@@ -54,25 +54,11 @@ export const SKILLS: readonly SkillDef[] = [
     description: '专用矿船的驾驶与自动化开采调校：每级缩短采集循环时间 ⟦3%⟧（最多缩短 ⟦40%⟧）。',
   },
   {
-    id: 'deep-space-logistics',
-    name: '深空物流学',
-    group: '舰船',
-    rank: 3,
-    description: '深空物流与仓位规划：全舰队货仓容量每级 +⟦4%⟧（满级 +⟦20%⟧；与货舱扩展件/货舱管理学乘算）。',
-  },
-  {
     id: 'industrial-ops',
     name: '工业舰操作',
     group: '舰船',
     rank: 3,
     description: '工业舰族专精驾驶：驾驶工业族舰船时采集产量每级 +⟦4%⟧。',
-  },
-  {
-    id: 'hauler-ops',
-    name: '货舰操作',
-    group: '舰船',
-    rank: 3,
-    description: '航运舰族专精驾驶：驾驶航运族舰船时货仓容量每级 +⟦5%⟧。',
   },
 
   // ───────── 工业 ─────────
@@ -367,7 +353,21 @@ export const SKILLS: readonly SkillDef[] = [
     description: '危险星域的保命之道：低安被抢的损失上限每级 −⟦12%⟧（满级 −⟦60%⟧，货与现金同享）。',
   },
 
-  // ───────── 物流（2026-09-04 技能扩军新组） ─────────
+  // ───────── 物流（2026-09-04 技能扩军新组；含从舰船组归并的运力技能） ─────────
+  {
+    id: 'deep-space-logistics',
+    name: '深空物流学',
+    group: '物流',
+    rank: 3,
+    description: '深空物流与仓位规划：全舰队货仓容量每级 +⟦4%⟧（满级 +⟦20%⟧；与货舱扩展件/货舱管理学乘算）。',
+  },
+  {
+    id: 'hauler-ops',
+    name: '货舰操作',
+    group: '物流',
+    rank: 3,
+    description: '航运舰族专精驾驶：驾驶航运族舰船时货仓容量每级 +⟦5%⟧。',
+  },
   {
     id: 'compression',
     name: '压缩技术',
