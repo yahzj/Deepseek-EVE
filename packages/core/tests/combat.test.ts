@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
+import type { ItemDef } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import {
@@ -435,5 +436,79 @@ describe('V18B 随机目标与"尸体不承接火力"（船长 2026-09-05）', (
     const later = battle.fx.filter((f) => f.side === 'me' && f.hit && f.seq > preSeq)
     expect(later.length).toBeGreaterThan(0) // 火力没有停（已转火存活单位）
     for (const f of later) expect(f.to).not.toBe('foe-0') // 尸体不承接火力
+  })
+})
+
+describe('第二批战斗技能（2026-09-05：火控阵列学/武器装填技术/无人机作战学）', () => {
+  /** 装一件族武器并取条目（extra 注入技能等级） */
+  function modSpec(
+    slot: 'turret' | 'missile' | 'laser',
+    damageType: 'kinetic' | 'explosive' | 'plasma',
+    extra: (s: GameState) => void,
+  ): { gun?: { hitRate: number; reloadMs: number }; beam?: { shotDmg: number; hitRate: number; reloadMs: number } } {
+    const id = `w2-${slot}`
+    const def = moduleDef(id, slot, 0, {
+      damageType,
+      dmgMult: 2,
+      maxRangeM: 6000,
+      minRangeM: slot === 'laser' ? 0 : 500,
+      hitRate: 0.8,
+      falloff: slot === 'missile' ? 1 : 0.3,
+      reloadMs: 3000,
+      cpuUse: 10,
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 31 })
+    const ctx = makeTestCtx({ modules: [def] })
+    addModule(state, id, 1)
+    expect(fitModule(state, id, ctx).ok).toBe(true)
+    extra(state)
+    const spec = createPlayerSpec(state, ctx, state.shipId)!
+    const w = spec.weapons.find((x) => x.label === def.name || x.label === `${def.name}×1`)!
+    if (w.kind === 'beam') return { beam: { shotDmg: w.shotDmg ?? 0, hitRate: w.hitRate, reloadMs: w.reloadMs } }
+    return { gun: { hitRate: w.hitRate, reloadMs: w.reloadMs } }
+  }
+
+  it('火控阵列学：满级 gun 命中率 ×1.15；激光必中不受影响', () => {
+    const g0 = modSpec('turret', 'kinetic', () => undefined).gun!
+    const g5 = modSpec('turret', 'kinetic', (s) => (s.skills.trained['fire-control'] = 5)).gun!
+    expect(g5.hitRate).toBeCloseTo(g0.hitRate * 1.15, 10)
+    const l5 = modSpec('laser', 'plasma', (s) => (s.skills.trained['fire-control'] = 5)).beam!
+    expect(l5.hitRate).toBe(1) // 激光必中恒 1，不受火控技能影响
+  })
+
+  it('武器装填技术：满级装填 ×0.8（3000 → 2400，gun 与激光同享）', () => {
+    const g0 = modSpec('turret', 'kinetic', () => undefined).gun!
+    const g5 = modSpec('turret', 'kinetic', (s) => (s.skills.trained['reload-drills'] = 5)).gun!
+    expect(g5.reloadMs).toBe(Math.round(g0.reloadMs * 0.8))
+    const l0 = modSpec('laser', 'plasma', () => undefined).beam!
+    const l5 = modSpec('laser', 'plasma', (s) => (s.skills.trained['reload-drills'] = 5)).beam!
+    expect(l5.reloadMs).toBe(Math.round(l0.reloadMs * 0.8))
+  })
+
+  it('无人机作战学：满级无人机单发 ×1.25（不吃炮术，独立乘区）', () => {
+    const droneDef: ItemDef = {
+      id: 'd-x',
+      name: '无人机X',
+      kind: 'drone',
+      unitM3: 1.5,
+      baseSellPriceIsk: 1,
+      description: '测试无人机',
+      dmg: 10,
+      damageType: 'kinetic',
+      cpuUse: 5,
+    }
+    const shot = (extra: (s: GameState) => void): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 32 })
+      const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 150 })] })
+      state.fleet[state.shipId].cargo['d-x'] = 3
+      extra(state)
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      const w = spec.weapons.find((x) => x.label === droneDef.name)!
+      return w.shotDmg ?? 0
+    }
+    const d0 = shot(() => undefined)
+    const d5 = shot((s) => (s.skills.trained['drone-warfare'] = 5))
+    expect(d0).toBeGreaterThan(0)
+    expect(d5).toBe(Math.round(d0 * 1.25))
   })
 })

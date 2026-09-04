@@ -301,7 +301,10 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const famMult = famLv > 0 ? 1 + ctx.balance.battle.familySkillPerLevel * famLv : 1
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
     const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]))
-    const reload = Math.max(100, Math.round(turret.reloadMs / reloadDiv))
+    // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
+    const fireLv = Math.min(5, state.skills.trained['fire-control'] ?? 0)
+    const fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1
+    const reload = Math.max(100, Math.round((turret.reloadMs / reloadDiv) * Math.max(0.6, 1 - 0.04 * Math.min(5, state.skills.trained['reload-drills'] ?? 0))))
     if (turret.slot === 'laser') {
       // V18B-2 激光炮：beam 条目——必中（开火不掷命中）、逐发扣能量弹药、
       // 距离衰减作用于威力（幅度 = 命中衰减的 50%，开火时按当前距离计算）
@@ -327,7 +330,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       eqHitMul: hitEq > 1 ? hitEq : undefined,
       maxRangeM: turret.maxRangeM,
       minRangeM: turret.minRangeM ?? 0,
-      hitRate: turret.hitRate ?? 0.5,
+      hitRate: (turret.hitRate ?? 0.5) * fireMult,
       falloff: turret.falloff ?? 0.3,
       reloadMs: reload,
     })
@@ -362,8 +365,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
           label: def.name,
           kind: 'fixed',
           fixedType: def.damageType ?? 'kinetic',
-          // V18 战术导控阵列：无人机单发伤害 ×(1+Σ导控)
-          shotDmg: Math.round((def.dmg ?? 0) * (1 + droneDmgBonus)),
+          // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）
+          shotDmg: Math.round((def.dmg ?? 0) * (1 + droneDmgBonus) * (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0))),
           maxRangeM: 2600,
           minRangeM: 200,
           hitRate: 0.6,
