@@ -207,13 +207,7 @@ function BeltCard({
       return
     }
     if (!mineAsk) {
-      setMineAsk(true)
-      onToast(
-        '⚡ 远征中开采 = 转场：本次远征将取消（无战果）' +
-          (state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : '') +
-          '——再点一次确认。',
-        true,
-      )
+      setMineAsk(true) // 展开卡片内联警示（替代底部 toast——警示要够明显）
       return
     }
     setMineAsk(false)
@@ -289,8 +283,8 @@ function BeltCard({
           </div>
         ) : null}
         <button
-          className={`app-btn is-small${isActiveBelt ? ' is-warn' : mineAsk ? ' is-warn' : ' is-primary'}`}
-          disabled={locked || (!isActiveBelt && !canStart)}
+          className={`app-btn is-small${isActiveBelt ? ' is-warn' : expeditionOn && !mineAsk ? ' is-warn' : ' is-primary'}`}
+          disabled={locked || (!isActiveBelt && !canStart) || mineAsk}
           title={
             locked
               ? unexplored
@@ -300,18 +294,34 @@ function BeltCard({
                 ? '停止当前开采'
                 : !canStart
                   ? '采矿作业进行中：先停止当前开采'
-                  : expeditionOn
-                    ? state.expedition.phase === 'battle'
-                      ? '交火中无法抽身采矿——先让战斗分出胜负或撤退'
-                      : mineAsk
-                        ? '再点一次确认：开采将取消本次远征（无战果）并停止连续出击'
-                        : '远征中可转开采（取消本次远征、连击同步停）'
-                    : undefined
+                  : mineAsk
+                    ? '确认已展开在下方——用面板按钮操作'
+                    : expeditionOn
+                      ? '远征中：点击展开转开采确认（将取消本次远征并停止连击）'
+                      : undefined
           }
           onClick={mineStartClick}
         >
-          {isActiveBelt ? '停止开采' : mineAsk ? '⚡ 再点确认开采' : '开始开采'}
+          {isActiveBelt ? '停止开采' : expeditionOn ? '⚡ 转开采' : '开始开采'}
         </button>
+        {/* T4 延后项：远征中转开采的醒目内联警示（取代易忽略的底部提示） */}
+        {mineAsk ? (
+          <div className="app-ano-switch-confirm">
+            <div className="app-sell-warn">
+              ⚠ 远征中开采 = <b>转场</b>：本次远征将立即取消——
+              <b> 无战果、无返程</b>
+              {state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : ''}，随即在「{belt.name}」开始采矿。
+            </div>
+            <div className="app-sell-confirm-btns">
+              <button className="app-btn is-small is-danger" onClick={mineStartClick}>
+                确认开采
+              </button>
+              <button className="app-btn is-small" onClick={() => setMineAsk(false)}>
+                取消
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="app-belt-ai">
           <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title="选择空闲副船">

@@ -2671,3 +2671,21 @@ body {
 .app-bts-star-layer.is-far .app-bts-star { box-shadow: 0 0 2px rgba(160,190,255,.4); }
 .app-bts-star-layer.is-mid .app-bts-star { box-shadow: 0 0 3px rgba(200,220,255,.5); }
 .app-bts-star-layer.is-near .app-bts-star { background: #eef4ff; box-shadow: 0 0 5px rgba(220,235,255,.65); }
+/* T4 转场：采矿↔远征的醒目内联确认面板（操作按钮旁，替代易忽略的底部 toast） */
+.app-ano-switch-confirm {
+  border: 1px dashed #e0524a;
+  background: rgba(224, 82, 74, 0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.app-ano-switch-confirm .app-sell-warn {
+  margin: 0;
+}
+.app-ano-pilot-note {
+  margin: 6px 0;
+  font-size: 12px;
+  opacity: 0.92;
+}

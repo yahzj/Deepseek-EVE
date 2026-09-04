@@ -924,18 +924,20 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
 
   function handleGoClick(): void {
     if (miningActive && !goAsk) {
-      setGoAsk(true)
-      onToast(
-        `⚡ 采矿中出击 = 转战：当前采矿将结束（已采 ${mining.tripUnits} 单位随船），舰队从矿带星系出发。` +
-          `当前驾驶「${pilotName}」${pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}——再点一次确认。`,
-        true,
-      )
+      setGoAsk(true) // 展开卡片内联警示（替换底部 toast——警示要够明显）
       return
     }
+    if (!goAsk) {
+      const r = engine.startExpeditionAt(anomaly.id)
+      if (!r.ok) onToast(r.error ?? '无法出发', true)
+      else onToast('舰队已出发，战报稍后见。')
+      return
+    }
+    // 面板「确认转战」
     setGoAsk(false)
-    const r = miningActive ? engine.startExpeditionFromMiningAt(anomaly.id) : engine.startExpeditionAt(anomaly.id)
-    if (!r.ok) onToast(r.error ?? (miningActive ? '无法转战' : '无法出发'), true)
-    else onToast(miningActive ? '已转战：采矿结束（货随船），舰队正从矿带星系出发。' : '舰队已出发，战报稍后见。')
+    const r = engine.startExpeditionFromMiningAt(anomaly.id)
+    if (!r.ok) onToast(r.error ?? '无法转战', true)
+    else onToast('已转战：采矿结束（货随船），舰队正从矿带星系出发。')
   }
 
   function toggleLoop(): void {
@@ -1011,10 +1013,12 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             {looping ? '■ 停止连击' : '🔁 连续出击'}
           </button>
           <button
-            className={`app-btn is-small ${goAsk ? 'is-warn' : 'is-primary'}`}
-            disabled={goDisabled}
+            className={`app-btn is-small ${miningActive && !goAsk ? 'is-warn is-primary' : goAsk ? 'is-dim' : 'is-primary'}`}
+            disabled={goDisabled || goAsk}
             title={
-              cdRemain > 0
+              goAsk
+                ? '转战确认已展开在下方——用面板按钮操作'
+                : cdRemain > 0
                 ? `重复出击冷却中（剩约 ${Math.max(1, Math.ceil(cdRemain / 1000))} 秒）`
                 : !reqMet || unexplored
                   ? '先满足声望/探索条件'
@@ -1027,17 +1031,36 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
                         : inFlightOther
                           ? '远征进行中——先等当前远征结束'
                           : miningActive
-                            ? goAsk
-                              ? '再点一次确认：转战将结束当前采矿（货随船）并从矿带星系出发'
-                              : `采矿中可转战（结束采矿、货随船、从矿带星系出发）；当前驾驶「${pilotName}」${pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}`
+                            ? '采矿中：点击展开转战确认（将结束采矿、货随船、从矿带星系出发）'
                             : ''
             }
             onClick={handleGoClick}
           >
-            {cdRemain > 0 ? '冷却中' : goAsk ? '⚡ 再点确认转战' : miningActive ? '转战出发' : '出发'}
+            {cdRemain > 0 ? '冷却中' : miningActive ? '⚡ 转战出发' : '出发'}
           </button>
         </div>
       </div>
+      {/* T4 延后项：采矿中转战的醒目内联警示（操作按钮正下方全宽，取代易忽略的底部提示） */}
+      {goAsk ? (
+        <div className="app-ano-switch-confirm">
+          <div className="app-sell-warn">
+            ⚠ 采矿中出击 = <b>转场</b>：本次采矿将立即结束——本趟已采
+            <b> {mining.tripUnits} 单位</b>留在船上（不卸货），舰船将从
+            <b> 当前矿带星系</b>直接出发征讨「{anomaly.name}」。
+          </div>
+          <div className="app-ano-pilot-note">
+            当前驾驶：「{pilotName}」{pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}
+          </div>
+          <div className="app-sell-confirm-btns">
+            <button className="app-btn is-small is-danger" onClick={handleGoClick}>
+              确认转战
+            </button>
+            <button className="app-btn is-small" onClick={() => setGoAsk(false)}>
+              取消
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
