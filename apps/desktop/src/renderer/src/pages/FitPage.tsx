@@ -14,9 +14,12 @@ import {
   RACK_LABELS,
   rackLabel,
   rackOf,
+  sameKindCount,
   shipDisplayName,
   shipSlotsOf,
   slotLabel,
+  stackingOf,
+  stackWeight,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, ModuleHover, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
@@ -35,12 +38,15 @@ const COMBAT_BASE_KEYS = new Set([
   '回避率',
 ])
 
-/** 槽类可装家族简述（空位引导文案） */
+/** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽） */
 const RACK_FAMILIES: Record<RackSlot, string> = {
   high: '炮台 / 采集器 / 无人机装置',
-  mid: '护盾增强・扩展 / 矢量推进器',
-  low: '装甲镀层・增厚板 / 货舱扩展',
+  mid: '护盾增强・扩展 / 矢量推进器 / 索敌・陀螺（命中・闪避支援）',
+  low: '装甲镀层・增厚板 / 货舱扩展 / 稳定器・射速计算机（伤害・射速支援）',
 }
+
+/** 数字千分位 */
+const fmt = (n: number): string => n.toLocaleString('zh-CN')
 
 /** 单层抗性 chips：只列非零系（chip 底色 = 类型色），全零 = "—" */
 function layerResChips(res: DamageResists | undefined): ReactNode {
@@ -62,8 +68,10 @@ export function FitPage({ engine, onToast }: PageProps) {
   const shipName = shipDisplayName(state, engine.ctx, state.shipId)
   const fitted = state.fleet[state.shipId]?.fitted
   const slots = shipDef ? shipSlotsOf(shipDef) : { high: 1, mid: 1, low: 1 }
-  // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力、命中含失稳）
+  // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力曲线、回避含陀螺缺口）
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, state.shipId) : null
+  // V18.1 索敌阵列（命中件）：炮台命中乘子（收敛后；条目层）
+  const gunEq = spec?.weapons.find((w) => w.kind === 'gun')?.eqHitMul
 
   const bayModules: ModuleDef[] = engine.modules.filter((m) => countModule(state, m.id) > 0)
   // CPU 占用（全位合计，与无人机放飞共用）
@@ -83,6 +91,20 @@ export function FitPage({ engine, onToast }: PageProps) {
 
   function handleUnfit(rack: RackSlot, index: number): void {
     if (engine.unfitAtAt(rack, index)) onToast('装备已卸下并放回装备库。')
+  }
+
+  /** 空位候选下拉文案：V18.1 收敛件标注"第 N 件衰减"（避免玩家误以为全效线性叠加） */
+  function fitOptionLabel(m: ModuleDef): string {
+    const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）`
+    if (!fitted) return base
+    const st = stackingOf(m)
+    if (st.group === 'flat') return base
+    const n = sameKindCount(fitted, engine.ctx, m)
+    if (n === 0) return base
+    if (st.group === 'curve') {
+      return `${base} ← 同类第 ${n + 1} 件：按 ${Math.round(stackWeight(n + 1) * 100)}% 生效`
+    }
+    return `${base} ← 同类第 ${n + 1} 件：只削剩余缺口（收益递减）`
   }
 
   return (
@@ -113,10 +135,19 @@ export function FitPage({ engine, onToast }: PageProps) {
                           </>
                         ),
                       },
+                      // V18.1：合成预览（收敛件多装的最终值——回避/命中/速度均为装后结果）
+                      { k: '回避率（含装备）', v: `${Math.round(spec.evasion * 100)}%` },
+                      {
+                        k: '开火命中修正（含装备）',
+                        v: `推进失稳 ×${(spec.hitMul ?? 1).toFixed(2)}${
+                          gunEq !== undefined ? ` · 索敌 ×${gunEq.toFixed(2)}` : ''
+                        }`,
+                      },
+                      { k: '机动速度（含加力）', v: `${fmt(Math.round(spec.speedMps))} m/s` },
                     ]
                   : []),
               ]}
-              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性 = EVE 式乘入合成（上限 90%）；「动力」影响弃船避险与跃迁充能。`}
+              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性 = EVE 式乘入合成（上限 90%）；V18.1 多装规则：伤害/射速/容量全额叠加，命中/闪避/抗性/速度收益递减；「动力」影响弃船避险与跃迁充能。`}
             />
             <div className="app-info-row">
               <span className="app-info-key">CPU 占用</span>
@@ -172,7 +203,7 @@ export function FitPage({ engine, onToast }: PageProps) {
                                 <option value="">— 装入…</option>
                                 {candidates.map((m) => (
                                   <option key={m.id} value={m.id}>
-                                    {m.name}（×{countModule(state, m.id)} · {moduleShortEffect(m)}）
+                                    {fitOptionLabel(m)}
                                   </option>
                                 ))}
                               </select>

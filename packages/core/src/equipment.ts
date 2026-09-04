@@ -8,8 +8,10 @@
  * - V18 槽位制：fitted = 三类位数组 {high/mid/low: (id|null)[]}，长度 = 船对应槽类
  *   数量（ShipDef.slots，复数安装）。模块归槽 = ModuleDef.rack（rackOf 单点推导）；
  * - 装配 = 装入该类第一空位（可指定位）；卸下 = 按 槽类+位序；
- *   可叠件（turret/miner/cargo/无人机装置）可复数；唯一件（盾/甲抗性与容量系、
- *   推进器）全船同类同系仅 1 件（uniqueKeyOf）；
+ *   V18A：抗/容系与推进器"同类唯一"；**V18.1（船长 2026-09-04）：取消同类唯一——
+ *   全部可复数安装**，防超模靠两类收敛（stackingOf/curveMult/gapCombine）：
+ *   缺口复合组（抗性/闪避）、EVE 曲线组（命中/速度）；加算组（伤害/射速/容量/导控）
+ *   线性叠加不额外收敛——唯一硬约束 = CPU 全位合计（与无人机放飞共用）；
  * - V17 CPU 装配校验沿用：全部位合计 cpuUse ≤ 船体 cpu（与无人机放飞共用）；
  *   口径已随 V18 取消：任意船可装任意炮；
  * - 载入修复链（repairDeprecatedModules）：下架型号迁移/退回 + V18 槽位数与船布局
@@ -19,7 +21,7 @@
 import { addLog } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext } from './types'
+import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists } from './types'
 import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState } from './inventory'
 import { fleetDefOf } from './instances'
@@ -72,28 +74,71 @@ export function familyModules(state: GameState, ctx: SimContext, shipId: string,
   return allFittedModules(fitted, ctx).filter((d) => d.slot === family)
 }
 
+/* ═══════════ V18.1 多件收敛（取消同类唯一后的防超模机制） ═══════════ */
+
+/** 收敛分组：gap = 缺口复合（抗性/闪避）、curve = EVE 曲线（命中/速度）、flat = 加算线性 */
+export type StackGroup = 'gap' | 'curve' | 'flat'
+
 /**
- * V18 同类唯一键：盾/甲 抗性系按 家族+系（如 shield-resist-kinetic）、容量系
- * （shield-hp / armor-hp）、推进器（propulsion）返回非空键——同键全船仅可装 1 件；
- * 可叠件（炮/矿枪/货舱扩展/无人机装置）返回 null（允许复数、线性求和）。
+ * 一件装备的收敛分组与收敛键（同键 = 同一收敛池，按单件效果从强到弱参与合成）。
+ * - 抗性（盾/甲各系）与闪避 → gap（缺口复合 1−Π(1−x)，天然收敛）；
+ * - 命中/速度 → curve（EVE 曲线 Π(1+pᵢ·wᵢ)）；
+ * - 伤害%/射速/容量%/矿枪/货舱/导控/炮台实体 → flat（加算线性，不额外收敛）。
+ * UI 用 group 出"多装递减 / 可多装·全额叠加"标签；装配数件数用 kind 提示第 N 件。
  */
-export function uniqueKeyOf(def: ModuleDef): string | null {
-  const firstKey = (add: Partial<Record<string, number>> | undefined): string | null => {
+export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } {
+  const resistKey = (add: DamageResists | undefined): string | null => {
     for (const [t, v] of Object.entries(add ?? {})) if ((v ?? 0) > 0) return t
     return null
   }
-  if (def.slot === 'shield') {
-    const t = firstKey(def.shieldResistAdd)
-    if (t) return `shield-resist-${t}`
-    if (def.shieldHpBonus !== undefined) return 'shield-hp'
+  if (def.evasionGapPct !== undefined) return { group: 'gap', kind: 'evasion' }
+  if (def.hitBonusPct !== undefined) return { group: 'curve', kind: 'hit' }
+  if (def.speedBonusPct !== undefined) return { group: 'curve', kind: 'speed' }
+  const sk = resistKey(def.shieldResistAdd)
+  if (sk) return { group: 'gap', kind: `shield-${sk}` }
+  const ak = resistKey(def.armorResistAdd)
+  if (ak) return { group: 'gap', kind: `armor-${ak}` }
+  return { group: 'flat', kind: def.slot }
+}
+
+/** EVE 叠加曲线第 n 件权重（n 从 1 起）：e^−((n−1)/2.67)² ≈ 100% / 87% / 57% / 28% / 11%… */
+export function stackWeight(n: number): number {
+  const k = Math.max(0, n - 1) / 2.67
+  return Math.exp(-(k * k))
+}
+
+/**
+ * EVE 曲线多件合成系数：单件加成按"从强到弱"排位后
+ * 总系数 = Π(1 + pᵢ × wᵢ)（EVE stacking penalty 标准形）。
+ */
+export function curveMult(bonuses: number[]): number {
+  const sorted = [...bonuses].filter((p) => p > 0).sort((a, b) => b - a)
+  let mult = 1
+  for (let i = 0; i < sorted.length; i++) mult *= 1 + sorted[i]! * stackWeight(i + 1)
+  return mult
+}
+
+/**
+ * 缺口复合：1 − (1−base) × Π(1−xᵢ)。
+ * base = 既有缺口值（如船体基础回避 0.13 / 船体基础抗 0.5），x = 各件缺口削减。
+ * 两件 20% 闪避件且无基础 → 1−0.8² = 0.36（船长示例）。
+ */
+export function gapCombine(gaps: number[], base = 0): number {
+  const cut = (x: number): number => Math.min(0.9, Math.max(0, x))
+  let remain = 1 - cut(base)
+  for (const x of gaps) remain *= 1 - cut(x)
+  return 1 - remain
+}
+
+/** 已装模块中与目标件同收敛键（kind）的件数（含目标件本身则 +1 由调用方处理） */
+export function sameKindCount(fitted: FittedModules, ctx: SimContext, def: ModuleDef): number {
+  const kind = stackingOf(def).kind
+  let n = 0
+  for (const id of allFittedIds(fitted)) {
+    const d = ctx.modules.get(id)
+    if (d && d.id !== def.id && stackingOf(d).kind === kind) n++
   }
-  if (def.slot === 'armor') {
-    const t = firstKey(def.armorResistAdd)
-    if (t) return `armor-resist-${t}`
-    if (def.armorHpBonus !== undefined) return 'armor-hp'
-  }
-  if (def.slot === 'propulsion') return 'propulsion'
-  return null
+  return n
 }
 
 /** 全位 CPU 占用合计（与无人机放飞共用池；装配校验/战斗余量同源） */
@@ -117,7 +162,8 @@ export function firstFreeBay(fitted: FittedModules, rack: RackSlot): number {
 
 /**
  * 玩家指令：把装备库里的装备装到当前船对应槽类（rack）的某空位。
- * index 缺省 = 第一个空位；该槽类无空位/唯一键冲突/CPU 超限 → 拒绝并提示。
+ * index 缺省 = 第一个空位；该槽类无空位/CPU 超限 → 拒绝并提示。
+ * V18.1：无同类唯一约束——任何件可复数安装，防超模靠收敛机制（stackingOf）与 CPU。
  */
 export function fitModule(
   state: GameState,
@@ -139,18 +185,6 @@ export function fitModule(
   if (shipDef) {
     const want = shipSlotsOf(shipDef)[rack]
     while (bays.length < want) bays.push(null)
-  }
-  // 同类唯一校验（全船：同键只可 1 件——防两块动能膜叠出超模乘入抗性）
-  const key = uniqueKeyOf(def)
-  if (key !== null) {
-    const clash = allFittedIds(fitted).find((id) => {
-      const d = ctx.modules.get(id)
-      return d !== undefined && uniqueKeyOf(d) === key
-    })
-    if (clash !== undefined) {
-      const clashDef = ctx.modules.get(clash)
-      return { ok: false, error: `同类唯一：${clashDef?.name ?? clash} 已在船上（先卸下它才能装 ${def.name}）。` }
-    }
   }
   // 目标位
   let index = -1

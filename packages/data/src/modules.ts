@@ -1,5 +1,5 @@
 /**
- * 装备表（V17.1 + V17.2 + V18：54 件）。
+ * 装备表（V17.1 + V17.2 + V18 + V18.1：72 件）。
  *
  * 设计（中文说明）：
  * - 工业槽（miner/cargo）：保留加成系数形态（bonus：产量/容量百分比）——生产参数简单直接；
@@ -24,8 +24,14 @@
  *   proto 奇货（声望 10、无蓝图）；护盾/装甲/推进无蓝图（市场供应为主）；
  * - 存档迁移：mod-shield-1/2/3、mod-armor-1/2/3（通用全系）与 mod-turret-1/2/3
  *   （V17 前混型炮）已下架，载入存档自动按动能款迁移（core/equipment 迁移表）；
- * - V18 立项（C3）：EVE 式高/中/低槽船体布局为独立里程碑，届时纯结构迁移
- *   （槽位制设计评审中，见 docs/roadmap.md）——炮尺寸三档制已随口径取消移除，与其无关。
+ * - V18（C3）槽位制 + V18.1（2026-09-04 船长拍板）支援件与收敛：
+ *   · 槽位制：fitted 位数组 + rack 归属（高 = 炮/矿/无人机装置；中 = 盾系/推进；
+ *     低 = 甲系/货舱）；V18.1 支援件再挂 中/低（伤害+射速 = 低；命中+闪避 = 中）；
+ *   · V18.1 取消"同类唯一"：全部件可复数安装，防超模靠收敛（core/equipment
+ *     stackingOf）：抗性/闪避缺口复合、命中/速度 EVE 曲线、伤害/射速/容量加算；
+ *     本表支援件数值（+6/10/15% 等）为暂定初值，进 C4 校准轮复核；
+ *   · support 家族效果字段判别：damageTypeBonusPct = 稳定器、reloadCutPct = 射速
+ *     计算机、hitBonusPct = 索敌阵列、evasionGapPct = 姿态陀螺。
  */
 
 import type { ModuleDef } from '@whale/core'
@@ -629,6 +635,172 @@ export const MODULES: readonly ModuleDef[] = [
     hitPenalty: 0.2,
     cpuUse: 40,
     description: '加力推进：战斗速度 +50%，代价 = 开火命中 ×0.80（常驻）。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
+  },
+
+  // ══════════ V18.1 支援件（support：低槽 = 伤害稳定器/射速计算机；中槽 = 索敌阵列/姿态陀螺） ══════════
+  // 收敛标签：伤害/射速 = 可多装·全额叠加（加算）；命中 = 多装递减（EVE 曲线）；闪避 = 多装递减（缺口复合）。
+  // 数值 = 暂定初值（MK1/MK2/MK3：+6/10/15% 等；CPU 5/15/40），进 C4 校准轮复核。
+  {
+    id: 'mod-stab-kin-1',
+    name: '动能稳定器 MK1',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { kinetic: 0.06 },
+    cpuUse: 5,
+    description: '动能武器支援（低槽）：动能炮台单发伤害 +6%。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-stab-kin-2',
+    name: '动能稳定器 MK2',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { kinetic: 0.1 },
+    cpuUse: 15,
+    description: '动能武器支援（低槽）：动能炮台单发伤害 +10%。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-stab-kin-3',
+    name: '动能稳定器 MK3',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { kinetic: 0.15 },
+    cpuUse: 40,
+    description: '动能武器支援（低槽）：动能炮台单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+  },
+  {
+    id: 'mod-stab-exp-1',
+    name: '高爆稳定器 MK1',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { explosive: 0.06 },
+    cpuUse: 5,
+    description: '高爆武器支援（低槽）：高爆炮台单发伤害 +6%。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-stab-exp-2',
+    name: '高爆稳定器 MK2',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { explosive: 0.1 },
+    cpuUse: 15,
+    description: '高爆武器支援（低槽）：高爆炮台单发伤害 +10%。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-stab-exp-3',
+    name: '高爆稳定器 MK3',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { explosive: 0.15 },
+    cpuUse: 40,
+    description: '高爆武器支援（低槽）：高爆炮台单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+  },
+  {
+    id: 'mod-stab-pla-1',
+    name: '等离子稳定器 MK1',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { plasma: 0.06 },
+    cpuUse: 5,
+    description: '等离子武器支援（低槽）：等离子炮台单发伤害 +6%。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-stab-pla-2',
+    name: '等离子稳定器 MK2',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { plasma: 0.1 },
+    cpuUse: 15,
+    description: '等离子武器支援（低槽）：等离子炮台单发伤害 +10%。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-stab-pla-3',
+    name: '等离子稳定器 MK3',
+    slot: 'support',
+    rack: 'low',
+    damageTypeBonusPct: { plasma: 0.15 },
+    cpuUse: 40,
+    description: '等离子武器支援（低槽）：等离子炮台单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+  },
+  {
+    id: 'mod-rof-1',
+    name: '射速计算机 MK1',
+    slot: 'support',
+    rack: 'low',
+    reloadCutPct: 0.05,
+    cpuUse: 5,
+    description: '炮台射速支援（低槽）：装填间隔 −5%（约合射速 +5%）。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-rof-2',
+    name: '射速计算机 MK2',
+    slot: 'support',
+    rack: 'low',
+    reloadCutPct: 0.08,
+    cpuUse: 15,
+    description: '炮台射速支援（低槽）：装填间隔 −8%（约合射速 +9%）。同类可多装、效果全额叠加。',
+  },
+  {
+    id: 'mod-rof-3',
+    name: '射速计算机 MK3',
+    slot: 'support',
+    rack: 'low',
+    reloadCutPct: 0.12,
+    cpuUse: 40,
+    description: '炮台射速支援（低槽）：装填间隔 −12%（约合射速 +14%）。同类可多装、效果全额叠加（市场稀有）。',
+  },
+  {
+    id: 'mod-track-1',
+    name: '索敌阵列 MK1',
+    slot: 'support',
+    rack: 'mid',
+    hitBonusPct: 0.08,
+    cpuUse: 5,
+    description: '索敌支援（中槽）：炮台命中整体提升 8%。同类多装收益递减。',
+  },
+  {
+    id: 'mod-track-2',
+    name: '索敌阵列 MK2',
+    slot: 'support',
+    rack: 'mid',
+    hitBonusPct: 0.12,
+    cpuUse: 15,
+    description: '索敌支援（中槽）：炮台命中整体提升 12%。同类多装收益递减。',
+  },
+  {
+    id: 'mod-track-3',
+    name: '索敌阵列 MK3',
+    slot: 'support',
+    rack: 'mid',
+    hitBonusPct: 0.16,
+    cpuUse: 40,
+    description: '索敌支援（中槽）：炮台命中整体提升 16%。同类多装收益递减（市场稀有）。',
+  },
+  {
+    id: 'mod-gyro-1',
+    name: '姿态陀螺 MK1',
+    slot: 'support',
+    rack: 'mid',
+    evasionGapPct: 0.1,
+    cpuUse: 5,
+    description: '机动支援（中槽）：被命中缺口削减 10%（敌命中 60% → 54%）。同类多装收益递减。',
+  },
+  {
+    id: 'mod-gyro-2',
+    name: '姿态陀螺 MK2',
+    slot: 'support',
+    rack: 'mid',
+    evasionGapPct: 0.15,
+    cpuUse: 15,
+    description: '机动支援（中槽）：被命中缺口削减 15%（敌命中 60% → 51%）。同类多装收益递减。',
+  },
+  {
+    id: 'mod-gyro-3',
+    name: '姿态陀螺 MK3',
+    slot: 'support',
+    rack: 'mid',
+    evasionGapPct: 0.2,
+    cpuUse: 40,
+    description: '机动支援（中槽）：被命中缺口削减 20%（敌命中 60% → 48%）。同类多装收益递减（市场稀有）。',
   },
 ]
 

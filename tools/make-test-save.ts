@@ -144,9 +144,10 @@ function injectRefine(state: GameState): string[] {
 }
 
 /**
- * v18（V18 槽位制门槛）：资金 + 一艘满槽高配武装演示船（虎鲨：多炮同 id ×2 齐射、
- * 异弹型炮、中低槽满配，CPU 165 内）+ 复数矿枪备件 + 弹药与无人机补给。
- * 测装配页复数安装/同类唯一提示、战斗多炮 ×N 合并与 per-gun 弹型、无人机放飞。
+ * v18/v18.1（槽位制 + 支援件门槛）：资金 + 一艘满槽高配武装演示船（虎鲨：多炮同 id ×2
+ * 齐射、异弹型炮、中槽 索敌+陀螺、低槽 双动能稳定器 = 全额叠加演示，CPU 165 内）+
+ * 复数矿枪/支援件备件 + 弹药与无人机补给。
+ * 测装配页复数安装与两类叠加标签、收敛提示（第 N 件递减）、战斗 ×N 齐射与 per-gun 弹型。
  */
 function injectV18(state: GameState): string[] {
   const notes: string[] = []
@@ -154,32 +155,36 @@ function injectV18(state: GameState): string[] {
   // 1) 资金：买得起顶配船与替换件
   state.wallet.isk += 50_000_000
   notes.push('钱包 +50,000,000 ISK')
-  // 2) 一艘满槽高配武装演示船（CPU 预算内；高槽 2×动能 MK2 = 齐射 ×2 演示 + 高爆 MK2 异弹型）
+  // 2) 一艘满槽高配武装演示船（CPU 144/165；V18.1 支援件布局）
   const uid = addShipToFleet(state, 'sh-tigershark')
   const demo = state.fleet[uid]!
   demo.customName = '复数装配演示'
   demo.fitted = {
     high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-exp-2', null],
-    mid: ['mod-shield-ext-2', 'mod-prop-2'],
-    low: ['mod-armor-plate-2', 'mod-cargo-2'],
+    mid: ['mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-stab-kin-2'],
   }
   demo.cargo['drone-scout'] = 20
   demo.cargo['drone-assault'] = 10
-  notes.push(`新增满槽演示船「${uid}（复数装配演示）」——虎鲨级：高槽 2×动能 MK2 + 高爆 MK2（留 1 位试无人机件）、中槽 盾扩+推进、低槽 甲板+货舱；装配页可见 ×2 齐射与复数槽位`)
+  notes.push(`新增满槽演示船「${uid}（复数装配演示）」——虎鲨级：高槽 2×动能 MK2 + 高爆 MK2（留 1 位试第 3 门 → ×3 齐射）、中槽 索敌阵列 MK2 + 姿态陀螺 MK2、低槽 动能稳定器 MK2 ×2（+20% 全额叠加）`)
   notes.push('演示船货仓预置蜂鸟侦察机 ×20 + 赤鸢攻击机 ×10（需自装无人机挂架/战术导控）')
-  // 3) 备件：复数矿枪（可再装一艘采矿船试复数产量）+ 高槽空位可加第 3 门动能炮（×3 齐射）
+  // 3) 备件：复数矿枪（再装一艘采矿船试复数产量）+ 支援件替换/升级件
   state.moduleBay['mod-miner-2'] = (state.moduleBay['mod-miner-2'] ?? 0) + 2
   state.moduleBay['mod-turret-kin-2'] = (state.moduleBay['mod-turret-kin-2'] ?? 0) + 1
+  state.moduleBay['mod-stab-kin-2'] = (state.moduleBay['mod-stab-kin-2'] ?? 0) + 1
+  state.moduleBay['mod-stab-exp-2'] = (state.moduleBay['mod-stab-exp-2'] ?? 0) + 1
+  state.moduleBay['mod-rof-2'] = (state.moduleBay['mod-rof-2'] ?? 0) + 1
+  state.moduleBay['mod-track-2'] = (state.moduleBay['mod-track-2'] ?? 0) + 1
+  state.moduleBay['mod-gyro-2'] = (state.moduleBay['mod-gyro-2'] ?? 0) + 1
   state.moduleBay['mod-drone-rack-2'] = (state.moduleBay['mod-drone-rack-2'] ?? 0) + 1
-  state.moduleBay['mod-drone-tac-2'] = (state.moduleBay['mod-drone-tac-2'] ?? 0) + 1
-  notes.push('装备库补：矿枪 MK2 ×2（复数采矿示例）、动能炮 MK2 ×1（第 3 门 → ×3）、无人机挂架/导控 MK2 各 1')
+  notes.push('装备库补：矿枪 MK2 ×2（复数采矿）、动能炮 MK2 ×1（第 3 门 → ×3）、稳定器/射速/索敌/陀螺 MK2 各 1（试替换与同类第 2 件递减提示）、无人机挂架 MK2 ×1')
   // 4) 弹药 + 耐久
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 500
   }
   for (const s of Object.values(state.fleet)) s.durability = 1
   notes.push('仓库补三型通用弹 ×500 各；全舰耐久回满')
-  notes.push('测试路径：舰船页换驾驶到演示船 → 装配页看高/中/低三组位与 CPU 余量；再装第 2 块盾扩应被「同类唯一」拒绝；去悬赏开战看 ×2 齐射合并条目与动能/高爆弹型分开装填')
+  notes.push('测试路径：舰船页换驾驶到演示船 → 装配页看高/中/低三组位与合成预览（回避含陀螺、命中含索敌、速度含加力）；低槽再装第 3 件动能稳定器应全额叠加 +30%；中槽再装第 2 件索敌/陀螺应提示「第 N 件衰减」；去悬赏开战看 ×2 齐射与动能/高爆弹型分开装填')
   return notes
 }
 

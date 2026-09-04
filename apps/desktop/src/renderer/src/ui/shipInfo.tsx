@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, stackingOf } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -82,41 +82,69 @@ export function turretAmmoText(mod: ModuleDef): string {
   return `${type}弹`
 }
 
-/** 短效文案（装配台槽位行 / 装备库行 / 手册网格共用） */
+/** 短效文案（装配台槽位行 / 装备库行 / 手册网格共用；V18.1 收敛件尾注"多装递减"） */
 export function moduleShortEffect(mod: ModuleDef): string {
+  let body = ''
   switch (mod.slot) {
     case 'miner':
-      return `产量 +${pctOpt(mod.bonus)}`
+      body = `产量 +${pctOpt(mod.bonus)}`
+      break
     case 'cargo':
-      return `货舱容量 +${pctOpt(mod.bonus)}`
+      body = `货舱容量 +${pctOpt(mod.bonus)}`
+      break
     case 'turret': {
-      return `${turretAmmoText(mod)} · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      body = `${turretAmmoText(mod)} · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      break
     }
     case 'shield': {
       const parts: string[] = []
       if (mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
       const gap = resistGapText(mod.shieldResistAdd)
       if (gap) parts.push(gap)
-      return parts.join(' · ')
+      body = parts.join(' · ')
+      break
     }
     case 'armor': {
       const parts: string[] = []
       if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
       const gap = resistGapText(mod.armorResistAdd)
       if (gap) parts.push(gap)
-      return parts.join(' · ')
+      body = parts.join(' · ')
+      break
     }
     case 'propulsion': {
       const parts: string[] = []
       if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}`)
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(`命中×${(1 - mod.hitPenalty).toFixed(2)}`)
-      return parts.join(' · ')
+      body = parts.join(' · ')
+      break
     }
     case 'drone-rack':
-      return `无人机舱 +${fmt(mod.droneBayBonusM3)} m³`
+      body = `无人机舱 +${fmt(mod.droneBayBonusM3)} m³`
+      break
     case 'drone-tac':
-      return `无人机伤害 +${pctOpt(mod.droneDmgBonus)}`
+      body = `无人机伤害 +${pctOpt(mod.droneDmgBonus)}`
+      break
+    case 'support': {
+      // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
+      const dmg = mod.damageTypeBonusPct
+      if (dmg && Object.keys(dmg).length > 0) {
+        body = Object.entries(dmg)
+          .filter(([, v]) => (v ?? 0) > 0)
+          .map(([t, v]) => `${DMG_LABEL[t as DamageType]}伤 +${pct(v ?? 0)}`)
+          .join(' + ')
+      } else if (mod.reloadCutPct !== undefined) {
+        body = `装填 −${pct(mod.reloadCutPct)}`
+      } else if (mod.hitBonusPct !== undefined) {
+        body = `炮台命中 +${pct(mod.hitBonusPct)}`
+      } else if (mod.evasionGapPct !== undefined) {
+        body = `被命中 −${pct(mod.evasionGapPct)}（缺口）`
+      }
+      break
+    }
   }
+  // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
+  return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -294,6 +322,45 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.droneDmgBonus !== undefined) {
       lines.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus)}（乘入放飞无人机单发；线性可叠）` })
     }
+  } else if (mod.slot === 'support') {
+    // V18.1 支援件：按效果字段渲染（低槽 = 稳定器/射速计算机；中槽 = 索敌/陀螺）
+    const dmg = mod.damageTypeBonusPct
+    if (dmg && Object.keys(dmg).length > 0) {
+      const tail = '只加成对应系炮台单发，不影响无人机'
+      lines.push({
+        k: '炮台伤害',
+        v: (
+          <>
+            {Object.entries(dmg)
+              .filter(([, v]) => (v ?? 0) > 0)
+              .map(([t, v]) => (
+                <span key={t} className="app-stack-inline">
+                  <DmgChip t={t as DamageType} />
+                  <span className="app-dim">{` +${pct(v ?? 0)}（${tail}）`}</span>
+                </span>
+              ))}
+          </>
+        ),
+      })
+    }
+    if (mod.reloadCutPct !== undefined) {
+      lines.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}（装填 ÷ ${(1 / (1 - (mod.reloadCutPct ?? 0))).toFixed(2)}，只作用于炮台）` })
+    }
+    if (mod.hitBonusPct !== undefined) {
+      lines.push({ k: '命中支援', v: `炮台命中 ×${(1 + (mod.hitBonusPct ?? 0)).toFixed(2)}（同类多装按 EVE 曲线递减）` })
+    }
+    if (mod.evasionGapPct !== undefined) {
+      lines.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}——敌命中 60% 时 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}；全船生效` })
+    }
+  }
+  // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
+  const st = stackingOf(mod)
+  if (st.group === 'flat') {
+    lines.push({ k: '叠加方式', v: '可多装 · 全额叠加（效果线性求和；上限看 CPU）' })
+  } else if (st.group === 'curve') {
+    lines.push({ k: '叠加方式', v: '同类多装收益递减（EVE 叠加曲线：第 2 件 ≈87%、第 3 件 ≈57%）' })
+  } else {
+    lines.push({ k: '叠加方式', v: '同类多装收益递减（缺口复合：1 − (1−a)(1−b)；第 2 件再削剩余缺口）' })
   }
   if (mod.cpuUse !== undefined) lines.push({ k: 'CPU 占用', v: fmt(mod.cpuUse) })
   return lines

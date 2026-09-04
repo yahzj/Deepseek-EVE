@@ -165,6 +165,12 @@ export {
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
   migrateDeprecatedAmmo,
+  // V18.1 多件收敛（取消同类唯一后的防超模机制；UI 标签与装配提示用）
+  stackingOf,
+  stackWeight,
+  curveMult,
+  gapCombine,
+  sameKindCount,
 } from './equipment'
 
 export {

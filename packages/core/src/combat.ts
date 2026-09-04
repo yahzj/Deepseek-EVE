@@ -18,7 +18,7 @@ import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, 
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
-import { allFittedModules, familyModules, fittedCpuUsed } from './equipment'
+import { allFittedModules, curveMult, familyModules, fittedCpuUsed, gapCombine } from './equipment'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -41,8 +41,10 @@ export interface WeaponSpec {
   fixedType?: DamageType
   /** fixed 单发伤害 */
   shotDmg?: number
-  /** gun：弹型 → 单发伤害（构建期含 dmgMult×(1+炮术×5%)×(1+powerBonus)） */
+  /** gun：弹型 → 单发伤害（构建期含 dmgMult×(1+炮术×5%)×(1+powerBonus)×伤害稳定器） */
   shotsByType?: Partial<Record<DamageType, number>>
+  /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1） */
+  eqHitMul?: number
   maxRangeM: number
   minRangeM: number
   hitRate: number
@@ -59,7 +61,8 @@ export interface UnitSpec {
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
   evasion: number
   hitBonus: number
-  /** V17.1 开火失稳乘子：加力推进装配后 <1（命中整体 ×hitMul），默认 1 */
+  /** V17.1 开火失稳乘子：推进器装配后 <1（命中整体 ×hitMul）；V18.1 多件推进器只取
+   * 最重（削减最大）一件；索敌命中件走 WeaponSpec.eqHitMul，不并入本字段 */
   hitMul?: number
   signatureM: number
   scanResMm: number
@@ -100,7 +103,7 @@ export function inRange(dist: number, w: { minRangeM: number; maxRangeM: number 
  * 参数保留 scanResMm/signatureM 可选字段仅为调用面兼容（字面量与单位对象），公式不消费。
  */
 export function hitChance(
-  weapon: { hitRate: number; minRangeM: number; maxRangeM: number; falloff: number },
+  weapon: { hitRate: number; minRangeM: number; maxRangeM: number; falloff: number; eqHitMul?: number },
   attacker: { hitBonus: number; scanResMm?: number; hitMul?: number },
   defender: { evasion: number; signatureM?: number },
   dist: number,
@@ -108,7 +111,8 @@ export function hitChance(
 ): number {
   const df = distFactor(dist, weapon)
   const raw = (weapon.hitRate + attacker.hitBonus) * df - defender.evasion
-  return clamp(bal.hitMin, bal.hitMax, raw * (attacker.hitMul ?? 1))
+  // V18.1：索敌（命中件）乘子在 clamp 内与失稳分开——eqHitMul 只随炮台条目
+  return clamp(bal.hitMin, bal.hitMax, raw * (weapon.eqHitMul ?? 1) * (attacker.hitMul ?? 1))
 }
 
 /** 把一发伤害按层序消费（盾→甲→结构），返回更新后三层与实际扣血 */
@@ -189,17 +193,19 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const bal = ctx.balance.battle
   const fitted = fleet.fitted
 
-  // V18：家族件列表（全位；可叠件复数、抗/容系唯一件由装配层保证）
+  // V18：家族件列表（全位；V18.1 起无同类唯一——多件按收敛组合成）
   const shieldDefs = familyModules(state, ctx, shipId, 'shield')
   const armorDefs = familyModules(state, ctx, shipId, 'armor')
   const propDefs = familyModules(state, ctx, shipId, 'propulsion')
   const turretDefs = familyModules(state, ctx, shipId, 'turret')
+  // V18.1 支援件（中/低槽：伤害/射速/命中/闪避，效果字段判别）
+  const supportDefs = allFittedModules(fitted, ctx).filter((d) => d.slot === 'support')
   // 无人机装置（高槽 rack 件；甲板扩展/战术导控按字段判别）
   const droneGear = allFittedModules(fitted, ctx).filter(
     (d) => d.droneBayBonusM3 !== undefined || d.droneDmgBonus !== undefined,
   )
 
-  // 盾/甲：容量加成求和；抗性按系逐件缺口乘入（mergeResist 链）
+  // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
   let shieldHpMult = 1
   for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
   let armorHpMult = 1
@@ -215,8 +221,28 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   for (const m of armorDefs) applyAdds(armorRes, m.armorResistAdd)
   const resists = { shield: shieldRes, armor: armorRes, hull: ship.hullResist ?? {} }
 
-  // 推进器（装配层唯一）：速度加成乘入 + 命中失稳
-  const propMod = propDefs[0]
+  // V18.1 支援件合成：
+  // - 伤害稳定器（按系加算）+ 射速计算机（装填缩短加算）只进炮台条目；
+  // - 索敌阵列 = EVE 曲线命中乘子（只进炮台条目 eqHitMul）；
+  // - 姿态陀螺 = 缺口复合回避（全船，含船体基础）。
+  const dmgBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
+  let rofCut = 0
+  const hitEqs: number[] = []
+  const evadeGaps: number[] = []
+  for (const m of supportDefs) {
+    for (const [t, v] of Object.entries(m.damageTypeBonusPct ?? {})) dmgBonus[t as DamageType] += v ?? 0
+    rofCut += m.reloadCutPct ?? 0
+    if (m.hitBonusPct !== undefined) hitEqs.push(m.hitBonusPct)
+    if (m.evasionGapPct !== undefined) evadeGaps.push(m.evasionGapPct)
+  }
+  const hitEq = curveMult(hitEqs)
+  const evasion = gapCombine(evadeGaps, ship.evasion ?? 0.12)
+  const reloadDiv = 1 + Math.min(0.9, rofCut)
+
+  // 推进器（V18.1 多件）：速度加成 EVE 曲线收敛；开火失稳只取最重一件
+  const propSpeeds = propDefs.map((p) => p.speedBonusPct ?? 0)
+  const speedEq = curveMult(propSpeeds)
+  const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
 
   const weapons: WeaponSpec[] = []
   const gunneryLv = state.skills.trained[ctx.balance.combat.gunnerySkillId] ?? 0
@@ -249,18 +275,20 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const type = turret.damageType ?? 'kinetic'
     const mult = turret.dmgMult ?? 1
     const ammoDef = ctx.items.get(AMMO_IDS[type])
-    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale)
+    // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
+    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * (1 + dmgBonus[type]))
     const shotsByType: Partial<Record<DamageType, number>> = {}
     shotsByType[type] = perShot * count
     weapons.push({
       label: count > 1 ? `${turret.name}×${count}` : turret.name,
       kind: 'gun',
       shotsByType,
+      eqHitMul: hitEq > 1 ? hitEq : undefined,
       maxRangeM: turret.maxRangeM,
       minRangeM: turret.minRangeM ?? 0,
       hitRate: turret.hitRate ?? 0.5,
       falloff: turret.falloff ?? 0.3,
-      reloadMs: turret.reloadMs,
+      reloadMs: Math.max(100, Math.round(turret.reloadMs / reloadDiv)),
     })
   }
 
@@ -311,14 +339,15 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     side: 'me',
     hp,
     resists,
-    evasion: ship.evasion ?? 0.12,
+    // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
+    evasion,
     hitBonus: ship.hitBonus ?? 0,
-    // V17.1：加力推进失稳——装配推进器后我方全部武器命中 ×(1−hitPenalty)（常驻；进胜率推演同源）
-    hitMul: 1 - (propMod?.hitPenalty ?? 0),
+    // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
+    hitMul: 1 - worstPen,
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
-    // V17：矢量推进器 = 加力推进——战斗速度加成直接乘入（进 combatSpeed 的距离操纵力）
-    speedMps: (ship.maxSpeedMps ?? 200) * (1 + (propMod?.speedBonusPct ?? 0)),
+    // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛
+    speedMps: (ship.maxSpeedMps ?? 200) * Math.max(1, speedEq),
     agility: ship.agility,
     weapons,
     foeTactic: null,

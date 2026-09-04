@@ -461,11 +461,21 @@ export interface BattleBalance {
 }
 
 /**
- * 装备家族（V10 六值 + V18 无人机装置两值：家族语义是装配唯一性校验与引擎构建的依据，
- * 不是物理槽）。V18 起物理槽由 RackSlot（高/中/低 × 数量制）表达——归槽见 ModuleDef.rack /
- * labels.rackOf。
+ * 装备家族（V10 六值 + V18 无人机装置两值 + V18.1 支援件一值：家族语义是引擎构建与
+ * UI 徽标依据，不是物理槽；V18.1 起无"同类唯一"——多件收敛靠合成机制，见
+ * equipment.stackingOf）。V18 起物理槽由 RackSlot（高/中/低 × 数量制）表达——
+ * 归槽见 ModuleDef.rack / labels.rackOf。
  */
-export type ModuleSlot = 'miner' | 'cargo' | 'turret' | 'shield' | 'armor' | 'propulsion' | 'drone-rack' | 'drone-tac'
+export type ModuleSlot =
+  | 'miner'
+  | 'cargo'
+  | 'turret'
+  | 'shield'
+  | 'armor'
+  | 'propulsion'
+  | 'drone-rack'
+  | 'drone-tac'
+  | 'support'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
 export type RackSlot = 'high' | 'mid' | 'low'
@@ -493,7 +503,7 @@ export type FittedModules = {
 export interface ModuleDef {
   id: string
   name: string
-  /** 家族（六值之一：装配唯一性/引擎构建依据；UI 徽标用家族中文名） */
+  /** 家族（装配/引擎构建/UI 徽标用；V18.1 起无唯一约束，多件收敛靠合成机制） */
   slot: ModuleSlot
   /**
    * V18 槽类归属（装到哪类物理槽：high/mid/low）。
@@ -509,17 +519,20 @@ export interface ModuleDef {
    */
   bonus?: number
   description: string
-  /* ═══ V17/V17.1 战斗装备参数（EVE 式：字段各自进公式环节；抗性件与容量件拆族，同槽二选一；
-      推进器带常驻命中代价；负面专属高级系列留后续版本） ═══ */
-  /** 容量件（护盾扩展器）：护盾层容量加成（+15% = 0.15）——抗性件不携带本字段 */
+  /* ═══ V17/V17.1 战斗装备参数（EVE 式：字段各自进公式环节；抗性件与容量件拆族；
+       V18.1 起取消同类唯一——多件按 equipment 收敛组合成：抗性/闪避缺口复合 1−Π(1−x)、
+       命中/速度 EVE 曲线 Π(1+pᵢ·wᵢ)、伤害/射速/容量加算 Σ） ═══ */
+  /** 容量件（护盾扩展器）：护盾层容量加成（+15% = 0.15）——抗性件不携带本字段；
+   * V18.1：多件允许、加算求和 */
   shieldHpBonus?: number
   /**
    * 抗性件（护盾增强器·X型）：按系"缺口削减"抗性（0.5 = 对该系未抗部分再减半）。
-   * 实际抗性 = 1 − (1−船体基础抗) × (1−本值)，上限 0.9（见 combat.mergeResist）——
+   * 实际抗性 = 1 − (1−船体基础抗) × Π(1−各件值)，上限 0.9（见 combat.mergeResist）——
+   * V18.1：同系多件允许（缺口复合天然收敛）——
    * 船体基础抗越高模块收益越低（EVE 面板观感）；键缺省 = 0；专精件只给一个系。
    */
   shieldResistAdd?: DamageResists
-  /** 容量件（装甲增厚板）：装甲层容量加成——抗性件不携带本字段 */
+  /** 容量件（装甲增厚板）：装甲层容量加成——抗性件不携带本字段；V18.1 多件加算 */
   armorHpBonus?: number
   /** 抗性件（装甲镀层·X型）：按系缺口削减抗性（语义同上 shieldResistAdd） */
   armorResistAdd?: DamageResists
@@ -527,10 +540,12 @@ export interface ModuleDef {
    * 矢量推进器（加力推进）：战斗机动速度加成（0.15 = +15%）。
    * 直接乘入 UnitSpec.speedMps → combatSpeed：拉高接近/脱离/距离操纵力；
    * 弃船逃生率与跃迁充能仍只随船体动力（agility）——V17 起模块不再碰船体间接属性。
+   * V18.1：多件推进器速度加成走 EVE 曲线（Π(1+pᵢ·wᵢ)）。
    */
   speedBonusPct?: number
   /** 推进器开火失稳：命中削减量（0.05 = 我方武器命中 ×0.95；界 [0, 0.5]，缺省 0；
-   * 常驻生效并进胜率预估同源口径，见 combat.hitChance 的 hitMul） */
+   * 常驻生效并进胜率预估同源口径，见 combat.hitChance 的 hitMul）。
+   * V18.1：多件推进器时命中代价只取最重（削减最大）一件。 */
   hitPenalty?: number
   /**
    * 炮台固定弹种（V17.2 炮族制：每门炮只打一种伤害——换炮 = 换弹种）。
@@ -560,6 +575,18 @@ export interface ModuleDef {
   droneBayBonusM3?: number
   /** 战术导控阵列：放飞无人机单发伤害加成（0.12 = +12%；线性求和乘入；线性可叠件） */
   droneDmgBonus?: number
+  /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */
+  /** 伤害稳定器（按系）：该系炮台单发伤害加成（0.06 = +6%；多件加算 Σ；只作用于炮台，
+   * 不叠加到无人机——无人机归战术导控管） */
+  damageTypeBonusPct?: DamageResists
+  /** 射速计算机：炮台装填间隔缩短（0.05 = reload ÷ (1+0.05)；多件加算；只作用于炮台） */
+  reloadCutPct?: number
+  /** 索敌阵列（命中）：炮台命中整体提升（0.08 = 命中项 ×1.08；多件 EVE 曲线收敛；
+   * 与推进器开火失稳同走 UnitSpec.hitMul，见 combat.hitChance；只作用于炮台） */
+  hitBonusPct?: number
+  /** 姿态陀螺（闪避）：被命中缺口削减（0.1 = 被命中率再 ×0.9）；全船生效；
+   * 多件缺口复合 1−Π(1−xᵢ)，见 equipment.gapCombine */
+  evasionGapPct?: number
 }
 
 /** 舰船蓝图（M5：用矿物制造舰船，产物进入船坞） */

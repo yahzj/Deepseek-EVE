@@ -17,6 +17,7 @@ import type {
   ItemDef,
   ModuleDef,
   ModuleSlot,
+  RackSlot,
   ShipBlueprintDef,
   ShipDef,
   ShipSlots,
@@ -130,7 +131,7 @@ export function ship(
   }
 }
 
-/** 快速造装备（V17：可附带武器/抗性缺口/推进等战斗字段） */
+/** 快速造装备（V17：可附带武器/抗性缺口/推进等战斗字段；V18.1：支援件效果字段） */
 export function moduleDef(
   id: string,
   slot: ModuleSlot,
@@ -152,6 +153,12 @@ export function moduleDef(
     hitPenalty?: number
     droneBayBonusM3?: number
     droneDmgBonus?: number
+    // V18.1 支援件（slot 'support'；效果字段判别）
+    rack?: RackSlot
+    damageTypeBonusPct?: Partial<Record<DamageType, number>>
+    reloadCutPct?: number
+    hitBonusPct?: number
+    evasionGapPct?: number
   },
 ): ModuleDef {
   return {
@@ -176,6 +183,11 @@ export function moduleDef(
     ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
     ...(opts?.droneBayBonusM3 !== undefined ? { droneBayBonusM3: opts.droneBayBonusM3 } : {}),
     ...(opts?.droneDmgBonus !== undefined ? { droneDmgBonus: opts.droneDmgBonus } : {}),
+    ...(opts?.rack !== undefined ? { rack: opts.rack } : {}),
+    ...(opts?.damageTypeBonusPct !== undefined ? { damageTypeBonusPct: opts.damageTypeBonusPct } : {}),
+    ...(opts?.reloadCutPct !== undefined ? { reloadCutPct: opts.reloadCutPct } : {}),
+    ...(opts?.hitBonusPct !== undefined ? { hitBonusPct: opts.hitBonusPct } : {}),
+    ...(opts?.evasionGapPct !== undefined ? { evasionGapPct: opts.evasionGapPct } : {}),
   }
 }
 

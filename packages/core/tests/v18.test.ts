@@ -116,10 +116,10 @@ describe('V18 无人机流', () => {
   })
 })
 
-describe('V18 装配规则：同类唯一 / 位对齐 / 多炮合并', () => {
-  it('同类唯一：同系抗性件、容量件、推进器全船各一件；异系与可叠件不冲突', () => {
+describe('V18/V18.1 装配规则：复数安装（唯一已取消）/ 位对齐 / 多炮合并', () => {
+  it('同类唯一取消（V18.1 拍板）：同系抗性件、容量件、推进器均可多装——防超模改由收敛机制负责（v181.test）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 9 })
-    const wide = ship('fatcat', { cpu: 300, slots: { high: 1, mid: 4, low: 4 } })
+    const wide = ship('fatcat', { cpu: 300, slots: { high: 1, mid: 6, low: 4 } })
     const ctxM = makeTestCtx({
       ships: [wide],
       modules: [
@@ -132,19 +132,15 @@ describe('V18 装配规则：同类唯一 / 位对齐 / 多炮合并', () => {
       ],
     })
     pilot(state, wide, {})
-    repairDeprecatedModules(state, ctxM) // 对齐 1/4/4 位
+    repairDeprecatedModules(state, ctxM) // 对齐 1/6/4 位
     for (const id of ['mod-skin', 'mod-skin', 'mod-sexp', 'mod-shp', 'mod-ahp', 'mod-p1', 'mod-p3']) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
     expect(fitModule(state, 'mod-skin', ctxM).ok).toBe(true)
-    const clash = fitModule(state, 'mod-skin', ctxM) // 同键第二件
-    expect(clash.ok).toBe(false)
-    expect(clash.error).toContain('同类唯一')
-    expect(fitModule(state, 'mod-sexp', ctxM).ok).toBe(true) // 异系允许
-    expect(fitModule(state, 'mod-shp', ctxM).ok).toBe(true) // 盾容件不同键允许
+    expect(fitModule(state, 'mod-skin', ctxM).ok).toBe(true) // 同键第二件：合法（V18.1）
+    expect(fitModule(state, 'mod-sexp', ctxM).ok).toBe(true) // 异系
+    expect(fitModule(state, 'mod-shp', ctxM).ok).toBe(true) // 盾容件（不同键）
     expect(fitModule(state, 'mod-ahp', ctxM).ok).toBe(true) // 甲容件（低槽）
     expect(fitModule(state, 'mod-p1', ctxM).ok).toBe(true)
-    const pClash = fitModule(state, 'mod-p3', ctxM) // 推进器唯一
-    expect(pClash.ok).toBe(false)
-    expect(pClash.error).toContain('同类唯一')
+    expect(fitModule(state, 'mod-p3', ctxM).ok).toBe(true) // 第二件推进器：合法
   })
 
   it('位对齐：repair 把超长位尾件退回装备库、短位补空（幂等）', () => {

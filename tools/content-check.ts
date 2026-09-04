@@ -91,7 +91,7 @@ for (const g of MARKET_GOODS) {
   }
 }
 check(goodKeys.size === MARKET_GOODS.length, `市场卡键重复（${MARKET_GOODS.length - goodKeys.size} 处）`)
-console.log(`· 市场商品卡：${MARKET_GOODS.length} 张（目标 ~95~110）`)
+console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
 
 // 每种物品必须有市场卡（防死物品）
 for (const item of itemDefs) {
@@ -134,7 +134,7 @@ const moduleIds = new Set<string>()
 for (const m of MODULES) {
   if (moduleIds.has(m.id)) errors.push(`装备 id 重复：${m.id}`)
   moduleIds.add(m.id)
-  check([...MODULE_SLOTS, 'drone-rack', 'drone-tac'].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
+  check([...MODULE_SLOTS].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
 }
 for (const g of MARKET_GOODS) {
   if (g.kind === 'module' && !moduleIds.has(g.refId)) errors.push(`市场卡 ${g.key} 装备缺失`)
@@ -284,7 +284,7 @@ for (const d of drones) {
 for (const m of MODULES) {
   check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
   // V18：家族合法（六家族 + 无人机装置两家族）
-  check([...MODULE_SLOTS, 'drone-rack', 'drone-tac'].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
+  check([...MODULE_SLOTS].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
   // V18：槽类归属 rack 必填且与 rackOf 推导一致（Q3 映射集中落数据；防标注漂移）
   check(m.rack !== undefined && RACK_SLOTS.includes(m.rack), `装备 ${m.id} 缺少 V18 rack 归属`)
   if (m.rack !== undefined) {
@@ -348,6 +348,27 @@ for (const m of MODULES) {
   } else if (m.slot === 'propulsion') {
     check(m.speedBonusPct !== undefined && m.speedBonusPct > 0 && m.speedBonusPct <= 0.9, `推进器 ${m.id} speedBonusPct 非法（V17 加力推进 = 战斗速度加成）`)
     check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
+  } else if (m.slot === 'support') {
+    // V18.1 支援件：恰好一类效果字段（伤害稳定器按系/射速/命中/闪避互斥），值域合法
+    const stabKeys = Object.entries(m.damageTypeBonusPct ?? {}).filter(([, v]) => (v ?? 0) > 0).length
+    const hasRof = m.reloadCutPct !== undefined
+    const hasHit = m.hitBonusPct !== undefined
+    const hasEva = m.evasionGapPct !== undefined
+    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避）`)
+    for (const [t, val] of Object.entries(m.damageTypeBonusPct ?? {})) {
+      if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
+        errors.push(`支援件 ${m.id} damageTypeBonusPct.${t} 非法：${String(val)}`)
+      }
+    }
+    if (hasRof) check((m.reloadCutPct ?? 0) > 0 && (m.reloadCutPct ?? 0) <= 0.9, `支援件 ${m.id} reloadCutPct 非法（需 (0, 0.9]）`)
+    if (hasHit) check((m.hitBonusPct ?? 0) > 0 && (m.hitBonusPct ?? 0) <= 0.9, `支援件 ${m.id} hitBonusPct 非法（需 (0, 0.9]）`)
+    if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
+    // 归槽语义：伤害/射速 = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
+    if (stabKeys > 0 || hasRof) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速）应为低槽，实际 ${m.rack}`)
+    if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
+    check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
+    check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)
   }
 }
 
