@@ -1,28 +1,37 @@
 /**
- * 物品页：物品仓库（飞行员资产：无限容量、永不遗失）。
- * 精炼产物与制造材料都在这里；矿石/气体/冰矿卸货后也先到仓库（V10 起按物品大类分组展示）。
+ * 物品页（货仓并入物品界面，2026-09-04 船长定）：选项页划分「仓库 / 货仓」。
+ * - 仓库 tab：物品仓库（无限容量、不随船、永不遗失）——按大类分组展示矿石/矿物/
+ *   气体/冰矿/弹药/无人机，并新增「装备」分组（装备库 moduleBay：制造/购入的装备），
+ *   矿石/气体/冰矿可装船或卖出，矿物是制造料；
+ * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel } from '@whale/core'
+import { useState } from 'react'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
+import { CargoPage } from './CargoPage'
 
-/** 可装回船上搬运的分类（资源类；矿物留在仓库当制造料，弹药/无人机等占位货只卖不搬） */
-const LOADABLE_KINDS = new Set(['ore', 'gas', 'ice'])
+type ItemsTab = 'warehouse' | 'cargo'
 
-const KIND_EMPTY: Record<string, string> = {
-  ore: '仓库里没有矿石（自动卸货的矿会先到这里）。',
-  mineral: '还没有矿物——去「工业」页精炼资源。',
-  gas: '仓库里没有气体。',
-  ice: '仓库里没有冰矿。',
-  ammo: '仓库里没有弹药。',
-  drone: '仓库里没有无人机。',
-}
-
-export function ItemsPage({ engine, onToast }: PageProps) {
+/** 仓库主视图（含装备库分组） */
+function WarehouseView({ engine, onToast }: PageProps) {
   const state = engine.state
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
+  const modRows = Object.entries(state.moduleBay).filter(([, n]) => n > 0)
+
+  /** 可装回船上搬运的分类（资源类；矿物留在仓库当制造料，弹药/无人机等占位货只卖不搬） */
+  const LOADABLE_KINDS = new Set(['ore', 'gas', 'ice'])
+
+  const KIND_EMPTY: Record<string, string> = {
+    ore: '仓库里没有矿石（自动卸货的矿会先到这里）。',
+    mineral: '还没有矿物——去「工业」页精炼资源。',
+    gas: '仓库里没有气体。',
+    ice: '仓库里没有冰矿。',
+    ammo: '仓库里没有弹药。',
+    drone: '仓库里没有无人机。',
+  }
 
   function handleSell(id: string): void {
     const r = engine.sellWare(id)
@@ -39,11 +48,8 @@ export function ItemsPage({ engine, onToast }: PageProps) {
   }
 
   return (
-    <div className="page-stack">
-      <Panel
-        title="物品仓库"
-        right={<span className="app-dim">无限容量 · 不随船 · 永不遗失</span>}
-      >
+    <>
+      <Panel title="仓库" right={<span className="app-dim">无限容量 · 不随船 · 永不遗失</span>}>
         <div className="app-dim app-note">
           精炼产物自动入仓，制造材料从仓库扣除。资源（矿石/气体/冰矿）可卖出，也可装到当前驾驶的船上（受货仓空间限制）。
         </div>
@@ -56,7 +62,7 @@ export function ItemsPage({ engine, onToast }: PageProps) {
         return (
           <Panel
             key={kind}
-            title={`${itemKindLabel(kind)}（仓库）`}
+            title={`${itemKindLabel(kind)}`}
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
             {kindRows.length === 0 ? (
@@ -110,6 +116,65 @@ export function ItemsPage({ engine, onToast }: PageProps) {
           </Panel>
         )
       })}
+
+      <Panel
+        title="装备（装备库）"
+        right={<span className="app-dim">{modRows.length} 种 · 空间站库存</span>}
+      >
+        {modRows.length === 0 ? (
+          <div className="app-dim app-inv-empty">
+            装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。
+          </div>
+        ) : (
+          <ul className="app-inv-list">
+            {modRows.map(([id, units]) => {
+              const def = engine.ctx.modules.get(id)
+              if (!def) return null
+              return (
+                <li key={id} className="app-inv-row" title={def.description}>
+                  <div className="app-inv-main">
+                    <span className="app-inv-name">{def.name}</span>
+                    <span className="app-inv-count">
+                      ×{units.toLocaleString('zh-CN')} · {SLOT_LABELS[def.slot] ?? def.slot} · CPU {def.cpuUse}
+                      {def.dmgMult !== undefined ? ` · 火力 ×${def.dmgMult}` : ''}
+                    </span>
+                  </div>
+                  <div className="app-inv-btns">
+                    <button className="app-btn is-small" disabled title="安装与卸下请到「装配」页">
+                      装配页使用
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Panel>
+    </>
+  )
+}
+
+export function ItemsPage(props: PageProps) {
+  const [tab, setTab] = useState<ItemsTab>('warehouse')
+  return (
+    <div className="page-stack">
+      <div className="app-items-head">
+        <div className="app-tabs">
+          <button
+            className={`app-tab${tab === 'warehouse' ? ' is-active' : ''}`}
+            onClick={() => setTab('warehouse')}
+          >
+            仓库
+          </button>
+          <button className={`app-tab${tab === 'cargo' ? ' is-active' : ''}`} onClick={() => setTab('cargo')}>
+            货仓
+          </button>
+        </div>
+        <span className="app-dim app-items-head-note">
+          {tab === 'warehouse' ? '飞行员资产：不随船、永不遗失' : '货仓随船：采集与战利品先落这里，弃船会遗失'}
+        </span>
+      </div>
+      {tab === 'cargo' ? <CargoPage {...props} /> : <WarehouseView {...props} />}
     </div>
   )
 }

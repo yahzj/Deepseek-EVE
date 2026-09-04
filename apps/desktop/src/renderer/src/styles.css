@@ -2789,3 +2789,9 @@ body {
 .app-bts-reload-ms { font-variant-numeric: tabular-nums; color: #7d8fa3; min-width: 34px; text-align: right; }
 .app-bts-reload.is-ready .app-bts-reload-ms { color: #6fd98a; }
 
+
+/* 物品页：仓库/货仓 选项页头（货仓并入物品界面） */
+.app-items-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--wui-border); padding-bottom: 0; }
+.app-items-head .app-tab { flex: 0 1 150px; }
+.app-items-head-note { padding-bottom: 6px; font-size: 12px; }
+

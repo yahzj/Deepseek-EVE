@@ -1,7 +1,8 @@
 /**
  * 主界面壳（V14.1 UI 版）：
  * - 顶栏：游戏名 / 飞行员 / ISK / 在线时长 / 保存 / 重置
- * - 顶部总菜单（原在窗口底部，移至顶部）：舰船 · 装配 · 货仓 · 物品 · 市场 · 工业 · 技能 · 星图；
+ * - 顶部总菜单（原在窗口底部，移至顶部）：舰船 · 装配 · 物品 · 市场 · 工业 · 技能 · 星图
+ *   （货仓已并入「物品」页的 仓库/货仓 子标签）；
  *   星图页内以标签切换三个功能区（矿带开采 / 星图·远征 / 悬赏情报）
  * - 中部：左侧为主窗口（按顶部菜单切换页面），右侧事件日志
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
@@ -13,7 +14,6 @@ import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
 import { FitPage } from './pages/FitPage'
 import { ShipPage } from './pages/ShipPage'
-import { CargoPage } from './pages/CargoPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
@@ -29,11 +29,10 @@ import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPan
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer } from './ui/Tooltip'
 
-/** 顶部菜单项 */
+/** 顶部菜单项（货仓已并入「物品」页子标签） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'ship', label: '舰船', icon: '◈' },
   { key: 'fit', label: '装配', icon: '⚙' },
-  { key: 'cargo', label: '货仓', icon: '▣' },
   { key: 'items', label: '物品', icon: '▤' },
   { key: 'market', label: '市场', icon: '¥' },
   { key: 'industry', label: '工业', icon: '⚒' },
@@ -41,7 +40,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'map', label: '星图', icon: '✦' },
 ]
 
-type PageKey = 'ship' | 'fit' | 'cargo' | 'items' | 'market' | 'industry' | 'skills' | 'map'
+type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -279,7 +278,6 @@ export function App({ engine }: { engine: GameEngine }) {
           <div className="app-page-content" key={page}>
             {page === 'ship' ? <ShipPage {...pageProps} /> : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}
-            {page === 'cargo' ? <CargoPage {...pageProps} /> : null}
             {page === 'items' ? <ItemsPage {...pageProps} /> : null}
             {page === 'market' ? <MarketPage {...pageProps} /> : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
