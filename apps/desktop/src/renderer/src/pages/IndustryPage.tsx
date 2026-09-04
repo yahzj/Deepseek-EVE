@@ -46,6 +46,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
 
   const ownedCores = CORE_ORDER.filter((t) => (state.aiCores[t] ?? 0) > 0)
   const [corePick, setCorePick] = useState<AiCoreType>('basic')
+  const [sec, setSec] = useState<'refine' | 'craft'>('refine')
   const coreReady = ownedCores.includes(corePick) ? corePick : (ownedCores[0] ?? null)
 
   /** 货仓+仓库里有货且带精炼配方的可精炼资源（矿石/气体/冰矿） */
@@ -75,6 +76,34 @@ export function IndustryPage({ engine, onToast }: PageProps) {
 
   return (
     <div className="page-stack">
+      {/* 功能标签页（与星图页同款 app-subtabs 规范）：精炼炉 / 蓝图制造 */}
+      <div className="app-subtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={sec === 'refine'}
+          className={`app-subtab${sec === 'refine' ? ' is-active' : ''}`}
+          onClick={() => setSec('refine')}
+        >
+          <span>♨</span>
+          <span>精炼炉</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={sec === 'craft'}
+          className={`app-subtab${sec === 'craft' ? ' is-active' : ''}`}
+          onClick={() => setSec('craft')}
+        >
+          <span>⚒</span>
+          <span>蓝图制造</span>
+        </button>
+      </div>
+
+      {sec === 'craft' ? (
+        <>
+          <BlueprintShelfPanel engine={engine} onToast={onToast} />
+          <ManufacturingPanel engine={engine} onToast={onToast} />
+        </>
+      ) : (
       <Panel
         title="精炼炉"
         right={<span className="app-dim">收率 {Math.round(rate * 100)}%（精炼学 +8%/级 · 高级回收 +4%/级，上限 95%）</span>}
@@ -177,9 +206,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
           </ul>
         ) : null}
       </Panel>
-
-      <BlueprintShelfPanel engine={engine} onToast={onToast} />
-      <ManufacturingPanel engine={engine} onToast={onToast} />
+      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
 } from '@whale/core'
 import type { MaterialNeed } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
+import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 
@@ -92,7 +93,15 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   )
 }
 
-/* ═══════════════ 蓝图制造台 ═══════════════ */
+/* ═══════════════ 蓝图制造台（任务中心式目录，参考星图页任务中心） ═══════════════ */
+
+/** 制造台类型筛选：全部 / 装备 / 舰船（与任务中心 app-tasktab 同款筛选风格） */
+type ManuTab = 'all' | 'equip' | 'ship'
+const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'equip', label: '装备蓝图' },
+  { key: 'ship', label: '舰船蓝图' },
+]
 
 /** 一张可制造蓝图的统一展示卡（装备蓝图与舰船蓝图共用） */
 function BlueprintCard({
@@ -105,6 +114,7 @@ function BlueprintCard({
   buildSeconds,
   buildCostIsk,
   productLabel,
+  kindLabel,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -116,6 +126,8 @@ function BlueprintCard({
   buildCostIsk: number
   /** 产物标签（如 装备名 或 舰船名+属性） */
   productLabel: string
+  /** 产物类别徽标：装备 / 舰船 */
+  kindLabel: string
 }) {
   const state = engine.state
   const mf = manufacturingStatus(state, engine.ctx)
@@ -142,6 +154,7 @@ function BlueprintCard({
   return (
     <div className={`app-bp-card${owned ? ' is-owned' : ''}`}>
       <div className="app-bp-top">
+        <span className="app-chip">{kindLabel}</span>
         <span className="app-bp-name">{name}</span>
         {owned ? <span className="app-chip">已学会</span> : bookCount > 0 ? <span className="app-chip">蓝图书 ×{bookCount}</span> : null}
         {lock ? <span className="app-chip is-exotic" title={lock}>🔒 {lock}</span> : null}
@@ -191,9 +204,82 @@ function BlueprintCard({
 export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const mf = manufacturingStatus(state, engine.ctx)
+  const [tab, setTab] = useState<ManuTab>('all')
+
+  /** 目录数据（舰船 + 装备统一成条目；任务中心式：可开工冒泡在前，再按名称） */
+  const items: Array<{
+    id: string
+    kindLabel: string
+    name: string
+    description: string
+    materials: readonly MaterialNeed[]
+    buildSeconds: number
+    buildCostIsk: number
+    productLabel: string
+    canStart: boolean
+  }> = []
+  const pushShip = (): void => {
+    for (const sbp of engine.shipBlueprints) {
+      const shipDef = engine.ctx.ships.get(sbp.shipId)
+      items.push({
+        id: sbp.id,
+        kindLabel: '舰船',
+        name: sbp.name,
+        description: sbp.description,
+        materials: sbp.materials,
+        buildSeconds: sbp.buildSeconds,
+        buildCostIsk: sbp.buildCostIsk,
+        productLabel: shipDef
+          ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+          : sbp.shipId,
+        canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds, sbp.buildCostIsk),
+      })
+    }
+  }
+  const pushEquip = (): void => {
+    for (const bp of engine.blueprints) {
+      const moduleName = engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId
+      items.push({
+        id: bp.id,
+        kindLabel: '装备',
+        name: bp.name,
+        description: bp.description,
+        materials: bp.materials,
+        buildSeconds: bp.buildSeconds,
+        buildCostIsk: bp.buildCostIsk,
+        productLabel: moduleName,
+        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds, bp.buildCostIsk),
+      })
+    }
+  }
+  pushShip()
+  pushEquip()
+
+  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够 + 无作业中 */
+  function canStartNow(
+    blueprintId: string,
+    materials: readonly MaterialNeed[],
+    buildSeconds: number,
+    buildCostIsk: number,
+  ): boolean {
+    if (mf.active || !ownsBlueprint(state, blueprintId)) return false
+    if (state.wallet.isk < buildCostIsk) return false
+    return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk }).length === 0
+  }
+
+  const visible = items.filter((it) => tab === 'all' || (tab === 'ship' ? it.kindLabel === '舰船' : it.kindLabel === '装备'))
+  const sorted = [...visible].sort(
+    (a, b) => Number(b.canStart) - Number(a.canStart) || a.name.localeCompare(b.name, 'zh-Hans-CN'),
+  )
+  const equipN = items.filter((i) => i.kindLabel === '装备').length
+  const shipN = items.filter((i) => i.kindLabel === '舰船').length
+  const learnedN = items.filter((i) => ownsBlueprint(state, i.id)).length
 
   return (
-    <Panel title="蓝图制造台" right={<span className="app-dim">工业理论每级 -5% 耗时</span>}>
+    <Panel
+      title="蓝图制造台"
+      right={<span className="app-dim">装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}；工业理论每级 -5% 耗时</span>}
+    >
       {/* 制造中：只显示进度，不可并行开工 */}
       {mf.active ? (
         <div className="app-mf-running">
@@ -209,52 +295,41 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         </div>
       ) : null}
 
-      {/* 舰船蓝图（造船厂） */}
-      <div className="app-inv-group-title">舰船蓝图（产物入船坞，可切换驾驶）</div>
-      <div className="app-bp-list">
-        {engine.shipBlueprints.map((sbp) => {
-          const shipDef = engine.ctx.ships.get(sbp.shipId)
-          return (
-            <BlueprintCard
-              key={sbp.id}
-              engine={engine}
-              onToast={onToast}
-              blueprintId={sbp.id}
-              name={sbp.name}
-              description={sbp.description}
-              materials={sbp.materials}
-              buildSeconds={sbp.buildSeconds}
-              buildCostIsk={sbp.buildCostIsk}
-              productLabel={
-                shipDef
-                  ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
-                  : sbp.shipId
-              }
-            />
-          )
-        })}
+      {/* 任务中心式筛选：全部 / 装备蓝图 / 舰船蓝图；可开工冒泡在前（材料不足卡标红缺口） */}
+      <div className="app-task-tabs" role="tablist">
+        {MANU_TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={tab === t.key}
+            className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="app-dim app-exp-idle">
+        已学会的配方才能开工；卡片会标出材料缺口与制造费。同一时刻只能制造一件（到点自动入库/入船坞）。
+        {' '}可开工的配方排在最前。
       </div>
 
-      {/* 装备蓝图 */}
-      <div className="app-inv-group-title">装备蓝图（产物入装备库）</div>
       <div className="app-bp-list">
-        {engine.blueprints.map((bp) => {
-          const moduleName = engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId
-          return (
-            <BlueprintCard
-              key={bp.id}
-              engine={engine}
-              onToast={onToast}
-              blueprintId={bp.id}
-              name={bp.name}
-              description={bp.description}
-              materials={bp.materials}
-              buildSeconds={bp.buildSeconds}
-              buildCostIsk={bp.buildCostIsk}
-              productLabel={moduleName}
-            />
-          )
-        })}
+        {sorted.map((it) => (
+          <BlueprintCard
+            key={it.id}
+            engine={engine}
+            onToast={onToast}
+            blueprintId={it.id}
+            name={it.name}
+            description={it.description}
+            materials={it.materials}
+            buildSeconds={it.buildSeconds}
+            buildCostIsk={it.buildCostIsk}
+            productLabel={it.productLabel}
+            kindLabel={it.kindLabel}
+          />
+        ))}
       </div>
     </Panel>
   )
