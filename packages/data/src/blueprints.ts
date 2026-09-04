@@ -46,7 +46,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 50 * 60,
     buildCostIsk: 60_000,
     priceIsk: 35_000,
-    description: '谐振钻头图纸。制造它需要克洛基石炼出的类晶体胶体。',
+    description: '谐振钻头图纸：类晶体胶体谐振环 + 类银散热栅，中期工业的里程碑。',
   },
   {
     id: 'bp-cargo-2',

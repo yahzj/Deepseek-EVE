@@ -45,7 +45,7 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 55,
     description: '红色星环内的高价值矿石，航线更长，回报也更丰厚。',
     refine: [
-      { mineralId: 'min-nocxium', perOre: 0.45 },
+      { mineralId: 'min-nocxium', perOre: 0.55 },
       { mineralId: 'min-tritanium', perOre: 1.5 },
     ],
   },
@@ -57,7 +57,7 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 150,
     description: '泛着幽光的致密岩层，同位聚晶的主要载体——环心矿区的高纯产出。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 1.7 },
+      { mineralId: 'min-isotope', perOre: 2.7 },
       { mineralId: 'min-tritanium', perOre: 2.2 },
     ],
   },
@@ -139,7 +139,7 @@ export const MINERALS: readonly ItemDef[] = [
     name: '同位聚晶',
     kind: 'mineral',
     unitM3: 0.01,
-    baseSellPriceIsk: 45,
+    baseSellPriceIsk: 55,
     description: '辉云/曦棱层系的精炼核心，高端工业的入门级新材料。',
   },
   {
@@ -147,7 +147,7 @@ export const MINERALS: readonly ItemDef[] = [
     name: '星髓晶',
     kind: 'mineral',
     unitM3: 0.01,
-    baseSellPriceIsk: 220,
+    baseSellPriceIsk: 245,
     description: '星髓凝晶，MK3 级装备与旗舰舰船骨架的必需材料。',
   },
   {
@@ -190,8 +190,8 @@ export const GASES: readonly ItemDef[] = [
     baseSellPriceIsk: 330,
     description: '坟场深处沉淀的腐蚀性磷光霾云——提炼价值极高的稀有气藏。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 1.8 },
-      { mineralId: 'min-starcore', perOre: 0.35 },
+      { mineralId: 'min-isotope', perOre: 2.4 },
+      { mineralId: 'min-starcore', perOre: 0.9 },
       { mineralId: 'min-mexallon', perOre: 0.7 },
     ],
   },
