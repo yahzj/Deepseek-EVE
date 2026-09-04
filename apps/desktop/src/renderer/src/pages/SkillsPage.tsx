@@ -10,6 +10,7 @@ import {
   skillQueueStatus,
 } from '@whale/core'
 import type { SkillDef } from '@whale/core'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Panel, ProgressBar } from '@whale/ui'
 import { plainSkillDesc } from '../ui/skillText'
@@ -43,6 +44,9 @@ export function levelTimesHint(def: SkillDef): string {
 }
 
 export function SkillsPage({ engine }: PageProps) {
+  const [groupTab, setGroupTab] = useState<string>('all')
+  const groups = engine.groups
+  const tabSkills = (g: string): string[] => engine.skills.filter((s) => s.group === g).map((s) => s.id)
   return (
     <div className="page-stack page-wide">
       <Panel
@@ -52,17 +56,51 @@ export function SkillsPage({ engine }: PageProps) {
         <QueueBlock engine={engine} />
       </Panel>
       <Panel title="技能目录" right={<span className="app-dim">12 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
+        {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类 */}
+        <div className="app-task-tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={groupTab === 'all'}
+            className={`app-tasktab${groupTab === 'all' ? ' is-active' : ''}`}
+            onClick={() => setGroupTab('all')}
+          >
+            全部
+          </button>
+          {groups.map((g) => (
+            <button
+              key={g}
+              role="tab"
+              aria-selected={groupTab === g}
+              className={`app-tasktab${groupTab === g ? ' is-active' : ''}`}
+              onClick={() => setGroupTab(g)}
+            >
+              {g}
+              <span className="app-dim"> {tabSkills(g).length}</span>
+            </button>
+          ))}
+        </div>
         <div className="app-skill-groups-wide">
-          {engine.groups.map((group) => (
-            <div key={group} className="app-skill-group">
-              <div className="app-skill-group-tag">{group}</div>
+          {groupTab === 'all' ? (
+            groups.map((group) => (
+              <div key={group} className="app-skill-group">
+                <div className="app-skill-group-tag">{group}</div>
+                {engine.skills
+                  .filter((s) => s.group === group)
+                  .map((skill) => (
+                    <SkillWideRow key={skill.id} engine={engine} skill={skill} />
+                  ))}
+              </div>
+            ))
+          ) : (
+            <div className="app-skill-group">
+              <div className="app-skill-group-tag">{groupTab}</div>
               {engine.skills
-                .filter((s) => s.group === group)
+                .filter((s) => s.group === groupTab)
                 .map((skill) => (
                   <SkillWideRow key={skill.id} engine={engine} skill={skill} />
                 ))}
             </div>
-          ))}
+          )}
         </div>
       </Panel>
     </div>
