@@ -160,31 +160,34 @@ function injectV18(state: GameState): string[] {
   const demo = state.fleet[uid]!
   demo.customName = '复数装配演示'
   demo.fitted = {
-    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-missile-2', null],
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-laser-2', 'mod-missile-2'],
     mid: ['mod-track-2', 'mod-gyro-2'],
-    low: ['mod-stab-kin-2', 'mod-stab-kin-2'],
+    low: ['mod-stab-kin-2', null],
   }
   demo.cargo['drone-scout'] = 20
   demo.cargo['drone-assault'] = 10
-  notes.push(`新增满槽演示船「${uid}（复数装配演示）」——虎鲨级：高槽 2×动能 MK2 + 导弹架 MK2（留 1 位试第 3 门 → ×3 齐射）、中槽 索敌阵列 MK2 + 姿态陀螺 MK2、低槽 动能稳定器 MK2 ×2（+20% 全额叠加）`)
+  notes.push(`新增满槽演示船「${uid}（复数装配演示）」——虎鲨级：高槽 2×动能 MK2 + 激光炮 MK2 + 导弹架 MK2（×2 齐射 + 必中光束 + 爆破轰炸三形态）、中槽 索敌阵列 MK2 + 姿态陀螺 MK2、低槽 动能稳定器 MK2（低槽留 1 位试射速计算机/其它稳定器）`)
   notes.push('演示船货仓预置蜂鸟侦察机 ×20 + 赤鸢攻击机 ×10（需自装无人机挂架/战术导控）')
-  // 3) 备件：复数矿枪（再装一艘采矿船试复数产量）+ 支援件替换/升级件
+  // 3) 备件：复数矿枪（再装一艘采矿船试复数产量）+ 支援件替换/升级件 + 激光备件
   state.moduleBay['mod-miner-2'] = (state.moduleBay['mod-miner-2'] ?? 0) + 2
   state.moduleBay['mod-turret-kin-2'] = (state.moduleBay['mod-turret-kin-2'] ?? 0) + 1
+  state.moduleBay['mod-laser-2'] = (state.moduleBay['mod-laser-2'] ?? 0) + 1
+  state.moduleBay['mod-missile-2'] = (state.moduleBay['mod-missile-2'] ?? 0) + 1
   state.moduleBay['mod-stab-kin-2'] = (state.moduleBay['mod-stab-kin-2'] ?? 0) + 1
   state.moduleBay['mod-stab-exp-2'] = (state.moduleBay['mod-stab-exp-2'] ?? 0) + 1
+  state.moduleBay['mod-stab-pla-2'] = (state.moduleBay['mod-stab-pla-2'] ?? 0) + 1
   state.moduleBay['mod-rof-2'] = (state.moduleBay['mod-rof-2'] ?? 0) + 1
   state.moduleBay['mod-track-2'] = (state.moduleBay['mod-track-2'] ?? 0) + 1
   state.moduleBay['mod-gyro-2'] = (state.moduleBay['mod-gyro-2'] ?? 0) + 1
   state.moduleBay['mod-drone-rack-2'] = (state.moduleBay['mod-drone-rack-2'] ?? 0) + 1
-  notes.push('装备库补：矿枪 MK2 ×2（复数采矿）、动能炮 MK2 ×1（第 3 门 → ×3）、稳定器/射速/索敌/陀螺 MK2 各 1（试替换与同类第 2 件递减提示）、无人机挂架 MK2 ×1')
+  notes.push('装备库补：矿枪 MK2 ×2（复数采矿）、动能炮/激光/导弹 MK2 各 1（试第 2 件 ×N 齐射/光束/爆破）、三系稳定器 MK2 + 射速/索敌/陀螺 MK2 各 1（试替换与第 N 件递减提示）、无人机挂架 MK2 ×1')
   // 4) 弹药 + 耐久
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 500
   }
   for (const s of Object.values(state.fleet)) s.durability = 1
   notes.push('仓库补三型通用弹 ×500 各；全舰耐久回满')
-  notes.push('测试路径：舰船页换驾驶到演示船 → 装配页看高/中/低三组位与合成预览（回避含陀螺、命中含索敌、速度含加力）；低槽再装第 3 件动能稳定器应全额叠加 +30%；中槽再装第 2 件索敌/陀螺应提示「第 N 件衰减」；去悬赏开战看 ×2 齐射与动能弹/爆破导弹（导弹架无视近盲、命中不随距离衰减）分开装填')
+  notes.push('测试路径：舰船页换驾驶到演示船 → 装配页看高/中/低三组位与合成预览（回避含陀螺、命中含索敌、速度含加力）；开战观察三形态：动能 ×2 齐射（距离衰减命中）、激光光束必中（距离只削威力、耗能量弹药）、爆破导弹（带近盲安全射距、命中不随距离衰减、耗爆破导弹）；低槽再装第 3 件稳定器观察按系加成与「第 N 件衰减」提示')
   return notes
 }
 

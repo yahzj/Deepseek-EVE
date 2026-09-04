@@ -349,16 +349,27 @@ for (const m of MODULES) {
     check(m.speedBonusPct !== undefined && m.speedBonusPct > 0 && m.speedBonusPct <= 0.9, `推进器 ${m.id} speedBonusPct 非法（V17 加力推进 = 战斗速度加成）`)
     check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
   } else if (m.slot === 'missile') {
-    // V18B-1 导弹架：爆炸系武器形态——无视近盲 + 追踪命中（不随距离衰减）
+    // V18B-1 导弹架：爆炸系武器形态——追踪命中（不随距离衰减）+ 近盲安全射距（防自爆）
     check(m.bonus === undefined, `导弹架 ${m.id} 不应携带工业 bonus`)
     check(m.damageType === 'explosive', `导弹架 ${m.id} damageType 必须为 explosive（爆炸系武器形态）`)
     check((m.ammoPerEngagement ?? 0) > 0 && Number.isInteger(m.ammoPerEngagement), `导弹架 ${m.id} ammoPerEngagement 缺失或非法`)
     check(m.maxRangeM !== undefined && m.maxRangeM > 0, `导弹架 ${m.id} maxRangeM 缺失或非法`)
-    check(m.minRangeM === 0, `导弹架 ${m.id} minRangeM 必须为 0（无视近盲）`)
+    check((m.minRangeM ?? 0) > 0 && (m.minRangeM ?? 0) < (m.maxRangeM ?? 0), `导弹架 ${m.id} minRangeM 必须为近盲正数（太近会炸到自己）`)
     check(m.hitRate !== undefined && m.hitRate > 0 && m.hitRate <= 1, `导弹架 ${m.id} hitRate 非法`)
     check(m.falloff === 1, `导弹架 ${m.id} falloff 必须为 1（命中不随距离衰减）`)
     check(m.reloadMs !== undefined && m.reloadMs > 0 && Number.isInteger(m.reloadMs), `导弹架 ${m.id} reloadMs 非法`)
     check(m.dmgMult !== undefined && m.dmgMult > 0, `导弹架 ${m.id} dmgMult 非法`)
+  } else if (m.slot === 'laser') {
+    // V18B-2 激光炮：能量系武器形态——必中光束（消耗能量弹药，威力随距离衰减）
+    check(m.bonus === undefined, `激光炮 ${m.id} 不应携带工业 bonus`)
+    check(m.damageType === 'plasma', `激光炮 ${m.id} damageType 必须为 plasma（能量系武器形态）`)
+    check((m.ammoPerEngagement ?? 0) > 0 && Number.isInteger(m.ammoPerEngagement), `激光炮 ${m.id} ammoPerEngagement 缺失或非法`)
+    check(m.maxRangeM !== undefined && m.maxRangeM > 0, `激光炮 ${m.id} maxRangeM 缺失或非法`)
+    check(m.minRangeM === 0, `激光炮 ${m.id} minRangeM 必须为 0（光束无近盲）`)
+    check(m.hitRate === 1, `激光炮 ${m.id} hitRate 必须为 1（必中，不掷命中）`)
+    check(m.falloff !== undefined && m.falloff > 0 && m.falloff <= 1, `激光炮 ${m.id} falloff（威力衰减参）非法`)
+    check(m.reloadMs !== undefined && m.reloadMs > 0 && Number.isInteger(m.reloadMs), `激光炮 ${m.id} reloadMs 非法`)
+    check(m.dmgMult !== undefined && m.dmgMult > 0, `激光炮 ${m.id} dmgMult 非法`)
   } else if (m.slot === 'support') {
     // V18.1 支援件：恰好一类效果字段（伤害稳定器按系/射速/命中/闪避互斥），值域合法
     const stabKeys = Object.entries(m.damageTypeBonusPct ?? {}).filter(([, v]) => (v ?? 0) > 0).length

@@ -118,6 +118,14 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8 8l1.8 1.8M16 8l-1.8 1.8M8 16l1.8-1.8M16 16l-1.8-1.8" />
     </g>
   ),
+  /* V18B-2 激光炮（方框徽：光束横贯） */
+  laser: (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M8.4 15.6L15.6 8.4M8.4 8.4l7.2 7.2" />
+      <path d="M10.9 8.4h4.7v4.7" />
+    </g>
+  ),
   /* V18.1 支援件（方框徽：上升增益箭头） */
   support: (
     <g>
@@ -211,6 +219,7 @@ export const TONES: Record<string, string> = {
   cargo: '#ffd166',
   turret: '#ff8373',
   missile: '#ff9a6b',
+  laser: '#c792ea',
   shield: '#6cb6ff',
   armor: '#cdd6e0',
   propulsion: '#ffb454',

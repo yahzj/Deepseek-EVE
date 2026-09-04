@@ -97,8 +97,13 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'missile': {
-      // V18B-1 导弹架：爆炸系武器形态（爆破导弹，无视近盲 + 追踪命中）
+      // V18B-1 导弹架：爆炸系武器形态（爆破导弹，近盲安全射距 + 追踪命中）
       body = `爆破导弹 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      break
+    }
+    case 'laser': {
+      // V18B-2 激光炮：能量系武器形态（能量弹药 · 必中 · 威力随距离轻微衰减）
+      body = `能量弹药 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
       break
     }
     case 'shield': {
@@ -332,10 +337,33 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       ),
     })
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
-    lines.push({ k: '弹道特性', v: '无视近盲（贴身可发射）· 追踪命中：不随距离衰减' })
+    lines.push({ k: '弹道特性', v: '近盲安全射距（太近会炸到自己）· 追踪命中：不随距离衰减' })
     if (mod.hitRate !== undefined) lines.push({ k: '追踪命中', v: `${pct(mod.hitRate)}（不再乘距离衰减；仍受攻防命中修正与回避影响）` })
     if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发（单发高伤节奏）` })
     if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹头伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
+  } else if (mod.slot === 'laser') {
+    // V18B-2 激光炮：能量系武器形态（必中光束 + 威力随距离衰减）
+    lines.push({
+      k: '弹种',
+      v: (
+        <>
+          <span className="app-dim">消耗：</span>
+          <DmgChip t={mod.damageType ?? 'plasma'} label="能量弹药" />
+          <span className="app-dim">（激光炮专用，出发预载此型）</span>
+        </>
+      ),
+    })
+    if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
+    lines.push({ k: '光束特性', v: '必中（射程带内锁定即命中，无视距离衰减与回避）· 无近盲' })
+    if (mod.falloff !== undefined) {
+      const far = (1 + (mod.falloff ?? 0)) / 2
+      lines.push({
+        k: '威力衰减',
+        v: `距离只削威力不削命中（幅度为命中衰减的一半）——远端威力 ×${far.toFixed(2)}`,
+      })
+    }
+    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
+    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `能量弹药伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
   } else if (mod.slot === 'drone-rack') {
     if (mod.droneBayBonusM3 !== undefined) {
       lines.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3)} m³（携带/放飞上限，与无人机装置可复数叠加）` })

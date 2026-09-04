@@ -466,13 +466,15 @@ export interface BattleBalance {
  * 靠合成机制，见 equipment.stackingOf）。V18 起物理槽由 RackSlot（高/中/低 × 数量制）
  * 表达——归槽见 ModuleDef.rack / labels.rackOf。
  * 武器形态映射（V18B 起按伤害系分形态，取代"同 MK 同参只换弹种"的临时炮数据）：
- * 动能 = 质量炮（turret）、爆炸 = 导弹架（missile）、能量 = 激光（turret，后续批改造）。
+ * 动能 = 质量炮（turret）、爆炸 = 导弹架（missile）、能量 = 激光炮（laser）——
+ * 激光：必中（不掷命中）+ 距离衰减作用于威力（幅度为命中衰减的 50%）+ 消耗能量弹药。
  */
 export type ModuleSlot =
   | 'miner'
   | 'cargo'
   | 'turret'
   | 'missile'
+  | 'laser'
   | 'shield'
   | 'armor'
   | 'propulsion'

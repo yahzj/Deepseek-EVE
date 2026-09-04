@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { createPlayerSpec, hitChance, loadAmmo, playerAmmoType } from '../src/combat'
+import { createPlayerSpec, hitChance, inRange, loadAmmo, playerAmmoType } from '../src/combat'
 import { fitModule, repairDeprecatedModules } from '../src/equipment'
 import type { ShipDef } from '../src/types'
 import { makeTestCtx, moduleDef, ship } from './helpers'
@@ -29,7 +29,7 @@ function missileDef(id: string, mk: number, reloadMs: number, dmgMult: number): 
     damageType: 'explosive',
     ammoPerEngagement: 24,
     maxRangeM: 5000 + mk * 1000,
-    minRangeM: 0,
+    minRangeM: mk === 1 ? 500 : mk === 2 ? 900 : 1400, // V18B-2 修正：近盲安全射距（防自爆）
     hitRate: 0.92,
     falloff: 1,
     reloadMs,
@@ -51,7 +51,7 @@ describe('V18B-1 导弹架', () => {
     expect(gun).toBeDefined()
     // 弹 7（爆破导弹）× dmgMult 1.25 × 1 = 8.75 → round 9
     expect(gun!.shotsByType!.explosive).toBe(Math.round(7 * 1.25))
-    expect(gun!.minRangeM).toBe(0) // 无视近盲
+    expect(gun!.minRangeM).toBe(500) // V18B-2 修正：近盲安全射距（太近会炸到自己）
     expect(gun!.falloff).toBe(1) // 追踪制
   })
 
@@ -69,7 +69,7 @@ describe('V18B-1 导弹架', () => {
     expect(gun.shotsByType!.explosive).toBe(Math.round(7 * 3.66) * 2)
   })
 
-  it('性格：无视近盲（贴身开火）+ 命中不随距离衰减（远端命中率 = 近端）', () => {
+  it('性格：近盲安全射距（带内才可发射）+ 命中不随距离衰减（远端命中率 = 近端）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 3 })
     const { bed, ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
     state.fleet[state.shipId]!.defId = 'bed'
@@ -81,9 +81,11 @@ describe('V18B-1 导弹架', () => {
     const bal = ctx.balance.battle
     const foe = { evasion: 0, signatureM: undefined }
     const me = { hitBonus: 0, scanResMm: undefined }
-    // 贴身（< 常规炮近盲 250 m）可命中：inRange min 0 → dist 100 在带内
-    // 导弹命中率近端 = 远端（falloff 1 → distFactor 恒 1）
-    const near = hitChance(missile, me, foe, 100, bal)
+    // 近盲带内（< 500 m）不可发射——贴近了会炸到自己
+    expect(inRange(300, missile)).toBe(false)
+    expect(inRange(0, missile)).toBe(false)
+    // 导弹命中率近端 = 远端（falloff 1 → distFactor 恒 1；带内 800 vs 5900）
+    const near = hitChance(missile, me, foe, 800, bal)
     const far = hitChance(missile, me, foe, 5900, bal) // 5900/6000 ≈ 98% 处
     expect(near).toBeCloseTo(far, 9)
     // 命中 = (0.92 + 0) × 1 − 0 = 0.92

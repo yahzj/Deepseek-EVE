@@ -35,21 +35,34 @@ export interface Hp3 {
 /** 静态武器卡 */
 export interface WeaponSpec {
   label: string
-  /** gun = 我方炮台（吃弹药，按 shotsByType 给单发伤害）；fixed = 固定单发（基础舰炮/无人机/敌方） */
-  kind: 'gun' | 'fixed'
-  /** fixed 的固定伤害类型 */
+  /** gun = 我方炮台/导弹架（吃弹药，按 shotsByType 给单发伤害）；beam = 激光炮（必中、
+   * 逐发扣能量弹药、威力随距离衰减）；fixed = 固定单发（基础舰炮/无人机/敌方） */
+  kind: 'gun' | 'beam' | 'fixed'
+  /** fixed/beam 的固定伤害类型（beam = plasma 能量弹药键） */
   fixedType?: DamageType
-  /** fixed 单发伤害 */
+  /** fixed/beam 单发伤害 */
   shotDmg?: number
   /** gun：弹型 → 单发伤害（构建期含 dmgMult×(1+炮术×5%)×(1+powerBonus)×伤害稳定器） */
   shotsByType?: Partial<Record<DamageType, number>>
-  /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1） */
+  /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1；
+   * beam 必中不携带——命中件对激光无效） */
   eqHitMul?: number
   maxRangeM: number
   minRangeM: number
   hitRate: number
   falloff: number
   reloadMs: number
+}
+
+/**
+ * V18B-2 激光威力系数：距离衰减从"命中"转为"威力"，且幅度只有命中衰减的 50%——
+ * 系数 = 1 − 距离进度 × (1−falloff) × 0.5（例 falloff 0.3 → 远端威力 ×0.65）。
+ */
+export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
+  const { minRangeM: min, maxRangeM: max, falloff } = w
+  if (max <= min) return 1
+  const t = clamp(0, 1, (dist - min) / (max - min))
+  return 1 - t * (1 - falloff) * 0.5
 }
 
 /** 静态单位卡（构建后不进存档） */
@@ -197,10 +210,11 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const shieldDefs = familyModules(state, ctx, shipId, 'shield')
   const armorDefs = familyModules(state, ctx, shipId, 'armor')
   const propDefs = familyModules(state, ctx, shipId, 'propulsion')
-  // V18B-1：武器形态分家——turret（动能/能量炮）与 missile（导弹架）都进武器池
+  // V18B：武器形态分家——turret（动能炮）与 missile（导弹架）与 laser（激光炮）都进武器池
   const turretDefs = [
     ...familyModules(state, ctx, shipId, 'turret'),
     ...familyModules(state, ctx, shipId, 'missile'),
+    ...familyModules(state, ctx, shipId, 'laser'),
   ]
   // V18.1 支援件（中/低槽：伤害/射速/命中/闪避，效果字段判别）
   const supportDefs = allFittedModules(fitted, ctx).filter((d) => d.slot === 'support')
@@ -281,6 +295,23 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const ammoDef = ctx.items.get(AMMO_IDS[type])
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
     const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * (1 + dmgBonus[type]))
+    const reload = Math.max(100, Math.round(turret.reloadMs / reloadDiv))
+    if (turret.slot === 'laser') {
+      // V18B-2 激光炮：beam 条目——必中（开火不掷命中）、逐发扣能量弹药、
+      // 距离衰减作用于威力（幅度 = 命中衰减的 50%，开火时按当前距离计算）
+      weapons.push({
+        label: count > 1 ? `${turret.name}×${count}` : turret.name,
+        kind: 'beam',
+        fixedType: 'plasma',
+        shotDmg: perShot * count,
+        maxRangeM: turret.maxRangeM,
+        minRangeM: turret.minRangeM ?? 0,
+        hitRate: 1,
+        falloff: turret.falloff ?? 0.3,
+        reloadMs: reload,
+      })
+      continue
+    }
     const shotsByType: Partial<Record<DamageType, number>> = {}
     shotsByType[type] = perShot * count
     weapons.push({
@@ -292,7 +323,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       minRangeM: turret.minRangeM ?? 0,
       hitRate: turret.hitRate ?? 0.5,
       falloff: turret.falloff ?? 0.3,
-      reloadMs: Math.max(100, Math.round(turret.reloadMs / reloadDiv)),
+      reloadMs: reload,
     })
   }
 
@@ -362,7 +393,11 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
  * 也返回 kinetic——基础舰炮实际不消耗弹药）。多门异弹型武器的装载/消耗在出发预载时按
  * 主武器型装载（battle.ammo 单型；异型武器在主弹种耗尽后停火，见 E 台阶 per-gun 完整化）。 */
 export function playerAmmoType(state: GameState, ctx: SimContext, shipId: string): DamageType {
-  const weapons = [...familyModules(state, ctx, shipId, 'turret'), ...familyModules(state, ctx, shipId, 'missile')]
+  const weapons = [
+    ...familyModules(state, ctx, shipId, 'turret'),
+    ...familyModules(state, ctx, shipId, 'missile'),
+    ...familyModules(state, ctx, shipId, 'laser'),
+  ]
   return (weapons[0]?.damageType as DamageType | undefined) ?? 'kinetic'
 }
 
@@ -478,11 +513,26 @@ export function foeDesiredRange(_me: UnitSpec, foes: UnitSpec[], bal: BattleBala
 
 /* ═══════════ 弹药 ═══════════ */
 
-/** 主炮总需求（时间上限/装填 ×余量） */
-export function ammoLoadTotal(me: UnitSpec, bal: BattleBalance): number {
-  const main = me.weapons.find((w) => w.kind === 'gun')
-  if (!main) return 0
-  return Math.max(1, Math.ceil((bal.ammoTimeCapMs / main.reloadMs) * bal.ammoMargin))
+/**
+ * 预载需求（V18B-2 per-gun 多键）：按每种耗弹武器键分别估量
+ * （该键武器中取最快装填：时间上限 ÷ reload × 余量）。
+ */
+export function ammoLoadTotals(me: UnitSpec, bal: BattleBalance): Partial<Record<DamageType, number>> {
+  const fastest = new Map<DamageType, number>()
+  const consider = (t: DamageType, reloadMs: number): void => {
+    fastest.set(t, Math.min(fastest.get(t) ?? Number.POSITIVE_INFINITY, reloadMs))
+  }
+  for (const w of me.weapons) {
+    if (w.kind === 'gun') {
+      const t = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
+      if (t) consider(t, w.reloadMs)
+    } else if (w.kind === 'beam') {
+      consider('plasma', w.reloadMs)
+    }
+  }
+  const out: Partial<Record<DamageType, number>> = {}
+  for (const [t, reload] of fastest) out[t] = Math.max(1, Math.ceil((bal.ammoTimeCapMs / reload) * bal.ammoMargin))
+  return out
 }
 
 /**
@@ -618,10 +668,13 @@ export function startBattleFor(
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
   battle.distanceM = openM
-  const ammoType = playerAmmoType(state, ctx, shipId)
-  const total = ammoLoadTotal(me, bal)
-  if (total > 0) {
-    battle.ammo = loadAmmo(state, ctx, ammoType, total)
+  // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
+  // （纯激光船也能带上能量弹药；混装各型互不挤占）
+  const totals = ammoLoadTotals(me, bal)
+  for (const [t, n] of Object.entries(totals)) {
+    const key = ammoKeyOf(t as DamageType)
+    const loaded = loadAmmo(state, ctx, t as DamageType, n)
+    battle.ammo[key] += loaded[key]
   }
   return battle
 }
@@ -668,7 +721,7 @@ export function battleArcsFor(
   ammo: { kin: number; exp: number; pla: number }
   me: Array<{
     label: string
-    kind: 'gun' | 'fixed'
+    kind: 'gun' | 'beam' | 'fixed'
     type: DamageType | null
     minM: number
     maxM: number
@@ -693,6 +746,7 @@ export function battleArcsFor(
   const meArcs = me.weapons.map((w) => {
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
+    else if (w.kind === 'beam') type = battle.ammo.pla > 0 ? 'plasma' : null // 激光吃能量弹药键
     else if (ammoLeft > 0) type = dominant // 炮台弹型动态（消耗中可能切换）
     return { label: w.label, kind: w.kind, type, minM: w.minRangeM, maxM: w.maxRangeM, reloadMs: w.reloadMs }
   })
@@ -818,9 +872,12 @@ function stepBattle(
       if (!inRange(b.distanceM, w) || !foeTarget) continue
       let type: DamageType
       let dmg: number
+      let autoHit = false
       if (w.kind === 'gun') {
-        const pick = nextAmmoType(b.ammo)
-        if (!pick) {
+        // V18B-2 per-gun 弹型：每件武器打自己的键（动能/爆破导弹/能量弹药混装各自供弹），
+        // 该键弹尽 → 本武器停火（不拖累其它型）
+        const pick = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
+        if (!pick || b.ammo[ammoKeyOf(pick)] <= 0) {
           meRt.weapons[wi] = w.reloadMs // 无弹：等一轮再查（避免每步空转）
           continue
         }
@@ -828,16 +885,28 @@ function stepBattle(
         dmg = w.shotsByType?.[pick] ?? 0
         b.ammo[ammoKeyOf(pick)] -= 1
         meRt.weapons[wi] = w.reloadMs
+      } else if (w.kind === 'beam') {
+        // V18B-2 激光：必中光束——逐发扣能量弹药；威力随距离衰减（beamPowerFactor）
+        if (b.ammo.pla <= 0) {
+          meRt.weapons[wi] = w.reloadMs
+          continue
+        }
+        type = 'plasma'
+        b.ammo.pla -= 1
+        dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerFactor(b.distanceM, w)))
+        meRt.weapons[wi] = w.reloadMs
+        autoHit = true
       } else {
         type = w.fixedType ?? 'kinetic'
         dmg = w.shotDmg ?? 0
         meRt.weapons[wi] = w.reloadMs
       }
       b.stats.meShots += 1
-      // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）
-      const meHit = hitChance(w, me, foeTarget, b.distanceM, bal)
-      const meHitEff = favor ? clamp(0, 1, meHit * favor.meMul) : meHit
-      const hit = dmg > 0 && nextRandom(state.rng) < meHitEff
+      // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
+      // beam 已必中（autoHit），不掷骰、favor 不放大
+      const meHit = autoHit ? 1 : hitChance(w, me, foeTarget, b.distanceM, bal)
+      const meHitEff = autoHit ? 1 : favor ? clamp(0, 1, meHit * favor.meMul) : meHit
+      const hit = dmg > 0 && (autoHit || nextRandom(state.rng) < meHitEff)
       if (hit) {
         b.stats.meHits += 1
         const rt = b.units[foeTarget.tag]!
@@ -956,13 +1025,14 @@ function winPreviewRaw(
   const meHpTotal = me.hp.s + me.hp.a + me.hp.h
   const foeHpTotal = foes.reduce((a, f) => a + f.hp.s + f.hp.a + f.hp.h, 0)
 
-  // 我方 DPS：逐武器（V17.2 炮台 = 固定弹种：按炮型 × 敌方血型克制精确计算）
+  // 我方 DPS：逐武器（V17.2 炮台 = 固定弹种：按炮型 × 敌方血型克制精确计算；
+  // V18B-2 激光 beam = 命中恒 1（必中）且按稳态距离折算威力衰减）
   let meDps = 0
   for (const w of me.weapons) {
-    const hit = hitChance(w, me, foes[0]!, steady, bal)
-    if (hit <= 0) continue
     let shot = 0
     let ammoType: DamageType | null = null
+    let hit = 0
+    let power = 1
     if (w.kind === 'gun') {
       const entries = Object.entries(w.shotsByType ?? {})
       if (entries.length > 0) {
@@ -970,11 +1040,19 @@ function winPreviewRaw(
         ammoType = t as DamageType
         shot = v ?? 0
       }
+      hit = hitChance(w, me, foes[0]!, steady, bal)
+    } else if (w.kind === 'beam') {
+      ammoType = w.fixedType ?? 'plasma'
+      shot = w.shotDmg ?? 0
+      hit = 1 // 必中
+      power = beamPowerFactor(steady, w)
     } else {
       shot = w.shotDmg ?? 0
+      hit = hitChance(w, me, foes[0]!, steady, bal)
     }
+    if (hit <= 0) continue
     const mult = effectiveDmgMultAgainst(foes, ammoType ?? w.fixedType ?? 'kinetic')
-    meDps += (shot * mult * hit * 1000) / w.reloadMs
+    meDps += (shot * power * mult * hit * 1000) / w.reloadMs
   }
   // 敌方 DPS（打我，含类型克制与层抗）
   let foeDps = 0

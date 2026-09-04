@@ -273,7 +273,8 @@ export function fittedBonuses(
 
 /**
  * 下架型号迁移表（V17 装备改版起沿用）：旧"通用全系"战斗装备 id → 新分系专精款
- * （动能款归位）；V18B-1：高爆炮台 → 同档导弹架（爆炸系武器形态归位）。
+ * （动能款归位）；V18B-1：高爆炮台 → 同档导弹架（爆炸系武器形态归位）；
+ * V18B-2：能量炮台 + 异星原型 → 同档激光炮（能量 = 激光形态归位）。
  * 本表供 repairDeprecatedModules 使用。
  */
 export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
@@ -290,6 +291,11 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
   'mod-turret-exp-1': 'mod-missile-1',
   'mod-turret-exp-2': 'mod-missile-2',
   'mod-turret-exp-3': 'mod-missile-3',
+  // V18B-2：能量炮台 + 异星原型退役 → 激光炮（能量 = 激光形态；异星原型 → 原型激光）
+  'mod-turret-pla-1': 'mod-laser-1',
+  'mod-turret-pla-2': 'mod-laser-2',
+  'mod-turret-pla-3': 'mod-laser-3',
+  'mod-turret-proto': 'mod-laser-proto',
 }
 
 /**

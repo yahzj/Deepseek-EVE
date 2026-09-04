@@ -62,7 +62,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-cargo-1', kind: 'module', refId: 'mod-cargo-1', rarity: 'common', basePrice: 28_000, demandMultiplier: 0.4 },
   { key: 'mod-turret-kin-1', kind: 'module', refId: 'mod-turret-kin-1', rarity: 'common', basePrice: 53_000, demandMultiplier: 0.4 },
   { key: 'mod-missile-1', kind: 'module', refId: 'mod-missile-1', rarity: 'common', basePrice: 62_000, demandMultiplier: 0.4 },
-  { key: 'mod-turret-pla-1', kind: 'module', refId: 'mod-turret-pla-1', rarity: 'common', basePrice: 66_000, demandMultiplier: 0.4 },
+  { key: 'mod-laser-1', kind: 'module', refId: 'mod-laser-1', rarity: 'common', basePrice: 66_000, demandMultiplier: 0.4 },
   // 战斗家族 MK1（V17 起真生效：护盾/装甲为分系专精三款、矢量推进器；低价鼓励勤换装）
   { key: 'mod-shield-kin-1', kind: 'module', refId: 'mod-shield-kin-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.4 },
   { key: 'mod-shield-exp-1', kind: 'module', refId: 'mod-shield-exp-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.4 },
@@ -95,13 +95,13 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-cargo-2', kind: 'module', refId: 'mod-cargo-2', rarity: 'rare', basePrice: 199_000, demandMultiplier: 0.35 },
   { key: 'mod-turret-kin-2', kind: 'module', refId: 'mod-turret-kin-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.35 },
   { key: 'mod-missile-2', kind: 'module', refId: 'mod-missile-2', rarity: 'rare', basePrice: 451_000, demandMultiplier: 0.35 },
-  { key: 'mod-turret-pla-2', kind: 'module', refId: 'mod-turret-pla-2', rarity: 'rare', basePrice: 481_000, demandMultiplier: 0.35 },
+  { key: 'mod-laser-2', kind: 'module', refId: 'mod-laser-2', rarity: 'rare', basePrice: 481_000, demandMultiplier: 0.35 },
   // MK3 攻坚装备（V10 起蓝图可造 + 稀有现货高价应急；自制成本 ×1.7）
   { key: 'mod-miner-3', kind: 'module', refId: 'mod-miner-3', rarity: 'rare', basePrice: 991_000, demandMultiplier: 0.35 },
   { key: 'mod-cargo-3', kind: 'module', refId: 'mod-cargo-3', rarity: 'rare', basePrice: 1_122_000, demandMultiplier: 0.35 },
   { key: 'mod-turret-kin-3', kind: 'module', refId: 'mod-turret-kin-3', rarity: 'rare', basePrice: 1_916_000, demandMultiplier: 0.35 },
   { key: 'mod-missile-3', kind: 'module', refId: 'mod-missile-3', rarity: 'rare', basePrice: 2_242_000, demandMultiplier: 0.35 },
-  { key: 'mod-turret-pla-3', kind: 'module', refId: 'mod-turret-pla-3', rarity: 'rare', basePrice: 2_395_000, demandMultiplier: 0.35 },
+  { key: 'mod-laser-3', kind: 'module', refId: 'mod-laser-3', rarity: 'rare', basePrice: 2_395_000, demandMultiplier: 0.35 },
   // 战斗家族 MK2/MK3（V17：分系专精 ×3 款；MK3 市场专供——V18 复查：稀有溢价 ×1.4/×1.7）
   { key: 'mod-shield-kin-2', kind: 'module', refId: 'mod-shield-kin-2', rarity: 'rare', basePrice: 28_000, demandMultiplier: 0.35 },
   { key: 'mod-shield-exp-2', kind: 'module', refId: 'mod-shield-exp-2', rarity: 'rare', basePrice: 28_000, demandMultiplier: 0.35 },
@@ -181,7 +181,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   // 异星原型装备（V10：超档收藏，无蓝图，需声望 10）
   { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 0.3, standingReq: 10 },
   { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 0.3, standingReq: 10 },
-  { key: 'mod-turret-proto', kind: 'module', refId: 'mod-turret-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 0.3, standingReq: 10 },
+  { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 0.3, standingReq: 10 },
   // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径）
   { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 90_000, demandMultiplier: 0.5, playerSellable: false },
   { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 0.5, playerSellable: false },

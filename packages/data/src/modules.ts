@@ -15,12 +15,14 @@
  *     重型（MK2 慢射远程）、攻坚（MK3 超远程重装填）、异星原型；同 MK 三弹种款
  *     性能一致只换伤害类型（动能打盾 ×1.5 / 高爆打甲 ×1.5 / 能量打盾 ×0.75 且单发基数最高）；
  *     蓝图 = 动能款（协会制式）；口径限制已取消——任意船可装任意炮，装配唯一约束 = CPU；
- *   · V18B-1 武器形态分家（船长 2026-09-04："按伤害类型设计武器，不应只是换描述"）：
+ *   · V18B-1/2 武器形态分家（船长 2026-09-04："按伤害类型设计武器，不应只是换描述"）：
  *     爆炸系已从临时"高爆炮"迁移为导弹架（mod-missile-1/2/3，见下方导弹架段）——
- *     无视近盲 + 命中不随距离衰减的远程爆破；动能/能量炮仍为临时填充数据，
- *     V18B-2 将分别改造为质量炮/激光形态（届时再做对应迁移）；
- *   · 弹药：动能弹（质量炮）、爆破导弹（导弹架专用，爆炸键）、等离子弹（能量）——
- *     每型单档通用弹（-l），武器按自身固定弹种消耗；
+ *     追踪命中不随距离衰减的远程爆破，带近盲安全射距（太近会炸到自己）；
+ *     V18B-2：能量系从临时"能量炮/异星原型"迁移为激光炮（mod-laser-1/2/3/proto）——
+ *     必中（不掷命中）+ 距离衰减作用于威力（幅度 = 命中衰减的 50%）+ 消耗能量弹药；
+ *     动能炮仍为临时填充数据，V18B-3 将改造为质量炮形态（届时再做迁移与改名确认）；
+ *   · 弹药：动能弹（质量炮）、爆破导弹（导弹架专用，爆炸键）、能量弹药（激光炮专用，
+ *     原名"等离子弹"，id 不变）——每型单档通用弹（-l），武器按自身固定弹种消耗；
  * - CPU 装配资源（V17.1 用户定稿：成倍档位拉开船级差距）：
  *   民用 3（炮台 6）/ MK1 5（炮台 10）/ MK2 15（炮台 28）/ MK3 40（炮台 52）/
  *   异星原型 60（炮台 70）——战斗件与工业件同档；低级船（沙猫 60 CPU）只带得动
@@ -175,23 +177,6 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.25,
   },
   {
-    id: 'mod-turret-pla-1',
-    name: '轻型炮台 MK1·能量型',
-    slot: 'turret',
-    rack: 'high',
-
-    damageType: 'plasma',
-    ammoPerEngagement: 24,
-    description: '轻型能量炮：对三层伤害均衡（打盾 0.75 倍），但能量弹单发基数最高——结构层决胜弹（市场专供）。',
-    cpuUse: 10,
-    maxRangeM: 4600,
-    minRangeM: 250,
-    hitRate: 0.8,
-    falloff: 0.3,
-    reloadMs: 2200,
-    dmgMult: 1.25,
-  },
-  {
     id: 'mod-turret-kin-2',
     name: '重型炮台 MK2·动能型',
     slot: 'turret',
@@ -207,23 +192,6 @@ export const MODULES: readonly ModuleDef[] = [
     falloff: 0.28,
     reloadMs: 3400,
     dmgMult: 3.73,
-  },
-  {
-    id: 'mod-turret-pla-2',
-    name: '重型炮台 MK2·能量型',
-    slot: 'turret',
-    rack: 'high',
-
-    damageType: 'plasma',
-    ammoPerEngagement: 12,
-    description: '重型能量炮：远程均衡火力，能量弹单发基数最高（市场专供，无蓝图）。',
-    cpuUse: 28,
-    maxRangeM: 8200,
-    minRangeM: 700,
-    hitRate: 0.78,
-    falloff: 0.28,
-    reloadMs: 3400,
-    dmgMult: 3.38,
   },
   {
     id: 'mod-turret-kin-3',
@@ -242,44 +210,85 @@ export const MODULES: readonly ModuleDef[] = [
     reloadMs: 4200,
     dmgMult: 5.13,
   },
+  // ══════════ 激光炮（V18B-2 能量系武器形态：消耗能量弹药，必中光束） ══════════
+  // 与原能量炮/异星原型（已退役迁移）同伤害系（plasma）/同消耗键，但性格独立：
+  // - 必中：射程带内不掷命中（无视距离衰减与回避，锁定即命中）；
+  // - 距离衰减作用在威力而非命中，且幅度只有命中衰减的一半（威系数 = 1 − 进度×(1−falloff)×50%）；
+  // - minRange 0（光束无弹道近盲）；逐发消耗能量弹药（ammo-plasma-l = 能量弹药）；
+  // - 数值初值对照原能量炮 dmgMult 下调（必中优势），进 C4 校准轮复核；
+  // - 市场专供（无蓝图；沿用原能量炮渠道与价位）。异星原型 → 原型激光（奇货）。
   {
-    id: 'mod-turret-pla-3',
-    name: '攻坚炮台 MK3·能量型',
-    slot: 'turret',
+    id: 'mod-laser-1',
+    name: '轻型激光炮 MK1',
+    slot: 'laser',
     rack: 'high',
 
     damageType: 'plasma',
-    ammoPerEngagement: 12,
-    description: '攻城级能量巨炮：能量武器时代的攻城解（市场稀有现货，无蓝图）。',
-    cpuUse: 52,
-    maxRangeM: 10500,
-    minRangeM: 1200,
-    hitRate: 0.78,
-    falloff: 0.28,
-    reloadMs: 4200,
-    dmgMult: 4.64,
+    ammoPerEngagement: 24,
+    description: '轻型激光炮：能量光束必中（锁定即命中）、无视近盲；距离只轻微削减威力。消耗能量弹药（市场专供）。',
+    cpuUse: 10,
+    maxRangeM: 4600,
+    minRangeM: 0,
+    hitRate: 1,
+    falloff: 0.3,
+    reloadMs: 2000,
+    dmgMult: 1.1,
   },
   {
-    id: 'mod-turret-proto',
-    name: '异星原型炮台',
-    slot: 'turret',
+    id: 'mod-laser-2',
+    name: '重型激光炮 MK2',
+    slot: 'laser',
     rack: 'high',
 
     damageType: 'plasma',
     ammoPerEngagement: 12,
-    description: '无法逆向工程的异星重型能量武器：13 km 射程，仅限奇货市场（需高声望）。',
+    description: '重型激光炮：8.2 km 远程光束，必中且只受轻微威力衰减——远程稳定输出的正解（市场专供，无蓝图）。',
+    cpuUse: 28,
+    maxRangeM: 8200,
+    minRangeM: 0,
+    hitRate: 1,
+    falloff: 0.35,
+    reloadMs: 3200,
+    dmgMult: 3.0,
+  },
+  {
+    id: 'mod-laser-3',
+    name: '攻坚激光炮 MK3',
+    slot: 'laser',
+    rack: 'high',
+
+    damageType: 'plasma',
+    ammoPerEngagement: 12,
+    description: '攻城级激光炮：10.5 km 光束炮塔——编队攻坚的稳定火力（市场稀有现货，无蓝图）。',
+    cpuUse: 52,
+    maxRangeM: 10500,
+    minRangeM: 0,
+    hitRate: 1,
+    falloff: 0.35,
+    reloadMs: 4000,
+    dmgMult: 4.2,
+  },
+  {
+    id: 'mod-laser-proto',
+    name: '异星原型激光炮',
+    slot: 'laser',
+    rack: 'high',
+
+    damageType: 'plasma',
+    ammoPerEngagement: 12,
+    description: '无法逆向工程的异星能量武器：13 km 光束，仅限奇货市场（需高声望）。',
     cpuUse: 70,
     maxRangeM: 13000,
-    minRangeM: 1600,
-    hitRate: 0.78,
-    falloff: 0.28,
-    reloadMs: 4800,
-    dmgMult: 5.91,
+    minRangeM: 0,
+    hitRate: 1,
+    falloff: 0.3,
+    reloadMs: 4600,
+    dmgMult: 5.1,
   },
 
   // ══════════ 导弹架（V18B-1 爆炸系武器形态：爆破导弹弹头，逐发消耗） ══════════
   // 与原高爆炮（已退役迁移）同伤害系/同消耗键，但性格独立：
-  // - 无视近盲（minRange 0：贴身可发射）；命中不随距离衰减（falloff 1 = 追踪制）；
+  // - 近盲安全射距（minRange 500/900/1400：太近发射会炸到自己）；命中不随距离衰减（falloff 1 = 追踪制）；
   // - 射程比同档动能炮更远、装填更慢、命中更高（追踪）——"远程爆破轰炸"定位；
   // - 数值初值 = 原高爆炮 dmgMult 继承 + 节奏重排，进 C4 校准轮复核；
   // - 市场专供（无蓝图；沿用原高爆炮渠道与价位）。
@@ -291,10 +300,10 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 24,
-    description: '轻型导弹巢：发射爆破导弹（打甲 1.5 倍、打盾减半）。无视近盲、命中不随距离衰减——贴身与远距都稳定的破甲火力（市场专供）。',
+    description: '轻型导弹巢：发射爆破导弹（打甲 1.5 倍、打盾减半）。命中不随距离衰减；注意 500 m 内近盲——贴太近发射会炸到自己（市场专供）。',
     cpuUse: 10,
     maxRangeM: 6200,
-    minRangeM: 0,
+    minRangeM: 500,
     hitRate: 0.92,
     falloff: 1,
     reloadMs: 2600,
@@ -311,7 +320,7 @@ export const MODULES: readonly ModuleDef[] = [
     description: '重型导弹巢：9.8 km 远程爆破轰炸——装甲舰编队的噩梦（市场专供，无蓝图）。',
     cpuUse: 28,
     maxRangeM: 9800,
-    minRangeM: 0,
+    minRangeM: 900,
     hitRate: 0.92,
     falloff: 1,
     reloadMs: 4000,
@@ -328,7 +337,7 @@ export const MODULES: readonly ModuleDef[] = [
     description: '巡航导弹巢：12.4 km 远程毁灭——大编队交火前先发制人的火力（市场稀有现货，无蓝图）。',
     cpuUse: 52,
     maxRangeM: 12400,
-    minRangeM: 0,
+    minRangeM: 1400,
     hitRate: 0.92,
     falloff: 1,
     reloadMs: 5000,
@@ -713,7 +722,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.06 },
     cpuUse: 5,
-    description: '等离子武器支援（低槽）：等离子炮台单发伤害 +6%。同类可多装、效果全额叠加。',
+    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +6%。同类可多装、效果全额叠加。',
   },
   {
     id: 'mod-stab-pla-2',
@@ -722,7 +731,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.1 },
     cpuUse: 15,
-    description: '等离子武器支援（低槽）：等离子炮台单发伤害 +10%。同类可多装、效果全额叠加。',
+    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +10%。同类可多装、效果全额叠加。',
   },
   {
     id: 'mod-stab-pla-3',
@@ -731,7 +740,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.15 },
     cpuUse: 40,
-    description: '等离子武器支援（低槽）：等离子炮台单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
   },
   {
     id: 'mod-rof-1',

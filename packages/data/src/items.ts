@@ -293,8 +293,9 @@ export const ICES: readonly ItemDef[] = [
 ]
 
 /** 弹药（V10.5 战斗数值契约就位：克制体系见 docs/design/v10b-combat-data.md；
- * 动能弹对护盾 ×1.5 对装甲 ×0.5、爆破导弹（爆炸）反之、等离子弹（能量系）对护盾 ×0.75 其余 ×1.0；
- * V18 口径取消：每型只留单档通用弹；V18B-1：爆炸系武器形态 = 导弹架 → 高爆弹更名"爆破导弹"） */
+ * 动能弹对护盾 ×1.5 对装甲 ×0.5、爆破导弹（爆炸）反之、能量弹药（能量系）对护盾 ×0.75 其余 ×1.0；
+ * V18 口径取消：每型只留单档通用弹；V18B-1/2：高爆弹更名"爆破导弹"（导弹架专用）、
+ * 等离子弹更名"能量弹药"（激光炮专用）——武器形态与弹药一一对应） */
 export const AMMO: readonly ItemDef[] = [
   {
     id: 'ammo-kinetic-l',
@@ -318,11 +319,11 @@ export const AMMO: readonly ItemDef[] = [
   },
   {
     id: 'ammo-plasma-l',
-    name: '等离子弹',
+    name: '能量弹药',
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 8,
-    description: '能量弹（等离子）：全场景中游的通用弹（对护盾 ×0.75、其余 ×1.0），新手备弹首选。战斗开放后由炮台消耗。',
+    description: '能量弹药（原"等离子弹"）：激光炮专用高能电池弹——光束必中、对护盾 ×0.75、其余 ×1.0。',
     damageType: 'plasma',
     dmg: 9,
   },
