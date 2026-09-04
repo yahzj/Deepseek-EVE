@@ -284,8 +284,9 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const foeColRef = useRef<HTMLDivElement>(null)
   /** 舰首朝向：meFlip = 我方头朝左；foeFlip = 敌方头朝左（默认相向而行：我方朝右、敌方朝左） */
   const facingRef = useRef({ meFlip: false, foeFlip: true })
-  /** 已消费的开火事件数（引擎每拍追加一次，渲染到达即回放） */
-  const fxIdxRef = useRef(0)
+  /** 已消费的最新开火事件序号（引擎事件环超 48 条会丢最旧——按序号续播而非数组下标，
+   *  避免"攒满 48 条后新开火全部不再播放"（战斗超 ~60 秒动画停播 bug） */
+  const fxSeqRef = useRef(0)
   const initedFxRef = useRef(false)
   const keyRef = useRef(1)
   const boltsRef = useRef<BoltV[]>([])
@@ -462,9 +463,10 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const openM = arcs.openM
   const nearM = arcs.nearM
 
-  // 首帧不重放历史开火事件
+  // 首帧不重放历史开火事件：只从"当前环尾"续播
   if (!initedFxRef.current) {
-    fxIdxRef.current = battle.fx.length
+    const tail = battle.fx.length > 0 ? battle.fx[battle.fx.length - 1] : undefined
+    fxSeqRef.current = tail ? tail.seq : 0
     initedFxRef.current = true
   }
 
@@ -492,12 +494,12 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   else if (foeGap < -2) facingRef.current.foeFlip = true // 敌想接近 → 船头朝我
   const { meFlip, foeFlip } = facingRef.current
 
-  /* ── 消费新到达的开火事件（同帧转弹道 + 闪光）── */
-  const fxLen = battle.fx.length
-  if (fxIdxRef.current < fxLen) {
-    while (fxIdxRef.current < fxLen) {
-      const fx: BattleFx = battle.fx[fxIdxRef.current]!
-      fxIdxRef.current += 1
+  /* ── 消费新到达的开火事件（按序号取 seq > lastSeq 的新事件，同帧转弹道 + 闪光；
+        环裁剪丢旧事件不影响：序号跳跃即自动跳过丢失部分） ── */
+  const arrivals = battle.fx.filter((f) => f.seq > fxSeqRef.current)
+  if (arrivals.length > 0) {
+    for (const fx of arrivals) {
+      fxSeqRef.current = fx.seq
       const fi = foeTags.indexOf(fx.tag)
       const idx = fi >= 0 ? fi : 0
       const src = fx.side === 'me' ? lay.me : lay.foe[idx]

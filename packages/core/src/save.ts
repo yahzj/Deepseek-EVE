@@ -594,6 +594,7 @@ function cleanBattle(raw: unknown): BattleState | null {
   const ammoRaw = asRaw(b.ammo)
   const statsRaw = asRaw(b.stats)
   const endedRaw = b.ended
+  const fx = cleanFx(b.fx, numf)
   return {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     lastTickGameMs: Math.max(0, Math.floor(numf(b.lastTickGameMs, 0))),
@@ -612,12 +613,14 @@ function cleanBattle(raw: unknown): BattleState | null {
       foeShots: numi(statsRaw.foeShots, 0),
       foeHits: numi(statsRaw.foeHits, 0),
     },
-    fx: cleanFx(b.fx, numf),
+    fx,
+    // 序号续发：以清洗后尾部序号 +1 为基准（旧档无 seq 字段时按序重排，见 cleanFx）
+    fxSeq: fx.length > 0 ? fx[fx.length - 1]!.seq + 1 : 0,
     ended: endedRaw === 'me' || endedRaw === 'foe' ? endedRaw : null,
   }
 }
 
-/** 清洗战斗可视化事件环（白名单字段；坏事件丢弃，缺失给空） */
+/** 清洗战斗可视化事件环（白名单字段；坏事件丢弃，缺失给空）。seq 按环内顺序重排（旧档无 seq 也能续播） */
 function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => number): BattleFx[] {
   const out: BattleFx[] = []
   if (!Array.isArray(raw)) return out
@@ -629,6 +632,7 @@ function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => number): 
       ev.type === 'kinetic' || ev.type === 'explosive' || ev.type === 'plasma' ? ev.type : null
     if (!side || !type) continue
     out.push({
+      seq: out.length, // 按清洗后顺序重排（保序：环内 atMs 递增）
       atMs: Math.max(0, Math.floor(numf(ev.atMs, 0))),
       side,
       tag: typeof ev.tag === 'string' && ev.tag.length > 0 ? ev.tag : side === 'me' ? 'player' : 'foe-0',

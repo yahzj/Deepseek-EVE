@@ -542,13 +542,19 @@ export function createBattleState(
     ammo: { kin: 0, exp: 0, pla: 0 },
     stats: { meShots: 0, meHits: 0, meDmg: 0, foeShots: 0, foeHits: 0 },
     fx: [],
+    fxSeq: 0,
     ended: null,
   }
 }
 
-/** 追加可视化开火事件（环缓冲，超长丢最旧；纯展示） */
-function pushFx(b: import('./state').BattleState, ev: import('./state').BattleFx): void {
-  b.fx.push(ev)
+/** 追加可视化开火事件（环缓冲 48 条，超长丢最旧；纯展示）。
+ * seq 由战斗内计数器自增分配——环头部裁剪后序号仍单调，UI 按 seq>last 续播不受裁剪影响。
+ * 导出仅供"事件环回归测试"锁定该语义；引擎内部调用。 */
+export function pushBattleFx(
+  b: import('./state').BattleState,
+  ev: Omit<import('./state').BattleFx, 'seq'>,
+): void {
+  b.fx.push({ ...ev, seq: b.fxSeq++ })
   if (b.fx.length > 48) b.fx.splice(0, b.fx.length - 48)
 }
 
@@ -803,7 +809,7 @@ function stepBattle(
         rt.hp = r.hp
         b.stats.meDmg += r.dealt
       }
-      pushFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'me', tag: 'player', type, hit })
+      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'me', tag: 'player', type, hit })
     }
   }
 
@@ -830,7 +836,7 @@ function stepBattle(
       const r = applyDamage(meRt.hp, me.resists, w.shotDmg ?? 0, fType)
       meRt.hp = r.hp
     }
-    pushFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, type: fType, hit: fHit })
+    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, type: fType, hit: fHit })
   }
 
   // ── 结束判定 ──

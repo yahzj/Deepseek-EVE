@@ -13,6 +13,7 @@ import {
   inRange,
   nextAmmoType,
   typeLayerMult,
+  createBattleState,
   createFoeSpecs,
   createPlayerSpec,
   desiredRangeFor,
@@ -23,6 +24,7 @@ import {
   advanceBattleFor,
   battleWinPreview,
   refundAmmo,
+  pushBattleFx,
   steerStep,
   spreadWinChance,
 } from '../src/combat'
@@ -268,5 +270,40 @@ describe('完整战斗流程', () => {
     expect(state.rng.count).toBe(before)
     expect(p).toBeGreaterThanOrEqual(0)
     expect(p).toBeLessThanOrEqual(1)
+  })
+})
+
+describe('战斗 fx 事件环（回归：超 48 条头部裁剪后仍按序号续播——长战斗攻击动画停播 bug）', () => {
+  it('环满裁剪：长度恒 ≤48、seq 单调连续、消费端按 seq>last 仍能拿到新事件', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 21 })
+    const ctx = makeTestCtx({ anomalies: [anomaly('ano-fx', 'galaxy-hub', { threat: 2, reward: 1_000 })] })
+    const me = createPlayerSpec(state, ctx, 'sandcat')!
+    const anomalyDef = ctx.anomalies.get('ano-fx')!
+    const foes = createFoeSpecs(anomalyDef, BAL())
+    const openM = battleOpenM(me, foes, BAL())
+    const battle = createBattleState(me, foes, 0, openM)
+    battle.distanceM = openM
+    // 塞满 60 条开火（超过 48 条环上限）
+    for (let i = 0; i < 60; i++) {
+      pushBattleFx(battle, {
+        atMs: i * 1000,
+        side: i % 2 === 0 ? 'me' : 'foe',
+        tag: i % 2 === 0 ? 'player' : 'foe-0',
+        type: 'kinetic',
+        hit: i % 3 === 0,
+      })
+    }
+    expect(battle.fx.length).toBe(48) // 环上限：最旧 12 条已被裁剪
+    const seqs = battle.fx.map((f) => f.seq)
+    for (let i = 1; i < seqs.length; i++) expect(seqs[i]!).toBe(seqs[i - 1]! + 1) // 单调连续
+    expect(seqs[0]).toBe(12)
+    expect(battle.fxSeq).toBe(60)
+    // UI 消费语义（BattleScreen 同款）：记 lastSeq 后继续出新事件 → filter 可拿到，不被裁剪吞掉
+    const lastSeen = battle.fx[battle.fx.length - 1]!.seq // = 59
+    pushBattleFx(battle, { atMs: 60_000, side: 'me', tag: 'player', type: 'explosive', hit: true })
+    expect(battle.fx.length).toBe(48)
+    const fresh = battle.fx.filter((f) => f.seq > lastSeen)
+    expect(fresh.map((f) => f.seq)).toEqual([60])
+    expect(fresh[0]!.atMs).toBe(60_000)
   })
 })

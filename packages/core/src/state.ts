@@ -255,6 +255,8 @@ export interface BattleUnitRt {
 
 /** V12 战斗可视化事件：一次实际开火（供战斗画面动画回放；纯展示数据，不影响结算与随机） */
 export interface BattleFx {
+  /** 单调序号（跨环裁剪仍可续播：UI 消费端记录 lastSeq，只取 seq 更大的新事件） */
+  seq: number
   /** 开火时刻（战斗推进中的 gameMs；只保留最近窗口内事件） */
   atMs: number
   side: 'me' | 'foe'
@@ -284,6 +286,8 @@ export interface BattleState {
   stats: { meShots: number; meHits: number; meDmg: number; foeShots: number; foeHits: number }
   /** 可视化开火事件环（最新 48 条；战斗画面动画回放用，不影响结算） */
   fx: BattleFx[]
+  /** 下一条开火事件的序号（pushFx 自增分配；环裁剪后消费端按序号续播） */
+  fxSeq: number
   /** 结束标记：'me' = 我方胜（敌编队全灭）；'foe' = 我方结构归零；null = 进行中（超时也在步进内判定） */
   ended: 'me' | 'foe' | null
 }
