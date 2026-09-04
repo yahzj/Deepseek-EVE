@@ -826,6 +826,40 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
               </span>
             ) : null}
           </div>
+          {/* 装填冷却平铺（距离条窗口上方）：每件武器一格——色点 + 名称 + 冷却条 + 倒计时/就绪 */}
+          <div className="app-bts-reloads">
+            {arcs.me.map((w, wi) => {
+              const remain = arcs.meReload[wi] ?? 0
+              const ready = remain <= 0
+              const pct = ready
+                ? 100
+                : Math.min(100, Math.max(0, ((w.reloadMs - remain) / Math.max(1, w.reloadMs)) * 100))
+              const dotColor = w.type ? DMG_COLOR[w.type] : '#93a4b8'
+              return (
+                <span
+                  key={`rl${wi}`}
+                  className={`app-bts-reload${ready ? ' is-ready' : ''}`}
+                  title={
+                    ready
+                      ? `${w.label}：装填就绪，进入射程即可开火`
+                      : `${w.label}：装填中 · 剩 ${Math.max(0.1, Math.ceil(remain / 100) / 10)} 秒`
+                  }
+                >
+                  <i className="app-bts-reload-dot" style={{ background: dotColor }} />
+                  <span className="app-bts-reload-name">{w.label}</span>
+                  <span className="app-bts-reload-track">
+                    <i
+                      className="app-bts-reload-fill"
+                      style={{ width: `${pct}%`, background: ready ? '#6fd98a' : dotColor }}
+                    />
+                  </span>
+                  <span className="app-bts-reload-ms">
+                    {ready ? '就绪' : `${Math.max(0.1, Math.ceil(remain / 100) / 10)}s`}
+                  </span>
+                </span>
+              )
+            })}
+          </div>
           <div className="app-bts-sliderRow">
             <span className="app-dim app-bts-sideLabel">◀ 拉开</span>
             <div className="app-bts-sliderWrap">

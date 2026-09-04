@@ -624,7 +624,17 @@ export function battleArcsFor(
   /** 敌方当前战术期望距离（与引擎推进同口径：按战术系数换算后钳制在开战距离内）——UI 判断敌舰意图方向用 */
   foeDesireM: number
   ammo: { kin: number; exp: number; pla: number }
-  me: Array<{ label: string; kind: 'gun' | 'fixed'; type: DamageType | null; minM: number; maxM: number }>
+  me: Array<{
+    label: string
+    kind: 'gun' | 'fixed'
+    type: DamageType | null
+    minM: number
+    maxM: number
+    /** 武器装填周期毫秒（静态；UI 冷却条分母） */
+    reloadMs: number
+  }>
+  /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
+  meReload: number[]
   foe: { minM: number; maxM: number; type: DamageType }
   /** 各单位三层满血量（UI 垂直血条按各自满值比例绘制） */
   maxHp: { me: { s: number; a: number; h: number }; foe: Record<string, { s: number; a: number; h: number }> }
@@ -642,8 +652,10 @@ export function battleArcsFor(
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
     else if (ammoLeft > 0) type = dominant // 炮台弹型动态（消耗中可能切换）
-    return { label: w.label, kind: w.kind, type, minM: w.minRangeM, maxM: w.maxRangeM }
+    return { label: w.label, kind: w.kind, type, minM: w.minRangeM, maxM: w.maxRangeM, reloadMs: w.reloadMs }
   })
+  // 我方各武器当前装填剩余（与 meArcs 同序：units['player'].weapons；单位缺失给空数组）
+  const meReload = (battle.units['player']?.weapons ?? []).map((n) => Math.max(0, Math.floor(n)))
   let foeMin = 0
   let foeMax = 0
   let foeType: DamageType = 'kinetic'
@@ -663,6 +675,7 @@ export function battleArcsFor(
     foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
     me: meArcs,
+    meReload,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
   }

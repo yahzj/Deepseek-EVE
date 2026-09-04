@@ -2778,3 +2778,14 @@ body {
 .app-fit-rack{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .app-fit-rack-title{font-size:13px;color:#cfe6ff}
 .app-fit-baypick{margin-left:6px;max-width:320px}
+/* 战斗小剧场：装填冷却平铺（距离条窗口上方） */
+.app-bts-reloads { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; justify-content: center; padding: 0 0 4px; min-height: 14px; }
+.app-bts-reload { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #9fb0c0; line-height: 1; }
+.app-bts-reload.is-ready { color: #b9e6c6; }
+.app-bts-reload-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; box-shadow: 0 0 4px currentColor; }
+.app-bts-reload-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-bts-reload-track { width: 46px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; }
+.app-bts-reload-fill { display: block; height: 100%; border-radius: 3px; opacity: .85; transition: width .25s ease; }
+.app-bts-reload-ms { font-variant-numeric: tabular-nums; color: #7d8fa3; min-width: 34px; text-align: right; }
+.app-bts-reload.is-ready .app-bts-reload-ms { color: #6fd98a; }
+
