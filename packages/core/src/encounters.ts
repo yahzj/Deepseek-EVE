@@ -239,7 +239,14 @@ function settleFight(state: GameState, ctx: SimContext): void {
 /**
  * 引擎内部：每推进后调用——推进进行中的遭遇（待决超时 / 战斗），空闲时按暴露窗口掷骰。
  */
-export function advanceEncounterWatch(state: GameState, ctx: SimContext, deltaMs: number): void {
+/**
+ * 引擎内部（每推进后调用）：
+ * ① 维护"低安在场记录"（galaxyId → 连续在场起始时刻，用于 5 分钟入场缓冲与首提提示）；
+ * ② 推进进行中的遭遇（待决超时自动文字结算 / 应战战斗推演）。
+ * 触发判定不在此处——由随机事件线到点时调用 rollLowSecAmbush（遭遇占用事件机会，船长 2026-09-04 定）。
+ */
+export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaMs: number): void {
+  maintainPresence(state, ctx)
   const enc = state.encounter
   if (enc.active) {
     if (enc.battle) {
@@ -252,46 +259,75 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, deltaMs
     // 待决邀约：超时自动按文字结算（离线大步长会立刻超时 → 与"离线只文字"一致）
     if (state.gameMs >= enc.deadlineGameMs) {
       resolveTextual(state, ctx, false)
-      return
     }
     return
   }
-  if (deltaMs <= 0) return
-  const bal = ctx.balance.encounter
-  const windowFrac = Math.min(4, deltaMs / Math.max(1, bal.windowMs)) // 单次推进最多折算 4 个窗口，防大步长瞬间多掷（区冷却兜底）
+}
+
+/** 引擎内部：刷新低安在场记录（本轮在场星系补起始时刻；离开的删除）；首次涉足低安给一次性提示 */
+export function maintainPresence(state: GameState, ctx: SimContext): void {
+  const now = state.gameMs
+  const seen = new Set<string>()
   for (const exp of collectExposures(state, ctx)) {
+    seen.add(exp.galaxyId)
+    if (state.lowSecPresence[exp.galaxyId] === undefined) {
+      state.lowSecPresence[exp.galaxyId] = now
+      noteLowSec(state, ctx, exp.galaxyId) // 新入场（且全局限首提）提示
+    }
+  }
+  for (const g of Object.keys(state.lowSecPresence)) {
+    if (!seen.has(g)) delete state.lowSecPresence[g]
+  }
+}
+
+/**
+ * 低安遭遇判定（船长 2026-09-04 定稿：**占用随机事件触发机会**）：
+ * 由随机事件系统在每次事件到点时调用——若我方有船在低安星系且已过 5 分钟入场缓冲
+ * （及区域冷却），按星系安全度概率遇袭；命中即产生遭遇并返回 true（本次事件时机被占用，
+ * 本段不再出随机事件）；未中返回 false（随机事件照常）。
+ */
+export function rollLowSecAmbush(state: GameState, ctx: SimContext): boolean {
+  if (state.encounter.active) return false // 已有未了结遭遇：不叠
+  const bal = ctx.balance.encounter
+  for (const exp of collectExposures(state, ctx)) {
+    const since = state.lowSecPresence[exp.galaxyId]
+    if (since === undefined || state.gameMs - since < bal.entryBufferMs) continue // 5 分钟缓冲
     const cd = state.encounterZoneCooldown[exp.galaxyId] ?? 0
     if (state.gameMs < cd) continue
     const sec = secOf(ctx, exp.galaxyId)
-    const p = Math.min(0.5, bal.chanceAtZero + bal.chancePerSec * Math.min(2, Math.max(0, bal.highSecSafe - sec)))
-    const hit = 1 - Math.pow(1 - p, windowFrac)
-    if (nextRandom(state.rng) >= hit) continue
-    // 命中：区域事件（同星系冷却 5 分钟）；承担者即该星系最高优先在场船
-    state.encounterZoneCooldown[exp.galaxyId] = state.gameMs + bal.zoneCooldownMs
-    noteLowSec(state, ctx, exp.galaxyId)
-    const power = Math.max(1, calcPower(state, ctx, exp.shipId))
-    const factor = bal.foePowerMin + nextRandom(state.rng) * (bal.foePowerMax - bal.foePowerMin)
-    const threat = Math.max(4, Math.round(power * factor))
-    const template = ctx.anomalies.get(tierIdOf(threat))
-    const shipName = shipDisplayName(state, ctx, exp.shipId)
-    state.encounter = {
-      active: true,
-      shipId: exp.shipId,
-      galaxyId: exp.galaxyId,
-      name: template?.name ?? '巡逻队',
-      threat,
-      origin: `${shipName} · ${exp.kind}`,
-      invitedAtGameMs: state.gameMs,
-      deadlineGameMs: state.gameMs + bal.inviteWaitMs,
-      battle: null,
-    }
-    addLog(
-      state,
-      'warn',
-      `⚠ 低安遭遇（${ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId}·${template?.name ?? '不明编队'}）：${shipName}（${exp.kind}中）被盯上了——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
-    )
-    return // 一次推进至多产生一次事件
+    const p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.highSecSafe - sec)))
+    if (nextRandom(state.rng) >= p) continue
+    spawnEncounter(state, ctx, exp)
+    return true // 一次到点至多一次遭遇（占用本段事件时机）
   }
+  return false
+}
+
+/** 命中 → 产生一次遭遇（区域事件：同星系冷却；承担者 = 该星系最高优先在场船） */
+function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure): void {
+  const bal = ctx.balance.encounter
+  state.encounterZoneCooldown[exp.galaxyId] = state.gameMs + bal.zoneCooldownMs
+  const power = Math.max(1, calcPower(state, ctx, exp.shipId))
+  const factor = bal.foePowerMin + nextRandom(state.rng) * (bal.foePowerMax - bal.foePowerMin)
+  const threat = Math.max(4, Math.round(power * factor))
+  const template = ctx.anomalies.get(tierIdOf(threat))
+  const shipName = shipDisplayName(state, ctx, exp.shipId)
+  state.encounter = {
+    active: true,
+    shipId: exp.shipId,
+    galaxyId: exp.galaxyId,
+    name: template?.name ?? '巡逻队',
+    threat,
+    origin: `${shipName} · ${exp.kind}`,
+    invitedAtGameMs: state.gameMs,
+    deadlineGameMs: state.gameMs + bal.inviteWaitMs,
+    battle: null,
+  }
+  addLog(
+    state,
+    'warn',
+    `⚠ 低安遭遇（${ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId}·${template?.name ?? '不明编队'}）：${shipName}（${exp.kind}中）被盯上了——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
+  )
 }
 
 /** 玩家指令：迎战（进入 V12 实时战斗，自动打完出战报） */

@@ -61,14 +61,15 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   richVeinChance: 0.01, // 每循环 1% 富矿脉（该循环产量翻倍）
   travelEventChance: 0.3, // 远征出发 30% 概率遇到途中事件
   rewardJitter: 0.15, // 远征奖金浮动 ±15%
-  // B1 低安遭遇（初稿数值：150s 窗口；sec=−1 → ≈6%；实测后回调）
+  // B1 低安遭遇（2026-09-04 定稿：占用随机事件时机——事件线到点判定；到达缓冲 5 分钟；
+  // 到点遇袭率 sec=0 → 5%、sec=−1 → 20%；实测后回调）
   encounter: {
     highSecSafe: 0.5, // sec ≥ 0.5（高安）不掷
-    windowMs: 150_000,
-    chanceAtZero: 0.01, // sec=0 → 1%
-    chancePerSec: 0.05, // sec 每降 1.0 → +5%（线性，到 −1 封顶约 6%）
-    zoneCooldownMs: 300_000, // 事件后同星系 5 分钟不再判
+    zoneCooldownMs: 300_000, // 遭遇后同星系 5 分钟冷却（区域事件不叠加）
     inviteWaitMs: 60_000, // 在线邀约 60 秒未响应 → 自动文字结算
+    entryBufferMs: 300_000, // 到达低安地点后 5 分钟缓冲：期间绝不遇袭
+    ambushChanceAtZero: 0.05, // 事件到点遇袭率基线（sec = 0）
+    ambushChancePerSec: 0.15, // sec 每降 1.0 → +15%（线性，封顶 ~27%）
     duraLossMin: 0.05,
     duraLossMax: 0.15, // 受损档：耐久 −5%~15%（底 clamp 5%）
     lootTakenMaxPct: 0.3, // 被抢：至多 30% 船上货

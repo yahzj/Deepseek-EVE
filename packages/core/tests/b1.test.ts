@@ -1,6 +1,7 @@
 /**
- * B1 低安遭遇/伏击（船长 2026-09-04 定稿）：高安不掷、低安暴露掷骰、承担者优先停留船、
- * 在线邀约超时自动文字结算、文字三档（耐久 clamp 5% 不弃船）、应战走真实战斗、首次低安提示。
+ * B1 低安遭遇/伏击（船长 2026-09-04 定稿 v2）：**占用随机事件时机**（事件线到点判定）、
+ * 到达低安 5 分钟缓冲、承担者优先停留船、在线邀约超时自动文字结算、文字三档（耐久 clamp 5% 不弃船）、
+ * 应战走真实战斗、首次低安提示。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -9,7 +10,7 @@ import type { AnomalyDef } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { startMining } from '../src/mining'
-import { fightEncounter, fleeEncounter } from '../src/encounters'
+import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, belt, galaxy } from './helpers'
 
@@ -35,16 +36,6 @@ function lowWorld() {
   return { state, ctx }
 }
 
-/** 推进直到命中一次遭遇（概率约 7.5%/窗口；上限内几乎必中） */
-function rollUntilEncounter(state: GameState, ctx: SimContext): void {
-  let guard = 0
-  while (!state.encounter.active && guard < 80) {
-    guard += 1
-    advanceGame(state, 4 * ctx.balance.encounter.windowMs, ctx) // 每次调用最多折算 4 窗口
-  }
-  expect(state.encounter.active).toBe(true)
-}
-
 /** 把采矿状态机直接拨到"在带采掘"（绕过行程，专注遭遇逻辑） */
 function forceAtBelt(state: GameState): void {
   state.mining.phase = 'mining'
@@ -52,28 +43,36 @@ function forceAtBelt(state: GameState): void {
   state.awayGalaxy = null
 }
 
-describe('B1 低安遭遇', () => {
-  it('高安（母港矿带）长时间开采：一次遭遇都不会有', () => {
+describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
+  it('高安（母港矿带）开采：无在场记录、反复判定也绝不遇袭', () => {
     const { state, ctx } = lowWorld()
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
     forceAtBelt(state)
-    for (let i = 0; i < 20; i += 1) advanceGame(state, 4 * ctx.balance.encounter.windowMs, ctx)
+    advanceGame(state, 60_000, ctx) // 建立在场记录（母港高安不记）
+    expect(Object.keys(state.lowSecPresence).length).toBe(0)
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false)
     expect(state.encounter.active).toBe(false)
     expect(state.logs.some((l) => l.text.includes('低安遭遇'))).toBe(false)
     expect(state.lowSecNotified).toBe(false)
   })
 
-  it('低安矿带在带采掘：按窗口命中遭遇 → 在线邀约 60s 未响应 → 自动文字结算（耐久永不为 0）', () => {
+  it('到达缓冲：进低安不足 5 分钟判定必不中；过缓冲后命中 → 邀约 60s 未响应 → 自动文字结算（耐久永不为 0）', () => {
     const { state, ctx } = lowWorld()
     expect(startMining(state, 'belt-f', ctx).ok).toBe(true)
     forceAtBelt(state)
-    rollUntilEncounter(state, ctx)
+    advanceGame(state, 1000, ctx) // 记录在场起始
+    expect(state.lowSecNotified).toBe(true) // 首次涉足低安提示（缓冲期内也提示）
+    for (let i = 0; i < 80; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false) // 缓冲期必不中
+    expect(state.encounter.active).toBe(false)
+    advanceGame(state, ctx.balance.encounter.entryBufferMs, ctx) // 跨过 5 分钟缓冲
+    let hit = false
+    for (let i = 0; i < 200 && !hit; i += 1) hit = rollLowSecAmbush(state, ctx)
+    expect(hit).toBe(true)
     const enc = state.encounter
+    expect(enc.active).toBe(true)
     expect(enc.galaxyId).toBe('galaxy-far')
     expect(enc.shipId).toBe(state.shipId) // 主控采矿承担
-    expect(enc.deadlineGameMs - enc.invitedAtGameMs).toBe(ctx.balance.encounter.inviteWaitMs)
-    expect(state.lowSecNotified).toBe(true) // 首次低安提示
-    // 未响应：推进超过邀约窗 → 自动结算，遭遇关闭且留日志
+    // 未响应：推进超过邀约窗 → 自动结算
     advanceGame(state, ctx.balance.encounter.inviteWaitMs + 1000, ctx)
     expect(state.encounter.active).toBe(false)
     const logText = state.logs
@@ -82,6 +81,30 @@ describe('B1 低安遭遇', () => {
       .join('|')
     expect(logText).toContain('低安遭遇')
     expect(state.fleet[state.shipId]!.durability).toBeGreaterThan(0) // clamp：永不弃船
+  })
+
+  it('占用随机事件时机：事件到点（已过缓冲）必遇袭，本次时机不再出随机事件', () => {
+    const bal = makeTestCtx().balance
+    const ctx = makeTestCtx({
+      galaxies: [{ ...galaxy('galaxy-far', '远方'), security: -0.8 }],
+      belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-f', 'ore-a', '低安带', { galaxyId: 'galaxy-far' })],
+      balance: {
+        ...bal,
+        events: { ...bal.events, enabled: true, minGapMs: 600_000, maxGapMs: 600_000 },
+        encounter: { ...bal.encounter, ambushChanceAtZero: 1, ambushChancePerSec: 0 },
+      },
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    state.exploredGalaxies.push('galaxy-far')
+    expect(startMining(state, 'belt-f', ctx).ok).toBe(true)
+    forceAtBelt(state)
+    const starsBefore = state.logs.filter((l) => l.text.startsWith('✦')).length
+    advanceGame(state, 1000, ctx) // 先建立在场记录（自 gameMs≈0 起算缓冲）
+    // 越过首个事件到点（600s，且已过 300s 缓冲）→ 遇袭占用本次时机
+    advanceGame(state, 620_000, ctx)
+    expect(state.encounter.active).toBe(true)
+    const starsAfter = state.logs.filter((l) => l.text.startsWith('✦')).length
+    expect(starsAfter).toBe(starsBefore) // 本段随机事件未触发（时机被遭遇占用）
   })
 
   it('文字三档均不击沉：被抢不超货仓 30%、受损压 5% 底线', () => {
@@ -120,7 +143,11 @@ describe('B1 低安遭遇', () => {
       startedAtGameMs: state.gameMs,
       task: { kind: 'mining', beltId: 'belt-f', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
     }
-    rollUntilEncounter(state, ctx)
+    advanceGame(state, 1000, ctx) // 记录在场（副船在带 + 主控停留同星系）
+    advanceGame(state, ctx.balance.encounter.entryBufferMs, ctx) // 过缓冲
+    let hit = false
+    for (let i = 0; i < 200 && !hit; i += 1) hit = rollLowSecAmbush(state, ctx)
+    expect(hit).toBe(true)
     expect(state.encounter.shipId).toBe(state.shipId) // 停留的主控承担
   })
 

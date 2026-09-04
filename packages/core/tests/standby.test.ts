@@ -12,6 +12,7 @@ import { advanceGame } from '../src/engine'
 import { goStandbyAt, cancelStandby } from '../src/location'
 import { assignAiStandby, idleAiShipIds } from '../src/ai'
 import { cancelAiTask } from '../src/ai'
+import { rollLowSecAmbush } from '../src/encounters'
 import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
 import { changeShip } from '../src/shipyard'
@@ -116,12 +117,11 @@ describe('B1.5 前往星系待命', () => {
     expect(assignAiStandby(state, sid, 'basic', 'galaxy-far', ctx).ok).toBe(true)
     const outMs = (state.aiAssignments[sid]!.task as { outMs: number }).outMs
     advanceGame(state, outMs + 1000, ctx) // 到点驻留（低安）
-    let guard = 0
-    while (!state.encounter.active && guard < 90) {
-      guard += 1
-      advanceGame(state, 4 * ctx.balance.encounter.windowMs, ctx)
-    }
-    expect(state.encounter.active).toBe(true)
+    advanceGame(state, 1000, ctx) // 在场记录（自该刻起算缓冲）
+    advanceGame(state, ctx.balance.encounter.entryBufferMs, ctx) // 过 5 分钟缓冲
+    let hit = false
+    for (let i = 0; i < 200 && !hit; i += 1) hit = rollLowSecAmbush(state, ctx)
+    expect(hit).toBe(true)
     expect(state.encounter.shipId).toBe(sid) // 由驻留副船承担
   })
 

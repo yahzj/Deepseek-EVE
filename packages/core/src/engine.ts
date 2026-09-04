@@ -54,12 +54,12 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext):
   advanceExpedition(state, ctx)
   advanceScanning(state, ctx)
   advanceAi(state, d, ctx)
-  // 随机事件（到达式触发；先于市场窗口，事件单可被同一推进的窗口撮合）
+  // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
+  advanceEncounterWatch(state, ctx, d)
+  // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
   advanceEvents(state, d, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
-  // B1 低安遭遇：暴露掷骰与遭遇推进（待决超时按文字自动结算 / 应战战斗推演）
-  advanceEncounterWatch(state, ctx, d)
 }
 
 /** 技能队列推进（内部函数，不对外） */

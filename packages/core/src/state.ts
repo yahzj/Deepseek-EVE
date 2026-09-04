@@ -604,6 +604,8 @@ export type GameStateV17 = Omit<GameStateV16, 'version'> & {
   lowSecNotified: boolean
   /** B1：星系 id → 该星系遭遇冷却结束时刻（区域事件不叠加） */
   encounterZoneCooldown: Record<string, number>
+  /** B1：星系 id → 我方在该星系"连续在场起始时刻"（5 分钟入场缓冲计时；运行时维护） */
+  lowSecPresence: Record<string, number>
   /** B1.5：主控主动"前往星系待命"（去程；到点转 awayGalaxy 野外停留） */
   standby: StandbyState
 }
@@ -744,6 +746,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     },
     lowSecNotified: false,
     encounterZoneCooldown: {},
+    lowSecPresence: {},
     standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
     logs: [],
   }

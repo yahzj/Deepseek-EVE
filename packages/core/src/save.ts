@@ -1278,6 +1278,7 @@ function normalizeState(raw: unknown): GameState {
           battle: null,
         }
   const lowSecNotified = src.lowSecNotified === true
+  const lowSecPresence: Record<string, number> = {} // 运行时在场计时：读档后由 advanceEncounterWatch 重建
   const encounterZoneCooldown: Record<string, number> = {}
   for (const [key, value] of Object.entries(asRaw(src.encounterZoneCooldown))) {
     if (key.length === 0) continue
@@ -1377,6 +1378,7 @@ function normalizeState(raw: unknown): GameState {
     encounter,
     lowSecNotified,
     encounterZoneCooldown,
+    lowSecPresence,
     stationSites,
     dockedSite,
     dialogueSeen,

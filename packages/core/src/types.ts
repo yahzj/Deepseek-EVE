@@ -374,20 +374,20 @@ export interface BalanceConfig {
   travel: TravelBalance
 }
 
-/** B1 低安遭遇 / 伏击：掷骰窗口与结果数值（初稿，实测后回调） */
+/** B1 低安遭遇 / 伏击：占用随机事件时机；到达缓冲 + 到点遇袭概率（2026-09-04 定稿） */
 export interface EncounterBalance {
-  /** 高安阈值：星系安全等级 ≥ 此值不掷骰 */
+  /** 高安阈值：星系安全等级 ≥ 此值不掷 */
   highSecSafe: number
-  /** 掷骰窗口毫秒：每窗口内每个暴露源至多判一次 */
-  windowMs: number
-  /** 窗口命中率基线（sec = 0 时） */
-  chanceAtZero: number
-  /** sec 每降 1.0 的窗口命中率增量（线性；sec<0 生效） */
-  chancePerSec: number
   /** 遭遇后同一星系的冷却毫秒（区域事件不叠加） */
   zoneCooldownMs: number
   /** 在线「伏击待决」邀约等待毫秒（超时未响应 → 自动按文字结算） */
   inviteWaitMs: number
+  /** 到达低安地点后的缓冲毫秒（期间绝不遇袭） */
+  entryBufferMs: number
+  /** 事件到点遇袭率基线（sec = 0） */
+  ambushChanceAtZero: number
+  /** sec 每降 1.0 的遇袭率增量（线性，封顶约 0.9） */
+  ambushChancePerSec: number
   /** 受损档：耐久扣损区间（底 clamp 5% 绝不弃船） */
   duraLossMin: number
   duraLossMax: number

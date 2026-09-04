@@ -19,6 +19,7 @@ import { addLog } from './state'
 import type { GameState } from './state'
 import type { MarketGoodDef, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
+import { rollLowSecAmbush } from './encounters'
 import { ensureMarket, goodName, levelOf } from './market'
 
 /** 事件日志前缀（桌面端用它在新增日志里识别事件弹卡） */
@@ -287,7 +288,11 @@ export function advanceEvents(state: GameState, deltaMs: number, ctx: SimContext
   let guard = 0
   while (ev.nextAtGameMs <= state.gameMs && guard < 200) {
     guard++
-    fireOneEvent(state, ctx)
+    // B1（船长 2026-09-04 定稿）：低安遭遇占用随机事件时机——事件到点先判遇袭；
+    // 命中则本次事件机会被遭遇占用（本段不再抽随机事件）
+    if (!rollLowSecAmbush(state, ctx)) {
+      fireOneEvent(state, ctx)
+    }
     ev.nextAtGameMs += rollGapMs(state, ctx)
   }
 }

@@ -29,3 +29,12 @@
 `state.encounter: { active, shipId, galaxyId, threat, name, origin, invitedAtGameMs,
 deadlineGameMs, battle: BattleState|null }`；触发/推进/结算集中在 core `encounters.ts`，
 `advanceGame` 末尾接入 `advanceEncounterWatch`；副船采矿节流与区冷却同文件管理。
+
+## ⚠ 更新（2026-09-04 v2：船长追加缓冲与时机占用）
+
+- **到达缓冲**：每次进入低安地点（矿带/停留/远征抵近）后 **5 分钟安全期**（balance.encounter.entryBufferMs），
+  期间绝不遇袭；在场连续计时（lowSecPresence 运行时维护，随在场状态增删）。
+- **占用随机事件时机（触发融合）**：遭遇不再独立按窗口掷骰——改为随机事件每次到点时先判低安：
+  我方有船在低安且已过缓冲（及区域冷却）→ 按星系安全度遇袭（sec=0 → 5%、sec=−1 → 20%，参数化）；
+  命中 = 本次事件时机被遭遇占用（本段不再出随机事件）；未中 = 随机事件照常。高安/无暴露不变。
+- 触发链：advanceEncounterWatch（在场维护+遭遇推进）先于 advanceEvents（到点调用 rollLowSecAmbush）。
