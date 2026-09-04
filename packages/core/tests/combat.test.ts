@@ -323,3 +323,81 @@ describe('战斗 fx 事件环（回归：超 48 条头部裁剪后仍按序号�
     expect(fresh[0]!.atMs).toBe(60_000)
   })
 })
+
+describe('V18B 武器族技能（2026-09-05：动能炮术/导弹发射学/激光炮学 +5%/级乘区）', () => {
+  /** 造一艘只装一件该族武器的船，返回基础单发与族技能满级单发 */
+  function oneShot(slot: 'turret' | 'missile' | 'laser', damageType: 'kinetic' | 'explosive' | 'plasma'): {
+    base: number
+    maxed: number
+  } {
+    const id = `w-${slot}`
+    const def = moduleDef(id, slot, 0, {
+      damageType,
+      dmgMult: 2,
+      maxRangeM: 6000,
+      minRangeM: slot === 'laser' ? 0 : 500,
+      hitRate: 0.8,
+      falloff: slot === 'missile' ? 1 : 0.3,
+      reloadMs: 3000,
+      cpuUse: 10,
+    })
+    const mk = (famLv: number): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 23 })
+      const ctx = makeTestCtx({ modules: [def] })
+      addModule(state, id, 1)
+      expect(fitModule(state, id, ctx).ok).toBe(true)
+      if (famLv > 0) state.skills.trained[ctx.balance.battle.familySkillIds[slot]] = famLv
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      const w = spec.weapons.find((x) => x.label === def.name || x.label === `${def.name}×1`)!
+      if (w.kind === 'beam') return w.shotDmg ?? 0
+      return Object.values(w.shotsByType ?? {})[0] ?? 0
+    }
+    return { base: mk(0), maxed: mk(5) }
+  }
+
+  it('三形态：满级族技能 = 基础 ×1.25（±round 1；炮术不学，隔离乘区）', () => {
+    for (const [slot, type] of [
+      ['turret', 'kinetic'],
+      ['missile', 'explosive'],
+      ['laser', 'plasma'],
+    ] as const) {
+      const { base, maxed } = oneShot(slot, type)
+      expect(base).toBeGreaterThan(0)
+      expect(maxed).toBeGreaterThanOrEqual(Math.round(base * 1.25) - 1)
+      expect(maxed).toBeLessThanOrEqual(Math.round(base * 1.25) + 1)
+    }
+  })
+
+  it('族互不串乘：导弹/激光族技能不影响动能炮单发', () => {
+    const def = moduleDef('w-t', 'turret', 0, {
+      damageType: 'kinetic',
+      dmgMult: 2,
+      maxRangeM: 6000,
+      minRangeM: 0,
+      hitRate: 0.8,
+      falloff: 0.3,
+      reloadMs: 3000,
+      cpuUse: 10,
+    })
+    const dmgOf = (extra: (s: GameState) => void): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 23 })
+      const ctx = makeTestCtx({ modules: [def] })
+      addModule(state, 'w-t', 1)
+      expect(fitModule(state, 'w-t', ctx).ok).toBe(true)
+      extra(state)
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      const gun = spec.weapons.find((w) => w.kind === 'gun')
+      return gun ? (Object.values(gun.shotsByType ?? {})[0] ?? 0) : 0
+    }
+    const d0 = dmgOf(() => undefined)
+    const dKin = dmgOf((s) => {
+      s.skills.trained['kinetic-gunnery'] = 5
+    })
+    const dOthers = dmgOf((s) => {
+      s.skills.trained['missile-launching'] = 5
+      s.skills.trained['laser-cannon'] = 5
+    })
+    expect(dKin).toBeGreaterThan(d0) // 动能族生效
+    expect(dOthers).toBe(d0) // 异族不串乘
+  })
+})

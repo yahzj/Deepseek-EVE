@@ -112,6 +112,9 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // 开战距离 = 双方最远武器射程 +100m：开局几乎即时进入接战，缩短无谓等待
     openRangeFactor: 1.0,
     openRangePadM: 100,
+    // V18B 武器族专精技能（2026-09-05 一号按交接底稿接入）：+5%/级，与炮术学乘算（数值 C4 校准）
+    familySkillIds: { turret: 'kinetic-gunnery', missile: 'missile-launching', laser: 'laser-cannon' },
+    familySkillPerLevel: 0.05,
     speedFactor: 0.6, // 战斗机动速度 = maxSpeed ×0.6 ×(1 ± agility 修正)
     agilitySpeedBonus: 0.15,
     foeHpPerThreat: 2.6, // 敌方总血量 ≈ threat ×2.6（初值，校准脚本核对）

@@ -426,6 +426,10 @@ export interface BattleBalance {
   hitMax: number
   /** 炮术学每级单发伤害加成（0.05 = +5%/级） */
   gunneryDmgPerLevel: number
+  /** V18B 武器族技能（2026-09-05 一号按交接底稿接入）：模块槽族 → 专精技能 id；
+   * 每级单发伤害加成 = familySkillPerLevel（与 gunnery 乘算；构建期折算进各条目） */
+  familySkillIds: Record<'turret' | 'missile' | 'laser', string>
+  familySkillPerLevel: number
   /** 距离动力学：距离下限（贴脸极限）与开战距离 = 双方最远武器射程×openRangeFactor + openRangePadM（取小加成的近距开局） */
   minDistanceM: number
   openRangeFactor: number

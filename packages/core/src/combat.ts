@@ -293,8 +293,14 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const type = turret.damageType ?? 'kinetic'
     const mult = turret.dmgMult ?? 1
     const ammoDef = ctx.items.get(AMMO_IDS[type])
+    // V18B 武器族专精技能：按模块槽族取专精技能（turret→动能炮术 / missile→导弹发射学 /
+    // laser→激光炮学），乘算于 dmgScale（炮术学）之上——族与族互不串乘
+    const famKey = turret.slot === 'missile' || turret.slot === 'laser' || turret.slot === 'turret' ? turret.slot : null
+    const famLv =
+      famKey !== null ? Math.min(5, state.skills.trained[ctx.balance.battle.familySkillIds[famKey]] ?? 0) : 0
+    const famMult = famLv > 0 ? 1 + ctx.balance.battle.familySkillPerLevel * famLv : 1
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
-    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * (1 + dmgBonus[type]))
+    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]))
     const reload = Math.max(100, Math.round(turret.reloadMs / reloadDiv))
     if (turret.slot === 'laser') {
       // V18B-2 激光炮：beam 条目——必中（开火不掷命中）、逐发扣能量弹药、
