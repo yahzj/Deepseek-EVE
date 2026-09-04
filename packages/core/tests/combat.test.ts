@@ -193,7 +193,7 @@ describe('敌方换算与距离战术', () => {
 describe('弹药', () => {
   it('V17.2 单型装载：只装炮台固定弹种（货仓优先、仓库兜底）；退回仓库', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
-    // 基线：60 仓轻动能 / 40 货仓轻高爆 / 100 仓轻等离子
+    // 基线：60 仓动能 / 40 货仓高爆 / 100 仓等离子
     delete state.warehouse.items['ammo-kinetic-l']
     delete state.warehouse.items['ammo-explosive-l']
     delete state.warehouse.items['ammo-plasma-l']
@@ -202,19 +202,19 @@ describe('弹药', () => {
     state.warehouse.items['ammo-plasma-l'] = 100
     const ctx = makeTestCtx()
     // 高爆炮 → 只装高爆：需求 100、库存 40 → 40（货仓 40 全扣，仓/货归零，不碰其它型）
-    const loadedExp = loadAmmo(state, ctx, 'light', 'explosive', 100)
+    const loadedExp = loadAmmo(state, ctx, 'explosive', 100)
     expect(loadedExp.exp).toBe(40)
     expect(loadedExp.kin).toBe(0)
     expect(loadedExp.pla).toBe(0)
     expect(state.fleet[state.shipId].cargo['ammo-explosive-l'] ?? 0).toBe(0)
     expect(state.warehouse.items['ammo-kinetic-l']).toBe(60)
     // 动能炮 → 需求 40：仓库扣 40（货仓无动能）
-    const loadedKin = loadAmmo(state, ctx, 'light', 'kinetic', 40)
+    const loadedKin = loadAmmo(state, ctx, 'kinetic', 40)
     expect(loadedKin.kin).toBe(40)
     expect(state.warehouse.items['ammo-kinetic-l']).toBe(20)
     // 全量退回 → 各自回到原处（退的是"装载时实扣"的计数：动能回仓 40、高爆回仓 40）
-    refundAmmo(state, 'light', loadedExp)
-    refundAmmo(state, 'light', loadedKin)
+    refundAmmo(state, loadedExp)
+    refundAmmo(state, loadedKin)
     expect(state.warehouse.items['ammo-kinetic-l']).toBe(60)
     expect(state.warehouse.items['ammo-explosive-l']).toBe(40)
     expect(state.warehouse.items['ammo-plasma-l']).toBe(100)
@@ -247,7 +247,7 @@ describe('完整战斗流程', () => {
   it('玩家炮台+弹药参战：预载弹药被消耗（或至少装载成功）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 3 })
     state.wallet.isk = 100_000
-    const tur = moduleDef('tur-a', 'turret', 0.5, { weaponSize: 'light', maxRangeM: 4000, minRangeM: 0, hitRate: 0.8, falloff: 0.3, reloadMs: 2000, dmgMult: 1.5 })
+    const tur = moduleDef('tur-a', 'turret', 0.5, { maxRangeM: 4000, minRangeM: 0, hitRate: 0.8, falloff: 0.3, reloadMs: 2000, dmgMult: 1.5 })
     const ctx = makeTestCtx({ modules: [tur], anomalies: [anomaly('ano-weak2', 'galaxy-hub', { threat: 2, reward: 5_000 })] })
     state.warehouse.items['ammo-kinetic-l'] = 200
     addModule(state, 'tur-a', 1)

@@ -40,9 +40,6 @@ export type ItemKind = 'ore' | 'mineral' | 'gas' | 'ice' | 'ammo' | 'drone'
 /** 伤害类型（V10.5 战斗数值契约：远行星号体系——动能/高爆/能量三系） */
 export type DamageType = 'kinetic' | 'explosive' | 'plasma'
 
-/** 弹/武器尺寸（V10.5：轻弹配轻型武器、重弹配重型武器） */
-export type WeaponSize = 'light' | 'heavy'
-
 /** 一层装甲/护盾对三系伤害的减伤（V10.5b：EVE 式"每层多抗"的 3 类型版；0~0.9，缺省 0） */
 export type DamageResists = Partial<Record<DamageType, number>>
 
@@ -76,8 +73,6 @@ export interface ItemDef {
   /* ═══ V10.5 战斗数值契约（弹药/无人机用；引擎战斗实现后启用） ═══ */
   /** 伤害类型（弹药/无人机） */
   damageType?: DamageType
-  /** 弹药尺寸（仅弹药：light = id 后缀 -l；heavy = -h） */
-  ammoSize?: WeaponSize
   /** 单发/单架伤害基数（弹药/无人机；抽象战斗单位） */
   dmg?: number
   /** 放飞占用 CPU（仅无人机；V10.5b：带宽并入 CPU——装备与无人机共用船体 CPU） */
@@ -156,12 +151,6 @@ export interface ShipDef {
   droneBayM3?: number
   /** 无人机放飞所需的 CPU 占位资源已在 ItemDef.cpuUse；此处不重复定义 */
   /* ── 间接属性（EVE 参考；显示优先级低：仅装配界面展示；数值占位、战斗作用待战斗系统定） ── */
-  /**
-   * V17.2 炮口径适配：本船可装的最大炮台口径（light/heavy）。
-   * 缺省按 role 推导：armed/armored = heavy；industrial/hauler = light（重装工业船显式 heavy）。
-   * 装配校验与装配台"适配口径"显示同源（见 equipment.shipMaxWeaponSize）。
-   */
-  maxWeaponSize?: WeaponSize
   /** 最大速度 m/s */
   maxSpeedMps?: number
   /** 跃迁速度 AU/s */
@@ -512,11 +501,9 @@ export interface ModuleDef {
   /** 推进器开火失稳：命中削减量（0.05 = 我方武器命中 ×0.95；界 [0, 0.5]，缺省 0；
    * 常驻生效并进胜率预估同源口径，见 combat.hitChance 的 hitMul） */
   hitPenalty?: number
-  /** 炮台：配用弹药尺寸（light 配轻弹 / heavy 配重弹） */
-  weaponSize?: WeaponSize
   /**
    * 炮台固定弹种（V17.2 炮族制：每门炮只打一种伤害——换炮 = 换弹种）。
-   * 缺失视为 kinetic（兼容旧数据/测试）；消耗弹药 = weaponSize × damageType 对应型。
+   * 缺失视为 kinetic（兼容旧数据/测试）；消耗弹药 = damageType 对应型。
    */
   damageType?: DamageType
   /** 炮台：历史"每远征耗弹基数"（V11 起由出发预载制替代，字段保留仅展示） */

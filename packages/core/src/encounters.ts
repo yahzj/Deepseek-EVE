@@ -15,7 +15,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { nextRandom } from './rng'
-import { advanceBattleFor, playerAmmoSize, refundAmmo, startBattleFor } from './combat'
+import { advanceBattleFor, refundAmmo, startBattleFor } from './combat'
 import { calcPower } from './expedition'
 import { shipDisplayName } from './instances'
 
@@ -194,7 +194,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
   const fleetShip = state.fleet[shipId]
   if (battle) {
     // 退还剩余弹药（与远征/撤退同一口径）
-    refundAmmo(state, playerAmmoSize(state, ctx, shipId), battle.ammo)
+    refundAmmo(state, battle.ammo)
   }
   if (battle && battle.ended === 'me') {
     const loot = Math.max(

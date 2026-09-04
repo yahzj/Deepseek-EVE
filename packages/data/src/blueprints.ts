@@ -87,7 +87,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 100 * 60,
     buildCostIsk: 150_000,
     priceIsk: 90_000,
-    description: '重型动能炮：远程 8.2 km。需能上重型炮的船（武装舰/装甲舰）。深渊之门卫队也会忌惮你的船。',
+    description: '重型动能炮：远程 8.2 km，全船通用、远程压制首选。深渊之门卫队也会忌惮你的船。',
   },
 
   // ══════════ V10 民用档（常驻平价） ══════════

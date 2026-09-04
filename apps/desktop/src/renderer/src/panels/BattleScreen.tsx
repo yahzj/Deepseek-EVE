@@ -802,17 +802,24 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
               <span key={`lg${wi}`} className="app-bts-chip" title={w.kind === 'gun' && !w.type ? '炮台已无弹药（虚线弧 = 无法发射）' : undefined}>
                 <i style={{ background: w.type ? DMG_COLOR[w.type] : '#93a4b8' }} />
                 {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
-                {w.kind === 'gun' ? (w.type ? `（${DMG_LABEL[w.type]}弹）` : '（无弹）') : null}
+                {w.kind === 'gun' ? (
+                  w.type ? (
+                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}弹</span>
+                  ) : (
+                    '（无弹）'
+                  )
+                ) : null}
               </span>
             ))}
             <span className="app-bts-chip is-foe" title="敌方整编队武器（同型聚合）">
               <i style={{ background: foeColor }} />
-              敌方 {arcs.foe.minM.toLocaleString('zh-CN')}~{arcs.foe.maxM.toLocaleString('zh-CN')}m（{DMG_LABEL[arcs.foe.type]}）
+              敌方 {arcs.foe.minM.toLocaleString('zh-CN')}~{arcs.foe.maxM.toLocaleString('zh-CN')}m
+              <span className={`app-a-chip app-a-${arcs.foe.type}`}>{DMG_LABEL[arcs.foe.type]}</span>
             </span>
             {ammoChips.length > 0 ? (
               <span className="app-bts-ammo">
                 {ammoChips.map((t) => (
-                  <span key={t} style={{ color: DMG_COLOR[t] }}>
+                  <span key={t} className={`app-a-chip app-a-${t}`}>
                     {DMG_LABEL[t]}×{arcs.ammo[ammoKey(t)].toLocaleString('zh-CN')}
                   </span>
                 ))}

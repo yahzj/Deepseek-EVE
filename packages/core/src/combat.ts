@@ -11,10 +11,10 @@
  * - 伤害：我方炮台单发 = 弹 dmg × dmgMult ×(1+5%/级炮术)×(1+powerBonus)（构建期折算好
  *   每型弹的单发伤害 shotsByType）；其它武器固定值；按 类型×层克制系数 ×(1−层抗) 逐层消费；
  * - 弹药：我方炮台开火即时消耗 1 发（弹型 = 剩余最多型，平局 kin→exp→pla）；
- *   战斗结束剩余退回仓库（按口径 -l/-h）。
+ *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
 import type { GameState } from './state'
-import type { AnomalyDef, BattleBalance, DamageResists, DamageType, FoeTactic, SimContext, WeaponSize } from './types'
+import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeTactic, SimContext } from './types'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
@@ -132,9 +132,10 @@ export function applyDamage(
 
 /* ═══════════ 构建 ═══════════ */
 
-const AMMO_IDS: Record<WeaponSize, Record<DamageType, string>> = {
-  light: { kinetic: 'ammo-kinetic-l', explosive: 'ammo-explosive-l', plasma: 'ammo-plasma-l' },
-  heavy: { kinetic: 'ammo-kinetic-h', explosive: 'ammo-explosive-h', plasma: 'ammo-plasma-h' },
+const AMMO_IDS: Record<DamageType, string> = {
+  kinetic: 'ammo-kinetic-l',
+  explosive: 'ammo-explosive-l',
+  plasma: 'ammo-plasma-l',
 }
 
 function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): number {
@@ -157,6 +158,12 @@ export function mergeResist(base: DamageResists | undefined, add: DamageResists 
 /** 敌方编队主伤害类型（V17 导出；卡面 dmgMix 取最高权重，缺省 = 动能）——悬赏卡展示/玩家配抗参考 */
 export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
   return pickTopType(anomaly.dmgMix)
+}
+
+/** 敌方血型层占比（V17.2 导出；悬赏卡"敌型"展示——与 createFoeSpecs 同源）：
+ * 盾型 50/25/25 · 甲型 20/55/25 · 均衡 33/33/33（盾/甲/结构） */
+export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: number; h: number } {
+  return PROFILE_SPLIT[profile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
 }
 
 /** 构建我方单位静态卡（含装备加成与无人机装载；null = 船数据缺失） */
@@ -200,10 +207,9 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   })
   // 炮台（吃弹药；V17.2 炮族制 = 固定弹种单键）
   if (turret && turret.maxRangeM !== undefined && turret.reloadMs !== undefined) {
-    const size = turret.weaponSize ?? 'light'
     const type = turret.damageType ?? 'kinetic'
     const mult = turret.dmgMult ?? 1
-    const ammoDef = ctx.items.get(AMMO_IDS[size][type])
+    const ammoDef = ctx.items.get(AMMO_IDS[type])
     const shotsByType: Partial<Record<DamageType, number>> = {}
     shotsByType[type] = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale)
     weapons.push({
@@ -277,15 +283,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   }
 }
 
-/** 我方主武器弹药口径（无炮台返回 light，实际不会消耗） */
-export function playerAmmoSize(state: GameState, ctx: SimContext, shipId: string): WeaponSize {
-  const turretId = state.fleet[shipId]?.fitted?.turret
-  const def = turretId ? ctx.modules.get(turretId) : undefined
-  return def?.weaponSize ?? 'light'
-}
-
-/** 我方主武器固定弹种（V17.2 炮族制：炮台 damageType，缺省 kinetic；无炮台也返回
- * light/kinetic 口径——实际不消耗弹药） */
+/** 我方主武器固定弹种（V17.2 炮族制：炮台 damageType，缺省 kinetic；
+ * 无炮台也返回 kinetic——基础舰炮实际不消耗弹药） */
 export function playerAmmoType(state: GameState, ctx: SimContext, shipId: string): DamageType {
   const turretId = state.fleet[shipId]?.fitted?.turret
   const def = turretId ? ctx.modules.get(turretId) : undefined
@@ -416,10 +415,10 @@ export function ammoLoadTotal(me: UnitSpec, bal: BattleBalance): number {
  * battle.ammo 其余键恒 0；开火/退还/UI dominant 仍走既有三键结构，无需第二套）。
  * 货仓优先、仓库兜底；返回实装各型数量（只有目标型非零）。
  */
-export function loadAmmo(state: GameState, ctx: SimContext, size: WeaponSize, type: DamageType, total: number): { kin: number; exp: number; pla: number } {
+export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, total: number): { kin: number; exp: number; pla: number } {
   const out = { kin: 0, exp: 0, pla: 0 }
   if (total <= 0) return out
-  const id = AMMO_IDS[size][type]
+  const id = AMMO_IDS[type]
   const key = ammoKeyOf(type)
   const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
   if (stock <= 0) return out
@@ -444,14 +443,14 @@ export function loadAmmo(state: GameState, ctx: SimContext, size: WeaponSize, ty
 }
 
 /** 剩余弹药退回物品仓库 */
-export function refundAmmo(state: GameState, size: WeaponSize, ammo: { kin: number; exp: number; pla: number }): void {
+export function refundAmmo(state: GameState, ammo: { kin: number; exp: number; pla: number }): void {
   const map: Array<[DamageType, number]> = [
     ['kinetic', ammo.kin],
     ['explosive', ammo.exp],
     ['plasma', ammo.pla],
   ]
   for (const [t, n] of map) {
-    if (n > 0) addWare(state, AMMO_IDS[size][t], Math.floor(n))
+    if (n > 0) addWare(state, AMMO_IDS[t], Math.floor(n))
   }
 }
 
@@ -538,11 +537,10 @@ export function startBattleFor(
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
   battle.distanceM = openM
-  const size = playerAmmoSize(state, ctx, shipId)
   const ammoType = playerAmmoType(state, ctx, shipId)
   const total = ammoLoadTotal(me, bal)
   if (total > 0) {
-    battle.ammo = loadAmmo(state, ctx, size, ammoType, total)
+    battle.ammo = loadAmmo(state, ctx, ammoType, total)
   }
   return battle
 }

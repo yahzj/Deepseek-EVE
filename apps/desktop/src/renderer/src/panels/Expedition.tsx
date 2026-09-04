@@ -17,6 +17,7 @@ import {
   countAiCore,
   expeditionStatus,
   fleetDefOf,
+  foeLayerSplit,
   foeMainDamageType,
   formatDurationMs,
   frontierGalaxyIds,
@@ -34,7 +35,7 @@ import {
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { DMG_LABEL } from '../ui/shipInfo'
+import { DmgChip, ProfileChip } from '../ui/shipInfo'
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
 export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -1221,10 +1222,24 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       <div className="app-ano-win">
         火力 {power} → 预估胜率 <b className={`app-win-${chanceTone}`}>{Math.round(chance)}%</b>
         {!reqMet ? <span className="app-dim">（声望 {standing}/{anomaly.standingReq}）</span> : null}
-        {/* V17：敌方主伤害类型——护盾/装甲增强器按系配抗的换装依据 */}
+        {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据 */}
         <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入），伤害构成见卡面">
-          {' '}· 敌主伤 {DMG_LABEL[foeMainDamageType(anomaly)]}
+          {' '}· 敌主伤 <DmgChip t={foeMainDamageType(anomaly)} />
         </span>
+        {/* V17.2：敌方血型色 chip——选弹种依据：动能克盾 ×1.5 / 高爆克甲 ×1.5 */}
+        {(() => {
+          const p = anomaly.defProfile ?? 'balanced'
+          const split = foeLayerSplit(p)
+          const cn = p === 'shield' ? '盾厚' : p === 'armor' ? '甲厚' : '均衡'
+          return (
+            <span
+              className="app-dim"
+              title={`敌方三层血量占比：盾 ${Math.round(split.s * 100)}% / 甲 ${Math.round(split.a * 100)}% / 结构 ${Math.round(split.h * 100)}%——动能弹拆盾 ×1.5、高爆破甲 ×1.5、能量弹各层均衡`}
+            >
+              {' '}· 敌型 <ProfileChip profile={p} text={cn} />
+            </span>
+          )
+        })()}
       </div>
       <div className="app-ano-reward">
         奖金 {anomaly.rewardIsk.toLocaleString('zh-CN')} ISK

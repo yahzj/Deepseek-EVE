@@ -4,10 +4,11 @@
  * 矢量推进器带常驻命中代价；装配受船体 CPU 上限约束，档位 5/15/40）。
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
+import type { ReactNode } from 'react'
 import type { DamageResists, ModuleDef, ModuleSlot } from '@whale/core'
 import { countModule, createPlayerSpec, fleetDefOf, MODULE_SLOTS, shipDisplayName, slotLabel } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { combatBadges, DMG_LABEL, InfoTable, ModuleHover, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, DmgChip, DMG_LABEL, InfoTable, ModuleHover, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import type { PageProps } from './common'
 
 /** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复） */
@@ -23,13 +24,18 @@ const COMBAT_BASE_KEYS = new Set([
   '回避率',
 ])
 
-/** 单层抗性短文本：只列非零系，全零 = "—" */
-function layerResText(res: DamageResists | undefined): string {
+/** 单层抗性 chips：只列非零系（chip 底色 = 类型色），全零 = "—" */
+function layerResChips(res: DamageResists | undefined): ReactNode {
   const parts = (['kinetic', 'explosive', 'plasma'] as const)
     .map((t) => ({ t, v: res?.[t] ?? 0 }))
     .filter((x) => x.v > 0)
-    .map((x) => `${DMG_LABEL[x.t]} ${Math.round(x.v * 100)}%`)
-  return parts.length > 0 ? parts.join('、') : '—'
+  if (parts.length === 0) return '—'
+  return parts.map((x, i) => (
+    <span key={x.t}>
+      {i > 0 ? ' ' : null}
+      <DmgChip t={x.t} label={`${DMG_LABEL[x.t]} ${Math.round(x.v * 100)}%`} />
+    </span>
+  ))
 }
 
 export function FitPage({ engine, onToast }: PageProps) {
@@ -88,7 +94,12 @@ export function FitPage({ engine, onToast }: PageProps) {
                       },
                       {
                         k: '抗性（含装备）',
-                        v: `盾 ${layerResText(spec.resists.shield)}　甲 ${layerResText(spec.resists.armor)}　结构 ${layerResText(spec.resists.hull)}`,
+                        v: (
+                          <>
+                            盾 {layerResChips(spec.resists.shield)}　甲 {layerResChips(spec.resists.armor)}　结构{' '}
+                            {layerResChips(spec.resists.hull)}
+                          </>
+                        ),
                       },
                     ]
                   : []),

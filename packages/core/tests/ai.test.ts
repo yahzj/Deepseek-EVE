@@ -182,7 +182,6 @@ describe('AI 远征任务', () => {
   it('到点结算：任务结束 + 战报；胜利全额奖金且可能掉核心', () => {
     // 给副船装炮台 + 弹药，把 AI 指派门槛推到 ≥80%（同源 preview）
     const tur = moduleDef('tur-ai', 'turret', 0.5, {
-      weaponSize: 'light',
       maxRangeM: 6000,
       minRangeM: 0,
       hitRate: 0.9,

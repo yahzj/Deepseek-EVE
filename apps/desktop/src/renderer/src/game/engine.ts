@@ -46,6 +46,7 @@ import {
   refineAllOre,
   removeQueueAt,
   renameShip,
+  migrateDeprecatedAmmo,
   repairDeprecatedModules,
   repairShip,
   retreatBattle,
@@ -285,6 +286,8 @@ export class GameEngine {
         // V17 装备改版修复：旧"通用全系"增强器迁移为分系专精款（须在离线结算前完成，
         // 让离线战斗直接按新参数结算）；见 core/equipment.repairDeprecatedModules
         repairDeprecatedModules(this.state, this.ctx)
+        // V18 口径取消：旧重型弹 1:1 并入通用弹（含挂单撤销）；见 core/equipment.migrateDeprecatedAmmo
+        migrateDeprecatedAmmo(this.state)
         lastSavedWall = parsed.savedAtWallMs
       }
     } catch (err) {

@@ -45,13 +45,13 @@ const ammos = itemDefs.filter((i) => i.kind === 'ammo')
 const drones = itemDefs.filter((i) => i.kind === 'drone')
 const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
-// 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32）
-check(itemDefs.length === 32, `物品总数应为 32，实际 ${itemDefs.length}`)
+// 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3）
+check(itemDefs.length === 29, `物品总数应为 29，实际 ${itemDefs.length}`)
 check(ores.length === 7, `矿石应为 7 种，实际 ${ores.length}`)
 check(minerals.length === 8, `矿物应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
-check(ammos.length === 6, `弹药应为 6 种，实际 ${ammos.length}`)
+check(ammos.length === 3, `弹药应为 3 种（每型单档通用弹），实际 ${ammos.length}`)
 check(drones.length === 4, `无人机应为 4 种，实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
@@ -233,15 +233,18 @@ console.log(`· 舰船：${SHIPS.length} 艘（role 分布：${['industrial', 'a
 /* ── V10.5 战斗数值契约：弹药 / 无人机 / 装备字段 ── */
 for (const a of ammos) {
   check(a.damageType !== undefined && DMG_TYPES.has(a.damageType), `弹药 ${a.id} damageType 缺失或非法`)
-  check(a.ammoSize === 'light' || a.ammoSize === 'heavy', `弹药 ${a.id} ammoSize 缺失或非法`)
-  check(a.id.endsWith('-l') === (a.ammoSize === 'light'), `弹药 ${a.id} 尺寸与 id 后缀不一致`)
   check((a.dmg ?? 0) > 0 && Number.isFinite(a.dmg), `弹药 ${a.id} dmg 缺失或非正`)
 }
-for (const size of ['light', 'heavy'] as const) {
-  const byType = (t: string) => ammos.find((a) => a.ammoSize === size && a.damageType === t)?.dmg ?? 0
+// V18（口径取消）：弹药每型只留单档（-l 通用弹），三型齐全且能量基数最高
+for (const t of DMG_TYPES) {
+  const count = ammos.filter((a) => a.damageType === t).length
+  check(count === 1, `弹药：${t} 型应恰有 1 件通用弹，实际 ${count}`)
+}
+{
+  const byType = (t: string) => ammos.find((a) => a.damageType === t)?.dmg ?? 0
   check(
     byType('plasma') > byType('kinetic') && byType('plasma') > byType('explosive'),
-    `${size} 弹：能量(plasma)基数应最高（通用弹凭基数在结构层胜出）`,
+    '弹药：能量(plasma)基数应最高（通用弹凭基数在结构层胜出）',
   )
 }
 for (const d of drones) {
@@ -270,7 +273,6 @@ for (const m of MODULES) {
   } else if (m.slot === 'turret') {
     // V17：炮台不再携带工业 bonus（火力参数 = 武器卡，见下方全参数检查）
     check(m.bonus === undefined, `炮台 ${m.id} 不应携带 bonus（V17 起炮台用武器参数）`)
-    check(m.weaponSize === 'light' || m.weaponSize === 'heavy', `炮台 ${m.id} weaponSize 缺失或非法`)
     check(m.damageType !== undefined && DMG_TYPES.has(m.damageType), `炮台 ${m.id} damageType 缺失或非法（V17.2 炮族制：固定弹种）`)
     check((m.ammoPerEngagement ?? 0) > 0 && Number.isInteger(m.ammoPerEngagement), `炮台 ${m.id} ammoPerEngagement 缺失或非法`)
     // V12：武器参数必填且值域合法

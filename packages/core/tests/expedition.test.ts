@@ -97,7 +97,7 @@ describe('远征 V12：两阶段', () => {
   })
 
   it('炮台参战消耗弹药并退回剩余', () => {
-    const tur = moduleDef('tur-b', 'turret', 0.5, { weaponSize: 'light', maxRangeM: 4000, minRangeM: 0, hitRate: 0.8, falloff: 0.3, reloadMs: 1500, dmgMult: 2.0 })
+    const tur = moduleDef('tur-b', 'turret', 0.5, { maxRangeM: 4000, minRangeM: 0, hitRate: 0.8, falloff: 0.3, reloadMs: 1500, dmgMult: 2.0 })
     const ctxB = makeTestCtx({ modules: [tur], anomalies: [anomaly('ano-w', 'galaxy-hub', { threat: 1, reward: 1_000 })] })
     state.warehouse.items['ammo-kinetic-l'] = 500
     addModule(state, 'tur-b', 1)

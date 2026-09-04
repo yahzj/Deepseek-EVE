@@ -9,9 +9,7 @@
  *   turret/shield/armor/propulsion 战斗槽由战斗引擎消费各自参数（V17 起全部真生效，
  *   见 combat.createPlayerSpec——不再是占位家族）；
  * - V17 CPU 装配校验：fitModule 合计六槽 cpuUse ≤ 船体 cpu（与无人机放飞共用）；
- * - V17.2 炮口径适配：炮台 weaponSize ≤ 船适配口径才可装配（shipMaxWeaponSize：
- *   显式 maxWeaponSize 优先，缺省 armed/armored = heavy、其余 light）；存档修复顺带
- *   把旧档超口径炮台卸下退回（不丢资产）；
+ *   V17.2→V18 口径取消后无尺寸校验：任意船可装任意炮；
  * - V17 存档修复：repairDeprecatedModules 在载入后把已下架型号按迁移表原位替换
  *   （V17_MODULE_MIGRATIONS），悬空件退回装备库不丢资产；
  * - 加成查询统一返回按槽 Record：调用方只取自己关心的槽位（工业加成语义保留）。
@@ -19,26 +17,13 @@
 import { addLog } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { ModuleDef, ModuleSlot, ShipDef, SimContext, WeaponSize } from './types'
+import type { ModuleDef, ModuleSlot, SimContext } from './types'
 import { MODULE_SLOTS, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState } from './inventory'
 import { fleetDefOf } from './instances'
 
 /** 槽位顺序（界面展示用） */
 export { MODULE_SLOTS } from './labels'
-
-const WEAPON_RANK: Record<WeaponSize, number> = { light: 0, heavy: 1 }
-const SIZE_CN: Record<WeaponSize, string> = { light: '轻型', heavy: '重型' }
-
-/**
- * V17.2 船体炮口径适配：显式 maxWeaponSize 优先；缺省按 role——
- * armed（武装舰）/ armored（装甲舰）= heavy，industrial / hauler = light。
- * 装配校验（fitModule）与装配台"适配口径"显示同源。
- */
-export function shipMaxWeaponSize(ship: Pick<ShipDef, 'role' | 'maxWeaponSize'>): WeaponSize {
-  if (ship.maxWeaponSize !== undefined) return ship.maxWeaponSize
-  return ship.role === 'armed' || ship.role === 'armored' ? 'heavy' : 'light'
-}
 
 /** 槽位中文名（界面与日志共用） */
 export function slotLabel(slot: ModuleSlot): string {
@@ -79,19 +64,9 @@ export function fitModule(state: GameState, moduleId: string, ctx: SimContext): 
   if (fitted[slot] === moduleId) {
     return { ok: false, error: `${def.name} 已经装在该槽位上了。` }
   }
-  // V17.2 炮口径适配校验：炮台口径不得超过船体适配口径
   // V17 CPU 装配校验：六件合计（目标槽按新件计）不得超过船体 cpu；超出拒绝装配
   // （与无人机放飞共用：装配占满后战斗将无余量放无人机——见 combat.createPlayerSpec）
   const shipDef = fleetDefOf(state, ctx, state.shipId)
-  if (slot === 'turret' && def.weaponSize !== undefined && shipDef) {
-    const maxSize = shipMaxWeaponSize(shipDef)
-    if (WEAPON_RANK[def.weaponSize]! > WEAPON_RANK[maxSize]!) {
-      return {
-        ok: false,
-        error: `口径不符：${def.name}（${SIZE_CN[def.weaponSize]}炮）装不上 ${shipDef.name}——它只适配${SIZE_CN[maxSize]}炮。`,
-      }
-    }
-  }
   const cpuTotal = shipDef?.cpu
   if (cpuTotal !== undefined && cpuTotal > 0) {
     let used = 0
@@ -173,22 +148,17 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
 
 /**
  * 载入存档后的装备改版修复（V17/V17.2；幂等）：把装配中/装备库里的已下架型号替换为
- * 迁移款（见 V17_MODULE_MIGRATIONS）；找不到迁移的悬空装配件退回装备库（不丢资产）；
- * 顺带清退超口径的历史炮台装配（迁移前无口径限制，旧档可能把重型炮装在小船上）。
+ * 迁移款（见 V17_MODULE_MIGRATIONS）；找不到迁移的悬空装配件退回装备库（不丢资产）。
  * 应在 ctx 就绪后、离线结算前调用一次（桌面 GameEngine.start 已接入）。
  */
 export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
   let fittedMoved = 0
   let slotEmptied = 0
   let bayMoved = 0
-  let caliberEmptied = 0
-  // 1) 各船 fitted：目录外 id → 迁移替换，否则卸下退回；迁移后（及合法装配）
-  //    若炮台超船体口径 → 卸下退回（V17.2：旧档无口径限制的历史装配）
+  // 1) 各船 fitted：目录外 id → 迁移替换，否则卸下退回
   for (const ship of Object.values(state.fleet)) {
     const fitted = ship?.fitted
     if (!fitted) continue
-    const shipDef = ship?.defId ? ctx.ships.get(ship.defId) : undefined
-    const maxSize = shipDef ? shipMaxWeaponSize(shipDef) : 'light'
     for (const slot of MODULE_SLOTS) {
       let id = fitted[slot]
       if (!id) continue
@@ -205,15 +175,6 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
           continue
         }
       }
-      // V17.2 口径清退（含刚迁移进来的款）
-      if (slot === 'turret' && shipDef) {
-        const def = ctx.modules.get(id)
-        if (def?.weaponSize !== undefined && WEAPON_RANK[def.weaponSize]! > WEAPON_RANK[maxSize]!) {
-          fitted[slot] = null
-          state.moduleBay[id] = countModule(state, id) + 1
-          caliberEmptied += 1
-        }
-      }
     }
   }
   // 2) 装备库：有迁移的已下架型号 → 计数并入迁移款后删除旧键（无迁移的保留不丢资产）
@@ -224,16 +185,78 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
     delete state.moduleBay[id]
     bayMoved += n
   }
-  const total = fittedMoved + slotEmptied + bayMoved + caliberEmptied
+  const total = fittedMoved + slotEmptied + bayMoved
   if (total > 0) {
     addLog(
       state,
       'info',
-      `V17 装备改版：护盾/装甲增强器改为分系缺口抗性、炮台改为分系炮族（口径制）。` +
-        `旧件按动能款迁移 ${fittedMoved + bayMoved} 件；无对应款退回 ${slotEmptied} 件；` +
-        (caliberEmptied > 0 ? `超口径炮台退回 ${caliberEmptied} 件（小型船装不下重型炮）。` : ''),
+      `V17 装备改版：护盾/装甲增强器改为分系缺口抗性、炮台改为分系炮族。` +
+        `旧件按动能款迁移 ${fittedMoved + bayMoved} 件；无对应款退回 ${slotEmptied} 件。`,
     )
   }
 }
 
 export { SLOT_LABELS }
+/**
+ * V18 口径取消（船长 2026-09-04）：弹药每型只留单档（-l 件），把 -h 重弹按 1:1 并入对应
+ * 轻型款（货仓/仓库/escrow）；挂着 -h 的玩家卖单撤销（escrow 货量并入 -l 后按原价重挂?——
+ * 简单处理：撤销订单并把锁仓 1:1 转入 -l 入仓）。幂等：跑过即无 -h 键。
+ */
+const HEAVY_TO_LIGHT: Record<string, string> = {
+  'ammo-kinetic-h': 'ammo-kinetic-l',
+  'ammo-explosive-h': 'ammo-explosive-l',
+  'ammo-plasma-h': 'ammo-plasma-l',
+}
+
+export function migrateDeprecatedAmmo(state: GameState): number {
+  let converted = 0
+  // 仓库
+  for (const [id, n] of Object.entries(state.warehouse.items)) {
+    const next = HEAVY_TO_LIGHT[id]
+    if (!next) continue
+    state.warehouse.items[next] = (state.warehouse.items[next] ?? 0) + n
+    delete state.warehouse.items[id]
+    converted += n
+  }
+  // 各船货仓
+  for (const ship of Object.values(state.fleet)) {
+    const cargo = ship?.cargo
+    if (!cargo) continue
+    for (const id of Object.keys(cargo)) {
+      const next = HEAVY_TO_LIGHT[id]
+      if (!next) continue
+      const n = cargo[id]!
+      cargo[next] = (cargo[next] ?? 0) + n
+      delete cargo[id]
+      converted += n
+    }
+  }
+  // 挂着 -h 的玩家卖单撤销：锁仓按 1:1 退回仓库（并转 -l）；再清残余 escrow 锁仓
+  state.orders = state.orders.filter((o) => {
+    if (o.side === 'sell' && o.good && HEAVY_TO_LIGHT[o.good]) {
+      const locked = state.escrowItems[o.good] ?? 0
+      const take = Math.min(locked, o.qty)
+      if (take > 0) {
+        state.escrowItems[o.good] = locked - take
+        if (state.escrowItems[o.good] === 0) delete state.escrowItems[o.good]
+        const next = HEAVY_TO_LIGHT[o.good]!
+        state.warehouse.items[next] = (state.warehouse.items[next] ?? 0) + take
+        converted += take
+      }
+      return false // 撤销该卖单
+    }
+    return true
+  })
+  for (const id of Object.keys(state.escrowItems)) {
+    const next = HEAVY_TO_LIGHT[id]
+    if (!next) continue
+    const n = state.escrowItems[id]!
+    state.warehouse.items[next] = (state.warehouse.items[next] ?? 0) + n
+    delete state.escrowItems[id]
+    converted += n
+  }
+  if (converted > 0) {
+    addLog(state, 'info', `V18 弹药改版：旧重型弹已按 1:1 并入通用弹（共 ${converted} 发），相关挂单已撤销。`)
+  }
+  return converted
+}

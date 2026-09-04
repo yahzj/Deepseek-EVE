@@ -27,7 +27,6 @@ import {
   createFoeSpecs,
   createPlayerSpec,
   desiredRangeFor,
-  playerAmmoSize,
   refundAmmo,
   startBattleFor,
 } from './combat'
@@ -312,8 +311,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   }
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
-  const size = playerAmmoSize(state, ctx, state.shipId)
-  refundAmmo(state, size, battle.ammo)
+  refundAmmo(state, battle.ammo)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   if (won) {
@@ -429,8 +427,7 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   }
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
-  const size = playerAmmoSize(state, ctx, state.shipId)
-  refundAmmo(state, size, battle.ammo)
+  refundAmmo(state, battle.ammo)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   // 轻损：正常战败扣损骰 ×0.5；不做弃船骰

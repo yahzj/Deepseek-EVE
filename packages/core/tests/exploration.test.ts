@@ -100,7 +100,6 @@ describe('V13 探索：行动封锁（远征/采矿/AI）', () => {
   it('AI 派发：采矿/远征目标未点亮拒绝', () => {
     // 给副船武装，把 AI 远征门槛（胜率 ≥80%）先满足——封锁检查在其后
     const tur = moduleDef('tur-ai2', 'turret', 0.5, {
-      weaponSize: 'light',
       maxRangeM: 6000,
       minRangeM: 0,
       hitRate: 0.9,

@@ -119,7 +119,6 @@ export function moduleDef(
   slot: ModuleSlot,
   bonus: number,
   opts?: {
-    weaponSize?: 'light' | 'heavy'
     damageType?: DamageType
     maxRangeM?: number
     minRangeM?: number
@@ -142,7 +141,6 @@ export function moduleDef(
     slot,
     bonus,
     description: '测试用装备',
-    ...(opts?.weaponSize !== undefined ? { weaponSize: opts.weaponSize } : {}),
     ...(opts?.damageType !== undefined ? { damageType: opts.damageType } : {}),
     ...(opts?.maxRangeM !== undefined ? { maxRangeM: opts.maxRangeM } : {}),
     ...(opts?.minRangeM !== undefined ? { minRangeM: opts.minRangeM } : {}),
@@ -185,10 +183,10 @@ export const DEFAULT_TEST_ITEMS: readonly ItemDef[] = [
   ore('ore-b', { name: '矿乙', price: 20, refine: [{ mineralId: 'min-a', perOre: 1.2 }] }),
   mineral('min-a'),
   mineral('min-b', 12),
-  // V12：轻口径三型弹药（战斗/装载测试用；数值与正式数据一致）
-  { id: 'ammo-kinetic-l', name: '轻动能弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 6, description: '测试轻动能弹', damageType: 'kinetic', ammoSize: 'light', dmg: 6 },
-  { id: 'ammo-explosive-l', name: '轻高爆弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 7, description: '测试轻高爆弹', damageType: 'explosive', ammoSize: 'light', dmg: 7 },
-  { id: 'ammo-plasma-l', name: '轻等离子弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 8, description: '测试轻等离子弹', damageType: 'plasma', ammoSize: 'light', dmg: 9 },
+  // V18 口径取消：单档通用弹（战斗/装载测试用；数值与正式数据一致）——V12 曾为轻口径三型
+  { id: 'ammo-kinetic-l', name: '动能弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 6, description: '测试动能弹', damageType: 'kinetic', dmg: 6 },
+  { id: 'ammo-explosive-l', name: '高爆弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 7, description: '测试高爆弹', damageType: 'explosive', dmg: 7 },
+  { id: 'ammo-plasma-l', name: '等离子弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 8, description: '测试等离子弹', damageType: 'plasma', dmg: 9 },
 ]
 
 /** 测试世界里的默认装备 */

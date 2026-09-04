@@ -27,7 +27,6 @@ import {
   advanceBattleFor,
   aiFavorAdv,
   aiWinPreview,
-  playerAmmoSize,
   refundAmmo,
   startBattleFor,
 } from './combat'
@@ -518,7 +517,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   const battle = task.battle!
   const shipName = shipDisplayName(state, ctx, shipId)
   // 弹药剩余退回物品仓库
-  refundAmmo(state, playerAmmoSize(state, ctx, shipId), battle.ammo)
+  refundAmmo(state, battle.ammo)
   const anomaly = ctx.anomalies.get(task.anomalyId)
   if (!anomaly) {
     delete state.aiAssignments[shipId]

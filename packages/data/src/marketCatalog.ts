@@ -45,11 +45,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 400, supplyFlow: 6 },
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 6, poolTarget: 4_000, supplyFlow: 150 },
-  { key: 'ammo-kinetic-h', kind: 'item', refId: 'ammo-kinetic-h', rarity: 'common', basePrice: 14, poolTarget: 2_500, supplyFlow: 80 },
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 7, poolTarget: 3_800, supplyFlow: 140 },
-  { key: 'ammo-explosive-h', kind: 'item', refId: 'ammo-explosive-h', rarity: 'common', basePrice: 16, poolTarget: 2_400, supplyFlow: 75 },
   { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 8, poolTarget: 3_500, supplyFlow: 120 },
-  { key: 'ammo-plasma-h', kind: 'item', refId: 'ammo-plasma-h', rarity: 'common', basePrice: 18, poolTarget: 2_200, supplyFlow: 70 },
   // ── 无人机（V10 占位：NPC 补给池） ──
   { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, poolTarget: 200, supplyFlow: 4 },
   { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, poolTarget: 120, supplyFlow: 2 },

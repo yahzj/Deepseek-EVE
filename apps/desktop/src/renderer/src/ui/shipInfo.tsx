@@ -13,14 +13,26 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
-import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType, WeaponSize } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, SLOT_LABELS, shipMaxWeaponSize, shipRoleLabel } from '@whale/core'
+import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, SLOT_LABELS, shipRoleLabel } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
 export const DMG_LABEL: Record<DamageType, string> = { kinetic: '动能', explosive: '高爆', plasma: '能量' }
-/** 弹/武器尺寸中文名 */
-export const SIZE_LABEL: Record<WeaponSize, string> = { light: '轻', heavy: '重' }
+
+/**
+ * 伤害类型色 chip（V17.2 快速辨识）：颜色 = 我方三层血量色——
+ * 动能 = 盾蓝（拆盾 ×1.5）/ 高爆 = 甲红（破甲 ×1.5）/ 能量 = 结构黄（均衡高基）。
+ * label 可覆盖文字（如弹药全词"动能弹"），底色仍按类型。
+ */
+export function DmgChip({ t, label }: { t: DamageType; label?: ReactNode }): ReactNode {
+  return <span className={`app-d-chip app-d-${t}`}>{label ?? DMG_LABEL[t]}</span>
+}
+
+/** 敌型色 chip：盾厚 = 盾蓝 / 甲厚 = 甲红 / 均衡 = 结构黄（与血量层色同源） */
+export function ProfileChip({ profile, text }: { profile: 'shield' | 'armor' | 'balanced'; text: string }): ReactNode {
+  return <span className={`app-d-chip app-p-${profile}`}>{text}</span>
+}
 
 /** 一行键值信息 */
 export interface InfoLine {
@@ -64,11 +76,10 @@ function gapTo25Example(add: DamageResists | undefined): string {
  * 装备一行式短效果（装配台槽位行 / 装备库行共用；V17：各战斗家族显示真实进公式参数）。
  * 空槽文本由调用方自给；抗性为"缺口削减"值（合成规则见 moduleInfoLines 注释行）。
  */
-/** 炮台配弹文本（V17.2 炮族：口径 + 固定弹种） */
+/** 炮台配弹文本（V17.2 炮族：固定弹种） */
 export function turretAmmoText(mod: ModuleDef): string {
-  const size = mod.weaponSize !== undefined ? SIZE_LABEL[mod.weaponSize] : '—'
   const type = DMG_LABEL[mod.damageType ?? 'kinetic'] ?? mod.damageType
-  return `${size}${type}弹`
+  return `${type}弹`
 }
 
 /** 短效文案（装配台槽位行 / 装备库行 / 手册网格共用） */
@@ -79,8 +90,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'cargo':
       return `货舱容量 +${pctOpt(mod.bonus)}`
     case 'turret': {
-      const size = mod.weaponSize ? `${turretAmmoText(mod)} · ` : ''
-      return `${size}射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      return `${turretAmmoText(mod)} · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
     }
     case 'shield': {
       const parts: string[] = []
@@ -175,8 +185,6 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     if (ship.evasion !== undefined) lines.push({ k: '回避率', v: `${Math.round(ship.evasion * 100)}%` })
   }
   lines.push({ k: '槽位', v: slotListText() })
-  // V17.2：炮口径适配（armed/armored = 重，其余 = 轻；显式覆盖优先）
-  lines.push({ k: '适配炮口径', v: `${SIZE_LABEL[shipMaxWeaponSize(ship)]}型炮` })
   if (ship.cpu !== undefined) lines.push({ k: 'CPU', v: fmt(ship.cpu) })
   lines.push({ k: '无人机舱', v: ship.droneBayM3 ? `${fmt(ship.droneBayM3)} m³` : '无' })
   return lines
@@ -211,22 +219,34 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: '货舱容量', v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'shield') {
     if (mod.shieldHpBonus !== undefined) lines.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const gap = resistGapText(mod.shieldResistAdd)
-    if (gap) {
+    const entries = Object.entries(mod.shieldResistAdd ?? {}).filter(([, val]) => (val ?? 0) > 0)
+    if (entries.length > 0) {
       const ex = gapTo25Example(mod.shieldResistAdd)
+      const tail = ex ? `抗 +${pct(entries[0]![1]!)}（乘入制：${ex}；上限 90%）` : `抗 +${pct(entries[0]![1]!)}（乘入制，上限 90%）`
       lines.push({
         k: '护盾抗性（乘入制）',
-        v: ex ? `${gap}（${ex}；上限 90%）` : `${gap}（上限 90%）`,
+        v: (
+          <>
+            <DmgChip t={entries[0]![0] as DamageType} />
+            <span className="app-dim">{` ${tail}`}</span>
+          </>
+        ),
       })
     }
   } else if (mod.slot === 'armor') {
     if (mod.armorHpBonus !== undefined) lines.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const gap = resistGapText(mod.armorResistAdd)
-    if (gap) {
+    const entries = Object.entries(mod.armorResistAdd ?? {}).filter(([, val]) => (val ?? 0) > 0)
+    if (entries.length > 0) {
       const ex = gapTo25Example(mod.armorResistAdd)
+      const tail = ex ? `抗 +${pct(entries[0]![1]!)}（乘入制：${ex}；上限 90%）` : `抗 +${pct(entries[0]![1]!)}（乘入制，上限 90%）`
       lines.push({
         k: '装甲抗性（乘入制）',
-        v: ex ? `${gap}（${ex}；上限 90%）` : `${gap}（上限 90%）`,
+        v: (
+          <>
+            <DmgChip t={entries[0]![0] as DamageType} />
+            <span className="app-dim">{` ${tail}`}</span>
+          </>
+        ),
       })
     }
   } else if (mod.slot === 'propulsion') {
@@ -236,10 +256,20 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     }
     lines.push({ k: '说明', v: '弃船逃生 / 跃迁充能仍随船体动力，不受模块影响' })
   } else if (mod.slot === 'turret') {
-    const parts: string[] = []
-    if (mod.weaponSize !== undefined) parts.push(`配弹：${turretAmmoText(mod)}（固定弹种，出发只装此型）`)
-    if (mod.ammoPerEngagement !== undefined) parts.push(`每场耗弹基数 ×${mod.ammoPerEngagement}`)
-    if (parts.length > 0) lines.push({ k: '弹药', v: parts.join('　') })
+    if (mod.damageType !== undefined) {
+      lines.push({
+        k: '弹药',
+        v: (
+          <>
+            <span className="app-dim">配弹：</span>
+            <DmgChip t={mod.damageType} label={`${DMG_LABEL[mod.damageType]}弹`} />
+            <span className="app-dim">（固定弹种，出发只装此型）</span>
+          </>
+        ),
+      })
+    } else if (mod.ammoPerEngagement !== undefined) {
+      lines.push({ k: '弹药', v: `每场耗弹基数 ×${mod.ammoPerEngagement}` })
+    }
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
     if (mod.hitRate !== undefined || mod.falloff !== undefined) {
       const hit = mod.hitRate !== undefined ? `基础命中 ${pct(mod.hitRate)}` : ''
@@ -256,8 +286,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
 /** 弹药/无人机统一附加行（物品行在物品图鉴中的补充信息） */
 export function itemCombatLines(item: ItemDef): InfoLine[] {
   const lines: InfoLine[] = []
-  if (item.damageType !== undefined) lines.push({ k: '伤害类型', v: DMG_LABEL[item.damageType] ?? item.damageType })
-  if (item.ammoSize !== undefined) lines.push({ k: '弹种尺寸', v: SIZE_LABEL[item.ammoSize] ?? item.ammoSize })
+  if (item.damageType !== undefined) lines.push({ k: '伤害类型', v: <DmgChip t={item.damageType} /> })
   if (item.dmg !== undefined) lines.push({ k: '伤害基数', v: fmt(item.dmg) })
   if (item.kind === 'drone' && item.cpuUse !== undefined) {
     lines.push({ k: '放飞 CPU', v: fmt(item.cpuUse) })

@@ -9,7 +9,6 @@ export type {
   ItemDef,
   ItemKind,
   DamageType,
-  WeaponSize,
   DamageResists,
   DroneDefense,
   BeltDef,
@@ -153,7 +152,7 @@ export {
   fittedBonuses,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
-  shipMaxWeaponSize,
+  migrateDeprecatedAmmo,
 } from './equipment'
 
 export {
@@ -332,8 +331,8 @@ export {
   foeDesiredRange,
   mergeResist,
   foeMainDamageType,
+  foeLayerSplit,
   createPlayerSpec,
-  playerAmmoSize,
   playerAmmoType,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,

@@ -2756,3 +2756,16 @@ body {
   font-size: 11px;
   margin: 2px 0 4px;
 }
+/* v172 quick-identify chips: dmg type = hp layer colors (shield blue / armor red / hull yellow) */
+.app-d-chip{display:inline-block;padding:0 6px;border-radius:4px;font-size:12px;line-height:18px;color:#fff;vertical-align:1px;white-space:nowrap;margin-left:2px}
+.app-d-kinetic{background:#3f9fd8}
+.app-d-explosive{background:#d34a4a}
+.app-d-plasma{background:#e0b83f;color:#2a2400}
+.app-p-shield{background:#3f9fd8}
+.app-p-armor{background:#d34a4a}
+.app-p-balanced{background:#e0b83f;color:#2a2400}
+/* v172 ammo chips (battle semantics colors: kinetic gold / explosive orange / plasma cyan) */
+.app-a-chip{display:inline-block;padding:0 5px;border-radius:4px;font-size:11px;line-height:16px;color:#20242b;vertical-align:1px;margin-left:3px;white-space:nowrap}
+.app-a-kinetic{background:#ffd54f}
+.app-a-explosive{background:#ffa04d}
+.app-a-plasma{background:#5fd0ff}

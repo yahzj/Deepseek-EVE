@@ -7,7 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
- *  - b1   低安遭遇：+2000 万 ISK、协会声望 10、点亮全部低安星系、驾驶船配炮台+轻弹×3、
+ *  - b1   低安遭遇：+2000 万 ISK、协会声望 10、点亮全部低安星系、驾驶船配炮台+三型通用弹、
  *         AI 基础核心 +4 且 ai-expert Lv3（3 个副船名额）、全舰回满耐久、重置首次低安提示。
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
@@ -66,7 +66,7 @@ function injectB1(state: GameState): string[] {
     if (!state.exploredGalaxies.includes(g)) state.exploredGalaxies.push(g)
   }
   notes.push(`点亮低安星域 ${LOWSEC_GALAXIES.length} 个星系（含红环旁 cinder 等）`)
-  // 驾驶船炮台 + 轻弹补给（没有就补）
+  // 驾驶船炮台 + 三型通用弹补给（没有就补）
   const pilot = state.fleet[state.shipId]
   if (pilot) {
     if (!pilot.fitted.turret) {
@@ -80,7 +80,7 @@ function injectB1(state: GameState): string[] {
     for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
       state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 100
     }
-    notes.push('仓库补轻型三系弹药 ×100')
+    notes.push('仓库补三型通用弹 ×100')
   }
   // AI 副船名额与核心（实测"副船同遇"门槛）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 3)
