@@ -16,7 +16,7 @@
 import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog } from './types'
-import { skillLevelTimeMs } from './training'
+import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
 import { advanceStandby, advanceTransit } from './location'
 import { advanceManufacturing } from './manufacturing'
@@ -87,8 +87,10 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
       addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`)
       continue
     }
-    // 冲当前这一级还差多久（调试模式 debugQuick：每级固定 1 秒）
-    const levelMs = state.debugQuick ? 1000 : skillLevelTimeMs(def, current + 1)
+    // 冲当前这一级还差多久（调试模式 debugQuick：每级固定 1 秒；高效学习法缩时）
+    const levelMs = state.debugQuick
+      ? 1000
+      : Math.max(1, Math.round(skillLevelTimeMs(def, current + 1) * trainingTimeFactor(state)))
     const needMs = Math.max(0, levelMs - item.progressMs)
     if (remaining < needMs) {
       // 时间不够升一级：只记下这级练到一半的进度
@@ -157,7 +159,9 @@ export function enqueueSkill(
     // 有被取消后暂存的本级进度 → 附着上去，等它成为队首时自动续接
     const saved = state.skills.savedProgress[skillId]
     if (typeof saved === 'number' && saved > 0) {
-      const levelMs = state.debugQuick ? 1000 : skillLevelTimeMs(def, targetLevel)
+      const levelMs = state.debugQuick
+        ? 1000
+        : Math.max(1, Math.round(skillLevelTimeMs(def, targetLevel) * trainingTimeFactor(state)))
       item.progressMs = Math.min(saved, Math.max(0, levelMs - 1))
       delete state.skills.savedProgress[skillId]
     }
@@ -265,7 +269,7 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
   const def = catalog.get(item.skillId)
   const currentLevel = state.skills.trained[item.skillId] ?? 0
   const intoLevel = currentLevel + 1
-  const levelTimeMs = def ? skillLevelTimeMs(def, intoLevel) : 0
+  const levelTimeMs = def ? Math.max(1, Math.round(skillLevelTimeMs(def, intoLevel) * trainingTimeFactor(state))) : 0
   const remainingMs = Math.max(0, levelTimeMs - item.progressMs)
   const percent = levelTimeMs > 0 ? Math.min(100, Math.max(0, (item.progressMs / levelTimeMs) * 100)) : 0
   const head: HeadTrainingInfo = {
@@ -286,7 +290,7 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
       skillId: p.skillId,
       skillName: pDef?.name ?? `未知技能「${p.skillId}」`,
       targetLevel: p.targetLevel,
-      levelMs: pDef ? skillLevelTimeMs(pDef, p.targetLevel) : 0,
+      levelMs: pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state))) : 0,
     }
   })
   return { head, pending }

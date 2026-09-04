@@ -9,6 +9,7 @@ import {
   formatDurationMs,
   skillLevelTimeMs,
   skillQueueStatus,
+  trainingTimeFactor,
 } from '@whale/core'
 import type { SkillDef } from '@whale/core'
 import { useState } from 'react'
@@ -35,13 +36,18 @@ export function SkillDescText({ text }: { text: string }) {
   )
 }
 
-/** "各级训练时长"提示串（技能行悬浮提示用） */
-export function levelTimesHint(def: SkillDef): string {
+/** "各级训练时长"提示串（技能行悬浮提示用；factor = 高效学习法缩时系数） */
+export function levelTimesHint(def: SkillDef, factor = 1): string {
   const parts: string[] = []
   for (let lv = 1; lv <= MAX_SKILL_LEVEL; lv++) {
-    parts.push(`Lv${lv} ${formatDurationMs(skillLevelTimeMs(def, lv))}`)
+    parts.push(`Lv${lv} ${formatDurationMs(Math.round(skillLevelTimeMs(def, lv) * factor))}`)
   }
   return `各级训练时长：${parts.join(' · ')}`
+}
+
+/** 技能行时长（毫秒）：基础 × 高效学习法系数（引擎推进/预估同源） */
+function effLevelMs(def: SkillDef | undefined, lv: number, factor: number): number {
+  return def ? Math.max(1, Math.round(skillLevelTimeMs(def, lv) * factor)) : 0
 }
 
 export function SkillsPage({ engine }: PageProps) {
@@ -167,7 +173,8 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
   const saved = state.skills.savedProgress[skill.id] ?? 0
   const lastQueued = mine.length > 0 ? mine[mine.length - 1]!.targetLevel : current
   const def = engine.ctx.skills.get(skill.id)
-  const title = `${plainSkillDesc(skill.description)}${def ? `｜${levelTimesHint(def)}` : ''}`
+  const tf = trainingTimeFactor(state)
+  const title = `${plainSkillDesc(skill.description)}${def ? `｜${levelTimesHint(def, tf)}` : ''}${tf < 1 ? '（高效学习法缩时已计入）' : ''}`
 
   // "轮到该技能还有多久"（只对已排队、非队首的展示）
   let waitMs = 0
@@ -200,7 +207,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
                 追加→Lv{lastQueued + 1}
               </button>
               {def ? (
-                <span className="app-sr-eta">该级约 {formatDurationMs(skillLevelTimeMs(def, lastQueued + 1))}</span>
+                <span className="app-sr-eta">该级约 {formatDurationMs(effLevelMs(def, lastQueued + 1, tf))}</span>
               ) : null}
             </>
           ) : null}
@@ -219,12 +226,12 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
               <button
                 className="app-btn is-primary is-small"
                 onClick={() => engine.trainNextLevel(skill.id)}
-                title={`排上后练这一级需 ${def ? formatDurationMs(skillLevelTimeMs(def, lastQueued + 1)) : ''}`}
+                title={`排上后练这一级需 ${def ? formatDurationMs(effLevelMs(def, lastQueued + 1, tf)) : ''}`}
               >
                 追加→Lv{lastQueued + 1}
               </button>
               {def ? (
-                <span className="app-sr-eta">该级约 {formatDurationMs(skillLevelTimeMs(def, lastQueued + 1))}</span>
+                <span className="app-sr-eta">该级约 {formatDurationMs(effLevelMs(def, lastQueued + 1, tf))}</span>
               ) : null}
             </>
           ) : null}
@@ -237,14 +244,14 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
         <button
           className="app-btn is-primary is-small"
           onClick={() => engine.trainNextLevel(skill.id)}
-          title={def ? `练这一级需 ${formatDurationMs(skillLevelTimeMs(def, current + 1))}` : undefined}
+          title={def ? `练这一级需 ${formatDurationMs(effLevelMs(def, current + 1, tf))}` : undefined}
         >
           训练→Lv{current + 1}
         </button>
-        {def ? <span className="app-sr-eta">本级约 {formatDurationMs(skillLevelTimeMs(def, current + 1))}</span> : null}
+        {def ? <span className="app-sr-eta">本级约 {formatDurationMs(effLevelMs(def, current + 1, tf))}</span> : null}
         {saved > 0 && def ? (
           <span className="app-sr-eta app-sr-resume">
-            有保留进度 {Math.min(100, Math.round((saved / skillLevelTimeMs(def, current + 1)) * 100))}%，训练即续接
+            有保留进度 {Math.min(100, Math.round((saved / effLevelMs(def, current + 1, tf)) * 100))}%，训练即续接
           </span>
         ) : null}
       </div>

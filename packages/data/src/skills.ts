@@ -257,6 +257,13 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 4,
     description: 'AI 指挥技能：每级可同时指挥 ⟦1 艘⟧ AI 副船（配合 AI 核心使用）。',
   },
+  {
+    id: 'accelerated-learning',
+    name: '高效学习法',
+    group: '工程',
+    rank: 1,
+    description: '神经回路训练法：所有技能的训练时长每级 −⟦4%⟧（满级 −⟦20%⟧，至少保留 60%）。',
+  },
 
   // ───────── 贸易（V9+：市场税率减免） ─────────
   {

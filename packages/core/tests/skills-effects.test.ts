@@ -18,6 +18,7 @@ import { repairCostIsk } from '../src/shipyard'
 import { bountyRewardFactor } from '../src/expedition'
 import { simulateOffline } from '../src/simulation'
 import { enqueueSkill, HIDDEN_SKILL_IDS } from '../src/engine'
+import { trainingTimeFactor } from '../src/training'
 import { marketSellSkillMult } from '../src/market'
 import { lootFactor } from '../src/expedition'
 
@@ -246,6 +247,15 @@ describe('技能补全 P1：离线作业管理学（结算上限 +8%/级）', ()
     s5.skills.trained['offline-ops'] = 5
     simulateOffline(s5, now - 12 * 3_600_000, now, makeTestCtx())
     expect(s5.gameMs).toBe(Math.round(8 * 3_600_000 * 1.4)) // lv5：cap ≈ 11.2h
+  })
+})
+
+describe('技能补全 P3b：高效学习法（训练时长 −4%/级）', () => {
+  it('零级 ×1；满级 ×0.8', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 20 })
+    expect(trainingTimeFactor(state)).toBe(1)
+    state.skills.trained['accelerated-learning'] = 5
+    expect(trainingTimeFactor(state)).toBe(0.8)
   })
 })
 

@@ -114,6 +114,7 @@ export { hashSeed, nextRandom, nextInt } from './rng'
 export {
   DEFAULT_TRAIN_BASE_MS,
   skillLevelTimeMs,
+  trainingTimeFactor,
   totalTimeToLevel,
   totalQueueTimeMs,
 } from './training'

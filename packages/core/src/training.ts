@@ -11,6 +11,13 @@
  */
 
 import type { SkillDef } from './types'
+import type { GameState } from './state'
+
+/** 高效学习法（accelerated-learning，P3b）：训练时长 −4%/级（至少保留 60%）——推进/预估/界面显示同源乘算 */
+export function trainingTimeFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['accelerated-learning'] ?? 0)
+  return Math.max(0.6, 1 - 0.04 * lv)
+}
 
 /** 默认单级基础时长：60 秒（毫秒） */
 export const DEFAULT_TRAIN_BASE_MS = 60_000
