@@ -1426,15 +1426,6 @@ body {
   padding-bottom: 2px;
 }
 /* éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆº?V9 ç”¯å‚šæº€æ¤¤åž«ç‰±å¯®?éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆºæ„¨æ™²éˆº?*/
-.app-market-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  align-items: start;
-}
-.app-market-cols .wui-panel {
-  min-width: 0;
-}
 .app-mkt-list {
   max-height: 520px;
   overflow-y: auto;
@@ -2769,7 +2760,7 @@ body {
 .app-a-kinetic{background:#ffd54f}
 .app-a-explosive{background:#ffa04d}
 .app-a-plasma{background:#5fd0ff}
-/* ¾«Á¶Â¯ÔË×ª½ø¶È£¨¹¤ÒµÏ¸»¯£© */
+/* ï¿½ï¿½ï¿½ï¿½Â¯ï¿½ï¿½×ªï¿½ï¿½ï¿½È£ï¿½ï¿½ï¿½ÒµÏ¸ï¿½ï¿½ï¿½ï¿½ */
 .app-refine-progress { height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 3px; max-width: 460px; }
 .app-refine-progress-fill { display: block; height: 100%; background: #6fd98a; border-radius: 2px; transition: width .4s ease; }
 
@@ -2778,7 +2769,7 @@ body {
 .app-fit-rack{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .app-fit-rack-title{font-size:13px;color:#cfe6ff}
 .app-fit-baypick{margin-left:6px;max-width:320px}
-/* Õ½¶·Ð¡¾ç³¡£º×°ÌîÀäÈ´Æ½ÆÌ£¨¾àÀëÌõ´°¿ÚÉÏ·½£© */
+/* Õ½ï¿½ï¿½Ð¡ï¿½ç³¡ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½È´Æ½ï¿½Ì£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ */
 .app-bts-reloads { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; justify-content: center; padding: 0 0 4px; min-height: 14px; }
 .app-bts-reload { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #9fb0c0; line-height: 1; }
 .app-bts-reload.is-ready { color: #b9e6c6; }
@@ -2790,7 +2781,7 @@ body {
 .app-bts-reload.is-ready .app-bts-reload-ms { color: #6fd98a; }
 
 
-/* ÎïÆ·Ò³£º²Ö¿â/»õ²Ö Ñ¡ÏîÒ³Í·£¨»õ²Ö²¢ÈëÎïÆ·½çÃæ£© */
+/* ï¿½ï¿½Æ·Ò³ï¿½ï¿½ï¿½Ö¿ï¿½/ï¿½ï¿½ï¿½ï¿½ Ñ¡ï¿½ï¿½Ò³Í·ï¿½ï¿½ï¿½ï¿½ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½æ£© */
 .app-items-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--wui-border); padding-bottom: 0; }
 .app-items-head .app-tab { flex: 0 1 150px; }
 .app-items-head-note { padding-bottom: 6px; font-size: 12px; }

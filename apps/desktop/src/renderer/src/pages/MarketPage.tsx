@@ -497,6 +497,7 @@ export function MarketPage({ engine, onToast }: PageProps) {
   const common = goods.filter((g) => g.rarity === 'common')
   const rareCol = goods.filter((g) => g.rarity !== 'common')
   const [qtyByKey, setQtyByKey] = useState<Record<string, number>>({})
+  const [mktTab, setMktTab] = useState<'common' | 'rare'>('common')
   const taxRate = salesTaxRate(state, engine.ctx)
   const lvA = state.skills.trained[engine.ctx.balance.market.taxSkillAId] ?? 0
   const lvB = state.skills.trained[engine.ctx.balance.market.taxSkillBId] ?? 0
@@ -523,7 +524,30 @@ export function MarketPage({ engine, onToast }: PageProps) {
         。挂单、自动转挂单与买入一律免费。
       </div>
 
-      <div className="app-market-cols">
+      {/* 常驻订单 / 稀有订单（与星图页同款 app-subtabs 标签规范；稀有单时效短，切回本页记得看一眼） */}
+      <div className="app-subtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={mktTab === 'common'}
+          className={`app-subtab${mktTab === 'common' ? ' is-active' : ''}`}
+          onClick={() => setMktTab('common')}
+        >
+          <span>≡</span>
+          <span>常驻订单</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={mktTab === 'rare'}
+          className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
+          onClick={() => setMktTab('rare')}
+          title="稀有订单寿命 9 分钟、限定奇货 4 分钟闪现——切回本标签才能看到现存单"
+        >
+          <span>✦</span>
+          <span>稀有订单</span>
+        </button>
+      </div>
+
+      {mktTab === 'common' ? (
         <MarketColumn
           engine={engine}
           onToast={onToast}
@@ -537,7 +561,7 @@ export function MarketPage({ engine, onToast }: PageProps) {
           qtyOf={qtyOf}
           onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
         />
-
+      ) : (
         <MarketColumn
           engine={engine}
           onToast={onToast}
@@ -547,7 +571,7 @@ export function MarketPage({ engine, onToast }: PageProps) {
           qtyOf={qtyOf}
           onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
         />
-      </div>
+      )}
 
       <Panel
         title="我的挂单"
