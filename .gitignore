@@ -19,3 +19,6 @@ node_modules/
 # 网页版（GitHub Pages）构建产物
 dist-web/
 apps/desktop/dist-web/
+
+# Electron builder output (green zip + setup exe)
+apps/desktop/release/

@@ -1,0 +1,86 @@
+# 桌面版发布：推送 v 开头的 tag（如 v0.2.0）时，
+# 在 Windows 上打包「绿色版 zip + 安装包 exe」并发布正式 GitHub Release。
+#
+# 使用约定：
+#   1. 先把 apps/desktop/package.json 的 version 改成目标版本并提交（tag 版本必须与之一致）；
+#   2. 打 tag：git tag v0.2.0 && git push origin v0.2.0。
+#
+# 也可从 Actions 页手动触发：填写已推送的 tag 名（用于补跑/重发）。
+# 同名 Release 已存在时会报错（GitHub 限制）：删除旧 Release 后重跑，或换新版本号。
+
+name: Release Desktop (Windows)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: '已推送的版本 tag（如 v0.2.0）。push v* tag 触发时无需填写。'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-desktop-${{ github.event_name == 'push' && github.ref_name || inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  package-and-release:
+    name: 打包 zip + exe 并发布 Release
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag_name }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false' # 无代码签名证书，跳过签名探测
+    steps:
+      - name: Checkout（目标 tag）
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: 安装全部 workspace 依赖
+        run: npm ci --no-audit --no-fund
+
+      - name: 校验 tag 与 @whale/desktop 版本一致
+        shell: pwsh
+        run: |
+          $tag = $env:RELEASE_TAG
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw '未提供 tag：请推送 v* tag，或在手动触发时填写 tag_name。'
+          }
+          $wanted = $tag.TrimStart('v')
+          $pkg = Get-Content -Raw 'apps/desktop/package.json' | ConvertFrom-Json
+          Write-Host "tag=$tag  packageVersion=$($pkg.version)"
+          if ($wanted -ne $pkg.version) {
+            throw "版本不一致：tag '$tag' 要求 version '$wanted'，但 apps/desktop/package.json 的 version 是 '$($pkg.version)'。请先提交版本号改动再打 tag。"
+          }
+
+      - name: 构建（electron-vite）
+        run: npm run build -w @whale/desktop
+
+      - name: electron-builder 打包（NSIS 安装包 + 绿色版 zip）
+        working-directory: apps/desktop
+        run: npx electron-builder --win --publish never
+
+      - name: 核对产物
+        working-directory: apps/desktop
+        run: Get-ChildItem release | Select-Object Name, @{n='SizeMB';e={[math]::Round($_.Length / 1MB, 1)}} | Format-Table -AutoSize
+
+      - name: 发布正式 GitHub Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
+          draft: false
+          files: |
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe

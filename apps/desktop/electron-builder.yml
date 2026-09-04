@@ -1,0 +1,42 @@
+# Electron 打包配置（由 .github/workflows/release.yml 在打 v* tag 时执行；
+# 本机试打包：npm run pack -w @whale/desktop）
+#
+# 注意：渲染层依赖（react、@whale/* 等）都被 Vite 打进 out/ 产物，
+# 主/预加载只依赖 electron 与 node 内置，因此安装包只需 out/**，无需 node_modules。
+
+appId: com.whale.deepspace
+productName: 大鲸鱼深空工业
+copyright: Copyright © 2025 大鲸鱼 · 深空工业
+
+directories:
+  output: release
+  buildResources: build
+
+# 只需 electron-vite 的构建产物（electron-builder 会自动附带 package.json）
+files:
+  - out/**
+
+asar: true
+npmRebuild: false # 无原生模块，跳过重编译，加快打包
+
+win:
+  icon: build/icon.ico
+  # zip 目标没有独立配置节点：绿色版命名放在 win 平台级，
+  # NSIS 在下方用 target 级 artifactName 覆盖为自己的名字。
+  artifactName: ${productName}-绿色版-${version}-${arch}.${ext}
+  target:
+    - target: nsis # 安装包 exe
+      arch:
+        - x64
+    - target: zip # 免安装绿色版（解压即用）
+      arch:
+        - x64
+
+nsis:
+  oneClick: false # 向导式安装，可自选安装目录
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 大鲸鱼深空工业
+  artifactName: ${productName}-安装程序-${version}.${ext}
