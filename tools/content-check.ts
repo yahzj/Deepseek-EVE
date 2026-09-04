@@ -134,7 +134,7 @@ const moduleIds = new Set<string>()
 for (const m of MODULES) {
   if (moduleIds.has(m.id)) errors.push(`装备 id 重复：${m.id}`)
   moduleIds.add(m.id)
-  check(MODULE_SLOTS.includes(m.slot), `装备 ${m.id} 槽位非法：${m.slot}`)
+  check([...MODULE_SLOTS, 'drone-rack', 'drone-tac'].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
 }
 for (const g of MARKET_GOODS) {
   if (g.kind === 'module' && !moduleIds.has(g.refId)) errors.push(`市场卡 ${g.key} 装备缺失`)
@@ -283,10 +283,20 @@ for (const d of drones) {
 }
 for (const m of MODULES) {
   check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
+  // V18：家族合法（六家族 + 无人机装置两家族）
+  check([...MODULE_SLOTS, 'drone-rack', 'drone-tac'].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
   // V18：槽类归属 rack 必填且与 rackOf 推导一致（Q3 映射集中落数据；防标注漂移）
   check(m.rack !== undefined && RACK_SLOTS.includes(m.rack), `装备 ${m.id} 缺少 V18 rack 归属`)
   if (m.rack !== undefined) {
     check(m.rack === rackOf(m), `装备 ${m.id} rack 标注（${m.rack}）与 Q3 推导（${rackOf(m)}）不一致`)
+  }
+  if (m.slot === 'drone-rack' || m.slot === 'drone-tac') {
+    // V18 无人机装置：字段自洽（甲板扩展 = +droneBayM3；战术导控 = +droneDmgBonus；互斥）
+    const hasBay = (m.droneBayBonusM3 ?? 0) > 0
+    const hasDmg = (m.droneDmgBonus ?? 0) > 0
+    check(hasBay !== hasDmg, `无人机装置 ${m.id} 必须且只能给一个效果字段（bay/dmg）`)
+    if (hasBay) check((m.droneBayBonusM3 ?? 0) <= 500, `无人机甲板 ${m.id} droneBayBonusM3 越界`)
+    if (hasDmg) check((m.droneDmgBonus ?? 0) <= 1, `战术导控 ${m.id} droneDmgBonus 越界`)
   }
   if (m.slot === 'miner' || m.slot === 'cargo') {
     // V17：工业槽保留加成系数形态

@@ -73,6 +73,9 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-shield-ext-1', kind: 'module', refId: 'mod-shield-ext-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.4 },
   { key: 'mod-armor-plate-1', kind: 'module', refId: 'mod-armor-plate-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.4 },
   { key: 'mod-prop-1', kind: 'module', refId: 'mod-prop-1', rarity: 'common', basePrice: 6_000, demandMultiplier: 0.4 },
+  // V18 无人机装置（高槽；市场专供无蓝图）
+  { key: 'mod-drone-rack-1', kind: 'module', refId: 'mod-drone-rack-1', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.4 },
+  { key: 'mod-drone-tac-1', kind: 'module', refId: 'mod-drone-tac-1', rarity: 'common', basePrice: 18_000, demandMultiplier: 0.4 },
   // 低级蓝图（价格 = 蓝图商店价；买来学习后永久可造，重复蓝图回卖半价）
   { key: 'bp-miner-1', kind: 'blueprint', refId: 'bp-miner-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.5 },
   { key: 'bp-cargo-1', kind: 'blueprint', refId: 'bp-cargo-1', rarity: 'common', basePrice: 6_000, demandMultiplier: 0.5 },
@@ -107,6 +110,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-armor-exp-2', kind: 'module', refId: 'mod-armor-exp-2', rarity: 'rare', basePrice: 34_000, demandMultiplier: 0.35 },
   { key: 'mod-armor-pla-2', kind: 'module', refId: 'mod-armor-pla-2', rarity: 'rare', basePrice: 34_000, demandMultiplier: 0.35 },
   { key: 'mod-prop-2', kind: 'module', refId: 'mod-prop-2', rarity: 'rare', basePrice: 39_000, demandMultiplier: 0.35 },
+  { key: 'mod-drone-rack-2', kind: 'module', refId: 'mod-drone-rack-2', rarity: 'rare', basePrice: 90_000, demandMultiplier: 0.35 },
+  { key: 'mod-drone-tac-2', kind: 'module', refId: 'mod-drone-tac-2', rarity: 'rare', basePrice: 160_000, demandMultiplier: 0.35 },
   { key: 'mod-shield-kin-3', kind: 'module', refId: 'mod-shield-kin-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.35 },
   { key: 'mod-shield-exp-3', kind: 'module', refId: 'mod-shield-exp-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.35 },
   { key: 'mod-shield-pla-3', kind: 'module', refId: 'mod-shield-pla-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.35 },
@@ -118,6 +123,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-shield-ext-3', kind: 'module', refId: 'mod-shield-ext-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.35 },
   { key: 'mod-armor-plate-3', kind: 'module', refId: 'mod-armor-plate-3', rarity: 'rare', basePrice: 221_000, demandMultiplier: 0.35 },
   { key: 'mod-prop-3', kind: 'module', refId: 'mod-prop-3', rarity: 'rare', basePrice: 272_000, demandMultiplier: 0.35 },
+  { key: 'mod-drone-rack-3', kind: 'module', refId: 'mod-drone-rack-3', rarity: 'rare', basePrice: 260_000, demandMultiplier: 0.35 },
+  { key: 'mod-drone-tac-3', kind: 'module', refId: 'mod-drone-tac-3', rarity: 'rare', basePrice: 420_000, demandMultiplier: 0.35 },
   // 高级蓝图 MK2（旧）+ MK3（V10：学习需声望 4）
   { key: 'bp-miner-2', kind: 'blueprint', refId: 'bp-miner-2', rarity: 'rare', basePrice: 35_000, demandMultiplier: 0.5 },
   { key: 'bp-cargo-2', kind: 'blueprint', refId: 'bp-cargo-2', rarity: 'rare', basePrice: 45_000, demandMultiplier: 0.5 },

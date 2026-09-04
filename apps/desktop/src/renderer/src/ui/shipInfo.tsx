@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, SLOT_LABELS, shipRoleLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -112,6 +112,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(`命中×${(1 - mod.hitPenalty).toFixed(2)}`)
       return parts.join(' · ')
     }
+    case 'drone-rack':
+      return `无人机舱 +${fmt(mod.droneBayBonusM3)} m³`
+    case 'drone-tac':
+      return `无人机伤害 +${pctOpt(mod.droneDmgBonus)}`
   }
 }
 
@@ -156,9 +160,13 @@ export function combatBadges(ship: ShipDef): ReactNode[] {
   return out
 }
 
-/** 六槽列表文本（当前模型：所有船共用六槽，每槽一件） */
-export function slotListText(): string {
-  return MODULE_SLOTS.map((s) => SLOT_LABELS[s]).join(' · ')
+/** 槽位布局文本（V18：高/中/低 × 数量制复数安装——取代旧六槽单件列表） */
+export function slotListText(ship?: ShipDef): string {
+  if (ship) {
+    const s = shipSlotsOf(ship)
+    return `${RACK_LABELS.high} ${s.high} / ${RACK_LABELS.mid} ${s.mid} / ${RACK_LABELS.low} ${s.low}（复数安装）`
+  }
+  return MODULE_SLOTS.map((m) => SLOT_LABELS[m]).join(' · ')
 }
 
 /** 舰船统一信息行：基础 + V10.5b 面板分组（护盾/装甲/结构区块各自血量与三系抗性；CPU/无人机舱） */
@@ -184,7 +192,7 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     if (ship.hitBonus !== undefined) lines.push({ k: '命中加成', v: `+${Math.round(ship.hitBonus * 100)}%` })
     if (ship.evasion !== undefined) lines.push({ k: '回避率', v: `${Math.round(ship.evasion * 100)}%` })
   }
-  lines.push({ k: '槽位', v: slotListText() })
+  lines.push({ k: '槽位', v: slotListText(ship) })
   if (ship.cpu !== undefined) lines.push({ k: 'CPU', v: fmt(ship.cpu) })
   lines.push({ k: '无人机舱', v: ship.droneBayM3 ? `${fmt(ship.droneBayM3)} m³` : '无' })
   return lines
@@ -212,7 +220,7 @@ export function shipIndirectLines(ship: ShipDef): InfoLine[] {
  * 上限 90%——基础抗越高的船装同系模块收益越低）；推进器 = 加力推进（战斗速度）。
  */
 export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
-  const lines: InfoLine[] = [{ k: '槽位 / 类型', v: SLOT_LABELS[mod.slot] }]
+  const lines: InfoLine[] = [{ k: '槽位 / 类型', v: `${SLOT_LABELS[mod.slot]}（${RACK_LABELS[rackOf(mod)]}）` }]
   if (mod.slot === 'miner') {
     lines.push({ k: '循环产量', v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'cargo') {
@@ -278,6 +286,14 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     }
     if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
     if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
+  } else if (mod.slot === 'drone-rack') {
+    if (mod.droneBayBonusM3 !== undefined) {
+      lines.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3)} m³（携带/放飞上限，与无人机装置可复数叠加）` })
+    }
+  } else if (mod.slot === 'drone-tac') {
+    if (mod.droneDmgBonus !== undefined) {
+      lines.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus)}（乘入放飞无人机单发；线性可叠）` })
+    }
   }
   if (mod.cpuUse !== undefined) lines.push({ k: 'CPU 占用', v: fmt(mod.cpuUse) })
   return lines

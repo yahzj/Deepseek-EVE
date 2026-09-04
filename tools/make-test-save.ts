@@ -12,10 +12,12 @@
  *  - standby 星图待命：门槛同 b1 + 预置一艘副船已在低安驻留待命（看状态/取消/区域遭遇）；
  *  - refine 精炼炉运转周期：全品级矿石/气体/冰矿库存（货仓+仓库）+ 基础 AI 核心 ×1
  *    （测手动运转/核心驱动/停炉退料/忙碌互斥）。
+ *  - v18  V18 槽位制：资金 +5000 万 + 高配复数装配示例（同 id 双炮 ×2 / 异弹型炮 /
+ *         复数矿枪 / 无人机件）+ 三型弹药与无人机库存（测 FitPage 复数安装/同类唯一提示/战斗 ×N 齐射）。
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadSaveFile, serializeSaveFile } from '@whale/core'
+import { loadSaveFile, serializeSaveFile, addShipToFleet } from '@whale/core'
 import type { GameState } from '@whale/core'
 
 const SAVE_PATH = join(process.env.APPDATA ?? '', 'whale-idle', 'save.json')
@@ -69,16 +71,17 @@ function injectB1(state: GameState): string[] {
     if (!state.exploredGalaxies.includes(g)) state.exploredGalaxies.push(g)
   }
   notes.push(`点亮低安星域 ${LOWSEC_GALAXIES.length} 个星系（含红环旁 cinder 等）`)
-  // 驾驶船炮台 + 三型通用弹补给（没有就补）
+  // 驾驶船炮台 + 三型通用弹补给（没有就补；V18 位数组：炮占高槽首位）
   const pilot = state.fleet[state.shipId]
   if (pilot) {
-    if (!pilot.fitted.turret) {
-      const inBay = state.moduleBay['mod-turret-1'] ?? 0
-      if (inBay <= 0) state.moduleBay['mod-turret-1'] = 1
-      state.moduleBay['mod-turret-1']! -= 1
-      if (state.moduleBay['mod-turret-1'] === 0) delete state.moduleBay['mod-turret-1']
-      pilot.fitted.turret = 'mod-turret-1'
-      notes.push('驾驶船已装轻型炮台 MK1')
+    if (pilot.fitted.high.length === 0) pilot.fitted.high.push(null)
+    if (pilot.fitted.high[0] === null) {
+      const inBay = state.moduleBay['mod-turret-kin-1'] ?? 0
+      if (inBay <= 0) state.moduleBay['mod-turret-kin-1'] = 1
+      state.moduleBay['mod-turret-kin-1']! -= 1
+      if (state.moduleBay['mod-turret-kin-1'] === 0) delete state.moduleBay['mod-turret-kin-1']
+      pilot.fitted.high[0] = 'mod-turret-kin-1'
+      notes.push('驾驶船已装轻型炮台 MK1（高槽第 1 位）')
     }
     for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
       state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 100
@@ -140,10 +143,51 @@ function injectRefine(state: GameState): string[] {
   return notes
 }
 
+/**
+ * v18（V18 槽位制门槛）：资金 + 一艘满槽高配武装演示船（虎鲨：多炮同 id ×2 齐射、
+ * 异弹型炮、中低槽满配，CPU 165 内）+ 复数矿枪备件 + 弹药与无人机补给。
+ * 测装配页复数安装/同类唯一提示、战斗多炮 ×N 合并与 per-gun 弹型、无人机放飞。
+ */
+function injectV18(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 1) 资金：买得起顶配船与替换件
+  state.wallet.isk += 50_000_000
+  notes.push('钱包 +50,000,000 ISK')
+  // 2) 一艘满槽高配武装演示船（CPU 预算内；高槽 2×动能 MK2 = 齐射 ×2 演示 + 高爆 MK2 异弹型）
+  const uid = addShipToFleet(state, 'sh-tigershark')
+  const demo = state.fleet[uid]!
+  demo.customName = '复数装配演示'
+  demo.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-exp-2', null],
+    mid: ['mod-shield-ext-2', 'mod-prop-2'],
+    low: ['mod-armor-plate-2', 'mod-cargo-2'],
+  }
+  demo.cargo['drone-scout'] = 20
+  demo.cargo['drone-assault'] = 10
+  notes.push(`新增满槽演示船「${uid}（复数装配演示）」——虎鲨级：高槽 2×动能 MK2 + 高爆 MK2（留 1 位试无人机件）、中槽 盾扩+推进、低槽 甲板+货舱；装配页可见 ×2 齐射与复数槽位`)
+  notes.push('演示船货仓预置蜂鸟侦察机 ×20 + 赤鸢攻击机 ×10（需自装无人机挂架/战术导控）')
+  // 3) 备件：复数矿枪（可再装一艘采矿船试复数产量）+ 高槽空位可加第 3 门动能炮（×3 齐射）
+  state.moduleBay['mod-miner-2'] = (state.moduleBay['mod-miner-2'] ?? 0) + 2
+  state.moduleBay['mod-turret-kin-2'] = (state.moduleBay['mod-turret-kin-2'] ?? 0) + 1
+  state.moduleBay['mod-drone-rack-2'] = (state.moduleBay['mod-drone-rack-2'] ?? 0) + 1
+  state.moduleBay['mod-drone-tac-2'] = (state.moduleBay['mod-drone-tac-2'] ?? 0) + 1
+  notes.push('装备库补：矿枪 MK2 ×2（复数采矿示例）、动能炮 MK2 ×1（第 3 门 → ×3）、无人机挂架/导控 MK2 各 1')
+  // 4) 弹药 + 耐久
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 500
+  }
+  for (const s of Object.values(state.fleet)) s.durability = 1
+  notes.push('仓库补三型通用弹 ×500 各；全舰耐久回满')
+  notes.push('测试路径：舰船页换驾驶到演示船 → 装配页看高/中/低三组位与 CPU 余量；再装第 2 块盾扩应被「同类唯一」拒绝；去悬赏开战看 ×2 齐射合并条目与动能/高爆弹型分开装填')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
   refine: injectRefine,
+  v18: injectV18,
 }
 
 function main(): void {

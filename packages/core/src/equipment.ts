@@ -200,6 +200,7 @@ export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
   const fitted = fittedOf(state)
   if (!fitted) return false
   const legacy = V17_FAMILY_BAYS[family]
+  if (!legacy) return false // 无人机装置等新家族无 v17 兼容位：请用 unfitAt
   const bays = rackBays(fitted, legacy.rack)
   if (legacy.index >= bays.length || bays[legacy.index] === null) return false
   const moduleId = bays[legacy.index]!
@@ -209,8 +210,8 @@ export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
   return true
 }
 
-/** v17 六槽 → v18 位映射（迁移与旧语义共用） */
-export const V17_FAMILY_BAYS: Record<ModuleSlot, { rack: RackSlot; index: number }> = {
+/** v17 六槽 → v18 位映射（迁移与旧语义共用；新家族无映射位） */
+export const V17_FAMILY_BAYS: Partial<Record<ModuleSlot, { rack: RackSlot; index: number }>> = {
   turret: { rack: 'high', index: 0 },
   miner: { rack: 'high', index: 1 },
   shield: { rack: 'mid', index: 0 },

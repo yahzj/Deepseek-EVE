@@ -127,7 +127,7 @@ export function FitPage({ engine, onToast }: PageProps) {
             </div>
             {shipIndirectLines(shipDef).length > 0 ? (
               <div className="app-fit-shipinfo-low">
-                <div className="app-info-note">间接属性（速度/信号/锁定——战斗与装配决策参考）</div>
+                <div className="app-info-note">间接属性（2026-09 定：速度参与战斗机动与航行；信号/锁定/质量为设定展示，不参与战斗公式）</div>
                 <InfoTable lines={shipIndirectLines(shipDef)} />
               </div>
             ) : null}

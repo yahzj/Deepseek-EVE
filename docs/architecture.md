@@ -61,7 +61,7 @@
 文件（JSON） = { format: "whale-idle-save", version: N, savedAtWallMs, state }
 ```
 
-当前结构版本 v16：
+当前结构版本 v18：
 - **v10**（v9 之上）：六槽位模型——fitted 扩为 miner/cargo/turret/shield/armor/propulsion，
   盾/甲/推进原为占位家族（效果随战斗系统启用，见 v10b 文档）；
 - **v11**：随机事件流（events.nextAtGameMs，间隔 10~30 分钟，见 `docs/design/v11-random-events.md`）；
@@ -72,7 +72,16 @@
 - **v14**：扫描续扫——scanProgress（星系 → 已完成就地扫描窗口毫秒；终止探索时保存，下次补扫）；
 - **v15**：调试模式——debugQuick（开发工具：所有作业按 1 秒完成 + 离线快进，见 docs/design/v15-debug.md）；
 - **v16**：矿带空间分层 + 复合产出池——删除克洛基石/熔辉石/赤曜石（折算迁移）、悬赏与矿带门槛按星图空间（X 纵深/环心/死路/辐射）重排（见 docs/design/v16-tiering.md）。
-v0→…→v16 迁移链在案，老档自动无损升级；真实档迁移经隔离冒烟验证。
+- **v17**：舰船实例化（T5-B）——fleet 键升格为实例 uid（同型可多艘，第 1 艘 uid 恒等于船型 id），
+  条目带 defId/customName；escrow 挂卖快照同步（见 docs/design/t5b-fleet-instances.md；迁移链 v16→v17 在案）。
+- **v18**：EVE 式高/中/低槽制（C3，V18A 实施）——fitted 由六槽 Record 改为三类位数组
+  `{ high/mid/low: (id|null)[] }`（位长 = 船布局 slots，复数安装）；槽类归属 rack 落数据
+  （ModuleDef.rack：高 = 炮台/矿枪/无人机装置、中 = 盾系/推进器、低 = 甲系/货舱扩展）；
+  抗性/容量同系与推进器同类唯一、线性件可叠、CPU 全位合计；新增高槽无人机家族 6 件
+  （甲板扩展 +15/35/70 m³、战术导控 +12/25/40%）；命中公式只取武器命中×距离 − 回避
+  （信号半径/扫描分辨率等间接属性不参战，仅展示）；载入修复链按船布局对齐位长、溢出件退库
+  （见 docs/design/v18-slots.md；迁移链 v17→v18 在案，旧六槽原位映射 high=[炮,矿] mid=[盾,推] low=[甲,货]）。
+v0→…→v18 迁移链在案，老档自动无损升级；真实档迁移经隔离冒烟验证。
 - `version` 是**结构版本号**，每次改结构 +1 并补迁移函数（见 core/src/save.ts）；
   读档 = 逐版本迁移 → 逐字段容错补默认值 → 可用状态。
 - 保存 = 先写 `.tmp` 再改名覆盖（防断电损坏）。

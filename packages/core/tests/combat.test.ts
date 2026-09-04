@@ -71,6 +71,22 @@ describe('命中与伤害公式', () => {
     expect(hopeless).toBe(0)
   })
 
+  it('2026-09 拍板：信号半径/扫描分辨率不参与命中公式（纯展示副属性）', () => {
+    const gun = { hitRate: 0.55, minRangeM: 0, maxRangeM: 2200, falloff: 0.3 }
+    const attacker = { hitBonus: 0, scanResMm: 450 }
+    const bal = BAL()
+    // 同回避不同信号 → 命中完全相同；小信号（40m）不再放大回避
+    const smallSig = hitChance(gun, attacker, { evasion: 0.13, signatureM: 40 }, 500, bal)
+    const bigSig = hitChance(gun, attacker, { evasion: 0.13, signatureM: 260 }, 500, bal)
+    expect(smallSig).toBeCloseTo(bigSig, 10)
+    // 回调后武装艇（0.13 回避）近程应有健康命中（>0.25），不再被压成 0
+    expect(smallSig).toBeGreaterThan(0.25)
+    // 扫描分辨率不影响攻方命中加成
+    const atkA = hitChance({ hitRate: 0.5, minRangeM: 0, maxRangeM: 4000, falloff: 0.3 }, { hitBonus: 0.1, scanResMm: 200 }, { evasion: 0.1 }, 500, bal)
+    const atkB = hitChance({ hitRate: 0.5, minRangeM: 0, maxRangeM: 4000, falloff: 0.3 }, { hitBonus: 0.1, scanResMm: 900 }, { evasion: 0.1 }, 500, bal)
+    expect(atkA).toBeCloseTo(atkB, 10)
+  })
+
   it('applyDamage：逐层消费（盾→甲→结构），破层溢出；未破层不外溢', () => {
     const hp = { s: 10, a: 10, h: 10 }
     // 未破盾：全部被盾吸收

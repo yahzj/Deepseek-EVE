@@ -424,14 +424,6 @@ export interface BattleBalance {
   /** 命中率输出钳制：开放边界 0% / 100%（贴脸高加成场合可必中、极端劣势可完全脱靶） */
   hitMin: number
   hitMax: number
-  /** 信号修正：effEvasion = evasion × clamp(sigMin, sigMax, sigBaseM / defender.signatureM) */
-  sigBaseM: number
-  sigMin: number
-  sigMax: number
-  /** 锁定修正：effHitBonus = hitBonus × clamp(scanMin, scanMax, attacker.scanResMm / scanBaseMm) */
-  scanBaseMm: number
-  scanMin: number
-  scanMax: number
   /** 炮术学每级单发伤害加成（0.05 = +5%/级） */
   gunneryDmgPerLevel: number
   /** 距离动力学：距离下限（贴脸极限）与开战距离 = 双方最远武器射程×openRangeFactor + openRangePadM（取小加成的近距开局） */
@@ -469,10 +461,11 @@ export interface BattleBalance {
 }
 
 /**
- * 装备家族（V10 六值保留：家族语义是装配唯一性校验与引擎构建的依据，不是物理槽）。
- * V18 起物理槽由 RackSlot（高/中/低 × 数量制）表达——归槽见 ModuleDef.rack / labels.rackOf。
+ * 装备家族（V10 六值 + V18 无人机装置两值：家族语义是装配唯一性校验与引擎构建的依据，
+ * 不是物理槽）。V18 起物理槽由 RackSlot（高/中/低 × 数量制）表达——归槽见 ModuleDef.rack /
+ * labels.rackOf。
  */
-export type ModuleSlot = 'miner' | 'cargo' | 'turret' | 'shield' | 'armor' | 'propulsion'
+export type ModuleSlot = 'miner' | 'cargo' | 'turret' | 'shield' | 'armor' | 'propulsion' | 'drone-rack' | 'drone-tac'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
 export type RackSlot = 'high' | 'mid' | 'low'

@@ -107,12 +107,6 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   battle: {
     hitMin: 0, // 命中率开放下限 0%：极端劣势可完全脱靶（不再保底 3%）
     hitMax: 1, // 命中率开放上限 100%：贴脸高加成场合可必中（不再封顶 97%）
-    sigBaseM: 60, // 信号半径 60m 为基准：更小 → 回避修正上浮（难打中）
-    sigMin: 0.4,
-    sigMax: 1.4,
-    scanBaseMm: 600, // 扫描分辨率 600mm 为基准：更大 → 命中加成发挥更足
-    scanMin: 0.6,
-    scanMax: 1.5,
     gunneryDmgPerLevel: 0.05, // 炮术学：每级 +5% 单发伤害
     minDistanceM: 200, // 距离下限（贴脸极限）
     // 开战距离 = 双方最远武器射程 +100m：开局几乎即时进入接战，缩短无谓等待

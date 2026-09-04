@@ -1,5 +1,5 @@
 /**
- * 装备表（V17.1 + V17.2：48 件）。
+ * 装备表（V17.1 + V17.2 + V18：54 件）。
  *
  * 设计（中文说明）：
  * - 工业槽（miner/cargo）：保留加成系数形态（bonus：产量/容量百分比）——生产参数简单直接；
@@ -315,6 +315,64 @@ export const MODULES: readonly ModuleDef[] = [
     falloff: 0.28,
     reloadMs: 4800,
     dmgMult: 5.91,
+  },
+
+  // ══════════ 无人机装置（V18 高槽装置位：远行星号式；与炮/矿共位竞争） ══════════
+  // 无人机甲板扩展 = +droneBayM3（携带/放飞上限；线性可叠件）；战术导控阵列 =
+  // 放飞无人机单发伤害加成（求和乘入；线性可叠件）。两者均为市场专供（无蓝图）。
+  {
+    id: 'mod-drone-rack-1',
+    name: '无人机甲板扩展 MK1',
+    slot: 'drone-rack',
+    rack: 'high',
+    droneBayBonusM3: 15,
+    cpuUse: 5,
+    description: '外挂无人机甲板：无人机舱 +15 m³（约多带 2-5 架中型/数架轻型）。无人机流的起点。',
+  },
+  {
+    id: 'mod-drone-rack-2',
+    name: '无人机甲板扩展 MK2',
+    slot: 'drone-rack',
+    rack: 'high',
+    droneBayBonusM3: 35,
+    cpuUse: 15,
+    description: '外挂无人机甲板：无人机舱 +35 m³。中型无人机编队的扩容方案。',
+  },
+  {
+    id: 'mod-drone-rack-3',
+    name: '无人机甲板扩展 MK3',
+    slot: 'drone-rack',
+    rack: 'high',
+    droneBayBonusM3: 70,
+    cpuUse: 40,
+    description: '整队级外挂甲板：无人机舱 +70 m³（市场稀有，无蓝图）。',
+  },
+  {
+    id: 'mod-drone-tac-1',
+    name: '战术导控阵列 MK1',
+    slot: 'drone-tac',
+    rack: 'high',
+    droneDmgBonus: 0.12,
+    cpuUse: 8,
+    description: '放飞无人机单发伤害 +12%（乘入无人机自身基数）。无人机流派的火力核心。',
+  },
+  {
+    id: 'mod-drone-tac-2',
+    name: '战术导控阵列 MK2',
+    slot: 'drone-tac',
+    rack: 'high',
+    droneDmgBonus: 0.25,
+    cpuUse: 20,
+    description: '放飞无人机单发伤害 +25%。电子战终端加持下的无人机更致命。',
+  },
+  {
+    id: 'mod-drone-tac-3',
+    name: '战术导控阵列 MK3',
+    slot: 'drone-tac',
+    rack: 'high',
+    droneDmgBonus: 0.4,
+    cpuUse: 45,
+    description: '放飞无人机单发伤害 +40%（市场稀有，无蓝图）。无人机甲板舰的指挥核心。',
   },
 
   // ══════════ 护盾增强器（shield 抗性件：纯抗性，分系缺口乘入） ══════════

@@ -93,18 +93,21 @@ export function inRange(dist: number, w: { minRangeM: number; maxRangeM: number 
   return dist >= w.minRangeM && dist <= w.maxRangeM
 }
 
-/** 单发命中概率（设计文档公式；V17.1：×attacker.hitMul = 加力失稳缩放，缺省 1） */
+/**
+ * 单发命中概率（设计文档公式；V17.1：×attacker.hitMul = 加力失稳缩放，缺省 1）。
+ * 2026-09 船长拍板：信号半径/扫描分辨率等"间接属性"不参与战斗公式（纯展示副属性），
+ * 命中只由 武器基础命中/攻方命中加成 × 距离衰减 − 守方回避 决定。
+ * 参数保留 scanResMm/signatureM 可选字段仅为调用面兼容（字面量与单位对象），公式不消费。
+ */
 export function hitChance(
   weapon: { hitRate: number; minRangeM: number; maxRangeM: number; falloff: number },
-  attacker: { hitBonus: number; scanResMm: number; hitMul?: number },
-  defender: { evasion: number; signatureM: number },
+  attacker: { hitBonus: number; scanResMm?: number; hitMul?: number },
+  defender: { evasion: number; signatureM?: number },
   dist: number,
   bal: BattleBalance,
 ): number {
-  const effEvasion = defender.evasion * clamp(bal.sigMin, bal.sigMax, bal.sigBaseM / Math.max(1, defender.signatureM))
-  const effHitBonus = attacker.hitBonus * clamp(bal.scanMin, bal.scanMax, attacker.scanResMm / bal.scanBaseMm)
   const df = distFactor(dist, weapon)
-  const raw = (weapon.hitRate + effHitBonus) * df - effEvasion
+  const raw = (weapon.hitRate + attacker.hitBonus) * df - defender.evasion
   return clamp(bal.hitMin, bal.hitMax, raw * (attacker.hitMul ?? 1))
 }
 

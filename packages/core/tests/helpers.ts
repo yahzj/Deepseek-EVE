@@ -150,6 +150,8 @@ export function moduleDef(
     armorResistAdd?: Partial<Record<DamageType, number>>
     speedBonusPct?: number
     hitPenalty?: number
+    droneBayBonusM3?: number
+    droneDmgBonus?: number
   },
 ): ModuleDef {
   return {
@@ -172,6 +174,8 @@ export function moduleDef(
     ...(opts?.armorResistAdd !== undefined ? { armorResistAdd: opts.armorResistAdd } : {}),
     ...(opts?.speedBonusPct !== undefined ? { speedBonusPct: opts.speedBonusPct } : {}),
     ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
+    ...(opts?.droneBayBonusM3 !== undefined ? { droneBayBonusM3: opts.droneBayBonusM3 } : {}),
+    ...(opts?.droneDmgBonus !== undefined ? { droneDmgBonus: opts.droneDmgBonus } : {}),
   }
 }
 
