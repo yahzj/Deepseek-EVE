@@ -309,6 +309,19 @@ export function ShipPage({ engine, onToast }: PageProps) {
                       </div>
                     </div>
                   )
+                ) : !isCurrent && !isWorking ? (
+                  /* T5-A 修正（船长反馈）：锁定只禁出售——锁定的闲置船仍可切换驾驶 */
+                  <div className="app-ship-bottom">
+                    <span className="app-dim">货仓与装备随船保存</span>
+                    <div className="app-ship-bottom-btns">
+                      <span className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
+                        🔒 已锁定
+                      </span>
+                      <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
+                        切换驾驶
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
                 </div>
               </ShipHover>
