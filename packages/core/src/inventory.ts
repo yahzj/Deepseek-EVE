@@ -84,27 +84,45 @@ export function removeWare(state: GameState, itemId: string, units: number): boo
 
 /* ───────── 货仓体积（可指定船，含该船货舱槽装备加成） ───────── */
 
-/** 指定船货仓已占用体积（m³） */
+/** 指定船货仓已占用体积（m³；矿石/气体/冰矿按压缩技术折算体积） */
 export function cargoUsedM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   let used = 0
   for (const [itemId, units] of Object.entries(cargoOfShip(state, shipId))) {
     const def = ctx.items.get(itemId)
-    used += units * (def ? def.unitM3 : 0)
+    used += units * cargoUnitM3(state, def)
   }
   return used
 }
 
-/** 指定船货仓容量（m³，按该船自己的舰船定义 + 低槽货舱扩展件加成（复数 Σ）+
- * 深空物流学（deep-space-logistics）：每级 +4%，满级 +20%） */
+/** 压缩技术（compression）：矿石/气体/冰矿的货仓占用体积每级 −6%（满级 −30%）——舱容/满舱判定同源 */
+export function cargoUnitM3(state: GameState, item: import('./types').ItemDef | undefined): number {
+  const raw = item?.unitM3 ?? 0
+  if (raw <= 0) return raw
+  if (item!.kind === 'ore' || item!.kind === 'gas' || item!.kind === 'ice') {
+    const lv = Math.min(5, state.skills.trained['compression'] ?? 0)
+    if (lv > 0) return raw * (1 - 0.06 * lv)
+  }
+  return raw
+}
+
+/** 指定船货仓容量（m³；舰船基础 + 货舱扩展件（复数 Σ）+ 深空物流学 +4%/级 × 货舱管理学 +3%/级；
+ *  货舰操作（航运族专精）+5%/级） */
 export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   const ship = fleetDefOf(state, ctx, shipId)
   if (!ship) return 0
   const cargoDefs = familyModules(state, ctx, shipId, 'cargo')
   let bonus = 0
   for (const def of cargoDefs) bonus += def.bonus ?? 0
+  let capMult = 1
   const logLv = Math.min(5, state.skills.trained['deep-space-logistics'] ?? 0)
-  const logMult = 1 + 0.04 * logLv
-  return Math.round(ship.cargoM3 * (1 + bonus) * logMult)
+  if (logLv > 0) capMult *= 1 + 0.04 * logLv
+  const holdLv = Math.min(5, state.skills.trained['hold-management'] ?? 0)
+  if (holdLv > 0) capMult *= 1 + 0.03 * holdLv
+  if (ship.role === 'hauler') {
+    const haulerLv = Math.min(5, state.skills.trained['hauler-ops'] ?? 0)
+    if (haulerLv > 0) capMult *= 1 + 0.05 * haulerLv
+  }
+  return Math.round(ship.cargoM3 * (1 + bonus) * capMult)
 }
 
 /** 当前驾驶船货仓已占用体积（m³） */
@@ -171,6 +189,6 @@ export function loadWarehouseToCargo(state: GameState, itemId: string, units: nu
 export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: SimContext): number {
   const def = ctx.items.get(itemId)
   if (!def || def.unitM3 <= 0) return 0
-  const maxBySpace = Math.floor(freeCargoM3(state, ctx) / def.unitM3)
+  const maxBySpace = Math.floor(freeCargoM3(state, ctx) / cargoUnitM3(state, def))
   return loadWarehouseToCargo(state, itemId, maxBySpace)
 }

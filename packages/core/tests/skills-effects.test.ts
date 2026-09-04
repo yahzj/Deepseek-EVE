@@ -12,7 +12,7 @@ import { travelTimeFactor } from '../src/travel'
 import { calcBuildDurationMs, matNeedCount, missingMaterials } from '../src/manufacturing'
 import { scanWindowMsOf } from '../src/explore'
 import { getMiningParams, richVeinFactor } from '../src/mining'
-import { cargoCapacityM3Of } from '../src/inventory'
+import { cargoCapacityM3Of, cargoUnitM3 } from '../src/inventory'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { repairCostIsk } from '../src/shipyard'
 import { bountyRewardFactor } from '../src/expedition'
@@ -267,5 +267,47 @@ describe('技能补全 P2：市场/远征/扫描系数', () => {
     state.skills.trained['signal-analysis'] = 5
     state.skills.trained['signal-filtering'] = 5
     expect(scanWindowMsOf(state)).toBe(Math.round(600_000 * 0.6 * 0.7)) // 252000
+  })
+})
+
+describe('技能补全 P3a：物流/容量/执照/维修', () => {
+  it('压缩技术：矿/气/冰体积满级 ×0.7；矿物等不受影响', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 16 })
+    const ctx = makeTestCtx()
+    const ore = ctx.items.get('ore-a')!
+    const mineral = ctx.items.get('min-a')!
+    expect(cargoUnitM3(state, ore)).toBe(1)
+    expect(cargoUnitM3(state, mineral)).toBeCloseTo(mineral.unitM3 ?? 0, 10)
+    state.skills.trained['compression'] = 5
+    expect(cargoUnitM3(state, ore)).toBeCloseTo(0.7, 10)
+    expect(cargoUnitM3(state, mineral)).toBeCloseTo(mineral.unitM3 ?? 0, 10)
+  })
+  it('货舱管理学与深空物流学乘算：满级容量 ×1.15×1.2', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 17 })
+    const ctx = makeTestCtx()
+    const base = fleetDefOf(state, ctx, state.shipId)!.cargoM3
+    state.skills.trained['hold-management'] = 5
+    expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base * 1.15))
+    state.skills.trained['deep-space-logistics'] = 5
+    expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base * 1.15 * 1.2))
+  })
+  it('工业舰操作（默认沙猫=industrial）：满级采矿产量 ×1.2', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 18 })
+    const ctx = makeTestCtx({ belts: [belt('belt-io', 'ore-a')] })
+    const base = fleetDefOf(state, ctx, state.shipId)!.oreUnitsPerCycle
+    state.skills.trained['industrial-ops'] = 5
+    const p = getMiningParams(state, ctx, { shipId: state.shipId, beltId: 'belt-io' })!
+    expect(p.unitsPerCycle).toBe(Math.max(1, Math.floor(base * 1.2)))
+  })
+  it('维修双技（−10% × −5%/级）合计下限 40%', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 19 })
+    const ctx = makeTestCtx()
+    state.fleet[state.shipId].durability = 0.4
+    const cost0 = repairCostIsk(state, state.shipId, ctx)
+    state.skills.trained['repair-engineering'] = 5
+    state.skills.trained['station-protocol'] = 5
+    const costFull = repairCostIsk(state, state.shipId, ctx)
+    expect(costFull).toBeLessThanOrEqual(Math.ceil(cost0 * 0.4) + 1) // ≈ ×0.4 下限
+    expect(costFull).toBeGreaterThanOrEqual(Math.floor(cost0 * 0.35))
   })
 })

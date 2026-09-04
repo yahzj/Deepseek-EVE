@@ -16,7 +16,7 @@ import type { AiAssignment, GameState } from './state'
 import type { AiCoreType, SimContext } from './types'
 import type { CommandResult } from './engine'
 import { nextRandom } from './rng'
-import { addWare } from './inventory'
+import { addWare, cargoUnitM3 } from './inventory'
 import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOutput, shipInReturn } from './mining'
@@ -427,7 +427,7 @@ function advanceAiMining(
     const oreNow = rollBeltOutput(state, ctx, beltDef)
 
     // 满舱检查（货仓放不下整个循环 → 自动返航）
-    const oreM3PerCycle = params.unitsPerCycle * (oreNow?.unitM3 ?? params.ore.unitM3)
+    const oreM3PerCycle = params.unitsPerCycle * cargoUnitM3(state, oreNow ?? params.ore)
     if (oreM3PerCycle > freeCargoFor(state, shipId, ctx)) {
       task.phase = 'returning'
       task.phaseAccMs = 0
@@ -470,7 +470,7 @@ function freeCargoFor(state: GameState, shipId: string, ctx: SimContext): number
   let used = 0
   const cargo = state.fleet[shipId]?.cargo ?? {}
   for (const [itemId, units] of Object.entries(cargo)) {
-    used += units * (ctx.items.get(itemId)?.unitM3 ?? 0)
+    used += units * cargoUnitM3(state, ctx.items.get(itemId))
   }
   return Math.max(0, cap - used)
 }

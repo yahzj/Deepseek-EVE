@@ -13,7 +13,7 @@ import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
 import { nextRandom } from './rng'
-import { addItem, freeCargoM3 } from './inventory'
+import { addItem, cargoUnitM3, freeCargoM3 } from './inventory'
 import { loseShip, repairWithKits } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
@@ -668,10 +668,10 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
       return '耐久不足且修理组件耗尽'
     }
   }
-  // 货仓：放不下本单预期缴获 → 停（B 甲：无远程入库，回港卸货是玩家的决定）
+  // 货仓：放不下本单预期缴获 → 停（B 甲：无远程入库，回港卸货是玩家的决定；体积按压缩技术折算）
   const lootM3 = anomaly.loot.reduce((sum, row) => {
     const def = ctx.items.get(row.itemId)
-    return sum + row.units * (def?.unitM3 ?? 0)
+    return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
   if (freeCargoM3(state, ctx) < lootM3) {
     stopAutoLoopReason(state, `货仓剩余空间不足以装载「${anomaly.name}」的缴获——请返航空间站卸货。`)

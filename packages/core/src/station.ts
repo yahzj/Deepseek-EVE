@@ -92,7 +92,10 @@ export function deliverStationResources(
   if (took <= 0) {
     return { ok: false, error: `没有可提交的 ${itemName}（仓库与货仓都为空）。` }
   }
-  prog.delivered[itemId] = (prog.delivered[itemId] ?? 0) + took
+  // 建筑工程学（station-engineering）：本次交付进度 +8%/级（等价减少所需物资；只放大本次，防历史复合膨胀）
+  const engLv = Math.min(5, state.skills.trained['station-engineering'] ?? 0)
+  const credited = engLv > 0 ? Math.floor(took * (1 + 0.08 * engLv)) : took
+  prog.delivered[itemId] = (prog.delivered[itemId] ?? 0) + credited
   const tier = site.tiers[prog.stage]!
   const remain = tierRemaining(state, site)
   addLog(

@@ -21,7 +21,7 @@ import type { GameState, MiningState } from './state'
 import type { BeltDef, ItemDef, ShipDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { isMineableItem } from './labels'
-import { addItem, freeCargoM3, unloadCargoOfShipToWarehouse, unloadCargoToWarehouse } from './inventory'
+import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse, unloadCargoToWarehouse } from './inventory'
 import { DSI_FACTION_ID, HOME_GALAXY_ID, recallExpedition, shortestTravelMinutes, standingOf } from './expedition'
 import { travelLegMs, travelMinutesEff } from './travel'
 import { actionBlockReason, markExplored } from './explore'
@@ -85,6 +85,11 @@ export function getMiningParams(
   if (ore.kind === 'gas' || ore.kind === 'ice') {
     const deepLv = Math.min(5, state.skills.trained['deep-space-harvesting'] ?? 0)
     if (deepLv > 0) prodMult *= 1 + 0.05 * deepLv
+  }
+  // 工业舰操作（industrial-ops）：工业族舰船专精 +4%/级
+  if (ship.role === 'industrial') {
+    const opsLv = Math.min(5, state.skills.trained['industrial-ops'] ?? 0)
+    if (opsLv > 0) prodMult *= 1 + 0.04 * opsLv
   }
   const unitsPerCycle = Math.max(1, Math.floor(ship.oreUnitsPerCycle * prodMult * (1 + minerBonus)))
   return { ship, belt, ore, cycleMs, unitsPerCycle }
@@ -378,7 +383,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     }
 
     // 满舱检查：放不下整个循环 → 自动返航或停采
-    const oreM3PerCycle = params.unitsPerCycle * oreNow.unitM3
+    const oreM3PerCycle = params.unitsPerCycle * cargoUnitM3(state, oreNow)
     if (oreM3PerCycle > freeCargoM3(state, ctx)) {
       if (m.autoCycle) {
         m.phase = 'returning'

@@ -58,7 +58,21 @@ export const SKILLS: readonly SkillDef[] = [
     name: '深空物流学',
     group: '舰船',
     rank: 3,
-    description: '深空物流与仓位规划：全舰队货仓容量每级 +⟦4%⟧（满级 +⟦20%⟧；与货舱扩展件加成乘算）。',
+    description: '深空物流与仓位规划：全舰队货仓容量每级 +⟦4%⟧（满级 +⟦20%⟧；与货舱扩展件/货舱管理学乘算）。',
+  },
+  {
+    id: 'industrial-ops',
+    name: '工业舰操作',
+    group: '舰船',
+    rank: 3,
+    description: '工业舰族专精驾驶：驾驶工业族舰船时采集产量每级 +⟦4%⟧。',
+  },
+  {
+    id: 'hauler-ops',
+    name: '货舰操作',
+    group: '舰船',
+    rank: 3,
+    description: '航运舰族专精驾驶：驾驶航运族舰船时货仓容量每级 +⟦5%⟧。',
   },
 
   // ───────── 工业 ─────────
@@ -174,6 +188,13 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 3,
     description: '无人值守作业调度：离线结算时长上限每级 +⟦8%⟧（基础 8 小时，满级约 11.2 小时）。',
   },
+  {
+    id: 'station-engineering',
+    name: '建筑工程学',
+    group: '工业',
+    rank: 3,
+    description: '副空间站工程标准：向建站点交付物资的进度计数每级 +⟦8%⟧（等价减少所需物资，满级 −⟦40%⟧）。',
+  },
 
   // ───────── 战斗（数值由战斗线维护） ─────────
   {
@@ -213,7 +234,21 @@ export const SKILLS: readonly SkillDef[] = [
     name: '维修工程学',
     group: '工程',
     rank: 2,
-    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（满级 −⟦50%⟧，最低半价；修理组件不受影响）。',
+    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站协议学乘算，合计最多 −⟦60%⟧；修理组件不受影响）。',
+  },
+  {
+    id: 'hull-quick-repair',
+    name: '舰体快修学',
+    group: '工程',
+    rank: 2,
+    description: '应急修补手法：自动使用修理组件时的恢复量每级 +⟦10%⟧（满级 +⟦50%⟧）。',
+  },
+  {
+    id: 'station-protocol',
+    name: '空间站协议学',
+    group: '工程',
+    rank: 2,
+    description: '空间站服务谈判：停站维修费每级再降低 ⟦5%⟧（与维修工程学乘算，合计最多 −⟦60%⟧）。',
   },
   {
     id: 'ai-expert',
@@ -324,10 +359,26 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 3,
     description: '危险星域的保命之道：低安被抢的损失上限每级 −⟦12%⟧（满级 −⟦60%⟧，货与现金同享）。',
   },
+
+  // ───────── 物流（2026-09-04 技能扩军新组） ─────────
+  {
+    id: 'compression',
+    name: '压缩技术',
+    group: '物流',
+    rank: 3,
+    description: '矿物压缩封装（EVE 同款概念）：矿石/气体/冰矿的货仓占用体积每级 −⟦6%⟧（满级 −⟦30%⟧）。',
+  },
+  {
+    id: 'hold-management',
+    name: '货舱管理学',
+    group: '物流',
+    rank: 2,
+    description: '舱位规划与收纳：全舰队货仓容量每级再 +⟦3%⟧（与深空物流学乘算叠加）。',
+  },
 ]
 
 /** 技能组清单（按此顺序分组展示） */
-export const SKILL_GROUPS: readonly string[] = ['舰船', '工业', '战斗', '工程', '贸易', '探索']
+export const SKILL_GROUPS: readonly string[] = ['舰船', '工业', '战斗', '工程', '贸易', '探索', '物流']
 
 /** 把技能表建成引擎用的"按 id 快速查找"目录 */
 export function buildSkillCatalog(): ReadonlyMap<string, SkillDef> {
