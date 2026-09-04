@@ -153,6 +153,7 @@ export {
   fittedBonuses,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
+  shipMaxWeaponSize,
 } from './equipment'
 
 export {
@@ -328,6 +329,8 @@ export {
   mergeResist,
   foeMainDamageType,
   createPlayerSpec,
+  playerAmmoSize,
+  playerAmmoType,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
 } from './combat'

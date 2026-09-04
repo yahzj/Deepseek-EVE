@@ -1,5 +1,5 @@
 /**
- * 装备表（V17.1 定稿：42 件）。
+ * 装备表（V17.1 + V17.2：48 件）。
  *
  * 设计（中文说明）：
  * - 工业槽（miner/cargo）：保留加成系数形态（bonus：产量/容量百分比）——生产参数简单直接；
@@ -11,18 +11,22 @@
  *     与抗性件同槽二选一（本槽只能装一件），无分系；
  *   · 矢量推进器 = 加力推进（战斗速度加成，常驻）＋代价：开火命中 ×(1−hitPenalty)
  *     （MK1 +15%/×0.95、MK2 +30%/×0.88、MK3 +50%/×0.80——低档轻微、高档重）；
- *   · 炮台 = 完整武器卡（射程带/命中/装填/伤害倍率/配弹尺寸，见 combat）；
+ *   · 炮台（V17.2 炮族制） = 口径 × 固定弹种 × 档位：轻口径（light 弹）速射近程、
+ *     重口径（heavy 弹）慢射远程；同口径同 MK 三弹种款性能一致只换伤害类型
+ *     （动能打盾 ×1.5 / 高爆打甲 ×1.5 / 能量打盾 ×0.75 且单发基数最高）；
+ *     蓝图 = 动能款（协会制式）；高爆/能量款市场专供；船体只适配 ≤ 自身口径的炮
+ *     （see equipment.shipMaxWeaponSize——armed/armored 与重装工业船才上重型炮）；
  * - CPU 装配资源（V17.1 用户定稿：成倍档位拉开船级差距）：
  *   民用 3（炮台 6）/ MK1 5（炮台 10）/ MK2 15（炮台 28）/ MK3 40（炮台 52）/
  *   异星原型 60（炮台 70）——战斗件与工业件同档；低级船（沙猫 60 CPU）只带得动
  *   低级全套，MK3 顶配套件需要 220+ CPU 的顶级船，无人机放飞余量同池竞争；
  * - 渠道与既有规则一致：MK1 平价 / MK2・MK3 稀有（MK3 无蓝图市场专供）/
  *   proto 奇货（声望 10、无蓝图）；护盾/装甲/推进无蓝图（市场供应为主）；
- * - V17 旧件迁移：mod-shield-1/2/3、mod-armor-1/2/3（通用全系）已下架，载入存档自动
- *   按动能款迁移（core/equipment.V17_MODULE_MIGRATIONS）；V17 早期"容量+抗性"混装件
- *   未发布过任何正式版本（本轮定稿即首版）；
- * - V18 立项：EVE 式高/中/低槽（船体槽位布局 + 炮尺寸制）作为独立里程碑，本表
- *   参数（缺口/CPU/代价/弹药口径）与其正交，届时纯结构迁移（见 docs/roadmap.md）。
+ * - 存档迁移：mod-shield-1/2/3、mod-armor-1/2/3（通用全系）与 mod-turret-1/2/3
+ *   （V17 前混型炮）已下架，载入存档自动按动能款迁移（core/equipment 迁移表）；
+ *   超口径历史装配自动卸下退回；
+ * - V18 立项：EVE 式高/中/低槽（船体槽位布局 + 炮尺寸三档化）作为独立里程碑，本表
+ *   参数（缺口/CPU/代价/口径）与其正交，届时纯结构迁移（见 docs/roadmap.md）。
  */
 
 import type { ModuleDef } from '@whale/core'
@@ -112,14 +116,18 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 60,
   },
 
-  // ══════════ 炮台（turret：完整武器卡；伤害 = 弹 dmg × dmgMult × 技能/船加成） ══════════
+  // ══════════ 炮台（turret：V17.2 炮族制——口径 × 固定弹种 × 档位；11 件） ══════════
+  // 轻口径（light 弹）速射近程；重口径（heavy 弹）慢射远程；同口径同 MK 各弹种款
+  // 性能一致、只换伤害类型（克制：动能打盾×1.5/高爆打甲×1.5/能量打盾×0.75 通用）。
+  // 蓝图 = 动能款（协会制式）；高爆/能量款市场专供。
   {
     id: 'mod-turret-civ',
     name: '民用舰炮',
     slot: 'turret',
-    description: '协会自警队制式轻型舰炮：配轻弹，4.2 km 有效射程。',
     weaponSize: 'light',
+    damageType: 'kinetic',
     ammoPerEngagement: 24,
+    description: '协会自警队制式轻型动能炮：吃轻动能弹，4.2 km 有效射程。入门即动能——默认悬赏都能打。',
     cpuUse: 6,
     maxRangeM: 4200,
     minRangeM: 250,
@@ -129,12 +137,13 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.0,
   },
   {
-    id: 'mod-turret-1',
-    name: '舰载轻型炮台 MK1',
+    id: 'mod-turret-kin-1',
+    name: '轻型炮台 MK1·动能型',
     slot: 'turret',
-    description: '把矿船变成勉强能打的武装矿船（轻型炮台，吃轻弹）。',
     weaponSize: 'light',
+    damageType: 'kinetic',
     ammoPerEngagement: 24,
+    description: '轻型动能速射炮：打盾 1.5 倍伤害（打甲减半）。协会制式、蓝图可造，把矿船变成勉强能打的武装矿船。',
     cpuUse: 10,
     maxRangeM: 4600,
     minRangeM: 250,
@@ -144,12 +153,45 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.25,
   },
   {
-    id: 'mod-turret-2',
-    name: '舰载重型炮台 MK2',
+    id: 'mod-turret-exp-1',
+    name: '轻型炮台 MK1·高爆型',
     slot: 'turret',
-    description: '深空工业舰炮的巅峰（重型炮台，吃重弹）。',
+    weaponSize: 'light',
+    damageType: 'explosive',
+    ammoPerEngagement: 24,
+    description: '轻型高爆炮：打甲 1.5 倍伤害（打盾减半）。装甲型敌人的克星（市场专供，无蓝图）。',
+    cpuUse: 10,
+    maxRangeM: 4600,
+    minRangeM: 250,
+    hitRate: 0.8,
+    falloff: 0.3,
+    reloadMs: 2200,
+    dmgMult: 1.25,
+  },
+  {
+    id: 'mod-turret-pla-1',
+    name: '轻型炮台 MK1·能量型',
+    slot: 'turret',
+    weaponSize: 'light',
+    damageType: 'plasma',
+    ammoPerEngagement: 24,
+    description: '轻型能量炮：对三层伤害均衡（打盾 0.75 倍），但能量弹单发基数最高——结构层决胜弹（市场专供）。',
+    cpuUse: 10,
+    maxRangeM: 4600,
+    minRangeM: 250,
+    hitRate: 0.8,
+    falloff: 0.3,
+    reloadMs: 2200,
+    dmgMult: 1.25,
+  },
+  {
+    id: 'mod-turret-kin-2',
+    name: '重型炮台 MK2·动能型',
+    slot: 'turret',
     weaponSize: 'heavy',
+    damageType: 'kinetic',
     ammoPerEngagement: 12,
+    description: '重型动能炮：8.2 km 远程。协会重型制式（蓝图可造）——需要能上重型炮的船。',
     cpuUse: 28,
     maxRangeM: 8200,
     minRangeM: 700,
@@ -159,12 +201,77 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.6,
   },
   {
-    id: 'mod-turret-3',
-    name: '舰载攻坚炮台 MK3',
+    id: 'mod-turret-exp-2',
+    name: '重型炮台 MK2·高爆型',
     slot: 'turret',
-    description: '攻城级重型舰炮（吃重弹），市场稀有现货（无蓝图）；52 CPU 只为大口径准备。',
     weaponSize: 'heavy',
+    damageType: 'explosive',
     ammoPerEngagement: 12,
+    description: '重型高爆炮：远程破甲主力——装甲舰编队的噩梦（市场专供，无蓝图）。',
+    cpuUse: 28,
+    maxRangeM: 8200,
+    minRangeM: 700,
+    hitRate: 0.78,
+    falloff: 0.28,
+    reloadMs: 3400,
+    dmgMult: 1.6,
+  },
+  {
+    id: 'mod-turret-pla-2',
+    name: '重型炮台 MK2·能量型',
+    slot: 'turret',
+    weaponSize: 'heavy',
+    damageType: 'plasma',
+    ammoPerEngagement: 12,
+    description: '重型能量炮：远程均衡火力，重弹最高基数（市场专供，无蓝图）。',
+    cpuUse: 28,
+    maxRangeM: 8200,
+    minRangeM: 700,
+    hitRate: 0.78,
+    falloff: 0.28,
+    reloadMs: 3400,
+    dmgMult: 1.6,
+  },
+  {
+    id: 'mod-turret-kin-3',
+    name: '攻坚炮台 MK3·动能型',
+    slot: 'turret',
+    weaponSize: 'heavy',
+    damageType: 'kinetic',
+    ammoPerEngagement: 12,
+    description: '攻城级动能巨炮：10.5 km，攻坚炮里的协会制式（蓝图可造，52 CPU 只为大口径准备）。',
+    cpuUse: 52,
+    maxRangeM: 10500,
+    minRangeM: 1200,
+    hitRate: 0.78,
+    falloff: 0.28,
+    reloadMs: 4200,
+    dmgMult: 2.2,
+  },
+  {
+    id: 'mod-turret-exp-3',
+    name: '攻坚炮台 MK3·高爆型',
+    slot: 'turret',
+    weaponSize: 'heavy',
+    damageType: 'explosive',
+    ammoPerEngagement: 12,
+    description: '攻城级高爆巨炮：摧毁装甲工事的一击（市场稀有现货，无蓝图）。',
+    cpuUse: 52,
+    maxRangeM: 10500,
+    minRangeM: 1200,
+    hitRate: 0.78,
+    falloff: 0.28,
+    reloadMs: 4200,
+    dmgMult: 2.2,
+  },
+  {
+    id: 'mod-turret-pla-3',
+    name: '攻坚炮台 MK3·能量型',
+    slot: 'turret',
+    weaponSize: 'heavy',
+    damageType: 'plasma',
+    ammoPerEngagement: 12,
+    description: '攻城级能量巨炮：能量武器时代的攻城解（市场稀有现货，无蓝图）。',
     cpuUse: 52,
     maxRangeM: 10500,
     minRangeM: 1200,
@@ -177,9 +284,10 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-turret-proto',
     name: '异星原型炮台',
     slot: 'turret',
-    description: '无法逆向工程的异星重型武器（吃重弹），仅限奇货市场（需高声望）。',
     weaponSize: 'heavy',
+    damageType: 'plasma',
     ammoPerEngagement: 12,
+    description: '无法逆向工程的异星重型能量武器：13 km 射程，仅限奇货市场（需高声望）。',
     cpuUse: 70,
     maxRangeM: 13000,
     minRangeM: 1600,

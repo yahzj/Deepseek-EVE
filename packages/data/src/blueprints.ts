@@ -64,8 +64,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
   {
     id: 'bp-turret-1',
-    name: '舰载轻型炮台 MK1 蓝图',
-    moduleId: 'mod-turret-1',
+    name: '轻型炮台 MK1（动能）蓝图',
+    moduleId: 'mod-turret-kin-1',
     materials: [
       { itemId: 'min-tritanium', count: 2_000 },
       { itemId: 'min-mexallon', count: 500 },
@@ -73,12 +73,12 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 20 * 60,
     buildCostIsk: 20_000,
     priceIsk: 12_000,
-    description: '给矿船装一门正经舰炮。远征失利维修费太贵？先装个炮台。',
+    description: '给矿船装一门正经的轻型动能炮（协会制式弹种；高爆/能量款市场专供）。远征失利维修费太贵？先装个炮台。',
   },
   {
     id: 'bp-turret-2',
-    name: '舰载重型炮台 MK2 蓝图',
-    moduleId: 'mod-turret-2',
+    name: '重型炮台 MK2（动能）蓝图',
+    moduleId: 'mod-turret-kin-2',
     materials: [
       { itemId: 'min-mexallon', count: 1_600 },
       { itemId: 'min-nocxium', count: 500 },
@@ -87,7 +87,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 100 * 60,
     buildCostIsk: 150_000,
     priceIsk: 90_000,
-    description: '重型舰炮：火力 +60%。深渊之门卫队也会忌惮你的船。',
+    description: '重型动能炮：远程 8.2 km。需能上重型炮的船（武装舰/装甲舰）。深渊之门卫队也会忌惮你的船。',
   },
 
   // ══════════ V10 民用档（常驻平价） ══════════

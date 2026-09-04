@@ -156,6 +156,12 @@ export interface ShipDef {
   droneBayM3?: number
   /** 无人机放飞所需的 CPU 占位资源已在 ItemDef.cpuUse；此处不重复定义 */
   /* ── 间接属性（EVE 参考；显示优先级低：仅装配界面展示；数值占位、战斗作用待战斗系统定） ── */
+  /**
+   * V17.2 炮口径适配：本船可装的最大炮台口径（light/heavy）。
+   * 缺省按 role 推导：armed/armored = heavy；industrial/hauler = light（重装工业船显式 heavy）。
+   * 装配校验与装配台"适配口径"显示同源（见 equipment.shipMaxWeaponSize）。
+   */
+  maxWeaponSize?: WeaponSize
   /** 最大速度 m/s */
   maxSpeedMps?: number
   /** 跃迁速度 AU/s */
@@ -508,6 +514,11 @@ export interface ModuleDef {
   hitPenalty?: number
   /** 炮台：配用弹药尺寸（light 配轻弹 / heavy 配重弹） */
   weaponSize?: WeaponSize
+  /**
+   * 炮台固定弹种（V17.2 炮族制：每门炮只打一种伤害——换炮 = 换弹种）。
+   * 缺失视为 kinetic（兼容旧数据/测试）；消耗弹药 = weaponSize × damageType 对应型。
+   */
+  damageType?: DamageType
   /** 炮台：历史"每远征耗弹基数"（V11 起由出发预载制替代，字段保留仅展示） */
   ammoPerEngagement?: number
   /* ═══ V11 武器（炮台家族）：射程带 / 命中 / 装填 / 伤害倍率 ═══ */
