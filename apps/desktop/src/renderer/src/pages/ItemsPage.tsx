@@ -158,21 +158,26 @@ export function ItemsPage(props: PageProps) {
   const [tab, setTab] = useState<ItemsTab>('warehouse')
   return (
     <div className="page-stack">
-      <div className="app-items-head">
-        <div className="app-tabs">
-          <button
-            className={`app-tab${tab === 'warehouse' ? ' is-active' : ''}`}
-            onClick={() => setTab('warehouse')}
-          >
-            仓库
-          </button>
-          <button className={`app-tab${tab === 'cargo' ? ' is-active' : ''}`} onClick={() => setTab('cargo')}>
-            货仓
-          </button>
-        </div>
-        <span className="app-dim app-items-head-note">
-          {tab === 'warehouse' ? '飞行员资产：不随船、永不遗失' : '货仓随船：采集与战利品先落这里，弃船会遗失'}
-        </span>
+      {/* 功能标签页（与星图页同款 app-subtabs 规范） */}
+      <div className="app-subtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={tab === 'warehouse'}
+          className={`app-subtab${tab === 'warehouse' ? ' is-active' : ''}`}
+          onClick={() => setTab('warehouse')}
+        >
+          <span>▤</span>
+          <span>仓库</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'cargo'}
+          className={`app-subtab${tab === 'cargo' ? ' is-active' : ''}`}
+          onClick={() => setTab('cargo')}
+        >
+          <span>▣</span>
+          <span>货仓</span>
+        </button>
       </div>
       {tab === 'cargo' ? <CargoPage {...props} /> : <WarehouseView {...props} />}
     </div>
