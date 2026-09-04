@@ -14,6 +14,9 @@ import { scanWindowMsOf } from '../src/explore'
 import { getMiningParams } from '../src/mining'
 import { cargoCapacityM3Of } from '../src/inventory'
 import { startRefineRun, stopRefineRun } from '../src/industry'
+import { repairCostIsk } from '../src/shipyard'
+import { bountyRewardFactor } from '../src/expedition'
+import { enqueueSkill, HIDDEN_SKILL_IDS } from '../src/engine'
 
 const GAS_X: ItemDef = {
   id: 'gas-x',
@@ -117,5 +120,42 @@ describe('技能补全：深空物流学（货仓容量每级 +4%）', () => {
     expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base))
     state.skills.trained['deep-space-logistics'] = 5
     expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base * 1.2))
+  })
+})
+
+describe('技能补全：维修工程学（维修费每级 −10%）', () => {
+  it('满级维修费降至 ~半价', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = makeTestCtx()
+    state.fleet[state.shipId].durability = 0.4
+    const cost0 = repairCostIsk(state, state.shipId, ctx)
+    expect(cost0).toBeGreaterThan(0)
+    state.skills.trained['repair-engineering'] = 5
+    const cost5 = repairCostIsk(state, state.shipId, ctx)
+    expect(cost5).toBeLessThan(cost0)
+    expect(cost5).toBeLessThanOrEqual(Math.ceil(cost0 * 0.5) + 1) // ~半价（ceil 舍入容差）
+    expect(cost5).toBeGreaterThanOrEqual(Math.floor(cost0 * 0.4))
+  })
+})
+
+describe('技能补全：赏金猎手学（悬赏奖金每级 +8%）', () => {
+  it('零级 ×1；满级 ×1.4', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 8 })
+    expect(bountyRewardFactor(state)).toBe(1)
+    state.skills.trained['bounty-hunting'] = 5
+    expect(bountyRewardFactor(state)).toBe(1.4)
+  })
+})
+
+describe('战斗线占位技能：隐藏 + 禁训', () => {
+  it('护盾/能量/船体加固在隐藏清单中，且不被加入训练队列', () => {
+    expect(HIDDEN_SKILL_IDS).toEqual(['shield-operation', 'energy-management', 'hull-upgrades'])
+    const state = createInitialState({ nowWallMs: 0, seed: 9 })
+    const ctx = makeTestCtx()
+    // helpers 的测试技能目录不含这三条（真实目录含之，enqueueSkill 对隐藏技能返回"暂不可训练"）；
+    // 无论目录命中与否，训练入口都必须拒绝且不产生队列项
+    const r = enqueueSkill(state, 'shield-operation', 1, ctx.skills)
+    expect(r.ok).toBe(false)
+    expect(state.skills.queue).toHaveLength(0)
   })
 })

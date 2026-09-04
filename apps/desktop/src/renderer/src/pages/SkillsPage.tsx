@@ -4,6 +4,7 @@
  * 说明内 ⟦效果数值⟧ 高亮、各级训练时长展示。
  */
 import {
+  HIDDEN_SKILL_IDS,
   MAX_SKILL_LEVEL,
   formatDurationMs,
   skillLevelTimeMs,
@@ -46,7 +47,9 @@ export function levelTimesHint(def: SkillDef): string {
 export function SkillsPage({ engine }: PageProps) {
   const [groupTab, setGroupTab] = useState<string>('all')
   const groups = engine.groups
-  const tabSkills = (g: string): string[] => engine.skills.filter((s) => s.group === g).map((s) => s.id)
+  // 战斗线预留技能（护盾操作/能量管理/船体加固）隐藏：不进目录、不可见
+  const visibleSkills = engine.skills.filter((s) => !HIDDEN_SKILL_IDS.includes(s.id))
+  const tabCount = (g: string): number => visibleSkills.filter((s) => s.group === g).length
   return (
     <div className="page-stack page-wide">
       <Panel
@@ -55,7 +58,7 @@ export function SkillsPage({ engine }: PageProps) {
       >
         <QueueBlock engine={engine} />
       </Panel>
-      <Panel title="技能目录" right={<span className="app-dim">{engine.skills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
+      <Panel title="技能目录" right={<span className="app-dim">{visibleSkills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
         {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类 */}
         <div className="app-task-tabs" role="tablist">
           <button
@@ -75,7 +78,7 @@ export function SkillsPage({ engine }: PageProps) {
               onClick={() => setGroupTab(g)}
             >
               {g}
-              <span className="app-dim"> {tabSkills(g).length}</span>
+              <span className="app-dim"> {tabCount(g)}</span>
             </button>
           ))}
         </div>
@@ -84,7 +87,7 @@ export function SkillsPage({ engine }: PageProps) {
             groups.map((group) => (
               <div key={group} className="app-skill-group">
                 <div className="app-skill-group-tag">{group}</div>
-                {engine.skills
+                {visibleSkills
                   .filter((s) => s.group === group)
                   .map((skill) => (
                     <SkillWideRow key={skill.id} engine={engine} skill={skill} />
@@ -94,7 +97,7 @@ export function SkillsPage({ engine }: PageProps) {
           ) : (
             <div className="app-skill-group">
               <div className="app-skill-group-tag">{groupTab}</div>
-              {engine.skills
+              {visibleSkills
                 .filter((s) => s.group === groupTab)
                 .map((skill) => (
                   <SkillWideRow key={skill.id} engine={engine} skill={skill} />

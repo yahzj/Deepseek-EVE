@@ -126,6 +126,7 @@ export {
   removeQueueAt,
   clearSkillQueue,
   skillQueueStatus,
+  HIDDEN_SKILL_IDS,
 } from './engine'
 export type { CommandResult, HeadTrainingInfo, QueueView } from './engine'
 
@@ -281,6 +282,7 @@ export {
   HOME_GALAXY_ID,
   DSI_FACTION_ID,
   standingOf,
+  bountyRewardFactor,
   calcPower,
   winChance,
   calcExpeditionDurationMs,

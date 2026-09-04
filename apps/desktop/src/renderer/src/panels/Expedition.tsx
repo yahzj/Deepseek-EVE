@@ -12,6 +12,7 @@ import {
   aiCoreName,
   battleWinPreview,
   bountyCooldownRemainingMs,
+  bountyRewardFactor,
   calcExpeditionDurationMs,
   calcPower,
   countAiCore,
@@ -1086,7 +1087,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             <span className="app-ga-main">
               ⚔ {a.name}
               <span className="app-dim app-ga-desc">
-                威胁 {a.threat} · 奖金 {a.rewardIsk.toLocaleString('zh-CN')} ISK
+                威胁 {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
                 {state.completedBounties.includes(a.id) ? ' · 已首胜' : ''}
               </span>
             </span>
@@ -1242,7 +1243,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         })()}
       </div>
       <div className="app-ano-reward">
-        奖金 {anomaly.rewardIsk.toLocaleString('zh-CN')} ISK
+        奖金 {Math.round(anomaly.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
         {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title="该悬赏已首胜：重复完成不再获得声望，可转向新目标提升协会声望">（已首胜）</span> : null}
       </div>

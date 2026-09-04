@@ -158,6 +158,12 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
   }
 }
 
+/** 赏金猎手学（bounty-hunting，2026-09-04 补全）：悬赏奖金加成系数，每级 +8%（满级 ×1.4） */
+export function bountyRewardFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['bounty-hunting'] ?? 0)
+  return 1 + 0.08 * lv
+}
+
 /**
  * 出征通用前置检查（startExpedition 与"采矿转战"入口共用）：
  * 目标数据 / 舰队 / 声望 / 星系探索 / 重复冷却 / 扫描 / 返港行程。
@@ -321,7 +327,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // ── 胜利：奖金 ±浮动 + 情报彩蛋 + 战利品 + 声望 ──
     const jitter = ctx.balance.rewardJitter
     const roll = 1 - jitter + 2 * jitter * nextRandom(state.rng)
-    let reward = Math.max(0, Math.round(anomaly.rewardIsk * roll))
+    let reward = Math.max(0, Math.round(anomaly.rewardIsk * roll * bountyRewardFactor(state)))
     if (nextRandom(state.rng) < 0.15) {
       const texts = [
         '舰队返航时打捞到一枚漂流信标，协会收购了上面的航路情报',

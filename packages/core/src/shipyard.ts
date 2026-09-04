@@ -195,13 +195,15 @@ export function durabilityOf(state: GameState, shipId: string): number {
   return state.fleet[shipId]?.durability ?? 0
 }
 
-/** 维修某艘拥有船的费用（ISK） */
+/** 维修某艘拥有船的费用（ISK；维修工程学每级 −10%，最低半价） */
 export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext): number {
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   if (!fleetShip || !def) return 0
   const missing = Math.max(0, 1 - fleetShip.durability)
-  return Math.ceil(missing * def.cargoM3 * ctx.balance.repair.perM3Cost)
+  const engLv = Math.min(5, state.skills.trained['repair-engineering'] ?? 0)
+  const disc = Math.max(0.5, 1 - 0.1 * engLv)
+  return Math.ceil(missing * def.cargoM3 * ctx.balance.repair.perM3Cost * disc)
 }
 
 /** 玩家指令：维修某艘拥有船（回满耐久），钱不够时按比例修复可用部分 */

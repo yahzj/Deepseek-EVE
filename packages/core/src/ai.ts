@@ -20,7 +20,7 @@ import { addWare } from './inventory'
 import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, rollBeltOutput, shipInReturn } from './mining'
-import { DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, shortestTravelMinutes, standingOf } from './expedition'
+import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, shortestTravelMinutes, standingOf } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
@@ -542,7 +542,10 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   if (won) {
     // ── 胜利：奖励全额，战利品直接入物品仓库 ──
     const jitter = ctx.balance.rewardJitter
-    const reward = Math.max(0, Math.round(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng))))
+    const reward = Math.max(
+      0,
+      Math.round(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng)) * bountyRewardFactor(state)),
+    )
     state.wallet.isk += reward
     // AI 结算不发放声望、不写入首胜清单：协会声望只属于"亲手完成"（悬赏卡与指派解锁均以主控首胜为准）
     const lootText: string[] = []

@@ -122,26 +122,35 @@ export const SKILLS: readonly SkillDef[] = [
   },
 
   // ───────── 工程 ─────────
+  // 说明：护盾操作学 / 能量管理学 / 船体加固理论为战斗线预留条目——暂在界面隐藏、
+  // 引擎禁训（HIDDEN_SKILL_IDS，见 core/engine.ts），战斗数值（二号）接入后开放。
   {
     id: 'shield-operation',
     name: '护盾操作学',
     group: '工程',
     rank: 1,
-    description: '以后生效：提升护盾容量与恢复（战斗线）。',
+    description: '以后生效：提升护盾容量与恢复（战斗线预留，当前隐藏）。',
   },
   {
     id: 'energy-management',
     name: '能量管理学',
     group: '工程',
     rank: 2,
-    description: '以后生效：提升电容总量，支撑更强的武器与设备（战斗线）。',
+    description: '以后生效：提升电容总量，支撑更强的武器与设备（战斗线预留，当前隐藏）。',
   },
   {
     id: 'hull-upgrades',
     name: '船体加固理论',
     group: '工程',
     rank: 3,
-    description: '以后生效：提升船体结构值与装甲抗性（战斗线）。',
+    description: '以后生效：提升船体结构值与装甲抗性（战斗线预留，当前隐藏）。',
+  },
+  {
+    id: 'repair-engineering',
+    name: '维修工程学',
+    group: '工程',
+    rank: 2,
+    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（满级 −⟦50%⟧，最低半价；修理组件不受影响）。',
   },
   {
     id: 'ai-expert',
@@ -165,6 +174,13 @@ export const SKILLS: readonly SkillDef[] = [
     group: '贸易',
     rank: 2,
     description: '协会渠道谈判：每级再降低 ⟦8%⟧ 贸易税——与会计学双修满级后贸易税仅剩 ⟦1%⟧（合计减免 ⟦80%⟧）。',
+  },
+  {
+    id: 'bounty-hunting',
+    name: '赏金猎手学',
+    group: '贸易',
+    rank: 2,
+    description: '赏金评估与协会渠道：完成悬赏（含 AI 副船远征）的奖金每级 +⟦8%⟧（满级 +⟦40%⟧，在随机浮动之上乘算）。',
   },
 
   // ───────── 探索（2026-09-04 新组） ─────────
