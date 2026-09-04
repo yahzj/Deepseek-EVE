@@ -253,6 +253,7 @@ export function anomaly(
     loot?: AnomalyDef['loot']
     standingGain?: number
     tactic?: AnomalyDef['tactic']
+    escorts?: number
   },
 ): AnomalyDef {
   return {
@@ -266,6 +267,7 @@ export function anomaly(
     loot: opts?.loot ?? [],
     combatSeconds: opts?.combatSeconds ?? 120,
     tactic: opts?.tactic,
+    escorts: opts?.escorts,
     description: '测试用异常点',
   }
 }

@@ -867,7 +867,6 @@ function stepBattle(
   // ── 我方开火（主炮 + 无人机条目） ──
   const meRt = b.units['player']
   if (meRt && isAlive(b, 'player')) {
-    const foeTarget = firstAliveFoe(b, foes)
     for (let wi = 0; wi < me.weapons.length; wi++) {
       const w = me.weapons[wi]!
       const cd = meRt.weapons[wi] ?? 0
@@ -875,7 +874,12 @@ function stepBattle(
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
         continue
       }
-      if (!inRange(b.distanceM, w) || !foeTarget) continue
+      if (!inRange(b.distanceM, w)) continue
+      // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
+      // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人——
+      // 修复旧"每步缓存单一集火目标、齐射轮内打已死目标浪费火力"的问题。
+      const foeTarget = randomAliveFoe(state, b, foes)
+      if (!foeTarget) continue
       let type: DamageType
       let dmg: number
       let autoHit = false
@@ -920,7 +924,7 @@ function stepBattle(
         rt.hp = r.hp
         b.stats.meDmg += r.dealt
       }
-      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'me', tag: 'player', type, hit })
+      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'me', tag: 'player', to: foeTarget.tag, type, hit })
     }
   }
 
@@ -947,7 +951,7 @@ function stepBattle(
       const r = applyDamage(meRt.hp, me.resists, w.shotDmg ?? 0, fType)
       meRt.hp = r.hp
     }
-    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, type: fType, hit: fHit })
+    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: fHit })
   }
 
   // ── 结束判定 ──
@@ -989,9 +993,15 @@ function isAlive(b: import('./state').BattleState, tag: string): boolean {
   return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
 }
 
-function firstAliveFoe(b: import('./state').BattleState, foes: UnitSpec[]): UnitSpec | null {
-  for (const f of foes) if (isAlive(b, f.tag)) return f
-  return null
+/**
+ * V18B 随机目标（船长 2026-09-05）：从存活敌人中均匀随机抽一个（确定性走 state.rng——
+ * 种子固定则每场可复现；每发武器调用一次 = 齐射可分散到不同目标）。
+ */
+function randomAliveFoe(state: import('./state').GameState, b: import('./state').BattleState, foes: UnitSpec[]): UnitSpec | null {
+  const alive = foes.filter((f) => isAlive(b, f.tag))
+  if (alive.length === 0) return null
+  const i = Math.min(alive.length - 1, Math.floor(nextRandom(state.rng) * alive.length))
+  return alive[i]!
 }
 
 function totalHpRatio(b: import('./state').BattleState, tag: string, spec: UnitSpec): number {

@@ -2141,6 +2141,10 @@ body {
 .app-bts-unit { position: relative; display: inline-flex; }
 .app-bts-unit.is-dead .app-sprite { animation: app-bts-fadeout .55s ease .5s forwards; }
 @keyframes app-bts-fadeout { to { opacity: 0; } }
+/* V18B（2026-09-05）残骸层：死亡锚点爆炸 + 原位淡出（不占敌方队列；补位由存活列表完成）。
+   容器 inline 宽高 = 舰体尺寸（left/top 已按舰体中心对齐），boom 仍按容器 50%/46% 居中 */
+.app-bts-wreck { position: absolute; z-index: 5; pointer-events: none; }
+.app-bts-wreck .app-sprite { filter: grayscale(.85) brightness(.8); }
 .app-bts-boom { position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: 5; pointer-events: none; }
 .app-bts-boom i { position: absolute; display: block; }
 .app-bts-boom .b-core { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: radial-gradient(circle, #fff 0 35%, #ffe9b0 60%, rgba(255,160,77,0) 78%); animation: app-bts-bcore .32s ease-out forwards; }

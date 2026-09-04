@@ -295,6 +295,11 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const deadRef = useRef<Set<string>>(new Set())
   /** 爆炸特效的计划开始墙钟：tag → 墙钟（= 检测到死亡时刻 + 弹道飞行时长，让致死弹着弹后再炸） */
   const boomRef = useRef<Map<string, number>>(new Map())
+  /**
+   * V18B 残骸锚（2026-09-05 补位收拢）：tag → 死亡时刻在敌方队列中的坐标 + 爆炸计划时刻。
+   * 单位被击毁后立即从队列撤出（剩余敌舰补位收拢），残骸在本锚点原地播放爆炸并淡出。
+   */
+  const wreckRef = useRef<Map<string, { x: number; y: number; boomAt: number }>>(new Map())
   /** 各单位上一次渲染的血量总和（用于检测"本拍刚死"，避免复活旧尸爆炸） */
   const prevHpRef = useRef<Map<string, number>>(new Map())
   const hpInitRef = useRef(false)
@@ -473,13 +478,15 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const meShip = fleetDefOf(state, engine.ctx, state.shipId)
   const meRole: ShipRole = meShip?.role ?? 'industrial'
   const foeTags = Object.keys(combat.foeHp)
-  const foeMain = combat.foeHp[foeTags[0]!]
+  /** V18B 补位收拢：敌方队列只排存活单位（死单位撤出，剩余补位前移；残骸走独立残骸层） */
+  const foeAliveTags = foeTags.filter((t) => !deadRef.current.has(t))
+  const origIdxOf = (tag: string): number => Math.max(0, foeTags.indexOf(tag))
   const ended = battle.ended !== null
   const defeat = battle.ended === 'foe'
 
   const realDist = battle.distanceM // 引擎实时距离（交火中每 ~100ms 更新）
   const visM = smoothM !== null ? smoothM : realDist // 视觉插值距离（舰列/弧/游标平滑用）
-  const foeN = foeTags.length
+  const foeN = Math.max(1, foeAliveTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
   const lay = layout(dims, foeN, visM, openM, nearM)
   const pct = (m: number): number => approachOf(m, openM, nearM) * 100
   const now = performance.now()
@@ -500,14 +507,27 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   if (arrivals.length > 0) {
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
-      const fi = foeTags.indexOf(fx.tag)
-      const idx = fi >= 0 ? fi : 0
-      const src = fx.side === 'me' ? lay.me : lay.foe[idx]
-      const dst = fx.side === 'me' ? lay.foe[idx] : lay.me
+      // V18B（2026-09-05 修复）：弹道按 fx.to（目标 tag）定位——随机目标下每发飞向各自
+      // 目标而非固定队列首位；目标已死（致死发/残骸期）落向残骸锚；缺 to 旧事件回退首位
+      const isMeShot = fx.side === 'me'
+      const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
+      const aimAliveIdx = foeAliveTags.indexOf(aimTag)
+      let src: Anchor | undefined
+      let dst: Anchor | undefined
+      if (isMeShot) {
+        src = lay.me
+        const wreck = wreckRef.current.get(aimTag)
+        dst = aimAliveIdx >= 0 ? lay.foe[aimAliveIdx] : (wreck ?? lay.foe[0])
+      } else {
+        src = aimAliveIdx >= 0 ? lay.foe[aimAliveIdx] : lay.foe[0] // 发射者（存活敌人）
+        dst = lay.me
+      }
       if (!src || !dst) continue
-      const foeNose = idx === 0 ? NOSE_MAIN : NOSE_ESC
-      const srcNose = fx.side === 'me' ? NOSE_MAIN : foeNose
-      const dstNose = fx.side === 'me' ? foeNose : NOSE_MAIN
+      const aimOrig = origIdxOf(aimTag)
+      const shooterOrig = origIdxOf(fx.tag)
+      const foeNose = aimOrig === 0 ? NOSE_MAIN : NOSE_ESC
+      const srcNose = isMeShot ? NOSE_MAIN : shooterOrig === 0 ? NOSE_MAIN : NOSE_ESC
+      const dstNose = isMeShot ? foeNose : NOSE_MAIN
       const g = boltGeom(fx.side, src, dst, srcNose, dstNose)
       boltsRef.current.push({
         key: keyRef.current++,
@@ -543,6 +563,12 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
       if (sum === 0 && prev > 0 && !deadRef.current.has(tag)) {
         deadRef.current.add(tag) // 刚被击毁：登记残骸；爆炸延后到致死弹道着弹后再启动
         boomRef.current.set(tag, now + FLY_MS)
+        // V18B 补位：记录死亡锚点（本拍该单位仍在队列 → lay 坐标即其当前位置），
+        // 下一帧起撤出队列让剩余敌舰补位，残骸在本锚点爆炸并淡出
+        const wIdx = foeAliveTags.indexOf(tag)
+        if (wIdx >= 0) {
+          wreckRef.current.set(tag, { x: lay.foe[wIdx]?.x ?? 0, y: lay.foe[wIdx]?.y ?? 0, boomAt: now + FLY_MS })
+        }
       }
     }
   }
@@ -642,33 +668,56 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
     <i key={f.key} className="app-bts-muzzle" style={{ left: f.x, top: f.y, color: f.color }} />
   ))
 
-  /* 敌方单位行（舰名 = 敌方舰种名显示在舰上方；含爆炸演出与残骸淡出） */
-  const foeTagsList = foeTags
+  /* 敌方单位行（V18B 补位：只排存活单位；死单位撤出 → 剩余敌舰前移收拢。
+     外观按原始编队位（主体大舰红/僚机小舰）恒定，不随补位变化） */
   const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
   const foeClassBase = foeClassName(foeAnomaly?.tactic, foeAnomaly?.defProfile)
-  const foeUnitEls = foeTagsList.map((tag, i) => {
-    const boomAt = boomRef.current.get(tag)
-    const dead = deadRef.current.has(tag)
-    const boomLive = boomAt !== undefined && now >= boomAt && now - boomAt < BOOM_LIFE
+  const foeUnitEls = foeAliveTags.map((tag) => {
+    const orig = origIdxOf(tag)
     return (
-      <div key={tag} className={`app-bts-unit${dead ? ' is-dead' : ''}`}>
+      <div key={tag} className="app-bts-unit">
         <ShipSprite
-          role={i === 0 ? 'armed' : 'hauler'}
+          role={orig === 0 ? 'armed' : 'hauler'}
           flip={foeFlip}
-          accent={i === 0 ? '#ff8373' : '#c25a4a'}
-          size={i === 0 ? LAY.MAIN : LAY.ESC}
+          accent={orig === 0 ? '#ff8373' : '#c25a4a'}
+          size={orig === 0 ? LAY.MAIN : LAY.ESC}
         />
-        <span className="app-bts-name" style={{ color: i === 0 ? '#ffb3a6' : '#d8a08f' }}>
-          {i === 0 ? foeClassBase : `${foeClassBase}·僚机`}
+        <span className="app-bts-name" style={{ color: orig === 0 ? '#ffb3a6' : '#d8a08f' }}>
+          {orig === 0 ? foeClassBase : `${foeClassBase}·僚机`}
         </span>
-        {boomLive ? (
+      </div>
+    )
+  })
+  /* V18B 残骸层：被击毁单位在死亡锚点（lane 坐标）播放爆炸（boom 期），
+     之后残骸本体原位淡出（不占队列——补位由 foeAliveTags 完成） */
+  const WRECK_FADE_MS = 520
+  const wreckEls = [...wreckRef.current.entries()].map(([tag, w]) => {
+    const orig = origIdxOf(tag)
+    const size = orig === 0 ? LAY.MAIN : LAY.ESC
+    const box = { left: w.x - size / 2, top: w.y - size / 2, width: size, height: size }
+    const boomLive = now >= w.boomAt && now - w.boomAt < BOOM_LIFE
+    if (boomLive) {
+      return (
+        <span key={tag} className="app-bts-wreck" style={box}>
           <span className="app-bts-boom">
             <i className="b-core" />
             <i className="b-ring" />
             <i className="b-ring r2" />
           </span>
-        ) : null}
-      </div>
+        </span>
+      )
+    }
+    const fadeT = (now - (w.boomAt + BOOM_LIFE)) / WRECK_FADE_MS
+    if (fadeT >= 1) return null // 淡出完成：不再渲染（锚点留存仅作历史弹道落点）
+    return (
+      <span key={tag} className="app-bts-wreck" style={{ ...box, opacity: Math.max(0, 1 - fadeT) }}>
+        <ShipSprite
+          role={orig === 0 ? 'armed' : 'hauler'}
+          flip={foeFlip}
+          accent={orig === 0 ? '#ff8373' : '#c25a4a'}
+          size={size}
+        />
+      </span>
     )
   })
 
@@ -775,20 +824,26 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
             </div>
           </div>
 
-          {/* 敌方舰列（含爆炸演出） */}
+          {/* 敌方舰列（V18B：血条只跟存活单位；残骸独立层见下） */}
           <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>
             <div className="app-bts-shipRow">{foeUnitEls}</div>
-            {foeMain ? (
+            {foeAliveTags[0] ? (
               <div className="app-bts-hpWrap">
-                <HpTri hp={foeMain} max={arcs.maxHp.foe[foeTags[0]!] ?? { s: foeMain.s, a: foeMain.a, h: foeMain.h }} />
+                <HpTri
+                  hp={combat.foeHp[foeAliveTags[0]]!}
+                  max={arcs.maxHp.foe[foeAliveTags[0]] ?? { s: 0, a: 0, h: 0 }}
+                />
               </div>
             ) : null}
-            {foeTags.slice(1).map((tag) => (
+            {foeAliveTags.slice(1).map((tag) => (
               <div key={tag} className="app-bts-hpWrap">
                 <HpTri hp={combat.foeHp[tag]!} max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }} label={combat.foeHp[tag]!.name} />
               </div>
             ))}
           </div>
+
+          {/* V18B 残骸层（死亡锚点爆炸 + 原位淡出；在弹道层之下） */}
+          {wreckEls}
 
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}

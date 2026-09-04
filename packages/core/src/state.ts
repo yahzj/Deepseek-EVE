@@ -262,6 +262,11 @@ export interface BattleFx {
   side: 'me' | 'foe'
   /** 开火单位 tag：'player' / 'foe-0'（主力）/ 'foe-1..n'（僚机） */
   tag: string
+  /**
+   * V18B 目标 tag（2026-09-05 船长修复）：本次开火瞄准的目标单位（'player' 或敌方 tag）。
+   * 旧事件/测试构造可缺省（UI 回退旧行为）；随机目标下每发可指向不同单位。
+   */
+  to?: string
   /** 本次开火弹种（炮台 = 当时实际消耗的弹型） */
   type: 'kinetic' | 'explosive' | 'plasma'
   /** 是否命中目标 */
