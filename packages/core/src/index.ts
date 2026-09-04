@@ -304,8 +304,12 @@ export {
   startTransitHome,
   advanceTransit,
   transitStatus,
+  goStandbyAt,
+  advanceStandby,
+  cancelStandby,
+  standbyStatus,
 } from './location'
-export type { TransitView } from './location'
+export type { TransitView, StandbyView } from './location'
 export {
   siteProgress,
   isSiteBuilt,
@@ -348,6 +352,7 @@ export {
   buyBasicAiCore,
   assignAiMining,
   assignAiExpedition,
+  assignAiStandby,
   cancelAiTask,
   advanceAi,
   advanceAiExpedition,

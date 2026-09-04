@@ -72,9 +72,11 @@ export function ensureTransitExplored(state: GameState, ctx: SimContext): void {
     if (task.kind === 'mining') {
       const belt = ctx.belts.get(task.beltId)
       if (belt?.galaxyId) markExplored(state, belt.galaxyId)
-    } else {
+    } else if (task.kind === 'expedition') {
       const anomaly = ctx.anomalies.get(task.anomalyId)
       if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
+    } else if (task.kind === 'standby') {
+      markExplored(state, task.galaxyId)
     }
   }
 }
@@ -94,6 +96,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (state.scanning.active) return { ok: false, error: '扫描探索作业进行中。' }
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站。' }
+  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排扫描。' }
   if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法出航扫描。' }
 

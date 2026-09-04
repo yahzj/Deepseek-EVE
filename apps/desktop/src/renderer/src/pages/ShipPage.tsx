@@ -546,10 +546,16 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               const belt = engine.ctx.belts.get(task.beltId)
               const phaseLabel = task.phase === 'returning' ? '返航中' : task.phase === 'outbound' ? '出航中' : '采掘中'
               desc = `采矿 ${belt?.name ?? task.beltId} · ${phaseLabel} · 本趟 ${task.tripUnits} 单位`
-            } else {
+            } else if (task.kind === 'expedition') {
               const a = engine.ctx.anomalies.get(task.anomalyId)
               const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
               desc = `远征 ${a?.name ?? task.anomalyId} · 剩余约 ${Math.floor(remain / 60_000)} 分钟`
+            } else {
+              const g = engine.ctx.galaxies.get(task.galaxyId)
+              desc =
+                task.phase === 'out'
+                  ? `前往 ${g?.name ?? task.galaxyId} 待命（去程中）`
+                  : `驻留待命：${g?.name ?? task.galaxyId}`
             }
             return (
               <li key={sid} className="app-inv-row">

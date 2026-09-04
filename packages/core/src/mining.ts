@@ -170,6 +170,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const belt = ctx.belts.get(beltId)!
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
+  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null

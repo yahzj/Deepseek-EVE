@@ -85,7 +85,8 @@ export function isIdleField(state: GameState): boolean {
     !state.transit.active &&
     !state.expedition.active &&
     !state.mining.active &&
-    !state.scanning.active
+    !state.scanning.active &&
+    !state.standby.active
   )
 }
 
@@ -95,6 +96,7 @@ export function isIdleField(state: GameState): boolean {
  */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
   if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。' }
+  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航行程进行中。' }
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
@@ -176,4 +178,106 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
     remainingMs,
     percent,
   }
+}
+
+/* ═══════════ B1.5 主动"前往星系待命"（主控） ═══════════ */
+
+/**
+ * 玩家指令：前往指定星系待命（飞抵后野外停留 awayGalaxy=目标——采矿/悬赏/返航皆可从停留点继续；
+ * 低安星系的停留船会进入 B1 遭遇暴露）。
+ * 前置：舰船空闲（不在采矿/远征/扫描/返航/途中待命）；目标星系必须已探索且不在当前停靠点。
+ */
+export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
+  const target = ctx.galaxies.get(galaxyId)
+  if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
+  const s = state.standby
+  if (s.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排。' }
+  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
+  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。' }
+  if (state.scanning.active) return { ok: false, error: '扫描作业中：请先终止扫描。' }
+  if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。` }
+  const from = originGalaxyOf(state, ctx)
+  if (from === galaxyId && state.awayGalaxy === null && !state.standby.active) {
+    return { ok: false, error: `舰船已停靠「${target.name}」，无需前往。` }
+  }
+  if (state.awayGalaxy === galaxyId && isIdleField(state)) {
+    return { ok: false, error: `舰船已在「${target.name}」待命。` }
+  }
+  const mins = shortestTravelMinutes(ctx, from, galaxyId)
+  if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。` }
+  const legMs = state.debugQuick ? 1000 : Math.max(1, travelLegMs(state, ctx, mins))
+  s.active = true
+  s.galaxyId = galaxyId
+  s.finishAtGameMs = state.gameMs + legMs
+  s.legMs = legMs
+  const fromName = ctx.galaxies.get(from)?.name ?? from
+  addLog(
+    state,
+    'info',
+    `⛳ 前往「${target.name}」待命：从「${fromName}」启程，约 ${Math.round(legMs / 1000)} 秒后抵达并留守（低安星系可能遭遇巡逻/伏击，可随时取消或从该处继续采矿/出击）。`,
+  )
+  return { ok: true }
+}
+
+/** 引擎内部：推进待命去程；到点 → 野外停留目标星系（awayGalaxy，目标出发时已验证已探索） */
+export function advanceStandby(state: GameState, ctx: SimContext): void {
+  const s = state.standby
+  if (!s.active) return
+  if (state.gameMs < s.finishAtGameMs) return
+  const galaxyId = s.galaxyId
+  const name = galaxyId ? ctx.galaxies.get(galaxyId)?.name ?? galaxyId : ''
+  s.active = false
+  s.galaxyId = null
+  s.finishAtGameMs = 0
+  s.legMs = 0
+  state.awayGalaxy = galaxyId // 目标星系野外停留（低安遭遇暴露即生效）
+  addLog(
+    state,
+    'info',
+    galaxyId === null
+      ? '待命行程结束。'
+      : `⛳ 已抵达「${name}」并进入待命：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
+  )
+}
+
+/** 玩家指令：取消待命去程（召回口径：立即回到母港/空间站，无耗时） */
+export function cancelStandby(state: GameState, ctx: SimContext): CommandResult {
+  const s = state.standby
+  if (!s.active || s.galaxyId === null) return { ok: false, error: '当前没有进行中的待命行程。' }
+  const name = ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId
+  s.active = false
+  s.galaxyId = null
+  s.finishAtGameMs = 0
+  s.legMs = 0
+  state.awayGalaxy = null // 召回口径：回母港（与远征召回一致）
+  addLog(state, 'warn', `待命行程已取消：舰船返回母港（未抵达「${name}」）。`)
+  return { ok: true }
+}
+
+/** 待命去程只读视图（活动栏用） */
+export interface StandbyView {
+  active: boolean
+  galaxyId: string | null
+  targetName: string
+  remainingMs: number
+  percent: number
+}
+
+export function standbyStatus(state: GameState, ctx: SimContext): StandbyView {
+  const s = state.standby
+  const remainingMs = s.active ? Math.max(0, s.finishAtGameMs - state.gameMs) : 0
+  const percent = s.legMs > 0 ? Math.min(100, Math.max(0, ((s.legMs - remainingMs) / s.legMs) * 100)) : 0
+  return {
+    active: s.active,
+    galaxyId: s.galaxyId,
+    targetName: s.galaxyId ? ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId : '',
+    remainingMs,
+    percent,
+  }
+}
+
+/** 星系是否已探明（standby 前置用；避免引 explore 造成环） */
+function isExploredOf(state: GameState, galaxyId: string): boolean {
+  return state.exploredGalaxies.includes(galaxyId)
 }

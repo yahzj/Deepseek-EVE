@@ -152,6 +152,17 @@ export interface ShipTransitState {
   legMs: number
 }
 
+/** B1.5 主动"前往星系待命"（主控）：飞去目标星系 → 野外停留（awayGalaxy）；去程可召回 */
+export interface StandbyState {
+  active: boolean
+  /** 目标星系 id */
+  galaxyId: string | null
+  /** 到达时刻（游戏内毫秒，出发锁定） */
+  finishAtGameMs: number
+  /** 去程总毫秒（显示用） */
+  legMs: number
+}
+
 /** 制造作业状态（限时批次：时间到自动完成出装备/船） */
 export interface ManufacturingState {
   active: boolean
@@ -343,8 +354,21 @@ export interface AiExpeditionTask {
   battle: BattleState | null
 }
 
-/** AI 副船任务（二选一） */
-export type AiTask = AiMiningTask | AiExpeditionTask
+/** AI 副船任务：前往指定星系驻留待命（占名额；out 去程 → stand 驻留；可取消召回） */
+export interface AiStandbyTask {
+  kind: 'standby'
+  /** 目标星系 id（必须已探索） */
+  galaxyId: string
+  /** 去程到达时刻（真实毫秒；已按核心效率拉长） */
+  finishAtGameMs: number
+  /** 等效单程毫秒（已按效率折算，锁定时展示用） */
+  outMs: number
+  /** 当前阶段：去程 / 驻留 */
+  phase: 'out' | 'stand'
+}
+
+/** AI 副船任务（采矿 / 远征 / 待命） */
+export type AiTask = AiMiningTask | AiExpeditionTask | AiStandbyTask
 
 /** 一艘副船的 AI 指派（key = 副船 id，主控船不可被指派） */
 export interface AiAssignment {
@@ -580,6 +604,8 @@ export type GameStateV17 = Omit<GameStateV16, 'version'> & {
   lowSecNotified: boolean
   /** B1：星系 id → 该星系遭遇冷却结束时刻（区域事件不叠加） */
   encounterZoneCooldown: Record<string, number>
+  /** B1.5：主控主动"前往星系待命"（去程；到点转 awayGalaxy 野外停留） */
+  standby: StandbyState
 }
 
 /** 对外统一称呼：当前版本状态 */
@@ -718,6 +744,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     },
     lowSecNotified: false,
     encounterZoneCooldown: {},
+    standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
     logs: [],
   }
   addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')

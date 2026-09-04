@@ -72,15 +72,19 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
   } else if (state.awayGalaxy !== null) {
     push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })
   }
-  // 副船（采矿 / 远征途中；交火中不算暴露）
+  // 副船（采矿 / 远征途中 / 驻留待命；交火中不算暴露；待命去程未抵达不算）
   for (const [sid, a] of Object.entries(state.aiAssignments)) {
     const t = a.task
     if (t.kind === 'mining') {
       const g = ctx.belts.get(t.beltId)?.galaxyId
       if (g) push({ galaxyId: g, shipId: sid, kind: '采矿' })
-    } else if (t.kind === 'expedition' && t.phase !== 'battle') {
-      const g = ctx.anomalies.get(t.anomalyId)?.galaxyId
-      if (g) push({ galaxyId: g, shipId: sid, kind: '远征途中' })
+    } else if (t.kind === 'expedition') {
+      if (t.phase !== 'battle') {
+        const g = ctx.anomalies.get(t.anomalyId)?.galaxyId
+        if (g) push({ galaxyId: g, shipId: sid, kind: '远征途中' })
+      }
+    } else if (t.kind === 'standby' && t.phase === 'stand') {
+      push({ galaxyId: t.galaxyId, shipId: sid, kind: '停留' }) // 已驻留的副船 = 区域停留船
     }
   }
   return [...out.values()]

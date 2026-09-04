@@ -232,7 +232,50 @@ export function assignAiExpedition(
   return { ok: true }
 }
 
-/** 引擎内部：推进所有 AI 副船任务 */
+/** 玩家指令：指派 AI 副船前往指定星系驻留待命（占名额，可取消召回；低安星系进入遭遇暴露） */
+export function assignAiStandby(
+  state: GameState,
+  shipId: string,
+  coreType: AiCoreType,
+  galaxyId: string,
+  ctx: SimContext,
+): CommandResult {
+  const pre = checkAssignable(state, shipId, coreType, ctx)
+  if (!pre.ok) return pre
+  const galaxy = ctx.galaxies.get(galaxyId)
+  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
+  if (!state.exploredGalaxies.includes(galaxyId)) {
+    return { ok: false, error: `「${galaxy.name}」尚未探明——先对其执行扫描探索。` }
+  }
+  const eff = aiEfficiency(state, ctx, coreType)
+  const outMinutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
+  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。' }
+  // 单程按副船自身跃迁/技能换算（出发锁定），再按 AI 效率拉长（与远征任务同口径）
+  const rawOutMs = travelLegMs(state, ctx, outMinutes, shipId)
+  const outMs = Math.max(1, Math.round(rawOutMs / eff))
+  spendAiCore(state, coreType)
+  const assignment: AiAssignment = {
+    coreType,
+    startedAtGameMs: state.gameMs,
+    task: {
+      kind: 'standby',
+      galaxyId,
+      finishAtGameMs: state.gameMs + outMs,
+      outMs,
+      phase: 'out',
+    },
+  }
+  state.aiAssignments[shipId] = assignment
+  const shipName = shipDisplayName(state, ctx, shipId)
+  addLog(
+    state,
+    'info',
+    `[AI] ${shipName} 出发前往「${galaxy.name}」驻留待命（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%）——到达后留守该星系，可随时取消召回。`,
+  )
+  return { ok: true }
+}
+
+/** 玩家指令：取消 AI 任务（核心归还）；待命/远征/采矿通用 */
 export function cancelAiTask(state: GameState, shipId: string, ctx: SimContext): boolean {
   const assignment = state.aiAssignments[shipId]
   if (!assignment) return false
@@ -260,10 +303,28 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext): v
     }
     if (assignment.task.kind === 'mining') {
       advanceAiMining(state, shipId, assignment, deltaMs, ctx)
-    } else {
+    } else if (assignment.task.kind === 'expedition') {
       advanceAiExpedition(state, shipId, assignment, ctx)
+    } else {
+      advanceAiStandby(state, shipId, assignment, ctx)
     }
   }
+}
+
+/** AI 待命任务推进：去程计时到点 → 驻留（stand；驻留期间无事可做，占名额守在该星系） */
+function advanceAiStandby(state: GameState, shipId: string, assignment: AiAssignment, ctx: SimContext): void {
+  const task = assignment.task as AiStandbyTaskState
+  if (task.phase !== 'out') return // 驻留中：等待取消/后续指令
+  if (state.gameMs < task.finishAtGameMs) return
+  task.phase = 'stand'
+  const galaxy = ctx.galaxies.get(task.galaxyId)
+  markExplored(state, task.galaxyId) // 副船实际抵达 → 点亮（同 AI 采矿到达语义）
+  const shipName = shipDisplayName(state, ctx, shipId)
+  addLog(
+    state,
+    'info',
+    `[AI·${shipName}] 已抵达「${galaxy?.name ?? task.galaxyId}」驻留待命——取消任务可召回；低安星系留意巡逻与伏击。`,
+  )
 }
 
 /** AI 采矿任务推进（真实毫秒口径；循环/周转周期按效率拉长） */
@@ -544,6 +605,7 @@ function aiAbandonChance(state: GameState, ctx: SimContext, shipId: string, thre
 }
 
 type AiExpeditionTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'expedition' }>
+type AiStandbyTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'standby' }>
 
 /** 远征胜利后的 AI 核心掉落（按威胁取最高档，逐条掷骰），返回掉落文本（可为空串） */
 function rollAiCoreDrop(state: GameState, threat: number, ctx: SimContext): string {

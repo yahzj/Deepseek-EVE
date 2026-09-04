@@ -12,11 +12,11 @@ import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
 import { manufacturingStatus } from './manufacturing'
 import { expeditionStatus } from './expedition'
-import { transitStatus } from './location'
+import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
-export type ActivityKind = 'train' | 'mining' | 'scan' | 'manufacture' | 'expedition' | 'ai' | 'return' | 'transit'
+export type ActivityKind = 'train' | 'mining' | 'scan' | 'manufacture' | 'expedition' | 'ai' | 'return' | 'transit' | 'standby'
 
 /** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
@@ -27,6 +27,7 @@ export type ActivityStopKind =
   | 'recall-expedition'
   | 'retreat-battle'
   | 'cancel-ai'
+  | 'recall-standby'
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
@@ -150,7 +151,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         stop: 'cancel-ai',
         stopParam: shipId,
       })
-    } else {
+    } else if (task.kind === 'expedition') {
       const aName = ctx.anomalies.get(task.anomalyId)?.name ?? task.anomalyId
       const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
       const phase = task.phase === 'out' ? '去程' : task.phase === 'battle' ? '交火' : '返航'
@@ -161,6 +162,21 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         sub: `${aName}（${phase}）`,
         percent: null,
         remainingMs: task.phase === 'battle' ? null : remain,
+        stopable: true,
+        stop: 'cancel-ai',
+        stopParam: shipId,
+      })
+    } else {
+      // B1.5 AI 驻留待命（out 去程给倒计时；stand 驻留中）
+      const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
+      const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
+      out.push({
+        id: `ai-${shipId}`,
+        kind: 'ai',
+        label: `${shipName} · 驻留待命`,
+        sub: task.phase === 'out' ? `前往 ${gName}（去程 · 剩约 ${Math.max(1, Math.round(remain / 1000))} 秒）` : `留守「${gName}」`,
+        percent: null,
+        remainingMs: task.phase === 'out' ? remain : null,
         stopable: true,
         stop: 'cancel-ai',
         stopParam: shipId,
@@ -203,6 +219,21 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
+  // ── B1.5 主控"前往星系待命"去程（可取消召回） ──
+  const sbv = standbyStatus(state, ctx)
+  if (sbv.active) {
+    out.push({
+      id: 'standby',
+      kind: 'standby',
+      label: `前往 ${sbv.targetName} 待命`,
+      sub: '去程中',
+      percent: sbv.percent,
+      remainingMs: sbv.remainingMs,
+      stopable: true,
+      stop: 'recall-standby',
+    })
+  }
+
   return out
 }
 
@@ -218,6 +249,8 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
       if (state.mining.phase === 'mining') return '采矿中'
       return state.mining.phase === 'outbound' ? '采矿·出航中' : '采矿·返航中'
     }
+    const sb = standbyStatus(state, ctx)
+    if (sb.active) return `待命·前往${sb.targetName}中`
     const sv = scanStatus(state)
     if (sv.active) return '扫描探索中'
     const ev = expeditionStatus(state, ctx)
@@ -237,6 +270,7 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
     if (task.phase === 'mining') return 'AI 采矿中'
     return task.phase === 'outbound' ? 'AI 采矿·出航中' : 'AI 采矿·返航中'
   }
+  if (task.kind === 'standby') return task.phase === 'out' ? 'AI 待命·去程中' : 'AI 待命中'
   if (task.phase === 'out') return 'AI 远征·去程中'
   if (task.phase === 'battle') return 'AI 远征·交火中'
   return 'AI 远征·返航中'

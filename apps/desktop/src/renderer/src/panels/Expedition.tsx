@@ -4,19 +4,23 @@
  */
 import { useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { AnomalyDef, GalaxyDef } from '@whale/core'
+import type { AnomalyDef, GalaxyDef, AiCoreType } from '@whale/core'
 import {
+  AI_CORE_ORDER,
   DSI_FACTION_ID,
   SCAN_WINDOW_MS,
+  aiCoreName,
   battleWinPreview,
   bountyCooldownRemainingMs,
   calcExpeditionDurationMs,
   calcPower,
+  countAiCore,
   expeditionStatus,
   fleetDefOf,
   foeMainDamageType,
   formatDurationMs,
   frontierGalaxyIds,
+  idleAiShipIds,
   isExplored,
   originGalaxyOf,
   scanStatus,
@@ -798,6 +802,8 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                 ) : null}
               </div>
               <div className="app-map-detail-desc">{selected.description}</div>
+              {/* B1.5 前往星系动作区：待命（主控/副船）/ 矿带 / 悬赏，含简介 */}
+              <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} />
               <div className="app-dim">
                 {(() => {
                   const nom = shortestTravelMinutes(engine.ctx, 'galaxy-hub', selected.id)
@@ -878,6 +884,234 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
         )}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ─────────── B1.5 星图「前往星系」动作区（待命/矿带/悬赏 + 简介） ─────────── */
+
+function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy: GalaxyDef; onToast: ToastFn }) {
+  const state = engine.state
+  const ctx = engine.ctx
+  // —— 主控待命 ——
+  const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
+  const alreadyHere =
+    state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active && !state.scanning.active
+  const pilotBusy =
+    state.mining.active ||
+    state.expedition.active ||
+    state.scanning.active ||
+    state.transit.active ||
+    (state.standby.active && !inFlight)
+  const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
+  const standbyTitle = inFlight
+    ? '正在前往该星系待命途中'
+    : alreadyHere
+      ? `舰船已在「${galaxy.name}」待命`
+      : pilotBusy
+        ? '当前驾驶船有进行中的作业（采矿/远征/扫描/返航/去程）——结束后才能出发待命'
+        : undefined
+  function handleStandby(): void {
+    const r = engine.goStandbyAt(galaxy.id)
+    if (!r.ok) onToast(r.error ?? '无法前往', true)
+    else onToast(`已出发前往「${galaxy.name}」待命（可随时在活动栏取消）。`)
+  }
+
+  // —— 副船待命 ——
+  const idleShips = idleAiShipIds(state)
+  const [aiShip, setAiShip] = useState('')
+  const [aiCore, setAiCore] = useState<AiCoreType>('basic')
+  const aiCoreAvailable = countAiCore(state, aiCore) > 0
+  function handleAiStandby(): void {
+    if (!aiShip) {
+      onToast('先选择一艘空闲副船。', true)
+      return
+    }
+    const r = engine.assignAiStandbyAt(aiShip, aiCore, galaxy.id)
+    if (!r.ok) onToast(r.error ?? '无法派往待命', true)
+    else onToast('副船已出发前往该星系驻留待命（可取消召回）。')
+  }
+
+  // —— 该星系矿带 ——
+  const belts = engine.belts.filter(
+    (b) => b.galaxyId === galaxy.id || (galaxy.id === 'galaxy-hub' && !b.galaxyId),
+  )
+  const expOn = state.expedition.active
+  const [mineAskBelt, setMineAskBelt] = useState<string | null>(null)
+  function handleMineStart(beltId: string): void {
+    if (state.mining.active) {
+      onToast('采矿作业进行中：先停止当前开采再换矿带。', true)
+      return
+    }
+    if (expOn && !mineAskBelt) {
+      setMineAskBelt(beltId)
+      onToast(
+        '⚡ 远征中开采 = 转场：本次远征将取消（无战果）' +
+          (state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : '') +
+          '——再点一次确认。',
+        true,
+      )
+      return
+    }
+    setMineAskBelt(null)
+    const r = expOn ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
+    if (!r.ok) onToast(r.error ?? '无法开采', true)
+  }
+
+  // —— 该星系悬赏（只列当前可接；已首胜标黄不隐藏） ——
+  const pilotName = shipDisplayName(state, ctx, state.shipId)
+  const pilotRoleLabel = (() => {
+    const role = fleetDefOf(state, ctx, state.shipId)?.role
+    return role ? shipRoleLabel(role) : ''
+  })()
+  const miningActive = state.mining.active
+  const [goAskAno, setGoAskAno] = useState<string | null>(null)
+  function handleAnoGo(ano: AnomalyDef): void {
+    if (miningActive && goAskAno !== ano.id) {
+      setGoAskAno(ano.id)
+      onToast(
+        `⚡ 采矿中出击 = 转战：当前采矿将结束（已采 ${state.mining.tripUnits} 单位随船），从矿带星系出发。` +
+          `当前驾驶「${pilotName}」${pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}——再点一次确认。`,
+        true,
+      )
+      return
+    }
+    setGoAskAno(null)
+    const r = miningActive ? engine.startExpeditionFromMiningAt(ano.id) : engine.startExpeditionAt(ano.id)
+    if (!r.ok) onToast(r.error ?? '无法出发', true)
+  }
+
+  return (
+    <div className="app-galaxy-actions">
+      <div className="app-bay-title">前往星系 · 行动</div>
+      {/* ① 前往待命 */}
+      <div className="app-ga-row">
+        <span className="app-ga-main">
+          ⛳ 前往待命
+          <span className="app-dim app-ga-desc">飞抵后留守该星系（低安可触发巡逻/伏击，可采矿/出击/返航）</span>
+        </span>
+        <button
+          className="app-btn is-small is-primary"
+          disabled={standbyDisabled}
+          title={standbyDisabled ? standbyTitle : `飞往「${galaxy.name}」并待命（按当前船速度约 1 分钟/航程）`}
+          onClick={handleStandby}
+        >
+          {inFlight ? '前往中…' : alreadyHere || state.awayGalaxy === galaxy.id ? '已在此待命' : '前往待命'}
+        </button>
+      </div>
+      {/* ② 副船待命 */}
+      <div className="app-ga-row app-ga-ai">
+        <select
+          className="app-select"
+          value={aiShip}
+          onChange={(e) => setAiShip(e.target.value)}
+          title="空闲副船"
+          disabled={idleShips.length === 0}
+        >
+          <option value="">{idleShips.length === 0 ? '无空闲副船' : '— 选副船待命 —'}</option>
+          {idleShips.map((id) => (
+            <option key={id} value={id}>
+              {shipDisplayName(state, ctx, id)}
+            </option>
+          ))}
+        </select>
+        <select className="app-select" value={aiCore} onChange={(e) => setAiCore(e.target.value as AiCoreType)} title="AI 核心">
+          {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+            <option key={t} value={t}>
+              {aiCoreName(t)}
+            </option>
+          ))}
+        </select>
+        <button className="app-btn is-small" disabled={!aiShip || !aiCoreAvailable} onClick={handleAiStandby}>
+          派去待命
+        </button>
+      </div>
+      {/* ③ 矿带 */}
+      <div className="app-bay-title app-ga-sub">矿带（{belts.length}）</div>
+      {belts.length === 0 ? (
+        <div className="app-dim app-ga-empty">该星系没有可采矿区。</div>
+      ) : (
+        belts.map((b) => {
+          const ore = ctx.items.get(b.oreId)
+          const isMiningThis = state.mining.active && state.mining.beltId === b.id
+          return (
+            <div key={b.id} className="app-ga-row">
+              <span className="app-ga-main">
+                {b.name}
+                <span className="app-dim app-ga-desc">{ore?.name ?? b.oreId}（空船出航更快，满载自动返航卸货）</span>
+              </span>
+              <button
+                className={`app-btn is-small${isMiningThis || mineAskBelt === b.id ? ' is-warn' : ' is-primary'}`}
+                disabled={isMiningThis || state.mining.active}
+                title={
+                  state.mining.active
+                    ? isMiningThis
+                      ? '采掘中（自动循环中）'
+                      : '采矿作业进行中：先停止当前开采再换矿带'
+                    : expOn
+                      ? mineAskBelt === b.id
+                        ? '再点一次确认：开采将取消本次远征（无战果）'
+                        : '远征中：点击转开采（将取消本次远征）'
+                      : '开始开采'
+                }
+                onClick={() => handleMineStart(b.id)}
+              >
+                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? '⚡ 再点确认' : expOn ? '⚡ 转开采' : '⛏ 开采'}
+              </button>
+            </div>
+          )
+        })
+      )}
+      {/* ④ 悬赏 */}
+      <div className="app-bay-title app-ga-sub">悬赏（{engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length}）</div>
+      {(() => {
+        const list = engine.anomalies
+          .filter((a) => a.galaxyId === galaxy.id)
+          .filter((a) => {
+            if (standingOf(state, DSI_FACTION_ID) < a.standingReq) return false
+            if (bountyCooldownRemainingMs(state, a.id) > 0) return false
+            if (state.expedition.active && state.expedition.anomalyId === a.id) return false
+            return true
+          })
+        if (list.length === 0) {
+          return <div className="app-dim app-ga-empty">该星系暂无可接悬赏（声望/冷却/进行中过滤）。</div>
+        }
+        const scanOn = state.scanning.active
+        const transitOn = state.transit.active
+        const otherExpOn = state.expedition.active && state.expedition.anomalyId !== null
+        const goBlocked = scanOn || transitOn || (otherExpOn && !miningActive)
+        return list.map((a) => (
+          <div key={a.id} className="app-ga-row">
+            <span className="app-ga-main">
+              ⚔ {a.name}
+              <span className="app-dim app-ga-desc">
+                威胁 {a.threat} · 奖金 {a.rewardIsk.toLocaleString('zh-CN')} ISK
+                {state.completedBounties.includes(a.id) ? ' · 已首胜' : ''}
+              </span>
+            </span>
+            <button
+              className={`app-btn is-small${goAskAno === a.id ? ' is-warn' : ' is-primary'}`}
+              disabled={goBlocked}
+              title={
+                scanOn
+                  ? '扫描探索进行中'
+                  : transitOn
+                    ? '返航空间站途中'
+                    : otherExpOn && !miningActive
+                      ? '远征进行中——先等当前远征结束'
+                      : miningActive
+                        ? goAskAno === a.id
+                          ? '再点一次确认转战'
+                          : '采矿中可转战'
+                        : '出发远征'
+              }
+              onClick={() => handleAnoGo(a)}
+            >
+              {goAskAno === a.id ? '⚡ 再点确认' : miningActive ? '转战出发' : '出击'}
+            </button>
+          </div>
+        ))
+      })()}
     </div>
   )
 }

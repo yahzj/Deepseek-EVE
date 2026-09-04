@@ -95,8 +95,27 @@ function injectB1(state: GameState): string[] {
   return notes
 }
 
+/** standby（B1.5 星图前往星系待命）：门槛同 b1 + 预置一艘副船已在低安驻留待命（看状态/取消/遭遇） */
+function injectStandby(state: GameState): string[] {
+  const notes = injectB1(state)
+  // 预置：找一艘空闲副船（非驾驶且无 AI 任务），已驻留低安（gravemaw 星系）验证状态/取消/区域机制
+  const idleShip = Object.keys(state.fleet).find((id) => id !== state.shipId && !state.aiAssignments[id])
+  const coreType = 'basic'
+  if (idleShip && (state.aiCores[coreType] ?? 0) > 0) {
+    state.aiCores[coreType]! -= 1
+    state.aiAssignments[idleShip] = {
+      coreType,
+      startedAtGameMs: state.gameMs,
+      task: { kind: 'standby', galaxyId: 'galaxy-maw', finishAtGameMs: state.gameMs, outMs: 1, phase: 'stand' },
+    }
+    notes.push(`预置副船 ${idleShip} 已驻留待命于低安「深渊之口」(galaxy-maw)——可直接看活动栏状态/取消/区域遭遇`)
+  }
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
+  standby: injectStandby,
 }
 
 function main(): void {

@@ -2721,3 +2721,38 @@ body {
   color: #ffb9b0;
   font-size: 12px;
 }
+/* B1.5 星图「前往星系」动作区 */
+.app-galaxy-actions {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--wui-border);
+}
+.app-ga-sub {
+  margin-top: 8px;
+}
+.app-ga-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 5px 0;
+}
+.app-ga-ai {
+  gap: 6px;
+  justify-content: flex-start;
+}
+.app-ga-main {
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.app-ga-desc {
+  font-size: 11px;
+  line-height: 1.4;
+}
+.app-ga-empty {
+  font-size: 11px;
+  margin: 2px 0 4px;
+}

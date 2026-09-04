@@ -16,6 +16,7 @@ import {
   fightEncounter,
   fleeEncounter,
   assignAiExpedition,
+  assignAiStandby,
   assignAiMining,
   buyAtMarket,
   buyBasicAiCore,
@@ -23,11 +24,13 @@ import {
   cancelAiTask,
   cancelManufacturing,
   cancelOrder,
+  cancelStandby,
   changeShip,
   clearSkillQueue,
   createInitialState,
   enqueueSkill,
   fitModule,
+  goStandbyAt,
   goodLockedReason,
   learnBlueprint,
   levelOf,
@@ -234,7 +237,9 @@ export class GameEngine {
   readonly shipBlueprints = SHIP_BLUEPRINTS
   readonly galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
-  readonly anomalies = ANOMALIES
+  readonly anomalies = ANOMALIES.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录
+  /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
+  readonly allAnomalies = ANOMALIES
   /** 通讯剧本目录（T9） */
   readonly dialogues = DIALOGUES
 
@@ -769,6 +774,36 @@ export class GameEngine {
   }
 
 
+
+  /** B1.5：前往指定星系待命（主控；飞抵后野外停留） */
+  goStandbyAt(galaxyId: string): CommandResult {
+    const result = goStandbyAt(this.state, galaxyId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** B1.5：取消主控待命去程（召回回母港） */
+  recallStandbyNow(): CommandResult {
+    const result = cancelStandby(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** B1.5：指派副船前往星系驻留待命 */
+  assignAiStandbyAt(shipId: string, coreType: string, galaxyId: string): CommandResult {
+    const result = assignAiStandby(this.state, shipId, coreType as never, galaxyId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
   /** B1 低安遭遇：迎战（进入实时战斗，自动打完） */
   fightEncounterNow(): CommandResult {
     const result = fightEncounter(this.state, this.ctx)

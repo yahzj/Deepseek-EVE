@@ -822,6 +822,28 @@ function normalizeState(raw: unknown): GameState {
               : 0,
         },
       }
+    } else if (taskRaw.kind === 'standby') {
+      const galaxyId = typeof taskRaw.galaxyId === 'string' ? taskRaw.galaxyId : ''
+      if (!galaxyId) continue
+      const phaseRaw = taskRaw.phase
+      const phase: 'out' | 'stand' = phaseRaw === 'stand' ? 'stand' : 'out'
+      aiAssignments[shipKey] = {
+        coreType: a.coreType,
+        startedAtGameMs: startedAt,
+        task: {
+          kind: 'standby',
+          galaxyId,
+          finishAtGameMs:
+            typeof taskRaw.finishAtGameMs === 'number' && Number.isFinite(taskRaw.finishAtGameMs)
+              ? Math.max(0, Math.floor(taskRaw.finishAtGameMs))
+              : 0,
+          outMs:
+            typeof taskRaw.outMs === 'number' && Number.isFinite(taskRaw.outMs)
+              ? Math.max(0, Math.floor(taskRaw.outMs))
+              : 0,
+          phase,
+        },
+      }
     } else if (taskRaw.kind === 'expedition') {
       const anomalyId = typeof taskRaw.anomalyId === 'string' ? taskRaw.anomalyId : ''
       if (!anomalyId) continue
@@ -1205,6 +1227,15 @@ function normalizeState(raw: unknown): GameState {
         ? Math.max(0, Math.floor(transitRaw.legMs))
         : 0,
   }
+  // --- B1.5 主控待命行程（v17.1 兼容字段）：active 且目标合法才启用 ---
+  const stbRaw = asRaw(src.standby)
+  const stbGalaxy = typeof stbRaw.galaxyId === 'string' && stbRaw.galaxyId.length > 0 ? stbRaw.galaxyId : null
+  const standby = {
+    active: stbRaw.active === true && stbGalaxy !== null,
+    galaxyId: stbGalaxy,
+    finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
+    legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
+  }
   const bountyCooldowns: Record<string, number> = {}
   const bcRaw = asRaw(src.bountyCooldowns)
   for (const [key, value] of Object.entries(bcRaw)) {
@@ -1340,6 +1371,7 @@ function normalizeState(raw: unknown): GameState {
     completedBounties,
     awayGalaxy,
     transit,
+    standby,
     bountyCooldowns,
     autoLoopAnomalyId,
     encounter,

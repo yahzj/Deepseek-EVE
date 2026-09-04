@@ -18,7 +18,7 @@ import type { GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog } from './types'
 import { skillLevelTimeMs } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
-import { advanceTransit } from './location'
+import { advanceStandby, advanceTransit } from './location'
 import { advanceManufacturing } from './manufacturing'
 import { advanceExpedition } from './expedition'
 import { advanceAi } from './ai'
@@ -49,6 +49,7 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext):
   advanceShipReturns(state, d, ctx)
   // T8 显式返航行程（野外→空间站）
   advanceTransit(state, ctx)
+  advanceStandby(state, ctx)
   advanceManufacturing(state, ctx)
   advanceExpedition(state, ctx)
   advanceScanning(state, ctx)
