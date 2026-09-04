@@ -12,13 +12,17 @@
  *  - standby 星图待命：门槛同 b1 + 预置一艘副船已在低安驻留待命（看状态/取消/区域遭遇）；
  *  - refine 精炼炉运转周期：全品级矿石/气体/冰矿库存（货仓+仓库）+ 基础 AI 核心 ×1
  *    （测手动运转/核心驱动/停炉退料/忙碌互斥）。
- *  - v18  V18 槽位制：资金 +5000 万 + 高配复数装配示例（同 id 双炮 ×2 / 异弹型炮 /
- *         复数矿枪 / 无人机件）+ 三型弹药与无人机库存（测 FitPage 复数安装/同类唯一提示/战斗 ×N 齐射）。
+ *  - v18  V18 槽位制 + V18.1 支援件 + V18B 武器形态：资金 +5000 万 + 满槽高配演示船
+ *         （2×动能 MK2 + 激光 MK2 + 导弹 MK2 三形态混装）+ 三族/支援件备件 + 弹药与无人机补给
+ *         （测 FitPage 复数安装/叠加标签/合成预览、per-gun 弹型、装配页与战斗数值）。
+ *  - v18b 三族武器战斗验证门槛（船长 2026-09-05：三族武器 + 星图进度）：全部星系点亮 +
+ *         协会声望 10 + 三族武器 MK1-3 全套入库 + 三形态演示船设为驾驶（开箱即可验证战斗）。
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadSaveFile, serializeSaveFile, addShipToFleet } from '@whale/core'
 import type { GameState } from '@whale/core'
+import { GALAXIES } from '@whale/data'
 
 const SAVE_PATH = join(process.env.APPDATA ?? '', 'whale-idle', 'save.json')
 const OUT_DIR = join(process.cwd(), 'docs', 'test-saves')
@@ -191,11 +195,67 @@ function injectV18(state: GameState): string[] {
   return notes
 }
 
+/**
+ * v18b（三族武器战斗验证门槛）：船长 2026-09-05 要求"三族武器存档 + 一定星图进度"——
+ * 全部星系点亮 + 协会声望 10（悬赏全可接）；三族武器 MK1-3 全套入库（自由换装对比
+ * 动能炮/导弹架/激光炮手感）；三形态混装演示船直接设为驾驶（开箱即可出击验证战斗）。
+ */
+function injectV18b(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 1) 资金 + 声望 + 星图进度（全点亮：远征/悬赏/低安任意挑）
+  state.wallet.isk += 50_000_000
+  notes.push('钱包 +50,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 10)
+  notes.push('协会声望升至 10（可接全部悬赏）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（本次新增 ${lit} 个星系）——远征/悬赏/矿带任意出发`)
+  // 2) 三形态混装演示船（同 v18 配置）并直接设为驾驶
+  const uid = addShipToFleet(state, 'sh-tigershark')
+  const demo = state.fleet[uid]!
+  demo.customName = '三族战斗演示'
+  demo.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-laser-2', 'mod-missile-2'],
+    mid: ['mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', null],
+  }
+  demo.cargo['drone-scout'] = 20
+  demo.cargo['drone-assault'] = 10
+  state.shipId = uid // 直接开船
+  notes.push(`新增「${uid}（三族战斗演示）」虎鲨级并已设为驾驶：高槽 2×动能 MK2 + 激光 MK2 + 导弹 MK2（×2 齐射 + 必中光束 + 爆破轰炸）、中槽 索敌 + 陀螺、低槽 动能稳定器（留 1 位试射速/换稳定器）`)
+  notes.push('演示船货仓预置蜂鸟侦察机 ×20 + 赤鸢攻击机 ×10（仓库有无人机挂架可试无人机流对比）')
+  // 3) 三族武器 MK1~3 全套入库（自由换装对比各族各档）
+  for (const id of [
+    'mod-turret-kin-1', 'mod-turret-kin-2', 'mod-turret-kin-3',
+    'mod-missile-1', 'mod-missile-2', 'mod-missile-3',
+    'mod-laser-1', 'mod-laser-2', 'mod-laser-3',
+    'mod-stab-kin-2', 'mod-stab-exp-2', 'mod-stab-pla-2', 'mod-rof-2', 'mod-drone-rack-2',
+  ]) {
+    state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
+  }
+  notes.push('装备库补三族武器 MK1/2/3 各一件 + 三系稳定器 MK2 + 射速计算机 MK2 + 无人机挂架 MK2（单族对比与换装用）')
+  // 4) 弹药足量 + 耐久
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 2_000
+  }
+  for (const s of Object.values(state.fleet)) s.durability = 1
+  notes.push('仓库补动能弹/爆破导弹/能量弹药 ×2000 各；全舰耐久回满')
+  notes.push('测试路径：星图任选悬赏/目标出击 → 观察三族弹道与命中/威力差异（动能距离衰减+近盲、激光必中+威力减半衰减、导弹近盲防自爆+追踪无衰减）；换装单族 MK1/2/3 对比 DPS 手感；AI 副船装配同源生效')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
   refine: injectRefine,
   v18: injectV18,
+  v18b: injectV18b,
 }
 
 function main(): void {
