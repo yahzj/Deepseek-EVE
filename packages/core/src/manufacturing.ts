@@ -50,19 +50,21 @@ function blueprintName(ctx: SimContext, blueprintId: string): string {
   return ctx.blueprints.get(blueprintId)?.name ?? ctx.shipBlueprints.get(blueprintId)?.name ?? blueprintId
 }
 
-/** 按当前技能计算制造耗时（毫秒），开工时锁定 */
+/** 按当前技能计算制造耗时（毫秒），开工时锁定（工业理论 −5%/级 × 批量生产学 −4%/级 乘算） */
 export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: BuildSpec): number {
   const bal = ctx.balance.manufacturing
   const level = state.skills.trained[bal.timeSkillId] ?? 0
-  const ratio = Math.max(bal.minTimeRatio, 1 - bal.timePerLevel * level)
+  const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
+  const ratio = Math.max(bal.minTimeRatio, (1 - bal.timePerLevel * level) * (1 - 0.04 * batchLv))
   // 调试模式 debugQuick：制造固定 1 秒
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }
 
-/** 材料学（materials，2026-09-04 补全）：每级 −2% 制造材料消耗（满级 −10%，单种至少留 1 单位） */
+/** 材料学（materials）−2%/级 × 组件标准化（component-standardization）−1%/级：乘算折扣（下限 70%） */
 export function materialFactor(state: GameState): number {
-  const lv = Math.min(5, state.skills.trained['materials'] ?? 0)
-  return Math.max(0.9, 1 - 0.02 * lv)
+  const lv1 = Math.min(5, state.skills.trained['materials'] ?? 0)
+  const lv2 = Math.min(5, state.skills.trained['component-standardization'] ?? 0)
+  return Math.max(0.7, (1 - 0.02 * lv1) * (1 - 0.01 * lv2))
 }
 
 /** 材料学折扣后的实际需求数量（预览/扣料/取消退回同口径） */

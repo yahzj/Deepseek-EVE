@@ -40,6 +40,12 @@ export interface MiningParams {
   unitsPerCycle: number
 }
 
+/** 富矿勘探学（rich-vein-prospecting，P1）：富矿脉概率系数（每级 ×1.2，基础 1%） */
+export function richVeinFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['rich-vein-prospecting'] ?? 0)
+  return 1 + 0.2 * lv
+}
+
 /** 指定船在指定矿带的循环参数（缺省：当前驾驶船 + 当前采矿作业矿带） */
 export function getMiningParams(
   state: GameState,
@@ -66,16 +72,21 @@ export function getMiningParams(
   const minerDefs = familyModules(state, ctx, shipId, 'miner')
   let minerBonus = 0
   for (const def of minerDefs) minerBonus += def.bonus ?? 0
-  // 深空采集学（deep-space-harvesting，2026-09-04 补全）：气体/冰矿产量每级 +5%（普通矿石不受影响）
-  let deepMult = 1
+  // 产量乘链（全乘算；EVE 同源多技能先例）：采矿技术 + 星质地质学(全矿) + 深井爆破学(低品级矿)
+  // + 深空采集学(气/冰) → 最后 × 矿枪(复数 Σ)
+  let prodMult = 1 + bal.yieldPerLevel * yieldLevel
+  const astroLv = Math.min(5, state.skills.trained['astro-geology'] ?? 0)
+  if (astroLv > 0) prodMult *= 1 + 0.04 * astroLv
+  if ((ore.baseSellPriceIsk ?? 0) <= 55) {
+    // 低品级矿：富凡 12 / 灼烧 18 / 希莫非特 55
+    const blastLv = Math.min(5, state.skills.trained['deep-hole-blasting'] ?? 0)
+    if (blastLv > 0) prodMult *= 1 + 0.06 * blastLv
+  }
   if (ore.kind === 'gas' || ore.kind === 'ice') {
     const deepLv = Math.min(5, state.skills.trained['deep-space-harvesting'] ?? 0)
-    if (deepLv > 0) deepMult = 1 + 0.05 * deepLv
+    if (deepLv > 0) prodMult *= 1 + 0.05 * deepLv
   }
-  const unitsPerCycle = Math.max(
-    1,
-    Math.floor(ship.oreUnitsPerCycle * (1 + bal.yieldPerLevel * yieldLevel) * (1 + minerBonus) * deepMult),
-  )
+  const unitsPerCycle = Math.max(1, Math.floor(ship.oreUnitsPerCycle * prodMult * (1 + minerBonus)))
   return { ship, belt, ore, cycleMs, unitsPerCycle }
 }
 
@@ -393,7 +404,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
 
     // 结算一个循环（先抽富矿脉，再入舱）
     let units = params.unitsPerCycle
-    if (nextRandom(state.rng) < ctx.balance.richVeinChance) {
+    if (nextRandom(state.rng) < ctx.balance.richVeinChance * richVeinFactor(state)) {
       units *= 2
       addLog(state, 'info', `富矿脉！本循环产量翻倍，获得 ${units} 单位${oreNow.name}。`)
     }
@@ -461,7 +472,7 @@ export function miningStatus(state: GameState, ctx: SimContext): MiningView {
       tripUnits: m.tripUnits,
       autoCycle: m.autoCycle,
       stopAfterTrip: m.stopAfterTrip,
-      richVeinChance: ctx.balance.richVeinChance,
+      richVeinChance: ctx.balance.richVeinChance * richVeinFactor(state),
       legMs: leg,
       outboundLegMs: outLeg,
     }
@@ -492,7 +503,7 @@ export function miningStatus(state: GameState, ctx: SimContext): MiningView {
     tripUnits: m.tripUnits,
     autoCycle: m.autoCycle,
     stopAfterTrip: m.stopAfterTrip,
-    richVeinChance: ctx.balance.richVeinChance,
+    richVeinChance: ctx.balance.richVeinChance * richVeinFactor(state),
     legMs: leg,
     outboundLegMs: outLeg,
   }

@@ -19,7 +19,7 @@ import { nextRandom } from './rng'
 import { addWare } from './inventory'
 import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
-import { getMiningParams, oneLegMs, oneOutboundLegMs, rollBeltOutput, shipInReturn } from './mining'
+import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOutput, shipInReturn } from './mining'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, shortestTravelMinutes, standingOf } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
@@ -402,7 +402,7 @@ function advanceAiMining(
       continue
     }
 
-    // 采掘：逐循环结算（周期 = 玩家 cycleMs ÷ eff）
+    // 采掘：逐循环结算（周期 = 玩家 cycleMs ÷ eff；副船整备学再 −3%/级）
     const params = getMiningParams(state, ctx, { shipId, beltId: task.beltId })
     if (!params) {
       delete state.aiAssignments[shipId]
@@ -410,7 +410,9 @@ function advanceAiMining(
       addLog(state, 'warn', `[AI·${shipName}] 矿带数据缺失，任务终止（${aiCoreName(assignment.coreType)} 已归还）。`)
       return
     }
-    const cycleReal = Math.max(1, Math.ceil(params.cycleMs / realCycleDiv))
+    const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
+    const servFactor = 1 - 0.03 * servLv
+    const cycleReal = Math.max(1, Math.ceil((params.cycleMs * servFactor) / realCycleDiv))
     if (task.cycleAccMs < cycleReal) {
       const need = cycleReal - task.cycleAccMs
       const take = Math.min(remaining, need)
@@ -436,9 +438,9 @@ function advanceAiMining(
       )
       continue
     }
-    // 富矿脉判定与主控一致（随机源共享）
+    // 富矿脉判定与主控一致（随机源共享；富矿勘探学加成同源）
     let units = params.unitsPerCycle
-    if (nextRandom(state.rng) < ctx.balance.richVeinChance) {
+    if (nextRandom(state.rng) < ctx.balance.richVeinChance * richVeinFactor(state)) {
       units *= 2
       addLog(state, 'info', `[AI·${shipName}] 富矿脉！本循环产量翻倍。`)
     }

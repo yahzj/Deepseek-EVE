@@ -9,13 +9,14 @@ import type { ItemDef, SimContext } from '../src/types'
 import { belt, makeTestCtx } from './helpers'
 import { fleetDefOf } from '../src/instances'
 import { travelTimeFactor } from '../src/travel'
-import { matNeedCount, missingMaterials } from '../src/manufacturing'
+import { calcBuildDurationMs, matNeedCount, missingMaterials } from '../src/manufacturing'
 import { scanWindowMsOf } from '../src/explore'
-import { getMiningParams } from '../src/mining'
+import { getMiningParams, richVeinFactor } from '../src/mining'
 import { cargoCapacityM3Of } from '../src/inventory'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { repairCostIsk } from '../src/shipyard'
 import { bountyRewardFactor } from '../src/expedition'
+import { simulateOffline } from '../src/simulation'
 import { enqueueSkill, HIDDEN_SKILL_IDS } from '../src/engine'
 
 const GAS_X: ItemDef = {
@@ -157,5 +158,91 @@ describe('战斗线占位技能：隐藏 + 禁训', () => {
     const r = enqueueSkill(state, 'shield-operation', 1, ctx.skills)
     expect(r.ok).toBe(false)
     expect(state.skills.queue).toHaveLength(0)
+  })
+})
+
+describe('技能补全 P1：矿业三技（星质地质学/深井爆破学/富矿勘探学）', () => {
+  const mkOre = (price: number): ItemDef => ({
+    id: `ore-p${price}`,
+    name: `试矿${price}`,
+    kind: 'ore',
+    unitM3: 1,
+    baseSellPriceIsk: price,
+    description: '',
+  })
+  it('星质地质学全矿 +4%/级；深井爆破学只作用于低品级矿（卖价 ≤55）', () => {
+    const low = mkOre(12)
+    const high = mkOre(300)
+    const baseState = (): GameState => createInitialState({ nowWallMs: 0, seed: 10 })
+    const base = fleetDefOf(baseState(), makeTestCtx(), 'sandcat')!.oreUnitsPerCycle
+    const run = (ore: ItemDef, skills: Record<string, number>): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 10 })
+      for (const [id, lv] of Object.entries(skills)) state.skills.trained[id] = lv
+      const ctx = makeTestCtx({ items: [ore], belts: [belt(`belt-${ore.id}`, ore.id)] })
+      return getMiningParams(state, ctx, { shipId: state.shipId, beltId: `belt-${ore.id}` })!.unitsPerCycle
+    }
+    // 星质 5 级：×1.2（高低品都生效）
+    expect(run(low, { 'astro-geology': 5 })).toBe(Math.max(1, Math.floor(base * 1.2)))
+    expect(run(high, { 'astro-geology': 5 })).toBe(Math.max(1, Math.floor(base * 1.2)))
+    // 深井 5 级：低品 ×1.3 再叠；高品无效
+    expect(run(low, { 'astro-geology': 5, 'deep-hole-blasting': 5 })).toBe(
+      Math.max(1, Math.floor(base * 1.2 * 1.3)),
+    )
+    expect(run(high, { 'deep-hole-blasting': 5 })).toBe(Math.max(1, Math.floor(base)))
+    // 富矿系数：满级 ×2（基础 1% → 2%）
+    const s = createInitialState({ nowWallMs: 0, seed: 10 })
+    expect(richVeinFactor(s)).toBe(1)
+    s.skills.trained['rich-vein-prospecting'] = 5
+    expect(richVeinFactor(s)).toBe(2)
+  })
+})
+
+describe('技能补全 P1：制造双技（批量生产学/组件标准化）', () => {
+  it('制造时间与工业理论乘算；材料与材料学乘算', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ctx = makeTestCtx()
+    const spec = { materials: [{ itemId: 'ore-a', count: 100 }], buildSeconds: 100, buildCostIsk: 0 } as const
+    const t0 = calcBuildDurationMs(state, ctx, spec)
+    state.skills.trained['batch-production'] = 5
+    const t5 = calcBuildDurationMs(state, ctx, spec)
+    expect(t5).toBe(Math.round(t0 * 0.8)) // −4%×5
+    // 组件标准化满级：材料学基础上再 −5%（总 ×0.95）
+    expect(matNeedCount(state, 100)).toBe(100)
+    state.skills.trained['component-standardization'] = 5
+    expect(matNeedCount(state, 100)).toBe(95)
+  })
+})
+
+describe('技能补全 P1：手动精炼双技（炉心熔炼学/炉膛扩容学）与 AI 隔离', () => {
+  it('主控手动：周期 −4%/级、批容 +6%/级；AI 核心驱动不受两技能影响', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 12 })
+    const ctx = makeTestCtx()
+    state.warehouse.items['ore-a'] = 200
+    state.skills.trained['core-smelting'] = 5
+    state.skills.trained['furnace-expansion'] = 5
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.refineRun.cycleMs).toBe(4_800) // 6000 ×0.8
+    expect(state.refineRun.batchUnits).toBe(13) // 10 ×1.3
+    expect(stopRefineRun(state, ctx).ok).toBe(true)
+    // AI 驱动：不吃手动双技（无 core-smelting/expansion 加成）
+    state.aiCores['basic'] = 1
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(state.refineRun.cycleMs).toBe(15_000) // 6000 ÷ 0.4
+    expect(state.refineRun.batchUnits).toBe(10)
+    expect(stopRefineRun(state, ctx).ok).toBe(true)
+  })
+})
+
+describe('技能补全 P1：离线作业管理学（结算上限 +8%/级）', () => {
+  it('满级 12 小时离线结算 ≈ 11.2 小时（基础 8 小时 ×1.4）', () => {
+    const now = 2_000_000_000_000
+    const mk = (): GameState => createInitialState({ nowWallMs: now - 12 * 3_600_000, seed: 13 })
+    const s0 = mk()
+    simulateOffline(s0, now - 12 * 3_600_000, now, makeTestCtx())
+    expect(s0.gameMs).toBe(8 * 3_600_000) // lv0：cap 8h
+    const s5 = mk()
+    s5.skills.trained['offline-ops'] = 5
+    simulateOffline(s5, now - 12 * 3_600_000, now, makeTestCtx())
+    expect(s5.gameMs).toBe(Math.round(8 * 3_600_000 * 1.4)) // lv5：cap ≈ 11.2h
   })
 })

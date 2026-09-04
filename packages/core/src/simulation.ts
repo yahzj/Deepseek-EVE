@@ -46,7 +46,10 @@ export function simulateOffline(
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
-  const { deltaMs, overflowMs } = offlineSplit(rawGap, capMs)
+  // 离线作业管理学（offline-ops，P1）：离线结算上限每级 +8%（基础 8 小时）
+  const opsLv = Math.min(5, state.skills.trained['offline-ops'] ?? 0)
+  const capEff = Math.round(capMs * (1 + 0.08 * opsLv))
+  const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
   if (deltaMs <= 0) return
 
   // 记录结算前的数量（当前船货仓 + 物品仓库），用于结算后对比出"离线得了什么"

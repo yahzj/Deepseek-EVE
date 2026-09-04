@@ -163,10 +163,17 @@ export function startRefineRun(
   const { batchUnits, cycleMs } = refineParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(cycleMs / eff))
+  let batchEff = batchUnits
   if (worker !== 'pilot') {
     // 工业自动化（industrial-automation，2026-09-04 补全）：AI 驱动精炼炉每级再 −5% 周期（至少保留 60%）
     const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
     if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.05 * autoLv)))
+  } else {
+    // 主控手动精炼双技能（P1）：炉心熔炼学 −4% 周期/级、炉膛扩容学 +6% 批容/级（AI 驱动不受影响）
+    const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
+    if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
+    const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
+    if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
@@ -183,7 +190,7 @@ export function startRefineRun(
     active: true,
     worker,
     itemId,
-    batchUnits,
+    batchUnits: batchEff,
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     lockedQty: available,
@@ -193,7 +200,7 @@ export function startRefineRun(
   addLog(
     state,
     'info',
-    `精炼炉启动：${def.name}×${available} 入炉（${who}；每批 ${batchUnits} 单位 / ${formatDurationMs(cycleEff)}，到点自动续批，料尽自动停炉）。`,
+    `精炼炉启动：${def.name}×${available} 入炉（${who}；每批 ${batchEff} 单位 / ${formatDurationMs(cycleEff)}，到点自动续批，料尽自动停炉）。`,
   )
   return { ok: true }
 }
