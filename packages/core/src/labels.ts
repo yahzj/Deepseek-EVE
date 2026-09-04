@@ -8,11 +8,12 @@
 
 import type { FittedModules, ItemDef, ItemKind, ModuleSlot, RackSlot, ShipRole, ShipSlots } from './types'
 
-/** 槽位展示顺序（装配页从上到下的渲染顺序；V18.1 支援件排尾） */
+/** 槽位展示顺序（装配页从上到下的渲染顺序；V18.1 支援件排尾、V18B-1 导弹架随武器） */
 export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'miner',
   'cargo',
   'turret',
+  'missile',
   'shield',
   'armor',
   'propulsion',
@@ -26,6 +27,7 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   miner: '采集器',
   cargo: '货舱扩展',
   turret: '炮台',
+  missile: '导弹架',
   shield: '护盾装置',
   armor: '装甲装置',
   propulsion: '推进器',
@@ -63,13 +65,20 @@ export function shipSlotsOf(ship: { slots?: ShipSlots }): ShipSlots {
 
 /**
  * V18 模块归槽（Q3 映射单点实现）：显式 ModuleDef.rack 优先；缺省按家族/字段推导——
- * turret・miner・drone-rack・drone-tac（炮台・采集器・无人机装置）→ high；
+ * turret・missile・miner・drone-rack・drone-tac（炮台・导弹架・采集器・无人机装置）→ high；
  * shield・propulsion（盾系・推进）→ mid；armor・cargo（甲系・货舱）→ low；
  * support（V18.1 支援件）必须显式标注 rack（伤害/射速 = low、命中/闪避 = mid）。
  */
 export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3?: number; droneDmgBonus?: number }): RackSlot {
   if (def.rack !== undefined) return def.rack
-  if (def.slot === 'turret' || def.slot === 'miner' || def.slot === 'drone-rack' || def.slot === 'drone-tac') return 'high'
+  if (
+    def.slot === 'turret' ||
+    def.slot === 'missile' ||
+    def.slot === 'miner' ||
+    def.slot === 'drone-rack' ||
+    def.slot === 'drone-tac'
+  )
+    return 'high'
   if (def.slot === 'shield' || def.slot === 'propulsion') return 'mid'
   return 'low'
 }

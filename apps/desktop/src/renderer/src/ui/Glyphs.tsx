@@ -76,6 +76,14 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.6v2.3M12 14.1v2.3M7.6 12h2.3M14.1 12h2.3" />
     </g>
   ),
+  /* V18B-1 导弹架（方框徽：导弹弹体斜置） */
+  missile: (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M15.6 8.4l-6.6 6.6M13.6 8.4h2v2M10.4 15.6h-2v-2" />
+      <path d="M8.9 15.1L15.1 8.9" />
+    </g>
+  ),
   shield: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -93,6 +101,28 @@ const SHAPES: Record<string, ReactNode> = {
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
       <path d="M12 8.6c1.7 2 2.7 3.4 2.7 5a2.7 2.7 0 1 1-5.4 0c0-1.6 1-3 2.7-5z" />
       <path d="M12 7.4V8.5" />
+    </g>
+  ),
+  /* V18 无人机装置（方框徽：停机甲板 / 导控阵列） */
+  'drone-rack': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M9.3 9.8h1.6v1.6H9.3zM13.1 9.8h1.6v1.6h-1.6z" />
+      <path d="M9 14.8h6" />
+    </g>
+  ),
+  'drone-tac': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M12 9.4l2.6 2.6-2.6 2.6-2.6-2.6z" />
+      <path d="M8 8l1.8 1.8M16 8l-1.8 1.8M8 16l1.8-1.8M16 16l-1.8-1.8" />
+    </g>
+  ),
+  /* V18.1 支援件（方框徽：上升增益箭头） */
+  support: (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M12 15.2V9.4M9.8 11.4L12 9l2.2 2.4" />
     </g>
   ),
   /* ── 舰船角色（大形徽：双层几何轮廓） ── */
@@ -180,9 +210,13 @@ export const TONES: Record<string, string> = {
   miner: '#5ee6c8',
   cargo: '#ffd166',
   turret: '#ff8373',
+  missile: '#ff9a6b',
   shield: '#6cb6ff',
   armor: '#cdd6e0',
   propulsion: '#ffb454',
+  'drone-rack': '#ffc46b',
+  'drone-tac': '#ffb454',
+  support: '#ff8ab5',
   industrial: '#5ee6c8',
   armed: '#ff8373',
   armored: '#cdd6e0',

@@ -197,7 +197,11 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const shieldDefs = familyModules(state, ctx, shipId, 'shield')
   const armorDefs = familyModules(state, ctx, shipId, 'armor')
   const propDefs = familyModules(state, ctx, shipId, 'propulsion')
-  const turretDefs = familyModules(state, ctx, shipId, 'turret')
+  // V18B-1：武器形态分家——turret（动能/能量炮）与 missile（导弹架）都进武器池
+  const turretDefs = [
+    ...familyModules(state, ctx, shipId, 'turret'),
+    ...familyModules(state, ctx, shipId, 'missile'),
+  ]
   // V18.1 支援件（中/低槽：伤害/射速/命中/闪避，效果字段判别）
   const supportDefs = allFittedModules(fitted, ctx).filter((d) => d.slot === 'support')
   // 无人机装置（高槽 rack 件；甲板扩展/战术导控按字段判别）
@@ -354,12 +358,12 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   }
 }
 
-/** 我方主武器固定弹种（V18 多炮：取高槽第一门炮的 damageType；无炮也返回
- * kinetic——基础舰炮实际不消耗弹药）。多门异弹型炮的装载/消耗在出发预载时按主炮型
- * 装载（battle.ammo 单型；异型炮在本主炮弹尽后停火，见 E 台阶 per-gun 完整化）。 */
+/** 我方主武器固定弹种（V18 多炮：取高槽第一门武器（炮台/导弹架）的 damageType；无武器
+ * 也返回 kinetic——基础舰炮实际不消耗弹药）。多门异弹型武器的装载/消耗在出发预载时按
+ * 主武器型装载（battle.ammo 单型；异型武器在主弹种耗尽后停火，见 E 台阶 per-gun 完整化）。 */
 export function playerAmmoType(state: GameState, ctx: SimContext, shipId: string): DamageType {
-  const turrets = familyModules(state, ctx, shipId, 'turret')
-  return (turrets[0]?.damageType as DamageType | undefined) ?? 'kinetic'
+  const weapons = [...familyModules(state, ctx, shipId, 'turret'), ...familyModules(state, ctx, shipId, 'missile')]
+  return (weapons[0]?.damageType as DamageType | undefined) ?? 'kinetic'
 }
 
 /* ═══════════ 敌方编队 ═══════════ */

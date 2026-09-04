@@ -308,11 +308,13 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   // V13 探索：实际到港 → 点亮该星系（去程结束进入交火 = 已抵达）
   if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
   const loaded = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
-  const hasTurret = familyModules(state, ctx, shipId, 'turret').length > 0
+  // V18B-1：武器形态分家——炮台（turret）与导弹架（missile）都算"已装武器"
+  const hasTurret =
+    familyModules(state, ctx, shipId, 'turret').length > 0 || familyModules(state, ctx, shipId, 'missile').length > 0
   addLog(
     state,
     'info',
-    `⚔ 抵达目标（${anomaly?.name ?? ''}）：进入交火。${hasTurret ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，炮台无法开火（基础舰炮可还击）。') : '未装配炮台：仅基础舰炮还击。'}`,
+    `⚔ 抵达目标（${anomaly?.name ?? ''}）：进入交火。${hasTurret ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}`,
   )
   return true
 }

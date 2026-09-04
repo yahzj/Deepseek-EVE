@@ -293,8 +293,8 @@ export const ICES: readonly ItemDef[] = [
 ]
 
 /** 弹药（V10.5 战斗数值契约就位：克制体系见 docs/design/v10b-combat-data.md；
- * 动能弹对护盾 ×1.5 对装甲 ×0.5、高爆弹反之、等离子弹（能量系）对护盾 ×0.75 其余 ×1.0；
- * V18 口径取消：每型只留单档通用弹，战斗系统开放后由炮台按自身固定弹种消耗） */
+ * 动能弹对护盾 ×1.5 对装甲 ×0.5、爆破导弹（爆炸）反之、等离子弹（能量系）对护盾 ×0.75 其余 ×1.0；
+ * V18 口径取消：每型只留单档通用弹；V18B-1：爆炸系武器形态 = 导弹架 → 高爆弹更名"爆破导弹"） */
 export const AMMO: readonly ItemDef[] = [
   {
     id: 'ammo-kinetic-l',
@@ -308,11 +308,11 @@ export const AMMO: readonly ItemDef[] = [
   },
   {
     id: 'ammo-explosive-l',
-    name: '高爆弹',
+    name: '爆破导弹',
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 7,
-    description: '高爆弹：拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。战斗开放后由炮台消耗。',
+    description: '爆破导弹：导弹架专用弹药，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
     damageType: 'explosive',
     dmg: 7,
   },

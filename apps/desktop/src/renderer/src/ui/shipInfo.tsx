@@ -96,6 +96,11 @@ export function moduleShortEffect(mod: ModuleDef): string {
       body = `${turretAmmoText(mod)} · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
       break
     }
+    case 'missile': {
+      // V18B-1 导弹架：爆炸系武器形态（爆破导弹，无视近盲 + 追踪命中）
+      body = `爆破导弹 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      break
+    }
     case 'shield': {
       const parts: string[] = []
       if (mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
@@ -314,6 +319,23 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     }
     if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
     if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
+  } else if (mod.slot === 'missile') {
+    // V18B-1 导弹架：武器卡（与炮台同参数字段，性格差异 = 无视近盲 + 追踪命中）
+    lines.push({
+      k: '弹头',
+      v: (
+        <>
+          <span className="app-dim">配弹：</span>
+          <DmgChip t={mod.damageType ?? 'explosive'} label="爆破导弹" />
+          <span className="app-dim">（导弹架专用，出发只装此型）</span>
+        </>
+      ),
+    })
+    if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
+    lines.push({ k: '弹道特性', v: '无视近盲（贴身可发射）· 追踪命中：不随距离衰减' })
+    if (mod.hitRate !== undefined) lines.push({ k: '追踪命中', v: `${pct(mod.hitRate)}（不再乘距离衰减；仍受攻防命中修正与回避影响）` })
+    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发（单发高伤节奏）` })
+    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹头伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
   } else if (mod.slot === 'drone-rack') {
     if (mod.droneBayBonusM3 !== undefined) {
       lines.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3)} m³（携带/放飞上限，与无人机装置可复数叠加）` })

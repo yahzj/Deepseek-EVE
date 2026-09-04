@@ -14,8 +14,13 @@
  *   · 炮台（V17.2 炮族制；V18 口径取消） = 档位 × 固定弹种：轻型（MK1 速射近程）、
  *     重型（MK2 慢射远程）、攻坚（MK3 超远程重装填）、异星原型；同 MK 三弹种款
  *     性能一致只换伤害类型（动能打盾 ×1.5 / 高爆打甲 ×1.5 / 能量打盾 ×0.75 且单发基数最高）；
- *     蓝图 = 动能款（协会制式）；高爆/能量款市场专供；口径限制已取消——任意船可装
- *     任意炮，装配唯一约束 = CPU；弹药每型单档通用弹（-l），炮台按自身固定弹种消耗；
+ *     蓝图 = 动能款（协会制式）；口径限制已取消——任意船可装任意炮，装配唯一约束 = CPU；
+ *   · V18B-1 武器形态分家（船长 2026-09-04："按伤害类型设计武器，不应只是换描述"）：
+ *     爆炸系已从临时"高爆炮"迁移为导弹架（mod-missile-1/2/3，见下方导弹架段）——
+ *     无视近盲 + 命中不随距离衰减的远程爆破；动能/能量炮仍为临时填充数据，
+ *     V18B-2 将分别改造为质量炮/激光形态（届时再做对应迁移）；
+ *   · 弹药：动能弹（质量炮）、爆破导弹（导弹架专用，爆炸键）、等离子弹（能量）——
+ *     每型单档通用弹（-l），武器按自身固定弹种消耗；
  * - CPU 装配资源（V17.1 用户定稿：成倍档位拉开船级差距）：
  *   民用 3（炮台 6）/ MK1 5（炮台 10）/ MK2 15（炮台 28）/ MK3 40（炮台 52）/
  *   异星原型 60（炮台 70）——战斗件与工业件同档；低级船（沙猫 60 CPU）只带得动
@@ -170,23 +175,6 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.25,
   },
   {
-    id: 'mod-turret-exp-1',
-    name: '轻型炮台 MK1·高爆型',
-    slot: 'turret',
-    rack: 'high',
-
-    damageType: 'explosive',
-    ammoPerEngagement: 24,
-    description: '轻型高爆炮：打甲 1.5 倍伤害（打盾减半）。装甲型敌人的克星（市场专供，无蓝图）。',
-    cpuUse: 10,
-    maxRangeM: 4600,
-    minRangeM: 250,
-    hitRate: 0.8,
-    falloff: 0.3,
-    reloadMs: 2200,
-    dmgMult: 1.25,
-  },
-  {
     id: 'mod-turret-pla-1',
     name: '轻型炮台 MK1·能量型',
     slot: 'turret',
@@ -219,23 +207,6 @@ export const MODULES: readonly ModuleDef[] = [
     falloff: 0.28,
     reloadMs: 3400,
     dmgMult: 3.73,
-  },
-  {
-    id: 'mod-turret-exp-2',
-    name: '重型炮台 MK2·高爆型',
-    slot: 'turret',
-    rack: 'high',
-
-    damageType: 'explosive',
-    ammoPerEngagement: 12,
-    description: '重型高爆炮：远程破甲主力——装甲舰编队的噩梦（市场专供，无蓝图）。',
-    cpuUse: 28,
-    maxRangeM: 8200,
-    minRangeM: 700,
-    hitRate: 0.78,
-    falloff: 0.28,
-    reloadMs: 3400,
-    dmgMult: 3.66,
   },
   {
     id: 'mod-turret-pla-2',
@@ -272,23 +243,6 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 5.13,
   },
   {
-    id: 'mod-turret-exp-3',
-    name: '攻坚炮台 MK3·高爆型',
-    slot: 'turret',
-    rack: 'high',
-
-    damageType: 'explosive',
-    ammoPerEngagement: 12,
-    description: '攻城级高爆巨炮：摧毁装甲工事的一击（市场稀有现货，无蓝图）。',
-    cpuUse: 52,
-    maxRangeM: 10500,
-    minRangeM: 1200,
-    hitRate: 0.78,
-    falloff: 0.28,
-    reloadMs: 4200,
-    dmgMult: 5.03,
-  },
-  {
     id: 'mod-turret-pla-3',
     name: '攻坚炮台 MK3·能量型',
     slot: 'turret',
@@ -321,6 +275,64 @@ export const MODULES: readonly ModuleDef[] = [
     falloff: 0.28,
     reloadMs: 4800,
     dmgMult: 5.91,
+  },
+
+  // ══════════ 导弹架（V18B-1 爆炸系武器形态：爆破导弹弹头，逐发消耗） ══════════
+  // 与原高爆炮（已退役迁移）同伤害系/同消耗键，但性格独立：
+  // - 无视近盲（minRange 0：贴身可发射）；命中不随距离衰减（falloff 1 = 追踪制）；
+  // - 射程比同档动能炮更远、装填更慢、命中更高（追踪）——"远程爆破轰炸"定位；
+  // - 数值初值 = 原高爆炮 dmgMult 继承 + 节奏重排，进 C4 校准轮复核；
+  // - 市场专供（无蓝图；沿用原高爆炮渠道与价位）。
+  {
+    id: 'mod-missile-1',
+    name: '轻型导弹架 MK1',
+    slot: 'missile',
+    rack: 'high',
+
+    damageType: 'explosive',
+    ammoPerEngagement: 24,
+    description: '轻型导弹巢：发射爆破导弹（打甲 1.5 倍、打盾减半）。无视近盲、命中不随距离衰减——贴身与远距都稳定的破甲火力（市场专供）。',
+    cpuUse: 10,
+    maxRangeM: 6200,
+    minRangeM: 0,
+    hitRate: 0.92,
+    falloff: 1,
+    reloadMs: 2600,
+    dmgMult: 1.25,
+  },
+  {
+    id: 'mod-missile-2',
+    name: '重型导弹架 MK2',
+    slot: 'missile',
+    rack: 'high',
+
+    damageType: 'explosive',
+    ammoPerEngagement: 12,
+    description: '重型导弹巢：9.8 km 远程爆破轰炸——装甲舰编队的噩梦（市场专供，无蓝图）。',
+    cpuUse: 28,
+    maxRangeM: 9800,
+    minRangeM: 0,
+    hitRate: 0.92,
+    falloff: 1,
+    reloadMs: 4000,
+    dmgMult: 3.66,
+  },
+  {
+    id: 'mod-missile-3',
+    name: '巡航导弹架 MK3',
+    slot: 'missile',
+    rack: 'high',
+
+    damageType: 'explosive',
+    ammoPerEngagement: 12,
+    description: '巡航导弹巢：12.4 km 远程毁灭——大编队交火前先发制人的火力（市场稀有现货，无蓝图）。',
+    cpuUse: 52,
+    maxRangeM: 12400,
+    minRangeM: 0,
+    hitRate: 0.92,
+    falloff: 1,
+    reloadMs: 5000,
+    dmgMult: 5.03,
   },
 
   // ══════════ 无人机装置（V18 高槽装置位：远行星号式；与炮/矿共位竞争） ══════════
@@ -674,7 +686,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.06 },
     cpuUse: 5,
-    description: '高爆武器支援（低槽）：高爆炮台单发伤害 +6%。同类可多装、效果全额叠加。',
+    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +6%。同类可多装、效果全额叠加。',
   },
   {
     id: 'mod-stab-exp-2',
@@ -683,7 +695,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.1 },
     cpuUse: 15,
-    description: '高爆武器支援（低槽）：高爆炮台单发伤害 +10%。同类可多装、效果全额叠加。',
+    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +10%。同类可多装、效果全额叠加。',
   },
   {
     id: 'mod-stab-exp-3',
@@ -692,7 +704,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.15 },
     cpuUse: 40,
-    description: '高爆武器支援（低槽）：高爆炮台单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
   },
   {
     id: 'mod-stab-pla-1',

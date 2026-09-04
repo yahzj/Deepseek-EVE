@@ -461,15 +461,18 @@ export interface BattleBalance {
 }
 
 /**
- * 装备家族（V10 六值 + V18 无人机装置两值 + V18.1 支援件一值：家族语义是引擎构建与
- * UI 徽标依据，不是物理槽；V18.1 起无"同类唯一"——多件收敛靠合成机制，见
- * equipment.stackingOf）。V18 起物理槽由 RackSlot（高/中/低 × 数量制）表达——
- * 归槽见 ModuleDef.rack / labels.rackOf。
+ * 装备家族（V10 六值 + V18 无人机装置两值 + V18.1 支援件一值 + V18B-1 导弹架一值：
+ * 家族语义是引擎构建与 UI 徽标依据，不是物理槽；V18.1 起无"同类唯一"——多件收敛
+ * 靠合成机制，见 equipment.stackingOf）。V18 起物理槽由 RackSlot（高/中/低 × 数量制）
+ * 表达——归槽见 ModuleDef.rack / labels.rackOf。
+ * 武器形态映射（V18B 起按伤害系分形态，取代"同 MK 同参只换弹种"的临时炮数据）：
+ * 动能 = 质量炮（turret）、爆炸 = 导弹架（missile）、能量 = 激光（turret，后续批改造）。
  */
 export type ModuleSlot =
   | 'miner'
   | 'cargo'
   | 'turret'
+  | 'missile'
   | 'shield'
   | 'armor'
   | 'propulsion'
