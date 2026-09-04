@@ -69,7 +69,8 @@ function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }
   const activeBeltId = view.active ? state.mining.beltId : null
 
   function handleStart(beltId: string): void {
-    const r = engine.startMiningAt(beltId)
+    // T4 延后项：远征中（确认后）走"取消远征再开采"转场入口
+    const r = state.expedition.active ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
     if (!r.ok) onToast(r.error ?? '无法开采', true)
   }
 
@@ -188,6 +189,36 @@ function BeltCard({
   const aiCount = aiWorkers.length
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
+  // T4 延后项：远征中可「转开采」（两步确认）
+  const [mineAsk, setMineAsk] = useState(false)
+  const expeditionOn = state.expedition.active
+
+  function mineStartClick(): void {
+    if (isActiveBelt) {
+      onStop()
+      return
+    }
+    if (!expeditionOn) {
+      onStart(belt.id)
+      return
+    }
+    if (state.expedition.phase === 'battle') {
+      onToast('交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。', true)
+      return
+    }
+    if (!mineAsk) {
+      setMineAsk(true)
+      onToast(
+        '⚡ 远征中开采 = 转场：本次远征将取消（无战果）' +
+          (state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : '') +
+          '——再点一次确认。',
+        true,
+      )
+      return
+    }
+    setMineAsk(false)
+    onStart(belt.id)
+  }
 
   function cancelWorker(shipId: string): void {
     if (engine.cancelAiTaskAt(shipId)) onToast('AI 开采任务已取消（核心已归还）。')
@@ -258,7 +289,7 @@ function BeltCard({
           </div>
         ) : null}
         <button
-          className={`app-btn is-small${isActiveBelt ? ' is-warn' : ' is-primary'}`}
+          className={`app-btn is-small${isActiveBelt ? ' is-warn' : mineAsk ? ' is-warn' : ' is-primary'}`}
           disabled={locked || (!isActiveBelt && !canStart)}
           title={
             locked
@@ -269,11 +300,17 @@ function BeltCard({
                 ? '停止当前开采'
                 : !canStart
                   ? '采矿作业进行中：先停止当前开采'
-                  : undefined
+                  : expeditionOn
+                    ? state.expedition.phase === 'battle'
+                      ? '交火中无法抽身采矿——先让战斗分出胜负或撤退'
+                      : mineAsk
+                        ? '再点一次确认：开采将取消本次远征（无战果）并停止连续出击'
+                        : '远征中可转开采（取消本次远征、连击同步停）'
+                    : undefined
           }
-          onClick={() => (isActiveBelt ? onStop() : onStart(belt.id))}
+          onClick={mineStartClick}
         >
-          {isActiveBelt ? '停止开采' : '开始开采'}
+          {isActiveBelt ? '停止开采' : mineAsk ? '⚡ 再点确认开采' : '开始开采'}
         </button>
 
         <div className="app-belt-ai">

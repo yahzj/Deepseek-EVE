@@ -9,8 +9,9 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, SAVE_FORMAT } from '../src/save'
 import { countItem, countWare } from '../src/inventory'
-import { miningStatus, oneLegMs, oneOutboundLegMs, startMining } from '../src/mining'
+import { miningStatus, oneLegMs, oneOutboundLegMs, startMining, startMiningFromExpedition } from '../src/mining'
 import { changeShip } from '../src/shipyard'
+import { startExpedition, startExpeditionFromMining } from '../src/expedition'
 import { makeTestCtx, belt, ship } from './helpers'
 
 /** 世界：驾驶船 sandcat（800 m³/12s/10u）+ 附赠武装艇 sh-falconet（有 def）；关闭富矿脉保时序确定 */
@@ -155,5 +156,95 @@ describe('T4 存档（善后账本兼容字段）', () => {
     })
     const text2 = JSON.stringify({ format: SAVE_FORMAT, version: 16, savedAtWallMs: 0, state: { skills: {} } })
     expect(loadSaveFile(text2).state.shipReturns).toEqual({})
+  })
+})
+
+/* ═══════ T4 延后项：远征 ↔ 采矿互斥解除（船长 2026-09-04 定稿转场语义） ═══════ */
+
+function startLocalMining(state: GameState, ctx: SimContext): void {
+  expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
+  // 走完出航腿，进入采掘
+  advanceGame(state, 60_001, ctx)
+  expect(state.mining.phase).toBe('mining')
+}
+
+describe('T4 延后项：采矿 ↔ 远征 转场', () => {
+  it('采矿中（本地矿带）转战悬赏：采矿结束、货随船、远征从母港出发', () => {
+    const { state, ctx } = world()
+    startLocalMining(state, ctx)
+    state.fleet[state.shipId]!.cargo['ore-a'] = 5 // 船上已有货
+    expect(startExpeditionFromMining(state, 'ano-a', ctx).ok).toBe(true)
+    expect(state.mining.active).toBe(false)
+    expect(state.expedition.active).toBe(true)
+    expect(state.expedition.anomalyId).toBe('ano-a')
+    expect(state.expedition.phase).toBe('out')
+    expect(state.awayGalaxy).toBeNull() // 本地矿带 → 母港出发
+    expect(state.fleet[state.shipId]!.cargo['ore-a']).toBe(5) // 货随船
+    expect(state.logs.some((l) => l.text.includes('采矿已结束'))).toBe(true)
+  })
+
+  it('采矿中（异地矿带）转战：远征从矿带所在星系出发', () => {
+    const ctx2 = makeTestCtx({
+      quietEvents: true,
+      belts: [belt('belt-a', 'ore-a', '带belt-a', { galaxyId: 'galaxy-hub' }), belt('belt-f', 'ore-a', '远处带', { galaxyId: 'galaxy-far' })],
+    })
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
+    state.exploredGalaxies.push('galaxy-far') // 点亮远方星系，解锁采矿封锁
+    expect(startMining(state, 'belt-f', ctx2).ok).toBe(true)
+    advanceGame(state, 500_000, ctx2) // 2 分钟航程到达后在采掘
+    expect(state.mining.phase).toBe('mining')
+    expect(startExpeditionFromMining(state, 'ano-a', ctx2).ok).toBe(true) // 目标在母港星系
+    expect(state.expedition.active).toBe(true)
+    // 出发点 = 矿带星系：远征出发日志带起点名（startExpedition 会清空 awayGalaxy 表达）
+    expect(state.expedition.outMs).toBeGreaterThan(0) // 从 far 飞回 hub 有航程
+    expect(state.logs.some((l) => l.text.includes('从「远方」启程'))).toBe(true)
+  })
+
+  it('预检先行：声望不足时拒绝转战，采矿作业不受影响', () => {
+    const { state, ctx } = world()
+    startLocalMining(state, ctx)
+    const r = startExpeditionFromMining(state, 'ano-hard', ctx) // 需声望 5
+    expect(r.ok).toBe(false)
+    expect(state.mining.active).toBe(true) // 采矿没被打断
+  })
+
+  it('无采矿作业时转战入口回落普通出击', () => {
+    const { state, ctx } = world()
+    expect(startExpeditionFromMining(state, 'ano-a', ctx).ok).toBe(true)
+    expect(state.expedition.active).toBe(true)
+    expect(state.mining.active).toBe(false)
+  })
+
+  it('远征去程中直接开矿：远征取消（连击同步停）、采矿从母港开始', () => {
+    const { state, ctx } = world()
+    state.autoLoopAnomalyId = 'ano-a' // 模拟连击发起
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
+    expect(state.expedition.active).toBe(true)
+    expect(startMiningFromExpedition(state, 'belt-a', ctx).ok).toBe(true)
+    expect(state.expedition.active).toBe(false)
+    expect(state.expedition.anomalyId).toBeNull()
+    expect(state.mining.active).toBe(true)
+    expect(state.mining.phase).toBe('outbound')
+    expect(state.autoLoopAnomalyId).toBeNull() // 连击停止
+    expect(state.awayGalaxy).toBeNull()
+  })
+
+  it('交火中不能转开采：拒绝且远征原样', () => {
+    const { state, ctx } = world()
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
+    advanceGame(state, 1, ctx) // 零航程 → 立即进入交火
+    expect(state.expedition.phase).toBe('battle')
+    const r = startMiningFromExpedition(state, 'belt-a', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('交火')
+    expect(state.expedition.active).toBe(true)
+    expect(state.mining.active).toBe(false)
+  })
+
+  it('无远征时转开采入口回落普通采矿', () => {
+    const { state, ctx } = world()
+    expect(startMiningFromExpedition(state, 'belt-a', ctx).ok).toBe(true)
+    expect(state.mining.active).toBe(true)
+    expect(state.expedition.active).toBe(false)
   })
 })

@@ -12,13 +12,15 @@ import {
   bountyCooldownRemainingMs,
   calcExpeditionDurationMs,
   calcPower,
-  expeditionFeasibility,
   expeditionStatus,
+  fleetDefOf,
   formatDurationMs,
   frontierGalaxyIds,
   isExplored,
   originGalaxyOf,
   scanStatus,
+  shipDisplayName,
+  shipRoleLabel,
   shortestTravelMinutes,
   standingOf,
   travelLegMs,
@@ -892,10 +894,20 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const standing = standingOf(state, DSI_FACTION_ID)
   const reqMet = standing >= anomaly.standingReq
   const unexplored = galaxy ? !isExplored(state, galaxy.id) : false // V13：星系未探索（悬赏情报例外可见）
-  const feasibility = expeditionFeasibility(state, anomaly, engine.ctx)
+  // T4 延后项：采矿中可「转战」（两步确认）；提示当前驾驶船（可能开着战斗船在挖矿）
+  const [goAsk, setGoAsk] = useState(false)
   const lootText = anomaly.loot
     .map((l) => `${engine.ctx.items.get(l.itemId)?.name ?? l.itemId}×${l.units}`)
     .join('、')
+  const mining = state.mining
+  const miningActive = mining.active
+  const pilotName = shipDisplayName(state, engine.ctx, state.shipId)
+  const pilotRoleLabel = (() => {
+    const role = fleetDefOf(state, engine.ctx, state.shipId)?.role
+    return role ? shipRoleLabel(role) : ''
+  })()
+  const inFlightSelf = state.expedition.active && state.expedition.anomalyId === anomaly.id
+  const inFlightOther = state.expedition.active && !inFlightSelf
   // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
   // T8：重复冷却 + 连续出击状态；优化：其它作业（采矿/扫描/返航/非本目标的远征）中不可开启
@@ -906,11 +918,24 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
     state.scanning.active ||
     state.transit.active ||
     (state.expedition.active && state.autoLoopAnomalyId !== anomaly.id)
+  // 出击可点条件：声望/探索/冷却/扫描/返港/远征在飞时禁；采矿中放行（转战）
+  const goDisabled =
+    !reqMet || unexplored || cdRemain > 0 || state.scanning.active || state.transit.active || inFlightSelf || inFlightOther
 
-  function handleGo(): void {
-    const r = engine.startExpeditionAt(anomaly.id)
-    if (!r.ok) onToast(r.error ?? '无法出发', true)
-    else onToast('舰队已出发，战报稍后见。')
+  function handleGoClick(): void {
+    if (miningActive && !goAsk) {
+      setGoAsk(true)
+      onToast(
+        `⚡ 采矿中出击 = 转战：当前采矿将结束（已采 ${mining.tripUnits} 单位随船），舰队从矿带星系出发。` +
+          `当前驾驶「${pilotName}」${pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}——再点一次确认。`,
+        true,
+      )
+      return
+    }
+    setGoAsk(false)
+    const r = miningActive ? engine.startExpeditionFromMiningAt(anomaly.id) : engine.startExpeditionAt(anomaly.id)
+    if (!r.ok) onToast(r.error ?? (miningActive ? '无法转战' : '无法出发'), true)
+    else onToast(miningActive ? '已转战：采矿结束（货随船），舰队正从矿带星系出发。' : '舰队已出发，战报稍后见。')
   }
 
   function toggleLoop(): void {
@@ -986,18 +1011,30 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             {looping ? '■ 停止连击' : '🔁 连续出击'}
           </button>
           <button
-            className="app-btn is-small is-primary"
-            disabled={!reqMet || !feasibility.ok || cdRemain > 0}
+            className={`app-btn is-small ${goAsk ? 'is-warn' : 'is-primary'}`}
+            disabled={goDisabled}
             title={
               cdRemain > 0
                 ? `重复出击冷却中（剩约 ${Math.max(1, Math.ceil(cdRemain / 1000))} 秒）`
-                : feasibility.ok
-                  ? ''
-                  : feasibility.reason
+                : !reqMet || unexplored
+                  ? '先满足声望/探索条件'
+                  : state.scanning.active
+                    ? '扫描探索进行中——结束扫描后才能出发'
+                    : state.transit.active
+                      ? '返航空间站途中——到站后再出发'
+                      : inFlightSelf
+                        ? '该目标已在执行中'
+                        : inFlightOther
+                          ? '远征进行中——先等当前远征结束'
+                          : miningActive
+                            ? goAsk
+                              ? '再点一次确认：转战将结束当前采矿（货随船）并从矿带星系出发'
+                              : `采矿中可转战（结束采矿、货随船、从矿带星系出发）；当前驾驶「${pilotName}」${pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}`
+                            : ''
             }
-            onClick={handleGo}
+            onClick={handleGoClick}
           >
-            {reqMet && feasibility.ok ? (cdRemain > 0 ? '冷却中' : '出发') : '不可出发'}
+            {cdRemain > 0 ? '冷却中' : goAsk ? '⚡ 再点确认转战' : miningActive ? '转战出发' : '出发'}
           </button>
         </div>
       </div>

@@ -53,8 +53,10 @@ import {
   setMiningStopAfterTrip,
   simulateOffline,
   startExpedition,
+  startExpeditionFromMining,
   startManufacturing,
   startMining,
+  startMiningFromExpedition,
   startScan,
   startTransitHome,
   deliverStationResources,
@@ -441,6 +443,16 @@ export class GameEngine {
     return result
   }
 
+  /** T4 延后项：远征中直接转开采（UI 两步确认后调用；取消远征并停连击） */
+  startMiningFromExpeditionAt(beltId: string): CommandResult {
+    const result = startMiningFromExpedition(this.state, beltId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
   /** 停止开采（返回是否真的在采） */
   stopMiningNow(): boolean {
     const ok = stopMining(this.state, this.ctx)
@@ -617,6 +629,16 @@ export class GameEngine {
   /** 出发远征（去程-实时交火-返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
     const result = startExpedition(this.state, anomalyId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
+  startExpeditionFromMiningAt(anomalyId: string): CommandResult {
+    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

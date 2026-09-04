@@ -22,7 +22,7 @@ import type { BeltDef, ItemDef, ShipDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { isMineableItem } from './labels'
 import { addItem, freeCargoM3, unloadCargoOfShipToWarehouse, unloadCargoToWarehouse } from './inventory'
-import { DSI_FACTION_ID, HOME_GALAXY_ID, shortestTravelMinutes, standingOf } from './expedition'
+import { DSI_FACTION_ID, HOME_GALAXY_ID, recallExpedition, shortestTravelMinutes, standingOf } from './expedition'
 import { travelLegMs, travelMinutesEff } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
@@ -132,8 +132,12 @@ export function oneOutboundLegMs(
   return Math.max(1, Math.round(oneLegMs(state, ctx, beltId, shipId, origin) / 2))
 }
 
-/** 玩家指令：开始在指定采集点开采（矿石/气体/冰矿；高价值采集点有协会声望门槛） */
-export function startMining(state: GameState, beltId: string, ctx: SimContext): CommandResult {
+/**
+ * 采矿通用前置检查（startMining 与"远征转开采"入口共用）：
+ * 采集点数据 / 矿石 / 声望 / 舰队 / 星系可达与探索封锁。
+ * 不含"采矿/远征进行中"互斥（由各入口自己裁决）。
+ */
+function miningPreflight(state: GameState, beltId: string, ctx: SimContext): CommandResult {
   const belt = ctx.belts.get(beltId)
   if (!belt) return { ok: false, error: `未知采集点：${beltId}。` }
   const ore = ctx.items.get(belt.oreId)
@@ -145,8 +149,6 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
       return { ok: false, error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（当前 ${have}）——多完成悬赏任务攒声望。` }
     }
   }
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
   if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法开采。' }
   // 挂星系的采集点必须能从母港到达（无航路 → 拒绝）
   if (belt.galaxyId && belt.galaxyId !== HOME_GALAXY_ID) {
@@ -158,6 +160,16 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
     const block = actionBlockReason(state, belt.galaxyId)
     if (block) return { ok: false, error: block }
   }
+  return { ok: true }
+}
+
+/** 玩家指令：开始在指定采集点开采（矿石/气体/冰矿；高价值采集点有协会声望门槛） */
+export function startMining(state: GameState, beltId: string, ctx: SimContext): CommandResult {
+  const pre = miningPreflight(state, beltId, ctx)
+  if (!pre.ok) return pre
+  const belt = ctx.belts.get(beltId)!
+  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
+  if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null
@@ -192,6 +204,31 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
         : ' 自动循环已关闭：货舱满后将停在矿带。'),
   )
   return { ok: true }
+}
+
+/**
+ * T4 延后项（船长 2026-09-04 定稿）：远征中直接转开采。
+ * 前置校验全部通过后：取消当前远征（交火中除外——须先打完或撤退），
+ * 若该远征由「连续出击」自动发起则连击同步停止；随后按普通采矿从母港/空间站出发。
+ * 直接调用 startMining 在远征中仍会被拒绝——本入口是确认后的唯一转场路径。
+ */
+export function startMiningFromExpedition(state: GameState, beltId: string, ctx: SimContext): CommandResult {
+  const pre = miningPreflight(state, beltId, ctx)
+  if (!pre.ok) return pre
+  const exp = state.expedition
+  if (!exp.active) return startMining(state, beltId, ctx) // 无远征 → 普通开采
+  if (exp.phase === 'battle') {
+    return { ok: false, error: '交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。' }
+  }
+  // 转场即手动收手：由连击发起的本次远征同步停止连击（同撤退口径）
+  if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
+    state.autoLoopAnomalyId = null
+    addLog(state, 'info', '连续出击已停止（转开采）。')
+  }
+  // 召回式取消远征（无战果；battle 已排除）→ 船回到母港/空间站，随后照常开矿
+  const recalled = recallExpedition(state, ctx)
+  if (!recalled.ok) return recalled
+  return startMining(state, beltId, ctx)
 }
 
 /** 停止开采（手动）：任何阶段都会停（若在返航/出航中，货物留在船上） */

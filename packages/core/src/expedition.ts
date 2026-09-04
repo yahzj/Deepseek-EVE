@@ -160,19 +160,14 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
   }
 }
 
-/** 玩家指令：出发远征（V12：out → battle → back；opts.desireM = 期望距离偏好） */
-export function startExpedition(
-  state: GameState,
-  anomalyId: string,
-  ctx: SimContext,
-  opts?: { desireM?: number },
-): CommandResult {
+/**
+ * 出征通用前置检查（startExpedition 与"采矿转战"入口共用）：
+ * 目标数据 / 舰队 / 声望 / 星系探索 / 重复冷却 / 扫描 / 返港行程。
+ * 不含"采矿/远征进行中"互斥（由各入口自己裁决）与起点可达性（由各入口按自身起点检查）。
+ */
+function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描。' }
-  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
   if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法出航。' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
@@ -186,6 +181,23 @@ export function startExpedition(
   if (cd > 0) {
     return { ok: false, error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。` }
   }
+  if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描。' }
+  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
+  return { ok: true }
+}
+
+/** 玩家指令：出发远征（V12：out → battle → back；opts.desireM = 期望距离偏好） */
+export function startExpedition(
+  state: GameState,
+  anomalyId: string,
+  ctx: SimContext,
+  opts?: { desireM?: number },
+): CommandResult {
+  const pre = expeditionPreflight(state, ctx, anomalyId)
+  if (!pre.ok) return pre
+  const anomaly = ctx.anomalies.get(anomalyId)!
+  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
+  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)
   const fromName = ctx.galaxies.get(from)?.name ?? from
@@ -218,6 +230,53 @@ export function startExpedition(
     `⚔ 远征出发（${anomaly.name}）：${shipName} 从「${fromName}」启程，预计 ${travelMinutesEff(state, ctx, outMinutes)} 分钟抵达；胜后停留该星系（可连续出击或返航），失利自动返航。`,
   )
   return { ok: true }
+}
+
+/**
+ * T4 延后项（船长 2026-09-04 定稿）：采矿中直接转战悬赏。
+ * 前置校验全部通过后：采矿作业终止（同手动停止——停哪算哪、已采的货随船带走），
+ * 远征从「当前矿带所在星系」出发（矿带无星系 = 本地，从母港出发）。
+ * 直接调用 startExpedition 在采矿中仍会被拒绝——本入口是确认后的唯一转场路径。
+ */
+export function startExpeditionFromMining(
+  state: GameState,
+  anomalyId: string,
+  ctx: SimContext,
+  opts?: { desireM?: number },
+): CommandResult {
+  const pre = expeditionPreflight(state, ctx, anomalyId)
+  if (!pre.ok) return pre
+  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
+  const m = state.mining
+  if (!m.active) return startExpedition(state, anomalyId, ctx, opts) // 无采矿作业 → 普通出发
+  const anomaly = ctx.anomalies.get(anomalyId)!
+  const belt = m.beltId ? ctx.belts.get(m.beltId) : undefined
+  // 从矿带所在星系出发（本地矿带 = 母港停靠出发）
+  const from = belt?.galaxyId ?? null
+  if (from !== null) {
+    const reach = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
+    if (!Number.isFinite(reach)) return { ok: false, error: '目标星系不在矿带所在星系的已知航路内。' }
+  }
+  const ore = belt ? ctx.items.get(belt.oreId) : undefined
+  const trip = m.tripUnits
+  const beltName = belt ? belt.name : '矿带'
+  // 终止采矿（同手动停止语义：进度清零、货随船）
+  m.active = false
+  m.beltId = null
+  m.phase = 'mining'
+  m.cycleAccMs = 0
+  m.phaseAccMs = 0
+  m.tripUnits = 0
+  m.originGalaxy = null
+  // 矿带在异星系：以"野外停泊"表达起点（startExpedition 会读取并清空）
+  if (from !== null) state.awayGalaxy = from
+  const shipName = shipDisplayName(state, ctx, state.shipId)
+  addLog(
+    state,
+    'warn',
+    `采矿已结束（${shipName} 转战悬赏「${anomaly.name}」）：离开「${beltName}」${trip > 0 ? `——本趟采得的 ${trip} 单位${ore?.name ?? ''}仍在船上` : '（本趟尚无收获）'}，记得回港卸货。`,
+  )
+  return startExpedition(state, anomalyId, ctx, opts)
 }
 
 /** 到港开战（主控）：开战时刻 = 到港时刻；期望距离取已记忆偏好（无则有效射程中点） */
