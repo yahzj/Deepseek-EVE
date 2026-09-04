@@ -1,0 +1,121 @@
+/**
+ * 技能补全效果测试（2026-09-04）：材料学 / 工业自动化 / 深空采集学 / 信号分析学 /
+ * 舰船操控学 / 深空物流学——六个接线点的行为锁定（零级 = 无影响，满级 = 预期值）。
+ */
+import { describe, expect, it } from 'vitest'
+import type { GameState } from '../src/state'
+import { createInitialState } from '../src/state'
+import type { ItemDef, SimContext } from '../src/types'
+import { belt, makeTestCtx } from './helpers'
+import { fleetDefOf } from '../src/instances'
+import { travelTimeFactor } from '../src/travel'
+import { matNeedCount, missingMaterials } from '../src/manufacturing'
+import { scanWindowMsOf } from '../src/explore'
+import { getMiningParams } from '../src/mining'
+import { cargoCapacityM3Of } from '../src/inventory'
+import { startRefineRun, stopRefineRun } from '../src/industry'
+
+const GAS_X: ItemDef = {
+  id: 'gas-x',
+  name: '试制气体',
+  kind: 'gas',
+  unitM3: 1,
+  baseSellPriceIsk: 40,
+  description: '测试用气体',
+}
+
+describe('技能补全：舰船操控学（航行时间每级 −2%）', () => {
+  it('零级不变；与导航族乘算叠加', () => {
+    const base = createInitialState({ nowWallMs: 0, seed: 1 })
+    const ctx = makeTestCtx()
+    base.skills.trained['navigation'] = 5 // 0.8
+    const fNav5 = travelTimeFactor(base, ctx)
+    base.skills.trained['spaceship-command'] = 5 // 再 ×0.9
+    const fBoth = travelTimeFactor(base, ctx)
+    expect(fNav5).toBeCloseTo(0.8, 10)
+    expect(fBoth).toBeCloseTo(0.72, 10)
+  })
+})
+
+describe('技能补全：材料学（制造消耗每级 −2%）', () => {
+  it('满级 matNeedCount = ×0.9 向下取整（至少 1）；缺口预览同口径', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 2 })
+    const ctx = makeTestCtx()
+    expect(matNeedCount(state, 100)).toBe(100) // 零级
+    state.skills.trained['materials'] = 5
+    expect(matNeedCount(state, 100)).toBe(90)
+    expect(matNeedCount(state, 1)).toBe(1) // 保底 1
+    // 缺料预览：100 → 折扣后 90，仓库 90 够、89 差 1
+    const spec = { materials: [{ itemId: 'ore-a', count: 100 }], buildSeconds: 60, buildCostIsk: 1000 } as const
+    state.warehouse.items['ore-a'] = 90
+    expect(missingMaterials(state, ctx, spec)).toEqual([])
+    state.warehouse.items['ore-a'] = 89
+    const miss = missingMaterials(state, ctx, spec)
+    expect(miss.length).toBe(1)
+    expect(miss[0]).toContain('还差 1')
+  })
+})
+
+describe('技能补全：工业自动化（AI 精炼炉周期每级 −5%）', () => {
+  it('基础核心 + 自动化满级：6000/0.4 → ×0.75 = 11250ms；手动运转不受影响', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const ctx = makeTestCtx()
+    state.aiCores['basic'] = 1
+    state.warehouse.items['ore-a'] = 60
+    state.skills.trained['industrial-automation'] = 5
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(state.refineRun.cycleMs).toBe(11_250) // 6000 ÷ 0.4 × 0.75
+    expect(stopRefineRun(state, ctx).ok).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.refineRun.cycleMs).toBe(6_000) // 手动 = 原始周期
+    expect(stopRefineRun(state, ctx).ok).toBe(true)
+  })
+})
+
+describe('技能补全：深空采集学（气体/冰矿产量每级 +5%）', () => {
+  it('气体矿带满级 = ×1.25；普通矿石不受影响', () => {
+    const mk = (): { state: GameState; ctx: SimContext } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 4 })
+      const ctx = makeTestCtx({ items: [GAS_X], belts: [belt('belt-g', 'gas-x')] })
+      return { state, ctx }
+    }
+    const a = mk()
+    const b = mk()
+    b.state.skills.trained['deep-space-harvesting'] = 5
+    const p0 = getMiningParams(a.state, a.ctx, { shipId: a.state.shipId, beltId: 'belt-g' })!
+    const p5 = getMiningParams(b.state, b.ctx, { shipId: b.state.shipId, beltId: 'belt-g' })!
+    expect(p0.unitsPerCycle).toBeGreaterThan(0)
+    expect(p5.unitsPerCycle).toBe(Math.max(1, Math.floor(p0.unitsPerCycle * 1.25)))
+    // 普通矿石带不受影响（默认 ctx 的 belt-fortune 类由 helpers 提供 ore belt 场景用 ore-a）
+    const c = mk()
+    c.state.skills.trained['deep-space-harvesting'] = 5
+    const ctxOre = makeTestCtx({ belts: [belt('belt-o', 'ore-a')] })
+    const stOre = createInitialState({ nowWallMs: 0, seed: 4 })
+    const pOre = getMiningParams(stOre, ctxOre, { shipId: stOre.shipId, beltId: 'belt-o' })!
+    expect(pOre.unitsPerCycle).toBeGreaterThan(0)
+    const stOre5 = createInitialState({ nowWallMs: 0, seed: 4 })
+    stOre5.skills.trained['deep-space-harvesting'] = 5
+    const pOre5 = getMiningParams(stOre5, ctxOre, { shipId: stOre5.shipId, beltId: 'belt-o' })!
+    expect(pOre5.unitsPerCycle).toBe(pOre.unitsPerCycle)
+  })
+})
+
+describe('技能补全：信号分析学（扫描窗口每级 −8%）', () => {
+  it('窗口 10 分钟 → 满级 6 分钟（×0.6）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    expect(scanWindowMsOf(state)).toBe(600_000)
+    state.skills.trained['signal-analysis'] = 5
+    expect(scanWindowMsOf(state)).toBe(360_000)
+  })
+})
+
+describe('技能补全：深空物流学（货仓容量每级 +4%）', () => {
+  it('满级 = 基础容量 ×1.2', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 6 })
+    const ctx = makeTestCtx()
+    const base = fleetDefOf(state, ctx, state.shipId)!.cargoM3
+    expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base))
+    state.skills.trained['deep-space-logistics'] = 5
+    expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base * 1.2))
+  })
+})

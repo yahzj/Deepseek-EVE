@@ -66,9 +66,15 @@ export function getMiningParams(
   const minerDefs = familyModules(state, ctx, shipId, 'miner')
   let minerBonus = 0
   for (const def of minerDefs) minerBonus += def.bonus ?? 0
+  // 深空采集学（deep-space-harvesting，2026-09-04 补全）：气体/冰矿产量每级 +5%（普通矿石不受影响）
+  let deepMult = 1
+  if (ore.kind === 'gas' || ore.kind === 'ice') {
+    const deepLv = Math.min(5, state.skills.trained['deep-space-harvesting'] ?? 0)
+    if (deepLv > 0) deepMult = 1 + 0.05 * deepLv
+  }
   const unitsPerCycle = Math.max(
     1,
-    Math.floor(ship.oreUnitsPerCycle * (1 + bal.yieldPerLevel * yieldLevel) * (1 + minerBonus)),
+    Math.floor(ship.oreUnitsPerCycle * (1 + bal.yieldPerLevel * yieldLevel) * (1 + minerBonus) * deepMult),
   )
   return { ship, belt, ore, cycleMs, unitsPerCycle }
 }

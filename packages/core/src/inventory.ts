@@ -94,14 +94,17 @@ export function cargoUsedM3Of(state: GameState, ctx: SimContext, shipId: string)
   return used
 }
 
-/** 指定船货仓容量（m³，按该船自己的舰船定义 + 低槽货舱扩展件加成（复数 Σ）） */
+/** 指定船货仓容量（m³，按该船自己的舰船定义 + 低槽货舱扩展件加成（复数 Σ）+
+ * 深空物流学（deep-space-logistics）：每级 +4%，满级 +20%） */
 export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   const ship = fleetDefOf(state, ctx, shipId)
   if (!ship) return 0
   const cargoDefs = familyModules(state, ctx, shipId, 'cargo')
   let bonus = 0
   for (const def of cargoDefs) bonus += def.bonus ?? 0
-  return Math.round(ship.cargoM3 * (1 + bonus))
+  const logLv = Math.min(5, state.skills.trained['deep-space-logistics'] ?? 0)
+  const logMult = 1 + 0.04 * logLv
+  return Math.round(ship.cargoM3 * (1 + bonus) * logMult)
 }
 
 /** 当前驾驶船货仓已占用体积（m³） */

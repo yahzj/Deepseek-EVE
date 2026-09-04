@@ -233,6 +233,8 @@ export {
   ownsBlueprint,
   calcBuildDurationMs,
   missingMaterials,
+  materialFactor,
+  matNeedCount,
   startManufacturing,
   advanceManufacturing,
   manufacturingStatus,

@@ -162,7 +162,12 @@ export function startRefineRun(
   }
   const { batchUnits, cycleMs } = refineParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
-  const cycleEff = Math.max(1, Math.round(cycleMs / eff))
+  let cycleEff = Math.max(1, Math.round(cycleMs / eff))
+  if (worker !== 'pilot') {
+    // 工业自动化（industrial-automation，2026-09-04 补全）：AI 驱动精炼炉每级再 −5% 周期（至少保留 60%）
+    const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
+    if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.05 * autoLv)))
+  }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }

@@ -9,6 +9,7 @@ import {
   formatDurationMs,
   manufacturingStatus,
   marketLockedReason,
+  matNeedCount,
   missingMaterials,
   ownsBlueprint,
 } from '@whale/core'
@@ -164,12 +165,14 @@ function BlueprintCard({
       </div>
       <ul className="app-bp-mats">
         {materials.map((need) => {
+          const needCount = matNeedCount(state, need.count) // 材料学折扣后的实际需求
           const have = countWare(state, need.itemId)
-          const enough = have >= need.count
+          const enough = have >= needCount
           const matName = engine.ctx.items.get(need.itemId)?.name ?? need.itemId
           return (
             <li key={need.itemId} className={`app-bp-mat${enough ? '' : ' is-short'}`}>
-              {matName} ×{need.count.toLocaleString('zh-CN')}
+              {matName} ×{needCount.toLocaleString('zh-CN')}
+              {needCount !== need.count ? <span className="app-dim">（原 ×{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span> : null}
               <span className="app-dim">（仓库 {have.toLocaleString('zh-CN')}）</span>
             </li>
           )

@@ -59,14 +59,26 @@ export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: Bui
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }
 
-/** 材料缺口说明（界面提示用）；材料从物品仓库取用 */
+/** 材料学（materials，2026-09-04 补全）：每级 −2% 制造材料消耗（满级 −10%，单种至少留 1 单位） */
+export function materialFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['materials'] ?? 0)
+  return Math.max(0.9, 1 - 0.02 * lv)
+}
+
+/** 材料学折扣后的实际需求数量（预览/扣料/取消退回同口径） */
+export function matNeedCount(state: GameState, count: number): number {
+  return Math.max(1, Math.floor(count * materialFactor(state)))
+}
+
+/** 材料缺口说明（界面提示用；材料从物品仓库取用；数量已按材料学折扣折算） */
 export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildSpec): string[] {
   const missing: string[] = []
   for (const need of spec.materials) {
+    const needCount = matNeedCount(state, need.count)
     const have = countWare(state, need.itemId)
-    if (have < need.count) {
+    if (have < needCount) {
       const name = ctx.items.get(need.itemId)?.name ?? need.itemId
-      missing.push(`${name} 还差 ${(need.count - have).toLocaleString('zh-CN')} 单位`)
+      missing.push(`${name} 还差 ${(needCount - have).toLocaleString('zh-CN')} 单位`)
     }
   }
   return missing
@@ -88,9 +100,9 @@ export function startManufacturing(state: GameState, blueprintId: string, ctx: S
     return { ok: false, error: `材料不足：${missing.join('、')}。` }
   }
 
-  // 扣材料（物品仓库）与制造费
+  // 扣材料（物品仓库，按材料学折扣后数量）与制造费
   for (const need of buildable.spec.materials) {
-    removeWare(state, need.itemId, need.count)
+    removeWare(state, need.itemId, matNeedCount(state, need.count))
   }
   state.wallet.isk -= buildable.spec.buildCostIsk
 
@@ -130,10 +142,11 @@ export function cancelManufacturing(state: GameState, ctx: SimContext): CommandR
   mf.finishAtGameMs = 0
   mf.durationMs = 0
   if (buildable) {
+    // 退回 = 开工时实际扣除的数量（含材料学折扣），不多退
     for (const need of buildable.spec.materials) {
-      addWare(state, need.itemId, need.count)
+      addWare(state, need.itemId, matNeedCount(state, need.count))
     }
-    addLog(state, 'info', `已取消制造「${productName}」：材料全额退回物品仓库（制造费不退）。`)
+    addLog(state, 'info', `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量；制造费不退）。`)
   } else {
     addLog(state, 'warn', '制造作业已取消（引用的蓝图数据缺失，无材料可退）。')
   }

@@ -55,7 +55,7 @@ export function SkillsPage({ engine }: PageProps) {
       >
         <QueueBlock engine={engine} />
       </Panel>
-      <Panel title="技能目录" right={<span className="app-dim">12 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
+      <Panel title="技能目录" right={<span className="app-dim">{engine.skills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
         {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类 */}
         <div className="app-task-tabs" role="tablist">
           <button

@@ -23,6 +23,14 @@ import { shortestTravelMinutes, travelLegMs } from './travel'
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
 
+/** 信号分析学（signal-analysis，2026-09-04 补全）：每级 −8% 就地扫描窗口（满级 −40%，下限 6 分钟）。
+ * 扫描进度（scanProgress）仍按毫秒累计；skill 只缩短单次所需窗口，续扫百分比按当前生效窗口折算。 */
+export function scanWindowMsOf(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['signal-analysis'] ?? 0)
+  const factor = Math.max(0.6, 1 - 0.08 * lv)
+  return Math.round(SCAN_WINDOW_MS * factor)
+}
+
 /** 某星系是否已探索（母港恒为真） */
 export function isExplored(state: GameState, galaxyId: string): boolean {
   return galaxyId === HOME_GALAXY_ID || state.exploredGalaxies.includes(galaxyId)
@@ -122,9 +130,10 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     return { ok: true }
   }
   const legMs = travelLegMs(state, ctx, travelMin)
-  // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress）
-  const doneMs = Math.min(SCAN_WINDOW_MS - 1, Math.max(0, Math.floor(state.scanProgress[galaxyId] ?? 0)))
-  const remainWindowMs = SCAN_WINDOW_MS - doneMs
+  // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress；窗口按信号分析学折算）
+  const effWin = scanWindowMsOf(state)
+  const doneMs = Math.min(effWin - 1, Math.max(0, Math.floor(state.scanProgress[galaxyId] ?? 0)))
+  const remainWindowMs = effWin - doneMs
   const totalMs = legMs + remainWindowMs
   const s = state.scanning
   s.active = true
@@ -136,7 +145,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     state,
     'info',
     doneMs > 0
-      ? `开始扫描探索（续扫，从「${fromName}」出发）：就地扫描已完成 ${Math.round((doneMs / SCAN_WINDOW_MS) * 100)}%，本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口。`
+      ? `开始扫描探索（续扫，从「${fromName}」出发）：就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%，本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口。`
       : `开始扫描探索：深空扫描艇从「${fromName}」出发驶向一处「未知信号」——预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并停留该星系。扫描期间更容易碰到有趣的东西。`,
   )
   return { ok: true }
@@ -186,8 +195,9 @@ export function stopScan(state: GameState, ctx: SimContext): CommandResult {
   const galaxy = ctx.galaxies.get(gid)
   const galaxyName = galaxy?.name ?? gid
   const totalMs = Math.max(1, s.finishAtGameMs - s.startedAtGameMs)
-  const doneMs = Math.min(SCAN_WINDOW_MS - 1, Math.max(0, Math.floor(state.scanProgress[gid] ?? 0)))
-  const remainWindowMs = SCAN_WINDOW_MS - doneMs
+  const effWin = scanWindowMsOf(state)
+  const doneMs = Math.min(effWin - 1, Math.max(0, Math.floor(state.scanProgress[gid] ?? 0)))
+  const remainWindowMs = effWin - doneMs
   // T8 作业 = 去程 + 窗口（无返航段）：去程腿 = 总长 - 剩余窗口
   const legMs = Math.max(0, totalMs - remainWindowMs)
   const elapsed = Math.max(0, state.gameMs - s.startedAtGameMs)
@@ -202,7 +212,7 @@ export function stopScan(state: GameState, ctx: SimContext): CommandResult {
   if (elapsed < legMs) {
     // 还在去程路上：窗口进度无新增 → 折返空间站（从出发地计程；从母港出发则直接回港）
     if (doneMs > 0) {
-      addLog(state, 'info', `已终止扫描探索（对「${galaxyName}」之前已保存 ${Math.round((doneMs / SCAN_WINDOW_MS) * 100)}% 窗口进度，下次续扫）。`)
+      addLog(state, 'info', `已终止扫描探索（对「${galaxyName}」之前已保存 ${Math.round((doneMs / effWin) * 100)}% 窗口进度，下次续扫）。`)
     } else {
       addLog(state, 'info', `已终止扫描探索：对「${galaxyName}」的扫描艇尚未开始就地扫描，本次无进度可保留。`)
     }
@@ -219,15 +229,15 @@ export function stopScan(state: GameState, ctx: SimContext): CommandResult {
     finishScan(state, ctx)
     return { ok: true }
   }
-  // 就地扫描进行中：保存窗口完成部分，从目标返航空间站
+  // 就地扫描进行中：保存窗口完成部分（按生效窗口上限），从目标返航空间站
   const windowDone = Math.min(remainWindowMs, Math.max(0, elapsed - legMs))
   const newDone = doneMs + windowDone
-  const keep = Math.min(SCAN_WINDOW_MS - 1, newDone)
+  const keep = Math.min(effWin - 1, newDone)
   if (keep > 0) state.scanProgress[gid] = keep
   addLog(
     state,
     'info',
-    `已终止扫描探索：就地扫描完成 ${Math.round((keep / SCAN_WINDOW_MS) * 100)}%，进度已保存——下次对该星系扫描只需补扫剩余窗口。扫描艇正在返航空间站。`,
+    `已终止扫描探索：就地扫描完成 ${Math.round((keep / effWin) * 100)}%，进度已保存——下次对该星系扫描只需补扫剩余窗口。扫描艇正在返航空间站。`,
   )
   state.awayGalaxy = gid
   startTransitHome(state, ctx)

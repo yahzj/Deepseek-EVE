@@ -68,6 +68,9 @@ export function travelTimeFactor(state: GameState, ctx: SimContext, shipId?: str
     const lv = state.skills.trained[skillId] ?? 0
     if (lv > 0) f *= 1 - bal.cutPerLevel * lv
   }
+  // 舰船操控学（spaceship-command，2026-09-04 补全接活）：全船基础操控，每级航行时间再 −2%（与航行技能族乘算）
+  const cmdLv = Math.min(5, state.skills.trained['spaceship-command'] ?? 0)
+  if (cmdLv > 0) f *= 1 - 0.02 * cmdLv
   return Math.max(bal.minFactor, f)
 }
 
