@@ -24,7 +24,6 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "build:web": "vite build --config web.vite.config.ts",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit"
   }

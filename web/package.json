@@ -1,0 +1,19 @@
+{
+  "name": "@whale/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "网页版（GitHub Pages）：同一套 renderer 源码静态化，仅依赖 react/vite（不装 Electron）。",
+  "scripts": {
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.3"
+  }
+}

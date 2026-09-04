@@ -6,8 +6,7 @@ NPC 订单簿市场，以及 V10 的"深空市场大扩容"（占位导入，战
 
 ## 在线网页版（GitHub Pages）
 
-- 同一份代码可构建为纯浏览器可玩的网页版（
-pm run build:web -w @whale/desktop），由 GitHub Actions 自动部署到 Pages；
+- 同一份代码可构建为纯浏览器可玩的网页版（独立工程 web/：cd web && npm ci && npm run build，只装 react/vite、不装 Electron），由 GitHub Actions 自动部署到 Pages；
 - 网页版存档保存在浏览器 localStorage（自带备份/恢复面板），与桌面版文件存档相互独立；
 - 推送 main 分支即触发部署：仓库 Settings → Pages → Source 选 **GitHub Actions** 即可。
 
