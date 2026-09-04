@@ -213,8 +213,9 @@ describe('装备装配与加成', () => {
     expect(fitModule(state, 'mod-t', ctxWithTurret).ok).toBe(true)
     expect(state.fleet[state.shipId].fitted.turret).toBe('mod-t')
     expect(state.fleet[state.shipId].fitted.miner).toBeNull()
-    // 矿船火力公式读取炮台加成
-    expect(calcPower(state, ctxWithTurret)).toBeCloseTo(10 * 1.6, 5)
+    // V17：火力指数（calcPower）只计基础 + 炮术 + 船型加成——炮台不再以百分比乘入，
+    // 其真实战力由 battleWinPreview 期望推演评估（装备 = 弹伤害 × dmgMult × 技能）
+    expect(calcPower(state, ctxWithTurret)).toBeCloseTo(10, 5)
     // 换装炮台：旧件退回装备库（第一件 mod-t 装配后已出库，换装时退回 1 件）
     const ctxT2 = makeTestCtx({ modules: [moduleDef('mod-t2', 'turret', 0.25), moduleDef('mod-t', 'turret', 0.6)] })
     state.moduleBay['mod-t2'] = 1

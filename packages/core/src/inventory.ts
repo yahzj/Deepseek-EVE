@@ -99,7 +99,7 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
   if (!ship) return 0
   const fitted = state.fleet[shipId]?.fitted
   const cargoDef = fitted?.cargo ? ctx.modules.get(fitted.cargo) : undefined
-  const bonus = cargoDef && cargoDef.slot === 'cargo' ? cargoDef.bonus : 0
+  const bonus = cargoDef && cargoDef.slot === 'cargo' ? cargoDef.bonus ?? 0 : 0
   return Math.round(ship.cargoM3 * (1 + bonus))
 }
 

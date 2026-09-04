@@ -544,12 +544,42 @@ export interface StationSiteProgress {
   delivered: Record<string, number>
 }
 
+/** B1 低安遭遇（v17.1 兼容字段）：一次"伏击/巡逻"事件（进行中/待决/战斗中） */
+export interface EncounterState {
+  /** 是否有未了结的遭遇 */
+  active: boolean
+  /** 承担这艘船的 uid（主控或副船） */
+  shipId: string | null
+  /** 事发星系（sec<0） */
+  galaxyId: string | null
+  /** 事件展示名（文案池按低安深度选） */
+  name: string
+  /** 遭遇强度（编队总战力 ≈ 承担船火力 × 0.6~1.05） */
+  threat: number
+  /** 来源说明：主控采矿/停留/远征途中 或 副船任务 */
+  origin: string
+  /** 产生时刻（游戏毫秒） */
+  invitedAtGameMs: number
+  /** 在线邀约超时时刻（超过即自动按文字结算） */
+  deadlineGameMs: number
+  /** 玩家应战后的实时战斗（null = 未开打） */
+  battle: BattleState | null
+}
+
 /** 第十七版存档结构（当前版本）：v17 = v16 + 舰船实例化（T5-B）——
  * 同型舰船可多艘：fleet 键从"船型 id"升级为"实例 uid"（第 1 艘 = 船型 id，
  * 第 2 艘起 = `船型id#2/#3…`，固定不回收）；fleet 条目补 defId/customName。
- * 旧档每型只有一艘：迁移只补条目字段，键与驾驶/AI/锁定/返航/挂单里的船 id 原样保留。 */
+ * 旧档每型只有一艘：迁移只补条目字段，键与驾驶/AI/锁定/返航/挂单里的船 id 原样保留。
+ * 附带兼容字段（v17.1，无版本号，normalize 兜底）：encounter 低安遭遇 / lowSecNotified
+ * 首次低安提示 / encounterZoneCooldown 星系级遭遇冷却。 */
 export type GameStateV17 = Omit<GameStateV16, 'version'> & {
   version: 17
+  /** B1 低安遭遇（进行中/待决/战斗中；无 = inactive 空对象） */
+  encounter: EncounterState
+  /** B1：是否已提示过"进入低安"（首次进低安弹提示 + 手册留档） */
+  lowSecNotified: boolean
+  /** B1：星系 id → 该星系遭遇冷却结束时刻（区域事件不叠加） */
+  encounterZoneCooldown: Record<string, number>
 }
 
 /** 对外统一称呼：当前版本状态 */
@@ -675,6 +705,19 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     pendingDialogue: null,
     debugQuick: false,
     completedBounties: [],
+    encounter: {
+      active: false,
+      shipId: null,
+      galaxyId: null,
+      name: '',
+      threat: 0,
+      origin: '',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle: null,
+    },
+    lowSecNotified: false,
+    encounterZoneCooldown: {},
     logs: [],
   }
   addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')

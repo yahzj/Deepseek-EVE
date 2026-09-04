@@ -14,6 +14,7 @@ import {
   calcPower,
   expeditionStatus,
   fleetDefOf,
+  foeMainDamageType,
   formatDurationMs,
   frontierGalaxyIds,
   isExplored,
@@ -29,6 +30,7 @@ import {
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+import { DMG_LABEL } from '../ui/shipInfo'
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
 export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -985,6 +987,10 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       <div className="app-ano-win">
         火力 {power} → 预估胜率 <b className={`app-win-${chanceTone}`}>{Math.round(chance)}%</b>
         {!reqMet ? <span className="app-dim">（声望 {standing}/{anomaly.standingReq}）</span> : null}
+        {/* V17：敌方主伤害类型——护盾/装甲增强器按系配抗的换装依据 */}
+        <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入），伤害构成见卡面">
+          {' '}· 敌主伤 {DMG_LABEL[foeMainDamageType(anomaly)]}
+        </span>
       </div>
       <div className="app-ano-reward">
         奖金 {anomaly.rewardIsk.toLocaleString('zh-CN')} ISK

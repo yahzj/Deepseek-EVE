@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 import { ITEM_KIND_LABELS, SHIP_ROLE_LABELS, SLOT_LABELS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
-import { combatBadges, itemCombatLines, moduleInfoLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, InfoHover, itemCombatLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 
 /** 宽类型标签索引（详情窗数据来自 raw，键是 string） */
@@ -18,13 +18,14 @@ const kindName = (k: string): string => (ITEM_KIND_LABELS as Record<string, stri
 const slotName = (k: string): string => (SLOT_LABELS as Record<string, string>)[k] ?? k
 const roleName = (k: string): string => (SHIP_ROLE_LABELS as Record<string, string>)[k] ?? k
 
-type Tab = 'guide' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
+type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
 type ViewMode = 'grid' | 'list'
 /** 详情行数据 */
 type RawData = Record<string, unknown>
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: 'guide', label: '玩法速览' },
+  { key: 'rules', label: '航行须知' },
   { key: 'items', label: '物品图鉴' },
   { key: 'modules', label: '装备图鉴' },
   { key: 'ships', label: '舰船图鉴' },
@@ -52,6 +53,27 @@ const GUIDE_ROWS: Array<[string, string]> = [
   ['交易', '市场页：常驻供应/稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。'],
   ['随机事件', '深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。'],
   ['耐久与维修', '远征失利会扣耐久，耐久归零弃船（货随船失）；舰船页可付费维修。'],
+]
+
+/** 航行须知 · 低安安全规则（B1；2026-09-04 定稿） */
+const RULES_LOWSEC: Array<[string, string]> = [
+  ['安全等级', '星图星系标色：越高越安全。sec ≥ 0.5 高安基本太平；低于 0 越深越危险。'],
+  ['什么会遇袭', '在低安星系的采矿（含往返矿带）、远征途中、以及胜利后停留，都可能撞见巡逻拦截或海盗伏击；AI 副船同样会遇。'],
+  ['承担者', '同一低安星系我方有船在场时，停泊/停留的船优先成为目标（区域事件一次，事件后该星系冷却一段时间）。'],
+  ['在线时', '遭遇会弹出「伏击待决」横幅：可「⚔ 迎战」（进入实时战斗，自动打完）或「💨 快速脱离」；60 秒未处置自动脱离。'],
+  ['离线时', '离线（含离线结算）遭遇直接文字结算，不会凭空等你去点。'],
+  ['结局三档', '击退：缴获少量 ISK；受损：耐久 −5%~15%（底线 5%，绝不弃船）；被抢：至多 30% 船上货物（无货则抢少量钱包）。'],
+]
+
+/** 航行须知 · 重要规则留档（后续新机制持续补充） */
+const RULES_CORE: Array<[string, string]> = [
+  ['采矿 ↔ 远征 转场', '采矿中点悬赏「⚡ 转战出发」= 结束采矿（货随船）并从矿带星系出发；远征中点矿带「⚡ 转开采」= 取消远征（无战果、连击同步停）并回港开采。均需两次确认。'],
+  ['连续出击', '「连续出击」在空闲时可开：打完自动冷却 10 秒再战；货仓装不下缴获 / 耐久低于 50% 且修理组件耗尽 / 战败都会自动暂停。'],
+  ['战斗撤退', '交火中可「⚑ 撤退」（活动栏或战场内，两次确认）：轻损脱离、无弃船风险、自动返航并停止连击。'],
+  ['船只锁定', '锁定只防误售：驾驶、AI 执勤、维修、改名都不受影响。'],
+  ['重复舰船', '同型可买多艘：第 2 艘起默认带「#N」；可自由改名（10 字内、允许重名），改名后全界面显示自定义名。'],
+  ['货仓与出售', '装卸与出售只对当前驾驶船；出售需回母港市场；副站可卸货入仓库。'],
+  ['离线结算', '离线最长结算 8 小时，重启自动结算并弹离线简报。'],
 ]
 
 const GUIDE_NOTES: string[] = [
@@ -121,13 +143,8 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     const modId = String(r.id ?? '')
     const modDef = modId ? engine.ctx.modules.get(modId) : undefined
     if (modDef) {
-      // V10.5：统一行（基础加成 + 盾/甲/推进/炮台契约字段）
+      // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
       for (const line of moduleInfoLines(modDef)) rows.push([line.k, line.v])
-      const parts: string[] = []
-      if (modDef.shieldHpBonus !== undefined || modDef.armorHpBonus !== undefined || modDef.agilityBonus !== undefined || modDef.weaponSize !== undefined) {
-        parts.push('战斗契约数值，战斗系统启用后生效')
-      }
-      if (parts.length > 0) rows.push(['说明', parts.join('')])
     } else {
       rows.push(['槽位', `${slotName(String(r.slot ?? ''))} · 加成 ${Math.round(Number(r.bonus ?? 0) * 100)}%`])
     }
@@ -135,9 +152,9 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     const shipId = String(r.id ?? '')
     const shipDef = shipId ? engine.ctx.ships.get(shipId) : undefined
     if (shipDef) {
-      // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）
+      // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
       for (const line of shipInfoLines(shipDef)) rows.push([line.k, line.v])
-      rows.push(['说明', '盾/甲/结构/火力为战斗契约数值：战斗系统启用后生效'])
+      rows.push(['说明', '已生效战斗数值：抗性为整数主抗制，增强器以缺口乘入合成（上限 90%）'])
       rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场偶尔闪现）' : '市场流通'])
     } else {
       const role = String(r.role ?? 'industrial')
@@ -287,7 +304,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     tab: 'modules',
     glyph: mod.slot,
     name: mod.name,
-    sub: `${slotName(mod.slot)} · ${Math.round(mod.bonus * 100)}%`,
+    sub: `${slotName(mod.slot)} · ${moduleShortEffect(mod)}`,
     raw: mod as unknown as RawData,
   }))
   const shipCells: GridCell[] = engine.ships.map((ship) => {
@@ -362,6 +379,25 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
             </div>
           ) : null}
 
+          {tab === 'rules' ? (
+            <div className="app-hand-guide">
+              <div className="app-bay-title">低安安全（安全等级 = 星系风险）</div>
+              {RULES_LOWSEC.map(([k, v]) => (
+                <div key={k} className="app-hand-guide-row">
+                  <b className="app-hand-guide-key">{k}</b>
+                  <span>{v}</span>
+                </div>
+              ))}
+              <div className="app-bay-title">重要规则留档</div>
+              {RULES_CORE.map(([k, v]) => (
+                <div key={k} className="app-hand-guide-row">
+                  <b className="app-hand-guide-key">{k}</b>
+                  <span>{v}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {tab === 'items' ? (
             <DataTab
               view={view}
@@ -375,7 +411,13 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                       .map((r) => `${engine.ctx.items.get(r.mineralId)?.name ?? r.mineralId}×${r.perOre}`)
                       .join(' + ')
                     return (
-                      <li key={item.id} className="app-hand-entry">
+                      <ItemHover
+                        key={item.id}
+                        as="li"
+                        item={item}
+                        nameOf={(pid) => engine.ctx.items.get(pid)?.name}
+                        className="app-hand-entry"
+                      >
                         <div className="app-inv-name">
                           <RowGlyph glyph={item.kind} /> {item.name}
                           <span className="app-chip is-dim">{kindName(item.kind)}</span>
@@ -383,7 +425,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         </div>
                         <div className="app-dim">{item.description}</div>
                         {refine ? <div className="app-hand-sub">精炼（100% 收率）→ {refine}</div> : null}
-                      </li>
+                      </ItemHover>
                     )
                   })}
                 </ul>
@@ -400,14 +442,14 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
               renderList={() => (
                 <ul className="app-hand-list">
                   {engine.modules.map((mod) => (
-                    <li key={mod.id} className="app-hand-entry">
+                    <ModuleHover key={mod.id} as="li" mod={mod} className="app-hand-entry">
                       <div className="app-inv-name">
                         <RowGlyph glyph={mod.slot} /> {mod.name}
                         <span className="app-chip is-dim">{slotName(mod.slot)}</span>
-                        <span className="app-gold"> {Math.round(mod.bonus * 100)}%</span>
+                        <span className="app-gold"> {moduleShortEffect(mod)}</span>
                       </div>
                       <div className="app-dim">{mod.description}</div>
-                    </li>
+                    </ModuleHover>
                   ))}
                 </ul>
               )}
@@ -425,7 +467,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                   {engine.ships.map((ship) => {
                     const role = ship.role ?? 'industrial'
                     return (
-                      <li key={ship.id} className="app-hand-entry">
+                      <ShipHover key={ship.id} as="li" ship={ship} className="app-hand-entry">
                         <div className="app-inv-name">
                           <RowGlyph glyph={role} /> {ship.name}
                           <span className="app-chip is-dim">T{ship.tier}</span>
@@ -438,10 +480,10 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         </div>
                         <div className="app-hand-sub">
                           <span className="app-combat-badges">{combatBadges(ship)}</span>
-                          <span className="app-dim">（契约数值：战斗系统启用后生效）</span>
+                          <span className="app-dim">（战斗数值已启用 · 悬停查看完整面板）</span>
                         </div>
                         <div className="app-hand-sub">{ship.description}</div>
-                      </li>
+                      </ShipHover>
                     )
                   })}
                 </ul>
@@ -460,7 +502,18 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                   {engine.blueprints.map((bp) => {
                     const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
                     return (
-                      <li key={bp.id} className="app-hand-entry">
+                      <InfoHover
+                        key={bp.id}
+                        as="li"
+                        title={bp.name}
+                        lines={[
+                          { k: '产物', v: `${engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId}（装备）` },
+                          { k: '材料需求', v: mats },
+                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 造费 ${bp.buildCostIsk.toLocaleString('zh-CN')} ISK` },
+                        ]}
+                        note={bp.description}
+                        className="app-hand-entry"
+                      >
                         <div className="app-inv-name">
                           <RowGlyph glyph="blueprint" /> {bp.name}
                         </div>
@@ -469,13 +522,24 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                           材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 制造费 {bp.buildCostIsk.toLocaleString('zh-CN')} ISK
                         </div>
                         <div className="app-dim">{bp.description}</div>
-                      </li>
+                      </InfoHover>
                     )
                   })}
                   {engine.shipBlueprints.map((bp) => {
                     const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
                     return (
-                      <li key={bp.id} className="app-hand-entry">
+                      <InfoHover
+                        key={bp.id}
+                        as="li"
+                        title={bp.name}
+                        lines={[
+                          { k: '产物', v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
+                          { k: '材料需求', v: mats },
+                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 造费 ${bp.buildCostIsk.toLocaleString('zh-CN')} ISK` },
+                        ]}
+                        note={bp.description}
+                        className="app-hand-entry"
+                      >
                         <div className="app-inv-name">
                           <RowGlyph glyph="blueprint" /> {bp.name}
                         </div>
@@ -484,7 +548,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                           材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 制造费 {bp.buildCostIsk.toLocaleString('zh-CN')} ISK
                         </div>
                         <div className="app-dim">{bp.description}</div>
-                      </li>
+                      </InfoHover>
                     )
                   })}
                 </ul>

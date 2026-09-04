@@ -264,7 +264,12 @@ for (const d of drones) {
 }
 for (const m of MODULES) {
   check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
-  if (m.slot === 'turret') {
+  if (m.slot === 'miner' || m.slot === 'cargo') {
+    // V17：工业槽保留加成系数形态
+    check((m.bonus ?? 0) > 0 && Number.isFinite(m.bonus), `工业装备 ${m.id} bonus 缺失或非法（V17 仅工业槽使用）`)
+  } else if (m.slot === 'turret') {
+    // V17：炮台不再携带工业 bonus（火力参数 = 武器卡，见下方全参数检查）
+    check(m.bonus === undefined, `炮台 ${m.id} 不应携带 bonus（V17 起炮台用武器参数）`)
     check(m.weaponSize === 'light' || m.weaponSize === 'heavy', `炮台 ${m.id} weaponSize 缺失或非法`)
     check((m.ammoPerEngagement ?? 0) > 0 && Number.isInteger(m.ammoPerEngagement), `炮台 ${m.id} ammoPerEngagement 缺失或非法`)
     // V12：武器参数必填且值域合法
@@ -275,13 +280,40 @@ for (const m of MODULES) {
     check(m.reloadMs !== undefined && m.reloadMs > 0 && Number.isInteger(m.reloadMs), `炮台 ${m.id} reloadMs 非法`)
     check(m.dmgMult !== undefined && m.dmgMult > 0, `炮台 ${m.id} dmgMult 非法`)
   } else if (m.slot === 'shield') {
-    check(m.shieldHpBonus !== undefined && m.shieldHpBonus > 0 && m.shieldHpBonus <= 2, `护盾 ${m.id} shieldHpBonus 非法`)
-    check(m.shieldResistBonus !== undefined && m.shieldResistBonus >= 0 && m.shieldResistBonus <= 0.9, `护盾 ${m.id} shieldResistBonus 非法`)
+    // V17.1 拆族：容量件（shieldHpBonus）与抗性件（shieldResistAdd）互斥，且必须给一项
+    const cap = m.shieldHpBonus
+    const add = m.shieldResistAdd
+    const hasCap = cap !== undefined
+    const hasAdd = add !== undefined && Object.keys(add).length > 0
+    check(hasCap || hasAdd, `护盾 ${m.id} 未声明容量或抗性（V17.1 拆族）`)
+    check(!(hasCap && hasAdd), `护盾 ${m.id} 同时携带容量与抗性——抗性/容量件已拆族（V17.1）`)
+    if (hasCap) check(cap !== undefined && cap > 0 && cap <= 2, `护盾 ${m.id} shieldHpBonus 非法`)
+    if (hasAdd) {
+      for (const [t, val] of Object.entries(add ?? {})) {
+        if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
+          errors.push(`护盾 ${m.id} shieldResistAdd.${t} 非法：${String(val)}（需 (0, 0.9]，乘入缺口值）`)
+        }
+      }
+    }
   } else if (m.slot === 'armor') {
-    check(m.armorHpBonus !== undefined && m.armorHpBonus > 0 && m.armorHpBonus <= 2, `装甲 ${m.id} armorHpBonus 非法`)
-    check(m.armorResistBonus !== undefined && m.armorResistBonus >= 0 && m.armorResistBonus <= 0.9, `装甲 ${m.id} armorResistBonus 非法`)
+    // V17.1 拆族：同上（装甲镀层=抗性 / 装甲增厚板=容量）
+    const cap = m.armorHpBonus
+    const add = m.armorResistAdd
+    const hasCap = cap !== undefined
+    const hasAdd = add !== undefined && Object.keys(add).length > 0
+    check(hasCap || hasAdd, `装甲 ${m.id} 未声明容量或抗性（V17.1 拆族）`)
+    check(!(hasCap && hasAdd), `装甲 ${m.id} 同时携带容量与抗性——抗性/容量件已拆族（V17.1）`)
+    if (hasCap) check(cap !== undefined && cap > 0 && cap <= 2, `装甲 ${m.id} armorHpBonus 非法`)
+    if (hasAdd) {
+      for (const [t, val] of Object.entries(add ?? {})) {
+        if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
+          errors.push(`装甲 ${m.id} armorResistAdd.${t} 非法：${String(val)}（需 (0, 0.9]，乘入缺口值）`)
+        }
+      }
+    }
   } else if (m.slot === 'propulsion') {
-    check(m.agilityBonus !== undefined && m.agilityBonus > 0 && m.agilityBonus <= 0.5, `推进器 ${m.id} agilityBonus 非法`)
+    check(m.speedBonusPct !== undefined && m.speedBonusPct > 0 && m.speedBonusPct <= 0.9, `推进器 ${m.id} speedBonusPct 非法（V17 加力推进 = 战斗速度加成）`)
+    check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
   }
 }
 

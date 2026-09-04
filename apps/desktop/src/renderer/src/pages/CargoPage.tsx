@@ -18,7 +18,7 @@ import {
   shipDisplayName,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
-import { HoverTip } from '../ui/Tooltip'
+import { ItemHover } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 
@@ -153,7 +153,13 @@ export function CargoPage({ engine, onToast }: PageProps) {
                   if (!def) return null
                   const buy = itemBuyQuote(engine, id)
                   return (
-                    <HoverTip key={id} as="li" tip={def.description} className="app-inv-row">
+                    <ItemHover
+                      key={id}
+                      as="li"
+                      item={def}
+                      nameOf={(pid) => engine.ctx.items.get(pid)?.name}
+                      className="app-inv-row"
+                    >
                       <div className="app-inv-main">
                         <span className="app-inv-name">{def.name}</span>
                         <span className="app-inv-count">
@@ -174,7 +180,7 @@ export function CargoPage({ engine, onToast }: PageProps) {
                           <span className="app-dim app-sr-eta">只读查看</span>
                         )}
                       </div>
-                    </HoverTip>
+                    </ItemHover>
                   )
                 })}
               </ul>

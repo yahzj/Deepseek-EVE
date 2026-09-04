@@ -58,6 +58,8 @@ export interface UnitSpec {
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
   evasion: number
   hitBonus: number
+  /** V17.1 开火失稳乘子：加力推进装配后 <1（命中整体 ×hitMul），默认 1 */
+  hitMul?: number
   signatureM: number
   scanResMm: number
   speedMps: number
@@ -90,10 +92,10 @@ export function inRange(dist: number, w: { minRangeM: number; maxRangeM: number 
   return dist >= w.minRangeM && dist <= w.maxRangeM
 }
 
-/** 单发命中概率（设计文档公式） */
+/** 单发命中概率（设计文档公式；V17.1：×attacker.hitMul = 加力失稳缩放，缺省 1） */
 export function hitChance(
   weapon: { hitRate: number; minRangeM: number; maxRangeM: number; falloff: number },
-  attacker: { hitBonus: number; scanResMm: number },
+  attacker: { hitBonus: number; scanResMm: number; hitMul?: number },
   defender: { evasion: number; signatureM: number },
   dist: number,
   bal: BattleBalance,
@@ -101,7 +103,8 @@ export function hitChance(
   const effEvasion = defender.evasion * clamp(bal.sigMin, bal.sigMax, bal.sigBaseM / Math.max(1, defender.signatureM))
   const effHitBonus = attacker.hitBonus * clamp(bal.scanMin, bal.scanMax, attacker.scanResMm / bal.scanBaseMm)
   const df = distFactor(dist, weapon)
-  return clamp(bal.hitMin, bal.hitMax, (weapon.hitRate + effHitBonus) * df - effEvasion)
+  const raw = (weapon.hitRate + effHitBonus) * df - effEvasion
+  return clamp(bal.hitMin, bal.hitMax, raw * (attacker.hitMul ?? 1))
 }
 
 /** 把一发伤害按层序消费（盾→甲→结构），返回更新后三层与实际扣血 */
@@ -138,12 +141,22 @@ function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): 
   return Math.max(20, maxSpeedMps * bal.speedFactor * (1 + (agility - 0.5) * 2 * bal.agilitySpeedBonus))
 }
 
-function mergeResist(base: DamageResists | undefined, add: number | undefined): DamageResists {
+/**
+ * EVE 式抗性合成（V17）：模块按"缺口削减"乘入——实际抗性 = 1 − (1−基础) × (1−模块值)，
+ * 上限 0.9。基础已有高抗的层位装同系模块收益递减（与旧"绝对加算百分点"的分水岭；
+ * 对无基础层 = 模块值直接成面板）。
+ */
+export function mergeResist(base: DamageResists | undefined, add: DamageResists | undefined): DamageResists {
   const out: DamageResists = {}
   for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
-    out[t] = clamp(0, 0.9, (base?.[t] ?? 0) + (add ?? 0))
+    out[t] = clamp(0, 0.9, 1 - (1 - (base?.[t] ?? 0)) * (1 - (add?.[t] ?? 0)))
   }
   return out
+}
+
+/** 敌方编队主伤害类型（V17 导出；卡面 dmgMix 取最高权重，缺省 = 动能）——悬赏卡展示/玩家配抗参考 */
+export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
+  return pickTopType(anomaly.dmgMix)
 }
 
 /** 构建我方单位静态卡（含装备加成与无人机装载；null = 船数据缺失） */
@@ -156,6 +169,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
 
   const shieldMod = fitted.shield ? ctx.modules.get(fitted.shield) : undefined
   const armorMod = fitted.armor ? ctx.modules.get(fitted.armor) : undefined
+  const propMod = fitted.propulsion ? ctx.modules.get(fitted.propulsion) : undefined
   const turret = fitted.turret ? ctx.modules.get(fitted.turret) : undefined
 
   const hp: Hp3 = {
@@ -164,8 +178,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     h: ship.hullHp ?? 0,
   }
   const resists = {
-    shield: mergeResist(ship.shieldResist, shieldMod?.shieldResistBonus),
-    armor: mergeResist(ship.armorResist, armorMod?.armorResistBonus),
+    shield: mergeResist(ship.shieldResist, shieldMod?.shieldResistAdd),
+    armor: mergeResist(ship.armorResist, armorMod?.armorResistAdd),
     hull: ship.hullResist ?? {},
   }
   const weapons: WeaponSpec[] = []
@@ -252,9 +266,12 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     resists,
     evasion: ship.evasion ?? 0.12,
     hitBonus: ship.hitBonus ?? 0,
+    // V17.1：加力推进失稳——装配推进器后我方全部武器命中 ×(1−hitPenalty)（常驻；进胜率推演同源）
+    hitMul: 1 - (propMod?.hitPenalty ?? 0),
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
-    speedMps: ship.maxSpeedMps ?? 200,
+    // V17：矢量推进器 = 加力推进——战斗速度加成直接乘入（进 combatSpeed 的距离操纵力）
+    speedMps: (ship.maxSpeedMps ?? 200) * (1 + (propMod?.speedBonusPct ?? 0)),
     agility: ship.agility,
     weapons,
     foeTactic: null,

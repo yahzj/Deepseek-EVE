@@ -338,6 +338,8 @@ export interface BalanceConfig {
   market: MarketBalance
   /** V11 战斗引擎常量（命中/距离动力学/敌方换算/战术/弹药预载） */
   battle: BattleBalance
+  /** B1 低安遭遇 / 伏击（sec<0 星系活动的风险涟漪） */
+  encounter: EncounterBalance
   /** 随机事件节奏（V11）：到达式触发，间隔 10~30 分钟、越接近上限越可能到期 */
   events: {
     /** 总开关（测试等场景可关闭事件流，避免干扰确定性断言） */
@@ -364,6 +366,35 @@ export interface BalanceConfig {
   rewardJitter: number
   /** 星图航行（V12.1）：飞船跃迁速度 + 航行加速技能族共同决定星系间实际耗时 */
   travel: TravelBalance
+}
+
+/** B1 低安遭遇 / 伏击：掷骰窗口与结果数值（初稿，实测后回调） */
+export interface EncounterBalance {
+  /** 高安阈值：星系安全等级 ≥ 此值不掷骰 */
+  highSecSafe: number
+  /** 掷骰窗口毫秒：每窗口内每个暴露源至多判一次 */
+  windowMs: number
+  /** 窗口命中率基线（sec = 0 时） */
+  chanceAtZero: number
+  /** sec 每降 1.0 的窗口命中率增量（线性；sec<0 生效） */
+  chancePerSec: number
+  /** 遭遇后同一星系的冷却毫秒（区域事件不叠加） */
+  zoneCooldownMs: number
+  /** 在线「伏击待决」邀约等待毫秒（超时未响应 → 自动按文字结算） */
+  inviteWaitMs: number
+  /** 受损档：耐久扣损区间（底 clamp 5% 绝不弃船） */
+  duraLossMin: number
+  duraLossMax: number
+  /** 被抢：至多损失船上货物比例（无货则抢钱包） */
+  lootTakenMaxPct: number
+  /** 被抢（无货时）：至多损失钱包 ISK 比例 */
+  iskTakenMaxPct: number
+  /** 遭遇强度：承担船火力 × [foePowerMin..foePowerMax] */
+  foePowerMin: number
+  foePowerMax: number
+  /** 击退 / 胜利缴获：ISK ≈ 威胁 × [lootIskMin..lootIskMax] */
+  lootIskMin: number
+  lootIskMax: number
 }
 
 /** V12.1 星图航行平衡常量 */
@@ -444,20 +475,37 @@ export interface ModuleDef {
   name: string
   /** 装在哪个槽 */
   slot: ModuleSlot
-  /** 效果系数：miner = 每循环产量加成；cargo = 货舱容量加成；turret = 火力加成（0.2 = +20%） */
-  bonus: number
+  /**
+   * V17 起效果系数仅限工业槽：miner = 每循环产量加成；cargo = 货舱容量加成（0.2 = +20%）。
+   * 战斗槽不再使用本字段——炮台走武器参数（maxRangeM…dmgMult），护盾/装甲走
+   * shieldHpBonus/armorHpBonus 与抗性缺口（shieldResistAdd/armorResistAdd），推进器走
+   * speedBonusPct：每件装备以"自己的参数进战斗公式的具体环节"，而非笼统百分比。
+   */
+  bonus?: number
   description: string
-  /* ═══ V10.5 战斗数值契约（占位家族与炮台；引擎战斗实现后启用） ═══ */
-  /** 护盾增强器：护盾层容量加成（+15% = 0.15） */
+  /* ═══ V17/V17.1 战斗装备参数（EVE 式：字段各自进公式环节；抗性件与容量件拆族，同槽二选一；
+      推进器带常驻命中代价；负面专属高级系列留后续版本） ═══ */
+  /** 容量件（护盾扩展器）：护盾层容量加成（+15% = 0.15）——抗性件不携带本字段 */
   shieldHpBonus?: number
-  /** 护盾增强器：护盾层抗性绝对加算（0.04 = +4 个百分点） */
-  shieldResistBonus?: number
-  /** 装甲增厚板：装甲层容量加成 */
+  /**
+   * 抗性件（护盾增强器·X型）：按系"缺口削减"抗性（0.5 = 对该系未抗部分再减半）。
+   * 实际抗性 = 1 − (1−船体基础抗) × (1−本值)，上限 0.9（见 combat.mergeResist）——
+   * 船体基础抗越高模块收益越低（EVE 面板观感）；键缺省 = 0；专精件只给一个系。
+   */
+  shieldResistAdd?: DamageResists
+  /** 容量件（装甲增厚板）：装甲层容量加成——抗性件不携带本字段 */
   armorHpBonus?: number
-  /** 装甲增厚板：装甲层抗性绝对加算 */
-  armorResistBonus?: number
-  /** 矢量推进器：机动加成（0~0.5，弃船逃生线） */
-  agilityBonus?: number
+  /** 抗性件（装甲镀层·X型）：按系缺口削减抗性（语义同上 shieldResistAdd） */
+  armorResistAdd?: DamageResists
+  /**
+   * 矢量推进器（加力推进）：战斗机动速度加成（0.15 = +15%）。
+   * 直接乘入 UnitSpec.speedMps → combatSpeed：拉高接近/脱离/距离操纵力；
+   * 弃船逃生率与跃迁充能仍只随船体动力（agility）——V17 起模块不再碰船体间接属性。
+   */
+  speedBonusPct?: number
+  /** 推进器开火失稳：命中削减量（0.05 = 我方武器命中 ×0.95；界 [0, 0.5]，缺省 0；
+   * 常驻生效并进胜率预估同源口径，见 combat.hitChance 的 hitMul） */
+  hitPenalty?: number
   /** 炮台：配用弹药尺寸（light 配轻弹 / heavy 配重弹） */
   weaponSize?: WeaponSize
   /** 炮台：历史"每远征耗弹基数"（V11 起由出发预载制替代，字段保留仅展示） */
@@ -475,7 +523,7 @@ export interface ModuleDef {
   reloadMs?: number
   /** 单发伤害倍率（实际单发伤害 = 弹 dmg × dmgMult × (1+5%/级炮术) × (1+船 powerBonus)） */
   dmgMult?: number
-  /** 装配占用 CPU（V10.5b：与无人机放飞共用船体 CPU；引擎战斗期校验，本轮仅展示） */
+  /** 装配占用 CPU（V17 起装配校验生效：模块合计不得超过船体 cpu；与无人机放飞共用） */
   cpuUse?: number
 }
 
@@ -597,6 +645,8 @@ export interface AnomalyDef {
   /** 敌方单位速度 m/s（缺省用 battle.foeSpeedBaseMps 按体积修正） */
   foeSpeedMps?: number
   description: string
+  /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
+  hidden?: boolean
 }
 
 /** 模拟需要的全部静态内容（由数据包构建后一次性传入） */

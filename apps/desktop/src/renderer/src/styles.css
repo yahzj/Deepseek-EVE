@@ -2689,3 +2689,35 @@ body {
   font-size: 12px;
   opacity: 0.92;
 }
+/* B1 低安遭遇横幅：屏幕中上部全宽警示（邀约待决 / 遭遇战中） */
+.app-enc-banner {
+  position: fixed;
+  top: 108px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 860px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(58, 20, 22, 0.96);
+  border: 1px solid #e0524a;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+}
+.app-enc-banner.is-fight {
+  background: rgba(24, 34, 58, 0.96);
+  border-color: #6f9bff;
+}
+.app-enc-title {
+  color: #ffd7d2;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.app-enc-sub {
+  color: #ffb9b0;
+  font-size: 12px;
+}

@@ -13,6 +13,8 @@ import {
   addLog,
   advanceAutoLoopBounty,
   advanceGame,
+  fightEncounter,
+  fleeEncounter,
   assignAiExpedition,
   assignAiMining,
   buyAtMarket,
@@ -41,6 +43,7 @@ import {
   refineAllOre,
   removeQueueAt,
   renameShip,
+  repairDeprecatedModules,
   repairShip,
   retreatBattle,
   sellCargoItem,
@@ -274,6 +277,9 @@ export class GameEngine {
       if (raw !== null) {
         const parsed = loadSaveFile(raw)
         this.state = parsed.state
+        // V17 装备改版修复：旧"通用全系"增强器迁移为分系专精款（须在离线结算前完成，
+        // 让离线战斗直接按新参数结算）；见 core/equipment.repairDeprecatedModules
+        repairDeprecatedModules(this.state, this.ctx)
         lastSavedWall = parsed.savedAtWallMs
       }
     } catch (err) {
@@ -762,6 +768,26 @@ export class GameEngine {
     return result
   }
 
+
+  /** B1 低安遭遇：迎战（进入实时战斗，自动打完） */
+  fightEncounterNow(): CommandResult {
+    const result = fightEncounter(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** B1 低安遭遇：快速脱离（立即按文字三档结算） */
+  fleeEncounterNow(): CommandResult {
+    const result = fleeEncounter(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
   /** 战斗中撤退：轻损脱离并自动返航（同时停止连续出击） */
   retreatNow(): CommandResult {
     const result = retreatBattle(this.state, this.ctx)

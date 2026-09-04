@@ -1,13 +1,17 @@
 /**
  * 装备：入库/出库/装配/加成。
  *
- * 规则（中文说明，v7 + V10）：
+ * 规则（中文说明，v7 + V10 + V17）：
  * - 装配位置在"当前驾驶的船"上（fleet[shipId].fitted），换船看到的是那艘船的装备；
  * - 装备库（moduleBay）是空间站库存：制造完成先入库，装配时取出；
  * - 弃船会连 fitted 一起遗失（moduleBay 不丢）；
- * - 槽位（v10 起六槽定死）：miner/cargo/turret 三槽立即生效（产量/容量/火力），
- *   shield/armor/propulsion 三槽为占位家族：可装配、效果随战斗系统开放；
- * - 加成查询统一返回按槽 Record：调用方只取自己关心的槽位（行为与旧三字段一致）。
+ * - 槽位（v10 起六槽定死）：miner/cargo 工业槽即时生效（产量/容量）；
+ *   turret/shield/armor/propulsion 战斗槽由战斗引擎消费各自参数（V17 起全部真生效，
+ *   见 combat.createPlayerSpec——不再是占位家族）；
+ * - V17 CPU 装配校验：fitModule 合计六槽 cpuUse ≤ 船体 cpu（与无人机放飞共用）；
+ * - V17 存档修复：repairDeprecatedModules 在载入后把已下架型号按迁移表原位替换
+ *   （V17_MODULE_MIGRATIONS），悬空件退回装备库不丢资产；
+ * - 加成查询统一返回按槽 Record：调用方只取自己关心的槽位（工业加成语义保留）。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
@@ -15,6 +19,7 @@ import type { GameState } from './state'
 import type { ModuleDef, ModuleSlot, SimContext } from './types'
 import { MODULE_SLOTS, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState } from './inventory'
+import { fleetDefOf } from './instances'
 
 /** 槽位顺序（界面展示用） */
 export { MODULE_SLOTS } from './labels'
@@ -58,6 +63,20 @@ export function fitModule(state: GameState, moduleId: string, ctx: SimContext): 
   if (fitted[slot] === moduleId) {
     return { ok: false, error: `${def.name} 已经装在该槽位上了。` }
   }
+  // V17 CPU 装配校验：六件合计（目标槽按新件计）不得超过船体 cpu；超出拒绝装配
+  // （与无人机放飞共用：装配占满后战斗将无余量放无人机——见 combat.createPlayerSpec）
+  const shipDef = fleetDefOf(state, ctx, state.shipId)
+  const cpuTotal = shipDef?.cpu
+  if (cpuTotal !== undefined && cpuTotal > 0) {
+    let used = 0
+    for (const s of MODULE_SLOTS) {
+      const id = s === slot ? moduleId : fitted[s]
+      if (id) used += ctx.modules.get(id)?.cpuUse ?? 0
+    }
+    if (used > cpuTotal) {
+      return { ok: false, error: `装配超载：合计需 CPU ${used}，船体上限 ${cpuTotal}（卸下其它装备或换低耗型号）。` }
+    }
+  }
   const prevId = fitted[slot]
   if (prevId !== null) {
     // 旧件退回装备库，再装新的
@@ -82,7 +101,8 @@ export function unfitSlot(state: GameState, slot: ModuleSlot): boolean {
   return true
 }
 
-/** 指定船（缺省当前驾驶船）的装备加成：按槽返回（仅生效槽位有消费者，占位槽加成保留数值） */
+/** 指定船（缺省当前驾驶船）的装备加成：按槽返回（V17：仅工业槽 bonus 有消费者；
+ * 战斗槽加成由各自字段直接进 combat.createPlayerSpec——本表对它们恒为 0） */
 export function fittedBonuses(
   state: GameState,
   ctx: SimContext,
@@ -97,7 +117,7 @@ export function fittedBonuses(
     if (moduleId === null) continue
     const def = ctx.modules.get(moduleId)
     if (!def || def.slot !== slot) continue
-    result[slot] = def.bonus
+    result[slot] = def.bonus ?? 0
   }
   return result
 }
@@ -105,6 +125,65 @@ export function fittedBonuses(
 /** 当前驾驶船的 fitted（空船时返回 null） */
 function fittedOf(state: GameState): GameState['fleet'][string]['fitted'] | null {
   return currentShipState(state)?.fitted ?? null
+}
+
+/**
+ * V17 装备改版迁移表：旧"通用全系"战斗装备 id → 新分系专精款。
+ * 归位原则 = 旧件普遍用于应对默认动能伤害 → 动能款（同类同代次）；护盾增强器旧 id
+ * 顺延为动能型，装甲增厚板旧 id 亦为动能型。本表供 repairDeprecatedModules 使用。
+ */
+export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
+  'mod-shield-1': 'mod-shield-kin-1',
+  'mod-shield-2': 'mod-shield-kin-2',
+  'mod-shield-3': 'mod-shield-kin-3',
+  'mod-armor-1': 'mod-armor-kin-1',
+  'mod-armor-2': 'mod-armor-kin-2',
+  'mod-armor-3': 'mod-armor-kin-3',
+}
+
+/**
+ * 载入存档后的装备改版修复（V17；幂等）：把装配中/装备库里的已下架型号替换为迁移款
+ * （见 V17_MODULE_MIGRATIONS）；找不到迁移的悬空装配件退回装备库（不丢资产）。
+ * 应在 ctx 就绪后、离线结算前调用一次（桌面 GameEngine.start 已接入）。
+ */
+export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
+  let fittedMoved = 0
+  let slotEmptied = 0
+  let bayMoved = 0
+  // 1) 各船 fitted：目录外 id → 迁移替换，否则卸下退回装备库
+  for (const ship of Object.values(state.fleet)) {
+    const fitted = ship?.fitted
+    if (!fitted) continue
+    for (const slot of MODULE_SLOTS) {
+      const id = fitted[slot]
+      if (!id || ctx.modules.get(id)) continue
+      const next = V17_MODULE_MIGRATIONS[id]
+      if (next && ctx.modules.get(next)) {
+        fitted[slot] = next
+        fittedMoved += 1
+      } else {
+        fitted[slot] = null
+        state.moduleBay[id] = countModule(state, id) + 1
+        slotEmptied += 1
+      }
+    }
+  }
+  // 2) 装备库：有迁移的已下架型号 → 计数并入迁移款后删除旧键（无迁移的保留不丢资产）
+  for (const [id, n] of Object.entries(state.moduleBay)) {
+    const next = V17_MODULE_MIGRATIONS[id]
+    if (!next || !ctx.modules.get(next)) continue
+    state.moduleBay[next] = (state.moduleBay[next] ?? 0) + n
+    delete state.moduleBay[id]
+    bayMoved += n
+  }
+  const total = fittedMoved + slotEmptied + bayMoved
+  if (total > 0) {
+    addLog(
+      state,
+      'info',
+      `V17 装备改版：护盾/装甲增强器改为分系专精的 EVE 式缺口抗性。旧通用型已按动能款迁移 ${fittedMoved + bayMoved} 件，无对应款 ${slotEmptied} 件退回装备库。`,
+    )
+  }
 }
 
 export { SLOT_LABELS }

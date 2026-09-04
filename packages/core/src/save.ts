@@ -1218,6 +1218,43 @@ function normalizeState(raw: unknown): GameState {
       ? src.autoLoopAnomalyId
       : null
 
+  // --- B1 低安遭遇（v17.1 兼容字段）：未激活 = 标准空态（往返幂等）；激活才逐字段容错 ---
+  const encRaw = asRaw(src.encounter)
+  const encShipId = typeof encRaw.shipId === 'string' && encRaw.shipId.length > 0 ? encRaw.shipId : null
+  const encGalaxy = typeof encRaw.galaxyId === 'string' && encRaw.galaxyId.length > 0 ? encRaw.galaxyId : null
+  const encounter: GameState['encounter'] =
+    encRaw.active === true && encShipId !== null && encGalaxy !== null
+      ? {
+          active: true,
+          shipId: encShipId,
+          galaxyId: encGalaxy,
+          name: typeof encRaw.name === 'string' && encRaw.name.length > 0 ? encRaw.name : '巡逻队',
+          threat: Math.max(1, Math.floor(num(encRaw.threat, 10))),
+          origin: typeof encRaw.origin === 'string' ? encRaw.origin : '',
+          invitedAtGameMs: Math.max(0, Math.floor(num(encRaw.invitedAtGameMs))),
+          deadlineGameMs: Math.max(0, Math.floor(num(encRaw.deadlineGameMs))),
+          battle: cleanBattle(encRaw.battle),
+        }
+      : {
+          active: false,
+          shipId: null,
+          galaxyId: null,
+          name: '',
+          threat: 0,
+          origin: '',
+          invitedAtGameMs: 0,
+          deadlineGameMs: 0,
+          battle: null,
+        }
+  const lowSecNotified = src.lowSecNotified === true
+  const encounterZoneCooldown: Record<string, number> = {}
+  for (const [key, value] of Object.entries(asRaw(src.encounterZoneCooldown))) {
+    if (key.length === 0) continue
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      encounterZoneCooldown[key] = Math.floor(value)
+    }
+  }
+
   // --- T9 建站进度（v16.1）：stage 0..3，delivered 只收正数 ---
   const stationSites: Record<string, { stage: number; delivered: Record<string, number> }> = {}
   const sitesRaw = asRaw(src.stationSites)
@@ -1305,6 +1342,9 @@ function normalizeState(raw: unknown): GameState {
     transit,
     bountyCooldowns,
     autoLoopAnomalyId,
+    encounter,
+    lowSecNotified,
+    encounterZoneCooldown,
     stationSites,
     dockedSite,
     dialogueSeen,

@@ -393,7 +393,7 @@ function freeCargoFor(state: GameState, shipId: string, ctx: SimContext): number
   const fitted = state.fleet[shipId]?.fitted
   const cargoModuleId = fitted?.cargo ?? null
   const cargoDef = cargoModuleId ? ctx.modules.get(cargoModuleId) : undefined
-  const bonus = cargoDef && cargoDef.slot === 'cargo' ? cargoDef.bonus : 0
+  const bonus = cargoDef && cargoDef.slot === 'cargo' ? cargoDef.bonus ?? 0 : 0
   const cap = Math.round(ship.cargoM3 * (1 + bonus))
   let used = 0
   const cargo = state.fleet[shipId]?.cargo ?? {}

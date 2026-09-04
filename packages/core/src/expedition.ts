@@ -47,18 +47,16 @@ export function standingOf(state: GameState, factionId: string): number {
 }
 
 /**
- * 火力指数（旧口径保留：展示用；战斗判定已由 battleWinPreview/实时引擎取代）。
- * = 基础 + 炮术学加成，再 ×(1 + 炮台槽加成 + 船型加成)。
+ * 火力指数（V17 口径：基础 + 炮术学 + 船型加成；仅展示/弃船率叙事用）。
+ * 装备不再乘入——炮台等装备的真实表现由 battleWinPreview（期望推演，含武器参数）评估，
+ * 指数只反映"技能 + 船体"的骨架战力，避免旧口径把模块百分比冒充实时强度。
  */
 export function calcPower(state: GameState, ctx: SimContext, shipId: string = state.shipId): number {
   const bal = ctx.balance.combat
   const gunnery = state.skills.trained[bal.gunnerySkillId] ?? 0
   const base = bal.basePower + bal.powerPerLevel * gunnery
-  const fitted = state.fleet[shipId]?.fitted
-  const turretDef = fitted?.turret ? ctx.modules.get(fitted.turret) : undefined
-  const turretBonus = turretDef?.slot === 'turret' ? turretDef.bonus : 0
   const shipDef = fleetDefOf(state, ctx, shipId)
-  return Math.round(base * (1 + turretBonus) * (1 + (shipDef?.powerBonus ?? 0)))
+  return Math.round(base * (1 + (shipDef?.powerBonus ?? 0)))
 }
 
 /**

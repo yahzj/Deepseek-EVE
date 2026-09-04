@@ -17,10 +17,11 @@
  */
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { goodLockedReason, goodName, levelOf, marketQuote, marketTrend, naturalHoldings, salesTaxRate } from '@whale/core'
-import type { MarketGoodDef, MarketRarity } from '@whale/core'
+import { goodLockedReason, goodName, levelOf, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs } from '@whale/core'
+import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
+import { InfoHover, ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -81,6 +82,105 @@ function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
     desc = `${tier}（效率 ${eff}%）：指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。`
   }
   return `${head}\n${desc || '（暂无说明）'}`
+}
+
+/** 蓝图悬浮参数行（产物/材料/制造）；装备蓝图与舰船蓝图共用同一形状 */
+function blueprintHoverLines(
+  ctx: PageProps['engine']['ctx'],
+  bp: BlueprintDef | ShipBlueprintDef,
+): { title: string; lines: Array<{ k: string; v: string }>; note: string } {
+  const isModuleBp = 'moduleId' in bp
+  const productName = isModuleBp
+    ? ctx.modules.get((bp as BlueprintDef).moduleId)?.name ?? (bp as BlueprintDef).moduleId
+    : ctx.ships.get((bp as ShipBlueprintDef).shipId)?.name ?? (bp as ShipBlueprintDef).shipId
+  const materials = bp.materials.map((m) => `${ctx.items.get(m.itemId)?.name ?? m.itemId} ×${m.count}`).join('　')
+  return {
+    title: bp.name,
+    lines: [
+      { k: '产物', v: productName },
+      { k: '材料需求', v: materials },
+      { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 造费 ${isk(bp.buildCostIsk)}` },
+    ],
+    note: bp.description,
+  }
+}
+
+/**
+ * 商品行悬停（全站统一富卡皮肤）：装备/物品/舰船/蓝图/AI 核心各自组装
+ * 标题 + 参数表 + 描述——与仓库/货仓/手册列表同一悬浮视觉。
+ */
+function GoodHover({
+  engine,
+  good,
+  children,
+}: {
+  engine: PageProps['engine']
+  good: MarketGoodDef
+  children: ReactNode
+}) {
+  const ctx = engine.ctx
+  const rowCls = 'app-inv-row app-mkt-row'
+  if (good.kind === 'module') {
+    const mod = ctx.modules.get(good.refId)
+    if (mod) {
+      return (
+        <ModuleHover as="li" mod={mod} className={rowCls}>
+          {children}
+        </ModuleHover>
+      )
+    }
+  } else if (good.kind === 'item') {
+    const item = ctx.items.get(good.refId)
+    if (item) {
+      return (
+        <ItemHover as="li" item={item} className={rowCls} nameOf={(id) => ctx.items.get(id)?.name}>
+          {children}
+        </ItemHover>
+      )
+    }
+  } else if (good.kind === 'ship') {
+    const ship = ctx.ships.get(good.refId)
+    if (ship) {
+      return (
+        <ShipHover as="li" ship={ship} className={rowCls} note={ship.description}>
+          {children}
+        </ShipHover>
+      )
+    }
+  } else if (good.kind === 'blueprint') {
+    const bp = ctx.blueprints.get(good.refId) ?? ctx.shipBlueprints.get(good.refId)
+    if (bp) {
+      const info = blueprintHoverLines(ctx, bp)
+      return (
+        <InfoHover as="li" title={info.title} lines={info.lines} note={info.note} className={rowCls}>
+          {children}
+        </InfoHover>
+      )
+    }
+  } else if (good.kind === 'aicore') {
+    const eff = Math.round((engine.ctx.balance.aiCore.efficiency[good.refId as never] ?? 1) * 100)
+    const tier =
+      good.refId === 'basic' ? '基础核心' : good.refId === 'gamma' ? '伽马级核心' : good.refId === 'beta' ? '贝塔级核心' : '阿尔法级核心'
+    return (
+      <InfoHover
+        as="li"
+        title={goodName(ctx, good.key)}
+        lines={[
+          { k: '等级', v: tier },
+          { k: '效率', v: `${eff}%（AI 副船工作速度；不影响奖励）` },
+        ]}
+        note="指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。"
+        className={rowCls}
+      >
+        {children}
+      </InfoHover>
+    )
+  }
+  return (
+    <HoverTip as="li" tip={goodTipText(engine, good)} className={rowCls}>
+      {children}
+    </HoverTip>
+  )
 }
 
 function GoodRow({
@@ -171,7 +271,7 @@ function GoodRow({
   }
 
   return (
-    <HoverTip as="li" tip={goodTipText(engine, good)} className="app-inv-row app-mkt-row">
+    <GoodHover engine={engine} good={good}>
       <div className="app-inv-main">
         <div className="app-mkt-name-line">
           <span className="app-inv-name">{name}</span>
@@ -277,7 +377,7 @@ function GoodRow({
           </span>
         </div>
       ) : null}
-    </HoverTip>
+    </GoodHover>
   )
 }
 

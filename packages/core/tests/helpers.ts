@@ -10,6 +10,7 @@ import type {
   BalanceConfig,
   BeltDef,
   BlueprintDef,
+  DamageType,
   GalaxyDef,
   GalaxyEdgeDef,
   ItemDef,
@@ -112,7 +113,7 @@ export function ship(
   }
 }
 
-/** 快速造装备（V12：可附带武器/战斗字段） */
+/** 快速造装备（V17：可附带武器/抗性缺口/推进等战斗字段） */
 export function moduleDef(
   id: string,
   slot: ModuleSlot,
@@ -126,6 +127,12 @@ export function moduleDef(
     reloadMs?: number
     dmgMult?: number
     cpuUse?: number
+    shieldHpBonus?: number
+    shieldResistAdd?: Partial<Record<DamageType, number>>
+    armorHpBonus?: number
+    armorResistAdd?: Partial<Record<DamageType, number>>
+    speedBonusPct?: number
+    hitPenalty?: number
   },
 ): ModuleDef {
   return {
@@ -142,6 +149,12 @@ export function moduleDef(
     ...(opts?.reloadMs !== undefined ? { reloadMs: opts.reloadMs } : {}),
     ...(opts?.dmgMult !== undefined ? { dmgMult: opts.dmgMult } : {}),
     ...(opts?.cpuUse !== undefined ? { cpuUse: opts.cpuUse } : {}),
+    ...(opts?.shieldHpBonus !== undefined ? { shieldHpBonus: opts.shieldHpBonus } : {}),
+    ...(opts?.shieldResistAdd !== undefined ? { shieldResistAdd: opts.shieldResistAdd } : {}),
+    ...(opts?.armorHpBonus !== undefined ? { armorHpBonus: opts.armorHpBonus } : {}),
+    ...(opts?.armorResistAdd !== undefined ? { armorResistAdd: opts.armorResistAdd } : {}),
+    ...(opts?.speedBonusPct !== undefined ? { speedBonusPct: opts.speedBonusPct } : {}),
+    ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
   }
 }
 

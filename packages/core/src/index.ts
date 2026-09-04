@@ -151,6 +151,8 @@ export {
   fitModule,
   unfitSlot,
   fittedBonuses,
+  V17_MODULE_MIGRATIONS,
+  repairDeprecatedModules,
 } from './equipment'
 
 export {
@@ -323,6 +325,9 @@ export {
   spreadWinChance,
   desiredRangeFor,
   foeDesiredRange,
+  mergeResist,
+  foeMainDamageType,
+  createPlayerSpec,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
 } from './combat'
@@ -358,3 +363,5 @@ export {
   serializeSaveFile,
   loadSaveFile,
 } from './save'
+
+export { advanceEncounterWatch, fightEncounter, fleeEncounter } from './encounters'

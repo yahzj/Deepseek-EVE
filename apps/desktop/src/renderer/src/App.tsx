@@ -7,7 +7,7 @@
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { formatDurationMs } from '@whale/core'
+import { formatDurationMs, shipDisplayName } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
@@ -140,6 +140,15 @@ export function App({ engine }: { engine: GameEngine }) {
   const [page, setPage] = useState<PageKey>('map')
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
+  // B1：首次进入低安的一次性醒目提示（规则全文在手册「航行须知」）
+  const lowSecPrev = useRef(state.lowSecNotified)
+  useEffect(() => {
+    if (state.lowSecNotified && !lowSecPrev.current) {
+      showToast('⚠ 已进入低安星系：采矿/停留/远征可能遭遇巡逻拦截或海盗伏击——可迎战或快速脱离，规则见手册「航行须知」。', true)
+    }
+    lowSecPrev.current = state.lowSecNotified
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.lowSecNotified])
   // V15 调试模式入口（开发工具：localStorage 标志启用后才显示）
   const [debugOn] = useState<boolean>(readDebugEnabled)
 
@@ -329,6 +338,45 @@ export function App({ engine }: { engine: GameEngine }) {
 
         {toast ? <div className={`app-toast${toast.warn ? ' is-warn' : ''}`}>{toast.text}</div> : null}
         {eventToast ? <div className="app-event-toast">{eventToast.text}</div> : null}
+        {/* B1 低安遭遇横幅：待决（迎战/快速脱离，60s 超时自动脱离）与遭遇战进行中 */}
+        {state.encounter.active ? (
+          <div className={`app-enc-banner${state.encounter.battle ? ' is-fight' : ''}`}>
+            {state.encounter.battle ? (
+              <span className="app-enc-title">
+                ⚔ 遭遇战中：{shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)} vs{' '}
+                {state.encounter.name}（引擎自动推演，战报稍后）
+              </span>
+            ) : (
+              <>
+                <span className="app-enc-title">⚠ 低安遭遇 · {state.encounter.name}</span>
+                <span className="app-enc-sub">
+                  {shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)}（{state.encounter.origin}）被盯上 ·{' '}
+                  {Math.max(1, Math.ceil((state.encounter.deadlineGameMs - state.gameMs) / 1000))} 秒内未处置将自动脱离
+                </span>
+                <button
+                  className="app-btn is-small is-primary"
+                  title="进入实时战斗（引擎自动打完）；战斗失利将受损甚至被抢"
+                  onClick={() => {
+                    const r = engine.fightEncounterNow()
+                    if (!r.ok) showToast(r.error ?? '无法应战', true)
+                  }}
+                >
+                  ⚔ 迎战
+                </button>
+                <button
+                  className="app-btn is-small"
+                  title="立即脱离：按文字结算（可能击退缴获 / 受损 / 被抢小部分货）"
+                  onClick={() => {
+                    const r = engine.fleeEncounterNow()
+                    if (!r.ok) showToast(r.error ?? '无法脱离', true)
+                  }}
+                >
+                  💨 快速脱离
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
         {pendingOpen ? (() => {
           const s = engine.dialogues.find((d) => d.id === pendingOpen)
           return s ? <Communicator script={s} onClose={() => setPendingOpen(null)} /> : null

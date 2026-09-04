@@ -63,7 +63,7 @@ export function getMiningParams(
   const cycleMs = state.debugQuick ? 1000 : Math.max(1, Math.round(ship.cycleSeconds * 1000 * timeRatio))
   const minerModuleId = state.fleet[shipId]?.fitted.miner ?? null
   const minerDef = minerModuleId ? ctx.modules.get(minerModuleId) : undefined
-  const minerBonus = minerDef && minerDef.slot === 'miner' ? minerDef.bonus : 0
+  const minerBonus = minerDef && minerDef.slot === 'miner' ? minerDef.bonus ?? 0 : 0
   const unitsPerCycle = Math.max(
     1,
     Math.floor(ship.oreUnitsPerCycle * (1 + bal.yieldPerLevel * yieldLevel) * (1 + minerBonus)),

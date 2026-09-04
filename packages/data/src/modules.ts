@@ -1,30 +1,41 @@
 /**
- * 装备表（M2 + V10 + V10.5 + V10.5b）：24 件装备。
+ * 装备表（V17.1 定稿：42 件）。
  *
  * 设计（中文说明）：
- * - 生效家族（miner 采集器 / cargo 货舱 / turret 炮台）：各 4 档——民用（新手平价）、
- *   MK1/MK2（历史档位）、MK3（攻坚级，无蓝图仅市场稀有），加成封顶不无限拉高曲线；
- * - 占位家族（shield 护盾 / armor 装甲 / propulsion 推进器）：V10 新槽位，可装配，
- *   V10.5 起数值契约就位（量%/抗性/机动），V10.5b 起抗性加成为"对三系伤害等量提升"；
- * - 炮台配弹（V10.5 契约）：民用/MK1 = 轻型炮台（吃轻弹，每远征耗弹 24），
- *   MK2 起 = 重型炮台（吃重弹，每远征耗弹 12）；
- * - cpuUse（V10.5b）：装配占用 CPU——与无人机放飞共用船体 CPU（带宽已并入），
- *   本轮仅展示与契约，引擎在战斗系统阶段校验；
- * - 原型机（proto）：市场 exotic 限定奇货、声望门槛解锁、无蓝图——超档收藏品；
- * - 每类只有一档生效于单槽：重复装同槽自动退回旧件（见 core/equipment）。
+ * - 工业槽（miner/cargo）：保留加成系数形态（bonus：产量/容量百分比）——生产参数简单直接；
+ * - 战斗家族 V17.1 起按"参数进公式"分族（全部经用户审核定稿）：
+ *   · 抗性件 = 纯抗性：护盾增强器（护盾槽）与装甲镀层（装甲槽），动能/高爆/能量三系 ×
+ *     MK1/2/3；值 = "缺口削减"（实际抗性 = 1 − (1−船体基础) × (1−值)，上限 90%）——
+ *     EVE 式乘入：船体基础越高同系收益越低，无基础船面板 = 该值；
+ *   · 容量件 = 纯容量：护盾扩展器（护盾槽）与装甲增厚板（装甲槽），MK1/2/3——
+ *     与抗性件同槽二选一（本槽只能装一件），无分系；
+ *   · 矢量推进器 = 加力推进（战斗速度加成，常驻）＋代价：开火命中 ×(1−hitPenalty)
+ *     （MK1 +15%/×0.95、MK2 +30%/×0.88、MK3 +50%/×0.80——低档轻微、高档重）；
+ *   · 炮台 = 完整武器卡（射程带/命中/装填/伤害倍率/配弹尺寸，见 combat）；
+ * - CPU 装配资源（V17.1 用户定稿：成倍档位拉开船级差距）：
+ *   民用 3（炮台 6）/ MK1 5（炮台 10）/ MK2 15（炮台 28）/ MK3 40（炮台 52）/
+ *   异星原型 60（炮台 70）——战斗件与工业件同档；低级船（沙猫 60 CPU）只带得动
+ *   低级全套，MK3 顶配套件需要 220+ CPU 的顶级船，无人机放飞余量同池竞争；
+ * - 渠道与既有规则一致：MK1 平价 / MK2・MK3 稀有（MK3 无蓝图市场专供）/
+ *   proto 奇货（声望 10、无蓝图）；护盾/装甲/推进无蓝图（市场供应为主）；
+ * - V17 旧件迁移：mod-shield-1/2/3、mod-armor-1/2/3（通用全系）已下架，载入存档自动
+ *   按动能款迁移（core/equipment.V17_MODULE_MIGRATIONS）；V17 早期"容量+抗性"混装件
+ *   未发布过任何正式版本（本轮定稿即首版）；
+ * - V18 立项：EVE 式高/中/低槽（船体槽位布局 + 炮尺寸制）作为独立里程碑，本表
+ *   参数（缺口/CPU/代价/弹药口径）与其正交，届时纯结构迁移（见 docs/roadmap.md）。
  */
 
 import type { ModuleDef } from '@whale/core'
 
 export const MODULES: readonly ModuleDef[] = [
-  // ══════════ 采集器（miner：+循环产量） ══════════
+  // ══════════ 采集器（miner：工业槽，产量加成） ══════════
   {
     id: 'mod-miner-civ',
     name: '民用采集器',
     slot: 'miner',
     bonus: 0.1,
-    description: '产量 +10%。空间站平价货，新手第一件看得起的强化（V10 新增）。',
-    cpuUse: 6,
+    description: '产量 +10%。空间站平价货，新手第一件看得起的强化。',
+    cpuUse: 3,
   },
   {
     id: 'mod-miner-1',
@@ -32,7 +43,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'miner',
     bonus: 0.2,
     description: '提升 20% 循环产量。工业入门的第一件自制装备。',
-    cpuUse: 8,
+    cpuUse: 5,
   },
   {
     id: 'mod-miner-2',
@@ -40,33 +51,33 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'miner',
     bonus: 0.5,
     description: '提升 50% 循环产量。双管谐振钻头，深空工业的标杆装备。',
-    cpuUse: 14,
+    cpuUse: 15,
   },
   {
     id: 'mod-miner-3',
     name: '精密采集器 MK3',
     slot: 'miner',
     bonus: 0.8,
-    description: '产量 +80%。协会精密工业的结晶，市场稀有现货（V10 新增，无蓝图）。',
-    cpuUse: 24,
+    description: '产量 +80%。协会精密工业的结晶，市场稀有现货（无蓝图）；40 CPU 已接近小型船满载。',
+    cpuUse: 40,
   },
   {
     id: 'mod-miner-proto',
     name: '异星原型采集器',
     slot: 'miner',
     bonus: 1.1,
-    description: '产量 +110%。来源不明的异星技术，仅限奇货市场（V10，需高声望）。',
-    cpuUse: 34,
+    description: '产量 +110%。来源不明的异星技术，仅限奇货市场（需高声望）。',
+    cpuUse: 60,
   },
 
-  // ══════════ 货舱（cargo：+货舱容量） ══════════
+  // ══════════ 货舱（cargo：工业槽，容量加成） ══════════
   {
     id: 'mod-cargo-civ',
     name: '民用货舱扩展',
     slot: 'cargo',
     bonus: 0.15,
-    description: '货舱容量 +15%。廉价的续航改装（V10 新增）。',
-    cpuUse: 5,
+    description: '货舱容量 +15%。廉价的续航改装。',
+    cpuUse: 3,
   },
   {
     id: 'mod-cargo-1',
@@ -74,7 +85,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     bonus: 0.3,
     description: '货舱容量 +30%，减少返港卸货次数。',
-    cpuUse: 7,
+    cpuUse: 5,
   },
   {
     id: 'mod-cargo-2',
@@ -82,35 +93,34 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     bonus: 0.8,
     description: '货舱容量 +80%。离线长时间作业的必备扩展。',
-    cpuUse: 12,
+    cpuUse: 15,
   },
   {
     id: 'mod-cargo-3',
     name: '折叠货舱扩展 MK3',
     slot: 'cargo',
     bonus: 1.4,
-    description: '货舱容量 +140%。空间折叠衬层，市场稀有现货（V10 新增，无蓝图）。',
-    cpuUse: 20,
+    description: '货舱容量 +140%。空间折叠衬层，市场稀有现货（无蓝图）。',
+    cpuUse: 40,
   },
   {
     id: 'mod-cargo-proto',
     name: '异星原型货舱',
     slot: 'cargo',
     bonus: 1.8,
-    description: '货舱容量 +180%。异星空间技术，仅限奇货市场（V10，需高声望）。',
-    cpuUse: 28,
+    description: '货舱容量 +180%。异星空间技术，仅限奇货市场（需高声望）。',
+    cpuUse: 60,
   },
 
-  // ══════════ 炮台（turret：+火力；V10.5 契约：weaponSize/耗弹基数） ══════════
+  // ══════════ 炮台（turret：完整武器卡；伤害 = 弹 dmg × dmgMult × 技能/船加成） ══════════
   {
     id: 'mod-turret-civ',
     name: '民用舰炮',
     slot: 'turret',
-    bonus: 0.12,
-    description: '火力 +12%。协会自警队的制式轻型舰炮，吃轻弹（战斗启用后每远征耗弹 24）。',
+    description: '协会自警队制式轻型舰炮：配轻弹，4.2 km 有效射程。',
     weaponSize: 'light',
     ammoPerEngagement: 24,
-    cpuUse: 10,
+    cpuUse: 6,
     maxRangeM: 4200,
     minRangeM: 250,
     hitRate: 0.8,
@@ -122,11 +132,10 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-turret-1',
     name: '舰载轻型炮台 MK1',
     slot: 'turret',
-    bonus: 0.25,
-    description: '火力 +25%。把矿船变成勉强能打的武装矿船（轻型炮台，吃轻弹）。',
+    description: '把矿船变成勉强能打的武装矿船（轻型炮台，吃轻弹）。',
     weaponSize: 'light',
     ammoPerEngagement: 24,
-    cpuUse: 14,
+    cpuUse: 10,
     maxRangeM: 4600,
     minRangeM: 250,
     hitRate: 0.8,
@@ -138,11 +147,10 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-turret-2',
     name: '舰载重型炮台 MK2',
     slot: 'turret',
-    bonus: 0.6,
-    description: '火力 +60%。深空工业舰炮的巅峰（重型炮台，吃重弹，每远征耗弹 12）。',
+    description: '深空工业舰炮的巅峰（重型炮台，吃重弹）。',
     weaponSize: 'heavy',
     ammoPerEngagement: 12,
-    cpuUse: 26,
+    cpuUse: 28,
     maxRangeM: 8200,
     minRangeM: 700,
     hitRate: 0.78,
@@ -154,11 +162,10 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-turret-3',
     name: '舰载攻坚炮台 MK3',
     slot: 'turret',
-    bonus: 1.0,
-    description: '火力 +100%。攻城级重型舰炮（吃重弹），市场稀有现货（V10 新增，无蓝图）。',
+    description: '攻城级重型舰炮（吃重弹），市场稀有现货（无蓝图）；52 CPU 只为大口径准备。',
     weaponSize: 'heavy',
     ammoPerEngagement: 12,
-    cpuUse: 40,
+    cpuUse: 52,
     maxRangeM: 10500,
     minRangeM: 1200,
     hitRate: 0.78,
@@ -170,11 +177,10 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-turret-proto',
     name: '异星原型炮台',
     slot: 'turret',
-    bonus: 1.5,
-    description: '火力 +150%。无法逆向工程的异星重型武器（吃重弹），仅限奇货市场（V10，需高声望）。',
+    description: '无法逆向工程的异星重型武器（吃重弹），仅限奇货市场（需高声望）。',
     weaponSize: 'heavy',
     ammoPerEngagement: 12,
-    cpuUse: 55,
+    cpuUse: 70,
     maxRangeM: 13000,
     minRangeM: 1600,
     hitRate: 0.78,
@@ -183,97 +189,233 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 2.8,
   },
 
-  // ══════════ 护盾（shield；数值契约就位，抗性加成为三系等量） ══════════
+  // ══════════ 护盾增强器（shield 抗性件：纯抗性，分系缺口乘入） ══════════
   {
-    id: 'mod-shield-1',
-    name: '护盾增强器 MK1',
+    id: 'mod-shield-kin-1',
+    name: '护盾增强器 MK1·动能型',
     slot: 'shield',
-    bonus: 0.15,
-    description: '（战斗启用）护盾容量 +15%、护盾抗性三系各 +4 个百分点。',
-    shieldHpBonus: 0.15,
-    shieldResistBonus: 0.04,
-    cpuUse: 6,
+    shieldResistAdd: { kinetic: 0.2 },
+    cpuUse: 5,
+    description: '动能抗 +20%（乘入制：0 基础船面板 +20%，25% 基础船 → 40%，上限 90%）。动能是协会武装最常用弹种——默认悬赏都吃这口。',
   },
   {
-    id: 'mod-shield-2',
-    name: '护盾增强器 MK2',
+    id: 'mod-shield-exp-1',
+    name: '护盾增强器 MK1·高爆型',
     slot: 'shield',
-    bonus: 0.35,
-    description: '（战斗启用）护盾容量 +35%、护盾抗性三系各 +8 个百分点。',
-    shieldHpBonus: 0.35,
-    shieldResistBonus: 0.08,
-    cpuUse: 10,
+    shieldResistAdd: { explosive: 0.2 },
+    cpuUse: 5,
+    description: '高爆抗 +20%（乘入制，上限 90%）。克制爆破弹与鱼雷型敌人。',
   },
   {
-    id: 'mod-shield-3',
-    name: '护盾增强器 MK3',
+    id: 'mod-shield-pla-1',
+    name: '护盾增强器 MK1·能量型',
     slot: 'shield',
-    bonus: 0.5,
-    description: '（战斗启用）护盾容量 +60%、护盾抗性三系各 +12 个百分点。',
-    shieldHpBonus: 0.6,
-    shieldResistBonus: 0.12,
-    cpuUse: 16,
+    shieldResistAdd: { plasma: 0.2 },
+    cpuUse: 5,
+    description: '能量抗 +20%（乘入制，上限 90%）。对能量武器的调谐方案。',
+  },
+  {
+    id: 'mod-shield-kin-2',
+    name: '护盾增强器 MK2·动能型',
+    slot: 'shield',
+    shieldResistAdd: { kinetic: 0.35 },
+    cpuUse: 15,
+    description: '动能抗 +35%（乘入制：0 基础船 +35%，25% 基础船 → 51%，上限 90%）。带弹道预测算法的第二代调谐器。',
+  },
+  {
+    id: 'mod-shield-exp-2',
+    name: '护盾增强器 MK2·高爆型',
+    slot: 'shield',
+    shieldResistAdd: { explosive: 0.35 },
+    cpuUse: 15,
+    description: '高爆抗 +35%（乘入制，上限 90%）。专为爆破弹道优化的护盾频段。',
+  },
+  {
+    id: 'mod-shield-pla-2',
+    name: '护盾增强器 MK2·能量型',
+    slot: 'shield',
+    shieldResistAdd: { plasma: 0.35 },
+    cpuUse: 15,
+    description: '能量抗 +35%（乘入制，上限 90%）。高频能量护盾的稳定方案。',
+  },
+  {
+    id: 'mod-shield-kin-3',
+    name: '护盾增强器 MK3·动能型',
+    slot: 'shield',
+    shieldResistAdd: { kinetic: 0.5 },
+    cpuUse: 40,
+    description: '动能抗 +50%（乘入制：0 基础船 +50%，25% 基础船 → 63%，上限 90%）。旗舰级弹道拦截阵列（市场稀有）。',
+  },
+  {
+    id: 'mod-shield-exp-3',
+    name: '护盾增强器 MK3·高爆型',
+    slot: 'shield',
+    shieldResistAdd: { explosive: 0.5 },
+    cpuUse: 40,
+    description: '高爆抗 +50%（乘入制，上限 90%）。可以正面接下爆破弹雨的强化护盾（市场稀有）。',
+  },
+  {
+    id: 'mod-shield-pla-3',
+    name: '护盾增强器 MK3·能量型',
+    slot: 'shield',
+    shieldResistAdd: { plasma: 0.5 },
+    cpuUse: 40,
+    description: '能量抗 +50%（乘入制，上限 90%）。能量武器时代的盾构解（市场稀有）。',
   },
 
-  // ══════════ 装甲（armor；数值契约就位，抗性加成为三系等量） ══════════
+  // ══════════ 护盾扩展器（shield 容量件：纯容量，与抗性件同槽二选一） ══════════
   {
-    id: 'mod-armor-1',
+    id: 'mod-shield-ext-1',
+    name: '护盾扩展器 MK1',
+    slot: 'shield',
+    shieldHpBonus: 0.15,
+    cpuUse: 5,
+    description: '护盾容量 +15%。只堆盾量、不选抗性系时的朴素方案。',
+  },
+  {
+    id: 'mod-shield-ext-2',
+    name: '护盾扩展器 MK2',
+    slot: 'shield',
+    shieldHpBonus: 0.35,
+    cpuUse: 15,
+    description: '护盾容量 +35%。扩容器阵列，吃下更多爆发伤害。',
+  },
+  {
+    id: 'mod-shield-ext-3',
+    name: '护盾扩展器 MK3',
+    slot: 'shield',
+    shieldHpBonus: 0.6,
+    cpuUse: 40,
+    description: '护盾容量 +60%。全站功率输送的巨型护盾发生器（市场稀有）。',
+  },
+
+  // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入） ══════════
+  {
+    id: 'mod-armor-kin-1',
+    name: '装甲镀层 MK1·动能型',
+    slot: 'armor',
+    armorResistAdd: { kinetic: 0.25 },
+    cpuUse: 5,
+    description: '动能抗 +25%（乘入制：0 基础船 +25%，25% 基础船 → 44%，上限 90%）。动能破甲弹的克制镀层。',
+  },
+  {
+    id: 'mod-armor-exp-1',
+    name: '装甲镀层 MK1·高爆型',
+    slot: 'armor',
+    armorResistAdd: { explosive: 0.25 },
+    cpuUse: 5,
+    description: '高爆抗 +25%（乘入制，上限 90%）。高爆对装甲是双倍伤害——这是第一道防线。',
+  },
+  {
+    id: 'mod-armor-pla-1',
+    name: '装甲镀层 MK1·能量型',
+    slot: 'armor',
+    armorResistAdd: { plasma: 0.25 },
+    cpuUse: 5,
+    description: '能量抗 +25%（乘入制，上限 90%）。隔热镀层方案。',
+  },
+  {
+    id: 'mod-armor-kin-2',
+    name: '装甲镀层 MK2·动能型',
+    slot: 'armor',
+    armorResistAdd: { kinetic: 0.4 },
+    cpuUse: 15,
+    description: '动能抗 +40%（乘入制：0 基础船 +40%，25% 基础船 → 55%，上限 90%）。复合夹层结构，动能弹的噩梦。',
+  },
+  {
+    id: 'mod-armor-exp-2',
+    name: '装甲镀层 MK2·高爆型',
+    slot: 'armor',
+    armorResistAdd: { explosive: 0.4 },
+    cpuUse: 15,
+    description: '高爆抗 +40%（乘入制，上限 90%）。爆震格栅装甲，重炮手眼中最硬的骨头。',
+  },
+  {
+    id: 'mod-armor-pla-2',
+    name: '装甲镀层 MK2·能量型',
+    slot: 'armor',
+    armorResistAdd: { plasma: 0.4 },
+    cpuUse: 15,
+    description: '能量抗 +40%（乘入制，上限 90%）。陶瓷隔热层叠技术。',
+  },
+  {
+    id: 'mod-armor-kin-3',
+    name: '装甲镀层 MK3·动能型',
+    slot: 'armor',
+    armorResistAdd: { kinetic: 0.55 },
+    cpuUse: 40,
+    description: '动能抗 +55%（乘入制：0 基础船 +55%，25% 基础船 → 66%，上限 90%）。要塞级复合装甲（市场稀有）。',
+  },
+  {
+    id: 'mod-armor-exp-3',
+    name: '装甲镀层 MK3·高爆型',
+    slot: 'armor',
+    armorResistAdd: { explosive: 0.55 },
+    cpuUse: 40,
+    description: '高爆抗 +55%（乘入制，上限 90%）。顶住高爆齐射的移动堡垒（市场稀有）。',
+  },
+  {
+    id: 'mod-armor-pla-3',
+    name: '装甲镀层 MK3·能量型',
+    slot: 'armor',
+    armorResistAdd: { plasma: 0.55 },
+    cpuUse: 40,
+    description: '能量抗 +55%（乘入制，上限 90%）。能硬抗能量炮的烧蚀装甲（市场稀有）。',
+  },
+
+  // ══════════ 装甲增厚板（armor 容量件：纯容量，与抗性件同槽二选一） ══════════
+  {
+    id: 'mod-armor-plate-1',
     name: '装甲增厚板 MK1',
     slot: 'armor',
-    bonus: 0.2,
-    description: '（战斗启用）装甲容量 +20%、装甲抗性三系各 +6 个百分点。',
     armorHpBonus: 0.2,
-    armorResistBonus: 0.06,
     cpuUse: 5,
+    description: '装甲容量 +20%。经典堆甲方案，只加厚度、不挑弹种。',
   },
   {
-    id: 'mod-armor-2',
+    id: 'mod-armor-plate-2',
     name: '装甲增厚板 MK2',
     slot: 'armor',
-    bonus: 0.5,
-    description: '（战斗启用）装甲容量 +45%、装甲抗性三系各 +10 个百分点。',
     armorHpBonus: 0.45,
-    armorResistBonus: 0.1,
-    cpuUse: 8,
+    cpuUse: 15,
+    description: '装甲容量 +45%。加厚夹层，装甲舰的中坚配置。',
   },
   {
-    id: 'mod-armor-3',
+    id: 'mod-armor-plate-3',
     name: '装甲增厚板 MK3',
     slot: 'armor',
-    bonus: 0.8,
-    description: '（战斗启用）装甲容量 +80%、装甲抗性三系各 +15 个百分点。',
     armorHpBonus: 0.8,
-    armorResistBonus: 0.15,
-    cpuUse: 14,
+    cpuUse: 40,
+    description: '装甲容量 +80%。全站重工浇铸的复合装甲层（市场稀有）。',
   },
 
-  // ══════════ 推进器（propulsion；数值契约就位） ══════════
+  // ══════════ 矢量推进器（propulsion：加力推进 + 常驻命中代价） ══════════
   {
     id: 'mod-prop-1',
     name: '矢量推进器 MK1',
     slot: 'propulsion',
-    bonus: 0.1,
-    description: '（战斗启用）机动 +0.08（弃船逃生率随机动提升）。',
-    agilityBonus: 0.08,
-    cpuUse: 6,
+    speedBonusPct: 0.15,
+    hitPenalty: 0.05,
+    cpuUse: 5,
+    description: '加力推进：战斗速度 +15%，代价 = 开火命中 ×0.95（常驻）。逼近/脱离更快，输出略失稳。',
   },
   {
     id: 'mod-prop-2',
     name: '矢量推进器 MK2',
     slot: 'propulsion',
-    bonus: 0.25,
-    description: '（战斗启用）机动 +0.15（弃船逃生率随机动提升）。',
-    agilityBonus: 0.15,
-    cpuUse: 10,
+    speedBonusPct: 0.3,
+    hitPenalty: 0.12,
+    cpuUse: 15,
+    description: '加力推进：战斗速度 +30%，代价 = 开火命中 ×0.88（常驻）。高机动舰标配，风筝战术的引擎。',
   },
   {
     id: 'mod-prop-3',
     name: '矢量推进器 MK3',
     slot: 'propulsion',
-    bonus: 0.4,
-    description: '（战斗启用）机动 +0.25（弃船逃生率随机动提升）。',
-    agilityBonus: 0.25,
-    cpuUse: 15,
+    speedBonusPct: 0.5,
+    hitPenalty: 0.2,
+    cpuUse: 40,
+    description: '加力推进：战斗速度 +50%，代价 = 开火命中 ×0.80（常驻）。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
   },
 ]
 

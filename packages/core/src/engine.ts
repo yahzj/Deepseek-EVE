@@ -24,6 +24,7 @@ import { advanceExpedition } from './expedition'
 import { advanceAi } from './ai'
 import { advanceEvents } from './events'
 import { advanceMarket } from './market'
+import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -56,6 +57,8 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext):
   advanceEvents(state, d, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
+  // B1 低安遭遇：暴露掷骰与遭遇推进（待决超时按文字自动结算 / 应战战斗推演）
+  advanceEncounterWatch(state, ctx, d)
 }
 
 /** 技能队列推进（内部函数，不对外） */
