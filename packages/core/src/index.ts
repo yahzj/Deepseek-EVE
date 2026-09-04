@@ -99,7 +99,15 @@ export {
   isMineableItem,
   emptyFitted,
   SLOT_LABELS,
+  // V18 槽类
+  RACK_SLOTS,
+  RACK_LABELS,
+  rackLabel,
+  shipSlotsOf,
+  rackOf,
+  allFittedIds,
 } from './labels'
+export type { RackSlot, ShipSlots } from './types'
 
 export { hashSeed, nextRandom, nextInt } from './rng'
 
@@ -149,7 +157,9 @@ export {
   removeModule,
   fitModule,
   unfitSlot,
+  unfitAt,
   fittedBonuses,
+  fittedCpuUsed,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
   migrateDeprecatedAmmo,
@@ -205,15 +215,19 @@ export {
 
 export {
   refineRate,
-  refineAllOre,
+  oreAvailable,
+  refineRunActive,
+  refineManualActive,
+  startRefineRun,
+  stopRefineRun,
+  refineRunStatus,
   sellCargoItem,
   sellWareItem,
   sellAll,
   sellPriceMultiplier,
-  oreAvailable,
   buyShip,
 } from './industry'
-export type { RefineResult, SellResult } from './industry'
+export type { RefineRunView, SellResult } from './industry'
 
 export {
   ownsBlueprint,

@@ -1,31 +1,33 @@
 /**
- * 装备：入库/出库/装配/加成。
+ * 装备：入库/出库/装配/加成（V18 槽位制）。
  *
- * 规则（中文说明，v7 + V10 + V17）：
+ * 规则（中文说明，v7 + V10 + V17 + V18）：
  * - 装配位置在"当前驾驶的船"上（fleet[shipId].fitted），换船看到的是那艘船的装备；
  * - 装备库（moduleBay）是空间站库存：制造完成先入库，装配时取出；
  * - 弃船会连 fitted 一起遗失（moduleBay 不丢）；
- * - 槽位（v10 起六槽定死）：miner/cargo 工业槽即时生效（产量/容量）；
- *   turret/shield/armor/propulsion 战斗槽由战斗引擎消费各自参数（V17 起全部真生效，
- *   见 combat.createPlayerSpec——不再是占位家族）；
- * - V17 CPU 装配校验：fitModule 合计六槽 cpuUse ≤ 船体 cpu（与无人机放飞共用）；
- *   V17.2→V18 口径取消后无尺寸校验：任意船可装任意炮；
- * - V17 存档修复：repairDeprecatedModules 在载入后把已下架型号按迁移表原位替换
- *   （V17_MODULE_MIGRATIONS），悬空件退回装备库不丢资产；
- * - 加成查询统一返回按槽 Record：调用方只取自己关心的槽位（工业加成语义保留）。
+ * - V18 槽位制：fitted = 三类位数组 {high/mid/low: (id|null)[]}，长度 = 船对应槽类
+ *   数量（ShipDef.slots，复数安装）。模块归槽 = ModuleDef.rack（rackOf 单点推导）；
+ * - 装配 = 装入该类第一空位（可指定位）；卸下 = 按 槽类+位序；
+ *   可叠件（turret/miner/cargo/无人机装置）可复数；唯一件（盾/甲抗性与容量系、
+ *   推进器）全船同类同系仅 1 件（uniqueKeyOf）；
+ * - V17 CPU 装配校验沿用：全部位合计 cpuUse ≤ 船体 cpu（与无人机放飞共用）；
+ *   口径已随 V18 取消：任意船可装任意炮；
+ * - 载入修复链（repairDeprecatedModules）：下架型号迁移/退回 + V18 槽位数与船布局
+ *   对齐（超长尾件退库、短位补空）+ 旧 -h 弹药并入（migrateDeprecatedAmmo）；
+ * - 加成查询 = 按家族求和（复数矿枪/货舱扩展线性叠加；AI/采矿/货舱同源单点）。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { ModuleDef, ModuleSlot, SimContext } from './types'
-import { MODULE_SLOTS, SLOT_LABELS, slotLabel as labelOf } from './labels'
+import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext } from './types'
+import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState } from './inventory'
 import { fleetDefOf } from './instances'
 
-/** 槽位顺序（界面展示用） */
+/** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
 export { MODULE_SLOTS } from './labels'
 
-/** 槽位中文名（界面与日志共用） */
+/** 槽位中文名（家族徽标/日志） */
 export function slotLabel(slot: ModuleSlot): string {
   return labelOf(slot)
 }
@@ -51,8 +53,78 @@ export function removeModule(state: GameState, moduleId: string, count = 1): boo
   return true
 }
 
-/** 玩家指令：把装备库里的装备装到当前船的对应槽位（同槽旧件自动退回装备库） */
-export function fitModule(state: GameState, moduleId: string, ctx: SimContext): CommandResult {
+/* ═══════════ V18 fitted 位数组语义（多件查询/唯一键/占用） ═══════════ */
+
+/** 全位已装模块定义（顺序 = 高→中→低 位序；跳过空位） */
+export function allFittedModules(fitted: FittedModules, ctx: SimContext): ModuleDef[] {
+  const out: ModuleDef[] = []
+  for (const id of allFittedIds(fitted)) {
+    const def = ctx.modules.get(id)
+    if (def) out.push(def)
+  }
+  return out
+}
+
+/** 某家族（slot 六值）的全部已装件定义（按位序）——复数语义消费者用 */
+export function familyModules(state: GameState, ctx: SimContext, shipId: string, family: ModuleSlot): ModuleDef[] {
+  const fitted = state.fleet[shipId]?.fitted
+  if (!fitted) return []
+  return allFittedModules(fitted, ctx).filter((d) => d.slot === family)
+}
+
+/**
+ * V18 同类唯一键：盾/甲 抗性系按 家族+系（如 shield-resist-kinetic）、容量系
+ * （shield-hp / armor-hp）、推进器（propulsion）返回非空键——同键全船仅可装 1 件；
+ * 可叠件（炮/矿枪/货舱扩展/无人机装置）返回 null（允许复数、线性求和）。
+ */
+export function uniqueKeyOf(def: ModuleDef): string | null {
+  const firstKey = (add: Partial<Record<string, number>> | undefined): string | null => {
+    for (const [t, v] of Object.entries(add ?? {})) if ((v ?? 0) > 0) return t
+    return null
+  }
+  if (def.slot === 'shield') {
+    const t = firstKey(def.shieldResistAdd)
+    if (t) return `shield-resist-${t}`
+    if (def.shieldHpBonus !== undefined) return 'shield-hp'
+  }
+  if (def.slot === 'armor') {
+    const t = firstKey(def.armorResistAdd)
+    if (t) return `armor-resist-${t}`
+    if (def.armorHpBonus !== undefined) return 'armor-hp'
+  }
+  if (def.slot === 'propulsion') return 'propulsion'
+  return null
+}
+
+/** 全位 CPU 占用合计（与无人机放飞共用池；装配校验/战斗余量同源） */
+export function fittedCpuUsed(fitted: FittedModules, ctx: SimContext): number {
+  let used = 0
+  for (const def of allFittedModules(fitted, ctx)) used += def.cpuUse ?? 0
+  return used
+}
+
+/** 当前驾驶船的 fitted（空船时返回 null） */
+function fittedOf(state: GameState): GameState['fleet'][string]['fitted'] | null {
+  return currentShipState(state)?.fitted ?? null
+}
+
+/* ═══════════ 装配 / 卸下（V18 位数组） ═══════════ */
+
+/** 找某槽类第一个空位（无空位返回 -1） */
+export function firstFreeBay(fitted: FittedModules, rack: RackSlot): number {
+  return rackBays(fitted, rack).findIndex((id) => id === null)
+}
+
+/**
+ * 玩家指令：把装备库里的装备装到当前船对应槽类（rack）的某空位。
+ * index 缺省 = 第一个空位；该槽类无空位/唯一键冲突/CPU 超限 → 拒绝并提示。
+ */
+export function fitModule(
+  state: GameState,
+  moduleId: string,
+  ctx: SimContext,
+  opts?: { rack?: RackSlot; index?: number },
+): CommandResult {
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
   if (countModule(state, moduleId) < 1) {
@@ -60,49 +132,94 @@ export function fitModule(state: GameState, moduleId: string, ctx: SimContext): 
   }
   const fitted = fittedOf(state)
   if (!fitted) return { ok: false, error: '当前舰船数据缺失，无法装配。' }
-  const slot = def.slot
-  if (fitted[slot] === moduleId) {
-    return { ok: false, error: `${def.name} 已经装在该槽位上了。` }
-  }
-  // V17 CPU 装配校验：六件合计（目标槽按新件计）不得超过船体 cpu；超出拒绝装配
-  // （与无人机放飞共用：装配占满后战斗将无余量放无人机——见 combat.createPlayerSpec）
+  const rack = opts?.rack ?? rackOf(def)
+  const bays = rackBays(fitted, rack)
+  // V18 韧性：位数组长度按船布局期望补齐（repair 链负责持久对齐；此处兜底运行态）
   const shipDef = fleetDefOf(state, ctx, state.shipId)
+  if (shipDef) {
+    const want = shipSlotsOf(shipDef)[rack]
+    while (bays.length < want) bays.push(null)
+  }
+  // 同类唯一校验（全船：同键只可 1 件——防两块动能膜叠出超模乘入抗性）
+  const key = uniqueKeyOf(def)
+  if (key !== null) {
+    const clash = allFittedIds(fitted).find((id) => {
+      const d = ctx.modules.get(id)
+      return d !== undefined && uniqueKeyOf(d) === key
+    })
+    if (clash !== undefined) {
+      const clashDef = ctx.modules.get(clash)
+      return { ok: false, error: `同类唯一：${clashDef?.name ?? clash} 已在船上（先卸下它才能装 ${def.name}）。` }
+    }
+  }
+  // 目标位
+  let index = -1
+  if (opts?.index !== undefined) {
+    if (opts.index < 0 || opts.index >= bays.length || bays[opts.index] !== null) {
+      return { ok: false, error: `该${rackLabel(rack)}位不可用（第 ${opts.index + 1} 位）。` }
+    }
+    index = opts.index
+  } else {
+    index = firstFreeBay(fitted, rack)
+    if (index < 0) {
+      return { ok: false, error: `${rackLabel(rack)}已满（${bays.length}/${bays.length}）：先卸下再装。` }
+    }
+  }
+  // CPU 装配校验：全位合计（含新件）≤ 船体 cpu
   const cpuTotal = shipDef?.cpu
   if (cpuTotal !== undefined && cpuTotal > 0) {
-    let used = 0
-    for (const s of MODULE_SLOTS) {
-      const id = s === slot ? moduleId : fitted[s]
-      if (id) used += ctx.modules.get(id)?.cpuUse ?? 0
-    }
+    const used = fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0)
     if (used > cpuTotal) {
       return { ok: false, error: `装配超载：合计需 CPU ${used}，船体上限 ${cpuTotal}（卸下其它装备或换低耗型号）。` }
     }
   }
-  const prevId = fitted[slot]
-  if (prevId !== null) {
-    // 旧件退回装备库，再装新的
-    fitted[slot] = null
-    addModule(state, prevId)
-  }
   removeModule(state, moduleId)
-  fitted[slot] = moduleId
-  addLog(state, 'info', `已装配 ${def.name}（${slotLabel(slot)}）。`)
+  bays[index] = moduleId
+  addLog(state, 'info', `已装配 ${def.name}（${rackLabel(rack)}第 ${index + 1} 位）。`)
   return { ok: true }
 }
 
-/** 玩家指令：卸下当前船某槽位的装备（放回装备库） */
-export function unfitSlot(state: GameState, slot: ModuleSlot): boolean {
+/** 玩家指令：按 槽类+位序 卸下当前船某位的装备（放回装备库） */
+export function unfitAt(state: GameState, rack: RackSlot, index: number): boolean {
   const fitted = fittedOf(state)
   if (!fitted) return false
-  const moduleId = fitted[slot]
+  const bays = rackBays(fitted, rack)
+  if (index < 0 || index >= bays.length) return false
+  const moduleId = bays[index]
   if (moduleId === null) return false
-  fitted[slot] = null
+  bays[index] = null
   addModule(state, moduleId)
-  addLog(state, 'info', `已卸下并放回装备库（${slotLabel(slot)}）。`)
+  addLog(state, 'info', `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`)
   return true
 }
 
-/** 指定船（缺省当前驾驶船）的装备加成：按槽返回（V17：仅工业槽 bonus 有消费者；
+/** 玩家指令：卸下当前船"某家族的第一件"（旧六槽语义的兼容入口；UI 位操作请用 unfitAt）。
+ * 家族 → 固定兼容位（V17_FAMILY_BAYS：turret→high0 / miner→high1 / shield→mid0 /
+ * propulsion→mid1 / armor→low0 / cargo→low1）。 */
+export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
+  const fitted = fittedOf(state)
+  if (!fitted) return false
+  const legacy = V17_FAMILY_BAYS[family]
+  const bays = rackBays(fitted, legacy.rack)
+  if (legacy.index >= bays.length || bays[legacy.index] === null) return false
+  const moduleId = bays[legacy.index]!
+  bays[legacy.index] = null
+  addModule(state, moduleId)
+  addLog(state, 'info', `已卸下并放回装备库（${slotLabel(family)}）。`)
+  return true
+}
+
+/** v17 六槽 → v18 位映射（迁移与旧语义共用） */
+export const V17_FAMILY_BAYS: Record<ModuleSlot, { rack: RackSlot; index: number }> = {
+  turret: { rack: 'high', index: 0 },
+  miner: { rack: 'high', index: 1 },
+  shield: { rack: 'mid', index: 0 },
+  propulsion: { rack: 'mid', index: 1 },
+  armor: { rack: 'low', index: 0 },
+  cargo: { rack: 'low', index: 1 },
+}
+
+/** 指定船（缺省当前驾驶船）的家族加成：按家族求和（复数矿枪/货舱扩展线性叠加；
  * 战斗槽加成由各自字段直接进 combat.createPlayerSpec——本表对它们恒为 0） */
 export function fittedBonuses(
   state: GameState,
@@ -111,27 +228,17 @@ export function fittedBonuses(
 ): Record<ModuleSlot, number> {
   const result = {} as Record<ModuleSlot, number>
   for (const slot of MODULE_SLOTS) result[slot] = 0
-  const fitted = state.fleet[shipId]?.fitted ?? null
+  const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return result
-  for (const slot of MODULE_SLOTS) {
-    const moduleId = fitted[slot]
-    if (moduleId === null) continue
-    const def = ctx.modules.get(moduleId)
-    if (!def || def.slot !== slot) continue
-    result[slot] = def.bonus ?? 0
+  for (const def of allFittedModules(fitted, ctx)) {
+    if (def.bonus !== undefined && def.slot !== 'turret') result[def.slot] += def.bonus ?? 0
   }
   return result
 }
 
-/** 当前驾驶船的 fitted（空船时返回 null） */
-function fittedOf(state: GameState): GameState['fleet'][string]['fitted'] | null {
-  return currentShipState(state)?.fitted ?? null
-}
-
 /**
- * V17 装备改版迁移表：旧"通用全系"战斗装备 id → 新分系专精款。
- * 归位原则 = 旧件普遍用于应对默认动能伤害 → 动能款（同类同代次）；护盾增强器旧 id
- * 顺延为动能型，装甲增厚板旧 id 亦为动能型。本表供 repairDeprecatedModules 使用。
+ * V17 装备改版迁移表：旧"通用全系"战斗装备 id → 新分系专精款（动能款归位）。
+ * 本表供 repairDeprecatedModules 使用。
  */
 export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
   'mod-shield-1': 'mod-shield-kin-1',
@@ -140,44 +247,70 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
   'mod-armor-1': 'mod-armor-kin-1',
   'mod-armor-2': 'mod-armor-kin-2',
   'mod-armor-3': 'mod-armor-kin-3',
-  // V17.2 炮族制：旧"混型"炮台下架 → 动能款（协会制式）；异星原型（能量）与民用舰炮保留
   'mod-turret-1': 'mod-turret-kin-1',
   'mod-turret-2': 'mod-turret-kin-2',
   'mod-turret-3': 'mod-turret-kin-3',
 }
 
 /**
- * 载入存档后的装备改版修复（V17/V17.2；幂等）：把装配中/装备库里的已下架型号替换为
- * 迁移款（见 V17_MODULE_MIGRATIONS）；找不到迁移的悬空装配件退回装备库（不丢资产）。
- * 应在 ctx 就绪后、离线结算前调用一次（桌面 GameEngine.start 已接入）。
+ * 载入存档后的装备修复（V17/V18；幂等）：把装配中/装备库里的已下架型号替换为迁移款、
+ * 悬空件退回；并把每船位数组长度与船槽布局对齐（超长尾件退库、短位补空——含 v17 档
+ * 六槽→18 位数组迁移后的 2/2/2 过渡形状）。应在 ctx 就绪后、离线结算前调用。
  */
 export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
   let fittedMoved = 0
   let slotEmptied = 0
   let bayMoved = 0
-  // 1) 各船 fitted：目录外 id → 迁移替换，否则卸下退回
+  let aligned = 0
   for (const ship of Object.values(state.fleet)) {
     const fitted = ship?.fitted
     if (!fitted) continue
-    for (const slot of MODULE_SLOTS) {
-      let id = fitted[slot]
-      if (!id) continue
-      if (!ctx.modules.get(id)) {
-        const next = V17_MODULE_MIGRATIONS[id]
-        if (next && ctx.modules.get(next)) {
-          fitted[slot] = next
-          fittedMoved += 1
-          id = next
-        } else {
-          fitted[slot] = null
-          state.moduleBay[id] = countModule(state, id) + 1
-          slotEmptied += 1
-          continue
+    const shipDef = ship?.defId ? ctx.ships.get(ship.defId) : undefined
+    // 1) 逐位：目录外 id → 迁移替换，否则卸下退回
+    for (const rack of ['high', 'mid', 'low'] as const) {
+      const bays = rackBays(fitted, rack)
+      for (let i = 0; i < bays.length; i++) {
+        const id = bays[i]
+        if (!id) continue
+        if (!ctx.modules.get(id)) {
+          const next = V17_MODULE_MIGRATIONS[id]
+          if (next && ctx.modules.get(next)) {
+            bays[i] = next
+            fittedMoved += 1
+          } else {
+            bays[i] = null
+            state.moduleBay[id] = countModule(state, id) + 1
+            slotEmptied += 1
+          }
+        }
+      }
+    }
+    // 2) V18 槽位数对齐：长度 = 船布局（目标短 → 尾件退库；目标长 → 补空）
+    if (shipDef) {
+      const target = {
+        high: shipDef.slots?.high ?? 1,
+        mid: shipDef.slots?.mid ?? 1,
+        low: shipDef.slots?.low ?? 1,
+      } as Record<RackSlot, number>
+      for (const rack of ['high', 'mid', 'low'] as const) {
+        const bays = rackBays(fitted, rack)
+        const want = target[rack]
+        if (bays.length > want) {
+          for (let i = want; i < bays.length; i++) {
+            const id = bays[i]
+            if (id) {
+              state.moduleBay[id] = countModule(state, id) + 1
+              aligned += 1
+            }
+          }
+          bays.length = want
+        } else if (bays.length < want) {
+          while (bays.length < want) bays.push(null)
         }
       }
     }
   }
-  // 2) 装备库：有迁移的已下架型号 → 计数并入迁移款后删除旧键（无迁移的保留不丢资产）
+  // 3) 装备库：有迁移的已下架型号 → 计数并入迁移款后删除旧键（无迁移的保留不丢资产）
   for (const [id, n] of Object.entries(state.moduleBay)) {
     const next = V17_MODULE_MIGRATIONS[id]
     if (!next || !ctx.modules.get(next)) continue
@@ -185,22 +318,22 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
     delete state.moduleBay[id]
     bayMoved += n
   }
-  const total = fittedMoved + slotEmptied + bayMoved
+  const total = fittedMoved + slotEmptied + bayMoved + aligned
   if (total > 0) {
     addLog(
       state,
       'info',
-      `V17 装备改版：护盾/装甲增强器改为分系缺口抗性、炮台改为分系炮族。` +
-        `旧件按动能款迁移 ${fittedMoved + bayMoved} 件；无对应款退回 ${slotEmptied} 件。`,
+      `装备修复：旧件按动能款迁移 ${fittedMoved + bayMoved} 件；悬空退回 ${slotEmptied} 件；` +
+        (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : ''),
     )
   }
 }
 
 export { SLOT_LABELS }
+
 /**
- * V18 口径取消（船长 2026-09-04）：弹药每型只留单档（-l 件），把 -h 重弹按 1:1 并入对应
- * 轻型款（货仓/仓库/escrow）；挂着 -h 的玩家卖单撤销（escrow 货量并入 -l 后按原价重挂?——
- * 简单处理：撤销订单并把锁仓 1:1 转入 -l 入仓）。幂等：跑过即无 -h 键。
+ * V18 口径取消（船长 2026-09-04）：弹药每型只留单档（-l），把 -h 重弹按 1:1 并入对应
+ * 通用弹（货仓/仓库/escrow）；挂着 -h 的玩家卖单撤销。幂等：跑过即无 -h 键。
  */
 const HEAVY_TO_LIGHT: Record<string, string> = {
   'ammo-kinetic-h': 'ammo-kinetic-l',
@@ -210,7 +343,6 @@ const HEAVY_TO_LIGHT: Record<string, string> = {
 
 export function migrateDeprecatedAmmo(state: GameState): number {
   let converted = 0
-  // 仓库
   for (const [id, n] of Object.entries(state.warehouse.items)) {
     const next = HEAVY_TO_LIGHT[id]
     if (!next) continue
@@ -218,7 +350,6 @@ export function migrateDeprecatedAmmo(state: GameState): number {
     delete state.warehouse.items[id]
     converted += n
   }
-  // 各船货仓
   for (const ship of Object.values(state.fleet)) {
     const cargo = ship?.cargo
     if (!cargo) continue
@@ -231,7 +362,6 @@ export function migrateDeprecatedAmmo(state: GameState): number {
       converted += n
     }
   }
-  // 挂着 -h 的玩家卖单撤销：锁仓按 1:1 退回仓库（并转 -l）；再清残余 escrow 锁仓
   state.orders = state.orders.filter((o) => {
     if (o.side === 'sell' && o.good && HEAVY_TO_LIGHT[o.good]) {
       const locked = state.escrowItems[o.good] ?? 0
@@ -243,7 +373,7 @@ export function migrateDeprecatedAmmo(state: GameState): number {
         state.warehouse.items[next] = (state.warehouse.items[next] ?? 0) + take
         converted += take
       }
-      return false // 撤销该卖单
+      return false
     }
     return true
   })

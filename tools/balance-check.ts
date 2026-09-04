@@ -19,15 +19,18 @@ import {
   createInitialState,
   enqueueSkill,
   fitModule,
+  isAtHome,
   learnBlueprint,
   loadSaveFile,
-  refineAllOre,
+  refineRunActive,
   sellAll,
   sellWareItem,
   serializeSaveFile,
   setMiningAutoCycle,
   startManufacturing,
   startMining,
+  startRefineRun,
+  startTransitHome,
 } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { buildSimContext } from '@whale/data'
@@ -62,6 +65,8 @@ interface StrategyResult {
 interface Strategy {
   name: string
   desc: string
+  /** 该策略是否依赖母港精炼炉（精炼流：满舱回港 → 开炉运转 → 再出航） */
+  refineAtHome: boolean
   /** 开跑前排队要练的技能（训练与采矿并行） */
   planSkills(state: GameState, ctx: SimContext): void
   /** 每次采矿停止（含满舱）后回调：处理库存、买蓝图、制造、买船 */
@@ -110,10 +115,18 @@ function runStrategy(strategy: Strategy): StrategyResult {
     advanceGame(state, STEP_MS, ctx)
     simMs += STEP_MS
 
-    // 采矿停了（满舱自动停/异常）→ 处理货舱并重启
+    // 采矿停了（满舱自动停/异常）→ 处理库存；精炼流需先回港开炉运转，炼完再出航
     if (!state.mining.active) {
       strategy.onMiningStopped(state, ctx, result)
-      startMining(state, BELT, ctx)
+      if (strategy.refineAtHome) {
+        if (!isAtHome(state) && !state.transit.active && !state.standby.active) {
+          startTransitHome(state, ctx) // 满舱回母港
+        } else if (isAtHome(state) && !state.transit.active && !refineRunActive(state)) {
+          startMining(state, BELT, ctx) // 精炼炉已停/无料 → 再次出航
+        }
+      } else {
+        startMining(state, BELT, ctx)
+      }
     }
 
     // 每小时快照
@@ -172,6 +185,7 @@ function acquireBlueprint(state: GameState, ctx: SimContext, blueprintId: string
 const strategyA: Strategy = {
   name: 'A · 原矿流（卖原矿攒船）',
   desc: '只练采矿技术；满舱直接把富凡晶石卖给空间站',
+  refineAtHome: false,
   planSkills(state, ctx) {
     queueToMax(state, ctx, 'mining')
   },
@@ -185,15 +199,18 @@ const strategyA: Strategy = {
 
 const strategyB: Strategy = {
   name: 'B · 精炼流（炼矿再卖）',
-  desc: '练采矿技术 + 精炼学5 + 高级回收5；满舱精炼成矿物出售',
+  desc: '练采矿技术 + 精炼学5 + 高级回收5；满舱回港运转精炼炉（自动续批至料尽）再卖矿物',
+  refineAtHome: true,
   planSkills(state, ctx) {
     queueToMax(state, ctx, 'mining')
     queueToMax(state, ctx, 'refining')
     queueToMax(state, ctx, 'reprocessing')
   },
   onMiningStopped(state, ctx, result) {
-    // 精炼所有矿石再卖矿物（精炼学 5 级收率 90%）：矿物在物品仓库，用仓库卖出
-    if (countItem(state, ORE_ID) > 0) refineAllOre(state, ORE_ID, ctx)
+    // 回港后启动精炼炉（锁定全库存循环运转；引擎每步自动推进到料尽），矿物卖掉
+    if (isAtHome(state) && countItem(state, ORE_ID) > 0 && !refineRunActive(state)) {
+      startRefineRun(state, ORE_ID, 'pilot', ctx)
+    }
     for (const id of ['min-tritanium', 'min-pyerite']) {
       sellWareOf(state, ctx, id)
     }
@@ -213,7 +230,8 @@ const GEAR_PLAN: Array<{ bp: string; module: string; label: string }> = [
 
 const strategyC: Strategy = {
   name: 'C · 装备流（精炼 + 自造装备）',
-  desc: '练满采矿三技能 + 精炼双技能；按路线造并装配装备，再造掘洞级',
+  desc: '练满采矿三技能 + 精炼双技能；满舱回港运转精炼炉；按路线造并装配装备，再造掘洞级',
+  refineAtHome: true,
   planSkills(state, ctx) {
     queueToMax(state, ctx, 'mining')
     queueToMax(state, ctx, 'refining')
@@ -221,8 +239,10 @@ const strategyC: Strategy = {
     queueToMax(state, ctx, 'mining-frigate')
   },
   onMiningStopped(state, ctx, result) {
-    // 精炼并卖掉矿物
-    if (countItem(state, ORE_ID) > 0) refineAllOre(state, ORE_ID, ctx)
+    // 回港后启动精炼炉（自动续批至料尽）；矿物卖掉
+    if (isAtHome(state) && countItem(state, ORE_ID) > 0 && !refineRunActive(state)) {
+      startRefineRun(state, ORE_ID, 'pilot', ctx)
+    }
     sellWareOf(state, ctx, 'min-tritanium')
     sellWareOf(state, ctx, 'min-pyerite')
     sellWareOf(state, ctx, 'min-mexallon')

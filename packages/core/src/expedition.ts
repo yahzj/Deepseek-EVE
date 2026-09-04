@@ -31,6 +31,7 @@ import {
   startBattleFor,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
+import { familyModules } from './equipment'
 
 /** 母港星系 id（内容层约定；与 state.HOME_GALAXY_ID 同值，经此转发保持既有 import 面不变） */
 export { HOME_GALAXY_ID }
@@ -180,6 +181,9 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   }
   if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
+  if (state.refineRun.active && state.refineRun.worker === 'pilot') {
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出发远征（想自动精炼可改用 AI 核心驱动）。' }
+  }
   return { ok: true }
 }
 
@@ -289,8 +293,7 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   // V13 探索：实际到港 → 点亮该星系（去程结束进入交火 = 已抵达）
   if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
   const loaded = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
-  const turretId = state.fleet[shipId]?.fitted?.turret
-  const hasTurret = turretId !== null && turretId !== undefined
+  const hasTurret = familyModules(state, ctx, shipId, 'turret').length > 0
   addLog(
     state,
     'info',

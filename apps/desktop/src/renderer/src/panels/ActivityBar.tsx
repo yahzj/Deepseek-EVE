@@ -14,6 +14,7 @@ const KIND_ICON: Record<string, string> = {
   mining: '⛏',
   scan: '🔭',
   manufacture: '⚒',
+  refine: '♨',
   expedition: '⚔',
   ai: '🤖',
   return: '↩',
@@ -30,6 +31,8 @@ function stopLabel(v: ActivityView): string {
       return '终止'
     case 'cancel-manufacture':
       return '取消'
+    case 'stop-refine':
+      return '停炉'
     case 'recall-expedition':
       return '召回'
     case 'recall-standby':
@@ -61,6 +64,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'cancel-manufacture':
       run(engine.cancelManufacturingNow(), '已取消制造：材料全额退回物品仓库（制造费不退）。')
+      break
+    case 'stop-refine':
+      run(engine.stopRefineRunNow(), '已停炉：已完成批保留，剩余原料退回仓库。')
       break
     case 'recall-expedition':
       run(engine.recallExpeditionNow(), '远征已召回：舰队返回母港（无战果）。')
@@ -113,7 +119,9 @@ export function ActivityBar({ engine, onToast }: { engine: GameEngine; onToast: 
                 title={
                   v.stop === 'cancel-manufacture'
                     ? '取消制造：材料全额退回、制造费不退'
-                    : v.stop === 'recall-expedition'
+                    : v.stop === 'stop-refine'
+                      ? '停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）'
+                      : v.stop === 'recall-expedition'
                       ? '召回远征：中止任务返回母港（无战果）'
                       : v.stop === 'stop-scan'
                         ? '终止扫描：就地扫描进度保存，下次续扫'

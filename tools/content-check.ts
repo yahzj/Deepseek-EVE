@@ -25,7 +25,7 @@ import {
   SHIPS,
   buildItemCatalog,
 } from '@whale/data'
-import { MODULE_SLOTS, MINEABLE_KINDS } from '@whale/core'
+import { MODULE_SLOTS, MINEABLE_KINDS, RACK_SLOTS, rackOf } from '@whale/core'
 
 const errors: string[] = []
 const warn: string[] = []
@@ -203,6 +203,22 @@ for (const s of SHIPS) {
   // V10.5b：CPU 总量必填正数；无人机舱 ≥0；间接属性若有则必须为正数
   check((s.cpu ?? 0) > 0 && Number.isInteger(s.cpu), `舰船 ${s.id} cpu 缺失或非法（V10.5b）`)
   check((s.droneBayM3 ?? 0) >= 0 && Number.isFinite(s.droneBayM3), `舰船 ${s.id} droneBayM3 非法`)
+  // V18：槽位布局必填（高/中/低 ≥1 整数；总位 3~12）
+  const slots = s.slots
+  check(!!slots, `舰船 ${s.id} 缺少 V18 槽位布局 slots`)
+  if (slots) {
+    const total = slots.high + slots.mid + slots.low
+    check(
+      Number.isInteger(slots.high) && slots.high >= 1 && slots.high <= 6 &&
+        Number.isInteger(slots.mid) && slots.mid >= 1 && slots.mid <= 5 &&
+        Number.isInteger(slots.low) && slots.low >= 1 && slots.low <= 6,
+      `舰船 ${s.id} slots 越界：${JSON.stringify(slots)}（需 高1-6/中1-5/低1-6）`,
+    )
+    check(total >= 3 && total <= 12, `舰船 ${s.id} 总槽位 ${total} 超限（3~12）`)
+    // V18 族定位弱断言：武装舰高槽多、装甲舰低槽多（布局草案精神）
+    if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+    if (s.role === 'armored') check(slots.low >= slots.high + 1, `装甲舰 ${s.id} 低槽应显著多于高槽（${slots.low} vs ${slots.high}）`)
+  }
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
   check(s.hitBonus === undefined || (s.hitBonus >= 0 && s.hitBonus <= 0.5), `舰船 ${s.id} hitBonus 越界：${String(s.hitBonus)}`)
@@ -267,6 +283,11 @@ for (const d of drones) {
 }
 for (const m of MODULES) {
   check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
+  // V18：槽类归属 rack 必填且与 rackOf 推导一致（Q3 映射集中落数据；防标注漂移）
+  check(m.rack !== undefined && RACK_SLOTS.includes(m.rack), `装备 ${m.id} 缺少 V18 rack 归属`)
+  if (m.rack !== undefined) {
+    check(m.rack === rackOf(m), `装备 ${m.id} rack 标注（${m.rack}）与 Q3 推导（${rackOf(m)}）不一致`)
+  }
   if (m.slot === 'miner' || m.slot === 'cargo') {
     // V17：工业槽保留加成系数形态
     check((m.bonus ?? 0) > 0 && Number.isFinite(m.bonus), `工业装备 ${m.id} bonus 缺失或非法（V17 仅工业槽使用）`)

@@ -39,7 +39,7 @@ describe('炮族制：炮台固定弹种（口径取消后）', () => {
     expect(Object.keys(gunK.shotsByType ?? {})).toEqual(['kinetic'])
 
     // 换能量炮：单键换型
-    state.fleet[state.shipId].fitted.turret = null
+    state.fleet[state.shipId].fitted.high[0] = null
     state.moduleBay['tur-pla'] = 1
     expect(fitModule(state, 'tur-pla', ctx).ok).toBe(true)
     expect(playerAmmoType(state, ctx, 'sandcat')).toBe('plasma')
@@ -54,7 +54,7 @@ describe('炮族制：炮台固定弹种（口径取消后）', () => {
     state.moduleBay['tur-mk3'] = 1
     // sandcat = industrial（旧口径制只适配轻型炮）——现在可直接装
     expect(fitModule(state, 'tur-mk3', ctx).ok).toBe(true)
-    expect(state.fleet[state.shipId].fitted.turret).toBe('tur-mk3')
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('tur-mk3')
   })
 
   it('单型装载：只装固定弹种型（通用弹单档），其它型库存不碰', () => {
@@ -99,10 +99,10 @@ describe('口径取消：迁移（重弹并入通用弹；旧炮迁移动能款�
     const ctx = makeTestCtx({
       modules: [turret('mod-turret-kin-2', 'kinetic', { cpuUse: 28, dmgMult: 3.73, maxRangeM: 8200 })],
     })
-    state.fleet[state.shipId].fitted.turret = 'mod-turret-2' // 旧档历史装配（曾视为"轻型船超口径"）
+    state.fleet[state.shipId].fitted.high[0] = 'mod-turret-2' // 旧档历史装配（曾视为"轻型船超口径"）
     state.moduleBay['mod-turret-2'] = 3
     repairDeprecatedModules(state, ctx)
-    expect(state.fleet[state.shipId].fitted.turret).toBe('mod-turret-kin-2') // 原位迁移保留
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-turret-kin-2') // 原位迁移保留
     expect(state.moduleBay['mod-turret-kin-2']).toBe(3)
     expect('mod-turret-2' in state.moduleBay).toBe(false)
   })

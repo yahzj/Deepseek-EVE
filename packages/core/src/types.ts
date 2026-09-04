@@ -70,6 +70,10 @@ export interface ItemDef {
   description: string
   /** 精炼配方：矿石/气体/冰矿带配方（产物必须是矿物） */
   refine?: readonly RefineRow[]
+  /** 精炼运转周期（工业细化）：单批单位（该资源每批入炉单位数） */
+  refineBatchUnits?: number
+  /** 精炼运转周期（工业细化）：单批周期毫秒（5~10 秒节奏；缺失时 core 兜底默认） */
+  refineCycleMs?: number
   /* ═══ V10.5 战斗数值契约（弹药/无人机用；引擎战斗实现后启用） ═══ */
   /** 伤害类型（弹药/无人机） */
   damageType?: DamageType
@@ -147,6 +151,11 @@ export interface ShipDef {
   /* ═══ V10.5b：装配资源与间接属性（契约占位；CPU=装备与无人机共用，带宽已并入） ═══ */
   /** CPU 总量（抽象单位：装配模块与放飞无人机共同消耗；引擎战斗期校验） */
   cpu?: number
+  /**
+   * V18 高/中/低槽布局（每类槽的安装位数量；复数安装·数量制——缺省 {1,1,1}，
+   * 正式内容全部显式标注；19 船草案表见 docs/design/v18-slots.md §四）。
+   */
+  slots?: ShipSlots
   /** 无人机舱容量（m³，携带上限之一；0 = 无无人机舱） */
   droneBayM3?: number
   /** 无人机放飞所需的 CPU 占位资源已在 ItemDef.cpuUse；此处不重复定义 */
@@ -459,17 +468,46 @@ export interface BattleBalance {
   killcamMs: number
 }
 
-/** 装备槽位（V10 定死六槽，不再扩展）：
- * - miner 采集器（加循环产量）/ cargo 货舱（加容量）/ turret 炮台（加火力）——引擎生效；
- * - shield 护盾 / armor 装甲 / propulsion 推进器——占位家族：可装配、效果随战斗系统开放 */
+/**
+ * 装备家族（V10 六值保留：家族语义是装配唯一性校验与引擎构建的依据，不是物理槽）。
+ * V18 起物理槽由 RackSlot（高/中/低 × 数量制）表达——归槽见 ModuleDef.rack / labels.rackOf。
+ */
 export type ModuleSlot = 'miner' | 'cargo' | 'turret' | 'shield' | 'armor' | 'propulsion'
+
+/** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
+export type RackSlot = 'high' | 'mid' | 'low'
+
+/** 舰船三类槽位布局（V18：每类槽的安装位数量；复数安装 = 每槽位可装一件该类的模块） */
+export interface ShipSlots {
+  high: number
+  mid: number
+  low: number
+}
+
+/**
+ * V18 已装配模块：三类位数组（每数组长度 = 船对应槽类数量，元素 = 模块 id 或 null）。
+ * v17 六槽 Record（miner/cargo/turret/shield/armor/propulsion）于存档迁移 17→18 转为
+ * 位数组：turret→high[0]、miner→high[1]、shield→mid[0]、propulsion→mid[1]、
+ * armor→low[0]、cargo→low[1]（位不足的溢出件退回装备库）。
+ */
+export type FittedModules = {
+  high: Array<string | null>
+  mid: Array<string | null>
+  low: Array<string | null>
+}
 
 /** 装备定义（造出来装到船上的模块） */
 export interface ModuleDef {
   id: string
   name: string
-  /** 装在哪个槽 */
+  /** 家族（六值之一：装配唯一性/引擎构建依据；UI 徽标用家族中文名） */
   slot: ModuleSlot
+  /**
+   * V18 槽类归属（装到哪类物理槽：high/mid/low）。
+   * 缺省按家族推导（labels.rackOf）：turret・miner → high；shield・propulsion → mid；
+   * armor・cargo → low；数据层全部件将显式标注本字段（Q3 映射集中落数据）。
+   */
+  rack?: RackSlot
   /**
    * V17 起效果系数仅限工业槽：miner = 每循环产量加成；cargo = 货舱容量加成（0.2 = +20%）。
    * 战斗槽不再使用本字段——炮台走武器参数（maxRangeM…dmgMult），护盾/装甲走
@@ -523,6 +561,12 @@ export interface ModuleDef {
   dmgMult?: number
   /** 装配占用 CPU（V17 起装配校验生效：模块合计不得超过船体 cpu；与无人机放飞共用） */
   cpuUse?: number
+  /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展，
+     有 droneDmgBonus = 战术导控；归槽 rack = high，见 labels.rackOf） ═══ */
+  /** 无人机甲板扩展：+droneBayM3（携带/放飞上限扩容；线性可叠件） */
+  droneBayBonusM3?: number
+  /** 战术导控阵列：放飞无人机单发伤害加成（0.12 = +12%；线性求和乘入；线性可叠件） */
+  droneDmgBonus?: number
 }
 
 /** 舰船蓝图（M5：用矿物制造舰船，产物进入船坞） */

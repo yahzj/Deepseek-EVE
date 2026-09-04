@@ -145,7 +145,7 @@ describe('T5-B 舰船实例化（v17）', () => {
     renameShip(state, uid2, '二号')
     const text = serializeSaveFile(state, state.savedAtWallMs)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(17)
+    expect(loaded.state.version).toBe(18)
     expect(loaded.state).toEqual(state)
 
     // v16 老档（fleet/escrow 条目无 v17 字段）：迁移链补字段
@@ -168,7 +168,7 @@ describe('T5-B 舰船实例化（v17）', () => {
       },
     }
     const upgraded = loadSaveFile(JSON.stringify(v16))
-    expect(upgraded.state.version).toBe(17)
+    expect(upgraded.state.version).toBe(18)
     expect(upgraded.state.fleet.sandcat!.defId).toBe('sandcat')
     expect(upgraded.state.fleet.sandcat!.customName).toBeNull()
     expect(upgraded.state.fleet.sandcat!.cargo['ore-a']).toBe(3)

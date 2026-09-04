@@ -11,6 +11,7 @@ import type {
   BeltDef,
   BlueprintDef,
   DamageType,
+  FittedModules,
   GalaxyDef,
   GalaxyEdgeDef,
   ItemDef,
@@ -18,6 +19,7 @@ import type {
   ModuleSlot,
   ShipBlueprintDef,
   ShipDef,
+  ShipSlots,
   SimContext,
   SkillDef,
   StationSiteDef,
@@ -64,6 +66,18 @@ export function belt(
   }
 }
 
+/**
+ * V18 快速造 fitted（v17 兼容位布局 2/2/2：high = [turret, miner]、mid = [shield,
+ * propulsion]、low = [armor, cargo]；缺省全空位）。
+ */
+export function fittedOf(opts?: Partial<Record<ModuleSlot, string | null>>): FittedModules {
+  return {
+    high: [opts?.turret ?? null, opts?.miner ?? null],
+    mid: [opts?.shield ?? null, opts?.propulsion ?? null],
+    low: [opts?.armor ?? null, opts?.cargo ?? null],
+  }
+}
+
 /** 快速造舰船（V12：带默认战斗数值，保证战斗测试可用；可覆盖） */
 export function ship(
   id: string,
@@ -85,6 +99,7 @@ export function ship(
     scanResMm?: number
     cpu?: number
     droneBayM3?: number
+    slots?: ShipSlots
   },
 ): ShipDef {
   return {
@@ -92,6 +107,8 @@ export function ship(
     name: `船${id}`,
     tier: 1,
     role: 'industrial',
+    // V18：测试船默认 2/2/2 槽位（同 fittedOf 布局，可装复数件）
+    slots: opts?.slots ?? { high: 2, mid: 2, low: 2 },
     cargoM3: opts?.cargo ?? 800,
     cycleSeconds: opts?.cycle ?? 12,
     oreUnitsPerCycle: opts?.perCycle ?? 10,

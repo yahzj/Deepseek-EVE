@@ -109,7 +109,7 @@ describe('V17：CPU 装配校验（合计不超过船体上限）', () => {
     const r = fitModule(state, 'mod-heavy', ctx)
     expect(r.ok).toBe(false)
     expect(r.error).toContain('超载')
-    expect(state.fleet[state.shipId].fitted.shield).toBeNull()
+    expect(state.fleet[state.shipId].fitted.mid[0]).toBeNull()
     expect(state.moduleBay['mod-heavy']).toBe(1)
   })
 
@@ -133,7 +133,7 @@ describe('V17：calcPower 不再乘装备百分比（炮台战力走 battleWinPr
     state.moduleBay['mod-t'] = 1
     fitModule(state, 'mod-t', ctx)
     expect(calcPower(state, ctx)).toBe(10)
-    expect(state.fleet[state.shipId].fitted.turret).toBe('mod-t') // 装配本身照常生效（战斗内火力另算）
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-t') // 装配本身照常生效（战斗内火力另算）
   })
 })
 
@@ -144,15 +144,15 @@ describe('V17：旧"通用全系"增强器存档迁移', () => {
       modules: [moduleDef('mod-shield-kin-1', 'shield', 0, { shieldHpBonus: 0.15, shieldResistAdd: { kinetic: 0.15 } })],
     })
     // 模拟旧存档：装的是已下架的 mod-shield-1（全系通用款）
-    state.fleet[state.shipId].fitted.shield = 'mod-shield-1'
-    state.fleet[state.shipId].fitted.cargo = 'mod-ghost' // 未来可能出现的无迁移下架件
+    state.fleet[state.shipId].fitted.mid[0] = 'mod-shield-1'
+    state.fleet[state.shipId].fitted.low[1] = 'mod-ghost' // 未来可能出现的无迁移下架件
     state.moduleBay['mod-shield-1'] = 2
     state.moduleBay['mod-ghost'] = 1
 
     repairDeprecatedModules(state, ctx)
 
-    expect(state.fleet[state.shipId].fitted.shield).toBe('mod-shield-kin-1') // 原位迁移
-    expect(state.fleet[state.shipId].fitted.cargo).toBeNull() // 无迁移 → 卸下
+    expect(state.fleet[state.shipId].fitted.mid[0]).toBe('mod-shield-kin-1') // 原位迁移
+    expect(state.fleet[state.shipId].fitted.low[1]).toBeNull() // 无迁移 → 卸下
     expect(state.moduleBay['mod-shield-kin-1']).toBe(2) // 装备库计数并入
     expect('mod-shield-1' in state.moduleBay).toBe(false) // 旧键清除
     expect(state.moduleBay['mod-ghost']).toBe(2) // 退回装备库（1 + 悬空 1），不丢资产
@@ -172,7 +172,7 @@ describe('V17：旧"通用全系"增强器存档迁移', () => {
     const ctx = makeTestCtx({
       modules: [moduleDef('mod-shield-kin-1', 'shield', 0, { shieldHpBonus: 0.15, shieldResistAdd: { kinetic: 0.15 }, cpuUse: 6 })],
     })
-    state.fleet[state.shipId].fitted.shield = 'mod-shield-1'
+    state.fleet[state.shipId].fitted.mid[0] = 'mod-shield-1'
     repairDeprecatedModules(state, ctx)
     expect(unfitSlot(state, 'shield')).toBe(true)
     expect(state.moduleBay['mod-shield-kin-1']).toBe(1)

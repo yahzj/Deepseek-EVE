@@ -1,21 +1,28 @@
 /**
- * 精炼 / 市场出售（V9：卖出并入市场订单簿）/ 舰船购买。
+ * 精炼炉运转 / 市场出售（V9：卖出并入市场订单簿）/ 舰船购买。
  *
- * 精炼模型（中文说明）：
- * - 矿石原料自动从"当前船货仓 + 物品仓库"合计取用（先货仓后仓库）；
- * - 精炼产物（矿物）直接进入"物品仓库"（货仓不占空间）；
- * - 收率 = 基础 50% + 精炼学 8%/级 + 高级回收 4%/级，上限 95%；
- *   低技能时精炼可能不如直接卖原矿——玩家自行权衡（故意设计）。
+ * 精炼模型（工业细化，2026-09-04 船长定稿：运转周期制）：
+ * - 精炼 = 母港精炼炉的"循环运转"：单工位，每次只运转一种资源（矿石/气体/冰矿）；
+ *   劳动者 = 主控亲自运转（占主控工作位）或一枚 AI 核心驱动（核心出库占用，不占副船名额）；
+ * - 固定批量运转：每种资源有"单批单位 × 单批周期"（5~10 秒节奏，items.ts refineBatchUnits/
+ *   refineCycleMs；缺失兜底 10 单位/6 秒）；启动即把全部库存锁定入炉（货仓优先取用），
+ *   每批到点按收率出矿物入物品仓库并自动续批，直到料尽自动停炉（核心归还）；
+ * - 停止即止：已完成批已出货，剩余锁定原料全额退回物品仓库；
+ * - 收率 = 基础 50% + 精炼学 8%/级 + 高级回收 4%/级，上限 95%；每批结算按当时技能取值；
+ * - AI 核心驱动：单批周期 ÷核心效率（核心只提速不减产，与副船任务同口径）。
  * - 卖出（V9 起）不再有"固定价卖给空间站"：货先锁定进市场 escrow，按 NPC 收购簿
  *   即时市价成交（吃穿簿的剩余自动转限价卖单）；池商品在均衡时收购价 = 基准价，
  *   与旧版空间站收购价一致（波动来自池淤积与冲击动量）；
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
-import { addLog } from './state'
+import { addLog, EMPTY_REFINE_RUN } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { SimContext } from './types'
+import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
+import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
+import { isAtHome } from './location'
+import { formatDurationMs } from './time'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
 import { shipDisplayName } from './instances'
@@ -36,69 +43,221 @@ export function refineRate(state: GameState, ctx: SimContext): number {
   return Math.min(bal.maxRate, Math.max(0, rate))
 }
 
-/** 精炼结果明细 */
-export interface RefineResult {
-  ok: boolean
-  error?: string
-  usedOreUnits: number
-  /** 精炼产物：矿物 id -> 数量（入物品仓库） */
-  produced: Record<string, number>
-  rate: number
-}
-
 /** 矿石在"货仓+仓库"的合计数量 */
 export function oreAvailable(state: GameState, oreId: string): number {
   return countItem(state, oreId) + countWare(state, oreId)
 }
 
-/** 玩家指令：把某种资源（矿石/气体/冰矿）全部精炼（原料从货仓与仓库自动取用，产物进仓库） */
-export function refineAllOre(state: GameState, oreId: string, ctx: SimContext): RefineResult {
-  const ore = ctx.items.get(oreId)
-  if (!ore) {
-    return { ok: false, error: `未知物品：${oreId}。`, usedOreUnits: 0, produced: {}, rate: 0 }
+/** 兜底运转参数（资源数据未给显式单批参数时；测试用小批量快周期） */
+const FALLBACK_BATCH_UNITS = 10
+const FALLBACK_CYCLE_MS = 6_000
+
+/** 某资源的运转参数：单批单位 / 单批周期毫秒 */
+function refineParamsOf(def: ItemDef): { batchUnits: number; cycleMs: number } {
+  const batchUnits =
+    def.refineBatchUnits !== undefined && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : FALLBACK_BATCH_UNITS
+  const cycleMs =
+    def.refineCycleMs !== undefined && def.refineCycleMs > 0 ? Math.floor(def.refineCycleMs) : FALLBACK_CYCLE_MS
+  return { batchUnits, cycleMs }
+}
+
+/** 精炼炉此刻是否在运转 */
+export function refineRunActive(state: GameState): boolean {
+  return state.refineRun.active
+}
+
+/** 精炼炉运转是否占用了主控（主控忙判定；AI 核心驱动不占主控） */
+export function refineManualActive(state: GameState): boolean {
+  return state.refineRun.active && state.refineRun.worker === 'pilot'
+}
+
+/** 精炼炉运行视图（工业页 / 顶部活动栏共用） */
+export interface RefineRunView {
+  active: boolean
+  itemId: string | null
+  itemName: string
+  /** 劳动者：pilot = 主控 / AI 核心类型 */
+  worker: 'pilot' | AiCoreType
+  workerLabel: string
+  /** 当前收率（每批结算按当时技能取值） */
+  rate: number
+  /** 单批单位（开工锁定） */
+  batchUnits: number
+  /** 单批周期毫秒（已按核心效率拉长） */
+  cycleMs: number
+  /** 剩余待炼单位（含当前批；停炉全额退回） */
+  lockedQty: number
+  /** 已完成批数 */
+  batchesDone: number
+  /** 当前批进度 0~100 */
+  percent: number
+  /** 整炉剩余毫秒（当前批 + 后续批） */
+  remainingMs: number
+}
+
+/** 精炼炉运行状态（工业页/活动栏共用） */
+export function refineRunStatus(state: GameState, ctx: SimContext): RefineRunView {
+  const r = state.refineRun
+  const def = r.itemId ? ctx.items.get(r.itemId) : undefined
+  const base = {
+    active: r.active,
+    itemId: r.itemId,
+    itemName: def?.name ?? '—',
+    worker: r.worker,
+    workerLabel: r.worker === 'pilot' ? '主控' : aiCoreName(r.worker),
+    rate: refineRate(state, ctx),
+    batchUnits: r.batchUnits,
+    cycleMs: r.cycleMs,
+    lockedQty: r.lockedQty,
+    batchesDone: r.batchesDone,
   }
-  if (!ore.refine || ore.refine.length === 0) {
-    return { ok: false, error: `「${ore.name}」没有精炼配方（只支持矿石/气体/冰矿）。`, usedOreUnits: 0, produced: {}, rate: 0 }
+  if (!r.active || r.itemId === null || r.cycleMs <= 0) {
+    return { ...base, percent: 0, remainingMs: 0 }
   }
-  const available = oreAvailable(state, oreId)
+  const remainCur = Math.max(0, r.finishAtGameMs - state.gameMs)
+  const qtyNow = Math.min(r.batchUnits, r.lockedQty)
+  const afterNow = Math.max(0, r.lockedQty - qtyNow)
+  const remainNext = afterNow > 0 ? Math.ceil(afterNow / r.batchUnits) * r.cycleMs : 0
+  const percent = Math.min(100, Math.max(0, Math.round(((r.cycleMs - remainCur) / r.cycleMs) * 100)))
+  return { ...base, percent, remainingMs: remainCur + remainNext }
+}
+
+/**
+ * 玩家指令：启动精炼炉运转（循环运转：每批到点按收率出货并自动续批，直到料尽自动停）。
+ * worker = 'pilot'（主控亲自运转，占主控工作位）或 AI 核心类型（一枚核心驱动精炼炉，
+ * 核心出库占用、不占副船名额；停炉/料尽自动归还）。原料 = 货仓+仓库当前全部库存，锁定入炉。
+ */
+export function startRefineRun(
+  state: GameState,
+  itemId: string,
+  worker: 'pilot' | AiCoreType,
+  ctx: SimContext,
+): CommandResult {
+  if (state.refineRun.active) {
+    return { ok: false, error: '精炼炉正在运转：先停炉才能换资源或换劳动者。' }
+  }
+  if (!isAtHome(state)) {
+    return { ok: false, error: '精炼炉在母港：回到母港才能启动运转。' }
+  }
+  const def = ctx.items.get(itemId)
+  if (!def) {
+    return { ok: false, error: `未知物品：${itemId}。` }
+  }
+  if (!def.refine || def.refine.length === 0) {
+    return { ok: false, error: `「${def.name}」没有精炼配方（只支持矿石/气体/冰矿）。` }
+  }
+  const available = oreAvailable(state, itemId)
   if (available <= 0) {
-    return { ok: false, error: `货仓与仓库里都没有 ${ore.name}。`, usedOreUnits: 0, produced: {}, rate: 0 }
+    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
   }
-
-  const rate = refineRate(state, ctx)
-  const produced: Record<string, number> = {}
-  for (const row of ore.refine) {
-    const mineral = ctx.items.get(row.mineralId)
-    if (!mineral || mineral.kind !== 'mineral') continue
-    const units = Math.floor(available * row.perOre * rate)
-    if (units > 0) {
-      produced[row.mineralId] = units
-      addWare(state, row.mineralId, units)
-    }
+  if (worker === 'pilot') {
+    // 主控亲自运转 = 占主控工作位：与其它主控作业互斥
+    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
+    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
+    if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
+    if (state.standby.active) return { ok: false, error: '待命行程中：先召回。' }
+    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+  } else if (countAiCore(state, worker) <= 0) {
+    return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
   }
-
-  // 扣原料：先货仓后仓库
+  const { batchUnits, cycleMs } = refineParamsOf(def)
+  const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
+  const cycleEff = Math.max(1, Math.round(cycleMs / eff))
+  if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+  }
+  // 锁定全部现有库存入炉（货仓优先，余下取仓库）
   let toTake = available
-  const fromCargo = Math.min(countItem(state, oreId), toTake)
+  const fromCargo = Math.min(countItem(state, itemId), toTake)
   if (fromCargo > 0) {
-    removeItem(state, oreId, fromCargo)
+    removeItem(state, itemId, fromCargo)
     toTake -= fromCargo
   }
-  if (toTake > 0) removeWare(state, oreId, toTake)
-
-  if (Object.keys(produced).length === 0) {
-    addLog(state, 'warn', `精炼失败：${ore.name}×${available} 未能产出任何矿物（收率过低？）。`)
-  } else {
-    const detail = Object.entries(produced)
-      .map(([id, n]) => `${ctx.items.get(id)?.name ?? id}×${n}`)
-      .join('、')
-    addLog(
-      state,
-      'trade',
-      `精炼完成：消耗${ore.name}×${available}，产出 ${detail}（已入物品仓库，收率 ${Math.round(rate * 100)}%）。`,
-    )
+  if (toTake > 0) removeWare(state, itemId, toTake)
+  state.refineRun = {
+    active: true,
+    worker,
+    itemId,
+    batchUnits,
+    cycleMs: cycleEff,
+    finishAtGameMs: state.gameMs + cycleEff,
+    lockedQty: available,
+    batchesDone: 0,
   }
-  return { ok: true, usedOreUnits: available, produced, rate }
+  const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)} 驱动（效率 ${Math.round(eff * 100)}%）`
+  addLog(
+    state,
+    'info',
+    `精炼炉启动：${def.name}×${available} 入炉（${who}；每批 ${batchUnits} 单位 / ${formatDurationMs(cycleEff)}，到点自动续批，料尽自动停炉）。`,
+  )
+  return { ok: true }
+}
+
+/**
+ * 玩家指令：停炉。已完成批已出货；剩余锁定原料全额退回物品仓库；
+ * AI 核心驱动时核心自动归还。返回退回单位数（0 = 当前批刚开始）。
+ */
+export function stopRefineRun(state: GameState, ctx: SimContext): CommandResult {
+  const r = state.refineRun
+  if (!r.active) return { ok: false, error: '精炼炉没有在运转。' }
+  const def = r.itemId ? ctx.items.get(r.itemId) : undefined
+  const refund = r.lockedQty
+  if (refund > 0 && r.itemId) addWare(state, r.itemId, refund)
+  if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+  const coreNote = r.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''
+  state.refineRun = { ...EMPTY_REFINE_RUN }
+  addLog(
+    state,
+    'info',
+    `精炼炉已停炉：${def?.name ?? '未知资源'} 已完成 ${r.batchesDone} 批，剩余 ×${refund} 已退回物品仓库${coreNote}。`,
+  )
+  return { ok: true }
+}
+
+/**
+ * 引擎内部：推进精炼炉运转（每次时间推进后调用）。
+ * 到点即结算当前批（按当时收率，产物入仓库）并自动续批；料尽自动停炉并归还 AI 核心。
+ */
+export function advanceRefining(state: GameState, ctx: SimContext): void {
+  const r = state.refineRun
+  if (!r.active || r.itemId === null) return
+  const def = ctx.items.get(r.itemId)
+  if (!def) {
+    // 数据异常：停炉并把剩余料退回（核心归还）
+    if (r.lockedQty > 0) addWare(state, r.itemId, r.lockedQty)
+    if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+    state.refineRun = { ...EMPTY_REFINE_RUN }
+    addLog(state, 'warn', '精炼炉运转异常：资源数据缺失，剩余原料已退回物品仓库（AI 核心已归还）。')
+    return
+  }
+  let guard = 0
+  while (r.active && r.lockedQty > 0 && state.gameMs >= r.finishAtGameMs) {
+    if (++guard > 100_000) break // 防失控循环
+    const rate = refineRate(state, ctx)
+    const qty = Math.min(r.batchUnits, r.lockedQty)
+    for (const row of def.refine ?? []) {
+      const mineral = ctx.items.get(row.mineralId)
+      if (!mineral || mineral.kind !== 'mineral') continue
+      const units = Math.floor(qty * row.perOre * rate)
+      if (units > 0) addWare(state, row.mineralId, units)
+    }
+    r.lockedQty -= qty
+    r.batchesDone += 1
+    if (r.lockedQty <= 0) {
+      // 料尽：自动停炉
+      const doneBatches = r.batchesDone
+      if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+      const wasCore = r.worker !== 'pilot'
+      state.refineRun = { ...EMPTY_REFINE_RUN }
+      addLog(
+        state,
+        'info',
+        `精炼炉运转完成：${def.name} 共 ${doneBatches} 批全部炼完，产物已入物品仓库（收率 ${Math.round(rate * 100)}%）${wasCore ? '；AI 核心已归还核心库' : ''}。`,
+      )
+      break
+    }
+    r.finishAtGameMs += r.cycleMs
+  }
 }
 
 /** 出售结果 */

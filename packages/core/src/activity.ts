@@ -11,12 +11,13 @@ import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
 import { manufacturingStatus } from './manufacturing'
+import { refineRunStatus } from './industry'
 import { expeditionStatus } from './expedition'
 import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
-export type ActivityKind = 'train' | 'mining' | 'scan' | 'manufacture' | 'expedition' | 'ai' | 'return' | 'transit' | 'standby'
+export type ActivityKind = 'train' | 'mining' | 'scan' | 'manufacture' | 'refine' | 'expedition' | 'ai' | 'return' | 'transit' | 'standby'
 
 /** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
@@ -24,6 +25,7 @@ export type ActivityStopKind =
   | 'stop-mining'
   | 'stop-scan'
   | 'cancel-manufacture'
+  | 'stop-refine'
   | 'recall-expedition'
   | 'retreat-battle'
   | 'cancel-ai'
@@ -113,6 +115,21 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: mfv.remainingMs,
       stopable: true,
       stop: 'cancel-manufacture',
+    })
+  }
+
+  // ── 精炼炉运转（工业细化：循环运转，到点自动续批；主控/AI 核心驱动） ──
+  const rv = refineRunStatus(state, ctx)
+  if (rv.active) {
+    out.push({
+      id: 'refine',
+      kind: 'refine',
+      label: `精炼炉 · ${rv.itemName}`,
+      sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / 余 ×${rv.lockedQty}（每批 ${rv.batchUnits} 单位）`,
+      percent: rv.percent,
+      remainingMs: rv.remainingMs,
+      stopable: true,
+      stop: 'stop-refine',
     })
   }
 

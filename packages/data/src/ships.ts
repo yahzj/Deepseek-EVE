@@ -25,6 +25,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sandcat',
     name: '沙猫级采矿艇',
     role: 'industrial',
+    slots: { high: 2, mid: 1, low: 1 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 1,
     cargoM3: 800,
     cycleSeconds: 12,
@@ -51,6 +52,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'burrower',
     name: '掘洞级采矿艇',
     role: 'industrial',
+    slots: { high: 2, mid: 2, low: 1 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 2,
     cargoM3: 1800,
     cycleSeconds: 11,
@@ -77,6 +79,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'whale',
     name: '鲸吞级采矿艇',
     role: 'industrial',
+    slots: { high: 2, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 4500,
     cycleSeconds: 10,
@@ -103,6 +106,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'pioneer',
     name: '开拓级采矿艇',
     role: 'industrial',
+    slots: { high: 3, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 5200,
     cycleSeconds: 9,
@@ -129,6 +133,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'whale-king',
     name: '鲸王级采矿艇',
     role: 'industrial',
+    slots: { high: 3, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 4,
     cargoM3: 10000,
     cycleSeconds: 8,
@@ -155,6 +160,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-humpback',
     name: '座头鲸级矿舰',
     role: 'industrial',
+    slots: { high: 1, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 9000,
     cycleSeconds: 10,
@@ -181,6 +187,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-bowhead',
     name: '弓头鲸级货舰',
     role: 'industrial',
+    slots: { high: 1, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 17000,
     cycleSeconds: 12,
@@ -207,6 +214,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-colossal',
     name: '巨灵鲸级旗舰货舰',
     role: 'industrial',
+    slots: { high: 2, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 4,
     cargoM3: 26000,
     cycleSeconds: 11,
@@ -235,6 +243,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-falconet',
     name: '隼枭级武装艇',
     role: 'armed',
+    slots: { high: 3, mid: 2, low: 1 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 1,
     cargoM3: 650,
     cycleSeconds: 16,
@@ -262,6 +271,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-shrike',
     name: '伯劳级武装护卫舰',
     role: 'armed',
+    slots: { high: 3, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 2,
     cargoM3: 1050,
     cycleSeconds: 15,
@@ -289,6 +299,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-tigershark',
     name: '虎鲨级武装护卫舰',
     role: 'armed',
+    slots: { high: 4, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 2,
     cargoM3: 1500,
     cycleSeconds: 14,
@@ -316,6 +327,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-mako',
     name: '灰鲭鲨级驱逐舰',
     role: 'armed',
+    slots: { high: 4, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 2300,
     cycleSeconds: 13,
@@ -343,6 +355,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-whiteshark',
     name: '大白鲨级炮舰',
     role: 'armed',
+    slots: { high: 5, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 3200,
     cycleSeconds: 13,
@@ -372,6 +385,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-tortoise',
     name: '陆龟级重装艇',
     role: 'armored',
+    slots: { high: 2, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 2,
     cargoM3: 7000,
     cycleSeconds: 13,
@@ -398,6 +412,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-hawksbill',
     name: '玳瑁级重装巡舰',
     role: 'armored',
+    slots: { high: 2, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 12000,
     cycleSeconds: 13,
@@ -424,6 +439,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-xuanwu',
     name: '玄武级重装旗舰',
     role: 'armored',
+    slots: { high: 2, mid: 3, low: 4 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 4,
     cargoM3: 19000,
     cycleSeconds: 14,
@@ -452,6 +468,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-flyingfish',
     name: '飞鱼级快运舰',
     role: 'hauler',
+    slots: { high: 1, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 2,
     cargoM3: 5000,
     cycleSeconds: 11,
@@ -478,6 +495,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-sailfish',
     name: '旗鱼级高速货舰',
     role: 'hauler',
+    slots: { high: 1, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 8500,
     cycleSeconds: 11,
@@ -504,6 +522,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-swordfish',
     name: '剑鱼级大型货舰',
     role: 'hauler',
+    slots: { high: 2, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 3,
     cargoM3: 14000,
     cycleSeconds: 12,

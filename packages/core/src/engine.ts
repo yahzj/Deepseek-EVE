@@ -20,6 +20,7 @@ import { skillLevelTimeMs } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
 import { advanceStandby, advanceTransit } from './location'
 import { advanceManufacturing } from './manufacturing'
+import { advanceRefining } from './industry'
 import { advanceExpedition } from './expedition'
 import { advanceAi } from './ai'
 import { advanceEvents } from './events'
@@ -51,6 +52,7 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext):
   advanceTransit(state, ctx)
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx)
+  advanceRefining(state, ctx)
   advanceExpedition(state, ctx)
   advanceScanning(state, ctx)
   advanceAi(state, d, ctx)

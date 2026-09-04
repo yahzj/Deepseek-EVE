@@ -17,8 +17,8 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, LogEntry, LogKind } from './state'
-import type { ModuleSlot } from './types'
+import type { BattleFx, BattleState, GameState, GameStateV18, LogEntry, LogKind } from './state'
+import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
 
@@ -517,6 +517,29 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     }
     return { ...raw, fleet, escrowShips }
   },
+  /**
+   * v17 → v18（V18 槽位制）：每船 fitted 由六槽 Record 转为三类位数组（复数安装）。
+   * 原位映射：high = [turret, miner]、mid = [shield, propulsion]、low = [armor, cargo]
+   * （每类 2 位的过渡形状——与实际船槽布局的数量对齐由 repair 链完成，超位件退回装备库）。
+   */
+  17: (raw) => {
+    const fleetRaw = asRaw(raw.fleet)
+    const fleet: Record<string, unknown> = {}
+    for (const [id, shipRaw] of Object.entries(fleetRaw)) {
+      const s = asRaw(shipRaw)
+      const f = asRaw(s.fitted)
+      const pick = (fam: string): string | null => (typeof f[fam] === 'string' ? (f[fam] as string) : null)
+      fleet[id] = {
+        ...s,
+        fitted: {
+          high: [pick('turret'), pick('miner')],
+          mid: [pick('shield'), pick('propulsion')],
+          low: [pick('armor'), pick('cargo')],
+        },
+      }
+    }
+    return { ...raw, fleet }
+  },
 }
 
 /** 字符串或 null 归一（迁移辅助） */
@@ -702,7 +725,7 @@ function normalizeState(raw: unknown): GameState {
   }
   const freshShip = (
     defId: string,
-  ): { defId: string; customName: string | null; durability: number; cargo: Record<string, number>; fitted: Record<ModuleSlot, string | null> } => ({
+  ): { defId: string; customName: string | null; durability: number; cargo: Record<string, number>; fitted: FittedModules } => ({
     defId,
     customName: null,
     durability: 1,
@@ -730,10 +753,19 @@ function normalizeState(raw: unknown): GameState {
         : 1
     // v17：defId 缺省按实例 uid 回填（第 1 艘 uid = 船型 id）
     const defId = typeof shipRaw.defId === 'string' && shipRaw.defId.length > 0 ? shipRaw.defId : uidDefId(id)
-    // 六槽逐一容错：缺槽补 null（v10 起 fitted 六槽定死）
-    const fitted = emptyFitted()
-    for (const key of Object.keys(fitted)) {
-      fitted[key as ModuleSlot] = slotId(fRaw[key])
+    // V18 fitted 容错：三类位数组（逐位净化）；v17 六槽 Record → 原位映射为 2/2/2 过渡形状
+    const fitted: FittedModules = emptyFitted()
+    if (Array.isArray(fRaw.high) || Array.isArray(fRaw.mid) || Array.isArray(fRaw.low)) {
+      const rackOfRaw = (rack: RackSlot): Array<string | null> =>
+        Array.isArray(fRaw[rack]) ? (fRaw[rack] as unknown[]).map((v) => slotId(v)) : []
+      fitted.high = rackOfRaw('high')
+      fitted.mid = rackOfRaw('mid')
+      fitted.low = rackOfRaw('low')
+    } else {
+      const pick = (fam: string): string | null => (typeof fRaw[fam] === 'string' ? slotId(fRaw[fam]) : null)
+      fitted.high = [pick('turret'), pick('miner')]
+      fitted.mid = [pick('shield'), pick('propulsion')]
+      fitted.low = [pick('armor'), pick('cargo')]
     }
     fleet[id] = {
       defId,
@@ -1236,6 +1268,27 @@ function normalizeState(raw: unknown): GameState {
     finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
     legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
   }
+  // --- 精炼炉运转（2026-09-04 工业细化兼容字段）：active 且资源合法才启用，否则空态 ---
+  const rfrRaw = asRaw(src.refineRun)
+  const rfrItem =
+    typeof rfrRaw.itemId === 'string' && rfrRaw.itemId.length > 0 ? rfrRaw.itemId : null
+  const refineWorker: GameState['refineRun']['worker'] =
+    rfrRaw.worker === 'basic' || rfrRaw.worker === 'gamma' || rfrRaw.worker === 'beta' || rfrRaw.worker === 'alpha'
+      ? rfrRaw.worker
+      : 'pilot'
+  const refineRun: GameState['refineRun'] =
+    rfrRaw.active === true && rfrItem !== null && num(rfrRaw.lockedQty) > 0
+      ? {
+          active: true,
+          worker: refineWorker,
+          itemId: rfrItem,
+          batchUnits: Math.max(1, Math.floor(num(rfrRaw.batchUnits, 10))),
+          cycleMs: Math.max(1, Math.floor(num(rfrRaw.cycleMs, 6_000))),
+          finishAtGameMs: Math.max(0, Math.floor(num(rfrRaw.finishAtGameMs))),
+          lockedQty: Math.max(1, Math.floor(num(rfrRaw.lockedQty))),
+          batchesDone: Math.max(0, Math.floor(num(rfrRaw.batchesDone))),
+        }
+      : { active: false, worker: 'pilot', itemId: null, batchUnits: 0, cycleMs: 0, finishAtGameMs: 0, lockedQty: 0, batchesDone: 0 }
   const bountyCooldowns: Record<string, number> = {}
   const bcRaw = asRaw(src.bountyCooldowns)
   for (const [key, value] of Object.entries(bcRaw)) {
@@ -1335,7 +1388,7 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  return {
+  const normalized: GameStateV18 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -1373,6 +1426,7 @@ function normalizeState(raw: unknown): GameState {
     awayGalaxy,
     transit,
     standby,
+    refineRun,
     bountyCooldowns,
     autoLoopAnomalyId,
     encounter,
@@ -1385,6 +1439,7 @@ function normalizeState(raw: unknown): GameState {
     pendingDialogue,
     logs,
   }
+  return normalized
 }
 
 /** 保存：把状态序列化成 JSON 字符串（现在时间由调用方传入，测试可固定） */

@@ -24,6 +24,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-tritanium', perOre: 2 },
       { mineralId: 'min-pyerite', perOre: 0.6 },
     ],
+    refineBatchUnits: 100,
+    refineCycleMs: 6_000,
   },
   {
     id: 'ore-scorched',
@@ -36,6 +38,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-pyerite', perOre: 1.6 },
       { mineralId: 'min-mexallon', perOre: 0.5 },
     ],
+    refineBatchUnits: 80,
+    refineCycleMs: 6_000,
   },
   {
     id: 'ore-hemorphite',
@@ -48,6 +52,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-nocxium', perOre: 0.55 },
       { mineralId: 'min-tritanium', perOre: 1.5 },
     ],
+    refineBatchUnits: 50,
+    refineCycleMs: 6_000,
   },
   {
     id: 'ore-glowstone',
@@ -60,6 +66,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.7 },
       { mineralId: 'min-tritanium', perOre: 2.2 },
     ],
+    refineBatchUnits: 40,
+    refineCycleMs: 7_000,
   },
   {
     id: 'ore-sunshard',
@@ -72,6 +80,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.7 },
       { mineralId: 'min-pyerite', perOre: 1.0 },
     ],
+    refineBatchUnits: 40,
+    refineCycleMs: 7_000,
   },
   {
     id: 'ore-voidshard',
@@ -85,6 +95,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.12 },
       { mineralId: 'min-nocxium', perOre: 0.3 },
     ],
+    refineBatchUnits: 20,
+    refineCycleMs: 8_000,
   },
   {
     id: 'ore-nebulite',
@@ -97,6 +109,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.55 },
       { mineralId: 'min-starcore', perOre: 0.8 },
     ],
+    refineBatchUnits: 12,
+    refineCycleMs: 8_000,
   },
 ]
 
@@ -181,6 +195,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.2 },
       { mineralId: 'min-tritanium', perOre: 1.2 },
     ],
+    refineBatchUnits: 50,
+    refineCycleMs: 6_000,
   },
   {
     id: 'gas-phosphor',
@@ -194,6 +210,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-starcore', perOre: 0.9 },
       { mineralId: 'min-mexallon', perOre: 0.7 },
     ],
+    refineBatchUnits: 20,
+    refineCycleMs: 8_000,
   },
   {
     id: 'gas-ionstorm',
@@ -207,6 +225,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.08 },
       { mineralId: 'min-isotope', perOre: 0.4 },
     ],
+    refineBatchUnits: 25,
+    refineCycleMs: 7_000,
   },
   {
     id: 'gas-aurora',
@@ -219,6 +239,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-starcore', perOre: 0.7 },
       { mineralId: 'min-darkiron', perOre: 0.28 },
     ],
+    refineBatchUnits: 15,
+    refineCycleMs: 8_000,
   },
 ]
 
@@ -235,6 +257,8 @@ export const ICES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 3.6 },
       { mineralId: 'min-mexallon', perOre: 1.0 },
     ],
+    refineBatchUnits: 40,
+    refineCycleMs: 6_000,
   },
   {
     id: 'ice-marrow',
@@ -248,6 +272,8 @@ export const ICES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 1.5 },
       { mineralId: 'min-mexallon', perOre: 0.5 },
     ],
+    refineBatchUnits: 25,
+    refineCycleMs: 7_000,
   },
   {
     id: 'ice-darkstar',
@@ -261,6 +287,8 @@ export const ICES: readonly ItemDef[] = [
       { mineralId: 'min-starcore', perOre: 0.6 },
       { mineralId: 'min-isotope', perOre: 1.0 },
     ],
+    refineBatchUnits: 12,
+    refineCycleMs: 8_000,
   },
 ]
 

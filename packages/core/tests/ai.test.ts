@@ -19,7 +19,7 @@ import {
   idleAiShipIds,
   maxAiSlots,
 } from '../src/ai'
-import { anomaly, makeTestCtx, moduleDef, ship, skill } from './helpers'
+import { anomaly, makeTestCtx, moduleDef, ship, skill , fittedOf } from './helpers'
 import { aiWinPreview } from '../src/combat'
 
 /** 基础核心的市场卡（测试世界不自动生成核心，手动补一张） */
@@ -73,7 +73,7 @@ describe('AI 采矿任务', () => {
     state = createInitialState({ nowWallMs: 0, seed: 42 })
     state.skills.trained['ai-expert'] = 1
     // 舰队加一艘可指派的空闲船（sandcat2：100 m³ / 6s / 每循环 5 单位）
-    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state, 'basic', 2)
     ctx = makeTestCtx()
   })
@@ -85,7 +85,7 @@ describe('AI 采矿任务', () => {
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(false) // 重复
     // 名额 1：第二艘船无空位（先把 sandcat3 加进舰队）
-    state.fleet['sandcat3'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state.fleet['sandcat3'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     const r3 = assignAiMining(state, 'sandcat3', 'basic', 'belt-a', ctx)
     expect(r3.ok).toBe(false)
     expect(r3.error).toContain('名额已满')
@@ -111,7 +111,7 @@ describe('AI 采矿任务', () => {
     // 阿尔法 75%：6s/0.75 = 8 秒一个循环
     const state2 = createInitialState({ nowWallMs: 0, seed: 42 })
     state2.skills.trained['ai-expert'] = 1
-    state2.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state2.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state2, 'alpha', 1)
     assignAiMining(state2, 'sandcat2', 'alpha', 'belt-a', ctx)
     advanceGame(state2, 8_000, ctx)
@@ -141,7 +141,7 @@ describe('AI 远征任务', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
     const ctx = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2, reward: 8_000 })] })
     state.skills.trained['ai-expert'] = 1
-    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state, 'basic', 1)
 
     // 手动首胜解锁：即使胜率合格，未亲手完成过的目标 AI 一律拒接
@@ -173,7 +173,7 @@ describe('AI 远征任务', () => {
     const state2 = createInitialState({ nowWallMs: 0, seed: 1 })
     const ctx2 = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2 })] })
     state2.skills.trained['ai-expert'] = 1
-    state2.fleet['sandcat2'] = { durability: 0.3, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state2.fleet['sandcat2'] = { durability: 0.3, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state2, 'basic', 1)
     state2.completedBounties.push('ano-easy') // 已解锁，仍被低耐久门槛拒绝
     expect(assignAiExpedition(state2, 'sandcat2', 'basic', 'ano-easy', ctx2).ok).toBe(false)
@@ -199,7 +199,7 @@ describe('AI 远征任务', () => {
       })
       state.skills.trained['ai-expert'] = 1
       state.skills.trained['gunnery'] = 5
-      state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: 'tur-ai', shield: null, armor: null, propulsion: null } }
+      state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: 'tur-ai', miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
       state.warehouse.items['ammo-kinetic-l'] = 1_000
       gainAiCore(state, 'basic', 1)
       state.completedBounties.push('ano-easy') // 玩家已手动首胜 → AI 解锁（自动远征前提）
@@ -230,7 +230,7 @@ describe('AI 远征任务', () => {
     const hardCtx = makeTestCtx({ anomalies: [anomaly('ano-hard9', 'galaxy-hub', { threat: 9000, reward: 8_000 })] })
     const s1 = createInitialState({ nowWallMs: 0, seed: 3 })
     s1.skills.trained['ai-expert'] = 1
-    s1.fleet['sandcat2'] = { durability: 0.5, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    s1.fleet['sandcat2'] = { durability: 0.5, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     // 直接构造"已出发"任务（两阶段：out 已到港），走完整战斗失败路径
     s1.aiAssignments['sandcat2'] = {
       coreType: 'basic',

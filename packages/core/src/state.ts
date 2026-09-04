@@ -9,11 +9,13 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, ModuleSlot } from './types'
+import type { AiCoreType, FittedModules, ModuleSlot } from './types'
 import { emptyFitted } from './labels'
 
+export type { FittedModules } from './types'
+
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 17
+export const CURRENT_STATE_VERSION = 18
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -87,9 +89,10 @@ export interface WarehouseState {
   items: Record<string, number>
 }
 
-/** 已装配的装备：槽位 -> 装备 id（null = 空槽）。存在"每一艘船"的 fitted 里（随船）。
- * v10 起六槽定死（miner/cargo/turret 生效 + shield/armor/propulsion 占位），不再扩展。 */
-export type FittedModules = Record<ModuleSlot, string | null>
+/**
+ * 已装配的装备：v17 前 = 六槽 Record；v18 起 = FittedModules 三类位数组
+ * （见 ./types.ts 定义与 save.ts 迁移 17→18）。
+ */
 
 /** 舰队里一艘船的状态（v7 起：耐久 + 货仓 + 已装配装备都跟船走；
  * v17 实例化：同型可多艘，条目含 defId 船型锚与自定义名。
@@ -171,6 +174,43 @@ export interface ManufacturingState {
   finishAtGameMs: number
   /** 本次作业总耗时（毫秒，开工时按当时技能锁定，中途升技能不影响） */
   durationMs: number
+}
+
+/**
+ * 精炼炉运转状态（工业细化，2026-09-04 船长确认）：单工位循环运转——
+ * 固定批量周期自动续批（5~10 秒节奏），原料开工时按全部库存锁定入炉；
+ * 产物只在每批到点时按收率结算入仓；停止即止：已完成批已出货、剩余锁定料全额退回。
+ * worker：'pilot' = 主控亲自运转（占主控工作位，期间不可离港作业）/
+ * AiCoreType = 接入一枚 AI 核心驱动（核心出库占用、不占副船名额，停止/料尽自动归还）。
+ */
+export interface RefineRunState {
+  active: boolean
+  /** 劳动者：主控亲自运转 / AI 核心类型 */
+  worker: 'pilot' | AiCoreType
+  /** 正在运转的资源 id（矿石/气体/冰矿） */
+  itemId: string | null
+  /** 单批单位（开工锁定） */
+  batchUnits: number
+  /** 单批周期毫秒（已按 AI 核心效率拉长；开工锁定） */
+  cycleMs: number
+  /** 当前批到点时刻（游戏内毫秒） */
+  finishAtGameMs: number
+  /** 剩余待炼单位（含当前批未炼部分；停炉时全额退回仓库） */
+  lockedQty: number
+  /** 已完成批数（展示用） */
+  batchesDone: number
+}
+
+/** 精炼炉空态（新档 / 停炉后） */
+export const EMPTY_REFINE_RUN: RefineRunState = {
+  active: false,
+  worker: 'pilot',
+  itemId: null,
+  batchUnits: 0,
+  cycleMs: 0,
+  finishAtGameMs: 0,
+  lockedQty: 0,
+  batchesDone: 0,
 }
 
 /** 远征作业状态（V12 两阶段：去程 out → 交火 battle → 返航 back；battle 为实时状态机） */
@@ -590,14 +630,12 @@ export interface EncounterState {
   battle: BattleState | null
 }
 
-/** 第十七版存档结构（当前版本）：v17 = v16 + 舰船实例化（T5-B）——
- * 同型舰船可多艘：fleet 键从"船型 id"升级为"实例 uid"（第 1 艘 = 船型 id，
- * 第 2 艘起 = `船型id#2/#3…`，固定不回收）；fleet 条目补 defId/customName。
- * 旧档每型只有一艘：迁移只补条目字段，键与驾驶/AI/锁定/返航/挂单里的船 id 原样保留。
- * 附带兼容字段（v17.1，无版本号，normalize 兜底）：encounter 低安遭遇 / lowSecNotified
- * 首次低安提示 / encounterZoneCooldown 星系级遭遇冷却。 */
-export type GameStateV17 = Omit<GameStateV16, 'version'> & {
-  version: 17
+/** 第十八版存档结构（当前版本）：v18 = v17 + V18 槽位制（fitted 六槽 Record →
+ * 高/中/低三类位数组，复数安装；装备 rack 归槽；存档迁移 17→18 原位映射后由
+ * repair 链与船布局对齐）。v17 时代全部字段保留（fleet 实例化 defId/customName、
+ * B1 低安遭遇、B1.5 待命、refineRun 等）。 */
+export type GameStateV18 = Omit<GameStateV16, 'version'> & {
+  version: 18
   /** B1 低安遭遇（进行中/待决/战斗中；无 = inactive 空对象） */
   encounter: EncounterState
   /** B1：是否已提示过"进入低安"（首次进低安弹提示 + 手册留档） */
@@ -608,10 +646,12 @@ export type GameStateV17 = Omit<GameStateV16, 'version'> & {
   lowSecPresence: Record<string, number>
   /** B1.5：主控主动"前往星系待命"（去程；到点转 awayGalaxy 野外停留） */
   standby: StandbyState
+  /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
+  refineRun: RefineRunState
 }
 
 /** 对外统一称呼：当前版本状态 */
-export type GameState = GameStateV17
+export type GameState = GameStateV18
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
@@ -624,10 +664,10 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
 }
 
 /** 创建一份全新的初始存档（一个新飞行员） */
-export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV17 {
+export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV18 {
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV17 = {
-    version: 17,
+  const state: GameStateV18 = {
+    version: 18,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -748,6 +788,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     encounterZoneCooldown: {},
     lowSecPresence: {},
     standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
+    refineRun: { ...EMPTY_REFINE_RUN },
     logs: [],
   }
   addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')

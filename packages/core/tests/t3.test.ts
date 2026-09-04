@@ -8,7 +8,7 @@ import { emptyFitted } from '../src/labels'
 import { cargoCapacityM3Of, cargoItemsOf, cargoOfShip, cargoUsedM3Of } from '../src/inventory'
 import { shipBusyLabel } from '../src/activity'
 import { startMining } from '../src/mining'
-import { makeTestCtx, ship } from './helpers'
+import { makeTestCtx, ship, fittedOf } from './helpers'
 
 /** 默认舰队 = 驾驶船（sandcat，800 m³）+ 初始附赠武装艇 sh-falconet（data 无 def）；ctx 另带一艘货船 def */
 function world() {
@@ -26,7 +26,7 @@ describe('T3 按船货仓只读查询', () => {
     state.fleet.sandcat.cargo['ore-a'] = 50
     // 副船 bighauler：装 100 单位矿甲，且货舱槽装了 +30% 的 mod-b
     state.fleet.bighauler.cargo['ore-b'] = 100
-    state.fleet.bighauler.fitted = { ...emptyFitted(), cargo: 'mod-b' }
+    state.fleet.bighauler.fitted = fittedOf({ cargo: 'mod-b' })
 
     expect(cargoOfShip(state, 'sandcat')).toEqual({ 'ore-a': 50 })
     expect(cargoOfShip(state, 'bighauler')).toEqual({ 'ore-b': 100 })

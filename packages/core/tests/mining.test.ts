@@ -8,7 +8,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem } from '../src/inventory'
 import { beltTravelMinutes, miningStatus, oneLegMs, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining } from '../src/mining'
-import { makeTestCtx, belt, ship, skill } from './helpers'
+import { makeTestCtx, belt, ship, skill , fittedOf } from './helpers'
 
 describe('采矿作业', () => {
   let state: GameState
@@ -72,7 +72,7 @@ describe('采矿作业', () => {
     // 关闭富矿脉保证循环数精确
     const bal = makeTestCtx().balance
     const tinyCtx = makeTestCtx({ ships: [ship('tiny', { cargo: 30 })], balance: { ...bal, richVeinChance: 0 } })
-    state.fleet['tiny'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state.fleet['tiny'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     state.shipId = 'tiny'
 
     // 场景一：默认自动循环 → 满舱转返航（不停止）；30 秒显式行程 + 4 轮后满舱
@@ -85,7 +85,7 @@ describe('采矿作业', () => {
 
     // 场景二：关闭自动循环 → 满舱停采并警告（同样含 30 秒显式行程）
     const state2 = createInitialState({ nowWallMs: 0, seed: 1 })
-    state2.fleet['tiny'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state2.fleet['tiny'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     state2.shipId = 'tiny'
     setMiningAutoCycle(state2, false)
     startMining(state2, 'belt-a', tinyCtx)

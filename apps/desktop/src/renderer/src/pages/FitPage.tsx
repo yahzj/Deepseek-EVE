@@ -1,12 +1,23 @@
 /**
- * 装配页：给"当前驾驶的船"装配装备（V17.1：六槽全部真生效——工业槽加产量/容量；
- * 战斗槽抗性件与容量件同槽二选一（护盾增强器/扩展器、装甲镀层/增厚板）、炮台武器卡、
- * 矢量推进器带常驻命中代价；装配受船体 CPU 上限约束，档位 5/15/40）。
+ * 装配页（V18 槽位制）：给"当前驾驶的船"装配装备。
+ * 高/中/低三类物理槽 × 位序（ShipDef.slots 数量，复数安装）；模块按 rack 归槽
+ * （高 = 炮台/采集器/无人机装置；中 = 盾系/推进；低 = 甲系/货舱扩展）。
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
 import type { ReactNode } from 'react'
-import type { DamageResists, ModuleDef, ModuleSlot } from '@whale/core'
-import { countModule, createPlayerSpec, fleetDefOf, MODULE_SLOTS, shipDisplayName, slotLabel } from '@whale/core'
+import type { DamageResists, ModuleDef, ModuleSlot, RackSlot } from '@whale/core'
+import {
+  countModule,
+  createPlayerSpec,
+  fleetDefOf,
+  fittedCpuUsed,
+  RACK_LABELS,
+  rackLabel,
+  rackOf,
+  shipDisplayName,
+  shipSlotsOf,
+  slotLabel,
+} from '@whale/core'
 import { Panel } from '@whale/ui'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, ModuleHover, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import type { PageProps } from './common'
@@ -23,6 +34,13 @@ const COMBAT_BASE_KEYS = new Set([
   '命中加成',
   '回避率',
 ])
+
+/** 槽类可装家族简述（空位引导文案） */
+const RACK_FAMILIES: Record<RackSlot, string> = {
+  high: '炮台 / 采集器 / 无人机装置',
+  mid: '护盾增强・扩展 / 矢量推进器',
+  low: '装甲镀层・增厚板 / 货舱扩展',
+}
 
 /** 单层抗性 chips：只列非零系（chip 底色 = 类型色），全零 = "—" */
 function layerResChips(res: DamageResists | undefined): ReactNode {
@@ -43,36 +61,28 @@ export function FitPage({ engine, onToast }: PageProps) {
   const shipDef = fleetDefOf(state, engine.ctx, state.shipId)
   const shipName = shipDisplayName(state, engine.ctx, state.shipId)
   const fitted = state.fleet[state.shipId]?.fitted
+  const slots = shipDef ? shipSlotsOf(shipDef) : { high: 1, mid: 1, low: 1 }
   // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力、命中含失稳）
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, state.shipId) : null
 
-  // 空槽短文案（按槽位一句引导）
-  const emptyText = (slot: ModuleSlot): string => {
-    if (slot === 'shield') return '增强器（分系抗性）或扩展器（护盾容量）——二选一'
-    if (slot === 'armor') return '镀层（分系抗性）或增厚板（装甲容量）——二选一'
-    if (slot === 'propulsion') return '矢量推进器：加力速度加成 + 命中代价'
-    if (slot === 'turret') return '炮台：武器卡——射程/命中/装填/伤害（配弹）'
-    if (slot === 'miner') return '采集器：循环产量加成'
-    return '货舱扩展：容量加成'
-  }
-
   const bayModules: ModuleDef[] = engine.modules.filter((m) => countModule(state, m.id) > 0)
-
-  // CPU 占用：当前驾驶船已装配模块的 cpuUse 合计（V17.1 校验生效，档位 5/15/40）
-  const cpuUsed = MODULE_SLOTS.reduce((sum, slot) => {
-    const id = fitted?.[slot]
-    if (!id) return sum
-    return sum + (engine.ctx.modules.get(id)?.cpuUse ?? 0)
-  }, 0)
+  // CPU 占用（全位合计，与无人机放飞共用）
+  const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) : 0
 
   function handleFit(m: ModuleDef): void {
     const r = engine.fitModuleAt(m.id)
     if (!r.ok) onToast(r.error ?? '装配失败', true)
-    else onToast(`${m.name} 已装配到${slotLabel(m.slot)}。`)
+    else onToast(`${m.name} 已装配到${rackLabel(rackOf(m))}。`)
   }
 
-  function handleUnfit(key: ModuleSlot): void {
-    if (engine.unfitSlotAt(key)) onToast('装备已卸下并放回装备库。')
+  function handleFitToBay(m: ModuleDef, rack: RackSlot, index: number): void {
+    const r = engine.fitModuleTo(m.id, rack, index)
+    if (!r.ok) onToast(r.error ?? '装配失败', true)
+    else onToast(`${m.name} 已装入${rackLabel(rack)}第 ${index + 1} 位。`)
+  }
+
+  function handleUnfit(rack: RackSlot, index: number): void {
+    if (engine.unfitAtAt(rack, index)) onToast('装备已卸下并放回装备库。')
   }
 
   return (
@@ -85,7 +95,9 @@ export function FitPage({ engine, onToast }: PageProps) {
             </span>
             <InfoTable
               lines={[
-                ...shipInfoLines(shipDef).filter((l) => l.k !== '槽位' && l.k !== '采集性能' && l.k !== '货舱容量' && !COMBAT_BASE_KEYS.has(l.k)),
+                ...shipInfoLines(shipDef).filter(
+                  (l) => l.k !== '槽位' && l.k !== '采集性能' && l.k !== '货舱容量' && !COMBAT_BASE_KEYS.has(l.k),
+                ),
                 ...(spec
                   ? [
                       {
@@ -104,7 +116,7 @@ export function FitPage({ engine, onToast }: PageProps) {
                     ]
                   : []),
               ]}
-              note="抗性 = EVE 式乘入合成（上限 90%）；推进器 = 速度加成 + 命中代价；「动力」影响弃船避险与跃迁充能。"
+              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性 = EVE 式乘入合成（上限 90%）；「动力」影响弃船避险与跃迁充能。`}
             />
             <div className="app-info-row">
               <span className="app-info-key">CPU 占用</span>
@@ -121,27 +133,71 @@ export function FitPage({ engine, onToast }: PageProps) {
             ) : null}
           </div>
         ) : null}
-        <div className="app-fit-slots">
-          {MODULE_SLOTS.map((slot) => {
-            const fittedId = fitted?.[slot] ?? null
-            const fittedDef = fittedId ? engine.ctx.modules.get(fittedId) : undefined
+
+        {/* V18：高/中/低三组槽位（每组按位序列出；复数安装） */}
+        <div className="app-fit-racks">
+          {(['high', 'mid', 'low'] as RackSlot[]).map((rack) => {
+            const bays = fitted ? fitted[rack] : []
+            const filledCount = bays.filter((id) => id !== null).length
+            const total = slots[rack]
+            const candidates = bayModules.filter((m) => rackOf(m) === rack)
             return (
-              <div key={slot} className={`app-fit-slot${fittedDef ? ' is-filled' : ''}`}>
-                <div className="app-fit-slot-main">
-                  <span className="app-fit-slot-name">{slotLabel(slot)}</span>
-                  <span className="app-fit-slot-effect">
-                    {fittedDef ? (
-                      <ModuleHover mod={fittedDef}>{`${fittedDef.name} · ${moduleShortEffect(fittedDef)}`}</ModuleHover>
-                    ) : (
-                      `空 · ${emptyText(slot)}`
-                    )}
-                  </span>
+              <div key={rack} className="app-fit-rack">
+                <div className="app-fit-rack-title">
+                  {RACK_LABELS[rack]} <span className="app-dim">（{RACK_FAMILIES[rack]}）</span>
+                  <span className="app-dim">　{filledCount}/{total} 已占</span>
                 </div>
-                {fittedDef ? (
-                  <button className="app-btn is-small is-warn" onClick={() => handleUnfit(slot)}>
-                    卸下
-                  </button>
-                ) : null}
+                {Array.from({ length: Math.max(total, bays.length) }, (_, i) => {
+                  const fittedId = bays[i] ?? null
+                  const fittedDef = fittedId ? engine.ctx.modules.get(fittedId) : undefined
+                  if (!fittedDef) {
+                    // 空位：给出该类候选件（库中），一键装入本空位
+                    return (
+                      <div key={`${rack}-${i}`} className="app-fit-slot">
+                        <div className="app-fit-slot-main">
+                          <span className="app-fit-slot-name">第 {i + 1} 位</span>
+                          <span className="app-fit-slot-effect">
+                            空
+                            {candidates.length > 0 ? (
+                              <select
+                                className="app-select app-fit-baypick"
+                                value=""
+                                onChange={(e) => {
+                                  const mid = e.target.value
+                                  if (!mid) return
+                                  const m = engine.ctx.modules.get(mid)
+                                  if (m) handleFitToBay(m, rack, i)
+                                }}
+                              >
+                                <option value="">— 装入…</option>
+                                {candidates.map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.name}（×{countModule(state, m.id)} · {moduleShortEffect(m)}）
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="app-dim">（装备库无此类件——市场/制造获取）</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div key={`${rack}-${i}`} className="app-fit-slot is-filled">
+                      <div className="app-fit-slot-main">
+                        <span className="app-fit-slot-name">第 {i + 1} 位</span>
+                        <span className="app-fit-slot-effect">
+                          <ModuleHover mod={fittedDef}>{`${fittedDef.name} · ${moduleShortEffect(fittedDef)}`}</ModuleHover>
+                        </span>
+                      </div>
+                      <button className="app-btn is-small is-warn" onClick={() => handleUnfit(rack, i)}>
+                        卸下
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
@@ -158,7 +214,7 @@ export function FitPage({ engine, onToast }: PageProps) {
                 <div className="app-inv-main">
                   <span className="app-inv-name">{m.name}</span>
                   <span className="app-inv-count">
-                    ×{countModule(state, m.id)} · {slotLabel(m.slot)}：{moduleShortEffect(m)}
+                    ×{countModule(state, m.id)} · {slotLabel(m.slot)} · {rackLabel(rackOf(m))}：{moduleShortEffect(m)}
                   </span>
                 </div>
                 <div className="app-inv-btns">

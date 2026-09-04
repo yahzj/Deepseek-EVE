@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { startExpedition } from '../src/expedition'
-import { anomaly, makeTestCtx, ship } from './helpers'
+import { anomaly, makeTestCtx, ship , fittedOf } from './helpers'
 
 function bossAnomaly(name: string): ReturnType<typeof anomaly> {
   const a = anomaly(name, 'galaxy-hub', { threat: 60, reward: 500_000 })
@@ -26,7 +26,7 @@ describe('V12 战斗性能回归', () => {
       })
       const state = createInitialState({ nowWallMs: 0, seed: 1000 + i })
       state.wallet.isk = 5_000_000
-      state.fleet['bulk'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+      state.fleet['bulk'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
       state.shipId = 'bulk'
       state.skills.trained['gunnery'] = 5
       expect(startExpedition(state, `ano-perf-${i}`, ctx).ok).toBe(true)

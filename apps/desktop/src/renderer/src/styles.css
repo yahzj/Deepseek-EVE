@@ -2769,3 +2769,12 @@ body {
 .app-a-kinetic{background:#ffd54f}
 .app-a-explosive{background:#ffa04d}
 .app-a-plasma{background:#5fd0ff}
+/* 精炼炉运转进度（工业细化） */
+.app-refine-progress { height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 3px; max-width: 460px; }
+.app-refine-progress-fill { display: block; height: 100%; background: #6fd98a; border-radius: 2px; transition: width .4s ease; }
+
+/* v18 fit racks (three rack groups with bay rows) */
+.app-fit-racks{display:flex;flex-direction:column;gap:10px}
+.app-fit-rack{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.app-fit-rack-title{font-size:13px;color:#cfe6ff}
+.app-fit-baypick{margin-left:6px;max-width:320px}

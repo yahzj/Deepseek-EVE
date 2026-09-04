@@ -14,6 +14,7 @@ import {
   marketGoodOf,
   marketQuote,
   maxAiSlots,
+  allFittedIds,
   shipRoleLabel,
 } from '@whale/core'
 import type { AiCoreType, FleetShipState } from '@whale/core'
@@ -116,10 +117,8 @@ export function ShipPage({ engine, onToast }: PageProps) {
   function sellBlockers(shipState: FleetShipState | undefined): { modules: string[]; cargoUnits: number } {
     const modules: string[] = []
     if (shipState) {
-      for (const [slot, modId] of Object.entries(shipState.fitted)) {
-        if (modId !== null) {
-          modules.push(engine.ctx.modules.get(modId)?.name ?? modId)
-        }
+      for (const modId of allFittedIds(shipState.fitted)) {
+        modules.push(engine.ctx.modules.get(modId)?.name ?? modId)
       }
     }
     const cargoUnits = Object.values(shipState?.cargo ?? {}).reduce((a, b) => a + b, 0)

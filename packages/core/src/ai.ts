@@ -17,6 +17,7 @@ import type { AiCoreType, SimContext } from './types'
 import type { CommandResult } from './engine'
 import { nextRandom } from './rng'
 import { addWare } from './inventory'
+import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, rollBeltOutput, shipInReturn } from './mining'
 import { DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, shortestTravelMinutes, standingOf } from './expedition'
@@ -63,6 +64,16 @@ function spendAiCore(state: GameState, type: AiCoreType): boolean {
   if (current <= 0) return false
   state.aiCores[type] = current - 1
   return true
+}
+
+/** 占用一枚核心（出库；精炼炉 AI 自动化等"站内设施驱动"场景——不占副船名额） */
+export function occupyAiCore(state: GameState, type: AiCoreType): boolean {
+  return spendAiCore(state, type)
+}
+
+/** 归还一枚核心（入库；任务结束/取消/设施停用时调用） */
+export function releaseAiCore(state: GameState, type: AiCoreType): void {
+  gainAiCore(state, type)
 }
 
 /** 可同时指挥的副船数 = 技能等级 */
@@ -446,14 +457,13 @@ function advanceAiMining(
 
 type AiMiningTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'mining' }>
 
-/** 副船货仓剩余空间 */
+/** 副船货仓剩余空间（V18：低槽货舱扩展复数 Σ 加成——与 inventory.cargoCapacityM3Of 同源语义） */
 function freeCargoFor(state: GameState, shipId: string, ctx: SimContext): number {
   const ship = fleetDefOf(state, ctx, shipId)
   if (!ship) return 0
-  const fitted = state.fleet[shipId]?.fitted
-  const cargoModuleId = fitted?.cargo ?? null
-  const cargoDef = cargoModuleId ? ctx.modules.get(cargoModuleId) : undefined
-  const bonus = cargoDef && cargoDef.slot === 'cargo' ? cargoDef.bonus ?? 0 : 0
+  const cargoDefs = familyModules(state, ctx, shipId, 'cargo')
+  let bonus = 0
+  for (const def of cargoDefs) bonus += def.bonus ?? 0
   const cap = Math.round(ship.cargoM3 * (1 + bonus))
   let used = 0
   const cargo = state.fleet[shipId]?.cargo ?? {}

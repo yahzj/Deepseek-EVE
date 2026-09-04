@@ -26,7 +26,7 @@ import { nextRandom } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
 import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName } from './shipyard'
-import { emptyFitted, uidDefId } from './labels'
+import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { gainAiCore } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
@@ -745,7 +745,7 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
   if (shipInReturn(state, shipId)) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能出售。' }
   const cargoUnits = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
   if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
-  if (Object.values(fleetShip.fitted).some((moduleId) => moduleId !== null)) {
+  if (allFittedIds(fleetShip.fitted).length > 0) {
     return { ok: false, reason: '还装着模块，请先卸下。' }
   }
   return { ok: true }

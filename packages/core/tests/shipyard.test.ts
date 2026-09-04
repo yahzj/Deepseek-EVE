@@ -75,15 +75,16 @@ describe('舰队', () => {
     const ctxS = makeTestCtx({ ships: [ship('sandcat2')] })
     addShipToFleet(state, 'sandcat2')
     state.fleet['sandcat']!.cargo['ore-a'] = 50
-    state.fleet['sandcat']!.fitted.miner = 'mod-a'
+    state.fleet['sandcat']!.fitted.high[1] = 'mod-a'
     state.moduleBay['mod-a'] = 1
     loseShip(state, 'sandcat', ctxS, '测试弃船')
     expect(ownsShip(state, 'sandcat')).toBe(false)
     expect(state.shipId).not.toBe('sandcat') // 自动切到其它船
-    // 剩余船都不带原船的货仓/装备
+    // 剩余船都不带原船的货仓/装备（V18：三类位数组全空）
     for (const fs of Object.values(state.fleet)) {
       expect(Object.keys(fs.cargo)).toHaveLength(0)
-      expect(Object.values(fs.fitted).every((v) => v === null)).toBe(true)
+      const allBays = [...fs.fitted.high, ...fs.fitted.mid, ...fs.fitted.low]
+      expect(allBays.every((v) => v === null)).toBe(true)
     }
     // 全损：逐艘弃船直到一艘不剩 → 补发沙猫
     let guard = 0

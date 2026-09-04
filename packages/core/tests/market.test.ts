@@ -371,7 +371,7 @@ describe('A3 回归：v8→v9 迁移后直接 8 小时长离线（市场开市 +
     }
     const loaded = loadSaveFile(JSON.stringify({ format: 'whale-idle-save', version: 8, savedAtWallMs: 100, state: v8Raw }))
     const state = loaded.state
-    expect(state.version).toBe(17)
+    expect(state.version).toBe(18)
     expect(state.learnedRecipes).toEqual(['bp-a', 'bp-b']) // 蓝图无损平移
 
     // 直接 8 小时大离线（480 窗口）

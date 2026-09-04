@@ -10,6 +10,7 @@
 import type { FleetShipState, GameState } from './state'
 import type { SimContext } from './types'
 import { fleetDefOf } from './instances'
+import { familyModules } from './equipment'
 
 /* ───────── 基础访问（容错） ───────── */
 
@@ -93,13 +94,13 @@ export function cargoUsedM3Of(state: GameState, ctx: SimContext, shipId: string)
   return used
 }
 
-/** 指定船货仓容量（m³，按该船自己的舰船定义 + 该船货舱槽装备加成） */
+/** 指定船货仓容量（m³，按该船自己的舰船定义 + 低槽货舱扩展件加成（复数 Σ）） */
 export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   const ship = fleetDefOf(state, ctx, shipId)
   if (!ship) return 0
-  const fitted = state.fleet[shipId]?.fitted
-  const cargoDef = fitted?.cargo ? ctx.modules.get(fitted.cargo) : undefined
-  const bonus = cargoDef && cargoDef.slot === 'cargo' ? cargoDef.bonus ?? 0 : 0
+  const cargoDefs = familyModules(state, ctx, shipId, 'cargo')
+  let bonus = 0
+  for (const def of cargoDefs) bonus += def.bonus ?? 0
   return Math.round(ship.cargoM3 * (1 + bonus))
 }
 

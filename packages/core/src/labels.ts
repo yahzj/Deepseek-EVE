@@ -6,7 +6,7 @@
  * 物品大类（kind）只影响展示分组与"是否能被采集/精炼"的判断，不落盘。
  */
 
-import type { ItemDef, ItemKind, ModuleSlot, ShipRole } from './types'
+import type { FittedModules, ItemDef, ItemKind, ModuleSlot, RackSlot, ShipRole, ShipSlots } from './types'
 
 /** 槽位展示顺序（装配页从上到下的渲染顺序） */
 export const MODULE_SLOTS: readonly ModuleSlot[] = ['miner', 'cargo', 'turret', 'shield', 'armor', 'propulsion']
@@ -24,6 +24,41 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
 /** 槽位中文名（单点实现） */
 export function slotLabel(slot: ModuleSlot): string {
   return SLOT_LABELS[slot] ?? slot
+}
+
+/* ═══════════ V18：槽类（高/中/低）与归槽映射 ═══════════ */
+
+/** 槽类展示顺序（高 → 中 → 低） */
+export const RACK_SLOTS: readonly RackSlot[] = ['high', 'mid', 'low']
+
+/** 槽类中文名（装配页分组标题/徽标） */
+export const RACK_LABELS: Record<RackSlot, string> = {
+  high: '高槽',
+  mid: '中槽',
+  low: '低槽',
+}
+
+/** 槽类中文名（单点实现） */
+export function rackLabel(rack: RackSlot): string {
+  return RACK_LABELS[rack] ?? rack
+}
+
+/** 船体槽位布局缺省（{1,1,1}；正式舰船数据全部显式标注 slots） */
+export function shipSlotsOf(ship: { slots?: ShipSlots }): ShipSlots {
+  return ship.slots ?? { high: 1, mid: 1, low: 1 }
+}
+
+/**
+ * V18 模块归槽（Q3 映射单点实现）：显式 ModuleDef.rack 优先；缺省按家族/字段推导——
+ * turret・miner（炮台・采集器）→ high；shield・propulsion（盾系・推进）→ mid；
+ * armor・cargo（甲系・货舱）→ low；无人机装置（droneBayBonusM3/droneDmgBonus 字段）→ high。
+ */
+export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3?: number; droneDmgBonus?: number }): RackSlot {
+  if (def.rack !== undefined) return def.rack
+  if (def.droneBayBonusM3 !== undefined || def.droneDmgBonus !== undefined) return 'high'
+  if (def.slot === 'turret' || def.slot === 'miner') return 'high'
+  if (def.slot === 'shield' || def.slot === 'propulsion') return 'mid'
+  return 'low'
 }
 
 /** 物品分类展示顺序 */
@@ -63,11 +98,28 @@ export function isMineableItem(item: ItemDef | undefined): item is ItemDef {
   return !!item && MINEABLE_KINDS.has(item.kind)
 }
 
-/** 制造一艘"全新空船"的 fitted（六槽全空）；存档兜底/新船入坞共用 */
-export function emptyFitted(): Record<ModuleSlot, string | null> {
-  const fitted = {} as Record<ModuleSlot, string | null>
-  for (const slot of MODULE_SLOTS) fitted[slot] = null
-  return fitted
+/** 制造一艘"全新空船"的 fitted（V18：三类位数组全空；缺省 1/1/1 每类 1 位，
+ * 存档兜底/新船入坞共用——长度与实际船槽位布局的对齐由 repair 链完成） */
+export function emptyFitted(slots: ShipSlots = { high: 1, mid: 1, low: 1 }): FittedModules {
+  return {
+    high: Array<string | null>(slots.high).fill(null),
+    mid: Array<string | null>(slots.mid).fill(null),
+    low: Array<string | null>(slots.low).fill(null),
+  }
+}
+
+/** 某槽类的位数组（fitted 内部引用，可读写；长度 = 船对应槽类数量） */
+export function rackBays(fitted: FittedModules, rack: RackSlot): Array<string | null> {
+  return fitted[rack]
+}
+
+/** 全部已装模块 id（跳过空位；顺序 = 高槽位序 → 中槽位序 → 低槽位序） */
+export function allFittedIds(fitted: FittedModules): string[] {
+  const out: string[] = []
+  for (const rack of RACK_SLOTS) {
+    for (const id of fitted[rack]) if (id) out.push(id)
+  }
+  return out
 }
 
 /* ───── T5-B（v17）舰船实例 uid 工具（内容约定：ShipDef.id 不得含 '#'，实例号分隔符） ───── */

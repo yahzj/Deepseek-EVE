@@ -1,0 +1,65 @@
+# 工业细化：精炼炉「运转周期」（设计定稿与实现记录）
+
+> 状态：**已确认并实现**（2026-09-04 船长确认开工；core + desktop 已接线，等待并行
+> 会话（大鲸鱼二号 C3 槽位）合入后做全量验证与提交）。
+> 船长原话：工业（精炼）要有"运转周期"；工业运转需占用玩家或 AI 工作位置；
+> 单批周期尽量 5~10 秒、控制每批产出数量；自动化直接用 AI 核心（站内设施，不需副船）；
+> 相关技能后续再加。
+
+## 一、模型（Q1 乙循环 / Q2 乙固定批量 / 单工位预留升级）
+
+- **精炼 = 母港精炼炉的循环运转**：单工位，同一时刻只运转一种资源（矿石/气体/冰矿）；
+  结构上 `refineRun` 为单作业对象，扩展多工位 = 后续加数组即可。
+- **固定批量 × 自动续批**：每种资源有"单批单位 × 单批周期"（items.ts 可选字段
+  `refineBatchUnits` / `refineCycleMs`，缺省兜底 10 单位 / 6 秒）；启动即把"货仓+仓库"
+  当前**全部库存锁定入炉**（货仓优先），每批到点按收率出矿物入物品仓库并自动续批，
+  直到料尽自动停炉。
+- **劳动者**（船长定稿）：
+  - `pilot` = 主控亲自运转：占主控工作位，期间不可离港作业（采矿/扫描/远征/前往待命
+    入口各有守卫，错误提示引导"可改用 AI 核心驱动"）；市场/仓库/训练/制造不受限；
+  - AI 核心类型 = 接入一枚核心驱动精炼炉：核心**出库占用、不占副船名额**（站内设施
+    自动化，不需要船）；单批周期 ÷核心效率（基础 40%/伽马 50%/贝塔 60%/阿尔法 75%）；
+    停炉/料尽自动归还核心库。
+- **停止即止**：已完成批已出货；**剩余锁定原料全额退回仓库**（产物按"批完成"结算，
+  半批不退不扣，无秒级损失）；AI 核心立即归还。
+- **收率**：公式不变（基础 50% + 精炼学 8%/级 + 高级回收 4%/级，上限 95%）；每批结算
+  按当时技能取值。
+- 离线/在线一致：`advanceRefining` 挂进引擎推进链（制造之后），大推进一次性跑完剩余批。
+
+## 二、数值（items.ts 单批参数：N 单位 / 周期）
+
+| 资源 | N/批 | 周期 | 资源 | N/批 | 周期 |
+|---|---|---|---|---|---|
+| 富凡晶石 | 100 | 6s | 氖云气 | 50 | 6s |
+| 灼烧岩 | 80 | 6s | 磷光霾 | 20 | 8s |
+| 希莫非特 | 50 | 6s | 离子风暴云 | 25 | 7s |
+| 辉云岩 / 曦棱晶 | 40 | 7s | 极光云 | 15 | 8s |
+| 玄晶 | 20 | 8s | 蓝霜冰 | 40 | 6s |
+| 星幽矿 | 12 | 8s | 寒髓冰 | 25 | 7s |
+| — | — | — | 暗星冰 | 12 | 8s |
+
+原则：周期 5~10 秒、批量小（细粒度流水线观感）；精炼总量受库存约束，不产生新 ISK
+上限（原料本可卖），平衡影响集中在"时间化"（B/C 策略需回港 + 等待运转，见 balance-check
+适配；24h 体检待并行会话合入后复跑）。
+
+## 三、实现面
+
+- core：`state.ts` `RefineRunState`（兼容字段 `refineRun`，**不 bump 版本**，normalize
+  兜底空态）；`industry.ts` 重写精炼（`startRefineRun/stopRefineRun/refineRunStatus/
+  advanceRefining/refineManualActive`，删除即时 `refineAllOre`）；`engine.ts` 推进链；
+  `activity.ts` refine 行（可停炉）；`ai.ts` 新增 `occupyAiCore/releaseAiCore` 导出；
+  启动守卫：主控忙碌互斥（startMining/startScan/goStandbyAt/expeditionPreflight）；
+  `save.ts` 归一化接线；`index.ts` 导出。
+- data：`types.ts` ItemDef 可选 `refineBatchUnits/refineCycleMs`；14 种可精炼资源填表。
+- desktop：wrapper `startRefineRunAt/stopRefineRunNow/refineRunView`；工业页精炼炉 UI
+  （运转中进度/停炉；资源行「手动运转」「AI 运转」+核心选择）；活动栏 ♨ 行接线。
+- tools：`balance-check` B/C 策略改为"满舱回港 → 运转 → 再出航"（`refineAtHome` 驱动）；
+  `make-test-save.ts` 注册 `refine` 案例（全品级库存 + 基础核心 ×1）。
+
+## 四、验证状态
+
+- `tests/industry.test.ts` 16/16 ✓（运转/续批/料尽/停炉退料/AI 核心占用归还/视图/互斥）；
+- data typecheck ✓；core/desktop 全量验证被并行会话（C3 槽位 fitted 重构）的进行中
+  改动阻塞（helpers/FittedModules 相关测试待其合入后恢复）；
+- 待并行合入后：全量 npm test / typecheck ×4 / desktop+web build / balance 体检复跑，
+  再统一提交（提交时与二号改动按文件/区域分离）。

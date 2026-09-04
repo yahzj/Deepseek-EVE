@@ -14,10 +14,11 @@
  *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
 import type { GameState } from './state'
-import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeTactic, SimContext } from './types'
+import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeTactic, ModuleDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
+import { allFittedModules, familyModules, fittedCpuUsed } from './equipment'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -142,6 +143,17 @@ function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): 
   return Math.max(20, maxSpeedMps * bal.speedFactor * (1 + (agility - 0.5) * 2 * bal.agilitySpeedBonus))
 }
 
+/** 逐件缺口乘入（对 out 原位改：每系 res = 1−(1−res)(1−add)） */
+function applyAdds(out: DamageResists, add: DamageResists | undefined): void {
+  if (!add) return
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const a = add[t] ?? 0
+    if (a <= 0) continue
+    const cur = out[t] ?? 0
+    out[t] = clamp(0, 0.9, 1 - (1 - cur) * (1 - a))
+  }
+}
+
 /**
  * EVE 式抗性合成（V17）：模块按"缺口削减"乘入——实际抗性 = 1 − (1−基础) × (1−模块值)，
  * 上限 0.9。基础已有高抗的层位装同系模块收益递减（与旧"绝对加算百分点"的分水岭；
@@ -166,7 +178,7 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
   return PROFILE_SPLIT[profile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
 }
 
-/** 构建我方单位静态卡（含装备加成与无人机装载；null = 船数据缺失） */
+/** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船数据缺失） */
 export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: string): UnitSpec | null {
   const ship = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
@@ -174,26 +186,40 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const bal = ctx.balance.battle
   const fitted = fleet.fitted
 
-  const shieldMod = fitted.shield ? ctx.modules.get(fitted.shield) : undefined
-  const armorMod = fitted.armor ? ctx.modules.get(fitted.armor) : undefined
-  const propMod = fitted.propulsion ? ctx.modules.get(fitted.propulsion) : undefined
-  const turret = fitted.turret ? ctx.modules.get(fitted.turret) : undefined
+  // V18：家族件列表（全位；可叠件复数、抗/容系唯一件由装配层保证）
+  const shieldDefs = familyModules(state, ctx, shipId, 'shield')
+  const armorDefs = familyModules(state, ctx, shipId, 'armor')
+  const propDefs = familyModules(state, ctx, shipId, 'propulsion')
+  const turretDefs = familyModules(state, ctx, shipId, 'turret')
+  // 无人机装置（高槽 rack 件；甲板扩展/战术导控按字段判别）
+  const droneGear = allFittedModules(fitted, ctx).filter(
+    (d) => d.droneBayBonusM3 !== undefined || d.droneDmgBonus !== undefined,
+  )
 
+  // 盾/甲：容量加成求和；抗性按系逐件缺口乘入（mergeResist 链）
+  let shieldHpMult = 1
+  for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
+  let armorHpMult = 1
+  for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
   const hp: Hp3 = {
-    s: (ship.shieldHp ?? 0) * (1 + (shieldMod?.shieldHpBonus ?? 0)),
-    a: (ship.armorHp ?? 0) * (1 + (armorMod?.armorHpBonus ?? 0)),
+    s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult),
+    a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult),
     h: ship.hullHp ?? 0,
   }
-  const resists = {
-    shield: mergeResist(ship.shieldResist, shieldMod?.shieldResistAdd),
-    armor: mergeResist(ship.armorResist, armorMod?.armorResistAdd),
-    hull: ship.hullResist ?? {},
-  }
+  const shieldRes = mergeResist(ship.shieldResist, undefined)
+  for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
+  const armorRes = mergeResist(ship.armorResist, undefined)
+  for (const m of armorDefs) applyAdds(armorRes, m.armorResistAdd)
+  const resists = { shield: shieldRes, armor: armorRes, hull: ship.hullResist ?? {} }
+
+  // 推进器（装配层唯一）：速度加成乘入 + 命中失稳
+  const propMod = propDefs[0]
+
   const weapons: WeaponSpec[] = []
   const gunneryLv = state.skills.trained[ctx.balance.combat.gunnerySkillId] ?? 0
   const dmgScale = (1 + bal.gunneryDmgPerLevel * gunneryLv) * (1 + (ship.powerBonus ?? 0))
 
-  // 兜底武器：基础舰炮恒在（弱；装炮台后有弹时炮台为增伤选项，无弹仍可还击）
+  // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）
   weapons.push({
     label: '基础舰炮',
     kind: 'fixed',
@@ -205,15 +231,26 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     falloff: 0.3,
     reloadMs: 3500,
   })
-  // 炮台（吃弹药；V17.2 炮族制 = 固定弹种单键）
-  if (turret && turret.maxRangeM !== undefined && turret.reloadMs !== undefined) {
+  // V18 多炮：同 id 同参合并为 ×N 齐射条目（避免 UI 弧线爆炸），异型各自成条目
+  const gunGroups = new Map<string, ModuleDef[]>()
+  for (const t of turretDefs) {
+    if (t.maxRangeM === undefined || t.reloadMs === undefined) continue
+    const g = gunGroups.get(t.id)
+    if (g) g.push(t)
+    else gunGroups.set(t.id, [t])
+  }
+  for (const group of gunGroups.values()) {
+    const turret = group[0]!
+    if (turret.maxRangeM === undefined || turret.reloadMs === undefined) continue
+    const count = group.length
     const type = turret.damageType ?? 'kinetic'
     const mult = turret.dmgMult ?? 1
     const ammoDef = ctx.items.get(AMMO_IDS[type])
+    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale)
     const shotsByType: Partial<Record<DamageType, number>> = {}
-    shotsByType[type] = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale)
+    shotsByType[type] = perShot * count
     weapons.push({
-      label: turret.name,
+      label: count > 1 ? `${turret.name}×${count}` : turret.name,
       kind: 'gun',
       shotsByType,
       maxRangeM: turret.maxRangeM,
@@ -224,14 +261,15 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     })
   }
 
-  // 无人机装载：贪心（dmg/cpuUse 降序）受舱容 + CPU 余量约束，逐架展开为武器条目
-  const bayLimit = ship.droneBayM3 ?? 0
-  let bayUsed = 0
-  let cpuLeft = (ship.cpu ?? 0)
-  for (const slot of ['miner', 'cargo', 'turret', 'shield', 'armor', 'propulsion'] as const) {
-    const id = fitted[slot]
-    if (id) cpuLeft -= ctx.modules.get(id)?.cpuUse ?? 0
+  // 无人机装载（V18：甲板扩展 +bay、导控 +dmg；贪心受舱容 + CPU 余量约束）
+  let bayLimit = ship.droneBayM3 ?? 0
+  let droneDmgBonus = 0
+  for (const g of droneGear) {
+    bayLimit += g.droneBayBonusM3 ?? 0
+    droneDmgBonus += g.droneDmgBonus ?? 0
   }
+  let bayUsed = 0
+  let cpuLeft = (ship.cpu ?? 0) - fittedCpuUsed(fitted, ctx)
   if (bayLimit > 0 && cpuLeft > 0) {
     const stock: Array<{ def: NonNullable<ReturnType<SimContext['items']['get']>>; units: number }> = []
     for (const [id, units] of Object.entries(cargoItemsOf(state))) {
@@ -252,7 +290,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
           label: def.name,
           kind: 'fixed',
           fixedType: def.damageType ?? 'kinetic',
-          shotDmg: def.dmg ?? 0,
+          // V18 战术导控阵列：无人机单发伤害 ×(1+Σ导控)
+          shotDmg: Math.round((def.dmg ?? 0) * (1 + droneDmgBonus)),
           maxRangeM: 2600,
           minRangeM: 200,
           hitRate: 0.6,
@@ -283,12 +322,12 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   }
 }
 
-/** 我方主武器固定弹种（V17.2 炮族制：炮台 damageType，缺省 kinetic；
- * 无炮台也返回 kinetic——基础舰炮实际不消耗弹药） */
+/** 我方主武器固定弹种（V18 多炮：取高槽第一门炮的 damageType；无炮也返回
+ * kinetic——基础舰炮实际不消耗弹药）。多门异弹型炮的装载/消耗在出发预载时按主炮型
+ * 装载（battle.ammo 单型；异型炮在本主炮弹尽后停火，见 E 台阶 per-gun 完整化）。 */
 export function playerAmmoType(state: GameState, ctx: SimContext, shipId: string): DamageType {
-  const turretId = state.fleet[shipId]?.fitted?.turret
-  const def = turretId ? ctx.modules.get(turretId) : undefined
-  return def?.damageType ?? 'kinetic'
+  const turrets = familyModules(state, ctx, shipId, 'turret')
+  return (turrets[0]?.damageType as DamageType | undefined) ?? 'kinetic'
 }
 
 /* ═══════════ 敌方编队 ═══════════ */

@@ -10,7 +10,7 @@ import { advanceGame } from '../src/engine'
 import { countItem, countWare } from '../src/inventory'
 import { miningStatus, rollBeltOutput, startMining } from '../src/mining'
 import { assignAiMining, gainAiCore } from '../src/ai'
-import { belt, makeTestCtx, ore } from './helpers'
+import { belt, makeTestCtx, ore , fittedOf } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 function mixedBelt(): BeltDef {
@@ -71,7 +71,7 @@ describe('V16 复合矿带：按权重抽取产出', () => {
     state.fleet['sandcat2'] = {
       durability: 1,
       cargo: {},
-      fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null },
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
     }
     gainAiCore(state, 'basic', 2)
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-mix', ctx).ok).toBe(true)
@@ -97,7 +97,7 @@ describe('V16 迁移：被删矿石折算', () => {
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
     const s = loaded.state
-    expect(s.version).toBe(17)
+    expect(s.version).toBe(18)
     expect(s.warehouse.items['ore-kernite']).toBeUndefined()
     expect(s.warehouse.items['ore-fluxite']).toBeUndefined()
     expect(s.fleet['sandcat']!.cargo['ore-crimsonite']).toBeUndefined()
@@ -117,7 +117,7 @@ describe('V16 迁移：被删矿石折算', () => {
     const raw = state as unknown as Record<string, unknown>
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
-    expect(loaded.state.version).toBe(17)
+    expect(loaded.state.version).toBe(18)
     expect(loaded.state.logs.some((l) => l.text.includes('内容整合'))).toBe(false)
   })
 })

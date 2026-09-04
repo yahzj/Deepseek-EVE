@@ -196,6 +196,9 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。' }
   if (state.scanning.active) return { ok: false, error: '扫描作业中：请先终止扫描。' }
+  if (state.refineRun.active && state.refineRun.worker === 'pilot') {
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。' }
+  }
   if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。` }
   const from = originGalaxyOf(state, ctx)
   if (from === galaxyId && state.awayGalaxy === null && !state.standby.active) {

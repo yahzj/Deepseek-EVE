@@ -43,7 +43,7 @@ import {
   offlineSplit,
   placeBuyOrder,
   recallExpedition,
-  refineAllOre,
+  refineRunStatus,
   removeQueueAt,
   renameShip,
   migrateDeprecatedAmmo,
@@ -64,14 +64,17 @@ import {
   startManufacturing,
   startMining,
   startMiningFromExpedition,
+  startRefineRun,
   startScan,
   startTransitHome,
+  stopRefineRun,
   deliverStationResources,
   playDialogue,
   stopMining,
   stopScan,
   setAutoLoopBounty,
   unfitSlot,
+  unfitAt,
   unloadCargoToWarehouse,
 } from '@whale/core'
 import type {
@@ -79,7 +82,8 @@ import type {
   CommandResult,
   GameState,
   ModuleSlot,
-  RefineResult,
+  RackSlot,
+  RefineRunView,
   SellResult,
   SimContext,
 } from '@whale/core'
@@ -477,14 +481,29 @@ export class GameEngine {
     return ok
   }
 
-  /** 精炼某种矿石（全部） */
-  refineOre(oreId: string): RefineResult {
-    const result = refineAllOre(this.state, oreId, this.ctx)
+  /** 启动精炼炉运转（worker：'pilot' = 主控亲自运转 / AI 核心类型 = 核心驱动自动化） */
+  startRefineRunAt(itemId: string, worker: AiCoreType | 'pilot'): CommandResult {
+    const result = startRefineRun(this.state, itemId, worker, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()
     }
     return result
+  }
+
+  /** 停炉：已完成批保留，剩余锁定原料全额退回仓库；AI 核心驱动时核心自动归还 */
+  stopRefineRunNow(): CommandResult {
+    const result = stopRefineRun(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 精炼炉运行视图（工业页/活动栏共用） */
+  refineRunView(): RefineRunView {
+    return refineRunStatus(this.state, this.ctx)
   }
 
   /** 卖当前船货仓里的物品（旧名兼容） */
@@ -630,9 +649,29 @@ export class GameEngine {
     return result
   }
 
-  /** 卸下某槽位的装备（放回装备库） */
+  /** 卸下某槽位的装备（放回装备库；旧六槽语义的兼容入口） */
   unfitSlotAt(slot: ModuleSlot): boolean {
     const ok = unfitSlot(this.state, slot)
+    if (ok) {
+      void this.persist()
+      this.notify()
+    }
+    return ok
+  }
+
+  /** V18：把装备装到 指定槽类+位序（位行"装入"入口；库行装配请用 fitModuleAt 自动首空位） */
+  fitModuleTo(moduleId: string, rack: RackSlot, index: number): CommandResult {
+    const result = fitModule(this.state, moduleId, this.ctx, { rack, index })
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** V18：卸下 指定槽类+位序 的装备（放回装备库） */
+  unfitAtAt(rack: RackSlot, index: number): boolean {
+    const ok = unfitAt(this.state, rack, index)
     if (ok) {
       void this.persist()
       this.notify()

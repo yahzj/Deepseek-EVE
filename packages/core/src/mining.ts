@@ -27,6 +27,7 @@ import { travelLegMs, travelMinutesEff } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
+import { familyModules } from './equipment'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
 export interface MiningParams {
@@ -61,9 +62,10 @@ export function getMiningParams(
   const timeRatio = Math.max(bal.minTimeRatio, 1 - bal.timePerLevel * timeLevel)
   // 调试模式 debugQuick：循环固定 1 秒
   const cycleMs = state.debugQuick ? 1000 : Math.max(1, Math.round(ship.cycleSeconds * 1000 * timeRatio))
-  const minerModuleId = state.fleet[shipId]?.fitted.miner ?? null
-  const minerDef = minerModuleId ? ctx.modules.get(minerModuleId) : undefined
-  const minerBonus = minerDef && minerDef.slot === 'miner' ? minerDef.bonus ?? 0 : 0
+  // V18 复数矿枪：高槽全部采集器件加成求和（线性叠加）
+  const minerDefs = familyModules(state, ctx, shipId, 'miner')
+  let minerBonus = 0
+  for (const def of minerDefs) minerBonus += def.bonus ?? 0
   const unitsPerCycle = Math.max(
     1,
     Math.floor(ship.oreUnitsPerCycle * (1 + bal.yieldPerLevel * yieldLevel) * (1 + minerBonus)),
@@ -171,6 +173,9 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
   if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (state.refineRun.active && state.refineRun.worker === 'pilot') {
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。' }
+  }
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null

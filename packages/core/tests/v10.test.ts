@@ -8,14 +8,14 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem, countWare } from '../src/inventory'
 import { startMining, stopMining } from '../src/mining'
-import { buyShip, refineAllOre } from '../src/industry'
+import { buyShip, startRefineRun } from '../src/industry'
 import { assignAiMining } from '../src/ai'
 import { addModule, countModule, fitModule, unfitSlot, fittedBonuses } from '../src/equipment'
 import { changeShip } from '../src/shipyard'
 import { buyAtMarket, ensureMarket, marketSellHolding, placeBuyOrder, shipSellable } from '../src/market'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import type { BeltDef, ItemDef, MarketGoodDef, ModuleDef, ShipDef, SimContext } from '../src/types'
-import { belt, makeTestCtx, moduleDef, ship } from './helpers'
+import { belt, fittedOf, makeTestCtx, moduleDef, ship } from './helpers'
 
 /** 测试用气体（可采集可精炼 → 矿粉甲） */
 const GAS_X: ItemDef = {
@@ -95,22 +95,22 @@ describe('V10：气体/冰矿接入采集与精炼循环', () => {
     expect(r.error).toContain('没有对应的可采集资源')
   })
 
-  it('精炼台接受气体/冰矿（带配方即精炼），产物入仓库；收率公式不变', () => {
+  it('精炼炉接受气体/冰矿（循环运转：10 单位/批、6 秒兜底批参），产物入仓库；收率公式不变', () => {
     state.warehouse.items['gas-x'] = 100
+    expect(startRefineRun(state, 'gas-x', 'pilot', ctx).ok).toBe(true)
+    advanceGame(state, 61_000, ctx) // 10 批 × 6s → 料尽自动停
+    expect(countWare(state, 'min-a')).toBe(100) // floor(10×2×0.5)=10/批 ×10
     state.warehouse.items['ice-x'] = 100
-    const r1 = refineAllOre(state, 'gas-x', ctx)
-    expect(r1.ok).toBe(true)
-    expect(countWare(state, 'min-a')).toBe(100) // floor(100×2×0.5)
-    const r2 = refineAllOre(state, 'ice-x', ctx)
-    expect(r2.ok).toBe(true)
-    expect(countWare(state, 'min-b')).toBe(75) // floor(100×1.5×0.5)
+    expect(startRefineRun(state, 'ice-x', 'pilot', ctx).ok).toBe(true)
+    advanceGame(state, 61_000, ctx)
+    expect(countWare(state, 'min-b')).toBe(70) // floor(10×1.5×0.5)=7/批 ×10
   })
 
   it('弹药/矿物无配方不能精炼', () => {
     state.warehouse.items['ammo-x'] = 10
-    expect(refineAllOre(state, 'ammo-x', ctx).ok).toBe(false)
+    expect(startRefineRun(state, 'ammo-x', 'pilot', ctx).ok).toBe(false)
     state.warehouse.items['min-a'] = 10
-    expect(refineAllOre(state, 'min-a', ctx).ok).toBe(false)
+    expect(startRefineRun(state, 'min-a', 'pilot', ctx).ok).toBe(false)
   })
 })
 
@@ -142,7 +142,7 @@ describe('V10：采集点声望门槛（主控 + AI）', () => {
   it('AI 指派同样受采集点声望门槛约束', () => {
     const ctx = ctxWithExtras({ belts: [{ ...belt('belt-gate2', 'ore-a'), standingReq: 5 }] })
     state.skills.trained['ai-expert'] = 1
-    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     state.aiCores['basic'] = 1
     const r = assignAiMining(state, 'sandcat2', 'basic', 'belt-gate2', ctx)
     expect(r.ok).toBe(false)
@@ -236,7 +236,7 @@ describe('V10：占位槽位（shield/armor/propulsion）装配', () => {
   it('可装配/卸下占位模块；加成写入但无行为消费者；装满模块的船不可出售', () => {
     addModule(state, 'mod-shield-x', 1)
     expect(fitModule(state, 'mod-shield-x', ctx).ok).toBe(true)
-    expect(state.fleet[state.shipId]!.fitted.shield).toBe('mod-shield-x')
+    expect(state.fleet[state.shipId]!.fitted.mid[0]).toBe('mod-shield-x')
     const bonuses = fittedBonuses(state, ctx)
     expect(bonuses.shield).toBeCloseTo(0.2, 5)
     expect(bonuses.miner).toBe(0)
@@ -244,13 +244,13 @@ describe('V10：占位槽位（shield/armor/propulsion）装配', () => {
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
     stopMining(state, ctx)
     // 装着模块的船不能挂卖（先切到另一艘船，避免"驾驶中"拦截）
-    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null } }
+    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     expect(changeShip(state, 'sandcat2', ctx).ok).toBe(true)
     expect(shipSellable(state, 'sandcat')).toEqual({ ok: false, reason: '还装着模块，请先卸下。' })
     // 切回并卸下：退回装备库
     expect(changeShip(state, 'sandcat', ctx).ok).toBe(true)
     expect(unfitSlot(state, 'shield')).toBe(true)
-    expect(state.fleet['sandcat']!.fitted.shield).toBeNull()
+    expect(state.fleet['sandcat']!.fitted.mid[0]).toBeNull()
     expect(countModule(state, 'mod-shield-x')).toBe(1)
   })
 })
@@ -288,23 +288,25 @@ describe('V10：存档 v9→v10 迁移（fitted 补三个空槽）', () => {
     }
     const text = JSON.stringify({ format: SAVE_FORMAT, version: 9, savedAtWallMs: 100, state: v9 })
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(17)
+    expect(loaded.state.version).toBe(18)
     const fitted = loaded.state.fleet['sandcat']!.fitted
-    expect(fitted.miner).toBe('mod-miner-x')
-    expect(fitted.cargo).toBeNull()
-    expect(fitted.turret).toBeNull()
-    expect(fitted.shield).toBeNull()
-    expect(fitted.armor).toBeNull()
-    expect(fitted.propulsion).toBeNull()
+    // v9 六槽 → V18 位数组：turret→high[0]、miner→high[1]、shield→mid[0]、
+    // propulsion→mid[1]、armor→low[0]、cargo→low[1]（v9 档 fitted 只含 miner/cargo/turret）
+    expect(fitted.high[1]).toBe('mod-miner-x')
+    expect(fitted.high[0]).toBeNull()
+    expect(fitted.mid[0]).toBeNull()
+    expect(fitted.mid[1]).toBeNull()
+    expect(fitted.low[0]).toBeNull()
+    expect(fitted.low[1]).toBeNull()
   })
 
-  it('v10 档往返保存不丢六槽', () => {
+  it('v10 档往返保存不丢位', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
     const text = serializeSaveFile(state, 0)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(17)
+    expect(loaded.state.version).toBe(18)
     expect(Object.keys(loaded.state.fleet[loaded.state.shipId]!.fitted).sort()).toEqual(
-      ['armor', 'cargo', 'miner', 'propulsion', 'shield', 'turret'].sort(),
+      ['high', 'mid', 'low'].sort(),
     )
   })
 })

@@ -9,6 +9,9 @@
  * 功能 case 注册制（扩展在此追加）：
  *  - b1   低安遭遇：+2000 万 ISK、协会声望 10、点亮全部低安星系、驾驶船配炮台+三型通用弹、
  *         AI 基础核心 +4 且 ai-expert Lv3（3 个副船名额）、全舰回满耐久、重置首次低安提示。
+ *  - standby 星图待命：门槛同 b1 + 预置一艘副船已在低安驻留待命（看状态/取消/区域遭遇）；
+ *  - refine 精炼炉运转周期：全品级矿石/气体/冰矿库存（货仓+仓库）+ 基础 AI 核心 ×1
+ *    （测手动运转/核心驱动/停炉退料/忙碌互斥）。
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -113,9 +116,34 @@ function injectStandby(state: GameState): string[] {
   return notes
 }
 
+/** refine（精炼炉运转周期）：各品级矿石/气体/冰矿补库存 + 一枚 AI 核心（测主控与核心驱动两条线） */
+function injectRefine(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 全品级库存（浅→渊）：货仓放一份、仓库放一份，验证"货仓优先锁定 + 仓库补位"
+  const stock: Array<[string, string, number]> = [
+    ['ore-veldspar', '富凡晶石', 900],
+    ['ore-glowstone', '辉云岩', 300],
+    ['ore-voidshard', '玄晶', 120],
+    ['gas-neon', '氖云气', 200],
+    ['ice-frost', '蓝霜冰', 160],
+  ]
+  for (const [id, name, n] of stock) {
+    state.fleet[state.shipId].cargo[id] = (state.fleet[state.shipId].cargo[id] ?? 0) + Math.min(80, n)
+    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + Math.max(0, n - 80)
+    notes.push(`${name} ×${n}（货仓 80 + 仓库 ${n - 80}）`)
+  }
+  // 一枚 AI 核心（测核心驱动的自动运转与归还）
+  state.aiCores['basic'] = (state.aiCores['basic'] ?? 0) + 1
+  notes.push('基础 AI 核心 ×1（可在精炼炉选「AI 运转」，驱动期间核心被占用）')
+  notes.push('测试路径：工业页精炼炉 —— 手动运转任意资源（看批进度/活动栏/停炉退料）；换 AI 运转（核心占用与归还）；离港操作应被拒绝')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
+  refine: injectRefine,
 }
 
 function main(): void {

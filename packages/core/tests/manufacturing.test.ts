@@ -7,7 +7,7 @@ import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { cargoCapacityM3, countItem } from '../src/inventory'
-import { countModule, fitModule, unfitSlot } from '../src/equipment'
+import { countModule, fitModule, unfitAt } from '../src/equipment'
 import { miningStatus, startMining } from '../src/mining'
 import { calcPower } from '../src/expedition'
 import { learnBlueprint } from '../src/market'
@@ -158,35 +158,43 @@ describe('装备装配与加成', () => {
     ctx = makeTestCtx() // mod-a：miner +50%；mod-b：cargo +30%
   })
 
-  it('装配：装备库扣 1、槽位生效；重复装配/未持有被拒绝', () => {
+  it('装配（V18）：装入槽类首空位、装备库扣 1；库空/未持有被拒绝', () => {
     state.moduleBay['mod-a'] = 1
     const r = fitModule(state, 'mod-a', ctx)
     expect(r.ok).toBe(true)
-    expect(state.fleet[state.shipId].fitted.miner).toBe('mod-a')
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-a') // 采集器 → 高槽首空位
     expect(countModule(state, 'mod-a')).toBe(0)
     expect(fitModule(state, 'mod-a', ctx).ok).toBe(false) // 装备库已空
     expect(fitModule(state, 'mod-b', ctx).ok).toBe(false) // 未持有
   })
 
-  it('同槽换装：旧件自动退回装备库', () => {
-    const ctx2 = makeTestCtx({ modules: [moduleDef('mod-c', 'miner', 0.2)] })
+  it('复数安装：可叠件多把并存（矿枪 ×2）；槽类位满后拒绝第三件', () => {
+    const ctx2 = makeTestCtx({ modules: [moduleDef('mod-c', 'miner', 0.2), moduleDef('mod-d', 'miner', 0.3)] })
     state.moduleBay['mod-a'] = 1
     state.moduleBay['mod-c'] = 1
-    fitModule(state, 'mod-a', ctx2)
+    state.moduleBay['mod-d'] = 1
+    expect(fitModule(state, 'mod-a', ctx2).ok).toBe(true)
     const r = fitModule(state, 'mod-c', ctx2)
     expect(r.ok).toBe(true)
-    expect(state.fleet[state.shipId].fitted.miner).toBe('mod-c')
-    expect(countModule(state, 'mod-a')).toBe(1) // 旧件退回
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-a') // 旧件不自动退（复数共存）
+    expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-c')
+    expect(countModule(state, 'mod-a')).toBe(0)
     expect(countModule(state, 'mod-c')).toBe(0)
+    // 高槽满（2/2）：第三把矿枪被拒
+    const r3 = fitModule(state, 'mod-d', ctx2)
+    expect(r3.ok).toBe(false)
+    expect(r3.error).toContain('高槽已满')
+    expect(state.moduleBay['mod-d']).toBe(1) // 未扣库
   })
 
-  it('卸下：装备放回装备库', () => {
+  it('卸下（unfitAt 按 槽类+位）：装备放回装备库', () => {
     state.moduleBay['mod-b'] = 1
     fitModule(state, 'mod-b', ctx)
-    expect(unfitSlot(state, 'cargo')).toBe(true)
-    expect(state.fleet[state.shipId].fitted.cargo).toBeNull()
+    expect(unfitAt(state, 'low', 0)).toBe(true)
+    expect(state.fleet[state.shipId].fitted.low[0]).toBeNull()
     expect(countModule(state, 'mod-b')).toBe(1)
-    expect(unfitSlot(state, 'cargo')).toBe(false) // 空槽卸无可卸
+    expect(unfitAt(state, 'low', 0)).toBe(false) // 空位卸无可卸
+    expect(unfitAt(state, 'high', 5)).toBe(false) // 越界位拒绝
   })
 
   it('采集器加成接入采矿：+50% 产量 → 每循环 15 单位', () => {
@@ -204,23 +212,24 @@ describe('装备装配与加成', () => {
     expect(cargoCapacityM3(state, ctx)).toBe(1_040)
   })
 
-  it('炮台槽（M4）：装配到 turret 槽位，与其它槽互不干扰', () => {
-    state.moduleBay['mod-a'] = 1 // miner 槽装备
-    state.moduleBay['mod-b'] = 1 // cargo 槽装备
+  it('炮台（V18）：与采集器同高槽复数并存；火力指数不含装备；换炮先卸后装', () => {
+    state.moduleBay['mod-a'] = 1 // miner 件
     // 默认测试装备没有 turret 类，补一个
     const ctxWithTurret = makeTestCtx({ modules: [moduleDef('mod-t', 'turret', 0.6)] })
     state.moduleBay['mod-t'] = 1
+    expect(fitModule(state, 'mod-a', ctxWithTurret).ok).toBe(true)
     expect(fitModule(state, 'mod-t', ctxWithTurret).ok).toBe(true)
-    expect(state.fleet[state.shipId].fitted.turret).toBe('mod-t')
-    expect(state.fleet[state.shipId].fitted.miner).toBeNull()
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-a') // 矿枪先装占首空位
+    expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-t') // 炮台占第二高位
     // V17：火力指数（calcPower）只计基础 + 炮术 + 船型加成——炮台不再以百分比乘入，
     // 其真实战力由 battleWinPreview 期望推演评估（装备 = 弹伤害 × dmgMult × 技能）
     expect(calcPower(state, ctxWithTurret)).toBeCloseTo(10, 5)
-    // 换装炮台：旧件退回装备库（第一件 mod-t 装配后已出库，换装时退回 1 件）
+    // 换炮：卸下旧炮再装新炮（V18 无自动替换——复数语义）
     const ctxT2 = makeTestCtx({ modules: [moduleDef('mod-t2', 'turret', 0.25), moduleDef('mod-t', 'turret', 0.6)] })
     state.moduleBay['mod-t2'] = 1
-    fitModule(state, 'mod-t2', ctxT2)
-    expect(state.fleet[state.shipId].fitted.turret).toBe('mod-t2')
-    expect(countModule(state, 'mod-t')).toBe(1) // 旧炮台退回装备库
+    expect(unfitAt(state, 'high', 1)).toBe(true)
+    expect(fitModule(state, 'mod-t2', ctxT2).ok).toBe(true)
+    expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-t2')
+    expect(countModule(state, 'mod-t')).toBe(1) // 卸下的旧炮台退回装备库
   })
 })

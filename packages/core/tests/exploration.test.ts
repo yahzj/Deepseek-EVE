@@ -21,7 +21,7 @@ import {
 } from '../src/explore'
 import { EXPLORE_EVENTS } from '../src/events'
 import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
-import { anomaly, belt, makeTestCtx, moduleDef, ship } from './helpers'
+import { anomaly, belt, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 describe('V13 星图探索：迷雾与剪影', () => {
@@ -113,7 +113,7 @@ describe('V13 探索：行动封锁（远征/采矿/AI）', () => {
     state.fleet['sandcat2'] = {
       durability: 1,
       cargo: {},
-      fitted: { miner: null, cargo: null, turret: 'tur-ai2', shield: null, armor: null, propulsion: null },
+      fitted: fittedOf({ turret: 'tur-ai2', miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
     }
     gainAiCore(state, 'basic', 2)
     state.wallet.isk = 500_000
@@ -209,7 +209,7 @@ describe('V13 扫描探索作业', () => {
     state.fleet['warpy'] = {
       durability: 1,
       cargo: {},
-      fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null },
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
     }
     expect(startScan(state, 'galaxy-far', fastCtx).ok).toBe(true)
     const leg = Math.round(120_000 * (3 / 3.5))
@@ -252,14 +252,14 @@ describe('V14 存档迁移与续扫进度', () => {
     raw.version = 12
     const text = serializeSaveFile(state, 999)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(17)
+    expect(loaded.state.version).toBe(18)
     expect(loaded.state.exploredGalaxies).toEqual(['galaxy-hub'])
     expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null })
     expect(loaded.state.scanProgress).toEqual({})
     expect(loaded.state.wallet.isk).toBe(123_456)
     // 往返保存：新字段保留
     const again = loadSaveFile(serializeSaveFile(loaded.state, 1000))
-    expect(again.state.version).toBe(17)
+    expect(again.state.version).toBe(18)
     expect(again.state.exploredGalaxies).toEqual(['galaxy-hub'])
   })
 })
