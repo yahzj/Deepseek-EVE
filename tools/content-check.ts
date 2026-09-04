@@ -271,6 +271,7 @@ for (const m of MODULES) {
     // V17：炮台不再携带工业 bonus（火力参数 = 武器卡，见下方全参数检查）
     check(m.bonus === undefined, `炮台 ${m.id} 不应携带 bonus（V17 起炮台用武器参数）`)
     check(m.weaponSize === 'light' || m.weaponSize === 'heavy', `炮台 ${m.id} weaponSize 缺失或非法`)
+    check(m.damageType !== undefined && DMG_TYPES.has(m.damageType), `炮台 ${m.id} damageType 缺失或非法（V17.2 炮族制：固定弹种）`)
     check((m.ammoPerEngagement ?? 0) > 0 && Number.isInteger(m.ammoPerEngagement), `炮台 ${m.id} ammoPerEngagement 缺失或非法`)
     // V12：武器参数必填且值域合法
     check(m.maxRangeM !== undefined && m.maxRangeM > 0, `炮台 ${m.id} maxRangeM 缺失或非法`)

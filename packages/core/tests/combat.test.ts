@@ -191,9 +191,9 @@ describe('敌方换算与距离战术', () => {
 })
 
 describe('弹药', () => {
-  it('装载按库存比例（货仓优先）且总量不超过需求；退回仓库', () => {
+  it('V17.2 单型装载：只装炮台固定弹种（货仓优先、仓库兜底）；退回仓库', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
-    // 清掉初始赠送弹药，按本用例基线重设（60 仓动能 / 40 货仓高爆 / 100 仓等离子）
+    // 基线：60 仓轻动能 / 40 货仓轻高爆 / 100 仓轻等离子
     delete state.warehouse.items['ammo-kinetic-l']
     delete state.warehouse.items['ammo-explosive-l']
     delete state.warehouse.items['ammo-plasma-l']
@@ -201,17 +201,23 @@ describe('弹药', () => {
     state.fleet[state.shipId].cargo['ammo-explosive-l'] = 40
     state.warehouse.items['ammo-plasma-l'] = 100
     const ctx = makeTestCtx()
-    const loaded = loadAmmo(state, ctx, 'light', 100)
-    expect(loaded.kin + loaded.exp + loaded.pla).toBe(100)
-    expect(loaded.exp).toBe(20) // 100×40/200 比例 → 20（不足比例不掏空货仓）
-    expect(loaded.kin).toBe(30) // 60/200 比例 → 30
-    expect(state.fleet[state.shipId].cargo['ammo-explosive-l']).toBe(20) // 货仓优先扣，余 20
-    expect(state.warehouse.items['ammo-kinetic-l']).toBe(30)
-    refundAmmo(state, 'light', loaded)
+    // 高爆炮 → 只装高爆：需求 100、库存 40 → 40（货仓 40 全扣，仓/货归零，不碰其它型）
+    const loadedExp = loadAmmo(state, ctx, 'light', 'explosive', 100)
+    expect(loadedExp.exp).toBe(40)
+    expect(loadedExp.kin).toBe(0)
+    expect(loadedExp.pla).toBe(0)
+    expect(state.fleet[state.shipId].cargo['ammo-explosive-l'] ?? 0).toBe(0)
     expect(state.warehouse.items['ammo-kinetic-l']).toBe(60)
+    // 动能炮 → 需求 40：仓库扣 40（货仓无动能）
+    const loadedKin = loadAmmo(state, ctx, 'light', 'kinetic', 40)
+    expect(loadedKin.kin).toBe(40)
+    expect(state.warehouse.items['ammo-kinetic-l']).toBe(20)
+    // 全量退回 → 各自回到原处（退的是"装载时实扣"的计数：动能回仓 40、高爆回仓 40）
+    refundAmmo(state, 'light', loadedExp)
+    refundAmmo(state, 'light', loadedKin)
+    expect(state.warehouse.items['ammo-kinetic-l']).toBe(60)
+    expect(state.warehouse.items['ammo-explosive-l']).toBe(40)
     expect(state.warehouse.items['ammo-plasma-l']).toBe(100)
-    expect(state.warehouse.items['ammo-explosive-l']).toBe(20) // 退还入仓
-    expect(state.fleet[state.shipId].cargo['ammo-explosive-l']).toBe(20) // 货仓余量不动（合计 40）
   })
 
   it('开火弹型 = 剩余最多，平局按 kin→exp→pla', () => {

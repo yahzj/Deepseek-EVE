@@ -182,31 +182,33 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
   let slotEmptied = 0
   let bayMoved = 0
   let caliberEmptied = 0
-  // 1) 各船 fitted：目录外 id → 迁移替换，否则卸下退回；目录内炮台超口径 → 卸下退回
+  // 1) 各船 fitted：目录外 id → 迁移替换，否则卸下退回；迁移后（及合法装配）
+  //    若炮台超船体口径 → 卸下退回（V17.2：旧档无口径限制的历史装配）
   for (const ship of Object.values(state.fleet)) {
     const fitted = ship?.fitted
     if (!fitted) continue
     const shipDef = ship?.defId ? ctx.ships.get(ship.defId) : undefined
     const maxSize = shipDef ? shipMaxWeaponSize(shipDef) : 'light'
     for (const slot of MODULE_SLOTS) {
-      const id = fitted[slot]
+      let id = fitted[slot]
       if (!id) continue
       if (!ctx.modules.get(id)) {
         const next = V17_MODULE_MIGRATIONS[id]
         if (next && ctx.modules.get(next)) {
           fitted[slot] = next
           fittedMoved += 1
+          id = next
         } else {
           fitted[slot] = null
           state.moduleBay[id] = countModule(state, id) + 1
           slotEmptied += 1
+          continue
         }
-        continue
       }
-      // V17.2 口径清退：旧档超口径历史装配 → 卸下退回装备库
+      // V17.2 口径清退（含刚迁移进来的款）
       if (slot === 'turret' && shipDef) {
-        const def = ctx.modules.get(id)!
-        if (def.weaponSize !== undefined && WEAPON_RANK[def.weaponSize]! > WEAPON_RANK[maxSize]!) {
+        const def = ctx.modules.get(id)
+        if (def?.weaponSize !== undefined && WEAPON_RANK[def.weaponSize]! > WEAPON_RANK[maxSize]!) {
           fitted[slot] = null
           state.moduleBay[id] = countModule(state, id) + 1
           caliberEmptied += 1

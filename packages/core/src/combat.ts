@@ -423,20 +423,23 @@ export function loadAmmo(state: GameState, ctx: SimContext, size: WeaponSize, ty
   const key = ammoKeyOf(type)
   const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
   if (stock <= 0) return out
-  let need = Math.min(stock, total)
-  const fromCargo = Math.min(need, Math.floor(cargoItemsOf(state)[id] ?? 0))
+  let want = Math.min(stock, total)
+  let got = 0
+  const fromCargo = Math.min(want, Math.floor(cargoItemsOf(state)[id] ?? 0))
   if (fromCargo > 0) {
     removeItem(state, id, fromCargo)
-    need -= fromCargo
+    want -= fromCargo
+    got += fromCargo
   }
-  if (need > 0) {
-    const fromWare = Math.min(need, countWare(state, id))
+  if (want > 0) {
+    const fromWare = Math.min(want, countWare(state, id))
     if (fromWare > 0) {
       removeWare(state, id, fromWare)
-      need -= fromWare
+      want -= fromWare
+      got += fromWare
     }
   }
-  out[key] = total - need
+  out[key] = got
   return out
 }
 

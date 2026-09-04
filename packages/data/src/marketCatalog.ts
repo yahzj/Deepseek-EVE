@@ -63,7 +63,9 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-turret-civ', kind: 'module', refId: 'mod-turret-civ', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.4 },
   { key: 'mod-miner-1', kind: 'module', refId: 'mod-miner-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.4 },
   { key: 'mod-cargo-1', kind: 'module', refId: 'mod-cargo-1', rarity: 'common', basePrice: 26_000, demandMultiplier: 0.4 },
-  { key: 'mod-turret-1', kind: 'module', refId: 'mod-turret-1', rarity: 'common', basePrice: 36_000, demandMultiplier: 0.4 },
+  { key: 'mod-turret-kin-1', kind: 'module', refId: 'mod-turret-kin-1', rarity: 'common', basePrice: 36_000, demandMultiplier: 0.4 },
+  { key: 'mod-turret-exp-1', kind: 'module', refId: 'mod-turret-exp-1', rarity: 'common', basePrice: 42_000, demandMultiplier: 0.4 },
+  { key: 'mod-turret-pla-1', kind: 'module', refId: 'mod-turret-pla-1', rarity: 'common', basePrice: 44_000, demandMultiplier: 0.4 },
   // 战斗家族 MK1（V17 起真生效：护盾/装甲为分系专精三款、矢量推进器；低价鼓励勤换装）
   { key: 'mod-shield-kin-1', kind: 'module', refId: 'mod-shield-kin-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.4 },
   { key: 'mod-shield-exp-1', kind: 'module', refId: 'mod-shield-exp-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.4 },
@@ -91,11 +93,15 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   // MK2 装备（制造党自用为主；偶有现货）
   { key: 'mod-miner-2', kind: 'module', refId: 'mod-miner-2', rarity: 'rare', basePrice: 150_000, demandMultiplier: 0.35 },
   { key: 'mod-cargo-2', kind: 'module', refId: 'mod-cargo-2', rarity: 'rare', basePrice: 130_000, demandMultiplier: 0.35 },
-  { key: 'mod-turret-2', kind: 'module', refId: 'mod-turret-2', rarity: 'rare', basePrice: 240_000, demandMultiplier: 0.35 },
+  { key: 'mod-turret-kin-2', kind: 'module', refId: 'mod-turret-kin-2', rarity: 'rare', basePrice: 240_000, demandMultiplier: 0.35 },
+  { key: 'mod-turret-exp-2', kind: 'module', refId: 'mod-turret-exp-2', rarity: 'rare', basePrice: 280_000, demandMultiplier: 0.35 },
+  { key: 'mod-turret-pla-2', kind: 'module', refId: 'mod-turret-pla-2', rarity: 'rare', basePrice: 300_000, demandMultiplier: 0.35 },
   // MK3 攻坚装备（V10：无蓝图，市场专供）
   { key: 'mod-miner-3', kind: 'module', refId: 'mod-miner-3', rarity: 'rare', basePrice: 420_000, demandMultiplier: 0.35 },
   { key: 'mod-cargo-3', kind: 'module', refId: 'mod-cargo-3', rarity: 'rare', basePrice: 380_000, demandMultiplier: 0.35 },
-  { key: 'mod-turret-3', kind: 'module', refId: 'mod-turret-3', rarity: 'rare', basePrice: 620_000, demandMultiplier: 0.35 },
+  { key: 'mod-turret-kin-3', kind: 'module', refId: 'mod-turret-kin-3', rarity: 'rare', basePrice: 620_000, demandMultiplier: 0.35 },
+  { key: 'mod-turret-exp-3', kind: 'module', refId: 'mod-turret-exp-3', rarity: 'rare', basePrice: 700_000, demandMultiplier: 0.35 },
+  { key: 'mod-turret-pla-3', kind: 'module', refId: 'mod-turret-pla-3', rarity: 'rare', basePrice: 750_000, demandMultiplier: 0.35 },
   // 战斗家族 MK2/MK3（V17：分系专精 ×3 款；MK3 市场专供）
   { key: 'mod-shield-kin-2', kind: 'module', refId: 'mod-shield-kin-2', rarity: 'rare', basePrice: 20_000, demandMultiplier: 0.35 },
   { key: 'mod-shield-exp-2', kind: 'module', refId: 'mod-shield-exp-2', rarity: 'rare', basePrice: 20_000, demandMultiplier: 0.35 },

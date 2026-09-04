@@ -130,6 +130,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '鲸王级采矿艇',
     role: 'industrial',
     tier: 4,
+    maxWeaponSize: 'heavy', // V17.2：重装工业旗舰可上重型炮
     cargoM3: 10000,
     cycleSeconds: 8,
     oreUnitsPerCycle: 58,
@@ -208,6 +209,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '巨灵鲸级旗舰货舰',
     role: 'industrial',
     tier: 4,
+    maxWeaponSize: 'heavy', // V17.2：旗舰货舰可上重型炮
     cargoM3: 26000,
     cycleSeconds: 11,
     oreUnitsPerCycle: 44,

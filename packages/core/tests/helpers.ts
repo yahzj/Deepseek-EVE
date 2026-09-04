@@ -120,6 +120,7 @@ export function moduleDef(
   bonus: number,
   opts?: {
     weaponSize?: 'light' | 'heavy'
+    damageType?: DamageType
     maxRangeM?: number
     minRangeM?: number
     hitRate?: number
@@ -142,6 +143,7 @@ export function moduleDef(
     bonus,
     description: '测试用装备',
     ...(opts?.weaponSize !== undefined ? { weaponSize: opts.weaponSize } : {}),
+    ...(opts?.damageType !== undefined ? { damageType: opts.damageType } : {}),
     ...(opts?.maxRangeM !== undefined ? { maxRangeM: opts.maxRangeM } : {}),
     ...(opts?.minRangeM !== undefined ? { minRangeM: opts.minRangeM } : {}),
     ...(opts?.hitRate !== undefined ? { hitRate: opts.hitRate } : {}),

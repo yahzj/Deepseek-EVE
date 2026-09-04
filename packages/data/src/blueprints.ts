@@ -165,8 +165,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
   {
     id: 'bp-turret-3',
-    name: '舰载攻坚炮台 MK3 蓝图',
-    moduleId: 'mod-turret-3',
+    name: '攻坚炮台 MK3（动能）蓝图',
+    moduleId: 'mod-turret-kin-3',
     materials: [
       { itemId: 'min-tritanium', count: 22_000 },
       { itemId: 'min-mexallon', count: 4_000 },

@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType, WeaponSize } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, SLOT_LABELS, shipRoleLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, SLOT_LABELS, shipMaxWeaponSize, shipRoleLabel } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -64,6 +64,14 @@ function gapTo25Example(add: DamageResists | undefined): string {
  * 装备一行式短效果（装配台槽位行 / 装备库行共用；V17：各战斗家族显示真实进公式参数）。
  * 空槽文本由调用方自给；抗性为"缺口削减"值（合成规则见 moduleInfoLines 注释行）。
  */
+/** 炮台配弹文本（V17.2 炮族：口径 + 固定弹种） */
+export function turretAmmoText(mod: ModuleDef): string {
+  const size = mod.weaponSize !== undefined ? SIZE_LABEL[mod.weaponSize] : '—'
+  const type = DMG_LABEL[mod.damageType ?? 'kinetic'] ?? mod.damageType
+  return `${size}${type}弹`
+}
+
+/** 短效文案（装配台槽位行 / 装备库行 / 手册网格共用） */
 export function moduleShortEffect(mod: ModuleDef): string {
   switch (mod.slot) {
     case 'miner':
@@ -71,7 +79,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'cargo':
       return `货舱容量 +${pctOpt(mod.bonus)}`
     case 'turret': {
-      const size = mod.weaponSize ? `${SIZE_LABEL[mod.weaponSize]}弹 · ` : ''
+      const size = mod.weaponSize ? `${turretAmmoText(mod)} · ` : ''
       return `${size}射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
     }
     case 'shield': {
@@ -167,6 +175,8 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     if (ship.evasion !== undefined) lines.push({ k: '回避率', v: `${Math.round(ship.evasion * 100)}%` })
   }
   lines.push({ k: '槽位', v: slotListText() })
+  // V17.2：炮口径适配（armed/armored = 重，其余 = 轻；显式覆盖优先）
+  lines.push({ k: '适配炮口径', v: `${SIZE_LABEL[shipMaxWeaponSize(ship)]}型炮` })
   if (ship.cpu !== undefined) lines.push({ k: 'CPU', v: fmt(ship.cpu) })
   lines.push({ k: '无人机舱', v: ship.droneBayM3 ? `${fmt(ship.droneBayM3)} m³` : '无' })
   return lines
@@ -227,7 +237,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: '说明', v: '弃船逃生 / 跃迁充能仍随船体动力，不受模块影响' })
   } else if (mod.slot === 'turret') {
     const parts: string[] = []
-    if (mod.weaponSize !== undefined) parts.push(`配弹：${SIZE_LABEL[mod.weaponSize]}弹`)
+    if (mod.weaponSize !== undefined) parts.push(`配弹：${turretAmmoText(mod)}（固定弹种，出发只装此型）`)
     if (mod.ammoPerEngagement !== undefined) parts.push(`每场耗弹基数 ×${mod.ammoPerEngagement}`)
     if (parts.length > 0) lines.push({ k: '弹药', v: parts.join('　') })
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
