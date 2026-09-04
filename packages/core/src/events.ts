@@ -152,7 +152,10 @@ function fireFlavor(state: GameState, table: readonly FlavorEntry[]): void {
   const entry = table[nextInt(state.rng, table.length)]!
   let amount: number | undefined
   if (entry.iskMin !== undefined && entry.iskMax !== undefined) {
-    amount = entry.iskMin + nextInt(state.rng, entry.iskMax - entry.iskMin + 1)
+    // 事件分红学（event-dividend）：随机事件现金奖励 +15%/级
+    const divLv = Math.min(5, state.skills.trained['event-dividend'] ?? 0)
+    const raw = entry.iskMin + nextInt(state.rng, entry.iskMax - entry.iskMin + 1)
+    amount = divLv > 0 ? Math.round(raw * (1 + 0.15 * divLv)) : raw
     state.wallet.isk += amount
   }
   logEvent(state, entry.text, amount)

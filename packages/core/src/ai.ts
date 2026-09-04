@@ -20,7 +20,7 @@ import { addWare } from './inventory'
 import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOutput, shipInReturn } from './mining'
-import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, shortestTravelMinutes, standingOf } from './expedition'
+import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
@@ -551,9 +551,11 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     state.wallet.isk += reward
     // AI 结算不发放声望、不写入首胜清单：协会声望只属于"亲手完成"（悬赏卡与指派解锁均以主控首胜为准）
     const lootText: string[] = []
+    const lootMul = lootFactor(state)
     for (const row of anomaly.loot) {
-      addWare(state, row.itemId, row.units)
-      lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${row.units}`)
+      const units = Math.max(1, Math.round(row.units * lootMul))
+      addWare(state, row.itemId, units)
+      lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     const dropText = rollAiCoreDrop(state, anomaly.threat, ctx)
     addLog(

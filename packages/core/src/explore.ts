@@ -23,11 +23,11 @@ import { shortestTravelMinutes, travelLegMs } from './travel'
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
 
-/** 信号分析学（signal-analysis，2026-09-04 补全）：每级 −8% 就地扫描窗口（满级 −40%，下限 6 分钟）。
- * 扫描进度（scanProgress）仍按毫秒累计；skill 只缩短单次所需窗口，续扫百分比按当前生效窗口折算。 */
+/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）乘算：扫描窗口（总下限 40%） */
 export function scanWindowMsOf(state: GameState): number {
-  const lv = Math.min(5, state.skills.trained['signal-analysis'] ?? 0)
-  const factor = Math.max(0.6, 1 - 0.08 * lv)
+  const aLv = Math.min(5, state.skills.trained['signal-analysis'] ?? 0)
+  const bLv = Math.min(5, state.skills.trained['signal-filtering'] ?? 0)
+  const factor = Math.max(0.4, (1 - 0.08 * aLv) * (1 - 0.06 * bLv))
   return Math.round(SCAN_WINDOW_MS * factor)
 }
 
@@ -129,7 +129,10 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     addLog(state, 'info', '开始扫描探索（调试模式）：1 秒后录入情报并停留。')
     return { ok: true }
   }
-  const legMs = travelLegMs(state, ctx, travelMin)
+  let legMs = travelLegMs(state, ctx, travelMin)
+  // 星图测绘学（cartography）：扫描去程 −6%/级
+  const mapLv = Math.min(5, state.skills.trained['cartography'] ?? 0)
+  if (mapLv > 0) legMs = Math.max(1, Math.round(legMs * (1 - 0.06 * mapLv)))
   // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress；窗口按信号分析学折算）
   const effWin = scanWindowMsOf(state)
   const doneMs = Math.min(effWin - 1, Math.max(0, Math.floor(state.scanProgress[galaxyId] ?? 0)))

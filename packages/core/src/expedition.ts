@@ -112,7 +112,10 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
 /** 出发抽"途中事件"（沿用 M5；去程过半触发） */
 function rollTravelEvent(state: GameState, ctx: SimContext): string | null {
   if (ctx.travelEvents.length === 0) return null
-  if (nextRandom(state.rng) >= ctx.balance.travelEventChance) return null
+  // 星际奇遇学（galactic-happenings）：途中事件触发率 ×1.15/级
+  const luckLv = Math.min(5, state.skills.trained['galactic-happenings'] ?? 0)
+  const chance = ctx.balance.travelEventChance * (1 + 0.15 * luckLv)
+  if (nextRandom(state.rng) >= chance) return null
   const total = ctx.travelEvents.reduce((sum, e) => sum + e.weight, 0)
   if (total <= 0) return ctx.travelEvents[0]!.id
   let roll = nextRandom(state.rng) * total
@@ -156,6 +159,12 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
     addItem(state, effect.itemId, effect.units)
     addLog(state, 'info', `${eventDef.text}（获得 ${def.name}×${effect.units}）`)
   }
+}
+
+/** 漂流物打捞学（salvage-diving）：远征缴获物资数量系数，每级 +12%（主控与 AI 同享） */
+export function lootFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
+  return 1 + 0.12 * lv
 }
 
 /** 赏金猎手学（bounty-hunting，2026-09-04 补全）：悬赏奖金加成系数，每级 +8%（满级 ×1.4） */
@@ -340,9 +349,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       addLog(state, 'trade', `🎁 ${text}（+${bonus.toLocaleString('zh-CN')} ISK）`)
     }
     const lootText: string[] = []
+    const lootMul = lootFactor(state)
     for (const row of anomaly.loot) {
-      addItem(state, row.itemId, row.units)
-      lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${row.units}`)
+      const units = Math.max(1, Math.round(row.units * lootMul))
+      addItem(state, row.itemId, units)
+      lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     state.wallet.isk += reward
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）

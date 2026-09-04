@@ -245,6 +245,41 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 2,
     description: '赏金评估与协会渠道：完成悬赏（含 AI 副船远征）的奖金每级 +⟦8%⟧（满级 +⟦40%⟧，在随机浮动之上乘算）。',
   },
+  {
+    id: 'marketing',
+    name: '营销学',
+    group: '贸易',
+    rank: 2,
+    description: '货物包装与渠道推销：市场卖出结算价每级 +⟦1.2%⟧（满级 +⟦6%⟧，与协会声望加成乘算）。',
+  },
+  {
+    id: 'source-sweeping',
+    name: '现货抢购学',
+    group: '贸易',
+    rank: 3,
+    description: '供应链情报网络：市场稀有/限定订单的刷新频率每级 ×⟦1.25⟧（满级约 ×⟦4⟧）。',
+  },
+  {
+    id: 'secondhand-market',
+    name: '二手市场学',
+    group: '贸易',
+    rank: 2,
+    description: '收藏品估值与人脉：出售蓝图书的回价每级 +⟦8%⟧（满级 +⟦40%⟧）。',
+  },
+  {
+    id: 'galactic-happenings',
+    name: '星际奇遇学',
+    group: '贸易',
+    rank: 3,
+    description: '奇闻轶事的嗅觉：远征途中遭遇随机事件的概率每级 ×⟦1.15⟧（满级约 ×⟦2⟧）。',
+  },
+  {
+    id: 'event-dividend',
+    name: '事件分红学',
+    group: '贸易',
+    rank: 2,
+    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧。',
+  },
 
   // ───────── 探索（2026-09-04 新组） ─────────
   {
@@ -253,6 +288,41 @@ export const SKILLS: readonly SkillDef[] = [
     group: '探索',
     rank: 2,
     description: '未知信号解读与锁定：就地扫描窗口每级缩短 ⟦8%⟧（满级 −⟦40%⟧）。',
+  },
+  {
+    id: 'cartography',
+    name: '星图测绘学',
+    group: '探索',
+    rank: 2,
+    description: '航线标定与跳跃窗优化：前往扫描点的航行耗时每级缩短 ⟦6%⟧。',
+  },
+  {
+    id: 'signal-filtering',
+    name: '信号过滤学',
+    group: '探索',
+    rank: 2,
+    description: '干扰抑制与信号提纯：就地扫描窗口每级再缩短 ⟦6%⟧（与信号分析学乘算，总下限 40%）。',
+  },
+  {
+    id: 'salvage-diving',
+    name: '漂流物打捞学',
+    group: '探索',
+    rank: 3,
+    description: '残骸打捞与战利品收集：远征缴获的物资数量每级 +⟦12%⟧（主控与 AI 同享）。',
+  },
+  {
+    id: 'seizure-appraisal',
+    name: '缴获评估学',
+    group: '探索',
+    rank: 2,
+    description: '战利品估值与销赃渠道：低安遭遇击退/大捷的缴获 ISK 每级 +⟦10%⟧。',
+  },
+  {
+    id: 'lowsec-survival',
+    name: '低安生存学',
+    group: '探索',
+    rank: 3,
+    description: '危险星域的保命之道：低安被抢的损失上限每级 −⟦12%⟧（满级 −⟦60%⟧，货与现金同享）。',
   },
 ]
 

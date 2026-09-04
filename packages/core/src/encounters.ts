@@ -135,8 +135,11 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
   const r = nextRandom(state.rng)
   const suffix = viaFlee ? '（快速脱离）' : '（无人应答，自动处置）'
   const fleetShip = state.fleet[shipId]
+  // 缴获评估学 ×1.1/级；低安生存学：被抢上限 −12%/级（货与现金同享）
+  const seizeF = 1 + 0.1 * Math.min(5, state.skills.trained['seizure-appraisal'] ?? 0)
+  const survF = 1 - 0.12 * Math.min(5, state.skills.trained['lowsec-survival'] ?? 0)
   if (r < wWin) {
-    const loot = Math.max(1, Math.round(threat * (bal.lootIskMin + nextRandom(state.rng) * (bal.lootIskMax - bal.lootIskMin))))
+    const loot = Math.max(1, Math.round(threat * (bal.lootIskMin + nextRandom(state.rng) * (bal.lootIskMax - bal.lootIskMin)) * seizeF))
     state.wallet.isk += loot
     addLog(state, 'info', `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} ISK，全身而退。`)
   } else if (r < wWin + wLose) {
@@ -158,7 +161,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     let takenUnits = 0
     if (fleetShip) {
       const total = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
-      const take = Math.floor(total * bal.lootTakenMaxPct * nextRandom(state.rng))
+      const take = Math.floor(total * bal.lootTakenMaxPct * survF * nextRandom(state.rng))
       let rest = take
       for (const key of Object.keys(fleetShip.cargo)) {
         if (rest <= 0) break
@@ -170,7 +173,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
       }
       takenUnits = take - rest
     }
-    const takenIsk = takenUnits <= 0 ? Math.floor(state.wallet.isk * bal.iskTakenMaxPct * nextRandom(state.rng)) : 0
+    const takenIsk = takenUnits <= 0 ? Math.floor(state.wallet.isk * bal.iskTakenMaxPct * survF * nextRandom(state.rng)) : 0
     state.wallet.isk = Math.max(0, state.wallet.isk - takenIsk)
     addLog(
       state,
@@ -199,7 +202,12 @@ function settleFight(state: GameState, ctx: SimContext): void {
   if (battle && battle.ended === 'me') {
     const loot = Math.max(
       1,
-      Math.round(enc.threat * (bal.lootIskMin + nextRandom(state.rng) * (bal.lootIskMax - bal.lootIskMin)) * 1.6),
+      Math.round(
+        enc.threat *
+          (bal.lootIskMin + nextRandom(state.rng) * (bal.lootIskMax - bal.lootIskMin)) *
+          1.6 *
+          (1 + 0.1 * Math.min(5, state.skills.trained['seizure-appraisal'] ?? 0)),
+      ),
     )
     state.wallet.isk += loot
     addLog(state, 'info', `🏆 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK。`)
@@ -213,7 +221,9 @@ function settleFight(state: GameState, ctx: SimContext): void {
     let takenUnits = 0
     if (fleetShip && nextRandom(state.rng) < 0.5) {
       const total = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
-      const take = Math.floor(total * bal.lootTakenMaxPct * (0.5 + nextRandom(state.rng) * 0.5))
+      const take = Math.floor(
+        total * bal.lootTakenMaxPct * (0.5 + nextRandom(state.rng) * 0.5) * (1 - 0.12 * Math.min(5, state.skills.trained['lowsec-survival'] ?? 0)),
+      )
       let rest = take
       for (const key of Object.keys(fleetShip.cargo)) {
         if (rest <= 0) break

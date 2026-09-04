@@ -409,8 +409,9 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       }
     }
   } else if (def.rarity === 'rare') {
-    // 稀有订单：低频供应（船 1 艘/次，其余 1~3 件）
-    if (nextRandom(state.rng) < bal.rareWindowChance) {
+    // 稀有订单：低频供应（船 1 艘/次，其余 1~3 件）；现货抢购学 ×1.25/级
+    const sweepF = 1 + 0.25 * Math.min(5, state.skills.trained['source-sweeping'] ?? 0)
+    if (nextRandom(state.rng) < bal.rareWindowChance * sweepF) {
       const qty = def.kind === 'ship' ? 1 : 1 + Math.floor(nextRandom(state.rng) * 3)
       pushSell(Math.round(sellPrice(def, L) * jitter()), qty)
     }
@@ -418,7 +419,8 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
     if (sellable && nextRandom(state.rng) < 0.03) pushBuy(Math.round(buyPrice(def, L)), 1)
   } else {
     // exotic 限定奇货：一闪而过（4 分钟寿命 + 极低刷新概率 = 天价奇货）
-    if (nextRandom(state.rng) < bal.exoticWindowChance) pushSell(Math.round(sellPrice(def, L) * jitter()), 1)
+    const sweepF = 1 + 0.25 * Math.min(5, state.skills.trained['source-sweeping'] ?? 0)
+    if (nextRandom(state.rng) < bal.exoticWindowChance * sweepF) pushSell(Math.round(sellPrice(def, L) * jitter()), 1)
     if (sellable && nextRandom(state.rng) < 0.01) pushBuy(Math.round(buyPrice(def, L)), 1)
   }
 }
@@ -633,6 +635,18 @@ export function refundToStorage(state: GameState, ctx: SimContext, goodKey: stri
  * 前置：调用方已把 qty 锁定进 escrowItems（或经 placeSellOrder 挂单）。
  * 返回 total = 税后净入账（含声望加成，扣贸易税）。
  */
+
+/** 卖出技能加成系数（营销学 +1.2%/级；蓝图书另乘 二手市场学 +8%/级）——独立于声望加成 */
+export function marketSellSkillMult(state: GameState, kind: MarketGoodDef['kind'] | undefined): number {
+  let mult = 1
+  const mktLv = Math.min(5, state.skills.trained['marketing'] ?? 0)
+  if (mktLv > 0) mult *= 1 + 0.012 * mktLv
+  if (kind === 'blueprint') {
+    const shLv = Math.min(5, state.skills.trained['secondhand-market'] ?? 0)
+    if (shLv > 0) mult *= 1 + 0.08 * shLv
+  }
+  return mult
+}
 export function sellAtMarket(
   state: GameState,
   ctx: SimContext,
@@ -660,8 +674,8 @@ export function sellAtMarket(
     if (npc.qty <= 0) buyList.splice(idx, 1)
   }
   const sold = qty - remaining
-  const mult = sellStandingMult(state, def)
-  const gross = Math.round(total * mult) // 毛额（含声望加成）
+  const mult = sellStandingMult(state, def) * marketSellSkillMult(state, def.kind) // 声望加成 × 卖出技能加成
+  const gross = Math.round(total * mult) // 毛额
   const net = netAfterTax(state, ctx, gross) // 税后净入账
   const tax = gross - net
   state.wallet.isk += net

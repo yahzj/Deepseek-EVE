@@ -18,6 +18,8 @@ import { repairCostIsk } from '../src/shipyard'
 import { bountyRewardFactor } from '../src/expedition'
 import { simulateOffline } from '../src/simulation'
 import { enqueueSkill, HIDDEN_SKILL_IDS } from '../src/engine'
+import { marketSellSkillMult } from '../src/market'
+import { lootFactor } from '../src/expedition'
 
 const GAS_X: ItemDef = {
   id: 'gas-x',
@@ -244,5 +246,26 @@ describe('技能补全 P1：离线作业管理学（结算上限 +8%/级）', ()
     s5.skills.trained['offline-ops'] = 5
     simulateOffline(s5, now - 12 * 3_600_000, now, makeTestCtx())
     expect(s5.gameMs).toBe(Math.round(8 * 3_600_000 * 1.4)) // lv5：cap ≈ 11.2h
+  })
+})
+
+describe('技能补全 P2：市场/远征/扫描系数', () => {
+  it('营销学卖出乘数与二手市场蓝图乘数（独立于声望）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 14 })
+    expect(marketSellSkillMult(state, 'item')).toBe(1)
+    state.skills.trained['marketing'] = 5
+    expect(marketSellSkillMult(state, 'item')).toBeCloseTo(1.06, 10)
+    state.skills.trained['secondhand-market'] = 5
+    expect(marketSellSkillMult(state, 'blueprint')).toBeCloseTo(1.06 * 1.4, 10)
+    expect(marketSellSkillMult(state, 'item')).toBeCloseTo(1.06, 10) // 非蓝图不乘二手
+  })
+  it('漂流物打捞学：远征缴获乘数（满级 ×1.6）；信号过滤学与信号分析乘算（双满窗口 42%）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 15 })
+    expect(lootFactor(state)).toBe(1)
+    state.skills.trained['salvage-diving'] = 5
+    expect(lootFactor(state)).toBe(1.6)
+    state.skills.trained['signal-analysis'] = 5
+    state.skills.trained['signal-filtering'] = 5
+    expect(scanWindowMsOf(state)).toBe(Math.round(600_000 * 0.6 * 0.7)) // 252000
   })
 })
