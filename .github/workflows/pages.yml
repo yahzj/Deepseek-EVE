@@ -26,7 +26,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # 网页构建不需要 Electron：跳过 postinstall，避免 CI 下载 ~100MB Electron 二进制卡住
+        # （vite 依赖的 esbuild/rollup 均自带平台二进制包，不受影响）
+        run: npm ci --ignore-scripts
 
       - name: Build web bundle
         run: npm run build:web -w @whale/desktop
