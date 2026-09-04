@@ -1,0 +1,31 @@
+{
+  "name": "@whale/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./out/main/index.js",
+  "description": "桌面外壳（Electron）：窗口、存档读写，界面与游戏逻辑都来自各 packages。",
+  "dependencies": {
+    "@whale/core": "0.1.0",
+    "@whale/data": "0.1.0",
+    "@whale/ui": "0.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.3.1",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.3"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "build:web": "vite build --config web.vite.config.ts",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit"
+  }
+}

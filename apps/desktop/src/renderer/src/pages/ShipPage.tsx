@@ -1,0 +1,565 @@
+/**
+ * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
+ */
+import { useState } from 'react'
+import {
+  AI_CORE_ORDER,
+  aiCoreName,
+  aiEfficiency,
+  aiSlotsUsed,
+  countAiCore,
+  goodLockedReason,
+  idleAiShipIds,
+  isExplored,
+  marketGoodOf,
+  marketQuote,
+  maxAiSlots,
+  shipRoleLabel,
+} from '@whale/core'
+import type { AiCoreType, FleetShipState } from '@whale/core'
+import { aiWinPreview, durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
+import { Panel } from '@whale/ui'
+import { ShipHover } from '../ui/shipInfo'
+import type { PageProps } from './common'
+import { isk } from './common'
+
+/** 市场稀有度中文标签 */
+function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
+  return rarity === 'common' ? '常驻' : rarity === 'rare' ? '稀有' : '限定奇货'
+}
+
+export function ShipPage({ engine, onToast }: PageProps) {
+  const state = engine.state
+  const ctx = engine.ctx
+  // T5：当前展开出售确认的船（同时只展开一艘）
+  const [sellConfirmId, setSellConfirmId] = useState<string | null>(null)
+  // T7：扫描在途换船＝警告确认（模式甲：确认后先终止扫描——进度保留——再切换）
+  const [scanSwitchId, setScanSwitchId] = useState<string | null>(null)
+  // T5-B：正在改名（输入框展开）的船实例 + 草稿
+  const [renameId, setRenameId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+
+  /** 舰队里所有船实例（v17：同型多艘各自成卡；当前驾驶在前） */
+  const fleetEntries = Object.entries(state.fleet)
+    .map(([uid, entry]) => ({ uid, ship: entry, def: ctx.ships.get(entry.defId ?? uid) }))
+    .filter((x): x is { uid: string; ship: FleetShipState; def: NonNullable<ReturnType<typeof ctx.ships.get>> } => x.def !== undefined)
+    .sort(
+      (a, b) =>
+        Number(b.uid === state.shipId) - Number(a.uid === state.shipId) ||
+        a.def.tier - b.def.tier ||
+        a.uid.localeCompare(b.uid),
+    )
+
+  function handleSwitch(id: string): void {
+    // 扫描探索在途：先弹确认（终止扫描=已扫窗口进度保留，可续扫），确认后才执行
+    if (state.scanning.active) {
+      setScanSwitchId(id)
+      return
+    }
+    const r = engine.changeShipAt(id)
+    if (!r.ok) onToast(r.error ?? '切换失败', true)
+  }
+
+  /** 确认：终止扫描（进度保留）→ 切换驾驶 */
+  function confirmScanSwitch(id: string): void {
+    setScanSwitchId(null)
+    const stop = engine.stopScanNow()
+    if (!stop.ok) {
+      onToast(stop.error ?? '终止扫描失败，未切换。', true)
+      return
+    }
+    const r = engine.changeShipAt(id)
+    if (!r.ok) onToast(r.error ?? '切换失败', true)
+    else onToast('已终止扫描（进度保留，可续扫）并切换驾驶。')
+  }
+
+  function handleRepair(id: string): void {
+    const r = engine.repairShipAt(id)
+    if (!r.ok) onToast(r.error ?? '维修失败', true)
+    else onToast('维修完成，耐久已回满。')
+  }
+
+  /** T5：锁定/解锁防误售 */
+  function handleToggleLock(id: string, currentlyLocked: boolean): void {
+    const r = engine.lockShipAt(id, !currentlyLocked)
+    if (!r.ok) onToast(r.error ?? '操作失败', true)
+    else onToast(currentlyLocked ? '已解锁：恢复可出售。' : '已锁定：此船不可出售（防止误售）。')
+  }
+
+  function confirmSell(id: string): void {
+    const r = engine.sellShipAt(id)
+    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    else onToast('出售指令已受理：有收购单即时成交；没有则自动挂卖单（可撤单退回机库）。')
+    setSellConfirmId(null)
+  }
+
+  /** 开始改名（恢复默认名 = 直接提交 null） */
+  function startRename(id: string, currentCustom: string | null | undefined): void {
+    setRenameId(id)
+    setRenameDraft(currentCustom ?? '')
+  }
+  function submitRename(id: string, name: string | null): void {
+    const r = engine.renameShipAt(id, name)
+    if (!r.ok) onToast(r.error ?? '改名失败', true)
+    else onToast(name === null ? '已恢复默认船名。' : `已命名为「${name.trim()}」。`)
+    setRenameId(null)
+    setRenameDraft('')
+  }
+
+  function handleBuy(id: string): void {
+    const r = engine.buyShipAt(id)
+    if (!r.ok) onToast(r.error ?? '购买失败', true)
+    else onToast('订单已受理：有现货立即入坞登舰；无现货已挂收购单（到货自动入机库，可撤单）。')
+  }
+
+  /** 出售确认前的本船预检：返回 { 模块名列表, 货仓单位 }（两者有任一即禁售并醒目提示） */
+  function sellBlockers(shipState: FleetShipState | undefined): { modules: string[]; cargoUnits: number } {
+    const modules: string[] = []
+    if (shipState) {
+      for (const [slot, modId] of Object.entries(shipState.fitted)) {
+        if (modId !== null) {
+          modules.push(engine.ctx.modules.get(modId)?.name ?? modId)
+        }
+      }
+    }
+    const cargoUnits = Object.values(shipState?.cargo ?? {}).reduce((a, b) => a + b, 0)
+    return { modules, cargoUnits }
+  }
+
+  return (
+    <div className="page-stack">
+      {/* ───── 我的舰队 ───── */}
+      <Panel
+        title="我的舰队"
+        right={
+          <span className="app-dim">
+            {Object.keys(state.fleet).length} 艘 · 当前驾驶：
+            {shipDisplayName(state, ctx, state.shipId)}
+          </span>
+        }
+      >
+        {scanSwitchId ? (
+          <div className="app-sell-confirm" style={{ marginTop: 0, marginBottom: 8 }}>
+            <div className="app-sell-warn" style={{ background: 'transparent' }}>
+              ⚠ 扫描探索往返途中：切换驾驶将终止本次扫描（已扫窗口进度保留，可对该星系续扫）。
+            </div>
+            <div className="app-sell-confirm-title">确认切换至「{shipDisplayName(state, ctx, scanSwitchId)}」？</div>
+            <div className="app-sell-confirm-btns">
+              <button className="app-btn is-small is-warn" onClick={() => confirmScanSwitch(scanSwitchId)}>
+                终止扫描并切换
+              </button>
+              <button className="app-btn is-small" onClick={() => setScanSwitchId(null)}>
+                取消
+              </button>
+            </div>
+          </div>
+        ) : null}
+        <div className="app-ship-list">
+          {fleetEntries.map(({ uid, ship: shipState, def }) => {
+            const dur = durabilityOf(state, uid)
+            const isCurrent = uid === state.shipId
+            const repairCost = repairCostIsk(state, uid, engine.ctx)
+            const isWorking = uid in state.aiAssignments
+            const isLockedShip = state.shipLocks[uid] === true
+            const displayName = shipDisplayName(state, engine.ctx, uid)
+            const isRenaming = renameId === uid
+            const blockers = sellBlockers(shipState)
+            const blockCount = blockers.modules.length + (blockers.cargoUnits > 0 ? 1 : 0)
+            // 出售估价：当前收购价（无报价就不写死数字）
+            const sellGood = marketGoodOf(engine.ctx, 'ship', def.id)
+            const sellBuy = sellGood ? marketQuote(state, engine.ctx, sellGood.key).buy : undefined
+            const canSell = !isCurrent && !isWorking && !isLockedShip
+            return (
+              <ShipHover key={uid} ship={def} block>
+                <div className={`app-ship-card${isCurrent ? ' is-current' : ''}`}>
+                <div className="app-ship-top">
+                  <span className="app-ship-name">
+                    {displayName}
+                    <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
+                    {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
+                    {isLockedShip ? (
+                      <em className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
+                        🔒 锁定
+                      </em>
+                    ) : null}
+                  </span>
+                  <span className="app-ship-top-right">
+                    {isCurrent ? (
+                      <span className="app-chip">驾驶中</span>
+                    ) : isWorking ? (
+                      <span className="app-chip">AI 执勤中</span>
+                    ) : null}
+                    {!isRenaming ? (
+                      <button
+                        className="app-btn is-small"
+                        title={shipState.customName ? `已自定义名称——点击改名（或恢复默认）` : '自由改名（免费，10 字内，可重名；同型默认自动带 #N）'}
+                        onClick={() => startRename(uid, shipState.customName)}
+                      >
+                        ✏️ 改名
+                      </button>
+                    ) : null}
+                    <button
+                      className={`app-btn is-small app-lock-btn${isLockedShip ? ' is-warn' : ''}`}
+                      title={isLockedShip ? '已锁定防误售——点击解锁' : '锁定此船，防止误售（锁定后仍可驾驶/派 AI）'}
+                      onClick={() => handleToggleLock(uid, isLockedShip)}
+                    >
+                      {isLockedShip ? '🔓 解锁' : '🔒 锁定'}
+                    </button>
+                  </span>
+                </div>
+                {isRenaming ? (
+                  <div className="app-rename-row">
+                    <input
+                      className="app-input app-rename-input"
+                      value={renameDraft}
+                      maxLength={10}
+                      autoFocus
+                      placeholder="新船名（10 字内，允许重名）"
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') submitRename(uid, renameDraft)
+                        else if (e.key === 'Escape') setRenameId(null)
+                      }}
+                    />
+                    <button
+                      className="app-btn is-small is-primary"
+                      disabled={renameDraft.trim().length === 0}
+                      onClick={() => submitRename(uid, renameDraft)}
+                    >
+                      确定
+                    </button>
+                    {shipState.customName ? (
+                      <button className="app-btn is-small" onClick={() => submitRename(uid, null)}>
+                        恢复默认名
+                      </button>
+                    ) : null}
+                    <button className="app-btn is-small" onClick={() => setRenameId(null)}>
+                      取消
+                    </button>
+                  </div>
+                ) : null}
+                <div className="app-ship-spec">
+                  货舱 {def.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {def.cycleSeconds} 秒 × {def.oreUnitsPerCycle} 单位 · 动力 {Math.round(def.agility * 100)}%
+                </div>
+                <div className="app-dur-row">
+                  <div className="app-dur-track">
+                    <div className="app-dur-fill" style={{ width: `${Math.round(dur * 100)}%` }} />
+                  </div>
+                  <span className={`app-dur-text${dur < 0.5 ? ' is-bad' : dur < 1 ? ' is-mid' : ''}`}>
+                    耐久 {Math.round(dur * 100)}%
+                  </span>
+                  {dur < 1 && !isWorking ? (
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => handleRepair(uid)}
+                      disabled={state.wallet.isk < repairCost}
+                      title={`维修需 ${repairCost.toLocaleString('zh-CN')} ISK`}
+                    >
+                      维修 {repairCost.toLocaleString('zh-CN')}
+                    </button>
+                  ) : null}
+                </div>
+                {canSell ? (
+                  sellConfirmId === uid ? (
+                    /* T5 二次确认：醒目标出货舱/装配未清空的阻止原因 */
+                    <div className="app-sell-confirm">
+                      <div className="app-sell-confirm-title">确认出售「{displayName}」？</div>
+                      <div className="app-dim app-sell-confirm-note">
+                        将按当前市场收购价即时成交；没有收购单时自动转为限价卖单（可随时撤销退回机库）。
+                        {sellBuy !== undefined ? ` 预计到手约 ${isk(sellBuy)} ISK（税后以实际成交计）。` : ''}
+                      </div>
+                      {blockers.modules.length > 0 ? (
+                        <div className="app-sell-warn">
+                          ⚠ 该船仍装配着装备（{blockers.modules.join('、')}），必须先卸下才能出售！
+                        </div>
+                      ) : null}
+                      {blockers.cargoUnits > 0 ? (
+                        <div className="app-sell-warn">
+                          ⚠ 货仓里还有 {blockers.cargoUnits.toLocaleString('zh-CN')} 单位货物——请先清空或卸入仓库！
+                        </div>
+                      ) : null}
+                      <div className="app-sell-confirm-btns">
+                        <button
+                          className="app-btn is-small is-warn"
+                          disabled={blockCount > 0}
+                          title={blockCount > 0 ? '先卸下装备并清空货仓才能出售' : '确认按上述条件出售'}
+                          onClick={() => confirmSell(uid)}
+                        >
+                          确认出售
+                        </button>
+                        <button className="app-btn is-small" onClick={() => setSellConfirmId(null)}>
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="app-ship-bottom">
+                      <span className="app-dim">货仓与装备随船保存</span>
+                      <div className="app-ship-bottom-btns">
+                        <button
+                          className="app-btn is-small"
+                          onClick={() => setSellConfirmId(uid)}
+                          title="出售前需确认；有装备/货物会在此处醒目提示"
+                        >
+                          市价出售
+                        </button>
+                        <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
+                          切换驾驶
+                        </button>
+                      </div>
+                    </div>
+                  )
+                ) : null}
+                </div>
+              </ShipHover>
+            )
+          })}
+        </div>
+      </Panel>
+
+      {/* ───── AI 指挥中心 ───── */}
+      <AiCommandPanel engine={engine} onToast={onToast} />
+
+      {/* ───── 市场现货 · 舰船（V9：空间站商店已并入市场） ───── */}
+      <Panel
+        title="舰船市场"
+        right={<span className="app-dim">现货看订单簿 · 无货可挂收购单自动等补货</span>}
+      >
+        <div className="app-ship-list">
+          {engine.ships
+            .filter((def) => {
+              for (const good of engine.ctx.marketGoods.values()) {
+                if (good.kind === 'ship' && good.refId === def.id) return true
+              }
+              return false
+            })
+            .map((def) => {
+              // v17：可重复拥有同型——统计机库内该型艘数（实例 uid 或以 defId 为键的第 1 艘）
+              const ownedCount = Object.keys(state.fleet).filter(
+                (k) => state.fleet[k]!.defId === def.id || k === def.id,
+              ).length
+              const good = [...engine.ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === def.id)
+              const quote = good ? marketQuote(state, engine.ctx, good.key) : null
+              const ask = quote?.sell
+              const lock = good ? goodLockedReason(state, good) : null
+              return (
+                <ShipHover key={def.id} ship={def} block>
+                  <div className="app-ship-card">
+                  <div className="app-ship-top">
+                    <span className="app-ship-name">
+                      {def.name}
+                      <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
+                    </span>
+                    <span className={`app-chip${good?.rarity === 'common' ? '' : good?.rarity === 'rare' ? ' is-rare' : ' is-exotic'}`}>
+                      {good ? rarityLabel(good.rarity) : ''}
+                    </span>
+                  </div>
+                  <div className="app-ship-spec">
+                    货舱 {def.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {def.cycleSeconds} 秒 × {def.oreUnitsPerCycle} 单位 · 动力 {Math.round(def.agility * 100)}%
+                  </div>
+                  <div className="app-ship-desc">{def.description}</div>
+                  <div className="app-ship-bottom">
+                    {ask !== undefined ? (
+                      <span className="app-ship-price">现货 {isk(ask)} ISK</span>
+                    ) : (
+                      <span className="app-dim">暂无现货 · 挂收购单自动等货</span>
+                    )}
+                    {ownedCount > 0 ? (
+                      <span className="app-chip" title="机库里已有同型舰船；可再购一艘（同型多艘自动编号）">
+                        机库 ×{ownedCount}
+                      </span>
+                    ) : null}
+                    {lock ? (
+                      <button className="app-btn is-small" disabled title={lock}>
+                        🔒 {lock}
+                      </button>
+                    ) : (
+                      <button className="app-btn is-small is-primary" onClick={() => handleBuy(def.id)} disabled={state.wallet.isk <= 0}>
+                        {ask !== undefined ? '现货买入' : '挂单求购'}
+                      </button>
+                    )}
+                  </div>
+                  </div>
+                </ShipHover>
+              )
+            })}
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
+/* ═══════════════ AI 指挥中心 ═══════════════ */
+
+function AiCommandPanel({ engine, onToast }: PageProps) {
+  const state = engine.state
+  const slots = maxAiSlots(state, engine.ctx)
+  const used = aiSlotsUsed(state)
+  const idleShips = idleAiShipIds(state)
+
+  const [shipId, setShipId] = useState('')
+  const [coreType, setCoreType] = useState<AiCoreType>('basic')
+  const [mode, setMode] = useState<'mining' | 'expedition'>('mining')
+  const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
+  const [anomalyId, setAnomalyId] = useState('')
+
+  function handleBuyCore(): void {
+    const r = engine.buyBasicCoreAt()
+    if (!r.ok) onToast(r.error ?? '购买失败', true)
+    else onToast('购买指令已受理：现货立即入核心库；无现货已挂收购单（到货自动入库）。')
+  }
+
+  function handleAssign(): void {
+    if (!shipId) {
+      onToast('先选择一艘空闲舰船。', true)
+      return
+    }
+    const r =
+      mode === 'mining'
+        ? engine.assignAiMiningAt(shipId, coreType, beltId)
+        : engine.assignAiExpeditionAt(shipId, coreType, anomalyId)
+    if (!r.ok) onToast(r.error ?? '指派失败', true)
+    else onToast('AI 任务已下达。')
+  }
+
+  /** 当前可用悬赏（与核心 gate 完全同源：已亲手首胜 + AI 最终成功率 ≥80%，含 favor 修正） */
+  const pickableAnomalies =
+    mode === 'expedition' && shipId
+      ? engine.anomalies
+          .filter((a) => {
+            if (standingOfState(state) < a.standingReq) return false
+            if (!state.completedBounties.includes(a.id)) return false // 需手动首胜解锁自动远征
+            return aiWinPreview(state, engine.ctx, a, shipId) >= 0.8
+          })
+          .sort((a, b) => a.threat - b.threat)
+      : []
+
+  return (
+    <Panel
+      title="AI 指挥中心"
+      right={<span className="app-dim">名额 {used}/{slots}</span>}
+    >
+      {/* 名额与核心库 */}
+      <div className="app-ai-status">
+        <span className="app-dim">
+          「人工智能专家」Lv{state.skills.trained['ai-expert'] ?? 0} → 可同时指挥 {slots} 艘副船
+          {slots === 0 ? '（先到「技能」页训练该技能）' : ''}
+        </span>
+        <div className="app-core-badges">
+          {AI_CORE_ORDER.map((type) => (
+            <span key={type} className={`app-chip${countAiCore(state, type) > 0 ? '' : ' is-dim'}`}>
+              {aiCoreName(type)} ×{countAiCore(state, type)}（{Math.round(aiEfficiency(state, engine.ctx, type) * 100)}%）
+            </span>
+          ))}
+          <button className="app-btn is-small is-primary" onClick={handleBuyCore}>
+            市场购入基础核心{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? ` · ${isk(marketQuote(state, engine.ctx, 'core-basic').sell!)} ISK` : '（暂缺货·可挂单）'}
+          </button>
+        </div>
+      </div>
+
+      {/* 指派表单 */}
+      {slots > 0 ? (
+        <div className="app-ai-assign">
+          <select className="app-select" value={shipId} onChange={(e) => { setShipId(e.target.value); setAnomalyId('') }}>
+            <option value="">— 选择空闲舰船 —</option>
+            {idleShips.map((id) => {
+              return (
+                <option key={id} value={id}>
+                  {shipDisplayName(state, engine.ctx, id)}（耐久 {Math.round(durabilityOf(state, id) * 100)}%）
+                </option>
+              )
+            })}
+          </select>
+          <select className="app-select" value={coreType} onChange={(e) => setCoreType(e.target.value as AiCoreType)}>
+            {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
+            ))}
+          </select>
+          <select className="app-select" value={mode} onChange={(e) => setMode(e.target.value as 'mining' | 'expedition')}>
+            <option value="mining">采矿任务</option>
+            <option value="expedition">远征任务</option>
+          </select>
+          {mode === 'mining' ? (
+            <select className="app-select" value={beltId} onChange={(e) => setBeltId(e.target.value)}>
+              {engine.belts.map((b) => {
+                const standing = standingOfState(state)
+                // 与星图页矿带卡片同一套锁定：声望 或 所在星系未探索（V13）
+                const unexplored = b.galaxyId ? !isExplored(state, b.galaxyId) : false
+                const locked = (b.standingReq ?? 0) > standing || unexplored
+                return (
+                  <option key={b.id} value={b.id} disabled={locked}>
+                    {unexplored
+                      ? `🔭 ${b.name}（所在星系未探索——先到星图扫描）`
+                      : locked
+                        ? `🔒 ${b.name}（需声望 ${b.standingReq}，当前 ${standing}）`
+                        : `${b.name}（${engine.ctx.items.get(b.oreId)?.name}）`}
+                  </option>
+                )
+              })}
+            </select>
+          ) : (
+            <select className="app-select" value={anomalyId} onChange={(e) => setAnomalyId(e.target.value)} disabled={!shipId}>
+              <option value="">— 可接悬赏（已亲手首胜 · 最终成功率≥80%） —</option>
+              {pickableAnomalies.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {engine.ctx.galaxies.get(a.galaxyId)?.name}·{a.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            className="app-btn is-primary is-small"
+            onClick={handleAssign}
+            disabled={!shipId || (mode === 'expedition' && !anomalyId)}
+          >
+            指派任务
+          </button>
+        </div>
+      ) : (
+        <div className="app-dim app-inv-empty">人工智能专家 Lv0：先训练技能，再购买基础 AI 核心即可指挥第一艘副船。</div>
+      )}
+
+      {/* 执行中列表 */}
+      <div className="app-bay-title">执行中（{used}）</div>
+      {used === 0 ? (
+        <div className="app-dim app-inv-empty">没有正在执行的 AI 任务。</div>
+      ) : (
+        <ul className="app-inv-list">
+          {Object.entries(state.aiAssignments).map(([sid, assignment]) => {
+            const task = assignment.task
+            const eff = aiEfficiency(state, engine.ctx, assignment.coreType)
+            let desc = ''
+            if (task.kind === 'mining') {
+              const belt = engine.ctx.belts.get(task.beltId)
+              const phaseLabel = task.phase === 'returning' ? '返航中' : task.phase === 'outbound' ? '出航中' : '采掘中'
+              desc = `采矿 ${belt?.name ?? task.beltId} · ${phaseLabel} · 本趟 ${task.tripUnits} 单位`
+            } else {
+              const a = engine.ctx.anomalies.get(task.anomalyId)
+              const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
+              desc = `远征 ${a?.name ?? task.anomalyId} · 剩余约 ${Math.floor(remain / 60_000)} 分钟`
+            }
+            return (
+              <li key={sid} className="app-inv-row">
+                <div className="app-inv-main">
+                  <span className="app-inv-name">{shipDisplayName(state, engine.ctx, sid)}</span>
+                  <span className="app-inv-count">
+                    {desc} · {aiCoreName(assignment.coreType)}（效率 {Math.round(eff * 100)}%）
+                  </span>
+                </div>
+                <div className="app-inv-btns">
+                  <span className="app-dim" title="取消 AI 任务（核心归还）请在顶部「活动」栏操作">
+                    活动栏可取消
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
+function standingOfState(state: { standings: Record<string, number> }): number {
+  return state.standings['dsi'] ?? 0
+}

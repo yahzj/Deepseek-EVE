@@ -1,0 +1,22 @@
+{
+  "name": "@whale/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "游戏引擎核心：纯 TypeScript、无框架依赖、确定性（注入时间源 + 种子随机）。未来升级在线时整体搬进服务端。",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  }
+}

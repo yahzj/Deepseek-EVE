@@ -1,0 +1,154 @@
+/* ============================================================
+   @whale/ui 组件样式：EVE 风格深色"星海"主题
+   ============================================================ */
+
+:root {
+  /* 主题色板 */
+  --wui-bg-deep: #05080d;      /* 最深背景 */
+  --wui-bg-panel: #0a111b;     /* 面板底 */
+  --wui-bg-hover: #0f1a28;     /* 悬浮底 */
+  --wui-border: #1b2b3f;       /* 边框 */
+  --wui-border-bright: #2b4a6e;/* 强调边框 */
+  --wui-text: #c8d6e5;         /* 正文 */
+  --wui-text-dim: #6b7f94;     /* 次要文字 */
+  --wui-accent: #4fd8c4;       /* 青绿主强调（进度/正常） */
+  --wui-gold: #e8b45a;         /* 金色（升级/高级） */
+  --wui-red: #d96a6a;          /* 红色（危险） */
+  --wui-amber: #d9a05a;        /* 琥珀（警告） */
+  --wui-purple: #a98ae0;       /* 紫色（系统） */
+  --wui-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+}
+
+/* ---------- 面板 ---------- */
+.wui-panel {
+  background: linear-gradient(180deg, var(--wui-bg-panel), #080e16);
+  border: 1px solid var(--wui-border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wui-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--wui-border);
+  background: linear-gradient(90deg, rgba(79, 216, 196, 0.08), transparent 60%);
+  flex-shrink: 0;
+}
+
+.wui-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--wui-accent);
+}
+
+.wui-panel-right {
+  font-size: 12px;
+  color: var(--wui-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wui-panel-body {
+  padding: 10px 12px;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+/* ---------- 进度条 ---------- */
+.wui-progress {
+  margin: 4px 0;
+}
+
+.wui-progress-label {
+  font-size: 11px;
+  color: var(--wui-text-dim);
+  margin-bottom: 3px;
+}
+
+.wui-progress-track {
+  height: 8px;
+  background: #0c1522;
+  border: 1px solid var(--wui-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.wui-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2f9e8f, var(--wui-accent));
+  transition: width 0.4s linear;
+}
+
+.wui-progress.is-warn .wui-progress-fill {
+  background: linear-gradient(90deg, #a8742e, var(--wui-amber));
+}
+
+.wui-progress.is-danger .wui-progress-fill {
+  background: linear-gradient(90deg, #a13a3a, var(--wui-red));
+}
+
+/* ---------- 日志流 ---------- */
+.wui-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--wui-mono);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.wui-log-item {
+  padding: 1px 4px;
+  border-left: 2px solid transparent;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.wui-log-time {
+  color: #48617c;
+  font-size: 11px;
+  margin-right: 8px;
+  user-select: none;
+}
+
+.wui-log-item:hover {
+  background: var(--wui-bg-hover);
+}
+
+/* T6 日志配色：类别语义（system 系统 / levelup 升级 / warn 警告 / queue 训练队列 /
+   info 流程信息 / trade 交易资金）；色距拉大、不刺眼（色值需与 App.tsx KIND_DOT 同步） */
+.wui-log-system {
+  color: var(--wui-purple);
+}
+.wui-log-levelup {
+  color: #ecc264;
+  font-weight: 600;
+}
+.wui-log-warn {
+  color: #ff8278;
+  border-left-color: var(--wui-red);
+  background: rgba(255, 90, 80, 0.06);
+}
+.wui-log-queue {
+  color: #54d4de;
+}
+.wui-log-info {
+  color: #8fa3c2;
+}
+.wui-log-trade {
+  color: #6fdc8f;
+}
+.wui-log-empty {
+  color: var(--wui-text-dim);
+  font-size: 12px;
+  padding: 8px;
+}

@@ -1,0 +1,337 @@
+/**
+ * 星图探索（V13）单元测试：
+ * 初始迷雾/剪影推导/行动封锁/扫描探索作业/扫描期探索事件与加速/在途兜底点亮/v12→v13 迁移。
+ */
+import { beforeEach, describe, expect, it } from 'vitest'
+import type { SimContext } from '../src/types'
+import type { GameState } from '../src/state'
+import { createInitialState } from '../src/state'
+import { advanceGame } from '../src/engine'
+import { startMining } from '../src/mining'
+import { startExpedition } from '../src/expedition'
+import {
+  actionBlockReason,
+  ensureTransitExplored,
+  frontierGalaxyIds,
+  isExplored,
+  markExplored,
+  scanStatus,
+  startScan,
+  stopScan,
+} from '../src/explore'
+import { EXPLORE_EVENTS } from '../src/events'
+import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
+import { anomaly, belt, makeTestCtx, moduleDef, ship } from './helpers'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
+
+describe('V13 星图探索：迷雾与剪影', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 42 })
+    ctx = makeTestCtx()
+  })
+
+  it('初始：只亮母港；hub 的一跳邻居是剪影（frontier）', () => {
+    expect(state.exploredGalaxies).toEqual(['galaxy-hub'])
+    expect(isExplored(state, 'galaxy-hub')).toBe(true)
+    expect(isExplored(state, 'galaxy-far')).toBe(false)
+    expect(frontierGalaxyIds(state, ctx)).toEqual(['galaxy-far'])
+  })
+
+  it('markExplored 去重；点亮后剪影推进到下一层', () => {
+    expect(markExplored(state, 'galaxy-far')).toBe(true)
+    expect(markExplored(state, 'galaxy-far')).toBe(false)
+    expect(frontierGalaxyIds(state, ctx)).toEqual([])
+    // 多跳世界：默认 hub–far 边仍存在，追加 hub–mid / mid–far
+    const chainCtx = makeTestCtx({
+      edges: [
+        { from: 'galaxy-hub', to: 'galaxy-mid', travelMinutes: 1 },
+        { from: 'galaxy-mid', to: 'galaxy-far', travelMinutes: 1 },
+      ],
+    })
+    const s2 = createInitialState({ nowWallMs: 0, seed: 1 })
+    expect(frontierGalaxyIds(s2, chainCtx).sort()).toEqual(['galaxy-far', 'galaxy-mid'])
+    markExplored(s2, 'galaxy-mid')
+    expect(frontierGalaxyIds(s2, chainCtx)).toEqual(['galaxy-far'])
+  })
+
+  it('actionBlockReason：母港/已探索可行动，未探索给提示', () => {
+    expect(actionBlockReason(state, null)).toBeNull()
+    expect(actionBlockReason(state, 'galaxy-hub')).toBeNull()
+    const r = actionBlockReason(state, 'galaxy-far')
+    expect(r).toContain('尚未探索')
+    markExplored(state, 'galaxy-far')
+    expect(actionBlockReason(state, 'galaxy-far')).toBeNull()
+  })
+})
+
+describe('V13 探索：行动封锁（远征/采矿/AI）', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 42 })
+    state.wallet.isk = 500_000
+    ctx = makeTestCtx({ belts: [belt('belt-far2', 'ore-a', '远星带', { galaxyId: 'galaxy-far' })] })
+  })
+
+  it('远征：未点亮星系目标拒绝出发（声望满足也不行），点亮后可出发', () => {
+    state.standings['dsi'] = 5
+    const r1 = startExpedition(state, 'ano-hard', ctx)
+    expect(r1.ok).toBe(false)
+    expect(r1.error).toContain('尚未探索')
+    markExplored(state, 'galaxy-far')
+    expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
+  })
+
+  it('采矿：远处矿带未点亮拒绝开工；点亮后成功；母港矿带不受限', () => {
+    const r1 = startMining(state, 'belt-far2', ctx)
+    expect(r1.ok).toBe(false)
+    expect(r1.error).toContain('尚未探索')
+    markExplored(state, 'galaxy-far')
+    expect(startMining(state, 'belt-far2', ctx).ok).toBe(true)
+    state.mining.active = false
+    state.mining.beltId = null
+    expect(startMining(state, 'belt-a', ctx).ok).toBe(true) // hub 本地带不受限
+  })
+
+  it('AI 派发：采矿/远征目标未点亮拒绝', () => {
+    // 给副船武装，把 AI 远征门槛（胜率 ≥80%）先满足——封锁检查在其后
+    const tur = moduleDef('tur-ai2', 'turret', 0.5, {
+      weaponSize: 'light',
+      maxRangeM: 6000,
+      minRangeM: 0,
+      hitRate: 0.9,
+      falloff: 0.3,
+      reloadMs: 1000,
+      dmgMult: 3,
+      cpuUse: 10,
+    })
+    state.skills.trained['ai-expert'] = 1
+    state.skills.trained['gunnery'] = 5
+    state.fleet['sandcat2'] = {
+      durability: 1,
+      cargo: {},
+      fitted: { miner: null, cargo: null, turret: 'tur-ai2', shield: null, armor: null, propulsion: null },
+    }
+    gainAiCore(state, 'basic', 2)
+    state.wallet.isk = 500_000
+    state.warehouse.items['ammo-kinetic-l'] = 1_000
+    // 手动首胜前置（AI 只打玩家亲手完成过的目标）：预置解锁，让本用例专测探索封锁
+    state.completedBounties.push('ano-easy-far')
+    const farCtx = makeTestCtx({
+      modules: [tur],
+      belts: [belt('belt-far3', 'ore-a', '远星带', { galaxyId: 'galaxy-far' })],
+      anomalies: [anomaly('ano-easy-far', 'galaxy-far', { threat: 2, reward: 8_000 })],
+    })
+    const rm = assignAiMining(state, 'sandcat2', 'basic', 'belt-far3', farCtx)
+    expect(rm.ok).toBe(false)
+    expect(rm.error).toContain('尚未探索')
+    const re = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy-far', farCtx)
+    expect(re.ok).toBe(false)
+    expect(re.error).toContain('尚未探索')
+    markExplored(state, 'galaxy-far')
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-far3', farCtx).ok).toBe(true)
+    state.aiAssignments = {}
+    gainAiCore(state, 'basic', 1)
+    expect(assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy-far', farCtx).ok).toBe(true)
+  })
+})
+
+describe('V13 探索：在途兜底点亮', () => {
+  it('读档后远征进行中（老档迁移场景）：推进时目标星系自动点亮', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = makeTestCtx()
+    state.expedition.active = true
+    state.expedition.anomalyId = 'ano-hard'
+    state.expedition.phase = 'out'
+    state.expedition.finishAtGameMs = state.gameMs + 10 * 60_000
+    state.expedition.outMs = 120_000
+    state.expedition.durationMs = 4 * 60_000
+    state.expedition.combatMs = 60_000
+    state.expedition.power = 10
+    expect(isExplored(state, 'galaxy-far')).toBe(false)
+    advanceGame(state, 1_000, ctx)
+    expect(isExplored(state, 'galaxy-far')).toBe(true)
+  })
+
+  it('ensureTransitExplored 直接可用（主控采矿/AI 任务同款兜底）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = makeTestCtx()
+    ensureTransitExplored(state, ctx)
+    expect(isExplored(state, 'galaxy-far')).toBe(false) // 无在途作业 → 不点亮
+  })
+})
+
+describe('V13 扫描探索作业', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 42 })
+    ctx = makeTestCtx()
+  })
+
+  it('校验：母港无需扫描；非剪影不可扫描；作业互斥；已探索无需扫描', () => {
+    expect(startScan(state, 'galaxy-hub', ctx).error).toContain('无需扫描')
+    expect(startScan(state, 'galaxy-ghost', ctx).ok).toBe(false) // 未知星系
+    state.mining.active = true
+    expect(startScan(state, 'galaxy-far', ctx).error).toContain('采矿作业进行中') // 剪影 + 作业中 → 互斥优先
+    state.mining.active = false
+    markExplored(state, 'galaxy-far')
+    expect(startScan(state, 'galaxy-far', ctx).error).toContain('无需扫描')
+  })
+
+  it('剪影可扫描：时长 = 单程航行 + 10 分钟窗口；完成点亮并停留该星系', () => {
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    const st = scanStatus(state)
+    expect(st.active).toBe(true)
+    expect(st.galaxyId).toBe('galaxy-far')
+    // 默认测试船无 warp：单程 2 分钟 + 10 分钟窗口 = 12 分钟（T8：无自动返航段）
+    expect(st.totalMs).toBe(12 * 60_000)
+    // 还差 1ms → 未完成
+    advanceGame(state, 12 * 60_000 - 1, ctx)
+    expect(state.scanning.active).toBe(true)
+    expect(isExplored(state, 'galaxy-far')).toBe(false)
+    advanceGame(state, 1, ctx)
+    expect(state.scanning.active).toBe(false)
+    expect(isExplored(state, 'galaxy-far')).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far') // 完成即停留（野外）
+    expect(state.logs.some((l) => l.text.includes('扫描完成'))).toBe(true)
+  })
+
+  it('warp 快船扫描更快（航行段缩放）', () => {
+    const fastCtx = makeTestCtx({
+      ships: [ship('warpy', { warpSpeedAus: 3.5 })],
+    })
+    state.shipId = 'warpy'
+    state.fleet['warpy'] = {
+      durability: 1,
+      cargo: {},
+      fitted: { miner: null, cargo: null, turret: null, shield: null, armor: null, propulsion: null },
+    }
+    expect(startScan(state, 'galaxy-far', fastCtx).ok).toBe(true)
+    const leg = Math.round(120_000 * (3 / 3.5))
+    expect(scanStatus(state).totalMs).toBe(leg + 10 * 60_000)
+  })
+})
+
+describe('V13 扫描期事件：加速 + 探索池', () => {
+  it('扫描期间到点事件从「探索发现」池抽取', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ctx = makeTestCtx()
+    state.events.nextAtGameMs = state.gameMs + 30_000
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    advanceGame(state, 40_000, ctx) // boost ×2：30s 倒计时被 80s 进度覆盖 → 必触发
+    const last = state.logs[state.logs.length - 1]!
+    expect(last.text.startsWith('✦')).toBe(true)
+    expect(EXPLORE_EVENTS.some((e) => last.text.includes(e.text))).toBe(true)
+  })
+
+  it('无扫描时事件走常规池（回归：默认四类不受影响）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ctx = makeTestCtx()
+    state.events.nextAtGameMs = state.gameMs + 1_000
+    advanceGame(state, 2_000, ctx)
+    const last = state.logs[state.logs.length - 1]!
+    expect(last.text.startsWith('✦')).toBe(true)
+    // 常规池文本不应来自探索池（探索池有独特词条）
+    expect(EXPLORE_EVENTS.some((e) => last.text.includes(e.text))).toBe(false)
+  })
+})
+
+describe('V14 存档迁移与续扫进度', () => {
+  it('v12 档读入：补 explored=[hub]、scanning 默认与 scanProgress 空表，其余无损', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    state.wallet.isk = 123_456
+    const raw = state as unknown as Record<string, unknown>
+    delete raw.exploredGalaxies
+    delete raw.scanning
+    delete raw.scanProgress
+    raw.version = 12
+    const text = serializeSaveFile(state, 999)
+    const loaded = loadSaveFile(text)
+    expect(loaded.state.version).toBe(17)
+    expect(loaded.state.exploredGalaxies).toEqual(['galaxy-hub'])
+    expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null })
+    expect(loaded.state.scanProgress).toEqual({})
+    expect(loaded.state.wallet.isk).toBe(123_456)
+    // 往返保存：新字段保留
+    const again = loadSaveFile(serializeSaveFile(loaded.state, 1000))
+    expect(again.state.version).toBe(17)
+    expect(again.state.exploredGalaxies).toEqual(['galaxy-hub'])
+  })
+})
+
+describe('V14 扫描终止与续扫', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 42 })
+    ctx = makeTestCtx()
+  })
+
+  it('无作业时终止返回错误', () => {
+    expect(stopScan(state, ctx).ok).toBe(false)
+  })
+
+  it('去程途中终止：无窗口进度可保存（scanProgress 不新增）；从母港出发直接折返', () => {
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    advanceGame(state, 60_000, ctx) // 单程 2 分钟，仍在去程
+    expect(stopScan(state, ctx).ok).toBe(true)
+    expect(state.scanning.active).toBe(false)
+    expect(isExplored(state, 'galaxy-far')).toBe(false)
+    expect(state.scanProgress['galaxy-far']).toBeUndefined()
+    expect(state.transit.active).toBe(false) // 母港出发去程终止 = 已回港
+    expect(state.awayGalaxy).toBeNull()
+  })
+
+  it('扫描窗口中终止：保存已完成窗口毫秒并自动返航；下次续扫只补剩余窗口', () => {
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    // 去程 120s + 就地扫描 180s → 累计 300s（总作业 = 120 + 600 = 720s，仍在扫描窗口内）
+    advanceGame(state, 300_000, ctx)
+    expect(state.scanning.active).toBe(true)
+    expect(stopScan(state, ctx).ok).toBe(true)
+    expect(state.scanning.active).toBe(false)
+    expect(isExplored(state, 'galaxy-far')).toBe(false)
+    expect(state.scanProgress['galaxy-far']).toBe(180_000)
+    // 终止 = 从目标自动返航空间站（transit），到站后野外标记清除
+    expect(state.transit.active).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    advanceGame(state, 120_000 + 1_000, ctx)
+    expect(state.transit.active).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
+    // 续扫：单程 120s + 剩余窗口 420s = 540s
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    expect(scanStatus(state).totalMs).toBe(120_000 + 420_000)
+    // 补扫完成 → 点亮、清进度并停留
+    advanceGame(state, 540_000, ctx)
+    expect(state.scanning.active).toBe(false)
+    expect(isExplored(state, 'galaxy-far')).toBe(true)
+    expect(state.scanProgress['galaxy-far']).toBeUndefined()
+    expect(state.awayGalaxy).toBe('galaxy-far')
+  })
+
+  it('窗口完整走完即自动完成（点亮并停留，无返航段）', () => {
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    // 窗口还差 1ms：仍在作业中
+    advanceGame(state, 720_000 - 1, ctx)
+    expect(state.scanning.active).toBe(true)
+    expect(isExplored(state, 'galaxy-far')).toBe(false)
+    advanceGame(state, 1, ctx)
+    expect(state.scanning.active).toBe(false)
+    expect(isExplored(state, 'galaxy-far')).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    expect(state.scanProgress['galaxy-far']).toBeUndefined()
+    expect(state.transit.active).toBe(false)
+  })
+
+  it('normalize 兜底：进度记录被收敛在窗口上限内', () => {
+    state.scanProgress['galaxy-far'] = 999_999_999
+    const loaded = loadSaveFile(serializeSaveFile(state, 1))
+    expect(loaded.state.scanProgress['galaxy-far']).toBe(10 * 60_000)
+  })
+})

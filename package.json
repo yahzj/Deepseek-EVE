@@ -1,0 +1,25 @@
+{
+  "name": "whale-eve-idle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "大鲸鱼 —— 以 EVE 星战前夜为蓝本的文字挂机游戏（单机起步，架构预留升级在线）",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @whale/desktop",
+    "build": "npm run build -w @whale/desktop",
+    "test": "npm run test -w @whale/core",
+    "typecheck": "npm run typecheck -w @whale/core && npm run typecheck -w @whale/data && npm run typecheck -w @whale/ui && npm run typecheck -w @whale/desktop",
+    "balance": "tsx tools/balance-check.ts",
+    "content:check": "tsx tools/content-check.ts",
+    "battle:calibrate": "tsx tools/battle-calibrate.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
+  }
+}

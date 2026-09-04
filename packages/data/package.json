@@ -1,0 +1,23 @@
+{
+  "name": "@whale/data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "游戏静态内容数据（EVE 风格数值表）：技能、舰船、蓝图、星系等，全部数据驱动。",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@whale/core": "0.1.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
