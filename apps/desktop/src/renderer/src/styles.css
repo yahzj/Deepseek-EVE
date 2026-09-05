@@ -7134,3 +7134,17 @@ body {
 .app-sr-sub{font-size:calc(var(--ui-fs,1)*10px)}
 .app-chip{font-size:calc(var(--ui-fs,1)*11px)}
 .app-btn{font-size:calc(var(--ui-fs,1)*12px)}
+
+/* settings panel (captain UI polish 2026-09-05) */
+.app-settings-modal{width:460px;max-width:calc(100vw - 48px)}
+.app-settings-title{font-size:15px;font-weight:700;letter-spacing:2px;color:var(--wui-gold);margin-bottom:2px}
+.app-settings-sub{font-size:11px;color:var(--wui-text-dim);margin-bottom:10px}
+.app-settings-list{display:flex;flex-direction:column;gap:10px}
+.app-settings-row{display:flex;flex-direction:column;gap:7px;padding:10px 12px;border:1px solid rgba(85,112,140,.28);border-radius:8px;background:rgba(8,16,28,.55)}
+.app-settings-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.app-settings-label{font-size:12px;font-weight:600}
+.app-settings-val{font-family:var(--wui-mono);font-size:12px;color:#ffe08a;background:rgba(232,180,90,.08);border:1px solid rgba(232,180,90,.35);border-radius:4px;padding:1px 8px;min-width:52px;text-align:center}
+.app-settings-slider{width:100%;accent-color:var(--wui-accent);height:18px;cursor:pointer}
+.app-settings-desc{font-size:10px;color:var(--wui-text-dim)}
+.app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:10px;border-top:1px dashed rgba(85,112,140,.3)}
+.app-settings-btns{display:flex;gap:6px}

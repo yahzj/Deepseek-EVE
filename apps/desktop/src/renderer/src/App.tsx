@@ -145,24 +145,31 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
   }
   return (
     <div className="app-modal-mask" onClick={onClose}>
-      <div className="app-modal" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span className="app-inv-name">界面缩放 {Math.round(zoom * 100)}%（整窗缩放：几何与文字一起）</span>
-            <input type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span className="app-inv-name">字体大小 {Math.round(fs * 100)}%（独立于界面缩放，覆盖正文/列表/标题字号族）</span>
-            <input type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
-          </label>
-          <div className="app-mkt-trade-btns" style={{ justifyContent: 'flex-end', marginTop: 6 }}>
-            <button
-              className="app-btn is-small"
-              onClick={() => {
-                setZoom(1)
-                setFs(1)
-              }}
-            >
+      <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="app-settings-title">设置</div>
+        <div className="app-settings-sub">界面缩放与字体大小，即时生效 · 自动记忆</div>
+        <div className="app-settings-list">
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">界面缩放</span>
+              <span className="app-settings-val">{Math.round(zoom * 100)}%</span>
+            </div>
+            <input className="app-settings-slider" type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
+            <div className="app-settings-desc">整窗缩放：面板几何与文字一起放大/缩小（80%~125%）</div>
+          </div>
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">字体大小</span>
+              <span className="app-settings-val">{Math.round(fs * 100)}%</span>
+            </div>
+            <input className="app-settings-slider" type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
+            <div className="app-settings-desc">独立于界面缩放，只调整文字（85%~125%）</div>
+          </div>
+        </div>
+        <div className="app-settings-foot">
+          <span className="app-dim">可随时从顶栏「设置」调回</span>
+          <span className="app-settings-btns">
+            <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1) }}>
               恢复默认
             </button>
             <button
@@ -174,7 +181,7 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
             >
               完成
             </button>
-          </div>
+          </span>
         </div>
       </div>
     </div>
