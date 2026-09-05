@@ -52,8 +52,10 @@ import {
   repairShip,
   retreatBattle,
   sellCargoItem,
+  sellCargoItemQty,
   sellShipAtMarket,
   sellWareItem,
+  sellWareItemQty,
   serializeSaveFile,
   shipDisplayName,
   setBattleDesire,
@@ -991,8 +993,9 @@ export class GameEngine {
   }
 
   /** 卖当前船货仓里的物品 */
-  sellCargo(itemId: string): SellResult {
-    const result = sellCargoItem(this.state, itemId, this.ctx)
+  sellCargo(itemId: string, qty?: number): SellResult {
+    const result =
+      qty === undefined ? sellCargoItem(this.state, itemId, this.ctx) : sellCargoItemQty(this.state, itemId, qty, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -1001,8 +1004,9 @@ export class GameEngine {
   }
 
   /** 卖物品仓库里的物品 */
-  sellWare(itemId: string): SellResult {
-    const result = sellWareItem(this.state, itemId, this.ctx)
+  sellWare(itemId: string, qty?: number): SellResult {
+    const result =
+      qty === undefined ? sellWareItem(this.state, itemId, this.ctx) : sellWareItemQty(this.state, itemId, qty, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

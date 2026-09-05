@@ -1699,6 +1699,17 @@ body {
   padding-top: 8px;
   border-top: 1px dashed rgba(85, 112, 140, 0.25);
 }
+/* 出售数量选择行（2026-09-05：部分出售） */
+.app-sellqty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+.app-sellqty-row .app-input {
+  width: 120px;
+  font-family: var(--wui-mono);
+}
 .app-fit-modal-head {
   display: flex;
   align-items: center;

@@ -12,6 +12,7 @@ import { ItemHover } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
+import { SellQtyModal } from '../ui/SellQtyModal'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -36,12 +37,6 @@ function WarehouseView({ engine, onToast }: PageProps) {
     drone: '仓库里没有无人机。',
   }
 
-  function handleSell(id: string): void {
-    const r = engine.sellWare(id)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK（按市场收购价；吃穿簿的剩余自动挂卖单）。`)
-  }
-
   function handleLoad(id: string): void {
     const def = engine.ctx.items.get(id)
     if (!def) return
@@ -53,16 +48,28 @@ function WarehouseView({ engine, onToast }: PageProps) {
     }
   }
 
-  /** 装备市价卖出（船长 2026-09-05：装备此前没有出售入口） */
-  function handleSellMod(id: string): void {
+  // 出售数量选择（船长 2026-09-05：支持只卖一部分）
+  const [sellItem, setSellItem] = useState<string | null>(null)
+  const [sellMod, setSellMod] = useState<string | null>(null)
+  function handleSellQtyItem(id: string, qty: number): void {
+    const r = engine.sellWare(id, qty)
+    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    else onToast(`已按市价售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
+    setSellItem(null)
+    setPickItem(null)
+  }
+  function handleSellQtyMod(id: string, qty: number): void {
     const good = marketGoodOf(engine.ctx, 'module', id)
     if (!good) {
       onToast('该装备不在市场流通目录（无法出售）。', true)
+      setSellMod(null)
+      setPickMod(null)
       return
     }
-    const r = engine.sellHoldingAt(good.key)
+    const r = engine.sellHoldingAt(good.key, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast('已按市场收购价售出（簿吃穿余量自动挂卖单）。')
+    else onToast(`已按市价售出装备（簿吃穿余量自动挂卖单）。`)
+    setSellMod(null)
     setPickMod(null)
   }
 
@@ -151,8 +158,8 @@ function WarehouseView({ engine, onToast }: PageProps) {
                           </button>
                         ) : null}
                         {buy !== undefined ? (
-                          <button className="app-btn is-small is-primary" onClick={() => handleSell(id)}>
-                            市价卖出全部
+                          <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
+                            市价卖出
                           </button>
                         ) : (
                           <button className="app-btn is-small" disabled>
@@ -197,8 +204,8 @@ function WarehouseView({ engine, onToast }: PageProps) {
                       装配页使用
                     </button>
                     {modGood && modGood.playerSellable !== false ? (
-                      <button className="app-btn is-small is-primary" onClick={() => handleSellMod(id)}>
-                        市价卖出全部
+                      <button className="app-btn is-small is-primary" onClick={() => setSellMod(id)}>
+                        市价卖出
                       </button>
                     ) : (
                       <button className="app-btn is-small" disabled title="不在市场流通目录或不可售">
@@ -256,11 +263,11 @@ function WarehouseView({ engine, onToast }: PageProps) {
                   <button
                     className="app-btn is-primary is-small"
                     onClick={() => {
-                      handleSell(pickItem)
                       setPickItem(null)
+                      setSellItem(pickItem)
                     }}
                   >
-                    市价卖出全部（{pickItemUnits.toLocaleString('zh-CN')} 单位）
+                    市价卖出
                   </button>
                 ) : (
                   <button className="app-btn is-small" disabled>
@@ -291,8 +298,14 @@ function WarehouseView({ engine, onToast }: PageProps) {
                   装配页使用
                 </button>
                 {marketGoodOf(engine.ctx, 'module', pickMod) ? (
-                  <button className="app-btn is-primary is-small" onClick={() => handleSellMod(pickMod)}>
-                    市价卖出全部（×{pickModUnits.toLocaleString('zh-CN')}）
+                  <button
+                    className="app-btn is-primary is-small"
+                    onClick={() => {
+                      setPickMod(null)
+                      setSellMod(pickMod)
+                    }}
+                  >
+                    市价卖出（×{pickModUnits.toLocaleString('zh-CN')}）
                   </button>
                 ) : (
                   <button className="app-btn is-small" disabled>
@@ -302,6 +315,42 @@ function WarehouseView({ engine, onToast }: PageProps) {
               </div>
             </ItemActionModal>
           ) : null}
+
+          {/* 出售数量选择（部分出售；船长 2026-09-05） */}
+          {sellItem ? (() => {
+            const def = engine.ctx.items.get(sellItem)
+            if (!def) return null
+            const units = state.warehouse.items[sellItem] ?? 0
+            const buy = itemBuyQuote(engine, sellItem)
+            return (
+              <SellQtyModal
+                name={def.name}
+                glyph={def.kind}
+                max={units}
+                unit="单位"
+                priceText={buy !== undefined ? `收价 ${isk(buy)} ISK/单位` : undefined}
+                note={def.description}
+                onClose={() => setSellItem(null)}
+                onConfirm={(qty) => handleSellQtyItem(sellItem, qty)}
+              />
+            )
+          })() : null}
+          {sellMod ? (() => {
+            const def = engine.ctx.modules.get(sellMod)
+            if (!def) return null
+            const units = state.moduleBay[sellMod] ?? 0
+            return (
+              <SellQtyModal
+                name={def.name}
+                glyph={def.slot}
+                max={units}
+                unit="件"
+                note={def.description}
+                onClose={() => setSellMod(null)}
+                onConfirm={(qty) => handleSellQtyMod(sellMod, qty)}
+              />
+            )
+          })() : null}
         </>
       )}
     </>

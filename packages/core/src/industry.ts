@@ -413,6 +413,40 @@ export function sellWareItem(state: GameState, itemId: string, ctx: SimContext):
   return sellItemFrom(state, itemId, countWare(state, itemId), (units) => removeWare(state, itemId, units), ctx, '仓库')
 }
 
+/** 从当前船货仓按市价**卖出指定数量**（船长 2026-09-05：出售支持只卖一部分；其余语义同 sellCargoItem） */
+export function sellCargoItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
+  const have = countItem(state, itemId)
+  const want = Math.max(0, Math.floor(qty))
+  if (want <= 0) return { ok: false, error: '出售数量需大于 0。', soldUnits: 0, gainedIsk: 0 }
+  if (want > have) {
+    const def = ctx.items.get(itemId)
+    return {
+      ok: false,
+      error: `货仓里只有 ${have} 单位${def ? ` ${def.name}` : ''}，无法卖 ${want} 单位。`,
+      soldUnits: 0,
+      gainedIsk: 0,
+    }
+  }
+  return sellItemFrom(state, itemId, want, (units) => removeItem(state, itemId, units), ctx, '货仓')
+}
+
+/** 从物品仓库按市价**卖出指定数量**（同 sellWareItem 其余语义） */
+export function sellWareItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
+  const have = countWare(state, itemId)
+  const want = Math.max(0, Math.floor(qty))
+  if (want <= 0) return { ok: false, error: '出售数量需大于 0。', soldUnits: 0, gainedIsk: 0 }
+  if (want > have) {
+    const def = ctx.items.get(itemId)
+    return {
+      ok: false,
+      error: `仓库里只有 ${have} 单位${def ? ` ${def.name}` : ''}，无法卖 ${want} 单位。`,
+      soldUnits: 0,
+      gainedIsk: 0,
+    }
+  }
+  return sellItemFrom(state, itemId, want, (units) => removeWare(state, itemId, units), ctx, '仓库')
+}
+
 function sellItemFrom(
   state: GameState,
   itemId: string,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @whale/core 对外统一出口。
  * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
  */
@@ -233,7 +233,9 @@ export {
   refineRunViews,
   redeemFragments,
   sellCargoItem,
+  sellCargoItemQty,
   sellWareItem,
+  sellWareItemQty,
   sellAll,
   sellPriceMultiplier,
   buyShip,

@@ -21,6 +21,7 @@ import { Panel, ProgressBar } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
+import { SellQtyModal } from '../ui/SellQtyModal'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
@@ -69,18 +70,17 @@ export function CargoPage({ engine, onToast }: PageProps) {
     })
     .filter(Boolean) as ItemGridCell[]
 
-  function handleSell(id: string): void {
+  function handleSell(id: string, qty: number): void {
     // T9：出售/市场只在母港（副站不设市场）
     if (state.awayGalaxy !== null || state.dockedSite !== null) {
       onToast('出售需回到母港市场（当前在野外或副空间站）。', true)
       return
     }
-    const r = engine.sellCargo(id)
+    const r = engine.sellCargo(id, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else {
-      onToast(`入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
-      setPickId(null)
-    }
+    else onToast(`已售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
+    setSellId(null)
+    setPickId(null)
   }
 
   // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
@@ -88,6 +88,11 @@ export function CargoPage({ engine, onToast }: PageProps) {
   const pickDef = pickId ? engine.ctx.items.get(pickId) : undefined
   const pickUnits = pickId ? (cargo[pickId] ?? 0) : 0
   const pickBuy = pickId ? itemBuyQuote(engine, pickId) : undefined
+  // 出售数量选择（船长 2026-09-05：支持只卖一部分）
+  const [sellId, setSellId] = useState<string | null>(null)
+  const sellDef = sellId ? engine.ctx.items.get(sellId) : undefined
+  const sellUnits = sellId ? (cargo[sellId] ?? 0) : 0
+  const sellBuy = sellId ? itemBuyQuote(engine, sellId) : undefined
 
   function handleUnloadAll(): void {
     // T9：卸货入仓库在任何空间站可用（母港与副站）
@@ -200,8 +205,8 @@ export function CargoPage({ engine, onToast }: PageProps) {
                       </div>
                       <div className="app-inv-btns">
                         {isPiloted && buy !== undefined ? (
-                          <button className="app-btn is-small is-primary" onClick={() => handleSell(id)}>
-                            市价卖出全部
+                          <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
+                            市价卖出
                           </button>
                         ) : isPiloted ? (
                           <button className="app-btn is-small" disabled>
@@ -249,8 +254,14 @@ export function CargoPage({ engine, onToast }: PageProps) {
                 {!isPiloted ? (
                   <div className="app-dim">正在查看「{targetName}」——只读：装卸与出售仅对当前驾驶船可用。</div>
                 ) : pickBuy !== undefined ? (
-                  <button className="app-btn is-primary is-small" onClick={() => handleSell(pickId)}>
-                    市价卖出全部（{pickUnits.toLocaleString('zh-CN')} 单位）
+                  <button
+                    className="app-btn is-primary is-small"
+                    onClick={() => {
+                      setPickId(null)
+                      setSellId(pickId)
+                    }}
+                  >
+                    市价卖出
                   </button>
                 ) : (
                   <button className="app-btn is-small" disabled>
@@ -259,6 +270,20 @@ export function CargoPage({ engine, onToast }: PageProps) {
                 )}
               </div>
             </ItemActionModal>
+          ) : null}
+
+          {/* 出售数量选择（部分出售；船长 2026-09-05） */}
+          {sellDef && sellId ? (
+            <SellQtyModal
+              name={sellDef.name}
+              glyph={sellDef.kind}
+              max={sellUnits}
+              unit="单位"
+              priceText={sellBuy !== undefined ? `收价 ${isk(sellBuy)} ISK/单位` : undefined}
+              note={sellDef.description}
+              onClose={() => setSellId(null)}
+              onConfirm={(qty) => handleSell(sellId, qty)}
+            />
           ) : null}
         </>
       )}
