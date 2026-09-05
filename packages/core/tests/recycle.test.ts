@@ -109,6 +109,20 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(startRecycleRun(state, notWreck, 'pilot', ctx).ok).toBe(false) // 不是残骸
     expect(startRecycleRun(state, wreckItemIdOf('ano-grave'), 'pilot', ctx).ok).toBe(false) // 仓库没有残骸
   })
+
+  it('残骸回收学：批周期每级 −4%（Lv5 = ×0.6，手动与 AI 同享）', () => {
+    const mk = (lv: number) => {
+      const state = createInitialState({ nowWallMs: 0, seed: 35 })
+      const ctx = ctxOf()
+      if (lv > 0) state.skills.trained['salvage-recycling'] = lv
+      const wreckId = wreckItemIdOf('ano-grave')
+      addWare(state, wreckId, 40)
+      expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
+      return state.refineRun.cycleMs
+    }
+    expect(mk(0)).toBe(25_000)
+    expect(mk(5)).toBe(20_000) // 每级 −4%：Lv5 = −20%（下限 60% 为长线保护）
+  })
 })
 
 describe('蓝图碎片逆向研究', () => {

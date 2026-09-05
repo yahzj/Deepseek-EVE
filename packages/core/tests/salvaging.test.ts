@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceSalvageOp, startSalvageOp, stopSalvageOp } from '../src/salvaging'
+import { advanceSalvageOp, pullOneWreck, startSalvageOp, stopSalvageOp } from '../src/salvaging'
 import { injectWreckDensity, wreckDensityOf } from '../src/salvage'
 import { assignAiSalvage, advanceAi } from '../src/ai'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
@@ -99,5 +99,20 @@ describe('打捞作业（采矿式单趟）', () => {
     const wreckId = 'wreck-ano-far'
     expect(countItem(state, wreckId) + countWare(state, wreckId)).toBeGreaterThan(0) // 残骸已入物品仓库
     expect(state.logs.some((l) => l.text.includes('打捞任务完成'))).toBe(true)
+  })
+
+  it('漂流物打捞学：残骸打捞量每级 +12%（Lv5 = ×1.6；主控/AI 同源 pullOneWreck）', () => {
+    const mk = (lv: number) => {
+      const state = fittedState(3)
+      const ctx = ctxOf()
+      if (lv > 0) state.skills.trained['salvage-diving'] = lv
+      state.galaxyWrecks['galaxy-far'] = { density: 34, rare: 0 }
+      const pulled = pullOneWreck(state, ctx, 'galaxy-far')!
+      return pulled.volumeM3
+    }
+    const v0 = mk(0)
+    const v5 = mk(5)
+    expect(v5).toBeCloseTo(v0 * 1.6, 6)
+    expect(v0).toBeGreaterThan(0)
   })
 })

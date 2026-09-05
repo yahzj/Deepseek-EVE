@@ -216,6 +216,13 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 3,
     description: '副空间站工程标准：向建站点交付物资的进度计数每级 +⟦8%⟧（等价减少所需物资，满级 −⟦40%⟧）。',
   },
+  {
+    id: 'salvage-recycling',
+    name: '残骸回收学',
+    group: '工业',
+    rank: 3,
+    description: '精炼炉残骸回收（开箱批）的周期优化：批周期每级 −⟦4%⟧（手动与 AI 核心驱动同享，至少保留 60%）。',
+  },
 
   // ───────── 战斗（2026-09-05 武器族技能批次：三形态专精乘区，乘算于炮术学之上） ─────────
   {
@@ -448,7 +455,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '漂流物打捞学',
     group: '探索',
     rank: 3,
-    description: '残骸打捞与战利品收集：远征缴获的物资数量每级 +⟦12%⟧（主控与 AI 同享）。',
+    description: '残骸打捞与战利品收集：远征缴获的物资数量与残骸打捞量每级 +⟦12%⟧（主控与 AI 同享）。',
   },
   {
     id: 'seizure-appraisal',

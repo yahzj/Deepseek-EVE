@@ -15,7 +15,7 @@
  * - 两栏标题下方各带一个搜索栏：可按名称/商品键检索 + 按类型（物品/装备/舰船/蓝图/核心）过滤；
  * - 每行提供手动挂单（挂单买/挂单卖，数量+价格可改，卖单从自然库存锁定）。
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { goodLockedReason, goodName, levelOf, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
@@ -462,20 +462,34 @@ function MyOrders({ engine, onToast }: PageProps) {
   )
 }
 
-export function MarketPage({ engine, onToast }: PageProps) {
+export function MarketPage({
+  engine,
+  onToast,
+  focusKey,
+  focusSeq,
+}: PageProps & { focusKey?: string | null; focusSeq?: number }) {
   const state = engine.state
   const goods = useMemo(() => [...engine.ctx.marketGoods.values()], [engine])
   const common = goods.filter((g) => g.rarity === 'common')
   const rareCol = goods.filter((g) => g.rarity !== 'common')
   const [qtyByKey, setQtyByKey] = useState<Record<string, number>>({})
   const [mktTab, setMktTab] = useState<'common' | 'rare'>('common')
+  // 外部聚焦（如舰船页"去市场"）：focusSeq 递增时把搜索词设为指定商品 key（像玩家自己搜的一样）
+  const [kw, setKw] = useState('')
+  const lastFocusSeq = useRef(0)
+  useEffect(() => {
+    if (focusKey && focusSeq !== undefined && focusSeq !== lastFocusSeq.current) {
+      lastFocusSeq.current = focusSeq
+      setKw(focusKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSeq])
   const taxRate = salesTaxRate(state, engine.ctx)
   const lvA = state.skills.trained[engine.ctx.balance.market.taxSkillAId] ?? 0
   const lvB = state.skills.trained[engine.ctx.balance.market.taxSkillBId] ?? 0
 
   // 页面级全局搜索（船长 2026-09-05）：搜索栏从两栏内取出；输入/类型过滤时同时检索常驻与稀有订单
   // （常驻与稀有的商品集不重叠——rarity 单值归属，跨栏合并不会重复条目）。
-  const [kw, setKw] = useState('')
   const [kind, setKind] = useState<KindFilter>('all')
   const query = kw.trim().toLowerCase()
   const filterActive = query.length > 0 || kind !== 'all'

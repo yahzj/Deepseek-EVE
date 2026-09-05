@@ -140,6 +140,8 @@ export function App({ engine }: { engine: GameEngine }) {
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
   const [shipTab, setShipTab] = useState<ShipTab>('fleet')
+  // 舰船页"去市场"→ 市场页聚焦该船订单（seq 递增触发一次）
+  const [mktFocus, setMktFocus] = useState<{ key: string; seq: number } | null>(null)
   // B1：首次进入低安的一次性醒目提示（规则全文在手册「航行须知」）
   const lowSecPrev = useRef(state.lowSecNotified)
   useEffect(() => {
@@ -285,10 +287,20 @@ export function App({ engine }: { engine: GameEngine }) {
             }}
           />
           <div className="app-page-content" key={page}>
-            {page === 'ship' ? <ShipPage {...pageProps} tab={shipTab} onTab={setShipTab} /> : null}
+            {page === 'ship' ? (
+              <ShipPage
+                {...pageProps}
+                tab={shipTab}
+                onTab={setShipTab}
+                onGotoMarket={(goodKey) => {
+                  setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+                  setPage('market')
+                }}
+              />
+            ) : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}
             {page === 'items' ? <ItemsPage {...pageProps} /> : null}
-            {page === 'market' ? <MarketPage {...pageProps} /> : null}
+            {page === 'market' ? <MarketPage {...pageProps} focusKey={mktFocus?.key ?? null} focusSeq={mktFocus?.seq ?? 0} /> : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
             {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={setMapTab} /> : null}

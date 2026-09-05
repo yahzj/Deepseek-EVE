@@ -157,7 +157,10 @@ export function pullOneWreck(
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
   const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
-  return { itemId: wreckId, mul, volumeM3: baseM3 * mul }
+  // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
+  const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
+  const volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv)
+  return { itemId: wreckId, mul, volumeM3 }
 }
 
 /**

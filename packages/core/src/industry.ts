@@ -258,7 +258,10 @@ export function startRecycleRun(
     return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
-  const cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))
+  let cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))
+  // 残骸回收学（salvage-recycling，2026-09-05）：回收批周期每级 −4%（手动与 AI 同享，至少保留 60%）
+  const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
+  if (recLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * recLv)))
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }

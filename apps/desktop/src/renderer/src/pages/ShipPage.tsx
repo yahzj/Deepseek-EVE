@@ -37,7 +37,13 @@ const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: stri
   { key: 'shop', label: '舰船市场', icon: '🛒' },
 ]
 
-export function ShipPage({ engine, onToast, tab, onTab }: PageProps & { tab?: ShipTab; onTab?: (t: ShipTab) => void }) {
+export function ShipPage({
+  engine,
+  onToast,
+  tab,
+  onTab,
+  onGotoMarket,
+}: PageProps & { tab?: ShipTab; onTab?: (t: ShipTab) => void; onGotoMarket?: (goodKey: string) => void }) {
   const state = engine.state
   const ctx = engine.ctx
   // 标签页（受控可选：App 跳 AI 中心时切到 ai）
@@ -117,12 +123,6 @@ export function ShipPage({ engine, onToast, tab, onTab }: PageProps & { tab?: Sh
     else onToast(name === null ? '已恢复默认船名。' : `已命名为「${name.trim()}」。`)
     setRenameId(null)
     setRenameDraft('')
-  }
-
-  function handleBuy(id: string): void {
-    const r = engine.buyShipAt(id)
-    if (!r.ok) onToast(r.error ?? '购买失败', true)
-    else onToast('订单已受理：有现货立即入坞登舰；无现货已挂收购单（到货自动入机库，可撤单）。')
   }
 
   /** 出售确认前的本船预检：返回 { 模块名列表, 货仓单位 }（两者有任一即禁售并醒目提示） */
@@ -414,14 +414,20 @@ export function ShipPage({ engine, onToast, tab, onTab }: PageProps & { tab?: Sh
                       </span>
                     ) : null}
                     {lock ? (
-                      <button className="app-btn is-small" disabled title={lock}>
+                      <span className="app-chip is-exotic" title={lock}>
                         🔒 {lock}
+                      </span>
+                    ) : null}
+                    {good ? (
+                      <button
+                        className={`app-btn is-small${lock ? '' : ' is-primary'}`}
+                        disabled={!onGotoMarket}
+                        title={lock ?? '前往市场页查看该舰船订单——自动聚焦搜索该船，现货/挂单都在市场操作'}
+                        onClick={() => onGotoMarket?.(good.key)}
+                      >
+                        去市场查看 / 下单
                       </button>
-                    ) : (
-                      <button className="app-btn is-small is-primary" onClick={() => handleBuy(def.id)} disabled={state.wallet.isk <= 0}>
-                        {ask !== undefined ? '现货买入' : '挂单求购'}
-                      </button>
-                    )}
+                    ) : null}
                   </div>
                   </div>
                 </ShipHover>
