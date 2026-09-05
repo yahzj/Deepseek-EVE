@@ -879,6 +879,17 @@ function lockNaturalStock(state: GameState, def: MarketGoodDef, n: number): bool
   return ok
 }
 
+/** 退还锁进 escrow 的自然库存（市价卖出簿空等场景回滚用；与 lockNaturalStock 互逆） */
+function unlockNaturalStock(state: GameState, def: MarketGoodDef, n: number): void {
+  if (n <= 0) return
+  if (def.kind === 'item') addWare(state, def.refId, n)
+  else if (def.kind === 'module') addModule(state, def.refId, n)
+  else if (def.kind === 'blueprint') {
+    state.blueprintStock[def.refId] = (state.blueprintStock[def.refId] ?? 0) + n
+  }
+  state.escrowItems[def.key] = Math.max(0, (state.escrowItems[def.key] ?? 0) - n)
+}
+
 /** 自然库存持有量（市场页展示"我的可卖"用） */
 export function naturalHoldings(state: GameState, def: MarketGoodDef): number {
   if (def.kind === 'item') return countWare(state, def.refId)
@@ -909,6 +920,17 @@ export function marketSellHolding(
   const n = Math.min(want, available)
   if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。', sold: 0, total: 0, remaining: 0 }
   const res = sellAtMarket(state, ctx, goodKey, n)
+  // 收购簿为空 → 一笔未成交：退还锁定货物（此前会被锁进 escrow 且无订单,货物永久丢失——船长 2026-09-05 验证发现）
+  if (res.sold === 0 && res.remaining > 0) {
+    unlockNaturalStock(state, def, n)
+    return {
+      ok: false,
+      error: '市场收购簿为空，暂时无人收购——未出售任何货物，已退回库存。可改挂限价卖单等待收购。',
+      sold: 0,
+      total: 0,
+      remaining: n,
+    }
+  }
   return { ok: true, sold: res.sold, total: res.total, remaining: res.remaining }
 }
 
