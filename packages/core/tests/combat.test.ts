@@ -421,7 +421,7 @@ describe('V18B 随机目标与"尸体不承接火力"（船长 2026-09-05）', (
       powerBonus: 0,
     })
     const tur = moduleDef('tur-f', 'turret', 0, {
-      maxRangeM: 5000,
+      maxRangeM: 9000, // 长于敌（orbit·threat60 → 射程 ~7.1km）：开局距 9.1km 即在带内，立即接火
       minRangeM: 0,
       hitRate: 0.95,
       falloff: 0.9,

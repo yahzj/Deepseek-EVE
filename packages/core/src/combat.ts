@@ -728,12 +728,10 @@ export function startBattleFor(
   const rawDesire = desireM !== undefined && desireM > 0 ? Math.round(desireM) : desiredRangeFor(me, 'mid', bal)
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
-  // C4 校准轮（2026-09-05）：开局距离直接落在"双方期望交战位置"附近（敌方带内站位 ×
-  // 我方期望的折中 + 15% 缓冲），不再从最远射程外开始长距离接近——远程对远程不再有
-  // 十几秒"双方干瞪眼"的接近空窗；舰列收拢一小段后立即进入对射。openM 仅作上界。
-  const foeDesire = Math.min(openM, foeDesiredRange(me, foes, bal))
-  const engage = Math.round((desire + foeDesire) / 2)
-  battle.distanceM = Math.min(openM, Math.max(bal.minDistanceM + 50, Math.round(engage * 1.15)))
+  // 开战距离 = 双方所有武器最远射程 +100m（openRangeFactor/PadM 既定规则）：开局从
+  // 射程外稍远处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
+  // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
+  battle.distanceM = openM
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
   const totals = ammoLoadTotals(me, bal, state)
