@@ -1455,6 +1455,59 @@ body {
   border-radius: 4px;
   padding: 6px 8px;
 }
+/* ── 装配台左右分栏 + 槽位图标排布（船长 2026-09-05：左船参数 / 右装备按槽位图标，取消列表） ── */
+.app-fit-cols {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.app-fit-col-left {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.app-fit-col-right {
+  flex: 1 1 400px;
+  min-width: 0;
+}
+.app-fit-icongrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+.app-fit-slot-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid rgba(85, 112, 140, 0.35);
+  border-radius: 8px;
+  background: rgba(14, 24, 40, 0.6);
+}
+.app-fit-slot-icon.is-filled {
+  border-color: rgba(79, 216, 196, 0.35);
+  background: rgba(24, 40, 60, 0.6);
+}
+.app-fit-slot-icon.is-empty {
+  border-style: dashed;
+}
+.app-fit-slot-icon-glyph {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-fit-slot-icon-name {
+  font-size: 11px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-fit-slot-icon .app-fit-baypick {
+  width: 100%;
+  font-size: 11px;
+}
 .app-fit-slot.is-filled {
   border-style: solid;
   border-color: var(--wui-gold);

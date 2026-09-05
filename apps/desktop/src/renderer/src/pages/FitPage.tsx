@@ -18,14 +18,13 @@ import {
   sameKindCount,
   shipDisplayName,
   shipSlotsOf,
-  slotLabel,
   stackingOf,
   stackWeight,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { combatBadges, DmgChip, DMG_LABEL, InfoTable, ModuleHover, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import type { PageProps } from './common'
-import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
+
 
 /** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复） */
 const COMBAT_BASE_KEYS = new Set([
@@ -78,15 +77,7 @@ export function FitPage({ engine, onToast }: PageProps) {
   const bayModules: ModuleDef[] = engine.modules.filter((m) => countModule(state, m.id) > 0)
   // CPU 占用（全位合计，与无人机放飞共用）
   const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) : 0
-  // 装备库「图标/列表」切换（与手册/物品/货仓同款样式族；默认图标视图）
-  const [view, setView] = useItemView()
-  const modCells: ItemGridCell[] = bayModules.map((m) => ({
-    key: m.id,
-    glyph: m.slot,
-    name: m.name,
-    sub: `×${countModule(state, m.id)} · ${slotLabel(m.slot)}`,
-    title: moduleShortEffect(m),
-  }))
+  // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
   function handleFit(m: ModuleDef): void {
     const r = engine.fitModuleAt(m.id)
@@ -121,6 +112,8 @@ export function FitPage({ engine, onToast }: PageProps) {
   return (
     <div className="page-stack">
       <Panel title="装配台" right={<span className="app-dim">当前舰船：{shipName} · 装备随船</span>}>
+        <div className="app-fit-cols">
+          <div className="app-fit-col-left">
         {shipDef ? (
           <div className="app-fit-shipinfo">
             <span className="app-fit-shipinfo-head">
@@ -175,8 +168,9 @@ export function FitPage({ engine, onToast }: PageProps) {
             ) : null}
           </div>
         ) : null}
-
-        {/* V18：高/中/低三组槽位（每组按位序列出；复数安装） */}
+          </div>
+          <div className="app-fit-col-right">
+        {/* V18：高/中/低三组槽位——按槽位图标排布（取消列表形式，船长 2026-09-05） */}
         <div className="app-fit-racks">
           {(['high', 'mid', 'low'] as RackSlot[]).map((rack) => {
             const bays = fitted ? fitted[rack] : []
@@ -189,98 +183,64 @@ export function FitPage({ engine, onToast }: PageProps) {
                   {RACK_LABELS[rack]} <span className="app-dim">（{RACK_FAMILIES[rack]}）</span>
                   <span className="app-dim">　{filledCount}/{total} 已占</span>
                 </div>
+                <div className="app-fit-icongrid">
                 {Array.from({ length: Math.max(total, bays.length) }, (_, i) => {
                   const fittedId = bays[i] ?? null
                   const fittedDef = fittedId ? engine.ctx.modules.get(fittedId) : undefined
                   if (!fittedDef) {
-                    // 空位：给出该类候选件（库中），一键装入本空位
+                    // 空位：图标格 + 候选下拉（取消列表形式，船长 2026-09-05）
                     return (
-                      <div key={`${rack}-${i}`} className="app-fit-slot">
-                        <div className="app-fit-slot-main">
-                          <span className="app-fit-slot-name">第 {i + 1} 位</span>
-                          <span className="app-fit-slot-effect">
-                            空
-                            {candidates.length > 0 ? (
-                              <select
-                                className="app-select app-fit-baypick"
-                                value=""
-                                onChange={(e) => {
-                                  const mid = e.target.value
-                                  if (!mid) return
-                                  const m = engine.ctx.modules.get(mid)
-                                  if (m) handleFitToBay(m, rack, i)
-                                }}
-                              >
-                                <option value="">— 装入…</option>
-                                {candidates.map((m) => (
-                                  <option key={m.id} value={m.id}>
-                                    {fitOptionLabel(m)}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className="app-dim">（装备库无此类件——市场/制造获取）</span>
-                            )}
-                          </span>
-                        </div>
+                      <div key={`${rack}-${i}`} className="app-fit-slot-icon is-empty">
+                        <span className="app-fit-slot-icon-glyph">＋</span>
+                        <span className="app-fit-slot-icon-name">第 {i + 1} 位</span>
+                        {candidates.length > 0 ? (
+                          <select
+                            className="app-select app-fit-baypick"
+                            value=""
+                            onChange={(e) => {
+                              const mid = e.target.value
+                              if (!mid) return
+                              const m = engine.ctx.modules.get(mid)
+                              if (m) handleFitToBay(m, rack, i)
+                            }}
+                          >
+                            <option value="">— 装入…</option>
+                            {candidates.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {fitOptionLabel(m)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="app-dim">无候选</span>
+                        )}
                       </div>
                     )
                   }
+                  const tone = toneOf(fittedDef.slot)
                   return (
-                    <div key={`${rack}-${i}`} className="app-fit-slot is-filled">
-                      <div className="app-fit-slot-main">
-                        <span className="app-fit-slot-name">第 {i + 1} 位</span>
-                        <span className="app-fit-slot-effect">
-                          <ModuleHover mod={fittedDef}>{`${fittedDef.name} · ${moduleShortEffect(fittedDef)}`}</ModuleHover>
-                        </span>
-                      </div>
+                    <div
+                      key={`${rack}-${i}`}
+                      className="app-fit-slot-icon is-filled"
+                      title={`${fittedDef.name} · ${moduleShortEffect(fittedDef)} · ${rackLabel(rack)}第${i + 1}位`}
+                    >
+                      <span className="app-fit-slot-icon-glyph">
+                        <Glyph name={fittedDef.slot} size={22} color={tone} />
+                      </span>
+                      <span className="app-fit-slot-icon-name">{fittedDef.name}</span>
                       <button className="app-btn is-small is-warn" onClick={() => handleUnfit(rack, i)}>
                         卸下
                       </button>
                     </div>
                   )
                 })}
+                </div>
               </div>
             )
           })}
         </div>
-      </Panel>
-
-      <Panel title="装备库" right={<span className="app-dim">制造完成或卸下的装备 · 空间站库存不随船</span>}>
-        {bayModules.length === 0 ? (
-          <div className="app-dim app-inv-empty">装备库是空的——去「工业」页用蓝图制造，或在市场淘现成装备。</div>
-        ) : (
-          <>
-            <ItemViewBar mode={view} onChange={setView} />
-            {view === 'grid' ? (
-              <ItemGlyphGrid
-                cells={modCells}
-                onPick={(key) => {
-                  const m = engine.modules.find((x) => x.id === key)
-                  if (m) handleFit(m)
-                }}
-              />
-            ) : (
-              <ul className="app-inv-list">
-                {bayModules.map((m) => (
-                  <ModuleHover key={m.id} as="li" mod={m} className="app-inv-row">
-                    <div className="app-inv-main">
-                      <span className="app-inv-name">{m.name}</span>
-                      <span className="app-inv-count">
-                        ×{countModule(state, m.id)} · {slotLabel(m.slot)} · {rackLabel(rackOf(m))}：{moduleShortEffect(m)}
-                      </span>
-                    </div>
-                    <div className="app-inv-btns">
-                      <button className="app-btn is-small is-primary" onClick={() => handleFit(m)}>
-                        装配
-                      </button>
-                    </div>
-                  </ModuleHover>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
+          </div>
+        </div>
       </Panel>
     </div>
   )
