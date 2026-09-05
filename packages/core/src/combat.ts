@@ -449,19 +449,14 @@ const PROFILE_SPLIT: Record<string, Hp3> = {
 
 /** 敌方战术 → 武器射程带（贴合作战风格）：
  * brawl 贴脸肉搏 = 无最小射程的近身喷子；orbit 环绕 = 中距小炮；kite 放风筝 = 高最小射程的远距炮。
- * C4 校准轮（2026-09-05）：基础带为 threat≈10 时的形态；高威胁目标按 foeRangeScale 放大——
- * 后期敌人不再"手短"（最高级威胁风筝射程可超玩家动能 MK3，防远程白嫖）。 */
+ * （C4 曾试行"射程随威胁成长"已回滚——见 docs/design/c4-calibration-notes.md：统一按 threat
+ *  放大射程会让战术带语义失真、同威胁不同 tactic 强度拉锯更剧烈；射程 = tactic 身份，
+ *  强度由 threat（血/火力）表达。）
+ */
 const TACTIC_RANGE: Record<FoeTactic, { max: number; min: number }> = {
   brawl: { max: 2200, min: 0 },
   orbit: { max: 4600, min: 350 },
   kite: { max: 9200, min: 1200 },
-}
-
-/** 敌方射程随威胁的成长系数：1 + (threat−floor)/span（balance battle 常量），钳制 [1, 2.2] */
-export function foeRangeScale(threat: number, bal: BattleBalance): number {
-  const floor = bal.foeRangeThreatFloor ?? 10
-  const span = bal.foeRangeThreatSpan ?? 90
-  return Math.min(2.2, Math.max(1, 1 + (threat - floor) / span))
 }
 
 /** 展开敌方编队（threat 卡面 = 总战力） */
@@ -471,12 +466,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
   const escorts = Math.max(0, Math.min(2, anomaly.escorts ?? 0))
   const mainThreat = anomaly.threat / (1 + 0.6 * escorts)
   const mainType = pickTopType(anomaly.dmgMix)
-  // C4 校准轮：敌方射程随威胁成长（后期目标不再手短）；僚机同主群武器
-  const rangeScale = foeRangeScale(anomaly.threat, bal)
-  const range = {
-    max: Math.round(TACTIC_RANGE[tactic]!.max * rangeScale),
-    min: Math.round(TACTIC_RANGE[tactic]!.min * rangeScale),
-  }
+  const range = TACTIC_RANGE[tactic]!
 
   const make = (tag: string, name: string, uThreat: number, type: DamageType): UnitSpec => {
     const totalHp = uThreat * bal.foeHpPerThreat

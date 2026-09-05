@@ -126,10 +126,6 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     foeReloadMs: 4_000, // 敌方武器装填
     foeFalloff: 0.3, // 敌方命中衰减（maxRange 端点）
     foeSpeedBaseMps: 120, // 敌方速度基准（按体积修正）
-    // C4 校准轮：敌方武器射程随威胁成长——scale = 1 + (threat−10)/90（threat 100 → ×2）。
-    // 后期目标不再"手短"挨远程白嫖；中低威胁不变形（新手友好）。见 combat.foeRangeScale
-    foeRangeThreatFloor: 10,
-    foeRangeThreatSpan: 90,
     // 敌期望交战距离 = 自身武器带内站位系数（贴脸近端 / 环绕中段 / 风筝远端）——带内必能开火
     tacticDesireFactor: { brawl: 0.2, orbit: 0.55, kite: 0.85 },
     ammoTimeCapMs: 4 * 60_000, // 弹药预载：按 4 分钟最大交战时长估算
