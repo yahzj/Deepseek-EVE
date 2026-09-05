@@ -33,7 +33,7 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 export type ShipTab = 'fleet' | 'ai' | 'shop'
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: '⛵' },
-  { key: 'ai', label: 'AI 指挥', icon: '🤖', title: 'AI 副船：指派采矿/远征，成功率按各船装配现算' },
+  { key: 'ai', label: 'AI 指挥', icon: '🤖', title: 'AI 副船：指派采矿/打捞/驻留待命（远征已下线，悬赏请主控出击）' },
   { key: 'shop', label: '舰船市场', icon: '🛒' },
 ]
 
@@ -563,7 +563,10 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           >
             <option value="mining">采矿任务</option>
             <option value="salvage">打捞任务</option>
-            <option value="expedition">远征任务</option>
+            {/* AI 远征软下线（船长 2026-09-05）：选项保留但禁选；悬赏请主控亲自出击 */}
+            <option value="expedition" disabled title="已下线（2026-09-05 船长定）：AI 自动打悬赏收益过高——悬赏请主控亲自出击">
+              远征任务（已下线）
+            </option>
           </select>
           {mode === 'mining' ? (
             <select className="app-select" value={beltId} onChange={(e) => setBeltId(e.target.value)}>

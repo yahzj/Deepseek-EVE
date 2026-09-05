@@ -1,5 +1,7 @@
 /**
- * AI 核心系统（v8）单元测试：购买/名额/指派/效率计时/远征结算/掉落/取消/迁移由 save 负责。
+ * AI 核心系统（v8）单元测试：购买/名额/指派/效率计时/远征软下线善后/取消/迁移由 save 负责。
+ * AI 远征已软下线（2026-09-05 船长定）：旧战斗结算路径的用例随之下线，
+ * 恢复远征时再补回（引擎旧逻辑保留未删）。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { MarketGoodDef, SimContext } from '../src/types'
@@ -19,7 +21,7 @@ import {
   idleAiShipIds,
   maxAiSlots,
 } from '../src/ai'
-import { anomaly, makeTestCtx, moduleDef, ship, skill , fittedOf } from './helpers'
+import { anomaly, makeTestCtx, fittedOf } from './helpers'
 import { aiWinPreview } from '../src/combat'
 
 /** 基础核心的市场卡（测试世界不自动生成核心，手动补一张） */
@@ -137,112 +139,44 @@ describe('AI 采矿任务', () => {
 })
 
 describe('AI 远征任务', () => {
-  it('只接高胜率单：最终成功率不足 80% 拒绝；未亲手完成的目标一律拒绝；指派成功则按效率拉长耗时', () => {
+  it('软下线（2026-09-05 船长定）：指派一律拒绝——即使已首胜解锁/武装达标/耐久合格，也不占名额不耗核心', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
     const ctx = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2, reward: 8_000 })] })
     state.skills.trained['ai-expert'] = 1
     state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state, 'basic', 1)
-
-    // 手动首胜解锁：即使胜率合格，未亲手完成过的目标 AI 一律拒接
-    const noClear1 = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-a', ctx)
-    const noClear2 = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy', ctx)
-    expect(noClear1.ok).toBe(false)
-    expect(noClear2.ok).toBe(false)
-    // 模拟玩家已手动首胜过这两个目标
-    state.completedBounties.push('ano-a', 'ano-easy')
-
-    // AI 门槛 = "最终成功率"口径 aiWinPreview ≥80%（favor 修正 + 扩散；与结算 favor、AI 面板展示同源）
-    const gate = (anomalyId: string): boolean => {
-      const a = ctx.anomalies.get(anomalyId)!
-      return aiWinPreview(state, ctx, a, 'sandcat2') >= 0.8
-    }
-    const r1 = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-a', ctx)
-    expect(r1.ok).toBe(gate('ano-a'))
-    if (r1.ok) cancelAiTask(state, 'sandcat2', ctx)
-    const r2 = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy', ctx)
-    expect(r2.ok).toBe(gate('ano-easy'))
-    if (r2.ok) {
-      // 母港目标无航程：outMs 仅 1ms 保底 → 下一拍即到港开战
-      const task = state.aiAssignments['sandcat2']!.task as { finishAtGameMs: number; outMs: number }
-      expect(task.outMs).toBeGreaterThanOrEqual(1)
-      expect(task.finishAtGameMs).toBe(task.outMs)
-      cancelAiTask(state, 'sandcat2', ctx)
-    }
-    // 低耐久拒绝（与预览无关的硬门槛）
-    const state2 = createInitialState({ nowWallMs: 0, seed: 1 })
-    const ctx2 = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2 })] })
-    state2.skills.trained['ai-expert'] = 1
-    state2.fleet['sandcat2'] = { durability: 0.3, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
-    gainAiCore(state2, 'basic', 1)
-    state2.completedBounties.push('ano-easy') // 已解锁，仍被低耐久门槛拒绝
-    expect(assignAiExpedition(state2, 'sandcat2', 'basic', 'ano-easy', ctx2).ok).toBe(false)
+    state.completedBounties.push('ano-easy') // 已亲手首胜（原解锁前提）
+    const r = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('已下线')
+    expect(state.aiAssignments['sandcat2']).toBeUndefined() // 未占用名额
+    expect(countAiCore(state, 'basic')).toBe(1) // 核心未耗
+    expect(aiSlotsUsed(state)).toBe(0)
   })
 
-  it('到点结算：任务结束 + 战报；胜利全额奖金且可能掉核心', () => {
-    // 给副船装炮台 + 弹药，把 AI 指派门槛推到 ≥80%（同源 preview）
-    const tur = moduleDef('tur-ai', 'turret', 0.5, {
-      maxRangeM: 6000,
-      minRangeM: 0,
-      hitRate: 0.9,
-      falloff: 0.3,
-      reloadMs: 1000,
-      dmgMult: 3,
-      cpuUse: 10,
-    })
-    for (const seedNum of [1, 5, 9, 13, 17]) {
+  it('软下线：遗留远征任务推进时安全善后（取消 + 归还核心；不进入战斗、不结算奖励/声望）', () => {
+    // 直接构造"进行中"的旧版远征任务（模拟旧档/旧版本遗留），推进应被善后而非开战
+    for (const seedNum of [1, 5]) {
       const state = createInitialState({ nowWallMs: 0, seed: seedNum })
-      const ctx = makeTestCtx({
-        modules: [tur],
-        anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2, reward: 8_000 })],
-        balance: { ...makeTestCtx().balance, aiCore: { ...makeTestCtx().balance.aiCore, drops: [{ minThreat: 1, rewards: [{ type: 'gamma', chance: 1 }] }] } },
-      })
+      const ctx = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2, reward: 8_000 })] })
       state.skills.trained['ai-expert'] = 1
-      state.skills.trained['gunnery'] = 5
-      state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: 'tur-ai', miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
-      state.warehouse.items['ammo-kinetic-l'] = 1_000
-      gainAiCore(state, 'basic', 1)
-      state.completedBounties.push('ano-easy') // 玩家已手动首胜 → AI 解锁（自动远征前提）
-      const walletBefore = state.wallet.isk
-      const r = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy', ctx)
-      expect(r.ok).toBe(true) // 武装副船必须过 ≥80% 门槛（若失败说明预览数值需校准）
-      advanceGame(state, 600_000, ctx)
-
-      expect(state.aiAssignments['sandcat2']).toBeUndefined() // 任务结束
-      expect(state.logs.some((l) => l.text.includes('[AI') && l.text.includes('战报'))).toBe(true)
-      // AI 结算不写首胜清单、不发放声望（声望只属于亲手完成）
-      expect(state.completedBounties).toEqual(['ano-easy'])
-      expect(state.standings['dsi']).toBeUndefined()
-      if (state.wallet.isk > walletBefore) {
-        // 胜利路径：全额 8000（±15% 浮动），必掉伽马（定制掉落表）
-        expect(state.wallet.isk - walletBefore).toBeGreaterThanOrEqual(6_800)
-        expect(countAiCore(state, 'gamma')).toBe(1)
-        expect(state.logs.some((l) => l.text.includes('缴获'))).toBe(true)
-        break // 找到一条胜利路径即通过
+      state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
+      // 模拟旧档：任务进行中=核心已被占用（库存 0），善后应归还 1 颗
+      state.completedBounties.push('ano-easy')
+      state.aiAssignments['sandcat2'] = {
+        coreType: 'basic',
+        startedAtGameMs: 0,
+        task: { kind: 'expedition', anomalyId: 'ano-easy', finishAtGameMs: 0, outMs: 0, power: 10, phase: 'out', battle: null },
       }
-      // 失利路径：核心已归还
-      expect(countAiCore(state, 'basic')).toBe(1)
+      const walletBefore = state.wallet.isk
+      advanceGame(state, 600_000, ctx)
+      expect(state.aiAssignments['sandcat2']).toBeUndefined() // 任务已善后
+      expect(countAiCore(state, 'basic')).toBe(1) // 核心归还
+      expect(state.logs.some((l) => l.text.includes('AI 远征已下线'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('战报'))).toBe(false) // 未进入战斗结算
+      expect(state.wallet.isk).toBe(walletBefore) // 无奖励入账
+      expect(state.completedBounties).toEqual(['ano-easy']) // 无新首胜
+      expect(state.standings['dsi']).toBeUndefined() // 无声望
     }
-  })
-
-  it('失利低耐久自动维修 / 弃船归还核心（两分支宽松断言）', () => {
-    // 用高威胁目标强制低胜率，直接构造任务（绕过 ≥80% 门槛）再调用结算
-    const hardCtx = makeTestCtx({ anomalies: [anomaly('ano-hard9', 'galaxy-hub', { threat: 9000, reward: 8_000 })] })
-    const s1 = createInitialState({ nowWallMs: 0, seed: 3 })
-    s1.skills.trained['ai-expert'] = 1
-    s1.fleet['sandcat2'] = { durability: 0.5, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
-    // 直接构造"已出发"任务（两阶段：out 已到港），走完整战斗失败路径
-    s1.aiAssignments['sandcat2'] = {
-      coreType: 'basic',
-      startedAtGameMs: 0,
-      task: { kind: 'expedition', anomalyId: 'ano-hard9', finishAtGameMs: 0, outMs: 0, power: 10, phase: 'out', battle: null },
-    }
-    // 高威胁目标：到港开战并很快战败（500 发级余量：时间足够战斗走完）
-    advanceGame(s1, 120_000, hardCtx)
-    // 任务必结束、核心必归还
-    expect(s1.aiAssignments['sandcat2']).toBeUndefined()
-    expect(countAiCore(s1, 'basic')).toBe(1)
-    // 战败路径：耐久下降或弃船（日志有战报/损毁）
-    expect(s1.logs.some((l) => l.text.includes('战报') || l.text.includes('舰船损毁'))).toBe(true)
   })
 })

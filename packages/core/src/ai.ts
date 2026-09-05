@@ -183,7 +183,12 @@ export function assignAiMining(
   return { ok: true }
 }
 
-/** 玩家指令：指派 AI 远征任务（只接预估胜率 ≥80% 且耐久 ≥50% 的目标；奖励全额） */
+/**
+ * 玩家指令：指派 AI 远征任务（原语义：只接预估胜率 ≥80% 且耐久 ≥50% 的目标；奖励全额）。
+ * ⚠️ 软下线（2026-09-05 船长定，不移除）：悬赏收益实测单线 10~150M/h（顶配连刷），
+ * AI 多线无人值守 = 印钞放大器 → 本入口一律拒绝，AI 只保留采矿/打捞/驻留待命；
+ * 如需恢复：删掉本前置返回即可（后续门槛/冷却代码原样保留）。
+ */
 export function assignAiExpedition(
   state: GameState,
   shipId: string,
@@ -191,6 +196,16 @@ export function assignAiExpedition(
   anomalyId: string,
   ctx: SimContext,
 ): CommandResult {
+  // AI 远征软下线开关（2026-09-05 船长定，不移除）：true=一律拒绝；改 false 即恢复
+  const aiExpeditionOffline: boolean = true
+  if (aiExpeditionOffline) {
+    return {
+      ok: false,
+      error:
+        'AI 远征已下线（2026-09-05 船长定：自动打悬赏收益过高，悬赏请主控亲自出击）——AI 采矿/打捞/驻留待命不受影响。',
+    }
+  }
+  // ↓↓↓ 软下线前的完整指派逻辑（门槛/冷却/行程，保留待恢复）↓↓↓
   const pre = checkAssignable(state, shipId, coreType, ctx)
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)
@@ -647,7 +662,11 @@ function freeCargoFor(state: GameState, shipId: string, ctx: SimContext): number
   return Math.max(0, cap - used)
 }
 
-/** AI 远征推进（V12 两阶段：out → battle；战斗由实时引擎推进，结束即结算归还核心） */
+/**
+ * AI 远征推进（V12 两阶段：out → battle；战斗由实时引擎推进，结束即结算归还核心）。
+ * ⚠️ 软下线（2026-09-05 船长定，不移除）：本函数不再推进新战斗——
+ * 对历史遗留任务做一次安全善后（取消 + 归还核心 + 日志）；下方两阶段逻辑保留待恢复。
+ */
 export function advanceAiExpedition(
   state: GameState,
   shipId: string,
@@ -655,6 +674,13 @@ export function advanceAiExpedition(
   ctx: SimContext,
 ): void {
   const shipName = shipDisplayName(state, ctx, shipId)
+  if (state.aiAssignments[shipId]?.task?.kind === 'expedition') {
+    delete state.aiAssignments[shipId]
+    gainAiCore(state, assignment.coreType)
+    addLog(state, 'warn', `[AI·${shipName}] AI 远征已下线（船长 2026-09-05）：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`)
+    return
+  }
+  // ↓↓↓ 软下线前的完整推进逻辑（out → battle → 结算，保留待恢复）↓↓↓
   for (let guard = 0; guard < 5; guard++) {
     const current = state.aiAssignments[shipId]
     if (!current) return
