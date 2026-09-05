@@ -499,13 +499,13 @@ export function App({ engine }: { engine: GameEngine }) {
               </div>
             ) : null}
             {offlineReport.shipsIn.length > 0 ? (
-              <div className="app-report-line">◈ 新船入坞：{offlineReport.shipsIn.join('、')}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>新船入坞：{offlineReport.shipsIn.join('、')}</div>
             ) : null}
             {offlineReport.skillsUp.length > 0 ? (
               <div className="app-report-line">技能：{offlineReport.skillsUp.join('、')}</div>
             ) : null}
             {offlineReport.learnedIn.length > 0 ? (
-              <div className="app-report-line">✓ 学会配方：{offlineReport.learnedIn.join('、')}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="ico-cross" size={13} color={ICO_TONES["ico-cross"]} /></span>学会配方：{offlineReport.learnedIn.join('、')}</div>
             ) : null}
             {offlineReport.highlights.map((h, i) => (
               <div key={i} className={`app-report-highlight is-${h.kind}`}>

@@ -1347,7 +1347,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         })()}
         {cdRemain > 0 ? (
           <span className="app-dim" title="同目标重复出击的冷却（受该船扫描属性影响）">
-            {' '}· ⟳ 冷却 {Math.max(1, Math.ceil(cdRemain / 1000))} 秒
+            {' '}· <span className="app-ico"><Glyph name="ico-clock" size={12} color={ICO_TONES['ico-clock']} /></span>冷却 {Math.max(1, Math.ceil(cdRemain / 1000))} 秒
           </span>
         ) : null}
       </div>
@@ -1410,7 +1410,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             }
             onClick={toggleLoop}
           >
-            {looping ? '■ 停止连击' : '↻ 连续出击'}
+            {looping ? '■ 停止连击' : (<><span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>连续出击</>)}
           </button>
           <button
             className={`app-btn is-small ${miningActive && !goAsk ? 'is-warn is-primary' : goAsk ? 'is-dim' : 'is-primary'}`}

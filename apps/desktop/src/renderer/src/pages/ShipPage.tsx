@@ -250,7 +250,7 @@ export function ShipPage({
                         title={shipState.customName ? `已自定义名称——点击改名（或恢复默认）` : '自由改名（免费，10 字内，可重名；同型默认自动带 #N）'}
                         onClick={() => startRename(uid, shipState.customName)}
                       >
-                        ✎️ 改名
+                        改名
                       </button>
                     ) : null}
                     <button
