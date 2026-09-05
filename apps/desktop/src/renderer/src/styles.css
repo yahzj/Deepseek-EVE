@@ -7137,7 +7137,7 @@ body {
 .app-btn{font-size:calc(var(--ui-fs,1)*12px)}
 
 /* settings panel (captain UI polish 2026-09-05) */
-.app-settings-modal{width:460px;max-width:calc(100vw - 48px)}
+.app-settings-modal{box-sizing:border-box;width:460px;max-width:calc(100vw - 48px);padding:18px 20px 16px}
 .app-settings-title{font-size:15px;font-weight:700;letter-spacing:2px;color:var(--wui-gold);margin-bottom:2px}
 .app-settings-sub{font-size:11px;color:var(--wui-text-dim);margin-bottom:10px}
 .app-settings-list{display:flex;flex-direction:column;gap:10px}
