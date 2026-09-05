@@ -17,12 +17,13 @@
 | 真档 / 门槛档 | 真档 = `%APPDATA%\whale-idle\save.json` 船长真实进度；门槛档 = tools/make-test-save.ts 注入的验收存档（docs/test-saves/） | |
 | 高安 / 中安 / 低安 | `security ≥ 0.5` = 高安（太平）；`0 ≤ sec < 0.5` = 中安（常态）；`security < 0` = **低安**（B1 遭遇暴露区；B3 低安残骸箱同口径） | B1/B3 共用 |
 | 悬赏（卡/目标） | `AnomalyDef`；远征战斗目标，声望门槛 standingReq 解锁 | |
-| 首胜 | `completedBounties` 含该卡 id：手动打赢后才能交给 AI 副船自动远征；重复打不再涨声望 | |
+| 首胜 | `completedBounties` 含该卡 id：手动打赢后才能交给 AI 副船自动远征；重复打不再涨声望 | AI 远征已下线（2026-09-05） |
 | 远征 | 出航(out)→到港战斗(battle)→返航(back) 状态机 | |
+| AI 远征（下线） | AI 副船打悬赏的任务类型；**已软下线（2026-09-05 船长定，引擎代码保留可恢复）**——指派一律拒绝，历史遗留任务自动善后 | ai.ts 开关 aiExpeditionOffline |
 | 悬赏冷却 | 同目标重复出击冷却 `bountyCooldownRemainingMs`（T8；受扫描属性影响） | |
 | 连击 / 连续出击 | `autoLoopAnomalyId`：完成→冷却结束自动再出发 | |
 | 主控 / 驾驶船 | 玩家当前驾驶的船实例（state.shipId） | |
-| AI 副船 | `aiAssignments` 指派任务（采矿/远征/待命）的闲置舰船；AI 远征同构走 favor 结算 | |
+| AI 副船 | `aiAssignments` 指派任务（采矿/打捞/驻留待命；远征已下线）的闲置舰船 | |
 | 声望 | standing（协会声望按星系/阵营累积） | |
 | 精炼炉 | 母港单工位循环批处理（refineRun）：固定批量自动续批，占主控工作位或一枚 AI 核心 | 残骸回收拟复用 |
 
@@ -34,8 +35,12 @@
 | 虚拟装配 | 敌舰生成口径：射程 = 战术带×成长系数 封顶 15km；速度 = 参考船速段×m_base×tactic 系数 封顶 1.2× | foeSpeedTacticMul brawl 1.28 / orbit 1.0 / kite 0.72 |
 | 参考段火力 | foeRefFire 段表 2.1/9.7/12.8 dps（≤16 / 17-40 / 41+），foeHpOfThreat = 段火力×D(T) | |
 | 近盲带 | 武器 minRange 以内。**敌我区分（2026-09-05 拍板）**：敌近盲内不停火、伤害×blindDmgMul(缺省0.3)；玩家近盲内不开火 | blindDmgMul 单卡可覆盖 |
-| 胜率口径 | `battleWinPreview`（玩家手动，无 favor）与 `aiWinPreview`（AI：favor 0.3 修正 + logit 扩散）| AI 门槛 = 最终成功率 ≥80% |
+| 胜率口径 | `battleWinPreview`（玩家手动，无 favor）与 `aiWinPreview`（AI：favor 0.3 修正 + logit 扩散）| AI 门槛 = 最终成功率 ≥80%（AI 远征下线后仅留存代码） |
 | favor | AI 远征优势：模型胜率 0.8 局 → AI 命中×1.18/敌命中×0.82 | aiFavorStrength 0.3 |
+| 承伤三层 | 护盾 s / 装甲 a / 结构 h：伤害按 盾→甲→结构 顺序扣 | P0 承伤持久化（2026-09-05） |
+| 结构（=原耐久） | `fleetShip.durability` 与结构层合并：战斗中结构受损即扣耐久并**跨场保留**，归零弃船 | 仅港内维修/套件恢复 |
+| 装甲残余 | `fleetShip.armorPct`（0~1）：战斗中装甲损伤**跨场保留** | 同上 |
+| 护盾回充 | 护盾损失不保留：战中被动回充（shieldRegenPerSec，初值 2%/s；甲/结构打穿后停充防僵持），脱战/场间回满 | balance.battle |
 | 支援件 | V18.1 support 件：稳定(伤害)/射速/索敌(命中)/陀螺(闪避) | **回调已取消（2026-09-05 定）** |
 
 ## 三、装备 / 制造 / 经济

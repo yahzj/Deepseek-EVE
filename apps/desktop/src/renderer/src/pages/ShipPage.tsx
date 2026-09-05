@@ -102,7 +102,7 @@ export function ShipPage({
   function handleRepair(id: string): void {
     const r = engine.repairShipAt(id)
     if (!r.ok) onToast(r.error ?? '维修失败', true)
-    else onToast('维修完成，耐久已回满。')
+    else onToast('维修完成：结构/装甲已修复。')
   }
 
   /** T5：锁定/解锁防误售 */
@@ -194,6 +194,7 @@ export function ShipPage({
         <div className="app-ship-list">
           {fleetEntries.map(({ uid, ship: shipState, def }) => {
             const dur = durabilityOf(state, uid)
+            const armor = shipState.armorPct ?? 1 // P0 承伤持久化：装甲残余（跨场保留）
             const isCurrent = uid === state.shipId
             const repairCost = repairCostIsk(state, uid, engine.ctx)
             const isWorking = uid in state.aiAssignments
@@ -289,15 +290,18 @@ export function ShipPage({
                   <div className="app-dur-track">
                     <div className="app-dur-fill" style={{ width: `${Math.round(dur * 100)}%` }} />
                   </div>
-                  <span className={`app-dur-text${dur < 0.5 ? ' is-bad' : dur < 1 ? ' is-mid' : ''}`}>
-                    耐久 {Math.round(dur * 100)}%
+                  <span
+                    className={`app-dur-text${dur < 0.5 || armor < 0.5 ? ' is-bad' : dur < 1 || armor < 1 ? ' is-mid' : ''}`}
+                    title={`结构（=原耐久，与装甲同为跨场保留的损伤；护盾损失不保留）${dur < 1 ? `：结构 ${Math.round(dur * 100)}%` : ''}${armor < 1 ? `，装甲 ${Math.round(armor * 100)}%` : ''}`}
+                  >
+                    结构 {Math.round(dur * 100)}%{armor < 1 ? ` · 装甲 ${Math.round(armor * 100)}%` : ''}
                   </span>
-                  {dur < 1 && !isWorking ? (
+                  {(dur < 1 || armor < 1) && !isWorking ? (
                     <button
                       className="app-btn is-small is-warn"
                       onClick={() => handleRepair(uid)}
                       disabled={state.wallet.isk < repairCost}
-                      title={`维修需 ${repairCost.toLocaleString('zh-CN')} ISK`}
+                      title={`维修需 ${repairCost.toLocaleString('zh-CN')} ISK（结构+装甲一并修复；护盾无需维修）`}
                     >
                       维修 {repairCost.toLocaleString('zh-CN')}
                     </button>
@@ -559,7 +563,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               const ok = rate === null || rate >= 0.8
               return (
                 <option key={id} value={id} disabled={!ok}>
-                  {shipDisplayName(state, engine.ctx, id)}（耐久 {Math.round(durabilityOf(state, id) * 100)}%
+                  {shipDisplayName(state, engine.ctx, id)}（结构 {Math.round(durabilityOf(state, id) * 100)}%
                   {rate === null ? '' : ok ? ` · 成功率 ${Math.round(rate * 100)}%` : ` · 成功率 ${Math.round(rate * 100)}%（<80% 不可派）`}）
                 </option>
               )
