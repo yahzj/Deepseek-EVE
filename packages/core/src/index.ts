@@ -154,6 +154,7 @@ export {
 export {
   MODULE_SLOTS,
   slotLabel,
+  effectiveCpu,
   countModule,
   addModule,
   removeModule,
@@ -308,6 +309,21 @@ export {
 export type { ExpeditionView, BattleTacticChoice } from './expedition'
 
 export { recallExpedition } from './expedition'
+export {
+  WRECK_FLOOR,
+  WRECK_INJECT_PER_THREAT,
+  WRECK_DRAIN_SHARE,
+  WRECK_DECAY_MS,
+  WRECK_RECOVER_MS,
+  WRECK_VOLUME_PER_THREAT,
+  wreckItemIdOf,
+  anomalyIdOfWreck,
+  wreckBaseDensity,
+  wreckDensityOf,
+  injectWreckDensity,
+  advanceWreckDrift,
+  salvageRoundPull,
+} from './salvage'
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,

@@ -20,6 +20,7 @@ import { formatDurationMs } from './time'
 import { originGalaxyOf } from './location'
 import { onArriveAtGalaxy } from './station'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
+import { injectWreckDensity, wreckDensityOf } from './salvage'
 import {
   advanceBattleFor,
   battleOpenM,
@@ -358,6 +359,9 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     state.wallet.isk += reward
+    // B3 击杀注入（2026-09-05）：胜利为该星系残骸密度 +威胁×0.4（无上限）
+    injectWreckDensity(state, ctx, anomaly.galaxyId, anomaly.threat)
+    const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）
     const firstBlood = !state.completedBounties.includes(anomaly.id)
     if (firstBlood) {
@@ -370,7 +374,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'trade',
-      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}，${standPart}。`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}，${standPart}` +
+        `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
     )
     // T8 胜利 = 结算并停留该星系：远征结束、船停在目标（母港星系=已回港）、悬赏冷却计时开始
     setBountyCooldown(state, ctx, anomaly.id)

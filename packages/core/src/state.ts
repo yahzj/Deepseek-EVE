@@ -639,6 +639,14 @@ export interface EncounterState {
   battle: BattleState | null
 }
 
+/** B3 星系残骸记录（2026-09-05；密度模型见 docs/design/b3-salvage.md）：
+ * density = 当前残骸密度（无记录 = 基础密度，由 security 推导不入档）；
+ * rare = 稀有残骸计数（预留，暂不实现）。 */
+export interface WreckGalaxyRecord {
+  density: number
+  rare: number
+}
+
 /** 第十八版存档结构（当前版本）：v18 = v17 + V18 槽位制（fitted 六槽 Record →
  * 高/中/低三类位数组，复数安装；装备 rack 归槽；存档迁移 17→18 原位映射后由
  * repair 链与船布局对齐）。v17 时代全部字段保留（fleet 实例化 defId/customName、
@@ -657,6 +665,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   standby: StandbyState
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
+  /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
+  galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
 
 /** 对外统一称呼：当前版本状态 */
@@ -799,6 +809,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     lowSecPresence: {},
     standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
     refineRun: { ...EMPTY_REFINE_RUN },
+    galaxyWrecks: {},
     logs: [],
   }
   addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')

@@ -1306,6 +1306,22 @@ function normalizeState(raw: unknown): GameState {
       ? src.autoLoopAnomalyId
       : null
 
+  // --- B3 星系残骸密度（2026-09-05 兼容字段无版本号）：合法记录保留（密度 ≥0、稀有计数取整）；
+  // 非法/缺省 = 无记录（运行时按基础密度推导，不入档） ---
+  const galaxyWrecks: Record<string, { density: number; rare: number }> = {}
+  const gwRaw = asRaw(src.galaxyWrecks)
+  for (const [galaxyId, gw] of Object.entries(gwRaw)) {
+    if (galaxyId.length === 0 || typeof gw !== 'object' || gw === null) continue
+    const g = asRaw(gw)
+    const density = g.density
+    const rare = g.rare
+    if (typeof density !== 'number' || !Number.isFinite(density) || density < 0) continue
+    galaxyWrecks[galaxyId] = {
+      density,
+      rare: typeof rare === 'number' && Number.isFinite(rare) ? Math.max(0, Math.floor(rare)) : 0,
+    }
+  }
+
   // --- B1 低安遭遇（v17.1 兼容字段）：未激活 = 标准空态（往返幂等）；激活才逐字段容错 ---
   const encRaw = asRaw(src.encounter)
   const encShipId = typeof encRaw.shipId === 'string' && encRaw.shipId.length > 0 ? encRaw.shipId : null
@@ -1441,6 +1457,7 @@ function normalizeState(raw: unknown): GameState {
     dockedSite,
     dialogueSeen,
     pendingDialogue,
+    galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     logs,
   }
   return normalized

@@ -21,6 +21,7 @@ import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOutput, shipInReturn } from './mining'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
+import { injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
@@ -549,6 +550,9 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       Math.round(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng)) * bountyRewardFactor(state)),
     )
     state.wallet.isk += reward
+    // B3 击杀注入（2026-09-05）：AI 远征胜利与该星系主控胜利同源（威胁×0.4）
+    injectWreckDensity(state, ctx, anomaly.galaxyId, anomaly.threat)
+    const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // AI 结算不发放声望、不写入首胜清单：协会声望只属于"亲手完成"（悬赏卡与指派解锁均以主控首胜为准）
     const lootText: string[] = []
     const lootMul = lootFactor(state)
@@ -563,7 +567,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       'trade',
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 大捷（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）！` +
         `奖金 ${reward.toLocaleString('zh-CN')} ISK${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
-        `${dropText ? `，${dropText}` : ''}。`,
+        `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
     )
   } else {
     // ── 失利：扣耐久 → 弃船骰 → 维修费（公式与主控一致，火力按本船指数） ──

@@ -27,6 +27,7 @@ import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
+import { advanceWreckDrift } from './salvage'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
@@ -50,6 +51,8 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext):
   ensureTransitExplored(state, ctx)
   advanceSkillQueue(state, d, ctx.skills)
   advanceMining(state, d, ctx)
+  // B3 星系残骸密度：闲置漂移（打捞作业接入后传正在打捞的星系 id，漂移双向挂起）
+  advanceWreckDrift(state, ctx, d)
   // T4 换船善后：自动返航中的旧船独立于新作业推进（到港自动卸货）
   advanceShipReturns(state, d, ctx)
   // T8 显式返航行程（野外→空间站）
