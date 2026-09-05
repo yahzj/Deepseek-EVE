@@ -358,6 +358,23 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6.2 20.4h5.6" />
     </g>
   ),
+  /* 通讯天线（原 📡：抛物面弧 + 天线杆 + 底座） */
+  'ico-antenna': (
+    <g>
+      <path d="M5.6 14.4a7.8 7.8 0 0 1 12.8 0" />
+      <path d="M12 14.4v5.2" />
+      <path d="M9.6 19.6h4.8" />
+      <circle cx="12" cy="10.6" r="1" />
+    </g>
+  ),
+  /* 战术情报雷达（原 🛰 侦察情报：扫描环 + 扫掠针） */
+  'ico-tact': (
+    <g>
+      <circle cx="12" cy="12" r="5" />
+      <path d="M12 12l4.2-4.2" />
+      <path d="M9.6 8.4a4.4 4.4 0 0 1 2.4-1.2" />
+    </g>
+  ),
   fallback: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -430,6 +447,8 @@ export const ICO_TONES: Record<string, string> = {
   'ico-swap': '#7de3a8',
   'ico-cross': '#ff8373',
   'ico-crane': '#ffd166',
+  'ico-antenna': '#6fe3f0',
+  'ico-tact': '#ff9a6b',
 }
 
 /** 渲染一个科幻线性图标 */

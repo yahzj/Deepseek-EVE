@@ -1356,7 +1356,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       {anomaly.tactic ? (
         <div className="app-ano-meta">
           <span className="app-dim" title="敌方战术决定了接战距离与克制关系：威胁低也可能打不动——胜率%与打法提示为准">
-            <span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
+            <span className="app-ico"><Glyph name="ico-tact" size={12} color={ICO_TONES["ico-tact"]} /></span>{FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
           </span>
         </div>
       ) : null}
@@ -1627,7 +1627,7 @@ function StationCard({ engine, onToast }: { engine: GameEngine; onToast: ToastFn
                   else onToast(r.error ?? '通讯失败', true)
                 }}
               >
-                ✉ 通讯记录
+                <span className="app-ico"><Glyph name="ico-antenna" size={13} color={ICO_TONES["ico-antenna"]} /></span>通讯记录
               </button>
             ) : null}
           </div>
