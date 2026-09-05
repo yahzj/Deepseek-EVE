@@ -130,7 +130,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     sq.startedAtGameMs = state.gameMs
     sq.finishAtGameMs = state.gameMs + 1000
     sq.originGalaxy = from === HOME_GALAXY_ID ? null : from
-    addLog(state, 'info', '开始扫描探索（调试模式）：1 秒后录入情报并停留。')
+    addLog(state, 'info', '开始扫描探索：1 秒后录入情报并停留。')
     return { ok: true }
   }
   let legMs = travelLegMs(state, ctx, travelMin)

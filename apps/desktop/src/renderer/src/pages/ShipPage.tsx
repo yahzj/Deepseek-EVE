@@ -596,7 +596,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             <option value="mining">采矿任务</option>
             <option value="salvage">打捞任务</option>
             {/* AI 远征软下线（船长 2026-09-05）：选项保留但禁选；悬赏请主控亲自出击 */}
-            <option value="expedition" disabled title="已下线（2026-09-05 船长定）：AI 自动打悬赏收益过高——悬赏请主控亲自出击">
+            <option value="expedition" disabled title="已下线：AI 自动打悬赏收益过高——悬赏请主控亲自出击">
               远征任务（已下线）
             </option>
           </select>

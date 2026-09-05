@@ -713,7 +713,7 @@ export function MarketPage({
         title="我的挂单"
         right={
           <span className="app-dim">
-            余额 {isk(state.wallet.isk)} ISK · escrow 在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
+            余额 {isk(state.wallet.isk)} ISK · 托管在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
           </span>
         }
       >

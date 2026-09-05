@@ -49,7 +49,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 180 * 60,
     buildCostIsk: 420_000,
     priceIsk: 260_000,
-    description: '座头鲸级矿舰总装图纸（V10）：货舱 9000 m³、10 秒循环产 40 单位——比鲸吞级更能装更能挖。',
+    description: '座头鲸级矿舰总装图纸：货舱 9000 m³、10 秒循环产 40 单位——比鲸吞级更能装更能挖。',
   },
   {
     id: 'sbp-colossal',
@@ -68,7 +68,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 480 * 60,
     buildCostIsk: 2_400_000,
     priceIsk: 900_000,
-    description: '巨灵鲸级旗舰货舰总装图纸（V10 限定奇货）：货舱 26000 m³ 的移动要塞——材料清单本身就是一份远征地图。',
+    description: '巨灵鲸级旗舰货舰总装图纸（限定奇货）：货舱 26000 m³ 的移动要塞——材料清单本身就是一份远征地图。',
   },
 ]
 

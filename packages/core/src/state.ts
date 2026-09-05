@@ -914,7 +914,6 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     logs: [],
   }
   addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')
-  addLog(state, 'info', 'V12：实时战斗引擎上线——远征交火带距离机动/即时射击/命中回避（随 V10.5 数值契约启用）。V11 随机事件、V10 市场扩容已随版本就绪。')
   addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} ISK 已到账；沙猫级采矿艇已停靠机库，另有隼枭级武装艇待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
   addLog(state, 'info', '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。')
   return state

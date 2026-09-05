@@ -492,7 +492,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
     >
       <div className="app-dim app-note">
         打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：出航 → 持续打捞 → 满仓自动返港；
-        残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞全程可能遇袭（B1）。
+        残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞全程可能遇袭。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 

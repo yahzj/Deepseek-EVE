@@ -132,7 +132,7 @@ export function enqueueSkill(
   const def = catalog.get(skillId)
   if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。` }
   if (HIDDEN_SKILL_IDS.includes(skillId)) {
-    return { ok: false, error: `「${def.name}」尚在研发中（战斗线预留），暂不可训练。` }
+    return { ok: false, error: `「${def.name}」尚在研发中，暂不可训练。` }
   }
   if (!Number.isInteger(targetLevel) || targetLevel < 1 || targetLevel > MAX_SKILL_LEVEL) {
     return { ok: false, error: `目标等级必须是 1 ~ ${MAX_SKILL_LEVEL} 的整数。` }

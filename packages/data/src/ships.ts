@@ -181,7 +181,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 21_000,
     signatureM: 120,
     scanResMm: 430,
-    description: '鲸盟第三代量产矿舰：货舱是鲸吞级的两倍，产量再上一档（V10 新增，稀有现货或蓝图自造）。',
+    description: '鲸盟第三代量产矿舰：货舱是鲸吞级的两倍，产量再上一档（稀有现货或蓝图自造）。',
   },
   {
     id: 'sh-bowhead',
@@ -208,7 +208,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 22_000,
     signatureM: 190,
     scanResMm: 360,
-    description: '工业级大型货舰：近两万立方货舱，离线囤货与 AI 长途采矿的中坚（V10 新增）。',
+    description: '工业级大型货舰：近两万立方货舱，离线囤货与 AI 长途采矿的中坚。',
   },
   {
     id: 'sh-colossal',
@@ -235,7 +235,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 23_000,
     signatureM: 260,
     scanResMm: 320,
-    description: '鲸盟总装的旗舰货舰：两万六千立方货舱，深空物流的移动要塞（V10 新增，仅可制造）。',
+    description: '鲸盟总装的旗舰货舰：两万六千立方货舱，深空物流的移动要塞（仅可制造）。',
   },
 
   // ══════════ 掠食者武装线（盾厚炮强；带无人机舱；锁定强） ══════════
@@ -377,7 +377,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 38_000,
     signatureM: 88,
     scanResMm: 520,
-    description: '顶级武装炮舰：市场限量现货，声誉与实力的双重象征（V10 限定奇货）。',
+    description: '顶级武装炮舰：市场限量现货，声誉与实力的双重象征（限定奇货）。',
   },
 
   // ══════════ 甲壳重装线（装甲/结构最厚 + 装甲层高抗） ══════════
@@ -406,7 +406,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 22_000,
     signatureM: 130,
     scanResMm: 420,
-    description: '慢而稳的重甲运输艇：货舱大、皮糙肉厚（V10.5：装甲/结构契约数值就位）。',
+    description: '慢而稳的重甲运输艇：货舱大、皮糙肉厚。',
   },
   {
     id: 'sh-hawksbill',
@@ -460,7 +460,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 24_000,
     signatureM: 250,
     scanResMm: 330,
-    description: '重装线的顶点：传闻用整颗小行星的岩壳锻造（V10 限定奇货，需高声望）。',
+    description: '重装线的顶点：传闻用整颗小行星的岩壳锻造（限定奇货，需高声望）。',
   },
 
   // ══════════ 蜃楼航运线（壳大皮薄：结构量高、盾甲低） ══════════
@@ -489,7 +489,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 24_000,
     signatureM: 95,
     scanResMm: 480,
-    description: '快运舰：比矿船能装、比矿船能跑，小型囤货流的入门选择（V10 新增）。',
+    description: '快运舰：比矿船能装、比矿船能跑，小型囤货流的入门选择。',
   },
   {
     id: 'sh-sailfish',
@@ -516,7 +516,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 25_000,
     signatureM: 130,
     scanResMm: 430,
-    description: '高速货舰：八千五百立方货舱仍能保持高速循环（V10 新增）。',
+    description: '高速货舰：八千五百立方货舱仍能保持高速循环。',
   },
   {
     id: 'sh-swordfish',
@@ -543,7 +543,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26_000,
     signatureM: 170,
     scanResMm: 390,
-    description: '蜃楼航运的旗舰货舰：十四千立方运力，跑商人的终极梦想（V10 限定奇货）。',
+    description: '蜃楼航运的旗舰货舰：十四千立方运力，跑商人的终极梦想（限定奇货）。',
   },
 ]
 

@@ -202,7 +202,7 @@ export function assignAiExpedition(
     return {
       ok: false,
       error:
-        'AI 远征已下线（2026-09-05 船长定：自动打悬赏收益过高，悬赏请主控亲自出击）——AI 采矿/打捞/驻留待命不受影响。',
+        'AI 远征已下线：悬赏请主控亲自出击——AI 采矿/打捞/驻留待命不受影响。',
     }
   }
   // ↓↓↓ 软下线前的完整指派逻辑（门槛/冷却/行程，保留待恢复）↓↓↓
@@ -677,7 +677,7 @@ export function advanceAiExpedition(
   if (state.aiAssignments[shipId]?.task?.kind === 'expedition') {
     delete state.aiAssignments[shipId]
     gainAiCore(state, assignment.coreType)
-    addLog(state, 'warn', `[AI·${shipName}] AI 远征已下线（船长 2026-09-05）：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`)
+    addLog(state, 'warn', `[AI·${shipName}] AI 远征已下线：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`)
     return
   }
   // ↓↓↓ 软下线前的完整推进逻辑（out → battle → 结算，保留待恢复）↓↓↓

@@ -326,8 +326,8 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
       }
     }
 
-    if (expRecalled) pushLog('info', '远征系统升级（V12 实时战斗引擎）：出发中的远征已自动召回，可重新出发。')
-    if (aiRecalled > 0) pushLog('info', `远征系统升级（V12）：AI 远征任务已自动召回，${aiRecalled} 枚 AI 核心已归还核心库。`)
+    if (expRecalled) pushLog('info', '远征系统升级：出发中的远征已自动召回，可重新出发。')
+    if (aiRecalled > 0) pushLog('info', `远征系统升级：AI 远征任务已自动召回，${aiRecalled} 枚 AI 核心已归还核心库。`)
     if (logs.length > 300) logs.splice(0, logs.length - 300)
     return { ...raw, expedition: nextExp, aiAssignments: nextAi, aiCores: cores, logs }
   },
@@ -437,7 +437,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
           parts.push(`${minId}×${n}`)
         }
       }
-      pushLog('info', `内容整合（V16 矿带分层）：${meta.label}×${qty} 按精炼等值折算为${parts.join('、')}入仓。`)
+      pushLog('info', `内容整合：${meta.label}×${qty} 按精炼等值折算为${parts.join('、')}入仓。`)
       delete wareItems[oreId]
     }
 

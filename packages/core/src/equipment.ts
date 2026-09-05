@@ -445,7 +445,7 @@ export function migrateDeprecatedAmmo(state: GameState): number {
     converted += n
   }
   if (converted > 0) {
-    addLog(state, 'info', `V18 弹药改版：旧重型弹已按 1:1 并入通用弹（共 ${converted} 发），相关挂单已撤销。`)
+    addLog(state, 'info', `弹药改版：旧重型弹已按 1:1 并入通用弹（共 ${converted} 发），相关挂单已撤销。`)
   }
   return converted
 }
