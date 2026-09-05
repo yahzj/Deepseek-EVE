@@ -12,6 +12,7 @@ import { formatDurationMs, shipDisplayName } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
+import { PrologueScreen } from './panels/PrologueScreen'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
@@ -532,6 +533,9 @@ export function App({ engine }: { engine: GameEngine }) {
           }}
         />
       ) : null}
+
+      {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
+      {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
 
       {/* 全局悬停提示层（置于最上） */}
       <TooltipLayer />

@@ -83,6 +83,9 @@ import {
   unfitSlot,
   unfitAt,
   unloadCargoToWarehouse,
+  beginTutorialAfterAwaken,
+  skipTutorial,
+  ONB_AWAKEN,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -341,6 +344,11 @@ export class GameEngine {
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
     this.lastRealMs = now
+    // 序章·苏醒：演出阶段（step 0）冻结游戏时间——不推进/不累计余额，界面由演出组件驱动
+    if (this.state.onboarding.step === ONB_AWAKEN) {
+      this.pendingMs = 0
+      return
+    }
     const exp = this.state.expedition
     // 含已分胜负的"击杀慢镜窗口"（battle.ended 非空但尚未结算）：
     // 窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定的实时画面
@@ -1116,5 +1124,27 @@ export class GameEngine {
     this.offlineReport = null
     void this.persist()
     this.notify()
+  }
+
+  /** 序章·苏醒：自检/起名完成 → 写入呼号并进入采集步骤（教程 S1） */
+  prologueAwaken(name: string): CommandResult {
+    const n = (name ?? '').trim()
+    this.state.character.name = n.length > 0 ? n.slice(0, 12) : 'PRTS'
+    const result = beginTutorialAfterAwaken(this.state)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 序章·苏醒：跳过（含演出阶段）——全额结算奖励 + 隼枭修满，教程结束 */
+  prologueSkip(): CommandResult {
+    const result = skipTutorial(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 }
