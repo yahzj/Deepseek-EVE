@@ -27,7 +27,7 @@ function bpGoodKey(engine: GameEngine, blueprintId: string): string | null {
   return null
 }
 
-/* ═══════════════ 蓝图书架 ═══════════════ */
+/* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
 /** 蓝图书架：持有的蓝图书（学习 → 永久学会；多余的书市价出售） */
 export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -63,33 +63,39 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
 
   return (
     <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；重复书只能出售</span>}>
-      <ul className="app-inv-list">
+      <div className="app-shelf-grid">
         {entries.map(([id, n]) => {
           const bp = engine.blueprints.find((b) => b.id === id) ?? engine.shipBlueprints.find((b) => b.id === id)
           const learned = ownsBlueprint(state, id)
+          const kindShip = (bp && 'shipId' in bp) || (!bp && engine.shipBlueprints.some((b) => b.id === id))
           return (
-            <li key={id} className="app-inv-row">
-              <div className="app-inv-main">
-                <span className="app-inv-name">{bp?.name ?? id}</span>
-                <span className="app-inv-count">
+            <div key={id} className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}`}>
+              <div className="app-belt-head">
+                <span className="app-belt-name" title={bp?.name ?? id}>
+                  {kindShip ? '🚢 ' : '▦ '}
+                  {bp?.name ?? id}
+                </span>
+                <span className="app-chip" style={{ marginLeft: 'auto' }}>
                   ×{n}
-                  {learned ? ' · 配方已学会（重复书可出售）' : ' · 尚未学习'}
                 </span>
               </div>
-              <div className="app-inv-btns">
+              <div className="app-belt-desc">
+                {learned ? '配方已学会（重复书可出售）' : '尚未学习——学习后永久可造'}
+              </div>
+              <div className="app-belt-actions">
                 {!learned ? (
                   <button className="app-btn is-small is-primary" onClick={() => handleLearn(id)}>
                     学习
                   </button>
                 ) : null}
-                <button className="app-btn is-small" onClick={() => handleSell(id)}>
+                <button className="app-btn is-small" onClick={() => handleSell(id)} title="按市场收购价卖出这本蓝图书（重复书只能出售）">
                   市价出售
                 </button>
               </div>
-            </li>
+            </div>
           )
         })}
-      </ul>
+      </div>
     </Panel>
   )
 }
