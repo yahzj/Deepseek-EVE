@@ -17,6 +17,7 @@ import {
   miningStatus,
   oneLegMs,
   shipDisplayName,
+  wreckDensityOf,
 } from '@whale/core'
 import type { AiCoreType, BeltDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
@@ -25,11 +26,12 @@ import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH } from './common'
 
-/** 星图页的三个功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口） */
-export type MapTab = 'star' | 'mine' | 'bounty'
+/** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口） */
+export type MapTab = 'star' | 'mine' | 'salvage' | 'bounty'
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'star', label: '星图·远征', icon: '✦' },
   { key: 'mine', label: '矿带开采', icon: '⛏' },
+  { key: 'salvage', label: '残骸打捞', icon: '🛰' },
   { key: 'bounty', label: '任务中心', icon: '⚔' },
 ]
 
@@ -57,6 +59,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProp
 
       {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} /> : null}
       {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} /> : null}
       {mapTab === 'bounty' ? <TaskPanel engine={engine} onToast={onToast} /> : null}
     </div>
   )
@@ -377,5 +380,79 @@ function BeltCard({
         </div>
       </div>
     </div>
+  )
+}
+
+/* ═══════════════ 标签三：残骸打捞（B3 采矿式单趟：星系密度 → 开始打捞/停止） ═══════════════ */
+
+function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+  const state = engine.state
+  const me = state.salvaging
+  // 正在该星系打捞的 AI 副船数
+  const aiOn = new Map<string, number>()
+  for (const a of Object.values(state.aiAssignments)) {
+    if (a.task.kind === 'salvage') aiOn.set(a.task.galaxyId, (aiOn.get(a.task.galaxyId) ?? 0) + 1)
+  }
+  const galaxies = [...engine.ctx.galaxies.values()]
+    .filter((g) => isExplored(state, g.id) && engine.anomalies.some((x) => x.galaxyId === g.id))
+    .map((g) => ({ galaxy: g, density: wreckDensityOf(state, g.id, engine.ctx), ai: aiOn.get(g.id) ?? 0 }))
+    .sort((a, b) => b.density - a.density)
+
+  return (
+    <Panel
+      title="残骸打捞"
+      right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；满仓自动返航卸货后结束</span>}
+    >
+      <div className="app-dim app-note">
+        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。开始后采矿式单趟作业：出航 → 持续打捞 → 满仓自动返港；
+        残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头）。低安星系打捞全程可能遇袭（B1）。
+      </div>
+      {galaxies.length === 0 ? (
+        <div className="app-dim app-inv-empty">还没有可打捞的星系——先扫描探索点亮星图（星系内要有悬赏目标才会产生残骸）。</div>
+      ) : (
+        <ul className="app-inv-list">
+          {galaxies.map(({ galaxy: g, density, ai }) => {
+            const isMine = me.active && me.galaxyId === g.id
+            const phaseLabel =
+              me.phase === 'outbound' ? '出航中' : me.phase === 'returning' ? '返航卸货中' : '打捞中'
+            return (
+              <li key={g.id} className="app-inv-row">
+                <div className="app-inv-main">
+                  <span className="app-inv-name">
+                    {g.name}
+                    {isMine ? <span className="app-chip">主控打捞中（{phaseLabel}）</span> : null}
+                    {ai > 0 ? <span className="app-chip is-dim">AI×{ai}</span> : null}
+                  </span>
+                  <span className="app-inv-count">
+                    残骸密度 <b>{density.toFixed(1)}</b>
+                    {isMine ? ` · 本趟约 ${Math.round(me.tripM3 * 10) / 10} m³` : ''}
+                    {ai > 0 ? '（AI 打捞任务进行中，见舰船页）' : ''}
+                  </span>
+                </div>
+                <div className="app-inv-btns">
+                  {isMine ? (
+                    <button className="app-btn is-small is-warn" onClick={() => engine.stopSalvageOpNow()}>
+                      ■ 停止打捞
+                    </button>
+                  ) : (
+                    <button
+                      className="app-btn is-small is-primary"
+                      disabled={me.active}
+                      title={me.active ? '已有打捞作业进行中（其它星系）' : '开始打捞（需高槽打捞器；采矿式单趟）'}
+                      onClick={() => {
+                        const r = engine.startSalvageOpAt(g.id)
+                        if (!r.ok) onToast(r.error ?? '无法打捞', true)
+                      }}
+                    >
+                      🛰 开始打捞
+                    </button>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Panel>
   )
 }
