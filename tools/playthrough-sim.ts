@@ -225,9 +225,10 @@ function sellEverything(): void {
   const moved = unloadCargoToWarehouse(state)
   if (moved > 0) mark('卸载入仓')
   for (const g of ctx.marketGoods.values()) {
-    if (g.kind === 'ship' || g.kind === 'aicore' || g.kind === 'blueprint' || g.kind === 'module') continue // 装备不卖（避免抽血武器/制造品）
+    if (g.kind === 'ship' || g.kind === 'aicore' || g.kind === 'blueprint' || g.kind === 'module') continue // 装备不卖
     const def = ctx.items.get(g.refId)
-    const keep = def ? (def.kind === 'mineral' ? 120 : def.kind === 'ore' || def.kind === 'gas' || def.kind === 'ice' ? 150 : 0) : 0
+    if (!def || def.kind === 'ammo' || def.kind === 'drone') continue // 弹药/无人机自用不卖
+    const keep = def.kind === 'mineral' ? 120 : def.kind === 'ore' || def.kind === 'gas' || def.kind === 'ice' ? 150 : 0
     const avail = Math.max(0, countWare(state, g.refId) - keep) + Math.max(0, countItem(state, g.refId) - keep)
     if (avail <= 0) continue
     const res = marketSellHolding(state, ctx, g.key, avail)
@@ -458,22 +459,33 @@ function doLearnCraft(): void {
   } else issue(`制造 ${bp.id} 失败：${r.error}`)
 }
 
+let lastShipUpgradeDay = -99
 function buyShipAndGear(): void {
   if (meBusy() || !isHome() || state.mining.active) return
   const curDef = fleetDefOf(state, ctx, state.shipId)
-  // 升级船：只买武装族（powerBonus 是战斗成长主轴）里显著更强（价格 ×1.8 起步）且买得起的
-  if (curDef) {
-    const better = [...ctx.ships.values()]
-      .filter((s) => s.role === 'armed' && (s.powerBonus ?? 0) > (curDef.powerBonus ?? 0) + 0.05 && state.wallet.isk > s.priceIsk * 1.3 + 400_000)
-      .sort((a, b) => (b.powerBonus ?? 0) - (a.powerBonus ?? 0))
-    const target = better[0]
+  // 升级船（武装族）：只买"尚未拥有"且更强 powerBonus 的船；每天至多尝试一次
+  if (curDef && day() - lastShipUpgradeDay >= 1) {
+    const owned = new Set<string>()
+    for (const f of Object.values(state.fleet)) if (f?.defId) owned.add(f.defId)
+    const target = [...ctx.ships.values()]
+      .filter(
+        (s) =>
+          s.role === 'armed' &&
+          (s.powerBonus ?? 0) > (curDef.powerBonus ?? 0) + 0.05 &&
+          !owned.has(s.id) &&
+          state.wallet.isk > s.priceIsk * 1.3 + 400_000,
+      )
+      .sort((a, b) => (b.powerBonus ?? 0) - (a.powerBonus ?? 0))[0]
     if (target) {
       const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'ship' && x.refId === target.id)
       if (g) {
         const got = buyAtMarket(state, ctx, g.key, 1)
         if (got.shipUid) {
           const r = changeShip(state, got.shipUid, ctx)
-          if (r.ok) mark(`换驾 ${target.name}`)
+          if (r.ok) {
+            lastShipUpgradeDay = day()
+            mark(`换驾 ${target.name}`)
+          }
         }
       }
     }
@@ -713,6 +725,13 @@ let i = 0
 for (const [text, n] of issuesRaw) {
   if (i++ >= 120) break
   lines.push(`  ×${n} ${text}`)
+}
+const bossFinal = ctx.anomalies.get('ano-vault-sentinel')
+if (bossFinal) {
+  const cur = fleetDefOf(state, ctx, state.shipId)
+  lines.push(
+    `终局评估：当前驾驶 ${cur?.name ?? state.shipId} 对 ano-vault-sentinel 预估胜率 ${Math.round(battleWinPreview(state, ctx, bossFinal) * 100)}%`,
+  )
 }
 const report = lines.join('\n')
 console.log(report)
