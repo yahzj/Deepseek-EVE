@@ -271,7 +271,15 @@ export function App({ engine }: { engine: GameEngine }) {
           ))}
         </nav>
         <main className="app-page-main">
-          <ActivityBar engine={engine} onToast={showToast} onAiCenter={() => setPage('ship')} />
+          <ActivityBar
+            engine={engine}
+            onToast={showToast}
+            onAiCenter={() => setPage('ship')}
+            onGoPage={(page, mapTab) => {
+              setPage(page as PageKey)
+              if (mapTab) setMapTab(mapTab as MapTab)
+            }}
+          />
           <div className="app-page-content" key={page}>
             {page === 'ship' ? <ShipPage {...pageProps} /> : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}

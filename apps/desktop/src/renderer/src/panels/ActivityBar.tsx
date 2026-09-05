@@ -84,7 +84,39 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
   }
 }
 
-export function ActivityBar({ engine, onToast, onAiCenter }: { engine: GameEngine; onToast: ToastFn; onAiCenter?: () => void }) {
+/** 活动项 → 跳转目标页面（可带二级标签）：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
+ *  制造/精炼→工业；训练→技能页（船长 2026-09-05 点击跳转）。 */
+function goFor(kind: string): { page: string; mapTab?: string } {
+  switch (kind) {
+    case 'mining':
+      return { page: 'map', mapTab: 'mine' }
+    case 'scan':
+    case 'expedition':
+    case 'return':
+    case 'transit':
+    case 'standby':
+      return { page: 'map', mapTab: 'star' }
+    case 'manufacture':
+    case 'refine':
+      return { page: 'industry' }
+    case 'train':
+      return { page: 'skills' }
+    default:
+      return { page: 'map' }
+  }
+}
+
+export function ActivityBar({
+  engine,
+  onToast,
+  onAiCenter,
+  onGoPage,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  onAiCenter?: () => void
+  onGoPage?: (page: string, mapTab?: string) => void
+}) {
   const state = engine.state
   const all = activityOverview(state, engine.ctx)
   // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用 🤖×N 徽标
@@ -96,8 +128,18 @@ export function ActivityBar({ engine, onToast, onAiCenter }: { engine: GameEngin
   const [retreatAsk, setRetreatAsk] = useState(false)
   if (retreatAsk && !playerItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
 
-  const renderItem = (v: ActivityView) => (
-    <div key={v.id} className={`app-activitybar-item is-${v.kind}`} title={v.stopReason ?? undefined}>
+  const renderItem = (v: ActivityView) => {
+    const target = goFor(v.kind)
+    const handleItemClick = (): void => {
+      if (onGoPage) onGoPage(target.page, target.mapTab)
+    }
+    return (
+    <div
+      key={v.id}
+      className={`app-activitybar-item is-${v.kind}`}
+      title={v.stopReason ?? `点击前往「${target.page === 'map' ? (target.mapTab === 'mine' ? '矿带开采' : '星图·远征') : target.page === 'industry' ? '工业' : '技能'}」页`}
+      onClick={handleItemClick}
+    >
       <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
       <div className="app-activitybar-main">
         <div className="app-activitybar-line">
@@ -132,7 +174,8 @@ export function ActivityBar({ engine, onToast, onAiCenter }: { engine: GameEngin
                         ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止连续出击）'
                         : undefined
           }
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation() // 点击"停止/移除/撤退"不触发行跳转
             if (v.stop !== 'retreat-battle') {
               doStop(v, engine, onToast)
               return
@@ -150,7 +193,8 @@ export function ActivityBar({ engine, onToast, onAiCenter }: { engine: GameEngin
         </button>
       ) : null}
     </div>
-  )
+    )
+  }
 
   return (
     <div className="app-activitybar">

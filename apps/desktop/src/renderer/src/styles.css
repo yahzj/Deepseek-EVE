@@ -2395,6 +2395,10 @@ body {
   border: 1px solid rgba(85, 112, 140, 0.35);
   border-radius: 6px;
   background: rgba(14, 24, 40, 0.65);
+  cursor: pointer; /* 点击跳转对应页面（船长 2026-09-05） */
+}
+.app-activitybar-item:hover {
+  background: rgba(30, 46, 70, 0.75);
 }
 .app-activitybar-item.is-battle,
 .app-activitybar-item.is-expedition { border-color: rgba(232, 180, 90, 0.4); }
