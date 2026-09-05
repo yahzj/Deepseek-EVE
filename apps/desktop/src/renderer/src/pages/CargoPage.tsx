@@ -21,6 +21,7 @@ import { Panel, ProgressBar } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
+import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: '船上没有矿石——到「星图」页开采。',
@@ -49,6 +50,22 @@ export function CargoPage({ engine, onToast }: PageProps) {
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
   const rows = Object.entries(cargo).filter(([, n]) => n > 0)
+
+  // 图标/列表切换（手册同款；网格为浏览视图）
+  const [view, setView] = useItemView()
+  const cargoCells: ItemGridCell[] = rows
+    .map(([id, units]) => {
+      const def = engine.ctx.items.get(id)
+      if (!def) return null
+      return {
+        key: id,
+        glyph: def.kind,
+        name: def.name,
+        sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * def.unitM3)}`,
+        title: def.description,
+      }
+    })
+    .filter(Boolean) as ItemGridCell[]
 
   function handleSell(id: string): void {
     // T9：出售/市场只在母港（副站不设市场）
@@ -130,6 +147,9 @@ export function CargoPage({ engine, onToast }: PageProps) {
         )}
       </Panel>
 
+      <ItemViewBar mode={view} onChange={setView} />
+      {view === 'list' ? (
+        <>
       {ITEM_KIND_ORDER.map((kind) => {
         const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
         // 矿石面板常驻（引导开采），其余分类空时不显示
@@ -188,6 +208,16 @@ export function CargoPage({ engine, onToast }: PageProps) {
           </Panel>
         )
       })}
+        </>
+      ) : (
+        <Panel title="货仓资源" right={<span className="app-dim">{cargoCells.length} 种 · 图标视图（浏览）</span>}>
+          {cargoCells.length > 0 ? (
+            <ItemGlyphGrid cells={cargoCells} />
+          ) : (
+            <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
+          )}
+        </Panel>
+      )}
     </div>
   )
 }

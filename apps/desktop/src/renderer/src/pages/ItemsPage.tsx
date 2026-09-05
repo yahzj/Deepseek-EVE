@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
+import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -47,8 +48,32 @@ function WarehouseView({ engine, onToast }: PageProps) {
     else onToast(`已装船 ${def.name}×${loaded.toLocaleString('zh-CN')}。`)
   }
 
+  // 图标/列表切换（手册同款；网格为浏览视图）
+  const [mode, setMode] = useItemView()
+  const kindCells: ItemGridCell[] = []
+  const modCells: ItemGridCell[] = []
+  for (const [id, units] of rows) {
+    const def = engine.ctx.items.get(id)
+    if (!def) continue
+    kindCells.push({
+      key: id,
+      glyph: def.kind,
+      name: def.name,
+      sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * def.unitM3)}`,
+      title: def.description,
+    })
+  }
+  for (const [id, units] of modRows) {
+    const def = engine.ctx.modules.get(id)
+    if (!def) continue
+    modCells.push({ key: id, glyph: def.slot, name: def.name, sub: `×${units.toLocaleString('zh-CN')}`, title: def.description })
+  }
+
   return (
     <>
+      <ItemViewBar mode={mode} onChange={setMode} />
+      {mode === 'list' ? (
+        <>
       <Panel title="仓库" right={<span className="app-dim">无限容量 · 不随船 · 永不遗失</span>}>
         <div className="app-dim app-note">
           精炼产物自动入仓，制造材料从仓库扣除。资源（矿石/气体/冰矿）可卖出，也可装到当前驾驶的船上（受货仓空间限制）。
@@ -150,6 +175,26 @@ function WarehouseView({ engine, onToast }: PageProps) {
           </ul>
         )}
       </Panel>
+        </>
+      ) : (
+        <>
+          <div className="app-dim app-note">图标视图（浏览用）：物品与装备按图标网格排列；装卸 / 卖出请切回「列表」视图。</div>
+          <Panel title="仓库资源" right={<span className="app-dim">{kindCells.length} 种</span>}>
+            {kindCells.length > 0 ? (
+              <ItemGlyphGrid cells={kindCells} />
+            ) : (
+              <div className="app-dim app-inv-empty">仓库里没有资源（自动卸货的矿会先到这里）。</div>
+            )}
+          </Panel>
+          <Panel title="装备（装备库）" right={<span className="app-dim">{modCells.length} 种 · 空间站库存</span>}>
+            {modCells.length > 0 ? (
+              <ItemGlyphGrid cells={modCells} />
+            ) : (
+              <div className="app-dim app-inv-empty">装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。</div>
+            )}
+          </Panel>
+        </>
+      )}
     </>
   )
 }
