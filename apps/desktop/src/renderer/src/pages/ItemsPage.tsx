@@ -19,8 +19,13 @@ import { CargoPage } from './CargoPage'
 
 type ItemsTab = 'warehouse' | 'cargo'
 
+/** 物品页附加导航：跳市场页并聚焦某商品订单（船长 2026-09-05：市价卖出旁加"查看市场"） */
+export interface ItemNavProps {
+  onGotoMarket: (goodKey: string) => void
+}
+
 /** 仓库主视图（含装备库分组） */
-function WarehouseView({ engine, onToast }: PageProps) {
+function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
   const modRows = Object.entries(state.moduleBay).filter(([, n]) => n > 0)
@@ -46,6 +51,12 @@ function WarehouseView({ engine, onToast }: PageProps) {
       onToast(`已装船 ${def.name}×${loaded.toLocaleString('zh-CN')}。`)
       setPickItem(null)
     }
+  }
+
+  /** 快速查看市场订单（参照舰船市场入口：跳市场页并聚焦该商品；船长 2026-09-05） */
+  function goMarket(kind: 'item' | 'module', id: string): void {
+    const good = marketGoodOf(engine.ctx, kind, id)
+    if (good) onGotoMarket(good.key)
   }
 
   // 出售数量选择（船长 2026-09-05：支持只卖一部分）
@@ -166,6 +177,15 @@ function WarehouseView({ engine, onToast }: PageProps) {
                             不在市场目录
                           </button>
                         )}
+                        {marketGoodOf(engine.ctx, 'item', id) ? (
+                          <button
+                            className="app-btn is-small"
+                            title="前往市场查看该物品的订单（价格/挂单/买入）"
+                            onClick={() => goMarket('item', id)}
+                          >
+                            ↖ 查看市场
+                          </button>
+                        ) : null}
                       </div>
                     </ItemHover>
                   )
@@ -212,6 +232,15 @@ function WarehouseView({ engine, onToast }: PageProps) {
                         不在市场目录
                       </button>
                     )}
+                    {modGood ? (
+                      <button
+                        className="app-btn is-small"
+                        title="前往市场查看该装备的订单（价格/挂单/买入）"
+                        onClick={() => goMarket('module', id)}
+                      >
+                        ↖ 查看市场
+                      </button>
+                    ) : null}
                   </div>
                 </li>
               )
@@ -274,6 +303,18 @@ function WarehouseView({ engine, onToast }: PageProps) {
                     不在市场目录（无法出售）
                   </button>
                 )}
+                {marketGoodOf(engine.ctx, 'item', pickItem) ? (
+                  <button
+                    className="app-btn is-small"
+                    title="前往市场查看该物品的订单（价格/挂单/买入）"
+                    onClick={() => {
+                      setPickItem(null)
+                      goMarket('item', pickItem)
+                    }}
+                  >
+                    ↖ 查看市场订单
+                  </button>
+                ) : null}
               </div>
             </ItemActionModal>
           ) : null}
@@ -312,6 +353,18 @@ function WarehouseView({ engine, onToast }: PageProps) {
                     不在市场目录（无法出售）
                   </button>
                 )}
+                {marketGoodOf(engine.ctx, 'module', pickMod) ? (
+                  <button
+                    className="app-btn is-small"
+                    title="前往市场查看该装备的订单（价格/挂单/买入）"
+                    onClick={() => {
+                      setPickMod(null)
+                      goMarket('module', pickMod)
+                    }}
+                  >
+                    ↖ 查看市场订单
+                  </button>
+                ) : null}
               </div>
             </ItemActionModal>
           ) : null}
@@ -357,7 +410,7 @@ function WarehouseView({ engine, onToast }: PageProps) {
   )
 }
 
-export function ItemsPage(props: PageProps) {
+export function ItemsPage(props: PageProps & Partial<ItemNavProps>) {
   const [tab, setTab] = useState<ItemsTab>('warehouse')
   return (
     <div className="page-stack">
@@ -382,7 +435,11 @@ export function ItemsPage(props: PageProps) {
           <span>货仓</span>
         </button>
       </div>
-      {tab === 'cargo' ? <CargoPage {...props} /> : <WarehouseView {...props} />}
+      {tab === 'cargo' ? (
+        <CargoPage {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
+      ) : (
+        <WarehouseView {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
+      )}
     </div>
   )
 }

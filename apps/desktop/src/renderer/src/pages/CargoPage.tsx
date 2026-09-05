@@ -14,6 +14,7 @@ import {
   cargoUsedM3Of,
   fleetDefOf,
   itemKindLabel,
+  marketGoodOf,
   shipBusyLabel,
   shipDisplayName,
 } from '@whale/core'
@@ -22,6 +23,7 @@ import { ItemHover } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
+import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
@@ -35,7 +37,7 @@ const KIND_EMPTY: Record<string, string> = {
   drone: '船上没有无人机。',
 }
 
-export function CargoPage({ engine, onToast }: PageProps) {
+export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
   const piloted = state.shipId
   const [selId, setSelId] = useState<string>(piloted)
@@ -93,6 +95,12 @@ export function CargoPage({ engine, onToast }: PageProps) {
   const sellDef = sellId ? engine.ctx.items.get(sellId) : undefined
   const sellUnits = sellId ? (cargo[sellId] ?? 0) : 0
   const sellBuy = sellId ? itemBuyQuote(engine, sellId) : undefined
+
+  /** 快速查看市场订单（参照舰船市场入口：跳市场页并聚焦该商品；船长 2026-09-05） */
+  function goMarket(id: string): void {
+    const good = marketGoodOf(engine.ctx, 'item', id)
+    if (good) onGotoMarket(good.key)
+  }
 
   function handleUnloadAll(): void {
     // T9：卸货入仓库在任何空间站可用（母港与副站）
@@ -205,9 +213,18 @@ export function CargoPage({ engine, onToast }: PageProps) {
                       </div>
                       <div className="app-inv-btns">
                         {isPiloted && buy !== undefined ? (
-                          <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
-                            市价卖出
-                          </button>
+                          <>
+                            <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
+                              市价卖出
+                            </button>
+                            <button
+                              className="app-btn is-small"
+                              title="前往市场查看该物品的订单（价格/挂单/买入）"
+                              onClick={() => goMarket(id)}
+                            >
+                              ↖ 查看市场
+                            </button>
+                          </>
                         ) : isPiloted ? (
                           <button className="app-btn is-small" disabled>
                             不在市场目录
@@ -268,6 +285,18 @@ export function CargoPage({ engine, onToast }: PageProps) {
                     不在市场目录（无法出售）
                   </button>
                 )}
+                {pickId && marketGoodOf(engine.ctx, 'item', pickId) ? (
+                  <button
+                    className="app-btn is-small"
+                    title="前往市场查看该物品的订单（价格/挂单/买入）"
+                    onClick={() => {
+                      setPickId(null)
+                      goMarket(pickId)
+                    }}
+                  >
+                    ↖ 查看市场订单
+                  </button>
+                ) : null}
               </div>
             </ItemActionModal>
           ) : null}

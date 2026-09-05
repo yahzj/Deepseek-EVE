@@ -299,7 +299,15 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}
-            {page === 'items' ? <ItemsPage {...pageProps} /> : null}
+            {page === 'items' ? (
+              <ItemsPage
+                {...pageProps}
+                onGotoMarket={(goodKey) => {
+                  setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+                  setPage('market')
+                }}
+              />
+            ) : null}
             {page === 'market' ? <MarketPage {...pageProps} focusKey={mktFocus?.key ?? null} focusSeq={mktFocus?.seq ?? 0} /> : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
             {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
