@@ -13,7 +13,7 @@ import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
-import { TutorialGuide, TutorialEpilogue, type GuideGo } from './panels/TutorialGuide'
+import { TutorialGuide, TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -33,9 +33,9 @@ import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 
-/** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例）；icon = Glyphs 字形名 */
+/** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: 'map', label: '出港', icon: 'nav-map' },
+  { key: 'map', label: '点击 出港', icon: 'nav-map' },
   { key: 'ship', label: '舰船', icon: 'nav-ship' },
   { key: 'fit', label: '装配', icon: 'nav-fit' },
   { key: 'items', label: '物品', icon: 'nav-items' },
@@ -616,15 +616,26 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* 序章·苏醒：教程引导卡（步骤 1..6）与收尾演出（步骤 7） */}
       {guideOn ? (
-        <TutorialGuide
-          engine={engine}
-          step={tutStep}
-          onGo={(g: GuideGo) => {
-            changePage(g.page as PageKey)
-            if (g.mapTab) changeMapTab(g.mapTab as MapTab)
-            if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
-          }}
-        />
+        <>
+          <TutorialSpot
+            engine={engine}
+            step={tutStep}
+            onGo={(g: GuideGo) => {
+              changePage(g.page as PageKey)
+              if (g.mapTab) changeMapTab(g.mapTab as MapTab)
+              if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
+            }}
+          />
+          <TutorialGuide
+            engine={engine}
+            step={tutStep}
+            onGo={(g: GuideGo) => {
+              changePage(g.page as PageKey)
+              if (g.mapTab) changeMapTab(g.mapTab as MapTab)
+              if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
+            }}
+          />
+        </>
       ) : null}
       {epiOn ? (
         <TutorialEpilogue
