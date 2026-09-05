@@ -256,25 +256,26 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
       </header>
 
-      {/* ───── 顶部总菜单（V14.1：原在窗口底部，移至顶部；点击星图直进星图页，功能切换在页内标签） ───── */}
-      <nav className="app-nav-top">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            className={`app-nav-item${page === item.key ? ' is-active' : ''}`}
-            onClick={() => setPage(item.key)}
-          >
-            <span className="app-nav-icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
+      {/* ───── 顶部活动窗口（全宽一行，内容居中、固定高、AI 用图标数） ───── */}
+      <div className="app-activitybar-wrap">
+        <ActivityBar engine={engine} onToast={showToast} />
+      </div>
 
-      {/* ───── 工作区：主窗口（活动栏置于其顶部，左侧列内）+ 事件日志（可右滑隐藏 / 按类型过滤） ───── */}
+      {/* ───── 工作区：左导航栏 + 主窗口 + 事件日志（可右滑隐藏 / 按类型过滤） ───── */}
       <div className="app-workspace">
+        <nav className="app-nav-side">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              className={`app-nav-item${page === item.key ? ' is-active' : ''}`}
+              onClick={() => setPage(item.key)}
+            >
+              <span className="app-nav-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
         <main className="app-page-main">
-          {/* T1+优化：活动窗口位于左侧主窗口内部顶部（不再全宽横跨、不与主窗口/日志同级） */}
-          <ActivityBar engine={engine} onToast={showToast} />
           <div className="app-page-content" key={page}>
             {page === 'ship' ? <ShipPage {...pageProps} /> : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}

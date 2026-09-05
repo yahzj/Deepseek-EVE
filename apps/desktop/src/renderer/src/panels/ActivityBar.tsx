@@ -86,16 +86,24 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
 export function ActivityBar({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const items = activityOverview(state, engine.ctx)
+  // 船长 2026-09-05：AI 活动不直接在活动窗口逐条显示，改为"🤖×N"小图标徽标（有多少 AI 在执行）
+  const aiCount = items.filter((i) => i.kind === 'ai').length
+  const shownItems = items.filter((i) => i.kind !== 'ai')
   const loopId = state.autoLoopAnomalyId
   // 撤退需二次确认（轻损但有代价）
   const [retreatAsk, setRetreatAsk] = useState(false)
-  if (retreatAsk && !items.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
-  if (items.length === 0 && !loopId) return null
+  if (retreatAsk && !shownItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
+  if (shownItems.length === 0 && aiCount === 0 && !loopId) return null
   return (
     <div className="app-activitybar">
       <span className="app-activitybar-title">活动</span>
+      {aiCount > 0 ? (
+        <span className="app-activitybar-ai" title={`${aiCount} 艘 AI 副船正在执行任务（采矿/远征等）`}>
+          🤖×{aiCount}
+        </span>
+      ) : null}
       <div className="app-activitybar-items">
-        {items.map((v) => (
+        {shownItems.map((v) => (
           <div key={v.id} className={`app-activitybar-item is-${v.kind}`} title={v.stopReason ?? undefined}>
             <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
             <div className="app-activitybar-main">

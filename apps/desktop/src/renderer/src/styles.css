@@ -982,6 +982,27 @@ body {
   border-bottom: 1px solid var(--wui-border);
   background: linear-gradient(180deg, #0d1826, #091019);
 }
+/* 左侧常驻导航栏（船长 2026-09-05：主菜单从顶栏移到此；复用 app-nav-item 覆盖为横排图标+文字） */
+.app-nav-side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 134px;
+  padding: 8px 6px;
+  border-right: 1px solid var(--wui-border);
+  background: linear-gradient(180deg, #0d1826, #091019);
+  overflow-y: auto;
+}
+.app-nav-side .app-nav-item {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+}
 .app-nav-wrap {
   position: relative;
   display: inline-flex;
@@ -2282,13 +2303,25 @@ body {
 .app-sec-chip-4 { background: #e0569a; }
 .app-sec-chip-5 { background: #b455e8; color: #f4eaff; }
 /* T1 顶部活动窗口（优化：置于左侧主列顶部；按钮紧贴条目左侧，不再横跨全屏） */
+/* 顶部活动窗口全宽容器（内容居中，实际使用宽度接近主窗口） */
+.app-activitybar-wrap {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 8px 10px 0;
+}
 .app-activitybar {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 0 6px;
-  padding: 6px 8px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 1180px; /* 接近主窗口宽度 */
+  min-height: 44px;
+  max-height: 96px; /* 固定高度上限，内容多时内部滚动 */
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px 10px;
   background: rgba(10, 18, 30, 0.85);
   border: 1px solid var(--wui-border);
   border-radius: 6px;
@@ -2299,10 +2332,22 @@ body {
   letter-spacing: 2px;
   flex-shrink: 0;
 }
+/* AI 活动图标数徽标（船长 2026-09-05：AI 不逐条显示，用 🤖×N 表示在活动数） */
+.app-activitybar-ai {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--wui-text-dim);
+  padding: 2px 8px;
+  border: 1px dashed rgba(120, 200, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(120, 200, 255, 0.05);
+}
 .app-activitybar-items {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
