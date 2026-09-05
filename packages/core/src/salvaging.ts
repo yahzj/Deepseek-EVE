@@ -26,7 +26,7 @@ import { nextRandom } from './rng'
 import { salvageRoundPull, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
-function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
+export function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
   if (state.debugQuick) return 1000
   const mins = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
   const travel = Number.isFinite(mins) ? mins : 0
@@ -34,7 +34,7 @@ function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: 
 }
 
 /** 出航腿（空船出门跃迁×2 → 约返航一半；调试模式固定 1 秒） */
-function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
+export function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
   if (state.debugQuick) return 1000
   return Math.max(1, Math.round(legMsFor(state, ctx, galaxyId, shipId) / 2))
 }

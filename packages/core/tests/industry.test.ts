@@ -33,30 +33,34 @@ describe('精炼与市场（M1 经济）', () => {
     })
   })
 
-  describe('精炼炉运转（v19 多工位并行：固定批量 × 自动续批，料尽/停炉收尾；主控限 1 台 + 每闲置核心 1 台）', () => {
+  describe('精炼炉运转（v20：同资源多单位并行、原料不锁定实时扣取；主控限 1 台 + 每闲置核心 1 台）', () => {
     // 测试 fixture 无单批参数 → 兜底：10 单位/批、6 秒/批（100 单位 = 10 批 = 60s）
     const totalUnits = 100
+    const runIdOf = (itemId: string): number => {
+      const r = state.refineRuns.find((x) => x.itemId === itemId)
+      expect(r).toBeDefined()
+      return r!.id
+    }
 
-    it('启动锁定全量（货仓优先），每批到点出货并自动续批，料尽自动停炉', () => {
+    it('启动不锁料；每批到点实时扣料出货并自动续批，料尽自动停炉', () => {
       state.fleet[state.shipId].cargo['ore-a'] = totalUnits
-      const r = startRefineRun(state, 'ore-a', 'pilot', ctx)
-      expect(r.ok).toBe(true)
-      // 锁定：货仓清空、炉内 lockedQty = 全量
-      expect(countItem(state, 'ore-a')).toBe(0)
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      // 不锁定：货仓原样保留
+      expect(countItem(state, 'ore-a')).toBe(totalUnits)
       expect(state.refineRuns).toHaveLength(1)
-      expect(state.refineRuns[0]!.lockedQty).toBe(totalUnits)
       expect(state.refineRuns[0]!.worker).toBe('pilot')
-      // 半途：1 批完成后锁定减 10，产物按 50% 收率入仓库
+      // 半途：1 批到点扣 10 单位（货仓优先），产物按 50% 收率入仓库
       advanceGame(state, 7_000, ctx)
-      expect(state.refineRuns[0]!.lockedQty).toBe(90)
+      expect(countItem(state, 'ore-a')).toBe(90)
       expect(countWare(state, 'min-a')).toBe(10) // floor(10×2×0.5)
       expect(countWare(state, 'min-b')).toBe(2) // floor(10×0.5×0.5)
-      // 跑完剩余 9 批
+      // 跑完剩余：库存耗尽自动停
       advanceGame(state, 60_000, ctx)
       expect(state.refineRuns).toHaveLength(0)
+      expect(countItem(state, 'ore-a')).toBe(0)
       expect(countWare(state, 'min-a')).toBe(100)
       expect(countWare(state, 'min-b')).toBe(20)
-      expect(state.logs.some((l) => l.text.includes('运转完成'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('完成'))).toBe(true)
     })
 
     it('收率技能影响每批结算：精炼学 5 级 = 90%（每批 floor 后累计）', () => {
@@ -68,23 +72,23 @@ describe('精炼与市场（M1 经济）', () => {
       expect(countWare(state, 'min-b')).toBe(40) // floor(10×0.5×0.9)=4/批 ×10
     })
 
-    it('货仓+仓库库存一并锁定；中途停炉：已完成批保留、剩余料全额退回', () => {
+    it('货仓+仓库一并供料；中途停炉：已完成批保留，余料本来就在仓库无需退回', () => {
       state.fleet[state.shipId].cargo['ore-a'] = 30
       state.warehouse.items['ore-a'] = 70
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      expect(countItem(state, 'ore-a')).toBe(0)
-      expect(countWare(state, 'ore-a')).toBe(0)
-      expect(state.refineRuns[0]!.lockedQty).toBe(100)
-      advanceGame(state, 7_000, ctx) // 1 批完成
+      expect(countItem(state, 'ore-a')).toBe(30)
+      expect(countWare(state, 'ore-a')).toBe(70)
+      advanceGame(state, 7_000, ctx) // 1 批完成（货仓扣 10）
       expect(countWare(state, 'min-a')).toBe(10)
-      const st = stopRefineRun(state, ctx, 'ore-a')
+      const stopId = runIdOf('ore-a')
+      const st = stopRefineRun(state, ctx, stopId)
       expect(st.ok).toBe(true)
       expect(state.refineRuns).toHaveLength(0)
-      expect(countWare(state, 'ore-a')).toBe(90) // 剩余退回
-      expect(countWare(state, 'min-a')).toBe(10)
-      expect(state.logs.some((l) => l.text.includes('已停炉'))).toBe(true)
+      expect(countItem(state, 'ore-a')).toBe(20)
+      expect(countWare(state, 'ore-a')).toBe(70)
+      expect(state.logs.some((l) => l.text.includes('已停'))).toBe(true)
       // 重复停炉报错
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(false)
+      expect(stopRefineRun(state, ctx, stopId).ok).toBe(false)
     })
 
     it('AI 核心驱动：出库占用、周期 ÷效率(基础40%)、料尽自动归还核心', () => {
@@ -96,7 +100,7 @@ describe('精炼与市场（M1 经济）', () => {
       advanceGame(state, 16_000, ctx) // 第 1 批（10 单位）完成
       expect(countWare(state, 'min-a')).toBe(10)
       expect(countWare(state, 'min-b')).toBe(2)
-      expect(state.refineRuns[0]!.lockedQty).toBe(5)
+      expect(countWare(state, 'ore-a')).toBe(5)
       advanceGame(state, 16_000, ctx) // 尾批（5 单位）完成 → 料尽自动停
       expect(state.refineRuns).toHaveLength(0)
       expect(countWare(state, 'min-a')).toBe(15) // 10 + floor(5×2×0.5)
@@ -105,55 +109,69 @@ describe('精炼与市场（M1 经济）', () => {
       expect(state.logs.some((l) => l.text.includes('AI 核心已归还'))).toBe(true)
     })
 
-    it('AI 核心驱动中途停炉：剩余料退回 + 核心立即归还', () => {
+    it('AI 核心驱动中途停炉：核心立即归还，余料留仓', () => {
       state.aiCores['basic'] = 1
       state.warehouse.items['ore-a'] = 25
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
       advanceGame(state, 16_000, ctx)
       expect(countAiCore(state, 'basic')).toBe(0)
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+      expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
       expect(countAiCore(state, 'basic')).toBe(1)
       expect(countWare(state, 'ore-a')).toBe(15) // 25 - 10
       expect(state.refineRuns).toHaveLength(0)
     })
 
-    it('主控限 1 台 + 每闲置核心 1 台：pilot 炉与 AI 炉可并行，各自独立推进与停炉收尾', () => {
-      state.aiCores['basic'] = 1
-      state.warehouse.items['ore-a'] = 30
-      state.warehouse.items['ore-b'] = 20
+    it('同一资源可多台并行：pilot 1 台 + AI 核心各一台同时炼同一批库存', () => {
+      state.aiCores['basic'] = 2
+      state.warehouse.items['ore-a'] = 100
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      // 同资源至多一台炉
+      // 主控第二台仍被拒（pilot 限 1）
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
-      // 主控只能亲自运转一台
-      expect(startRefineRun(state, 'ore-b', 'pilot', ctx).ok).toBe(false)
-      // AI 核心并行开第二台（不同资源）
-      expect(startRefineRun(state, 'ore-b', 'basic', ctx).ok).toBe(true)
-      expect(state.refineRuns).toHaveLength(2)
-      expect(state.refineRuns.map((x) => x.itemId).sort()).toEqual(['ore-a', 'ore-b'])
-      advanceGame(state, 7_000, ctx)
-      // 主控炉 ore-a（6s/批）：1 批 → min-a 10、min-b 2；AI 炉 ore-b（15s/批）未到点
-      expect(countWare(state, 'min-a')).toBe(10)
-      expect(countWare(state, 'min-b')).toBe(2)
-      // 只停 ore-a 主控炉 → ore-b 继续
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
-      expect(state.refineRuns).toHaveLength(1)
-      expect(state.refineRuns[0]!.itemId).toBe('ore-b')
-      expect(countWare(state, 'ore-a')).toBe(20) // 30 - 10 退回
-      // AI 炉 ore-b（20 单位 = 2 批）继续跑完：t=15s 批 1、t=30s 批 2（每批 floor(10×1.2×0.5)=6）
-      advanceGame(state, 25_000, ctx)
+      // 两枚核心开同资源第二、三台（原料不锁定共享扣取）
+      expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+      expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+      expect(state.refineRuns).toHaveLength(3)
+      expect(state.refineRuns.filter((x) => x.worker === 'pilot')).toHaveLength(1)
+      expect(state.refineRuns.every((x) => x.itemId === 'ore-a')).toBe(true)
+      // 三台各自独立周期（pilot 6s；核心 15s），到点顺次实时扣料
+      advanceGame(state, 16_000, ctx)
+      // pilot：批 1（6s）、批 2（12s）→ 扣 20；核心两台各批 1（15s）→ 扣 20
+      expect(countWare(state, 'ore-a')).toBe(60)
+      expect(countWare(state, 'min-a')).toBe(40) // 每批 10 × 4 批 × (2×0.5)
+      expect(state.refineRuns).toHaveLength(3)
+      // 全部继续推进直到库存耗尽（各自尾批自然收尾）
+      advanceGame(state, 200_000, ctx)
       expect(state.refineRuns).toHaveLength(0)
-      expect(countWare(state, 'min-a')).toBe(22) // 10 + 12
+      expect(countWare(state, 'ore-a')).toBe(0)
+      expect(countAiCore(state, 'basic')).toBe(2) // 双核心归还
+    })
+
+    it('并行中停掉其中一台：其余台继续；停台核心立即归还', () => {
+      state.aiCores['basic'] = 2
+      state.warehouse.items['ore-a'] = 80
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+      expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+      const stopId = state.refineRuns.find((x) => x.worker === 'basic')!.id
+      expect(stopRefineRun(state, ctx, stopId).ok).toBe(true)
+      expect(state.refineRuns).toHaveLength(2)
+      expect(state.refineRuns.some((x) => x.id === stopId)).toBe(false)
       expect(countAiCore(state, 'basic')).toBe(1)
     })
 
-    it('同资源第二台/主控第二台/无核心/主控忙/不在母港均拒绝启动', () => {
-      state.warehouse.items['ore-a'] = 50
+    it('原料中途卖光：到点即停炉（日志说明）', () => {
+      state.warehouse.items['ore-a'] = 20
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      // 同资源炉位占用
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
-      // 无 AI 核心
-      expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(false)
+      advanceGame(state, 7_000, ctx) // 批 1 扣 10
+      state.warehouse.items['ore-a'] = 0 // 模拟把剩余原料全部卖掉
+      advanceGame(state, 7_000, ctx)
+      expect(state.refineRuns).toHaveLength(0)
+      expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
+    })
+
+    it('无核心/主控忙/不在母港均拒绝启动', () => {
+      state.warehouse.items['ore-a'] = 50
+      expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(false) // 无 AI 核心
       // 采矿中（主控忙）不能亲自运转
       state.mining.active = true
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
@@ -163,10 +181,10 @@ describe('精炼与市场（M1 经济）', () => {
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
       state.awayGalaxy = null
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+      expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
     })
 
-    it('无配方/空库存/未知物品拒绝启动；运行视图可读（多工位逐台一条）', () => {
+    it('无配方/空库存/未知物品拒绝启动；运行视图可读（多工位逐台一条、带稳定 id）', () => {
       state.fleet[state.shipId].cargo['min-a'] = 10
       expect(startRefineRun(state, 'min-a', 'pilot', ctx).ok).toBe(false) // 矿物无配方
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false) // 无库存
@@ -185,16 +203,16 @@ describe('精炼与市场（M1 经济）', () => {
       expect(views[0]!.percent).toBeGreaterThan(0)
       expect(views[0]!.percent).toBeLessThanOrEqual(100)
       expect(views[0]!.remainingMs).toBeGreaterThan(0)
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+      expect(views[0]!.id).toBeGreaterThan(0)
+      expect(stopRefineRun(state, ctx, views[0]!.id).ok).toBe(true)
     })
 
-    it('手动运转期间禁止再亲自开炉（矿种切换需先停炉）', () => {
+    it('手动运转期间禁止再亲自开炉（pilot 限 1 台）', () => {
       state.warehouse.items['ore-a'] = 20
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      expect(state.logs.some((l) => l.text.includes('精炼炉启动'))).toBe(true)
-      // 精炼炉占用时重复启动失败
+      expect(state.logs.some((l) => l.text.includes('精炼炉开工'))).toBe(true)
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
-      expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+      expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
     })
   })
 

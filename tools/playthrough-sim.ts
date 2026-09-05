@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 全流程模拟验证（2026-09-05 船长需求）——AI 玩家从零开始跑完整内容链：
  * 技能训练 / 采矿 / 精炼 / 制造 / 市场买卖 / 换船配装 / 悬赏远征 / 声望 / 星系探索扫描 /
  * AI 副船 / 随机事件 / 低安遭遇，直到「全部星系点亮 + DSI 声望 ≥13 +
@@ -134,7 +134,7 @@ function meBusy(): boolean {
     state.scanning.active ||
     state.standby.active ||
     state.transit.active ||
-    (state.refineRun.active && state.refineRun.worker === 'pilot') ||
+    (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) ||
     state.encounter.active
   )
 }
@@ -284,7 +284,7 @@ function sellEverything(): void {
 
 function doMine(): void {
   if (state.mining.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return
   if (state.expedition.active || state.scanning.active || state.standby.active || state.transit.active) return
   // 任意已探索星系的高价值矿带（本地带价值低，远程带采矿会自动往返）
   const pick = BELT_LIST.find(({ b }) => {
@@ -304,7 +304,7 @@ let lastRefineDay = -99
 function doRefineCraft(): void {
   // pilot 精炼限频：每 6h 至多一轮（验证链即可，避免长期占主控挡采矿/远征）
   if (day() - lastRefineDay < 0.25) return
-  if (!state.refineRun.active) {
+  if (state.refineRuns.length === 0) {
     const cand = [...ctx.items.values()].find(
       (i) => (i.kind === 'gas' || i.kind === 'ice' || i.kind === 'ore') && i.refine && i.refine.length > 0 && oreAvailable(state, i.id) >= 200 && isHome(),
     )
@@ -321,7 +321,7 @@ function doRefineCraft(): void {
 
 function doExplore(): void {
   if (state.scanning.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return // 主控开炉时不出港扫描
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return // 主控开炉时不出港扫描
   const f = frontierGalaxyIds(state, ctx).find((g) => !isExplored(state, g))
   if (f) {
     const r = startScan(state, f, ctx)
@@ -414,7 +414,7 @@ function doAi(): void {
  * 终局战力被免费艇封顶（顶配 68% 黑洞——2026-09-05 记录，模拟器自身策略缺陷）。
  */
 function useFreeFalconet(): void {
-  if (meBusy() || !isHome() || (state.refineRun.active && state.refineRun.worker === 'pilot')) return
+  if (meBusy() || !isHome() || (state.refineRuns.some((r) => r.active && r.worker === 'pilot'))) return
   if (state.mining.active || state.expedition.active || state.scanning.active || state.salvaging.active) return
   const cur = fleetDefOf(state, ctx, state.shipId)
   let best: { uid: string; power: number } | null = null
@@ -615,7 +615,7 @@ function fitModuleTo(state: GameState, moduleId: string): boolean {
 
 function doBounty(): void {
   if (state.expedition.active || state.encounter.active || state.transit.active || state.standby.active || state.scanning.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return
   // 只打：未首胜（推进声望）+ 门槛达标 + 星系已探索 + 非冷却 + 有把握
   const canDo = ANOMALY_LIST.filter(
     (a) =>
@@ -643,7 +643,7 @@ function doBounty(): void {
 /** 刷钱：打当前可赢的收益最高悬赏（含已首胜；boss 够强前都可用） */
 function doFarm(): void {
   if (state.expedition.active || state.encounter.active || state.transit.active || state.standby.active || state.scanning.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return
   // 通关目标仍挂起时，boss 达到 85%+ 就留给「最终验证」；通关后（万亿现金目标）boss 悬赏也进刷钱池
   if (WANTS.boss && !goalDone.boss) {
     const boss = ctx.anomalies.get('ano-vault-sentinel')
@@ -750,7 +750,7 @@ function allGoalsDone(): boolean {
 /** 收集购物（全收集目标：缺的船/装备按最便宜的补；每次最多推进一件，防卡单步） */
 function doCollectShop(): void {
   if (!WANTS.collect || goalDone.collect) return
-  if (meBusy() || !isHome() || (state.refineRun.active && state.refineRun.worker === 'pilot')) return
+  if (meBusy() || !isHome() || (state.refineRuns.some((r) => r.active && r.worker === 'pilot'))) return
   const ownedShips = new Set(Object.values(state.fleet).map((f) => f?.defId).filter((x): x is string => !!x))
   const missingShip = [...ctx.ships.values()].filter((s) => !ownedShips.has(s.id)).sort((a, b) => a.priceIsk - b.priceIsk)[0]
   if (missingShip) {
@@ -833,7 +833,7 @@ function fitSalvagersTo(uid: string): boolean {
 /** 确保有一艘可用的打捞作业船（缺则买最便宜的高槽船并装打捞器） */
 function ensureSalvageFleet(): void {
   if (findSalvageShip()) return
-  if (meBusy() || !isHome() || (state.refineRun.active && state.refineRun.worker === 'pilot')) return
+  if (meBusy() || !isHome() || (state.refineRuns.some((r) => r.active && r.worker === 'pilot'))) return
   const owned = new Set(Object.values(state.fleet).map((x) => x?.defId).filter((x): x is string => !!x))
   const cand = [...ctx.ships.values()]
     .filter((s) => (s.slots?.high ?? 0) > 0 && !owned.has(s.id) && state.wallet.isk > s.priceIsk * 1.5 + 200_000)
@@ -870,7 +870,7 @@ function countAiKind(kind: string): number {
  * 优先 AI 核心驱动（背景运转，主控可以继续远征/扫描/打捞；核心不足就买一颗）；
  * 只有买不起核心时才用主控亲自开炉。 */
 function doRecycle(): void {
-  if (state.refineRun.active || state.mining.active || !isHome()) return
+  if (state.refineRuns.length > 0 || state.mining.active || !isHome()) return
   if (countAiCore(state, 'basic') <= 0) {
     if (state.wallet.isk < 100_000) return
     buyBasicAiCore(state, ctx)
@@ -894,7 +894,7 @@ let lastPilotSalvageDay = -99
 function doPilotSalvageSession(): void {
   if (WANTS.boss && !goalDone.boss) return // 通关前不占用主控
   if (day() - lastPilotSalvageDay < 0.5) return
-  if (state.salvaging.active || state.mining.active || state.expedition.active || (state.refineRun.active && state.refineRun.worker === 'pilot')) return
+  if (state.salvaging.active || state.mining.active || state.expedition.active || (state.refineRuns.some((r) => r.active && r.worker === 'pilot'))) return
   const uid = findSalvageShip()
   const gal = salvageGalaxyPick()
   if (!uid || !gal) return

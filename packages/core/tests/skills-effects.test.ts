@@ -72,10 +72,10 @@ describe('技能补全：工业自动化（AI 精炼炉周期每级 −5%）', (
     state.skills.trained['industrial-automation'] = 5
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     expect(state.refineRuns[0]!.cycleMs).toBe(11_250) // 6000 ÷ 0.4 × 0.75
-    expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
     expect(state.refineRuns[0]!.cycleMs).toBe(6_000) // 手动 = 原始周期
-    expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
   })
 })
 
@@ -219,13 +219,13 @@ describe('技能补全 P1：手动精炼双技（炉心熔炼学/炉膛扩容学
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
     expect(state.refineRuns[0]!.cycleMs).toBe(4_800) // 6000 ×0.8
     expect(state.refineRuns[0]!.batchUnits).toBe(13) // 10 ×1.3
-    expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
     // AI 驱动：不吃手动双技（无 core-smelting/expansion 加成）
     state.aiCores['basic'] = 1
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     expect(state.refineRuns[0]!.cycleMs).toBe(15_000) // 6000 ÷ 0.4
     expect(state.refineRuns[0]!.batchUnits).toBe(10)
-    expect(stopRefineRun(state, ctx, 'ore-a').ok).toBe(true)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
   })
 })
 

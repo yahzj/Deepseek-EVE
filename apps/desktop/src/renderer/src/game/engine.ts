@@ -515,9 +515,9 @@ export class GameEngine {
     return result
   }
 
-  /** 停指定资源的炉（v19 多工位按 itemId 定位）：已完成批保留，剩余原料全额退回；AI 核心自动归还 */
-  stopRefineRunAt(itemId: string): CommandResult {
-    const result = stopRefineRun(this.state, this.ctx, itemId)
+  /** 停指定台号的炉（v20 按台号定位；同资源多台互不影响）：已完成批保留，原料未锁定无需退回；AI 核心自动归还 */
+  stopRefineRunAt(runId: number | string): CommandResult {
+    const result = stopRefineRun(this.state, this.ctx, Number(runId))
     if (result.ok) {
       void this.persist()
       this.notify()

@@ -41,26 +41,27 @@ function manualBusyNote(state: GameState): string | null {
 }
 
 /**
- * 一张精炼炉卡片（矿石/气体/冰/残骸统一；矿带卡信息分区）。
- * 运转中的卡：样式不动，只把操作区按钮变为「停炉」+ 数据行显示运行进度（船长 2026-09-05）。
+ * 一张精炼炉卡片（矿石/气体/冰/残骸统一；矿带卡结构 + 每台炉=一个劳动者单位）。
+ * v20 语义（船长 2026-09-05）：同资源可多单位同时运转（主控 1 台 + 每枚闲置 AI 核心 1 台），
+ * 原料不锁定、每批实时扣取——运转中的单位以"名册行"列出（各自批进度条 + 停），
+ * 下方按钮可继续加开单位；没有单位的卡保持静态数据与启动区。
  */
 function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast'] }): ReactNode {
   const state = engine.state
   const isWreck = def.kind === 'wreck'
   const rate = refineRate(state, engine.ctx)
   const total = oreAvailable(state, def.id)
-  // 该资源是否已有一台炉在运转（多工位：本卡命中才显示停炉）
-  const running = engine.refineRunViews().find((v) => v.itemId === def.id)
-  // 每卡独立的 AI 核心选择（一枚核心一台炉；核心库存被占用后自动回落可用类型）
+  // 该资源当前全部运转单位（同资源可多台）
+  const runs = engine.refineRunViews().filter((v) => v.itemId === def.id)
+  const running = runs.length > 0
+  // 每卡独立的 AI 核心选择（一枚核心驱动一台；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
   const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
-  // 手动运转禁用原因：主控已亲自开着一台 / 其它主控作业占用
-  const manualNote = running
-    ? null
-    : state.refineRuns.some((r) => r.worker === 'pilot')
-      ? '你已亲自运转着一台炉：先停它才能再亲自开一台（AI 核心不受此限）。'
-      : manualBusyNote(state)
+  // 手动再开一台被拒的原因：主控已亲自开着一台 / 其它主控作业占用
+  const manualNote = state.refineRuns.some((r) => r.worker === 'pilot')
+    ? '你已亲自运转着一台炉：先停它才能再亲自开一台（AI 核心不受此限）。'
+    : manualBusyNote(state)
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = isWreck ? engine.startRecycleRunAt(def.id, worker) : engine.startRefineRunAt(def.id, worker)
@@ -68,29 +69,25 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
       onToast(r.error ?? '启动失败。', true)
       return
     }
-    const who = worker === 'pilot' ? '你亲自运转' : `${aiCoreName(worker)}核心驱动`
+    const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)}核心驱动`
     onToast(
       isWreck
-        ? `残骸回收启动：${def.name} ${Math.round(total * 10) / 10} m³ 入炉开箱（${who}，到点自动续批，料尽自动停炉）。`
-        : `精炼炉启动：${def.name}×${total.toLocaleString('zh-CN')} 入炉（${who}，到点自动续批）。`,
+        ? `残骸回收开工：${def.name}（仓库 ${Math.round(total * 10) / 10} m³）${who}，每批到点实时扣料、耗尽自动停。`
+        : `精炼炉开工：${def.name}（仓库 ×${total.toLocaleString('zh-CN')}）${who}，每批到点实时扣料、耗尽自动停。`,
     )
   }
-  function stopNow(): void {
-    const r = engine.stopRefineRunAt(def.id)
+  function stopRun(runId: number): void {
+    const r = engine.stopRefineRunAt(runId)
     if (!r.ok) onToast(r.error ?? '停炉失败。', true)
-    else onToast('已停炉：已完成批保留，剩余原料退回仓库。')
+    else onToast('已停该台炉：原料未锁定，余料仍在仓库（可继续加开其它单位）。')
   }
 
-  // 数据行：运行中 = 进度（批数/炉内余/整炉剩余）；空闲 = 可用量/批参数
+  // 数据行：有单位运转 = 台数 + 仓库余量；空闲 = 可用量/批参数
   let dataLine: ReactNode
   if (running) {
-    dataLine = (
-      <>
-        {isWreck ? `已开箱 ${running.batchesDone} 批` : `已炼 ${running.batchesDone} 批`} · 炉内余 ×
-        {running.lockedQty.toLocaleString('zh-CN')}（每批 {running.batchUnits} / {Math.round(running.cycleMs / 100) / 10} 秒）
-        {running.remainingMs > 0 ? ` · 整炉约剩 ${Math.max(1, Math.ceil(running.remainingMs / 1000))} 秒` : ''}
-      </>
-    )
+    dataLine = isWreck
+      ? `运转 ${runs.length} 台 · 仓库余 ${Math.round(total * 10) / 10} m³`
+      : `运转 ${runs.length} 台 · 仓库余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
   } else if (isWreck) {
     dataLine = `可用 ${Math.round(total * 10) / 10} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
   } else {
@@ -135,65 +132,75 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         {isWreck ? '每批开箱 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）' : def.description}
       </div>
       <div className="app-belt-ore">{dataLine}</div>
-      {/* 运转中：当前批周期进度条（船长 2026-09-05） */}
-      {running ? (
-        <div
-          className="app-refine-progress"
-          title={`当前批进度 ${running.percent}%（每批 ${running.batchUnits} 单位 / ${Math.round(running.cycleMs / 100) / 10} 秒；到点自动续批）`}
-        >
-          <span className="app-refine-progress-fill" style={{ width: `${running.percent}%` }} />
-        </div>
-      ) : null}
       {econ}
       <div className="app-belt-actions">
-        {running ? (
-          <button className="app-btn is-small is-warn" onClick={stopNow} title="停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）">
-            ■ 停炉
-          </button>
-        ) : (
-          <>
-            <button
-              className="app-btn is-small is-primary"
-              disabled={manualNote !== null}
-              title={
-                manualNote ??
-                (isWreck
-                  ? '由你亲自运转：锁定全部残骸，循环开箱到料尽（期间不可离港作业）'
-                  : '由你亲自运转：锁定全部库存，循环炼到料尽（期间不可离港作业）')
-              }
-              onClick={() => runWith('pilot')}
-            >
-              {isWreck ? '手动回收' : '手动运转'}
-            </button>
-            {usableCores.length > 0 ? (
-              <div className="app-belt-ai">
-                <select
-                  className="app-select"
-                  value={core ?? ''}
-                  onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-                  title="选择接入这台炉的 AI 核心：一枚核心驱动一台炉（驱动期间该核心被占用；核心库存即并行上限）"
+        {/* 运转单位名册（每台一行：劳动者 + 当前批进度条 + 停）——矿带副船名册同款结构 */}
+        {runs.length > 0 ? (
+          <div className="app-belt-workers">
+            {runs.map((v) => (
+              <span key={v.id} className="app-belt-worker">
+                <span className="app-belt-worker-name">
+                  {v.worker === 'pilot' ? '⛏ 主控' : `🤖 ${v.workerLabel}核心`} · {isWreck ? '已开箱' : '已炼'} {v.batchesDone} 批
+                </span>
+                <span
+                  className="app-progress-mini"
+                  title={`当前批进度 ${v.percent}%（每批 ${v.batchUnits} 单位 / ${Math.round(v.cycleMs / 100) / 10} 秒；每批到点实时扣料）`}
                 >
-                  {usableCores.map((t) => (
-                    <option key={t} value={t}>
-                      {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                    </option>
-                  ))}
-                </select>
+                  <i style={{ width: `${v.percent}%` }} />
+                </span>
                 <button
-                  className="app-btn is-small"
-                  disabled={!core}
-                  title={core ? '接入 AI 核心自动运转（不占副船与主控；效率越高批周期越短）' : '没有可用 AI 核心'}
-                  onClick={() => core && runWith(core)}
+                  className="app-btn is-small is-warn"
+                  onClick={() => stopRun(v.id)}
+                  title="停这台炉：已完成批保留；原料未锁定无需退回（AI 核心自动归还）"
                 >
-                  {isWreck ? 'AI 回收' : 'AI 运转'}
+                  停
                 </button>
-              </div>
-            ) : (
-              <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
-                {isWreck ? 'AI 回收' : 'AI 运转'}
-              </button>
-            )}
-          </>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <button
+          className="app-btn is-small is-primary"
+          disabled={manualNote !== null}
+          title={
+            manualNote ??
+            (running
+              ? '由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，每批到点实时扣料'
+              : isWreck
+                ? '由你亲自运转一台：循环开箱，每批到点实时扣料（期间不可离港作业）'
+                : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
+          }
+          onClick={() => runWith('pilot')}
+        >
+          {isWreck ? '手动回收' : '手动运转'}
+        </button>
+        {usableCores.length > 0 ? (
+          <div className="app-belt-ai">
+            <select
+              className="app-select"
+              value={core ?? ''}
+              onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
+              title="选择接入 AI 核心：一枚核心驱动一台炉（驱动期间该核心被占用；核心库存即并行上限）"
+            >
+              {usableCores.map((t) => (
+                <option key={t} value={t}>
+                  {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                </option>
+              ))}
+            </select>
+            <button
+              className="app-btn is-small"
+              disabled={!core}
+              title={core ? (running ? '接入一枚闲置 AI 核心加开一台' : '接入 AI 核心自动运转（不占副船与主控）') : '没有可用 AI 核心'}
+              onClick={() => core && runWith(core)}
+            >
+              {isWreck ? 'AI 回收' : 'AI 运转'}
+            </button>
+          </div>
+        ) : (
+          <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
+            {isWreck ? 'AI 回收' : 'AI 运转'}
+          </button>
         )}
       </div>
     </div>
@@ -269,9 +276,9 @@ export function IndustryPage({ engine, onToast }: PageProps) {
           }
         >
           <div className="app-dim app-note">
-            多工位并行：每张卡 = 一台炉（同一资源至多一台）。启动即把「当前船货仓 + 物品仓库」的该资源全部锁定入炉，
-            按批量周期到点出料并自动续批、料尽自动停炉。劳动者 = 你亲自运转（全局限 1 台，占主控工作位）或每台接入
-            一枚闲置 AI 核心（核心库存即并行上限；运转中核心被占用）。卡片数据行与按钮只反映该台炉自身的状态。
+            多单位并行（同采矿/打捞）：同一资源可多单位同时运转——你亲自运转限 1 台（占主控工作位），每枚闲置 AI
+            核心可再驱动一台（核心库存即并行上限）。原料不锁定：每批到点从「货仓 + 仓库」实时扣取，多台共享同一库存，
+            耗尽即停（中途卖料会提前停炉）。运转中的单位以名册行列出（各自批进度 + 停）。
           </div>
 
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (

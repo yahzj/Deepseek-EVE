@@ -11,6 +11,7 @@ import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
 import { manufacturingStatus } from './manufacturing'
+import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
 import { expeditionStatus, bountyCooldownRemainingMs } from './expedition'
 import { standbyStatus, transitStatus } from './location'
@@ -130,18 +131,20 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 精炼炉运转（v19 多工位：每个资源/残骸一台炉，逐台一条活动；主控/AI 核心驱动） ──
+  // ── 精炼炉运转（v20 多台并行：每个资源/残骸可多台、逐台一条活动；主控/AI 核心驱动） ──
   for (const rv of refineRunViews(state, ctx)) {
+    const isWreck = rv.itemId ? ctx.items.get(rv.itemId)?.kind === 'wreck' : false
+    const remainUnits = rv.itemId ? oreAvailable(state, rv.itemId) : 0
     out.push({
-      id: `refine:${rv.itemId ?? ''}`,
+      id: `refine:${rv.id}`,
       kind: 'refine',
-      label: `${rv.itemId && ctx.items.get(rv.itemId)?.kind === 'wreck' ? '残骸回收' : '精炼炉'} · ${rv.itemName}`,
-      sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / 余 ×${rv.lockedQty}（每批 ${rv.batchUnits} 单位）`,
+      label: `${isWreck ? '残骸回收' : '精炼炉'} · ${rv.itemName}`,
+      sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / 仓库余 ×${remainUnits}（每批 ${rv.batchUnits} 单位）`,
       percent: rv.percent,
       remainingMs: rv.remainingMs,
       stopable: true,
       stop: 'stop-refine',
-      stopParam: rv.itemId ?? undefined,
+      stopParam: String(rv.id),
     })
   }
 

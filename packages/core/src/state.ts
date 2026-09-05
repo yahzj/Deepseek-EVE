@@ -15,7 +15,7 @@ import { emptyFitted } from './labels'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 19
+export const CURRENT_STATE_VERSION = 20
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -177,42 +177,43 @@ export interface ManufacturingState {
 }
 
 /**
- * 精炼炉运转状态（工业细化，2026-09-04 船长确认）：单工位循环运转——
- * 固定批量周期自动续批（5~10 秒节奏），原料开工时按全部库存锁定入炉；
- * 产物只在每批到点时按收率结算入仓；停止即止：已完成批已出货、剩余锁定料全额退回。
- * worker：'pilot' = 主控亲自运转（占主控工作位，期间不可离港作业）/
- * AiCoreType = 接入一枚 AI 核心驱动（核心出库占用、不占副船名额，停止/料尽自动归还）。
+ * 精炼炉运转状态（工业细化 2026-09-04 起循环运转；2026-09-05 船长拍板多单位并行 + 实时扣料）：
+ * - v20 起同资源允许多台炉同时运转（worker 各自独立周期循环），原料不预锁定——
+ *   每批到点时从仓库/货仓实时扣取 min(单批, 当前余量)，余量不足自然成尾批，耗尽自动停；
+ * - 原料未锁定 = 可中途卖出（卖光后到点即停并记日志）；
+ * - worker：'pilot' = 主控亲自运转（全局限 1 台、占主控工作位，期间不可离港作业）/
+ *   AiCoreType = 一枚 AI 核心驱动一台（核心出库占用、不占副船名额，停止/料尽自动归还）。
  */
 export interface RefineRunState {
   active: boolean
+  /** 稳定台号（state.refineSeq 分配；停炉/活动栏按它定位单台） */
+  id: number
   /** 劳动者：主控亲自运转 / AI 核心类型 */
   worker: 'pilot' | AiCoreType
   /** 运转模式：refine = 资源精炼（矿石/气体/冰矿）；recycle = 残骸回收开箱（B3） */
   recipe: 'refine' | 'recycle'
   /** 正在运转的资源 id（矿石/气体/冰矿/残骸物品） */
   itemId: string | null
-  /** 单批单位（开工锁定） */
+  /** 单批单位（开工时按技能现算） */
   batchUnits: number
-  /** 单批周期毫秒（已按 AI 核心效率拉长；开工锁定） */
+  /** 单批周期毫秒（已按 AI 核心效率拉长） */
   cycleMs: number
   /** 当前批到点时刻（游戏内毫秒） */
   finishAtGameMs: number
-  /** 剩余待炼单位（含当前批未炼部分；停炉时全额退回仓库） */
-  lockedQty: number
   /** 已完成批数（展示用） */
   batchesDone: number
 }
 
-/** 精炼炉空态（新档 / 停炉后） */
+/** 精炼炉空态（兼容常量；v20 多台炉不用单例空态） */
 export const EMPTY_REFINE_RUN: RefineRunState = {
   active: false,
+  id: -1,
   worker: 'pilot',
   recipe: 'refine',
   itemId: null,
   batchUnits: 0,
   cycleMs: 0,
   finishAtGameMs: 0,
-  lockedQty: 0,
   batchesDone: 0,
 }
 
@@ -719,16 +720,27 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
 
-/** 对外统一称呼：当前版本状态（v19 = v18 + 精炼炉多工位：refineRun 单例 → refineRuns 数组） */
-export type GameState = GameStateV19
+/** 对外统一称呼：当前版本状态（v20 = v19 + 精炼炉同资源多单位并行 / 原料不锁定实时扣取） */
+export type GameState = GameStateV20
 
-/** 第十九版存档结构（当前版本）：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
+/** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
  * refineRuns 数组，数组内至多一个 worker='pilot'，itemId 全局唯一）。 */
 export type GameStateV19 = Omit<GameStateV18, 'version' | 'refineRun'> & {
   version: 19
   /** 精炼炉运转工位表（v19 多工位；每元素一台炉：资源/残骸 + 劳动者） */
   refineRuns: RefineRunState[]
+}
+
+/** 第二十版存档结构（当前版本）：v20 = v19 去掉 RefineRunState.lockedQty（2026-09-05 船长拍板：
+ * 同资源允许多单位同时运转，原料不预锁定、每批到点实时扣取仓库余量——在炉锁定料于
+ * 19→20 迁移时全额退回仓库）；每台炉带稳定 id（refineSeq 递增分配）。 */
+export type GameStateV20 = Omit<GameStateV19, 'version'> & {
+  version: 20
+  /** 精炼炉运转工位表（v20：同资源可多台；原料不锁定） */
+  refineRuns: RefineRunState[]
+  /** 精炼炉台号自增分配器（新台启动时取用并 +1） */
+  refineSeq: number
 }
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
@@ -742,10 +754,10 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
 }
 
 /** 创建一份全新的初始存档（一个新飞行员） */
-export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV19 {
+export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV20 {
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV19 = {
-    version: 19,
+  const state: GameStateV20 = {
+    version: 20,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -868,6 +880,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     lowSecPresence: {},
     standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
     refineRuns: [],
+    refineSeq: 1,
     salvaging: { ...EMPTY_SALVAGE_OP },
     galaxyWrecks: {},
     logs: [],

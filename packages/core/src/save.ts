@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV19, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV20, LogEntry, LogKind } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -582,6 +582,35 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
           },
         ]
       : []
+    return next
+  },
+  19: (raw) => {
+    // v19 → v20（2026-09-05 船长拍板：同资源多单位并行、原料不锁定实时扣取）：
+    // 在炉锁定料（lockedQty）全额退回仓库，每台分配稳定 id，并初始化 refineSeq
+    const next: RawState = { ...raw }
+    const ware = asRaw(raw.warehouse)
+    const wareItems = asRaw(ware.items)
+    const runsRaw = Array.isArray(raw.refineRuns) ? raw.refineRuns : []
+    const runs: unknown[] = []
+    let seq = 1
+    for (const runRaw of runsRaw) {
+      const r = asRaw(runRaw)
+      const item = typeof r.itemId === 'string' && r.itemId.length > 0 ? r.itemId : null
+      const locked =
+        typeof r.lockedQty === 'number' && Number.isFinite(r.lockedQty) ? Math.max(0, Math.floor(r.lockedQty)) : 0
+      if (item !== null && locked > 0) {
+        const cur = typeof wareItems[item] === 'number' ? (wareItems[item] as number) : 0
+        wareItems[item] = cur + locked
+      }
+      const nr: RawState = { ...r }
+      delete nr.lockedQty
+      nr.id = seq
+      seq += 1
+      runs.push(nr)
+    }
+    next.refineRuns = runs
+    next.refineSeq = seq
+    next.warehouse = { ...ware, items: wareItems }
     return next
   },
 }
@@ -1343,44 +1372,47 @@ function normalizeState(raw: unknown): GameState {
     finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
     legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
   }
-  // --- 精炼炉运转工位表（v19 多工位，2026-09-05 船长拍板；兼容 v18 单例 refineRun 兜底） ---
+  // --- 精炼炉运转工位表（v20 多工位并行、原料不锁定；兼容 v19 起 refineRuns 与更早 refineRun 兜底） ---
   const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {
     const r = asRaw(rawRun)
     const item = typeof r.itemId === 'string' && r.itemId.length > 0 ? r.itemId : null
     if (r.active !== true || item === null) return null
-    const qty = Math.max(0, Math.floor(num(r.lockedQty)))
-    if (qty <= 0) return null
     const worker: GameState['refineRuns'][number]['worker'] =
       r.worker === 'basic' || r.worker === 'gamma' || r.worker === 'beta' || r.worker === 'alpha'
         ? r.worker
         : 'pilot'
     return {
       active: true,
+      id: -1, // 占位：由调用方按 refineSeq 统一分配
       worker,
       recipe: r.recipe === 'recycle' ? 'recycle' : 'refine',
       itemId: item,
       batchUnits: Math.max(1, Math.floor(num(r.batchUnits, 10))),
       cycleMs: Math.max(1, Math.floor(num(r.cycleMs, 6_000))),
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))),
-      lockedQty: qty,
       batchesDone: Math.max(0, Math.floor(num(r.batchesDone))),
     }
   }
   const refineRuns: GameState['refineRuns'] = []
-  if (Array.isArray(src.refineRuns)) {
-    for (const rawRun of src.refineRuns) {
-      const run = sanitizeRefineRun(rawRun)
-      if (!run) continue
-      // 引擎不变式守护：同资源至多一台炉；pilot 至多一台
-      if (refineRuns.some((x) => x.itemId === run.itemId)) continue
-      if (run.worker === 'pilot' && refineRuns.some((x) => x.worker === 'pilot')) continue
-      refineRuns.push(run)
-    }
+  let refineSeq = 1
+  const pushSanitized = (rawRun: unknown): void => {
+    const run = sanitizeRefineRun(rawRun)
+    if (!run) return
+    // v20 守护：pilot 至多一台（同资源多台为合法状态，不再过滤重复 itemId）
+    if (run.worker === 'pilot' && refineRuns.some((x) => x.worker === 'pilot')) return
+    run.id = refineSeq
+    refineSeq += 1
+    refineRuns.push(run)
   }
-  if (refineRuns.length === 0) {
-    // v18 及更早老档兜底（正常路径已由 18→19 迁移转换，此处双保险）
-    const legacy = sanitizeRefineRun(src.refineRun)
-    if (legacy) refineRuns.push(legacy)
+  if (Array.isArray(src.refineRuns)) {
+    for (const rawRun of src.refineRuns) pushSanitized(rawRun)
+  }
+  if (refineRuns.length === 0 && src.refineRun !== undefined) {
+    // v18 及更早老档兜底（正常路径已由迁移链转换，此处双保险）
+    pushSanitized(src.refineRun)
+  }
+  if (typeof src.refineSeq === 'number' && Number.isFinite(src.refineSeq)) {
+    refineSeq = Math.max(refineSeq, Math.floor(src.refineSeq))
   }
   const bountyCooldowns: Record<string, number> = {}
   const bcRaw = asRaw(src.bountyCooldowns)
@@ -1513,7 +1545,7 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  const normalized: GameStateV19 = {
+  const normalized: GameStateV20 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -1552,6 +1584,7 @@ function normalizeState(raw: unknown): GameState {
     transit,
     standby,
     refineRuns,
+    refineSeq,
     salvaging,
     bountyCooldowns,
     autoLoopAnomalyId,

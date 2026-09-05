@@ -105,7 +105,7 @@ describe('V15 存档：debugQuick 字段', () => {
     s.debugQuick = true
     const loaded = loadSaveFile(serializeSaveFile(s, 1000))
     expect(loaded.state.debugQuick).toBe(true)
-    expect(loaded.state.version).toBe(19)
+    expect(loaded.state.version).toBe(20)
   })
 
   it('v14 档迁移：补 debugQuick=false 且其余无损', () => {
@@ -115,7 +115,7 @@ describe('V15 存档：debugQuick 字段', () => {
     delete raw.debugQuick
     raw.version = 14
     const loaded = loadSaveFile(serializeSaveFile(s, 1000))
-    expect(loaded.state.version).toBe(19)
+    expect(loaded.state.version).toBe(20)
     expect(loaded.state.debugQuick).toBe(false)
     expect(loaded.state.wallet.isk).toBe(77)
   })

@@ -97,7 +97,7 @@ describe('V16 迁移：被删矿石折算', () => {
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
     const s = loaded.state
-    expect(s.version).toBe(19)
+    expect(s.version).toBe(20)
     expect(s.warehouse.items['ore-kernite']).toBeUndefined()
     expect(s.warehouse.items['ore-fluxite']).toBeUndefined()
     expect(s.fleet['sandcat']!.cargo['ore-crimsonite']).toBeUndefined()
@@ -117,7 +117,7 @@ describe('V16 迁移：被删矿石折算', () => {
     const raw = state as unknown as Record<string, unknown>
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
-    expect(loaded.state.version).toBe(19)
+    expect(loaded.state.version).toBe(20)
     expect(loaded.state.logs.some((l) => l.text.includes('内容整合'))).toBe(false)
   })
 })

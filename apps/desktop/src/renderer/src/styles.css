@@ -3157,6 +3157,14 @@ body {
 .app-belt-card .app-refine-progress { height: 7px; width: 100%; max-width: none; border-radius: 4px; background: rgba(0,0,0,.42); }
 .app-belt-card .app-refine-progress-fill { border-radius: 4px; }
 .app-refine-progress-fill { display: block; height: 100%; background: #6fd98a; border-radius: 2px; transition: width .4s ease; }
+/* 通用小进度条（行内单位名册/矿带/打捞卡：⛏/🤖 单行内显示当前批进度；船长 2026-09-05） */
+.app-progress-mini { display: inline-block; flex: 0 0 auto; width: 60px; height: 6px; border-radius: 3px; background: rgba(0,0,0,.45); overflow: hidden; }
+.app-progress-mini i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #2f9e8f, var(--wui-accent)); transition: width .35s ease; }
+.app-progress-mini.is-warn i { background: linear-gradient(90deg, #a8742e, var(--wui-amber)); }
+/* 作业卡全宽进度条（矿带/打捞主控作业：行程段琥珀、作业循环青绿；2026-09-05 船长） */
+.app-card-progress { display: block; width: 100%; height: 7px; border-radius: 4px; background: rgba(0,0,0,.42); overflow: hidden; }
+.app-card-progress i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #2f9e8f, var(--wui-accent)); transition: width .35s ease; }
+.app-card-progress.is-travel i { background: linear-gradient(90deg, #a8742e, var(--wui-amber)); }
 
 /* v18 fit racks (three rack groups with bay rows) */
 .app-fit-racks{display:flex;flex-direction:column;gap:10px}

@@ -17,6 +17,8 @@ import {
   miningStatus,
   oneLegMs,
   salvagerCyclesOf,
+  legMsFor,
+  outboundLegMsFor,
   shipDisplayName,
   recycleTierOf,
   wreckBaseDensity,
@@ -180,6 +182,7 @@ function BeltCard({
 }) {
   const state = engine.state
   const oreDef = engine.ctx.items.get(belt.oreId)
+  const mv = miningStatus(state, engine.ctx)
   const standing = state.standings['dsi'] ?? 0
   const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
   const galaxyName = galaxy?.name ?? '母港'
@@ -271,6 +274,14 @@ function BeltCard({
         ) : null}
       </div>
       <div className="app-belt-desc">{belt.description}</div>
+      {isActiveBelt ? (
+        <div
+          className={`app-card-progress${mv.phase !== 'mining' ? ' is-travel' : ''}`}
+          title={`${mv.phaseLabel} · 进度 ${mv.percent}%（${mv.phase === 'mining' ? '当前采掘循环' : '行程'}）`}
+        >
+          <i style={{ width: `${mv.percent}%` }} />
+        </div>
+      ) : null}
       <div className="app-belt-ore">
         所在 {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} ISK` : '—'}
         {unexplored ? '（到「星图·远征」对该星系「未知信号」扫描后解锁）' : ''}
@@ -512,6 +523,30 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
   )
 }
 
+/** 残骸打捞主控作业进度（船长 2026-09-05：给打捞卡加进度条）：
+ * 出航/返航 = 行程腿进度；打捞中 = 主循环周期（最短打捞器周期档）进度 */
+function salvageProgressOf(engine: GameEngine): { percent: number; label: string; travel: boolean } | null {
+  const s = engine.state.salvaging
+  if (!s.active || s.galaxyId === null) return null
+  const state = engine.state
+  const ctx = engine.ctx
+  if (s.phase === 'outbound') {
+    const leg = Math.max(1, outboundLegMsFor(state, ctx, s.galaxyId))
+    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '出航中', travel: true }
+  }
+  if (s.phase === 'returning') {
+    const leg = Math.max(1, legMsFor(state, ctx, s.galaxyId))
+    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '返航卸货中', travel: true }
+  }
+  const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+  const step = cycles.length > 0 ? Math.min(...cycles) : 0
+  return {
+    percent: step > 0 ? Math.min(100, Math.round((s.cycleAccMs / step) * 100)) : 0,
+    label: `打捞循环（${cycles.length} 台打捞器）`,
+    travel: false,
+  }
+}
+
 /** 一张星系残骸卡：密度/效率估价 + 副船名册（快速取消）+ 主控按钮 + AI 指派条 */
 function WreckCard({
   galaxy: g,
@@ -543,6 +578,7 @@ function WreckCard({
   const state = engine.state
   const anomalies = engine.anomalies.filter((a) => a.galaxyId === g.id)
   const est = salvageEstimate(state, engine, g.id, density)
+  const prog = isActive ? salvageProgressOf(engine) : null
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
@@ -562,6 +598,14 @@ function WreckCard({
         ) : null}
       </div>
       <div className="app-belt-desc">该星系敌群残骸：共 {anomalies.length} 类悬赏目标会持续沉积残骸密度。</div>
+      {prog ? (
+        <div
+          className={`app-card-progress${prog.travel ? ' is-travel' : ''}`}
+          title={`${prog.label} · 进度 ${prog.percent}%`}
+        >
+          <i style={{ width: `${prog.percent}%` }} />
+        </div>
+      ) : null}
       <div className="app-belt-ore">
         残骸密度 <b>{density.toFixed(1)}</b>
         {lowSec ? '（低安回收箱可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
