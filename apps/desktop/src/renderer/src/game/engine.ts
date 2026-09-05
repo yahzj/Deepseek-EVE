@@ -331,6 +331,10 @@ export class GameEngine {
    * 时间泵（每 100ms 一响）：
    * - 玩家交火中：按 100ms 粒度切片推进并即时通知 → 战斗动画接近实时（数据 10Hz，无整秒跳变）；
    * - 其余时间：余额累计满 1s 再整体推进一次（训练/采矿/市场等节奏与旧版一致，界面通知保持 1Hz）。
+   * - 到港边界切分（2026-09-05 探针 ageMs=1002 实证）：去程到港若落在这 1s 整片内，旧实现会在
+   *   同一次推进里把“开战后剩余时间”一并打完才通知 UI——导弹等远程武器能在画面弹出前就已开火
+   *   一轮（战场首帧敌舰残血/武器已冷却）。现改为只推进到开战瞬间即通知，战场以 age≈0 弹出，
+   *   随后交火按 100ms 实时泵推进（积压余额同样按 100ms 分片追平，无整秒隐藏推进）。
    * 切分只是把同一段游戏时间分成多小份送进核心引擎，各系统均按时间推进，总量不变。
    */
   private tick(): void {
@@ -343,14 +347,29 @@ export class GameEngine {
     const inBattle = exp.phase === 'battle' && !!exp.battle
     if (inBattle) {
       if (this.pendingMs > 0) {
-        advanceGame(this.state, this.pendingMs, this.ctx)
-        this.pendingMs = 0
+        // 交火期积压（切页/后台节流等产生）按 100ms 分片追平，避免整段隐藏推进
+        const step = Math.min(this.pendingMs, 100)
+        advanceGame(this.state, step, this.ctx)
+        this.pendingMs -= step
+      } else {
+        advanceGame(this.state, dt, this.ctx)
       }
-      advanceGame(this.state, dt, this.ctx)
       this.notify()
       return
     }
     this.pendingMs += dt
+    // 去程将在这片余额内到港：先只推到“到港开战瞬间”，通知战场以 age≈0 弹出
+    if (exp.phase === 'out' && exp.active && exp.finishAtGameMs > this.state.gameMs) {
+      const toArrival = exp.finishAtGameMs - this.state.gameMs
+      if (this.pendingMs >= toArrival) {
+        if (toArrival > 0) {
+          advanceGame(this.state, toArrival, this.ctx)
+          this.pendingMs -= toArrival
+        }
+        this.notify()
+        return // 下一拍起进入 inBattle 泵，余额按 100ms 分片追平
+      }
+    }
     if (this.pendingMs >= 1000) {
       advanceGame(this.state, this.pendingMs, this.ctx)
       this.pendingMs = 0
