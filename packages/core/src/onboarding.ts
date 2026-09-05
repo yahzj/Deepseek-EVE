@@ -183,7 +183,7 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
     // 采集完成：仓库已有 ≥20 富凡晶石（已返港卸货）→ 提示交付
     if ((state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) >= TUTORIAL_DELIVER_N) {
       state.onboarding.step = ONB_DELIVER
-      addLog(state, 'info', '采集达标：前往星图「任务中心」·重要任务交付「补给协议·首批矿物」。')
+      addLog(state, 'info', '采集达标：前往出港页「任务中心」·重要任务交付「补给协议·首批矿物」。')
     }
     return
   }
