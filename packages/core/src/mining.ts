@@ -28,6 +28,7 @@ import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
+import { ONB_MINE, TUTORIAL_DELIVER_N } from './onboarding'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
 export interface MiningParams {
@@ -329,7 +330,8 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           'info',
           `自动返港：已把货仓全部卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} 单位，本趟采得 ${oreName}×${trip}）。`,
         )
-        if (m.stopAfterTrip || !m.autoCycle) {
+        // 序章·苏醒 教学首单：卸货后停在港（等玩家去任务中心交付），不自动续采
+        if (m.stopAfterTrip || !m.autoCycle || state.onboarding.step === ONB_MINE) {
           // 按设定结束循环
           m.active = false
           m.beltId = null
@@ -425,6 +427,23 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     }
     addItem(state, oreNow.id, units)
     m.tripUnits += units
+
+    // 序章·苏醒 教学首单（船长 2026-09-05 拍板：不等到满舱，采足交付量即返港卸货——约 1 周期，
+    // 若单周期产量不足 20 则下一周期再回，免去教学期满仓往返的长等待）
+    if (state.onboarding.step === ONB_MINE && m.tripUnits >= TUTORIAL_DELIVER_N) {
+      m.phase = 'returning'
+      m.phaseAccMs = 0
+      const stGalNow2 = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
+      const mergedMs2 =
+        oneLegMs(state, ctx, m.beltId, undefined, stGalNow2) +
+        oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow2)
+      addLog(
+        state,
+        'info',
+        `教学首单已采足（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返港卸货（返航约 ${Math.round(mergedMs2 / 1000)} 秒）。`,
+      )
+      continue // 剩余时间转入返航阶段
+    }
   }
 }
 
