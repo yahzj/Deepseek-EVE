@@ -149,8 +149,10 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
         ) : null}
       </div>
       {phase === 'open' ? (
-        /* “睁眼”转场：一条横向白线延伸至屏幕两端，随后光晕扩散成视界（船长 2026-09-05 定） */
+        /* “睁眼”转场：横向白线延伸至屏幕两端 → 光晕出现时黑底开始转透明，
+           1.4s(引擎写入呼号)恰好 100% 透明（船长 2026-09-05 优化） */
         <div className="app-pro-open" onClick={(e) => e.stopPropagation()}>
+          <div className="app-pro-bg" />
           <div className="app-pro-iris" />
           <div className="app-pro-slit" />
         </div>
