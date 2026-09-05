@@ -16,10 +16,14 @@ import {
   marketQuote,
   miningStatus,
   oneLegMs,
+  salvagerCyclesOf,
   shipDisplayName,
+  recycleTierOf,
+  wreckBaseDensity,
   wreckDensityOf,
+  RECYCLE_YIELD_PER_M3,
 } from '@whale/core'
-import type { AiCoreType, BeltDef } from '@whale/core'
+import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { ExpeditionPanel, TaskPanel } from '../panels/Expedition'
 import type { GameEngine } from '../game/engine'
@@ -383,76 +387,250 @@ function BeltCard({
   )
 }
 
-/* ═══════════════ 标签三：残骸打捞（B3 采矿式单趟：星系密度 → 开始打捞/停止） ═══════════════ */
+/* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式单趟） ═══════════════ */
+
+/** 回收池估价近似（矿物 baseSellPrice 按池权重加权；与 tools/salvage-econ.ts 同源口径） */
+const RECYCLE_POOL_AVG_ISK: Record<'common' | 'risky' | 'dire', number> = {
+  common: 9.8,
+  risky: 27.6,
+  dire: 92.4,
+}
+
+/** 打捞速率与回收保底估值（当前驾驶船装配/技能 × 当前密度现算；展示用近似） */
+function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyId: string, density: number): { eff: string | null; val: string | null } {
+  const ctx = engine.ctx
+  const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+  const anomalies = engine.anomalies.filter((a) => a.galaxyId === galaxyId)
+  if (cycles.length === 0 || anomalies.length === 0) {
+    return { eff: cycles.length === 0 ? '未装配打捞器（舰船页高槽安装后显示效率）' : null, val: null }
+  }
+  const roundsPerHour = cycles.reduce((s, c) => s + 3_600_000 / c, 0)
+  const avgThreat = anomalies.reduce((s, a) => s + a.threat, 0) / anomalies.length
+  const v0 = Math.max(0.1, avgThreat * 0.06)
+  const mul = Math.max(0.5, density / 10)
+  const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
+  const assay = (state.skills.trained['wreck-assaying'] ?? 0) > 0 ? 0.01 * Math.pow(1.2, Math.min(5, state.skills.trained['wreck-assaying'] ?? 0)) : 0
+  const volH = roundsPerHour * v0 * mul * (1 + 0.12 * diveLv) * (1 + assay)
+  const tier = recycleTierOf(wreckBaseDensity(galaxyId, ctx))
+  const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
+  const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
+  const capM3H = 1440 / Math.max(0.6, 1 - 0.04 * recLv) // 回收炉时（周期技能缩短后）
+  const effM3 = Math.min(volH, capM3H)
+  const evH = Math.round(effM3 * RECYCLE_YIELD_PER_M3[tier] * RECYCLE_POOL_AVG_ISK[tier] * (1 + 0.08 * refLv))
+  return {
+    eff: `${cycles.length} 台打捞器 · ≈${Math.round(volH).toLocaleString('zh-CN')} m³/h（当前密度现算${volH > capM3H ? '，超出回收炉速按炉速计' : ''}）`,
+    val: `${isk(evH)} ISK/h 保底（按来源危险度池估价）`,
+  }
+}
 
 function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const me = state.salvaging
-  // 正在该星系打捞的 AI 副船数
-  const aiOn = new Map<string, number>()
-  for (const a of Object.values(state.aiAssignments)) {
-    if (a.task.kind === 'salvage') aiOn.set(a.task.galaxyId, (aiOn.get(a.task.galaxyId) ?? 0) + 1)
+  // 正在该星系打捞的 AI 副船（名册：快速取消用）
+  const aiWorkersBy = new Map<string, Array<{ sid: string; coreType: AiCoreType }>>()
+  for (const [sid, a] of Object.entries(state.aiAssignments)) {
+    if (a.task.kind === 'salvage') {
+      const list = aiWorkersBy.get(a.task.galaxyId) ?? []
+      list.push({ sid, coreType: a.coreType })
+      aiWorkersBy.set(a.task.galaxyId, list)
+    }
   }
   const galaxies = [...engine.ctx.galaxies.values()]
     .filter((g) => isExplored(state, g.id) && engine.anomalies.some((x) => x.galaxyId === g.id))
-    .map((g) => ({ galaxy: g, density: wreckDensityOf(state, g.id, engine.ctx), ai: aiOn.get(g.id) ?? 0 }))
+    .map((g) => ({
+      galaxy: g,
+      density: wreckDensityOf(state, g.id, engine.ctx),
+      workers: aiWorkersBy.get(g.id) ?? [],
+    }))
     .sort((a, b) => b.density - a.density)
+  const idleShips = idleAiShipIds(state)
+
+  const phaseText = (): string => {
+    if (!me.active) return `${shipDisplayName(state, engine.ctx, state.shipId)} 停靠空间站——在下方残骸卡上开始打捞，或指派 AI 副船。`
+    const gName = me.galaxyId ? engine.ctx.galaxies.get(me.galaxyId)?.name : ''
+    if (me.phase === 'outbound') return `${shipDisplayName(state, engine.ctx, state.shipId)} 前往「${gName}」（出航中）· 持续打捞中`
+    if (me.phase === 'returning') return `${shipDisplayName(state, engine.ctx, state.shipId)} 返航卸货中（本趟约 ${Math.round(me.tripM3 * 10) / 10} m³）`
+    return `${shipDisplayName(state, engine.ctx, state.shipId)} 在「${gName}」打捞中 · 本趟约 ${Math.round(me.tripM3 * 10) / 10} m³`
+  }
+
+  function startAt(galaxyId: string): void {
+    const r = engine.startSalvageOpAt(galaxyId)
+    if (!r.ok) onToast(r.error ?? '无法打捞', true)
+  }
+  function stopNow(): void {
+    if (engine.stopSalvageOpNow()) onToast('已停止打捞（货物留在船上）。')
+  }
+  function assignAi(galaxyId: string, shipId: string, coreType: AiCoreType): void {
+    if (!shipId) {
+      onToast('先选择一艘空闲副船。', true)
+      return
+    }
+    const r = engine.assignAiSalvageAt(shipId, coreType, galaxyId)
+    if (!r.ok) onToast(r.error ?? '指派失败', true)
+    else onToast('AI 副船已出发打捞（满仓自动返港卸货后任务结束）。')
+  }
+  function cancelAi(sid: string): void {
+    if (engine.cancelAiTaskAt(sid)) onToast('AI 打捞任务已取消（核心已归还）。')
+    else onToast('取消失败：任务状态异常。', true)
+  }
 
   return (
     <Panel
       title="残骸打捞"
-      right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；满仓自动返航卸货后结束</span>}
+      right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
       <div className="app-dim app-note">
-        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。开始后采矿式单趟作业：出航 → 持续打捞 → 满仓自动返港；
-        残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头）。低安星系打捞全程可能遇袭（B1）。
+        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：出航 → 持续打捞 → 满仓自动返港；
+        残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞全程可能遇袭（B1）。
       </div>
+      <div className="app-dim app-inv-empty">{phaseText()}</div>
+
       {galaxies.length === 0 ? (
         <div className="app-dim app-inv-empty">还没有可打捞的星系——先扫描探索点亮星图（星系内要有悬赏目标才会产生残骸）。</div>
       ) : (
-        <ul className="app-inv-list">
-          {galaxies.map(({ galaxy: g, density, ai }) => {
-            const isMine = me.active && me.galaxyId === g.id
-            const phaseLabel =
-              me.phase === 'outbound' ? '出航中' : me.phase === 'returning' ? '返航卸货中' : '打捞中'
-            return (
-              <li key={g.id} className="app-inv-row">
-                <div className="app-inv-main">
-                  <span className="app-inv-name">
-                    {g.name}
-                    {isMine ? <span className="app-chip">主控打捞中（{phaseLabel}）</span> : null}
-                    {ai > 0 ? <span className="app-chip is-dim">AI×{ai}</span> : null}
-                  </span>
-                  <span className="app-inv-count">
-                    残骸密度 <b>{density.toFixed(1)}</b>
-                    {isMine ? ` · 本趟约 ${Math.round(me.tripM3 * 10) / 10} m³` : ''}
-                    {ai > 0 ? '（AI 打捞任务进行中，见舰船页）' : ''}
-                  </span>
-                </div>
-                <div className="app-inv-btns">
-                  {isMine ? (
-                    <button className="app-btn is-small is-warn" onClick={() => engine.stopSalvageOpNow()}>
-                      ■ 停止打捞
-                    </button>
-                  ) : (
-                    <button
-                      className="app-btn is-small is-primary"
-                      disabled={me.active}
-                      title={me.active ? '已有打捞作业进行中（其它星系）' : '开始打捞（需高槽打捞器；采矿式单趟）'}
-                      onClick={() => {
-                        const r = engine.startSalvageOpAt(g.id)
-                        if (!r.ok) onToast(r.error ?? '无法打捞', true)
-                      }}
-                    >
-                      🛰 开始打捞
-                    </button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        <div className="app-belt-grid">
+          {galaxies.map(({ galaxy: g, density, workers }) => (
+            <WreckCard
+              key={g.id}
+              galaxy={g}
+              density={density}
+              aiWorkers={workers}
+              isActive={me.active && me.galaxyId === g.id}
+              activeAnywhere={me.active}
+              idleShips={idleShips}
+              engine={engine}
+              onStart={() => startAt(g.id)}
+              onStop={stopNow}
+              onAiAssign={assignAi}
+              onAiCancel={cancelAi}
+              onToast={onToast}
+            />
+          ))}
+        </div>
       )}
     </Panel>
+  )
+}
+
+/** 一张星系残骸卡：密度/效率估价 + 副船名册（快速取消）+ 主控按钮 + AI 指派条 */
+function WreckCard({
+  galaxy: g,
+  density,
+  aiWorkers,
+  isActive,
+  activeAnywhere,
+  idleShips,
+  engine,
+  onStart,
+  onStop,
+  onAiAssign,
+  onAiCancel,
+  onToast,
+}: {
+  galaxy: GalaxyDef
+  density: number
+  aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
+  isActive: boolean
+  activeAnywhere: boolean
+  idleShips: string[]
+  engine: GameEngine
+  onStart: () => void
+  onStop: () => void
+  onAiAssign: (galaxyId: string, shipId: string, coreType: AiCoreType) => void
+  onAiCancel: (shipId: string) => void
+  onToast: ToastFn
+}) {
+  const state = engine.state
+  const anomalies = engine.anomalies.filter((a) => a.galaxyId === g.id)
+  const est = salvageEstimate(state, engine, g.id, density)
+  const [aiShipId, setAiShipId] = useState('')
+  const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
+  const lowSec = typeof g.security === 'number' && g.security < 0
+
+  return (
+    <div className={`app-belt-card${isActive ? ' is-active' : ''}`}>
+      <div className="app-belt-head">
+        <span className="app-belt-name">
+          {g.name}
+          {isActive ? <em className="app-belt-flag is-run">🛰 主控打捞中</em> : null}
+          {lowSec ? <em className="app-belt-flag">⚠ 低安（打捞可能遇袭）</em> : null}
+        </span>
+        {aiWorkers.length > 0 ? (
+          <span className="app-belt-ai-badge" title={`${aiWorkers.length} 艘 AI 副船正在此星系打捞`}>
+            🤖×{aiWorkers.length}
+          </span>
+        ) : null}
+      </div>
+      <div className="app-belt-desc">该星系敌群残骸：共 {anomalies.length} 类悬赏目标会持续沉积残骸密度。</div>
+      <div className="app-belt-ore">
+        残骸密度 <b>{density.toFixed(1)}</b>
+        {lowSec ? '（低安回收箱可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
+      </div>
+      {est.eff || est.val ? (
+        <div className="app-belt-econ" title="估算 = 当前打捞器装配 × 当前密度 × 打捞/回收技能现算（展示口径，非结算）">
+          {est.eff ? <div>🛰 {est.eff}</div> : null}
+          {est.val ? <div className="app-belt-econ-val">{MONEY_GLYPH} {est.val}</div> : null}
+        </div>
+      ) : null}
+
+      <div className="app-belt-actions">
+        {aiWorkers.length > 0 ? (
+          <div className="app-belt-workers">
+            {aiWorkers.map((w) => (
+              <span key={w.sid} className="app-belt-worker">
+                <span className="app-belt-worker-name">
+                  🤖 {shipDisplayName(state, engine.ctx, w.sid)}
+                  <span className="app-dim">（{aiCoreName(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
+                </span>
+                <button
+                  className="app-btn is-small is-warn"
+                  title={`取消 ${shipDisplayName(state, engine.ctx, w.sid)} 在此星系的打捞任务（AI 核心归还核心库）`}
+                  onClick={() => onAiCancel(w.sid)}
+                >
+                  取消
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {isActive ? (
+          <button className="app-btn is-small is-warn" onClick={onStop}>
+            ■ 停止打捞
+          </button>
+        ) : (
+          <button
+            className="app-btn is-small is-primary"
+            disabled={activeAnywhere}
+            title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需高槽打捞器；单趟，满仓自动返航）'}
+            onClick={onStart}
+          >
+            🛰 开始打捞
+          </button>
+        )}
+        <div className="app-belt-ai">
+          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title="选择空闲副船（需该船高槽装有打捞器）">
+            <option value="">— 空闲副船 —</option>
+            {idleShips.map((id) => (
+              <option key={id} value={id}>
+                {shipDisplayName(state, engine.ctx, id)}
+              </option>
+            ))}
+          </select>
+          <select className="app-select" value={aiCoreSel} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型（效率越高行程/周期越快）">
+            {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
+            ))}
+          </select>
+          <button
+            className="app-btn is-small"
+            disabled={activeAnywhere || !aiShipId}
+            title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : aiShipId ? '指派 AI 副船打捞此星系（满仓自动返港后任务结束）' : '先选择空闲副船'}
+            onClick={() => onAiAssign(g.id, aiShipId, aiCoreSel)}
+          >
+            指派 AI 打捞
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
