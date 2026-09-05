@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 
-type Phase = 'wake' | 'boot' | 'diag' | 'name'
+type Phase = 'wake' | 'boot' | 'diag' | 'name' | 'open'
 
 type LineKind = 'ok' | 'warn' | 'fail'
 
@@ -53,7 +53,8 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
   useEffect(() => {
     if (phase !== 'boot') return
     if (shown >= CHECK_LINES.length) {
-      const t = window.setTimeout(() => setPhase('diag'), 350)
+      // 自检条目全部滚完后停留 ~1.5s（船长 2026-09-05：让玩家看清结果）再出结论卡
+      const t = window.setTimeout(() => setPhase('diag'), 1500)
       timerRef.current = t
       return () => window.clearTimeout(t)
     }
@@ -68,8 +69,13 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
   }
 
   const confirm = (): void => {
-    const r = engine.prologueAwaken(name)
-    if (!r.ok) setErr(r.error ?? '写入失败')
+    if (phase === 'open') return
+    // “睁眼”转场后再唤醒（引擎写入呼号并进入采集步骤）
+    setPhase('open')
+    window.setTimeout(() => {
+      const r = engine.prologueAwaken(name)
+      if (!r.ok) setErr(r.error ?? '写入失败')
+    }, 1400)
   }
 
   return (
@@ -142,10 +148,21 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
           </div>
         ) : null}
       </div>
+      {phase === 'open' ? (
+        /* “睁眼”转场：黑暗中的一线光睁成视界（船长 2026-09-05 定） */
+        <div className="app-pro-open" onClick={(e) => e.stopPropagation()}>
+          <div className="app-pro-eye" />
+          <div className="app-pro-lid is-top" />
+          <div className="app-pro-lid is-bottom" />
+          <div className="app-pro-flash" />
+        </div>
+      ) : null}
       {err && phase === 'wake' ? <div className="app-pro-err">{err}</div> : null}
-      <button className="app-pro-skip" onClick={skip} title="跳过教程：立即全额结算奖励并修好隼枭">
-        跳过教程 ›
-      </button>
+      {phase !== 'open' ? (
+        <button className="app-pro-skip" onClick={skip} title="跳过教程：立即全额结算奖励并修好隼枭">
+          跳过教程 ›
+        </button>
+      ) : null}
     </div>
   )
 }
