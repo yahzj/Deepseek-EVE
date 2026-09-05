@@ -10,7 +10,7 @@
  * 已抽到 ./battleViewCore.tsx——动画/表现类改动请先落在那里的常量与纯函数。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { battleArcsFor, battleTacticDesire, expeditionStatus, fleetDefOf } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf } from '@whale/core'
 import type { BattleFx, DamageType, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -45,6 +45,8 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const starLayerRefs = useRef<Array<HTMLDivElement | null>>([])
   const starOffRef = useRef<number[]>([0, 0, 0])
   const starStateRef = useRef({ v: 70, dir: 1 })
+/** 驾驶船战斗速度（装配/推进器/技能折算后的实际值，战斗期间静态）——星空视差速率来源 */
+const meSpeedRef = useRef(200)
   const starField = useMemo(
     () =>
       STAR_LAYERS.map((cfg, i) => ({
@@ -132,6 +134,14 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
+  // 星空视差速率：开战时锁定一次驾驶船战斗速度（装配/技能静态，战斗期间不变）
+  useEffect(() => {
+    if (!engine.state.expedition.battle) return
+    const spec = createPlayerSpec(engine.state, engine.ctx, engine.state.shipId)
+    meSpeedRef.current = spec?.speedMps ?? 200
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine.state.expedition.battle?.startedAtGameMs])
+
   // 视觉插值：引擎每 ~100ms 一拍；本循环 33ms 在两拍间线性插值，舰列/弧/游标平滑移动
   useEffect(() => {
     const iv = window.setInterval(() => {
@@ -151,18 +161,14 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
       }
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
 
-      // ── 背景视差滚动：方向 = 玩家舰推进方向（同向流动）；速度 = 巡航基础 + 按期望距离差的机动加速 ──
-      // 近似依据：引擎只演化相对距离、无绝对速度。玩家船"即时速度"由此代理表达：
-      // 基础巡航保证对峙/已到达期望时星空也持续流动（表示双方高速同向/巡航中）；
-      // 期望差大 → 机动全速叠加（追逐/拉锯加速）。
+      // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
+      // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（推进器/技能已折算），
+      // 对峙（已到位）时保持原流向以巡航速度流动（双方高速同向的体感）。
       const st = starStateRef.current
-      const gap = b.myDesireM - b.distanceM // <0 = 想接近（船向右推进）；>0 = 想拉开（船向左退）
-      const base = 70 // px/s 巡航基础（对峙也流动）
-      let dir = st.dir
-      if (Math.abs(gap) > 2) dir = gap < 0 ? -1 : 1 // 同向：接近(右进)星向右流
-      st.dir = dir
-      const drive = Math.abs(gap) > 2 ? Math.min(1, (Math.abs(gap) - 2) / 160) * 220 : 0
-      const target = dir * (base + drive)
+      const gap = b.myDesireM - b.distanceM // <0 = 想接近（前进/向右）；>0 = 想拉开（后退/向左）
+      if (Math.abs(gap) > 2) st.dir = gap < 0 ? 1 : -1 // +1 = 星空向左流 / −1 = 向右流
+      const vMag = Math.min(240, 40 + meSpeedRef.current * 0.32) // 40px/s 底速 + 船速比例（~300m/s → 136px/s）
+      const target = st.dir * vMag
       st.v += (target - st.v) * 0.12 // 速度连续渐变
       const offs = starOffRef.current
       const W = Math.max(1, dimsRef.current.W)
