@@ -44,7 +44,7 @@ import {
   offlineSplit,
   placeBuyOrder,
   recallExpedition,
-  refineRunStatus,
+  refineRunViews,
   removeQueueAt,
   renameShip,
   migrateDeprecatedAmmo,
@@ -505,7 +505,7 @@ export class GameEngine {
     return ok
   }
 
-  /** 启动精炼炉运转（worker：'pilot' = 主控亲自运转 / AI 核心类型 = 核心驱动自动化） */
+  /** 启动精炼炉运转（worker：'pilot' = 主控亲自运转（全局限 1 台）/ AI 核心类型 = 核心驱动自动化，每闲置核心 1 台） */
   startRefineRunAt(itemId: string, worker: AiCoreType | 'pilot'): CommandResult {
     const result = startRefineRun(this.state, itemId, worker, this.ctx)
     if (result.ok) {
@@ -515,9 +515,9 @@ export class GameEngine {
     return result
   }
 
-  /** 停炉：已完成批保留，剩余锁定原料全额退回仓库；AI 核心驱动时核心自动归还 */
-  stopRefineRunNow(): CommandResult {
-    const result = stopRefineRun(this.state, this.ctx)
+  /** 停指定资源的炉（v19 多工位按 itemId 定位）：已完成批保留，剩余原料全额退回；AI 核心自动归还 */
+  stopRefineRunAt(itemId: string): CommandResult {
+    const result = stopRefineRun(this.state, this.ctx, itemId)
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -525,7 +525,7 @@ export class GameEngine {
     return result
   }
 
-  /** B3：启动残骸回收（开箱批：10 m³/25s；残骸计数 = 体积） */
+  /** B3：启动残骸回收（开箱批：10 m³/25s；残骸计数 = 体积；多工位并行） */
   startRecycleRunAt(wreckItemId: string, worker: AiCoreType | 'pilot'): CommandResult {
     const result = startRecycleRun(this.state, wreckItemId, worker, this.ctx)
     if (result.ok) {
@@ -535,9 +535,9 @@ export class GameEngine {
     return result
   }
 
-  /** 精炼炉运行视图（工业页/活动栏共用） */
-  refineRunView(): RefineRunView {
-    return refineRunStatus(this.state, this.ctx)
+  /** 全部精炼炉工位运行视图（v19 多工位：工业页卡片逐台 / 活动栏逐条） */
+  refineRunViews(): RefineRunView[] {
+    return refineRunViews(this.state, this.ctx)
   }
 
   /** 卖当前船货仓里的物品（旧名兼容） */

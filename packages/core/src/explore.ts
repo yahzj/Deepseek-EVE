@@ -110,7 +110,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站。' }
   if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排扫描。' }
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') {
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出航扫描。' }
   }
   if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法出航扫描。' }

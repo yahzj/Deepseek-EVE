@@ -92,12 +92,12 @@ describe('残骸回收批（精炼炉运转）', () => {
     addWare(state, wreckId, 10) // 正好一批
     const r0 = startRecycleRun(state, wreckId, 'pilot', ctx)
     expect(r0.ok).toBe(true)
-    expect(state.refineRun.recipe).toBe('recycle')
-    expect(state.refineRun.batchUnits).toBe(10)
+    expect(state.refineRuns[0]!.recipe).toBe('recycle')
+    expect(state.refineRuns[0]!.batchUnits).toBe(10)
     expect(countMinerals(state, ctx)).toBe(0)
     state.gameMs = 25_000 // 一批到点
     advanceRefining(state, ctx)
-    expect(state.refineRun.active).toBe(false) // 料尽自动停
+    expect(state.refineRuns).toHaveLength(0) // 料尽自动停
     expect(countMinerals(state, ctx)).toBeGreaterThan(0)
     expect(state.logs.some((l) => l.text.includes('残骸回收完成'))).toBe(true)
   })
@@ -118,7 +118,7 @@ describe('残骸回收批（精炼炉运转）', () => {
       const wreckId = wreckItemIdOf('ano-grave')
       addWare(state, wreckId, 40)
       expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
-      return state.refineRun.cycleMs
+      return state.refineRuns[0]!.cycleMs
     }
     expect(mk(0)).toBe(25_000)
     expect(mk(5)).toBe(20_000) // 每级 −4%：Lv5 = −20%（下限 60% 为长线保护）

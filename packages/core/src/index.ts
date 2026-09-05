@@ -230,7 +230,7 @@ export {
   startRefineRun,
   startRecycleRun,
   stopRefineRun,
-  refineRunStatus,
+  refineRunViews,
   redeemFragments,
   sellCargoItem,
   sellWareItem,

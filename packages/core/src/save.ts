@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV18, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV19, LogEntry, LogKind } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -539,6 +539,50 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
       }
     }
     return { ...raw, fleet }
+  },
+  18: (raw) => {
+    // v18 → v19（2026-09-05 船长拍板精炼炉多工位）：refineRun 单例 → refineRuns 数组
+    const next: RawState = { ...raw }
+    const r = asRaw(raw.refineRun)
+    const item = typeof r.itemId === 'string' && r.itemId.length > 0 ? r.itemId : null
+    const worker =
+      r.worker === 'basic' || r.worker === 'gamma' || r.worker === 'beta' || r.worker === 'alpha'
+        ? r.worker
+        : 'pilot'
+    const hasActive =
+      r.active === true &&
+      item !== null &&
+      typeof r.lockedQty === 'number' &&
+      Number.isFinite(r.lockedQty) &&
+      r.lockedQty > 0
+    delete next.refineRun
+    next.refineRuns = hasActive
+      ? [
+          {
+            active: true,
+            worker,
+            recipe: r.recipe === 'recycle' ? 'recycle' : 'refine',
+            itemId: item,
+            batchUnits:
+              typeof r.batchUnits === 'number' && r.batchUnits > 0 ? Math.floor(r.batchUnits) : 10,
+            cycleMs:
+              typeof r.cycleMs === 'number' && r.cycleMs > 0 ? Math.floor(r.cycleMs) : 6_000,
+            finishAtGameMs:
+              typeof r.finishAtGameMs === 'number' && Number.isFinite(r.finishAtGameMs)
+                ? Math.max(0, Math.floor(r.finishAtGameMs))
+                : 0,
+            lockedQty:
+              typeof r.lockedQty === 'number' && Number.isFinite(r.lockedQty) && r.lockedQty > 0
+                ? Math.max(1, Math.floor(r.lockedQty))
+                : 1,
+            batchesDone:
+              typeof r.batchesDone === 'number' && Number.isFinite(r.batchesDone)
+                ? Math.max(0, Math.floor(r.batchesDone))
+                : 0,
+          },
+        ]
+      : []
+    return next
   },
 }
 
@@ -1299,28 +1343,45 @@ function normalizeState(raw: unknown): GameState {
     finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
     legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
   }
-  // --- 精炼炉运转（2026-09-04 工业细化兼容字段）：active 且资源合法才启用，否则空态 ---
-  const rfrRaw = asRaw(src.refineRun)
-  const rfrItem =
-    typeof rfrRaw.itemId === 'string' && rfrRaw.itemId.length > 0 ? rfrRaw.itemId : null
-  const refineWorker: GameState['refineRun']['worker'] =
-    rfrRaw.worker === 'basic' || rfrRaw.worker === 'gamma' || rfrRaw.worker === 'beta' || rfrRaw.worker === 'alpha'
-      ? rfrRaw.worker
-      : 'pilot'
-  const refineRun: GameState['refineRun'] =
-    rfrRaw.active === true && rfrItem !== null && num(rfrRaw.lockedQty) > 0
-      ? {
-          active: true,
-          worker: refineWorker,
-          recipe: rfrRaw.recipe === 'recycle' ? 'recycle' : 'refine',
-          itemId: rfrItem,
-          batchUnits: Math.max(1, Math.floor(num(rfrRaw.batchUnits, 10))),
-          cycleMs: Math.max(1, Math.floor(num(rfrRaw.cycleMs, 6_000))),
-          finishAtGameMs: Math.max(0, Math.floor(num(rfrRaw.finishAtGameMs))),
-          lockedQty: Math.max(1, Math.floor(num(rfrRaw.lockedQty))),
-          batchesDone: Math.max(0, Math.floor(num(rfrRaw.batchesDone))),
-        }
-      : { active: false, worker: 'pilot', recipe: 'refine', itemId: null, batchUnits: 0, cycleMs: 0, finishAtGameMs: 0, lockedQty: 0, batchesDone: 0 }
+  // --- 精炼炉运转工位表（v19 多工位，2026-09-05 船长拍板；兼容 v18 单例 refineRun 兜底） ---
+  const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {
+    const r = asRaw(rawRun)
+    const item = typeof r.itemId === 'string' && r.itemId.length > 0 ? r.itemId : null
+    if (r.active !== true || item === null) return null
+    const qty = Math.max(0, Math.floor(num(r.lockedQty)))
+    if (qty <= 0) return null
+    const worker: GameState['refineRuns'][number]['worker'] =
+      r.worker === 'basic' || r.worker === 'gamma' || r.worker === 'beta' || r.worker === 'alpha'
+        ? r.worker
+        : 'pilot'
+    return {
+      active: true,
+      worker,
+      recipe: r.recipe === 'recycle' ? 'recycle' : 'refine',
+      itemId: item,
+      batchUnits: Math.max(1, Math.floor(num(r.batchUnits, 10))),
+      cycleMs: Math.max(1, Math.floor(num(r.cycleMs, 6_000))),
+      finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))),
+      lockedQty: qty,
+      batchesDone: Math.max(0, Math.floor(num(r.batchesDone))),
+    }
+  }
+  const refineRuns: GameState['refineRuns'] = []
+  if (Array.isArray(src.refineRuns)) {
+    for (const rawRun of src.refineRuns) {
+      const run = sanitizeRefineRun(rawRun)
+      if (!run) continue
+      // 引擎不变式守护：同资源至多一台炉；pilot 至多一台
+      if (refineRuns.some((x) => x.itemId === run.itemId)) continue
+      if (run.worker === 'pilot' && refineRuns.some((x) => x.worker === 'pilot')) continue
+      refineRuns.push(run)
+    }
+  }
+  if (refineRuns.length === 0) {
+    // v18 及更早老档兜底（正常路径已由 18→19 迁移转换，此处双保险）
+    const legacy = sanitizeRefineRun(src.refineRun)
+    if (legacy) refineRuns.push(legacy)
+  }
   const bountyCooldowns: Record<string, number> = {}
   const bcRaw = asRaw(src.bountyCooldowns)
   for (const [key, value] of Object.entries(bcRaw)) {
@@ -1452,7 +1513,7 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  const normalized: GameStateV18 = {
+  const normalized: GameStateV19 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -1490,7 +1551,7 @@ function normalizeState(raw: unknown): GameState {
     awayGalaxy,
     transit,
     standby,
-    refineRun,
+    refineRuns,
     salvaging,
     bountyCooldowns,
     autoLoopAnomalyId,

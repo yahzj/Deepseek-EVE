@@ -107,7 +107,7 @@ function meBusy(): boolean {
     state.scanning.active ||
     state.standby.active ||
     state.transit.active ||
-    (state.refineRun.active && state.refineRun.worker === 'pilot') ||
+    state.refineRuns.some((r) => r.active && r.worker === 'pilot') ||
     state.encounter.active
   )
 }
@@ -242,7 +242,7 @@ function sellEverything(): void {
 
 function doMine(): void {
   if (state.mining.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return
   if (state.expedition.active || state.scanning.active || state.standby.active || state.transit.active) return
   // 任意已探索星系的高价值矿带（本地带价值低，远程带采矿会自动往返）
   const pick = BELT_LIST.find(({ b }) => {
@@ -262,7 +262,7 @@ let lastRefineDay = -99
 function doRefineCraft(): void {
   // pilot 精炼限频：每 6h 至多一轮（验证链即可，避免长期占主控挡采矿/远征）
   if (day() - lastRefineDay < 0.25) return
-  if (!state.refineRun.active) {
+  if (state.refineRuns.length === 0) {
     const cand = [...ctx.items.values()].find(
       (i) => (i.kind === 'gas' || i.kind === 'ice' || i.kind === 'ore') && i.refine && i.refine.length > 0 && oreAvailable(state, i.id) >= 200 && isHome(),
     )
@@ -514,7 +514,7 @@ function fitModuleTo(state: GameState, moduleId: string): boolean {
 
 function doBounty(): void {
   if (state.expedition.active || state.encounter.active || state.transit.active || state.standby.active || state.scanning.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return
   // 只打：未首胜（推进声望）+ 门槛达标 + 星系已探索 + 非冷却 + 有把握
   const canDo = ANOMALY_LIST.filter(
     (a) =>
@@ -542,7 +542,7 @@ function doBounty(): void {
 /** 刷钱：打当前可赢的收益最高悬赏（含已首胜；boss 够强前都可用） */
 function doFarm(): void {
   if (state.expedition.active || state.encounter.active || state.transit.active || state.standby.active || state.scanning.active) return
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') return
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return
   const boss = ctx.anomalies.get('ano-vault-sentinel')
   if (boss && battleWinPreview(state, ctx, boss) >= 0.85) return
   const candidates = ANOMALY_LIST.filter(

@@ -15,7 +15,7 @@ import { emptyFitted } from './labels'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 18
+export const CURRENT_STATE_VERSION = 19
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -719,8 +719,17 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
 
-/** 对外统一称呼：当前版本状态 */
-export type GameState = GameStateV18
+/** 对外统一称呼：当前版本状态（v19 = v18 + 精炼炉多工位：refineRun 单例 → refineRuns 数组） */
+export type GameState = GameStateV19
+
+/** 第十九版存档结构（当前版本）：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
+ * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
+ * refineRuns 数组，数组内至多一个 worker='pilot'，itemId 全局唯一）。 */
+export type GameStateV19 = Omit<GameStateV18, 'version' | 'refineRun'> & {
+  version: 19
+  /** 精炼炉运转工位表（v19 多工位；每元素一台炉：资源/残骸 + 劳动者） */
+  refineRuns: RefineRunState[]
+}
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
@@ -733,10 +742,10 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
 }
 
 /** 创建一份全新的初始存档（一个新飞行员） */
-export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV18 {
+export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV19 {
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV18 = {
-    version: 18,
+  const state: GameStateV19 = {
+    version: 19,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -858,7 +867,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     encounterZoneCooldown: {},
     lowSecPresence: {},
     standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
-    refineRun: { ...EMPTY_REFINE_RUN },
+    refineRuns: [],
     salvaging: { ...EMPTY_SALVAGE_OP },
     galaxyWrecks: {},
     logs: [],

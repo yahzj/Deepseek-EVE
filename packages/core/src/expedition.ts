@@ -197,7 +197,7 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   }
   if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') {
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出发远征（想自动精炼可改用 AI 核心驱动）。' }
   }
   return { ok: true }

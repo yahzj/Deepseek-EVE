@@ -196,7 +196,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
   if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
-  if (state.refineRun.active && state.refineRun.worker === 'pilot') {
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。' }
   }
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 星图探索（V13）单元测试：
  * 初始迷雾/剪影推导/行动封锁/扫描探索作业/扫描期探索事件与加速/在途兜底点亮/v12→v13 迁移。
  */
@@ -252,14 +252,14 @@ describe('V14 存档迁移与续扫进度', () => {
     raw.version = 12
     const text = serializeSaveFile(state, 999)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(18)
+    expect(loaded.state.version).toBe(19)
     expect(loaded.state.exploredGalaxies).toEqual(['galaxy-hub'])
     expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null })
     expect(loaded.state.scanProgress).toEqual({})
     expect(loaded.state.wallet.isk).toBe(123_456)
     // 往返保存：新字段保留
     const again = loadSaveFile(serializeSaveFile(loaded.state, 1000))
-    expect(again.state.version).toBe(18)
+    expect(again.state.version).toBe(19)
     expect(again.state.exploredGalaxies).toEqual(['galaxy-hub'])
   })
 })

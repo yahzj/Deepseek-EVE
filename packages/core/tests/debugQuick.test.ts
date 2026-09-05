@@ -1,4 +1,4 @@
-/**
+﻿/**
  * V15 调试模式测试：debugQuick=1 时 训练/采矿/制造/远征航行/扫描 按 1 秒完成、
  * 交火即时按胜率预览判定并走正常结算；普通模式（false）行为不受影响。
  */
@@ -105,7 +105,7 @@ describe('V15 存档：debugQuick 字段', () => {
     s.debugQuick = true
     const loaded = loadSaveFile(serializeSaveFile(s, 1000))
     expect(loaded.state.debugQuick).toBe(true)
-    expect(loaded.state.version).toBe(18)
+    expect(loaded.state.version).toBe(19)
   })
 
   it('v14 档迁移：补 debugQuick=false 且其余无损', () => {
@@ -115,7 +115,7 @@ describe('V15 存档：debugQuick 字段', () => {
     delete raw.debugQuick
     raw.version = 14
     const loaded = loadSaveFile(serializeSaveFile(s, 1000))
-    expect(loaded.state.version).toBe(18)
+    expect(loaded.state.version).toBe(19)
     expect(loaded.state.debugQuick).toBe(false)
     expect(loaded.state.wallet.isk).toBe(77)
   })

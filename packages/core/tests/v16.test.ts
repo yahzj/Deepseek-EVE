@@ -1,4 +1,4 @@
-/**
+﻿/**
  * V16 矿带分层与复合产出池测试：
  * 复合带按权重出多品种 / 单产带不消耗 rng / 被删矿石的 v15→v16 折算迁移。
  */
@@ -97,7 +97,7 @@ describe('V16 迁移：被删矿石折算', () => {
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
     const s = loaded.state
-    expect(s.version).toBe(18)
+    expect(s.version).toBe(19)
     expect(s.warehouse.items['ore-kernite']).toBeUndefined()
     expect(s.warehouse.items['ore-fluxite']).toBeUndefined()
     expect(s.fleet['sandcat']!.cargo['ore-crimsonite']).toBeUndefined()
@@ -117,7 +117,7 @@ describe('V16 迁移：被删矿石折算', () => {
     const raw = state as unknown as Record<string, unknown>
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
-    expect(loaded.state.version).toBe(18)
+    expect(loaded.state.version).toBe(19)
     expect(loaded.state.logs.some((l) => l.text.includes('内容整合'))).toBe(false)
   })
 })

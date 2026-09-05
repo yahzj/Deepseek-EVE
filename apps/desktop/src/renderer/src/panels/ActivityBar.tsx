@@ -70,7 +70,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.cancelManufacturingNow(), '已取消制造：材料全额退回物品仓库（制造费不退）。')
       break
     case 'stop-refine':
-      run(engine.stopRefineRunNow(), '已停炉：已完成批保留，剩余原料退回仓库。')
+      if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), '已停炉：已完成批保留，剩余原料退回仓库。')
       break
     case 'recall-expedition':
       run(engine.recallExpeditionNow(), '远征已召回：舰队返回母港（无战果）。')
