@@ -11,17 +11,20 @@ function def(id: string, rank = 1, baseMs?: number): SkillDef {
 }
 
 describe('训练时长公式', () => {
-  it('rank=1：1 级 60 秒，2 级 120 秒（指数增长）', () => {
+  it('rank=1：系数 1/2/4/16/64（船长 2026-09-05 曲线）', () => {
     const a = def('a')
     expect(skillLevelTimeMs(a, 1)).toBe(60_000)
     expect(skillLevelTimeMs(a, 2)).toBe(120_000)
     expect(skillLevelTimeMs(a, 3)).toBe(240_000)
+    expect(skillLevelTimeMs(a, 4)).toBe(960_000) // ×16
+    expect(skillLevelTimeMs(a, 5)).toBe(3_840_000) // ×64
   })
 
-  it('rank=2 时每级时间翻倍（体现难度系数）', () => {
+  it('rank=2 时每级时间随难度翻倍（体现难度系数）', () => {
     const a = def('a', 2)
     expect(skillLevelTimeMs(a, 1)).toBe(120_000)
     expect(skillLevelTimeMs(a, 2)).toBe(240_000)
+    expect(skillLevelTimeMs(a, 4)).toBe(1_920_000) // 60s×2×16
   })
 
   it('自定义 baseMs 可以覆盖默认 60 秒', () => {
@@ -29,9 +32,9 @@ describe('训练时长公式', () => {
     expect(skillLevelTimeMs(a, 1)).toBe(5_000)
   })
 
-  it('rank=1 从 0 练到 5 级合计 31 分钟', () => {
+  it('rank=1 从 0 练到 5 级合计 87 分钟', () => {
     const a = def('a')
-    expect(totalTimeToLevel(a, 0, 5)).toBe(1_860_000) // 60s × (1+2+4+8+16)
+    expect(totalTimeToLevel(a, 0, 5)).toBe(5_220_000) // 60s × (1+2+4+16+64)
   })
 
   it('目标不高于当前等级时总时长为 0', () => {

@@ -3,16 +3,17 @@
  *
  * 规则（M0，EVE 风格但刻意简化）：
  *   - 训练到某级 = 按等级逐级累加；
- *   - 单级时长 = 档位基础时长 × 技能 rank × 2^(等级-1)；
- *   - 所以低级快、高级慢，rank 越大整条技能线越慢。
+ *   - 单级时长 = 档位基础时长 × 技能 rank × 等级系数；
+ *   - 等级系数（船长 2026-09-05 定）：Lv1=1 / Lv2=2 / Lv3=4 / Lv4=16 / Lv5=64
+ *     ——前三级轻、Lv4 起陡峭，Lv4→Lv5 是最重的一段（合计系数 87）。
  *
- * 档位基础时长（2026-09-05 船长定档：适当加速、最久技能 ≤48h、低档快高档慢）：
- *   - rank 1/2（新手常用）保持 60 秒档——单级 1~32 分钟、到 V 合计 31/62 分钟的上手节奏；
- *   - rank 3 基础 155 秒 → 到 V 合计 ≈4 小时；
- *   - rank 4（当前最高，含 人工智能专家）基础 696 秒 → 到 V 合计 ≈23.8 小时（<48h 上限一半，
- *     给未来更高档留量；原 EVE 同款“本级 ×2 递增、rank 线性乘”结构，速度仅是更友好）。
+ * 档位基础时长（2026-09-05 船长定档；系数改版后总时长相应放大，船长拍板不作红线修正）：
+ *   - rank 1/2（新手常用）60 秒档 → 到 Lv5 合计 ≈1.4h / 2.9h；
+ *   - rank 3 基础 155 秒 → 到 Lv5 合计 ≈11.2h；
+ *   - rank 4（当前最高，含 人工智能专家）基础 696 秒 → 到 Lv5 合计 ≈67.3h（约 2.8 天，
+ *     其中 Lv4→Lv5 单级 ≈49.5h——船长知悉并选择该陡度）。
  *
- * 例：rank=1 的技能练到 5 级 = 1 + 2 + 4 + 8 + 16 = 31 分钟。
+ * 例：rank=1 的技能练到 5 级 = (1+2+4+16+64) × 1 分钟 = 87 分钟。
  * 这套公式以后可以整体替换成 EVE 的 SP 制（技能点），只要改这一个文件。
  */
 
@@ -30,11 +31,14 @@ export const DEFAULT_TRAIN_BASE_MS = 60_000
 
 /** 各 rank 档的单级基础时长（无 baseMs 覆盖时按档取用；2026-09-05 船长定档） */
 const RANK_BASE_MS: Record<number, number> = {
-  1: 60_000, // r1 → Lv5 ≈31 分钟
-  2: 60_000, // r2 → Lv5 ≈62 分钟
-  3: 155_000, // r3 → Lv5 ≈4 小时
-  4: 696_000, // r4 → Lv5 ≈23.8 小时（<48h 上限）
+  1: 60_000, // r1 → Lv5 ≈87 分钟
+  2: 60_000, // r2 → Lv5 ≈2.9h
+  3: 155_000, // r3 → Lv5 ≈11.2h
+  4: 696_000, // r4 → Lv5 ≈67.3h（船长拍板，不按 48h 红线修正）
 }
+
+/** 等级系数（船长 2026-09-05 定）：[Lv1, Lv2, Lv3, Lv4, Lv5] */
+export const LEVEL_TIME_COEF: readonly number[] = [1, 2, 4, 16, 64]
 
 /** 每个技能定义允许单独覆盖的字段名 */
 export const CUSTOM_BASE_MS_FIELD = 'baseMs' as const
@@ -45,7 +49,8 @@ export const CUSTOM_BASE_MS_FIELD = 'baseMs' as const
  */
 export function skillLevelTimeMs(def: SkillDef, level: number): number {
   const base = def.baseMs ?? RANK_BASE_MS[def.rank] ?? DEFAULT_TRAIN_BASE_MS
-  return Math.round(base * def.rank * Math.pow(2, level - 1))
+  const coef = LEVEL_TIME_COEF[level - 1] ?? LEVEL_TIME_COEF[LEVEL_TIME_COEF.length - 1]!
+  return Math.round(base * def.rank * coef)
 }
 
 /**
