@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
@@ -51,6 +51,19 @@ function WarehouseView({ engine, onToast }: PageProps) {
       onToast(`已装船 ${def.name}×${loaded.toLocaleString('zh-CN')}。`)
       setPickItem(null)
     }
+  }
+
+  /** 装备市价卖出（船长 2026-09-05：装备此前没有出售入口） */
+  function handleSellMod(id: string): void {
+    const good = marketGoodOf(engine.ctx, 'module', id)
+    if (!good) {
+      onToast('该装备不在市场流通目录（无法出售）。', true)
+      return
+    }
+    const r = engine.sellHoldingAt(good.key)
+    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    else onToast('已按市场收购价售出（簿吃穿余量自动挂卖单）。')
+    setPickMod(null)
   }
 
   // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
@@ -169,6 +182,7 @@ function WarehouseView({ engine, onToast }: PageProps) {
             {modRows.map(([id, units]) => {
               const def = engine.ctx.modules.get(id)
               if (!def) return null
+              const modGood = marketGoodOf(engine.ctx, 'module', id)
               return (
                 <li key={id} className="app-inv-row" title={def.description}>
                   <div className="app-inv-main">
@@ -182,6 +196,15 @@ function WarehouseView({ engine, onToast }: PageProps) {
                     <button className="app-btn is-small" disabled title="安装与卸下请到「装配」页">
                       装配页使用
                     </button>
+                    {modGood && modGood.playerSellable !== false ? (
+                      <button className="app-btn is-small is-primary" onClick={() => handleSellMod(id)}>
+                        市价卖出全部
+                      </button>
+                    ) : (
+                      <button className="app-btn is-small" disabled title="不在市场流通目录或不可售">
+                        不在市场目录
+                      </button>
+                    )}
                   </div>
                 </li>
               )
@@ -264,9 +287,18 @@ function WarehouseView({ engine, onToast }: PageProps) {
               </div>
               <div className="app-dim app-itempick-note">{pickModDef.description}</div>
               <div className="app-itempick-actions">
-                <button className="app-btn is-small" disabled title="安装与卸下请到「装配」页">
-                  到「装配」页安装使用
+                <button className="app-btn is-small" title="安装与卸下请到「装配」页">
+                  装配页使用
                 </button>
+                {marketGoodOf(engine.ctx, 'module', pickMod) ? (
+                  <button className="app-btn is-primary is-small" onClick={() => handleSellMod(pickMod)}>
+                    市价卖出全部（×{pickModUnits.toLocaleString('zh-CN')}）
+                  </button>
+                ) : (
+                  <button className="app-btn is-small" disabled>
+                    不在市场目录（无法出售）
+                  </button>
+                )}
               </div>
             </ItemActionModal>
           ) : null}
