@@ -323,12 +323,16 @@ body {
   font-size: 11px;
   color: var(--wui-gold);
 }
-/* 效率行（试点 2026-09-05：每循环产量/时长/每小时产出/每小时估价——估价按物品本身，不随市场） */
+/* 效率行（试点 2026-09-05：每循环产量/时长/每小时产出 + 估价——估价按物品本身，不随市场） */
 .app-belt-econ {
   font-size: 11px;
   color: var(--wui-gold);
   margin-top: 2px;
   opacity: 0.92;
+}
+.app-belt-econ-val {
+  color: var(--wui-text-dim);
+  opacity: 0.9;
 }
 /* ---------- 矿带卡片网格（星图页-矿带开采：矩形卡片 + 卡内操作容器） ---------- */
 .app-belt-grid {
