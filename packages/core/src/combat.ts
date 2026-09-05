@@ -18,7 +18,7 @@ import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, 
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
-import { allFittedModules, curveMult, familyModules, fittedCpuUsed, gapCombine } from './equipment'
+import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine } from './equipment'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -274,6 +274,9 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     if (m.evasionGapPct !== undefined) evadeGaps.push(m.evasionGapPct)
   }
   const hitEq = curveMult(hitEqs)
+  // 2026-09-05 一号按盘点补：规避机动学——舰船被命中缺口每级收窄 5%（与姿态陀螺缺口复合）
+  const evLv = Math.min(5, state.skills.trained[bal.evasionSkillId] ?? 0)
+  if (evLv > 0) evadeGaps.push(bal.evasionPerLevel * evLv)
   const evasion = gapCombine(evadeGaps, ship.evasion ?? 0.12)
   const reloadDiv = 1 + Math.min(0.9, rofCut)
 
@@ -371,7 +374,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     droneDmgBonus += g.droneDmgBonus ?? 0
   }
   let bayUsed = 0
-  let cpuLeft = (ship.cpu ?? 0) - fittedCpuUsed(fitted, ctx)
+  // 舰船系统工程（2026-09-05 一号补）：船体 CPU 总量 +5%/级（装配与放飞共用；不改单件成本）
+  let cpuLeft = effectiveCpu(state, ctx, ship) - fittedCpuUsed(fitted, ctx)
   // 批次五更正（船长 2026-09-05）：带宽已并入 CPU——CPU 是全船静态载荷约束（装配 + 放飞共用同一池，
   // 无人机卡面 cpuUse 即原带宽占用），技能不折减放飞 CPU；装载循环判定维持原语义。
   if (bayLimit > 0 && cpuLeft > 0) {
@@ -417,13 +421,16 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     resists,
     // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
     evasion,
-    hitBonus: ship.hitBonus ?? 0,
+    hitBonus: (ship.hitBonus ?? 0) * (1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)),
     // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
     hitMul: 1 - worstPen,
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
-    // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛
-    speedMps: (ship.maxSpeedMps ?? 200) * Math.max(1, speedEq),
+    // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛；矢量机动操作（舰船）再乘 +5%/级
+    speedMps:
+      (ship.maxSpeedMps ?? 200) *
+      Math.max(1, speedEq) *
+      (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)),
     agility: ship.agility,
     weapons,
     foeTactic: null,

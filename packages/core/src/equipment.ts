@@ -29,6 +29,16 @@ import { fleetDefOf } from './instances'
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
 export { MODULE_SLOTS } from './labels'
 
+/**
+ * 舰船系统工程（2026-09-05 一号按盘点补）：船体 CPU +5%/级——只提高预算、不改单件成本。
+ * 装配校验 / 无人机放飞 / 装配页显示 三处同源调用本函数。
+ */
+export function effectiveCpu(state: GameState, ctx: SimContext, def: { cpu?: number } | undefined): number {
+  const bal = ctx.balance.battle
+  const lv = Math.min(5, state.skills.trained[bal.cpuSkillId] ?? 0)
+  return Math.round((def?.cpu ?? 0) * (1 + bal.cpuPerLevel * lv))
+}
+
 /** 槽位中文名（家族徽标/日志） */
 export function slotLabel(slot: ModuleSlot): string {
   return labelOf(slot)
@@ -199,9 +209,10 @@ export function fitModule(
       return { ok: false, error: `${rackLabel(rack)}已满（${bays.length}/${bays.length}）：先卸下再装。` }
     }
   }
-  // CPU 装配校验：全位合计（含新件）≤ 船体 cpu
-  const cpuTotal = shipDef?.cpu
-  if (cpuTotal !== undefined && cpuTotal > 0) {
+  // CPU 装配校验：全位合计（含新件）≤ 船体 cpu（舰船系统工程 +5%/级 扩容）
+  const cpuBase = shipDef?.cpu
+  if (cpuBase !== undefined && cpuBase > 0) {
+    const cpuTotal = effectiveCpu(state, ctx, shipDef)
     const used = fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0)
     if (used > cpuTotal) {
       return { ok: false, error: `装配超载：合计需 CPU ${used}，船体上限 ${cpuTotal}（卸下其它装备或换低耗型号）。` }

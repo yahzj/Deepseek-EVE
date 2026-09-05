@@ -33,7 +33,7 @@ import {
 } from '../src/combat'
 import { addShipToFleet } from '../src/shipyard'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
-import { addModule, fitModule } from '../src/equipment'
+import { addModule, effectiveCpu, fitModule } from '../src/equipment'
 
 const BAL = () => makeTestCtx().balance.battle
 
@@ -712,6 +712,35 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     expect(ar5.a).toBeCloseTo(12, 10)
     expect(ar5.h).toBeCloseTo(30, 10)
     expect(ar5.s).toBeCloseTo(ind5.s, 10) // 护盾层不受重装舰操作影响
+  })
+})
+
+describe('舰船属性成长技能（2026-09-05 一号补：CPU/机动速度/回避/命中，数值 C4 复核）', () => {
+  it('舰船系统工程：effectiveCpu 满级 ×1.25（cpu 120 → 150；只扩预算不改单件）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 61 })
+    const ctx = makeTestCtx()
+    const def = ship('sandcat', { cpu: 120 })
+    expect(effectiveCpu(state, ctx, def)).toBe(120)
+    state.skills.trained['ship-systems-engineering'] = 5
+    expect(effectiveCpu(state, ctx, def)).toBe(150)
+  })
+
+  it('矢量机动操作/索敌统合/规避机动学：满级 机动速度×1.25、命中×1.25、回避缺口×0.75', () => {
+    const specOf = (extra: (s: GameState) => void) => {
+      const state = createInitialState({ nowWallMs: 0, seed: 62 })
+      const ctx = makeTestCtx()
+      extra(state)
+      return createPlayerSpec(state, ctx, state.shipId)!
+    }
+    const s0 = specOf(() => undefined)
+    const s5 = specOf((s) => {
+      s.skills.trained['vector-maneuvering'] = 5
+      s.skills.trained['targeting-integration'] = 5
+      s.skills.trained['evasion-maneuvering'] = 5
+    })
+    expect(s5.speedMps).toBeCloseTo(s0.speedMps * 1.25, 6)
+    expect(s5.hitBonus).toBeCloseTo(s0.hitBonus * 1.25, 6)
+    expect(s5.evasion).toBeCloseTo(1 - (1 - s0.evasion) * 0.75, 6)
   })
 })
 

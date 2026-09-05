@@ -10,6 +10,7 @@ import {
   countModule,
   createPlayerSpec,
   fleetDefOf,
+  effectiveCpu,
   fittedCpuUsed,
   RACK_LABELS,
   rackLabel,
@@ -152,7 +153,7 @@ export function FitPage({ engine, onToast }: PageProps) {
             <div className="app-info-row">
               <span className="app-info-key">CPU 占用</span>
               <span className="app-info-val">
-                {cpuUsed} / {shipDef.cpu ?? '—'}
+                {cpuUsed} / {shipDef ? effectiveCpu(state, engine.ctx, shipDef) : '—'}
                 <span className="app-dim">　档位：低级 5 / 中级 15 / 高级 40（炮台更高）；与无人机放飞共用，超上限拒绝装配</span>
               </span>
             </div>

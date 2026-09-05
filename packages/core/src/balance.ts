@@ -115,6 +115,15 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // V18B 武器族专精技能（2026-09-05 一号按交接底稿接入）：+5%/级，与炮术学乘算（数值 C4 校准）
     familySkillIds: { turret: 'kinetic-gunnery', missile: 'missile-launching', laser: 'laser-cannon' },
     familySkillPerLevel: 0.05,
+    // 舰船属性成长技能（2026-09-05 一号按盘点补；显著档 +5%/级，数值 C4 复核）
+    cpuSkillId: 'ship-systems-engineering',
+    cpuPerLevel: 0.05,
+    speedSkillId: 'vector-maneuvering',
+    speedPerLevel: 0.05,
+    evasionSkillId: 'evasion-maneuvering',
+    evasionPerLevel: 0.05,
+    hitSkillId: 'targeting-integration',
+    hitPerLevel: 0.05,
     speedFactor: 0.6, // 战斗机动速度 = maxSpeed ×0.6 ×(1 ± agility 修正)
     agilitySpeedBonus: 0.15,
     // C4 血量曲线（2026-09-05 船长拍板：战斗时长预期反推，k=1.6 幂型凸曲线，方案 A=无技能基线）：

@@ -430,6 +430,18 @@ export interface BattleBalance {
    * 每级单发伤害加成 = familySkillPerLevel（与 gunnery 乘算；构建期折算进各条目） */
   familySkillIds: Record<'turret' | 'missile' | 'laser', string>
   familySkillPerLevel: number
+  /* ═══ 舰船属性成长技能（2026-09-05 一号按盘点补；数值 C4 复核）═════════════
+     CPU：只提高船体 CPU 总量（装配+无人机放飞共用预算），不改单件成本；
+     机动速度：乘于 船速×推进器 之上；回避：缺口收窄（与姿态陀螺缺口复合）；
+     命中：乘于 船体 hitBonus，作用于打敌命中加成。 */
+  cpuSkillId: string
+  cpuPerLevel: number
+  speedSkillId: string
+  speedPerLevel: number
+  evasionSkillId: string
+  evasionPerLevel: number
+  hitSkillId: string
+  hitPerLevel: number
   /** 距离动力学：距离下限（贴脸极限）与开战距离 = 双方最远武器射程×openRangeFactor + openRangePadM（取小加成的近距开局） */
   minDistanceM: number
   openRangeFactor: number

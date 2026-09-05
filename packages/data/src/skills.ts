@@ -74,6 +74,27 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 3,
     description: '重装舰族专精驾驶：驾驶重装族舰船时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。',
   },
+  {
+    id: 'vector-maneuvering',
+    name: '矢量机动操作',
+    group: '舰船',
+    rank: 2,
+    description: '矢量喷口操控：战斗机动速度每级 +⟦5%⟧（满级 +⟦25%⟧；与推进器速度加成乘算，星图航行加速不受影响）。',
+  },
+  {
+    id: 'evasion-maneuvering',
+    name: '规避机动学',
+    group: '舰船',
+    rank: 1,
+    description: '规避机动训练：舰船被命中缺口每级收窄 ⟦5%⟧（等效回避率上升；与姿态陀螺缺口复合，直接增强舰船的基础回避）。',
+  },
+  {
+    id: 'targeting-integration',
+    name: '索敌统合',
+    group: '舰船',
+    rank: 2,
+    description: '火控统合训练：舰船命中加成每级 +⟦5%⟧（满级 +⟦25%⟧；作用于打敌命中加成，与武器级「火控阵列学」独立）。',
+  },
 
   // ───────── 工业 ─────────
   {
@@ -333,6 +354,13 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工程',
     rank: 1,
     description: '神经回路训练法：所有技能的训练时长每级 −⟦4%⟧（满级 −⟦20%⟧，至少保留 60%）。',
+  },
+  {
+    id: 'ship-systems-engineering',
+    name: '舰船系统工程',
+    group: '工程',
+    rank: 2,
+    description: '舰船电力与环路布局优化：船体 CPU 每级 +⟦5%⟧（满级 +⟦25%⟧；只提高装配与无人机放飞的总预算，不改单件装备的 CPU 占用）。',
   },
 
   // ───────── 贸易（V9+：市场税率减免） ─────────
