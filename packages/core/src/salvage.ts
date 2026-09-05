@@ -153,8 +153,17 @@ export function salvageRoundPull(state: GameState, ctx: SimContext, galaxyId: st
 export const RECYCLE_BATCH_M3 = 10
 export const RECYCLE_CYCLE_MS = 25_000
 
-/** 保底矿物产出档（旋钮，P3 按经济锚校准；单位 = 矿物 unit/m³ 残骸体积当量） */
-export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = { common: 10, risky: 16, dire: 24 }
+/**
+ * 保底矿物产出档（P3 校准，2026-09-05 船长锚：回收链保底 ≈ 采矿 ×1.1 ≈ 5.5 万 ISK/h，
+ * 按"炉时 1440 m³/h"反推：Y_档 = 55,000 ÷ (1440 × 池内矿物期望单价)；
+ * 三池期望单价：常 9.8 / 险 27.6 / 危 92.45 ISK/单位（按池权重×baseSellPrice）。
+ * 单位 = 矿物 unit/m³ 残骸。
+ */
+export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = {
+  common: 3.9,
+  risky: 1.4,
+  dire: 0.42,
+}
 /** 保底矿物抽取抖动（±10%，走 state.rng） */
 export const RECYCLE_YIELD_JITTER = 0.1
 
@@ -246,8 +255,9 @@ export function rollRecycleGuarantee(
 }
 
 /**
- * 彩头分层（B3，2026-09-05 船长定稿；概率为初值旋钮，P3 按 EV 守恒校准）：
- * ① 基础常驻件直出（civ/MK1 无门槛件）——任何回收批都按具掷骰；
+ * 彩头分层（B3，2026-09-05 船长定稿；概率为 P3 初值，按"彩头 EV ≤ 保底 10%（~5.5k/h）"
+ * 且随获取效率守恒校准，单位 = 每 m³ 掷骰）：
+ * ① 基础常驻件直出（civ/MK1 无门槛件）——任何残骸按 m³ 掷骰；
  * ② 低安（sec<0）残骸箱低概率出 MK2 装备；
  * ③ 蓝图碎片：威胁 ≥17 出 MK2 碎片（集 100 解锁蓝图）、≥41 追加 MK3 碎片（集 1000）。
  * 返回：{ modules: [{id,count}] 入装备库；fragments: [{moduleId,count}] 入物品仓库 }。
@@ -269,8 +279,10 @@ export const RECYCLE_MK2_MODULES: readonly string[] = [
   'mod-shield-kin-2',
   'mod-armor-kin-2',
 ]
-/** 每具基础件直出概率（0.4%）、低安 MK2 概率（0.15%）、碎片概率（0.4% / 0.08%） */
-export const RECYCLE_CHANCE = { base: 0.004, mk2: 0.0015, fragT2: 0.004, fragT3: 0.0008 }
+/** 每 m³ 概率（P3 按真实市场均价反推，EV/批 10m³ ≈ 保底 10% 上限 ≈ 38 ISK）：
+ * 基础件池均价 ~23.3k → 0.0001；低安 MK2 池均价 ~251k → 0.000004；
+ * 碎片片值（蓝图市价÷所需片数）MK2 ~567 / MK3 ~177 → 0.0006 / 0.0009 */
+export const RECYCLE_CHANCE = { base: 0.00008, mk2: 0.000003, fragT2: 0.00045, fragT3: 0.0007 }
 /** 蓝图碎片配方：模块 → 蓝图 id + 所需片数（MK2 100 / MK3 1000；异星 10000 预留） */
 export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; need: number }> = {
   'mod-miner-2': { blueprintId: 'bp-miner-2', need: 100 },

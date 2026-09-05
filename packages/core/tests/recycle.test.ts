@@ -74,13 +74,13 @@ describe('回收画像与保底矿物滚动', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 21 })
     const ctx = ctxOf()
     const profile = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
-    const out = rollRecycleGuarantee(state, ctx, profile, 36) // 10 具 × 3.6 m³（threat60 残骸）
+    const out = rollRecycleGuarantee(state, ctx, profile, 36) // 批体积 36 m³ 直接按 m³ 计
     expect(out.length).toBe(1)
     const row = out[0]!
     const poolIds = ['min-mexallon', 'min-nocxium', 'min-isotope', 'min-starcore', 'min-darkiron']
     expect(poolIds).toContain(row.mineralId)
-    expect(row.units).toBeGreaterThan(700) // 36×24=864 基准，±10% 抖动
-    expect(row.units).toBeLessThan(1000)
+    expect(row.units).toBeGreaterThanOrEqual(12) // 36×0.42≈15 基准 ±10% → 13~16
+    expect(row.units).toBeLessThanOrEqual(17)
   })
 })
 
