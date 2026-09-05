@@ -84,8 +84,15 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
   }
 }
 
-/** 活动项 → 跳转目标页面（可带二级标签）：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
- *  制造/精炼→工业；训练→技能页（船长 2026-09-05 点击跳转）。 */
+/**
+ * 活动项 → 跳转目标页面（可带星图二级标签）——船长 2026-09-05 点击跳转。
+ *
+ * ⚠️ 扩展约定（新增活动时务必同步）：以后若新增活动项目 / 新增页面，
+ * 必须在本函数补充对应 `case`（kind → { page, mapTab? }），否则新活动点下去
+ * 会回退到默认 `{ page: 'map' }`（星图页），跳转失效。
+ * 映射关系建议遵循：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
+ * 制造/精炼→工业；训练→技能页。跳转实现经 App 传入的 onGoPage（setPage + setMapTab）。
+ */
 function goFor(kind: string): { page: string; mapTab?: string } {
   switch (kind) {
     case 'mining':
