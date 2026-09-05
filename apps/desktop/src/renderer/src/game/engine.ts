@@ -795,8 +795,8 @@ export class GameEngine {
     const wallBase = this.state.savedAtWallMs > 0 ? this.state.savedAtWallMs : Date.now()
     const before = snapshotBasics(this.state)
     const { overflowMs } = offlineSplit(ms)
-    // 调试快进：冻结进行中的遭遇战斗，不随快进时间跳变而瞬结（船长 2026-09-05）
-    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeEncounterBattle: true })
+    // 调试快进：冻结进行中的战斗（低安遭遇战 + 主控远征），不随快进时间跳变而瞬结（船长 2026-09-05）
+    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true })
     this.state.savedAtWallMs = wallBase + ms
     this.offlineReport = buildOfflineReport(before, this.state, this.ctx, ms, overflowMs)
     void this.persist()

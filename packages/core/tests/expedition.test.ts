@@ -142,6 +142,22 @@ describe('远征 V12：两阶段', () => {
     expect(advanceExpedition).toBeTypeOf('function')
   })
 
+  it('调试快进冻结主控远征战斗：大步推进不瞬结、恢复后正常打完', () => {
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
+    advanceGame(state, 5_000, ctx) // 到港开战（战斗进行中）
+    const exp = state.expedition
+    expect(exp.phase).toBe('battle')
+    // 冻结大步推进：战斗不瞬结，仍进行中
+    advanceGame(state, 10 * 60_000, ctx, { freezeBattle: true })
+    expect(exp.phase).toBe('battle')
+    expect(exp.battle).not.toBeNull()
+    expect(exp.battle!.ended).toBeFalsy()
+    expect(exp.battle!.lastTickGameMs).toBe(state.gameMs) // 时钟已同步，不欠快进时间
+    // 恢复后正常打完
+    advanceGame(state, 10 * 60_000, ctx)
+    expect(exp.active).toBe(false)
+  })
+
   it('击杀慢镜：分出胜负后延迟 killcamMs 再结算（主控），大步长推进仍立即结算', () => {
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     advanceGame(state, 5_000, ctx) // 到港开战（战斗进行中）

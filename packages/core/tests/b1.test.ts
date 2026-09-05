@@ -193,7 +193,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(state.encounter.battle).not.toBeNull()
     const lastTick = state.encounter.battle!.lastTickGameMs
     // 冻结快进：大步推进，战斗不应被时间跳变瞬结（仍进行中、战斗未结束）
-    advanceGame(state, 5 * 60_000, ctx, { freezeEncounterBattle: true })
+    advanceGame(state, 5 * 60_000, ctx, { freezeBattle: true })
     expect(state.encounter.active).toBe(true)
     expect(state.encounter.battle!.ended).toBeFalsy()
     // 战斗时钟已同步到当前（不欠快进时间，避免恢复后一瞬追赶打完）

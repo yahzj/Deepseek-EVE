@@ -525,7 +525,7 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
 }
 
 /** 引擎内部：按阶段推进远征（时间已由 gameMs 表达；同帧内阶段可连续跨越，离线大推进亦然） */
-export function advanceExpedition(state: GameState, ctx: SimContext): void {
+export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattle = false): void {
   const exp = state.expedition
   for (let guard = 0; guard < 6; guard++) {
     if (!exp.active) return
@@ -553,6 +553,16 @@ export function advanceExpedition(state: GameState, ctx: SimContext): void {
           return
         }
         continue
+      }
+      // 调试快进冻结主控战斗（船长 2026-09-05：方便测试战斗系统）——快进期间不推进/瞬结主控远征战斗
+      if (freezeBattle) {
+        const now = state.gameMs
+        const owed = Math.max(0, now - (exp.battle.lastTickGameMs ?? now))
+        if (owed > 0) {
+          exp.battle.lastTickGameMs = now
+          exp.battle.startedAtGameMs += owed
+        }
+        return
       }
       advanceBattleFor(state, ctx, exp.battle, state.shipId, exp.anomalyId)
       if (exp.battle.ended) {

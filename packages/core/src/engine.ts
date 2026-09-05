@@ -44,7 +44,7 @@ export const HIDDEN_SKILL_IDS: readonly string[] = []
  * 把游戏时间推进 deltaMs 毫秒（技能队列、主控采矿、换船善后返航、制造、主控远征、AI 副船任务、
  * 随机事件与市场）。非法/负数/0 的时长会被安全忽略。
  */
-export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, opts?: { freezeEncounterBattle?: boolean }): void {
+export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, opts?: { freezeBattle?: boolean }): void {
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
   state.gameMs += d
@@ -62,11 +62,11 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, 
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx)
   advanceRefining(state, ctx)
-  advanceExpedition(state, ctx)
+  advanceExpedition(state, ctx, opts?.freezeBattle)
   advanceScanning(state, ctx)
   advanceAi(state, d, ctx)
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
-  advanceEncounterWatch(state, ctx, d, opts?.freezeEncounterBattle)
+  advanceEncounterWatch(state, ctx, d, opts?.freezeBattle)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
   advanceEvents(state, d, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）

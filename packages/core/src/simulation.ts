@@ -43,7 +43,7 @@ export function simulateOffline(
   nowWallMs: number,
   ctx: SimContext,
   capMs: number = DEFAULT_OFFLINE_CAP_MS,
-  opts?: { freezeEncounterBattle?: boolean },
+  opts?: { freezeBattle?: boolean },
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
