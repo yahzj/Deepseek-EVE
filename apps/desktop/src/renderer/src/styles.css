@@ -1500,6 +1500,65 @@ body {
   flex: 1 1 400px;
   min-width: 0;
 }
+/* ── CPU 占用条（槽位区顶部；船长 2026-09-05：由左栏移来并醒目化） ── */
+.app-fit-cpustrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(232, 180, 90, 0.45);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(232, 180, 90, 0.14), rgba(14, 24, 40, 0.55));
+}
+.app-fit-cpustrip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wui-gold);
+  letter-spacing: 0.5px;
+}
+.app-fit-cpustrip-num {
+  font-family: var(--wui-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffe08a;
+  white-space: nowrap;
+}
+.app-fit-cpustrip-pct {
+  font-family: var(--wui-mono);
+  font-size: 11px;
+  color: rgba(232, 220, 190, 0.75);
+  min-width: 34px;
+  text-align: right;
+}
+.app-fit-cpustrip-track {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.app-fit-cpustrip-track i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.35s ease;
+  background: linear-gradient(90deg, #2f9e8f, var(--wui-accent));
+}
+.app-fit-cpustrip-track.is-warn i {
+  background: linear-gradient(90deg, #a8742e, var(--wui-amber));
+}
+.app-fit-cpustrip-track.is-full i {
+  background: linear-gradient(90deg, #a13a3a, var(--wui-red));
+}
+.app-fit-cpustrip.is-warn {
+  border-color: rgba(232, 180, 90, 0.85);
+  box-shadow: 0 0 0 1px rgba(232, 180, 90, 0.18);
+}
+.app-fit-cpustrip.is-full {
+  border-color: var(--wui-red);
+  box-shadow: 0 0 0 1px rgba(224, 82, 74, 0.25);
+}
 .app-fit-icongrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));

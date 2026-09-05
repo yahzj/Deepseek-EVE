@@ -64,6 +64,25 @@ function layerResChips(res: DamageResists | undefined): ReactNode {
   ))
 }
 
+/** CPU 占用条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配） */
+function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
+  const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0
+  // 醒目分级：低占用金/正常青绿渐变 → ≥85% 琥珀告警 → 100% 危险红
+  const cls = pct >= 99.5 ? 'is-full' : pct >= 85 ? 'is-warn' : 'is-ok'
+  return (
+    <div className={`app-fit-cpustrip ${cls}`} title="档位基础：低级 5 / 中级 15 / 高级 40 CPU（炮台更高）；与无人机放飞共用，超上限拒绝装配">
+      <span className="app-fit-cpustrip-label">CPU 占用</span>
+      <span className="app-fit-cpustrip-num">
+        {used} / {total}
+      </span>
+      <span className="app-fit-cpustrip-pct">{Math.round(pct)}%</span>
+      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+        <i style={{ width: `${pct}%` }} />
+      </span>
+    </div>
+  )
+}
+
 export function FitPage({ engine, onToast }: PageProps) {
   const state = engine.state
   const shipDef = fleetDefOf(state, engine.ctx, state.shipId)
@@ -161,13 +180,6 @@ export function FitPage({ engine, onToast }: PageProps) {
               ]}
               note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性 = EVE 式乘入合成（上限 90%）；V18.1 多装规则：伤害/射速/容量全额叠加，命中/闪避/抗性/速度收益递减；「动力」影响弃船避险与跃迁充能。`}
             />
-            <div className="app-info-row">
-              <span className="app-info-key">CPU 占用</span>
-              <span className="app-info-val">
-                {cpuUsed} / {shipDef ? effectiveCpu(state, engine.ctx, shipDef) : '—'}
-                <span className="app-dim">　档位：低级 5 / 中级 15 / 高级 40（炮台更高）；与无人机放飞共用，超上限拒绝装配</span>
-              </span>
-            </div>
             {shipIndirectLines(shipDef).length > 0 ? (
               <div className="app-fit-shipinfo-low">
                 <div className="app-info-note">间接属性（2026-09 定：速度参与战斗机动与航行；信号/锁定/质量为设定展示，不参与战斗公式）</div>
@@ -178,6 +190,10 @@ export function FitPage({ engine, onToast }: PageProps) {
         ) : null}
           </div>
           <div className="app-fit-col-right">
+        {/* CPU 占用条（船长 2026-09-05：由左栏移置槽位最上方、醒目显示；与放飞共用池） */}
+        {shipDef ? (
+          <CpuStrip used={cpuUsed} total={effectiveCpu(state, engine.ctx, shipDef)} />
+        ) : null}
         {/* V18：高/中/低三组槽位——按槽位图标排布（取消列表形式，船长 2026-09-05） */}
         <div className="app-fit-racks">
           {(['high', 'mid', 'low'] as RackSlot[]).map((rack) => {
