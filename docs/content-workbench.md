@@ -10,41 +10,48 @@
 ## 一、流程总览
 
 ```
-npm run content:export              # ① 导出 7 张 CSV 到 content-csv/
-   ↓  Excel/WPS 打开编辑（筛选/排序/批量改数值与文案）
-npm run content:import <表> <csv>   # ②（Phase B）安全回写源 TS + 自动校验 + diff 摘要
+npm run content:export            # ① 导出 → content-csv/content-workbench.xlsx（7 张 sheet）
+   ↓  Excel 双击打开工作簿，底部标签切换表，编辑后 Ctrl+S
+npm run content:import <表> <文件> # ② 回写（xlsx 或 csv 均可）+ 自动校验 + diff 摘要
    ↓
 content:check + typecheck 自动收尾 → git diff 过目 → 提交
 ```
 
-新增/删除条目、改嵌套结构**不在 CSV 做**——给出 id + 草案交内容维护者代办（CSV 只改存量行）。
+新增/删除条目、改嵌套结构**不在工作簿做**——给出 id + 草案交内容维护者代办（工作簿只改存量行）。
 
-## 二、快速开始（导出）
+## 二、快速开始（主格式 = .xlsx，2026-09-05 船长拍板升级）
 
 ```powershell
 npm run content:export          # 默认输出 content-csv/
 npm run content:export D:\my    # 也可输出到任意目录
 ```
 
-| 文件 | 内容 | 行数(约) | 主要可改列 |
+产出两份：
+- **`content-csv/content-workbench.xlsx`（主格式）**：一个文件 7 张 sheet（底部标签切换：
+  技能/物品/装备/舰船/敌人/矿带/市场），**Excel 原生格式——打开/编辑/保存零编码坑**，
+  中文与 ⟦⟧ 等特殊字符全部安全；推荐日常只用它；
+- `content-csv/*.csv`（兼容格式，UTF-8+BOM）：旧习惯或程序处理仍可用；导入器对
+  Excel 各种保存变体（GBK/逗号/Tab/分号）已自动容错，坏表头列自动跳过不阻塞。
+
+回写时**直接给工作簿路径**即可（自动按 sheet 名取表）：
+
+```powershell
+npm run content:import items content-csv/content-workbench.xlsx [--dry-run]
+```
+
+| sheet | 内容 | 行数(约) | 主要可改列 |
 |---|---|---|---|
-| skills.csv | 技能 | 62 | 名称/组/rank/描述（⟦⟧红线见下） |
-| items.csv | 物品（矿/矿物/气/冰/弹药/无人机） | 29 | 体积/收购价/精炼配方/伤害基数/描述 |
-| modules.csv | 装备 | 72 | 数值参数/CPU/抗性拆列/描述 |
-| ships.csv | 舰船 | 19 | 血量/9 抗性列/槽位/CPU/速度/描述 |
-| anomalies.csv | 敌人/悬赏 | 26 | 威胁/战术/血型/奖励/战利品/伤害权重 |
-| belts.csv | 矿带 | 17 | 主产物/复合产出池/声望门槛 |
-| market.csv | 市场商品 | 139 | 基准价/池参数/倍率/门槛 |
+| skills | 技能 | 62 | 名称/组/rank/描述（⟦⟧红线见下） |
+| items | 物品（矿/矿物/气/冰/弹药/无人机） | 29 | 体积/收购价/精炼配方/伤害基数/描述 |
+| modules | 装备 | 72 | 数值参数/CPU/抗性拆列/描述 |
+| ships | 舰船 | 19 | 血量/9 抗性列/槽位/CPU/速度/描述 |
+| anomalies | 敌人/悬赏 | 26 | 威胁/战术/血型/奖励/战利品/伤害权重 |
+| belts | 矿带 | 17 | 主产物/复合产出池/声望门槛 |
+| market | 市场商品 | 139 | 基准价/池参数/倍率/门槛 |
 
-CSV 为 UTF-8 + BOM：Excel/WPS 双击即开，中文不乱码。**编辑后直接 Ctrl+S 保存即可**。
-
-> ⚠️ **Excel 保存纪律（2026-09-05 实证踩坑）**：Excel 默认"CSV(逗号分隔)"会用系统 ANSI(GBK)
-> 编码 + 可能改成分隔符保存——表现为再次打开列挤成一列、中文乱码、`m?` 之类的表头损坏。
-> 导入器已做自动容错（UTF-8/GBK 编码 + 逗号/Tab/分号分隔符自动识别，坏表头列跳过不阻塞），
-> 但 **ANSI 保存会永久损坏 GBK 无法表示的字符**（如技能描述的 ⟦⟧ 标记）。正确姿势：
-> Excel 里 **另存为 → 更多格式 → "CSV UTF-8（逗号分隔）"**（WPS：另存为 → CSV，编码选 UTF-8）。
-> 万一文件已存坏：`npm run content:export` 重新导出干净文件，重做你的改动即可
-> （源数据以 git 为准，CSV 只是工作台）。
+> 历史坑（CSV 时代实证，已归档）：Excel 默认保存 CSV 会用 ANSI(GBK)+Tab，导致再打开列挤成一列、
+> 中文乱码，GBK 写不出的字符（⟦⟧）永久损坏——升级 .xlsx 后不再有此问题；如仍用 CSV 建议
+> "另存为 → CSV UTF-8（逗号分隔）"，存坏了就 `content:export` 重导（源以 git 为准）。
 
 ## 三、列约定（导出/导入两端一致）
 
@@ -72,9 +79,12 @@ CSV 为 UTF-8 + BOM：Excel/WPS 双击即开，中文不乱码。**编辑后直�
 ## 五、Phase B：content:import（回写，2026-09-05 已交付）
 
 ```powershell
-npm run content:import <表名> <csv文件>        # 实写回源 TS
-npm run content:import <表名> <csv文件> --dry-run   # 只预览计划，不写盘
+npm run content:import <表名> <xlsx或csv文件>        # 实写回源 TS
+npm run content:import <表名> <xlsx或csv文件> --dry-run   # 只预览计划，不写盘
 ```
+
+主流程直接传工作簿：`npm run content:import items content-csv/content-workbench.xlsx`
+（自动按 sheet 名取表；csv 同样支持）。
 
 四道护栏（任一不过 = 整体拒绝、零写入）：
 1. **主键只读**：CSV 出现未知 id（新增条目）→ 拒绝；源表有而 CSV 缺失（多为"筛选视图保存"

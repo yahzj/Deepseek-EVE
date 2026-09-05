@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import * as ts from 'typescript'
+import ExcelJS from 'exceljs'
 import { ANOMALIES, BELTS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { tableOf, type ColSpec } from './content-schema'
 
@@ -71,6 +72,56 @@ function parseDelimited(text: string, delim: string): string[][] {
   row.push(cur)
   if (row.length > 1 || row[0] !== '') rows.push(row)
   return rows
+}
+
+/* ═══════════ xlsx 读取（exceljs；单元格值 → 文本，布尔归一 是/否） ═══════════ */
+function cellText(v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'boolean') return v ? '是' : '否'
+  if (typeof v === 'string') return v
+  if (typeof v === 'number') return String(v)
+  if (v instanceof Date) return v.toISOString()
+  const o = v as { result?: unknown; text?: unknown; richText?: Array<{ text: string }> }
+  if (o.richText) return o.richText.map((r) => r.text).join('')
+  if (typeof o.text === 'string') return o.text
+  if (typeof o.result === 'string' || typeof o.result === 'number' || typeof o.result === 'boolean') {
+    return cellText(o.result)
+  }
+  return String(v)
+}
+
+/** 读取编辑文件 → { 表头, 数据行 }（.xlsx 按 sheet 名；空单元格统一补到表头长度） */
+async function loadTableFile(
+  filePath: string,
+  tableName: string,
+): Promise<{ head: string[]; data: string[][] }> {
+  let rows: string[][]
+  if (/\.xlsx$/i.test(filePath)) {
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.readFile(filePath)
+    const ws = wb.getWorksheet(tableName) ?? wb.worksheets[0]
+    if (!ws) throw new Error(`xlsx 里找不到名为「${tableName}」的 sheet`)
+    rows = []
+    ws.eachRow({ includeEmpty: false }, (row) => {
+      const vals: string[] = []
+      const max = row.cellCount
+      for (let i = 1; i <= max; i++) vals.push(cellText(row.getCell(i).value))
+      rows.push(vals)
+    })
+  } else {
+    const buf = readFileSync(filePath)
+    const text = decodeText(buf)
+    rows = parseDelimited(text, detectDelimiter(text))
+  }
+  const head = rows[0]!.map((h) => h.trim())
+  const len = head.length
+  return {
+    head,
+    data: rows
+      .slice(1)
+      .filter((r) => r.some((c) => c.trim() !== ''))
+      .map((r) => (r.length < len ? [...r, ...new Array<string>(len - r.length).fill('')] : r)),
+  }
 }
 
 /* ═══════════ 主键集合 ═══════════ */
@@ -238,11 +289,12 @@ function planRow(
         break
       }
       case 'bool': {
-        if (cell !== '是' && cell !== '否') {
+        const norm = cell === '是' || cell.toLowerCase() === 'true' ? '是' : cell === '否' || cell.toLowerCase() === 'false' ? '否' : ''
+        if (norm === '') {
           err(`${csvRow[0]}：${col.head} 须填 是/否（得「${cell}」）`)
           continue
         }
-        const t = cell === '是' ? 'true' : 'false'
+        const t = norm === '是' ? 'true' : 'false'
         if (curText === t) continue
         changes.push({ kind: 'set', rowId: csvRow[0]!, prop: root, text: t })
         break
@@ -382,7 +434,7 @@ function applyChanges(
 }
 
 /* ═══════════ 主流程 ═══════════ */
-function main(): void {
+async function main(): Promise<void> {
   const tableName = process.argv[2]
   const csvPath = process.argv[3]
   const dryRun = process.argv.includes('--dry-run')
@@ -392,28 +444,24 @@ function main(): void {
     process.exit(2)
   }
   if (!csvPath) {
-    console.error('用法：npm run content:import <表名> <csv文件> [--dry-run]')
+    console.error('用法：npm run content:import <表名> <xlsx或csv文件> [--dry-run]')
     process.exit(2)
   }
-  const csvBuf = readFileSync(csvPath)
-  const csvText = decodeText(csvBuf)
-  const delim = detectDelimiter(csvText)
-  const parsed = parseDelimited(csvText, delim)
-  const head = parsed[0]!.map((h) => h.trim())
-  // Excel 可能截掉行尾空字段：数据行统一补齐到表头长度（尾部空 = 不改，安全）
-  const headLen = head.length
-  const headIdx = new Map(head.map((h, i) => [h, i]))
-  const dataRows = parsed
-    .slice(1)
-    .filter((r) => r.some((c) => c.trim() !== ''))
-    .map((r) => (r.length < headLen ? [...r, ...new Array<string>(headLen - r.length).fill('')] : r))
+  const loaded = await loadTableFile(csvPath, spec.name)
+  const head = loaded.head
+  const dataRows = loaded.data
+  if (dataRows.length === 0) {
+    console.error('文件无数据行（首行是表头）')
+    process.exit(2)
+  }
   if (dataRows.length === 0) {
     console.error('CSV 无数据行（首行是表头）')
     process.exit(2)
   }
+  const headIdx = new Map(head.map((h, i) => [h, i]))
   const idColHead = spec.cols[0]!.head
   if (!head.includes(idColHead)) {
-    console.error(`CSV 缺主键列「${idColHead}」——请勿改动表头行`)
+    console.error(`文件缺主键列「${idColHead}」——请勿改动表头行`)
     process.exit(2)
   }
   // 未知表头检查：警告并跳过该列（Excel ANSI 保存可能把生僻字符写成 '?' 弄坏表头——
@@ -500,4 +548,7 @@ function main(): void {
   console.log('anomalies 表数值改动进二号 C4 平衡复核清单。')
 }
 
-main()
+main().catch((e) => {
+  console.error('❌ 导入失败：', e)
+  process.exit(1)
+})

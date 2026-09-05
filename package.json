@@ -23,6 +23,7 @@
     "battle:calibrate": "tsx tools/battle-calibrate.ts"
   },
   "devDependencies": {
+    "exceljs": "^4.4.0",
     "tsx": "^4.23.13"
   },
   "allowScripts": {
