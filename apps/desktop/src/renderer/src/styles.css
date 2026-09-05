@@ -1020,6 +1020,30 @@ body {
   font-size: 17px;
   line-height: 1;
 }
+/* 星图 = 首要功能（船长 2026-09-05）：置顶放大 + 描边矩形（青边渐变底，hover 提亮） */
+.app-nav-side .app-nav-item.is-featured {
+  margin-bottom: 6px;
+  padding: 11px 12px;
+  border: 2px solid rgba(79, 216, 196, 0.55);
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(79, 216, 196, 0.1), rgba(79, 216, 196, 0.02));
+  color: var(--wui-accent);
+  font-size: 15px;
+  font-weight: 700;
+}
+.app-nav-side .app-nav-item.is-featured .app-nav-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 22px;
+}
+.app-nav-side .app-nav-item.is-featured:hover {
+  border-color: rgba(79, 216, 196, 0.9);
+  box-shadow: 0 0 12px rgba(79, 216, 196, 0.22);
+}
+.app-nav-side .app-nav-item.is-featured.is-active {
+  border-color: var(--wui-accent);
+  background: rgba(79, 216, 196, 0.14);
+}
 .app-nav-wrap {
   position: relative;
   display: inline-flex;

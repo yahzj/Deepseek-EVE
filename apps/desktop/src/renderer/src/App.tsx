@@ -29,15 +29,15 @@ import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPan
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer } from './ui/Tooltip'
 
-/** 顶部菜单项（货仓已并入「物品」页子标签） */
+/** 左侧导航项（星图为首：最重要功能，置顶并放大描边样式，见 NAV_ITEMS 的 map 特例） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
+  { key: 'map', label: '星图', icon: '✦' },
   { key: 'ship', label: '舰船', icon: '◈' },
   { key: 'fit', label: '装配', icon: '⚙' },
   { key: 'items', label: '物品', icon: '▤' },
   { key: 'market', label: '市场', icon: '¥' },
   { key: 'industry', label: '工业', icon: '⚒' },
   { key: 'skills', label: '技能', icon: '✚' },
-  { key: 'map', label: '星图', icon: '✦' },
 ]
 
 type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
@@ -265,7 +265,7 @@ export function App({ engine }: { engine: GameEngine }) {
           {NAV_ITEMS.map((item) => (
             <button
               key={item.key}
-              className={`app-nav-item${page === item.key ? ' is-active' : ''}`}
+              className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}`}
               onClick={() => setPage(item.key)}
             >
               <span className="app-nav-icon">{item.icon}</span>
