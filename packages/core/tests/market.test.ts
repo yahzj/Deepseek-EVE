@@ -130,18 +130,21 @@ describe('市场动态：冲击 / 池压力 / 内部消化', () => {
     mk.npcSell['min-a']!.push({ price: 6, qty: 1_000, expiresAtGameMs: state.gameMs + 30 * 60_000 })
     mk.digest['min-a'] = { qty: 0, price: 0, perWindow: 0 }
 
-    advanceGame(state, 60_000, ctx) // 一个窗口：新收购单(≈8) ≥ 6 → 冲突进消化
-    expect(mk.digest['min-a']!.qty).toBeGreaterThanOrEqual(500) // 冲突订单被消化队列吞下（不是瞬消）
-    expect(mk.npcBuy['min-a']!.length).toBe(0) // 簿面没有直接成交
-    // 消化随时间推进（第二窗口：先消化 15% 再进新冲突）
+    advanceGame(state, 60_000, ctx) // 一个窗口：收购阶梯(≈8/7/6) 撞上陈旧供应单(6)
+    expect(mk.digest['min-a']!.qty).toBeGreaterThan(0) // 冲突档被消化队列吞下（不是瞬消）
+    // 簿面上不应出现"高于陈旧供应单(6)"的收购单（越档不瞬时成交）；等于/低于 6 的低档可留簿面
+    for (const o of mk.npcBuy['min-a']!) expect(o.price).toBeLessThanOrEqual(6)
+    // 消化随时间推进（陈旧供应单仍在 → 持续有冲突进队列，但每窗口先按 perWindow 消化）
     advanceGame(state, 60_000, ctx)
-    expect(mk.digest['min-a']!.qty).toBeGreaterThanOrEqual(850) // 500-75+500=925
-    expect(mk.digest['min-a']!.qty).toBeLessThan(1_000)
-    // 陈旧供应单消失后：市场恢复收购单入簿
+    expect(mk.digest['min-a']!.qty).toBeGreaterThan(0)
+    // 陈旧供应单消失后：市场恢复收购单入簿（不再全部进消化）
     mk.npcSell['min-a']!.splice(0, mk.npcSell['min-a']!.length)
     mk.digest['min-a']!.qty = 0
     advanceGame(state, 60_000, ctx)
     expect(mk.npcBuy['min-a']!.length).toBeGreaterThan(0)
+    // 无陈旧低价单后，正常的收购阶梯应落在簿面（非消化）
+    const crossed = mk.npcBuy['min-a']!.some((o) => o.price > 6)
+    expect(crossed).toBe(true)
   })
 })
 

@@ -395,17 +395,26 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
 
   if (def.rarity === 'common') {
     if (def.poolTarget && def.poolTarget > 0) {
-      // 池商品：每窗口簿面供需线薄了就补；量随状态走
+      // 池商品：按价格档铺阶梯（船长 2026-09-05：不要全部挤在一个价——不同档位不同价/量，低价品取整后也差 ≥1 ISK）
       const flow = def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget / 120))
       const p = 1 - 0.5 * ((poolQ - def.poolTarget) / def.poolTarget)
       const pClamped = Math.max(0.4, Math.min(1.6, p))
-      if (buyList.length < 2 || nextRandom(state.rng) < 0.85) {
-        pushBuy(Math.round(buyPrice(def, L) * jitter()), Math.max(1, Math.round(flow * pClamped)))
+      const avail = Math.max(0.05, Math.min(1.5, poolQ / def.poolTarget))
+      const buyBase = buyPrice(def, L) // 最佳收购价 = L
+      const sellBase = sellPrice(def, L) // 最低供应价 ≈ L×1.06
+      const buyStep = Math.max(1, Math.round(buyBase * 0.04))
+      const sellStep = Math.max(1, Math.round(sellBase * 0.04))
+      // 收购阶梯：最佳档在 L，越深越便宜、量越大（墙）；每窗始终铺满 3 档（盘口稳定成阶梯，避免挤单一价）
+      for (let i = 0; i < 3; i += 1) {
+        const price = Math.max(1, buyBase - i * buyStep)
+        const qty = Math.max(1, Math.round(flow * pClamped * (0.5 + 0.35 * i)))
+        pushBuy(price, qty)
       }
-      // 供应量 ∝ 池余量（站里有多少卖多少）
-      if (sellList.length < 2 || nextRandom(state.rng) < 0.85) {
-        const avail = Math.max(0.05, Math.min(1.5, poolQ / def.poolTarget))
-        pushSell(Math.round(sellPrice(def, L) * jitter()), Math.max(1, Math.round(flow * avail)))
+      // 供应阶梯：最低档在 L×1.06，越深越贵、量越大
+      for (let i = 0; i < 3; i += 1) {
+        const price = Math.max(1, sellBase + i * sellStep)
+        const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i)))
+        pushSell(price, qty)
       }
     } else {
       // 单件平价品：维持供应线与低价收购线
