@@ -149,12 +149,10 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
         ) : null}
       </div>
       {phase === 'open' ? (
-        /* “睁眼”转场：黑暗中的一线光睁成视界（船长 2026-09-05 定） */
+        /* “睁眼”转场：一条横向白线延伸至屏幕两端，随后光晕扩散成视界（船长 2026-09-05 定） */
         <div className="app-pro-open" onClick={(e) => e.stopPropagation()}>
-          <div className="app-pro-eye" />
-          <div className="app-pro-lid is-top" />
-          <div className="app-pro-lid is-bottom" />
-          <div className="app-pro-flash" />
+          <div className="app-pro-iris" />
+          <div className="app-pro-slit" />
         </div>
       ) : null}
       {err && phase === 'wake' ? <div className="app-pro-err">{err}</div> : null}
