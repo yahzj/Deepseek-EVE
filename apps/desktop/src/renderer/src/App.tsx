@@ -113,11 +113,29 @@ export function App({ engine }: { engine: GameEngine }) {
 
   // ── 手机竖屏自动横屏（船长 2026-09-05）：触屏 + 竖屏时把整窗旋转 90° 并等比缩放，游戏画面横过来显示（免手动转手机） ──
   const [mobileRot, setMobileRot] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
       const portrait = window.innerHeight > window.innerWidth
-      setMobileRot(coarse && portrait && window.innerWidth < 900)
+      const rot = coarse && portrait && window.innerWidth < 900
+      setMobileRot(rot)
+      const el = rootRef.current
+      if (el) {
+        if (rot) {
+          // 虚拟横屏设计宽度：越大画面整体越小、看到越多（船长 2026-09-05：横屏后偏大，改 1200 放宽）
+          const designW = 1200
+          const scale = window.innerHeight / designW
+          const vh = designW * window.innerWidth / window.innerHeight
+          el.style.setProperty('--mob-w', `${designW}px`)
+          el.style.setProperty('--mob-h', `${vh}px`)
+          el.style.setProperty('--mob-scale', String(scale))
+        } else {
+          el.style.removeProperty('--mob-w')
+          el.style.removeProperty('--mob-h')
+          el.style.removeProperty('--mob-scale')
+        }
+      }
     }
     update()
     window.addEventListener('resize', update)
@@ -256,7 +274,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const pageProps = { engine, onToast: showToast }
 
   return (
-    <div className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
+    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
       {/* ───── 顶栏 ───── */}
       <header className="app-header">
         <div className="app-header-left">

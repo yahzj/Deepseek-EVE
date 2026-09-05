@@ -27,13 +27,14 @@ body {
   display: flex;
   flex-direction: column;
 }
-/* ── 手机竖屏自动横屏（船长 2026-09-05）：整窗 rotate(-90°) + 按视口等比缩放填屏，游戏画面横过来显示 ── */
+/* ── 手机竖屏自动横屏（船长 2026-09-05）：整窗 rotate(-90°) + 等比缩放；--mob-w/--mob-h/--mob-scale 由 JS 按设计宽度计算 ── */
 .app-root.is-mobile-rot {
+  --mob-w: 1200px;   /* 虚拟横屏设计宽度 */
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 100vh;        /* 虚拟横屏宽 = 物理视口高 */
-  height: 100vw;       /* 虚拟横屏高 = 物理视口宽 */
+  width: var(--mob-w);
+  height: var(--mob-h, 100vw);
   transform: translate(-50%, -50%) rotate(-90deg) scale(var(--mob-scale, 1));
   transform-origin: center center;
   overflow: hidden;
