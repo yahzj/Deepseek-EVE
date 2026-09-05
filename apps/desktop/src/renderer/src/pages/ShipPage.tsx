@@ -637,7 +637,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 return (
                   <option key={b.id} value={b.id} disabled={locked}>
                     {unexplored
-                      ? `✧ ${b.name}（所在星系未探索——先到星图扫描）`
+                      ? `✧ ${b.name}（所在星系未探索——先到出港页扫描）`
                       : locked
                         ? `✕ ${b.name}（需声望 ${b.standingReq}，当前 ${standing}）`
                         : `${b.name}（${engine.ctx.items.get(b.oreId)?.name}）`}

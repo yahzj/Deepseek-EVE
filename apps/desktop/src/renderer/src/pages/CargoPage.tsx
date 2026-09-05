@@ -29,7 +29,7 @@ import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
 
 const KIND_EMPTY: Record<string, string> = {
-  ore: '船上没有矿石——到「星图」页开采。',
+  ore: '船上没有矿石——到「出港」页开采。',
   mineral: '船上没有矿物（精炼产物直接入仓库）。',
   gas: '船上没有气体。',
   ice: '船上没有冰矿。',
