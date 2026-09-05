@@ -16,6 +16,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import {
+  BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
   FOE_CLASS, foeClassName, FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
@@ -313,6 +314,7 @@ const meSpeedRef = useRef(200)
       boltsRef.current.push({
         key: keyRef.current++,
         color: DMG_COLOR[fx.type],
+        type: fx.type,
         hit: fx.hit,
         x1: g.x1,
         y1: g.y1,
@@ -435,16 +437,54 @@ const meSpeedRef = useRef(200)
   const meStats = battle.stats
   const secs = Math.max(1, Math.round((state.gameMs - battle.startedAtGameMs) / 1000))
 
-  /* 弹道（旋转容器内沿 +x 飞行）+ 撞点特效（CSS 延迟到着弹时刻） */
-  const boltEls = boltsRef.current.map((bv) => (
-    <div key={bv.key} className="app-bts-bolt" style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
-      <i className="app-bts-bolt-bar" style={{ width: bv.len, background: `linear-gradient(90deg, ${bv.color} 0%, ${bv.color}cc 60%, transparent 100%)`, boxShadow: `0 0 8px ${bv.color}` }} />
+  /* 弹道（旋转容器内沿 +x 飞行）+ 撞点特效（CSS 延迟到着弹时刻）——
+     2026-09-05 三族观感分家：动能=快曳光 / 导弹=慢速虚线尾焰 / 激光=近瞬光束线 */
+  const boltEls = boltsRef.current.map((bv) => {
+    const look = BOLT_LOOK[bv.type] ?? BOLT_LOOK.kinetic
+    const color = bv.color
+    const barBg =
+      look.dash !== null
+        ? `repeating-linear-gradient(90deg, ${color} 0 ${look.dash - 4}px, transparent ${look.dash - 4}px ${look.dash}px)`
+        : `linear-gradient(90deg, ${color} 0%, ${color}cc 60%, transparent 100%)`
+    const beamLine = bv.type === 'plasma' ? (
       <i
-        className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'}`}
-        style={{ left: bv.len, top: 0, borderColor: bv.color, boxShadow: `0 0 10px ${bv.color}`, animationDelay: `${FLY_MS}ms` }}
+        className="app-bts-beamline"
+        style={{
+          width: bv.len,
+          borderColor: color,
+          boxShadow: `0 0 6px ${color}`,
+          animationDuration: `${look.fly}ms`,
+        }}
       />
-    </div>
-  ))
+    ) : null
+    return (
+      <div key={bv.key} className={`app-bts-bolt is-${bv.type}`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
+        <i
+          className="app-bts-bolt-bar"
+          style={{
+            width: bv.len,
+            height: bv.type === 'plasma' ? 1 : bv.type === 'explosive' ? 6 : 4,
+            top: bv.type === 'plasma' ? 0 : -2,
+            background: barBg,
+            boxShadow: `0 0 8px ${color}`,
+            animationDuration: `${look.fly}ms`,
+          }}
+        />
+        {beamLine}
+        <i
+          className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'}`}
+          style={{
+            left: bv.len,
+            top: 0,
+            borderColor: color,
+            boxShadow: `0 0 10px ${color}`,
+            animationDelay: `${look.fly}ms`,
+            animationDuration: bv.type === 'plasma' ? '180ms' : '420ms',
+          }}
+        />
+      </div>
+    )
+  })
   const muzzleEls = flashRef.current.map((f) => (
     <i key={f.key} className="app-bts-muzzle" style={{ left: f.x, top: f.y, color: f.color }} />
   ))

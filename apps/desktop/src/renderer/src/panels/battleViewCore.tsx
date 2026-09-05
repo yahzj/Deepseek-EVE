@@ -180,6 +180,7 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
 interface BoltV {
   key: number
   color: string
+  type: DamageType
   hit: boolean
   x1: number
   y1: number
@@ -193,6 +194,16 @@ interface FlashV {
   color: string
   x: number
   y: number
+}
+
+/** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家）：
+ * - kinetic 动能炮：快速曳光（默认 420ms）；
+ * - explosive 导弹：慢速、虚线尾焰（760ms）——视觉上“追着飞”；
+ * - plasma 激光/能量：近瞬光束（130ms）+ 细长光束线。 */
+export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }> = {
+  kinetic: { fly: 420, dash: null },
+  explosive: { fly: 760, dash: 14 },
+  plasma: { fly: 130, dash: null },
 }
 
 /** 开火事件 → 弹道几何：起点 = 源舰枪口（舰艏前缘），终点 = 目标舰枪口侧命中点。
