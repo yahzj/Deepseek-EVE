@@ -298,10 +298,13 @@ const meSpeedRef = useRef(200)
   const openM = arcs.openM
   const nearM = arcs.nearM
 
-  // 首帧不重放历史开火事件：只从"当前环尾"续播
+  // 首帧不重放历史开火事件：只从"当前环尾"续播（迟到进战场不补播旧弹道）；
+  // 无历史时置 -1——引擎每场战斗首发的 seq=0，若按 0 初始化会被 seq>0 过滤吞掉
+  // （2026-09-05 修复“导弹第一次攻击没有动画”：旧实现里首发发生在画面弹出前的隐藏秒，
+  // 从未被看见；开场缓冲拉开后首发成为可见第一发，序号断层立刻显形）
   if (!initedFxRef.current) {
     const tail = battle.fx.length > 0 ? battle.fx[battle.fx.length - 1] : undefined
-    fxSeqRef.current = tail ? tail.seq : 0
+    fxSeqRef.current = tail ? tail.seq : -1
     initedFxRef.current = true
   }
 
