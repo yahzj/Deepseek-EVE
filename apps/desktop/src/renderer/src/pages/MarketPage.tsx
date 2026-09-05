@@ -743,100 +743,111 @@ export function MarketPage({
         。挂单、自动转挂单与买入一律免费。
       </div>
 
-      {/* 页面级全局搜索栏：同时检索常驻 + 稀有订单（常驻与稀有商品不重叠） */}
-      <div className="app-mkt-search">
-        <input
-          className="app-mkt-search-input"
-          type="search"
-          placeholder="搜索市场（同时检索常驻与稀有订单）：名称 / 商品键"
-          value={kw}
-          onChange={(e) => setKw(e.target.value)}
-        />
-        <select className="app-mkt-kind" value={kind} onChange={(e) => setKind(e.target.value as KindFilter)}>
-          <option value="all">全部类型</option>
-          {KIND_OPTIONS.filter((k) => k !== 'all').map((k) => (
-            <option key={k} value={k}>
-              {KIND_TEXT[k]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {selGood ? (
-        <>
-          <MarketDetail engine={engine} onToast={onToast} good={selGood} />
-          <button className="app-btn is-small" onClick={() => setSelKey(null)}>
-            收起详情
-          </button>
-        </>
-      ) : null}
-
-      {filterActive ? (
-        /* ── 搜索/过滤激活：跨栏合并结果（常驻 + 稀有一次搜全；GoodRow 自带稀有度徽标区分） ── */
-        <MarketColumn
-          engine={engine}
-          onToast={onToast}
-          title={query.length > 0 ? `搜索结果：${kw.trim()}` : `全部 ${KIND_TEXT[kind] ?? kind}`}
-          right={<span className="app-dim">常驻与稀有订单一次搜全（商品按稀有度徽标区分）</span>}
-          rows={filteredAll}
-          qtyOf={qtyOf}
-          onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
-          onSelect={setSelKey}
-        />
-      ) : (
-        <>
-          {/* 常驻订单 / 稀有订单（与星图页同款 app-subtabs 标签规范；稀有单时效短，切回本页记得看一眼） */}
-          <div className="app-subtabs" role="tablist">
-            <button
-              role="tab"
-              aria-selected={mktTab === 'common'}
-              className={`app-subtab${mktTab === 'common' ? ' is-active' : ''}`}
-              onClick={() => setMktTab('common')}
-            >
-              <span>≡</span>
-              <span>常驻订单</span>
-            </button>
-            <button
-              role="tab"
-              aria-selected={mktTab === 'rare'}
-              className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
-              onClick={() => setMktTab('rare')}
-              title="稀有订单寿命 9 分钟、限定奇货 4 分钟闪现——切回本标签才能看到现存单"
-            >
-              <span>✦</span>
-              <span>稀有订单</span>
-            </button>
+      {/* 常驻双栏：左 = 搜索 + 标签 + 商品列表；右 = 市场详情大盘（常驻，无选中时显示引导） */}
+      <div className="app-mkt-split">
+        <div className="app-mkt-left">
+          {/* 页面级全局搜索栏：同时检索常驻 + 稀有订单（常驻与稀有商品不重叠） */}
+          <div className="app-mkt-search">
+            <input
+              className="app-mkt-search-input"
+              type="search"
+              placeholder="搜索市场（同时检索常驻与稀有订单）：名称 / 商品键"
+              value={kw}
+              onChange={(e) => setKw(e.target.value)}
+            />
+            <select className="app-mkt-kind" value={kind} onChange={(e) => setKind(e.target.value as KindFilter)}>
+              <option value="all">全部类型</option>
+              {KIND_OPTIONS.filter((k) => k !== 'all').map((k) => (
+                <option key={k} value={k}>
+                  {KIND_TEXT[k]}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {mktTab === 'common' ? (
+          {filterActive ? (
+            /* ── 搜索/过滤激活：跨栏合并结果（常驻 + 稀有一次搜全；GoodRow 自带稀有度徽标区分） ── */
             <MarketColumn
               engine={engine}
               onToast={onToast}
-              title="常驻供应"
-              right={
-                <span className="app-dim" title="NPC 每 60 秒按窗口补给/刷新订单（含离线期间）">
-                  下次补给 {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
-                </span>
-              }
-              rows={stockedFirst(engine, common)}
+              title={query.length > 0 ? `搜索结果：${kw.trim()}` : `全部 ${KIND_TEXT[kind] ?? kind}`}
+              right={<span className="app-dim">常驻与稀有订单一次搜全（商品按稀有度徽标区分）</span>}
+              rows={filteredAll}
               qtyOf={qtyOf}
               onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
               onSelect={setSelKey}
             />
           ) : (
-            <MarketColumn
-              engine={engine}
-              onToast={onToast}
-              title="稀有订单"
-              right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · ⏳=现存单到期</span>}
-              rows={stockedFirst(engine, rareCol)}
-              qtyOf={qtyOf}
-              onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
-              onSelect={setSelKey}
-            />
+            <>
+              {/* 常驻订单 / 稀有订单（与星图页同款 app-subtabs 标签规范；稀有单时效短，切回本页记得看一眼） */}
+              <div className="app-subtabs" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={mktTab === 'common'}
+                  className={`app-subtab${mktTab === 'common' ? ' is-active' : ''}`}
+                  onClick={() => setMktTab('common')}
+                >
+                  <span>≡</span>
+                  <span>常驻订单</span>
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={mktTab === 'rare'}
+                  className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
+                  onClick={() => setMktTab('rare')}
+                  title="稀有订单寿命 9 分钟、限定奇货 4 分钟闪现——切回本标签才能看到现存单"
+                >
+                  <span>✦</span>
+                  <span>稀有订单</span>
+                </button>
+              </div>
+
+              {mktTab === 'common' ? (
+                <MarketColumn
+                  engine={engine}
+                  onToast={onToast}
+                  title="常驻供应"
+                  right={
+                    <span className="app-dim" title="NPC 每 60 秒按窗口补给/刷新订单（含离线期间）">
+                      下次补给 {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
+                    </span>
+                  }
+                  rows={stockedFirst(engine, common)}
+                  qtyOf={qtyOf}
+                  onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
+                  onSelect={setSelKey}
+                />
+              ) : (
+                <MarketColumn
+                  engine={engine}
+                  onToast={onToast}
+                  title="稀有订单"
+                  right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · ⏳=现存单到期</span>}
+                  rows={stockedFirst(engine, rareCol)}
+                  qtyOf={qtyOf}
+                  onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
+                  onSelect={setSelKey}
+                />
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+
+        <div className="app-mkt-right">
+          {selGood ? (
+            <MarketDetail engine={engine} onToast={onToast} good={selGood} />
+          ) : (
+            <Panel
+              title="市场详情"
+              right={<span className="app-dim">点击左侧商品的「📈 详情」查看行情</span>}
+            >
+              <div className="app-dim app-inv-empty">
+                从左侧列表选择一件商品，即可查看价格曲线、买卖盘深度与交易面板。
+              </div>
+            </Panel>
+          )}
+        </div>
+      </div>
 
       <Panel
         title="我的挂单"

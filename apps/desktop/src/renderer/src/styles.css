@@ -1738,12 +1738,38 @@ body {
   width: 120px;
   font-family: var(--wui-mono);
 }
-/* 市场详情卡（2026-09-05：参考盘口——价格曲线/买卖盘深度/持有量/交易面板） */
-.app-mkt-detail {
+/* 市场常驻双栏（2026-09-05：左=搜索+商品列表，右=行情详情大盘） */
+.app-mkt-split {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
   gap: 12px;
   align-items: start;
+}
+.app-mkt-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.app-mkt-left .app-mkt-search {
+  margin-bottom: 0;
+}
+.app-mkt-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+@media (max-width: 1180px) {
+  .app-mkt-split {
+    grid-template-columns: 1fr;
+  }
+}
+/* 市场详情卡（2026-09-05：参考盘口——价格曲线/买卖盘深度/持有量/交易面板）；右栏内纵向堆叠 */
+.app-mkt-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .app-mkt-chart {
   width: 100%;
