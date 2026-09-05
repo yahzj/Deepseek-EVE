@@ -1506,12 +1506,15 @@ body {
   gap: 8px;
 }
 .app-fit-slot-icon {
+  /* 尺寸稳定性规范：槽位高度固定，不随装备内容伸缩，避免界面跳动 */
+  height: 76px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 8px 6px;
+  gap: 3px;
+  padding: 6px;
   border: 1px solid rgba(85, 112, 140, 0.35);
   border-radius: 8px;
   background: rgba(14, 24, 40, 0.6);
