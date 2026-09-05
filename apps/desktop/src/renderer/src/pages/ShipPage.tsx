@@ -476,6 +476,12 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     else onToast('AI 任务已下达。')
   }
 
+  /** 取消执行中的 AI 任务（船长 2026-09-05：活动栏简略后须在 AI 指挥中心内可直接取消） */
+  function handleCancelAi(sid: string): void {
+    if (engine.cancelAiTaskAt(sid)) onToast('AI 任务已取消（核心已归还）。')
+    else onToast('取消失败：任务状态异常。', true)
+  }
+
   /**
    * 可选悬赏（入口过滤与核心同源：声望 + 已亲手首胜；是否可派给某副船 = 该船自身装配的
    * AI 最终成功率 ≥80%，逐船现算并显示在副船下拉框内——不再按"先选船"过滤目标列表）。
@@ -665,9 +671,13 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   </span>
                 </div>
                 <div className="app-inv-btns">
-                  <span className="app-dim" title="取消 AI 任务（核心归还）请在顶部「活动」栏操作">
-                    活动栏可取消
-                  </span>
+                  <button
+                    className="app-btn is-small is-warn"
+                    onClick={() => handleCancelAi(sid)}
+                    title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 的 AI 任务：副船召回，核心归还核心库`}
+                  >
+                    取消任务
+                  </button>
                 </div>
               </li>
             )
