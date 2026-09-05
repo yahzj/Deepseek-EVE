@@ -24,6 +24,7 @@ import { HoverTip } from '../ui/Tooltip'
 import { InfoHover, ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
+import { Glyph, ICO_TONES } from '../ui/Glyphs'
 
 const KIND_TEXT: Record<string, string> = {
   item: '物品',
@@ -232,7 +233,10 @@ function GoodRow({
           {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
           {lock ? (
             <span className="app-chip is-exotic" title={lock}>
-              ✕ {lock}
+              <span className="app-ico">
+                <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+              </span>
+              {lock}
             </span>
           ) : null}
         </div>
@@ -247,7 +251,14 @@ function GoodRow({
             供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : '暂无现货'}</b>
             {quote.sellQty > 1 ? ` ×${quote.sellQty.toLocaleString('zh-CN')}` : ''}
           </span>
-          {life !== undefined ? <span className="app-chip app-life-chip">⟳ {fmtClock(life)}</span> : null}
+          {life !== undefined ? (
+            <span className="app-chip app-life-chip">
+              <span className="app-ico">
+                <Glyph name="ico-clock" size={11} color={ICO_TONES['ico-clock']} />
+              </span>
+              {fmtClock(life)}
+            </span>
+          ) : null}
           {poolQ !== undefined ? <span className="app-dim"> · 站内库存 {Math.floor(poolQ).toLocaleString('zh-CN')}</span> : null}
           {good.rarity === 'common' ? <span className="app-dim"> · {RARITY_TEXT[good.rarity]}</span> : null}
           {quote.sell === undefined && good.rarity !== 'common' ? (
@@ -683,7 +694,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title="稀有订单"
-                  right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · ⟳=现存单到期</span>}
+                  right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · 时钟=现存单到期</span>}
                   rows={stockedFirst(engine, rareCol)}
                   selKey={activeSelKey}
                   onSelect={setSelKey}

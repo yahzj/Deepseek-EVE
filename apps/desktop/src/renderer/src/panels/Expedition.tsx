@@ -38,6 +38,7 @@ import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, ProfileChip } from '../ui/shipInfo'
+import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
 export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -55,14 +56,37 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
       {scan.active || view.active || state.transit.active ? (
         <div className="app-dim app-exp-idle">
           {state.transit.active
-            ? `⌂ 返航空间站中 · 剩余约 ${formatDurationMs(Math.max(0, state.transit.finishAtGameMs - state.gameMs))}`
+            ? (
+              <>
+                <span className="app-ico">
+                  <Glyph name="ico-home" size={12} color={ICO_TONES['ico-home']} />
+                </span>
+                返航空间站中 · 剩余约 {formatDurationMs(Math.max(0, state.transit.finishAtGameMs - state.gameMs))}
+              </>
+            )
             : ''}
           {state.transit.active && (scan.active || view.active) ? ' ｜ ' : ''}
-          {scan.active ? `✧ 扫描探索进行中 · 剩余约 ${formatDurationMs(scan.remainingMs)}` : ''}
+          {scan.active ? (
+            <>
+              <span className="app-ico">
+                <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
+              </span>
+              扫描探索进行中 · 剩余约 {formatDurationMs(scan.remainingMs)}
+            </>
+          ) : (
+            ''
+          )}
           {scan.active && view.active ? ' ｜ ' : ''}
           {view.active
             ? view.phase === 'combat'
-              ? `⚔ 实时交火中（${view.anomalyName}）· 火力 ${view.power} vs 威胁 ${view.threat}——点击右上角「⚔ 战斗中」进入战场，或静待战报；活动栏可查看实时进度`
+              ? (
+                <>
+                  <span className="app-ico">
+                    <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
+                  </span>
+                  实时交火中（{view.anomalyName}）· 火力 {view.power} vs 威胁 {view.threat}——点击右上角「⚔ 战斗中」进入战场，或静待战报；活动栏可查看实时进度
+                </>
+              )
               : `${view.anomalyName}（${view.galaxyName}）· ${view.phaseLabel}，剩余约 ${formatDurationMs(view.remainingMs)}——进度与「召回」在顶部活动栏`
             : ''}
         </div>
@@ -74,7 +98,10 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
         /* T8：野外（掩护巡逻 / 胜利停留 / 扫描完成后停泊）——远征/扫描/采矿均可即时出发，或显式返航 */
         <div className="app-exp-idle app-idle-field">
           <span>
-            ⚐ 舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（掩护巡逻 / 野外停留）——
+            <span className="app-ico">
+              <Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} />
+            </span>
+            舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（掩护巡逻 / 野外停留）——
             从这里可即时出发远征、扫描或采矿（去程已取消，无航行等待）；卸货、维修与换船需返回空间站。
           </span>
           <button
@@ -85,7 +112,10 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
               if (!r.ok) onToast(r.error ?? '无法返航', true)
             }}
           >
-            ⌂ 返航空间站
+            <span className="app-ico">
+              <Glyph name="ico-home" size={13} color={ICO_TONES['ico-home']} />
+            </span>
+            返航空间站
           </button>
         </div>
       ) : (
@@ -810,7 +840,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   onClick={() => handleScan(selected)}
                   title={`派出深空扫描艇：立即就地扫描（去程已取消）约 10 分钟，完成即停留该星系；期间事件倒计时加速、更易遭遇「探索发现」`}
                 >
-                  ✧ 扫描探索（约 {Math.max(1, scanMinutesOf(selected))} 分钟）
+                  <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（约 {Math.max(1, scanMinutesOf(selected))} 分钟）
                 </button>
                 <span className="app-dim app-map-scan-note">完成即点亮 · 期间事件更频繁</span>
               </div>
@@ -912,7 +942,7 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
   return (
     <div className="app-ga-row">
       <span className="app-ga-main">
-        ✚ 应急修理
+        <span className="app-ico"><Glyph name="ico-cross" size={12} color={ICO_TONES["ico-cross"]} /></span>应急修理
         <span className="app-dim app-ga-desc">消耗货仓 1 枚修理组件（民用优先）：基础 HP×容量增幅（民用30/军用70）</span>
       </span>
       <button
@@ -1033,7 +1063,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
       {/* ① 前往掩护巡逻 */}
       <div className="app-ga-row">
         <span className="app-ga-main">
-          ⚐ 前往掩护巡逻
+          <span className="app-ico"><Glyph name="ico-flag" size={13} color={ICO_TONES["ico-flag"]} /></span>前往掩护巡逻
           <span className="app-dim app-ga-desc">即时转场留守该星系（低安可触发巡逻/伏击；可采矿/出击/返航）</span>
         </span>
         <button
@@ -1102,7 +1132,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
                 }
                 onClick={() => handleMineStart(b.id)}
               >
-                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? '⇄ 再点确认' : expOn ? '⇄ 转开采' : '⛏ 开采'}
+                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>再点确认</>) : expOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>转开采</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES['nav-mine']} /></span>开采</>)}
               </button>
             </div>
           )
@@ -1160,7 +1190,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
       })()}
       {/* ⑤ 残骸打捞（B3：采矿式单趟作业；需高槽打捞器，满仓自动返航卸货后结束） */}
       <div className="app-bay-title app-ga-sub">
-        ⚒ 残骸打捞（该星系残骸密度 {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
+        <span className="app-ico"><Glyph name="nav-salvage" size={14} color={NAV_TONES["nav-salvage"]} /></span>残骸打捞（该星系残骸密度 {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
       </div>
       {state.salvaging.active && state.salvaging.galaxyId === galaxy.id ? (
         <div className="app-ga-row">

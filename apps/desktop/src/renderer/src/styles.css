@@ -3512,3 +3512,6 @@ body {
 .app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: 12px; color: #9db8a8; background: rgba(255,255,255,.04); border: 1px solid #3a4a40; border-radius: 5px; padding: 5px 12px; cursor: pointer; }
 .app-pro-skip:hover { color: #d8ffe8; border-color: #6a9a80; }
 
+
+/* 行内操作图标（批2 SVG） */
+.app-ico { display: inline-flex; align-items: center; vertical-align: -2px; margin-right: 3px; }

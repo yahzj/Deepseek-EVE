@@ -21,7 +21,7 @@ import type { AiCoreType, FleetShipState } from '@whale/core'
 import { aiWinPreview, durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
-import { Glyph, NAV_TONES } from '../ui/Glyphs'
+import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -221,7 +221,10 @@ export function ShipPage({
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
                     {isLockedShip ? (
                       <em className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
-                        ✕ 锁定
+                        <span className="app-ico">
+                          <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+                        </span>
+                        锁定
                       </em>
                     ) : null}
                   </span>
@@ -236,7 +239,10 @@ export function ShipPage({
                       title={`进入「${displayName}」的装配台——可直接为该船装配/卸下装备（不需要切换驾驶）`}
                       onClick={() => onGotoFit?.(uid)}
                     >
-                      ⚒ 装配
+                      <span className="app-ico">
+                        <Glyph name="nav-fit" size={13} color={NAV_TONES['nav-fit']} />
+                      </span>
+                      装配
                     </button>
                     {!isRenaming ? (
                       <button
@@ -252,7 +258,16 @@ export function ShipPage({
                       title={isLockedShip ? '已锁定防误售——点击解锁' : '锁定此船，防止误售（锁定后仍可驾驶/派 AI）'}
                       onClick={() => handleToggleLock(uid, isLockedShip)}
                     >
-                      {isLockedShip ? '解锁' : '✕ 锁定'}
+                      {isLockedShip ? (
+                        '解锁'
+                      ) : (
+                        <>
+                          <span className="app-ico">
+                            <Glyph name="ico-lock" size={12} color={ICO_TONES['ico-lock']} />
+                          </span>
+                          锁定
+                        </>
+                      )}
                     </button>
                   </span>
                 </div>
@@ -320,7 +335,10 @@ export function ShipPage({
                       }}
                       title="消耗驾驶船货仓 1 枚修理组件（民用优先）：基础回复 HP×容量增幅（民用30/军用70）——野外/回港前应急可用"
                     >
-                      ✚ 组件修复 ×{kitCount}
+                      <span className="app-ico">
+                        <Glyph name="ico-cross" size={12} color={ICO_TONES['ico-cross']} />
+                      </span>
+                      组件修复 ×{kitCount}
                     </button>
                   ) : null}
                 </div>
@@ -380,7 +398,10 @@ export function ShipPage({
                     <span className="app-dim">货仓与装备随船保存</span>
                     <div className="app-ship-bottom-btns">
                       <span className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
-                        ✕ 已锁定
+                        <span className="app-ico">
+                          <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+                        </span>
+                        已锁定
                       </span>
                       <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
                         切换驾驶
@@ -450,7 +471,10 @@ export function ShipPage({
                     ) : null}
                     {lock ? (
                       <span className="app-chip is-exotic" title={lock}>
-                        ✕ {lock}
+                        <span className="app-ico">
+                          <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+                        </span>
+                        {lock}
                       </span>
                     ) : null}
                     {good ? (

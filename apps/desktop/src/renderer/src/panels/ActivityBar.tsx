@@ -9,18 +9,19 @@ import { formatDurationMs } from '@whale/core'
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 
 const KIND_ICON: Record<string, string> = {
-  train: '✚',
-  mining: '⛏',
-  scan: '✧',
-  manufacture: '⚒',
-  refine: '♨',
-  expedition: '⚔',
-  ai: '⚙',
-  return: '↩',
-  transit: '⌂',
-  loop: '↻',
+  train: 'nav-skills',
+  mining: 'nav-mine',
+  scan: 'ico-scan',
+  manufacture: 'nav-industry',
+  refine: 'nav-industry',
+  expedition: 'nav-bounty',
+  ai: 'nav-ai',
+  return: 'nav-ship',
+  transit: 'ico-home',
+  loop: 'ico-loop',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -164,7 +165,7 @@ export function ActivityBar({
       title={v.stopReason ?? `点击前往「${goText}」页`}
       onClick={handleItemClick}
     >
-      <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
+      <span className="app-activitybar-icon"><Glyph name={KIND_ICON[v.kind] ?? 'fallback'} size={15} color={NAV_TONES[KIND_ICON[v.kind]] ?? ICO_TONES[KIND_ICON[v.kind]]} /></span>
       <div className="app-activitybar-main">
         <div className="app-activitybar-line">
           <span className="app-activitybar-label">{v.label}</span>

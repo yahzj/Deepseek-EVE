@@ -200,9 +200,10 @@ const SHAPES: Record<string, ReactNode> = {
     </g>
   ),
   /* ── 界面导航/功能概念（2026-09-05 图标全 SVG 线性化：与物品/装备同语言） ── */
+  /* 星图/出港（2026-09-05 船长：实心四角星——闪星） */
   'nav-map': (
     <g>
-      <path d="M12 3.8l2 4.9 4.9 2-4.9 2-2 4.9-2-4.9-4.9-2 4.9-2z" />
+      <path fill="currentColor" stroke="none" d="M12 2L14.9 9.1L22 12L14.9 14.9L12 22L9.1 14.9L2 12L9.1 9.1Z" />
     </g>
   ),
   /* 舰船/舰队（2026-09-05 船长：帆船不像星舰，改火箭造型） */
@@ -286,6 +287,60 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 9.4l2.6 2.6-2.6 2.6-2.6-2.6z" />
     </g>
   ),
+  /* ── 界面操作概念（批2，2026-09-05：按钮/徽标字符图标 SVG 化） ── */
+  'ico-home': (
+    <g>
+      <path d="M4 11l8-6.6L20 11" />
+      <path d="M6.2 9.4V19h11.6V9.4" />
+      <path d="M10.2 19v-4.4h3.6V19" />
+    </g>
+  ),
+  'ico-lock': (
+    <g>
+      <rect x="6.6" y="10.6" width="10.8" height="8.2" rx="1.8" />
+      <path d="M9.2 10.4V8.2a2.8 2.8 0 0 1 5.6 0v2.2" />
+      <circle cx="12" cy="14.6" r="1.2" />
+      <path d="M12 15.8v1.2" />
+    </g>
+  ),
+  'ico-clock': (
+    <g>
+      <circle cx="12" cy="12" r="8.2" />
+      <path d="M12 7.4V12l3.2 2" />
+    </g>
+  ),
+  'ico-loop': (
+    <g>
+      <path d="M19.4 10.2A7.6 7.6 0 1 0 19.6 14" />
+      <path d="M19.4 6.4v3.8h-3.8" />
+    </g>
+  ),
+  'ico-flag': (
+    <g>
+      <path d="M6.2 20.4V4.6" />
+      <path d="M6.2 5.2c3.8-2 6.4.6 9.8-.9v7c-3.4 1.5-6-1.1-9.8.9z" />
+    </g>
+  ),
+  'ico-scan': (
+    <g>
+      <circle cx="12" cy="12" r="5.6" />
+      <path d="M12 12l4.2-4.2" />
+      <path d="M9 3.4h6M3.4 9v6M15 20.6H9M20.6 15V9" />
+    </g>
+  ),
+  'ico-swap': (
+    <g>
+      <path d="M8 6.6h8.4a3 3 0 0 1 0 6H11" />
+      <path d="M14.8 4l2 2.6-2 2.4" />
+      <path d="M16 17.4H7.6a3 3 0 0 1 0-6H13" />
+      <path d="M9.2 20l-2-2.6 2-2.4" />
+    </g>
+  ),
+  'ico-cross': (
+    <g>
+      <path d="M12 5.4v13.2M5.4 12h13.2" />
+    </g>
+  ),
   fallback: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -345,6 +400,18 @@ export const NAV_TONES: Record<string, string> = {
   'nav-task': '#8fa9d8',
   'nav-ai': '#ff8ab5',
   'nav-shop': '#f7c35c',
+}
+
+/** 操作图标色调（与 NAV_TONES 同族语汇；默认跟随文本色） */
+export const ICO_TONES: Record<string, string> = {
+  'ico-home': '#ffd76a',
+  'ico-lock': '#ff8373',
+  'ico-clock': '#ffe08a',
+  'ico-loop': '#6fe3f0',
+  'ico-flag': '#ffca58',
+  'ico-scan': '#b78bff',
+  'ico-swap': '#7de3a8',
+  'ico-cross': '#ff8373',
 }
 
 /** 渲染一个科幻线性图标 */

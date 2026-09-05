@@ -29,7 +29,7 @@ import { BattleScreen } from './panels/BattleScreen'
 import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
-import { Glyph, NAV_TONES } from './ui/Glyphs'
+import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例）；icon = Glyphs 字形名 */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -438,7 +438,7 @@ export function App({ engine }: { engine: GameEngine }) {
                     if (!r.ok) showToast(r.error ?? '无法应战', true)
                   }}
                 >
-                  ⚔ 迎战
+                  <span className="app-ico"><Glyph name="nav-bounty" size={14} color={NAV_TONES["nav-bounty"]} /></span>迎战
                 </button>
                 <button
                   className="app-btn is-small"
@@ -448,7 +448,7 @@ export function App({ engine }: { engine: GameEngine }) {
                     if (!r.ok) showToast(r.error ?? '无法脱离', true)
                   }}
                 >
-                  » 快速脱离
+                  <span className="app-ico"><Glyph name="ico-swap" size={14} color={ICO_TONES["ico-swap"]} /></span>快速脱离
                 </button>
               </>
             )}
