@@ -625,7 +625,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     expect(resOf('tun-ar', 'armor', (s) => (s.skills.trained['shield-tuning'] = 5), 'armor')).toBeCloseTo(0.4, 10)
   })
 
-  it('无人机整备学：满级放飞 CPU −40%（cpu 12、单架 5 → 放飞 2 → 4 架）', () => {
+  it('无人机整备学：满级无人机装填 ×0.8（2200 → 1760）；放飞 CPU 判定不受技能影响', () => {
     const droneDef: ItemDef = {
       id: 'd-srv',
       name: '无人机S',
@@ -637,8 +637,22 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
       damageType: 'kinetic',
       cpuUse: 5,
     }
-    const launched = (extra: (s: GameState) => void): number => {
+    const entry = (extra: (s: GameState) => void): { reloadMs: number } => {
       const state = createInitialState({ nowWallMs: 0, seed: 56 })
+      const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 150 })] })
+      state.fleet[state.shipId].cargo['d-srv'] = 3
+      extra(state)
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      const w = spec.weapons.find((x) => x.label === droneDef.name)!
+      return { reloadMs: w.reloadMs }
+    }
+    // 装填折减：满级 ×0.8（与武器装填技术同口径：每级 −4%，至少保留 60%）
+    expect(entry(() => undefined).reloadMs).toBe(2200)
+    expect(entry((s) => (s.skills.trained['drone-servicing'] = 5)).reloadMs).toBe(1760)
+    // CPU 判定不被技能放宽（CPU = 装配 + 放飞共用静态预算，技能不折减放飞成本）：
+    // cpu 12、单架 cpuUse 5 → 无论技能等级都只放飞 2 架
+    const launched = (extra: (s: GameState) => void): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 57 })
       const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 12 })] })
       state.fleet[state.shipId].cargo['d-srv'] = 4
       extra(state)
@@ -646,7 +660,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
       return spec.weapons.filter((w) => w.label === droneDef.name).length
     }
     expect(launched(() => undefined)).toBe(2)
-    expect(launched((s) => (s.skills.trained['drone-servicing'] = 5))).toBe(4)
+    expect(launched((s) => (s.skills.trained['drone-servicing'] = 5))).toBe(2)
   })
 
   it('武装舰操作：仅 armed 族满级全武器单发 ×1.15（基础舰炮也吃）；其他族不受影响', () => {

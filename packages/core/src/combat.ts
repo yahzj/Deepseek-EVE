@@ -369,9 +369,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   }
   let bayUsed = 0
   let cpuLeft = (ship.cpu ?? 0) - fittedCpuUsed(fitted, ctx)
-  // 批次五：无人机整备学（drone-servicing）——放飞占用 CPU −8%/级（只降放飞成本；装配位/船 CPU 约束不变），
-  // 下限 60%（与装填训练同级收口风格一致）
-  const droneCpuMul = Math.max(0.6, 1 - 0.08 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0))
+  // 批次五更正（船长 2026-09-05）：带宽已并入 CPU——CPU 是全船静态载荷约束（装配 + 放飞共用同一池，
+  // 无人机卡面 cpuUse 即原带宽占用），技能不折减放飞 CPU；装载循环判定维持原语义。
   if (bayLimit > 0 && cpuLeft > 0) {
     const stock: Array<{ def: NonNullable<ReturnType<SimContext['items']['get']>>; units: number }> = []
     for (const [id, units] of Object.entries(cargoItemsOf(state))) {
@@ -383,13 +382,14 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       if (def?.kind === 'drone' && units > 0) stock.push({ def, units })
     }
     stock.sort((a, b) => (b.def.dmg ?? 0) / Math.max(1, b.def.cpuUse ?? 1) - (a.def.dmg ?? 0) / Math.max(1, a.def.cpuUse ?? 1))
+    // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——装填 2200ms 基准、
+    // 每级 −4%、至少保留 60%（与武器装填技术同口径；武器装填技术不含无人机，两者独立乘算）
+    const droneReload = Math.round(2200 * Math.max(0.6, 1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
     outer: for (const { def, units } of stock) {
-      // 单架实际放飞成本（整备学折减后；四舍五入到整数 CPU）
-      const droneCpuAfter = Math.round((def.cpuUse ?? 0) * droneCpuMul)
       for (let i = 0; i < units; i++) {
-        if (bayUsed + def.unitM3 > bayLimit || cpuLeft - droneCpuAfter < 0) break outer
+        if (bayUsed + def.unitM3 > bayLimit || cpuLeft - (def.cpuUse ?? 0) < 0) break outer
         bayUsed += def.unitM3
-        cpuLeft -= droneCpuAfter
+        cpuLeft -= def.cpuUse ?? 0
         weapons.push({
           label: def.name,
           kind: 'fixed',
@@ -400,7 +400,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
           minRangeM: 200,
           hitRate: 0.6,
           falloff: 0.35,
-          reloadMs: 2200,
+          reloadMs: droneReload,
         })
       }
     }
