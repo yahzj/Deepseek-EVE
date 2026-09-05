@@ -731,8 +731,14 @@ export interface AnomalyDef {
   escorts?: number
   /** 敌方伤害类型权重（缺省三系均分） */
   dmgMix?: Partial<Record<DamageType, number>>
-  /** 敌方单位速度 m/s（缺省用 battle.foeSpeedBaseMps 按体积修正） */
+  /** 敌方单位速度 m/s（缺省按虚拟装配模板：参考船速 × m_base × tactic 系数） */
   foeSpeedMps?: number
+  /**
+   * V18B 近盲带伤害比例（2026-09-05 船长拍板）：玩家进入敌近盲带（dist < minRange）时
+   * 敌**不停火**，伤害 × 本值——与玩家（近盲带内完全打不了）区分。0~1，缺省 0.3
+   * （现有怪物全部按 0.3；未来单卡可覆盖，如更怕贴脸的给 0.1）。
+   */
+  blindDmgMul?: number
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean

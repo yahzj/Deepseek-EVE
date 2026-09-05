@@ -714,3 +714,63 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     expect(ar5.s).toBeCloseTo(ind5.s, 10) // 护盾层不受重装舰操作影响
   })
 })
+
+describe('V18B 敌人近盲带（2026-09-05 船长拍板：与玩家区分——近盲带内不停火、伤害 ×blindDmgMul 打折）', () => {
+  /**
+   * 同种子双跑对照：soft = 不配 blindDmgMul（走引擎默认 0.3）、full = 显式 1（全伤）。
+   * 场景：超慢风筝怪（foeSpeedMps 30，敌期望 8000m）× 高盾沙猫（我方期望 200m、
+   * 151m/s ≫ 敌 20m/s）→ 距离从 800m 被压向 200m 收敛、全程 < 敌 minRange（threat45
+   * kite ≈1737m），即整场都在近盲带内——任何跑出带外的全伤弹都会破坏下方比例断言。
+   */
+  function blindRun(seed: number, blindDmgMul?: number) {
+    const ano = anomaly('ano-kite-blind', 'galaxy-hub', { threat: 45, tactic: 'kite' })
+    const def: typeof ano = blindDmgMul === undefined ? { ...ano, foeSpeedMps: 30 } : { ...ano, foeSpeedMps: 30, blindDmgMul }
+    const state = createInitialState({ nowWallMs: 0, seed })
+    const ctx = makeTestCtx({
+      ships: [ship('sandcat', { shieldHp: 50_000, armorHp: 5_000, hullHp: 5_000, evasion: 0 })],
+      anomalies: [def],
+    })
+    const bal = ctx.balance.battle
+    const me = createPlayerSpec(state, ctx, state.shipId)!
+    const foes = createFoeSpecs(def, bal)
+    const w = foes[0]!.weapons[0]!
+    const b = createBattleState(me, foes, 0, bal.minDistanceM)
+    b.distanceM = 800
+    const hp0 = me.hp.s + me.hp.a + me.hp.h
+    state.gameMs = 40_000 // 40s：敌每 4s 一轮 → ~10 发全落在近盲带内
+    advanceBattleFor(state, ctx, b, state.shipId, def.id)
+    const hp1 = b.units['player']!.hp
+    return {
+      shots: b.stats.foeShots,
+      hits: b.stats.foeHits,
+      loss: hp0 - (hp1.s + hp1.a + hp1.h),
+      distEnd: b.distanceM,
+      blindDmgMul: w.blindDmgMul ?? 1,
+      minRangeM: w.minRangeM,
+      shotDmg: w.shotDmg ?? 0,
+    }
+  }
+
+  it('近盲带内敌照常开火：伤害精确 ×0.3（对照 ×1）；且全程未开出带外', () => {
+    const soft = blindRun(91)
+    const full = blindRun(91, 1)
+    expect(soft.blindDmgMul).toBe(0.3) // 未配 blindDmgMul → 引擎默认 0.3
+    expect(full.blindDmgMul).toBe(1)
+    expect(soft.minRangeM).toBeGreaterThan(0)
+    // 旧行为（近盲带内停火）会得到 foeShots=0——这正是本回归要钉住的拍板
+    expect(soft.shots).toBeGreaterThan(0)
+    expect(full.shots).toBeGreaterThan(0)
+    expect(soft.shots).toBe(full.shots) // 同种子同节奏：唯一差异只能是单发伤害
+    expect(soft.hits).toBe(full.hits)
+    expect(soft.hits).toBeGreaterThan(0)
+    // 距离被压死在我方期望点且未逃出敌近盲带：所有敌弹都应按 0.3 打折
+    expect(soft.distEnd).toBeLessThan(soft.minRangeM)
+    expect(full.distEnd).toBeLessThan(full.minRangeM)
+    // 单发 = round(shotDmg×0.3) → 总损失比 ≈ 0.3015（round(262×0.3)/262；命中数两跑相同）
+    expect(soft.loss).toBeGreaterThan(0)
+    expect(full.loss).toBeGreaterThan(soft.loss)
+    const ratio = soft.loss / full.loss
+    expect(ratio).toBeGreaterThan(0.25)
+    expect(ratio).toBeLessThan(0.35)
+  })
+})

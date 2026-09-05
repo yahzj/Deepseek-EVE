@@ -47,6 +47,9 @@ export interface WeaponSpec {
   /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1；
    * beam 必中不携带——命中件对激光无效） */
   eqHitMul?: number
+  /** V18B 敌方近盲带伤害比例（2026-09-05）：敌在近盲带内（dist < minRange）仍开火，
+   * 伤害 × 本值；玩家武器不受影响（近盲带内不开火） */
+  blindDmgMul?: number
   maxRangeM: number
   minRangeM: number
   hitRate: number
@@ -541,6 +544,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
           shotDmg,
           maxRangeM: rangeMax,
           minRangeM: rangeMin,
+          // V18B：敌人近盲带伤害比例（船长 2026-09-05：与玩家区分——近盲带内不停火、伤害打折）
+          blindDmgMul: anomaly.blindDmgMul ?? 0.3,
           hitRate: bal.foeHitRate,
           falloff: bal.foeFalloff,
           reloadMs: bal.foeReloadMs,
@@ -1035,16 +1040,21 @@ function stepBattle(
       continue
     }
     rt.weapons[0] = w.reloadMs
-    if (!inRange(b.distanceM, w) || !meRt) continue
+    // V18B（2026-09-05 船长拍板）：敌人近盲带（dist < minRange）内**不停火**——放行到
+    // maxRange 内即可开火；伤害按 blindDmgMul 打折（玩家贴脸钻近盲不再零风险）。
+    // 玩家武器无此待遇（近盲带内仍不开火）——双方在近盲带上行为区分。
+    if (b.distanceM > w.maxRangeM || !meRt) continue
     b.stats.foeShots += 1
     const fType = w.fixedType ?? 'kinetic'
+    const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
+    const shotDmg = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
     // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
     const foeHit = hitChance(w, f, me, b.distanceM, bal)
     const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
     const fHit = nextRandom(state.rng) < foeHitEff
     if (fHit) {
       b.stats.foeHits += 1
-      const r = applyDamage(meRt.hp, me.resists, w.shotDmg ?? 0, fType)
+      const r = applyDamage(meRt.hp, me.resists, shotDmg, fType)
       meRt.hp = r.hp
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: fHit })
@@ -1166,14 +1176,16 @@ function winPreviewRaw(
     const mult = effectiveDmgMultAgainst(foes, ammoType ?? w.fixedType ?? 'kinetic')
     meDps += (shot * power * mult * hit * 1000) / w.reloadMs
   }
-  // 敌方 DPS（打我，含类型克制与层抗）
+  // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——与实时引擎同源）
   let foeDps = 0
   for (const f of foes) {
     const w = f.weapons[0]!
     const hit = hitChance(w, f, me, steady, bal)
     if (hit <= 0) continue
+    const blindMul = steady < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
+    const shot = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
     const mult = avgLayerMult(meHpTotal, me, w.fixedType ?? 'kinetic')
-    foeDps += ((w.shotDmg ?? 0) * mult * hit * 1000) / w.reloadMs
+    foeDps += (shot * mult * hit * 1000) / w.reloadMs
   }
 
   const ttrMe = foeDps > 0 ? meHpTotal / Math.max(1e-9, foeDps * foeMul) : Infinity // 我被击毁所需秒数
