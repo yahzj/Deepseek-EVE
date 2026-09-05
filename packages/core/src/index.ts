@@ -459,6 +459,8 @@ export {
   TUTORIAL_BATTLE_EVASION_BONUS,
   TASK_ORE_DELIVER,
   TASK_TRIAL_WIN,
+  TASK_FIND_HUMANS,
+  publishFindHumans,
   tutorialActive,
   tutorialAccelWait,
   isTutorialBattle,

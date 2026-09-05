@@ -45,6 +45,15 @@ export const TUTORIAL_BATTLE_EVASION_BONUS = 0.5
 /** 重要任务状态键（importantTasks） */
 export const TASK_ORE_DELIVER = 'tut-ore-deliver'
 export const TASK_TRIAL_WIN = 'tut-trial-win'
+/** 贯穿任务「寻找人类」：教程完成时发布,永久无法完成（船长 2026-09-05：正常发布,不告诉做法） */
+export const TASK_FIND_HUMANS = 'find-humans'
+
+/** 发布「寻找人类」（幂等）：教程完成(含跳过)时调用 */
+export function publishFindHumans(state: GameState): void {
+  if (state.importantTasks[TASK_FIND_HUMANS]) return
+  state.importantTasks[TASK_FIND_HUMANS] = { done: false }
+  addLog(state, 'info', '◆ 重要任务发布「寻找人类」：完成方法未知——先在这座城市活下去,再慢慢打听。')
+}
 
 const isTaskDone = (state: GameState, key: string): boolean => state.importantTasks[key]?.done === true
 
@@ -204,10 +213,11 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
   void ctx
 }
 
-/** 渲染层：收尾演出播完 → 教程完成（全解锁） */
+/** 渲染层：收尾演出播完 → 教程完成（全解锁）并发布贯穿任务「寻找人类」 */
 export function finishTutorial(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_EPILOGUE) return { ok: false, error: '收尾演出尚未开始。' }
   state.onboarding.step = ONB_DONE
+  publishFindHumans(state)
   addLog(state, 'system', '序章·苏醒 完成。你，一艘不该存在的旧时代舰船 AI，开始了新的航程。')
   return { ok: true }
 }
@@ -242,6 +252,7 @@ export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
     fal.durability = 1
   }
   state.onboarding.step = ONB_DONE
+  publishFindHumans(state)
   addLog(state, 'system', '教程已跳过：教程奖励已全额结算，隼枭已修复完好。祝航程顺利。')
   return { ok: true }
 }
