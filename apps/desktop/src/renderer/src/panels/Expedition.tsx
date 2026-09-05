@@ -35,6 +35,7 @@ import {
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
+import { MONEY_GLYPH } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, ProfileChip } from '../ui/shipInfo'
 
@@ -1139,6 +1140,16 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const chance = Math.round(pWin)
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const totalMs = calcExpeditionDurationMs(state, engine.ctx, anomaly)
+  // 奖励/小时（试点 2026-09-05）：单趟往返口径 = 去程 + 交火 + 返航；
+  // 按当前驾驶船跃迁与航行技能换算；奖励含 bountyRewardFactor（与奖金行一致）。
+  const outMs = Math.max(0, totalMs - anomaly.combatSeconds * 1000)
+  const roundTripMs = totalMs + outMs
+  const grossIsk = anomaly.rewardIsk * bountyRewardFactor(state)
+  const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
+  const iskPerHourTxt =
+    iskPerHour >= 1000
+      ? `${(iskPerHour / 1000).toLocaleString('zh-CN', { maximumFractionDigits: 1 })}k`
+      : Math.round(iskPerHour).toLocaleString('zh-CN')
   const standing = standingOf(state, DSI_FACTION_ID)
   const reqMet = standing >= anomaly.standingReq
   const unexplored = galaxy ? !isExplored(state, galaxy.id) : false // V13：星系未探索（悬赏情报例外可见）
@@ -1263,6 +1274,12 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         奖金 {Math.round(anomaly.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
         {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title="该悬赏已首胜：重复完成不再获得声望，可转向新目标提升协会声望">（已首胜）</span> : null}
+      </div>
+      <div
+        className="app-ano-econ"
+        title={`估算奖励/小时（单趟往返 = 去程+交火+返航，按当前驾驶船跃迁与航行技能）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
+      >
+        {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（单趟往返）
       </div>
       <div className="app-ano-bottom">
         <span className="app-ano-desc">

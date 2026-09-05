@@ -730,6 +730,13 @@ body {
   color: var(--wui-gold);
   margin-top: 1px;
 }
+/* 奖励/小时（试点 2026-09-05：单趟往返口径，与矿带卡效率行同风格金色） */
+.app-ano-econ {
+  font-size: 11px;
+  color: var(--wui-gold);
+  margin-top: 2px;
+  opacity: 0.92;
+}
 .app-win-高 { color: var(--wui-accent); }
 .app-win-中 { color: var(--wui-amber); }
 .app-win-低 { color: var(--wui-red); }
