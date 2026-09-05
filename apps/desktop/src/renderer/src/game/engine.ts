@@ -85,6 +85,9 @@ import {
   unloadCargoToWarehouse,
   beginTutorialAfterAwaken,
   skipTutorial,
+  finishTutorial,
+  deliverTutorialOre,
+  tutorialAccelWait,
   ONB_AWAKEN,
 } from '@whale/core'
 import type {
@@ -365,7 +368,9 @@ export class GameEngine {
       this.notify()
       return
     }
-    this.pendingMs += dt
+    // 序章·苏醒：教学等待段（采集/返航途中）时间泵 ×6（船长 2026-09-05 照准）；交火期不加速
+    const pumpDt = tutorialAccelWait(this.state) ? dt * 6 : dt
+    this.pendingMs += pumpDt
     // 去程将在这片余额内到港：推进到“越过到港边界 1ms”，确保核心在本片内触发开战（引擎在
     // 跨过 finishAt 的推进中才执行开战——精确停在边界会留到下一片，且下一片 toArrival=0 使
     // 守卫失效、被整秒泵吞掉，复现暗推 ~1s，探针 ageMs=1108），随后立即通知战场以 age≈0 弹出
@@ -1141,6 +1146,26 @@ export class GameEngine {
   /** 序章·苏醒：跳过（含演出阶段）——全额结算奖励 + 隼枭修满，教程结束 */
   prologueSkip(): CommandResult {
     const result = skipTutorial(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 序章·苏醒：收尾演出播完 → 教程完成（step 99，全解锁） */
+  prologueFinishShow(): CommandResult {
+    const result = finishTutorial(this.state)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 重要任务①「补给协议·首批矿物」：交付富凡晶石（仓库扣取）→ 4,000 ISK + 基础 AI 核心 */
+  deliverTutorialOreAt(): CommandResult {
+    const result = deliverTutorialOre(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

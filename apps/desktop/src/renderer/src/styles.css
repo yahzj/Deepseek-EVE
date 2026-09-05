@@ -7049,3 +7049,30 @@ body {
 @keyframes app-pro-slit { to { transform: scaleX(1); } }
 .app-pro-iris { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,1) 0%, rgba(235,255,246,.97) 12%, rgba(150,240,195,.85) 30%, rgba(40,110,80,.6) 52%, rgba(0,0,0,.96) 74%); animation: app-pro-iris .66s ease-out .4s forwards; }
 @keyframes app-pro-iris { 0% { opacity: 0; transform: scale(.18); } 55% { opacity: 1; } 100% { opacity: 1; transform: scale(1.9); } }
+/* 鈹€鈹€ 搴忕珷路鑻忛啋 鏁欑▼寮曞锛堥樁娈?4锛?026-09-05锛?鈹€鈹€ */
+.app-nav-item:disabled { opacity: .38; cursor: not-allowed; }
+.app-tut-card { position: fixed; right: 14px; bottom: 14px; z-index: 80; width: min(360px, 84vw); background: linear-gradient(180deg, rgba(14,24,34,.96), rgba(8,14,20,.98)); border: 1px solid #2e8a63; border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.6); }
+.app-tut-tab { position: fixed; right: 14px; bottom: 14px; z-index: 80; font-size: 12px; color: #8fe8b6; background: rgba(10,20,15,.92); border: 1px solid #2e8a63; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.app-tut-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app-tut-title { color: #9feec0; font-weight: 800; font-size: 13px; }
+.app-tut-min { cursor: pointer; color: #5f8a72; font-size: 14px; padding: 0 6px; }
+.app-tut-lines { margin: 8px 0 10px; }
+.app-tut-line { font-size: 12px; color: #b9d8c6; line-height: 1.75; }
+.app-tut-actions { display: flex; gap: 8px; align-items: center; }
+/* 鏀跺熬婕斿嚭锛堟楠?7锛?*/
+.app-pro-epi { position: fixed; inset: 0; z-index: 95; background: radial-gradient(ellipse at 50% 30%, rgba(12,22,18,.98), rgba(2,6,8,.99)); color: #cfe3d8; display: flex; align-items: center; justify-content: center; overflow: auto; }
+.app-pro-epi-inner { width: min(620px, 88vw); display: flex; flex-direction: column; gap: 14px; padding: 26px 22px; }
+.app-pro-epi-title { color: #ffd08a; font-weight: 800; font-size: 16px; letter-spacing: 2px; text-align: center; }
+.app-pro-epi-line { font-size: 13.5px; line-height: 1.9; color: #cfe6d8; animation: app-pro-epifade .5s ease-out; }
+@keyframes app-pro-epifade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.app-pro-epi-quest { font-size: 12.5px; color: #ffcf8a; border: 1px dashed #7a5a2a; background: rgba(90,60,20,.18); border-radius: 8px; padding: 8px 12px; }
+
+
+/* ── 任务中心 · 重要任务（序章）卡（阶段 5，2026-09-05） ── */
+.app-imp-quests { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.app-imp-card { border: 1px solid #2e8a63; background: linear-gradient(180deg, rgba(16,34,26,.9), rgba(9,18,14,.95)); border-radius: 8px; padding: 10px 12px; }
+.app-imp-card.is-done { border-color: #6a8a76; background: rgba(20,30,24,.6); }
+.app-imp-card-title { color: #8feec0; font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.app-imp-card.is-done .app-imp-card-title { color: #9db8a8; }
+.app-imp-card-body { font-size: 12px; color: #b9d8c6; line-height: 1.7; margin-bottom: 8px; }
+.app-imp-card-body.is-done-txt { color: #7f9a8a; margin-bottom: 0; }
