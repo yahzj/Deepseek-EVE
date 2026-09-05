@@ -240,6 +240,10 @@ export interface MarketBalance {
   shockPerTrigger: number
   /** 冲击衰减半程（毫秒） */
   shockDecayHalfMs: number
+  /** 慢速均值回归噪声：均值回归半程（毫秒）——让常驻行情即使无人交易也温和起伏 */
+  noiseHalfLifeMs: number
+  /** 慢速均值回归噪声：每窗口随机游走增量半幅（价格比例；叠加冲击/压力后形成真实曲线） */
+  noiseStep: number
   /** 价格输出下限/上限（相对 basePrice），防归零/溢出 */
   minPriceRatio: number
   maxPriceRatio: number

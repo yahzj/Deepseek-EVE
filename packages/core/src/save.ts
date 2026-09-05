@@ -1175,6 +1175,7 @@ function normalizeState(raw: unknown): GameState {
       shock: num(p.shock, 0),
       netVol: num(p.netVol, 0),
       lastHistoryGameMs: Math.max(0, Math.floor(num(p.lastHistoryGameMs))),
+      noise: num(p.noise, 0),
     }
   }
   const buyBooks: Record<string, unknown> = {}

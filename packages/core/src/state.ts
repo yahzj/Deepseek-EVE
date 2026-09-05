@@ -342,6 +342,8 @@ export interface MarketPoolState {
   q: number
   /** 冲击动量（价格偏移比例，有符号、无叠加上限；随时间衰减） */
   shock: number
+  /** 慢速均值回归噪声（价格偏移比例，缓慢随机游走并向 0 回归；让常驻行情即使无人交易也温和起伏） */
+  noise: number
   /** 窗口内净成交量（正 = 玩家净买入；每个窗口结算后归零） */
   netVol: number
   /** 最近一次历史记录时刻（价格小史采样） */

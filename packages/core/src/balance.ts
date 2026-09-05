@@ -95,6 +95,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     shockTriggerRatio: 2, // 窗口净成交量 > 参考量 ×2 时触发冲击
     shockPerTrigger: 0.05, // 每次触发 +5% 方向偏移（无上限叠加，见"冲击动量"）
     shockDecayHalfMs: 6 * 60_000, // 冲击衰减半程 6 分钟
+    noiseHalfLifeMs: 4 * 3_600_000, // 慢速噪声均值回归半程 4 小时（让常驻行情即使无人交易也温和起伏）
+    noiseStep: 0.04, // 每窗口随机游走增量半幅（约 4%/分钟尺度，稳态 ±15% 左右；叠加冲击/压力后形成真实曲线）
     minPriceRatio: 0.2, // 价格输出下限（相对基准），防归零
     maxPriceRatio: 5, // 价格输出上限（相对基准），防溢出
     digestPerWindow: 0.15, // 内部消化队列每窗口消化 15%（冲突订单随时间推进消化）

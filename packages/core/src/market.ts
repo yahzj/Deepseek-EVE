@@ -70,9 +70,11 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
   for (const def of ctx.marketGoods.values()) {
     const key = def.key
     if (!(key in mk.pools)) {
-      mk.pools[key] = { q: def.poolTarget ?? 0, shock: 0, netVol: 0, lastHistoryGameMs: 0 }
+      mk.pools[key] = { q: def.poolTarget ?? 0, shock: 0, netVol: 0, lastHistoryGameMs: 0, noise: 0 }
       addedKeys.push(key)
     }
+    // 旧档（无 noise 字段）规范化：补 0，避免窗口推进读到 undefined
+    mk.pools[key]!.noise = mk.pools[key]!.noise ?? 0
     mk.npcBuy[key] ??= []
     mk.npcSell[key] ??= []
     mk.digest[key] ??= { qty: 0, price: 0, perWindow: 0 }
@@ -123,7 +125,7 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
 
 /* ═══════════ 价格 ═══════════ */
 
-/** 均衡价 L：池商品 = base×库存压力×(1+冲击)；单件 = base×(1+冲击)。输出按比例钳制防失控 */
+/** 均衡价 L：池商品 = base×库存压力×(1+冲击)·(1+慢速噪声)；单件 = base×(1+冲击)·(1+噪声)。输出按比例钳制防失控 */
 function priceLevel(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ: number): number {
   const bal = ctx.balance.market
   const pool = state.market.pools[def.key]!
@@ -132,7 +134,9 @@ function priceLevel(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ
     pressure = 1 - 0.5 * ((poolQ - def.poolTarget) / def.poolTarget)
     pressure = Math.max(0.4, Math.min(1.6, pressure))
   }
-  const level = def.basePrice * pressure * (1 + pool.shock)
+  // 慢速均值回归噪声：独立于压力/冲击，让常驻行情即使无人交易也温和起伏（2026-09-05 船长感知"太稳定"）
+  const noise = Math.max(-0.4, Math.min(0.4, pool.noise ?? 0))
+  const level = def.basePrice * pressure * (1 + pool.shock) * (1 + noise)
   return Math.round(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, level)))
 }
 
@@ -283,6 +287,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
   const nextNow = mk.lastTickGameMs + dt
   const regenK = 1 - Math.pow(0.5, dt / bal.poolRegenHalfMs)
   const decayK = 1 - Math.pow(0.5, dt / bal.shockDecayHalfMs)
+  const noiseK = 1 - Math.pow(0.5, dt / bal.noiseHalfLifeMs)
 
   for (const def of ctx.marketGoods.values()) {
     const key = def.key
@@ -297,6 +302,8 @@ function processWindow(state: GameState, ctx: SimContext): void {
     // 池向目标回归（站内吸收/补给）+ 冲击衰减
     if (def.poolTarget && def.poolTarget > 0) pool.q += (def.poolTarget - pool.q) * regenK
     pool.shock *= 1 - decayK
+    // 慢速均值回归噪声：随机游走 + 向 0 回报，钳制 ±0.4（船长 2026-09-05：常驻行情"太稳定"，加真实起伏）
+    pool.noise = Math.max(-0.4, Math.min(0.4, pool.noise * (1 - noiseK) + (nextRandom(state.rng) - 0.5) * bal.noiseStep))
 
     // 内部消化（冲突大单随时间推进消化）
     const dig = mk.digest[key]!
@@ -313,12 +320,11 @@ function processWindow(state: GameState, ctx: SimContext): void {
   for (const def of ctx.marketGoods.values()) {
     const key = def.key
     const pool = mk.pools[key]!
-    const best = bestBuy(mk.npcBuy[key] ?? [])
-    if (best !== undefined) {
-      const hist = mk.priceHistory[key]!
-      hist.push(best)
-      if (hist.length > 24) hist.shift()
-    }
+    // 记当前均衡价 L（含慢速噪声/压力/冲击）。不用 bestBuy：其是"20 窗移动最大值"，
+    // 旧高单会在下行时压制，掩盖噪声波动（尤其便宜货整数取整后钉死）——L 每窗重算，更能即时反映行情趋势。
+    const hist = mk.priceHistory[key]!
+    hist.push(priceLevel(state, ctx, def, pool.q))
+    if (hist.length > 24) hist.shift()
     const ref = referenceVol(def, bal.referenceVolRatio)
     if (ref > 0 && Math.abs(pool.netVol) > ref * bal.shockTriggerRatio) {
       pool.shock += Math.sign(pool.netVol) * bal.shockPerTrigger // 无叠加上限（用户确认）
