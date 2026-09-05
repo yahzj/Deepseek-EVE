@@ -13,7 +13,7 @@
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { addLog } from './state'
+import { addLog, DEFAULT_PILOT_NAME } from './state'
 import { addWare } from './inventory'
 import { isAtHome } from './location'
 
@@ -193,11 +193,14 @@ export function finishTutorial(state: GameState): CommandResult {
   return { ok: true }
 }
 
-/** 跳过教程：全额结算（发齐未领奖励 + 隼枭修至完好），幂等；战斗进行中拒绝 */
+/** 跳过教程：全额结算（发齐未领奖励 + 隼枭修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */
 export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const s = state.onboarding.step
-  if (s < ONB_MINE || s >= ONB_DONE) return { ok: false, error: '教程尚未开始或已完成。' }
+  const inProgress = s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)
+  if (!inProgress) return { ok: false, error: '教程尚未开始或已完成。' }
   if (state.expedition.battle) return { ok: false, error: '交火中不能跳过教程——战斗结束回港后再试。' }
+  // 演出阶段跳过：呼号落定为默认 PRTS（未及起名）
+  if (s === ONB_AWAKEN) state.character.name = state.character.name === DEFAULT_PILOT_NAME ? 'PRTS' : state.character.name
   // 奖励去重：任务 ① 未领则补发
   if (!isTaskDone(state, TASK_ORE_DELIVER)) {
     state.wallet.isk += TUTORIAL_REWARD_ISK

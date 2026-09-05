@@ -3470,3 +3470,37 @@ body {
 .app-items-head .app-tab { flex: 0 1 150px; }
 .app-items-head-note { padding-bottom: 6px; font-size: 12px; }
 
+
+/* ── 序章·苏醒（2026-09-05）：新档开场演出（黑屏/醒来/自检/起名） ── */
+.app-prologue { position: fixed; inset: 0; z-index: 90; background: #000; color: #cfe3d8; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.app-prologue-inner { width: min(680px, 88vw); max-height: 88vh; overflow: auto; padding: 24px; }
+.app-pro-wake { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+.app-pro-dim { color: #5f7a6c; font-size: 12px; letter-spacing: 2px; }
+.app-pro-wake-btn { font-size: 22px; font-weight: 800; font-family: var(--wui-mono); color: #d8ffe8; background: rgba(20,60,45,.25); border: 1px solid #3f8a68; border-radius: 10px; padding: 16px 44px; cursor: pointer; animation: app-pro-breathe 2.4s ease-in-out infinite; }
+.app-pro-wake-btn:hover { background: rgba(40,110,80,.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
+@keyframes app-pro-breathe { 0%,100% { opacity: .55; transform: scale(.99); } 50% { opacity: 1; transform: scale(1.02); } }
+.app-pro-term { font-family: var(--wui-mono); font-size: 13px; line-height: 1.9; }
+.app-pro-term-title { color: #9fd8b6; margin-bottom: 10px; font-weight: 700; letter-spacing: 1px; }
+.app-pro-line { display: flex; gap: 8px; white-space: pre-wrap; }
+.app-pro-line.is-ok .app-pro-mark { color: #7fe0a0; }
+.app-pro-line.is-warn .app-pro-mark { color: #ffcf6e; }
+.app-pro-line.is-fail .app-pro-mark { color: #ff7f6e; }
+.app-pro-mod { color: #bfe6cd; min-width: 110px; }
+.app-pro-dots { color: #4c6a5a; }
+.app-pro-text { color: #9db8a8; flex: 1; }
+.app-pro-cursor { color: #7fe0a0; animation: app-pro-blink .8s steps(1) infinite; }
+@keyframes app-pro-blink { 50% { opacity: 0; } }
+.app-pro-hint { color: #46604f; font-size: 11px; margin-top: 12px; text-align: center; }
+.app-pro-diag { border: 1px solid #5a4a3a; background: rgba(60,26,10,.25); border-radius: 10px; padding: 18px 20px; }
+.app-pro-diag-title { color: #ffb37a; font-weight: 800; font-size: 15px; margin-bottom: 12px; }
+.app-pro-diag-row { display: flex; gap: 10px; line-height: 1.8; font-size: 13px; }
+.app-pro-diag-k { color: #c9a68a; min-width: 90px; }
+.app-pro-diag-v { color: #ffd9b0; }
+.app-pro-frag { color: #8a7a66; font-size: 12px; border-top: 1px dashed #5a4a3a; margin: 12px 0; padding-top: 10px; font-style: italic; }
+.app-pro-name { display: flex; flex-direction: column; gap: 12px; }
+.app-pro-sub { color: #9db8a8; font-size: 13px; }
+.app-pro-input { font-size: 20px; padding: 10px 14px; width: min(320px, 80%); font-family: var(--wui-mono); letter-spacing: 3px; }
+.app-pro-name-default { color: #5f7a6c; font-size: 12px; }
+.app-pro-err { color: #ff7f6e; font-size: 13px; margin-top: 8px; }
+.app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: 12px; color: #9db8a8; background: rgba(255,255,255,.04); border: 1px solid #3a4a40; border-radius: 5px; padding: 5px 12px; cursor: pointer; }
+.app-pro-skip:hover { color: #d8ffe8; border-color: #6a9a80; }
