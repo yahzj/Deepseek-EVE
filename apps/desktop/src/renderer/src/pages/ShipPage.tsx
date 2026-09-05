@@ -411,9 +411,10 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
   const [shipId, setShipId] = useState('')
   const [coreType, setCoreType] = useState<AiCoreType>('basic')
-  const [mode, setMode] = useState<'mining' | 'expedition'>('mining')
+  const [mode, setMode] = useState<'mining' | 'expedition' | 'salvage'>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
   const [anomalyId, setAnomalyId] = useState('')
+  const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
 
   function handleBuyCore(): void {
     const r = engine.buyBasicCoreAt()
@@ -429,7 +430,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     const r =
       mode === 'mining'
         ? engine.assignAiMiningAt(shipId, coreType, beltId)
-        : engine.assignAiExpeditionAt(shipId, coreType, anomalyId)
+        : mode === 'salvage'
+          ? engine.assignAiSalvageAt(shipId, coreType, salvageGalaxyId)
+          : engine.assignAiExpeditionAt(shipId, coreType, anomalyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
     else onToast('AI 任务已下达。')
   }
@@ -508,8 +511,13 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
-          <select className="app-select" value={mode} onChange={(e) => setMode(e.target.value as 'mining' | 'expedition')}>
+          <select
+            className="app-select"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as 'mining' | 'expedition' | 'salvage')}
+          >
             <option value="mining">采矿任务</option>
+            <option value="salvage">打捞任务</option>
             <option value="expedition">远征任务</option>
           </select>
           {mode === 'mining' ? (
@@ -529,6 +537,17 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   </option>
                 )
               })}
+            </select>
+          ) : mode === 'salvage' ? (
+            <select className="app-select" value={salvageGalaxyId} onChange={(e) => setSalvageGalaxyId(e.target.value)}>
+              <option value="">— 选星系（需已探索且有敌群残骸） —</option>
+              {[...engine.ctx.galaxies.values()]
+                .filter((g) => isExplored(state, g.id) && engine.anomalies.some((a) => a.galaxyId === g.id))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
             </select>
           ) : (
             <select
@@ -556,7 +575,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           <button
             className="app-btn is-primary is-small"
             onClick={handleAssign}
-            disabled={!shipId || (mode === 'expedition' && !anomalyId)}
+            disabled={
+              !shipId ||
+              (mode === 'expedition' && !anomalyId) ||
+              (mode === 'salvage' && !salvageGalaxyId)
+            }
           >
             指派任务
           </button>
@@ -583,6 +606,10 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               const a = engine.ctx.anomalies.get(task.anomalyId)
               const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
               desc = `远征 ${a?.name ?? task.anomalyId} · 剩余约 ${Math.floor(remain / 60_000)} 分钟`
+            } else if (task.kind === 'salvage') {
+              const g = engine.ctx.galaxies.get(task.galaxyId)
+              const phaseLabel = task.phase === 'returning' ? '返航卸货' : task.phase === 'outbound' ? '出航' : '打捞中'
+              desc = `打捞 ${g?.name ?? task.galaxyId} · ${phaseLabel}（本趟约 ${Math.round(task.tripM3 * 10) / 10} m³）`
             } else {
               const g = engine.ctx.galaxies.get(task.galaxyId)
               desc =

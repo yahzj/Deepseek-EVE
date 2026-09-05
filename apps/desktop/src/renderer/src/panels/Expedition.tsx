@@ -28,6 +28,7 @@ import {
   scanStatus,
   shipDisplayName,
   shipRoleLabel,
+  wreckDensityOf,
   shortestTravelMinutes,
   standingOf,
   travelLegMs,
@@ -1115,6 +1116,47 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           </div>
         ))
       })()}
+      {/* ⑤ 残骸打捞（B3：采矿式单趟作业；需高槽打捞器，满仓自动返航卸货后结束） */}
+      <div className="app-bay-title app-ga-sub">
+        🛰 残骸打捞（该星系残骸密度 {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
+      </div>
+      {state.salvaging.active && state.salvaging.galaxyId === galaxy.id ? (
+        <div className="app-ga-row">
+          <span className="app-ga-main">
+            打捞作业中
+            <span className="app-dim app-ga-desc">
+              {state.salvaging.phase === 'outbound'
+                ? '出航中'
+                : state.salvaging.phase === 'returning'
+                  ? '返航卸货中'
+                  : `持续打捞（本趟约 ${Math.round(state.salvaging.tripM3 * 10) / 10} m³）`}
+            </span>
+          </span>
+          <button className="app-btn is-small is-warn" onClick={() => engine.stopSalvageOpNow()}>
+            ■ 停止
+          </button>
+        </div>
+      ) : (
+        <div className="app-ga-row">
+          <span className="app-ga-main">
+            打捞（需高槽打捞器）
+            <span className="app-dim app-ga-desc">
+              残骸回母港用精炼炉「残骸回收」开箱（保底矿物+彩头）；满仓自动返航；低安留意伏击
+            </span>
+          </span>
+          <button
+            className="app-btn is-small is-primary"
+            disabled={state.salvaging.active}
+            title={state.salvaging.active ? '打捞作业进行中（顶部活动栏可停止）' : '开始打捞（采矿式单趟）'}
+            onClick={() => {
+              const r = engine.startSalvageOpAt(galaxy.id)
+              if (!r.ok) onToast(r.error ?? '无法打捞', true)
+            }}
+          >
+            🛰 开始打捞
+          </button>
+        </div>
+      )}
     </div>
   )
 }

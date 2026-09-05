@@ -18,6 +18,7 @@ import {
   assignAiExpedition,
   assignAiStandby,
   assignAiMining,
+  assignAiSalvage,
   buyAtMarket,
   buyBasicAiCore,
   buyShip,
@@ -65,12 +66,14 @@ import {
   startMining,
   startMiningFromExpedition,
   startRefineRun,
+  startSalvageOp,
   startScan,
   startTransitHome,
   stopRefineRun,
   deliverStationResources,
   playDialogue,
   stopMining,
+  stopSalvageOp,
   stopScan,
   setAutoLoopBounty,
   unfitSlot,
@@ -474,6 +477,26 @@ export class GameEngine {
   /** 停止开采（返回是否真的在采） */
   stopMiningNow(): boolean {
     const ok = stopMining(this.state, this.ctx)
+    if (ok) {
+      void this.persist()
+      this.notify()
+    }
+    return ok
+  }
+
+  /** B3：开始打捞作业（采矿式单趟；需高槽打捞器） */
+  startSalvageOpAt(galaxyId: string): CommandResult {
+    const result = startSalvageOp(this.state, galaxyId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** B3：停止打捞作业 */
+  stopSalvageOpNow(): boolean {
+    const ok = stopSalvageOp(this.state, this.ctx)
     if (ok) {
       void this.persist()
       this.notify()
@@ -1011,6 +1034,16 @@ export class GameEngine {
   /** 指派 AI 远征任务 */
   assignAiExpeditionAt(shipId: string, coreType: AiCoreType, anomalyId: string): CommandResult {
     const result = assignAiExpedition(this.state, shipId, coreType, anomalyId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** B3：指派 AI 打捞任务（单趟：出航→打捞→满仓返港卸货→结束） */
+  assignAiSalvageAt(shipId: string, coreType: AiCoreType, galaxyId: string): CommandResult {
+    const result = assignAiSalvage(this.state, shipId, coreType, galaxyId, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()
