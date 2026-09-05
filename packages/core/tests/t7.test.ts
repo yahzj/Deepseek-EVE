@@ -7,6 +7,8 @@ import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { changeShip } from '../src/shipyard'
+import { miningReturnLegMs } from '../src/location'
+import { scaledReturnMs } from '../src/trips'
 import { makeTestCtx, ship } from './helpers'
 
 function world() {
@@ -74,7 +76,8 @@ describe('T7 换船守卫：在途移动不可直接切换驾驶', () => {
     expect(r.ok).toBe(true)
     expect(state.shipId).toBe('sh-falconet')
     expect(state.mining.active).toBe(false)
-    // 旧船进入善后返航账本（本地带：返航基准 120s）
-    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: 120_000, phaseAccMs: 0 })
+    // 旧船进入善后返航账本（本地带：返航基准 120s，按货仓占比缩放——空仓 ≈ 瞬回，船长 2026-09-05）
+    const expLeg = scaledReturnMs(miningReturnLegMs(state, ctx, 'belt-a'), state, ctx, 'sandcat')
+    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg, phaseAccMs: 0 })
   })
 })

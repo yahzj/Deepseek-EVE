@@ -24,6 +24,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom } from './rng'
 import { salvageRoundPull, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
+import { scaledReturnMs } from './trips'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
 export function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
@@ -200,10 +201,13 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       addLog(state, 'warn', '打捞目标星系数据缺失，作业已停止。')
       return
     }
-    // ── 返航阶段（去程并入返航，定稿）；旧档遗留的 outbound 相位按原空船腿推进 ──
+    // ── 返航阶段（去程并入返航；返航腿按货仓占比缩放——空仓快、满仓=原时长，船长 2026-09-05）──
     if (s.phase === 'outbound' || s.phase === 'returning') {
-      // 去程已取消：返航腿 = 满载返航 + 空船去程（总行程时间不变）
-      const leg = s.phase === 'outbound' ? outboundLegMsFor(state, ctx, galaxyId) : legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
+      const outFull = outboundLegMsFor(state, ctx, galaxyId)
+      const leg =
+        s.phase === 'outbound'
+          ? outFull
+          : scaledReturnMs(legMsFor(state, ctx, galaxyId) + outFull, state, ctx, state.shipId)
       const need = leg - s.phaseAccMs
       if (remaining < need) {
         s.phaseAccMs += remaining

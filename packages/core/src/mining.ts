@@ -29,6 +29,7 @@ import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
 import { ONB_MINE, TUTORIAL_DELIVER_N } from './onboarding'
+import { scaledReturnMs } from './trips'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
 export interface MiningParams {
@@ -302,15 +303,20 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
 
   let remaining = deltaMs
   while (m.active && remaining > 0) {
-    // ── 返航阶段（去程并入返航，定稿：总行程时间不变）；old 档遗留的 outbound 相位按原空船腿推进 ──
+    // ── 返航阶段（去程并入返航；返航腿按货仓占比缩放——空仓快、满仓=原时长，船长 2026-09-05）──
     if (m.phase === 'returning' || m.phase === 'outbound') {
       const beltDef = m.beltId ? ctx.belts.get(m.beltId) : undefined
       const stGal = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
+      const outFull = oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
       const leg =
         m.phase === 'outbound'
-          ? oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
-          : oneLegMs(state, ctx, m.beltId, undefined, stGal) +
-            oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
+          ? outFull
+          : scaledReturnMs(
+              oneLegMs(state, ctx, m.beltId, undefined, stGal) + outFull,
+              state,
+              ctx,
+              state.shipId,
+            )
       const need = leg - m.phaseAccMs
       if (remaining < need) {
         m.phaseAccMs += remaining
@@ -396,15 +402,19 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       if (m.autoCycle) {
         m.phase = 'returning'
         m.phaseAccMs = 0
-        // 去程并入返航：返航腿 = 满载返航 + 空船去程（总行程时间不变）
+        // 去程并入返航：返航腿 = (满载返航 + 空船去程) × 货仓占比（此处通常近满舱 → ≈原时长）
         const stGalNow = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
-        const mergedMs =
+        const mergedMs = scaledReturnMs(
           oneLegMs(state, ctx, m.beltId, undefined, stGalNow) +
-          oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow)
+            oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow),
+          state,
+          ctx,
+          state.shipId,
+        )
         addLog(
           state,
           'info',
-          `货舱已满（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返航空间站卸货（返航约 ${Math.round(mergedMs / 1000)} 秒，去程已并入返航）。`,
+          `货舱已满（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返航空间站卸货（返航约 ${Math.max(1, Math.round(mergedMs / 1000))} 秒，去程已并入返航）。`,
         )
         continue // 剩余时间转入返航阶段
       }
@@ -435,13 +445,17 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.phase = 'returning'
       m.phaseAccMs = 0
       const stGalNow2 = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
-      const mergedMs2 =
+      const mergedMs2 = scaledReturnMs(
         oneLegMs(state, ctx, m.beltId, undefined, stGalNow2) +
-        oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow2)
+          oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow2),
+        state,
+        ctx,
+        state.shipId,
+      )
       addLog(
         state,
         'info',
-        `教学首单已采足（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返港卸货（返航约 ${Math.round(mergedMs2 / 1000)} 秒）。`,
+        `教学首单已采足（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返港卸货（返航约 ${Math.max(1, Math.round(mergedMs2 / 1000))} 秒）。`,
       )
       continue // 剩余时间转入返航阶段
     }
@@ -485,8 +499,13 @@ export function miningStatus(state: GameState, ctx: SimContext): MiningView {
   const leg = oneLegMs(state, ctx, m.beltId, undefined, stGal)
   const outLeg = oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
   // 阶段按方向用各自的腿（百分比/剩余都以"当前阶段实际腿长"为准）：
-  // 返航腿 = 满载返航 + 空船去程（去程并入返航，定稿）
-  const phaseLeg = m.phase === 'returning' ? leg + outLeg : m.phase === 'outbound' ? outLeg : leg
+  // 返航腿 = (满载返航 + 空船去程) × 货仓占比（空仓快、满仓原时长，船长 2026-09-05）
+  const phaseLeg =
+    m.phase === 'returning'
+      ? scaledReturnMs(leg + outLeg, state, ctx, state.shipId)
+      : m.phase === 'outbound'
+        ? outLeg
+        : leg
 
   const phaseLabel =
     m.phase === 'returning' ? '返航卸货中' : m.phase === 'outbound' ? '出航中' : '采掘中'
