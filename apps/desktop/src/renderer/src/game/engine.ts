@@ -86,6 +86,7 @@ import {
   beginTutorialAfterAwaken,
   skipTutorial,
   finishTutorial,
+  deliverTutorialOre,
   tutorialAccelWait,
   ONB_AWAKEN,
 } from '@whale/core'
@@ -1155,6 +1156,16 @@ export class GameEngine {
   /** 序章·苏醒：收尾演出播完 → 教程完成（step 99，全解锁） */
   prologueFinishShow(): CommandResult {
     const result = finishTutorial(this.state)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 重要任务①「补给协议·首批矿物」：交付富凡晶石（仓库扣取）→ 4,000 ISK + 基础 AI 核心 */
+  deliverTutorialOreAt(): CommandResult {
+    const result = deliverTutorialOre(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

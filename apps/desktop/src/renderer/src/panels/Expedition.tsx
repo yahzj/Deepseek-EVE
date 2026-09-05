@@ -38,6 +38,7 @@ import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, ProfileChip } from '../ui/shipInfo'
+import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
@@ -194,6 +195,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
       </div>
       {tab === 'important' ? (
         <div>
+          <ImportantTasks engine={engine} onToast={onToast} />
           <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（采矿返航/卸货/维修/补给/换驾驶）。</div>
           <div className="app-station-list">
             <StationCard engine={engine} onToast={onToast} />

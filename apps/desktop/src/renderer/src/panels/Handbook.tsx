@@ -84,6 +84,11 @@ const RULES_COMBAT: Array<[string, string]> = [
   ['抗性乘入', '各层抗性为 EVE 式缺口乘入（上限 90%）：每层受到的伤害 = 层伤害 × 克制倍率 ×（1 − 该层对应系抗性）——配装时看敌方主伤害类型，选对应层抗与弹种。'],
 ]
 
+/** 航行须知 · 目标档案（序章·苏醒 2026-09-05：长期目标说明，不承载关键信息） */
+const RULES_GOALS: Array<[string, string]> = [
+  ['寻找人类', '人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；在这座章鱼宇宙人统治的母港继续航行，或许终会有所发现。'],
+]
+
 const GUIDE_NOTES: string[] = [
   '技能训练与采矿/远征并行：训练队列永不停歇，先排要练的技能即可。',
   '物品仓库与装备库是空间站资产，弃船不丢；船上的货仓与装备会随船遗失。',
@@ -408,6 +413,13 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
               ))}
               <div className="app-bay-title">战斗 · 伤害克制速查</div>
               {RULES_COMBAT.map(([k, v]) => (
+                <div key={k} className="app-hand-guide-row">
+                  <b className="app-hand-guide-key">{k}</b>
+                  <span>{v}</span>
+                </div>
+              ))}
+              <div className="app-bay-title">目标档案</div>
+              {RULES_GOALS.map(([k, v]) => (
                 <div key={k} className="app-hand-guide-row">
                   <b className="app-hand-guide-key">{k}</b>
                   <span>{v}</span>
