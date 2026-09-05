@@ -437,4 +437,41 @@ export {
   loadSaveFile,
 } from './save'
 
+export {
+  ONB_OFF,
+  ONB_AWAKEN,
+  ONB_MINE,
+  ONB_DELIVER,
+  ONB_REPAIR,
+  ONB_TRIAL,
+  ONB_SKILL,
+  ONB_DIVIDE,
+  ONB_EPILOGUE,
+  ONB_DONE,
+  TUTORIAL_DELIVER_ITEM,
+  TUTORIAL_DELIVER_N,
+  TUTORIAL_REWARD_ISK,
+  TUTORIAL_REWARD_TURRET,
+  TUTORIAL_REWARD_AMMO,
+  TUTORIAL_REWARD_AMMO_N,
+  TUTORIAL_SKILL_ID,
+  TUTORIAL_BATTLE_HIT_BONUS,
+  TUTORIAL_BATTLE_EVASION_BONUS,
+  TASK_ORE_DELIVER,
+  TASK_TRIAL_WIN,
+  tutorialActive,
+  tutorialAccelWait,
+  isTutorialBattle,
+  applyTutorialBuff,
+  beginTutorialAfterAwaken,
+  deliverTutorialOre,
+  claimTutorialTrialReward,
+  grantTutorialSkill,
+  onTutorialSkillPageOpened,
+  advanceOnboardingAuto,
+  finishTutorial,
+  skipTutorial,
+} from './onboarding'
+export type { OnboardingState, ImportantTaskState } from './state'
+
 export { advanceEncounterWatch, fightEncounter, fleeEncounter } from './encounters'
