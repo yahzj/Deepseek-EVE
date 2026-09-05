@@ -8,12 +8,12 @@
  * - 停炉即止：已完成批已出货，剩余原料全额退回仓库（AI 核心自动归还）。
  */
 import { refineRate } from '@whale/core'
-import type { AiCoreType } from '@whale/core'
+import type { AiCoreType, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import type { PageProps } from './common'
-import { m3 } from './common'
+import { MONEY_GLYPH, m3 } from './common'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -85,6 +85,155 @@ export function IndustryPage({ engine, onToast }: PageProps) {
     else onToast('已停炉：已完成批保留，剩余原料退回仓库。')
   }
 
+  /* ── 精炼炉卡（2026-09-05 船长：按采矿页矿带卡同款结构重做） ── */
+
+  /** AI 核心选择行（每卡底部操作区，与矿带卡"指派条"同构：炉子单工位 = 只选核心无副船） */
+  function coreSelectRow(defId: string, runLabel: string): ReactNode {
+    return (
+      <div className="app-belt-ai">
+        <select
+          className="app-select"
+          value={coreReady ?? ''}
+          onChange={(e) => setCorePick(e.target.value as AiCoreType)}
+          title="选择接入精炼炉的 AI 核心（驱动期间核心被占用）"
+        >
+          {ownedCores.map((t) => (
+            <option key={t} value={t}>
+              {t === 'basic' ? '基础' : t === 'gamma' ? '伽马' : t === 'beta' ? '贝塔' : '阿尔法'}核心
+            </option>
+          ))}
+        </select>
+        <button
+          className="app-btn is-small"
+          disabled={!coreReady}
+          title={coreReady ? '接入 AI 核心自动运转（不占副船与主控；效率越高批周期越短）' : '没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'}
+          onClick={() => coreReady && start(defId, coreReady)}
+        >
+          {runLabel}
+        </button>
+      </div>
+    )
+  }
+
+  /** 主控运转按钮（is-primary；忙时禁用并给原因 title——矿带卡"开始"按钮同款语义） */
+  function pilotButton(defId: string, label: string, note: string): ReactNode {
+    return (
+      <button
+        className="app-btn is-small is-primary"
+        disabled={!pilotFree}
+        title={pilotFree ? note : pilotBusyNote ?? undefined}
+        onClick={() => start(defId, 'pilot')}
+      >
+        {label}
+      </button>
+    )
+  }
+
+  /** 一张精炼资源卡（矿石/气体/冰）：矿带卡信息分区（名称 → 说明 → 可用/批数据 → 产出效率 → 操作区） */
+  function oreCard(def: ItemDef): ReactNode {
+    const total = oreTotal(def.id)
+    const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
+    const cycleMs = def.refineCycleMs && def.refineCycleMs > 0 ? def.refineCycleMs : 6000
+    const cycleS = Math.round(cycleMs / 100) / 10
+    const outs = (def.refine ?? [])
+      .map((row) => {
+        const mineral = engine.ctx.items.get(row.mineralId)
+        if (!mineral) return null
+        const units = Math.floor(batch * row.perOre * rate)
+        return units > 0 ? { def: mineral, units } : null
+      })
+      .filter((x): x is { def: ItemDef; units: number } => x !== null)
+    const outText = outs.map((o) => `${o.def.name}×${o.units}`).join('、') || '（收率过低无产出）'
+    const batchValue = outs.reduce((s, o) => s + o.units * (o.def.baseSellPriceIsk ?? 0), 0)
+    const perHourIsk = Math.round(batchValue * (3_600_000 / cycleMs))
+    return (
+      <div className="app-belt-card" key={def.id}>
+        <div className="app-belt-head">
+          <span className="app-belt-name">{def.name}</span>
+        </div>
+        {def.description ? <div className="app-belt-desc">{def.description}</div> : null}
+        <div className="app-belt-ore">
+          可用 ×{total.toLocaleString('zh-CN')}（{m3(total * def.unitM3)}）· 每批 {batch} 单位 / {cycleS} 秒 · 约{' '}
+          {Math.ceil(total / batch)} 批炼完
+        </div>
+        <div className="app-belt-econ">
+          <div>♨ 每批产出：{outText}</div>
+          {batchValue > 0 ? (
+            <div className="app-belt-econ-val" title="按矿物站内收价（不随市场浮动）估算：每批价值 × 每小时批次数">
+              {MONEY_GLYPH} ≈{perHourIsk.toLocaleString('zh-CN')} ISK/h
+            </div>
+          ) : null}
+        </div>
+        <div className="app-belt-actions">
+          {pilotButton(def.id, '手动运转', '由你亲自运转：锁定全部库存，循环炼到料尽（期间不可离港作业）')}
+          {ownedCores.length > 0 ? (
+            coreSelectRow(def.id, 'AI 运转')
+          ) : (
+            <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
+              AI 运转
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /** 一张残骸回收卡（同矿带卡结构；开箱规则放说明行、无可预估 ISK 的确定性产出） */
+  function wreckCard(def: ItemDef): ReactNode {
+    const total = oreTotal(def.id)
+    return (
+      <div className="app-belt-card" key={def.id}>
+        <div className="app-belt-head">
+          <span className="app-belt-name">🛰 {def.name}</span>
+        </div>
+        <div className="app-belt-desc">
+          每批开箱 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）
+        </div>
+        <div className="app-belt-ore">
+          可用 {Math.round(total * 10) / 10} m³ · 每批 10 m³ / 25 秒 · 约 {Math.ceil(total / 10)} 批开完
+        </div>
+        <div className="app-belt-actions">
+          {pilotButton(def.id, '手动回收', '由你亲自运转：锁定全部残骸，循环开箱到料尽（期间不可离港作业）')}
+          {ownedCores.length > 0 ? (
+            coreSelectRow(def.id, 'AI 回收')
+          ) : (
+            <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
+              AI 回收
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /** 运转中卡（is-active 同矿带"主控采掘中"卡：旗标 + 数据 + 进度 + 停炉） */
+  function runningCard(): ReactNode {
+    const isPilot = run.worker === 'pilot'
+    return (
+      <div className="app-belt-card is-active">
+        <div className="app-belt-head">
+          <span className="app-belt-name">{run.itemName}</span>
+          <em className="app-belt-flag is-run">{isPilot ? '⛏ 主控运转中' : `🤖 ${run.workerLabel}核心驱动中`}</em>
+        </div>
+        <div className="app-belt-desc">
+          {isRecycle ? '开箱循环：每批保底矿物 + 概率彩头，料尽自动停炉' : '循环运转制：到点自动续批出料，料尽自动停炉'}
+        </div>
+        <div className="app-belt-ore">
+          已炼 {run.batchesDone} 批 · 炉内余 ×{run.lockedQty.toLocaleString('zh-CN')}（每批 {run.batchUnits} 单位）
+          {run.remainingMs > 0 ? ` · 整炉约剩 ${Math.max(1, Math.ceil(run.remainingMs / 1000))} 秒` : ''}
+        </div>
+        <div className="app-refine-progress">
+          <span className="app-refine-progress-fill" style={{ width: `${run.percent}%` }} />
+        </div>
+        <div className="app-belt-actions">
+          <button className="app-btn is-small is-warn" onClick={stop} title="停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）">
+            ■ 停炉
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-stack">
       {/* 功能标签页（与星图页同款 app-subtabs 规范）：精炼炉 / 蓝图书架 / 蓝图制造 */}
@@ -133,153 +282,26 @@ export function IndustryPage({ engine, onToast }: PageProps) {
         </div>
 
         {run.active ? (
-          <div className="app-inv-row">
-            <div className="app-inv-main">
-              <span className="app-inv-name">{run.itemName}</span>
-              <span className="app-inv-count">
-                {run.workerLabel}驱动 · {isRecycle ? '已开箱' : '已炼'} {run.batchesDone} 批 / 余 ×{run.lockedQty}（每批 {run.batchUnits} 单位 · {Math.round(run.cycleMs / 100) / 10} 秒）
-                {run.remainingMs > 0 ? ` · 整炉约剩 ${Math.max(1, Math.ceil(run.remainingMs / 1000))} 秒` : ''}
-              </span>
-              <div className="app-refine-progress">
-                <span className="app-refine-progress-fill" style={{ width: `${run.percent}%` }} />
-              </div>
-            </div>
-            <div className="app-inv-btns">
-              <button className="app-btn is-small is-warn" onClick={stop} title="停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）">
-                停炉
-              </button>
-            </div>
-          </div>
+          <div className="app-belt-list">{runningCard()}</div>
         ) : null}
 
         {!run.active && oreDefs.length === 0 && wreckDefs.length === 0 ? (
           <div className="app-dim app-inv-empty">
-            没有可精炼/可回收的资源——采集矿石/气体/冰矿，或打捞带回残骸后再来（先停掉正在运转的炉子）。
+            没有可精炼/可回收的资源——采集矿石/气体/冰矿，或打捞带回残骸后再来。
           </div>
         ) : null}
         {!run.active && oreDefs.length > 0 ? (
-          <ul className="app-inv-list">
-            {oreDefs.map((def) => {
-              const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
-              const cycleS = def.refineCycleMs && def.refineCycleMs > 0 ? Math.round(def.refineCycleMs / 100) / 10 : 6
-              const total = oreTotal(def.id)
-              const batchPreview = (def.refine ?? [])
-                .map((row) => {
-                  const mineral = engine.ctx.items.get(row.mineralId)
-                  const units = Math.floor(batch * row.perOre * rate)
-                  return units > 0 ? `${mineral?.name ?? row.mineralId}×${units}` : ''
-                })
-                .filter(Boolean)
-                .join('、')
-              const batches = Math.ceil(total / batch)
-              return (
-                <li key={def.id} className="app-inv-row">
-                  <div className="app-inv-main">
-                    <span className="app-inv-name">{def.name}</span>
-                    <span className="app-inv-count">
-                      可用 ×{total.toLocaleString('zh-CN')}（{m3(total * def.unitM3)}）· 每批 {batch} 单位 / {cycleS} 秒 · 约 {batches} 批炼完
-                      （每批产出 {batchPreview || '（收率过低无产出）'}）
-                    </span>
-                  </div>
-                  <div className="app-inv-btns">
-                    <button
-                      className="app-btn is-small is-primary"
-                      disabled={!pilotFree}
-                      title={pilotFree ? '由你亲自运转：锁定全部库存，循环炼到料尽（期间不可离港作业）' : pilotBusyNote ?? undefined}
-                      onClick={() => start(def.id, 'pilot')}
-                    >
-                      手动运转
-                    </button>
-                    {ownedCores.length > 0 ? (
-                      <>
-                        <select
-                          className="app-dim"
-                          value={coreReady ?? ''}
-                          onChange={(e) => setCorePick(e.target.value as AiCoreType)}
-                          title="选择接入精炼炉的 AI 核心（驱动期间核心被占用）"
-                        >
-                          {ownedCores.map((t) => (
-                            <option key={t} value={t}>
-                              {t === 'basic' ? '基础' : t === 'gamma' ? '伽马' : t === 'beta' ? '贝塔' : '阿尔法'}核心
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="app-btn is-small"
-                          title="接入 AI 核心自动运转（不占副船与主控；效率越高批周期越短）"
-                          onClick={() => coreReady && start(def.id, coreReady)}
-                        >
-                          AI 运转
-                        </button>
-                      </>
-                    ) : (
-                      <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
-                        AI 运转
-                      </button>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          <>
+            <div className="app-bay-title">♨ 精炼资源（{oreDefs.length}）——循环运转到料尽自动停炉</div>
+            <div className="app-belt-grid">{oreDefs.map((def) => oreCard(def))}</div>
+          </>
         ) : null}
 
         {/* B3 残骸回收（开箱：保底矿物 + 彩头；残骸计数 = 体积，批 10 m³ / 25 秒） */}
         {!run.active && wreckDefs.length > 0 ? (
           <>
-            <div className="app-bay-title">♻ 残骸回收（开箱：保底矿物 + 彩头）</div>
-            <ul className="app-inv-list">
-              {wreckDefs.map((def) => {
-                const total = oreTotal(def.id)
-                return (
-                  <li key={def.id} className="app-inv-row">
-                    <div className="app-inv-main">
-                      <span className="app-inv-name">🛰 {def.name}</span>
-                      <span className="app-inv-count">
-                        可用 {Math.round(total * 10) / 10} m³ · 每批 10 m³ / 25 秒 · 每批开箱 = 保底矿物（按来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）
-                      </span>
-                    </div>
-                    <div className="app-inv-btns">
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={!pilotFree}
-                        title={pilotFree ? '由你亲自运转：锁定全部残骸，循环开箱到料尽（期间不可离港作业）' : pilotBusyNote ?? undefined}
-                        onClick={() => start(def.id, 'pilot')}
-                      >
-                        手动回收
-                      </button>
-                      {ownedCores.length > 0 ? (
-                        <>
-                          <select
-                            className="app-dim"
-                            value={coreReady ?? ''}
-                            onChange={(e) => setCorePick(e.target.value as AiCoreType)}
-                            title="选择接入精炼炉的 AI 核心（驱动期间核心被占用）"
-                          >
-                            {ownedCores.map((t) => (
-                              <option key={t} value={t}>
-                                {t === 'basic' ? '基础' : t === 'gamma' ? '伽马' : t === 'beta' ? '贝塔' : '阿尔法'}核心
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            className="app-btn is-small"
-                            title="接入 AI 核心自动开箱（不占副船与主控；效率越高批周期越短）"
-                            onClick={() => coreReady && start(def.id, coreReady)}
-                          >
-                            AI 回收
-                          </button>
-                        </>
-                      ) : (
-                        <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
-                          AI 回收
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+            <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——开箱：保底矿物 + 彩头</div>
+            <div className="app-belt-grid">{wreckDefs.map((def) => wreckCard(def))}</div>
           </>
         ) : null}
       </Panel>
