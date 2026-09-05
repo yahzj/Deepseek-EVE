@@ -1541,12 +1541,13 @@ body {
   align-items: center;
   gap: 6px;
 }
+.app-fit-target-ship {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffe08a;
+}
 .app-fit-target-hint {
   font-size: 11px;
-}
-.app-fit-target .app-cargo-ships {
-  flex-basis: 100%;
-  margin: 2px 0 0;
 }
 .app-fit-cpustrip {
   display: flex;

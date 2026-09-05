@@ -43,7 +43,14 @@ export function ShipPage({
   tab,
   onTab,
   onGotoMarket,
-}: PageProps & { tab?: ShipTab; onTab?: (t: ShipTab) => void; onGotoMarket?: (goodKey: string) => void }) {
+  onGotoFit,
+}: PageProps & {
+  tab?: ShipTab
+  onTab?: (t: ShipTab) => void
+  onGotoMarket?: (goodKey: string) => void
+  /** 进入某船的装配页（船长 2026-09-05：舰队卡片按钮直达该船装配） */
+  onGotoFit?: (shipId: string) => void
+}) {
   const state = engine.state
   const ctx = engine.ctx
   // 标签页（受控可选：App 跳 AI 中心时切到 ai）
@@ -219,6 +226,13 @@ export function ShipPage({
                     ) : isWorking ? (
                       <span className="app-chip">AI 执勤中</span>
                     ) : null}
+                    <button
+                      className="app-btn is-small"
+                      title={`进入「${displayName}」的装配台——可直接为该船装配/卸下装备（不需要切换驾驶）`}
+                      onClick={() => onGotoFit?.(uid)}
+                    >
+                      ⚒ 装配
+                    </button>
                     {!isRenaming ? (
                       <button
                         className="app-btn is-small"

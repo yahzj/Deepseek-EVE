@@ -142,6 +142,11 @@ export function App({ engine }: { engine: GameEngine }) {
   const [shipTab, setShipTab] = useState<ShipTab>('fleet')
   // 舰船页"去市场"→ 市场页聚焦该船订单（seq 递增触发一次）
   const [mktFocus, setMktFocus] = useState<{ key: string; seq: number } | null>(null)
+  // 舰船页卡片"装配"→ 装配页默认目标船（船长 2026-09-05：入口在舰队卡片；离开装配页即清，再次直进默认当前驾驶船）
+  const [fitShipId, setFitShipId] = useState<string | null>(null)
+  useEffect(() => {
+    if (page !== 'fit') setFitShipId(null)
+  }, [page])
   // B1：首次进入低安的一次性醒目提示（规则全文在手册「航行须知」）
   const lowSecPrev = useRef(state.lowSecNotified)
   useEffect(() => {
@@ -296,9 +301,13 @@ export function App({ engine }: { engine: GameEngine }) {
                   setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
                   setPage('market')
                 }}
+                onGotoFit={(shipId) => {
+                  setFitShipId(shipId)
+                  setPage('fit')
+                }}
               />
             ) : null}
-            {page === 'fit' ? <FitPage {...pageProps} /> : null}
+            {page === 'fit' ? <FitPage {...pageProps} fitShipId={fitShipId} /> : null}
             {page === 'items' ? (
               <ItemsPage
                 {...pageProps}
