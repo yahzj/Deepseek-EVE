@@ -7083,3 +7083,18 @@ body {
 .app-imp-card-body.is-done-txt { color: #7f9a8a; margin-bottom: 0; }
 .app-imp-card.is-perm { border-color: #b08a3a; background: linear-gradient(180deg, rgba(46,36,14,.92), rgba(26,20,8,.96)); }
 .app-imp-card-state { font-size: 11.5px; color: #ffd08a; }
+
+/* ── 更新公告（2026-09-05 船长定：大更新必须发公告） ── */
+.app-ann-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff6b52; margin-left: 5px; vertical-align: 1px; box-shadow: 0 0 6px rgba(255,90,60,.9); }
+.app-ann-mask { position: fixed; inset: 0; z-index: 88; background: rgba(3,6,10,.6); display: flex; align-items: center; justify-content: center; }
+.app-ann { width: min(720px, 90vw); max-height: 82vh; display: flex; flex-direction: column; background: linear-gradient(180deg, rgba(20,28,40,.98), rgba(8,13,20,.99)); border: 1px solid var(--wui-gold); border-radius: 12px; box-shadow: 0 14px 46px rgba(0,0,0,.7); }
+.app-ann-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; border-bottom: 1px dashed rgba(255,255,255,.14); }
+.app-ann-title { font-size: 16px; font-weight: 800; color: #ffe08a; }
+.app-ann-list { overflow: auto; padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.app-ann-item { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 10px 12px; background: rgba(255,255,255,.02); }
+.app-ann-item.is-new { border-color: rgba(255,208,120,.45); background: rgba(120,90,30,.1); }
+.app-ann-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.app-ann-tag { font-size: 11px; color: #ffe08a; border: 1px solid rgba(255,208,120,.5); border-radius: 4px; padding: 0 6px; }
+.app-ann-item-title { font-weight: 800; font-size: 13.5px; color: #eaf2fa; }
+.app-ann-bullets { margin: 6px 0 0; padding-left: 18px; }
+.app-ann-bullets li { font-size: 12px; color: #b9c8d8; line-height: 1.8; }
