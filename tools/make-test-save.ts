@@ -302,6 +302,31 @@ function injectB3(state: GameState): string[] {
   return notes
 }
 
+/** repair（P2 修理系统验收门槛，2026-09-05）：驾驶船带伤（结构 55%/装甲 40%）+
+ * 货仓预置 民用×3 / 军用×2 + 仓库备件 + 钱包——开箱即测 港内计费（HP×科技档）、
+ * 野外/舰船页组件修复、自动链阈值、蓝图自造材料账。 */
+function injectRepair(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 500_000
+  notes.push('钱包 +500,000 ISK（够几次港内维修对比）')
+  const pilot = state.fleet[state.shipId]
+  if (pilot) {
+    pilot.durability = 0.55
+    pilot.armorPct = 0.4
+    pilot.cargo['repairkit-civ'] = (pilot.cargo['repairkit-civ'] ?? 0) + 3
+    pilot.cargo['repairkit-mil'] = (pilot.cargo['repairkit-mil'] ?? 0) + 2
+    notes.push(`驾驶船带伤：结构 55%、装甲 40%；货仓预置 民用修理组件 ×3 + 军用 ×2`)
+  }
+  state.warehouse.items['repairkit-civ'] = (state.warehouse.items['repairkit-civ'] ?? 0) + 5
+  state.warehouse.items['repairkit-mil'] = (state.warehouse.items['repairkit-mil'] ?? 0) + 3
+  state.warehouse.items['bp-repairkit-civ'] = (state.warehouse.items['bp-repairkit-civ'] ?? 0) + 1
+  state.warehouse.items['bp-repairkit-mil'] = (state.warehouse.items['bp-repairkit-mil'] ?? 0) + 1
+  notes.push('仓库备件：两档组件 + 两本蓝图书各 1（可现场学习后到工业页自造看材料账）')
+  notes.push('测试路径：舰船页看 结构/装甲 双显与受损提示 → 港内维修（对照费用文案）→ 读档重来用 舰船页/星图远征停留面板 组件修复 → 货仓页把组件装/卸 → 学蓝图自造 → 低耐久下开连续出击观察自动吃组件')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -309,6 +334,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   v18: injectV18,
   v18b: injectV18b,
   b3: injectB3,
+  repair: injectRepair,
 }
 
 function main(): void {
