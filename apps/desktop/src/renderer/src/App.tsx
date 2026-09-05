@@ -28,7 +28,7 @@ import { BattleScreen } from './panels/BattleScreen'
 import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
-import { Glyph } from './ui/Glyphs'
+import { Glyph, NAV_TONES } from './ui/Glyphs'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例）；icon = Glyphs 字形名 */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -312,7 +312,7 @@ export function App({ engine }: { engine: GameEngine }) {
               onClick={() => setPage(item.key)}
             >
               <span className="app-nav-icon">
-                <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} />
+                <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
               </span>
               <span>{item.label}</span>
             </button>

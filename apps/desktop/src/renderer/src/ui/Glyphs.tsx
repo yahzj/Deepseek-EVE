@@ -330,6 +330,23 @@ export function toneOf(key: string | undefined): string {
   return (key && TONES[key]) || '#8aa0b8'
 }
 
+/** 导航/标签图标专属色调（2026-09-05 船长：每个图标各自纯色，未选中也着色；选中态由按钮高亮区分） */
+export const NAV_TONES: Record<string, string> = {
+  'nav-map': '#ffe08a',
+  'nav-ship': '#6cb6ff',
+  'nav-fit': '#7de3a8',
+  'nav-items': '#ffd166',
+  'nav-market': '#ffa45c',
+  'nav-industry': '#42d9b0',
+  'nav-skills': '#c792ea',
+  'nav-mine': '#b5e35f',
+  'nav-bounty': '#ff8373',
+  'nav-salvage': '#6fe3f0',
+  'nav-task': '#8fa9d8',
+  'nav-ai': '#ff8ab5',
+  'nav-shop': '#f7c35c',
+}
+
 /** 渲染一个科幻线性图标 */
 export function Glyph({
   name,

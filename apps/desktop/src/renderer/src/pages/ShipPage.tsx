@@ -21,7 +21,7 @@ import type { AiCoreType, FleetShipState } from '@whale/core'
 import { aiWinPreview, durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
-import { Glyph } from '../ui/Glyphs'
+import { Glyph, NAV_TONES } from '../ui/Glyphs'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -159,7 +159,7 @@ export function ShipPage({
             title={t.title}
           >
             <span className="app-tab-ico">
-              <Glyph name={t.icon} size={15} />
+              <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
             </span>
             <span>{t.label}</span>
           </button>

@@ -27,7 +27,7 @@ import {
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
-import { Glyph } from '../ui/Glyphs'
+import { Glyph, NAV_TONES } from '../ui/Glyphs'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
@@ -60,7 +60,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProp
             onClick={() => onMapTab?.(t.key)}
           >
             <span className="app-tab-ico">
-              <Glyph name={t.icon} size={15} />
+              <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
             </span>
             <span>{t.label}</span>
           </button>
