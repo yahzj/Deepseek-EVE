@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, stackingOf } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, stackingOf, layerMultText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -22,11 +22,16 @@ export const DMG_LABEL: Record<DamageType, string> = { kinetic: '动能', explos
 
 /**
  * 伤害类型色 chip（V17.2 快速辨识）：颜色 = 我方三层血量色——
- * 动能 = 盾蓝（拆盾 ×1.5）/ 高爆 = 甲红（破甲 ×1.5）/ 能量 = 结构黄（均衡高基）。
+ * 动能 = 盾蓝（拆盾 ×1.5）/ 高爆 = 甲红（破甲 ×1.5）/ 能量 = 结构黄（拆盾 ×1.25）。
  * label 可覆盖文字（如弹药全词"动能弹"），底色仍按类型。
+ * 悬停显示与 combat.typeLayerMult 同源的克制矩阵（2026-09-05 船长）。
  */
 export function DmgChip({ t, label }: { t: DamageType; label?: ReactNode }): ReactNode {
-  return <span className={`app-d-chip app-d-${t}`}>{label ?? DMG_LABEL[t]}</span>
+  return (
+    <span className={`app-d-chip app-d-${t}`} title={`${DMG_LABEL[t]}：${layerMultText(t)}`}>
+      {label ?? DMG_LABEL[t]}
+    </span>
+  )
 }
 
 /** 敌型色 chip：盾厚 = 盾蓝 / 甲厚 = 甲红 / 均衡 = 结构黄（与血量层色同源） */

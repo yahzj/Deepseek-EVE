@@ -38,13 +38,13 @@ import { addModule, effectiveCpu, fitModule } from '../src/equipment'
 const BAL = () => makeTestCtx().balance.battle
 
 describe('命中与伤害公式', () => {
-  it('克制系数：动能 盾×1.5/甲×0.5；高爆反之；能量盾×0.75', () => {
+  it('克制系数：动能 盾×1.5/甲×0.5；高爆反之；能量盾×1.25（船长 2026-09-05：0.75→1.25，C4 复核）', () => {
     expect(typeLayerMult('kinetic', 'shield')).toBe(1.5)
     expect(typeLayerMult('kinetic', 'armor')).toBe(0.5)
     expect(typeLayerMult('kinetic', 'hull')).toBe(1)
     expect(typeLayerMult('explosive', 'armor')).toBe(1.5)
     expect(typeLayerMult('explosive', 'shield')).toBe(0.5)
-    expect(typeLayerMult('plasma', 'shield')).toBe(0.75)
+    expect(typeLayerMult('plasma', 'shield')).toBe(1.25)
     expect(typeLayerMult('plasma', 'armor')).toBe(1)
   })
 

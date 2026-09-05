@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @whale/core 对外统一出口。
  * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
  */
@@ -396,6 +396,8 @@ export {
   foeLayerSplit,
   createPlayerSpec,
   playerAmmoType,
+  typeLayerMult,
+  layerMultText,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
 } from './combat'

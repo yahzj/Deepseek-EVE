@@ -77,6 +77,13 @@ const RULES_CORE: Array<[string, string]> = [
   ['离线结算', '离线最长结算 8 小时，重启自动结算并弹离线简报。'],
 ]
 
+/** 航行须知 · 战斗伤害克制速查（数值与 combat.typeLayerMult 同源；能量对盾 1.25 船长 2026-09-05 改） */
+const RULES_COMBAT: Array<[string, string]> = [
+  ['血条三层', '每艘船血量分 护盾 → 装甲 → 结构 三层依次承受（破层溢出向下渗透）。'],
+  ['伤害克制矩阵', '动能弹：盾 ×1.5 / 甲 ×0.5 / 结构 ×1（专职拆盾）；爆炸弹（高爆/导弹）：盾 ×0.5 / 甲 ×1.5 / 结构 ×1（专职破甲）；能量（等离子弹/激光）：盾 ×1.25 / 甲 ×1 / 结构 ×1（拆盾也强、无弱点）。弹药 chip 颜色 = 对应克制层色（盾蓝/甲红/结构黄），悬停可见矩阵。'],
+  ['抗性乘入', '各层抗性为 EVE 式缺口乘入（上限 90%）：每层受到的伤害 = 层伤害 × 克制倍率 ×（1 − 该层对应系抗性）——配装时看敌方主伤害类型，选对应层抗与弹种。'],
+]
+
 const GUIDE_NOTES: string[] = [
   '技能训练与采矿/远征并行：训练队列永不停歇，先排要练的技能即可。',
   '物品仓库与装备库是空间站资产，弃船不丢；船上的货仓与装备会随船遗失。',
@@ -391,6 +398,13 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
               ))}
               <div className="app-bay-title">重要规则留档</div>
               {RULES_CORE.map(([k, v]) => (
+                <div key={k} className="app-hand-guide-row">
+                  <b className="app-hand-guide-key">{k}</b>
+                  <span>{v}</span>
+                </div>
+              ))}
+              <div className="app-bay-title">战斗 · 伤害克制速查（2026-09-05）</div>
+              {RULES_COMBAT.map(([k, v]) => (
                 <div key={k} className="app-hand-guide-row">
                   <b className="app-hand-guide-key">{k}</b>
                   <span>{v}</span>

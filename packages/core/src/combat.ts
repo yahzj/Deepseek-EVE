@@ -92,11 +92,25 @@ function clamp(min: number, max: number, v: number): number {
   return Math.min(max, Math.max(min, v))
 }
 
-/** 层位克制系数（远行星号体系削弱版） */
+/**
+ * 层位克制系数（远行星号体系削弱版）。
+ * 2026-09-05 船长改：能量（plasma）对护盾 0.75 → 1.25（能量弹/激光对盾更有效，
+ * 三系成为"各有克制侧重"：动能拆盾 1.5、爆炸破甲 1.5、能量拆盾 1.25 且不劣于任何层）。
+ * ⚠ C4 复核项：此改动提升激光炮/能量弹系（含部分无人机能量弹）胜率与 PvE 时长结构，请二号复核平衡。
+ */
 export function typeLayerMult(t: DamageType, layer: 'shield' | 'armor' | 'hull'): number {
   if (t === 'kinetic') return layer === 'shield' ? 1.5 : layer === 'armor' ? 0.5 : 1
   if (t === 'explosive') return layer === 'shield' ? 0.5 : layer === 'armor' ? 1.5 : 1
-  return layer === 'shield' ? 0.75 : 1 // plasma（能量）
+  return layer === 'shield' ? 1.25 : 1 // plasma（能量）：拆盾 1.25，对甲/结构无劣化
+}
+
+/** 三层克制一句话（UI 悬停/手册速查用；数值与 typeLayerMult 同源） */
+export function layerMultText(type: DamageType): string {
+  const fmt = (layer: 'shield' | 'armor' | 'hull'): string => {
+    const v = typeLayerMult(type, layer)
+    return v === 1 ? '×1' : `×${v}`
+  }
+  return `盾 ${fmt('shield')} · 甲 ${fmt('armor')} · 结构 ${fmt('hull')}`
 }
 
 /** 距离衰减：minRange 端 1.0 → maxRange 端 falloff（线性） */
