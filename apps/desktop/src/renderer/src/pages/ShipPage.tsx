@@ -29,9 +29,21 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
   return rarity === 'common' ? '常驻' : rarity === 'rare' ? '稀有' : '限定奇货'
 }
 
-export function ShipPage({ engine, onToast }: PageProps) {
+/** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05） */
+export type ShipTab = 'fleet' | 'ai' | 'shop'
+const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
+  { key: 'fleet', label: '我的舰队', icon: '⛵' },
+  { key: 'ai', label: 'AI 指挥', icon: '🤖', title: 'AI 副船：指派采矿/远征，成功率按各船装配现算' },
+  { key: 'shop', label: '舰船市场', icon: '🛒' },
+]
+
+export function ShipPage({ engine, onToast, tab, onTab }: PageProps & { tab?: ShipTab; onTab?: (t: ShipTab) => void }) {
   const state = engine.state
   const ctx = engine.ctx
+  // 标签页（受控可选：App 跳 AI 中心时切到 ai）
+  const [localTab, setLocalTab] = useState<ShipTab>('fleet')
+  const activeTab = tab ?? localTab
+  const setActiveTab = onTab ?? setLocalTab
   // T5：当前展开出售确认的船（同时只展开一艘）
   const [sellConfirmId, setSellConfirmId] = useState<string | null>(null)
   // T7：扫描在途换船＝警告确认（模式甲：确认后先终止扫描——进度保留——再切换）
@@ -127,6 +139,25 @@ export function ShipPage({ engine, onToast }: PageProps) {
 
   return (
     <div className="page-stack">
+      {/* 舰队 / AI 指挥 / 舰船市场（MapPage/IndustryPage 同款 app-subtabs 规范） */}
+      <div className="app-subtabs" role="tablist">
+        {SHIP_TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={activeTab === t.key}
+            className={`app-subtab${activeTab === t.key ? ' is-active' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+            title={t.title}
+          >
+            <span>{t.icon}</span>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'fleet' ? (
+        <>
       {/* ───── 我的舰队 ───── */}
       <Panel
         title="我的舰队"
@@ -328,15 +359,16 @@ export function ShipPage({ engine, onToast }: PageProps) {
           })}
         </div>
       </Panel>
+      </>
+      ) : null}
 
-      {/* ───── AI 指挥中心 ───── */}
-      <AiCommandPanel engine={engine} onToast={onToast} />
+      {activeTab === 'ai' ? <AiCommandPanel engine={engine} onToast={onToast} /> : null}
 
-      {/* ───── 市场现货 · 舰船（V9：空间站商店已并入市场） ───── */}
-      <Panel
-        title="舰船市场"
-        right={<span className="app-dim">现货看订单簿 · 无货可挂收购单自动等补货</span>}
-      >
+      {activeTab === 'shop' ? (
+        <Panel
+          title="舰船市场"
+          right={<span className="app-dim">现货看订单簿 · 无货可挂收购单自动等补货</span>}
+        >
         <div className="app-ship-list">
           {engine.ships
             .filter((def) => {
@@ -397,6 +429,7 @@ export function ShipPage({ engine, onToast }: PageProps) {
             })}
         </div>
       </Panel>
+      ) : null}
     </div>
   )
 }

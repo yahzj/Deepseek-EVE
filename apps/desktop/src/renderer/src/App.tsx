@@ -13,7 +13,7 @@ import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
 import { FitPage } from './pages/FitPage'
-import { ShipPage } from './pages/ShipPage'
+import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
@@ -139,6 +139,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const [page, setPage] = useState<PageKey>('map')
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
+  const [shipTab, setShipTab] = useState<ShipTab>('fleet')
   // B1：首次进入低安的一次性醒目提示（规则全文在手册「航行须知」）
   const lowSecPrev = useRef(state.lowSecNotified)
   useEffect(() => {
@@ -274,14 +275,17 @@ export function App({ engine }: { engine: GameEngine }) {
           <ActivityBar
             engine={engine}
             onToast={showToast}
-            onAiCenter={() => setPage('ship')}
+            onAiCenter={() => {
+              setPage('ship')
+              setShipTab('ai') // AI 徽标 → 舰船页「AI 指挥」标签
+            }}
             onGoPage={(page, mapTab) => {
               setPage(page as PageKey)
               if (mapTab) setMapTab(mapTab as MapTab)
             }}
           />
           <div className="app-page-content" key={page}>
-            {page === 'ship' ? <ShipPage {...pageProps} /> : null}
+            {page === 'ship' ? <ShipPage {...pageProps} tab={shipTab} onTab={setShipTab} /> : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}
             {page === 'items' ? <ItemsPage {...pageProps} /> : null}
             {page === 'market' ? <MarketPage {...pageProps} /> : null}
