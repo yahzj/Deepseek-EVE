@@ -444,7 +444,20 @@ export interface BattleBalance {
   foeHitRate: number
   foeReloadMs: number
   foeFalloff: number
-  foeSpeedBaseMps: number
+  /* C4-#3 敌方"虚拟装配"模板（2026-09-05 船长拍板：威胁越高全属性越高，侧重随战术风格） */
+  /** 参考船速分段表（threat 上界 → 等效船体 maxSpeed m/s；与玩家船速同池，无推进口径） */
+  foeRefSpeedTable: ReadonlyArray<{ upToThreat: number; maxSpeedMps: number }>
+  /** 敌速基数端点：threat 10 → 玩家参考 ×lo；threat 100 → ×hi（无推进玩家多数持平/略快） */
+  foeSpeedAtThreat10: number
+  foeSpeedAtThreat100: number
+  /** 战术风格速度系数（brawl 贴脸再高 10~20%，见船长指示） */
+  foeSpeedTacticMul: Record<FoeTactic, number>
+  /** 敌速绝对上限 = 参考船速 × 此值（留"推进可甩/脱战"窗口） */
+  foeSpeedCapMul: number
+  /** 射程成长侧重系数：scale = 1 + 系数×(threat−10)/90（brawl 少增、kite 多增） */
+  foeRangeGrowMul: Record<FoeTactic, number>
+  /** 敌最远射程封顶（玩家射程天花板 + 余量；压制穿越时间目标 ≤12s） */
+  foeRangeCapM: number
   /** 敌期望交战距离系数 = 自身武器带内站位（0.2 贴脸近端 / 0.55 环绕 / 0.85 风筝远端；值域 [0.05,0.95]） */
   tacticDesireFactor: Record<FoeTactic, number>
   /** 弹药预载：估计交战时长上限 ms 与余量系数（出发按射速预载，结束退回） */

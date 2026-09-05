@@ -10,7 +10,7 @@
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, startBattleFor } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, foeRefSpeedMps, startBattleFor } from '../packages/core/src/combat'
 
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
@@ -114,6 +114,27 @@ async function main(): Promise<void> {
       }
       console.log(`${ld.name.padEnd(34)} ${cells.join('  ')}`)
     }
+  }
+
+  /* C4-#3 校验段：敌方虚拟装配推导结果（射程/速度 vs 玩家参考） */
+  console.log('\n—— 敌方虚拟装配校验（射程=封顶后最大值；速度 vs 无推进玩家战斗速度折算 ×0.6）——')
+  const playerSpeeds = SHIPS.map((s) => (s.maxSpeedMps ?? 0) * 0.6)
+  const sorted = [...playerSpeeds].sort((a, b) => a - b)
+  const med = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0
+  console.log(
+    `玩家无推进战斗速度（×0.6 近似）：min ${Math.round(sorted[0] ?? 0)} / 中位 ${Math.round(med)} / max ${Math.round(sorted[sorted.length - 1] ?? 0)} m/s`,
+  )
+  for (const a of threats) {
+    const foes = createFoeSpecs(a, bal)
+    const f0 = foes[0]!
+    const fmax = f0.weapons[0]!.maxRangeM
+    const capped = fmax >= bal.foeRangeCapM ? ' *封顶' : ''
+    const ref = foeRefSpeedMps(a.threat, bal)
+    console.log(
+      `${String(a.threat).padStart(3)} ${a.name.padEnd(12)} ${String(a.tactic ?? 'orbit').padEnd(6)} ` +
+        `敌射程 ${(fmax / 1000).toFixed(1)}km${capped}  敌速 ${f0.speedMps}（参考船 ${ref} → ${Math.round((f0.speedMps / Math.max(1, ref)) * 100)}%）  ` +
+        `近战贴脸系数: ${(f0.speedMps / Math.max(1, med)).toFixed(2)}×玩家中位`,
+    )
   }
   void bal
 }

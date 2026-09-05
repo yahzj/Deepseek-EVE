@@ -125,7 +125,24 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     foeHitRate: 0.55, // 敌方武器基础命中
     foeReloadMs: 4_000, // 敌方武器装填
     foeFalloff: 0.3, // 敌方命中衰减（maxRange 端点）
-    foeSpeedBaseMps: 120, // 敌方速度基准（按体积修正）
+    // C4-#3 敌方"虚拟装配"（2026-09-05 船长拍板）：威胁越高全属性越高、侧重随战术风格。
+    // 参考船速表 = 玩家船 maxSpeed 同池分段（threat ≤10 对应 T1 级、96+ 对应旗舰级）；
+    // 敌速 = 参考段船速 × m_base(threat) × tactic 系数，m_base 0.80→0.95（threat 10→100）
+    // ——无推进玩家多数持平/略快；brawl 再 ×1.12 贴脸（初值，船长将在数据库查看后微调）
+    foeRefSpeedTable: [
+      { upToThreat: 10, maxSpeedMps: 220 },
+      { upToThreat: 34, maxSpeedMps: 250 },
+      { upToThreat: 62, maxSpeedMps: 280 },
+      { upToThreat: 88, maxSpeedMps: 300 },
+      { upToThreat: 9999, maxSpeedMps: 320 },
+    ],
+    foeSpeedAtThreat10: 0.8,
+    foeSpeedAtThreat100: 0.95,
+    foeSpeedTacticMul: { brawl: 1.12, orbit: 1.0, kite: 1.0 },
+    foeSpeedCapMul: 1.2,
+    // 射程成长侧重：近战几乎不变形（靠速度近身）、环绕居中、风筝多增；封顶 = 玩家天花板 13 km + 2 km
+    foeRangeGrowMul: { brawl: 0.3, orbit: 0.7, kite: 1.15 },
+    foeRangeCapM: 15_000,
     // 敌期望交战距离 = 自身武器带内站位系数（贴脸近端 / 环绕中段 / 风筝远端）——带内必能开火
     tacticDesireFactor: { brawl: 0.2, orbit: 0.55, kite: 0.85 },
     ammoTimeCapMs: 4 * 60_000, // 弹药预载：按 4 分钟最大交战时长估算

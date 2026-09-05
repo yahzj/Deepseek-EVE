@@ -449,24 +449,52 @@ const PROFILE_SPLIT: Record<string, Hp3> = {
 
 /** 敌方战术 → 武器射程带（贴合作战风格）：
  * brawl 贴脸肉搏 = 无最小射程的近身喷子；orbit 环绕 = 中距小炮；kite 放风筝 = 高最小射程的远距炮。
- * （C4 曾试行"射程随威胁成长"已回滚——见 docs/design/c4-calibration-notes.md：统一按 threat
- *  放大射程会让战术带语义失真、同威胁不同 tactic 强度拉锯更剧烈；射程 = tactic 身份，
- *  强度由 threat（血/火力）表达。）
- */
+ * C4-#3（2026-09-05）：射程/速度由"虚拟装配模板"推导——射程 = 基础带 ×
+ * (1 + 侧重系数×(threat−10)/90) 后封顶；速度 = 参考船速段 × m_base × tactic 系数
+ * （平衡常量 battle 段 foe* 模板）。射程语义保持 tactic 身份（brawl 近战靠速度贴脸）。 */
 const TACTIC_RANGE: Record<FoeTactic, { max: number; min: number }> = {
   brawl: { max: 2200, min: 0 },
   orbit: { max: 4600, min: 350 },
   kite: { max: 9200, min: 1200 },
 }
 
-/** 展开敌方编队（threat 卡面 = 总战力） */
+/** 参考船速分段查询（threat → 等效船体 maxSpeed；与玩家 maxSpeedMps 同池） */
+export function foeRefSpeedMps(threat: number, bal: BattleBalance): number {
+  const table = bal.foeRefSpeedTable
+  for (let i = 0; i < table.length; i++) {
+    if (threat <= table[i]!.upToThreat) return table[i]!.maxSpeedMps
+  }
+  const last = table[table.length - 1]
+  return last ? last.maxSpeedMps : 200
+}
+
+/** 敌速基数（无 tactic 系数）：m_base = 0.80 + (0.95−0.80)×(threat−10)/90，clamp [0.7, 1.15] */
+function foeSpeedBase(threat: number, bal: BattleBalance): number {
+  const lo = bal.foeSpeedAtThreat10 ?? 0.8
+  const hi = bal.foeSpeedAtThreat100 ?? 0.95
+  const t = Math.min(1, Math.max(0, (threat - 10) / 90))
+  return Math.min(1.15, Math.max(0.7, lo + (hi - lo) * t))
+}
+
+/** 展开敌方编队（threat 卡面 = 总战力；血/火力威胁线性，射程/速度走虚拟装配模板） */
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpec[] {
   const tactic = anomaly.tactic ?? 'orbit'
   const split = PROFILE_SPLIT[anomaly.defProfile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
   const escorts = Math.max(0, Math.min(2, anomaly.escorts ?? 0))
   const mainThreat = anomaly.threat / (1 + 0.6 * escorts)
   const mainType = pickTopType(anomaly.dmgMix)
-  const range = TACTIC_RANGE[tactic]!
+  // C4-#3：射程 = 基础带 ×(1 + 侧重×((T−10)/90)) → 封顶（clamp 保持 min < max）
+  const rangeBase = TACTIC_RANGE[tactic]!
+  const growMul = bal.foeRangeGrowMul[tactic] ?? 0.7
+  const growT = Math.min(1, Math.max(0, (anomaly.threat - 10) / 90))
+  const cap = bal.foeRangeCapM ?? 15_000
+  const rangeMax = Math.min(cap, Math.round(rangeBase.max * (1 + growMul * growT)))
+  const rangeMin = Math.min(rangeMax - 1, Math.round(rangeBase.min * (1 + growMul * growT)))
+  // C4-#3：速度 = 参考船速(段) × m_base(threat) × tactic 系数 → cap（≤参考 ×foeSpeedCapMul）
+  const refSpeed = foeRefSpeedMps(anomaly.threat, bal)
+  const spdCap = Math.round(refSpeed * (bal.foeSpeedCapMul ?? 1.2))
+  const tacticSpd = bal.foeSpeedTacticMul[tactic] ?? 1
+  const foeSpeed = anomaly.foeSpeedMps ?? Math.min(spdCap, Math.round(refSpeed * foeSpeedBase(anomaly.threat, bal) * tacticSpd))
 
   const make = (tag: string, name: string, uThreat: number, type: DamageType): UnitSpec => {
     const totalHp = uThreat * bal.foeHpPerThreat
@@ -483,7 +511,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
-      speedMps: anomaly.foeSpeedMps ?? Math.round(bal.foeSpeedBaseMps * (0.85 + (uThreat / anomaly.threat) * 0.3)),
+      speedMps: foeSpeed, // C4-#3 虚拟装配推导（整编队同速；anomaly.foeSpeedMps 覆盖优先）
       agility: 0.3,
       weapons: [
         {
@@ -491,8 +519,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
           kind: 'fixed',
           fixedType: type,
           shotDmg,
-          maxRangeM: range.max,
-          minRangeM: range.min,
+          maxRangeM: rangeMax,
+          minRangeM: rangeMin,
           hitRate: bal.foeHitRate,
           falloff: bal.foeFalloff,
           reloadMs: bal.foeReloadMs,
