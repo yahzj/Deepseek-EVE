@@ -1019,7 +1019,7 @@ body {
   font-size: 20px;
   line-height: 1;
 }
-/* 星图 = 首要功能（船长 2026-09-05）：大正方形按钮，图标在上、文字在下、整体居中 */
+/* 「出港」导航按钮 = 首要功能（船长 2026-09-05）：大正方形按钮，图标在上、文字在下、整体居中 */
 .app-nav-side .app-nav-item.is-featured {
   flex-direction: column;
   align-items: center;

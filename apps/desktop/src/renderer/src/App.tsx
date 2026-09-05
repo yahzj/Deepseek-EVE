@@ -29,9 +29,9 @@ import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPan
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer } from './ui/Tooltip'
 
-/** 左侧导航项（星图为首：最重要功能，置顶并放大描边样式，见 NAV_ITEMS 的 map 特例） */
+/** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: 'map', label: '星图', icon: '✦' },
+  { key: 'map', label: '出港', icon: '✦' },
   { key: 'ship', label: '舰船', icon: '◈' },
   { key: 'fit', label: '装配', icon: '⚙' },
   { key: 'items', label: '物品', icon: '▤' },
