@@ -403,7 +403,7 @@ export function App({ engine }: { engine: GameEngine }) {
             onToast={showToast}
             onAiCenter={() => {
               changePage('ship')
-              changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥」标签
+              changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥中心」标签
             }}
             onGoPage={(page, mapTab) => {
               changePage(page as PageKey)
