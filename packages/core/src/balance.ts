@@ -117,10 +117,20 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     familySkillPerLevel: 0.05,
     speedFactor: 0.6, // 战斗机动速度 = maxSpeed ×0.6 ×(1 ± agility 修正)
     agilitySpeedBonus: 0.15,
-    // C4 校准轮（2026-09-05）：血池放大 + 敌 DPS 回调（秒杀 → 30s 级同级交战；合成同质怪
-    // 验证引擎单调：10→90 胜率平滑下降，同级时长 ~13-25s——敌血提档 threat×10 拉长至 ~30s）
-    foeHpPerThreat: 10, // 敌方总血量 ≈ threat ×10（C4 前 2.6；校准目标 30~50s 同级交战）
-    foeEscortThreatFrac: 0.5, // 僚机每架 = threat ×0.5
+    // C4 血量曲线（2026-09-05 船长拍板：战斗时长预期反推，k=1.6 幂型凸曲线，方案 A=无技能基线）：
+    // 敌总血(T) = 参考段火力 × D(T)，D = 5 + 85×((T−6)/90)^1.6（T6→5s … T96→90s，纯对射口径）
+    // 参考火力 = 无技能解析对射 DPS（动能制式：隼枭3高槽?1×MK1=2.1 待定——当前段表：
+    //   ≤16 隼枭+1×MK1 2.1 / ≤40 虎鲨+2×MK2 9.7 / >40 鲸王+3×MK3 12.8；跑解析探针生成，船长可微调）
+    foeHpCurveDMin: 5,
+    foeHpCurveDSpan: 85,
+    foeHpCurveExp: 1.6,
+    foeHpCurveFloorThreat: 6,
+    foeHpCurveSpanThreat: 90,
+    foeRefFire: [
+      { upToThreat: 16, dps: 2.1 },
+      { upToThreat: 40, dps: 9.7 },
+      { upToThreat: 9999, dps: 12.8 },
+    ],
     foeDpsPerThreat: 0.8, // 敌方总火力 ≈ threat ×0.8（C4 前 1.1）
     foeHitRate: 0.55, // 敌方武器基础命中
     foeReloadMs: 4_000, // 敌方武器装填

@@ -437,9 +437,14 @@ export interface BattleBalance {
   /** 舰船 maxSpeedMps 参与距离收敛的比例（战斗机动速度 = speed × speedFactor ×(1±agilitySpeedBonus)） */
   speedFactor: number
   agilitySpeedBonus: number
-  /** 敌方换算（threat → 血/火力/速度） */
-  foeHpPerThreat: number
-  foeEscortThreatFrac: number
+  /** C4 血量曲线（2026-09-05）：D = DMin + DSpan×((T−floor)/span)^exp；敌血 = 参考火力×D */
+  foeHpCurveDMin: number
+  foeHpCurveDSpan: number
+  foeHpCurveExp: number
+  foeHpCurveFloorThreat: number
+  foeHpCurveSpanThreat: number
+  /** 参考火力段表（无技能解析对射 DPS：威胁上界 → dps）——血量反推基准，可微调 */
+  foeRefFire: ReadonlyArray<{ upToThreat: number; dps: number }>
   foeDpsPerThreat: number
   foeHitRate: number
   foeReloadMs: number

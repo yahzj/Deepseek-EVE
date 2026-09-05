@@ -16,6 +16,7 @@ import {
   typeLayerMult,
   createBattleState,
   createFoeSpecs,
+  foeHpOfThreat,
   createPlayerSpec,
   desiredRangeFor,
   foeDesiredRange,
@@ -131,7 +132,8 @@ describe('敌方换算与距离战术', () => {
     const foes = createFoeSpecs(withEscorts, bal)
     expect(foes).toHaveLength(3)
     const totalHp = foes.reduce((s, f) => s + f.hp.s + f.hp.a + f.hp.h, 0)
-    expect(totalHp).toBeCloseTo(90 * bal.foeHpPerThreat, 4)
+    // C4 血量曲线：总血 = foeHpOfThreat(threat)（时长预期反推），与僚机数量无关
+    expect(totalHp).toBeCloseTo(foeHpOfThreat(90, bal), 0)
   })
 
   it('开战距离在最远射程之外；中距/风筝/贴脸期望单调', () => {

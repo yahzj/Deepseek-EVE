@@ -10,7 +10,7 @@
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, createFoeSpecs, foeRefSpeedMps, startBattleFor } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor } from '../packages/core/src/combat'
 
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
@@ -85,6 +85,14 @@ async function main(): Promise<void> {
   const threats = [...ANOMALIES].sort((a, b) => a.threat - b.threat)
   console.log('══ C4 战斗校准（真实模拟胜率）══')
   console.log('威胁梯度：' + threats.map((a) => `${a.name}=${a.threat}`).join(' '))
+  // 时长预期行（C4 血量曲线 D(T)，纯对射口径；模拟时长含接近期故应 ≥ D）
+  const dExpect = (t: number): number =>
+    Math.round((bal.foeHpCurveDMin + bal.foeHpCurveDSpan * Math.pow(Math.min(1, Math.max(0, (t - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat)), bal.foeHpCurveExp)) * 10) / 10
+  console.log(
+    '预期击杀D(T)：' +
+      threats.map((a) => `${a.threat}:${dExpect(a.threat)}s`).join(' '),
+  )
+  console.log('敌血 foeHpOfThreat：' + threats.map((a) => `${a.threat}:${foeHpOfThreat(a.threat, bal)}`).join(' '))
   for (const skillName of ['无技能', '全战斗技能5']) {
     const skills = skillName === '无技能' ? {} : FULL_SKILLS
     console.log(`\n—— 技能档：${skillName}（每格 = 胜率%｜平均秒数，${SEEDS.length} 种子实战平均）——`)

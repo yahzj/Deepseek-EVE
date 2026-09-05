@@ -476,6 +476,24 @@ function foeSpeedBase(threat: number, bal: BattleBalance): number {
   return Math.min(1.15, Math.max(0.7, lo + (hi - lo) * t))
 }
 
+/** 敌编队总血（C4 时长预期曲线反推，2026-09-05）：参考段火力 × D(T) */
+export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
+  const floor = bal.foeHpCurveFloorThreat ?? 6
+  const span = bal.foeHpCurveSpanThreat ?? 90
+  const t = Math.min(1, Math.max(0, (threat - floor) / span))
+  const d = (bal.foeHpCurveDMin ?? 5) + (bal.foeHpCurveDSpan ?? 85) * Math.pow(t, bal.foeHpCurveExp ?? 1.6)
+  const table = bal.foeRefFire
+  let f = table[0]?.dps ?? 5
+  for (let i = 0; i < table.length; i++) {
+    if (threat <= table[i]!.upToThreat) {
+      f = table[i]!.dps
+      break
+    }
+    f = table[i]!.dps
+  }
+  return Math.max(1, Math.round(f * d))
+}
+
 /** 展开敌方编队（threat 卡面 = 总战力；血/火力威胁线性，射程/速度走虚拟装配模板） */
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpec[] {
   const tactic = anomaly.tactic ?? 'orbit'
@@ -497,7 +515,9 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
   const foeSpeed = anomaly.foeSpeedMps ?? Math.min(spdCap, Math.round(refSpeed * foeSpeedBase(anomaly.threat, bal) * tacticSpd))
 
   const make = (tag: string, name: string, uThreat: number, type: DamageType): UnitSpec => {
-    const totalHp = uThreat * bal.foeHpPerThreat
+    // C4：总血 = 时长曲线反推表值；按威胁份额分配（主体/僚机 = uThreat/T × 总血）
+    const unitHp = (foeHpOfThreat(anomaly.threat, bal) * uThreat) / Math.max(1, anomaly.threat)
+    const totalHp = unitHp
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     const dps = uThreat * bal.foeDpsPerThreat
     const shotDmg = Math.max(1, Math.round((dps * bal.foeReloadMs) / 1000 / bal.foeHitRate))
