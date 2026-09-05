@@ -393,9 +393,13 @@ body {
   flex-wrap: wrap;
 }
 .app-belt-ai .app-select {
+  flex: 0 0 auto;
   font-size: 11.5px;
   padding: 3px 6px;
-  max-width: 130px;
+  /* 船长 2026-09-05：下拉过短文字截断——放宽到核心名（如「阿尔法（88%）」）可完整显示；
+     同排放不下时由 .app-belt-ai 的 flex-wrap 自然换行 */
+  max-width: 200px;
+  min-width: 0;
 }
 /* 卡片内：本带采掘中的 AI 副船列表（快速取消） */
 .app-belt-workers {
