@@ -20,6 +20,7 @@ const KIND_ICON: Record<string, string> = {
   ai: '🤖',
   return: '↩',
   transit: '🏠',
+  loop: '🔁',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -42,6 +43,8 @@ function stopLabel(v: ActivityView): string {
       return '撤退'
     case 'cancel-ai':
       return '取消'
+    case 'stop-loop':
+      return '停连击'
     default:
       return ''
   }
@@ -81,6 +84,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
     case 'cancel-ai':
       if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), 'AI 任务已取消（核心已归还）。')
       break
+    case 'stop-loop':
+      run(engine.bountyLoopAt(null), '连续出击已停止。')
+      break
   }
 }
 
@@ -103,6 +109,8 @@ function goFor(kind: string): { page: string; mapTab?: string } {
     case 'transit':
     case 'standby':
       return { page: 'map', mapTab: 'star' }
+    case 'loop':
+      return { page: 'map', mapTab: 'bounty' }
     case 'manufacture':
     case 'refine':
       return { page: 'industry' }
@@ -130,7 +138,6 @@ export function ActivityBar({
   const aiCount = all.filter((i) => i.kind === 'ai').length
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
-  const loopId = state.autoLoopAnomalyId
   // 撤退需二次确认（轻损但有代价）
   const [retreatAsk, setRetreatAsk] = useState(false)
   if (retreatAsk && !playerItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
@@ -140,11 +147,21 @@ export function ActivityBar({
     const handleItemClick = (): void => {
       if (onGoPage) onGoPage(target.page, target.mapTab)
     }
+    const goText =
+      target.page === 'map'
+        ? target.mapTab === 'mine'
+          ? '矿带开采'
+          : target.mapTab === 'bounty'
+            ? '悬赏情报'
+            : '星图·远征'
+        : target.page === 'industry'
+          ? '工业'
+          : '技能'
     return (
     <div
       key={v.id}
       className={`app-activitybar-item is-${v.kind}`}
-      title={v.stopReason ?? `点击前往「${target.page === 'map' ? (target.mapTab === 'mine' ? '矿带开采' : '星图·远征') : target.page === 'industry' ? '工业' : '技能'}」页`}
+      title={v.stopReason ?? `点击前往「${goText}」页`}
       onClick={handleItemClick}
     >
       <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
@@ -215,11 +232,6 @@ export function ActivityBar({
           >
             🤖×{aiCount}
           </button>
-        ) : null}
-        {loopId ? (
-          <span className="app-activitybar-loop-mini" title="连续出击中（胜利冷却 10 秒起自动再出发）">
-            🔁 连击
-          </span>
         ) : null}
       </div>
       <div className="app-activitybar-group">

@@ -12,12 +12,23 @@ import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
 import { manufacturingStatus } from './manufacturing'
 import { refineRunStatus } from './industry'
-import { expeditionStatus } from './expedition'
+import { expeditionStatus, bountyCooldownRemainingMs } from './expedition'
 import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
-export type ActivityKind = 'train' | 'mining' | 'scan' | 'manufacture' | 'refine' | 'expedition' | 'ai' | 'return' | 'transit' | 'standby'
+export type ActivityKind =
+  | 'train'
+  | 'mining'
+  | 'scan'
+  | 'manufacture'
+  | 'refine'
+  | 'expedition'
+  | 'ai'
+  | 'return'
+  | 'transit'
+  | 'standby'
+  | 'loop'
 
 /** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
@@ -30,6 +41,7 @@ export type ActivityStopKind =
   | 'retreat-battle'
   | 'cancel-ai'
   | 'recall-standby'
+  | 'stop-loop'
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
@@ -148,6 +160,31 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       stopable: true,
       stop: inBattle ? 'retreat-battle' : 'recall-expedition',
     })
+  }
+
+  // ── 连续出击（autoLoop：打完冷却后自动再出发；悬赏冷却/等待空窗也记录为玩家活动——船长 2026-09-05） ──
+  const loopId = state.autoLoopAnomalyId
+  if (loopId !== null) {
+    const inFlight = state.expedition.active && state.expedition.anomalyId === loopId
+    if (!inFlight) {
+      const aName = ctx.anomalies.get(loopId)?.name ?? loopId
+      const cdMs = bountyCooldownRemainingMs(state, loopId)
+      const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
+      out.push({
+        id: 'loop',
+        kind: 'loop',
+        label: '连续出击',
+        sub: busyOther
+          ? `目标「${aName}」——等待当前作业结束，自动再出击`
+          : cdMs > 0
+            ? `目标「${aName}」——冷却结束自动索敌再出击`
+            : `目标「${aName}」——即将自动再出击`,
+        percent: null,
+        remainingMs: cdMs > 0 ? cdMs : null,
+        stopable: true,
+        stop: 'stop-loop',
+      })
+    }
   }
 
   // ── AI 副船任务（每条） ──
