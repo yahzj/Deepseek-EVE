@@ -1978,6 +1978,25 @@ body {
 .app-mkt-row {
   flex-wrap: wrap;
 }
+/* 左栏商品行（2026-09-05：整行可点击选中 → 右栏详情） */
+.app-mkt-row-click {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 6px;
+  margin-left: -6px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.app-mkt-row-click:hover {
+  background: rgba(79, 216, 196, 0.07);
+}
+.app-mkt-row-click:focus-visible {
+  outline: 2px solid var(--wui-accent);
+  outline-offset: -2px;
+}
+.app-mkt-row-click.is-sel {
+  background: rgba(79, 216, 196, 0.1);
+  box-shadow: inset 2px 0 0 var(--wui-accent);
+}
 .app-mkt-name-line {
   display: flex;
   align-items: center;
