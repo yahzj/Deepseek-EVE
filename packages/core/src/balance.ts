@@ -148,7 +148,9 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     ],
     foeSpeedAtThreat10: 0.8,
     foeSpeedAtThreat100: 0.95,
-    foeSpeedTacticMul: { brawl: 1.12, orbit: 1.0, kite: 1.0 },
+    // 战术风格速度系数：brawl 贴脸再高（近身使命）；**kite ×0.72（2026-09-05 船长拍板：远程怪
+    // 大降速与速度成长——慢速风筝怪可被玩家追上钻近盲，远程压制窗口受玩家速度制约）**
+    foeSpeedTacticMul: { brawl: 1.12, orbit: 1.0, kite: 0.72 },
     foeSpeedCapMul: 1.2,
     // 射程成长侧重：近战几乎不变形（靠速度近身）、环绕居中、风筝多增；封顶 = 玩家天花板 13 km + 2 km
     foeRangeGrowMul: { brawl: 0.3, orbit: 0.7, kite: 1.15 },
