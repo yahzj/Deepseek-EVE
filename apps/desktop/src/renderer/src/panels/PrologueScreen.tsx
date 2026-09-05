@@ -79,7 +79,10 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
   }
 
   return (
-    <div className="app-prologue" onClick={() => (phase === 'boot' ? setShown(CHECK_LINES.length) : undefined)}>
+    <div
+      className={`app-prologue${phase === 'open' ? ' is-eye' : ''}`}
+      onClick={() => (phase === 'boot' ? setShown(CHECK_LINES.length) : undefined)}
+    >
       <div className="app-prologue-inner">
         {phase === 'wake' ? (
           <div className="app-pro-wake">
