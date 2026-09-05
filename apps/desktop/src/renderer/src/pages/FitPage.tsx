@@ -24,6 +24,7 @@ import {
   rackLabel,
   rackOf,
   sameKindCount,
+  shipBusyLabel,
   shipDisplayName,
   shipSlotsOf,
   stackingOf,
@@ -222,12 +223,23 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
 
 export function FitPage({ engine, onToast }: PageProps) {
   const state = engine.state
-  const shipDef = fleetDefOf(state, engine.ctx, state.shipId)
-  const shipName = shipDisplayName(state, engine.ctx, state.shipId)
-  const fitted = state.fleet[state.shipId]?.fitted
+  // 装配目标船（船长 2026-09-05：可装配舰队任意船；进入默认 = 当前驾驶船）
+  const fleetIds = Object.keys(state.fleet)
+  const piloted = state.shipId
+  const [targetId, setTargetId] = useState<string>(piloted)
+  const effectiveTarget = fleetIds.includes(targetId) ? targetId : piloted
+  function chooseTarget(id: string): void {
+    setTargetId(id)
+    setPickBay(null) // 目标切换 → 关闭换装浮层与缓存
+    setPickDiffs(null)
+  }
+  const isPiloted = effectiveTarget === piloted
+  const shipDef = fleetDefOf(state, engine.ctx, effectiveTarget)
+  const shipName = shipDisplayName(state, engine.ctx, effectiveTarget)
+  const fitted = state.fleet[effectiveTarget]?.fitted
   const slots = shipDef ? shipSlotsOf(shipDef) : { high: 1, mid: 1, low: 1 }
   // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力曲线、回避含陀螺缺口）
-  const spec = shipDef ? createPlayerSpec(state, engine.ctx, state.shipId) : null
+  const spec = shipDef ? createPlayerSpec(state, engine.ctx, effectiveTarget) : null
   // V18.1 索敌阵列（命中件）：炮台命中乘子（收敛后；条目层）
   const gunEq = spec?.weapons.find((w) => w.kind === 'gun')?.eqHitMul
 
@@ -237,7 +249,7 @@ export function FitPage({ engine, onToast }: PageProps) {
   // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
   function handleUnfit(rack: RackSlot, index: number): void {
-    if (engine.unfitAtAt(rack, index)) onToast('装备已卸下并放回装备库。')
+    if (engine.unfitAtAt(rack, index, effectiveTarget)) onToast('装备已卸下并放回装备库。')
   }
 
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
@@ -260,15 +272,15 @@ export function FitPage({ engine, onToast }: PageProps) {
     while (arr.length <= index) arr.push(null)
     arr[index] = m.id
     const simFitted: FittedModules = { ...base, [rack]: arr }
-    const fleet = state.fleet[state.shipId]
+    const fleet = state.fleet[effectiveTarget]
     if (!fleet) return null
     const simState: GameState = {
       ...state,
-      fleet: { ...state.fleet, [state.shipId]: { ...fleet, fitted: simFitted } },
+      fleet: { ...state.fleet, [effectiveTarget]: { ...fleet, fitted: simFitted } },
     }
     return {
       cur: curSpec,
-      next: createPlayerSpec(simState, engine.ctx, state.shipId),
+      next: createPlayerSpec(simState, engine.ctx, effectiveTarget),
       cpuNext: fittedCpuUsed(simFitted, engine.ctx),
     }
   }
@@ -291,8 +303,8 @@ export function FitPage({ engine, onToast }: PageProps) {
     if (!pickBay) return
     const { rack, index } = pickBay
     // 该位已装 → 先卸下旧件（放回装备库），再装入所选件
-    if ((fitted?.[rack]?.[index] ?? null) !== null) engine.unfitAtAt(rack, index)
-    const r = engine.fitModuleTo(m.id, rack, index)
+    if ((fitted?.[rack]?.[index] ?? null) !== null) engine.unfitAtAt(rack, index, effectiveTarget)
+    const r = engine.fitModuleTo(m.id, rack, index, effectiveTarget)
     if (!r.ok) onToast(r.error ?? '装配失败', true)
     else onToast(`${m.name} 已装入${rackLabel(rack)}第 ${index + 1} 位。`)
     setPickBay(null)
@@ -314,7 +326,38 @@ export function FitPage({ engine, onToast }: PageProps) {
 
   return (
     <div className="page-stack">
-      <Panel title="装配台" right={<span className="app-dim">当前舰船：{shipName} · 装备随船</span>}>
+      <Panel title="装配台" right={<span className="app-dim">装备随船 · 驾驶船切换在「舰船」页</span>}>
+        {/* 装配目标（船长 2026-09-05：醒目左置 + 可装配舰队任意船；默认当前驾驶船） */}
+        <div className="app-fit-target">
+          <span className="app-fit-target-label">
+            装配目标
+            {isPiloted ? <em className="app-belt-flag is-run">当前舰船</em> : <em className="app-belt-flag">非驾驶船</em>}
+          </span>
+          <span className="app-dim app-fit-target-hint">点击切换要装配的舰船（直接装配非驾驶中的舰船，进入时默认当前舰船）</span>
+          <div className="app-cargo-ships">
+            {fleetIds.map((id) => {
+              const d = fleetDefOf(state, engine.ctx, id)
+              const b = shipBusyLabel(state, engine.ctx, id)
+              const isP = id === piloted
+              const isSel = id === effectiveTarget
+              return (
+                <button
+                  key={id}
+                  className={`app-shipchip${isSel ? ' is-active' : ''}${isP ? ' is-piloted' : ''}`}
+                  onClick={() => chooseTarget(id)}
+                  title={`${shipDisplayName(state, engine.ctx, id)}${isP ? '（当前驾驶中）' : b ? `（${b}）` : '（闲置）'}`}
+                >
+                  <span className="app-shipchip-name">
+                    {d ? <span className={`app-role-dot is-${d.role}`} /> : null}
+                    {shipDisplayName(state, engine.ctx, id)}
+                  </span>
+                  {isP ? <span className="app-shipchip-tag">驾驶中</span> : null}
+                  {b && !isP ? <span className="app-shipchip-busy">·{b}</span> : null}
+                </button>
+              )
+            })}
+          </div>
+        </div>
         <div className="app-fit-cols">
           <div className="app-fit-col-left">
         {shipDef ? (

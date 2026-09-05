@@ -1521,6 +1521,33 @@ body {
   min-width: 0;
 }
 /* ── CPU 占用条（槽位区顶部；船长 2026-09-05：由左栏移来并醒目化） ── */
+/* 装配目标行（2026-09-05：醒目左置；chips 复用货仓页船选择条） */
+.app-fit-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(232, 180, 90, 0.4);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(232, 180, 90, 0.12), rgba(14, 24, 40, 0.5));
+}
+.app-fit-target-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--wui-gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-fit-target-hint {
+  font-size: 11px;
+}
+.app-fit-target .app-cargo-ships {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+}
 .app-fit-cpustrip {
   display: flex;
   align-items: center;

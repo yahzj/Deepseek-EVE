@@ -171,7 +171,8 @@ export function firstFreeBay(fitted: FittedModules, rack: RackSlot): number {
 }
 
 /**
- * 玩家指令：把装备库里的装备装到当前船对应槽类（rack）的某空位。
+ * 玩家指令：把装备库里的装备装到某船对应槽类（rack）的某空位。
+ * shipId 缺省 = 当前驾驶船（2026-09-05 船长：装配页支持直接装配非驾驶中的舰船）。
  * index 缺省 = 第一个空位；该槽类无空位/CPU 超限 → 拒绝并提示。
  * V18.1：无同类唯一约束——任何件可复数安装，防超模靠收敛机制（stackingOf）与 CPU。
  */
@@ -179,19 +180,20 @@ export function fitModule(
   state: GameState,
   moduleId: string,
   ctx: SimContext,
-  opts?: { rack?: RackSlot; index?: number },
+  opts?: { rack?: RackSlot; index?: number; shipId?: string },
 ): CommandResult {
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
   if (countModule(state, moduleId) < 1) {
     return { ok: false, error: `装备库里没有 ${def.name}，先去制造台造一件。` }
   }
-  const fitted = fittedOf(state)
-  if (!fitted) return { ok: false, error: '当前舰船数据缺失，无法装配。' }
+  const shipId = opts?.shipId ?? state.shipId
+  const fitted = state.fleet[shipId]?.fitted
+  if (!fitted) return { ok: false, error: '该舰船数据缺失，无法装配。' }
   const rack = opts?.rack ?? rackOf(def)
   const bays = rackBays(fitted, rack)
   // V18 韧性：位数组长度按船布局期望补齐（repair 链负责持久对齐；此处兜底运行态）
-  const shipDef = fleetDefOf(state, ctx, state.shipId)
+  const shipDef = fleetDefOf(state, ctx, shipId)
   if (shipDef) {
     const want = shipSlotsOf(shipDef)[rack]
     while (bays.length < want) bays.push(null)
@@ -224,9 +226,9 @@ export function fitModule(
   return { ok: true }
 }
 
-/** 玩家指令：按 槽类+位序 卸下当前船某位的装备（放回装备库） */
-export function unfitAt(state: GameState, rack: RackSlot, index: number): boolean {
-  const fitted = fittedOf(state)
+/** 玩家指令：按 槽类+位序 卸下某船某位的装备（放回装备库；shipId 缺省 = 当前驾驶船） */
+export function unfitAt(state: GameState, rack: RackSlot, index: number, shipId: string = state.shipId): boolean {
+  const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return false
   const bays = rackBays(fitted, rack)
   if (index < 0 || index >= bays.length) return false

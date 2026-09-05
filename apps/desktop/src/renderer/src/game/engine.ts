@@ -695,9 +695,9 @@ export class GameEngine {
     return ok
   }
 
-  /** V18：把装备装到 指定槽类+位序（位行"装入"入口；库行装配请用 fitModuleAt 自动首空位） */
-  fitModuleTo(moduleId: string, rack: RackSlot, index: number): CommandResult {
-    const result = fitModule(this.state, moduleId, this.ctx, { rack, index })
+  /** V18：把装备装到 指定槽类+位序（shipId 缺省 = 当前驾驶船；2026-09-05 装配页可装配非驾驶船） */
+  fitModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
+    const result = fitModule(this.state, moduleId, this.ctx, { rack, index, shipId })
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -705,9 +705,9 @@ export class GameEngine {
     return result
   }
 
-  /** V18：卸下 指定槽类+位序 的装备（放回装备库） */
-  unfitAtAt(rack: RackSlot, index: number): boolean {
-    const ok = unfitAt(this.state, rack, index)
+  /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船） */
+  unfitAtAt(rack: RackSlot, index: number, shipId?: string): boolean {
+    const ok = unfitAt(this.state, rack, index, shipId)
     if (ok) {
       void this.persist()
       this.notify()
