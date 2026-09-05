@@ -241,7 +241,7 @@ describe('装备装配与加成', () => {
     fitModule(state, 'mod-a', ctx)
     startMining(state, 'belt-a', ctx)
     expect(miningStatus(state, ctx).unitsPerCycle).toBe(15) // floor(10 × 1.5)
-    advanceGame(state, 60_000 + 12_000, ctx) // 空船出航 60s + 1 个循环
+    advanceGame(state, 12_000, ctx) // 去程取消：指令即采掘 → 1 个循环
     expect(countItem(state, 'ore-a')).toBe(15)
   })
 

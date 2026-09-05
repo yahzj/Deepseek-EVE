@@ -169,7 +169,7 @@ export function startRefineRun(
     if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
-    if (state.standby.active) return { ok: false, error: '待命行程中：先召回。' }
+    if (state.standby.active) return { ok: false, error: '掩护巡逻（旧档去程）进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   } else if (countAiCore(state, worker) <= 0) {
     return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
@@ -250,7 +250,7 @@ export function startRecycleRun(
     if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
-    if (state.standby.active) return { ok: false, error: '待命行程中：先召回。' }
+    if (state.standby.active) return { ok: false, error: '掩护巡逻（旧档去程）进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   } else if (countAiCore(state, worker) <= 0) {
     return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }

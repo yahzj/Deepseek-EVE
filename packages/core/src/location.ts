@@ -93,11 +93,12 @@ export function isIdleField(state: GameState): boolean {
 
 /**
  * 玩家指令：从野外返航**最近空间站**（母港或已建成副站）。
- * 前置：在野外且无任何进行中作业；时长按当前船跃迁/技能、出发时锁定。
+ * 前置：在野外且无任何进行中作业。
+ * 换港返航即时到站（定稿：去程取消）：下达即停靠目标站（finishAtGameMs = 当前时刻，无航行等待）。
  */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
   if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。' }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '掩护巡逻（旧档去程）进行中——请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航行程进行中。' }
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
@@ -107,26 +108,32 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   const target = nearestStationGalaxyId(state, ctx, from)
   const mins = shortestTravelMinutes(ctx, from, target)
   if (!Number.isFinite(mins)) return { ok: false, error: '最近空间站不在已知航路内，无法返航。' }
-  const legMs = state.debugQuick ? 1000 : Math.max(1, travelLegMs(state, ctx, mins))
   const t = state.transit
-  t.active = true
-  t.fromGalaxy = from
-  t.toGalaxy = target
-  t.finishAtGameMs = state.gameMs + legMs
-  t.legMs = legMs
   const fromName = ctx.galaxies.get(from)?.name ?? from
   const toName = ctx.galaxies.get(target)?.name ?? '空间站'
-  addLog(
-    state,
-    'info',
-    state.debugQuick
-      ? `已命令返航：从「${fromName}」返回空间站（${toName}）。`
-      : `返航空间站（${toName}）：从「${fromName}」出发，约 ${Math.round(legMs / 1000)} 秒后到站（可卸货/维修/换船）。`,
-  )
+  // 换港返航即时到站（去程取消）：不保留行程状态，直接停靠目标站
+  t.active = false
+  t.fromGalaxy = null
+  t.toGalaxy = null
+  t.finishAtGameMs = 0
+  t.legMs = 0
+  state.awayGalaxy = null
+  // 目标若是已建成副站 → 停靠该站；否则回母港
+  state.dockedSite = null
+  for (const site of ctx.stations.values()) {
+    const prog = state.stationSites[site.id]
+    if (prog && prog.stage >= site.tiers.length && site.galaxyId === target) {
+      state.dockedSite = site.id
+      addLog(state, 'info', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。`)
+      return { ok: true }
+    }
+  }
+  addLog(state, 'info', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。`)
   return { ok: true }
 }
 
-/** 引擎内部：推进返航行程；到站按目标设置停靠（副站或母港） */
+/** 引擎内部：推进返航行程（仅旧档/遗留在途行程：finishAt 在未来；新指令即时到站不留行程）。
+ * 到站按目标设置停靠（副站或母港）。 */
 export function advanceTransit(state: GameState, ctx: SimContext): void {
   const t = state.transit
   if (!t.active) return
@@ -182,18 +189,19 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
   }
 }
 
-/* ═══════════ B1.5 主动"前往星系待命"（主控） ═══════════ */
+/* ═══════════ B1.5 主动"前往星系掩护巡逻"（原"待命"，主控） ═══════════ */
 
 /**
- * 玩家指令：前往指定星系待命（飞抵后野外停留 awayGalaxy=目标——采矿/悬赏/返航皆可从停留点继续；
+ * 玩家指令：前往指定星系**掩护巡逻**（即时就位：去程已取消，无航行等待；
+ * 下达即转场该星系野外停留 awayGalaxy=目标——采矿/悬赏/返航皆可从停留点继续；
  * 低安星系的停留船会进入 B1 遭遇暴露）。
- * 前置：舰船空闲（不在采矿/远征/扫描/返航/途中待命）；目标星系必须已探索且不在当前停靠点。
+ * 前置：舰船空闲（不在采矿/远征/扫描/返航行程中）；目标星系必须已探索且不在当前停靠点。
  */
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
   const s = state.standby
-  if (s.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (s.active) return { ok: false, error: '掩护巡逻进行中（旧档去程）：请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排。' }
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。' }
@@ -204,64 +212,65 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   }
   if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。` }
   const from = originGalaxyOf(state, ctx)
-  if (from === galaxyId && state.awayGalaxy === null && !state.standby.active) {
+  if (from === galaxyId && state.awayGalaxy === null) {
     return { ok: false, error: `舰船已停靠「${target.name}」，无需前往。` }
   }
   if (state.awayGalaxy === galaxyId && isIdleField(state)) {
-    return { ok: false, error: `舰船已在「${target.name}」待命。` }
+    return { ok: false, error: `舰船已在「${target.name}」掩护巡逻。` }
   }
   const mins = shortestTravelMinutes(ctx, from, galaxyId)
   if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。` }
-  const legMs = state.debugQuick ? 1000 : Math.max(1, travelLegMs(state, ctx, mins))
-  s.active = true
-  s.galaxyId = galaxyId
-  s.finishAtGameMs = state.gameMs + legMs
-  s.legMs = legMs
-  const fromName = ctx.galaxies.get(from)?.name ?? from
-  addLog(
-    state,
-    'info',
-    `⛳ 前往「${target.name}」待命：从「${fromName}」启程，约 ${Math.round(legMs / 1000)} 秒后抵达并留守（低安星系可能遭遇巡逻/伏击，可随时取消或从该处继续采矿/出击）。`,
-  )
-  return { ok: true }
-}
-
-/** 引擎内部：推进待命去程；到点 → 野外停留目标星系（awayGalaxy，目标出发时已验证已探索） */
-export function advanceStandby(state: GameState, ctx: SimContext): void {
-  const s = state.standby
-  if (!s.active) return
-  if (state.gameMs < s.finishAtGameMs) return
-  const galaxyId = s.galaxyId
-  const name = galaxyId ? ctx.galaxies.get(galaxyId)?.name ?? galaxyId : ''
+  // 去程取消（定稿）：即时就位——到达时刻 = 当前，无去程等待；船即刻转场目标星系留守
   s.active = false
   s.galaxyId = null
   s.finishAtGameMs = 0
   s.legMs = 0
+  state.awayGalaxy = galaxyId
+  addLog(
+    state,
+    'info',
+    `⛳ 掩护巡逻：舰船已抵达「${target.name}」并留守该星系（低安星系可能遭遇巡逻/伏击；可随时返航空间站，或从该处继续采矿/出击）。`,
+  )
+  return { ok: true }
+}
+
+/** 引擎内部：收尾掩护巡逻状态。新指令即时就位（active=false，无需处理）；
+ * 仅旧档/遗留的去程状态（finishAt 在未来）到此仍需等待到点再留守，并兼容清理异常残留。 */
+export function advanceStandby(state: GameState, ctx: SimContext): void {
+  const s = state.standby
+  if (!s.active) return
+  if (state.gameMs < s.finishAtGameMs) return // 旧档/遗留：去程仍在路上 → 到点再留守
+  const galaxyId = s.galaxyId
+  s.active = false
+  s.galaxyId = null
+  s.finishAtGameMs = 0
+  s.legMs = 0
+  if (galaxyId === null) return
+  if (state.awayGalaxy === galaxyId) return // 已即时就位（不重复写到达日志）
+  const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   state.awayGalaxy = galaxyId // 目标星系野外停留（低安遭遇暴露即生效）
   addLog(
     state,
     'info',
-    galaxyId === null
-      ? '待命行程结束。'
-      : `⛳ 已抵达「${name}」并进入待命：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
+    `⛳ 已抵达「${name}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
   )
 }
 
-/** 玩家指令：取消待命去程（召回口径：立即回到母港/空间站，无耗时） */
+/** 玩家指令：取消旧的掩护巡逻去程（仅旧档在途状态有意义；召回口径：立即回到母港/空间站，无耗时） */
 export function cancelStandby(state: GameState, ctx: SimContext): CommandResult {
   const s = state.standby
-  if (!s.active || s.galaxyId === null) return { ok: false, error: '当前没有进行中的待命行程。' }
+  if (!s.active || s.galaxyId === null) return { ok: false, error: '当前没有进行中的掩护巡逻行程。' }
   const name = ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId
   s.active = false
   s.galaxyId = null
   s.finishAtGameMs = 0
   s.legMs = 0
   state.awayGalaxy = null // 召回口径：回母港（与远征召回一致）
-  addLog(state, 'warn', `待命行程已取消：舰船返回母港（未抵达「${name}」）。`)
+  addLog(state, 'warn', `掩护巡逻行程已取消：舰船返回母港（未抵达「${name}」）。`)
   return { ok: true }
 }
 
-/** 待命去程只读视图（活动栏用） */
+/** 掩护巡逻（旧"待命"）只读视图（活动栏用；新指令即时就位后为 inactive） */
 export interface StandbyView {
   active: boolean
   galaxyId: string | null

@@ -50,16 +50,14 @@ describe('T3 按船货仓只读查询', () => {
 })
 
 describe('T3 shipBusyLabel：船忙态判定', () => {
-  it('驾驶船：空闲 null；采矿中/出航/返航；扫描中；远征去程/交火/返航', () => {
+  it('驾驶船：空闲 null；采矿中/返航；扫描中；远征去程(旧档)/交火/返航', () => {
     const { state, ctx } = world()
     const piloted = state.shipId
     expect(shipBusyLabel(state, ctx, piloted)).toBeNull()
 
-    // 采矿（主控）：T4 起开工先显式出航（30s 行程）
+    // 采矿（主控）：去程已取消——指令即进入采掘
     const r = startMining(state, 'belt-a', ctx)
     expect(r.ok).toBe(true)
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('采矿·出航中')
-    state.mining.phase = 'mining'
     expect(shipBusyLabel(state, ctx, piloted)).toBe('采矿中')
     state.mining.phase = 'returning'
     expect(shipBusyLabel(state, ctx, piloted)).toBe('采矿·返航中')

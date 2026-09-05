@@ -40,23 +40,27 @@ describe('T1 统一停止指令', () => {
     expect(cancelManufacturing(state, ctx, runId).ok).toBe(false)
   })
 
-  it('召回远征：去程可召回（无战果回港）；交火中拒绝', () => {
+  it('召回远征：去程已取消 → 出发即交火不可召回；返航（back）可召回（无战果回港）', () => {
     state.standings['dsi'] = 5
     state.exploredGalaxies.push('galaxy-far')
-    expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
-    expect(state.expedition.phase).toBe('out')
-    expect(recallExpedition(state, ctx).ok).toBe(true)
-    expect(state.expedition.active).toBe(false)
-    expect(state.logs.some((l) => l.text.includes('已召回'))).toBe(true)
-    // 交火中拒绝召回
-    const s2 = createInitialState({ nowWallMs: 0, seed: 42 })
-    s2.standings['dsi'] = 5
-    expect(startExpedition(s2, 'ano-a', ctx).ok).toBe(true) // hub 目标立即到港开战
-    advanceGame(s2, 1, ctx)
-    expect(s2.expedition.phase).toBe('battle')
-    const r = recallExpedition(s2, ctx)
+    // 去程取消：下达即开战，交火中拒绝召回
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true) // hub 目标即时开战
+    expect(state.expedition.phase).toBe('battle')
+    const r = recallExpedition(state, ctx)
     expect(r.ok).toBe(false)
     expect(r.error).toContain('交火中')
+    expect(state.logs.some((l) => l.text.includes('已召回'))).toBe(false)
+    // 返航中（去程并入返航的 back 相位）仍可召回
+    const s2 = createInitialState({ nowWallMs: 0, seed: 42 })
+    s2.standings['dsi'] = 5
+    s2.exploredGalaxies.push('galaxy-far')
+    expect(startExpedition(s2, 'ano-hard', ctx).ok).toBe(true) // far 目标即时开战
+    s2.expedition.phase = 'back' // 手工转返航（供召回语义验证）
+    s2.expedition.battle = null
+    s2.expedition.finishAtGameMs = s2.gameMs + 240_000
+    expect(recallExpedition(s2, ctx).ok).toBe(true)
+    expect(s2.expedition.active).toBe(false)
+    expect(s2.logs.some((l) => l.text.includes('已召回'))).toBe(true)
   })
 })
 
@@ -102,18 +106,27 @@ describe('T1 activityOverview 视图', () => {
     expect(mf.stop).toBe('cancel-manufacture')
   })
 
-  it('远征在途出卡并可召回；AI 采矿任务出卡且带 stopParam', () => {
+  it('远征出卡：交火中可撤退；返航（back）可召回；AI 采矿任务出卡且带 stopParam', () => {
     state.standings['dsi'] = 5
     state.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
+    // 去程取消：下达即交火 → 活动卡停止动作 = 撤退
+    let acts = activityOverview(state, ctx)
+    let exp = acts.find((a) => a.kind === 'expedition')!
+    expect(exp.stopable).toBe(true)
+    expect(exp.stop).toBe('retreat-battle')
+    // 手工转返航（back，去程并入返航中）→ 可召回
+    state.expedition.phase = 'back'
+    state.expedition.battle = null
+    state.expedition.finishAtGameMs = state.gameMs + 240_000
     // 手工挂一条 AI 采矿任务（用初始武装艇 sh-falconet）
     state.aiAssignments['sh-falconet'] = {
       coreType: 'basic',
       startedAtGameMs: state.gameMs,
       task: { kind: 'mining', beltId: 'belt-a', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
     }
-    const acts = activityOverview(state, ctx)
-    const exp = acts.find((a) => a.kind === 'expedition')!
+    acts = activityOverview(state, ctx)
+    exp = acts.find((a) => a.kind === 'expedition')!
     expect(exp.stopable).toBe(true)
     expect(exp.stop).toBe('recall-expedition')
     const ai = acts.find((a) => a.kind === 'ai')!

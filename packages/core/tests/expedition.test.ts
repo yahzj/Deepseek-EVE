@@ -39,14 +39,14 @@ describe('远征 V12：两阶段', () => {
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(false) // 未探索 → 拒绝
     state.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
-    expect(state.expedition.phase).toBe('out')
+    // 去程取消：下达即进入交火（不再有 out 等待相位）
+    expect(state.expedition.phase).toBe('battle')
     expect(state.expedition.active).toBe(true)
   })
 
-  it('去程到港即开战（out→battle 同帧衔接）；hub 内目标立即进入交火', () => {
-    // ano-a 在母港星系：航程 0，任意推进即到港
+  it('去程取消：出发即开战（无 out 等待）；交火打完自动结算', () => {
+    // ano-a 在母港星系：即时进入交火
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
-    advanceGame(state, 10_000, ctx)
     expect(state.expedition.phase).toBe('battle')
     expect(state.expedition.battle).not.toBeNull()
     // 长推进把战斗打完（战斗上限 10 分钟；母港目标 vs 沙猫很快分出胜负）
@@ -60,21 +60,16 @@ describe('远征 V12：两阶段', () => {
     expect(state.logs.some((l) => l.text.includes('战报'))).toBe(true)
   })
 
-  it('途中事件在去程中段触发一次', () => {
+  it('途中事件在出发瞬间触发一次（去程已取消，无中段等待）', () => {
     const farCtx = makeTestCtx({
       anomalies: [anomaly('ano-far0', 'galaxy-far', { threat: 4, reward: 5_000 })],
       balance: { ...makeTestCtx().balance, travelEventChance: 1 }, // 途中事件必触发（去随机）
     })
     state.exploredGalaxies.push('galaxy-far') // V13：目标星系需已探索
     expect(startExpedition(state, 'ano-far0', farCtx).ok).toBe(true)
-    // 去程 2 分钟 → 中点 60s
-    advanceGame(state, 30_000, farCtx)
-    expect(state.expedition.eventFired).toBe(false)
-    advanceGame(state, 40_000, farCtx) // 70s > 60s
+    // 去程取消：事件在出发瞬间触发
     expect(state.expedition.eventFired).toBe(true)
     expect(state.logs.some((l) => l.text.includes('途中遭遇事件'))).toBe(true)
-    // 到港开战
-    advanceGame(state, 60_000, farCtx)
     expect(state.expedition.phase).toBe('battle')
   })
 
@@ -130,15 +125,14 @@ describe('远征 V12：两阶段', () => {
     expect(s2.expedition.desirePrefM).toBe(2_000)
   })
 
-  it('battleWinPreview 与远征面板 winPercent 一致（不同阶段）', () => {
+  it('battleWinPreview 可用；远征面板：下达即交火（combat），交火中不展示预估胜率', () => {
     const p = battleWinPreview(state, ctx, ctx.anomalies.get('ano-a')!, 'sandcat')
     expect(expeditionStatus(state, ctx).winPercent).toBe(0) // 未出发
     startExpedition(state, 'ano-a', ctx)
     const view = expeditionStatus(state, ctx)
-    expect(view.phase).toBe('out')
-    expect(view.winPercent).toBe(Math.round(p * 100))
-    advanceGame(state, 5_000, ctx)
-    expect(expeditionStatus(state, ctx).phase).toBe('combat')
+    expect(view.phase).toBe('combat') // 去程取消：下达即开战
+    expect(view.winPercent).toBe(0) // 交火中按 0（不展示）
+    expect(p).toBeGreaterThan(0)
     expect(advanceExpedition).toBeTypeOf('function')
   })
 

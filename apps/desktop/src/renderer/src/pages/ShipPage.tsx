@@ -33,7 +33,7 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 export type ShipTab = 'fleet' | 'ai' | 'shop'
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: '⛵' },
-  { key: 'ai', label: 'AI 指挥', icon: '🤖', title: 'AI 副船：指派采矿/打捞/驻留待命（远征已下线，悬赏请主控出击）' },
+  { key: 'ai', label: 'AI 指挥', icon: '🤖', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
   { key: 'shop', label: '舰船市场', icon: '🛒' },
 ]
 
@@ -694,8 +694,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               const g = engine.ctx.galaxies.get(task.galaxyId)
               desc =
                 task.phase === 'out'
-                  ? `前往 ${g?.name ?? task.galaxyId} 待命（去程中）`
-                  : `驻留待命：${g?.name ?? task.galaxyId}`
+                  ? `前往 ${g?.name ?? task.galaxyId} 掩护巡逻（去程中）`
+                  : `掩护巡逻：${g?.name ?? task.galaxyId}`
             }
             return (
               <li key={sid} className="app-inv-row">

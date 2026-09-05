@@ -77,14 +77,14 @@ describe('V10：气体/冰矿接入采集与精炼循环', () => {
     stopMining(state, ctx)
     const gasCtx = ctxWithExtras({ belts: [belt('belt-gasx', 'gas-x')] })
     expect(startMining(state, 'belt-gasx', gasCtx).ok).toBe(true)
-    advanceGame(state, 60_000 + 12_000, gasCtx) // 空船出航 60s + 1 个循环
+    advanceGame(state, 12_000, gasCtx) // 去程取消：指令即采掘 → 1 个循环
     expect(countItem(state, 'gas-x')).toBe(10)
   })
 
   it('矿船可以开采冰矿（kind=ice）', () => {
     const iceCtx = ctxWithExtras({ belts: [belt('belt-icex', 'ice-x')] })
     expect(startMining(state, 'belt-icex', iceCtx).ok).toBe(true)
-    advanceGame(state, 60_000 + 12_000, iceCtx) // 空船出航 60s + 1 个循环
+    advanceGame(state, 12_000, iceCtx) // 去程取消：指令即采掘 → 1 个循环
     expect(countItem(state, 'ice-x')).toBe(10)
   })
 

@@ -13,7 +13,6 @@ import {
   battleWinPreview,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
-  calcExpeditionDurationMs,
   calcPower,
   countAiCore,
   expeditionStatus,
@@ -827,7 +826,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                 ) : null}
               </div>
               <div className="app-map-detail-desc">{selected.description}</div>
-              {/* B1.5 前往星系动作区：待命（主控/副船）/ 矿带 / 悬赏，含简介 */}
+              {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介 */}
               <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} />
               <div className="app-dim">
                 {(() => {
@@ -942,12 +941,12 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
   )
 }
 
-/* ─────────── B1.5 星图「前往星系」动作区（待命/矿带/悬赏 + 简介） ─────────── */
+/* ─────────── B1.5 星图「前往星系」动作区（掩护巡逻/矿带/悬赏 + 简介） ─────────── */
 
 function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy: GalaxyDef; onToast: ToastFn }) {
   const state = engine.state
   const ctx = engine.ctx
-  // —— 主控待命 ——
+  // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active && !state.scanning.active
@@ -959,19 +958,19 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
     (state.standby.active && !inFlight)
   const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
   const standbyTitle = inFlight
-    ? '正在前往该星系待命途中'
+    ? '正在前往该星系掩护巡逻途中（旧档去程）'
     : alreadyHere
-      ? `舰船已在「${galaxy.name}」待命`
+      ? `舰船已在「${galaxy.name}」掩护巡逻`
       : pilotBusy
-        ? '当前驾驶船有进行中的作业（采矿/远征/扫描/返航/去程）——结束后才能出发待命'
+        ? '当前驾驶船有进行中的作业（采矿/远征/扫描/返航）——结束后才能前往掩护巡逻'
         : undefined
   function handleStandby(): void {
     const r = engine.goStandbyAt(galaxy.id)
     if (!r.ok) onToast(r.error ?? '无法前往', true)
-    else onToast(`已出发前往「${galaxy.name}」待命（可随时在活动栏取消）。`)
+    else onToast(`掩护巡逻就位：舰船已抵达「${galaxy.name}」并留守（可随时返航空间站或继续作业）。`)
   }
 
-  // —— 副船待命 ——
+  // —— 副船掩护巡逻 ——
   const idleShips = idleAiShipIds(state)
   const [aiShip, setAiShip] = useState('')
   const [aiCore, setAiCore] = useState<AiCoreType>('basic')
@@ -982,8 +981,8 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
       return
     }
     const r = engine.assignAiStandbyAt(aiShip, aiCore, galaxy.id)
-    if (!r.ok) onToast(r.error ?? '无法派往待命', true)
-    else onToast('副船已出发前往该星系驻留待命（可取消召回）。')
+    if (!r.ok) onToast(r.error ?? '无法派往掩护巡逻', true)
+    else onToast('副船已派往该星系掩护巡逻（可取消召回）。')
   }
 
   // —— 该星系矿带 ——
@@ -1042,22 +1041,22 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
       ) : null}
-      {/* ① 前往待命 */}
+      {/* ① 前往掩护巡逻 */}
       <div className="app-ga-row">
         <span className="app-ga-main">
-          ⛳ 前往待命
-          <span className="app-dim app-ga-desc">飞抵后留守该星系（低安可触发巡逻/伏击，可采矿/出击/返航）</span>
+          ⛳ 前往掩护巡逻
+          <span className="app-dim app-ga-desc">即时转场留守该星系（低安可触发巡逻/伏击；可采矿/出击/返航）</span>
         </span>
         <button
           className="app-btn is-small is-primary"
           disabled={standbyDisabled}
-          title={standbyDisabled ? standbyTitle : `飞往「${galaxy.name}」并待命（按当前船速度约 1 分钟/航程）`}
+          title={standbyDisabled ? standbyTitle : `前往「${galaxy.name}」掩护巡逻（即时就位，无航行等待）`}
           onClick={handleStandby}
         >
-          {inFlight ? '前往中…' : alreadyHere || state.awayGalaxy === galaxy.id ? '已在此待命' : '前往待命'}
+          {inFlight ? '前往中…' : alreadyHere || state.awayGalaxy === galaxy.id ? '已在此掩护巡逻' : '前往掩护巡逻'}
         </button>
       </div>
-      {/* ② 副船待命 */}
+      {/* ② 副船掩护巡逻 */}
       <div className="app-ga-row app-ga-ai">
         <select
           className="app-select"
@@ -1066,7 +1065,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           title="空闲副船"
           disabled={idleShips.length === 0}
         >
-          <option value="">{idleShips.length === 0 ? '无空闲副船' : '— 选副船待命 —'}</option>
+          <option value="">{idleShips.length === 0 ? '无空闲副船' : '— 选副船掩护巡逻 —'}</option>
           {idleShips.map((id) => (
             <option key={id} value={id}>
               {shipDisplayName(state, ctx, id)}
@@ -1081,7 +1080,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           ))}
         </select>
         <button className="app-btn is-small" disabled={!aiShip || !aiCoreAvailable} onClick={handleAiStandby}>
-          派去待命
+          派去掩护巡逻
         </button>
       </div>
       {/* ③ 矿带 */}
@@ -1096,7 +1095,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             <div key={b.id} className="app-ga-row">
               <span className="app-ga-main">
                 {b.name}
-                <span className="app-dim app-ga-desc">{ore?.name ?? b.oreId}（空船出航更快，满载自动返航卸货）</span>
+                <span className="app-dim app-ga-desc">{ore?.name ?? b.oreId}（满载自动返航卸货；去程时间已并入返航）</span>
               </span>
               <button
                 className={`app-btn is-small${isMiningThis || mineAskBelt === b.id ? ' is-warn' : ' is-primary'}`}
@@ -1235,11 +1234,9 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const pWin = battleWinPreview(state, engine.ctx, anomaly) * 100
   const chance = Math.round(pWin)
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
-  const totalMs = calcExpeditionDurationMs(state, engine.ctx, anomaly)
-  // 奖励/小时（试点 2026-09-05）：单趟往返口径 = 去程 + 交火 + 返航；
-  // 按当前驾驶船跃迁与航行技能换算；奖励含 bountyRewardFactor（与奖金行一致）。
-  const outMs = Math.max(0, totalMs - anomaly.combatSeconds * 1000)
-  const roundTripMs = totalMs + outMs
+  const combatMs = anomaly.combatSeconds * 1000
+  // 奖励/小时（去程已取消）：胜利即停留该星系、可即时再出击——每单耗时 ≈ 实时交火时长
+  const roundTripMs = Math.max(1, combatMs)
   const grossIsk = anomaly.rewardIsk * bountyRewardFactor(state)
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
   const iskPerHourTxt =
@@ -1285,7 +1282,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
     if (!goAsk) {
       const r = engine.startExpeditionAt(anomaly.id)
       if (!r.ok) onToast(r.error ?? '无法出发', true)
-      else onToast('舰队已出发，战报稍后见。')
+      else onToast('舰队已抵达目标空域，正在交火！')
       return
     }
     // 面板「确认转战」
@@ -1322,12 +1319,10 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           </>
         )) : '？'} ·{' '}
         {(() => {
-          // 预估时间统一带"约"；同星系/零航程目标不出现"约 0 秒"——直接标"本星系 · 即时开战"
-          const outMs = Math.max(0, totalMs - anomaly.combatSeconds * 1000)
-          const legPart = outMs <= 0 ? '本星系 · 即时开战' : `去程约 ${formatDurationMs(outMs)}`
+          // 去程已取消（定稿）：下达即开战，不再展示"去程约 X"；交火后胜利即停留
           return (
             <>
-              {legPart} · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)} · 胜利后停留（可连击/返航）
+              即时开战（去程取消） · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)} · 胜利后停留（可连击/返航）
             </>
           )
         })()}
@@ -1373,9 +1368,9 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       </div>
       <div
         className="app-ano-econ"
-        title={`估算奖励/小时（单趟往返 = 去程+交火+返航，按当前驾驶船跃迁与航行技能）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
+        title={`估算奖励/小时（去程已取消：每次出击 = 实时交火时长）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
       >
-        {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（单趟往返）
+        {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（每次出击）
       </div>
       <div className="app-ano-bottom">
         <span className="app-ano-desc">

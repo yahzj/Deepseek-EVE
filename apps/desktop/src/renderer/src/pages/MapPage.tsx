@@ -117,7 +117,7 @@ function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }
           {phaseText()}——本卡「停止开采」也可直接操作；想换船去「舰船」页切换驾驶，旧船会自动返航卸货。
         </div>
       ) : (
-        <div className="app-dim app-inv-empty">矿船停靠空间站——在下方矿带卡片上开始自动采掘，或指派 AI 副船。</div>
+        <div className="app-dim app-inv-empty">在下方矿带卡片上开始采掘——去程已取消，指令下达即到带开工。</div>
       )}
 
       {/* 设置行 */}
@@ -129,7 +129,7 @@ function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }
             disabled={view.active}
             onChange={(e) => engine.setAutoCycleAt(e.target.checked)}
           />
-          自动循环（满舱返航 → 卸入仓库 → 再出航）
+          自动循环（满舱返航卸入仓库 → 去程并入返航 → 自动再采掘）
         </label>
         <label className="app-check">
           <input
@@ -461,9 +461,9 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
   const phaseText = (): string => {
     if (!me.active) return `${shipDisplayName(state, engine.ctx, state.shipId)} 停靠空间站——在下方残骸卡上开始打捞，或指派 AI 副船。`
     const gName = me.galaxyId ? engine.ctx.galaxies.get(me.galaxyId)?.name : ''
-    if (me.phase === 'outbound') return `${shipDisplayName(state, engine.ctx, state.shipId)} 前往「${gName}」（出航中）· 持续打捞中`
-    if (me.phase === 'returning') return `${shipDisplayName(state, engine.ctx, state.shipId)} 返航卸货中（本趟约 ${Math.round(me.tripM3 * 10) / 10} m³）`
-    return `${shipDisplayName(state, engine.ctx, state.shipId)} 在「${gName}」打捞中 · 本趟约 ${Math.round(me.tripM3 * 10) / 10} m³`
+    if (me.phase === 'outbound') return `${shipDisplayName(state, engine.ctx, state.shipId)} 前往「${gName}」（出航中 · 旧档去程）`
+    if (me.phase === 'returning') return `${shipDisplayName(state, engine.ctx, state.shipId)} 返航卸货中（本趟约 ${Math.round(me.tripM3 * 100) / 100} m³）`
+    return `${shipDisplayName(state, engine.ctx, state.shipId)} 在「${gName}」持续打捞中 · 本趟约 ${Math.round(me.tripM3 * 100) / 100} m³`
   }
 
   function startAt(galaxyId: string): void {
@@ -493,7 +493,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
       <div className="app-dim app-note">
-        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：出航 → 持续打捞 → 满仓自动返港；
+        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：下达即持续打捞（去程已取消）→ 满仓自动返航（去程并入返航）卸货；
         残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞全程可能遇袭。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
@@ -525,8 +525,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
   )
 }
 
-/** 残骸打捞主控作业进度（船长 2026-09-05：给打捞卡加进度条）：
- * 出航/返航 = 行程腿进度；打捞中 = 主循环周期（最短打捞器周期档）进度 */
+/** 残骸打捞主控作业进度：返航（去程并入）= 行程进度；打捞中 = 主循环周期（最短打捞器周期档）进度 */
 function salvageProgressOf(engine: GameEngine): { percent: number; label: string; travel: boolean } | null {
   const s = engine.state.salvaging
   if (!s.active || s.galaxyId === null) return null
@@ -534,10 +533,11 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
   const ctx = engine.ctx
   if (s.phase === 'outbound') {
     const leg = Math.max(1, outboundLegMsFor(state, ctx, s.galaxyId))
-    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '出航中', travel: true }
+    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '出航中（旧档）', travel: true }
   }
   if (s.phase === 'returning') {
-    const leg = Math.max(1, legMsFor(state, ctx, s.galaxyId))
+    // 返航腿 = 满载返航 + 空船去程（去程并入返航）
+    const leg = Math.max(1, legMsFor(state, ctx, s.galaxyId) + outboundLegMsFor(state, ctx, s.galaxyId))
     return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '返航卸货中', travel: true }
   }
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)

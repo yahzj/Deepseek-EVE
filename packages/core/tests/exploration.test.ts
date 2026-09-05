@@ -184,15 +184,15 @@ describe('V13 扫描探索作业', () => {
     expect(startScan(state, 'galaxy-far', ctx).error).toContain('无需扫描')
   })
 
-  it('剪影可扫描：时长 = 单程航行 + 10 分钟窗口；完成点亮并停留该星系', () => {
+  it('剪影可扫描：去程取消，时长 = 10 分钟就地扫描窗口；完成点亮并停留该星系', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     const st = scanStatus(state)
     expect(st.active).toBe(true)
     expect(st.galaxyId).toBe('galaxy-far')
-    // 默认测试船无 warp：单程 2 分钟 + 10 分钟窗口 = 12 分钟（T8：无自动返航段）
-    expect(st.totalMs).toBe(12 * 60_000)
+    // 去程已取消：总时长 = 就地扫描窗口（默认 10 分钟；T8：无自动返航段）
+    expect(st.totalMs).toBe(10 * 60_000)
     // 还差 1ms → 未完成
-    advanceGame(state, 12 * 60_000 - 1, ctx)
+    advanceGame(state, 10 * 60_000 - 1, ctx)
     expect(state.scanning.active).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     advanceGame(state, 1, ctx)
@@ -202,7 +202,7 @@ describe('V13 扫描探索作业', () => {
     expect(state.logs.some((l) => l.text.includes('扫描完成'))).toBe(true)
   })
 
-  it('warp 快船扫描更快（航行段缩放）', () => {
+  it('去程取消：扫描时长与航行（warp/地图技能）无关，只算就地窗口', () => {
     const fastCtx = makeTestCtx({
       ships: [ship('warpy', { warpSpeedAus: 3.5 })],
     })
@@ -213,8 +213,7 @@ describe('V13 扫描探索作业', () => {
       fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
     }
     expect(startScan(state, 'galaxy-far', fastCtx).ok).toBe(true)
-    const leg = Math.round(120_000 * (3 / 3.5))
-    expect(scanStatus(state).totalMs).toBe(leg + 10 * 60_000)
+    expect(scanStatus(state).totalMs).toBe(10 * 60_000) // 无航行段可缩
   })
 })
 
@@ -278,37 +277,33 @@ describe('V14 扫描终止与续扫', () => {
     expect(stopScan(state, ctx).ok).toBe(false)
   })
 
-  it('去程途中终止：无窗口进度可保存（scanProgress 不新增）；从母港出发直接折返', () => {
+  it('立即终止（去程已取消）：尚未产生窗口进度则无保留，舰船停靠原样', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
-    advanceGame(state, 60_000, ctx) // 单程 2 分钟，仍在去程
     expect(stopScan(state, ctx).ok).toBe(true)
     expect(state.scanning.active).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
-    expect(state.transit.active).toBe(false) // 母港出发去程终止 = 已回港
+    expect(state.transit.active).toBe(false) // 即时返航空间站（无行程）
     expect(state.awayGalaxy).toBeNull()
   })
 
-  it('扫描窗口中终止：保存已完成窗口毫秒并自动返航；下次续扫只补剩余窗口', () => {
+  it('扫描窗口中终止：保存已完成窗口毫秒并即时返航；下次续扫只补剩余窗口', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
-    // 去程 120s + 就地扫描 180s → 累计 300s（总作业 = 120 + 600 = 720s，仍在扫描窗口内）
+    // 去程取消：总作业 = 就地窗口 600s；扫到 300s 处终止 → 进度 300_000
     advanceGame(state, 300_000, ctx)
     expect(state.scanning.active).toBe(true)
     expect(stopScan(state, ctx).ok).toBe(true)
     expect(state.scanning.active).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
-    expect(state.scanProgress['galaxy-far']).toBe(180_000)
-    // 终止 = 从目标自动返航空间站（transit），到站后野外标记清除
-    expect(state.transit.active).toBe(true)
-    expect(state.awayGalaxy).toBe('galaxy-far')
-    advanceGame(state, 120_000 + 1_000, ctx)
+    expect(state.scanProgress['galaxy-far']).toBe(300_000)
+    // 终止 = 即时返航空间站（transit 不落行程；位置回母港）
     expect(state.transit.active).toBe(false)
     expect(state.awayGalaxy).toBeNull()
-    // 续扫：单程 120s + 剩余窗口 420s = 540s
+    // 续扫：剩余窗口 300s = 300_000
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
-    expect(scanStatus(state).totalMs).toBe(120_000 + 420_000)
+    expect(scanStatus(state).totalMs).toBe(300_000)
     // 补扫完成 → 点亮、清进度并停留
-    advanceGame(state, 540_000, ctx)
+    advanceGame(state, 300_000, ctx)
     expect(state.scanning.active).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(true)
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
@@ -318,7 +313,7 @@ describe('V14 扫描终止与续扫', () => {
   it('窗口完整走完即自动完成（点亮并停留，无返航段）', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     // 窗口还差 1ms：仍在作业中
-    advanceGame(state, 720_000 - 1, ctx)
+    advanceGame(state, 600_000 - 1, ctx)
     expect(state.scanning.active).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     advanceGame(state, 1, ctx)

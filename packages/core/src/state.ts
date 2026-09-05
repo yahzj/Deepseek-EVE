@@ -113,24 +113,24 @@ export interface FleetShipState {
   fitted: FittedModules
 }
 
-/** 采矿作业状态（v7 状态机：采掘 → 返航 → 出航 的自动循环） */
+/** 采矿作业状态（自动循环：采掘 → 返航（去程并入）→ 卸货 的自动循环；去程相位仅旧档兼容） */
 export interface MiningState {
   active: boolean
   beltId: string | null
-  /** 作业阶段：mining=正在采掘；returning=满舱返航；outbound=卸货后出航 */
+  /** 作业阶段：mining=正在采掘；returning=返航（满载返航 + 去程并入）；outbound=旧档遗留相位 */
   phase: 'mining' | 'returning' | 'outbound'
   /** 采掘循环计时器累计（毫秒），满一个循环结算一次产出 */
   cycleAccMs: number
-  /** 返航/出航阶段计时器（毫秒） */
+  /** 返航/去程遗留相位计时器（毫秒） */
   phaseAccMs: number
   /** 本次作业累计采得单位数（日志用） */
   tripUnits: number
-  /** 全自动循环（满舱自动返航→卸货→再出航） */
+  /** 全自动循环（满舱自动返航→卸货→再采掘） */
   autoCycle: boolean
   /** 完成本次返航卸货后停止（配合全自动循环使用） */
   stopAfterTrip: boolean
   /** T8 兼容字段：本次作业的出发星系（null = 从空间站/母港出发）；
-   *  首次到带后清空，此后自动循环腿一律以"空间站"为卸货/出发基准 */
+   *  用于把去程时间并入首次返航腿；首次卸货后清空，此后自动循环一律以空间站为基准 */
   originGalaxy: string | null
 }
 
@@ -157,14 +157,15 @@ export interface ShipTransitState {
   legMs: number
 }
 
-/** B1.5 主动"前往星系待命"（主控）：飞去目标星系 → 野外停留（awayGalaxy）；去程可召回 */
+/** B1.5 主控"前往星系掩护巡逻"（原"待命"）：下达即时就位——船转场目标星系野外停留（awayGalaxy）；
+ * 字段为旧档兼容保留：旧档在途（finishAt 在未来）仍需等到点再留守；新指令不留 active 状态。 */
 export interface StandbyState {
   active: boolean
   /** 目标星系 id */
   galaxyId: string | null
-  /** 到达时刻（游戏内毫秒，出发锁定） */
+  /** 到达时刻（游戏内毫秒；新指令 = 当前时刻，无去程等待） */
   finishAtGameMs: number
-  /** 去程总毫秒（显示用） */
+  /** 去程总毫秒（旧档显示用；新指令 = 0） */
   legMs: number
 }
 
@@ -221,9 +222,9 @@ export const EMPTY_REFINE_RUN: RefineRunState = {
   batchesDone: 0,
 }
 
-/** B3 打捞作业（2026-09-05 船长定稿：采矿式单趟作业，见 docs/design/b3-salvage.md）：
- * 出航 → 目标星系持续打捞（每台打捞器按周期结算）→ 满仓自动返航 → 到港整仓卸入仓库 → 结束（不自动续）。
- * tripM3 = 本趟捞取体积当量累计（展示/日志）；deviceAccMs = 各周期档的打捞器相位（周期 ms → 累计）。 */
+/** B3 打捞作业（采矿式单趟）：立即打捞 → 满仓自动返航（去程并入）→ 到港整仓卸入仓库 → 结束（不自动续）。
+ * tripM3 = 本趟捞取体积当量累计（展示/日志）；deviceAccMs = 各周期档的打捞器相位（周期 ms → 累计）。
+ * outbound 相位仅旧档遗留兼容。 */
 export interface SalvageOpState {
   active: boolean
   /** 目标星系 id（null = 无作业） */
@@ -250,27 +251,27 @@ export const EMPTY_SALVAGE_OP: SalvageOpState = {
   deviceAccMs: {},
 }
 
-/** 远征作业状态（V12 两阶段：去程 out → 交火 battle → 返航 back；battle 为实时状态机） */
+/** 远征作业状态（去程取消 → 交火 battle → 返航 back；battle 为实时状态机；返航 = 2×单程） */
 export interface ExpeditionState {
   active: boolean
   /** 目标异常点 id */
   anomalyId: string | null
-  /** 当前阶段结束的游戏内时刻（毫秒）——V12 起语义随 phase：到港开战/战斗结束/返航到家 */
+  /** 当前阶段结束的游戏内时刻（毫秒）——V12 起语义随 phase：开战/战斗结束/返航到家 */
   finishAtGameMs: number
   /** 本次作业总耗时（毫秒，出发时锁定；展示用） */
   durationMs: number
-  /** 单程航程耗时（毫秒，锁定） */
+  /** 单程航程耗时（毫秒，锁定；返航腿并入后按 ×2 计） */
   outMs: number
   /** 交火参考耗时（毫秒，展示用；实际由战斗推演决定） */
   combatMs: number
   /** 出发时火力（锁定；展示/旧式兼容） */
   power: number
-  /** 出发时抽中的途中事件 id（null = 本次平安无事） */
+  /** 出发时抽中的途中事件 id（null = 本次平安无事；去程取消后在出发瞬间触发） */
   eventId: string | null
   /** 途中事件是否已触发 */
   eventFired: boolean
   /* ═══ V12：阶段与战斗状态 ═══ */
-  /** 当前阶段：去程 / 交火 / 返航（未出航时 = 'out'） */
+  /** 当前阶段：去程（旧档兼容）/ 交火 / 返航（未出航时 = 'out'） */
   phase: 'out' | 'battle' | 'back'
   /** 实时战斗状态（phase='battle' 时非空；只存动态量，静态由 ship/anomaly 定义重建） */
   battle: BattleState | null
@@ -458,7 +459,7 @@ export interface AiExpeditionTask {
   battle: BattleState | null
 }
 
-/** AI 副船任务：前往指定星系驻留待命（占名额；out 去程 → stand 驻留；可取消召回） */
+/** AI 副船任务：前往指定星系掩护巡逻（占名额；out 去程 → stand 驻留；可取消召回） */
 export interface AiStandbyTask {
   kind: 'standby'
   /** 目标星系 id（必须已探索） */
@@ -590,9 +591,8 @@ export type GameStateV11 = Omit<GameStateV10, 'version'> & {
   events: EventsState
 }
 
-/** 扫描探索作业状态（V13：前往剪影星系 → 就地扫描 → 返航；完成回港时点亮该星系）
- * T8：作业 = 去程 + 就地窗口；窗口完成即"停留该星系"（不再自动返航）。
- * originGalaxy（T8 兼容字段）：本次扫描出发星系（null = 空间站/母港） */
+/** 扫描探索作业状态（V13：就地深空扫描，去程已取消；完成/点亮时停留该星系，无自动返航段）。
+ * originGalaxy（T8 兼容字段）：本次扫描出发星系（null = 空间站/母港；用于终止后折返基准） */
 export interface ScanningState {
   active: boolean
   /** 目标星系 id（扫描对象永远是"已探索星系的一跳邻居"，即星图剪影） */

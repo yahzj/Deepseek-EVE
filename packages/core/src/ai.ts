@@ -186,7 +186,7 @@ export function assignAiMining(
 /**
  * 玩家指令：指派 AI 远征任务（原语义：只接预估胜率 ≥80% 且耐久 ≥50% 的目标；奖励全额）。
  * ⚠️ 软下线（2026-09-05 船长定，不移除）：悬赏收益实测单线 10~150M/h（顶配连刷），
- * AI 多线无人值守 = 印钞放大器 → 本入口一律拒绝，AI 只保留采矿/打捞/驻留待命；
+ * AI 多线无人值守 = 印钞放大器 → 本入口一律拒绝，AI 只保留采矿/打捞/掩护巡逻；
  * 如需恢复：删掉本前置返回即可（后续门槛/冷却代码原样保留）。
  */
 export function assignAiExpedition(
@@ -202,7 +202,7 @@ export function assignAiExpedition(
     return {
       ok: false,
       error:
-        'AI 远征已下线：悬赏请主控亲自出击——AI 采矿/打捞/驻留待命不受影响。',
+        'AI 远征已下线：悬赏请主控亲自出击——AI 采矿/打捞/掩护巡逻不受影响。',
     }
   }
   // ↓↓↓ 软下线前的完整指派逻辑（门槛/冷却/行程，保留待恢复）↓↓↓
@@ -314,7 +314,7 @@ export function assignAiSalvage(
   return { ok: true }
 }
 
-/** 玩家指令：指派 AI 副船前往指定星系驻留待命（占名额，可取消召回；低安星系进入遭遇暴露） */
+/** 玩家指令：指派 AI 副船前往指定星系掩护巡逻（占名额，可取消召回；低安星系进入遭遇暴露） */
 export function assignAiStandby(
   state: GameState,
   shipId: string,
@@ -352,12 +352,12 @@ export function assignAiStandby(
   addLog(
     state,
     'info',
-    `[AI] ${shipName} 出发前往「${galaxy.name}」驻留待命（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%）——到达后留守该星系，可随时取消召回。`,
+    `[AI] ${shipName} 出发前往「${galaxy.name}」掩护巡逻（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%）——到达后留守该星系，可随时取消召回。`,
   )
   return { ok: true }
 }
 
-/** 玩家指令：取消 AI 任务（核心归还）；待命/远征/采矿通用 */
+/** 玩家指令：取消 AI 任务（核心归还）；掩护巡逻/远征/采矿通用 */
 export function cancelAiTask(state: GameState, shipId: string, ctx: SimContext): boolean {
   const assignment = state.aiAssignments[shipId]
   if (!assignment) return false
@@ -395,7 +395,7 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext): v
   }
 }
 
-/** AI 待命任务推进：去程计时到点 → 驻留（stand；驻留期间无事可做，占名额守在该星系） */
+/** AI 掩护巡逻任务推进：去程计时到点 → 驻留（stand；驻留期间无事可做，占名额守在该星系） */
 function advanceAiStandby(state: GameState, shipId: string, assignment: AiAssignment, ctx: SimContext): void {
   const task = assignment.task as AiStandbyTaskState
   if (task.phase !== 'out') return // 驻留中：等待取消/后续指令
@@ -407,7 +407,7 @@ function advanceAiStandby(state: GameState, shipId: string, assignment: AiAssign
   addLog(
     state,
     'info',
-    `[AI·${shipName}] 已抵达「${galaxy?.name ?? task.galaxyId}」驻留待命——取消任务可召回；低安星系留意巡逻与伏击。`,
+    `[AI·${shipName}] 已抵达「${galaxy?.name ?? task.galaxyId}」掩护巡逻——取消任务可召回；低安星系留意巡逻与伏击。`,
   )
 }
 

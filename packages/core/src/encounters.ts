@@ -76,7 +76,7 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
   if (state.salvaging.active && state.salvaging.galaxyId) {
     push({ galaxyId: state.salvaging.galaxyId, shipId: state.shipId, kind: '打捞' })
   }
-  // 副船（采矿 / 远征途中 / 驻留待命；交火中不算暴露；待命去程未抵达不算）
+  // 副船（采矿 / 远征途中 / 掩护巡逻；交火中不算暴露；巡逻去程未抵达不算）
   for (const [sid, a] of Object.entries(state.aiAssignments)) {
     const t = a.task
     if (t.kind === 'mining') {

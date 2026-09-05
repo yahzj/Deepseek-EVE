@@ -757,7 +757,7 @@ export class GameEngine {
     return ok
   }
 
-  /** 出发远征（去程-实时交火-返航自动执行） */
+  /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
     const result = startExpedition(this.state, anomalyId, this.ctx)
     if (result.ok) {
@@ -884,7 +884,7 @@ export class GameEngine {
     return result
   }
 
-  /** T8：从野外停留点显式返航空间站（活动栏倒计时） */
+  /** T8：从野外停留点即时返航空间站（去程取消：下达即到站） */
   flyHomeNow(): CommandResult {
     const result = startTransitHome(this.state, this.ctx)
     if (result.ok) {
@@ -896,7 +896,7 @@ export class GameEngine {
 
 
 
-  /** B1.5：前往指定星系待命（主控；飞抵后野外停留） */
+  /** B1.5：前往指定星系掩护巡逻（原"待命"；即时就位，无去程等待） */
   goStandbyAt(galaxyId: string): CommandResult {
     const result = goStandbyAt(this.state, galaxyId, this.ctx)
     if (result.ok) {
@@ -906,7 +906,7 @@ export class GameEngine {
     return result
   }
 
-  /** B1.5：取消主控待命去程（召回回母港） */
+  /** B1.5：取消主控掩护巡逻去程（旧档在途；召回回母港） */
   recallStandbyNow(): CommandResult {
     const result = cancelStandby(this.state, this.ctx)
     if (result.ok) {
@@ -916,7 +916,7 @@ export class GameEngine {
     return result
   }
 
-  /** B1.5：指派副船前往星系驻留待命 */
+  /** B1.5：指派副船前往星系掩护巡逻（占名额，可取消召回） */
   assignAiStandbyAt(shipId: string, coreType: string, galaxyId: string): CommandResult {
     const result = assignAiStandby(this.state, shipId, coreType as never, galaxyId, this.ctx)
     if (result.ok) {

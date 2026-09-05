@@ -38,7 +38,7 @@ function stopLabel(v: ActivityView): string {
     case 'recall-expedition':
       return '召回'
     case 'recall-standby':
-      return '召回待命'
+      return '召回巡逻'
     case 'retreat-battle':
       return '撤退'
     case 'cancel-ai':
@@ -76,7 +76,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.recallExpeditionNow(), '远征已召回：舰队返回母港（无战果）。')
       break
     case 'recall-standby':
-      run(engine.recallStandbyNow(), '待命行程已取消：舰船返回母港。')
+      run(engine.recallStandbyNow(), '掩护巡逻已召回：舰船返回母港。')
       break
     case 'retreat-battle':
       run(engine.retreatNow(), '已撤退：舰队脱离交火并自动返航。')

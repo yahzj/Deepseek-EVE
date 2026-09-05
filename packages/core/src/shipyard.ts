@@ -109,7 +109,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
       error: '扫描探索往返途中：切换驾驶将中断本次扫描（已扫窗口进度保留）。请先在顶部活动栏「终止扫描」，或确认终止后由界面替你处理。',
     }
   }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——到港后再换船。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——到港后再换船。' }
   // 采矿作业中：直接切换成功——旧船按其当前阶段自动返航（到港自动卸货入仓库），采矿作业随之结束
   if (state.mining.active) {
     retireMiningShip(state, ctx)
@@ -261,7 +261,7 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   if (!fleetShip || !def) return { ok: false, error: `船坞里没有 ${name}。` }
   // T8：驾驶船在野外/返航途中时不能维修（维修服务在空间站）
   if (shipId === state.shipId && (state.awayGalaxy !== null || state.standby.active)) {
-    return { ok: false, error: `${name} 不在空间站（野外/待命途中）——返航后才能维修。` }
+    return { ok: false, error: `${name} 不在空间站（野外/掩护巡逻途中）——返航后才能维修。` }
   }
   if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
     return { ok: false, error: `${name} 状态完好，无需维修。` }

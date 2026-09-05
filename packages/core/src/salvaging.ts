@@ -2,10 +2,10 @@
  * 打捞作业（B3，2026-09-05 船长定稿：采矿式作业；docs/design/b3-salvage.md）。
  *
  * 模型：
- * - 单趟作业：出航（空船跃迁×2，腿 ≈ 返航一半）→ 抵达目标星系后自动持续打捞
+ * - 单趟作业：下达即视为已抵达目标星系，立即自动持续打捞（去程已取消）
  *   （船内每台打捞器按各自周期结算，每轮按 salvageRoundPull 的"体积当量系数"
  *   捞取该星系敌群型号池随机一只残骸入货仓）→ **满仓自动返航** → 到港整仓卸入
- *   物品仓库 → 作业结束（不自动续，手动再派）；
+ *   物品仓库 → 作业结束（不自动续，手动再派）；去程时间并入返航腿（总行程时间不变）；
  * - 满仓判定 = 货仓放不下下一轮捞取量时转返航（残骸 = 重货）；
  * - 打捞期间该星系密度漂移**双向挂起**（engine 每拍把正在打捞的星系传给
  *   advanceWreckDrift）；低安星系打捞全程暴露（encounters.collectExposures）；
@@ -75,7 +75,7 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法出发打捞。' }
   if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消。' }
   if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（可改用 AI 核心驱动）。' }
@@ -94,11 +94,13 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   const s = state.salvaging
   s.active = true
   s.galaxyId = galaxyId
-  s.phase = 'outbound'
+  s.phase = 'salvaging' // 去程取消：指令即视为已抵达，立即开始打捞
   s.phaseAccMs = 0
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  // 船即时到目标星系：点亮探索（与采矿同口径；目标本就要求已探索，此处兜底）
+  markExplored(state, galaxyId)
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const density = wreckDensityOf(state, galaxyId, ctx)
   const salvagers = salvagerCyclesOf(state, ctx, state.shipId).length
@@ -107,8 +109,8 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   addLog(
     state,
     'info',
-    `开始打捞：${galaxy.name}（残骸密度 ${density.toFixed(1)}）。${shipName} 空船出航（约 ${outSec} 秒），` +
-      `由 ${salvagers} 台打捞器持续打捞，满仓自动返航（约 ${retSec} 秒）卸入仓库后结束（不自动续）。`,
+    `开始打捞：${galaxy.name}（残骸密度 ${density.toFixed(1)}）。${shipName} 已抵达目标空域，立即开始持续打捞` +
+      `（${salvagers} 台打捞器；满载返航约 ${retSec + outSec} 秒，去程时间已并入返航）卸入仓库后结束（不自动续）。`,
   )
   return { ok: true }
 }
@@ -176,7 +178,7 @@ export function pullOneWreck(
 }
 
 /**
- * 引擎内部：按流逝时间推进打捞状态机（出航 → 逐台打捞 → 满仓返航 → 到港卸货结束）。
+ * 引擎内部：按流逝时间推进打捞状态机（即时打捞 → 满仓返航（去程并入）→ 到港卸货结束）。
  * 剩余时间管理器与采矿同构：时间按阶段逐段消费，一次大推进可完整穿越全程。
  */
 export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimContext): void {
@@ -197,9 +199,10 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       addLog(state, 'warn', '打捞目标星系数据缺失，作业已停止。')
       return
     }
-    // ── 出航 / 返航阶段 ──
+    // ── 返航阶段（去程并入返航，定稿）；旧档遗留的 outbound 相位按原空船腿推进 ──
     if (s.phase === 'outbound' || s.phase === 'returning') {
-      const leg = s.phase === 'outbound' ? outboundLegMsFor(state, ctx, galaxyId) : legMsFor(state, ctx, galaxyId)
+      // 去程已取消：返航腿 = 满载返航 + 空船去程（总行程时间不变）
+      const leg = s.phase === 'outbound' ? outboundLegMsFor(state, ctx, galaxyId) : legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
       const need = leg - s.phaseAccMs
       if (remaining < need) {
         s.phaseAccMs += remaining
@@ -219,7 +222,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         resetOp(state)
         break
       }
-      // 抵达目标星系（点亮探索）
+      // 旧档遗留的出航相位到点：抵达目标星系（点亮探索）后直接打捞
       markExplored(state, galaxyId)
       s.phase = 'salvaging'
       s.cycleAccMs = 0
@@ -260,13 +263,14 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           return
         }
         if (pulled.volumeM3 > freeCargoM3(state, ctx)) {
-          // 满仓（下一轮放不下）：自动返航
+          // 满仓（下一轮放不下）：自动返航（去程并入返航，总行程时间不变）
           s.phase = 'returning'
           s.phaseAccMs = 0
+          const mergedSec = Math.round((legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)) / 1000)
           addLog(
             state,
             'info',
-            `货仓已满（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³）：自动返航卸货（约 ${Math.round(legMsFor(state, ctx, galaxyId) / 1000)} 秒）。`,
+            `货仓已满（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³）：自动返航卸货（约 ${mergedSec} 秒，去程已并入返航）。`,
           )
           break
         }

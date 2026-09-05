@@ -114,18 +114,19 @@ describe('oneLegMs：满载/返航腿不缩放、航程段缩放（出航空船�
 
 describe('远征出发锁定（V12.1）', () => {
   // 默认测试目标 ano-hard 位于 galaxy-far（单程 2 分钟），需声望 5 且星系已探索（V13 封锁）
-  it('outMs 按出发时技能锁定：途中升级不影响本次航行', () => {
+  it('outMs 按出发时技能锁定：途中升级不影响本次（去程取消，开战时刻 = 下达时刻）', () => {
     const ctx = makeTestCtx()
     const state = freshState()
     state.standings['dsi'] = 5
     state.exploredGalaxies.push('galaxy-far')
-    // 无技能：2 分钟单程 → outMs 120s
+    // 无技能：2 分钟单程 → outMs 120s（用于失利返航腿并入）
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
     expect(state.expedition.outMs).toBe(120_000)
     // 升级航行技能：本次已锁定不变
     state.skills.trained['navigation'] = 5
     expect(state.expedition.outMs).toBe(120_000)
-    expect(state.expedition.finishAtGameMs - state.gameMs).toBe(120_000)
+    // 去程取消：finishAt = 开战时刻 = 下达时刻（无去程等待）
+    expect(state.expedition.finishAtGameMs - state.gameMs).toBe(0)
   })
 
   it('出发前已练满技能：outMs 按 ×0.8 锁定', () => {

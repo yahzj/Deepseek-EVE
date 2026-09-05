@@ -34,16 +34,15 @@ describe('采矿作业', () => {
     expect(startMining(state, 'belt-a', ctx).ok).toBe(false)
   })
 
-  it('显式行程后每 12 秒完成一个循环：10 单位矿石入舱', () => {
+  it('去程取消：指令即开始采掘，每 12 秒完成一个循环：10 单位矿石入舱', () => {
     startMining(state, 'belt-a', ctx)
-    // T4：点开采先进入"前往矿带"（本地空船出航单程 60 秒）——途中无产出
-    advanceGame(state, 60_000, ctx)
+    // 去程已取消：指令下达即视为已抵达矿带，立即采掘（无出航等待）
     expect(state.mining.phase).toBe('mining')
     expect(countItem(state, 'ore-a')).toBe(0)
     advanceGame(state, 12_000, ctx)
     expect(countItem(state, 'ore-a')).toBe(10)
     expect(state.mining.tripUnits).toBe(10)
-    // 半循环：进度保留在 cycleAccMs（60 秒 = 5 循环，余半循环）
+    // 半循环：进度保留在 cycleAccMs（12 秒 = 1 循环，余半循环）
     advanceGame(state, 6_000, ctx)
     expect(countItem(state, 'ore-a')).toBe(10)
     const view = miningStatus(state, ctx)
@@ -53,7 +52,6 @@ describe('采矿作业', () => {
   it('采矿技术等级加成产量：Lv2 时每循环 11 单位', () => {
     state.skills.trained['mining'] = 2 // balance.yieldSkillId = 'mining'
     startMining(state, 'belt-a', ctx)
-    advanceGame(state, 60_000, ctx) // 显式行程到带
     advanceGame(state, 12_000, ctx)
     expect(countItem(state, 'ore-a')).toBe(11) // floor(10 × 1.12)
   })
@@ -61,7 +59,6 @@ describe('采矿作业', () => {
   it('采矿护卫舰操作缩短循环：Lv5 时循环 10.2 秒', () => {
     state.skills.trained['mining-frigate'] = 5 // balance.timeSkillId = 'mining-frigate'
     startMining(state, 'belt-a', ctx)
-    advanceGame(state, 60_000, ctx) // 显式行程到带
     advanceGame(state, 10_200, ctx)
     expect(countItem(state, 'ore-a')).toBe(10)
     // 10.2 秒整时刚好一循环；10 秒时不足一循环
@@ -75,55 +72,52 @@ describe('采矿作业', () => {
     state.fleet['tiny'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     state.shipId = 'tiny'
 
-    // 场景一：默认自动循环 → 满舱转返航（不停止）；30 秒显式行程 + 4 轮后满舱
+    // 场景一：默认自动循环 → 满舱转返航（不停止）；4 轮节拍后满舱
     startMining(state, 'belt-a', tinyCtx)
-    advanceGame(state, 60_000 + 48_000, tinyCtx) // 60s 空船出航 + 4 个循环（第 4 轮结束时满舱触发返航）
+    advanceGame(state, 48_000, tinyCtx) // 3 循环 = 30 单位 + 第 4 循环节拍（满舱检查）→ 转返航
     expect(countItem(state, 'ore-a')).toBe(30)
     expect(state.mining.active).toBe(true)
     expect(state.mining.phase).toBe('returning')
     expect(state.logs.some((l) => l.text.includes('自动返航'))).toBe(true)
 
-    // 场景二：关闭自动循环 → 满舱停采并警告（同样含 30 秒显式行程）
+    // 场景二：关闭自动循环 → 满舱停采并警告
     const state2 = createInitialState({ nowWallMs: 0, seed: 1 })
     state2.fleet['tiny'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     state2.shipId = 'tiny'
     setMiningAutoCycle(state2, false)
     startMining(state2, 'belt-a', tinyCtx)
-    advanceGame(state2, 60_000 + 48_000, tinyCtx)
+    advanceGame(state2, 48_000, tinyCtx)
     expect(countItem(state2, 'ore-a')).toBe(30)
     expect(state2.mining.active).toBe(false)
     expect(state2.mining.beltId).toBeNull()
     expect(state2.logs.some((l) => l.kind === 'warn' && l.text.includes('货舱已满'))).toBe(true)
   })
 
-  it('自动循环全流程：空船前往 → 采满 → 满载返航到港卸入仓库 → 出航 → 恢复采掘', () => {
-    // 关闭富矿脉：空船出航 60s → 80 循环 × 12 秒 = 960 秒采满，第 81 个节拍（972s）触发返航
+  it('自动循环全流程：立即采掘 → 采满 → 满载返航（去程并入）卸入仓库 → 自动回带再采掘', () => {
+    // 关闭富矿脉：采满 800 = 80 循环 × 12 秒，第 81 循环节拍（972s）触发返航
     const bal = makeTestCtx().balance
     const calmCtx = makeTestCtx({ balance: { ...bal, richVeinChance: 0 } })
     startMining(state, 'belt-a', calmCtx) // sandcat：800 m³ / 10u 每循环
-    advanceGame(state, 60_000 + 972_000, calmCtx)
+    advanceGame(state, 972_000, calmCtx)
     expect(state.mining.phase).toBe('returning')
     expect(countItem(state, 'ore-a')).toBe(800) // 满舱在返航中
-    // 满载返航腿 120s：卸货完成、转入出航
-    advanceGame(state, 120_000, calmCtx)
-    expect(state.mining.phase).toBe('outbound')
+    // 满载返航 120s + 空船去程 60s 并入 = 180s：到港卸货后直接回带采掘
+    advanceGame(state, 180_000, calmCtx)
+    expect(state.mining.phase).toBe('mining')
     expect(countItem(state, 'ore-a')).toBe(0) // 货仓已清空
     expect(state.warehouse.items['ore-a']).toBe(800) // 全部进仓库
     expect(state.logs.some((l) => l.text.includes('卸入物品仓库'))).toBe(true)
-    // 空船出航（60s）到带：恢复采掘
-    advanceGame(state, 60_000, calmCtx)
-    expect(state.mining.phase).toBe('mining')
-    // 又采了一轮
+    // 回到矿带：恢复采掘
     advanceGame(state, 12_000, calmCtx)
     expect(countItem(state, 'ore-a')).toBe(10)
   })
 
-  it('勾选“本次返航后停止”：卸货完成后停采，不再出航', () => {
+  it('勾选“本次返航后停止”：卸货完成后停采，不再自动周转', () => {
     const bal = makeTestCtx().balance
     const calmCtx = makeTestCtx({ balance: { ...bal, richVeinChance: 0 } })
     setMiningStopAfterTrip(state, true)
     startMining(state, 'belt-a', calmCtx)
-    advanceGame(state, 60_000 + 972_000 + 120_000, calmCtx) // 空船出航 + 采满 + 满载返航到港
+    advanceGame(state, 972_000 + 180_000, calmCtx) // 采满 + 满载返航（去程并入）= 到港卸货即停
     expect(state.mining.active).toBe(false)
     expect(state.warehouse.items['ore-a']).toBe(800)
     expect(state.logs.some((l) => l.text.includes('自动循环已结束'))).toBe(true)
@@ -133,13 +127,13 @@ describe('采矿作业', () => {
     // 市场窗口与随机事件也会消耗随机数——本测试只数采矿消耗，故两者都关闭
     const noMarketCtx = makeTestCtx({ marketGoods: [], quietEvents: true })
     startMining(state, 'belt-a', noMarketCtx)
-    advanceGame(state, 60_000 + 120_000, noMarketCtx) // 60s 空船出航 + 10 个循环
+    advanceGame(state, 120_000, noMarketCtx) // 10 个循环
     expect(state.rng.count).toBe(10)
   })
 
   it('手动停止：记录本趟产出；未在开采时停止返回 false', () => {
     startMining(state, 'belt-a', ctx)
-    advanceGame(state, 60_000 + 60_000, ctx) // 60s 空船出航 + 5 循环 = 50 单位
+    advanceGame(state, 60_000, ctx) // 5 循环 = 50 单位
     expect(stopMining(state, ctx)).toBe(true)
     expect(state.mining.active).toBe(false)
     expect(state.logs.some((l) => l.text.includes('50 单位'))).toBe(true)
@@ -160,16 +154,14 @@ describe('采矿作业', () => {
     })
     state.skills.trained['任意技能'] = 5
     startMining(state, 'belt-a', customCtx)
-    advanceGame(state, 60_000, customCtx) // 显式行程到带
-    advanceGame(state, 12_000, customCtx)
+    advanceGame(state, 12_000, customCtx) // 立即采掘（去程取消）
     expect(countItem(state, 'ore-a')).toBe(13) // floor(10 × 1.30)
   })
 
   it('技能中途升级立刻生效（同一段推进内按新参数结算后续循环）', () => {
     // 先用 Lv0 挖 2 个循环，直接把技能等级改到 5，再推进——后续循环按新产量算
     startMining(state, 'belt-a', ctx)
-    advanceGame(state, 60_000, ctx) // 显式行程到带
-    advanceGame(state, 24_000, ctx)
+    advanceGame(state, 24_000, ctx) // 2 个循环 = 20 单位
     expect(countItem(state, 'ore-a')).toBe(20)
     state.skills.trained['mining'] = 5 // 产量翻到 floor(10×1.3)=13
     advanceGame(state, 12_000, ctx)
@@ -177,7 +169,7 @@ describe('采矿作业', () => {
   })
 })
 
-describe('矿带挂星系：显式行程航程（星图拓展）', () => {
+describe('矿带挂星系：去程取消与并入返航的航程（星图拓展）', () => {
   let state: GameState
   let ctx: SimContext
 

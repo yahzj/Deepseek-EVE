@@ -94,7 +94,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       label: mv.beltName,
       sub: mv.phaseLabel,
       percent: mv.percent,
-      // T4 显式行程：出航/返航阶段给出精确剩余；采掘阶段只给循环进度
+      // 返航阶段给出精确剩余；采掘阶段只给循环进度（去程已取消并入返航）
       remainingMs: mv.phase !== 'mining' ? mv.remainingMs : null,
       stopable: true,
       stop: 'stop-mining',
@@ -239,13 +239,13 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         stopParam: shipId,
       })
     } else {
-      // B1.5 AI 驻留待命（out 去程给倒计时；stand 驻留中）
+      // B1.5 AI 掩护巡逻（out 去程给倒计时；stand 驻留中）
       const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
       const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
-        label: `${shipName} · 驻留待命`,
+        label: `${shipName} · 掩护巡逻`,
         sub: task.phase === 'out' ? `前往 ${gName}（去程 · 剩约 ${Math.max(1, Math.round(remain / 1000))} 秒）` : `留守「${gName}」`,
         percent: null,
         remainingMs: task.phase === 'out' ? remain : null,
@@ -291,13 +291,13 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── B1.5 主控"前往星系待命"去程（可取消召回） ──
+  // ── B1.5 主控"前往星系掩护巡逻"（旧"待命"；新指令即时就位，仅旧档去程会显示） ──
   const sbv = standbyStatus(state, ctx)
   if (sbv.active) {
     out.push({
       id: 'standby',
       kind: 'standby',
-      label: `前往 ${sbv.targetName} 待命`,
+      label: `前往 ${sbv.targetName} 掩护巡逻`,
       sub: '去程中',
       percent: sbv.percent,
       remainingMs: sbv.remainingMs,
@@ -322,7 +322,7 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
       return state.mining.phase === 'outbound' ? '采矿·出航中' : '采矿·返航中'
     }
     const sb = standbyStatus(state, ctx)
-    if (sb.active) return `待命·前往${sb.targetName}中`
+    if (sb.active) return `掩护巡逻·前往${sb.targetName}中`
     const sv = scanStatus(state)
     if (sv.active) return '扫描探索中'
     const ev = expeditionStatus(state, ctx)
@@ -342,7 +342,7 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
     if (task.phase === 'mining') return 'AI 采矿中'
     return task.phase === 'outbound' ? 'AI 采矿·出航中' : 'AI 采矿·返航中'
   }
-  if (task.kind === 'standby') return task.phase === 'out' ? 'AI 待命·去程中' : 'AI 待命中'
+  if (task.kind === 'standby') return task.phase === 'out' ? 'AI 掩护巡逻·去程中' : 'AI 掩护巡逻中'
   if (task.phase === 'out') return 'AI 远征·去程中'
   if (task.phase === 'battle') return 'AI 远征·交火中'
   return 'AI 远征·返航中'

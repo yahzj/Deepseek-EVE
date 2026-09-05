@@ -1,12 +1,13 @@
 /**
- * 远征（M3 + V12 两阶段 + T8 停留语义）：派舰船去远方星系的异常点，
- * 流程 = 去程(out) → 实时交火(battle) →（胜利 = 结算并停留该星系 / 失利 = 自动返航 back）。
+ * 远征（M3 + V12 两阶段 + T8 停留语义）：派舰船去远方星系的异常点。
+ * 流程 = 去程取消（定稿：下达即开战，无出航等待）→ 实时交火(battle) →
+ * （胜利 = 结算并停留该星系 / 失利 = 自动返航 back，返航时长 = 原去程 + 原返程 = 2×单程）。
  * 交火由 V12 战斗引擎（combat.ts）确定性推进；离线大步长与在线小步同引擎。到点语义：
- * - out：finishAtGameMs = 到港时刻（去程结束即开战）；出发地 = 当前位置（野外/空间站，T8）
+ * - out：仅兼容旧档/遗留状态（历史去程相位；finishAtGameMs = 到港时刻）；
  * - battle：无固定结束时刻；结束由战斗引擎判定（battle.ended），结算后：
  *   胜 → 远征结束 + 船停留目标星系（awayGalaxy）+ 悬赏冷却计时开始；
  *   负 → 转 back 自动返航（维修/弃船按既有惩罚在结算时发生）
- * - back：finishAtGameMs = 到家时刻，到点 active=false
+ * - back：finishAtGameMs = 到家时刻（= 开战时刻 + 2×单程，去程并入返航），到点 active=false
  */
 import { addLog, HOME_GALAXY_ID } from './state'
 import type { CommandResult } from './engine'
@@ -19,7 +20,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
 import { originGalaxyOf } from './location'
 import { onArriveAtGalaxy } from './station'
-import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
+import { shortestTravelMinutes, travelLegMs } from './travel'
 import { injectWreckDensity, wreckDensityOf } from './salvage'
 import {
   advanceBattleFor,
@@ -111,7 +112,7 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   return { ok: true }
 }
 
-/** 出发抽"途中事件"（沿用 M5；去程过半触发） */
+/** 出发抽"途中事件"（沿用 M5；去程取消后在出发瞬间触发） */
 function rollTravelEvent(state: GameState, ctx: SimContext): string | null {
   if (ctx.travelEvents.length === 0) return null
   // 星际奇遇学（galactic-happenings）：途中事件触发率 ×1.15/级
@@ -131,7 +132,7 @@ function rollTravelEvent(state: GameState, ctx: SimContext): string | null {
 function maybeFireTravelEvent(state: GameState, ctx: SimContext): void {
   const exp = state.expedition
   if (!exp.active || !exp.eventId || exp.eventFired) return
-  // 去程中点 = 到港时刻 - 单程时长/2
+  // 旧档/遗留去程相位在此按"中点时刻"触发；新指令（去程取消）由 startExpedition 出发瞬间直接触发
   if (state.gameMs < exp.finishAtGameMs - Math.floor(exp.outMs / 2)) return
   const eventDef = ctx.travelEvents.find((e) => e.id === exp.eventId)
   exp.eventFired = true
@@ -217,22 +218,22 @@ export function startExpedition(
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消（顶部活动栏）。' }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)
   const fromName = ctx.galaxies.get(from)?.name ?? from
   state.awayGalaxy = null
   const outMinutes = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
   if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。' }
-  // V12.1：按出发时的船跃迁与航行技能锁定单程耗时（途中升级不影响本次）
+  // V12.1：按出发时的船跃迁与航行技能锁定单程耗时（途中升级不影响本次）；用于失利返航腿并入
   const outMs = travelLegMs(state, ctx, outMinutes)
   const now = state.gameMs
   const exp = state.expedition
   exp.active = true
   exp.anomalyId = anomalyId
-  exp.phase = 'out'
+  exp.phase = 'out' // 占位：本函数内随即转入 battle（去程取消：开战时刻 = 现在）
   exp.battle = null
-  exp.finishAtGameMs = now + outMs
+  exp.finishAtGameMs = now // 开战时刻 = 下达时刻（不再有去程等待）
   exp.outMs = outMs
   exp.combatMs = anomaly.combatSeconds * 1000
   exp.durationMs = outMs + exp.combatMs
@@ -247,8 +248,20 @@ export function startExpedition(
   addLog(
     state,
     'info',
-    `⚔ 远征出发（${anomaly.name}）：${shipName} 从「${fromName}」启程，预计 ${travelMinutesEff(state, ctx, outMinutes)} 分钟抵达；胜后停留该星系（可连续出击或返航），失利自动返航。`,
+    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」跃迁至目标空域——去程已取消，立即进入交火。胜后停留该星系（可连续出击或返航），失利自动返航（去程时间并入返航）。`,
   )
+  // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
+  if (exp.eventId) maybeFireTravelEvent(state, ctx)
+  // 去程取消：立即开战（beginBattleAt 会点亮目标星系并写"进入交火"日志）
+  const opened = beginBattleAt(state, ctx, anomalyId, state.shipId, now)
+  if (!opened) {
+    exp.active = false
+    exp.anomalyId = null
+    exp.battle = null
+    exp.phase = 'out'
+    exp.finishAtGameMs = 0
+    return { ok: false, error: '目标数据缺失，无法开战。' }
+  }
   return { ok: true }
 }
 
@@ -267,7 +280,7 @@ export function startExpeditionFromMining(
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消（顶部活动栏）。' }
   const m = state.mining
   if (!m.active) return startExpedition(state, anomalyId, ctx, opts) // 无采矿作业 → 普通出发
   const anomaly = ctx.anomalies.get(anomalyId)!
@@ -435,11 +448,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。练练炮术学，记得给船做保养。`,
     )
   }
-  // 转返航
+  // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程）
   exp.battle = null
   exp.phase = 'back'
-  exp.finishAtGameMs = state.gameMs + exp.outMs
-  addLog(state, 'info', '舰队开始返航。')
+  exp.finishAtGameMs = state.gameMs + exp.outMs * 2
+  addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
 }
 
 /**
@@ -496,11 +509,11 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
     state.autoLoopAnomalyId = null
     addLog(state, 'info', '连续出击已停止（手动撤退）。')
   }
-  // 转返航（沿用失利返回流程）
+  // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程；沿用失利返回流程）
   exp.battle = null
   exp.phase = 'back'
-  exp.finishAtGameMs = state.gameMs + exp.outMs
-  addLog(state, 'info', '舰队脱离战场，自动返航。')
+  exp.finishAtGameMs = state.gameMs + exp.outMs * 2
+  addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
   return { ok: true }
 }
 
@@ -762,15 +775,18 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   const phase: 'out' | 'combat' | 'back' = exp.phase === 'battle' ? 'combat' : exp.phase
   const phaseLabel =
     phase === 'out' ? '航行中（去程）' : phase === 'combat' ? '交火中' : '返航中'
-  // 进度：out/back 按单程；combat 按已交战时间/最大上限
+  // 进度：out（仅旧档兼容）按单程；back 去程并入返航按 2×单程；combat 按已交战时间/最大上限
   let percent = 0
   let remainingMs = 0
   let totalMs = 1
-  if (exp.phase === 'out' || exp.phase === 'back') {
-    const elapsed = Math.max(0, exp.outMs - Math.max(0, exp.finishAtGameMs - state.gameMs))
+  if (exp.phase === 'out') {
     remainingMs = Math.max(0, exp.finishAtGameMs - state.gameMs)
     totalMs = exp.outMs
-    percent = Math.min(100, (elapsed / Math.max(1, totalMs)) * 100)
+    percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / Math.max(1, totalMs)) * 100))
+  } else if (exp.phase === 'back') {
+    remainingMs = Math.max(0, exp.finishAtGameMs - state.gameMs)
+    totalMs = exp.outMs * 2 // 去程并入返航
+    percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / Math.max(1, totalMs)) * 100))
   } else if (exp.battle) {
     const b = exp.battle
     const elapsed = Math.max(0, state.gameMs - b.startedAtGameMs)

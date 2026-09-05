@@ -13,7 +13,6 @@ import { goStandbyAt, cancelStandby } from '../src/location'
 import { assignAiStandby, idleAiShipIds } from '../src/ai'
 import { cancelAiTask } from '../src/ai'
 import { rollLowSecAmbush } from '../src/encounters'
-import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
 import { changeShip } from '../src/shipyard'
 import { shipDisplayName } from '../src/instances'
@@ -47,42 +46,31 @@ function lowWorld() {
   return { state, ctx }
 }
 
-describe('B1.5 前往星系待命', () => {
-  it('主控：前往远方待命 → 去程中可取消召回；到点野外停留（awayGalaxy）并写日志', () => {
+describe('B1.5 前往星系掩护巡逻（原"待命"；去程取消，即时就位）', () => {
+  it('主控：掩护巡逻即时就位（无去程等待）→ 野外停留并写日志；重复就位被拒', () => {
     const { state, ctx } = world()
     expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(true)
-    expect(state.standby.active).toBe(true)
-    expect(state.standby.galaxyId).toBe('galaxy-far')
-    expect(state.standby.finishAtGameMs).toBeGreaterThan(0)
-    // 活动栏条目（可召回）
-    const items = activityOverview(state, ctx).filter((i) => i.kind === 'standby')
-    expect(items.length).toBe(1)
-    expect(items[0]!.stop).toBe('recall-standby')
-    // 取消召回
-    expect(cancelStandby(state, ctx).ok).toBe(true)
-    expect(state.standby.active).toBe(false)
-    expect(state.awayGalaxy).toBeNull()
-    // 重新出发 → 到点
-    expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(true)
-    advanceGame(state, state.standby.finishAtGameMs - state.gameMs + 1, ctx)
-    expect(state.standby.active).toBe(false)
+    // 即时就位：船立刻在目标星系野外停留；无"去程中"状态
     expect(state.awayGalaxy).toBe('galaxy-far')
+    expect(state.standby.active).toBe(false)
     expect(state.logs.some((l) => l.text.includes('已抵达'))).toBe(true)
-    // 已在目标待命 → 拒绝重复
+    // 已就位：没有进行中的去程可取消（离开请用「返航空间站」）
+    expect(cancelStandby(state, ctx).ok).toBe(false)
+    // 已在目标掩护巡逻 → 拒绝重复
     expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(false)
   })
 
-  it('去程中 busy 互斥：采矿/远征/换驾驶/维修 全部拒绝；到点待命后采矿可正常开始（从停留点出发）', () => {
+  it('掩护巡逻就位 = 野外停留：换驾驶被拒，但从停留点可继续出击/采矿', () => {
     const { state, ctx } = world()
     expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(true)
-    expect(startMining(state, 'belt-a', ctx).ok).toBe(false)
-    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(false)
-    expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(false)
-    // 到点后：待命即野外停留——从远处矿带采矿走 T8 野外出发（belt-a 本地则拒绝无航路?用 far 需要带）
-    advanceGame(state, 10 * 60_000, ctx)
     expect(state.awayGalaxy).toBe('galaxy-far')
-    const r = startExpedition(state, 'ano-a', ctx) // 悬赏在母港，从 far 出发有航路
+    // 在野外：换船/维修被拒（需返航空间站）
+    expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(false)
+    // 从停留点出击悬赏（目标在母港，有航路）→ 成功（即时开战）
+    const r = startExpedition(state, 'ano-a', ctx)
     expect(r.ok).toBe(true)
+    expect(state.expedition.active).toBe(true)
+    expect(state.awayGalaxy).toBeNull() // 作业位置由作业自身表达
   })
 
   it('副船：指派待命（占名额、目标须已探索）→ 到点驻留 → 不占 idle → 取消召回归核心', () => {
@@ -125,9 +113,10 @@ describe('B1.5 前往星系待命', () => {
     expect(state.encounter.shipId).toBe(sid) // 由驻留副船承担
   })
 
-  it('存档往返：standby 与副船待命任务可序列化；旧档缺字段兜底为空', () => {
+  it('存档往返：standby 与副船掩护巡逻任务可序列化；旧档缺字段兜底为空', () => {
     const { state, ctx } = world()
-    expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(true)
+    // 构造旧档样式的"去程中"状态（兼容字段仍保留；新指令即时就位不留此状态）
+    state.standby = { active: true, galaxyId: 'galaxy-far', finishAtGameMs: state.gameMs + 120_000, legMs: 120_000 }
     const text = serializeSaveFile(state, state.savedAtWallMs)
     const loaded = loadSaveFile(text).state
     expect(loaded.standby.active).toBe(true)

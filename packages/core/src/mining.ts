@@ -2,13 +2,13 @@
  * 采矿作业（M1 基础 + v7 自动循环状态机 + T4 显式行程/换驾驶善后）。
  *
  * 模型（中文说明）：
- * - 采矿是自动循环：前往矿带(出航) → 采掘(挖到货舱满) → 返航 → 卸货入物品仓库 → 出航 → 采掘…；
- *   卸载由"物品仓库"承接（货仓清空），所以可以无限循环（仓库无限容量）；
+ * - 采矿是自动循环：采掘(挖到货舱满) → 返航 → 卸货入物品仓库 → 采掘…（循环无限，仓库无限容量）；
+ *   去程已取消（定稿）：下达开采指令即视为已抵达矿带、立即开始采掘（即时反馈）；
+ *   空船去程时间并入返航腿——满载返航 = 原返航单程 + 原去程单程（自动循环的总行程时间不变）；
  * - autoCycle（默认开）：满舱自动周转；玩家可勾选 stopAfterTrip「本次返航后停止」；
- * - T4 显式行程：点开采先进入"前往矿带"（出航）阶段，到带才开始采掘；
- *   往返不对称（船长定稿）：满载/返航单程 = 进出港基准 120 秒（balance.mining.localLegMs）
- *   + 远处航程（按船跃迁/航行技能）；出航是空船出门 → 跃迁速度×2 → 出航单程减半
- *   （oneOutboundLegMs：本地出航 60 秒；远带出航 ≈ (航程+基准)/2）；
+ * - 往返不对称（船长定稿）：满载/返航单程 = 进出港基准 120 秒（balance.mining.localLegMs）
+ *   + 远处航程（按船跃迁/航行技能）；空船去程 = 跃迁速度×2 → 去程单程为返航的一半
+ *   （oneOutboundLegMs：本地去程 60 秒；远带去程 ≈ (航程+基准)/2）；去程并入返航后按相加计；
  * - 换驾驶善后（船长定稿 2026-09-04）：采矿作业中直接在舰船页切换驾驶——换船成功，
  *   旧船按当前阶段转入 shipReturns 自动返航（倒计时，到港自动卸货入仓库），采矿作业随之结束；
  *   取消原"换船重采"按钮与自动续采语义；
@@ -142,8 +142,8 @@ export function oneLegMs(
 }
 
 /**
- * 显式行程"出航/前往矿带"单程时长（毫秒，T4）：空船出门，跃迁速度×2 →
- * 出航单程 = 满载单程的一半（调试模式仍固定 1 秒）。
+ * "空船去程"单程时长（毫秒）：空船出门跃迁速度×2 → 去程 = 满载返航单程的一半
+ * （并入返航腿后按相加计；调试模式仍固定 1 秒）。
  */
 export function oneOutboundLegMs(
   state: GameState,
@@ -195,7 +195,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消（顶部活动栏）。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。' }
   }
@@ -207,13 +207,15 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const m = state.mining
   m.active = true
   m.beltId = beltId
-  m.phase = 'outbound' // T4 显式行程：先前往矿带，到带后才开始采掘
+  m.phase = 'mining' // 去程取消：指令即视为已抵达矿带，立即开始采掘（无出航相位）
   m.cycleAccMs = 0
   m.phaseAccMs = 0
   m.tripUnits = 0
   m.autoCycle = m.autoCycle !== false // 默认开，除非玩家关过
   m.stopAfterTrip = m.stopAfterTrip === true
-  m.originGalaxy = fromField
+  m.originGalaxy = fromField // 仍记录出发点——用于把去程时间并入首次返航腿
+  // 船即时到矿带：矿带挂星系（且非母港）即刻点亮探索
+  if (belt.galaxyId) markExplored(state, belt.galaxyId)
 
   const params = getMiningParams(state, ctx)
   const shipName = shipDisplayName(state, ctx, state.shipId)
@@ -221,16 +223,14 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const outSec = Math.max(1, Math.round(oneOutboundLegMs(state, ctx, beltId, undefined, fromField) / 1000))
   const retSec = Math.max(1, Math.round(oneLegMs(state, ctx, beltId) / 1000))
   const travelStatic = beltTravelMinutes(ctx, belt, fromField)
-  const travelMin = travelStatic > 0 ? travelMinutesEff(state, ctx, travelStatic) : 0
-  const fromNote = fromField ? `从「${ctx.galaxies.get(fromField)?.name ?? fromField}」出发，` : ''
-  const travelNote = travelMin > 0 ? `，其中航程约 ${travelMin} 分钟` : ''
+  const travelNote = travelStatic > 0 ? `（其中远带航程约 ${Math.max(1, travelMinutesEff(state, ctx, travelStatic))} 分钟）` : ''
+  const tripNote = m.autoCycle
+    ? ' 已启用自动循环：满舱自动返航空间站卸货，卸完自动开始下一趟。'
+    : ' 自动循环已关闭：货舱满后将停在矿带。'
   addLog(
     state,
     'info',
-    `开始开采：${belt.name}。${shipName} ${fromNote}空船出航前往矿带${cycleNote}（前往约 ${outSec} 秒——空船跃迁×2；满载返航约 ${retSec} 秒${travelNote}）。` +
-      (m.autoCycle
-        ? ' 已启用自动循环：满舱自动返航空间站卸货，卸完自动再出航。'
-        : ' 自动循环已关闭：货舱满后将停在矿带。'),
+    `开始开采：${belt.name}。${shipName} 已抵达矿带，立即开始采掘${cycleNote}（满载返航约 ${retSec + outSec} 秒，去程时间已并入返航${travelNote}）。${tripNote}`,
   )
   return { ok: true }
 }
@@ -260,7 +260,7 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
   return startMining(state, beltId, ctx)
 }
 
-/** 停止开采（手动）：任何阶段都会停（若在返航/出航中，货物留在船上） */
+/** 停止开采（手动）：任何阶段都会停（若在返航/去程遗留相位中，货物留在船上） */
 export function stopMining(state: GameState, ctx: SimContext): boolean {
   if (!state.mining.active) return false
   const m = state.mining
@@ -282,9 +282,10 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
 }
 
 /**
- * 引擎内部调用：按流逝时间推进采矿状态机（采掘循环 / 返航 / 出航）。
+ * 引擎内部调用：按流逝时间推进采矿状态机（采掘循环 / 返航）。
+ * 去程已并入返航（总行程时间不变）；旧档遗留的 outbound 相位仍按空船腿推进兼容。
  * 剩余时间管理器：时间按"阶段所需"逐段消费，一次大推进可完整穿越
- * 采掘→返航→卸货→出航→采掘 多个阶段，富余时间永不丢失。
+ * 采掘→返航→卸货→采掘 多个阶段，富余时间永不丢失。
  */
 export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext): void {
   const m = state.mining
@@ -299,15 +300,15 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
 
   let remaining = deltaMs
   while (m.active && remaining > 0) {
-    // ── 返航 / 出航阶段（T4 往返不对称：出航空船跃迁×2 → 腿减半；T8：初始出航按出发地计程；
-    //    T9：自动循环往返目标 = 离矿带最近的空间站） ──
+    // ── 返航阶段（去程并入返航，定稿：总行程时间不变）；old 档遗留的 outbound 相位按原空船腿推进 ──
     if (m.phase === 'returning' || m.phase === 'outbound') {
       const beltDef = m.beltId ? ctx.belts.get(m.beltId) : undefined
       const stGal = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
       const leg =
         m.phase === 'outbound'
           ? oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
-          : oneLegMs(state, ctx, m.beltId, undefined, stGal)
+          : oneLegMs(state, ctx, m.beltId, undefined, stGal) +
+            oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
       const need = leg - m.phaseAccMs
       if (remaining < need) {
         m.phaseAccMs += remaining
@@ -317,7 +318,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       remaining -= need
       m.phaseAccMs = 0
       if (m.phase === 'returning') {
-        // 到港：整仓卸入物品仓库
+        // 返抵空间站：整仓卸入物品仓库（去程段已并入本腿，卸完即回到矿带采掘）
         const belt = m.beltId ? ctx.belts.get(m.beltId) : undefined
         const ore = belt ? ctx.items.get(belt.oreId) : undefined
         const oreName = ore ? ore.name : '货物'
@@ -338,10 +339,13 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           addLog(state, 'info', '自动循环已结束（按设定返港后停止）。')
           break
         }
-        m.phase = 'outbound'
+        // 自动循环：空船去程已并入刚才的返航腿 → 直接回到矿带恢复采掘（不再有出航相位）
+        m.phase = 'mining'
+        m.cycleAccMs = 0
         m.tripUnits = 0
+        m.originGalaxy = null // 起点使命完成，此后循环以空间站为基准
       } else {
-        // 到达矿带：恢复采掘（V13：实际抵达该星系 → 点亮探索）；起点使命完成，自动循环改以空间站为基准
+        // 旧档遗留的 outbound 相位（读档恢复）：走完空船腿到达矿带后恢复采掘并点亮探索
         const belt = m.beltId ? ctx.belts.get(m.beltId) : undefined
         if (belt?.galaxyId) markExplored(state, belt.galaxyId)
         m.phase = 'mining'
@@ -389,10 +393,15 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       if (m.autoCycle) {
         m.phase = 'returning'
         m.phaseAccMs = 0
+        // 去程并入返航：返航腿 = 满载返航 + 空船去程（总行程时间不变）
+        const stGalNow = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
+        const mergedMs =
+          oneLegMs(state, ctx, m.beltId, undefined, stGalNow) +
+          oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow)
         addLog(
           state,
           'info',
-          `货舱已满（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返航空间站卸货（返航单程约 ${Math.round(oneLegMs(state, ctx, m.beltId, undefined, beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID) / 1000)} 秒；空船出航更快）。`,
+          `货舱已满（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返航空间站卸货（返航约 ${Math.round(mergedMs / 1000)} 秒，去程已并入返航）。`,
         )
         continue // 剩余时间转入返航阶段
       }
@@ -455,8 +464,9 @@ export function miningStatus(state: GameState, ctx: SimContext): MiningView {
   const stGal = belt?.galaxyId ? nearestStationGalaxyId(state, ctx, belt.galaxyId) : HOME_GALAXY_ID
   const leg = oneLegMs(state, ctx, m.beltId, undefined, stGal)
   const outLeg = oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGal)
-  // 阶段按方向用各自的腿（百分比/剩余都以"当前阶段实际腿长"为准）
-  const phaseLeg = m.phase === 'outbound' ? outLeg : leg
+  // 阶段按方向用各自的腿（百分比/剩余都以"当前阶段实际腿长"为准）：
+  // 返航腿 = 满载返航 + 空船去程（去程并入返航，定稿）
+  const phaseLeg = m.phase === 'returning' ? leg + outLeg : m.phase === 'outbound' ? outLeg : leg
 
   const phaseLabel =
     m.phase === 'returning' ? '返航卸货中' : m.phase === 'outbound' ? '出航中' : '采掘中'

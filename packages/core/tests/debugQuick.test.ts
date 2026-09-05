@@ -42,10 +42,10 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     expect(n.skills.trained['nav-1'] ?? 0).toBe(0)
   })
 
-  it('采矿：循环 1 秒、行程腿 1 秒（快速产出）', () => {
+  it('采矿：指令即采掘，循环 1 秒（快速产出；去程已取消）', () => {
     const s = freshState(true)
     expect(startMining(s, 'belt-a', ctx).ok).toBe(true)
-    advanceGame(s, 1000, ctx) // T4 显式行程 1 秒：先到带
+    // 去程取消：无需 1 秒行程，直接采掘
     expect(miningStatus(s, ctx).phase).toBe('mining')
     advanceGame(s, 1000, ctx) // 一个循环 12s → 1s
     expect(miningStatus(s, ctx).tripUnits).toBeGreaterThan(0)
@@ -62,13 +62,12 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     expect(s.manufacturingRuns).toHaveLength(0)
   })
 
-  it('远征：去程/返航 1 秒；交火保留真实战斗（调试不跳过战斗，供验证）', () => {
+  it('远征：去程取消（下达即开战）；返航 1 秒/单程×2；交火保留真实战斗（调试不跳过战斗，供验证）', () => {
     const s = freshState(true)
     s.standings['dsi'] = 5
     s.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(s, 'ano-hard', ctx).ok).toBe(true)
-    // 去程 2 分钟 → debug 1 秒
-    advanceGame(s, 1000, ctx)
+    // 去程取消：下达即进入交火
     expect(s.expedition.phase).toBe('battle')
     expect(s.expedition.battle).not.toBeNull()
     // 战斗按实时引擎推进（不被 debugQuick 即时跳过）；循环小步推进至战斗上限后必然结算

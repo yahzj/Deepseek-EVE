@@ -36,7 +36,7 @@ describe('T8 胜利停留与重复冷却', () => {
     const { state, ctx } = worldWithFarBounty()
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
     expect(state.awayGalaxy).toBeNull() // 作业中位置由作业表达
-    advanceGame(state, 10 * 60_000, ctx) // 去程 2 分钟 + 秒杀交火 → 完成
+    advanceGame(state, 10 * 60_000, ctx) // 去程取消：即时开战 + 秒杀交火 → 完成
     expect(state.expedition.active).toBe(false)
     expect(state.awayGalaxy).toBe('galaxy-far') // 胜利停留
     const cd = bountyCooldownRemainingMs(state, 'ano-far-easy')
@@ -46,9 +46,9 @@ describe('T8 胜利停留与重复冷却', () => {
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(false)
     advanceGame(state, 11_000, ctx)
     expect(bountyCooldownRemainingMs(state, 'ano-far-easy')).toBe(0)
-    // 从停留地再次出发：同一星系 → 零航程直接开战
+    // 从停留地再次出发：同一星系 → 零航程即时开战
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
-    expect(state.expedition.phase).toBe('out')
+    expect(state.expedition.phase).toBe('battle')
     expect(state.expedition.outMs).toBe(0)
     expect(state.awayGalaxy).toBeNull()
   })
@@ -58,7 +58,7 @@ describe('T8 胜利停留与重复冷却', () => {
     // 重置探索状态：far 已点亮则不能扫——另起一个真实未探索世界
     const state2 = createInitialState({ nowWallMs: 0, seed: 5 })
     expect(startScan(state2, 'galaxy-far', ctx).ok).toBe(true)
-    advanceGame(state2, 12 * 60_000, ctx)
+    advanceGame(state2, 10 * 60_000, ctx)
     expect(state2.scanning.active).toBe(false)
     expect(state2.awayGalaxy).toBe('galaxy-far')
   })
@@ -134,22 +134,16 @@ describe('T8 连续出击（自动环）', () => {
 })
 
 describe('T8 位置模型：返航空间站与守卫', () => {
-  it('野外空闲：换船被拒；返航行程到站后清位置；随后可换船', () => {
+  it('野外空闲：换船被拒；换港返航即时到站（去程取消）；随后可换船', () => {
     const { state, ctx } = worldWithFarBounty()
     state.awayGalaxy = 'galaxy-far'
-    // 换船守卫（含驾驶船在野外/返航提示）
+    // 换船守卫（含驾驶船在野外提示）
     const r = changeShip(state, 'sh-falconet', ctx)
     expect(r.ok).toBe(false)
     expect(r.error).toContain('返航空间站')
-    // 发返航行程
+    // 换港返航：去程取消 → 即时到站（无行程等待）
     expect(startTransitHome(state, ctx).ok).toBe(true)
-    expect(state.transit.active).toBe(true)
-    expect(state.transit.fromGalaxy).toBe('galaxy-far')
-    // 途中仍不可换
-    expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(false)
-    // 返航到站（2 分钟航程默认船）
-    advanceGame(state, 120_000 + 1_000, ctx)
-    expect(state.transit.active).toBe(false)
+    expect(state.transit.active).toBe(false) // 不留行程状态
     expect(state.awayGalaxy).toBeNull()
     expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(true)
     // 站内再发返航 → 拒绝
@@ -161,7 +155,7 @@ describe('T8 位置模型：返航空间站与守卫', () => {
     state.fleet.sandcat.durability = 0.6
     state.awayGalaxy = 'galaxy-far'
     expect(repairShip(state, 'sandcat', ctx).ok).toBe(false)
-    // 从野外直接采矿（belt-a 在母港星系 → 初始出航含 2 分钟回程；此处只验证入口与原点记录）
+    // 从野外直接采矿（belt-a 在母港星系 → 去程取消但初始出航（并入返航）仍按出发点计程；此处只验证入口与原点记录）
     const bal = makeTestCtx().balance
     const calmCtx = makeTestCtx({
       belts: [{ id: 'belt-far-a', name: '远带矿', oreId: 'ore-a', galaxyId: 'galaxy-far', description: '' }],
@@ -178,7 +172,8 @@ describe('T8 存档（v16.1 兼容字段）', () => {
   it('awayGalaxy/transit/bountyCooldowns/autoLoop 往返一致；非法条目被清', () => {
     const { state, ctx } = worldWithFarBounty()
     state.awayGalaxy = 'galaxy-far'
-    startTransitHome(state, ctx)
+    // 旧档样式在途行程：手动构造（新指令即时到站不留行程；字段仍可序列化往返）
+    state.transit = { active: true, fromGalaxy: 'galaxy-far', toGalaxy: 'galaxy-hub', finishAtGameMs: 120_000, legMs: 120_000 }
     state.bountyCooldowns['ano-x'] = state.gameMs + 5_000
     state.autoLoopAnomalyId = 'ano-far-easy'
     const loaded = loadSaveFile(serializeSaveFile(state, 0))
