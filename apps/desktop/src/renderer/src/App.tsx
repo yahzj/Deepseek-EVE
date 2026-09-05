@@ -420,7 +420,7 @@ export function App({ engine }: { engine: GameEngine }) {
           <div className={`app-enc-banner${state.encounter.battle ? ' is-fight' : ''}`}>
             {state.encounter.battle ? (
               <span className="app-enc-title">
-                ⚔ 遭遇战中：{shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)} vs{' '}
+                遭遇战中：{shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)} vs{' '}
                 {state.encounter.name}（引擎自动推演，战报稍后）
               </span>
             ) : (
@@ -462,7 +462,7 @@ export function App({ engine }: { engine: GameEngine }) {
       {/* ───── 交火中：右上角悬浮入口（主动进入战斗页，不自动切换页面） ───── */}
       {inBattle && !battleOpen ? (
         <button className="app-battle-float" onClick={() => setBattleOpen(true)} title="进入全屏战场：观察实时战斗，可拖动距离条指挥">
-          ⚔ 战斗中 · 进入战场
+          战斗中 · 进入战场
         </button>
       ) : null}
 

@@ -1159,7 +1159,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
         return list.map((a) => (
           <div key={a.id} className="app-ga-row">
             <span className="app-ga-main">
-              ⚔ {a.name}
+              <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
               <span className="app-dim app-ga-desc">
                 威胁 {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
                 {state.completedBounties.includes(a.id) ? ' · 已首胜' : ''}
@@ -1205,7 +1205,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             </span>
           </span>
           <button className="app-btn is-small is-warn" onClick={() => engine.stopSalvageOpNow()}>
-            ■ 停止
+            停止
           </button>
         </div>
       ) : (
@@ -1225,7 +1225,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
               if (!r.ok) onToast(r.error ?? '无法打捞', true)
             }}
           >
-            ⚒ 开始打捞
+            <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>开始打捞
           </button>
         </div>
       )}
@@ -1323,7 +1323,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       <div className="app-ano-top">
         <span className="app-ano-name">{anomaly.name}</span>
         <span className={`app-chip${locked ? ' is-dim' : ''}`}>
-          {unexplored ? '✧ 星系未探索' : reqMet ? `威胁 ${anomaly.threat}` : `需声望 ${anomaly.standingReq}`}
+          {unexplored ? (<><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>星系未探索</>) : reqMet ? `威胁 ${anomaly.threat}` : (<><span className="app-ico"><Glyph name="ico-lock" size={12} color={ICO_TONES["ico-lock"]} /></span>需声望 ${anomaly.standingReq}</>)}
         </span>
       </div>
       <div className="app-ano-meta">
@@ -1354,7 +1354,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       {anomaly.tactic ? (
         <div className="app-ano-meta">
           <span className="app-dim" title="敌方战术决定了接战距离与克制关系：威胁低也可能打不动——胜率%与打法提示为准">
-            ⚒ {FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
+            <span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
           </span>
         </div>
       ) : null}
@@ -1410,7 +1410,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             }
             onClick={toggleLoop}
           >
-            {looping ? '■ 停止连击' : (<><span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>连续出击</>)}
+            {looping ? '停止连击' : (<><span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>连续出击</>)}
           </button>
           <button
             className={`app-btn is-small ${miningActive && !goAsk ? 'is-warn is-primary' : goAsk ? 'is-dim' : 'is-primary'}`}
@@ -1526,7 +1526,7 @@ function StationCard({ engine, onToast }: { engine: GameEngine; onToast: ToastFn
             <div className="app-station-head">
               <span className="app-station-name">
                 {site.name}
-                {built ? <em className="app-chip app-station-built">⌂ 已建成</em> : null}
+                {built ? <em className="app-chip app-station-built"><span className="app-ico"><Glyph name="ico-home" size={12} color={ICO_TONES["ico-home"]} /></span>已建成</em> : null}
                 {!built && tier ? (
                   <em className="app-chip">建造中 · 档位「{tier.name}」</em>
                 ) : null}
