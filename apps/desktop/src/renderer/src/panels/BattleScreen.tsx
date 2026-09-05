@@ -346,11 +346,22 @@ const meSpeedRef = useRef(200)
       if (sum === 0 && prev > 0 && !deadRef.current.has(tag)) {
         deadRef.current.add(tag) // 刚被击毁：登记残骸；爆炸延后到致死弹道着弹后再启动
         boomRef.current.set(tag, now + FLY_MS)
-        // V18B 补位：记录死亡锚点（本拍该单位仍在队列 → lay 坐标即其当前位置），
-        // 下一帧起撤出队列让剩余敌舰补位，残骸在本锚点爆炸并淡出
+        // V18B 补位：记录死亡锚点。注意：不能用布局几何 lay.foe 的 y（列流渲染的垂直位置
+        // 与几何锚不一致，会造成死亡瞬间“突然上移”）——本拍该单位仍在 DOM，直接实测其
+        // 可视中心（lane 坐标），爆炸/残骸原地播放；下一帧起撤出队列让剩余敌舰补位
         const wIdx = foeAliveTags.indexOf(tag)
         if (wIdx >= 0) {
-          wreckRef.current.set(tag, { x: lay.foe[wIdx]?.x ?? 0, y: lay.foe[wIdx]?.y ?? 0, boomAt: now + FLY_MS })
+          const lane = laneRef.current
+          const dom = lane ? lane.querySelector<HTMLElement>(`.app-bts-unit[data-tag="${CSS.escape(tag)}"]`) : null
+          let ax = lay.foe[wIdx]?.x ?? 0
+          let ay = lay.foe[wIdx]?.y ?? 0
+          if (dom && lane) {
+            const lr = lane.getBoundingClientRect()
+            const dr = dom.getBoundingClientRect()
+            ax = dr.left - lr.left + dr.width / 2
+            ay = dr.top - lr.top + dr.height / 2
+          }
+          wreckRef.current.set(tag, { x: ax, y: ay, boomAt: now + FLY_MS })
         }
       }
     }
@@ -496,7 +507,7 @@ const meSpeedRef = useRef(200)
   const foeUnitEls = foeAliveTags.map((tag) => {
     const orig = origIdxOf(tag)
     return (
-      <div key={tag} className="app-bts-unit">
+      <div key={tag} data-tag={tag} className="app-bts-unit">
         <ShipSprite
           role={orig === 0 ? 'armed' : 'hauler'}
           flip={foeFlip}
