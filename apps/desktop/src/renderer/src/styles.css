@@ -7004,7 +7004,7 @@ body {
 
 .app-pro-frag { color: #8a7a66; font-size: 12px; border-top: 1px dashed #5a4a3a; margin: 12px 0; padding-top: 10px; font-style: italic; }
 
-.app-pro-name { display: flex; flex-direction: column; gap: 12px; }
+.app-pro-name { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
 
 .app-pro-sub { color: #9db8a8; font-size: 13px; }
 
