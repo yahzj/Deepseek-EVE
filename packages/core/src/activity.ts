@@ -177,7 +177,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         sub: busyOther
           ? `目标「${aName}」——等待当前作业结束，自动再出击`
           : cdMs > 0
-            ? `目标「${aName}」——冷却结束自动索敌再出击`
+            ? `目标「${aName}」——正在扫描新敌人`
             : `目标「${aName}」——即将自动再出击`,
         percent: null,
         remainingMs: cdMs > 0 ? cdMs : null,
