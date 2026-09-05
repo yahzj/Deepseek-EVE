@@ -331,8 +331,8 @@ body {
   opacity: 0.92;
 }
 .app-belt-econ-val {
-  color: var(--wui-text-dim);
-  opacity: 0.9;
+  color: var(--wui-gold);
+  opacity: 0.92;
 }
 /* ---------- 矿带卡片网格（星图页-矿带开采：矩形卡片 + 卡内操作容器） ---------- */
 .app-belt-grid {

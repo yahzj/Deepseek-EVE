@@ -193,7 +193,7 @@ function BeltCard({
     const perHourUnits = Math.round(mp.unitsPerCycle * cyclesPerHour)
     const valuePerHour = Math.round(perHourUnits * valuePerUnit)
     const sec = Math.round(mp.cycleMs / 1000)
-    effLine = `${mp.unitsPerCycle} 单位/循环 · ${sec}s · ≈${perHourUnits.toLocaleString('zh-CN')}/h`
+    effLine = `${mp.unitsPerCycle} 单位/循环 · ${sec}s · ≈${perHourUnits.toLocaleString('zh-CN')} 单位/h`
     valLine = `估价 ≈${valuePerHour.toLocaleString('zh-CN')} ISK/h`
   }
   // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
