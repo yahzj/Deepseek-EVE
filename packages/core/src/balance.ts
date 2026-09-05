@@ -138,7 +138,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // C4-#3 敌方"虚拟装配"（2026-09-05 船长拍板）：威胁越高全属性越高、侧重随战术风格。
     // 参考船速表 = 玩家船 maxSpeed 同池分段（threat ≤10 对应 T1 级、96+ 对应旗舰级）；
     // 敌速 = 参考段船速 × m_base(threat) × tactic 系数，m_base 0.80→0.95（threat 10→100）
-    // ——无推进玩家多数持平/略快；brawl 再 ×1.12 贴脸（初值，船长将在数据库查看后微调）
+    // ——无推进玩家多数持平/略快；brawl 再 ×1.28 贴脸（2026-09-05 船长确认：普通船不开
+    // 加力甩不掉、贴脸怪须快速近身；1.12→1.28，命中失稳由玩家加力自行取舍）
     foeRefSpeedTable: [
       { upToThreat: 10, maxSpeedMps: 220 },
       { upToThreat: 34, maxSpeedMps: 250 },
@@ -150,7 +151,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     foeSpeedAtThreat100: 0.95,
     // 战术风格速度系数：brawl 贴脸再高（近身使命）；**kite ×0.72（2026-09-05 船长拍板：远程怪
     // 大降速与速度成长——慢速风筝怪可被玩家追上钻近盲，远程压制窗口受玩家速度制约）**
-    foeSpeedTacticMul: { brawl: 1.12, orbit: 1.0, kite: 0.72 },
+    foeSpeedTacticMul: { brawl: 1.28, orbit: 1.0, kite: 0.72 },
     foeSpeedCapMul: 1.2,
     // 射程成长侧重：近战几乎不变形（靠速度近身）、环绕居中、风筝多增；封顶 = 玩家天花板 13 km + 2 km
     foeRangeGrowMul: { brawl: 0.3, orbit: 0.7, kite: 1.15 },
