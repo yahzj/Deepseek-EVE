@@ -987,21 +987,38 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  width: 134px;
-  padding: 8px 6px;
+  gap: 4px;
+  width: 150px;
+  padding: 10px 8px;
   border-right: 1px solid var(--wui-border);
   background: linear-gradient(180deg, #0d1826, #091019);
   overflow-y: auto;
 }
+/* 侧栏条目：横排图标+文字，垂直居中、字号加至 13.5px（船长 2026-09-05：原 12px 太小、
+ * 图标与文字基线未对齐） */
 .app-nav-side .app-nav-item {
+  display: flex;
   flex-direction: row;
+  align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
   width: 100%;
-  padding: 7px 10px;
+  padding: 8px 10px;
   text-align: left;
+  font-size: 13.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.app-nav-side .app-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 17px;
+  line-height: 1;
 }
 .app-nav-wrap {
   position: relative;
