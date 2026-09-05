@@ -721,8 +721,9 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
       },
     },
     moduleBay: {
-      // V12：基础战斗装备（轻型炮台 MK1 一件）
-      'mod-turret-1': 1,
+      // V12：基础战斗装备（动能炮台 MK1 一件；2026-09-05 全流程模拟发现：
+      // 旧 id 'mod-turret-1' 已在 V17.2 退役，新档默认直接写旧 id = 幽灵装备）
+      'mod-turret-kin-1': 1,
     },
     aiCores: { basic: 0, gamma: 0, beta: 0, alpha: 0 },
     aiAssignments: {},
