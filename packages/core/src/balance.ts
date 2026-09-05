@@ -71,6 +71,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     entryBufferMs: 300_000, // 到达低安地点后 5 分钟缓冲：期间绝不遇袭
     ambushChanceAtZero: 0.05, // 事件到点遇袭率基线（sec = 0）
     ambushChancePerSec: 0.15, // sec 每降 1.0 → +15%（线性，封顶 ~27%）
+    scanAmbushMul: 1.5, // 低安扫描中：遇袭概率 ×1.5（封顶 0.9；船长 2026-09-05 定，扫描即暴露、无入场缓冲）
     duraLossMin: 0.05,
     duraLossMax: 0.15, // 受损档：耐久 −5%~15%（底 clamp 5%）
     lootTakenMaxPct: 0.3, // 被抢：至多 30% 船上货

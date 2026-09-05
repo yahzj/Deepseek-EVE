@@ -23,13 +23,28 @@ import { shortestTravelMinutes } from './travel'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
+/** 低安扫描时长惩罚系数（船长 2026-09-05 定：目标星系 sec < 0.5 时，窗口 ×[1 + 0.8×(0.5−sec)]；
+ *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
+export const SCAN_LOWSEC_PENALTY = 0.8
 
-/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）乘算：扫描窗口（总下限 40%） */
-export function scanWindowMsOf(state: GameState): number {
+/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）乘算：扫描窗口技能系数（总下限 40%） */
+export function scanSkillFactor(state: GameState): number {
   const aLv = Math.min(5, state.skills.trained['signal-analysis'] ?? 0)
   const bLv = Math.min(5, state.skills.trained['signal-filtering'] ?? 0)
-  const factor = Math.max(0.4, (1 - 0.08 * aLv) * (1 - 0.06 * bLv))
-  return Math.round(SCAN_WINDOW_MS * factor)
+  return Math.max(0.4, (1 - 0.08 * aLv) * (1 - 0.06 * bLv))
+}
+
+/** 扫描窗口（毫秒；不含低安惩罚；旧签名保留给不关心目标星系的调用） */
+export function scanWindowMsOf(state: GameState): number {
+  return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state))
+}
+
+/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05） */
+export function scanWindowMsFor(state: GameState, ctx: SimContext, galaxyId: string): number {
+  const galaxy = ctx.galaxies.get(galaxyId)
+  const sec = galaxy?.security ?? 1
+  const lowPen = sec < 0.5 ? 1 + SCAN_LOWSEC_PENALTY * (0.5 - sec) : 1
+  return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state) * lowPen)
 }
 
 /** 某星系是否已探索（母港恒为真） */
@@ -135,7 +150,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     return { ok: true }
   }
   // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress；窗口按信号分析学折算）
-  const effWin = scanWindowMsOf(state)
+  const effWin = scanWindowMsFor(state, ctx, galaxyId)
   const doneMs = Math.min(effWin - 1, Math.max(0, Math.floor(state.scanProgress[galaxyId] ?? 0)))
   const remainWindowMs = effWin - doneMs
   const totalMs = remainWindowMs // 去程取消：总时长 = 就地扫描窗口（无航行段）
@@ -145,12 +160,16 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   s.startedAtGameMs = state.gameMs
   s.finishAtGameMs = state.gameMs + totalMs
   s.originGalaxy = from === HOME_GALAXY_ID ? null : from
+  const riskNote =
+    (galaxy?.security ?? 1) < 0.5
+      ? '该星系为低安：信号嘈杂、扫描偏慢，且扫描中更容易被巡逻盯上（遇袭概率提高，作业不会中断）。'
+      : '扫描期间更容易碰到有趣的东西。'
   addLog(
     state,
     'info',
     doneMs > 0
       ? `开始扫描探索（续扫，就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%）：本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口（去程已取消，立即开始）。`
-      : `开始扫描探索：深空扫描立即就地展开（去程已取消）——预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并停留该星系。扫描期间更容易碰到有趣的东西。`,
+      : `开始扫描探索：深空扫描立即就地展开（去程已取消）——预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并停留该星系。${riskNote}`,
   )
   return { ok: true }
 }
@@ -199,7 +218,7 @@ export function stopScan(state: GameState, ctx: SimContext): CommandResult {
   const galaxy = ctx.galaxies.get(gid)
   const galaxyName = galaxy?.name ?? gid
   const totalMs = Math.max(1, s.finishAtGameMs - s.startedAtGameMs)
-  const effWin = scanWindowMsOf(state)
+  const effWin = scanWindowMsFor(state, ctx, gid)
   const doneMs = Math.min(effWin - 1, Math.max(0, Math.floor(state.scanProgress[gid] ?? 0)))
   const remainWindowMs = effWin - doneMs
   // 作业 = 就地窗口（去程已取消）；旧档在途扫描的去程腿 = 总长 - 剩余窗口

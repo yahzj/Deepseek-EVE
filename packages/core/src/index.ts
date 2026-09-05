@@ -221,6 +221,9 @@ export {
   scanStatus,
   advanceScanning,
   SCAN_WINDOW_MS,
+  SCAN_LOWSEC_PENALTY,
+  scanWindowMsOf,
+  scanWindowMsFor,
 } from './explore'
 
 export {

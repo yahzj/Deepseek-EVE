@@ -46,7 +46,7 @@ function secOf(ctx: SimContext, galaxyId: string | null): number {
 interface Exposure {
   galaxyId: string
   shipId: string
-  kind: '采矿' | '停留' | '远征途中' | '打捞'
+  kind: '采矿' | '停留' | '远征途中' | '打捞' | '扫描'
   /** 描述（日志用）：承担船名 + 来源 */
 }
 
@@ -75,6 +75,10 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
   // B3 打捞作业（目标星系，含往返阶段；低安打捞全程暴露，同采矿口径；P2b 补 AI 打捞任务）
   if (state.salvaging.active && state.salvaging.galaxyId) {
     push({ galaxyId: state.salvaging.galaxyId, shipId: state.shipId, kind: '打捞' })
+  }
+  // 主控：低安扫描（船长 2026-09-05 定：扫描即暴露、无入场缓冲、命中概率 ×scanAmbushMul，扫描作业不中断）
+  if (state.scanning.active && state.scanning.galaxyId) {
+    push({ galaxyId: state.scanning.galaxyId, shipId: state.shipId, kind: '扫描' })
   }
   // 副船（采矿 / 远征途中 / 掩护巡逻；交火中不算暴露；巡逻去程未抵达不算）
   for (const [sid, a] of Object.entries(state.aiAssignments)) {
@@ -323,11 +327,14 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext): boolean {
   const bal = ctx.balance.encounter
   for (const exp of collectExposures(state, ctx)) {
     const since = state.lowSecPresence[exp.galaxyId]
-    if (since === undefined || state.gameMs - since < bal.entryBufferMs) continue // 5 分钟缓冲
+    // 扫描即暴露：不受入场缓冲限制（含无在场记录的情形；船长 2026-09-05 定）
+    const isScan = exp.kind === '扫描'
+    if (!isScan && (since === undefined || state.gameMs - since < bal.entryBufferMs)) continue
     const cd = state.encounterZoneCooldown[exp.galaxyId] ?? 0
     if (state.gameMs < cd) continue
     const sec = secOf(ctx, exp.galaxyId)
-    const p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.highSecSafe - sec)))
+    let p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.highSecSafe - sec)))
+    if (isScan) p = Math.min(0.9, p * (bal.scanAmbushMul ?? 1)) // 扫描低安：遇袭概率 ×scanAmbushMul
     if (nextRandom(state.rng) >= p) continue
     spawnEncounter(state, ctx, exp)
     return true // 一次到点至多一次遭遇（占用本段事件时机）

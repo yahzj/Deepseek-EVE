@@ -392,6 +392,8 @@ export interface EncounterBalance {
   ambushChanceAtZero: number
   /** sec 每降 1.0 的遇袭率增量（线性，封顶约 0.9） */
   ambushChancePerSec: number
+  /** 低安扫描中遇袭率乘数（船长 2026-09-05 定：×1.5，封顶 0.9；扫描即暴露、无入场缓冲） */
+  scanAmbushMul: number
   /** 受损档：耐久扣损区间（底 clamp 5% 绝不弃船） */
   duraLossMin: number
   duraLossMax: number
