@@ -17,6 +17,7 @@
  */
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { ItemDef, SimContext } from './types'
+import { nextRandom } from './rng'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、半效保底 */
 export const WRECK_FLOOR = 5
@@ -139,3 +140,183 @@ export function salvageRoundPull(state: GameState, ctx: SimContext, galaxyId: st
   }
   return mul
 }
+
+/* ═══════════ 回收开箱（B3：精炼炉「残骸回收」批；2026-09-05 船长定稿） ═══════════ */
+
+/** 回收批参数（劳动者 100%）：10 具 / 25 秒 → 1440 具/h，与 4×MK1 打捞参照同速率对齐 */
+export const RECYCLE_BATCH_UNITS = 10
+export const RECYCLE_CYCLE_MS = 25_000
+
+/** 保底矿物产出档（旋钮，P3 按经济锚校准；单位 = 矿物 unit/m³ 残骸体积当量） */
+export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = { common: 10, risky: 16, dire: 24 }
+/** 保底矿物抽取抖动（±10%，走 state.rng） */
+export const RECYCLE_YIELD_JITTER = 0.1
+
+/** 回收矿物池档（按残骸所属星系基础密度；常 10-19 / 险 20-29 / 危 30-40） */
+export type RecycleTier = 'common' | 'risky' | 'dire'
+export const RECYCLE_TIER_LABELS: Record<RecycleTier, string> = { common: '常', risky: '险', dire: '危' }
+
+/** 三档矿物池（权重表：矿物 id → 权重；船长 2026-09-05 定稿构成） */
+const RECYCLE_POOLS: Record<RecycleTier, ReadonlyArray<readonly [string, number]>> = {
+  common: [
+    ['min-tritanium', 65],
+    ['min-pyerite', 30],
+    ['min-mexallon', 5],
+  ],
+  risky: [
+    ['min-pyerite', 45],
+    ['min-mexallon', 35],
+    ['min-nocxium', 12],
+    ['min-isotope', 8],
+  ],
+  dire: [
+    ['min-mexallon', 30],
+    ['min-nocxium', 25],
+    ['min-isotope', 30],
+    ['min-starcore', 13],
+    ['min-darkiron', 2],
+  ],
+}
+
+/** 打捞所得残骸回收时所属档（按其敌群星系基础密度） */
+export function recycleTierOf(baseDensity: number): RecycleTier {
+  if (baseDensity >= 30) return 'dire'
+  if (baseDensity >= 20) return 'risky'
+  return 'common'
+}
+
+/** 残骸物品 → 回收画像（敌群威胁/星系危险度；未知物品返回 null） */
+export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleProfile | null {
+  const anomalyId = anomalyIdOfWreck(wreckItemId)
+  if (!anomalyId) return null
+  const anomaly = ctx.anomalies.get(anomalyId)
+  if (!anomaly) return null
+  const base = wreckBaseDensity(anomaly.galaxyId, ctx)
+  const galaxy = ctx.galaxies.get(anomaly.galaxyId)
+  return {
+    anomalyId,
+    galaxyId: anomaly.galaxyId,
+    threat: anomaly.threat,
+    baseDensity: base,
+    tier: recycleTierOf(base),
+    lowSec: typeof galaxy?.security === 'number' && galaxy.security < 0,
+  }
+}
+
+export interface RecycleProfile {
+  anomalyId: string
+  galaxyId: string
+  threat: number
+  baseDensity: number
+  tier: RecycleTier
+  lowSec: boolean
+}
+
+/**
+ * 保底矿物开箱（每批调用；确定性走 state.rng）：
+ * 产出总量 = 批体积(m³) × 档位单方产量 × jitter，矿物品种按档位池权重抽取。
+ */
+export function rollRecycleGuarantee(
+  state: GameState,
+  ctx: SimContext,
+  profile: RecycleProfile,
+  volumeM3: number,
+): Array<{ mineralId: string; units: number }> {
+  const pool = RECYCLE_POOLS[profile.tier]!
+  const baseUnits = Math.max(1, volumeM3 * RECYCLE_YIELD_PER_M3[profile.tier])
+  const jitter = 1 - RECYCLE_YIELD_JITTER + 2 * RECYCLE_YIELD_JITTER * nextRandom(state.rng)
+  const total = Math.max(1, Math.floor(baseUnits * jitter))
+  let acc = 0
+  const roll = nextRandom(state.rng) * pool.reduce((s, [, w]) => s + w, 0)
+  let pick = pool[0]![0]!
+  for (const [id, w] of pool) {
+    acc += w
+    if (roll <= acc) {
+      pick = id
+      break
+    }
+  }
+  return ctx.items.has(pick) ? [{ mineralId: pick, units: total }] : []
+}
+
+/**
+ * 彩头分层（B3，2026-09-05 船长定稿；概率为初值旋钮，P3 按 EV 守恒校准）：
+ * ① 基础常驻件直出（civ/MK1 无门槛件）——任何回收批都按具掷骰；
+ * ② 低安（sec<0）残骸箱低概率出 MK2 装备；
+ * ③ 蓝图碎片：威胁 ≥17 出 MK2 碎片（集 100 解锁蓝图）、≥41 追加 MK3 碎片（集 1000）。
+ * 返回：{ modules: [{id,count}] 入装备库；fragments: [{moduleId,count}] 入物品仓库 }。
+ */
+export const RECYCLE_BASE_MODULES: readonly string[] = [
+  'mod-miner-civ',
+  'mod-cargo-civ',
+  'mod-turret-civ',
+  'mod-miner-1',
+  'mod-cargo-1',
+  'mod-turret-kin-1',
+]
+export const RECYCLE_MK2_MODULES: readonly string[] = [
+  'mod-miner-2',
+  'mod-cargo-2',
+  'mod-turret-kin-2',
+  'mod-laser-2',
+  'mod-missile-2',
+  'mod-shield-kin-2',
+  'mod-armor-kin-2',
+]
+/** 每具基础件直出概率（0.4%）、低安 MK2 概率（0.15%）、碎片概率（0.4% / 0.08%） */
+export const RECYCLE_CHANCE = { base: 0.004, mk2: 0.0015, fragT2: 0.004, fragT3: 0.0008 }
+/** 蓝图碎片配方：模块 → 蓝图 id + 所需片数（MK2 100 / MK3 1000；异星 10000 预留） */
+export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; need: number }> = {
+  'mod-miner-2': { blueprintId: 'bp-miner-2', need: 100 },
+  'mod-cargo-2': { blueprintId: 'bp-cargo-2', need: 100 },
+  'mod-turret-kin-2': { blueprintId: 'bp-turret-2', need: 100 },
+  'mod-miner-3': { blueprintId: 'bp-miner-3', need: 1000 },
+  'mod-cargo-3': { blueprintId: 'bp-cargo-3', need: 1000 },
+  'mod-turret-kin-3': { blueprintId: 'bp-turret-3', need: 1000 },
+}
+/** 碎片物品 id（蓝图碎片按目标装备注册） */
+export function fragmentItemIdOf(moduleId: string): string {
+  return `frag-${moduleId}`
+}
+/** 碎片物品定义（按目标装备生成；不可出售） */
+export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef {
+  return {
+    id: fragmentItemIdOf(moduleId),
+    name: `${moduleName}蓝图碎片`,
+    kind: 'fragment',
+    unitM3: 0.02,
+    baseSellPriceIsk: 1,
+    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片可在母港逆向解锁「${moduleName}」蓝图（无需市场）。`,
+  }
+}
+
+/** 彩头开箱（每批调用；逐具掷骰，确定性走 state.rng） */
+export function rollRecycleLoot(
+  state: GameState,
+  ctx: SimContext,
+  profile: RecycleProfile,
+  batchUnits: number,
+): { modules: string[]; fragments: string[] } {
+  const modules: string[] = []
+  const fragments: string[] = []
+  const mk2Pool = RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
+  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
+  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
+  for (let i = 0; i < batchUnits; i++) {
+    if (nextRandom(state.rng) < RECYCLE_CHANCE.base) {
+      const pool = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
+      if (pool.length > 0) modules.push(pool[Math.floor(nextRandom(state.rng) * pool.length)]!)
+    }
+    if (profile.lowSec && mk2Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.mk2) {
+      modules.push(mk2Pool[Math.floor(nextRandom(state.rng) * mk2Pool.length)]!)
+    }
+    if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT2) {
+      fragments.push(t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!)
+    }
+    if (profile.threat >= 41 && t3Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT3) {
+      fragments.push(t3Pool[Math.floor(nextRandom(state.rng) * t3Pool.length)]!)
+    }
+  }
+  return { modules, fragments }
+}
+

@@ -26,6 +26,15 @@ import { formatDurationMs } from './time'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
 import { shipDisplayName } from './instances'
+import {
+  RECYCLE_BATCH_UNITS,
+  RECYCLE_CYCLE_MS,
+  FRAGMENT_RECIPES,
+  fragmentItemIdOf,
+  recycleProfileOf,
+  rollRecycleGuarantee,
+  rollRecycleLoot,
+} from './salvage'
 
 /**
  * M4：协会声望贸易加成——声望每 1 点，空间站收购价 +1%，上限 +15%。
@@ -189,6 +198,7 @@ export function startRefineRun(
   state.refineRun = {
     active: true,
     worker,
+    recipe: 'refine',
     itemId,
     batchUnits: batchEff,
     cycleMs: cycleEff,
@@ -201,6 +211,79 @@ export function startRefineRun(
     state,
     'info',
     `精炼炉启动：${def.name}×${available} 入炉（${who}；每批 ${batchEff} 单位 / ${formatDurationMs(cycleEff)}，到点自动续批，料尽自动停炉）。`,
+  )
+  return { ok: true }
+}
+
+/**
+ * 玩家指令：启动"残骸回收"（B3 开箱批，2026-09-05 船长定稿）：同一精炼炉位，
+ * 批 = 10 具 / 25 秒（劳动者 100%；AI 核心按效率拉长周期），每批开箱 = 保底矿物
+ * （按残骸敌群星系危险度三档池 + 体积当量）+ 彩头（基础件直出 / 低安 MK2 / 蓝图碎片）。
+ * 原料 = 货仓+仓库的该型号残骸全部锁定入炉；料尽自动停炉（核心归还）。
+ */
+export function startRecycleRun(
+  state: GameState,
+  wreckItemId: string,
+  worker: 'pilot' | AiCoreType,
+  ctx: SimContext,
+): CommandResult {
+  if (state.refineRun.active) {
+    return { ok: false, error: '精炼炉正在运转：先停炉才能换资源或换劳动者。' }
+  }
+  if (!isAtHome(state)) {
+    return { ok: false, error: '精炼炉在母港：回到母港才能启动残骸回收。' }
+  }
+  const def = ctx.items.get(wreckItemId)
+  if (!def) return { ok: false, error: `未知物品：${wreckItemId}。` }
+  if (def.kind !== 'wreck') {
+    return { ok: false, error: `「${def.name}」不是残骸——残骸回收只接受打捞到的残骸。` }
+  }
+  const profile = recycleProfileOf(ctx, wreckItemId)
+  if (!profile) {
+    return { ok: false, error: `「${def.name}」来源数据缺失，无法回收。` }
+  }
+  const available = oreAvailable(state, wreckItemId)
+  if (available <= 0) {
+    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
+  }
+  if (worker === 'pilot') {
+    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
+    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
+    if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
+    if (state.standby.active) return { ok: false, error: '待命行程中：先召回。' }
+    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+  } else if (countAiCore(state, worker) <= 0) {
+    return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
+  }
+  const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
+  const cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))
+  if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+  }
+  // 锁定全部现有库存入炉（货仓优先，余下取仓库）
+  let toTake = available
+  const fromCargo = Math.min(countItem(state, wreckItemId), toTake)
+  if (fromCargo > 0) {
+    removeItem(state, wreckItemId, fromCargo)
+    toTake -= fromCargo
+  }
+  if (toTake > 0) removeWare(state, wreckItemId, toTake)
+  state.refineRun = {
+    active: true,
+    worker,
+    recipe: 'recycle',
+    itemId: wreckItemId,
+    batchUnits: RECYCLE_BATCH_UNITS,
+    cycleMs: cycleEff,
+    finishAtGameMs: state.gameMs + cycleEff,
+    lockedQty: available,
+    batchesDone: 0,
+  }
+  const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)} 驱动（效率 ${Math.round(eff * 100)}%）`
+  addLog(
+    state,
+    'info',
+    `残骸回收启动：${def.name}×${available} 入炉开箱（${who}；每批 ${RECYCLE_BATCH_UNITS} 具 / ${formatDurationMs(cycleEff)}，保底矿物按「${def.name}」来源危险度池，料尽自动停炉）。`,
   )
   return { ok: true }
 }
@@ -243,15 +326,37 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
     return
   }
   let guard = 0
+  const isRecycle = r.recipe === 'recycle'
+  const profile = isRecycle ? recycleProfileOf(ctx, r.itemId) : null
+  if (isRecycle && !profile) {
+    // 残骸来源数据异常：退回并停炉
+    if (r.lockedQty > 0) addWare(state, r.itemId, r.lockedQty)
+    if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+    state.refineRun = { ...EMPTY_REFINE_RUN }
+    addLog(state, 'warn', '残骸回收运转异常：残骸来源数据缺失，剩余已退回物品仓库（AI 核心已归还）。')
+    return
+  }
   while (r.active && r.lockedQty > 0 && state.gameMs >= r.finishAtGameMs) {
     if (++guard > 100_000) break // 防失控循环
-    const rate = refineRate(state, ctx)
     const qty = Math.min(r.batchUnits, r.lockedQty)
-    for (const row of def.refine ?? []) {
-      const mineral = ctx.items.get(row.mineralId)
-      if (!mineral || mineral.kind !== 'mineral') continue
-      const units = Math.floor(qty * row.perOre * rate)
-      if (units > 0) addWare(state, row.mineralId, units)
+    if (isRecycle && profile) {
+      // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）
+      const volumeM3 = qty * def.unitM3
+      const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
+      for (const row of out) addWare(state, row.mineralId, row.units)
+      const loot = rollRecycleLoot(state, ctx, profile, qty)
+      for (const modId of loot.modules) state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1
+      const fragUnits = new Map<string, number>()
+      for (const m of loot.fragments) fragUnits.set(m, (fragUnits.get(m) ?? 0) + 1)
+      for (const [m, n] of fragUnits) addWare(state, fragmentItemIdOf(m), n)
+    } else {
+      const rate = refineRate(state, ctx)
+      for (const row of def.refine ?? []) {
+        const mineral = ctx.items.get(row.mineralId)
+        if (!mineral || mineral.kind !== 'mineral') continue
+        const units = Math.floor(qty * row.perOre * rate)
+        if (units > 0) addWare(state, row.mineralId, units)
+      }
     }
     r.lockedQty -= qty
     r.batchesDone += 1
@@ -261,11 +366,10 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       const wasCore = r.worker !== 'pilot'
       state.refineRun = { ...EMPTY_REFINE_RUN }
-      addLog(
-        state,
-        'info',
-        `精炼炉运转完成：${def.name} 共 ${doneBatches} 批全部炼完，产物已入物品仓库（收率 ${Math.round(rate * 100)}%）${wasCore ? '；AI 核心已归还核心库' : ''}。`,
-      )
+      const doneText = isRecycle
+        ? `残骸回收完成：${def.name} 共 ${doneBatches} 批全部拆解完，矿物与彩头已入物品仓库${wasCore ? '；AI 核心已归还核心库' : ''}。`
+        : `精炼炉运转完成：${def.name} 共 ${doneBatches} 批全部炼完，产物已入物品仓库（收率 ${Math.round(refineRate(state, ctx) * 100)}%）${wasCore ? '；AI 核心已归还核心库' : ''}。`
+      addLog(state, 'info', doneText)
       break
     }
     r.finishAtGameMs += r.cycleMs
@@ -375,4 +479,45 @@ function estimateShipBid(state: GameState, ctx: SimContext, goodKey: string): nu
 /** 兼容旧导出名：旧版单源卖（全部从货仓卖） */
 export function sellAll(state: GameState, itemId: string, ctx: SimContext): SellResult {
   return sellCargoItem(state, itemId, ctx)
+}
+
+/**
+ * 逆向研究（B3 蓝图碎片兑换，2026-09-05 船长定稿）：消耗指定装备的蓝图碎片
+ * （货仓+仓库），把对应蓝图**永久**加入 learnedRecipes（一次掌握，之后可无限自制，
+ * 无需再经市场购图）。母港操作。
+ */
+export function redeemFragments(state: GameState, ctx: SimContext, moduleId: string): CommandResult {
+  const recipe = FRAGMENT_RECIPES[moduleId]
+  if (!recipe) return { ok: false, error: `「${moduleId}」没有对应的逆向研究蓝图。` }
+  if (!isAtHome(state)) {
+    return { ok: false, error: '逆向研究在母港进行：回到母港后再操作。' }
+  }
+  if (state.learnedRecipes.includes(recipe.blueprintId)) {
+    return { ok: false, error: '该蓝图已掌握（learnedRecipes 永久生效），无需重复逆向。' }
+  }
+  const def = ctx.modules.get(moduleId)
+  const bpDef = ctx.blueprints.get(recipe.blueprintId)
+  const fragId = fragmentItemIdOf(moduleId)
+  const fragDef = ctx.items.get(fragId)
+  const have = countItem(state, fragId) + countWare(state, fragId)
+  if (have < recipe.need) {
+    return {
+      ok: false,
+      error: `碎片不足：${fragDef?.name ?? fragId} 现有 ${have}/${recipe.need} 片（还需 ${recipe.need - have} 片）。`,
+    }
+  }
+  let need = recipe.need
+  const fromCargo = Math.min(countItem(state, fragId), need)
+  if (fromCargo > 0) {
+    removeItem(state, fragId, fromCargo)
+    need -= fromCargo
+  }
+  if (need > 0) removeWare(state, fragId, need)
+  state.learnedRecipes.push(recipe.blueprintId)
+  addLog(
+    state,
+    'info',
+    `逆向研究完成：${fragDef?.name ?? fragId} ×${recipe.need} → 已解锁「${bpDef?.name ?? recipe.blueprintId}」蓝图（${def?.name ?? moduleId} 可自制备；无需市场购图）。`,
+  )
+  return { ok: true }
 }

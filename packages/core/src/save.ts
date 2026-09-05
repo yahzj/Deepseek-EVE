@@ -1285,6 +1285,7 @@ function normalizeState(raw: unknown): GameState {
       ? {
           active: true,
           worker: refineWorker,
+          recipe: rfrRaw.recipe === 'recycle' ? 'recycle' : 'refine',
           itemId: rfrItem,
           batchUnits: Math.max(1, Math.floor(num(rfrRaw.batchUnits, 10))),
           cycleMs: Math.max(1, Math.floor(num(rfrRaw.cycleMs, 6_000))),
@@ -1292,7 +1293,7 @@ function normalizeState(raw: unknown): GameState {
           lockedQty: Math.max(1, Math.floor(num(rfrRaw.lockedQty))),
           batchesDone: Math.max(0, Math.floor(num(rfrRaw.batchesDone))),
         }
-      : { active: false, worker: 'pilot', itemId: null, batchUnits: 0, cycleMs: 0, finishAtGameMs: 0, lockedQty: 0, batchesDone: 0 }
+      : { active: false, worker: 'pilot', recipe: 'refine', itemId: null, batchUnits: 0, cycleMs: 0, finishAtGameMs: 0, lockedQty: 0, batchesDone: 0 }
   const bountyCooldowns: Record<string, number> = {}
   const bcRaw = asRaw(src.bountyCooldowns)
   for (const [key, value] of Object.entries(bcRaw)) {

@@ -3,7 +3,14 @@
  * 桌面层只在启动时构建一次。
  */
 
-import { DEFAULT_BALANCE, wreckItemDefOf, wreckItemIdOf } from '@whale/core'
+import {
+  DEFAULT_BALANCE,
+  FRAGMENT_RECIPES,
+  fragmentItemDefOf,
+  fragmentItemIdOf,
+  wreckItemDefOf,
+  wreckItemIdOf,
+} from '@whale/core'
 import type { SimContext } from '@whale/core'
 import { buildSkillCatalog } from './skills'
 import { buildItemCatalog } from './items'
@@ -29,12 +36,20 @@ export function buildSimContext(): SimContext {
     if (items.has(id)) continue
     items.set(id, wreckItemDefOf(a.id, a.name, a.threat))
   }
+  const modules = buildModuleCatalog()
+  // B3：碎片物品按"有逆向配方的装备"生成
+  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
+    const mod = modules.get(moduleId)
+    if (!mod) continue
+    const id = fragmentItemIdOf(moduleId)
+    if (!items.has(id)) items.set(id, fragmentItemDefOf(moduleId, mod.name))
+  }
   return {
     skills: buildSkillCatalog(),
     ships: buildShipCatalog(),
     belts: buildBeltCatalog(),
     items,
-    modules: buildModuleCatalog(),
+    modules,
     blueprints: buildBlueprintCatalog(),
     shipBlueprints: buildShipBlueprintCatalog(),
     galaxies,

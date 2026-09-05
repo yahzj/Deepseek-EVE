@@ -5,7 +5,7 @@
  * 以及两张测试蓝图 bp-a（造 mod-a，10 单位矿粉甲，10 分钟）与 bp-b（造 mod-b）。
  */
 import { DEFAULT_BALANCE } from '../src/balance'
-import { wreckItemDefOf, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentItemDefOf, fragmentItemIdOf, wreckItemDefOf, wreckItemIdOf } from '../src/salvage'
 import type {
   AnomalyDef,
   BalanceConfig,
@@ -437,6 +437,13 @@ export function makeTestCtx(opts?: {
     itemsMap.set(id, wreckItemDefOf(a.id, a.name, a.threat))
   }
   const modulesMap = new Map(modules.map((m) => [m.id, m]))
+  // B3：碎片物品按"有逆向配方的装备"生成（模块在上下文里才生成，名称取模块名）
+  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
+    const mod = modulesMap.get(moduleId)
+    if (!mod) continue
+    const id = fragmentItemIdOf(moduleId)
+    if (!itemsMap.has(id)) itemsMap.set(id, fragmentItemDefOf(moduleId, mod.name))
+  }
   const blueprintsMap = new Map(blueprints.map((b) => [b.id, b]))
   const shipBlueprintsMap = new Map(shipBlueprints.map((b) => [b.id, b]))
   const marketGoods =
