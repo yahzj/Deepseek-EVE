@@ -677,8 +677,12 @@ export interface MaterialNeed {
 export interface BlueprintDef {
   id: string
   name: string
-  /** 制造出的装备 id（须在装备表里存在） */
-  moduleId: string
+  /** 制造出的装备 id（须在装备表里存在）；弹药等物品类蓝图不填（改用 itemId+outputUnits） */
+  moduleId?: string
+  /** 制造出的物品 id（2026-09-05 弹药蓝图：产物 = 弹药等物品，每次产 outputUnits 单位入仓库） */
+  itemId?: string
+  /** 单次制造产出单位数（物品类蓝图；缺省 1） */
+  outputUnits?: number
   /** 材料需求（矿物），开工时一次性扣除 */
   materials: readonly MaterialNeed[]
   /** 基础制造耗时（秒），受工业理论缩短 */

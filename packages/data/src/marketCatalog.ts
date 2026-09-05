@@ -83,6 +83,10 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'bp-miner-civ', kind: 'blueprint', refId: 'bp-miner-civ', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.5 },
   { key: 'bp-cargo-civ', kind: 'blueprint', refId: 'bp-cargo-civ', rarity: 'common', basePrice: 2_400, demandMultiplier: 0.5 },
   { key: 'bp-turret-civ', kind: 'blueprint', refId: 'bp-turret-civ', rarity: 'common', basePrice: 2_800, demandMultiplier: 0.5 },
+  // 弹药生产线蓝图（2026-09-05：基础弹自制；书籍价随弹型市场价）
+  { key: 'bp-ammo-kinetic', kind: 'blueprint', refId: 'bp-ammo-kinetic', rarity: 'common', basePrice: 900, demandMultiplier: 0.5 },
+  { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1_100, demandMultiplier: 0.5 },
+  { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.5 },
   // 低级船（AI 副船军团的主力船）
   { key: 'ship-burrower', kind: 'ship', refId: 'burrower', rarity: 'common', basePrice: 120_000, demandMultiplier: 0.4 },
   // 基础 AI 核心（原直购并入市场，平价常驻；核心不支持回卖）

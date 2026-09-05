@@ -332,7 +332,10 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
       tab: 'blueprints' as Tab,
       glyph: 'blueprint',
       name: bp.name,
-      sub: `装备 · ${engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId}`,
+      sub:
+        bp.itemId !== undefined
+          ? `弹药 · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
+          : `装备 · ${engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.moduleId ?? ''}`,
       raw: bp as unknown as RawData,
     })),
     ...engine.shipBlueprints.map((bp) => ({
@@ -516,13 +519,17 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                 <ul className="app-hand-list">
                   {engine.blueprints.map((bp) => {
                     const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
+                    const isAmmo = bp.itemId !== undefined
+                    const product = isAmmo
+                      ? `${engine.ctx.items.get(bp.itemId!)?.name ?? bp.itemId!}（弹药）`
+                      : `${engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId!}（装备）`
                     return (
                       <InfoHover
                         key={bp.id}
                         as="li"
                         title={bp.name}
                         lines={[
-                          { k: '产物', v: `${engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId}（装备）` },
+                          { k: '产物', v: product },
                           { k: '材料需求', v: mats },
                           { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 造费 ${bp.buildCostIsk.toLocaleString('zh-CN')} ISK` },
                         ]}
@@ -532,7 +539,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         <div className="app-inv-name">
                           <RowGlyph glyph="blueprint" /> {bp.name}
                         </div>
-                        <div className="app-dim">产物：{engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId}（装备）</div>
+                        <div className="app-dim">产物：{product}</div>
                         <div className="app-hand-sub">
                           材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 制造费 {bp.buildCostIsk.toLocaleString('zh-CN')} ISK
                         </div>

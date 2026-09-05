@@ -178,6 +178,40 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 260_000,
     description: '攻坚炮台 MK3 图纸：冥铁炮管与星髓炮闩的杰作（学习需声望 4）。',
   },
+  /* ═══ 弹药蓝图（2026-09-05 船长：基础弹可自制；单批 120 发，材料成本≈市价 55% 锚定，参数可调） ═══ */
+  {
+    id: 'bp-ammo-kinetic',
+    name: '动能弹生产线蓝图',
+    itemId: 'ammo-kinetic-l',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 ISK ≈ 720×0.53
+    buildSeconds: 60,
+    buildCostIsk: 12,
+    priceIsk: 900,
+    description: '动能弹生产线图纸：把三钛合金轧成高速实心弹（120 发/批，对护盾 ×1.5）。',
+  },
+  {
+    id: 'bp-ammo-explosive',
+    name: '爆破导弹生产线蓝图',
+    itemId: 'ammo-explosive-l',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 ISK ≈ 840×0.57
+    buildSeconds: 75,
+    buildCostIsk: 15,
+    priceIsk: 1_100,
+    description: '爆破导弹生产线图纸：类银超金属冲压弹壳装填高爆装药（120 发/批，对装甲 ×1.5）。',
+  },
+  {
+    id: 'bp-ammo-plasma',
+    name: '能量弹药生产线蓝图',
+    itemId: 'ammo-plasma-l',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-mexallon', count: 26 }], // 520 ISK ≈ 960×0.54
+    buildSeconds: 90,
+    buildCostIsk: 18,
+    priceIsk: 1_300,
+    description: '能量弹药生产线图纸：类晶体胶体充能电池组（120 发/批，对护盾 ×1.25）。',
+  },
 ]
 
 /** 构建"蓝图 id → 定义"目录 */

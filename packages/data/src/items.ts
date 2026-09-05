@@ -323,7 +323,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 8,
-    description: '能量弹药（原"等离子弹"）：激光炮专用高能电池弹——光束必中、对护盾 ×0.75、其余 ×1.0。',
+    description: '能量弹药（原"等离子弹"）：激光炮专用高能电池弹——光束必中、对护盾 ×1.25、对甲/结构 ×1。',
     damageType: 'plasma',
     dmg: 9,
   },

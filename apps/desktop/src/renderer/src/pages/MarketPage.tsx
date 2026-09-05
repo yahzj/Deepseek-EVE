@@ -84,15 +84,19 @@ function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
   return `${head}\n${desc || '（暂无说明）'}`
 }
 
-/** 蓝图悬浮参数行（产物/材料/制造）；装备蓝图与舰船蓝图共用同一形状 */
+/** 蓝图悬浮参数行（产物/材料/制造）；装备/弹药/舰船蓝图共用同一形状 */
 function blueprintHoverLines(
   ctx: PageProps['engine']['ctx'],
   bp: BlueprintDef | ShipBlueprintDef,
 ): { title: string; lines: Array<{ k: string; v: string }>; note: string } {
   const isModuleBp = 'moduleId' in bp
-  const productName = isModuleBp
-    ? ctx.modules.get((bp as BlueprintDef).moduleId)?.name ?? (bp as BlueprintDef).moduleId
-    : ctx.ships.get((bp as ShipBlueprintDef).shipId)?.name ?? (bp as ShipBlueprintDef).shipId
+  const isItemBp = 'itemId' in bp // 2026-09-05 弹药蓝图
+  const def = bp as BlueprintDef
+  const productName = isItemBp
+    ? ctx.items.get(def.itemId!)?.name ?? def.itemId!
+    : isModuleBp
+      ? ctx.modules.get(def.moduleId!)?.name ?? def.moduleId!
+      : ctx.ships.get((bp as ShipBlueprintDef).shipId)?.name ?? (bp as ShipBlueprintDef).shipId
   const materials = bp.materials.map((m) => `${ctx.items.get(m.itemId)?.name ?? m.itemId} ×${m.count}`).join('　')
   return {
     title: bp.name,

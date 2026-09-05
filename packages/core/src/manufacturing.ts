@@ -25,13 +25,17 @@ export interface BuildSpec {
   buildCostIsk: number
 }
 
-/** 按 id 解析一张可制造蓝图（先查装备蓝图，再查舰船蓝图） */
+/** 按 id 解析一张可制造蓝图（先查装备/物品类蓝图，再查舰船蓝图；
+ * 2026-09-05：弹药等物品类 = moduleId 缺省但带 itemId/outputUnits 的普通蓝图） */
 export function findBuildable(
   ctx: SimContext,
   blueprintId: string,
-): { kind: 'module' | 'ship'; spec: BuildSpec; moduleId?: string; shipId?: string } | null {
+): { kind: 'module' | 'ship' | 'item'; spec: BuildSpec; moduleId?: string; shipId?: string; itemId?: string; outputUnits?: number } | null {
   const bp = ctx.blueprints.get(blueprintId)
   if (bp) {
+    if (bp.itemId !== undefined) {
+      return { kind: 'item', spec: bp, itemId: bp.itemId, outputUnits: bp.outputUnits ?? 1 }
+    }
     return { kind: 'module', spec: bp, moduleId: bp.moduleId }
   }
   const shipBp = ctx.shipBlueprints.get(blueprintId)
@@ -87,6 +91,13 @@ export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildS
   return missing
 }
 
+/** 产物显示名（module=装备 / ship=舰船 / item=弹药等物品；数据缺失回退 fallback） */
+function productNameOf(ctx: SimContext, b: NonNullable<ReturnType<typeof findBuildable>>, fallback: string): string {
+  if (b.kind === 'item') return ctx.items.get(b.itemId ?? '')?.name ?? fallback
+  if (b.kind === 'module') return ctx.modules.get(b.moduleId ?? '')?.name ?? fallback
+  return ctx.ships.get(b.shipId ?? '')?.name ?? fallback
+}
+
 /** 玩家指令：开始制造（v21 多工位：不同蓝图可同时造，同蓝图至多一条线；
  * 材料与制造费立即扣除，时间到自动完成） */
 export function startManufacturing(state: GameState, blueprintId: string, ctx: SimContext): CommandResult {
@@ -120,10 +131,7 @@ export function startManufacturing(state: GameState, blueprintId: string, ctx: S
     finishAtGameMs: state.gameMs + durationMs,
     durationMs,
   })
-  const productName =
-    buildable.kind === 'module'
-      ? ctx.modules.get(buildable.moduleId ?? '')?.name ?? blueprintId
-      : ctx.ships.get(buildable.shipId ?? '')?.name ?? blueprintId
+  const productName = productNameOf(ctx, buildable, blueprintId)
   addLog(
     state,
     'trade',
@@ -141,12 +149,7 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
   if (idx < 0) return { ok: false, error: '没有找到该制造线（已完成或已取消）。' }
   const [mf] = state.manufacturingRuns.splice(idx, 1)
   const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
-  const productName =
-    buildable && buildable.kind === 'module'
-      ? ctx.modules.get(buildable.moduleId ?? '')?.name ?? mf.blueprintId
-      : buildable && buildable.kind === 'ship'
-        ? ctx.ships.get(buildable.shipId ?? '')?.name ?? mf.blueprintId
-        : mf.blueprintId ?? ''
+  const productName = buildable ? productNameOf(ctx, buildable, mf.blueprintId ?? '') : (mf.blueprintId ?? '')
   if (buildable) {
     // 退回 = 开工时实际扣除的数量（含材料学折扣），不多退
     for (const need of buildable.spec.materials) {
@@ -181,7 +184,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
       }
       addModule(state, moduleDef.id)
       addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
-    } else {
+    } else if (buildable.kind === 'ship') {
       const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
       if (!shipDef) {
         addLog(state, 'warn', '制造作业引用的舰船数据缺失，产出已丢弃（数据异常）。')
@@ -189,6 +192,16 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
       }
       addShipToFleet(state, shipDef.id)
       addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
+    } else {
+      // 2026-09-05 弹药蓝图：物品类产物按 outputUnits 批量入物品仓库
+      const itemDef = buildable.itemId ? ctx.items.get(buildable.itemId) : undefined
+      if (!itemDef) {
+        addLog(state, 'warn', '制造作业引用的物品数据缺失，产出已丢弃（数据异常）。')
+        continue
+      }
+      const n = Math.max(1, buildable.outputUnits ?? 1)
+      addWare(state, itemDef.id, n)
+      addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
     }
   }
 }
@@ -199,10 +212,10 @@ export interface ManufacturingView {
   /** 稳定线号 */
   id: number
   blueprintId: string | null
-  /** 产物显示名（装备或舰船） */
+  /** 产物显示名（装备/舰船/弹药等物品） */
   productName: string
-  /** 制造的是装备还是舰船（界面图标/说明用） */
-  kind: 'module' | 'ship' | null
+  /** 产物类别（界面图标/说明用；2026-09-05 起含 item = 弹药等物品蓝图） */
+  kind: 'module' | 'ship' | 'item' | null
   /** 剩余毫秒（到点前由引擎完成；显示端每秒刷新） */
   remainingMs: number
   /** 总耗时毫秒 */
@@ -212,12 +225,7 @@ export interface ManufacturingView {
 
 function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): ManufacturingView {
   const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
-  const productName =
-    buildable && buildable.kind === 'module'
-      ? ctx.modules.get(buildable.moduleId ?? '')?.name ?? mf.blueprintId
-      : buildable && buildable.kind === 'ship'
-        ? ctx.ships.get(buildable.shipId ?? '')?.name ?? mf.blueprintId
-        : mf.blueprintId ?? ''
+  const productName = buildable ? productNameOf(ctx, buildable, mf.blueprintId ?? '') : (mf.blueprintId ?? '')
   const remainingMs = Math.max(0, mf.finishAtGameMs - state.gameMs)
   const percent =
     mf.durationMs > 0 ? Math.min(100, Math.max(0, Math.round(((mf.durationMs - remainingMs) / mf.durationMs) * 100))) : 0
@@ -225,7 +233,7 @@ function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): M
     active: mf.active,
     id: mf.id,
     blueprintId: mf.blueprintId,
-    productName: productName ?? '',
+    productName,
     kind: buildable ? buildable.kind : null,
     remainingMs,
     durationMs: mf.durationMs,

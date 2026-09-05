@@ -102,12 +102,13 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
 
 /* ═══════════════ 蓝图制造台（v21 仿精炼炉/矿带卡；多蓝图并行制造） ═══════════════ */
 
-/** 制造台类型筛选：全部 / 装备 / 舰船（与任务中心 app-tasktab 同款筛选风格） */
-type ManuTab = 'all' | 'equip' | 'ship'
+/** 制造台类型筛选：全部 / 装备 / 舰船 / 弹药（2026-09-05 基础弹药可自制） */
+type ManuTab = 'all' | 'equip' | 'ship' | 'ammo'
 const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'equip', label: '装备蓝图' },
   { key: 'ship', label: '舰船蓝图' },
+  { key: 'ammo', label: '弹药蓝图' },
 ]
 
 /** 一张可制造蓝图的展示卡（v21 仿精炼炉/矿带卡结构：制造中该卡自带进度与取消，多蓝图可并行） */
@@ -169,7 +170,7 @@ function BlueprintCard({
     <div className="app-belt-card">
       <div className="app-belt-head">
         <span className="app-belt-name">
-          {kindLabel === '舰船' ? '🚢 ' : ''}
+          {kindLabel === '舰船' ? '🚢 ' : kindLabel === '弹药' ? '▣ ' : ''}
           {name}
           {run ? <em className="app-belt-flag is-run">{kindLabel === '舰船' ? '造船中' : '制造中'}</em> : null}
         </span>
@@ -303,7 +304,8 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   }
   const pushEquip = (): void => {
     for (const bp of engine.blueprints) {
-      const moduleName = engine.ctx.modules.get(bp.moduleId)?.name ?? bp.moduleId
+      if (bp.itemId !== undefined) continue // 弹药等物品蓝图单独分类
+      const moduleName = engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId!
       items.push({
         id: bp.id,
         kindLabel: '装备',
@@ -318,8 +320,29 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
       })
     }
   }
+  /** 弹药蓝图（2026-09-05：基础弹自制；产物为物品按 outputUnits 入仓） */
+  const pushAmmo = (): void => {
+    for (const bp of engine.blueprints) {
+      if (bp.itemId === undefined) continue
+      const itemDef = engine.ctx.items.get(bp.itemId)
+      const units = bp.outputUnits ?? 1
+      items.push({
+        id: bp.id,
+        kindLabel: '弹药',
+        name: bp.name,
+        description: bp.description,
+        materials: bp.materials,
+        buildSeconds: bp.buildSeconds,
+        buildCostIsk: bp.buildCostIsk,
+        productLabel: `${itemDef?.name ?? bp.itemId} ×${units} 发`,
+        running: runViews.some((v) => v.blueprintId === bp.id),
+        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds, bp.buildCostIsk),
+      })
+    }
+  }
   pushShip()
   pushEquip()
+  pushAmmo()
 
   /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够 + 该蓝图无线在跑 */
   function canStartNow(
@@ -333,7 +356,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk }).length === 0
   }
 
-  const visible = items.filter((it) => tab === 'all' || (tab === 'ship' ? it.kindLabel === '舰船' : it.kindLabel === '装备'))
+  const visible = items.filter(
+    (it) => tab === 'all' || (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '弹药'),
+  )
   const sorted = [...visible].sort(
     (a, b) =>
       Number(b.running) - Number(a.running) ||
