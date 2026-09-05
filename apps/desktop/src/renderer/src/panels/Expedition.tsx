@@ -1120,6 +1120,16 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
 
 /* ─────────── 悬赏任务卡 ─────────── */
 
+/**
+ * 敌方战术 → 打法提示（C4 第二批收口·#3 丙，2026-09-05 船长确认"甲+丙"）：
+ * 威胁数字是强度刻度、战术决定"哪种装配吃瘪"——kite 卡专治短程，光看威胁会误判。
+ */
+const FOE_TACTIC_HINTS: Record<string, string> = {
+  brawl: '贴脸近战型：会被快速咬住——火力压制，或拉开距离消耗',
+  orbit: '环绕中距型：中距对射，主动权取决于双方射程带',
+  kite: '远程风筝型：射程压制——需远程火力对射，或高速贴脸钻其近盲带',
+}
+
 function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly: AnomalyDef; onToast: ToastFn }) {
   const state = engine.state
   const galaxy = engine.ctx.galaxies.get(anomaly.galaxyId)
@@ -1220,6 +1230,13 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           </span>
         ) : null}
       </div>
+      {anomaly.tactic ? (
+        <div className="app-ano-meta">
+          <span className="app-dim" title="敌方战术决定了接战距离与克制关系：威胁低也可能打不动——胜率%与打法提示为准">
+            🛰 {FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
+          </span>
+        </div>
+      ) : null}
       <div className="app-ano-win">
         火力 {power} → 预估胜率 <b className={`app-win-${chanceTone}`}>{Math.round(chance)}%</b>
         {!reqMet ? <span className="app-dim">（声望 {standing}/{anomaly.standingReq}）</span> : null}
