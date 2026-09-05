@@ -170,7 +170,7 @@ export function TutorialEpilogue({ engine, onDone }: { engine: GameEngine; onDon
         ))}
         {all ? (
           <>
-            <div className="app-pro-epi-quest">◆ 新目标档案已写入手册·航行须知：「寻找人类」—— 完成方法未知。</div>
+            <div className="app-pro-epi-quest">◆ 重要任务已发布「寻找人类」—— 完成方法未知（目标档案见手册·航行须知）。</div>
             <button className="app-btn is-primary" onClick={complete}>
               开始新的航程
             </button>

@@ -164,7 +164,15 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
     }
   })
 
-  const stationCount = engine.ctx.stations.size
+  // 建站任务初期不出现：只有“抵达/探索过”该星系后才解锁（船长 2026-09-05 拍板）
+  const state = engine.state
+  const visStationIds = [...engine.ctx.stations.values()]
+    .filter((site) => {
+      const g = engine.ctx.galaxies.get(site.galaxyId)
+      return !!g && isExplored(state, g.id)
+    })
+    .map((site) => site.id)
+  const stationCount = visStationIds.length
 
   function changeTab(next: TaskTabKey): void {
     setTab(next)
@@ -178,7 +186,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
   return (
     <Panel
       title="任务中心"
-      right={<span className="app-dim">建站 {stationCount} · 任务可跨分类</span>}
+      right={<span className="app-dim">建站 {stationCount} · 抵达对应星系后出现</span>}
     >
       <div className="app-task-tabs" role="tablist">
         {TASK_TABS.map((t) => (
@@ -196,17 +204,29 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
       {tab === 'important' ? (
         <div>
           <ImportantTasks engine={engine} onToast={onToast} />
-          <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（采矿返航/卸货/维修/补给/换驾驶）。</div>
-          <div className="app-station-list">
-            <StationCard engine={engine} onToast={onToast} />
-          </div>
+          {stationCount > 0 ? (
+            <>
+              <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（采矿返航/卸货/维修/补给/换驾驶）。</div>
+              <div className="app-station-list">
+                <StationCard engine={engine} onToast={onToast} siteIds={visStationIds} />
+              </div>
+            </>
+          ) : (
+            <div className="app-dim app-exp-idle">暂无建站任务——抵达对应星系后出现。</div>
+          )}
         </div>
       ) : tab === 'resource' ? (
         <div>
-          <div className="app-dim app-exp-idle">资源任务：向建站点提交本星系出产物资，分档推进、边交边生效。</div>
-          <div className="app-station-list">
-            <StationCard engine={engine} onToast={onToast} />
-          </div>
+          {stationCount > 0 ? (
+            <>
+              <div className="app-dim app-exp-idle">资源任务：向建站点提交本星系出产物资，分档推进、边交边生效。</div>
+              <div className="app-station-list">
+                <StationCard engine={engine} onToast={onToast} siteIds={visStationIds} />
+              </div>
+            </>
+          ) : (
+            <div className="app-dim app-exp-idle">暂无资源任务——抵达对应星系后出现。</div>
+          )}
         </div>
       ) : (
         <div className="app-dim app-exp-idle">暂无快递任务——协会货运网络尚在筹备，分类已就位（后续内容接入）。</div>
@@ -1499,13 +1519,18 @@ export function Communicator({
   )
 }
 
-/** 建站族任务卡：状态 / 档位进度 / 提交 / 通讯重看 */
-function StationCard({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+/** 建站族任务卡：状态 / 档位进度 / 提交 / 通讯重看（siteIds 为空数组时不显示任何卡——任务初期不出现） */
+function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast: ToastFn; siteIds?: string[] }) {
   const state = engine.state
   const [comm, setComm] = useState<string | null>(null)
   const [qty, setQty] = useState<number>(0)
   const [selItem, setSelItem] = useState<Record<string, string>>({})
-  const sites = [...engine.ctx.stations.values()]
+  const sites = siteIds
+    ? siteIds.flatMap((id) => {
+        const s = engine.ctx.stations.get(id)
+        return s ? [s] : []
+      })
+    : [...engine.ctx.stations.values()]
   return (
     <>
       {sites.map((site) => {

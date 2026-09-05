@@ -624,7 +624,21 @@ export function App({ engine }: { engine: GameEngine }) {
           }}
         />
       ) : null}
-      {epiOn ? <TutorialEpilogue engine={engine} onDone={() => undefined} /> : null}
+      {epiOn ? (
+        <TutorialEpilogue
+          engine={engine}
+          onDone={() => {
+            // 苏醒完成演出后：落在任务中心「重要任务」页（新发布的「寻找人类」在此）
+            try {
+              localStorage.setItem('whale-idle:task-tab', 'important')
+            } catch {
+              // 忽略
+            }
+            setPage('map')
+            setMapTab('task')
+          }}
+        />
+      ) : null}
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
