@@ -331,17 +331,16 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
   const lastX = w - pad
   const lastY = mapY(last)
   return (
-    <svg className="app-mkt-chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="价格趋势">
-      <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
-      <circle cx={lastX.toFixed(1)} cy={lastY.toFixed(1)} r="3.5" fill="#ffe08a" />
-      <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-      <text x={pad} y={mapY(dataMx) - 5} fill="rgba(255,255,255,0.55)" fontSize="10">
-        高价 {isk(dataMx)}
-      </text>
-      <text x={pad} y={mapY(dataMn) + 12} fill="rgba(255,255,255,0.45)" fontSize="10">
-        低价 {isk(dataMn)}
-      </text>
-    </svg>
+    <div className="app-mkt-chart-wrap">
+      <svg className="app-mkt-chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="价格趋势">
+        <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
+        <circle cx={lastX.toFixed(1)} cy={lastY.toFixed(1)} r="3.5" fill="#ffe08a" />
+        <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+      </svg>
+      {/* 高低价标注用 HTML 覆盖层（非 SVG 文本），避免 preserveAspectRatio=none 拉伸字形 */}
+      <span className="app-mkt-chart-hi">高价 {isk(dataMx)}</span>
+      <span className="app-mkt-chart-lo">低价 {isk(dataMn)}</span>
+    </div>
   )
 }
 

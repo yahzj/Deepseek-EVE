@@ -1771,6 +1771,9 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+.app-mkt-chart-wrap {
+  position: relative;
+}
 .app-mkt-chart {
   width: 100%;
   height: 130px;
@@ -1778,6 +1781,25 @@ body {
   background: rgba(0, 0, 0, 0.28);
   border-radius: 8px;
   border: 1px solid rgba(85, 112, 140, 0.2);
+}
+/* 高低价标注为 HTML 覆盖层（非 SVG 文本），避免 preserveAspectRatio=none 拉伸字形（船长 2026-09-05） */
+.app-mkt-chart-hi {
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+.app-mkt-chart-lo {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
 }
 .app-mkt-chart-empty {
   height: 130px;
