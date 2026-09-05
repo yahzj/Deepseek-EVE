@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, LogEntry, LogKind } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -656,6 +656,15 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
             : 1
       }
     }
+    return next
+  },
+  22: (raw) => {
+    // v22 -> v23（2026-09-05 序章·苏醒）：补 onboarding（-1 = 老档不触发教程）与 importantTasks（空）
+    const next: RawState = { ...raw }
+    const ob = asRaw(next.onboarding)
+    if (typeof ob.step !== 'number') next.onboarding = { step: -1 }
+    const its = asRaw(next.importantTasks)
+    if (its === null || typeof its !== 'object') next.importantTasks = {}
     return next
   },
 }
@@ -1609,7 +1618,23 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  const normalized: GameStateV22 = {
+  // --- 序章·苏醒（v23 兼容字段）：教程进度（-1 = 未开始）+ 重要任务状态 ---
+  const onboardingRaw = asRaw(src.onboarding)
+  const onboardingStep =
+    typeof onboardingRaw.step === 'number' && Number.isFinite(onboardingRaw.step) ? Math.floor(onboardingRaw.step) : -1
+  const onboarding = { step: onboardingStep }
+  const importantTasks: GameState['importantTasks'] = {}
+  const itRaw = asRaw(src.importantTasks)
+  for (const [key, value] of Object.entries(itRaw)) {
+    if (key.length === 0) continue
+    const r = asRaw(value)
+    importantTasks[key] = {
+      done: r.done === true,
+      delivered: typeof r.delivered === 'number' && Number.isFinite(r.delivered) ? Math.max(0, Math.floor(r.delivered)) : undefined,
+    }
+  }
+
+  const normalized: GameStateV23 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -1662,6 +1687,8 @@ function normalizeState(raw: unknown): GameState {
     dialogueSeen,
     pendingDialogue,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
+    onboarding,
+    importantTasks,
     logs,
   }
   return normalized

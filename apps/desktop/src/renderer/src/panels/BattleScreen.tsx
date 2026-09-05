@@ -143,38 +143,6 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, battle?.ended, view.combat === null])
 
-  // 【临时探针 2026-09-05：查“开局不满血/导弹已冷却”】每场新战斗首帧打一行控制台数据——
-  // 若首帧敌方血量已损/武器已冷却而 gameMs 与开战时刻相差小、距离=开战距离，则是首帧渲染滞后；
-  // 查明后本探针移除。
-  const battleFirstSeenRef = useRef<number | null>(null)
-  useEffect(() => {
-    const b = engine.state.expedition.battle
-    const combat = expeditionStatus(engine.state, engine.ctx).combat
-    if (!b || !combat || battleFirstSeenRef.current === b.startedAtGameMs) return
-    battleFirstSeenRef.current = b.startedAtGameMs
-    const me = b.units['player']
-    const arcsNow = battleArcsFor(engine.state, engine.ctx)
-    const foeRows = Object.entries(b.units)
-      .filter(([, u]) => u.side === 'foe')
-      .map(([tag, u]) => ({ tag, hp: `${u.hp.s.toFixed(1)}/${u.hp.a.toFixed(1)}/${u.hp.h.toFixed(1)}` }))
-    console.info(
-      '[战场首帧]',
-      JSON.stringify({
-        ageMs: engine.state.gameMs - b.startedAtGameMs, // 首帧可见时战斗已暗中推进多少游戏毫秒
-        distM: Math.round(b.distanceM),
-        openM: arcsNow ? Math.round(arcsNow.openM) : null, // 规则开战距离=最远射程+100
-        meMaxRangeM: arcsNow ? arcsNow.me.map((w) => ({ label: w.label, max: Math.round(w.maxM), kind: w.kind })) : null,
-        myDesireM: Math.round(b.myDesireM),
-        ended: b.ended,
-        foeHp: foeRows,
-        meHp: me ? `${me.hp.s.toFixed(1)}/${me.hp.a.toFixed(1)}/${me.hp.h.toFixed(1)}` : null,
-        meReloadMs: me ? me.weapons.map((n) => Math.max(0, Math.round(n))) : null, // 首帧我方武器冷却剩余
-        ammo: b.ammo,
-      }),
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine.state.expedition.battle, view.combat === null])
-
   // 战报自动关闭：report 展示 6 秒后自动返回（按钮可随时提前关闭）
   useEffect(() => {
     if (stage !== 'report') return
