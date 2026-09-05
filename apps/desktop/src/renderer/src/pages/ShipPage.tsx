@@ -434,17 +434,24 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     else onToast('AI 任务已下达。')
   }
 
-  /** 当前可用悬赏（与核心 gate 完全同源：已亲手首胜 + AI 最终成功率 ≥80%，含 favor 修正） */
+  /**
+   * 可选悬赏（入口过滤与核心同源：声望 + 已亲手首胜；是否可派给某副船 = 该船自身装配的
+   * AI 最终成功率 ≥80%，逐船现算并显示在副船下拉框内——不再按"先选船"过滤目标列表）。
+   */
   const pickableAnomalies =
-    mode === 'expedition' && shipId
+    mode === 'expedition'
       ? engine.anomalies
           .filter((a) => {
             if (standingOfState(state) < a.standingReq) return false
             if (!state.completedBounties.includes(a.id)) return false // 需手动首胜解锁自动远征
-            return aiWinPreview(state, engine.ctx, a, shipId) >= 0.8
+            return true
           })
           .sort((a, b) => a.threat - b.threat)
       : []
+  const selAnomaly =
+    mode === 'expedition' && anomalyId ? engine.anomalies.find((a) => a.id === anomalyId) : undefined
+  /** 该副船（按自身装配/技能，favor 口径）对当前所选悬赏的最终成功率；未选悬赏 = null */
+  const aiChanceOf = (id: string): number | null => (selAnomaly ? aiWinPreview(state, engine.ctx, selAnomaly, id) : null)
 
   return (
     <Panel
@@ -472,12 +479,26 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       {/* 指派表单 */}
       {slots > 0 ? (
         <div className="app-ai-assign">
-          <select className="app-select" value={shipId} onChange={(e) => { setShipId(e.target.value); setAnomalyId('') }}>
-            <option value="">— 选择空闲舰船 —</option>
+          <select
+            className="app-select"
+            value={shipId}
+            onChange={(e) => setShipId(e.target.value)}
+            title={
+              mode === 'expedition' && selAnomaly
+                ? '成功率 = 该副船按自身装配/技能的 AI 最终成功率（含 favor）；低于 80% 不可自动远征'
+                : '选择空闲舰船'
+            }
+          >
+            <option value="">
+              {mode === 'expedition' && selAnomaly ? `— 选副船（远征 ${selAnomaly.name}）—` : '— 选择空闲舰船 —'}
+            </option>
             {idleShips.map((id) => {
+              const rate = aiChanceOf(id)
+              const ok = rate === null || rate >= 0.8
               return (
-                <option key={id} value={id}>
-                  {shipDisplayName(state, engine.ctx, id)}（耐久 {Math.round(durabilityOf(state, id) * 100)}%）
+                <option key={id} value={id} disabled={!ok}>
+                  {shipDisplayName(state, engine.ctx, id)}（耐久 {Math.round(durabilityOf(state, id) * 100)}%
+                  {rate === null ? '' : ok ? ` · 成功率 ${Math.round(rate * 100)}%` : ` · 成功率 ${Math.round(rate * 100)}%（<80% 不可派）`}）
                 </option>
               )
             })}
@@ -510,11 +531,24 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               })}
             </select>
           ) : (
-            <select className="app-select" value={anomalyId} onChange={(e) => setAnomalyId(e.target.value)} disabled={!shipId}>
-              <option value="">— 可接悬赏（已亲手首胜 · 最终成功率≥80%） —</option>
+            <select
+              className="app-select"
+              value={anomalyId}
+              onChange={(e) => {
+                const id = e.target.value
+                setAnomalyId(id)
+                // 已选副船若对该目标成功率 <80%（不达自动远征门槛）→ 清空让玩家重选
+                if (id && shipId) {
+                  const a = engine.anomalies.find((x) => x.id === id)
+                  if (a && aiWinPreview(state, engine.ctx, a, shipId) < 0.8) setShipId('')
+                }
+              }}
+              title="悬赏需已亲手首胜；副船成功率按其自身装配现算（见左侧舰船下拉）"
+            >
+              <option value="">— 选悬赏（声望·已首胜） —</option>
               {pickableAnomalies.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {engine.ctx.galaxies.get(a.galaxyId)?.name}·{a.name}
+                  {engine.ctx.galaxies.get(a.galaxyId)?.name}·{a.name}（威胁 {a.threat}）
                 </option>
               ))}
             </select>
