@@ -114,32 +114,23 @@ const TASK_SORT_LABEL: Record<TaskSort, string> = {
   standing: '声望收益最高',
 }
 
-/* 选项卡分类（船长优化）：重要 / 悬赏 / 资源（建站） / 快递——任务可属于多类（如建站=重要+资源） */
-type TaskTabKey = 'important' | 'bounty' | 'resource' | 'courier'
+/* 选项卡分类（船长优化）：重要 / 资源（建站） / 快递——任务可属于多类（如建站=重要+资源） */
+/* 注：悬赏任务已从任务中心抽出，独立成出港「战斗悬赏」标签（见 BountyPanel，船长 2026-09-05） */
+type TaskTabKey = 'important' | 'resource' | 'courier'
 const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
   { key: 'important', label: '重要任务' },
-  { key: 'bounty', label: '悬赏任务' },
   { key: 'resource', label: '资源任务' },
   { key: 'courier', label: '快递任务' },
 ]
 const TASK_TAB_KEY = 'whale-idle:task-tab'
 
 export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
-  const state = engine.state
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {
       const v = localStorage.getItem(TASK_TAB_KEY)
-      return v === 'important' || v === 'bounty' || v === 'resource' || v === 'courier' ? v : 'important'
+      return v === 'important' || v === 'resource' || v === 'courier' ? v : 'important'
     } catch {
       return 'important'
-    }
-  })
-  const [sort, setSort] = useState<TaskSort>(() => {
-    try {
-      const v = localStorage.getItem(TASK_SORT_KEY)
-      return v === 'default' || v === 'distance' || v === 'galaxy' || v === 'reward' || v === 'standing' ? v : 'default'
-    } catch {
-      return 'default'
     }
   })
 
@@ -153,6 +144,57 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
       // 忽略
     }
   }
+
+  return (
+    <Panel
+      title="任务中心"
+      right={<span className="app-dim">建站 {stationCount} · 任务可跨分类</span>}
+    >
+      <div className="app-task-tabs" role="tablist">
+        {TASK_TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={tab === t.key}
+            className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
+            onClick={() => changeTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'important' ? (
+        <div>
+          <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（采矿返航/卸货/维修/补给/换驾驶）。</div>
+          <div className="app-station-list">
+            <StationCard engine={engine} onToast={onToast} />
+          </div>
+        </div>
+      ) : tab === 'resource' ? (
+        <div>
+          <div className="app-dim app-exp-idle">资源任务：向建站点提交本星系出产物资，分档推进、边交边生效。</div>
+          <div className="app-station-list">
+            <StationCard engine={engine} onToast={onToast} />
+          </div>
+        </div>
+      ) : (
+        <div className="app-dim app-exp-idle">暂无快递任务——协会货运网络尚在筹备，分类已就位（后续内容接入）。</div>
+      )}
+    </Panel>
+  )
+}
+
+/* ─────────── 战斗悬赏（船长 2026-09-05：从「任务中心」抽出，独立成出港顶级标签——悬赏卡列表） ─────────── */
+export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+  const state = engine.state
+  const [sort, setSort] = useState<TaskSort>(() => {
+    try {
+      const v = localStorage.getItem(TASK_SORT_KEY)
+      return v === 'default' || v === 'distance' || v === 'galaxy' || v === 'reward' || v === 'standing' ? v : 'default'
+    } catch {
+      return 'default'
+    }
+  })
 
   function changeSort(next: TaskSort): void {
     setSort(next)
@@ -202,57 +244,24 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
 
   return (
     <Panel
-      title="任务中心"
-      right={<span className="app-dim">悬赏 {engine.anomalies.length} · 建站 {stationCount} · 任务可跨分类</span>}
+      title="战斗悬赏"
+      right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 可接取排序</span>}
     >
-      <div className="app-task-tabs" role="tablist">
-        {TASK_TABS.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={tab === t.key}
-            className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
-            onClick={() => changeTab(t.key)}
-          >
-            {t.label}
-          </button>
+      <div className="app-task-sortrow">
+        <span className="app-dim">悬赏排序：</span>
+        <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as TaskSort)}>
+          {(Object.keys(TASK_SORT_LABEL) as TaskSort[]).map((k) => (
+            <option key={k} value={k}>
+              {TASK_SORT_LABEL[k]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="app-ano-list">
+        {sorted.map((item) => (
+          <AnomalyCard key={item.a.id} engine={engine} anomaly={item.a} onToast={onToast} />
         ))}
       </div>
-      {tab === 'important' ? (
-        <div>
-          <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（采矿返航/卸货/维修/补给/换驾驶）。</div>
-          <div className="app-station-list">
-            <StationCard engine={engine} onToast={onToast} />
-          </div>
-        </div>
-      ) : tab === 'resource' ? (
-        <div>
-          <div className="app-dim app-exp-idle">资源任务：向建站点提交本星系出产物资，分档推进、边交边生效。</div>
-          <div className="app-station-list">
-            <StationCard engine={engine} onToast={onToast} />
-          </div>
-        </div>
-      ) : tab === 'courier' ? (
-        <div className="app-dim app-exp-idle">暂无快递任务——协会货运网络尚在筹备，分类已就位（后续内容接入）。</div>
-      ) : (
-        <div>
-          <div className="app-task-sortrow">
-            <span className="app-dim">悬赏排序：</span>
-            <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as TaskSort)}>
-              {(Object.keys(TASK_SORT_LABEL) as TaskSort[]).map((k) => (
-                <option key={k} value={k}>
-                  {TASK_SORT_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="app-ano-list">
-            {sorted.map((item) => (
-              <AnomalyCard key={item.a.id} engine={engine} anomaly={item.a} onToast={onToast} />
-            ))}
-          </div>
-        </div>
-      )}
     </Panel>
   )
 }
