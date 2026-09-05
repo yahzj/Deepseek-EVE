@@ -263,14 +263,28 @@ function settleFight(state: GameState, ctx: SimContext): void {
  * ② 推进进行中的遭遇（待决超时自动文字结算 / 应战战斗推演）。
  * 触发判定不在此处——由随机事件线到点时调用 rollLowSecAmbush（遭遇占用事件机会，船长 2026-09-04 定）。
  */
-export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaMs: number): void {
+export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaMs: number, freezeBattle = false): void {
   maintainPresence(state, ctx)
   const enc = state.encounter
   if (enc.active) {
     if (enc.battle) {
-      if (!enc.battle.ended) {
-        advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, tierIdOf(enc.threat), null)
+      if (enc.battle.ended) {
+        settleFight(state, ctx)
+        return
       }
+      // 调试快进冻结（船长 2026-09-05：取消"瞬间结束交战"）——不在快进期间推进/结算进行中的遭遇战，
+      // 把战斗时钟同步到"现在"（并同步平移 startedAtGameMs 以免 maxBattleMs 误判超时），战术状态保持冻结，
+      // 快进结束后战斗从冻结点继续按真实时长逐拍打完，不随快进时间跳变而瞬结。
+      if (freezeBattle) {
+        const now = state.gameMs
+        const owed = Math.max(0, now - (enc.battle.lastTickGameMs ?? now))
+        if (owed > 0) {
+          enc.battle.lastTickGameMs = now
+          enc.battle.startedAtGameMs += owed
+        }
+        return
+      }
+      advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, tierIdOf(enc.threat), null)
       if (enc.battle.ended) settleFight(state, ctx)
       return
     }

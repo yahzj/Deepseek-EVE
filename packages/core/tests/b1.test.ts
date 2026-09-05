@@ -175,6 +175,35 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     void durBefore
   })
 
+  it('调试快进冻结：进行中的遭遇战不随快进时间跳变而瞬结', () => {
+    const { state, ctx } = lowWorld()
+    state.awayGalaxy = 'galaxy-far'
+    state.encounter = {
+      active: true,
+      shipId: state.shipId,
+      galaxyId: 'galaxy-far',
+      name: '伏击劫掠队',
+      threat: 6, // 比沙猫火力低 → 应战胜算高（若被瞬结会立刻打完，此处应保持进行中）
+      origin: '测试',
+      invitedAtGameMs: state.gameMs,
+      deadlineGameMs: state.gameMs + 60_000,
+      battle: null,
+    }
+    expect(fightEncounter(state, ctx).ok).toBe(true)
+    expect(state.encounter.battle).not.toBeNull()
+    const lastTick = state.encounter.battle!.lastTickGameMs
+    // 冻结快进：大步推进，战斗不应被时间跳变瞬结（仍进行中、战斗未结束）
+    advanceGame(state, 5 * 60_000, ctx, { freezeEncounterBattle: true })
+    expect(state.encounter.active).toBe(true)
+    expect(state.encounter.battle!.ended).toBeFalsy()
+    // 战斗时钟已同步到当前（不欠快进时间，避免恢复后一瞬追赶打完）
+    expect(state.encounter.battle!.lastTickGameMs).toBe(state.gameMs)
+    void lastTick
+    // 解除冻结后正常打完
+    advanceGame(state, 5 * 60_000, ctx)
+    expect(state.encounter.active).toBe(false)
+  })
+
   it('快速脱离：立即文字结算并关闭遭遇', () => {
     const { state, ctx } = lowWorld()
     state.awayGalaxy = 'galaxy-far'

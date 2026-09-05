@@ -43,6 +43,7 @@ export function simulateOffline(
   nowWallMs: number,
   ctx: SimContext,
   capMs: number = DEFAULT_OFFLINE_CAP_MS,
+  opts?: { freezeEncounterBattle?: boolean },
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
@@ -65,7 +66,7 @@ export function simulateOffline(
   // 记录结算前的日志条数（必须在写"离线归来"之前取，否则把这条也算进去）
   const before = state.logs.length
   addLog(state, 'info', `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`)
-  advanceGame(state, deltaMs, ctx)
+  advanceGame(state, deltaMs, ctx, opts)
   // 事件数 = 总新增 - 1（减去"离线归来"本身）
   const eventCount = state.logs.length - before - 1
 
