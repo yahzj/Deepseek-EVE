@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { goodLockedReason, goodName, levelOf, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs } from '@whale/core'
+import { goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -193,12 +193,14 @@ function GoodRow({
   good,
   buyQty,
   onQty,
+  onSelect,
 }: {
   engine: PageProps['engine']
   onToast: PageProps['onToast']
   good: MarketGoodDef
   buyQty: number
   onQty: (n: number) => void
+  onSelect?: (key: string) => void
 }) {
   const state = engine.state
   const quote = marketQuote(state, engine.ctx, good.key)
@@ -304,6 +306,11 @@ function GoodRow({
         </div>
       </div>
       <div className="app-inv-btns">
+        {onSelect ? (
+          <button className="app-btn is-small" title="展开行情详情（价格曲线 / 买卖盘 / 交易面板）" onClick={() => onSelect(good.key)}>
+            📈 详情
+          </button>
+        ) : null}
         {lock ? (
           <button className="app-btn is-small" disabled title={lock}>
             声望未达标
@@ -401,6 +408,7 @@ function MarketColumn({
   rows,
   qtyOf,
   onQty,
+  onSelect,
 }: {
   engine: PageProps['engine']
   onToast: PageProps['onToast']
@@ -409,6 +417,7 @@ function MarketColumn({
   rows: MarketGoodDef[]
   qtyOf: (key: string) => number
   onQty: (key: string, n: number) => void
+  onSelect?: (key: string) => void
 }) {
   return (
     <Panel title={title} right={right}>
@@ -417,10 +426,196 @@ function MarketColumn({
       ) : (
         <ul className="app-inv-list app-mkt-list">
           {rows.map((good) => (
-            <GoodRow key={good.key} engine={engine} onToast={onToast} good={good} buyQty={qtyOf(good.key)} onQty={(n) => onQty(good.key, n)} />
+            <GoodRow key={good.key} engine={engine} onToast={onToast} good={good} buyQty={qtyOf(good.key)} onQty={(n) => onQty(good.key, n)} onSelect={onSelect} />
           ))}
         </ul>
       )}
+    </Panel>
+  )
+}
+
+/* ═══════════════ 市场详情卡（船长 2026-09-05：参考盘口风格——价格曲线/买卖盘/持有量/交易面板） ═══════════════ */
+
+/** 价格折线（SVG，最少 2 点） */
+function PriceChart({ hist }: { hist: readonly number[] }) {
+  if (hist.length < 2) {
+    return (
+      <div className="app-mkt-chart-empty">
+        <span className="app-dim">暂无历史样本——市场运行一段时间后自动采样（每 30 分钟一次，保留 24 窗口）</span>
+      </div>
+    )
+  }
+  const w = 560
+  const h = 120
+  const pad = 6
+  const mn = Math.min(...hist)
+  const mx = Math.max(...hist)
+  const range = Math.max(1, mx - mn)
+  const pts = hist
+    .map((v, i) => {
+      const x = (i / (hist.length - 1)) * (w - pad * 2) + pad
+      const y = h - pad - ((v - mn) / range) * (h - pad * 2)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+  const last = hist[hist.length - 1]!
+  const lastX = w - pad
+  const lastY = h - pad - ((last - mn) / range) * (h - pad * 2)
+  return (
+    <svg className="app-mkt-chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="价格趋势">
+      <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
+      <circle cx={lastX.toFixed(1)} cy={lastY.toFixed(1)} r="3.5" fill="#ffe08a" />
+      <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+      <text x={pad} y={pad + 8} fill="rgba(255,255,255,0.55)" fontSize="10">
+        高价 {isk(mx)}
+      </text>
+      <text x={pad} y={h - pad - 4} fill="rgba(255,255,255,0.45)" fontSize="10">
+        低价 {isk(mn)}
+      </text>
+    </svg>
+  )
+}
+
+/** 市场详情卡：价格曲线 + 买卖盘深度 + 持有量 + 交易面板（买/卖 tab：市价或挂单） */
+function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; onToast: PageProps['onToast']; good: MarketGoodDef }) {
+  const state = engine.state
+  const quote = marketQuote(state, engine.ctx, good.key)
+  const hist = marketHistory(state, good.key)
+  const trend = marketTrend(state, good.key)
+  const holdings = naturalHoldings(state, good)
+  const lock = goodLockedReason(state, good)
+  const buyOrders = [...(state.market.npcBuy[good.key] ?? [])].sort((a, b) => b.price - a.price).slice(0, 8)
+  const sellOrders = [...(state.market.npcSell[good.key] ?? [])].sort((a, b) => a.price - b.price).slice(0, 8)
+  const maxOrderQty = Math.max(1, ...buyOrders.map((o) => o.qty), ...sellOrders.map((o) => o.qty))
+  const sortedHist = hist.length ? [...hist].sort((a, b) => a - b) : []
+  const median = sortedHist.length ? sortedHist[Math.floor(sortedHist.length / 2)]! : undefined
+  const name = goodName(engine.ctx, good.key)
+  const [tab, setTab] = useState<'buy' | 'sell'>('buy')
+  const [qty, setQty] = useState(1)
+  const [price, setPrice] = useState(1)
+
+  function setDefaults(side: 'buy' | 'sell'): void {
+    setTab(side)
+    setPrice(Math.max(1, side === 'buy' ? quote.sell ?? levelOf(state, engine.ctx, good.key) : quote.buy ?? levelOf(state, engine.ctx, good.key) * (good.demandMultiplier ?? 0.5)))
+    setQty(side === 'sell' ? Math.max(1, holdings) : 1)
+  }
+  function doBuy(): void {
+    if (lock) {
+      onToast(`暂不能买入：${lock}。`, true)
+      return
+    }
+    const n = Math.max(1, Math.floor(qty || 1))
+    const r = engine.buyGoodAt(good.key, n)
+    if (!r.ok) onToast(r.error ?? '买入失败', true)
+    else onToast(`已买入 ${name}×${n.toLocaleString('zh-CN')}（详见日志）。`)
+  }
+  function doSell(): void {
+    const n = Math.max(1, Math.min(holdings, Math.floor(qty || 1)))
+    if (n <= 0 || holdings <= 0) {
+      onToast('没有可卖的库存。', true)
+      return
+    }
+    const r = engine.sellHoldingAt(good.key, n)
+    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    else onToast(`已按市价卖出 ${name}×${n.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
+  }
+  function doPlace(): void {
+    const n = Math.max(1, Math.floor(qty || 1))
+    const p = Math.max(1, Math.floor(price || 1))
+    if (tab === 'buy') {
+      const id = engine.placeBuyOrderAt(good.key, p, n)
+      if (id === null) onToast('挂买单失败：价格或数量无效。', true)
+      else onToast(`已挂买单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK。`)
+    } else {
+      const r = engine.placeSellOrderAt(good.key, p, n)
+      if (!r.ok) onToast(r.error ?? '挂卖单失败。', true)
+      else onToast(`已挂卖单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK。`)
+    }
+  }
+
+  return (
+    <Panel
+      title={`市场详情 · ${name}`}
+      right={
+        <span className="app-dim">
+          持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} ISK
+          <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
+            {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
+          </span>
+        </span>
+      }
+    >
+      <div className="app-mkt-detail">
+        <div className="app-mkt-detail-left">
+          <PriceChart hist={hist} />
+          <div className="app-mkt-detail-quotes">
+            <div className="app-mkt-quote">
+              收购 <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
+            </div>
+            <div className="app-mkt-quote">
+              供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : '暂无现货'}</b>
+            </div>
+            <div className="app-mkt-quote">
+              库存池 {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
+            </div>
+          </div>
+        </div>
+        <div className="app-mkt-detail-books">
+          <div className="app-mkt-book">
+            <div className="app-mkt-book-title">买盘（收你的货）</div>
+            {buyOrders.map((o, i) => (
+              <div key={`b${i}`} className="app-mkt-depth">
+                <span className="app-mkt-depth-price">{isk(o.price)}</span>
+                <span className="app-mkt-depth-bar app-mkt-depth-buy">
+                  <i style={{ width: `${Math.round((o.qty / maxOrderQty) * 100)}%` }} />
+                </span>
+                <span className="app-mkt-depth-qty">{o.qty.toLocaleString('zh-CN')}</span>
+              </div>
+            ))}
+            {buyOrders.length === 0 ? <div className="app-dim app-sr-eta">暂无收购单</div> : null}
+          </div>
+          <div className="app-mkt-book">
+            <div className="app-mkt-book-title">卖盘（卖给你的货）</div>
+            {sellOrders.map((o, i) => (
+              <div key={`s${i}`} className="app-mkt-depth">
+                <span className="app-mkt-depth-price">{isk(o.price)}</span>
+                <span className="app-mkt-depth-bar app-mkt-depth-sell">
+                  <i style={{ width: `${Math.round((o.qty / maxOrderQty) * 100)}%` }} />
+                </span>
+                <span className="app-mkt-depth-qty">{o.qty.toLocaleString('zh-CN')}</span>
+              </div>
+            ))}
+            {sellOrders.length === 0 ? <div className="app-dim app-sr-eta">暂无供应单</div> : null}
+          </div>
+        </div>
+        <div className="app-mkt-trade">
+          <div className="app-mkt-trade-tabs">
+            <button className={`app-btn is-small${tab === 'buy' ? ' is-primary' : ''}`} onClick={() => setDefaults('buy')}>
+              买入
+            </button>
+            <button className={`app-btn is-small${tab === 'sell' ? ' is-primary' : ''}`} onClick={() => setDefaults('sell')}>
+              卖出
+            </button>
+          </div>
+          <div className="app-mkt-trade-row">
+            <span className="app-dim">数量</span>
+            <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+          </div>
+          <div className="app-mkt-trade-row">
+            <span className="app-dim">单价</span>
+            <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
+            <span className="app-dim">ISK</span>
+          </div>
+          <div className="app-mkt-trade-btns">
+            <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : doSell}>
+              {tab === 'buy' ? '市价买入' : '市价卖出'}
+            </button>
+            <button className="app-btn is-small" onClick={doPlace}>
+              {tab === 'buy' ? '挂买单' : '挂卖单'}
+            </button>
+          </div>
+        </div>
+      </div>
     </Panel>
   )
 }
@@ -480,11 +675,15 @@ export function MarketPage({
   const [mktTab, setMktTab] = useState<'common' | 'rare'>('common')
   // 外部聚焦（如舰船页"去市场"）：focusSeq 递增时把搜索词设为指定商品 key（像玩家自己搜的一样）
   const [kw, setKw] = useState('')
+  // 行情详情选中商品（船长 2026-09-05：行内「📈 详情」/外部聚焦展开）
+  const [selKey, setSelKey] = useState<string | null>(null)
+  const selGood = selKey ? goods.find((g) => g.key === selKey) ?? null : null
   const lastFocusSeq = useRef(0)
   useEffect(() => {
     if (focusKey && focusSeq !== undefined && focusSeq !== lastFocusSeq.current) {
       lastFocusSeq.current = focusSeq
       setKw(focusKey)
+      setSelKey(focusKey)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusSeq])
@@ -554,6 +753,15 @@ export function MarketPage({
         </select>
       </div>
 
+      {selGood ? (
+        <>
+          <MarketDetail engine={engine} onToast={onToast} good={selGood} />
+          <button className="app-btn is-small" onClick={() => setSelKey(null)}>
+            收起详情
+          </button>
+        </>
+      ) : null}
+
       {filterActive ? (
         /* ── 搜索/过滤激活：跨栏合并结果（常驻 + 稀有一次搜全；GoodRow 自带稀有度徽标区分） ── */
         <MarketColumn
@@ -564,6 +772,7 @@ export function MarketPage({
           rows={filteredAll}
           qtyOf={qtyOf}
           onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
+          onSelect={setSelKey}
         />
       ) : (
         <>
@@ -603,6 +812,7 @@ export function MarketPage({
               rows={stockedFirst(engine, common)}
               qtyOf={qtyOf}
               onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
+              onSelect={setSelKey}
             />
           ) : (
             <MarketColumn
@@ -613,6 +823,7 @@ export function MarketPage({
               rows={stockedFirst(engine, rareCol)}
               qtyOf={qtyOf}
               onQty={(key, n) => setQtyByKey((p) => ({ ...p, [key]: n }))}
+              onSelect={setSelKey}
             />
           )}
         </>
