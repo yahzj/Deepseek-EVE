@@ -112,9 +112,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     hitMax: 1, // 命中率开放上限 100%：贴脸高加成场合可必中（不再封顶 97%）
     gunneryDmgPerLevel: 0.05, // 炮术学：每级 +5% 单发伤害
     minDistanceM: 200, // 距离下限（贴脸极限）
-    // 开战距离 = 双方最远武器射程 +100m：开局几乎即时进入接战，缩短无谓等待
+    // 开战距离 = 双方最远武器射程 + 缓冲；缓冲 = max(100m, 射程×10%)（船长 2026-09-05 拍板：
+    // 旧固定 +100m 对远程武器太近——导弹 6200m 开场 100m 即接战，画面还没看清就先挨一轮；
+    // 现按射程比例拉开，远程武器有可见的接敌接近窗口）
     openRangeFactor: 1.0,
     openRangePadM: 100,
+    openRangePadShare: 0.1,
     // V18B 武器族专精技能（2026-09-05 一号按交接底稿接入）：+5%/级，与炮术学乘算（数值 C4 校准）
     familySkillIds: { turret: 'kinetic-gunnery', missile: 'missile-launching', laser: 'laser-cannon' },
     familySkillPerLevel: 0.05,

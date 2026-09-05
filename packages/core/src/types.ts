@@ -450,10 +450,13 @@ export interface BattleBalance {
   evasionPerLevel: number
   hitSkillId: string
   hitPerLevel: number
-  /** 距离动力学：距离下限（贴脸极限）与开战距离 = 双方最远武器射程×openRangeFactor + openRangePadM（取小加成的近距开局） */
+  /** 距离动力学：距离下限（贴脸极限）与开战距离 = 双方最远武器射程×openRangeFactor
+   *  + max(openRangePadM, 最远射程×openRangePadShare)（船长 2026-09-05：缓冲按射程比例拉开） */
   minDistanceM: number
   openRangeFactor: number
   openRangePadM: number
+  /** 缓冲比例：开战缓冲 = max(100m 下限 openRangePadM, 双方最远射程×本比例)（默认 0.1 = 10%） */
+  openRangePadShare: number
   /** 舰船 maxSpeedMps 参与距离收敛的比例（战斗机动速度 = speed × speedFactor ×(1±agilitySpeedBonus)） */
   speedFactor: number
   agilitySpeedBonus: number

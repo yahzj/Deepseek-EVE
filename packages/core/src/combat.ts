@@ -595,12 +595,14 @@ function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): Dama
   return best
 }
 
-/** 开战距离 = 双方最大射程 ×factor + pad */
+/** 开战距离 = 双方最大射程 ×factor + 缓冲；缓冲 = max(固定 100m, 最大射程×10%)（船长 2026-09-05：
+ * 远程武器不再 100m 即接战，按射程比例拉开，保证开场有可见的接近窗口） */
 export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance): number {
   let top = 0
   for (const w of me.weapons) top = Math.max(top, w.maxRangeM)
   for (const f of foes) for (const w of f.weapons) top = Math.max(top, w.maxRangeM)
-  return Math.round(top * bal.openRangeFactor + bal.openRangePadM)
+  const pad = Math.max(bal.openRangePadM, Math.round(top * (bal.openRangePadShare ?? 0.1)))
+  return Math.round(top * bal.openRangeFactor + pad)
 }
 
 /** 玩家战术期望距离（贴脸/中距/风筝）。
@@ -800,8 +802,8 @@ export function startBattleFor(
   const rawDesire = desireM !== undefined && desireM > 0 ? Math.round(desireM) : desiredRangeFor(me, 'mid', bal)
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
-  // 开战距离 = 双方所有武器最远射程 +100m（openRangeFactor/PadM 既定规则）：开局从
-  // 射程外稍远处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
+  // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
+  // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
   battle.distanceM = openM
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
