@@ -9,6 +9,7 @@ import {
   aiEfficiency,
   countAiCore,
   formatDurationMs,
+  getMiningParams,
   idleAiShipIds,
   isExplored,
   marketGoodOf,
@@ -175,6 +176,24 @@ function BeltCard({
   const standing = state.standings['dsi'] ?? 0
   const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
   const galaxyName = galaxy?.name ?? '母港'
+  // 效率行（试点 2026-09-05）：每循环产量 × 循环时长 → 每小时产出与每小时估价。
+  // 估价按物品本身 baseSellPriceIsk（不随市场浮动）；复合带按权重加权期望价值。
+  let econLine: string | null = null
+  const mp = getMiningParams(state, engine.ctx, { beltId: belt.id })
+  if (mp) {
+    const cyclesPerHour = 3_600_000 / mp.cycleMs
+    const rows = belt.outputs?.length ? belt.outputs : [{ itemId: belt.oreId, weight: 1 }]
+    const wsum = rows.reduce((s, r) => s + r.weight, 0)
+    let valuePerUnit = 0
+    for (const r of rows) {
+      const d = engine.ctx.items.get(r.itemId)
+      valuePerUnit += (r.weight / wsum) * (d?.baseSellPriceIsk ?? 0)
+    }
+    const perHourUnits = Math.round(mp.unitsPerCycle * cyclesPerHour)
+    const valuePerHour = Math.round(perHourUnits * valuePerUnit)
+    const sec = Math.round(mp.cycleMs / 1000)
+    econLine = `${mp.unitsPerCycle} 单位/循环 · ${sec}s · ≈${perHourUnits.toLocaleString('zh-CN')}/h · 估价 ≈${valuePerHour.toLocaleString('zh-CN')} ISK/h`
+  }
   // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
   const unexplored = belt.galaxyId ? !isExplored(state, belt.galaxyId) : false
   const locked = (belt.standingReq ?? 0) > standing || unexplored
@@ -247,6 +266,11 @@ function BeltCard({
         所在 {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} ISK` : '—'}
         {unexplored ? '（到「星图·远征」对该星系「未知信号」扫描后解锁）' : ''}
       </div>
+      {econLine ? (
+        <div className="app-belt-econ" title="按物品本身估价（不随市场浮动）计算：每小时循环数 × 每循环产量 × 加权估价">
+          ⛏ {econLine}
+        </div>
+      ) : null}
       {/* V16 复合矿带：本带可采出的全部产物与权重（每循环按权重抽取一种） */}
       {belt.outputs && belt.outputs.length > 1 ? (
         <div className="app-belt-compose">
