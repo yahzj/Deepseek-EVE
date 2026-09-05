@@ -231,7 +231,10 @@ export function ActivityBar({
             title={`${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`}
             onClick={onAiCenter}
           >
-            ⚙×{aiCount}
+            <span className="app-ico">
+              <Glyph name="nav-ai" size={13} color={NAV_TONES['nav-ai']} />
+            </span>
+            ×{aiCount}
           </button>
         ) : null}
       </div>
