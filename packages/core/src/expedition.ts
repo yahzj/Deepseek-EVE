@@ -28,6 +28,7 @@ import {
   createFoeSpecs,
   createPlayerSpec,
   desiredRangeFor,
+  persistFleetHullDamage,
   refundAmmo,
   startBattleFor,
 } from './combat'
@@ -334,6 +335,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
   refundAmmo(state, battle.ammo)
+  // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
+  persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   if (won) {
@@ -456,6 +459,8 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
   refundAmmo(state, battle.ammo)
+  // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
+  persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   // 轻损：正常战败扣损骰 ×0.5；不做弃船骰

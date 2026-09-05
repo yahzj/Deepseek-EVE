@@ -46,7 +46,9 @@ describe('战斗中撤退（轻损）', () => {
   it('耐久扣到 ≤0 时压到 5% 下限（保护性钳制，不弃船）并显著告警', () => {
     const { state, ctx } = world()
     enterBattle(state, ctx)
-    state.fleet[state.shipId]!.durability = 0.01 // 接近崩坏
+    // P0 承伤持久化：耐久=结构层——把本场玩家单位结构打到 0（甲 0、仅剩盾）模拟结构崩坏
+    const u = state.expedition.battle!.units['player']!
+    u.hp = { s: 500, a: 0, h: 0 }
     expect(retreatBattle(state, ctx).ok).toBe(true)
     expect(durabilityOf(state, state.shipId)).toBe(0.05)
     expect(state.logs.some((l) => l.text.includes('濒临崩溃'))).toBe(true)

@@ -170,6 +170,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     ammoTimeCapMs: 4 * 60_000, // 弹药预载：按 4 分钟最大交战时长估算
     ammoMargin: 1.5, // 预载余量 ×1.5
     maxBattleMs: 10 * 60_000, // 战斗硬上限：超时按剩余血量比判胜
+    // P0 承伤持久化：护盾战中被动回充（每秒回满盾的 2%；P2 随流派平衡再校准）
+    shieldRegenPerSec: 0.02,
     winSpread: 1.6, // 预估胜率扩散（logit ×1.6）：0.8 → ~0.90 / 0.5 → 0.5 / 0.2 → ~0.10
     aiFavorStrength: 0.3, // AI 远征 favor：模型胜率 0.8 局 → AI 命中 ×1.18 / 敌命中 ×0.82（简单局近必胜）
     killcamMs: 1_500, // 击杀慢镜：胜负后延迟 1.5s 再结算（让最后一击动画+爆炸演出播完）

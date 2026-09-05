@@ -15,7 +15,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { nextRandom } from './rng'
-import { advanceBattleFor, refundAmmo, startBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, startBattleFor } from './combat'
 import { calcPower } from './expedition'
 import { shipDisplayName } from './instances'
 
@@ -204,6 +204,8 @@ function settleFight(state: GameState, ctx: SimContext): void {
   if (battle) {
     // 退还剩余弹药（与远征/撤退同一口径）
     refundAmmo(state, battle.ammo)
+    // P0 承伤持久化：遭遇战同样保留装甲/结构残余（结构=耐久）；失利附加扣损在后
+    persistFleetHullDamage(state, ctx, shipId, battle)
   }
   if (battle && battle.ended === 'me') {
     const loot = Math.max(

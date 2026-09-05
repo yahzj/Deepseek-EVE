@@ -759,6 +759,8 @@ describe('V18B 敌人近盲带（2026-09-05 船长拍板：与玩家区分——
       ships: [ship('sandcat', { shieldHp: 50_000, armorHp: 5_000, hullHp: 5_000, evasion: 0 })],
       anomalies: [def],
     })
+    // P0 承伤持久化：本用例只钉“近盲带倍率”的纯伤害数学，屏蔽护盾被动回充干扰
+    ctx.balance.battle.shieldRegenPerSec = 0
     const bal = ctx.balance.battle
     const me = createPlayerSpec(state, ctx, state.shipId)!
     const foes = createFoeSpecs(def, bal)

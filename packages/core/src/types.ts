@@ -425,6 +425,8 @@ export interface BattleBalance {
   /** 命中率输出钳制：开放边界 0% / 100%（贴脸高加成场合可必中、极端劣势可完全脱靶） */
   hitMin: number
   hitMax: number
+  /** P0 承伤持久化：护盾战中被动回充（每秒回充 = 满盾 × 此比例；0 = 关，初值见 balance） */
+  shieldRegenPerSec: number
   /** 炮术学每级单发伤害加成（0.05 = +5%/级） */
   gunneryDmgPerLevel: number
   /** V18B 武器族技能（2026-09-05 一号按交接底稿接入）：模块槽族 → 专精技能 id；

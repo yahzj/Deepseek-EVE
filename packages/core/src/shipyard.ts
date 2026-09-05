@@ -42,7 +42,7 @@ export function allocateShipUid(state: GameState, defId: string): string {
 
 function emptyShipState(defId: string): FleetShipState {
   const fitted: FittedModules = emptyFitted()
-  return { defId, customName: null, durability: 1, cargo: {}, fitted }
+  return { defId, customName: null, durability: 1, armorPct: 1, cargo: {}, fitted }
 }
 
 /** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/数据缺失返回 undefined） */
@@ -195,19 +195,21 @@ export function durabilityOf(state: GameState, shipId: string): number {
   return state.fleet[shipId]?.durability ?? 0
 }
 
-/** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级，合计下限 40%） */
+/** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级，合计下限 40%）。
+ * P0 承伤持久化：装甲损伤并入维修口径——费用 =（结构缺失 + 0.5×装甲缺失）×船容×单价；
+ * 权重与费率属 P2 校准项。 */
 export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext): number {
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   if (!fleetShip || !def) return 0
-  const missing = Math.max(0, 1 - fleetShip.durability)
+  const missing = Math.max(0, 1 - fleetShip.durability) + 0.5 * Math.max(0, 1 - (fleetShip.armorPct ?? 1))
   const engLv = Math.min(5, state.skills.trained['repair-engineering'] ?? 0)
   const protoLv = Math.min(5, state.skills.trained['station-protocol'] ?? 0)
   const disc = Math.max(0.4, (1 - 0.1 * engLv) * (1 - 0.05 * protoLv))
   return Math.ceil(missing * def.cargoM3 * ctx.balance.repair.perM3Cost * disc)
 }
 
-/** 玩家指令：维修某艘拥有船（回满耐久），钱不够时按比例修复可用部分 */
+/** 玩家指令：维修某艘拥有船（回满耐久与装甲；钱不够时按比例修复可用部分） */
 export function repairShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
@@ -217,14 +219,17 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   if (shipId === state.shipId && (state.awayGalaxy !== null || state.standby.active)) {
     return { ok: false, error: `${name} 不在空间站（野外/待命途中）——返航后才能维修。` }
   }
-  if (fleetShip.durability >= 1) return { ok: false, error: `${name} 状态完好，无需维修。` }
+  if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
+    return { ok: false, error: `${name} 状态完好，无需维修。` }
+  }
   const cost = repairCostIsk(state, shipId, ctx)
   if (state.wallet.isk < cost) {
     return { ok: false, error: `维修费不足：需要 ${cost.toLocaleString('zh-CN')} ISK。` }
   }
   state.wallet.isk -= cost
   fleetShip.durability = 1
-  addLog(state, 'trade', `已完成 ${name} 的全面维修（${cost.toLocaleString('zh-CN')} ISK），耐久恢复至 100%。`)
+  fleetShip.armorPct = 1
+  addLog(state, 'trade', `已完成 ${name} 的全面维修（${cost.toLocaleString('zh-CN')} ISK），结构/装甲恢复至 100%。`)
   return { ok: true }
 }
 
@@ -236,15 +241,16 @@ export function isShipLocked(state: GameState, shipId: string): boolean {
 
 /**
  * T8 修理组件（船长定稿 seam）：优先用货仓中的修理组件（itemDef.repairRestore > 0）
- * 修复驾驶船耐久，直到 ≥ target（连续出击阈值默认 0.5）或组件耗尽；返回消耗件数。
- * 内容数据后续补充修理组件条目后自动生效。
+ * 修复驾驶船耐久与装甲，直到 结构 ≥ target（连续出击阈值默认 0.5）且 装甲 ≥ 同 target
+ * 或组件耗尽；返回消耗件数。
+ * P0 承伤持久化：组件对装甲/结构同量恢复（同目标下限；细分定价属 P2）。
  */
 export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5): number {
   const fleetShip = state.fleet[state.shipId]
   if (!fleetShip) return 0
   let used = 0
   let guard = 0
-  while (fleetShip.durability < target && guard < 500) {
+  while ((fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target) && guard < 500) {
     guard += 1
     const cargo = fleetShip.cargo
     let kitId: string | null = null
@@ -263,13 +269,14 @@ export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5):
     if (units <= 1) delete cargo[kitId]
     else cargo[kitId] = units - 1
     fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + restore) * 1000) / 1000)
+    fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + restore) * 1000) / 1000)
     used += 1
   }
   if (used > 0) {
     addLog(
       state,
       'info',
-      `自动使用修理组件 ×${used}：${shipDisplayName(state, ctx, state.shipId)} 耐久恢复至 ${Math.round(fleetShip.durability * 100)}%。`,
+      `自动使用修理组件 ×${used}：${shipDisplayName(state, ctx, state.shipId)} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
     )
   }
   return used

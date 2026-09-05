@@ -772,6 +772,14 @@ export function startBattleFor(
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
   if (!me) return null
+  // P0 承伤持久化：装甲/结构（=耐久合并属性）按场间残余开局；护盾每场满值重建
+  const fleetShip = state.fleet[shipId]
+  if (fleetShip) {
+    const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
+    const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
+    me.hp.a = Math.max(0, me.hp.a * armorMul)
+    me.hp.h = Math.max(0, me.hp.h * hullMul)
+  }
   const foes = createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
   // 期望距离记忆可能来自更远射程的战斗：钳到本次开战距离内
@@ -905,6 +913,29 @@ export function spreadWinChance(p: number, k: number): number {
   const logit = Math.log(t / (1 - t))
   const s = 1 / (1 + Math.exp(-k * logit))
   return clamp(0.02, 0.98, s)
+}
+
+/**
+ * P0 承伤持久化：把装甲/结构残余写回船（结构 = 耐久合并属性；护盾不保留）。
+ * cap 用该船当前满值（技能/装配同源 createPlayerSpec）——换装后残余按新上限比例折算。
+ * 调用方在战斗结束（或手动撤退收场）后、其余结算（失利附加扣损等）之前调用；
+ * battle.ended 为空也允许（撤退时记录当前残余）。
+ */
+export function persistFleetHullDamage(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  battle: import('./state').BattleState | null,
+): void {
+  const fleetShip = state.fleet[shipId]
+  if (!fleetShip) return
+  const unit = battle?.units['player']
+  if (!unit) return
+  const cap = createPlayerSpec(state, ctx, shipId)
+  if (!cap) return
+  const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
+  fleetShip.armorPct = cap.hp.a > 0 ? clamp01(unit.hp.a / cap.hp.a) : 1
+  fleetShip.durability = cap.hp.h > 0 ? clamp01(unit.hp.h / cap.hp.h) : 0
 }
 
 /** 推进指定战斗（主控远征与 AI 远征通用）；结束后 ended 非空由调用方结算。
@@ -1065,6 +1096,13 @@ function stepBattle(
       meRt.hp = r.hp
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: fHit })
+  }
+
+  // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
+  // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）──
+  if (meRt && bal.shieldRegenPerSec > 0 && meRt.hp.s < me.hp.s && (meRt.hp.a > 0 || meRt.hp.h > 0)) {
+    const regen = me.hp.s * bal.shieldRegenPerSec * dtSec
+    if (regen > 0) meRt.hp.s = Math.min(me.hp.s, meRt.hp.s + regen)
   }
 
   // ── 结束判定 ──
