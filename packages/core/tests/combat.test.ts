@@ -26,6 +26,7 @@ import {
   battleWinPreview,
   refundAmmo,
   pushBattleFx,
+  ammoLoadTotals,
   steerStep,
   spreadWinChance,
 } from '../src/combat'
@@ -510,5 +511,85 @@ describe('第二批战斗技能（2026-09-05：火控阵列学/武器装填技�
     const d5 = shot((s) => (s.skills.trained['drone-warfare'] = 5))
     expect(d0).toBeGreaterThan(0)
     expect(d5).toBe(Math.round(d0 * 1.25))
+  })
+})
+
+describe('第三/四批战斗技能（2026-09-05：防御容量/能量供能/弹药集约）', () => {
+  function laserBeamDmg(extra: (s: GameState) => void): number {
+    const id = 'w-eng'
+    const def = moduleDef(id, 'laser', 0, {
+      damageType: 'plasma',
+      dmgMult: 2,
+      maxRangeM: 6000,
+      minRangeM: 0,
+      hitRate: 1,
+      falloff: 0.3,
+      reloadMs: 3000,
+      cpuUse: 10,
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 41 })
+    const ctx = makeTestCtx({ modules: [def] })
+    addModule(state, id, 1)
+    expect(fitModule(state, id, ctx).ok).toBe(true)
+    extra(state)
+    const spec = createPlayerSpec(state, ctx, state.shipId)!
+    const w = spec.weapons.find((x) => x.label === def.name)!
+    return w.shotDmg ?? 0
+  }
+
+  it('护盾操作学/船体加固理论：满级盾、甲、结构容量 ×1.2', () => {
+    const hpOf = (extra: (s: GameState) => void): { s: number; a: number; h: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 42 })
+      const ctx = makeTestCtx()
+      extra(state)
+      return createPlayerSpec(state, ctx, state.shipId)!.hp
+    }
+    const hp0 = hpOf(() => undefined)
+    const hp5 = hpOf((s) => {
+      s.skills.trained['shield-operation'] = 5
+      s.skills.trained['hull-upgrades'] = 5
+    })
+    expect(hp5.s).toBeCloseTo(hp0.s * 1.2, 6)
+    expect(hp5.a).toBeCloseTo(hp0.a * 1.2, 6)
+    expect(hp5.h).toBeCloseTo(hp0.h * 1.2, 6)
+  })
+
+  it('能量管理学：激光单发满级 ×1.15（与激光炮学乘算可叠加）', () => {
+    const d0 = laserBeamDmg(() => undefined)
+    const d5 = laserBeamDmg((s) => (s.skills.trained['energy-management'] = 5))
+    const dBoth = laserBeamDmg((s) => {
+      s.skills.trained['energy-management'] = 5
+      s.skills.trained['laser-cannon'] = 5
+    })
+    expect(d5).toBe(Math.round(d0 * 1.15))
+    expect(dBoth).toBe(Math.round(d0 * 1.15 * 1.25))
+  })
+
+  it('弹药集约学：满级预载量 ×1.4（±ceil 容差）', () => {
+    const loadTot = (extra: (s: GameState) => void): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 43 })
+      const def = moduleDef('w-ammo', 'turret', 0, {
+        damageType: 'kinetic',
+        dmgMult: 2,
+        maxRangeM: 6000,
+        minRangeM: 0,
+        hitRate: 0.8,
+        falloff: 0.3,
+        reloadMs: 3000,
+        cpuUse: 10,
+      })
+      const ctx = makeTestCtx({ modules: [def] })
+      addModule(state, 'w-ammo', 1)
+      expect(fitModule(state, 'w-ammo', ctx).ok).toBe(true)
+      extra(state)
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      const totals = ammoLoadTotals(spec, ctx.balance.battle, state)
+      return totals.kinetic ?? 0
+    }
+    const t0 = loadTot(() => undefined)
+    const t5 = loadTot((s) => (s.skills.trained['ammunition-condensing'] = 5))
+    expect(t0).toBeGreaterThan(0)
+    expect(t5).toBeGreaterThanOrEqual(Math.round(t0 * 1.4) - 2)
+    expect(t5).toBeLessThanOrEqual(Math.round(t0 * 1.4) + 2)
   })
 })

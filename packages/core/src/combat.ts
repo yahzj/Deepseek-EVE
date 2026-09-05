@@ -228,10 +228,13 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
   let armorHpMult = 1
   for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
+  // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
+  const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
+  const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
   const hp: Hp3 = {
-    s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult),
-    a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult),
-    h: ship.hullHp ?? 0,
+    s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv),
+    a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * (1 + 0.04 * hullLv),
+    h: (ship.hullHp ?? 0) * (1 + 0.04 * hullLv),
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -298,7 +301,12 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const famKey = turret.slot === 'missile' || turret.slot === 'laser' || turret.slot === 'turret' ? turret.slot : null
     const famLv =
       famKey !== null ? Math.min(5, state.skills.trained[ctx.balance.battle.familySkillIds[famKey]] ?? 0) : 0
-    const famMult = famLv > 0 ? 1 + ctx.balance.battle.familySkillPerLevel * famLv : 1
+    let famMult = famLv > 0 ? 1 + ctx.balance.battle.familySkillPerLevel * famLv : 1
+    // 批次三：能量管理学（energy-management）——激光供能调谐 +3%/级（与激光炮学乘算）
+    if (turret.slot === 'laser') {
+      const engLv = Math.min(5, state.skills.trained['energy-management'] ?? 0)
+      if (engLv > 0) famMult *= 1 + 0.03 * engLv
+    }
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
     const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]))
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
@@ -526,7 +534,11 @@ export function foeDesiredRange(_me: UnitSpec, foes: UnitSpec[], bal: BattleBala
  * 预载需求（V18B-2 per-gun 多键）：按每种耗弹武器键分别估量
  * （该键武器中取最快装填：时间上限 ÷ reload × 余量）。
  */
-export function ammoLoadTotals(me: UnitSpec, bal: BattleBalance): Partial<Record<DamageType, number>> {
+export function ammoLoadTotals(
+  me: UnitSpec,
+  bal: BattleBalance,
+  state: import('./state').GameState,
+): Partial<Record<DamageType, number>> {
   const fastest = new Map<DamageType, number>()
   const consider = (t: DamageType, reloadMs: number): void => {
     fastest.set(t, Math.min(fastest.get(t) ?? Number.POSITIVE_INFINITY, reloadMs))
@@ -539,8 +551,13 @@ export function ammoLoadTotals(me: UnitSpec, bal: BattleBalance): Partial<Record
       consider('plasma', w.reloadMs)
     }
   }
+  // 弹药集约学（ammunition-condensing，批次四）：出发预载弹药 +8%/级（实际装载仍受库存上限约束）
+  const condLv = Math.min(5, state.skills.trained['ammunition-condensing'] ?? 0)
+  const condFactor = 1 + 0.08 * condLv
   const out: Partial<Record<DamageType, number>> = {}
-  for (const [t, reload] of fastest) out[t] = Math.max(1, Math.ceil((bal.ammoTimeCapMs / reload) * bal.ammoMargin))
+  for (const [t, reload] of fastest) {
+    out[t] = Math.max(1, Math.ceil(((bal.ammoTimeCapMs * condFactor) / reload) * bal.ammoMargin))
+  }
   return out
 }
 
@@ -679,7 +696,7 @@ export function startBattleFor(
   battle.distanceM = openM
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
-  const totals = ammoLoadTotals(me, bal)
+  const totals = ammoLoadTotals(me, bal, state)
   for (const [t, n] of Object.entries(totals)) {
     const key = ammoKeyOf(t as DamageType)
     const loaded = loadAmmo(state, ctx, t as DamageType, n)

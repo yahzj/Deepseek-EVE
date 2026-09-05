@@ -34,9 +34,9 @@ export interface CommandResult {
   error?: string
 }
 
-/** 界面隐藏且不可训练的技能 id（战斗线预留占位：护盾/能量/船体加固，战斗数值接入后移除）——
- * 数据表保留条目便于回归；引擎禁训 + 界面过滤共用本清单（见 core/engine.enqueueSkill） */
-export const HIDDEN_SKILL_IDS: readonly string[] = ['shield-operation', 'energy-management', 'hull-upgrades']
+/** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；
+ * 未来新占位条目在此登记——引擎禁训 + 界面过滤共用本清单） */
+export const HIDDEN_SKILL_IDS: readonly string[] = []
 
 /**
  * 把游戏时间推进 deltaMs 毫秒（技能队列、主控采矿、换船善后返航、制造、主控远征、AI 副船任务、

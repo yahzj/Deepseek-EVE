@@ -151,16 +151,9 @@ describe('技能补全：赏金猎手学（悬赏奖金每级 +8%）', () => {
   })
 })
 
-describe('战斗线占位技能：隐藏 + 禁训', () => {
-  it('护盾/能量/船体加固在隐藏清单中，且不被加入训练队列', () => {
-    expect(HIDDEN_SKILL_IDS).toEqual(['shield-operation', 'energy-management', 'hull-upgrades'])
-    const state = createInitialState({ nowWallMs: 0, seed: 9 })
-    const ctx = makeTestCtx()
-    // helpers 的测试技能目录不含这三条（真实目录含之，enqueueSkill 对隐藏技能返回"暂不可训练"）；
-    // 无论目录命中与否，训练入口都必须拒绝且不产生队列项
-    const r = enqueueSkill(state, 'shield-operation', 1, ctx.skills)
-    expect(r.ok).toBe(false)
-    expect(state.skills.queue).toHaveLength(0)
+describe('战斗占位技能（2026-09-05 批次三后全部开放为真实技能）', () => {
+  it('HIDDEN_SKILL_IDS 已清空', () => {
+    expect(HIDDEN_SKILL_IDS).toEqual([])
   })
 })
 

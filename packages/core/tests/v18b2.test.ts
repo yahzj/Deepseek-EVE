@@ -113,7 +113,7 @@ describe('V18B-2 激光炮', () => {
     const ano = anomaly('ano-x2', 'galaxy-hub', { threat: 20, reward: 50_000 })
     const ctx2 = { ...ctx, anomalies: new Map([...ctx.anomalies, [ano.id, ano]]) }
     const spec = createPlayerSpec(state, ctx2 as never, state.shipId)!
-    const totals = ammoLoadTotals(spec, ctx.balance.battle)
+    const totals = ammoLoadTotals(spec, ctx.balance.battle, state)
     expect(totals.kinetic).toBeGreaterThan(0)
     expect(totals.plasma).toBeGreaterThan(0)
     const battle = startBattleFor(state, ctx2 as never, state.shipId, 'ano-x2', 0)!

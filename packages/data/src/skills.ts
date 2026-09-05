@@ -232,6 +232,13 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 1,
     description: '无人机作战协同：无人机单发伤害每级 +⟦5%⟧（与战术导控装置乘算；无人机不吃炮术与武器族技能）。',
   },
+  {
+    id: 'ammunition-condensing',
+    name: '弹药集约学',
+    group: '战斗',
+    rank: 2,
+    description: '弹仓整理与备弹规划：出发预载弹药量每级 +⟦8%⟧（满级 +⟦40%⟧；实际装载仍受携带库存上限约束）。',
+  },
 
   // ───────── 工程 ─────────
   // 说明：护盾操作学 / 能量管理学 / 船体加固理论为战斗线预留条目——暂在界面隐藏、
@@ -241,21 +248,21 @@ export const SKILLS: readonly SkillDef[] = [
     name: '护盾操作学',
     group: '工程',
     rank: 1,
-    description: '以后生效：提升护盾容量与恢复（战斗线预留，当前隐藏）。',
+    description: '护盾系统维护与回充规划：护盾容量每级 +⟦4%⟧（满级 +⟦20%⟧；与护盾扩展器件乘算）。',
   },
   {
     id: 'energy-management',
     name: '能量管理学',
     group: '工程',
     rank: 2,
-    description: '以后生效：提升电容总量，支撑更强的武器与设备（战斗线预留，当前隐藏）。',
+    description: '舰船能源供能调谐：激光炮单发威力每级 +⟦3%⟧（满级 +⟦15%⟧；与激光炮学乘算叠加）。',
   },
   {
     id: 'hull-upgrades',
     name: '船体加固理论',
     group: '工程',
     rank: 3,
-    description: '以后生效：提升船体结构值与装甲抗性（战斗线预留，当前隐藏）。',
+    description: '船体结构强化工程：装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与装甲增厚板乘算）。',
   },
   {
     id: 'repair-engineering',
