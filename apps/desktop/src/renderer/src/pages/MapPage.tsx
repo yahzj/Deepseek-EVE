@@ -23,7 +23,7 @@ import { Panel, ProgressBar } from '@whale/ui'
 import { ExpeditionPanel, TaskPanel } from '../panels/Expedition'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
-import { isk } from './common'
+import { isk, MONEY_GLYPH } from './common'
 
 /** 星图页的三个功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口） */
 export type MapTab = 'star' | 'mine' | 'bounty'
@@ -271,7 +271,7 @@ function BeltCard({
       {effLine || valLine ? (
         <div className="app-belt-econ" title="按物品本身估价（不随市场浮动）计算：每小时循环数 × 每循环产量 × 加权估价">
           {effLine ? <div>⛏ {effLine}</div> : null}
-          {valLine ? <div className="app-belt-econ-val">💠 {valLine}</div> : null}
+          {valLine ? <div className="app-belt-econ-val">{MONEY_GLYPH} {valLine}</div> : null}
         </div>
       ) : null}
       {/* V16 复合矿带：本带可采出的全部产物与权重（每循环按权重抽取一种） */}

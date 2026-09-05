@@ -18,6 +18,13 @@ export function isk(n: number): string {
   return n.toLocaleString('zh-CN')
 }
 
+/**
+ * 货币图形前缀（估价/ISK 金额行用），2026-09-05 船长指示标注：
+ * 目前暂用 emoji 💠 作为"估价"前缀；**将来统一金钱符号图形时，只需同步替换本常量**，
+ * 各调用处（如 MapPage 矿带卡"估价"行）经本常量引用即自动跟随，无需逐个改。
+ */
+export const MONEY_GLYPH = '💠'
+
 /** m³ 显示 */
 export function m3(n: number): string {
   return `${Math.floor(n).toLocaleString('zh-CN')} m³`
