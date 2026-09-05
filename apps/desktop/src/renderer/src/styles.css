@@ -3153,6 +3153,9 @@ body {
 .app-a-plasma{background:#5fd0ff}
 /* ����¯��ת���ȣ���ҵϸ���� */
 .app-refine-progress { height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 3px; max-width: 460px; }
+/* 精炼炉卡内运行进度（船长 2026-09-05：卡内要能看清当前批周期进度） */
+.app-belt-card .app-refine-progress { height: 7px; width: 100%; max-width: none; border-radius: 4px; background: rgba(0,0,0,.42); }
+.app-belt-card .app-refine-progress-fill { border-radius: 4px; }
 .app-refine-progress-fill { display: block; height: 100%; background: #6fd98a; border-radius: 2px; transition: width .4s ease; }
 
 /* v18 fit racks (three rack groups with bay rows) */

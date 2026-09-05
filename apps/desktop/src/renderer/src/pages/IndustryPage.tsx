@@ -135,6 +135,15 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         {isWreck ? '每批开箱 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）' : def.description}
       </div>
       <div className="app-belt-ore">{dataLine}</div>
+      {/* 运转中：当前批周期进度条（船长 2026-09-05） */}
+      {running ? (
+        <div
+          className="app-refine-progress"
+          title={`当前批进度 ${running.percent}%（每批 ${running.batchUnits} 单位 / ${Math.round(running.cycleMs / 100) / 10} 秒；到点自动续批）`}
+        >
+          <span className="app-refine-progress-fill" style={{ width: `${running.percent}%` }} />
+        </div>
+      ) : null}
       {econ}
       <div className="app-belt-actions">
         {running ? (
