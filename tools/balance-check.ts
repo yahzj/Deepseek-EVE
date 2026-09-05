@@ -22,6 +22,7 @@ import {
   isAtHome,
   learnBlueprint,
   loadSaveFile,
+  marketGoodOf,
   refineRunActive,
   sellAll,
   sellWareItem,
@@ -56,6 +57,7 @@ interface StrategyResult {
   name: string
   desc: string
   finalIsk: number
+  finalAssets: number
   finalShip: string
   milestones: string[]
   snapshots: Snapshot[]
@@ -99,6 +101,7 @@ function runStrategy(strategy: Strategy): StrategyResult {
     name: strategy.name,
     desc: strategy.desc,
     finalIsk: 0,
+    finalAssets: 0,
     finalShip: '',
     milestones: [],
     snapshots: [],
@@ -142,8 +145,46 @@ function runStrategy(strategy: Strategy): StrategyResult {
 
   // 收尾统计
   result.finalIsk = Math.floor(state.wallet.isk)
+  result.finalAssets = Math.floor(wealthOf(state, ctx)) // 总资产口径：钱包 + 舰队/已装模块 + 仓库/书架折算
   result.finalShip = shipName(state, ctx)
   return result
+}
+
+/**
+ * 总资产估算（甲案·2026-09-05）：把"非现金产出"折回市场常驻 base 价，避免只比钱包——
+ * 精炼/装备流的矿物、自造件、书架书都是资产。口径 = 现值（可再卖）而非成本，三策略同源可比。
+ */
+function wealthOf(state: GameState, ctx: SimContext): number {
+  let v = state.wallet.isk
+  const valItem = (id: string, u: number): number => {
+    const g = marketGoodOf(ctx, 'item', id)
+    const b = g?.basePrice ?? ctx.items.get(id)?.baseSellPriceIsk ?? 0
+    return b * u
+  }
+  // 仓库物品（原矿/矿物/弹药等）
+  for (const [id, u] of Object.entries(state.warehouse.items ?? {})) v += valItem(id, u)
+  // 装备库（自造未装/备用件）
+  for (const [id, u] of Object.entries(state.moduleBay ?? {})) v += (marketGoodOf(ctx, 'module', id)?.basePrice ?? 0) * u
+  // 蓝图书架（重复/未学书仍可卖）
+  for (const [id, n] of Object.entries(state.blueprintStock ?? {})) {
+    if (n > 0) v += (marketGoodOf(ctx, 'blueprint', id)?.basePrice ?? 0) * n
+  }
+  // 全舰队：船（按市场常驻 base/priceIsk）+ 货仓 + 已装模块
+  for (const f of Object.values(state.fleet)) {
+    if (!f) continue
+    if (f.defId) {
+      const bp = marketGoodOf(ctx, 'ship', f.defId)?.basePrice ?? ctx.ships.get(f.defId)?.priceIsk ?? 0
+      v += bp
+    }
+    for (const [id, u] of Object.entries(f.cargo ?? {})) v += valItem(id, u)
+    for (const rack of Object.values(f.fitted)) {
+      const list = Array.isArray(rack) ? rack : rack ? [rack] : []
+      for (const id of list) {
+        if (typeof id === 'string' && id.length > 0) v += marketGoodOf(ctx, 'module', id)?.basePrice ?? 0
+      }
+    }
+  }
+  return v
 }
 
 function shipName(state: GameState, ctx: SimContext): string {
@@ -309,7 +350,7 @@ function report(results: StrategyResult[]): void {
   for (const r of results) {
     console.log('')
     console.log(`■ ${r.name} —— ${r.desc}`)
-    console.log(`  24 小时后：${fmtIsk(r.finalIsk)} ISK · 舰船：${r.finalShip}`)
+    console.log(`  24 小时后：${fmtIsk(r.finalIsk)} ISK（钱包） · 总资产 ${fmtIsk(r.finalAssets)} ISK · 舰船：${r.finalShip}`)
     if (r.milestones.length > 0) {
       console.log('  里程碑：' + r.milestones.join(' → '))
     }
