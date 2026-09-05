@@ -87,6 +87,7 @@ import {
   skipTutorial,
   finishTutorial,
   deliverTutorialOre,
+  onTutorialSkillPageOpened,
   tutorialAccelWait,
   ONB_AWAKEN,
 } from '@whale/core'
@@ -1166,6 +1167,16 @@ export class GameEngine {
   /** 重要任务①「补给协议·首批矿物」：交付富凡晶石（仓库扣取）→ 4,000 ISK + 基础 AI 核心 */
   deliverTutorialOreAt(): CommandResult {
     const result = deliverTutorialOre(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 序章·苏醒 S5：玩家到达技能页 → 特典即时归档（人工智能专家 Lv1，免训练等待）并进入分身步骤 */
+  prologueSkillOpened(): CommandResult {
+    const result = onTutorialSkillPageOpened(this.state)
     if (result.ok) {
       void this.persist()
       this.notify()

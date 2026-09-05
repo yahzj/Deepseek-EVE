@@ -282,7 +282,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const guideOn = tutStep >= 1 && tutStep <= 6
   const epiOn = tutStep === 7
   const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
-    1: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
+    // 步骤 1 开放 物品页：玩家若取消采矿/返航,可手动把货仓矿石卸入仓库（防卡教程——船长复测反馈）
+    1: { pages: ['ship', 'map', 'items'], map: 'mine', ship: 'fleet' },
     2: { pages: ['map'], map: 'task' },
     3: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
     4: { pages: ['map'], map: 'bounty' },
@@ -340,6 +341,15 @@ export function App({ engine }: { engine: GameEngine }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep])
+  // S5：到达技能页 → 特典即时归档（人工智能专家 Lv1，免训练等待——船长复测：学习该技能没有加速）
+  const skillSeenStep = useRef(-1)
+  useEffect(() => {
+    if (tutStep === 5 && page === 'skills' && skillSeenStep.current !== 5) {
+      skillSeenStep.current = 5
+      engine.prologueSkillOpened()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutStep, page])
 
   return (
     <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
@@ -428,7 +438,7 @@ export function App({ engine }: { engine: GameEngine }) {
             ) : null}
             {page === 'market' ? <MarketPage {...pageProps} focusKey={mktFocus?.key ?? null} focusSeq={mktFocus?.seq ?? 0} /> : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
-            {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
+            {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === 5 ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} /> : null}
           </div>
         </main>

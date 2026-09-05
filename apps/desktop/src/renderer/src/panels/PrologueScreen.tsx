@@ -70,12 +70,12 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
 
   const confirm = (): void => {
     if (phase === 'open') return
-    // “睁眼”转场后再唤醒（引擎写入呼号并进入采集步骤）
+    // “睁眼”转场后再唤醒（引擎写入呼号并进入采集步骤）；光晕消散加长后总时长 1.9s（船长 2026-09-05）
     setPhase('open')
     window.setTimeout(() => {
       const r = engine.prologueAwaken(name)
       if (!r.ok) setErr(r.error ?? '写入失败')
-    }, 1400)
+    }, 1900)
   }
 
   return (
