@@ -3470,3 +3470,6 @@ body {
 .app-items-head .app-tab { flex: 0 1 150px; }
 .app-items-head-note { padding-bottom: 6px; font-size: 12px; }
 
+
+/* SVG 图标统一（2026-09-05）：标签/导航图标对齐 */
+.app-tab-ico { display: inline-flex; align-items: center; }

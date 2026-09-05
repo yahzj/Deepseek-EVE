@@ -21,6 +21,7 @@ import type { AiCoreType, FleetShipState } from '@whale/core'
 import { aiWinPreview, durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
+import { Glyph } from '../ui/Glyphs'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -32,9 +33,9 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 /** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05） */
 export type ShipTab = 'fleet' | 'ai' | 'shop'
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
-  { key: 'fleet', label: '我的舰队', icon: '◈' },
-  { key: 'ai', label: 'AI 指挥', icon: '⚙', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
-  { key: 'shop', label: '舰船市场', icon: '¥' },
+  { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
+  { key: 'ai', label: 'AI 指挥', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
+  { key: 'shop', label: '舰船市场', icon: 'nav-shop' },
 ]
 
 export function ShipPage({
@@ -157,7 +158,9 @@ export function ShipPage({
             onClick={() => setActiveTab(t.key)}
             title={t.title}
           >
-            <span>{t.icon}</span>
+            <span className="app-tab-ico">
+              <Glyph name={t.icon} size={15} />
+            </span>
             <span>{t.label}</span>
           </button>
         ))}

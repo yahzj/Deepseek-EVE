@@ -27,19 +27,20 @@ import {
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
+import { Glyph } from '../ui/Glyphs'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH } from './common'
 
-/** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口） */
+/** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'task'
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
-  { key: 'star', label: '星图·远征', icon: '✦' },
-  { key: 'mine', label: '矿带开采', icon: '⛏' },
-  { key: 'bounty', label: '战斗悬赏', icon: '⚔' },
-  { key: 'salvage', label: '残骸打捞', icon: '⚒' },
-  { key: 'task', label: '任务中心', icon: '▦' },
+  { key: 'star', label: '星图·远征', icon: 'nav-map' },
+  { key: 'mine', label: '矿带开采', icon: 'nav-mine' },
+  { key: 'bounty', label: '战斗悬赏', icon: 'nav-bounty' },
+  { key: 'salvage', label: '残骸打捞', icon: 'nav-salvage' },
+  { key: 'task', label: '任务中心', icon: 'nav-task' },
 ]
 
 export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProps & {
@@ -58,7 +59,9 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProp
             className={`app-subtab${mapTab === t.key ? ' is-active' : ''}`}
             onClick={() => onMapTab?.(t.key)}
           >
-            <span>{t.icon}</span>
+            <span className="app-tab-ico">
+              <Glyph name={t.icon} size={15} />
+            </span>
             <span>{t.label}</span>
           </button>
         ))}

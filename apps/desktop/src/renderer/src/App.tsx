@@ -28,16 +28,17 @@ import { BattleScreen } from './panels/BattleScreen'
 import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
+import { Glyph } from './ui/Glyphs'
 
-/** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例） */
+/** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例）；icon = Glyphs 字形名 */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: 'map', label: '出港', icon: '✦' },
-  { key: 'ship', label: '舰船', icon: '◈' },
-  { key: 'fit', label: '装配', icon: '⚙' },
-  { key: 'items', label: '物品', icon: '▤' },
-  { key: 'market', label: '市场', icon: '¥' },
-  { key: 'industry', label: '工业', icon: '⚒' },
-  { key: 'skills', label: '技能', icon: '✚' },
+  { key: 'map', label: '出港', icon: 'nav-map' },
+  { key: 'ship', label: '舰船', icon: 'nav-ship' },
+  { key: 'fit', label: '装配', icon: 'nav-fit' },
+  { key: 'items', label: '物品', icon: 'nav-items' },
+  { key: 'market', label: '市场', icon: 'nav-market' },
+  { key: 'industry', label: '工业', icon: 'nav-industry' },
+  { key: 'skills', label: '技能', icon: 'nav-skills' },
 ]
 
 type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
@@ -310,7 +311,9 @@ export function App({ engine }: { engine: GameEngine }) {
               className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}`}
               onClick={() => setPage(item.key)}
             >
-              <span className="app-nav-icon">{item.icon}</span>
+              <span className="app-nav-icon">
+                <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} />
+              </span>
               <span>{item.label}</span>
             </button>
           ))}
