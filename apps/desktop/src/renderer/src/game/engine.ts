@@ -41,6 +41,7 @@ import {
   lockShip,
   marketQuote,
   marketSellHolding,
+  marketSellPreview,
   offlineSplit,
   placeBuyOrder,
   recallExpedition,
@@ -696,6 +697,11 @@ export class GameEngine {
     }
     if (res.ok) return { ok: true }
     return { ok: false, error: res.error ?? '出售失败。' }
+  }
+
+  /** 市价卖出预览（只读）：全部卖出确认框用——可成交件数/毛额/税/税后到账/剩余 */
+  sellPreviewAt(goodKey: string, qty?: number): ReturnType<typeof marketSellPreview> {
+    return marketSellPreview(this.state, this.ctx, goodKey, qty)
   }
 
   /** 市价出售机库里的舰船（须空仓、无装配、非驾驶） */

@@ -912,6 +912,47 @@ export function marketSellHolding(
   return { ok: true, sold: res.sold, total: res.total, remaining: res.remaining }
 }
 
+/**
+ * 市价卖出预览（只读，不改任何状态；船长 2026-09-05：全部卖出前需向玩家展示实际成交与到账）：
+ * 与 sellAtMarket 同源模拟——按收购簿出价从高到低逐单吃到簿穿/数量尽；
+ * 返回可成交件数、成交毛额、贸易税、税后净到账与剩余（剩余将自动挂限价卖单，不计入本次到账）。
+ */
+export function marketSellPreview(
+  state: GameState,
+  ctx: SimContext,
+  goodKey: string,
+  qty?: number,
+): { ok: boolean; error?: string; avail: number; want: number; fillable: number; orders: number; gross: number; tax: number; net: number; leftover: number } {
+  const def = ctx.marketGoods.get(goodKey)
+  const zero = { avail: 0, want: 0, fillable: 0, orders: 0, gross: 0, tax: 0, net: 0, leftover: 0 }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, ...zero }
+  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', ...zero }
+  if (def.kind === 'ship' || def.kind === 'aicore') {
+    return { ok: false, error: '舰船请在船坞/舰船页出售（需货仓清空、无装配）。', ...zero }
+  }
+  const avail = naturalHoldings(state, def)
+  const want = qty === undefined ? avail : Math.max(0, Math.floor(qty))
+  const n = Math.min(want, avail)
+  if (n <= 0 || avail <= 0) return { ok: false, error: '没有可卖的库存。', ...zero, avail, want }
+  let remaining = n
+  let total = 0
+  let orders = 0
+  const buyList = state.market.npcBuy[goodKey] ?? []
+  const sorted = [...buyList].sort((a, b) => b.price - a.price)
+  for (const npc of sorted) {
+    if (remaining <= 0) break
+    const take = Math.min(remaining, npc.qty)
+    total += take * npc.price
+    remaining -= take
+    orders += 1
+  }
+  const sold = n - remaining
+  const mult = sellStandingMult(state, def) * marketSellSkillMult(state, def.kind)
+  const gross = Math.round(total * mult)
+  const net = netAfterTax(state, ctx, gross)
+  return { ok: true, avail, want: n, fillable: sold, orders, gross, tax: gross - net, net, leftover: remaining }
+}
+
 /** 挂限价卖单（市场页用）：从自然库存锁定货入 escrow 后挂单；撤单自动退回原库存 */
 export function listSellHolding(
   state: GameState,

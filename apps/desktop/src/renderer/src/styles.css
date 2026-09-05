@@ -7149,3 +7149,12 @@ body {
 .app-settings-desc{font-size:10px;color:var(--wui-text-dim)}
 .app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:10px;border-top:1px dashed rgba(85,112,140,.3)}
 .app-settings-btns{display:flex;gap:6px}
+/* ── 市场「全部卖出」确认框（2026-09-05 船长：先预览实际成交与到账再确认） ── */
+.app-mkt-confirm-mask { position: fixed; inset: 0; z-index: 96; background: rgba(3,6,10,.62); display: flex; align-items: center; justify-content: center; }
+.app-mkt-confirm { width: min(460px, 90vw); background: linear-gradient(180deg, rgba(24,30,42,.99), rgba(10,15,22,.99)); border: 1px solid #b08a3a; border-radius: 12px; padding: 16px 18px; box-shadow: 0 14px 44px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: 9px; }
+.app-mkt-confirm-title { font-size: 15px; font-weight: 800; color: #ffe08a; }
+.app-mkt-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: #b9c8d8; }
+.app-mkt-confirm-row.is-net { border-top: 1px dashed rgba(255,255,255,.16); padding-top: 8px; }
+.app-mkt-confirm-note { font-size: 12px; color: #ffcf8a; line-height: 1.7; border: 1px dashed #7a5a2a; background: rgba(90,60,20,.16); border-radius: 8px; padding: 7px 10px; }
+.app-mkt-confirm-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+
