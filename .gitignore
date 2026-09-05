@@ -22,3 +22,6 @@ apps/desktop/dist-web/
 
 # Electron builder output (green zip + setup exe)
 apps/desktop/release/
+
+# 内容工作台中间产物（导出 CSV；源数据以 git 为准）
+content-csv/

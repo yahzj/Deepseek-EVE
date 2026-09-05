@@ -18,6 +18,7 @@
     "typecheck": "npm run typecheck -w @whale/core && npm run typecheck -w @whale/data && npm run typecheck -w @whale/ui && npm run typecheck -w @whale/desktop",
     "balance": "tsx tools/balance-check.ts",
     "content:check": "tsx tools/content-check.ts",
+    "content:export": "tsx tools/content-export.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts"
   },
   "devDependencies": {
