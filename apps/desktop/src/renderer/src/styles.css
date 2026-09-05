@@ -27,6 +27,32 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* ── 手机竖屏自动横屏（船长 2026-09-05）：整窗 rotate(-90°) + 按视口等比缩放填屏，游戏画面横过来显示 ── */
+.app-root.is-mobile-rot {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vh;        /* 虚拟横屏宽 = 物理视口高 */
+  height: 100vw;       /* 虚拟横屏高 = 物理视口宽 */
+  transform: translate(-50%, -50%) rotate(-90deg) scale(var(--mob-scale, 1));
+  transform-origin: center center;
+  overflow: hidden;
+}
+/* 旋转后物理视口宽仍是竖屏宽(<1180)，会误触发 max-width:1180px 折叠——旋转时维持桌面横排布局 */
+.app-root.is-mobile-rot .app-mkt-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
+}
+/* 全屏覆盖层宽度改用"虚拟横屏宽"(100vh)，避免被 100vw 截窄 */
+.app-root.is-mobile-rot .app-modal,
+.app-root.is-mobile-rot .app-detail {
+  max-width: min(460px, calc(100vh - 40px));
+}
+.app-root.is-mobile-rot .app-event-toast {
+  max-width: min(640px, calc(100vh - 40px));
+}
+.app-root.is-mobile-rot .app-bts-hpWrap {
+  max-width: 56vh;
+}
 .app-header {
   flex-shrink: 0;
   display: flex;

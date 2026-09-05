@@ -111,6 +111,23 @@ export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
   useEffect(() => engine.subscribe(force), [engine])
 
+  // ── 手机竖屏自动横屏（船长 2026-09-05）：触屏 + 竖屏时把整窗旋转 90° 并等比缩放，游戏画面横过来显示（免手动转手机） ──
+  const [mobileRot, setMobileRot] = useState(false)
+  useEffect(() => {
+    const update = (): void => {
+      const coarse = window.matchMedia('(pointer: coarse)').matches
+      const portrait = window.innerHeight > window.innerWidth
+      setMobileRot(coarse && portrait && window.innerWidth < 900)
+    }
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+
   // 全局：点击被禁用的按钮时，把按钮禁用原因（title / data-disabled-reason）以警告提示弹出，
   // 没有写明原因的统一回退文案——避免"点了没反应"
   useEffect(() => {
@@ -239,7 +256,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const pageProps = { engine, onToast: showToast }
 
   return (
-    <div className="app-root">
+    <div className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
       {/* ───── 顶栏 ───── */}
       <header className="app-header">
         <div className="app-header-left">
