@@ -23,6 +23,7 @@ import {
 } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { Glyph, toneOf } from '../ui/Glyphs'
 import type { PageProps } from './common'
 
 
