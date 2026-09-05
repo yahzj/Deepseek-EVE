@@ -381,6 +381,16 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [qty, setQty] = useState(1)
   const [price, setPrice] = useState(1)
+  const [confirmSell, setConfirmSell] = useState<{
+    avail: number
+    want: number
+    fillable: number
+    orders: number
+    gross: number
+    tax: number
+    net: number
+    leftover: number
+  } | null>(null)
 
   function setDefaults(side: 'buy' | 'sell'): void {
     setTab(side)
@@ -407,12 +417,21 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     if (!r.ok) onToast(r.error ?? '出售失败', true)
     else onToast(`已按市价卖出 ${name}×${n.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
   }
-  /** 全部卖出：一次市价单吃完全部持有（簿吃穿余量自动挂限价卖单，引擎内部逐单撮合） */
-  function doSellAll(): void {
+  /** 全部卖出：先预览（可成交件数/毛额/税/净到账）再弹确认——不直接执行（船长 2026-09-05） */
+  function askSellAll(): void {
     if (holdings <= 0) {
       onToast('没有可卖的库存。', true)
       return
     }
+    const pv = engine.sellPreviewAt(good.key, holdings)
+    if (!pv.ok) {
+      onToast(pv.error ?? '无法卖出', true)
+      return
+    }
+    setConfirmSell(pv)
+  }
+  function doSellAll(): void {
+    setConfirmSell(null)
     const r = engine.sellHoldingAt(good.key, holdings)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
     else onToast(`已全部卖出 ${name}×${holdings.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
@@ -432,6 +451,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   }
 
   return (
+    <>
     <Panel
       title={`市场详情 · ${name}`}
       right={
@@ -525,7 +545,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               {tab === 'buy' ? '市价买入' : '市价卖出'}
             </button>
             {tab === 'sell' ? (
-              <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={doSellAll} title="一次卖出全部持有（按收购簿从高价到低价逐单成交，余量自动挂限价卖单）">
+              <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
                 全部卖出（{holdings}）
               </button>
             ) : null}
@@ -536,6 +556,57 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
         </div>
       </div>
     </Panel>
+      {confirmSell ? (
+        <div className="app-mkt-confirm-mask" onClick={() => setConfirmSell(null)}>
+          <div className="app-mkt-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="app-mkt-confirm-title">确认全部卖出 · {name}</div>
+            <div className="app-mkt-confirm-row">
+              <span>卖出数量</span>
+              <b>{confirmSell.want.toLocaleString('zh-CN')} 件（持有 {confirmSell.avail.toLocaleString('zh-CN')}）</b>
+            </div>
+            <div className="app-mkt-confirm-row">
+              <span>收购簿可立即成交</span>
+              <b className={confirmSell.fillable > 0 ? 'app-trend-up' : ''}>
+                {confirmSell.fillable.toLocaleString('zh-CN')} 件 · {confirmSell.orders} 笔单
+              </b>
+            </div>
+            {confirmSell.fillable > 0 ? (
+              <>
+                <div className="app-mkt-confirm-row">
+                  <span>预计成交额（毛额）</span>
+                  <b className="app-gold">{isk(confirmSell.gross)} ISK</b>
+                </div>
+                <div className="app-mkt-confirm-row">
+                  <span>贸易税</span>
+                  <b>−{isk(confirmSell.tax)} ISK</b>
+                </div>
+                <div className="app-mkt-confirm-row is-net">
+                  <span>预计实际到账（税后）</span>
+                  <b className="app-gold">{isk(confirmSell.net)} ISK</b>
+                </div>
+              </>
+            ) : null}
+            {confirmSell.leftover > 0 ? (
+              <div className="app-mkt-confirm-note">
+                ⚠ 收购簿只能吃下 {confirmSell.fillable.toLocaleString('zh-CN')} 件，其余{' '}
+                {confirmSell.leftover.toLocaleString('zh-CN')} 件将自动按边际价挂限价卖单——挂单成交前不计入本次到账（挂单免费，可随时撤销）。
+              </div>
+            ) : null}
+            {confirmSell.fillable <= 0 ? (
+              <div className="app-mkt-confirm-note">⚠ 当前收购簿为空：本次不会立即成交，全部数量将提示改为挂限价卖单。</div>
+            ) : null}
+            <div className="app-mkt-confirm-btns">
+              <button className="app-btn is-small" onClick={() => setConfirmSell(null)}>
+                取消
+              </button>
+              <button className="app-btn is-small is-sellall" onClick={doSellAll}>
+                确认全部卖出
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }
 

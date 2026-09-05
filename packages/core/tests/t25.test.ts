@@ -10,28 +10,30 @@ import { rollLowSecAmbush } from '../src/encounters'
 
 describe('低安扫描规则（2026-09-05）', () => {
   const ctx = buildSimContext()
+  // GalaxyDef.security 为可选（v24 起），此处归一化为确定值
+  const secs = [...ctx.galaxies.values()].map((g) => ({ id: g.id, sec: g.security ?? 1 }))
 
   it('扫描窗口：目标星系越不安全越久（高安不延长）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
-    const lows = [...ctx.galaxies.values()].filter((g) => g.security < 0.5)
-    const highs = [...ctx.galaxies.values()].filter((g) => g.security >= 0.5)
+    const lows = secs.filter((x) => x.sec < 0.5)
+    const highs = secs.filter((x) => x.sec >= 0.5)
     expect(lows.length).toBeGreaterThan(0)
     expect(highs.length).toBeGreaterThan(0)
-    const low = lows.reduce((a, b) => (a.security < b.security ? a : b))
-    const high = highs.reduce((a, b) => (a.security < b.security ? a : b))
+    const low = lows.reduce((a, b) => (b.sec < a.sec ? b : a))
+    const high = highs.reduce((a, b) => (b.sec < a.sec ? b : a))
     const lowWin = scanWindowMsFor(state, ctx, low.id)
     const highWin = scanWindowMsFor(state, ctx, high.id)
     // 无技能时高安窗口 = 基准 10 分钟
     expect(highWin).toBe(SCAN_WINDOW_MS)
     // 低安按公式延长（1 + 0.8×(0.5 − sec)）
-    const expectLow = Math.round(SCAN_WINDOW_MS * (1 + 0.8 * Math.max(0, 0.5 - low.security)))
+    const expectLow = Math.round(SCAN_WINDOW_MS * (1 + 0.8 * Math.max(0, 0.5 - low.sec)))
     expect(lowWin).toBe(expectLow)
     expect(lowWin).toBeGreaterThan(highWin)
   })
 
   it('低安扫描即暴露：无入场缓冲可遇袭，命中后扫描作业不中断', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 42 })
-    const low = [...ctx.galaxies.values()].filter((g) => g.security < 0.5).reduce((a, b) => (a.security < b.security ? a : b))
+    const low = secs.filter((x) => x.sec < 0.5).reduce((a, b) => (b.sec < a.sec ? b : a))
     state.scanning = { active: true, galaxyId: low.id, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null }
     state.lowSecPresence = {} // 无在场记录 → 普通暴露会被 5 分钟缓冲拦下；扫描应不受限
     state.encounterZoneCooldown = {}
