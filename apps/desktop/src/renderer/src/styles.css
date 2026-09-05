@@ -3512,6 +3512,26 @@ body {
 .app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: 12px; color: #9db8a8; background: rgba(255,255,255,.04); border: 1px solid #3a4a40; border-radius: 5px; padding: 5px 12px; cursor: pointer; }
 .app-pro-skip:hover { color: #d8ffe8; border-color: #6a9a80; }
 
+/* 操作图标（批2 SVG） */
 
-/* ���ڲ���ͼ�꣨��2 SVG�� */
+
+
+
 .app-ico { display: inline-flex; align-items: center; vertical-align: -2px; margin-right: 3px; }
+
+
+/* 自检不合格条目整行红色（船长 2026-09-05） */
+.app-pro-line.is-fail { color: #ff7f6e; }
+.app-pro-line.is-fail .app-pro-mod, .app-pro-line.is-fail .app-pro-text { color: #ff8f7e; }
+.app-pro-line.is-fail .app-pro-mark { color: #ff5040; font-weight: 800; }
+/* 起名后“睁眼”转场（船长 2026-09-05）：眼睑张开 + 一线光扩成视界 + 白光闪屏 */
+.app-pro-open { position: absolute; inset: 0; overflow: hidden; }
+.app-pro-lid { position: absolute; left: 0; right: 0; height: 50%; background: #000; z-index: 2; }
+.app-pro-lid.is-top { top: 0; animation: app-pro-lids .95s ease-out .1s forwards; }
+.app-pro-lid.is-bottom { bottom: 0; animation: app-pro-lids .95s ease-out .1s forwards; }
+@keyframes app-pro-lids { from { height: 50%; } to { height: 0; } }
+.app-pro-eye { position: absolute; left: 50%; top: 50%; width: 4px; height: 0; transform: translate(-50%, -50%); background: linear-gradient(180deg, #eafff2, #9ff0c0); border-radius: 4px; box-shadow: 0 0 26px 6px rgba(160, 245, 200, .8); z-index: 1; animation: app-pro-eye .95s ease-out .1s forwards; }
+@keyframes app-pro-eye { from { height: 2px; } to { height: 60vh; opacity: .85; } }
+.app-pro-flash { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 50% 46%, rgba(225,255,240,.98) 0%, rgba(150,235,190,.75) 26%, rgba(30,80,55,.4) 60%, rgba(0,0,0,.92) 100%); opacity: 0; animation: app-pro-flashfade .55s ease-in .62s forwards; }
+@keyframes app-pro-flashfade { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+
