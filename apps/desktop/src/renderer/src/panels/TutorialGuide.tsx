@@ -67,10 +67,10 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
   6: {
     title: '分身：指派沙猫采矿',
     lines: [
-      '舰船页 →「AI 指挥」：为沙猫装载基础 AI 核心并指派采矿作业——那是你的第一个分身。',
+      '舰船页 →「AI 指挥中心」：为沙猫装载基础 AI 核心并指派采矿作业——那是你的第一个分身。',
     ],
     go: { page: 'ship', shipTab: 'ai' },
-    goLabel: '前往 AI 指挥',
+    goLabel: '前往 AI 指挥中心',
   },
 }
 

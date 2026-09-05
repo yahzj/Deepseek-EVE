@@ -34,7 +34,7 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 export type ShipTab = 'fleet' | 'ai' | 'shop'
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
-  { key: 'ai', label: 'AI 指挥', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
+  { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
   { key: 'shop', label: '舰船市场', icon: 'nav-shop' },
 ]
 
