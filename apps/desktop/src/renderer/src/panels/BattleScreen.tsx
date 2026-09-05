@@ -553,35 +553,37 @@ const meSpeedRef = useRef(200)
       </div>
     )
   })
-  /* V18B 残骸层：被击毁单位在死亡锚点（lane 坐标）播放爆炸（boom 期），
-     之后残骸本体原位淡出（不占队列——补位由 foeAliveTags 完成） */
+  /* V18B-3 残骸层（2026-09-05 单船复测修复）：僵尸帧（boomAt 前）本体仍在队列，本层
+     一律不渲染——旧实现此时 fadeT 为负、灰舰全显，造成“灰舰幻影叠在原位舰体上方”。
+     爆炸帧起才在本体原处渲染：灰舰残骸常驻 + boom 期叠加闪光环，boom 结束后残骸淡出。
+     残骸盒 = 舰体实际比例（size × 0.46×size）以锚点居中——旧正方形盒内舰体图贴左上，
+     视觉中心偏高 ~0.27×size，正是“残骸向上偏移”的来源。 */
   const WRECK_FADE_MS = 520
   const wreckEls = [...wreckRef.current.entries()].map(([tag, w]) => {
+    const sinceBoom = now - w.boomAt
+    if (sinceBoom < 0) return null // 僵尸帧：本体仍在队列原样飞行，无残骸幻影
     const orig = origIdxOf(tag)
     const size = orig === 0 ? LAY.MAIN : LAY.ESC
-    const box = { left: w.x - size / 2, top: w.y - size / 2, width: size, height: size }
-    const boomLive = now >= w.boomAt && now - w.boomAt < BOOM_LIFE
-    if (boomLive) {
-      return (
-        <span key={tag} className="app-bts-wreck" style={box}>
-          <span className="app-bts-boom">
-            <i className="b-core" />
-            <i className="b-ring" />
-            <i className="b-ring r2" />
-          </span>
-        </span>
-      )
-    }
-    const fadeT = (now - (w.boomAt + BOOM_LIFE)) / WRECK_FADE_MS
+    const h = Math.round(size * 0.46)
+    const boomLive = sinceBoom < BOOM_LIFE
+    const fadeT = (sinceBoom - BOOM_LIFE) / WRECK_FADE_MS
     if (fadeT >= 1) return null // 淡出完成：不再渲染（锚点留存仅作历史弹道落点）
+    const box = { left: w.x - size / 2, top: w.y - h / 2, width: size, height: h }
     return (
-      <span key={tag} className="app-bts-wreck" style={{ ...box, opacity: Math.max(0, 1 - fadeT) }}>
+      <span key={tag} className="app-bts-wreck" style={{ ...box, opacity: fadeT > 0 ? Math.max(0, 1 - fadeT) : 1 }}>
         <ShipSprite
           role={orig === 0 ? 'armed' : 'hauler'}
           flip={foeFlip}
           accent={orig === 0 ? '#ff8373' : '#c25a4a'}
           size={size}
         />
+        {boomLive ? (
+          <span className="app-bts-boom">
+            <i className="b-core" />
+            <i className="b-ring" />
+            <i className="b-ring r2" />
+          </span>
+        ) : null}
       </span>
     )
   })
