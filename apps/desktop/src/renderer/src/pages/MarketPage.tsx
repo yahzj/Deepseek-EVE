@@ -484,8 +484,17 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const trend = marketTrend(state, good.key)
   const holdings = naturalHoldings(state, good)
   const lock = goodLockedReason(state, good)
-  const buyOrders = [...(state.market.npcBuy[good.key] ?? [])].sort((a, b) => b.price - a.price).slice(0, 8)
-  const sellOrders = [...(state.market.npcSell[good.key] ?? [])].sort((a, b) => a.price - b.price).slice(0, 8)
+  // 按价格档聚合成交量（2026-09-05 船长：同价订单不应拆成多行——盘口按档合并），再取前 8 档
+  const agg = (orders: Array<{ price: number; qty: number }>, desc: boolean): Array<{ price: number; qty: number }> => {
+    const m = new Map<number, number>()
+    for (const o of orders) m.set(o.price, (m.get(o.price) ?? 0) + o.qty)
+    return [...m.entries()]
+      .map(([price, qty]) => ({ price, qty }))
+      .sort((a, b) => (desc ? b.price - a.price : a.price - b.price))
+      .slice(0, 8)
+  }
+  const buyOrders = agg(state.market.npcBuy[good.key] ?? [], true)
+  const sellOrders = agg(state.market.npcSell[good.key] ?? [], false)
   const maxOrderQty = Math.max(1, ...buyOrders.map((o) => o.qty), ...sellOrders.map((o) => o.qty))
   const sortedHist = hist.length ? [...hist].sort((a, b) => a - b) : []
   const median = sortedHist.length ? sortedHist[Math.floor(sortedHist.length / 2)]! : undefined
