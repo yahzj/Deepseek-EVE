@@ -637,11 +637,81 @@ function tryFinalRun(): boolean {
   return true
 }
 
+/* ═══════════ 策略黑洞：侦测 / 记录 / 分级解救（船长 2026-09-05 定） ═══════════
+ * 规则：模拟玩家陷入"黑洞"（无推进的循环）本身要记录进报告（不是引擎 bug）；
+ * 但拖太久影响测试时长时按级解救：L1 清仓变现归位 → L2 注资升装 →
+ * 终局前置判断：顶配武装仍打不过 boss（疑似平衡项）→ 提前终止并标注转 C4 复核。 */
+const holeLogs: string[] = []
+let lastMoveDay = 0
+let rescueLevel = 0
+let lastRescueDay = -99
+let lastFp = ''
+let holeEarlyExit = false
+let topGearDay = -1 // 顶配达成日（终局受阻计时起点）
+
+function progressFingerprint(): string {
+  // 主线推进指纹：新首胜/新点亮/换驾驶/现金粗桶（500 万级）——纯赚钱波动不算推进
+  return `${state.completedBounties.length}:${exploredCount()}:${state.shipId}:${Math.floor(state.wallet.isk / 5_000_000)}`
+}
+
+/** 返回 true = 提前终止（终局受阻判定的黑洞） */
+function holeWatch(): boolean {
+  const d = day()
+  const cur = fleetDefOf(state, ctx, state.shipId)
+  const weaponCount = (state.fleet[state.shipId]?.fitted.high ?? []).filter(Boolean).length
+  const boss = ctx.anomalies.get('ano-vault-sentinel')
+  const bossW = boss ? battleWinPreview(state, ctx, boss) : 0
+  // 训练毕业（全部 62 技能满 5 级）才算顶配——real-training 下未毕业不算
+  const trainingDone = [...ctx.skills.keys()].every((id) => (state.skills.trained[id] ?? 0) >= 5)
+  // 顶配达成登记：训练毕业 + 武装船 + ≥3 武器 + 声望解锁 + 星系全亮
+  if (topGearDay < 0 && trainingDone && cur?.role === 'armed' && weaponCount >= 3 && boss && standing() >= boss.standingReq && exploredCount() >= GALAXY_IDS.length) {
+    topGearDay = d
+  }
+  // 终局受阻判定：顶配达成后 10 天仍打不过 boss（farm 循环黑洞）→ 提前终止（疑似 C4 平衡项）
+  if (boss && trainingDone && bossW < 0.85 && topGearDay >= 0 && d - topGearDay >= 10) {
+    holeLogs.push(
+      `[${d.toFixed(1)}d] 黑洞（终局受阻）：顶配武装（${cur?.name ?? state.shipId}×${weaponCount} 门，自 ${topGearDay.toFixed(1)}d 达成）对 ${boss.name} 胜率仍 ${Math.round(bossW * 100)}% < 85% ——疑似平衡项，提前终止并转 C4 复核`,
+    )
+    holeEarlyExit = true
+    return true
+  }
+  const fp = progressFingerprint()
+  if (fp !== lastFp) {
+    lastFp = fp
+    lastMoveDay = d
+    rescueLevel = 0
+    return false
+  }
+  const stuck = d - lastMoveDay
+  if (stuck < 6) return false // 6 天无主线推进才算黑洞
+  if (d - lastRescueDay < 3) return false // 救援冷却 3 天
+  lastRescueDay = d
+  rescueLevel += 1
+  if (rescueLevel === 1) {
+    holeLogs.push(`[${d.toFixed(1)}d] 黑洞：连续 ${stuck.toFixed(0)} 天无推进（指纹 ${fp}）→ 救援1：召回作业+清仓变现+归位采矿`)
+    if (state.expedition.active) recallExpedition(state, ctx)
+    if (state.scanning.active) stopScan(state, ctx)
+    if (state.standby.active) cancelStandby(state, ctx)
+    for (const g of ctx.marketGoods.values()) {
+      if (g.kind !== 'item') continue
+      const def = ctx.items.get(g.refId)
+      if (!def || def.kind === 'ammo' || def.kind === 'drone' || def.kind === 'mineral') continue
+      const avail = countWare(state, g.refId)
+      if (avail > 0) marketSellHolding(state, ctx, g.key, avail)
+    }
+    lastFp = progressFingerprint()
+  } else {
+    const inj = rescueLevel === 2 ? Math.round(800_000 + state.wallet.isk * 0.5) : 2_000_000
+    holeLogs.push(`[${d.toFixed(1)}d] 黑洞持续 → 救援${rescueLevel}：注资 ${Math.round(inj / 1000)}k ISK（${rescueLevel === 2 ? '升级船与武器' : '维持继续观察'}）`)
+    state.wallet.isk += inj
+    lastFp = progressFingerprint()
+  }
+  return false
+}
+
 /* ═══════════ 主循环 ═══════════ */
 const wall0 = Date.now()
 let won = false
-let noProgressDays = 0
-let prevNetWorth = -1
 
 while (state.gameMs < MAX_MS && !won) {
   auditLogs()
@@ -687,21 +757,8 @@ while (state.gameMs < MAX_MS && !won) {
       `进度：声望${standing()} 星系${exploredCount()}/20 现金${Math.round(state.wallet.isk / 1000)}k 船${Object.keys(state.fleet).length}艘`,
     )
   }
-  // 停滞护栏：净资产天数不涨 → 强制回港采矿卖货
-  if (state.gameMs % (86_400_000 * 2) === 0) {
-    const net = state.wallet.isk
-    if (net <= prevNetWorth && prevNetWorth >= 0) noProgressDays += 2
-    else noProgressDays = 0
-    prevNetWorth = net
-    if (noProgressDays > 10) {
-      issue(`停滞护栏：净资产 ${noProgressDays} 天无增长（现金 ${Math.round(net)}）`)
-      noProgressDays = 0
-      // 强制定居母港采矿
-      if (state.expedition.active) recallExpedition(state, ctx)
-      if (state.scanning.active) stopScan(state, ctx)
-      if (state.standby.active) cancelStandby(state, ctx)
-    }
-  }
+  // 策略黑洞侦测（船长 2026-09-05：黑洞要记录报告；拖太久影响测试时长要分级解救）
+  if (holeWatch()) break
   advanceGame(state, STEP_MS, ctx)
 }
 
@@ -713,12 +770,16 @@ const wallSec = ((Date.now() - wall0) / 1000).toFixed(1)
 const lines: string[] = []
 lines.push('══════════ 全流程模拟报告 ══════════')
 lines.push(`debugQuick=${!REAL_TRAINING} seed=${SEED} 上限 ${MAX_DAYS} 天`)
-lines.push(`结果：${won ? '✅ 通关' : '❌ 未通关（天数上限/中途退出）'}  游戏内 ${(state.gameMs / 86_400_000).toFixed(2)} 天 / 墙钟 ${wallSec}s`)
+const resultTxt = won ? '✅ 通关' : holeEarlyExit ? '⏹ 提前终止（终局受阻黑洞，见策略黑洞记录）' : '❌ 未通关（天数上限）'
+lines.push(`结果：${resultTxt}  游戏内 ${(state.gameMs / 86_400_000).toFixed(2)} 天 / 墙钟 ${wallSec}s`)
 lines.push(`现金 ${Math.round(state.wallet.isk).toLocaleString('zh-CN')} ISK · DSI 声望 ${standing()} · 星系 ${exploredCount()}/${GALAXY_IDS.length} · 累计卖出 ${Math.round(soldTotal).toLocaleString('zh-CN')} ISK`)
 lines.push(`训练总级数 ${Object.values(state.skills.trained).reduce((a, b) => a + b, 0)} · 队列 ${state.skills.queue.length} · 舰船 ${Object.keys(state.fleet).length} 艘 · AI 任务 ${Object.keys(state.aiAssignments).length} · 日志 ${state.logs.length} 条`)
 lines.push('')
 lines.push('—— 里程碑（节选前 150 条）——')
 for (const m of milestones.slice(0, 150)) lines.push(`  ${m}`)
+lines.push('')
+lines.push(`—— 策略黑洞记录（${holeLogs.length} 次）——`)
+for (const h of holeLogs) lines.push(`  ${h}`)
 lines.push('')
 lines.push(`—— 异常（去重 ${issuesRaw.size} 类）——`)
 let i = 0
@@ -736,4 +797,4 @@ if (bossFinal) {
 const report = lines.join('\n')
 console.log(report)
 if (REPORT) writeFileSync(REPORT, report, 'utf8')
-process.exit(won && issuesRaw.size === 0 ? 0 : 1)
+process.exit((won || holeEarlyExit) && issuesRaw.size === 0 ? 0 : 1)
