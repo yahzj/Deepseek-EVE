@@ -30,6 +30,7 @@ import {
   steerStep,
   spreadWinChance,
 } from '../src/combat'
+import { addShipToFleet } from '../src/shipyard'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 import { addModule, fitModule } from '../src/equipment'
 
@@ -408,6 +409,17 @@ describe('V18B 随机目标与"尸体不承接火力"（船长 2026-09-05）', (
   it('多编队：我方命中分散到多个目标；主体已死后火力绝不瞄准尸体', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 42 })
     state.wallet.isk = 200_000
+    addShipToFleet(state, 'sh-tigershark')
+    state.shipId = 'sh-tigershark'
+    const tiger = ship('sh-tigershark', {
+      cpu: 400,
+      slots: { high: 4, mid: 4, low: 4 },
+      shieldHp: 200,
+      armorHp: 100,
+      hullHp: 150,
+      evasion: 0.11,
+      powerBonus: 0,
+    })
     const tur = moduleDef('tur-f', 'turret', 0, {
       maxRangeM: 5000,
       minRangeM: 0,
@@ -417,23 +429,24 @@ describe('V18B 随机目标与"尸体不承接火力"（船长 2026-09-05）', (
       dmgMult: 1.5,
     })
     const ctx = makeTestCtx({
+      ships: [tiger],
       modules: [tur],
-      anomalies: [anomaly('ano-squad', 'galaxy-hub', { threat: 200, reward: 10_000, escorts: 2 })],
+      anomalies: [anomaly('ano-squad', 'galaxy-hub', { threat: 60, reward: 10_000, escorts: 2 })],
     })
     state.warehouse.items['ammo-kinetic-l'] = 5_000
     addModule(state, 'tur-f', 1)
     expect(fitModule(state, 'tur-f', ctx).ok).toBe(true)
-    const battle = startBattleFor(state, ctx, 'sandcat', 'ano-squad', 0)!
+    const battle = startBattleFor(state, ctx, 'sh-tigershark', 'ano-squad', 0)!
     // 阶段一：全员存活推进 6 秒 → 命中应分散到多个不同目标（随机目标 ≠ 只打主体）
     state.gameMs = 6_000
-    advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-squad')
+    advanceBattleFor(state, ctx, battle, 'sh-tigershark', 'ano-squad')
     const early = battle.fx.filter((f) => f.side === 'me' && f.hit)
     expect(new Set(early.map((f) => f.to ?? f.tag)).size).toBeGreaterThan(1)
     // 阶段二：把主体打成尸体（hp 清零），继续推进 → 新开火绝不瞄准 foe-0
     const preSeq = battle.fx.length > 0 ? battle.fx[battle.fx.length - 1]!.seq : -1
     battle.units['foe-0']!.hp = { s: 0, a: 0, h: 0 }
     state.gameMs = 12_000
-    advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-squad')
+    advanceBattleFor(state, ctx, battle, 'sh-tigershark', 'ano-squad')
     const later = battle.fx.filter((f) => f.side === 'me' && f.hit && f.seq > preSeq)
     expect(later.length).toBeGreaterThan(0) // 火力没有停（已转火存活单位）
     for (const f of later) expect(f.to).not.toBe('foe-0') // 尸体不承接火力

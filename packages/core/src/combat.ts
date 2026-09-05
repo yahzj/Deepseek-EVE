@@ -448,11 +448,20 @@ const PROFILE_SPLIT: Record<string, Hp3> = {
 }
 
 /** 敌方战术 → 武器射程带（贴合作战风格）：
- * brawl 贴脸肉搏 = 无最小射程的近身喷子；orbit 环绕 = 中距小炮；kite 放风筝 = 高最小射程的远距炮。 */
+ * brawl 贴脸肉搏 = 无最小射程的近身喷子；orbit 环绕 = 中距小炮；kite 放风筝 = 高最小射程的远距炮。
+ * C4 校准轮（2026-09-05）：基础带为 threat≈10 时的形态；高威胁目标按 foeRangeScale 放大——
+ * 后期敌人不再"手短"（最高级威胁风筝射程可超玩家动能 MK3，防远程白嫖）。 */
 const TACTIC_RANGE: Record<FoeTactic, { max: number; min: number }> = {
   brawl: { max: 2200, min: 0 },
   orbit: { max: 4600, min: 350 },
   kite: { max: 9200, min: 1200 },
+}
+
+/** 敌方射程随威胁的成长系数：1 + (threat−floor)/span（balance battle 常量），钳制 [1, 2.2] */
+export function foeRangeScale(threat: number, bal: BattleBalance): number {
+  const floor = bal.foeRangeThreatFloor ?? 10
+  const span = bal.foeRangeThreatSpan ?? 90
+  return Math.min(2.2, Math.max(1, 1 + (threat - floor) / span))
 }
 
 /** 展开敌方编队（threat 卡面 = 总战力） */
@@ -462,7 +471,12 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
   const escorts = Math.max(0, Math.min(2, anomaly.escorts ?? 0))
   const mainThreat = anomaly.threat / (1 + 0.6 * escorts)
   const mainType = pickTopType(anomaly.dmgMix)
-  const range = TACTIC_RANGE[tactic]!
+  // C4 校准轮：敌方射程随威胁成长（后期目标不再手短）；僚机同主群武器
+  const rangeScale = foeRangeScale(anomaly.threat, bal)
+  const range = {
+    max: Math.round(TACTIC_RANGE[tactic]!.max * rangeScale),
+    min: Math.round(TACTIC_RANGE[tactic]!.min * rangeScale),
+  }
 
   const make = (tag: string, name: string, uThreat: number, type: DamageType): UnitSpec => {
     const totalHp = uThreat * bal.foeHpPerThreat
@@ -710,11 +724,16 @@ export function startBattleFor(
   if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
-  // 期望距离记忆可能来自更远射程的战斗：钳到本次开战距离内，保证开局总是"从射程外稍远处开始接近"
+  // 期望距离记忆可能来自更远射程的战斗：钳到本次开战距离内
   const rawDesire = desireM !== undefined && desireM > 0 ? Math.round(desireM) : desiredRangeFor(me, 'mid', bal)
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
-  battle.distanceM = openM
+  // C4 校准轮（2026-09-05）：开局距离直接落在"双方期望交战位置"附近（敌方带内站位 ×
+  // 我方期望的折中 + 15% 缓冲），不再从最远射程外开始长距离接近——远程对远程不再有
+  // 十几秒"双方干瞪眼"的接近空窗；舰列收拢一小段后立即进入对射。openM 仅作上界。
+  const foeDesire = Math.min(openM, foeDesiredRange(me, foes, bal))
+  const engage = Math.round((desire + foeDesire) / 2)
+  battle.distanceM = Math.min(openM, Math.max(bal.minDistanceM + 50, Math.round(engage * 1.15)))
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
   const totals = ammoLoadTotals(me, bal, state)

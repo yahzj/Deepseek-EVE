@@ -249,7 +249,7 @@ export const MODULES: readonly ModuleDef[] = [
     hitRate: 1,
     falloff: 0.35,
     reloadMs: 3200,
-    dmgMult: 3.0,
+    dmgMult: 2.7,
   },
   {
     id: 'mod-laser-3',
@@ -266,7 +266,7 @@ export const MODULES: readonly ModuleDef[] = [
     hitRate: 1,
     falloff: 0.35,
     reloadMs: 4000,
-    dmgMult: 4.2,
+    dmgMult: 3.8,
   },
   {
     id: 'mod-laser-proto',
@@ -283,7 +283,7 @@ export const MODULES: readonly ModuleDef[] = [
     hitRate: 1,
     falloff: 0.3,
     reloadMs: 4600,
-    dmgMult: 5.1,
+    dmgMult: 4.7,
   },
 
   // ══════════ 导弹架（V18B-1 爆炸系武器形态：爆破导弹弹头，逐发消耗） ══════════

@@ -445,6 +445,10 @@ export interface BattleBalance {
   foeReloadMs: number
   foeFalloff: number
   foeSpeedBaseMps: number
+  /** C4 校准轮：敌方武器射程随威胁成长的线性起点（threat ≤ floor = 基础战术带不放大） */
+  foeRangeThreatFloor: number
+  /** C4 校准轮：射程放大 span——scale = 1 + (threat−floor)/span（threat = floor+span → ×2） */
+  foeRangeThreatSpan: number
   /** 敌期望交战距离系数 = 自身武器带内站位（0.2 贴脸近端 / 0.55 环绕 / 0.85 风筝远端；值域 [0.05,0.95]） */
   tacticDesireFactor: Record<FoeTactic, number>
   /** 弹药预载：估计交战时长上限 ms 与余量系数（出发按射速预载，结束退回） */

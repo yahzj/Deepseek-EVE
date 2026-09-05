@@ -117,13 +117,19 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     familySkillPerLevel: 0.05,
     speedFactor: 0.6, // 战斗机动速度 = maxSpeed ×0.6 ×(1 ± agility 修正)
     agilitySpeedBonus: 0.15,
-    foeHpPerThreat: 2.6, // 敌方总血量 ≈ threat ×2.6（初值，校准脚本核对）
+    // C4 校准轮（2026-09-05）：血池放大 + 敌 DPS 回调（秒杀 → 30s 级同级交战；合成同质怪
+    // 验证引擎单调：10→90 胜率平滑下降，同级时长 ~13-25s——敌血提档 threat×10 拉长至 ~30s）
+    foeHpPerThreat: 10, // 敌方总血量 ≈ threat ×10（C4 前 2.6；校准目标 30~50s 同级交战）
     foeEscortThreatFrac: 0.5, // 僚机每架 = threat ×0.5
-    foeDpsPerThreat: 1.1, // 敌方总火力 ≈ threat ×1.1
+    foeDpsPerThreat: 0.8, // 敌方总火力 ≈ threat ×0.8（C4 前 1.1）
     foeHitRate: 0.55, // 敌方武器基础命中
     foeReloadMs: 4_000, // 敌方武器装填
     foeFalloff: 0.3, // 敌方命中衰减（maxRange 端点）
     foeSpeedBaseMps: 120, // 敌方速度基准（按体积修正）
+    // C4 校准轮：敌方武器射程随威胁成长——scale = 1 + (threat−10)/90（threat 100 → ×2）。
+    // 后期目标不再"手短"挨远程白嫖；中低威胁不变形（新手友好）。见 combat.foeRangeScale
+    foeRangeThreatFloor: 10,
+    foeRangeThreatSpan: 90,
     // 敌期望交战距离 = 自身武器带内站位系数（贴脸近端 / 环绕中段 / 风筝远端）——带内必能开火
     tacticDesireFactor: { brawl: 0.2, orbit: 0.55, kite: 0.85 },
     ammoTimeCapMs: 4 * 60_000, // 弹药预载：按 4 分钟最大交战时长估算
