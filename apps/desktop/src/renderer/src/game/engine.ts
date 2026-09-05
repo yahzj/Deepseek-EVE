@@ -50,6 +50,7 @@ import {
   migrateDeprecatedAmmo,
   repairDeprecatedModules,
   repairShip,
+  useOneRepairKit,
   retreatBattle,
   sellCargoItem,
   sellCargoItemQty,
@@ -1017,6 +1018,16 @@ export class GameEngine {
   /** 维修指定船（满血） */
   repairShipAt(shipId: string): CommandResult {
     const result = repairShip(this.state, shipId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 手动使用一枚修理组件（驾驶船货仓；恢复结构+装甲各自上限百分比） */
+  useRepairKitNow(): CommandResult {
+    const result = useOneRepairKit(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

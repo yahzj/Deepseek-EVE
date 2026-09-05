@@ -46,7 +46,7 @@ const drones = itemDefs.filter((i) => i.kind === 'drone')
 const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
 // 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3）
-check(itemDefs.length === 29, `物品总数应为 29，实际 ${itemDefs.length}`)
+check(itemDefs.length === 31, `物品总数应为 31，实际 ${itemDefs.length}`)
 check(ores.length === 7, `矿石应为 7 种，实际 ${ores.length}`)
 check(minerals.length === 8, `矿物应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -125,7 +125,10 @@ for (const item of itemDefs) {
       check(row.perOre > 0 && Number.isFinite(row.perOre), `${item.id} 配方系数非法：${row.perOre}`)
     }
   } else {
-    check(item.kind === 'mineral' || item.kind === 'ammo' || item.kind === 'drone', `${item.id}（${item.kind}）没有精炼配方——可采集资源必须有配方`)
+    check(
+      item.kind === 'mineral' || item.kind === 'ammo' || item.kind === 'drone' || item.kind === 'kit',
+      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免）`,
+    )
   }
 }
 
@@ -148,7 +151,16 @@ const moduleIdSet = new Set(MODULES.map((m) => m.id))
 for (const bp of BLUEPRINTS) {
   if (bpIds.has(bp.id)) errors.push(`蓝图 id 重复：${bp.id}`)
   bpIds.add(bp.id)
-  check(moduleIdSet.has(bp.moduleId), `蓝图 ${bp.id} → 装备 ${bp.moduleId} 不存在`)
+  // 产物：moduleId（装备）或 itemId+outputUnits（消耗品/弹药，2026-09-05 弹药/修理组件同构）
+  if (bp.moduleId !== undefined) {
+    check(moduleIdSet.has(bp.moduleId), `蓝图 ${bp.id} → 装备 ${bp.moduleId} 不存在`)
+  } else if (bp.itemId !== undefined) {
+    const out = items.get(bp.itemId)
+    check(!!out, `蓝图 ${bp.id} → 产物物品 ${bp.itemId} 不存在`)
+    check(bp.outputUnits !== undefined && Number.isInteger(bp.outputUnits) && bp.outputUnits > 0, `蓝图 ${bp.id} 产物数量非法`)
+  } else {
+    errors.push(`蓝图 ${bp.id} 缺少 moduleId/itemId 产物声明`)
+  }
   for (const need of bp.materials) {
     const mat = items.get(need.itemId)
     check(!!mat && mat.kind === 'mineral', `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物`)

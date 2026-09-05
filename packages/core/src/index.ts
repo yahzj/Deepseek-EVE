@@ -186,6 +186,7 @@ export {
   isShipLocked,
   lockShip,
   repairWithKits,
+  useOneRepairKit,
   renameShip,
 } from './shipyard'
 

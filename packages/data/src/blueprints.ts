@@ -212,6 +212,35 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 1_300,
     description: '能量弹药生产线图纸：类晶体胶体充能电池组（120 发/批，对护盾 ×1.25）。',
   },
+  /* ═══ 修理组件蓝图（2026-09-05 船长：组件可自制；材料成本≈市价 55% 锚，参数可调） ═══ */
+  {
+    id: 'bp-repairkit-civ',
+    name: '民用修理组件蓝图',
+    itemId: 'repairkit-civ',
+    outputUnits: 5,
+    materials: [
+      { itemId: 'min-tritanium', count: 2_000 }, // 16,000 ISK
+      { itemId: 'min-pyerite', count: 500 }, // 6,000 ISK
+    ], // 22,000 ≈ 40,000×0.55
+    buildSeconds: 90,
+    buildCostIsk: 600,
+    priceIsk: 3_600,
+    description: '民用修理组件蓝图：纳米修复材料压装（5 个/批；结构+装甲各回 35% 上限）。',
+  },
+  {
+    id: 'bp-repairkit-mil',
+    name: '军用修理组件蓝图',
+    itemId: 'repairkit-mil',
+    outputUnits: 3,
+    materials: [
+      { itemId: 'min-mexallon', count: 1_000 }, // 20,000 ISK
+      { itemId: 'min-pyerite', count: 800 }, // 9,600 ISK
+    ], // 29,600 ≈ 54,000×0.55
+    buildSeconds: 120,
+    buildCostIsk: 1_200,
+    priceIsk: 9_000,
+    description: '军用修理组件蓝图：高密度纳米修复剂封装（3 个/批；结构+装甲各回 70% 上限）。',
+  },
 ]
 
 /** 构建"蓝图 id → 定义"目录 */

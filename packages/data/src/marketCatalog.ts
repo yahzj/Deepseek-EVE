@@ -47,6 +47,9 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 6, poolTarget: 4_000, supplyFlow: 150 },
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 7, poolTarget: 3_800, supplyFlow: 140 },
   { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 8, poolTarget: 3_500, supplyFlow: 120 },
+  // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
+  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 8_000, poolTarget: 300, supplyFlow: 4 },
+  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 18_000, poolTarget: 120, supplyFlow: 1.5 },
   // ── 无人机（V10 占位：NPC 补给池） ──
   { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, poolTarget: 200, supplyFlow: 4 },
   { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, poolTarget: 120, supplyFlow: 2 },
@@ -87,6 +90,9 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'bp-ammo-kinetic', kind: 'blueprint', refId: 'bp-ammo-kinetic', rarity: 'common', basePrice: 900, demandMultiplier: 0.5 },
   { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1_100, demandMultiplier: 0.5 },
   { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.5 },
+  // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
+  { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 3_600, demandMultiplier: 0.5 },
+  { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 9_000, demandMultiplier: 0.5 },
   // 低级船（AI 副船军团的主力船）
   { key: 'ship-burrower', kind: 'ship', refId: 'burrower', rarity: 'common', basePrice: 120_000, demandMultiplier: 0.4 },
   // 基础 AI 核心（原直购并入市场，平价常驻；核心不支持回卖）

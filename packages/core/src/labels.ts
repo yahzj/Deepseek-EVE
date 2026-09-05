@@ -91,7 +91,7 @@ export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3
 }
 
 /** 物品分类展示顺序 */
-export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'fragment']
+export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'fragment', 'kit']
 
 /** 物品分类中文名（仓库/货仓分组标题与空态文案用） */
 export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
@@ -103,6 +103,7 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   drone: '无人机',
   wreck: '残骸',
   fragment: '蓝图碎片',
+  kit: '修理组件',
 }
 
 export function itemKindLabel(kind: ItemKind): string {

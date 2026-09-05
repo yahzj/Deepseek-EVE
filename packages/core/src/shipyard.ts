@@ -282,6 +282,43 @@ export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5):
   return used
 }
 
+/**
+ * 手动使用一枚修理组件（驾驶船货仓，民用优先；2026-09-05 修理系统）：
+ * 对「结构」与「装甲」各恢复 repairRestore×（1+10%/级 抢修工程学）的上限比例；无组件/未受损返回原因。
+ */
+export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResult {
+  const fleetShip = state.fleet[state.shipId]
+  if (!fleetShip) return { ok: false, error: '当前舰船数据缺失。' }
+  if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
+    return { ok: false, error: '结构/装甲状态完好，无需修理组件。' }
+  }
+  const order = ['repairkit-civ', 'repairkit-mil'] as const
+  let kitId: string | null = null
+  for (const id of order) {
+    if ((fleetShip.cargo[id] ?? 0) > 0) {
+      kitId = id
+      break
+    }
+  }
+  if (kitId === null) return { ok: false, error: '货仓里没有修理组件——市场购入或蓝图自制后装入货仓。' }
+  const def = ctx.items.get(kitId)
+  if (!def || typeof def.repairRestore !== 'number') return { ok: false, error: '修理组件数据异常。' }
+  const restore =
+    def.repairRestore * (1 + 0.1 * Math.min(5, state.skills.trained['hull-quick-repair'] ?? 0))
+  const left = fleetShip.cargo[kitId]!
+  if (left <= 1) delete fleetShip.cargo[kitId]
+  else fleetShip.cargo[kitId] = left - 1
+  fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + restore) * 1000) / 1000)
+  fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + restore) * 1000) / 1000)
+  const shipName = shipDisplayName(state, ctx, state.shipId)
+  addLog(
+    state,
+    'info',
+    `🧰 使用 ${def.name} ×1：${shipName} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
+  )
+  return { ok: true }
+}
+
 /** 玩家指令：锁定 / 解锁一艘拥有的船（防误售） */
 export function lockShip(state: GameState, shipId: string, locked: boolean, ctx: SimContext): CommandResult {
   if (!ownsShip(state, shipId)) return { ok: false, error: `船坞里没有这艘船。` }

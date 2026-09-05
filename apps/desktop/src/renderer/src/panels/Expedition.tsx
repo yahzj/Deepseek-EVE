@@ -904,6 +904,35 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   )
 }
 
+/* ─────────── 野外应急修理（修理系统 2026-09-05：驾驶船停留本星系时的手动组件入口） ─────────── */
+function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+  const state = engine.state
+  const ship = state.fleet[state.shipId]
+  if (!ship) return null
+  const kits = (['repairkit-civ', 'repairkit-mil'] as const).reduce((n, id) => n + (ship.cargo[id] ?? 0), 0)
+  const worn = ship.durability < 1 || (ship.armorPct ?? 1) < 1
+  if (kits <= 0 || !worn) return null
+  return (
+    <div className="app-ga-row">
+      <span className="app-ga-main">
+        🧰 应急修理
+        <span className="app-dim app-ga-desc">消耗货仓 1 枚修理组件（民用优先）：结构/装甲各恢复上限百分比</span>
+      </span>
+      <button
+        className="app-btn is-small is-primary"
+        onClick={() => {
+          const r = engine.useRepairKitNow()
+          if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
+          else onToast('已使用一枚修理组件（结构/装甲各恢复上限百分比）。')
+        }}
+        title="只能在停留/停靠时手动使用；连续出击出发前低于 50% 会自动消耗组件"
+      >
+        组件 ×{kits}
+      </button>
+    </div>
+  )
+}
+
 /* ─────────── B1.5 星图「前往星系」动作区（待命/矿带/悬赏 + 简介） ─────────── */
 
 function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy: GalaxyDef; onToast: ToastFn }) {
@@ -1000,6 +1029,10 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
   return (
     <div className="app-galaxy-actions">
       <div className="app-bay-title">前往星系 · 行动</div>
+      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
+      {state.awayGalaxy === galaxy.id ? (
+        <FieldKitRepair engine={engine} onToast={onToast} />
+      ) : null}
       {/* ① 前往待命 */}
       <div className="app-ga-row">
         <span className="app-ga-main">

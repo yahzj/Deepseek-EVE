@@ -35,8 +35,9 @@ export interface RefineRow {
 
 /** 物品大类（V10）：矿石/矿物为既有体系；气体/冰矿可采集可精炼（接入现有循环）；
  * 弹药/无人机为占位消耗品（市场流通、可囤可回卖，战斗系统开放后启用消耗）；
- * B3（2026-09-05）：wreck = 残骸（打捞回收原料）、fragment = 蓝图碎片（逆向研究素材） */
-export type ItemKind = 'ore' | 'mineral' | 'gas' | 'ice' | 'ammo' | 'drone' | 'wreck' | 'fragment'
+ * B3（2026-09-05）：wreck = 残骸（打捞回收原料）、fragment = 蓝图碎片（逆向研究素材）；
+ * kit（2026-09-05）：修理组件（消耗品，repairRestore 百分比恢复结构/装甲） */
+export type ItemKind = 'ore' | 'mineral' | 'gas' | 'ice' | 'ammo' | 'drone' | 'wreck' | 'fragment' | 'kit'
 
 /** 伤害类型（V10.5 战斗数值契约：远行星号体系——动能/高爆/能量三系） */
 export type DamageType = 'kinetic' | 'explosive' | 'plasma'

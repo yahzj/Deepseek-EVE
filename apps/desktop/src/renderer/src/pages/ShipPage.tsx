@@ -195,6 +195,7 @@ export function ShipPage({
           {fleetEntries.map(({ uid, ship: shipState, def }) => {
             const dur = durabilityOf(state, uid)
             const armor = shipState.armorPct ?? 1 // P0 承伤持久化：装甲残余（跨场保留）
+            const kitCount = (['repairkit-civ', 'repairkit-mil'] as const).reduce((n, id) => n + (shipState.cargo[id] ?? 0), 0)
             const isCurrent = uid === state.shipId
             const repairCost = repairCostIsk(state, uid, engine.ctx)
             const isWorking = uid in state.aiAssignments
@@ -304,6 +305,19 @@ export function ShipPage({
                       title={`维修需 ${repairCost.toLocaleString('zh-CN')} ISK（结构+装甲一并修复；护盾无需维修）`}
                     >
                       维修 {repairCost.toLocaleString('zh-CN')}
+                    </button>
+                  ) : null}
+                  {isCurrent && (dur < 1 || armor < 1) && kitCount > 0 ? (
+                    <button
+                      className="app-btn is-small"
+                      onClick={() => {
+                        const r = engine.useRepairKitNow()
+                        if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
+                        else onToast('已使用一枚修理组件（结构+装甲各恢复上限百分比）。')
+                      }}
+                      title="消耗驾驶船货仓 1 枚修理组件（民用优先）：结构+装甲各恢复其上限百分比——野外/回港前应急可用"
+                    >
+                      🧰 组件修复 ×{kitCount}
                     </button>
                   ) : null}
                 </div>
