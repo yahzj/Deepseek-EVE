@@ -71,11 +71,11 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
           停靠「{engine.ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite}」（副空间站）：提供卸货/维修/补给/换驾驶——悬赏与扫描可从本站出发（按当前位置计程）。
         </div>
       ) : state.awayGalaxy !== null ? (
-        /* T8：野外停留（胜利/扫描完成后的停泊地）——可继续出击或显式返航 */
+        /* T8：野外（掩护巡逻 / 胜利停留 / 扫描完成后停泊）——远征/扫描/采矿均可即时出发，或显式返航 */
         <div className="app-exp-idle app-idle-field">
           <span>
-            ⛺ 舰船停留「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」（野外）——
-            从这里出发的远征/扫描按当前位置计程；卸货、维修与换船需回到空间站。
+            ⛺ 舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（掩护巡逻 / 野外停留）——
+            从这里可即时出发远征、扫描或采矿（去程已取消，无航行等待）；卸货、维修与换船需返回空间站。
           </span>
           <button
             className="app-btn is-small"
