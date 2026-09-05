@@ -222,7 +222,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-tritanium', count: 850 }, // 6,800 ISK
       { itemId: 'min-pyerite', count: 120 }, // 1,440 ISK
     ], // 8,240 ≈ 15,000(3,000×5)×0.55
-    buildSeconds: 90,
+    buildSeconds: 30, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（90s→30s）
     buildCostIsk: 600,
     priceIsk: 3_600,
     description: '民用修理组件蓝图：纳米修复材料压装（5 个/批；基础 30 HP×容量增幅）。',
@@ -236,7 +236,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-mexallon', count: 1_100 }, // 22,000 ISK
       { itemId: 'min-pyerite', count: 1_050 }, // 12,600 ISK
     ], // 34,600 ≈ 63,000(21,000×3)×0.55
-    buildSeconds: 120,
+    buildSeconds: 40, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（120s→40s）
     buildCostIsk: 1_200,
     priceIsk: 9_000,
     description: '军用修理组件蓝图：高密度纳米修复剂封装（3 个/批；基础 70 HP×容量增幅）。',
