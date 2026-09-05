@@ -265,7 +265,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 30_000,
     signatureM: 40,
     scanResMm: 680,
-    description: '协会训练武装艇：不擅长挖矿，但动力惊人——当前就能当低风险远征的轻快座驾（战斗系统启用火力与三层血量）。',
+    description: '协会训练武装艇：不擅长挖矿，但动力惊人——当前就能当低风险远征的轻快座驾。',
   },
   {
     id: 'sh-shrike',

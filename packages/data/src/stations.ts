@@ -15,9 +15,9 @@ export const STATION_SITES: readonly StationSiteDef[] = [
     standingReq: 0,
     acceptItemIds: ['ore-hemorphite', 'ore-scorched'],
     tiers: [
-      { name: '奠基', count: 2_000, unlockDesc: '可停靠并卸货入仓库（采矿返航目标候选）' },
+      { name: '奠基', count: 2_000, unlockDesc: '可停靠并卸货入仓库' },
       { name: '完善', count: 4_000, unlockDesc: '开放维修与补给（弹药/修理组件）' },
-      { name: '建成', count: 2_000, unlockDesc: '开放换驾驶；并入空间站清单（最近空间站解析）' },
+      { name: '建成', count: 2_000, unlockDesc: '开放换驾驶；并入空间站清单' },
     ],
     introDialogueId: 'dlg-redring-intro',
     doneDialogueId: 'dlg-redring-done',
@@ -31,9 +31,9 @@ export const STATION_SITES: readonly StationSiteDef[] = [
     standingReq: 0,
     acceptItemIds: ['ice-frost'],
     tiers: [
-      { name: '奠基', count: 2_500, unlockDesc: '可停靠并卸货入仓库（采矿返航目标候选）' },
+      { name: '奠基', count: 2_500, unlockDesc: '可停靠并卸货入仓库' },
       { name: '完善', count: 5_000, unlockDesc: '开放维修与补给（弹药/修理组件）' },
-      { name: '建成', count: 2_500, unlockDesc: '开放换驾驶；并入空间站清单（最近空间站解析）' },
+      { name: '建成', count: 2_500, unlockDesc: '开放换驾驶；并入空间站清单' },
     ],
     introDialogueId: 'dlg-cinder-intro',
     doneDialogueId: 'dlg-cinder-done',
