@@ -15,7 +15,6 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { addLog, DEFAULT_PILOT_NAME } from './state'
 import { addWare } from './inventory'
-import { isAtHome } from './location'
 
 /** -1 = 未开始（老档/经典）；以下为教程进行态 */
 export const ONB_OFF = -1
@@ -59,14 +58,12 @@ export function tutorialActive(state: GameState): boolean {
   return state.onboarding.step >= ONB_MINE && state.onboarding.step <= ONB_EPILOGUE
 }
 
-/** 教程等待段是否可加速（采集/返航等；渲染引擎时间泵 ×6 用） */
+/** 教程等待段是否可加速（采集/返航等；渲染引擎时间泵 ×6 用）。
+ * 注意：不能用 isAtHome 判定——母港本地矿带的采矿/返航全程 awayGalaxy 为空(dockedSite 也空),
+ * isAtHome 恒真,曾导致 ×6 从未生效(船长 2026-09-05 复测:返港仍需 3 分钟)。改用「教程采集步骤
+ * + 采矿作业进行中」：采集与返航都加速,卸货停止循环后自然退出加速。 */
 export function tutorialAccelWait(state: GameState): boolean {
-  const s = state.onboarding.step
-  if (s === ONB_MINE) {
-    // 采集/返航途中（不在港）加速；已回港等交付不再加速
-    return !isAtHome(state)
-  }
-  return false
+  return state.onboarding.step === ONB_MINE && state.mining.active
 }
 
 /** 教学战判定：教程步骤 4、目标是演习场讨伐令、主控驾驶、任务未领 */
