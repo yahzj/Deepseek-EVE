@@ -50,11 +50,13 @@ function effLevelMs(def: SkillDef | undefined, lv: number, factor: number): numb
   return def ? Math.max(1, Math.round(skillLevelTimeMs(def, lv) * factor)) : 0
 }
 
-export function SkillsPage({ engine }: PageProps) {
+export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?: string | null }) {
   const [groupTab, setGroupTab] = useState<string>('all')
   const groups = engine.groups
   // 战斗线预留技能（护盾操作/能量管理/船体加固）隐藏：不进目录、不可见
-  const visibleSkills = engine.skills.filter((s) => !HIDDEN_SKILL_IDS.includes(s.id))
+  const visibleSkills = engine.skills.filter(
+    (s) => !HIDDEN_SKILL_IDS.includes(s.id) && (!focusSkillId || s.id === focusSkillId),
+  )
   const tabCount = (g: string): number => visibleSkills.filter((s) => s.group === g).length
   return (
     <div className="page-stack page-wide">
@@ -89,7 +91,17 @@ export function SkillsPage({ engine }: PageProps) {
           ))}
         </div>
         <div className="app-skill-groups-wide">
-          {groupTab === 'all' ? (
+          {focusSkillId ? (
+            <div className="app-skill-group">
+              <div className="app-skill-group-tag">教程聚焦</div>
+              {visibleSkills.map((skill) => (
+                <SkillWideRow key={skill.id} engine={engine} skill={skill} />
+              ))}
+              <div className="app-dim" style={{ padding: '6px 4px' }}>
+                其余技能将在完成教程后开放浏览。
+              </div>
+            </div>
+          ) : groupTab === 'all' ? (
             groups.map((group) => (
               <div key={group} className="app-skill-group">
                 <div className="app-skill-group-tag">{group}</div>

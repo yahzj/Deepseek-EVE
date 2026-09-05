@@ -14,7 +14,7 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { addLog, DEFAULT_PILOT_NAME } from './state'
-import { addWare } from './inventory'
+import { addWare, unloadCargoToWarehouse } from './inventory'
 
 /** -1 = 未开始（老档/经典）；以下为教程进行态 */
 export const ONB_OFF = -1
@@ -110,7 +110,14 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
     'trade',
     `◆ 重要任务完成「补给协议·首批矿物」：交付 ${oreName}×${TUTORIAL_DELIVER_N}，+${TUTORIAL_REWARD_ISK.toLocaleString('zh-CN')} ISK、基础 AI 核心 ×1。`,
   )
-  if (state.onboarding.step === ONB_DELIVER) state.onboarding.step = ONB_REPAIR
+  if (state.onboarding.step === ONB_DELIVER) {
+    state.onboarding.step = ONB_REPAIR
+    // 维修的是“当前驾驶船”——交完矿强制切回隼枭，避免玩家仍驾矿船导致维修错船/矿船出战（船长复测反馈）
+    if (state.shipId !== 'sh-falconet' && state.fleet['sh-falconet']) {
+      state.shipId = 'sh-falconet'
+      addLog(state, 'info', '已把驾驶切回隼枭级武装艇——接下来港内维修的对象是它。')
+    }
+  }
   return { ok: true }
 }
 
@@ -154,6 +161,16 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
   const s = state.onboarding.step
   if (s < ONB_MINE || s >= ONB_DONE) return
   if (s === ONB_MINE) {
+    // 防卡（船长 2026-09-05 复测）：玩家中途取消采矿/取消返航回到泊位时,矿石仍在货仓——自动卸货入仓库
+    if (!state.mining.active && !state.expedition.active) {
+      const cargoOre = state.fleet[state.shipId]?.cargo[TUTORIAL_DELIVER_ITEM] ?? 0
+      if (cargoOre > 0) {
+        const moved = unloadCargoToWarehouse(state)
+        if (moved > 0) {
+          addLog(state, 'info', `货仓中的 ${cargoOre} 单位矿石已自动卸入物品仓库（${moved} 单位）。`)
+        }
+      }
+    }
     // 采集完成：仓库已有 ≥20 富凡晶石（已返港卸货）→ 提示交付
     if ((state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) >= TUTORIAL_DELIVER_N) {
       state.onboarding.step = ONB_DELIVER
@@ -164,6 +181,11 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
   if (s === ONB_REPAIR) {
     const f = state.fleet['sh-falconet']
     if (f && (f.armorPct ?? 0) >= 0.999 && f.durability >= 0.999) {
+      // 试炼将使用隼枭出战：先切驾驶再放行（防玩家仍驾矿船进入战斗——船长复测反馈）
+      if (state.shipId !== 'sh-falconet' && state.fleet['sh-falconet']) {
+        state.shipId = 'sh-falconet'
+        addLog(state, 'info', '驾驶已切回隼枭级武装艇——试炼由它出战。')
+      }
       state.onboarding.step = ONB_TRIAL
       addLog(state, 'info', '隼枭已修复完好。前往「战斗悬赏」接受演习场讨伐令（试炼）。')
     }
