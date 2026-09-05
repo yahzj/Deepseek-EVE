@@ -2311,6 +2311,7 @@ body {
   flex-direction: column;
   gap: 6px;
   width: 100%;
+  box-sizing: border-box; /* width 100% 含 padding/border——修复右边框被父容器 overflow:hidden 裁断 */
   max-height: 230px; /* 固定高度上限，内容多时内部滚动（垂直排布） */
   overflow-y: auto;
   margin: 0 0 6px;
