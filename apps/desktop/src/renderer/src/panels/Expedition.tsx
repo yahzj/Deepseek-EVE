@@ -267,6 +267,13 @@ const MAP_H = 300
  * 旧本地覆盖会遮蔽新默认（此前改内置坐标看不到变化即此因）；今后编辑器排完版「保存并复制 JSON」合入默认即可。
  */
 const LAYOUT_KEY = 'whale-idle:starmap-layout-v2'
+/** v1 旧键（whale-idle:starmap-layout）已作废且不再读取：启动时顺手删除本地残留数据 */
+const LEGACY_LAYOUT_KEY = 'whale-idle:starmap-layout'
+try {
+  localStorage.removeItem(LEGACY_LAYOUT_KEY)
+} catch {
+  // 存储不可用时忽略（布局编辑器本就依赖 localStorage，读不到也无碍）
+}
 /**
  * 开发模式开关：星图布局编辑器（拖拽/交叉检测/自动整理/导出 JSON）默认对玩家隐藏；
  * 需要调整布局时在 DevTools 执行 localStorage.setItem('whale-idle:dev-layout','1') 后刷新页面即可显示入口。
