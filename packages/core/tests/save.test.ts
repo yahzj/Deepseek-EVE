@@ -61,7 +61,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     })
 
     const loaded = loadSaveFile(v0Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect(loaded.state.skills.trained['a']).toBe(1)
     expect(loaded.state.skills.queue).toHaveLength(2)
     expect(loaded.state.skills.queue[0]).toEqual({ skillId: 'a', targetLevel: 3, progressMs: 0 })
@@ -111,7 +111,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     const v1Text = JSON.stringify({ format: SAVE_FORMAT, version: 1, savedAtWallMs: 100, state: v1State })
 
     const loaded = loadSaveFile(v1Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect(loaded.state.skills.trained['refining']).toBe(2)
     expect(loaded.state.skills.queue[0]!.progressMs).toBe(10_000)
     expect(loaded.state.logs).toHaveLength(1)
@@ -141,7 +141,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     const v2Text = JSON.stringify({ format: SAVE_FORMAT, version: 2, savedAtWallMs: 200, state: v2State })
 
     const loaded = loadSaveFile(v2Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect(loaded.state.wallet.isk).toBe(55_000)
     expect(loaded.state.shipId).toBe('burrower')
     expect(loaded.state.fleet[loaded.state.shipId].cargo).toEqual({ 'ore-a': 300, 'min-a': 40 })
@@ -187,7 +187,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     const v4Text = JSON.stringify({ format: SAVE_FORMAT, version: 4, savedAtWallMs: 300, state: v4State })
 
     const loaded = loadSaveFile(v4Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect(loaded.state.fleet[loaded.state.shipId].fitted).toEqual(fittedOf({ miner: 'mod-a' }))
     expect(loaded.state.moduleBay).toEqual({ 'mod-a': 2 })
     expect(loaded.state.standings).toEqual({ dsi: 6 })
@@ -229,7 +229,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     const v5Text = JSON.stringify({ format: SAVE_FORMAT, version: 5, savedAtWallMs: 400, state: v5State })
 
     const loaded = loadSaveFile(v5Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect(loaded.state.shipId).toBe('pioneer')
     // 船坞以"当前船"起步（migration v5→v6），容错再补默认船
     expect(Object.keys(loaded.state.fleet)).toContain('pioneer')
@@ -270,7 +270,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     const v7Text = JSON.stringify({ format: SAVE_FORMAT, version: 7, savedAtWallMs: 500, state: v7State })
 
     const loaded = loadSaveFile(v7Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect('aiCoreLevel' in loaded.state).toBe(false)
     expect(loaded.state.aiCores).toEqual({ basic: 0, gamma: 0, beta: 0, alpha: 0 })
     expect(loaded.state.aiAssignments).toEqual({})
@@ -314,7 +314,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
     const v8Text = JSON.stringify({ format: SAVE_FORMAT, version: 8, savedAtWallMs: 600, state: v8State })
 
     const loaded = loadSaveFile(v8Text)
-    expect(loaded.state.version).toBe(22)
+    expect(loaded.state.version).toBe(23)
     expect('blueprints' in loaded.state).toBe(false)
     expect(loaded.state.learnedRecipes).toEqual(['bp-miner-1', 'sbp-whale-king']) // 无损平移
     expect(loaded.state.blueprintStock).toEqual({})

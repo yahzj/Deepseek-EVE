@@ -256,7 +256,7 @@ export class GameEngine {
   readonly dialogues = DIALOGUES
 
   /** 当前游戏状态（每秒被推进；界面直接读它渲染） */
-  state: GameState = createInitialState()
+  state: GameState = createInitialState({ prologue: true })
 
   /** 本次启动的离线简报（没有离线结算时为 null；读完界面手动关闭） */
   offlineReport: OfflineReport | null = null
@@ -303,7 +303,7 @@ export class GameEngine {
       }
     } catch (err) {
       console.error('读档失败，将开启新档：', err)
-      this.state = createInitialState()
+      this.state = createInitialState({ prologue: true })
       const reason = err instanceof SaveError ? err.message : String(err)
       addLog(this.state, 'warn', `存档读取失败（${reason}），已为你开启新档案。`)
     }
@@ -1111,7 +1111,7 @@ export class GameEngine {
 
   /** 重置档案（开新档） */
   resetGame(): void {
-    this.state = createInitialState()
+    this.state = createInitialState({ prologue: true })
     this.offlineReport = null
     void this.persist()
     this.notify()

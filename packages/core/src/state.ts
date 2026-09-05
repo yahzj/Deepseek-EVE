@@ -15,7 +15,7 @@ import { emptyFitted } from './labels'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 22
+export const CURRENT_STATE_VERSION = 23
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -24,9 +24,10 @@ export const MAX_SKILL_LEVEL = 5
 export const DEFAULT_LOG_CAP = 300
 /** 新飞行员默认名字 */
 export const DEFAULT_PILOT_NAME = '深空学徒'
-/** 初始资金（ISK），够买得起第一艘船但买不起第二艘——先挖矿赚第一桶金 */
+/** 初始资金（ISK）——经典开局（测试/模拟基准）：够买船但买不起第二艘。
+ * 真实新游戏走序章 prologue 分支（零资金，见 createInitialState） */
 export const DEFAULT_START_ISK = 10_000
-/** 初始自带舰船 id（须存在于舰船数据表） */
+/** 初始自带舰船 id（经典开局 = 沙猫矿艇；序章 prologue = 隼枭武装艇带伤） */
 export const DEFAULT_START_SHIP_ID = 'sandcat'
 /** AI 核心最高等级 */
 export const MAX_AI_CORE_LEVEL = 5
@@ -726,8 +727,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
 
-/** 对外统一称呼：当前版本状态（v21 = v20 + 蓝图制造多工位并行 manufacturingRuns） */
-export type GameState = GameStateV22
+/** 对外统一称呼：当前版本状态（v23 = v22 + 序章·苏醒 onboarding/importantTasks） */
+export type GameState = GameStateV23
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -768,6 +769,28 @@ export type GameStateV22 = Omit<GameStateV21, 'version'> & {
   version: 22
 }
 
+/** 序章/新手引导进度（2026-09-05 序章·苏醒：-1 = 未开始（老档/跳过），0..N = 教程进行中，99 = 已完成） */
+export interface OnboardingState {
+  step: number
+}
+
+/** 重要任务状态（任务中心「重要任务」分类；key = 数据目录任务 id） */
+export interface ImportantTaskState {
+  done: boolean
+  /** 可交付任务的累计已交数量（按任务 id 语义使用） */
+  delivered?: number
+}
+
+/** 第二十三版存档结构（当前版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：
+ * onboarding 教程进度（老档迁移为 -1 = 不触发）与重要任务状态（importantTasks）。
+ * 新档默认调整随 createInitialState：零初始资金、默认驾驶隼枭带 80% 损伤、装备库/仓库
+ * 不再预置炮台与弹药（炮台与弹药改由教学战斗任务奖励）。v22→v23 迁移只补默认字段，无结构变化。 */
+export type GameStateV23 = Omit<GameStateV22, 'version'> & {
+  version: 23
+  onboarding: OnboardingState
+  importantTasks: Record<string, ImportantTaskState>
+}
+
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
@@ -778,11 +801,24 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
   }
 }
 
-/** 创建一份全新的初始存档（一个新飞行员） */
-export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV22 {
+/**
+ * 创建一份全新的初始存档。
+ * - 默认（经典开局，测试/模拟基准）：10,000 ISK、沙猫矿艇默认驾驶、机库另有隼枭、
+ *   装备库 1×轻型炮台 MK1、仓库三型弹各 60（历史行为，测试大量依赖）；
+ * - prologue:true（序章·苏醒 2026-09-05 船长拍板，真实新游戏入口用）：
+ *   零初始资金、默认驾驶=隼枭（装甲/耐久 80% 供维修教学）、沙猫同在机库、
+ *   装备库/仓库无预置炮台弹药（改由教学战斗任务奖励）。
+ */
+export function createInitialState(opts?: {
+  name?: string
+  seed?: number
+  nowWallMs?: number
+  prologue?: boolean
+}): GameStateV23 {
+  const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV22 = {
-    version: 22,
+  const state: GameStateV23 = {
+    version: 23,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -799,40 +835,68 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
       queue: [],
       savedProgress: {},
     },
-    wallet: { isk: DEFAULT_START_ISK },
-    shipId: DEFAULT_START_SHIP_ID,
-    fleet: {
-      [DEFAULT_START_SHIP_ID]: {
-        defId: DEFAULT_START_SHIP_ID,
-        customName: null,
-        durability: 1,
-        armorPct: 1,
-        cargo: {},
-        fitted: emptyFitted(),
-      },
-      // V12 测试友好：初始另送一艘武装艇（船坞待命）+ 基础战斗装备（见下）
-      'sh-falconet': {
-        defId: 'sh-falconet',
-        customName: null,
-        durability: 1,
-        armorPct: 1,
-        cargo: {},
-        fitted: emptyFitted(),
-      },
-    },
+    wallet: { isk: prologue ? 0 : DEFAULT_START_ISK },
+    shipId: prologue ? 'sh-falconet' : DEFAULT_START_SHIP_ID,
+    fleet: prologue
+      ? {
+          // 隼枭级武装艇：默认驾驶，带 80% 装甲/耐久损伤（重要任务奖金→港内维修教学闭环，母港维修费 ≈1,584 ISK）
+          'sh-falconet': {
+            defId: 'sh-falconet',
+            customName: null,
+            durability: 0.8,
+            armorPct: 0.8,
+            cargo: {},
+            fitted: emptyFitted(),
+          },
+          // 沙猫级采矿艇同在机库（S1 教学：切换驾驶到矿船再出击采矿）
+          sandcat: {
+            defId: 'sandcat',
+            customName: null,
+            durability: 1,
+            armorPct: 1,
+            cargo: {},
+            fitted: emptyFitted(),
+          },
+        }
+      : {
+          [DEFAULT_START_SHIP_ID]: {
+            defId: DEFAULT_START_SHIP_ID,
+            customName: null,
+            durability: 1,
+            armorPct: 1,
+            cargo: {},
+            fitted: emptyFitted(),
+          },
+          // 经典开局同历史：机库另有隼枭武装艇待命
+          'sh-falconet': {
+            defId: 'sh-falconet',
+            customName: null,
+            durability: 1,
+            armorPct: 1,
+            cargo: {},
+            fitted: emptyFitted(),
+          },
+        },
     warehouse: {
-      items: {
-        // V12：三型通用弹药各 60 发（配合武装艇 MK1 炮，方便上手即测战斗；V18 口径取消后无轻/重档）
-        'ammo-kinetic-l': 60,
-        'ammo-explosive-l': 60,
-        'ammo-plasma-l': 60,
-      },
+      items: prologue
+        ? {
+            // 序章·苏醒：仓库不预置弹药——动能弹 120 由教学战斗任务（演习场讨伐令）奖励
+          }
+        : {
+            // 经典开局：三型通用弹药各 60 发
+            'ammo-kinetic-l': 60,
+            'ammo-explosive-l': 60,
+            'ammo-plasma-l': 60,
+          },
     },
-    moduleBay: {
-      // V12：基础战斗装备（动能炮台 MK1 一件；2026-09-05 全流程模拟发现：
-      // 旧 id 'mod-turret-1' 已在 V17.2 退役，新档默认直接写旧 id = 幽灵装备）
-      'mod-turret-kin-1': 1,
-    },
+    moduleBay: prologue
+      ? {
+          // 序章·苏醒：装备库不预置炮台——轻型炮台 MK1 由教学战斗任务奖励
+        }
+      : {
+          // 经典开局：轻型炮台（动能）MK1 一件
+          'mod-turret-kin-1': 1,
+        },
     aiCores: { basic: 0, gamma: 0, beta: 0, alpha: 0 },
     aiAssignments: {},
     shipReturns: {},
@@ -911,11 +975,18 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     refineSeq: 1,
     salvaging: { ...EMPTY_SALVAGE_OP },
     galaxyWrecks: {},
+    onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
+    importantTasks: {},
     logs: [],
   }
-  addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')
-  addLog(state, 'info', 'V12：实时战斗引擎上线——远征交火带距离机动/即时射击/命中回避（随 V10.5 数值契约启用）。V11 随机事件、V10 市场扩容已随版本就绪。')
-  addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} ISK 已到账；沙猫级采矿艇已停靠机库，另有隼枭级武装艇待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
+  if (prologue) {
+    addLog(state, 'system', '舰载系统苏醒：隐秘泊位·母港。')
+    addLog(state, 'warn', '自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。')
+    addLog(state, 'info', '初始资金 0 ISK：一切从采集第一舱矿石开始。隼枭级武装艇（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。')
+  } else {
+    addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')
+    addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} ISK 已到账；沙猫级采矿艇已停靠机库，另有隼枭级武装艇待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
+  }
   addLog(state, 'info', '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。')
   return state
 }
