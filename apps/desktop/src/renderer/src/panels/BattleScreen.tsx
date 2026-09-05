@@ -81,6 +81,9 @@ const meSpeedRef = useRef(200)
   /** 各单位上一次渲染的血量总和（用于检测"本拍刚死"，避免复活旧尸爆炸） */
   const prevHpRef = useRef<Map<string, number>>(new Map())
   const hpInitRef = useRef(false)
+  /** 各单位最近一次被击中的攻击形态（tag → DamageType）——击杀爆炸延迟按“致死形态的弹道时长”对齐，
+   *  否则导弹(760ms)会被按旧 420ms 提前触发“变灰+上移” */
+  const lastHitTypeRef = useRef<Map<string, DamageType>>(new Map())
   /** 分出胜负时的结算快照（resolve 后 battle 会被清空，报告数据靠它） */
   const outroRef = useRef<OutroSnap | null>(null)
   const reportTextRef = useRef('')
@@ -305,6 +308,7 @@ const meSpeedRef = useRef(200)
         dst = lay.me
       }
       if (!src || !dst) continue
+      if (isMeShot && fx.hit) lastHitTypeRef.current.set(aimTag, fx.type) // 记录最近命中形态（击杀延迟用）
       const aimOrig = origIdxOf(aimTag)
       const shooterOrig = origIdxOf(fx.tag)
       const foeNose = aimOrig === 0 ? NOSE_MAIN : NOSE_ESC
@@ -345,7 +349,11 @@ const meSpeedRef = useRef(200)
       prevHpRef.current.set(tag, sum)
       if (sum === 0 && prev > 0 && !deadRef.current.has(tag)) {
         deadRef.current.add(tag) // 刚被击毁：登记残骸；爆炸延后到致死弹道着弹后再启动
-        boomRef.current.set(tag, now + FLY_MS)
+        // 击杀爆炸延迟 = 致死形态的弹道时长（动能 420 / 导弹 760 / 激光 130），
+        // 与命中 puff 同时出现——否则导弹击杀会在弹道半途提前变灰/上移
+        const killerType = lastHitTypeRef.current.get(tag)
+        const killerFly = (killerType ? BOLT_LOOK[killerType]?.fly : undefined) ?? FLY_MS
+        boomRef.current.set(tag, now + killerFly)
         // V18B 补位：记录死亡锚点。注意：不能用布局几何 lay.foe 的 y（列流渲染的垂直位置
         // 与几何锚不一致，会造成死亡瞬间“突然上移”）——本拍该单位仍在 DOM，直接实测其
         // 可视中心（lane 坐标），爆炸/残骸原地播放；下一帧起撤出队列让剩余敌舰补位
@@ -361,7 +369,7 @@ const meSpeedRef = useRef(200)
             ax = dr.left - lr.left + dr.width / 2
             ay = dr.top - lr.top + dr.height / 2
           }
-          wreckRef.current.set(tag, { x: ax, y: ay, boomAt: now + FLY_MS })
+          wreckRef.current.set(tag, { x: ax, y: ay, boomAt: now + killerFly })
         }
       }
     }
