@@ -593,3 +593,95 @@ describe('第三/四批战斗技能（2026-09-05：防御容量/能量供能/弹
     expect(t5).toBeLessThanOrEqual(Math.round(t0 * 1.4) + 2)
   })
 })
+
+describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人机整备学、武装/重装舰操作）', () => {
+  it('护盾调谐学/装甲调谐学：满级减伤缺口收窄 ×0.9（0.4 基抗 → 0.46）；盾/甲技能互不串', () => {
+    const resOf = (
+      modId: string,
+      slot: 'shield' | 'armor',
+      extra: (s: GameState) => void,
+      layer: 'shield' | 'armor',
+    ): number => {
+      const mod = moduleDef(modId, slot, 0, {
+        ...(slot === 'shield' ? { shieldResistAdd: { kinetic: 0.4 } } : { armorResistAdd: { kinetic: 0.4 } }),
+        cpuUse: 5,
+      })
+      const state = createInitialState({ nowWallMs: 0, seed: 55 })
+      const ctx = makeTestCtx({ modules: [mod] })
+      addModule(state, modId, 1)
+      expect(fitModule(state, modId, ctx).ok).toBe(true)
+      extra(state)
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      return spec.resists[layer]!.kinetic ?? 0
+    }
+    // 无技能：装备基抗原样 0.4
+    expect(resOf('tun-sh', 'shield', () => undefined, 'shield')).toBeCloseTo(0.4, 10)
+    expect(resOf('tun-ar', 'armor', () => undefined, 'armor')).toBeCloseTo(0.4, 10)
+    // 满级：缺口 0.6 ×0.9 = 0.54 → 抗性 0.46（合计封顶 0.9 不变）
+    expect(resOf('tun-sh', 'shield', (s) => (s.skills.trained['shield-tuning'] = 5), 'shield')).toBeCloseTo(0.46, 10)
+    expect(resOf('tun-ar', 'armor', (s) => (s.skills.trained['armor-tuning'] = 5), 'armor')).toBeCloseTo(0.46, 10)
+    // 装甲调谐学不动护盾层、护盾调谐学不动装甲层
+    expect(resOf('tun-sh', 'shield', (s) => (s.skills.trained['armor-tuning'] = 5), 'shield')).toBeCloseTo(0.4, 10)
+    expect(resOf('tun-ar', 'armor', (s) => (s.skills.trained['shield-tuning'] = 5), 'armor')).toBeCloseTo(0.4, 10)
+  })
+
+  it('无人机整备学：满级放飞 CPU −40%（cpu 12、单架 5 → 放飞 2 → 4 架）', () => {
+    const droneDef: ItemDef = {
+      id: 'd-srv',
+      name: '无人机S',
+      kind: 'drone',
+      unitM3: 1.5,
+      baseSellPriceIsk: 1,
+      description: '测试无人机',
+      dmg: 10,
+      damageType: 'kinetic',
+      cpuUse: 5,
+    }
+    const launched = (extra: (s: GameState) => void): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 56 })
+      const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 12 })] })
+      state.fleet[state.shipId].cargo['d-srv'] = 4
+      extra(state)
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      return spec.weapons.filter((w) => w.label === droneDef.name).length
+    }
+    expect(launched(() => undefined)).toBe(2)
+    expect(launched((s) => (s.skills.trained['drone-servicing'] = 5))).toBe(4)
+  })
+
+  it('武装舰操作：仅 armed 族满级全武器单发 ×1.15（基础舰炮也吃）；其他族不受影响', () => {
+    const armedDef = { ...ship('sandcat'), role: 'armed' as const }
+    const shotOf = (def: ReturnType<typeof ship> | typeof armedDef, lv: number): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 57 })
+      const ctx = makeTestCtx({ ships: [def] })
+      state.skills.trained['armed-ops'] = lv
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      return spec.weapons[0]!.shotDmg ?? 0 // 基础舰炮（无外挂武器时的兜底条目，同乘 dmgScale）
+    }
+    const ind0 = shotOf(ship('sandcat'), 0)
+    const ind5 = shotOf(ship('sandcat'), 5) // 非 armed 族：技能不生效
+    expect(ind5).toBe(ind0)
+    const ar0 = shotOf(armedDef, 0)
+    const ar5 = shotOf(armedDef, 5)
+    expect(ar5).toBeGreaterThanOrEqual(Math.round(ar0 * 1.15) - 1)
+    expect(ar5).toBeLessThanOrEqual(Math.round(ar0 * 1.15) + 1)
+    expect(ar5).toBeGreaterThan(ar0)
+  })
+
+  it('重装舰操作：仅 armored 族满级装甲与结构 ×1.2（护盾不动）；其他族不受影响', () => {
+    const armoredDef = { ...ship('sandcat'), role: 'armored' as const }
+    const hpOf = (def: ReturnType<typeof ship> | typeof armoredDef, lv: number): { s: number; a: number; h: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 58 })
+      const ctx = makeTestCtx({ ships: [def] })
+      state.skills.trained['armored-ops'] = lv
+      return createPlayerSpec(state, ctx, state.shipId)!.hp
+    }
+    const ind5 = hpOf(ship('sandcat'), 5) // industrial 族：技能不生效
+    expect(ind5.a).toBeCloseTo(10, 10)
+    expect(ind5.h).toBeCloseTo(25, 10)
+    const ar5 = hpOf(armoredDef, 5) // 沙猫基甲 10 / 基结构 25 → ×1.2
+    expect(ar5.a).toBeCloseTo(12, 10)
+    expect(ar5.h).toBeCloseTo(30, 10)
+    expect(ar5.s).toBeCloseTo(ind5.s, 10) // 护盾层不受重装舰操作影响
+  })
+})

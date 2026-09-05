@@ -60,6 +60,20 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 3,
     description: '工业舰族专精驾驶：驾驶工业族舰船时采集产量每级 +⟦4%⟧。',
   },
+  {
+    id: 'armed-ops',
+    name: '武装舰操作',
+    group: '舰船',
+    rank: 3,
+    description: '武装舰族专精驾驶：驾驶武装族舰船时所有武器（含基础舰炮）单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧；与炮术学、武器族专精乘算叠加）。',
+  },
+  {
+    id: 'armored-ops',
+    name: '重装舰操作',
+    group: '舰船',
+    rank: 3,
+    description: '重装舰族专精驾驶：驾驶重装族舰船时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。',
+  },
 
   // ───────── 工业 ─────────
   {
@@ -239,16 +253,30 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 2,
     description: '弹仓整理与备弹规划：出发预载弹药量每级 +⟦8%⟧（满级 +⟦40%⟧；实际装载仍受携带库存上限约束）。',
   },
+  {
+    id: 'drone-servicing',
+    name: '无人机整备学',
+    group: '战斗',
+    rank: 3,
+    description: '甲板整备流程优化：无人机放飞占用的 CPU 每级 −⟦8%⟧（满级 −⟦40%⟧，至少保留 ⟦60%⟧；只放宽放飞成本，船 CPU 装配约束不变）。',
+  },
 
   // ───────── 工程 ─────────
-  // 说明：护盾操作学 / 能量管理学 / 船体加固理论为战斗线预留条目——暂在界面隐藏、
-  // 引擎禁训（HIDDEN_SKILL_IDS，见 core/engine.ts），战斗数值（二号）接入后开放。
+  // 说明：护盾操作学 / 能量管理学 / 船体加固理论原为战斗线预留条目（曾由 HIDDEN_SKILL_IDS 隐藏），
+  // 批次三起已全部开放并入战斗数值；批次五追加护盾调谐学 / 装甲调谐学（减伤缺口收窄）。
   {
     id: 'shield-operation',
     name: '护盾操作学',
     group: '工程',
     rank: 1,
     description: '护盾系统维护与回充规划：护盾容量每级 +⟦4%⟧（满级 +⟦20%⟧；与护盾扩展器件乘算）。',
+  },
+  {
+    id: 'shield-tuning',
+    name: '护盾调谐学',
+    group: '工程',
+    rank: 2,
+    description: '护盾谐振频率调谐：护盾减伤缺口（未减免部分）每级收窄 ⟦2%⟧（等效全系抗性约 +2 个百分点/级；合计仍封顶 ⟦90%⟧，与抗性改装件乘算叠加）。',
   },
   {
     id: 'energy-management',
@@ -263,6 +291,13 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工程',
     rank: 3,
     description: '船体结构强化工程：装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与装甲增厚板乘算）。',
+  },
+  {
+    id: 'armor-tuning',
+    name: '装甲调谐学',
+    group: '工程',
+    rank: 2,
+    description: '装甲板晶格微调：装甲减伤缺口（未减免部分）每级收窄 ⟦2%⟧（等效全系抗性约 +2 个百分点/级；合计仍封顶 ⟦90%⟧，与抗性改装件乘算叠加）。',
   },
   {
     id: 'repair-engineering',

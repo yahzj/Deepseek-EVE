@@ -231,15 +231,29 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
+  // 批次五：重装舰操作（armored 族驾驶）——装甲+结构容量 +4%/级，与船体加固理论乘算
+  const armoredOpsLv = ship.role === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
+  const hullSkillMult = (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv)
   const hp: Hp3 = {
     s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv),
-    a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * (1 + 0.04 * hullLv),
-    h: (ship.hullHp ?? 0) * (1 + 0.04 * hullLv),
+    a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * hullSkillMult,
+    h: (ship.hullHp ?? 0) * hullSkillMult,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
   const armorRes = mergeResist(ship.armorResist, undefined)
   for (const m of armorDefs) applyAdds(armorRes, m.armorResistAdd)
+  // 批次五：护盾调谐学/装甲调谐学——减伤缺口每级收窄 2%（等效抗性 +~2 百分点/级，上限 90% 不变）
+  const tune = (res: DamageResists, lv: number): void => {
+    if (lv <= 0) return
+    const f = 1 - 0.02 * lv
+    for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+      const v = res[t] ?? 0
+      res[t] = Math.min(0.9, Math.max(0, 1 - (1 - v) * f))
+    }
+  }
+  tune(shieldRes, Math.min(5, state.skills.trained['shield-tuning'] ?? 0))
+  tune(armorRes, Math.min(5, state.skills.trained['armor-tuning'] ?? 0))
   const resists = { shield: shieldRes, armor: armorRes, hull: ship.hullResist ?? {} }
 
   // V18.1 支援件合成：
@@ -267,7 +281,9 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
 
   const weapons: WeaponSpec[] = []
   const gunneryLv = state.skills.trained[ctx.balance.combat.gunnerySkillId] ?? 0
-  const dmgScale = (1 + bal.gunneryDmgPerLevel * gunneryLv) * (1 + (ship.powerBonus ?? 0))
+  // 批次五：武装舰操作（armed 族驾驶 +3%/级 全武器单发，乘于炮术学之外）
+  const arOpsLv = ship.role === 'armed' ? Math.min(5, state.skills.trained['armed-ops'] ?? 0) : 0
+  const dmgScale = (1 + bal.gunneryDmgPerLevel * gunneryLv) * (1 + (ship.powerBonus ?? 0)) * (1 + 0.03 * arOpsLv)
 
   // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）
   weapons.push({
@@ -353,6 +369,9 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   }
   let bayUsed = 0
   let cpuLeft = (ship.cpu ?? 0) - fittedCpuUsed(fitted, ctx)
+  // 批次五：无人机整备学（drone-servicing）——放飞占用 CPU −8%/级（只降放飞成本；装配位/船 CPU 约束不变），
+  // 下限 60%（与装填训练同级收口风格一致）
+  const droneCpuMul = Math.max(0.6, 1 - 0.08 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0))
   if (bayLimit > 0 && cpuLeft > 0) {
     const stock: Array<{ def: NonNullable<ReturnType<SimContext['items']['get']>>; units: number }> = []
     for (const [id, units] of Object.entries(cargoItemsOf(state))) {
@@ -365,10 +384,12 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     }
     stock.sort((a, b) => (b.def.dmg ?? 0) / Math.max(1, b.def.cpuUse ?? 1) - (a.def.dmg ?? 0) / Math.max(1, a.def.cpuUse ?? 1))
     outer: for (const { def, units } of stock) {
+      // 单架实际放飞成本（整备学折减后；四舍五入到整数 CPU）
+      const droneCpuAfter = Math.round((def.cpuUse ?? 0) * droneCpuMul)
       for (let i = 0; i < units; i++) {
-        if (bayUsed + def.unitM3 > bayLimit || cpuLeft - (def.cpuUse ?? 0) < 0) break outer
+        if (bayUsed + def.unitM3 > bayLimit || cpuLeft - droneCpuAfter < 0) break outer
         bayUsed += def.unitM3
-        cpuLeft -= def.cpuUse ?? 0
+        cpuLeft -= droneCpuAfter
         weapons.push({
           label: def.name,
           kind: 'fixed',
