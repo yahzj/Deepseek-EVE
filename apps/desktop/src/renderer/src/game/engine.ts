@@ -66,6 +66,7 @@ import {
   startMining,
   startMiningFromExpedition,
   startRefineRun,
+  startRecycleRun,
   startSalvageOp,
   startScan,
   startTransitHome,
@@ -517,6 +518,16 @@ export class GameEngine {
   /** 停炉：已完成批保留，剩余锁定原料全额退回仓库；AI 核心驱动时核心自动归还 */
   stopRefineRunNow(): CommandResult {
     const result = stopRefineRun(this.state, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** B3：启动残骸回收（开箱批：10 m³/25s；残骸计数 = 体积） */
+  startRecycleRunAt(wreckItemId: string, worker: AiCoreType | 'pilot'): CommandResult {
+    const result = startRecycleRun(this.state, wreckItemId, worker, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

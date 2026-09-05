@@ -144,6 +144,10 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-rof-3', kind: 'module', refId: 'mod-rof-3', rarity: 'rare', basePrice: 920_000, demandMultiplier: 0.35 },
   { key: 'mod-track-3', kind: 'module', refId: 'mod-track-3', rarity: 'rare', basePrice: 800_000, demandMultiplier: 0.35 },
   { key: 'mod-gyro-3', kind: 'module', refId: 'mod-gyro-3', rarity: 'rare', basePrice: 750_000, demandMultiplier: 0.35 },
+  /* ═══ B3 打捞器（2026-09-05；高槽无伤害件：升级只减周期；初价按低耗件梯队，可调） ═══ */
+  { key: 'mod-salvager-1', kind: 'module', refId: 'mod-salvager-1', rarity: 'common', basePrice: 20_000, demandMultiplier: 0.4 },
+  { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 130_000, demandMultiplier: 0.35 },
+  { key: 'mod-salvager-3', kind: 'module', refId: 'mod-salvager-3', rarity: 'rare', basePrice: 780_000, demandMultiplier: 0.35 },
   // 高级蓝图 MK2（旧）+ MK3（V10：学习需声望 4）
   { key: 'bp-miner-2', kind: 'blueprint', refId: 'bp-miner-2', rarity: 'rare', basePrice: 35_000, demandMultiplier: 0.5 },
   { key: 'bp-cargo-2', kind: 'blueprint', refId: 'bp-cargo-2', rarity: 'rare', basePrice: 45_000, demandMultiplier: 0.5 },

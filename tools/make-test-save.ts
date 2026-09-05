@@ -17,6 +17,9 @@
  *         （测 FitPage 复数安装/叠加标签/合成预览、per-gun 弹型、装配页与战斗数值）。
  *  - v18b 三族武器战斗验证门槛（船长 2026-09-05：三族武器 + 星图进度）：全部星系点亮 +
  *         协会声望 10 + 三族武器 MK1-3 全套入库 + 三形态演示船设为驾驶（开箱即可验证战斗）。
+ *  - b3   残骸打捞-回收全链门槛（2026-09-05）：全部星系点亮 + 资金/声望 + 打捞演示船
+ *         （白鲨级高槽 4×打捞器 MK2）+ 打捞器 MK1-3 入库 + 坟场/深渊/穹顶高残骸密度
+ *         + 仓库预置 2 种残骸各 100 m³（回收开箱立即可测）+ AI 基础核心 ×1 且 ai-expert Lv1。
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -250,12 +253,62 @@ function injectV18b(state: GameState): string[] {
   return notes
 }
 
+/** B3：残骸打捞-回收全链验证门槛 */
+function injectB3(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 1) 资金 + 声望 + 星图全点亮（低安打捞点可达）
+  state.wallet.isk += 20_000_000
+  notes.push('钱包 +20,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 10)
+  notes.push('协会声望升至 10')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——低安打捞点已可达`)
+  // 2) 打捞演示船（白鲨级：高槽 5 位装 4×打捞器 MK2，留 1 位试单/多台差异）直接设为驾驶
+  const uid = addShipToFleet(state, 'sh-whiteshark')
+  const demo = state.fleet[uid]!
+  demo.customName = '残骸打捞演示'
+  demo.fitted = {
+    high: ['mod-salvager-2', 'mod-salvager-2', 'mod-salvager-2', 'mod-salvager-2', null],
+    mid: [null, null, null],
+    low: [null, null],
+  }
+  state.shipId = uid
+  for (const id of ['mod-salvager-1', 'mod-salvager-2', 'mod-salvager-3']) {
+    state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
+  }
+  for (const s of Object.values(state.fleet)) s.durability = 1
+  notes.push('新增「残骸打捞演示」白鲨级并设为驾驶（高槽 4×打捞器 MK2，留 1 位）；打捞器 MK1/2/3 各一件已入库；全舰耐久回满')
+  // 3) 高残骸密度（低安打捞点 + 深空顶级点）
+  state.galaxyWrecks['galaxy-grave'] = { density: 60, rare: 0 }
+  state.galaxyWrecks['galaxy-abyss'] = { density: 50, rare: 0 }
+  state.galaxyWrecks['galaxy-vault'] = { density: 70, rare: 0 }
+  notes.push('坟场/深渊/穹顶墓园残骸密度预置 60/50/70（打捞即见肥瘦随密度变化）')
+  // 4) 仓库预置残骸（回收开箱立即可测：保底矿物 + 彩头）
+  state.warehouse.items['wreck-ano-gravekeeper'] = (state.warehouse.items['wreck-ano-gravekeeper'] ?? 0) + 100
+  state.warehouse.items['wreck-ano-abyss-guard'] = (state.warehouse.items['wreck-ano-abyss-guard'] ?? 0) + 100
+  notes.push('仓库预置 坟场守墓人/深渊之门卫队 残骸各 100 m³——工业页「残骸回收」可直接开箱')
+  // 5) AI 打捞任务门槛（名额 1 + 基础核心）
+  state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 1)
+  state.aiCores.basic = (state.aiCores.basic ?? 0) + 1
+  notes.push('「人工智能专家」Lv1 + 基础 AI 核心 ×1（可试 AI 打捞任务）')
+  notes.push('测试路径：星图远征面板「残骸打捞」开捞（或 AI 指挥中心打捞任务）→ 满仓自动返港 → 工业页残骸回收开箱（保底矿物 + 彩头/碎片）→ 装备库与仓库核收')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
   refine: injectRefine,
   v18: injectV18,
   v18b: injectV18b,
+  b3: injectB3,
 }
 
 function main(): void {
