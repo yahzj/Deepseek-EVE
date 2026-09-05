@@ -185,7 +185,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'ammo-kinetic-l',
     outputUnits: 120,
     materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 ISK ≈ 720×0.53
-    buildSeconds: 60,
+    buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
     priceIsk: 900,
     description: '动能弹生产线图纸：把三钛合金轧成高速实心弹（120 发/批，对护盾 ×1.5）。',
@@ -196,7 +196,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'ammo-explosive-l',
     outputUnits: 120,
     materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 ISK ≈ 840×0.57
-    buildSeconds: 75,
+    buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 15,
     priceIsk: 1_100,
     description: '爆破导弹生产线图纸：类银超金属冲压弹壳装填高爆装药（120 发/批，对装甲 ×1.5）。',
@@ -207,7 +207,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'ammo-plasma-l',
     outputUnits: 120,
     materials: [{ itemId: 'min-mexallon', count: 26 }], // 520 ISK ≈ 960×0.54
-    buildSeconds: 90,
+    buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 18,
     priceIsk: 1_300,
     description: '能量弹药生产线图纸：类晶体胶体充能电池组（120 发/批，对护盾 ×1.25）。',
