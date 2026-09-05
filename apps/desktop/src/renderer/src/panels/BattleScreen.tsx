@@ -153,6 +153,7 @@ const meSpeedRef = useRef(200)
     if (!b || !combat || battleFirstSeenRef.current === b.startedAtGameMs) return
     battleFirstSeenRef.current = b.startedAtGameMs
     const me = b.units['player']
+    const arcsNow = battleArcsFor(engine.state, engine.ctx)
     const foeRows = Object.entries(b.units)
       .filter(([, u]) => u.side === 'foe')
       .map(([tag, u]) => ({ tag, hp: `${u.hp.s.toFixed(1)}/${u.hp.a.toFixed(1)}/${u.hp.h.toFixed(1)}` }))
@@ -161,6 +162,8 @@ const meSpeedRef = useRef(200)
       JSON.stringify({
         ageMs: engine.state.gameMs - b.startedAtGameMs, // 首帧可见时战斗已暗中推进多少游戏毫秒
         distM: Math.round(b.distanceM),
+        openM: arcsNow ? Math.round(arcsNow.openM) : null, // 规则开战距离=最远射程+100
+        meMaxRangeM: arcsNow ? arcsNow.me.map((w) => ({ label: w.label, max: Math.round(w.maxM), kind: w.kind })) : null,
         myDesireM: Math.round(b.myDesireM),
         ended: b.ended,
         foeHp: foeRows,
