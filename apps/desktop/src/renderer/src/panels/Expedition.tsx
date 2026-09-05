@@ -808,7 +808,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   className="app-btn is-small is-primary"
                   disabled={scan.active || state.mining.active || view.active}
                   onClick={() => handleScan(selected)}
-                  title={`派出深空扫描艇：单程航行约 ${formatDurationMs(Math.max(1, Math.round(travelLegMs(state, engine.ctx, Math.max(1, shortestTravelMinutes(engine.ctx, 'galaxy-hub', selected.id))))))}（按当前驾驶船）+ 就地扫描 10 分钟，完成即停留该星系；期间事件倒计时加速、更易遭遇「探索发现」`}
+                  title={`派出深空扫描艇：立即就地扫描（去程已取消）约 10 分钟，完成即停留该星系；期间事件倒计时加速、更易遭遇「探索发现」`}
                 >
                   🔭 扫描探索（约 {Math.max(1, scanMinutesOf(selected))} 分钟）
                 </button>
@@ -829,18 +829,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介 */}
               <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} />
               <div className="app-dim">
-                {(() => {
-                  const nom = shortestTravelMinutes(engine.ctx, 'galaxy-hub', selected.id)
-                  if (!Number.isFinite(nom)) return `距母港（${hubName}）单程：无航路`
-                  const act = travelMinutesEff(state, engine.ctx, nom)
-                  return (
-                    <>
-                      距母港（{hubName}）单程约 {formatDurationMs(Math.max(1, Math.round(act * 60_000)))}
-                      <span title={`标称 ${nom}′ · 已按当前驾驶船跃迁速度与航行技能换算`}>（标称 {nom}′）</span>
-                    </>
-                  )
-                })()}
-                {view.active ? ' · 远征中' : ''}
+                距母港（{hubName}）{view.active ? ' · 远征中' : ''}
               </div>
               {editing ? (
                 <div className="app-map-edit-tip">
@@ -958,7 +947,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
     (state.standby.active && !inFlight)
   const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
   const standbyTitle = inFlight
-    ? '正在前往该星系掩护巡逻途中（旧档去程）'
+    ? '正在前往该星系掩护巡逻途中'
     : alreadyHere
       ? `舰船已在「${galaxy.name}」掩护巡逻`
       : pilotBusy

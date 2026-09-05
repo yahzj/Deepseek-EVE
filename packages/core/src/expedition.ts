@@ -218,7 +218,7 @@ export function startExpedition(
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)
   const fromName = ctx.galaxies.get(from)?.name ?? from
@@ -280,7 +280,7 @@ export function startExpeditionFromMining(
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
   const m = state.mining
   if (!m.active) return startExpedition(state, anomalyId, ctx, opts) // 无采矿作业 → 普通出发
   const anomaly = ctx.anomalies.get(anomalyId)!
@@ -843,5 +843,5 @@ export function expeditionFeasibility(state: GameState, anomaly: AnomalyDef, ctx
   if (block) return { ok: false, reason: '星系未探索' }
   const minutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, anomaly.galaxyId)
   if (!Number.isFinite(minutes)) return { ok: false, reason: '无航路' }
-  return { ok: true, reason: `航程 ${minutes} 分钟单程` }
+  return { ok: true, reason: `去程即时 · 失利返航约 ${minutes * 2} 分钟` }
 }

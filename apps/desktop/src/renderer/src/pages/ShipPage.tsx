@@ -178,7 +178,7 @@ export function ShipPage({
         {scanSwitchId ? (
           <div className="app-sell-confirm" style={{ marginTop: 0, marginBottom: 8 }}>
             <div className="app-sell-warn" style={{ background: 'transparent' }}>
-              ⚠ 扫描探索往返途中：切换驾驶将终止本次扫描（已扫窗口进度保留，可对该星系续扫）。
+              ⚠ 扫描探索进行中：切换驾驶将终止本次扫描（已扫窗口进度保留，可对该星系续扫）。
             </div>
             <div className="app-sell-confirm-title">确认切换至「{shipDisplayName(state, ctx, scanSwitchId)}」？</div>
             <div className="app-sell-confirm-btns">

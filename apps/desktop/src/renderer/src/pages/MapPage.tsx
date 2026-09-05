@@ -461,7 +461,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
   const phaseText = (): string => {
     if (!me.active) return `${shipDisplayName(state, engine.ctx, state.shipId)} 停靠空间站——在下方残骸卡上开始打捞，或指派 AI 副船。`
     const gName = me.galaxyId ? engine.ctx.galaxies.get(me.galaxyId)?.name : ''
-    if (me.phase === 'outbound') return `${shipDisplayName(state, engine.ctx, state.shipId)} 前往「${gName}」（出航中 · 旧档去程）`
+    if (me.phase === 'outbound') return `${shipDisplayName(state, engine.ctx, state.shipId)} 前往「${gName}」（出航中）`
     if (me.phase === 'returning') return `${shipDisplayName(state, engine.ctx, state.shipId)} 返航卸货中（本趟约 ${Math.round(me.tripM3 * 100) / 100} m³）`
     return `${shipDisplayName(state, engine.ctx, state.shipId)} 在「${gName}」持续打捞中 · 本趟约 ${Math.round(me.tripM3 * 100) / 100} m³`
   }
@@ -533,7 +533,7 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
   const ctx = engine.ctx
   if (s.phase === 'outbound') {
     const leg = Math.max(1, outboundLegMsFor(state, ctx, s.galaxyId))
-    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '出航中（旧档）', travel: true }
+    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '出航中', travel: true }
   }
   if (s.phase === 'returning') {
     // 返航腿 = 满载返航 + 空船去程（去程并入返航）

@@ -98,7 +98,7 @@ export function isIdleField(state: GameState): boolean {
  */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
   if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。' }
-  if (state.standby.active) return { ok: false, error: '掩护巡逻（旧档去程）进行中——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航行程进行中。' }
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
@@ -201,7 +201,7 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   const target = ctx.galaxies.get(galaxyId)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
   const s = state.standby
-  if (s.active) return { ok: false, error: '掩护巡逻进行中（旧档去程）：请先取消（顶部活动栏）。' }
+  if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排。' }
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。' }

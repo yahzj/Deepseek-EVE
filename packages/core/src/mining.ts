@@ -23,7 +23,7 @@ import { nextRandom } from './rng'
 import { isMineableItem } from './labels'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse, unloadCargoToWarehouse } from './inventory'
 import { DSI_FACTION_ID, HOME_GALAXY_ID, recallExpedition, shortestTravelMinutes, standingOf } from './expedition'
-import { travelLegMs, travelMinutesEff } from './travel'
+import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
@@ -195,7 +195,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——请先取消（顶部活动栏）。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。' }
   }
@@ -223,7 +223,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const outSec = Math.max(1, Math.round(oneOutboundLegMs(state, ctx, beltId, undefined, fromField) / 1000))
   const retSec = Math.max(1, Math.round(oneLegMs(state, ctx, beltId) / 1000))
   const travelStatic = beltTravelMinutes(ctx, belt, fromField)
-  const travelNote = travelStatic > 0 ? `（其中远带航程约 ${Math.max(1, travelMinutesEff(state, ctx, travelStatic))} 分钟）` : ''
+  const travelNote = travelStatic > 0 ? '（远带矿带：返航已含往返航程）' : ''
   const tripNote = m.autoCycle
     ? ' 已启用自动循环：满舱自动返航空间站卸货，卸完自动开始下一趟。'
     : ' 自动循环已关闭：货舱满后将停在矿带。'

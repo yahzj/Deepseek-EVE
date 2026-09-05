@@ -106,10 +106,10 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   if (state.scanning.active) {
     return {
       ok: false,
-      error: '扫描探索往返途中：切换驾驶将中断本次扫描（已扫窗口进度保留）。请先在顶部活动栏「终止扫描」，或确认终止后由界面替你处理。',
+      error: '扫描探索进行中：切换驾驶将中断本次扫描（已扫窗口进度保留）。请先在顶部活动栏「终止扫描」，或确认终止后由界面替你处理。',
     }
   }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中（旧档去程）——到港后再换船。' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——到港后再换船。' }
   // 采矿作业中：直接切换成功——旧船按其当前阶段自动返航（到港自动卸货入仓库），采矿作业随之结束
   if (state.mining.active) {
     retireMiningShip(state, ctx)
