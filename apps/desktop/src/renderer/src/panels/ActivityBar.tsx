@@ -1,6 +1,7 @@
 /**
- * T1 顶部活动窗口：常驻显示当前全部进行中活动（训练/采矿/扫描/制造/远征/AI），
- * 并提供统一终止入口。各页原有运行状态区与停止按钮已收敛于此。
+ * T1 顶部活动窗口：常驻显示「玩家活动」与「技能训练」两个分区（各带待机文案），
+ * 提供统一终止入口；AI 活动不逐条显示，用 🤖×N 小图标徽标（点击跳 AI 指挥中心）。
+ * 布局：垂直排布，固定高度上限，内容多时内部滚动（船长 2026-09-05）。
  */
 import { activityOverview } from '@whale/core'
 import type { ActivityView } from '@whale/core'
@@ -85,104 +86,106 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
 
 export function ActivityBar({ engine, onToast, onAiCenter }: { engine: GameEngine; onToast: ToastFn; onAiCenter?: () => void }) {
   const state = engine.state
-  const items = activityOverview(state, engine.ctx)
-  // 船长 2026-09-05：AI 活动不直接在活动窗口逐条显示，改为"🤖×N"小图标徽标（有多少 AI 在执行）
-  const aiCount = items.filter((i) => i.kind === 'ai').length
-  const shownItems = items.filter((i) => i.kind !== 'ai')
+  const all = activityOverview(state, engine.ctx)
+  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用 🤖×N 徽标
+  const aiCount = all.filter((i) => i.kind === 'ai').length
+  const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
+  const trainItems = all.filter((i) => i.kind === 'train')
   const loopId = state.autoLoopAnomalyId
   // 撤退需二次确认（轻损但有代价）
   const [retreatAsk, setRetreatAsk] = useState(false)
-  if (retreatAsk && !shownItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
-  // 常驻显示：无任何活动时显示"待机"提示（船长 2026-09-05）
-  const idle = shownItems.length === 0 && aiCount === 0 && !loopId
-  return (
-    <div className="app-activitybar">
-      <span className="app-activitybar-title">活动</span>
-      {aiCount > 0 ? (
+  if (retreatAsk && !playerItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
+
+  const renderItem = (v: ActivityView) => (
+    <div key={v.id} className={`app-activitybar-item is-${v.kind}`} title={v.stopReason ?? undefined}>
+      <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
+      <div className="app-activitybar-main">
+        <div className="app-activitybar-line">
+          <span className="app-activitybar-label">{v.label}</span>
+          <span className="app-dim app-activitybar-sub">{v.sub}</span>
+          {v.percent !== null ? (
+            <span className="app-activitybar-track">
+              <span className="app-activitybar-fill" style={{ width: `${v.percent}%` }} />
+            </span>
+          ) : null}
+          <span className="app-activitybar-time">
+            {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
+            {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${formatDurationMs(v.remainingMs)}` : ''}
+          </span>
+        </div>
+      </div>
+      {v.stopable && v.stop ? (
         <button
-          className="app-activitybar-ai"
-          title={`${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`}
-          onClick={onAiCenter}
+          className="app-btn is-small is-warn"
+          title={
+            v.stop === 'cancel-manufacture'
+              ? '取消制造：材料全额退回、制造费不退'
+              : v.stop === 'stop-refine'
+                ? '停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）'
+                : v.stop === 'recall-expedition'
+                  ? '召回远征：中止任务返回母港（无战果）'
+                  : v.stop === 'stop-scan'
+                    ? '终止扫描：就地扫描进度保存，下次续扫'
+                    : v.stop === 'remove-training'
+                      ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
+                      : v.stop === 'retreat-battle'
+                        ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止连续出击）'
+                        : undefined
+          }
+          onClick={() => {
+            if (v.stop !== 'retreat-battle') {
+              doStop(v, engine, onToast)
+              return
+            }
+            if (!retreatAsk) {
+              setRetreatAsk(true)
+              onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
+              return
+            }
+            setRetreatAsk(false)
+            doStop(v, engine, onToast)
+          }}
         >
-          🤖×{aiCount}
+          {v.stop === 'retreat-battle' && retreatAsk ? '再点确认撤退' : stopLabel(v)}
         </button>
       ) : null}
-      <div className="app-activitybar-items">
-        {idle ? (
-          <span className="app-activitybar-idle">☕ 待机中：暂无进行中的活动——安排采矿 / 远征 / 扫描，或训练技能。</span>
-        ) : (
-          shownItems.map((v) => (
-          <div key={v.id} className={`app-activitybar-item is-${v.kind}`} title={v.stopReason ?? undefined}>
-            <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
-            <div className="app-activitybar-main">
-              <div className="app-activitybar-line">
-                <span className="app-activitybar-label">{v.label}</span>
-                <span className="app-dim app-activitybar-sub">{v.sub}</span>
-                {v.percent !== null ? (
-                  <span className="app-activitybar-track">
-                    <span className="app-activitybar-fill" style={{ width: `${v.percent}%` }} />
-                  </span>
-                ) : null}
-                <span className="app-activitybar-time">
-                  {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
-                  {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${formatDurationMs(v.remainingMs)}` : ''}
-                </span>
-              </div>
-            </div>
-            {v.stopable && v.stop ? (
-              <button
-                className="app-btn is-small is-warn"
-                title={
-                  v.stop === 'cancel-manufacture'
-                    ? '取消制造：材料全额退回、制造费不退'
-                    : v.stop === 'stop-refine'
-                      ? '停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）'
-                      : v.stop === 'recall-expedition'
-                      ? '召回远征：中止任务返回母港（无战果）'
-                      : v.stop === 'stop-scan'
-                        ? '终止扫描：就地扫描进度保存，下次续扫'
-                        : v.stop === 'remove-training'
-                          ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
-                          : v.stop === 'retreat-battle'
-                            ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止连续出击）'
-                            : undefined
-                }
-                onClick={() => {
-                  if (v.stop !== 'retreat-battle') {
-                    doStop(v, engine, onToast)
-                    return
-                  }
-                  if (!retreatAsk) {
-                    setRetreatAsk(true)
-                    onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
-                    return
-                  }
-                  setRetreatAsk(false)
-                  doStop(v, engine, onToast)
-                }}
-              >
-                {v.stop === 'retreat-battle' && retreatAsk ? '再点确认撤退' : stopLabel(v)}
-              </button>
-            ) : null}
-          </div>
-        )))}
-        {loopId ? (
-          <div className="app-activitybar-loop">
-            <span className="app-dim">
-              🔁 连击：{engine.ctx.anomalies.get(loopId)?.name ?? loopId}（胜利冷却 10 秒起自动再出发）
-            </span>
-            <button
-              className="app-btn is-small is-warn"
-              title="停止连续出击（当前这一单照常打完）"
-              onClick={() => {
-                const r = engine.bountyLoopAt(null)
-                if (!r.ok) onToast(r.error ?? '操作失败', true)
-              }}
-            >
-              停连击
-            </button>
-          </div>
+    </div>
+  )
+
+  return (
+    <div className="app-activitybar">
+      <div className="app-activitybar-hd">
+        <span className="app-activitybar-title">活动</span>
+        {aiCount > 0 ? (
+          <button
+            className="app-activitybar-ai"
+            title={`${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`}
+            onClick={onAiCenter}
+          >
+            🤖×{aiCount}
+          </button>
         ) : null}
+        {loopId ? (
+          <span className="app-activitybar-loop-mini" title="连续出击中（胜利冷却 10 秒起自动再出发）">
+            🔁 连击
+          </span>
+        ) : null}
+      </div>
+      <div className="app-activitybar-group">
+        <div className="app-activitybar-gtitle">玩家活动</div>
+        {playerItems.length > 0 ? (
+          playerItems.map(renderItem)
+        ) : (
+          <span className="app-activitybar-idle">☕ 待机中——安排采矿 / 远征 / 扫描。</span>
+        )}
+      </div>
+      <div className="app-activitybar-group">
+        <div className="app-activitybar-gtitle">技能训练</div>
+        {trainItems.length > 0 ? (
+          trainItems.map(renderItem)
+        ) : (
+          <span className="app-activitybar-idle">📚 暂未训练——去「技能」页排课。</span>
+        )}
       </div>
     </div>
   )
