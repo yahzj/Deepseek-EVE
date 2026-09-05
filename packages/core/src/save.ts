@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, LogEntry, LogKind } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -641,6 +641,23 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     next.manufacturingSeq = mfRuns.length > 0 ? 2 : 1
     return next
   },
+  21: (raw) => {
+    // v21 -> v22（2026-09-05 船长拍板：承伤持久化）：舰队船补 armorPct（缺省 1 = 装甲完好）
+    const next: RawState = { ...raw }
+    const fleetRaw = asRaw(next.fleet)
+    if (fleetRaw !== null && typeof fleetRaw === 'object') {
+      for (const shipRaw of Object.values(fleetRaw)) {
+        const s = asRaw(shipRaw)
+        if (typeof s !== 'object' || s === null) continue
+        const armor = s.armorPct
+        s.armorPct =
+          typeof armor === 'number' && Number.isFinite(armor)
+            ? Math.min(1, Math.max(0, Math.round(armor * 1000) / 1000))
+            : 1
+      }
+    }
+    return next
+  },
 }
 /** 字符串或 null 归一（迁移辅助） */
 function asNullableString(v: unknown): string | null {
@@ -829,10 +846,18 @@ function normalizeState(raw: unknown): GameState {
   }
   const freshShip = (
     defId: string,
-  ): { defId: string; customName: string | null; durability: number; cargo: Record<string, number>; fitted: FittedModules } => ({
+  ): {
+    defId: string
+    customName: string | null
+    durability: number
+    armorPct?: number
+    cargo: Record<string, number>
+    fitted: FittedModules
+  } => ({
     defId,
     customName: null,
     durability: 1,
+    armorPct: 1,
     cargo: {},
     fitted: emptyFitted(),
   })
@@ -855,6 +880,13 @@ function normalizeState(raw: unknown): GameState {
       typeof durabilityRaw === 'number' && Number.isFinite(durabilityRaw)
         ? Math.min(1, Math.max(0, Math.round(durabilityRaw * 1000) / 1000))
         : 1
+    // P0 承伤持久化：装甲残余（0~1）。仅当原档带数值才写回（迁移层负责给旧档补 1；
+    // 创建层一律显式带 1）——避免给无字段的新建条目强插默认值破坏往返一致性
+    const armorRaw = shipRaw.armorPct
+    const armorPct =
+      typeof armorRaw === 'number' && Number.isFinite(armorRaw)
+        ? Math.min(1, Math.max(0, Math.round(armorRaw * 1000) / 1000))
+        : undefined
     // v17：defId 缺省按实例 uid 回填（第 1 艘 uid = 船型 id）
     const defId = typeof shipRaw.defId === 'string' && shipRaw.defId.length > 0 ? shipRaw.defId : uidDefId(id)
     // V18 fitted 容错：三类位数组（逐位净化）；v17 六槽 Record → 原位映射为 2/2/2 过渡形状
@@ -875,6 +907,7 @@ function normalizeState(raw: unknown): GameState {
       defId,
       customName: cleanCustomName(shipRaw.customName),
       durability,
+      armorPct,
       cargo: cargoMap,
       fitted,
     }
@@ -1575,7 +1608,7 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  const normalized: GameStateV21 = {
+  const normalized: GameStateV22 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,

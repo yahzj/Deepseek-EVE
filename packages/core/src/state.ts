@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 游戏状态：一份存档里保存的全部内容。
  *
  * 设计要点（中文说明）：
@@ -15,7 +15,7 @@ import { emptyFitted } from './labels'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 21
+export const CURRENT_STATE_VERSION = 22
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -103,8 +103,10 @@ export interface FleetShipState {
   defId?: string
   /** v17：玩家自定义船名（缺省/未设 = 用默认名：船型名，同型第 2 艘起自动带「 #N」） */
   customName?: string | null
-  /** 耐久 0~1（1 = 完好）；每次远征失利扣减，归零即弃船 */
+  /** 耐久 0~1（1 = 完好）；P0 起与「结构层」合并：战斗中结构被打多少，耐久就扣多少（跨场保留），归零即弃船 */
   durability: number
+  /** P0 承伤持久化：装甲残余比例 0~1（1 = 完好；缺省=1）。损伤跨场保留，仅港内付费维修/修理套件恢复 */
+  armorPct?: number
   /** 船上货仓：itemId -> 单位数（随船，弃船即遗失） */
   cargo: Record<string, number>
   /** 装在这艘船上的装备（随船，弃船即遗失） */
@@ -723,7 +725,7 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
 }
 
 /** 对外统一称呼：当前版本状态（v21 = v20 + 蓝图制造多工位并行 manufacturingRuns） */
-export type GameState = GameStateV21
+export type GameState = GameStateV22
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -745,7 +747,7 @@ export type GameStateV20 = Omit<GameStateV19, 'version'> & {
   refineSeq: number
 }
 
-/** 第二十一版存档结构（当前版本）：v21 = v20 + 蓝图制造多工位并行（2026-09-05 船长拍板：
+/** 第二十一版存档结构：v21 = v20 + 蓝图制造多工位并行（2026-09-05 船长拍板：
  * 多张蓝图可同时制造、逐线独立进度与取消；manufacturing 单例 → manufacturingRuns 数组 +
  * manufacturingSeq 线号分配器；同蓝图至多一条线，不同蓝图不限；制造不占主控）。 */
 export type GameStateV21 = Omit<GameStateV20, 'version' | 'manufacturing'> & {
@@ -754,6 +756,14 @@ export type GameStateV21 = Omit<GameStateV20, 'version' | 'manufacturing'> & {
   manufacturingRuns: ManufacturingRunState[]
   /** 制造线号自增分配器 */
   manufacturingSeq: number
+}
+
+/** 第二十二版存档结构（当前版本）：v22 = v21 + 承伤持久化（2026-09-05 船长拍板：
+ * 护盾场间重置 + 战中被动回充；装甲损伤（fleetShip.armorPct，缺省 1）跨场保留；
+ * 结构层与耐久合并为同一属性（战斗中结构受损即扣 durability，跨场保留），
+ * 两者仅港内付费维修/修理套件恢复；v21→v22 迁移只补 armorPct 默认值，无结构变化）。 */
+export type GameStateV22 = Omit<GameStateV21, 'version'> & {
+  version: 22
 }
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
@@ -767,10 +777,10 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
 }
 
 /** 创建一份全新的初始存档（一个新飞行员） */
-export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV21 {
+export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV22 {
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV21 = {
-    version: 21,
+  const state: GameStateV22 = {
+    version: 22,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -794,6 +804,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
         defId: DEFAULT_START_SHIP_ID,
         customName: null,
         durability: 1,
+        armorPct: 1,
         cargo: {},
         fitted: emptyFitted(),
       },
@@ -802,6 +813,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
         defId: 'sh-falconet',
         customName: null,
         durability: 1,
+        armorPct: 1,
         cargo: {},
         fitted: emptyFitted(),
       },
