@@ -35,7 +35,8 @@ import { Glyph, toneOf } from '../ui/Glyphs'
 import type { PageProps } from './common'
 
 
-/** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复） */
+/** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复；火力加成例外——船长
+ * 2026-09-05：不入血量徽章组，作为下方属性行展示，故从过滤名单中放行） */
 const COMBAT_BASE_KEYS = new Set([
   '护盾',
   '护盾抗性',
@@ -43,7 +44,6 @@ const COMBAT_BASE_KEYS = new Set([
   '装甲抗性',
   '结构',
   '结构抗性',
-  '火力加成',
   '命中加成',
   '回避率',
 ])
@@ -58,23 +58,23 @@ const RACK_FAMILIES: Record<RackSlot, string> = {
 /** 数字千分位 */
 const fmt = (n: number): string => n.toLocaleString('zh-CN')
 
-/** 单层抗性 chips：只列非零系（chip 底色 = 类型色），全零 = "—" */
-function layerResChips(res: DamageResists | undefined): ReactNode {
-  const parts = (['kinetic', 'explosive', 'plasma'] as const)
-    .map((t) => ({ t, v: res?.[t] ?? 0 }))
-    .filter((x) => x.v > 0)
-  if (parts.length === 0) return '—'
-  return parts.map((x, i) => (
-    <span key={x.t}>
-      {i > 0 ? ' ' : null}
-      <DmgChip t={x.t} label={`${DMG_LABEL[x.t]} ${Math.round(x.v * 100)}%`} />
-    </span>
-  ))
+/** 抗性三系恒显 chips（船长 2026-09-05：0 抗也列出——不做"缺行=0"的隐性省略） */
+function resChipsAll(res: DamageResists | undefined): ReactNode {
+  return (['kinetic', 'explosive', 'plasma'] as const).map((t) => {
+    const pct = Math.round((res?.[t] ?? 0) * 100)
+    return pct > 0 ? (
+      <DmgChip key={t} t={t} label={`${DMG_LABEL[t]} ${pct}%`} />
+    ) : (
+      <span key={t} className="app-res-zero">
+        {DMG_LABEL[t]} 0%
+      </span>
+    )
+  })
 }
 
 /** 换装对比段（装配浮层卡片底部；船长 2026-09-05：显示装后 DPS/属性是否有变化） */
 interface FitSeg {
-  /** 展示文本（如 "火力 ≈ +14%" / "盾 960→1032"） */
+  /** 展示文本（如 "火力 +14%" / "盾 960→1032" / "CPU 剩 42→35"） */
   t: string
   /** 着色：up=绿（升）· down=红（降）· info=中性青（值变化）· none=灰（占位说明） */
   c: 'up' | 'down' | 'info' | 'none'
@@ -106,13 +106,16 @@ function meanHitMul(spec: UnitSpec): number | null {
 }
 
 /** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化 */
-function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number): FitSeg[] {
+function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number, cpuTotal: number): FitSeg[] {
   const segs: FitSeg[] = []
   const add = (t: string, c: FitSeg['c']): void => {
     segs.push({ t, c })
   }
   const dir = (d: number): 'up' | 'down' => (d > 0 ? 'up' : 'down')
-  if (cpuNext !== cpuCur) add(`CPU ${cpuCur}→${cpuNext}`, 'info')
+  // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）
+  const remCur = Math.max(0, cpuTotal - cpuCur)
+  const remNext = Math.max(0, cpuTotal - cpuNext)
+  if (remNext !== remCur) add(`CPU 剩 ${remCur}→${remNext}`, 'info')
   // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
   for (const k of ['s', 'a', 'h'] as const) {
@@ -140,16 +143,16 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
   if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
   if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
-  // 火力（名义口径，见 rawDpsOf 注释）
+  // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
-  if (cd <= 0 && nd > 0) add('火力 ≈ 新增', 'up')
-  else if (nd <= 0 && cd > 0) add('火力 ≈ 归零', 'down')
+  if (cd <= 0 && nd > 0) add('火力 新增', 'up')
+  else if (nd <= 0 && cd > 0) add('火力 归零', 'down')
   else if (cd > 0 && nd > 0) {
     const pct = (nd / cd - 1) * 100
     if (Math.abs(pct) >= 0.5) {
       const show = Math.abs(pct) >= 10 ? String(Math.round(pct)) : pct.toFixed(1)
-      add(`火力 ≈ ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
+      add(`火力 ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
     }
   }
   // 命中近似（整机相对变化；口径见 meanHitMul）
@@ -159,26 +162,55 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
     const hp = (nh / ch - 1) * 100
     if (Math.abs(hp) >= 2) {
       const show = Math.abs(hp) >= 10 ? String(Math.round(hp)) : hp.toFixed(1)
-      add(`命中 ≈ ${hp > 0 ? '+' : '−'}${show}%`, hp > 0 ? 'up' : 'down')
+      add(`命中 ${hp > 0 ? '+' : '−'}${show}%`, hp > 0 ? 'up' : 'down')
     }
   }
   return segs
 }
 
-/** CPU 占用条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配） */
+/** 武器判定：炮台/导弹架/激光炮（弹种 chip 显示攻击类型，色 = 伤害类型 ↔ 血量层色） */
+const WEAPON_SLOTS = new Set<ModuleSlot>(['turret', 'missile', 'laser'])
+
+/** 武器弹药 chip（船长 2026-09-05：换装卡须明示弹药攻击类型） */
+function ammoChipOf(m: ModuleDef): ReactNode | null {
+  if (m.slot === 'turret') {
+    const t = m.damageType ?? 'kinetic'
+    return <DmgChip t={t} label={`${DMG_LABEL[t]}弹`} />
+  }
+  if (m.slot === 'missile') return <DmgChip t="explosive" label="爆破导弹" />
+  if (m.slot === 'laser') return <DmgChip t="plasma" label="能量弹药" />
+  return null
+}
+
+/** 射程短文本（换装卡武器行用；min=0 省略近端） */
+function rangeShort(m: ModuleDef): string {
+  const max = m.maxRangeM
+  if (max === undefined) return '—'
+  const hi = max >= 1000 ? `${(max / 1000).toFixed(max % 1000 === 0 ? 0 : 1)} km` : `${max} m`
+  const lo = m.minRangeM && m.minRangeM > 0 ? m.minRangeM : 0
+  if (lo === 0) return hi
+  const loS = lo >= 1000 ? `${(lo / 1000).toFixed(lo % 1000 === 0 ? 0 : 1)} km` : `${lo} m`
+  return `${loS} ~ ${hi}`
+}
+
+/** CPU 剩余条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配；减法显示剩余——船长 2026-09-05） */
 function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
-  const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0
-  // 醒目分级：低占用金/正常青绿渐变 → ≥85% 琥珀告警 → 100% 危险红
-  const cls = pct >= 99.5 ? 'is-full' : pct >= 85 ? 'is-warn' : 'is-ok'
+  const rem = Math.max(0, total - used)
+  const remPct = total > 0 ? Math.min(100, (rem / total) * 100) : 0
+  // 醒目分级：剩余充足青绿 → ≤15% 琥珀告警 → 0 危险红
+  const cls = rem <= 0 ? 'is-full' : remPct <= 15 ? 'is-warn' : 'is-ok'
   return (
-    <div className={`app-fit-cpustrip ${cls}`} title="档位基础：低级 5 / 中级 15 / 高级 40 CPU（炮台更高）；与无人机放飞共用，超上限拒绝装配">
-      <span className="app-fit-cpustrip-label">CPU 占用</span>
+    <div
+      className={`app-fit-cpustrip ${cls}`}
+      title="档位基础：低级 5 / 中级 15 / 高级 40 CPU（炮台更高）；剩余 = 船体上限 − 已装占用，与无人机放飞共用"
+    >
+      <span className="app-fit-cpustrip-label">CPU 剩余</span>
       <span className="app-fit-cpustrip-num">
-        {used} / {total}
+        {rem} / {total}
       </span>
-      <span className="app-fit-cpustrip-pct">{Math.round(pct)}%</span>
-      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
-        <i style={{ width: `${pct}%` }} />
+      <span className="app-fit-cpustrip-pct">{Math.round(remPct)}%</span>
+      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(remPct)} aria-valuemin={0} aria-valuemax={100}>
+        <i style={{ width: `${remPct}%` }} />
       </span>
     </div>
   )
@@ -238,6 +270,7 @@ export function FitPage({ engine, onToast }: PageProps) {
   }
   function openPick(rack: RackSlot, index: number): void {
     setPickBay({ rack, index })
+    const cpuTotal = shipDef ? effectiveCpu(state, engine.ctx, shipDef) : 0
     const segs = new Map<string, FitSeg[]>()
     for (const m of candidatesOf(rack)) {
       const oldId = fitted?.[rack]?.[index] ?? null
@@ -246,7 +279,7 @@ export function FitPage({ engine, onToast }: PageProps) {
         continue // 同件重装无对比意义
       }
       const r = tryFitSpec(m, rack, index)
-      segs.set(m.id, r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext) : [])
+      segs.set(m.id, r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal) : [])
     }
     setPickDiffs(segs)
   }
@@ -283,29 +316,32 @@ export function FitPage({ engine, onToast }: PageProps) {
         {shipDef ? (
           <div className="app-fit-shipinfo">
             <span className="app-fit-shipinfo-head">
-              <span className="app-combat-badges">{combatBadges(shipDef)}</span>
+              {/* 血量徽章 = 装后合成值（装备/技能生效后）；火力增幅已从徽章移入下方属性行（船长 2026-09-05） */}
+              <span className="app-combat-badges">
+                {combatBadges(
+                  shipDef,
+                  spec
+                    ? { hp: { s: Math.round(spec.hp.s), a: Math.round(spec.hp.a), h: Math.round(spec.hp.h) }, resists: spec.resists }
+                    : undefined,
+                )}
+              </span>
             </span>
             <InfoTable
               lines={[
                 ...shipInfoLines(shipDef).filter(
-                  (l) => l.k !== '槽位' && l.k !== '采集性能' && l.k !== '货舱容量' && !COMBAT_BASE_KEYS.has(l.k),
+                  (l) =>
+                    l.k !== '槽位' &&
+                    l.k !== '采集性能' &&
+                    l.k !== '货舱容量' &&
+                    l.k !== 'CPU' && // 上限已由右栏「CPU 剩余」条显示（含技能加成），表格不重复
+                    !COMBAT_BASE_KEYS.has(l.k),
                 ),
+                // 装后合成预览（V18.1：收敛件多装最终值；血量由顶部徽章承担不重复列出——与最上方徽章同源）
                 ...(spec
                   ? [
-                      {
-                        k: '血量（含装备）',
-                        v: `盾 ${Math.round(spec.hp.s)} · 甲 ${Math.round(spec.hp.a)} · 结构 ${Math.round(spec.hp.h)}`,
-                      },
-                      {
-                        k: '抗性（含装备）',
-                        v: (
-                          <>
-                            盾 {layerResChips(spec.resists.shield)}　甲 {layerResChips(spec.resists.armor)}　结构{' '}
-                            {layerResChips(spec.resists.hull)}
-                          </>
-                        ),
-                      },
-                      // V18.1：合成预览（收敛件多装的最终值——回避/命中/速度均为装后结果）
+                      { k: '护盾抗性（含装备）', v: resChipsAll(spec.resists.shield) },
+                      { k: '装甲抗性（含装备）', v: resChipsAll(spec.resists.armor) },
+                      { k: '结构抗性', v: resChipsAll(spec.resists.hull) },
                       { k: '回避率（含装备）', v: `${Math.round(spec.evasion * 100)}%` },
                       {
                         k: '开火命中修正（含装备）',
@@ -329,7 +365,7 @@ export function FitPage({ engine, onToast }: PageProps) {
         ) : null}
           </div>
           <div className="app-fit-col-right">
-        {/* CPU 占用条（船长 2026-09-05：由左栏移置槽位最上方、醒目显示；与放飞共用池） */}
+        {/* CPU 剩余条（船长 2026-09-05：由左栏移置槽位最上方、减法显示剩余；与放飞共用池） */}
         {shipDef ? (
           <CpuStrip used={cpuUsed} total={effectiveCpu(state, engine.ctx, shipDef)} />
         ) : null}
@@ -433,8 +469,20 @@ export function FitPage({ engine, onToast }: PageProps) {
                       </span>
                       <span className="app-fit-pick-name">{m.name}</span>
                     </span>
+                    {/* 说明行：武器 = 弹药类型 chip（攻击类型醒目）+ 射程；其余 = 效果短述 */}
                     <span className="app-fit-pick-sub">
-                      ×{countModule(state, m.id)} · {moduleShortEffect(m)}
+                      {WEAPON_SLOTS.has(m.slot) ? (
+                        <>
+                          {ammoChipOf(m)}
+                          <span className="app-fit-pick-subtext">
+                            ×{countModule(state, m.id)} · 射程 {rangeShort(m)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="app-fit-pick-subtext">
+                          ×{countModule(state, m.id)} · {moduleShortEffect(m)}
+                        </span>
+                      )}
                     </span>
                     {sameAsOld ? (
                       <span className="app-fit-pick-diff">

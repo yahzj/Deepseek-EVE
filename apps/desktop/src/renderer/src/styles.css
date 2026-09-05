@@ -1702,7 +1702,14 @@ body {
   line-height: 1.3;
 }
 .app-fit-pick-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 4px;
   font-size: 10.5px;
+  color: var(--wui-text-dim);
+}
+.app-fit-pick-subtext {
   color: var(--wui-text-dim);
 }
 /* 装后对比段（换装差异：数值与战斗引擎同源，见 FitPage diffSegs 注释） */
@@ -2308,7 +2315,6 @@ body {
 .app-combat-badge.is-shield { color: #8fd0ff; border-color: #2f6fa8; background: rgba(47,111,168,0.12); }
 .app-combat-badge.is-armor { color: #ffd9a0; border-color: #a8783a; background: rgba(168,120,58,0.12); }
 .app-combat-badge.is-hull { color: #ffabab; border-color: #a84848; background: rgba(168,72,72,0.12); }
-.app-combat-badge.is-power { color: #ffe08a; border-color: #b3913a; background: rgba(179,145,58,0.12); }
 .app-combat-badge em { font-style: normal; opacity: 0.75; }
 .app-ship-hover { display: inline-block; }
 .app-ship-hover.is-block { display: block; }
@@ -3131,6 +3137,8 @@ body {
 .app-d-kinetic{background:#3f9fd8}
 .app-d-explosive{background:#d34a4a}
 .app-d-plasma{background:#e0b83f;color:#2a2400}
+/* v18.1 零抗灰字（三系恒显：0% 也列出，不做缺行省略——船长 2026-09-05） */
+.app-res-zero{display:inline-block;font-size:12px;line-height:18px;color:var(--wui-text-dim);opacity:.85;margin-left:6px;font-family:var(--wui-mono);white-space:nowrap;vertical-align:1px}
 .app-p-shield{background:#3f9fd8}
 .app-p-armor{background:#d34a4a}
 .app-p-balanced{background:#e0b83f;color:#2a2400}

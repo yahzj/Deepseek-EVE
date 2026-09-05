@@ -172,8 +172,20 @@ export function warpChargePct(ship: ShipDef): number | null {
   return Math.round(ship.agility * 200)
 }
 
+/** 装后覆盖（装配页把徽章数值/抗性换成 createPlayerSpec 合成快照；其它调用点不传 = 船体基础值） */
+export interface BadgeOver {
+  hp?: { s: number; a: number; h: number }
+  resists?: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
+}
+
 /** 层位血量徽章（盾/甲/结构），悬停 title 显示该层三系抗性 */
-function layerBadge(key: string, cls: string, label: string, hp: number | undefined, resist: DamageResists | undefined): ReactNode {
+function layerBadge(
+  key: string,
+  cls: string,
+  label: string,
+  hp: number | undefined,
+  resist: DamageResists | undefined,
+): ReactNode {
   const hasResist = resist !== undefined && Object.values(resist).some((v) => (v ?? 0) > 0)
   return (
     <span key={key} className={`app-combat-badge ${cls}`} title={hasResist ? `抗性：${resistsText(resist)}` : undefined}>
@@ -182,20 +194,18 @@ function layerBadge(key: string, cls: string, label: string, hp: number | undefi
   )
 }
 
-/** 三层血量徽章（盾/甲/结构 + 火力），各行其色 */
-export function combatBadges(ship: ShipDef): ReactNode[] {
-  const out: ReactNode[] = []
-  out.push(layerBadge('s', 'is-shield', '盾', ship.shieldHp, ship.shieldResist))
-  out.push(layerBadge('a', 'is-armor', '甲', ship.armorHp, ship.armorResist))
-  out.push(layerBadge('h', 'is-hull', '结构', ship.hullHp, ship.hullResist))
-  if (ship.powerBonus !== undefined && ship.powerBonus > 0) {
-    out.push(
-      <span key="p" className="app-combat-badge is-power">
-        火力 +{Math.round(ship.powerBonus * 100)}%
-      </span>,
-    )
-  }
-  return out
+/**
+ * 三层血量徽章（盾/甲/结构），各行其色。火力增幅不进徽章组（船长 2026-09-05：不应与血量并列，
+ * 由属性表"火力加成"行展示）。over = 装配页装后覆盖（血量/抗性换成含装备合成值）。
+ */
+export function combatBadges(ship: ShipDef, over?: BadgeOver): ReactNode[] {
+  const hp = over?.hp
+  const res = over?.resists
+  return [
+    layerBadge('s', 'is-shield', '盾', hp?.s ?? ship.shieldHp, res?.shield ?? ship.shieldResist),
+    layerBadge('a', 'is-armor', '甲', hp?.a ?? ship.armorHp, res?.armor ?? ship.armorResist),
+    layerBadge('h', 'is-hull', '结构', hp?.h ?? ship.hullHp, res?.hull ?? ship.hullResist),
+  ]
 }
 
 /** 槽位布局文本（V18：高/中/低 × 数量制复数安装——取代旧六槽单件列表） */
