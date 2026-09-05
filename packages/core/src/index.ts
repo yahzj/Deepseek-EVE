@@ -65,7 +65,7 @@ export type {
   FittedModules,
   FleetShipState,
   MiningState,
-  ManufacturingState,
+  ManufacturingRunState,
   ExpeditionState,
   MarketPoolState,
   MarketDigestEntry,
@@ -248,7 +248,7 @@ export {
   matNeedCount,
   startManufacturing,
   advanceManufacturing,
-  manufacturingStatus,
+  manufacturingRunViews,
   findBuildable,
 } from './manufacturing'
 export type { BuildSpec, ManufacturingView } from './manufacturing'

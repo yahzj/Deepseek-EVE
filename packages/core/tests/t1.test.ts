@@ -30,13 +30,14 @@ describe('T1 统一停止指令', () => {
     expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true)
     const walletBefore = state.wallet.isk
     advanceGame(state, 3_000, ctx)
-    expect(cancelManufacturing(state, ctx).ok).toBe(true)
-    expect(state.manufacturing.active).toBe(false)
+    const runId = state.manufacturingRuns[0]!.id
+    expect(cancelManufacturing(state, ctx, runId).ok).toBe(true)
+    expect(state.manufacturingRuns).toHaveLength(0)
     expect(state.warehouse.items['min-a']).toBe(50) // 材料全退
     expect(state.wallet.isk).toBe(walletBefore) // 制造费不退（取消不补回）
     expect(state.logs.some((l) => l.text.includes('已取消制造'))).toBe(true)
     // 空态：无作业再取消 → 拒绝
-    expect(cancelManufacturing(state, ctx).ok).toBe(false)
+    expect(cancelManufacturing(state, ctx, runId).ok).toBe(false)
   })
 
   it('召回远征：去程可召回（无战果回港）；交火中拒绝', () => {

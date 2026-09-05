@@ -1,4 +1,4 @@
-﻿/**
+/**
  * V15 调试模式测试：debugQuick=1 时 训练/采矿/制造/远征航行/扫描 按 1 秒完成、
  * 交火即时按胜率预览判定并走正常结算；普通模式（false）行为不受影响。
  */
@@ -57,9 +57,9 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     s.warehouse.items['min-a'] = 50
     expect(startManufacturing(s, 'bp-a', ctx).ok).toBe(true)
     advanceGame(s, 999, ctx)
-    expect(s.manufacturing.active).toBe(true)
+    expect(s.manufacturingRuns).toHaveLength(1)
     advanceGame(s, 1, ctx)
-    expect(s.manufacturing.active).toBe(false)
+    expect(s.manufacturingRuns).toHaveLength(0)
   })
 
   it('远征：去程/返航 1 秒；交火保留真实战斗（调试不跳过战斗，供验证）', () => {
@@ -94,7 +94,7 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     s.warehouse.items['min-a'] = 50
     expect(startManufacturing(s, 'bp-a', ctx).ok).toBe(true)
     advanceGame(s, 1_000, ctx)
-    expect(s.manufacturing.active).toBe(true) // bp-a 10 分钟
+    expect(s.manufacturingRuns).toHaveLength(1) // bp-a 10 分钟
   })
 })
 
@@ -105,7 +105,7 @@ describe('V15 存档：debugQuick 字段', () => {
     s.debugQuick = true
     const loaded = loadSaveFile(serializeSaveFile(s, 1000))
     expect(loaded.state.debugQuick).toBe(true)
-    expect(loaded.state.version).toBe(20)
+    expect(loaded.state.version).toBe(21)
   })
 
   it('v14 档迁移：补 debugQuick=false 且其余无损', () => {
@@ -115,7 +115,7 @@ describe('V15 存档：debugQuick 字段', () => {
     delete raw.debugQuick
     raw.version = 14
     const loaded = loadSaveFile(serializeSaveFile(s, 1000))
-    expect(loaded.state.version).toBe(20)
+    expect(loaded.state.version).toBe(21)
     expect(loaded.state.debugQuick).toBe(false)
     expect(loaded.state.wallet.isk).toBe(77)
   })

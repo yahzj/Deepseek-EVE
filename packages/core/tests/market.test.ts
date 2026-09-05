@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 市场系统（V9）单元测试：开盘簿、市价买卖、剩余转挂单、撤单退回、冲击动量、
  * 内部消化、池库存、声望加成、蓝图学习/回卖、舰船市场出售。
  */
@@ -371,7 +371,7 @@ describe('A3 回归：v8→v9 迁移后直接 8 小时长离线（市场开市 +
     }
     const loaded = loadSaveFile(JSON.stringify({ format: 'whale-idle-save', version: 8, savedAtWallMs: 100, state: v8Raw }))
     const state = loaded.state
-    expect(state.version).toBe(20)
+    expect(state.version).toBe(21)
     expect(state.learnedRecipes).toEqual(['bp-a', 'bp-b']) // 蓝图无损平移
 
     // 直接 8 小时大离线（480 窗口）

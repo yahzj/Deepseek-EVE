@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV20, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, LogEntry, LogKind } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -613,8 +613,35 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     next.warehouse = { ...ware, items: wareItems }
     return next
   },
+  20: (raw) => {
+    // v20 -> v21 (2026-09-05 captain: manufacturing multi-line): singleton -> runs
+    const next: RawState = { ...raw }
+    const mf = asRaw(raw.manufacturing)
+    const bp = typeof mf.blueprintId === 'string' && mf.blueprintId.length > 0 ? mf.blueprintId : null
+    delete next.manufacturing
+    const mfRuns =
+      mf.active === true && bp !== null
+        ? [
+            {
+              active: true,
+              id: 1,
+              blueprintId: bp,
+              finishAtGameMs:
+                typeof mf.finishAtGameMs === 'number' && Number.isFinite(mf.finishAtGameMs)
+                  ? Math.max(0, Math.floor(mf.finishAtGameMs))
+                  : 0,
+              durationMs:
+                typeof mf.durationMs === 'number' && Number.isFinite(mf.durationMs)
+                  ? Math.max(0, Math.floor(mf.durationMs))
+                  : 0,
+            },
+          ]
+        : []
+    next.manufacturingRuns = mfRuns
+    next.manufacturingSeq = mfRuns.length > 0 ? 2 : 1
+    return next
+  },
 }
-
 /** 字符串或 null 归一（迁移辅助） */
 function asNullableString(v: unknown): string | null {
   return typeof v === 'string' && v.length > 0 ? v : null
@@ -1210,24 +1237,27 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  // --- 制造作业（v3） ---
-  const mfRaw = asRaw(src.manufacturing)
-  const mfBlueprintId =
-    typeof mfRaw.blueprintId === 'string' && mfRaw.blueprintId.length > 0 ? mfRaw.blueprintId : null
-  const manufacturing = {
-    active: mfRaw.active === true && mfBlueprintId !== null,
-    blueprintId: mfBlueprintId,
-    finishAtGameMs:
-      typeof mfRaw.finishAtGameMs === 'number' && Number.isFinite(mfRaw.finishAtGameMs)
-        ? Math.max(0, Math.floor(mfRaw.finishAtGameMs))
-        : 0,
-    durationMs:
-      typeof mfRaw.durationMs === 'number' && Number.isFinite(mfRaw.durationMs)
-        ? Math.max(0, Math.floor(mfRaw.durationMs))
-        : 0,
+    // --- 制造作业线表（v21 多工位；兼容 v20 及更早单例 manufacturing 兜底） ---
+  const manufacturingRuns: GameState['manufacturingRuns'] = []
+  let manufacturingSeq = 1
+  const sanitizeMfRun = (rawRun: unknown): GameState['manufacturingRuns'][number] | null => {
+    const r = asRaw(rawRun)
+    const bp = typeof r.blueprintId === 'string' && r.blueprintId.length > 0 ? r.blueprintId : null
+    if (r.active !== true || bp === null) return null
+    return { active: true, id: -1, blueprintId: bp, finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))), durationMs: Math.max(0, Math.floor(num(r.durationMs))) }
   }
-
-  // --- 势力声望（v4） ---
+  const pushMf = (rawRun: unknown): void => {
+    const run = sanitizeMfRun(rawRun)
+    if (!run) return
+    if (manufacturingRuns.some((x) => x.blueprintId === run.blueprintId)) return
+    run.id = manufacturingSeq
+    manufacturingSeq += 1
+    manufacturingRuns.push(run)
+  }
+  if (Array.isArray(src.manufacturingRuns)) { for (const rawRun of src.manufacturingRuns) pushMf(rawRun) }
+  if (manufacturingRuns.length === 0 && src.manufacturing !== undefined) { pushMf(src.manufacturing) }
+  if (typeof src.manufacturingSeq === 'number' && Number.isFinite(src.manufacturingSeq)) { manufacturingSeq = Math.max(manufacturingSeq, Math.floor(src.manufacturingSeq)) }
+// --- 势力声望（v4） ---
   const standings: Record<string, number> = {}
   const standingsRaw = asRaw(src.standings)
   for (const [key, value] of Object.entries(standingsRaw)) {
@@ -1545,7 +1575,7 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  const normalized: GameStateV20 = {
+  const normalized: GameStateV21 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -1571,7 +1601,8 @@ function normalizeState(raw: unknown): GameState {
     orders,
     escrowItems,
     escrowShips,
-    manufacturing,
+    manufacturingRuns,
+    manufacturingSeq,
     standings,
     expedition,
     events,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 游戏状态：一份存档里保存的全部内容。
  *
  * 设计要点（中文说明）：
@@ -15,7 +15,7 @@ import { emptyFitted } from './labels'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 20
+export const CURRENT_STATE_VERSION = 21
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -166,9 +166,11 @@ export interface StandbyState {
   legMs: number
 }
 
-/** 制造作业状态（限时批次：时间到自动完成出装备/船） */
-export interface ManufacturingState {
+/** 一条制造作业（v21 多工位并行：不同蓝图可同时制造，各自限时到点自动出产物/船） */
+export interface ManufacturingRunState {
   active: boolean
+  /** 稳定线号（state.manufacturingSeq 分配；取消/活动栏按它定位） */
+  id: number
   blueprintId: string | null
   /** 完成的游戏内时刻（毫秒） */
   finishAtGameMs: number
@@ -504,7 +506,7 @@ export interface GameStateV7 {
   /** 采矿作业（自动循环状态机） */
   mining: MiningState
   /** 制造作业 */
-  manufacturing: ManufacturingState
+  manufacturing: ManufacturingRunState
   /** 势力声望 */
   standings: Record<string, number>
   /** 远征作业 */
@@ -720,8 +722,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
 
-/** 对外统一称呼：当前版本状态（v20 = v19 + 精炼炉同资源多单位并行 / 原料不锁定实时扣取） */
-export type GameState = GameStateV20
+/** 对外统一称呼：当前版本状态（v21 = v20 + 蓝图制造多工位并行 manufacturingRuns） */
+export type GameState = GameStateV21
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -743,6 +745,17 @@ export type GameStateV20 = Omit<GameStateV19, 'version'> & {
   refineSeq: number
 }
 
+/** 第二十一版存档结构（当前版本）：v21 = v20 + 蓝图制造多工位并行（2026-09-05 船长拍板：
+ * 多张蓝图可同时制造、逐线独立进度与取消；manufacturing 单例 → manufacturingRuns 数组 +
+ * manufacturingSeq 线号分配器；同蓝图至多一条线，不同蓝图不限；制造不占主控）。 */
+export type GameStateV21 = Omit<GameStateV20, 'version' | 'manufacturing'> & {
+  version: 21
+  /** 制造作业线表（v21 多工位；每元素一条线） */
+  manufacturingRuns: ManufacturingRunState[]
+  /** 制造线号自增分配器 */
+  manufacturingSeq: number
+}
+
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
@@ -754,10 +767,10 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
 }
 
 /** 创建一份全新的初始存档（一个新飞行员） */
-export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV20 {
+export function createInitialState(opts?: { name?: string; seed?: number; nowWallMs?: number }): GameStateV21 {
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV20 = {
-    version: 20,
+  const state: GameStateV21 = {
+    version: 21,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -836,7 +849,8 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
       stopAfterTrip: false,
       originGalaxy: null,
     },
-    manufacturing: { active: false, blueprintId: null, finishAtGameMs: 0, durationMs: 0 },
+    manufacturingRuns: [],
+    manufacturingSeq: 1,
     standings: {},
     expedition: {
       active: false,

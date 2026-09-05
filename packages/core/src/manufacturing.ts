@@ -1,16 +1,17 @@
 /**
- * 蓝图制造（M2/M5/V9：限时批次作业，支持两种产物——装备 与 舰船）。
+ * 蓝图制造（M2/M5/V9 限时批次；v21 多工位并行，产物：装备或舰船）。
  *
  * 模型（中文说明）：
  * - V9 起蓝图 = 消耗品书：市场买回后放进"蓝图书架"，学习一本 → 永久学会该配方
  *   （learnedRecipes）；重复蓝图书只能放回市场交易，不能无限复制；
  * - 每次开工：立即扣除全部材料与制造费，耗时受工业理论缩短（开工锁定）；
  * - 到点自动完成：装备入装备库 / 舰船入船坞；
- * - 同时只允许一个制造作业。
+ * - v21（2026-09-05 船长拍板）：多张蓝图可同时制造（manufacturingRuns 逐线独立进度/
+ *   取消，同蓝图至多一条线）；制造不占主控，与出海作业并行。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
-import type { GameState } from './state'
+import type { GameState, ManufacturingRunState } from './state'
 import type { BlueprintDef, ShipBlueprintDef, SimContext } from './types'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule } from './equipment'
@@ -50,13 +51,9 @@ function blueprintName(ctx: SimContext, blueprintId: string): string {
   return ctx.blueprints.get(blueprintId)?.name ?? ctx.shipBlueprints.get(blueprintId)?.name ?? blueprintId
 }
 
-/** 按当前技能计算制造耗时（毫秒），开工时锁定（工业理论 −5%/级 × 批量生产学 −4%/级 乘算） */
+/** 制造时长：基础秒数 × 工业理论技能修正（debugQuick 秒级完成） */
 export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: BuildSpec): number {
-  const bal = ctx.balance.manufacturing
-  const level = state.skills.trained[bal.timeSkillId] ?? 0
-  const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
-  const ratio = Math.max(bal.minTimeRatio, (1 - bal.timePerLevel * level) * (1 - 0.04 * batchLv))
-  // 调试模式 debugQuick：制造固定 1 秒
+  const ratio = Math.max(0.4, 1 - 0.05 * (state.skills.trained['industrial-theory'] ?? 0))
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }
 
@@ -86,14 +83,17 @@ export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildS
   return missing
 }
 
-/** 玩家指令：开始制造（材料与制造费立即扣除，时间到自动完成） */
+/** 玩家指令：开始制造（v21 多工位：不同蓝图可同时造，同蓝图至多一条线；
+ * 材料与制造费立即扣除，时间到自动完成） */
 export function startManufacturing(state: GameState, blueprintId: string, ctx: SimContext): CommandResult {
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }
   if (!ownsBlueprint(state, blueprintId)) {
     return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
   }
-  if (state.manufacturing.active) return { ok: false, error: '制造作业进行中，完成一件后才能开始下一件。' }
+  if (state.manufacturingRuns.some((r) => r.blueprintId === blueprintId)) {
+    return { ok: false, error: '该蓝图已有一条制造线在跑：完成或取消后再开。' }
+  }
   if (state.wallet.isk < buildable.spec.buildCostIsk) {
     return { ok: false, error: `制造费不足：需要 ${buildable.spec.buildCostIsk.toLocaleString('zh-CN')} ISK。` }
   }
@@ -109,40 +109,40 @@ export function startManufacturing(state: GameState, blueprintId: string, ctx: S
   state.wallet.isk -= buildable.spec.buildCostIsk
 
   const durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
-  state.manufacturing = {
+  state.manufacturingRuns.push({
     active: true,
+    id: state.manufacturingSeq++,
     blueprintId,
     finishAtGameMs: state.gameMs + durationMs,
     durationMs,
-  }
+  })
   const productName =
     buildable.kind === 'module'
       ? ctx.modules.get(buildable.moduleId ?? '')?.name ?? blueprintId
       : ctx.ships.get(buildable.shipId ?? '')?.name ?? blueprintId
-  addLog(state, 'trade', `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），预计 ${formatDurationMs(durationMs)} 完成。`)
+  addLog(
+    state,
+    'trade',
+    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），预计 ${formatDurationMs(durationMs)} 完成；可多张蓝图同时制造。`,
+  )
   return { ok: true }
 }
 
 /**
- * 玩家指令：取消制造作业（T1 活动窗口统一停止）。
+ * 玩家指令：取消指定的制造线（v21 按线号定位；T1 活动窗口统一停止）。
  * 材料按蓝图清单全额退回物品仓库；已付制造费不退；产物不产生。
  */
-export function cancelManufacturing(state: GameState, ctx: SimContext): CommandResult {
-  const mf = state.manufacturing
-  if (!mf.active || mf.blueprintId === null) {
-    return { ok: false, error: '当前没有进行中的制造作业。' }
-  }
-  const buildable = findBuildable(ctx, mf.blueprintId)
+export function cancelManufacturing(state: GameState, ctx: SimContext, runId: number): CommandResult {
+  const idx = state.manufacturingRuns.findIndex((r) => r.id === runId)
+  if (idx < 0) return { ok: false, error: '没有找到该制造线（已完成或已取消）。' }
+  const [mf] = state.manufacturingRuns.splice(idx, 1)
+  const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
   const productName =
     buildable && buildable.kind === 'module'
       ? ctx.modules.get(buildable.moduleId ?? '')?.name ?? mf.blueprintId
       : buildable && buildable.kind === 'ship'
         ? ctx.ships.get(buildable.shipId ?? '')?.name ?? mf.blueprintId
-        : mf.blueprintId
-  mf.active = false
-  mf.blueprintId = null
-  mf.finishAtGameMs = 0
-  mf.durationMs = 0
+        : mf.blueprintId ?? ''
   if (buildable) {
     // 退回 = 开工时实际扣除的数量（含材料学折扣），不多退
     for (const need of buildable.spec.materials) {
@@ -155,45 +155,45 @@ export function cancelManufacturing(state: GameState, ctx: SimContext): CommandR
   return { ok: true }
 }
 
-/** 引擎内部调用：检查制造作业是否到点完成（每次时间推进后调用） */
+/** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点） */
 export function advanceManufacturing(state: GameState, ctx: SimContext): void {
-  const mf = state.manufacturing
-  if (!mf.active) return
-  if (state.gameMs < mf.finishAtGameMs) return
+  for (let i = state.manufacturingRuns.length - 1; i >= 0; i--) {
+    const mf = state.manufacturingRuns[i]!
+    if (!mf.active || state.gameMs < mf.finishAtGameMs) continue
 
-  const blueprintId = mf.blueprintId
-  const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
-  mf.active = false
-  mf.blueprintId = null
-  mf.finishAtGameMs = 0
-  mf.durationMs = 0
-  if (!buildable) {
-    addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
-    return
-  }
+    const blueprintId = mf.blueprintId
+    const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
+    state.manufacturingRuns.splice(i, 1)
+    if (!buildable) {
+      addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
+      continue
+    }
 
-  if (buildable.kind === 'module') {
-    const moduleDef = buildable.moduleId ? ctx.modules.get(buildable.moduleId) : undefined
-    if (!moduleDef) {
-      addLog(state, 'warn', '制造作业引用的装备数据缺失，产出已丢弃（数据异常）。')
-      return
+    if (buildable.kind === 'module') {
+      const moduleDef = buildable.moduleId ? ctx.modules.get(buildable.moduleId) : undefined
+      if (!moduleDef) {
+        addLog(state, 'warn', '制造作业引用的装备数据缺失，产出已丢弃（数据异常）。')
+        continue
+      }
+      addModule(state, moduleDef.id)
+      addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
+    } else {
+      const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
+      if (!shipDef) {
+        addLog(state, 'warn', '制造作业引用的舰船数据缺失，产出已丢弃（数据异常）。')
+        continue
+      }
+      addShipToFleet(state, shipDef.id)
+      addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
     }
-    addModule(state, moduleDef.id)
-    addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
-  } else {
-    const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
-    if (!shipDef) {
-      addLog(state, 'warn', '制造作业引用的舰船数据缺失，产出已丢弃（数据异常）。')
-      return
-    }
-    addShipToFleet(state, shipDef.id)
-    addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
   }
 }
 
-/** 制造作业进度（界面显示用） */
+/** 制造作业进度（界面显示用；v21 每条制造线一个 view） */
 export interface ManufacturingView {
   active: boolean
+  /** 稳定线号 */
+  id: number
   blueprintId: string | null
   /** 产物显示名（装备或舰船） */
   productName: string
@@ -206,28 +206,30 @@ export interface ManufacturingView {
   percent: number
 }
 
-export function manufacturingStatus(state: GameState, ctx: SimContext): ManufacturingView {
-  const mf = state.manufacturing
-  if (!mf.active || mf.blueprintId === null) {
-    return { active: false, blueprintId: null, productName: '', kind: null, remainingMs: 0, durationMs: 0, percent: 0 }
-  }
-  const buildable = findBuildable(ctx, mf.blueprintId)
+function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): ManufacturingView {
+  const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
   const productName =
     buildable && buildable.kind === 'module'
       ? ctx.modules.get(buildable.moduleId ?? '')?.name ?? mf.blueprintId
       : buildable && buildable.kind === 'ship'
         ? ctx.ships.get(buildable.shipId ?? '')?.name ?? mf.blueprintId
-        : mf.blueprintId
+        : mf.blueprintId ?? ''
   const remainingMs = Math.max(0, mf.finishAtGameMs - state.gameMs)
-  const durationMs = Math.max(1, mf.durationMs)
-  const percent = Math.min(100, Math.max(0, ((durationMs - remainingMs) / durationMs) * 100))
+  const percent =
+    mf.durationMs > 0 ? Math.min(100, Math.max(0, Math.round(((mf.durationMs - remainingMs) / mf.durationMs) * 100))) : 0
   return {
-    active: true,
+    active: mf.active,
+    id: mf.id,
     blueprintId: mf.blueprintId,
-    productName,
+    productName: productName ?? '',
     kind: buildable ? buildable.kind : null,
     remainingMs,
-    durationMs,
+    durationMs: mf.durationMs,
     percent,
   }
+}
+
+/** 全部制造线视图（v21 多工位：工业页卡片逐线 / 活动栏逐条） */
+export function manufacturingRunViews(state: GameState, ctx: SimContext): ManufacturingView[] {
+  return state.manufacturingRuns.map((r) => viewOf(state, ctx, r))
 }

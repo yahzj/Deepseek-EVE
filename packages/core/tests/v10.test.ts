@@ -1,4 +1,4 @@
-﻿/**
+/**
  * V10 单元测试：资源通用化（气体/冰矿采集与精炼）、采集点声望门槛（主控+AI）、
  * 市场声望门槛、新占位槽位装配、迁移 v9→v10 的行为面。
  */
@@ -288,7 +288,7 @@ describe('V10：存档 v9→v10 迁移（fitted 补三个空槽）', () => {
     }
     const text = JSON.stringify({ format: SAVE_FORMAT, version: 9, savedAtWallMs: 100, state: v9 })
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(20)
+    expect(loaded.state.version).toBe(21)
     const fitted = loaded.state.fleet['sandcat']!.fitted
     // v9 六槽 → V18 位数组：turret→high[0]、miner→high[1]、shield→mid[0]、
     // propulsion→mid[1]、armor→low[0]、cargo→low[1]（v9 档 fitted 只含 miner/cargo/turret）
@@ -304,7 +304,7 @@ describe('V10：存档 v9→v10 迁移（fitted 补三个空槽）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
     const text = serializeSaveFile(state, 0)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(20)
+    expect(loaded.state.version).toBe(21)
     expect(Object.keys(loaded.state.fleet[loaded.state.shipId]!.fitted).sort()).toEqual(
       ['high', 'mid', 'low'].sort(),
     )

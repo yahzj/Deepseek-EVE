@@ -10,7 +10,7 @@ import type { SimContext } from './types'
 import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
-import { manufacturingStatus } from './manufacturing'
+import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
 import { expeditionStatus, bountyCooldownRemainingMs } from './expedition'
@@ -116,11 +116,10 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 制造 ──
-  const mfv = manufacturingStatus(state, ctx)
-  if (mfv.active) {
+  // ── 制造（v21 多工位：每条制造线一条活动；逐线可取消） ──
+  for (const mfv of manufacturingRunViews(state, ctx)) {
     out.push({
-      id: 'manufacture',
+      id: `manufacture:${mfv.id}`,
       kind: 'manufacture',
       label: mfv.productName,
       sub: mfv.kind === 'ship' ? '造船中' : '制造中',
@@ -128,6 +127,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: mfv.remainingMs,
       stopable: true,
       stop: 'cancel-manufacture',
+      stopParam: String(mfv.id),
     })
   }
 

@@ -6,14 +6,15 @@ import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
-import { cargoCapacityM3, countItem } from '../src/inventory'
+import { cargoCapacityM3, countItem, countWare } from '../src/inventory'
 import { countModule, fitModule, unfitAt } from '../src/equipment'
 import { miningStatus, startMining } from '../src/mining'
 import { calcPower } from '../src/expedition'
 import { learnBlueprint } from '../src/market'
 import {
   calcBuildDurationMs,
-  manufacturingStatus,
+  cancelManufacturing,
+  manufacturingRunViews,
   missingMaterials,
   ownsBlueprint,
   startManufacturing,
@@ -53,13 +54,13 @@ describe('蓝图学习（V9 消耗品制）', () => {
   })
 })
 
-describe('制造作业', () => {
+describe('制造作业（v21 多工位：多张蓝图可并行，逐线进度/取消）', () => {
   let state: GameState
   let ctx: SimContext
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
-    ctx = makeTestCtx() // bp-a：10 单位矿粉min-a、制造费 500、耗时 600 秒
+    ctx = makeTestCtx() // bp-a：10 单位矿粉min-a、制造费 500、耗时 600 秒；bp-b：mod-b
     state.blueprintStock['bp-a'] = 1
     learnBlueprint(state, ctx, 'bp-a')
   })
@@ -81,17 +82,17 @@ describe('制造作业', () => {
     expect(missingMaterials(state, ctx, ctx.blueprints.get('bp-a')!)).toHaveLength(1)
   })
 
-  it('开工成功：扣材料、扣制造费、锁定耗时（600 秒）', () => {
+  it('开工成功：扣材料、扣制造费、锁定耗时（600 秒）；同蓝图第二条线被拒', () => {
     state.warehouse.items['min-a'] = 10
     const r = startManufacturing(state, 'bp-a', ctx)
     expect(r.ok).toBe(true)
     expect(countItem(state, 'min-a')).toBe(0)
     expect(state.wallet.isk).toBe(9_500) // 10000 - 500(制造费)；学习不花钱
-    expect(state.manufacturing.active).toBe(true)
-    expect(state.manufacturing.finishAtGameMs).toBe(600_000)
-    expect(state.manufacturing.durationMs).toBe(600_000)
+    expect(state.manufacturingRuns).toHaveLength(1)
+    expect(state.manufacturingRuns[0]!.finishAtGameMs).toBe(600_000)
+    expect(state.manufacturingRuns[0]!.durationMs).toBe(600_000)
     expect(state.logs.some((l) => l.text.includes('制造开始'))).toBe(true)
-    // 制造中不能再开工
+    // 同蓝图在跑 → 拒绝
     expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(false)
   })
 
@@ -99,21 +100,57 @@ describe('制造作业', () => {
     state.skills.trained['industry'] = 5
     state.warehouse.items['min-a'] = 10
     startManufacturing(state, 'bp-a', ctx)
-    expect(state.manufacturing.durationMs).toBe(450_000)
+    expect(state.manufacturingRuns[0]!.durationMs).toBe(450_000)
     expect(calcBuildDurationMs(state, ctx, ctx.blueprints.get('bp-a')!)).toBe(450_000)
   })
 
-  it('时间推进到点自动完成：装备入库、作业复位、写日志', () => {
+  it('两张蓝图并行：各自到点独立完成入装备库', () => {
+    state.blueprintStock['bp-b'] = 1
+    learnBlueprint(state, ctx, 'bp-b') // bp-b：8 单位矿粉 min-b、300 秒、300 ISK
+    state.warehouse.items['min-a'] = 10
+    state.warehouse.items['min-b'] = 8
+    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true) // 600s
+    expect(startManufacturing(state, 'bp-b', ctx).ok).toBe(true) // 300s（并行）
+    expect(state.manufacturingRuns).toHaveLength(2)
+    expect(manufacturingRunViews(state, ctx)).toHaveLength(2)
+    expect(state.wallet.isk).toBe(9_200) // 10000 - 500 - 300
+    // 300s：bp-b 完成
+    advanceGame(state, 300_000, ctx)
+    expect(countModule(state, 'mod-b')).toBe(1)
+    expect(state.manufacturingRuns).toHaveLength(1)
+    expect(state.manufacturingRuns[0]!.blueprintId).toBe('bp-a')
+    // 再 300s：bp-a 完成
+    advanceGame(state, 300_000, ctx)
+    expect(countModule(state, 'mod-a')).toBe(1)
+    expect(state.manufacturingRuns).toHaveLength(0)
+  })
+
+  it('取消其中一条线：材料退回、另一条不受影响', () => {
+    state.blueprintStock['bp-b'] = 1
+    learnBlueprint(state, ctx, 'bp-b')
+    state.warehouse.items['min-a'] = 10
+    state.warehouse.items['min-b'] = 8
+    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-b', ctx).ok).toBe(true)
+    const bRunId = state.manufacturingRuns.find((r) => r.blueprintId === 'bp-b')!.id
+    expect(cancelManufacturing(state, ctx, bRunId).ok).toBe(true)
+    expect(state.manufacturingRuns).toHaveLength(1)
+    expect(state.manufacturingRuns[0]!.blueprintId).toBe('bp-a')
+    expect(countWare(state, 'min-b')).toBe(8) // 材料退回
+    // 取消不存在线 → 拒绝
+    expect(cancelManufacturing(state, ctx, bRunId).ok).toBe(false)
+  })
+
+  it('时间推进到点自动完成：装备入库、线移除、写日志', () => {
     state.warehouse.items['min-a'] = 10
     startManufacturing(state, 'bp-a', ctx)
     // 还差 1 秒
     advanceGame(state, 599_000, ctx)
-    expect(state.manufacturing.active).toBe(true)
+    expect(state.manufacturingRuns).toHaveLength(1)
     expect(countModule(state, 'mod-a')).toBe(0)
     // 最后一秒到点
     advanceGame(state, 2_000, ctx)
-    expect(state.manufacturing.active).toBe(false)
-    expect(state.manufacturing.blueprintId).toBeNull()
+    expect(state.manufacturingRuns).toHaveLength(0)
     expect(countModule(state, 'mod-a')).toBe(1)
     expect(state.logs.some((l) => l.text.includes('制造完成'))).toBe(true)
   })
@@ -123,9 +160,9 @@ describe('制造作业', () => {
     startManufacturing(state, 'bp-a', ctx) // 600 秒
     state.skills.trained['industry'] = 5 // 中途升到 5 级
     advanceGame(state, 449_999, ctx)
-    expect(state.manufacturing.active).toBe(true) // 锁 600s，未完成
+    expect(state.manufacturingRuns).toHaveLength(1) // 锁 600s，未完成
     advanceGame(state, 200_000, ctx)
-    expect(state.manufacturing.active).toBe(false) // 超过 600s 完成
+    expect(state.manufacturingRuns).toHaveLength(0) // 超过 600s 完成
     expect(countModule(state, 'mod-a')).toBe(1)
   })
 
@@ -133,19 +170,21 @@ describe('制造作业', () => {
     state.warehouse.items['min-a'] = 10
     startManufacturing(state, 'bp-a', ctx)
     advanceGame(state, 2_000_000, ctx)
-    expect(state.manufacturing.active).toBe(false)
+    expect(state.manufacturingRuns).toHaveLength(0)
     expect(countModule(state, 'mod-a')).toBe(1)
   })
 
-  it('制造状态查询：进度百分比与剩余时间准确', () => {
+  it('制造状态查询：进度百分比与剩余时间准确（逐线 view 带 id）', () => {
     state.warehouse.items['min-a'] = 10
     startManufacturing(state, 'bp-a', ctx)
     advanceGame(state, 300_000, ctx) // 一半
-    const view = manufacturingStatus(state, ctx)
-    expect(view.active).toBe(true)
-    expect(view.productName).toBe('模块mod-a')
-    expect(view.remainingMs).toBe(300_000)
-    expect(view.percent).toBeCloseTo(50, 0)
+    const views = manufacturingRunViews(state, ctx)
+    expect(views).toHaveLength(1)
+    expect(views[0]!.active).toBe(true)
+    expect(views[0]!.productName).toBe('模块mod-a')
+    expect(views[0]!.remainingMs).toBe(300_000)
+    expect(views[0]!.percent).toBeCloseTo(50, 0)
+    expect(views[0]!.id).toBeGreaterThan(0)
   })
 })
 

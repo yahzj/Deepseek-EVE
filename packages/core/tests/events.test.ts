@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 随机事件系统（V11）单元测试：间隔语义、确定性、市场大类 A/B 落地、存档迁移。
  */
 import { describe, expect, it } from 'vitest'
@@ -121,12 +121,12 @@ describe('随机事件系统（V11）', () => {
     delete raw.state.events // 模拟 v10 档（无 events 字段）
     raw.version = 10
     const loaded = loadSaveFile(JSON.stringify(raw))
-    expect(loaded.state.version).toBe(20)
+    expect(loaded.state.version).toBe(21)
     expect(loaded.state.events.nextAtGameMs).toBe(0) // 迁移补默认
 
     // 往返保留
     const round = loadSaveFile(serializeSaveFile(loaded.state))
     expect(round.state.events.nextAtGameMs).toBe(0)
-    expect(round.state.version).toBe(20)
+    expect(round.state.version).toBe(21)
   })
 })
