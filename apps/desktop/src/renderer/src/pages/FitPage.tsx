@@ -151,7 +151,9 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
   else if (cd > 0 && nd > 0) {
     const pct = (nd / cd - 1) * 100
     if (Math.abs(pct) >= 0.5) {
-      const show = Math.abs(pct) >= 10 ? String(Math.round(pct)) : pct.toFixed(1)
+      // 绝对值格式化（船长 2026-09-05：避免负值自带符号与前缀符号叠成双负号）
+      const absPct = Math.abs(pct)
+      const show = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1)
       add(`火力 ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
     }
   }
@@ -161,7 +163,9 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
   if (ch !== null && nh !== null && ch > 0) {
     const hp = (nh / ch - 1) * 100
     if (Math.abs(hp) >= 2) {
-      const show = Math.abs(hp) >= 10 ? String(Math.round(hp)) : hp.toFixed(1)
+      // 同上：绝对值格式化，符号只由前缀给一次
+      const absHp = Math.abs(hp)
+      const show = absHp >= 10 ? String(Math.round(absHp)) : absHp.toFixed(1)
       add(`命中 ${hp > 0 ? '+' : '−'}${show}%`, hp > 0 ? 'up' : 'down')
     }
   }
