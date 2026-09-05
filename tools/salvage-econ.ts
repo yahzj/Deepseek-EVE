@@ -110,6 +110,12 @@ function main(): void {
   const bonusEv = baseEv + mk2Ev + fragEv
   console.log(`彩头 EV/h：基础件 ${Math.round(baseEv).toLocaleString('zh-CN')} + MK2(低安) ${Math.round(mk2Ev).toLocaleString('zh-CN')} + 碎片 ${Math.round(fragEv).toLocaleString('zh-CN')} ≈ ${Math.round(bonusEv).toLocaleString('zh-CN')} ISK（≤ 保底 10% = ${Math.round(target * 0.1).toLocaleString('zh-CN')}；满技能保底下占比 ≈ ${((bonusEv / (target * FULL_SKILL_MULT)) * 100).toFixed(1)}%）`)
   console.log('AI 核心档折算（炉周期 ÷ 效率，再乘技能项）：' + [0.4, 0.5, 0.6, 0.75].map((e) => `${Math.round(e * 100)}% → 无技能 ${Math.round(target * e).toLocaleString('zh-CN')} / 满技能 ${Math.round(target * e * FULL_SKILL_MULT).toLocaleString('zh-CN')} ISK/h`).join('；'))
+  console.log('v20 多炉并行复核（2026-09-05 二号，一号变更记录点名）：')
+  console.log('  · 炉位规则：主控 1 台（100%）+ 每枚闲置 AI 核心 1 台（效率 40/50/60/75%）——核心库存即并行上限；')
+  console.log('  · 每台炉独立按上表 EV（common 满技能 96.3k×eff），合计 = Σeff × 单炉 EV；')
+  console.log('  · 典型场景（common，满技能）：主炉+basic(1.4)≈135k/h；+gamma(1.9)≈183k/h；+beta(2.5)≈241k/h；+alpha(3.25)≈313k/h')
+  console.log('  · 复核结论：单炉锚 55k 与 Y 保持不变；核心炉收益高但受「打捞供料（低密满技能 ~7.5k m³/h vs 满技能合计炉速 1800×3.25≈5.9k m³/h，仍供大于求）」')
+  console.log('    与「核心同时被 AI 任务占用」双闸约束，未发现必须改 Y 的失衡；若长线验证核心印钞，旋钮候选=限制每资源并行台数或下调 Y（未定）。')
   console.log('供料侧（打捞，技能 5：整备学 −15% 周期 + 漂流物打捞学 +60% 单轮 + 富集识别 ~+2.5% 期望 → 产能 ≈ ×1.93）：')
   console.log('  · 4×MK1 低密度(mul≈1) ≈ 3.9k → 满技能 ≈ 7.5k m³/h；满技能炉速 1800 m³/h → 仍富余（仓库缓冲，AI 炉可 24/7）；')
   console.log('  · 深空平衡密度(mul≈3.6)：无技能 ≈ 14k → 满技能 ≈ 27k m³/h → 炉速仍是瓶颈，积压明显——批容量为 P3 旋钮（如调 20 m³/批）。')
