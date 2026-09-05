@@ -7127,3 +7127,10 @@ body {
 .app-btn.is-sellall { border-color: rgba(255,176,106,.75); color: #ffcf9e; }
 .app-btn.is-sellall:hover:not(:disabled) { background: rgba(255,150,70,.16); box-shadow: 0 0 10px rgba(255,160,80,.35); }
 
+/* ui font scale overrides (SettingsPanel, captain 2026-09-05) */
+.app-inv-name{font-size:calc(var(--ui-fs,1)*12px)}
+.app-inv-count{font-size:calc(var(--ui-fs,1)*11px)}
+.app-sr-name{font-size:calc(var(--ui-fs,1)*12px)}
+.app-sr-sub{font-size:calc(var(--ui-fs,1)*10px)}
+.app-chip{font-size:calc(var(--ui-fs,1)*11px)}
+.app-btn{font-size:calc(var(--ui-fs,1)*12px)}

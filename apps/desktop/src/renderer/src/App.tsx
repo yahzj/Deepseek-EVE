@@ -8,6 +8,7 @@
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
 import { useEffect, useReducer, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { formatDurationMs, shipDisplayName } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
@@ -111,6 +112,75 @@ function readLogPrefs(): LogPrefs {
   }
 }
 
+/** 读取数字偏好（带范围钳制；损坏回默认） */
+function readNum(key: string, def: number, min: number, max: number): number {
+  try {
+    const v = Number.parseFloat(localStorage.getItem(key) ?? '')
+    return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : def
+  } catch {
+    return def
+  }
+}
+
+const ZOOM_KEY = 'whale-idle:ui-zoom'
+const FS_KEY = 'whale-idle:ui-fs'
+
+/** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs */
+function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onClose: () => void }) {
+  const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
+  const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, 1.25))
+  useEffect(() => {
+    const el = root.current
+    if (!el) return
+    ;(el.style as { zoom?: string }).zoom = String(zoom)
+    el.style.setProperty('--ui-fs', String(fs))
+  }, [zoom, fs, root])
+  function persist(): void {
+    try {
+      localStorage.setItem(ZOOM_KEY, String(zoom))
+      localStorage.setItem(FS_KEY, String(fs))
+    } catch {
+      // 忽略
+    }
+  }
+  return (
+    <div className="app-modal-mask" onClick={onClose}>
+      <div className="app-modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="app-inv-name">界面缩放 {Math.round(zoom * 100)}%（整窗缩放：几何与文字一起）</span>
+            <input type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="app-inv-name">字体大小 {Math.round(fs * 100)}%（独立于界面缩放，覆盖正文/列表/标题字号族）</span>
+            <input type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
+          </label>
+          <div className="app-mkt-trade-btns" style={{ justifyContent: 'flex-end', marginTop: 6 }}>
+            <button
+              className="app-btn is-small"
+              onClick={() => {
+                setZoom(1)
+                setFs(1)
+              }}
+            >
+              恢复默认
+            </button>
+            <button
+              className="app-btn is-small is-primary"
+              onClick={() => {
+                persist()
+                onClose()
+              }}
+            >
+              完成
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
   useEffect(() => engine.subscribe(force), [engine])
@@ -211,6 +281,7 @@ export function App({ engine }: { engine: GameEngine }) {
   // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
   const [showSaveManager, setShowSaveManager] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [battleOpen, setBattleOpen] = useState(false)
 
   // 交火中（主动进入全屏战斗页；不自动切换页面）
@@ -368,6 +439,9 @@ export function App({ engine }: { engine: GameEngine }) {
           <AnnouncementHub engine={engine} />
           <button className="app-btn" onClick={() => setShowHandbook(true)} title="玩法说明与图鉴">
             手册
+          </button>
+          <button className="app-btn" onClick={() => setShowSettings(true)} title="界面缩放与字体大小">
+            设置
           </button>
           <button className="app-btn" onClick={() => void handleSave()}>
             保存
@@ -602,6 +676,7 @@ export function App({ engine }: { engine: GameEngine }) {
       {/* ───── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ───── */}
       {showSaveManager ? <SaveManager engine={engine} onToast={showToast} onClose={() => setShowSaveManager(false)} /> : null}
       {showHandbook ? <Handbook engine={engine} onClose={() => setShowHandbook(false)} /> : null}
+      {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
       {battleOpen ? (
         <BattleScreen
           engine={engine}
