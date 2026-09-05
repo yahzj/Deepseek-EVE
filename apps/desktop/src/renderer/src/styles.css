@@ -3504,17 +3504,21 @@ body {
 .app-pro-err { color: #ff7f6e; font-size: 13px; margin-top: 8px; }
 .app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: 12px; color: #9db8a8; background: rgba(255,255,255,.04); border: 1px solid #3a4a40; border-radius: 5px; padding: 5px 12px; cursor: pointer; }
 .app-pro-skip:hover { color: #d8ffe8; border-color: #6a9a80; }
+
 /* 自检不合格条目整行红色（船长 2026-09-05） */
 .app-pro-line.is-fail { color: #ff7f6e; }
 .app-pro-line.is-fail .app-pro-mod, .app-pro-line.is-fail .app-pro-text { color: #ff8f7e; }
 .app-pro-line.is-fail .app-pro-mark { color: #ff5040; font-weight: 800; }
-/* 起名后“睁眼”转场（船长 2026-09-05）：眼睑张开 + 一线光扩成视界 + 白光闪屏 */
-.app-pro-open { position: absolute; inset: 0; overflow: hidden; }
-.app-pro-lid { position: absolute; left: 0; right: 0; height: 50%; background: #000; z-index: 2; }
-.app-pro-lid.is-top { top: 0; animation: app-pro-lids .95s ease-out .1s forwards; }
-.app-pro-lid.is-bottom { bottom: 0; animation: app-pro-lids .95s ease-out .1s forwards; }
-@keyframes app-pro-lids { from { height: 50%; } to { height: 0; } }
-.app-pro-eye { position: absolute; left: 50%; top: 50%; width: 4px; height: 0; transform: translate(-50%, -50%); background: linear-gradient(180deg, #eafff2, #9ff0c0); border-radius: 4px; box-shadow: 0 0 26px 6px rgba(160, 245, 200, .8); z-index: 1; animation: app-pro-eye .95s ease-out .1s forwards; }
-@keyframes app-pro-eye { from { height: 2px; } to { height: 60vh; opacity: .85; } }
-.app-pro-flash { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 50% 46%, rgba(225,255,240,.98) 0%, rgba(150,235,190,.75) 26%, rgba(30,80,55,.4) 60%, rgba(0,0,0,.92) 100%); opacity: 0; animation: app-pro-flashfade .55s ease-in .62s forwards; }
-@keyframes app-pro-flashfade { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+/* 自检结论卡：红色主题（船长 2026-09-05） */
+.app-pro-diag { border: 1px solid #7a2a20; background: rgba(74,14,8,.34); box-shadow: 0 0 26px rgba(255,60,40,.12) inset; }
+.app-pro-diag-title { color: #ff6b52; text-shadow: 0 0 10px rgba(255,80,50,.45); }
+.app-pro-diag-row .app-pro-diag-k { color: #d89a8c; }
+.app-pro-diag-row .app-pro-diag-v { color: #ffb0a2; }
+.app-pro-frag { color: #96635a; border-color: #7a3026; }
+/* 起名后“睁眼”转场（船长 2026-09-05）：横向白线延伸至屏幕两端 → 光晕扩散成视界 */
+.app-pro-open { position: absolute; inset: 0; overflow: hidden; background: #000; animation: app-pro-openout .5s ease .92s forwards; }
+@keyframes app-pro-openout { from { opacity: 1; } to { opacity: 0; } }
+.app-pro-slit { position: absolute; left: 0; top: 50%; width: 100%; height: 2px; margin-top: -1px; background: #fff; transform: scaleX(0); transform-origin: 50% 50%; box-shadow: 0 0 16px 3px rgba(255,255,255,.95), 0 0 46px 10px rgba(190,255,225,.55); animation: app-pro-slit .42s cubic-bezier(.15,.8,.3,1) .06s forwards; }
+@keyframes app-pro-slit { to { transform: scaleX(1); } }
+.app-pro-iris { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,1) 0%, rgba(235,255,246,.97) 12%, rgba(150,240,195,.85) 30%, rgba(40,110,80,.6) 52%, rgba(0,0,0,.96) 74%); animation: app-pro-iris .66s ease-out .4s forwards; }
+@keyframes app-pro-iris { 0% { opacity: 0; transform: scale(.18); } 55% { opacity: 1; } 100% { opacity: 1; transform: scale(1.9); } }
