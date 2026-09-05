@@ -337,22 +337,6 @@ export class GameEngine {
    *   随后交火按 100ms 实时泵推进（积压余额同样按 100ms 分片追平，无整秒隐藏推进）。
    * 切分只是把同一段游戏时间分成多小份送进核心引擎，各系统均按时间推进，总量不变。
    */
-  /** 【临时探针】已登记的战斗起始键（startedAtGameMs），防重复打印 */
-  private battleBirthSeen = 0
-  private markBattleBirth(where: string): void {
-    const b = this.state.expedition.battle
-    if (!b || this.battleBirthSeen === b.startedAtGameMs) return
-    this.battleBirthSeen = b.startedAtGameMs
-    console.info(
-      '[战斗诞生]',
-      JSON.stringify({
-        where, // 在哪个推进路径里被检测到
-        ageMs: this.state.gameMs - b.startedAtGameMs, // 诞生瞬间已暗推多少
-        distM: Math.round(b.distanceM),
-        ended: b.ended,
-      }),
-    )
-  }
   private tick(): void {
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
@@ -370,7 +354,6 @@ export class GameEngine {
       } else {
         advanceGame(this.state, dt, this.ctx)
       }
-      this.markBattleBirth('live-chunk')
       this.notify()
       return
     }
@@ -386,7 +369,6 @@ export class GameEngine {
           advanceGame(this.state, slice, this.ctx)
           this.pendingMs -= slice
         }
-        this.markBattleBirth('arrival-slice')
         this.notify()
         return // 下一拍起进入 inBattle 泵，余额按 100ms 分片追平
       }
@@ -394,7 +376,6 @@ export class GameEngine {
     if (this.pendingMs >= 1000) {
       advanceGame(this.state, this.pendingMs, this.ctx)
       this.pendingMs = 0
-      this.markBattleBirth('big-pump')
       this.notify()
     }
     // T8 连续出击（落档开关）：整秒心跳后检查自动再出发/暂停条件
