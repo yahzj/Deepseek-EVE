@@ -326,7 +326,7 @@ export {
   injectWreckDensity,
   advanceWreckDrift,
   salvageRoundPull,
-  RECYCLE_BATCH_UNITS,
+  RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_YIELD_PER_M3,
   RECYCLE_TIER_LABELS,

@@ -27,7 +27,7 @@ import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
 import { shipDisplayName } from './instances'
 import {
-  RECYCLE_BATCH_UNITS,
+  RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   FRAGMENT_RECIPES,
   fragmentItemIdOf,
@@ -218,7 +218,7 @@ export function startRefineRun(
 
 /**
  * 玩家指令：启动"残骸回收"（B3 开箱批，2026-09-05 船长定稿）：同一精炼炉位，
- * 批 = 10 具 / 25 秒（劳动者 100%；AI 核心按效率拉长周期），每批开箱 = 保底矿物
+ * 批 = 10 m³ / 25 秒（劳动者 100%；AI 核心按效率拉长周期；残骸计数 = 体积），每批开箱 = 保底矿物
  * （按残骸敌群星系危险度三档池 + 体积当量）+ 彩头（基础件直出 / 低安 MK2 / 蓝图碎片）。
  * 原料 = 货仓+仓库的该型号残骸全部锁定入炉；料尽自动停炉（核心归还）。
  */
@@ -275,7 +275,7 @@ export function startRecycleRun(
     worker,
     recipe: 'recycle',
     itemId: wreckItemId,
-    batchUnits: RECYCLE_BATCH_UNITS,
+    batchUnits: RECYCLE_BATCH_M3,
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     lockedQty: available,
@@ -285,7 +285,7 @@ export function startRecycleRun(
   addLog(
     state,
     'info',
-    `残骸回收启动：${def.name}×${available} 入炉开箱（${who}；每批 ${RECYCLE_BATCH_UNITS} 具 / ${formatDurationMs(cycleEff)}，保底矿物按「${def.name}」来源危险度池，料尽自动停炉）。`,
+    `残骸回收启动：${def.name} ${Math.round(available * 100) / 100} m³ 入炉开箱（${who}；每批 ${RECYCLE_BATCH_M3} m³ / ${formatDurationMs(cycleEff)}，保底矿物按来源危险度池，料尽自动停炉）。`,
   )
   return { ok: true }
 }

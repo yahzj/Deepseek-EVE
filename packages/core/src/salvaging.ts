@@ -23,7 +23,7 @@ import { actionBlockReason, markExplored } from './explore'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom } from './rng'
-import { salvageRoundPull, wreckDensityOf, wreckItemDefOf, wreckItemIdOf } from './salvage'
+import { salvageRoundPull, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
 function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
@@ -154,8 +154,10 @@ export function pullOneWreck(
   }
   const mul = salvageRoundPull(state, ctx, galaxyId)
   const wreckId = wreckItemIdOf(chosen.anomalyId)
-  const def = ctx.items.get(wreckId) ?? wreckItemDefOf(chosen.anomalyId, chosen.anomalyId, chosen.threat)
-  return { itemId: wreckId, mul, volumeM3: def.unitM3 * mul }
+  // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
+  // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
+  const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
+  return { itemId: wreckId, mul, volumeM3: baseM3 * mul }
 }
 
 /**
@@ -249,11 +251,11 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           addLog(
             state,
             'info',
-            `货仓已满（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³ 当量）：自动返航卸货（约 ${Math.round(legMsFor(state, ctx, galaxyId) / 1000)} 秒）。`,
+            `货仓已满（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³）：自动返航卸货（约 ${Math.round(legMsFor(state, ctx, galaxyId) / 1000)} 秒）。`,
           )
           break
         }
-        addItem(state, pulled.itemId, pulled.mul)
+        addItem(state, pulled.itemId, pulled.volumeM3) // 计数 = 体积（m³）
         s.tripM3 += pulled.volumeM3
       }
       if (s.phase === 'returning') break

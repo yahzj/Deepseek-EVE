@@ -623,7 +623,7 @@ function advanceAiSalvage(
           break
         }
         const cargo = state.fleet[shipId]!.cargo
-        cargo[pulled.itemId] = (cargo[pulled.itemId] ?? 0) + pulled.mul
+        cargo[pulled.itemId] = (cargo[pulled.itemId] ?? 0) + pulled.volumeM3 // 计数 = 体积（m³）
         task.tripM3 += pulled.volumeM3
       }
       if (task.phase === 'returning') break

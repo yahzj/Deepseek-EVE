@@ -36,19 +36,19 @@ export const WRECK_RECOVER_MS = 4 * 3_600_000
 export const WRECK_VOLUME_PER_THREAT = 0.06
 
 /**
- * 残骸物品定义（按敌群生成，全自动派生可覆盖）：基础体积 m³ = 威胁 ×0.06（下限 0.1）。
- * 残骸不直接卖钱（市场无价值，baseSellPrice 仅占位）——唯一变现 = 精炼炉「残骸回收」开箱；
+ * 残骸物品定义（按敌群生成；B3 乙案：计数 = 体积 → unitM3 = 1，数量即 m³）。
+ * 残骸不直接卖钱（baseSellPrice 占位）——唯一变现 = 精炼炉「残骸回收」开箱；
  * 回收时按物品 id 反查敌群（ctx.anomalies）取星系危险度/威胁决定矿物池与彩头池。
+ * 体积量级 = 威胁 ×0.06 m³/份 在打捞/回收结算时按敌群威胁动态计算（见 pullOneWreck）。
  */
 export function wreckItemDefOf(anomalyId: string, anomalyName: string, threat: number): ItemDef {
-  const volume = Math.max(0.1, Math.round(Math.max(1, threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
   return {
     id: wreckItemIdOf(anomalyId),
     name: `${anomalyName}残骸`,
     kind: 'wreck',
-    unitM3: volume,
+    unitM3: 1, // 计数 = 体积（m³）
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」编队的舰体残骸（约 ${volume} m³/份）：不可直接出售，回母港用精炼炉「残骸回收」开箱——保底矿物 + 概率彩头。`,
+    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：不可直接出售，回母港用精炼炉「残骸回收」开箱——保底矿物 + 概率彩头。`,
   }
 }
 
@@ -143,8 +143,14 @@ export function salvageRoundPull(state: GameState, ctx: SimContext, galaxyId: st
 
 /* ═══════════ 回收开箱（B3：精炼炉「残骸回收」批；2026-09-05 船长定稿） ═══════════ */
 
-/** 回收批参数（劳动者 100%）：10 具 / 25 秒 → 1440 具/h，与 4×MK1 打捞参照同速率对齐 */
-export const RECYCLE_BATCH_UNITS = 10
+/**
+ * B3 记账口径（2026-09-05 船长拍板乙案）：**残骸计数 = 体积**——
+ * 打捞入舱按"m³ 当量"计（item unitM3 = 1，数量即体积），同一型号的残骸 id 只决定
+ * 回收画像（危险度池/低安/碎片档），体积不再挂 item 静态单件。回收批按体积：
+ * 每批 10 m³ / 25 秒（劳动者 100% → 1440 m³/h，与 4×MK1 打捞量级对齐）。
+ */
+/** 回收批体积（m³）/ 周期：10 m³ / 25 秒（劳动者 100%；AI 核心按效率拉长周期） */
+export const RECYCLE_BATCH_M3 = 10
 export const RECYCLE_CYCLE_MS = 25_000
 
 /** 保底矿物产出档（旋钮，P3 按经济锚校准；单位 = 矿物 unit/m³ 残骸体积当量） */
