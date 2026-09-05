@@ -397,8 +397,8 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     if (!r.ok) onToast(r.error ?? '买入失败', true)
     else onToast(`已买入 ${name}×${n.toLocaleString('zh-CN')}（详见日志）。`)
   }
-  function doSell(): void {
-    const n = Math.max(1, Math.min(holdings, Math.floor(qty || 1)))
+  function doSell(q?: number): void {
+    const n = Math.max(1, Math.min(holdings, Math.floor(q ?? (qty || 1))))
     if (n <= 0 || holdings <= 0) {
       onToast('没有可卖的库存。', true)
       return
@@ -406,6 +406,16 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     const r = engine.sellHoldingAt(good.key, n)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
     else onToast(`已按市价卖出 ${name}×${n.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
+  }
+  /** 全部卖出：一次市价单吃完全部持有（簿吃穿余量自动挂限价卖单，引擎内部逐单撮合） */
+  function doSellAll(): void {
+    if (holdings <= 0) {
+      onToast('没有可卖的库存。', true)
+      return
+    }
+    const r = engine.sellHoldingAt(good.key, holdings)
+    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    else onToast(`已全部卖出 ${name}×${holdings.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
   }
   function doPlace(): void {
     const n = Math.max(1, Math.floor(qty || 1))
@@ -477,17 +487,33 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           </div>
         </div>
         <div className="app-mkt-trade">
-          <div className="app-mkt-trade-tabs">
-            <button className={`app-btn is-small${tab === 'buy' ? ' is-primary' : ''}`} onClick={() => setDefaults('buy')}>
+          {/* 买/卖方向切换：独立分段开关样式，与下方交易按钮明确区分（船长 2026-09-05） */}
+          <div className="app-mkt-sides" role="tablist">
+            <button
+              role="tab"
+              aria-selected={tab === 'buy'}
+              className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}`}
+              onClick={() => setDefaults('buy')}
+            >
               买入
             </button>
-            <button className={`app-btn is-small${tab === 'sell' ? ' is-primary' : ''}`} onClick={() => setDefaults('sell')}>
+            <button
+              role="tab"
+              aria-selected={tab === 'sell'}
+              className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
+              onClick={() => setDefaults('sell')}
+            >
               卖出
             </button>
           </div>
           <div className="app-mkt-trade-row">
             <span className="app-dim">数量</span>
             <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+            {tab === 'sell' ? (
+              <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部持有（${holdings}）`}>
+                全部
+              </button>
+            ) : null}
           </div>
           <div className="app-mkt-trade-row">
             <span className="app-dim">单价</span>
@@ -495,9 +521,14 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <span className="app-dim">ISK</span>
           </div>
           <div className="app-mkt-trade-btns">
-            <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : doSell}>
+            <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
               {tab === 'buy' ? '市价买入' : '市价卖出'}
             </button>
+            {tab === 'sell' ? (
+              <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={doSellAll} title="一次卖出全部持有（按收购簿从高价到低价逐单成交，余量自动挂限价卖单）">
+                全部卖出（{holdings}）
+              </button>
+            ) : null}
             <button className="app-btn is-small" onClick={doPlace}>
               {tab === 'buy' ? '挂买单' : '挂卖单'}
             </button>
