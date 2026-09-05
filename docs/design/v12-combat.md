@@ -88,7 +88,7 @@
   （D = 5+85×((T−6)/90)^1.6）；血量按威胁份额分给主体/僚机（每架 escorts×0.6 份额）
 - 敌方武器由 tactic 定型（brawl 贴脸近程 / orbit 中距环绕 / kite 远程高最小射程），
   C4-#3 起走"虚拟装配模板"：射程 = 战术带 ×(1+侧重系数×(T−10)/90) 封顶 15km；
-  速度 = 参考船速段 × m_base(T) × tactic 系数（brawl 1.12 / orbit 1.0 / kite 0.72）封顶；
+  速度 = 参考船速段 × m_base(T) × tactic 系数（brawl 1.28 / orbit 1.0 / kite 0.72）封顶；
   总火力 ≈ threat × foeDpsPerThreat（0.8）
 - 现有 10 目标按叙事补字段（深渊之门卫队 shield+kite、坟场守墓人 armor+brawl、
   星髓巢穴 armor+brawl+僚机×2 = 首个 1v3 等）
