@@ -39,13 +39,17 @@ function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: string, s
   return Math.max(1, Math.round(legMsFor(state, ctx, galaxyId, shipId) / 2))
 }
 
-/** 该船装配的打捞器周期表（每台周期毫秒；无打捞器 = 空表） */
+/** 该船装配的打捞器周期表（每台周期毫秒；无打捞器 = 空表）。
+ * 打捞装置整备学（salvage-rigging）：单轮周期每级 −3%（最多 −40%；主控与 AI 同源——
+ * 主控作业与 AI 任务都经本函数取周期）。 */
 export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return []
+  const rigLv = Math.min(5, state.skills.trained['salvage-rigging'] ?? 0)
+  const rigFactor = rigLv > 0 ? Math.max(0.6, 1 - 0.03 * rigLv) : 1
   const cycles: number[] = []
   for (const def of allFittedModules(fleetShip.fitted, ctx)) {
-    if (def.slot === 'salvager') cycles.push(def.salvageCycleMs ?? 10_000)
+    if (def.slot === 'salvager') cycles.push(Math.max(100, Math.round((def.salvageCycleMs ?? 10_000) * rigFactor)))
   }
   return cycles
 }
@@ -128,6 +132,12 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   return true
 }
 
+/** 完好舰体（当轮捞取 ×2）概率：基础 1%，每级 ×1.2（残骸富集识别学，2026-09-05） */
+export function assayChanceOf(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['wreck-assaying'] ?? 0)
+  return 0.01 * Math.pow(1.2, lv)
+}
+
 /** 一轮打捞的通用结算（主控作业与 AI 任务共用）：
  * 抽该星系敌群型号池一只（威胁加权）→ 体积当量系数（含放干扣减）→ 返回 { itemId, volumeM3 }；
  * 星系无型号池返回 null。放货入舱由调用方按剩余舱容裁决（放不下 = 满仓返航）。 */
@@ -157,9 +167,11 @@ export function pullOneWreck(
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
   const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
+  // 残骸富集识别学（wreck-assaying，2026-09-05）：完好舰体（当轮 ×2）概率 1% ×1.2/级
+  const bigFind = nextRandom(state.rng) < assayChanceOf(state)
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
-  const volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv)
+  const volumeM3 = baseM3 * mul * (bigFind ? 2 : 1) * (1 + 0.12 * diveLv)
   return { itemId: wreckId, mul, volumeM3 }
 }
 

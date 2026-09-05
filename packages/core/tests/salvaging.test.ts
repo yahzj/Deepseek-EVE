@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceSalvageOp, pullOneWreck, startSalvageOp, stopSalvageOp } from '../src/salvaging'
+import { advanceSalvageOp, assayChanceOf, pullOneWreck, salvagerCyclesOf, startSalvageOp, stopSalvageOp } from '../src/salvaging'
 import { injectWreckDensity, wreckDensityOf } from '../src/salvage'
 import { assignAiSalvage, advanceAi } from '../src/ai'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
@@ -114,5 +114,18 @@ describe('打捞作业（采矿式单趟）', () => {
     const v5 = mk(5)
     expect(v5).toBeCloseTo(v0 * 1.6, 6)
     expect(v0).toBeGreaterThan(0)
+  })
+
+  it('打捞技能组（对标采矿）：整备学 Lv5 周期 −15%；富集识别学 Lv5 概率 ×1.2⁵', () => {
+    const state = fittedState(17)
+    const ctx = ctxOf()
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    expect(salvagerCyclesOf(state, ctx, state.shipId)).toEqual([1000])
+    state.skills.trained['salvage-rigging'] = 5
+    expect(salvagerCyclesOf(state, ctx, state.shipId)).toEqual([850]) // 1000×0.85
+    expect(assayChanceOf(state)).toBe(0.01) // 未学富集识别学
+    state.skills.trained['wreck-assaying'] = 5
+    expect(assayChanceOf(state)).toBeCloseTo(0.01 * Math.pow(1.2, 5), 12)
+    expect(assayChanceOf(state)).toBeGreaterThan(0.01)
   })
 })

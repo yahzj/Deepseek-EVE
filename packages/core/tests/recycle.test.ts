@@ -123,6 +123,21 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(mk(0)).toBe(25_000)
     expect(mk(5)).toBe(20_000) // 每级 −4%：Lv5 = −20%（下限 60% 为长线保护）
   })
+
+  it('残骸提纯学：保底矿物每级 +8%（Lv5 = ×1.4；同种子同抽取序列仅总量放大）', () => {
+    const run = (lv: number): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 37 })
+      const ctx = ctxOf()
+      if (lv > 0) state.skills.trained['salvage-refining'] = lv
+      const profile = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
+      const out = rollRecycleGuarantee(state, ctx, profile, 36)
+      return out.length > 0 ? out[0]!.units : 0
+    }
+    const u0 = run(0)
+    const u5 = run(5)
+    expect(u0).toBeGreaterThan(0)
+    expect(u5).toBeCloseTo(u0 * 1.4, 1) // 同种子同抽取；只放大总量
+  })
 })
 
 describe('蓝图碎片逆向研究', () => {
