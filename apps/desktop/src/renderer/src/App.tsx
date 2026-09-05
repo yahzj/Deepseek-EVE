@@ -27,7 +27,7 @@ import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
 import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
-import { TooltipLayer } from './ui/Tooltip'
+import { TooltipLayer, hideTip } from './ui/Tooltip'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边，见 NAV_ITEMS 的 map 特例） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -146,6 +146,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [fitShipId, setFitShipId] = useState<string | null>(null)
   useEffect(() => {
     if (page !== 'fit') setFitShipId(null)
+    // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
+    hideTip()
   }, [page])
   // B1：首次进入低安的一次性醒目提示（规则全文在手册「航行须知」）
   const lowSecPrev = useRef(state.lowSecNotified)
