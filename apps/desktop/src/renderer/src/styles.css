@@ -1648,11 +1648,12 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
   margin-top: 4px;
+  align-items: stretch;
 }
 .app-fit-pick-item {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 3px;
   padding: 8px;
   text-align: left;
@@ -1667,13 +1668,36 @@ body {
   border-color: rgba(79, 216, 196, 0.55);
   background: rgba(24, 40, 60, 0.7);
 }
+/* 已装在此位（同件重装无意义）：禁用点击 + 金色描边标识（船长 2026-09-05） */
+.app-fit-pick-item:disabled {
+  cursor: default;
+  opacity: 0.75;
+  border-color: rgba(232, 180, 90, 0.45);
+  background: rgba(232, 180, 90, 0.05);
+}
+.app-fit-pick-item:disabled:hover {
+  border-color: rgba(232, 180, 90, 0.45);
+  background: rgba(232, 180, 90, 0.05);
+}
+/* 首行：图标与名称同行（船长 2026-09-05：图标不再独占一行） */
+.app-fit-pick-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 20px;
+}
 .app-fit-pick-icon {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 28px;
+  width: 20px;
+  height: 20px;
 }
 .app-fit-pick-name {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
   line-height: 1.3;
 }
@@ -1681,6 +1705,24 @@ body {
   font-size: 10.5px;
   color: var(--wui-text-dim);
 }
+/* 装后对比段（换装差异：数值与战斗引擎同源，见 FitPage diffSegs 注释） */
+.app-fit-pick-diff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  row-gap: 2px;
+  column-gap: 7px;
+  width: 100%;
+  margin-top: 1px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(85, 112, 140, 0.25);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.app-fit-pick-diff .dseg.is-up { color: #7fe0a0; }
+.app-fit-pick-diff .dseg.is-down { color: #ff9288; }
+.app-fit-pick-diff .dseg.is-info { color: #93d8d2; }
+.app-fit-pick-diff .dseg.is-none { color: var(--wui-text-dim); }
 .app-fit-slot.is-filled {
   border-style: solid;
   border-color: var(--wui-gold);

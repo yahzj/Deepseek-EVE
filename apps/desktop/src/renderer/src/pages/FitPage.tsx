@@ -5,13 +5,21 @@
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
 import { useState, type ReactNode } from 'react'
-import type { DamageResists, ModuleDef, ModuleSlot, RackSlot } from '@whale/core'
+import type {
+  DamageResists,
+  FittedModules,
+  GameState,
+  ModuleDef,
+  ModuleSlot,
+  RackSlot,
+  UnitSpec,
+} from '@whale/core'
 import {
   countModule,
   createPlayerSpec,
-  fleetDefOf,
   effectiveCpu,
   fittedCpuUsed,
+  fleetDefOf,
   RACK_LABELS,
   rackLabel,
   rackOf,
@@ -64,6 +72,99 @@ function layerResChips(res: DamageResists | undefined): ReactNode {
   ))
 }
 
+/** 换装对比段（装配浮层卡片底部；船长 2026-09-05：显示装后 DPS/属性是否有变化） */
+interface FitSeg {
+  /** 展示文本（如 "火力 ≈ +14%" / "盾 960→1032"） */
+  t: string
+  /** 着色：up=绿（升）· down=红（降）· info=中性青（值变化）· none=灰（占位说明） */
+  c: 'up' | 'down' | 'info' | 'none'
+}
+
+const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: '盾', a: '甲', h: '结构' }
+const TYPE_SN: Record<string, string> = { kinetic: '动', explosive: '爆', plasma: '热' }
+
+/** 名义火力（全命中、无距离衰减、弹药不断供）：Σ 各武器 单发/装填秒。
+ * 仅供"同条件下换装相对比较"——战斗实际 DPS 还乘命中/距离衰减（基础舰炮恒在，剔除避免稀释）。 */
+function rawDpsOf(spec: UnitSpec): number {
+  let sum = 0
+  for (const w of spec.weapons) {
+    if (w.label === '基础舰炮') continue
+    const per = w.kind === 'gun' ? Object.values(w.shotsByType ?? {})[0] ?? 0 : (w.shotDmg ?? 0)
+    sum += per / Math.max(0.1, w.reloadMs / 1000)
+  }
+  return sum
+}
+
+/** 整机命中近似（口径：炮台命中率均值 × 开火失稳，再乘索敌乘子；beam 必中计 1）——
+ * 供"命中 ≈ ±%"相对变化段（覆盖索敌阵列/失稳惩罚/换炮基础命中差） */
+function meanHitMul(spec: UnitSpec): number | null {
+  const ws = spec.weapons.filter((w) => w.kind === 'gun' || w.kind === 'beam')
+  if (ws.length === 0) return null
+  let s = 0
+  for (const w of ws) s += w.kind === 'beam' ? 1 : (w.hitRate ?? 0.5) * (w.eqHitMul ?? 1)
+  return (spec.hitMul ?? 1) * (s / ws.length)
+}
+
+/** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化 */
+function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number): FitSeg[] {
+  const segs: FitSeg[] = []
+  const add = (t: string, c: FitSeg['c']): void => {
+    segs.push({ t, c })
+  }
+  const dir = (d: number): 'up' | 'down' => (d > 0 ? 'up' : 'down')
+  if (cpuNext !== cpuCur) add(`CPU ${cpuCur}→${cpuNext}`, 'info')
+  // 血量层（取变化最大的两层，避免长卡）
+  const hpPairs: Array<{ lab: string; c: number; n: number }> = []
+  for (const k of ['s', 'a', 'h'] as const) {
+    const c = cur.hp[k]
+    const n = next.hp[k]
+    if (n !== c) hpPairs.push({ lab: HP_KEY_LABEL[k], c: Math.round(c), n: Math.round(n) })
+  }
+  hpPairs.sort((x, y) => Math.abs(y.n - y.c) - Math.abs(x.n - x.c))
+  for (const p of hpPairs.slice(0, 2)) add(`${p.lab} ${fmt(p.c)}→${fmt(p.n)}`, dir(p.n - p.c))
+  // 抗性（盾/甲两层 × 三系；取百分点变化最大的两条）
+  const resDiffs: Array<{ t: string; c: number; n: number }> = []
+  for (const layer of ['shield', 'armor'] as const) {
+    const cb = cur.resists[layer] ?? {}
+    const nb = next.resists[layer] ?? {}
+    for (const ty of ['kinetic', 'explosive', 'plasma'] as const) {
+      const cpp = Math.round((cb[ty] ?? 0) * 100)
+      const npp = Math.round((nb[ty] ?? 0) * 100)
+      if (npp !== cpp) resDiffs.push({ t: `${layer === 'shield' ? '盾' : '甲'}·${TYPE_SN[ty]}抗`, c: cpp, n: npp })
+    }
+  }
+  resDiffs.sort((a, b) => Math.abs(b.n - b.c) - Math.abs(a.n - a.c))
+  for (const d of resDiffs.slice(0, 2)) add(`${d.t} ${d.c}→${d.n}%`, dir(d.n - d.c))
+  // 回避 / 机动速度
+  const epp = Math.round((next.evasion - cur.evasion) * 100)
+  if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
+  const spd = Math.round(next.speedMps - cur.speedMps)
+  if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
+  // 火力（名义口径，见 rawDpsOf 注释）
+  const cd = rawDpsOf(cur)
+  const nd = rawDpsOf(next)
+  if (cd <= 0 && nd > 0) add('火力 ≈ 新增', 'up')
+  else if (nd <= 0 && cd > 0) add('火力 ≈ 归零', 'down')
+  else if (cd > 0 && nd > 0) {
+    const pct = (nd / cd - 1) * 100
+    if (Math.abs(pct) >= 0.5) {
+      const show = Math.abs(pct) >= 10 ? String(Math.round(pct)) : pct.toFixed(1)
+      add(`火力 ≈ ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
+    }
+  }
+  // 命中近似（整机相对变化；口径见 meanHitMul）
+  const ch = meanHitMul(cur)
+  const nh = meanHitMul(next)
+  if (ch !== null && nh !== null && ch > 0) {
+    const hp = (nh / ch - 1) * 100
+    if (Math.abs(hp) >= 2) {
+      const show = Math.abs(hp) >= 10 ? String(Math.round(hp)) : hp.toFixed(1)
+      add(`命中 ≈ ${hp > 0 ? '+' : '−'}${show}%`, hp > 0 ? 'up' : 'down')
+    }
+  }
+  return segs
+}
+
 /** CPU 占用条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配） */
 function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
   const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0
@@ -105,11 +206,49 @@ export function FitPage({ engine, onToast }: PageProps) {
 
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
   const [pickBay, setPickBay] = useState<{ rack: RackSlot; index: number } | null>(null)
-  function openPick(rack: RackSlot, index: number): void {
-    setPickBay({ rack, index })
-  }
+  // 换装对比段缓存（每候选一段；打开浮层时按当前装配/库存试算一次）
+  const [pickDiffs, setPickDiffs] = useState<Map<string, FitSeg[]> | null>(null)
   function candidatesOf(rack: RackSlot): ModuleDef[] {
     return bayModules.filter((m) => rackOf(m) === rack)
+  }
+  /** 试算"该位卸旧件→装候选"后的同源合成快照（只读模拟：浅拷贝 fitted 链，不触碰真实状态） */
+  function tryFitSpec(
+    m: ModuleDef,
+    rack: RackSlot,
+    index: number,
+  ): { cur: UnitSpec; next: UnitSpec | null; cpuNext: number } | null {
+    const curSpec = spec
+    if (!curSpec) return null
+    const base: FittedModules = fitted ?? { high: [], mid: [], low: [] }
+    const arr = [...(base[rack] ?? [])]
+    while (arr.length <= index) arr.push(null)
+    arr[index] = m.id
+    const simFitted: FittedModules = { ...base, [rack]: arr }
+    const fleet = state.fleet[state.shipId]
+    if (!fleet) return null
+    const simState: GameState = {
+      ...state,
+      fleet: { ...state.fleet, [state.shipId]: { ...fleet, fitted: simFitted } },
+    }
+    return {
+      cur: curSpec,
+      next: createPlayerSpec(simState, engine.ctx, state.shipId),
+      cpuNext: fittedCpuUsed(simFitted, engine.ctx),
+    }
+  }
+  function openPick(rack: RackSlot, index: number): void {
+    setPickBay({ rack, index })
+    const segs = new Map<string, FitSeg[]>()
+    for (const m of candidatesOf(rack)) {
+      const oldId = fitted?.[rack]?.[index] ?? null
+      if (oldId === m.id) {
+        segs.set(m.id, [])
+        continue // 同件重装无对比意义
+      }
+      const r = tryFitSpec(m, rack, index)
+      segs.set(m.id, r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext) : [])
+    }
+    setPickDiffs(segs)
   }
   function pickModule(m: ModuleDef): void {
     if (!pickBay) return
@@ -272,21 +411,52 @@ export function FitPage({ engine, onToast }: PageProps) {
               </button>
             </div>
             <div className="app-dim app-note">
-              以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。同类多装规则与 CPU
-              校验与引擎一致。
+              以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前
+              对比（火力为名义口径：全命中、不计距离衰减）；同类多装与 CPU 校验与引擎一致。
             </div>
             <div className="app-fit-pickgrid">
-              {candidatesOf(pickBay.rack).map((m) => (
-                <button key={m.id} className="app-fit-pick-item" title={fitOptionLabel(m)} onClick={() => pickModule(m)}>
-                  <span className="app-fit-pick-icon">
-                    <Glyph name={m.slot} size={24} color={toneOf(m.slot)} />
-                  </span>
-                  <span className="app-fit-pick-name">{m.name}</span>
-                  <span className="app-fit-pick-sub">
-                    ×{countModule(state, m.id)} · {moduleShortEffect(m)}
-                  </span>
-                </button>
-              ))}
+              {candidatesOf(pickBay.rack).map((m) => {
+                const segs = pickDiffs?.get(m.id)
+                const sameAsOld = (fitted?.[pickBay.rack]?.[pickBay.index] ?? null) === m.id
+                return (
+                  <button
+                    key={m.id}
+                    className="app-fit-pick-item"
+                    title={fitOptionLabel(m)}
+                    onClick={() => pickModule(m)}
+                    disabled={sameAsOld}
+                  >
+                    {/* 图标与名称同行（船长 2026-09-05：图标不再单独占一行） */}
+                    <span className="app-fit-pick-head">
+                      <span className="app-fit-pick-icon">
+                        <Glyph name={m.slot} size={20} color={toneOf(m.slot)} />
+                      </span>
+                      <span className="app-fit-pick-name">{m.name}</span>
+                    </span>
+                    <span className="app-fit-pick-sub">
+                      ×{countModule(state, m.id)} · {moduleShortEffect(m)}
+                    </span>
+                    {sameAsOld ? (
+                      <span className="app-fit-pick-diff">
+                        <span className="dseg is-none">已装在此位</span>
+                      </span>
+                    ) : segs && segs.length > 0 ? (
+                      <span className="app-fit-pick-diff" title={segs.map((s) => s.t).join('　')}>
+                        {segs.slice(0, 4).map((s, i) => (
+                          <span key={i} className={`dseg is-${s.c}`}>
+                            {s.t}
+                          </span>
+                        ))}
+                        {segs.length > 4 ? <span className="dseg is-none">+{segs.length - 4}</span> : null}
+                      </span>
+                    ) : (
+                      <span className="app-fit-pick-diff">
+                        <span className="dseg is-none">装后：战斗无差异</span>
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
               {candidatesOf(pickBay.rack).length === 0 ? (
                 <div className="app-dim app-inv-empty">
                   装备库没有适配此槽位的装备——市场购买或在「工业」页制造后，回来点击槽位装入。
