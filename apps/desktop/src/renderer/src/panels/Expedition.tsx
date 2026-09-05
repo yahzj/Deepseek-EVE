@@ -1526,7 +1526,7 @@ function StationCard({ engine, onToast }: { engine: GameEngine; onToast: ToastFn
             <div className="app-station-head">
               <span className="app-station-name">
                 {site.name}
-                {built ? <em className="app-chip app-station-built"><span className="app-ico"><Glyph name="ico-home" size={12} color={ICO_TONES["ico-home"]} /></span>已建成</em> : null}
+                {built ? <em className="app-chip app-station-built"><span className="app-ico"><Glyph name="ico-crane" size={12} color={ICO_TONES["ico-crane"]} /></span>已建成</em> : null}
                 {!built && tier ? (
                   <em className="app-chip">建造中 · 档位「{tier.name}」</em>
                 ) : null}

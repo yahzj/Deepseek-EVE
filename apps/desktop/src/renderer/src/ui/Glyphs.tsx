@@ -265,10 +265,13 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 3.2v4.4M12 16.4v4.4M3.2 12h4.4M16.4 12h4.4" />
     </g>
   ),
+  /* 残骸打捞（原 🛰 卫星：中心舱体 + 太阳能翼 + 天线——贴近原图标语义） */
   'nav-salvage': (
     <g>
-      <rect x="5.2" y="12.2" width="13.6" height="6.6" rx="1.4" />
-      <path d="M12 4.2v7.4M8.9 7.9L12 4.8l3.1 3.1" />
+      <circle cx="12" cy="12.4" r="2.5" />
+      <rect x="3" y="10" width="5.4" height="4.8" rx="1" />
+      <rect x="15.6" y="10" width="5.4" height="4.8" rx="1" />
+      <path d="M12 4.4v5M12 4.4l1.7 1.7M12 4.4l-1.7 1.7" />
     </g>
   ),
   'nav-task': (
@@ -345,6 +348,16 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 5.4v13.2M5.4 12h13.2" />
     </g>
   ),
+  /* 建站吊车（原 🏗：塔柱 + 吊臂 + 吊钩） */
+  'ico-crane': (
+    <g>
+      <path d="M9 20.4V5" />
+      <path d="M9 5h6.4" />
+      <path d="M15.4 5v2.6" />
+      <path d="M15.4 7.6v2.6M14 10.2h2.8" />
+      <path d="M6.2 20.4h5.6" />
+    </g>
+  ),
   fallback: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -416,6 +429,7 @@ export const ICO_TONES: Record<string, string> = {
   'ico-scan': '#b78bff',
   'ico-swap': '#7de3a8',
   'ico-cross': '#ff8373',
+  'ico-crane': '#ffd166',
 }
 
 /** 渲染一个科幻线性图标 */
