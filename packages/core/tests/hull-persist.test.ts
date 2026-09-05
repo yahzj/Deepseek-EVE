@@ -98,51 +98,53 @@ describe('P0 承伤持久化', () => {
     expect(state.fleet[shipId]!.armorPct).toBe(1)
   })
 
-  it('修理组件（手动）：受损时消耗一枚（民用优先）恢复结构+装甲上限百分比；完好/无件时拒绝', () => {
+  it('修理组件（手动，P2 固定回复）：受损时民用 30HP/军用 70HP（满池 200 → 各 +0.15/+0.35 比例）；无组件时拒绝', () => {
     const ctx: SimContext = makeTestCtx({
       ships: [ship('sandcat', { shieldHp: 100, armorHp: 200, hullHp: 200 })],
       items: [
-        { id: 'repairkit-civ', name: '民用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 8_000, repairRestore: 0.35, description: 't' },
-        { id: 'repairkit-mil', name: '军用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 18_000, repairRestore: 0.7, description: 't' },
+        { id: 'repairkit-civ', name: '民用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 3_000, repairRestore: 30, description: 't' },
+        { id: 'repairkit-mil', name: '军用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 21_000, repairRestore: 70, description: 't' },
       ],
     })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
     const shipId = state.shipId
     const fleetShip = state.fleet[shipId]!
-    fleetShip.cargo['repairkit-civ'] = 2
+    fleetShip.cargo['repairkit-civ'] = 1
     fleetShip.cargo['repairkit-mil'] = 1
     fleetShip.durability = 0.4
     fleetShip.armorPct = 0.5
-    // 民用 0.35：0.4→0.75、0.5→0.85（先扣民用）
+    // 民用 30/200：0.4→0.55、0.5→0.65（先扣民用）
     expect(useOneRepairKit(state, ctx).ok).toBe(true)
-    expect(fleetShip.durability).toBeCloseTo(0.75, 6)
-    expect(fleetShip.armorPct).toBeCloseTo(0.85, 6)
-    expect(fleetShip.cargo['repairkit-civ']).toBe(1)
-    // 第二枚民用补满（0.75+0.35 封顶 1；装甲 0.85+0.35 封顶 1）
-    expect(useOneRepairKit(state, ctx).ok).toBe(true)
-    expect(fleetShip.durability).toBe(1)
-    expect(fleetShip.armorPct).toBe(1)
+    expect(fleetShip.durability).toBeCloseTo(0.55, 6)
+    expect(fleetShip.armorPct).toBeCloseTo(0.65, 6)
     expect(fleetShip.cargo['repairkit-civ']).toBeUndefined()
-    // 已完好：拒绝且不消耗军用件
-    expect(useOneRepairKit(state, ctx).ok).toBe(false)
-    expect(fleetShip.cargo['repairkit-mil']).toBe(1)
+    // 军用 70/200：结构 0.55+0.35=0.9；装甲 0.65+0.35 封顶 1
+    expect(useOneRepairKit(state, ctx).ok).toBe(true)
+    expect(fleetShip.durability).toBeCloseTo(0.9, 6)
+    expect(fleetShip.armorPct).toBe(1)
+    expect(fleetShip.cargo['repairkit-mil']).toBeUndefined()
+    // 组件耗尽（结构仍未满 1）：拒绝且提示无组件
+    const r = useOneRepairKit(state, ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('没有修理组件')
   })
 
-  it('修理组件（自动链）：连续出击阈值下 repairWithKits 消耗货仓组件恢复结构+装甲至目标', () => {
+  it('修理组件（自动链，P2 固定回复）：连续出击阈值下按 70HP 换算恢复结构+装甲至目标', () => {
     const ctx: SimContext = makeTestCtx({
+      ships: [ship('sandcat', { shieldHp: 100, armorHp: 200, hullHp: 200 })],
       items: [
-        { id: 'repairkit-mil', name: '军用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 18_000, repairRestore: 0.7, description: 't' },
+        { id: 'repairkit-mil', name: '军用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 21_000, repairRestore: 70, description: 't' },
       ],
     })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
-    const ship = state.fleet[state.shipId]!
-    ship.cargo['repairkit-mil'] = 1
-    ship.durability = 0.4
-    ship.armorPct = 0.2
+    const fleetShip = state.fleet[state.shipId]!
+    fleetShip.cargo['repairkit-mil'] = 1
+    fleetShip.durability = 0.4
+    fleetShip.armorPct = 0.2
     const used = repairWithKits(state, ctx, 0.5)
     expect(used).toBe(1)
-    expect(ship.durability).toBe(1) // 0.4 + 0.7 封顶
-    expect(ship.armorPct).toBe(0.9)
-    expect(ship.cargo['repairkit-mil']).toBeUndefined()
+    expect(fleetShip.durability).toBeCloseTo(0.75, 6) // 0.4 + 70/200
+    expect(fleetShip.armorPct).toBeCloseTo(0.55, 6) // 0.2 + 70/200
+    expect(fleetShip.cargo['repairkit-mil']).toBeUndefined()
   })
 })

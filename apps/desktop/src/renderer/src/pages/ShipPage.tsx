@@ -313,9 +313,9 @@ export function ShipPage({
                       onClick={() => {
                         const r = engine.useRepairKitNow()
                         if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
-                        else onToast('已使用一枚修理组件（结构+装甲各恢复上限百分比）。')
+                        else onToast('已使用一枚修理组件（基础 HP×容量增幅，民用30/军用70）。')
                       }}
-                      title="消耗驾驶船货仓 1 枚修理组件（民用优先）：结构+装甲各恢复其上限百分比——野外/回港前应急可用"
+                      title="消耗驾驶船货仓 1 枚修理组件（民用优先）：基础回复 HP×容量增幅（民用30/军用70）——野外/回港前应急可用"
                     >
                       🧰 组件修复 ×{kitCount}
                     </button>

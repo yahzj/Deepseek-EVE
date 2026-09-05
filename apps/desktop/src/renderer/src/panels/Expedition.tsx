@@ -916,14 +916,14 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
     <div className="app-ga-row">
       <span className="app-ga-main">
         🧰 应急修理
-        <span className="app-dim app-ga-desc">消耗货仓 1 枚修理组件（民用优先）：结构/装甲各恢复上限百分比</span>
+        <span className="app-dim app-ga-desc">消耗货仓 1 枚修理组件（民用优先）：基础 HP×容量增幅（民用30/军用70）</span>
       </span>
       <button
         className="app-btn is-small is-primary"
         onClick={() => {
           const r = engine.useRepairKitNow()
           if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
-          else onToast('已使用一枚修理组件（结构/装甲各恢复上限百分比）。')
+          else onToast('已使用一枚修理组件（基础 HP×容量增幅）。')
         }}
         title="只能在停留/停靠时手动使用；连续出击出发前低于 50% 会自动消耗组件"
       >

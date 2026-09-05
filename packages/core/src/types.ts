@@ -342,8 +342,8 @@ export interface BalanceConfig {
     }[]
   }
   repair: {
-    /** 舰船维修费单价：ISK / m³ / 每单位缺失耐久 */
-    perM3Cost: number
+    /** P2 定稿：港内维修单价 = ISK / 1 HP（甲+结构缺失按各自满值池折算）× 舰船科技档权重 */
+    perHpCost: number
   }
   market: MarketBalance
   /** V11 战斗引擎常量（命中/距离动力学/敌方换算/战术/弹药预载） */

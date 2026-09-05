@@ -106,14 +106,14 @@ describe('T8 连续出击（自动环）', () => {
   it('修理组件优先：货仓有组件时自动连用修复到阈值后再继续，组件不足才停', () => {
     const ctx = makeTestCtx({ quietEvents: true })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
-    // 两块"纳米修理组件"（用矿物壳 + repairRestore 字段模拟，等后续内容添加正式条目）
-    const kit = { ...mineral('kit-a', 15), name: '纳米修理组件', description: '测试修理组件', repairRestore: 0.3 }
+    // 测试修理组件（P2 固定 HP 语义：repairRestore=基础回复 HP；用超大值保证单件修满，专测"先修再出发"流程）
+    const kit = { ...mineral('kit-a', 15), name: '纳米修理组件', description: '测试修理组件', repairRestore: 1_000_000 }
     const kitCtx = makeTestCtx({ items: [kit], quietEvents: true })
     state.fleet.sandcat.cargo['kit-a'] = 2
     state.fleet.sandcat.durability = 0.2
-    // 直接修到 0.5 阈值：0.2+0.3=0.5 → 只用 1 件
+    // 单件即修满 → 只用 1 件即越过 0.5 阈值
     expect(repairWithKits(state, kitCtx, 0.5)).toBe(1)
-    expect(state.fleet.sandcat.durability).toBe(0.5)
+    expect(state.fleet.sandcat.durability).toBe(1)
     expect(state.fleet.sandcat.cargo['kit-a']).toBe(1)
     // 循环条件检查：耐久 0.45（低于阈值）+ 1 件组件 → 自动消耗并继续
     const state2: GameState = createInitialState({ nowWallMs: 0, seed: 2 })
@@ -126,9 +126,9 @@ describe('T8 连续出击（自动环）', () => {
       items: [kit],
       quietEvents: true,
     })
-    expect(advanceAutoLoopBounty(state2, ctxB)).toBeNull() // 组件修到 0.75 → 放行出发
+    expect(advanceAutoLoopBounty(state2, ctxB)).toBeNull() // 组件修满 → 放行出发
     expect(state2.expedition.active).toBe(true)
-    expect(state2.fleet.sandcat.durability).toBe(0.75)
+    expect(state2.fleet.sandcat.durability).toBe(1)
     expect(state2.fleet.sandcat.cargo['kit-a']).toBeUndefined()
   })
 })

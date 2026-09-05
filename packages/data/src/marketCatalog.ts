@@ -48,8 +48,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 7, poolTarget: 3_800, supplyFlow: 140 },
   { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 8, poolTarget: 3_500, supplyFlow: 120 },
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
-  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 8_000, poolTarget: 300, supplyFlow: 4 },
-  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 18_000, poolTarget: 120, supplyFlow: 1.5 },
+  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_000, poolTarget: 300, supplyFlow: 4 },
+  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 21_000, poolTarget: 120, supplyFlow: 1.5 },
   // ── 无人机（V10 占位：NPC 补给池） ──
   { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, poolTarget: 200, supplyFlow: 4 },
   { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, poolTarget: 120, supplyFlow: 2 },

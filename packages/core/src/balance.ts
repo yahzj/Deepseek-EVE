@@ -56,7 +56,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     ],
   },
   repair: {
-    perM3Cost: 60, // 维修费 = 缺失耐久 × 货舱 m³ × 60 ISK
+    // P2 定稿（2026-09-05）：维修费 =（甲缺失+结构缺失 HP）× perHpCost × 科技档权重（L1×0.4…L4×1.4）
+    perHpCost: 300,
   },
   richVeinChance: 0.01, // 每循环 1% 富矿脉（该循环产量翻倍）
   travelEventChance: 0.3, // 远征出发 30% 概率遇到途中事件

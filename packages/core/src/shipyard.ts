@@ -10,6 +10,7 @@ import type { FittedModules, FleetShipState, GameState } from './state'
 import type { SimContext } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { fleetDefOf, shipDisplayName } from './instances'
+import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
@@ -195,18 +196,61 @@ export function durabilityOf(state: GameState, shipId: string): number {
   return state.fleet[shipId]?.durability ?? 0
 }
 
+/* ───────── P2 修理数值（2026-09-05 定稿）：组件=固定 HP×容量增幅；港内=按缺失 HP×费率×科技档 ───────── */
+
+/** 舰船科技档权重（低档便宜、高档贵；赠舰按 甲+结构 总量归档）：
+ * L1 <200k / 池<200 → ×0.4；L2 <800k / 池<400 → ×0.7；L3 <1.5M / 池<700 → ×1.0；其余（旗舰级）→ ×1.4 */
+function repairTierWeight(def: { priceIsk: number; armorHp?: number; hullHp?: number }): number {
+  const price = def.priceIsk ?? 0
+  const poolKey = (def.armorHp ?? 0) + (def.hullHp ?? 0)
+  const key = price > 0 ? price : poolKey
+  if (price > 0 ? key < 200_000 : key < 200) return 0.4
+  if (price > 0 ? key < 800_000 : key < 400) return 0.7
+  if (price > 0 ? key < 1_500_000 : key < 700) return 1.0
+  return 1.4
+}
+
+/** 该船装甲/结构层的“满值（含模块与技能放大）”与“出厂基础”——组件固定回复按 层满值/基础 = 容量增幅 */
+function layerCaps(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): { capA: number; capH: number; baseA: number; baseH: number } | null {
+  const spec = createPlayerSpec(state, ctx, shipId)
+  const def = fleetDefOf(state, ctx, shipId)
+  if (!spec || !def) return null
+  return { capA: spec.hp.a, capH: spec.hp.h, baseA: def.armorHp ?? 0, baseH: def.hullHp ?? 0 }
+}
+
+/** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 抢修工程学（+10%/级） */
+function kitHealFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  baseHp: number,
+  caps: { capA: number; capH: number; baseA: number; baseH: number } | null,
+): { a: number; h: number } {
+  const skill = 1 + 0.1 * Math.min(5, state.skills.trained['hull-quick-repair'] ?? 0)
+  const aMult = caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1
+  const hMult = caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1
+  return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
+}
+
 /** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级，合计下限 40%）。
- * P0 承伤持久化：装甲损伤并入维修口径——费用 =（结构缺失 + 0.5×装甲缺失）×船容×单价；
- * 权重与费率属 P2 校准项。 */
+ * P2 定稿：费用 =（结构缺失 HP + 装甲缺失 HP）× 每 HP 费率 × 科技档权重——与装甲/结构池同尺，
+ * 低档船便宜、旗舰级贵（旧“按货舱计费”已废弃：货舰修不起且与池脱钩）。 */
 export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext): number {
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   if (!fleetShip || !def) return 0
-  const missing = Math.max(0, 1 - fleetShip.durability) + 0.5 * Math.max(0, 1 - (fleetShip.armorPct ?? 1))
+  const caps = layerCaps(state, ctx, shipId)
+  if (!caps) return 0
+  const missingHp =
+    Math.max(0, 1 - fleetShip.durability) * caps.capH + Math.max(0, 1 - (fleetShip.armorPct ?? 1)) * caps.capA
   const engLv = Math.min(5, state.skills.trained['repair-engineering'] ?? 0)
   const protoLv = Math.min(5, state.skills.trained['station-protocol'] ?? 0)
   const disc = Math.max(0.4, (1 - 0.1 * engLv) * (1 - 0.05 * protoLv))
-  return Math.ceil(missing * def.cargoM3 * ctx.balance.repair.perM3Cost * disc)
+  return Math.ceil(missingHp * ctx.balance.repair.perHpCost * repairTierWeight(def) * disc)
 }
 
 /** 玩家指令：维修某艘拥有船（回满耐久与装甲；钱不够时按比例修复可用部分） */
@@ -240,17 +284,17 @@ export function isShipLocked(state: GameState, shipId: string): boolean {
 }
 
 /**
- * T8 修理组件（船长定稿 seam）：优先用货仓中的修理组件（itemDef.repairRestore > 0）
- * 修复驾驶船耐久与装甲，直到 结构 ≥ target（连续出击阈值默认 0.5）且 装甲 ≥ 同 target
- * 或组件耗尽；返回消耗件数。
- * P0 承伤持久化：组件对装甲/结构同量恢复（同目标下限；细分定价属 P2）。
+ * T8 修理组件（P2 定稿）：优先用货仓中的修理组件（itemDef.repairRestore = 基础回复 HP）
+ * 修复驾驶船结构/装甲至 target（连续出击阈值默认 0.5），或组件耗尽；返回消耗件数。
+ * 每次回复 = 基础 HP × 层容量增幅 × 抢修工程学（与手动同口径）。
  */
 export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5): number {
   const fleetShip = state.fleet[state.shipId]
   if (!fleetShip) return 0
+  const caps = layerCaps(state, ctx, state.shipId)
   let used = 0
   let guard = 0
-  while ((fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target) && guard < 500) {
+  while ((fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target) && guard < 200) {
     guard += 1
     const cargo = fleetShip.cargo
     let kitId: string | null = null
@@ -264,12 +308,14 @@ export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5):
     }
     if (kitId === null) break
     const def = ctx.items.get(kitId)!
-    const restore = def.repairRestore! * (1 + 0.1 * Math.min(5, state.skills.trained['hull-quick-repair'] ?? 0))
+    const heal = kitHealFor(state, ctx, state.shipId, def.repairRestore!, caps)
     const units = cargo[kitId]!
     if (units <= 1) delete cargo[kitId]
     else cargo[kitId] = units - 1
-    fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + restore) * 1000) / 1000)
-    fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + restore) * 1000) / 1000)
+    if (caps) {
+      fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + heal.h / caps.capH) * 1000) / 1000)
+      fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
+    }
     used += 1
   }
   if (used > 0) {
@@ -283,8 +329,8 @@ export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5):
 }
 
 /**
- * 手动使用一枚修理组件（驾驶船货仓，民用优先；2026-09-05 修理系统）：
- * 对「结构」与「装甲」各恢复 repairRestore×（1+10%/级 抢修工程学）的上限比例；无组件/未受损返回原因。
+ * 手动使用一枚修理组件（驾驶船货仓，民用优先；2026-09-05 修理系统，P2 定稿）：
+ * 对「结构」与「装甲」各恢复“基础 HP × 层容量增幅 ×（1+10%/级 抢修工程学）”；无组件/未受损返回原因。
  */
 export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResult {
   const fleetShip = state.fleet[state.shipId]
@@ -303,13 +349,15 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
   if (kitId === null) return { ok: false, error: '货仓里没有修理组件——市场购入或蓝图自制后装入货仓。' }
   const def = ctx.items.get(kitId)
   if (!def || typeof def.repairRestore !== 'number') return { ok: false, error: '修理组件数据异常。' }
-  const restore =
-    def.repairRestore * (1 + 0.1 * Math.min(5, state.skills.trained['hull-quick-repair'] ?? 0))
+  const caps = layerCaps(state, ctx, state.shipId)
+  const heal = kitHealFor(state, ctx, state.shipId, def.repairRestore, caps)
   const left = fleetShip.cargo[kitId]!
   if (left <= 1) delete fleetShip.cargo[kitId]
   else fleetShip.cargo[kitId] = left - 1
-  fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + restore) * 1000) / 1000)
-  fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + restore) * 1000) / 1000)
+  if (caps) {
+    fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + heal.h / caps.capH) * 1000) / 1000)
+    fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
+  }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   addLog(
     state,
