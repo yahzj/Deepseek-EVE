@@ -13,6 +13,7 @@ import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
+import { TutorialGuide, TutorialEpilogue, type GuideGo } from './panels/TutorialGuide'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
@@ -275,6 +276,71 @@ export function App({ engine }: { engine: GameEngine }) {
 
   const pageProps = { engine, onToast: showToast }
 
+  // ── 序章·苏醒：教程锁定与引导（步骤 1..6 页签/按钮级锁定；7 收尾演出；99 全解锁） ──
+  const tutStep = engine.state.onboarding.step
+  const tutLocked = tutStep >= 1 && tutStep <= 6
+  const guideOn = tutStep >= 1 && tutStep <= 6
+  const epiOn = tutStep === 7
+  const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
+    1: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
+    2: { pages: ['map'], map: 'task' },
+    3: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
+    4: { pages: ['map'], map: 'bounty' },
+    5: { pages: ['skills'] },
+    6: { pages: ['ship'], ship: 'ai' },
+  }
+  const tutCanOpen = (p: PageKey): boolean => {
+    if (!tutLocked) return true
+    const allow = TUT_LOCK[tutStep]
+    return !!allow && allow.pages.includes(p)
+  }
+  const tutMapTab = tutLocked ? TUT_LOCK[tutStep]?.map : undefined
+  const tutShipTab = tutLocked ? TUT_LOCK[tutStep]?.ship : undefined
+  const MAP_TAB_LABEL: Record<MapTab, string> = {
+    star: '星图·远征',
+    mine: '矿带开采',
+    bounty: '战斗悬赏',
+    salvage: '残骸打捞',
+    task: '任务中心',
+  }
+  const changePage = (p: PageKey): void => {
+    if (!tutCanOpen(p)) {
+      showToast('按教程引导进行：先完成当前「教程目标」（右下角引导卡）。', true)
+      return
+    }
+    setPage(p)
+  }
+  const changeMapTab = (t: MapTab): void => {
+    if (tutMapTab && t !== tutMapTab) {
+      showToast(`当前教程步骤请使用「${MAP_TAB_LABEL[tutMapTab] ?? tutMapTab}」标签。`, true)
+      return
+    }
+    setMapTab(t)
+  }
+  const changeShipTab = (t: ShipTab): void => {
+    if (tutShipTab && t !== tutShipTab) {
+      showToast('当前教程步骤请使用舰船页对应标签（见引导卡）。', true)
+      return
+    }
+    setShipTab(t)
+  }
+  // 步骤推进 → 跳到该步骤默认视图（切换瞬间发生；恢复读档也会归位一次）
+  const prevTutStep = useRef(-1)
+  useEffect(() => {
+    if (tutStep !== prevTutStep.current) {
+      prevTutStep.current = tutStep
+      if (tutStep >= 1 && tutStep <= 6) {
+        const d = TUT_LOCK[tutStep]
+        if (d) {
+          setPage(d.pages[0]!)
+          if (d.map) setMapTab(d.map)
+          if (d.ship) setShipTab(d.ship)
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutStep])
+
   return (
     <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
       {/* ───── 顶栏 ───── */}
@@ -294,10 +360,10 @@ export function App({ engine }: { engine: GameEngine }) {
           <button className="app-btn" onClick={() => void handleSave()}>
             保存
           </button>
-          <button className="app-btn" onClick={() => setShowSaveManager(true)} title="备份 / 恢复存档">
+          <button className="app-btn" disabled={tutLocked} title={tutLocked ? '教程期间暂不可用（避免误触）' : '备份 / 恢复存档'} onClick={() => setShowSaveManager(true)}>
             存档管理
           </button>
-          <button className="app-btn is-danger" onClick={handleReset}>
+          <button className="app-btn is-danger" disabled={tutLocked} title={tutLocked ? '教程期间暂不可用（避免误触）' : undefined} onClick={handleReset}>
             重置档案
           </button>
         </div>
@@ -310,7 +376,9 @@ export function App({ engine }: { engine: GameEngine }) {
             <button
               key={item.key}
               className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}`}
-              onClick={() => setPage(item.key)}
+              disabled={tutLocked && !tutCanOpen(item.key)}
+              title={tutLocked && !tutCanOpen(item.key) ? '按教程引导进行：先完成当前「教程目标」' : undefined}
+              onClick={() => changePage(item.key)}
             >
               <span className="app-nav-icon">
                 <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
@@ -324,12 +392,12 @@ export function App({ engine }: { engine: GameEngine }) {
             engine={engine}
             onToast={showToast}
             onAiCenter={() => {
-              setPage('ship')
-              setShipTab('ai') // AI 徽标 → 舰船页「AI 指挥」标签
+              changePage('ship')
+              changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥」标签
             }}
             onGoPage={(page, mapTab) => {
-              setPage(page as PageKey)
-              if (mapTab) setMapTab(mapTab as MapTab)
+              changePage(page as PageKey)
+              if (mapTab) changeMapTab(mapTab as MapTab)
             }}
           />
           <div className="app-page-content" key={page}>
@@ -337,14 +405,14 @@ export function App({ engine }: { engine: GameEngine }) {
               <ShipPage
                 {...pageProps}
                 tab={shipTab}
-                onTab={setShipTab}
+                onTab={changeShipTab}
                 onGotoMarket={(goodKey) => {
                   setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-                  setPage('market')
+                  changePage('market')
                 }}
                 onGotoFit={(shipId) => {
                   setFitShipId(shipId)
-                  setPage('fit')
+                  changePage('fit')
                 }}
               />
             ) : null}
@@ -354,14 +422,14 @@ export function App({ engine }: { engine: GameEngine }) {
                 {...pageProps}
                 onGotoMarket={(goodKey) => {
                   setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-                  setPage('market')
+                  changePage('market')
                 }}
               />
             ) : null}
             {page === 'market' ? <MarketPage {...pageProps} focusKey={mktFocus?.key ?? null} focusSeq={mktFocus?.seq ?? 0} /> : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
             {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
-            {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={setMapTab} /> : null}
+            {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} /> : null}
           </div>
         </main>
         <div className="app-log-dock">
@@ -533,6 +601,20 @@ export function App({ engine }: { engine: GameEngine }) {
           }}
         />
       ) : null}
+
+      {/* 序章·苏醒：教程引导卡（步骤 1..6）与收尾演出（步骤 7） */}
+      {guideOn ? (
+        <TutorialGuide
+          engine={engine}
+          step={tutStep}
+          onGo={(g: GuideGo) => {
+            changePage(g.page as PageKey)
+            if (g.mapTab) changeMapTab(g.mapTab as MapTab)
+            if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
+          }}
+        />
+      ) : null}
+      {epiOn ? <TutorialEpilogue engine={engine} onDone={() => undefined} /> : null}
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
