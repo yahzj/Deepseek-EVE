@@ -5,6 +5,7 @@
  * 以及两张测试蓝图 bp-a（造 mod-a，10 单位矿粉甲，10 分钟）与 bp-b（造 mod-b）。
  */
 import { DEFAULT_BALANCE } from '../src/balance'
+import { wreckItemDefOf, wreckItemIdOf } from '../src/salvage'
 import type {
   AnomalyDef,
   BalanceConfig,
@@ -427,7 +428,14 @@ export function makeTestCtx(opts?: {
   const travelEvents = [...DEFAULT_TEST_TRAVEL_EVENTS, ...(opts?.travelEvents ?? [])]
   const stations = new Map<string, StationSiteDef>(Array.from(opts?.stations ?? [], (s) => [s.id, s]))
   const shipsMap = new Map(ships.map((s) => [s.id, s]))
+  const galaxiesMap = new Map(galaxies.map((g) => [g.id, g]))
   const itemsMap = new Map(items.map((i) => [i.id, i]))
+  // B3：按敌群自动补残骸物品（打捞回收原料；基础体积默认随威胁派生）
+  for (const a of anomalies) {
+    const id = wreckItemIdOf(a.id)
+    if (itemsMap.has(id)) continue
+    itemsMap.set(id, wreckItemDefOf(a.id, a.name, a.threat))
+  }
   const modulesMap = new Map(modules.map((m) => [m.id, m]))
   const blueprintsMap = new Map(blueprints.map((b) => [b.id, b]))
   const shipBlueprintsMap = new Map(shipBlueprints.map((b) => [b.id, b]))
@@ -453,7 +461,7 @@ export function makeTestCtx(opts?: {
     modules: modulesMap,
     blueprints: blueprintsMap,
     shipBlueprints: shipBlueprintsMap,
-    galaxies: new Map(galaxies.map((g) => [g.id, g])),
+    galaxies: galaxiesMap,
     galaxyEdges: edges,
     anomalies: new Map(anomalies.map((a) => [a.id, a])),
     travelEvents,

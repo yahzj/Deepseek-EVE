@@ -16,7 +16,7 @@
  * （base 由 security 推导不入档；兼容字段，无版本号）。
  */
 import type { GameState, WreckGalaxyRecord } from './state'
-import type { SimContext } from './types'
+import type { ItemDef, SimContext } from './types'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、半效保底 */
 export const WRECK_FLOOR = 5
@@ -33,6 +33,23 @@ export const WRECK_RECOVER_MS = 4 * 3_600_000
 
 /** 星系残骸基础体积默认推导系数：基础体积 m³ = 威胁 ×0.06（卡级可覆盖，见数据层） */
 export const WRECK_VOLUME_PER_THREAT = 0.06
+
+/**
+ * 残骸物品定义（按敌群生成，全自动派生可覆盖）：基础体积 m³ = 威胁 ×0.06（下限 0.1）。
+ * 残骸不直接卖钱（市场无价值，baseSellPrice 仅占位）——唯一变现 = 精炼炉「残骸回收」开箱；
+ * 回收时按物品 id 反查敌群（ctx.anomalies）取星系危险度/威胁决定矿物池与彩头池。
+ */
+export function wreckItemDefOf(anomalyId: string, anomalyName: string, threat: number): ItemDef {
+  const volume = Math.max(0.1, Math.round(Math.max(1, threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
+  return {
+    id: wreckItemIdOf(anomalyId),
+    name: `${anomalyName}残骸`,
+    kind: 'wreck',
+    unitM3: volume,
+    baseSellPriceIsk: 1,
+    description: `「${anomalyName}」编队的舰体残骸（约 ${volume} m³/份）：不可直接出售，回母港用精炼炉「残骸回收」开箱——保底矿物 + 概率彩头。`,
+  }
+}
 
 /** 残骸物品 id（按敌群注册：每悬赏卡/遭遇群一种残骸） */
 export function wreckItemIdOf(anomalyId: string): string {

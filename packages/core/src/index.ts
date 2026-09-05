@@ -318,6 +318,7 @@ export {
   WRECK_VOLUME_PER_THREAT,
   wreckItemIdOf,
   anomalyIdOfWreck,
+  wreckItemDefOf,
   wreckBaseDensity,
   wreckDensityOf,
   injectWreckDensity,

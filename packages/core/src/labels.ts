@@ -15,6 +15,7 @@ export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'turret',
   'missile',
   'laser',
+  'salvager',
   'shield',
   'armor',
   'propulsion',
@@ -30,6 +31,7 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   turret: '炮台',
   missile: '导弹架',
   laser: '激光炮',
+  salvager: '打捞器',
   shield: '护盾装置',
   armor: '装甲装置',
   propulsion: '推进器',
@@ -78,6 +80,7 @@ export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3
     def.slot === 'turret' ||
     def.slot === 'missile' ||
     def.slot === 'laser' ||
+    def.slot === 'salvager' ||
     def.slot === 'miner' ||
     def.slot === 'drone-rack' ||
     def.slot === 'drone-tac'
@@ -88,7 +91,7 @@ export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3
 }
 
 /** 物品分类展示顺序 */
-export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone']
+export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'fragment']
 
 /** 物品分类中文名（仓库/货仓分组标题与空态文案用） */
 export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
@@ -98,6 +101,8 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   ice: '冰矿',
   ammo: '弹药',
   drone: '无人机',
+  wreck: '残骸',
+  fragment: '蓝图碎片',
 }
 
 export function itemKindLabel(kind: ItemKind): string {

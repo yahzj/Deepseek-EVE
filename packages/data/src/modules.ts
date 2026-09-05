@@ -823,6 +823,37 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 40,
     description: '机动支援（中槽）：被命中缺口削减 20%（敌命中 60% → 48%）。同类多装收益递减（市场稀有）。',
   },
+
+  // ══════════ B3 打捞器（salvager：高槽无伤害件，2026-09-05 船长定稿） ══════════
+  // 每轮每台捞 1 具残骸；升级只缩短周期不增产（10s/8s/6s）；多台叠加；CPU 2/6/15（压缩表）。
+  // 周期字段 salvageCycleMs 供打捞作业引擎消费；产出/密度关系见 salvage.ts 与 docs/design/b3-salvage.md。
+  {
+    id: 'mod-salvager-1',
+    name: '打捞器 MK1',
+    slot: 'salvager',
+    rack: 'high',
+    cpuUse: 2,
+    salvageCycleMs: 10_000,
+    description: '残骸打捞（高槽，无伤害）：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。同类可多装。',
+  },
+  {
+    id: 'mod-salvager-2',
+    name: '打捞器 MK2',
+    slot: 'salvager',
+    rack: 'high',
+    cpuUse: 6,
+    salvageCycleMs: 8_000,
+    description: '残骸打捞（高槽，无伤害）：周期缩短至 8 秒/轮（每轮仍 1 具）；同类可多装（市场稀有）。',
+  },
+  {
+    id: 'mod-salvager-3',
+    name: '打捞器 MK3',
+    slot: 'salvager',
+    rack: 'high',
+    cpuUse: 15,
+    salvageCycleMs: 6_000,
+    description: '残骸打捞（高槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）；同类可多装（市场稀有）。',
+  },
 ]
 
 /** 构建"装备 id → 定义"目录 */

@@ -34,8 +34,9 @@ export interface RefineRow {
 }
 
 /** 物品大类（V10）：矿石/矿物为既有体系；气体/冰矿可采集可精炼（接入现有循环）；
- * 弹药/无人机为占位消耗品（市场流通、可囤可回卖，战斗系统开放后启用消耗） */
-export type ItemKind = 'ore' | 'mineral' | 'gas' | 'ice' | 'ammo' | 'drone'
+ * 弹药/无人机为占位消耗品（市场流通、可囤可回卖，战斗系统开放后启用消耗）；
+ * B3（2026-09-05）：wreck = 残骸（打捞回收原料）、fragment = 蓝图碎片（逆向研究素材） */
+export type ItemKind = 'ore' | 'mineral' | 'gas' | 'ice' | 'ammo' | 'drone' | 'wreck' | 'fragment'
 
 /** 伤害类型（V10.5 战斗数值契约：远行星号体系——动能/高爆/能量三系） */
 export type DamageType = 'kinetic' | 'explosive' | 'plasma'
@@ -509,6 +510,7 @@ export type ModuleSlot =
   | 'turret'
   | 'missile'
   | 'laser'
+  | 'salvager'
   | 'shield'
   | 'armor'
   | 'propulsion'
@@ -614,6 +616,9 @@ export interface ModuleDef {
   droneBayBonusM3?: number
   /** 战术导控阵列：放飞无人机单发伤害加成（0.12 = +12%；线性求和乘入；线性可叠件） */
   droneDmgBonus?: number
+  /* ═══ B3 打捞器（salvager 家族：高槽无伤害件；升级只缩短周期） ═══ */
+  /** 打捞器单轮周期毫秒（每台每轮捞 1 具残骸；MK1/2/3 = 10s/8s/6s） */
+  salvageCycleMs?: number
   /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */
   /** 伤害稳定器（按系）：该系炮台单发伤害加成（0.06 = +6%；多件加算 Σ；只作用于炮台，
    * 不叠加到无人机——无人机归战术导控管） */

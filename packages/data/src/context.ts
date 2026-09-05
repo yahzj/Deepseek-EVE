@@ -3,7 +3,7 @@
  * 桌面层只在启动时构建一次。
  */
 
-import { DEFAULT_BALANCE } from '@whale/core'
+import { DEFAULT_BALANCE, wreckItemDefOf, wreckItemIdOf } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import { buildSkillCatalog } from './skills'
 import { buildItemCatalog } from './items'
@@ -20,17 +20,26 @@ import { buildStationCatalog } from './stations'
 import { GALAXY_EDGES } from './universe'
 
 export function buildSimContext(): SimContext {
+  const galaxies = buildGalaxyCatalog()
+  const anomalies = buildAnomalyCatalog()
+  const items = new Map(buildItemCatalog())
+  // B3：按敌群自动补残骸物品（打捞回收原料；基础体积默认随威胁派生，可覆盖）
+  for (const a of anomalies.values()) {
+    const id = wreckItemIdOf(a.id)
+    if (items.has(id)) continue
+    items.set(id, wreckItemDefOf(a.id, a.name, a.threat))
+  }
   return {
     skills: buildSkillCatalog(),
     ships: buildShipCatalog(),
     belts: buildBeltCatalog(),
-    items: buildItemCatalog(),
+    items,
     modules: buildModuleCatalog(),
     blueprints: buildBlueprintCatalog(),
     shipBlueprints: buildShipBlueprintCatalog(),
-    galaxies: buildGalaxyCatalog(),
+    galaxies,
     galaxyEdges: GALAXY_EDGES,
-    anomalies: buildAnomalyCatalog(),
+    anomalies,
     travelEvents: buildTravelEvents(),
     stations: buildStationCatalog(),
     marketGoods: buildMarketGoodsCatalog(),

@@ -14,6 +14,9 @@ import {
   salvageRoundPull,
   wreckBaseDensity,
   wreckDensityOf,
+  wreckItemDefOf,
+  wreckItemIdOf,
+  anomalyIdOfWreck,
 } from '../src/salvage'
 
 /** 带 security 的测试星系（hub=母港高安 1.0 / kor=中安 0.5 / grave=低安 −1.0 / abyss −0.7） */
@@ -83,6 +86,21 @@ describe('闲置漂移（打捞中挂起；回 base 自动清记录）', () => {
     advanceWreckDrift(state, ctx, WRECK_DECAY_MS, 'galaxy-hub') // 挂起 hub；kor 正常回升
     expect(state.galaxyWrecks['galaxy-hub']!.density).toBe(58)
     expect(state.galaxyWrecks['galaxy-kor']).toBeUndefined() // kor 已回 base 清记录
+  })
+})
+
+describe('残骸物品（按敌群注册，基础体积默认 = 威胁×0.06 m³）', () => {
+  it('id/名称/体积派生正确；id ↔ 敌群互转', () => {
+    const def = wreckItemDefOf('ano-training', '演习场讨伐令', 6)
+    expect(def.id).toBe('wreck-ano-training')
+    expect(def.kind).toBe('wreck')
+    expect(def.unitM3).toBe(0.36) // 6×0.06
+    expect(def.baseSellPriceIsk).toBe(1) // 残骸不可直接卖钱
+    expect(wreckItemIdOf('ano-x')).toBe('wreck-ano-x')
+    expect(anomalyIdOfWreck('wreck-ano-x')).toBe('ano-x')
+    expect(anomalyIdOfWreck('ore-a')).toBeNull()
+    // 大威胁残骸更重
+    expect(wreckItemDefOf('ano-big', '顶级怪', 96).unitM3).toBe(5.76)
   })
 })
 
