@@ -1656,6 +1656,49 @@ body {
   border-radius: 10px;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
 }
+/* 物品操作浮层窄版（2026-09-05：图标卡点选弹出；内容 = 信息 + 操作按钮） */
+.app-fit-modal.is-narrow {
+  width: min(360px, 92vw);
+}
+.app-itempick-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+.app-itempick-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(85, 112, 140, 0.3);
+}
+.app-itempick-info {
+  min-width: 0;
+}
+.app-itempick-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-itempick-note {
+  font-size: 11px;
+  margin: 4px 0 10px;
+}
+.app-itempick-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(85, 112, 140, 0.25);
+}
 .app-fit-modal-head {
   display: flex;
   align-items: center;

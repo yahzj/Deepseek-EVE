@@ -9,6 +9,8 @@ import { useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
+import { Glyph, toneOf } from '../ui/Glyphs'
+import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -45,8 +47,20 @@ function WarehouseView({ engine, onToast }: PageProps) {
     if (!def) return
     const loaded = engine.loadWareToCargoFit(id)
     if (loaded === 0) onToast('船上没有足够空间。', true)
-    else onToast(`已装船 ${def.name}×${loaded.toLocaleString('zh-CN')}。`)
+    else {
+      onToast(`已装船 ${def.name}×${loaded.toLocaleString('zh-CN')}。`)
+      setPickItem(null)
+    }
   }
+
+  // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
+  const [pickItem, setPickItem] = useState<string | null>(null)
+  const [pickMod, setPickMod] = useState<string | null>(null)
+  const pickItemDef = pickItem ? engine.ctx.items.get(pickItem) : undefined
+  const pickItemUnits = pickItem ? (state.warehouse.items[pickItem] ?? 0) : 0
+  const pickItemBuy = pickItem ? itemBuyQuote(engine, pickItem) : undefined
+  const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
+  const pickModUnits = pickMod ? (state.moduleBay[pickMod] ?? 0) : 0
 
   // 图标/列表切换（手册同款；网格为浏览视图）
   const [mode, setMode] = useItemView()
@@ -178,21 +192,84 @@ function WarehouseView({ engine, onToast }: PageProps) {
         </>
       ) : (
         <>
-          <div className="app-dim app-note">图标视图（浏览用）：物品与装备按图标网格排列；装卸 / 卖出请切回「列表」视图。</div>
+          <div className="app-dim app-note">图标视图：点击任意物品/装备卡片即可执行装卸、卖出等操作。</div>
           <Panel title="仓库资源" right={<span className="app-dim">{kindCells.length} 种</span>}>
             {kindCells.length > 0 ? (
-              <ItemGlyphGrid cells={kindCells} />
+              <ItemGlyphGrid cells={kindCells} onPick={(key) => setPickItem(key)} />
             ) : (
               <div className="app-dim app-inv-empty">仓库里没有资源（自动卸货的矿会先到这里）。</div>
             )}
           </Panel>
           <Panel title="装备（装备库）" right={<span className="app-dim">{modCells.length} 种 · 空间站库存</span>}>
             {modCells.length > 0 ? (
-              <ItemGlyphGrid cells={modCells} />
+              <ItemGlyphGrid cells={modCells} onPick={(key) => setPickMod(key)} />
             ) : (
               <div className="app-dim app-inv-empty">装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。</div>
             )}
           </Panel>
+
+          {pickItemDef && pickItem ? (
+            <ItemActionModal onClose={() => setPickItem(null)}>
+              <div className="app-itempick-head">
+                <span className="app-itempick-icon">
+                  <Glyph name={pickItemDef.kind} size={40} color={toneOf(pickItemDef.kind)} />
+                </span>
+                <div className="app-itempick-info">
+                  <div className="app-itempick-name">{pickItemDef.name}</div>
+                  <div className="app-dim">
+                    ×{pickItemUnits.toLocaleString('zh-CN')}（{m3(pickItemUnits * pickItemDef.unitM3)}）· 市场收价{' '}
+                    {pickItemBuy !== undefined ? `${isk(pickItemBuy)} ISK` : '—'}
+                  </div>
+                </div>
+              </div>
+              <div className="app-dim app-itempick-note">{pickItemDef.description}</div>
+              <div className="app-itempick-actions">
+                {LOADABLE_KINDS.has(pickItemDef.kind) ? (
+                  <button className="app-btn is-small" onClick={() => handleLoad(pickItem)}>
+                    装到船上
+                  </button>
+                ) : null}
+                {pickItemBuy !== undefined ? (
+                  <button
+                    className="app-btn is-primary is-small"
+                    onClick={() => {
+                      handleSell(pickItem)
+                      setPickItem(null)
+                    }}
+                  >
+                    市价卖出全部（{pickItemUnits.toLocaleString('zh-CN')} 单位）
+                  </button>
+                ) : (
+                  <button className="app-btn is-small" disabled>
+                    不在市场目录（无法出售）
+                  </button>
+                )}
+              </div>
+            </ItemActionModal>
+          ) : null}
+
+          {pickModDef && pickMod ? (
+            <ItemActionModal onClose={() => setPickMod(null)}>
+              <div className="app-itempick-head">
+                <span className="app-itempick-icon">
+                  <Glyph name={pickModDef.slot} size={40} color={toneOf(pickModDef.slot)} />
+                </span>
+                <div className="app-itempick-info">
+                  <div className="app-itempick-name">{pickModDef.name}</div>
+                  <div className="app-dim">
+                    ×{pickModUnits.toLocaleString('zh-CN')} · {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU{' '}
+                    {pickModDef.cpuUse}
+                  </div>
+                </div>
+              </div>
+              <div className="app-dim app-itempick-note">{pickModDef.description}</div>
+              <div className="app-itempick-actions">
+                <button className="app-btn is-small" disabled title="安装与卸下请到「装配」页">
+                  到「装配」页安装使用
+                </button>
+              </div>
+            </ItemActionModal>
+          ) : null}
         </>
       )}
     </>

@@ -19,6 +19,8 @@ import {
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { ItemHover } from '../ui/shipInfo'
+import { Glyph, toneOf } from '../ui/Glyphs'
+import { ItemActionModal } from '../ui/ItemActionModal'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
@@ -75,8 +77,17 @@ export function CargoPage({ engine, onToast }: PageProps) {
     }
     const r = engine.sellCargo(id)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
+    else {
+      onToast(`入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
+      setPickId(null)
+    }
   }
+
+  // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
+  const [pickId, setPickId] = useState<string | null>(null)
+  const pickDef = pickId ? engine.ctx.items.get(pickId) : undefined
+  const pickUnits = pickId ? (cargo[pickId] ?? 0) : 0
+  const pickBuy = pickId ? itemBuyQuote(engine, pickId) : undefined
 
   function handleUnloadAll(): void {
     // T9：卸货入仓库在任何空间站可用（母港与副站）
@@ -210,13 +221,46 @@ export function CargoPage({ engine, onToast }: PageProps) {
       })}
         </>
       ) : (
-        <Panel title="货仓资源" right={<span className="app-dim">{cargoCells.length} 种 · 图标视图（浏览）</span>}>
-          {cargoCells.length > 0 ? (
-            <ItemGlyphGrid cells={cargoCells} />
-          ) : (
-            <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
-          )}
-        </Panel>
+        <>
+          <Panel title="货仓资源" right={<span className="app-dim">{cargoCells.length} 种 · 图标视图（点卡片操作）</span>}>
+            {cargoCells.length > 0 ? (
+              <ItemGlyphGrid cells={cargoCells} onPick={(key) => setPickId(key)} />
+            ) : (
+              <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
+            )}
+          </Panel>
+
+          {pickDef && pickId ? (
+            <ItemActionModal onClose={() => setPickId(null)}>
+              <div className="app-itempick-head">
+                <span className="app-itempick-icon">
+                  <Glyph name={pickDef.kind} size={40} color={toneOf(pickDef.kind)} />
+                </span>
+                <div className="app-itempick-info">
+                  <div className="app-itempick-name">{pickDef.name}</div>
+                  <div className="app-dim">
+                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}）· 市场收价{' '}
+                    {pickBuy !== undefined ? `${isk(pickBuy)} ISK` : '—'}
+                  </div>
+                </div>
+              </div>
+              <div className="app-dim app-itempick-note">{pickDef.description}</div>
+              <div className="app-itempick-actions">
+                {!isPiloted ? (
+                  <div className="app-dim">正在查看「{targetName}」——只读：装卸与出售仅对当前驾驶船可用。</div>
+                ) : pickBuy !== undefined ? (
+                  <button className="app-btn is-primary is-small" onClick={() => handleSell(pickId)}>
+                    市价卖出全部（{pickUnits.toLocaleString('zh-CN')} 单位）
+                  </button>
+                ) : (
+                  <button className="app-btn is-small" disabled>
+                    不在市场目录（无法出售）
+                  </button>
+                )}
+              </div>
+            </ItemActionModal>
+          ) : null}
+        </>
       )}
     </div>
   )
