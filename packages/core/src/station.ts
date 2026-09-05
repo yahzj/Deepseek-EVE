@@ -126,7 +126,8 @@ export function deliverStationResources(
 }
 
 /**
- * 抵达挂点：船抵达某星系（远征胜利停留/扫描完成）时调用——
+ * 抵达挂点（历史调用方：悬赏胜利停留/扫描完成停留——2026-09-06 起两处均改为自动返航，
+ * 本挂点仅由旧路径/历史代码触发；新到站入口 = 掩护巡逻到位 noteStationSiteAt + 手动返航）：
  * 1) 该星系有建站点：已奠基（stage≥1）→ 直接停靠该站；未奠基 → 作为野外工地停留；
  * 2) 通讯触发：站点未建成且介绍剧本未读 → 挂起待播。
  */
@@ -160,4 +161,21 @@ export function playDialogue(state: GameState, scriptId: string, ctx: SimContext
   }
   state.dialogueSeen[scriptId] = true
   if (state.pendingDialogue === scriptId) state.pendingDialogue = null
+}
+
+/**
+ * 2026-09-06 轻量到位挂点（掩护巡逻即时驻留到建站星系时调用；悬赏胜利/扫描完成已不再停留，
+ * 建站叙事入口改由这里承接）：星系有未建成建站点且介绍剧本未读 → 挂起待播通讯。
+ * 驻留不自动停靠（工地/副站停靠仍走手动「返航空间站」）。
+ */
+export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: string): void {
+  const site = [...ctx.stations.values()].find((s) => s.galaxyId === galaxyId)
+  if (!site) return
+  const prog = siteProgress(state, site.id)
+  if (prog.stage >= site.tiers.length) return // 已建成：停靠走「返航空间站」，无需介绍
+  if (site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
+    state.pendingDialogue = site.introDialogueId
+    const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+    addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里（未建成，可「返航空间站」停靠施工/卸料）。`)
+  }
 }

@@ -1,13 +1,15 @@
 /**
- * 远征（M3 + V12 两阶段 + T8 停留语义）：派舰船去远方星系的异常点。
+ * 远征（M3 + V12 两阶段 + 2026-09-06"完成即返航"语义）：派舰船去远方星系的异常点。
  * 流程 = 去程取消（定稿：下达即开战，无出航等待）→ 实时交火(battle) →
- * （胜利 = 结算并停留该星系 / 失利 = 自动返航 back，返航时长 = 原去程 + 原返程 = 2×单程）。
+ * （胜利 = 结算后自动返航 back，返航 = 目标星系↔母港 2×单程、不可召回；
+ *   失利/撤退 = 自动返航 back，返航时长 = 出发地往返 2×单程、可召回）。
  * 交火由 V12 战斗引擎（combat.ts）确定性推进；离线大步长与在线小步同引擎。到点语义：
  * - out：仅兼容旧档/遗留状态（历史去程相位；finishAtGameMs = 到港时刻）；
  * - battle：无固定结束时刻；结束由战斗引擎判定（battle.ended），结算后：
- *   胜 → 远征结束 + 船停留目标星系（awayGalaxy）+ 悬赏冷却计时开始；
- *   负 → 转 back 自动返航（维修/弃船按既有惩罚在结算时发生）
- * - back：finishAtGameMs = 到家时刻（= 开战时刻 + 2×单程，去程并入返航），到点 active=false
+ *   胜 → 奖金/战利品/声望入账 + 悬赏冷却开始，随即转 back（returnReason='victory'）；
+ *   负 → 转 back 自动返航（维修/弃船按既有惩罚在结算时发生，returnReason='defeat'）
+ * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
+ *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
 import { addLog, HOME_GALAXY_ID } from './state'
 import type { CommandResult } from './engine'
@@ -19,7 +21,6 @@ import { loseShip, repairWithKits } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
 import { originGalaxyOf } from './location'
-import { onArriveAtGalaxy } from './station'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { injectWreckDensity, wreckDensityOf } from './salvage'
 import {
@@ -242,6 +243,7 @@ export function startExpedition(
   exp.power = calcPower(state, ctx)
   exp.eventId = rollTravelEvent(state, ctx)
   exp.eventFired = false
+  exp.returnReason = undefined
   // 期望距离偏好：本次显式传入优先；否则沿用上次记忆（默认在开战时取有效射程中点）
   if (opts?.desireM !== undefined) {
     exp.desirePrefM = Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM))
@@ -250,7 +252,7 @@ export function startExpedition(
   addLog(
     state,
     'info',
-    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」跃迁至目标空域——去程已取消，立即进入交火。胜后停留该星系（可连续出击或返航），失利自动返航（去程时间并入返航）。`,
+    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」跃迁至目标空域——去程已取消，立即进入交火。胜利后自动返航母港（去程并入返航，不可召回）；失利/撤退同样自动返航。`,
   )
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
   if (exp.eventId) maybeFireTravelEvent(state, ctx)
@@ -398,23 +400,34 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     )
     // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)
-    // T8 胜利 = 结算并停留该星系：远征结束、船停在目标（母港星系=已回港）、悬赏冷却计时开始
+    // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
-    exp.active = false
-    exp.anomalyId = null
-    exp.phase = 'out'
     exp.battle = null
     exp.eventId = null
     exp.eventFired = false
-    if (anomaly.galaxyId !== HOME_GALAXY_ID) {
-      // T8/T9：胜利停留——若是建站点星系则视档位停靠工地/副站，并可能挂起介绍通讯
-      onArriveAtGalaxy(state, ctx, anomaly.galaxyId)
-      addLog(
-        state,
-        'info',
-        `舰队停留「${galaxy?.name ?? anomaly.galaxyId}」——可连续出击同一目标（冷却 10 秒起）或「返航空间站」。`,
-      )
+    if (anomaly.galaxyId === HOME_GALAXY_ID) {
+      // 母港目标：本港悬赏 → 结算即已回港（无返航段）
+      exp.active = false
+      exp.anomalyId = null
+      exp.phase = 'out'
+      exp.finishAtGameMs = 0
+      exp.returnReason = undefined
+      addLog(state, 'info', '战果已入账：舰队已停靠母港（本港悬赏，无返航段）。')
+      return
     }
+    // 2026-09-06（船长定稿：取消胜利停留）：悬赏胜利 = 结算后自动返航母港——
+    // 一律按 目标星系↔母港 2×单程计（原去程并入返航，与出发地无关），返航期间不可召回
+    // （路程成本必付）；连续出击到港后冷却结束自动续打（巡回讨伐）。
+    const homeMins = shortestTravelMinutes(ctx, HOME_GALAXY_ID, anomaly.galaxyId)
+    const backMs = Number.isFinite(homeMins) ? travelLegMs(state, ctx, homeMins) * 2 : exp.outMs * 2
+    exp.phase = 'back'
+    exp.returnReason = 'victory'
+    exp.finishAtGameMs = state.gameMs + backMs
+    addLog(
+      state,
+      'info',
+      `战果已入账：舰队自动返航（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——回港后可卸货/维修，或让连续出击自动续打。`,
+    )
     return
   } else {
     // 失利：扣耐久 + 弃船骰 + 维修费（沿用旧机制）；若正处于连续出击环 → 停环
@@ -452,9 +465,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。练练炮术学，记得给船做保养。`,
     )
   }
-  // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程）
+  // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程；失利返航可召回）
   exp.battle = null
   exp.phase = 'back'
+  exp.returnReason = 'defeat'
   exp.finishAtGameMs = state.gameMs + exp.outMs * 2
   addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
 }
@@ -516,6 +530,7 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程；沿用失利返回流程）
   exp.battle = null
   exp.phase = 'back'
+  exp.returnReason = 'retreat'
   exp.finishAtGameMs = state.gameMs + exp.outMs * 2
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
   return { ok: true }
@@ -594,21 +609,34 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     }
     // back：到港结束
     if (state.gameMs < exp.finishAtGameMs) return
+    const wasVictoryReturn = exp.returnReason === 'victory'
     exp.active = false
     exp.anomalyId = null
     exp.battle = null
     exp.phase = 'out'
-    addLog(state, 'info', '远征结束，舰队已停靠母港。')
+    exp.finishAtGameMs = 0
+    exp.returnReason = undefined
+    addLog(
+      state,
+      'info',
+      wasVictoryReturn
+        ? '悬赏战果已携回母港：舰队停靠完毕（缴获在货仓，可卸入仓库或维修后再次出击）。'
+        : '远征结束，舰队已停靠母港。',
+    )
     return
   }
 }
 
-/** 玩家指令：召回远征（T1 活动窗口统一停止）。仅去程/返航可召回——召回即直接回港、无战果；交火中禁止（避免绕过战斗结算）。 */
+/** 玩家指令：召回远征（T1 活动窗口统一停止）。仅去程/返航可召回——召回即直接回港、无战果；交火中禁止（避免绕过战斗结算）。
+ * 2026-09-06：胜利自动返航（returnReason='victory'）不可召回——路程成本必付，防止"打完立即召回免费回家"。 */
 export function recallExpedition(state: GameState, ctx: SimContext): CommandResult {
   const exp = state.expedition
   if (!exp.active) return { ok: false, error: '当前没有进行中的远征。' }
   if (exp.phase === 'battle') {
     return { ok: false, error: '交火中无法撤离——请先让战斗分出胜负。' }
+  }
+  if (exp.phase === 'back' && exp.returnReason === 'victory') {
+    return { ok: false, error: '胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。' }
   }
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const name = anomaly?.name ?? exp.anomalyId ?? '目标'
@@ -704,7 +732,7 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
   if (fleetShip.durability < 0.5) {
     repairWithKits(state, ctx, 0.5)
     if ((state.fleet[state.shipId]?.durability ?? 0) < 0.5) {
-      stopAutoLoopReason(state, '耐久低于 50% 且货仓修理组件不足——请返航空间站维修。')
+      stopAutoLoopReason(state, '耐久低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。')
       return '耐久不足且修理组件耗尽'
     }
   }
@@ -714,7 +742,7 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
   if (freeCargoM3(state, ctx) < lootM3) {
-    stopAutoLoopReason(state, `货仓剩余空间不足以装载「${anomaly.name}」的缴获——请返航空间站卸货。`)
+    stopAutoLoopReason(state, `货仓剩余空间不足以装载「${anomaly.name}」的缴获——舰船已在母港，请卸货后重新开启连击。`)
     return '货仓空间不足'
   }
   // 出发（内部含声望/冷却/探索/位置全部校验）
@@ -738,6 +766,8 @@ export interface ExpeditionView {
   /** 阶段：out 航行 / combat 交火 / back 返航 */
   phase: 'out' | 'combat' | 'back' | null
   phaseLabel: string
+  /** 可否召回（去程可；返航仅失利/撤退可——胜利自动返航不可召回） */
+  recallable: boolean
   threat: number
   power: number
   /** 预估胜率（百分比，battleWinPreview；0 = 无法评估） */
@@ -767,6 +797,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     percent: 0,
     phase: null as 'out' | 'combat' | 'back' | null,
     phaseLabel: '',
+    recallable: false,
     threat: 0,
     power: 0,
     winPercent: 0,
@@ -828,6 +859,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     percent,
     phase,
     phaseLabel,
+    recallable: exp.phase === 'out' || (exp.phase === 'back' && exp.returnReason !== 'victory'),
     threat,
     power,
     winPercent,

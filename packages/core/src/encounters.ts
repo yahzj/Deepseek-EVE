@@ -1,7 +1,9 @@
 /**
- * B1 低安遭遇 / 伏击（v17.1 兼容字段，船长 2026-09-04 定稿）：
- * - 暴露面：主控（低安矿带采矿 / 低安星系胜利停留 / 低安悬赏远征途中）与 AI 副船
- *   （低安矿带采矿 / 低安远征途中），按暴露窗口掷骰；高安（sec ≥ 0.5）不掷；
+ * B1 低安遭遇 / 伏击（v17.1 兼容字段，船长 2026-09-04 定稿；2026-09-06 暴露面收敛）：
+ * - 暴露只属于"停留与就地作业"：主控（低安矿带采掘中 / 打捞作业中 / 扫描窗口 / 野外驻留）与
+ *   AI 副船（采矿采掘中 / 打捞作业中 / 掩护巡逻驻留）；高安（sec ≥ 0.5）不掷；
+ * - 2026-09-06（船长纠正：移动状态不暴露）——航行/返航/转场途中一律不计暴露；
+ *   远征只剩交火与自动返航（均非就地作业）→ 不再进入暴露面；交火中也不暴露；
  * - 承担规则：同星系内我方在场船中"停留船"优先承担（区域一次；事件后该星系 5 分钟冷却）；
  * - 形态：离线（含大步离线结算）直接文字三档结算；在线命中产生"伏击待决"邀约，
  *   玩家可「迎战」（进入 V12 实时战斗，自动打完）或「快速脱离」；60 秒（游戏时间）未响应
@@ -42,11 +44,12 @@ function secOf(ctx: SimContext, galaxyId: string | null): number {
   return ctx.galaxies.get(galaxyId)?.security ?? 1
 }
 
-/** 一次"暴露"：某艘我方舰船正活动在某个低安星系（或远征途中以目标星系计风险） */
+/** 一次"暴露"：某艘我方舰船正"就地活动/驻留"在某个低安星系
+ * （2026-09-06：移动/返航/转场途中不暴露） */
 interface Exposure {
   galaxyId: string
   shipId: string
-  kind: '采矿' | '停留' | '远征途中' | '打捞' | '扫描'
+  kind: '采矿' | '停留' | '打捞' | '扫描'
   /** 描述（日志用）：承担船名 + 来源 */
 }
 
@@ -61,40 +64,39 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
     if (!prev || rank(e) > rank(prev)) out.set(e.galaxyId, e)
   }
   const m = state.mining
-  const e = state.expedition
-  // 主控：采矿在带（含往返阶段都在矿带星系附近活动）
-  if (m.active && m.beltId) {
+  // 主控：采矿只算"采掘相位"（返航/去程是移动 → 不暴露）
+  if (m.active && m.phase === 'mining' && m.beltId) {
     const g = ctx.belts.get(m.beltId)?.galaxyId
     if (g) push({ galaxyId: g, shipId: state.shipId, kind: '采矿' })
-  } else if (e.active && e.phase !== 'battle' && e.anomalyId) {
-    const g = ctx.anomalies.get(e.anomalyId)?.galaxyId
-    if (g) push({ galaxyId: g, shipId: state.shipId, kind: '远征途中' })
-  } else if (state.awayGalaxy !== null) {
-    push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })
   }
-  // B3 打捞作业（目标星系，含往返阶段；低安打捞全程暴露，同采矿口径；P2b 补 AI 打捞任务）
-  if (state.salvaging.active && state.salvaging.galaxyId) {
+  // 主控打捞：只算"打捞作业相位"（出航/返航移动不暴露）
+  if (state.salvaging.active && state.salvaging.phase === 'salvaging' && state.salvaging.galaxyId) {
     push({ galaxyId: state.salvaging.galaxyId, shipId: state.shipId, kind: '打捞' })
   }
-  // 主控：低安扫描（船长 2026-09-05 定：扫描即暴露、无入场缓冲、命中概率 ×scanAmbushMul，扫描作业不中断）
-  if (state.scanning.active && state.scanning.galaxyId) {
+  // 主控扫描：只算就地扫描窗口段（returning=自动返航移动，不暴露；船长 2026-09-05：扫描即暴露、无入场缓冲）
+  if (state.scanning.active && state.scanning.returning !== true && state.scanning.galaxyId) {
     push({ galaxyId: state.scanning.galaxyId, shipId: state.shipId, kind: '扫描' })
   }
-  // 副船（采矿 / 远征途中 / 掩护巡逻；交火中不算暴露；巡逻去程未抵达不算）
+  // 主控野外驻留（掩护巡逻/旧档停留遗留）= 区域停留船；无作业进行时才成立
+  if (
+    state.awayGalaxy !== null &&
+    !m.active &&
+    !state.expedition.active &&
+    !state.salvaging.active &&
+    !state.scanning.active
+  ) {
+    push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })
+  }
+  // 副船（采矿采掘中 / 打捞作业中 / 掩护巡逻驻留；移动段与交火不暴露）
   for (const [sid, a] of Object.entries(state.aiAssignments)) {
     const t = a.task
-    if (t.kind === 'mining') {
+    if (t.kind === 'mining' && t.phase === 'mining') {
       const g = ctx.belts.get(t.beltId)?.galaxyId
       if (g) push({ galaxyId: g, shipId: sid, kind: '采矿' })
-    } else if (t.kind === 'expedition') {
-      if (t.phase !== 'battle') {
-        const g = ctx.anomalies.get(t.anomalyId)?.galaxyId
-        if (g) push({ galaxyId: g, shipId: sid, kind: '远征途中' })
-      }
+    } else if (t.kind === 'salvage' && t.phase === 'salvaging') {
+      push({ galaxyId: t.galaxyId, shipId: sid, kind: '打捞' })
     } else if (t.kind === 'standby' && t.phase === 'stand') {
       push({ galaxyId: t.galaxyId, shipId: sid, kind: '停留' }) // 已驻留的副船 = 区域停留船
-    } else if (t.kind === 'salvage') {
-      push({ galaxyId: t.galaxyId, shipId: sid, kind: '打捞' }) // B3：AI 打捞任务同构暴露
     }
   }
   return [...out.values()]
@@ -122,7 +124,7 @@ function noteLowSec(state: GameState, ctx: SimContext, galaxyId: string): void {
   addLog(
     state,
     'warn',
-    `⚠ 首次进入低安星系（${name}，安全 ${secOf(ctx, galaxyId).toFixed(1)}）：低安活动可能遭遇巡逻拦截或海盗伏击（采矿/停留/远征途中均可能）；可「迎战」或快速脱离，详见手册「航行须知」。`,
+    `⚠ 首次进入低安星系（${name}，安全 ${secOf(ctx, galaxyId).toFixed(1)}）：低安活动可能遭遇巡逻拦截或海盗伏击（采掘/打捞/扫描作业与驻留时可能，航行途中不会）；可「迎战」或快速脱离，详见手册「航行须知」。`,
   )
 }
 

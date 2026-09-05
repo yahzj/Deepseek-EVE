@@ -971,7 +971,7 @@ function tryFinalRun(): boolean {
       return false
     }
     mark(`最终悬赏击败 ${i + 1}/5`)
-    // 胜利后停留目标星系（awayGalaxy=boss 星系），回母港继续
+    // 2026-09-06：胜利后自动返航回母港（去程并入返航）；连打间隙只需等回港空闲
     if (i < 4) {
       let g = 0
       while (state.awayGalaxy !== null && g < 300 && !meBusy()) {
@@ -1118,7 +1118,7 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
       sellEverything() // 采矿往返间歇在港时卸货卖货
     }
   } else if (!meBusy()) {
-    // 野外（胜利停留）：连续出击优先，不回港空转
+    // 空闲兜底（2026-09-06：野外驻留仅来自掩护巡逻；悬赏/探索优先，随后归位/采矿由上层负责）
     if (WANTS.boss && !goalDone.boss && standing() < 13) doBounty()
     if (!state.expedition.active && standing() >= 13 && exploredCount() < GALAXY_IDS.length) doExplore()
     if (!state.expedition.active && !state.mining.active && !state.salvaging.active) goHomeIfAway()

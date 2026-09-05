@@ -8,6 +8,7 @@ import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTaskBoardView }
 import {
   AI_CORE_ORDER,
   DSI_FACTION_ID,
+  HOME_GALAXY_ID,
   SCAN_WINDOW_MS,
   aiCoreName,
   battleWinPreview,
@@ -72,7 +73,9 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
               <span className="app-ico">
                 <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
               </span>
-              扫描探索进行中 · 剩余约 {formatDurationMs(scan.remainingMs)}
+              {scan.returning
+                ? `扫描完成 · 自动返航中 · 剩余约 ${formatDurationMs(scan.remainingMs)}`
+                : `扫描探索进行中 · 剩余约 ${formatDurationMs(scan.remainingMs)}`}
             </>
           ) : (
             ''
@@ -96,13 +99,13 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
           停靠「{engine.ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite}」（副空间站）：提供卸货/维修/补给/换驾驶——悬赏与扫描可从本站出发（按当前位置计程）。
         </div>
       ) : state.awayGalaxy !== null ? (
-        /* T8：野外（掩护巡逻 / 胜利停留 / 扫描完成后停泊）——远征/扫描/采矿均可即时出发，或显式返航 */
+        /* 2026-09-06：野外停留来源 = 掩护巡逻驻留（悬赏胜利/扫描完成已改为自动返航，不再停留）——远征/扫描/采矿均可即时出发，或显式返航 */
         <div className="app-exp-idle app-idle-field">
           <span>
             <span className="app-ico">
               <Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} />
             </span>
-            舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（掩护巡逻 / 野外停留）——
+            舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系掩护巡逻驻留——
             从这里可即时出发远征、扫描或采矿（去程已取消，无航行等待）；卸货、维修与换船需返回空间站。
           </span>
           <button
@@ -121,7 +124,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
         </div>
       ) : (
         <div className="app-dim app-exp-idle">
-          舰船停靠空间站。星图上标着悬赏情报，选一个目标「出发」——胜利后停留目标星系可连续出击，失利自动返航。
+          舰船停靠空间站。星图上标着悬赏情报，选一个目标「出发」——即时开战，胜利/失利都会自动返航（去程并入返航），打完回家结算。
         </div>
       )}
       <StarMap engine={engine} onToast={onToast} />
@@ -621,17 +624,15 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
     bountyByGalaxy.set(a.galaxyId, (bountyByGalaxy.get(a.galaxyId) ?? 0) + 1)
   }
 
-  const scanMinutesOf = (g: GalaxyDef): number => {
-    const mins = shortestTravelMinutes(engine.ctx, 'galaxy-hub', g.id)
-    if (!Number.isFinite(mins)) return 0
-    // T8：作业 = 单程航行 + 就地扫描窗口（完成即停留，无自动返航段）
-    return Math.round((travelLegMs(state, engine.ctx, mins) + SCAN_WINDOW_MS) / 60_000)
+  const scanMinutesOf = (): number => {
+    // 2026-09-06：作业 = 就地扫描窗口（去程已取消；完成自动返航，返航不占等待）
+    return Math.max(1, Math.round(SCAN_WINDOW_MS / 60_000))
   }
 
   function handleScan(g: GalaxyDef): void {
     const r = engine.startScanAt(g.id)
     if (!r.ok) onToast(r.error ?? '无法发起扫描。', true)
-    else onToast('扫描探索艇已出发，返港后录入情报。')
+    else onToast('扫描艇已就地展开深空扫描：窗口完成即点亮该星系并自动返航（去程并入返航）。')
   }
 
   const posOf = (g: GalaxyDef): { x: number; y: number } => {
@@ -865,11 +866,11 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   className="app-btn is-small is-primary"
                   disabled={scan.active || state.mining.active || view.active}
                   onClick={() => handleScan(selected)}
-                  title={`派出深空扫描艇：立即就地扫描（去程已取消）约 10 分钟，完成即停留该星系；期间事件倒计时加速、更易遭遇「探索发现」`}
+                  title={`派出深空扫描艇：立即就地扫描（去程已取消）约 10 分钟；窗口完成即点亮该星系并自动返航（去程并入返航）；期间事件倒计时加速、更易遭遇「探索发现」`}
                 >
-                  <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（约 {Math.max(1, scanMinutesOf(selected))} 分钟）
+                  <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（约 {scanMinutesOf()} 分钟）
                 </button>
-                <span className="app-dim app-map-scan-note">完成即点亮 · 期间事件更频繁</span>
+                <span className="app-dim app-map-scan-note">完成即点亮 + 自动返航 · 期间事件更频繁</span>
               </div>
             </div>
           ) : (
@@ -1281,8 +1282,10 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const chance = Math.round(pWin)
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
-  // 奖励/小时（去程已取消）：胜利即停留该星系、可即时再出击——每单耗时 ≈ 实时交火时长
-  const roundTripMs = Math.max(1, combatMs)
+  // 奖励/小时（2026-09-06：胜利自动返航 = 目标↔母港 2×单程，去程并入返航）——每单耗时 = 交火 + 返航
+  const retMins = anomaly.galaxyId === HOME_GALAXY_ID ? NaN : shortestTravelMinutes(engine.ctx, HOME_GALAXY_ID, anomaly.galaxyId)
+  const retMs = Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
+  const roundTripMs = Math.max(1, combatMs + retMs)
   const grossIsk = anomaly.rewardIsk * bountyRewardFactor(state)
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
   const iskPerHourTxt =
@@ -1365,10 +1368,16 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           </>
         )) : '？'} ·{' '}
         {(() => {
-          // 去程已取消（定稿）：下达即开战，不再展示"去程约 X"；交火后胜利即停留
+          // 2026-09-06：去程取消（下达即开战）；胜利自动返航（目标↔母港 2×单程，不可召回）
+          const homeTarget = anomaly.galaxyId === HOME_GALAXY_ID
+          const backTxt =
+            homeTarget || !Number.isFinite(retMins)
+              ? ''
+              : ` · 胜利自动返航约 ${Math.max(1, Math.round(retMins * 2))} 分钟（不可召回）`
           return (
             <>
-              即时开战（去程取消） · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)} · 胜利后停留（可连击/返航）
+              即时开战（去程取消） · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
+              {homeTarget ? ' · 本港悬赏，胜利即回港' : backTxt}
             </>
           )
         })()}
@@ -1414,7 +1423,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       </div>
       <div
         className="app-ano-econ"
-        title={`估算奖励/小时（去程已取消：每次出击 = 实时交火时长）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
+        title={`估算奖励/小时（2026-09-06 口径：每单耗时 = 交火 + 胜利自动返航 2×单程；母港目标无返航）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
       >
         {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（每次出击）
       </div>
@@ -1433,7 +1442,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
                   ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启连击'
                   : looping
                     ? '停止自动循环（当前这一单会打完）'
-                    : '开启连续出击：完成后冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
+                    : '开启巡回讨伐：胜利后自动返航到港（去程并入返航），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
             }
             onClick={toggleLoop}
           >

@@ -136,7 +136,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
 
   it('停留船优先承担：主控停在低安星系 + 副船同星系采矿 → 事件记在主控头上（区域一次）', () => {
     const { state, ctx } = lowWorld()
-    state.awayGalaxy = 'galaxy-far' // 主控胜利后停留低安
+    state.awayGalaxy = 'galaxy-far' // 主控驻留低安（掩护巡逻；2026-09-06 胜利不再停留）
     // 注入一艘副船同星系采矿（sandcat 名下直接登记，专注遭遇归属判定）
     state.aiAssignments['sandcat'] = {
       coreType: 'basic',
@@ -250,5 +250,69 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(legacy.encounter.active).toBe(false)
     expect(legacy.lowSecNotified).toBe(false)
     void ctx
+  })
+})
+
+describe('B1 暴露面收敛（2026-09-06 船长：移动状态不暴露——只留停留与就地作业）', () => {
+  /** 预置"在场已久"记录（起始为负 → 早已过入场缓冲，gameMs 不必推进）：直接测暴露判定 */
+  const seedPresenceOld = (state: GameState): void => {
+    state.lowSecPresence['galaxy-far'] = -600_000
+  }
+
+  it('采矿返航段（moving）不暴露；采掘相位（就地作业）照常暴露', () => {
+    const { state, ctx } = lowWorld()
+    state.mining.active = true
+    state.mining.beltId = 'belt-f'
+    state.mining.phase = 'returning' // 满仓返航 = 移动
+    seedPresenceOld(state)
+    for (let i = 0; i < 120; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false)
+    expect(state.encounter.active).toBe(false)
+    // 对照：转回采掘相位 → 暴露命中
+    state.mining.phase = 'mining'
+    let hit = false
+    for (let i = 0; i < 300 && !hit; i += 1) hit = rollLowSecAmbush(state, ctx)
+    expect(hit).toBe(true)
+    expect(state.encounter.shipId).toBe(state.shipId)
+  })
+
+  it('远征（交火 / 失利返航 / 胜利自动返航）一律不暴露', () => {
+    const { state, ctx } = lowWorld()
+    seedPresenceOld(state)
+    const exp = state.expedition
+    exp.active = true
+    exp.anomalyId = 'enc-pirate-1'
+    // 交火中
+    exp.phase = 'battle'
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false)
+    // 失利返航
+    exp.phase = 'back'
+    exp.returnReason = 'defeat'
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false)
+    // 胜利自动返航（不可召回的那一腿）
+    exp.returnReason = 'victory'
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false)
+    expect(state.encounter.active).toBe(false)
+  })
+
+  it('打捞返航段 / 扫描自动返航段不暴露；打捞与扫描"作业中"相位照常暴露', () => {
+    // 打捞：返航段不暴露
+    const w1 = lowWorld()
+    w1.state.salvaging.active = true
+    w1.state.salvaging.galaxyId = 'galaxy-far'
+    w1.state.salvaging.phase = 'returning'
+    seedPresenceOld(w1.state)
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(w1.state, w1.ctx)).toBe(false)
+    // 打捞作业相位 → 暴露命中
+    w1.state.salvaging.phase = 'salvaging'
+    let hit1 = false
+    for (let i = 0; i < 300 && !hit1; i += 1) hit1 = rollLowSecAmbush(w1.state, w1.ctx)
+    expect(hit1).toBe(true)
+    // 扫描：自动返航段不暴露（扫描窗口段本就有 t25 覆盖）
+    const w2 = lowWorld()
+    w2.state.scanning.active = true
+    w2.state.scanning.galaxyId = 'galaxy-far'
+    w2.state.scanning.returning = true
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(w2.state, w2.ctx)).toBe(false)
+    expect(w2.state.encounter.active).toBe(false)
   })
 })

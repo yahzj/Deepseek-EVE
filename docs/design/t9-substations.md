@@ -1,7 +1,10 @@
-# T9 副空间站 + 通讯对话系统（状态：已确认）
+# T9 副空间站 + 通讯对话系统（状态：已确认；2026-09-06 到站挂点改道）
 
 > 来源：船长测试反馈单 T9（roadmap 置顶，批次 B·大系统；原列于 T10 前，船长调整为 T10 之后实施）。
 > 2026-09-04 问答确认（Q1甲/Q2甲+乙/Q3甲/Q4甲/D1甲/D2 通讯器样式/D3甲）。
+> 🔁 2026-09-06（随"任务完成即返航"）：悬赏胜利/扫描完成不再停留 → `explore.ts/expedition.ts`
+> 的 onArriveAtGalaxy 挂点退役；到站叙事改由 **掩护巡逻到位**（`location.ts` 调 station.noteStationSiteAt：
+> 建站星系挂介绍通讯、提示可「返航空间站」停靠）+ 手动返航停靠（工地 stage≥1 即停靠）承接。
 > 关联：docs/design/t8-galaxy-stay.md（station seam）、t10-task-center.md（建站族承接）。
 
 ## 确认口径
@@ -19,9 +22,9 @@
   core：`types.ts`（StationSiteDef/StationTierDef/DialogueScriptDef 等 + SimContext.stations）、
   `state.ts/save.ts`（v16.1 兼容：stationSites/dockedSite/dialogueSeen/pendingDialogue）、
   `station.ts`（交付扣减（仓库+货仓）、档位推进、抵达挂点：stage≥1 停靠副站否则野外工地、
-  通讯挂起）、`location.ts`（stationGalaxyIds=母港⊕建成站、nearestStationGalaxyId、
-  dockedSite 停靠模型、transit 到站按目标设停靠）、`mining.ts`+`ai.ts`（自动循环往返目标=最近站）、
-  `explore.ts/expedition.ts`（完成停留→onArriveAtGalaxy 挂点）；
+  通讯挂起；2026-09-06 增 noteStationSiteAt 轻量挂点）、`location.ts`（stationGalaxyIds=母港⊕建成站、
+  nearestStationGalaxyId、dockedSite 停靠模型、transit 到站按目标设停靠、掩护巡逻到位调
+  noteStationSiteAt）、`mining.ts`+`ai.ts`（自动循环往返目标=最近站）；
 - renderer：任务中心建站族卡（提交面板：选料/数量/可用量；停靠判定）、通讯器浮层（App 待播自动弹出 +
   卡内重看）、活动栏停靠文案、CargoPage（出售仅母港、卸货任意站）、styles。
 - 测试：`t9.test.ts` 7 组（交付/档位/建成并入与最近站解析/抵达挂点两态/通讯镜像与已读/存档容错）。

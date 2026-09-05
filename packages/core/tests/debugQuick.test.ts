@@ -78,13 +78,19 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     expect(s.logs.some((l) => l.text.includes('战报'))).toBe(true)
   })
 
-  it('扫描：1 秒完成点亮', () => {
+  it('扫描：1 秒完成点亮并自动返航（2026-09-06：完成不再停留）', () => {
     const s = freshState(true)
     expect(startScan(s, 'galaxy-far', ctx).ok).toBe(true)
     expect(s.scanning.active).toBe(true)
-    advanceGame(s, 1000, ctx)
-    expect(s.scanning.active).toBe(false)
+    advanceGame(s, 1000, ctx) // 窗口 1 秒走完 → 点亮 + 转自动返航
+    expect(s.scanning.returning).toBe(true)
+    expect(s.scanning.active).toBe(true)
     expect(isExplored(s, 'galaxy-far')).toBe(true)
+    expect(s.awayGalaxy).toBeNull()
+    // 返航腿走完 → 停靠母港
+    for (let i = 0; i < 40 && s.scanning.active; i++) advanceGame(s, 20_000, ctx)
+    expect(s.scanning.active).toBe(false)
+    expect(s.awayGalaxy).toBeNull()
   })
 
   it('debugQuick=false 时以上路径不变（抽样：制造仍按原时长）', () => {

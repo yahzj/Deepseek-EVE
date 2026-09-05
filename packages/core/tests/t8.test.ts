@@ -10,16 +10,18 @@ import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import {
   advanceAutoLoopBounty,
   bountyCooldownRemainingMs,
+  recallExpedition,
   setAutoLoopBounty,
   startExpedition,
 } from '../src/expedition'
-import { startScan } from '../src/explore'
+import { isExplored, startScan } from '../src/explore'
 import { startMining } from '../src/mining'
 import { changeShip, repairWithKits, repairShip } from '../src/shipyard'
-import { startTransitHome } from '../src/location'
+import { goStandbyAt, startTransitHome } from '../src/location'
+import { shortestTravelMinutes, travelLegMs } from '../src/travel'
 import { makeTestCtx, anomaly, mineral, ship } from './helpers'
 
-/** 远星系低威胁悬赏（快速可胜）：胜利后船停留目标星系 */
+/** 远星系低威胁悬赏（快速可胜）：2026-09-06 起胜利自动返航母港（不再停留目标星系） */
 function worldWithFarBounty() {
   const ctx: SimContext = makeTestCtx({
     ships: [ship('sh-falconet', { cargo: 120 })],
@@ -31,57 +33,118 @@ function worldWithFarBounty() {
   return { state, ctx }
 }
 
-describe('T8 胜利停留与重复冷却', () => {
-  it('胜利 = 结算并停留目标星系；同目标 10 秒冷却（扫描属性因子）；冷却后可再出发', () => {
+describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => {
+  it('胜利 = 结算并自动返航（不可召回）；同目标 10 秒冷却（扫描属性因子）；到港后可再出发', () => {
     const { state, ctx } = worldWithFarBounty()
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
     expect(state.awayGalaxy).toBeNull() // 作业中位置由作业表达
-    advanceGame(state, 10 * 60_000, ctx) // 去程取消：即时开战 + 秒杀交火 → 完成
-    expect(state.expedition.active).toBe(false)
-    expect(state.awayGalaxy).toBe('galaxy-far') // 胜利停留
+    // 即时开战 + 秒杀交火 → 结算转自动返航（back）
+    for (let i = 0; i < 40 && !(state.expedition.active && state.expedition.phase === 'back'); i++) {
+      advanceGame(state, 20_000, ctx)
+    }
+    expect(state.expedition.phase).toBe('back')
+    expect(state.expedition.returnReason).toBe('victory')
+    expect(state.expedition.active).toBe(true)
+    expect(state.awayGalaxy).toBeNull() // 不再停留目标星系
     const cd = bountyCooldownRemainingMs(state, 'ano-far-easy')
     expect(cd).toBeGreaterThan(0)
     expect(cd).toBeLessThanOrEqual(10_000)
-    // 冷却内拒绝
+    // 冷却内拒绝再出发
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(false)
-    advanceGame(state, 11_000, ctx)
+    // 胜利返航不可召回（路程必付）
+    const r = recallExpedition(state, ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error ?? '').toContain('不可召回')
+    // 返航到港（原去程并入返航 2×单程）→ 空闲停靠母港
+    for (let i = 0; i < 60 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.expedition.active).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
+    // 冷却已过（返航远超 10s）→ 可从母港再次出发（付出真实返航路程）
     expect(bountyCooldownRemainingMs(state, 'ano-far-easy')).toBe(0)
-    // 从停留地再次出发：同一星系 → 零航程即时开战
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
     expect(state.expedition.phase).toBe('battle')
-    expect(state.expedition.outMs).toBe(0)
     expect(state.awayGalaxy).toBeNull()
   })
 
-  it('扫描完成同样停留（母港之外的星系）', () => {
+  it('失利/旧档返航仍可召回（口径不变）；扫描完成点亮后自动返航（不停留）', () => {
     const { state, ctx } = worldWithFarBounty()
-    // 重置探索状态：far 已点亮则不能扫——另起一个真实未探索世界
+    // —— 失利返航（无 returnReason 的旧档在途 back 同口径）：可召回（即时回港）——
+    const exp = state.expedition
+    exp.active = true
+    exp.anomalyId = 'ano-far-easy'
+    exp.phase = 'back'
+    exp.returnReason = 'defeat'
+    exp.finishAtGameMs = state.gameMs + 600_000
+    const recallDefeat = recallExpedition(state, ctx)
+    expect(recallDefeat.ok).toBe(true)
+    expect(state.expedition.active).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
+    // —— 扫描完成：点亮 + 自动返航 ——
     const state2 = createInitialState({ nowWallMs: 0, seed: 5 })
     expect(startScan(state2, 'galaxy-far', ctx).ok).toBe(true)
-    advanceGame(state2, 10 * 60_000, ctx)
+    advanceGame(state2, 10 * 60_000, ctx) // 窗口走完
+    expect(state2.scanning.returning).toBe(true)
+    expect(state2.scanning.active).toBe(true)
+    expect(isExplored(state2, 'galaxy-far')).toBe(true)
+    expect(state2.awayGalaxy).toBeNull() // 完成不停留
+    for (let i = 0; i < 60 && state2.scanning.active; i++) advanceGame(state2, 60_000, ctx)
     expect(state2.scanning.active).toBe(false)
-    expect(state2.awayGalaxy).toBe('galaxy-far')
+    expect(state2.awayGalaxy).toBeNull()
+  })
+
+  it('从野外驻留（掩护巡逻）出发打悬赏：胜利返航仍按 目标↔母港 2×单程计费（与出发地无关），落点母港', () => {
+    const { state, ctx } = worldWithFarBounty()
+    // 先驻留 far（即时就位）
+    expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    // 打本地悬赏：零航程即时开战（outMs = 0——若按出发地计费，返航也会是 0）
+    expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
+    expect(state.expedition.outMs).toBe(0)
+    for (let i = 0; i < 600 && !(state.expedition.active && state.expedition.phase === 'back'); i++) {
+      advanceGame(state, 500, ctx)
+    }
+    expect(state.expedition.phase).toBe('back')
+    expect(state.expedition.returnReason).toBe('victory')
+    // 胜利返航按 目标↔母港 2×单程重算（与出发地无关）：剩余应接近整段 2×单程（检测步长 500ms 内）
+    const homeLeg = travelLegMs(state, ctx, shortestTravelMinutes(ctx, 'galaxy-hub', 'galaxy-far'))
+    const remain = state.expedition.finishAtGameMs - state.gameMs
+    expect(remain).toBeGreaterThan(homeLeg * 2 - 1_500)
+    expect(remain).toBeLessThanOrEqual(homeLeg * 2)
+    expect(state.awayGalaxy).toBeNull()
+    // 返航到港后停靠母港（驻留结束）
+    for (let i = 0; i < 120 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.expedition.active).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
   })
 })
 
-describe('T8 连续出击（自动环）', () => {
-  it('开启落档；冷却中等候；冷却结束空闲时自动再出发；战利品放不下/耐久不足自动暂停', () => {
+describe('T8 连续出击（2026-09-06 巡回讨伐：自动返航到港后自动再出击）', () => {
+  it('开启落档；胜利自动返航期间等待；到港冷却结束自动再出发（巡回多轮）；战利品放不下/耐久不足自动暂停', () => {
     const { state, ctx } = worldWithFarBounty()
     expect(setAutoLoopBounty(state, ctx, 'ano-far-easy').ok).toBe(true)
     expect(state.autoLoopAnomalyId).toBe('ano-far-easy')
-    // 第一单手动出发并打完（停留 far、冷却开始）
+    // 第一单手动出发：即时开战 → 胜利 → 自动返航（此时 auto 步等待，不打断返航）
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
-    advanceGame(state, 10 * 60_000, ctx)
-    expect(state.awayGalaxy).toBe('galaxy-far')
-    // 冷却中：auto 步等待
-    expect(advanceAutoLoopBounty(state, ctx)).toBeNull()
-    expect(state.expedition.active).toBe(false)
-    // 冷却走完 → 自动再出发（零航程，进入 out 即刻开战）
-    advanceGame(state, 11_000, ctx)
-    expect(advanceAutoLoopBounty(state, ctx)).toBeNull()
+    for (let i = 0; i < 40 && !(state.expedition.active && state.expedition.phase === 'back'); i++) {
+      advanceGame(state, 20_000, ctx)
+    }
+    expect(state.expedition.phase).toBe('back') // 胜利返航中
+    expect(state.awayGalaxy).toBeNull()
+    expect(advanceAutoLoopBounty(state, ctx)).toBeNull() // 返航中：等
     expect(state.expedition.active).toBe(true)
+    // 到港（2×单程走完）→ 空闲且冷却结束 → 自动再出发（巡回第二单）
+    for (let i = 0; i < 60 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.expedition.active).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
+    expect(advanceAutoLoopBounty(state, ctx)).toBeNull()
+    expect(state.expedition.active).toBe(true) // 自动续战
+    // 第二单打完并回港 → 第三单仍自动出发（巡回可持续）
+    for (let i = 0; i < 80 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.expedition.active).toBe(false)
+    expect(advanceAutoLoopBounty(state, ctx)).toBeNull()
+    expect(state.expedition.active).toBe(true) // 第三单自动再出发
 
-    // —— 暂停条件 1：货仓放不下预期缴获（把货仓塞满再触发 auto）——
+    // —— 暂停条件 1：货仓放不下预期缴获（船在母港空闲时触发 auto）——
     const state2 = createInitialState({ nowWallMs: 0, seed: 6 })
     state2.exploredGalaxies.push('galaxy-far')
     state2.standings['dsi'] = 0

@@ -274,6 +274,9 @@ export interface ExpeditionState {
   /* ═══ V12：阶段与战斗状态 ═══ */
   /** 当前阶段：去程（旧档兼容）/ 交火 / 返航（未出航时 = 'out'） */
   phase: 'out' | 'battle' | 'back'
+  /** 返航来源（2026-09-06 兼容字段）：victory=悬赏胜利自动返航（不可召回）；
+   *  defeat/retreat=失利/撤退返航（可召回）；旧档在途 back 无此字段 = 按失利口径 */
+  returnReason?: 'victory' | 'defeat' | 'retreat'
   /** 实时战斗状态（phase='battle' 时非空；只存动态量，静态由 ship/anomaly 定义重建） */
   battle: BattleState | null
   /** 玩家期望距离偏好（米；战斗内拖动/战术选择写入，下次出发自动沿用；未设则用有效射程中点） */
@@ -592,18 +595,21 @@ export type GameStateV11 = Omit<GameStateV10, 'version'> & {
   events: EventsState
 }
 
-/** 扫描探索作业状态（V13：就地深空扫描，去程已取消；完成/点亮时停留该星系，无自动返航段）。
+/** 扫描探索作业状态（V13：就地深空扫描，去程已取消；窗口完成 → 点亮 + 自动返航（2026-09-06），
+ * 不再停留。返回段 scanning 保持 active（returning=true）表达"船在忙"，到港后清空。
  * originGalaxy（T8 兼容字段）：本次扫描出发星系（null = 空间站/母港；用于终止后折返基准） */
 export interface ScanningState {
   active: boolean
   /** 目标星系 id（扫描对象永远是"已探索星系的一跳邻居"，即星图剪影） */
   galaxyId: string | null
-  /** 作业完成的游戏内时刻（毫秒，出发时锁定） */
+  /** 当前段完成的游戏内时刻（毫秒，出发时锁定；returning 段 = 到港时刻） */
   finishAtGameMs: number
-  /** 出发时刻（毫秒，展示用） */
+  /** 当前段开始时刻（毫秒；窗口段 = 出发时刻，returning 段 = 窗口完成时刻） */
   startedAtGameMs: number
   /** T8：本次扫描的出发星系（null = 空间站/母港） */
   originGalaxy: string | null
+  /** 2026-09-06 兼容字段：窗口已完成、正在自动返航（2×单程 目标↔母港；不可终止） */
+  returning?: boolean
 }
 
 /** 第十二版存档结构（历史版本）：v12 = v11 + 实时战斗（远征两阶段 phase/battle 落档） */
@@ -685,7 +691,7 @@ export interface EncounterState {
   name: string
   /** 遭遇强度（编队总战力 ≈ 承担船火力 × 0.6~1.05） */
   threat: number
-  /** 来源说明：主控采矿/停留/远征途中 或 副船任务 */
+  /** 来源说明：主控采掘/打捞/扫描/驻留 或 副船任务（2026-09-06：移动不暴露） */
   origin: string
   /** 产生时刻（游戏毫秒） */
   invitedAtGameMs: number
@@ -1021,7 +1027,7 @@ export function createInitialState(opts?: {
       battle: null,
     },
     exploredGalaxies: [HOME_GALAXY_ID],
-    scanning: { active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null },
+    scanning: { active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false },
     scanProgress: {},
     awayGalaxy: null,
     transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0 },

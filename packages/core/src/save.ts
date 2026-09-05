@@ -1326,6 +1326,11 @@ function normalizeState(raw: unknown): GameState {
   const expPhase: 'out' | 'battle' | 'back' =
     expPhaseRaw === 'battle' || expPhaseRaw === 'back' ? expPhaseRaw : 'out'
   const expBattle: BattleState | null = expPhase === 'battle' ? cleanBattle(expRaw.battle) : null
+  const expReturnReason: GameState['expedition']['returnReason'] =
+    expPhase === 'back' &&
+    (expRaw.returnReason === 'victory' || expRaw.returnReason === 'defeat' || expRaw.returnReason === 'retreat')
+      ? expRaw.returnReason
+      : undefined
   const expedition = {
     active: expRaw.active === true && expAnomalyId !== null,
     anomalyId: expAnomalyId,
@@ -1355,6 +1360,8 @@ function normalizeState(raw: unknown): GameState {
       typeof expRaw.desirePrefM === 'number' && Number.isFinite(expRaw.desirePrefM) && expRaw.desirePrefM > 0
         ? Math.round(expRaw.desirePrefM)
         : undefined,
+    // 2026-09-06 兼容字段：胜利自动返航（不可召回）/失利/撤退；仅 back 相位有效，其余清空
+    returnReason: expReturnReason,
   }
 
   // --- 日志（逐条容错，超上限截掉最旧的） ---
@@ -1423,6 +1430,8 @@ function normalizeState(raw: unknown): GameState {
         : 0,
     originGalaxy:
       typeof scanRaw.originGalaxy === 'string' && scanRaw.originGalaxy.length > 0 ? scanRaw.originGalaxy : null,
+    // 2026-09-06 兼容字段：窗口已完成、处于自动返航段（返回中不可终止）
+    returning: scanRaw.returning === true,
   }
 
   // --- T8 野外停留 / 返航行程 / 悬赏冷却 / 连续出击（v16.1 兼容字段） ---

@@ -11,6 +11,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
+import { noteStationSiteAt } from './station'
 
 /** 已建成的空间站星系清单（母港 + 副站建成者），顺序 = 母港优先 */
 export function stationGalaxyIds(state: GameState, ctx: SimContext): string[] {
@@ -228,6 +229,8 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   s.finishAtGameMs = 0
   s.legMs = 0
   state.awayGalaxy = galaxyId
+  // 2026-09-06：建站叙事入口改挂掩护巡逻到位（悬赏胜利/扫描完成不再停留）
+  noteStationSiteAt(state, ctx, galaxyId)
   addLog(
     state,
     'info',
@@ -251,6 +254,7 @@ export function advanceStandby(state: GameState, ctx: SimContext): void {
   if (state.awayGalaxy === galaxyId) return // 已即时就位（不重复写到达日志）
   const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   state.awayGalaxy = galaxyId // 目标星系野外停留（低安遭遇暴露即生效）
+  noteStationSiteAt(state, ctx, galaxyId) // 2026-09-06：建站叙事入口改挂掩护巡逻到位
   addLog(
     state,
     'info',

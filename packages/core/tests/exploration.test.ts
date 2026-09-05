@@ -184,22 +184,31 @@ describe('V13 扫描探索作业', () => {
     expect(startScan(state, 'galaxy-far', ctx).error).toContain('无需扫描')
   })
 
-  it('剪影可扫描：去程取消，时长 = 10 分钟就地扫描窗口；完成点亮并停留该星系', () => {
+  it('剪影可扫描：去程取消，时长 = 10 分钟就地扫描窗口；完成点亮并自动返航（不停留）', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     const st = scanStatus(state)
     expect(st.active).toBe(true)
     expect(st.galaxyId).toBe('galaxy-far')
-    // 去程已取消：总时长 = 就地扫描窗口（默认 10 分钟；T8：无自动返航段）
+    expect(st.returning).toBe(false)
+    // 去程已取消：总时长 = 就地扫描窗口（默认 10 分钟）
     expect(st.totalMs).toBe(10 * 60_000)
     // 还差 1ms → 未完成
     advanceGame(state, 10 * 60_000 - 1, ctx)
     expect(state.scanning.active).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     advanceGame(state, 1, ctx)
-    expect(state.scanning.active).toBe(false)
+    // 窗口完成：点亮 + 进入自动返航段（2026-09-06：不再停留该星系）
+    expect(state.scanning.returning).toBe(true)
+    expect(state.scanning.active).toBe(true)
+    expect(scanStatus(state).returning).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(true)
-    expect(state.awayGalaxy).toBe('galaxy-far') // 完成即停留（野外）
+    expect(state.awayGalaxy).toBeNull()
     expect(state.logs.some((l) => l.text.includes('扫描完成'))).toBe(true)
+    // 自动返航（2×单程）走完 → 停靠母港
+    for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.scanning.active).toBe(false)
+    expect(state.scanning.returning).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
   })
 
   it('去程取消：扫描时长与航行（warp/地图技能）无关，只算就地窗口', () => {
@@ -254,7 +263,7 @@ describe('V14 存档迁移与续扫进度', () => {
     const loaded = loadSaveFile(text)
     expect(loaded.state.version).toBe(24)
     expect(loaded.state.exploredGalaxies).toEqual(['galaxy-hub'])
-    expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null })
+    expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false })
     expect(loaded.state.scanProgress).toEqual({})
     expect(loaded.state.wallet.isk).toBe(123_456)
     // 往返保存：新字段保留
@@ -302,26 +311,38 @@ describe('V14 扫描终止与续扫', () => {
     // 续扫：剩余窗口 300s = 300_000
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     expect(scanStatus(state).totalMs).toBe(300_000)
-    // 补扫完成 → 点亮、清进度并停留
+    // 补扫完成 → 点亮、清进度并转入自动返航；返航到港后停靠母港
     advanceGame(state, 300_000, ctx)
-    expect(state.scanning.active).toBe(false)
+    expect(state.scanning.active).toBe(true)
+    expect(state.scanning.returning).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(true)
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
-    expect(state.awayGalaxy).toBe('galaxy-far')
+    for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.scanning.active).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
   })
 
-  it('窗口完整走完即自动完成（点亮并停留，无返航段）', () => {
+  it('窗口完整走完即自动完成（点亮 + 自动返航，无停留段）；返航段不可终止', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     // 窗口还差 1ms：仍在作业中
     advanceGame(state, 600_000 - 1, ctx)
     expect(state.scanning.active).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     advanceGame(state, 1, ctx)
-    expect(state.scanning.active).toBe(false)
+    expect(state.scanning.active).toBe(true) // 自动返航段（船在忙）
+    expect(state.scanning.returning).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(true)
-    expect(state.awayGalaxy).toBe('galaxy-far')
-    expect(state.scanProgress['galaxy-far']).toBeUndefined()
+    expect(state.awayGalaxy).toBeNull()
     expect(state.transit.active).toBe(false)
+    // 返航段不可终止
+    expect(stopScan(state, ctx).ok).toBe(false)
+    expect(state.scanning.active).toBe(true)
+    // 到港收尾
+    for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
+    expect(state.scanning.active).toBe(false)
+    expect(state.scanning.returning).toBe(false)
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.scanProgress['galaxy-far']).toBeUndefined()
   })
 
   it('normalize 兜底：进度记录被收敛在窗口上限内', () => {

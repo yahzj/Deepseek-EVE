@@ -102,18 +102,18 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 扫描探索 ──
+  // ── 扫描探索（2026-09-06：窗口完成 → 自动返航段不可终止，只读展示） ──
   const sv = scanStatus(state)
   if (sv.active) {
     out.push({
       id: 'scan',
       kind: 'scan',
-      label: '扫描探索',
-      sub: '未知信号',
+      label: sv.returning ? '扫描 · 自动返航' : '扫描探索',
+      sub: sv.returning ? '情报已录入 · 返回母港' : '未知信号',
       percent: sv.percent,
       remainingMs: sv.remainingMs,
-      stopable: true,
-      stop: 'stop-scan',
+      stopable: !sv.returning,
+      stop: sv.returning ? null : 'stop-scan',
     })
   }
 
@@ -149,10 +149,11 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 远征（去程/返航/交火） ──
+  // ── 远征（去程/返航/交火；2026-09-06：胜利自动返航不可召回 → 无停止按钮） ──
   const ev = expeditionStatus(state, ctx)
   if (ev.active) {
     const inBattle = ev.phase === 'combat'
+    const canStop = inBattle || ev.recallable
     out.push({
       id: 'expedition',
       kind: 'expedition',
@@ -160,9 +161,9 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       sub: inBattle ? '实时交火中' : `${ev.phaseLabel}（${ev.galaxyName}）`,
       percent: ev.percent,
       remainingMs: ev.remainingMs,
-      // 交火中可"撤退"（轻损脱离并返航）；去程/返航可"召回"
-      stopable: true,
-      stop: inBattle ? 'retreat-battle' : 'recall-expedition',
+      // 交火中可"撤退"；去程/失利返航可"召回"；胜利返航不可召回（路程必付）
+      stopable: canStop,
+      stop: inBattle ? 'retreat-battle' : canStop ? 'recall-expedition' : null,
     })
   }
 
