@@ -19,6 +19,7 @@ import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
 import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine } from './equipment'
+import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -796,6 +797,8 @@ export function startBattleFor(
     me.hp.a = Math.max(0, me.hp.a * armorMul)
     me.hp.h = Math.max(0, me.hp.h * hullMul)
   }
+  // 序章·苏醒：教学战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
+  if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
   const foes = createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
   // 期望距离记忆可能来自更远射程的战斗：钳到本次开战距离内
@@ -974,6 +977,8 @@ export function advanceBattleFor(
     battle.ended = 'foe'
     return
   }
+  // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
+  if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
   const foes = createFoeSpecs(anomaly, bal)
   const foeDesire = foeDesiredRange(me, foes, bal)
   const openM = battleOpenM(me, foes, bal)

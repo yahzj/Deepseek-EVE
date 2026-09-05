@@ -35,6 +35,7 @@ import {
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
+import { claimTutorialTrialReward } from './onboarding'
 
 /** 母港星系 id（内容层约定；与 state.HOME_GALAXY_ID 同值，经此转发保持既有 import 面不变） */
 export { HOME_GALAXY_ID }
@@ -394,6 +395,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
     )
+    // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
+    claimTutorialTrialReward(state, anomaly.id)
     // T8 胜利 = 结算并停留该星系：远征结束、船停在目标（母港星系=已回港）、悬赏冷却计时开始
     setBountyCooldown(state, ctx, anomaly.id)
     exp.active = false

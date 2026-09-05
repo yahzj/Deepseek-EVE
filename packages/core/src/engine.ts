@@ -29,6 +29,7 @@ import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWreckDrift } from './salvage'
 import { advanceSalvageOp } from './salvaging'
+import { advanceOnboardingAuto } from './onboarding'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
@@ -71,6 +72,8 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, 
   advanceEvents(state, d, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
+  // 序章·苏醒：教程自动推进判定（采集达标/修复完成/技能归档/分身就位；廉价，仅教程进行中）
+  advanceOnboardingAuto(state, ctx)
 }
 
 /** 技能队列推进（内部函数，不对外） */
