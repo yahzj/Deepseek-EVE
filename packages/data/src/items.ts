@@ -18,7 +18,7 @@ export const ORES: readonly ItemDef[] = [
     name: '富凡晶石',
     kind: 'ore',
     unitM3: 1,
-    baseSellPriceIsk: 12,
+    baseSellPriceIsk: 13,
     description: '最常见的低品位矿石，遍布新手星域，是起步的第一桶金。',
     refine: [
       { mineralId: 'min-tritanium', perOre: 2 },

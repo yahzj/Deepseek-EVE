@@ -18,8 +18,41 @@ import * as ts from 'typescript'
 import { ANOMALIES, BELTS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { tableOf, type ColSpec } from './content-schema'
 
-/* ═══════════ CSV 解析（标准：引号转义/逗号/换行/BOM） ═══════════ */
-function parseCsv(text: string): string[][] {
+/* ═══════════ CSV 解析（标准：引号转义/BOM/编码与分隔符自动容错） ═══════════
+ * Excel/WPS 保存 CSV 有各种变体：UTF-8 或 ANSI(GBK) 编码、逗号或 Tab 分隔——
+ * 这里统一自动识别，船长在 Excel 里怎么存都能导入。 */
+function decodeText(buf: Buffer): string {
+  if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) return buf.subarray(3).toString('utf8')
+  const u = buf.toString('utf8')
+  if (!u.includes('\uFFFD')) return u
+  try {
+    return new TextDecoder('gb18030').decode(buf)
+  } catch {
+    return u // 解码器不可用时退回 utf8（将按含乱码内容提示）
+  }
+}
+
+function detectDelimiter(text: string): string {
+  const sample = text.slice(0, 4000)
+  const count = (d: string): number => {
+    let n = 0
+    let inQ = false
+    for (let i = 0; i < sample.length; i++) {
+      const ch = sample[i]!
+      if (ch === '"') inQ = !inQ
+      else if (!inQ && ch === d) n++
+    }
+    return n
+  }
+  const t = count('\t')
+  const c = count(',')
+  const s = count(';')
+  if (t > c && t > s) return '\t'
+  if (s > c && s > t) return ';'
+  return ','
+}
+
+function parseDelimited(text: string, delim: string): string[][] {
   const rows: string[][] = []
   let row: string[] = []
   let cur = ''
@@ -31,7 +64,7 @@ function parseCsv(text: string): string[][] {
         if (text[i + 1] === '"') { cur += '"'; i++ } else inQ = false
       } else cur += ch
     } else if (ch === '"') inQ = true
-    else if (ch === ',') { row.push(cur); cur = '' }
+    else if (ch === delim) { row.push(cur); cur = '' }
     else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = '' }
     else if (ch !== '\r') cur += ch
   }
@@ -362,11 +395,18 @@ function main(): void {
     console.error('用法：npm run content:import <表名> <csv文件> [--dry-run]')
     process.exit(2)
   }
-  const csvText = readFileSync(csvPath, 'utf8').replace(/^\uFEFF/, '')
-  const parsed = parseCsv(csvText)
+  const csvBuf = readFileSync(csvPath)
+  const csvText = decodeText(csvBuf)
+  const delim = detectDelimiter(csvText)
+  const parsed = parseDelimited(csvText, delim)
   const head = parsed[0]!.map((h) => h.trim())
+  // Excel 可能截掉行尾空字段：数据行统一补齐到表头长度（尾部空 = 不改，安全）
+  const headLen = head.length
   const headIdx = new Map(head.map((h, i) => [h, i]))
-  const dataRows = parsed.slice(1).filter((r) => r.some((c) => c.trim() !== ''))
+  const dataRows = parsed
+    .slice(1)
+    .filter((r) => r.some((c) => c.trim() !== ''))
+    .map((r) => (r.length < headLen ? [...r, ...new Array<string>(headLen - r.length).fill('')] : r))
   if (dataRows.length === 0) {
     console.error('CSV 无数据行（首行是表头）')
     process.exit(2)
@@ -376,10 +416,13 @@ function main(): void {
     console.error(`CSV 缺主键列「${idColHead}」——请勿改动表头行`)
     process.exit(2)
   }
-  // 未知表头检查（一次）
+  // 未知表头检查：警告并跳过该列（Excel ANSI 保存可能把生僻字符写成 '?' 弄坏表头——
+  // 跳过比中断安全：坏表头列的数据不回写，其余列照常导入）
   const known = new Set(spec.cols.map((c) => c.head))
-  for (const h of head) {
-    if (!known.has(h)) err(`未知表头列「${h}」——请勿改表头；不要该列请直接删除整列`)
+  const unknownHeads = head.filter((h) => !known.has(h))
+  if (unknownHeads.length > 0) {
+    console.warn(`⚠️ 忽略 ${unknownHeads.length} 个无法识别的表头列（数据不回写）：${unknownHeads.slice(0, 6).join('、')}${unknownHeads.length > 6 ? '…' : ''}`)
+    console.warn('   若表头被 Excel 存坏（如 m? ⟦? 乱码），请重新 npm run content:export 生成干净文件后只改数据列。')
   }
   const sourceIds = spec.idProp === 'key' ? IDS.market : IDS[tableName as 'items']
   const csvIds = dataRows.map((r) => (r[headIdx.get(idColHead)!] ?? '').trim())

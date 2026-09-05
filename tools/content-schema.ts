@@ -18,6 +18,9 @@
  *
  * 空单元格语义（两端一致）：空 = 该字段不改；列表/可选字段填 '-' = 删除该字段。
  * 所有数值 = 引擎原值（0.2 = 20%），枚举 = 英文原值。
+ *
+ * 表头字符纪律：表头只用 ASCII 与 GBK 可表示的字符（m3 不用 m³、不用 ⟦⟧ 等生僻符号）——
+ * Excel 以 ANSI(GBK) 保存 CSV 会把不可表示字符写成 '?'，导致表头失配/内容损坏（2026-09-05 实证）。
  */
 export interface ColSpec {
   head: string
@@ -61,7 +64,7 @@ export const TABLES: readonly TableSpec[] = [
       col('名称', 'name', 'str'),
       col('组', 'group', 'str'),
       col('rank(难度系数)', 'rank', 'num', { min: 1, int: true }),
-      col('描述(⟦⟧高亮段须与引擎接线一致，改动后需人工复核)', 'description', 'str'),
+      col('描述(高亮数值段须与引擎接线一致，改动后需人工复核)', 'description', 'str'),
     ],
   },
   {
@@ -74,7 +77,7 @@ export const TABLES: readonly TableSpec[] = [
       col('kind(ore矿石/mineral矿物/gas气体/ice冰矿/ammo弹药/drone无人机)', 'kind', 'enum', {
         vals: ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone'],
       }),
-      col('单位体积m³', 'unitM3', 'num', { min: 0.0001 }),
+      col('单位体积m3', 'unitM3', 'num', { min: 0.0001 }),
       col('空间站收购价ISK', 'baseSellPriceIsk', 'num', { min: 0 }),
       col('精炼配方(mineralId×每单位产出|…)', 'refine', 'list', {
         itemKey: 'mineralId', valKey: 'perOre', valMin: 0.0001, ref: 'items',
@@ -120,7 +123,7 @@ export const TABLES: readonly TableSpec[] = [
       col('装填时间ms', 'reloadMs', 'num', { min: 1, int: true }),
       col('单发倍率dmgMult', 'dmgMult', 'num', { min: 0.0001, max: 100 }),
       col('CPU占用cpuUse', 'cpuUse', 'num', { min: 0 }),
-      col('无人机甲板扩容m³', 'droneBayBonusM3', 'num', { min: 0 }),
+      col('无人机甲板扩容m3', 'droneBayBonusM3', 'num', { min: 0 }),
       col('无人机伤害加成droneDmgBonus', 'droneDmgBonus', 'num', { min: 0, max: 5 }),
       col('按系伤害加成动能damageTypeBonusPct.kinetic', 'damageTypeBonusPct.kinetic', 'obj', { min: 0, max: 5 }),
       col('按系伤害加成高爆damageTypeBonusPct.explosive', 'damageTypeBonusPct.explosive', 'obj', { min: 0, max: 5 }),
@@ -142,7 +145,7 @@ export const TABLES: readonly TableSpec[] = [
       col('角色role(industrial工业/armed武装/armored重装/hauler航运)', 'role', 'enum', {
         vals: ['industrial', 'armed', 'armored', 'hauler'],
       }),
-      col('货舱m³', 'cargoM3', 'num', { min: 1 }),
+      col('货舱m3', 'cargoM3', 'num', { min: 1 }),
       col('采集循环s', 'cycleSeconds', 'num', { min: 1 }),
       col('每循环产量', 'oreUnitsPerCycle', 'num', { min: 0.0001 }),
       col('空间站售价ISK(0=自带/仅制造)', 'priceIsk', 'num', { min: 0 }),
@@ -164,7 +167,7 @@ export const TABLES: readonly TableSpec[] = [
       col('高槽数', 'slots.high', 'obj', { min: 0, int: true }),
       col('中槽数', 'slots.mid', 'obj', { min: 0, int: true }),
       col('低槽数', 'slots.low', 'obj', { min: 0, int: true }),
-      col('无人机舱m³', 'droneBayM3', 'num', { min: 0 }),
+      col('无人机舱m3', 'droneBayM3', 'num', { min: 0 }),
       col('速度m/s', 'maxSpeedMps', 'num', { min: 0 }),
       col('跃迁AU/s', 'warpSpeedAus', 'num', { min: 0 }),
       col('质量kg', 'massKg', 'num', { min: 0 }),
