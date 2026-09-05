@@ -25,6 +25,7 @@ import {
 import { Panel } from '@whale/ui'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, ModuleHover, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import type { PageProps } from './common'
+import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
 
 /** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复） */
 const COMBAT_BASE_KEYS = new Set([
@@ -77,6 +78,15 @@ export function FitPage({ engine, onToast }: PageProps) {
   const bayModules: ModuleDef[] = engine.modules.filter((m) => countModule(state, m.id) > 0)
   // CPU 占用（全位合计，与无人机放飞共用）
   const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) : 0
+  // 装备库「图标/列表」切换（与手册/物品/货仓同款样式族；默认图标视图）
+  const [view, setView] = useItemView()
+  const modCells: ItemGridCell[] = bayModules.map((m) => ({
+    key: m.id,
+    glyph: m.slot,
+    name: m.name,
+    sub: `×${countModule(state, m.id)} · ${slotLabel(m.slot)}`,
+    title: moduleShortEffect(m),
+  }))
 
   function handleFit(m: ModuleDef): void {
     const r = engine.fitModuleAt(m.id)
@@ -240,23 +250,36 @@ export function FitPage({ engine, onToast }: PageProps) {
         {bayModules.length === 0 ? (
           <div className="app-dim app-inv-empty">装备库是空的——去「工业」页用蓝图制造，或在市场淘现成装备。</div>
         ) : (
-          <ul className="app-inv-list">
-            {bayModules.map((m) => (
-              <ModuleHover key={m.id} as="li" mod={m} className="app-inv-row">
-                <div className="app-inv-main">
-                  <span className="app-inv-name">{m.name}</span>
-                  <span className="app-inv-count">
-                    ×{countModule(state, m.id)} · {slotLabel(m.slot)} · {rackLabel(rackOf(m))}：{moduleShortEffect(m)}
-                  </span>
-                </div>
-                <div className="app-inv-btns">
-                  <button className="app-btn is-small is-primary" onClick={() => handleFit(m)}>
-                    装配
-                  </button>
-                </div>
-              </ModuleHover>
-            ))}
-          </ul>
+          <>
+            <ItemViewBar mode={view} onChange={setView} />
+            {view === 'grid' ? (
+              <ItemGlyphGrid
+                cells={modCells}
+                onPick={(key) => {
+                  const m = engine.modules.find((x) => x.id === key)
+                  if (m) handleFit(m)
+                }}
+              />
+            ) : (
+              <ul className="app-inv-list">
+                {bayModules.map((m) => (
+                  <ModuleHover key={m.id} as="li" mod={m} className="app-inv-row">
+                    <div className="app-inv-main">
+                      <span className="app-inv-name">{m.name}</span>
+                      <span className="app-inv-count">
+                        ×{countModule(state, m.id)} · {slotLabel(m.slot)} · {rackLabel(rackOf(m))}：{moduleShortEffect(m)}
+                      </span>
+                    </div>
+                    <div className="app-inv-btns">
+                      <button className="app-btn is-small is-primary" onClick={() => handleFit(m)}>
+                        装配
+                      </button>
+                    </div>
+                  </ModuleHover>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </Panel>
     </div>
