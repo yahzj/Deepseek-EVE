@@ -214,6 +214,7 @@ export function startExpedition(
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)!
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
   if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
@@ -648,7 +649,7 @@ function stopAutoLoopReason(state: GameState, reason: string): void {
 export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string | null {
   const id = state.autoLoopAnomalyId
   if (id === null) return null
-  if (state.expedition.active || state.mining.active || state.scanning.active || state.transit.active) {
+  if (state.expedition.active || state.mining.active || state.scanning.active || state.transit.active || state.salvaging.active) {
     return null // 作业中/返航中：等
   }
   const anomaly = ctx.anomalies.get(id)
@@ -802,6 +803,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
 /** 目标可否出发的说明（界面禁用提示用；V13 含探索封锁） */
 export function expeditionFeasibility(state: GameState, anomaly: AnomalyDef, ctx: SimContext): { ok: boolean; reason: string } {
   if (state.mining.active) return { ok: false, reason: '采矿中' }
+  if (state.salvaging.active) return { ok: false, reason: '打捞中' }
   if (state.expedition.active) return { ok: false, reason: '远征中' }
   if (state.scanning.active) return { ok: false, reason: '扫描探索中' }
   const standing = standingOf(state, DSI_FACTION_ID)

@@ -161,6 +161,8 @@ export function moduleDef(
     reloadCutPct?: number
     hitBonusPct?: number
     evasionGapPct?: number
+    // B3 打捞器：单轮周期毫秒（打捞作业每台每轮耗时）
+    salvageCycleMs?: number
   },
 ): ModuleDef {
   return {
@@ -191,6 +193,7 @@ export function moduleDef(
     ...(opts?.reloadCutPct !== undefined ? { reloadCutPct: opts.reloadCutPct } : {}),
     ...(opts?.hitBonusPct !== undefined ? { hitBonusPct: opts.hitBonusPct } : {}),
     ...(opts?.evasionGapPct !== undefined ? { evasionGapPct: opts.evasionGapPct } : {}),
+    ...(opts?.salvageCycleMs !== undefined ? { salvageCycleMs: opts.salvageCycleMs } : {}),
   }
 }
 

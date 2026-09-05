@@ -46,7 +46,7 @@ function secOf(ctx: SimContext, galaxyId: string | null): number {
 interface Exposure {
   galaxyId: string
   shipId: string
-  kind: '采矿' | '停留' | '远征途中'
+  kind: '采矿' | '停留' | '远征途中' | '打捞'
   /** 描述（日志用）：承担船名 + 来源 */
 }
 
@@ -71,6 +71,10 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
     if (g) push({ galaxyId: g, shipId: state.shipId, kind: '远征途中' })
   } else if (state.awayGalaxy !== null) {
     push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })
+  }
+  // B3 打捞作业（目标星系，含往返阶段；低安打捞全程暴露，同采矿口径；P2b 补 AI 打捞任务）
+  if (state.salvaging.active && state.salvaging.galaxyId) {
+    push({ galaxyId: state.salvaging.galaxyId, shipId: state.shipId, kind: '打捞' })
   }
   // 副船（采矿 / 远征途中 / 驻留待命；交火中不算暴露；待命去程未抵达不算）
   for (const [sid, a] of Object.entries(state.aiAssignments)) {

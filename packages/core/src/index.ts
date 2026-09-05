@@ -342,6 +342,7 @@ export {
   rollRecycleLoot,
 } from './salvage'
 export type { RecycleTier, RecycleProfile } from './salvage'
+export { advanceSalvageOp, startSalvageOp, stopSalvageOp, salvagerCyclesOf } from './salvaging'
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,

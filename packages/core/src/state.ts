@@ -216,6 +216,35 @@ export const EMPTY_REFINE_RUN: RefineRunState = {
   batchesDone: 0,
 }
 
+/** B3 打捞作业（2026-09-05 船长定稿：采矿式单趟作业，见 docs/design/b3-salvage.md）：
+ * 出航 → 目标星系持续打捞（每台打捞器按周期结算）→ 满仓自动返航 → 到港整仓卸入仓库 → 结束（不自动续）。
+ * tripM3 = 本趟捞取体积当量累计（展示/日志）；deviceAccMs = 各周期档的打捞器相位（周期 ms → 累计）。 */
+export interface SalvageOpState {
+  active: boolean
+  /** 目标星系 id（null = 无作业） */
+  galaxyId: string | null
+  /** 阶段：outbound（出航）/ salvaging（打捞中）/ returning（返航） */
+  phase: 'outbound' | 'salvaging' | 'returning'
+  phaseAccMs: number
+  /** 统一推进步的累计（以最短打捞器周期为步长） */
+  cycleAccMs: number
+  /** 本趟累计捞取体积当量（m³） */
+  tripM3: number
+  /** 打捞器相位账：周期 ms → 已累计 ms */
+  deviceAccMs: Record<string, number>
+}
+
+/** 打捞作业空态（新档 / 作业结束） */
+export const EMPTY_SALVAGE_OP: SalvageOpState = {
+  active: false,
+  galaxyId: null,
+  phase: 'salvaging',
+  phaseAccMs: 0,
+  cycleAccMs: 0,
+  tripM3: 0,
+  deviceAccMs: {},
+}
+
 /** 远征作业状态（V12 两阶段：去程 out → 交火 battle → 返航 back；battle 为实时状态机） */
 export interface ExpeditionState {
   active: boolean
@@ -668,6 +697,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   standby: StandbyState
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
+  /** B3 打捞作业（2026-09-05：采矿式单趟；兼容字段无版本号，旧档载入 = 空态） */
+  salvaging: SalvageOpState
   /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
   galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
@@ -812,6 +843,7 @@ export function createInitialState(opts?: { name?: string; seed?: number; nowWal
     lowSecPresence: {},
     standby: { active: false, galaxyId: null, finishAtGameMs: 0, legMs: 0 },
     refineRun: { ...EMPTY_REFINE_RUN },
+    salvaging: { ...EMPTY_SALVAGE_OP },
     galaxyWrecks: {},
     logs: [],
   }

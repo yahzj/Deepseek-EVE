@@ -162,6 +162,7 @@ export function startRefineRun(
   if (worker === 'pilot') {
     // 主控亲自运转 = 占主控工作位：与其它主控作业互斥
     if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
+    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '待命行程中：先召回。' }
@@ -248,6 +249,7 @@ export function startRecycleRun(
   }
   if (worker === 'pilot') {
     if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
+    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '待命行程中：先召回。' }
@@ -446,7 +448,8 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
         !state.transit.active &&
         !state.expedition.active &&
         !state.scanning.active &&
-        !state.mining.active
+        !state.mining.active &&
+        !state.salvaging.active
       if (pilotFree) {
         state.shipId = uid
         addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} ISK）并登舰。`)

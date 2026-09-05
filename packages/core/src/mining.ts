@@ -193,6 +193,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)!
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
   if (state.standby.active) return { ok: false, error: '舰船正在前往待命星系途中——请先取消（顶部活动栏）。' }
   if (state.refineRun.active && state.refineRun.worker === 'pilot') {

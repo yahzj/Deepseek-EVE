@@ -1307,6 +1307,22 @@ function normalizeState(raw: unknown): GameState {
       ? src.autoLoopAnomalyId
       : null
 
+  // --- B3 打捞作业（2026-09-05 兼容字段）：active + 合法星系才启用，否则空态 ---
+  const slvRaw = asRaw(src.salvaging)
+  const slvGalaxy = typeof slvRaw.galaxyId === 'string' && slvRaw.galaxyId.length > 0 ? slvRaw.galaxyId : null
+  const salvaging: GameState['salvaging'] =
+    slvRaw.active === true && slvGalaxy !== null
+      ? {
+          active: true,
+          galaxyId: slvGalaxy,
+          phase: slvRaw.phase === 'outbound' || slvRaw.phase === 'returning' ? slvRaw.phase : 'salvaging',
+          phaseAccMs: Math.max(0, Math.floor(num(slvRaw.phaseAccMs))),
+          cycleAccMs: Math.max(0, Math.floor(num(slvRaw.cycleAccMs))),
+          tripM3: Math.max(0, num(slvRaw.tripM3) || 0),
+          deviceAccMs: {}, // 相位账读档重建（以最短周期为步的推进自然重建）
+        }
+      : { active: false, galaxyId: null, phase: 'salvaging', phaseAccMs: 0, cycleAccMs: 0, tripM3: 0, deviceAccMs: {} }
+
   // --- B3 星系残骸密度（2026-09-05 兼容字段无版本号）：合法记录保留（密度 ≥0、稀有计数取整）；
   // 非法/缺省 = 无记录（运行时按基础密度推导，不入档） ---
   const galaxyWrecks: Record<string, { density: number; rare: number }> = {}
@@ -1448,6 +1464,7 @@ function normalizeState(raw: unknown): GameState {
     transit,
     standby,
     refineRun,
+    salvaging,
     bountyCooldowns,
     autoLoopAnomalyId,
     encounter,
