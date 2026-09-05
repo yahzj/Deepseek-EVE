@@ -244,21 +244,21 @@ export function IndustryPage({ engine, onToast }: PageProps) {
         </button>
         <button
           role="tab"
-          aria-selected={sec === 'shelf'}
-          className={`app-subtab${sec === 'shelf' ? ' is-active' : ''}`}
-          onClick={() => setSec('shelf')}
-        >
-          <span>▦</span>
-          <span>蓝图书架</span>
-        </button>
-        <button
-          role="tab"
           aria-selected={sec === 'craft'}
           className={`app-subtab${sec === 'craft' ? ' is-active' : ''}`}
           onClick={() => setSec('craft')}
         >
           <span>⚒</span>
           <span>蓝图制造</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={sec === 'shelf'}
+          className={`app-subtab${sec === 'shelf' ? ' is-active' : ''}`}
+          onClick={() => setSec('shelf')}
+        >
+          <span>▦</span>
+          <span>蓝图书架</span>
         </button>
       </div>
 
