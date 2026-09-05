@@ -12,6 +12,7 @@ import { emptyFitted, uidDefId } from './labels'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
+import { scaledReturnMs } from './trips'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
@@ -130,7 +131,9 @@ export function retireMiningShip(state: GameState, ctx: SimContext): boolean {
   const beltId = m.beltId
   const belt = ctx.belts.get(beltId)
   const beltName = belt?.name ?? '矿带'
-  const legMs = miningReturnLegMs(state, ctx, beltId)
+  // 善后返航腿按旧船货仓占比缩放（空仓快、满仓原时长，船长 2026-09-05）
+  const legFull = miningReturnLegMs(state, ctx, beltId)
+  const legMs = scaledReturnMs(legFull, state, ctx, state.shipId)
   const phaseAccMs =
     m.phase === 'outbound'
       ? Math.min(legMs, m.phaseAccMs * 2) // 空船出航腿为正常一半：折返按 2×折算已走

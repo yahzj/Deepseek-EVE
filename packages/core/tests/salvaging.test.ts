@@ -63,14 +63,18 @@ describe('打捞作业（采矿式单趟：去程取消，指令即打捞）', (
     expect(countItem(state, wreckId)).toBeGreaterThan(0)
   })
 
-  it('满仓（放不下下一轮）→ 自动返航（去程并入）→ 到港卸入仓库 → 作业结束（不自动续）', () => {
+  it('满仓（放不下下一轮）→ 自动返航（去程并入，按货仓占比缩放）→ 到港卸入仓库 → 作业结束（不自动续）', () => {
     const state = fittedState(5)
     const ctx = ctxOf(1.5) // 小货仓：第一轮捞取就放不下
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
-    advanceSalvageOp(state, 2_500, ctx) // 首轮（1s）放不下 → 转返航（debug 腿 1s+1s = 2s，已走 1.5s）
+    // 逐拍推进到转返航（返航腿随货仓占比缩放，不再用固定毫秒断言）
+    let guard = 0
+    while (state.salvaging.phase !== 'returning' && state.salvaging.active && guard++ < 500) {
+      advanceSalvageOp(state, 100, ctx)
+    }
     expect(state.salvaging.phase).toBe('returning')
-    advanceSalvageOp(state, 2_000, ctx) // 剩余 0.5s 到港 → 卸货结束
+    advanceSalvageOp(state, 200_000, ctx) // 足够覆盖缩放后的返航腿
     expect(state.salvaging.active).toBe(false)
     expect(state.logs.some((l) => l.text.includes('打捞自动返港'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('不自动续'))).toBe(true)
