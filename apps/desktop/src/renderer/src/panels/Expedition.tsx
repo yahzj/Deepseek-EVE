@@ -261,7 +261,12 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
 
 const MAP_W = 700
 const MAP_H = 300
-const LAYOUT_KEY = 'whale-idle:starmap-layout'
+/**
+ * 布局本地覆盖键（v2，2026-09-05）：船长本地排版坐标已合入内置默认（universe.ts，并整体左移 14），
+ * 旧键 v1（whale-idle:starmap-layout，09-04 编辑器排版本）一律不再读取——
+ * 旧本地覆盖会遮蔽新默认（此前改内置坐标看不到变化即此因）；今后编辑器排完版「保存并复制 JSON」合入默认即可。
+ */
+const LAYOUT_KEY = 'whale-idle:starmap-layout-v2'
 /**
  * 开发模式开关：星图布局编辑器（拖拽/交叉检测/自动整理/导出 JSON）默认对玩家隐藏；
  * 需要调整布局时在 DevTools 执行 localStorage.setItem('whale-idle:dev-layout','1') 后刷新页面即可显示入口。
