@@ -2332,15 +2332,25 @@ body {
   letter-spacing: 2px;
   flex-shrink: 0;
 }
-/* AI 活动图标数徽标（船长 2026-09-05：AI 不逐条显示，用 🤖×N 表示在活动数） */
+/* AI 活动图标数徽标（船长 2026-09-05：AI 不逐条显示，用 🤖×N 表示在活动数；点击跳 AI 指挥中心） */
 .app-activitybar-ai {
   flex-shrink: 0;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 12px;
   color: var(--wui-text-dim);
   padding: 2px 8px;
   border: 1px dashed rgba(120, 200, 255, 0.3);
   border-radius: 6px;
   background: rgba(120, 200, 255, 0.05);
+}
+.app-activitybar-ai:hover {
+  background: rgba(120, 200, 255, 0.12);
+}
+/* 待机提示（无任何活动时，活动窗口常驻显示） */
+.app-activitybar-idle {
+  font-size: 11.5px;
+  color: var(--wui-text-dim);
 }
 .app-activitybar-items {
   display: flex;

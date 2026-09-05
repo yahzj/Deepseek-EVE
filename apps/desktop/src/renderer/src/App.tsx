@@ -258,7 +258,7 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* ───── 顶部活动窗口（全宽一行，内容居中、固定高、AI 用图标数） ───── */}
       <div className="app-activitybar-wrap">
-        <ActivityBar engine={engine} onToast={showToast} />
+        <ActivityBar engine={engine} onToast={showToast} onAiCenter={() => setPage('ship')} />
       </div>
 
       {/* ───── 工作区：左导航栏 + 主窗口 + 事件日志（可右滑隐藏 / 按类型过滤） ───── */}

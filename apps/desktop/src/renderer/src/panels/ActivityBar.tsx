@@ -83,7 +83,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
   }
 }
 
-export function ActivityBar({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+export function ActivityBar({ engine, onToast, onAiCenter }: { engine: GameEngine; onToast: ToastFn; onAiCenter?: () => void }) {
   const state = engine.state
   const items = activityOverview(state, engine.ctx)
   // 船长 2026-09-05：AI 活动不直接在活动窗口逐条显示，改为"🤖×N"小图标徽标（有多少 AI 在执行）
@@ -93,17 +93,25 @@ export function ActivityBar({ engine, onToast }: { engine: GameEngine; onToast: 
   // 撤退需二次确认（轻损但有代价）
   const [retreatAsk, setRetreatAsk] = useState(false)
   if (retreatAsk && !shownItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
-  if (shownItems.length === 0 && aiCount === 0 && !loopId) return null
+  // 常驻显示：无任何活动时显示"待机"提示（船长 2026-09-05）
+  const idle = shownItems.length === 0 && aiCount === 0 && !loopId
   return (
     <div className="app-activitybar">
       <span className="app-activitybar-title">活动</span>
       {aiCount > 0 ? (
-        <span className="app-activitybar-ai" title={`${aiCount} 艘 AI 副船正在执行任务（采矿/远征等）`}>
+        <button
+          className="app-activitybar-ai"
+          title={`${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`}
+          onClick={onAiCenter}
+        >
           🤖×{aiCount}
-        </span>
+        </button>
       ) : null}
       <div className="app-activitybar-items">
-        {shownItems.map((v) => (
+        {idle ? (
+          <span className="app-activitybar-idle">☕ 待机中：暂无进行中的活动——安排采矿 / 远征 / 扫描，或训练技能。</span>
+        ) : (
+          shownItems.map((v) => (
           <div key={v.id} className={`app-activitybar-item is-${v.kind}`} title={v.stopReason ?? undefined}>
             <span className="app-activitybar-icon">{KIND_ICON[v.kind] ?? '•'}</span>
             <div className="app-activitybar-main">
@@ -157,7 +165,7 @@ export function ActivityBar({ engine, onToast }: { engine: GameEngine; onToast: 
               </button>
             ) : null}
           </div>
-        ))}
+        )))}
         {loopId ? (
           <div className="app-activitybar-loop">
             <span className="app-dim">
