@@ -68,6 +68,14 @@ function spendAiCore(state: GameState, type: AiCoreType): boolean {
   return true
 }
 
+/** 批量出库 N 枚（市场挂卖/出售锁定用；库存不足整批不动并返回 false） */
+export function spendAiCores(state: GameState, type: AiCoreType, count: number): boolean {
+  const current = state.aiCores[type] ?? 0
+  if (count <= 0 || current < count) return false
+  state.aiCores[type] = current - count
+  return true
+}
+
 /** 占用一枚核心（出库；精炼炉 AI 自动化等"站内设施驱动"场景——不占副船名额） */
 export function occupyAiCore(state: GameState, type: AiCoreType): boolean {
   return spendAiCore(state, type)

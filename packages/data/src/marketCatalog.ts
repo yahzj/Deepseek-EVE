@@ -4,7 +4,7 @@
  * 目录规则（中文说明，设计文档 V4/V5/V10 已确认）：
  * - 市场只有两栏：常驻供应（common）/ 稀有订单（rare + exotic 奇货同栏展示）；
  * - 单件商品价格锚定旧商店价：常驻品=平价；稀有/限定品按稀缺度定溢价；
- * - 收购价 = demandMultiplier × L（防套利；装备/船 0.35~0.4 二手折价、蓝图 0.5、核心不可回卖）；
+ * - 收购价 = demandMultiplier × L（防套利；装备/船 0.35~0.4 二手折价、蓝图/AI 核心 0.5）；
  * - 矿石/矿物/气体/冰矿/弹药/无人机走"池模型"：basePrice = 常驻均衡价，收购平价、供应微溢 6%；
  *   池 target/flow 随价格递减（防高价商品天量刷钱）；弹药/无人机为 NPC 补给池（占位消耗品，
  *   玩家可回卖但亏 6% 无套利）；
@@ -96,8 +96,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 9_000, demandMultiplier: 0.5 },
   // 低级船（AI 副船军团的主力船）
   { key: 'ship-burrower', kind: 'ship', refId: 'burrower', rarity: 'common', basePrice: 120_000, demandMultiplier: 0.4 },
-  // 基础 AI 核心（原直购并入市场，平价常驻；核心不支持回卖）
-  { key: 'core-basic', kind: 'aicore', refId: 'basic', rarity: 'common', basePrice: 25_000, demandMultiplier: 0.5, playerSellable: false },
+  // 基础 AI 核心（原直购并入市场，平价常驻；可回卖：收购价 0.5×L）
+  { key: 'core-basic', kind: 'aicore', refId: 'basic', rarity: 'common', basePrice: 25_000, demandMultiplier: 0.5 },
 
   // ══════════ 稀有订单（rare：低频刷新、寿命 9 分钟） ══════════
 
@@ -197,10 +197,10 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 0.3, standingReq: 10 },
   { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 0.3, standingReq: 10 },
   { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 0.3, standingReq: 10 },
-  // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径）
-  { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 90_000, demandMultiplier: 0.5, playerSellable: false },
-  { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 0.5, playerSellable: false },
-  { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 900_000, demandMultiplier: 0.5, playerSellable: false },
+  // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径；可回卖：收购价 0.5×L）
+  { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 90_000, demandMultiplier: 0.5 },
+  { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 0.5 },
+  { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 900_000, demandMultiplier: 0.5 },
 ]
 
 /** 构建市场商品目录 */

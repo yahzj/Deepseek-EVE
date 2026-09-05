@@ -3,7 +3,7 @@
  * 内部消化、池库存、声望加成、蓝图学习/回卖、舰船市场出售。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SimContext } from '../src/types'
+import type { SimContext, MarketGoodDef } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
@@ -18,9 +18,12 @@ import {
   listSellHolding,
   marketQuote,
   marketSellHolding,
+  marketSellPreview,
+  naturalHoldings,
   salesTaxRate,
   sellShipAtMarket,
 } from '../src/market'
+import { occupyAiCore } from '../src/ai'
 import { makeTestCtx, mineral, ship } from './helpers'
 
 const MIN_A = mineral('min-a') // basePrice 8
@@ -384,5 +387,84 @@ describe('A3 回归：v8→v9 迁移后直接 8 小时长离线（市场开市 +
     expect(Object.keys(mk.pools).length).toBe(ctx.marketGoods.size) // 全目录开市
     expect((mk.priceHistory['it-ore-a'] ?? []).length).toBeGreaterThan(0) // 整段离线都有价格采样
     expect(state.learnedRecipes).toEqual(['bp-a', 'bp-b']) // 配方不受离线影响
+  })
+})
+
+describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购价 0.5×L 同蓝图档）', () => {
+  let state: GameState
+  let ctx: SimContext
+  const coreDef = (): MarketGoodDef => ({
+    key: 'core-basic',
+    kind: 'aicore',
+    refId: 'basic',
+    rarity: 'common',
+    basePrice: 25_000,
+    demandMultiplier: 0.5,
+  })
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 1 }) // 初始 10_000 ISK
+    ctx = makeTestCtx({ marketGoods: [coreDef()] })
+  })
+
+  it('自然库存识别核心库；市价卖 1 枚：吃开盘收购簿入账（税后），核心库扣减', () => {
+    state.aiCores.basic = 1
+    expect(naturalHoldings(state, coreDef())).toBe(1)
+    const q = marketQuote(state, ctx, 'core-basic') // 触发开盘：1 收购单（0.5×L）
+    expect(q.buy).toBe(12_500)
+    const before = state.wallet.isk
+    const r = marketSellHolding(state, ctx, 'core-basic')
+    expect(r.ok).toBe(true)
+    expect(r.sold).toBe(1)
+    expect(r.remaining).toBe(0)
+    expect(state.aiCores.basic ?? 0).toBe(0)
+    expect(state.orders).toHaveLength(0)
+    expect(state.escrowItems['core-basic'] ?? 0).toBe(0)
+    const tax = salesTaxRate(state, ctx)
+    expect(state.wallet.isk - before).toBe(12_500 - Math.round(12_500 * tax))
+  })
+
+  it('超量卖出：簿吃穿后余量自动挂限价单（escrow 锁核心），撤单退回核心库', () => {
+    state.aiCores.basic = 2
+    marketQuote(state, ctx, 'core-basic') // 开盘收购簿仅 1 单
+    const r = marketSellHolding(state, ctx, 'core-basic')
+    expect(r.ok).toBe(true)
+    expect(r.sold).toBe(1)
+    expect(r.remaining).toBe(1)
+    expect(state.aiCores.basic ?? 0).toBe(0) // 全部出库：1 成交 + 1 挂单 escrow
+    expect(state.escrowItems['core-basic'] ?? 0).toBe(1)
+    expect(state.orders).toHaveLength(1)
+    expect(state.orders[0]!.qty).toBe(1)
+    expect(cancelOrder(state, ctx, state.orders[0]!.id)).toBe(true)
+    expect(state.escrowItems['core-basic'] ?? 0).toBe(0)
+    expect(state.aiCores.basic ?? 0).toBe(1)
+  })
+
+  it('挂限价卖单：核心入 escrow，撤单退回核心库', () => {
+    state.aiCores.basic = 3
+    const r = listSellHolding(state, ctx, 'core-basic', 20_000, 2)
+    expect(r.ok).toBe(true)
+    expect(state.aiCores.basic ?? 0).toBe(1)
+    expect(state.escrowItems['core-basic'] ?? 0).toBe(2)
+    expect(cancelOrder(state, ctx, r.orderId!)).toBe(true)
+    expect(state.escrowItems['core-basic'] ?? 0).toBe(0)
+    expect(state.aiCores.basic ?? 0).toBe(3)
+  })
+
+  it('卖出预览（全部卖出确认框同源）对核心可用；占用中的核心不计入可卖', () => {
+    state.aiCores.basic = 2
+    marketQuote(state, ctx, 'core-basic')
+    const pv = marketSellPreview(state, ctx, 'core-basic')
+    expect(pv.ok).toBe(true)
+    expect(pv.avail).toBe(2)
+    expect(pv.fillable).toBe(1)
+    expect(pv.leftover).toBe(1)
+    // 模拟占用（副船任务/精炼炉占用即出库）→ 核心库只反映闲置数，占用枚数不可卖
+    expect(occupyAiCore(state, 'basic')).toBe(true)
+    expect(occupyAiCore(state, 'basic')).toBe(true)
+    expect(naturalHoldings(state, coreDef())).toBe(0)
+    const r = marketSellHolding(state, ctx, 'core-basic')
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('没有可卖')
   })
 })

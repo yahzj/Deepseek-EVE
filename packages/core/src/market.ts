@@ -27,7 +27,7 @@ import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
 import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName } from './shipyard'
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
-import { gainAiCore } from './ai'
+import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
 
@@ -861,7 +861,7 @@ export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: s
   return { ok: true }
 }
 
-/** 从"自然库存"扣货并计入 escrow（物品→仓库、装备→装备库、蓝图→蓝图书架）；数量不足返回 false */
+/** 从"自然库存"扣货并计入 escrow（物品→仓库、装备→装备库、蓝图→蓝图书架、核心→核心库）；数量不足返回 false */
 function lockNaturalStock(state: GameState, def: MarketGoodDef, n: number): boolean {
   if (n <= 0) return false
   let ok = false
@@ -874,21 +874,22 @@ function lockNaturalStock(state: GameState, def: MarketGoodDef, n: number): bool
       if (state.blueprintStock[def.refId] === 0) delete state.blueprintStock[def.refId]
       ok = true
     }
-  }
+  } else if (def.kind === 'aicore') ok = spendAiCores(state, def.refId as never, n)
   if (ok) state.escrowItems[def.key] = (state.escrowItems[def.key] ?? 0) + n
   return ok
 }
 
-/** 自然库存持有量（市场页展示"我的可卖"用） */
+/** 自然库存持有量（市场页展示"我的可卖"用：物品→仓库、装备→装备库、蓝图→书架、核心→核心库） */
 export function naturalHoldings(state: GameState, def: MarketGoodDef): number {
   if (def.kind === 'item') return countWare(state, def.refId)
   if (def.kind === 'module') return countModule(state, def.refId)
   if (def.kind === 'blueprint') return state.blueprintStock[def.refId] ?? 0
+  if (def.kind === 'aicore') return countAiCore(state, def.refId as never)
   return 0
 }
 
 /** 市价卖出持有的商品（市场页用）：自动从"自然库存"取货（物品→物品仓库、装备→装备库、
- * 蓝图→蓝图书架）；数量省略 = 全卖。舰船请走 sellShipAtMarket/船坞。 */
+ * 蓝图→蓝图书架、AI 核心→核心库闲置数）；数量省略 = 全卖。舰船请走 sellShipAtMarket/船坞。 */
 export function marketSellHolding(
   state: GameState,
   ctx: SimContext,
@@ -898,7 +899,7 @@ export function marketSellHolding(
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return { ok: false, error: `未知商品：${goodKey}`, sold: 0, total: 0, remaining: 0 }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', sold: 0, total: 0, remaining: 0 }
-  if (def.kind === 'ship' || def.kind === 'aicore') {
+  if (def.kind === 'ship') {
     return { ok: false, error: '舰船请在船坞/舰船页出售（需货仓清空、无装配）。', sold: 0, total: 0, remaining: 0 }
   }
   const available = naturalHoldings(state, def)
@@ -927,7 +928,7 @@ export function marketSellPreview(
   const zero = { avail: 0, want: 0, fillable: 0, orders: 0, gross: 0, tax: 0, net: 0, leftover: 0 }
   if (!def) return { ok: false, error: `未知商品：${goodKey}`, ...zero }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', ...zero }
-  if (def.kind === 'ship' || def.kind === 'aicore') {
+  if (def.kind === 'ship') {
     return { ok: false, error: '舰船请在船坞/舰船页出售（需货仓清空、无装配）。', ...zero }
   }
   const avail = naturalHoldings(state, def)
@@ -964,7 +965,7 @@ export function listSellHolding(
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return { ok: false, error: `未知商品：${goodKey}` }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。' }
-  if (def.kind === 'ship' || def.kind === 'aicore') return { ok: false, error: '该商品不能这样挂单。' }
+  if (def.kind === 'ship') return { ok: false, error: '舰船请走整船挂单（舰船页出售入口）。' }
   const available = naturalHoldings(state, def)
   const want = qty === undefined ? available : Math.max(0, Math.floor(qty))
   if (want <= 0 || available <= 0) return { ok: false, error: '没有可卖的库存。' }
