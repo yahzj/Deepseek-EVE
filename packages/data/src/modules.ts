@@ -78,7 +78,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'miner',
     rack: 'high',
     bonus: 0.8,
-    description: '产量 +80%。协会精密工业的结晶（蓝图可造，见制造台）；40 CPU 已接近小型船满载。',
+    description: '产量 +80%。协会精密工业的结晶（蓝图可造，见组装机）；40 CPU 已接近小型船满载。',
     cpuUse: 40,
   },
   {
@@ -125,7 +125,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     rack: 'low',
     bonus: 1.4,
-    description: '货舱容量 +140%。空间折叠衬层，协会制式蓝图可造（制造台）。',
+    description: '货舱容量 +140%。空间折叠衬层，协会制式蓝图可造（组装机）。',
     cpuUse: 40,
   },
   {

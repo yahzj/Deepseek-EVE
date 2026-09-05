@@ -1,5 +1,5 @@
 /**
- * 工业页：精炼炉（多工位并行卡片网格）+ 蓝图书架 + 蓝图制造台。
+ * 工业页：精炼炉（多工位并行卡片网格）+ 蓝图书架 + 组装机。
  *
  * 精炼模型（2026-09-04 船长定稿运转周期制；2026-09-05 船长拍板多工位并行）：
  * - 每个资源（矿石/气体/冰矿）或残骸型号至多一台炉，可同时运转多台；
@@ -231,7 +231,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
 
   return (
     <div className="page-stack">
-      {/* 功能标签页（与星图页同款 app-subtabs 规范）：精炼炉 / 蓝图书架 / 蓝图制造 */}
+      {/* 功能标签页（与星图页同款 app-subtabs 规范）：精炼炉 / 蓝图书架 / 组装机 */}
       <div className="app-subtabs" role="tablist">
         <button
           role="tab"
@@ -249,7 +249,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
           onClick={() => setSec('craft')}
         >
           <span>⚒</span>
-          <span>蓝图制造</span>
+          <span>组装机</span>
         </button>
         <button
           role="tab"

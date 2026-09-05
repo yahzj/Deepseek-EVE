@@ -185,7 +185,7 @@ export function fitModule(
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
   if (countModule(state, moduleId) < 1) {
-    return { ok: false, error: `装备库里没有 ${def.name}，先去制造台造一件。` }
+    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。` }
   }
   const shipId = opts?.shipId ?? state.shipId
   const fitted = state.fleet[shipId]?.fitted

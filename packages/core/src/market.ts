@@ -857,7 +857,7 @@ export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: s
   state.blueprintStock[blueprintId] = count - 1
   if (state.blueprintStock[blueprintId] === 0) delete state.blueprintStock[blueprintId]
   state.learnedRecipes.push(blueprintId)
-  addLog(state, 'info', `已学习「${known.name}」：可前往制造台无限次制造。`)
+  addLog(state, 'info', `已学习「${known.name}」：可前往组装机无限次制造。`)
   return { ok: true }
 }
 

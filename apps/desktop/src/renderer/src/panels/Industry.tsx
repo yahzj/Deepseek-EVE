@@ -1,5 +1,5 @@
 /**
- * 工业面板：蓝图书架 + 蓝图制造台（v21 仿精炼炉/矿带卡：多张蓝图并行、制造中卡内自带进度与取消）。
+ * 工业面板：蓝图书架 + 组装机（v21 仿精炼炉/矿带卡：多张蓝图并行、制造中卡内自带进度与取消）。
  * V9：蓝图 = 消耗品书。市场买书 → 书进"蓝图书架"（blueprintStock）→ 学习一本 → 永久可造；
  * 学会后的重复蓝图书只能放回市场出售。
  */
@@ -37,7 +37,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
     if (!r.ok) onToast(r.error ?? '学习失败', true)
-    else onToast('已学习该配方：可到制造台无限次制造。')
+    else onToast('已学习该配方：可到组装机无限次制造。')
   }
 
   function handleSell(blueprintId: string): void {
@@ -55,7 +55,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
     return (
       <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造</span>}>
         <div className="app-dim app-note">
-          书架上还没有蓝图书：到下方制造台点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。
+          书架上还没有蓝图书：到下方组装机点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。
         </div>
       </Panel>
     )
@@ -100,9 +100,9 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   )
 }
 
-/* ═══════════════ 蓝图制造台（v21 仿精炼炉/矿带卡；多蓝图并行制造） ═══════════════ */
+/* ═══════════════ 组装机（v21 仿精炼炉/矿带卡；多蓝图并行制造） ═══════════════ */
 
-/** 制造台类型筛选：全部 / 装备 / 舰船 / 弹药（2026-09-05 基础弹药可自制） */
+/** 组装机类型筛选：全部 / 装备 / 舰船 / 弹药（2026-09-05 基础弹药可自制） */
 type ManuTab = 'all' | 'equip' | 'ship' | 'ammo'
 const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
   { key: 'all', label: '全部' },
@@ -371,7 +371,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
 
   return (
     <Panel
-      title="蓝图制造台"
+      title="组装机"
       right={<span className="app-dim">制造中 {runViews.length} · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}</span>}
     >
       {/* 筛选：全部 / 装备蓝图 / 舰船蓝图；制造中冒泡在前（材料不足卡标红缺口） */}
