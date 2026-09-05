@@ -51,9 +51,13 @@ function blueprintName(ctx: SimContext, blueprintId: string): string {
   return ctx.blueprints.get(blueprintId)?.name ?? ctx.shipBlueprints.get(blueprintId)?.name ?? blueprintId
 }
 
-/** 制造时长：基础秒数 × 工业理论技能修正（debugQuick 秒级完成） */
+/** 按当前技能计算制造耗时（毫秒），开工时锁定（工业理论 −5%/级 × 批量生产学 −4%/级 乘算） */
 export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: BuildSpec): number {
-  const ratio = Math.max(0.4, 1 - 0.05 * (state.skills.trained['industrial-theory'] ?? 0))
+  const bal = ctx.balance.manufacturing
+  const level = state.skills.trained[bal.timeSkillId] ?? 0
+  const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
+  const ratio = Math.max(bal.minTimeRatio, (1 - bal.timePerLevel * level) * (1 - 0.04 * batchLv))
+  // 调试模式 debugQuick：制造固定 1 秒
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }
 

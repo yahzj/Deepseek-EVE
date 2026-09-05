@@ -1,5 +1,5 @@
 /**
- * 工业面板：蓝图制造台（市场求购蓝图书 / 蓝图书架学习 / 开始制造 / 进度，产物：装备或舰船）。
+ * 工业面板：蓝图书架 + 蓝图制造台（v21 仿精炼炉/矿带卡：多张蓝图并行、制造中卡内自带进度与取消）。
  * V9：蓝图 = 消耗品书。市场买书 → 书进"蓝图书架"（blueprintStock）→ 学习一本 → 永久可造；
  * 学会后的重复蓝图书只能放回市场出售。
  */
@@ -7,14 +7,14 @@ import {
   calcBuildDurationMs,
   countWare,
   formatDurationMs,
-  manufacturingStatus,
+  manufacturingRunViews,
   marketLockedReason,
   matNeedCount,
   missingMaterials,
   ownsBlueprint,
 } from '@whale/core'
 import type { MaterialNeed } from '@whale/core'
-import { Panel, ProgressBar } from '@whale/ui'
+import { Panel } from '@whale/ui'
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -94,7 +94,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   )
 }
 
-/* ═══════════════ 蓝图制造台（任务中心式目录，参考星图页任务中心） ═══════════════ */
+/* ═══════════════ 蓝图制造台（v21 仿精炼炉/矿带卡；多蓝图并行制造） ═══════════════ */
 
 /** 制造台类型筛选：全部 / 装备 / 舰船（与任务中心 app-tasktab 同款筛选风格） */
 type ManuTab = 'all' | 'equip' | 'ship'
@@ -104,7 +104,7 @@ const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
   { key: 'ship', label: '舰船蓝图' },
 ]
 
-/** 一张可制造蓝图的统一展示卡（装备蓝图与舰船蓝图共用） */
+/** 一张可制造蓝图的展示卡（v21 仿精炼炉/矿带卡结构：制造中该卡自带进度与取消，多蓝图可并行） */
 function BlueprintCard({
   engine,
   onToast,
@@ -131,7 +131,8 @@ function BlueprintCard({
   kindLabel: string
 }) {
   const state = engine.state
-  const mf = manufacturingStatus(state, engine.ctx)
+  // 该蓝图的制造线（同蓝图至多一条）
+  const run = manufacturingRunViews(state, engine.ctx).find((v) => v.blueprintId === blueprintId)
   const owned = ownsBlueprint(state, blueprintId)
   const buildMs = calcBuildDurationMs(state, engine.ctx, { materials, buildSeconds, buildCostIsk })
   const canPayFee = state.wallet.isk >= buildCostIsk
@@ -152,39 +153,93 @@ function BlueprintCard({
     if (!r.ok) onToast(r.error ?? '开工失败', true)
   }
 
+  function handleCancel(): void {
+    const r = engine.cancelManufacturingAt(run!.id)
+    if (!r.ok) onToast(r.error ?? '取消失败', true)
+    else onToast('已取消制造：材料全额退回物品仓库（制造费不退）。')
+  }
+
   return (
-    <div className={`app-bp-card${owned ? ' is-owned' : ''}`}>
-      <div className="app-bp-top">
-        <span className="app-chip">{kindLabel}</span>
-        <span className="app-bp-name">{name}</span>
-        {owned ? <span className="app-chip">已学会</span> : bookCount > 0 ? <span className="app-chip">蓝图书 ×{bookCount}</span> : null}
-        {lock ? <span className="app-chip is-exotic" title={lock}>🔒 {lock}</span> : null}
-      </div>
-      <div className="app-bp-product">
-        产物：<span className="app-gold">{productLabel}</span> · 耗时 {formatDurationMs(buildMs)}（技能修正后）
-      </div>
-      <ul className="app-bp-mats">
-        {materials.map((need) => {
-          const needCount = matNeedCount(state, need.count) // 材料学折扣后的实际需求
-          const have = countWare(state, need.itemId)
-          const enough = have >= needCount
-          const matName = engine.ctx.items.get(need.itemId)?.name ?? need.itemId
-          return (
-            <li key={need.itemId} className={`app-bp-mat${enough ? '' : ' is-short'}`}>
-              {matName} ×{needCount.toLocaleString('zh-CN')}
-              {needCount !== need.count ? <span className="app-dim">（原 ×{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span> : null}
-              <span className="app-dim">（仓库 {have.toLocaleString('zh-CN')}）</span>
-            </li>
-          )
-        })}
-      </ul>
-      <div className="app-bp-bottom">
-        <span className="app-dim">制造费 {buildCostIsk.toLocaleString('zh-CN')} ISK</span>
+    <div className="app-belt-card">
+      <div className="app-belt-head">
+        <span className="app-belt-name">
+          {kindLabel === '舰船' ? '🚢 ' : ''}
+          {name}
+          {run ? <em className="app-belt-flag is-run">{kindLabel === '舰船' ? '造船中' : '制造中'}</em> : null}
+        </span>
         {owned ? (
+          <span className="app-chip" style={{ marginLeft: 'auto' }}>
+            已学会
+          </span>
+        ) : bookCount > 0 ? (
+          <span className="app-chip" style={{ marginLeft: 'auto' }}>
+            蓝图书 ×{bookCount}
+          </span>
+        ) : lock ? (
+          <span className="app-chip is-exotic" title={lock} style={{ marginLeft: 'auto' }}>
+            🔒 {lock}
+          </span>
+        ) : (
+          <span className="app-chip" style={{ marginLeft: 'auto' }}>
+            {kindLabel}
+          </span>
+        )}
+      </div>
+      <div className="app-belt-desc">{description}</div>
+
+      {run ? (
+        <>
+          <div className="app-belt-ore">
+            产物：<span className="app-gold">{productLabel}</span> · 剩余约 {formatDurationMs(run.remainingMs)}（总耗时{' '}
+            {formatDurationMs(run.durationMs)}）
+          </div>
+          <div
+            className="app-card-progress"
+            title={`制造进度 ${run.percent}%（到点自动${kindLabel === '舰船' ? '停入船坞' : '入库'}）`}
+          >
+            <i style={{ width: `${run.percent}%` }} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="app-belt-ore">
+            产物：<span className="app-gold">{productLabel}</span> · 耗时 {formatDurationMs(buildMs)}（技能修正后）
+          </div>
+          <ul className="app-bp-mats">
+            {materials.map((need) => {
+              const needCount = matNeedCount(state, need.count) // 材料学折扣后的实际需求
+              const have = countWare(state, need.itemId)
+              const enough = have >= needCount
+              const matName = engine.ctx.items.get(need.itemId)?.name ?? need.itemId
+              return (
+                <li key={need.itemId} className={`app-bp-mat${enough ? '' : ' is-short'}`}>
+                  {matName} ×{needCount.toLocaleString('zh-CN')}
+                  {needCount !== need.count ? (
+                    <span className="app-dim">（原 ×{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span>
+                  ) : null}
+                  <span className="app-dim">（仓库 {have.toLocaleString('zh-CN')}）</span>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="app-belt-econ">制造费 {buildCostIsk.toLocaleString('zh-CN')} ISK</div>
+        </>
+      )}
+
+      <div className="app-belt-actions">
+        {run ? (
+          <button
+            className="app-btn is-small is-warn"
+            onClick={handleCancel}
+            title="取消这条制造线：材料按材料学折扣后的实际用量全额退回（制造费不退）"
+          >
+            ■ 取消制造
+          </button>
+        ) : owned ? (
           <button
             className="app-btn is-small is-primary"
-            disabled={!canPayFee || mf.active || short.length > 0}
-            title={short.join('；')}
+            disabled={!canPayFee || short.length > 0}
+            title={short.join('；') || '开始制造（材料与制造费立即扣除；可多张蓝图并行制造）'}
             onClick={handleBuild}
           >
             开始制造
@@ -199,17 +254,16 @@ function BlueprintCard({
           </button>
         )}
       </div>
-      <div className="app-bp-desc">{description}</div>
     </div>
   )
 }
 
 export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
-  const mf = manufacturingStatus(state, engine.ctx)
+  const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTab>('all')
 
-  /** 目录数据（舰船 + 装备统一成条目；任务中心式：可开工冒泡在前，再按名称） */
+  /** 目录数据（舰船 + 装备统一成条目；制造中冒泡在前，再按名称） */
   const items: Array<{
     id: string
     kindLabel: string
@@ -219,6 +273,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     buildSeconds: number
     buildCostIsk: number
     productLabel: string
+    running: boolean
     canStart: boolean
   }> = []
   const pushShip = (): void => {
@@ -235,6 +290,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         productLabel: shipDef
           ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
           : sbp.shipId,
+        running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds, sbp.buildCostIsk),
       })
     }
@@ -251,6 +307,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         buildSeconds: bp.buildSeconds,
         buildCostIsk: bp.buildCostIsk,
         productLabel: moduleName,
+        running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds, bp.buildCostIsk),
       })
     }
@@ -258,21 +315,24 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   pushShip()
   pushEquip()
 
-  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够 + 无作业中 */
+  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够 + 该蓝图无线在跑 */
   function canStartNow(
     blueprintId: string,
     materials: readonly MaterialNeed[],
     buildSeconds: number,
     buildCostIsk: number,
   ): boolean {
-    if (mf.active || !ownsBlueprint(state, blueprintId)) return false
+    if (runViews.some((v) => v.blueprintId === blueprintId) || !ownsBlueprint(state, blueprintId)) return false
     if (state.wallet.isk < buildCostIsk) return false
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk }).length === 0
   }
 
   const visible = items.filter((it) => tab === 'all' || (tab === 'ship' ? it.kindLabel === '舰船' : it.kindLabel === '装备'))
   const sorted = [...visible].sort(
-    (a, b) => Number(b.canStart) - Number(a.canStart) || a.name.localeCompare(b.name, 'zh-Hans-CN'),
+    (a, b) =>
+      Number(b.running) - Number(a.running) ||
+      Number(b.canStart) - Number(a.canStart) ||
+      a.name.localeCompare(b.name, 'zh-Hans-CN'),
   )
   const equipN = items.filter((i) => i.kindLabel === '装备').length
   const shipN = items.filter((i) => i.kindLabel === '舰船').length
@@ -281,24 +341,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   return (
     <Panel
       title="蓝图制造台"
-      right={<span className="app-dim">装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}；工业理论每级 -5% 耗时</span>}
+      right={<span className="app-dim">制造中 {runViews.length} · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}</span>}
     >
-      {/* 制造中：只显示进度，不可并行开工 */}
-      {mf.active ? (
-        <div className="app-mf-running">
-          <div className="app-mf-title">
-            {mf.kind === 'ship' ? '🚢 造船中：' : '制造中：'}
-            <span className="app-gold">{mf.productName}</span>
-          </div>
-          <ProgressBar
-            value={mf.percent}
-            tone="warn"
-            label={`剩余约 ${formatDurationMs(mf.remainingMs)}（到点自动${mf.kind === 'ship' ? '停入船坞' : '入库'}）`}
-          />
-        </div>
-      ) : null}
-
-      {/* 任务中心式筛选：全部 / 装备蓝图 / 舰船蓝图；可开工冒泡在前（材料不足卡标红缺口） */}
+      {/* 筛选：全部 / 装备蓝图 / 舰船蓝图；制造中冒泡在前（材料不足卡标红缺口） */}
       <div className="app-task-tabs" role="tablist">
         {MANU_TABS.map((t) => (
           <button
@@ -313,11 +358,11 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         ))}
       </div>
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工；卡片会标出材料缺口与制造费。同一时刻只能制造一件（到点自动入库/入船坞）。
-        {' '}可开工的配方排在最前。
+        已学会的配方才能开工；卡片会标出材料缺口与制造费。<b>多张蓝图可同时制造</b>（每条线独立进度，制造中卡自带
+        进度与取消；制造不占主控，可与出海作业并行）。制造中 / 可开工的配方排在最前。
       </div>
 
-      <div className="app-bp-list">
+      <div className="app-belt-grid">
         {sorted.map((it) => (
           <BlueprintCard
             key={it.id}
@@ -337,4 +382,3 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     </Panel>
   )
 }
-

@@ -753,9 +753,9 @@ export class GameEngine {
     return result
   }
 
-  /** T1：取消制造作业（材料全额退回仓库、制造费不退） */
-  cancelManufacturingNow(): CommandResult {
-    const result = cancelManufacturing(this.state, this.ctx)
+  /** v21：取消指定制造线（按线号；材料全额退回仓库、制造费不退） */
+  cancelManufacturingAt(runId: number | string): CommandResult {
+    const result = cancelManufacturing(this.state, this.ctx, Number(runId))
     if (result.ok) {
       void this.persist()
       this.notify()

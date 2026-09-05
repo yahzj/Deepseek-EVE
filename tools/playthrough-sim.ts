@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 全流程模拟验证（2026-09-05 船长需求）——AI 玩家从零开始跑完整内容链：
  * 技能训练 / 采矿 / 精炼 / 制造 / 市场买卖 / 换船配装 / 悬赏远征 / 声望 / 星系探索扫描 /
  * AI 副船 / 随机事件 / 低安遭遇，直到「全部星系点亮 + DSI 声望 ≥13 +
@@ -514,7 +514,7 @@ const craftedOnce = new Set<string>()
 /** 蓝图：市场买书 → 学习 → 制造一件（制造链验证一次；防重复造抽血）。
  * 只处理市场有书可购的配方（碎片/原型专属配方无书，模拟不代打碎片）；无书配方跳过不卡循环。 */
 function doLearnCraft(): void {
-  if (state.manufacturing.active) return
+  if (state.manufacturingRuns.length > 0) return
   const bp = [...ctx.blueprints.values()]
     .filter((b) => goodOf('blueprint', b.id) !== undefined)
     .sort((a, b) => a.priceIsk - b.priceIsk)

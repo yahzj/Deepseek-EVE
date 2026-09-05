@@ -67,7 +67,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.stopScanNow(), '已终止扫描探索：就地扫描进度已保存，下次续扫。')
       break
     case 'cancel-manufacture':
-      run(engine.cancelManufacturingNow(), '已取消制造：材料全额退回物品仓库（制造费不退）。')
+      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), '已取消制造：材料全额退回物品仓库（制造费不退）。')
       break
     case 'stop-refine':
       if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), '已停止该台炉：原料未锁定，余料仍在仓库。')
