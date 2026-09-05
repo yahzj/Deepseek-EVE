@@ -14,6 +14,7 @@ import { LogList, Panel } from '@whale/ui'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { TutorialGuide, TutorialEpilogue, type GuideGo } from './panels/TutorialGuide'
+import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
@@ -364,6 +365,7 @@ export function App({ engine }: { engine: GameEngine }) {
           {debugOn ? <DebugButton engine={engine} onFastForwarded={() => setReportDismissed(false)} /> : null}
           <span className="app-isk">{state.wallet.isk.toLocaleString('zh-CN')} ISK</span>
           <span className="app-clock">在线 {formatDurationMs(state.gameMs)}</span>
+          <AnnouncementHub engine={engine} />
           <button className="app-btn" onClick={() => setShowHandbook(true)} title="玩法说明与图鉴">
             手册
           </button>

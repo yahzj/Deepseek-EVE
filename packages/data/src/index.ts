@@ -15,6 +15,7 @@ export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
 export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
+export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 
 export type {
