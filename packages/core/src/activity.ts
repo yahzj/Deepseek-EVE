@@ -183,6 +183,21 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         stop: 'cancel-ai',
         stopParam: shipId,
       })
+    } else if (task.kind === 'salvage') {
+      // B3 AI 打捞任务
+      const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
+      const phase = task.phase === 'returning' ? '返航卸货' : task.phase === 'outbound' ? '出航' : '打捞中'
+      out.push({
+        id: `ai-${shipId}`,
+        kind: 'ai',
+        label: `${shipName} · 打捞`,
+        sub: `${gName}（${phase}）`,
+        percent: null,
+        remainingMs: null,
+        stopable: true,
+        stop: 'cancel-ai',
+        stopParam: shipId,
+      })
     } else {
       // B1.5 AI 驻留待命（out 去程给倒计时；stand 驻留中）
       const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId

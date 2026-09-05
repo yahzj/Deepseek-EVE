@@ -128,6 +128,36 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   return true
 }
 
+/** 一轮打捞的通用结算（主控作业与 AI 任务共用）：
+ * 抽该星系敌群型号池一只（威胁加权）→ 体积当量系数（含放干扣减）→ 返回 { itemId, volumeM3 }；
+ * 星系无型号池返回 null。放货入舱由调用方按剩余舱容裁决（放不下 = 满仓返航）。 */
+export function pullOneWreck(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+): { itemId: string; mul: number; volumeM3: number } | null {
+  const pool: Array<{ anomalyId: string; threat: number }> = []
+  for (const a of ctx.anomalies.values()) {
+    if (a.galaxyId === galaxyId) pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
+  }
+  if (pool.length === 0) return null
+  let acc = 0
+  const total = pool.reduce((n, p) => n + p.threat, 0)
+  const roll = nextRandom(state.rng) * total
+  let chosen = pool[0]!
+  for (const p of pool) {
+    acc += p.threat
+    if (roll <= acc) {
+      chosen = p
+      break
+    }
+  }
+  const mul = salvageRoundPull(state, ctx, galaxyId)
+  const wreckId = wreckItemIdOf(chosen.anomalyId)
+  const def = ctx.items.get(wreckId) ?? wreckItemDefOf(chosen.anomalyId, chosen.anomalyId, chosen.threat)
+  return { itemId: wreckId, mul, volumeM3: def.unitM3 * mul }
+}
+
 /**
  * 引擎内部：按流逝时间推进打捞状态机（出航 → 逐台打捞 → 满仓返航 → 到港卸货结束）。
  * 剩余时间管理器与采矿同构：时间按阶段逐段消费，一次大推进可完整穿越全程。
@@ -180,8 +210,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     }
 
     // ── 打捞阶段：逐台打捞器按各自周期结算 ──
-    const pool = wreckPoolOf(ctx, galaxyId)
-    if (pool.length === 0) {
+    if (wreckPoolOf(ctx, galaxyId).length === 0) {
       resetOp(state)
       addLog(state, 'warn', '该星系敌群数据缺失，打捞作业已停止。')
       return
@@ -207,23 +236,13 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + stepMs
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
-        // 抽型号（该星系敌群按威胁加权）→ 抽体积当量系数（同时放干扣减）
-        let acc = 0
-        const total = pool.reduce((n, p) => n + p.threat, 0)
-        const roll = nextRandom(state.rng) * total
-        let chosen = pool[0]!
-        for (const p of pool) {
-          acc += p.threat
-          if (roll <= acc) {
-            chosen = p
-            break
-          }
+        const pulled = pullOneWreck(state, ctx, galaxyId)
+        if (!pulled) {
+          resetOp(state)
+          addLog(state, 'warn', '该星系敌群数据缺失，打捞作业已停止。')
+          return
         }
-        const mul = salvageRoundPull(state, ctx, galaxyId)
-        const wreckId = wreckItemIdOf(chosen.anomalyId)
-        const def = ctx.items.get(wreckId) ?? wreckItemDefOf(chosen.anomalyId, chosen.anomalyId, chosen.threat)
-        const volumeM3 = def.unitM3 * mul
-        if (volumeM3 > freeCargoM3(state, ctx)) {
+        if (pulled.volumeM3 > freeCargoM3(state, ctx)) {
           // 满仓（下一轮放不下）：自动返航
           s.phase = 'returning'
           s.phaseAccMs = 0
@@ -234,8 +253,8 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           )
           break
         }
-        addItem(state, wreckId, mul)
-        s.tripM3 += volumeM3
+        addItem(state, pulled.itemId, pulled.mul)
+        s.tripM3 += pulled.volumeM3
       }
       if (s.phase === 'returning') break
     }

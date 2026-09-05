@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceSalvageOp, startSalvageOp, stopSalvageOp } from '../src/salvaging'
 import { injectWreckDensity, wreckDensityOf } from '../src/salvage'
+import { assignAiSalvage, advanceAi } from '../src/ai'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 import { countItem, countWare } from '../src/inventory'
 
@@ -73,5 +74,30 @@ describe('打捞作业（采矿式单趟）', () => {
     expect(state.salvaging.active).toBe(false)
     expect(state.logs.some((l) => l.text.includes('打捞自动返港'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('不自动续'))).toBe(true)
+  })
+
+  it('AI 打捞任务：指派（需打捞器/名额/核心）→ 单趟往返 → 满仓返港卸货 → 任务结束核心归还', () => {
+    const state = fittedState(7)
+    state.debugQuick = true
+    const ctx = ctxOf(100)
+    // 副船 + 名额 + 基础核心
+    state.skills.trained['ai-expert'] = 1
+    state.aiCores.basic = 1
+    state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: ['mod-salvager-1'], mid: [], low: [] } }
+    // 无打捞器 → 拒绝
+    state.fleet['sandcat2']!.fitted = { high: [], mid: [], low: [] }
+    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-far', ctx).ok).toBe(false)
+    // 装上打捞器 → 出发
+    state.fleet['sandcat2']!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-far', ctx).ok).toBe(true)
+    // 大推进：出航（效率 40% 拉长）→ 打捞（基础周期 1s ÷40% = 2.5s/轮）→ 满仓（100 m³）→ 返航 → 结束
+    injectWreckDensity(state, ctx, 'galaxy-far', 40)
+    state.gameMs = 0
+    advanceAi(state, 200_000, ctx)
+    expect(state.aiAssignments['sandcat2']).toBeUndefined() // 任务结束
+    expect(state.aiCores.basic).toBe(1) // 核心已归还
+    const wreckId = 'wreck-ano-far'
+    expect(countItem(state, wreckId) + countWare(state, wreckId)).toBeGreaterThan(0) // 残骸已入物品仓库
+    expect(state.logs.some((l) => l.text.includes('打捞任务完成'))).toBe(true)
   })
 })

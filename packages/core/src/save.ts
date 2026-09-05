@@ -913,6 +913,33 @@ function normalizeState(raw: unknown): GameState {
           battle,
         },
       }
+    } else if (taskRaw.kind === 'salvage') {
+      // B3 AI 打捞任务（兼容字段）：星系合法才保留；相位/相位账重建
+      const galaxyId = typeof taskRaw.galaxyId === 'string' ? taskRaw.galaxyId : ''
+      if (!galaxyId) continue
+      const phaseRaw = taskRaw.phase
+      const phase: 'outbound' | 'salvaging' | 'returning' =
+        phaseRaw === 'outbound' || phaseRaw === 'returning' ? phaseRaw : 'salvaging'
+      aiAssignments[shipKey] = {
+        coreType: a.coreType,
+        startedAtGameMs: startedAt,
+        task: {
+          kind: 'salvage',
+          galaxyId,
+          phase,
+          phaseAccMs:
+            typeof taskRaw.phaseAccMs === 'number' && Number.isFinite(taskRaw.phaseAccMs)
+              ? Math.max(0, Math.floor(taskRaw.phaseAccMs))
+              : 0,
+          cycleAccMs:
+            typeof taskRaw.cycleAccMs === 'number' && Number.isFinite(taskRaw.cycleAccMs)
+              ? Math.max(0, Math.floor(taskRaw.cycleAccMs))
+              : 0,
+          deviceAccMs: {},
+          tripM3:
+            typeof taskRaw.tripM3 === 'number' && Number.isFinite(taskRaw.tripM3) ? Math.max(0, taskRaw.tripM3) : 0,
+        },
+      }
     }
   }
 

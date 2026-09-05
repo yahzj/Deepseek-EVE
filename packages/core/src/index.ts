@@ -342,7 +342,7 @@ export {
   rollRecycleLoot,
 } from './salvage'
 export type { RecycleTier, RecycleProfile } from './salvage'
-export { advanceSalvageOp, startSalvageOp, stopSalvageOp, salvagerCyclesOf } from './salvaging'
+export { advanceSalvageOp, startSalvageOp, stopSalvageOp, salvagerCyclesOf, pullOneWreck } from './salvaging'
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,
@@ -411,6 +411,7 @@ export {
   buyBasicAiCore,
   assignAiMining,
   assignAiExpedition,
+  assignAiSalvage,
   assignAiStandby,
   cancelAiTask,
   advanceAi,

@@ -419,6 +419,22 @@ export interface AiMiningTask {
   tripUnits: number
 }
 
+/** AI 副船任务：打捞（B3 单趟：outbound → salvaging → returning；满仓自动返港卸货后任务结束） */
+export interface AiSalvageTask {
+  kind: 'salvage'
+  /** 目标星系 id（已探索；有敌群型号池） */
+  galaxyId: string
+  phase: 'outbound' | 'salvaging' | 'returning'
+  /** 出航/返航腿累计（真实毫秒；已按核心效率拉长） */
+  phaseAccMs: number
+  /** 打捞统一推进步累计（真实毫秒；以最短打捞器周期为步） */
+  cycleAccMs: number
+  /** 各周期档打捞器相位账：周期 ms → 已累计 ms（真实毫秒） */
+  deviceAccMs: Record<string, number>
+  /** 本趟捞取体积当量累计（m³，展示用） */
+  tripM3: number
+}
+
 /** AI 副船任务：远征（V12 两阶段：out → battle → back；AI 只接高胜率单，奖励全额） */
 export interface AiExpeditionTask {
   kind: 'expedition'
@@ -448,8 +464,8 @@ export interface AiStandbyTask {
   phase: 'out' | 'stand'
 }
 
-/** AI 副船任务（采矿 / 远征 / 待命） */
-export type AiTask = AiMiningTask | AiExpeditionTask | AiStandbyTask
+/** AI 副船任务（采矿 / 打捞 / 远征 / 待命） */
+export type AiTask = AiMiningTask | AiSalvageTask | AiExpeditionTask | AiStandbyTask
 
 /** 一艘副船的 AI 指派（key = 副船 id，主控船不可被指派） */
 export interface AiAssignment {

@@ -17,6 +17,7 @@ import type { AiCoreType, SimContext } from './types'
 import type { CommandResult } from './engine'
 import { nextRandom } from './rng'
 import { addWare, cargoUnitM3 } from './inventory'
+import { pullOneWreck, salvagerCyclesOf } from './salvaging'
 import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOutput, shipInReturn } from './mining'
@@ -243,6 +244,61 @@ export function assignAiExpedition(
   return { ok: true }
 }
 
+/** 玩家指令：指派 AI 打捞任务（B3 单趟：出航 → 打捞 → 满仓自动返港卸货 → 任务结束，核心归还）。
+ * 要求：副船高槽装有打捞器；目标星系已探索且有敌群型号池；效率只拉长行程/周期，不减产。 */
+export function assignAiSalvage(
+  state: GameState,
+  shipId: string,
+  coreType: AiCoreType,
+  galaxyId: string,
+  ctx: SimContext,
+): CommandResult {
+  const pre = checkAssignable(state, shipId, coreType, ctx)
+  if (!pre.ok) return pre
+  const galaxy = ctx.galaxies.get(galaxyId)
+  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
+  if (!state.exploredGalaxies.includes(galaxyId)) {
+    return { ok: false, error: `「${galaxy.name}」尚未探明——先对其执行扫描探索。` }
+  }
+  const block = actionBlockReason(state, galaxyId)
+  if (block) return { ok: false, error: block }
+  if (salvagerCyclesOf(state, ctx, shipId).length === 0) {
+    return { ok: false, error: '该副船没有打捞器：先在其高槽装上打捞器（MK1/2/3）再派打捞任务。' }
+  }
+  let hasPool = false
+  for (const a of ctx.anomalies.values()) {
+    if (a.galaxyId === galaxyId) {
+      hasPool = true
+      break
+    }
+  }
+  if (!hasPool) {
+    return { ok: false, error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。` }
+  }
+  const eff = aiEfficiency(state, ctx, coreType)
+  spendAiCore(state, coreType)
+  state.aiAssignments[shipId] = {
+    coreType,
+    startedAtGameMs: state.gameMs,
+    task: {
+      kind: 'salvage',
+      galaxyId,
+      phase: 'outbound',
+      phaseAccMs: 0,
+      cycleAccMs: 0,
+      deviceAccMs: {},
+      tripM3: 0,
+    },
+  }
+  const shipName = shipDisplayName(state, ctx, shipId)
+  addLog(
+    state,
+    'info',
+    `[AI] ${shipName} 出发打捞：${galaxy.name}（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%；满仓自动返港卸货后任务结束）。`,
+  )
+  return { ok: true }
+}
+
 /** 玩家指令：指派 AI 副船前往指定星系驻留待命（占名额，可取消召回；低安星系进入遭遇暴露） */
 export function assignAiStandby(
   state: GameState,
@@ -314,6 +370,8 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext): v
     }
     if (assignment.task.kind === 'mining') {
       advanceAiMining(state, shipId, assignment, deltaMs, ctx)
+    } else if (assignment.task.kind === 'salvage') {
+      advanceAiSalvage(state, shipId, assignment, deltaMs, ctx)
     } else if (assignment.task.kind === 'expedition') {
       advanceAiExpedition(state, shipId, assignment, ctx)
     } else {
@@ -459,6 +517,119 @@ function advanceAiMining(
 }
 
 type AiMiningTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'mining' }>
+type AiSalvageTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'salvage' }>
+
+/** AI 打捞任务推进（B3 单趟：outbound → salvaging → returning；行程/周期按核心效率拉长，满仓返港后任务结束） */
+function advanceAiSalvage(
+  state: GameState,
+  shipId: string,
+  assignment: AiAssignment,
+  deltaMs: number,
+  ctx: SimContext,
+): void {
+  const task = assignment.task as AiSalvageTaskState
+  const eff = aiEfficiency(state, ctx, assignment.coreType)
+  const shipName = shipDisplayName(state, ctx, shipId)
+  const abort = (why: string): void => {
+    delete state.aiAssignments[shipId]
+    gainAiCore(state, assignment.coreType)
+    addLog(state, 'warn', `[AI·${shipName}] ${why}（${aiCoreName(assignment.coreType)} 已归还）。`)
+  }
+  const legBaseOf = (): number => {
+    if (state.debugQuick) return 1000
+    const mins = shortestTravelMinutes(ctx, HOME_GALAXY_ID, task.galaxyId)
+    const travel = Number.isFinite(mins) ? mins : 0
+    return Math.max(1, ctx.balance.mining.localLegMs + travelLegMs(state, ctx, travel, shipId))
+  }
+  let remaining = deltaMs
+  let guard = 0
+  while (remaining > 0) {
+    if (++guard > 100_000) break
+    // ── 出航 / 返航（按效率拉长） ──
+    if (task.phase === 'outbound' || task.phase === 'returning') {
+      const legBase = task.phase === 'outbound' ? Math.round(legBaseOf() / 2) : legBaseOf()
+      const legReal = Math.max(1, Math.round(legBase / eff))
+      const need = legReal - task.phaseAccMs
+      if (remaining < need) {
+        task.phaseAccMs += remaining
+        remaining = 0
+        break
+      }
+      remaining -= need
+      task.phaseAccMs = 0
+      if (task.phase === 'returning') {
+        // 到港：整仓卸入物品仓库 → 任务结束、核心归还
+        const cargo = state.fleet[shipId]?.cargo
+        let moved = 0
+        if (cargo) {
+          for (const [itemId, units] of Object.entries(cargo)) {
+            if (units > 0) {
+              state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + units
+              moved += units
+            }
+          }
+          for (const itemId of Object.keys(cargo)) delete cargo[itemId]
+        }
+        const galaxyName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
+        addLog(
+          state,
+          'trade',
+          `[AI·${shipName}] 打捞自动返港：${galaxyName} 残骸已卸入物品仓库（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。打捞任务完成（${aiCoreName(assignment.coreType)} 已归还）。`,
+        )
+        delete state.aiAssignments[shipId]
+        gainAiCore(state, assignment.coreType)
+        return
+      }
+      // 抵达目标星系
+      markExplored(state, task.galaxyId)
+      task.phase = 'salvaging'
+      task.cycleAccMs = 0
+      continue
+    }
+    // ── 打捞：逐台打捞器按各自真实周期结算（周期 = 基础周期 ÷ 效率） ──
+    const rawCycles = salvagerCyclesOf(state, ctx, shipId)
+    if (rawCycles.length === 0) {
+      abort('打捞器数据缺失，打捞任务终止')
+      return
+    }
+    const reals = rawCycles.map((c) => Math.max(1, Math.ceil(c / eff)))
+    const stepMs = Math.min(...reals)
+    if (task.cycleAccMs < stepMs) {
+      const need = stepMs - task.cycleAccMs
+      const take = Math.min(remaining, need)
+      task.cycleAccMs += take
+      remaining -= take
+      if (task.cycleAccMs < stepMs) break
+    }
+    task.cycleAccMs = 0
+    for (const real of reals) {
+      const key = String(real)
+      task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) + stepMs
+      while ((task.deviceAccMs[key] ?? 0) >= real) {
+        task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) - real
+        const pulled = pullOneWreck(state, ctx, task.galaxyId)
+        if (!pulled) {
+          abort('该星系敌群数据缺失，打捞任务终止')
+          return
+        }
+        if (pulled.volumeM3 > freeCargoFor(state, shipId, ctx)) {
+          task.phase = 'returning'
+          task.phaseAccMs = 0
+          addLog(
+            state,
+            'info',
+            `[AI·${shipName}] 货仓已满（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）：自动返航卸货。`,
+          )
+          break
+        }
+        const cargo = state.fleet[shipId]!.cargo
+        cargo[pulled.itemId] = (cargo[pulled.itemId] ?? 0) + pulled.mul
+        task.tripM3 += pulled.volumeM3
+      }
+      if (task.phase === 'returning') break
+    }
+  }
+}
 
 /** 副船货仓剩余空间（V18：低槽货舱扩展复数 Σ 加成——与 inventory.cargoCapacityM3Of 同源语义） */
 function freeCargoFor(state: GameState, shipId: string, ctx: SimContext): number {

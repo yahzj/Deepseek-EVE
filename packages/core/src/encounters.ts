@@ -89,6 +89,8 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
       }
     } else if (t.kind === 'standby' && t.phase === 'stand') {
       push({ galaxyId: t.galaxyId, shipId: sid, kind: '停留' }) // 已驻留的副船 = 区域停留船
+    } else if (t.kind === 'salvage') {
+      push({ galaxyId: t.galaxyId, shipId: sid, kind: '打捞' }) // B3：AI 打捞任务同构暴露
     }
   }
   return [...out.values()]
