@@ -1509,11 +1509,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 8px 6px;
   border: 1px solid rgba(85, 112, 140, 0.35);
   border-radius: 8px;
   background: rgba(14, 24, 40, 0.6);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--wui-text);
+  text-align: center;
+}
+.app-fit-slot-icon:hover {
+  border-color: rgba(79, 216, 196, 0.55);
 }
 .app-fit-slot-icon.is-filled {
   border-color: rgba(79, 216, 196, 0.35);
@@ -1535,9 +1543,81 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.app-fit-slot-icon .app-fit-baypick {
-  width: 100%;
-  font-size: 11px;
+.app-fit-slot-icon-unfit {
+  font-size: 10px;
+  color: var(--wui-red);
+  opacity: 0.85;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.app-fit-slot-icon-unfit:hover {
+  background: rgba(224, 82, 74, 0.15);
+}
+/* ── 槽位换装浮层（覆盖左栏船属性；船长 2026-09-05） ── */
+.app-fit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 8, 15, 0.62);
+}
+.app-fit-modal {
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #0d1a2b, #081019);
+  border: 1px solid var(--wui-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
+}
+.app-fit-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.app-fit-pickgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.app-fit-pick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 8px;
+  text-align: left;
+  font-family: inherit;
+  color: var(--wui-text);
+  background: rgba(15, 26, 40, 0.6);
+  border: 1px solid rgba(85, 112, 140, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.app-fit-pick-item:hover {
+  border-color: rgba(79, 216, 196, 0.55);
+  background: rgba(24, 40, 60, 0.7);
+}
+.app-fit-pick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+}
+.app-fit-pick-name {
+  font-size: 12px;
+  line-height: 1.3;
+}
+.app-fit-pick-sub {
+  font-size: 10.5px;
+  color: var(--wui-text-dim);
 }
 .app-fit-slot.is-filled {
   border-style: solid;

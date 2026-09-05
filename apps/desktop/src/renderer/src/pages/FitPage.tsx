@@ -4,7 +4,7 @@
  * （高 = 炮台/采集器/无人机装置；中 = 盾系/推进；低 = 甲系/货舱扩展）。
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { DamageResists, ModuleDef, ModuleSlot, RackSlot } from '@whale/core'
 import {
   countModule,
@@ -80,20 +80,27 @@ export function FitPage({ engine, onToast }: PageProps) {
   const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) : 0
   // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
-  function handleFit(m: ModuleDef): void {
-    const r = engine.fitModuleAt(m.id)
-    if (!r.ok) onToast(r.error ?? '装配失败', true)
-    else onToast(`${m.name} 已装配到${rackLabel(rackOf(m))}。`)
+  function handleUnfit(rack: RackSlot, index: number): void {
+    if (engine.unfitAtAt(rack, index)) onToast('装备已卸下并放回装备库。')
   }
 
-  function handleFitToBay(m: ModuleDef, rack: RackSlot, index: number): void {
+  // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
+  const [pickBay, setPickBay] = useState<{ rack: RackSlot; index: number } | null>(null)
+  function openPick(rack: RackSlot, index: number): void {
+    setPickBay({ rack, index })
+  }
+  function candidatesOf(rack: RackSlot): ModuleDef[] {
+    return bayModules.filter((m) => rackOf(m) === rack)
+  }
+  function pickModule(m: ModuleDef): void {
+    if (!pickBay) return
+    const { rack, index } = pickBay
+    // 该位已装 → 先卸下旧件（放回装备库），再装入所选件
+    if ((fitted?.[rack]?.[index] ?? null) !== null) engine.unfitAtAt(rack, index)
     const r = engine.fitModuleTo(m.id, rack, index)
     if (!r.ok) onToast(r.error ?? '装配失败', true)
     else onToast(`${m.name} 已装入${rackLabel(rack)}第 ${index + 1} 位。`)
-  }
-
-  function handleUnfit(rack: RackSlot, index: number): void {
-    if (engine.unfitAtAt(rack, index)) onToast('装备已卸下并放回装备库。')
+    setPickBay(null)
   }
 
   /** 空位候选下拉文案：V18.1 收敛件标注"第 N 件衰减"（避免玩家误以为全效线性叠加） */
@@ -177,7 +184,6 @@ export function FitPage({ engine, onToast }: PageProps) {
             const bays = fitted ? fitted[rack] : []
             const filledCount = bays.filter((id) => id !== null).length
             const total = slots[rack]
-            const candidates = bayModules.filter((m) => rackOf(m) === rack)
             return (
               <div key={rack} className="app-fit-rack">
                 <div className="app-fit-rack-title">
@@ -189,50 +195,42 @@ export function FitPage({ engine, onToast }: PageProps) {
                   const fittedId = bays[i] ?? null
                   const fittedDef = fittedId ? engine.ctx.modules.get(fittedId) : undefined
                   if (!fittedDef) {
-                    // 空位：图标格 + 候选下拉（取消列表形式，船长 2026-09-05）
+                    // 空位：点击槽位 → 浮层选装（船长 2026-09-05：格内不显示位序、无下拉）
                     return (
-                      <div key={`${rack}-${i}`} className="app-fit-slot-icon is-empty">
+                      <button
+                        key={`${rack}-${i}`}
+                        className="app-fit-slot-icon is-empty"
+                        onClick={() => openPick(rack, i)}
+                        title={`第 ${i + 1} 位（空）——点击选择装备`}
+                      >
                         <span className="app-fit-slot-icon-glyph">＋</span>
-                        <span className="app-fit-slot-icon-name">第 {i + 1} 位</span>
-                        {candidates.length > 0 ? (
-                          <select
-                            className="app-select app-fit-baypick"
-                            value=""
-                            onChange={(e) => {
-                              const mid = e.target.value
-                              if (!mid) return
-                              const m = engine.ctx.modules.get(mid)
-                              if (m) handleFitToBay(m, rack, i)
-                            }}
-                          >
-                            <option value="">— 装入…</option>
-                            {candidates.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {fitOptionLabel(m)}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="app-dim">无候选</span>
-                        )}
-                      </div>
+                        <span className="app-fit-slot-icon-name">装入</span>
+                      </button>
                     )
                   }
                   const tone = toneOf(fittedDef.slot)
                   return (
-                    <div
+                    <button
                       key={`${rack}-${i}`}
                       className="app-fit-slot-icon is-filled"
-                      title={`${fittedDef.name} · ${moduleShortEffect(fittedDef)} · ${rackLabel(rack)}第${i + 1}位`}
+                      onClick={() => openPick(rack, i)}
+                      title={`${fittedDef.name} · ${moduleShortEffect(fittedDef)} · 第${i + 1}位（点击更换）`}
                     >
                       <span className="app-fit-slot-icon-glyph">
                         <Glyph name={fittedDef.slot} size={22} color={tone} />
                       </span>
                       <span className="app-fit-slot-icon-name">{fittedDef.name}</span>
-                      <button className="app-btn is-small is-warn" onClick={() => handleUnfit(rack, i)}>
+                      <span
+                        className="app-fit-slot-icon-unfit"
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUnfit(rack, i)
+                        }}
+                      >
                         卸下
-                      </button>
-                    </div>
+                      </span>
+                    </button>
                   )
                 })}
                 </div>
@@ -243,6 +241,45 @@ export function FitPage({ engine, onToast }: PageProps) {
           </div>
         </div>
       </Panel>
+
+      {/* 槽位换装浮层：覆盖左侧舰船属性（船长 2026-09-05） */}
+      {pickBay ? (
+        <div className="app-fit-overlay" onClick={() => setPickBay(null)}>
+          <div className="app-fit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-fit-modal-head">
+              <span>
+                {RACK_LABELS[pickBay.rack]} · 第 {pickBay.index + 1} 位
+                {fitted?.[pickBay.rack]?.[pickBay.index] ? '（更换）' : '（装入）'}
+              </span>
+              <button className="app-btn is-small" onClick={() => setPickBay(null)}>
+                关闭
+              </button>
+            </div>
+            <div className="app-dim app-note">
+              以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。同类多装规则与 CPU
+              校验与引擎一致。
+            </div>
+            <div className="app-fit-pickgrid">
+              {candidatesOf(pickBay.rack).map((m) => (
+                <button key={m.id} className="app-fit-pick-item" title={fitOptionLabel(m)} onClick={() => pickModule(m)}>
+                  <span className="app-fit-pick-icon">
+                    <Glyph name={m.slot} size={24} color={toneOf(m.slot)} />
+                  </span>
+                  <span className="app-fit-pick-name">{m.name}</span>
+                  <span className="app-fit-pick-sub">
+                    ×{countModule(state, m.id)} · {moduleShortEffect(m)}
+                  </span>
+                </button>
+              ))}
+              {candidatesOf(pickBay.rack).length === 0 ? (
+                <div className="app-dim app-inv-empty">
+                  装备库没有适配此槽位的装备——市场购买或在「工业」页制造后，回来点击槽位装入。
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
