@@ -10,6 +10,14 @@
 >   原位播放爆炸并淡出（独立残骸层，不占阵型）。
 > - 平衡提示：随机分散使敌方减员变慢（原集火先拆一艘），战斗略长；胜率预估仍用
 >   血池期望模型，差异进 C4 校准轮复核。
+> - **敌方近盲带规则（2026-09-05 追加拍板，c4f9c17）**：敌方单位在近盲带内
+>   （dist < weapon.minRangeM）**不停火**，照常射击但伤害 × `blindDmgMul` 打折
+>   （单发 = round(shotDmg × blindDmgMul)，实时引擎与胜率预估同源）；AnomalyDef 新增
+>   `blindDmgMul?`（0~1，缺省 0.3，现有怪物全按 0.3，未来单卡可覆盖）。
+>   **玩家武器无此待遇**：玩家在近盲带内仍不开火——双方在近盲带上行为区分
+>   （玩家贴脸钻敌近盲不再是零风险）。
+> - **C4 第二批·kite 速度（2026-09-05，eb40979）**：kite 战术速度系数调至 0.72 且
+>   封顶（foeSpeedCapMul），远程怪速度与随威胁成长大降——玩家可以追上、钻其近盲带。
 
 > 状态：**已确认**（用户 2026-09 确认；含补充：离线性能专项测试、编队/多单位架构预留、
 > 无人机 v1 并入主船 + 生存契约 DroneDefense 已补、分期 P1 引擎 / P2 小剧场 UI）。
@@ -41,7 +49,8 @@
 ## 三、命中与伤害公式（每次开火）
 
 ```
-开火条件    weapon.minRangeM ≤ 距离 ≤ weapon.maxRangeM（过近/过远不开火）
+开火条件    weapon.minRangeM ≤ 距离 ≤ weapon.maxRangeM（过近/过远不开火；
+            **敌方例外（2026-09-05）：近盲带内不停火、伤害 ×blindDmgMul**，见文首更新）
 距离衰减    distFactor：minRange 端 = 1.0 → 线性降至 maxRange 端 = weapon.falloff
 有效回避    effEvasion = defender.evasion × clamp(sigMin, sigMax, sigBaseM / defender.signatureM)
 命中加成    effHitBonus = attacker.hitBonus × clamp(scanMin, scanMax, attacker.scanResMm / scanBaseMm)
@@ -73,10 +82,14 @@
 ## 六、敌方单位换算（运行时，初值校准）
 
 - AnomalyDef 增：`tactic`（默认 orbit）/ `defProfile`（默认 balanced，血型比例 盾型 50/25/25、
-  甲型 20/55/25、均衡 33/33/33）/ `escorts`（0~2）/ `dmgMix`（默认均分）/ `foeSpeedMps?`
-- 主体总血 = threat × foeHpPerThreat；僚机每架 threat × foeEscortThreatFrac
-- 敌方武器由 tactic 定型（brawl 近程高射速低单发 / kite 远程低射速高单发），
-  总火力 ≈ threat × foeDpsPerThreat；敌 maxRange 由 tactic 换算出（brawl 近/orbit 中/kite 远）
+  甲型 20/55/25、均衡 33/33/33）/ `escorts`（0~2）/ `dmgMix`（默认均分）/ `foeSpeedMps?` /
+  `blindDmgMul?`（近盲带伤害比例，缺省 0.3）
+- 主体总血 = C4 时长预期曲线 `foeHpOfThreat(T)` = 参考段火力 foeRefFire(段) × D(T)
+  （D = 5+85×((T−6)/90)^1.6）；血量按威胁份额分给主体/僚机（每架 escorts×0.6 份额）
+- 敌方武器由 tactic 定型（brawl 贴脸近程 / orbit 中距环绕 / kite 远程高最小射程），
+  C4-#3 起走"虚拟装配模板"：射程 = 战术带 ×(1+侧重系数×(T−10)/90) 封顶 15km；
+  速度 = 参考船速段 × m_base(T) × tactic 系数（brawl 1.12 / orbit 1.0 / kite 0.72）封顶；
+  总火力 ≈ threat × foeDpsPerThreat（0.8）
 - 现有 10 目标按叙事补字段（深渊之门卫队 shield+kite、坟场守墓人 armor+brawl、
   星髓巢穴 armor+brawl+僚机×2 = 首个 1v3 等）
 
