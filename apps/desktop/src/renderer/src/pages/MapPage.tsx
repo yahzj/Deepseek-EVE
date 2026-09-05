@@ -38,7 +38,7 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'star', label: '星图·远征', icon: '✦' },
   { key: 'mine', label: '矿带开采', icon: '⛏' },
   { key: 'bounty', label: '战斗悬赏', icon: '⚔' },
-  { key: 'salvage', label: '残骸打捞', icon: '🛰' },
+  { key: 'salvage', label: '残骸打捞', icon: '⚒' },
   { key: 'task', label: '任务中心', icon: '▦' },
 ]
 
@@ -260,9 +260,9 @@ function BeltCard({
           {isActiveBelt ? <em className="app-belt-flag is-run">⛏ 主控采掘中</em> : null}
           {locked ? (
             unexplored ? (
-              <em className="app-belt-flag">🔭 所在星系未探索</em>
+              <em className="app-belt-flag">✧ 所在星系未探索</em>
             ) : (
-              <em className="app-belt-flag">🔒 需声望 {belt.standingReq}</em>
+              <em className="app-belt-flag">✕ 需声望 {belt.standingReq}</em>
             )
           ) : null}
         </span>
@@ -271,7 +271,7 @@ function BeltCard({
             className="app-belt-ai-badge"
             title={`${aiCount} 艘 AI 副船正在此矿带采掘`}
           >
-            🤖×{aiCount}
+            ⚙×{aiCount}
           </span>
         ) : null}
       </div>
@@ -315,7 +315,7 @@ function BeltCard({
             {aiWorkers.map(([sid, a]) => (
               <span key={sid} className="app-belt-worker">
                 <span className="app-belt-worker-name">
-                  🤖 {shipDisplayName(state, engine.ctx, sid)}
+                  ⚙ {shipDisplayName(state, engine.ctx, sid)}
                   <span className="app-dim">（{aiCoreName(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
                 </span>
                 <button
@@ -349,7 +349,7 @@ function BeltCard({
           }
           onClick={mineStartClick}
         >
-          {isActiveBelt ? '停止开采' : expeditionOn ? '⚡ 转开采' : '开始开采'}
+          {isActiveBelt ? '停止开采' : expeditionOn ? '⇄ 转开采' : '开始开采'}
         </button>
         {/* T4 延后项：远征中转开采的醒目内联警示（取代易忽略的底部提示） */}
         {mineAsk ? (
@@ -590,12 +590,12 @@ function WreckCard({
       <div className="app-belt-head">
         <span className="app-belt-name">
           {g.name}
-          {isActive ? <em className="app-belt-flag is-run">🛰 主控打捞中</em> : null}
+          {isActive ? <em className="app-belt-flag is-run">⚒ 主控打捞中</em> : null}
           {lowSec ? <em className="app-belt-flag">⚠ 低安（打捞可能遇袭）</em> : null}
         </span>
         {aiWorkers.length > 0 ? (
           <span className="app-belt-ai-badge" title={`${aiWorkers.length} 艘 AI 副船正在此星系打捞`}>
-            🤖×{aiWorkers.length}
+            ⚙×{aiWorkers.length}
           </span>
         ) : null}
       </div>
@@ -614,7 +614,7 @@ function WreckCard({
       </div>
       {est.eff || est.val ? (
         <div className="app-belt-econ" title="估算 = 当前打捞器装配 × 当前密度 × 打捞/回收技能现算（展示口径，非结算）">
-          {est.eff ? <div>🛰 {est.eff}</div> : null}
+          {est.eff ? <div>⚒ {est.eff}</div> : null}
           {est.val ? <div className="app-belt-econ-val">{MONEY_GLYPH} {est.val}</div> : null}
         </div>
       ) : null}
@@ -625,7 +625,7 @@ function WreckCard({
             {aiWorkers.map((w) => (
               <span key={w.sid} className="app-belt-worker">
                 <span className="app-belt-worker-name">
-                  🤖 {shipDisplayName(state, engine.ctx, w.sid)}
+                  ⚙ {shipDisplayName(state, engine.ctx, w.sid)}
                   <span className="app-dim">（{aiCoreName(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
                 </span>
                 <button
@@ -650,7 +650,7 @@ function WreckCard({
             title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需高槽打捞器；单趟，满仓自动返航）'}
             onClick={onStart}
           >
-            🛰 开始打捞
+            ⚒ 开始打捞
           </button>
         )}
         <div className="app-belt-ai">

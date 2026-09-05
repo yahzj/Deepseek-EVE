@@ -218,7 +218,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
       ),
     )
     state.wallet.isk += loot
-    addLog(state, 'info', `🏆 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK。`)
+    addLog(state, 'info', `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK。`)
   } else {
     const loss = Math.round((bal.duraLossMin + nextRandom(state.rng) * (bal.duraLossMax - bal.duraLossMin)) * 1000) / 1000
     if (fleetShip) {

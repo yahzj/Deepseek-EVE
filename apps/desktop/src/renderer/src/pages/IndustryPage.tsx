@@ -126,7 +126,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
   return (
     <div className="app-belt-card" key={def.id}>
       <div className="app-belt-head">
-        <span className="app-belt-name">{isWreck ? `🛰 ${def.name}` : def.name}</span>
+        <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
       </div>
       <div className="app-belt-desc">
         {isWreck ? '每批开箱 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）' : def.description}
@@ -140,7 +140,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
             {runs.map((v) => (
               <span key={v.id} className="app-belt-worker">
                 <span className="app-belt-worker-name">
-                  {v.worker === 'pilot' ? '⛏ 主控' : `🤖 ${v.workerLabel}核心`} · {isWreck ? '已开箱' : '已炼'} {v.batchesDone} 批
+                  {v.worker === 'pilot' ? '⛏ 主控' : `⚙ ${v.workerLabel}核心`} · {isWreck ? '已开箱' : '已炼'} {v.batchesDone} 批
                 </span>
                 <span
                   className="app-progress-mini"

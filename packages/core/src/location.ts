@@ -229,7 +229,7 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   addLog(
     state,
     'info',
-    `⛳ 掩护巡逻：舰船已抵达「${target.name}」并留守该星系（低安星系可能遭遇巡逻/伏击；可随时返航空间站，或从该处继续采矿/出击）。`,
+    `⚐ 掩护巡逻：舰船已抵达「${target.name}」并留守该星系（低安星系可能遭遇巡逻/伏击；可随时返航空间站，或从该处继续采矿/出击）。`,
   )
   return { ok: true }
 }
@@ -252,7 +252,7 @@ export function advanceStandby(state: GameState, ctx: SimContext): void {
   addLog(
     state,
     'info',
-    `⛳ 已抵达「${name}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
+    `⚐ 已抵达「${name}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
   )
 }
 

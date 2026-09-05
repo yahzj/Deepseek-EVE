@@ -32,9 +32,9 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 /** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05） */
 export type ShipTab = 'fleet' | 'ai' | 'shop'
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
-  { key: 'fleet', label: '我的舰队', icon: '⛵' },
-  { key: 'ai', label: 'AI 指挥', icon: '🤖', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
-  { key: 'shop', label: '舰船市场', icon: '🛒' },
+  { key: 'fleet', label: '我的舰队', icon: '◈' },
+  { key: 'ai', label: 'AI 指挥', icon: '⚙', title: 'AI 副船：指派采矿/打捞/掩护巡逻（远征已下线，悬赏请主控出击）' },
+  { key: 'shop', label: '舰船市场', icon: '¥' },
 ]
 
 export function ShipPage({
@@ -218,7 +218,7 @@ export function ShipPage({
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
                     {isLockedShip ? (
                       <em className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
-                        🔒 锁定
+                        ✕ 锁定
                       </em>
                     ) : null}
                   </span>
@@ -241,7 +241,7 @@ export function ShipPage({
                         title={shipState.customName ? `已自定义名称——点击改名（或恢复默认）` : '自由改名（免费，10 字内，可重名；同型默认自动带 #N）'}
                         onClick={() => startRename(uid, shipState.customName)}
                       >
-                        ✏️ 改名
+                        ✎️ 改名
                       </button>
                     ) : null}
                     <button
@@ -249,7 +249,7 @@ export function ShipPage({
                       title={isLockedShip ? '已锁定防误售——点击解锁' : '锁定此船，防止误售（锁定后仍可驾驶/派 AI）'}
                       onClick={() => handleToggleLock(uid, isLockedShip)}
                     >
-                      {isLockedShip ? '🔓 解锁' : '🔒 锁定'}
+                      {isLockedShip ? '解锁' : '✕ 锁定'}
                     </button>
                   </span>
                 </div>
@@ -317,7 +317,7 @@ export function ShipPage({
                       }}
                       title="消耗驾驶船货仓 1 枚修理组件（民用优先）：基础回复 HP×容量增幅（民用30/军用70）——野外/回港前应急可用"
                     >
-                      🧰 组件修复 ×{kitCount}
+                      ✚ 组件修复 ×{kitCount}
                     </button>
                   ) : null}
                 </div>
@@ -377,7 +377,7 @@ export function ShipPage({
                     <span className="app-dim">货仓与装备随船保存</span>
                     <div className="app-ship-bottom-btns">
                       <span className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
-                        🔒 已锁定
+                        ✕ 已锁定
                       </span>
                       <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
                         切换驾驶
@@ -447,7 +447,7 @@ export function ShipPage({
                     ) : null}
                     {lock ? (
                       <span className="app-chip is-exotic" title={lock}>
-                        🔒 {lock}
+                        ✕ {lock}
                       </span>
                     ) : null}
                     {good ? (
@@ -610,9 +610,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 return (
                   <option key={b.id} value={b.id} disabled={locked}>
                     {unexplored
-                      ? `🔭 ${b.name}（所在星系未探索——先到星图扫描）`
+                      ? `✧ ${b.name}（所在星系未探索——先到星图扫描）`
                       : locked
-                        ? `🔒 ${b.name}（需声望 ${b.standingReq}，当前 ${standing}）`
+                        ? `✕ ${b.name}（需声望 ${b.standingReq}，当前 ${standing}）`
                         : `${b.name}（${engine.ctx.items.get(b.oreId)?.name}）`}
                   </option>
                 )

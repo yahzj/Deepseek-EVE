@@ -232,7 +232,7 @@ function GoodRow({
           {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
           {lock ? (
             <span className="app-chip is-exotic" title={lock}>
-              🔒 {lock}
+              ✕ {lock}
             </span>
           ) : null}
         </div>
@@ -247,7 +247,7 @@ function GoodRow({
             供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : '暂无现货'}</b>
             {quote.sellQty > 1 ? ` ×${quote.sellQty.toLocaleString('zh-CN')}` : ''}
           </span>
-          {life !== undefined ? <span className="app-chip app-life-chip">⏳ {fmtClock(life)}</span> : null}
+          {life !== undefined ? <span className="app-chip app-life-chip">⟳ {fmtClock(life)}</span> : null}
           {poolQ !== undefined ? <span className="app-dim"> · 站内库存 {Math.floor(poolQ).toLocaleString('zh-CN')}</span> : null}
           {good.rarity === 'common' ? <span className="app-dim"> · {RARITY_TEXT[good.rarity]}</span> : null}
           {quote.sell === undefined && good.rarity !== 'common' ? (
@@ -514,7 +514,7 @@ function MyOrders({ engine, onToast }: PageProps) {
         <li key={order.id} className="app-inv-row">
           <div className="app-inv-main">
             <span className="app-inv-name">
-              {order.side === 'sell' ? '⬇ 卖单' : '⬆ 买单'}：{goodName(engine.ctx, order.good)}
+              {order.side === 'sell' ? '▼ 卖单' : '▲ 买单'}：{goodName(engine.ctx, order.good)}
             </span>
             <span className="app-inv-count">
               {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} ISK · 剩余 {order.qty.toLocaleString('zh-CN')}
@@ -551,7 +551,7 @@ export function MarketPage({
   const [mktTab, setMktTab] = useState<'common' | 'rare'>('common')
   // 外部聚焦（如舰船页"去市场"）：focusSeq 递增时把搜索词设为指定商品 key（像玩家自己搜的一样）
   const [kw, setKw] = useState('')
-  // 行情详情选中商品（船长 2026-09-05：行内「📈 详情」/外部聚焦展开）
+  // 行情详情选中商品（船长 2026-09-05：行内「 详情」/外部聚焦展开）
   const [selKey, setSelKey] = useState<string | null>(null)
   // 右栏大盘默认选中第一个常驻商品；点击其它行或外部聚焦后以 selKey 为准
   const defaultSelKey = stockedFirst(engine, common)[0]?.key ?? null
@@ -683,7 +683,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title="稀有订单"
-                  right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · ⏳=现存单到期</span>}
+                  right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · ⟳=现存单到期</span>}
                   rows={stockedFirst(engine, rareCol)}
                   selKey={activeSelKey}
                   onSelect={setSelKey}
@@ -699,7 +699,7 @@ export function MarketPage({
           ) : (
             <Panel
               title="市场详情"
-              right={<span className="app-dim">点击左侧商品的「📈 详情」查看行情</span>}
+              right={<span className="app-dim">点击左侧商品的「 详情」查看行情</span>}
             >
               <div className="app-dim app-inv-empty">
                 从左侧列表选择一件商品，即可查看价格曲线、买卖盘深度与交易面板。

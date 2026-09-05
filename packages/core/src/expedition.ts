@@ -366,7 +366,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       const text = texts[Math.floor(nextRandom(state.rng) * texts.length)]!
       const bonus = Math.round(reward * 0.1)
       reward += bonus
-      addLog(state, 'trade', `🎁 ${text}（+${bonus.toLocaleString('zh-CN')} ISK）`)
+      addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} ISK）`)
     }
     const lootText: string[] = []
     const lootMul = lootFactor(state)

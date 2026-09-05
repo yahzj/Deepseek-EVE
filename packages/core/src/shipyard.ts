@@ -362,7 +362,7 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
   addLog(
     state,
     'info',
-    `🧰 使用 ${def.name} ×1：${shipName} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
+    `✚ 使用 ${def.name} ×1：${shipName} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
   )
   return { ok: true }
 }

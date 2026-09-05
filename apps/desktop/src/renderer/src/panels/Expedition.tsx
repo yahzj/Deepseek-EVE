@@ -55,10 +55,10 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
       {scan.active || view.active || state.transit.active ? (
         <div className="app-dim app-exp-idle">
           {state.transit.active
-            ? `🏠 返航空间站中 · 剩余约 ${formatDurationMs(Math.max(0, state.transit.finishAtGameMs - state.gameMs))}`
+            ? `⌂ 返航空间站中 · 剩余约 ${formatDurationMs(Math.max(0, state.transit.finishAtGameMs - state.gameMs))}`
             : ''}
           {state.transit.active && (scan.active || view.active) ? ' ｜ ' : ''}
-          {scan.active ? `🔭 扫描探索进行中 · 剩余约 ${formatDurationMs(scan.remainingMs)}` : ''}
+          {scan.active ? `✧ 扫描探索进行中 · 剩余约 ${formatDurationMs(scan.remainingMs)}` : ''}
           {scan.active && view.active ? ' ｜ ' : ''}
           {view.active
             ? view.phase === 'combat'
@@ -74,7 +74,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
         /* T8：野外（掩护巡逻 / 胜利停留 / 扫描完成后停泊）——远征/扫描/采矿均可即时出发，或显式返航 */
         <div className="app-exp-idle app-idle-field">
           <span>
-            ⛺ 舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（掩护巡逻 / 野外停留）——
+            ⚐ 舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（掩护巡逻 / 野外停留）——
             从这里可即时出发远征、扫描或采矿（去程已取消，无航行等待）；卸货、维修与换船需返回空间站。
           </span>
           <button
@@ -85,7 +85,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
               if (!r.ok) onToast(r.error ?? '无法返航', true)
             }}
           >
-            🏠 返航空间站
+            ⌂ 返航空间站
           </button>
         </div>
       ) : (
@@ -810,7 +810,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   onClick={() => handleScan(selected)}
                   title={`派出深空扫描艇：立即就地扫描（去程已取消）约 10 分钟，完成即停留该星系；期间事件倒计时加速、更易遭遇「探索发现」`}
                 >
-                  🔭 扫描探索（约 {Math.max(1, scanMinutesOf(selected))} 分钟）
+                  ✧ 扫描探索（约 {Math.max(1, scanMinutesOf(selected))} 分钟）
                 </button>
                 <span className="app-dim app-map-scan-note">完成即点亮 · 期间事件更频繁</span>
               </div>
@@ -912,7 +912,7 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
   return (
     <div className="app-ga-row">
       <span className="app-ga-main">
-        🧰 应急修理
+        ✚ 应急修理
         <span className="app-dim app-ga-desc">消耗货仓 1 枚修理组件（民用优先）：基础 HP×容量增幅（民用30/军用70）</span>
       </span>
       <button
@@ -988,7 +988,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
     if (expOn && !mineAskBelt) {
       setMineAskBelt(beltId)
       onToast(
-        '⚡ 远征中开采 = 转场：本次远征将取消（无战果）' +
+        '⇄ 远征中开采 = 转场：本次远征将取消（无战果）' +
           (state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : '') +
           '——再点一次确认。',
         true,
@@ -1012,7 +1012,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
     if (miningActive && goAskAno !== ano.id) {
       setGoAskAno(ano.id)
       onToast(
-        `⚡ 采矿中出击 = 转战：当前采矿将结束（已采 ${state.mining.tripUnits} 单位随船），从矿带星系出发。` +
+        `⇄ 采矿中出击 = 转战：当前采矿将结束（已采 ${state.mining.tripUnits} 单位随船），从矿带星系出发。` +
           `当前驾驶「${pilotName}」${pilotRoleLabel ? `（${pilotRoleLabel}型）` : ''}——再点一次确认。`,
         true,
       )
@@ -1033,7 +1033,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
       {/* ① 前往掩护巡逻 */}
       <div className="app-ga-row">
         <span className="app-ga-main">
-          ⛳ 前往掩护巡逻
+          ⚐ 前往掩护巡逻
           <span className="app-dim app-ga-desc">即时转场留守该星系（低安可触发巡逻/伏击；可采矿/出击/返航）</span>
         </span>
         <button
@@ -1102,7 +1102,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
                 }
                 onClick={() => handleMineStart(b.id)}
               >
-                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? '⚡ 再点确认' : expOn ? '⚡ 转开采' : '⛏ 开采'}
+                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? '⇄ 再点确认' : expOn ? '⇄ 转开采' : '⛏ 开采'}
               </button>
             </div>
           )
@@ -1153,14 +1153,14 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
               }
               onClick={() => handleAnoGo(a)}
             >
-              {goAskAno === a.id ? '⚡ 再点确认' : miningActive ? '转战出发' : '出击'}
+              {goAskAno === a.id ? '⇄ 再点确认' : miningActive ? '转战出发' : '出击'}
             </button>
           </div>
         ))
       })()}
       {/* ⑤ 残骸打捞（B3：采矿式单趟作业；需高槽打捞器，满仓自动返航卸货后结束） */}
       <div className="app-bay-title app-ga-sub">
-        🛰 残骸打捞（该星系残骸密度 {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
+        ⚒ 残骸打捞（该星系残骸密度 {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
       </div>
       {state.salvaging.active && state.salvaging.galaxyId === galaxy.id ? (
         <div className="app-ga-row">
@@ -1195,7 +1195,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
               if (!r.ok) onToast(r.error ?? '无法打捞', true)
             }}
           >
-            🛰 开始打捞
+            ⚒ 开始打捞
           </button>
         </div>
       )}
@@ -1293,7 +1293,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       <div className="app-ano-top">
         <span className="app-ano-name">{anomaly.name}</span>
         <span className={`app-chip${locked ? ' is-dim' : ''}`}>
-          {unexplored ? '🔭 星系未探索' : reqMet ? `威胁 ${anomaly.threat}` : `需声望 ${anomaly.standingReq}`}
+          {unexplored ? '✧ 星系未探索' : reqMet ? `威胁 ${anomaly.threat}` : `需声望 ${anomaly.standingReq}`}
         </span>
       </div>
       <div className="app-ano-meta">
@@ -1317,14 +1317,14 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         })()}
         {cdRemain > 0 ? (
           <span className="app-dim" title="同目标重复出击的冷却（受该船扫描属性影响）">
-            {' '}· ⏳ 冷却 {Math.max(1, Math.ceil(cdRemain / 1000))} 秒
+            {' '}· ⟳ 冷却 {Math.max(1, Math.ceil(cdRemain / 1000))} 秒
           </span>
         ) : null}
       </div>
       {anomaly.tactic ? (
         <div className="app-ano-meta">
           <span className="app-dim" title="敌方战术决定了接战距离与克制关系：威胁低也可能打不动——胜率%与打法提示为准">
-            🛰 {FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
+            ⚒ {FOE_TACTIC_HINTS[anomaly.tactic] ?? `战术 ${anomaly.tactic}`}
           </span>
         </div>
       ) : null}
@@ -1380,7 +1380,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             }
             onClick={toggleLoop}
           >
-            {looping ? '■ 停止连击' : '🔁 连续出击'}
+            {looping ? '■ 停止连击' : '↻ 连续出击'}
           </button>
           <button
             className={`app-btn is-small ${miningActive && !goAsk ? 'is-warn is-primary' : goAsk ? 'is-dim' : 'is-primary'}`}
@@ -1406,7 +1406,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             }
             onClick={handleGoClick}
           >
-            {cdRemain > 0 ? '冷却中' : miningActive ? '⚡ 转战出发' : '出发'}
+            {cdRemain > 0 ? '冷却中' : miningActive ? '⇄ 转战出发' : '出发'}
           </button>
         </div>
       </div>
@@ -1496,7 +1496,7 @@ function StationCard({ engine, onToast }: { engine: GameEngine; onToast: ToastFn
             <div className="app-station-head">
               <span className="app-station-name">
                 {site.name}
-                {built ? <em className="app-chip app-station-built">🏗 已建成</em> : null}
+                {built ? <em className="app-chip app-station-built">⌂ 已建成</em> : null}
                 {!built && tier ? (
                   <em className="app-chip">建造中 · 档位「{tier.name}」</em>
                 ) : null}
@@ -1595,7 +1595,7 @@ function StationCard({ engine, onToast }: { engine: GameEngine; onToast: ToastFn
                   else onToast(r.error ?? '通讯失败', true)
                 }}
               >
-                📡 通讯记录
+                ✉ 通讯记录
               </button>
             ) : null}
           </div>

@@ -72,7 +72,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
             <div key={id} className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}`}>
               <div className="app-belt-head">
                 <span className="app-belt-name" title={bp?.name ?? id}>
-                  {kindShip ? '🚢 ' : '▦ '}
+                  {kindShip ? '◈ ' : '▦ '}
                   {bp?.name ?? id}
                 </span>
                 <span className="app-chip" style={{ marginLeft: 'auto' }}>
@@ -170,7 +170,7 @@ function BlueprintCard({
     <div className="app-belt-card">
       <div className="app-belt-head">
         <span className="app-belt-name">
-          {kindLabel === '舰船' ? '🚢 ' : kindLabel === '弹药' ? '▣ ' : ''}
+          {kindLabel === '舰船' ? '◈ ' : kindLabel === '弹药' ? '▣ ' : ''}
           {name}
           {run ? <em className="app-belt-flag is-run">{kindLabel === '舰船' ? '造船中' : '制造中'}</em> : null}
         </span>
@@ -184,7 +184,7 @@ function BlueprintCard({
           </span>
         ) : lock ? (
           <span className="app-chip is-exotic" title={lock} style={{ marginLeft: 'auto' }}>
-            🔒 {lock}
+            ✕ {lock}
           </span>
         ) : (
           <span className="app-chip" style={{ marginLeft: 'auto' }}>
@@ -253,7 +253,7 @@ function BlueprintCard({
           </button>
         ) : lock ? (
           <button className="app-btn is-small" disabled title={lock}>
-            🔒 声望未达标
+            ✕ 声望未达标
           </button>
         ) : (
           <button className="app-btn is-small" onClick={handleAcquire}>

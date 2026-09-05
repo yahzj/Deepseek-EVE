@@ -112,7 +112,7 @@ export function deliverStationResources(
       addLog(
         state,
         'trade',
-        `🏗 「${site.name}」建成并网！已并入空间站网络（卸货/维修/补给/换驾驶可用，采矿返航按最近空间站解析）。`,
+        `⌂ 「${site.name}」建成并网！已并入空间站网络（卸货/维修/补给/换驾驶可用，采矿返航按最近空间站解析）。`,
       )
       if (site.doneDialogueId && !state.dialogueSeen[site.doneDialogueId]) {
         state.pendingDialogue = site.doneDialogueId

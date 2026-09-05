@@ -1,6 +1,6 @@
 /**
  * V15 调试面板（开发工具，默认对玩家隐藏）。
- * 进入方式：DevTools 执行 localStorage.setItem('whale-idle:debug','1') 后刷新 → 顶栏出现 ⚡ 调试。
+ * 进入方式：DevTools 执行 localStorage.setItem('whale-idle:debug','1') 后刷新 → 顶栏出现 ⇄ 调试。
  * 功能：1 秒化总开关（所有作业按 1 秒完成，随存档 debugQuick 记录）；离线快进（复用离线结算，8 小时上限）。
  */
 import { useState } from 'react'
@@ -45,7 +45,7 @@ export function DebugButton({
         onClick={() => setOpen((v) => !v)}
         title="调试模式（开发工具）：1 秒化 / 离线快进"
       >
-        ⚡ 调试{quick ? ' · 1秒化' : ''}
+        ⇄ 调试{quick ? ' · 1秒化' : ''}
       </button>
       {open ? (
         <>

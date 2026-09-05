@@ -1,6 +1,6 @@
 /**
  * T1 顶部活动窗口：常驻显示「玩家活动」与「技能训练」两个分区（各带待机文案），
- * 提供统一终止入口；AI 活动不逐条显示，用 🤖×N 小图标徽标（点击跳 AI 指挥中心）。
+ * 提供统一终止入口；AI 活动不逐条显示，用 ⚙×N 小图标徽标（点击跳 AI 指挥中心）。
  * 布局：垂直排布，固定高度上限，内容多时内部滚动（船长 2026-09-05）。
  */
 import { activityOverview } from '@whale/core'
@@ -13,14 +13,14 @@ import type { ToastFn } from '../pages/common'
 const KIND_ICON: Record<string, string> = {
   train: '✚',
   mining: '⛏',
-  scan: '🔭',
+  scan: '✧',
   manufacture: '⚒',
   refine: '♨',
   expedition: '⚔',
-  ai: '🤖',
+  ai: '⚙',
   return: '↩',
-  transit: '🏠',
-  loop: '🔁',
+  transit: '⌂',
+  loop: '↻',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -134,7 +134,7 @@ export function ActivityBar({
 }) {
   const state = engine.state
   const all = activityOverview(state, engine.ctx)
-  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用 🤖×N 徽标
+  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用 ⚙×N 徽标
   const aiCount = all.filter((i) => i.kind === 'ai').length
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
@@ -230,7 +230,7 @@ export function ActivityBar({
             title={`${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`}
             onClick={onAiCenter}
           >
-            🤖×{aiCount}
+            ⚙×{aiCount}
           </button>
         ) : null}
       </div>
@@ -239,7 +239,7 @@ export function ActivityBar({
         {playerItems.length > 0 ? (
           playerItems.map(renderItem)
         ) : (
-          <span className="app-activitybar-idle">☕ 待机中——安排采矿 / 远征 / 扫描。</span>
+          <span className="app-activitybar-idle">待机中——安排采矿 / 远征 / 扫描。</span>
         )}
       </div>
       <div className="app-activitybar-group">
@@ -247,7 +247,7 @@ export function ActivityBar({
         {trainItems.length > 0 ? (
           trainItems.map(renderItem)
         ) : (
-          <span className="app-activitybar-idle">📚 暂未训练——去「技能」页排课。</span>
+          <span className="app-activitybar-idle">✚ 暂未训练——去「技能」页排课。</span>
         )}
       </div>
     </div>
