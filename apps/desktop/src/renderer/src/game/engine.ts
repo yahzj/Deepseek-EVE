@@ -76,6 +76,9 @@ import {
   stopRefineRun,
   deliverStationResources,
   playDialogue,
+  completeSideTask,
+  sideTaskBoard,
+  courierTaskUnlocked,
   stopMining,
   stopSalvageOp,
   stopScan,
@@ -99,6 +102,7 @@ import type {
   RackSlot,
   RefineRunView,
   SellResult,
+  SideTask,
   SimContext,
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
@@ -977,6 +981,28 @@ export class GameEngine {
     void this.persist()
     this.notify()
     return { ok: true }
+  }
+
+  /* ─────────────── v24 任务中心·时效任务（资源 / 快递，定时刷新限时有效） ─────────────── */
+
+  /** 任务板只读视图：资源/快递任务列表 + 到期倒计时（未开盘/未解锁状态一并返回） */
+  sideTasksView(): ReturnType<typeof sideTaskBoard> {
+    return sideTaskBoard(this.state, this.ctx)
+  }
+
+  /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */
+  courierTasksUnlocked(): boolean {
+    return courierTaskUnlocked(this.state, this.ctx)
+  }
+
+  /** 完成一条资源/快递时效任务（物品仓库足量 → 扣货 → 现金入账 → 该条下板，其余不受影响） */
+  completeSideTaskAt(kind: SideTask['kind'], id: number): CommandResult {
+    const result = completeSideTask(this.state, this.ctx, kind, id)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 
   /**

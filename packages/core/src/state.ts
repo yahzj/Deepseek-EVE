@@ -15,7 +15,7 @@ import { emptyFitted } from './labels'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 23
+export const CURRENT_STATE_VERSION = 24
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -727,8 +727,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   galaxyWrecks: Record<string, WreckGalaxyRecord>
 }
 
-/** 对外统一称呼：当前版本状态（v23 = v22 + 序章·苏醒 onboarding/importantTasks） */
-export type GameState = GameStateV23
+/** 对外统一称呼：当前版本状态（v24 = v23 + 任务中心·时效任务板 sideTasks） */
+export type GameState = GameStateV24
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -781,7 +781,7 @@ export interface ImportantTaskState {
   delivered?: number
 }
 
-/** 第二十三版存档结构（当前版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：
+/** 第二十三版存档结构（历史版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：
  * onboarding 教程进度（老档迁移为 -1 = 不触发）与重要任务状态（importantTasks）。
  * 新档默认调整随 createInitialState：零初始资金、默认驾驶隼枭带 80% 损伤、装备库/仓库
  * 不再预置炮台与弹药（炮台与弹药改由教学战斗任务奖励）。v22→v23 迁移只补默认字段，无结构变化。 */
@@ -789,6 +789,45 @@ export type GameStateV23 = Omit<GameStateV22, 'version'> & {
   version: 23
   onboarding: OnboardingState
   importantTasks: Record<string, ImportantTaskState>
+}
+
+/** 任务中心·时效任务一条（资源/快递；随市场窗口整板刷新，任务只存活一个窗口期） */
+export interface SideTask {
+  /** 稳定 id（state.sideTasks.seq 分配；UI 作 key、完成时定位） */
+  id: number
+  /** 任务族：resource 资源任务 / courier 快递任务 */
+  kind: 'resource' | 'courier'
+  /** 目标物品的市场商品 key（ctx.marketGoods 键；刷出时锁定的报价来源） */
+  goodKey: string
+  /** 目标物品 refId（state.warehouse.items 按它计数、完成时扣取） */
+  refId: string
+  /** 需交付单位数（物品仓库持有 ≥ 该值方可完成；刷出时锁定） */
+  need: number
+  /** 完成奖励 ISK（刷出时按当时 bestSell×0.96 取整到整百锁定；不给声望） */
+  rewardIsk: number
+}
+
+/** 任务中心·时效任务板（v24：资源/快递定时任务；2026-09-05 船长拍板：
+ * 与市场 60 秒窗口同边界整板刷新——到点旧任务全部过期清空、重刷 2 条资源任务
+ * （快递在已建成副空间站后同刷 2 条）；离线大步长只按"末窗"结算一次刷新与其市场影响）。 */
+export interface SideTasksState {
+  /** 任务 id 自增分配器（新任务取用后 +1；读档兜底 ≥ 现存任务最大 id +1） */
+  seq: number
+  /** 本板任务所属窗口的起始边界时刻（游戏内毫秒 = 刷出时的市场 lastTickGameMs）；
+   *  下一市场窗口边界 window + tickMs 到点时整板过期替换 */
+  window: number
+  /** 资源任务（当前窗口，至多 2 条） */
+  resource: SideTask[]
+  /** 快递任务（当前窗口；副站建成解锁后才刷，至多 2 条） */
+  courier: SideTask[]
+}
+
+/** 第二十四版存档结构（当前版本）：v24 = v23 + 任务中心·时效任务板 sideTasks
+ * （2026-09-05 船长拍板：资源/快递定时任务，与市场 60 秒窗口同边界整板刷新；
+ * 新档/老档统一迁移补空板默认值，字段纯新增无结构变化）。 */
+export type GameStateV24 = Omit<GameStateV23, 'version'> & {
+  version: 24
+  sideTasks: SideTasksState
 }
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
@@ -814,11 +853,11 @@ export function createInitialState(opts?: {
   seed?: number
   nowWallMs?: number
   prologue?: boolean
-}): GameStateV23 {
+}): GameStateV24 {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV23 = {
-    version: 23,
+  const state: GameStateV24 = {
+    version: 24,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -977,6 +1016,7 @@ export function createInitialState(opts?: {
     galaxyWrecks: {},
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
+    sideTasks: { seq: 1, window: 0, resource: [], courier: [] }, // v24：任务中心·时效任务板（首个市场窗口边界后由引擎开刷）
     logs: [],
   }
   if (prologue) {

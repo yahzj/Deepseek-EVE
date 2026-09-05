@@ -477,3 +477,7 @@ export {
 export type { OnboardingState, ImportantTaskState } from './state'
 
 export { advanceEncounterWatch, fightEncounter, fleeEncounter } from './encounters'
+
+export { advanceSideTasks, sideTaskBoard, completeSideTask, courierTaskUnlocked } from './sideTasks'
+export type { SideTaskBoardView } from './sideTasks'
+export type { SideTask, SideTasksState, GameStateV24 } from './state'

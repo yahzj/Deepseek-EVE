@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -665,6 +665,16 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     if (typeof ob.step !== 'number') next.onboarding = { step: -1 }
     const its = asRaw(next.importantTasks)
     if (its === null || typeof its !== 'object') next.importantTasks = {}
+    return next
+  },
+  23: (raw) => {
+    // v23 -> v24（2026-09-05 任务中心·时效任务板）：补 sideTasks 空板默认（老档不触发刷新，
+    // 引擎在首个市场窗口边界后按现行簿面开刷）；条目细节由 normalizeState 统一清洗
+    const next: RawState = { ...raw }
+    const st = asRaw(next.sideTasks)
+    if (st === null || typeof st !== 'object') {
+      next.sideTasks = { seq: 1, window: 0, resource: [], courier: [] }
+    }
     return next
   },
 }
@@ -1634,7 +1644,52 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  const normalized: GameStateV23 = {
+  // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
+  const cleanSideTaskList = (
+    rawList: unknown,
+    listKind: 'resource' | 'courier',
+  ): GameState['sideTasks']['resource'] => {
+    const out: GameState['sideTasks']['resource'] = []
+    if (!Array.isArray(rawList)) return out
+    for (const item of rawList) {
+      if (typeof item !== 'object' || item === null) continue
+      const r = asRaw(item)
+      const kind = r.kind === 'courier' ? 'courier' : 'resource'
+      if (kind !== listKind) continue
+      const id = Math.floor(num(r.id))
+      const need = Math.floor(num(r.need))
+      const rewardIsk = Math.floor(num(r.rewardIsk))
+      const goodKey = typeof r.goodKey === 'string' ? r.goodKey : ''
+      const refId = typeof r.refId === 'string' ? r.refId : ''
+      if (!Number.isFinite(id) || id <= 0 || goodKey.length === 0 || refId.length === 0) continue
+      if (!Number.isFinite(need) || need <= 0) continue
+      out.push({
+        id,
+        kind,
+        goodKey,
+        refId,
+        need,
+        rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
+      })
+    }
+    return out
+  }
+  const stRaw = asRaw(src.sideTasks)
+  const sideTaskResource = cleanSideTaskList(stRaw.resource, 'resource')
+  const sideTaskCourier = cleanSideTaskList(stRaw.courier, 'courier')
+  const stSeqRaw = Math.floor(num(stRaw.seq))
+  let sideTaskSeq = Number.isFinite(stSeqRaw) ? Math.max(1, stSeqRaw) : 1
+  // 分配器兜底：不能低于现存任务最大 id（防未来刷新撞号；正常档 seq ≥ 现存最大 id，天然不动）
+  for (const t of [...sideTaskResource, ...sideTaskCourier]) sideTaskSeq = Math.max(sideTaskSeq, t.id)
+  const sideTaskWindow = Math.max(0, Math.floor(num(stRaw.window)))
+  const sideTasks = {
+    seq: sideTaskSeq,
+    window: sideTaskWindow,
+    resource: sideTaskResource,
+    courier: sideTaskCourier,
+  }
+
+  const normalized: GameStateV24 = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -1689,6 +1744,7 @@ function normalizeState(raw: unknown): GameState {
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     onboarding,
     importantTasks,
+    sideTasks,
     logs,
   }
   return normalized
