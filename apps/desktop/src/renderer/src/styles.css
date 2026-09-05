@@ -2304,22 +2304,16 @@ body {
 .app-sec-chip-5 { background: #b455e8; color: #f4eaff; }
 /* T1 顶部活动窗口（优化：置于左侧主列顶部；按钮紧贴条目左侧，不再横跨全屏） */
 /* 顶部活动窗口全宽容器（内容居中，实际使用宽度接近主窗口） */
-.app-activitybar-wrap {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 8px 10px 0;
-}
+/* 活动窗口：置于主窗口列顶部，宽度与主窗口一致（不再全宽居中）——船长 2026-09-05 */
 .app-activitybar {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  max-width: 1180px; /* 接近主窗口宽度 */
-  max-height: 230px; /* 固定高度上限，内容多时内部滚动（船长 2026-09-05 垂直排布） */
+  max-height: 230px; /* 固定高度上限，内容多时内部滚动（垂直排布） */
   overflow-y: auto;
-  margin: 0;
+  margin: 0 0 6px;
   padding: 8px 12px;
   background: rgba(10, 18, 30, 0.85);
   border: 1px solid var(--wui-border);

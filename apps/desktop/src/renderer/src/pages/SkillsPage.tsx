@@ -119,30 +119,9 @@ export function SkillsPage({ engine }: PageProps) {
 function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
   const state = engine.state
   const view = skillQueueStatus(state, engine.ctx.skills)
-  const head = view.head
+  // 船长 2026-09-05：正在训练的那条由顶部活动窗口「技能训练」区展示；这里只显示"排队中"的技能。
   return (
     <div>
-      {head ? (
-        <div className="app-qb-head">
-          <div className="app-qb-bar">
-            <ProgressBar
-              value={head.percent}
-              label={`正在训练：${head.skillName} → Lv${head.targetLevel} · 冲 Lv${head.intoLevel} · 剩 ${formatDurationMs(head.remainingMs)}`}
-            />
-          </div>
-          <button
-            className="app-btn is-small is-warn"
-            title="取消训练：本级进度保留，重新排同一级自动续接；后面同技能条目自动顺延一级"
-            onClick={() => engine.dequeueAt(0)}
-          >
-            取消
-          </button>
-        </div>
-      ) : (
-        <div className="app-dim app-train-idle">
-          队列空闲。取消训练会保留本级已练进度——重新把该技能排为队首时自动续接。
-        </div>
-      )}
       {view.pending.length > 0 ? (
         <div className="app-train-pending">
           {view.pending.map((p, i) => (
@@ -157,7 +136,11 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
             </span>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="app-dim app-train-idle">
+          无排队中的技能——正在训练的技能见顶部活动窗口；点下方技能行的「追加」继续排课。
+        </div>
+      )}
     </div>
   )
 }

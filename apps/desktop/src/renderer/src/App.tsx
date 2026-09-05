@@ -256,12 +256,7 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
       </header>
 
-      {/* ───── 顶部活动窗口（全宽一行，内容居中、固定高、AI 用图标数） ───── */}
-      <div className="app-activitybar-wrap">
-        <ActivityBar engine={engine} onToast={showToast} onAiCenter={() => setPage('ship')} />
-      </div>
-
-      {/* ───── 工作区：左导航栏 + 主窗口 + 事件日志（可右滑隐藏 / 按类型过滤） ───── */}
+      {/* ───── 工作区：左导航栏 + 主窗口（活动窗口置于主列顶部，宽度与主窗口一致）+ 事件日志 ───── */}
       <div className="app-workspace">
         <nav className="app-nav-side">
           {NAV_ITEMS.map((item) => (
@@ -276,6 +271,7 @@ export function App({ engine }: { engine: GameEngine }) {
           ))}
         </nav>
         <main className="app-page-main">
+          <ActivityBar engine={engine} onToast={showToast} onAiCenter={() => setPage('ship')} />
           <div className="app-page-content" key={page}>
             {page === 'ship' ? <ShipPage {...pageProps} /> : null}
             {page === 'fit' ? <FitPage {...pageProps} /> : null}
