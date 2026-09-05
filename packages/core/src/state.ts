@@ -791,7 +791,7 @@ export type GameStateV23 = Omit<GameStateV22, 'version'> & {
   importantTasks: Record<string, ImportantTaskState>
 }
 
-/** 任务中心·时效任务一条（资源/快递；随市场窗口整板刷新，任务只存活一个窗口期） */
+/** 任务中心·时效任务一条（资源/快递；随 20 分钟补给周期整板刷新，任务只存活一轮） */
 export interface SideTask {
   /** 稳定 id（state.sideTasks.seq 分配；UI 作 key、完成时定位） */
   id: number
@@ -799,32 +799,70 @@ export interface SideTask {
   kind: 'resource' | 'courier'
   /** 目标物品的市场商品 key（ctx.marketGoods 键；刷出时锁定的报价来源） */
   goodKey: string
-  /** 目标物品 refId（state.warehouse.items 按它计数、完成时扣取） */
+  /** 目标物品 refId（state.warehouse.items 按它计数、出发/完成时扣取） */
   refId: string
-  /** 需交付单位数（物品仓库持有 ≥ 该值方可完成；刷出时锁定） */
+  /** 需交付单位数（物品仓库持有 ≥ 该值方可出发/完成；刷出时锁定） */
   need: number
-  /** 完成奖励 ISK（刷出时按当时 bestSell×0.96 取整到整百锁定；不给声望） */
+  /** 完成奖励 ISK（刷出时按当时收购价锚定取整到整百锁定；不给声望） */
+  rewardIsk: number
+  /** 快递目标副站 id（kind='courier' 刷出时绑定；老档缺省时出发按"最近已建成副站"兜底解析） */
+  stationId?: string
+  /** 快递目标副站所在星系 id（kind='courier' 刷出时绑定） */
+  galaxyId?: string
+}
+
+/**
+ * 快递投送在途（2026-09-06 船长拍板：真实航行投送——主控"去程取消"的快递专项例外）。
+ * 出发投送即把 need 从物品仓库锁定扣出并转入本挂账；到站（gameMs ≥ arriveAtGameMs）由引擎
+ * 自动结算（奖励入账、任务下板、本挂账清空）。同一时刻只允许一笔投送（null = 无）。
+ * 兼容字段（v24 无版本号变化）：老档缺省 null，normalize 补默认。
+ */
+export interface CourierDeliveryState {
+  /** 所投送任务的稳定 id（整板刷新把原任务换下后，到站仍按原任务 id 结算） */
+  taskId: number
+  /** 目标物品的市场商品 key（出发时复制） */
+  goodKey: string
+  /** 目标物品 refId */
+  refId: string
+  /** 在途投送单位数（出发时已从仓库锁定扣出；到站不再扣） */
+  need: number
+  /** 目标副站 id（出发时校验仍在建成状态） */
+  stationId: string
+  /** 目标副站所在星系 id */
+  galaxyId: string
+  /** 出发时刻（游戏内毫秒） */
+  departAtGameMs: number
+  /** 预计到站时刻（游戏内毫秒 = 出发时刻 + 真实航程 travelLegMs） */
+  arriveAtGameMs: number
+  /** 刷出时锁定的酬金（整板刷新后到站仍按此结算） */
   rewardIsk: number
 }
 
-/** 任务中心·时效任务板（v24：资源/快递定时任务；2026-09-05 船长拍板：
- * 与市场 60 秒窗口同边界整板刷新——到点旧任务全部过期清空、重刷 2 条资源任务
- * （快递在已建成副空间站后同刷 2 条）；离线大步长只按"末窗"结算一次刷新与其市场影响）。 */
+/** 任务中心·时效任务板（v24：资源/快递定时任务；2026-09-05 船长拍板，2026-09-06 修订节奏：
+ * 与市场「补给刷新」周期 orderLifeMs.common（20 分钟）同节奏整板刷新——每个 20 分钟整点旧任务
+ * 全部过期清空、重刷 2 条资源任务（快递在已建成副空间站后同刷 2 条）；每条任务只存活一轮
+ * （window → window + 20 分钟）；离线大步长只按"末窗"结算一次刷新与其市场影响。
+ * v24 兼容字段（无版本号）：courier 任务绑定 stationId/galaxyId、deliver 在途投送挂账——
+ * 老档读入 normalize 缺省 null/缺省时按"最近已建成副站"兜底）。 */
 export interface SideTasksState {
   /** 任务 id 自增分配器（新任务取用后 +1；读档兜底 ≥ 现存任务最大 id +1） */
   seq: number
-  /** 本板任务所属窗口的起始边界时刻（游戏内毫秒 = 刷出时的市场 lastTickGameMs）；
-   *  下一市场窗口边界 window + tickMs 到点时整板过期替换 */
+  /** 本板任务所属轮次的起点整点（游戏内毫秒 = 20 分钟格点；0 = 未开盘）；
+   *  下一 20 分钟整点 window + orderLifeMs.common 到点时整板过期替换 */
   window: number
-  /** 资源任务（当前窗口，至多 2 条） */
+  /** 资源任务（当前轮，至多 2 条） */
   resource: SideTask[]
-  /** 快递任务（当前窗口；副站建成解锁后才刷，至多 2 条） */
+  /** 快递任务（当前轮；副站建成解锁后才刷，至多 2 条） */
   courier: SideTask[]
+  /** 快递投送在途挂账（一次一笔；null = 无）。整板刷新不清除在途投送，到站仍按原任务结算 */
+  deliver: CourierDeliveryState | null
 }
 
 /** 第二十四版存档结构（当前版本）：v24 = v23 + 任务中心·时效任务板 sideTasks
- * （2026-09-05 船长拍板：资源/快递定时任务，与市场 60 秒窗口同边界整板刷新；
- * 新档/老档统一迁移补空板默认值，字段纯新增无结构变化）。 */
+ * （2026-09-05 船长拍板：资源/快递定时任务；2026-09-06 节奏改为市场补给周期 orderLifeMs.common
+ * 20 分钟一轮整板刷新；快递真实航行投送——SideTask 绑定 stationId/galaxyId + sideTasks.deliver
+ * 在途挂账为兼容字段，无版本号变化，老档 normalize 补 null/兜底解析）；
+ * 新档/老档统一迁移补空板默认值，字段纯新增无结构变化。 */
 export type GameStateV24 = Omit<GameStateV23, 'version'> & {
   version: 24
   sideTasks: SideTasksState
@@ -1016,7 +1054,7 @@ export function createInitialState(opts?: {
     galaxyWrecks: {},
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
-    sideTasks: { seq: 1, window: 0, resource: [], courier: [] }, // v24：任务中心·时效任务板（首个市场窗口边界后由引擎开刷）
+    sideTasks: { seq: 1, window: 0, resource: [], courier: [], deliver: null }, // v24：任务中心·时效任务板（首个 20 分钟整点后由引擎开刷；deliver = 快递投送在途挂账，缺省 null）
     logs: [],
   }
   if (prologue) {

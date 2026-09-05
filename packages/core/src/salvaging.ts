@@ -77,6 +77,7 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
   if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消。' }
   if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发打捞——到站自动结算后再安排。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（可改用 AI 核心驱动）。' }
   }

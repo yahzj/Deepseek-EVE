@@ -79,6 +79,8 @@ import {
   completeSideTask,
   sideTaskBoard,
   courierTaskUnlocked,
+  courierDelivering,
+  startCourierDelivery,
   stopMining,
   stopSalvageOp,
   stopScan,
@@ -995,7 +997,7 @@ export class GameEngine {
     return courierTaskUnlocked(this.state, this.ctx)
   }
 
-  /** 完成一条资源/快递时效任务（物品仓库足量 → 扣货 → 现金入账 → 该条下板，其余不受影响） */
+  /** 完成一条资源时效任务（物品仓库足量 → 扣货 → 现金入账 → 该条下板，其余不受影响） */
   completeSideTaskAt(kind: SideTask['kind'], id: number): CommandResult {
     const result = completeSideTask(this.state, this.ctx, kind, id)
     if (result.ok) {
@@ -1003,6 +1005,21 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  /** 快递任务「出发投送」（真实航行：仓库锁定扣货 → 挂入在途 → 到站引擎自动结算） */
+  startCourierDeliveryAt(id: number): CommandResult {
+    const result = startCourierDelivery(this.state, this.ctx, id)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 是否正在快递投送（在途；其余出航作业在此期间被拒绝） */
+  isCourierDelivering(): boolean {
+    return courierDelivering(this.state)
   }
 
   /**

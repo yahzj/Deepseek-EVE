@@ -4,7 +4,7 @@
  */
 import { useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { AnomalyDef, GalaxyDef, AiCoreType } from '@whale/core'
+import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTaskBoardView } from '@whale/core'
 import {
   AI_CORE_ORDER,
   DSI_FACTION_ID,
@@ -217,7 +217,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
         </div>
       ) : tab === 'resource' ? (
         <div>
-          {/* v24：资源时效任务（随市场窗口整板刷新，仓库足量交付即结；原 StationCard 建站内容保留在下方） */}
+          {/* v24：资源时效任务（每 20 分钟补给周期整板刷新，仓库足量交付即结；原 StationCard 建站内容保留在下方） */}
           <SideTasksArea engine={engine} onToast={onToast} kind="resource" />
           {stationCount > 0 ? (
             <>
@@ -1524,34 +1524,45 @@ export function Communicator({
   )
 }
 
-/* ─────────── v24 任务中心·时效任务（资源 / 快递：随市场窗口整板刷新，限时有效） ─────────── */
+/* ─────────── v24 任务中心·时效任务（资源 / 快递：随 20 分钟补给周期整板刷新，限时有效） ─────────── */
 
-/** mm:ss（向上取整到秒；与市场页 nextSupply 同口径） */
+/** mm:ss（向上取整到秒；与市场页下次补给同口径） */
 function fmtSideClock(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000))
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
 }
 
-/** 时效任务区：资源 = 限时收购（协会收商品）；快递 = 副站投送（需建成一座副站解锁） */
+/** 时效任务区：资源 = 限时收购（协会收商品，仓库足量直接交付）；快递 = 副站真实航行投送
+ *  （需建成一座副站解锁；两步：出发投送 → 到站自动结算） */
 function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast: ToastFn; kind: 'resource' | 'courier' }) {
   const state = engine.state
   const view = engine.sideTasksView()
-  const tickSec = Math.max(1, Math.round(engine.ctx.balance.market.tickMs / 1000))
+  // 任务板与市场「补给刷新」同节奏：orderLifeMs.common = 20 分钟一轮（与常驻订单寿命一致）
+  const periodMin = Math.max(1, Math.round(engine.ctx.balance.market.orderLifeMs.common / 60_000))
   const isCourier = kind === 'courier'
   const tasks = isCourier ? view.courier : view.resource
-  const actLabel = isCourier ? '完成投送' : '完成交付'
+  // 快递：本批某单是否就是当前在途投送（仍在板上）；整板刷新后原单被换下 → 由顶部横幅继续提示
+  const deliverNowId = view.deliver?.taskId ?? null
+  // 在途单不在本批板上（整板刷新后）：横幅 + 本批其余订单都显示
+  const inflightOffBoard = isCourier && deliverNowId !== null && !tasks.some((t) => t.id === deliverNowId)
 
-  const finish = (id: number): void => {
-    const r = engine.completeSideTaskAt(kind, id)
-    if (r.ok) onToast(isCourier ? '投送完成，酬金已入账。' : '交付完成，奖励已入账。')
+  const act = (id: number): void => {
+    if (isCourier) {
+      const r = engine.startCourierDeliveryAt(id)
+      if (r.ok) onToast('快递已出发——携货按真实航程投送，到站自动结算酬金。')
+      else onToast(r.error ?? '无法出发投送', true)
+      return
+    }
+    const r = engine.completeSideTaskAt('resource', id)
+    if (r.ok) onToast('交付完成，奖励已入账。')
     else onToast(r.error ?? '无法完成', true)
   }
 
   const headText = isCourier
     ? view.courierUnlocked
-      ? '副站投送 · 限时订单（协会委托向已建成副站投送物资）'
+      ? '副站投送 · 限时订单（协会委托向已建成副站投送物资：真实航程，到站自动结算）'
       : '副站投送 · 需先完成一座副空间站建设后解锁'
-    : '协会限时收购 · 资源订单（仓库足量即可交付，随市场窗口刷新）'
+    : '协会限时收购 · 资源订单（仓库足量即可交付，随补给周期整板刷新）'
 
   return (
     <div className="app-sidetasks">
@@ -1559,11 +1570,11 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
         <span>{headText}</span>
         {!isCourier || view.courierUnlocked ? (
           view.opened || tasks.length > 0 ? (
-            <span className="app-st-time" title="本批任务只存活一个市场窗口：到点整板替换（未完成的任务自动过期）">
-              距下批刷新 {fmtSideClock(view.remainingMs)} · 每 {tickSec} 秒一批
+            <span className="app-st-time" title={`本批任务只存活一轮（${periodMin} 分钟，与常驻订单寿命一致）：到下一个整点整板替换（未完成的任务自动过期；在途投送不受影响、到站照常结算）`}>
+              距下批刷新 {fmtSideClock(view.remainingMs)} · 每 {periodMin} 分钟一轮
             </span>
           ) : (
-            <span className="app-dim">市场首个窗口后开刷（每 {tickSec} 秒一批）</span>
+            <span className="app-dim">首个补给周期（约 {periodMin} 分钟）后开刷</span>
           )
         ) : null}
       </div>
@@ -1572,57 +1583,137 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
           建站完成（任意一座副空间站的「建成」档位落成并并入空间站网络）后，协会货运网络才会向你派发投送订单。
         </div>
       ) : tasks.length === 0 ? (
-        view.opened ? (
+        isCourier && inflightOffBoard ? (
+          // 整板刷新把在途单换下：投送不受影响，横幅持续显示到到站结算
+          <CourierInFlightBanner view={view} ctx={engine.ctx} />
+        ) : view.opened ? (
           <div className="app-dim app-exp-idle">
             {isCourier
-              ? '本窗口暂无待办投送订单——已完成或尚未刷出，下一批随市场窗口自动刷新（仓库足量点「完成投送」即时结算，无飞行过程）。'
-              : '本窗口暂无待交付资源订单——已完成或尚未刷出，下一批随市场窗口自动刷新（从物品仓库扣货交付，不接受船上货仓）。'}
+              ? '本批暂无待办投送订单——已完成或尚未刷出，下一批随 20 分钟补给周期整板自动刷新（订单在途期间不受整板刷新影响，到站照常结算）。'
+              : '本批暂无待交付资源订单——已完成或尚未刷出，下一批随 20 分钟补给周期整板自动刷新（从物品仓库扣货交付，不接受船上货仓）。'}
           </div>
         ) : (
           <div className="app-dim app-exp-idle">
             {isCourier
-              ? '副站已建成——市场首个窗口后自动开刷本批投送订单（仓库足量点「完成投送」即时结算，无飞行过程）。'
-              : '暂无资源收购单——市场开盘后的首个窗口会自动刷出本批订单（从物品仓库扣货交付，不接受船上货仓）。'}
+              ? '副站已建成——首个补给周期（约 20 分钟）后自动开刷本批投送订单（仓库足量点「出发投送」，携货按真实航程驶往目标副站，到站自动结算酬金）。'
+              : '暂无资源收购单——首个补给周期（约 20 分钟）后自动刷出本批订单（从物品仓库扣货交付，不接受船上货仓）。'}
           </div>
         )
       ) : (
-        tasks.map((t) => {
-          const name = engine.ctx.items.get(t.refId)?.name ?? t.refId
-          const have = state.warehouse.items[t.refId] ?? 0
-          const short = Math.max(0, t.need - have)
-          const canFinish = have >= t.need && view.remainingMs > 0
-          const lockedTxt = short > 0 ? `物品仓库 ${name} 不足：还差 ${short.toLocaleString('zh-CN')} 单位（任务需 ${t.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）` : '本批任务已到期，等下一批刷新'
-          return (
-            <div key={t.id} className="app-station-card">
-              <div className="app-station-head">
-                <span className="app-station-name">
-                  {isCourier ? '⌁ 副站投送' : '◈ 限时收购'}：{name} × {t.need.toLocaleString('zh-CN')}
-                  {isCourier ? <em className="app-chip">已建成副站</em> : <em className="app-chip">物品仓库交付</em>}
-                </span>
-                <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
+        <>
+          {isCourier && inflightOffBoard ? <CourierInFlightBanner view={view} ctx={engine.ctx} /> : null}
+          {tasks.map((t) => {
+            const name = engine.ctx.items.get(t.refId)?.name ?? t.refId
+            const have = state.warehouse.items[t.refId] ?? 0
+            const short = Math.max(0, t.need - have)
+            if (isCourier) {
+              // —— 快递卡：出发投送 / 投送中（当前在途单）/ 有他单在途 ——
+              const siteId = t.stationId
+              const siteName = siteId ? engine.ctx.stations.get(siteId)?.name ?? siteId : undefined
+              const galaxyName = t.galaxyId ? engine.ctx.galaxies.get(t.galaxyId)?.name ?? t.galaxyId : undefined
+              const isThisInFlight = view.deliver !== null && view.deliver.taskId === t.id
+              const otherInFlight = view.deliver !== null && !isThisInFlight
+              const expired = view.remainingMs <= 0
+              const lockedTxt = short > 0
+                ? `物品仓库 ${name} 不足：还差 ${short.toLocaleString('zh-CN')} 单位（任务需 ${t.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）——先把货卸入仓库再出发`
+                : expired
+                  ? '本批任务已到期，等下一批刷新'
+                  : otherInFlight
+                    ? '已有另一笔投送在途中（同一时间仅一笔）：到站结算后再出发'
+                    : undefined
+              return (
+                <div key={t.id} className="app-station-card">
+                  <div className="app-station-head">
+                    <span className="app-station-name">
+                      ⌁ 副站投送：{name} × {t.need.toLocaleString('zh-CN')}
+                      <em className="app-chip">真实航程</em>
+                    </span>
+                    <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
+                  </div>
+                  <div className="app-station-mats">
+                    目标「{siteName ?? '（最近已建成副站）'}」{galaxyName ? `（${galaxyName}）` : ''}：
+                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算——酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} ISK（不涨声望；到站后舰船将停靠目标副站）。
+                  </div>
+                  <div className="app-station-deliver">
+                    <span className="app-dim">
+                      仓库现有 {have.toLocaleString('zh-CN')} 单位{short > 0 ? `（差 ${short.toLocaleString('zh-CN')}，先把货卸入仓库再出发）` : ''}
+                    </span>
+                    {isThisInFlight ? (
+                      <span className="app-btn is-small is-primary" aria-disabled title="该单正在投送途中——到站自动结算酬金并下板">
+                        投送中 · 预计剩 {fmtSideClock(view.deliver!.remainingMs)}
+                      </span>
+                    ) : (
+                      <button
+                        className="app-btn is-small is-primary"
+                        disabled={short > 0 || expired || otherInFlight}
+                        title={lockedTxt ?? `出发投送：携 ${name}×${t.need.toLocaleString('zh-CN')} 驶往「${siteName ?? '最近副站'}」，到站领取 ${t.rewardIsk.toLocaleString('zh-CN')} ISK`}
+                        onClick={() => act(t.id)}
+                      >
+                        出发投送（{Math.min(have, t.need).toLocaleString('zh-CN')}/{t.need.toLocaleString('zh-CN')}）
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+            // —— 资源卡：仓库足量即时交付 ——
+            const canFinish = have >= t.need && view.remainingMs > 0
+            const lockedTxt = short > 0
+              ? `物品仓库 ${name} 不足：还差 ${short.toLocaleString('zh-CN')} 单位（任务需 ${t.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）`
+              : '本批任务已到期，等下一批刷新'
+            return (
+              <div key={t.id} className="app-station-card">
+                <div className="app-station-head">
+                  <span className="app-station-name">
+                    ◈ 限时收购：{name} × {t.need.toLocaleString('zh-CN')}
+                    <em className="app-chip">物品仓库交付</em>
+                  </span>
+                  <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
+                </div>
+                <div className="app-station-mats">
+                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓）——奖励 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} ISK（不涨声望）。
+                </div>
+                <div className="app-station-deliver">
+                  <span className="app-dim">
+                    仓库现有 {have.toLocaleString('zh-CN')} 单位{short > 0 ? `（差 ${short.toLocaleString('zh-CN')}，先把货卸入仓库再交付）` : ''}
+                  </span>
+                  <button
+                    className="app-btn is-small is-primary"
+                    disabled={!canFinish}
+                    title={canFinish ? `交付：交付 ${name}×${t.need.toLocaleString('zh-CN')}，领取 ${t.rewardIsk.toLocaleString('zh-CN')} ISK` : lockedTxt}
+                    onClick={() => act(t.id)}
+                  >
+                    完成交付（{Math.min(have, t.need).toLocaleString('zh-CN')}/{t.need.toLocaleString('zh-CN')}）
+                  </button>
+                </div>
               </div>
-              <div className="app-station-mats">
-                {isCourier
-                  ? `向已建成的副空间站投送 ${name}×${t.need.toLocaleString('zh-CN')}：即时结算、无飞行过程——酬金 ${MONEY_GLYPH} ${t.rewardIsk.toLocaleString('zh-CN')} ISK（不涨声望）。`
-                  : `协会限时收购 ${name}×${t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓）——奖励 ${MONEY_GLYPH} ${t.rewardIsk.toLocaleString('zh-CN')} ISK（不涨声望）。`}
-              </div>
-              <div className="app-station-deliver">
-                <span className="app-dim">
-                  仓库现有 {have.toLocaleString('zh-CN')} 单位{short > 0 ? `（差 ${short.toLocaleString('zh-CN')}，先把货卸入仓库再交付）` : ''}
-                </span>
-                <button
-                  className="app-btn is-small is-primary"
-                  disabled={!canFinish}
-                  title={canFinish ? `${actLabel}：交付 ${name}×${t.need.toLocaleString('zh-CN')}，领取 ${t.rewardIsk.toLocaleString('zh-CN')} ISK` : lockedTxt}
-                  onClick={() => finish(t.id)}
-                >
-                  {actLabel}（{Math.min(have, t.need).toLocaleString('zh-CN')}/{t.need.toLocaleString('zh-CN')}）
-                </button>
-              </div>
-            </div>
-          )
-        })
+            )
+          })}
+        </>
       )}
+    </div>
+  )
+}
+
+/** 快递投送在途横幅：在途单已被整板刷新换下（不在本批板上）时的持续提示；到站自动结算不可取消 */
+function CourierInFlightBanner({ view, ctx }: { view: SideTaskBoardView; ctx: SimContext }) {
+  const d = view.deliver
+  if (!d) return null
+  const itemName = ctx.items.get(d.refId)?.name ?? d.refId
+  return (
+    <div className="app-station-card is-built">
+      <div className="app-station-head">
+        <span className="app-station-name">
+          ⌁ 投送中：{itemName} × {d.need.toLocaleString('zh-CN')} → 「{d.stationName}」（{d.galaxyName}）
+          <em className="app-chip">在途</em>
+        </span>
+        <span className="app-dim">
+          {d.remainingMs > 0 ? `预计剩 ${fmtSideClock(d.remainingMs)}` : '已到站，正在结算'}
+        </span>
+      </div>
+      <div className="app-station-mats">
+        货物已在途中（出发时已从仓库锁定扣出）。到站自动结算酬金；期间舰船不可开矿/远征/扫描/打捞/掩护巡逻/换港返航（投送不可取消）。
+      </div>
     </div>
   )
 }

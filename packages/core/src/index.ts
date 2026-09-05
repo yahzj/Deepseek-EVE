@@ -478,6 +478,16 @@ export type { OnboardingState, ImportantTaskState } from './state'
 
 export { advanceEncounterWatch, fightEncounter, fleeEncounter } from './encounters'
 
-export { advanceSideTasks, sideTaskBoard, completeSideTask, courierTaskUnlocked } from './sideTasks'
-export type { SideTaskBoardView } from './sideTasks'
-export type { SideTask, SideTasksState, GameStateV24 } from './state'
+export {
+  advanceSideTasks,
+  sideTaskBoard,
+  sideTaskCandidateGoods,
+  completeSideTask,
+  courierTaskUnlocked,
+  courierDelivering,
+  startCourierDelivery,
+  RESOURCE_TASK_MARGIN,
+  COURIER_TASK_MARGIN,
+} from './sideTasks'
+export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
+export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24 } from './state'

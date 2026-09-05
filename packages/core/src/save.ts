@@ -673,7 +673,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     const next: RawState = { ...raw }
     const st = asRaw(next.sideTasks)
     if (st === null || typeof st !== 'object') {
-      next.sideTasks = { seq: 1, window: 0, resource: [], courier: [] }
+      next.sideTasks = { seq: 1, window: 0, resource: [], courier: [], deliver: null }
     }
     return next
   },
@@ -1663,16 +1663,54 @@ function normalizeState(raw: unknown): GameState {
       const refId = typeof r.refId === 'string' ? r.refId : ''
       if (!Number.isFinite(id) || id <= 0 || goodKey.length === 0 || refId.length === 0) continue
       if (!Number.isFinite(need) || need <= 0) continue
-      out.push({
+      const task: GameState['sideTasks']['resource'][number] = {
         id,
         kind,
         goodKey,
         refId,
         need,
         rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
-      })
+      }
+      // 快递目标绑定（v24 兼容字段；缺省时出发按"最近已建成副站"兜底解析）
+      const stationId = typeof r.stationId === 'string' && r.stationId.length > 0 ? r.stationId : ''
+      const galaxyId = typeof r.galaxyId === 'string' && r.galaxyId.length > 0 ? r.galaxyId : ''
+      if (stationId.length > 0) task.stationId = stationId
+      if (galaxyId.length > 0) task.galaxyId = galaxyId
+      out.push(task)
     }
     return out
+  }
+  // 快递投送在途挂账（v24 兼容字段，无版本号变化；老档缺省 = null）
+  const cleanCourierDeliver = (rawDeliver: unknown): GameState['sideTasks']['deliver'] => {
+    if (rawDeliver === null || typeof rawDeliver !== 'object') return null
+    const d = asRaw(rawDeliver)
+    const taskId = Math.floor(num(d.taskId))
+    const need = Math.floor(num(d.need))
+    const arriveAt = Math.floor(num(d.arriveAtGameMs))
+    const departAt = Math.floor(num(d.departAtGameMs))
+    const rewardIsk = Math.floor(num(d.rewardIsk))
+    const goodKey = typeof d.goodKey === 'string' ? d.goodKey : ''
+    const refId = typeof d.refId === 'string' ? d.refId : ''
+    const stationId = typeof d.stationId === 'string' ? d.stationId : ''
+    const galaxyId = typeof d.galaxyId === 'string' ? d.galaxyId : ''
+    if (
+      !Number.isFinite(taskId) || taskId <= 0 ||
+      !Number.isFinite(need) || need <= 0 ||
+      !Number.isFinite(arriveAt) || arriveAt < 0 ||
+      goodKey.length === 0 || refId.length === 0 ||
+      stationId.length === 0 || galaxyId.length === 0
+    ) return null
+    return {
+      taskId,
+      goodKey,
+      refId,
+      need,
+      stationId,
+      galaxyId,
+      departAtGameMs: Number.isFinite(departAt) && departAt >= 0 ? departAt : 0,
+      arriveAtGameMs: arriveAt,
+      rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
+    }
   }
   const stRaw = asRaw(src.sideTasks)
   const sideTaskResource = cleanSideTaskList(stRaw.resource, 'resource')
@@ -1687,6 +1725,7 @@ function normalizeState(raw: unknown): GameState {
     window: sideTaskWindow,
     resource: sideTaskResource,
     courier: sideTaskCourier,
+    deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
   const normalized: GameStateV24 = {

@@ -73,8 +73,9 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, 
   advanceEvents(state, d, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
-  // 任务中心·时效任务（v24 资源/快递）：与市场窗口同边界整板刷新（须在市场窗口推进后执行，
-  // 让市场影响作用于刷新后的现行簿面）；离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
+  // 任务中心·时效任务（v24 资源/快递）：与市场「补给刷新」周期（orderLifeMs.common，20 分钟）
+  // 同节奏整板刷新（须在市场窗口推进后执行，让市场影响作用于刷新后的现行簿面）；
+  // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
   advanceSideTasks(state, ctx)
   // 序章·苏醒：教程自动推进判定（采集达标/修复完成/技能归档/分身就位；廉价，仅教程进行中）
   advanceOnboardingAuto(state, ctx)

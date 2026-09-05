@@ -40,7 +40,7 @@ describe('v23 序章·苏醒', () => {
     expect(loaded.state.version).toBe(24)
     expect(loaded.state.onboarding.step).toBe(-1)
     expect(Object.keys(loaded.state.importantTasks)).toEqual([])
-    expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [] })
+    expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [], deliver: null })
     expect(loaded.state.wallet.isk).toBe(DEFAULT_START_ISK)
   })
 })

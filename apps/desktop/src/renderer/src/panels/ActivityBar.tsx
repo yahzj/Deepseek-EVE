@@ -22,6 +22,7 @@ const KIND_ICON: Record<string, string> = {
   return: 'nav-ship',
   transit: 'ico-home',
   loop: 'ico-loop',
+  courier: 'nav-task',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -110,6 +111,8 @@ function goFor(kind: string): { page: string; mapTab?: string } {
     case 'transit':
     case 'standby':
       return { page: 'map', mapTab: 'star' }
+    case 'courier':
+      return { page: 'map', mapTab: 'task' }
     case 'loop':
       return { page: 'map', mapTab: 'bounty' }
     case 'manufacture':
@@ -154,7 +157,9 @@ export function ActivityBar({
           ? '矿带开采'
           : target.mapTab === 'bounty'
             ? '悬赏情报'
-            : '星图·远征'
+            : target.mapTab === 'task'
+              ? '任务中心'
+              : '星图·远征'
         : target.page === 'industry'
           ? '工业'
           : '技能'

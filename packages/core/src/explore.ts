@@ -112,6 +112,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站。' }
   if (state.standby.active) return { ok: false, error: '舰船正在前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排扫描。' }
+  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能开始扫描——到站自动结算后再安排。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港扫描。' }
   }

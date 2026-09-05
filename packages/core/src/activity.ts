@@ -30,6 +30,7 @@ export type ActivityKind =
   | 'transit'
   | 'standby'
   | 'loop'
+  | 'courier'
 
 /** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
@@ -306,6 +307,27 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
+  // ── 快递投送（v24 时效任务真实航行；一次一笔，到站自动结算，不可中途取消） ──
+  const cd = state.sideTasks.deliver
+  if (cd !== null) {
+    const totalLeg = Math.max(0, cd.arriveAtGameMs - cd.departAtGameMs)
+    const remain = Math.max(0, cd.arriveAtGameMs - state.gameMs)
+    const siteName = ctx.stations.get(cd.stationId)?.name ?? cd.stationId
+    const galaxyName = ctx.galaxies.get(cd.galaxyId)?.name ?? cd.galaxyId
+    out.push({
+      id: 'courier',
+      kind: 'courier',
+      label: '快递投送',
+      sub: `向「${siteName}」（${galaxyName}）投送中`,
+      percent:
+        totalLeg > 0 ? Math.min(100, Math.max(0, Math.round(((totalLeg - remain) / totalLeg) * 100))) : 100,
+      remainingMs: remain,
+      stopable: false,
+      stopReason: '投送不可取消：到站自动结算酬金',
+      stop: null,
+    })
+  }
+
   return out
 }
 
@@ -321,6 +343,7 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
       if (state.mining.phase === 'mining') return '采矿中'
       return state.mining.phase === 'outbound' ? '采矿·出航中' : '采矿·返航中'
     }
+    if (state.sideTasks.deliver !== null) return '快递投送中'
     const sb = standbyStatus(state, ctx)
     if (sb.active) return `掩护巡逻·前往${sb.targetName}中`
     const sv = scanStatus(state)
