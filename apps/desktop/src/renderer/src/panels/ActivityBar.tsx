@@ -15,6 +15,7 @@ const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
   mining: 'nav-mine',
   scan: 'ico-scan',
+  salvage: 'nav-salvage',
   manufacture: 'nav-industry',
   refine: 'nav-industry',
   expedition: 'nav-bounty',
@@ -33,6 +34,8 @@ function stopLabel(v: ActivityView): string {
       return '停止'
     case 'stop-scan':
       return '终止'
+    case 'stop-salvage':
+      return '停止'
     case 'cancel-manufacture':
       return '取消'
     case 'stop-refine':
@@ -67,6 +70,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'stop-scan':
       run(engine.stopScanNow(), '已终止扫描探索：就地扫描进度已保存，下次续扫。')
+      break
+    case 'stop-salvage':
+      run(engine.stopSalvageOpNow(), '已停止打捞：本趟已捞的残骸仍在船上（未返航不卸货）。')
       break
     case 'cancel-manufacture':
       if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), '已取消制造：材料全额退回物品仓库（制造费不退）。')
@@ -106,6 +112,7 @@ function goFor(kind: string): { page: string; mapTab?: string } {
     case 'mining':
       return { page: 'map', mapTab: 'mine' }
     case 'scan':
+    case 'salvage':
     case 'expedition':
     case 'return':
     case 'transit':
@@ -198,11 +205,13 @@ export function ActivityBar({
                   ? '召回远征：中止任务返回母港（无战果）'
                   : v.stop === 'stop-scan'
                     ? '终止扫描：就地扫描进度保存，下次续扫'
-                    : v.stop === 'remove-training'
-                      ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
-                      : v.stop === 'retreat-battle'
-                        ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止连续出击）'
-                        : undefined
+                    : v.stop === 'stop-salvage'
+                      ? '停止打捞：本趟已捞的残骸留在船上（未返航不卸货）'
+                      : v.stop === 'remove-training'
+                        ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
+                        : v.stop === 'retreat-battle'
+                          ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止连续出击）'
+                          : undefined
           }
           onClick={(e) => {
             e.stopPropagation() // 点击"停止/移除/撤退"不触发行跳转

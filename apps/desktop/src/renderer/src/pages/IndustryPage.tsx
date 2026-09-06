@@ -215,15 +215,18 @@ export function IndustryPage({ engine, onToast }: PageProps) {
   const runViews = engine.refineRunViews()
 
   /** 货仓+仓库里有货（或在炉中）且带精炼配方的可精炼资源（矿石/气体/冰矿） */
-  const oreDefs = engine.items.filter(
+  const allItemDefs = [...engine.ctx.items.values()]
+  const oreDefs = allItemDefs.filter(
     (def) =>
       def.kind !== 'wreck' &&
       def.refine !== undefined &&
       def.refine.length > 0 &&
       (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
   )
-  /** B3：可回收的残骸（货仓+仓库有货或在炉中；残骸计数 = 体积 m³） */
-  const wreckDefs = engine.items.filter(
+  /** B3：可回收的残骸（货仓+仓库有货或在炉中；残骸计数 = 体积 m³）。
+   *  ⚠ 残骸定义按敌群运行时生成、只存在于 ctx.items——engine.items(静态目录) 里没有，
+   *  之前从这里取列表导致回收卡永远不出现（2026-09-06 玩家上报）。 */
+  const wreckDefs = allItemDefs.filter(
     (def) => def.kind === 'wreck' && (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
   )
 

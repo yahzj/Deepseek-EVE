@@ -22,6 +22,7 @@ export type ActivityKind =
   | 'train'
   | 'mining'
   | 'scan'
+  | 'salvage'
   | 'manufacture'
   | 'refine'
   | 'expedition'
@@ -37,6 +38,7 @@ export type ActivityStopKind =
   | 'remove-training'
   | 'stop-mining'
   | 'stop-scan'
+  | 'stop-salvage'
   | 'cancel-manufacture'
   | 'stop-refine'
   | 'recall-expedition'
@@ -99,6 +101,23 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: mv.phase !== 'mining' ? mv.remainingMs : null,
       stopable: true,
       stop: 'stop-mining',
+    })
+  }
+
+  // ── 主控打捞（B3：单趟作业；2026-09-06 补行——玩家上报活动栏不显示） ──
+  const svg = state.salvaging
+  if (svg.active) {
+    const gName = svg.galaxyId ? (ctx.galaxies.get(svg.galaxyId)?.name ?? svg.galaxyId) : ''
+    const phaseTxt = svg.phase === 'returning' ? '返航卸货' : svg.phase === 'outbound' ? '出航' : '打捞中'
+    out.push({
+      id: 'salvage',
+      kind: 'salvage',
+      label: gName ? `打捞 · ${gName}` : '打捞作业',
+      sub: phaseTxt,
+      percent: null,
+      remainingMs: null,
+      stopable: true,
+      stop: 'stop-salvage',
     })
   }
 
