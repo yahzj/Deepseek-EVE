@@ -48,7 +48,15 @@ const FULL_SKILLS: Record<string, number> = {
   'armor-tuning': 5,
   'armed-ops': 5,
   'armored-ops': 5,
+  'vector-maneuvering': 5,
+  'evasion-maneuvering': 5,
+  'targeting-integration': 5,
+  'ship-systems-engineering': 5,
 }
+
+/** 中位技能档（船长 2026-09-06：技能=独立于装备的局外成长，敌人设计对其宽容——
+ * 在 0/满 之间加中位参照：同一批技能统一 Lv3） */
+const MID_SKILLS: Record<string, number> = Object.fromEntries(Object.keys(FULL_SKILLS).map((k) => [k, 3]))
 
 function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, seed: number): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
@@ -97,9 +105,9 @@ async function main(): Promise<void> {
       threats.map((a) => `${a.threat}:${dExpect(a.threat)}s`).join(' '),
   )
   console.log('敌血 foeHpOfThreat：' + threats.map((a) => `${a.threat}:${foeHpOfThreat(a.threat, bal)}`).join(' '))
-  for (const skillName of ['无技能', '全战斗技能5']) {
-    const skills = skillName === '无技能' ? {} : FULL_SKILLS
-    console.log(`\n—— 技能档：${skillName}（每格 = 胜率%｜平均秒数，${SEEDS.length} 种子实战平均）——`)
+  for (const skillName of ['无技能', '中位技能(战斗系Lv3)', '全战斗技能5']) {
+    const skills = skillName === '无技能' ? {} : skillName.startsWith('中位') ? MID_SKILLS : FULL_SKILLS
+    console.log(`\n—— 技能档：${skillName}（每格 = 胜率%｜平均秒数｜战后残血%，${SEEDS.length} 种子实战平均）——`)
     for (const ld of LOADOUTS) {
       const initHp = initHpOf(ld.ship)
       const cells: string[] = []
@@ -121,8 +129,7 @@ async function main(): Promise<void> {
         const wp = Math.round((wins / SEEDS.length) * 100)
         const dur = ends > 0 ? Math.round(durSum / ends / 1000) : 0
         const rem = initHp > 0 ? Math.round((remainSum / SEEDS.length / initHp) * 100) : 0
-        cells.push(`${wp}/${dur}s`)
-        void rem
+        cells.push(`${wp}/${dur}s/${rem}%`)
       }
       console.log(`${ld.name.padEnd(34)} ${cells.join('  ')}`)
     }
