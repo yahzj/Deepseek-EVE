@@ -131,7 +131,7 @@ describe('V13 探索：行动封锁（远征/采矿/AI）', () => {
     // AI 远征已软下线（2026-09-05 船长定）：无论是否点亮一律"已下线"拒绝（探索封锁语义随之下线）
     const re = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy-far', farCtx)
     expect(re.ok).toBe(false)
-    expect(re.error).toContain('已下线')
+    expect(re.error).toContain('暂停受理')
     markExplored(state, 'galaxy-far')
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-far3', farCtx).ok).toBe(true)
     state.aiAssignments = {}

@@ -68,7 +68,7 @@ const KIND_LABEL: Record<LogKind, string> = {
 }
 /** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 const KIND_DESC: Record<LogKind, string> = {
-  system: '系统：开档/版本/欢迎等',
+  system: '系统：欢迎与系统通告等',
   info: '信息：无资金变动的流程与搬运（采矿/扫描/制造完成/装配/切船/卸货/离线结算等）',
   queue: '训练：技能队列增删与完成',
   levelup: '升级：技能升级',

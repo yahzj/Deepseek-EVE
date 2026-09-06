@@ -471,7 +471,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             </div>
             <div className="app-dim app-note">
               以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前
-              对比（火力为名义口径：全命中、不计距离衰减）；同类多装与 CPU 校验与引擎一致。
+              对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。
             </div>
             <div className="app-fit-pickgrid">
               {candidatesOf(pickBay.rack).map((m) => {

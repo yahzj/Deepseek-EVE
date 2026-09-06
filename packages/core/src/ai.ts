@@ -211,7 +211,7 @@ export function assignAiExpedition(
     return {
       ok: false,
       error:
-        'AI 远征已下线：悬赏请主控亲自出击——AI 采矿/打捞/掩护巡逻不受影响。',
+        '自动远征暂停受理：悬赏请主控亲自出击——AI 采矿/打捞/掩护巡逻不受影响。',
     }
   }
   // ↓↓↓ 软下线前的完整指派逻辑（门槛/冷却/行程，保留待恢复）↓↓↓
@@ -690,7 +690,7 @@ export function advanceAiExpedition(
   if (state.aiAssignments[shipId]?.task?.kind === 'expedition') {
     delete state.aiAssignments[shipId]
     gainAiCore(state, assignment.coreType)
-    addLog(state, 'warn', `[AI·${shipName}] AI 远征已下线：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`)
+    addLog(state, 'warn', `[AI·${shipName}] 自动远征暂停受理：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`)
     return
   }
   // ↓↓↓ 软下线前的完整推进逻辑（out → battle → 结算，保留待恢复）↓↓↓

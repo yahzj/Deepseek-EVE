@@ -171,8 +171,8 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     state,
     'info',
     doneMs > 0
-      ? `开始扫描探索（续扫，就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%）：本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口（去程已取消，立即开始）。`
-      : `开始扫描探索：深空扫描立即就地展开（去程已取消）——预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并自动返航（去程并入返航）。${riskNote}`,
+      ? `开始扫描探索（续扫，就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%）：本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口，立即开始。`
+      : `开始扫描探索：深空扫描立即就地展开——预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并自动返航。${riskNote}`,
   )
   return { ok: true }
 }

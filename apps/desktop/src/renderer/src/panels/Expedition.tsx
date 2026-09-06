@@ -106,7 +106,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
               <Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} />
             </span>
             舰船在「{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系掩护巡逻驻留——
-            从这里可即时出发远征、扫描或采矿（去程已取消，无航行等待）；卸货、维修与换船需返回空间站。
+            从这里可即时出发远征、扫描或采矿；卸货、维修与换船需返回空间站。
           </span>
           <button
             className="app-btn is-small"
@@ -866,7 +866,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   className="app-btn is-small is-primary"
                   disabled={scan.active || state.mining.active || view.active}
                   onClick={() => handleScan(selected)}
-                  title={`派出深空扫描艇：立即就地扫描（去程已取消）约 10 分钟；窗口完成即点亮该星系并自动返航（去程并入返航）；期间事件倒计时加速、更易遭遇「探索发现」`}
+                  title={`派出深空扫描艇：立即就地扫描约 10 分钟；窗口完成即点亮该星系并自动返航；期间事件倒计时加速、更易遭遇「探索发现」`}
                 >
                   <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（约 {scanMinutesOf()} 分钟）
                 </button>
@@ -1376,7 +1376,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
               : ` · 胜利自动返航约 ${Math.max(1, Math.round(retMins * 2))} 分钟（不可召回）`
           return (
             <>
-              即时开战（去程取消） · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
+              即时开战 · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
               {homeTarget ? ' · 本港悬赏，胜利即回港' : backTxt}
             </>
           )
@@ -1423,7 +1423,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       </div>
       <div
         className="app-ano-econ"
-        title={`估算奖励/小时（2026-09-06 口径：每单耗时 = 交火 + 胜利自动返航 2×单程；母港目标无返航）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
+        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航 2×单程；母港目标无返航）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
       >
         {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（每次出击）
       </div>

@@ -116,7 +116,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         <div className="app-belt-econ">
           <div
             className="app-belt-econ-val"
-            title="与星图「残骸打捞」页同口径：按残骸来源危险度池的保底矿物估价（展示估算，非结算；按手动炉基准批计，AI 核心周期更长）"
+            title="按残骸来源危险度池的保底矿物估算（手动炉基准；AI 核心驱动时周期更长）——参考值，实际所得以回收拆解结算为准"
           >
             {MONEY_GLYPH} 保底 ≈{evH.toLocaleString('zh-CN')} ISK/h
           </div>

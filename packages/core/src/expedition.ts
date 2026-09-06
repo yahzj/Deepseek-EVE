@@ -252,7 +252,7 @@ export function startExpedition(
   addLog(
     state,
     'info',
-    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」跃迁至目标空域——去程已取消，立即进入交火。胜利后自动返航母港（去程并入返航，不可召回）；失利/撤退同样自动返航。`,
+    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航母港（返航含去返全程，不可召回）；失利/撤退同样自动返航。`,
   )
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
   if (exp.eventId) maybeFireTravelEvent(state, ctx)
