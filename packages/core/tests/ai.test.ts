@@ -136,6 +136,53 @@ describe('AI 采矿任务', () => {
     const task2 = state.aiAssignments['sandcat2']!.task as { phase: string }
     expect(task2.phase).toBe('outbound')
   })
+
+  it('返航腿与主控同口径：部分货载按占比缩放（25% 货载 → 实返航 75 秒，旧满仓口径需 300 秒）', () => {
+    // 手工构造"返航中"采矿任务 + 25 m³ 货载（25/100 → 满仓基准 120s×0.25=30s，÷0.4=75s；不缩放则 120s/0.4=300s）
+    state.fleet['sandcat2']!.cargo['ore-a'] = 25
+    state.aiAssignments['sandcat2'] = {
+      coreType: 'basic',
+      startedAtGameMs: 0,
+      task: { kind: 'mining', beltId: 'belt-a', phase: 'returning', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 25 },
+    }
+    advanceGame(state, 74_999, ctx)
+    expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('returning') // 尚未到港
+    expect(state.fleet['sandcat2']!.cargo['ore-a'] ?? 0).toBe(25)
+    advanceGame(state, 1, ctx) // 第 75 秒整：到港卸货（回归点：未缩放时此刻仍在返航）
+    expect(countWare(state, 'ore-a')).toBe(25)
+    expect(state.fleet['sandcat2']!.cargo['ore-a'] ?? 0).toBe(0)
+    expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('outbound') // 转出航继续循环
+  })
+})
+
+describe('AI 打捞任务', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.skills.trained['ai-expert'] = 1
+    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
+    gainAiCore(state, 'basic', 1)
+    ctx = makeTestCtx()
+  })
+
+  it('返航腿与主控同口径：部分货载按占比缩放（25 m³ → 实返航 75 秒，旧满仓口径需 300 秒）', () => {
+    // 手工构造"返航中"打捞任务（galaxy-hub 本地：基准腿 = localLegMs 120s）+ 25 m³ 货载
+    // → 120s×0.25=30s，÷0.4=75s 实返航；不缩放则 120s/0.4=300s
+    state.fleet['sandcat2']!.cargo['ore-a'] = 25 // 计数 = 体积（m³）
+    state.aiAssignments['sandcat2'] = {
+      coreType: 'basic',
+      startedAtGameMs: 0,
+      task: { kind: 'salvage', galaxyId: 'galaxy-hub', phase: 'returning', phaseAccMs: 0, cycleAccMs: 0, deviceAccMs: {}, tripM3: 25 },
+    }
+    advanceGame(state, 74_999, ctx)
+    expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('returning')
+    advanceGame(state, 1, ctx) // 第 75 秒整：到港卸货 → 单趟任务结束、核心归还（回归点：未缩放时此刻仍在返航）
+    expect(countWare(state, 'ore-a')).toBe(25)
+    expect(state.aiAssignments['sandcat2']).toBeUndefined()
+    expect(countAiCore(state, 'basic')).toBe(2) // 占用 1 枚已归还
+  })
 })
 
 describe('AI 远征任务', () => {

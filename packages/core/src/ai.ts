@@ -24,6 +24,7 @@ import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOu
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
+import { scaledReturnMs } from './trips'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import {
@@ -439,10 +440,11 @@ function advanceAiMining(
       // T9：AI 采矿往返以"离矿带最近空间站"为基准（未建副站时 = 母港）
       const beltDef = ctx.belts.get(task.beltId)
       const stGal = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
+      // 返航腿与主控同口径（2026-09-06 船长复核⑤）：满仓基准时长先按货仓占比缩放，再按效率拉长
       const legBase =
         task.phase === 'outbound'
           ? oneOutboundLegMs(state, ctx, task.beltId, shipId, stGal)
-          : oneLegMs(state, ctx, task.beltId, shipId, stGal)
+          : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId)
       const legMsReal = Math.max(1, Math.round(legBase / eff))
       const need = legMsReal - task.phaseAccMs
       if (remaining < need) {
@@ -568,9 +570,12 @@ function advanceAiSalvage(
   let guard = 0
   while (remaining > 0) {
     if (++guard > 100_000) break
-    // ── 出航 / 返航（按效率拉长） ──
+    // ── 出航 / 返航（按效率拉长；返航腿与主控同口径——2026-09-06 船长复核⑤：满仓基准先按货仓占比缩放） ──
     if (task.phase === 'outbound' || task.phase === 'returning') {
-      const legBase = task.phase === 'outbound' ? Math.round(legBaseOf() / 2) : legBaseOf()
+      const legBase =
+        task.phase === 'outbound'
+          ? Math.round(legBaseOf() / 2)
+          : scaledReturnMs(legBaseOf(), state, ctx, shipId)
       const legReal = Math.max(1, Math.round(legBase / eff))
       const need = legReal - task.phaseAccMs
       if (remaining < need) {
