@@ -176,6 +176,15 @@ body {
 
 .app-root.is-mobile-rot .app-bts-note { font-size: 12.5px; }
 
+/* 手机：战斗顶部按钮区放大（2026-09-06 船长：方便退出/撤退——大字大触区，行可换行防挤） */
+.app-root.is-mobile-rot .app-battle-screen-top { gap: 14px; padding: 12px 16px; flex-wrap: wrap; row-gap: 10px; }
+
+.app-root.is-mobile-rot .app-battle-screen-top .app-btn { font-size: 15px; padding: 11px 22px; border-radius: 9px; }
+
+.app-root.is-mobile-rot .app-battle-screen-top .app-gold { font-size: 17px; }
+
+.app-root.is-mobile-rot .app-battle-screen-top .app-dim { font-size: 13px; }
+
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
 .app-mob-sel-mask { position: fixed; inset: 0; z-index: 320; background: rgba(3,7,12,.55); display: flex; align-items: center; justify-content: center; }
