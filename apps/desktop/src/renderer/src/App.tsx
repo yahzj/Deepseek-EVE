@@ -7,8 +7,9 @@
  * - 中部：左侧为主窗口（按顶部菜单切换页面），右侧事件日志
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
-import { Profiler, useEffect, useReducer, useRef, useState } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
+import type { RefObject } from 'react'
+import { flushSync } from 'react-dom'
 import { formatDurationMs, shipDisplayName } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
@@ -191,14 +192,24 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
 
 /* ═══════════════ 性能监测（2026-09-08 诊断工具：隐形采集；whale-idle:debug 下顶栏出现 ⏱ 性能 可查看/导出） ═══════════════ */
 
-/** Profiler 边界：采集激活时才包一层（未激活零开销），把每次 React 提交耗时上报给 perfHub */
-function PerfShell({ children }: { children: ReactNode }) {
-  if (!perfHub.recording) return <>{children}</>
-  return (
-    <Profiler id="app" onRender={(_id, _phase, actual) => perfHub.recordCommit(actual)}>
-      {children}
-    </Profiler>
-  )
+/**
+ * 性能监测下的引擎订阅封装：生产构建中 React <Profiler> 不触发 onRender，
+ * 因此在采集激活时用 flushSync 把整树刷新压成同步并实测耗时（正常路径不受影响、仍是异步渲染）。
+ */
+function PerfListener({ engine, force }: { engine: GameEngine; force: () => void }) {
+  useEffect(() => {
+    return engine.subscribe(() => {
+      if (perfHub.recording) {
+        const t0 = performance.now()
+        flushSync(force)
+        perfHub.recordCommit(performance.now() - t0)
+      } else {
+        force()
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine])
+  return null
 }
 
 /** 调试悬浮 HUD：当前推进/通知/提交耗时 + 一键复制完整快照 JSON（玩家可按引导导出） */
@@ -279,7 +290,6 @@ function PerfHud({ onClose }: { onClose: () => void }) {
 
 export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
-  useEffect(() => engine.subscribe(force), [engine])
 
   // ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：按 visualViewport 真实可见区铺满对齐，
   //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"） ──
@@ -577,8 +587,9 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [tutStep, page])
 
   return (
-    <PerfShell>
-      <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
+    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
+      {/* 引擎订阅：正常异步渲染；性能监测激活时改 flushSync 同步刷新并实测整树提交耗时 */}
+      <PerfListener engine={engine} force={force} />
       {/* ───── 顶栏 ───── */}
       <header className="app-header">
         <div className="app-header-left">
@@ -927,7 +938,6 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* 全局悬停提示层（置于最上） */}
       <TooltipLayer />
-      </div>
-    </PerfShell>
+    </div>
   )
 }
