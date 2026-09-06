@@ -9,13 +9,21 @@
  * - 位置：跟随鼠标（默认光标右下方），右侧/下方放不下自动翻到左/上方，并始终收敛在视口内；
  *   渲染后按实际尺寸再精修一次（富内容高度不同也能正确避让边缘）；
  * - 滚动列表内同样不受裁切（fixed 定位）。
+ *
+ * 2026-09-06 手机浏览器适配（船长：悬浮窗在手机上显示不正常/疑似拿不到鼠标位置）：
+ * - 手机横屏（.app-root.is-mobile-rot）时，提示层位于旋转后的"局部坐标空间"，与
+ *   clientX/Y（物理视口）不一致 → 先按 root 的 --mob-scale/--mob-x/--mob-y 换算回局部坐标
+ *   再布局与收边（与教程高亮框同一套逆变换）；
+ * - 触屏合成鼠标事件常给出 (0,0) 等无效坐标 → 用全局最近一次真实 pointer 位置兜底；
+ * - 无 hover 环境改为"点到即看"：任何 pointerdown/滚动都会收起当前提示，触碰带说明的元素后
+ *   由浏览器合成的 enter 事件重新显示（锚在触点），避免提示残留在角落里。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ElementType, MouseEvent, ReactNode } from 'react'
 
 interface TipState {
   content: ReactNode
-  /** 光标落点（用于渲染后按实际尺寸精修；< 0 表示已精修过） */
+  /** 锚点（局部坐标；渲染后按实际尺寸精修一次；< 0 表示已精修过） */
   cx: number
   cy: number
   x: number
@@ -34,18 +42,76 @@ function emit(): void {
   for (const fn of listeners) fn(current)
 }
 
+/** 布局空间度量：桌面 = 视口（恒等）；手机横屏 = root 旋转前的局部空间（与提示层坐标系一致） */
+interface Metrics {
+  rot: boolean
+  s: number
+  L: number
+  T: number
+  bw: number
+  bh: number
+}
+
+function viewMetrics(): Metrics {
+  if (typeof document !== 'undefined') {
+    const root = document.querySelector<HTMLElement>('.app-root.is-mobile-rot')
+    if (root) {
+      const cs = window.getComputedStyle(root)
+      const s = parseFloat(cs.getPropertyValue('--mob-scale'))
+      const L = parseFloat(cs.getPropertyValue('--mob-x'))
+      const T = parseFloat(cs.getPropertyValue('--mob-y'))
+      if (Number.isFinite(s) && s > 0 && Number.isFinite(L) && Number.isFinite(T)) {
+        return {
+          rot: true,
+          s,
+          L,
+          T,
+          bw: root.offsetWidth || 1200,
+          bh: root.offsetHeight || window.innerHeight,
+        }
+      }
+    }
+  }
+  return { rot: false, s: 1, L: 0, T: 0, bw: window.innerWidth, bh: window.innerHeight }
+}
+
+/** 物理视口坐标 → 提示层局部坐标（局部(lx,ly)→视口：X = L + s·ly；Y = T − s·lx） */
+function toLocal(m: Metrics, x: number, y: number): { x: number; y: number } {
+  if (!m.rot) return { x, y }
+  return { x: (m.T - y) / m.s, y: (x - m.L) / m.s }
+}
+
+/** 最近一次真实指针位置（pointerdown/pointermove 维护；兜底触屏合成事件给出的 (0,0) 坐标） */
+const lastPt = { x: -1, y: -1 }
+if (typeof window !== 'undefined') {
+  window.addEventListener('pointerdown', (e) => {
+    lastPt.x = e.clientX
+    lastPt.y = e.clientY
+  }, { passive: true })
+  window.addEventListener('pointermove', (e) => {
+    lastPt.x = e.clientX
+    lastPt.y = e.clientY
+  }, { passive: true })
+}
+
 /** 首帧占位定位（粗估；TooltipLayer 渲染后会按实际尺寸精修一次） */
 function place(content: ReactNode, cx: number, cy: number): void {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+  const m = viewMetrics()
+  let px = cx
+  let py = cy
+  if (px === 0 && py === 0 && lastPt.x >= 0) {
+    px = lastPt.x
+    py = lastPt.y
+  }
+  const lp = toLocal(m, px, py)
   const estH = 160
-  let x = cx + 14
-  let y = cy + 16
-  if (x + TIP_W + PAD > vw) x = cx - TIP_W - 12 // 右侧放不下 → 光标左侧
-  if (y + estH + PAD > vh) y = cy - estH - 10 // 下方放不下 → 光标上方
-  x = Math.max(PAD, Math.min(vw - TIP_W - PAD, x))
-  y = Math.max(PAD, Math.min(vh - estH - PAD, y))
-  current = { content, cx, cy, x: Math.round(x), y: Math.round(y) }
+  let x = lp.x + 14
+  let y = lp.y + 16
+  if (x + TIP_W + PAD > m.bw) x = lp.x - TIP_W - 12 // 右侧放不下 → 锚点左侧
+  if (y + estH + PAD > m.bh) y = lp.y - estH - 10 // 下方放不下 → 锚点上方
+  x = Math.max(PAD, Math.min(m.bw - TIP_W - PAD, x))
+  y = Math.max(PAD, Math.min(m.bh - estH - PAD, y))
+  current = { content, cx: lp.x, cy: lp.y, x: Math.round(x), y: Math.round(y) }
   emit()
 }
 
@@ -54,7 +120,7 @@ export function showTip(content: ReactNode, clientX: number, clientY: number): v
   place(content, clientX, clientY)
 }
 
-/** mousemove 高频更新：rAF 节流 */
+/** 指针高频更新：rAF 节流 */
 export function moveTip(content: ReactNode, clientX: number, clientY: number): void {
   if (raf !== 0) return
   raf = requestAnimationFrame(() => {
@@ -85,21 +151,31 @@ export function TooltipLayer(): ReactNode {
     }
   }, [])
 
+  // 无 hover 的触屏交互：点任意处/滚动先收起提示（触碰带说明元素后由合成 enter 重新显示）
+  useEffect(() => {
+    const dismiss = (): void => hideTip()
+    window.addEventListener('pointerdown', dismiss)
+    window.addEventListener('scroll', dismiss, true)
+    return () => {
+      window.removeEventListener('pointerdown', dismiss)
+      window.removeEventListener('scroll', dismiss, true)
+    }
+  }, [])
+
   // 渲染后按实际尺寸精修落点（首帧估算 → 实测翻转/收敛一次；cx < 0 表示已精修）
   useLayoutEffect(() => {
     if (!state || state.cx < 0) return
     const el = ref.current
     if (!el) return
-    const vw = window.innerWidth
-    const vh = window.innerHeight
+    const m = viewMetrics()
     const w = el.offsetWidth
     const h = el.offsetHeight
     let x = state.cx + 14
     let y = state.cy + 16
-    if (x + w + PAD > vw) x = state.cx - w - 12
-    if (y + h + PAD > vh) y = state.cy - h - 10
-    x = Math.max(PAD, Math.min(vw - w - PAD, x))
-    y = Math.max(PAD, Math.min(vh - h - PAD, y))
+    if (x + w + PAD > m.bw) x = state.cx - w - 12
+    if (y + h + PAD > m.bh) y = state.cy - h - 10
+    x = Math.max(PAD, Math.min(m.bw - w - PAD, x))
+    y = Math.max(PAD, Math.min(m.bh - h - PAD, y))
     setState((s) => (s && s.cx >= 0 ? { ...s, cx: -1, cy: -1, x: Math.round(x), y: Math.round(y) } : s))
   }, [state])
 

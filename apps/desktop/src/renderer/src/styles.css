@@ -185,6 +185,13 @@ body {
 
 .app-root.is-mobile-rot .app-battle-screen-top .app-dim { font-size: 13px; }
 
+/* 手机：悬浮说明（Tooltip）在横屏局部空间渲染——坐标换算见 ui/Tooltip.tsx；上限改按局部空间、字号加大（2026-09-06 船长） */
+.app-root.is-mobile-rot .app-tip { font-size: 13px; padding: 9px 13px; max-width: min(340px, 92%); max-height: 62%; }
+
+.app-root.is-mobile-rot .app-tip .app-ship-hover-title { font-size: 15px; }
+
+.app-root.is-mobile-rot .app-tip .app-info-note { font-size: 12px; }
+
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
 .app-mob-sel-mask { position: fixed; inset: 0; z-index: 320; background: rgba(3,7,12,.55); display: flex; align-items: center; justify-content: center; }
