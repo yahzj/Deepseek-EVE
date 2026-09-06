@@ -1,11 +1,11 @@
-# 大鲸鱼·性能自动采集（2026-09-08 诊断工具）
+﻿# 大鲸鱼·性能自动采集（2026-09-08 诊断工具）
 # 用法：powershell -File tools/run-autoperf.ps1  [-Spec '<场景JSON>']
 # 默认场景：地图挂机 60s → 工业页 60s → 市场页 60s → 战斗 ≈90s
 # 产物：out/autoperf-<时间戳>/run.log（含 AUTOPERF_REPORT_BEGIN/END 的完整 JSON 报告）
 param(
   [string]$Spec = '{"scenes":[{"name":"map-idle","seconds":60},{"name":"industry","page":"工业","seconds":60},{"name":"market","page":"市场","seconds":60},{"name":"battle","battle":true,"seconds":90}]}'
 )
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue' # Electron 的 stderr 噪音（NativeCommandError）不能当致命错误
 $root = Split-Path -Parent $PSScriptRoot
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $dir = Join-Path $root "out/autoperf-$stamp"

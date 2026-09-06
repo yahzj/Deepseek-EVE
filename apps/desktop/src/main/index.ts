@@ -148,6 +148,9 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
+      // 性能自动采集（诊断工具）：窗口无交互桌面/被遮挡时 Chromium 会节流定时器到 1/分钟，
+      // 使测量失真——自动跑分时关闭节流
+      backgroundThrottling: !process.env.WHALE_AUTOPERF,
     },
   })
 
@@ -172,6 +175,12 @@ app.setName('whale-idle')
 // 性能自动采集（2026-09-08 诊断工具）：把存档目录隔离到临时目录，绝不碰真实存档
 if (process.env.WHALE_PERF_USERDATA) {
   app.setPath('userData', process.env.WHALE_PERF_USERDATA)
+}
+// 自动跑分时关闭 Chromium 的后台/遮挡节流（见 createWindow），保证定时器与渲染按真实节奏跑
+if (process.env.WHALE_AUTOPERF) {
+  app.commandLine.appendSwitch('disable-background-timer-throttling')
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+  app.commandLine.appendSwitch('disable-renderer-backgrounding')
 }
 
 app.whenReady().then(() => {

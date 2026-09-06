@@ -15,16 +15,23 @@ root.render(<div className="app-loading">正在启动星门引擎……</div>)
 engine
   .start()
   .then(() => {
-    root.render(<App engine={engine} />)
-    // 性能自动采集模式（仅 Electron 环境变量注入时运行；玩家路径无感）
+    // 性能自动采集模式（仅 Electron 环境变量注入时运行；玩家路径无感）：
+    // 必须在 App 首帧渲染前激活 Hub，让 Profiler/埋点从第一个 commit 就记录
     const perfJson = window.__autoperf
     if (perfJson) {
       try {
-        void runAutoPerf(engine, JSON.parse(perfJson) as Parameters<typeof runAutoPerf>[1])
+        const spec = JSON.parse(perfJson) as Parameters<typeof runAutoPerf>[1]
+        void import('./game/perf').then(({ perfHub }) => {
+          perfHub.activate()
+          root.render(<App engine={engine} />)
+          void runAutoPerf(engine, spec)
+        })
+        return
       } catch (err) {
         console.error('性能自动采集启动失败：', err)
       }
     }
+    root.render(<App engine={engine} />)
   })
   .catch((err: unknown) => {
     console.error('引擎启动失败：', err)
