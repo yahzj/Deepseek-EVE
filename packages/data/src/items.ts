@@ -24,8 +24,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-tritanium', perOre: 2 },
       { mineralId: 'min-pyerite', perOre: 0.6 },
     ],
-    refineBatchUnits: 100,
-    refineCycleMs: 6_000,
+    refineBatchUnits: 24,
+    refineCycleMs: 20_000,
   },
   {
     id: 'ore-scorched',
@@ -38,8 +38,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-pyerite', perOre: 1.6 },
       { mineralId: 'min-mexallon', perOre: 0.5 },
     ],
-    refineBatchUnits: 80,
-    refineCycleMs: 6_000,
+    refineBatchUnits: 20,
+    refineCycleMs: 20_000,
   },
   {
     id: 'ore-hemorphite',
@@ -52,8 +52,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-nocxium', perOre: 0.55 },
       { mineralId: 'min-tritanium', perOre: 1.5 },
     ],
-    refineBatchUnits: 50,
-    refineCycleMs: 6_000,
+    refineBatchUnits: 10,
+    refineCycleMs: 20_000,
   },
   {
     id: 'ore-glowstone',
@@ -66,8 +66,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.7 },
       { mineralId: 'min-tritanium', perOre: 2.2 },
     ],
-    refineBatchUnits: 40,
-    refineCycleMs: 7_000,
+    refineBatchUnits: 4,
+    refineCycleMs: 20_000,
   },
   {
     id: 'ore-sunshard',
@@ -80,8 +80,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.7 },
       { mineralId: 'min-pyerite', perOre: 1.0 },
     ],
-    refineBatchUnits: 40,
-    refineCycleMs: 7_000,
+    refineBatchUnits: 4,
+    refineCycleMs: 20_000,
   },
   {
     id: 'ore-voidshard',
@@ -95,8 +95,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.12 },
       { mineralId: 'min-nocxium', perOre: 0.3 },
     ],
-    refineBatchUnits: 20,
-    refineCycleMs: 8_000,
+    refineBatchUnits: 18,
+    refineCycleMs: 260_000,
   },
   {
     id: 'ore-nebulite',
@@ -109,8 +109,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.55 },
       { mineralId: 'min-starcore', perOre: 0.8 },
     ],
-    refineBatchUnits: 12,
-    refineCycleMs: 8_000,
+    refineBatchUnits: 4,
+    refineCycleMs: 80_000,
   },
 ]
 
