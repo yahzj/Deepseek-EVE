@@ -193,6 +193,12 @@ describe('精炼与市场（M1 经济）', () => {
       expect(startRefineRun(state, 'min-a', 'pilot', ctx).ok).toBe(false) // 矿物无配方
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false) // 无库存
       expect(startRefineRun(state, '不存在的矿石', 'pilot', ctx).ok).toBe(false)
+      // 不足一批不能开工（2026-09-06 船长反馈：数量不足仍能开工）
+      state.warehouse.items['ore-a'] = 5
+      const tiny = startRefineRun(state, 'ore-a', 'pilot', ctx)
+      expect(tiny.ok).toBe(false)
+      expect(tiny.error ?? '').toContain('不足一批')
+      state.warehouse.items['ore-a'] = 0
       // 运行视图：空态
       expect(refineRunViews(state, ctx)).toHaveLength(0)
       // 运行中视图：进度 0~100、剩余毫秒 > 0

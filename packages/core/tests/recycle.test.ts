@@ -128,12 +128,17 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(stopLog[0]!.text).toContain('回收所得')
   })
 
-  it('非残骸物品 / 无残骸 / 非母港不能启动回收', () => {
+  it('非残骸物品 / 无残骸 / 不足一批 / 非母港不能启动回收', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 33 })
     const ctx = ctxOf()
     const notWreck = ctx.items.has('min-tritanium') ? 'min-tritanium' : 'ore-a'
     expect(startRecycleRun(state, notWreck, 'pilot', ctx).ok).toBe(false) // 不是残骸
     expect(startRecycleRun(state, wreckItemIdOf('ano-grave'), 'pilot', ctx).ok).toBe(false) // 仓库没有残骸
+    // 不足一批不能开工（2026-09-06 船长反馈：数量不足仍能开工）
+    addWare(state, wreckItemIdOf('ano-grave'), 5)
+    const tiny = startRecycleRun(state, wreckItemIdOf('ano-grave'), 'pilot', ctx)
+    expect(tiny.ok).toBe(false)
+    expect(tiny.error ?? '').toContain('不足一批')
   })
 
   it('残骸回收学：批周期每级 −4%（Lv5 = ×0.6，手动与 AI 同享）', () => {

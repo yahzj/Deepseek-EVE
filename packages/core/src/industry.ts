@@ -189,6 +189,14 @@ export function startRefineRun(
     const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
     if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   }
+  // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 本台单批量；运行中余量不足的"尾批"处理不受影响。
+  // 放在占用核心之前（不足即拒绝，不占核不记数）
+  if (available < batchEff) {
+    return {
+      ok: false,
+      error: `可炼量不足一批（每批 ${batchEff} 单位，现有 ${available} 单位）——先集齐再开工。`,
+    }
+  }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }
@@ -236,6 +244,13 @@ export function startRecycleRun(
   const available = oreAvailable(state, wreckItemId)
   if (available <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
+  }
+  // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 一批；运行中余量不足的"尾批"处理不受影响
+  if (available < RECYCLE_BATCH_M3) {
+    return {
+      ok: false,
+      error: `残骸不足一批（每批 ${RECYCLE_BATCH_M3} m³，现有 ${Math.round(available * 100) / 100} m³）——先凑够同型号残骸再拆解。`,
+    }
   }
   if (worker === 'pilot') {
     // 主控亲自回收：全局限 1 台 + 占主控工作位
