@@ -128,9 +128,53 @@ body {
 
 .app-root.is-mobile-rot .app-bts-range::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: #ffd98a; border: 2px solid #7a5816; box-shadow: 0 3px 10px rgba(0,0,0,.55); }
 
-.app-root.is-mobile-rot .app-bts-sideLabel { font-size: 12px; }
+.app-root.is-mobile-rot .app-bts-sideLabel { font-size: 13px; }
 
-.app-root.is-mobile-rot .app-bts-desire { min-width: 150px; font-size: 13px; }
+.app-root.is-mobile-rot .app-bts-desire { min-width: 180px; font-size: 14px; }
+
+/* 手机：战斗底部操作区整体放大（2026-09-06 船长：底栏高度低、内部偏小。
+   dock/距离尺原用 clamp(420px,52vw,780px)——vw 在旋转局部空间取物理竖屏宽，被压到 420px 窄条，一并拉宽） */
+.app-root.is-mobile-rot .app-battle-controls { gap: 10px; padding: 12px 16px 16px; }
+
+.app-root.is-mobile-rot .app-bts-dock { width: min(96%, 1180px); gap: 10px; }
+
+.app-root.is-mobile-rot .app-bts-ruler { width: min(96%, 1180px); }
+
+.app-root.is-mobile-rot .app-bts-ruler-head { font-size: 12.5px; }
+
+.app-root.is-mobile-rot .app-bts-scale { height: 14px; }
+
+.app-root.is-mobile-rot .app-bts-zone { top: 1px; height: 11px; }
+
+.app-root.is-mobile-rot .app-bts-tick { top: -3px; height: 18px; }
+
+.app-root.is-mobile-rot .app-bts-cursor { top: -12px; height: 34px; }
+
+.app-root.is-mobile-rot .app-bts-cur-chip { font-size: 13px; padding: 3px 9px; }
+
+.app-root.is-mobile-rot .app-bts-lane { min-height: 210px; }
+
+.app-root.is-mobile-rot .app-bts-dock .app-bts-legends { gap: 8px; font-size: 13.5px; }
+
+.app-root.is-mobile-rot .app-bts-chip { gap: 6px; border-radius: 7px; padding: 6px 12px; }
+
+.app-root.is-mobile-rot .app-bts-chip i { width: 13px; height: 13px; }
+
+.app-root.is-mobile-rot .app-bts-reloads { gap: 8px 16px; padding: 2px 0 6px; min-height: 20px; }
+
+.app-root.is-mobile-rot .app-bts-reload { gap: 7px; font-size: 13.5px; }
+
+.app-root.is-mobile-rot .app-bts-reload-dot { width: 11px; height: 11px; }
+
+.app-root.is-mobile-rot .app-bts-reload-track { width: 84px; height: 8px; }
+
+.app-root.is-mobile-rot .app-bts-reload-ms { min-width: 46px; font-size: 13px; }
+
+.app-root.is-mobile-rot .app-bts-ops { gap: 16px; }
+
+.app-root.is-mobile-rot .app-bts-ops .app-btn { font-size: 15px; padding: 10px 26px; border-radius: 9px; }
+
+.app-root.is-mobile-rot .app-bts-note { font-size: 12.5px; }
 
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
