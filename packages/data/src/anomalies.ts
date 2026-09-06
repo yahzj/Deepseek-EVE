@@ -28,6 +28,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-pirate-post',
     name: '边境海盗前哨',
+    foeHpOverride: 28, // P1 重标（2026-09-06，待终审）：A 段隼枭MK1 中位 ~28s
     galaxyId: 'galaxy-kor',
     threat: 12,
     tactic: 'brawl',
@@ -43,6 +44,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-abandoned-platform',
     name: '占港武装通缉',
+    foeHpOverride: 65, // P1 重标（2026-09-06，待终审）：A 段隼枭MK1 中位 ~33s
     galaxyId: 'galaxy-dust',
     threat: 16,
     tactic: 'orbit',
@@ -58,6 +60,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-redring-raiders',
     name: '赤潮劫掠舰队',
+    foeHpOverride: 440, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~55s
     galaxyId: 'galaxy-redring',
     threat: 34,
     tactic: 'kite',
@@ -73,6 +76,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-gravekeeper',
     name: '坟场守墓人',
+    foeHpOverride: 3300, // P1 重标（2026-09-06，待终审）：E 段大白鲨5MK3 中位 ~80s（效率差基准）
     galaxyId: 'galaxy-grave',
     threat: 88,
     tactic: 'brawl',
@@ -88,6 +92,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-ghost-signal',
     name: '幽灵舰信号',
+    foeHpOverride: 475, // P1 重标（2026-09-06，待终审）：C 段灰鲭鲨4MK2 中位 ~58s
     galaxyId: 'galaxy-redring',
     threat: 46,
     tactic: 'kite',
@@ -104,6 +109,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-abyss-guard',
     name: '深渊之门卫队',
+    foeHpOverride: 460, // P1 重标（2026-09-06，待终审）：C 段墙点（kite+僚）中位 ~58s
     galaxyId: 'galaxy-abyss',
     threat: 45,
     tactic: 'kite',
@@ -123,6 +129,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-titan-wreck',
     name: '泰坦残骸勘探',
+    foeHpOverride: 1120, // P1 重标（2026-09-06，待终审）：C 段灰鲭鲨4MK2 中位 ~68s
     galaxyId: 'galaxy-abyss',
     threat: 60,
     tactic: 'brawl',
@@ -138,6 +145,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-auro-raiders',
     name: '奥罗武装残骸群',
+    foeHpOverride: 1435, // P1 重标（2026-09-06，待终审）：C 段灰鲭鲨4MK2 中位 ~70s
     galaxyId: 'galaxy-auro',
     threat: 62,
     tactic: 'brawl',
@@ -157,6 +165,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-starcore-boss',
     name: '星髓巢穴',
+    foeHpOverride: 1530, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~80s
     galaxyId: 'galaxy-starcore',
     threat: 72,
     tactic: 'brawl',
@@ -175,6 +184,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-cinder-siege',
     name: '烬火围攻战',
+    foeHpOverride: 1025, // P1 重标（2026-09-06，待终审）：C 段灰鲭鲨4MK2 中位 ~52s
     galaxyId: 'galaxy-cinder',
     threat: 42,
     standingReq: 6,
@@ -187,6 +197,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-echo-haunt',
     name: '回音残舰',
+    foeHpOverride: 1470, // P1 重标（2026-09-06，待终审）：C 段灰鲭鲨4MK2 中位 ~64s
     galaxyId: 'galaxy-echo',
     threat: 52,
     standingReq: 6,
@@ -199,6 +210,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-nadir-static',
     name: '天底静区封锁',
+    foeHpOverride: 2040, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~74s
     galaxyId: 'galaxy-nadir',
     threat: 66,
     standingReq: 9,
@@ -211,6 +223,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-maw-hunt',
     name: '噬口猎杀令',
+    foeHpOverride: 2460, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~86s
     galaxyId: 'galaxy-maw',
     threat: 80,
     standingReq: 11,
@@ -223,6 +236,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-vault-sentinel',
     name: '穹顶守卫',
+    foeHpOverride: 4100, // P1 重标（2026-09-06，待终审）：E 段大白鲨5MK3 中位 ~84s（效率差基准）
     galaxyId: 'galaxy-vault',
     threat: 96,
     standingReq: 13,
@@ -235,6 +249,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-voidedge-warden',
     name: '虚海守望者',
+    foeHpOverride: 3300, // P1 重标（2026-09-06，待终审）：E 段大白鲨5MK3 中位 ~78s（效率差基准）
     galaxyId: 'galaxy-voidedge',
     threat: 88,
     standingReq: 12,
@@ -263,6 +278,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-shard-bandits',
     name: '碎晶带劫匪通缉',
+    foeHpOverride: 285, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~38s
     galaxyId: 'galaxy-shard',
     threat: 20,
     tactic: 'brawl',
@@ -277,6 +293,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-lantern-saboteurs',
     name: '信标猎手悬赏',
+    foeHpOverride: 365, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~40s
     galaxyId: 'galaxy-lantern',
     threat: 22,
     tactic: 'orbit',
@@ -291,6 +308,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-haze-ambush',
     name: '灰霾伏击团清剿令',
+    foeHpOverride: 260, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~48s
     galaxyId: 'galaxy-haze',
     threat: 28,
     tactic: 'kite',
@@ -307,6 +325,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-mirage-hijackers',
     name: '蜃影导航劫持令',
+    foeHpOverride: 525, // P1 重标（2026-09-06，待终审）：C 段墙点（kite+僚）中位 ~60s
     galaxyId: 'galaxy-mirage',
     threat: 48,
     tactic: 'kite',
@@ -323,6 +342,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-chasm-aberrations',
     name: '裂谷畸变体猎杀令',
+    foeHpOverride: 1215, // P1 重标（2026-09-06，待终审）：C 段灰鲭鲨4MK2 中位 ~66s
     galaxyId: 'galaxy-chasm',
     threat: 58,
     tactic: 'brawl',
