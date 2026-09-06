@@ -184,7 +184,7 @@ function isBenignSellErr(err?: string): boolean {
   return !!err && BENIGN_SELL_ERRS.some((p) => err.includes(p))
 }
 /** 叙事性 warn（低安首入提示/遭遇横幅等引擎按设计发 warn 的玩家向日志）不计引擎异常 */
-const BENIGN_NARRATIVE_WARN = ['首次进入低安', '低安遭遇', '被盯上了', '被咬下一块装甲']
+const BENIGN_NARRATIVE_WARN = ['首次进入低安', '低安遭遇', '被盯上了', '被咬下一块装甲', '被洗劫']
 
 function auditLogs(): void {
   for (let i = lastLogIdx; i < state.logs.length; i++) {
