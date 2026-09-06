@@ -208,7 +208,7 @@ export function recycleTierOf(baseDensity: number): RecycleTier {
   return 'common'
 }
 
-/** 残骸物品 → 回收画像（敌群威胁/星系危险度；未知物品返回 null） */
+/** 残骸物品 → 回收画像（敌群威胁/星系危险度/特色池；未知物品返回 null） */
 export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleProfile | null {
   const anomalyId = anomalyIdOfWreck(wreckItemId)
   if (!anomalyId) return null
@@ -223,6 +223,10 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
     baseDensity: base,
     tier: recycleTierOf(base),
     lowSec: typeof galaxy?.security === 'number' && galaxy.security < 0,
+    // B3.1：敌群特色（2026-09-06）——缺省走三档基础池/三层彩头
+    pool: anomaly.recyclePool,
+    note: anomaly.recycleNote,
+    loot: anomaly.recycleLoot,
   }
 }
 
@@ -233,11 +237,17 @@ export interface RecycleProfile {
   baseDensity: number
   tier: RecycleTier
   lowSec: boolean
+  /** B3.1 特色保底矿物权重池（缺省 = 三档基础池） */
+  pool?: ReadonlyArray<readonly [string, number]>
+  /** 玩家可见"残骸产出倾向"（缺省无） */
+  note?: string
+  /** 试点彩头可出件集（缺省 = 三层默认） */
+  loot?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 
 /**
  * 保底矿物开箱（每批调用；确定性走 state.rng）：
- * 产出总量 = 批体积(m³) × 档位单方产量 × jitter，矿物品种按档位池权重抽取。
+ * 产出总量 = 批体积(m³) × 档位单方产量 × jitter，品种按"敌群特色池（缺省档池）"权重抽取。
  */
 export function rollRecycleGuarantee(
   state: GameState,
@@ -245,7 +255,7 @@ export function rollRecycleGuarantee(
   profile: RecycleProfile,
   volumeM3: number,
 ): Array<{ mineralId: string; units: number }> {
-  const pool = RECYCLE_POOLS[profile.tier]!
+  const pool = profile.pool && profile.pool.length > 0 ? profile.pool : RECYCLE_POOLS[profile.tier]!
   let baseUnits = Math.max(1, volumeM3 * RECYCLE_YIELD_PER_M3[profile.tier])
   // 残骸提纯学（salvage-refining，2026-09-05）：保底矿物每级 +8%（对标精炼收率系）
   const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
@@ -328,15 +338,28 @@ export function rollRecycleLoot(
 ): { modules: string[]; fragments: string[] } {
   const modules: string[] = []
   const fragments: string[] = []
-  const mk2Pool = RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
+  // B3.1 试点：敌群可出件集替换"基础件通吃池 / 低安 MK2 池"，掉率按件集均价反比缩放 → EV 等值
+  const avgPriceOf = (ids: readonly string[]): number => {
+    const ps = ids
+      .map((id) => ctx.marketGoods.get(id)?.basePrice)
+      .filter((p): p is number => typeof p === 'number' && p > 0)
+    return ps.length > 0 ? ps.reduce((a, b) => a + b, 0) / ps.length : 0
+  }
+  const defBaseAvg = avgPriceOf(RECYCLE_BASE_MODULES)
+  const setBase = (profile.loot?.modules ?? []).filter((id) => ctx.modules.has(id))
+  const basePool = setBase.length > 0 ? setBase : RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
+  const baseChance = basePool.length > 0 ? RECYCLE_CHANCE.base * (defBaseAvg / (avgPriceOf(basePool) || defBaseAvg)) : 0
+  const defMk2Avg = avgPriceOf(RECYCLE_MK2_MODULES)
+  const setMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id))
+  const mk2Pool = setMk2.length > 0 ? setMk2 : RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
+  const mk2Chance = mk2Pool.length > 0 ? RECYCLE_CHANCE.mk2 * (defMk2Avg / (avgPriceOf(mk2Pool) || defMk2Avg)) : 0
   const t2Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
   const t3Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
   for (let i = 0; i < batchUnits; i++) {
-    if (nextRandom(state.rng) < RECYCLE_CHANCE.base) {
-      const pool = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
-      if (pool.length > 0) modules.push(pool[Math.floor(nextRandom(state.rng) * pool.length)]!)
+    if (basePool.length > 0 && nextRandom(state.rng) < baseChance) {
+      modules.push(basePool[Math.floor(nextRandom(state.rng) * basePool.length)]!)
     }
-    if (profile.lowSec && mk2Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.mk2) {
+    if (profile.lowSec && mk2Pool.length > 0 && nextRandom(state.rng) < mk2Chance) {
       modules.push(mk2Pool[Math.floor(nextRandom(state.rng) * mk2Pool.length)]!)
     }
     if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT2) {

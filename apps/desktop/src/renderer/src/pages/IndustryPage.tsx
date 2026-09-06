@@ -10,8 +10,11 @@
  * - 页面布局 = 矿带卡同款：资源卡常驻网格；运转中的卡不改样式，只把操作按钮变为「停炉」。
  */
 import {
+  FRAGMENT_RECIPES,
+  RECYCLE_BASE_MODULES,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
+  RECYCLE_MK2_MODULES,
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_YIELD_PER_M3,
   aiCoreName,
@@ -154,8 +157,9 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
       </div>
       <div className="app-belt-desc">
-        {isWreck ? '每批拆解 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）' : def.description}
+        {isWreck ? '每批拆解 = 保底矿物 + 概率彩头（来源与低出率物见下两行）' : def.description}
       </div>
+      {isWreck ? <WreckFlavorRow def={def} engine={engine} /> : null}
       <div className="app-belt-ore">{dataLine}</div>
       {econ}
       <div className="app-belt-actions">
@@ -228,6 +232,38 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+/** B3.1：残骸回收卡"产出倾向 / 低出率掉落"说明行（2026-09-06 船长：直接告诉玩家具体低出率物） */
+function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
+  const ctx = engine.ctx
+  const profile = recycleProfileOf(ctx, def.id)
+  if (!profile) return null
+  const moduleName = (id: string): string => ctx.modules.get(id)?.name ?? id
+  const names = (ids: readonly string[]): string =>
+    ids
+      .filter((id) => ctx.modules.has(id))
+      .map(moduleName)
+      .join('、')
+  const baseSet = profile.loot?.modules && profile.loot.modules.length > 0 ? profile.loot.modules : RECYCLE_BASE_MODULES
+  const mk2Set = profile.loot?.mk2 && profile.loot.mk2.length > 0 ? profile.loot.mk2 : RECYCLE_MK2_MODULES
+  const parts: string[] = []
+  const baseNames = names(baseSet)
+  if (baseNames) parts.push(baseNames)
+  if (profile.lowSec && mk2Set.length > 0) parts.push(`低安专属：${names(mk2Set)}`)
+  const frags: string[] = []
+  for (const m of Object.keys(FRAGMENT_RECIPES)) {
+    const r = FRAGMENT_RECIPES[m]!
+    const eligible = r.need === 100 ? profile.threat >= 17 : r.need === 1000 ? profile.threat >= 41 : false
+    if (eligible && ctx.modules.has(m)) frags.push(`${moduleName(m)}蓝图碎片（集 ${r.need} 片）`)
+  }
+  if (frags.length > 0) parts.push(frags.slice(0, 4).join('、') + (frags.length > 4 ? ` 等${frags.length}种` : ''))
+  return (
+    <div className="app-belt-desc is-tip">
+      {profile.note ? <div className="app-dim">产出倾向：{profile.note}</div> : null}
+      {parts.length > 0 ? <div className="app-dim">低出率掉落：{parts.join('；')}</div> : null}
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { createInitialState } from '../src/state'
 import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
 import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import type { ItemDef } from '../src/types'
+import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
 import { recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
 
@@ -69,6 +69,29 @@ describe('回收画像与保底矿物滚动', () => {
     const kor = recycleProfileOf(ctx, wreckItemIdOf('ano-kor'))!
     expect(kor.tier).toBe('common') // 柯尔 base18 <20 → 常池
     expect(kor.lowSec).toBe(false)
+  })
+
+  it('B3.1：敌群特色池覆盖保底抽取（只出特色矿）；note/loot 随画像透传（2026-09-06）', () => {
+    const base = ctxOf()
+    const flavMap = new Map(base.anomalies)
+    const baseDef = base.anomalies.get('ano-grave')!
+    flavMap.set('ano-grave', {
+      ...baseDef,
+      recyclePool: [['min-darkiron', 100]] as readonly (readonly [string, number])[],
+      recycleNote: '守墓舰残骸：冥铁合金为主',
+      recycleLoot: { modules: ['mod-armor-kin-2'] },
+    })
+    const ctx: SimContext = { ...base, anomalies: flavMap }
+    const profile = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
+    expect(profile.pool).toEqual([['min-darkiron', 100]])
+    expect(profile.note).toContain('冥铁')
+    expect(profile.loot?.modules).toEqual(['mod-armor-kin-2'])
+    const state = createInitialState({ nowWallMs: 0, seed: 23 })
+    for (let i = 0; i < 30; i += 1) {
+      const out = rollRecycleGuarantee(state, ctx, profile, 10)
+      expect(out.length).toBe(1)
+      expect(out[0]!.mineralId).toBe('min-darkiron') // 特色池覆盖：绝不出档池其它矿物
+    }
   })
 
   it('保底矿物：总量 = 体积×档位单方产量×抖动，品种按档位池抽取（走 rng 确定性）', () => {

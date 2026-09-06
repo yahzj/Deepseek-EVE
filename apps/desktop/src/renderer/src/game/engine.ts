@@ -108,7 +108,7 @@ import type {
   SideTask,
   SimContext,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
 import { saveBridge } from './storage'
 
 type Listener = () => void
@@ -263,9 +263,9 @@ export class GameEngine {
   readonly shipBlueprints = SHIP_BLUEPRINTS
   readonly galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
-  readonly anomalies = ANOMALIES.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录
+  readonly anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
-  readonly allAnomalies = ANOMALIES
+  readonly allAnomalies = ANOMALIES_FLAVORED
   /** 通讯剧本目录（T9） */
   readonly dialogues = DIALOGUES
 

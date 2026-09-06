@@ -775,6 +775,13 @@ export interface AnomalyDef {
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean
+  /* ═══ B3.1 敌群特色回收（2026-09-06 船长定档；可缺省 → 三档基础池/三层彩头默认） ═══ */
+  /** 保底矿物权重池（同档矿物）；池均价 ≈ 档基数 × m（m = 危险度溢价 × 威胁线性，content-check 断言） */
+  recyclePool?: ReadonlyArray<readonly [string, number]>
+  /** 玩家可见的"残骸产出倾向"一句话 */
+  recycleNote?: string
+  /** 试点彩头可出件集（替换基础件通吃池 / 低安 MK2 池；掉率按件集均价自动缩放保持 EV 等值） */
+  recycleLoot?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 
 /** 模拟需要的全部静态内容（由数据包构建后一次性传入） */
