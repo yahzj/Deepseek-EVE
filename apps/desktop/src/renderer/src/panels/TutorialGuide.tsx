@@ -254,6 +254,37 @@ function findVisibleTarget(keywords: string[]): { el: Element; text: string } | 
   return lastVisibleMatch(keywords, true) ?? lastVisibleMatch(keywords, false)
 }
 
+/**
+ * 2026-09-06：手机横屏（.app-root 带 rotate+scale 变换）时，fixed 子元素进入"变换后局部空间"，
+ * 与 getBoundingClientRect 的视口坐标不一致 → 高亮框错位。这里把视口框换算回根元素局部坐标。
+ * 桌面（无 is-mobile-rot）不换算，行为与以前完全一致。
+ * 局部(lx,ly) → 视口：X = L + s·ly；Y = T − s·lx（s=缩放，L/T=根元素 left/top，即 --mob-x/--mob-y）
+ */
+function rootRotTransform(): { s: number; L: number; T: number } | null {
+  const root = document.querySelector<HTMLElement>('.app-root.is-mobile-rot')
+  if (!root) return null
+  const cs = getComputedStyle(root)
+  const s = parseFloat(cs.getPropertyValue('--mob-scale'))
+  const L = parseFloat(cs.getPropertyValue('--mob-x'))
+  const T = parseFloat(cs.getPropertyValue('--mob-y'))
+  if (!Number.isFinite(s) || s <= 0 || !Number.isFinite(L) || !Number.isFinite(T)) return null
+  return { s, L, T }
+}
+
+/** 目标按钮视口框 → 高亮框所在坐标空间的 {x(左), y(上), w, h}（手机换算到局部、桌面直接用视口） */
+function ringRectFor(el: Element): { x: number; y: number; w: number; h: number } {
+  const r = el.getBoundingClientRect()
+  const rot = rootRotTransform()
+  if (!rot) return { x: r.left, y: r.top, w: r.width, h: r.height }
+  const { s, L, T } = rot
+  return {
+    x: (T - r.top) / s, // 视口上边 ↔ 局部 x
+    y: (r.left - L) / s, // 视口左边 ↔ 局部 y
+    w: r.height / s,
+    h: r.width / s,
+  }
+}
+
 export function TutorialSpot({ engine, step, onGo }: { engine: GameEngine; step: number; onGo: (g: GuideGo) => void }) {
   const [ring, setRing] = useState<{ x: number; y: number; w: number; h: number; label: string } | null>(null)
   const plan = stepPlan(engine, step)
@@ -266,11 +297,11 @@ export function TutorialSpot({ engine, step, onGo }: { engine: GameEngine; step:
         setRing(null)
         return
       }
-      const r = hit.el.getBoundingClientRect()
+      const box = ringRectFor(hit.el)
       setRing((prev) =>
-        prev && prev.x === r.left && prev.y === r.top && prev.w === r.width && prev.h === r.height && prev.label === hit.text
+        prev && prev.x === box.x && prev.y === box.y && prev.w === box.w && prev.h === box.h && prev.label === hit.text
           ? prev
-          : { x: r.left, y: r.top, w: r.width, h: r.height, label: hit.text },
+          : { x: box.x, y: box.y, w: box.w, h: box.h, label: hit.text },
       )
     }
     relocate()
