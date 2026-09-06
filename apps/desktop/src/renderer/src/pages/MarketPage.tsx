@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs } from '@whale/core'
+import { goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -204,6 +204,8 @@ function GoodRow({
   const trend = marketTrend(state, good.key)
   const poolQ = good.poolTarget && good.poolTarget > 0 ? (state.market.pools[good.key]?.q ?? 0) : undefined
   const lock = goodLockedReason(state, good)
+  const bm = bmGateReason(state, good)
+  const lockShow = lock ?? bm // 玩家侧统一观感：暗市对玩家隐身，仅显示声望锁指引（与顶船同款）
   const life = good.rarity !== 'common' ? earliestSellRemaining(engine, good.key) : undefined
   const name = goodName(engine.ctx, good.key)
   const clickable = onSelect !== undefined
@@ -231,12 +233,12 @@ function GoodRow({
           <span className="app-chip is-dim">{KIND_TEXT[good.kind] ?? good.kind}</span>
           {good.rarity === 'rare' ? <span className="app-chip is-rare">稀有</span> : null}
           {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
-          {lock ? (
-            <span className="app-chip is-exotic" title={lock}>
+          {lockShow ? (
+            <span className="app-chip is-exotic" title={lockShow}>
               <span className="app-ico">
                 <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
               </span>
-              {lock}
+              {lockShow}
             </span>
           ) : null}
         </div>

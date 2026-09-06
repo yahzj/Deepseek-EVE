@@ -14,7 +14,7 @@
 
 import type { MarketGoodDef } from '@whale/core'
 
-export const MARKET_GOODS: readonly MarketGoodDef[] = [
+export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ══════════ 常驻供应（common） ══════════
 
   // ── 矿石（池模型：玩家售矿主渠道；收购平价，池淤积压价） ──
@@ -202,6 +202,25 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 0.5 },
   { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 900_000, demandMultiplier: 0.5 },
 ]
+
+/**
+ * P2 暗市双通道（2026-09-06 船长定：声望 11 前常驻供给 ×0.01、订单 ×4 暗市可绕过买入；
+ * 解锁后恢复原稀有度节奏与正常价、不转常驻）。范围 = MK3 战斗件 19 件（武器三族/无人机架·导控/
+ * 盾·甲抗容/支援件；剔除生产件 miner·cargo·salvager 与机动 prop）+ 动能 MK3 蓝图书
+ * （自制渠道同闸，防绕过）。原型（proto）与顶船维持原 standingReq 纯硬拦，不加暗市。
+ */
+const BM_MK3_KEYS = new Set([
+  'mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3',
+  'mod-drone-rack-3', 'mod-drone-tac-3',
+  'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-shield-pla-3', 'mod-shield-ext-3',
+  'mod-armor-kin-3', 'mod-armor-exp-3', 'mod-armor-pla-3', 'mod-armor-plate-3',
+  'mod-stab-kin-3', 'mod-stab-exp-3', 'mod-stab-pla-3', 'mod-rof-3', 'mod-track-3', 'mod-gyro-3',
+  'bp-turret-3',
+])
+
+export const MARKET_GOODS: readonly MarketGoodDef[] = MARKET_GOODS_RAW.map((g) =>
+  BM_MK3_KEYS.has(g.key) ? { ...g, bmStanding: 11 } : g,
+)
 
 /** 构建市场商品目录 */
 export function buildMarketGoodsCatalog(): ReadonlyMap<string, MarketGoodDef> {

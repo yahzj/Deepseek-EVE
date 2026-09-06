@@ -272,6 +272,8 @@ export {
   salesTaxRate,
   goodLockedReason,
   marketLockedReason,
+  bmGateLocked,
+  bmGateReason,
   placeSellOrder,
   placeBuyOrder,
   cancelOrder,
