@@ -20,6 +20,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingReq: 0,
     standingGain: 1,
     rewardIsk: 1_000, // 母港零航程即时目标：奖励压至教学水平（防重复刷效率碾压采矿与后续悬赏；2026-09-06 船长复核：2,000→1,000 再 −50% 收口）
+    foeHpOverride: 22, // P1 战斗引入（2026-09-06）：脱离威胁曲线单列——裸船零技能可过（约 37s）
     loot: [],
     combatSeconds: 120,
     description: '深空工业协会的常设讨伐令：演习场中失控的靶机与训练残骸需要定期清剿。悬赏按次结算、可反复接取——新手的第一张长期单。',
@@ -254,6 +255,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingReq: 1,
     standingGain: 1,
     rewardIsk: 6_400, // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
+    foeHpOverride: 110, // P1 战斗引入（2026-09-06）：需 ≥1 件基础武器（常驻 MK1）且零技能可过（约 75s）；裸船 ~20% 不可过
     loot: [{ itemId: 'min-pyerite', units: 25 }],
     combatSeconds: 180,
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',

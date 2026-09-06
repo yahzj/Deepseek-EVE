@@ -766,6 +766,9 @@ export interface AnomalyDef {
   dmgMix?: Partial<Record<DamageType, number>>
   /** 敌方单位速度 m/s（缺省按虚拟装配模板：参考船速 × m_base × tactic 系数） */
   foeSpeedMps?: number
+  /** P1（2026-09-06）：悬赏级编队总血覆写（脱离全局威胁曲线，按单卡标定）——
+   * 演习场/新港 = 战斗引入单，独立设计；单位 HP 仍按威胁份额/僚机规则切分。缺省 = 曲线值 */
+  foeHpOverride?: number
   /**
    * V18B 近盲带伤害比例（2026-09-05 船长拍板）：玩家进入敌近盲带（dist < minRange）时
    * 敌**不停火**，伤害 × 本值——与玩家（近盲带内完全打不了）区分。0~1，缺省 0.3

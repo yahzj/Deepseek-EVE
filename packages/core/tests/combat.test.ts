@@ -136,6 +136,16 @@ describe('敌方换算与距离战术', () => {
     expect(totalHp).toBeCloseTo(foeHpOfThreat(90, bal), 0)
   })
 
+  it('悬赏级 foeHpOverride 优先于威胁曲线（P1 战斗引入单；无覆写时回落曲线值）', () => {
+    const bal = BAL()
+    const base = anomaly('ano-x', 'galaxy-hub', { threat: 10 })
+    const totalOf = (a: Parameters<typeof createFoeSpecs>[0]): number =>
+      createFoeSpecs(a, bal).reduce((s, f) => s + f.hp.s + f.hp.a + f.hp.h, 0)
+    expect(totalOf(base)).toBeCloseTo(foeHpOfThreat(10, bal), 0) // 无覆写 = 曲线值
+    const overridden: Parameters<typeof createFoeSpecs>[0] = { ...base, foeHpOverride: 110 }
+    expect(totalOf(overridden)).toBeCloseTo(110, 0) // 有覆写 = 单卡总值（含僚机切分规则不变）
+  })
+
   it('开战距离在最远射程之外；中距/风筝/贴脸期望单调', () => {
     const ctx = makeTestCtx()
     const state = createInitialState({ nowWallMs: 0, seed: 1 })

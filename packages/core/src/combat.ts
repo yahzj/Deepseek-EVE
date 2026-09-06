@@ -540,8 +540,10 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
   const foeSpeed = anomaly.foeSpeedMps ?? Math.min(spdCap, Math.round(refSpeed * foeSpeedBase(anomaly.threat, bal) * tacticSpd))
 
   const make = (tag: string, name: string, uThreat: number, type: DamageType): UnitSpec => {
-    // C4：总血 = 时长曲线反推表值；按威胁份额分配（主体/僚机 = uThreat/T × 总血）
-    const unitHp = (foeHpOfThreat(anomaly.threat, bal) * uThreat) / Math.max(1, anomaly.threat)
+    // C4：总血 = 时长曲线反推表值（P1：单卡 foeHpOverride 优先 = 独立标定，脱离曲线）；
+    // 按威胁份额分配（主体/僚机 = uThreat/T × 总血）
+    const baseHp = anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)
+    const unitHp = (baseHp * uThreat) / Math.max(1, anomaly.threat)
     const totalHp = unitHp
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     const dps = uThreat * bal.foeDpsPerThreat
