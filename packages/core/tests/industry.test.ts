@@ -54,13 +54,14 @@ describe('精炼与市场（M1 经济）', () => {
       expect(countItem(state, 'ore-a')).toBe(90)
       expect(countWare(state, 'min-a')).toBe(10) // floor(10×2×0.5)
       expect(countWare(state, 'min-b')).toBe(2) // floor(10×0.5×0.5)
-      // 跑完剩余：库存耗尽自动停
+      // 跑完剩余：库存耗尽自动停（整批 10×10，无尾料）
       advanceGame(state, 60_000, ctx)
       expect(state.refineRuns).toHaveLength(0)
       expect(countItem(state, 'ore-a')).toBe(0)
       expect(countWare(state, 'min-a')).toBe(100)
       expect(countWare(state, 'min-b')).toBe(20)
-      expect(state.logs.some((l) => l.text.includes('完成'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('精炼所得'))).toBe(true)
     })
 
     it('收率技能影响每批结算：精炼学 5 级 = 90%（每批 floor 后累计）', () => {
@@ -101,11 +102,13 @@ describe('精炼与市场（M1 经济）', () => {
       expect(countWare(state, 'min-a')).toBe(10)
       expect(countWare(state, 'min-b')).toBe(2)
       expect(countWare(state, 'ore-a')).toBe(5)
-      advanceGame(state, 16_000, ctx) // 尾批（5 单位）完成 → 料尽自动停
+      advanceGame(state, 16_000, ctx) // 余 5 不足一批 → 2026-09-06 起停工保留，不再吃小批
       expect(state.refineRuns).toHaveLength(0)
-      expect(countWare(state, 'min-a')).toBe(15) // 10 + floor(5×2×0.5)
-      expect(countWare(state, 'min-b')).toBe(3) // 2 + floor(5×0.5×0.5)
+      expect(countWare(state, 'min-a')).toBe(10) // 只有整批产出
+      expect(countWare(state, 'min-b')).toBe(2)
+      expect(countWare(state, 'ore-a')).toBe(5) // 余料保留
       expect(countAiCore(state, 'basic')).toBe(1) // 归还
+      expect(state.logs.some((l) => l.text.includes('余量不足一批'))).toBe(true)
       expect(state.logs.some((l) => l.text.includes('AI 核心已归还'))).toBe(true)
     })
 
@@ -171,6 +174,19 @@ describe('精炼与市场（M1 经济）', () => {
       const fin = state.logs.filter((l) => l.text.includes('原料耗尽'))
       expect(fin.length).toBeGreaterThan(0)
       expect(fin[0]!.text).toContain('精炼所得')
+    })
+
+    it('运行中余量不足一批：到批点即停工、余料保留（不再吃小批，2026-09-06 船长拍板）', () => {
+      state.warehouse.items['ore-a'] = 30
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      advanceGame(state, 7_000, ctx) // 批 1（10）完成 → 余 20
+      advanceGame(state, 7_000, ctx) // 批 2（10）完成 → 余 10
+      state.warehouse.items['ore-a'] = 4 // 卖掉到不足一批
+      advanceGame(state, 7_000, ctx) // 下一批到点 → 不足一批停工，余料保留
+      expect(state.refineRuns).toHaveLength(0)
+      expect(countWare(state, 'ore-a')).toBe(4) // 没有吃"小批尾料"
+      expect(state.logs.some((l) => l.text.includes('余量不足一批'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('余料保留'))).toBe(true)
     })
 
     it('无核心/主控忙/不在母港均拒绝启动', () => {

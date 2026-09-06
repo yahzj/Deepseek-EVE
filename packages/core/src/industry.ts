@@ -396,7 +396,27 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
         )
         break
       }
-      const qty = Math.min(r.batchUnits, avail)
+      // 2026-09-06（船长拍板：余量不足即停工、余料保留）：到批点时余量不足一批 → 立即停工，
+      // 不再吃"小批尾料"；余料留在货仓/仓库，与"起炉需 ≥ 一批"对称（凑够一批再开）
+      if (avail < r.batchUnits) {
+        const doneBatches = r.batchesDone
+        if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+        const wasCore = r.worker !== 'pilot'
+        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
+        const remainTxt = isRecycle ? `${Math.round(avail * 100) / 100} m³` : `${avail} 单位`
+        state.refineRuns.splice(i, 1)
+        addLog(
+          state,
+          'info',
+          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 余量不足一批（每批 ${
+            r.batchUnits
+          }${isRecycle ? ' m³' : ' 单位'}，余 ${remainTxt}）——已完成 ${doneBatches} 批` +
+            (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
+            `，已停工、余料保留在货仓/仓库（凑够一批可再开）${wasCore ? '；AI 核心已归还核心库' : ''}。`,
+        )
+        break
+      }
+      const qty = r.batchUnits // 每批整批扣料（不足一批已在上方停工，不再有小批）
       // 从货仓优先扣料，余下取仓库
       const fromCargo = Math.min(countItem(state, r.itemId), qty)
       if (fromCargo > 0) removeItem(state, r.itemId, fromCargo)
@@ -434,23 +454,7 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
         r.recAcc = acc
       }
       r.batchesDone += 1
-      if (qty < r.batchUnits || oreAvailable(state, r.itemId) <= 0) {
-        // 尾批（余量不足一批）或本批把库存清空 → 炼完即停，防止空转与抢料
-        const doneBatches = r.batchesDone
-        if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
-        const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
-        state.refineRuns.splice(i, 1)
-        addLog(
-          state,
-          'info',
-          `${isRecycle ? `残骸回收完成：${def.name}` : `精炼炉运转完成：${def.name}`} 共 ${doneBatches} 批` +
-            (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-            `，产物已入物品仓库${wasCore ? '；AI 核心已归还核心库' : ''}。`,
-        )
-        break
-      }
-      r.finishAtGameMs += r.cycleMs
+      r.finishAtGameMs += r.cycleMs // 下一批到点；届时若余料耗尽/不足一批由上方分支自动停炉
     }
   }
 }

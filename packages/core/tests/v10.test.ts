@@ -99,6 +99,7 @@ describe('V10：气体/冰矿接入采集与精炼循环', () => {
     state.warehouse.items['gas-x'] = 100
     expect(startRefineRun(state, 'gas-x', 'pilot', ctx).ok).toBe(true)
     advanceGame(state, 61_000, ctx) // 10 批 × 6s → 料尽自动停
+    advanceGame(state, 10_000, ctx) // 收尾拍：让 gas 炉彻底停（pilot 位空出，2026-09-06 起整批语义）
     expect(countWare(state, 'min-a')).toBe(100) // floor(10×2×0.5)=10/批 ×10
     state.warehouse.items['ice-x'] = 100
     expect(startRefineRun(state, 'ice-x', 'pilot', ctx).ok).toBe(true)

@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
-import { addWare } from '../src/inventory'
+import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
@@ -98,13 +98,35 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(countMinerals(state, ctx)).toBe(0)
     state.gameMs = 25_000 // 一批到点
     advanceRefining(state, ctx)
-    expect(state.refineRuns).toHaveLength(0) // 料尽自动停
+    expect(state.refineRuns).toHaveLength(1) // 跑完一批后下一批到点才见底
+    state.gameMs = 50_000
+    advanceRefining(state, ctx) // 库存已空 → 自动停炉
+    expect(state.refineRuns).toHaveLength(0)
     expect(countMinerals(state, ctx)).toBeGreaterThan(0)
-    expect(state.logs.some((l) => l.text.includes('残骸回收完成'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
     // 2026-09-06（玩家上报）：结束日志必须带回收所得明细（保底矿物）
-    const fin = state.logs.filter((l) => l.text.includes('残骸回收完成'))
+    const fin = state.logs.filter((l) => l.text.includes('原料耗尽'))
     expect(fin.length).toBeGreaterThan(0)
     expect(fin[0]!.text).toContain('回收所得：保底矿物')
+  })
+
+  it('运行中余量不足一批：到批点即停工、余料保留（不再吃小批，2026-09-06 船长拍板）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 34 })
+    const ctx = ctxOf()
+    const wreckId = wreckItemIdOf('ano-grave')
+    addWare(state, wreckId, 30) // 3 批
+    expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = 25_000
+    advanceRefining(state, ctx) // 批 1 → 余 20
+    state.gameMs = 50_000
+    advanceRefining(state, ctx) // 批 2 → 余 10
+    removeWare(state, wreckId, 6) // 卖掉/他用掉 6 → 余 4，不足一批
+    state.gameMs = 75_000
+    advanceRefining(state, ctx) // 下一批到点：不足一批 → 停工，余料保留
+    expect(state.refineRuns).toHaveLength(0)
+    expect(countWare(state, wreckId)).toBe(4)
+    expect(state.logs.some((l) => l.text.includes('余量不足一批'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('余料保留'))).toBe(true)
   })
 
   it('中途停炉日志同样带回收所得明细；回收累计随存档往返保留', () => {
