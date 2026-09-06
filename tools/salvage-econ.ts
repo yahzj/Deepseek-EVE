@@ -1,6 +1,6 @@
 /**
- * B3 回收链经济体检（正式工具，P3 校准用，2026-09-05；满技能行 2026-09-05 收尾）：
- * 锚：回收链保底 EV/h（炉时 100%）≈ 采矿环 ×1.1（采矿参照 ~50,000 ISK/h → 目标 55,000）。
+ * B3 回收链经济体检（正式工具，P3 校准用，2026-09-05；满技能行 2026-09-05 收尾；
+ * 2026-09-06 船长定档：锚提至 82k ISK/h = 采矿参照 ×1.65，Y_档 5.8 / 2.06 / 0.62）：
  * 口径：回收批 10 m³/25s（劳动者 100%）→ 炉时 1440 m³/h；残骸计数 = 体积（乙案）。
  * 满技能行口径：残骸回收学 5（批周期 −20%，下限 60%）→ 炉时 1800 m³/h；
  *   残骸提纯学 5（保底 +40%）→ 保底 EV 乘 ×1.75（技能效果一律 5 级封顶，引擎同款 Math.min(5,…)）。
@@ -77,16 +77,16 @@ function moduleAvgPrice(ids: readonly string[]): number {
 }
 
 function main(): void {
-  console.log('══ B3 回收链经济体检（锚：保底 ≈ 采矿 ×1.1）══')
+  console.log('══ B3 回收链经济体检（锚：保底 ≈ 采矿 ×1.65，2026-09-06 船长定档 82k）══')
   console.log(
-    `采矿参照 X = ${MINING_REF.toLocaleString('zh-CN')} ISK/h（中段口径：平衡模拟策略均先练采矿技术 5）；目标保底 = ${(MINING_REF * 1.1).toLocaleString('zh-CN')} ISK/h`,
+    `采矿参照 X = ${MINING_REF.toLocaleString('zh-CN')} ISK/h（中段口径：平衡模拟策略均先练采矿技术 5）；目标保底 = ${(MINING_REF * 1.65).toLocaleString('zh-CN')} ISK/h`,
   )
   console.log(`炉时：无技能 ${FURNACE_M3_H} m³/h（批 ${RECYCLE_BATCH_M3} m³ / ${(RECYCLE_CYCLE_MS / 1000)}s）→ 满技能 ${FURNACE_M3_H_FULL} m³/h（残骸回收学 5：周期 −20%）`)
   console.log(`满技能保底乘数 = ×${FULL_SKILL_MULT.toFixed(3)}（回收学 5 炉速 ×1.25 × 提纯学 5 保底 ×${REFINE_LV5_MULT.toFixed(1)}；效果 Lv5 封顶与引擎同款）`)
   const baseAvg = moduleAvgPrice(RECYCLE_BASE_MODULES)
   const mk2Avg = moduleAvgPrice(RECYCLE_MK2_MODULES)
   console.log(`彩头池均价：基础件 ${Math.round(baseAvg).toLocaleString('zh-CN')} ISK / MK2 ${Math.round(mk2Avg).toLocaleString('zh-CN')} ISK`)
-  const target = MINING_REF * 1.1
+  const target = MINING_REF * 1.65
   for (const tier of ['common', 'risky', 'dire'] as const) {
     const avg = poolAvgPrice(tier)
     const ev = FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * avg
@@ -112,14 +112,14 @@ function main(): void {
   console.log('AI 核心档折算（炉周期 ÷ 效率，再乘技能项）：' + [0.4, 0.5, 0.6, 0.75].map((e) => `${Math.round(e * 100)}% → 无技能 ${Math.round(target * e).toLocaleString('zh-CN')} / 满技能 ${Math.round(target * e * FULL_SKILL_MULT).toLocaleString('zh-CN')} ISK/h`).join('；'))
   console.log('v20 多炉并行复核（2026-09-05 二号，一号变更记录点名）：')
   console.log('  · 炉位规则：主控 1 台（100%）+ 每枚闲置 AI 核心 1 台（效率 40/50/60/75%）——核心库存即并行上限；')
-  console.log('  · 每台炉独立按上表 EV（common 满技能 96.3k×eff），合计 = Σeff × 单炉 EV；')
-  console.log('  · 典型场景（common，满技能）：主炉+basic(1.4)≈135k/h；+gamma(1.9)≈183k/h；+beta(2.5)≈241k/h；+alpha(3.25)≈313k/h')
-  console.log('  · 复核结论：单炉锚 55k 与 Y 保持不变；核心炉收益高但受「打捞供料（低密满技能 ~7.5k m³/h vs 满技能合计炉速 1800×3.25≈5.9k m³/h，仍供大于求）」')
-  console.log('    与「核心同时被 AI 任务占用」双闸约束，未发现必须改 Y 的失衡；若长线验证核心印钞，旋钮候选=限制每资源并行台数或下调 Y（未定）。')
+  console.log('  · 每台炉独立按上表 EV（common 满技能 ≈143.5k×eff），合计 = Σeff × 单炉 EV；')
+  console.log('  · 典型场景（common，满技能，锚 82k）：主炉+basic(1.4)≈201k/h；+gamma(1.9)≈273k/h；+beta(2.5)≈359k/h；+alpha(3.25)≈466k/h')
+  console.log('  · 复核结论：2026-09-06 锚从 55k 提至 82k（Y 5.8/2.06/0.62，船长定档）；核心炉收益高但受「打捞供料（低密满技能 ~7.5k m³/h vs 满技能合计炉速 1800×3.25≈5.9k m³/h，仍供大于求）」')
+  console.log('    与「核心同时被 AI 任务占用」双闸约束；若长线验证核心印钞，旋钮候选=限制每资源并行台数或回调 Y（未定）。')
   console.log('供料侧（打捞，技能 5：整备学 −15% 周期 + 漂流物打捞学 +60% 单轮 + 富集识别 ~+2.5% 期望 → 产能 ≈ ×1.93）：')
   console.log('  · 4×MK1 低密度(mul≈1) ≈ 3.9k → 满技能 ≈ 7.5k m³/h；满技能炉速 1800 m³/h → 仍富余（仓库缓冲，AI 炉可 24/7）；')
   console.log('  · 深空平衡密度(mul≈3.6)：无技能 ≈ 14k → 满技能 ≈ 27k m³/h → 炉速仍是瓶颈，积压明显——批容量为 P3 旋钮（如调 20 m³/批）。')
-  console.log(`校准注：锚 X 的口径含「采矿技术 5」（模拟策略统一前置）；回收链两行（无技能/满技能）为同链成长差；若采矿侧再把护卫舰操作/地质学等点满，X 同步抬升 ≈ ×1.8（富凡级口径），两链满级比例仍落在 ×1 上下——目测以本表为主。`)
+  console.log(`校准注：锚 X 的口径含「采矿技术 5」（模拟策略统一前置）；回收链两行（无技能/满技能）为同链成长差；若采矿侧再把护卫舰操作/地质学等点满，X 同步抬升 ≈ ×1.8（富凡级口径），两链满级比例仍落在 ×1~×1.3 上下——目测以本表为主。2026-09-06 锚 82k（×1.65）。`)
 }
 
 void main()

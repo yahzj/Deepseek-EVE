@@ -154,15 +154,15 @@ export const RECYCLE_BATCH_M3 = 10
 export const RECYCLE_CYCLE_MS = 25_000
 
 /**
- * 保底矿物产出档（P3 校准，2026-09-05 船长锚：回收链保底 ≈ 采矿 ×1.1 ≈ 5.5 万 ISK/h，
- * 按"炉时 1440 m³/h"反推：Y_档 = 55,000 ÷ (1440 × 池内矿物期望单价)；
+ * 保底矿物产出档（P3 校准 + 2026-09-06 船长定档：无技能单炉保底 ≈82k ISK/h = 采矿 ×1.65，
+ * 按"炉时 1440 m³/h"反推：Y_档 = 82,000 ÷ (1440 × 池内矿物期望单价)；
  * 三池期望单价：常 9.8 / 险 27.6 / 危 92.45 ISK/单位（按池权重×baseSellPrice）。
  * 单位 = 矿物 unit/m³ 残骸。
  */
 export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = {
-  common: 3.9,
-  risky: 1.4,
-  dire: 0.42,
+  common: 5.8,
+  risky: 2.06,
+  dire: 0.62,
 }
 /** 保底矿物抽取抖动（±10%，走 state.rng） */
 export const RECYCLE_YIELD_JITTER = 0.1
