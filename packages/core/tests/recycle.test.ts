@@ -80,8 +80,8 @@ describe('回收画像与保底矿物滚动', () => {
     const row = out[0]!
     const poolIds = ['min-mexallon', 'min-nocxium', 'min-isotope', 'min-starcore', 'min-darkiron']
     expect(poolIds).toContain(row.mineralId)
-    expect(row.units).toBeGreaterThanOrEqual(12) // 36×0.42≈15 基准 ±10% → 13~16
-    expect(row.units).toBeLessThanOrEqual(17)
+    expect(row.units).toBeGreaterThanOrEqual(18) // 36×0.62≈22.3 基准 ±10% → 20~24（2026-09-06 锚 82k 后 Y 上调）
+    expect(row.units).toBeLessThanOrEqual(26)
   })
 })
 
@@ -189,7 +189,9 @@ describe('残骸回收批（精炼炉运转）', () => {
     const u0 = run(0)
     const u5 = run(5)
     expect(u0).toBeGreaterThan(0)
-    expect(u5).toBeCloseTo(u0 * 1.4, 1) // 同种子同抽取；只放大总量
+    // 同种子同抽取、只放大总量；单方产量上调后 floor 使精确 1.4 不再可整除——给取整带差容限
+    expect(u5 / u0).toBeGreaterThan(1.25)
+    expect(u5 / u0).toBeLessThan(1.55)
   })
 })
 
