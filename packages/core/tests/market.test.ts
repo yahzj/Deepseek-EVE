@@ -20,11 +20,13 @@ import {
   marketSellHolding,
   marketSellPreview,
   naturalHoldings,
+  placeBuyOrder,
+  bmGateReason,
   salesTaxRate,
   sellShipAtMarket,
 } from '../src/market'
 import { occupyAiCore } from '../src/ai'
-import { makeTestCtx, mineral, ship } from './helpers'
+import { makeTestCtx, mineral, moduleDef, ship } from './helpers'
 
 const MIN_A = mineral('min-a') // basePrice 8
 
@@ -466,5 +468,75 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
     const r = marketSellHolding(state, ctx, 'core-basic')
     expect(r.ok).toBe(false)
     expect(r.error).toContain('没有可卖')
+  })
+})
+
+describe('P2 暗市双通道（声望闸：常驻 ×0.01 供给 + ×4 暗市单可绕过）', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.wallet.isk = 100_000_000
+    ctx = makeTestCtx({
+      quietEvents: true,
+      modules: [moduleDef('mod-x', 'turret', 0), moduleDef('mod-y', 'turret', 0)],
+      marketGoods: [
+        { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'common', basePrice: 10_000, bmStanding: 5 },
+        { key: 'mod-y', kind: 'module', refId: 'mod-y', rarity: 'common', basePrice: 10_000 },
+      ],
+    })
+  })
+
+  const bmSells = (): Array<{ price: number; qty: number; bm?: boolean }> => state.market.npcSell['mod-x'] ?? []
+  const normalSells = (): Array<{ price: number; qty: number; bm?: boolean }> => state.market.npcSell['mod-y'] ?? []
+
+  it('闸内：常驻供给骤减为约 1% 窗口、到货为 ×4 暗市单（bm 标记）；对照商品不受影响', () => {
+    marketQuote(state, ctx, 'mod-x')
+    // 逐窗推进：锁定商品 ~0.85%/窗 出暗市卖单（寿命 20 分钟会过期，改判"曾出现"）；对照商品常驻高概率在场
+    let sawBm = false
+    let bmPrice = 0
+    let sawNormal = false
+    for (let i = 0; i < 600 && !(sawBm && sawNormal); i++) {
+      advanceGame(state, 60_000, ctx)
+      const bm = bmSells().find((o) => o.bm)
+      if (bm && !sawBm) {
+        sawBm = true
+        bmPrice = bm.price
+      }
+      if (normalSells().length > 0) sawNormal = true
+    }
+    expect(state.standings['dsi'] ?? 0).toBe(0)
+    expect(sawBm).toBe(true) // 1% 供给线确实会到货（600 窗内几乎必见）
+    expect(bmPrice).toBeGreaterThan(10_000 * 3) // ×4 价（基准价 1 万 → ≥4 万量级）
+    expect(sawNormal).toBe(true) // 无闸对照：常驻节奏在场
+  })
+
+  it('闸内：暗市单可绕过拦截直接买入；常驻挂单/普通供应单被拦', () => {
+    marketQuote(state, ctx, 'mod-x')
+    expect(bmGateReason(state, ctx.marketGoods.get('mod-x')!)).toContain('声望 5')
+    // 注入一张暗市单 → 可买
+    state.market.npcSell['mod-x']!.push({ price: 40_000, qty: 1, bm: true, expiresAtGameMs: state.gameMs + 600_000 })
+    const r1 = buyAtMarket(state, ctx, 'mod-x', 1)
+    expect(r1.bought).toBe(1)
+    expect(state.moduleBay['mod-x']).toBe(1)
+    // 注入普通供应单 → 被跳过（bought 0）
+    state.market.npcSell['mod-x']!.push({ price: 9_000, qty: 1, bm: false, expiresAtGameMs: state.gameMs + 600_000 })
+    const r2 = buyAtMarket(state, ctx, 'mod-x', 1)
+    expect(r2.bought).toBe(0)
+    // 常驻买单不开放
+    expect(placeBuyOrder(state, ctx, 'mod-x', 40_000, 1)).toBeNull()
+    expect(placeBuyOrder(state, ctx, 'mod-y', 10_000, 1)).not.toBeNull() // 对照无闸可挂
+  })
+
+  it('声望达标：常驻恢复原节奏原价（稀有度不变、不转常驻）、暗市文案消失', () => {
+    marketQuote(state, ctx, 'mod-x')
+    state.standings['dsi'] = 5
+    expect(bmGateReason(state, ctx.marketGoods.get('mod-x')!)).toBeNull()
+    advanceGame(state, 40 * 60_000, ctx)
+    expect(bmSells().length).toBeGreaterThan(5)
+    for (const o of bmSells()) {
+      expect(o.price).toBeLessThan(20_000) // 正常价（~1 万±2%）
+    }
   })
 })

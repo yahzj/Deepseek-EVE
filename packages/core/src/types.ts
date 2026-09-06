@@ -218,6 +218,11 @@ export interface MarketGoodDef {
   playerBuyable?: boolean
   /** 需要的协会声望（V10：部分高端商品声望解锁；买入时校验，卖出不限） */
   standingReq?: number
+  /** 暗市双通道声望闸（P2 2026-09-06 船长定：常驻硬拦 + 暗市可绕过）：
+   * 声望低于本值 → 该商品常驻供给窗口命中 ×0.01、订单价 ×4（标记暗市单、可绕过拦截买入）、
+   * 常驻挂单不开放；达标后恢复原稀有度刷单与正常价（不转为常驻商品）。
+   * 与 standingReq 正交：standingReq = 纯硬拦（现役顶船维持，不加暗市）。 */
+  bmStanding?: number
 }
 
 /** 市场平衡参数 */

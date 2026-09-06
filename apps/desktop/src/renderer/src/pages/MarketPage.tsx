@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs } from '@whale/core'
+import { goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -204,6 +204,7 @@ function GoodRow({
   const trend = marketTrend(state, good.key)
   const poolQ = good.poolTarget && good.poolTarget > 0 ? (state.market.pools[good.key]?.q ?? 0) : undefined
   const lock = goodLockedReason(state, good)
+  const bm = bmGateReason(state, good)
   const life = good.rarity !== 'common' ? earliestSellRemaining(engine, good.key) : undefined
   const name = goodName(engine.ctx, good.key)
   const clickable = onSelect !== undefined
@@ -237,6 +238,11 @@ function GoodRow({
                 <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
               </span>
               {lock}
+            </span>
+          ) : null}
+          {bm && !lock ? (
+            <span className="app-chip is-dim" title={bm}>
+              需声望 · 暗市×4
             </span>
           ) : null}
         </div>

@@ -376,6 +376,8 @@ export interface NpcMarketOrder {
   price: number
   qty: number
   expiresAtGameMs: number
+  /** P2 暗市单标记（2026-09-06）：声望闸商品在闸内刷出的 ×4 订单；可绕过常驻拦截买入 */
+  bm?: boolean
 }
 
 /** 内部消化队列（NPC 冲突订单随时间推进成交，不瞬消） */
