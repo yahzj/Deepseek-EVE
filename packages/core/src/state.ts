@@ -208,8 +208,9 @@ export interface RefineRunState {
   finishAtGameMs: number
   /** 已完成批数（展示用） */
   batchesDone: number
-  /** 残骸回收所得累计（B3；2026-09-06 兼容字段：停炉/料尽/自然结束时写明细日志用；
-   *  仅 recycle 炉存在；normalize 清洗兜底，无版本号） */
+  /** 炉内所得累计（2026-09-06 兼容字段：停炉/料尽/自然结束时写明细日志用；
+   *  refine 炉只用 min（产物矿物）；recycle 炉 = 保底矿物(min) + 彩头装备(mod) + 蓝图碎片(frag)；
+   *  normalize 清洗兜底，无版本号） */
   recAcc?: {
     min: Record<string, number>
     mod: Record<string, number>

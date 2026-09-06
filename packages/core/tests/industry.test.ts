@@ -159,7 +159,7 @@ describe('精炼与市场（M1 经济）', () => {
       expect(countAiCore(state, 'basic')).toBe(1)
     })
 
-    it('原料中途卖光：到点即停炉（日志说明）', () => {
+    it('原料中途卖光：到点即停炉（日志说明）；结束日志带精炼所得明细', () => {
       state.warehouse.items['ore-a'] = 20
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       advanceGame(state, 7_000, ctx) // 批 1 扣 10
@@ -167,6 +167,10 @@ describe('精炼与市场（M1 经济）', () => {
       advanceGame(state, 7_000, ctx)
       expect(state.refineRuns).toHaveLength(0)
       expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
+      // 2026-09-06：精炼与回收统一——结束日志带"精炼所得"明细
+      const fin = state.logs.filter((l) => l.text.includes('原料耗尽'))
+      expect(fin.length).toBeGreaterThan(0)
+      expect(fin[0]!.text).toContain('精炼所得')
     })
 
     it('无核心/主控忙/不在母港均拒绝启动', () => {
@@ -210,9 +214,11 @@ describe('精炼与市场（M1 经济）', () => {
     it('手动运转期间禁止再亲自开炉（pilot 限 1 台）', () => {
       state.warehouse.items['ore-a'] = 20
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      expect(state.logs.some((l) => l.text.includes('精炼炉开工'))).toBe(true)
+      // 2026-09-06：开工不再写日志（卡片/活动栏实时可见，避免刷屏）
+      expect(state.logs.some((l) => l.text.includes('开工'))).toBe(false)
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
       expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('精炼炉已停'))).toBe(true)
     })
   })
 
