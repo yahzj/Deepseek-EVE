@@ -281,12 +281,39 @@ export class GameEngine {
   private saveIntervalId: number | null = null
   /** 非战斗期推进余额（累计满 1s 才推进一次，保持旧节奏；战斗中改 100ms 切片实时推进） */
   private pendingMs = 0
+  /** 心跳周期毫秒（2026-09-08 降频优化：挂机 500ms；战斗/教学加速/远征去程边界保持 100ms） */
+  private pumpMs = 100
   /** 优化：本场远征是否由"连续出击"自动发起（期间战斗界面默认最小化，不自动弹全屏战场） */
   private autoSortie = false
 
   /** UI 查询：当前是否处于"自动连击发起的远征"（战斗界面不自动弹出） */
   autoSortieNow(): boolean {
     return this.autoSortie
+  }
+
+  /**
+   * 是否需要 100ms 快速心跳（否则用 500ms 低频挂机心跳——玩家反馈主机高占用后优化）：
+   * - 交火中（含已分胜负的击杀慢镜窗口）：战斗按 100ms 实时推进 → 必须保持；
+   * - 教学加速等待段：时间泵 ×6，保持原颗粒度；
+   * - 远征去程（phase 'out'）：到港边界切割守卫依赖心跳颗粒度，降频后开战弹出延迟 ≤0.5s（原 ≤0.1s）。
+   */
+  private wantsFastPump(): boolean {
+    const exp = this.state.expedition
+    if (exp.phase === 'battle' && !!exp.battle) return true
+    if (tutorialAccelWait(this.state)) return true
+    if (exp.active && exp.phase === 'out') return true
+    return false
+  }
+
+  /** 按当前局面重排心跳周期（只在需要变速时才重建定时器，避免每拍 clearInterval 抖动） */
+  private ensurePump(): void {
+    const want = this.wantsFastPump() ? 100 : 500
+    if (want === this.pumpMs) return
+    this.pumpMs = want
+    if (this.intervalId !== null) window.clearInterval(this.intervalId)
+    this.intervalId = window.setInterval(() => this.tick(), this.pumpMs)
+    // 变速瞬间重新锚定墙钟，避免 dt 大跳影响余额累计节奏
+    this.lastRealMs = Date.now()
   }
 
   subscribe = (listener: Listener): (() => void) => {
@@ -297,6 +324,8 @@ export class GameEngine {
   }
 
   private notify(): void {
+    // 任何状态变更通知后重排心跳：交火中/教学加速/远征去程 = 100ms，普通挂机 = 500ms（2026-09-08 降频）
+    this.ensurePump()
     for (const fn of this.listeners) fn()
   }
 
@@ -332,7 +361,9 @@ export class GameEngine {
     }
 
     this.lastRealMs = Date.now()
-    this.intervalId = window.setInterval(() => this.tick(), 100)
+    this.pumpMs = 0
+    // 心跳周期按当前局面启动：战斗/教学加速/远征去程 100ms，普通挂机 500ms（低负载；2026-09-08 降频优化）
+    this.ensurePump()
     this.saveIntervalId = window.setInterval(() => {
       void this.persist()
     }, 15_000)
@@ -342,9 +373,11 @@ export class GameEngine {
   }
 
   /**
-   * 时间泵（每 100ms 一响）：
+   * 时间泵（2026-09-08 降频：交火/教学加速/远征去程 = 100ms 一响；普通挂机 = 500ms 一响，
+   * 低负载——玩家反馈主机高占用后的优化）：
    * - 玩家交火中：按 100ms 粒度切片推进并即时通知 → 战斗动画接近实时（数据 10Hz，无整秒跳变）；
-   * - 其余时间：余额累计满 1s 再整体推进一次（训练/采矿/市场等节奏与旧版一致，界面通知保持 1Hz）。
+   * - 其余时间（挂机 500ms 心跳）：余额累计满 1s 再整体推进一次（训练/采矿/市场等节奏与旧版一致，
+   *   界面通知保持 1Hz）。
    * - 到港边界切分（2026-09-05 探针 ageMs=1002 实证）：去程到港若落在这 1s 整片内，旧实现会在
    *   同一次推进里把“开战后剩余时间”一并打完才通知 UI——导弹等远程武器能在画面弹出前就已开火
    *   一轮（战场首帧敌舰残血/武器已冷却）。现改为只推进到开战瞬间即通知，战场以 age≈0 弹出，
