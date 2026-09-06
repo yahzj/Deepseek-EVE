@@ -83,6 +83,9 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（可改用 AI 核心驱动）。' }
   }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出海（可改用 AI 核心驱动）。' }
+  }
   if (galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
     if (!Number.isFinite(travel)) {

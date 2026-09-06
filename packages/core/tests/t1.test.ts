@@ -27,7 +27,7 @@ describe('T1 统一停止指令', () => {
   it('取消制造：材料全额退回仓库、制造费不退、作业结束', () => {
     state.learnedRecipes.push('bp-a')
     state.warehouse.items['min-a'] = 50
-    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
     const walletBefore = state.wallet.isk
     advanceGame(state, 3_000, ctx)
     const runId = state.manufacturingRuns[0]!.id
@@ -85,8 +85,9 @@ describe('T1 activityOverview 视图', () => {
     state.scanning = { active: true, galaxyId: 'galaxy-far', finishAtGameMs: state.gameMs + 60_000, startedAtGameMs: state.gameMs, originGalaxy: null }
     state.learnedRecipes.push('bp-a')
     state.warehouse.items['min-a'] = 20
-    // 制造与采矿/扫描并行允许（不同作业系统）
-    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true)
+    // 制造与采矿/扫描并行允许（2026-09-08：制造带劳动者——主控手动与出海互斥，故用 AI 核心驱动来并行）
+    state.aiCores['basic'] = 1
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
     const acts = activityOverview(state, ctx)
     const kinds = acts.map((a) => a.kind).sort()
     expect(kinds).toContain('train')

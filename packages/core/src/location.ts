@@ -213,6 +213,9 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。' }
   }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。' }
+  }
   if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。` }
   const from = originGalaxyOf(state, ctx)
   if (from === galaxyId && state.awayGalaxy === null) {

@@ -202,6 +202,9 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。' }
   }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出海（想自动制造可改用 AI 核心驱动）。' }
+  }
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null

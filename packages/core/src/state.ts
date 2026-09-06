@@ -170,12 +170,20 @@ export interface StandbyState {
   legMs: number
 }
 
-/** 一条制造作业（v21 多工位并行：不同蓝图可同时制造，各自限时到点自动出产物/船） */
+/**
+ * 一条制造作业（v21 多工位并行：不同蓝图可同时制造、同蓝图可多线，各自限时到点自动出产物/船；
+ * 2026-09-08 起劳动者制与精炼炉同款：worker = 'pilot'（主控亲自，全局限 1 条、占主控工作位）/
+ * AiCoreType（一枚核心驱动一条线，核心出库占用、完成/取消自动归还，库存即并行上限）。
+ * worker 缺省 = 老档遗留的"旧作业"（劳动者制上线前开的无线作业）：豁免继续跑到自然完成/被取消，
+ * 不占劳动者位；新开工必须带 worker。）
+ */
 export interface ManufacturingRunState {
   active: boolean
   /** 稳定线号（state.manufacturingSeq 分配；取消/活动栏按它定位） */
   id: number
   blueprintId: string | null
+  /** 劳动者：主控亲自 / AI 核心类型；缺省 = 旧档遗留无线作业（不占劳动者位） */
+  worker?: 'pilot' | AiCoreType
   /** 完成的游戏内时刻（毫秒） */
   finishAtGameMs: number
   /** 本次作业总耗时（毫秒，开工时按当时技能锁定，中途升技能不影响） */
@@ -767,7 +775,7 @@ export type GameStateV20 = Omit<GameStateV19, 'version'> & {
 /** 第二十一版存档结构：v21 = v20 + 蓝图制造多工位并行（2026-09-05 船长拍板：
  * 多张蓝图可同时制造、逐线独立进度与取消；manufacturing 单例 → manufacturingRuns 数组 +
  * manufacturingSeq 线号分配器；不同蓝图不限；2026-09-08 起同蓝图也可开多条线（与精炼炉多炉并线一致）；
- * 制造不占主控）。 */
+ * 2026-09-08 起制造带劳动者（与精炼炉同款机制：主控亲自 1 条占主控 / AI 核心每线一枚，见 ManufacturingRunState）。 */
 export type GameStateV21 = Omit<GameStateV20, 'version' | 'manufacturing'> & {
   version: 21
   /** 制造作业线表（v21 多工位；每元素一条线） */

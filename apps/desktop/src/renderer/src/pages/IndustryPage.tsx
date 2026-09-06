@@ -64,10 +64,12 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
   const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
   const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
-  // 手动再开一台被拒的原因：主控已亲自开着一台 / 其它主控作业占用
+  // 手动再开一台被拒的原因：主控已亲自开着一台炉 / 开着一条制造线 / 其它主控作业占用（三者共享手动工作位）
   const manualNote = state.refineRuns.some((r) => r.worker === 'pilot')
     ? '你已亲自运转着一台炉：先停它才能再亲自开一台（AI 核心不受此限）。'
-    : manualBusyNote(state)
+    : state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
+      ? '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。'
+      : manualBusyNote(state)
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = isWreck ? engine.startRecycleRunAt(def.id, worker) : engine.startRefineRunAt(def.id, worker)

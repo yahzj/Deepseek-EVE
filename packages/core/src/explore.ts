@@ -131,6 +131,9 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港扫描。' }
   }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港扫描。' }
+  }
   if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法开始扫描。' }
 
   // 出发地 = 当前位置（野外停留点或空间站）；作业开始时清野外标记（位置交给作业自身表达）

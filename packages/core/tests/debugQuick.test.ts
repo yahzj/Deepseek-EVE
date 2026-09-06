@@ -55,7 +55,7 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     const s = freshState(true)
     s.learnedRecipes.push('bp-a')
     s.warehouse.items['min-a'] = 50
-    expect(startManufacturing(s, 'bp-a', ctx).ok).toBe(true)
+    expect(startManufacturing(s, 'bp-a', 'pilot', ctx).ok).toBe(true)
     advanceGame(s, 999, ctx)
     expect(s.manufacturingRuns).toHaveLength(1)
     advanceGame(s, 1, ctx)
@@ -97,7 +97,7 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     const s = freshState(false)
     s.learnedRecipes.push('bp-a')
     s.warehouse.items['min-a'] = 50
-    expect(startManufacturing(s, 'bp-a', ctx).ok).toBe(true)
+    expect(startManufacturing(s, 'bp-a', 'pilot', ctx).ok).toBe(true)
     advanceGame(s, 1_000, ctx)
     expect(s.manufacturingRuns).toHaveLength(1) // bp-a 10 分钟
   })

@@ -255,6 +255,7 @@ export {
   startManufacturing,
   advanceManufacturing,
   manufacturingRunViews,
+  manufacturingManualActive,
   findBuildable,
 } from './manufacturing'
 export type { BuildSpec, ManufacturingView } from './manufacturing'

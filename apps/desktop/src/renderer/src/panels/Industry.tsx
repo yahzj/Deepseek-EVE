@@ -1,11 +1,14 @@
 /**
- * 工业面板：蓝图书架 + 组装机（v21 仿精炼炉/矿带卡：多张蓝图并行、制造中卡内自带进度与取消；
- * 2026-09-08：同一蓝图可同时开多条线，逐线独立进度/取消，可随时加开）。
+ * 工业面板：蓝图书架 + 组装机（2026-09-08 与精炼炉完全同款劳动者制：主控亲自/AI 核心驱动；
+ * 同一蓝图可同时开多条线、不同蓝图不限，皆受劳动者约束——每条线独立进度与取消，可随时加开）。
  * V9：蓝图 = 消耗品书。市场买书 → 书进"蓝图书架"（blueprintStock）→ 学习一本 → 永久可造；
  * 学会后的重复蓝图书只能放回市场出售。
  */
 import {
+  aiCoreName,
+  aiEfficiency,
   calcBuildDurationMs,
+  countAiCore,
   countWare,
   formatDurationMs,
   manufacturingRunViews,
@@ -14,11 +17,13 @@ import {
   missingMaterials,
   ownsBlueprint,
 } from '@whale/core'
-import type { MaterialNeed } from '@whale/core'
+import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+
+const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
 /** 在市场目录里找某蓝图的市场商品（key）；找不到返回 null */
 function bpGoodKey(engine: GameEngine, blueprintId: string): string | null {
@@ -101,7 +106,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   )
 }
 
-/* ═══════════════ 组装机（v21 仿精炼炉/矿带卡；多蓝图并行 + 同蓝图可多线） ═══════════════ */
+/* ═══════════════ 组装机（2026-09-08 与精炼炉同款劳动者制：主控亲自 / AI 核心驱动；多蓝图 + 同蓝图多线） ═══════════════ */
 
 /** 组装机类型筛选：全部 / 装备 / 舰船 / 弹药（2026-09-05 基础弹药可自制） */
 type ManuTab = 'all' | 'equip' | 'ship' | 'ammo'
@@ -112,8 +117,27 @@ const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
   { key: 'ammo', label: '弹药蓝图' },
 ]
 
-/** 一张可制造蓝图的展示卡（v21 仿精炼炉/矿带卡结构；2026-09-08 起同一蓝图可开多条制造线，
- * 卡内逐线自带进度与取消，材料够即可随时「加开一条线」） */
+/** 主控此刻不能"亲自再开一条制造线"的原因（null = 主控空闲可开；AI 核心驱动不受此限；
+ * 与精炼炉卡的手动判定同口径：手动工作位全局限 1 条（精炼炉/回收炉/制造线共用）） */
+function manualBuildNote(state: GameState): string | null {
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。'
+  }
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。'
+  }
+  if (state.awayGalaxy !== null) return '你不在母港——先返航。'
+  if (state.mining.active) return '采矿作业中：先停止开采。'
+  if (state.salvaging.active) return '打捞作业中：先停止打捞（或等满仓自动返航）。'
+  if (state.expedition.active) return '远征中：先召回或等待结束。'
+  if (state.scanning.active) return '扫描探索中：先终止扫描。'
+  if (state.standby.active) return '掩护巡逻进行中：先召回。'
+  if (state.transit.active) return '返航途中：到站后再开线。'
+  return null
+}
+
+/** 一张可制造蓝图的展示卡（与精炼炉卡同款结构：运转名册逐线 = 劳动者 + 进度 + 取消；
+ * 开工按钮 = 手动制造（主控亲自）/ AI 核心下拉 + AI 制造；已学会 + 材料/制造费够即可随时加开） */
 function BlueprintCard({
   engine,
   onToast,
@@ -150,6 +174,11 @@ function BlueprintCard({
   const short = missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk })
   const goodKey = bpGoodKey(engine, blueprintId)
   const lock = !owned && goodKey ? marketLockedReason(state, engine.ctx, goodKey) : null
+  // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
+  const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
+  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
+  const manualNote = manualBuildNote(state)
 
   function handleAcquire(): void {
     const r = engine.acquireBlueprintAt(blueprintId)
@@ -158,25 +187,40 @@ function BlueprintCard({
     else onToast('蓝图书已购得并自动学会：现在可以开始制造了。')
   }
 
-  function handleBuild(): void {
-    const r = engine.startManufacturingAt(blueprintId)
-    if (!r.ok) onToast(r.error ?? '开工失败', true)
+  function runWith(worker: AiCoreType | 'pilot'): void {
+    const r = engine.startManufacturingAt(blueprintId, worker)
+    if (!r.ok) {
+      onToast(r.error ?? '开工失败', true)
+      return
+    }
+    onToast(
+      worker === 'pilot'
+        ? '主控亲自开工：材料与制造费已扣除，线已开（期间不可离港作业）。'
+        : `${aiCoreName(worker)}已接入：材料与制造费已扣除，线已开（核心占用一枚，完成/取消自动归还）。`,
+    )
   }
 
   function handleCancel(runId: number): void {
     const r = engine.cancelManufacturingAt(runId)
     if (!r.ok) onToast(r.error ?? '取消失败', true)
-    else onToast('已取消该条制造线：材料全额退回物品仓库（制造费不退），其余线不受影响。')
+    else onToast('已取消该条制造线：材料全额退回物品仓库（制造费不退；AI 核心已归还），其余线不受影响。')
   }
 
-  const feeShort = canPayFee ? '' : `制造费不足：需要 ${buildCostIsk.toLocaleString('zh-CN')} ISK`
-  const blockTitle =
-    short.length > 0
-      ? short.join('；')
-      : feeShort ||
-        (running
-          ? '材料与制造费足够：可再加开一条线（与现有线并行制造，每条独立进度/取消）'
-          : '开始制造：材料与制造费立即扣除（同一蓝图可多线并行）')
+  const payShortTxt = canPayFee ? '' : `制造费不足：需要 ${buildCostIsk.toLocaleString('zh-CN')} ISK`
+  const feedTxt = short.length > 0 ? short.join('；') : payShortTxt
+  const manualTitle =
+    manualNote ??
+    feedTxt ??
+    (running
+      ? '主控亲自再加开一条线：材料与制造费立即扣除（主控手动工作位全局限 1 条，其余线须 AI 驱动）'
+      : '主控亲自开一条制造线：材料与制造费立即扣除，期间不可离港作业')
+  const aiTitle = feedTxt
+    ? feedTxt
+    : core
+      ? running
+        ? '接入一枚闲置 AI 核心再加开一条线（核心出库占用；完成/取消自动归还）'
+        : '接入 AI 核心自动制造：材料与制造费立即扣除（核心出库占用一枚；不占主控与副船名额）'
+      : '没有可用 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'
 
   return (
     <div className="app-belt-card">
@@ -219,7 +263,7 @@ function BlueprintCard({
             · 已开 {runs.length} 条线，首条约 {formatDurationMs(Math.min(...runs.map((v) => v.remainingMs)))} 到点
           </>
         ) : (
-          <> · 耗时 {formatDurationMs(buildMs)}（技能修正后）</>
+          <> · 主控耗时 {formatDurationMs(buildMs)}（技能修正后；AI 核心另按效率拉长）</>
         )}
       </div>
       <ul className="app-bp-mats">
@@ -243,22 +287,21 @@ function BlueprintCard({
       <div className="app-belt-econ">
         制造费 {buildCostIsk.toLocaleString('zh-CN')} ISK/条
         {running ? <span className="app-dim"> · 已付 {runs.length} 条</span> : null}
-        {running && short.length > 0 ? (
-          <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span>
-        ) : null}
+        {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
       </div>
 
       <div className="app-belt-actions">
-        {/* 该蓝图逐条制造线名册（每行：进度 + 剩余 + 取消；2026-09-08 同蓝图多线）——精炼炉运转名册同款结构 */}
+        {/* 该蓝图逐条制造线名册（每行：劳动者 + 剩余 + 进度 + 取消）——精炼炉运转名册同款结构 */}
         {runs.length > 0 ? (
           <div className="app-belt-workers" style={{ marginTop: 2 }}>
             {runs.map((v) => (
               <span key={v.id} className="app-belt-worker">
                 <span
                   className="app-belt-worker-name"
-                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '停入船坞' : '入库'}`}
+                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '停入船坞' : '入库'}${v.worker === null ? '（旧作业：老规则免占用线，跑完即止）' : ''}`}
                 >
-                  进度 {v.percent}% · 剩余约 {formatDurationMs(v.remainingMs)}
+                  {v.worker === null ? '⚙ 旧作业' : v.worker === 'pilot' ? '⛏ 主控亲自' : `⚙ ${v.workerLabel}驱动`} · 剩余约{' '}
+                  {formatDurationMs(v.remainingMs)}
                 </span>
                 <span className="app-progress-mini" title={`制造进度 ${v.percent}%`}>
                   <i style={{ width: `${v.percent}%` }} />
@@ -266,7 +309,7 @@ function BlueprintCard({
                 <button
                   className="app-btn is-small is-warn"
                   onClick={() => handleCancel(v.id)}
-                  title="取消这条制造线：材料按材料学折扣后的实际用量全额退回（制造费不退），其它线不受影响"
+                  title="取消这条制造线：材料按材料学折扣后的实际用量全额退回（制造费不退；AI 核心自动归还），其它线不受影响"
                 >
                   ■ 取消
                 </button>
@@ -276,14 +319,44 @@ function BlueprintCard({
         ) : null}
 
         {owned ? (
-          <button
-            className="app-btn is-small is-primary"
-            disabled={!canPayFee || short.length > 0}
-            title={blockTitle}
-            onClick={handleBuild}
-          >
-            {running ? '加开一条线' : '开始制造'}
-          </button>
+          <>
+            <button
+              className="app-btn is-small is-primary"
+              disabled={manualNote !== null || !canPayFee || short.length > 0}
+              title={manualTitle}
+              onClick={() => runWith('pilot')}
+            >
+              手动制造
+            </button>
+            {usableCores.length > 0 ? (
+              <div className="app-belt-ai">
+                <select
+                  className="app-select"
+                  value={core ?? ''}
+                  onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
+                  title="选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用；核心库存即并行上限）"
+                >
+                  {usableCores.map((t) => (
+                    <option key={t} value={t}>
+                      {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="app-btn is-small"
+                  disabled={!core || !canPayFee || short.length > 0}
+                  title={aiTitle}
+                  onClick={() => core && runWith(core)}
+                >
+                  AI 制造
+                </button>
+              </div>
+            ) : (
+              <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
+                AI 制造
+              </button>
+            )}
+          </>
         ) : lock ? (
           <button className="app-btn is-small" disabled title={lock}>
             ✕ 声望未达标
@@ -377,7 +450,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   pushEquip()
   pushAmmo()
 
-  /** 可加开判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够（制造中也允许再加开一条线） */
+  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够（劳动者判定由卡片按钮各自表达） */
   function canStartNow(
     blueprintId: string,
     materials: readonly MaterialNeed[],
@@ -422,9 +495,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         ))}
       </div>
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工；卡片会标出材料缺口与制造费。<b>同一蓝图可同时开多条线</b>（与精炼炉多炉并线
-        一致：每条线独立进度、可单独取消，材料够即可随时「加开一条线」）；不同蓝图当然也并行。制造不占主控，
-        可与出海作业并行。制造中 / 可加开的配方排在最前。
+        已学会的配方才能开工；卡片会标出材料缺口与制造费。劳动者与精炼炉完全相同：<b>主控亲自
+        （全局限 1 条、占主控不可离港）</b>或<b>一枚 AI 核心驱动一条线</b>（核心库存即并行上限）；同一蓝图
+        可同时开多条线、不同蓝图也并行，材料/制造费够即可随时加开。制造中 / 可开工的配方排在最前。
       </div>
 
       <div className="app-belt-grid">

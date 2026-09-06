@@ -205,6 +205,9 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出发远征（想自动精炼可改用 AI 核心驱动）。' }
   }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出发远征（想自动制造可改用 AI 核心驱动）。' }
+  }
   return { ok: true }
 }
 

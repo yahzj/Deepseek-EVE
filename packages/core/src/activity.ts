@@ -136,13 +136,14 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 制造（v21 多工位：每条制造线一条活动；逐线可取消） ──
+  // ── 制造（v21 多工位：每条制造线一条活动；逐线可取消；2026-09-08 线带劳动者：主控/AI 核心/旧作业） ──
   for (const mfv of manufacturingRunViews(state, ctx)) {
+    const who = mfv.worker === null ? '旧作业' : mfv.worker === 'pilot' ? '主控亲自' : `${mfv.workerLabel}驱动`
     out.push({
       id: `manufacture:${mfv.id}`,
       kind: 'manufacture',
       label: mfv.productName,
-      sub: mfv.kind === 'ship' ? '造船中' : '制造中',
+      sub: `${who} · ${mfv.kind === 'ship' ? '造船中' : '制造中'}`,
       percent: mfv.percent,
       remainingMs: mfv.remainingMs,
       stopable: true,

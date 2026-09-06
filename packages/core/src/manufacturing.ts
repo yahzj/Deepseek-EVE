@@ -8,16 +8,23 @@
  * - 到点自动完成：装备入装备库 / 舰船入船坞；
  * - v21（2026-09-05 船长拍板）：多张蓝图可同时制造（manufacturingRuns 逐线独立进度/
  *   取消）；2026-09-08 起同一蓝图也可开多条线（与精炼炉多炉并线一致）；
- *   制造不占主控，与出海作业并行。
+ * - 2026-09-08（船长拍板：与精炼炉机制完全相同，仅处理层不同）：制造线与炉同款劳动者制——
+ *   worker = 'pilot'（主控亲自制造：全局限 1 条、与手动精炼/回收共用一个手动工作位、
+ *   占主控不可离港作业）或 AiCoreType（一枚 AI 核心驱动一条线：核心出库占用、不占副船名额、
+ *   完成/取消自动归还，核心库存即并行上限）；
+ * - 耗时链同炉：主控线 = 工业理论 × 批量生产学（现有公式）；AI 线 = 基础耗时 ÷ 核心效率再乘
+ *   工业自动化 −5%/级（下限 60%）。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
-import type { BlueprintDef, ShipBlueprintDef, SimContext } from './types'
+import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule } from './equipment'
 import { addShipToFleet } from './shipyard'
 import { formatDurationMs } from './time'
+import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
+import { isAtHome } from './location'
 
 /** 制造类蓝图的公共形状（装备蓝图与舰船蓝图共有的字段） */
 export interface BuildSpec {
@@ -99,13 +106,49 @@ function productNameOf(ctx: SimContext, b: NonNullable<ReturnType<typeof findBui
   return ctx.ships.get(b.shipId ?? '')?.name ?? fallback
 }
 
-/** 玩家指令：开始制造（多工位：同一蓝图可同时开多条制造线，与精炼炉多炉并线一致；
- * 材料与制造费立即扣除，时间到自动完成） */
-export function startManufacturing(state: GameState, blueprintId: string, ctx: SimContext): CommandResult {
+/**
+ * 主控此刻是否正亲自开着一条制造线（主控忙判定：AI 核心驱动 / 旧作业不占主控）
+ */
+export function manufacturingManualActive(state: GameState): boolean {
+  return state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
+}
+
+/**
+ * 玩家指令：开始制造（2026-09-08 劳动者制与精炼炉完全同款，仅处理层不同：worker = 'pilot'
+ * 主控亲自（全局限 1 条、与手动精炼/回收共用手动工作位、占主控不可离港作业）或 AiCoreType
+ * 一枚核心驱动一条线（核心库存即并行上限，出库占用、完成/取消归还）；同一蓝图可多条线、
+ * 不同蓝图不限，皆受劳动者约束；材料与制造费立即扣除，时间到自动完成）。
+ */
+export function startManufacturing(
+  state: GameState,
+  blueprintId: string,
+  worker: 'pilot' | AiCoreType,
+  ctx: SimContext,
+): CommandResult {
+  if (!isAtHome(state)) {
+    return { ok: false, error: '组装机在母港：回到母港才能开工制造。' }
+  }
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }
   if (!ownsBlueprint(state, blueprintId)) {
     return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
+  }
+  if (worker === 'pilot') {
+    // 主控亲自制造 = 全局限 1 条 + 与手动精炼/回收共用一个手动工作位 + 占主控工作位
+    if (manufacturingManualActive(state)) {
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。' }
+    }
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+      return { ok: false, error: '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。' }
+    }
+    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
+    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
+    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
+    if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
+    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
+    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+  } else if (countAiCore(state, worker) <= 0) {
+    return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
   }
   if (state.wallet.isk < buildable.spec.buildCostIsk) {
     return { ok: false, error: `制造费不足：需要 ${buildable.spec.buildCostIsk.toLocaleString('zh-CN')} ISK。` }
@@ -114,18 +157,29 @@ export function startManufacturing(state: GameState, blueprintId: string, ctx: S
   if (missing.length > 0) {
     return { ok: false, error: `材料不足：${missing.join('、')}。` }
   }
-
+  // 耗时链同炉：主控 = 工业理论 × 批量生产学；AI = ÷核心效率 再乘 工业自动化 −5%/级（下限 60%）
+  let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
+  if (worker !== 'pilot') {
+    const eff = aiEfficiency(state, ctx, worker)
+    durationMs = Math.max(1, Math.round(durationMs / eff))
+    const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
+    if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0.6, 1 - 0.05 * autoLv)))
+  }
+  // AI 线：先占用核心（材料/费用校验之后、扣料之前——失败不产生任何副作用）
+  if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+  }
   // 扣材料（物品仓库，按材料学折扣后数量）与制造费
   for (const need of buildable.spec.materials) {
     removeWare(state, need.itemId, matNeedCount(state, need.count))
   }
   state.wallet.isk -= buildable.spec.buildCostIsk
 
-  const durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
   state.manufacturingRuns.push({
     active: true,
     id: state.manufacturingSeq++,
     blueprintId,
+    worker,
     finishAtGameMs: state.gameMs + durationMs,
     durationMs,
   })
@@ -133,14 +187,15 @@ export function startManufacturing(state: GameState, blueprintId: string, ctx: S
   addLog(
     state,
     'trade',
-    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），预计 ${formatDurationMs(durationMs)} 完成；同一蓝图可加开多条线。`,
+    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），${worker === 'pilot' ? '主控亲自开线' : `${aiCoreName(worker)}驱动`}，预计 ${formatDurationMs(durationMs)} 完成。`,
   )
   return { ok: true }
 }
 
 /**
  * 玩家指令：取消指定的制造线（v21 按线号定位；T1 活动窗口统一停止）。
- * 材料按蓝图清单全额退回物品仓库；已付制造费不退；产物不产生。
+ * 材料按蓝图清单全额退回物品仓库；已付制造费不退；产物不产生；
+ * AI 核心驱动的线取消时核心归还核心库（旧作业无线可退）。
  */
 export function cancelManufacturing(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.manufacturingRuns.findIndex((r) => r.id === runId)
@@ -148,19 +203,25 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
   const [mf] = state.manufacturingRuns.splice(idx, 1)
   const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
   const productName = buildable ? productNameOf(ctx, buildable, mf.blueprintId ?? '') : (mf.blueprintId ?? '')
+  if (mf.worker !== undefined && mf.worker !== 'pilot') releaseAiCore(state, mf.worker)
   if (buildable) {
     // 退回 = 开工时实际扣除的数量（含材料学折扣），不多退
     for (const need of buildable.spec.materials) {
       addWare(state, need.itemId, matNeedCount(state, need.count))
     }
-    addLog(state, 'info', `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量；制造费不退）。`)
+    addLog(
+      state,
+      'info',
+      `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量；制造费不退${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）。`,
+    )
   } else {
     addLog(state, 'warn', '制造作业已取消（引用的蓝图数据缺失，无材料可退）。')
   }
   return { ok: true }
 }
 
-/** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点） */
+/** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点；
+ * AI 核心驱动的线到点完成即归还核心） */
 export function advanceManufacturing(state: GameState, ctx: SimContext): void {
   for (let i = state.manufacturingRuns.length - 1; i >= 0; i--) {
     const mf = state.manufacturingRuns[i]!
@@ -169,6 +230,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
     const blueprintId = mf.blueprintId
     const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
     state.manufacturingRuns.splice(i, 1)
+    if (mf.worker !== undefined && mf.worker !== 'pilot') releaseAiCore(state, mf.worker)
     if (!buildable) {
       addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
       continue
@@ -214,6 +276,10 @@ export interface ManufacturingView {
   productName: string
   /** 产物类别（界面图标/说明用；2026-09-05 起含 item = 弹药等物品蓝图） */
   kind: 'module' | 'ship' | 'item' | null
+  /** 劳动者：'pilot' = 主控亲自 / AiCoreType = AI 核心驱动；null = 旧作业（老档遗留，免占用跑到完） */
+  worker: 'pilot' | AiCoreType | null
+  /** 劳动者显示名（'主控' / 核心中文名 / '旧作业'） */
+  workerLabel: string
   /** 剩余毫秒（到点前由引擎完成；显示端每秒刷新） */
   remainingMs: number
   /** 总耗时毫秒 */
@@ -227,12 +293,15 @@ function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): M
   const remainingMs = Math.max(0, mf.finishAtGameMs - state.gameMs)
   const percent =
     mf.durationMs > 0 ? Math.min(100, Math.max(0, Math.round(((mf.durationMs - remainingMs) / mf.durationMs) * 100))) : 0
+  const worker = mf.worker ?? null
   return {
     active: mf.active,
     id: mf.id,
     blueprintId: mf.blueprintId,
     productName,
     kind: buildable ? buildable.kind : null,
+    worker,
+    workerLabel: worker === null ? '旧作业' : worker === 'pilot' ? '主控' : aiCoreName(worker),
     remainingMs,
     durationMs: mf.durationMs,
     percent,

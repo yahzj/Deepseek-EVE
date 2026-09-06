@@ -144,7 +144,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '工业自动化',
     group: '工业',
     rank: 3,
-    description: 'AI 自动化作业：AI 核心驱动的精炼炉运转周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧，至少保留 60%；手动运转不受影响）。',
+    description: 'AI 自动化作业：AI 核心驱动的精炼炉与组装机作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧，至少保留 60%；手动运转不受影响）。',
   },
   {
     id: 'astro-geology',

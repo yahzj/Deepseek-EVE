@@ -161,9 +161,12 @@ export function startRefineRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
   }
   if (worker === 'pilot') {
-    // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与其它主控作业互斥
+    // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与其它主控作业互斥；与主控手动制造共用手动工作位
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。' }
+    }
+    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。' }
     }
     if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
     if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
@@ -253,9 +256,12 @@ export function startRecycleRun(
     }
   }
   if (worker === 'pilot') {
-    // 主控亲自回收：全局限 1 台 + 占主控工作位
+    // 主控亲自回收：全局限 1 台 + 占主控工作位；与主控手动制造共用手动工作位
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。' }
+    }
+    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。' }
     }
     if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
     if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
