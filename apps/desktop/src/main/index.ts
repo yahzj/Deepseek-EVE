@@ -169,6 +169,11 @@ function createWindow(): void {
 
 app.setName('whale-idle')
 
+// 性能自动采集（2026-09-08 诊断工具）：把存档目录隔离到临时目录，绝不碰真实存档
+if (process.env.WHALE_PERF_USERDATA) {
+  app.setPath('userData', process.env.WHALE_PERF_USERDATA)
+}
+
 app.whenReady().then(() => {
   registerSaveHandlers()
   createWindow()

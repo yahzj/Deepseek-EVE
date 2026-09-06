@@ -19,3 +19,12 @@ contextBridge.exposeInMainWorld('whale', {
   /** 恢复备份（覆盖前自动备份当前档） */
   restore: (name: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('save:restore', name),
 })
+
+// 性能自动采集（2026-09-08 诊断工具）：主进程环境变量 WHALE_AUTOPERF 注入场景 JSON；
+// 平时为 null，玩家侧零暴露
+try {
+  const spec = process.env.WHALE_AUTOPERF
+  if (spec) contextBridge.exposeInMainWorld('__autoperf', spec)
+} catch {
+  // 环境变量不可用时静默跳过（正常游玩路径）
+}

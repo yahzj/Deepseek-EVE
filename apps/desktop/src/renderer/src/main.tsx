@@ -4,6 +4,7 @@
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { GameEngine } from './game/engine'
+import { runAutoPerf } from './game/autoPerf'
 import './styles.css'
 
 const engine = new GameEngine()
@@ -15,6 +16,15 @@ engine
   .start()
   .then(() => {
     root.render(<App engine={engine} />)
+    // 性能自动采集模式（仅 Electron 环境变量注入时运行；玩家路径无感）
+    const perfJson = window.__autoperf
+    if (perfJson) {
+      try {
+        void runAutoPerf(engine, JSON.parse(perfJson) as Parameters<typeof runAutoPerf>[1])
+      } catch (err) {
+        console.error('性能自动采集启动失败：', err)
+      }
+    }
   })
   .catch((err: unknown) => {
     console.error('引擎启动失败：', err)

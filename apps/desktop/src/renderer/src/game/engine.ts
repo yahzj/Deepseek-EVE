@@ -110,6 +110,8 @@ import type {
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
 import { saveBridge } from './storage'
+import { perfHub } from './perf'
+import type { PerfBucket } from './perf'
 
 type Listener = () => void
 
@@ -323,10 +325,29 @@ export class GameEngine {
     }
   }
 
+  /** 当前心跳所属计量桶：交火中 = battle，其余 = idle（性能监测分桶用） */
+  private currentBucket(): PerfBucket {
+    const exp = this.state.expedition
+    return exp.active && exp.phase === 'battle' && !!exp.battle ? 'battle' : 'idle'
+  }
+
+  /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销） */
+  private advanceSlice(ms: number): void {
+    const rec = perfHub.recording
+    const t0 = rec ? performance.now() : 0
+    const bucket = this.currentBucket()
+    advanceGame(this.state, ms, this.ctx)
+    if (rec) perfHub.recordAdvance(bucket, performance.now() - t0)
+  }
+
   private notify(): void {
     // 任何状态变更通知后重排心跳：交火中/教学加速/远征去程 = 100ms，普通挂机 = 500ms（2026-09-08 降频）
     this.ensurePump()
+    const rec = perfHub.recording
+    const t0 = rec ? performance.now() : 0
+    const bucket = this.currentBucket()
     for (const fn of this.listeners) fn()
+    if (rec) perfHub.recordNotify(bucket, performance.now() - t0)
   }
 
   /** 启动引擎：读档 → 离线结算 → 每秒推进 + 自动保存 */
@@ -401,10 +422,10 @@ export class GameEngine {
       if (this.pendingMs > 0) {
         // 交火期积压（切页/后台节流等产生）按 100ms 分片追平，避免整段隐藏推进
         const step = Math.min(this.pendingMs, 100)
-        advanceGame(this.state, step, this.ctx)
+        this.advanceSlice(step)
         this.pendingMs -= step
       } else {
-        advanceGame(this.state, dt, this.ctx)
+        this.advanceSlice(dt)
       }
       this.notify()
       return
@@ -420,7 +441,7 @@ export class GameEngine {
       if (this.pendingMs >= toArrival) {
         const slice = Math.min(this.pendingMs, toArrival + 1)
         if (slice > 0) {
-          advanceGame(this.state, slice, this.ctx)
+          this.advanceSlice(slice)
           this.pendingMs -= slice
         }
         this.notify()
@@ -428,7 +449,7 @@ export class GameEngine {
       }
     }
     if (this.pendingMs >= 1000) {
-      advanceGame(this.state, this.pendingMs, this.ctx)
+      this.advanceSlice(this.pendingMs)
       this.pendingMs = 0
       this.notify()
     }

@@ -30,6 +30,8 @@ declare global {
 
   interface Window {
     whale: WhaleApi
+    /** 性能自动采集场景 JSON（仅 Electron 自动跑分注入；平时为 undefined） */
+    __autoperf?: string
   }
 }
 

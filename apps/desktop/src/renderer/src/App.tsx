@@ -7,11 +7,12 @@
  * - 中部：左侧为主窗口（按顶部菜单切换页面），右侧事件日志
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
-import { useEffect, useReducer, useRef, useState } from 'react'
-import type { RefObject } from 'react'
+import { Profiler, useEffect, useReducer, useRef, useState } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { formatDurationMs, shipDisplayName } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
+import { perfHub, perfAutoEnabled } from './game/perf'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { TutorialGuide, TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
@@ -188,6 +189,94 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
   )
 }
 
+/* ═══════════════ 性能监测（2026-09-08 诊断工具：隐形采集；whale-idle:debug 下顶栏出现 ⏱ 性能 可查看/导出） ═══════════════ */
+
+/** Profiler 边界：采集激活时才包一层（未激活零开销），把每次 React 提交耗时上报给 perfHub */
+function PerfShell({ children }: { children: ReactNode }) {
+  if (!perfHub.recording) return <>{children}</>
+  return (
+    <Profiler id="app" onRender={(_id, _phase, actual) => perfHub.recordCommit(actual)}>
+      {children}
+    </Profiler>
+  )
+}
+
+/** 调试悬浮 HUD：当前推进/通知/提交耗时 + 一键复制完整快照 JSON（玩家可按引导导出） */
+function PerfHud({ onClose }: { onClose: () => void }) {
+  const [, bump] = useReducer((n: number) => n + 1, 0)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    const iv = window.setInterval(bump, 1_000)
+    return () => window.clearInterval(iv)
+  }, [])
+  function fmtBox(b?: { n: number; sumMs: number; maxMs: number }): string {
+    if (!b || b.n === 0) return '—'
+    return `均 ${(b.sumMs / b.n).toFixed(2)}ms · 峰 ${b.maxMs.toFixed(1)}ms ×${b.n}`
+  }
+  async function doCopy(): Promise<void> {
+    const rep = perfHub.report()
+    if (!rep) return
+    const text = JSON.stringify(rep, null, 1)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1800)
+  }
+  const t = perfHub.liveTotals()
+  const fps = t && t.fps.samples > 0 ? (t.fps.avg / t.fps.samples).toFixed(0) : '—'
+  const wallS = Math.round(perfHub.liveWallMs() / 1000)
+  return (
+    <div className="app-perf-hud">
+      <div className="app-perf-hud-title">
+        性能快照 · {wallS}s · FPS ≈{fps}
+        <button className="app-btn is-small" onClick={() => void doCopy()}>
+          {copied ? '✓ 已复制' : '复制报告'}
+        </button>
+        <button className="app-btn is-small" onClick={onClose}>
+          ✕
+        </button>
+      </div>
+      {t ? (
+        <>
+          <div className="app-perf-hud-line">
+            <span>引擎推进 · 挂机</span>
+            <span>{fmtBox(t.adv.idle)}</span>
+          </div>
+          <div className="app-perf-hud-line">
+            <span>引擎推进 · 战斗</span>
+            <span>{fmtBox(t.adv.battle)}</span>
+          </div>
+          <div className="app-perf-hud-line">
+            <span>整树刷新 · 挂机</span>
+            <span>{fmtBox(t.notify.idle)}</span>
+          </div>
+          <div className="app-perf-hud-line">
+            <span>整树刷新 · 战斗</span>
+            <span>{fmtBox(t.notify.battle)}</span>
+          </div>
+          <div className="app-perf-hud-line">
+            <span>React 提交</span>
+            <span>{fmtBox(t.commit)}</span>
+          </div>
+          <div className="app-perf-hud-line">
+            <span>长任务</span>
+            <span>{t.long.n} 次{t.long.n > 0 ? ` · 最长 ${t.long.maxMs.toFixed(0)}ms` : ''}</span>
+          </div>
+        </>
+      ) : null}
+      <div className="app-dim app-perf-hud-tip">此面板只记录/展示，不影响游戏；「复制报告」= 发给开发者的完整诊断 JSON</div>
+    </div>
+  )
+}
+
 export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
   useEffect(() => engine.subscribe(force), [engine])
@@ -327,6 +416,12 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [state.lowSecNotified])
   // V15 调试模式入口（开发工具：localStorage 标志启用后才显示）
   const [debugOn] = useState<boolean>(readDebugEnabled)
+  // 性能监测（2026-09-08 诊断工具）：debug 开关在首帧前激活隐形采集；自动采集模式由 main.tsx 预激活
+  useState(() => {
+    if (perfAutoEnabled()) perfHub.activate()
+    return false
+  })
+  const [perfOpen, setPerfOpen] = useState(false)
 
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
@@ -482,7 +577,8 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [tutStep, page])
 
   return (
-    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
+    <PerfShell>
+      <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
       {/* ───── 顶栏 ───── */}
       <header className="app-header">
         <div className="app-header-left">
@@ -491,7 +587,18 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
         <div className="app-header-right">
           {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
-          {debugOn ? <DebugButton engine={engine} onFastForwarded={() => setReportDismissed(false)} /> : null}
+          {debugOn ? (
+            <>
+              <DebugButton engine={engine} onFastForwarded={() => setReportDismissed(false)} />
+              <button
+                className="app-btn"
+                onClick={() => setPerfOpen((v) => !v)}
+                title="性能监测（诊断工具）：FPS / 引擎推进 / 整树刷新 / React 提交耗时；可一键复制完整快照"
+              >
+                ⏱ 性能
+              </button>
+            </>
+          ) : null}
           <span className="app-isk">{state.wallet.isk.toLocaleString('zh-CN')} ISK</span>
           <span className="app-clock">在线 {formatDurationMs(state.gameMs)}</span>
           <AnnouncementHub engine={engine} />
@@ -815,8 +922,12 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
       ) : null}
 
+      {/* 性能监测 HUD（debug 开关下由顶栏「⏱ 性能」唤出） */}
+      {perfOpen ? <PerfHud onClose={() => setPerfOpen(false)} /> : null}
+
       {/* 全局悬停提示层（置于最上） */}
       <TooltipLayer />
-    </div>
+      </div>
+    </PerfShell>
   )
 }
