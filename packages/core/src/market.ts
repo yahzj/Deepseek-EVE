@@ -187,13 +187,12 @@ export function bmGateLocked(state: GameState, def: MarketGoodDef): boolean {
   return !!def.bmStanding && def.bmStanding > 0 && (state.standings[DSI_FACTION_ID] ?? 0) < def.bmStanding
 }
 
-/** 暗市闸展示文案（null = 已解锁；含"需声望 + 暗市 ×4"玩家向提示） */
+/** 暗市闸展示文案（2026-09-06 船长定：暗市对玩家隐身——仅声望锁指引，与 standingReq 锁同观感；
+ * 闸内偶发 ×4 到货在外观与文案上与普通稀有单无异） */
 export function bmGateReason(state: GameState, def: MarketGoodDef): string | null {
   if (!def.bmStanding || def.bmStanding <= 0) return null
   const have = state.standings[DSI_FACTION_ID] ?? 0
-  return have >= def.bmStanding
-    ? null
-    : `需「深空工业协会」声望 ${def.bmStanding}（当前 ${have}）——常驻渠道待解锁；暗市偶发到货 ×4 价可提前购`
+  return have >= def.bmStanding ? null : `需「深空工业协会」声望 ${def.bmStanding}（当前 ${have}）`
 }
 
 /** 当前均衡价 L（展示/估价用；不含单边价差与 jitter） */
@@ -783,7 +782,7 @@ export function buyAtMarket(
   }
   if (remaining > 0) {
     if (bmLock && bought === 0) {
-      addLog(state, 'info', `常驻供应待「深空工业协会」声望 ${def.bmStanding} 解锁——暗市偶发 ×4 价订单到货时可直接买入。`)
+      addLog(state, 'info', `常驻供应待「深空工业协会」声望 ${def.bmStanding} 解锁。`)
     } else {
       addLog(state, 'info', `市价买入成交 ${bought.toLocaleString('zh-CN')} 后供应簿吃穿，剩余 ${remaining.toLocaleString('zh-CN')}——可稍等补给或挂限价买单。`)
     }
