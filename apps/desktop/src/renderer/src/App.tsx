@@ -198,6 +198,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const rootRef = useRef<HTMLDivElement>(null)
   // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
   const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
+  // 教程卡防遮挡（手机横屏：目标按钮与右下角教程卡重叠时把卡上移）
+  const [guideLift, setGuideLift] = useState(false)
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
@@ -751,6 +753,7 @@ export function App({ engine }: { engine: GameEngine }) {
           <TutorialSpot
             engine={engine}
             step={tutStep}
+            onLift={setGuideLift}
             onGo={(g: GuideGo) => {
               changePage(g.page as PageKey)
               if (g.mapTab) changeMapTab(g.mapTab as MapTab)
@@ -760,6 +763,7 @@ export function App({ engine }: { engine: GameEngine }) {
           <TutorialGuide
             engine={engine}
             step={tutStep}
+            lifted={guideLift}
             onGo={(g: GuideGo) => {
               changePage(g.page as PageKey)
               if (g.mapTab) changeMapTab(g.mapTab as MapTab)

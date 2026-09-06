@@ -88,11 +88,14 @@ export function TutorialGuide({
   step,
   onGo,
   onClose,
+  lifted = false,
 }: {
   engine: GameEngine
   step: number
   onGo: (g: GuideGo) => void
   onClose?: () => void
+  /** 手机横屏：目标按钮与右下角卡片重叠时上移（2026-09-06 防遮挡） */
+  lifted?: boolean
 }) {
   const [minimized, setMinimized] = useState(false)
   const def = GUIDE_BY_STEP[step]
@@ -106,7 +109,7 @@ export function TutorialGuide({
     )
   }
   return (
-    <div className="app-tut-card">
+    <div className={`app-tut-card${lifted ? ' is-top' : ''}`}>
       <div className="app-tut-head">
         <span className="app-tut-title">◆ 教程目标 · {def.title}</span>
         <span className="app-tut-min" onClick={() => setMinimized(true)} title="最小化">
@@ -271,21 +274,71 @@ function rootRotTransform(): { s: number; L: number; T: number } | null {
   return { s, L, T }
 }
 
-/** 目标按钮视口框 → 高亮框所在坐标空间的 {x(左), y(上), w, h}（手机换算到局部、桌面直接用视口） */
+/** 目标按钮视口框 → 高亮框所在坐标空间的 {x(左), y(上), w, h}（手机换算到局部、桌面直接用视口）。
+ * 换算用"四角 → 局部坐标 → min/max"取轴对齐盒：仿射逐轴单调，min/max 盒的影像必然恰好等于原视口框，
+ * 不依赖旋转方向推断，避免正负号错误。局部(lx,ly)↔视口(X,Y)：X = L + s·ly；Y = T − s·lx。 */
 function ringRectFor(el: Element): { x: number; y: number; w: number; h: number } {
   const r = el.getBoundingClientRect()
   const rot = rootRotTransform()
   if (!rot) return { x: r.left, y: r.top, w: r.width, h: r.height }
   const { s, L, T } = rot
-  return {
-    x: (T - r.top) / s, // 视口上边 ↔ 局部 x
-    y: (r.left - L) / s, // 视口左边 ↔ 局部 y
-    w: r.height / s,
-    h: r.width / s,
-  }
+  const pts = [
+    { X: r.left, Y: r.top },
+    { X: r.right, Y: r.top },
+    { X: r.left, Y: r.bottom },
+    { X: r.right, Y: r.bottom },
+  ].map((p) => ({ lx: (T - p.Y) / s, ly: (p.X - L) / s }))
+  const minX = Math.min(...pts.map((p) => p.lx))
+  const maxX = Math.max(...pts.map((p) => p.lx))
+  const minY = Math.min(...pts.map((p) => p.ly))
+  const maxY = Math.max(...pts.map((p) => p.ly))
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
 }
 
-export function TutorialSpot({ engine, step, onGo }: { engine: GameEngine; step: number; onGo: (g: GuideGo) => void }) {
+/** 视口框（如教程卡的测量框）→ 局部框（同上四角换算，用于相交测试） */
+function localBoxOfRect(rot: { s: number; L: number; T: number }, r: DOMRect): { x: number; y: number; w: number; h: number } {
+  const pts = [
+    { X: r.left, Y: r.top },
+    { X: r.right, Y: r.top },
+    { X: r.left, Y: r.bottom },
+    { X: r.right, Y: r.bottom },
+  ].map((p) => ({ lx: (rot.T - p.Y) / rot.s, ly: (p.X - rot.L) / rot.s }))
+  const minX = Math.min(...pts.map((p) => p.lx))
+  const maxX = Math.max(...pts.map((p) => p.lx))
+  const minY = Math.min(...pts.map((p) => p.ly))
+  const maxY = Math.max(...pts.map((p) => p.ly))
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/** 元素是否被某个滚动/裁剪祖先裁掉（页面内滚动容器里滚出视口的按钮 rect 仍在屏内 → 直接画框会"指空"） */
+function isClippedByScroll(el: Element): boolean {
+  let n = el.parentElement
+  while (n && n !== document.body) {
+    const cs = getComputedStyle(n)
+    if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') {
+      const er = el.getBoundingClientRect()
+      const cr = n.getBoundingClientRect()
+      if (er.bottom <= cr.top + 2 || er.top >= cr.bottom - 2 || er.right <= cr.left + 2 || er.left >= cr.right - 2) {
+        return true
+      }
+    }
+    n = n.parentElement
+  }
+  return false
+}
+
+export function TutorialSpot({
+  engine,
+  step,
+  onGo,
+  onLift,
+}: {
+  engine: GameEngine
+  step: number
+  onGo: (g: GuideGo) => void
+  /** 手机横屏：高亮目标与右下角教程卡重叠时回调 true（上层把卡上移防遮挡） */
+  onLift?: (lift: boolean) => void
+}) {
   const [ring, setRing] = useState<{ x: number; y: number; w: number; h: number; label: string } | null>(null)
   const plan = stepPlan(engine, step)
 
@@ -295,6 +348,14 @@ export function TutorialSpot({ engine, step, onGo }: { engine: GameEngine; step:
       const hit = findVisibleTarget(plan.targets)
       if (!hit) {
         setRing(null)
+        onLift?.(false)
+        return
+      }
+      const rot = rootRotTransform() !== null
+      if (rot && isClippedByScroll(hit.el)) {
+        // 目标在内部滚动容器里被裁掉：先滚入视口，下一拍再画框（避免框指在看不见的位置）
+        hit.el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        setRing(null)
         return
       }
       const box = ringRectFor(hit.el)
@@ -303,6 +364,34 @@ export function TutorialSpot({ engine, step, onGo }: { engine: GameEngine; step:
           ? prev
           : { x: box.x, y: box.y, w: box.w, h: box.h, label: hit.text },
       )
+      // 手机横屏：检测右下角教程卡（展开态）是否压住目标 → 请求上移
+      if (rot && onLift) {
+        const card = document.querySelector<HTMLElement>('.app-tut-card')
+        const root = document.querySelector<HTMLElement>('.app-root.is-mobile-rot')
+        const m = rootRotTransform()
+        const bh = root?.offsetHeight ?? 0
+        let overlap = false
+        if (card && m && bh > 0) {
+          const cr = card.getBoundingClientRect()
+          if (cr.height > 0) {
+            // 卡当前可能已在上移位（is-top）；统一折算成"默认右下角位"再判断，避免来回抖动
+            const yTop = card.classList.contains('is-top') ? bh - cr.height - 14 : cr.top
+            const yBot = card.classList.contains('is-top') ? cr.top : bh - cr.height - 14
+            const hyp = new DOMRect(cr.left, yTop, cr.width, cr.height)
+            void yBot
+            const cardLocal = localBoxOfRect(m, hyp)
+            const margin = 16
+            overlap =
+              box.x < cardLocal.x + cardLocal.w + margin &&
+              box.x + box.w + margin > cardLocal.x &&
+              box.y < cardLocal.y + cardLocal.h + margin &&
+              box.y + box.h + margin > cardLocal.y
+          }
+        }
+        onLift(overlap)
+      } else if (!rot) {
+        onLift?.(false)
+      }
     }
     relocate()
     const iv = window.setInterval(relocate, 150)

@@ -211,6 +211,9 @@ body {
 
 .app-root.is-mobile-rot .app-stepbar { max-width: min(1100px, calc(100vh - 48px)); }
 
+/* 手机：教程卡防遮挡——目标按钮被右下角卡压住时上移（JS 计算重叠后置 is-top，2026-09-06） */
+.app-root.is-mobile-rot .app-tut-card.is-top { top: 110px; bottom: auto; }
+
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
 .app-mob-sel-mask { position: fixed; inset: 0; z-index: 320; background: rgba(3,7,12,.55); display: flex; align-items: center; justify-content: center; }
