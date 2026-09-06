@@ -192,7 +192,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
   useEffect(() => engine.subscribe(force), [engine])
 
-  // ── 手机竖屏自动横屏（船长 2026-09-05）：触屏 + 竖屏时把整窗旋转 90° 并等比缩放，游戏画面横过来显示（免手动转手机） ──
+  // ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：按 visualViewport 真实可见区铺满对齐，
+  //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"） ──
   const [mobileRot, setMobileRot] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -204,26 +205,49 @@ export function App({ engine }: { engine: GameEngine }) {
       const el = rootRef.current
       if (el) {
         if (rot) {
+          // 真实可见区（布局视口内可视区域）：移动端地址栏/工具栏悬浮时 ≠ innerWidth/innerHeight
+          const vv = window.visualViewport
+          const visW = vv ? vv.width : window.innerWidth
+          const visH = vv ? vv.height : window.innerHeight
+          const visX = vv ? vv.offsetLeft : 0
+          const visY = vv ? vv.offsetTop : 0
           // 虚拟横屏设计宽度：越大画面整体越小、看到越多（船长 2026-09-05：横屏后偏大，改 1200 放宽）
           const designW = 1200
-          const scale = window.innerHeight / designW
-          const vh = designW * window.innerWidth / window.innerHeight
+          const scale = visH / designW
+          const vh = designW * visW / visH
+          // 布局坐标对齐：旋转(绕原点 -90°)后，元素的"右下"恰好落在可见区右下
+          // 映射：物理 x = L + s·y，物理 y = T − s·x ⇒ 取 L=visX、T=visY+visH 即整区铺满
           el.style.setProperty('--mob-w', `${designW}px`)
           el.style.setProperty('--mob-h', `${vh}px`)
           el.style.setProperty('--mob-scale', String(scale))
+          el.style.setProperty('--mob-x', `${visX}px`)
+          el.style.setProperty('--mob-y', `${visY + visH}px`)
         } else {
           el.style.removeProperty('--mob-w')
           el.style.removeProperty('--mob-h')
           el.style.removeProperty('--mob-scale')
+          el.style.removeProperty('--mob-x')
+          el.style.removeProperty('--mob-y')
         }
       }
     }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('orientationchange', update)
+    const vv = window.visualViewport
+    if (vv) {
+      // 地址栏展开/收起、键盘弹出等只会改 visualViewport 尺寸/偏移的场合也要重算
+      vv.addEventListener('resize', update)
+      vv.addEventListener('scroll', update)
+    }
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('orientationchange', update)
+      const v2 = window.visualViewport
+      if (v2) {
+        v2.removeEventListener('resize', update)
+        v2.removeEventListener('scroll', update)
+      }
     }
   }, [])
 

@@ -56,7 +56,8 @@ body {
 
 }
 
-/* ── 手机竖屏自动横屏（船长 2026-09-05）：整窗 rotate(-90°) + 等比缩放；--mob-w/--mob-h/--mob-scale 由 JS 按设计宽度计算 ── */
+/* ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：visualViewport 真实可见区铺满）──
+   整窗 rotate(-90°) + 等比缩放；--mob-w/--mob-h/--mob-scale/--mob-x/--mob-y 由 JS 按可见区计算 ── */
 
 .app-root.is-mobile-rot {
 
@@ -64,17 +65,18 @@ body {
 
   position: fixed;
 
-  top: 50%;
+  left: var(--mob-x, 0px);
 
-  left: 50%;
+  top: var(--mob-y, 0px);
 
   width: var(--mob-w);
 
   height: var(--mob-h, 100vw);
 
-  transform: translate(-50%, -50%) rotate(-90deg) scale(var(--mob-scale, 1));
+  /* 绕左上角旋转缩放；JS 按 visualViewport 把"右下角"贴到可见区右下 → 左右/上下不被地址栏遮 */
+  transform-origin: 0 0;
 
-  transform-origin: center center;
+  transform: rotate(-90deg) scale(var(--mob-scale, 1));
 
   overflow: hidden;
 
