@@ -226,38 +226,64 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   return { text: def.lines[0] ?? def.title, go: def.go, goLabel: def.goLabel, targets: byStep[step] ?? [] }
 }
 
-function findVisibleTarget(keywords: string[]): { el: Element; text: string } | null {
-  for (const kw of keywords) {
-    for (const el of Array.from(document.querySelectorAll('button'))) {
-      const t = (el.textContent ?? '').replace(/\s+/g, '')
-      if (!t.includes(kw)) continue
-      const r = el.getBoundingClientRect()
-      if (r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth) {
-        return { el, text: (el.textContent ?? '').trim().slice(0, 18) }
-      }
-    }
+/**
+ * 在可见按钮里找当前应点的目标（2026-09-06 船长反馈：光圈方框位置错误——
+ * 根因 1：按关键字"首个命中"，常落在左侧常驻导航(出港/舰船)而非页面内的真实按钮；
+ * 根因 2：只在步骤切换后定位一次，页面转场/滚动后框不跟随）。
+ * 修法：优先排除左侧导航，在页面内容里取**最深的可见命中**（真正的操作按钮）；
+ * 找不到才回退到导航按钮；随后由 TutorialSpot 的轮询持续跟随位置。
+ */
+function lastVisibleMatch(keywords: string[], excludeNav: boolean): { el: Element; text: string } | null {
+  let best: { el: Element; text: string } | null = null
+  for (const el of Array.from(document.querySelectorAll('button'))) {
+    if (excludeNav && el.closest('.app-nav-side')) continue
+    const t = (el.textContent ?? '').replace(/\s+/g, '')
+    if (!keywords.some((kw) => t.includes(kw))) continue
+    const r = el.getBoundingClientRect()
+    if (!(r.width > 0 && r.height > 0)) continue
+    // 部分可见也算（可点）；完全滚出视口才跳过
+    if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) continue
+    best = { el, text: (el.textContent ?? '').trim().slice(0, 18) } // DOM 靠后 = 页面内容越深 → 覆盖为最新
   }
-  return null
+  return best
+}
+
+function findVisibleTarget(keywords: string[]): { el: Element; text: string } | null {
+  if (keywords.length === 0) return null
+  // 优先页面内容里的真实按钮；页面不在该处时才高亮左侧导航入口
+  return lastVisibleMatch(keywords, true) ?? lastVisibleMatch(keywords, false)
 }
 
 export function TutorialSpot({ engine, step, onGo }: { engine: GameEngine; step: number; onGo: (g: GuideGo) => void }) {
   const [ring, setRing] = useState<{ x: number; y: number; w: number; h: number; label: string } | null>(null)
   const plan = stepPlan(engine, step)
 
-  // 每次引擎状态/页面变化后重定位光圈（rAF 保证布局已稳定）
+  // 定位光圈：立即定位 + 轮询跟随（页面转场/滚动/布局变动后框始终贴在目标上，2026-09-06 修复"框位置错误"）
   useLayoutEffect(() => {
-    const t = window.setTimeout(() => {
+    const relocate = (): void => {
       const hit = findVisibleTarget(plan.targets)
       if (!hit) {
         setRing(null)
         return
       }
       const r = hit.el.getBoundingClientRect()
-      setRing({ x: r.left, y: r.top, w: r.width, h: r.height, label: hit.text })
-    }, 40)
-    return () => window.clearTimeout(t)
+      setRing((prev) =>
+        prev && prev.x === r.left && prev.y === r.top && prev.w === r.width && prev.h === r.height && prev.label === hit.text
+          ? prev
+          : { x: r.left, y: r.top, w: r.width, h: r.height, label: hit.text },
+      )
+    }
+    relocate()
+    const iv = window.setInterval(relocate, 150)
+    window.addEventListener('resize', relocate)
+    window.addEventListener('scroll', relocate, true)
+    return () => {
+      window.clearInterval(iv)
+      window.removeEventListener('resize', relocate)
+      window.removeEventListener('scroll', relocate, true)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, plan.text, engine.state.gameMs, engine.state.shipId, engine.state.mining.active, engine.state.onboarding.step])
+  }, [step, plan.text])
 
   return (
     <>

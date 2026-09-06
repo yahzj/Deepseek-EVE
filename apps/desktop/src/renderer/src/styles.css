@@ -7056,8 +7056,10 @@ body {
 
 .app-pro-bg { position: absolute; inset: 0; background: #000; animation: app-pro-bgfade 1.52s linear .38s forwards; }
 @keyframes app-pro-bgfade { from { opacity: 1; } to { opacity: 0; } }
-.app-pro-slit { position: absolute; left: 0; top: 50%; width: 100%; height: 2px; margin-top: -1px; background: #fff; transform: scaleX(0); transform-origin: 50% 50%; box-shadow: 0 0 16px 3px rgba(255,255,255,.95), 0 0 46px 10px rgba(190,255,225,.55); animation: app-pro-slit .42s cubic-bezier(.15,.8,.3,1) .06s forwards; }
+.app-pro-slit { position: absolute; left: 0; top: 50%; width: 100%; height: 2px; margin-top: -1px; background: #fff; transform: scaleX(0); transform-origin: 50% 50%; box-shadow: 0 0 16px 3px rgba(255,255,255,.95), 0 0 46px 10px rgba(190,255,225,.55); animation: app-pro-slit .42s cubic-bezier(.15,.8,.3,1) .06s forwards, app-pro-slitfade 1.42s linear .48s forwards; }
 @keyframes app-pro-slit { to { transform: scaleX(1); } }
+/* 白线与黑底同步透明化（船长 2026-09-06：线不再残留到卸载瞬间）：伸展完成(.48s)后开始淡出，与 .app-pro-bg 同一时刻(1.9s)归零 */
+@keyframes app-pro-slitfade { to { opacity: 0; } }
 .app-pro-iris { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,1) 0%, rgba(235,255,246,.97) 12%, rgba(150,240,195,.85) 30%, rgba(40,110,80,.6) 52%, rgba(0,0,0,.96) 74%); animation: app-pro-iris 1.5s ease .3s forwards; }
 @keyframes app-pro-iris { 0% { opacity: 0; transform: scale(.15); } 12% { opacity: 1; } 38% { opacity: 1; transform: scale(1.55); } 100% { opacity: 0; transform: scale(2.25); } }
 /* 鈹€鈹€ 搴忕珷路鑻忛啋 鏁欑▼寮曞锛堥樁娈?4锛?026-09-05锛?鈹€鈹€ */
