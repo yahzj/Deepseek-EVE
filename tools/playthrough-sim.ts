@@ -43,6 +43,7 @@ import {
   isAtHome,
   isExplored,
   learnBlueprint,
+  marketGoodOf,
   marketSellHolding,
   maxAiSlots,
   missingMaterials,
@@ -65,10 +66,14 @@ import {
   stopScan,
   unfitAt,
   unloadCargoToWarehouse,
+  addShipToFleet,
+  calcPower,
+  repairDeprecatedModules,
   DSI_FACTION_ID,
 } from '@whale/core'
 import type { GameState, SimContext, AnomalyDef, ShipDef } from '@whale/core'
 import { buildSimContext } from '@whale/data'
+import { advanceBattleFor, startBattleFor } from '../packages/core/src/combat'
 
 const ARGS = process.argv.slice(2)
 const argVal = (name: string, dflt: number): number => {
@@ -78,6 +83,9 @@ const argVal = (name: string, dflt: number): number => {
 const MAX_DAYS = argVal('--max-days', 60)
 const SEED = argVal('--seed', 20260905)
 const REAL_TRAINING = ARGS.includes('--real-training')
+/** 资产/战斗力增长快照间隔（游戏天）；默认 real-training 1 天、debugQuick 0.02 天 */
+const SNAP_DAYS = argVal('--snap-days', REAL_TRAINING ? 1 : 0.02)
+const SNAP_MS = Math.max(60_000, Math.round(SNAP_DAYS * 86_400_000))
 const REPORT_IDX = ARGS.indexOf('--report')
 const REPORT = REPORT_IDX >= 0 ? ARGS[REPORT_IDX + 1] : null
 
@@ -160,11 +168,22 @@ function mark(msg: string): void {
   milestones.push(`[${day().toFixed(2)}d] ${msg}`)
 }
 
+/** 市场瞬态卖出失败（收购簿空/暂无收购/无可卖库存）= 正常行情波动，不算引擎异常——
+ * debugQuick 下产量远超市场吸收时高频出现（2026-09-06 观察：簿空修复 90eb8c2 后由吞货
+ * bug 掩盖的真实报错浮出水面，属模拟器需容忍的瞬态） */
+const BENIGN_SELL_ERRS = ['没有可卖的库存。', '收购簿为空', '暂时无人收购']
+function isBenignSellErr(err?: string): boolean {
+  return !!err && BENIGN_SELL_ERRS.some((p) => err.includes(p))
+}
+/** 叙事性 warn（低安首入提示/遭遇横幅等引擎按设计发 warn 的玩家向日志）不计引擎异常 */
+const BENIGN_NARRATIVE_WARN = ['首次进入低安', '低安遭遇', '被盯上了']
+
 function auditLogs(): void {
   for (let i = lastLogIdx; i < state.logs.length; i++) {
     const l = state.logs[i]!
     if (!LOG_KINDS.has(l.kind)) issue(`日志未知 kind「${l.kind}」：${l.text.slice(0, 100)}`)
-    else if (l.kind === 'warn' || l.kind === 'error') issue(`引擎[${l.kind}] ${l.text.slice(0, 150)}`)
+    else if (l.kind === 'error' || (l.kind === 'warn' && !BENIGN_NARRATIVE_WARN.some((p) => l.text.includes(p))))
+      issue(`引擎[${l.kind}] ${l.text.slice(0, 150)}`)
   }
   lastLogIdx = state.logs.length
 }
@@ -274,7 +293,7 @@ function sellEverything(): void {
     const avail = Math.max(0, countWare(state, g.refId) - keep) + Math.max(0, countItem(state, g.refId) - keep)
     if (avail <= 0) continue
     const res = marketSellHolding(state, ctx, g.key, avail)
-    if (!res.ok && res.error !== '没有可卖的库存。') issue(`卖出 ${g.key} 失败：${res.error}`)
+    if (!res.ok && !isBenignSellErr(res.error)) issue(`卖出 ${g.key} 失败：${res.error}`)
     else if (res.sold > 0) {
       soldTotal += res.total
       mark(`市价卖出 ${g.key}`)
@@ -1058,6 +1077,97 @@ function holeWatch(): boolean {
   return false
 }
 
+/* ═══════════ 资产/战斗力增长快照（2026-09-06 船长：记录玩家资产增长与战斗力增长） ═══════════ */
+const growthRows: string[] = []
+let lastSnapMs = -1
+
+/** 总资产估算（口径与 balance-check 甲案同源：钱包 + 舰队/已装模块/货仓 + 仓库 + 装备库 + 蓝图书架，按市场常驻 base 折算现值） */
+function wealthOfLive(): number {
+  let v = state.wallet.isk
+  const valItem = (id: string, u: number): number => {
+    const g = marketGoodOf(ctx, 'item', id)
+    const b = g?.basePrice ?? ctx.items.get(id)?.baseSellPriceIsk ?? 0
+    return b * u
+  }
+  for (const [id, u] of Object.entries(state.warehouse.items ?? {})) v += valItem(id, u)
+  for (const [id, u] of Object.entries(state.moduleBay ?? {})) v += (marketGoodOf(ctx, 'module', id)?.basePrice ?? 0) * u
+  for (const [id, n] of Object.entries(state.blueprintStock ?? {})) if (n > 0) v += (marketGoodOf(ctx, 'blueprint', id)?.basePrice ?? 0) * n
+  for (const f of Object.values(state.fleet)) {
+    if (!f) continue
+    if (f.defId) v += marketGoodOf(ctx, 'ship', f.defId)?.basePrice ?? ctx.ships.get(f.defId)?.priceIsk ?? 0
+    for (const [id, u] of Object.entries(f.cargo ?? {})) v += valItem(id, u)
+    for (const rack of Object.values(f.fitted)) {
+      const list = Array.isArray(rack) ? rack : rack ? [rack] : []
+      for (const id of list) if (typeof id === 'string' && id.length > 0) v += marketGoodOf(ctx, 'module', id)?.basePrice ?? 0
+    }
+  }
+  return v
+}
+
+/** 实测基准战：独立新档复制当前驾驶船（船型/装配/技能），打合成参考目标（threat 档，orbit），返回 胜率% 与胜局平均击杀秒 */
+function refFightOf(threat: number): { winPct: number; winSec: number } {
+  const def = fleetDefOf(state, ctx, state.shipId)
+  const liveFitted = state.fleet[state.shipId]?.fitted
+  if (!def || !liveFitted) return { winPct: 0, winSec: 0 }
+  let wins = 0
+  let durSum = 0
+  for (const seed of [1, 51]) {
+    const s = createInitialState({ nowWallMs: 0, seed })
+    s.wallet.isk = 500_000_000
+    addShipToFleet(s, def.id)
+    s.shipId = def.id
+    for (const [k, lv] of Object.entries(state.skills.trained)) if ((lv ?? 0) > 0) s.skills.trained[k] = lv
+    for (const k of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) s.warehouse.items[k] = 9_000
+    const e = s.fleet[def.id]!
+    e.fitted = { high: [...(liveFitted.high ?? [])], mid: [...(liveFitted.mid ?? [])], low: [...(liveFitted.low ?? [])] }
+    repairDeprecatedModules(s, ctx as SimContext)
+    const a: AnomalyDef = {
+      id: `ref-${threat}`,
+      name: `参考${threat}`,
+      galaxyId: HOME_GALAXY_ID,
+      threat,
+      standingReq: 0,
+      standingGain: 0,
+      rewardIsk: 1,
+      loot: [],
+      combatSeconds: 120,
+      tactic: 'orbit',
+      description: '战力基准靶',
+    }
+    const actx = { ...ctx, anomalies: new Map([[a.id, a]]) } as SimContext
+    const b = startBattleFor(s, actx, def.id, a.id, 0)
+    if (!b) continue
+    s.gameMs = 600_000 + 5_000
+    advanceBattleFor(s, actx, b, def.id, a.id)
+    if (b.ended === 'me') {
+      wins++
+      durSum += Math.max(0, b.lastTickGameMs - b.startedAtGameMs)
+    }
+  }
+  return { winPct: Math.round((wins / 2) * 100), winSec: wins > 0 ? Math.round(durSum / wins / 1000) : 0 }
+}
+
+function fmtIsk(n: number): string {
+  return n >= 1_000_000_000 ? `${(n / 1_000_000_000).toFixed(2)}B` : n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${Math.round(n / 1000)}k` : String(Math.round(n))
+}
+
+function growthSnapshot(): void {
+  const def = fleetDefOf(state, ctx, state.shipId)
+  const fitted = state.fleet[state.shipId]?.fitted
+  const weapons = (fitted?.high ?? []).filter((x): x is string => x !== null && x.length > 0)
+  const skillsSum = Object.values(state.skills.trained).reduce((a, b) => a + b, 0)
+  const r30 = refFightOf(30)
+  const r60 = refFightOf(60)
+  growthRows.push(
+    `d${(state.gameMs / 86_400_000).toFixed(3).padStart(7)} · 现金${fmtIsk(state.wallet.isk).padStart(6)} · 总资产${fmtIsk(wealthOfLive()).padStart(7)}` +
+      ` · 声望${standing()} · 星系${exploredCount()}/${GALAXY_IDS.length} · 首胜${state.completedBounties.length}` +
+      ` · 技能${skillsSum}级 · 火力${calcPower(state, ctx)}` +
+      ` · 驾驶${def?.name ?? state.shipId}(${weapons.length}门)` +
+      ` · 实测 T30 ${r30.winPct}%/${r30.winSec > 0 ? r30.winSec + 's' : '—'} · T60 ${r60.winPct}%/${r60.winSec > 0 ? r60.winSec + 's' : '—'}`,
+  )
+  lastSnapMs = state.gameMs
+}
+
 /* ═══════════ 主循环（目标制：通关 / 万亿现金 / 全收集；B3 打捞回收闭环） ═══════════ */
 const wall0 = Date.now()
 
@@ -1133,6 +1243,8 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
   checkGoals()
   // 策略黑洞侦测（船长 2026-09-05：黑洞要记录报告；拖太久影响测试时长要分级解救）
   if (holeWatch()) break
+  // 资产/战斗力增长快照（船长 2026-09-06：每快照间隔落一行，见报告末节）
+  if (lastSnapMs < 0 || state.gameMs - lastSnapMs >= SNAP_MS) growthSnapshot()
   advanceGame(state, STEP_MS, ctx)
 }
 
@@ -1170,6 +1282,9 @@ lines.push('—— 活动统计（B3/工业 覆盖）——')
 lines.push(
   `  AI 打捞派发 ${act.aiSalvage} 次 · 主控打捞会话 ${act.pilotSalvage} 次 · 残骸回收开炉 ${act.recycle} 次 · 制造完工 ${act.craft} 件 · 蓝图学习 ${act.learnBp} 张`,
 )
+lines.push('')
+lines.push(`—— 资产/战斗力增长快照（每 ${SNAP_DAYS} 游戏天；实测 = 复制当前驾驶船打合成 T30/T60 靶，2 种子平均）——`)
+for (const r of growthRows) lines.push(`  ${r}`)
 lines.push('')
 lines.push('—— 里程碑（节选前 150 条）——')
 for (const m of milestones.slice(0, 150)) lines.push(`  ${m}`)
