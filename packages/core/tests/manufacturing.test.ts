@@ -54,7 +54,7 @@ describe('蓝图学习（V9 消耗品制）', () => {
   })
 })
 
-describe('制造作业（v21 多工位：多张蓝图可并行，逐线进度/取消）', () => {
+describe('制造作业（v21 多工位：多张蓝图并行 + 同蓝图可多线，逐线进度/取消）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -82,18 +82,34 @@ describe('制造作业（v21 多工位：多张蓝图可并行，逐线进度/�
     expect(missingMaterials(state, ctx, ctx.blueprints.get('bp-a')!)).toHaveLength(1)
   })
 
-  it('开工成功：扣材料、扣制造费、锁定耗时（600 秒）；同蓝图第二条线被拒', () => {
+  it('开工成功：扣材料、扣制造费、锁定耗时（600 秒）', () => {
     state.warehouse.items['min-a'] = 10
     const r = startManufacturing(state, 'bp-a', ctx)
     expect(r.ok).toBe(true)
-    expect(countItem(state, 'min-a')).toBe(0)
+    expect(state.warehouse.items['min-a'] ?? 0).toBe(0)
     expect(state.wallet.isk).toBe(9_500) // 10000 - 500(制造费)；学习不花钱
     expect(state.manufacturingRuns).toHaveLength(1)
     expect(state.manufacturingRuns[0]!.finishAtGameMs).toBe(600_000)
     expect(state.manufacturingRuns[0]!.durationMs).toBe(600_000)
     expect(state.logs.some((l) => l.text.includes('制造开始'))).toBe(true)
-    // 同蓝图在跑 → 拒绝
-    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(false)
+  })
+
+  it('同蓝图可开多条线（2026-09-08 与精炼炉并炉一致）：各自扣料计费、逐线独立完成', () => {
+    state.warehouse.items['min-a'] = 20
+    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(true) // 同蓝图第二、三条线不再被拒
+    expect(startManufacturing(state, 'bp-a', ctx).ok).toBe(false) // 材料不足（10×3 > 20）才拒
+    expect(state.manufacturingRuns).toHaveLength(2)
+    expect(state.wallet.isk).toBe(9_000) // 10000 − 500×2
+    expect(state.warehouse.items['min-a'] ?? 0).toBe(0) // 10×2 全扣
+    const views = manufacturingRunViews(state, ctx)
+    expect(views).toHaveLength(2)
+    expect(views.every((v) => v.blueprintId === 'bp-a')).toBe(true)
+    expect(views[0]!.id).toBeLessThan(views[1]!.id) // 线号独立递增
+    // 两条线各自到点完成 → 同蓝图产物 2 件
+    advanceGame(state, 600_000, ctx)
+    expect(state.manufacturingRuns).toHaveLength(0)
+    expect(countModule(state, 'mod-a')).toBe(2)
   })
 
   it('工业理论 5 级把耗时缩短 25%（450 秒）', () => {

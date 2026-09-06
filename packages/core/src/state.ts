@@ -766,7 +766,8 @@ export type GameStateV20 = Omit<GameStateV19, 'version'> & {
 
 /** 第二十一版存档结构：v21 = v20 + 蓝图制造多工位并行（2026-09-05 船长拍板：
  * 多张蓝图可同时制造、逐线独立进度与取消；manufacturing 单例 → manufacturingRuns 数组 +
- * manufacturingSeq 线号分配器；同蓝图至多一条线，不同蓝图不限；制造不占主控）。 */
+ * manufacturingSeq 线号分配器；不同蓝图不限；2026-09-08 起同蓝图也可开多条线（与精炼炉多炉并线一致）；
+ * 制造不占主控）。 */
 export type GameStateV21 = Omit<GameStateV20, 'version' | 'manufacturing'> & {
   version: 21
   /** 制造作业线表（v21 多工位；每元素一条线） */

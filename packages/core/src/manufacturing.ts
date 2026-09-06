@@ -7,7 +7,8 @@
  * - 每次开工：立即扣除全部材料与制造费，耗时受工业理论缩短（开工锁定）；
  * - 到点自动完成：装备入装备库 / 舰船入船坞；
  * - v21（2026-09-05 船长拍板）：多张蓝图可同时制造（manufacturingRuns 逐线独立进度/
- *   取消，同蓝图至多一条线）；制造不占主控，与出海作业并行。
+ *   取消）；2026-09-08 起同一蓝图也可开多条线（与精炼炉多炉并线一致）；
+ *   制造不占主控，与出海作业并行。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
@@ -98,16 +99,13 @@ function productNameOf(ctx: SimContext, b: NonNullable<ReturnType<typeof findBui
   return ctx.ships.get(b.shipId ?? '')?.name ?? fallback
 }
 
-/** 玩家指令：开始制造（v21 多工位：不同蓝图可同时造，同蓝图至多一条线；
+/** 玩家指令：开始制造（多工位：同一蓝图可同时开多条制造线，与精炼炉多炉并线一致；
  * 材料与制造费立即扣除，时间到自动完成） */
 export function startManufacturing(state: GameState, blueprintId: string, ctx: SimContext): CommandResult {
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }
   if (!ownsBlueprint(state, blueprintId)) {
     return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
-  }
-  if (state.manufacturingRuns.some((r) => r.blueprintId === blueprintId)) {
-    return { ok: false, error: '该蓝图已有一条制造线在跑：完成或取消后再开。' }
   }
   if (state.wallet.isk < buildable.spec.buildCostIsk) {
     return { ok: false, error: `制造费不足：需要 ${buildable.spec.buildCostIsk.toLocaleString('zh-CN')} ISK。` }
@@ -135,7 +133,7 @@ export function startManufacturing(state: GameState, blueprintId: string, ctx: S
   addLog(
     state,
     'trade',
-    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），预计 ${formatDurationMs(durationMs)} 完成；可多张蓝图同时制造。`,
+    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），预计 ${formatDurationMs(durationMs)} 完成；同一蓝图可加开多条线。`,
   )
   return { ok: true }
 }
