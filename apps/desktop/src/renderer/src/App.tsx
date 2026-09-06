@@ -196,6 +196,8 @@ export function App({ engine }: { engine: GameEngine }) {
   //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"） ──
   const [mobileRot, setMobileRot] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
+  const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
@@ -250,6 +252,29 @@ export function App({ engine }: { engine: GameEngine }) {
       }
     }
   }, [])
+
+  // 手机横屏：拦截原生 select 弹层 → 自绘大号选项面板（仅 is-mobile-rot 生效，桌面不变）
+  useEffect(() => {
+    if (!mobileRot) {
+      setMobSel(null)
+      return
+    }
+    const onPointerDown = (e: PointerEvent): void => {
+      const t = e.target as HTMLElement | null
+      if (t?.closest?.('.app-mob-sel-mask')) return // 面板自身（点遮罩由 onClick 关闭）
+      const sel = t?.closest?.('select') as HTMLSelectElement | null
+      if (!sel || sel.disabled || sel.options.length === 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      const opts = Array.from(sel.options).map((o) => ({
+        value: o.value,
+        label: (o.textContent ?? '').trim() || o.value,
+      }))
+      setMobSel({ el: sel, opts, sel: sel.value })
+    }
+    window.addEventListener('pointerdown', onPointerDown, true)
+    return () => window.removeEventListener('pointerdown', onPointerDown, true)
+  }, [mobileRot])
 
   // 全局：点击被禁用的按钮时，把按钮禁用原因（title / data-disabled-reason）以警告提示弹出，
   // 没有写明原因的统一回退文案——避免"点了没反应"
@@ -761,6 +786,30 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
+
+      {/* 手机横屏：自绘下拉选项面板（值写回原生 select 并派发 change，保持各页 onChange 原样生效） */}
+      {mobSel ? (
+        <div className="app-mob-sel-mask" onClick={() => setMobSel(null)}>
+          <div className="app-mob-sel" onClick={(e) => e.stopPropagation()}>
+            {mobSel.opts.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                className={`app-mob-sel-opt${o.value === mobSel.sel ? ' is-sel' : ''}`}
+                onClick={() => {
+                  const cur = mobSel
+                  setMobSel(null)
+                  if (!cur || !cur.el.isConnected) return
+                  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(cur.el, o.value)
+                  cur.el.dispatchEvent(new Event('change', { bubbles: true }))
+                }}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* 全局悬停提示层（置于最上） */}
       <TooltipLayer />
