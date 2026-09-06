@@ -195,7 +195,7 @@ describe('AI 远征任务', () => {
     state.completedBounties.push('ano-easy') // 已亲手首胜（原解锁前提）
     const r = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy', ctx)
     expect(r.ok).toBe(false)
-    expect(r.error).toContain('已下线')
+    expect(r.error).toContain('暂停受理')
     expect(state.aiAssignments['sandcat2']).toBeUndefined() // 未占用名额
     expect(countAiCore(state, 'basic')).toBe(1) // 核心未耗
     expect(aiSlotsUsed(state)).toBe(0)
@@ -219,7 +219,7 @@ describe('AI 远征任务', () => {
       advanceGame(state, 600_000, ctx)
       expect(state.aiAssignments['sandcat2']).toBeUndefined() // 任务已善后
       expect(countAiCore(state, 'basic')).toBe(1) // 核心归还
-      expect(state.logs.some((l) => l.text.includes('AI 远征已下线'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('自动远征暂停受理'))).toBe(true)
       expect(state.logs.some((l) => l.text.includes('战报'))).toBe(false) // 未进入战斗结算
       expect(state.wallet.isk).toBe(walletBefore) // 无奖励入账
       expect(state.completedBounties).toEqual(['ano-easy']) // 无新首胜

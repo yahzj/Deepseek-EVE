@@ -121,7 +121,7 @@ function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }
           {phaseText()}——本卡「停止开采」也可直接操作；想换船去「舰船」页切换驾驶，旧船会自动返航卸货。
         </div>
       ) : (
-        <div className="app-dim app-inv-empty">在下方矿带卡片上开始采掘——去程已取消，指令下达即到带开工。</div>
+        <div className="app-dim app-inv-empty">在下方矿带卡片上开始采掘——指令下达即抵达矿带开工。</div>
       )}
 
       {/* 设置行 */}
@@ -490,7 +490,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
       <div className="app-dim app-note">
-        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：下达即持续打捞（去程已取消）→ 满仓自动返航（去程并入返航）卸货；
+        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：下达即持续打捞 → 满仓自动返航卸货；
         残骸回母港用工业页「残骸回收」拆解（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞作业中可能遇袭（航行与返航途中不会——移动不暴露）。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
@@ -610,7 +610,7 @@ function WreckCard({
         {lowSec ? '（低安回收箱可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
       </div>
       {est.eff || est.val ? (
-        <div className="app-belt-econ" title="估算 = 当前打捞器装配 × 当前密度 × 打捞/回收技能现算（展示口径，非结算）">
+        <div className="app-belt-econ" title="估算 = 当前打捞器装配 × 当前密度 × 打捞/回收技能（参考值，实际所得以回收拆解结算为准）">
           {est.eff ? <div><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{est.eff}</div> : null}
           {est.val ? <div className="app-belt-econ-val">{MONEY_GLYPH} {est.val}</div> : null}
         </div>
