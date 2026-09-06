@@ -12,10 +12,13 @@
 import {
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
+  RECYCLE_POOL_AVG_ISK,
+  RECYCLE_YIELD_PER_M3,
   aiCoreName,
   aiEfficiency,
   countAiCore,
   oreAvailable,
+  recycleProfileOf,
   refineRate,
 } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
@@ -96,9 +99,31 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
     dataLine = `可用 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）· 每批 ${batch} 单位 / ${cycleS} 秒 · 约 ${Math.ceil(total / batch)} 批炼完`
   }
 
-  // 效率估价区：精炼卡显示每批产物与 ≈ISK/h（按矿物站内收价，不随市场）；回收卡无确定估值
+  // 效率估价区：精炼卡显示每批产物与 ≈ISK/h（按矿物站内收价，不随市场）；
+  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（展示估算，非结算；2026-09-06 对齐）
   let econ: ReactNode = null
-  if (!isWreck) {
+  if (isWreck) {
+    const profile = recycleProfileOf(engine.ctx, def.id)
+    if (profile) {
+      const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
+      const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
+      const cycleMs = Math.max(1, Math.round(RECYCLE_CYCLE_MS * Math.max(0.6, 1 - 0.04 * recLv))) // 手动炉基准（AI 核心另按效率拉长）
+      const m3h = (3_600_000 / cycleMs) * RECYCLE_BATCH_M3
+      const evH = Math.round(
+        m3h * RECYCLE_YIELD_PER_M3[profile.tier] * RECYCLE_POOL_AVG_ISK[profile.tier] * (1 + 0.08 * refLv),
+      )
+      econ = (
+        <div className="app-belt-econ">
+          <div
+            className="app-belt-econ-val"
+            title="与星图「残骸打捞」页同口径：按残骸来源危险度池的保底矿物估价（展示估算，非结算；按手动炉基准批计，AI 核心周期更长）"
+          >
+            {MONEY_GLYPH} 保底 ≈{evH.toLocaleString('zh-CN')} ISK/h
+          </div>
+        </div>
+      )
+    }
+  } else {
     const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
     const cycleMs = def.refineCycleMs && def.refineCycleMs > 0 ? def.refineCycleMs : 6_000
     const outs = (def.refine ?? [])
@@ -129,7 +154,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
       </div>
       <div className="app-belt-desc">
-        {isWreck ? '每批开箱 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）' : def.description}
+        {isWreck ? '每批拆解 = 保底矿物（按残骸来源星系危险度池）+ 概率彩头（基础件 / 低安 MK2 / 蓝图碎片）' : def.description}
       </div>
       <div className="app-belt-ore">{dataLine}</div>
       {econ}
@@ -140,7 +165,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
             {runs.map((v) => (
               <span key={v.id} className="app-belt-worker">
                 <span className="app-belt-worker-name">
-                  {v.worker === 'pilot' ? '⛏ 主控' : `⚙ ${v.workerLabel}核心`} · {isWreck ? '已开箱' : '已炼'} {v.batchesDone} 批
+                  {v.worker === 'pilot' ? '⛏ 主控' : `⚙ ${v.workerLabel}核心`} · {isWreck ? '已拆解' : '已炼'} {v.batchesDone} 批
                 </span>
                 <span
                   className="app-progress-mini"
@@ -167,7 +192,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
             (running
               ? '由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，每批到点实时扣料'
               : isWreck
-                ? '由你亲自运转一台：循环开箱，每批到点实时扣料（期间不可离港作业）'
+                ? '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
                 : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
           }
           onClick={() => runWith('pilot')}
@@ -303,7 +328,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
 
           {wreckDefs.length > 0 ? (
             <>
-              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——开箱：保底矿物 + 彩头</div>
+              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底矿物 + 概率彩头</div>
               <div className="app-belt-grid">
                 {wreckDefs.map((def) => (
                   <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} />

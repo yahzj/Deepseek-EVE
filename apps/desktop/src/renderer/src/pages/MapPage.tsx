@@ -24,6 +24,7 @@ import {
   wreckBaseDensity,
   wreckDensityOf,
   RECYCLE_YIELD_PER_M3,
+  RECYCLE_POOL_AVG_ISK,
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
@@ -405,14 +406,7 @@ function BeltCard({
 
 /* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式单趟） ═══════════════ */
 
-/** 回收池估价近似（矿物 baseSellPrice 按池权重加权；与 tools/salvage-econ.ts 同源口径） */
-const RECYCLE_POOL_AVG_ISK: Record<'common' | 'risky' | 'dire', number> = {
-  common: 9.8,
-  risky: 27.6,
-  dire: 92.4,
-}
-
-/** 打捞速率与回收保底估值（当前驾驶船装配/技能 × 当前密度现算；展示用近似） */
+/** 打捞速率与回收保底估值（当前驾驶船装配/技能 × 当前密度现算；展示用近似；回收卡同口径共用 RECYCLE_POOL_AVG_ISK） */
 function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyId: string, density: number): { eff: string | null; val: string | null } {
   const ctx = engine.ctx
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
@@ -497,7 +491,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
     >
       <div className="app-dim app-note">
         打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：下达即持续打捞（去程已取消）→ 满仓自动返航（去程并入返航）卸货；
-        残骸回母港用工业页「残骸回收」开箱（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞作业中可能遇袭（航行与返航途中不会——移动不暴露）。
+        残骸回母港用工业页「残骸回收」拆解（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞作业中可能遇袭（航行与返航途中不会——移动不暴露）。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 

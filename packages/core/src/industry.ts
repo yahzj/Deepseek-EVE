@@ -280,7 +280,7 @@ export function startRecycleRun(
   addLog(
     state,
     'info',
-    `残骸回收开工：${def.name}（可拆 ${Math.round(available * 100) / 100} m³，货仓+仓库合计）${who}开箱——每批 ${RECYCLE_BATCH_M3} m³ / ${formatDurationMs(cycleEff)}，到点实时扣料；保底矿物按残骸来源星系危险度池抽取，耗尽自动停炉；同种残骸可多台同时开箱。`,
+    `残骸回收开工：${def.name}（可拆 ${Math.round(available * 100) / 100} m³，货仓+仓库合计）${who}拆解——每批 ${RECYCLE_BATCH_M3} m³ / ${formatDurationMs(cycleEff)}，到点实时扣料；保底矿物按残骸来源星系危险度池抽取，耗尽自动停炉；同种残骸可多台同时拆解。`,
   )
   return { ok: true }
 }

@@ -221,7 +221,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '残骸回收学',
     group: '工业',
     rank: 3,
-    description: '精炼炉残骸回收（开箱批）的周期优化：批周期每级 −⟦4%⟧（手动与 AI 核心驱动同享，至少保留 60%）。',
+    description: '残骸回收（精炼炉拆解残骸）的批周期优化：批周期每级 −⟦4%⟧（手动与 AI 核心驱动同享，至少保留 60%）。',
   },
   {
     id: 'salvage-rigging',

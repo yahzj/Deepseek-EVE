@@ -48,7 +48,7 @@ export function wreckItemDefOf(anomalyId: string, anomalyName: string, threat: n
     kind: 'wreck',
     unitM3: 1, // 计数 = 体积（m³）
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：不可直接出售，回母港用精炼炉「残骸回收」开箱——保底矿物 + 概率彩头。`,
+    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：不可直接出售，回母港用精炼炉「残骸回收」拆解——保底矿物 + 概率彩头。`,
   }
 }
 
@@ -166,6 +166,14 @@ export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = {
 }
 /** 保底矿物抽取抖动（±10%，走 state.rng） */
 export const RECYCLE_YIELD_JITTER = 0.1
+
+/** 三档池的期望单价（ISK/单位：按池权重×baseSellPrice 加权；与 tools/salvage-econ.ts 同源口径）。
+ *  供"回收保底 ISK/h 估价"展示——星图「残骸打捞」页与工业页回收卡共用同一组值（2026-09-06）。 */
+export const RECYCLE_POOL_AVG_ISK: Record<RecycleTier, number> = {
+  common: 9.8,
+  risky: 27.6,
+  dire: 92.4,
+}
 
 /** 回收矿物池档（按残骸所属星系基础密度；常 10-19 / 险 20-29 / 危 30-40） */
 export type RecycleTier = 'common' | 'risky' | 'dire'
