@@ -192,6 +192,25 @@ body {
 
 .app-root.is-mobile-rot .app-tip .app-info-note { font-size: 12px; }
 
+/* 手机：扫荡"旋转后仍按物理 vw 取宽"的覆盖层卡片——统一放宽到横屏可读宽度（2026-09-06） */
+.app-root.is-mobile-rot .app-ann { width: min(720px, calc(100vh - 48px)); max-height: 76%; }
+
+.app-root.is-mobile-rot .app-comm { width: min(640px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-fit-modal { width: min(560px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-tut-card { width: min(560px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-mkt-confirm { width: min(520px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-bts-report-card { width: min(640px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-prologue-inner { width: min(700px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-pro-epi-inner { width: min(660px, calc(100vh - 48px)); }
+
+.app-root.is-mobile-rot .app-stepbar { max-width: min(1100px, calc(100vh - 48px)); }
+
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
 .app-mob-sel-mask { position: fixed; inset: 0; z-index: 320; background: rgba(3,7,12,.55); display: flex; align-items: center; justify-content: center; }
