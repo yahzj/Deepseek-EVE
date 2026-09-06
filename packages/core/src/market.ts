@@ -4,6 +4,7 @@
  * 规则（中文说明，设计文档 V4/V5 已确认）：
  * - 两栏目录：常驻供应（common：矿石/矿物池模型 + 单件平价品）与稀有订单
  *   （rare 溢价品 / exotic 限定奇货；后者寿命极短、概率极低、天价）；
+ *   rare 供给 = 全市场每窗口配额制（P2 2026-09-06，见 RARE_QUOTA_* 与 marketRareQuotaN）；
  * - 价格模型：L = 均衡价 × 库存压力 × (1 + 冲击动量)（单件品压力恒 1）。
  *   常驻池商品买卖价差小（收购 ≈0.97L / 供应 ≈1.03L）；
  *   单件商品按目录显式倍数（供应 = supplyMultiplier×L、收购 = demandMultiplier×L）；
@@ -30,6 +31,21 @@ import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
+
+/* ═══════════ P2 稀有配额常量（2026-09-06 船长定：全市场 rare 供给每窗口总张数有限+浮动）═══
+ * 完整设计见 docs/design/power-ladder-rework.md「P2 稀有配额制」；
+ * 下列为建议默认值，随时可由船长复核调参（改常量 + 测试 + 文档同步即可）。 */
+
+/** 每窗口 rare 供给总张数下限（浮动；「现货抢购学」/整批解锁在此基础上放大） */
+const RARE_QUOTA_MIN = 4
+/** 每窗口 rare 供给总张数上限（浮动） */
+const RARE_QUOTA_MAX = 9
+/** 闸内（常驻供应未解锁）rare 商品参与全局配额分配的权重：相对解锁商品（权重 1）的份额 */
+const RARE_LOCKED_WEIGHT = 0.04
+/** 完成整批解锁（某 bmStanding 门槛随声望达标全部解锁）后：每批每窗口追加的张数 */
+const RARE_QUOTA_PER_STAGE = 1
+/** rare NPC 订单存在时长倍率（9 分钟 → 36 分钟；供给/收购两侧同规则） */
+const RARE_LIFE_MUL = 4
 
 /** 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续） */
 function sellStandingMult(state: GameState, def: MarketGoodDef | undefined): number {
@@ -292,6 +308,43 @@ export function advanceMarket(state: GameState, deltaMs: number, ctx: SimContext
   }
 }
 
+/* ═══════════ P2 稀有配额（2026-09-06 船长定） ═══════════ */
+
+/** 已整批解锁的暗市批次数：不同 bmStanding 门槛值各算一批（批内门槛相同），声望 ≥ 门槛即整批解锁。
+ * （2026-09-06 现状：MK3 一批 20 件门槛 11；未来新门槛自动按新批计入。） */
+function rareBatchesDone(state: GameState, ctx: SimContext): number {
+  const gates = new Set<number>()
+  for (const def of ctx.marketGoods.values()) {
+    if (def.rarity === 'rare' && def.bmStanding && def.bmStanding > 0) gates.add(def.bmStanding)
+  }
+  const standing = state.standings[DSI_FACTION_ID] ?? 0
+  let done = 0
+  for (const g of gates) if (standing >= g) done += 1
+  return done
+}
+
+/** 本窗 rare 供给配额张数：4~9 浮动 + 整批解锁追加（+RARE_QUOTA_PER_STAGE/批）；
+ * 「现货抢购学」按旧语义（每级 ×1.25，上限 5 级）放大本窗配额。 */
+function marketRareQuotaN(state: GameState, ctx: SimContext): number {
+  const span = RARE_QUOTA_MAX - RARE_QUOTA_MIN + 1
+  const base = RARE_QUOTA_MIN + Math.floor(nextRandom(state.rng) * span)
+  const bonus = rareBatchesDone(state, ctx) * RARE_QUOTA_PER_STAGE
+  const sweepF = 1 + 0.25 * Math.min(5, state.skills.trained['source-sweeping'] ?? 0)
+  return Math.max(0, Math.round((base + bonus) * sweepF))
+}
+
+/** 配额池构成：全市场 rare 商品中解锁（权重 1）与闸内（权重 RARE_LOCKED_WEIGHT）的数量 */
+function rarePoolStats(state: GameState, ctx: SimContext): { unlockedN: number; lockedN: number } {
+  let unlockedN = 0
+  let lockedN = 0
+  for (const def of ctx.marketGoods.values()) {
+    if (def.rarity !== 'rare') continue
+    if (bmGateLocked(state, def)) lockedN += 1
+    else unlockedN += 1
+  }
+  return { unlockedN, lockedN }
+}
+
 /** 单个窗口：过期清理 → 池回归/冲击衰减 → 内部消化 → 刷单 → 撮合 → 小史/冲击结算 */
 function processWindow(state: GameState, ctx: SimContext): void {
   const mk = state.market
@@ -301,6 +354,21 @@ function processWindow(state: GameState, ctx: SimContext): void {
   const regenK = 1 - Math.pow(0.5, dt / bal.poolRegenHalfMs)
   const decayK = 1 - Math.pow(0.5, dt / bal.shockDecayHalfMs)
   const noiseK = 1 - Math.pow(0.5, dt / bal.noiseHalfLifeMs)
+
+  // ── P2 稀有配额（2026-09-06 船长定：全市场 rare 供给每窗口总张数有限且有浮动）──
+  // 本窗配额张数 = marketRareQuotaN（4~9 浮动 + 整批解锁 +1/批，现货抢购学放大）；
+  // 配额按权重摊到各 rare 商品（解锁权重 1、闸内权重 RARE_LOCKED_WEIGHT）：
+  // 每件商品本窗出单概率 = 配额 × 自身权重 ÷ 权重和（每件 ≤1 张/窗）。common/exotic 不参与配额。
+  // 无 rare 商品的目录（如纯采矿测试档）不掷配额骰，避免扰动确定性 RNG 计数。
+  const stat = rarePoolStats(state, ctx)
+  let pRareUnlocked = 0
+  let pRareLocked = 0
+  if (stat.unlockedN + stat.lockedN > 0) {
+    const rareSupplyN = marketRareQuotaN(state, ctx)
+    const wSum = stat.unlockedN + RARE_LOCKED_WEIGHT * stat.lockedN
+    pRareUnlocked = Math.min(1, rareSupplyN / wSum)
+    pRareLocked = pRareUnlocked * RARE_LOCKED_WEIGHT
+  }
 
   for (const def of ctx.marketGoods.values()) {
     const key = def.key
@@ -323,7 +391,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
     if (dig.qty > 0) dig.qty = Math.max(0, dig.qty - dig.perWindow)
 
     // 刷单
-    refreshGoodOrders(state, ctx, def, pool.q, nextNow)
+    refreshGoodOrders(state, ctx, def, pool.q, nextNow, pRareUnlocked, pRareLocked)
   }
 
   // 撮合我的限价单（含已成交挂单的清理）
@@ -371,8 +439,18 @@ function referenceVol(def: MarketGoodDef, ratio: number): number {
   return 1
 }
 
-/** 按稀有度刷单 */
-function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ: number, now: number): void {
+/** 按稀有度刷单（P2 稀有配额制 2026-09-06：全市场 rare 供给张数有限+浮动，见 processWindow）
+ * 另注：本函数对 rare 生成的所有 NPC 订单寿命 ×RARE_LIFE_MUL（含收购侧）；闸内 rare 商品
+ * 以低权重参与配额，价格 ×4（隐身，外观同普通稀有单）。common/exotic 维持原机制。 */
+function refreshGoodOrders(
+  state: GameState,
+  ctx: SimContext,
+  def: MarketGoodDef,
+  poolQ: number,
+  now: number,
+  pRareUnlocked: number,
+  pRareLocked: number,
+): void {
   const mk = state.market
   const bal = ctx.balance.market
   const key = def.key
@@ -382,11 +460,14 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
   const jitter = (): number => 1 + (nextRandom(state.rng) - 0.5) * 0.04 // ±2%
   const sellable = def.playerSellable !== false
   const L = priceLevel(state, ctx, def, poolQ)
-  // P2 暗市闸（2026-09-06）：闸内商品 99% 窗口静默（出现概率 ×0.01），
-  // 出现的订单为暗市单：价 ×4、可绕过常驻拦截买入；稀有度与解锁后的节奏不变
-  const bmGate = bmGateLocked(state, def)
-  if (bmGate && nextRandom(state.rng) >= 0.01) return
-  const bmMul = bmGate ? 4 : 1
+  // rare 订单寿命 ×RARE_LIFE_MUL（含收购侧；common/exotic 维持原寿命）
+  const lifeMs = Math.round(bal.orderLifeMs[def.rarity] * (def.rarity === 'rare' ? RARE_LIFE_MUL : 1))
+  // P2 稀有配额制（2026-09-06 船长定）：bmStanding 仅配置于 rare 商品。闸内商品不再按
+  // 自身窗口概率独立出单，而是以 RARE_LOCKED_WEIGHT 权重参与全局配额（到货概率 = pRareLocked，
+  // 见 processWindow）；命中后为暗市单：价 ×4、标 bm（可绕过常驻声望拦截买入）——
+  // 外观与普通稀有单一致（暗市对玩家隐身）。非 rare 商品若误配 bmStanding 按普通商品处理。
+  const rareLocked = def.rarity === 'rare' && bmGateLocked(state, def)
+  const priceMul = rareLocked ? 4 : 1
 
   const pushBuy = (price: number, qty: number, bm = false): void => {
     if (qty <= 0 || !sellable) return
@@ -395,7 +476,7 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       digestAdd(state, ctx, key, qty, price, lowest) // 与簿上供应单冲突 → 内部消化
       return
     }
-    buyList.push({ price, qty, bm: bm || undefined, expiresAtGameMs: now + bal.orderLifeMs[def.rarity] })
+    buyList.push({ price, qty, bm: bm || undefined, expiresAtGameMs: now + lifeMs })
     if (buyList.length > 10) buyList.splice(0, 1)
   }
   const pushSell = (price: number, qty: number, bm = false): void => {
@@ -407,7 +488,7 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       digestAdd(state, ctx, key, qty, highest, price)
       return
     }
-    sellList.push({ price, qty, bm: bm || undefined, expiresAtGameMs: now + bal.orderLifeMs[def.rarity] })
+    sellList.push({ price, qty, bm: bm || undefined, expiresAtGameMs: now + lifeMs })
     if (sellList.length > 10) sellList.splice(0, 1)
   }
 
@@ -418,43 +499,47 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       const p = 1 - 0.5 * ((poolQ - def.poolTarget) / def.poolTarget)
       const pClamped = Math.max(0.4, Math.min(1.6, p))
       const avail = Math.max(0.05, Math.min(1.5, poolQ / def.poolTarget))
-      const buyBase = Math.round(buyPrice(def, L) * bmMul) // 最佳收购价 = L（暗市 ×4）
-      const sellBase = Math.round(sellPrice(def, L) * bmMul) // 最低供应价 ≈ L×1.06（暗市 ×4）
+      const buyBase = Math.round(buyPrice(def, L)) // 最佳收购价 = L
+      const sellBase = Math.round(sellPrice(def, L)) // 最低供应价 ≈ L×1.06
       const buyStep = Math.max(1, Math.round(buyBase * 0.04))
       const sellStep = Math.max(1, Math.round(sellBase * 0.04))
       // 收购阶梯：最佳档在 L，越深越便宜、量越大（墙）；每窗始终铺满 3 档（盘口稳定成阶梯，避免挤单一价）
       for (let i = 0; i < 3; i += 1) {
         const price = Math.max(1, buyBase - i * buyStep)
         const qty = Math.max(1, Math.round(flow * pClamped * (0.5 + 0.35 * i)))
-        pushBuy(price, qty, bmGate)
+        pushBuy(price, qty, rareLocked)
       }
       // 供应阶梯：最低档在 L×1.06，越深越贵、量越大
       for (let i = 0; i < 3; i += 1) {
         const price = Math.max(1, sellBase + i * sellStep)
         const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i)))
-        pushSell(price, qty, bmGate)
+        pushSell(price, qty, rareLocked)
       }
     } else {
       // 单件平价品：维持供应线与低价收购线
-      if (nextRandom(state.rng) < 0.85) pushBuy(Math.round(buyPrice(def, L) * jitter() * bmMul), 1, bmGate)
+      if (nextRandom(state.rng) < 0.85) pushBuy(Math.round(buyPrice(def, L) * jitter()), 1, rareLocked)
       if (sellList.length < 2 || nextRandom(state.rng) < 0.85) {
-        pushSell(Math.round(sellPrice(def, L) * jitter() * bmMul), 1, bmGate)
+        pushSell(Math.round(sellPrice(def, L) * jitter()), 1, rareLocked)
       }
     }
   } else if (def.rarity === 'rare') {
-    // 稀有订单：低频供应（船 1 艘/次，其余 1~3 件）；现货抢购学 ×1.25/级
-    const sweepF = 1 + 0.25 * Math.min(5, state.skills.trained['source-sweeping'] ?? 0)
-    if (nextRandom(state.rng) < bal.rareWindowChance * sweepF) {
+    // 稀有订单（配额制）：出单概率 = 本窗配额分摊（pRareUnlocked；现货抢购学已折算进配额，
+    // 见 marketRareQuotaN），每件商品每窗至多 1 张；闸内商品以 pRareLocked 低概率出暗市单
+    // （×4 价 + bm 标记，可绕过声望拦截买入）。数量：船 1 艘/次，其余 1~3 件。
+    const p = rareLocked ? pRareLocked : pRareUnlocked
+    if (nextRandom(state.rng) < p) {
       const qty = def.kind === 'ship' ? 1 : 1 + Math.floor(nextRandom(state.rng) * 3)
-      pushSell(Math.round(sellPrice(def, L) * jitter() * bmMul), qty, bmGate)
+      pushSell(Math.round(sellPrice(def, L) * jitter() * priceMul), qty, rareLocked)
     }
-    // 玩家卖方向（二手/多余）：低频出现
-    if (sellable && nextRandom(state.rng) < 0.03) pushBuy(Math.round(buyPrice(def, L) * bmMul), 1, bmGate)
+    // 玩家卖方向（二手/多余）：低频出现（闸内 ×4 收购价同规则）
+    if (sellable && nextRandom(state.rng) < 0.03) {
+      pushBuy(Math.round(buyPrice(def, L) * priceMul), 1, rareLocked)
+    }
   } else {
     // exotic 限定奇货：一闪而过（4 分钟寿命 + 极低刷新概率 = 天价奇货）
     const sweepF = 1 + 0.25 * Math.min(5, state.skills.trained['source-sweeping'] ?? 0)
-    if (nextRandom(state.rng) < bal.exoticWindowChance * sweepF) pushSell(Math.round(sellPrice(def, L) * jitter() * bmMul), 1, bmGate)
-    if (sellable && nextRandom(state.rng) < 0.01) pushBuy(Math.round(buyPrice(def, L) * bmMul), 1, bmGate)
+    if (nextRandom(state.rng) < bal.exoticWindowChance * sweepF) pushSell(Math.round(sellPrice(def, L) * jitter() * priceMul), 1, rareLocked)
+    if (sellable && nextRandom(state.rng) < 0.01) pushBuy(Math.round(buyPrice(def, L) * priceMul), 1, rareLocked)
   }
 }
 

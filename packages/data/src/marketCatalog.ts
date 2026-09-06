@@ -204,10 +204,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
 ]
 
 /**
- * P2 暗市双通道（2026-09-06 船长定：声望 11 前常驻供给 ×0.01、订单 ×4 暗市可绕过买入；
- * 解锁后恢复原稀有度节奏与正常价、不转常驻）。范围 = MK3 战斗件 19 件（武器三族/无人机架·导控/
- * 盾·甲抗容/支援件；剔除生产件 miner·cargo·salvager 与机动 prop）+ 动能 MK3 蓝图书
- * （自制渠道同闸，防绕过）。原型（proto）与顶船维持原 standingReq 纯硬拦，不加暗市。
+ * P2 稀有配额制闸内商品（2026-09-06 船长定：声望 11 前以低权重参与全局 rare 配额、
+ * 命中即 ×4 价暗市单可绕过买入；解锁后恢复正常权重与价格、不转常驻）。
+ * 范围 = MK3 战斗件 19 件（武器三族/无人机架·导控/盾·甲抗容/支援件；剔除生产件 miner·cargo·salvager
+ * 与机动 prop）+ 动能 MK3 蓝图书（自制渠道同闸，防绕过）。
+ * 原型（proto）与顶船维持原 standingReq 纯硬拦，不加暗市。
  */
 const BM_MK3_KEYS = new Set([
   'mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3',

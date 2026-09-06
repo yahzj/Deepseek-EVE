@@ -376,7 +376,8 @@ export interface NpcMarketOrder {
   price: number
   qty: number
   expiresAtGameMs: number
-  /** P2 暗市单标记（2026-09-06）：声望闸商品在闸内刷出的 ×4 订单；可绕过常驻拦截买入 */
+  /** P2 暗市单标记（2026-09-06）：闸内 rare 商品以低权重命中全局配额时刷出的 ×4 价订单；
+   * 可绕过常驻声望拦截买入（外观同普通稀有单，玩家向隐身） */
   bm?: boolean
 }
 

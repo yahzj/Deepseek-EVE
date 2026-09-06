@@ -471,7 +471,7 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
   })
 })
 
-describe('P2 暗市双通道（声望闸：常驻 ×0.01 供给 + ×4 暗市单可绕过）', () => {
+describe('P2 稀有配额双通道（全局配额：闸内低权重到货 ×4 暗市单；整批解锁恢复）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -482,33 +482,42 @@ describe('P2 暗市双通道（声望闸：常驻 ×0.01 供给 + ×4 暗市单�
       quietEvents: true,
       modules: [moduleDef('mod-x', 'turret', 0), moduleDef('mod-y', 'turret', 0)],
       marketGoods: [
-        { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'common', basePrice: 10_000, bmStanding: 5 },
+        // 闸内 rare 商品（门槛 5；其余 rare 商品解锁、权重 1 参与同一全局配额）
+        { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'rare', basePrice: 10_000, bmStanding: 5 },
         { key: 'mod-y', kind: 'module', refId: 'mod-y', rarity: 'common', basePrice: 10_000 },
       ],
     })
   })
 
-  const bmSells = (): Array<{ price: number; qty: number; bm?: boolean }> => state.market.npcSell['mod-x'] ?? []
+  const bmSells = (): Array<{ price: number; qty: number; bm?: boolean; expiresAtGameMs: number }> =>
+    state.market.npcSell['mod-x'] ?? []
   const normalSells = (): Array<{ price: number; qty: number; bm?: boolean }> => state.market.npcSell['mod-y'] ?? []
+  // 本窗刚生成的订单 = 寿命终点正好落在（本窗末 lastTick + rare 寿命 ×4 = 36 分钟）
+  const topOrderLife = (): number => {
+    const top = bmSells()[bmSells().length - 1]!
+    return top.expiresAtGameMs - state.market.lastTickGameMs
+  }
 
-  it('闸内：常驻供给骤减为约 1% 窗口、到货为 ×4 暗市单（bm 标记）；对照商品不受影响', () => {
+  it('闸内：以低权重参与全局配额，到货为 ×4 暗市单（bm 标记 + 36 分钟寿命）；对照常驻不受影响', () => {
     marketQuote(state, ctx, 'mod-x')
-    // 逐窗推进：锁定商品 ~0.85%/窗 出暗市卖单（寿命 20 分钟会过期，改判"曾出现"）；对照商品常驻高概率在场
-    let sawBm = false
+    // 只有 1 件闸内 rare（配额池仅它）→ 本窗到货概率 = RARE_LOCKED_WEIGHT（4%）；
+    // 500 窗内暗市单必多次到货（P(≥3)≈1）。到货单：bm 标记、价 ×4（基准 1 万 → 4 万量级）。
     let bmPrice = 0
+    let bmCount = 0
     let sawNormal = false
-    for (let i = 0; i < 600 && !(sawBm && sawNormal); i++) {
+    for (let i = 0; i < 500; i++) {
       advanceGame(state, 60_000, ctx)
       const bm = bmSells().find((o) => o.bm)
-      if (bm && !sawBm) {
-        sawBm = true
-        bmPrice = bm.price
+      if (bm) {
+        bmCount++
+        bmPrice = bmPrice || bm.price
       }
       if (normalSells().length > 0) sawNormal = true
     }
     expect(state.standings['dsi'] ?? 0).toBe(0)
-    expect(sawBm).toBe(true) // 1% 供给线确实会到货（600 窗内几乎必见）
-    expect(bmPrice).toBeGreaterThan(10_000 * 3) // ×4 价（基准价 1 万 → ≥4 万量级）
+    expect(bmCount).toBeGreaterThanOrEqual(3) // 闸内商品确实经配额到货（低权重，非完全静默）
+    expect(bmPrice).toBeGreaterThan(30_000) // ×4 价（基准 1 万 ×4 量级；正常价约 1 万±2%）
+    expect(bmPrice).toBeLessThan(90_000) // 未到 ×8 等超倍率
     expect(sawNormal).toBe(true) // 无闸对照：常驻节奏在场
   })
 
@@ -529,14 +538,17 @@ describe('P2 暗市双通道（声望闸：常驻 ×0.01 供给 + ×4 暗市单�
     expect(placeBuyOrder(state, ctx, 'mod-y', 10_000, 1)).not.toBeNull() // 对照无闸可挂
   })
 
-  it('声望达标：常驻恢复原节奏原价（稀有度不变、不转常驻）、暗市文案消失', () => {
+  it('声望达标（整批解锁）：恢复原价原节奏、订单为普通稀有单（36 分钟寿命）、暗市文案消失', () => {
     marketQuote(state, ctx, 'mod-x')
     state.standings['dsi'] = 5
     expect(bmGateReason(state, ctx.marketGoods.get('mod-x')!)).toBeNull()
     advanceGame(state, 40 * 60_000, ctx)
-    expect(bmSells().length).toBeGreaterThan(5)
+    expect(bmSells().length).toBeGreaterThan(5) // 解锁后 rare 正常出单（唯一解锁 rare → 每窗必出）
     for (const o of bmSells()) {
-      expect(o.price).toBeLessThan(20_000) // 正常价（~1 万±2%）
+      expect(o.bm).toBeUndefined() // 不再标暗市单
+      expect(o.price).toBeLessThan(20_000) // 正常价（~1 万±2%，噪声 ±0.4 内）
     }
+    expect(topOrderLife()).toBe(36 * 60_000) // rare 订单寿命 ×4（9 分钟 → 36 分钟）
+    expect(placeBuyOrder(state, ctx, 'mod-x', 40_000, 1)).not.toBeNull() // 常驻买单解禁
   })
 })
