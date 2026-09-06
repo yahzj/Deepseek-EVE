@@ -5,8 +5,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceRefining, redeemFragments, startRecycleRun } from '../src/industry'
+import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
 import { addWare } from '../src/inventory'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
 import { recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
@@ -100,6 +101,31 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(state.refineRuns).toHaveLength(0) // 料尽自动停
     expect(countMinerals(state, ctx)).toBeGreaterThan(0)
     expect(state.logs.some((l) => l.text.includes('残骸回收完成'))).toBe(true)
+    // 2026-09-06（玩家上报）：结束日志必须带回收所得明细（保底矿物）
+    const fin = state.logs.filter((l) => l.text.includes('残骸回收完成'))
+    expect(fin.length).toBeGreaterThan(0)
+    expect(fin[0]!.text).toContain('回收所得：保底矿物')
+  })
+
+  it('中途停炉日志同样带回收所得明细；回收累计随存档往返保留', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 32 })
+    const ctx = ctxOf()
+    const wreckId = wreckItemIdOf('ano-grave')
+    addWare(state, wreckId, 40) // 4 批
+    expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = 25_000
+    advanceRefining(state, ctx) // 第 1 批
+    expect(state.refineRuns).toHaveLength(1)
+    expect(Object.values(state.refineRuns[0]!.recAcc?.min ?? {}).length).toBeGreaterThan(0)
+    // 往返存档：累计不丢
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    const acc = loaded.refineRuns[0]?.recAcc
+    expect(acc !== undefined && Object.keys(acc.min).length > 0).toBe(true)
+    // 停炉日志带明细
+    expect(stopRefineRun(loaded, ctx, loaded.refineRuns[0]!.id).ok).toBe(true)
+    const stopLog = loaded.logs.filter((l) => l.text.includes('残骸回收炉已停'))
+    expect(stopLog.length).toBeGreaterThan(0)
+    expect(stopLog[0]!.text).toContain('回收所得')
   })
 
   it('非残骸物品 / 无残骸 / 非母港不能启动回收', () => {

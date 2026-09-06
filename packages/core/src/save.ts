@@ -1473,7 +1473,30 @@ function normalizeState(raw: unknown): GameState {
       r.worker === 'basic' || r.worker === 'gamma' || r.worker === 'beta' || r.worker === 'alpha'
         ? r.worker
         : 'pilot'
-    return {
+    // 回收所得累计（可选兼容字段：只保留正数，非 recycle 丢弃）
+    const recRaw = asRaw(r.recAcc)
+    const numMap = (m: unknown): Record<string, number> => {
+      const out: Record<string, number> = {}
+      for (const [k, v] of Object.entries(asRaw(m))) {
+        if (k.length === 0) continue
+        const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 0
+        if (n > 0) out[k] = n
+      }
+      return out
+    }
+    const recAcc =
+      r.recipe === 'recycle' &&
+      (Object.keys(recRaw).length > 0 ||
+        Object.keys(numMap(recRaw.min)).length > 0 ||
+        Object.keys(numMap(recRaw.mod)).length > 0 ||
+        Object.keys(numMap(recRaw.frag)).length > 0)
+        ? {
+            min: numMap(recRaw.min),
+            mod: numMap(recRaw.mod),
+            frag: numMap(recRaw.frag),
+          }
+        : undefined
+    const runOut: GameState['refineRuns'][number] = {
       active: true,
       id: -1, // 占位：由调用方按 refineSeq 统一分配
       worker,
@@ -1484,6 +1507,8 @@ function normalizeState(raw: unknown): GameState {
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))),
       batchesDone: Math.max(0, Math.floor(num(r.batchesDone))),
     }
+    if (recAcc) runOut.recAcc = recAcc
+    return runOut
   }
   const refineRuns: GameState['refineRuns'] = []
   let refineSeq = 1

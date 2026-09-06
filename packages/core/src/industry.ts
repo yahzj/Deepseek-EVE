@@ -274,14 +274,39 @@ export function startRecycleRun(
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     batchesDone: 0,
+    recAcc: { min: {}, mod: {}, frag: {} }, // 回收所得累计（停炉/料尽/自然结束时写明细日志）
   })
   const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)} 驱动（效率 ${Math.round(eff * 100)}%）`
   addLog(
     state,
     'info',
-    `残骸回收开工：${def.name}（仓库现有 ${Math.round(available * 100) / 100} m³）由${who}开箱（每批 ${RECYCLE_BATCH_M3} m³ / ${formatDurationMs(cycleEff)}，每批到点实时扣料，保底矿物按来源危险度池，耗尽自动停炉；可多台同拆同种残骸）。`,
+    `残骸回收开工：${def.name}（可拆 ${Math.round(available * 100) / 100} m³，货仓+仓库合计）${who}开箱——每批 ${RECYCLE_BATCH_M3} m³ / ${formatDurationMs(cycleEff)}，到点实时扣料；保底矿物按残骸来源星系危险度池抽取，耗尽自动停炉；同种残骸可多台同时开箱。`,
   )
   return { ok: true }
+}
+
+/** 回收所得明细文本（停炉/料尽/自然结束时附在日志里；2026-09-06 玩家上报"结果不显示"） */
+function recycleResultNote(
+  state: GameState,
+  ctx: SimContext,
+  rec: { min: Record<string, number>; mod: Record<string, number>; frag: Record<string, number> },
+): string {
+  const nameOf = (id: string): string => ctx.items.get(id)?.name ?? id
+  const fmt = (m: Record<string, number>, cap = 6): string => {
+    const es = Object.entries(m).sort((a, b) => b[1]! - a[1]!)
+    const head = es
+      .slice(0, cap)
+      .map(([id, n]) => `${nameOf(id)}×${n}`)
+      .join('、')
+    return es.length > cap ? `${head} 等${es.length}种` : head
+  }
+  const parts: string[] = []
+  if (Object.keys(rec.min).length > 0) parts.push(`保底矿物 ${fmt(rec.min)}`)
+  const loot: string[] = []
+  if (Object.keys(rec.mod).length > 0) loot.push(`装备 ${fmt(rec.mod)}`)
+  if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
+  if (loot.length > 0) parts.push(`彩头：${loot.join('；')}`)
+  return parts.length > 0 ? parts.join('；') : ''
 }
 
 /**
@@ -295,10 +320,13 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
   const def = r.itemId ? ctx.items.get(r.itemId) : undefined
   if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
   const coreNote = r.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''
+  const accNote = r.recipe === 'recycle' && r.recAcc ? recycleResultNote(state, ctx, r.recAcc) : ''
   addLog(
     state,
     'info',
-    `${def?.kind === 'wreck' ? '残骸回收炉' : '精炼炉'}已停：${def?.name ?? '未知资源'}（已完成 ${r.batchesDone} 批）${coreNote}；原料未锁定无需退回，余料仍在仓库。`,
+    `${def?.kind === 'wreck' ? '残骸回收炉' : '精炼炉'}已停：${def?.name ?? '未知资源'}（已完成 ${r.batchesDone} 批）${coreNote}` +
+      (accNote ? `；回收所得：${accNote}` : '') +
+      '。原料未锁定无需退回，余料仍留在货仓/仓库。',
   )
   return { ok: true }
 }
@@ -336,18 +364,22 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
     }
     while (r.active && state.gameMs >= r.finishAtGameMs) {
       if (++guard > 100_000) break // 防失控循环
-      // v20 实时扣料：仓库余量决定本批能炼多少
+      // v20 实时扣料：仓库/货仓余量决定本批能炼多少
       const avail = oreAvailable(state, r.itemId)
       if (avail <= 0) {
         // 原料耗尽：自动停炉（含被卖光/被并行台抢先的情况）
         const doneBatches = r.batchesDone
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
+        const accNote = isRecycle && r.recAcc ? recycleResultNote(state, ctx, r.recAcc) : ''
         state.refineRuns.splice(i, 1)
         addLog(
           state,
           'info',
-          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 原料耗尽（共 ${doneBatches} 批）${wasCore ? '；AI 核心已归还核心库' : ''}。`,
+          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 原料耗尽（共 ${doneBatches} 批）` +
+            (accNote ? `；回收所得：${accNote}` : '') +
+            (wasCore ? '；AI 核心已归还核心库' : '') +
+            '。',
         )
         break
       }
@@ -358,7 +390,8 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
       const fromWare = qty - fromCargo
       if (fromWare > 0) removeWare(state, r.itemId, fromWare)
       if (isRecycle && profile) {
-        // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）
+        // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
+        // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
         const volumeM3 = qty * def.unitM3
         const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
         for (const row of out) addWare(state, row.mineralId, row.units)
@@ -367,6 +400,11 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
         const fragUnits = new Map<string, number>()
         for (const m of loot.fragments) fragUnits.set(m, (fragUnits.get(m) ?? 0) + 1)
         for (const [m, n] of fragUnits) addWare(state, fragmentItemIdOf(m), n)
+        const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
+        for (const row of out) acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
+        for (const modId of loot.modules) acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
+        for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
+        r.recAcc = acc
       } else {
         const rate = refineRate(state, ctx)
         for (const row of def.refine ?? []) {
@@ -378,15 +416,18 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
       }
       r.batchesDone += 1
       if (qty < r.batchUnits || oreAvailable(state, r.itemId) <= 0) {
-        // 尾批（仓库余量不足一批）或本批把库存清空 → 炼完即停，防止空转与抢料
+        // 尾批（余量不足一批）或本批把库存清空 → 炼完即停，防止空转与抢料
         const doneBatches = r.batchesDone
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
+        const accNote = isRecycle && r.recAcc ? recycleResultNote(state, ctx, r.recAcc) : ''
         state.refineRuns.splice(i, 1)
         addLog(
           state,
           'info',
-          `${isRecycle ? `残骸回收完成：${def.name}` : `精炼炉运转完成：${def.name}`} 共 ${doneBatches} 批（最后一批为余料小批），产物已入物品仓库${wasCore ? '；AI 核心已归还核心库' : ''}。`,
+          `${isRecycle ? `残骸回收完成：${def.name}` : `精炼炉运转完成：${def.name}`} 共 ${doneBatches} 批` +
+            (accNote ? `；回收所得：${accNote}` : '') +
+            `，产物已入物品仓库${wasCore ? '；AI 核心已归还核心库' : ''}。`,
         )
         break
       }

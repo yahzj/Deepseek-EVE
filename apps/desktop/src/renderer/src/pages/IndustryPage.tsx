@@ -72,22 +72,22 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
     const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)}核心驱动`
     onToast(
       isWreck
-        ? `残骸回收开工：${def.name}（仓库 ${Math.round(total * 10) / 10} m³）${who}，每批到点实时扣料、耗尽自动停。`
-        : `精炼炉开工：${def.name}（仓库 ×${total.toLocaleString('zh-CN')}）${who}，每批到点实时扣料、耗尽自动停。`,
+        ? `残骸回收开工：${def.name}（可拆 ${Math.round(total * 10) / 10} m³，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`
+        : `精炼炉开工：${def.name}（可炼 ×${total.toLocaleString('zh-CN')}，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`,
     )
   }
   function stopRun(runId: number): void {
     const r = engine.stopRefineRunAt(runId)
     if (!r.ok) onToast(r.error ?? '停炉失败。', true)
-    else onToast('已停该台炉：原料未锁定，余料仍在仓库（可继续加开其它单位）。')
+    else onToast('已停该台炉：原料未锁定无需退回，余料仍留在货仓/仓库原位（可继续加开其它单位）。')
   }
 
-  // 数据行：有单位运转 = 台数 + 仓库余量；空闲 = 可用量/批参数
+  // 数据行：有单位运转 = 台数 + 余量；空闲 = 可用量/批参数
   let dataLine: ReactNode
   if (running) {
     dataLine = isWreck
-      ? `运转 ${runs.length} 台 · 仓库余 ${Math.round(total * 10) / 10} m³`
-      : `运转 ${runs.length} 台 · 仓库余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
+      ? `运转 ${runs.length} 台 · 合计余 ${Math.round(total * 10) / 10} m³`
+      : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
   } else if (isWreck) {
     dataLine = `可用 ${Math.round(total * 10) / 10} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
   } else {
