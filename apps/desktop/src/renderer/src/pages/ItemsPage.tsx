@@ -413,8 +413,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
 export function ItemsPage(props: PageProps & Partial<ItemNavProps>) {
   const [tab, setTab] = useState<ItemsTab>('warehouse')
   return (
-    <div className="page-stack">
-      {/* 功能标签页（与星图页同款 app-subtabs 规范） */}
+    <div className="page-stack page-fill">
+      {/* 功能标签页（与星图页同款 app-subtabs 规范）；标签行固定 */}
       <div className="app-subtabs" role="tablist">
         <button
           role="tab"
@@ -435,11 +435,14 @@ export function ItemsPage(props: PageProps & Partial<ItemNavProps>) {
           <span>货仓</span>
         </button>
       </div>
-      {tab === 'cargo' ? (
-        <CargoPage {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
-      ) : (
-        <WarehouseView {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
-      )}
+      {/* 船长拍板：物品页整标签一窗滚——活跃标签内容包进二级滚动窗（CargoPage 内层不再产生双滚动） */}
+      <div className="app-win-body">
+        {tab === 'cargo' ? (
+          <CargoPage {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
+        ) : (
+          <WarehouseView {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
+        )}
+      </div>
     </div>
   )
 }

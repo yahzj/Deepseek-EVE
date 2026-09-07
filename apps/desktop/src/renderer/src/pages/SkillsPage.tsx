@@ -59,14 +59,15 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
   )
   const tabCount = (g: string): number => visibleSkills.filter((s) => s.group === g).length
   return (
-    <div className="page-stack page-wide">
+    <div className="page-stack page-wide page-fill">
       <Panel
         title="训练队列"
         right={<span className="app-dim">技能与采矿/远征/制造并行 · 取消训练保留本级进度，重排同一级自动续接</span>}
       >
         <QueueBlock engine={engine} />
       </Panel>
-      <Panel title="技能目录" right={<span className="app-dim">{visibleSkills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
+      {/* 船长拍板：技能目录整窗滚（队列面板固定在上） */}
+      <Panel className="is-fill" title="技能目录" right={<span className="app-dim">{visibleSkills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
         {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类 */}
         <div className="app-task-tabs" role="tablist">
           <button
