@@ -218,9 +218,9 @@ export interface MarketGoodDef {
   playerBuyable?: boolean
   /** 需要的协会声望（V10：部分高端商品声望解锁；买入时校验，卖出不限） */
   standingReq?: number
-  /** 暗市双通道声望闸（P2 2026-09-06 船长定：全市场 rare 配额 + 暗市单可绕过）：
-   * 声望低于本值 → 该商品为"闸内"：不占常驻供给线，以 RARE_LOCKED_WEIGHT 低权重参与全局
-   * rare 配额（每窗口出单概率 ≈ 配额分摊 × 权重），命中即暗市单：价 ×4、标记 bm、
+  /** 暗市双通道声望闸（P2 2026-09-06 船长定：rare 抽取节拍 + 暗市单可绕过）：
+   * 声望低于本值 → 该商品为"闸内"：不占常驻供给线，以 RARE_LOCKED_WEIGHT 低权重参与每
+   * RARE_DRAW_PERIOD_MS（10 分钟）的加权有放回抽取，命中即暗市单：价 ×4、标记 bm、
    * 可绕过常驻拦截买入；常驻挂单不开放。达标后整批解锁：恢复正常权重/正常价（不转为常驻商品）。
    * 与 standingReq 正交：standingReq = 纯硬拦（现役顶船维持，不加暗市）。 */
   bmStanding?: number
@@ -236,10 +236,10 @@ export interface MarketBalance {
   poolRegenHalfMs: number
   /** 每窗口 NPC 常驻供需单刷新数量 */
   commonFlowPerWindow: number
-  /** 稀有商品每窗口刷新供应单的概率（P2 配额制 2026-09-06 起不再使用——rare 改为全局配额
-   * 分摊，见 market.ts RARE_QUOTA_*；字段保留以兼容数据/档） */
+  /** 稀有商品每 60s 窗刷新供应单的概率（P2 节拍制 2026-09-06 起 unused——rare 改为百分比
+   * 抽取，见 market.ts RARE_PCT_* 与 RARE_DRAW_PERIOD_MS；字段保留以兼容数据/档） */
   rareWindowChance: number
-  /** 限定商品每个窗口刷新供应单的概率 */
+  /** 限定商品每个抽取窗（10 分钟）独立掷骰的出单概率：0.8%×现货抢购学（约每件每 20.8 小时一轮） */
   exoticWindowChance: number
   /** 窗口净成交量超过该比例（相对参考量）时触发冲击 */
   shockTriggerRatio: number

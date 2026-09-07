@@ -26,6 +26,7 @@ import {
   sellShipAtMarket,
 } from '../src/market'
 import { occupyAiCore } from '../src/ai'
+import { DEFAULT_BALANCE } from '../src/balance'
 import { makeTestCtx, mineral, moduleDef, ship } from './helpers'
 
 const MIN_A = mineral('min-a') // basePrice 8
@@ -471,7 +472,7 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
   })
 })
 
-describe('P2 稀有配额双通道（全局配额：闸内低权重到货 ×4 暗市单；整批解锁恢复）', () => {
+describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回抽取可重复 + 闸内 ×4 + 奇货上限 2/6h）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -482,7 +483,7 @@ describe('P2 稀有配额双通道（全局配额：闸内低权重到货 ×4 �
       quietEvents: true,
       modules: [moduleDef('mod-x', 'turret', 0), moduleDef('mod-y', 'turret', 0)],
       marketGoods: [
-        // 闸内 rare 商品（门槛 5；其余 rare 商品解锁、权重 1 参与同一全局配额）
+        // 闸内 rare 商品（门槛 5）；无任何解锁 rare → 每抽取窗必抽到它（U=0 时 N 下限 1）
         { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'rare', basePrice: 10_000, bmStanding: 5 },
         { key: 'mod-y', kind: 'module', refId: 'mod-y', rarity: 'common', basePrice: 10_000 },
       ],
@@ -492,33 +493,32 @@ describe('P2 稀有配额双通道（全局配额：闸内低权重到货 ×4 �
   const bmSells = (): Array<{ price: number; qty: number; bm?: boolean; expiresAtGameMs: number }> =>
     state.market.npcSell['mod-x'] ?? []
   const normalSells = (): Array<{ price: number; qty: number; bm?: boolean }> => state.market.npcSell['mod-y'] ?? []
-  // 本窗刚生成的订单 = 寿命终点正好落在（本窗末 lastTick + rare 寿命 ×4 = 36 分钟）
-  const topOrderLife = (): number => {
-    const top = bmSells()[bmSells().length - 1]!
-    return top.expiresAtGameMs - state.market.lastTickGameMs
+  // 某窗"刚生成"的订单 = 寿命终点恰好落在（本窗末 lastTick + 对应寿命）
+  const freshOf = (list: Array<{ expiresAtGameMs: number }>, lifeMs: number): Array<{ expiresAtGameMs: number }> => {
+    const lt = state.market.lastTickGameMs
+    return list.filter((o) => o.expiresAtGameMs === lt + lifeMs)
   }
+  const RARE_LIFE = 36 * 60_000 // rare 9 分钟 ×4
+  const EXO_LIFE = 6 * 3_600_000 // 奇货 6 小时
 
-  it('闸内：以低权重参与全局配额，到货为 ×4 暗市单（bm 标记 + 36 分钟寿命）；对照常驻不受影响', () => {
+  it('闸内：每个 10 分钟抽取窗出 1 张 ×4 暗市单（bm 标记 + 36 分钟寿命）；非抽取窗静默；对照常驻在场', () => {
     marketQuote(state, ctx, 'mod-x')
-    // 只有 1 件闸内 rare（配额池仅它）→ 本窗到货概率 = RARE_LOCKED_WEIGHT（4%）；
-    // 500 窗内暗市单必多次到货（P(≥3)≈1）。到货单：bm 标记、价 ×4（基准 1 万 → 4 万量级）。
-    let bmPrice = 0
-    let bmCount = 0
-    let sawNormal = false
-    for (let i = 0; i < 500; i++) {
-      advanceGame(state, 60_000, ctx)
-      const bm = bmSells().find((o) => o.bm)
-      if (bm) {
-        bmCount++
-        bmPrice = bmPrice || bm.price
-      }
-      if (normalSells().length > 0) sawNormal = true
-    }
-    expect(state.standings['dsi'] ?? 0).toBe(0)
-    expect(bmCount).toBeGreaterThanOrEqual(3) // 闸内商品确实经配额到货（低权重，非完全静默）
-    expect(bmPrice).toBeGreaterThan(30_000) // ×4 价（基准 1 万 ×4 量级；正常价约 1 万±2%）
-    expect(bmPrice).toBeLessThan(90_000) // 未到 ×8 等超倍率
-    expect(sawNormal).toBe(true) // 无闸对照：常驻节奏在场
+    // 第 10 窗 = 首个抽取窗：必抽（唯一候选）→ 1 张 ×4 暗市单
+    for (let w = 1; w <= 10; w++) advanceGame(state, 60_000, ctx)
+    expect(bmSells().length).toBe(1)
+    const bm0 = bmSells()[0]!
+    expect(bm0.bm).toBe(true) // 暗市单标记
+    expect(bm0.price).toBeGreaterThan(30_000) // ×4 价（基准 1 万 → 4 万量级）
+    expect(bm0.price).toBeLessThan(90_000) // 未到 ×8 等超倍率
+    expect(freshOf(bmSells(), RARE_LIFE).length).toBe(1) // 本窗新单 = 36 分钟寿命
+    // 非抽取窗（11~19 窗）不再新增
+    for (let w = 11; w <= 19; w++) advanceGame(state, 60_000, ctx)
+    expect(bmSells().length).toBe(1)
+    // 到第 40 窗共 4 个抽取窗 → 4 张暗市单（首张 46 分钟才过期，未清）
+    for (let w = 20; w <= 40; w++) advanceGame(state, 60_000, ctx)
+    expect(bmSells().length).toBe(4)
+    for (const o of bmSells()) expect(o.bm).toBe(true)
+    expect(normalSells().length).toBeGreaterThan(0) // 无闸对照：常驻节奏在场
   })
 
   it('闸内：暗市单可绕过拦截直接买入；常驻挂单/普通供应单被拦', () => {
@@ -538,17 +538,105 @@ describe('P2 稀有配额双通道（全局配额：闸内低权重到货 ×4 �
     expect(placeBuyOrder(state, ctx, 'mod-y', 10_000, 1)).not.toBeNull() // 对照无闸可挂
   })
 
-  it('声望达标（整批解锁）：恢复原价原节奏、订单为普通稀有单（36 分钟寿命）、暗市文案消失', () => {
+  it('声望达标（整批解锁）：恢复原价原节奏（每抽取窗 1 张普通稀有单）、暗市文案消失', () => {
     marketQuote(state, ctx, 'mod-x')
     state.standings['dsi'] = 5
     expect(bmGateReason(state, ctx.marketGoods.get('mod-x')!)).toBeNull()
-    advanceGame(state, 40 * 60_000, ctx)
-    expect(bmSells().length).toBeGreaterThan(5) // 解锁后 rare 正常出单（唯一解锁 rare → 每窗必出）
+    advanceGame(state, 40 * 60_000, ctx) // 4 个抽取窗 × 每窗 N=max(1, 8~15%×1)=1 → 恰 4 张
+    expect(bmSells().length).toBe(4)
     for (const o of bmSells()) {
       expect(o.bm).toBeUndefined() // 不再标暗市单
       expect(o.price).toBeLessThan(20_000) // 正常价（~1 万±2%，噪声 ±0.4 内）
     }
-    expect(topOrderLife()).toBe(36 * 60_000) // rare 订单寿命 ×4（9 分钟 → 36 分钟）
+    expect(freshOf(bmSells(), RARE_LIFE).length).toBe(1) // 本窗新单（第 4 窗）= 36 分钟寿命
     expect(placeBuyOrder(state, ctx, 'mod-x', 40_000, 1)).not.toBeNull() // 常驻买单解禁
+  })
+
+  it('有放回抽取：同窗可重复抽中同一商品；每抽取窗张数 = 8%~15% × 已解锁件数（20 件 → 2~3 张）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 11 })
+    state.wallet.isk = 100_000_000
+    const goods: MarketGoodDef[] = Array.from({ length: 20 }, (_, i) => ({
+      key: `mod-u${i}`,
+      kind: 'module' as const,
+      refId: `mod-u${i}`,
+      rarity: 'rare' as const,
+      basePrice: 1_000,
+    }))
+    ctx = makeTestCtx({ quietEvents: true, marketGoods: goods })
+    let totalSpawned = 0
+    let dupWins = 0
+    for (let w = 1; w <= 1200; w++) {
+      advanceGame(state, 60_000, ctx)
+      if (w % 10 !== 0) continue // 只在抽取窗结算
+      let winN = 0
+      let maxPerGood = 0
+      for (const g of goods) {
+        const fresh = freshOf(state.market.npcSell[g.key] ?? [], RARE_LIFE)
+        winN += fresh.length
+        if (fresh.length > maxPerGood) maxPerGood = fresh.length
+      }
+      expect(winN).toBeGreaterThanOrEqual(2) // round(8%×20)=2 … round(15%×20)=3
+      expect(winN).toBeLessThanOrEqual(3)
+      totalSpawned += winN
+      if (maxPerGood >= 2) dupWins++ // 同一类型同窗被重复抽中
+    }
+    expect(totalSpawned).toBeGreaterThan(250) // 120 抽取窗 × ~2.3 张
+    expect(dupWins).toBeGreaterThan(0) // 有放回语义下重复命中确实会发生
+  })
+
+  it('奇货：每抽取窗独立掷骰（测试档上调概率）；订单 6 小时有效；非抽取窗不出货', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 13 })
+    state.wallet.isk = 100_000_000
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, exoticWindowChance: 0.5 } },
+      marketGoods: [{ key: 'mod-e1', kind: 'module', refId: 'mod-e1', rarity: 'exotic', basePrice: 10_000 }],
+    })
+    for (let w = 1; w <= 9; w++) advanceGame(state, 60_000, ctx)
+    expect(state.market.npcSell['mod-e1'] ?? []).toHaveLength(0) // 第 10 窗才是首个抽取窗
+    let atWin = -1
+    for (let w = 10; w <= 120; w++) {
+      advanceGame(state, 60_000, ctx)
+      if ((state.market.npcSell['mod-e1'] ?? []).length > 0) {
+        atWin = w
+        break
+      }
+    }
+    expect(atWin).toBeGreaterThan(0)
+    expect(atWin % 10).toBe(0) // 只出现在 10 分钟抽取窗
+    const top = state.market.npcSell['mod-e1']![state.market.npcSell['mod-e1']!.length - 1]!
+    expect(top.expiresAtGameMs - state.market.lastTickGameMs).toBe(EXO_LIFE) // 订单 6 小时有效
+  })
+
+  it('奇货单次上限 2：抽取窗命中 >2 件时随机抽选保留 2 张（测试档上调概率验证）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 17 })
+    state.wallet.isk = 100_000_000
+    const goods: MarketGoodDef[] = Array.from({ length: 6 }, (_, i) => ({
+      key: `mod-e${i}`,
+      kind: 'module' as const,
+      refId: `mod-e${i}`,
+      rarity: 'exotic' as const,
+      basePrice: 10_000,
+    }))
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, exoticWindowChance: 0.5 } },
+      marketGoods: goods,
+    })
+    let totalKept = 0
+    let capWins = 0
+    for (let w = 1; w <= 300; w++) {
+      advanceGame(state, 60_000, ctx)
+      if (w % 10 !== 0) continue
+      let winN = 0
+      for (const g of goods) winN += freshOf(state.market.npcSell[g.key] ?? [], EXO_LIFE).length
+      expect(winN).toBeLessThanOrEqual(2) // 单次上限 2
+      totalKept += winN
+      if (winN === 2) capWins++
+    }
+    // 6 件 × 0.5/窗 期望命中 ~3/窗：若无上限 30 窗应 ~90 张；上限后明显截断但仍持续到货
+    expect(totalKept).toBeLessThan(60)
+    expect(totalKept).toBeGreaterThan(20)
+    expect(capWins).toBeGreaterThan(0)
   })
 })

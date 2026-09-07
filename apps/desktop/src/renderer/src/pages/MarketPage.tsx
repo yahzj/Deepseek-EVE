@@ -5,7 +5,7 @@
  * - 收购价 = NPC 收玩家的价；供应价 = NPC 卖玩家的价（两者有价差，防倒卖）；
  * - 池商品（矿石/矿物）：站内库存池（常驻显示），池淤积→收购压价（倾销会砸价），
  *   池枯竭→供应断货涨价；价格还受隐藏的"冲击动量"影响（集中买卖会推/砸价，随时间恢复）；
- * - 单件商品（装备/蓝图/船/核心）：常驻平价随刷随买；稀有订单低频、限定奇货一闪而过；
+ * - 单件商品（装备/蓝图/船/核心）：常驻平价随刷随买；稀有订单低频、限定奇货偶发高价；
  * - 市价买入吃穿簿后剩单会自动转成限价挂单；挂单随时可撤销（货退回原库存）。
  *
  * 展示规则（玩家 2026-09 修正要求）：
@@ -264,7 +264,7 @@ function GoodRow({
           {poolQ !== undefined ? <span className="app-dim"> · 站内库存 {Math.floor(poolQ).toLocaleString('zh-CN')}</span> : null}
           {good.rarity === 'common' ? <span className="app-dim"> · {RARITY_TEXT[good.rarity]}</span> : null}
           {quote.sell === undefined && good.rarity !== 'common' ? (
-            <span className="app-dim"> · 常来看看（{good.rarity === 'rare' ? '稀有' : '限定'}订单寿命极短）</span>
+            <span className="app-dim"> · 常来看看（每 10 分钟刷新一轮到货）</span>
           ) : null}
         </div>
       </div>
@@ -774,7 +774,7 @@ export function MarketPage({
                   aria-selected={mktTab === 'rare'}
                   className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
                   onClick={() => setMktTab('rare')}
-                  title="稀有订单寿命 36 分钟、限定奇货 4 分钟闪现——切回本标签才能看到现存单"
+                  title="稀有订单寿命 36 分钟、限定奇货 6 小时有效——每 10 分钟一轮到货，切回本标签才能看到现存单"
                 >
                   <span>✦</span>
                   <span>稀有订单</span>
@@ -798,7 +798,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title="稀有订单"
-                  right={<span className="app-dim">稀有 36 分钟寿命 · 限定奇货 4 分钟闪现 · 时钟=现存单到期</span>}
+                  right={<span className="app-dim">每 10 分钟一轮到货 · 稀有 36 分钟寿命 · 限定奇货 6 小时有效 · 时钟=现存单到期</span>}
                   rows={stockedFirst(engine, rareCol)}
                   selKey={activeSelKey}
                   onSelect={setSelKey}

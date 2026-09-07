@@ -402,6 +402,9 @@ export interface MarketState {
   digest: Record<string, MarketDigestEntry>
   /** 最近一次刷单/撮合的游戏时刻 */
   lastTickGameMs: number
+  /** P2 抽取节拍（2026-09-06 船长定：rare/奇货出单每 RARE_DRAW_PERIOD_MS 一次）：
+   * 上次"慢抽取"执行的游戏时刻；旧档缺省由 ensureMarket 按开盘时刻补齐（零迁移） */
+  slowDrawLastGameMs?: number
   /** 我的挂单自增号 */
   orderSeq: number
   /** 价格小史（最近采样，展示趋势用） */
