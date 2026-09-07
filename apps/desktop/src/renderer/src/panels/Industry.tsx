@@ -68,7 +68,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   }
 
   return (
-    <Panel className="is-fill" title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；重复书只能出售</span>}>
+    <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；重复书只能出售</span>}>
       <div className="app-shelf-grid">
         {entries.map(([id, n]) => {
           const bp = engine.blueprints.find((b) => b.id === id) ?? engine.shipBlueprints.find((b) => b.id === id)
@@ -477,7 +477,6 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
 
   return (
     <Panel
-      className="is-fill"
       title="组装机"
       right={<span className="app-dim">制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}</span>}
     >
