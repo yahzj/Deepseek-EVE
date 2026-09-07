@@ -241,7 +241,7 @@ export interface RecycleProfile {
   pool?: ReadonlyArray<readonly [string, number]>
   /** 玩家可见"残骸产出倾向"（缺省无） */
   note?: string
-  /** 试点彩头可出件集（缺省 = 三层默认） */
+  /** 主题追加件（2026-09-08"追加"语义：默认池 + 敌群增幅件；缺省 = 三层默认，无追加） */
   loot?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 

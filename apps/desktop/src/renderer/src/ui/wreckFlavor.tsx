@@ -1,7 +1,7 @@
 /**
  * B3.1 残骸回收「产出倾向 / 低出率掉落」展示零件（2026-09-08 收尾：星图打捞页星系卡与工业页回收卡共用）。
  * - 产出倾向 = recycleNote（敌群特色一句话说明）；
- * - 低出率掉落 = 试点主题件集（缺省回落到 基础件/MK2 全图池）+ 高威胁蓝图碎片（阈值同回收引擎）。
+ * - 低出率掉落 = 主题追加件（敌群增幅装备；无主题卡回落 基础件/MK2 默认池）+ 高威胁蓝图碎片（阈值同回收引擎）。
  * 文案与类名对齐工业页回收卡 WreckFlavorRow 既有行（同族最小差异，不另起样式）。
  */
 import { FRAGMENT_RECIPES, RECYCLE_BASE_MODULES, RECYCLE_MK2_MODULES } from '@whale/core'
@@ -12,7 +12,7 @@ export function recycleFlavorParts(
     lowSec: boolean
     threat: number
     loot?: { modules?: readonly string[]; mk2?: readonly string[] }
-    /** 只列"试点特色件集"：无主题件集时不回落全图基础池（星系汇总行用；回收卡不传保持既有口径） */
+    /** 只列"主题追加件"：无主题件时不回落全图默认池（星系汇总行用；回收卡不传保持既有口径） */
     themedOnly?: boolean
   },
   mods: ReadonlyMap<string, { name?: string }>,
