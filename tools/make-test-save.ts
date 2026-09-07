@@ -20,6 +20,10 @@
  *  - b3   残骸打捞-回收全链门槛（2026-09-05）：全部星系点亮 + 资金/声望 + 打捞演示船
  *         （白鲨级高槽 4×打捞器 MK2）+ 打捞器 MK1-3 入库 + 坟场/深渊/穹顶高残骸密度
  *         + 仓库预置 2 种残骸各 100 m³（回收开箱立即可测）+ AI 基础核心 ×1 且 ai-expert Lv1。
+ *  - repair 修理系统验收门槛（2026-09-05）：驾驶船带伤 + 两档修理组件/蓝图书备件 + 钱包。
+ *  - redtide 赤潮劫掠队手感试验（2026-09-08，玩家反馈"MK1 满配灰鲭鲨三发被打成破烂"）：
+ *         点亮红环 + 声望 6 + 两艘灰鲭鲨级演示船——MK1 满配（设为驾驶，复现反馈场景）与
+ *         MK2 满配参考船 + MK1/MK2 全套备件 + 弹药（换装对比三连发毁伤体感）。
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -304,8 +308,7 @@ function injectB3(state: GameState): string[] {
 
 /** repair（P2 修理系统验收门槛，2026-09-05）：驾驶船带伤（结构 55%/装甲 40%）+
  * 货仓预置 民用×3 / 军用×2 + 仓库备件 + 钱包——开箱即测 港内计费（HP×科技档）、
- * 野外/舰船页组件修复、自动链阈值、蓝图自造材料账。 */
-function injectRepair(state: GameState): string[] {
+ * 野外/舰船页组件修复、自动链阈值、蓝图自造材料账。 */function injectRepair(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
   state.wallet.isk += 500_000
@@ -327,6 +330,77 @@ function injectRepair(state: GameState): string[] {
   return notes
 }
 
+/** redtide（2026-09-08 玩家反馈"MK1 满配灰鲭鲨被赤潮劫掠队三发打成破烂"手感试验档）：
+ * 点亮红环航道 + 声望 6（赤潮需 3）+ 两艘灰鲭鲨级（高4/中3/低2）——MK1 满配设为驾驶
+ * （复现反馈场景：4×动能炮 MK1 + 中 盾抗/容量/索敌 MK1 + 低 甲抗/甲板 MK1），
+ * MK2 满配同型参考船换装对比；装备库备 MK1/MK2 换装件 + 足量弹药与修理组件。 */
+function injectRedtide(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  notes.push('钱包 +30,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 6)
+  notes.push('协会声望升至 6（赤潮劫掠舰队需 3，可接）')
+  if (!state.exploredGalaxies.includes('galaxy-redring')) state.exploredGalaxies.push('galaxy-redring')
+  notes.push('点亮 红环航道（赤潮劫掠舰队所在星系）')
+  // MK1 满配试验船（设为驾驶）
+  const uid1 = addShipToFleet(state, 'sh-mako')
+  const s1 = state.fleet[uid1]!
+  s1.customName = 'MK1满配·试验'
+  s1.fitted = {
+    high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'],
+    mid: ['mod-shield-kin-1', 'mod-shield-ext-1', 'mod-track-1'],
+    low: ['mod-armor-kin-1', 'mod-armor-plate-1'],
+  }
+  state.shipId = uid1
+  // MK2 满配参考船（同型换装对比）
+  const uid2 = addShipToFleet(state, 'sh-mako')
+  const s2 = state.fleet[uid2]!
+  s2.customName = 'MK2满配·参考'
+  s2.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2'],
+    low: ['mod-armor-kin-2', 'mod-armor-plate-2'],
+  }
+  notes.push(`新增灰鲭鲨级 ×2：${uid1}（MK1满配·试验，已设为驾驶——复现"三发被打成破烂"场景）与 ${uid2}（MK2满配·参考，舰船页切换对比）`)
+  // 弹药/修理组件（两船货仓 + 仓库）
+  const ammo: Array<[string, string]> = [
+    ['ammo-kinetic-l', '动能弹'],
+    ['ammo-plasma-l', '能量弹药'],
+    ['ammo-explosive-l', '爆破导弹'],
+  ]
+  for (const ship of [s1, s2]) {
+    ship.cargo['ammo-kinetic-l'] = (ship.cargo['ammo-kinetic-l'] ?? 0) + 600
+    ship.cargo['ammo-plasma-l'] = (ship.cargo['ammo-plasma-l'] ?? 0) + 300
+    ship.cargo['ammo-explosive-l'] = (ship.cargo['ammo-explosive-l'] ?? 0) + 300
+    ship.cargo['repairkit-civ'] = (ship.cargo['repairkit-civ'] ?? 0) + 3
+    ship.cargo['repairkit-mil'] = (ship.cargo['repairkit-mil'] ?? 0) + 2
+  }
+  for (const [id, name] of ammo) {
+    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + 2_000
+    notes.push(`仓库补 ${name} ×2,000`)
+  }
+  notes.push('两船货仓各带 动能弹 600 / 能量弹药·爆破导弹 300 + 修理组件（民 3/军 2）')
+  // 换装备件：MK1 全系 + MK2 武器/抗容/支援
+  const spares: Array<[string, number]> = [
+    ['mod-turret-kin-1', 2], ['mod-laser-1', 1], ['mod-missile-1', 1],
+    ['mod-shield-kin-1', 1], ['mod-shield-ext-1', 1],
+    ['mod-armor-kin-1', 1], ['mod-armor-plate-1', 1],
+    ['mod-track-1', 1], ['mod-prop-1', 1],
+    ['mod-turret-kin-2', 2], ['mod-laser-2', 1], ['mod-missile-2', 1],
+    ['mod-shield-kin-2', 1], ['mod-shield-ext-2', 1],
+    ['mod-armor-kin-2', 1], ['mod-armor-plate-2', 1],
+    ['mod-track-2', 1], ['mod-prop-2', 1],
+    ['mod-rof-2', 1], ['mod-gyro-2', 1], ['mod-stab-kin-2', 1],
+  ]
+  for (const [id, n] of spares) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + n
+  notes.push('装备库备 MK1/MK2 换装件（动能/激光/导弹、盾抗/容量、甲抗/甲板、索敌/推进/射速/陀螺/稳定器）——装配页自由换装对比')
+  for (const sh of Object.values(state.fleet)) sh.durability = 1
+  notes.push('全舰耐久回满')
+  notes.push('测试路径：星图·战斗悬赏 → 红环航道「赤潮劫掠舰队」→ 开战观察 MK1 满配被几轮齐射击穿/残血比例（对照玩家反馈）与预估胜率 → 舰船页切换 MK2满配·参考 同目标再打一轮对比 → 装配页换 推进器/射速计算机 等变体看手感差异')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -335,8 +409,8 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   v18b: injectV18b,
   b3: injectB3,
   repair: injectRepair,
+  redtide: injectRedtide,
 }
-
 function main(): void {
   const feature = process.argv[2]
   if (!feature || feature === 'help' || !(feature in INJECTORS)) {
