@@ -45,7 +45,7 @@ function readView(): ViewMode {
 const GUIDE_ROWS: Array<[string, string]> = [
   ['采矿', '出港页选矿带开采：矿石进当前船货仓；练「采矿技术/采矿护卫舰操作」提产量缩循环。'],
   ['装卸', '货仓页一键卸入物品仓库（无限容量、不随船）；矿也可直接市价卖出。'],
-  ['精炼', '工业页把矿石炼成矿物（收率受精炼学/高级回收影响）；矿物是制造原料，也可卖出。'],
+  ['精炼', '工业页把矿石炼成矿物（产出倍率由精炼学与高级回收处理提升：基础 100%，最高 160%）；矿物是制造原料，也可卖出。'],
   ['回收残骸', '打捞的残骸在工业页开箱拆解：保底矿物按敌群「产出倾向」主题抽取，随 星系危险度×敌群威胁 上浮；另有概率彩头——卡面「低出率掉落」列出的该敌群主题增幅件与高威胁蓝图碎片（MK3 装备只经碎片解锁，唯关底穹顶守卫可直出 MK3 武器）。星图「残骸打捞」页会先标出该星系这些内容。'],
   ['制造', '市场买蓝图书 → 蓝图书架「学习」后永久可造 → 工业页开工（扣材料+制造费，到点自动入库/入坞）。'],
   ['装配', '装备库里的模块可装到船的采集器/货舱/炮台/护盾/装甲/推进器槽；卸下自动退回装备库。'],
@@ -455,7 +455,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                           <span className="app-dim"> · {item.unitM3} m³/单位</span>
                         </div>
                         <div className="app-dim">{item.description}</div>
-                        {refine ? <div className="app-hand-sub">精炼（100% 收率）→ {refine}</div> : null}
+                        {refine ? <div className="app-hand-sub">精炼（产出倍率 100%）→ {refine}</div> : null}
                       </ItemHover>
                     )
                   })}

@@ -5,7 +5,7 @@
  * - 每个资源（矿石/气体/冰矿）或残骸型号至多一台炉，可同时运转多台；
  * - 劳动者 = 主控亲自运转（全局限 1 台、占主控工作位，期间不可离港作业）或
  *   一枚 AI 核心驱动（每台一枚闲置核心；核心出库占用、不占副船名额，库存即并行上限）；
- * - 固定批量循环：启动即把"货仓+仓库"当前全部库存锁定入炉，每批到点按收率出货并自动
+ * - 固定批量循环：启动即把"货仓+仓库"当前全部库存锁定入炉，每批到点按产出倍率出货并自动
  *   续批，直到料尽自动停炉；停炉即止：已完成批已出货、剩余料全额退回（核心归还）。
  * - 页面布局 = 矿带卡同款：资源卡常驻网格；运转中的卡不改样式，只把操作按钮变为「停炉」。
  */
@@ -138,7 +138,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         return units > 0 ? { def: mineral, units } : null
       })
       .filter((x): x is { def: ItemDef; units: number } => x !== null)
-    const outText = outs.map((o) => `${o.def.name}×${o.units}`).join('、') || '（收率过低无产出）'
+    const outText = outs.map((o) => `${o.def.name}×${o.units}`).join('、') || '（当前无产出）'
     const batchValue = outs.reduce((s, o) => s + o.units * (o.def.baseSellPriceIsk ?? 0), 0)
     // 2026-09-08：净口径 = 每批产物收价 − 每批耗料（原料同样按站内收价；原料可卖，不扣即虚高）
     const costPerBatch = batch * (def.baseSellPriceIsk ?? 0)
@@ -152,7 +152,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
           <div
             className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
             title={`净收益估算：每批产物（矿物站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} ISK/h；${
-              netH < 0 ? '当前收率下精炼不如直接卖原料。' : '数值已扣除耗料成本。'
+              netH < 0 ? '当前产出倍率下精炼不如直接卖原料。' : '数值已扣除耗料成本。'
             }`}
           >
             {MONEY_GLYPH} ≈{netH.toLocaleString('zh-CN')} ISK/h{netH < 0 ? '（净亏：直接卖原料更划算）' : '（净）'}
@@ -329,7 +329,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
           title="精炼炉"
           right={
             <span className="app-dim">
-              收率 {Math.round(rate * 100)}%（精炼学 +8%/级 · 高级回收 +4%/级，上限 95%）· 运转 {runningCount} 台
+              产出倍率 {Math.round(rate * 100)}%（基础 100% · 精炼学 +8%/级 · 高级回收处理 +4%/级，上限 160%）· 运转 {runningCount} 台
             </span>
           }
         >

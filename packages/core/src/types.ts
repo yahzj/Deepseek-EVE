@@ -26,10 +26,11 @@ export type SkillCatalog = ReadonlyMap<string, SkillDef>
 
 /* ═══════════════════════ M1：物品 / 矿带 / 舰船 ═══════════════════════ */
 
-/** 精炼配方一行：每 1 单位矿石，在 100% 收率下产出多少单位该矿物 */
+/** 精炼配方一行：每 1 单位矿石，在产出倍率 100% 下产出多少单位该矿物
+ * （2026-09-08 术语：玩家口径「产出倍率」= 引擎 refineRate，基础 100%、技能最高 160%） */
 export interface RefineRow {
   mineralId: string
-  /** 每单位矿石产出的矿物单位数（可为小数，实际产量按收率折算后向下取整） */
+  /** 每单位矿石产出的矿物单位数（可为小数，实际产量按产出倍率折算后向下取整） */
   perOre: number
 }
 
@@ -291,17 +292,17 @@ export interface BalanceConfig {
     localLegMs: number
   }
   refining: {
-    /** 基础收率（如 0.5 = 50%） */
+    /** 基础产出倍率（1.0 = 100%；2026-09-08 起基础即满额，配方已 ÷2 等价迁移） */
     baseRate: number
-    /** 主收率技能 id（"精炼学"） */
+    /** 主产出倍率技能 id（"精炼学"） */
     rateSkillId: string
-    /** 每级收率提升 */
+    /** 产出倍率每级提升（精炼学 +8%） */
     ratePerLevel: number
-    /** 次级收率技能 id（"高级回收处理"） */
+    /** 次级产出倍率技能 id（"高级回收处理"） */
     secondRateSkillId: string
-    /** 每级收率提升 */
+    /** 产出倍率每级提升（高级回收处理 +4%） */
     secondRatePerLevel: number
-    /** 收率上限 */
+    /** 产出倍率上限（1.6 = 160%） */
     maxRate: number
   }
   manufacturing: {

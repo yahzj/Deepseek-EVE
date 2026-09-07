@@ -257,7 +257,7 @@ export function rollRecycleGuarantee(
 ): Array<{ mineralId: string; units: number }> {
   const pool = profile.pool && profile.pool.length > 0 ? profile.pool : RECYCLE_POOLS[profile.tier]!
   let baseUnits = Math.max(1, volumeM3 * RECYCLE_YIELD_PER_M3[profile.tier])
-  // 残骸提纯学（salvage-refining，2026-09-05）：保底矿物每级 +8%（对标精炼收率系）
+  // 残骸提纯学（salvage-refining，2026-09-05）：保底矿物每级 +8%（独立技能线，不依赖精炼产出倍率）
   const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
   if (refLv > 0) baseUnits *= 1 + 0.08 * refLv
   const jitter = 1 - RECYCLE_YIELD_JITTER + 2 * RECYCLE_YIELD_JITTER * nextRandom(state.rng)

@@ -116,14 +116,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '精炼学',
     group: '工业',
     rank: 1,
-    description: '精炼炉收率：每级提高 ⟦8%⟧（基础 50%；与高级回收处理合计上限 ⟦95%⟧）。',
+    description: '精炼炉产出倍率：每级提高 ⟦8%⟧（基础 100%；与高级回收处理合计上限 ⟦160%⟧）。',
   },
   {
     id: 'reprocessing',
     name: '高级回收处理',
     group: '工业',
     rank: 2,
-    description: '进一步提高精炼收率：每级 +⟦4%⟧（与精炼学合计上限 ⟦95%⟧）。',
+    description: '进一步提高精炼产出倍率：每级 +⟦4%⟧（与精炼学合计上限 ⟦160%⟧）。',
   },
   {
     id: 'industry',
@@ -242,7 +242,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '残骸提纯学',
     group: '工业',
     rank: 2,
-    description: '回收提纯工艺：残骸回收的保底矿物产出每级 +⟦8%⟧（对标精炼收率系——采矿有精炼学/高级回收合计至 95%，残骸用此保持满配对位）。',
+    description: '回收提纯工艺：残骸回收的保底矿物产出每级 +⟦8%⟧（满级共 +40%）。',
   },
 
   // ───────── 战斗（2026-09-05 武器族技能批次：三形态专精乘区，乘算于炮术学之上） ─────────

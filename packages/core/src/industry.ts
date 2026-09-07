@@ -7,9 +7,11 @@
  *   AI 核心驱动（核心出库占用，不占副船名额；核心库存即并行上限）；
  * - 固定批量运转：每种资源有"单批单位 × 单批周期"（5~10 秒节奏，items.ts refineBatchUnits/
  *   refineCycleMs；缺失兜底 10 单位/6 秒）；启动即把全部库存锁定入炉（货仓优先取用），
- *   每批到点按收率出矿物入物品仓库并自动续批，直到料尽自动停炉（核心归还）；
+ *   每批到点按产出倍率出矿物入物品仓库并自动续批，直到料尽自动停炉（核心归还）；
  * - 停止即止：已完成批已出货，剩余锁定原料全额退回物品仓库；
- * - 收率 = 基础 50% + 精炼学 8%/级 + 高级回收 4%/级，上限 95%；每批结算按当时技能取值；
+ * - 产出倍率（玩家口径；旧称收率）= 基础 100%（配方按 100% 基准标定）+ 精炼学 8%/级 +
+ *   高级回收处理 4%/级，上限 160%；每批结算按当时技能取值（2026-09-08 船长定稿：
+ *   基础即满额产出，技能只负责把倍率推高到 160%——配方数值已按此基准标定）；
  * - AI 核心驱动：单批周期 ÷核心效率（核心只提速不减产，与副船任务同口径）。
  * - 卖出（V9 起）不再有"固定价卖给空间站"：货先锁定进市场 escrow，按 NPC 收购簿
  *   即时市价成交（吃穿簿的剩余自动转限价卖单）；池商品在均衡时收购价 = 基准价，
@@ -44,7 +46,7 @@ export function sellPriceMultiplier(state: GameState): number {
   return 1 + Math.min(0.15, standingOf(state, DSI_FACTION_ID) * 0.01)
 }
 
-/** 按当前技能计算精炼收率（0~1） */
+/** 按当前技能计算精炼产出倍率（玩家口径：1.0 = 100%，1.6 = 160%；旧称收率） */
 export function refineRate(state: GameState, ctx: SimContext): number {
   const bal = ctx.balance.refining
   const level1 = state.skills.trained[bal.rateSkillId] ?? 0
@@ -91,7 +93,7 @@ export interface RefineRunView {
   /** 劳动者：pilot = 主控 / AI 核心类型 */
   worker: 'pilot' | AiCoreType
   workerLabel: string
-  /** 当前收率（每批结算按当时技能取值） */
+  /** 当前产出倍率（玩家口径 %；每批结算按当时技能取值） */
   rate: number
   /** 单批单位（开工时按技能现算） */
   batchUnits: number

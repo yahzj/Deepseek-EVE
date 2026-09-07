@@ -3,11 +3,12 @@
  *
  * 数值设计（中文说明）：
  * - 矿石/气体/冰矿 1 单位占 1 m³ 货舱，矿物精炼后体积骤减（0.01 m³/单位）；
- * - 精炼配方按"50% 收率（无技能）时每批产值 ≈ 每批耗料价值"配平（2026-09-08 船长定稿，
- *   替代旧"100% 收率 ≈ 收购价 ×1.15~1.35、初始 50% 收率亏"规则）：零技能精炼不吃亏，
- *   精炼学每级 +8pp 收率线性转赚，满技能（95%）净收益 ≈ +82%~+110% 耗料值
- *   （≈ 原料售价 ×1.9，与"满级 ×1.75~1.8"公告口径同源）；perOre 取整粒度允许
- *   50% 实际净率落在 +0.4%~+4.6% 的微正区间（护栏见 tools/content-check.ts）；
+ * - 精炼配方 = 「产出倍率 100% 下每 1 单位资源的矿物产出」（玩家口径：产出倍率，旧称收率；
+ *   balance.refining 基础倍率 1.0、精炼学 +8%/级、高级回收处理 +4%/级、上限 1.6）。
+ *   2026-09-08 船长两轮定稿：配方按「无技能（倍率 100%）时每批产值 ≈ 每批耗料价值」配平——
+ *   零技能精炼不吃亏（perOre 取整允许实际净率微正 +0.4%~+4.6%）；技能把倍率推高到 160%，
+ *   满技能净收益 ≈ +60%~+79% 耗料值（多数 60~70%；小批量高档位因取整步长略高。技能每级收益
+ *   较旧「50% 起点」体系约减半，防工业技能过肥；护栏见 tools/content-check.ts）；
  * - 新矿物只由新资源产出 → 不稀释旧矿价值；V10 起高价值采集点需协会声望（见 belts.ts）；
  * - 弹药/无人机为占位消耗品：市场流通、可囤可回卖，战斗系统开放后启用消耗。
  */
@@ -24,8 +25,8 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 13,
     description: '最常见的低品位矿石，遍布新手星域，是起步的第一桶金。',
     refine: [
-      { mineralId: 'min-tritanium', perOre: 2.35 },
-      { mineralId: 'min-pyerite', perOre: 0.68 },
+      { mineralId: 'min-tritanium', perOre: 1.175 },
+      { mineralId: 'min-pyerite', perOre: 0.34 },
     ],
     refineBatchUnits: 24,
     refineCycleMs: 20_000,
@@ -38,8 +39,8 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 18,
     description: '熔岩包裹的致密矿石，类银与类晶体的重要来源。',
     refine: [
-      { mineralId: 'min-pyerite', perOre: 1.97 },
-      { mineralId: 'min-mexallon', perOre: 0.7 },
+      { mineralId: 'min-pyerite', perOre: 0.985 },
+      { mineralId: 'min-mexallon', perOre: 0.35 },
     ],
     refineBatchUnits: 20,
     refineCycleMs: 20_000,
@@ -52,8 +53,8 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 55,
     description: '红色星环内的高价值矿石，航线更长，回报也更丰厚。',
     refine: [
-      { mineralId: 'min-nocxium', perOre: 1.06 },
-      { mineralId: 'min-tritanium', perOre: 2.89 },
+      { mineralId: 'min-nocxium', perOre: 0.53 },
+      { mineralId: 'min-tritanium', perOre: 1.445 },
     ],
     refineBatchUnits: 10,
     refineCycleMs: 20_000,
@@ -66,8 +67,8 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 150,
     description: '泛着幽光的致密岩层，同位聚晶的主要载体——环心矿区的高纯产出。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 5.28 },
-      { mineralId: 'min-tritanium', perOre: 4.3 },
+      { mineralId: 'min-isotope', perOre: 2.64 },
+      { mineralId: 'min-tritanium', perOre: 2.15 },
     ],
     refineBatchUnits: 4,
     refineCycleMs: 20_000,
@@ -80,8 +81,8 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 115,
     description: '棱面折射晨光的晶体矿石，高纯度同位聚晶的富矿层。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 4.15 },
-      { mineralId: 'min-pyerite', perOre: 1.54 },
+      { mineralId: 'min-isotope', perOre: 2.075 },
+      { mineralId: 'min-pyerite', perOre: 0.77 },
     ],
     refineBatchUnits: 4,
     refineCycleMs: 20_000,
@@ -94,9 +95,9 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 340,
     description: '深空裂隙中凝结的黑色晶体，孕育冥铁合金的母矿。',
     refine: [
-      { mineralId: 'min-starcore', perOre: 2.37 },
-      { mineralId: 'min-darkiron', perOre: 0.19 },
-      { mineralId: 'min-nocxium', perOre: 0.48 },
+      { mineralId: 'min-starcore', perOre: 1.185 },
+      { mineralId: 'min-darkiron', perOre: 0.095 },
+      { mineralId: 'min-nocxium', perOre: 0.24 },
     ],
     refineBatchUnits: 18,
     refineCycleMs: 260_000,
@@ -109,8 +110,8 @@ export const ORES: readonly ItemDef[] = [
     baseSellPriceIsk: 490,
     description: '只有星云深处的矿脉才出产的传说级矿石，一舱就能换一艘船。',
     refine: [
-      { mineralId: 'min-darkiron', perOre: 1.0 },
-      { mineralId: 'min-starcore', perOre: 1.37 },
+      { mineralId: 'min-darkiron', perOre: 0.5 },
+      { mineralId: 'min-starcore', perOre: 0.685 },
     ],
     refineBatchUnits: 4,
     refineCycleMs: 80_000,
@@ -195,8 +196,8 @@ export const GASES: readonly ItemDef[] = [
     baseSellPriceIsk: 85,
     description: '低重力气田的氖氦混合云，采集容易，同位聚晶的重要来源。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 2.86 },
-      { mineralId: 'min-tritanium', perOre: 1.84 },
+      { mineralId: 'min-isotope', perOre: 1.43 },
+      { mineralId: 'min-tritanium', perOre: 0.92 },
     ],
     refineBatchUnits: 50,
     refineCycleMs: 6_000,
@@ -209,9 +210,9 @@ export const GASES: readonly ItemDef[] = [
     baseSellPriceIsk: 330,
     description: '坟场深处沉淀的腐蚀性磷光霾云——提炼价值极高的稀有气藏。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 4.58 },
-      { mineralId: 'min-starcore', perOre: 1.62 },
-      { mineralId: 'min-mexallon', perOre: 1.26 },
+      { mineralId: 'min-isotope', perOre: 2.29 },
+      { mineralId: 'min-starcore', perOre: 0.81 },
+      { mineralId: 'min-mexallon', perOre: 0.63 },
     ],
     refineBatchUnits: 20,
     refineCycleMs: 8_000,
@@ -224,9 +225,9 @@ export const GASES: readonly ItemDef[] = [
     baseSellPriceIsk: 230,
     description: '狂暴离子流内部反而凝集着纯净的星髓晶——敢进去的人才拿得到。',
     refine: [
-      { mineralId: 'min-starcore', perOre: 1.54 },
-      { mineralId: 'min-darkiron', perOre: 0.13 },
-      { mineralId: 'min-isotope', perOre: 0.63 },
+      { mineralId: 'min-starcore', perOre: 0.77 },
+      { mineralId: 'min-darkiron', perOre: 0.065 },
+      { mineralId: 'min-isotope', perOre: 0.315 },
     ],
     refineBatchUnits: 25,
     refineCycleMs: 7_000,
@@ -239,8 +240,8 @@ export const GASES: readonly ItemDef[] = [
     baseSellPriceIsk: 330,
     description: '极光粒子云团，传说其中沉淀着冥铁与星髓的混合物。',
     refine: [
-      { mineralId: 'min-starcore', perOre: 1.47 },
-      { mineralId: 'min-darkiron', perOre: 0.5 },
+      { mineralId: 'min-starcore', perOre: 0.735 },
+      { mineralId: 'min-darkiron', perOre: 0.25 },
     ],
     refineBatchUnits: 15,
     refineCycleMs: 8_000,
@@ -257,8 +258,8 @@ export const ICES: readonly ItemDef[] = [
     baseSellPriceIsk: 150,
     description: '蓝白色寒冰星环的碎块，冰层里封存着高纯度同位聚晶。',
     refine: [
-      { mineralId: 'min-isotope', perOre: 4.95 },
-      { mineralId: 'min-mexallon', perOre: 1.46 },
+      { mineralId: 'min-isotope', perOre: 2.475 },
+      { mineralId: 'min-mexallon', perOre: 0.73 },
     ],
     refineBatchUnits: 40,
     refineCycleMs: 6_000,
@@ -271,9 +272,9 @@ export const ICES: readonly ItemDef[] = [
     baseSellPriceIsk: 230,
     description: '冰核深处呈现髓质纹理的古老冰层，星髓晶藏量可观。',
     refine: [
-      { mineralId: 'min-starcore', perOre: 1.32 },
-      { mineralId: 'min-isotope', perOre: 2.42 },
-      { mineralId: 'min-mexallon', perOre: 0.88 },
+      { mineralId: 'min-starcore', perOre: 0.66 },
+      { mineralId: 'min-isotope', perOre: 1.21 },
+      { mineralId: 'min-mexallon', perOre: 0.44 },
     ],
     refineBatchUnits: 25,
     refineCycleMs: 7_000,
@@ -286,9 +287,9 @@ export const ICES: readonly ItemDef[] = [
     baseSellPriceIsk: 360,
     description: '吸收光线的黑色冰晶，暗星冰环深处才有的珍品。',
     refine: [
-      { mineralId: 'min-darkiron', perOre: 0.59 },
-      { mineralId: 'min-starcore', perOre: 1.1 },
-      { mineralId: 'min-isotope', perOre: 1.83 },
+      { mineralId: 'min-darkiron', perOre: 0.295 },
+      { mineralId: 'min-starcore', perOre: 0.55 },
+      { mineralId: 'min-isotope', perOre: 0.915 },
     ],
     refineBatchUnits: 12,
     refineCycleMs: 8_000,
