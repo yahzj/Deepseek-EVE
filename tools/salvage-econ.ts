@@ -18,6 +18,9 @@ import {
   FRAGMENT_RECIPES,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
+  RECYCLE_POOL_AVG_ISK,
+  recycleTierOf,
+  wreckBaseDensity,
 } from '@whale/core'
 
 const ctx = buildSimContext()
@@ -97,6 +100,38 @@ function main(): void {
       `· ${tier.padEnd(6)} 池均价 ${avg.toFixed(1).padStart(6)} ISK/单位 | Y = ${RECYCLE_YIELD_PER_M3[tier]} unit/m³ | 保底 EV/h：无技能 ${Math.round(ev).toLocaleString('zh-CN')}（偏差 ${dev.toFixed(1)}%）→ 满技能 ${Math.round(full).toLocaleString('zh-CN')}（偏差 ${fullDev.toFixed(1)}%）`,
     )
   }
+  // B3.1 敌群特色池逐卡对照（2026-09-08：池均价 ÷ 档基数 ∈ 保底乘数 m ±3%；
+  // m = mSec(1+0.45×max(0,−sec) ≤1.45) × mThreat(1+0.004×threat ≤1.30)；content-check 同步断言）
+  console.log('══ B3.1 敌群特色池逐卡对照（目标：池均价 = m × 档基数 ±3%）══')
+  let bad = 0
+  let rows = 0
+  for (const def of ctx.anomalies.values()) {
+    if (!def.recyclePool || def.recyclePool.length === 0) continue
+    rows += 1
+    const galaxy = ctx.galaxies.get(def.galaxyId)
+    const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
+    const mSec = Math.min(1.45, 1 + 0.45 * Math.max(0, -sec))
+    const mThreat = Math.min(1.3, 1 + 0.004 * (def.threat ?? 0))
+    const m = mSec * mThreat
+    const pool = def.recyclePool
+    const wSum = pool.reduce((s, [, w]) => s + w, 0)
+    let avg = 0
+    for (const [id, w] of pool) {
+      const item = ctx.items.get(id)
+      avg += (w / wSum) * (item?.baseSellPriceIsk ?? 0)
+    }
+    const tier = recycleTierOf(wreckBaseDensity(def.galaxyId, ctx))
+    const base = RECYCLE_POOL_AVG_ISK[tier]
+    const ratio = avg / base
+    const dev = ((ratio - m) / m) * 100
+    const ok = Math.abs(dev) <= 3
+    if (!ok) bad += 1
+    const ev = FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * avg
+    console.log(
+      `· ${def.name}${galaxy ? `（${galaxy.name}）` : ''} m=${m.toFixed(3)} | 池均价 ${avg.toFixed(2)} ÷ 档基数 ${base} = ${ratio.toFixed(3)}（偏差 ${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%）${ok ? ' ✓' : ' ✗ 超差'} | 保底 ≈ ${Math.round(ev).toLocaleString('zh-CN')} ISK/h`,
+    )
+  }
+  console.log(`· B3.1 特色池 ${rows} 张，超差 ${bad} 张（≥21 为满配）`)
   // 彩头 EV（每 m³ 概率 × 均价；MK2 仅低安池子、碎片按各自片值；概率不受技能影响）
   const baseEv = FURNACE_M3_H * RECYCLE_CHANCE.base * baseAvg
   const mk2Ev = FURNACE_M3_H * RECYCLE_CHANCE.mk2 * mk2Avg
