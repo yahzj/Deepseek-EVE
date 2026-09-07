@@ -1,16 +1,42 @@
 /**
- * B3.1 敌群特色残骸产出表（2026-09-06 船长确认方向，数值草表 docs/design/b3-flavor-content.md）。
- * 规则：保底目标乘数 m = mSec × mThreat（sec 溢价 ≤1.45 × 威胁 ≤1.3，顶格 1.89）；
- * 每卡 recyclePool = 同档 2 主矿权重，池均价 ≈ m×档基数 ±3%（content-check 断言）。
- * note = 玩家可见“残骸产出倾向”一句话；loot = 试点彩头可出件集（可选，缺省走三层默认）。
+ * 主题彩头追加表（2026-09-08 船长定稿：武器移出主题、仅增幅装备；统一"追加"语义）。
+ * 规则：
+ * - recycleLoot.modules = 中安主题追加件（加到"直出基础池"上；每卡 ≤1 件、非火力增幅件）；
+ * - recycleLoot.mk2 = 低安主题追加件（加到"低安门槛 MK2 池"上；默认 7 件一件不少，仅 sec<0 掷）；
+ * - 主题件不得含武器；唯一例外 = 关底穹顶守卫 追加三把 MK3 武器（动能/激光/导弹架）；
+ * - 有追加件时引擎整池按均价反比缩放（EV 守恒），content-check 断言区划与白名单。
  */
 import type { AnomalyDef } from '@whale/core'
 
-/** 按悬赏卡 id 合并进悬赏卡定义（context 构建时 spread 进 ANOMALIES 条目） */
 export type RecycleFlavor = {
   recyclePool?: ReadonlyArray<readonly [string, number]>
   recycleNote?: string
   recycleLoot?: { modules?: readonly string[]; mk2?: readonly string[] }
+}
+
+/** 主题追加件（18 张 sec<0.5 悬赏；高安与母港系走默认池，无追加） */
+export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = {
+  // ── 中安（0 ≤ sec < 0.5）：直出基础池追加 1 件非火力增幅件 ──
+  'ano-lantern-saboteurs': { modules: ['mod-cargo-2'] }, // 信标猎手：长途货舱
+  'ano-haze-ambush': { modules: ['mod-shield-kin-2'] }, // 灰霾伏击：动能护盾增强（并入试点）
+  'ano-shard-bandits': { modules: ['mod-miner-2'] }, // 碎晶劫匪：掠夺采集器（并入试点）
+  'ano-redring-raiders': { modules: ['mod-armor-plate-2'] }, // 赤潮舰队：装甲增厚
+  'ano-ghost-signal': { modules: ['mod-shield-pla-2'] }, // 幽灵舰：能量护盾残影
+  'ano-echo-haunt': { modules: ['mod-shield-ext-2'] }, // 回音残舰：护盾扩展
+  'ano-mirage-hijackers': { modules: ['mod-gyro-2'] }, // 蜃影劫持：姿态陀螺（机动）
+  // ── 低安（sec < 0）：低安门槛 MK2 池追加增幅件（默认 7 件保留）──
+  'ano-auro-raiders': { mk2: ['mod-armor-exp-2', 'mod-stab-exp-2'] }, // 奥罗盗匪：高爆甲+高爆稳定
+  'ano-abyss-guard': { mk2: ['mod-shield-exp-2', 'mod-armor-plate-2'] }, // 深渊卫队：高爆盾+增厚
+  'ano-titan-wreck': { mk2: ['mod-shield-ext-2', 'mod-armor-plate-2'] }, // 泰坦：巨构扩展+增厚（并入试点，武器清出）
+  'ano-cinder-siege': { mk2: ['mod-armor-pla-2', 'mod-stab-pla-2'] }, // 烬火围攻：能量甲+等离子稳定
+  'ano-chasm-aberrations': { mk2: ['mod-stab-kin-2', 'mod-armor-exp-2'] }, // 裂谷畸变：动能稳定+高爆甲
+  'ano-nadir-static': { mk2: ['mod-rof-2', 'mod-track-2'] }, // 天底封锁：射速+索敌
+  'ano-starcore-boss': { mk2: ['mod-drone-tac-2', 'mod-drone-rack-2'] }, // 星髓巢穴：战术导控+甲板扩展（武器清出）
+  'ano-maw-hunt': { mk2: ['mod-prop-2', 'mod-gyro-2'] }, // 噬口猎杀：矢量推进+陀螺
+  'ano-voidedge-warden': { mk2: ['mod-shield-pla-2', 'mod-rof-2'] }, // 虚海守望：能量盾+射速
+  'ano-gravekeeper': { mk2: ['mod-shield-pla-2', 'mod-armor-plate-2'] }, // 坟场守墓：能量盾+增厚
+  // 穹顶守卫（关底唯一武器直出点）：门槛池追加三把 MK3 武器（动能/激光/导弹架；不追加装甲——默认池已有）
+  'ano-vault-sentinel': { mk2: ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3'] },
 }
 
 export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
@@ -98,20 +124,6 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recyclePool: [['min-darkiron', 17], ['min-isotope', 83]],
     recycleNote: '穹顶守卫残骸：冥铁合金残片',
   },
-}
-
-/** 试点彩头可出件（6 卡：星髓巢穴/坟场/穹顶/深渊·泰坦/碎晶带/灰霾带）——件集掉率按均价自动缩放；
- * 2026-09-08 船长收口：MK3 一律走碎片（1000 片），唯一例外 = 最后一个悬赏「穹顶守卫」彩头可概率直出
- * MK3 武器（攻坚炮台 MK3·动能型，mod-turret-kin-3）；主题彩头仅限 sec < 0.5 星系（content-check 断言）。 */
-export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = {
-  'ano-starcore-boss': { modules: ['mod-turret-kin-2', 'mod-laser-2', 'mod-drone-tac-2'], mk2: ['mod-drone-tac-2'] },
-  'ano-gravekeeper': { modules: ['mod-armor-kin-2', 'mod-shield-kin-2'], mk2: ['mod-armor-kin-2'] },
-  // 穹顶守卫（最后悬赏）：MK3 装甲不直出（走碎片），主题 = MK2 装甲镀层 + 唯一 MK3 武器直出例外
-  'ano-vault-sentinel': { modules: ['mod-armor-kin-2', 'mod-turret-kin-3'], mk2: ['mod-turret-kin-3'] },
-  // 泰坦残骸勘探：MK3 武器直出随收口移除，改回 MK2 动能炮 + 导弹架主题（MK3 经 T3 碎片集齐解锁）
-  'ano-titan-wreck': { modules: ['mod-turret-kin-2', 'mod-missile-2'], mk2: ['mod-turret-kin-2'] },
-  'ano-shard-bandits': { modules: ['mod-laser-2', 'mod-missile-2'], mk2: ['mod-laser-2'] },
-  'ano-haze-ambush': { modules: ['mod-missile-2', 'mod-turret-kin-2'], mk2: ['mod-missile-2'] },
 }
 
 /** 合并进悬赏卡（工厂函数由 anomalies.ts 调用，避免循环依赖） */
