@@ -774,7 +774,7 @@ export function MarketPage({
                   aria-selected={mktTab === 'rare'}
                   className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
                   onClick={() => setMktTab('rare')}
-                  title="稀有订单寿命 9 分钟、限定奇货 4 分钟闪现——切回本标签才能看到现存单"
+                  title="稀有订单寿命 36 分钟、限定奇货 4 分钟闪现——切回本标签才能看到现存单"
                 >
                   <span>✦</span>
                   <span>稀有订单</span>
@@ -798,7 +798,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title="稀有订单"
-                  right={<span className="app-dim">稀有 9 分钟寿命 · 限定奇货 4 分钟闪现 · 时钟=现存单到期</span>}
+                  right={<span className="app-dim">稀有 36 分钟寿命 · 限定奇货 4 分钟闪现 · 时钟=现存单到期</span>}
                   rows={stockedFirst(engine, rareCol)}
                   selKey={activeSelKey}
                   onSelect={setSelKey}
