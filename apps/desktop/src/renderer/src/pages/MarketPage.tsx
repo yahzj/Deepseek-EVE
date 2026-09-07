@@ -681,7 +681,8 @@ export function MarketPage({
   onToast,
   focusKey,
   focusSeq,
-}: PageProps & { focusKey?: string | null; focusSeq?: number }) {
+  onFocusUsed,
+}: PageProps & { focusKey?: string | null; focusSeq?: number; onFocusUsed?: () => void }) {
   const state = engine.state
   const goods = useMemo(() => [...engine.ctx.marketGoods.values()], [engine])
   const common = goods.filter((g) => g.rarity === 'common')
@@ -701,6 +702,8 @@ export function MarketPage({
       lastFocusSeq.current = focusSeq
       setKw(focusKey)
       setSelKey(focusKey)
+      // 一次性聚焦（2026-09-08 修复）：应用后通知 App 清空，避免每次进市场都默认带出上次查看的物品
+      onFocusUsed?.()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusSeq])
