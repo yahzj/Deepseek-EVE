@@ -36,7 +36,7 @@
 - 样式纪律：滚动条样式复用既有列表/网格族，不新造外观。
 
 ## 实施清单（逐页勾选；每页完成后在 App.tsx 的 no-scroll 名单加入该页）
-- [x] 批次1：舰船（fleet/AI/shop 各活跃 Panel is-fill）——已上线（App PAGE_NO_SCROLL 含 ship）
+- [ ] 批次1：舰船（fleet/AI/shop 各活跃 Panel is-fill）
 - [ ] 批次1：市场（两条说明入固定头、左列列表弹性化、右列沿用 7307）
 - [ ] 批次1：装配（fit-cols 入 Panel body 内滚）
 - [ ] 批次2：工业（三标签 Panel body 滚；组装机筛选行固定策略与船长对齐）

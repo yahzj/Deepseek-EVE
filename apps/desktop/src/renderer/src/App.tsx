@@ -49,9 +49,6 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
 
 type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
 
-/** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship'])
-
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
   const totalMin = Math.floor(gameMs / 60_000)
@@ -665,8 +662,7 @@ export function App({ engine }: { engine: GameEngine }) {
               if (mapTab) changeMapTab(mapTab as MapTab)
             }}
           />
-          {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗） */}
-          <div className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}`} key={page}>
+          <div className="app-page-content" key={page}>
             {page === 'ship' ? (
               <ShipPage
                 {...pageProps}
