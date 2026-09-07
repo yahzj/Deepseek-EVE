@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { acquisitionFactorOf, goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -397,7 +397,8 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
 
   function setDefaults(side: 'buy' | 'sell'): void {
     setTab(side)
-    setPrice(Math.max(1, side === 'buy' ? quote.sell ?? levelOf(state, engine.ctx, good.key) : quote.buy ?? Math.round(levelOf(state, engine.ctx, good.key) * acquisitionFactorOf(good))))
+    // 默认价 = 与引擎通道同源的价线（收购价线/供应价线）；簿价含 jitter 不作通道基准
+    setPrice(Math.max(1, side === 'buy' ? quote.sell ?? askLineOf(state, engine.ctx, good.key) : buyLineOf(state, engine.ctx, good.key)))
     setQty(side === 'sell' ? Math.max(1, holdings) : 1)
   }
   function doBuy(): void {
@@ -571,8 +572,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               const p = Math.max(1, Math.floor(price || 1))
               const bal = engine.ctx.balance.market
               if (tab === 'sell') {
-                const bid =
-                  quote.buy ?? Math.max(1, Math.round(levelOf(state, engine.ctx, good.key) * acquisitionFactorOf(good)))
+                const bid = buyLineOf(state, engine.ctx, good.key)
                 if (p > bid) {
                   const pct = ((p - bid) / bid) * 100
                   const pRoll = (bal.snatchSellChance * Math.exp((-bal.snatchSellDecay * pct) / 100)) * 100
@@ -602,8 +602,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                   </>
                 )
               }
-              const ask =
-                quote.sell ?? Math.max(1, Math.round(levelOf(state, engine.ctx, good.key) * (good.supplyMultiplier ?? 1)))
+              const ask = quote.sell ?? askLineOf(state, engine.ctx, good.key)
               if (p >= ask) return <>平价买入（= 供应价 {isk(ask)}）：现买现得</>
               const pct = ((ask - p) / ask) * 100
               const pRoll = (bal.snatchBuyChance * Math.exp((-bal.snatchBuyDecay * pct) / 100)) * 100

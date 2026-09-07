@@ -275,6 +275,8 @@ export {
   bmGateLocked,
   bmGateReason,
   acquisitionFactorOf,
+  buyLineOf,
+  askLineOf,
   placeSellOrder,
   placeBuyOrder,
   cancelOrder,

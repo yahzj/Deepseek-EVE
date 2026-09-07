@@ -232,7 +232,7 @@ export const TABLES: readonly TableSpec[] = [
       col('常驻·目标库存poolTarget', 'poolTarget', 'num', { min: 0, int: true }),
       col('常驻·供应流量supplyFlow', 'supplyFlow', 'num', { min: 0, int: true }),
       col('稀有/限定·供应倍数supplyMultiplier', 'supplyMultiplier', 'num', { min: 0 }),
-      col('收购出价倍数demandMultiplier(空=平价)', 'demandMultiplier', 'num', { min: 0 }),
+      col('收购档位demandMultiplier（2026-09-08：单件 common 0.6/rare 0.65/exotic 1.0，池商品留空=原料平价、池耗材 0.6）', 'demandMultiplier', 'num', { min: 0 }),
       col('可否卖出playerSellable(空=默认可)', 'playerSellable', 'bool'),
       col('可否买入playerBuyable(空=默认可)', 'playerBuyable', 'bool'),
       col('声望要求standingReq', 'standingReq', 'num', { min: 0, int: true }),

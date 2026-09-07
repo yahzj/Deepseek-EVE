@@ -10,7 +10,7 @@
  *   池耗材显式 0.6，防"造弹卖站"近无本回血）；
  * - 矿石/矿物/气体/冰矿/弹药/无人机走"池模型"：basePrice = 常驻均衡价，收购平价、供应微溢 6%；
  *   池 target/flow 随价格递减（防高价商品天量刷钱）；弹药/无人机为 NPC 补给池（占位消耗品，
- *   玩家可回卖但亏 6% 无套利）；
+ *   玩家可回卖但收购仅 0.6L，倒卖无套利）；
  * - V10 声望门槛（standingReq）：部分高端商品需协会声望才可买入（卖出不限）——给声望找新用途；
  *   门槛梯度：MK3 蓝图 4、武装/重装/航运顶级船 7~9、异星原型与旗舰 10~11。
  */
@@ -83,7 +83,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // V18 无人机装置（高槽；市场专供无蓝图）
   { key: 'mod-drone-rack-1', kind: 'module', refId: 'mod-drone-rack-1', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.6 },
   { key: 'mod-drone-tac-1', kind: 'module', refId: 'mod-drone-tac-1', rarity: 'common', basePrice: 18_000, demandMultiplier: 0.6 },
-  // 低级蓝图（价格 = 蓝图商店价；买来学习后永久可造，重复蓝图回卖半价）
+  // 低级蓝图（价格 = 蓝图商店价；买来学习后永久可造，重复蓝图回卖按 common 档 0.6L 收购）
   { key: 'bp-miner-1', kind: 'blueprint', refId: 'bp-miner-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
   { key: 'bp-cargo-1', kind: 'blueprint', refId: 'bp-cargo-1', rarity: 'common', basePrice: 6_000, demandMultiplier: 0.6 },
   { key: 'bp-turret-1', kind: 'blueprint', refId: 'bp-turret-1', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.6 },
@@ -99,7 +99,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 9_000, demandMultiplier: 0.6 },
   // 低级船（AI 副船军团的主力船）
   { key: 'ship-burrower', kind: 'ship', refId: 'burrower', rarity: 'common', basePrice: 120_000, demandMultiplier: 0.6 },
-  // 基础 AI 核心（原直购并入市场，平价常驻；可回卖：收购价 0.5×L）
+  // 基础 AI 核心（原直购并入市场，平价常驻；可回卖：收购档 common 0.6×L）
   { key: 'core-basic', kind: 'aicore', refId: 'basic', rarity: 'common', basePrice: 25_000, demandMultiplier: 0.6 },
 
   // ══════════ 稀有订单（rare：低频刷新、寿命 9 分钟） ══════════
@@ -200,7 +200,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 1.0, standingReq: 10 },
-  // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径；可回卖：收购价 0.5×L）
+  // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径；可回卖：收购档 exotic 1.0×L）
   { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 90_000, demandMultiplier: 1.0 },
   { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 1.0 },
   { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 900_000, demandMultiplier: 1.0 },

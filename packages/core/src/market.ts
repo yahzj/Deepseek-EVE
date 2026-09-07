@@ -181,6 +181,23 @@ export function acquisitionFactorOf(def: MarketGoodDef): number {
   return def.demandMultiplier ?? BUY_TIER[def.rarity]
 }
 
+/** 当前收购价线（引擎吸收/抢单基准 buyPrice 同源；UI 提示与默认卖价须用它——簿最高价含 jitter，
+ * 若当基准展示，UI 显示的"平价档"与引擎实际通道会在 ±2% 临界带错位） */
+export function buyLineOf(state: GameState, ctx: SimContext, goodKey: string): number {
+  const def = ctx.marketGoods.get(goodKey)
+  if (!def) return 0
+  const poolQ = state.market.pools[goodKey]?.q ?? 0
+  return Math.round(buyPrice(def, priceLevel(state, ctx, def, poolQ)))
+}
+
+/** 当前供应价线（sellPrice 同源；买单默认价/低挂提示基准） */
+export function askLineOf(state: GameState, ctx: SimContext, goodKey: string): number {
+  const def = ctx.marketGoods.get(goodKey)
+  if (!def) return 0
+  const poolQ = state.market.pools[goodKey]?.q ?? 0
+  return Math.round(sellPrice(def, priceLevel(state, ctx, def, poolQ)))
+}
+
 /** 收购单价（NPC 收玩家的价）：池商品 = L × 倍率（原料留空 = 1.0 平价；弹药/修理件/无人机等
  * 池耗材显式 0.6）；单件 = 档位倍率 × L（common 0.6 / rare 0.65 / exotic 1.0）；delta = 档位差 */
 function buyPrice(def: MarketGoodDef, L: number, delta = 0): number {

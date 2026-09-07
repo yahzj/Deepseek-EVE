@@ -13,7 +13,9 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   acquisitionFactorOf,
+  askLineOf,
   buyAtMarket,
+  buyLineOf,
   cancelOrder,
   learnBlueprint,
   listSellHolding,
@@ -798,6 +800,10 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     expect(marketQuote(state, ctx, 'mod-a').buy).toBe(60) // 0.6×100
     expect(marketQuote(state, ctx, 'min-a').buy).toBe(100) // 原料池留空 = 平价 1.0
     expect(marketQuote(state, ctx, 'ammo-a').buy).toBe(6) // 池耗材显式 0.6 → 10×0.6
+    // 价线函数与引擎通道同源（吸收/抢单基准；UI 提示同款用）
+    expect(buyLineOf(state, ctx, 'mod-a')).toBe(60)
+    expect(buyLineOf(state, ctx, 'ammo-a')).toBe(6)
+    expect(askLineOf(state, ctx, 'mod-a')).toBe(100) // 单件供应线 = supply×L
   })
 
   it('簿面件数放大：common 单件开盘收购单 qty 3；rare 收购单出现时 qty 2 @0.65L', () => {
