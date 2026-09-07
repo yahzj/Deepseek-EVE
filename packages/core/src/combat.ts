@@ -895,7 +895,9 @@ export function battleArcsFor(
   })
   // 我方各武器当前装填剩余（与 meArcs 同序：units['player'].weapons；单位缺失给空数组）
   const meReload = (battle.units['player']?.weapons ?? []).map((n) => Math.max(0, Math.floor(n)))
-  let foeMin = 0
+  // 敌方整编队聚合：min/max 跨各单位武器取极值（min 以 +∞ 起步——否则 0 初值会把
+  // 近盲带最小射程吞成 0，底部"敌方 X~Ym"显示错误，2026-09-08 玩家反馈）
+  let foeMin = Number.POSITIVE_INFINITY
   let foeMax = 0
   let foeType: DamageType = 'kinetic'
   for (const f of foes) {
@@ -905,6 +907,7 @@ export function battleArcsFor(
       foeType = w.fixedType ?? 'kinetic'
     }
   }
+  if (!Number.isFinite(foeMin)) foeMin = 0
   const openM = battleOpenM(me, foes, bal)
   const foeMaxHp: Record<string, { s: number; a: number; h: number }> = {}
   for (const f of foes) foeMaxHp[f.tag] = { s: f.hp.s, a: f.hp.a, h: f.hp.h }

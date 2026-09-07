@@ -14,7 +14,7 @@ import {
   setBattleDesire,
   startExpedition,
 } from '../src/expedition'
-import { battleWinPreview } from '../src/combat'
+import { battleWinPreview, battleArcsFor } from '../src/combat'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 
 describe('远征 V12：两阶段', () => {
@@ -204,8 +204,7 @@ describe('远征 V12：两阶段', () => {
   })
 })
 
-describe('远征自动返航最近建成站（2026-09-08 船长定：所有自动返航选最近已建成站）', () => {
-  it('目标星系已建成副站：胜利 = 本地返港 120s，到港停靠该站（不再回母港）', () => {
+describe('远征自动返航最近建成站（2026-09-08 船长定：所有自动返航选最近已建成站）', () => {  it('目标星系已建成副站：胜利 = 本地返港 120s，到港停靠该站（不再回母港）', () => {
     const site = {
       id: 'site-far',
       name: '远郊前哨',
@@ -236,5 +235,27 @@ describe('远征自动返航最近建成站（2026-09-08 船长定：所有自�
     expect(st.dockedSite).toBe('site-far') // 落点 = 该站（母港镜像入口）
     expect(st.awayGalaxy).toBeNull()
     expect(st.logs.some((l) => l.text.includes('「远郊前哨」'))).toBe(true)
+  })
+})
+
+describe('战斗界面敌方射程聚合（2026-09-08 玩家反馈：敌方最小射程被 0 初值吞成 0）', () => {
+  it('kite/带僚机目标：foe.minM = 真实近盲起点（>0），foe.maxM 正常', () => {
+    const st = createInitialState({ nowWallMs: 0, seed: 5 })
+    st.wallet.isk = 500_000
+    const foe = {
+      ...anomaly('ano-kite', 'galaxy-hub', { threat: 34, reward: 1_000 }),
+      tactic: 'kite' as const,
+      dmgMix: { plasma: 2 } as const,
+      escorts: 1,
+    }
+    const c = makeTestCtx({ anomalies: [foe] })
+    expect(startExpedition(st, 'ano-kite', c).ok).toBe(true)
+    advanceGame(st, 5_000, c) // 开战（battle 存在即可读聚合视图）
+    const arcs = battleArcsFor(st, c)
+    expect(arcs).not.toBeNull()
+    expect(arcs!.foe.maxM).toBeGreaterThan(0)
+    expect(arcs!.foe.minM).toBeGreaterThan(0) // kite 模板 min 1200×(1+成长)>0——回归：旧代码恒为 0
+    expect(arcs!.foe.minM).toBeLessThan(arcs!.foe.maxM)
+    expect(arcs!.foe.type).toBe('plasma')
   })
 })
