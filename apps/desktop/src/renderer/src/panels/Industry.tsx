@@ -68,7 +68,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   }
 
   return (
-    <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；重复书只能出售</span>}>
+    <Panel className="is-fill" title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；重复书只能出售</span>}>
       <div className="app-shelf-grid">
         {entries.map(([id, n]) => {
           const bp = engine.blueprints.find((b) => b.id === id) ?? engine.shipBlueprints.find((b) => b.id === id)
@@ -477,10 +477,11 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
 
   return (
     <Panel
+      className="is-fill win-fixed-body"
       title="组装机"
       right={<span className="app-dim">制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}</span>}
     >
-      {/* 筛选：全部 / 装备蓝图 / 舰船蓝图；制造中冒泡在前（材料不足卡标红缺口） */}
+      {/* 筛选与说明固定（固定头+下滚）：类型标签行/说明常显，卡网格独立内滚 */}
       <div className="app-task-tabs" role="tablist">
         {MANU_TABS.map((t) => (
           <button
@@ -500,22 +501,24 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         可同时开多条线、不同蓝图也并行，材料/制造费够即可随时加开。制造中 / 可开工的配方排在最前。
       </div>
 
-      <div className="app-belt-grid">
-        {sorted.map((it) => (
-          <BlueprintCard
-            key={it.id}
-            engine={engine}
-            onToast={onToast}
-            blueprintId={it.id}
-            name={it.name}
-            description={it.description}
-            materials={it.materials}
-            buildSeconds={it.buildSeconds}
-            buildCostIsk={it.buildCostIsk}
-            productLabel={it.productLabel}
-            kindLabel={it.kindLabel}
-          />
-        ))}
+      <div className="app-win-body">
+        <div className="app-belt-grid">
+          {sorted.map((it) => (
+            <BlueprintCard
+              key={it.id}
+              engine={engine}
+              onToast={onToast}
+              blueprintId={it.id}
+              name={it.name}
+              description={it.description}
+              materials={it.materials}
+              buildSeconds={it.buildSeconds}
+              buildCostIsk={it.buildCostIsk}
+              productLabel={it.productLabel}
+              kindLabel={it.kindLabel}
+            />
+          ))}
+        </div>
       </div>
     </Panel>
   )

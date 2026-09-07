@@ -53,6 +53,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
 
   return (
     <Panel
+      className="is-fill"
       title="深空工业协会 · 远征调度"
       right={<span className="app-standing">声望 {standing}</span>}
     >
@@ -190,9 +191,11 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
 
   return (
     <Panel
+      className="is-fill win-fixed-body"
       title="任务中心"
       right={<span className="app-dim">建站 {stationCount} · 抵达对应星系后出现</span>}
     >
+      {/* 子标签固定（固定头+下滚）：重要/资源/快递 常显，下方任务内容独立内滚 */}
       <div className="app-task-tabs" role="tablist">
         {TASK_TABS.map((t) => (
           <button
@@ -206,6 +209,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
           </button>
         ))}
       </div>
+      <div className="app-win-body">
       {tab === 'important' ? (
         <div>
           <ImportantTasks engine={engine} onToast={onToast} />
@@ -241,6 +245,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
           <SideTasksArea engine={engine} onToast={onToast} kind="courier" />
         </div>
       )}
+      </div>
     </Panel>
   )
 }
@@ -305,6 +310,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
 
   return (
     <Panel
+      className="is-fill"
       title="战斗悬赏"
       right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 可接取排序</span>}
     >
@@ -607,6 +613,8 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   })
   const [override, setOverride] = useState<LayoutMap>(readLayoutOverride)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** 2026-09-08 船长：点星系行动改弹窗——星图不再被长详情纵向挤压 */
+  const [modalId, setModalId] = useState<string | null>(null)
   const dragRef = useRef<{ id: string } | null>(null)
   const hubName = engine.ctx.galaxies.get('galaxy-hub')?.name ?? ''
   const selected: GalaxyDef | null = engine.ctx.galaxies.get(selectedId ?? '') ?? null
@@ -836,7 +844,10 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
             <g
               key={g.id}
               className="app-map-node"
-              onClick={() => setSelectedId(g.id)}
+              onClick={() => {
+                setSelectedId(g.id)
+                setModalId(g.id)
+              }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
               <circle cx={p.x} cy={p.y} r={frontier ? 7 : isHub ? 11 : 8} className={`app-map-dot${cls}`} />
@@ -851,9 +862,13 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
           )
         })}
       </svg>
-      <div className="app-map-side">
-        {selected ? (
-          isFrontier(selected.id) ? (
+      {/* 星系行动弹窗（2026-09-08 船长方案：点选星系弹出行动窗口；复用通讯浮层 app-comm 样式族，滚动在 .app-comm-body 内） */}
+      {modalId !== null && selected ? (
+        <div className="app-comm-mask" onClick={() => setModalId(null)}>
+          <div className="app-comm" onClick={(e) => e.stopPropagation()}>
+            <div className="app-comm-title">星系行动 · {isFrontier(selected.id) ? '未知信号' : selected.name}</div>
+            <div className="app-comm-body">
+        {isFrontier(selected.id) ? (
             <div className="app-map-detail">
               <div className="app-map-detail-name app-map-frontier-name">未知信号</div>
               <div className="app-map-detail-desc">
@@ -898,12 +913,21 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               ) : null}
             </div>
           )
-        ) : (
-          <div className="app-dim app-map-hint">
-            点击星系查看航路情报；「未知信号」可通过扫描探索点亮（已探索星系的一跳邻居会以剪影显示）。
+        }
+            </div>
+            <div className="app-comm-foot">
+              <button className="app-btn is-small" onClick={() => setModalId(null)}>
+                ✕ 关闭
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
+      {!selected ? (
+        <div className="app-dim app-map-hint">
+          点击星系查看航路情报与行动；「未知信号」可通过扫描探索点亮（已探索星系的一跳邻居会以剪影显示）。
+        </div>
+      ) : null}
       {/* 布局编辑工具条（开发工具：默认隐藏，置 dev-layout 标志后显示入口） */}
       {!devEditor && !editing ? null : (
         <div className="app-map-editbar">

@@ -314,6 +314,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
         <BlueprintShelfPanel engine={engine} onToast={onToast} />
       ) : (
         <Panel
+          className="is-fill"
           title="精炼炉"
           right={
             <span className="app-dim">

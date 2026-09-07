@@ -50,7 +50,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProp
   onMapTab?: (tab: MapTab) => void
 }) {
   return (
-    <div className="page-stack">
+    <div className="page-stack page-fill">
       {/* ───── 功能标签页（免滚动切换） ───── */}
       <div className="app-subtabs" role="tablist">
         {MAP_TABS.map((t) => (
@@ -113,6 +113,7 @@ function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }
 
   return (
     <Panel
+      className="is-fill"
       title="本地矿带开采"
       right={view.active ? <span className="app-dim">作业中 · 实时进度与「停止」见顶部活动栏</span> : null}
     >
@@ -487,6 +488,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
 
   return (
     <Panel
+      className="is-fill"
       title="残骸打捞"
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >

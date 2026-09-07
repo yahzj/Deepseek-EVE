@@ -2118,6 +2118,45 @@ body {
 
 }
 
+/* 一级页不滚基建（2026-09-08）：仅改造完成的页加 no-scroll（未改造页保持整页滚，防中间态裁内容）；
+ * 页面根用 .page-fill 吃满；二级窗 = 固定头(面板头/常显行) + 内滚体(.wui-panel-body 自带或 .app-win-body) */
+
+.app-page-content.no-scroll {
+
+  display: flex;
+
+  flex-direction: column;
+
+  overflow: hidden;
+
+}
+
+.page-stack.page-fill {
+
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+}
+
+.wui-panel.is-fill {
+
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+}
+
+.app-win-body {
+
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+  overflow-y: auto;
+
+}
+
 .page-stack {
 
   display: flex;
@@ -7305,3 +7344,21 @@ body {
 /* ---------- market right column stretch (2026-09-08) ---------- */
 
 .app-mkt-right > .wui-panel:last-child { flex: 1 1 auto; min-height: 0; }
+
+/* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
+
+.app-page-content.no-scroll > .page-stack.page-fill > .app-mkt-split { flex: 1 1 auto; min-height: 0; }
+
+.app-mkt-left { min-height: 0; }
+
+.app-mkt-left > .wui-panel { flex: 1 1 auto; min-height: 0; }
+
+.app-mkt-right { min-height: 0; }
+
+.app-mkt-right > .wui-panel { min-height: 0; }
+
+/* ---------- fixed-head + scroll-body inside panel (2026-09-08) ---------- */
+
+.wui-panel.win-fixed-body > .wui-panel-body { overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+
+.wui-panel.win-fixed-body .app-win-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
