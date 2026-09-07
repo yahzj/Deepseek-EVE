@@ -319,8 +319,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   }
 
   return (
-    <div className="page-stack">
-      <Panel title="装配台" right={<span className="app-dim">装备随船 · 进入其它船的装配台请在「舰船」页点卡片「⚒ 装配」</span>}>
+    <div className="page-stack page-fill">
+      <Panel className="is-fill" title="装配台" right={<span className="app-dim">装备随船 · 进入其它船的装配台请在「舰船」页点卡片「⚒ 装配」</span>}>
         {/* 装配目标（船长 2026-09-05：醒目左置；入口在舰船页卡片，本页不再切换目标） */}
         <div className="app-fit-target">
           <span className="app-fit-target-label">

@@ -296,11 +296,12 @@ function MarketColumn({
   onSelect?: (key: string) => void
 }) {
   return (
-    <Panel title={title} right={right}>
+    // is-fill + 去掉列表自身 max-height 帽：列表交给 Panel body 二级内滚（一级页不滚）
+    <Panel className="is-fill" title={title} right={right}>
       {rows.length === 0 ? (
         <div className="app-dim app-inv-empty">没有匹配的订单（试试清空搜索或切换类型）。</div>
       ) : (
-        <ul className="app-inv-list app-mkt-list">
+        <ul className="app-inv-list">
           {rows.map((good) => (
             <GoodRow key={good.key} engine={engine} good={good} selected={good.key === selKey} onSelect={onSelect} />
           ))}
@@ -733,7 +734,7 @@ export function MarketPage({
   )
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-fill">
       <div className="app-dim app-note">
         空间站商店已并入市场：所有买卖都走 NPC 挂单簿撮合。收购价 &lt; 供应价有差价；
         集中买卖会触发"冲击动量"（价格短时偏离，随后缓慢恢复）；矿石/矿物还受站内库存池调节。

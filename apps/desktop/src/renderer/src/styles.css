@@ -7344,3 +7344,15 @@ body {
 /* ---------- market right column stretch (2026-09-08) ---------- */
 
 .app-mkt-right > .wui-panel:last-child { flex: 1 1 auto; min-height: 0; }
+
+/* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
+
+.app-page-content.no-scroll > .page-stack.page-fill > .app-mkt-split { flex: 1 1 auto; min-height: 0; }
+
+.app-mkt-left { min-height: 0; }
+
+.app-mkt-left > .wui-panel { flex: 1 1 auto; min-height: 0; }
+
+.app-mkt-right { min-height: 0; }
+
+.app-mkt-right > .wui-panel { min-height: 0; }
