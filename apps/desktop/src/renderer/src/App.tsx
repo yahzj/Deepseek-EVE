@@ -50,7 +50,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
 type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market'])
+const PAGE_NO_SCROLL = new Set<string>(['ship'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {

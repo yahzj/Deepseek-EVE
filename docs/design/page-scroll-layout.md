@@ -37,8 +37,8 @@
 
 ## 实施清单（逐页勾选；每页完成后在 App.tsx 的 no-scroll 名单加入该页）
 - [x] 批次1：舰船（fleet/AI/shop 各活跃 Panel is-fill）——已上线（App PAGE_NO_SCROLL 含 ship）
-- [x] 批次1：市场（说明行固定 + split 弹性占满；左列商品 Panel is-fill body 内滚；右栏沿用 7307 弹性链）——已上线（no-scroll 含 market）
-- [x] 批次1：装配（单 Panel is-fill，body 内滚）——已上线（no-scroll 含 fit）
+- [ ] 批次1：市场（两条说明入固定头、左列列表弹性化、右列沿用 7307）
+- [ ] 批次1：装配（fit-cols 入 Panel body 内滚）
 - [ ] 批次2：工业（三标签 Panel body 滚；组装机筛选行固定策略与船长对齐）
 - [ ] 批次2：星图（5 标签 Panel body 滚；远征=地图全窗+行动弹窗）
 - [ ] 批次3：技能（队列固定 + 目录 Panel is-fill 整窗滚）
