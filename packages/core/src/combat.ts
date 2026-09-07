@@ -548,9 +548,13 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     const dps = uThreat * bal.foeDpsPerThreat
     // 2026-09-08（船长定：能量=光束必中；动能/爆炸普遍高命中 0.85 + 逐卡低命中特例）：
-    // 单发 = DPS×装填÷该武器有效命中（能量 1），期望 DPS 恒定；foeDmgMul 为等效回退校准口
+    // 非能量单发 = DPS×装填 ÷ 有效命中 × foeHitCompMul（回避>0 期望上升的等效补偿，方案 A）；
+    // 能量 effHit=1 不消费补偿；foeDmgMul 为逐卡等效回退/个性口
     const effHit = type === 'plasma' ? 1 : anomaly.foeHitRate ?? bal.foeHitRate
-    const shotDmg = Math.max(1, Math.round(((dps * bal.foeReloadMs) / 1000 / effHit) * (anomaly.foeDmgMul ?? 1)))
+    const shotDmg = Math.max(
+      1,
+      Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1) * (anomaly.foeDmgMul ?? 1)),
+    )
     return {
       tag,
       name,

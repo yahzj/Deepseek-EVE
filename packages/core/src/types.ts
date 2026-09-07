@@ -479,6 +479,12 @@ export interface BattleBalance {
   foeRefFire: ReadonlyArray<{ upToThreat: number; dps: number }>
   foeDpsPerThreat: number
   foeHitRate: number
+  /**
+   * 动能/爆炸高命中等效补偿（2026-09-08 船长方案 A）：命中提高 + 单发按 1/命中 等比降后，
+   * 守方回避 >0 时期望承伤仍会上升——本系数对非能量敌单发再乘（锚点 ≈ 典型回避 0.22 ×
+   * 中距衰减 0.7 的旧 0.55 模型折算 ≈0.62，可迭代校准）；能量光束（effHit=1）不消费。
+   */
+  foeHitCompMul: number
   foeReloadMs: number
   foeFalloff: number
   /* C4-#3 敌方"虚拟装配"模板（2026-09-05 船长拍板：威胁越高全属性越高，侧重随战术风格） */
