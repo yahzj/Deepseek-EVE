@@ -361,7 +361,7 @@ function autoMarketGoods(ctx: {
       refId: mod.id,
       rarity: 'common',
       basePrice: 20_000 + n * 1_000,
-      demandMultiplier: 0.4,
+      demandMultiplier: 0.6, // 收购档位 common（2026-09-08 船长定；与 marketCatalog 同口径）
     })
   }
   for (const bp of ctx.blueprints.values()) {
@@ -371,7 +371,7 @@ function autoMarketGoods(ctx: {
       refId: bp.id,
       rarity: 'common',
       basePrice: bp.priceIsk,
-      demandMultiplier: 0.5,
+      demandMultiplier: 0.6,
     })
   }
   for (const bp of ctx.shipBlueprints.values()) {
@@ -381,7 +381,7 @@ function autoMarketGoods(ctx: {
       refId: bp.id,
       rarity: 'common',
       basePrice: bp.priceIsk,
-      demandMultiplier: 0.5,
+      demandMultiplier: 0.6,
     })
   }
   for (const ship of ctx.ships.values()) {
@@ -392,7 +392,7 @@ function autoMarketGoods(ctx: {
         refId: ship.id,
         rarity: 'common',
         basePrice: ship.priceIsk,
-        demandMultiplier: 0.4,
+        demandMultiplier: 0.6,
       })
     }
   }

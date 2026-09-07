@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
+import { acquisitionFactorOf, goodLockedReason, goodName, levelOf, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -397,7 +397,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
 
   function setDefaults(side: 'buy' | 'sell'): void {
     setTab(side)
-    setPrice(Math.max(1, side === 'buy' ? quote.sell ?? levelOf(state, engine.ctx, good.key) : quote.buy ?? levelOf(state, engine.ctx, good.key) * (good.demandMultiplier ?? 0.5)))
+    setPrice(Math.max(1, side === 'buy' ? quote.sell ?? levelOf(state, engine.ctx, good.key) : quote.buy ?? Math.round(levelOf(state, engine.ctx, good.key) * acquisitionFactorOf(good))))
     setQty(side === 'sell' ? Math.max(1, holdings) : 1)
   }
   function doBuy(): void {
@@ -565,14 +565,24 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
             <span className="app-dim">ISK</span>
           </div>
-          {/* 站内让利吸收提示（2026-09-08 船长定：吸收量与价格挂钩——让利换清仓速度） */}
-          {tab === 'sell' ? (
-            <div className="app-dim app-sr-eta">
-              {(() => {
+          {/* 价格指引（2026-09-08 船长：吸收量随价格挂钩 + 两侧巡游抢单——让利清仓快、高挂/低挂赌巡游） */}
+          <div className="app-dim app-sr-eta">
+            {(() => {
+              const p = Math.max(1, Math.floor(price || 1))
+              const bal = engine.ctx.balance.market
+              if (tab === 'sell') {
                 const bid =
-                  quote.buy ?? Math.max(1, Math.round(levelOf(state, engine.ctx, good.key) * (good.demandMultiplier ?? 0.5)))
-                const p = Math.max(1, Math.floor(price || 1))
-                const bal = engine.ctx.balance.market
+                  quote.buy ?? Math.max(1, Math.round(levelOf(state, engine.ctx, good.key) * acquisitionFactorOf(good)))
+                if (p > bid) {
+                  const pct = ((p - bid) / bid) * 100
+                  const pRoll = (bal.snatchSellChance * Math.exp((-bal.snatchSellDecay * pct) / 100)) * 100
+                  return (
+                    <>
+                      高于收购价 {isk(bid)} 约 {pct.toFixed(pct >= 10 ? 0 : 1)}%：站内不收，等巡游采购约{' '}
+                      <b>{pRoll < 10 ? pRoll.toFixed(1) : pRoll.toFixed(0)}%/分</b> 概率——想快就降价让利
+                    </>
+                  )
+                }
                 if (p < bid) {
                   const pct = ((bid - p) / bid) * 100
                   const E = Math.min(bal.absorbMaxMul, 1 + bal.absorbPerPoint * pct)
@@ -587,13 +597,24 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 }
                 return (
                   <>
-                    平价挂卖（≤ 收购价 {isk(bid)}）：站内每 60 秒保底吸收；每让利 1% 吸收提速 40%，折 10% 封顶 ×
+                    平价挂卖（= 收购价 {isk(bid)}）：站内每 60 秒保底吸收；让利 1% 提速 40%、折 10% 封顶 ×
                     {bal.absorbMaxMul}
                   </>
                 )
-              })()}
-            </div>
-          ) : null}
+              }
+              const ask =
+                quote.sell ?? Math.max(1, Math.round(levelOf(state, engine.ctx, good.key) * (good.supplyMultiplier ?? 1)))
+              if (p >= ask) return <>平价买入（= 供应价 {isk(ask)}）：现买现得</>
+              const pct = ((ask - p) / ask) * 100
+              const pRoll = (bal.snatchBuyChance * Math.exp((-bal.snatchBuyDecay * pct) / 100)) * 100
+              return (
+                <>
+                  低于供应价 {isk(ask)} 约 {pct.toFixed(pct >= 10 ? 0 : 1)}%：等巡游供货约{' '}
+                  <b>{pRoll < 10 ? pRoll.toFixed(1) : pRoll.toFixed(0)}%/分</b> 概率——想立刻拿到就提价到供应价
+                </>
+              )
+            })()}
+          </div>
           <div className="app-mkt-trade-btns">
             {/* 2026-09-08 船长：挂单按钮前置到市价买卖之前（挂单/市价/（卖出侧）全部卖出） */}
             <button className="app-btn is-small" onClick={doPlace}>

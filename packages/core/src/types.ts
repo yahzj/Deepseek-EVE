@@ -214,7 +214,9 @@ export interface MarketGoodDef {
   absorbQtyPerWindow?: number
   /** 稀有/限定：NPC 供应单的倍数（basePrice × 该值 = 刷出售价） */
   supplyMultiplier?: number
-  /** 玩家卖出此类商品时 NPC 需求单的出价倍数（低于供应价，防套利） */
+  /** 收购档位（2026-09-08 船长定：收购价 = 该倍率 × L；单件缺省按 rarity = common 0.6 /
+   * rare 0.65 / exotic 1.0；池商品留空 = 原料平价 1.0L，池耗材显式 0.6。防套利：
+   * 收购恒低于供应价，倒买倒卖恒亏税） */
   demandMultiplier?: number
   /** 玩家可否卖出（默认 true） */
   playerSellable?: boolean
@@ -274,6 +276,17 @@ export interface MarketBalance {
   taxSkillBId: string
   /** 每个技能每级的税率减免比例（两个技能满级合计减免 80% = 2×5×8%） */
   taxCutPerLevel: number
+  /** 两侧"抢单"（2026-09-08 船长定：越线挂单每 60s 窗小概率成交，见 market.ts matchPlayerOrders）：
+   * 卖单挂价 > 收购价线时命中概率 = snatchSellChance × e^(−snatchSellDecay × r)，
+   * r = 挂价超出收购价线的比例；每窗每单一次掷骰，命中成交 1 件 @ 挂单价 */
+  snatchSellChance: number
+  /** 卖出侧抢单衰减系数（r 越大命中越低；高挂 = 赌小概率好价） */
+  snatchSellDecay: number
+  /** 买单挂价 < 供应价线时命中概率 = snatchBuyChance × e^(−snatchBuyDecay × s)，
+   * s = 挂价低于供应价线的比例 */
+  snatchBuyChance: number
+  /** 买入侧抢单衰减系数 */
+  snatchBuyDecay: number
 }
 
 /**

@@ -109,6 +109,11 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     taxSkillAId: 'accounting', // 会计学：每级 -8% 贸易税
     taxSkillBId: 'trade-negotiation', // 贸易谈判学：每级 -8% 贸易税
     taxCutPerLevel: 0.08, // 两技能各 5 级 → 合计减免 80%（税 5% → 1%）
+    // 两侧抢单（2026-09-08 船长定：越线挂单每 60s 窗小概率成交——高挂/低挂 = 赌巡游，慢但可能）
+    snatchSellChance: 0.3, // 卖出侧基础命中：压线 0% 溢价时 30%/窗（溢价 10% → ≈16%、+50% → ≈1.5%）
+    snatchSellDecay: 6,
+    snatchBuyChance: 0.2, // 买入侧基础命中：压线砍价 0% 时 20%/窗（砍 5% → ≈10%、砍 20% → ≈1.2%）
+    snatchBuyDecay: 14,
   },
   battle: {
     hitMin: 0, // 命中率开放下限 0%：极端劣势可完全脱靶（不再保底 3%）

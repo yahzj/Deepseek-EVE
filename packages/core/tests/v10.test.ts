@@ -163,7 +163,7 @@ describe('V10：市场声望门槛', () => {
     refId: 'warship',
     rarity: 'exotic',
     basePrice: 500_000,
-    demandMultiplier: 0.3,
+    demandMultiplier: 1.0, // 收购档位 exotic（2026-09-08 船长定）
     standingReq: 6,
   }
   const GATED_ITEM: ItemDef = {

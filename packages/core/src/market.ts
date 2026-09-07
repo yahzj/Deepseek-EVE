@@ -6,11 +6,15 @@
  *   （rare 溢价品 / exotic 限定奇货；后者订单 6 小时有效）；
  *   rare/奇货供给侧 = 每 10 分钟抽取节拍（P2 2026-09-06，见 slowSupplyDraw 与 RARE_DRAW_PERIOD_MS）；
  * - 价格模型：L = 均衡价 × 库存压力 × (1 + 冲击动量)（单件品压力恒 1）。
- *   常驻池商品买卖价差小（收购 ≈0.97L / 供应 ≈1.03L）；
- *   单件商品按目录显式倍数（供应 = supplyMultiplier×L、收购 = demandMultiplier×L）；
+ *   常驻池商品买卖价差小（原料收购 ≈1.0L / 供应 ≈1.06L；池耗材收购 0.6L）；
+ *   单件商品收购档位（2026-09-08 船长定）：common 0.6L / rare 0.65L / exotic 1.0L，
+ *   供应 = supplyMultiplier×L（≈1.0L）——收购恒低于供应价，倒买倒卖恒亏税（防套利）；
  * - 库存池：玩家卖给收购单 → 池增加；玩家买走供应单 → 池减少；池以 30 分钟半程
  *   向 poolTarget 回归（站内产业吸收/补给）。池接近干涸 → 供应单停发（短缺）；
  *   池淤积 → 收购压价 → 倾销会砸价（池压 + 冲击双压价，冲击叠加无上限——用户确认）；
+ * - 两侧"抢单"（2026-09-08 船长定）：卖单挂价 > 收购价线 / 买单挂价 < 供应价线时，
+ *   每 60s 窗掷一次骰（卖出 30%·e^(−6r)、买入 20%·e^(−14s)，r/s = 相对价线偏移比例），
+ *   命中成交 1 件 @ 挂单价——高挂/低挂 = 赌巡游小概率，平价/让利走确定性通道；
  * - 冲击动量（隐藏）：窗口净成交量 > 参考量×2 触发一次 ±0.05 偏移，半程 6 分钟衰减；
  *   冲击过后陈旧簿与新高价订单冲突 → 进内部消化队列，按窗口比例随时间消化（不瞬消）；
  * - 卖出预扣（escrow）：卖出先锁定货；市价单吃簿后剩余自动转限价单；
@@ -25,7 +29,7 @@
  */
 import { addLog } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
-import type { MarketBalance, MarketGoodDef, MarketGoodKind, SimContext } from './types'
+import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
 import { nextRandom } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
@@ -139,9 +143,9 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
     mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: Math.max(1, Math.round(flow * 0.8)), expiresAtGameMs: now + life })
     mk.pools[def.key]!.q = def.poolTarget
   } else {
-    // 单件平价品（装备/蓝图/船/基础核心）：1 收购 + 2 供应
+    // 单件平价品（装备/蓝图/船/基础核心）：1 收购（qty 3，2026-09-08 船长定件数放大）+ 2 供应
     if (sellable) {
-      mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: 1, expiresAtGameMs: now + life })
+      mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: 3, expiresAtGameMs: now + life })
     }
     mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: 1, expiresAtGameMs: now + life })
     mk.npcSell[def.key]!.push({ price: sellPrice(def, L, 0.02), qty: 1, expiresAtGameMs: now + life })
@@ -165,11 +169,23 @@ function priceLevel(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ
   return Math.round(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, level)))
 }
 
-/** 收购单价（NPC 收玩家的价）：池商品在均衡价时收购 = L（平价收购，压价靠池淤积/冲击）；
- * 单件 = demandMultiplier×L；delta = 档位差 */
+/** 收购档位（2026-09-08 船长定：单件收购 = 该档 × L；防套利——收购恒低于供应、倒卖亏税） */
+export const BUY_TIER: Record<MarketRarity, number> = {
+  common: 0.6,
+  rare: 0.65,
+  exotic: 1.0,
+}
+
+/** 商品收购倍率（数据目录 demandMultiplier 优先；缺省按 rarity 档位）——UI 默认卖价同源用 */
+export function acquisitionFactorOf(def: MarketGoodDef): number {
+  return def.demandMultiplier ?? BUY_TIER[def.rarity]
+}
+
+/** 收购单价（NPC 收玩家的价）：池商品 = L × 倍率（原料留空 = 1.0 平价；弹药/修理件/无人机等
+ * 池耗材显式 0.6）；单件 = 档位倍率 × L（common 0.6 / rare 0.65 / exotic 1.0）；delta = 档位差 */
 function buyPrice(def: MarketGoodDef, L: number, delta = 0): number {
-  const base = def.poolTarget && def.poolTarget > 0 ? L : L * (def.demandMultiplier ?? 0.5)
-  return Math.round(base * (1 + delta))
+  const tier = def.poolTarget && def.poolTarget > 0 ? (def.demandMultiplier ?? 1) : acquisitionFactorOf(def)
+  return Math.round(L * tier * (1 + delta))
 }
 
 /** 供应单价（NPC 卖给玩家的价）：池商品微溢（+6%，至少 +1 ISK，防整数取整后与收购价同价）；
@@ -593,19 +609,20 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
         npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty)
       }
     } else {
-      // 单件平价品：维持供应线与低价收购线
-      if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), 1)
+      // 单件平价品：维持供应线与低价收购线（收购单 qty 3/张，2026-09-08 船长定件数放大）
+      if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), 3)
       if (sellList.length < 2 || nextRandom(state.rng) < 0.85) {
         npcPushSell(state, ctx, def, poolQ, now, lifeMs, Math.round(sellPrice(def, L) * priceJitter(state)), 1)
       }
     }
   } else if (def.rarity === 'rare') {
-    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 3%；闸内 ×4 收购价同规则；寿命同供给侧 36 分钟）
+    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 3%；qty 2/张，2026-09-08 船长定；
+    // 闸内 ×4 收购价同规则；寿命同供给侧 36 分钟）
     if (sellable && nextRandom(state.rng) < 0.03) {
-      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), 1, locked)
+      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), 2, locked)
     }
   } else if (def.rarity === 'exotic') {
-    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 1%；寿命同供给侧 6h）
+    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 1%；寿命同供给侧 6h；qty 1 维持稀缺节奏）
     if (sellable && nextRandom(state.rng) < 0.01) {
       npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L)), 1)
     }
@@ -624,6 +641,7 @@ function digestAdd(state: GameState, ctx: SimContext, key: string, qty: number, 
 
 function matchPlayerOrders(state: GameState, ctx: SimContext): void {
   const mk = state.market
+  const bal = ctx.balance.market
   // 窗口簿面成交计数归零（站内让利吸收按"本窗总吸收 ≥ 配额"补差，见 absorbViaStation）
   for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0
   for (const order of [...state.orders]) {
@@ -638,6 +656,18 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
         if (idx < 0) continue
         settleSell(state, ctx, order, npc, Math.min(order.qty, npc.qty), idx)
       }
+      // 越线抢单（卖出侧，2026-09-08 船长定）：簿吃不掉且挂价高于收购价线 → 巡游采购每窗掷骰
+      if (order.qty > 0) {
+        const sdef = ctx.marketGoods.get(order.good)
+        if (sdef && sdef.playerSellable !== false) {
+          const bid = Math.round(buyPrice(sdef, priceLevel(state, ctx, sdef, state.market.pools[order.good]?.q ?? 0)))
+          if (order.price > bid) {
+            const r = bid > 0 ? (order.price - bid) / bid : 1
+            const pRoll = Math.min(1, bal.snatchSellChance * Math.exp(-bal.snatchSellDecay * r))
+            if (nextRandom(state.rng) < pRoll) settleSnatchSell(state, ctx, order)
+          }
+        }
+      }
     } else {
       const sellList = mk.npcSell[order.good] ?? []
       const sorted = [...sellList].sort((a, b) => a.price - b.price)
@@ -647,6 +677,18 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
         const idx = sellList.indexOf(npc)
         if (idx < 0) continue
         settleBuy(state, ctx, order, npc, idx)
+      }
+      // 越线抢单（买入侧）：簿吃不掉且挂价低于供应价线 → 巡游供货每窗掷骰
+      if (order.qty > 0) {
+        const bdef = ctx.marketGoods.get(order.good)
+        if (bdef && bdef.playerBuyable !== false && !bmGateLocked(state, bdef)) {
+          const ask = Math.round(sellPrice(bdef, priceLevel(state, ctx, bdef, state.market.pools[order.good]?.q ?? 0)))
+          if (order.price < ask) {
+            const s = ask > 0 ? (ask - order.price) / ask : 1
+            const pRoll = Math.min(1, bal.snatchBuyChance * Math.exp(-bal.snatchBuyDecay * s))
+            if (nextRandom(state.rng) < pRoll) settleSnatchBuy(state, ctx, order)
+          }
+        }
       }
     }
   }
@@ -712,6 +754,52 @@ function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: N
   addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${value.toLocaleString('zh-CN')} ISK）。`)
 }
 
+/** 越线卖单抢单成交（2026-09-08 船长定：巡游采购 1 件 @ 挂单价；税/escrow/池与簿成交同口径） */
+function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder): void {
+  const def = ctx.marketGoods.get(order.good)
+  const shipSale = !!state.escrowShips[order.id]
+  const mult = sellStandingMult(state, def)
+  const gross = Math.round(order.price * mult)
+  const net = netAfterTax(state, ctx, gross)
+  const tax = gross - net
+  state.wallet.isk += net
+  if (shipSale) {
+    delete state.escrowShips[order.id]
+  } else {
+    state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - 1)
+  }
+  order.filled += 1
+  order.qty -= 1
+  const pool = state.market.pools[order.good]
+  if (pool) {
+    pool.netVol -= 1
+    if (def?.poolTarget && def.poolTarget > 0) pool.q += 1
+  }
+  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  if (shipSale) {
+    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+  } else {
+    const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
+    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×1（巡游采购），税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
+  }
+}
+
+/** 越线买单抢单成交（2026-09-08 船长定：巡游供货 1 件 @ 挂单价；钱包不足当窗跳过） */
+function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder): void {
+  if (state.wallet.isk < order.price) return
+  state.wallet.isk -= order.price
+  const def = ctx.marketGoods.get(order.good)
+  depositGood(state, ctx, order.good, 1)
+  order.filled += 1
+  order.qty -= 1
+  const pool = state.market.pools[order.good]
+  if (pool) {
+    pool.netVol += 1
+    if (def?.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - 1)
+  }
+  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×1（巡游供货，${order.price.toLocaleString('zh-CN')} ISK）。`)
+}
+
 /** 买入商品入对应库存（物品→物品仓库；装备→装备库；蓝图→蓝图书；核心→核心库；船→舰队）。
  * 返回：kind=ship 时为本次入队的舰船实例 uid（最后加入的一艘；多艘同批时取末艘），其余返回 null */
 function depositGood(state: GameState, ctx: SimContext, goodKey: string, qty: number): string | null {
@@ -756,8 +844,8 @@ function absorbMulOf(bal: MarketBalance, price: number, buyBid: number): number 
  * 语义 = 每窗总吸收保底：吃簿不够才站内补差，绝不叠加——
  * 对每张卖单算"当窗配额 F×E"（F = 基础吸收额、E = 折价倍率）；吃簿量 < 配额的部分
  * 计入该单补差结余（小数结转），结余整数部分以挂单价直接卖给站内，余数跨窗结转。
- * 只对挂价 ≤ 现行买盘价的卖单生效（高于买盘价 = 等更高簿价，站内不接）；买盘价 =
- * buyPrice 价线（池商品 L / 单件 demandMultiplier×L），将来买价档调整自动套用。
+ * 只对挂价 ≤ 现行买盘价的卖单生效（高于买盘价 = 等更高簿价或巡游抢单，站内不接）；买盘价 =
+ * buyPrice 价线（池商品 L×档位 / 单件 rarity 档位），随收购档位自动套用。
  * 簿厚（吃簿 ≥ 配额）时当窗只走簿面，站内不额外收——平价常态与现状长期持平，
  * 折价（让利）才把配额拉到 ×E，实现"压价换吞吐、最高 ×5"。
  */

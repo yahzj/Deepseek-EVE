@@ -26,7 +26,7 @@ const RARE_GOOD: MarketGoodDef = {
   refId: 'mod-a',
   rarity: 'rare',
   basePrice: 20_000,
-  demandMultiplier: 0.35,
+  demandMultiplier: 0.65, // 收购档位 rare（2026-09-08 船长定）
 }
 
 function eventCount(state: GameState): number {

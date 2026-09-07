@@ -274,6 +274,7 @@ export {
   marketLockedReason,
   bmGateLocked,
   bmGateReason,
+  acquisitionFactorOf,
   placeSellOrder,
   placeBuyOrder,
   cancelOrder,

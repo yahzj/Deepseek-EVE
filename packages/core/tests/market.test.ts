@@ -12,6 +12,7 @@ import { sellAll, sellWareItem } from '../src/industry'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
+  acquisitionFactorOf,
   buyAtMarket,
   cancelOrder,
   learnBlueprint,
@@ -175,15 +176,15 @@ describe('蓝图书：市场买入 → 学习 → 重复书回卖', () => {
     expect(learnBlueprint(state, ctx, 'bp-a').ok).toBe(false) // 没有书
   })
 
-  it('重复蓝图书可市价回卖（半价收购线，扣贸易税），学会的配方不受影响', () => {
+  it('重复蓝图书可市价回卖（0.6L 收购档位，扣贸易税），学会的配方不受影响', () => {
     state.blueprintStock['bp-a'] = 1
     const walletBefore = state.wallet.isk
     const r = marketSellHolding(state, ctx, 'bp-bp-a') // 全卖（1 本）
     expect(r.ok).toBe(true)
     expect(r.sold).toBe(1)
-    const gross = 500 // demand 0.5 × 1000
-    expect(r.total).toBe(gross - Math.round(gross * 0.05)) // 税后 475
-    expect(state.wallet.isk).toBe(walletBefore + 475)
+    const gross = 600 // demand 0.6 × 1000（common 收购档位，2026-09-08）
+    expect(r.total).toBe(gross - Math.round(gross * 0.05)) // 税后 570
+    expect(state.wallet.isk).toBe(walletBefore + 570)
     expect(state.blueprintStock['bp-a'] ?? 0).toBe(0)
     expect(state.orders).toHaveLength(0)
   })
@@ -231,8 +232,8 @@ describe('舰船市场：出售需满足条件，成交入账', () => {
     addShipToFleet(state, 'big') // 停在机库（默认驾驶沙猫）
     const res = sellShipAtMarket(state, ctx, 'big')
     expect(res.ok).toBe(true)
-    const gross = 48_000 // 120k × 0.4（单件商品 收购价 = demandMultiplier×L）
-    expect(res.total).toBe(gross - Math.round(gross * 0.05)) // 税后 45600
+    const gross = 72_000 // 120k × 0.6（common 收购档位，2026-09-08 船长定）
+    expect(res.total).toBe(gross - Math.round(gross * 0.05)) // 税后 68400
     expect(state.fleet['big']).toBeUndefined()
     expect(state.orders).toHaveLength(0) // 整船一次成交
     expect(state.escrowShips).toEqual({})
@@ -394,7 +395,7 @@ describe('A3 回归：v8→v9 迁移后直接 8 小时长离线（市场开市 +
   })
 })
 
-describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购价 0.5×L 同蓝图档）', () => {
+describe('AI 核心可回卖（2026-09-06 船长：四档核心放行；收购档位 0.6L 同 common 单件）', () => {
   let state: GameState
   let ctx: SimContext
   const coreDef = (): MarketGoodDef => ({
@@ -403,7 +404,7 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
     refId: 'basic',
     rarity: 'common',
     basePrice: 25_000,
-    demandMultiplier: 0.5,
+    demandMultiplier: 0.6,
   })
 
   beforeEach(() => {
@@ -414,8 +415,8 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
   it('自然库存识别核心库；市价卖 1 枚：吃开盘收购簿入账（税后），核心库扣减', () => {
     state.aiCores.basic = 1
     expect(naturalHoldings(state, coreDef())).toBe(1)
-    const q = marketQuote(state, ctx, 'core-basic') // 触发开盘：1 收购单（0.5×L）
-    expect(q.buy).toBe(12_500)
+    const q = marketQuote(state, ctx, 'core-basic') // 触发开盘：1 收购单 ×3 件（0.6×L）
+    expect(q.buy).toBe(15_000)
     const before = state.wallet.isk
     const r = marketSellHolding(state, ctx, 'core-basic')
     expect(r.ok).toBe(true)
@@ -425,23 +426,23 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
     expect(state.orders).toHaveLength(0)
     expect(state.escrowItems['core-basic'] ?? 0).toBe(0)
     const tax = salesTaxRate(state, ctx)
-    expect(state.wallet.isk - before).toBe(12_500 - Math.round(12_500 * tax))
+    expect(state.wallet.isk - before).toBe(15_000 - Math.round(15_000 * tax))
   })
 
-  it('超量卖出：簿吃穿后余量自动挂限价单（escrow 锁核心），撤单退回核心库', () => {
-    state.aiCores.basic = 2
-    marketQuote(state, ctx, 'core-basic') // 开盘收购簿仅 1 单
+  it('超量卖出：簿吃穿（开盘单 qty 3）后余量自动挂限价单（escrow 锁核心），撤单退回核心库', () => {
+    state.aiCores.basic = 5
+    marketQuote(state, ctx, 'core-basic') // 开盘收购簿 1 单 ×3 枚（簿面件数放大，2026-09-08）
     const r = marketSellHolding(state, ctx, 'core-basic')
     expect(r.ok).toBe(true)
-    expect(r.sold).toBe(1)
-    expect(r.remaining).toBe(1)
-    expect(state.aiCores.basic ?? 0).toBe(0) // 全部出库：1 成交 + 1 挂单 escrow
-    expect(state.escrowItems['core-basic'] ?? 0).toBe(1)
+    expect(r.sold).toBe(3)
+    expect(r.remaining).toBe(2)
+    expect(state.aiCores.basic ?? 0).toBe(0) // 全部出库：3 成交 + 2 挂单 escrow
+    expect(state.escrowItems['core-basic'] ?? 0).toBe(2)
     expect(state.orders).toHaveLength(1)
-    expect(state.orders[0]!.qty).toBe(1)
+    expect(state.orders[0]!.qty).toBe(2)
     expect(cancelOrder(state, ctx, state.orders[0]!.id)).toBe(true)
     expect(state.escrowItems['core-basic'] ?? 0).toBe(0)
-    expect(state.aiCores.basic ?? 0).toBe(1)
+    expect(state.aiCores.basic ?? 0).toBe(2)
   })
 
   it('挂限价卖单：核心入 escrow，撤单退回核心库', () => {
@@ -461,8 +462,8 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行，收购�
     const pv = marketSellPreview(state, ctx, 'core-basic')
     expect(pv.ok).toBe(true)
     expect(pv.avail).toBe(2)
-    expect(pv.fillable).toBe(1)
-    expect(pv.leftover).toBe(1)
+    expect(pv.fillable).toBe(2) // 开盘收购簿 1 单 ×3 枚（件数放大，2026-09-08）→ 全部可即时成交
+    expect(pv.leftover).toBe(0)
     // 模拟占用（副船任务/精炼炉占用即出库）→ 核心库只反映闲置数，占用枚数不可卖
     expect(occupyAiCore(state, 'basic')).toBe(true)
     expect(occupyAiCore(state, 'basic')).toBe(true)
@@ -716,11 +717,11 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
-      marketGoods: [{ key: 'mod-r', kind: 'module', refId: 'mod-r', rarity: 'rare', basePrice: 1_000 }],
+      marketGoods: [{ key: 'mod-r', kind: 'module', refId: 'mod-r', rarity: 'rare', basePrice: 1_000, demandMultiplier: 0.65 }],
     })
     marketQuote(state, ctx, 'mod-r') // 开盘
     const before = state.wallet.isk
-    placeSellOrder(state, ctx, 'mod-r', 500, 30) // b = 0.5×1000 = 500（单件按 demandMultiplier 0.5）
+    placeSellOrder(state, ctx, 'mod-r', 650, 30) // b = 0.65×1000 = 650（收购档位 rare）
     advanceGame(state, 10 * 60_000, ctx)
     const sold = 30 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThanOrEqual(1) // 结余 0.3/窗×10 窗 → 至少 3 件（簿偶发再添）
@@ -733,27 +734,134 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
-      marketGoods: [{ key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'exotic', basePrice: 10_000 }],
+      marketGoods: [
+        { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'exotic', basePrice: 10_000, demandMultiplier: 1.0 },
+      ],
     })
     marketQuote(state, ctx, 'mod-x')
-    placeSellOrder(state, ctx, 'mod-x', 5_000, 10) // b = 0.5×10000 = 5000
+    placeSellOrder(state, ctx, 'mod-x', 10_000, 10) // b = 1.0×10000 = 10000（收购档位 exotic = 全价回收）
     advanceGame(state, 30 * 60_000, ctx)
     const sold = 10 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThanOrEqual(1) // 结余 0.1/窗×30 → 至少 3 件
     expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
   })
 
-  it('挂价高于买盘价：站内不接、无保底；撤单全额退回', () => {
+  it('挂价高于买盘价：站内不接无保底，但越线可遇巡游采购（每窗小概率 ≤1 件）；撤单退回剩余', () => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
     ctx = poolCtx()
     marketQuote(state, ctx, 'min-a')
-    placeSellOrder(state, ctx, 'min-a', 9, 30) // b = 8 < 9：等更高簿价
+    placeSellOrder(state, ctx, 'min-a', 9, 30) // b = 8 < 9：站内吸收不接（无让利售出），赌巡游抢单
     advanceGame(state, 3 * 60_000, ctx)
-    expect(state.orders[0]!.qty).toBe(30) // 一字未动
-    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(false)
+    const sold = 30 - (state.orders[0]!.qty ?? 30)
+    expect(sold).toBeLessThanOrEqual(3) // 3 窗 × 每窗至多 1 件（seed 5 下命中 1）
+    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(false) // 吸收通道确实不接高挂
+    const hold = state.escrowItems['min-a'] ?? 0
+    expect(hold).toBe(30 - sold)
     expect(cancelOrder(state, ctx, state.orders[0]!.id)).toBe(true)
     expect(state.orders).toHaveLength(0)
     expect(state.escrowItems['min-a'] ?? 0).toBe(0)
-    expect(countWare(state, 'min-a')).toBe(30) // 全额退回仓库
+    expect(countWare(state, 'min-a')).toBe(30 - sold) // 剩余全额退回仓库（成交件已入账）
+  })
+})
+
+/* ═══════════ 收购侧改版（2026-09-08 船长定：档位 + 簿面件数 + 两侧抢单） ═══════════ */
+
+describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  /** 噪声关停（行情恒定，统计/窗口断言可复现） */
+  const quietBalance = (): typeof DEFAULT_BALANCE => ({
+    ...DEFAULT_BALANCE,
+    market: { ...DEFAULT_BALANCE.market, noiseStep: 0 },
+  })
+
+  it('收购档位真值表：common 0.6 / rare 0.65 / exotic 1.0 / 原料池 1.0 / 池耗材 0.6', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 3 })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      modules: [moduleDef('mod-a', 'turret', 0), moduleDef('mod-r2', 'turret', 0), moduleDef('mod-x2', 'turret', 0)],
+      marketGoods: [
+        { key: 'mod-a', kind: 'module', refId: 'mod-a', rarity: 'common', basePrice: 100, demandMultiplier: 0.6 },
+        { key: 'mod-r2', kind: 'module', refId: 'mod-r2', rarity: 'rare', basePrice: 1_000 }, // 缺省 → 0.65 档
+        { key: 'mod-x2', kind: 'module', refId: 'mod-x2', rarity: 'exotic', basePrice: 10_000 }, // 缺省 → 1.0 档
+        { key: 'min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 100, poolTarget: 3_000, supplyFlow: 10 },
+        { key: 'ammo-a', kind: 'item', refId: 'ammo-a', rarity: 'common', basePrice: 10, poolTarget: 4_000, supplyFlow: 150, demandMultiplier: 0.6 },
+      ],
+    })
+    // 档位函数（单件缺省按 rarity；显式值优先）
+    expect(acquisitionFactorOf(ctx.marketGoods.get('mod-a')!)).toBe(0.6)
+    expect(acquisitionFactorOf(ctx.marketGoods.get('mod-r2')!)).toBe(0.65)
+    expect(acquisitionFactorOf(ctx.marketGoods.get('mod-x2')!)).toBe(1.0)
+    // 开盘簿（有常驻簿的类别）价格即档位线
+    expect(marketQuote(state, ctx, 'mod-a').buy).toBe(60) // 0.6×100
+    expect(marketQuote(state, ctx, 'min-a').buy).toBe(100) // 原料池留空 = 平价 1.0
+    expect(marketQuote(state, ctx, 'ammo-a').buy).toBe(6) // 池耗材显式 0.6 → 10×0.6
+  })
+
+  it('簿面件数放大：common 单件开盘收购单 qty 3；rare 收购单出现时 qty 2 @0.65L', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      marketGoods: [
+        { key: 'mod-a', kind: 'module', refId: 'mod-a', rarity: 'common', basePrice: 100, demandMultiplier: 0.6 },
+        { key: 'mod-r2', kind: 'module', refId: 'mod-r2', rarity: 'rare', basePrice: 1_000 },
+      ],
+    })
+    marketQuote(state, ctx, 'mod-a')
+    expect(state.market.npcBuy['mod-a']!).toHaveLength(1)
+    expect(state.market.npcBuy['mod-a']![0]!.qty).toBe(3) // 2026-09-08：单件收购单 1→3 件
+    // rare 收购低频（3%/窗）：固定种子 400 窗内必出现，出现时件数 = 2、价格 = 0.65 档
+    let rarePrice = 0
+    for (let w = 0; w < 400; w++) {
+      advanceGame(state, 60_000, ctx)
+      const buy = (state.market.npcBuy['mod-r2'] ?? []).find((o) => o.qty === 2)
+      if (buy) {
+        rarePrice = buy.price
+        break
+      }
+    }
+    expect(rarePrice).toBe(650) // rare 缺省档 0.65 × L(1000)
+  })
+
+  it('卖出侧抢单：挂价 +10% 溢价 → 统计命中率 ≈ 30%·e^(−0.6) ≈16%/窗（无吸收无簿成交）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 101 })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      modules: [moduleDef('mod-a', 'turret', 0)],
+      marketGoods: [{ key: 'mod-a', kind: 'module', refId: 'mod-a', rarity: 'common', basePrice: 100, demandMultiplier: 0.6 }],
+    })
+    marketQuote(state, ctx, 'mod-a')
+    placeSellOrder(state, ctx, 'mod-a', 66, 500) // b=60 → r = 10% → 每窗 16.46%
+    advanceGame(state, 200 * 60_000, ctx)
+    const sold = 500 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBeGreaterThan(10) // 期望 ≈33；容差下限
+    expect(sold).toBeLessThan(70) // 上限
+    expect(state.logs.some((l) => l.text.includes('巡游采购'))).toBe(true)
+  })
+
+  it('买入侧抢单：砍价 5%（s≈5%）→ 统计命中率 ≈ 20%·e^(−0.7) ≈10%/窗（簿吃不掉）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 202 })
+    state.wallet.isk = 10_000_000
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      modules: [moduleDef('mod-a', 'turret', 0)],
+      marketGoods: [{ key: 'mod-a', kind: 'module', refId: 'mod-a', rarity: 'common', basePrice: 100, demandMultiplier: 0.6 }],
+    })
+    marketQuote(state, ctx, 'mod-a')
+    // 供应价线 = supply×L ≈ 100；挂 95（s=5% → 每窗 ≈9.93%）
+    const ask = state.market.npcSell['mod-a']![0]!.price
+    expect(ask).toBeGreaterThanOrEqual(95)
+    placeBuyOrder(state, ctx, 'mod-a', 95, 500)
+    advanceGame(state, 200 * 60_000, ctx)
+    const bought = 500 - (state.orders[0]?.qty ?? 0)
+    expect(bought).toBeGreaterThan(5) // 期望 ≈20；容差下限
+    expect(bought).toBeLessThan(60) // 上限
+    expect(state.logs.some((l) => l.text.includes('巡游供货'))).toBe(true)
+    expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
   })
 })
