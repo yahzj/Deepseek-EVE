@@ -290,6 +290,9 @@ export const RECYCLE_BASE_MODULES: readonly string[] = [
   'mod-miner-1',
   'mod-cargo-1',
   'mod-turret-kin-1',
+  // 2026-09-08 船长：激光/导弹 MK1 也进直出基础池（三系 MK1 武器齐平）
+  'mod-laser-1',
+  'mod-missile-1',
 ]
 export const RECYCLE_MK2_MODULES: readonly string[] = [
   'mod-miner-2',
@@ -329,7 +332,12 @@ export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef
   }
 }
 
-/** 彩头开箱（每批调用；逐具掷骰，确定性走 state.rng） */
+/**
+ * 彩头开箱（每批调用；逐具掷骰，确定性走 state.rng）。
+ * 主题 = "追加"语义（2026-09-08 船长收口）：默认池一件不少，recycleLoot.modules/mk2 只在各自
+ * 默认池上追加敌群主题件（武器不得为主题追加件——穹顶守卫三把 MK3 武器为唯一白名单例外，见 content-check）；
+ * 有追加件时整池按均价反比缩放（EV 守恒）；无追加件 = 默认池原概率。
+ */
 export function rollRecycleLoot(
   state: GameState,
   ctx: SimContext,
@@ -338,21 +346,30 @@ export function rollRecycleLoot(
 ): { modules: string[]; fragments: string[] } {
   const modules: string[] = []
   const fragments: string[] = []
-  // B3.1 试点：敌群可出件集替换"基础件通吃池 / 低安 MK2 池"，掉率按件集均价反比缩放 → EV 等值
   const avgPriceOf = (ids: readonly string[]): number => {
     const ps = ids
       .map((id) => ctx.marketGoods.get(id)?.basePrice)
       .filter((p): p is number => typeof p === 'number' && p > 0)
     return ps.length > 0 ? ps.reduce((a, b) => a + b, 0) / ps.length : 0
   }
-  const defBaseAvg = avgPriceOf(RECYCLE_BASE_MODULES)
-  const setBase = (profile.loot?.modules ?? []).filter((id) => ctx.modules.has(id))
-  const basePool = setBase.length > 0 ? setBase : RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
-  const baseChance = basePool.length > 0 ? RECYCLE_CHANCE.base * (defBaseAvg / (avgPriceOf(basePool) || defBaseAvg)) : 0
-  const defMk2Avg = avgPriceOf(RECYCLE_MK2_MODULES)
-  const setMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id))
-  const mk2Pool = setMk2.length > 0 ? setMk2 : RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
-  const mk2Chance = mk2Pool.length > 0 ? RECYCLE_CHANCE.mk2 * (defMk2Avg / (avgPriceOf(mk2Pool) || defMk2Avg)) : 0
+  // ① 基础件直出线：默认池（8 件，2026-09-08 起含三系 MK1 武器）+ 中安主题追加件
+  const defBase = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
+  const appendBase = (profile.loot?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
+  const defBaseAvg = avgPriceOf(defBase)
+  const basePool = [...defBase, ...appendBase]
+  const baseChance =
+    appendBase.length > 0 && basePool.length > 0
+      ? RECYCLE_CHANCE.base * (defBaseAvg / (avgPriceOf(basePool) || defBaseAvg))
+      : RECYCLE_CHANCE.base
+  // ② 低安门槛线：默认 MK2 池（7 件，武器全保留）+ 低安主题追加件（仅 sec<0 掷）
+  const defMk2 = RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
+  const appendMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
+  const defMk2Avg = avgPriceOf(defMk2)
+  const mk2Pool = [...defMk2, ...appendMk2]
+  const mk2Chance =
+    appendMk2.length > 0 && mk2Pool.length > 0
+      ? RECYCLE_CHANCE.mk2 * (defMk2Avg / (avgPriceOf(mk2Pool) || defMk2Avg))
+      : RECYCLE_CHANCE.mk2
   const t2Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
   const t3Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
   for (let i = 0; i < batchUnits; i++) {

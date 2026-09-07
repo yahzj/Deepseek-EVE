@@ -453,8 +453,11 @@ for (const m of MODULES) {
   }
   check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
   console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3%）`)
-  // 2026-09-08 船长收口：①MK3 一律走碎片，唯一例外 = 穹顶守卫彩头直出 MK3 武器（攻坚炮台 MK3·动能型）；
-  // ②主题彩头（recycleLoot override）只允许出现在 sec < 0.5 星系（MK2 支援/战术件等特色发放区划）
+  // 2026-09-08 船长定稿：①主题彩头（recycleLoot 追加件）只允许 sec < 0.5 星系；
+  // ②主题追加件不得含武器（炮/激光/导弹架），唯一例外 = 穹顶守卫门槛线追加三把 MK3 武器；
+  // ③MK3 一律走碎片，穹顶守卫 × {三把 MK3 武器} 为唯一 MK3 直出白名单
+  const weaponIds = new Set(MODULES.filter((m) => m.slot === 'turret' || m.slot === 'laser' || m.slot === 'missile').map((m) => m.id))
+  const mk3Weapons = ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3']
   let lootCards = 0
   for (const def of ANOMALIES_FLAVORED) {
     const loot = def.recycleLoot
@@ -466,15 +469,13 @@ for (const m of MODULES) {
     for (const group of ['modules', 'mk2'] as const) {
       for (const id of loot[group] ?? []) {
         const isMk3 = id.endsWith('-3')
-        const allowed = def.id === 'ano-vault-sentinel' && id === 'mod-turret-kin-3'
-        check(
-          !isMk3 || allowed,
-          `B3.1 MK3 直出收口失败：${def.name} 主题件 ${id}${allowed ? '' : '（MK3 一律走碎片，唯一例外 = 穹顶守卫 × 攻坚炮台 MK3·动能型）'}`,
-        )
+        const vaultMk3 = def.id === 'ano-vault-sentinel' && mk3Weapons.includes(id)
+        check(!isMk3 || vaultMk3, `B3.1 MK3 直出收口失败：${def.name} 主题件 ${id}（MK3 一律走碎片，唯一白名单 = 穹顶守卫 × 三把 MK3 武器）`)
+        check(!weaponIds.has(id) || vaultMk3, `B3.1 武器移出主题失败：${def.name} 主题追加件 ${id} 是武器（主题只放增幅装备；唯一武器例外 = 穹顶守卫三把 MK3）`)
       }
     }
   }
-  console.log(`· B3.1 主题彩头：${lootCards} 张试点（sec<0.5；MK3 直出例外仅穹顶守卫·攻坚炮台 MK3·动能型）`)
+  console.log(`· B3.1 主题追加件：${lootCards} 张卡（sec<0.5 增幅件；武器白名单仅穹顶守卫 × MK3 三武）`)
 }
 
 /* ── 输出 ── */
