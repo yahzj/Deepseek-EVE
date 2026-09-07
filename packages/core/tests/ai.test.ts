@@ -12,6 +12,7 @@ import { countWare } from '../src/inventory'
 import {
   aiEfficiency,
   aiSlotsUsed,
+  aiTaskView,
   assignAiExpedition,
   assignAiMining,
   buyBasicAiCore,
@@ -152,6 +153,25 @@ describe('AI 采矿任务', () => {
     expect(countWare(state, 'ore-a')).toBe(25)
     expect(state.fleet['sandcat2']!.cargo['ore-a'] ?? 0).toBe(0)
     expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('outbound') // 转出航继续循环
+  })
+
+  it('aiTaskView 与主控同口径：返航给进度与剩余（满仓 120s÷0.4=300s 腿，半程 = 50%）', () => {
+    state.fleet['sandcat2']!.cargo['ore-a'] = 100
+    state.aiAssignments['sandcat2'] = {
+      coreType: 'basic',
+      startedAtGameMs: 0,
+      task: { kind: 'mining', beltId: 'belt-a', phase: 'returning', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 100 },
+    }
+    const v0 = aiTaskView(state, ctx, 'sandcat2')!
+    expect(v0.kind).toBe('mining')
+    expect(v0.label).toBe('返航卸货中')
+    expect(v0.percent).toBe(0)
+    advanceGame(state, 149_999, ctx)
+    expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('returning')
+    advanceGame(state, 1, ctx)
+    const v1 = aiTaskView(state, ctx, 'sandcat2')!
+    expect(v1.remainingMs).toBe(150_000)
+    expect(v1.percent).toBe(50)
   })
 })
 

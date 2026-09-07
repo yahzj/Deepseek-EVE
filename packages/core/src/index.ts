@@ -432,7 +432,9 @@ export {
   cancelAiTask,
   advanceAi,
   advanceAiExpedition,
+  aiTaskView,
 } from './ai'
+export type { AiTaskView } from './ai'
 
 export {
   DEFAULT_OFFLINE_CAP_MS,
