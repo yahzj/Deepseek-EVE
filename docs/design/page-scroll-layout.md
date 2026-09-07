@@ -39,11 +39,9 @@
 - [x] 批次1：舰船（fleet/AI/shop 各活跃 Panel is-fill）——已上线（App PAGE_NO_SCROLL 含 ship）
 - [x] 批次1：市场（说明行固定 + split 弹性占满；左列商品 Panel is-fill body 内滚；右栏沿用 7307 弹性链）——已上线（no-scroll 含 market）
 - [x] 批次1：装配（单 Panel is-fill，body 内滚）——已上线（no-scroll 含 fit）
-- [x] 批次2：工业（三标签 Panel body 滚）——已上线（no-scroll 含 industry；组装机筛选行固定为后续微调项）
-- [x] 批次2：星图（5 标签 Panel body 滚）——已上线（no-scroll 含 map；远征「地图+行动弹窗」为后续独立重构项）
-- [x] 批次3：技能（队列固定 + 目录 Panel is-fill 整窗滚）——已上线（no-scroll 含 skills）
-- [x] 批次3：物品（仓库/货仓整标签单窗滚 app-win-body；CargoPage 嵌套无双滚）——已上线（no-scroll 含 items）
-- [ ] 后续独立项：星图·远征行动列表弹窗化（船长 2026-09-08 拍板方案）
-- [ ] 后续微调项：组装机/任务中心等 面板内筛选/子标签行固定（固定头+下滚精细化）
+- [ ] 批次2：工业（三标签 Panel body 滚；组装机筛选行固定策略与船长对齐）
+- [ ] 批次2：星图（5 标签 Panel body 滚；远征=地图全窗+行动弹窗）
+- [ ] 批次3：技能（队列固定 + 目录 Panel is-fill 整窗滚）
+- [ ] 批次3：物品（仓库/货仓整标签单窗滚；CargoPage 嵌套不产生双滚）
 - [ ] 全量回归：桌面各页 + 手机横屏矮高预算（不裁内容红线）+ ≤1180px 窄桌面
 
