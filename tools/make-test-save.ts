@@ -353,16 +353,16 @@ function injectRedtide(state: GameState): string[] {
     low: ['mod-armor-kin-1', 'mod-armor-plate-1'],
   }
   state.shipId = uid1
-  // MK2 满配参考船（同型换装对比）
+  // MK2 满配参考船（P1 S2 官方锚装：battle-calibrate S2 行——4×动能MK2 + 中 盾抗/索敌/陀螺 + 低 火力稳定器/甲抗）
   const uid2 = addShipToFleet(state, 'sh-mako')
   const s2 = state.fleet[uid2]!
-  s2.customName = 'MK2满配·参考'
+  s2.customName = 'MK2锚装·P1参考'
   s2.fitted = {
     high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
-    mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2'],
-    low: ['mod-armor-kin-2', 'mod-armor-plate-2'],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
-  notes.push(`新增灰鲭鲨级 ×2：${uid1}（MK1满配·试验，已设为驾驶——复现"三发被打成破烂"场景）与 ${uid2}（MK2满配·参考，舰船页切换对比）`)
+  notes.push(`新增灰鲭鲨级 ×2：${uid1}（MK1满配·试验，已设为驾驶——复现"三发被打成破烂"场景）与 ${uid2}（MK2锚装·P1参考，舰船页切换对比）`)
   // 弹药/修理组件（两船货仓 + 仓库）
   const ammo: Array<[string, string]> = [
     ['ammo-kinetic-l', '动能弹'],
@@ -397,7 +397,7 @@ function injectRedtide(state: GameState): string[] {
   notes.push('装备库备 MK1/MK2 换装件（动能/激光/导弹、盾抗/容量、甲抗/甲板、索敌/推进/射速/陀螺/稳定器）——装配页自由换装对比')
   for (const sh of Object.values(state.fleet)) sh.durability = 1
   notes.push('全舰耐久回满')
-  notes.push('测试路径：星图·战斗悬赏 → 红环航道「赤潮劫掠舰队」→ 开战观察 MK1 满配被几轮齐射击穿/残血比例（对照玩家反馈）与预估胜率 → 舰船页切换 MK2满配·参考 同目标再打一轮对比 → 装配页换 推进器/射速计算机 等变体看手感差异')
+  notes.push('测试路径：星图·战斗悬赏 → 红环航道「赤潮劫掠舰队」→ 开战观察 MK1 满配被几轮齐射击穿/残血比例（对照玩家反馈）与预估胜率 → 舰船页切换 MK2锚装·P1参考 同目标再打一轮对比 → 装配页换 推进器/射速计算机 等变体看手感差异')
   return notes
 }
 
