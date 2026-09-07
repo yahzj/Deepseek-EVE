@@ -146,8 +146,8 @@ export function ShipPage({
   }
 
   return (
-    <div className="page-stack">
-      {/* 舰队 / AI 指挥 / 舰船市场（MapPage/IndustryPage 同款 app-subtabs 规范） */}
+    <div className="page-stack page-fill">
+      {/* 舰队 / AI 指挥 / 舰船市场（MapPage/IndustryPage 同款 app-subtabs 规范）；标签行固定，活跃面板吸满并 body 内滚 */}
       <div className="app-subtabs" role="tablist">
         {SHIP_TABS.map((t) => (
           <button
@@ -170,6 +170,7 @@ export function ShipPage({
         <>
       {/* ───── 我的舰队 ───── */}
       <Panel
+        className="is-fill"
         title="我的舰队"
         right={
           <span className="app-dim">
@@ -422,6 +423,7 @@ export function ShipPage({
 
       {activeTab === 'shop' ? (
         <Panel
+          className="is-fill"
           title="舰船市场"
           right={<span className="app-dim">现货看订单簿 · 无货可挂收购单自动等补货</span>}
         >
@@ -562,6 +564,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
   return (
     <Panel
+      className="is-fill"
       title="AI 指挥中心"
       right={<span className="app-dim">名额 {used}/{slots}</span>}
     >
