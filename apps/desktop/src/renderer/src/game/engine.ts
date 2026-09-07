@@ -15,6 +15,7 @@ import {
   advanceGame,
   fightEncounter,
   fleeEncounter,
+  formatDurationMs,
   assignAiExpedition,
   assignAiStandby,
   assignAiMining,
@@ -251,6 +252,20 @@ function buildOfflineReport(
   }
 }
 
+/** 离线结算报告 → 事件日志单条汇总（2026-09-08 船长定：日志会话级不落盘，
+ * 但离线报告本体要进入本局事件日志，供关闭简报后查证） */
+function offlineReportLogText(r: OfflineReport): string {
+  const parts: string[] = [`离开 ${formatDurationMs(r.wallAwayMs)}，结算 ${formatDurationMs(r.settledMs)}`]
+  if (r.overflowMs > 0) parts.push(`另有 ${formatDurationMs(r.overflowMs)} 超出上限未结算`)
+  parts.push(`钱包 ${r.iskDelta >= 0 ? '+' : '−'}${Math.abs(r.iskDelta).toLocaleString('zh-CN')} ISK`)
+  if (r.items.length > 0) parts.push(`收获 ${r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join('、')}`)
+  if (r.modules.length > 0) parts.push(`装备入库 ${r.modules.map((m) => `${m.name}×${m.delta}`).join('、')}`)
+  if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join('、')}`)
+  if (r.skillsUp.length > 0) parts.push(`技能 ${r.skillsUp.join('、')}`)
+  if (r.learnedIn.length > 0) parts.push(`学会配方 ${r.learnedIn.join('、')}`)
+  return `离线结算报告：${parts.join('；')}。`
+}
+
 export class GameEngine {
   /** 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值） */
   readonly ctx: SimContext = buildSimContext()
@@ -379,6 +394,11 @@ export class GameEngine {
       const { overflowMs } = offlineSplit(now - lastSavedWall)
       simulateOffline(this.state, lastSavedWall, now, this.ctx)
       this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs)
+      // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
+      // 离线补时产生的日志照常显示，另补一条报告汇总单条（钱包/收获明细，关闭简报后仍可查证）
+      if (this.offlineReport !== null) {
+        addLog(this.state, 'info', offlineReportLogText(this.offlineReport))
+      }
     }
 
     this.lastRealMs = Date.now()
@@ -464,10 +484,12 @@ export class GameEngine {
     if (this.autoSortie && !this.state.expedition.active) this.autoSortie = false
   }
 
-  /** 保存存档 */
+  /** 保存存档（2026-09-08 船长定：事件日志不落盘——写盘前剥离 logs，
+   * 每次开启游戏日志空白；logs 仅作本局内存滚动展示） */
   async persist(): Promise<boolean> {
     try {
-      return await saveBridge.save(serializeSaveFile(this.state))
+      const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
+      return await saveBridge.save(serializeSaveFile(out))
     } catch (err) {
       console.error('保存失败：', err)
       return false
@@ -511,6 +533,7 @@ export class GameEngine {
       if (!restore.ok) return { ok: false, error: restore.error ?? '写回存档失败。' }
       this.state = parsed.state
       this.offlineReport = null
+      // 2026-09-08 船长定：日志会话级（写盘剥离）——恢复备份不做强制清空，本局日志接续显示
       this.notify()
       return { ok: true }
     } catch (err) {

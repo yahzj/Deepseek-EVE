@@ -1823,7 +1823,9 @@ function normalizeState(raw: unknown): GameState {
   return normalized
 }
 
-/** 保存：把状态序列化成 JSON 字符串（现在时间由调用方传入，测试可固定） */
+/** 保存：把状态序列化成 JSON 字符串（现在时间由调用方传入，测试可固定）。
+ * 2026-09-08 船长定：事件日志不落盘——桌面引擎调用前已剥离 state.logs（logs 仅作本局内存滚动），
+ * 旧档中的 logs 由引擎载入后清空；本函数保持通用（测试/工具可直接序列化完整状态） */
 export function serializeSaveFile(state: GameState, nowWallMs: number = Date.now()): string {
   return JSON.stringify({
     format: SAVE_FORMAT,

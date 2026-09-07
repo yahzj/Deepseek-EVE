@@ -1557,7 +1557,7 @@ export function Communicator({
         </div>
         <div className="app-comm-foot">
           <button className="app-btn is-small is-primary" onClick={onClose}>
-            关闭（对话已存档进右侧事件日志）
+            关闭（对话已记入右侧事件日志）
           </button>
         </div>
       </div>
