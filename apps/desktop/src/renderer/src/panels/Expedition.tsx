@@ -191,10 +191,11 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
 
   return (
     <Panel
-      className="is-fill"
+      className="is-fill win-fixed-body"
       title="任务中心"
       right={<span className="app-dim">建站 {stationCount} · 抵达对应星系后出现</span>}
     >
+      {/* 子标签固定（固定头+下滚）：重要/资源/快递 常显，下方任务内容独立内滚 */}
       <div className="app-task-tabs" role="tablist">
         {TASK_TABS.map((t) => (
           <button
@@ -208,6 +209,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
           </button>
         ))}
       </div>
+      <div className="app-win-body">
       {tab === 'important' ? (
         <div>
           <ImportantTasks engine={engine} onToast={onToast} />
@@ -243,6 +245,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
           <SideTasksArea engine={engine} onToast={onToast} kind="courier" />
         </div>
       )}
+      </div>
     </Panel>
   )
 }

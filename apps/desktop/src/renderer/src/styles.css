@@ -7356,3 +7356,9 @@ body {
 .app-mkt-right { min-height: 0; }
 
 .app-mkt-right > .wui-panel { min-height: 0; }
+
+/* ---------- fixed-head + scroll-body inside panel (2026-09-08) ---------- */
+
+.wui-panel.win-fixed-body > .wui-panel-body { overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+
+.wui-panel.win-fixed-body .app-win-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
