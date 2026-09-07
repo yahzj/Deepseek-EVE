@@ -18,8 +18,8 @@ export type RecycleFlavor = {
 export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = {
   // ── 中安（0 ≤ sec < 0.5）：直出基础池追加 1 件非火力增幅件 ──
   'ano-lantern-saboteurs': { modules: ['mod-cargo-2'] }, // 信标猎手：长途货舱
-  'ano-haze-ambush': { modules: ['mod-shield-kin-2'] }, // 灰霾伏击：动能护盾增强（并入试点）
-  'ano-shard-bandits': { modules: ['mod-miner-2'] }, // 碎晶劫匪：掠夺采集器（并入试点）
+  'ano-haze-ambush': { modules: ['mod-shield-kin-2'] }, // 灰霾伏击：动能护盾增强
+  'ano-shard-bandits': { modules: ['mod-miner-2'] }, // 碎晶劫匪：掠夺采集器
   'ano-redring-raiders': { modules: ['mod-armor-plate-2'] }, // 赤潮舰队：装甲增厚
   'ano-ghost-signal': { modules: ['mod-shield-pla-2'] }, // 幽灵舰：能量护盾残影
   'ano-echo-haunt': { modules: ['mod-shield-ext-2'] }, // 回音残舰：护盾扩展
@@ -27,7 +27,7 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   // ── 低安（sec < 0）：低安门槛 MK2 池追加增幅件（默认 7 件保留）──
   'ano-auro-raiders': { mk2: ['mod-armor-exp-2', 'mod-stab-exp-2'] }, // 奥罗盗匪：高爆甲+高爆稳定
   'ano-abyss-guard': { mk2: ['mod-shield-exp-2', 'mod-armor-plate-2'] }, // 深渊卫队：高爆盾+增厚
-  'ano-titan-wreck': { mk2: ['mod-shield-ext-2', 'mod-armor-plate-2'] }, // 泰坦：巨构扩展+增厚（并入试点，武器清出）
+  'ano-titan-wreck': { mk2: ['mod-shield-ext-2', 'mod-armor-plate-2'] }, // 泰坦：巨构扩展+增厚（武器清出）
   'ano-cinder-siege': { mk2: ['mod-armor-pla-2', 'mod-stab-pla-2'] }, // 烬火围攻：能量甲+等离子稳定
   'ano-chasm-aberrations': { mk2: ['mod-stab-kin-2', 'mod-armor-exp-2'] }, // 裂谷畸变：动能稳定+高爆甲
   'ano-nadir-static': { mk2: ['mod-rof-2', 'mod-track-2'] }, // 天底封锁：射速+索敌

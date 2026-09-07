@@ -790,7 +790,8 @@ export interface AnomalyDef {
   recyclePool?: ReadonlyArray<readonly [string, number]>
   /** 玩家可见的"残骸产出倾向"一句话 */
   recycleNote?: string
-  /** 试点彩头可出件集（替换基础件通吃池 / 低安 MK2 池；掉率按件集均价自动缩放保持 EV 等值） */
+  /** 主题追加件集（2026-09-08"追加"语义：只在默认池上追加，默认池一件不少；武器不入主题，
+   *  穹顶守卫三把 MK3 武器为唯一白名单） */
   recycleLoot?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 
