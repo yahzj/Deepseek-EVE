@@ -453,6 +453,28 @@ for (const m of MODULES) {
   }
   check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
   console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3%）`)
+  // 2026-09-08 船长收口：①MK3 一律走碎片，唯一例外 = 穹顶守卫彩头直出 MK3 武器（攻坚炮台 MK3·动能型）；
+  // ②主题彩头（recycleLoot override）只允许出现在 sec < 0.5 星系（MK2 支援/战术件等特色发放区划）
+  let lootCards = 0
+  for (const def of ANOMALIES_FLAVORED) {
+    const loot = def.recycleLoot
+    if (!loot || (!loot.modules?.length && !loot.mk2?.length)) continue
+    lootCards += 1
+    const galaxy = ctx.galaxies.get(def.galaxyId)
+    const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
+    check(sec < 0.5, `B3.1 主题彩头仅限 sec<0.5 星系：${def.name}（${def.galaxyId}）sec=${sec}`)
+    for (const group of ['modules', 'mk2'] as const) {
+      for (const id of loot[group] ?? []) {
+        const isMk3 = id.endsWith('-3')
+        const allowed = def.id === 'ano-vault-sentinel' && id === 'mod-turret-kin-3'
+        check(
+          !isMk3 || allowed,
+          `B3.1 MK3 直出收口失败：${def.name} 主题件 ${id}${allowed ? '' : '（MK3 一律走碎片，唯一例外 = 穹顶守卫 × 攻坚炮台 MK3·动能型）'}`,
+        )
+      }
+    }
+  }
+  console.log(`· B3.1 主题彩头：${lootCards} 张试点（sec<0.5；MK3 直出例外仅穹顶守卫·攻坚炮台 MK3·动能型）`)
 }
 
 /* ── 输出 ── */

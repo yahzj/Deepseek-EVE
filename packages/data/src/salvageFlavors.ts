@@ -100,12 +100,16 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   },
 }
 
-/** 试点彩头可出件（6 卡：星髓巢穴/坟场/穹顶/深渊·泰坦/碎晶带/灰霾带）——件集掉率按均价自动缩放 */
+/** 试点彩头可出件（6 卡：星髓巢穴/坟场/穹顶/深渊·泰坦/碎晶带/灰霾带）——件集掉率按均价自动缩放；
+ * 2026-09-08 船长收口：MK3 一律走碎片（1000 片），唯一例外 = 最后一个悬赏「穹顶守卫」彩头可概率直出
+ * MK3 武器（攻坚炮台 MK3·动能型，mod-turret-kin-3）；主题彩头仅限 sec < 0.5 星系（content-check 断言）。 */
 export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = {
   'ano-starcore-boss': { modules: ['mod-turret-kin-2', 'mod-laser-2', 'mod-drone-tac-2'], mk2: ['mod-drone-tac-2'] },
   'ano-gravekeeper': { modules: ['mod-armor-kin-2', 'mod-shield-kin-2'], mk2: ['mod-armor-kin-2'] },
-  'ano-vault-sentinel': { modules: ['mod-armor-kin-2', 'mod-armor-kin-3'], mk2: ['mod-armor-kin-3'] },
-  'ano-titan-wreck': { modules: ['mod-turret-kin-3', 'mod-missile-2'], mk2: ['mod-turret-kin-3'] },
+  // 穹顶守卫（最后悬赏）：MK3 装甲不直出（走碎片），主题 = MK2 装甲镀层 + 唯一 MK3 武器直出例外
+  'ano-vault-sentinel': { modules: ['mod-armor-kin-2', 'mod-turret-kin-3'], mk2: ['mod-turret-kin-3'] },
+  // 泰坦残骸勘探：MK3 武器直出随收口移除，改回 MK2 动能炮 + 导弹架主题（MK3 经 T3 碎片集齐解锁）
+  'ano-titan-wreck': { modules: ['mod-turret-kin-2', 'mod-missile-2'], mk2: ['mod-turret-kin-2'] },
   'ano-shard-bandits': { modules: ['mod-laser-2', 'mod-missile-2'], mk2: ['mod-laser-2'] },
   'ano-haze-ambush': { modules: ['mod-missile-2', 'mod-turret-kin-2'], mk2: ['mod-missile-2'] },
 }
