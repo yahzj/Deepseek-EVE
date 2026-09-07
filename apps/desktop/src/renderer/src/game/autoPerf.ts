@@ -17,6 +17,26 @@ export interface AutoPerfSpec {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** 滚动审计（诊断工具）：打印页面内容区各 Panel 的几何与 overflow 状态，定位"二级窗没滚动条/内容被裁" */
+function auditScrollGeometry(): void {
+  const page = document.querySelector<HTMLElement>('.app-page-content')
+  if (!page) return
+  const info = (el: HTMLElement, tag: string): string =>
+    `${tag} clientH=${Math.round(el.clientHeight)} scrollH=${Math.round(el.scrollHeight)} overflow=${getComputedStyle(el).overflowY}`
+  console.log(`AUDIT page: ${info(page, 'page-content')}`)
+  const stack = page.querySelector<HTMLElement>(':scope > .page-stack')
+  if (stack) console.log(`AUDIT ${info(stack, 'page-stack')}`)
+  page.querySelectorAll<HTMLElement>('.wui-panel').forEach((panel, i) => {
+    const body = panel.querySelector<HTMLElement>(':scope > .wui-panel-body')
+    const title = panel.querySelector('.wui-panel-title')?.textContent ?? `panel${i}`
+    console.log(`AUDIT panel=${title} h=${Math.round(panel.clientHeight)}/${Math.round(panel.scrollHeight)}`)
+    if (body) console.log(`AUDIT body-of=${title} h=${Math.round(body.clientHeight)}/${Math.round(body.scrollHeight)} ov=${getComputedStyle(body).overflowY}`)
+  })
+  page.querySelectorAll<HTMLElement>('.app-belt-grid,.app-ano-list,.app-inv-list,.app-shelf-grid,.app-mkt-list').forEach((el) => {
+    console.log(`AUDIT list.${el.className.split(' ')[0]} ${info(el, 'list')}`)
+  })
+}
+
 /** 按文字找左侧导航按钮（首次匹配；找不到返回 null） */
 function navButton(label: string): HTMLButtonElement | null {
   const nodes = document.querySelectorAll<HTMLButtonElement>('.app-nav-side button')
@@ -52,12 +72,26 @@ async function tryStartBattle(engine: GameEngine): Promise<boolean> {
 }
 
 /** 跑完一个场景段（固定墙钟时长；战斗段尝试维持战斗直到超时） */
-async function runScene(engine: GameEngine, sc: { name: string; seconds: number; page?: string; battle?: boolean }): Promise<void> {
+async function runScene(
+  engine: GameEngine,
+  sc: { name: string; seconds: number; page?: string; subtab?: string; auditScroll?: boolean; battle?: boolean },
+): Promise<void> {
   if (sc.page) {
     const b = navButton(sc.page)
     if (b) b.click()
     await sleep(1500) // 页面切换 + 首次渲染稳定
   }
+  if (sc.subtab) {
+    const nodes = document.querySelectorAll<HTMLButtonElement>('.app-subtabs button, .app-task-tabs button')
+    for (const t of nodes) {
+      if ((t.textContent ?? '').includes(sc.subtab)) {
+        t.click()
+        break
+      }
+    }
+    await sleep(1200)
+  }
+  if (sc.auditScroll) auditScrollGeometry()
   perfHub.beginScene(sc.name)
   const deadline = Date.now() + sc.seconds * 1000
   if (sc.battle) {
