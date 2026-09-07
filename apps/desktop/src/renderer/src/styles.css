@@ -2118,45 +2118,6 @@ body {
 
 }
 
-/* 一级页不滚基建（2026-09-08）：仅改造完成的页加 no-scroll（未改造页保持整页滚，防中间态裁内容）；
- * 页面根用 .page-fill 吃满；二级窗 = 固定头(面板头/常显行) + 内滚体(.wui-panel-body 自带或 .app-win-body) */
-
-.app-page-content.no-scroll {
-
-  display: flex;
-
-  flex-direction: column;
-
-  overflow: hidden;
-
-}
-
-.page-stack.page-fill {
-
-  flex: 1 1 auto;
-
-  min-height: 0;
-
-}
-
-.wui-panel.is-fill {
-
-  flex: 1 1 auto;
-
-  min-height: 0;
-
-}
-
-.app-win-body {
-
-  flex: 1 1 auto;
-
-  min-height: 0;
-
-  overflow-y: auto;
-
-}
-
 .page-stack {
 
   display: flex;
