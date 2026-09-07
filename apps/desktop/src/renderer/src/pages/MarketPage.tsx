@@ -565,6 +565,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <span className="app-dim">ISK</span>
           </div>
           <div className="app-mkt-trade-btns">
+            {/* 2026-09-08 船长：挂单按钮前置到市价买卖之前（挂单/市价/（卖出侧）全部卖出） */}
+            <button className="app-btn is-small" onClick={doPlace}>
+              {tab === 'buy' ? '挂买单' : '挂卖单'}
+            </button>
             <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
               {tab === 'buy' ? '市价买入' : '市价卖出'}
             </button>
@@ -573,9 +577,6 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 全部卖出（{holdings}）
               </button>
             ) : null}
-            <button className="app-btn is-small" onClick={doPlace}>
-              {tab === 'buy' ? '挂买单' : '挂卖单'}
-            </button>
           </div>
         </div>
       </div>
@@ -843,19 +844,19 @@ export function MarketPage({
               </div>
             </Panel>
           )}
+          {/* 2026-09-08 船长：我的挂单并入右栏详情页下方（右栏弹性补齐到与左侧同高） */}
+          <Panel
+            title="我的挂单"
+            right={
+              <span className="app-dim">
+                余额 {isk(state.wallet.isk)} ISK · 托管在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
+              </span>
+            }
+          >
+            <MyOrders engine={engine} onToast={onToast} />
+          </Panel>
         </div>
       </div>
-
-      <Panel
-        title="我的挂单"
-        right={
-          <span className="app-dim">
-            余额 {isk(state.wallet.isk)} ISK · 托管在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
-          </span>
-        }
-      >
-        <MyOrders engine={engine} onToast={onToast} />
-      </Panel>
     </div>
   )
 }
