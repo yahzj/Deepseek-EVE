@@ -7291,3 +7291,11 @@ body {
 .app-perf-hud-line { display: flex; justify-content: space-between; gap: 10px; }
 
 .app-perf-hud-tip { margin-top: 2px; font-size: 10.5px; }
+
+/* ---------- market detail quick book click (2026-09-08) ---------- */
+
+.app-mkt-depth.is-click { cursor: pointer; }
+
+.app-mkt-depth.is-click:hover { background: rgba(127, 227, 255, 0.08); }
+
+.app-mkt-chart-hint { margin-top: 2px; font-size: 10.5px; opacity: 0.75; color: #7fb4c9; }

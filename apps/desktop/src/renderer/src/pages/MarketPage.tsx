@@ -451,6 +451,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       else onToast(`已挂卖单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK。`)
     }
   }
+  /**
+   * 点盘口行快速就位（2026-09-08 船长）：买盘（收你的货）行 → 切「卖出」并预填该档价格/数量，
+   * 卖盘（卖给你的货）行 → 切「买入」并预填该档价格/数量——填好后可直接微调挂单或走市价按钮。
+   */
+  function fillFromBook(side: 'buy' | 'sell', rowPrice: number, rowQty: number): void {
+    setTab(side)
+    setPrice(rowPrice)
+    setQty(Math.max(1, rowQty))
+  }
 
   return (
     <>
@@ -468,6 +477,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       <div className="app-mkt-detail">
         <div className="app-mkt-detail-left">
           <PriceChart hist={hist} />
+          {hist.length >= 2 ? (
+            <div className="app-mkt-chart-hint">行市参考价走势：每 30 分钟采样一次（含库存压力与冲击），非逐笔成交价</div>
+          ) : null}
           <div className="app-mkt-detail-quotes">
             <div className="app-mkt-quote">
               收购 <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
@@ -484,7 +496,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           <div className="app-mkt-book">
             <div className="app-mkt-book-title">买盘（收你的货）</div>
             {buyOrders.map((o, i) => (
-              <div key={`b${i}`} className="app-mkt-depth">
+              <div
+                key={`b${i}`}
+                className="app-mkt-depth is-click"
+                title="点击 = 切到「卖出」并预填该收购价与数量——可直接挂卖单（或改价/改量）"
+                onClick={() => fillFromBook('sell', o.price, o.qty)}
+              >
                 <span className="app-mkt-depth-price">{isk(o.price)}</span>
                 <span className="app-mkt-depth-bar app-mkt-depth-buy">
                   <i style={{ width: `${Math.round((o.qty / maxOrderQty) * 100)}%` }} />
@@ -497,7 +514,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           <div className="app-mkt-book">
             <div className="app-mkt-book-title">卖盘（卖给你的货）</div>
             {sellOrders.map((o, i) => (
-              <div key={`s${i}`} className="app-mkt-depth">
+              <div
+                key={`s${i}`}
+                className="app-mkt-depth is-click"
+                title="点击 = 切到「买入」并预填该供应价与数量——可直接挂买单（或改价/改量）"
+                onClick={() => fillFromBook('buy', o.price, o.qty)}
+              >
                 <span className="app-mkt-depth-price">{isk(o.price)}</span>
                 <span className="app-mkt-depth-bar app-mkt-depth-sell">
                   <i style={{ width: `${Math.round((o.qty / maxOrderQty) * 100)}%` }} />
