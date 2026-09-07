@@ -137,7 +137,7 @@ function manualBuildNote(state: GameState): string | null {
 }
 
 /** 一张可制造蓝图的展示卡（与精炼炉卡同款结构：运转名册逐线 = 劳动者 + 进度 + 取消；
- * 开工按钮 = 手动制造（主控亲自）/ AI 核心下拉 + AI 制造；已学会 + 材料/制造费够即可随时加开） */
+ * 开工按钮 = 手动制造（主控亲自）/ AI 核心下拉 + AI 制造；已学会 + 材料够即可随时加开（制造费已于 2026-09-08 取消）） */
 function BlueprintCard({
   engine,
   onToast,
@@ -146,7 +146,6 @@ function BlueprintCard({
   description,
   materials,
   buildSeconds,
-  buildCostIsk,
   productLabel,
   kindLabel,
 }: {
@@ -157,7 +156,6 @@ function BlueprintCard({
   description: string
   materials: readonly MaterialNeed[]
   buildSeconds: number
-  buildCostIsk: number
   /** 产物标签（如 装备名 或 舰船名+属性） */
   productLabel: string
   /** 产物类别徽标：装备 / 舰船 */
@@ -168,10 +166,11 @@ function BlueprintCard({
   const runs = manufacturingRunViews(state, engine.ctx).filter((v) => v.blueprintId === blueprintId)
   const running = runs.length > 0
   const owned = ownsBlueprint(state, blueprintId)
-  const buildMs = calcBuildDurationMs(state, engine.ctx, { materials, buildSeconds, buildCostIsk })
-  const canPayFee = state.wallet.isk >= buildCostIsk
+  // 制造费已取消（2026-09-08）：耗时/缺口等 spec 计算的费用字段恒置 0
+  const spec = { materials, buildSeconds, buildCostIsk: 0 }
+  const buildMs = calcBuildDurationMs(state, engine.ctx, spec)
   const bookCount = state.blueprintStock[blueprintId] ?? 0
-  const short = missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk })
+  const short = missingMaterials(state, engine.ctx, spec)
   const goodKey = bpGoodKey(engine, blueprintId)
   const lock = !owned && goodKey ? marketLockedReason(state, engine.ctx, goodKey) : null
   // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
@@ -195,31 +194,30 @@ function BlueprintCard({
     }
     onToast(
       worker === 'pilot'
-        ? '主控亲自开工：材料与制造费已扣除，线已开（期间不可离港作业）。'
-        : `${aiCoreName(worker)}已接入：材料与制造费已扣除，线已开（核心占用一枚，完成/取消自动归还）。`,
+        ? '主控亲自开工：材料已扣除，线已开（期间不可离港作业）。'
+        : `${aiCoreName(worker)}已接入：材料已扣除，线已开（核心占用一枚，完成/取消自动归还）。`,
     )
   }
 
   function handleCancel(runId: number): void {
     const r = engine.cancelManufacturingAt(runId)
     if (!r.ok) onToast(r.error ?? '取消失败', true)
-    else onToast('已取消该条制造线：材料全额退回物品仓库（制造费不退；AI 核心已归还），其余线不受影响。')
+    else onToast('已取消该条制造线：材料全额退回物品仓库（AI 核心已归还），其余线不受影响。')
   }
 
-  const payShortTxt = canPayFee ? '' : `制造费不足：需要 ${buildCostIsk.toLocaleString('zh-CN')} ISK`
-  const feedTxt = short.length > 0 ? short.join('；') : payShortTxt
+  const feedTxt = short.length > 0 ? short.join('；') : ''
   const manualTitle =
     manualNote ??
     feedTxt ??
     (running
-      ? '主控亲自再加开一条线：材料与制造费立即扣除（主控手动工作位全局限 1 条，其余线须 AI 驱动）'
-      : '主控亲自开一条制造线：材料与制造费立即扣除，期间不可离港作业')
+      ? '主控亲自再加开一条线：材料立即扣除（主控手动工作位全局限 1 条，其余线须 AI 驱动）'
+      : '主控亲自开一条制造线：材料立即扣除，期间不可离港作业')
   const aiTitle = feedTxt
     ? feedTxt
     : core
       ? running
         ? '接入一枚闲置 AI 核心再加开一条线（核心出库占用；完成/取消自动归还）'
-        : '接入 AI 核心自动制造：材料与制造费立即扣除（核心出库占用一枚；不占主控与副船名额）'
+        : '接入 AI 核心自动制造：材料立即扣除（核心出库占用一枚；不占主控与副船名额）'
       : '没有可用 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'
 
   return (
@@ -285,8 +283,7 @@ function BlueprintCard({
         })}
       </ul>
       <div className="app-belt-econ">
-        制造费 {buildCostIsk.toLocaleString('zh-CN')} ISK/条
-        {running ? <span className="app-dim"> · 已付 {runs.length} 条</span> : null}
+        制造免费：只耗材料与时间
         {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
       </div>
 
@@ -309,7 +306,7 @@ function BlueprintCard({
                 <button
                   className="app-btn is-small is-warn"
                   onClick={() => handleCancel(v.id)}
-                  title="取消这条制造线：材料按材料学折扣后的实际用量全额退回（制造费不退；AI 核心自动归还），其它线不受影响"
+                  title="取消这条制造线：材料按材料学折扣后的实际用量全额退回（AI 核心自动归还），其它线不受影响"
                 >
                   ■ 取消
                 </button>
@@ -322,7 +319,7 @@ function BlueprintCard({
           <>
             <button
               className="app-btn is-small is-primary"
-              disabled={manualNote !== null || !canPayFee || short.length > 0}
+              disabled={manualNote !== null || short.length > 0}
               title={manualTitle}
               onClick={() => runWith('pilot')}
             >
@@ -344,7 +341,7 @@ function BlueprintCard({
                 </select>
                 <button
                   className="app-btn is-small"
-                  disabled={!core || !canPayFee || short.length > 0}
+                  disabled={!core || short.length > 0}
                   title={aiTitle}
                   onClick={() => core && runWith(core)}
                 >
@@ -384,7 +381,6 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     description: string
     materials: readonly MaterialNeed[]
     buildSeconds: number
-    buildCostIsk: number
     productLabel: string
     running: boolean
     canStart: boolean
@@ -399,12 +395,11 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         description: sbp.description,
         materials: sbp.materials,
         buildSeconds: sbp.buildSeconds,
-        buildCostIsk: sbp.buildCostIsk,
         productLabel: shipDef
           ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
           : sbp.shipId,
         running: runViews.some((v) => v.blueprintId === sbp.id),
-        canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds, sbp.buildCostIsk),
+        canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
       })
     }
   }
@@ -419,10 +414,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         description: bp.description,
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
-        buildCostIsk: bp.buildCostIsk,
         productLabel: moduleName,
         running: runViews.some((v) => v.blueprintId === bp.id),
-        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds, bp.buildCostIsk),
+        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
       })
     }
   }
@@ -439,10 +433,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         description: bp.description,
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
-        buildCostIsk: bp.buildCostIsk,
         productLabel: `${itemDef?.name ?? bp.itemId} ×${units} 发`,
         running: runViews.some((v) => v.blueprintId === bp.id),
-        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds, bp.buildCostIsk),
+        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
       })
     }
   }
@@ -450,16 +443,10 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   pushEquip()
   pushAmmo()
 
-  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足 + 钱包够（劳动者判定由卡片按钮各自表达） */
-  function canStartNow(
-    blueprintId: string,
-    materials: readonly MaterialNeed[],
-    buildSeconds: number,
-    buildCostIsk: number,
-  ): boolean {
+  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足（制造费已取消；劳动者判定由卡片按钮各自表达） */
+  function canStartNow(blueprintId: string, materials: readonly MaterialNeed[], buildSeconds: number): boolean {
     if (!ownsBlueprint(state, blueprintId)) return false
-    if (state.wallet.isk < buildCostIsk) return false
-    return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk }).length === 0
+    return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
   }
 
   const visible = items.filter(
@@ -496,9 +483,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         ))}
       </div>
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工；卡片会标出材料缺口与制造费。劳动者与精炼炉完全相同：<b>主控亲自
+        已学会的配方才能开工；卡片会标出材料缺口。制造免费，只耗材料与时间。劳动者与精炼炉完全相同：<b>主控亲自
         （全局限 1 条、占主控不可离港）</b>或<b>一枚 AI 核心驱动一条线</b>（核心库存即并行上限）；同一蓝图
-        可同时开多条线、不同蓝图也并行，材料/制造费够即可随时加开。制造中 / 可开工的配方排在最前。
+        可同时开多条线、不同蓝图也并行，材料够即可随时加开。制造中 / 可开工的配方排在最前。
       </div>
 
       <div className="app-win-body">
@@ -513,7 +500,6 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
               description={it.description}
               materials={it.materials}
               buildSeconds={it.buildSeconds}
-              buildCostIsk={it.buildCostIsk}
               productLabel={it.productLabel}
               kindLabel={it.kindLabel}
             />

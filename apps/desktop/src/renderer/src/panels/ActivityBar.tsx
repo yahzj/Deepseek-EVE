@@ -75,7 +75,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.stopSalvageOpNow(), '已停止打捞：本趟已捞的残骸仍在船上（未返航不卸货）。')
       break
     case 'cancel-manufacture':
-      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), '已取消制造：材料全额退回物品仓库（制造费不退）。')
+      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), '已取消制造：材料全额退回物品仓库。')
       break
     case 'stop-refine':
       if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), '已停止该台炉：原料未锁定，余料仍在仓库。')
@@ -202,7 +202,7 @@ export function ActivityBar({
           className="app-btn is-small is-warn"
           title={
             v.stop === 'cancel-manufacture'
-              ? '取消制造：材料全额退回、制造费不退'
+              ? '取消制造：材料全额退回'
               : v.stop === 'stop-refine'
                 ? '停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）'
                 : v.stop === 'recall-expedition'

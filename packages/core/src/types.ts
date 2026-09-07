@@ -668,7 +668,7 @@ export interface ShipBlueprintDef {
   materials: readonly MaterialNeed[]
   /** 基础制造耗时（秒），受工业理论缩短 */
   buildSeconds: number
-  /** 制造费（ISK） */
+  /** 制造费（ISK）——2026-09-08 船长定取消收取，字段保留为历史遗留数据 */
   buildCostIsk: number
   /** 购买蓝图价格（ISK） */
   priceIsk: number
@@ -698,7 +698,7 @@ export interface MaterialNeed {
   count: number
 }
 
-/** 蓝图定义（买下后永久可造，每次制造消耗材料 + 制造费 + 时间） */
+/** 蓝图定义（买下后永久可造，每次制造消耗材料 + 时间；制造费已取消） */
 export interface BlueprintDef {
   id: string
   name: string
@@ -712,7 +712,7 @@ export interface BlueprintDef {
   materials: readonly MaterialNeed[]
   /** 基础制造耗时（秒），受工业理论缩短 */
   buildSeconds: number
-  /** 制造费（ISK，开工即扣，失败不退还——但制造不会失败） */
+  /** 制造费（ISK）——2026-09-08 船长定取消收取，字段保留为历史遗留数据 */
   buildCostIsk: number
   /** 购买蓝图价格（ISK） */
   priceIsk: number

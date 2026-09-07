@@ -568,7 +568,7 @@ function doLearnCraft(): void {
   // 一号 v1.0 的 m.itemId/m.count 循环从不买料，导致制造永不启动：模拟器自身缺陷，2026-09-05 修）
   const bld = findBuildable(ctx, bp.id)
   if (!bld) return
-  if (state.wallet.isk < bld.spec.buildCostIsk + 50_000) return // 制造费不足：先攒钱（不再反复失败刷异常）
+  if (state.wallet.isk < 50_000) return // 留现金缓冲（制造费已于 2026-09-08 取消；此处为日常开销保底）
   if (bld.spec.materials.some((n) => countWare(state, n.itemId) < n.count)) {
     for (const n of bld.spec.materials) {
       const have = countWare(state, n.itemId)

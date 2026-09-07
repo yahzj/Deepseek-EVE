@@ -769,7 +769,7 @@ export class GameEngine {
   }
 
   /** 开始制造（2026-09-08 劳动者制与精炼炉同款：worker='pilot' 主控亲自（全局限 1 条、占主控）/ AI 核心类型 = 一枚核心驱动一条线；
-   * 扣材料与制造费，时间到自动完成；AI 线完成/取消核心自动归还） */
+   * 扣材料（制造费已取消），时间到自动完成；AI 线完成/取消核心自动归还） */
   startManufacturingAt(blueprintId: string, worker: AiCoreType | 'pilot'): CommandResult {
     const result = startManufacturing(this.state, blueprintId, worker, this.ctx)
     if (result.ok) {
@@ -859,7 +859,7 @@ export class GameEngine {
     return result
   }
 
-  /** v21：取消指定制造线（按线号；材料全额退回仓库、制造费不退） */
+  /** v21：取消指定制造线（按线号；材料全额退回仓库；制造费已取消无退费一说） */
   cancelManufacturingAt(runId: number | string): CommandResult {
     const result = cancelManufacturing(this.state, this.ctx, Number(runId))
     if (result.ok) {

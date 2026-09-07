@@ -104,7 +104,7 @@ function blueprintHoverLines(
     lines: [
       { k: '产物', v: productName },
       { k: '材料需求', v: materials },
-      { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 造费 ${isk(bp.buildCostIsk)}` },
+      { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 免费` },
     ],
     note: bp.description,
   }
