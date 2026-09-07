@@ -15,6 +15,9 @@
  *   冲击过后陈旧簿与新高价订单冲突 → 进内部消化队列，按窗口比例随时间消化（不瞬消）；
  * - 卖出预扣（escrow）：卖出先锁定货；市价单吃簿后剩余自动转限价单；
  *   撤单按类别退回（物品→物品仓库；装备→装备库；蓝图→蓝图书；船→舰队并保留耐久）；
+ * - 站内让利吸收（2026-09-08 船长定，见 docs/design/market-sell-absorb.md）：每窗总吸收
+ *   保底 = 基础吸收额 F×折价倍率 E（吃簿优先、差额站内补、不叠加；E 折 1% ×1.4、10% ×5 封顶；
+ *   F：池 = supplyFlow / common 单件 = 1 / rare = 0.3 / 奇货 = 0.1 件每窗）；挂价 ≤ 买盘价才生效；
  * - 买单成交直接入对应库存；舰船须满足可售条件（非驾驶、无 AI 任务、货仓空、无装配）；
  * - 贸易税（已确认 2026-09-03）：仅玩家卖出成交按 5% 征税（会计学/贸易谈判学各 -8%/级，
  *   双满合计减免 80% → 1%）；挂单/自动转挂单/买入一律免费——税是唯一的市场费用
@@ -387,6 +390,8 @@ function processWindow(state: GameState, ctx: SimContext): void {
 
   // 撮合我的限价单（含已成交挂单的清理）
   matchPlayerOrders(state, ctx)
+  // 站内让利吸收（2026-09-08 船长定：吸收量与卖单价挂钩——先吃簿，差额按折价倍率站内补收）
+  absorbViaStation(state, ctx)
 
   // 价格小史 + 冲击结算
   for (const def of ctx.marketGoods.values()) {
@@ -619,6 +624,8 @@ function digestAdd(state: GameState, ctx: SimContext, key: string, qty: number, 
 
 function matchPlayerOrders(state: GameState, ctx: SimContext): void {
   const mk = state.market
+  // 窗口簿面成交计数归零（站内让利吸收按"本窗总吸收 ≥ 配额"补差，见 absorbViaStation）
+  for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0
   for (const order of [...state.orders]) {
     if (order.qty <= 0) continue
     if (order.side === 'sell') {
@@ -667,6 +674,7 @@ function settleSell(
   state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - take)
   order.filled += take
   order.qty -= take
+  order.windowFilled = (order.windowFilled ?? 0) + take
   npc.qty -= take
   const pool = state.market.pools[order.good]
   if (pool) {
@@ -721,6 +729,92 @@ function depositGood(state: GameState, ctx: SimContext, goodKey: string, qty: nu
     return uid
   }
   return null
+}
+
+/* ═══════════ 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩） ═══════════ */
+
+/** 商品每窗基础吸收额 F（件；覆写优先，缺省按类别推导——船长 2026-09-08 确认口径：
+ * 池商品 = supplyFlow（缺省 poolTarget/120）、common 单件 = 1、rare = 0.3、奇货 = 0.1 件/窗） */
+function absorbBaseQtyOf(def: MarketGoodDef): number {
+  if (def.absorbQtyPerWindow !== undefined) return def.absorbQtyPerWindow
+  if (def.poolTarget && def.poolTarget > 0) return def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget / 120))
+  if (def.rarity === 'rare') return 0.3
+  if (def.rarity === 'exotic') return 0.1
+  return 1
+}
+
+/** 卖单本窗折价倍率 E：挂价每低于买盘价 1 个百分点放大 absorbPerPoint，absorbMaxMul 封顶。
+ * 挂价 ≥ 买盘价 → E = 1（平价仅保底，不额外提速） */
+function absorbMulOf(bal: MarketBalance, price: number, buyBid: number): number {
+  if (price >= buyBid) return 1
+  const pct = ((buyBid - price) / buyBid) * 100
+  return Math.min(bal.absorbMaxMul, 1 + bal.absorbPerPoint * pct)
+}
+
+/**
+ * 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩）：每 60s 窗撮合簿之后执行。
+ * 语义 = 每窗总吸收保底：吃簿不够才站内补差，绝不叠加——
+ * 对每张卖单算"当窗配额 F×E"（F = 基础吸收额、E = 折价倍率）；吃簿量 < 配额的部分
+ * 计入该单补差结余（小数结转），结余整数部分以挂单价直接卖给站内，余数跨窗结转。
+ * 只对挂价 ≤ 现行买盘价的卖单生效（高于买盘价 = 等更高簿价，站内不接）；买盘价 =
+ * buyPrice 价线（池商品 L / 单件 demandMultiplier×L），将来买价档调整自动套用。
+ * 簿厚（吃簿 ≥ 配额）时当窗只走簿面，站内不额外收——平价常态与现状长期持平，
+ * 折价（让利）才把配额拉到 ×E，实现"压价换吞吐、最高 ×5"。
+ */
+function absorbViaStation(state: GameState, ctx: SimContext): void {
+  const bal = ctx.balance.market
+  for (const order of state.orders) {
+    if (order.side !== 'sell' || order.qty <= 0) continue
+    const def = ctx.marketGoods.get(order.good)
+    if (!def || def.playerSellable === false) continue
+    const poolQ = state.market.pools[order.good]?.q ?? 0
+    const L = priceLevel(state, ctx, def, poolQ)
+    const buyBid = Math.round(buyPrice(def, L))
+    if (order.price > buyBid) continue // 高于买盘价：等簿价，不累计额度
+    const F = absorbBaseQtyOf(def)
+    const E = absorbMulOf(bal, order.price, buyBid)
+    const bookFill = order.windowFilled ?? 0
+    if (bookFill < F * E) {
+      // 吃簿不足配额 → 差额进补差结余（小数结转；簿厚的窗口不产生结余也不冲销）
+      order.absorbCredit = (order.absorbCredit ?? 0) + (F * E - bookFill)
+    }
+    const take = Math.min(order.qty, Math.floor((order.absorbCredit ?? 0) + 1e-9))
+    if (take <= 0) continue
+    settleStationTake(state, ctx, order, take)
+    order.absorbCredit = (order.absorbCredit ?? 0) - take
+  }
+  if (state.orders.some((o) => o.side === 'sell' && o.qty <= 0)) {
+    state.orders = state.orders.filter((o) => o.qty > 0)
+  }
+}
+
+/** 站内吸收成交（与 settleSell 同口径：税/声望加成/池/escrow；价格 = 挂单价） */
+function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder, take: number): void {
+  const def = ctx.marketGoods.get(order.good)
+  const shipSale = !!state.escrowShips[order.id]
+  const mult = sellStandingMult(state, def)
+  const gross = Math.round(take * order.price * mult)
+  const net = netAfterTax(state, ctx, gross)
+  const tax = gross - net
+  state.wallet.isk += net
+  if (shipSale) {
+    delete state.escrowShips[order.id]
+  } else {
+    state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - take)
+  }
+  order.filled += take
+  order.qty -= take
+  const pool = state.market.pools[order.good]
+  if (pool) {
+    pool.netVol -= take
+    if (def?.poolTarget && def.poolTarget > 0) pool.q += take
+  }
+  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  if (shipSale) {
+    addLog(state, 'trade', `让利售出：站内收购二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+  } else {
+    addLog(state, 'trade', `让利售出：站内按 ${order.price.toLocaleString('zh-CN')} ISK 收购 ${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+  }
 }
 
 /* ═══════════ 玩家操作：挂单 / 撤单 / 市价单 / 卖船 ═══════════ */

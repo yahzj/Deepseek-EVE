@@ -4,7 +4,8 @@
  * 模型（中文说明）：
  * - V9 起蓝图 = 消耗品书：市场买回后放进"蓝图书架"，学习一本 → 永久学会该配方
  *   （learnedRecipes）；重复蓝图书只能放回市场交易，不能无限复制；
- * - 每次开工：立即扣除全部材料与制造费，耗时受工业理论缩短（开工锁定）；
+ * - 每次开工：立即扣除全部材料，耗时受工业理论缩短（开工锁定）；
+ * - 2026-09-08 船长定：取消每次制造费（buildCostIsk 保留为数据遗留字段，不再校验/收取）；
  * - 到点自动完成：装备入装备库 / 舰船入船坞；
  * - v21（2026-09-05 船长拍板）：多张蓝图可同时制造（manufacturingRuns 逐线独立进度/
  *   取消）；2026-09-08 起同一蓝图也可开多条线（与精炼炉多炉并线一致）；
@@ -117,7 +118,8 @@ export function manufacturingManualActive(state: GameState): boolean {
  * 玩家指令：开始制造（2026-09-08 劳动者制与精炼炉完全同款，仅处理层不同：worker = 'pilot'
  * 主控亲自（全局限 1 条、与手动精炼/回收共用手动工作位、占主控不可离港作业）或 AiCoreType
  * 一枚核心驱动一条线（核心库存即并行上限，出库占用、完成/取消归还）；同一蓝图可多条线、
- * 不同蓝图不限，皆受劳动者约束；材料与制造费立即扣除，时间到自动完成）。
+ * 不同蓝图不限，皆受劳动者约束；材料立即扣除（2026-09-08 船长定：取消每次制造费），
+ * 时间到自动完成）。
  */
 export function startManufacturing(
   state: GameState,
@@ -150,9 +152,7 @@ export function startManufacturing(
   } else if (countAiCore(state, worker) <= 0) {
     return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
   }
-  if (state.wallet.isk < buildable.spec.buildCostIsk) {
-    return { ok: false, error: `制造费不足：需要 ${buildable.spec.buildCostIsk.toLocaleString('zh-CN')} ISK。` }
-  }
+  // 2026-09-08 船长定：取消每次制造费——开工不再校验/收取 buildCostIsk（蓝图数据字段保留为历史遗留）
   const missing = missingMaterials(state, ctx, buildable.spec)
   if (missing.length > 0) {
     return { ok: false, error: `材料不足：${missing.join('、')}。` }
@@ -165,15 +165,14 @@ export function startManufacturing(
     const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
     if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0.6, 1 - 0.05 * autoLv)))
   }
-  // AI 线：先占用核心（材料/费用校验之后、扣料之前——失败不产生任何副作用）
+  // AI 线：先占用核心（材料校验之后、扣料之前——失败不产生任何副作用）
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }
-  // 扣材料（物品仓库，按材料学折扣后数量）与制造费
+  // 扣材料（物品仓库，按材料学折扣后数量）；制造费已于 2026-09-08 取消，不再扣款
   for (const need of buildable.spec.materials) {
     removeWare(state, need.itemId, matNeedCount(state, need.count))
   }
-  state.wallet.isk -= buildable.spec.buildCostIsk
 
   state.manufacturingRuns.push({
     active: true,
@@ -194,8 +193,8 @@ export function startManufacturing(
 
 /**
  * 玩家指令：取消指定的制造线（v21 按线号定位；T1 活动窗口统一停止）。
- * 材料按蓝图清单全额退回物品仓库；已付制造费不退；产物不产生；
- * AI 核心驱动的线取消时核心归还核心库（旧作业无线可退）。
+ * 材料按蓝图清单全额退回物品仓库（2026-09-08 起开工不收取制造费，无退费一说）；
+ * 产物不产生；AI 核心驱动的线取消时核心归还核心库（旧作业无线可退）。
  */
 export function cancelManufacturing(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.manufacturingRuns.findIndex((r) => r.id === runId)
@@ -212,7 +211,7 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
     addLog(
       state,
       'info',
-      `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量；制造费不退${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）。`,
+      `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）。`,
     )
   } else {
     addLog(state, 'warn', '制造作业已取消（引用的蓝图数据缺失，无材料可退）。')

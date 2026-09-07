@@ -64,19 +64,24 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
-    ctx = makeTestCtx() // bp-a：10 单位矿粉 min-a、制造费 500、耗时 600 秒；bp-b：mod-b（8 单位 min-b、300 秒、300 ISK）
+    ctx = makeTestCtx() // bp-a：10 单位矿粉 min-a、耗时 600 秒（制造费 500 为历史遗留数据，2026-09-08 起引擎不再收取）；bp-b：mod-b（8 单位 min-b、300 秒）
     state.blueprintStock['bp-a'] = 1
     learnBlueprint(state, ctx, 'bp-a')
   })
 
-  it('未学配方 / 制造费不足 / 材料不足 → 拒绝并说明缺什么', () => {
+  it('未学配方 / 材料不足 → 拒绝并说明缺什么（2026-09-08 起无制造费门槛）', () => {
     const fresh = createInitialState({ nowWallMs: 0, seed: 1 })
     // 未学会配方
     expect(startManufacturing(fresh, 'bp-a', 'pilot', ctx).ok).toBe(false)
-    // 制造费不足
+    // 钱包只剩 100 也不再挡开工（制造费已取消）→ 材料齐全即可开线
     state.warehouse.items['min-a'] = 10
     state.wallet.isk = 100
-    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(false)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.wallet.isk).toBe(100) // 分文未扣
+    // 取消已开的线回到干净局面，再验证材料不足
+    const runId = state.manufacturingRuns[0]!.id
+    expect(cancelManufacturing(state, ctx, runId).ok).toBe(true)
+    expect(state.warehouse.items['min-a']).toBe(10) // 材料全退
     state.wallet.isk = 10_000
     // 材料不足（只有 6/10）→ 错误信息说明缺量
     state.warehouse.items['min-a'] = 6
@@ -86,12 +91,12 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     expect(missingMaterials(state, ctx, ctx.blueprints.get('bp-a')!)).toHaveLength(1)
   })
 
-  it('主控手动开工成功：扣材料、扣制造费、锁定耗时（600 秒）；主控全局限 1 条', () => {
+  it('主控手动开工成功：扣材料、不扣制造费、锁定耗时（600 秒）；主控全局限 1 条', () => {
     state.warehouse.items['min-a'] = 10
     const r = startManufacturing(state, 'bp-a', 'pilot', ctx)
     expect(r.ok).toBe(true)
     expect(state.warehouse.items['min-a'] ?? 0).toBe(0)
-    expect(state.wallet.isk).toBe(9_500) // 10000 - 500(制造费)；学习不花钱
+    expect(state.wallet.isk).toBe(10_000) // 制造费已取消（2026-09-08），分文不扣；学习不花钱
     expect(state.manufacturingRuns).toHaveLength(1)
     expect(state.manufacturingRuns[0]!.finishAtGameMs).toBe(600_000)
     expect(state.manufacturingRuns[0]!.durationMs).toBe(600_000)
@@ -189,14 +194,14 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
 
   it('两张蓝图并行：各自独立完成入装备库（AI 核心并行）', () => {
     state.blueprintStock['bp-b'] = 1
-    learnBlueprint(state, ctx, 'bp-b') // bp-b：8 单位矿粉 min-b、300 秒、300 ISK
+    learnBlueprint(state, ctx, 'bp-b') // bp-b：8 单位矿粉 min-b、300 秒
     state.aiCores['basic'] = 2
     state.warehouse.items['min-a'] = 10
     state.warehouse.items['min-b'] = 8
     expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true) // 600s ÷0.4 = 1500s
     expect(startManufacturing(state, 'bp-b', 'basic', ctx).ok).toBe(true) // 300s ÷0.4 = 750s
     expect(state.manufacturingRuns).toHaveLength(2)
-    expect(state.wallet.isk).toBe(9_200) // 10000 - 500 - 300
+    expect(state.wallet.isk).toBe(10_000) // 制造费取消后两条线分文不扣
     // 750s：bp-b 完成
     advanceGame(state, 750_000, ctx)
     expect(countModule(state, 'mod-b')).toBe(1)

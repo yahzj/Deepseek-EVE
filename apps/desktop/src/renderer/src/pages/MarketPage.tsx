@@ -104,7 +104,7 @@ function blueprintHoverLines(
     lines: [
       { k: '产物', v: productName },
       { k: '材料需求', v: materials },
-      { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 造费 ${isk(bp.buildCostIsk)}` },
+      { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 免费` },
     ],
     note: bp.description,
   }
@@ -565,6 +565,35 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
             <span className="app-dim">ISK</span>
           </div>
+          {/* 站内让利吸收提示（2026-09-08 船长定：吸收量与价格挂钩——让利换清仓速度） */}
+          {tab === 'sell' ? (
+            <div className="app-dim app-sr-eta">
+              {(() => {
+                const bid =
+                  quote.buy ?? Math.max(1, Math.round(levelOf(state, engine.ctx, good.key) * (good.demandMultiplier ?? 0.5)))
+                const p = Math.max(1, Math.floor(price || 1))
+                const bal = engine.ctx.balance.market
+                if (p < bid) {
+                  const pct = ((bid - p) / bid) * 100
+                  const E = Math.min(bal.absorbMaxMul, 1 + bal.absorbPerPoint * pct)
+                  const capped = E >= bal.absorbMaxMul - 1e-9
+                  return (
+                    <>
+                      已让利 {pct < 100 ? pct.toFixed(pct >= 10 ? 0 : 1) : '>100'}%（收购价 {isk(bid)}）：
+                      站内吸收 <b>×{E.toFixed(1)}</b>，清仓更快
+                      {capped ? '（已达上限）' : `（折 10% 封顶 ×${bal.absorbMaxMul}）`}
+                    </>
+                  )
+                }
+                return (
+                  <>
+                    平价挂卖（≤ 收购价 {isk(bid)}）：站内每 60 秒保底吸收；每让利 1% 吸收提速 40%，折 10% 封顶 ×
+                    {bal.absorbMaxMul}
+                  </>
+                )
+              })()}
+            </div>
+          ) : null}
           <div className="app-mkt-trade-btns">
             {/* 2026-09-08 船长：挂单按钮前置到市价买卖之前（挂单/市价/（卖出侧）全部卖出） */}
             <button className="app-btn is-small" onClick={doPlace}>

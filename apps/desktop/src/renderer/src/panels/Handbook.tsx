@@ -47,7 +47,7 @@ const GUIDE_ROWS: Array<[string, string]> = [
   ['装卸', '货仓页一键卸入物品仓库（无限容量、不随船）；矿也可直接市价卖出。'],
   ['精炼', '工业页把矿石炼成矿物（产出倍率由精炼学与高级回收处理提升：基础 100%，最高 160%）；矿物是制造原料，也可卖出。'],
   ['回收残骸', '打捞的残骸在工业页开箱拆解：保底矿物按敌群「产出倾向」主题抽取，随 星系危险度×敌群威胁 上浮；另有概率彩头——卡面「低出率掉落」列出的该敌群主题增幅件与高威胁蓝图碎片（MK3 装备只经碎片解锁，唯关底穹顶守卫可直出 MK3 武器）。星图「残骸打捞」页会先标出该星系这些内容。'],
-  ['制造', '市场买蓝图书 → 蓝图书架「学习」后永久可造 → 工业页开工（扣材料+制造费，到点自动入库/入坞）。'],
+  ['制造', '市场买蓝图书 → 蓝图书架「学习」后永久可造 → 工业页开工（只扣材料，制造免费，到点自动入库/入坞）。'],
   ['装配', '装备库里的模块可装到船的采集器/货舱/炮台/护盾/装甲/推进器槽；卸下自动退回装备库。'],
   ['远征', '出港页选悬赏目标出发即开战：按火力胜率结算，胜利得奖金/战利品/声望，随后自动返航回港（不可召回）；失利扣耐久、可能弃船，也会自动返航。'],
   ['AI 副船', '练「人工智能专家」+ 买基础 AI 核心，可给闲置舰船指派自动采矿/打捞/掩护巡逻任务（核心效率越高越快）。自动远征暂停受理：悬赏请主控亲自出击。'],
@@ -194,7 +194,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       </span>,
     ])
     rows.push(['耗时', `约 ${Math.round(Number(r.buildSeconds ?? 0) / 60)} 分钟（受工业理论缩短）`])
-    rows.push(['制造费', `${Number(r.buildCostIsk ?? 0).toLocaleString('zh-CN')} ISK`])
+    rows.push(['制造', '免费（只耗材料与时间）'])
   } else if (cell.tab === 'skills') {
     rows.push(['技能组', String(r.group ?? '')])
     rows.push(['训练难度', `rank ${Number(r.rank ?? 0)}（数值越大整条线练得越慢）`])
@@ -544,7 +544,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         lines={[
                           { k: '产物', v: product },
                           { k: '材料需求', v: mats },
-                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 造费 ${bp.buildCostIsk.toLocaleString('zh-CN')} ISK` },
+                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
                         ]}
                         note={bp.description}
                         className="app-hand-entry"
@@ -554,7 +554,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         </div>
                         <div className="app-dim">产物：{product}</div>
                         <div className="app-hand-sub">
-                          材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 制造费 {bp.buildCostIsk.toLocaleString('zh-CN')} ISK
+                          材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
                         </div>
                         <div className="app-dim">{bp.description}</div>
                       </InfoHover>
@@ -570,7 +570,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         lines={[
                           { k: '产物', v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
                           { k: '材料需求', v: mats },
-                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 造费 ${bp.buildCostIsk.toLocaleString('zh-CN')} ISK` },
+                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
                         ]}
                         note={bp.description}
                         className="app-hand-entry"
@@ -580,7 +580,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                         </div>
                         <div className="app-dim">产物：{engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）</div>
                         <div className="app-hand-sub">
-                          材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 制造费 {bp.buildCostIsk.toLocaleString('zh-CN')} ISK
+                          材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
                         </div>
                         <div className="app-dim">{bp.description}</div>
                       </InfoHover>

@@ -24,7 +24,7 @@ describe('T1 统一停止指令', () => {
     ctx = makeTestCtx({ skills: [skill('nav-x')] })
   })
 
-  it('取消制造：材料全额退回仓库、制造费不退、作业结束', () => {
+  it('取消制造：材料全额退回仓库、无制造费（2026-09-08 起不收）、作业结束', () => {
     state.learnedRecipes.push('bp-a')
     state.warehouse.items['min-a'] = 50
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
@@ -34,7 +34,7 @@ describe('T1 统一停止指令', () => {
     expect(cancelManufacturing(state, ctx, runId).ok).toBe(true)
     expect(state.manufacturingRuns).toHaveLength(0)
     expect(state.warehouse.items['min-a']).toBe(50) // 材料全退
-    expect(state.wallet.isk).toBe(walletBefore) // 制造费不退（取消不补回）
+    expect(state.wallet.isk).toBe(walletBefore) // 制造费已取消，开工从未扣款，取消无退费
     expect(state.logs.some((l) => l.text.includes('已取消制造'))).toBe(true)
     // 空态：无作业再取消 → 拒绝
     expect(cancelManufacturing(state, ctx, runId).ok).toBe(false)
