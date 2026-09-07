@@ -688,7 +688,14 @@ export function App({ engine }: { engine: GameEngine }) {
                 }}
               />
             ) : null}
-            {page === 'market' ? <MarketPage {...pageProps} focusKey={mktFocus?.key ?? null} focusSeq={mktFocus?.seq ?? 0} /> : null}
+            {page === 'market' ? (
+              <MarketPage
+                {...pageProps}
+                focusKey={mktFocus?.key ?? null}
+                focusSeq={mktFocus?.seq ?? 0}
+                onFocusUsed={() => setMktFocus(null)} // 一次性聚焦：应用后即清，避免每次进市场都带出上次的物品
+              />
+            ) : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === 5 ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} /> : null}
