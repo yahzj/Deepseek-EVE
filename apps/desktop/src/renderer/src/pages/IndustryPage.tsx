@@ -276,7 +276,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
   const runningCount = runViews.length
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-fill">
       {/* 功能标签页（与星图页同款 app-subtabs 规范）：精炼炉 / 蓝图书架 / 组装机 */}
       <div className="app-subtabs" role="tablist">
         <button

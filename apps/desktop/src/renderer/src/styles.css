@@ -7370,3 +7370,7 @@ body {
 .app-belt-worker.is-ai { flex-direction: column; align-items: stretch; gap: 3px; }
 
 .app-belt-worker.is-ai .app-belt-worker-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+/* ---------- fix: flex-shrink override so is-fill panels collapse into remaining height (2026-09-08) ---------- */
+
+.page-stack > .wui-panel.is-fill { flex-shrink: 1; }
