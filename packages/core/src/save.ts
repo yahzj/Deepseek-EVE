@@ -1267,6 +1267,8 @@ function normalizeState(raw: unknown): GameState {
         qty,
         filled: Math.max(0, Math.floor(num(o.filled))),
         placedAtGameMs: Math.max(0, Math.floor(num(o.placedAtGameMs))),
+        // 站内让利吸收结余（2026-09-08 起可选字段；旧档缺省 0 = 重新累计）
+        absorbCredit: Math.max(0, num(o.absorbCredit)),
       })
     }
   }

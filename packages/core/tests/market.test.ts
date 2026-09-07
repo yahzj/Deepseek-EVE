@@ -21,6 +21,7 @@ import {
   marketSellPreview,
   naturalHoldings,
   placeBuyOrder,
+  placeSellOrder,
   bmGateReason,
   salesTaxRate,
   sellShipAtMarket,
@@ -638,5 +639,121 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
     expect(totalKept).toBeLessThan(60)
     expect(totalKept).toBeGreaterThan(20)
     expect(capWins).toBeGreaterThan(0)
+  })
+})
+
+/* ═══════════ 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩） ═══════════ */
+
+describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / 边界', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  /** min-a：池商品 base 8 / target 3000 / supplyFlow 10 → 每窗收购阶梯（8/7/6 价档 5/9/12 件，
+   * 平价挂单只吃第 1 档 5 件）；F = supplyFlow = 10 件/窗。噪声关停 → 行情恒定，窗口行为可精确断言。 */
+  const poolCtx = (): SimContext =>
+    makeTestCtx({
+      quietEvents: true,
+      balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+      marketGoods: [
+        { key: 'min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 8, poolTarget: 3_000, supplyFlow: 10 },
+      ],
+    })
+
+  /** 开盘后清空存量簿（seedCommonBook 开局 2 张 ≈flow 级大单），只留每窗 60s 刷新量 → 窗口行为确定 */
+  const openClean = (ctx: SimContext, key: string): void => {
+    marketQuote(state, ctx, key)
+    state.market.npcBuy[key] = []
+    state.market.npcSell[key] = []
+  }
+
+  it('平价挂卖（p = 买盘价）：每窗总吸收恰为配额（簿 5 + 站内补 5，不叠加）——100 件 10 窗清完', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 5 })
+    ctx = poolCtx()
+    openClean(ctx, 'min-a') // 清开局存量簿
+    const before = state.wallet.isk
+    placeSellOrder(state, ctx, 'min-a', 8, 100) // b = 8（池商品平价收购 = L）
+    advanceGame(state, 10 * 60_000, ctx)
+    expect(state.orders).toHaveLength(0) // 100 件 ÷ 每窗 10 件 = 恰 10 窗
+    expect(state.escrowItems['min-a'] ?? 0).toBe(0)
+    expect(state.wallet.isk - before).toBe(760) // 100×8=800，税 5% → 760
+    expect(state.market.pools['min-a']!.q).toBeGreaterThanOrEqual(3_000) // 站内收购回池
+    const stationLogs = state.logs.filter((l) => l.text.includes('让利售出')).length
+    expect(stationLogs).toBe(10) // 每窗簿只吃 5 件 → 站内补差 5 件，10 窗各一条
+  })
+
+  it('折价放大封顶（p < 买盘价，d≈12.5% → E=5）：单窗吸收 = 5×配额（≈50 件），余量照常排队', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 5 })
+    ctx = poolCtx()
+    openClean(ctx, 'min-a')
+    placeSellOrder(state, ctx, 'min-a', 7, 300) // b=8 → 折 12.5% → 封顶 ×5 → 配额 50/窗
+    advanceGame(state, 60_000, ctx)
+    const sold = 300 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBe(50) // 簿吃（8/7 档 ≈14）后差额 36 由站内补 → 总量恰 50
+    expect(state.escrowItems['min-a'] ?? 0).toBe(250)
+    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+    expect(state.wallet.isk).toBeGreaterThan(0)
+  })
+
+  it('折价 5%（d=5% → E=3）：单窗吸收 30 件（>平价 10，<封顶 50）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 5 })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+      marketGoods: [
+        { key: 'min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 100, poolTarget: 3_000, supplyFlow: 10 },
+      ],
+    })
+    openClean(ctx, 'min-a')
+    placeSellOrder(state, ctx, 'min-a', 95, 300) // b=100 → 折 5% → E = 1+0.4×5 = 3 → 配额 30/窗
+    advanceGame(state, 60_000, ctx)
+    const sold = 300 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBe(30) // 簿吃（100/96 档 14 件）后差额 16 由站内补足 → 总量恰 30
+    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+  })
+
+  it('rare 小数基础吸收 0.3 件/窗：结余结转、10 窗内必触发站内吸收', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 11 })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+      marketGoods: [{ key: 'mod-r', kind: 'module', refId: 'mod-r', rarity: 'rare', basePrice: 1_000 }],
+    })
+    marketQuote(state, ctx, 'mod-r') // 开盘
+    const before = state.wallet.isk
+    placeSellOrder(state, ctx, 'mod-r', 500, 30) // b = 0.5×1000 = 500（单件按 demandMultiplier 0.5）
+    advanceGame(state, 10 * 60_000, ctx)
+    const sold = 30 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBeGreaterThanOrEqual(1) // 结余 0.3/窗×10 窗 → 至少 3 件（簿偶发再添）
+    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+    expect(state.wallet.isk).toBeGreaterThan(before)
+  })
+
+  it('奇货小数基础吸收 0.1 件/窗：30 窗内触发站内吸收', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 13 })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+      marketGoods: [{ key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'exotic', basePrice: 10_000 }],
+    })
+    marketQuote(state, ctx, 'mod-x')
+    placeSellOrder(state, ctx, 'mod-x', 5_000, 10) // b = 0.5×10000 = 5000
+    advanceGame(state, 30 * 60_000, ctx)
+    const sold = 10 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBeGreaterThanOrEqual(1) // 结余 0.1/窗×30 → 至少 3 件
+    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+  })
+
+  it('挂价高于买盘价：站内不接、无保底；撤单全额退回', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 5 })
+    ctx = poolCtx()
+    marketQuote(state, ctx, 'min-a')
+    placeSellOrder(state, ctx, 'min-a', 9, 30) // b = 8 < 9：等更高簿价
+    advanceGame(state, 3 * 60_000, ctx)
+    expect(state.orders[0]!.qty).toBe(30) // 一字未动
+    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(false)
+    expect(cancelOrder(state, ctx, state.orders[0]!.id)).toBe(true)
+    expect(state.orders).toHaveLength(0)
+    expect(state.escrowItems['min-a'] ?? 0).toBe(0)
+    expect(countWare(state, 'min-a')).toBe(30) // 全额退回仓库
   })
 })

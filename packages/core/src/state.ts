@@ -424,6 +424,12 @@ export interface PlayerOrder {
   qty: number
   filled: number
   placedAtGameMs: number
+  /** 站内让利吸收补差结余（件，小数结转；2026-09-08 船长定：仅卖单使用，撤单即弃）。
+   * 每窗：若该单吃簿量 < 基础吸收额×折价倍率 → 差额计入结余；整数部分由站内以挂单价吸收。
+   * 吃簿量 ≥ 配额（簿厚）时只吃簿不站补；旧档缺省 = 0，零迁移 */
+  absorbCredit?: number
+  /** 本窗口内簿面成交件数（仅卖单；撮合前置 0，窗口结算后弃值——不序列化） */
+  windowFilled?: number
 }
 
 /** 第九版存档结构（历史版本；v10 在其字段基础上只扩展了 fitted 槽位形状） */

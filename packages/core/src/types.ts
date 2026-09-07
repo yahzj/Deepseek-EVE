@@ -208,6 +208,9 @@ export interface MarketGoodDef {
   poolTarget?: number
   /** 常驻商品：NPC 供应单的稳态流量（玩家买入侧保障量级） */
   supplyFlow?: number
+  /** 站内让利吸收：每窗基础吸收额覆写（2026-09-08 船长定，缺省按类别推导：
+   * 池商品 = supplyFlow（或 poolTarget/120）、common 单件 = 1、rare = 0.3、奇货 = 0.1 件/窗） */
+  absorbQtyPerWindow?: number
   /** 稀有/限定：NPC 供应单的倍数（basePrice × 该值 = 刷出售价） */
   supplyMultiplier?: number
   /** 玩家卖出此类商品时 NPC 需求单的出价倍数（低于供应价，防套利） */
@@ -256,6 +259,11 @@ export interface MarketBalance {
   maxPriceRatio: number
   /** 内部消化队列每窗口消化比例（冲突订单随时间推进消化） */
   digestPerWindow: number
+  /** 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩）：
+   * 卖单挂价每低于买盘价 1 个百分点，该单每窗站内吸收额放大该倍率（线性，乘吸收 MaxMul 封顶） */
+  absorbPerPoint: number
+  /** 站内让利吸收：折价放大上限（默认 5×；折价 10% 即封顶） */
+  absorbMaxMul: number
   /** 参考成交量（用于冲击归一化）：默认 = poolTarget 的该比例 */
   referenceVolRatio: number
   /** 贸易税（销售税）：玩家卖出成交按此比例征税（ISK 回收阀） */
