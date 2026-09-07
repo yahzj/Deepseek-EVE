@@ -23,9 +23,19 @@ import {
   MODULES,
   SHIP_BLUEPRINTS,
   SHIPS,
+  ANOMALIES_FLAVORED,
   buildItemCatalog,
+  buildSimContext,
 } from '@whale/data'
-import { MODULE_SLOTS, MINEABLE_KINDS, RACK_SLOTS, rackOf } from '@whale/core'
+import {
+  MODULE_SLOTS,
+  MINEABLE_KINDS,
+  RACK_SLOTS,
+  RECYCLE_POOL_AVG_ISK,
+  recycleTierOf,
+  rackOf,
+  wreckBaseDensity,
+} from '@whale/core'
 
 const errors: string[] = []
 const warn: string[] = []
@@ -404,6 +414,45 @@ for (const m of MODULES) {
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)
   }
+}
+
+/* ── B3.1 敌群特色回收池（2026-09-08 收尾：池均价 ÷ 档基数 ∈ 保底乘数 m ±3%）
+ *   公式（docs/design/b3-flavor-content.md）：m = mSec(≤1.45) × mThreat(≤1.30)，
+ *   mSec = 1 + 0.45×max(0,−sec)；mThreat = 1 + 0.004×threat；档基数 = RECYCLE_POOL_AVG_ISK[tier] */
+{
+  const ctx = buildSimContext()
+  let flavored = 0
+  for (const def of ANOMALIES_FLAVORED) {
+    if (!def.recyclePool || def.recyclePool.length === 0) continue
+    flavored += 1
+    const galaxy = ctx.galaxies.get(def.galaxyId)
+    const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
+    const mSec = Math.min(1.45, 1 + 0.45 * Math.max(0, -sec))
+    const mThreat = Math.min(1.3, 1 + 0.004 * (def.threat ?? 0))
+    const m = mSec * mThreat
+    const pool = def.recyclePool
+    const wSum = pool.reduce((s, [, w]) => s + w, 0)
+    let avg = 0
+    let missing: string | null = null
+    for (const [id, w] of pool) {
+      const item = ctx.items.get(id)
+      if (!item || (item.baseSellPriceIsk ?? 0) <= 0) {
+        missing = missing ?? `池矿物 ${id} 缺失或价格非法`
+        continue
+      }
+      avg += (w / wSum) * item.baseSellPriceIsk!
+    }
+    const tier = recycleTierOf(wreckBaseDensity(def.galaxyId, ctx))
+    const base = RECYCLE_POOL_AVG_ISK[tier]
+    const ratio = avg / base
+    const dev = ((ratio - m) / m) * 100
+    check(
+      missing === null && Math.abs(dev) <= 3,
+      `B3.1 ${def.name}（${def.id}）特色池校验失败：${missing ?? `池均价 ${avg.toFixed(2)} ÷ 档基数 ${base} = ${ratio.toFixed(3)}，目标 m=${m.toFixed(3)}（偏差 ${dev.toFixed(1)}% > ±3%）`}`,
+    )
+  }
+  check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
+  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3%）`)
 }
 
 /* ── 输出 ── */

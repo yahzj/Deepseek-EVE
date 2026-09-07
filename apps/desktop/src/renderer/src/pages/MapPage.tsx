@@ -29,6 +29,7 @@ import {
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
@@ -581,6 +582,17 @@ function WreckCard({
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
+  // B3.1：星系卡「回收产出倾向 / 低出率掉落」汇总（= 该星系各悬赏敌群特色池；回收卡同款行，去重合并）
+  const notes: string[] = []
+  const partList: string[] = []
+  for (const a of anomalies) {
+    if (a.recycleNote && !notes.includes(a.recycleNote)) notes.push(a.recycleNote)
+    for (const p of recycleFlavorParts({ lowSec, threat: a.threat, loot: a.recycleLoot, themedOnly: true }, engine.ctx.modules)) {
+      if (!partList.includes(p)) partList.push(p)
+    }
+  }
+  const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? ` 等${notes.length}种倾向` : '')
+  const flavorParts = partList.slice(0, 4).concat(partList.length > 4 ? [`… 等${partList.length}组`] : [])
 
   return (
     <div className={`app-belt-card${isActive ? ' is-active' : ''}`}>
@@ -597,6 +609,7 @@ function WreckCard({
         ) : null}
       </div>
       <div className="app-belt-desc">该星系敌群残骸：共 {anomalies.length} 类悬赏目标会持续沉积残骸密度。</div>
+      <FlavorTip note={flavorNote} parts={flavorParts} />
       {prog ? (
         <div
           className={`app-card-progress${prog.travel ? ' is-travel' : ''}`}
