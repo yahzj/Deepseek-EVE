@@ -5,6 +5,7 @@ import { useState } from 'react'
 import {
   AI_CORE_ORDER,
   aiCoreName,
+  aiTaskView,
   aiEfficiency,
   aiSlotsUsed,
   countAiCore,
@@ -21,6 +22,7 @@ import type { AiCoreType, FleetShipState } from '@whale/core'
 import { aiWinPreview, durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
+import { AiTaskBar } from '../ui/aiProgress'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import type { PageProps } from './common'
 import { isk } from './common'
@@ -707,6 +709,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           {Object.entries(state.aiAssignments).map(([sid, assignment]) => {
             const task = assignment.task
             const eff = aiEfficiency(state, engine.ctx, assignment.coreType)
+            const aiView = aiTaskView(state, engine.ctx, sid)
             let desc = ''
             if (task.kind === 'mining') {
               const belt = engine.ctx.belts.get(task.beltId)
@@ -733,6 +736,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <span className="app-inv-name">{shipDisplayName(state, engine.ctx, sid)}</span>
                   <span className="app-inv-count">
                     {desc} · {aiCoreName(assignment.coreType)}（效率 {Math.round(eff * 100)}%）
+                  </span>
+                  <span className="app-inv-count">
+                    <AiTaskBar view={aiView} />
                   </span>
                 </div>
                 <div className="app-inv-btns">

@@ -7362,3 +7362,11 @@ body {
 .wui-panel.win-fixed-body > .wui-panel-body { overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
 
 .wui-panel.win-fixed-body .app-win-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
+
+/* ---------- AI task progress like main-control (2026-09-08) ---------- */
+
+.app-ai-taskbar { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; }
+
+.app-belt-worker.is-ai { flex-direction: column; align-items: stretch; gap: 3px; }
+
+.app-belt-worker.is-ai .app-belt-worker-line { display: flex; align-items: center; gap: 8px; min-width: 0; }

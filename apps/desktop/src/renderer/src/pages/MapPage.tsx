@@ -7,6 +7,7 @@ import {
   AI_CORE_ORDER,
   aiCoreName,
   aiEfficiency,
+  aiTaskView,
   countAiCore,
   formatDurationMs,
   getMiningParams,
@@ -30,6 +31,7 @@ import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
+import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
@@ -318,21 +320,29 @@ function BeltCard({
       <div className="app-belt-actions">
         {aiWorkers.length > 0 ? (
           <div className="app-belt-workers">
-            {aiWorkers.map(([sid, a]) => (
-              <span key={sid} className="app-belt-worker">
-                <span className="app-belt-worker-name">
-                  <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, sid)}
-                  <span className="app-dim">（{aiCoreName(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
-                </span>
-                <button
-                  className="app-btn is-small is-warn"
-                  title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 在此矿带的开采任务（AI 核心归还核心库）`}
-                  onClick={() => cancelWorker(sid)}
-                >
-                  取消
-                </button>
-              </span>
-            ))}
+            {aiWorkers.map(([sid, a]) => {
+              const aiView = aiTaskView(state, engine.ctx, sid)
+              return (
+                <div key={sid} className="app-belt-worker is-ai">
+                  <div className="app-belt-worker-line">
+                    <span className="app-belt-worker-name">
+                      <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, sid)}
+                      <span className="app-dim">（{aiCoreName(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
+                    </span>
+                    <button
+                      className="app-btn is-small is-warn"
+                      title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 在此矿带的开采任务（AI 核心归还核心库）`}
+                      onClick={() => cancelWorker(sid)}
+                    >
+                      取消
+                    </button>
+                  </div>
+                  <div className="app-belt-worker-line">
+                    <AiTaskBar view={aiView} />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : null}
         <button
@@ -634,21 +644,29 @@ function WreckCard({
       <div className="app-belt-actions">
         {aiWorkers.length > 0 ? (
           <div className="app-belt-workers">
-            {aiWorkers.map((w) => (
-              <span key={w.sid} className="app-belt-worker">
-                <span className="app-belt-worker-name">
-                  <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, w.sid)}
-                  <span className="app-dim">（{aiCoreName(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
-                </span>
-                <button
-                  className="app-btn is-small is-warn"
-                  title={`取消 ${shipDisplayName(state, engine.ctx, w.sid)} 在此星系的打捞任务（AI 核心归还核心库）`}
-                  onClick={() => onAiCancel(w.sid)}
-                >
-                  取消
-                </button>
-              </span>
-            ))}
+            {aiWorkers.map((w) => {
+              const aiView = aiTaskView(state, engine.ctx, w.sid)
+              return (
+                <div key={w.sid} className="app-belt-worker is-ai">
+                  <div className="app-belt-worker-line">
+                    <span className="app-belt-worker-name">
+                      <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, w.sid)}
+                      <span className="app-dim">（{aiCoreName(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
+                    </span>
+                    <button
+                      className="app-btn is-small is-warn"
+                      title={`取消 ${shipDisplayName(state, engine.ctx, w.sid)} 在此星系的打捞任务（AI 核心归还核心库）`}
+                      onClick={() => onAiCancel(w.sid)}
+                    >
+                      取消
+                    </button>
+                  </div>
+                  <div className="app-belt-worker-line">
+                    <AiTaskBar view={aiView} />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : null}
         {isActive ? (
