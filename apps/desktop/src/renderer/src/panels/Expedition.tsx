@@ -1283,9 +1283,10 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const chance = Math.round(pWin)
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
-  // 奖励/小时（2026-09-06：胜利自动返航 = 目标↔母港 2×单程，去程并入返航）——每单耗时 = 交火 + 返航
+  // 奖励/小时（2026-09-08：胜利自动返航——异星系 = 目标↔母港 2×单程；本地悬赏 = 固定返港 120s）——
+  // 每单耗时 = 交火 + 返航
   const retMins = anomaly.galaxyId === HOME_GALAXY_ID ? NaN : shortestTravelMinutes(engine.ctx, HOME_GALAXY_ID, anomaly.galaxyId)
-  const retMs = Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
+  const retMs = anomaly.galaxyId === HOME_GALAXY_ID ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
   const roundTripMs = Math.max(1, combatMs + retMs)
   const grossIsk = anomaly.rewardIsk * bountyRewardFactor(state)
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
@@ -1369,16 +1370,19 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           </>
         )) : '？'} ·{' '}
         {(() => {
-          // 2026-09-06：去程取消（下达即开战）；胜利自动返航（目标↔母港 2×单程，不可召回）
+          // 2026-09-06：去程取消（下达即开战）；胜利自动返航（异星系 = 目标↔母港 2×单程不可召回；
+          // 本地悬赏 2026-09-08 = 固定返港 2 分钟，不可召回）
           const homeTarget = anomaly.galaxyId === HOME_GALAXY_ID
           const backTxt =
-            homeTarget || !Number.isFinite(retMins)
+            homeTarget
               ? ''
-              : ` · 胜利自动返航约 ${Math.max(1, Math.round(retMins * 2))} 分钟（不可召回）`
+              : !Number.isFinite(retMins)
+                ? ''
+                : ` · 胜利自动返航约 ${Math.max(1, Math.round(retMins * 2))} 分钟（不可召回）`
           return (
             <>
               即时开战 · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
-              {homeTarget ? ' · 本港悬赏，胜利即回港' : backTxt}
+              {homeTarget ? ' · 本港悬赏：胜利返港约 2 分钟（不可召回）' : backTxt}
             </>
           )
         })()}
@@ -1424,7 +1428,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       </div>
       <div
         className="app-ano-econ"
-        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航 2×单程；母港目标无返航）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
+        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航：异星系 2×单程 / 本地悬赏固定返港 2 分钟）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
       >
         {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（每次出击）
       </div>

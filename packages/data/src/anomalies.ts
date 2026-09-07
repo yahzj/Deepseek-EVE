@@ -19,7 +19,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     defProfile: 'balanced',
     standingReq: 0,
     standingGain: 1,
-    rewardIsk: 1_000, // 母港零航程即时目标：奖励压至教学水平（防重复刷效率碾压采矿与后续悬赏；2026-09-06 船长复核：2,000→1,000 再 −50% 收口）
+    rewardIsk: 3_600, // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 ISK/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
     foeHpOverride: 22, // P1 战斗引入（2026-09-06）：脱离威胁曲线单列——裸船零技能可过（约 37s）
     loot: [],
     combatSeconds: 120,

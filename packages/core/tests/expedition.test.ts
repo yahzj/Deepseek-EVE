@@ -98,7 +98,8 @@ describe('远征 V12：两阶段', () => {
     addModule(state, 'tur-b', 1)
     expect(fitModule(state, 'tur-b', ctxB).ok).toBe(true)
     expect(startExpedition(state, 'ano-w', ctxB).ok).toBe(true)
-    advanceGame(state, 10 * 60_000, ctxB)
+    advanceGame(state, 10 * 60_000, ctxB) // 打赢（结算在 chunk 末尾）
+    advanceGame(state, 125_000, ctxB) // 本地悬赏返港段 120s（2026-09-08）
     expect(state.expedition.active).toBe(false)
     // 剩余弹药退回仓库（消耗后应少于 500）
     const left = state.warehouse.items['ammo-kinetic-l'] ?? 0
@@ -147,8 +148,9 @@ describe('远征 V12：两阶段', () => {
     expect(exp.battle).not.toBeNull()
     expect(exp.battle!.ended).toBeFalsy()
     expect(exp.battle!.lastTickGameMs).toBe(state.gameMs) // 时钟已同步，不欠快进时间
-    // 恢复后正常打完
+    // 恢复后正常打完；本地悬赏结算后需再走返港段 120s
     advanceGame(state, 10 * 60_000, ctx)
+    advanceGame(state, 125_000, ctx)
     expect(exp.active).toBe(false)
   })
 
@@ -169,10 +171,13 @@ describe('远征 V12：两阶段', () => {
     expect(exp.battle).not.toBeNull()
     advanceGame(state, 1_000, ctx) // 累计 ~1.1s < 1.5s
     expect(exp.phase).toBe('battle')
-    // 窗口走完：结算 → 转返航（母港目标零航程：同帧直接回港停靠）并出战报
+    // 窗口走完：结算 → 转返航（母港本地悬赏返港段 120s，2026-09-08 船长定）并出战报
     advanceGame(state, 1_000, ctx) // 累计 ≥2.1s
-    expect(exp.active).toBe(false)
+    expect(state.expedition.active).toBe(true)
+    expect(state.expedition.phase).toBe('back')
     expect(state.logs.some((l) => l.text.includes('战报'))).toBe(true)
+    advanceGame(state, 120_000, ctx) // 走完返港段 → 停靠母港
+    expect(state.expedition.active).toBe(false)
   })
 
   it('声望仅首胜发放：同一目标重复完成不再涨声望（防低威胁目标无限白刷）', () => {
@@ -181,17 +186,16 @@ describe('远征 V12：两阶段', () => {
       anomalies: [anomaly('ano-first', 'galaxy-hub', { threat: 1, reward: 1_000, standingGain: 2 })],
     })
     expect(startExpedition(state, 'ano-first', firstCtx).ok).toBe(true)
-    advanceGame(state, 10 * 60_000, firstCtx) // 打赢并完成
+    advanceGame(state, 10 * 60_000, firstCtx) // 打赢（结算在 chunk 末尾）
+    advanceGame(state, 125_000, firstCtx) // 本地悬赏返港段 120s
     expect(state.expedition.active).toBe(false)
     expect(state.standings['dsi']).toBe(2) // 首胜声望到账
     expect(state.completedBounties).toEqual(['ano-first'])
     const walletAfterFirst = state.wallet.isk
-    // T8：胜利后同目标有 10 秒重复冷却（基础 10s × 扫描属性因子）——等冷却结束再出击
-    expect(startExpedition(state, 'ano-first', firstCtx).ok).toBe(false)
-    advanceGame(state, 11_000, firstCtx) // 冷却 10s 走完
     // 再次重复完成：奖金照发，声望不再增加
     expect(startExpedition(state, 'ano-first', firstCtx).ok).toBe(true)
     advanceGame(state, 10 * 60_000, firstCtx)
+    advanceGame(state, 125_000, firstCtx)
     expect(state.expedition.active).toBe(false)
     expect(state.standings['dsi']).toBe(2) // 未再涨
     expect(state.completedBounties).toEqual(['ano-first']) // 清单不重复

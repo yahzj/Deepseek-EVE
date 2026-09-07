@@ -40,6 +40,10 @@ import { claimTutorialTrialReward } from './onboarding'
 
 /** 母港星系 id（内容层约定；与 state.HOME_GALAXY_ID 同值，经此转发保持既有 import 面不变） */
 export { HOME_GALAXY_ID }
+
+/** 本地悬赏返航段（2026-09-08 船长定）：目标星系 = 母港时胜利返港固定 120s
+ * （= balance.mining.localLegMs 本地满载单程，对齐矿工本地返航成本；防零航程白刷） */
+const LOCAL_RETURN_MS = 120_000
 /** 主要势力 id（声望绑定方） */
 export const DSI_FACTION_ID = 'dsi'
 
@@ -409,13 +413,12 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     exp.eventId = null
     exp.eventFired = false
     if (anomaly.galaxyId === HOME_GALAXY_ID) {
-      // 母港目标：本港悬赏 → 结算即已回港（无返航段）
-      exp.active = false
-      exp.anomalyId = null
-      exp.phase = 'out'
-      exp.finishAtGameMs = 0
-      exp.returnReason = undefined
-      addLog(state, 'info', '战果已入账：舰队已停靠母港（本港悬赏，无返航段）。')
+      // 本地悬赏（2026-09-08 船长定）：胜利结算后仍付一段固定返港时间（120s = 本地满载返航
+      // 单程，对齐矿工本地往返成本基准），防零航程白刷；期间不可召回（同胜利返航语义）。
+      exp.phase = 'back'
+      exp.returnReason = 'victory'
+      exp.finishAtGameMs = state.gameMs + LOCAL_RETURN_MS
+      addLog(state, 'info', '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。')
       return
     }
     // 2026-09-06（船长定稿：取消胜利停留）：悬赏胜利 = 结算后自动返航母港——
