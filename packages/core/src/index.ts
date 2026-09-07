@@ -387,6 +387,7 @@ export {
   deliverStationResources,
   onArriveAtGalaxy,
   playDialogue,
+  playerAtSite,
 } from './station'
 export type { StationSiteProgress } from './state'
 

@@ -33,6 +33,7 @@ import {
   standingOf,
   travelLegMs,
   travelMinutesEff,
+  playerAtSite,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -1750,7 +1751,8 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
         const delTotal = site.acceptItemIds.reduce((sum, id) => sum + (prog.delivered[id] ?? 0), 0)
         const remain = tier ? Math.max(0, tier.count - delTotal) : 0
         const itemId = selItem[site.id] ?? site.acceptItemIds[0]!
-        const dockedHere = state.awayGalaxy === null && state.dockedSite === site.id
+        // 工地现场 = 停靠该站，或野外停留于站点星系（2026-09-06 修复：现场交付无需"先停靠"）
+        const presentAtSite = playerAtSite(state, site)
         const availOf = (itemId: string): number =>
           (state.warehouse.items[itemId] ?? 0) + (state.fleet[state.shipId]?.cargo[itemId] ?? 0)
         const avail = site.acceptItemIds.reduce((s, id) => s + availOf(id), 0)
@@ -1773,7 +1775,15 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                     {secText(galaxy.security)}
                   </span>
                 ) : null}
-                {dockedHere ? ' · 已停靠' : state.awayGalaxy === null && state.dockedSite === null ? ' · 母港' : ''}
+                {presentAtSite && state.dockedSite === site.id ? (
+                  ' · 已停靠'
+                ) : state.awayGalaxy === null && state.dockedSite === null ? (
+                  ' · 母港'
+                ) : state.awayGalaxy === site.galaxyId ? (
+                  ' · 工地现场（可提交建材）'
+                ) : (
+                  ''
+                )}
               </span>
             </div>
             <div className="app-dim">{site.description}</div>
@@ -1808,7 +1818,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                   本档已缴 {Math.min(delTotal, tier.count).toLocaleString('zh-CN')} / {tier.count.toLocaleString('zh-CN')} 单位
                   {remain === 0 ? '（凑齐后自动结算档位）' : ''}
                 </div>
-                {dockedHere ? (
+                {presentAtSite ? (
                   <div className="app-station-deliver">
                     <span className="app-dim">提交建材（仓库+货仓）：</span>
                     <select
@@ -1846,7 +1856,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                     </button>
                   </div>
                 ) : (
-                  <div className="app-dim">需停靠在「{site.name}」（{galaxy?.name ?? ''}）才能提交建材。</div>
+                  <div className="app-dim">需抵达「{site.name}」（{galaxy?.name ?? ''}）工地现场才能提交建材——掩护巡逻/作业到场即可，无需停靠。</div>
                 )}
               </>
             ) : null}

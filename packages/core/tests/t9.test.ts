@@ -78,6 +78,32 @@ describe('T9 建站交付与档位', () => {
     // 建成后再提交被拒
     expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 1).ok).toBe(false)
   })
+
+  it('工地现场交付（2026-09-06 玩家反馈修复）：野外停留于站点星系即可提交——首档『奠基』无需停靠', () => {
+    const { state, ctx } = world()
+    state.warehouse.items['ore-a'] = 500
+    state.awayGalaxy = 'galaxy-far' // 掩护巡逻/作业到场（stage 0，泊位尚未解锁）
+    state.dockedSite = null
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 100).ok).toBe(true)
+    expect(siteProgress(state, 'site-test').stage).toBe(1) // 首档自动结算 → 解锁泊位
+    expect(state.warehouse.items['ore-a']).toBe(400)
+    // 停靠解锁后再停靠提交第二档（原路径不回退）
+    state.dockedSite = 'site-test'
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 150).ok).toBe(true)
+    expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+  })
+
+  it('不在工地现场（母港/他处星系/他站）仍不可提交', () => {
+    const { state, ctx } = world()
+    state.warehouse.items['ore-a'] = 100
+    state.awayGalaxy = 'galaxy-hub' // 别处野外
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 10).ok).toBe(false)
+    state.awayGalaxy = null
+    state.dockedSite = null // 母港
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 10).ok).toBe(false)
+    state.dockedSite = 'site-other' // 停在别的副站
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 10).ok).toBe(false)
+  })
 })
 
 describe('T9 抵达挂点与通讯', () => {

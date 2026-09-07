@@ -28,6 +28,18 @@ export function tierDeliveredTotal(prog: StationSiteProgress, site: StationSiteD
   return total
 }
 
+/** 玩家是否在该建站点"工地现场"（可提交建材，2026-09-06 紧急修复——玩家反馈无法提交）：
+ * - 停靠该站（已停靠工地/建成站）；
+ * - 野外停留于站点所在星系（掩护巡逻/作业到场即工地现场——首档『奠基』本就需先到工地
+ *   交付才能解锁泊位，不能再要求"先停靠"；建成前「返航空间站」只去已建成站/母港）；
+ * 母港特例：站点若设在母港星系，停靠母港即可（保留历史口径）。 */
+export function playerAtSite(state: GameState, site: StationSiteDef): boolean {
+  if (state.awayGalaxy === null) {
+    return state.dockedSite === site.id || (state.dockedSite === null && site.galaxyId === HOME_GALAXY_ID)
+  }
+  return state.awayGalaxy === site.galaxyId
+}
+
 /** 当前档还差多少单位（0 = 本档已满，等待推进结算） */
 export function tierRemaining(state: GameState, site: StationSiteDef): number {
   const prog = siteProgress(state, site.id)
@@ -60,11 +72,10 @@ export function deliverStationResources(
   }
   const want = Math.floor(units)
   if (!Number.isFinite(want) || want <= 0) return { ok: false, error: '提交数量必须是正整数。' }
-  // 前置：停靠在该站点（副站工地施工需船在场）
-  const dockedHere =
-    state.awayGalaxy === null && (state.dockedSite === siteId || (state.dockedSite === null && site.galaxyId === HOME_GALAXY_ID))
-  if (!dockedHere) {
-    return { ok: false, error: `需停靠在「${site.name}」（${ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId}）才能提交建材。` }
+  // 前置：在工地现场（停靠该站或野外停留于站点星系——母港仓库无法"跨航区施工"，但船在现场即可卸料）
+  if (!playerAtSite(state, site)) {
+    const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
+    return { ok: false, error: `需抵达「${site.name}」工地（${g}）才能提交建材——掩护巡逻/作业到场即可，无需停靠。` }
   }
   const need = Math.min(want, tierRemaining(state, site))
   if (need <= 0) return { ok: false, error: '当前档位的建材需求已满足，先提交更多即可结算该档。' }
@@ -176,6 +187,6 @@ export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: s
   if (site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
     const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
-    addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里（未建成，可「返航空间站」停靠施工/卸料）。`)
+    addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。任务中心·建站卡可直接提交建材（现场交付，无需停靠）；首档完成后解锁泊位。`)
   }
 }
