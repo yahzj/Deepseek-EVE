@@ -4,9 +4,12 @@
 船长给出市场参考图（盘口风格：左侧热门交易列表 + 详情区[24h 中位价/涨跌/价格折线/持有量] + 买卖盘深度 + 底部交易面板[买入/卖出/单价/数量]），要求市场页参考改造。
 
 ## 现状与复用
-- **价格历史已在引擎**（无需本次新增/存档变更）：`state.market.priceHistory`（每 30 分钟采样一次，保留最近 24 窗口），导出 API：
+- **价格历史已在引擎**（无需本次新增/存档变更）：`state.market.priceHistory`（每 30 分钟采样一次；
+  **2026-09-08 船长：保留窗 24 → 48（约 24 小时）**，趋势仍锚定最近 24 窗对比），导出 API：
   - `marketHistory(state, goodKey)` → 价格数组；`marketTrend(state, goodKey)` → 1/0/-1（涨/平/跌）；
   - 盘口 `state.market.npcBuy / npcSell`；当前报价 `marketQuote`；持有量 `naturalHoldings`（含 escrow 侧按自然库存）。
+  - 详情折线（2026-09-08）：保留 48 窗但**按宽度自适应显示**——容器够宽整条 48 窗直显；
+    宽度不足（采样点过密 <12px/点）自动只显示「最新 24 窗」（不做更早段查看入口）；悬停任意采样点显示数值与「约 N 分钟前」。
 - 交易沿用既有引擎：`buyGoodAt`（市价买入吃单）、`sellHoldingAt(key, qty?)`（市价卖出/部分卖）、`placeBuyOrderAt / placeSellOrderAt`（挂单）。
 
 ## 已实现（提交 f00a22b、c37f9c9）

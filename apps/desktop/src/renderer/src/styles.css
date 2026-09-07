@@ -3841,6 +3841,42 @@ body {
 
 }
 
+/* 折线悬停逐点数值浮标（2026-09-08 船长：保留 48 窗；宽度自适应显示，窄窗自动只显示最新 24 窗） */
+
+.app-mkt-chart-tip {
+
+  position: absolute;
+
+  transform: translate(-50%, calc(-100% - 6px));
+
+  background: rgba(10, 16, 22, 0.92);
+
+  border: 1px solid rgba(255, 224, 138, 0.45);
+
+  color: #ffe08a;
+
+  font-size: 10.5px;
+
+  line-height: 1.3;
+
+  white-space: nowrap;
+
+  padding: 2px 7px;
+
+  border-radius: 4px;
+
+  pointer-events: none;
+
+  z-index: 4;
+
+}
+
+.app-mkt-chart-tip.is-below {
+
+  transform: translate(-50%, 10px);
+
+}
+
 .app-mkt-detail-quotes {
 
   display: flex;

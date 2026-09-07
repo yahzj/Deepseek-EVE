@@ -15,7 +15,7 @@
  * - 两栏标题下方各带一个搜索栏：可按名称/商品键检索 + 按类型（物品/装备/舰船/蓝图/核心）过滤；
  * - 每行提供手动挂单（挂单买/挂单卖，数量+价格可改，卖单从自然库存锁定）。
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
@@ -313,47 +313,107 @@ function MarketColumn({
 
 /* ═══════════════ 市场详情卡（船长 2026-09-05：参考盘口风格——价格曲线/买卖盘/持有量/交易面板） ═══════════════ */
 
-/** 价格折线（SVG，最少 2 点） */
+/** 价格折线（SVG）。
+ * 2026-09-08 船长：保留窗 24 → 48；显示宽度自适应——容器够宽时整条 48 窗直显；
+ * 宽度不足（采样点过密）时自动只显示「最新 24 窗」（不做更早段查看入口，船长后定不实现）；
+ * 悬停任意采样点可查看该点数值与相对时间 */
+/** 采样点最小可视间距（px）：低于该密度判定"宽度不足"，回退显示最新 24 窗 */
+const MIN_POINT_SPACING_PX = 12
+
+/** 采样点「约 N 分钟前」标注（样本间隔 30 分钟；最新样本 = 现在） */
+function sampleAgoLabel(fullLen: number, absIdx: number): string {
+  const mins = (fullLen - 1 - absIdx) * 30
+  if (mins <= 0) return '现在'
+  if (mins < 60) return `约 ${mins} 分钟前`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m === 0 ? `约 ${h} 小时前` : `约 ${h} 小时 ${m} 分前`
+}
+
 function PriceChart({ hist }: { hist: readonly number[] }) {
-  if (hist.length < 2) {
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [wrapW, setWrapW] = useState<number | null>(null)
+  const [hover, setHover] = useState<number | null>(null)
+  const fullLen = hist.length
+  useLayoutEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const measure = () => setWrapW(el.clientWidth)
+    measure()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    ro?.observe(el)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [])
+  if (fullLen < 2) {
     return (
       <div className="app-mkt-chart-empty">
-        <span className="app-dim">暂无历史样本——市场运行一段时间后自动采样（每 30 分钟一次，保留 24 窗口）</span>
+        <span className="app-dim">暂无历史样本——市场运行一段时间后自动采样（每 30 分钟一次，保留 48 窗 / 约 24 小时）</span>
       </div>
     )
   }
+  // 宽度自适应（2026-09-08 船长）：够宽 → 整条保留窗直显；宽度不足 → 自动只显示最新 24 窗
+  const tooNarrow = wrapW !== null && wrapW < fullLen * MIN_POINT_SPACING_PX
+  const slice = tooNarrow ? hist.slice(-24) : hist
+  const offset = tooNarrow ? fullLen - 24 : 0
   const w = 560
   const h = 120
   const pad = 6
-  // y 轴范围：在历史最高/最低基础上外扩约 15% 并向上/下取整（船长 2026-09-05：不让折线顶死上下边框）
-  const dataMn = Math.min(...hist)
-  const dataMx = Math.max(...hist)
+  // y 轴范围：在可见段最高/最低基础上外扩约 15% 并向上/下取整（船长 2026-09-05：不让折线顶死上下边框）
+  const dataMn = Math.min(...slice)
+  const dataMx = Math.max(...slice)
   const dataRange = Math.max(1, dataMx - dataMn)
   const margin = dataRange * 0.15
   const axisMin = Math.floor(dataMn - margin)
   const axisMax = Math.ceil(dataMx + margin)
   const axisSpan = Math.max(1, axisMax - axisMin)
   const mapY = (v: number) => h - pad - ((v - axisMin) / axisSpan) * (h - pad * 2)
-  const pts = hist
-    .map((v, i) => {
-      const x = (i / (hist.length - 1)) * (w - pad * 2) + pad
-      const y = mapY(v)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
-  const last = hist[hist.length - 1]!
-  const lastX = w - pad
-  const lastY = mapY(last)
+  const xAt = (i: number) => (i / (slice.length - 1)) * (w - pad * 2) + pad
+  const pts = slice.map((v, i) => `${xAt(i).toFixed(1)},${mapY(v).toFixed(1)}`).join(' ')
   return (
-    <div className="app-mkt-chart-wrap">
-      <svg className="app-mkt-chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="价格趋势">
-        <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
-        <circle cx={lastX.toFixed(1)} cy={lastY.toFixed(1)} r="3.5" fill="#ffe08a" />
-        <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-      </svg>
-      {/* 高低价标注用 HTML 覆盖层（非 SVG 文本），避免 preserveAspectRatio=none 拉伸字形 */}
-      <span className="app-mkt-chart-hi">高价 {isk(dataMx)}</span>
-      <span className="app-mkt-chart-lo">低价 {isk(dataMn)}</span>
+    <div className="app-mkt-chart-wrap" ref={wrapRef}>
+        <svg
+          className="app-mkt-chart"
+          viewBox={`0 0 ${w} ${h}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="价格趋势"
+          onMouseLeave={() => setHover(null)}
+        >
+          <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
+          {slice.map((v, i) => {
+            const x = xAt(i)
+            const y = mapY(v)
+            const isLast = offset + i === fullLen - 1
+            const isHover = hover === i
+            return (
+              <g key={offset + i}>
+                {!isLast && !isHover ? <circle cx={x} cy={y} r={1.6} fill="rgba(255,224,138,0.55)" /> : null}
+                {isLast ? <circle cx={x} cy={y} r={3.5} fill="#ffe08a" /> : null}
+                {isHover ? <circle cx={x} cy={y} r={4.5} fill="none" stroke="#ffe08a" strokeWidth={1.2} /> : null}
+                <circle cx={x} cy={y} r={7} fill="transparent" style={{ cursor: 'crosshair' }} onMouseEnter={() => setHover(i)} />
+              </g>
+            )
+          })}
+          <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+        </svg>
+        {/* 高低价标注用 HTML 覆盖层（非 SVG 文本），避免 preserveAspectRatio=none 拉伸字形 */}
+        <span className="app-mkt-chart-hi">高价 {isk(dataMx)}</span>
+        <span className="app-mkt-chart-lo">低价 {isk(dataMn)}</span>
+        {hover !== null && hover < slice.length ? (
+          <div
+            className={`app-mkt-chart-tip${mapY(slice[hover]!) < 40 ? ' is-below' : ''}`}
+            style={{
+              left: `${(xAt(hover) / w) * 100}%`,
+              top: `${(mapY(slice[hover]!) / 130) * 100}%`,
+            }}
+          >
+            ≈{isk(slice[hover]!)} ISK · {sampleAgoLabel(fullLen, offset + hover)}
+          </div>
+        ) : null}
     </div>
   )
 }
@@ -480,7 +540,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
         <div className="app-mkt-detail-left">
           <PriceChart hist={hist} />
           {hist.length >= 2 ? (
-            <div className="app-mkt-chart-hint">行市参考价走势：每 30 分钟采样一次（含库存压力与冲击），非逐笔成交价</div>
+            <div className="app-mkt-chart-hint">行市参考价走势：每 30 分钟采样一次（含库存压力与冲击），保留 48 窗约 24 小时，非逐笔成交价</div>
           ) : null}
           <div className="app-mkt-detail-quotes">
             <div className="app-mkt-quote">

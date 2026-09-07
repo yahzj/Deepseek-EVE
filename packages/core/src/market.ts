@@ -285,19 +285,19 @@ export function marketQuote(
   return { buy: bestBuy, sell: bestSell, buyDepth: buyOrders.length, sellDepth: sellOrders.length, buyQty, sellQty }
 }
 
-/** 价格小史（最近 24 个窗口采样，趋势展示用） */
+/** 价格小史（最近 48 窗 ≈ 24 小时采样；2026-09-08 船长：保留窗 24 → 48，趋势展示用） */
 export function marketHistory(state: GameState, goodKey: string): readonly number[] {
   return state.market.priceHistory[goodKey] ?? []
 }
 
-/** 价格趋势：1 涨 / -1 跌 / 0 平 */
+/** 价格趋势：1 涨 / -1 跌 / 0 平（2026-09-08：保留窗加倍后仍锚定「最近 24 窗」对比，观感与旧版一致） */
 export function marketTrend(state: GameState, goodKey: string): number {
   const hist = state.market.priceHistory[goodKey]
   if (!hist || hist.length < 4) return 0
-  const first = hist[0]!
+  const base = hist.length > 24 ? hist[hist.length - 24]! : hist[0]!
   const last = hist[hist.length - 1]!
-  if (last > first * 1.01) return 1
-  if (last < first * 0.99) return -1
+  if (last > base * 1.01) return 1
+  if (last < base * 0.99) return -1
   return 0
 }
 
@@ -377,6 +377,10 @@ function rareDrawCount(state: GameState, ctx: SimContext, stat: { unlockedN: num
   return Math.max(1, Math.round(r * stat.unlockedN * sweepMul(state)))
 }
 
+/** 价格小史保留窗数（每窗 = balance.market.tickMs，默认 30 分钟）。
+ * 2026-09-08 船长：24 → 48（≈ 24 小时），配合市场详情折线的"分段查看" */
+const PRICE_HISTORY_LIMIT = 48
+
 /** 单个窗口：过期清理 → 池回归/冲击衰减 → 内部消化 → 刷单 → 撮合 → 小史/冲击结算 */
 function processWindow(state: GameState, ctx: SimContext): void {
   const mk = state.market
@@ -434,7 +438,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
     // 旧高单会在下行时压制，掩盖噪声波动（尤其便宜货整数取整后钉死）——L 每窗重算，更能即时反映行情趋势。
     const hist = mk.priceHistory[key]!
     hist.push(priceLevel(state, ctx, def, pool.q))
-    if (hist.length > 24) hist.shift()
+    if (hist.length > PRICE_HISTORY_LIMIT) hist.shift()
     const ref = referenceVol(def, bal.referenceVolRatio)
     if (ref > 0 && Math.abs(pool.netVol) > ref * bal.shockTriggerRatio) {
       pool.shock += Math.sign(pool.netVol) * bal.shockPerTrigger // 无叠加上限（用户确认）
