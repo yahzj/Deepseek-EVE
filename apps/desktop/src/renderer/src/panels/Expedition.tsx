@@ -53,6 +53,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
 
   return (
     <Panel
+      className="is-fill"
       title="深空工业协会 · 远征调度"
       right={<span className="app-standing">声望 {standing}</span>}
     >
@@ -190,6 +191,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
 
   return (
     <Panel
+      className="is-fill"
       title="任务中心"
       right={<span className="app-dim">建站 {stationCount} · 抵达对应星系后出现</span>}
     >
@@ -305,6 +307,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
 
   return (
     <Panel
+      className="is-fill"
       title="战斗悬赏"
       right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 可接取排序</span>}
     >
