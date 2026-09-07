@@ -146,7 +146,11 @@ export function ActivityBar({
   const state = engine.state
   const all = activityOverview(state, engine.ctx)
   // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用 ⚙×N 徽标
-  const aiCount = all.filter((i) => i.kind === 'ai').length
+  // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
+  const aiAll = all.filter((i) => i.kind === 'ai')
+  const aiShips = aiAll.filter((i) => i.stop === 'cancel-ai').length
+  const aiProd = aiAll.length - aiShips
+  const aiCount = aiAll.length
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
   // 撤退需二次确认（轻损但有代价）
@@ -242,8 +246,20 @@ export function ActivityBar({
         {aiCount > 0 ? (
           <button
             className="app-activitybar-ai"
-            title={`${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`}
-            onClick={onAiCenter}
+            title={
+              aiProd > 0 && aiShips > 0
+                ? `${aiShips} 艘 AI 副船 · ${aiProd} 条 AI 生产运行中——点击前往「舰船」AI 指挥中心（AI 生产线的取消在工业页）`
+                : aiProd > 0
+                  ? `${aiProd} 条 AI 生产运行中——点击前往「工业」页查看/取消`
+                  : `${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`
+            }
+            onClick={() => {
+              if (aiShips > 0 || aiProd === 0) {
+                if (onAiCenter) onAiCenter()
+              } else if (onGoPage) {
+                onGoPage('industry')
+              }
+            }}
           >
             <span className="app-ico">
               <Glyph name="nav-ai" size={13} color={NAV_TONES['nav-ai']} />

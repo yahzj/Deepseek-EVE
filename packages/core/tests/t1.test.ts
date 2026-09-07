@@ -93,7 +93,8 @@ describe('T1 activityOverview 视图', () => {
     expect(kinds).toContain('train')
     expect(kinds).toContain('mining')
     expect(kinds).toContain('scan')
-    expect(kinds).toContain('manufacture')
+    expect(kinds).toContain('ai') // 2026-09-08：AI 核心驱动的生产线并入 ⚙ AI 徽标（不再占玩家活动位）
+    expect(kinds).not.toContain('manufacture')
     const train = acts.find((a) => a.kind === 'train')!
     expect(train.stopable).toBe(true)
     expect(train.stop).toBe('remove-training')
@@ -103,8 +104,9 @@ describe('T1 activityOverview 视图', () => {
     const scan = acts.find((a) => a.kind === 'scan')!
     expect(scan.stop).toBe('stop-scan')
     expect(scan.remainingMs).toBeGreaterThan(0)
-    const mf = acts.find((a) => a.kind === 'manufacture')!
+    const mf = acts.find((a) => a.kind === 'ai' && a.id.startsWith('ai-prod-m'))!
     expect(mf.stop).toBe('cancel-manufacture')
+    expect(mf.stopParam).toBeTruthy()
   })
 
   it('远征出卡：交火中可撤退；返航（back）可召回；AI 采矿任务出卡且带 stopParam', () => {

@@ -136,12 +136,15 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 制造（v21 多工位：每条制造线一条活动；逐线可取消；2026-09-08 线带劳动者：主控/AI 核心/旧作业） ──
+  // ── 制造（v21 多工位：每条制造线一条活动；逐线可取消；2026-09-08 线带劳动者：主控/AI 核心/旧作业）──
+  // 2026-09-08（船长反馈）：AI 核心驱动的生产线不占"玩家活动"位——并入 ⚙ AI 徽标计数
+  // （kind='ai'）；主控亲自/旧作业仍逐条展示。
   for (const mfv of manufacturingRunViews(state, ctx)) {
+    const aiProd = mfv.worker !== null && mfv.worker !== 'pilot'
     const who = mfv.worker === null ? '旧作业' : mfv.worker === 'pilot' ? '主控亲自' : `${mfv.workerLabel}驱动`
     out.push({
-      id: `manufacture:${mfv.id}`,
-      kind: 'manufacture',
+      id: aiProd ? `ai-prod-m:${mfv.id}` : `manufacture:${mfv.id}`,
+      kind: aiProd ? 'ai' : 'manufacture',
       label: mfv.productName,
       sub: `${who} · ${mfv.kind === 'ship' ? '造船中' : '制造中'}`,
       percent: mfv.percent,
@@ -152,13 +155,15 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 精炼炉运转（v20 多台并行：每个资源/残骸可多台、逐台一条活动；主控/AI 核心驱动） ──
+  // ── 精炼炉运转（v20 多台并行：每个资源/残骸可多台、逐台一条活动；主控/AI 核心驱动）──
+  // 2026-09-08（同制造口径）：AI 核心驱动的炉不占"玩家活动"位——并入 ⚙ AI 徽标计数
   for (const rv of refineRunViews(state, ctx)) {
+    const aiProd = rv.worker !== 'pilot'
     const isWreck = rv.itemId ? ctx.items.get(rv.itemId)?.kind === 'wreck' : false
     const remainUnits = rv.itemId ? oreAvailable(state, rv.itemId) : 0
     out.push({
-      id: `refine:${rv.id}`,
-      kind: 'refine',
+      id: aiProd ? `ai-prod-r:${rv.id}` : `refine:${rv.id}`,
+      kind: aiProd ? 'ai' : 'refine',
       label: `${isWreck ? '残骸回收' : '精炼炉'} · ${rv.itemName}`,
       sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / 仓库余 ×${remainUnits}（每批 ${rv.batchUnits} 单位）`,
       percent: rv.percent,
