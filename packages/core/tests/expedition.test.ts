@@ -14,7 +14,7 @@ import {
   setBattleDesire,
   startExpedition,
 } from '../src/expedition'
-import { battleWinPreview, battleArcsFor } from '../src/combat'
+import { battleWinPreview, battleArcsFor, createFoeSpecs } from '../src/combat'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 
 describe('远征 V12：两阶段', () => {
@@ -257,5 +257,50 @@ describe('战斗界面敌方射程聚合（2026-09-08 玩家反馈：敌方最�
     expect(arcs!.foe.minM).toBeGreaterThan(0) // kite 模板 min 1200×(1+成长)>0——回归：旧代码恒为 0
     expect(arcs!.foe.minM).toBeLessThan(arcs!.foe.maxM)
     expect(arcs!.foe.type).toBe('plasma')
+  })
+})
+
+describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-08 船长定）', () => {
+  it('specs：plasma → beam（hitRate 1、近盲带保留 minRange>0）；kinetic 缺省命中 = 0.85、逐卡特例生效', () => {
+    const ctx = makeTestCtx({ quietEvents: true })
+    const bal = ctx.balance.battle
+    const plasma = {
+      ...anomaly('ano-p1', 'galaxy-hub', { threat: 20, reward: 1_000 }),
+      tactic: 'kite' as const,
+      dmgMix: { plasma: 2 } as const,
+    }
+    const w = createFoeSpecs(plasma, bal)[0]!.weapons[0]!
+    expect(w.kind).toBe('beam')
+    expect(w.hitRate).toBe(1)
+    expect(w.minRangeM).toBeGreaterThan(0) // 近盲带保留
+    expect(w.blindDmgMul).toBe(0.3)
+    const kin = createFoeSpecs({ ...anomaly('ano-k1', 'galaxy-hub', { threat: 20, reward: 1_000 }), dmgMix: { kinetic: 2 } }, bal)[0]!.weapons[0]!
+    expect(kin.kind).toBe('fixed')
+    expect(kin.hitRate).toBe(0.85) // 普遍高命中缺省
+    const kinLow = createFoeSpecs(
+      { ...anomaly('ano-k2', 'galaxy-hub', { threat: 20, reward: 1_000 }), dmgMix: { kinetic: 2 }, foeHitRate: 0.55 },
+      bal,
+    )[0]!.weapons[0]!
+    expect(kinLow.hitRate).toBe(0.55) // 低命中特例（占港/泰坦）
+  })
+
+  it('等效回退：foeDmgMul 缩放 shotDmg（光束以 effHit=1 反推单发，期望 DPS 恒定）', () => {
+    const ctx = makeTestCtx({ quietEvents: true })
+    const bal = ctx.balance.battle
+    const mk = (mul?: number) => ({
+      ...anomaly('ano-pmul', 'galaxy-hub', { threat: 34, reward: 1_000 }),
+      tactic: 'kite' as const,
+      dmgMix: { plasma: 2 } as const,
+      ...(mul !== undefined ? { foeDmgMul: mul } : {}),
+    })
+    const w1 = createFoeSpecs(mk(), bal)[0]!.weapons[0]!
+    const w2 = createFoeSpecs(mk(0.35), bal)[0]!.weapons[0]!
+    expect(w1.kind).toBe('beam')
+    expect(w1.shotDmg ?? 0).toBeGreaterThan(0)
+    // 单发 = DPS×装填÷1 × mul → 0.35 档应为满档 ~35%（舍入 ±1 内）
+    const full = w1.shotDmg ?? 0
+    const scaled = w2.shotDmg ?? 0
+    expect(scaled).toBeGreaterThanOrEqual(Math.round(full * 0.35) - 1)
+    expect(scaled).toBeLessThanOrEqual(Math.round(full * 0.35) + 1)
   })
 })

@@ -782,6 +782,17 @@ export interface AnomalyDef {
    * （现有怪物全部按 0.3；未来单卡可覆盖，如更怕贴脸的给 0.1）。
    */
   blindDmgMul?: number
+  /**
+   * 敌武器基础命中覆写（2026-09-08 船长定：普遍高命中 0.85、个别低命中特例做"乱射重火力"个性）。
+   * 只对动能/爆炸（fixed 命中模型）生效——能量（plasma）为光束必中，不消费本字段。
+   * 缺省 = balance.battle.foeHitRate（默认 0.85）。
+   */
+  foeHitRate?: number
+  /**
+   * 敌伤害乘子（2026-09-08 等效回退口）：能量光束必中化后逐卡校准用（如赤潮类 plasma 卡）。
+   * 缺省 1。命中侧不变——只缩放 shotDmg；时长/HP 验收带以 battle-calibrate 矩阵为准。
+   */
+  foeDmgMul?: number
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean

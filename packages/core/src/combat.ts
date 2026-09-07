@@ -547,7 +547,10 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
     const totalHp = unitHp
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     const dps = uThreat * bal.foeDpsPerThreat
-    const shotDmg = Math.max(1, Math.round((dps * bal.foeReloadMs) / 1000 / bal.foeHitRate))
+    // 2026-09-08（船长定：能量=光束必中；动能/爆炸普遍高命中 0.85 + 逐卡低命中特例）：
+    // 单发 = DPS×装填÷该武器有效命中（能量 1），期望 DPS 恒定；foeDmgMul 为等效回退校准口
+    const effHit = type === 'plasma' ? 1 : anomaly.foeHitRate ?? bal.foeHitRate
+    const shotDmg = Math.max(1, Math.round(((dps * bal.foeReloadMs) / 1000 / effHit) * (anomaly.foeDmgMul ?? 1)))
     return {
       tag,
       name,
@@ -563,14 +566,16 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
       weapons: [
         {
           label: `${name} 武器组`,
-          kind: 'fixed',
+          // 2026-09-08（船长定）：能量（plasma）= 光束必中（开火即中、无视回避），
+          // **近盲带保留**（带内威力 ×blindDmgMul）；动能/爆炸 = fixed 命中模型 + 逐卡命中率
+          kind: type === 'plasma' ? 'beam' : 'fixed',
           fixedType: type,
           shotDmg,
           maxRangeM: rangeMax,
           minRangeM: rangeMin,
           // V18B：敌人近盲带伤害比例（船长 2026-09-05：与玩家区分——近盲带内不停火、伤害打折）
           blindDmgMul: anomaly.blindDmgMul ?? 0.3,
-          hitRate: bal.foeHitRate,
+          hitRate: type === 'plasma' ? 1 : anomaly.foeHitRate ?? bal.foeHitRate,
           falloff: bal.foeFalloff,
           reloadMs: bal.foeReloadMs,
         },
@@ -1110,6 +1115,17 @@ function stepBattle(
     if (b.distanceM > w.maxRangeM || !meRt) continue
     b.stats.foeShots += 1
     const fType = w.fixedType ?? 'kinetic'
+    // 2026-09-08（船长定）：能量（beam）= 必中——不掷命中骰；威力：近盲带内 ×blindDmgMul
+    // （近盲带保留），带内至远端按 beamPowerFactor 距离衰减（与玩家激光同源语义）
+    if (w.kind === 'beam') {
+      const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(b.distanceM, w)
+      const dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * pow))
+      b.stats.foeHits += 1
+      const r = applyDamage(meRt.hp, me.resists, dmg, fType)
+      meRt.hp = r.hp
+      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: true })
+      continue
+    }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
     const shotDmg = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
     // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
@@ -1247,14 +1263,16 @@ function winPreviewRaw(
     const mult = effectiveDmgMultAgainst(foes, ammoType ?? w.fixedType ?? 'kinetic')
     meDps += (shot * power * mult * hit * 1000) / w.reloadMs
   }
-  // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——与实时引擎同源）
+  // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——
+  // 2026-09-08：能量 beam 必中（hit=1）且威力走 beamPowerFactor/盲带，与实时引擎同源）
   let foeDps = 0
   for (const f of foes) {
     const w = f.weapons[0]!
-    const hit = hitChance(w, f, me, steady, bal)
+    const isBeam = w.kind === 'beam'
+    const hit = isBeam ? 1 : hitChance(w, f, me, steady, bal)
     if (hit <= 0) continue
-    const blindMul = steady < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
-    const shot = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
+    const power = isBeam ? (steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(steady, w)) : steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
+    const shot = Math.max(1, Math.round((w.shotDmg ?? 0) * power))
     const mult = avgLayerMult(meHpTotal, me, w.fixedType ?? 'kinetic')
     foeDps += (shot * mult * hit * 1000) / w.reloadMs
   }

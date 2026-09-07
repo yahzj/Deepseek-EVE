@@ -148,7 +148,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
       { upToThreat: 9999, dps: 12.8 },
     ],
     foeDpsPerThreat: 0.8, // 敌方总火力 ≈ threat ×0.8（C4 前 1.1）
-    foeHitRate: 0.55, // 敌方武器基础命中
+    foeHitRate: 0.85, // 敌方动能/爆炸武器基础命中（2026-09-08 船长定：普遍高命中；能量=光束必中不消费本值；逐卡 foeHitRate 可覆写做低命中特例）
     foeReloadMs: 4_000, // 敌方武器装填
     foeFalloff: 0.3, // 敌方命中衰减（maxRange 端点）
     // C4-#3 敌方"虚拟装配"（2026-09-05 船长拍板）：威胁越高全属性越高、侧重随战术风格。

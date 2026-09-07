@@ -45,6 +45,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-abandoned-platform',
     name: '占港武装通缉',
     foeHpOverride: 292, // P1 重标 pass-2（2026-09-06，待终审）：A 段隼枭3×MK1 中位 ~36s
+    foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：武装拾荒者乱射——打得重但准头差；缺省 0.85）
     galaxyId: 'galaxy-dust',
     threat: 16,
     tactic: 'orbit',
@@ -66,6 +67,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { plasma: 2 },
+    foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
     standingReq: 3,
     standingGain: 1,
     rewardIsk: 75000,
@@ -116,6 +118,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     defProfile: 'shield',
     escorts: 1,
     dmgMix: { plasma: 2, kinetic: 1 },
+    foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
     standingReq: 6,
     standingGain: 2,
     rewardIsk: 160_000,
@@ -130,6 +133,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-titan-wreck',
     name: '泰坦残骸勘探',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~60s
+    foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：远古残骸老化自动炮台——单发重但失准）
     galaxyId: 'galaxy-abyss',
     threat: 60,
     tactic: 'brawl',
@@ -172,6 +176,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     defProfile: 'armor',
     escorts: 2,
     dmgMix: { plasma: 2, kinetic: 1 },
+    foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
     standingReq: 10,
     standingGain: 3,
     rewardIsk: 490000,
@@ -332,6 +337,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     defProfile: 'shield',
     escorts: 1,
     dmgMix: { plasma: 2 },
+    foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
     standingReq: 5,
     standingGain: 2,
     rewardIsk: 190_000,
