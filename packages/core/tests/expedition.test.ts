@@ -260,8 +260,26 @@ describe('战斗界面敌方射程聚合（2026-09-08 玩家反馈：敌方最�
   })
 })
 
-describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-08 船长定）', () => {
-  it('specs：plasma → beam（hitRate 1、近盲带保留 minRange>0）；kinetic 缺省命中 = 0.85、逐卡特例生效', () => {
+describe('返航段进度条（2026-09-08 玩家反馈：仅倒计时变、进度条不动）', () => {
+  it('本地悬赏 back：percent 随剩余时间推进（0 → 60s 后 50% → 到港）', () => {
+    const st = createInitialState({ nowWallMs: 0, seed: 3 })
+    st.wallet.isk = 500_000
+    const c = makeTestCtx({ anomalies: [anomaly('ano-bar', 'galaxy-hub', { threat: 1, reward: 1_000 })] })
+    expect(startExpedition(st, 'ano-bar', c).ok).toBe(true)
+    advanceGame(st, 10 * 60_000, c) // 打赢（结算在 chunk 末尾 → 进入 back，返航段 120s）
+    expect(st.expedition.phase).toBe('back')
+    const v0 = expeditionStatus(st, c)
+    expect(v0.phase).toBe('back')
+    expect(v0.percent).toBe(0) // 刚转入返航段：进度从 0 起（回归：旧分母 outMs×2=0 → 恒 0/卡死）
+    advanceGame(st, 60_000, c)
+    const v1 = expeditionStatus(st, c)
+    expect(v1.percent).toBe(50) // 120s 段过半
+    advanceGame(st, 61_000, c)
+    expect(st.expedition.active).toBe(false) // 返航完成
+  })
+})
+
+describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-08 船长定）', () => {  it('specs：plasma → beam（hitRate 1、近盲带保留 minRange>0）；kinetic 缺省命中 = 0.85、逐卡特例生效', () => {
     const ctx = makeTestCtx({ quietEvents: true })
     const bal = ctx.balance.battle
     const plasma = {

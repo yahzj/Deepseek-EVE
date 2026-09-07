@@ -293,6 +293,9 @@ export interface ExpeditionState {
   /** 返航来源（2026-09-06 兼容字段）：victory=悬赏胜利自动返航（不可召回）；
    *  defeat/retreat=失利/撤退返航（可召回）；旧档在途 back 无此字段 = 按失利口径 */
   returnReason?: 'victory' | 'defeat' | 'retreat'
+  /** 返航段起点（2026-09-08 兼容字段）：转入 back 的游戏时刻——进度条分母 =
+   *  finishAtGameMs − 本值（本地 120s/异星系 2×单程均正确）；旧档在途 back 缺省 → 回退旧口径 */
+  returnAtGameMs?: number
   /** 实时战斗状态（phase='battle' 时非空；只存动态量，静态由 ship/anomaly 定义重建） */
   battle: BattleState | null
   /** 玩家期望距离偏好（米；战斗内拖动/战术选择写入，下次出发自动沿用；未设则用有效射程中点） */

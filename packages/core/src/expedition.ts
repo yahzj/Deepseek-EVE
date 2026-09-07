@@ -442,6 +442,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         : ctx.galaxies.get(ret.base)?.name ?? ret.base
     exp.phase = 'back'
     exp.returnReason = 'victory'
+    exp.returnAtGameMs = state.gameMs // 2026-09-08：返航段起点（进度分母用）
     exp.finishAtGameMs = state.gameMs + backMs
     if (ret.base === anomaly.galaxyId || anomaly.galaxyId === HOME_GALAXY_ID) {
       // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
@@ -494,6 +495,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   exp.battle = null
   exp.phase = 'back'
   exp.returnReason = 'defeat'
+  exp.returnAtGameMs = state.gameMs // 2026-09-08：返航段起点（进度分母用）
   const retD = returnBackMs(state, ctx, anomaly.galaxyId)
   exp.finishAtGameMs = state.gameMs + (retD.ms > 0 ? retD.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
@@ -557,6 +559,7 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   exp.battle = null
   exp.phase = 'back'
   exp.returnReason = 'retreat'
+  exp.returnAtGameMs = state.gameMs // 2026-09-08：返航段起点（进度分母用）
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   exp.finishAtGameMs = state.gameMs + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
@@ -855,8 +858,14 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / Math.max(1, totalMs)) * 100))
   } else if (exp.phase === 'back') {
     remainingMs = Math.max(0, exp.finishAtGameMs - state.gameMs)
-    totalMs = exp.outMs * 2 // 去程并入返航
-    percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / Math.max(1, totalMs)) * 100))
+    // 2026-09-08：进度分母 = 返航段实际时长（returnAtGameMs 兼容字段；
+    // 本地 120s / 异星系 2×单程均正确；旧档在途 back 无该字段 → 回退旧口径 outMs×2）
+    const totalBack =
+      exp.returnAtGameMs !== undefined && Number.isFinite(exp.returnAtGameMs)
+        ? Math.max(1, exp.finishAtGameMs - exp.returnAtGameMs)
+        : exp.outMs * 2
+    totalMs = Math.max(1, totalBack)
+    percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
   } else if (exp.battle) {
     const b = exp.battle
     const elapsed = Math.max(0, state.gameMs - b.startedAtGameMs)
