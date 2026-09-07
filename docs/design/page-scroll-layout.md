@@ -34,3 +34,14 @@
 - `.app-page-content` → `overflow:hidden` + 弹性列；
 - `.page-stack.page-fill`（满高骨架）＋ `.app-win-head/.app-win-body`（自绘二级窗固定头/滚体工具类）＋ `wui-panel` 支持 `className`（吸满面板用 `.wui-panel.is-fill` 类，flex:1 1 auto + min-height:0）；
 - 样式纪律：滚动条样式复用既有列表/网格族，不新造外观。
+
+## 实施清单（逐页勾选；每页完成后在 App.tsx 的 no-scroll 名单加入该页）
+- [ ] 批次1：舰船（fleet/AI/shop 各活跃 Panel is-fill）
+- [ ] 批次1：市场（两条说明入固定头、左列列表弹性化、右列沿用 7307）
+- [ ] 批次1：装配（fit-cols 入 Panel body 内滚）
+- [ ] 批次2：工业（三标签 Panel body 滚；组装机筛选行固定策略与船长对齐）
+- [ ] 批次2：星图（5 标签 Panel body 滚；远征=地图全窗+行动弹窗）
+- [ ] 批次3：技能（队列固定 + 目录 Panel is-fill 整窗滚）
+- [ ] 批次3：物品（仓库/货仓整标签单窗滚；CargoPage 嵌套不产生双滚）
+- [ ] 全量回归：桌面各页 + 手机横屏矮高预算（不裁内容红线）+ ≤1180px 窄桌面
+
