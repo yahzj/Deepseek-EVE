@@ -15,7 +15,9 @@ import {
   siteProgress,
   tierRemaining,
 } from '../src/station'
-import { nearestStationGalaxyId, stationGalaxyIds } from '../src/location'
+import { nearestStationGalaxyId, stationGalaxyIds, isAtHomeLike } from '../src/location'
+import { startRefineRun, startRecycleRun, redeemFragments } from '../src/industry'
+import { startManufacturing } from '../src/manufacturing'
 import { makeTestCtx } from './helpers'
 
 /** 迷你建站点：挂在 galaxy-far，两档（100 / 150），收 ore-a */
@@ -176,5 +178,61 @@ describe('T9 存档（v16.1 兼容字段）', () => {
     expect(l2.state.dockedSite).toBeNull()
     expect(l2.state.dialogueSeen).toEqual({ d1: true })
     expect(l2.state.pendingDialogue).toBe('p1')
+  })
+})
+
+describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能全可用、共享仓库）', () => {
+  function builtWorld() {
+    const { state, ctx } = world()
+    state.warehouse.items['ore-a'] = 1000
+    state.dockedSite = 'site-test'
+    state.awayGalaxy = null
+    deliverStationResources(state, ctx, 'site-test', 'ore-a', 100)
+    deliverStationResources(state, ctx, 'site-test', 'ore-a', 150)
+    expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+    return { state, ctx }
+  }
+  const GATE_HINT = '需停靠空间站（母港或已建成副站）'
+
+  it('isAtHomeLike：母港与已建成副站为真；修建中/野外为假', () => {
+    const { state, ctx } = builtWorld()
+    expect(isAtHomeLike(state, ctx)).toBe(true) // 已建成副站
+    state.dockedSite = null
+    expect(isAtHomeLike(state, ctx)).toBe(true) // 母港
+    state.dockedSite = 'site-test'
+    state.stationSites['site-test'] = { stage: 1, delivered: {} } // 回退成修建中
+    expect(isAtHomeLike(state, ctx)).toBe(false)
+    state.awayGalaxy = 'galaxy-far'
+    state.dockedSite = null
+    expect(isAtHomeLike(state, ctx)).toBe(false) // 野外
+  })
+
+  it('已建成副站可开精炼炉/残骸回收/组装机/逆向研究（越过母港门，其余校验照常）', () => {
+    const { state, ctx } = builtWorld()
+    // 各入口先过"基地网络"门：停靠已建成副站时不再报位置错，而是继续后续校验
+    const r1 = startRefineRun(state, 'nope-ore', 'pilot', ctx)
+    expect(r1.error).not.toContain(GATE_HINT)
+    expect(r1.error).toContain('未知物品')
+    const r2 = startRecycleRun(state, 'nope-wreck', 'pilot', ctx)
+    expect(r2.error).not.toContain(GATE_HINT)
+    expect(r2.error).toContain('未知物品')
+    const r3 = startManufacturing(state, 'nope-bp', 'pilot', ctx)
+    expect(r3.error).not.toContain(GATE_HINT)
+    expect(r3.error).toContain('未知蓝图')
+    const r4 = redeemFragments(state, ctx, 'nope-mod')
+    expect(r4.error).not.toContain(GATE_HINT)
+  })
+
+  it('修建中工地/野外仍被基地网络门拦截', () => {
+    const { state, ctx } = world()
+    state.warehouse.items['ore-a'] = 200
+    state.dockedSite = 'site-test'
+    state.awayGalaxy = null
+    deliverStationResources(state, ctx, 'site-test', 'ore-a', 100) // stage 1（修建中）
+    expect(startManufacturing(state, 'nope-bp', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRefineRun(state, 'nope-ore', 'pilot', ctx).error).toContain(GATE_HINT)
+    state.awayGalaxy = 'galaxy-far' // 野外
+    state.dockedSite = null
+    expect(startRecycleRun(state, 'nope-wreck', 'pilot', ctx).error).toContain(GATE_HINT)
   })
 })

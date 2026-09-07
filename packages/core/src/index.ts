@@ -369,6 +369,7 @@ export {
   nearestStationGalaxyId,
   isAtStation,
   isAtHome,
+  isAtHomeLike,
   originGalaxyOf,
   isIdleField,
   startTransitHome,

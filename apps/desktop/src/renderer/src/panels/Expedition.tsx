@@ -97,7 +97,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
         </div>
       ) : state.dockedSite !== null ? (
         <div className="app-dim app-exp-idle">
-          停靠「{engine.ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite}」（副空间站）：提供卸货/维修/补给/换驾驶——悬赏与扫描可从本站出发（按当前位置计程）。
+          停靠「{engine.ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite}」（副空间站·已建成 = 母港镜像）：市场买卖/精炼回收/组装机制造/维修/补给/换驾驶/卸货全可用，设施与仓库与母港共享——悬赏与扫描可从本站出发（按当前位置计程）。
         </div>
       ) : state.awayGalaxy !== null ? (
         /* 2026-09-06：野外停留来源 = 掩护巡逻驻留（悬赏胜利/扫描完成已改为自动返航，不再停留）——远征/扫描/采矿均可即时出发，或显式返航 */
@@ -1242,7 +1242,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           <span className="app-ga-main">
             打捞（需高槽打捞器）
             <span className="app-dim app-ga-desc">
-              残骸回母港用精炼炉「残骸回收」拆解（保底矿物+彩头）；满仓自动返航；低安留意伏击
+              残骸停靠空间站（母港或已建成副站）后用精炼炉「残骸回收」拆解（保底矿物+彩头）；满仓自动返航；低安留意伏击
             </span>
           </span>
           <button
@@ -1811,7 +1811,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             {!explored ? (
               <div className="app-dim">该星系尚未探索——先到星图上扫描点亮。</div>
             ) : built ? (
-              <div className="app-dim">已并入空间站网络：本星系采矿返航 / 卸货 / 维修 / 补给 / 换驾驶可用。</div>
+              <div className="app-dim">已并入空间站网络 = 母港镜像：本星系采矿返航 / 市场买卖 / 精炼回收 / 组装机制造 / 维修 / 补给 / 换驾驶 / 卸货全可用（共享母港设施与仓库）。</div>
             ) : tier ? (
               <>
                 <div className="app-station-progress">

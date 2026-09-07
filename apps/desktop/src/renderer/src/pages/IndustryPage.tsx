@@ -34,7 +34,7 @@ const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
 /** 主控此刻不能"亲自运转一台新炉"的原因（null = 主控空闲可开；AI 核心驱动不受此限） */
 function manualBusyNote(state: GameState): string | null {
-  if (state.awayGalaxy !== null) return '你不在母港——先返航。'
+  if (state.awayGalaxy !== null) return '你不在空间站（母港或已建成副站）——先返航停靠。'
   if (state.mining.active) return '采矿作业中：先停止开采。'
   if (state.salvaging.active) return '打捞作业中：先停止打捞（或等满仓自动返航）。'
   if (state.expedition.active) return '远征中：先召回或等待结束。'

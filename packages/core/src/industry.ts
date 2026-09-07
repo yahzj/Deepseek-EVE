@@ -22,7 +22,7 @@ import type { GameState, RefineRunState } from './state'
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
 import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
-import { isAtHome } from './location'
+import { isAtHomeLike } from './location'
 import { formatDurationMs } from './time'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
@@ -146,8 +146,8 @@ export function startRefineRun(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  if (!isAtHome(state)) {
-    return { ok: false, error: '精炼炉在母港：回到母港才能启动运转。' }
+  if (!isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
   }
   const def = ctx.items.get(itemId)
   if (!def) {
@@ -232,8 +232,8 @@ export function startRecycleRun(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  if (!isAtHome(state)) {
-    return { ok: false, error: '精炼炉在母港：回到母港才能启动残骸回收。' }
+  if (!isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
   }
   const def = ctx.items.get(wreckItemId)
   if (!def) return { ok: false, error: `未知物品：${wreckItemId}。` }
@@ -613,8 +613,8 @@ export function sellAll(state: GameState, itemId: string, ctx: SimContext): Sell
 export function redeemFragments(state: GameState, ctx: SimContext, moduleId: string): CommandResult {
   const recipe = FRAGMENT_RECIPES[moduleId]
   if (!recipe) return { ok: false, error: `「${moduleId}」没有对应的逆向研究蓝图。` }
-  if (!isAtHome(state)) {
-    return { ok: false, error: '逆向研究在母港进行：回到母港后再操作。' }
+  if (!isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '逆向研究随协会基地网络进行：需停靠空间站（母港或已建成副站）。' }
   }
   if (state.learnedRecipes.includes(recipe.blueprintId)) {
     return { ok: false, error: '该蓝图已掌握（learnedRecipes 永久生效），无需重复逆向。' }

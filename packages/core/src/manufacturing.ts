@@ -24,7 +24,7 @@ import { addModule } from './equipment'
 import { addShipToFleet } from './shipyard'
 import { formatDurationMs } from './time'
 import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
-import { isAtHome } from './location'
+import { isAtHomeLike } from './location'
 
 /** 制造类蓝图的公共形状（装备蓝图与舰船蓝图共有的字段） */
 export interface BuildSpec {
@@ -125,8 +125,8 @@ export function startManufacturing(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  if (!isAtHome(state)) {
-    return { ok: false, error: '组装机在母港：回到母港才能开工制造。' }
+  if (!isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造。' }
   }
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }

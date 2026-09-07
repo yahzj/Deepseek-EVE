@@ -11,7 +11,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
-import { noteStationSiteAt } from './station'
+import { noteStationSiteAt, siteProgress } from './station'
 
 /** 已建成的空间站星系清单（母港 + 副站建成者），顺序 = 母港优先 */
 export function stationGalaxyIds(state: GameState, ctx: SimContext): string[] {
@@ -67,6 +67,16 @@ export function isAtStation(state: GameState): boolean {
 /** 是否在母港（出售/市场/制造等母港专属动作的前提） */
 export function isAtHome(state: GameState): boolean {
   return state.awayGalaxy === null && state.dockedSite === null
+}
+
+/** 是否停靠"协会基地网络"（2026-09-08 船长定：已建成副站 = 母港镜像——母港或已建成副站）：
+ * 市场/精炼炉/残骸回收/组装机等站内功能在母港与已建成副站同样可用（设施与仓库全局共享，
+ * 空间站只是入口）；野外/航行中/修建中工地不视为基地。 */
+export function isAtHomeLike(state: GameState, ctx: SimContext): boolean {
+  if (state.awayGalaxy !== null) return false
+  if (state.dockedSite === null) return true
+  const site = ctx.stations.get(state.dockedSite)
+  return !!site && siteProgress(state, site.id).stage >= site.tiers.length
 }
 
 /** 出发地星系：野外停留点，否则当前停靠站所在星系 */

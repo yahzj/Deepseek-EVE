@@ -13,6 +13,7 @@ import {
   cargoOfShip,
   cargoUsedM3Of,
   fleetDefOf,
+  isAtHomeLike,
   itemKindLabel,
   marketGoodOf,
   shipBusyLabel,
@@ -73,9 +74,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     .filter(Boolean) as ItemGridCell[]
 
   function handleSell(id: string, qty: number): void {
-    // T9：出售/市场只在母港（副站不设市场）
-    if (state.awayGalaxy !== null || state.dockedSite !== null) {
-      onToast('出售需回到母港市场（当前在野外或副空间站）。', true)
+    // 2026-09-08（船长定）：市场随"协会基地网络"——母港与已建成副站皆可出售（副站不设独立市场，共用全局市场）
+    if (!isAtHomeLike(state, engine.ctx)) {
+      onToast('出售需停靠空间站（母港或已建成副站；当前在野外或修建中工地）。', true)
       return
     }
     const r = engine.sellCargo(id, qty)

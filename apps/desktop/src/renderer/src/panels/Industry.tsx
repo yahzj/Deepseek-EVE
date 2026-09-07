@@ -126,7 +126,7 @@ function manualBuildNote(state: GameState): string | null {
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。'
   }
-  if (state.awayGalaxy !== null) return '你不在母港——先返航。'
+  if (state.awayGalaxy !== null) return '你不在空间站（母港或已建成副站）——先返航停靠。'
   if (state.mining.active) return '采矿作业中：先停止开采。'
   if (state.salvaging.active) return '打捞作业中：先停止打捞（或等满仓自动返航）。'
   if (state.expedition.active) return '远征中：先召回或等待结束。'
