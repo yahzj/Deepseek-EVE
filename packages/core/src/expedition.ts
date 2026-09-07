@@ -20,7 +20,7 @@ import { addItem, cargoUnitM3, freeCargoM3 } from './inventory'
 import { loseShip, repairWithKits } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
-import { originGalaxyOf } from './location'
+import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { injectWreckDensity, wreckDensityOf } from './salvage'
 import {
@@ -41,9 +41,31 @@ import { claimTutorialTrialReward } from './onboarding'
 /** 母港星系 id（内容层约定；与 state.HOME_GALAXY_ID 同值，经此转发保持既有 import 面不变） */
 export { HOME_GALAXY_ID }
 
-/** 本地悬赏返航段（2026-09-08 船长定）：目标星系 = 母港时胜利返港固定 120s
- * （= balance.mining.localLegMs 本地满载单程，对齐矿工本地返航成本；防零航程白刷） */
+/** 本地悬赏返航段（2026-09-08 船长定）：目标星系 = 返航基准（母港本地/建成站本地）时，
+ * 返港固定 120s（= balance.mining.localLegMs 本地满载单程，对齐矿工本地返航成本；防零航程白刷） */
 const LOCAL_RETURN_MS = 120_000
+
+/** 自动返航基准（2026-09-08 船长定：所有自动返航一律选"最近已建成空间站"，无建成副站 = 母港） */
+function returnBaseGalaxy(state: GameState, ctx: SimContext, fromGalaxy: string): string {
+  return nearestStationGalaxyId(state, ctx, fromGalaxy)
+}
+
+/** 从"战场星系"转入返航段的统一时长：基准 = 目标星系最近已建成站；
+ * 目标星系即基准（母港本地 / 建成站本地）→ 固定 LOCAL_RETURN_MS；否则 2×单程（去程并入返航）。
+ * 航路不可达时返回 0（调用方用 outMs×2 兜底）。 */
+function returnBackMs(state: GameState, ctx: SimContext, targetGalaxy: string): { ms: number; base: string } {
+  const base = returnBaseGalaxy(state, ctx, targetGalaxy)
+  if (base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) return { ms: LOCAL_RETURN_MS, base }
+  const mins = shortestTravelMinutes(ctx, base, targetGalaxy)
+  const ms = Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * 2 : 0
+  return { ms, base }
+}
+
+/** 返航到港落点（2026-09-08：基准星系有已建成副站 → 停靠该站；否则母港） */
+function landAtReturnBase(state: GameState, ctx: SimContext, baseGalaxy: string): void {
+  state.awayGalaxy = null
+  state.dockedSite = builtSiteAtGalaxy(state, ctx, baseGalaxy)
+}
 /** 主要势力 id（声望绑定方） */
 export const DSI_FACTION_ID = 'dsi'
 
@@ -259,7 +281,7 @@ export function startExpedition(
   addLog(
     state,
     'info',
-    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航母港（返航含去返全程，不可召回）；失利/撤退同样自动返航。`,
+    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。`,
   )
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
   if (exp.eventId) maybeFireTravelEvent(state, ctx)
@@ -412,28 +434,25 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     exp.battle = null
     exp.eventId = null
     exp.eventFired = false
-    if (anomaly.galaxyId === HOME_GALAXY_ID) {
-      // 本地悬赏（2026-09-08 船长定）：胜利结算后仍付一段固定返港时间（120s = 本地满载返航
-      // 单程，对齐矿工本地往返成本基准），防零航程白刷；期间不可召回（同胜利返航语义）。
-      exp.phase = 'back'
-      exp.returnReason = 'victory'
-      exp.finishAtGameMs = state.gameMs + LOCAL_RETURN_MS
-      addLog(state, 'info', '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。')
-      return
-    }
-    // 2026-09-06（船长定稿：取消胜利停留）：悬赏胜利 = 结算后自动返航母港——
-    // 一律按 目标星系↔母港 2×单程计（原去程并入返航，与出发地无关），返航期间不可召回
-    // （路程成本必付）；连续出击到港后冷却结束自动续打（巡回讨伐）。
-    const homeMins = shortestTravelMinutes(ctx, HOME_GALAXY_ID, anomaly.galaxyId)
-    const backMs = Number.isFinite(homeMins) ? travelLegMs(state, ctx, homeMins) * 2 : exp.outMs * 2
+    const ret = returnBackMs(state, ctx, anomaly.galaxyId)
+    const backMs = ret.ms > 0 ? ret.ms : exp.outMs * 2
+    const baseName =
+      ret.base === HOME_GALAXY_ID
+        ? '母港'
+        : ctx.galaxies.get(ret.base)?.name ?? ret.base
     exp.phase = 'back'
     exp.returnReason = 'victory'
     exp.finishAtGameMs = state.gameMs + backMs
-    addLog(
-      state,
-      'info',
-      `战果已入账：舰队自动返航（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——回港后可卸货/维修，或让连续出击自动续打。`,
-    )
+    if (ret.base === anomaly.galaxyId || anomaly.galaxyId === HOME_GALAXY_ID) {
+      // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
+      addLog(state, 'info', '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。')
+    } else {
+      addLog(
+        state,
+        'info',
+        `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站后可卸货/维修，或让连续出击自动续打。`,
+      )
+    }
     return
   } else {
     // 失利：扣耐久 + 弃船骰 + 维修费（沿用旧机制）；若正处于连续出击环 → 停环
@@ -471,11 +490,12 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。练练炮术学，记得给船做保养。`,
     )
   }
-  // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程；失利返航可召回）
+  // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）
   exp.battle = null
   exp.phase = 'back'
   exp.returnReason = 'defeat'
-  exp.finishAtGameMs = state.gameMs + exp.outMs * 2
+  const retD = returnBackMs(state, ctx, anomaly.galaxyId)
+  exp.finishAtGameMs = state.gameMs + (retD.ms > 0 ? retD.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
 }
 
@@ -533,11 +553,12 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
     state.autoLoopAnomalyId = null
     addLog(state, 'info', '连续出击已停止（手动撤退）。')
   }
-  // 转返航（去程并入返航：返航时长 = 原去程 + 原返程 = 2×单程；沿用失利返回流程）
+  // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
   exp.phase = 'back'
   exp.returnReason = 'retreat'
-  exp.finishAtGameMs = state.gameMs + exp.outMs * 2
+  const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
+  exp.finishAtGameMs = state.gameMs + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
   return { ok: true }
 }
@@ -613,21 +634,29 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
       }
       return
     }
-    // back：到港结束
+    // back：到港结束（2026-09-08：落点 = 返航基准星系——有已建成副站则停靠该站，否则母港）
     if (state.gameMs < exp.finishAtGameMs) return
     const wasVictoryReturn = exp.returnReason === 'victory'
+    const targetGal = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId)?.galaxyId ?? null : null
+    const base = targetGal !== null ? returnBaseGalaxy(state, ctx, targetGal) : HOME_GALAXY_ID
+    landAtReturnBase(state, ctx, base)
     exp.active = false
     exp.anomalyId = null
     exp.battle = null
     exp.phase = 'out'
     exp.finishAtGameMs = 0
     exp.returnReason = undefined
+    const siteName = state.dockedSite !== null ? ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite : null
     addLog(
       state,
       'info',
       wasVictoryReturn
-        ? '悬赏战果已携回母港：舰队停靠完毕（缴获在货仓，可卸入仓库或维修后再次出击）。'
-        : '远征结束，舰队已停靠母港。',
+        ? siteName
+          ? `悬赏战果已携回「${siteName}」：舰队停靠完毕（缴获在货仓，可卸入仓库、交易或维修后再次出击）。`
+          : '悬赏战果已携回母港：舰队停靠完毕（缴获在货仓，可卸入仓库或维修后再次出击）。'
+        : siteName
+          ? `远征结束，舰队已停靠「${siteName}」（副空间站）。`
+          : '远征结束，舰队已停靠母港。',
     )
     return
   }

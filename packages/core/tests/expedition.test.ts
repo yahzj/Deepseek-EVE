@@ -203,3 +203,38 @@ describe('远征 V12：两阶段', () => {
     expect(state.logs.some((l) => l.text.includes('无额外声望'))).toBe(true)
   })
 })
+
+describe('远征自动返航最近建成站（2026-09-08 船长定：所有自动返航选最近已建成站）', () => {
+  it('目标星系已建成副站：胜利 = 本地返港 120s，到港停靠该站（不再回母港）', () => {
+    const site = {
+      id: 'site-far',
+      name: '远郊前哨',
+      galaxyId: 'galaxy-far',
+      standingReq: 0,
+      acceptItemIds: ['ore-a'],
+      tiers: [
+        { name: '奠基', count: 100, unlockDesc: '泊位' },
+        { name: '建成', count: 150, unlockDesc: '并入网络' },
+      ],
+      introDialogueId: null,
+      doneDialogueId: null,
+      description: '',
+    }
+    const st = createInitialState({ nowWallMs: 0, seed: 7 })
+    st.wallet.isk = 500_000
+    const c = makeTestCtx({
+      stations: [site],
+      anomalies: [anomaly('ano-far-v', 'galaxy-far', { threat: 2, reward: 8_000 })],
+    })
+    st.exploredGalaxies.push('galaxy-far')
+    st.stationSites['site-far'] = { stage: 2, delivered: {} } // 已建成
+    expect(startExpedition(st, 'ano-far-v', c).ok).toBe(true)
+    advanceGame(st, 10 * 60_000, c) // 打赢（结算在 chunk 末尾）
+    expect(st.expedition.phase).toBe('back') // 本地返航段
+    advanceGame(st, 125_000, c) // 走完 120s 返港段
+    expect(st.expedition.active).toBe(false)
+    expect(st.dockedSite).toBe('site-far') // 落点 = 该站（母港镜像入口）
+    expect(st.awayGalaxy).toBeNull()
+    expect(st.logs.some((l) => l.text.includes('「远郊前哨」'))).toBe(true)
+  })
+})

@@ -367,6 +367,7 @@ export type { ActivityKind, ActivityStopKind, ActivityView } from './activity'
 export {
   stationGalaxyIds,
   nearestStationGalaxyId,
+  builtSiteAtGalaxy,
   isAtStation,
   isAtHome,
   isAtHomeLike,

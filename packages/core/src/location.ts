@@ -40,6 +40,16 @@ export function nearestStationGalaxyId(state: GameState, ctx: SimContext, fromGa
   return best
 }
 
+/** 某星系内是否停有"已建成"副站：返回站点 id（2026-09-08 镜像/返航落点用；无则 null） */
+export function builtSiteAtGalaxy(state: GameState, ctx: SimContext, galaxyId: string): string | null {
+  for (const site of ctx.stations.values()) {
+    if (site.galaxyId !== galaxyId) continue
+    const prog = state.stationSites[site.id]
+    if (prog && prog.stage >= site.tiers.length) return site.id
+  }
+  return null
+}
+
 /**
  * 采矿"返航/出航基准腿"（与 mining.oneLegMs 同口径的站解析版，供 shipyard 等不引 mining 的场景使用）：
  * = 本地进出港基准 + 矿带星系与"最近空间站"的实际航程。

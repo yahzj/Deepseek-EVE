@@ -18,7 +18,7 @@ import { addLog, HOME_GALAXY_ID } from './state'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { originGalaxyOf, startTransitHome } from './location'
+import { originGalaxyOf, startTransitHome, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
@@ -189,7 +189,10 @@ function finishScan(state: GameState, ctx: SimContext): void {
   const targetId = s.galaxyId
   const newly = galaxy ? markExplored(state, galaxy.id) : false
   const name = galaxy?.name ?? '未知星系'
-  const mins = targetId !== null ? shortestTravelMinutes(ctx, HOME_GALAXY_ID, targetId) : NaN
+  // 2026-09-08（船长定：自动返航一律选最近已建成空间站；无建成副站 = 母港）
+  const base = targetId !== null ? nearestStationGalaxyId(state, ctx, targetId) : HOME_GALAXY_ID
+  const baseName = base === HOME_GALAXY_ID ? '母港' : ctx.galaxies.get(base)?.name ?? base
+  const mins = targetId !== null ? shortestTravelMinutes(ctx, base, targetId) : NaN
   const backMs = targetId !== null && Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * 2 : 0
   s.returning = true
   s.startedAtGameMs = state.gameMs
@@ -198,8 +201,8 @@ function finishScan(state: GameState, ctx: SimContext): void {
     state,
     'info',
     newly
-      ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁；扫描艇自动返航（去程并入返航，约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟）。`
-      : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息；扫描艇自动返航（去程并入返航，约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟）。`,
+      ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁；扫描艇自动返航「${baseName}」（去程并入返航，约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟）。`
+      : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息；扫描艇自动返航「${baseName}」（去程并入返航，约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟）。`,
   )
 }
 
@@ -308,15 +311,25 @@ export function advanceScanning(state: GameState, ctx: SimContext): void {
   if (!s.active || s.galaxyId === null) return
   if (state.gameMs < s.finishAtGameMs) return
   if (s.returning) {
-    // 自动返航到港：作业结束，舰船停靠母港
+    // 自动返航到港（2026-09-08：落点 = 最近已建成站；有建成副站则停靠该站，否则母港）
     const gName = ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId
+    const base = s.galaxyId !== null ? nearestStationGalaxyId(state, ctx, s.galaxyId) : HOME_GALAXY_ID
+    const dockSite = builtSiteAtGalaxy(state, ctx, base)
     s.active = false
     s.galaxyId = null
     s.returning = false
     s.finishAtGameMs = 0
     s.startedAtGameMs = 0
     s.originGalaxy = null
-    addLog(state, 'info', `扫描艇已返航停靠母港（「${gName}」情报已入库，可继续开拓或出击）。`)
+    state.awayGalaxy = null
+    state.dockedSite = dockSite
+    addLog(
+      state,
+      'info',
+      dockSite !== null
+        ? `扫描艇已返航停靠「${ctx.stations.get(dockSite)?.name ?? dockSite}」（副空间站，「${gName}」情报已入库，可继续开拓或出击）。`
+        : `扫描艇已返航停靠母港（「${gName}」情报已入库，可继续开拓或出击）。`,
+    )
     return
   }
   finishScan(state, ctx)

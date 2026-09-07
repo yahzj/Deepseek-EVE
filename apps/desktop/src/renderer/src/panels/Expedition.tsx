@@ -24,6 +24,7 @@ import {
   frontierGalaxyIds,
   idleAiShipIds,
   isExplored,
+  nearestStationGalaxyId,
   originGalaxyOf,
   scanStatus,
   shipDisplayName,
@@ -1283,10 +1284,12 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const chance = Math.round(pWin)
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
-  // 奖励/小时（2026-09-08：胜利自动返航——异星系 = 目标↔母港 2×单程；本地悬赏 = 固定返港 120s）——
-  // 每单耗时 = 交火 + 返航
-  const retMins = anomaly.galaxyId === HOME_GALAXY_ID ? NaN : shortestTravelMinutes(engine.ctx, HOME_GALAXY_ID, anomaly.galaxyId)
-  const retMs = anomaly.galaxyId === HOME_GALAXY_ID ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
+  // 奖励/小时（2026-09-08：胜利自动返航——基准 = 目标星系最近已建成站；本地悬赏（目标=基准）
+  // = 固定返港 120s；异星系 = 2×单程）——每单耗时 = 交火 + 返航
+  const retBase = nearestStationGalaxyId(state, engine.ctx, anomaly.galaxyId)
+  const localTarget = anomaly.galaxyId === retBase
+  const retMins = localTarget ? NaN : shortestTravelMinutes(engine.ctx, retBase, anomaly.galaxyId)
+  const retMs = localTarget ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
   const roundTripMs = Math.max(1, combatMs + retMs)
   const grossIsk = anomaly.rewardIsk * bountyRewardFactor(state)
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
@@ -1370,9 +1373,9 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           </>
         )) : '？'} ·{' '}
         {(() => {
-          // 2026-09-06：去程取消（下达即开战）；胜利自动返航（异星系 = 目标↔母港 2×单程不可召回；
-          // 本地悬赏 2026-09-08 = 固定返港 2 分钟，不可召回）
-          const homeTarget = anomaly.galaxyId === HOME_GALAXY_ID
+          // 2026-09-06：去程取消（下达即开战）；胜利自动返航（2026-09-08：基准 = 最近已建成站；
+          // 本地悬赏 = 固定返港 2 分钟不可召回；异星系 = 2×单程不可召回）
+          const homeTarget = localTarget
           const backTxt =
             homeTarget
               ? ''
@@ -1382,7 +1385,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           return (
             <>
               即时开战 · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
-              {homeTarget ? ' · 本港悬赏：胜利返港约 2 分钟（不可召回）' : backTxt}
+              {homeTarget ? ' · 本地悬赏：胜利返港约 2 分钟（不可召回）' : backTxt}
             </>
           )
         })()}
