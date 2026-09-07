@@ -297,8 +297,9 @@ const strategyC: Strategy = {
         if (!acquireBlueprint(state, ctx, step.bp)) continue // 市场没书/钱不够，下个周期再试
         result.milestones.push(`市场购书并学会：${step.label}`)
       }
-      // 材料凑齐就开工制造（制造中的周期自然等待）
-      const start = startManufacturing(state, step.bp, ctx)
+      // 材料凑齐就开工制造（制造中的周期自然等待；2026-09-08 劳动者制：主控亲自开线须传 worker='pilot'，
+      // 与手动精炼共用工作位——炉在转时会被拒，等料尽停炉后的周期自然重试）
+      const start = startManufacturing(state, step.bp, 'pilot', ctx)
       if (start.ok) {
         result.milestones.push(`开始制造：${step.label}`)
         return // 制造期间继续挖矿，装配等制造完成后在后续周期处理

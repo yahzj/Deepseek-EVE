@@ -102,8 +102,9 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
     dataLine = `可用 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）· 每批 ${batch} 单位 / ${cycleS} 秒 · 约 ${Math.ceil(total / batch)} 批炼完`
   }
 
-  // 效率估价区：精炼卡显示每批产物与 ≈ISK/h（按矿物站内收价，不随市场）；
-  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（展示估算，非结算；2026-09-06 对齐）
+  // 效率估价区：精炼卡显示每批产物与「净 ≈ISK/h」（产物矿物收价 − 耗料原料收价，按双方站内收价、
+  // 不随市场；2026-09-08 船长定：估算必须扣除材料成本，防"越炼越亏还显示正收益"误读）；
+  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（残骸不可卖、无耗料可扣；展示估算，非结算）
   let econ: ReactNode = null
   if (isWreck) {
     const profile = recycleProfileOf(engine.ctx, def.id)
@@ -139,12 +140,22 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
       .filter((x): x is { def: ItemDef; units: number } => x !== null)
     const outText = outs.map((o) => `${o.def.name}×${o.units}`).join('、') || '（收率过低无产出）'
     const batchValue = outs.reduce((s, o) => s + o.units * (o.def.baseSellPriceIsk ?? 0), 0)
+    // 2026-09-08：净口径 = 每批产物收价 − 每批耗料（原料同样按站内收价；原料可卖，不扣即虚高）
+    const costPerBatch = batch * (def.baseSellPriceIsk ?? 0)
+    const netPerBatch = batchValue - costPerBatch
+    const grossH = Math.round(batchValue * (3_600_000 / cycleMs))
+    const netH = Math.round(netPerBatch * (3_600_000 / cycleMs))
     econ = (
       <div className="app-belt-econ">
         <div>♨ 每批产出：{outText}</div>
         {batchValue > 0 ? (
-          <div className="app-belt-econ-val" title="按矿物站内收价（不随市场浮动）估算：每批价值 × 每小时批次数">
-            {MONEY_GLYPH} ≈{(Math.round(batchValue * (3_600_000 / cycleMs))).toLocaleString('zh-CN')} ISK/h
+          <div
+            className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
+            title={`净收益估算：每批产物（矿物站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} ISK/h；${
+              netH < 0 ? '当前收率下精炼不如直接卖原料。' : '数值已扣除耗料成本。'
+            }`}
+          >
+            {MONEY_GLYPH} ≈{netH.toLocaleString('zh-CN')} ISK/h{netH < 0 ? '（净亏：直接卖原料更划算）' : '（净）'}
           </div>
         ) : null}
       </div>
