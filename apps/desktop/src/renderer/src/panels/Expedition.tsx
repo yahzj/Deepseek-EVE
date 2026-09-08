@@ -11,7 +11,8 @@ import {
   HOME_GALAXY_ID,
   SCAN_WINDOW_MS,
   aiCoreName,
-  battleWinPreview,
+  bountyDamageForecast,
+  bountyWinPercentGuarded,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
   calcPower,
@@ -1304,7 +1305,9 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const galaxy = engine.ctx.galaxies.get(anomaly.galaxyId)
   const power = calcPower(state, engine.ctx)
   // V12：预估胜率与引擎结算同源（期望推演）
-  const pWin = battleWinPreview(state, engine.ctx, anomaly) * 100
+  // 2026-09-08：悬赏展示胜率 = 带伤预警口径（预计伤及装甲/结构 → 显示下调；结算不变）
+  const pWin = bountyWinPercentGuarded(state, engine.ctx, anomaly) * 100
+  const fc = bountyDamageForecast(state, engine.ctx, anomaly)
   const chance = Math.round(pWin)
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
@@ -1427,7 +1430,13 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         </div>
       ) : null}
       <div className="app-ano-win">
-        火力 {power} → 预估胜率 <b className={`app-win-${chanceTone}`}>{Math.round(chance)}%</b>
+        火力 {power} → 预估胜率{' '}
+        <b
+          className={`app-win-${chanceTone}`}
+          title={`带伤预警口径：本场预计损耗装甲 ≈${Math.round(fc.armorLoss * 100)}%、结构 ≈${Math.round(fc.hullLoss * 100)}%（伤及装甲会下调胜率，伤及结构下调更多）——实际结算仍按实时战斗`}
+        >
+          {Math.round(chance)}%
+        </b>
         {!reqMet ? <span className="app-dim">（声望 {standing}/{anomaly.standingReq}）</span> : null}
         {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据 */}
         <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入），伤害构成见卡面">

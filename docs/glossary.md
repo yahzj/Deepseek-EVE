@@ -44,12 +44,14 @@
 | 参考段火力 | foeRefFire 段表 2.1/9.7/12.8 dps（≤16 / 17-40 / 41+），foeHpOfThreat = 段火力×D(T) | |
 | 近盲带 | 武器 minRange 以内。**敌我区分（2026-09-05 拍板）**：敌近盲内不停火、伤害×blindDmgMul(缺省0.3)；玩家近盲内不开火 | blindDmgMul 单卡可覆盖 |
 | 胜率口径 | `battleWinPreview`（玩家手动，无 favor）与 `aiWinPreview`（AI：favor 0.3 修正 + logit 扩散）| AI 门槛 = 最终成功率 ≥80%（AI 远征下线后仅留存代码） |
+| 带伤预警 | 悬赏展示胜率口径（2026-09-08）：原显示 − 预计装甲损耗×10pp − 预计结构损耗×25pp——只改展示，结算与 AI/模拟不变 | bountyWinPercentGuarded |
+| 连续作战保险 | 巡回场次（2026-09-08）：战斗内结构剩余 <50% 自动撤退（轻损、停环、绝不弃船）；巡回自动再出发门槛提前到装甲 <50% 即修补至 60% | battle.hullEscapeFrac/autoEscaped |
 | favor | AI 远征优势：模型胜率 0.8 局 → AI 命中×1.18/敌命中×0.82 | aiFavorStrength 0.3 |
 | 承伤三层 | 护盾 s / 装甲 a / 结构 h：伤害按 盾→甲→结构 顺序扣 | P0 承伤持久化（2026-09-05） |
 | 结构（=原耐久） | `fleetShip.durability` 与结构层合并：战斗中结构受损即扣耐久并**跨场保留**，归零弃船 | 仅港内维修/套件恢复 |
 | 装甲残余 | `fleetShip.armorPct`（0~1）：战斗中装甲损伤**跨场保留** | 同上 |
 | 护盾回充 | 护盾损失不保留：战中被动回充（shieldRegenPerSec，初值 2%/s；甲/结构打穿后停充防僵持），脱战/场间回满 | balance.battle |
-| 修理组件 | kit 消耗品（repairkit-civ 0.35 / repairkit-mil 0.7）：使用一枚对结构+装甲各恢复上限百分比；市场直售+蓝图自制（材料≈市价55%）；自动链（连续出击前 <50% 自动消耗）与手动入口（舰船页/停留面板） | shipyard.useOneRepairKit |
+| 修理组件 | kit 消耗品（repairkit-civ 0.35 / repairkit-mil 0.7）：使用一枚对结构+装甲各恢复上限百分比；市场直售+蓝图自制（材料≈市价55%）；自动链（连续出击前装甲或结构 <50% 自动修补至 60%，2026-09-08）与手动入口（舰船页/停留面板） | shipyard.useOneRepairKit |
 | 支援件 | V18.1 support 件：稳定(伤害)/射速/索敌(命中)/陀螺(闪避) | **回调已取消（2026-09-05 定）** |
 
 ## 三、装备 / 制造 / 经济

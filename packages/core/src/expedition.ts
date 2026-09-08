@@ -26,7 +26,7 @@ import { injectWreckDensity, wreckDensityOf } from './salvage'
 import {
   advanceBattleFor,
   battleOpenM,
-  battleWinPreview,
+  bountyWinPercentGuarded,
   createFoeSpecs,
   createPlayerSpec,
   desiredRangeFor,
@@ -91,7 +91,7 @@ export function calcPower(state: GameState, ctx: SimContext, shipId: string = st
 }
 
 /**
- * 胜率（旧口径保留：仅展示兼容；预估请用 battleWinPreview）。
+ * 胜率（旧口径保留：仅展示兼容；预估请用 battleWinPreview / 带伤预警口径 bountyWinPercentGuarded）。
  * 新口径下 AI 门槛与远征面板一律使用 battleWinPreview。
  */
 export function winChance(power: number, threat: number, ctx: SimContext): number {
@@ -353,6 +353,11 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   const exp = state.expedition
   exp.phase = 'battle'
   exp.battle = battle
+  // 连续作战保险（2026-09-08 船长定）：巡回场次挂撤退阈值——本场结构剩余 <50%（损失过半）
+  // 时战斗步进自动中止（advanceBattleFor 置 autoEscaped），随后走轻损撤退结算，绝不拖到弃船
+  if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === anomalyId) {
+    exp.battle.hullEscapeFrac = 0.5
+  }
   const anomaly = ctx.anomalies.get(anomalyId)
   // V13 探索：实际到港 → 点亮该星系（去程结束进入交火 = 已抵达）
   if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
@@ -515,8 +520,20 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   if (exp.battle.ended !== null) {
     return { ok: false, error: '战斗已分出胜负，正在结算——无法撤退。' }
   }
+  settleBattleRetreat(state, ctx, 'manual')
+  return { ok: true }
+}
+
+/**
+ * 撤退结算核心（2026-09-08：手动撤退与巡回自动撤退共用）：
+ * 承伤写回 → 半损扣耐久（最低 1%）→ 下限 5% 保护（绝不弃船）→ 维修费 → 停连击 → 转返航。
+ * mode = 'auto' 时由连续作战保险触发（本场结构损失过半），日志与停环文案区分来源。
+ */
+function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' | 'auto'): void {
+  const exp = state.expedition
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
+  if (!battle) return
   refundAmmo(state, battle.ammo)
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)
@@ -534,7 +551,9 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
     addLog(
       state,
       'warn',
-      '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
+      mode === 'auto'
+        ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
+        : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
     )
   }
   if (fleetShip) {
@@ -548,12 +567,14 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   addLog(
     state,
     'warn',
-    `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
+    mode === 'auto'
+      ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
+      : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
   )
-  // 手动收手 → 停连击（若有）
+  // 收手 → 停连击（若有；手动撤退与自动撤退都会终止连续出击）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
-    addLog(state, 'info', '连续出击已停止（手动撤退）。')
+    addLog(state, 'info', mode === 'manual' ? '连续出击已停止（手动撤退）。' : '连续出击已停止（本场结构损失过半，自动撤退）。')
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
@@ -563,7 +584,6 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   exp.finishAtGameMs = state.gameMs + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
-  return { ok: true }
 }
 
 /** 弃船概率（沿用旧公式；power 用火力指数） */export function abandonChance(
@@ -627,6 +647,12 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         return
       }
       advanceBattleFor(state, ctx, exp.battle, state.shipId, exp.anomalyId)
+      // 连续作战保险：巡回场次结构损失过半 → 立即轻损撤退（停环、绝不弃船）
+      if (exp.battle.autoEscaped) {
+        settleBattleRetreat(state, ctx, 'auto')
+        if (!exp.active) return
+        continue // 已转 back：若返航已到点则同帧回家
+      }
       if (exp.battle.ended) {
         // V12.3 击杀慢镜：分出胜负后延迟 killcamMs 再结算，让最后一击动画与爆炸演出播完；
         // 计时基准 = 战斗停表时刻（lastTickGameMs 冻结于击杀拍）。离线/大步长推进下差值立即达标，行为与旧版一致。
@@ -766,12 +792,14 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     stopAutoLoopReason(state, '当前舰船数据缺失。')
     return '当前舰船数据缺失'
   }
-  // 耐久：先自动消耗货仓修理组件（可能连续使用多件），仍 < 0.5 才停
-  if (fleetShip.durability < 0.5) {
-    repairWithKits(state, ctx, 0.5)
-    if ((state.fleet[state.shipId]?.durability ?? 0) < 0.5) {
-      stopAutoLoopReason(state, '耐久低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。')
-      return '耐久不足且修理组件耗尽'
+  // 装甲/结构门槛（2026-09-08 船长定：提前到装甲——装甲或结构 <50% 即自动修补到 60%，
+  // 为战斗内"结构损失过半自动撤退"保险留缓冲；组件不足则停环）
+  if ((fleetShip.armorPct ?? 1) < 0.5 || fleetShip.durability < 0.5) {
+    repairWithKits(state, ctx, 0.6)
+    const fs = state.fleet[state.shipId]
+    if (!fs || (fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
+      stopAutoLoopReason(state, '装甲或结构低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。')
+      return '耐久不足（装甲或结构低于 50%）且修理组件耗尽'
     }
   }
   // 货仓：放不下本单预期缴获 → 停（B 甲：无远程入库，回港卸货是玩家的决定；体积按压缩技术折算）
@@ -808,7 +836,7 @@ export interface ExpeditionView {
   recallable: boolean
   threat: number
   power: number
-  /** 预估胜率（百分比，battleWinPreview；0 = 无法评估） */
+  /** 预估胜率（百分比，带伤预警口径 bountyWinPercentGuarded——预计伤及装甲/结构会下调显示；0 = 无法评估） */
   winPercent: number
   /** 交火信息（phase=combat 时） */
   combat: {
@@ -875,7 +903,8 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   }
   let winPercent = 0
   if (anomaly && exp.phase !== 'battle') {
-    winPercent = Math.round(battleWinPreview(state, ctx, anomaly, state.shipId) * 100)
+    // 2026-09-08：悬赏展示胜率走"带伤预警"口径（预计伤及装甲/结构 → 显示下调，结算不变）
+    winPercent = Math.round(bountyWinPercentGuarded(state, ctx, anomaly, state.shipId) * 100)
   }
   const combat =
     exp.phase === 'battle' && exp.battle

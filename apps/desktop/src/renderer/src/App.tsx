@@ -450,6 +450,19 @@ export function App({ engine }: { engine: GameEngine }) {
   const [showSettings, setShowSettings] = useState(false)
   const [battleOpen, setBattleOpen] = useState(false)
 
+  // 顶栏「讨论 QQ 群」：点击复制群号（2026-09-08 船长指示）
+  const [qqCopied, setQqCopied] = useState(false)
+  const QQ_GROUP = '621172698'
+  const copyQqGroup = (): void => {
+    void navigator.clipboard
+      ?.writeText(QQ_GROUP)
+      .then(() => {
+        setQqCopied(true)
+        window.setTimeout(() => setQqCopied(false), 1600)
+      })
+      .catch(() => undefined)
+  }
+
   // 交火中（主动进入全屏战斗页；不自动切换页面）
   const inBattle = state.expedition.active && state.expedition.phase === 'battle'
 
@@ -616,6 +629,13 @@ export function App({ engine }: { engine: GameEngine }) {
           <span className="app-isk">{state.wallet.isk.toLocaleString('zh-CN')} ISK</span>
           <span className="app-clock">在线 {formatDurationMs(state.gameMs)}</span>
           <AnnouncementHub engine={engine} />
+          <button
+            className="app-btn"
+            onClick={copyQqGroup}
+            title={`游戏讨论 QQ 群：${QQ_GROUP}（点击复制群号，到 QQ 搜索群号即可加入）`}
+          >
+            {qqCopied ? '✓ 群号已复制' : `💬 QQ群 ${QQ_GROUP}`}
+          </button>
           <button className="app-btn" onClick={() => setShowHandbook(true)} title="玩法说明与图鉴">
             手册
           </button>

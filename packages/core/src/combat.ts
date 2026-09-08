@@ -1006,6 +1006,15 @@ export function advanceBattleFor(
     const dt = Math.min(BATTLE_STEP_MS, state.gameMs - battle.lastTickGameMs)
     stepBattle(state, battle, me, foes, foeDesire, openM, bal, dt, favor)
     battle.lastTickGameMs += dt
+    // 连续作战保险（2026-09-08 船长定，仅巡回场次 battle.hullEscapeFrac 有值）：
+    // 本场结构损失过半（剩余 < 满值结构 × 阈值）→ 中止步进并请求自动撤退，绝不拖到弃船
+    if (!battle.autoEscaped && battle.hullEscapeFrac !== undefined) {
+      const pl = battle.units['player']
+      if (pl && pl.hp.h < me.hp.h * battle.hullEscapeFrac) {
+        battle.autoEscaped = true
+        break
+      }
+    }
   }
 }
 
@@ -1221,17 +1230,26 @@ function steadyDistance(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance): num
 
 /** 预估胜率核心（确定性期望推演；不消耗 rng）。
  * meMul/foeMul = 命中率缩放系数（AI favor 用；玩家手动 = 1/1），返回未扩散的模型胜率 raw ∈ [0,1] */
-function winPreviewRaw(
+/** 稳态预览引擎（battleWinPreview 与带伤预警共用同一公式源——DPS/承伤/tick 换算与展示一一对应） */
+function steadyPreview(
   state: GameState,
   ctx: SimContext,
   anomaly: AnomalyDef,
   shipId: string,
   meMul: number,
   foeMul: number,
-): number {
+): {
+  me: UnitSpec
+  meHpTotal: number
+  foeHpTotal: number
+  meDps: number
+  foeDps: number
+  ttrMe: number
+  ttrFoe: number
+} | null {
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
-  if (!me) return 0
+  if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
   const steady = steadyDistance(me, foes, bal)
 
@@ -1283,10 +1301,68 @@ function winPreviewRaw(
 
   const ttrMe = foeDps > 0 ? meHpTotal / Math.max(1e-9, foeDps * foeMul) : Infinity // 我被击毁所需秒数
   const ttrFoe = meDps > 0 ? foeHpTotal / Math.max(1e-9, meDps * meMul) : Infinity // 我击毁敌方所需秒数
-  if (!Number.isFinite(ttrMe) && !Number.isFinite(ttrFoe)) return 0.5
-  if (!Number.isFinite(ttrMe)) return 1 // 敌永远打不死我 → 必胜
-  if (!Number.isFinite(ttrFoe)) return 0 // 我永远打不死敌 → 必败
-  return clamp(0, 1, ttrMe / (ttrMe + ttrFoe))
+  return { me, meHpTotal, foeHpTotal, meDps, foeDps, ttrMe, ttrFoe }
+}
+
+function winPreviewRaw(
+  state: GameState,
+  ctx: SimContext,
+  anomaly: AnomalyDef,
+  shipId: string,
+  meMul: number,
+  foeMul: number,
+): number {
+  const sp = steadyPreview(state, ctx, anomaly, shipId, meMul, foeMul)
+  if (!sp) return 0
+  if (!Number.isFinite(sp.ttrMe) && !Number.isFinite(sp.ttrFoe)) return 0.5
+  if (!Number.isFinite(sp.ttrMe)) return 1 // 敌永远打不死我 → 必胜
+  if (!Number.isFinite(sp.ttrFoe)) return 0 // 我永远打不死敌 → 必败
+  return clamp(0, 1, sp.ttrMe / (sp.ttrMe + sp.ttrFoe))
+}
+
+/**
+ * 带伤预警预估（2026-09-08 船长定）：在满耐久稳态模型上，把"预计承受总伤"按 盾→装甲→结构
+ * 三层顺序分摊，得到预计装甲损耗比与结构损耗比（0~1）。战斗持续时长 = 先到者（我被击毁 /
+ * 我击毁敌方），与实时引擎同源公式。
+ */
+export function bountyDamageForecast(
+  state: GameState,
+  ctx: SimContext,
+  anomaly: AnomalyDef,
+  shipId: string = state.shipId,
+): { armorLoss: number; hullLoss: number; rawWin: number } {
+  const sp = steadyPreview(state, ctx, anomaly, shipId, 1, 1)
+  if (!sp) return { armorLoss: 0, hullLoss: 0, rawWin: 0 }
+  let rawWin: number
+  if (!Number.isFinite(sp.ttrMe) && !Number.isFinite(sp.ttrFoe)) rawWin = 0.5
+  else if (!Number.isFinite(sp.ttrMe)) rawWin = 1
+  else if (!Number.isFinite(sp.ttrFoe)) rawWin = 0
+  else rawWin = clamp(0, 1, sp.ttrMe / (sp.ttrMe + sp.ttrFoe))
+  const duration = Math.min(sp.ttrMe, sp.ttrFoe)
+  const dmg = Number.isFinite(duration) ? sp.foeDps * duration : 0
+  const afterShield = Math.max(0, dmg - sp.me.hp.s)
+  const armorLoss = sp.me.hp.a > 0 ? clamp(0, 1, afterShield / sp.me.hp.a) : afterShield > 0 ? 1 : 0
+  const hullLoss = sp.me.hp.h > 0 ? clamp(0, 1, Math.max(0, afterShield - sp.me.hp.a) / sp.me.hp.h) : afterShield > sp.me.hp.a ? 1 : 0
+  return { armorLoss, hullLoss, rawWin }
+}
+
+/**
+ * 悬赏展示胜率（带伤预警口径，2026-09-08 船长定）：= 原显示胜率（满耐久基准 + logit 扩散）
+ * − 预计装甲损耗×winPenaltyArmorPerFull − 预计结构损耗×winPenaltyHullPerFull（结构伤扣更重），
+ * 下限 2%。只作用于玩家可见的悬赏卡/远征视图——实际结算与 AI/模拟工具仍用原 battleWinPreview。
+ */
+export function bountyWinPercentGuarded(
+  state: GameState,
+  ctx: SimContext,
+  anomaly: AnomalyDef,
+  shipId: string = state.shipId,
+): number {
+  const f = bountyDamageForecast(state, ctx, anomaly, shipId)
+  if (f.rawWin <= 0) return 0
+  const shown = spreadWinChance(f.rawWin, ctx.balance.battle.winSpread)
+  const bal = ctx.balance.battle
+  const penalty = f.armorLoss * bal.winPenaltyArmorPerFull + f.hullLoss * bal.winPenaltyHullPerFull
+  return Math.max(0.02, Math.min(0.98, shown - penalty))
 }
 
 /** 玩家口径预估胜率：无 favor 模型 + logit 扩散（悬赏卡/玩家手动战斗展示用；实际结算与之对应） */
