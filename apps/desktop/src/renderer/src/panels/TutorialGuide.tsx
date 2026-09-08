@@ -463,11 +463,28 @@ export function TutorialSpot({
           </button>
         </div>
       ) : null}
-      {ring ? (
-        <div className="app-spot-ring" style={{ left: ring.x - 4, top: ring.y - 4, width: ring.w + 8, height: ring.h + 8 }}>
-          <span className="app-spot-tip">点这里：{ring.label}</span>
-        </div>
-      ) : null}
+      {ring ? (() => {
+        // 「点这里」气泡防出屏（2026-09-08 船长反馈：提示位于屏幕外）——
+        // 目标贴近视口底缘时气泡翻到光圈上方；贴右缘时水平内移；旋转模式沿用旧行为
+        const rot = rootRotTransform() !== null
+        let cls = 'app-spot-ring'
+        let tipLeft = 0
+        if (!rot) {
+          const ringTop = ring.y - 4
+          const tipH = 34
+          if (ringTop + ring.h + 8 + tipH > window.innerHeight && ringTop - 8 - tipH > 0) cls += ' is-tip-above'
+          const tipW = Math.min(280, 24 + ring.label.length * 13)
+          const rightOver = ring.x - 4 + ring.w + 8 + tipW - window.innerWidth
+          if (rightOver > 0) tipLeft = -Math.min(rightOver, Math.max(0, ring.x - 4))
+        }
+        return (
+          <div className={cls} style={{ left: ring.x - 4, top: ring.y - 4, width: ring.w + 8, height: ring.h + 8 }}>
+            <span className="app-spot-tip" style={tipLeft !== 0 ? { marginLeft: tipLeft } : undefined}>
+              点这里：{ring.label}
+            </span>
+          </div>
+        )
+      })() : null}
     </>
   )
 }

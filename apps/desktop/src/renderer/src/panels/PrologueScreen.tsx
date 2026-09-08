@@ -49,15 +49,11 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     setShown(0)
   }
 
-  // boot 逐条滚动
+  // boot 逐条滚动；全部条目滚完后等待玩家点击确认，再进入自检结论（2026-09-08 船长定：
+  // 不再 1.5s 自动跳转——自检列表需玩家确认后才会弹出后续的警告结论界面）
   useEffect(() => {
     if (phase !== 'boot') return
-    if (shown >= CHECK_LINES.length) {
-      // 自检条目全部滚完后停留 ~1.5s（船长 2026-09-05：让玩家看清结果）再出结论卡
-      const t = window.setTimeout(() => setPhase('diag'), 1500)
-      timerRef.current = t
-      return () => window.clearTimeout(t)
-    }
+    if (shown >= CHECK_LINES.length) return
     const t = window.setTimeout(() => setShown((v) => v + 1), LINE_MS)
     timerRef.current = t
     return () => window.clearTimeout(t)
@@ -81,7 +77,11 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
   return (
     <div
       className={`app-prologue${phase === 'open' ? ' is-eye' : ''}`}
-      onClick={() => (phase === 'boot' ? setShown(CHECK_LINES.length) : undefined)}
+      onClick={() => {
+        if (phase !== 'boot') return
+        if (shown < CHECK_LINES.length) setShown(CHECK_LINES.length) // 播放中点击 = 跳过动画
+        else setPhase('diag') // 已播完：玩家确认 → 弹出自检结论（2026-09-08 船长定）
+      }}
     >
       <div className="app-prologue-inner">
         {phase === 'wake' ? (
@@ -105,8 +105,14 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
                 <span className="app-pro-mark">{kind === 'ok' ? 'OK' : kind === 'warn' ? '!' : '✕'}</span>
               </div>
             ))}
-            {shown < CHECK_LINES.length ? <div className="app-pro-cursor">▌</div> : null}
-            <div className="app-pro-hint">（点击画面可跳过自检动画）</div>
+            {shown < CHECK_LINES.length ? (
+              <>
+                <div className="app-pro-cursor">▌</div>
+                <div className="app-pro-hint">（点击画面可跳过自检动画）</div>
+              </>
+            ) : (
+              <div className="app-pro-hint">自检序列完成 —— 点击画面查看自检结论 ›</div>
+            )}
           </div>
         ) : null}
 
