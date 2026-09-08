@@ -163,8 +163,12 @@ export {
   fitModule,
   unfitSlot,
   unfitAt,
+  adjustDroneLoad,
   fittedBonuses,
   fittedCpuUsed,
+  // 2026-09-08 无人机舱大改：装载清单 CPU/体积（装配页预算条、装配校验、战斗装载同源）
+  droneCpuUsed,
+  droneLoadM3,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
   migrateDeprecatedAmmo,

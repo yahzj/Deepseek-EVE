@@ -526,7 +526,8 @@ describe('第二批战斗技能（2026-09-05：火控阵列学/武器装填技�
     const shot = (extra: (s: GameState) => void): number => {
       const state = createInitialState({ nowWallMs: 0, seed: 32 })
       const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 150 })] })
-      state.fleet[state.shipId].cargo['d-x'] = 3
+      state.fleet[state.shipId].cargo = {}
+      state.fleet[state.shipId].droneLoad = { 'd-x': 3 } // 2026-09-08 无人机舱大改：清单驱动
       extra(state)
       const spec = createPlayerSpec(state, ctx, state.shipId)!
       const w = spec.weapons.find((x) => x.label === droneDef.name)!
@@ -665,7 +666,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     const entry = (extra: (s: GameState) => void): { reloadMs: number } => {
       const state = createInitialState({ nowWallMs: 0, seed: 56 })
       const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 150 })] })
-      state.fleet[state.shipId].cargo['d-srv'] = 3
+      state.fleet[state.shipId].droneLoad = { 'd-srv': 3 } // 2026-09-08 无人机舱大改：清单驱动
       extra(state)
       const spec = createPlayerSpec(state, ctx, state.shipId)!
       const w = spec.weapons.find((x) => x.label === droneDef.name)!
@@ -679,7 +680,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     const launched = (extra: (s: GameState) => void): number => {
       const state = createInitialState({ nowWallMs: 0, seed: 57 })
       const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 12, cpu: 12 })] })
-      state.fleet[state.shipId].cargo['d-srv'] = 4
+      state.fleet[state.shipId].droneLoad = { 'd-srv': 4 } // 清单 4 架；cpu12/每架5 → 防御截断放飞 2
       extra(state)
       const spec = createPlayerSpec(state, ctx, state.shipId)!
       return spec.weapons.filter((w) => w.label === droneDef.name).length

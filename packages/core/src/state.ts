@@ -112,6 +112,9 @@ export interface FleetShipState {
   cargo: Record<string, number>
   /** 装在这艘船上的装备（随船，弃船即遗失） */
   fitted: FittedModules
+  /** 无人机舱装载清单（2026-09-08 无人机舱大改）：droneId -> 架数（0 = 不存）；
+   *  战斗只放飞此清单（不再自动从仓库贪心）；CPU 预占计入船体预算；旧档缺省 = 空 = 无无人机 */
+  droneLoad?: Record<string, number>
 }
 
 /** 采矿作业状态（自动循环：采掘 → 返航（去程并入）→ 卸货 的自动循环；去程相位仅旧档兼容） */

@@ -46,10 +46,12 @@ function makeCtx(ships: ShipDef[], withModules = true): SimContext {
   })
 }
 
-/** 把当前驾驶船替换为指定船型并塞货仓物品 */
-function pilot(state: GameState, shipDef: ShipDef, cargo: Record<string, number>): void {
-  state.fleet[state.shipId]!.defId = shipDef.id
-  state.fleet[state.shipId]!.cargo = { ...cargo }
+/** 把当前驾驶船替换为指定船型并写入无人机舱清单（2026-09-08 大改后装载 = droneLoad 清单驱动） */
+function pilot(state: GameState, shipDef: ShipDef, droneLoad: Record<string, number>): void {
+  const entry = state.fleet[state.shipId]!
+  entry.defId = shipDef.id
+  entry.cargo = {}
+  entry.droneLoad = { ...droneLoad }
 }
 
 describe('V18 无人机流', () => {

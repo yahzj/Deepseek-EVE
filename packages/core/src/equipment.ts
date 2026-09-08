@@ -23,7 +23,7 @@ import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists } from './types'
 import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
-import { currentShipState } from './inventory'
+import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
@@ -158,6 +158,30 @@ export function fittedCpuUsed(fitted: FittedModules, ctx: SimContext): number {
   return used
 }
 
+/** 2026-09-08 无人机舱大改：装载清单的 CPU 占用（与装配共用池；UI 预算/装配校验/战斗装载同源） */
+export function droneCpuUsed(droneLoad: Record<string, number> | undefined, ctx: SimContext): number {
+  if (!droneLoad) return 0
+  let used = 0
+  for (const [id, n] of Object.entries(droneLoad)) {
+    if (n <= 0) continue
+    const d = ctx.items.get(id)
+    if (d?.kind === 'drone') used += (d.cpuUse ?? 0) * n
+  }
+  return used
+}
+
+/** 2026-09-08：装载清单占用的机舱体积（m³ = Σ 架数×unitM3；装配页容量条用） */
+export function droneLoadM3(droneLoad: Record<string, number> | undefined, ctx: SimContext): number {
+  if (!droneLoad) return 0
+  let m3 = 0
+  for (const [id, n] of Object.entries(droneLoad)) {
+    if (n <= 0) continue
+    const d = ctx.items.get(id)
+    if (d?.kind === 'drone') m3 += (d.unitM3 ?? 0) * n
+  }
+  return m3
+}
+
 /** 当前驾驶船的 fitted（空船时返回 null） */
 function fittedOf(state: GameState): GameState['fleet'][string]['fitted'] | null {
   return currentShipState(state)?.fitted ?? null
@@ -211,13 +235,13 @@ export function fitModule(
       return { ok: false, error: `${rackLabel(rack)}已满（${bays.length}/${bays.length}）：先卸下再装。` }
     }
   }
-  // CPU 装配校验：全位合计（含新件）≤ 船体 cpu（舰船系统工程 +5%/级 扩容）
+  // CPU 装配校验：全位合计（含新件 + 该船无人机舱预占清单）≤ 船体 cpu（舰船系统工程 +5%/级 扩容）
   const cpuBase = shipDef?.cpu
   if (cpuBase !== undefined && cpuBase > 0) {
     const cpuTotal = effectiveCpu(state, ctx, shipDef)
-    const used = fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0)
+    const used = fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0) + droneCpuUsed(state.fleet[shipId]?.droneLoad, ctx)
     if (used > cpuTotal) {
-      return { ok: false, error: `装配超载：合计需 CPU ${used}，船体上限 ${cpuTotal}（卸下其它装备或换低耗型号）。` }
+      return { ok: false, error: `装配超载：合计需 CPU ${used}，船体上限 ${cpuTotal}（无人机舱占用亦计入预算——卸下装备或清一部分无人机）。` }
     }
   }
   removeModule(state, moduleId)
@@ -238,6 +262,67 @@ export function unfitAt(state: GameState, rack: RackSlot, index: number, shipId:
   addModule(state, moduleId)
   addLog(state, 'info', `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`)
   return true
+}
+
+/** 某船无人机舱总容量（船体 droneBayM3 + 已装甲板扩展 bonus） */
+function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): number {
+  const ship = fleetDefOf(state, ctx, shipId)
+  const fitted = state.fleet[shipId]?.fitted
+  let cap = ship?.droneBayM3 ?? 0
+  if (fitted) {
+    for (const id of allFittedIds(fitted)) {
+      const m = ctx.modules.get(id)
+      cap += m?.droneBayBonusM3 ?? 0
+    }
+  }
+  return cap
+}
+
+/**
+ * 无人机舱清单调整（2026-09-08 无人机舱大改）：delta > 0 = 从仓库装入（舱容 + CPU 预占校验）；
+ * delta < 0 = 卸下并退回仓库。shipId 缺省 = 当前驾驶船（装配页支持非驾驶目标，同 fitModule）。
+ */
+export function adjustDroneLoad(
+  state: GameState,
+  ctx: SimContext,
+  droneId: string,
+  delta: number,
+  shipId: string = state.shipId,
+): CommandResult {
+  const def = ctx.items.get(droneId)
+  if (!def || def.kind !== 'drone') return { ok: false, error: '只能装载无人机物品。' }
+  const fleet = state.fleet[shipId]
+  if (!fleet) return { ok: false, error: '该舰船数据缺失，无法装载无人机。' }
+  if (!Number.isInteger(delta) || delta === 0) return { ok: false, error: '数量必须是整数且不能为 0。' }
+  const load: Record<string, number> = { ...(fleet.droneLoad ?? {}) }
+  const cur = load[droneId] ?? 0
+  const next = cur + delta
+  if (next < 0) return { ok: false, error: `卸下数量超过已装载（当前 ×${cur}）。` }
+  if (delta > 0) {
+    const have = countWare(state, droneId)
+    if (have < delta) {
+      return { ok: false, error: `仓库里没有足够的 ${def.name}（差 ${delta - have} 架）。` }
+    }
+    const cap = droneBayCapOf(state, ctx, shipId)
+    const shipDef = fleetDefOf(state, ctx, shipId)
+    const cpuTotal = shipDef ? effectiveCpu(state, ctx, shipDef) : 0
+    const usedCpu = fittedCpuUsed(fleet.fitted, ctx) + droneCpuUsed(load, ctx) + (def.cpuUse ?? 0) * delta
+    const usedM3 = droneLoadM3(load, ctx) + (def.unitM3 ?? 0) * delta
+    if (usedM3 > cap) {
+      return { ok: false, error: `机舱容量不足：${Math.round(usedM3 * 10) / 10}/${cap} m³（先卸下一些，或装「甲板扩展」扩容）。` }
+    }
+    if (cpuTotal > 0 && usedCpu > cpuTotal) {
+      return { ok: false, error: `CPU 预算不足：合计需 ${usedCpu}/${cpuTotal}（无人机占用计入预算）。` }
+    }
+    removeWare(state, droneId, delta)
+  } else {
+    addWare(state, droneId, -delta)
+  }
+  if (next <= 0) delete load[droneId]
+  else load[droneId] = next
+  fleet.droneLoad = Object.keys(load).length > 0 ? load : undefined
+  addLog(state, 'info', `${delta > 0 ? '装入' : '卸下'} ${def.name} ×${Math.abs(delta)}（舱内 ×${next > 0 ? next : 0}）。`)
+  return { ok: true }
 }
 
 /** 玩家指令：卸下当前船"某家族的第一件"（旧六槽语义的兼容入口；UI 位操作请用 unfitAt）。

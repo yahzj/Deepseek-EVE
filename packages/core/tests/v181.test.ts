@@ -122,7 +122,8 @@ describe('V18.1 装配与战斗集成', () => {
       ],
     })
     state.fleet[state.shipId]!.defId = 'bed'
-    state.fleet[state.shipId]!.cargo = { 'drone-scout': 2 }
+    state.fleet[state.shipId]!.cargo = {}
+    state.fleet[state.shipId]!.droneLoad = { 'drone-scout': 2 } // 2026-09-08 无人机舱大改：清单驱动
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-gun-kin'] = 1
     state.moduleBay['mod-gun-exp'] = 1

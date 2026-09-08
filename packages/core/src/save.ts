@@ -872,6 +872,7 @@ function normalizeState(raw: unknown): GameState {
     armorPct?: number
     cargo: Record<string, number>
     fitted: FittedModules
+    droneLoad?: Record<string, number>
   } => ({
     defId,
     customName: null,
@@ -922,6 +923,17 @@ function normalizeState(raw: unknown): GameState {
       fitted.mid = [pick('shield'), pick('propulsion')]
       fitted.low = [pick('armor'), pick('cargo')]
     }
+    // 2026-09-08 无人机舱大改：droneLoad 清洗（正整数、删 0/非法值；旧档缺省 = 空 = 无无人机）
+    const dlRaw = asRaw(shipRaw.droneLoad)
+    let droneLoad: Record<string, number> | undefined
+    for (const [k, v] of Object.entries(dlRaw)) {
+      if (k.length === 0) continue
+      const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 0
+      if (n > 0) {
+        if (!droneLoad) droneLoad = {}
+        droneLoad[k] = n
+      }
+    }
     fleet[id] = {
       defId,
       customName: cleanCustomName(shipRaw.customName),
@@ -929,6 +941,7 @@ function normalizeState(raw: unknown): GameState {
       armorPct,
       cargo: cargoMap,
       fitted,
+      droneLoad,
     }
   }
   if (Object.keys(fleet).length === 0) {

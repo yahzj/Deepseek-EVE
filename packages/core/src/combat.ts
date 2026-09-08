@@ -381,7 +381,9 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     })
   }
 
-  // 无人机装载（V18：甲板扩展 +bay、导控 +dmg；贪心受舱容 + CPU 余量约束）
+  // 无人机装载（2026-09-08 无人机舱大改：只放飞该船 droneLoad 清单——不再从仓库/货仓自动贪心；
+  // 甲板扩展 +bay、战术导控 +dmg 不变。装入时 CPU 已在装配预算内预占（UI 钳制），此处为防御：
+  // 装配变化导致舱容/CPU 不足时按清单顺序整型裁到装得下，装不下的类型跳过）
   let bayLimit = ship.droneBayM3 ?? 0
   let droneDmgBonus = 0
   for (const g of droneGear) {
@@ -389,35 +391,35 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     droneDmgBonus += g.droneDmgBonus ?? 0
   }
   let bayUsed = 0
-  // 舰船系统工程（2026-09-05 一号补）：船体 CPU 总量 +5%/级（装配与放飞共用；不改单件成本）
   let cpuLeft = effectiveCpu(state, ctx, ship) - fittedCpuUsed(fitted, ctx)
-  // 批次五更正（船长 2026-09-05）：带宽已并入 CPU——CPU 是全船静态载荷约束（装配 + 放飞共用同一池，
-  // 无人机卡面 cpuUse 即原带宽占用），技能不折减放飞 CPU；装载循环判定维持原语义。
+  const droneLoad = fleet.droneLoad ?? {}
+  // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——装填 2200ms 基准、
+  // 每级 −4%（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
+  const droneReload = Math.round(2200 * (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
   if (bayLimit > 0 && cpuLeft > 0) {
-    const stock: Array<{ def: NonNullable<ReturnType<SimContext['items']['get']>>; units: number }> = []
-    for (const [id, units] of Object.entries(cargoItemsOf(state))) {
-      const def = ctx.items.get(id)
-      if (def?.kind === 'drone' && units > 0) stock.push({ def, units })
-    }
-    for (const [id, units] of Object.entries(state.warehouse.items)) {
-      const def = ctx.items.get(id)
-      if (def?.kind === 'drone' && units > 0) stock.push({ def, units })
-    }
-    stock.sort((a, b) => (b.def.dmg ?? 0) / Math.max(1, b.def.cpuUse ?? 1) - (a.def.dmg ?? 0) / Math.max(1, a.def.cpuUse ?? 1))
-    // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——装填 2200ms 基准、
-    // 每级 −4%（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
-    const droneReload = Math.round(2200 * (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
-    outer: for (const { def, units } of stock) {
-      for (let i = 0; i < units; i++) {
-        if (bayUsed + def.unitM3 > bayLimit || cpuLeft - (def.cpuUse ?? 0) < 0) break outer
-        bayUsed += def.unitM3
-        cpuLeft -= def.cpuUse ?? 0
+    for (const [droneId, want] of Object.entries(droneLoad)) {
+      if (!want || want <= 0) continue
+      const def = ctx.items.get(droneId)
+      if (!def || def.kind !== 'drone') continue
+      const perCpu = def.cpuUse ?? 0
+      const perM3 = def.unitM3 ?? 0
+      if (perCpu <= 0 || perM3 <= 0) continue
+      const byCpu = Math.floor(cpuLeft / perCpu)
+      const byBay = Math.floor((bayLimit - bayUsed) / perM3)
+      const n = Math.max(0, Math.min(want, byCpu, byBay))
+      if (n <= 0) continue
+      bayUsed += perM3 * n
+      cpuLeft -= perCpu * n
+      // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）
+      const shot = Math.round(
+        (def.dmg ?? 0) * (1 + droneDmgBonus) * (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0)),
+      )
+      for (let i = 0; i < n; i++) {
         weapons.push({
           label: def.name,
           kind: 'fixed',
           fixedType: def.damageType ?? 'kinetic',
-          // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）
-          shotDmg: Math.round((def.dmg ?? 0) * (1 + droneDmgBonus) * (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0))),
+          shotDmg: shot,
           maxRangeM: 2600,
           minRangeM: 200,
           hitRate: 0.6,

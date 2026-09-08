@@ -33,6 +33,7 @@ import {
   createInitialState,
   enqueueSkill,
   fitModule,
+  adjustDroneLoad,
   goStandbyAt,
   goodLockedReason,
   learnBlueprint,
@@ -966,6 +967,16 @@ export class GameEngine {
       this.notify()
     }
     return ok
+  }
+
+  /** 2026-09-08 无人机舱：清单调整（delta>0 装入/δ<0 卸下；shipId 缺省 = 当前驾驶船） */
+  adjustDroneLoadAt(droneId: string, delta: number, shipId?: string): CommandResult {
+    const result = adjustDroneLoad(this.state, this.ctx, droneId, delta, shipId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 
   /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
