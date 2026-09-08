@@ -114,7 +114,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
           </span>
           <button
             className="app-btn is-small"
-            title="显式返航最近空间站（当前为母港）：到站后可卸货/维修/换船"
+            title="显式返航最近空间站（当前为母港）：到站自动卸货，可维修/换船"
             onClick={() => {
               const r = engine.flyHomeNow()
               if (!r.ok) onToast(r.error ?? '无法返航', true)

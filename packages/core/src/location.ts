@@ -12,6 +12,13 @@ import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { noteStationSiteAt, siteProgress } from './station'
+import { unloadCargoOfShipToWarehouse } from './inventory'
+
+/** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */
+function dockUnloadNote(state: GameState, shipId: string): string {
+  const moved = unloadCargoOfShipToWarehouse(state, shipId)
+  return moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''
+}
 
 /** 已建成的空间站星系清单（母港 + 副站建成者），顺序 = 母港优先 */
 export function stationGalaxyIds(state: GameState, ctx: SimContext): string[] {
@@ -140,17 +147,18 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   t.finishAtGameMs = 0
   t.legMs = 0
   state.awayGalaxy = null
-  // 目标若是已建成副站 → 停靠该站；否则回母港
+  // 目标若是已建成副站 → 停靠该站；否则回母港（2026-09-08：到港即自动卸货）
   state.dockedSite = null
+  const unloadNote = dockUnloadNote(state, state.shipId)
   for (const site of ctx.stations.values()) {
     const prog = state.stationSites[site.id]
     if (prog && prog.stage >= site.tiers.length && site.galaxyId === target) {
       state.dockedSite = site.id
-      addLog(state, 'info', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。`)
+      addLog(state, 'info', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote}`)
       return { ok: true }
     }
   }
-  addLog(state, 'info', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。`)
+  addLog(state, 'info', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。${unloadNote}`)
   return { ok: true }
 }
 
@@ -168,19 +176,20 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
   const toName = toGalaxy ? ctx.galaxies.get(toGalaxy)?.name ?? toGalaxy : '空间站'
   t.toGalaxy = null
   state.awayGalaxy = null
-  // 目标若是已建成副站 → 停靠该站；否则回母港
+  // 目标若是已建成副站 → 停靠该站；否则回母港（2026-09-08：到港即自动卸货）
   state.dockedSite = null
+  const unloadNote = dockUnloadNote(state, state.shipId)
   if (toGalaxy) {
     for (const site of ctx.stations.values()) {
       const prog = state.stationSites[site.id]
       if (prog && prog.stage >= site.tiers.length && site.galaxyId === toGalaxy) {
         state.dockedSite = site.id
-        addLog(state, 'info', `返航完成：舰船已停靠「${site.name}」（副空间站）。`)
+        addLog(state, 'info', `返航完成：舰船已停靠「${site.name}」（副空间站）。${unloadNote}`)
         return
       }
     }
   }
-  addLog(state, 'info', `返航完成：舰船已停靠「${toName}」。`)
+  addLog(state, 'info', `返航完成：舰船已停靠「${toName}」。${unloadNote}`)
 }
 
 /** 返航行程只读视图（活动栏/星图页用） */
@@ -295,7 +304,13 @@ export function cancelStandby(state: GameState, ctx: SimContext): CommandResult 
   s.finishAtGameMs = 0
   s.legMs = 0
   state.awayGalaxy = null // 召回口径：回母港（与远征召回一致）
-  addLog(state, 'warn', `掩护巡逻行程已取消：舰船返回母港（未抵达「${name}」）。`)
+  // 2026-09-08：召回 = 回母港停靠——进港自动整仓卸货
+  const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
+  addLog(
+    state,
+    'warn',
+    `掩护巡逻行程已取消：舰船返回母港（未抵达「${name}」）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
+  )
   return { ok: true }
 }
 
