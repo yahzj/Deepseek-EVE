@@ -7311,7 +7311,12 @@ body {
 @keyframes app-pro-iris { 0% { opacity: 0; transform: scale(.15); } 12% { opacity: 1; } 38% { opacity: 1; transform: scale(1.55); } 100% { opacity: 0; transform: scale(2.25); } }
 /* 鈹€鈹€ 搴忕珷路鑻忛啋 鏁欑▼寮曞锛堥樁娈?4锛?026-09-05锛?鈹€鈹€ */
 .app-nav-item:disabled { opacity: .38; cursor: not-allowed; }
-.app-tut-card { position: fixed; right: 14px; bottom: 14px; z-index: 80; width: min(360px, 84vw); background: linear-gradient(180deg, rgba(14,24,34,.96), rgba(8,14,20,.98)); border: 1px solid #2e8a63; border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.6); }
+.app-tut-card { position: fixed; right: 14px; bottom: 14px; z-index: 80; width: min(360px, 84vw); background: linear-gradient(180deg, rgba(14,24,34,.96), rgba(8,14,20,.98)); border: 1px solid #2e8a63; border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.6); animation: app-tut-fade .45s ease; }
+/* 2026-09-08：任务引导窗口淡入浮现（步骤切换时整卡重挂载触发） */
+@keyframes app-tut-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .app-tut-tab { position: fixed; right: 14px; bottom: 14px; z-index: 80; font-size: 12px; color: #8fe8b6; background: rgba(10,20,15,.92); border: 1px solid #2e8a63; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 .app-tut-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .app-tut-title { color: #9feec0; font-weight: 800; font-size: 13px; }

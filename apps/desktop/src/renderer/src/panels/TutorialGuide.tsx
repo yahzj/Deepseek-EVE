@@ -4,7 +4,7 @@
  * - 步骤 8：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
  * 锁定策略（页签/按钮级）在 App.tsx 实施；本组件只管展示与跳转意图。
  */
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 
 export type GuideGo = { page: string; mapTab?: string; shipTab?: string }
@@ -109,6 +109,34 @@ export function TutorialGuide({
 }) {
   const [minimized, setMinimized] = useState(false)
   const def = GUIDE_BY_STEP[step]
+  // 打字机效果（2026-09-08 船长定：引导窗口文字逐字显示）：步骤切换时从 0 逐字播放，播完显示全文；
+  // 最小化/展开不打断——再次展开时若已播完即全文，无需重播
+  const totalChars = def ? def.lines.reduce((a, l) => a + l.length, 0) : 0
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    setShown(0)
+    if (totalChars <= 0) return
+    const iv = window.setInterval(() => {
+      setShown((v) => {
+        if (v >= totalChars) {
+          window.clearInterval(iv)
+          return v
+        }
+        return v + 1
+      })
+    }, 22) // 22ms/字 ≈ 逐字打字节奏
+    return () => window.clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, totalChars])
+  // 行 i 的起始字符偏移（用于逐行切片显示）
+  const lineOffsets: number[] = []
+  {
+    let acc = 0
+    for (const l of def?.lines ?? []) {
+      lineOffsets.push(acc)
+      acc += l.length
+    }
+  }
 
   if (!def) return null
   if (minimized) {
@@ -119,7 +147,8 @@ export function TutorialGuide({
     )
   }
   return (
-    <div className={`app-tut-card${lifted ? ' is-top' : ''}`}>
+    // key = step：步骤切换时整卡重挂载 → 淡入浮现 + 打字机从头播放（2026-09-08 船长定）
+    <div key={step} className={`app-tut-card${lifted ? ' is-top' : ''}`}>
       <div className="app-tut-head">
         <span className="app-tut-title">◆ 教程目标 · {def.title}</span>
         <span className="app-tut-min" onClick={() => setMinimized(true)} title="最小化">
@@ -127,11 +156,15 @@ export function TutorialGuide({
         </span>
       </div>
       <div className="app-tut-lines">
-        {def.lines.map((l, i) => (
-          <div key={i} className="app-tut-line">
-            {l}
-          </div>
-        ))}
+        {def.lines.map((l, i) => {
+          const start = lineOffsets[i] ?? 0
+          const end = Math.min(l.length, Math.max(0, shown - start))
+          return (
+            <div key={i} className="app-tut-line">
+              {l.slice(0, end)}
+            </div>
+          )
+        })}
       </div>
       <div className="app-tut-actions">
         <button
