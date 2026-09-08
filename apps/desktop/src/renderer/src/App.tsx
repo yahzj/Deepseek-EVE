@@ -722,7 +722,15 @@ export function App({ engine }: { engine: GameEngine }) {
                 onFocusUsed={() => setMktFocus(null)} // 一次性聚焦：应用后即清，避免每次进市场都带出上次的物品
               />
             ) : null}
-            {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
+            {page === 'industry' ? (
+              <IndustryPage
+                {...pageProps}
+                onGotoMarket={(goodKey) => {
+                  setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+                  changePage('market')
+                }}
+              />
+            ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} /> : null}
           </div>

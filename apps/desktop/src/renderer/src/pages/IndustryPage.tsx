@@ -23,7 +23,7 @@ import {
 } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import type { GameEngine } from '../game/engine'
 import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
@@ -52,7 +52,7 @@ function manualBusyNote(state: GameState): string | null {
  * 原料不锁定、每批实时扣取——运转中的单位以"名册行"列出（各自批进度条 + 停），
  * 下方按钮可继续加开单位；没有单位的卡保持静态数据与启动区。
  */
-function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast'] }): ReactNode {
+function FurnaceCard({ def, engine, onToast, highlight = false }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast']; highlight?: boolean }): ReactNode {
   const state = engine.state
   const isWreck = def.kind === 'wreck'
   const rate = refineRate(state, engine.ctx)
@@ -165,7 +165,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
   }
 
   return (
-    <div className="app-belt-card" key={def.id}>
+    <div className={`app-belt-card${highlight ? ' is-goto' : ''}`} key={def.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
       </div>
@@ -203,14 +203,16 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
         ) : null}
         <button
           className="app-btn is-small is-primary"
-          disabled={manualNote !== null}
+          disabled={manualNote !== null || total <= 0}
           title={
             manualNote ??
-            (running
-              ? '由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，每批到点实时扣料'
-              : isWreck
-                ? '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
-                : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
+            (total <= 0
+              ? '仓库/货仓里还没有原料：先采集（或从船货仓卸下），到市场购买也行'
+              : running
+                ? '由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，每批到点实时扣料'
+                : isWreck
+                  ? '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
+                  : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
           }
           onClick={() => runWith('pilot')}
         >
@@ -232,8 +234,16 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
             </select>
             <button
               className="app-btn is-small"
-              disabled={!core}
-              title={core ? (running ? '接入一枚闲置 AI 核心加开一台' : '接入 AI 核心自动运转（不占副船与主控）') : '没有可用 AI 核心'}
+              disabled={!core || total <= 0}
+              title={
+                core
+                  ? total <= 0
+                    ? '仓库/货仓里还没有原料：先采集（或从船货仓卸下），到市场购买也行'
+                    : running
+                      ? '接入一枚闲置 AI 核心加开一台'
+                      : '接入 AI 核心自动运转（不占副船与主控）'
+                  : '没有可用 AI 核心'
+              }
               onClick={() => core && runWith(core)}
             >
               {isWreck ? 'AI 回收' : 'AI 运转'}
@@ -263,21 +273,49 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   )
 }
 
-export function IndustryPage({ engine, onToast }: PageProps) {
+export function IndustryPage({ engine, onToast, onGotoMarket }: PageProps & { onGotoMarket?: (goodKey: string) => void }) {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
 
   const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>('refine')
   const runViews = engine.refineRunViews()
+  // 组装机「去精炼」跳转目标（矿石卡 id；高亮数秒后自清；2026-09-08 船长定）
+  const [focusOreId, setFocusOreId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!focusOreId) return
+    document.querySelector('.app-belt-card.is-goto')?.scrollIntoView({ block: 'center' })
+    const t = window.setTimeout(() => setFocusOreId(null), 3500)
+    return () => window.clearTimeout(t)
+  }, [focusOreId])
 
-  /** 货仓+仓库里有货（或在炉中）且带精炼配方的可精炼资源（矿石/气体/冰矿） */
+  /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场 */
+  function handleNeedMineral(itemId: string): void {
+    let src = ''
+    for (const def of engine.ctx.items.values()) {
+      if (def.kind === 'wreck') continue
+      if ((def.refine ?? []).some((r) => r.mineralId === itemId)) {
+        src = def.id
+        break
+      }
+    }
+    if (src) {
+      setSec('refine')
+      setFocusOreId(src)
+      return
+    }
+    for (const g of engine.ctx.marketGoods.values()) {
+      if (g.kind === 'item' && g.refId === itemId) {
+        onGotoMarket?.(g.key)
+        return
+      }
+    }
+    onToast(`「${engine.ctx.items.get(itemId)?.name ?? itemId}」没有精炼产出与市场渠道——先采集可炼原料再来看。`, true)
+  }
+
+  /** 带精炼配方的全部矿石/气体/冰矿（2026-09-08 船长定：精炼炉默认显示所有可精炼资源；空料卡提示引导） */
   const allItemDefs = [...engine.ctx.items.values()]
   const oreDefs = allItemDefs.filter(
-    (def) =>
-      def.kind !== 'wreck' &&
-      def.refine !== undefined &&
-      def.refine.length > 0 &&
-      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
+    (def) => def.kind !== 'wreck' && def.refine !== undefined && def.refine.length > 0,
   )
   /** B3：可回收的残骸（货仓+仓库有货或在炉中；残骸计数 = 体积 m³）。
    *  ⚠ 残骸定义按敌群运行时生成、只存在于 ctx.items——engine.items(静态目录) 里没有，
@@ -322,12 +360,12 @@ export function IndustryPage({ engine, onToast }: PageProps) {
       </div>
 
       {sec === 'craft' ? (
-        <ManufacturingPanel engine={engine} onToast={onToast} />
+        <ManufacturingPanel engine={engine} onToast={onToast} onNeedMineral={handleNeedMineral} />
       ) : sec === 'shelf' ? (
         <BlueprintShelfPanel engine={engine} onToast={onToast} />
       ) : (
         <Panel
-          className="is-fill"
+          className="is-fill win-fixed-body"
           title="精炼炉"
           right={
             <span className="app-dim">
@@ -337,9 +375,9 @@ export function IndustryPage({ engine, onToast }: PageProps) {
         >
           <div className="app-dim app-note">
             同资源可多单位并行：你亲自运转限 1 台，每枚 AI 核心各驱动一台（同时启用的 AI 核心总数受 AI 核心上限技能约束，与 AI 副船任务共用）；原料不锁定，
-            每批到点从「货仓 + 仓库」实时扣取、耗尽即停。运转单位在卡上以名册行显示（各自批进度 + 停）。
+            每批到点从「货仓 + 仓库」实时扣取、耗尽即停。运转单位在卡上以名册行显示（各自批进度 + 停）。下面列出全部可精炼资源——没有原料的卡会提示先去采集或购买。
           </div>
-
+          <div className="app-win-body">
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (
             <div className="app-dim app-inv-empty">
               没有可精炼/可回收的资源——采集矿石/气体/冰矿，或打捞带回残骸后再来。
@@ -348,10 +386,10 @@ export function IndustryPage({ engine, onToast }: PageProps) {
 
           {oreDefs.length > 0 ? (
             <>
-              <div className="app-bay-title">♨ 精炼资源（{oreDefs.length}）——循环运转到料尽自动停炉</div>
+              <div className="app-bay-title">♨ 可精炼资源（{oreDefs.length}）——循环运转到料尽自动停炉</div>
               <div className="app-belt-grid">
                 {oreDefs.map((def) => (
-                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} />
+                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} highlight={focusOreId === def.id} />
                 ))}
               </div>
             </>
@@ -367,6 +405,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
               </div>
             </>
           ) : null}
+          </div>
         </Panel>
       )}
     </div>

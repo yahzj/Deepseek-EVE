@@ -59,14 +59,14 @@ export interface WeaponSpec {
 }
 
 /**
- * V18B-2 激光威力系数：距离衰减从"命中"转为"威力"，且幅度只有命中衰减的 50%——
- * 系数 = 1 − 距离进度 × (1−falloff) × 0.5（例 falloff 0.3 → 远端威力 ×0.65）。
+ * 激光威力系数（2026-09-08 船长定：幅度 = 命中衰减的 1.5 倍，原 0.5 倍）——
+ * 系数 = 1 − 距离进度 × (1−falloff) × 1.5，保底 0（例 falloff 0.3 → 远端威力 ×0）。
  */
 export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
   const { minRangeM: min, maxRangeM: max, falloff } = w
   if (max <= min) return 1
   const t = clamp(0, 1, (dist - min) / (max - min))
-  return 1 - t * (1 - falloff) * 0.5
+  return Math.max(0, 1 - t * (1 - falloff) * 1.5)
 }
 
 /** 静态单位卡（构建后不进存档） */

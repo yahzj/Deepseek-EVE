@@ -44,6 +44,30 @@ function productBaseOf(engine: GameEngine, kind: 'module' | 'ship' | 'item', ref
   return 0
 }
 
+/** 精炼源矿石：精炼配方（def.refine）产出该矿物的矿石 id 列表；空 = 无精炼产出，只能市场购买 */
+function refineSourcesOf(engine: GameEngine, mineralId: string): string[] {
+  const out: string[] = []
+  for (const def of engine.ctx.items.values()) {
+    if (def.kind === 'wreck') continue
+    if ((def.refine ?? []).some((r) => r.mineralId === mineralId)) out.push(def.id)
+  }
+  return out
+}
+
+/** 蓝图书市场价（组装机排序用：市场目录 basePrice；缺省 = 蓝图字段；再无 = 沉底） */
+function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number): number {
+  const k = bpGoodKey(engine, blueprintId)
+  if (k) {
+    for (const g of engine.ctx.marketGoods.values()) {
+      if (g.key === k) return g.basePrice ?? fallback
+    }
+  }
+  return fallback
+}
+
+/** 组装机分组序（2026-09-08 船长定：按类型 + 蓝图价格排序）：装备 → 舰船 → 弹药 */
+const MANU_KIND_ORDER: Record<string, number> = { 装备: 0, 舰船: 1, 弹药: 2 }
+
 /* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
 /** 蓝图书架：持有的蓝图书（学习 → 永久学会；多余的书市价出售） */
@@ -161,6 +185,7 @@ function BlueprintCard({
   productNode,
   kindLabel,
   productBase,
+  onNeedMineral,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -177,6 +202,8 @@ function BlueprintCard({
   kindLabel: string
   /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
+  /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
+  onNeedMineral?: (itemId: string) => void
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
@@ -303,6 +330,27 @@ function BlueprintCard({
                 <span className="app-dim">（原 ×{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span>
               ) : null}
               <span className="app-dim">（仓库 {have.toLocaleString('zh-CN')}）</span>
+              {onNeedMineral ? (
+                (() => {
+                  const srcs = refineSourcesOf(engine, need.itemId)
+                  const srcName = (id: string): string => engine.ctx.items.get(id)?.name ?? id
+                  return (
+                    <span
+                      className="app-bp-mat-act"
+                      role="button"
+                      tabIndex={0}
+                      title={
+                        srcs.length > 0
+                          ? `「${matName}」由精炼炉炼出（${srcs.map(srcName).join('、')} 等）——点击跳到精炼炉该资源卡`
+                          : `「${matName}」无法经精炼炉产出——点击到市场购买`
+                      }
+                      onClick={() => onNeedMineral?.(need.itemId)}
+                    >
+                      {srcs.length > 0 ? '⚒ 去精炼' : '🛒 去市场'}
+                    </span>
+                  )
+                })()
+              ) : null}
             </li>
           )
         })}
@@ -405,7 +453,7 @@ function BlueprintCard({
   )
 }
 
-export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine: GameEngine; onToast: ToastFn; onNeedMineral?: (itemId: string) => void }) {
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTab>('all')
@@ -423,6 +471,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     running: boolean
     canStart: boolean
     productBase: number
+    bookPrice: number
   }> = []
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
@@ -450,6 +499,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
         productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
+        bookPrice: bookPriceOf(engine, sbp.id, 0),
       })
     }
   }
@@ -471,6 +521,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
         productBase: moduleDef ? productBaseOf(engine, 'module', bp.moduleId!) : 0,
+        bookPrice: bookPriceOf(engine, bp.id, 0),
       })
     }
   }
@@ -500,6 +551,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
         productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, units) : 0,
+        bookPrice: bookPriceOf(engine, bp.id, 0),
       })
     }
   }
@@ -516,10 +568,12 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   const visible = items.filter(
     (it) => tab === 'all' || (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '弹药'),
   )
+  // 2026-09-08 船长定：按「类型（装备→舰船→弹药）→ 蓝图价格（升序）」排序；无市场价沉底
+  const bpP = (v: number): number => (v > 0 ? v : Number.MAX_SAFE_INTEGER)
   const sorted = [...visible].sort(
     (a, b) =>
-      Number(b.running) - Number(a.running) ||
-      Number(b.canStart) - Number(a.canStart) ||
+      (MANU_KIND_ORDER[a.kindLabel] ?? 9) - (MANU_KIND_ORDER[b.kindLabel] ?? 9) ||
+      bpP(a.bookPrice) - bpP(b.bookPrice) ||
       a.name.localeCompare(b.name, 'zh-Hans-CN'),
   )
   const equipN = items.filter((i) => i.kindLabel === '装备').length
@@ -548,8 +602,8 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
       </div>
       <div className="app-dim app-exp-idle">
         已学会的配方才能开工；制造免费，只耗材料与时间。劳动者规则与精炼炉一致（<b>主控亲自全局限 1 条</b>或
-        <b>一枚 AI 核心驱动一条线</b>，同时启用的 AI 核心总数受 AI 核心上限技能约束、与 AI 副船任务共用）；同一蓝图可多条、不同蓝图并行。制造中 / 可开工的配方排在最前。
-        悬停「产物」名称可查看成品属性；卡面 ≈ISK/h 为净收益估算（现货价口径，未计销路）。
+        <b>一枚 AI 核心驱动一条线</b>，同时启用的 AI 核心总数受 AI 核心上限技能约束、与 AI 副船任务共用）；同一蓝图可多条、不同蓝图并行。蓝图按类型与价格排序。
+        悬停「产物」名称可查看成品属性；卡面 ≈ISK/h 为净收益估算（现货价口径，未计销路）；点需求材料右侧的「去精炼/去市场」可跳转找料。
       </div>
 
       <div className="app-win-body">
@@ -568,6 +622,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
               productNode={it.productNode}
               kindLabel={it.kindLabel}
               productBase={it.productBase}
+              onNeedMineral={onNeedMineral}
             />
           ))}
         </div>

@@ -169,11 +169,11 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 24,
     description: '轻型动能速射炮：打盾 1.5 倍伤害（打甲减半）。协会制式、蓝图可造，把矿船变成勉强能打的武装矿船。',
     cpuUse: 10,
-    maxRangeM: 4600,
+    maxRangeM: 3220, // 2026-09-08 船长定：动能炮射程 −30%（4600→3220），装填等价缩短（2200→1540）
     minRangeM: 250,
     hitRate: 0.8,
     falloff: 0.3,
-    reloadMs: 2200,
+    reloadMs: 1540,
     dmgMult: 1.25,
   },
   {
@@ -184,13 +184,13 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 12,
-    description: '重型动能炮：8.2 km 远程。协会重型制式（蓝图可造）——远程压制的正解。',
+    description: '重型动能炮：5.7 km 中远程。协会重型制式（蓝图可造）——中程压制的正解。',
     cpuUse: 28,
-    maxRangeM: 8200,
+    maxRangeM: 5740, // 2026-09-08 船长定：动能炮射程 −30%（8200→5740），装填等价缩短（3400→2380）
     minRangeM: 700,
     hitRate: 0.78,
     falloff: 0.28,
-    reloadMs: 3400,
+    reloadMs: 2380,
     dmgMult: 3.73,
   },
   {
@@ -201,19 +201,20 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 12,
-    description: '攻城级动能巨炮：10.5 km，攻坚炮里的协会制式（蓝图可造，52 CPU 顶级重炮）。',
+    description: '攻城级动能巨炮：7.4 km，攻坚炮里的协会制式（蓝图可造，52 CPU 顶级重炮）。',
     cpuUse: 52,
-    maxRangeM: 10500,
+    maxRangeM: 7350, // 2026-09-08 船长定：动能炮射程 −30%（10500→7350），装填等价缩短（4200→2940）
     minRangeM: 1200,
     hitRate: 0.78,
     falloff: 0.28,
-    reloadMs: 4200,
+    reloadMs: 2940,
     dmgMult: 5.13,
   },
   // ══════════ 激光炮（V18B-2 能量系武器形态：消耗能量弹药，必中光束） ══════════
   // 与原能量炮/异星原型（已退役迁移）同伤害系（plasma）/同消耗键，但性格独立：
   // - 必中：射程带内不掷命中（无视距离衰减与回避，锁定即命中）；
-  // - 距离衰减作用在威力而非命中，且幅度只有命中衰减的一半（威系数 = 1 − 进度×(1−falloff)×50%）；
+  // - 距离衰减作用在威力而非命中，幅度 = 命中衰减的 1.5 倍（2026-09-08 船长定，原 0.5 倍；
+  //   威系数 = 1 − 进度×(1−falloff)×1.5，保底 0）；
   // - minRange 0（光束无弹道近盲）；逐发消耗能量弹药（ammo-plasma-l = 能量弹药）；
   // - 数值初值对照原能量炮 dmgMult 下调（必中优势），进 C4 校准轮复核；
   // - 市场专供（无蓝图；沿用原能量炮渠道与价位）。异星原型 → 原型激光（奇货）。
@@ -225,7 +226,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 24,
-    description: '轻型激光炮：能量光束必中（锁定即命中）、无视近盲；距离只轻微削减威力。消耗能量弹药（市场专供）。',
+    description: '轻型激光炮：能量光束必中（锁定即命中）、无视近盲；距离越远威力削减越明显。消耗能量弹药（市场专供）。',
     cpuUse: 10,
     maxRangeM: 4600,
     minRangeM: 0,
@@ -242,7 +243,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 12,
-    description: '重型激光炮：8.2 km 远程光束，必中且只受轻微威力衰减——远程稳定输出的正解（市场专供，无蓝图）。',
+    description: '重型激光炮：8.2 km 远程光束，必中但威力随距离明显衰减——中程稳定输出的正解（市场专供，无蓝图）。',
     cpuUse: 28,
     maxRangeM: 8200,
     minRangeM: 0,
@@ -302,12 +303,12 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 24,
     description: '轻型导弹巢：发射爆破导弹（打甲 1.5 倍、打盾减半）。命中不随距离衰减；注意 500 m 内近盲——贴太近发射会炸到自己（市场专供）。',
     cpuUse: 10,
-    maxRangeM: 6200,
+    maxRangeM: 7440, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（6200/2600/1.25 → 7440/3120/1.5）
     minRangeM: 500,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 2600,
-    dmgMult: 1.25,
+    reloadMs: 3120,
+    dmgMult: 1.5,
   },
   {
     id: 'mod-missile-2',
@@ -317,14 +318,14 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 12,
-    description: '重型导弹巢：9.8 km 远程爆破轰炸——装甲舰编队的噩梦（市场专供，无蓝图）。',
+    description: '重型导弹巢：11.8 km 远程爆破轰炸——装甲舰编队的噩梦（市场专供，无蓝图）。',
     cpuUse: 28,
-    maxRangeM: 9800,
+    maxRangeM: 11760, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（9800/4000/3.66 → 11760/4800/4.39）
     minRangeM: 900,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 4000,
-    dmgMult: 3.66,
+    reloadMs: 4800,
+    dmgMult: 4.39,
   },
   {
     id: 'mod-missile-3',
@@ -334,14 +335,14 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 12,
-    description: '巡航导弹巢：12.4 km 远程毁灭——大编队交火前先发制人的火力（市场稀有现货，无蓝图）。',
+    description: '巡航导弹巢：14.9 km 远程毁灭——大编队交火前先发制人的火力（市场稀有现货，无蓝图）。',
     cpuUse: 52,
-    maxRangeM: 12400,
+    maxRangeM: 14880, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（12400/5000/5.03 → 14880/6000/6.04）
     minRangeM: 1400,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 5000,
-    dmgMult: 5.03,
+    reloadMs: 6000,
+    dmgMult: 6.04,
   },
 
   // ══════════ 无人机装置（V18 高槽装置位：远行星号式；与炮/矿共位竞争） ══════════

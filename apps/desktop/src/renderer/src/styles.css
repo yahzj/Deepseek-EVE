@@ -3227,6 +3227,33 @@ body {
 
 }
 
+/* 2026-09-08：组装机需求材料「去精炼/去市场」跳转 + 精炼卡跳转高亮 */
+.app-bp-mat-act {
+
+  cursor: pointer;
+
+  color: rgba(79, 216, 196, 0.95);
+
+  margin-left: 6px;
+
+  white-space: nowrap;
+
+  font-weight: 600;
+
+}
+
+.app-bp-mat-act:hover {
+
+  text-decoration: underline;
+
+}
+
+.app-belt-card.is-goto {
+
+  box-shadow: 0 0 0 2px rgba(79, 216, 196, 0.65);
+
+}
+
 .app-bp-bottom {
 
   display: flex;
