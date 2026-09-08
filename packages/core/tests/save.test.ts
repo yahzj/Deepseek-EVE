@@ -46,6 +46,43 @@ describe('存档往返（v7）', () => {
   })
 })
 
+describe('制造多线读档回归（卷B3 修复 2026-09-08：玩家反馈组装机同蓝图双线刷新后丢队列且 AI 核心占用）', () => {
+  it('同蓝图两条 AI 线往返保留（不再按 blueprintId 去重）；worker 随档保留；结构性坏条丢弃并归还核心', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    state.aiCores.basic = 0 // 三条线各出库 1 枚（账上已扣）
+    state.manufacturingRuns = [
+      { active: true, id: 1, blueprintId: 'sbp-a', worker: 'basic', finishAtGameMs: 100_000, durationMs: 60_000 },
+      { active: true, id: 2, blueprintId: 'sbp-a', worker: 'basic', finishAtGameMs: 200_000, durationMs: 60_000 },
+      // 结构性坏条（无蓝图 id）：读档丢弃 → 归还其已出库的 AI 核心
+      { active: true, id: 3, blueprintId: '', worker: 'basic', finishAtGameMs: 0, durationMs: 0 },
+    ]
+    state.manufacturingSeq = 4
+
+    const text = serializeSaveFile(state, 0)
+    const loaded = loadSaveFile(text)
+
+    expect(loaded.state.manufacturingRuns).toHaveLength(2) // 两条有效线都在（同蓝图不去重）
+    for (const r of loaded.state.manufacturingRuns) {
+      expect(r.blueprintId).toBe('sbp-a')
+      expect(r.worker).toBe('basic') // worker 不丢 → 完成/取消时核心正确归还、占用照常计数
+    }
+    expect(loaded.state.manufacturingRuns[0]!.id).not.toBe(loaded.state.manufacturingRuns[1]!.id) // id 重新唯一分配
+    expect(loaded.state.aiCores.basic).toBe(1) // 有效两条各占 1；坏条那枚已归还
+  })
+
+  it('旧档（无 worker 字段）的制造线照常保留为旧作业豁免语义（worker=undefined，不占核心）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    state.manufacturingRuns = [
+      { active: true, id: 1, blueprintId: 'bp-a', finishAtGameMs: 50_000, durationMs: 50_000 },
+    ]
+    const text = serializeSaveFile(state, 0)
+    const loaded = loadSaveFile(text)
+    expect(loaded.state.manufacturingRuns).toHaveLength(1)
+    expect(loaded.state.manufacturingRuns[0]!.worker).toBeUndefined()
+    expect(loaded.state.aiCores.basic).toBe(0)
+  })
+})
+
 describe('旧版本迁移链（v0 → … → v9）', () => {
   it('v0 草图档一路迁移到 v9：技能与队列保留，各系统补默认值', () => {
     const v0Text = JSON.stringify({
