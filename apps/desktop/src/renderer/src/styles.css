@@ -1804,6 +1804,48 @@ body {
 
 }
 
+.app-train-total {
+
+  font-size: 11px;
+
+  margin: 2px 0 0;
+
+  opacity: 0.85;
+
+}
+
+.app-train-arrow {
+
+  background: none;
+
+  border: none;
+
+  color: var(--wui-text-dim);
+
+  cursor: pointer;
+
+  font-size: 12px;
+
+  line-height: 1;
+
+  padding: 0 2px;
+
+}
+
+.app-train-arrow:hover:not(:disabled) {
+
+  color: #ffe08a;
+
+}
+
+.app-train-arrow:disabled {
+
+  opacity: 0.3;
+
+  cursor: default;
+
+}
+
 .app-train-head-line {
 
   display: flex;

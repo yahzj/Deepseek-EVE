@@ -133,17 +133,47 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
   const state = engine.state
   const view = skillQueueStatus(state, engine.ctx.skills)
   // 船长 2026-09-05：正在训练的那条由顶部活动窗口「技能训练」区展示；这里只显示"排队中"的技能。
+  // 2026-09-08（船长）：队列总时长 + 顺序调整——前移到顶 = 交换式顶替当前训练（原训练退位保留进度）
+  const totalMs =
+    (view.head !== null ? view.head.remainingMs : 0) +
+    view.pending.reduce((s, p) => s + p.remainingMs, 0)
+  const lastIndex = state.skills.queue.length - 1
   return (
     <div>
+      {totalMs > 0 ? (
+        <div className="app-dim app-train-total">
+          队列总时长 ≈ {formatDurationMs(totalMs)}
+          {view.head !== null ? `（含训练中本级剩余 ${formatDurationMs(view.head.remainingMs)}）` : ''}——↑ 前移一位，最前一位再 ↑ = 顶替当前训练（原训练退回排队并保留进度）。
+        </div>
+      ) : null}
       {view.pending.length > 0 ? (
         <div className="app-train-pending">
-          {view.pending.map((p, i) => (
-            <span key={`${p.skillId}-${p.queueIndex}`} className="app-chip app-train-chip" title="移出队列：同技能的后续条目自动顺延一级">
+          {view.pending.map((p) => (
+            <span key={`${p.skillId}-${p.queueIndex}`} className="app-chip app-train-chip">
+              <button
+                className="app-train-arrow"
+                title={p.queueIndex === 1 ? '移到最前 = 顶替当前训练：这条立刻开始练，原训练退回排队并保留本级进度' : '前移一位'}
+                onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex - 1)}
+              >
+                ↑
+              </button>
               <span>
-                第{i + 1}位 {p.skillName}→Lv{p.targetLevel}
+                第{p.queueIndex + 1}位 {p.skillName}→Lv{p.targetLevel}
               </span>
-              {p.levelMs > 0 ? <span className="app-dim">{formatDurationMs(p.levelMs)}</span> : null}
-              <button className="app-train-x" title="移出队列" onClick={() => engine.dequeueAt(p.queueIndex)}>
+              {p.progressMs > 0 ? (
+                <span className="app-dim">剩 {formatDurationMs(p.remainingMs)}</span>
+              ) : p.levelMs > 0 ? (
+                <span className="app-dim">{formatDurationMs(p.levelMs)}</span>
+              ) : null}
+              <button
+                className="app-train-arrow"
+                title={p.queueIndex < lastIndex ? '后移一位' : '已在队尾'}
+                disabled={p.queueIndex >= lastIndex}
+                onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex + 1)}
+              >
+                ↓
+              </button>
+              <button className="app-train-x" title="移出队列：同技能的后续条目自动顺延一级" onClick={() => engine.dequeueAt(p.queueIndex)}>
                 ×
               </button>
             </span>

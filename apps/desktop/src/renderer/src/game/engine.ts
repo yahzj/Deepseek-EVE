@@ -49,6 +49,7 @@ import {
   placeBuyOrder,
   recallExpedition,
   refineRunViews,
+  moveQueueItem,
   removeQueueAt,
   renameShip,
   migrateDeprecatedAmmo,
@@ -591,6 +592,16 @@ export class GameEngine {
   /** 从训练队列移除第 index 项（0 = 队首） */
   dequeueAt(index: number): boolean {
     const ok = removeQueueAt(this.state, index)
+    if (ok) {
+      void this.persist()
+      this.notify()
+    }
+    return ok
+  }
+
+  /** 2026-09-08（船长）：调整训练队列顺序（前移到顶 = 交换式顶替当前训练，原训练退位保留进度） */
+  moveQueueAt(fromIndex: number, toIndex: number): boolean {
+    const ok = moveQueueItem(this.state, fromIndex, toIndex)
     if (ok) {
       void this.persist()
       this.notify()

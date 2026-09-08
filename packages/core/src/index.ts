@@ -125,6 +125,7 @@ export {
   advanceGame,
   enqueueSkill,
   removeQueueAt,
+  moveQueueItem,
   clearSkillQueue,
   skillQueueStatus,
   HIDDEN_SKILL_IDS,

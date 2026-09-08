@@ -231,6 +231,40 @@ export function removeQueueAt(state: GameState, index: number): boolean {
   return true
 }
 
+/**
+ * 玩家指令：调整训练队列顺序（2026-09-08 船长：前移到顶可“交换式顶替”当前训练——
+ * 原队首带着本级进度退回其空出的位置，零损失）。
+ * 规则：在 0..len-1 之间移动任意条目（含队首）；移动后同技能条目按新出现次序
+ * 重算目标等级（= 当前已学 + 第 N 条，保持连锁逐级与各级时长正确）；
+ * 进度只跟随“该技能在队内的第一条”（目标 = 已学+1 者），其余条目进度清零。
+ */
+export function moveQueueItem(state: GameState, fromIndex: number, toIndex: number): boolean {
+  const queue = state.skills.queue
+  if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return false
+  if (fromIndex === toIndex) return true
+  if (fromIndex < 0 || fromIndex >= queue.length || toIndex < 0 || toIndex >= queue.length) return false
+  // 捕获各技能“队内首条”进度（仅当其在冲 已学+1 这一级时有效）
+  const progOf = new Map<string, { progressMs: number; targetLevel: number }>()
+  const seen = new Set<string>()
+  for (const it of queue) {
+    if (seen.has(it.skillId)) continue
+    seen.add(it.skillId)
+    if (it.progressMs > 0) progOf.set(it.skillId, { progressMs: it.progressMs, targetLevel: it.targetLevel })
+  }
+  const [moved] = queue.splice(fromIndex, 1)
+  queue.splice(toIndex, 0, moved)
+  // 重算目标等级 + 进度归属
+  const ranks = new Map<string, number>()
+  for (const it of queue) {
+    const r = (ranks.get(it.skillId) ?? 0) + 1
+    ranks.set(it.skillId, r)
+    it.targetLevel = (state.skills.trained[it.skillId] ?? 0) + r
+    const saved = progOf.get(it.skillId)
+    it.progressMs = saved !== undefined && r === 1 && it.targetLevel === saved.targetLevel ? saved.progressMs : 0
+  }
+  return true
+}
+
 /** 玩家指令：清空整个训练队列，返回移除了几项（队首进度保留，可续接） */
 export function clearSkillQueue(state: GameState): number {
   const count = state.skills.queue.length
@@ -277,6 +311,10 @@ export interface QueueView {
     targetLevel: number
     /** 该条目对应那一级的单级训练时长（毫秒） */
     levelMs: number
+    /** 该条目已练毫秒（通常仅同技能“队内首条”承接进度时有值） */
+    progressMs: number
+    /** 该级剩余毫秒 = levelMs − progressMs */
+    remainingMs: number
   }>
 }
 
@@ -304,12 +342,16 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
   }
   const pending = queue.slice(1).map((p: TrainingItem, i) => {
     const pDef = catalog.get(p.skillId)
+    const levelMs = pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state))) : 0
+    const progressMs = Math.min(Math.max(0, p.progressMs), Math.max(0, levelMs - 1))
     return {
       queueIndex: i + 1,
       skillId: p.skillId,
       skillName: pDef?.name ?? `未知技能「${p.skillId}」`,
       targetLevel: p.targetLevel,
-      levelMs: pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state))) : 0,
+      levelMs,
+      progressMs,
+      remainingMs: levelMs - progressMs,
     }
   })
   return { head, pending }
