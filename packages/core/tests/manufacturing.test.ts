@@ -169,6 +169,13 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     expect(state.manufacturingRuns[0]!.durationMs).toBe(1_125_000)
   })
 
+  it('手动线同样受工业自动化（方案①，2026-09-08 船长定）：满级 600s ×0.75 = 450 秒', () => {
+    state.skills.trained['industrial-automation'] = 5
+    state.warehouse.items['min-a'] = 10
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.manufacturingRuns[0]!.durationMs).toBe(450_000)
+  })
+
   it('同一蓝图可开多条 AI 线、不同蓝图也并行：逐线独立完成、核心逐枚归还', () => {
     state.blueprintStock['bp-b'] = 1
     learnBlueprint(state, ctx, 'bp-b')
