@@ -369,43 +369,46 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             </ItemActionModal>
           ) : null}
 
-          {/* 出售数量选择（部分出售；船长 2026-09-05） */}
-          {sellItem ? (() => {
-            const def = engine.ctx.items.get(sellItem)
-            if (!def) return null
-            const units = state.warehouse.items[sellItem] ?? 0
-            const buy = itemBuyQuote(engine, sellItem)
-            return (
-              <SellQtyModal
-                name={def.name}
-                glyph={def.kind}
-                max={units}
-                unit="单位"
-                priceText={buy !== undefined ? `收价 ${isk(buy)} ISK/单位` : undefined}
-                note={def.description}
-                onClose={() => setSellItem(null)}
-                onConfirm={(qty) => handleSellQtyItem(sellItem, qty)}
-              />
-            )
-          })() : null}
-          {sellMod ? (() => {
-            const def = engine.ctx.modules.get(sellMod)
-            if (!def) return null
-            const units = state.moduleBay[sellMod] ?? 0
-            return (
-              <SellQtyModal
-                name={def.name}
-                glyph={def.slot}
-                max={units}
-                unit="件"
-                note={def.description}
-                onClose={() => setSellMod(null)}
-                onConfirm={(qty) => handleSellQtyMod(sellMod, qty)}
-              />
-            )
-          })() : null}
+          {/* 出售数量弹层已提升到列表/图标两模式共用的外层（见组件 return 尾部） */}
         </>
       )}
+
+      {/* 出售数量选择（部分出售；船长 2026-09-05）——列表/图标两模式共用（2026-09-08 修复：
+         原误置于图标模式分支内，列表模式点「市价卖出」设了状态却无弹层渲染 = 点击无反应） */}
+      {sellItem ? (() => {
+        const def = engine.ctx.items.get(sellItem)
+        if (!def) return null
+        const units = state.warehouse.items[sellItem] ?? 0
+        const buy = itemBuyQuote(engine, sellItem)
+        return (
+          <SellQtyModal
+            name={def.name}
+            glyph={def.kind}
+            max={units}
+            unit="单位"
+            priceText={buy !== undefined ? `收价 ${isk(buy)} ISK/单位` : undefined}
+            note={def.description}
+            onClose={() => setSellItem(null)}
+            onConfirm={(qty) => handleSellQtyItem(sellItem, qty)}
+          />
+        )
+      })() : null}
+      {sellMod ? (() => {
+        const def = engine.ctx.modules.get(sellMod)
+        if (!def) return null
+        const units = state.moduleBay[sellMod] ?? 0
+        return (
+          <SellQtyModal
+            name={def.name}
+            glyph={def.slot}
+            max={units}
+            unit="件"
+            note={def.description}
+            onClose={() => setSellMod(null)}
+            onConfirm={(qty) => handleSellQtyMod(sellMod, qty)}
+          />
+        )
+      })() : null}
     </>
   )
 }
