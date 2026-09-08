@@ -596,7 +596,7 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
     for (const l of itemCombatLines(item)) lines.push(l)
   }
   if (item.repairRestore !== undefined) {
-    lines.push({ k: '修理组件', v: `单件修复船体耐久 +${Math.round(item.repairRestore * 100)}%` })
+    lines.push({ k: '修理组件', v: `单件基础回复 ${item.repairRestore} HP（结构/装甲各按层容量增幅，层越厚回得越多）` })
   }
   return lines
 }

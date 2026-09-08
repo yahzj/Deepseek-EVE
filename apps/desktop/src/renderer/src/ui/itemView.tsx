@@ -57,6 +57,17 @@ export interface ItemGridCell {
   title?: string
 }
 
+/** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
+export function kindExtraNote(kind: string): string | null {
+  if (kind === 'drone') {
+    return '无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。'
+  }
+  if (kind === 'ammo') {
+    return '弹药在战斗中自动消耗：开战时从 仓库/货仓 按需取用（货仓优先）；放仓库同样出战且不随船遗失——货仓里的弹药可随时卸回仓库更安全。'
+  }
+  return null
+}
+
 /** 图标网格（手册 app-hand-grid/cell 同款；供物品/装备浏览用，可选点击回调） */
 export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick?: (key: string) => void }) {
   if (cells.length === 0) return null

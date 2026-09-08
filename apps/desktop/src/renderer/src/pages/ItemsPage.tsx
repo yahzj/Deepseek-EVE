@@ -11,7 +11,7 @@ import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
-import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
+import { ItemGlyphGrid, ItemViewBar, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -123,10 +123,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             title={`${itemKindLabel(kind)}`}
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
-            {kind === 'drone' ? (
-              <div className="app-dim app-note">
-                无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。
-              </div>
+            {kindExtraNote(kind) ? (
+              <div className="app-dim app-note">{kindExtraNote(kind)}</div>
             ) : null}
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? '仓库里没有该分类物品。'}</div>
@@ -264,10 +262,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 title={`${itemKindLabel(kind)}`}
                 right={<span className="app-dim">{kindRows2.length} 种</span>}
               >
-                {kind === 'drone' ? (
-                  <div className="app-dim app-note">
-                    无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。
-                  </div>
+                {kindExtraNote(kind) ? (
+                  <div className="app-dim app-note">{kindExtraNote(kind)}</div>
                 ) : null}
                 {kindRows2.length === 0 ? (
                   <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? '仓库里没有该分类物品。'}</div>

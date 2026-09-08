@@ -27,7 +27,7 @@ import { SellQtyModal } from '../ui/SellQtyModal'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
-import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
+import { ItemGlyphGrid, ItemViewBar, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: '船上没有矿石——到「出港」页开采。',
@@ -196,10 +196,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
-            {kind === 'drone' ? (
-              <div className="app-dim app-note">
-                无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。
-              </div>
+            {kindExtraNote(kind) ? (
+              <div className="app-dim app-note">{kindExtraNote(kind)}</div>
             ) : null}
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{emptyText}</div>
@@ -279,10 +277,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
                   right={<span className="app-dim">{kindRows.length} 种</span>}
                 >
-                  {kind === 'drone' ? (
-                    <div className="app-dim app-note">
-                      无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。
-                    </div>
+                  {kindExtraNote(kind) ? (
+                    <div className="app-dim app-note">{kindExtraNote(kind)}</div>
                   ) : null}
                   <ItemGlyphGrid cells={cells} onPick={(key) => setPickId(key)} />
                 </Panel>
