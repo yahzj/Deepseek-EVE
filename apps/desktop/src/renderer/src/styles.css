@@ -3521,10 +3521,10 @@ body {
 .app-fit-slot-icon {
 
   /* 尺寸稳定性规范：槽位高度固定，不随装备内容伸缩，避免界面跳动
-     （2026-09-08 玩家反馈名称截断：名称区放宽为最多两行，卡高 76→78 微调，
-     内部 gap/padding 收窄 1px 抵消，总高增量 ≤2px×网格行数） */
+     （2026-09-08 玩家反馈长名换行仍截断：名称区放宽为最多三行、卡高 78→96，
+     「卸下」按钮化独立一行；角落按钮会遮挡多行文本故不作角落方案） */
 
-  height: 78px;
+  height: 96px;
 
   box-sizing: border-box;
 
@@ -3596,11 +3596,11 @@ body {
 
   max-width: 100%;
 
-  /* 2026-09-08 玩家反馈名称显示不全：允许多行，至多两行；超长截断兜底（悬停有整名提示） */
+  /* 2026-09-08 玩家反馈名称显示不全：允许多行，至多三行；超长截断兜底（悬停有整名提示） */
 
   display: -webkit-box;
 
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 
   -webkit-box-orient: vertical;
 
@@ -3620,13 +3620,19 @@ body {
 
   color: var(--wui-red);
 
-  opacity: 0.85;
+  opacity: 0.9;
 
-  padding: 1px 6px;
+  padding: 1px 7px;
 
   border-radius: 4px;
 
   cursor: pointer;
+
+  /* 2026-09-08：按钮化（带边框，独立一行放底部——角落会遮挡多行名称） */
+
+  border: 1px solid rgba(224, 82, 74, 0.55);
+
+  background: rgba(224, 82, 74, 0.08);
 
 }
 
