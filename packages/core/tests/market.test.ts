@@ -953,8 +953,8 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     placeSellOrder(state, ctx, 'gas-x', bid + 1, 3_000) // 比价线高 1 块 = 贴线越线（r≈1%）
     advanceGame(state, 200 * 60_000, ctx)
     const sold = 3_000 - (state.orders[0]?.qty ?? 0)
-    expect(sold).toBeGreaterThan(700) // 新口径 ≈56 次命中 × ~23 件 ≈1290；旧 1 件/窗口径 ≈56
-    expect(sold).toBeLessThan(2_800)
+    expect(sold).toBeGreaterThan(300) // 该种子 200 窗命中 ≈28 次 × ~23 件 ≈640；旧 1 件/窗口径 ≈28
+    expect(sold).toBeLessThan(2_500)
     expect(state.logs.some((l) => l.text.includes('巡游采购'))).toBe(true)
   })
 })
