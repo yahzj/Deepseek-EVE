@@ -54,11 +54,15 @@ describe('AI 核心库与名额', () => {
     expect(aiEfficiency(state, ctx, 'alpha')).toBe(0.75)
   })
 
-  it('AI 核心调度学（卷B3⑩）：效率在核心档位之上 ×(1+2%/级)，满级 ×1.1', () => {
+  it('AI 核心调度学（卷B3⑩）：核心档位之上每级 +2 个百分点累加（基础 40% → 满级 50%）', () => {
     state.skills.trained['ai-core-dispatch'] = 5
-    expect(aiEfficiency(state, ctx, 'basic')).toBeCloseTo(0.44, 10) // 0.4 × 1.1
-    expect(aiEfficiency(state, ctx, 'gamma')).toBeCloseTo(0.55, 10)
-    expect(aiEfficiency(state, ctx, 'alpha')).toBeCloseTo(0.825, 10) // 0.75 × 1.1
+    expect(aiEfficiency(state, ctx, 'basic')).toBe(0.5) // 0.4 + 0.02×5
+    expect(aiEfficiency(state, ctx, 'gamma')).toBe(0.6)
+    expect(aiEfficiency(state, ctx, 'beta')).toBe(0.7)
+    expect(aiEfficiency(state, ctx, 'alpha')).toBe(0.85) // 0.75 + 0.10
+    // 每级累加生效抽查
+    state.skills.trained['ai-core-dispatch'] = 2
+    expect(aiEfficiency(state, ctx, 'basic')).toBe(0.44) // 0.4 + 0.04
   })
 
   it('购买基础核心：扣款入库；钱不够拒绝', () => {
@@ -150,10 +154,10 @@ describe('AI 采矿任务', () => {
     expect(state2.fleet['sandcat2']!.cargo['ore-a']).toBe(5)
   })
 
-  it('AI 核心调度学满级：基础核心 40%×1.1 → 6 秒循环实际需 13.637 秒采 5 单位', () => {
-    state.skills.trained['ai-core-dispatch'] = 5 // 6000ms / 0.44 = 13636ms → ceil 13637ms
+  it('AI 核心调度学满级：基础核心 40%→50% → 6 秒循环实际需 12 秒采 5 单位', () => {
+    state.skills.trained['ai-core-dispatch'] = 5 // 6000ms / 0.5 = 12000ms
     assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx)
-    advanceGame(state, 13_636, ctx)
+    advanceGame(state, 11_999, ctx)
     expect(state.fleet['sandcat2']!.cargo['ore-a'] ?? 0).toBe(0) // 不足一个循环
     advanceGame(state, 1, ctx)
     expect(state.fleet['sandcat2']!.cargo['ore-a']).toBe(5)

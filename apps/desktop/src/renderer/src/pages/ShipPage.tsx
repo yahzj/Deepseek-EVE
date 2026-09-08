@@ -510,6 +510,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const cap = aiCoreCap(state, engine.ctx)
   const used = aiCoreUsed(state)
   const idleShips = idleAiShipIds(state)
+  // 计数口径同源（2026-09-08 玩家反馈"执行中 N 与实际行数对不上"）：used 含 AI 副船 +
+  // AI 核心驱动的精炼/回收炉与制造线（后者在工业页管理）；本页列表只列副船 → 标题拆分展示，
+  // 保证「标题数 = 行数」不被生产条目撑出假差额
+  const assignN = Object.keys(state.aiAssignments).length
+  const prodN = Math.max(0, used - assignN)
 
   const [shipId, setShipId] = useState('')
   const [coreType, setCoreType] = useState<AiCoreType>('basic')
@@ -646,9 +651,15 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       )}
 
       {/* 执行中列表 */}
-      <div className="app-bay-title">执行中（{used}）</div>
-      {used === 0 ? (
-        <div className="app-dim app-inv-empty">没有正在执行的 AI 任务。</div>
+      <div className="app-bay-title">
+        执行中 · AI 副船 {assignN}
+        {prodN > 0 ? ` · AI 生产 +${prodN}` : ''}
+        {prodN > 0 ? <span className="app-dim">（生产线的取消在工业页卡片）</span> : null}
+      </div>
+      {assignN === 0 ? (
+        <div className="app-dim app-inv-empty">
+          {prodN > 0 ? '没有 AI 副船任务（AI 生产线的取消在工业页）。' : '没有正在执行的 AI 任务。'}
+        </div>
       ) : (
         <ul className="app-inv-list">
           {Object.entries(state.aiAssignments).map(([sid, assignment]) => {

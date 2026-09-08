@@ -49,12 +49,13 @@ export function aiCoreName(type: AiCoreType): string {
 }
 
 /** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励）。
- *  卷B3⑩（2026-09-08 船长定）：「AI 核心调度学」在核心档位之上再乘 (1 + dispatchPerLevel×级)，
+ *  卷B3⑩（2026-09-08 船长定）：「AI 核心调度学」在核心档位之上每级 +2 个百分点累加
+ *  （如基础核心 40% → 满级 50%；伽马 60% / 贝塔 70% / 阿尔法 85%，封顶 100%），
  *  覆盖全部核心驱动作业（副船任务与站内炉/线共源）；返航腿不 ÷eff（卷B2⑥ 口径）故天然不受影响。 */
 export function aiEfficiency(state: GameState, ctx: SimContext, type: AiCoreType): number {
   const base = ctx.balance.aiCore.efficiency[type] ?? 1
   const dLv = Math.min(5, state.skills.trained[ctx.balance.aiCore.dispatchSkillId] ?? 0)
-  return base * (1 + ctx.balance.aiCore.dispatchPerLevel * dLv)
+  return Math.min(1, base + ctx.balance.aiCore.dispatchPerLevel * dLv)
 }
 
 /** 核心库数量 */
