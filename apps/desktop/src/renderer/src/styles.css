@@ -4096,6 +4096,22 @@ body {
 
 }
 
+/* 买卖按钮宽度规范（2026-09-08 船长：买入/卖出侧按钮宽度不齐、切换跳动）：
+   侧标签等分、交易按钮行内等分占满整行、单行不换行，全部卖出保留自适应 */
+.app-mkt-sides { width: fit-content; }
+
+.app-mkt-sides .app-mkt-side { flex: 1 1 0; min-width: 72px; padding: 5px 10px; text-align: center; white-space: nowrap; }
+
+.app-mkt-side.is-disabled { opacity: 0.45; cursor: not-allowed; }
+
+.app-mkt-side.is-disabled:hover { color: #7d95a8; }
+
+.app-mkt-trade-btns { flex-wrap: nowrap; align-items: center; }
+
+.app-mkt-trade-btns .app-btn { flex: 1 1 0; min-width: 0; padding-inline: 4px; white-space: nowrap; justify-content: center; }
+
+.app-mkt-trade-btns .is-sellall { flex: 0 0 auto; padding-inline: 10px; }
+
 .app-fit-modal-head {
 
   display: flex;
