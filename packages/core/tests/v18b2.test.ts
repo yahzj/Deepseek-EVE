@@ -41,11 +41,11 @@ function laserDef(id: string, mk: number, dmgMult: number, reloadMs = 2000): Ret
 }
 
 describe('V18B-2 激光炮', () => {
-  it('威力衰减公式：falloff 0.3 → 近端 ×1、中点 ×0.475、远端保底 0（命中衰减的 1.5 倍，2026-09-08 船长定）', () => {
+  it('威力衰减公式：falloff 0.3 → 近端 ×1、中点 ×0.72、远端 ×0.44（命中衰减的 0.8 倍，2026-09-08 船长定稿）', () => {
     const w = { minRangeM: 0, maxRangeM: 4600, falloff: 0.3 }
     expect(beamPowerFactor(0, w)).toBeCloseTo(1, 9)
-    expect(beamPowerFactor(2300, w)).toBeCloseTo(Math.max(0, 1 - 0.5 * (1 - 0.3) * 1.5), 9) // = 0.475
-    expect(beamPowerFactor(4600, w)).toBeCloseTo(Math.max(0, 1 - (1 - 0.3) * 1.5), 9) // = 0（保底）
+    expect(beamPowerFactor(2300, w)).toBeCloseTo(Math.max(0, 1 - 0.5 * (1 - 0.3) * 0.8), 9) // = 0.72
+    expect(beamPowerFactor(4600, w)).toBeCloseTo(Math.max(0, 1 - (1 - 0.3) * 0.8), 9) // = 0.44
     // falloff 1（无衰减参）→ 恒 1
     expect(beamPowerFactor(99999, { minRangeM: 0, maxRangeM: 4600, falloff: 1 })).toBe(1)
   })
