@@ -370,10 +370,14 @@ function secondhandMul(state: GameState): number {
 }
 
 /** 巡游采购单次件数（2026-09-08 方案 B，船长定：越贴近收购价线惩罚越小——概率衰减之外，
- *  单次件数也随偏离收窄放大）：r = 相对价线溢价比例（0.01 = +1%）。
- *  池商品（矿/气/残骸等大宗，玩家动辄几百上千单位）贴线每次可收几十件，越远越小；
- *  单件商品（装备/蓝图等）维持小量。任何档位都远低于平价簿 + 让利吸收（贴线 ~30 件/窗 vs
- *  平价簿 ≈2.55×supplyFlow/窗）→ 价线纪律与"让利换清仓"仍然成立。 */
+ *  单次件数也随偏离收窄放大，且**与该商品池订单的每窗生成量挂钩**）：
+ *  r = 相对价线溢价比例（0.01 = +1%）。
+ *  池商品（矿/气/冰/残骸等大宗）：单次 = round(每窗簿量基准 qtyBase × 档位比例)，
+ *  档位比例 = 贴线 ≤1% → 0.5、≤3% → 0.25、≤8% → 0.1、更远 → 1 件（下限 1）；
+ *  qtyBase = supplyFlow（缺省 = poolTarget/120，与让利吸收 F 同源口径）。
+ *  例：氖云气 supplyFlow 45 → 贴线一次 ~23 件（≈平价簿最高档的量），矿石类大池自动同步放大。
+ *  单件商品（装备/蓝图等无池）：维持小量 5/3/2/1。任何档位仍远慢于平价簿 + 让利吸收
+ *  （期望 ≈ 命中率 ~28% × 单次量，相对平价簿 ≈2.55×supplyFlow/窗）→ 价线纪律与"让利换清仓"保留。 */
 export function snatchSellFill(def: MarketGoodDef | undefined, r: number): number {
   const pool = !!def?.poolTarget && (def.poolTarget ?? 0) > 0
   if (!pool) {
@@ -382,9 +386,10 @@ export function snatchSellFill(def: MarketGoodDef | undefined, r: number): numbe
     if (r <= 0.08) return 2
     return 1
   }
-  if (r <= 0.01) return 30
-  if (r <= 0.03) return 15
-  if (r <= 0.08) return 6
+  const qtyBase = def?.supplyFlow && def.supplyFlow > 0 ? def.supplyFlow : Math.max(1, (def?.poolTarget ?? 0) / 120)
+  if (r <= 0.01) return Math.max(1, Math.round(qtyBase * 0.5))
+  if (r <= 0.03) return Math.max(1, Math.round(qtyBase * 0.25))
+  if (r <= 0.08) return Math.max(1, Math.round(qtyBase * 0.1))
   return 1
 }
 
