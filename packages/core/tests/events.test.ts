@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { advanceGame } from '../src/engine'
-import { fireMarketOrderEvent, fireMarketShockEvent } from '../src/events'
+import { fireMarketOrderEvent, fireMarketShockEvent, eventCadenceFactor } from '../src/events'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
@@ -128,5 +128,26 @@ describe('随机事件系统（V11）', () => {
     const round = loadSaveFile(serializeSaveFile(loaded.state))
     expect(round.state.events.nextAtGameMs).toBe(0)
     expect(round.state.version).toBe(24)
+  })
+})
+
+describe('星际奇遇学改版（2026-09-08 船长定：事件间隔每级 −8%，遇袭期望不变补偿）', () => {
+  it('满级间隔因子 = 0.6；无技能 = 1', () => {
+    const { state } = makeWorld()
+    expect(eventCadenceFactor(state)).toBe(1)
+    state.skills.trained['galactic-happenings'] = 5
+    expect(eventCadenceFactor(state)).toBeCloseTo(0.6, 10)
+  })
+
+  it('同种子下满级首档间隔 ≈ 无技能 ×0.6（同一随机数、仅间隔缩放）', () => {
+    const a = makeWorld()
+    const b = makeWorld()
+    b.state.skills.trained['galactic-happenings'] = 5
+    advanceGame(a.state, 60_000, a.ctx)
+    advanceGame(b.state, 60_000, b.ctx)
+    const g0 = a.state.events.nextAtGameMs
+    const g5 = b.state.events.nextAtGameMs
+    expect(g0).toBeGreaterThan(0)
+    expect(Math.abs(g5 - g0 * 0.6)).toBeLessThanOrEqual(1.5) // 各自 round 一次，容差 ±1.5ms
   })
 })

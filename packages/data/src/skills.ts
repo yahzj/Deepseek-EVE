@@ -439,7 +439,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '星际奇遇学',
     group: '贸易',
     rank: 3,
-    description: '奇闻轶事的嗅觉：远征途中遭遇随机事件的概率每级 ×⟦1.15⟧（满级约 ×⟦2⟧）。',
+    description: '奇闻轶事的嗅觉：在线随机事件的来访间隔每级 −⟦8%⟧（满级间隔约为原来的六成）；出击出发时遭遇随机事件的机会每级 ×⟦1.15⟧。',
   },
   {
     id: 'event-dividend',

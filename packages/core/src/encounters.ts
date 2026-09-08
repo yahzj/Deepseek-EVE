@@ -324,7 +324,7 @@ export function maintainPresence(state: GameState, ctx: SimContext): void {
  * （及区域冷却），按星系安全度概率遇袭；命中即产生遭遇并返回 true（本次事件时机被占用，
  * 本段不再出随机事件）；未中返回 false（随机事件照常）。
  */
-export function rollLowSecAmbush(state: GameState, ctx: SimContext): boolean {
+export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale = 1): boolean {
   if (state.encounter.active) return false // 已有未了结遭遇：不叠
   const bal = ctx.balance.encounter
   for (const exp of collectExposures(state, ctx)) {
@@ -337,6 +337,9 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext): boolean {
     const sec = secOf(ctx, exp.galaxyId)
     let p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.highSecSafe - sec)))
     if (isScan) p = Math.min(0.9, p * (bal.scanAmbushMul ?? 1)) // 扫描低安：遇袭概率 ×scanAmbushMul
+    // 2026-09-08（星际奇遇学缩短事件间隔）：事件到点更密 → 单次遇袭率 ×cadenceScale，
+    // 使"每小时遇袭期望"保持与无技能基线一致（船长定：按期望值不变进行修改）
+    if (cadenceScale < 1) p = Math.min(0.9, p * Math.max(0, cadenceScale))
     if (nextRandom(state.rng) >= p) continue
     spawnEncounter(state, ctx, exp)
     return true // 一次到点至多一次遭遇（占用本段事件时机）
