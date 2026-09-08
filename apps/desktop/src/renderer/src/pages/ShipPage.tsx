@@ -19,7 +19,7 @@ import {
   shipRoleLabel,
 } from '@whale/core'
 import type { AiCoreType, FleetShipState } from '@whale/core'
-import { aiWinPreview, durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
+import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
 import { AiTaskBar } from '../ui/aiProgress'
@@ -36,7 +36,7 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 export type ShipTab = 'fleet' | 'ai' | 'shop'
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
-  { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻（自动远征暂停受理，悬赏请主控出击）' },
+  { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
   { key: 'shop', label: '舰船市场', icon: 'nav-shop' },
 ]
 
@@ -513,9 +513,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
   const [shipId, setShipId] = useState('')
   const [coreType, setCoreType] = useState<AiCoreType>('basic')
-  const [mode, setMode] = useState<'mining' | 'expedition' | 'salvage'>('mining')
+  // AI 远征已停用并隐藏（2026-09-05 软下线、2026-09-08 船长定 UI 隐藏）：仅采矿/打捞/掩护巡逻
+  const [mode, setMode] = useState<'mining' | 'salvage'>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
-  const [anomalyId, setAnomalyId] = useState('')
   const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
 
   function handleBuyCore(): void {
@@ -532,9 +532,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     const r =
       mode === 'mining'
         ? engine.assignAiMiningAt(shipId, coreType, beltId)
-        : mode === 'salvage'
-          ? engine.assignAiSalvageAt(shipId, coreType, salvageGalaxyId)
-          : engine.assignAiExpeditionAt(shipId, coreType, anomalyId)
+        : engine.assignAiSalvageAt(shipId, coreType, salvageGalaxyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
     else onToast('AI 任务已下达。')
   }
@@ -544,25 +542,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     if (engine.cancelAiTaskAt(sid)) onToast('AI 任务已取消（核心已归还）。')
     else onToast('取消失败：任务状态异常。', true)
   }
-
-  /**
-   * 可选悬赏（入口过滤与核心同源：声望 + 已亲手首胜；是否可派给某副船 = 该船自身装配的
-   * AI 最终成功率 ≥80%，逐船现算并显示在副船下拉框内——不再按"先选船"过滤目标列表）。
-   */
-  const pickableAnomalies =
-    mode === 'expedition'
-      ? engine.anomalies
-          .filter((a) => {
-            if (standingOfState(state) < a.standingReq) return false
-            if (!state.completedBounties.includes(a.id)) return false // 需手动首胜解锁自动远征
-            return true
-          })
-          .sort((a, b) => a.threat - b.threat)
-      : []
-  const selAnomaly =
-    mode === 'expedition' && anomalyId ? engine.anomalies.find((a) => a.id === anomalyId) : undefined
-  /** 该副船（按自身装配/技能，favor 口径）对当前所选悬赏的最终成功率；未选悬赏 = null */
-  const aiChanceOf = (id: string): number | null => (selAnomaly ? aiWinPreview(state, engine.ctx, selAnomaly, id) : null)
 
   return (
     <Panel
@@ -595,25 +574,14 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             className="app-select"
             value={shipId}
             onChange={(e) => setShipId(e.target.value)}
-            title={
-              mode === 'expedition' && selAnomaly
-                ? '成功率 = 该副船按自身装配/技能的 AI 最终成功率（含 favor）；低于 80% 不可自动远征'
-                : '选择空闲舰船'
-            }
+            title="选择空闲舰船"
           >
-            <option value="">
-              {mode === 'expedition' && selAnomaly ? `— 选副船（远征 ${selAnomaly.name}）—` : '— 选择空闲舰船 —'}
-            </option>
-            {idleShips.map((id) => {
-              const rate = aiChanceOf(id)
-              const ok = rate === null || rate >= 0.8
-              return (
-                <option key={id} value={id} disabled={!ok}>
-                  {shipDisplayName(state, engine.ctx, id)}（结构 {Math.round(durabilityOf(state, id) * 100)}%
-                  {rate === null ? '' : ok ? ` · 成功率 ${Math.round(rate * 100)}%` : ` · 成功率 ${Math.round(rate * 100)}%（<80% 不可派）`}）
-                </option>
-              )
-            })}
+            <option value="">— 选择空闲舰船 —</option>
+            {idleShips.map((id) => (
+              <option key={id} value={id}>
+                {shipDisplayName(state, engine.ctx, id)}（结构 {Math.round(durabilityOf(state, id) * 100)}%）
+              </option>
+            ))}
           </select>
           <select className="app-select" value={coreType} onChange={(e) => setCoreType(e.target.value as AiCoreType)}>
             {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
@@ -623,14 +591,10 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           <select
             className="app-select"
             value={mode}
-            onChange={(e) => setMode(e.target.value as 'mining' | 'expedition' | 'salvage')}
+            onChange={(e) => setMode(e.target.value as 'mining' | 'salvage')}
           >
             <option value="mining">采矿任务</option>
             <option value="salvage">打捞任务</option>
-            {/* AI 远征软下线（船长 2026-09-05）：选项保留但禁选；悬赏请主控亲自出击 */}
-            <option value="expedition" disabled title="自动远征暂停受理——悬赏请主控亲自出击">
-              远征任务（暂停受理）
-            </option>
           </select>
           {mode === 'mining' ? (
             <select className="app-select" value={beltId} onChange={(e) => setBeltId(e.target.value)}>
@@ -650,7 +614,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 )
               })}
             </select>
-          ) : mode === 'salvage' ? (
+          ) : (
             <select className="app-select" value={salvageGalaxyId} onChange={(e) => setSalvageGalaxyId(e.target.value)}>
               <option value="">— 选星系（需已探索且有敌群残骸） —</option>
               {[...engine.ctx.galaxies.values()]
@@ -661,37 +625,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   </option>
                 ))}
             </select>
-          ) : (
-            <select
-              className="app-select"
-              value={anomalyId}
-              onChange={(e) => {
-                const id = e.target.value
-                setAnomalyId(id)
-                // 已选副船若对该目标成功率 <80%（不达自动远征门槛）→ 清空让玩家重选
-                if (id && shipId) {
-                  const a = engine.anomalies.find((x) => x.id === id)
-                  if (a && aiWinPreview(state, engine.ctx, a, shipId) < 0.8) setShipId('')
-                }
-              }}
-              title="悬赏需已亲手首胜；副船成功率按其自身装配现算（见左侧舰船下拉）"
-            >
-              <option value="">— 选悬赏（声望·已首胜） —</option>
-              {pickableAnomalies.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {engine.ctx.galaxies.get(a.galaxyId)?.name}·{a.name}（威胁 {a.threat}）
-                </option>
-              ))}
-            </select>
           )}
           <button
             className="app-btn is-primary is-small"
             onClick={handleAssign}
-            disabled={
-              !shipId ||
-              (mode === 'expedition' && !anomalyId) ||
-              (mode === 'salvage' && !salvageGalaxyId)
-            }
+            disabled={!shipId || (mode === 'salvage' && !salvageGalaxyId)}
           >
             指派任务
           </button>
@@ -716,6 +654,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               const phaseLabel = task.phase === 'returning' ? '返航中' : task.phase === 'outbound' ? '出航中' : '采掘中'
               desc = `采矿 ${belt?.name ?? task.beltId} · ${phaseLabel} · 本趟 ${task.tripUnits} 单位`
             } else if (task.kind === 'expedition') {
+              // 防御分支：AI 远征已停用（2026-09-05 软下线、2026-09-08 UI 隐藏），理论不出现——老档残留兜底显示
               const a = engine.ctx.anomalies.get(task.anomalyId)
               const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
               desc = `远征 ${a?.name ?? task.anomalyId} · 剩余约 ${Math.floor(remain / 60_000)} 分钟`

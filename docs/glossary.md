@@ -43,7 +43,7 @@
 | 虚拟装配 | 敌舰生成口径：射程 = 战术带×成长系数 封顶 15km；速度 = 参考船速段×m_base×tactic 系数 封顶 1.2× | foeSpeedTacticMul brawl 1.28 / orbit 1.0 / kite 0.72 |
 | 参考段火力 | foeRefFire 段表 2.1/9.7/12.8 dps（≤16 / 17-40 / 41+），foeHpOfThreat = 段火力×D(T) | |
 | 近盲带 | 武器 minRange 以内。**敌我区分（2026-09-05 拍板）**：敌近盲内不停火、伤害×blindDmgMul(缺省0.3)；玩家近盲内不开火 | blindDmgMul 单卡可覆盖 |
-| 胜率口径 | `battleWinPreview`（玩家手动，无 favor）与 `aiWinPreview`（AI：favor 0.3 修正 + logit 扩散）| AI 门槛 = 最终成功率 ≥80%（AI 远征下线后仅留存代码） |
+| 胜率口径 | `battleWinPreview`（玩家手动，无 favor）与 `aiWinPreview`（AI：favor 0.3 修正 + logit 扩散）| AI 远征已停用并隐藏（2026-09-05 软下线、2026-09-08 UI 隐藏）；口径代码留存待恢复 |
 | 带伤预警 | 悬赏展示胜率口径（2026-09-08）：原显示 − 预计装甲损耗×10pp − 预计结构损耗×25pp——只改展示，结算与 AI/模拟不变 | bountyWinPercentGuarded |
 | 连续作战保险 | 巡回场次（2026-09-08）：战斗内结构剩余 <50% 自动撤退（轻损、停环、绝不弃船）；巡回自动再出发门槛提前到装甲 <50% 即修补至 60% | battle.hullEscapeFrac/autoEscaped |
 | favor | AI 远征优势：模型胜率 0.8 局 → AI 命中×1.18/敌命中×0.82 | aiFavorStrength 0.3 |

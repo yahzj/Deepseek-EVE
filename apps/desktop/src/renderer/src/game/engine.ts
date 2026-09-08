@@ -1251,7 +1251,8 @@ export class GameEngine {
     return result
   }
 
-  /** 指派 AI 远征任务 */
+  /** 指派 AI 远征任务（软下线 2026-09-05 船长定：引擎一律拒绝；UI 入口已于 2026-09-08 隐藏——
+   * 本方法保留供恢复；恢复 = 加回 ShipPage 指派选项即可） */
   assignAiExpeditionAt(shipId: string, coreType: AiCoreType, anomalyId: string): CommandResult {
     const result = assignAiExpedition(this.state, shipId, coreType, anomalyId, this.ctx)
     if (result.ok) {

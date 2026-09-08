@@ -293,7 +293,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 32_000,
     signatureM: 48,
     scanResMm: 650,
-    description: '猎食者航队的制式护卫舰：高机动低产量，护送 AI 远征副船的好手。',
+    description: '猎食者航队的制式护卫舰：高机动低产量，护送 AI 副船行动的好手。',
   },
   {
     id: 'sh-tigershark',

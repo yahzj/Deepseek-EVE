@@ -411,7 +411,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '赏金猎手学',
     group: '贸易',
     rank: 2,
-    description: '赏金评估与协会渠道：完成悬赏（含 AI 副船远征）的奖金每级 +⟦8%⟧（满级 +⟦40%⟧，在随机浮动之上乘算）。',
+    description: '赏金评估与协会渠道：完成悬赏的奖金每级 +⟦8%⟧（满级 +⟦40%⟧，在随机浮动之上乘算）。',
   },
   {
     id: 'marketing',
