@@ -2,20 +2,21 @@
  * 远征（V12 两阶段）单元测试：出发校验/去程/途中事件/到港开战/实时战斗/弹药/结算惩罚。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SimContext } from '../src/types'
+import type { SimContext, ItemDef } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { addModule, fitModule } from '../src/equipment'
 import {
+  advanceAutoLoopBounty,
   advanceExpedition,
   battleTacticDesire,
   expeditionStatus,
   setBattleDesire,
   startExpedition,
 } from '../src/expedition'
-import { battleWinPreview, battleArcsFor, createFoeSpecs } from '../src/combat'
-import { anomaly, makeTestCtx, moduleDef } from './helpers'
+import { battleWinPreview, battleArcsFor, bountyDamageForecast, bountyWinPercentGuarded, createFoeSpecs } from '../src/combat'
+import { anomaly, DEFAULT_TEST_ITEMS, makeTestCtx, moduleDef } from './helpers'
 
 describe('远征 V12：两阶段', () => {
   let state: GameState
@@ -320,5 +321,106 @@ describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-
     const scaled = w2.shotDmg ?? 0
     expect(scaled).toBeGreaterThanOrEqual(Math.round(full * 0.35) - 1)
     expect(scaled).toBeLessThanOrEqual(Math.round(full * 0.35) + 1)
+  })
+})
+
+/* ═══════════ 连续作战保险（2026-09-08 船长定：带伤预警 + 战内自动撤退 + 装甲门槛） ═══════════ */
+
+describe('连续作战保险', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.wallet.isk = 500_000
+    ctx = makeTestCtx({ quietEvents: true })
+  })
+
+  it('带伤预警口径：预计损耗越大展示扣分越多；无损耗时与原预览一致（结算口径 battleWinPreview 不变）', () => {
+    const weak = ctx.anomalies.get('ano-a')!
+    const strong = ctx.anomalies.get('ano-hard')!
+    const fw = bountyDamageForecast(state, ctx, weak, state.shipId)
+    const fs = bountyDamageForecast(state, ctx, strong, state.shipId)
+    // 自洽：损耗比在 0~1；强敌（threat 40）预计损耗 ≥ 弱敌（threat 8）
+    for (const f of [fw, fs]) {
+      expect(f.armorLoss).toBeGreaterThanOrEqual(0)
+      expect(f.armorLoss).toBeLessThanOrEqual(1)
+      expect(f.hullLoss).toBeGreaterThanOrEqual(0)
+      expect(f.hullLoss).toBeLessThanOrEqual(1)
+    }
+    expect(fs.hullLoss + fs.armorLoss).toBeGreaterThanOrEqual(fw.hullLoss + fw.armorLoss)
+    // 展示口径 ≤ 原口径；损耗大时扣分更多
+    const rawWeak = battleWinPreview(state, ctx, weak, state.shipId)
+    const gWeak = bountyWinPercentGuarded(state, ctx, weak, state.shipId)
+    const gStrong = bountyWinPercentGuarded(state, ctx, strong, state.shipId)
+    expect(gWeak).toBeLessThanOrEqual(rawWeak + 1e-9)
+    expect(gStrong).toBeLessThanOrEqual(gWeak + 1e-9)
+    // 原口径 battleWinPreview 不受影响（仍按满耐久基准）
+    expect(battleWinPreview(state, ctx, weak, state.shipId)).toBe(rawWeak)
+  })
+
+  it('巡回自动再出发门槛看装甲：装甲 <50% 且无修理组件 → 停环（原先只看结构，太晚）', () => {
+    state.autoLoopAnomalyId = 'ano-a' // 本地目标（无冷却/无探索门槛）
+    const fs = state.fleet[state.shipId]!
+    fs.armorPct = 0.4 // 装甲已残、结构尚好——旧逻辑（结构 <0.5 才拦）会放行
+    fs.durability = 0.9
+    const reason = advanceAutoLoopBounty(state, ctx)
+    expect(reason).toContain('修理组件耗尽')
+    expect(state.autoLoopAnomalyId).toBeNull()
+    expect(state.expedition.active).toBe(false) // 未出发
+  })
+
+  it('巡回自动再出发：装甲 <50% 时有货仓修理组件 → 自动修补到 60% 再出发（战斗挂保险阈值 50%）', () => {
+    const kit: ItemDef = {
+      id: 'repairkit-civ',
+      name: '民用修理组件',
+      kind: 'kit',
+      unitM3: 1,
+      baseSellPriceIsk: 100,
+      repairRestore: 30,
+      description: '',
+    }
+    ctx = makeTestCtx({ quietEvents: true, items: [...DEFAULT_TEST_ITEMS, kit] })
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.wallet.isk = 500_000
+    state.autoLoopAnomalyId = 'ano-a'
+    const fs = state.fleet[state.shipId]!
+    fs.armorPct = 0.4
+    fs.durability = 0.9
+    fs.cargo['repairkit-civ'] = 50
+    const reason = advanceAutoLoopBounty(state, ctx)
+    expect(reason).toBeNull()
+    expect(state.fleet[state.shipId]!.armorPct ?? 1).toBeGreaterThanOrEqual(0.6) // 修补目标 0.6
+    expect(state.expedition.active).toBe(true)
+    expect(state.expedition.phase).toBe('battle') // 本地目标即时开战
+    expect(state.expedition.battle!.hullEscapeFrac).toBe(0.5) // 巡回场挂自动撤退阈值
+    expect(state.logs.some((l) => l.text.includes('自动使用修理组件'))).toBe(true)
+  })
+
+  it('巡回场战斗内结构损失过半 → 自动撤退：轻损保船、停环、转返航（绝不弃船）', () => {
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
+    expect(state.expedition.phase).toBe('battle')
+    const b = state.expedition.battle!
+    // 等效巡回场（自动再出发路径在 beginBattleAt 挂 0.5；手动开场等效补挂）
+    state.autoLoopAnomalyId = 'ano-a'
+    b.hullEscapeFrac = 0.5
+    // 人为压伤：结构剩 40%（< 50% 阈值）
+    b.units['player']!.hp.h = Math.floor((b.units['player']!.hp.h * 0.4) * 100) / 100
+    const shipId = state.shipId
+    advanceGame(state, 2_000, ctx)
+    const exp = state.expedition
+    expect(exp.active).toBe(true)
+    expect(exp.phase).toBe('back') // 已自动撤退转返航
+    expect(exp.returnReason).toBe('retreat')
+    expect(state.autoLoopAnomalyId).toBeNull() // 撤退即终止连续出击
+    expect(state.fleet[shipId]).toBeDefined() // 船没丢
+    const dur = state.fleet[shipId]!.durability
+    expect(dur).toBeGreaterThan(0.05) // 下限保护
+    expect(dur).toBeLessThan(0.5) // 本场已残
+    expect(state.logs.some((l) => l.text.includes('自动撤退'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('连续出击已停止'))).toBe(true)
+    // 返航到港：作业完整结束
+    advanceGame(state, 10 * 60_000, ctx)
+    expect(state.expedition.active).toBe(false)
   })
 })

@@ -398,6 +398,8 @@ export type { StationSiteProgress } from './state'
 
 export {
   battleWinPreview,
+  bountyDamageForecast,
+  bountyWinPercentGuarded,
   aiWinPreview,
   aiFavorAdv,
   battleOpenM,

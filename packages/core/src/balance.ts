@@ -190,6 +190,10 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     winSpread: 1.6, // 预估胜率扩散（logit ×1.6）：0.8 → ~0.90 / 0.5 → 0.5 / 0.2 → ~0.10
     aiFavorStrength: 0.3, // AI 远征 favor：模型胜率 0.8 局 → AI 命中 ×1.18 / 敌命中 ×0.82（简单局近必胜）
     killcamMs: 1_500, // 击杀慢镜：胜负后延迟 1.5s 再结算（让最后一击动画+爆炸演出播完）
+    // 带伤预警扣分（2026-09-08 船长定：展示胜率 = 原显示 − 预计装甲损耗×0.10 − 预计结构损耗×0.25；
+    // 只改展示，实际结算与 AI/模拟预估不变）
+    winPenaltyArmorPerFull: 0.1,
+    winPenaltyHullPerFull: 0.25,
   },
   events: {
     enabled: true, // 随机事件总开关（测试可整体关闭）

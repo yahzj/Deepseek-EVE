@@ -540,6 +540,11 @@ export interface BattleBalance {
   /** 击杀慢镜：战斗分出胜负后延迟结算的毫秒数（给最后一击动画与战败演出留时间；
    * 仅主控远征生效，AI 后台任务即时结算） */
   killcamMs: number
+  /** 带伤预警扣分（2026-09-08 船长定：只作用于悬赏展示胜率——预计装甲全损扣 winPenaltyArmorPerFull、
+   * 预计结构损耗额外按 winPenaltyHullPerFull；实际结算与 AI/模拟预估一律不变） */
+  winPenaltyArmorPerFull: number
+  /** 结构损耗预警扣分系数（结构伤比装甲伤扣得更重 = 船长的"更大幅度下调"） */
+  winPenaltyHullPerFull: number
 }
 
 /**
