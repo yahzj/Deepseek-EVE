@@ -1303,12 +1303,28 @@ function normalizeState(raw: unknown): GameState {
     const r = asRaw(rawRun)
     const bp = typeof r.blueprintId === 'string' && r.blueprintId.length > 0 ? r.blueprintId : null
     if (r.active !== true || bp === null) return null
-    return { active: true, id: -1, blueprintId: bp, finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))), durationMs: Math.max(0, Math.floor(num(r.durationMs))) }
+    // 劳动者（卷B3 修复 2026-09-08：worker 必须随档保留——缺省会丢 AI 核心占用与劳动者语义）
+    const worker =
+      r.worker === 'pilot' || r.worker === 'basic' || r.worker === 'gamma' || r.worker === 'beta' || r.worker === 'alpha'
+        ? r.worker
+        : undefined // 缺省 = 劳动者制前的旧作业豁免（不占核心/名额，跑到自然完成）
+    return { active: true, id: -1, blueprintId: bp, worker, finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))), durationMs: Math.max(0, Math.floor(num(r.durationMs))) }
   }
+  let pilotSeen = false // 主控亲自制造全局限 1 条（引擎保证；防御读档里出现重复）
   const pushMf = (rawRun: unknown): void => {
+    const raw = asRaw(rawRun)
     const run = sanitizeMfRun(rawRun)
-    if (!run) return
-    if (manufacturingRuns.some((x) => x.blueprintId === run.blueprintId)) return
+    if (!run) {
+      // 结构性坏条丢弃 → 归还其已出库的 AI 核心（防"消失的 AI 依旧占用"）
+      const w = raw.worker
+      if (w === 'basic' || w === 'gamma' || w === 'beta' || w === 'alpha') aiCores[w] = (aiCores[w] ?? 0) + 1
+      return
+    }
+    if (run.worker === 'pilot') {
+      if (pilotSeen) return
+      pilotSeen = true
+    }
+    // 卷B3 修复（2026-09-08 玩家反馈）：同一蓝图可开多条线 → 禁止按 blueprintId 去重
     run.id = manufacturingSeq
     manufacturingSeq += 1
     manufacturingRuns.push(run)

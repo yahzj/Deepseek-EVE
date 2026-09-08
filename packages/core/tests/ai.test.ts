@@ -54,6 +54,13 @@ describe('AI 核心库与名额', () => {
     expect(aiEfficiency(state, ctx, 'alpha')).toBe(0.75)
   })
 
+  it('AI 核心调度学（卷B3⑩）：效率在核心档位之上 ×(1+2%/级)，满级 ×1.1', () => {
+    state.skills.trained['ai-core-dispatch'] = 5
+    expect(aiEfficiency(state, ctx, 'basic')).toBeCloseTo(0.44, 10) // 0.4 × 1.1
+    expect(aiEfficiency(state, ctx, 'gamma')).toBeCloseTo(0.55, 10)
+    expect(aiEfficiency(state, ctx, 'alpha')).toBeCloseTo(0.825, 10) // 0.75 × 1.1
+  })
+
   it('购买基础核心：扣款入库；钱不够拒绝', () => {
     expect(countAiCore(state, 'basic')).toBe(0)
     state.wallet.isk = 24_999
@@ -141,6 +148,15 @@ describe('AI 采矿任务', () => {
     assignAiMining(state2, 'sandcat2', 'alpha', 'belt-a', ctx)
     advanceGame(state2, 8_000, ctx)
     expect(state2.fleet['sandcat2']!.cargo['ore-a']).toBe(5)
+  })
+
+  it('AI 核心调度学满级：基础核心 40%×1.1 → 6 秒循环实际需 13.637 秒采 5 单位', () => {
+    state.skills.trained['ai-core-dispatch'] = 5 // 6000ms / 0.44 = 13636ms → ceil 13637ms
+    assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx)
+    advanceGame(state, 13_636, ctx)
+    expect(state.fleet['sandcat2']!.cargo['ore-a'] ?? 0).toBe(0) // 不足一个循环
+    advanceGame(state, 1, ctx)
+    expect(state.fleet['sandcat2']!.cargo['ore-a']).toBe(5)
   })
 
   it('满舱自动返航卸货入物品仓库后继续出航（效率计入行程）', () => {

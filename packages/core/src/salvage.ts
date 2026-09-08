@@ -18,6 +18,8 @@
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { ItemDef, SimContext } from './types'
 import { nextRandom } from './rng'
+import { addModule } from './equipment'
+import { addWare } from './inventory'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、半效保底 */
 export const WRECK_FLOOR = 5
@@ -387,5 +389,68 @@ export function rollRecycleLoot(
     }
   }
   return { modules, fragments }
+}
+
+/* ═══════════ 完好舰体当场直发（卷B3⑨，2026-09-08 船长定稿：⑨-A） ═══════════ */
+
+/** 命中「完好舰体」后的蓝图碎片层概率/片数（威胁 ≥17 必掷 MK2 层、≥41 追加 MK3 层；
+ *  片值小（MK2 ~几百 ISK/片），纯凑逆向收藏的彩头尾缀，频率不敏感） */
+const INTACT_FRAG_T2_CHANCE = 0.3
+const INTACT_FRAG_T2_COUNT = 3
+const INTACT_FRAG_T3_CHANCE = 0.2
+const INTACT_FRAG_T3_COUNT = 1
+
+/**
+ * 完好舰体当场直发（主控/AI 打捞共用；在 pullOneWreck 命中完好舰体时调用一次）：
+ * 不再折算体积（旧 ×2 移除），改为按该残骸所属敌群的回收画像直发回收彩头：
+ * ① 基础件**必中 1 件**（该敌群主题追加件优先，否则默认基础件池 8 件）；
+ * ② 低安（sec<0）另按 balance.intactMk2Chance 掷 MK2 档（默认 MK2 池 + 低安主题追加件）；
+ * ③ 碎片层：威胁 ≥17 按 INTACT_FRAG_T2_CHANCE 掷 MK2 碎片 ×3 片；≥41 追加掷 MK3 碎片 ×1 片。
+ * 产物：装备 → 装备库、碎片 → 物品仓库（协会货运直送——打捞舰仍在野外，不占货仓、
+ * 不影响满仓返航判定）。返回日志摘要（无任何产物 = null）。
+ */
+export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId: string): string | null {
+  const profile = recycleProfileOf(ctx, wreckItemIdOf(anomalyId))
+  if (!profile) return null
+  const gains: string[] = []
+  // ① 基础件必中（主题追加件优先；无主题或不在上下文 = 默认基础池）
+  const defBase = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
+  const appendBase = (profile.loot?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
+  if (defBase.length === 0 && appendBase.length === 0) return null
+  const basePick =
+    appendBase.length > 0
+      ? appendBase[Math.floor(nextRandom(state.rng) * appendBase.length)]!
+      : defBase[Math.floor(nextRandom(state.rng) * defBase.length)]!
+  addModule(state, basePick)
+  gains.push(`「${ctx.modules.get(basePick)?.name ?? basePick}」`)
+  // ② 低安 MK2 层
+  if (profile.lowSec) {
+    const defMk2 = RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
+    const appendMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
+    const mk2Pool = [...defMk2, ...appendMk2]
+    if (mk2Pool.length > 0 && nextRandom(state.rng) < ctx.balance.intactMk2Chance) {
+      const mk2Pick = mk2Pool[Math.floor(nextRandom(state.rng) * mk2Pool.length)]!
+      addModule(state, mk2Pick)
+      gains.push(`「${ctx.modules.get(mk2Pick)?.name ?? mk2Pick}」`)
+    }
+  }
+  // ③ 碎片层（凑逆向收藏的尾缀）
+  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter(
+    (m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
+  )
+  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter(
+    (m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
+  )
+  if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T2_CHANCE) {
+    const m = t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!
+    addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T2_COUNT)
+    gains.push(`${INTACT_FRAG_T2_COUNT} 片「${ctx.items.get(fragmentItemIdOf(m))?.name ?? ''}」`)
+  }
+  if (profile.threat >= 41 && t3Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T3_CHANCE) {
+    const m = t3Pool[Math.floor(nextRandom(state.rng) * t3Pool.length)]!
+    addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T3_COUNT)
+    gains.push(`${INTACT_FRAG_T3_COUNT} 片「${ctx.items.get(fragmentItemIdOf(m))?.name ?? ''}」`)
+  }
+  return `缴获 ${gains.join('、')}——成件装备已随协会货运先行送回空间站（装备库查收）`
 }
 

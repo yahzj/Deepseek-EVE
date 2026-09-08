@@ -48,9 +48,13 @@ export function aiCoreName(type: AiCoreType): string {
   return type === 'basic' ? '基础 AI 核心' : type === 'gamma' ? '伽马 AI 核心' : type === 'beta' ? '贝塔 AI 核心' : '阿尔法 AI 核心'
 }
 
-/** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励） */
+/** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励）。
+ *  卷B3⑩（2026-09-08 船长定）：「AI 核心调度学」在核心档位之上再乘 (1 + dispatchPerLevel×级)，
+ *  覆盖全部核心驱动作业（副船任务与站内炉/线共源）；返航腿不 ÷eff（卷B2⑥ 口径）故天然不受影响。 */
 export function aiEfficiency(state: GameState, ctx: SimContext, type: AiCoreType): number {
-  return ctx.balance.aiCore.efficiency[type] ?? 1
+  const base = ctx.balance.aiCore.efficiency[type] ?? 1
+  const dLv = Math.min(5, state.skills.trained[ctx.balance.aiCore.dispatchSkillId] ?? 0)
+  return base * (1 + ctx.balance.aiCore.dispatchPerLevel * dLv)
 }
 
 /** 核心库数量 */
@@ -759,7 +763,7 @@ function advanceAiSalvage(
       task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) + stepMs
       while ((task.deviceAccMs[key] ?? 0) >= real) {
         task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) - real
-        const pulled = pullOneWreck(state, ctx, task.galaxyId)
+        const pulled = pullOneWreck(state, ctx, task.galaxyId, real)
         if (!pulled) {
           abort('该星系敌群数据缺失，打捞任务终止')
           return

@@ -42,6 +42,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   },
   aiCore: {
     skillId: 'ai-expert', // 唯一「AI 核心上限」技能：LvN = 可同时启用 N 枚 AI 核心（AI 副船任务与站内 AI 设施共用；后续上限技能在 ai.ts aiCoreCap 叠加）
+    dispatchSkillId: 'ai-core-dispatch', // AI 核心调度学（卷B3⑩，2026-09-08 船长定）：核心驱动作业效率再乘区
+    dispatchPerLevel: 0.02, // 每级 +2%（满级 ×1.1）；只作用于 ÷eff 的作业段（返航腿不参与，卷B2⑥）
     basicPriceIsk: 25_000, // 基础核心直购价
     efficiency: { basic: 0.4, gamma: 0.5, beta: 0.6, alpha: 0.75 },
     drops: [
@@ -59,6 +61,10 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   // 富矿脉基础触发率 3%/分钟（卷B2⑥，2026-09-08 船长定稿：掷点按"循环占用分钟数"缩放；
   // 命中后连续 2 循环 ×3；0 = 禁用，测试用它关富矿保 rng 时序）
   richVeinChance: 0.03,
+  // 完好舰体命中率 0.08%/打捞分钟（卷B3⑨，2026-09-08 船长定稿：命中 = 当场直发该敌群回收彩头；
+  // 基础件均价 33.5k 锚下 ≈ 4×MK2 打捞器满级 1 次/80 分钟 ≈ +6~8k/h 惊喜线；0 = 禁用）
+  intactHullRatePerMin: 0.0008,
+  intactMk2Chance: 0.04, // 命中后的低安 MK2 层（sec<0；默认 MK2 池均价 ≈251k → 大奖层频率压低）
   travelEventChance: 0.3, // 远征出发 30% 概率遇到途中事件
   rewardJitter: 0.15, // 远征奖金浮动 ±15%
   // B1 低安遭遇（2026-09-04 定稿：占用随机事件时机——事件线到点判定；到达缓冲 5 分钟；

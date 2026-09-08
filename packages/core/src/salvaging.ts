@@ -24,7 +24,7 @@ import { actionBlockReason, markExplored } from './explore'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom } from './rng'
-import { salvageRoundPull, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
+import { salvageRoundPull, rollIntactHullLoot, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
 import { scaledReturnMs } from './trips'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
@@ -140,19 +140,27 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   return true
 }
 
-/** 完好舰体（当轮捞取 ×2）概率：基础 1%，每级 ×1.2（残骸富集识别学，2026-09-05） */
-export function assayChanceOf(state: GameState): number {
+/**
+ * 完好舰体命中率（卷B3⑨，2026-09-08 船长定稿：概率按"该打捞轮占用的分钟数"换算——
+ * 与富矿脉⑥同哲学：以分钟为纲，掷点节奏不受打捞器数量/周期与 AI 效率影响）：
+ * p = min(1, 轮占分钟 × balance.intactHullRatePerMin × 1.2^级)。
+ * 命中 = 当场直发敌群回收彩头（rollIntactHullLoot；旧"当轮体积 ×2"已移除）。
+ * 0 = 禁用（测试用它关完好舰体保 rng 时序）。
+ */
+export function assayChanceOf(state: GameState, ctx: SimContext, cycleMsReal: number): number {
   const lv = Math.min(5, state.skills.trained['wreck-assaying'] ?? 0)
-  return 0.01 * Math.pow(1.2, lv)
+  return Math.min(1, (Math.max(0, cycleMsReal) / 60_000) * ctx.balance.intactHullRatePerMin * Math.pow(1.2, lv))
 }
 
 /** 一轮打捞的通用结算（主控作业与 AI 任务共用）：
  * 抽该星系敌群型号池一只（威胁加权）→ 体积当量系数（含放干扣减）→ 返回 { itemId, volumeM3 }；
- * 星系无型号池返回 null。放货入舱由调用方按剩余舱容裁决（放不下 = 满仓返航）。 */
+ * 星系无型号池返回 null。放货入舱由调用方按剩余舱容裁决（放不下 = 满仓返航）。
+ * cycleMsReal：该台打捞器本轮真实周期毫秒（完好舰体命中率按分钟语义换算用）。 */
 export function pullOneWreck(
   state: GameState,
   ctx: SimContext,
   galaxyId: string,
+  cycleMsReal: number,
 ): { itemId: string; mul: number; volumeM3: number } | null {
   const pool: Array<{ anomalyId: string; threat: number }> = []
   for (const a of ctx.anomalies.values()) {
@@ -175,11 +183,15 @@ export function pullOneWreck(
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
   const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
-  // 残骸富集识别学（wreck-assaying，2026-09-05）：完好舰体（当轮 ×2）概率 1% ×1.2/级
-  const bigFind = nextRandom(state.rng) < assayChanceOf(state)
+  // 残骸富集识别学（wreck-assaying，卷B3⑨）：完好舰体命中 → 当场直发该敌群回收彩头
+  // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
+  if (nextRandom(state.rng) < assayChanceOf(state, ctx, cycleMsReal)) {
+    const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
+    if (gains) addLog(state, 'info', `完好舰体！${gains}。`)
+  }
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
-  const volumeM3 = baseM3 * mul * (bigFind ? 2 : 1) * (1 + 0.12 * diveLv)
+  const volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv)
   return { itemId: wreckId, mul, volumeM3 }
 }
 
@@ -265,7 +277,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + stepMs
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
-        const pulled = pullOneWreck(state, ctx, galaxyId)
+        const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs)
         if (!pulled) {
           resetOp(state)
           addLog(state, 'warn', '该星系敌群数据缺失，打捞作业已停止。')

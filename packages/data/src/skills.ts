@@ -235,7 +235,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '残骸富集识别学',
     group: '工业',
     rank: 3,
-    description: '残骸价值判定：打捞到“完好舰体”（当轮捞取体积 ×2）的概率每级 ×⟦1.2⟧（基础 1%；对标富矿勘探学）。',
+    description: '残骸价值判定：打捞中发现「完好舰体」的机会每级 ×⟦1.2⟧——完好舰体不再折算体积，而是当场缴获一件该编队回收池的完整装备（低安空域有机会缴获更高档成装）。',
   },
   {
     id: 'salvage-refining',
@@ -377,6 +377,13 @@ export const SKILLS: readonly SkillDef[] = [
     description: 'AI 指挥框架：每级 +⟦1 枚⟧ 可同时启用的 AI 核心上限（AI 副船任务与站内精炼炉/回收炉/制造线共用该上限）。',
   },
   {
+    id: 'ai-core-dispatch',
+    name: 'AI 核心调度学',
+    group: '工程',
+    rank: 5,
+    description: '多核心的负载调度与协同优化：AI 核心驱动的全部作业（AI 副船任务与站内精炼炉/回收炉/制造线）效率每级 +⟦2%⟧（在核心档位效率之上乘算）。',
+  },
+  {
     id: 'accelerated-learning',
     name: '高效学习法',
     group: '工程',
@@ -425,14 +432,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '现货抢购学',
     group: '贸易',
     rank: 4,
-    description: '供应链情报网络：市场稀有/限定订单的刷新频率每级 ×⟦1.25⟧（满级约 ×⟦4⟧）。',
+    description: '供应链情报网络：市场稀有/限定订单的刷新频率每级 ×⟦1.1⟧（满级约 ×⟦1.5⟧）。',
   },
   {
     id: 'secondhand-market',
     name: '二手市场学',
     group: '贸易',
     rank: 2,
-    description: '收藏品估值与人脉：出售蓝图书的回价每级 +⟦8%⟧（满级 +⟦40%⟧）。',
+    description: '旧货市场渠道：市场稀有商品的供给单价格每级 −⟦2%⟧（满级 −⟦10%⟧）。',
   },
   {
     id: 'galactic-happenings',

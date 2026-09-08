@@ -643,6 +643,56 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
     expect(totalKept).toBeGreaterThan(20)
     expect(capWins).toBeGreaterThan(0)
   })
+
+  it('二手市场学（卷B3⑪）：稀有供给单价格 −2%/级（满级 −10%）；闸内暗市单同乘；奇货不参与', () => {
+    // 双跑对照：同种子同窗数，技能等级只改价格不耗随机数 → 逐单比值精确（取整 ±1 ISK）
+    const run = (lv: number, locked: boolean): { rare: number[]; exo: number[] } => {
+      const s = createInitialState({ nowWallMs: 0, seed: 21 })
+      s.wallet.isk = 100_000_000
+      s.skills.trained['secondhand-market'] = lv
+      if (!locked) s.standings['dsi'] = 5 // 解锁 → 原价线
+      const g = makeTestCtx({
+        quietEvents: true,
+        balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, exoticWindowChance: 0.5 } },
+        marketGoods: [
+          { key: 'mod-r', kind: 'module', refId: 'mod-r', rarity: 'rare', basePrice: 10_000, bmStanding: 5 },
+          { key: 'mod-e', kind: 'module', refId: 'mod-e', rarity: 'exotic', basePrice: 10_000 },
+        ],
+      })
+      marketQuote(s, g, 'mod-r')
+      marketQuote(s, g, 'mod-e')
+      const rare: number[] = []
+      const exo: number[] = []
+      for (let w = 1; w <= 200; w++) {
+        advanceGame(s, 60_000, g)
+        if (w % 10 !== 0) continue // 只在抽取窗结算
+        for (const o of s.market.npcSell['mod-r'] ?? []) {
+          if (o.expiresAtGameMs === s.market.lastTickGameMs + RARE_LIFE) rare.push(o.price)
+        }
+        for (const o of s.market.npcSell['mod-e'] ?? []) {
+          if (o.expiresAtGameMs === s.market.lastTickGameMs + EXO_LIFE) exo.push(o.price)
+        }
+      }
+      return { rare, exo }
+    }
+    // 解锁原价线：满级 ≈ ×0.9（逐单对照；两边各自取整 → 容差 ±1 ISK）
+    const u0 = run(0, false)
+    const u5 = run(5, false)
+    expect(u0.rare.length).toBe(20) // 每抽取窗 1 张（唯一候选，N 下限 1）
+    for (let i = 0; i < u0.rare.length; i++) {
+      expect(Math.abs(u5.rare[i]! - u0.rare[i]! * 0.9)).toBeLessThanOrEqual(1)
+    }
+    // 闸内 ×4 暗市单同乘：打折后仍远高于原价（声望解锁节奏不受影响）
+    const l0 = run(0, true)
+    const l5 = run(5, true)
+    expect(Math.abs(l5.rare[0]! - l0.rare[0]! * 0.9)).toBeLessThanOrEqual(1)
+    expect(l5.rare[0]!).toBeGreaterThan(30_000) // ~38k：仍是 ~4× 价
+    // 奇货不参与折扣（收购档 1.0L 全价回收 → 折价会造出"低买→全价回购"套利环）
+    const e0 = run(0, false)
+    const e5 = run(5, false)
+    expect(e0.exo.length).toBeGreaterThan(5)
+    expect(e5.exo).toEqual(e0.exo)
+  })
 })
 
 /* ═══════════ 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩） ═══════════ */
