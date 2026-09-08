@@ -20,7 +20,7 @@ import {
   shipDisplayName,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
-import { ItemHover } from '../ui/shipInfo'
+import { ItemHover, InfoTable, itemInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
@@ -304,6 +304,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   </div>
                 </div>
               </div>
+              {/* 2026-09-08 船长反馈：图标模式信息太少——与列表悬浮同源信息表 */}
+              <InfoTable lines={itemInfoLines(pickDef, (id) => engine.ctx.items.get(id)?.name)} />
               <div className="app-dim app-itempick-note">{pickDef.description}</div>
               <div className="app-itempick-actions">
                 {!isPiloted ? (

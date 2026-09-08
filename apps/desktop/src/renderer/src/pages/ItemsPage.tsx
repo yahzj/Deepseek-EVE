@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { ItemHover } from '../ui/shipInfo'
+import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, useItemView, type ItemGridCell } from '../ui/itemView'
@@ -299,6 +299,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   </div>
                 </div>
               </div>
+              {/* 2026-09-08 船长反馈：图标模式信息太少——与列表模式悬浮窗同源信息表（种类/体积/收价/精炼配方/弹药无人机战斗行/修理件） */}
+              <InfoTable lines={itemInfoLines(pickItemDef, (id) => engine.ctx.items.get(id)?.name)} />
               <div className="app-dim app-itempick-note">{pickItemDef.description}</div>
               <div className="app-itempick-actions">
                 {LOADABLE_KINDS.has(pickItemDef.kind) ? (
@@ -351,6 +353,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   </div>
                 </div>
               </div>
+              {/* 2026-09-08：装备弹层补与悬浮同源信息表（槽位/类型/CPU/效果参数） */}
+              <InfoTable lines={moduleInfoLines(pickModDef)} />
               <div className="app-dim app-itempick-note">{pickModDef.description}</div>
               <div className="app-itempick-actions">
                 <button className="app-btn is-small" title="安装与卸下请到「装配」页">
