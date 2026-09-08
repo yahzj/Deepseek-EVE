@@ -327,6 +327,19 @@ function stockedFirst(engine: PageProps['engine'], goods: MarketGoodDef[]): Mark
   return [...goods].sort((a, b) => Number(hasStock.get(b.key)) - Number(hasStock.get(a.key)))
 }
 
+/** 稀有订单列排序（2026-09-08 船长定：优先置顶"有货的限定奇货"）：
+ * ① 有货奇货 → ② 其余有货 → ③ 无货奇货 → ④ 其余无货；组内保持目录稳定顺序 */
+function rareOrderRows(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
+  const hasStock = new Map(goods.map((g) => [g.key, marketQuote(engine.state, engine.ctx, g.key).sell !== undefined]))
+  const tier = (g: MarketGoodDef): number => {
+    const stocked = hasStock.get(g.key) === true
+    if (stocked && g.rarity === 'exotic') return 0
+    if (stocked) return 1
+    return g.rarity === 'exotic' ? 2 : 3
+  }
+  return [...goods].sort((a, b) => tier(a) - tier(b))
+}
+
 function MarketColumn({
   engine,
   title,
@@ -1003,7 +1016,7 @@ export function MarketPage({
                   engine={engine}
                   title="稀有订单"
                   right={<span className="app-dim">每 10 分钟一轮到货 · 稀有 36 分钟寿命 · 限定奇货 6 小时有效 · 时钟=现存单到期</span>}
-                  rows={stockedFirst(engine, rareCol)}
+                  rows={rareOrderRows(engine, rareCol)}
                   selKey={activeSelKey}
                   onSelect={setSelKey}
                 />
