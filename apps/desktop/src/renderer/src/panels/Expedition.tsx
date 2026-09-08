@@ -1268,7 +1268,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           <span className="app-ga-main">
             打捞（需高槽打捞器）
             <span className="app-dim app-ga-desc">
-              残骸停靠空间站（母港或已建成副站）后用精炼炉「残骸回收」拆解（保底矿物+彩头）；满仓自动返航；低安留意伏击
+              残骸可带回站内拆解提炼；满仓自动返航卸货；低安作业留意伏击
             </span>
           </span>
           <button

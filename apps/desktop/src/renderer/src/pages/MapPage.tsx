@@ -418,7 +418,7 @@ function BeltCard({
 
 /* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式单趟） ═══════════════ */
 
-/** 打捞速率与回收保底估值（当前驾驶船装配/技能 × 当前密度现算；展示用近似；回收卡同口径共用 RECYCLE_POOL_AVG_ISK） */
+/** 打捞速率与拆解估价（当前驾驶船装配/技能 × 当前密度现算；展示用近似；回收卡同口径共用 RECYCLE_POOL_AVG_ISK） */
 function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyId: string, density: number): { eff: string | null; val: string | null } {
   const ctx = engine.ctx
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
@@ -441,7 +441,7 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const evH = Math.round(effM3 * RECYCLE_YIELD_PER_M3[tier] * RECYCLE_POOL_AVG_ISK[tier] * (1 + 0.08 * refLv))
   return {
     eff: `${cycles.length} 台打捞器 · ≈${Math.round(volH).toLocaleString('zh-CN')} m³/h（当前密度现算${volH > capM3H ? '，超出回收炉速按炉速计' : ''}）`,
-    val: `${isk(evH)} ISK/h 保底（按来源危险度池估价）`,
+    val: `${isk(evH)} ISK/h 拆解估价（按来源危险度池粗估）`,
   }
 }
 
@@ -503,7 +503,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
       <div className="app-dim app-note">
-        驾驶船高槽装打捞器即可开捞：单趟作业、满仓自动返航卸货；残骸回站后在工业页拆解（保底矿物 + 彩头）。低安星系打捞作业中可能遇袭——详见手册「航行须知」。
+        驾驶船高槽装打捞器即可开捞：单趟作业、满仓自动返航卸货；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 
