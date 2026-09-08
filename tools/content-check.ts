@@ -22,6 +22,7 @@ import {
   ITEMS,
   BELTS,
   MARKET_GOODS,
+  WRECK_BUY_GOODS,
   MODULES,
   SHIP_BLUEPRINTS,
   SHIPS,
@@ -477,6 +478,21 @@ for (const m of MODULES) {
   }
   check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
   console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3%）`)
+  // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正）：收价 < 无技能拆解保底（≈57/m³，三档齐平），
+  // 且与档位表一致（常 30 / 险 40 / 危 50，≈该档典型特色回收的五成上下）
+  const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
+  const noSkillPerM3 = 82_000 / 1_440
+  for (const g of WRECK_BUY_GOODS) {
+    const anoId = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
+    const def = ANOMALIES_FLAVORED.find((a) => a.id === anoId)
+    const sec = typeof ctx.galaxies.get(def?.galaxyId ?? '')?.security === 'number' ? ctx.galaxies.get(def!.galaxyId)!.security! : 0.5
+    const density = Math.min(40, Math.max(10, Math.round(10 + 15 * (1 - sec))))
+    const tier = density >= 30 ? 'dire' : density >= 20 ? 'risky' : 'common'
+    check(g.basePrice === wreckBuyPrice[tier], `残骸卡 ${g.key} 价格档错位：期望 ${wreckBuyPrice[tier]}（${tier}），实际 ${g.basePrice}`)
+    check(g.basePrice < noSkillPerM3, `残骸卡 ${g.key} 收价 ${g.basePrice} 不低于无技能拆解保底 ${noSkillPerM3.toFixed(1)}/m³——会击穿回收线最低锚`)
+    check(g.playerBuyable === false, `残骸卡 ${g.key} 必须只收不卖（playerBuyable=false）`)
+  }
+  console.log(`· 残骸收购卡：${WRECK_BUY_GOODS.length} 张（收价 = 常 30 / 险 40 / 危 50 ISK·m³，须低于无技能拆解保底）`)
   // 2026-09-08 船长定稿：①主题彩头（recycleLoot 追加件）只允许 sec < 0.5 星系；
   // ②主题追加件不得含武器（炮/激光/导弹架），唯一例外 = 穹顶守卫门槛线追加三把 MK3 武器；
   // ③MK3 一律走碎片，穹顶守卫 × {三把 MK3 武器} 为唯一 MK3 直出白名单
