@@ -845,9 +845,8 @@ export function MarketPage({
   return (
     <div className="page-stack page-fill">
       <div className="app-dim app-note">
-        空间站商店已并入市场：所有买卖都走 NPC 挂单簿撮合。收购价 &lt; 供应价有差价；
-        集中买卖会触发"冲击动量"（价格短时偏离，随后缓慢恢复）；矿石/矿物还受站内库存池调节。
-        每行可「挂单买/挂单卖」自定价等待成交。
+        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石/矿物另受库存池调节。
+        每行可「挂单买 / 挂单卖」自定价等待成交。
       </div>
       <div className="app-dim app-note">
         贸易税：卖出成交按成交额收税——当前税率{' '}

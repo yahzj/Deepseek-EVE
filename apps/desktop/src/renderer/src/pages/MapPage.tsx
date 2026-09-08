@@ -503,8 +503,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
       <div className="app-dim app-note">
-        打捞需驾驶船高槽装有打捞器（无伤害件，升级只减周期）。单趟作业：下达即持续打捞 → 满仓自动返航卸货；
-        残骸停靠空间站（母港或已建成副站）后用工业页「残骸回收」拆解（保底矿物 + 彩头：基础件 / 低安 MK2 / 蓝图碎片）。低安星系打捞作业中可能遇袭（航行与返航途中不会——移动不暴露）。
+        驾驶船高槽装打捞器即可开捞：单趟作业、满仓自动返航卸货；残骸回站后在工业页拆解（保底矿物 + 彩头）。低安星系打捞作业中可能遇袭——详见手册「航行须知」。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 
