@@ -381,7 +381,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: 'AI 核心调度学',
     group: '工程',
     rank: 5,
-    description: '多核心的负载调度与协同优化：AI 核心驱动的全部作业（AI 副船任务与站内精炼炉/回收炉/制造线）效率每级 +⟦2%⟧（在核心档位效率之上乘算）。',
+    description: '多核心的负载调度与协同优化：AI 核心驱动的全部作业（AI 副船任务与站内精炼炉/回收炉/制造线）效率每级 +⟦2 个百分点⟧（在核心档位之上累加，如基础核心 40% → 满级 ⟦50%⟧）。',
   },
   {
     id: 'accelerated-learning',

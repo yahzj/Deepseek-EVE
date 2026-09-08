@@ -42,8 +42,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   },
   aiCore: {
     skillId: 'ai-expert', // 唯一「AI 核心上限」技能：LvN = 可同时启用 N 枚 AI 核心（AI 副船任务与站内 AI 设施共用；后续上限技能在 ai.ts aiCoreCap 叠加）
-    dispatchSkillId: 'ai-core-dispatch', // AI 核心调度学（卷B3⑩，2026-09-08 船长定）：核心驱动作业效率再乘区
-    dispatchPerLevel: 0.02, // 每级 +2%（满级 ×1.1）；只作用于 ÷eff 的作业段（返航腿不参与，卷B2⑥）
+    dispatchSkillId: 'ai-core-dispatch', // AI 核心调度学（卷B3⑩，2026-09-08 船长定）：核心驱动作业效率累加区
+    dispatchPerLevel: 0.02, // 每级 +2 个百分点（基础 40% → 满级 50%；伽马 60%/贝塔 70%/阿尔法 85%，封顶 100%）
     basicPriceIsk: 25_000, // 基础核心直购价
     efficiency: { basic: 0.4, gamma: 0.5, beta: 0.6, alpha: 0.75 },
     drops: [
