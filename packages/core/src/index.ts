@@ -293,6 +293,7 @@ export {
   marketSellPreview,
   listSellHolding,
   refundToStorage,
+  snatchSellFill,
 } from './market'
 
 export {

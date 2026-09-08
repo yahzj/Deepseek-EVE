@@ -23,6 +23,7 @@ import {
   marketSellHolding,
   marketSellPreview,
   naturalHoldings,
+  snatchSellFill,
   placeBuyOrder,
   placeSellOrder,
   bmGateReason,
@@ -919,6 +920,38 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     expect(bought).toBeLessThan(60) // 上限
     expect(state.logs.some((l) => l.text.includes('巡游供货'))).toBe(true)
     expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
+  })
+
+  it('巡游采购单次件数随贴线放大（方案 B 2026-09-08 船长定）：池商品贴线 30 件、单件 5 件，越远越小', () => {
+    const poolDef = { key: 'p', kind: 'item' as const, refId: 'p', rarity: 'common' as const, basePrice: 10, poolTarget: 1_000, supplyFlow: 10 }
+    const singleDef = { key: 'm', kind: 'module' as const, refId: 'm', rarity: 'common' as const, basePrice: 100 }
+    expect(snatchSellFill(poolDef, 0.005)).toBe(30) // 贴线（<1%）：池商品一次可收几十件
+    expect(snatchSellFill(poolDef, 0.02)).toBe(15)
+    expect(snatchSellFill(poolDef, 0.05)).toBe(6)
+    expect(snatchSellFill(poolDef, 0.1)).toBe(1) // 远离价线仍 1 件
+    expect(snatchSellFill(singleDef, 0.005)).toBe(5) // 单件商品小量
+    expect(snatchSellFill(singleDef, 0.1)).toBe(1)
+    expect(snatchSellFill(undefined, 0.001)).toBe(5)
+  })
+
+  it('池商品贴线 +1% 挂卖：巡游命中一次收多件（200 窗销量显著 > 旧 1 件/窗口径）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 77 })
+    state.wallet.isk = 1_000_000
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      marketGoods: [{ key: 'gas-x', kind: 'item', refId: 'gas-x', rarity: 'common', basePrice: 100, poolTarget: 10_000, supplyFlow: 200 }],
+    })
+    state.warehouse.items['gas-x'] = 5_000
+    marketQuote(state, ctx, 'gas-x')
+    const bid = Math.round(buyLineOf(state, ctx, 'gas-x'))
+    expect(bid).toBe(100)
+    placeSellOrder(state, ctx, 'gas-x', bid + 1, 5_000) // 比价线高 1 块 = 贴线越线（r≈1%）
+    advanceGame(state, 200 * 60_000, ctx)
+    const sold = 5_000 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBeGreaterThan(400) // 新口径 ≈56 次命中 × ~30 件；旧 1 件/窗口径 ≈56 → 显著提升
+    expect(sold).toBeLessThan(4_500)
+    expect(state.logs.some((l) => l.text.includes('巡游采购'))).toBe(true)
   })
 })
 

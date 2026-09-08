@@ -369,6 +369,25 @@ function secondhandMul(state: GameState): number {
   return 1 - SECONDHAND_PER_LEVEL * Math.min(5, state.skills.trained['secondhand-market'] ?? 0)
 }
 
+/** 巡游采购单次件数（2026-09-08 方案 B，船长定：越贴近收购价线惩罚越小——概率衰减之外，
+ *  单次件数也随偏离收窄放大）：r = 相对价线溢价比例（0.01 = +1%）。
+ *  池商品（矿/气/残骸等大宗，玩家动辄几百上千单位）贴线每次可收几十件，越远越小；
+ *  单件商品（装备/蓝图等）维持小量。任何档位都远低于平价簿 + 让利吸收（贴线 ~30 件/窗 vs
+ *  平价簿 ≈2.55×supplyFlow/窗）→ 价线纪律与"让利换清仓"仍然成立。 */
+export function snatchSellFill(def: MarketGoodDef | undefined, r: number): number {
+  const pool = !!def?.poolTarget && (def.poolTarget ?? 0) > 0
+  if (!pool) {
+    if (r <= 0.01) return 5
+    if (r <= 0.03) return 3
+    if (r <= 0.08) return 2
+    return 1
+  }
+  if (r <= 0.01) return 30
+  if (r <= 0.03) return 15
+  if (r <= 0.08) return 6
+  return 1
+}
+
 /** rare 池构成：全市场 rare 商品中解锁（权重 1）与闸内（权重 RARE_LOCKED_WEIGHT）的数量 */
 function rarePoolStats(state: GameState, ctx: SimContext): { unlockedN: number; lockedN: number } {
   let unlockedN = 0
@@ -692,7 +711,8 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
         if (idx < 0) continue
         settleSell(state, ctx, order, npc, Math.min(order.qty, npc.qty), idx)
       }
-      // 越线抢单（卖出侧，2026-09-08 船长定）：簿吃不掉且挂价高于收购价线 → 巡游采购每窗掷骰
+      // 越线抢单（卖出侧，2026-09-08 船长定）：簿吃不掉且挂价高于收购价线 → 巡游采购每窗掷骰；
+      // 单次件数随溢价收窄放大（snatchSellFill：池商品贴线一次可收几十件，越远越小）
       if (order.qty > 0) {
         const sdef = ctx.marketGoods.get(order.good)
         if (sdef && sdef.playerSellable !== false) {
@@ -700,7 +720,9 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
           if (order.price > bid) {
             const r = bid > 0 ? (order.price - bid) / bid : 1
             const pRoll = Math.min(1, bal.snatchSellChance * Math.exp(-bal.snatchSellDecay * r))
-            if (nextRandom(state.rng) < pRoll) settleSnatchSell(state, ctx, order)
+            if (nextRandom(state.rng) < pRoll) {
+              settleSnatchSell(state, ctx, order, Math.min(order.qty, snatchSellFill(sdef, r)))
+            }
           }
         }
       }
@@ -790,33 +812,38 @@ function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: N
   addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${value.toLocaleString('zh-CN')} ISK）。`)
 }
 
-/** 越线卖单抢单成交（2026-09-08 船长定：巡游采购 1 件 @ 挂单价；税/escrow/池与簿成交同口径） */
-function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder): void {
+/** 越线卖单抢单成交（2026-09-08 船长定：巡游采购按贴线度多件成交 @ 挂单价；税/escrow/池与簿成交同口径） */
+function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder, take: number): void {
+  take = Math.max(1, Math.min(order.qty, Math.floor(take)))
   const def = ctx.marketGoods.get(order.good)
   const shipSale = !!state.escrowShips[order.id]
   const mult = sellStandingMult(state, def)
-  const gross = Math.round(order.price * mult)
+  const gross = Math.round(order.price * take * mult)
   const net = netAfterTax(state, ctx, gross)
   const tax = gross - net
   state.wallet.isk += net
   if (shipSale) {
     delete state.escrowShips[order.id]
   } else {
-    state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - 1)
+    state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - take)
   }
-  order.filled += 1
-  order.qty -= 1
+  order.filled += take
+  order.qty -= take
   const pool = state.market.pools[order.good]
   if (pool) {
-    pool.netVol -= 1
-    if (def?.poolTarget && def.poolTarget > 0) pool.q += 1
+    pool.netVol -= take
+    if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
   const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
   if (shipSale) {
     addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
   } else {
     const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×1（巡游采购），税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
+    addLog(
+      state,
+      'trade',
+      `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（巡游采购），税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`,
+    )
   }
 }
 
