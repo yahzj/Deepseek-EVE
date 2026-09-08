@@ -185,7 +185,7 @@ describe('技能补全 P1：矿业三技（星质地质学/深井爆破学/富�
       Math.max(1, Math.floor(base * 1.2 * 1.3)),
     )
     expect(run(high, { 'deep-hole-blasting': 5 })).toBe(Math.max(1, Math.floor(base)))
-    // 富矿系数：满级 ×2（基础 1% → 2%）
+    // 富矿系数：满级 ×2（基础 3%/分钟 → 6%/分钟，卷B2⑥）
     const s = createInitialState({ nowWallMs: 0, seed: 10 })
     expect(richVeinFactor(s)).toBe(1)
     s.skills.trained['rich-vein-prospecting'] = 5

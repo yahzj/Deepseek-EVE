@@ -12,7 +12,8 @@
  * - 换驾驶善后（船长定稿 2026-09-04）：采矿作业中直接在舰船页切换驾驶——换船成功，
  *   旧船按当前阶段转入 shipReturns 自动返航（倒计时，到港自动卸货入仓库），采矿作业随之结束；
  *   取消原"换船重采"按钮与自动续采语义；
- * - 循环时长/产量受采矿技能与采集器装备加成；每循环按种子随机抽"富矿脉"；
+ * - 循环时长/产量受采矿技能与采集器装备加成；每循环按种子随机抽"富矿脉"（卷B2⑥：
+ *   概率按分钟缩放，命中 = 连续 2 循环 ×3 的红利窗口，窗口内不再掷点）；
  * - 日志克制：只在 开始/停止/满舱转返航/卸货完成/富矿脉/换驾驶善后 时写。
  */
 import { addLog } from './state'
@@ -42,10 +43,21 @@ export interface MiningParams {
   unitsPerCycle: number
 }
 
-/** 富矿勘探学（rich-vein-prospecting，P1）：富矿脉概率系数（每级 ×1.2，基础 1%） */
+/** 富矿勘探学（rich-vein-prospecting，P1）：富矿脉触发率系数（线性 1+0.2×lv，lv 上限 5 → 满级 ×2；
+ *  卷B2⑥ 语义：作用在"每分钟基础触发率 3%"上，见 richVeinP） */
 export function richVeinFactor(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['rich-vein-prospecting'] ?? 0)
   return 1 + 0.2 * lv
+}
+
+/**
+ * 富矿脉本循环触发概率（卷B2⑥，2026-09-08 船长定稿）：
+ * p = min(1, 循环占用分钟数 × 基础触发率/分钟 × 勘探学系数)。
+ * 主控与 AI 共用（AI 传入自己的真实循环时长）；richVeinChance=0（禁用）时 p=0。
+ * 调用方即使 p=0 也照常消耗一次 nextRandom 判定（保旧档/测试 rng 时序不变）。
+ */
+export function richVeinP(cycleMs: number, state: GameState, ctx: SimContext): number {
+  return Math.min(1, (Math.max(0, cycleMs) / 60_000) * ctx.balance.richVeinChance * richVeinFactor(state))
 }
 
 /** 指定船在指定矿带的循环参数（缺省：当前驾驶船 + 当前采矿作业矿带） */
@@ -221,6 +233,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   m.autoCycle = m.autoCycle !== false // 默认开，除非玩家关过
   m.stopAfterTrip = m.stopAfterTrip === true
   m.originGalaxy = fromField // 仍记录出发点——用于把去程时间并入首次返航腿
+  m.rvLeft = 0 // 富矿红利窗口与矿带绑定：新开（含换带）一律从无窗口起步
   // 船即时到矿带：矿带挂星系（且非母港）即刻点亮探索
   if (belt.galaxyId) markExplored(state, belt.galaxyId)
 
@@ -284,6 +297,7 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
   m.phaseAccMs = 0
   m.tripUnits = 0
   m.originGalaxy = null
+  m.rvLeft = 0 // 停止开采：红利窗口随之清零（窗口绑定矿带）
   addLog(state, 'info', `已停止开采（${beltName}）。本趟共采得 ${trip} 单位${oreName}${phaseNote}。`)
   return true
 }
@@ -301,6 +315,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     m.active = false
     m.beltId = null
     m.phase = 'mining'
+    m.rvLeft = 0
     addLog(state, 'warn', '当前舰船数据缺失，采矿作业已停止。')
     return
   }
@@ -349,6 +364,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           m.phase = 'mining'
           m.cycleAccMs = 0
           m.tripUnits = 0
+          m.rvLeft = 0
           addLog(state, 'info', '自动循环已结束（按设定返港后停止）。')
           break
         }
@@ -375,6 +391,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.beltId = null
       m.phase = 'mining'
       m.cycleAccMs = 0
+      m.rvLeft = 0
       addLog(state, 'warn', '矿带/矿石数据缺失，采矿作业已停止。')
       return
     }
@@ -396,6 +413,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.beltId = null
       m.phase = 'mining'
       m.cycleAccMs = 0
+      m.rvLeft = 0
       addLog(state, 'warn', '矿带产物数据缺失，采矿作业已停止。')
       return
     }
@@ -426,6 +444,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.beltId = null
       m.phase = 'mining'
       m.cycleAccMs = 0
+      m.rvLeft = 0
       addLog(
         state,
         'warn',
@@ -434,11 +453,18 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       return
     }
 
-    // 结算一个循环（先抽富矿脉，再入舱）
+    // 结算一个循环：富矿红利窗口（卷B2⑥，船长定稿）——触发当轮 ×3 并开启 1 个红利循环；
+    // 窗口内不掷新富矿（避免窗口内再触发/重置），窗口结束不额外写日志（只在触发那一次写）；
+    // 判定恒消耗一次随机数（richVeinChance=0 时也掷），保既有存档/测试的 rng 时序不变。
     let units = params.unitsPerCycle
-    if (nextRandom(state.rng) < ctx.balance.richVeinChance * richVeinFactor(state)) {
-      units *= 2
-      addLog(state, 'info', `富矿脉！本循环产量翻倍，获得 ${units} 单位${oreNow.name}。`)
+    const rvLeft = m.rvLeft ?? 0
+    if (rvLeft > 0) {
+      units *= 3
+      m.rvLeft = rvLeft - 1
+    } else if (nextRandom(state.rng) < richVeinP(params.cycleMs, state, ctx)) {
+      units *= 3
+      m.rvLeft = 1
+      addLog(state, 'info', `富矿脉！连续 2 个循环产量 ×3，本循环获得 ${units} 单位${oreNow.name}。`)
     }
     addItem(state, oreNow.id, units)
     m.tripUnits += units
@@ -486,6 +512,7 @@ export interface MiningView {
   tripUnits: number
   autoCycle: boolean
   stopAfterTrip: boolean
+  /** 富矿脉触发率透传（卷B2⑥ 语义 = 每分钟基础触发率 × 勘探学系数；仅展示口径，renderer 未消费） */
   richVeinChance: number
   /** 满载/返航单程毫秒（T4：出航空船更快，见 outboundLegMs） */
   legMs: number

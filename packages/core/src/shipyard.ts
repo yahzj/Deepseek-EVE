@@ -157,6 +157,7 @@ export function retireMiningShip(state: GameState, ctx: SimContext): boolean {
   m.phaseAccMs = 0
   m.tripUnits = 0
   m.originGalaxy = null
+  m.rvLeft = 0 // 换船即离开矿带作业：红利窗口清零
   addLog(
     state,
     'info',
@@ -191,6 +192,7 @@ export function loseShip(state: GameState, shipId: string, ctx: SimContext, reas
     state.mining.phase = 'mining'
     state.mining.phaseAccMs = 0
     state.mining.cycleAccMs = 0
+    state.mining.rvLeft = 0
   }
 }
 

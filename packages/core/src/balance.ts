@@ -56,7 +56,9 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // P2 定稿（2026-09-05）：维修费 =（甲缺失+结构缺失 HP）× perHpCost × 科技档权重（L1×0.4…L4×1.4）
     perHpCost: 300,
   },
-  richVeinChance: 0.01, // 每循环 1% 富矿脉（该循环产量翻倍）
+  // 富矿脉基础触发率 3%/分钟（卷B2⑥，2026-09-08 船长定稿：掷点按"循环占用分钟数"缩放；
+  // 命中后连续 2 循环 ×3；0 = 禁用，测试用它关富矿保 rng 时序）
+  richVeinChance: 0.03,
   travelEventChance: 0.3, // 远征出发 30% 概率遇到途中事件
   rewardJitter: 0.15, // 远征奖金浮动 ±15%
   // B1 低安遭遇（2026-09-04 定稿：占用随机事件时机——事件线到点判定；到达缓冲 5 分钟；

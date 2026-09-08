@@ -20,7 +20,7 @@ import { addWare, cargoUnitM3 } from './inventory'
 import { pullOneWreck, salvagerCyclesOf } from './salvaging'
 import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
-import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinFactor, rollBeltOutput, shipInReturn } from './mining'
+import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
@@ -181,7 +181,7 @@ export function assignAiMining(
   state.aiAssignments[shipId] = {
     coreType,
     startedAtGameMs: state.gameMs,
-    task: { kind: 'mining', beltId, phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+    task: { kind: 'mining', beltId, phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0, rvLeft: 0 },
   }
   const shipName = shipDisplayName(state, ctx, shipId)
   const eff = aiEfficiency(state, ctx, coreType)
@@ -398,8 +398,9 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
   const task = assignment.task
   const eff = aiEfficiency(state, ctx, assignment.coreType)
   const accMs = (): number => (task as { phaseAccMs?: number }).phaseAccMs ?? 0
-  const leg = (base: number): { real: number; remain: number; percent: number } => {
-    const real = Math.max(1, Math.round(base / eff))
+  // 腿长口径（卷B2⑥ 与主控一致）：出航腿按效率拉长；返航腿只按货仓占比缩放、不 ÷效率
+  const leg = (base: number, effScaled: boolean): { real: number; remain: number; percent: number } => {
+    const real = Math.max(1, Math.round(effScaled ? base / eff : base))
     const remain = Math.max(0, real - accMs())
     return { real, remain, percent: Math.min(100, Math.max(0, Math.round((accMs() / real) * 100))) }
   }
@@ -411,7 +412,7 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
         task.phase === 'outbound'
           ? oneOutboundLegMs(state, ctx, task.beltId, shipId, stGal)
           : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId)
-      const v = leg(base)
+      const v = leg(base, task.phase === 'outbound')
       return { kind: 'mining', phase: task.phase, label: task.phase === 'returning' ? '返航卸货中' : '出航中', percent: v.percent, remainingMs: v.remain }
     }
     const params = getMiningParams(state, ctx, { shipId, beltId: task.beltId })
@@ -435,7 +436,7 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
     }
     if (task.phase === 'outbound' || task.phase === 'returning') {
       const base = task.phase === 'outbound' ? Math.round(legBase() / 2) : scaledReturnMs(legBase(), state, ctx, shipId)
-      const v = leg(base)
+      const v = leg(base, task.phase === 'outbound')
       return { kind: 'salvage', phase: task.phase, label: task.phase === 'returning' ? '返航卸货' : '出航', percent: v.percent, remainingMs: v.remain }
     }
     const reals = salvagerCyclesOf(state, ctx, shipId).map((c) => Math.max(1, Math.ceil(c / eff)))
@@ -517,17 +518,18 @@ function advanceAiMining(
 
   let remaining = deltaMs
   while (remaining > 0) {
-    // 返航 / 出航（T4：腿分方向——出航空船腿减半（跃迁×2），返航满载用正常腿；再按效率拉长）
+    // 返航 / 出航（T4：腿分方向——出航空船腿减半（跃迁×2），返航满载用正常腿；
+    // 效率只拉长出航腿与循环周期，返航腿与主控一致不再 ÷eff（卷B2⑥））
     if (task.phase === 'returning' || task.phase === 'outbound') {
       // T9：AI 采矿往返以"离矿带最近空间站"为基准（未建副站时 = 母港）
       const beltDef = ctx.belts.get(task.beltId)
       const stGal = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
-      // 返航腿与主控同口径（2026-09-06 船长复核⑤）：满仓基准时长先按货仓占比缩放，再按效率拉长
+      // 返航腿与主控同口径（2026-09-08 卷B2⑥ 船长定稿）：满仓基准时长先按货仓占比缩放，不再 ÷核心效率
       const legBase =
         task.phase === 'outbound'
           ? oneOutboundLegMs(state, ctx, task.beltId, shipId, stGal)
           : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId)
-      const legMsReal = Math.max(1, Math.round(legBase / eff))
+      const legMsReal = task.phase === 'outbound' ? Math.max(1, Math.round(legBase / eff)) : Math.max(1, Math.round(legBase))
       const need = legMsReal - task.phaseAccMs
       if (remaining < need) {
         task.phaseAccMs += remaining
@@ -610,11 +612,17 @@ function advanceAiMining(
       )
       continue
     }
-    // 富矿脉判定与主控一致（随机源共享；富矿勘探学加成同源）
+    // 富矿脉判定与主控一致（卷B2⑥ 红利窗口：触发当轮 ×3 并开 1 个红利循环；窗口内不掷点不写日志；
+    // 判定恒消耗一次随机数保 rng 时序；窗口与矿带绑定，自动循环返航卸货回原带保留）
     let units = params.unitsPerCycle
-    if (nextRandom(state.rng) < ctx.balance.richVeinChance * richVeinFactor(state)) {
-      units *= 2
-      addLog(state, 'info', `[AI·${shipName}] 富矿脉！本循环产量翻倍。`)
+    const rvLeft = task.rvLeft ?? 0
+    if (rvLeft > 0) {
+      units *= 3
+      task.rvLeft = rvLeft - 1
+    } else if (nextRandom(state.rng) < richVeinP(cycleReal, state, ctx)) {
+      units *= 3
+      task.rvLeft = 1
+      addLog(state, 'info', `[AI·${shipName}] 富矿脉！连续 2 个循环产量 ×3。`)
     }
     if (!oreNow) {
       // 数据缺失：按主产物入舱兜底（正常情况下 roll 不会返回 null）
@@ -659,13 +667,14 @@ function advanceAiSalvage(
   let guard = 0
   while (remaining > 0) {
     if (++guard > 100_000) break
-    // ── 出航 / 返航（按效率拉长；返航腿与主控同口径——2026-09-06 船长复核⑤：满仓基准先按货仓占比缩放） ──
+    // ── 出航 / 返航（效率只拉长出航腿；返航腿与主控同口径——2026-09-08 卷B2⑥ 船长定稿：
+    //    满仓基准先按货仓占比缩放，不再 ÷核心效率） ──
     if (task.phase === 'outbound' || task.phase === 'returning') {
       const legBase =
         task.phase === 'outbound'
           ? Math.round(legBaseOf() / 2)
           : scaledReturnMs(legBaseOf(), state, ctx, shipId)
-      const legReal = Math.max(1, Math.round(legBase / eff))
+      const legReal = task.phase === 'outbound' ? Math.max(1, Math.round(legBase / eff)) : Math.max(1, Math.round(legBase))
       const need = legReal - task.phaseAccMs
       if (remaining < need) {
         task.phaseAccMs += remaining

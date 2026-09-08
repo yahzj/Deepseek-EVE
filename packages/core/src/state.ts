@@ -133,6 +133,9 @@ export interface MiningState {
   /** T8 兼容字段：本次作业的出发星系（null = 从空间站/母港出发）；
    *  用于把去程时间并入首次返航腿；首次卸货后清空，此后自动循环一律以空间站为基准 */
   originGalaxy: string | null
+  /** 富矿红利窗口剩余循环数（卷B2⑥，2026-09-08 船长定稿）：触发当轮置 1，下一循环消耗至 0；
+   *  0/缺省 = 无窗口（旧档零迁移）。窗口与矿带绑定：换带/停止/结束清零；自动循环返航卸货后回原带保留。 */
+  rvLeft?: number
 }
 
 /** T4 换船善后：旧船自动返航到港的记录（key = 船 id，独立于主控采矿推进） */
@@ -465,6 +468,9 @@ export interface AiMiningTask {
   /** 返航/出航累计（真实毫秒） */
   phaseAccMs: number
   tripUnits: number
+  /** 富矿红利窗口剩余循环数（卷B2⑥，与主控 MiningState.rvLeft 同语义；每船独立；
+   *  0/缺省 = 无窗口；换带/任务终止清零，自动循环返航卸货回原带保留） */
+  rvLeft?: number
 }
 
 /** AI 副船任务：打捞（B3 单趟：outbound → salvaging → returning；满仓自动返港卸货后任务结束） */
@@ -1049,6 +1055,7 @@ export function createInitialState(opts?: {
       autoCycle: true,
       stopAfterTrip: false,
       originGalaxy: null,
+      rvLeft: 0,
     },
     manufacturingRuns: [],
     manufacturingSeq: 1,

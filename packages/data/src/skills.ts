@@ -165,7 +165,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '富矿勘探学',
     group: '工业',
     rank: 2,
-    description: '脉矿判定与富集带追踪：采掘时发现富矿脉（当次循环产量翻倍）的概率每级 ×⟦1.2⟧（基础 1%）。',
+    description: '脉矿判定与富集带追踪：采掘时发现富矿脉的机会每级 ×⟦1.2⟧（基础每分钟 ⟦3%⟧；发现后连续 2 个循环产量 ×⟦3⟧）。',
   },
   {
     id: 'core-smelting',

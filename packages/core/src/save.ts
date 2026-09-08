@@ -1008,6 +1008,8 @@ function normalizeState(raw: unknown): GameState {
             typeof taskRaw.tripUnits === 'number' && Number.isFinite(taskRaw.tripUnits)
               ? Math.max(0, Math.floor(taskRaw.tripUnits))
               : 0,
+          // 卷B2⑥ 零迁移：富矿红利窗口剩余循环数（缺失按 0；不升存档版本号）
+          rvLeft: taskRaw.rvLeft === 1 ? 1 : 0,
         },
       }
     } else if (taskRaw.kind === 'standby') {
@@ -1138,6 +1140,8 @@ function normalizeState(raw: unknown): GameState {
       typeof miningRaw.originGalaxy === 'string' && miningRaw.originGalaxy.length > 0
         ? miningRaw.originGalaxy
         : null,
+    // 卷B2⑥ 零迁移：富矿红利窗口剩余循环数（缺失按 0；不升存档版本号）
+    rvLeft: miningRaw.rvLeft === 1 ? 1 : 0,
   }
 
   // --- 装备库（v3） ---

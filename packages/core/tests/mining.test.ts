@@ -7,7 +7,7 @@ import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem } from '../src/inventory'
-import { beltTravelMinutes, miningStatus, oneLegMs, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining } from '../src/mining'
+import { beltTravelMinutes, miningStatus, oneLegMs, richVeinP, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining } from '../src/mining'
 import { makeTestCtx, belt, ship, skill , fittedOf } from './helpers'
 
 describe('采矿作业', () => {
@@ -124,8 +124,10 @@ describe('采矿作业', () => {
   })
 
   it('每次循环消耗一次种子随机数（富矿脉判定可复现）', () => {
-    // 市场窗口与随机事件也会消耗随机数——本测试只数采矿消耗，故两者都关闭
-    const noMarketCtx = makeTestCtx({ marketGoods: [], quietEvents: true })
+    // 市场窗口与随机事件也会消耗随机数——本测试只数采矿消耗，故两者都关闭；
+    // 卷B2⑥：富矿触发会开启 2 循环红利窗口（窗口内不掷点），关闭富矿脉保证每循环恒掷一次
+    const bal = makeTestCtx().balance
+    const noMarketCtx = makeTestCtx({ marketGoods: [], quietEvents: true, balance: { ...bal, richVeinChance: 0 } })
     startMining(state, 'belt-a', noMarketCtx)
     advanceGame(state, 120_000, noMarketCtx) // 10 个循环
     expect(state.rng.count).toBe(10)
@@ -202,5 +204,99 @@ describe('矿带挂星系：去程取消与并入返航的航程（星图拓展�
     const r = startMining(state, 'belt-lost', ctxNoRoute)
     expect(r.ok).toBe(false)
     expect(state.mining.active).toBe(false)
+  })
+})
+
+describe('富矿脉红利窗口（卷B2⑥：概率触发 + 连续 2 循环 ×3）', () => {
+  /** richVeinChance=5 → p = min(1, 12s/60s×5×1) = 1：每次掷点必中，确定性验证窗口机制 */
+  const p1Ctx = (): SimContext => {
+    const bal = makeTestCtx().balance
+    return makeTestCtx({ marketGoods: [], quietEvents: true, balance: { ...bal, richVeinChance: 5 } })
+  }
+
+  it('richVeinP 按分钟缩放：基础 3%/分钟 × 勘探学系数，封顶 1；chance=0 恒 0', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    const ctx = makeTestCtx()
+    expect(richVeinP(12_000, state, ctx)).toBeCloseTo(0.006, 10) // 12s = 0.2 分钟 × 3%
+    expect(richVeinP(60_000, state, ctx)).toBeCloseTo(0.03, 10) // 1 分钟 = 3%
+    state.skills.trained['rich-vein-prospecting'] = 5
+    expect(richVeinP(12_000, state, ctx)).toBeCloseTo(0.012, 10) // 满级系数 ×2
+    const zero = makeTestCtx({ balance: { ...ctx.balance, richVeinChance: 0 } })
+    expect(richVeinP(60_000, state, zero)).toBe(0) // 0 = 禁用
+    const cap = makeTestCtx({ balance: { ...ctx.balance, richVeinChance: 5 } })
+    expect(richVeinP(60_000, state, cap)).toBe(1) // 封顶 1
+  })
+
+  it('触发当轮与次轮各 ×3、只在触发写日志、窗口计数正确', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    const ctx = p1Ctx()
+    startMining(state, 'belt-a', ctx)
+    advanceGame(state, 36_000, ctx) // 3 循环（12s×3）
+    // 循环1：触发 30 单位 rvLeft=1；循环2：窗口 30 单位 rvLeft=0（不掷点）；循环3：再触发 30 单位 rvLeft=1
+    expect(countItem(state, 'ore-a')).toBe(90)
+    expect(state.mining.rvLeft).toBe(1)
+    expect(state.logs.filter((l) => l.text.includes('富矿脉')).length).toBe(2) // 只在触发写日志，窗口结束不写
+  })
+
+  it('窗口内不掷点（rng 时序）；禁用时每循环恰好 1 次', () => {
+    const s1 = createInitialState({ nowWallMs: 0, seed: 42 })
+    const ctx = p1Ctx()
+    startMining(s1, 'belt-a', ctx)
+    advanceGame(s1, 36_000, ctx) // 3 循环 → 掷点 2 次（中间窗口循环跳过）
+    expect(s1.rng.count).toBe(2)
+    const s2 = createInitialState({ nowWallMs: 0, seed: 42 })
+    const bal = makeTestCtx().balance
+    const calm = makeTestCtx({ marketGoods: [], quietEvents: true, balance: { ...bal, richVeinChance: 0 } })
+    startMining(s2, 'belt-a', calm)
+    advanceGame(s2, 36_000, calm) // 3 循环 → 每循环掷 1 次
+    expect(s2.rng.count).toBe(3)
+  })
+
+  it('停止开采清零窗口（窗口绑定矿带）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    const ctx = p1Ctx()
+    startMining(state, 'belt-a', ctx)
+    advanceGame(state, 12_000, ctx) // 触发 → rvLeft=1
+    expect(state.mining.rvLeft).toBe(1)
+    expect(stopMining(state, ctx)).toBe(true)
+    expect(state.mining.rvLeft).toBe(0)
+  })
+
+  it('自动循环返航卸货后回原带保留窗口（返航不清零）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    const ctx = p1Ctx()
+    state.fleet[state.shipId]!.cargo['ore-a'] = 10 // 返航中货载 10/800 → 返航腿 180s×0.0125=2250ms
+    state.mining = {
+      active: true,
+      beltId: 'belt-a',
+      phase: 'returning',
+      cycleAccMs: 0,
+      phaseAccMs: 0,
+      tripUnits: 10,
+      autoCycle: true,
+      stopAfterTrip: false,
+      originGalaxy: null,
+      rvLeft: 1,
+    }
+    advanceGame(state, 3_000, ctx) // 到港卸货 → 回带采掘（窗口保留）
+    expect(state.mining.phase).toBe('mining')
+    expect(countItem(state, 'ore-a')).toBe(0)
+    expect(state.warehouse.items['ore-a']).toBe(10)
+    expect(state.mining.rvLeft).toBe(1)
+    expect(state.rng.count).toBe(0)
+    advanceGame(state, 12_000, ctx) // 回带首个循环消耗窗口：×3 且不掷点
+    expect(countItem(state, 'ore-a')).toBe(30)
+    expect(state.mining.rvLeft).toBe(0)
+    expect(state.rng.count).toBe(0)
+  })
+
+  it('旧档零迁移：rvLeft 缺失按 0（无窗口）起步', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    const ctx = p1Ctx()
+    startMining(state, 'belt-a', ctx)
+    state.mining.rvLeft = undefined
+    advanceGame(state, 12_000, ctx) // 照常掷点 → 触发
+    expect(countItem(state, 'ore-a')).toBe(30)
+    expect(state.mining.rvLeft).toBe(1)
   })
 })

@@ -335,6 +335,7 @@ export function startExpeditionFromMining(
   m.phaseAccMs = 0
   m.tripUnits = 0
   m.originGalaxy = null
+  m.rvLeft = 0 // 转战悬赏即离开矿带作业：红利窗口清零
   // 矿带在异星系：以"野外停泊"表达起点（startExpedition 会读取并清空）
   if (from !== null) state.awayGalaxy = from
   const shipName = shipDisplayName(state, ctx, state.shipId)

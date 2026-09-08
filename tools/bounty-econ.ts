@@ -84,7 +84,8 @@ function miningBench(): Array<{ stand: number; id: string; galaxy: string; iskH:
       const it = ctx.items.get(o.itemId)
       return s + ((it?.baseSellPriceIsk ?? 0) * o.weight) / wSum
     }, 0)
-    const cyclesH = (3_600_000 / p.cycleMs) * 1.01 // 富矿脉期望 +1%
+    const richMul = 1 + 7.2 / (1 + 0.03 * (p.cycleMs / 60_000)) / 100 // 富矿脉期望（卷B2⑥）：每分钟 3%×触发后连续 2 循环×3 → ≈+7.2%/小时（按循环分钟微调）
+    const cyclesH = (3_600_000 / p.cycleMs) * richMul
     rows.push({ stand: b.standingReq ?? 0, id: b.id, galaxy: b.galaxyId ? ctx.galaxies.get(b.galaxyId)?.name ?? b.galaxyId : '本地', iskH: Math.round(cyclesH * p.unitsPerCycle * valPerCycle) })
   }
   rows.sort((x, y) => y.iskH - x.iskH)

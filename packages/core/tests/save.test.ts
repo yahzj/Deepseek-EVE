@@ -25,6 +25,7 @@ describe('存档往返（v7）', () => {
       autoCycle: true,
       stopAfterTrip: false,
       originGalaxy: null,
+      rvLeft: 0,
     }
     state.skills.trained['mining'] = 2
     state.skills.queue.push({ skillId: 'refining', targetLevel: 3, progressMs: 500 })
@@ -155,6 +156,7 @@ describe('旧版本迁移链（v0 → … → v9）', () => {
       autoCycle: true,
       stopAfterTrip: false,
       originGalaxy: null,
+      rvLeft: 0, // 卷B2⑥ 零迁移：旧档缺失按 0
     })
     expect(loaded.state.moduleBay).toEqual({})
     expect(loaded.state.learnedRecipes).toEqual([])
