@@ -21,7 +21,8 @@ import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, market
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
-import { InfoHover, ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
+import { InfoHover, ItemHover, itemInfoLines, ModuleHover, moduleInfoLines, ShipHover, shipInfoLines } from '../ui/shipInfo'
+import type { InfoLine } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
@@ -85,11 +86,13 @@ function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
   return `${head}\n${desc || '（暂无说明）'}`
 }
 
-/** 蓝图悬浮参数行（产物/材料/制造）；装备/弹药/舰船蓝图共用同一形状 */
+/** 蓝图悬浮参数行（产物/产物属性/材料/制造）；装备/弹药/舰船蓝图共用同一形状。
+ * 2026-09-08 船长定（玩家反馈）：悬浮须同显产物的属性与介绍——查蓝图 = 看造出来的是什么；
+ * 产物属性行/介绍与市场商品行悬浮、手册图鉴同一数据源。蓝图自身文案移入参数行「蓝图说明」。 */
 function blueprintHoverLines(
   ctx: PageProps['engine']['ctx'],
   bp: BlueprintDef | ShipBlueprintDef,
-): { title: string; lines: Array<{ k: string; v: string }>; note: string } {
+): { title: string; lines: InfoLine[]; note: string } {
   const isModuleBp = 'moduleId' in bp
   const isItemBp = 'itemId' in bp // 2026-09-05 弹药蓝图
   const def = bp as BlueprintDef
@@ -99,14 +102,38 @@ function blueprintHoverLines(
       ? ctx.modules.get(def.moduleId!)?.name ?? def.moduleId!
       : ctx.ships.get((bp as ShipBlueprintDef).shipId)?.name ?? (bp as ShipBlueprintDef).shipId
   const materials = bp.materials.map((m) => `${ctx.items.get(m.itemId)?.name ?? m.itemId} ×${m.count}`).join('　')
+  // 产物属性行（产物是什么：槽位/效果/伤害/抗性/货舱…全站同源行）与产物介绍（note 槽）
+  const prodLines: InfoLine[] = []
+  let prodDesc = ''
+  if (isItemBp) {
+    const item = ctx.items.get(def.itemId!)
+    if (item) {
+      for (const l of itemInfoLines(item, (id) => ctx.items.get(id)?.name)) prodLines.push(l)
+      prodDesc = item.description
+    }
+  } else if (isModuleBp) {
+    const mod = ctx.modules.get(def.moduleId!)
+    if (mod) {
+      for (const l of moduleInfoLines(mod)) prodLines.push(l)
+      prodDesc = mod.description
+    }
+  } else {
+    const ship = ctx.ships.get((bp as ShipBlueprintDef).shipId)
+    if (ship) {
+      for (const l of shipInfoLines(ship)) prodLines.push(l)
+      prodDesc = ship.description
+    }
+  }
   return {
     title: bp.name,
     lines: [
       { k: '产物', v: productName },
+      ...prodLines,
+      ...(bp.description ? [{ k: '蓝图说明', v: bp.description }] : []),
       { k: '材料需求', v: materials },
       { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 免费` },
     ],
-    note: bp.description,
+    note: prodDesc || bp.description,
   }
 }
 

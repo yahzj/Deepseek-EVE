@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 import { ITEM_KIND_LABELS, SHIP_ROLE_LABELS, SLOT_LABELS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
-import { combatBadges, InfoHover, itemCombatLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 
 /** 宽类型标签索引（详情窗数据来自 raw，键是 string） */
@@ -183,8 +183,38 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
   } else if (cell.tab === 'blueprints') {
     const materials = (r.materials as Array<{ itemId: string; count: number }> | undefined) ?? []
     const moduleId = r.moduleId !== undefined ? String(r.moduleId) : undefined
+    const itemId = r.itemId !== undefined ? String(r.itemId) : undefined
     const shipId = r.shipId !== undefined ? String(r.shipId) : undefined
-    rows.push(['产物', moduleId !== undefined ? `${engine.ctx.modules.get(moduleId)?.name ?? moduleId}（装备）` : `${engine.ctx.ships.get(shipId ?? '')?.name ?? shipId ?? ''}（舰船）`])
+    // 产物 + 产物属性行 + 产物介绍（2026-09-08 船长定：蓝图详情须同显产物属性与介绍——
+    // 与图鉴 modules/ships/items 分支同一数据源；弹药蓝图产物此前误落舰船分支，一并修正）
+    let productName = ''
+    const prodRows: Array<[string, ReactNode]> = []
+    if (itemId !== undefined) {
+      const itemDef = engine.ctx.items.get(itemId)
+      productName = `${itemDef?.name ?? itemId}（弹药）`
+      if (itemDef) {
+        for (const l of itemInfoLines(itemDef, (id) => engine.ctx.items.get(id)?.name)) prodRows.push([l.k, l.v])
+        if (itemDef.description) prodRows.push(['产物介绍', itemDef.description])
+      }
+    } else if (moduleId !== undefined) {
+      const modDef = engine.ctx.modules.get(moduleId)
+      productName = `${modDef?.name ?? moduleId}（装备）`
+      if (modDef) {
+        // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
+        for (const l of moduleInfoLines(modDef)) prodRows.push([l.k, l.v])
+        if (modDef.description) prodRows.push(['产物介绍', modDef.description])
+      }
+    } else {
+      const shipDef = engine.ctx.ships.get(shipId ?? '')
+      productName = `${shipDef?.name ?? shipId ?? ''}（舰船）`
+      if (shipDef) {
+        // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
+        for (const l of shipInfoLines(shipDef)) prodRows.push([l.k, l.v])
+        if (shipDef.description) prodRows.push(['产物介绍', shipDef.description])
+      }
+    }
+    rows.push(['产物', productName])
+    for (const [k, v] of prodRows) rows.push([k, v])
     rows.push([
       '材料需求',
       <span key="mats" className="app-detail-mats">

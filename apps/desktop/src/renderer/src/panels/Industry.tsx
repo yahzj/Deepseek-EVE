@@ -20,8 +20,10 @@ import {
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -147,6 +149,7 @@ function BlueprintCard({
   materials,
   buildSeconds,
   productLabel,
+  productNode,
   kindLabel,
 }: {
   engine: GameEngine
@@ -158,6 +161,8 @@ function BlueprintCard({
   buildSeconds: number
   /** 产物标签（如 装备名 或 舰船名+属性） */
   productLabel: string
+  /** 产物名悬浮卡（ModuleHover/ShipHover/ItemHover——查看成品属性的统一入口；无解析 = 纯文本） */
+  productNode?: ReactNode
   /** 产物类别徽标：装备 / 舰船 */
   kindLabel: string
 }) {
@@ -254,7 +259,7 @@ function BlueprintCard({
       <div className="app-belt-desc">{description}</div>
 
       <div className="app-belt-ore">
-        产物：<span className="app-gold">{productLabel}</span>
+        产物：{productNode ?? <span className="app-gold">{productLabel}</span>}
         {running ? (
           <>
             {' '}
@@ -382,12 +387,17 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     materials: readonly MaterialNeed[]
     buildSeconds: number
     productLabel: string
+    productNode: ReactNode
     running: boolean
     canStart: boolean
   }> = []
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
+      const prodLabel = shipDef
+        ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+        : sbp.shipId
+      const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: sbp.id,
         kindLabel: '舰船',
@@ -395,9 +405,15 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         description: sbp.description,
         materials: sbp.materials,
         buildSeconds: sbp.buildSeconds,
-        productLabel: shipDef
-          ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
-          : sbp.shipId,
+        productLabel: prodLabel,
+        // note = 船介绍（与市场舰船商品行同口径：悬浮显示舰船介绍而非默认战斗数值说明）
+        productNode: shipDef ? (
+          <ShipHover ship={shipDef} note={shipDef.description}>
+            {prodText}
+          </ShipHover>
+        ) : (
+          prodText
+        ),
         running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
       })
@@ -406,7 +422,9 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
   const pushEquip = (): void => {
     for (const bp of engine.blueprints) {
       if (bp.itemId !== undefined) continue // 弹药等物品蓝图单独分类
-      const moduleName = engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId!
+      const moduleDef = engine.ctx.modules.get(bp.moduleId!)
+      const prodLabel = moduleDef?.name ?? bp.moduleId!
+      const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: bp.id,
         kindLabel: '装备',
@@ -414,7 +432,8 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         description: bp.description,
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
-        productLabel: moduleName,
+        productLabel: prodLabel,
+        productNode: moduleDef ? <ModuleHover mod={moduleDef}>{prodText}</ModuleHover> : prodText,
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
       })
@@ -426,6 +445,8 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
       if (bp.itemId === undefined) continue
       const itemDef = engine.ctx.items.get(bp.itemId)
       const units = bp.outputUnits ?? 1
+      const prodLabel = `${itemDef?.name ?? bp.itemId} ×${units} 发`
+      const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: bp.id,
         kindLabel: '弹药',
@@ -433,7 +454,14 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         description: bp.description,
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
-        productLabel: `${itemDef?.name ?? bp.itemId} ×${units} 发`,
+        productLabel: prodLabel,
+        productNode: itemDef ? (
+          <ItemHover item={itemDef} nameOf={(id) => engine.ctx.items.get(id)?.name}>
+            {prodText}
+          </ItemHover>
+        ) : (
+          prodText
+        ),
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
       })
@@ -485,6 +513,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
       <div className="app-dim app-exp-idle">
         已学会的配方才能开工；制造免费，只耗材料与时间。劳动者规则与精炼炉一致（<b>主控亲自全局限 1 条</b>或
         <b>一枚 AI 核心驱动一条线</b>，核心库存即并行上限）；同一蓝图可多条、不同蓝图并行。制造中 / 可开工的配方排在最前。
+        悬停「产物」名称可查看成品属性。
       </div>
 
       <div className="app-win-body">
@@ -500,6 +529,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
               materials={it.materials}
               buildSeconds={it.buildSeconds}
               productLabel={it.productLabel}
+              productNode={it.productNode}
               kindLabel={it.kindLabel}
             />
           ))}
