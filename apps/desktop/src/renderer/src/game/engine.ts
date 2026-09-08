@@ -572,6 +572,91 @@ export class GameEngine {
     }
   }
 
+  /* ─────────────── 存档导入 / 导出（外部文件；2026-09-08 船长定） ─────────────── */
+
+  /** 当前进度序列化文本（与 persist 同口径：写盘前剥离会话日志） */
+  private currentSaveText(): string {
+    const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
+    return serializeSaveFile(out)
+  }
+
+  /** 导出当前进度：桌面 = 系统保存对话框选位置；网页/手机 = 触发下载 */
+  async exportSaveToFile(): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> {
+    try {
+      await this.persist() // 先落盘最新进度（与备份同口径）
+      return await saveBridge.exportSaveToFile(this.currentSaveText())
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
+  /** 导出指定备份到用户选择的位置（内容 = 该备份文件原文） */
+  async exportBackupToFile(name: string): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> {
+    try {
+      const read = await saveBridge.readBackup(name)
+      if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? '读取备份失败。' }
+      return await saveBridge.exportSaveToFile(read.text)
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
+  /** 从外部文件导入存档：覆盖前自动备份当前档 → 校验可解析 → 按时间差补齐离线进度
+   * （与正常启动同口径：repair 迁移 + simulateOffline + 离线简报）→ 落盘 → 热替换内存 */
+  async importSaveFromFile(): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
+    try {
+      const picked = await saveBridge.pickImportSave()
+      if (!picked.ok) return { ok: false, canceled: picked.canceled === true, error: picked.error }
+      const text = picked.text ?? ''
+      let parsed: ReturnType<typeof loadSaveFile>
+      try {
+        parsed = loadSaveFile(text)
+      } catch (err) {
+        return { ok: false, error: `所选文件无法解析为本游戏存档（${err instanceof Error ? err.message : String(err)}）。` }
+      }
+      const imported = parsed.state
+      // 防误操作：覆盖前先把"当前档"备份一份（与恢复同口径）
+      await this.persist()
+      try {
+        await saveBridge.backup()
+      } catch {
+        // 备份失败不阻断导入（尽力而为）
+      }
+      // 与正常启动同口径的载入修复链（须在离线结算前完成，让离线按新参数结算）
+      repairDeprecatedModules(imported, this.ctx)
+      migrateDeprecatedAmmo(imported)
+      // 按时间差补齐离线进度：档内墙钟 → 现在（上限与正常离线一致；墙钟在未来则跳过）
+      const now = Date.now()
+      const wallFrom = parsed.savedAtWallMs
+      if (wallFrom > 0 && now > wallFrom) {
+        const before = snapshotBasics(imported)
+        const stats = newSettleStats()
+        const { overflowMs } = offlineSplit(now - wallFrom)
+        simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
+        this.offlineReport = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
+        if (this.offlineReport !== null) {
+          addLog(imported, 'info', offlineReportLogText(this.offlineReport))
+        }
+      }
+      this.state = imported
+      const saved = await this.persist() // 落盘（写盘剥离日志；墙钟锚 = 现在 → 下次启动不会重复结算）
+      if (!saved) return { ok: false, error: '写回存档失败（存储空间不足或文件被占用）。' }
+      this.notify()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
+  /** 删除某份备份（只删备份文件，不影响当前档） */
+  async deleteSaveBackup(name: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      return await saveBridge.deleteBackup(name)
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
   /* ─────────────── 玩家动作（成功后自动存档 + 通知界面） ─────────────── */
 
   /** 训练某技能到"队列里应排的下一级"（T2 连锁：已学 + 1 + 已排同技能条数） */

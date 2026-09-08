@@ -20,6 +20,8 @@ export function SaveManager({
 }) {
   const [backups, setBackups] = useState<SaveBackupInfo[] | null>(null)
   const [busy, setBusy] = useState(false)
+  /** 删除二次确认：记住正在等待确认的备份名（再点一次才真删） */
+  const [armDelete, setArmDelete] = useState<string | null>(null)
 
   async function refresh(): Promise<void> {
     setBackups(await engine.listSaveBackups())
@@ -52,6 +54,56 @@ export function SaveManager({
     }
   }
 
+  /** 导入：系统文件选择（桌面/手机网页通用）→ 校验 → 覆盖当前档（覆盖前自动备份） */
+  async function handleImport(): Promise<void> {
+    setBusy(true)
+    const r = await engine.importSaveFromFile()
+    setBusy(false)
+    if (r.canceled) return
+    if (!r.ok) onToast(r.error ?? '导入失败。', true)
+    else {
+      onToast('已从所选文件导入存档（导入前已自动备份当前档）。')
+      onClose()
+    }
+  }
+
+  /** 导出当前档：桌面 = 系统对话框选文件夹/文件名；网页/手机 = 触发下载 */
+  async function handleExportCurrent(): Promise<void> {
+    setBusy(true)
+    const r = await engine.exportSaveToFile()
+    setBusy(false)
+    if (r.canceled) return
+    if (!r.ok) onToast(r.error ?? '导出失败。', true)
+    else onToast(r.path ? `已导出到：${r.path}` : '存档已开始下载（保存在下载目录，iOS 可在分享里选「存储到文件」）。')
+  }
+
+  /** 导出指定备份到用户选择的位置 */
+  async function handleExportBackup(name: string): Promise<void> {
+    setBusy(true)
+    const r = await engine.exportBackupToFile(name)
+    setBusy(false)
+    if (r.canceled) return
+    if (!r.ok) onToast(r.error ?? '导出失败。', true)
+    else onToast(r.path ? `已导出：${r.path}` : '备份已开始下载。')
+  }
+
+  /** 删除备份（两连击确认；只删备份文件，不影响当前档） */
+  async function handleDeleteBackup(name: string): Promise<void> {
+    if (armDelete !== name) {
+      setArmDelete(name) // 第一次点：进入确认态
+      return
+    }
+    setArmDelete(null)
+    setBusy(true)
+    const r = await engine.deleteSaveBackup(name)
+    setBusy(false)
+    if (!r.ok) onToast(r.error ?? '删除失败。', true)
+    else {
+      onToast(`已删除备份：${name}`)
+      void refresh()
+    }
+  }
+
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal" onClick={(e) => e.stopPropagation()}>
@@ -63,12 +115,20 @@ export function SaveManager({
         </div>
         <div className="app-modal-body">
           <div className="app-dim app-note">
-            备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录）；恢复 = 载入所选备份并立即生效，
-            操作前会自动为当前档再做一次备份以防误操作。
+            备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。恢复/导入前会自动为当前档再做一次备份
+            （若恢复错了，用列表里最新的备份即可退回）；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，
+            导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把存档保存到你选择的位置（手机网页版：导入走系统文件选择、
+            导出为下载——iOS 可在分享里选「存储到文件」）。
           </div>
           <div className="app-save-actions">
             <button className="app-btn is-primary is-small" onClick={() => void handleBackup()} disabled={busy}>
               备份当前档
+            </button>
+            <button className="app-btn is-small" onClick={() => void handleImport()} disabled={busy} title="选择一个 .json 存档文件导入（导入前自动备份当前档，并按时间差补齐离线进度）">
+              导入存档…
+            </button>
+            <button className="app-btn is-small" onClick={() => void handleExportCurrent()} disabled={busy} title="把当前进度保存为你指定的文件">
+              导出存档…
             </button>
             {busy ? <span className="app-dim">处理中……</span> : null}
           </div>
@@ -88,6 +148,17 @@ export function SaveManager({
                     </span>
                   </div>
                   <div className="app-inv-btns">
+                    <button className="app-btn is-small" onClick={() => void handleExportBackup(b.name)} disabled={busy} title="把这份备份保存为你指定的文件">
+                      导出
+                    </button>
+                    <button
+                      className={`app-btn is-small${armDelete === b.name ? ' is-warn' : ''}`}
+                      onClick={() => void handleDeleteBackup(b.name)}
+                      disabled={busy}
+                      title={armDelete === b.name ? '再点一次确认删除（只删这份备份，不影响当前档）' : '删除这份备份（两连击确认）'}
+                    >
+                      {armDelete === b.name ? '再点确认删除' : '删除'}
+                    </button>
                     <button className="app-btn is-small is-primary" onClick={() => void handleRestore(b.name)} disabled={busy}>
                       恢复
                     </button>

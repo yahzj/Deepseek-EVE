@@ -31,6 +31,9 @@ const electronBridge: WhaleApi = {
   listBackups: () => window.whale.listBackups(),
   readBackup: (name) => window.whale.readBackup(name),
   restore: (name) => window.whale.restore(name),
+  pickImportSave: () => window.whale.pickImportSave(),
+  exportSaveToFile: (text) => window.whale.exportSaveToFile(text),
+  deleteBackup: (name) => window.whale.deleteBackup(name),
 }
 
 /* ───────── 浏览器分支：localStorage（键空间：1 主档 + N 备份） ───────── */
@@ -132,6 +135,71 @@ const localStorageBridge: WhaleApi = {
     }
     if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: '浏览器存储空间不足，恢复失败。' }
     return { ok: true }
+  },
+  /** 删除某份浏览器内备份（只删备份键，不影响主档键） */
+  async deleteBackup(name: string): Promise<{ ok: boolean; error?: string }> {
+    const key = backupKeyOf(name)
+    if (key === null) return { ok: false, error: '非法的备份文件名。' }
+    if (ls().getItem(key) === null) return { ok: false, error: '找不到该备份。' }
+    ls().removeItem(key)
+    return { ok: true }
+  },
+  /** 导入 = 系统文件选择器（桌面浏览器/手机网页都可用），读取 .json 文本返回 */
+  async pickImportSave(): Promise<{ ok: boolean; text?: string; canceled?: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.json,application/json'
+      let done = false
+      const finish = (r: { ok: boolean; text?: string; canceled?: boolean; error?: string }): void => {
+        if (done) return
+        done = true
+        input.remove()
+        window.removeEventListener('focus', onFocusBack)
+        resolve(r)
+      }
+      const onFocusBack = (): void => {
+        // 兼容兜底：部分浏览器不派发 cancel——对话框关闭后焦点回来仍未选文件 → 视为取消
+        setTimeout(() => {
+          if (!done && (input.files?.length ?? 0) === 0) finish({ ok: false, canceled: true })
+        }, 300)
+      }
+      input.addEventListener('change', () => {
+        const file = input.files?.[0]
+        if (!file) {
+          finish({ ok: false, canceled: true })
+          return
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          finish({ ok: false, error: '文件过大（超过 10MB），不像是本游戏存档。' })
+          return
+        }
+        const reader = new FileReader()
+        reader.onload = (): void => finish({ ok: true, text: String(reader.result ?? '') })
+        reader.onerror = (): void => finish({ ok: false, error: '读取文件失败。' })
+        reader.readAsText(file, 'utf-8')
+      })
+      input.addEventListener('cancel', () => finish({ ok: false, canceled: true }))
+      window.addEventListener('focus', onFocusBack)
+      input.click()
+    })
+  },
+  /** 导出 = 触发浏览器下载（手机网页版保存到下载目录；iOS 可在分享里选「存储到文件」） */
+  async exportSaveToFile(text: string): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
+    try {
+      const blob = new Blob([text], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${stampOf(new Date())}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: `导出失败（${String(err)}）。` }
+    }
   },
 }
 
