@@ -65,6 +65,7 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
     ctx = makeTestCtx() // bp-a：10 单位矿粉 min-a、耗时 600 秒（制造费 500 为历史遗留数据，2026-09-08 起引擎不再收取）；bp-b：mod-b（8 单位 min-b、300 秒）
+    state.skills.trained['ai-expert'] = 5 // 2026-09-08 AI 核心上限制：本组 AI 线用例需资格（多线并行用 Lv5）
     state.blueprintStock['bp-a'] = 1
     learnBlueprint(state, ctx, 'bp-a')
   })

@@ -11,8 +11,9 @@
  *   取消）；2026-09-08 起同一蓝图也可开多条线（与精炼炉多炉并线一致）；
  * - 2026-09-08（船长拍板：与精炼炉机制完全相同，仅处理层不同）：制造线与炉同款劳动者制——
  *   worker = 'pilot'（主控亲自制造：全局限 1 条、与手动精炼/回收共用一个手动工作位、
- *   占主控不可离港作业）或 AiCoreType（一枚 AI 核心驱动一条线：核心出库占用、不占副船名额、
- *   完成/取消自动归还，核心库存即并行上限）；
+ *   占主控不可离港作业）或 AiCoreType（一枚 AI 核心驱动一条线：核心出库占用并计入
+ *   「AI 核心上限」——同时启用总数受 AI 核心上限技能约束、与 AI 副船任务共用，
+ *   完成/取消自动归还）；
  * - 耗时链同炉：主控线 = 工业理论 × 批量生产学（现有公式）；AI 线 = 基础耗时 ÷ 核心效率再乘
  *   工业自动化 −5%/级（下限 60%）。
  */
@@ -24,7 +25,7 @@ import { addWare, countWare, removeWare } from './inventory'
 import { addModule } from './equipment'
 import { addShipToFleet } from './shipyard'
 import { formatDurationMs } from './time'
-import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
+import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike } from './location'
 import { addAiIncome, addAiMakeDone, type SettleStats } from './settleStats'
 
@@ -127,7 +128,8 @@ export function manufacturingManualActive(state: GameState): boolean {
 /**
  * 玩家指令：开始制造（2026-09-08 劳动者制与精炼炉完全同款，仅处理层不同：worker = 'pilot'
  * 主控亲自（全局限 1 条、与手动精炼/回收共用手动工作位、占主控不可离港作业）或 AiCoreType
- * 一枚核心驱动一条线（核心库存即并行上限，出库占用、完成/取消归还）；同一蓝图可多条线、
+ * 一枚核心驱动一条线（同时启用数计入「AI 核心上限」——上限由 AI 核心上限技能决定、
+ * 与 AI 副船任务共用；出库占用、完成/取消归还）；同一蓝图可多条线、
  * 不同蓝图不限，皆受劳动者约束；材料立即扣除（2026-09-08 船长定：取消每次制造费），
  * 时间到自动完成）。
  */
@@ -159,8 +161,12 @@ export function startManufacturing(
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-  } else if (countAiCore(state, worker) <= 0) {
-    return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
+  } else {
+    const capBlock = aiCoreCapBlock(state, ctx)
+    if (capBlock) return { ok: false, error: capBlock }
+    if (countAiCore(state, worker) <= 0) {
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
+    }
   }
   // 2026-09-08 船长定：取消每次制造费——开工不再校验/收取 buildCostIsk（蓝图数据字段保留为历史遗留）
   const missing = missingMaterials(state, ctx, buildable.spec)

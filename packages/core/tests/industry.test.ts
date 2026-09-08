@@ -34,6 +34,10 @@ describe('精炼与市场（M1 经济）', () => {
   })
 
   describe('精炼炉运转（v20：同资源多单位并行、原料不锁定实时扣取；主控限 1 台 + 每闲置核心 1 台）', () => {
+    // 2026-09-08 AI 核心上限制：本组 AI 炉用例需「AI 核心上限」资格（Lv5 足够覆盖多台并行用例）
+    beforeEach(() => {
+      state.skills.trained['ai-expert'] = 5
+    })
     // 测试 fixture 无单批参数 → 兜底：10 单位/批、6 秒/批（100 单位 = 10 批 = 60s）
     const totalUnits = 100
     const runIdOf = (itemId: string): number => {

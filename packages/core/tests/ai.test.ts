@@ -10,8 +10,9 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countWare } from '../src/inventory'
 import {
+  aiCoreCap,
+  aiCoreUsed,
   aiEfficiency,
-  aiSlotsUsed,
   aiTaskView,
   assignAiExpedition,
   assignAiMining,
@@ -20,10 +21,12 @@ import {
   countAiCore,
   gainAiCore,
   idleAiShipIds,
-  maxAiSlots,
 } from '../src/ai'
 import { anomaly, makeTestCtx, fittedOf } from './helpers'
 import { aiWinPreview } from '../src/combat'
+import { startRefineRun, stopRefineRun } from '../src/industry'
+import { startManufacturing, cancelManufacturing } from '../src/manufacturing'
+import { learnBlueprint } from '../src/market'
 
 /** 基础核心的市场卡（测试世界不自动生成核心，手动补一张） */
 const CORE_BASIC_GOOD: MarketGoodDef = {
@@ -61,10 +64,10 @@ describe('AI 核心库与名额', () => {
     expect(countAiCore(state, 'basic')).toBe(1)
   })
 
-  it('名额 = 人工智能专家等级；技能 0 级不能指挥', () => {
-    expect(maxAiSlots(state, ctx)).toBe(0)
+  it('启用上限 = AI 核心上限技能贡献（现唯一 = 人工智能专家等级）；Lv0 = 0 不能启用', () => {
+    expect(aiCoreCap(state, ctx)).toBe(0)
     state.skills.trained['ai-expert'] = 2
-    expect(maxAiSlots(state, ctx)).toBe(2)
+    expect(aiCoreCap(state, ctx)).toBe(2)
   })
 })
 
@@ -93,18 +96,18 @@ describe('AI 采矿任务', () => {
     state.fleet['sandcat3'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     const r3 = assignAiMining(state, 'sandcat3', 'basic', 'belt-a', ctx)
     expect(r3.ok).toBe(false)
-    expect(r3.error).toContain('名额已满')
+    expect(r3.error).toContain('AI 核心启用已满')
   })
 
-  it('指派成功：扣核心、占用名额、可取消并归还', () => {
-    expect(aiSlotsUsed(state)).toBe(0)
+  it('指派成功：扣核心、占用启用数、可取消并归还', () => {
+    expect(aiCoreUsed(state)).toBe(0)
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
     expect(countAiCore(state, 'basic')).toBe(1) // 用掉 1 颗
-    expect(aiSlotsUsed(state)).toBe(1)
+    expect(aiCoreUsed(state)).toBe(1)
     expect(idleAiShipIds(state)).not.toContain('sandcat2')
     expect(cancelAiTask(state, 'sandcat2', ctx)).toBe(true)
     expect(countAiCore(state, 'basic')).toBe(2) // 归还
-    expect(aiSlotsUsed(state)).toBe(0)
+    expect(aiCoreUsed(state)).toBe(0)
   })
 
   it('效率拉长节奏：基础核心 40% → 6 秒循环实际需 15 秒采 5 单位', () => {
@@ -253,9 +256,9 @@ describe('AI 远征任务', () => {
     const r = assignAiExpedition(state, 'sandcat2', 'basic', 'ano-easy', ctx)
     expect(r.ok).toBe(false)
     expect(r.error).toContain('暂停受理')
-    expect(state.aiAssignments['sandcat2']).toBeUndefined() // 未占用名额
+    expect(state.aiAssignments['sandcat2']).toBeUndefined() // 未占用启用数
     expect(countAiCore(state, 'basic')).toBe(1) // 核心未耗
-    expect(aiSlotsUsed(state)).toBe(0)
+    expect(aiCoreUsed(state)).toBe(0)
   })
 
   it('软下线：遗留远征任务推进时安全善后（取消 + 归还核心；不进入战斗、不结算奖励/声望）', () => {
@@ -282,5 +285,92 @@ describe('AI 远征任务', () => {
       expect(state.completedBounties).toEqual(['ano-easy']) // 无新首胜
       expect(state.standings['dsi']).toBeUndefined() // 无声望
     }
+  })
+})
+
+describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务与站内 AI 设施共用同一上限）', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    ctx = makeTestCtx()
+    state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
+    state.warehouse.items['ore-a'] = 400 // 精炼炉用料
+    state.warehouse.items['min-a'] = 20 // 制造 bp-a 用料（10/线）
+    gainAiCore(state, 'basic', 3)
+  })
+
+  it('Lv0 上限 0：有核心也不能开 AI 炉', () => {
+    const r = startRefineRun(state, 'ore-a', 'basic', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('AI 核心上限为 0')
+  })
+
+  it('AI 炉占用启用数：满额再开拒；停炉即释放', () => {
+    state.skills.trained['ai-expert'] = 1
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(aiCoreUsed(state)).toBe(1)
+    const r2 = startRefineRun(state, 'ore-a', 'basic', ctx)
+    expect(r2.ok).toBe(false)
+    expect(r2.error).toContain('AI 核心启用已满')
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    expect(aiCoreUsed(state)).toBe(0)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true) // 释放后可再开
+  })
+
+  it('AI 副船任务与 AI 炉互占名额（同一上限池）', () => {
+    state.skills.trained['ai-expert'] = 1
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
+    expect(aiCoreUsed(state)).toBe(1)
+    const r = startRefineRun(state, 'ore-a', 'basic', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('AI 核心启用已满')
+    expect(cancelAiTask(state, 'sandcat2', ctx)).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true) // 副船取消后名额释放
+  })
+
+  it('制造线同池：Lv2 炉+线并行；第三处（副船）满额拒；停/取消后释放', () => {
+    state.skills.trained['ai-expert'] = 2
+    state.blueprintStock['bp-a'] = 1
+    learnBlueprint(state, ctx, 'bp-a')
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
+    expect(aiCoreUsed(state)).toBe(2)
+    const r = assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('AI 核心启用已满')
+    // 停炉 + 取消线 → 全部释放 → 可再启用
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    expect(cancelManufacturing(state, ctx, state.manufacturingRuns[0]!.id).ok).toBe(true)
+    expect(aiCoreUsed(state)).toBe(0)
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
+  })
+
+  it('存量超限（读档/技能低于占用）不中断：照常结算归还，但新启用被拒直到降到上限内', () => {
+    state.skills.trained['ai-expert'] = 2
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    state.skills.trained['ai-expert'] = 1 // 模拟技能低于当前占用（读档/变更后）
+    expect(aiCoreUsed(state)).toBe(2) // 存量仍计入
+    const blocked = startRefineRun(state, 'ore-a', 'basic', ctx)
+    expect(blocked.ok).toBe(false)
+    expect(blocked.error).toContain('AI 核心启用已满')
+    const before = state.refineRuns[0]!.batchesDone
+    advanceGame(state, 16_000, ctx) // 存量炉照常推进（不中断）
+    expect(state.refineRuns[0]!.batchesDone).toBeGreaterThan(before)
+    // 停一台仍超限（占用 1 ≥ 上限 1）→ 新开仍被拒
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(false)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    expect(aiCoreUsed(state)).toBe(0)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true) // 降到上限内可再开
+  })
+
+  it('旧作业豁免的制造线（worker 缺省）不计入启用数', () => {
+    // Lv0：唯一上限来源为 0 → 只有旧作业豁免线时启用数仍为 0
+    state.manufacturingRuns.push({ active: true, id: 99, blueprintId: 'bp-a', finishAtGameMs: 0, durationMs: 1000 })
+    expect(aiCoreUsed(state)).toBe(0)
+    expect(aiCoreCap(state, ctx)).toBe(0)
   })
 })

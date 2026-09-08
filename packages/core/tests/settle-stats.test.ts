@@ -17,6 +17,7 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     const ctx: SimContext = makeTestCtx()
     // AI 核心一台 + 库存充足（默认炉：10 单位/批、6s/批 → AI 周期 15s）
     state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制：开 AI 炉需「AI 核心上限」资格
     state.warehouse.items['ore-a'] = 400
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
 
@@ -49,6 +50,7 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
     const ctx: SimContext = makeTestCtx()
     state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制：开 AI 炉需「AI 核心上限」资格
     state.warehouse.items['ore-a'] = 400
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     const stats = newSettleStats()

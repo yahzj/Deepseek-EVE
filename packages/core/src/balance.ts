@@ -41,7 +41,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     durabilityFactor: 0.6, // 耐久惩罚：× (0.4 + 0.6×durability)
   },
   aiCore: {
-    skillId: 'ai-expert', // 人工智能专家：LvN = 可同时指挥 N 艘副船
+    skillId: 'ai-expert', // 唯一「AI 核心上限」技能：LvN = 可同时启用 N 枚 AI 核心（AI 副船任务与站内 AI 设施共用；后续上限技能在 ai.ts aiCoreCap 叠加）
     basicPriceIsk: 25_000, // 基础核心直购价
     efficiency: { basic: 0.4, gamma: 0.5, beta: 0.6, alpha: 0.75 },
     drops: [

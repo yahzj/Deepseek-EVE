@@ -374,7 +374,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '人工智能专家',
     group: '工程',
     rank: 4,
-    description: 'AI 指挥技能：每级可同时指挥 ⟦1 艘⟧ AI 副船（配合 AI 核心使用）。',
+    description: 'AI 指挥框架：每级 +⟦1 枚⟧ 可同时启用的 AI 核心上限（AI 副船任务与站内精炼炉/回收炉/制造线共用该上限）。',
   },
   {
     id: 'accelerated-learning',

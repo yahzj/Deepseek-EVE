@@ -4,17 +4,17 @@
 import { useState } from 'react'
 import {
   AI_CORE_ORDER,
+  aiCoreCap,
+  aiCoreUsed,
   aiCoreName,
   aiTaskView,
   aiEfficiency,
-  aiSlotsUsed,
   countAiCore,
   goodLockedReason,
   idleAiShipIds,
   isExplored,
   marketGoodOf,
   marketQuote,
-  maxAiSlots,
   allFittedIds,
   shipRoleLabel,
 } from '@whale/core'
@@ -507,8 +507,8 @@ export function ShipPage({
 
 function AiCommandPanel({ engine, onToast }: PageProps) {
   const state = engine.state
-  const slots = maxAiSlots(state, engine.ctx)
-  const used = aiSlotsUsed(state)
+  const cap = aiCoreCap(state, engine.ctx)
+  const used = aiCoreUsed(state)
   const idleShips = idleAiShipIds(state)
 
   const [shipId, setShipId] = useState('')
@@ -547,13 +547,13 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     <Panel
       className="is-fill"
       title="AI 指挥中心"
-      right={<span className="app-dim">名额 {used}/{slots}</span>}
+      right={<span className="app-dim">AI 核心启用 {used}/{cap}</span>}
     >
       {/* 名额与核心库 */}
       <div className="app-ai-status">
         <span className="app-dim">
-          「人工智能专家」Lv{state.skills.trained['ai-expert'] ?? 0} → 可同时指挥 {slots} 艘副船
-          {slots === 0 ? '（先到「技能」页训练该技能）' : ''}
+          AI 核心启用上限 {cap} 枚（AI 副船任务与站内精炼炉/回收炉/制造线共用；上限由 AI 核心上限技能决定）
+          {cap === 0 ? '（先到「技能」页训练 AI 核心上限技能）' : ''}
         </span>
         <div className="app-core-badges">
           {AI_CORE_ORDER.map((type) => (
@@ -568,7 +568,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       </div>
 
       {/* 指派表单 */}
-      {slots > 0 ? (
+      {cap > 0 ? (
         <div className="app-ai-assign">
           <select
             className="app-select"
@@ -635,7 +635,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           </button>
         </div>
       ) : (
-        <div className="app-dim app-inv-empty">人工智能专家 Lv0：先训练技能，再购买基础 AI 核心即可指挥第一艘副船。</div>
+        <div className="app-dim app-inv-empty">AI 核心上限为 0：先训练提升 AI 核心上限的技能（如「人工智能专家」），再购买基础 AI 核心即可启用第一枚。</div>
       )}
 
       {/* 执行中列表 */}

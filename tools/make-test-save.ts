@@ -102,7 +102,7 @@ function injectB1(state: GameState): string[] {
   // AI 副船名额与核心（实测"副船同遇"门槛）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 3)
   state.aiCores['basic'] = (state.aiCores['basic'] ?? 0) + 4
-  notes.push('人工智能专家 Lv3 + 基础核心 ×4（可同时指挥 3 艘副船）')
+  notes.push('人工智能专家 Lv3 + 基础核心 ×4（AI 核心启用上限 3 枚——AI 副船任务与站内设施共用）')
   // 全舰回满耐久（遭遇伤害测试以干净耐久起步）
   for (const s of Object.values(state.fleet)) s.durability = 1
   notes.push('全舰耐久回满')

@@ -352,7 +352,7 @@ export interface BalanceConfig {
     durabilityFactor: number
   }
   aiCore: {
-    /** 决定可同时指挥副船数的技能 id（"人工智能专家"） */
+    /** 提升「同时启用 AI 核心上限」的技能 id（现唯一 = 人工智能专家；多技能叠加见 ai.ts aiCoreCap） */
     skillId: string
     /** 基础 AI 核心单价（ISK，空间站直购；更高级核心由远征掉落） */
     basicPriceIsk: number

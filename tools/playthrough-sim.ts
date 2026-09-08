@@ -15,7 +15,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import {
-  aiSlotsUsed,
+  aiCoreUsed,
   assignAiMining,
   assignAiSalvage,
   battleWinPreview,
@@ -45,7 +45,7 @@ import {
   learnBlueprint,
   marketGoodOf,
   marketSellHolding,
-  maxAiSlots,
+  aiCoreCap,
   missingMaterials,
   oreAvailable,
   ownsBlueprint,
@@ -366,7 +366,7 @@ function nextUnseenBountyGalaxy(): string | null {
 let lastAiRotateDay = -99
 function doAi(): void {
   if (state.wallet.isk < 60_000) return
-  const max = maxAiSlots(state, ctx)
+  const max = aiCoreCap(state, ctx)
   if (max <= 0) return
   if (countAiCore(state, 'basic') <= 0) {
     const rb = buyBasicAiCore(state, ctx)
@@ -386,7 +386,7 @@ function doAi(): void {
       }
     }
   }
-  if (aiSlotsUsed(state) >= max) return
+  if (aiCoreUsed(state) >= max) return
   const idle = idleAiShipIds(state)
   if (idle.length === 0) {
     // 买一艘便宜工业船给 AI 用

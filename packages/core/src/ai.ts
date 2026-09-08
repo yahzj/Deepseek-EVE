@@ -2,9 +2,10 @@
  * AI 核心系统（v8）：AI 核心 = 玩家的分身。
  *
  * 规则（中文说明，设计文档已确认）：
- * - 「人工智能专家」技能等级 = 可同时指挥的副船数量（LvN = N 艘）；
+ * - 同时启用的 AI 核心总数上限 = AI 核心上限技能贡献之和（现唯一 = 「人工智能专家」，
+ *   LvN = N 枚：AI 副船任务与站内 AI 设施共用——2026-09-08 船长定，副船不再单独计名额）；
  * - 核心四档效率：基础 40% / 伽马 50% / 贝塔 60% / 阿尔法 75%；
- *   效率只影响副船工作速度（作业时长按 ÷效率拉长），不影响任何奖励（全额）；
+ *   效率只拉长所驱动作业的时长（÷效率），不影响任何奖励（全额）；
  * - 基础核心空间站直购；伽马/贝塔/阿尔法由远征胜利按威胁概率掉落；
  * - 采矿任务：无风险，满舱自动返航→卸货入物品仓库→再出航（无限循环，直到取消）；
  * - 远征任务：只接预估胜率 ≥80% 的悬赏、且船耐久 ≥50%；胜利奖励/战利品/声望全额；
@@ -88,14 +89,41 @@ export function releaseAiCore(state: GameState, type: AiCoreType): void {
   gainAiCore(state, type)
 }
 
-/** 可同时指挥的副船数 = 技能等级 */
-export function maxAiSlots(state: GameState, ctx: SimContext): number {
-  return state.skills.trained[ctx.balance.aiCore.skillId] ?? 0
+/** 同时启用 AI 核心的总数上限 = 各「AI 核心上限」技能贡献之和
+ * （现唯一 = 人工智能专家等级；后续新增上限技能在此叠加——船长 2026-09-08 定：
+ * AI 副船任务与站内 AI 设施共用同一上限，不再按用途分池） */
+export function aiCoreCap(state: GameState, ctx: SimContext): number {
+  let cap = 0
+  cap += state.skills.trained[ctx.balance.aiCore.skillId] ?? 0
+  return cap
 }
 
-/** 已占用的名额数 */
-export function aiSlotsUsed(state: GameState): number {
-  return Object.keys(state.aiAssignments).length
+/** 已启用的 AI 核心数（AI 副船任务 + 站内 AI 精炼炉/回收炉/制造线；
+ * 旧作业豁免的制造线 worker=undefined 未占核心 → 不计入） */
+export function aiCoreUsed(state: GameState): number {
+  let used = Object.keys(state.aiAssignments).length
+  for (const r of state.refineRuns) {
+    if (r.worker !== 'pilot') used += 1
+  }
+  for (const m of state.manufacturingRuns) {
+    if (m.worker !== undefined && m.worker !== 'pilot') used += 1
+  }
+  return used
+}
+
+/** AI 核心启用守卫（任何启用点共用）：null = 可启用；否则返回拒绝文案（上限未解锁 / 已满）。
+ * 船长 2026-09-08 定：存量超限（读档/技能变化）不中断运行，但同样计入 aiCoreUsed——
+ * 想再启用新的必须先把占用降到上限以内。 */
+export function aiCoreCapBlock(state: GameState, ctx: SimContext): string | null {
+  const cap = aiCoreCap(state, ctx)
+  if (cap <= 0) {
+    return 'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「人工智能专家」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线共用上限）。'
+  }
+  const used = aiCoreUsed(state)
+  if (used >= cap) {
+    return `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线）再启用新的。`
+  }
+  return null
 }
 
 /** 可指派的空闲船（舰队里非主控、无任务、不在换船善后返航中的船） */
@@ -135,11 +163,8 @@ function checkAssignable(state: GameState, shipId: string, coreType: AiCoreType,
   if (shipId === state.shipId) return { ok: false, error: '主控船由你亲自驾驶，不能指派 AI。' }
   if (!state.fleet[shipId]) return { ok: false, error: '舰队里没有这艘船。' }
   if (shipId in state.aiAssignments) return { ok: false, error: '这艘船已有 AI 任务。' }
-  const slots = maxAiSlots(state, ctx)
-  if (slots <= 0) return { ok: false, error: `「人工智能专家」Lv0：先训练该技能才能指挥 AI 副船。` }
-  if (aiSlotsUsed(state) >= slots) {
-    return { ok: false, error: `AI 名额已满（${slots}/${slots}）——升级「人工智能专家」可指挥更多副船。` }
-  }
+  const capBlock = aiCoreCapBlock(state, ctx)
+  if (capBlock) return { ok: false, error: capBlock }
   if (countAiCore(state, coreType) <= 0) {
     return { ok: false, error: `${aiCoreName(coreType)} 库存不足（效率 ${Math.round(aiEfficiency(state, ctx, coreType) * 100)}%）。` }
   }

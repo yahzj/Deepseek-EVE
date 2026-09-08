@@ -4,7 +4,8 @@
  * 精炼模型（工业细化，2026-09-04 船长定稿：运转周期制；2026-09-05 船长拍板多工位并行）：
  * - 精炼 = 母港精炼炉的"循环运转"：多工位并行（refineRuns 表），每个资源（矿石/气体/冰矿）
  *   或残骸型号至多一台炉；主控亲自运转限 1 台（占主控工作位），其余工位可各由一枚闲置
- *   AI 核心驱动（核心出库占用，不占副船名额；核心库存即并行上限）；
+ *   AI 核心驱动（核心出库占用并计入「AI 核心上限」——同时启用总数受 AI 核心上限技能
+ *   约束，与 AI 副船任务共用；库存只决定拥有/效率档）；
  * - 固定批量运转：每种资源有"单批单位 × 单批周期"（5~10 秒节奏，items.ts refineBatchUnits/
  *   refineCycleMs；缺失兜底 10 单位/6 秒）；启动即把全部库存锁定入炉（货仓优先取用），
  *   每批到点按产出倍率出矿物入物品仓库并自动续批，直到料尽自动停炉（核心归还）；
@@ -23,7 +24,7 @@ import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
-import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
+import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike } from './location'
 import { formatDurationMs } from './time'
 import { DSI_FACTION_ID, standingOf } from './expedition'
@@ -141,8 +142,8 @@ export function refineRunViews(state: GameState, ctx: SimContext): RefineRunView
 /**
  * 玩家指令：启动一台精炼炉（v20：同资源允许多台同时运转、原料不锁定——每批到点从仓库
  * 实时扣取，耗尽自动停；worker = 'pilot'（主控亲自运转，全局限 1 台、占主控工作位）或
- * AI 核心类型（每台需一枚闲置核心，核心库存即并行上限；核心出库占用、不占副船名额，
- * 停炉/料尽自动归还）。
+ * AI 核心类型（每台需一枚闲置核心 + 一个「AI 核心上限」名额——上限由 AI 核心上限技能
+ * 决定，与 AI 副船任务共用；核心出库占用、停炉/料尽自动归还）。
  */
 export function startRefineRun(
   state: GameState,
@@ -178,8 +179,12 @@ export function startRefineRun(
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-  } else if (countAiCore(state, worker) <= 0) {
-    return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
+  } else {
+    const capBlock = aiCoreCapBlock(state, ctx)
+    if (capBlock) return { ok: false, error: capBlock }
+    if (countAiCore(state, worker) <= 0) {
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
+    }
   }
   const { batchUnits, cycleMs } = refineParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
@@ -273,8 +278,12 @@ export function startRecycleRun(
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-  } else if (countAiCore(state, worker) <= 0) {
-    return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
+  } else {
+    const capBlock = aiCoreCapBlock(state, ctx)
+    if (capBlock) return { ok: false, error: capBlock }
+    if (countAiCore(state, worker) <= 0) {
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入回收炉。` }
+    }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))

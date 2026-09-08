@@ -87,6 +87,7 @@ describe('T1 activityOverview 视图', () => {
     state.warehouse.items['min-a'] = 20
     // 制造与采矿/扫描并行允许（2026-09-08：制造带劳动者——主控手动与出海互斥，故用 AI 核心驱动来并行）
     state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制
     expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
     const acts = activityOverview(state, ctx)
     const kinds = acts.map((a) => a.kind).sort()
