@@ -24,6 +24,7 @@ import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
+import { MONEY_GLYPH } from '../pages/common'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -33,6 +34,14 @@ function bpGoodKey(engine: GameEngine, blueprintId: string): string | null {
     if (good.kind === 'blueprint' && good.refId === blueprintId) return good.key
   }
   return null
+}
+
+/** 产物现货基准价（产物在市场目录的 basePrice；弹药等按单次产出数量折算） */
+function productBaseOf(engine: GameEngine, kind: 'module' | 'ship' | 'item', refId: string, units = 1): number {
+  for (const good of engine.ctx.marketGoods.values()) {
+    if (good.kind === kind && good.refId === refId) return (good.basePrice ?? 0) * units
+  }
+  return 0
 }
 
 /* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
@@ -151,6 +160,7 @@ function BlueprintCard({
   productLabel,
   productNode,
   kindLabel,
+  productBase,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -165,6 +175,8 @@ function BlueprintCard({
   productNode?: ReactNode
   /** 产物类别徽标：装备 / 舰船 */
   kindLabel: string
+  /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
+  productBase: number
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
@@ -211,6 +223,14 @@ function BlueprintCard({
   }
 
   const feedTxt = short.length > 0 ? short.join('；') : ''
+  // 2026-09-08（二号·组装机收益体检 A 项）：卡面补「净 ≈ISK/h」——产物现货基准价 − 材料收价
+  // （材料学折扣后），按当前技能单件耗时折算每小时；未计销路与成交税（卖出按空间站收购档约
+  // 6~7 折，自用装配则按现货计）——与精炼/回收卡「净口径估算」同款视觉。
+  const matIsk = materials.reduce(
+    (s, m) => s + matNeedCount(state, m.count) * (engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
+    0,
+  )
+  const netPerH = productBase > 0 ? Math.round(((productBase - matIsk) / Math.max(1, buildMs)) * 3_600_000) : null
   const manualTitle =
     manualNote ??
     feedTxt ??
@@ -288,8 +308,20 @@ function BlueprintCard({
         })}
       </ul>
       <div className="app-belt-econ">
-        制造免费：只耗材料与时间
-        {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
+        <div>
+          制造免费：只耗材料与时间
+          {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
+        </div>
+        {netPerH !== null ? (
+          <div
+            className={`app-belt-econ-val${netPerH < 0 ? ' is-neg' : ''}`}
+            title={`净收益估算：每件产物（市场现货基准价）− 每件材料（站内收价，材料学折扣后），按当前技能单件耗时折算每小时；不随市场收购波动、未计成交税。${
+              netPerH < 0 ? '当前价格与技能下制造不如直接卖材料。' : '卖出给空间站按收购档（约 6~7 折），自用装配则按现货价计。'
+            }`}
+          >
+            {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} ISK/h{netPerH < 0 ? '（净亏：直接卖材料更划算）' : '（净 · 现货价）'}
+          </div>
+        ) : null}
       </div>
 
       <div className="app-belt-actions">
@@ -336,7 +368,7 @@ function BlueprintCard({
                   className="app-select"
                   value={core ?? ''}
                   onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-                  title="选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用；核心库存即并行上限）"
+                  title="选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用并计入 AI 核心启用上限——上限由 AI 核心上限技能决定，与 AI 副船任务共用）"
                 >
                   {usableCores.map((t) => (
                     <option key={t} value={t}>
@@ -390,6 +422,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
     productNode: ReactNode
     running: boolean
     canStart: boolean
+    productBase: number
   }> = []
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
@@ -416,6 +449,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         ),
         running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
+        productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
       })
     }
   }
@@ -436,6 +470,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         productNode: moduleDef ? <ModuleHover mod={moduleDef}>{prodText}</ModuleHover> : prodText,
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
+        productBase: moduleDef ? productBaseOf(engine, 'module', bp.moduleId!) : 0,
       })
     }
   }
@@ -464,6 +499,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         ),
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
+        productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, units) : 0,
       })
     }
   }
@@ -512,8 +548,8 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
       </div>
       <div className="app-dim app-exp-idle">
         已学会的配方才能开工；制造免费，只耗材料与时间。劳动者规则与精炼炉一致（<b>主控亲自全局限 1 条</b>或
-        <b>一枚 AI 核心驱动一条线</b>，核心库存即并行上限）；同一蓝图可多条、不同蓝图并行。制造中 / 可开工的配方排在最前。
-        悬停「产物」名称可查看成品属性。
+        <b>一枚 AI 核心驱动一条线</b>，同时启用的 AI 核心总数受 AI 核心上限技能约束、与 AI 副船任务共用）；同一蓝图可多条、不同蓝图并行。制造中 / 可开工的配方排在最前。
+        悬停「产物」名称可查看成品属性；卡面 ≈ISK/h 为净收益估算（现货价口径，未计销路）。
       </div>
 
       <div className="app-win-body">
@@ -531,6 +567,7 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
               productLabel={it.productLabel}
               productNode={it.productNode}
               kindLabel={it.kindLabel}
+              productBase={it.productBase}
             />
           ))}
         </div>

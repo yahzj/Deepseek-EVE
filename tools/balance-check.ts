@@ -12,6 +12,7 @@
  *   C 装备流：在 B 基础上再练采矿护卫舰，并制造装配 采集器MK1 → 货舱MK1 → 采集器MK2
  */
 import {
+  acquisitionFactorOf,
   advanceGame,
   buyAtMarket,
   buyShip,
@@ -61,6 +62,13 @@ interface StrategyResult {
   finalShip: string
   milestones: string[]
   snapshots: Snapshot[]
+  /** 时间分解（30s 步按主控作业状态归类；训练与采矿并行不单列；2026-09-08 二号 C 流分项） */
+  time: { mining: number; travel: number; refine: number; build: number; other: number }
+  /** 自造装备结存（排除开局自带件）：期末装备库件数 / 全船已装配件数；现货与收购变现口径价值 */
+  gearBayN: number
+  gearFitN: number
+  gearSpot: number
+  gearAcq: number
 }
 
 /** 通用策略控制器：继承方实现"货舱满了怎么办" */
@@ -105,6 +113,26 @@ function runStrategy(strategy: Strategy): StrategyResult {
     finalShip: '',
     milestones: [],
     snapshots: [],
+    time: { mining: 0, travel: 0, refine: 0, build: 0, other: 0 },
+    gearBayN: 0,
+    gearFitN: 0,
+    gearSpot: 0,
+    gearAcq: 0,
+  }
+
+  // 开局自带装配/装备库件（教学件等）——装备结存统计时排除，只计"自造"件
+  const initFitted = new Set<string>()
+  for (const f of Object.values(state.fleet)) {
+    if (!f) continue
+    for (const rack of Object.values(f.fitted)) {
+      const list = Array.isArray(rack) ? rack : rack ? [rack] : []
+      for (const id of list) {
+        if (typeof id === 'string' && id.length > 0) initFitted.add(id)
+      }
+    }
+  }
+  for (const id of Object.keys(state.moduleBay ?? {})) {
+    if ((state.moduleBay[id] ?? 0) > 0) initFitted.add(id)
   }
 
   strategy.planSkills(state, ctx)
@@ -132,6 +160,13 @@ function runStrategy(strategy: Strategy): StrategyResult {
       }
     }
 
+    // 时间分解（主控单作业互斥 → 单分类；AI 作业不属三种新手策略；分类按本步末状态近似）
+    if (state.manufacturingRuns.some((r) => r.active)) result.time.build += STEP_MS
+    else if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) result.time.refine += STEP_MS
+    else if (state.mining.active) result.time.mining += STEP_MS
+    else if (state.transit.active || state.awayGalaxy !== null) result.time.travel += STEP_MS
+    else result.time.other += STEP_MS
+
     // 每小时快照
     if (simMs - lastHourLog >= HOUR_MS) {
       lastHourLog = simMs
@@ -147,6 +182,33 @@ function runStrategy(strategy: Strategy): StrategyResult {
   result.finalIsk = Math.floor(state.wallet.isk)
   result.finalAssets = Math.floor(wealthOf(state, ctx)) // 总资产口径：钱包 + 舰队/已装模块 + 仓库/书架折算
   result.finalShip = shipName(state, ctx)
+  // 自造装备结存（2026-09-08 二号·C 流分项）：装备库 + 全船已装配，排除开局自带件；
+  // 价值双口径 = 现货（自用/wealthOf 同源）与按收购档变现（acquisitionFactorOf）
+  const modVal = (id: string): { base: number; acq: number } => {
+    const g = marketGoodOf(ctx, 'module', id)
+    const base = g?.basePrice ?? 0
+    return { base, acq: g ? Math.round(base * acquisitionFactorOf(g)) : 0 }
+  }
+  for (const [id, u] of Object.entries(state.moduleBay ?? {})) {
+    if (u <= 0 || initFitted.has(id)) continue
+    const v = modVal(id)
+    result.gearBayN += u
+    result.gearSpot += v.base * u
+    result.gearAcq += v.acq * u
+  }
+  for (const f of Object.values(state.fleet)) {
+    if (!f) continue
+    for (const rack of Object.values(f.fitted)) {
+      const list = Array.isArray(rack) ? rack : rack ? [rack] : []
+      for (const id of list) {
+        if (typeof id !== 'string' || id.length === 0 || initFitted.has(id)) continue
+        const v = modVal(id)
+        result.gearFitN += 1
+        result.gearSpot += v.base
+        result.gearAcq += v.acq
+      }
+    }
+  }
   return result
 }
 
@@ -261,17 +323,15 @@ const strategyB: Strategy = {
 
 /* ───────── 策略 C：装备流 ───────── */
 
-/** 装备路线：MK1 采集器 → MK1 货舱 → 掘洞级 → MK1 炮台 → MK2 采集器 */
+/** 装备路线（2026-09-08 二号修正：富凡带精炼只产 三钛/类银，含超噬的装备需换矿带——
+ * 单带策略只走富凡可实现子集，其余留待多矿带扩展）；成品自装（矿枪提速 = 长期回报） */
 const GEAR_PLAN: Array<{ bp: string; module: string; label: string }> = [
   { bp: 'bp-miner-1', module: 'mod-miner-1', label: '强化采集器 MK1' },
-  { bp: 'bp-cargo-1', module: 'mod-cargo-1', label: '货舱扩展 MK1' },
-  { bp: 'bp-turret-1', module: 'mod-turret-1', label: '舰载轻型炮台 MK1' },
-  { bp: 'bp-miner-2', module: 'mod-miner-2', label: '强化采集器 MK2' },
 ]
 
 const strategyC: Strategy = {
   name: 'C · 装备流（精炼 + 自造装备）',
-  desc: '练满采矿三技能 + 精炼双技能；满舱回港运转精炼炉；按路线造并装配装备，再造掘洞级',
+  desc: '练满采矿三技能 + 精炼双技能；满舱回港运转精炼炉；囤料自造强化采集器 MK1 并装配，再造掘洞级',
   refineAtHome: true,
   planSkills(state, ctx) {
     queueToMax(state, ctx, 'mining')
@@ -280,32 +340,7 @@ const strategyC: Strategy = {
     queueToMax(state, ctx, 'mining-frigate')
   },
   onMiningStopped(state, ctx, result) {
-    // 回港后启动精炼炉（自动续批至料尽）；矿物卖掉
-    if (isAtHome(state) && countItem(state, ORE_ID) > 0 && !refineRunActive(state)) {
-      startRefineRun(state, ORE_ID, 'pilot', ctx)
-    }
-    sellWareOf(state, ctx, 'min-tritanium')
-    sellWareOf(state, ctx, 'min-pyerite')
-    sellWareOf(state, ctx, 'min-mexallon')
-
-    // 装备路线：市场购书学习 → 制造 → 装配
-    for (const step of GEAR_PLAN) {
-      if ((state.fleet[state.shipId]?.fitted.miner ?? null) === step.module || (state.fleet[state.shipId]?.fitted.cargo ?? null) === step.module || (state.fleet[state.shipId]?.fitted.turret ?? null) === step.module) {
-        continue // 已装配
-      }
-      if (!state.learnedRecipes.includes(step.bp)) {
-        if (!acquireBlueprint(state, ctx, step.bp)) continue // 市场没书/钱不够，下个周期再试
-        result.milestones.push(`市场购书并学会：${step.label}`)
-      }
-      // 材料凑齐就开工制造（制造中的周期自然等待；2026-09-08 劳动者制：主控亲自开线须传 worker='pilot'，
-      // 与手动精炼共用工作位——炉在转时会被拒，等料尽停炉后的周期自然重试）
-      const start = startManufacturing(state, step.bp, 'pilot', ctx)
-      if (start.ok) {
-        result.milestones.push(`开始制造：${step.label}`)
-        return // 制造期间继续挖矿，装配等制造完成后在后续周期处理
-      }
-    }
-    // 制造完成后装配；注意制造完成需要 advance 触发，在下一轮采矿停止点装配可能更晚——这里直接尝试装配
+    // 先尝试装配已入库的自造件
     for (const step of GEAR_PLAN) {
       const bay = state.moduleBay[step.module] ?? 0
       if (bay > 0) {
@@ -313,6 +348,42 @@ const strategyC: Strategy = {
         if (r.ok) result.milestones.push(`装配：${step.label}`)
       }
     }
+    const fittedNow = (m: string): boolean => {
+      const f = state.fleet[state.shipId]?.fitted ?? {}
+      return Object.values(f).some((rack) => (Array.isArray(rack) ? rack : rack ? [rack] : []).includes(m))
+    }
+    const gearDone = GEAR_PLAN.every((step) => fittedNow(step.module))
+
+    if (!gearDone) {
+      // 回港窗口（2026-09-08 二号修正：劳动者制下炉连轴转会挤掉制造窗口、矿物"炼出即卖"会让
+      // 材料永远凑不齐——真实玩家先囤料、在炉停的窗口开造，故：可造 → 造；不可造 → 继续炼不卖）
+      for (const step of GEAR_PLAN) {
+        if (fittedNow(step.module)) continue
+        if (!state.learnedRecipes.includes(step.bp)) {
+          if (!acquireBlueprint(state, ctx, step.bp)) break // 市场没书/钱不够，下个周期再试
+          result.milestones.push(`市场购书并学会：${step.label}`)
+        }
+        const start = startManufacturing(state, step.bp, 'pilot', ctx)
+        if (start.ok) {
+          result.milestones.push(`开始制造：${step.label}`)
+          return // 制造占回港窗口：完成前不炼不卖（制造结束自动恢复出航）
+        }
+        break // 材料不足：本次回港窗口不制造
+      }
+      // 囤料：把矿石炼成矿物但**不卖**（三钛/类银攒给矿枪）
+      if (isAtHome(state) && countItem(state, ORE_ID) > 0 && !refineRunActive(state)) {
+        startRefineRun(state, ORE_ID, 'pilot', ctx)
+      }
+      return
+    }
+
+    // 装备路线完成 → 恢复精炼卖矿模式（与 B 同）
+    if (isAtHome(state) && countItem(state, ORE_ID) > 0 && !refineRunActive(state)) {
+      startRefineRun(state, ORE_ID, 'pilot', ctx)
+    }
+    sellWareOf(state, ctx, 'min-tritanium')
+    sellWareOf(state, ctx, 'min-pyerite')
+    sellWareOf(state, ctx, 'min-mexallon')
     maybeBuyNextShip(state, ctx, result)
   },
 }
@@ -352,6 +423,18 @@ function report(results: StrategyResult[]): void {
     console.log('')
     console.log(`■ ${r.name} —— ${r.desc}`)
     console.log(`  24 小时后：${fmtIsk(r.finalIsk)} ISK（钱包） · 总资产 ${fmtIsk(r.finalAssets)} ISK · 舰船：${r.finalShip}`)
+    const t = r.time
+    const totalT = Math.max(1, t.mining + t.travel + t.refine + t.build + t.other)
+    const pct = (n: number): string => `${Math.round((n / totalT) * 100)}%`
+    const hms = (n: number): string => `${Math.round(n / 3_600_000)}h`
+    console.log(
+      `  时间分解：采矿 ${hms(t.mining)}(${pct(t.mining)}) · 回航/机动 ${hms(t.travel)}(${pct(t.travel)}) · 精炼炉 ${hms(t.refine)}(${pct(t.refine)}) · 制造 ${hms(t.build)}(${pct(t.build)}) · 空闲 ${hms(t.other)}(${pct(t.other)})`,
+    )
+    if (r.gearSpot > 0) {
+      console.log(
+        `  自造装备结存：装备库 ${r.gearBayN} 件 + 已装配 ${r.gearFitN} 件 = 现货 ${fmtIsk(r.gearSpot)} ISK；按空间站收购档变现 ≈${fmtIsk(r.gearAcq)} ISK（折价 ${fmtIsk(r.gearSpot - r.gearAcq)}——装备自用/装配则无此折价损失）`,
+      )
+    }
     if (r.milestones.length > 0) {
       console.log('  里程碑：' + r.milestones.join(' → '))
     }

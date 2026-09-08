@@ -46,7 +46,9 @@ function manualBusyNote(state: GameState): string | null {
 
 /**
  * 一张精炼炉卡片（矿石/气体/冰/残骸统一；矿带卡结构 + 每台炉=一个劳动者单位）。
- * v20 语义（船长 2026-09-05）：同资源可多单位同时运转（主控 1 台 + 每枚闲置 AI 核心 1 台），
+ * v20 语义（船长 2026-09-05）：同资源可多单位同时运转（主控 1 台 + 每枚 AI 核心 1 台）；
+ * 2026-09-08 船长定：同时启用的 AI 核心总数受 AI 核心上限技能约束（与 AI 副船任务共用），
+ * 核心库存只决定拥有/效率档。
  * 原料不锁定、每批实时扣取——运转中的单位以"名册行"列出（各自批进度条 + 停），
  * 下方按钮可继续加开单位；没有单位的卡保持静态数据与启动区。
  */
@@ -220,7 +222,7 @@ function FurnaceCard({ def, engine, onToast }: { def: ItemDef; engine: GameEngin
               className="app-select"
               value={core ?? ''}
               onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-              title="选择接入 AI 核心：一枚核心驱动一台炉（驱动期间该核心被占用；核心库存即并行上限）"
+              title="选择接入 AI 核心：一枚核心驱动一台炉（驱动期间该核心被占用并计入 AI 核心启用上限——上限由 AI 核心上限技能决定，与 AI 副船任务共用）"
             >
               {usableCores.map((t) => (
                 <option key={t} value={t}>
@@ -334,7 +336,7 @@ export function IndustryPage({ engine, onToast }: PageProps) {
           }
         >
           <div className="app-dim app-note">
-            同资源可多单位并行：你亲自运转限 1 台，每枚闲置 AI 核心各驱动一台（核心库存即并行上限）；原料不锁定，
+            同资源可多单位并行：你亲自运转限 1 台，每枚 AI 核心各驱动一台（同时启用的 AI 核心总数受 AI 核心上限技能约束，与 AI 副船任务共用）；原料不锁定，
             每批到点从「货仓 + 仓库」实时扣取、耗尽即停。运转单位在卡上以名册行显示（各自批进度 + 停）。
           </div>
 
