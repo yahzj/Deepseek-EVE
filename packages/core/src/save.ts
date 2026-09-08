@@ -1668,7 +1668,15 @@ function normalizeState(raw: unknown): GameState {
   const onboardingRaw = asRaw(src.onboarding)
   const onboardingStep =
     typeof onboardingRaw.step === 'number' && Number.isFinite(onboardingRaw.step) ? Math.floor(onboardingRaw.step) : -1
-  const onboarding = { step: onboardingStep }
+  // 出售教学基线（可选；缺省 undefined = 老档/无此步骤时不影响）
+  const oreSellBaselineRaw = onboardingRaw.oreSellBaseline
+  const onboarding = {
+    step: onboardingStep,
+    oreSellBaseline:
+      typeof oreSellBaselineRaw === 'number' && Number.isFinite(oreSellBaselineRaw)
+        ? Math.max(0, Math.floor(oreSellBaselineRaw))
+        : undefined,
+  }
   const importantTasks: GameState['importantTasks'] = {}
   const itRaw = asRaw(src.importantTasks)
   for (const [key, value] of Object.entries(itRaw)) {

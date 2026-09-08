@@ -2,9 +2,12 @@
  * 重要任务 · 序章/贯穿（2026-09-05 船长拍板规则更新）：
  * - 教程任务卡（补给协议/试炼）只在“进行中”展示——**已完成即隐藏**；
  * - 教程完成(含跳过)后发布贯穿任务「寻找人类」：正常发布、不告诉做法、确实无法完成；
- * - 显示范围：教程相关卡在步骤 2..6 且未完成时出现；「寻找人类」教程结束后常驻。
+ * - 显示范围：教程相关卡在对应步骤窗口（交付=2、试炼=5）且未完成时出现；「寻找人类」教程结束后常驻。
  */
 import {
+  ONB_DELIVER,
+  ONB_DIVIDE,
+  ONB_TRIAL,
   TASK_FIND_HUMANS,
   TASK_ORE_DELIVER,
   TASK_TRIAL_WIN,
@@ -23,8 +26,8 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
   const have = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
   const step = state.onboarding.step
   // 已完成的任务隐藏（船长 2026-09-05）；教程卡仅在对应步骤窗口且未完成时出现
-  const showOre = !oreDone && step >= 2 && step <= 6
-  const showTrial = !trialDone && step >= 4 && step <= 6
+  const showOre = !oreDone && step >= ONB_DELIVER && step <= ONB_DIVIDE
+  const showTrial = !trialDone && step >= ONB_TRIAL && step <= ONB_DIVIDE
 
   const deliver = (): void => {
     const r = engine.deliverTutorialOreAt()

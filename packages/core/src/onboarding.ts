@@ -1,8 +1,11 @@
 /**
  * 序章·苏醒（2026-09-05 船长拍板）——教程步骤机 + 重要任务结算（core 侧，可测）。
  *
- * 步骤常量：-1 未开始（老档/经典开局）／0 序章演出（UI）／1 采集 → 2 交付 → 3 修复 →
- * 4 试炼 → 5 技能归档 → 6 分身 → 7 收尾演出（UI）→ 99 完成。
+ * 步骤常量：-1 未开始（老档/经典开局）／0 序章演出（UI）／1 采集 → 2 交付 → 3 出售 →
+ * 4 修复 → 5 试炼 → 6 技能归档 → 7 分身 → 8 收尾演出（UI）→ 99 完成。
+ *
+ * 步骤 3「出售」（2026-09-08 船长定）：交付只扣 20 单位、剩余矿石留在仓库——玩家不知道
+ * 如何出售物品，故交付完成后先教学"去物品页卖矿"（卖出 ≥1 即达标推进），再进修复步骤。
  *
  * 规则要点：
  * - 教程期间 UI 锁线性引导（渲染层）；本模块负责状态判定/自动推进与奖励发放（幂等）；
@@ -21,11 +24,12 @@ export const ONB_OFF = -1
 export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；由渲染层推进到 1）
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
 export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批矿物」
-export const ONB_REPAIR = 3 // 修复：港内维修隼枭至完好
-export const ONB_TRIAL = 4 // 试炼：演习场讨伐令（教学战加成）
-export const ONB_SKILL = 5 // 技能归档：人工智能专家 Lv1 特典
-export const ONB_DIVIDE = 6 // 分身：给沙猫指派 AI 采矿
-export const ONB_EPILOGUE = 7 // 收尾演出（渲染层播放后调用 finishTutorial）
+export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
+export const ONB_REPAIR = 4 // 修复：港内维修隼枭至完好
+export const ONB_TRIAL = 5 // 试炼：演习场讨伐令（教学战加成）
+export const ONB_SKILL = 6 // 技能归档：人工智能专家 Lv1 特典
+export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
+export const ONB_EPILOGUE = 8 // 收尾演出（渲染层播放后调用 finishTutorial）
 export const ONB_DONE = 99
 
 /** 任务 ① 交付物：母港矿带（丰饶之环）富凡晶石；一趟约采 190~210 单位，教学交付 20 单位 */
@@ -120,12 +124,16 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
     `◆ 重要任务完成「补给协议·首批矿物」：交付 ${oreName}×${TUTORIAL_DELIVER_N}，+${TUTORIAL_REWARD_ISK.toLocaleString('zh-CN')} ISK、基础 AI 核心 ×1。`,
   )
   if (state.onboarding.step === ONB_DELIVER) {
-    state.onboarding.step = ONB_REPAIR
-    // 维修的是“当前驾驶船”——交完矿强制切回隼枭，避免玩家仍驾矿船导致维修错船/矿船出战（船长复测反馈）
+    // 2026-09-08：交付完成 → 进入「出售」教学步骤（先教卖矿再修复）
+    state.onboarding.step = ONB_SELL
+    // 基线 = 交付后的仓库余量（卖出 ≥1 即达标推进）
+    state.onboarding.oreSellBaseline = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
+    // 维修的是"当前驾驶船"——此时先切回隼枭，避免玩家仍驾矿船导致维修错船/矿船出战（船长复测反馈）
     if (state.shipId !== 'sh-falconet' && state.fleet['sh-falconet']) {
       state.shipId = 'sh-falconet'
       addLog(state, 'info', '已把驾驶切回隼枭级武装艇——接下来港内维修的对象是它。')
     }
+    addLog(state, 'info', '交付只扣除 20 单位，其余富凡晶石留在物品仓库——去「物品」页把它们卖成 ISK（教学目标）。')
   }
   return { ok: true }
 }
@@ -184,6 +192,16 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
     if ((state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) >= TUTORIAL_DELIVER_N) {
       state.onboarding.step = ONB_DELIVER
       addLog(state, 'info', '采集达标：前往出港页「任务中心」·重要任务交付「补给协议·首批矿物」。')
+    }
+    return
+  }
+  if (s === ONB_SELL) {
+    // 出售教学（2026-09-08）：交付后剩余矿石留在仓库；卖出 ≥1 即达标 → 进入修复步骤
+    const base = state.onboarding.oreSellBaseline
+    if (base !== undefined && (state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) < base) {
+      state.onboarding.step = ONB_REPAIR
+      state.onboarding.oreSellBaseline = undefined
+      addLog(state, 'info', '矿石已售出。前往舰船页维修隼枭至完好（装甲/结构 100%）。')
     }
     return
   }

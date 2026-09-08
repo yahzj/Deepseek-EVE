@@ -1,7 +1,7 @@
 /**
  * 序章·苏醒 阶段 4（2026-09-05 船长确认）——教程引导：
- * - 步骤 1..6：右下角「当前目标」任务卡（可最小化/展开；含跳转按钮、跳过入口、×6 教学加速提示）；
- * - 步骤 7：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
+ * - 步骤 1..7：右下角「当前目标」任务卡（可最小化/展开；含跳转按钮、跳过入口、×6 教学加速提示）；
+ * - 步骤 8：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
  * 锁定策略（页签/按钮级）在 App.tsx 实施；本组件只管展示与跳转意图。
  */
 import { useLayoutEffect, useState } from 'react'
@@ -39,6 +39,16 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
     goLabel: '前往任务中心',
   },
   3: {
+    title: '出售：把矿石换成 ISK',
+    lines: [
+      '交付只扣除了 20 单位——刚才挖的富凡晶石大部分还留在仓库里，空间站不会自动收购；',
+      '前往「物品」页 → 仓库标签 → 富凡晶石行点「市价卖出」（确认窗口里可只卖一部分）；',
+      '卖出任意数量即完成本步——也可以留一些矿石，以后精炼或制造用。',
+    ],
+    go: { page: 'items' },
+    goLabel: '前往物品页',
+  },
+  4: {
     title: '修复：隼枭级武装艇',
     lines: [
       '用任务赏金在舰船页对隼枭执行「港内维修」（装甲/结构恢复至 100%）。',
@@ -47,7 +57,7 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
     go: { page: 'ship', shipTab: 'fleet' },
     goLabel: '前往舰船页·维修',
   },
-  4: {
+  5: {
     title: '试炼：演习场讨伐令',
     lines: [
       '前往「战斗悬赏」接取演习场讨伐令（母港，教学战内你的命中/回避获得加成）。',
@@ -56,7 +66,7 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
     go: { page: 'map', mapTab: 'bounty' },
     goLabel: '前往战斗悬赏',
   },
-  5: {
+  6: {
     title: '记忆归档：人工智能专家',
     lines: [
       '打开技能页——记忆档案将恢复「人工智能专家」至 Lv1（免书免训练费，仅此一次）。',
@@ -64,7 +74,7 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
     go: { page: 'skills' },
     goLabel: '前往技能页',
   },
-  6: {
+  7: {
     title: '分身：指派沙猫采矿',
     lines: [
       '舰船页 →「AI 指挥中心」：为沙猫装载基础 AI 核心并指派采矿作业——那是你的第一个分身。',
@@ -148,7 +158,7 @@ export function TutorialGuide({
   )
 }
 
-/** 收尾演出覆盖层（步骤 7；点击文本区逐步显示 → 按钮完成） */
+/** 收尾演出覆盖层（步骤 8；点击文本区逐步显示 → 按钮完成） */
 export function TutorialEpilogue({ engine, onDone }: { engine: GameEngine; onDone: () => void }) {
   const [shown, setShown] = useState(1)
   const [finishing, setFinishing] = useState(false)
@@ -221,10 +231,11 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   if (!def) return { text: '', go: { page: 'map' }, goLabel: '', targets: [] }
   const byStep: Record<number, string[]> = {
     2: ['出港', '任务中心', '交付矿石'],
-    3: ['舰船', '港内维修', '维修', '修理'],
-    4: ['出港', '战斗悬赏', '演习场讨伐令', '出发'],
-    5: ['技能', '人工智能专家'],
-    6: ['舰船', 'AI 指挥中心', '指派', '采矿'],
+    3: ['物品', '仓库', '市价卖出', '卖出'],
+    4: ['舰船', '港内维修', '维修', '修理'],
+    5: ['出港', '战斗悬赏', '演习场讨伐令', '出发'],
+    6: ['技能', '人工智能专家'],
+    7: ['舰船', 'AI 指挥中心', '指派', '采矿'],
   }
   return { text: def.lines[0] ?? def.title, go: def.go, goLabel: def.goLabel, targets: byStep[step] ?? [] }
 }

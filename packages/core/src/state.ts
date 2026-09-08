@@ -815,6 +815,8 @@ export type GameStateV22 = Omit<GameStateV21, 'version'> & {
 /** 序章/新手引导进度（2026-09-05 序章·苏醒：-1 = 未开始（老档/跳过），0..N = 教程进行中，99 = 已完成） */
 export interface OnboardingState {
   step: number
+  /** 出售教学（步骤 3）：交付首批矿物时的仓库富凡晶石余量——此后只要卖出 ≥1 即达标推进（零迁移可选字段） */
+  oreSellBaseline?: number
 }
 
 /** 重要任务状态（任务中心「重要任务」分类；key = 数据目录任务 id） */

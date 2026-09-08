@@ -11,9 +11,11 @@ import {
   ONB_AWAKEN,
   ONB_MINE,
   ONB_DELIVER,
+  ONB_SELL,
   ONB_REPAIR,
   ONB_TRIAL,
   ONB_SKILL,
+  ONB_DIVIDE,
   ONB_EPILOGUE,
   ONB_DONE,
   TUTORIAL_DELIVER_ITEM,
@@ -46,7 +48,7 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     expect(s.onboarding.step).toBe(ONB_MINE)
   })
 
-  it('采集达标自动推进到交付；交付任务扣矿发奖（4,000 ISK + AI 核心），去重防双发', () => {
+  it('采集达标自动推进到交付；交付任务扣矿发奖（4,000 ISK + AI 核心），去重防双发；交付后进入出售步骤', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
     s.onboarding.step = ONB_MINE
     s.warehouse.items[TUTORIAL_DELIVER_ITEM] = TUTORIAL_DELIVER_N + 5
@@ -57,7 +59,17 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     expect(s.warehouse.items[TUTORIAL_DELIVER_ITEM]).toBe(5)
     expect(s.wallet.isk).toBe(TUTORIAL_REWARD_ISK)
     expect(s.aiCores.basic).toBe(1)
+    // 2026-09-08：交付后 → 出售教学步骤（记录基线 = 交付余量 5）
+    expect(s.onboarding.step).toBe(ONB_SELL)
+    expect(s.onboarding.oreSellBaseline).toBe(5)
+    // 未卖出不推进
+    advanceOnboardingAuto(s, ctx)
+    expect(s.onboarding.step).toBe(ONB_SELL)
+    // 卖出 ≥1（仓库 5 → 4）→ 推进修复步骤
+    s.warehouse.items[TUTORIAL_DELIVER_ITEM] = 4
+    advanceOnboardingAuto(s, ctx)
     expect(s.onboarding.step).toBe(ONB_REPAIR)
+    expect(s.onboarding.oreSellBaseline).toBeUndefined() // 基线清空
     // 双发防护 + 不足防护
     expect(deliverTutorialOre(s, ctx).ok).toBe(false)
     s.onboarding.step = ONB_DELIVER
@@ -107,7 +119,7 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     s.onboarding.step = ONB_SKILL
     expect(onTutorialSkillPageOpened(s).ok).toBe(true)
     expect(s.skills.trained['ai-expert']).toBe(1)
-    expect(s.onboarding.step).toBe(6) // ONB_DIVIDE
+    expect(s.onboarding.step).toBe(ONB_DIVIDE)
     expect(onTutorialSkillPageOpened(s).ok).toBe(false)
   })
 

@@ -10,7 +10,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, shipDisplayName } from '@whale/core'
+import { formatDurationMs, shipDisplayName, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -529,17 +529,19 @@ export function App({ engine }: { engine: GameEngine }) {
 
   // ── 序章·苏醒：教程锁定与引导（步骤 1..6 页签/按钮级锁定；7 收尾演出；99 全解锁） ──
   const tutStep = engine.state.onboarding.step
-  const tutLocked = tutStep >= 1 && tutStep <= 6
-  const guideOn = tutStep >= 1 && tutStep <= 6
-  const epiOn = tutStep === 7
+  const tutLocked = tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE
+  const guideOn = tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE
+  const epiOn = tutStep === ONB_EPILOGUE
   const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
     // 步骤 1 开放 物品页：玩家若取消采矿/返航,可手动把货仓矿石卸入仓库（防卡教程——船长复测反馈）
-    1: { pages: ['ship', 'map', 'items'], map: 'mine', ship: 'fleet' },
-    2: { pages: ['map'], map: 'task' },
-    3: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
-    4: { pages: ['map'], map: 'bounty' },
-    5: { pages: ['skills'] },
-    6: { pages: ['ship'], ship: 'ai' },
+    [ONB_MINE]: { pages: ['ship', 'map', 'items'], map: 'mine', ship: 'fleet' },
+    [ONB_DELIVER]: { pages: ['map'], map: 'task' },
+    // 步骤 3（2026-09-08）：出售教学——只开物品页（仓库「市价卖出」），矿只减不增 → 卖出 ≥1 自动推进
+    [ONB_SELL]: { pages: ['items'] },
+    [ONB_REPAIR]: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
+    [ONB_TRIAL]: { pages: ['map'], map: 'bounty' },
+    [ONB_SKILL]: { pages: ['skills'] },
+    [ONB_DIVIDE]: { pages: ['ship'], ship: 'ai' },
   }
   const tutCanOpen = (p: PageKey): boolean => {
     if (!tutLocked) return true
@@ -581,7 +583,7 @@ export function App({ engine }: { engine: GameEngine }) {
   useEffect(() => {
     if (tutStep !== prevTutStep.current) {
       prevTutStep.current = tutStep
-      if (tutStep >= 1 && tutStep <= 6) {
+      if (tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE) {
         const d = TUT_LOCK[tutStep]
         if (d) {
           setPage(d.pages[0]!)
@@ -595,8 +597,8 @@ export function App({ engine }: { engine: GameEngine }) {
   // S5：到达技能页 → 特典即时归档（人工智能专家 Lv1，免训练等待——船长复测：学习该技能没有加速）
   const skillSeenStep = useRef(-1)
   useEffect(() => {
-    if (tutStep === 5 && page === 'skills' && skillSeenStep.current !== 5) {
-      skillSeenStep.current = 5
+    if (tutStep === ONB_SKILL && page === 'skills' && skillSeenStep.current !== ONB_SKILL) {
+      skillSeenStep.current = ONB_SKILL
       engine.prologueSkillOpened()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -721,7 +723,7 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
             {page === 'industry' ? <IndustryPage {...pageProps} /> : null}
-            {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === 5 ? 'ai-expert' : undefined} /> : null}
+            {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} /> : null}
           </div>
         </main>
@@ -905,7 +907,7 @@ export function App({ engine }: { engine: GameEngine }) {
         />
       ) : null}
 
-      {/* 序章·苏醒：教程引导卡（步骤 1..6）与收尾演出（步骤 7） */}
+      {/* 序章·苏醒：教程引导卡（步骤 1..7）与收尾演出（步骤 8） */}
       {guideOn ? (
         <>
           <TutorialSpot
