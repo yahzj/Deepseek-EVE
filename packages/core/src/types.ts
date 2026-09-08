@@ -303,8 +303,6 @@ export interface BalanceConfig {
     timeSkillId: string
     /** 该技能每级循环时间缩减比例（如 0.03 = 3%） */
     timePerLevel: number
-    /** 循环时间最短只能缩到原值的多少（防无限加速） */
-    minTimeRatio: number
     /**
      * 采矿显式行程的"满载/返航单程"进出港基础时长（毫秒；T4，船长定稿 120 秒）：
      * 本地/无星系归属矿带单程 = 该值；远处矿带单程 = 航程 + 该值。
@@ -323,16 +321,12 @@ export interface BalanceConfig {
     secondRateSkillId: string
     /** 产出倍率每级提升（高级回收处理 +4%） */
     secondRatePerLevel: number
-    /** 产出倍率上限（1.6 = 160%） */
-    maxRate: number
   }
   manufacturing: {
     /** 制造时间缩减技能 id（"工业理论"） */
     timeSkillId: string
     /** 该技能每级制造时间缩减比例（如 0.05 = 5%） */
     timePerLevel: number
-    /** 制造时间最短只能缩到原值的多少 */
-    minTimeRatio: number
   }
   combat: {
     /** 基础火力（初始舰炮） */

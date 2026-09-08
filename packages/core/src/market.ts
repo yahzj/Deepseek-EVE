@@ -67,12 +67,13 @@ function sellStandingMult(state: GameState, def: MarketGoodDef | undefined): num
 /**
  * 当前贸易税率（销售税）：基础 5% × (1 − 8%×(会计学级 + 贸易谈判学级))；
  * 双技能满级合计减免 80% → 1%。税率只针对"玩家卖出成交"（买入/挂单不收）。
+ * 2026-09-08（船长定）：移除「减免 100%」防负护栏——技能等级上限内不会越界，税率下限 0。
  */
 export function salesTaxRate(state: GameState, ctx: SimContext): number {
   const bal = ctx.balance.market
   const lvA = state.skills.trained[bal.taxSkillAId] ?? 0
   const lvB = state.skills.trained[bal.taxSkillBId] ?? 0
-  const cut = Math.min(1, bal.taxCutPerLevel * (lvA + lvB))
+  const cut = bal.taxCutPerLevel * (lvA + lvB)
   return Math.max(0, bal.salesTaxRate * (1 - cut))
 }
 

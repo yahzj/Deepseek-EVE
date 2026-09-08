@@ -42,13 +42,13 @@ export function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: st
 }
 
 /** 该船装配的打捞器周期表（每台周期毫秒；无打捞器 = 空表）。
- * 打捞装置整备学（salvage-rigging）：单轮周期每级 −3%（最多 −40%；主控与 AI 同源——
- * 主控作业与 AI 任务都经本函数取周期）。 */
+ * 打捞装置整备学（salvage-rigging）：单轮周期每级 −3%（2026-09-08 船长定：移除「最多 −40%」
+ * 护栏；主控与 AI 同源——主控作业与 AI 任务都经本函数取周期）。 */
 export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return []
   const rigLv = Math.min(5, state.skills.trained['salvage-rigging'] ?? 0)
-  const rigFactor = rigLv > 0 ? Math.max(0.6, 1 - 0.03 * rigLv) : 1
+  const rigFactor = rigLv > 0 ? Math.max(0, 1 - 0.03 * rigLv) : 1
   const cycles: number[] = []
   for (const def of allFittedModules(fleetShip.fitted, ctx)) {
     if (def.slot === 'salvager') cycles.push(Math.max(100, Math.round((def.salvageCycleMs ?? 10_000) * rigFactor)))

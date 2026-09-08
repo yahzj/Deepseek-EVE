@@ -28,11 +28,12 @@ export const SCAN_WINDOW_MS = 10 * 60_000
  *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
 export const SCAN_LOWSEC_PENALTY = 0.8
 
-/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）乘算：扫描窗口技能系数（总下限 40%） */
+/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）乘算：扫描窗口技能系数
+ * （2026-09-08 船长定：移除「总下限 40%」护栏；双技能封顶 5 级乘积 0.42，乘算本身有界） */
 export function scanSkillFactor(state: GameState): number {
   const aLv = Math.min(5, state.skills.trained['signal-analysis'] ?? 0)
   const bLv = Math.min(5, state.skills.trained['signal-filtering'] ?? 0)
-  return Math.max(0.4, (1 - 0.08 * aLv) * (1 - 0.06 * bLv))
+  return Math.max(0, (1 - 0.08 * aLv) * (1 - 0.06 * bLv))
 }
 
 /** 扫描窗口（毫秒；不含低安惩罚；旧签名保留给不关心目标星系的调用） */

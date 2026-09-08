@@ -47,13 +47,14 @@ export function sellPriceMultiplier(state: GameState): number {
   return 1 + Math.min(0.15, standingOf(state, DSI_FACTION_ID) * 0.01)
 }
 
-/** 按当前技能计算精炼产出倍率（玩家口径：1.0 = 100%，1.6 = 160%；旧称收率） */
+/** 按当前技能计算精炼产出倍率（玩家口径：1.0 = 100%，1.6 = 160%；旧称收率）。
+ * 2026-09-08（船长定：移除 160% 上限护栏——双技能封顶 5 级，加算自然到 160%，上限仅防未来越界） */
 export function refineRate(state: GameState, ctx: SimContext): number {
   const bal = ctx.balance.refining
   const level1 = state.skills.trained[bal.rateSkillId] ?? 0
   const level2 = state.skills.trained[bal.secondRateSkillId] ?? 0
   const rate = bal.baseRate + bal.ratePerLevel * level1 + bal.secondRatePerLevel * level2
-  return Math.min(bal.maxRate, Math.max(0, rate))
+  return Math.max(0, rate)
 }
 
 /** 矿石在"货仓+仓库"的合计数量 */
@@ -185,9 +186,10 @@ export function startRefineRun(
   let cycleEff = Math.max(1, Math.round(cycleMs / eff))
   let batchEff = batchUnits
   if (worker !== 'pilot') {
-    // 工业自动化（industrial-automation，2026-09-04 补全）：AI 驱动精炼炉每级再 −5% 周期（至少保留 60%）
+    // 工业自动化（industrial-automation）：AI 驱动精炼炉每级再 −5% 周期
+    // （2026-09-08 船长定：移除「至少保留 60%」护栏；自动化×核心效率乘算本身有界）
     const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
-    if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.05 * autoLv)))
+    if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
   } else {
     // 主控手动精炼双技能（P1）：炉心熔炼学 −4% 周期/级、炉膛扩容学 +6% 批容/级（AI 驱动不受影响）
     const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
@@ -277,9 +279,10 @@ export function startRecycleRun(
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))
-  // 残骸回收学（salvage-recycling，2026-09-05）：回收批周期每级 −4%（手动与 AI 同享，至少保留 60%）
+  // 残骸回收学（salvage-recycling）：回收批周期每级 −4%（手动与 AI 同享；
+  // 2026-09-08 船长定：移除「至少保留 60%」护栏）
   const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
-  if (recLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * recLv)))
+  if (recLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.04 * recLv)))
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }

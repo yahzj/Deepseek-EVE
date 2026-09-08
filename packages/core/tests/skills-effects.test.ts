@@ -302,7 +302,7 @@ describe('技能补全 P3a：物流/容量/执照/维修', () => {
     const p = getMiningParams(state, ctx, { shipId: state.shipId, beltId: 'belt-io' })!
     expect(p.unitsPerCycle).toBe(Math.max(1, Math.floor(base * 1.2)))
   })
-  it('维修双技（−10% × −5%/级）合计下限 40%', () => {
+  it('维修双技（−10% × −5%/级）乘算：满级实付 ≈ ×0.375（2026-09-08 下限护栏已移除）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 19 })
     const ctx = makeTestCtx()
     state.fleet[state.shipId].durability = 0.4
@@ -310,7 +310,7 @@ describe('技能补全 P3a：物流/容量/执照/维修', () => {
     state.skills.trained['repair-engineering'] = 5
     state.skills.trained['station-protocol'] = 5
     const costFull = repairCostIsk(state, state.shipId, ctx)
-    expect(costFull).toBeLessThanOrEqual(Math.ceil(cost0 * 0.4) + 1) // ≈ ×0.4 下限
-    expect(costFull).toBeGreaterThanOrEqual(Math.floor(cost0 * 0.35))
+    expect(costFull).toBeLessThanOrEqual(Math.ceil(cost0 * 0.375) + 1) // ×0.375（ceil 舍入容差）
+    expect(costFull).toBeGreaterThanOrEqual(Math.floor(cost0 * 0.375))
   })
 })

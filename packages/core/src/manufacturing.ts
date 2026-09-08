@@ -78,7 +78,8 @@ export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: Bui
   const bal = ctx.balance.manufacturing
   const level = state.skills.trained[bal.timeSkillId] ?? 0
   const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
-  const ratio = Math.max(bal.minTimeRatio, (1 - bal.timePerLevel * level) * (1 - 0.04 * batchLv))
+  // 2026-09-08（船长定：移除「最多缩短 60%」下限护栏；工业理论×批量生产学乘算本身有界）
+  const ratio = Math.max(0, (1 - bal.timePerLevel * level) * (1 - 0.04 * batchLv))
   // 调试模式 debugQuick：制造固定 1 秒
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }

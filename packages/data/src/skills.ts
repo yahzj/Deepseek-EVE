@@ -51,7 +51,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '采矿护卫舰操作',
     group: '舰船',
     rank: 2,
-    description: '专用矿船的驾驶与自动化开采调校：每级缩短采集循环时间 ⟦3%⟧（最多缩短 ⟦40%⟧）。',
+    description: '专用矿船的驾驶与自动化开采调校：每级缩短采集循环时间 ⟦3%⟧。',
   },
   {
     id: 'industrial-ops',
@@ -86,7 +86,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '规避机动学',
     group: '舰船',
     rank: 2,
-    description: '规避机动训练：舰船被命中缺口每级收窄 ⟦5%⟧（等效回避率上升；与姿态陀螺缺口复合，直接增强舰船的基础回避）。',
+    description: '规避机动训练：舰船被敌方命中的概率每级降低 ⟦5%⟧（满级约降至无技能时的 75%；与姿态陀螺的回避加成相互乘算）。',
   },
   {
     id: 'targeting-integration',
@@ -116,28 +116,28 @@ export const SKILLS: readonly SkillDef[] = [
     name: '精炼学',
     group: '工业',
     rank: 3,
-    description: '精炼炉产出倍率：每级提高 ⟦8%⟧（基础 100%；与高级回收处理合计上限 ⟦160%⟧）。',
+    description: '精炼炉产出倍率：每级提高 ⟦8%⟧（基础 100%；与高级回收处理双修满级合计 ⟦160%⟧）。',
   },
   {
     id: 'reprocessing',
     name: '高级回收处理',
     group: '工业',
     rank: 4,
-    description: '进一步提高精炼产出倍率：每级 +⟦4%⟧（与精炼学合计上限 ⟦160%⟧）。',
+    description: '进一步提高精炼产出倍率：每级 +⟦4%⟧（与精炼学双修满级合计 ⟦160%⟧）。',
   },
   {
     id: 'industry',
     name: '工业理论',
     group: '工业',
     rank: 4,
-    description: '制造业核心理论：每级缩短蓝图制造时间 ⟦5%⟧（最多缩短 ⟦60%⟧）。',
+    description: '制造业核心理论：每级缩短蓝图制造时间 ⟦5%⟧（与批量生产学乘算叠加）。',
   },
   {
     id: 'materials',
     name: '材料学',
     group: '工业',
     rank: 4,
-    description: '制造工艺精进：每级减少蓝图制造的材料消耗 ⟦2%⟧（满级 −⟦10%⟧；单种至少消耗 1 单位）。',
+    description: '制造工艺精进：每级减少蓝图制造的材料消耗 ⟦2%⟧（满级 −⟦10%⟧；与组件标准化乘算叠加）。',
   },
   {
     id: 'industrial-automation',
@@ -221,14 +221,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '残骸回收学',
     group: '工业',
     rank: 3,
-    description: '残骸回收（精炼炉拆解残骸）的批周期优化：批周期每级 −⟦4%⟧（手动与 AI 核心驱动同享，至少保留 60%）。',
+    description: '残骸回收（精炼炉拆解残骸）的批周期优化：批周期每级 −⟦4%⟧（手动与 AI 核心驱动同享）。',
   },
   {
     id: 'salvage-rigging',
     name: '打捞装置整备学',
     group: '工业',
     rank: 3,
-    description: '打捞器的维护与调校：打捞器单轮周期每级缩短 ⟦3%⟧（最多缩短 ⟦40%⟧，主控与 AI 同享；对标采矿循环提速）。',
+    description: '打捞器的维护与调校：打捞器单轮周期每级缩短 ⟦3%⟧（主控与 AI 同享）。',
   },
   {
     id: 'wreck-assaying',
@@ -286,7 +286,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '武器装填技术',
     group: '战斗',
     rank: 4,
-    description: '装填班组训练：炮台/导弹架/激光炮的装填时间每级 −⟦4%⟧（至少保留 ⟦60%⟧）。',
+    description: '装填班组训练：炮台/导弹架/激光炮的装填时间每级 −⟦4%⟧。',
   },
   {
     id: 'drone-warfare',
@@ -300,14 +300,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '弹药集约学',
     group: '战斗',
     rank: 2,
-    description: '弹仓整理与备弹规划：出发预载弹药量每级 +⟦8%⟧（满级 +⟦40%⟧；实际装载仍受携带库存上限约束）。',
+    description: '弹仓整理与备弹规划：出发预载弹药量每级 +⟦8%⟧（满级 +⟦40%⟧）。',
   },
   {
     id: 'drone-servicing',
     name: '无人机整备学',
     group: '战斗',
     rank: 3,
-    description: '甲板整备与再出击优化：无人机的装填时间每级 −⟦4%⟧（至少保留 ⟦60%⟧；武器装填技术只作用于炮台/导弹架/激光炮，两者独立乘算）。',
+    description: '甲板整备与再出击优化：无人机的装填时间每级 −⟦4%⟧（武器装填技术只作用于炮台/导弹架/激光炮，两者独立乘算）。',
   },
 
   // ───────── 工程 ─────────
@@ -325,7 +325,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '护盾调谐学',
     group: '工程',
     rank: 2,
-    description: '护盾谐振频率调谐：护盾减伤缺口（未减免部分）每级收窄 ⟦2%⟧（等效全系抗性约 +2 个百分点/级；合计仍封顶 ⟦90%⟧，与抗性改装件乘算叠加）。',
+    description: '护盾谐振调谐：全系抗性每级 +⟦2%⟧（乘入制，上限 ⟦90%⟧；与护盾增强器同类叠加，多来源收益递减）。',
   },
   {
     id: 'energy-management',
@@ -346,14 +346,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '装甲调谐学',
     group: '工程',
     rank: 3,
-    description: '装甲板晶格微调：装甲减伤缺口（未减免部分）每级收窄 ⟦2%⟧（等效全系抗性约 +2 个百分点/级；合计仍封顶 ⟦90%⟧，与抗性改装件乘算叠加）。',
+    description: '装甲板晶格微调：全系抗性每级 +⟦2%⟧（乘入制，上限 ⟦90%⟧；与装甲镀层同类叠加，多来源收益递减）。',
   },
   {
     id: 'repair-engineering',
     name: '维修工程学',
     group: '工程',
     rank: 2,
-    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站协议学乘算，合计最多 −⟦60%⟧；修理组件不受影响）。',
+    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站协议学乘算叠加；修理组件不受影响）。',
   },
   {
     id: 'hull-quick-repair',
@@ -367,7 +367,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '空间站协议学',
     group: '工程',
     rank: 1,
-    description: '空间站服务谈判：停站维修费每级降低 ⟦5%⟧（与维修工程学乘算，合计最多 −⟦60%⟧）。',
+    description: '空间站服务谈判：停站维修费每级降低 ⟦5%⟧（与维修工程学乘算叠加）。',
   },
   {
     id: 'ai-expert',
@@ -381,7 +381,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '高效学习法',
     group: '工程',
     rank: 4,
-    description: '神经回路训练法：所有技能的训练时长每级 −⟦4%⟧（满级 −⟦20%⟧，至少保留 60%）。',
+    description: '神经回路训练法：所有技能的训练时长每级 −⟦4%⟧（满级 −⟦20%⟧）。',
   },
   {
     id: 'ship-systems-engineering',
@@ -397,14 +397,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '会计学',
     group: '贸易',
     rank: 3,
-    description: '贸易税减免：每级降低 ⟦8%⟧ 卖出成交的贸易税（与贸易谈判学合计最多减免 ⟦80%⟧）。',
+    description: '贸易税减免：卖出成交的贸易税每级降低 ⟦8%⟧（与贸易谈判学乘算叠加）。',
   },
   {
     id: 'trade-negotiation',
     name: '贸易谈判学',
     group: '贸易',
     rank: 4,
-    description: '协会渠道谈判：每级再降低 ⟦8%⟧ 贸易税——与会计学双修满级后贸易税仅剩 ⟦1%⟧（合计减免 ⟦80%⟧）。',
+    description: '协会渠道谈判：贸易税每级再降低 ⟦8%⟧（与会计学乘算叠加）。',
   },
   {
     id: 'bounty-hunting',
@@ -469,7 +469,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '信号过滤学',
     group: '探索',
     rank: 3,
-    description: '干扰抑制与信号提纯：就地扫描窗口每级再缩短 ⟦6%⟧（与信号分析学乘算，总下限 40%）。',
+    description: '干扰抑制与信号提纯：就地扫描窗口每级再缩短 ⟦6%⟧（与信号分析学乘算叠加）。',
   },
   {
     id: 'salvage-diving',
