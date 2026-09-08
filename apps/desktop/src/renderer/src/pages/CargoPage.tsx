@@ -59,19 +59,6 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
 
   // 图标/列表切换（手册同款；网格为浏览视图）
   const [view, setView] = useItemView()
-  const cargoCells: ItemGridCell[] = rows
-    .map(([id, units]) => {
-      const def = engine.ctx.items.get(id)
-      if (!def) return null
-      return {
-        key: id,
-        glyph: def.kind,
-        name: def.name,
-        sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * def.unitM3)}`,
-        title: def.description,
-      }
-    })
-    .filter(Boolean) as ItemGridCell[]
 
   function handleSell(id: string, qty: number): void {
     // 2026-09-08（船长定）：市场随"协会基地网络"——母港与已建成副站皆可出售（副站不设独立市场，共用全局市场）
@@ -209,6 +196,11 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
+            {kind === 'drone' ? (
+              <div className="app-dim app-note">
+                无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。
+              </div>
+            ) : null}
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{emptyText}</div>
             ) : (
@@ -265,13 +257,38 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         </>
       ) : (
         <>
-          <Panel title="货仓资源" right={<span className="app-dim">{cargoCells.length} 种 · 图标视图（点卡片操作）</span>}>
-            {cargoCells.length > 0 ? (
-              <ItemGlyphGrid cells={cargoCells} onPick={(key) => setPickId(key)} />
-            ) : (
-              <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
-            )}
-          </Panel>
+          {rows.length === 0 ? (
+            <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
+          ) : (
+            ITEM_KIND_ORDER.map((kind) => {
+              const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
+              if (kindRows.length === 0) return null
+              const cells: ItemGridCell[] = kindRows.map(([id, units]) => {
+                const def = engine.ctx.items.get(id)
+                return {
+                  key: id,
+                  glyph: def?.kind ?? kind,
+                  name: def?.name ?? id,
+                  sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
+                  title: def?.description,
+                }
+              })
+              return (
+                <Panel
+                  key={kind}
+                  title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
+                  right={<span className="app-dim">{kindRows.length} 种</span>}
+                >
+                  {kind === 'drone' ? (
+                    <div className="app-dim app-note">
+                      无人机在战斗开始时自动放飞：按「无人机舱（船体 + 甲板扩展）」容量与剩余 CPU 从仓库/货仓择优装载，战术导控阵列增伤；不消耗、不被击落——无需手动装船。
+                    </div>
+                  ) : null}
+                  <ItemGlyphGrid cells={cells} onPick={(key) => setPickId(key)} />
+                </Panel>
+              )
+            })
+          )}
 
           {pickDef && pickId ? (
             <ItemActionModal onClose={() => setPickId(null)}>
