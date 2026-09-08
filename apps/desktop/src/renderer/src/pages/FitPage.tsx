@@ -15,8 +15,12 @@ import type {
   UnitSpec,
 } from '@whale/core'
 import {
+  allFittedIds,
   countModule,
+  countWare,
   createPlayerSpec,
+  droneCpuUsed,
+  droneLoadM3,
   effectiveCpu,
   fittedCpuUsed,
   fleetDefOf,
@@ -238,8 +242,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const gunEq = spec?.weapons.find((w) => w.kind === 'gun')?.eqHitMul
 
   const bayModules: ModuleDef[] = engine.modules.filter((m) => countModule(state, m.id) > 0)
-  // CPU 占用（全位合计，与无人机放飞共用）
-  const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) : 0
+  // CPU 占用（全位合计 + 无人机舱清单预占——2026-09-08 无人机舱大改：装入即占预算）
+  const droneLoadOf = state.fleet[effectiveTarget]?.droneLoad
+  const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) + droneCpuUsed(droneLoadOf, engine.ctx) : 0
   // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
   function handleUnfit(rack: RackSlot, index: number): void {
@@ -275,7 +280,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return {
       cur: curSpec,
       next: createPlayerSpec(simState, engine.ctx, effectiveTarget),
-      cpuNext: fittedCpuUsed(simFitted, engine.ctx),
+      // 2026-09-08：换装对比 CPU 口径同含无人机舱清单占用（清单不变，只反映装配变化）
+      cpuNext: fittedCpuUsed(simFitted, engine.ctx) + droneCpuUsed(fleet.droneLoad, engine.ctx),
     }
   }
   function openPick(rack: RackSlot, index: number): void {
@@ -468,6 +474,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </div>
             )
           })}
+          {/* 无人机舱（2026-09-08 大改：低槽组下方；容量条 + 型卡流 + 装入弹层） */}
+          <DroneBaySection engine={engine} onToast={onToast} target={effectiveTarget} />
         </div>
           </div>
         </div>
@@ -551,6 +559,198 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 </div>
               ) : null}
             </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/* ═══════════════ 无人机舱（2026-09-08 无人机舱大改：低槽下方；容量条 + 一型一卡 ×N + 全部卸下 + 装入弹层） ═══════════════ */
+
+/** 无人机舱区：只放飞已装入清单；装入/卸下经 adjustDroneLoadAt（舱容 + CPU 预占校验） */
+function DroneBaySection({
+  engine,
+  onToast,
+  target,
+}: {
+  engine: PageProps['engine']
+  onToast: PageProps['onToast']
+  target: string
+}) {
+  const state = engine.state
+  const ctx = engine.ctx
+  const entry = state.fleet[target]
+  const shipDef = entry?.defId ? fleetDefOf(state, ctx, target) : undefined
+  const fitted = entry?.fitted
+  const load = entry?.droneLoad ?? {}
+  // 舱上限 = 船体 droneBayM3 + 已装甲板扩展（rack 高槽件）
+  let cap = shipDef?.droneBayM3 ?? 0
+  if (fitted) {
+    for (const id of allFittedIds(fitted)) {
+      cap += ctx.modules.get(id)?.droneBayBonusM3 ?? 0
+    }
+  }
+  if (cap <= 0 && Object.keys(load).length === 0) return null // 无舱不显示（与机舱平衡表一致）
+  const droneTypes = [...ctx.items.values()].filter((d) => d.kind === 'drone')
+  const usedM3 = droneLoadM3(load, ctx)
+  const droneCpu = droneCpuUsed(load, ctx)
+  const pct = cap > 0 ? Math.min(100, (usedM3 / cap) * 100) : 0
+  const [open, setOpen] = useState(false)
+  const [selId, setSelId] = useState<string | null>(null)
+  const [selN, setSelN] = useState(1)
+  const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx) : 0
+  const cpuTotal = shipDef ? effectiveCpu(state, ctx, shipDef) : 0
+  const cpuLeft = Math.max(0, cpuTotal - fittedCpu - droneCpu)
+
+  function adj(id: string, delta: number): void {
+    const r = engine.adjustDroneLoadAt(id, delta, target)
+    if (!r.ok) onToast(r.error ?? '操作失败', true)
+  }
+  function clearAll(): void {
+    for (const [id, n] of Object.entries(load)) adj(id, -n)
+  }
+  /** 某型还能装几架（仓库 × 舱余 × CPU 余 的最小值） */
+  function maxOf(droneId: string): number {
+    const d = ctx.items.get(droneId)
+    if (!d) return 0
+    const have = countWare(state, droneId)
+    const m3Left = Math.max(0, cap - droneLoadM3(load, ctx))
+    const byM3 = Math.floor(m3Left / Math.max(0.001, d.unitM3 ?? 0))
+    const byCpu = (d.cpuUse ?? 0) > 0 ? Math.floor(cpuLeft / (d.cpuUse ?? 1)) : 1_000_000
+    return Math.max(0, Math.min(have, byM3, byCpu))
+  }
+
+  const cells = Object.entries(load)
+    .filter(([, n]) => n > 0)
+    .map(([id, n]) => {
+      const def = ctx.items.get(id)
+      return { id, n, def }
+    })
+
+  return (
+    <div className="app-fit-dronebay">
+      <div className="app-fit-dronebay-head">
+        <span className="app-fit-dronebay-title">
+          无人机舱
+          {droneCpu > 0 ? (
+            <span className="app-dim">（清单占用 CPU {droneCpu}）</span>
+          ) : null}
+        </span>
+        {cells.length > 0 ? (
+          <button className="app-btn is-small is-warn" onClick={clearAll} title="把舱内全部无人机退回仓库">
+            全部卸下
+          </button>
+        ) : null}
+      </div>
+      {/* 容量条（参考 CPU 条视觉；m³ 口径） */}
+      <div className="app-fit-dronecap" title={`无人机舱容量：已装 ${Math.round(usedM3 * 10) / 10} / ${cap} m³（船体 + 甲板扩展）；清单 CPU 占用 ${droneCpu}（计入预算）`}>
+        <span className="app-fit-dronecap-label">机舱</span>
+        <span className="app-fit-dronecap-num">
+          {Math.round(usedM3 * 10) / 10}/{cap} m³
+        </span>
+        <span className="app-fit-dronecap-track">
+          <i style={{ width: `${pct}%` }} />
+        </span>
+        <span className="app-dim">
+          {cells.reduce((s, c) => s + c.n, 0)} 架 · CPU {droneCpu}
+        </span>
+      </div>
+      {/* 型卡流：一型一卡 ×N（+ / − 微调）；空态只有「装入」 */}
+      <div className="app-fit-dronebay-cells">
+        {cells.map(({ id, n, def }) => (
+          <div key={id} className="app-fit-drone-cell" title={`${def?.name ?? id}：无人机舱清单（战斗只放飞已装入的；仓库中其余无人机不出战）`}>
+            {def ? (
+              <span className="app-fit-drone-cell-glyph">
+                <Glyph name="drone" size={16} color={toneOf('drone')} />
+              </span>
+            ) : null}
+            <span className="app-fit-drone-cell-name">{def?.name ?? id} ×{n}</span>
+            <button className="app-fit-drone-step" title="卸下一架（退回仓库）" onClick={() => adj(id, -1)}>
+              −
+            </button>
+            <button className="app-fit-drone-step" title="再装一架（从仓库）" onClick={() => adj(id, 1)}>
+              +
+            </button>
+          </div>
+        ))}
+        <button
+          className="app-fit-drone-add"
+          onClick={() => {
+            setSelId(droneTypes.find((d) => maxOf(d.id) > 0)?.id ?? null)
+            setSelN(1)
+            setOpen(true)
+          }}
+          title="从仓库选择机型与数量装入无人机舱"
+        >
+          ＋ 装入
+        </button>
+      </div>
+
+      {/* 装入弹层：选型 + 数量（钳到 仓库/舱容/CPU 余量） */}
+      {open ? (
+        <div className="app-fit-overlay" onClick={() => setOpen(false)}>
+          <div className="app-fit-modal app-fit-drone-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-fit-modal-head">
+              <span>装入无人机（无人机舱 {Math.round(usedM3 * 10) / 10}/{cap} m³ · 余 CPU {cpuLeft}）</span>
+              <button className="app-btn is-small" onClick={() => setOpen(false)}>
+                关闭
+              </button>
+            </div>
+            <div className="app-fit-drone-picklist">
+              {droneTypes.map((d) => {
+                const m = maxOf(d.id)
+                const have = countWare(state, d.id)
+                const active = selId === d.id
+                return (
+                  <button
+                    key={d.id}
+                    className={`app-fit-drone-pick${active ? ' is-active' : ''}${m <= 0 ? ' is-off' : ''}`}
+                    onClick={() => {
+                      setSelId(d.id)
+                      setSelN(1)
+                    }}
+                    disabled={m <= 0}
+                    title={`${d.description}（单架 ${d.unitM3} m³ · CPU ${d.cpuUse}；仓库 ×${have}）`}
+                  >
+                    <Glyph name="drone" size={18} color={toneOf('drone')} />
+                    <span className="app-fit-drone-pick-name">{d.name}</span>
+                    <span className="app-dim">
+                      {m <= 0 ? '无法装入' : `仓库 ×${have} · 可装 ${m}`}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {selId ? (
+              <div className="app-fit-drone-qty">
+                <span>数量：</span>
+                <button className="app-fit-drone-step" disabled={selN <= 1} onClick={() => setSelN(Math.max(1, selN - 1))}>
+                  −
+                </button>
+                <b>×{selN}</b>
+                <button
+                  className="app-fit-drone-step"
+                  disabled={selN >= maxOf(selId)}
+                  onClick={() => setSelN(Math.min(maxOf(selId), selN + 1))}
+                >
+                  +
+                </button>
+                <button
+                  className="app-btn is-small is-primary"
+                  disabled={maxOf(selId) <= 0}
+                  onClick={() => {
+                    const want = Math.min(selN, maxOf(selId))
+                    adj(selId, want)
+                    setOpen(false)
+                  }}
+                >
+                  装入 ×{Math.min(selN, Math.max(1, maxOf(selId)))}
+                </button>
+              </div>
+            ) : (
+              <div className="app-dim app-fit-drone-empty">仓库没有可装入的无人机（蜂鸟/赤鸢等可在市场购买）。</div>
+            )}
           </div>
         </div>
       ) : null}
