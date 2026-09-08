@@ -26,6 +26,15 @@ import { addShipToFleet } from './shipyard'
 import { formatDurationMs } from './time'
 import { aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike } from './location'
+import { addAiIncome, addAiMakeDone, type SettleStats } from './settleStats'
+
+/** 市场基准价（离线结算预估收入用：装备/舰船粗估；找不到返回 0） */
+function marketBasePrice(ctx: SimContext, kind: 'module' | 'ship', refId: string): number {
+  for (const g of ctx.marketGoods.values()) {
+    if (g.kind === kind && g.refId === refId) return g.basePrice ?? 0
+  }
+  return 0
+}
 
 /** 制造类蓝图的公共形状（装备蓝图与舰船蓝图共有的字段） */
 export interface BuildSpec {
@@ -220,8 +229,8 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
 }
 
 /** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点；
- * AI 核心驱动的线到点完成即归还核心） */
-export function advanceManufacturing(state: GameState, ctx: SimContext): void {
+ * AI 核心驱动的线到点完成即归还核心。stats = 离线结算统计器（可选，见 settleStats.ts） */
+export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: SettleStats): void {
   for (let i = state.manufacturingRuns.length - 1; i >= 0; i--) {
     const mf = state.manufacturingRuns[i]!
     if (!mf.active || state.gameMs < mf.finishAtGameMs) continue
@@ -229,7 +238,9 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
     const blueprintId = mf.blueprintId
     const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
     state.manufacturingRuns.splice(i, 1)
-    if (mf.worker !== undefined && mf.worker !== 'pilot') releaseAiCore(state, mf.worker)
+    const worker = mf.worker
+    const byCore = worker !== undefined && worker !== 'pilot'
+    if (byCore) releaseAiCore(state, worker)
     if (!buildable) {
       addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
       continue
@@ -243,6 +254,10 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
       }
       addModule(state, moduleDef.id)
       addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
+      if (stats && byCore) {
+        addAiMakeDone(stats, worker)
+        addAiIncome(stats, worker, marketBasePrice(ctx, 'module', moduleDef.id))
+      }
     } else if (buildable.kind === 'ship') {
       const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
       if (!shipDef) {
@@ -251,6 +266,10 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
       }
       addShipToFleet(state, shipDef.id)
       addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
+      if (stats && byCore) {
+        addAiMakeDone(stats, worker)
+        addAiIncome(stats, worker, marketBasePrice(ctx, 'ship', shipDef.id))
+      }
     } else {
       // 2026-09-05 弹药蓝图：物品类产物按 outputUnits 批量入物品仓库
       const itemDef = buildable.itemId ? ctx.items.get(buildable.itemId) : undefined
@@ -261,6 +280,10 @@ export function advanceManufacturing(state: GameState, ctx: SimContext): void {
       const n = Math.max(1, buildable.outputUnits ?? 1)
       addWare(state, itemDef.id, n)
       addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
+      if (stats && byCore) {
+        addAiMakeDone(stats, worker)
+        addAiIncome(stats, worker, n * (itemDef.baseSellPriceIsk ?? 0))
+      }
     }
   }
 }

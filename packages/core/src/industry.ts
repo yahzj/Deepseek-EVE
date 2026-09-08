@@ -38,6 +38,7 @@ import {
   rollRecycleGuarantee,
   rollRecycleLoot,
 } from './salvage'
+import { addAiIncome, addAiRefineBatch, type SettleStats } from './settleStats'
 
 /**
  * M4：协会声望贸易加成——声望每 1 点，空间站收购价 +1%，上限 +15%。
@@ -356,8 +357,9 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
  * 引擎内部：推进全部精炼炉工位（每次时间推进后调用；v20：原料不锁定，
  * 每批到点从仓库实时扣取 min(单批, 仓库余量)——余量不足自然成尾批，耗尽自动停炉并归还核心。
  * 同资源多台并行时按数组顺序各自扣料，公平近似。
+ * stats = 离线结算统计器（可选；AI 核心驱动的批数与收入见 settleStats.ts）
  */
-export function advanceRefining(state: GameState, ctx: SimContext): void {
+export function advanceRefining(state: GameState, ctx: SimContext, stats?: SettleStats): void {
   // 倒序遍历：异常/料尽时从数组移除元素不影响尚未推进的其它工位
   for (let i = state.refineRuns.length - 1; i >= 0; i--) {
     const r = state.refineRuns[i]!
@@ -430,14 +432,26 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
       if (fromCargo > 0) removeItem(state, r.itemId, fromCargo)
       const fromWare = qty - fromCargo
       if (fromWare > 0) removeWare(state, r.itemId, fromWare)
+      let batchIncome = 0 // 2026-09-08：离线结算预估收入（矿物按站内收价；彩头装备按市场基准价粗估；碎片不计）
       if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
         const volumeM3 = qty * def.unitM3
         const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
         for (const row of out) addWare(state, row.mineralId, row.units)
+        batchIncome += out.reduce((s, row) => s + row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0), 0)
         const loot = rollRecycleLoot(state, ctx, profile, qty)
         for (const modId of loot.modules) state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1
+        const modCount = new Map<string, number>()
+        for (const m of loot.modules) modCount.set(m, (modCount.get(m) ?? 0) + 1)
+        for (const [modId, n] of modCount) {
+          for (const g of ctx.marketGoods.values()) {
+            if (g.kind === 'module' && g.refId === modId) {
+              batchIncome += n * (g.basePrice ?? 0)
+              break
+            }
+          }
+        }
         const fragUnits = new Map<string, number>()
         for (const m of loot.fragments) fragUnits.set(m, (fragUnits.get(m) ?? 0) + 1)
         for (const [m, n] of fragUnits) addWare(state, fragmentItemIdOf(m), n)
@@ -457,9 +471,14 @@ export function advanceRefining(state: GameState, ctx: SimContext): void {
           if (units > 0) {
             addWare(state, row.mineralId, units)
             acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + units
+            batchIncome += units * (mineral.baseSellPriceIsk ?? 0)
           }
         }
         r.recAcc = acc
+      }
+      if (r.worker !== 'pilot' && stats) {
+        addAiRefineBatch(stats, r.worker, isRecycle)
+        if (batchIncome > 0) addAiIncome(stats, r.worker, batchIncome)
       }
       r.batchesDone += 1
       r.finishAtGameMs += r.cycleMs // 下一批到点；届时若余料耗尽/不足一批由上方分支自动停炉

@@ -848,6 +848,15 @@ export function App({ engine }: { engine: GameEngine }) {
             {offlineReport.learnedIn.length > 0 ? (
               <div className="app-report-line"><span className="app-ico"><Glyph name="ico-cross" size={13} color={ICO_TONES["ico-cross"]} /></span>学会配方：{offlineReport.learnedIn.join('、')}</div>
             ) : null}
+            {offlineReport.coreJobs.length > 0 ? (
+              <>
+                <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ai" size={13} color={NAV_TONES["nav-ai"]} /></span>AI 核心作业</div>
+                {offlineReport.coreJobs.map((row, i) => (
+                  <div key={i} className="app-report-line">{row}</div>
+                ))}
+                <div className="app-dim app-report-tail">AI 核心预估收入按站内收价与市场基准价粗估，实际以成交为准。</div>
+              </>
+            ) : null}
             {offlineReport.highlights.map((h, i) => (
               <div key={i} className={`app-report-highlight is-${h.kind}`}>
                 {h.kind === 'warn' ? '⚠' : '¥'} {h.text}

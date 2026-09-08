@@ -37,6 +37,7 @@ import {
 import { durabilityOf, loseShip, repairShip } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { buyAtMarket, levelOf, marketGoodOf, marketQuote, placeBuyOrder } from './market'
+import { addAiIncome, addAiMiningTrip, addAiSalvageDone, type SettleStats } from './settleStats'
 
 /** 核心类型展示顺序 */
 export const AI_CORE_ORDER: readonly AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
@@ -459,8 +460,8 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
   return null
 }
 
-/** 引擎内部：推进所有 AI 副船任务 */
-export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext): void {
+/** 引擎内部：推进所有 AI 副船任务（stats = 离线结算统计器，可选；见 settleStats.ts） */
+export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, stats?: SettleStats): void {
   if (deltaMs <= 0) return
   for (const shipId of Object.keys(state.aiAssignments)) {
     const assignment = state.aiAssignments[shipId]
@@ -473,9 +474,9 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext): v
       continue
     }
     if (assignment.task.kind === 'mining') {
-      advanceAiMining(state, shipId, assignment, deltaMs, ctx)
+      advanceAiMining(state, shipId, assignment, deltaMs, ctx, stats)
     } else if (assignment.task.kind === 'salvage') {
-      advanceAiSalvage(state, shipId, assignment, deltaMs, ctx)
+      advanceAiSalvage(state, shipId, assignment, deltaMs, ctx, stats)
     } else if (assignment.task.kind === 'expedition') {
       advanceAiExpedition(state, shipId, assignment, ctx)
     } else {
@@ -507,6 +508,7 @@ function advanceAiMining(
   assignment: AiAssignment,
   deltaMs: number,
   ctx: SimContext,
+  stats?: SettleStats,
 ): void {
   const task = assignment.task as AiMiningTaskState
   const eff = aiEfficiency(state, ctx, assignment.coreType)
@@ -535,14 +537,16 @@ function advanceAiMining(
       remaining -= need
       task.phaseAccMs = 0
       if (task.phase === 'returning') {
-        // 到港：把船上货仓全部卸入物品仓库
+        // 到港：把船上货仓全部卸入物品仓库（2026-09-08：离线结算按趟统计 + 卸货按站内收价估收入）
         const cargo = state.fleet[shipId]?.cargo
         let moved = 0
+        let gain = 0
         if (cargo) {
           for (const [itemId, units] of Object.entries(cargo)) {
             if (units > 0) {
               state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + units
               moved += units
+              gain += units * (ctx.items.get(itemId)?.baseSellPriceIsk ?? 0)
             }
           }
           for (const itemId of Object.keys(cargo)) delete cargo[itemId]
@@ -554,6 +558,10 @@ function advanceAiMining(
           'trade',
           `[AI·${shipName}] 自动返港：把 ${moved.toLocaleString('zh-CN')} 单位${oreName}卸入物品仓库（本趟采得 ${task.tripUnits} 单位）。`,
         )
+        if (stats) {
+          addAiMiningTrip(stats, assignment.coreType)
+          if (gain > 0) addAiIncome(stats, assignment.coreType, gain)
+        }
         task.phase = 'outbound'
         task.tripUnits = 0
       } else {
@@ -631,6 +639,7 @@ function advanceAiSalvage(
   assignment: AiAssignment,
   deltaMs: number,
   ctx: SimContext,
+  stats?: SettleStats,
 ): void {
   const task = assignment.task as AiSalvageTaskState
   const eff = aiEfficiency(state, ctx, assignment.coreType)
@@ -684,6 +693,7 @@ function advanceAiSalvage(
           'trade',
           `[AI·${shipName}] 打捞自动返港：${galaxyName} 残骸已卸入物品仓库（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。打捞任务完成（${aiCoreName(assignment.coreType)} 已归还）。`,
         )
+        if (stats) addAiSalvageDone(stats, assignment.coreType) // 2026-09-08：离线结算按次统计（残骸不可直接变现，不计收入）
         delete state.aiAssignments[shipId]
         gainAiCore(state, assignment.coreType)
         return

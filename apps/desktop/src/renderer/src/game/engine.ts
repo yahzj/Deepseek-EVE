@@ -11,6 +11,7 @@ import {
   MAX_SKILL_LEVEL,
   SaveError,
   addLog,
+  aiCoreName,
   advanceAutoLoopBounty,
   advanceGame,
   fightEncounter,
@@ -43,6 +44,7 @@ import {
   marketQuote,
   marketSellHolding,
   marketSellPreview,
+  newSettleStats,
   offlineSplit,
   placeBuyOrder,
   recallExpedition,
@@ -106,6 +108,7 @@ import type {
   RackSlot,
   RefineRunView,
   SellResult,
+  SettleStats,
   SideTask,
   SimContext,
 } from '@whale/core'
@@ -155,6 +158,8 @@ export interface OfflineReport {
   logCount: number
   /** 期间最新 3 条 警告/交易 摘录 */
   highlights: Array<{ kind: string; text: string }>
+  /** AI 核心作业行（2026-09-08：各核心类型离线完成的作业 + 预估收入；空 = 无 AI 核心活动） */
+  coreJobs: string[]
 }
 
 function snapshotBasics(state: GameState): OfflineSnapshot {
@@ -189,6 +194,7 @@ function buildOfflineReport(
   ctx: SimContext,
   wallAwayMs: number,
   overflowMs: number,
+  stats?: SettleStats,
 ): OfflineReport | null {
   const settledMs = state.gameMs - before.gameMs
   if (settledMs < 60_000) return null
@@ -237,6 +243,26 @@ function buildOfflineReport(
   }
   highlights.reverse()
 
+  // AI 核心作业（2026-09-08 船长：离线报告按核心类型列出作业 + 预估收入）
+  const coreJobs: string[] = []
+  if (stats) {
+    const order: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
+    for (const t of order) {
+      const s = stats[t]
+      if (!s) continue
+      const acts: string[] = []
+      if (s.miningTrips > 0) acts.push(`采矿 ×${s.miningTrips} 趟`)
+      if (s.salvageDone > 0) acts.push(`打捞 ×${s.salvageDone} 次`)
+      if (s.refineBatches > 0) acts.push(`精炼 ×${s.refineBatches} 批`)
+      if (s.recycleBatches > 0) acts.push(`回收 ×${s.recycleBatches} 批`)
+      if (s.makeDone > 0) acts.push(`制造完成 ×${s.makeDone}`)
+      if (acts.length === 0) continue
+      coreJobs.push(
+        `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? ` · 预估收入 ≈+${s.income.toLocaleString('zh-CN')} ISK` : ''}`,
+      )
+    }
+  }
+
   return {
     wallAwayMs,
     settledMs,
@@ -249,6 +275,7 @@ function buildOfflineReport(
     learnedIn,
     logCount: newLogs.length,
     highlights,
+    coreJobs,
   }
 }
 
@@ -263,6 +290,7 @@ function offlineReportLogText(r: OfflineReport): string {
   if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join('、')}`)
   if (r.skillsUp.length > 0) parts.push(`技能 ${r.skillsUp.join('、')}`)
   if (r.learnedIn.length > 0) parts.push(`学会配方 ${r.learnedIn.join('、')}`)
+  if (r.coreJobs.length > 0) parts.push(`AI 核心作业 ${r.coreJobs.join('；')}`)
   return `离线结算报告：${parts.join('；')}。`
 }
 
@@ -389,11 +417,12 @@ export class GameEngine {
 
     const now = Date.now()
     if (lastSavedWall !== null) {
-      // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）
+      // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）；stats 收集 AI 核心作业
       const before = snapshotBasics(this.state)
+      const stats = newSettleStats()
       const { overflowMs } = offlineSplit(now - lastSavedWall)
-      simulateOffline(this.state, lastSavedWall, now, this.ctx)
-      this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs)
+      simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats })
+      this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs, stats)
       // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
       // 离线补时产生的日志照常显示，另补一条报告汇总单条（钱包/收获明细，关闭简报后仍可查证）
       if (this.offlineReport !== null) {
@@ -922,9 +951,10 @@ export class GameEngine {
     const before = snapshotBasics(this.state)
     const { overflowMs } = offlineSplit(ms)
     // 调试快进：冻结进行中的战斗（低安遭遇战 + 主控远征），不随快进时间跳变而瞬结（船长 2026-09-05）
-    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true })
+    const stats = newSettleStats()
+    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats })
     this.state.savedAtWallMs = wallBase + ms
-    this.offlineReport = buildOfflineReport(before, this.state, this.ctx, ms, overflowMs)
+    this.offlineReport = buildOfflineReport(before, this.state, this.ctx, ms, overflowMs, stats)
     void this.persist()
     this.notify()
   }

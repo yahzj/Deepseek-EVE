@@ -14,6 +14,7 @@ import type { SimContext } from './types'
 import { advanceGame } from './engine'
 import { countItem } from './inventory'
 import { formatDurationMs } from './time'
+import type { SettleStats } from './settleStats'
 
 // 兼容历史引用：formatDurationMs 现定义在 time.ts（避免模块循环依赖）
 export { formatDurationMs } from './time'
@@ -43,7 +44,7 @@ export function simulateOffline(
   nowWallMs: number,
   ctx: SimContext,
   capMs: number = DEFAULT_OFFLINE_CAP_MS,
-  opts?: { freezeBattle?: boolean },
+  opts?: { freezeBattle?: boolean; stats?: SettleStats },
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
@@ -66,7 +67,7 @@ export function simulateOffline(
   // 记录结算前的日志条数（必须在写"离线归来"之前取，否则把这条也算进去）
   const before = state.logs.length
   addLog(state, 'info', `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`)
-  advanceGame(state, deltaMs, ctx, opts)
+  advanceGame(state, deltaMs, ctx, { freezeBattle: opts?.freezeBattle, settleStats: opts?.stats })
   // 事件数 = 总新增 - 1（减去"离线归来"本身）
   const eventCount = state.logs.length - before - 1
 

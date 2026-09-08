@@ -28,6 +28,7 @@ import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWreckDrift } from './salvage'
+import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceOnboardingAuto } from './onboarding'
 import { advanceSideTasks } from './sideTasks'
@@ -46,7 +47,12 @@ export const HIDDEN_SKILL_IDS: readonly string[] = []
  * 把游戏时间推进 deltaMs 毫秒（技能队列、主控采矿、换船善后返航、制造、主控远征、AI 副船任务、
  * 随机事件与市场）。非法/负数/0 的时长会被安全忽略。
  */
-export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, opts?: { freezeBattle?: boolean }): void {
+export function advanceGame(
+  state: GameState,
+  deltaMs: number,
+  ctx: SimContext,
+  opts?: { freezeBattle?: boolean; settleStats?: SettleStats },
+): void {
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
   state.gameMs += d
@@ -62,11 +68,11 @@ export function advanceGame(state: GameState, deltaMs: number, ctx: SimContext, 
   // T8 显式返航行程（野外→空间站）
   advanceTransit(state, ctx)
   advanceStandby(state, ctx)
-  advanceManufacturing(state, ctx)
-  advanceRefining(state, ctx)
+  advanceManufacturing(state, ctx, opts?.settleStats)
+  advanceRefining(state, ctx, opts?.settleStats)
   advanceExpedition(state, ctx, opts?.freezeBattle)
   advanceScanning(state, ctx)
-  advanceAi(state, d, ctx)
+  advanceAi(state, d, ctx, opts?.settleStats)
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
   advanceEncounterWatch(state, ctx, d, opts?.freezeBattle)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）

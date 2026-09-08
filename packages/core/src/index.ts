@@ -447,6 +447,16 @@ export {
 } from './simulation'
 
 export {
+  newSettleStats,
+  addAiMiningTrip,
+  addAiSalvageDone,
+  addAiRefineBatch,
+  addAiMakeDone,
+  addAiIncome,
+} from './settleStats'
+export type { CoreSettleStats, SettleStats } from './settleStats'
+
+export {
   SAVE_FORMAT,
   SaveError,
   serializeSaveFile,
