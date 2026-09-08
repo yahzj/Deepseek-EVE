@@ -110,6 +110,23 @@ describe('AI 采矿任务', () => {
     expect(aiCoreUsed(state)).toBe(0)
   })
 
+  it('伽马/贝塔核心可指派采矿（2026-09-08 玩家反馈修复配套回归：核心类型不限基础）', () => {
+    gainAiCore(state, 'gamma', 1)
+    expect(assignAiMining(state, 'sandcat2', 'gamma', 'belt-a', ctx).ok).toBe(true)
+    expect(countAiCore(state, 'gamma')).toBe(0) // 出库占用
+    expect(countAiCore(state, 'basic')).toBe(2) // 基础库存不受影响
+    // 效率 50%：6 秒循环实际需 12 秒采 5 单位
+    advanceGame(state, 11_999, ctx)
+    expect(state.fleet['sandcat2']!.cargo['ore-a'] ?? 0).toBe(0) // 不足一个循环
+    advanceGame(state, 1, ctx)
+    expect(state.fleet['sandcat2']!.cargo['ore-a']).toBe(5)
+    // 贝塔核心同样可指派（回归：非基础类型全部可用，2026-09-08）
+    expect(cancelAiTask(state, 'sandcat2', ctx)).toBe(true)
+    gainAiCore(state, 'beta', 1)
+    expect(assignAiMining(state, 'sandcat2', 'beta', 'belt-a', ctx).ok).toBe(true)
+    expect(countAiCore(state, 'beta')).toBe(0) // 出库占用
+  })
+
   it('效率拉长节奏：基础核心 40% → 6 秒循环实际需 15 秒采 5 单位', () => {
     assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx)
     advanceGame(state, 14_000, ctx)

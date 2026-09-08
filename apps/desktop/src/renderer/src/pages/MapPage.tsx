@@ -230,6 +230,10 @@ function BeltCard({
   const aiCount = aiWorkers.length
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
+  // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：basic 用光只剩伽马时，
+  // 下拉显示与提交类型脱节 → 归一为当前有库存的类型（同工业页炉卡写法）
+  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[0] ?? 'basic')
   // T4 延后项：远征中可「转开采」（两步确认）
   const [mineAsk, setMineAsk] = useState(false)
   const expeditionOn = state.expedition.active
@@ -397,16 +401,16 @@ function BeltCard({
               )
             })}
           </select>
-          <select className="app-select" value={aiCoreSel} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型">
-            {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+          <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型（无库存类型不列出）">
+            {usableCores.map((t) => (
               <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
           <button
             className="app-btn is-small"
-            disabled={locked || !aiShipId}
+            disabled={locked || !aiShipId || usableCores.length === 0}
             title={locked ? (unexplored ? '所在星系未探索' : `需声望 ${belt.standingReq}`) : aiShipId ? '指派 AI 副船开采此矿带' : '先选择空闲副船'}
-            onClick={() => onAiAssign(belt.id, aiShipId, aiCoreSel)}
+            onClick={() => onAiAssign(belt.id, aiShipId, effCore)}
           >
             指派 AI 开采
           </button>
@@ -592,6 +596,9 @@ function WreckCard({
   const prog = isActive ? salvageProgressOf(engine) : null
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
+  // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
+  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[0] ?? 'basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
   // B3.1：星系卡「回收产出倾向 / 低出率掉落」汇总（= 该星系各悬赏敌群特色池；回收卡同款行，去重合并）
   const notes: string[] = []
@@ -691,16 +698,16 @@ function WreckCard({
               </option>
             ))}
           </select>
-          <select className="app-select" value={aiCoreSel} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型（效率越高行程/周期越快）">
-            {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+          <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型（效率越高行程/周期越快；无库存类型不列出）">
+            {usableCores.map((t) => (
               <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
           <button
             className="app-btn is-small"
-            disabled={activeAnywhere || !aiShipId}
+            disabled={activeAnywhere || !aiShipId || usableCores.length === 0}
             title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : aiShipId ? '指派 AI 副船打捞此星系（满仓自动返港后任务结束）' : '先选择空闲副船'}
-            onClick={() => onAiAssign(g.id, aiShipId, aiCoreSel)}
+            onClick={() => onAiAssign(g.id, aiShipId, effCore)}
           >
             指派 AI 打捞
           </button>

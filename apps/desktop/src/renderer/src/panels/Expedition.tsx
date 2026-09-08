@@ -1049,13 +1049,16 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
   const idleShips = idleAiShipIds(state)
   const [aiShip, setAiShip] = useState('')
   const [aiCore, setAiCore] = useState<AiCoreType>('basic')
-  const aiCoreAvailable = countAiCore(state, aiCore) > 0
+  // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
+  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[0] ?? 'basic')
+  const aiCoreAvailable = usableCores.length > 0
   function handleAiStandby(): void {
     if (!aiShip) {
       onToast('先选择一艘空闲副船。', true)
       return
     }
-    const r = engine.assignAiStandbyAt(aiShip, aiCore, galaxy.id)
+    const r = engine.assignAiStandbyAt(aiShip, effCore, galaxy.id)
     if (!r.ok) onToast(r.error ?? '无法派往掩护巡逻', true)
     else onToast('副船已派往该星系掩护巡逻（可取消召回）。')
   }
@@ -1147,8 +1150,8 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             </option>
           ))}
         </select>
-        <select className="app-select" value={aiCore} onChange={(e) => setAiCore(e.target.value as AiCoreType)} title="AI 核心">
-          {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+        <select className="app-select" value={effCore} onChange={(e) => setAiCore(e.target.value as AiCoreType)} title="AI 核心（无库存类型不列出）">
+          {usableCores.map((t) => (
             <option key={t} value={t}>
               {aiCoreName(t)}
             </option>

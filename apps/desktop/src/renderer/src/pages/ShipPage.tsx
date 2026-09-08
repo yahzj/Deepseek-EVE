@@ -517,6 +517,12 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const [mode, setMode] = useState<'mining' | 'salvage'>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
   const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
+  // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：核心下拉只列有库存类型，
+  // 但 state 初值/记忆可能已无库存（如 basic 用光、只剩伽马）→ 提交与实际显示脱节，
+  // 引擎仍按旧类型(basic)指派被拒。归一为"当前有库存的类型"再用于显示与提交
+  // （与工业页炉卡 usableCores 同款写法）。
+  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const effCore = usableCores.includes(coreType) ? coreType : (usableCores[0] ?? 'basic')
 
   function handleBuyCore(): void {
     const r = engine.buyBasicCoreAt()
@@ -531,8 +537,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     }
     const r =
       mode === 'mining'
-        ? engine.assignAiMiningAt(shipId, coreType, beltId)
-        : engine.assignAiSalvageAt(shipId, coreType, salvageGalaxyId)
+        ? engine.assignAiMiningAt(shipId, effCore, beltId)
+        : engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
     else onToast('AI 任务已下达。')
   }
@@ -583,8 +589,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               </option>
             ))}
           </select>
-          <select className="app-select" value={coreType} onChange={(e) => setCoreType(e.target.value as AiCoreType)}>
-            {AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0).map((t) => (
+          <select className="app-select" value={effCore} onChange={(e) => setCoreType(e.target.value as AiCoreType)} title="AI 核心类型（同时启用上限内；无库存类型不会列出）">
+            {usableCores.map((t) => (
               <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
@@ -629,7 +635,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           <button
             className="app-btn is-primary is-small"
             onClick={handleAssign}
-            disabled={!shipId || (mode === 'salvage' && !salvageGalaxyId)}
+            disabled={!shipId || (mode === 'salvage' && !salvageGalaxyId) || usableCores.length === 0}
+            title={usableCores.length === 0 ? '没有闲置的 AI 核心——先购入基础核心或等远征掉落' : undefined}
           >
             指派任务
           </button>
