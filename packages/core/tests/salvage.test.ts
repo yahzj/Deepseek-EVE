@@ -95,7 +95,7 @@ describe('残骸物品（按敌群注册；乙案：计数 = 体积 → unit 恒
     expect(def.id).toBe('wreck-ano-training')
     expect(def.kind).toBe('wreck')
     expect(def.unitM3).toBe(1) // 计数 = 体积（m³）：数量即体积
-    expect(def.baseSellPriceIsk).toBe(1) // 残骸不可直接卖钱
+    expect(def.baseSellPriceIsk).toBe(1) // 残骸物品本身不带价（站内收价由市场收购卡定，见 marketCatalog 残骸卡）
     expect(wreckItemIdOf('ano-x')).toBe('wreck-ano-x')
     expect(anomalyIdOfWreck('wreck-ano-x')).toBe('ano-x')
     expect(anomalyIdOfWreck('ore-a')).toBeNull()

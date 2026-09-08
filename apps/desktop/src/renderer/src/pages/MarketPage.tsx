@@ -33,10 +33,30 @@ const KIND_TEXT: Record<string, string> = {
   ship: '舰船',
   blueprint: '蓝图',
   aicore: '核心',
+  wreck: '残骸',
 }
-const KIND_OPTIONS = ['all', 'item', 'module', 'ship', 'blueprint', 'aicore'] as const
+const KIND_OPTIONS = ['all', 'item', 'wreck', 'module', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
+
+/** 目录条目对应的物品定义（item 类才查物品表） */
+function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
+  return good.kind === 'item' ? ctx.items.get(good.refId) : undefined
+}
+
+/** 行/悬停的分类文案：残骸类物品单独显示「残骸」（2026-09-08 船长定），其余按商品大类 */
+function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): string {
+  const it = itemDefOf(ctx, good)
+  return it?.kind === 'wreck' ? '残骸' : (KIND_TEXT[good.kind] ?? good.kind)
+}
+
+/** 类型过滤判定：「残骸」= item 类里物品大类为残骸者；「物品」不再包含残骸（单独成类） */
+function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter): boolean {
+  if (kind === 'all') return true
+  if (kind === 'wreck') return itemDefOf(ctx, good)?.kind === 'wreck'
+  if (good.kind !== kind) return false
+  return !(kind === 'item' && itemDefOf(ctx, good)?.kind === 'wreck')
+}
 
 /** mm:ss（向上取整到秒） */
 function fmtClock(ms: number): string {
@@ -70,7 +90,7 @@ function earliestSellRemaining(engine: PageProps['engine'], goodKey: string): nu
 
 /** 商品悬停说明（名称/类型/稀有度 + 数据表描述；AI 核心按效率动态描述） */
 function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
-  const head = `${goodName(engine.ctx, good.key)}（${KIND_TEXT[good.kind] ?? good.kind} · ${RARITY_TEXT[good.rarity] ?? ''}）`
+  const head = `${goodName(engine.ctx, good.key)}（${kindTextOf(engine.ctx, good)} · ${RARITY_TEXT[good.rarity] ?? ''}）`
   let desc = ''
   if (good.kind === 'item') desc = engine.ctx.items.get(good.refId)?.description ?? ''
   else if (good.kind === 'module') desc = engine.ctx.modules.get(good.refId)?.description ?? ''
@@ -257,7 +277,7 @@ function GoodRow({
       >
         <div className="app-mkt-name-line">
           <span className="app-inv-name">{name}</span>
-          <span className="app-chip is-dim">{KIND_TEXT[good.kind] ?? good.kind}</span>
+          <span className="app-chip is-dim">{kindTextOf(engine.ctx, good)}</span>
           {good.rarity === 'rare' ? <span className="app-chip is-rare">稀有</span> : null}
           {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
           {lockShow ? (
@@ -277,7 +297,7 @@ function GoodRow({
             </span>
           </span>
           <span className="app-mkt-quote">
-            供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : '暂无现货'}</b>
+            供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : good.playerBuyable === false ? '只收不卖' : '暂无现货'}</b>
             {quote.sellQty > 1 ? ` ×${quote.sellQty.toLocaleString('zh-CN')}` : ''}
           </span>
           {life !== undefined ? (
@@ -468,7 +488,8 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const sortedHist = hist.length ? [...hist].sort((a, b) => a - b) : []
   const median = sortedHist.length ? sortedHist[Math.floor(sortedHist.length / 2)]! : undefined
   const name = goodName(engine.ctx, good.key)
-  const [tab, setTab] = useState<'buy' | 'sell'>('buy')
+  const buyable = good.playerBuyable !== false // 只收不卖商品（残骸等）：不可买入
+  const [tab, setTab] = useState<'buy' | 'sell'>(buyable ? 'buy' : 'sell')
   const [qty, setQty] = useState(1)
   const [price, setPrice] = useState(1)
   const [confirmSell, setConfirmSell] = useState<{
@@ -574,7 +595,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               收购 <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
             </div>
             <div className="app-mkt-quote">
-              供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : '暂无现货'}</b>
+              供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : buyable ? '暂无现货' : '只收不卖'}</b>
             </div>
             <div className="app-mkt-quote">
               库存池 {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
@@ -616,7 +637,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 <span className="app-mkt-depth-qty">{o.qty.toLocaleString('zh-CN')}</span>
               </div>
             ))}
-            {sellOrders.length === 0 ? <div className="app-dim app-sr-eta">暂无供应单</div> : null}
+            {sellOrders.length === 0 ? (
+              <div className="app-dim app-sr-eta">{buyable ? '暂无供应单' : '空间站回收点：只收购，不出售'}</div>
+            ) : null}
           </div>
         </div>
         <div className="app-mkt-trade">
@@ -625,8 +648,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <button
               role="tab"
               aria-selected={tab === 'buy'}
-              className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}`}
-              onClick={() => setDefaults('buy')}
+              disabled={!buyable}
+              className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
+              onClick={() => {
+                if (buyable) setDefaults('buy')
+              }}
+              title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
             >
               买入
             </button>
@@ -858,7 +885,7 @@ export function MarketPage({
       stockedFirst(
         engine,
         goods.filter((good) => {
-          if (kind !== 'all' && good.kind !== kind) return false
+          if (kind !== 'all' && !kindPasses(engine.ctx, good, kind)) return false
           if (query.length > 0) {
             const name = goodName(engine.ctx, good.key).toLowerCase()
             if (!name.includes(query) && !good.key.toLowerCase().includes(query)) return false

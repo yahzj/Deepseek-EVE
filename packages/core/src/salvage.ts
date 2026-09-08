@@ -50,7 +50,7 @@ export function wreckItemDefOf(anomalyId: string, anomalyName: string, threat: n
     kind: 'wreck',
     unitM3: 1, // 计数 = 体积（m³）
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：不可直接出售，回母港用精炼炉「残骸回收」拆解——保底矿物 + 概率彩头。`,
+    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：可在空间站市场按废料价出售应急，或经精炼炉「残骸回收」拆解——保底矿物 + 概率彩头（拆解更值）。`,
   }
 }
 

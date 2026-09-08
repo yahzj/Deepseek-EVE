@@ -503,7 +503,7 @@ function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
     const defs: MarketGoodDef[] = []
     let totalW = 0
     for (const def of ctx.marketGoods.values()) {
-      if (def.rarity !== 'rare') continue
+      if (def.rarity !== 'rare' || def.playerBuyable === false) continue // 只收商品（残骸等）不出供给单
       defs.push(def)
       totalW += bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1
     }
@@ -524,7 +524,7 @@ function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
   const sweep = sweepMul(state)
   const winners: MarketGoodDef[] = []
   for (const def of ctx.marketGoods.values()) {
-    if (def.rarity !== 'exotic') continue
+    if (def.rarity !== 'exotic' || def.playerBuyable === false) continue
     if (nextRandom(state.rng) < ctx.balance.market.exoticWindowChance * sweep) winners.push(def)
   }
   while (winners.length > EXOTIC_CAP_PER_DRAW) {
@@ -636,16 +636,18 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
         const qty = Math.max(1, Math.round(flow * pClamped * (0.5 + 0.35 * i)))
         npcPushBuy(state, ctx, def, now, lifeMs, price, qty)
       }
-      // 供应阶梯：最低档在 L×1.06，越深越贵、量越大
-      for (let i = 0; i < 3; i += 1) {
-        const price = Math.max(1, sellBase + i * sellStep)
-        const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i)))
-        npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty)
+      // 供应阶梯：最低档在 L×1.06，越深越贵、量越大（playerBuyable=false 的只收商品不出售）
+      if (def.playerBuyable !== false) {
+        for (let i = 0; i < 3; i += 1) {
+          const price = Math.max(1, sellBase + i * sellStep)
+          const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i)))
+          npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty)
+        }
       }
     } else {
       // 单件平价品：维持供应线与低价收购线（收购单 qty 3/张，2026-09-08 船长定件数放大）
       if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), 3)
-      if (sellList.length < 2 || nextRandom(state.rng) < 0.85) {
+      if (def.playerBuyable !== false && (sellList.length < 2 || nextRandom(state.rng) < 0.85)) {
         npcPushSell(state, ctx, def, poolQ, now, lifeMs, Math.round(sellPrice(def, L) * priceJitter(state)), 1)
       }
     }
@@ -972,6 +974,7 @@ export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string
   if (!def || qty <= 0 || price <= 0) return null
   if (goodLockedReason(state, def) !== null) return null
   if (bmGateLocked(state, def)) return null // P2：声望闸内不开放常驻买单（暗市单现买即可）
+  if (def.playerBuyable === false) return null // 只收不卖商品（如残骸）：不开放挂买单
   state.market.orderSeq += 1
   const order: PlayerOrder = {
     id: state.market.orderSeq,
@@ -1113,6 +1116,7 @@ export function buyAtMarket(
   const def = ctx.marketGoods.get(goodKey)
   if (!def || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null }
   if (goodLockedReason(state, def) !== null) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null }
+  if (def.playerBuyable === false) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null } // 只收不卖（残骸等）
   // P2 暗市闸：声望未达时只能吃暗市单（bm 标记），常驻单跳过
   const bmLock = bmGateLocked(state, def)
   let remaining = qty

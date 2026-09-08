@@ -732,7 +732,7 @@ function advanceAiSalvage(
           'trade',
           `[AI·${shipName}] 打捞自动返港：${galaxyName} 残骸已卸入物品仓库（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。打捞任务完成（${aiCoreName(assignment.coreType)} 已归还）。`,
         )
-        if (stats) addAiSalvageDone(stats, assignment.coreType) // 2026-09-08：离线结算按次统计（残骸不可直接变现，不计收入）
+        if (stats) addAiSalvageDone(stats, assignment.coreType) // 2026-09-08：离线结算按次统计（残骸卖出/拆解变现不计入粗估）
         delete state.aiAssignments[shipId]
         gainAiCore(state, assignment.coreType)
         return

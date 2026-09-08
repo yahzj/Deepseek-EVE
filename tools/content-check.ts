@@ -48,6 +48,8 @@ function check(cond: boolean, msg: string): void {
 
 /* ── 基础目录 ── */
 const items = buildItemCatalog()
+/* 动态物品（残骸/蓝图碎片按敌群/逆向配方生成，不入静态物品表）——市场卡 item 解析用 */
+const ctxItems = buildSimContext().items
 const itemDefs = [...ITEMS]
 const ores = itemDefs.filter((i) => i.kind === 'ore')
 const minerals = itemDefs.filter((i) => i.kind === 'mineral')
@@ -74,8 +76,8 @@ for (const g of MARKET_GOODS) {
   goodKeys.add(g.key)
   switch (g.kind) {
     case 'item':
-      check(items.has(g.refId), `市场卡 ${g.key} → 物品 ${g.refId} 不存在`)
-      if (items.has(g.refId)) itemGoods.set(g.refId, { rarity: g.rarity, playerSellable: g.playerSellable !== false })
+      check(ctxItems.has(g.refId), `市场卡 ${g.key} → 物品 ${g.refId} 不存在`)
+      if (ctxItems.has(g.refId)) itemGoods.set(g.refId, { rarity: g.rarity, playerSellable: g.playerSellable !== false })
       break
     case 'module':
       check(MODULES.some((m) => m.id === g.refId), `市场卡 ${g.key} → 装备 ${g.refId} 不存在`)
