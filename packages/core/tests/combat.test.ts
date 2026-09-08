@@ -671,7 +671,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
       const w = spec.weapons.find((x) => x.label === droneDef.name)!
       return { reloadMs: w.reloadMs }
     }
-    // 装填折减：满级 ×0.8（与武器装填技术同口径：每级 −4%，至少保留 60%）
+    // 装填折减：满级 ×0.8（与武器装填技术同口径：每级 −4% 乘算，无下限护栏）
     expect(entry(() => undefined).reloadMs).toBe(2200)
     expect(entry((s) => (s.skills.trained['drone-servicing'] = 5)).reloadMs).toBe(1760)
     // CPU 判定不被技能放宽（CPU = 装配 + 放飞共用静态预算，技能不折减放飞成本）：

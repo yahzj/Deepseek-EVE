@@ -239,7 +239,8 @@ function kitHealFor(
   return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
 }
 
-/** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级，合计下限 40%）。
+/** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级乘算；
+ * 2026-09-08 船长定：移除「合计下限 40%」护栏，双满级实付 37.5%）。
  * P2 定稿：费用 =（结构缺失 HP + 装甲缺失 HP）× 每 HP 费率 × 科技档权重——与装甲/结构池同尺，
  * 低档船便宜、旗舰级贵（旧“按货舱计费”已废弃：货舰修不起且与池脱钩）。 */
 export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext): number {
@@ -252,7 +253,7 @@ export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext)
     Math.max(0, 1 - fleetShip.durability) * caps.capH + Math.max(0, 1 - (fleetShip.armorPct ?? 1)) * caps.capA
   const engLv = Math.min(5, state.skills.trained['repair-engineering'] ?? 0)
   const protoLv = Math.min(5, state.skills.trained['station-protocol'] ?? 0)
-  const disc = Math.max(0.4, (1 - 0.1 * engLv) * (1 - 0.05 * protoLv))
+  const disc = Math.max(0, (1 - 0.1 * engLv) * (1 - 0.05 * protoLv))
   return Math.ceil(missingHp * ctx.balance.repair.perHpCost * repairTierWeight(def) * disc)
 }
 

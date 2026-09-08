@@ -63,7 +63,10 @@
 - 同步面：items.ts 头注、README、docs/design/v10-content.md §二与 §3.1 表、
   docs/design/m1-design.md 决策段、docs/design/refine-cycles.md、docs/design/handoff-b3-skills.md、
   docs/glossary.md（产出倍率登记）、roadmap.md 变更记录、docs/development-conventions.md 变更记录。
-- 引擎配置：`packages/core/src/balance.ts` refining.baseRate 1.0 / maxRate 1.6（唯一调参处）。
+- 引擎配置：`packages/core/src/balance.ts` refining.baseRate 1.0、ratePerLevel 0.08、
+  secondRatePerLevel 0.04（唯一调参处）。**注（2026-09-08 同日）**：产出倍率护栏字段
+  maxRate 已按船长决定移除（见 docs/design/captain-skill-audit-batch.md 卷A2 ③）——
+  双技能封顶 5 级，加算自然收敛在 160%，无需 clamp；本档「上限 160%」口径不变。
 
 ## 五、验证状态
 

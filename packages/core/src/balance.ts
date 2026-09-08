@@ -11,7 +11,6 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     yieldPerLevel: 0.06,
     timeSkillId: 'mining-frigate', // 采矿护卫舰操作：每级 -3% 循环时间
     timePerLevel: 0.03,
-    minTimeRatio: 0.6, // 循环时间最多缩短 40%
     /** T4 显式行程基准（满载/返航单程的进出港基础）：本地矿带 120 秒；
      *  出航（空船）时跃迁×2 → 出航单程减半（60 秒）；远带单程 = 航程 + 120 秒 */
     localLegMs: 120 * 1000,
@@ -22,12 +21,10 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     ratePerLevel: 0.08,
     secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +4%
     secondRatePerLevel: 0.04,
-    maxRate: 1.6, // 产出倍率上限 160%（技能加满 = 100% + 40% + 20%）
   },
   manufacturing: {
     timeSkillId: 'industry', // 工业理论：每级 -5% 制造时间
     timePerLevel: 0.05,
-    minTimeRatio: 0.4, // 制造时间最多缩短 60%
   },
   combat: {
     basePower: 10, // 初始舰炮火力 10

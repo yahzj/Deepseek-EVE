@@ -67,7 +67,8 @@ export function getMiningParams(
   const bal = ctx.balance.mining
   const timeLevel = state.skills.trained[bal.timeSkillId] ?? 0
   const yieldLevel = state.skills.trained[bal.yieldSkillId] ?? 0
-  const timeRatio = Math.max(bal.minTimeRatio, 1 - bal.timePerLevel * timeLevel)
+  // 2026-09-08（船长定：移除「最多缩短 40%」循环下限护栏；技能封顶 5 级，乘法叠加本身有界）
+  const timeRatio = Math.max(0, 1 - bal.timePerLevel * timeLevel)
   // 调试模式 debugQuick：循环固定 1 秒
   const cycleMs = state.debugQuick ? 1000 : Math.max(1, Math.round(ship.cycleSeconds * 1000 * timeRatio))
   // V18 复数矿枪：高槽全部采集器件加成求和（线性叠加）
