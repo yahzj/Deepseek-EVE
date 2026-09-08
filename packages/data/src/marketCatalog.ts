@@ -16,6 +16,9 @@
  */
 
 import type { MarketGoodDef } from '@whale/core'
+import { wreckItemIdOf } from '@whale/core'
+import { ANOMALIES } from './anomalies'
+import { GALAXIES } from './universe'
 
 export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ══════════ 常驻供应（common） ══════════
@@ -222,9 +225,39 @@ const BM_MK3_KEYS = new Set([
   'bp-turret-3',
 ])
 
-export const MARKET_GOODS: readonly MarketGoodDef[] = MARKET_GOODS_RAW.map((g) =>
-  BM_MK3_KEYS.has(g.key) ? { ...g, bmStanding: 11 } : g,
-)
+/* ═══════════ 残骸收购卡（2026-09-08 船长定：残骸可到市场出售，单独分类；只收不卖） ═══════════
+ * - 收价按残骸所在星系回收档（常/险/危，与精炼炉「残骸回收」档一致）：30 / 45 / 60 ISK·m³，
+ *   约为无技能拆解保底（≈57/m³，含特色池乘数更高）的 50~60%——拆解 + 彩头 + 碎片 + 技能仍更赚，
+ *   卖站 = 急用钱/清仓的折价通道；
+ * - playerBuyable = false（只收不卖）：NPC 只挂收购单、不出售残骸（防"低价买残骸→拆解套利"）；
+ * - 每单位 = 1 m³（残骸乙案记账：计数即体积）。
+ */
+
+const GALAXY_SEC = new Map(GALAXIES.map((g) => [g.id, typeof g.security === 'number' ? g.security : 0.5]))
+/** 残骸站内收价（ISK/m³；档位 = 该星系基础密度回收档：常 <20 / 险 20~29 / 危 ≥30） */
+const WRECK_BUY_PRICE = { common: 30, risky: 45, dire: 60 } as const
+
+export const WRECK_BUY_GOODS: readonly MarketGoodDef[] = ANOMALIES.filter((a) => a.hidden !== true).map((a) => {
+  const sec = GALAXY_SEC.get(a.galaxyId) ?? 0.5
+  const density = Math.min(40, Math.max(10, Math.round(10 + 15 * (1 - sec))))
+  const tier = density >= 30 ? 'dire' : density >= 20 ? 'risky' : 'common'
+  const id = wreckItemIdOf(a.id)
+  return {
+    key: id,
+    kind: 'item',
+    refId: id,
+    rarity: 'common',
+    basePrice: WRECK_BUY_PRICE[tier],
+    poolTarget: 30_000,
+    supplyFlow: 500,
+    playerBuyable: false, // 只收不卖：空间站回收站不出售残骸
+  }
+})
+
+export const MARKET_GOODS: readonly MarketGoodDef[] = [
+  ...MARKET_GOODS_RAW.map((g) => (BM_MK3_KEYS.has(g.key) ? { ...g, bmStanding: 11 } : g)),
+  ...WRECK_BUY_GOODS,
+]
 
 /** 构建市场商品目录 */
 export function buildMarketGoodsCatalog(): ReadonlyMap<string, MarketGoodDef> {

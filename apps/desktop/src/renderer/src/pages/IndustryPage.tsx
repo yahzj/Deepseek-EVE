@@ -106,7 +106,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false }: { def: ItemDef
 
   // 效率估价区：精炼卡显示每批产物与「净 ≈ISK/h」（产物矿物收价 − 耗料原料收价，按双方站内收价、
   // 不随市场；2026-09-08 船长定：估算必须扣除材料成本，防"越炼越亏还显示正收益"误读）；
-  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（残骸不可卖、无耗料可扣；展示估算，非结算）
+  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（残骸可直接出售应急、也可拆解；回收无耗料可扣，展示估算非结算）
   let econ: ReactNode = null
   if (isWreck) {
     const profile = recycleProfileOf(engine.ctx, def.id)

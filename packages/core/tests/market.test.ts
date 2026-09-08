@@ -921,3 +921,27 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
   })
 })
+
+describe('残骸收购卡（2026-09-08 船长定：残骸可到市场出售——只收不卖，防低买高拆套利）', () => {
+  it('NPC 只挂常驻收购单、恒不出售；玩家不可买入（buyAtMarket 0 / 挂买单拒绝）；收购价围绕基准 30 ISK/m³', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 9 })
+    state.wallet.isk = 1_000_000
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      marketGoods: [
+        { key: 'wreck-ano-x', kind: 'item', refId: 'wreck-ano-x', rarity: 'common', basePrice: 30, poolTarget: 30_000, supplyFlow: 500, playerBuyable: false },
+      ],
+    })
+    marketQuote(state, ctx, 'wreck-ano-x') // 开盘
+    for (let w = 1; w <= 120; w++) advanceGame(state, 60_000, ctx)
+    // 只收不卖：收购簿常驻（池阶梯），供应簿恒空（不出售 → 无"低价买残骸→拆解"套利面）
+    expect(state.market.npcSell['wreck-ano-x'] ?? []).toHaveLength(0)
+    const buys = state.market.npcBuy['wreck-ano-x'] ?? []
+    expect(buys.length).toBeGreaterThan(0)
+    expect(buys.some((o) => o.price > 0 && o.price <= 60)).toBe(true) // 收价围绕 30（阶梯向下，不超 60）
+    // 玩家侧买入通道全部关闭
+    const r = buyAtMarket(state, ctx, 'wreck-ano-x', 10)
+    expect(r.bought).toBe(0)
+    expect(placeBuyOrder(state, ctx, 'wreck-ano-x', 30, 10)).toBeNull()
+  })
+})
