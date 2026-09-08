@@ -483,9 +483,8 @@ export function ManufacturingPanel({ engine, onToast }: { engine: GameEngine; on
         ))}
       </div>
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工；卡片会标出材料缺口。制造免费，只耗材料与时间。劳动者与精炼炉完全相同：<b>主控亲自
-        （全局限 1 条、占主控不可离港）</b>或<b>一枚 AI 核心驱动一条线</b>（核心库存即并行上限）；同一蓝图
-        可同时开多条线、不同蓝图也并行，材料够即可随时加开。制造中 / 可开工的配方排在最前。
+        已学会的配方才能开工；制造免费，只耗材料与时间。劳动者规则与精炼炉一致（<b>主控亲自全局限 1 条</b>或
+        <b>一枚 AI 核心驱动一条线</b>，核心库存即并行上限）；同一蓝图可多条、不同蓝图并行。制造中 / 可开工的配方排在最前。
       </div>
 
       <div className="app-win-body">

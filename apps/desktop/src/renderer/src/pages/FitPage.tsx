@@ -376,7 +376,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     ]
                   : []),
               ]}
-              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性 = EVE 式乘入合成（上限 90%）；多装规则：伤害/射速/容量全额叠加，命中/闪避/抗性/速度收益递减；「动力」影响弃船避险与跃迁充能。`}
+              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按 EVE 式乘入合成（上限 90%）；多装与「动力」细则见手册速览「装配」。`}
             />
             {shipIndirectLines(shipDef).length > 0 ? (
               <div className="app-fit-shipinfo-low">
