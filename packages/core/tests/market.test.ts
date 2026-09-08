@@ -23,6 +23,7 @@ import {
   marketSellHolding,
   marketSellPreview,
   naturalHoldings,
+  snatchSellFill,
   placeBuyOrder,
   placeSellOrder,
   bmGateReason,
@@ -919,6 +920,42 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     expect(bought).toBeLessThan(60) // 上限
     expect(state.logs.some((l) => l.text.includes('巡游供货'))).toBe(true)
     expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
+  })
+
+  it('巡游采购单次件数随贴线放大且与池订单生成量挂钩（方案 B 2026-09-08 船长定）：贴线 ≈ 半档簿量，越远越小', () => {
+    const poolDef = { key: 'p', kind: 'item' as const, refId: 'p', rarity: 'common' as const, basePrice: 10, poolTarget: 1_000, supplyFlow: 20 }
+    const singleDef = { key: 'm', kind: 'module' as const, refId: 'm', rarity: 'common' as const, basePrice: 100 }
+    expect(snatchSellFill(poolDef, 0.005)).toBe(10) // 贴线（<1%）= round(0.5×supplyFlow)
+    expect(snatchSellFill(poolDef, 0.02)).toBe(5) // ≤3% = round(0.25×flow)
+    expect(snatchSellFill(poolDef, 0.05)).toBe(2) // ≤8% = round(0.1×flow)
+    expect(snatchSellFill(poolDef, 0.1)).toBe(1) // 远离价线仍 1 件
+    // 池大小决定量级：小池（气 45/窗）贴线 ~23 件；大池（矿石 5000/窗）贴线 ~2500 件
+    expect(snatchSellFill({ ...poolDef, supplyFlow: 45 }, 0.005)).toBe(23)
+    expect(snatchSellFill({ ...poolDef, supplyFlow: 5_000 }, 0.005)).toBe(2_500)
+    expect(snatchSellFill({ ...poolDef, supplyFlow: 45 }, 0.005)).toBeGreaterThan(snatchSellFill({ ...poolDef, supplyFlow: 5 }, 0.005))
+    expect(snatchSellFill(singleDef, 0.005)).toBe(5) // 单件商品小量
+    expect(snatchSellFill(singleDef, 0.1)).toBe(1)
+    expect(snatchSellFill(undefined, 0.001)).toBe(5)
+  })
+
+  it('池商品贴线 +1% 挂卖：巡游单次按池量放大（200 窗销量显著 > 旧 1 件/窗口径）', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 77 })
+    state.wallet.isk = 1_000_000
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      marketGoods: [{ key: 'gas-x', kind: 'item', refId: 'gas-x', rarity: 'common', basePrice: 100, poolTarget: 10_000, supplyFlow: 45 }],
+    })
+    state.warehouse.items['gas-x'] = 3_000
+    marketQuote(state, ctx, 'gas-x')
+    const bid = Math.round(buyLineOf(state, ctx, 'gas-x'))
+    expect(bid).toBe(100)
+    placeSellOrder(state, ctx, 'gas-x', bid + 1, 3_000) // 比价线高 1 块 = 贴线越线（r≈1%）
+    advanceGame(state, 200 * 60_000, ctx)
+    const sold = 3_000 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBeGreaterThan(300) // 该种子 200 窗命中 ≈28 次 × ~23 件 ≈640；旧 1 件/窗口径 ≈28
+    expect(sold).toBeLessThan(2_500)
+    expect(state.logs.some((l) => l.text.includes('巡游采购'))).toBe(true)
   })
 })
 

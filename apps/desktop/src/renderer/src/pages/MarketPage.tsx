@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason, snatchSellFill } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -690,10 +690,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 if (p > bid) {
                   const pct = ((p - bid) / bid) * 100
                   const pRoll = (bal.snatchSellChance * Math.exp((-bal.snatchSellDecay * pct) / 100)) * 100
+                  const hitQty = snatchSellFill(good, pct / 100)
                   return (
                     <>
                       高于收购价 {isk(bid)} 约 {pct.toFixed(pct >= 10 ? 0 : 1)}%：站内不收，等巡游采购约{' '}
-                      <b>{pRoll < 10 ? pRoll.toFixed(1) : pRoll.toFixed(0)}%/分</b> 概率——想快就降价让利
+                      <b>{pRoll < 10 ? pRoll.toFixed(1) : pRoll.toFixed(0)}%/分</b> 概率（命中一次约收{' '}
+                      <b>{hitQty}</b> 件，越贴近价线收得越多）——想快就降价让利
                     </>
                   )
                 }
