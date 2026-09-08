@@ -45,6 +45,7 @@ export type ActivityStopKind =
   | 'retreat-battle'
   | 'cancel-ai'
   | 'recall-standby'
+  | 'cancel-deliver-trip'
   | 'stop-loop'
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
@@ -302,19 +303,32 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── T8 显式返航行程（野外 → 空间站，不可终止） ──
+  // ── T8 显式返航行程（野外 → 空间站，不可终止）／建站交付航线（2026-09-08：真实航程，可随时取消） ──
   const tv = transitStatus(state, ctx)
   if (tv.active) {
+    const delivering = tv.trip === 'deliver-to-site' || tv.trip === 'deliver-to-station'
     out.push({
       id: 'transit',
       kind: 'transit',
-      label: `返航空间站（${tv.toName}）`,
-      sub: tv.fromName ? `自「${tv.fromName}」启程` : '野外返航',
+      label: delivering
+        ? tv.trip === 'deliver-to-site'
+          ? `建站交付 · 前往「${tv.siteName ?? '工地'}」`
+          : '建站交付 · 返航中'
+        : `返航空间站（${tv.toName}）`,
+      sub: delivering
+        ? tv.trip === 'deliver-to-site'
+          ? tv.fromName
+            ? `自「${tv.fromName}」启程 · 到点自动交付建材并返航`
+            : '到点自动交付建材并返航'
+          : `工地交付完成 · 返回「${tv.toName}」`
+        : tv.fromName
+          ? `自「${tv.fromName}」启程`
+          : '野外返航',
       percent: tv.percent,
       remainingMs: tv.remainingMs,
-      stopable: false,
-      stopReason: '返航行程不可取消',
-      stop: null,
+      stopable: delivering,
+      stop: delivering ? 'cancel-deliver-trip' : null,
+      stopReason: delivering ? undefined : '返航行程不可取消',
     })
   }
 

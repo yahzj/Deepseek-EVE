@@ -78,6 +78,8 @@ import {
   startSalvageOp,
   startScan,
   startTransitHome,
+  startSiteDeliverTrip,
+  cancelSiteDeliverTrip,
   stopRefineRun,
   deliverStationResources,
   playDialogue,
@@ -1179,6 +1181,26 @@ export class GameEngine {
   /** T9：在副站提交建材（从物品仓库 + 驾驶船货仓扣取） */
   deliverSiteAt(siteId: string, itemId: string, units: number): CommandResult {
     const result = deliverStationResources(this.state, this.ctx, siteId, itemId, units)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-08：一键「前往工地交付」——从当前停靠空间站按真实航程出发，到点自动交付并自动返航 */
+  deliverTripAt(siteId: string): CommandResult {
+    const result = startSiteDeliverTrip(this.state, this.ctx, siteId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-08：取消进行中的建站交付航线（无惩罚；立即返航停靠最近已建成站） */
+  cancelDeliverTripNow(): CommandResult {
+    const result = cancelSiteDeliverTrip(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

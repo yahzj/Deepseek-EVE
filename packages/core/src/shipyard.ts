@@ -93,9 +93,19 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   // T8：驾驶船不在站内（野外停留/返航途中）时不可切换
   if (state.awayGalaxy !== null) {
     const where = state.transit.active
-      ? '正在返航空间站途中'
+      ? state.transit.delivery
+        ? '正在交付航线途中'
+        : '正在返航空间站途中'
       : `停留在「${ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（野外）`
     return { ok: false, error: `驾驶船${where}——请先「返航空间站」再换船。` }
+  }
+  // 2026-09-08（船长定）：未建成建站点不视为站点——建成（并入基地网络）后才开放换驾驶
+  if (state.dockedSite !== null) {
+    const dockSite = ctx.stations.get(state.dockedSite)
+    const prog = dockSite ? state.stationSites[dockSite.id] : null
+    if (dockSite && (!prog || prog.stage < dockSite.tiers.length)) {
+      return { ok: false, error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，换驾驶需在母港或已建成的副站进行。` }
+    }
   }
   if (state.expedition.active) {
     return {
@@ -268,6 +278,14 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   // T8：驾驶船在野外/返航途中时不能维修（维修服务在空间站）
   if (shipId === state.shipId && (state.awayGalaxy !== null || state.standby.active)) {
     return { ok: false, error: `${name} 不在空间站（野外/掩护巡逻途中）——返航后才能维修。` }
+  }
+  // 2026-09-08（船长定）：未建成建站点不视为站点——维修服务在副站建成（并入基地网络）后开放
+  if (state.dockedSite !== null) {
+    const dockSite = ctx.stations.get(state.dockedSite)
+    const prog = dockSite ? state.stationSites[dockSite.id] : null
+    if (dockSite && (!prog || prog.stage < dockSite.tiers.length)) {
+      return { ok: false, error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，维修需在母港或已建成的副站进行。` }
+    }
   }
   if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
     return { ok: false, error: `${name} 状态完好，无需维修。` }

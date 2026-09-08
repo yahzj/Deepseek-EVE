@@ -48,6 +48,8 @@ function stopLabel(v: ActivityView): string {
       return '撤退'
     case 'cancel-ai':
       return '取消'
+    case 'cancel-deliver-trip':
+      return '取消交付'
     case 'stop-loop':
       return '停连击'
     default:
@@ -91,6 +93,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'cancel-ai':
       if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), 'AI 任务已取消（核心已归还）。')
+      break
+    case 'cancel-deliver-trip':
+      run(engine.cancelDeliverTripNow(), '交付航线已取消（无惩罚）：舰船立即返航停靠最近空间站。')
       break
     case 'stop-loop':
       run(engine.bountyLoopAt(null), '连续出击已停止。')
@@ -207,7 +212,9 @@ export function ActivityBar({
                 ? '停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）'
                 : v.stop === 'recall-expedition'
                   ? '召回远征：中止任务返回母港（无战果）'
-                  : v.stop === 'stop-scan'
+                  : v.stop === 'cancel-deliver-trip'
+                    ? '取消交付航线：无惩罚，舰船立即返航停靠最近已建成空间站'
+                    : v.stop === 'stop-scan'
                     ? '终止扫描：就地扫描进度保存，下次续扫'
                     : v.stop === 'stop-salvage'
                       ? '停止打捞：本趟已捞的残骸留在船上（未返航不卸货）'

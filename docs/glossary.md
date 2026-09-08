@@ -119,3 +119,12 @@
 | 一级页 | 导航栏直系页 = 星图 / 舰船 / 装配 / 物品 / 市场 / 工业 / 技能（App NAV_ITEMS）；**整页无滚动条、高度 = 主窗口内容区高** | conventions 第九章「一级页不滚」 |
 | 二级窗口 | 一级页内的功能窗/标签页内容区（如 星图·远征/矿带、工业·精炼炉/组装机、市场左列/详情右栏、物品·仓库/货仓 等）；**滚动条只出现在这些内部窗口**（overflow-y:auto + min-height:0），样式复用既有列表/网格族 | 同上 |
 | 一级不滚前提 | 一级页内容必须能在主窗口内**完整装下**才去掉页滚动；放不下且无法拆分进二级窗口的页面 → 单独提出与船长讨论方案，禁止硬裁内容 | 同上（红线） |
+
+## 七、副空间站与建站交付（2026-09-08 定稿）
+
+| 术语 | 定义 | 出处/规则 |
+|---|---|---|
+| 工地现场 | 建站点所在星系的野外停留即"现场"：可提交建材（交付前置 = playerAtSite——停靠该站或野外停留于站点星系） | station.ts playerAtSite |
+| 未建成不视为任何站点 | 2026-09-08 船长定（彻底收口）：副站完成全部档位（建成）前**不提供停靠/泊位/卸货/维修/换驾驶等任何站内功能**——引擎停靠落点只认已建成站；advanceGame 逐 tick `reconcileDockSanity` 把旧档残留的未建成/未知停靠纠正为"工地现场野外停留"（幂等、只记一次日志）；维修/换驾驶对未建成停靠一律拒办 | location.ts reconcileDockSanity；stationSites stage ≥ tiers.length；shipyard.ts |
+| 建站交付航线 | 2026-09-08 船长定：「前往工地交付」指令（星图该星系行动区 + 建站任务卡双入口）——主船自停靠空间站按**真实航程**（travelLegMs）前往工地星系（transit.delivery.phase = to-site），到点野外停留**自动交付建材**并**自动返航最近空间站**（to-station；本次恰好建成 → 就地停靠新站）；**随时可取消**（无惩罚、取消即立即返航停靠最近已建成站）；存栏 = ShipTransitState.delivery{siteId, phase} | location.ts startSiteDeliverTrip / cancelSiteDeliverTrip / arriveDeliverSite |
+| 成交静默 | 2026-09-08 船长定：站内让利吸收与巡游抢单的成交日志及市场 UI 提示全部与普通簿面成交同模板（「挂单成交/挂单买入成交」），**不向玩家披露让利/巡游通道**（机制与价线纪律保留，仅玩家可见层静默） | market.ts settleStationTake/settleSnatch*；MarketPage 价格指引 |

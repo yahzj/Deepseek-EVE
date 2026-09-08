@@ -731,8 +731,22 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     expect(state.escrowItems['min-a'] ?? 0).toBe(0)
     expect(state.wallet.isk - before).toBe(760) // 100×8=800，税 5% → 760
     expect(state.market.pools['min-a']!.q).toBeGreaterThanOrEqual(3_000) // 站内收购回池
-    const stationLogs = state.logs.filter((l) => l.text.includes('让利售出')).length
-    expect(stationLogs).toBe(10) // 每窗簿只吃 5 件 → 站内补差 5 件，10 窗各一条
+    const fillLogs = state.logs.filter((l) => l.text.startsWith('挂单成交：')).length
+    expect(fillLogs).toBeGreaterThanOrEqual(10) // 每窗至少一条普通"挂单成交"日志（簿吃+站内补差，2026-09-08 静默后同模板）
+  })
+
+  it('静默（2026-09-08 船长定）：吸收/越线成交的事件日志与普通成交一致，不出现让利/巡游/站内字样', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 5 })
+    ctx = poolCtx()
+    openClean(ctx, 'min-a')
+    placeSellOrder(state, ctx, 'min-a', 7, 300) // 折价 12.5% → 吸收封顶 ×5
+    advanceGame(state, 60_000, ctx)
+    const sold = 300 - (state.orders[0]?.qty ?? 0)
+    expect(sold).toBe(50)
+    expect(state.logs.filter((l) => l.text.includes('让利') || l.text.includes('巡游') || l.text.includes('站内') || l.text.includes('收购'))).toHaveLength(0)
+    // 模板与普通成交完全一致：以"挂单成交："开头
+    const fillLogs = state.logs.filter((l) => l.text.startsWith('挂单成交：'))
+    expect(fillLogs.length).toBeGreaterThan(0)
   })
 
   it('折价放大封顶（p < 买盘价，d≈12.5% → E=5）：单窗吸收 = 5×配额（≈50 件），余量照常排队', () => {
@@ -744,7 +758,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     const sold = 300 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBe(50) // 簿吃（8/7 档 ≈14）后差额 36 由站内补 → 总量恰 50
     expect(state.escrowItems['min-a'] ?? 0).toBe(250)
-    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单成交：'))).toBe(true) // 静默后统一为普通成交模板
     expect(state.wallet.isk).toBeGreaterThan(0)
   })
 
@@ -762,7 +776,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     advanceGame(state, 60_000, ctx)
     const sold = 300 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBe(30) // 簿吃（100/96 档 14 件）后差额 16 由站内补足 → 总量恰 30
-    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单成交：'))).toBe(true)
   })
 
   it('rare 小数基础吸收 0.3 件/窗：结余结转、10 窗内必触发站内吸收', () => {
@@ -778,7 +792,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     advanceGame(state, 10 * 60_000, ctx)
     const sold = 30 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThanOrEqual(1) // 结余 0.3/窗×10 窗 → 至少 3 件（簿偶发再添）
-    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单成交：'))).toBe(true)
     expect(state.wallet.isk).toBeGreaterThan(before)
   })
 
@@ -796,7 +810,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     advanceGame(state, 30 * 60_000, ctx)
     const sold = 10 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThanOrEqual(1) // 结余 0.1/窗×30 → 至少 3 件
-    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单成交：'))).toBe(true)
   })
 
   it('挂价高于买盘价：站内不接无保底，但越线可遇巡游采购（每窗小概率 ≤1 件）；撤单退回剩余', () => {
@@ -807,7 +821,9 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     advanceGame(state, 3 * 60_000, ctx)
     const sold = 30 - (state.orders[0]!.qty ?? 30)
     expect(sold).toBeLessThanOrEqual(3) // 3 窗 × 每窗至多 1 件（seed 5 下命中 1）
-    expect(state.logs.some((l) => l.text.includes('让利售出'))).toBe(false) // 吸收通道确实不接高挂
+    // 静默后日志无通道字样；高挂不接吸收 → 成交日志不超过 3 窗上限
+    expect(state.logs.filter((l) => l.text.includes('让利') || l.text.includes('巡游') || l.text.includes('站内'))).toHaveLength(0)
+    expect(state.logs.filter((l) => l.text.startsWith('挂单成交：')).length).toBeLessThanOrEqual(3)
     const hold = state.escrowItems['min-a'] ?? 0
     expect(hold).toBe(30 - sold)
     expect(cancelOrder(state, ctx, state.orders[0]!.id)).toBe(true)
@@ -897,7 +913,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     const sold = 500 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThan(10) // 期望 ≈33；容差下限
     expect(sold).toBeLessThan(70) // 上限
-    expect(state.logs.some((l) => l.text.includes('巡游采购'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单成交：'))).toBe(true) // 越线抢单同样走普通成交模板
   })
 
   it('买入侧抢单：砍价 5%（s≈5%）→ 统计命中率 ≈ 20%·e^(−0.7) ≈10%/窗（簿吃不掉）', () => {
@@ -918,7 +934,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     const bought = 500 - (state.orders[0]?.qty ?? 0)
     expect(bought).toBeGreaterThan(5) // 期望 ≈20；容差下限
     expect(bought).toBeLessThan(60) // 上限
-    expect(state.logs.some((l) => l.text.includes('巡游供货'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单买入成交：'))).toBe(true) // 静默后与普通买单成交一致
     expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
   })
 
@@ -955,7 +971,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     const sold = 3_000 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThan(300) // 该种子 200 窗命中 ≈28 次 × ~23 件 ≈640；旧 1 件/窗口径 ≈28
     expect(sold).toBeLessThan(2_500)
-    expect(state.logs.some((l) => l.text.includes('巡游采购'))).toBe(true)
+    expect(state.logs.some((l) => l.text.startsWith('挂单成交：'))).toBe(true)
   })
 })
 

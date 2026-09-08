@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason, snatchSellFill } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -278,6 +278,20 @@ function GoodRow({
         <div className="app-mkt-name-line">
           <span className="app-inv-name">{name}</span>
           <span className="app-chip is-dim">{kindTextOf(engine.ctx, good)}</span>
+          {good.kind === 'blueprint' ? (
+            <>
+              {state.learnedRecipes.includes(good.refId) ? (
+                <span className="app-chip is-learned" title="已掌握该蓝图：可在工业页无限自制">
+                  已学习
+                </span>
+              ) : null}
+              {(state.blueprintStock[good.refId] ?? 0) > 0 ? (
+                <span className="app-chip is-stock" title="蓝图书已在物品仓库中（本行用于图纸交易，图书按张使用）">
+                  已获得 ×{(state.blueprintStock[good.refId] ?? 0).toLocaleString('zh-CN')}
+                </span>
+              ) : null}
+            </>
+          ) : null}
           {good.rarity === 'rare' ? <span className="app-chip is-rare">稀有</span> : null}
           {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
           {lockShow ? (
@@ -598,6 +612,21 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       }
     >
       <div className="app-mkt-detail">
+        {good.kind === 'blueprint' ? (
+          <div className="app-mkt-detail-badges">
+            {state.learnedRecipes.includes(good.refId) ? (
+              <span className="app-chip is-learned">已学习（可无限自制）</span>
+            ) : null}
+            {(state.blueprintStock[good.refId] ?? 0) > 0 ? (
+              <span className="app-chip is-stock">
+                已获得 ×{(state.blueprintStock[good.refId] ?? 0).toLocaleString('zh-CN')}
+              </span>
+            ) : null}
+            {!state.learnedRecipes.includes(good.refId) && (state.blueprintStock[good.refId] ?? 0) <= 0 ? (
+              <span className="app-chip is-dim">尚未获得</span>
+            ) : null}
+          </div>
+        ) : null}
         <div className="app-mkt-detail-left">
           <PriceChart hist={hist} />
           {hist.length >= 2 ? (
@@ -693,52 +722,33 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
             <span className="app-dim">ISK</span>
           </div>
-          {/* 价格指引（2026-09-08 船长：吸收量随价格挂钩 + 两侧巡游抢单——让利清仓快、高挂/低挂赌巡游） */}
+          {/* 价格指引（2026-09-08 船长定：不向玩家披露站内吸收/巡游通道——只保留普通撮合语义的指导文案） */}
           <div className="app-dim app-sr-eta">
             {(() => {
               const p = Math.max(1, Math.floor(price || 1))
-              const bal = engine.ctx.balance.market
               if (tab === 'sell') {
                 const bid = buyLineOf(state, engine.ctx, good.key)
                 if (p > bid) {
-                  const pct = ((p - bid) / bid) * 100
-                  const pRoll = (bal.snatchSellChance * Math.exp((-bal.snatchSellDecay * pct) / 100)) * 100
-                  const hitQty = snatchSellFill(good, pct / 100)
                   return (
                     <>
-                      高于收购价 {isk(bid)} 约 {pct.toFixed(pct >= 10 ? 0 : 1)}%：站内不收，等巡游采购约{' '}
-                      <b>{pRoll < 10 ? pRoll.toFixed(1) : pRoll.toFixed(0)}%/分</b> 概率（命中一次约收{' '}
-                      <b>{hitQty}</b> 件，越贴近价线收得越多）——想快就降价让利
+                      挂价高于当前收购价 {isk(bid)}：先按挂单价排队，等待买家出价回补后成交——想更快出手，把挂价降到不高于收购价即可优先成交
                     </>
                   )
                 }
                 if (p < bid) {
-                  const pct = ((bid - p) / bid) * 100
-                  const E = Math.min(bal.absorbMaxMul, 1 + bal.absorbPerPoint * pct)
-                  const capped = E >= bal.absorbMaxMul - 1e-9
                   return (
                     <>
-                      已让利 {pct < 100 ? pct.toFixed(pct >= 10 ? 0 : 1) : '>100'}%（收购价 {isk(bid)}）：
-                      站内吸收 <b>×{E.toFixed(1)}</b>，清仓更快
-                      {capped ? '（已达上限）' : `（折 10% 封顶 ×${bal.absorbMaxMul}）`}
+                      挂价低于收购价 {isk(bid)}：当前挂价有优势，会优先撮合成交，清仓更快
                     </>
                   )
                 }
-                return (
-                  <>
-                    平价挂卖（= 收购价 {isk(bid)}）：站内每 60 秒保底吸收；让利 1% 提速 40%、折 10% 封顶 ×
-                    {bal.absorbMaxMul}
-                  </>
-                )
+                return <>平价挂卖（= 收购价 {isk(bid)}）：按当前收购通道优先撮合成交</>
               }
               const ask = quote.sell ?? askLineOf(state, engine.ctx, good.key)
               if (p >= ask) return <>平价买入（= 供应价 {isk(ask)}）：现买现得</>
-              const pct = ((ask - p) / ask) * 100
-              const pRoll = (bal.snatchBuyChance * Math.exp((-bal.snatchBuyDecay * pct) / 100)) * 100
               return (
                 <>
-                  低于供应价 {isk(ask)} 约 {pct.toFixed(pct >= 10 ? 0 : 1)}%：等巡游供货约{' '}
-                  <b>{pRoll < 10 ? pRoll.toFixed(1) : pRoll.toFixed(0)}%/分</b> 概率——想立刻拿到就提价到供应价
+                  挂价低于供应价 {isk(ask)}：先按挂单价排队，等待卖单回补后成交——想立刻拿到，把挂价提到不低于供应价即可即时买入
                 </>
               )
             })()}

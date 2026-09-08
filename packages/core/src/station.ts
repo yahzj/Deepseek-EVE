@@ -1,6 +1,6 @@
 /**
- * T9 副空间站引擎：建造进度、资源交付（分档边交边生效）、
- * "抵达站点星系"挂点（停靠副站/野外工地 + 通讯剧本自动触发）。
+ * T9 副空间站引擎：建造进度、资源交付（分档施工；2026-09-08 船长定：功能统一在"建成"档后开放——
+ * 未建成不视为任何站点，不提供停靠）、"抵达站点星系"挂点（野外工地现场 + 通讯剧本自动触发）。
  * 空间站并入 stationGalaxyIds 由 stage>=tiers.length 表达（见 location.ts）。
  */
 import { addLog, HOME_GALAXY_ID } from './state'
@@ -40,9 +40,9 @@ export function tierNeedOf(state: GameState, site: StationSiteDef, tierIndex: nu
 }
 
 /** 玩家是否在该建站点"工地现场"（可提交建材，2026-09-06 紧急修复——玩家反馈无法提交）：
- * - 停靠该站（已停靠工地/建成站）；
- * - 野外停留于站点所在星系（掩护巡逻/作业到场即工地现场——首档『奠基』本就需先到工地
- *   交付才能解锁泊位，不能再要求"先停靠"；建成前「返航空间站」只去已建成站/母港）；
+ * - 停靠该站（仅已建成的副站可停靠，2026-09-08 起未建成不视为站点）；
+ * - 野外停留于站点所在星系（掩护巡逻/作业/交付航线到场即工地现场——未建成时现场即可交付，
+ *   不需要停靠；建成前「返航空间站」只去已建成站/母港）；
  * 母港特例：站点若设在母港星系，停靠母港即可（保留历史口径）。 */
 export function playerAtSite(state: GameState, site: StationSiteDef): boolean {
   if (state.awayGalaxy === null) {
@@ -145,7 +145,7 @@ export function deliverStationResources(
     'info',
     `「${site.name}」已接收 ${itemName}×${took.toLocaleString('zh-CN')}（档位「${tier.name}」还差 ${remain.toLocaleString('zh-CN')} 单位）。`,
   )
-  // 本档凑齐 → 推进档位（边交边生效）
+  // 本档凑齐 → 推进档位（站内功能统一在"建成"档后开放——2026-09-08 船长定）
   if (remain <= 0) {
     prog.stage += 1
     prog.delivered = {}
@@ -169,20 +169,14 @@ export function deliverStationResources(
 
 /**
  * 抵达挂点（历史调用方：悬赏胜利停留/扫描完成停留——2026-09-06 起两处均改为自动返航，
- * 本挂点仅由旧路径/历史代码触发；新到站入口 = 掩护巡逻到位 noteStationSiteAt + 手动返航）：
- * 1) 该星系有建站点：已奠基（stage≥1）→ 直接停靠该站；未奠基 → 作为野外工地停留；
- * 2) 通讯触发：站点未建成且介绍剧本未读 → 挂起待播。
+ * 本挂点仅由旧路径/历史代码触发；新到站入口 = 掩护巡逻到位 noteStationSiteAt + 手动返航）。
+ * 2026-09-08（船长定）：未建成建站点不视为任何站点——星系内有**已建成**副站才停靠，
+ * 否则一律作为工地现场野外停留；通讯挂起仅对未建成且介绍剧本未读生效。
  */
 export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: string): void {
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   const site = [...ctx.stations.values()].find((s) => s.galaxyId === galaxyId)
-  if (!site) {
-    state.awayGalaxy = galaxyId
-    return
-  }
-  const prog = siteProgress(state, site.id)
-  if (prog.stage >= 1) {
-    // 已奠基：可停靠（随档位开放服务由外部系统按 stage 判断）
+  if (site && isSiteBuilt(state, site)) {
     state.awayGalaxy = null
     state.dockedSite = site.id
     addLog(state, 'info', `已停靠「${site.name}」（${galaxyName}）。`)
@@ -191,7 +185,7 @@ export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: st
     addLog(state, 'info', `抵达「${galaxyName}」——协会的建站工地就在这里。`)
   }
   // 通讯：未建成 + 介绍剧本未读 → 自动挂起一次
-  if (prog.stage < site.tiers.length && site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
+  if (site && !isSiteBuilt(state, site) && site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
   }
 }
@@ -218,6 +212,6 @@ export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: s
   if (site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
     const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
-    addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。任务中心·建站卡可直接提交建材（现场交付，无需停靠）；首档完成后解锁泊位。`)
+    addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。`)
   }
 }

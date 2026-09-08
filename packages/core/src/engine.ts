@@ -18,7 +18,7 @@ import type { GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog } from './types'
 import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
-import { advanceStandby, advanceTransit } from './location'
+import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
 import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
 import { advanceExpedition } from './expedition'
@@ -65,7 +65,9 @@ export function advanceGame(
   advanceWreckDrift(state, ctx, d, state.salvaging.active ? state.salvaging.galaxyId : null)
   // T4 换船善后：自动返航中的旧船独立于新作业推进（到港自动卸货）
   advanceShipReturns(state, d, ctx)
-  // T8 显式返航行程（野外→空间站）
+  // 2026-09-08（船长定）：未建成建站点不视为任何站点——停靠残留纠正为工地现场停留（幂等）
+  reconcileDockSanity(state, ctx)
+  // T8 显式返航行程（野外→空间站）/ 建站交付航线（真实航程；到点自动交付 + 自动返航）
   advanceTransit(state, ctx)
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx, opts?.settleStats)

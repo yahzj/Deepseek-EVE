@@ -236,7 +236,7 @@ describe('T8 存档（v16.1 兼容字段）', () => {
     const { state, ctx } = worldWithFarBounty()
     state.awayGalaxy = 'galaxy-far'
     // 旧档样式在途行程：手动构造（新指令即时到站不留行程；字段仍可序列化往返）
-    state.transit = { active: true, fromGalaxy: 'galaxy-far', toGalaxy: 'galaxy-hub', finishAtGameMs: 120_000, legMs: 120_000 }
+    state.transit = { active: true, fromGalaxy: 'galaxy-far', toGalaxy: 'galaxy-hub', finishAtGameMs: 120_000, legMs: 120_000, delivery: null }
     state.bountyCooldowns['ano-x'] = state.gameMs + 5_000
     state.autoLoopAnomalyId = 'ano-far-easy'
     const loaded = loadSaveFile(serializeSaveFile(state, 0))
@@ -259,7 +259,7 @@ describe('T8 存档（v16.1 兼容字段）', () => {
     const l2 = loadSaveFile(raw)
     expect(l2.state.awayGalaxy).toBe('junk')
     // 任意字符串星系都收（引擎侧有可达性校验兜底）；legMs 非法归 0；toGalaxy 存在则视为有效行程
-    expect(l2.state.transit).toEqual({ active: true, fromGalaxy: 'junk', toGalaxy: 'junk', finishAtGameMs: 0, legMs: 0 })
+    expect(l2.state.transit).toEqual({ active: true, fromGalaxy: 'junk', toGalaxy: 'junk', finishAtGameMs: 0, legMs: 0, delivery: null })
     expect(l2.state.bountyCooldowns).toEqual({ a: 123 })
     expect(l2.state.autoLoopAnomalyId).toBeNull()
   })
