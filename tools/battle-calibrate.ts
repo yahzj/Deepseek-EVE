@@ -5,8 +5,9 @@
  * - 对每条"船 × 装配 × 技能档"跑 SEEDS 场确定性实战（advanceBattleFor 推到分出胜负/
  *   时间上限），输出平均胜率 % + 平均交火秒数 + 我方平均残血% —— 校准依据 = 真实结算，
  *   不是稳态近似（接近期/射程错位/随机目标都如实计入）。
- * - 装配行：裸船 / 三族 MK1·MK2·MK3 / 三形态混装演示 / 支援件满（见 LOADOUTS）。
- * - 技能档：无技能 / 全战斗技能 5（一号 2026-09-05 齐备）。
+ * - 装配行：裸船 / 三族 MK1·MK2·MK3 / 三形态混装演示 / 支援件满 / 无人机流 D1-D3
+ *   （2026-09-08 二号 C6：此前校准从未覆盖无人机——见 LOADOUTS 无人机段）。
+ * - 技能档：无技能 / 中位技能（战斗系 Lv3）/ 全战斗技能 5。
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
@@ -15,7 +16,7 @@ import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startB
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
 
-type Loadout = { name: string; ship: string; high: string[]; mid?: string[]; low?: string[] }
+type Loadout = { name: string; ship: string; high: string[]; mid?: string[]; low?: string[]; drones?: Record<string, number> }
 const LOADOUTS: Loadout[] = [
   { name: '裸船(基础舰炮)', ship: 'sh-falconet', high: [] },
   { name: '隼枭+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
@@ -29,6 +30,11 @@ const LOADOUTS: Loadout[] = [
   { name: 'S1 虎鲨4×MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'] },
   { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
   { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
+  /* ── 无人机流行（2026-09-08 二号：C6 评估——此前校准从未覆盖无人机；增幅件全占高槽、
+     库存足量由引擎按 dmg/CPU 贪心装载；同船炮流对照见 S1/S2/S4）── */
+  { name: 'D1 隼枭无人机轻装(rack1×2+tac1)', ship: 'sh-falconet', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 40, 'drone-assault': 20, 'drone-heavy': 12, 'drone-sentry': 6 } },
+  { name: 'D2 虎鲨无人机中装(rack2×2+tac2×2)', ship: 'sh-tigershark', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-scout': 40, 'drone-assault': 20, 'drone-heavy': 16, 'drone-sentry': 10 } },
+  { name: 'D3 大白鲨无人机重装(rack3×2+tac3×2+rack2)', ship: 'sh-whiteshark', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', 'mod-drone-rack-2'], drones: { 'drone-scout': 40, 'drone-assault': 24, 'drone-heavy': 20, 'drone-sentry': 16 } },
 ]
 
 const FULL_SKILLS: Record<string, number> = {
@@ -65,6 +71,10 @@ function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, 
   state.shipId = shipId
   for (const [id, lv] of Object.entries(skills)) state.skills.trained[id] = lv
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[key] = 5_000
+  // 2026-09-08（无人机行）：注入无人机库存（装载按舱容+CPU 贪心，见 combat 单位构建）
+  for (const [id, n] of Object.entries(ld.drones ?? {})) {
+    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + n
+  }
   const entry = state.fleet[shipId]!
   entry.fitted = { high: [...(ld.high ?? [])], mid: [...(ld.mid ?? [])], low: [...(ld.low ?? [])] }
   repairDeprecatedModules(state, ctx as SimContext)

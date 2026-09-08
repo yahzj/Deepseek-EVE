@@ -184,6 +184,9 @@
   可达成的操作（跑一段航程、点一个按钮）不代做；注入前后各写一条 system 日志说明；
   走 loadSaveFile/serializeSaveFile 保证字段合法与版本兼容。
 - **功能门槛注入以 case 注册制扩展**：每个功能一个 case（b1 = 低安遭遇…），列表维护在脚本头注释。
+- **命名规则（2026-09-08 船长定）**：测试存档命名必须符合用途——文件名 `<feature>` 段 =
+  注册 case 名（该档服务的唯一用途），固定 `test-save-<feature>-<stamp>.json`，禁止随意命名；
+  新 case 先注册（脚本头注释 + INJECTORS + docs/test-saves/README.md 档案清单）再生成。
 
 ---
 
