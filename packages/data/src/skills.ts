@@ -102,7 +102,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '采矿技术',
     group: '工业',
     rank: 3,
-    description: '矿石开采的核心技术：每级提高采集循环产量 ⟦6%⟧。',
+    description: '矿藏采集的核心技术：矿石、气体与冰矿的采集循环产量每级 +⟦6%⟧（与星质地质学、深空采集学乘算叠加）。',
   },
   {
     id: 'deep-space-harvesting',
@@ -144,7 +144,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '工业自动化',
     group: '工业',
     rank: 3,
-    description: 'AI 自动化作业：AI 核心驱动的精炼炉与组装机作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧，至少保留 60%；手动运转不受影响）。',
+    description: '自动化作业调度：精炼炉与组装机的作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧；手动与 AI 核心驱动同享，与炉心熔炼学/批量生产学乘算叠加）。',
   },
   {
     id: 'astro-geology',
@@ -207,7 +207,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '离线作业管理学',
     group: '工业',
     rank: 3,
-    description: '无人值守作业调度：离线结算时长上限每级 +⟦8%⟧（基础 8 小时，满级约 11.2 小时）。',
+    description: '无人值守作业调度：离线结算时长每级 +⟦20%⟧（基础 8 小时，满级 16 小时）。',
   },
   {
     id: 'station-engineering',

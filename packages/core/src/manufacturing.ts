@@ -167,14 +167,15 @@ export function startManufacturing(
   if (missing.length > 0) {
     return { ok: false, error: `材料不足：${missing.join('、')}。` }
   }
-  // 耗时链同炉：主控 = 工业理论 × 批量生产学；AI = ÷核心效率 再乘 工业自动化 −5%/级（下限 60%）
+  // 耗时链：calcBuildDurationMs（工业理论 × 批量生产学）为共同基准；AI 先 ÷核心效率；
+  // 工业自动化 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
   let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
   if (worker !== 'pilot') {
     const eff = aiEfficiency(state, ctx, worker)
     durationMs = Math.max(1, Math.round(durationMs / eff))
-    const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
-    if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0.6, 1 - 0.05 * autoLv)))
   }
+  const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
+  if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0, 1 - 0.05 * autoLv)))
   // AI 线：先占用核心（材料校验之后、扣料之前——失败不产生任何副作用）
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }

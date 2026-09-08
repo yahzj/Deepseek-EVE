@@ -185,18 +185,17 @@ export function startRefineRun(
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(cycleMs / eff))
   let batchEff = batchUnits
-  if (worker !== 'pilot') {
-    // 工业自动化（industrial-automation）：AI 驱动精炼炉每级再 −5% 周期
-    // （2026-09-08 船长定：移除「至少保留 60%」护栏；自动化×核心效率乘算本身有界）
-    const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
-    if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
-  } else {
-    // 主控手动精炼双技能（P1）：炉心熔炼学 −4% 周期/级、炉膛扩容学 +6% 批容/级（AI 驱动不受影响）
+  if (worker === 'pilot') {
+    // 主控手动精炼：炉心熔炼学 −4% 周期/级、炉膛扩容学 +6% 批容/级（AI 核心驱动不受这两个技能影响）
     const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
     if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
     const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
     if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   }
+  // 工业自动化（industrial-automation，2026-09-08 船长定：手动与 AI 核心驱动同享）：
+  // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
+  const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
+  if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
   // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 本台单批量；运行中余量不足的"尾批"处理不受影响。
   // 放在占用核心之前（不足即拒绝，不占核不记数）
   if (available < batchEff) {

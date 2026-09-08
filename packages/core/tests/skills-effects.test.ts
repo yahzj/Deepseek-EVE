@@ -63,8 +63,8 @@ describe('技能补全：材料学（制造消耗每级 −2%）', () => {
   })
 })
 
-describe('技能补全：工业自动化（AI 精炼炉周期每级 −5%）', () => {
-  it('基础核心 + 自动化满级：6000/0.4 → ×0.75 = 11250ms；手动运转不受影响', () => {
+describe('技能补全：工业自动化（手动与 AI 核心驱动同享，每级 −5% 周期）', () => {
+  it('AI：6000÷0.4 → ×0.75 = 11250ms；手动同享 → 6000×0.75 = 4500ms（2026-09-08 方案①）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 3 })
     const ctx = makeTestCtx()
     state.aiCores['basic'] = 1
@@ -74,7 +74,7 @@ describe('技能补全：工业自动化（AI 精炼炉周期每级 −5%）', (
     expect(state.refineRuns[0]!.cycleMs).toBe(11_250) // 6000 ÷ 0.4 × 0.75
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-    expect(state.refineRuns[0]!.cycleMs).toBe(6_000) // 手动 = 原始周期
+    expect(state.refineRuns[0]!.cycleMs).toBe(4_500) // 手动 6000 ×0.75（2026-09-08 起同享）
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
   })
 })
@@ -229,17 +229,17 @@ describe('技能补全 P1：手动精炼双技（炉心熔炼学/炉膛扩容学
   })
 })
 
-describe('技能补全 P1：离线作业管理学（结算上限 +8%/级）', () => {
-  it('满级 12 小时离线结算 ≈ 11.2 小时（基础 8 小时 ×1.4）', () => {
+describe('技能补全 P1：离线作业管理学（结算时长 +20%/级）', () => {
+  it('满级 20 小时离线结算 = 16 小时（基础 8 小时 ×2，2026-09-08 船长定）', () => {
     const now = 2_000_000_000_000
-    const mk = (): GameState => createInitialState({ nowWallMs: now - 12 * 3_600_000, seed: 13 })
+    const mk = (): GameState => createInitialState({ nowWallMs: now - 20 * 3_600_000, seed: 13 })
     const s0 = mk()
-    simulateOffline(s0, now - 12 * 3_600_000, now, makeTestCtx())
+    simulateOffline(s0, now - 20 * 3_600_000, now, makeTestCtx())
     expect(s0.gameMs).toBe(8 * 3_600_000) // lv0：cap 8h
     const s5 = mk()
     s5.skills.trained['offline-ops'] = 5
-    simulateOffline(s5, now - 12 * 3_600_000, now, makeTestCtx())
-    expect(s5.gameMs).toBe(Math.round(8 * 3_600_000 * 1.4)) // lv5：cap ≈ 11.2h
+    simulateOffline(s5, now - 20 * 3_600_000, now, makeTestCtx())
+    expect(s5.gameMs).toBe(16 * 3_600_000) // lv5：cap 16h
   })
 })
 
