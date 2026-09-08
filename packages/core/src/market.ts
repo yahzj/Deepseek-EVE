@@ -53,6 +53,9 @@ const RARE_PCT_MAX = 0.15
 const RARE_LOCKED_WEIGHT = 0.04
 /** 现货抢购学：每级放大倍率（2026-09-06 船长定削弱 25%→10%；上限 5 级；rare 与奇货共用） */
 const SWEEP_PER_LEVEL = 0.1
+/** 二手市场学（卷B3⑪，2026-09-08 船长定：淘货折扣）：稀有供给单价格每级 −2%（满级 −10%；
+ *  只作用 rare 类目，奇货不参与——见 secondhandMul 注释的防套利口径） */
+const SECONDHAND_PER_LEVEL = 0.02
 /** rare NPC 订单存在时长倍率（9 分钟 → 36 分钟；供给/收购两侧同规则） */
 const RARE_LIFE_MUL = 4
 /** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量） */
@@ -358,6 +361,14 @@ function sweepMul(state: GameState): number {
   return 1 + SWEEP_PER_LEVEL * Math.min(5, state.skills.trained['source-sweeping'] ?? 0)
 }
 
+/** 二手市场学（卷B3⑪，2026-09-08 船长定：淘货折扣）——稀有供给单价格每级 −2%（满级 −10%）。
+ *  只作用于 rare 类目供给单（slowSupplyDraw 刷出，含闸内 ×4 暗市单同乘——折后仍 ≫ 原价，
+ *  声望解锁节奏不受影响）；奇货（exotic）不参与：其收购档 = 1.0L 全价回收，折价会击穿
+ *  「收购 ≤1.0L < 供应」防套利不变式（买入折价单 → 全价回购 = 税后正利差印钱）。 */
+function secondhandMul(state: GameState): number {
+  return 1 - SECONDHAND_PER_LEVEL * Math.min(5, state.skills.trained['secondhand-market'] ?? 0)
+}
+
 /** rare 池构成：全市场 rare 商品中解锁（权重 1）与闸内（权重 RARE_LOCKED_WEIGHT）的数量 */
 function rarePoolStats(state: GameState, ctx: SimContext): { unlockedN: number; lockedN: number } {
   let unlockedN = 0
@@ -462,13 +473,14 @@ function orderLifeMsOf(def: MarketGoodDef, bal: MarketBalance): number {
 }
 
 /** 抽取命中一张 rare 供给单：解锁原价；闸内 = ×4 暗市单（标 bm，外观同普通稀有单，玩家向隐身）。
- * 数量：船 1 艘/次，其余 1~3 件（同窗可重复抽中同一类型 → 簿上允许同商品多张）。 */
+ * 数量：船 1 艘/次，其余 1~3 件（同窗可重复抽中同一类型 → 簿上允许同商品多张）。
+ * 价格：原价/×4 之上再乘 二手市场学折扣（卷B3⑪；见 secondhandMul）。 */
 function spawnRareSupply(state: GameState, ctx: SimContext, def: MarketGoodDef, now: number, locked: boolean): void {
   const poolQ = state.market.pools[def.key]?.q ?? 0
   const L = priceLevel(state, ctx, def, poolQ)
   const lifeMs = orderLifeMsOf(def, ctx.balance.market)
   const qty = def.kind === 'ship' ? 1 : 1 + Math.floor(nextRandom(state.rng) * 3)
-  const price = Math.round(sellPrice(def, L) * priceJitter(state) * (locked ? 4 : 1))
+  const price = Math.round(sellPrice(def, L) * priceJitter(state) * secondhandMul(state) * (locked ? 4 : 1))
   npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty, locked)
 }
 

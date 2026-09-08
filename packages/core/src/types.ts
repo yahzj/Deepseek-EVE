@@ -354,6 +354,11 @@ export interface BalanceConfig {
   aiCore: {
     /** 提升「同时启用 AI 核心上限」的技能 id（现唯一 = 人工智能专家；多技能叠加见 ai.ts aiCoreCap） */
     skillId: string
+    /** 卷B3⑩（2026-09-08 船长定）：AI 核心调度学 id——核心驱动的全部作业效率在档位之上再乘
+     *  (1 + dispatchPerLevel × 级)（纯作业段：返航腿不参与，卷B2⑥ 口径） */
+    dispatchSkillId: string
+    /** 卷B3⑩：调度学每级效率 +（默认 0.02 = +2%/级，满级 ×1.1） */
+    dispatchPerLevel: number
     /** 基础 AI 核心单价（ISK，空间站直购；更高级核心由远征掉落） */
     basicPriceIsk: number
     /** 各类型核心的效率（速度系数：1 = 玩家手操速度；只影响速度，不影响奖励） */
@@ -394,6 +399,11 @@ export interface BalanceConfig {
   /** 富矿脉基础触发率（每分钟，卷B2⑥ 2026-09-08 船长定稿：掷点按"该循环占用分钟数"缩放后判定；
    *  命中 = 连续 2 循环 ×3；0 = 禁用，测试用它关富矿保 rng 时序） */
   richVeinChance: number
+  /** 完好舰体命中率（每分钟，卷B3⑨ 2026-09-08 船长定稿：掷点按"该打捞轮占用的分钟数"缩放；
+   *  命中 = 当场直发敌群回收彩头；0 = 禁用，测试用它关完好舰体保 rng 时序） */
+  intactHullRatePerMin: number
+  /** 完好舰体命中后的低安 MK2 层概率（仅 sec<0 星系掷；价值 ≈25 万级大奖，频率压低） */
+  intactMk2Chance: number
   /** 远征出发时遇到"途中事件"的概率（M5） */
   travelEventChance: number
   /** 远征胜利奖金浮动范围（×0.85 ~ ×1.15 之类） */
