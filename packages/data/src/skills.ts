@@ -214,7 +214,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '建筑工程学',
     group: '工业',
     rank: 3,
-    description: '副空间站工程标准：向建站点交付物资的进度计数每级 +⟦8%⟧（等价减少所需物资，满级 −⟦40%⟧）。',
+    description: '副空间站工程标准：建站所需建材每级 −⟦8%⟧（满级 −⟦40%⟧）。',
   },
   {
     id: 'salvage-recycling',
@@ -446,7 +446,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '事件分红学',
     group: '贸易',
     rank: 2,
-    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧。',
+    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧（事件赏钱本身不多，纯属娱乐向的小彩头，不必指望发家）。',
   },
 
   // ───────── 探索（2026-09-04 新组） ─────────

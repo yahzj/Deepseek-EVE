@@ -236,3 +236,35 @@ describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能�
     expect(startRecycleRun(state, 'nope-wreck', 'pilot', ctx).error).toContain(GATE_HINT)
   })
 })
+
+describe('建筑工程学改版（2026-09-08 船长定：建材需求直减每级 −8%）', () => {
+  it('满级：两档需求 100/150 → 60/90，实交 150 单位建成（无技能需 250）', () => {
+    const { state, ctx } = world()
+    state.skills.trained['station-engineering'] = 5
+    state.dockedSite = 'site-test'
+    state.awayGalaxy = null
+    state.warehouse.items['ore-a'] = 500
+    expect(tierRemaining(state, ctx.stations.get('site-test')!)).toBe(60) // ceil(100×0.6)
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 60).ok).toBe(true)
+    expect(siteProgress(state, 'site-test').stage).toBe(1)
+    expect(state.warehouse.items['ore-a']).toBe(440)
+    expect(tierRemaining(state, ctx.stations.get('site-test')!)).toBe(90) // ceil(150×0.6)
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 90).ok).toBe(true)
+    expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+    expect(state.warehouse.items['ore-a']).toBe(350) // 实耗 150
+  })
+
+  it('旧档兼容：已缴虚高（旧计件放大口径写入）≥ 新需求时，下次提交自动结算推进', () => {
+    const { state, ctx } = world()
+    state.skills.trained['station-engineering'] = 5
+    state.dockedSite = 'site-test'
+    state.awayGalaxy = null
+    state.warehouse.items['ore-a'] = 500
+    // 模拟旧档：第一档（新需求 60）delivered 虚高到 70（旧 ×1.4 计件放大写入），档位未推进
+    state.stationSites['site-test'] = { stage: 0, delivered: { 'ore-a': 70 } }
+    expect(tierRemaining(state, ctx.stations.get('site-test')!)).toBe(0)
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 1).ok).toBe(true)
+    expect(siteProgress(state, 'site-test').stage).toBe(1) // 自动结算到第二档（虚高已缴未入新档）
+    expect(siteProgress(state, 'site-test').delivered).toEqual({ 'ore-a': 1 }) // 本次 1 单位记入新档
+  })
+})

@@ -28,6 +28,17 @@ export function tierDeliveredTotal(prog: StationSiteProgress, site: StationSiteD
   return total
 }
 
+/**
+ * 某档建材需求（建筑工程学 station-engineering 改版，2026-09-08 船长定）：
+ * 从"交付计件放大 ×(1+8%/级)"改为"需求直减"——每档需求 ×(1 − 8%/级)，满级 −40%，最少 1 单位。
+ */
+export function tierNeedOf(state: GameState, site: StationSiteDef, tierIndex: number): number {
+  const tiers = site.tiers
+  if (tierIndex < 0 || tierIndex >= tiers.length) return 0
+  const engLv = Math.min(5, state.skills.trained['station-engineering'] ?? 0)
+  return Math.max(1, Math.ceil(tiers[tierIndex]!.count * (1 - 0.08 * engLv)))
+}
+
 /** 玩家是否在该建站点"工地现场"（可提交建材，2026-09-06 紧急修复——玩家反馈无法提交）：
  * - 停靠该站（已停靠工地/建成站）；
  * - 野外停留于站点所在星系（掩护巡逻/作业到场即工地现场——首档『奠基』本就需先到工地
@@ -44,8 +55,7 @@ export function playerAtSite(state: GameState, site: StationSiteDef): boolean {
 export function tierRemaining(state: GameState, site: StationSiteDef): number {
   const prog = siteProgress(state, site.id)
   if (prog.stage >= site.tiers.length) return 0
-  const tier = site.tiers[prog.stage]!
-  return Math.max(0, tier.count - tierDeliveredTotal(prog, site))
+  return Math.max(0, tierNeedOf(state, site, prog.stage) - tierDeliveredTotal(prog, site))
 }
 
 /**
@@ -67,6 +77,29 @@ export function deliverStationResources(
     state.stationSites[siteId] = prog // 落库，避免只改临时默认对象
   }
   if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成，无需再提交。` }
+  // 兼容旧档（旧"计件放大"口径会把虚高已缴写进 delivered）：需求直减后已缴可能 ≥ 需求而未推进 →
+  // 先自动结算推进（最多顺推 6 档防御环）；顺推后整站建成按建成处理。
+  let compatAdvanced = 0
+  while (
+    prog.stage < site.tiers.length &&
+    compatAdvanced < 6 &&
+    tierDeliveredTotal(prog, site) > 0 &&
+    tierRemaining(state, site) <= 0
+  ) {
+    const doneTier = site.tiers[prog.stage]!
+    prog.stage += 1
+    prog.delivered = {}
+    compatAdvanced++
+    if (prog.stage < site.tiers.length) {
+      addLog(state, 'info', `「${site.name}」档位「${doneTier.name}」自动结算（需求口径改版）：下一档「${site.tiers[prog.stage]!.name}」开始。`)
+    }
+  }
+  if (prog.stage >= site.tiers.length) {
+    if (compatAdvanced > 0) {
+      addLog(state, 'trade', `⌂ 「${site.name}」建成并网（需求口径改版后自动结算）！已并入空间站网络。`)
+    }
+    return { ok: false, error: `「${site.name}」已建成，无需再提交。` }
+  }
   if (!site.acceptItemIds.includes(itemId)) {
     return { ok: false, error: `「${site.name}」不收这种材料——需要：${site.acceptItemIds.map((i) => ctx.items.get(i)?.name ?? i).join(' / ')}。` }
   }
@@ -103,10 +136,8 @@ export function deliverStationResources(
   if (took <= 0) {
     return { ok: false, error: `没有可提交的 ${itemName}（仓库与货仓都为空）。` }
   }
-  // 建筑工程学（station-engineering）：本次交付进度 +8%/级（等价减少所需物资；只放大本次，防历史复合膨胀）
-  const engLv = Math.min(5, state.skills.trained['station-engineering'] ?? 0)
-  const credited = engLv > 0 ? Math.floor(took * (1 + 0.08 * engLv)) : took
-  prog.delivered[itemId] = (prog.delivered[itemId] ?? 0) + credited
+  // 需求直减见 tierNeedOf（建筑工程学 −8%/级）：交付一律按实收计件
+  prog.delivered[itemId] = (prog.delivered[itemId] ?? 0) + took
   const tier = site.tiers[prog.stage]!
   const remain = tierRemaining(state, site)
   addLog(

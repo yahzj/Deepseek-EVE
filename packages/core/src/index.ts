@@ -391,6 +391,7 @@ export {
   siteProgress,
   isSiteBuilt,
   tierRemaining,
+  tierNeedOf,
   deliverStationResources,
   onArriveAtGalaxy,
   playDialogue,
