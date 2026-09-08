@@ -18,6 +18,12 @@ contextBridge.exposeInMainWorld('whale', {
   readBackup: (name: string): Promise<{ ok: boolean; text?: string; error?: string }> => ipcRenderer.invoke('save:read-backup', name),
   /** 恢复备份（覆盖前自动备份当前档） */
   restore: (name: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('save:restore', name),
+  /** 弹出系统对话框选择外部 .json 存档并读取文本（导入用；取消 → { ok:false, canceled:true }） */
+  pickImportSave: (): Promise<{ ok: boolean; text?: string; canceled?: boolean; error?: string }> =>
+    ipcRenderer.invoke('save:pick-import'),
+  /** 弹出系统保存对话框，把存档文本写到用户指定位置（导出用；取消 → { ok:false, canceled:true }） */
+  exportSaveToFile: (text: string): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> =>
+    ipcRenderer.invoke('save:export-to-file', text),
 })
 
 // 性能自动采集（2026-09-08 诊断工具）：主进程环境变量 WHALE_AUTOPERF 注入场景 JSON；

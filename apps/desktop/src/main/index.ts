@@ -4,7 +4,7 @@
  * 存档安全（中文说明）：保存时先写 ".tmp" 再改名覆盖，即使中途断电/崩溃，
  * 原档也完好无损，最多丢一次保存间隔的内容。
  */
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 
@@ -129,6 +129,52 @@ function registerSaveHandlers(): void {
       return { ok: true }
     } catch (err) {
       return { ok: false, error: String(err) }
+    }
+  })
+
+  /* ───────── 导入 / 导出（外部文件；2026-09-08 船长定：桌面系统对话框） ───────── */
+
+  /** 弹出文件选择框 → 读取所选 .json 存档文本（解析/校验由界面层做） */
+  ipcMain.handle('save:pick-import', async () => {
+    const opts: Electron.OpenDialogOptions = {
+      title: '选择要导入的存档文件',
+      buttonLabel: '导入此存档',
+      filters: [{ name: '存档 JSON', extensions: ['json'] }],
+      properties: ['openFile'],
+    }
+    const win = BrowserWindow.getAllWindows()[0]
+    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    if (r.canceled || r.filePaths.length === 0) return { ok: false, canceled: true }
+    try {
+      const text = await fs.readFile(r.filePaths[0]!, 'utf8')
+      if (text.length > 10 * 1024 * 1024) return { ok: false, error: '文件过大（超过 10MB），不像是本游戏存档。' }
+      return { ok: true, text }
+    } catch (err) {
+      return { ok: false, error: `读取文件失败（${String(err)}）。` }
+    }
+  })
+
+  /** 弹出保存对话框 → 把存档文本写到用户指定位置（原子写：tmp + 改名） */
+  ipcMain.handle('save:export-to-file', async (_event, data: unknown) => {
+    if (typeof data !== 'string' || data.length > 10 * 1024 * 1024) {
+      return { ok: false, error: '非法的存档文本。' }
+    }
+    const opts: Electron.SaveDialogOptions = {
+      title: '导出存档到…',
+      buttonLabel: '导出',
+      defaultPath: join(app.getPath('userData'), `${backupStamp()}.json`),
+      filters: [{ name: '存档 JSON', extensions: ['json'] }],
+    }
+    const win = BrowserWindow.getAllWindows()[0]
+    const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    if (r.canceled || !r.filePath) return { ok: false, canceled: true }
+    try {
+      const tmp = `${r.filePath}.tmp`
+      await fs.writeFile(tmp, data, 'utf8')
+      await fs.rename(tmp, r.filePath)
+      return { ok: true, path: r.filePath }
+    } catch (err) {
+      return { ok: false, error: `写入文件失败（${String(err)}）。` }
     }
   })
 }
