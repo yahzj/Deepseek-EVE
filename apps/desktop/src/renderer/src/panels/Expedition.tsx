@@ -36,6 +36,7 @@ import {
   travelLegMs,
   travelMinutesEff,
   playerAtSite,
+  tierNeedOf,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -1789,7 +1790,8 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
         const built = prog.stage >= site.tiers.length
         const tier = !built ? site.tiers[prog.stage]! : null
         const delTotal = site.acceptItemIds.reduce((sum, id) => sum + (prog.delivered[id] ?? 0), 0)
-        const remain = tier ? Math.max(0, tier.count - delTotal) : 0
+        const need = tier ? tierNeedOf(state, site, prog.stage) : 0
+        const remain = tier ? Math.max(0, need - delTotal) : 0
         const itemId = selItem[site.id] ?? site.acceptItemIds[0]!
         // 工地现场 = 停靠该站，或野外停留于站点星系（2026-09-06 修复：现场交付无需"先停靠"）
         const presentAtSite = playerAtSite(state, site)
@@ -1844,7 +1846,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             <div className="app-station-tiers">
               {site.tiers.map((t, i) => (
                 <span key={t.name} className={`app-station-tier${prog.stage > i ? ' is-done' : ''}${prog.stage === i && !built ? ' is-cur' : ''}`}>
-                  {i + 1}·{t.name}：{t.unlockDesc}（{t.count.toLocaleString('zh-CN')} 单位建材）{prog.stage > i ? ' ✓' : ''}
+                  {i + 1}·{t.name}：{t.unlockDesc}（{tierNeedOf(state, site, i).toLocaleString('zh-CN')} 单位建材）{prog.stage > i ? ' ✓' : ''}
                 </span>
               ))}
             </div>
@@ -1855,7 +1857,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             ) : tier ? (
               <>
                 <div className="app-station-progress">
-                  本档已缴 {Math.min(delTotal, tier.count).toLocaleString('zh-CN')} / {tier.count.toLocaleString('zh-CN')} 单位
+                  本档已缴 {Math.min(delTotal, need).toLocaleString('zh-CN')} / {need.toLocaleString('zh-CN')} 单位
                   {remain === 0 ? '（凑齐后自动结算档位）' : ''}
                 </div>
                 {presentAtSite ? (

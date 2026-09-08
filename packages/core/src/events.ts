@@ -132,10 +132,21 @@ export const EXPLORE_EVENTS: readonly FlavorEntry[] = [
 
 /* ═══════════ 工具 ═══════════ */
 
+/**
+ * 星际奇遇学（galactic-happenings，2026-09-08 船长定：缩短事件间隔）：
+ * 在线随机事件来访间隔每级 −8%（满级 ×0.6）。同一因子交给低安遇袭判定——
+ * 事件密度上浮时单次遇袭率等比例下调，使"每小时遇袭期望"不随本技能改变。
+ */
+export function eventCadenceFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['galactic-happenings'] ?? 0)
+  return Math.max(0, 1 - 0.08 * lv)
+}
+
 function rollGapMs(state: GameState, ctx: SimContext): number {
   const ev = ctx.balance.events
   const u = Math.pow(nextRandom(state.rng), ev.gapPower)
-  return Math.round(ev.minGapMs + (ev.maxGapMs - ev.minGapMs) * u)
+  const raw = ev.minGapMs + (ev.maxGapMs - ev.minGapMs) * u
+  return Math.max(0, Math.round(raw * eventCadenceFactor(state)))
 }
 
 function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
@@ -293,7 +304,7 @@ export function advanceEvents(state: GameState, deltaMs: number, ctx: SimContext
     guard++
     // B1（船长 2026-09-04 定稿）：低安遭遇占用随机事件时机——事件到点先判遇袭；
     // 命中则本次事件机会被遭遇占用（本段不再抽随机事件）
-    if (!rollLowSecAmbush(state, ctx)) {
+    if (!rollLowSecAmbush(state, ctx, eventCadenceFactor(state))) {
       fireOneEvent(state, ctx)
     }
     ev.nextAtGameMs += rollGapMs(state, ctx)
