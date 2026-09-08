@@ -1,6 +1,6 @@
 /**
- * T9 副空间站：分档交付（边交边生效）、停靠/抵达挂点、通讯剧本登记、
- * 建成并入空间站清单与"最近空间站"解析。
+ * T9 副空间站：分档施工（2026-09-08 船长定：未建成不视为任何站点，不停靠不提供功能）、
+ * 现场交付/交付航线、抵达挂点、通讯剧本登记、建成并入空间站清单与"最近空间站"解析。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -15,9 +15,11 @@ import {
   siteProgress,
   tierRemaining,
 } from '../src/station'
-import { nearestStationGalaxyId, stationGalaxyIds, isAtHomeLike } from '../src/location'
+import { nearestStationGalaxyId, stationGalaxyIds, isAtHomeLike, startSiteDeliverTrip, cancelSiteDeliverTrip } from '../src/location'
 import { startRefineRun, startRecycleRun, redeemFragments } from '../src/industry'
 import { startManufacturing } from '../src/manufacturing'
+import { changeShip, repairShip } from '../src/shipyard'
+import { advanceGame } from '../src/engine'
 import { makeTestCtx } from './helpers'
 
 /** 迷你建站点：挂在 galaxy-far，两档（100 / 150），收 ore-a */
@@ -29,8 +31,8 @@ function siteDef(): StationSiteDef {
     standingReq: 0,
     acceptItemIds: ['ore-a'],
     tiers: [
-      { name: '奠基', count: 100, unlockDesc: '可停靠卸货' },
-      { name: '建成', count: 150, unlockDesc: '并入空间站清单' },
+      { name: '奠基', count: 100, unlockDesc: '施工推进' },
+      { name: '建成', count: 150, unlockDesc: '建成并入空间站清单' },
     ],
     introDialogueId: 'dlg-intro',
     doneDialogueId: null,
@@ -81,18 +83,23 @@ describe('T9 建站交付与档位', () => {
     expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 1).ok).toBe(false)
   })
 
-  it('工地现场交付（2026-09-06 玩家反馈修复）：野外停留于站点星系即可提交——首档『奠基』无需停靠', () => {
+  it('工地现场交付（2026-09-06 玩家反馈修复 + 2026-09-08 收口）：野外停留于站点星系即可提交——无需停靠', () => {
     const { state, ctx } = world()
     state.warehouse.items['ore-a'] = 500
-    state.awayGalaxy = 'galaxy-far' // 掩护巡逻/作业到场（stage 0，泊位尚未解锁）
+    state.awayGalaxy = 'galaxy-far' // 现场（stage 0：工地不提供停靠，现场交付即可）
     state.dockedSite = null
     expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 100).ok).toBe(true)
-    expect(siteProgress(state, 'site-test').stage).toBe(1) // 首档自动结算 → 解锁泊位
+    expect(siteProgress(state, 'site-test').stage).toBe(1) // 首档结算
     expect(state.warehouse.items['ore-a']).toBe(400)
-    // 停靠解锁后再停靠提交第二档（原路径不回退）
-    state.dockedSite = 'site-test'
+    // 建成前仍不能停靠（不视为站点）：现场继续提交第二档
+    state.awayGalaxy = 'galaxy-far'
+    state.dockedSite = null
     expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 150).ok).toBe(true)
     expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+    // 建成后即可正常停靠
+    state.awayGalaxy = null
+    state.dockedSite = 'site-test'
+    expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 1).ok).toBe(false) // 已建成拒收
   })
 
   it('不在工地现场（母港/他处星系/他站）仍不可提交', () => {
@@ -109,7 +116,7 @@ describe('T9 建站交付与档位', () => {
 })
 
 describe('T9 抵达挂点与通讯', () => {
-  it('抵达未奠基站点星系：野外工地停留 + 自动挂起介绍通讯（已读后不再自动挂）', () => {
+  it('抵达未建成站点星系：一律工地现场野外停留（2026-09-08：未建成不视为站点，不再停靠）+ 自动挂起介绍通讯', () => {
     const { state, ctx } = world()
     onArriveAtGalaxy(state, ctx, 'galaxy-far')
     expect(state.awayGalaxy).toBe('galaxy-far')
@@ -122,9 +129,15 @@ describe('T9 抵达挂点与通讯', () => {
     expect(state.pendingDialogue).toBeNull()
   })
 
-  it('抵达已奠基站点星系：直接停靠该站（不再野外停留）', () => {
+  it('抵达已建成站点星系：直接停靠该站（建成后才视为空间站）', () => {
     const { state, ctx } = world()
-    state.stationSites['site-test'] = { stage: 1, delivered: {} }
+    state.warehouse.items['ore-a'] = 1000
+    state.awayGalaxy = 'galaxy-far'
+    state.dockedSite = null
+    deliverStationResources(state, ctx, 'site-test', 'ore-a', 100)
+    deliverStationResources(state, ctx, 'site-test', 'ore-a', 150)
+    expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+    state.awayGalaxy = 'galaxy-hub'
     onArriveAtGalaxy(state, ctx, 'galaxy-far')
     expect(state.awayGalaxy).toBeNull()
     expect(state.dockedSite).toBe('site-test')
@@ -266,5 +279,138 @@ describe('建筑工程学改版（2026-09-08 船长定：建材需求直减每�
     expect(deliverStationResources(state, ctx, 'site-test', 'ore-a', 1).ok).toBe(true)
     expect(siteProgress(state, 'site-test').stage).toBe(1) // 自动结算到第二档（虚高已缴未入新档）
     expect(siteProgress(state, 'site-test').delivered).toEqual({ 'ore-a': 1 }) // 本次 1 单位记入新档
+  })
+})
+
+/* ═══════════ 2026-09-08 建站交付航线（真实航程；自动交付 + 自动返航；可取消）+ 未建成收口 ═══════════ */
+
+describe('建站交付航线（2026-09-08 船长定）', () => {
+  /** debugQuick：星系际航程固定 1 秒，两条腿可快速走完 */
+  function tripWorld(oreInWare: number) {
+    const { state, ctx } = world()
+    state.debugQuick = true
+    state.exploredGalaxies = ['galaxy-hub', 'galaxy-far']
+    state.warehouse.items['ore-a'] = oreInWare
+    return { state, ctx }
+  }
+
+  it('前置校验：野外/作业/未探明/无建材时拒发；建材不足时正常出发', () => {
+    const { state, ctx } = tripWorld(0)
+    state.awayGalaxy = 'galaxy-far' // 野外
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false)
+    state.awayGalaxy = null
+    state.exploredGalaxies = ['galaxy-hub'] // 未探明
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false)
+    state.exploredGalaxies = ['galaxy-hub', 'galaxy-far']
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false) // 无建材
+    state.warehouse.items['ore-a'] = 10
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-hub') // 出发星系 = 出发地（航行中不视为站内）
+    expect(state.dockedSite).toBeNull()
+    expect(state.transit.delivery).toEqual({ siteId: 'site-test', phase: 'to-site' })
+  })
+
+  it('端到端：去程到点 → 自动交付 → 自动返航最近空间站 → 停靠完成', () => {
+    const { state, ctx } = tripWorld(120) // 首档 100 + 余 20
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    advanceGame(state, 900, ctx) // 去程未到点：仍在途、未交付
+    expect(state.transit.active).toBe(true)
+    expect(state.stationSites['site-test']).toBeUndefined()
+    advanceGame(state, 200, ctx) // 到点：野外停留 + 自动交付 100 → 档 1，余 20 也并入档 2 → 自动返航
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    expect(siteProgress(state, 'site-test').stage).toBe(1)
+    expect(state.warehouse.items['ore-a']).toBeUndefined() // 120 全数缴出
+    expect(siteProgress(state, 'site-test').delivered).toEqual({ 'ore-a': 20 }) // 档 2 已缴 20
+    expect(state.transit.delivery!.phase).toBe('to-station')
+    advanceGame(state, 2_000, ctx) // 返程到港：回母港
+    expect(state.transit.active).toBe(false)
+    expect(state.transit.delivery).toBeNull()
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.dockedSite).toBeNull()
+    expect(state.logs.some((l) => l.text.includes('本次自动交付建材 120'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('交付任务收尾'))).toBe(true)
+  })
+
+  it('建材足够一次建成：自动交付全部档位 → 就地停靠新落成的副站', () => {
+    const { state, ctx } = tripWorld(500)
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    advanceGame(state, 1_100, ctx) // 去程到点（1000ms）+ 余量
+    expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.dockedSite).toBe('site-test')
+    expect(state.transit.active).toBe(false)
+    expect(state.warehouse.items['ore-a']).toBe(250) // 500 - 250
+    expect(state.logs.some((l) => l.text.includes('达成「建成」'))).toBe(true)
+  })
+
+  it('途中取消（去程）：无惩罚、立即返航停靠出发站', () => {
+    const { state, ctx } = tripWorld(200)
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    advanceGame(state, 300, ctx) // 仍在途
+    const r = cancelSiteDeliverTrip(state, ctx)
+    expect(r.ok).toBe(true)
+    expect(state.transit.active).toBe(false)
+    expect(state.transit.delivery).toBeNull()
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.dockedSite).toBeNull() // 出发站 = 母港
+    expect(state.stationSites['site-test']).toBeUndefined() // 未交付任何建材
+    expect(state.logs.some((l) => l.text.includes('交付航线已取消'))).toBe(true)
+  })
+
+  it('取消前置：无在途交付航线时拒绝', () => {
+    const { state, ctx } = tripWorld(200)
+    expect(cancelSiteDeliverTrip(state, ctx).ok).toBe(false)
+  })
+
+  it('到达即全部建材不足：空跑后自动返航（档位不动）', () => {
+    const { state, ctx } = tripWorld(0)
+    state.warehouse.items['ore-a'] = 0
+    // 出发前置要求有建材：先放 1 单位让出发合法，途中清空仓库模拟不可交付
+    state.warehouse.items['ore-a'] = 1
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    state.warehouse.items['ore-a'] = 0
+    advanceGame(state, 1_100, ctx)
+    expect(siteProgress(state, 'site-test').stage).toBe(0)
+    expect(state.transit.delivery!.phase).toBe('to-station') // 照常自动返航
+    expect(state.logs.some((l) => l.text.includes('仓库与货仓没有可交付的建材'))).toBe(true)
+  })
+})
+
+describe('未建成副站彻底收口（2026-09-08 船长定：不视为任何站点）', () => {
+  it('reconcileDockSanity：停靠未建成/未知站点 → 纠正为工地现场野外停留（幂等、只记一次日志）', () => {
+    const { state, ctx } = world()
+    state.awayGalaxy = null
+    state.dockedSite = 'site-test' // 旧档残留（stage 0）
+    advanceGame(state, 1, ctx) // 引擎逐 tick 校正
+    expect(state.dockedSite).toBeNull()
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    expect(state.logs.filter((l) => l.text.includes('尚未建成'))).toHaveLength(1)
+    advanceGame(state, 1, ctx)
+    expect(state.logs.filter((l) => l.text.includes('尚未建成'))).toHaveLength(1) // 幂等：不再重复
+    // 未知站点 id → 回母港
+    state.dockedSite = 'site-ghost'
+    state.awayGalaxy = null
+    advanceGame(state, 1, ctx)
+    expect(state.dockedSite).toBeNull()
+    expect(state.awayGalaxy).toBe('galaxy-hub')
+  })
+
+  it('维修/换驾驶在"停靠"未建成站点时被拒（即使状态残留，服务按建成收口）', () => {
+    const { state, ctx } = world()
+    state.dockedSite = 'site-test'
+    state.awayGalaxy = null
+    // 换驾驶：造第二艘同型船
+    state.fleet['ship-b'] = { ...state.fleet[state.shipId]! }
+    expect(changeShip(state, 'ship-b', ctx).ok).toBe(false)
+    expect(changeShip(state, 'ship-b', ctx).error).toContain('尚未建成')
+    // 维修（当前驾驶船，故意受损）
+    state.fleet[state.shipId]!.durability = 0.4
+    const r = repairShip(state, state.shipId, ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('尚未建成')
+    // 建成后放行到后续校验（不再报位置错；钱够则直接修好，不够则只报费用不足）
+    state.stationSites['site-test'] = { stage: 2, delivered: {} } // 两档全满 = 建成
+    const r2 = repairShip(state, state.shipId, ctx)
+    if (!r2.ok) expect(r2.error).not.toContain('尚未建成')
   })
 })

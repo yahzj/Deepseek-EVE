@@ -1489,6 +1489,19 @@ function normalizeState(raw: unknown): GameState {
       typeof transitRaw.legMs === 'number' && Number.isFinite(transitRaw.legMs)
         ? Math.max(0, Math.floor(transitRaw.legMs))
         : 0,
+    // 2026-09-08 建站交付航线（可选字段：siteId 合法且 phase 合规才启用，旧档回退 null）
+    delivery: (() => {
+      const deliveryRaw = asRaw(transitRaw.active === true ? transitRaw.delivery : undefined)
+      if (
+        transitRaw.active === true &&
+        typeof deliveryRaw.siteId === 'string' &&
+        deliveryRaw.siteId.length > 0 &&
+        (deliveryRaw.phase === 'to-site' || deliveryRaw.phase === 'to-station')
+      ) {
+        return { siteId: deliveryRaw.siteId, phase: deliveryRaw.phase as 'to-site' | 'to-station' }
+      }
+      return null
+    })(),
   }
   // --- B1.5 主控待命行程（v17.1 兼容字段）：active 且目标合法才启用 ---
   const stbRaw = asRaw(src.standby)

@@ -390,6 +390,9 @@ export {
   advanceStandby,
   cancelStandby,
   standbyStatus,
+  startSiteDeliverTrip,
+  cancelSiteDeliverTrip,
+  reconcileDockSanity,
 } from './location'
 export type { TransitView, StandbyView } from './location'
 export {

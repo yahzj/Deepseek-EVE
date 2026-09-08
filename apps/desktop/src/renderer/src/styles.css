@@ -4762,6 +4762,30 @@ body {
 
 }
 
+/* 蓝图状态（2026-09-08 船长定：市场行/详情标注"已学习 / 已获得"） */
+
+.app-mkt-detail-badges { margin-bottom: 6px; }
+
+.app-chip.is-learned {
+
+  color: #6ee7b7;
+
+  border-color: rgba(110, 231, 183, 0.45);
+
+  background: rgba(110, 231, 183, 0.08);
+
+}
+
+.app-chip.is-stock {
+
+  color: #7cc7ff;
+
+  border-color: rgba(124, 199, 255, 0.45);
+
+  background: rgba(124, 199, 255, 0.08);
+
+}
+
 .app-mkt-qty {
 
   width: 84px;

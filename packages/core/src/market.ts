@@ -840,15 +840,12 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
   const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  // 2026-09-08（船长定）：越线抢单成交静默化——日志与普通簿面成交完全一致，不出现"巡游采购"字样
   if (shipSale) {
     addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
   } else {
     const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(
-      state,
-      'trade',
-      `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（巡游采购），税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`,
-    )
+    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
   }
 }
 
@@ -865,7 +862,8 @@ function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder):
     pool.netVol += 1
     if (def?.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - 1)
   }
-  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×1（巡游供货，${order.price.toLocaleString('zh-CN')} ISK）。`)
+  // 2026-09-08（船长定）：越线买单静默化——日志与普通买单成交一致，不出现"巡游供货"字样
+  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×1（${order.price.toLocaleString('zh-CN')} ISK）。`)
 }
 
 /** 买入商品入对应库存（物品→物品仓库；装备→装备库；蓝图→蓝图书；核心→核心库；船→舰队）。
@@ -966,10 +964,12 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
   const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  // 2026-09-08（船长定）：站内吸收静默化——日志与普通簿面成交完全一致，不出现"让利售出/站内收购"字样
   if (shipSale) {
-    addLog(state, 'trade', `让利售出：站内收购二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
   } else {
-    addLog(state, 'trade', `让利售出：站内按 ${order.price.toLocaleString('zh-CN')} ISK 收购 ${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+    const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
+    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
   }
 }
 

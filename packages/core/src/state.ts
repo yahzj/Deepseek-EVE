@@ -151,17 +151,25 @@ export interface ShipReturnState {
   phaseAccMs: number
 }
 
-/** T8 显式"返航空间站"行程（野外停留 → 空间站；出发锁定总时长） */
+/**
+ * T8 显式"返航空间站"行程（野外停留 → 空间站；出发锁定总时长）。
+ * 2026-09-08（船长定）：扩展为"建站交付航线"——主船从停靠空间站出发、按真实航程驶往
+ * 建设工地星系，到点自动交付建材并自动返航最近空间站；delivery 非空表示本行程为交付任务。
+ */
 export interface ShipTransitState {
   active: boolean
   /** 出发星系（显示用；null = 未知） */
   fromGalaxy: string | null
-  /** 目的空间站所在星系（当前只有母港；T9 副站就绪后可为副站星系） */
+  /** 目的空间站所在星系（当前只有母港；T9 副站就绪后可为副站星系）；
+   * 交付航线去程 = 工地星系、返程 = 最近空间站星系 */
   toGalaxy: string | null
   /** 到站时刻（游戏内毫秒，出发锁定） */
   finishAtGameMs: number
   /** 本次行程总毫秒（显示用） */
   legMs: number
+  /** 建站交付航线标记（2026-09-08 船长定）：siteId = 工地；phase = to-site（前往交付）/
+   * to-station（交付后自动返航）。null = 普通返航行程。 */
+  delivery: { siteId: string; phase: 'to-site' | 'to-station' } | null
 }
 
 /** B1.5 主控"前往星系掩护巡逻"（原"待命"）：下达即时就位——船转场目标星系野外停留（awayGalaxy）；
@@ -1080,7 +1088,7 @@ export function createInitialState(opts?: {
     scanning: { active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false },
     scanProgress: {},
     awayGalaxy: null,
-    transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0 },
+    transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0, delivery: null },
     bountyCooldowns: {},
     autoLoopAnomalyId: null,
     stationSites: {},
