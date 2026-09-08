@@ -601,7 +601,8 @@ export class GameEngine {
     }
   }
 
-  /** 从外部文件导入存档（覆盖前自动备份当前档 → 校验可解析 → 落盘 → 热替换内存） */
+  /** 从外部文件导入存档：覆盖前自动备份当前档 → 校验可解析 → 按时间差补齐离线进度
+   * （与正常启动同口径：repair 迁移 + simulateOffline + 离线简报）→ 落盘 → 热替换内存 */
   async importSaveFromFile(): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
     try {
       const picked = await saveBridge.pickImportSave()
@@ -613,19 +614,44 @@ export class GameEngine {
       } catch (err) {
         return { ok: false, error: `所选文件无法解析为本游戏存档（${err instanceof Error ? err.message : String(err)}）。` }
       }
-      // 防误操作：覆盖前先把当前档备份一份（与恢复同口径）
+      const imported = parsed.state
+      // 防误操作：覆盖前先把"当前档"备份一份（与恢复同口径）
       await this.persist()
       try {
         await saveBridge.backup()
       } catch {
         // 备份失败不阻断导入（尽力而为）
       }
-      const saved = await saveBridge.save(text)
+      // 与正常启动同口径的载入修复链（须在离线结算前完成，让离线按新参数结算）
+      repairDeprecatedModules(imported, this.ctx)
+      migrateDeprecatedAmmo(imported)
+      // 按时间差补齐离线进度：档内墙钟 → 现在（上限与正常离线一致；墙钟在未来则跳过）
+      const now = Date.now()
+      const wallFrom = parsed.savedAtWallMs
+      if (wallFrom > 0 && now > wallFrom) {
+        const before = snapshotBasics(imported)
+        const stats = newSettleStats()
+        const { overflowMs } = offlineSplit(now - wallFrom)
+        simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
+        this.offlineReport = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
+        if (this.offlineReport !== null) {
+          addLog(imported, 'info', offlineReportLogText(this.offlineReport))
+        }
+      }
+      this.state = imported
+      const saved = await this.persist() // 落盘（写盘剥离日志；墙钟锚 = 现在 → 下次启动不会重复结算）
       if (!saved) return { ok: false, error: '写回存档失败（存储空间不足或文件被占用）。' }
-      this.state = parsed.state
-      this.offlineReport = null
       this.notify()
       return { ok: true }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
+  /** 删除某份备份（只删备份文件，不影响当前档） */
+  async deleteSaveBackup(name: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      return await saveBridge.deleteBackup(name)
     } catch (err) {
       return { ok: false, error: String(err) }
     }

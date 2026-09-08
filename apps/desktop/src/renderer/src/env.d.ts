@@ -26,6 +26,8 @@ declare global {
     readBackup(name: string): Promise<{ ok: boolean; text?: string; error?: string }>
     /** 恢复备份（覆盖前自动备份当前档） */
     restore(name: string): Promise<{ ok: boolean; error?: string }>
+    /** 删除某份备份（只删备份文件，不影响当前档） */
+    deleteBackup(name: string): Promise<{ ok: boolean; error?: string }>
     /** 弹文件选择框读取外部 .json 存档文本（桌面 = 系统对话框；网页版 = 文件选择器；取消 → canceled） */
     pickImportSave(): Promise<{ ok: boolean; text?: string; canceled?: boolean; error?: string }>
     /** 把存档文本导出到用户指定位置（桌面 = 保存对话框；网页版 = 触发下载；取消 → canceled） */

@@ -33,6 +33,7 @@ const electronBridge: WhaleApi = {
   restore: (name) => window.whale.restore(name),
   pickImportSave: () => window.whale.pickImportSave(),
   exportSaveToFile: (text) => window.whale.exportSaveToFile(text),
+  deleteBackup: (name) => window.whale.deleteBackup(name),
 }
 
 /* ───────── 浏览器分支：localStorage（键空间：1 主档 + N 备份） ───────── */
@@ -133,6 +134,14 @@ const localStorageBridge: WhaleApi = {
       setWithBudget(BP_PREFIX + bk, current)
     }
     if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: '浏览器存储空间不足，恢复失败。' }
+    return { ok: true }
+  },
+  /** 删除某份浏览器内备份（只删备份键，不影响主档键） */
+  async deleteBackup(name: string): Promise<{ ok: boolean; error?: string }> {
+    const key = backupKeyOf(name)
+    if (key === null) return { ok: false, error: '非法的备份文件名。' }
+    if (ls().getItem(key) === null) return { ok: false, error: '找不到该备份。' }
+    ls().removeItem(key)
     return { ok: true }
   },
   /** 导入 = 系统文件选择器（桌面浏览器/手机网页都可用），读取 .json 文本返回 */

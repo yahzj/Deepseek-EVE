@@ -132,6 +132,17 @@ function registerSaveHandlers(): void {
     }
   })
 
+  // 删除某份备份（2026-09-08 船长定：玩家可清理备份；只删备份文件，不影响当前档）
+  ipcMain.handle('save:delete-backup', async (_event, name: unknown) => {
+    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: '非法的备份文件名。' }
+    try {
+      await fs.unlink(join(app.getPath('userData'), name))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  })
+
   /* ───────── 导入 / 导出（外部文件；2026-09-08 船长定：桌面系统对话框） ───────── */
 
   /** 弹出文件选择框 → 读取所选 .json 存档文本（解析/校验由界面层做） */
