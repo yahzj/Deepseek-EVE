@@ -2,6 +2,7 @@
  * 序章·苏醒（2026-09-05 船长拍板）——新档开场演出：黑屏 → 醒来 → 系统自检 →
  * 自检结论（乘员失踪/船体受损/记忆损坏）→ 回忆系统名称（默认 PRTS）→ 进入采集步骤。
  * 演出阶段引擎时间冻结（step 0）；右上角常驻「跳过」= 全额结算（core skipTutorial）。
+ * 阶段转场（2026-09-08 船长定）：换段先淡出旧画面，再切内容由 key 重挂载触发淡入。
  */
 import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
@@ -30,6 +31,8 @@ const DIAG_LINES: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const LINE_MS = 130
+/** 阶段转场：旧画面淡出时长（2026-09-08 船长定：开场动画之间加淡入淡出） */
+const FADE_MS = 220
 
 export function PrologueScreen({ engine }: { engine: GameEngine }) {
   const [phase, setPhase] = useState<Phase>('wake')
@@ -37,6 +40,9 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
   const [name, setName] = useState('PRTS')
   const [err, setErr] = useState('')
   const timerRef = useRef<number | null>(null)
+  // 淡出中标志 + 待切入阶段（2026-09-08：换段先 .is-fading 淡出 FADE_MS，再切内容触发淡入）
+  const [fading, setFading] = useState(false)
+  const nextPhaseRef = useRef<Phase | null>(null)
 
   useEffect(() => {
     return () => {
@@ -44,10 +50,25 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     }
   }, [])
 
-  const startBoot = (): void => {
-    setPhase('boot')
-    setShown(0)
+  /** 阶段切换统一入口：淡出 →（FADE_MS 后）换阶段 → key 重挂载触发淡入 */
+  const goto = (p: Phase): void => {
+    if (fading) return
+    nextPhaseRef.current = p
+    setFading(true)
   }
+
+  useEffect(() => {
+    if (!fading) return
+    const t = window.setTimeout(() => {
+      const p = nextPhaseRef.current
+      nextPhaseRef.current = null
+      if (p === 'boot') setShown(0) // boot 重播时自检行数归零
+      if (p) setPhase(p)
+      setFading(false)
+    }, FADE_MS)
+    timerRef.current = t
+    return () => window.clearTimeout(t)
+  }, [fading])
 
   // boot 逐条滚动；全部条目滚完后等待玩家点击确认，再进入自检结论（2026-09-08 船长定：
   // 不再 1.5s 自动跳转——自检列表需玩家确认后才会弹出后续的警告结论界面）
@@ -80,80 +101,85 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
       onClick={() => {
         if (phase !== 'boot') return
         if (shown < CHECK_LINES.length) setShown(CHECK_LINES.length) // 播放中点击 = 跳过动画
-        else setPhase('diag') // 已播完：玩家确认 → 弹出自检结论（2026-09-08 船长定）
+        else goto('diag') // 已播完：玩家确认 → 弹出自检结论（2026-09-08 船长定）
       }}
     >
       <div className="app-prologue-inner">
-        {phase === 'wake' ? (
-          <div className="app-pro-wake">
-            <div className="app-pro-dim">未知年代 · 隐秘泊位</div>
-            <button className="app-pro-wake-btn" onClick={startBoot}>
-              ⏻ 醒来
-            </button>
-            <div className="app-pro-dim">—— 点击唤醒 ——</div>
-          </div>
-        ) : null}
-
-        {phase === 'boot' ? (
-          <div className="app-pro-term">
-            <div className="app-pro-term-title">舰载系统自检 · 启动序列</div>
-            {CHECK_LINES.slice(0, shown).map(([mod, kind, text], i) => (
-              <div key={i} className={`app-pro-line is-${kind}`}>
-                <span className="app-pro-mod">{mod}</span>
-                <span className="app-pro-dots">…</span>
-                <span className="app-pro-text">{text}</span>
-                <span className="app-pro-mark">{kind === 'ok' ? 'OK' : kind === 'warn' ? '!' : '✕'}</span>
+        {phase !== 'open' ? (
+          /* key=阶段：重挂载触发淡入；fading 时旧画面保持并加 .is-fading 淡出（2026-09-08 船长定转场） */
+          <div key={phase} className={`app-pro-stage${fading ? ' is-fading' : ''}`}>
+            {phase === 'wake' ? (
+              <div className="app-pro-wake">
+                <div className="app-pro-dim">未知年代 · 隐秘泊位</div>
+                <button className="app-pro-wake-btn" onClick={() => goto('boot')}>
+                  ⏻ 醒来
+                </button>
+                <div className="app-pro-dim">—— 点击唤醒 ——</div>
               </div>
-            ))}
-            {shown < CHECK_LINES.length ? (
-              <>
-                <div className="app-pro-cursor">▌</div>
-                <div className="app-pro-hint">（点击画面可跳过自检动画）</div>
-              </>
-            ) : (
-              <div className="app-pro-hint">自检序列完成 —— 点击画面查看自检结论 ›</div>
-            )}
-          </div>
-        ) : null}
+            ) : null}
 
-        {phase === 'diag' ? (
-          <div className="app-pro-diag">
-            <div className="app-pro-diag-title">⚠ 自检结论</div>
-            {DIAG_LINES.map(([k, v], i) => (
-              <div key={i} className="app-pro-diag-row">
-                <span className="app-pro-diag-k">{k}</span>
-                <span className="app-pro-diag-v">{v}</span>
+            {phase === 'boot' ? (
+              <div className="app-pro-term">
+                <div className="app-pro-term-title">舰载系统自检 · 启动序列</div>
+                {CHECK_LINES.slice(0, shown).map(([mod, kind, text], i) => (
+                  <div key={i} className={`app-pro-line is-${kind}`}>
+                    <span className="app-pro-mod">{mod}</span>
+                    <span className="app-pro-dots">…</span>
+                    <span className="app-pro-text">{text}</span>
+                    <span className="app-pro-mark">{kind === 'ok' ? 'OK' : kind === 'warn' ? '!' : '✕'}</span>
+                  </div>
+                ))}
+                {shown < CHECK_LINES.length ? (
+                  <>
+                    <div className="app-pro-cursor">▌</div>
+                    <div className="app-pro-hint">（点击画面可跳过自检动画）</div>
+                  </>
+                ) : (
+                  <div className="app-pro-hint">自检序列完成 —— 点击画面查看自检结论 ›</div>
+                )}
               </div>
-            ))}
-            <div className="app-pro-frag">档案残片：「编号 07……如果它醒了，告诉它——」……（记录截断）</div>
-            <button className="app-btn is-primary" onClick={() => setPhase('name')}>
-              下一步：身份确认
-            </button>
-          </div>
-        ) : null}
+            ) : null}
 
-        {phase === 'name' ? (
-          <div className="app-pro-name" onClick={(e) => e.stopPropagation()}>
-            <div className="app-pro-diag-title">身份标识检索失败</div>
-            <div className="app-pro-sub">从记忆碎片中找回自己的系统名称（顶栏呼号）：</div>
-            <input
-              className="app-input app-pro-input"
-              value={name}
-              maxLength={12}
-              onChange={(e) => {
-                setName(e.target.value)
-                setErr('')
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') confirm()
-              }}
-              autoFocus
-            />
-            <div className="app-pro-name-default">默认：PRTS —— 可自由修改</div>
-            {err ? <div className="app-pro-err">{err}</div> : null}
-            <button className="app-btn is-primary" onClick={confirm}>
-              写入并启动
-            </button>
+            {phase === 'diag' ? (
+              <div className="app-pro-diag">
+                <div className="app-pro-diag-title">⚠ 自检结论</div>
+                {DIAG_LINES.map(([k, v], i) => (
+                  <div key={i} className="app-pro-diag-row">
+                    <span className="app-pro-diag-k">{k}</span>
+                    <span className="app-pro-diag-v">{v}</span>
+                  </div>
+                ))}
+                <div className="app-pro-frag">档案残片：「编号 07……如果它醒了，告诉它——」……（记录截断）</div>
+                <button className="app-btn is-primary" onClick={() => goto('name')}>
+                  下一步：身份确认
+                </button>
+              </div>
+            ) : null}
+
+            {phase === 'name' ? (
+              <div className="app-pro-name" onClick={(e) => e.stopPropagation()}>
+                <div className="app-pro-diag-title">身份标识检索失败</div>
+                <div className="app-pro-sub">从记忆碎片中找回自己的系统名称（顶栏呼号）：</div>
+                <input
+                  className="app-input app-pro-input"
+                  value={name}
+                  maxLength={12}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setErr('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirm()
+                  }}
+                  autoFocus
+                />
+                <div className="app-pro-name-default">默认：PRTS —— 可自由修改</div>
+                {err ? <div className="app-pro-err">{err}</div> : null}
+                <button className="app-btn is-primary" onClick={confirm}>
+                  写入并启动
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

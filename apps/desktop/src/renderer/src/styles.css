@@ -7211,6 +7211,13 @@ body {
 
 .app-prologue-inner { width: min(680px, 88vw); max-height: 88vh; overflow: auto; padding: 24px; }
 
+/* 2026-09-08：开场动画阶段之间加淡入淡出转场（船长定）——内容容器随阶段 key 重挂载触发淡入；
+   换段前旧画面加 .is-fading 先淡出 220ms，再由组件切换阶段触发新画面淡入 */
+.app-pro-stage { animation: app-pro-stage-in .3s ease; }
+@keyframes app-pro-stage-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.app-pro-stage.is-fading { animation: app-pro-stage-out .22s ease forwards; }
+@keyframes app-pro-stage-out { from { opacity: 1; } to { opacity: 0; } }
+
 .app-pro-wake { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
 
 .app-pro-dim { color: #5f7a6c; font-size: 12px; letter-spacing: 2px; }
@@ -7375,9 +7382,9 @@ body {
 @keyframes app-stepbar-pulse { 0%,100% { box-shadow: 0 0 4px rgba(120,240,170,.35); } 50% { box-shadow: 0 0 16px rgba(120,240,170,.85); transform: translateY(-1px); } }
 .app-spot-ring { position: fixed; z-index: 79; pointer-events: none; border: 3px solid #7dffb0; border-radius: 10px; box-shadow: 0 0 0 3px rgba(10,30,18,.75), 0 0 22px rgba(110,255,180,.95); animation: app-spot-pulse .9s ease-in-out infinite; }
 @keyframes app-spot-pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
-.app-spot-tip { position: absolute; left: 0; top: calc(100% + 8px); font-size: 12px; font-weight: 800; color: #05231a; background: #9dffc4; border-radius: 6px; padding: 3px 9px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.5); animation: app-spot-pulse 1.2s ease-in-out infinite; }
-/* 2026-09-08：目标贴视口底缘时气泡翻到光圈上方（防出屏） */
-.app-spot-ring.is-tip-above .app-spot-tip { top: auto; bottom: calc(100% + 8px); }
+/* 2026-09-08：「点这里」气泡改为独立 fixed 元素（原先 absolute 跟随光圈，估算定位会出屏/消失）——
+   文案与位置由 TutorialSpot 渲染后量测钳制，内联指定；气泡不挡点击 */
+.app-spot-bubble { position: fixed; z-index: 80; font-size: 12px; font-weight: 800; color: #05231a; background: #9dffc4; border-radius: 6px; padding: 3px 9px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.5); pointer-events: none; animation: app-spot-pulse 1.2s ease-in-out infinite; }
 
 /* ── 市场交易面板：买/卖方向切换与执行按钮区分 + 全部卖出（2026-09-05 船长） ── */
 .app-mkt-sides { display: inline-flex; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; overflow: hidden; background: rgba(6,10,16,.6); }

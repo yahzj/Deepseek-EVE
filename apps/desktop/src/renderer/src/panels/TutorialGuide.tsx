@@ -4,7 +4,7 @@
  * - 步骤 8：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
  * 锁定策略（页签/按钮级）在 App.tsx 实施；本组件只管展示与跳转意图。
  */
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 
 export type GuideGo = { page: string; mapTab?: string; shipTab?: string }
@@ -385,6 +385,29 @@ export function TutorialSpot({
 }) {
   const [ring, setRing] = useState<{ x: number; y: number; w: number; h: number; label: string } | null>(null)
   const plan = stepPlan(engine, step)
+  // 「点这里」气泡：独立 fixed 元素，按实际尺寸钳制在视口内（2026-09-08 修复：原先估算定位
+  // 导致气泡出屏/消失——现在渲染后量得宽高，优先放目标下方，放不下放上方，并水平居中钳制）
+  const tipRef = useRef<HTMLDivElement | null>(null)
+  const [tipAt, setTipAt] = useState<{ left: number; top: number } | null>(null)
+  useLayoutEffect(() => {
+    if (!ring) {
+      setTipAt(null)
+      return
+    }
+    const el = tipRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    if (rootRotTransform() !== null) {
+      setTipAt({ left: ring.x - 4, top: ring.y + ring.h + 8 }) // 旋转模式沿用原位置
+      return
+    }
+    const pad = 8
+    let top = ring.y + ring.h + 10
+    if (top + rect.height > window.innerHeight - pad) top = Math.max(pad, ring.y - rect.height - 10)
+    const left = Math.min(Math.max(pad, ring.x + ring.w / 2 - rect.width / 2), window.innerWidth - rect.width - pad)
+    setTipAt({ left, top })
+  }, [ring])
 
   // 定位光圈：立即定位 + 轮询跟随（页面转场/滚动/布局变动后框始终贴在目标上，2026-09-06 修复"框位置错误"）
   useLayoutEffect(() => {
@@ -463,28 +486,22 @@ export function TutorialSpot({
           </button>
         </div>
       ) : null}
-      {ring ? (() => {
-        // 「点这里」气泡防出屏（2026-09-08 船长反馈：提示位于屏幕外）——
-        // 目标贴近视口底缘时气泡翻到光圈上方；贴右缘时水平内移；旋转模式沿用旧行为
-        const rot = rootRotTransform() !== null
-        let cls = 'app-spot-ring'
-        let tipLeft = 0
-        if (!rot) {
-          const ringTop = ring.y - 4
-          const tipH = 34
-          if (ringTop + ring.h + 8 + tipH > window.innerHeight && ringTop - 8 - tipH > 0) cls += ' is-tip-above'
-          const tipW = Math.min(280, 24 + ring.label.length * 13)
-          const rightOver = ring.x - 4 + ring.w + 8 + tipW - window.innerWidth
-          if (rightOver > 0) tipLeft = -Math.min(rightOver, Math.max(0, ring.x - 4))
-        }
-        return (
-          <div className={cls} style={{ left: ring.x - 4, top: ring.y - 4, width: ring.w + 8, height: ring.h + 8 }}>
-            <span className="app-spot-tip" style={tipLeft !== 0 ? { marginLeft: tipLeft } : undefined}>
-              点这里：{ring.label}
-            </span>
-          </div>
-        )
-      })() : null}
+      {ring ? (
+        <div className="app-spot-ring" style={{ left: ring.x - 4, top: ring.y - 4, width: ring.w + 8, height: ring.h + 8 }} />
+      ) : null}
+      {ring ? (
+        <div
+          ref={tipRef}
+          className="app-spot-bubble"
+          style={
+            tipAt
+              ? { left: tipAt.left, top: tipAt.top, visibility: 'visible' }
+              : { left: -9999, top: -9999, visibility: 'hidden' }
+          }
+        >
+          点这里：{ring.label}
+        </div>
+      ) : null}
     </>
   )
 }
