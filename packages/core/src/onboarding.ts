@@ -32,9 +32,12 @@ export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
 export const ONB_EPILOGUE = 8 // 收尾演出（渲染层播放后调用 finishTutorial）
 export const ONB_DONE = 99
 
-/** 任务 ① 交付物：母港矿带（丰饶之环）富凡晶石；一趟约采 190~210 单位，教学交付 20 单位 */
+/** 任务 ① 交付物：母港矿带（丰饶之环）富凡晶石；教学交付 20 单位 */
 export const TUTORIAL_DELIVER_ITEM = 'ore-veldspar'
 export const TUTORIAL_DELIVER_N = 20
+/** 教学首单采足量（2026-09-08 船长定 50）：交付只扣 20，多采的 ~30 单位留给出售教学（步骤 3）——
+ * 旧值 = 交付量 20 → 交付后仓库归零，出售步骤无事可教 */
+export const TUTORIAL_MINE_GOAL = 50
 export const TUTORIAL_REWARD_ISK = 4_000
 /** 任务 ② 奖励：轻型炮台（动能）MK1 ×1 + 动能弹 120 */
 export const TUTORIAL_REWARD_TURRET = 'mod-turret-kin-1'

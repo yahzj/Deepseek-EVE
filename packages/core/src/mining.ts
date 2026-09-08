@@ -28,7 +28,7 @@ import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
-import { ONB_MINE, TUTORIAL_DELIVER_N } from './onboarding'
+import { ONB_MINE, TUTORIAL_MINE_GOAL } from './onboarding'
 import { scaledReturnMs } from './trips'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
@@ -442,9 +442,9 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     addItem(state, oreNow.id, units)
     m.tripUnits += units
 
-    // 序章·苏醒 教学首单（船长 2026-09-05 拍板：不等到满舱，采足交付量即返港卸货——约 1 周期，
-    // 若单周期产量不足 20 则下一周期再回，免去教学期满仓往返的长等待）
-    if (state.onboarding.step === ONB_MINE && m.tripUnits >= TUTORIAL_DELIVER_N) {
+    // 序章·苏醒 教学首单（船长 2026-09-05 拍板：不等到满舱，采足即返港卸货；2026-09-08 采足量
+    // 20 → TUTORIAL_MINE_GOAL=50：交付只需 20，多采的留给出售教学——采足 50（约 5 循环）才返航）
+    if (state.onboarding.step === ONB_MINE && m.tripUnits >= TUTORIAL_MINE_GOAL) {
       m.phase = 'returning'
       m.phaseAccMs = 0
       const stGalNow2 = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID

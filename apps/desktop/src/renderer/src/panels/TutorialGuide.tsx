@@ -23,7 +23,7 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
     lines: [
       '① 前往舰船页，把驾驶船切换为机库里的「沙猫级采矿艇」；',
       '② 出港 →「矿带开采」标签，对丰饶之环(母港)出击采集富凡晶石；',
-      '③ 采足交付量（约 1 周期）即自动返港卸货——教学节奏，不用等到满舱。',
+      '③ 采足 50 单位（约 5 个循环）即自动返港卸货——教学节奏，不用等到满舱，多采的矿石留给你卖。',
       '提示：教学期间航行/采矿加速 ×6。',
     ],
     go: { page: 'ship', shipTab: 'fleet' },
@@ -222,7 +222,7 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
       }
     }
     return {
-      text: '第二步：出港采集富凡晶石（采足 20 即自动返航）',
+      text: '第二步：出港采集富凡晶石（采足 50 即自动返航）',
       go: { page: 'map', mapTab: 'mine' },
       goLabel: '前往出港·矿带开采',
       targets: ['出港', '矿带开采', '采掘', '出击', '开采'],

@@ -20,6 +20,7 @@ import {
   ONB_DONE,
   TUTORIAL_DELIVER_ITEM,
   TUTORIAL_DELIVER_N,
+  TUTORIAL_MINE_GOAL,
   TUTORIAL_REWARD_ISK,
   TUTORIAL_REWARD_TURRET,
   TUTORIAL_REWARD_AMMO,
@@ -130,18 +131,18 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     expect(s.onboarding.step).toBe(ONB_DONE)
   })
 
-  it('教学首单采矿：采足交付量即返港停止(不等满舱),卸货后自动推进到交付步骤', () => {
+  it('教学首单采矿：采足 50 单位即返港停止(不等满舱),卸货后自动推进到交付步骤（2026-09-08：多采留给出售教学）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 3, prologue: true })
     s.onboarding.step = ONB_MINE
     s.shipId = 'sandcat'
     expect(startMining(s, 'belt-fortune', ctx).ok).toBe(true)
     expect(tutorialAccelWait(s)).toBe(true) // 采集/返航全程可 ×6（母港矿带 isAtHome 恒真,不能用它判定——船长复测修复）
     let guard = 0
-    while (s.mining.active && guard++ < 4000) advanceGame(s, 1000, ctx)
+    while (s.mining.active && guard++ < 8000) advanceGame(s, 1000, ctx)
     expect(s.mining.active).toBe(false)
     expect(tutorialAccelWait(s)).toBe(false) // 停止后退出加速
     expect(s.fleet['sandcat']!.cargo[TUTORIAL_DELIVER_ITEM] ?? 0).toBe(0) // 已卸空
-    expect(s.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0).toBeGreaterThanOrEqual(TUTORIAL_DELIVER_N)
+    expect(s.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0).toBeGreaterThanOrEqual(TUTORIAL_MINE_GOAL)
     expect(s.onboarding.step).toBe(ONB_DELIVER)
   })
 
