@@ -71,7 +71,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'armored-ops',
     name: '重装舰操作',
     group: '舰船',
-    rank: 3,
+    rank: 2,
     description: '重装舰族专精驾驶：驾驶重装族舰船时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。',
   },
   {
@@ -185,14 +185,14 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'batch-production',
     name: '批量生产学',
     group: '工业',
-    rank: 3,
+    rank: 2,
     description: '多工位装配线排程：蓝图制造时间每级再 −⟦4%⟧（与工业理论乘算叠加）。',
   },
   {
     id: 'component-standardization',
     name: '组件标准化',
     group: '工业',
-    rank: 3,
+    rank: 2,
     description: '通用组件规格化：蓝图制造材料消耗每级再 −⟦1%⟧（与材料学乘算叠加）。',
   },
   {
@@ -227,14 +227,14 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'salvage-rigging',
     name: '打捞装置整备学',
     group: '工业',
-    rank: 2,
+    rank: 3,
     description: '打捞器的维护与调校：打捞器单轮周期每级缩短 ⟦3%⟧（最多缩短 ⟦40%⟧，主控与 AI 同享；对标采矿循环提速）。',
   },
   {
     id: 'wreck-assaying',
     name: '残骸富集识别学',
     group: '工业',
-    rank: 2,
+    rank: 3,
     description: '残骸价值判定：打捞到“完好舰体”（当轮捞取体积 ×2）的概率每级 ×⟦1.2⟧（基础 1%；对标富矿勘探学）。',
   },
   {
@@ -278,7 +278,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'fire-control',
     name: '火控阵列学',
     group: '战斗',
-    rank: 2,
+    rank: 3,
     description: '火控解算优化：炮台/导弹架的命中率每级 +⟦3%⟧（相对乘算；激光必中不受影响）。',
   },
   {
@@ -345,7 +345,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'armor-tuning',
     name: '装甲调谐学',
     group: '工程',
-    rank: 2,
+    rank: 3,
     description: '装甲板晶格微调：装甲减伤缺口（未减免部分）每级收窄 ⟦2%⟧（等效全系抗性约 +2 个百分点/级；合计仍封顶 ⟦90%⟧，与抗性改装件乘算叠加）。',
   },
   {
@@ -366,7 +366,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'station-protocol',
     name: '空间站协议学',
     group: '工程',
-    rank: 2,
+    rank: 1,
     description: '空间站服务谈判：停站维修费每级再降低 ⟦5%⟧（与维修工程学乘算，合计最多 −⟦60%⟧）。',
   },
   {
@@ -403,7 +403,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'trade-negotiation',
     name: '贸易谈判学',
     group: '贸易',
-    rank: 2,
+    rank: 3,
     description: '协会渠道谈判：每级再降低 ⟦8%⟧ 贸易税——与会计学双修满级后贸易税仅剩 ⟦1%⟧（合计减免 ⟦80%⟧）。',
   },
   {
@@ -468,7 +468,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'signal-filtering',
     name: '信号过滤学',
     group: '探索',
-    rank: 2,
+    rank: 3,
     description: '干扰抑制与信号提纯：就地扫描窗口每级再缩短 ⟦6%⟧（与信号分析学乘算，总下限 40%）。',
   },
   {
@@ -505,7 +505,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'hauler-ops',
     name: '货舰操作',
     group: '物流',
-    rank: 3,
+    rank: 2,
     description: '航运舰族专精驾驶：驾驶航运族舰船时货仓容量每级 +⟦5%⟧。',
   },
   {
@@ -519,7 +519,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'hold-management',
     name: '货舱管理学',
     group: '物流',
-    rank: 2,
+    rank: 1,
     description: '舱位规划与收纳：全舰队货仓容量每级再 +⟦3%⟧（与深空物流学乘算叠加）。',
   },
 ]
