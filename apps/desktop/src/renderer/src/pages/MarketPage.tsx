@@ -803,7 +803,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
 
 /* ═══════════════ 我的挂单列表 ═══════════════ */
 
-function MyOrders({ engine, onToast }: PageProps) {
+function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: string) => void }) {
   const state = engine.state
   if (state.orders.length === 0) {
     return (
@@ -826,6 +826,13 @@ function MyOrders({ engine, onToast }: PageProps) {
             </span>
           </div>
           <div className="app-inv-btns">
+            <button
+              className="app-btn is-small"
+              onClick={() => onJump(order.good)}
+              title="跳到市场列表：按该商品搜索并打开行情详情"
+            >
+              查看行情
+            </button>
             <button
               className="app-btn is-small is-warn"
               onClick={() => {
@@ -882,6 +889,12 @@ export function MarketPage({
   const [kind, setKind] = useState<KindFilter>('all')
   const query = kw.trim().toLowerCase()
   const filterActive = query.length > 0 || kind !== 'all'
+  /** 「我的挂单」行内跳转：按该商品搜索（跨栏合并显示）并打开行情详情（2026-09-08 船长定） */
+  const jumpToOrder = (goodKey: string): void => {
+    setKw(goodKey)
+    setKind('all')
+    setSelKey(goodKey)
+  }
   const filteredAll = useMemo(
     () =>
       stockedFirst(
@@ -1021,7 +1034,7 @@ export function MarketPage({
               </span>
             }
           >
-            <MyOrders engine={engine} onToast={onToast} />
+            <MyOrders engine={engine} onToast={onToast} onJump={jumpToOrder} />
           </Panel>
         </div>
       </div>
