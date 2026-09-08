@@ -1,6 +1,7 @@
 /**
  * 序章·苏醒 阶段 4（2026-09-05 船长确认）——教程引导：
- * - 步骤 1..7：右下角「当前目标」任务卡（可最小化/展开；含跳转按钮、跳过入口、×6 教学加速提示）；
+ * - 步骤 1..7：右下角「当前目标」任务卡（可最小化/展开；步骤说明 + 跳过入口 + ×6 教学加速提示；
+ *   2026-09-08 船长定：卡内跳转按钮移除，跳转统一走顶部引导条按钮——两者功能重叠）；
  * - 步骤 8：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
  * 锁定策略（页签/按钮级）在 App.tsx 实施；本组件只管展示与跳转意图。
  */
@@ -96,14 +97,10 @@ const EPILOGUE_LINES = [
 export function TutorialGuide({
   engine,
   step,
-  onGo,
-  onClose,
   lifted = false,
 }: {
   engine: GameEngine
   step: number
-  onGo: (g: GuideGo) => void
-  onClose?: () => void
   /** 手机横屏：目标按钮与右下角卡片重叠时上移（2026-09-06 防遮挡） */
   lifted?: boolean
 }) {
@@ -166,21 +163,13 @@ export function TutorialGuide({
           )
         })}
       </div>
+      {/* 2026-09-08 船长定：卡内不再放「前往…」跳转按钮——与顶部引导条按钮功能重叠，
+          跳转统一走顶部引导条（高亮/光圈正常）；本卡只负责步骤说明与跳过入口 */}
       <div className="app-tut-actions">
-        <button
-          className="app-btn is-small is-primary"
-          onClick={() => {
-            setMinimized(true)
-            onGo(def.go)
-          }}
-        >
-          {def.goLabel}
-        </button>
         <button
           className="app-btn is-small"
           onClick={() => {
-            const r = engine.prologueSkip()
-            if (!r.ok) onClose?.()
+            engine.prologueSkip()
           }}
           title="跳过教程：立即全额结算奖励并修好隼枭"
         >

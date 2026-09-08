@@ -920,16 +920,8 @@ export function App({ engine }: { engine: GameEngine }) {
               if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
             }}
           />
-          <TutorialGuide
-            engine={engine}
-            step={tutStep}
-            lifted={guideLift}
-            onGo={(g: GuideGo) => {
-              changePage(g.page as PageKey)
-              if (g.mapTab) changeMapTab(g.mapTab as MapTab)
-              if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
-            }}
-          />
+          {/* 2026-09-08 船长定：卡内无跳转按钮，跳转走顶部引导条（见 TutorialSpot onGo） */}
+          <TutorialGuide engine={engine} step={tutStep} lifted={guideLift} />
         </>
       ) : null}
       {epiOn ? (
