@@ -7362,8 +7362,10 @@ body {
 .app-nav-item.is-featured:hover { background: linear-gradient(180deg, rgba(170,130,45,.44), rgba(90,65,16,.3)); box-shadow: 0 0 14px rgba(255,200,110,.4); }
 .app-nav-item.is-featured.is-active { border-color: #ffd98a; box-shadow: 0 0 18px rgba(255,210,120,.5), inset 0 0 8px rgba(255,200,110,.2); }
 .app-stepbar { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 78; display: flex; align-items: center; gap: 10px; background: linear-gradient(180deg, rgba(16,30,24,.97), rgba(8,16,12,.98)); border: 1px solid #2e8a63; border-radius: 999px; padding: 6px 8px 6px 16px; box-shadow: 0 6px 22px rgba(0,0,0,.55); max-width: min(760px, 92vw); }
-/* 2026-09-08：教程目标文案改最多两行折行（原单行省略号截断——玩家反馈顶部指引显示不全） */
-.app-stepbar-text { font-size: 13px; color: #d8ffe8; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+/* 2026-09-08：教程目标文案改最多两行折行（原单行省略号截断——玩家反馈顶部指引显示不全）；
+   ▸ 为独立标记不占文案宽度，文本换行独立对齐排头 */
+.app-stepbar-mark { flex: 0 0 auto; color: #7dffb0; font-weight: 700; align-self: flex-start; line-height: 1.3; }
+.app-stepbar-text { font-size: 13px; color: #d8ffe8; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; min-width: 0; }
 .app-stepbar-go { animation: app-stepbar-pulse 1.6s ease-in-out infinite; }
 @keyframes app-stepbar-pulse { 0%,100% { box-shadow: 0 0 4px rgba(120,240,170,.35); } 50% { box-shadow: 0 0 16px rgba(120,240,170,.85); transform: translateY(-1px); } }
 .app-spot-ring { position: fixed; z-index: 79; pointer-events: none; border: 3px solid #7dffb0; border-radius: 10px; box-shadow: 0 0 0 3px rgba(10,30,18,.75), 0 0 22px rgba(110,255,180,.95); animation: app-spot-pulse .9s ease-in-out infinite; }

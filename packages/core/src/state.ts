@@ -815,8 +815,9 @@ export type GameStateV22 = Omit<GameStateV21, 'version'> & {
 /** 序章/新手引导进度（2026-09-05 序章·苏醒：-1 = 未开始（老档/跳过），0..N = 教程进行中，99 = 已完成） */
 export interface OnboardingState {
   step: number
-  /** 出售教学（步骤 3）：交付首批矿物时的仓库富凡晶石余量——此后只要卖出 ≥1 即达标推进（零迁移可选字段） */
-  oreSellBaseline?: number
+  /** 出售教学（步骤 3）：交付完成时的钱包 ISK 基线——此后钱包超过基线（卖出矿石得款）才达标推进。
+   * 用钱包而非仓库余量判定：装船/挪货不动钱包，不会误推进（2026-09-08 船长确认 BUG 修复；零迁移可选字段） */
+  sellIskBaseline?: number
 }
 
 /** 重要任务状态（任务中心「重要任务」分类；key = 数据目录任务 id） */

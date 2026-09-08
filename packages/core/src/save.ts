@@ -1668,13 +1668,13 @@ function normalizeState(raw: unknown): GameState {
   const onboardingRaw = asRaw(src.onboarding)
   const onboardingStep =
     typeof onboardingRaw.step === 'number' && Number.isFinite(onboardingRaw.step) ? Math.floor(onboardingRaw.step) : -1
-  // 出售教学基线（可选；缺省 undefined = 老档/无此步骤时不影响）
-  const oreSellBaselineRaw = onboardingRaw.oreSellBaseline
+  // 出售教学钱包基线（可选；缺省 undefined = 老档/无此步骤时不影响）
+  const sellIskBaselineRaw = onboardingRaw.sellIskBaseline
   const onboarding = {
     step: onboardingStep,
-    oreSellBaseline:
-      typeof oreSellBaselineRaw === 'number' && Number.isFinite(oreSellBaselineRaw)
-        ? Math.max(0, Math.floor(oreSellBaselineRaw))
+    sellIskBaseline:
+      typeof sellIskBaselineRaw === 'number' && Number.isFinite(sellIskBaselineRaw)
+        ? Math.max(0, Math.floor(sellIskBaselineRaw))
         : undefined,
   }
   const importantTasks: GameState['importantTasks'] = {}

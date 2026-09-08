@@ -420,7 +420,11 @@ export function TutorialSpot({
     <>
       {plan.text && plan.goLabel ? (
         <div className="app-stepbar">
-          <span className="app-stepbar-text">▸ {plan.text}</span>
+          {/* ▸ 独立于文案（2026-09-08 船长定：不计入文案、换行后文本独立对齐排头） */}
+          <span className="app-stepbar-mark" aria-hidden="true">
+            ▸
+          </span>
+          <span className="app-stepbar-text">{plan.text}</span>
           <button className="app-btn is-small is-primary app-stepbar-go" onClick={() => onGo(plan.go)}>
             {plan.goLabel} ›
           </button>

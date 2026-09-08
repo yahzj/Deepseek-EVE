@@ -5,7 +5,8 @@
  * 4 修复 → 5 试炼 → 6 技能归档 → 7 分身 → 8 收尾演出（UI）→ 99 完成。
  *
  * 步骤 3「出售」（2026-09-08 船长定）：交付只扣 20 单位、剩余矿石留在仓库——玩家不知道
- * 如何出售物品，故交付完成后先教学"去物品页卖矿"（卖出 ≥1 即达标推进），再进修复步骤。
+ * 如何出售物品，故交付完成后先教学"去物品页卖矿"（卖出得款、钱包超交付基线即达标推进——
+ * 用钱包判定而非仓库余量：把矿石装到船上会减少仓库数量但不产生收入，不应误推进），再进修复步骤。
  *
  * 规则要点：
  * - 教程期间 UI 锁线性引导（渲染层）；本模块负责状态判定/自动推进与奖励发放（幂等）；
@@ -129,8 +130,8 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
   if (state.onboarding.step === ONB_DELIVER) {
     // 2026-09-08：交付完成 → 进入「出售」教学步骤（先教卖矿再修复）
     state.onboarding.step = ONB_SELL
-    // 基线 = 交付后的仓库余量（卖出 ≥1 即达标推进）
-    state.onboarding.oreSellBaseline = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
+    // 基线 = 交付后的钱包（含奖励）；此后钱包超基线 = 卖出矿石得款（装船/挪货不动钱包，不会误推进）
+    state.onboarding.sellIskBaseline = state.wallet.isk
     // 维修的是"当前驾驶船"——此时先切回隼枭，避免玩家仍驾矿船导致维修错船/矿船出战（船长复测反馈）
     if (state.shipId !== 'sh-falconet' && state.fleet['sh-falconet']) {
       state.shipId = 'sh-falconet'
@@ -199,11 +200,12 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
     return
   }
   if (s === ONB_SELL) {
-    // 出售教学（2026-09-08）：交付后剩余矿石留在仓库；卖出 ≥1 即达标 → 进入修复步骤
-    const base = state.onboarding.oreSellBaseline
-    if (base !== undefined && (state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) < base) {
+    // 出售教学（2026-09-08）：交付后剩余矿石留在仓库，卖出得款（钱包超交付基线）即达标 → 进入修复步骤。
+    // 用钱包判定：把矿石装到船上只挪动仓库数量、不产生收入，不会误推进（船长确认 BUG 修复）
+    const base = state.onboarding.sellIskBaseline
+    if (base !== undefined && state.wallet.isk > base) {
       state.onboarding.step = ONB_REPAIR
-      state.onboarding.oreSellBaseline = undefined
+      state.onboarding.sellIskBaseline = undefined
       addLog(state, 'info', '矿石已售出。前往舰船页维修隼枭至完好（装甲/结构 100%）。')
     }
     return

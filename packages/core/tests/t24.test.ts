@@ -60,17 +60,23 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     expect(s.warehouse.items[TUTORIAL_DELIVER_ITEM]).toBe(5)
     expect(s.wallet.isk).toBe(TUTORIAL_REWARD_ISK)
     expect(s.aiCores.basic).toBe(1)
-    // 2026-09-08：交付后 → 出售教学步骤（记录基线 = 交付余量 5）
+    // 2026-09-08：交付后 → 出售教学步骤（基线 = 交付后的钱包）
     expect(s.onboarding.step).toBe(ONB_SELL)
-    expect(s.onboarding.oreSellBaseline).toBe(5)
+    expect(s.onboarding.sellIskBaseline).toBe(TUTORIAL_REWARD_ISK)
     // 未卖出不推进
     advanceOnboardingAuto(s, ctx)
     expect(s.onboarding.step).toBe(ONB_SELL)
-    // 卖出 ≥1（仓库 5 → 4）→ 推进修复步骤
-    s.warehouse.items[TUTORIAL_DELIVER_ITEM] = 4
+    // BUG 回归（船长确认）：把矿石装到船上只减少仓库数量、不产生收入 → 不推进
+    s.fleet[s.shipId]!.cargo[TUTORIAL_DELIVER_ITEM] = (s.fleet[s.shipId]!.cargo[TUTORIAL_DELIVER_ITEM] ?? 0) + 2
+    s.warehouse.items[TUTORIAL_DELIVER_ITEM] = 3 // 仓库 5 → 3（装走 2）
+    advanceOnboardingAuto(s, ctx)
+    expect(s.onboarding.step).toBe(ONB_SELL)
+    expect(s.onboarding.sellIskBaseline).toBe(TUTORIAL_REWARD_ISK)
+    // 卖出得款（钱包 > 基线）→ 推进修复步骤
+    s.wallet.isk = TUTORIAL_REWARD_ISK + 100
     advanceOnboardingAuto(s, ctx)
     expect(s.onboarding.step).toBe(ONB_REPAIR)
-    expect(s.onboarding.oreSellBaseline).toBeUndefined() // 基线清空
+    expect(s.onboarding.sellIskBaseline).toBeUndefined() // 基线清空
     // 双发防护 + 不足防护
     expect(deliverTutorialOre(s, ctx).ok).toBe(false)
     s.onboarding.step = ONB_DELIVER
