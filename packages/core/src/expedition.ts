@@ -16,7 +16,7 @@ import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
 import { nextRandom } from './rng'
-import { addItem, cargoUnitM3, freeCargoM3 } from './inventory'
+import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { loseShip, repairWithKits } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
@@ -456,7 +456,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       addLog(
         state,
         'info',
-        `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站后可卸货/维修，或让连续出击自动续打。`,
+        `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站自动卸货入仓库，可维修或让连续出击自动续打。`,
       )
     }
     return
@@ -663,12 +663,14 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
       }
       return
     }
-    // back：到港结束（2026-09-08：落点 = 返航基准星系——有已建成副站则停靠该站，否则母港）
+    // back：到港结束（2026-09-08：落点 = 返航基准星系——有已建成副站则停靠该站，否则母港；
+    // 2026-09-08 船长再定：任何进港时刻自动整仓卸货入仓库）
     if (state.gameMs < exp.finishAtGameMs) return
     const wasVictoryReturn = exp.returnReason === 'victory'
     const targetGal = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId)?.galaxyId ?? null : null
     const base = targetGal !== null ? returnBaseGalaxy(state, ctx, targetGal) : HOME_GALAXY_ID
     landAtReturnBase(state, ctx, base)
+    const moved = unloadCargoOfShipToWarehouse(state, state.shipId) // 进港自动卸货（战利品/残货）
     exp.active = false
     exp.anomalyId = null
     exp.battle = null
@@ -676,16 +678,17 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     exp.finishAtGameMs = 0
     exp.returnReason = undefined
     const siteName = state.dockedSite !== null ? ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite : null
+    const unloadedNote = moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''
     addLog(
       state,
       'info',
       wasVictoryReturn
         ? siteName
-          ? `悬赏战果已携回「${siteName}」：舰队停靠完毕（缴获在货仓，可卸入仓库、交易或维修后再次出击）。`
-          : '悬赏战果已携回母港：舰队停靠完毕（缴获在货仓，可卸入仓库或维修后再次出击）。'
+          ? `悬赏战果已携回「${siteName}」并自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）——可维修或补给后再次出击。`
+          : `悬赏战果已携回母港并自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）——可维修或补给后再次出击。`
         : siteName
-          ? `远征结束，舰队已停靠「${siteName}」（副空间站）。`
-          : '远征结束，舰队已停靠母港。',
+          ? `远征结束，舰队已停靠「${siteName}」（副空间站）。${unloadedNote}`
+          : `远征结束，舰队已停靠母港。${unloadedNote}`,
     )
     return
   }
@@ -712,7 +715,13 @@ export function recallExpedition(state: GameState, ctx: SimContext): CommandResu
   exp.eventId = null
   exp.eventFired = false
   state.awayGalaxy = null
-  addLog(state, 'warn', `远征已召回：舰队中止前往「${name}」并返回母港（无战果）。`)
+  // 2026-09-08：召回 = 立即回到母港停靠——进港自动整仓卸货
+  const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
+  addLog(
+    state,
+    'warn',
+    `远征已召回：舰队中止前往「${name}」并返回母港（无战果）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
+  )
   return { ok: true }
 }
 

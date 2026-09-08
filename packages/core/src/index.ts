@@ -125,6 +125,7 @@ export {
   advanceGame,
   enqueueSkill,
   removeQueueAt,
+  moveQueueItem,
   clearSkillQueue,
   skillQueueStatus,
   HIDDEN_SKILL_IDS,
@@ -147,6 +148,7 @@ export {
   cargoCapacityM3,
   freeCargoM3,
   unloadCargoToWarehouse,
+  unloadCargoOfShipToWarehouse,
   loadWarehouseToCargo,
   loadWarehouseToCargoFit,
 } from './inventory'

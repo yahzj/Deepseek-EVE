@@ -114,12 +114,22 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     else onToast(`已把 ${moved.toLocaleString('zh-CN')} 单位货物卸入物品仓库。`)
   }
 
+  /** 2026-09-08（船长定）：非驾驶空闲舰船卸货入仓库 */
+  function handleUnloadShip(id: string): void {
+    const moved = engine.unloadShipAllToWarehouse(id)
+    if (moved === -1) onToast('找不到该舰船。', true)
+    else if (moved === -2) onToast('该船正在 AI 作业中——卸货需等任务结束（AI 到港会自行卸货）。', true)
+    else if (moved === -3) onToast('该船正在善后返航途中——到港会自动卸货。', true)
+    else if (moved === 0) onToast('货仓是空的。', true)
+    else onToast(`已把「${targetName}」货仓的 ${moved.toLocaleString('zh-CN')} 单位货物卸入物品仓库。`)
+  }
+
   return (
     <div className="page-stack">
       <Panel
         title="货仓"
         right={
-          isPiloted ? <span className="app-dim">当前驾驶船</span> : <span className="app-dim">查看中 · 只读</span>
+          isPiloted ? <span className="app-dim">当前驾驶船</span> : <span className="app-dim">查看中 · 可卸货</span>
         }
       >
         <div className="app-cargo-ships">
@@ -155,6 +165,16 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={rows.length === 0}>
               全部卸入仓库
             </button>
+          ) : busy === null ? (
+            // 2026-09-08（船长定）：空闲停靠的非驾驶舰船也可直接卸货入仓库（装船/出售仍限驾驶船）
+            <button
+              className="app-btn is-small"
+              onClick={() => handleUnloadShip(targetId)}
+              disabled={rows.length === 0}
+              title="该船空闲停靠：可直接把货仓卸入物品仓库"
+            >
+              全部卸入仓库
+            </button>
           ) : null}
         </div>
         {isPiloted ? (
@@ -165,9 +185,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           </div>
         ) : (
           <div className="app-dim app-note">
-            正在查看「{targetName}」的货仓——只读查看：装卸与出售仅对当前驾驶船「
-            {shipDisplayName(state, engine.ctx, piloted)}」可用。
-            {busy ? ` 该船当前：${busy}。` : ' 该船闲置中。'}
+            正在查看「{targetName}」的货仓：空闲停靠的舰船可直接卸入仓库；装船与出售仍仅限当前驾驶船「
+            {shipDisplayName(state, engine.ctx, piloted)}」。
+            {busy ? ` 该船当前：${busy}，卸货需等作业结束。` : ' 该船闲置中，可卸货。'}
           </div>
         )}
       </Panel>

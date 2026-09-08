@@ -49,6 +49,7 @@ import {
   placeBuyOrder,
   recallExpedition,
   refineRunViews,
+  moveQueueItem,
   removeQueueAt,
   renameShip,
   migrateDeprecatedAmmo,
@@ -92,6 +93,7 @@ import {
   unfitSlot,
   unfitAt,
   unloadCargoToWarehouse,
+  unloadCargoOfShipToWarehouse,
   beginTutorialAfterAwaken,
   skipTutorial,
   finishTutorial,
@@ -590,6 +592,16 @@ export class GameEngine {
   /** 从训练队列移除第 index 项（0 = 队首） */
   dequeueAt(index: number): boolean {
     const ok = removeQueueAt(this.state, index)
+    if (ok) {
+      void this.persist()
+      this.notify()
+    }
+    return ok
+  }
+
+  /** 2026-09-08（船长）：调整训练队列顺序（前移到顶 = 交换式顶替当前训练，原训练退位保留进度） */
+  moveQueueAt(fromIndex: number, toIndex: number): boolean {
+    const ok = moveQueueItem(this.state, fromIndex, toIndex)
     if (ok) {
       void this.persist()
       this.notify()
@@ -1170,6 +1182,19 @@ export class GameEngine {
   /** 把当前船货仓全部卸入物品仓库；返回卸入数量 */
   unloadAllToWarehouse(): number {
     const moved = unloadCargoToWarehouse(this.state)
+    if (moved > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return moved
+  }
+
+  /** 2026-09-08（船长定）：把指定（非驾驶、空闲停靠）舰船货仓全部卸入物品仓库；返回卸入数量 */
+  unloadShipAllToWarehouse(shipId: string): number {
+    if (!this.state.fleet[shipId]) return -1 // 船不存在
+    if (shipId in this.state.aiAssignments) return -2 // AI 作业中
+    if (shipId in this.state.shipReturns) return -3 // 善后返航中
+    const moved = unloadCargoOfShipToWarehouse(this.state, shipId)
     if (moved > 0) {
       void this.persist()
       this.notify()

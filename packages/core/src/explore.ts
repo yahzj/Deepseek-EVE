@@ -20,6 +20,7 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { originGalaxyOf, startTransitHome, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
+import { unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
@@ -311,7 +312,8 @@ export function advanceScanning(state: GameState, ctx: SimContext): void {
   if (!s.active || s.galaxyId === null) return
   if (state.gameMs < s.finishAtGameMs) return
   if (s.returning) {
-    // 自动返航到港（2026-09-08：落点 = 最近已建成站；有建成副站则停靠该站，否则母港）
+    // 自动返航到港（2026-09-08：落点 = 最近已建成站；有建成副站则停靠该站，否则母港；
+    // 2026-09-08 船长再定：到港即自动整仓卸货）
     const gName = ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId
     const base = s.galaxyId !== null ? nearestStationGalaxyId(state, ctx, s.galaxyId) : HOME_GALAXY_ID
     const dockSite = builtSiteAtGalaxy(state, ctx, base)
@@ -323,12 +325,13 @@ export function advanceScanning(state: GameState, ctx: SimContext): void {
     s.originGalaxy = null
     state.awayGalaxy = null
     state.dockedSite = dockSite
+    const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
     addLog(
       state,
       'info',
       dockSite !== null
-        ? `扫描艇已返航停靠「${ctx.stations.get(dockSite)?.name ?? dockSite}」（副空间站，「${gName}」情报已入库，可继续开拓或出击）。`
-        : `扫描艇已返航停靠母港（「${gName}」情报已入库，可继续开拓或出击）。`,
+        ? `扫描艇已返航停靠「${ctx.stations.get(dockSite)?.name ?? dockSite}」（副空间站，「${gName}」情报已入库，可继续开拓或出击）。${moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''}`
+        : `扫描艇已返航停靠母港（「${gName}」情报已入库，可继续开拓或出击）。${moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''}`,
     )
     return
   }
