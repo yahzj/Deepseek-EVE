@@ -324,8 +324,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return `${base} ← 同类第 ${n + 1} 件：只削剩余缺口（收益递减）`
   }
 
-  // 无人机舱总量（船体 + 已装「甲板扩展」；战斗自动装载上限——2026-09-08 玩家反馈"找不到装载入口"，
-  // 机制 = 战斗自动放飞，本行把上限与规则直接展示在装配信息里）
+  // 无人机舱总量（船体 + 已装「甲板扩展」= 清单容量上限；装入入口在低槽组下方无人机舱区——
+  // 2026-09-08 无人机舱大改：只放飞已装入清单，仓库余量不自动出战）
   const droneBayTotal =
     (shipDef?.droneBayM3 ?? 0) +
     (fitted
@@ -378,9 +378,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     l.k !== 'CPU' && // 上限已由右栏「CPU 剩余」条显示（含技能加成），表格不重复
                     !COMBAT_BASE_KEYS.has(l.k),
                 ),
-                // 无人机舱（战斗自动放飞，无需装船；甲板扩展已计入）
+                // 无人机舱（上限 = 船体 + 甲板扩展；战斗只放飞下方「无人机舱」清单——2026-09-08 大改）
                 ...(droneBayTotal > 0
-                  ? [{ k: '无人机舱（含甲板扩展）', v: `${droneBayTotal} m³ · 战斗自动放飞（无需装船）` }]
+                  ? [{ k: '无人机舱（含甲板扩展）', v: `${droneBayTotal} m³ · 战斗只放飞下方清单中已装入的无人机` }]
                   : []),
                 // 装后合成预览（V18.1：收敛件多装最终值；血量由顶部徽章承担不重复列出——与最上方徽章同源）
                 ...(spec

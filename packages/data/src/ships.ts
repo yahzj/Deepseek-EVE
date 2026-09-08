@@ -1,9 +1,10 @@
 /**
- * 舰船表（M1 + V10 + V10.5 + V10.5b：19 艘，四条风味线）。
+ * 舰船表（M1 + V10 + V10.5 + V10.5b + V18 无人机舱大改：21 艘，四条风味线 + 无人机平台延伸）。
  *
  * 数值设计（中文说明）：
  * - 鲸盟工业线（industrial）：沙猫（白送）→ 掘洞 → 鲸吞 → 座头鲸/弓头鲸 → 开拓/鲸王/巨灵鲸（图纸制造）
- * - 掠食者武装线（armed）：盾厚炮强（护盾层血量与火力最高），机动高、锁定强、有无人机舱
+ * - 掠食者武装线（armed）：盾厚炮强（护盾层血量与火力最高），机动高、锁定强、有无人机舱；
+ *   V18 无人机舱大改：蜂群级/哨兵级（armed）＝无人机平台延伸——大机舱 + 高槽多为甲板扩展/导控阵列位
  * - 甲壳重装线（armored）：装甲/结构最厚 + 装甲层高抗（全系），离线长作业 + 未来坦克位
  * - 蜃楼航运线（hauler）：特大货舱 + 高结构量，壳大皮薄、无战斗无人机舱
  * - V10.5：shieldHp/armorHp/hullHp = roleBase × tierScale（t1×1.0/t2×1.8/t3×2.9/t4×4.2，取整）
@@ -258,7 +259,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 30,
     hullHp: 36,
     cpu: 110,
-    droneBayM3: 30,
+    droneBayM3: 0,
     maxSpeedMps: 360,
     warpSpeedAus: 3.9,
     massKg: 900_000,
@@ -286,7 +287,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 54,
     hullHp: 66,
     cpu: 150,
-    droneBayM3: 45,
+    droneBayM3: 10,
     maxSpeedMps: 340,
     warpSpeedAus: 3.8,
     massKg: 1_400_000,
@@ -314,7 +315,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 57,
     hullHp: 72,
     cpu: 165,
-    droneBayM3: 55,
+    droneBayM3: 10,
     maxSpeedMps: 320,
     warpSpeedAus: 3.7,
     massKg: 1_900_000,
@@ -342,7 +343,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 87,
     hullHp: 105,
     cpu: 195,
-    droneBayM3: 85,
+    droneBayM3: 30,
     maxSpeedMps: 300,
     warpSpeedAus: 3.6,
     massKg: 3_600_000,
@@ -370,7 +371,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 96,
     hullHp: 114,
     cpu: 225,
-    droneBayM3: 130,
+    droneBayM3: 20,
     maxSpeedMps: 285,
     warpSpeedAus: 3.5,
     massKg: 4_500_000,
@@ -378,6 +379,64 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 88,
     scanResMm: 520,
     description: '顶级武装炮舰：市场限量现货，声誉与实力的双重象征（限定奇货）。',
+  },
+
+  // ══════════ 无人机平台延伸（掠食者同系：大机舱 + 高槽多为甲板扩展/导控阵列位） ══════════
+  {
+    id: 'sh-swarm',
+    name: '蜂群级无人机护卫',
+    role: 'armed',
+    slots: { high: 5, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    tier: 3,
+    cargoM3: 2600,
+    cycleSeconds: 13,
+    oreUnitsPerCycle: 16,
+    priceIsk: 620_000,
+    agility: 0.6,
+    evasion: 0.12,
+    hitBonus: 0.16,
+    powerBonus: 0.45,
+    shieldHp: 180,
+    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    armorHp: 90,
+    hullHp: 108,
+    cpu: 235,
+    droneBayM3: 160,
+    maxSpeedMps: 295,
+    warpSpeedAus: 3.5,
+    massKg: 4_000_000,
+    lockRangeM: 35_000,
+    signatureM: 92,
+    scanResMm: 540,
+    description: '掠食者航队的无人机护卫：大型机巢加身，放飞机群替火力不够的炮位撑腰。',
+  },
+  {
+    id: 'sh-sentinel',
+    name: '哨兵级无人机母舰',
+    role: 'armed',
+    slots: { high: 6, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    tier: 4,
+    cargoM3: 3600,
+    cycleSeconds: 13,
+    oreUnitsPerCycle: 15,
+    priceIsk: 2_600_000,
+    agility: 0.52,
+    evasion: 0.08,
+    hitBonus: 0.16,
+    powerBonus: 0.6,
+    shieldHp: 210,
+    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    armorHp: 105,
+    hullHp: 126,
+    cpu: 320,
+    droneBayM3: 320,
+    maxSpeedMps: 275,
+    warpSpeedAus: 3.3,
+    massKg: 6_500_000,
+    lockRangeM: 38_000,
+    signatureM: 110,
+    scanResMm: 500,
+    description: '掠食者航队定制的无人机母舰：翻倍的机巢与充裕的装配位，无人机战力的巅峰载体（限定奇货）。',
   },
 
   // ══════════ 甲壳重装线（装甲/结构最厚 + 装甲层高抗） ══════════
@@ -399,7 +458,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
     hullHp: 162,
     cpu: 145,
-    droneBayM3: 20,
+    droneBayM3: 40,
     maxSpeedMps: 200,
     warpSpeedAus: 3.0,
     massKg: 6_000_000,
@@ -426,7 +485,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
     hullHp: 261,
     cpu: 185,
-    droneBayM3: 40,
+    droneBayM3: 50,
     maxSpeedMps: 185,
     warpSpeedAus: 2.9,
     massKg: 11_000_000,
@@ -482,7 +541,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 120,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
     cpu: 105,
-    droneBayM3: 15,
+    droneBayM3: 40,
     maxSpeedMps: 430,
     warpSpeedAus: 7.4,
     massKg: 4_000_000,
@@ -509,7 +568,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 192,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
     cpu: 135,
-    droneBayM3: 20,
+    droneBayM3: 50,
     maxSpeedMps: 415,
     warpSpeedAus: 6.3,
     massKg: 8_000_000,
@@ -536,7 +595,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 198,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
     cpu: 175,
-    droneBayM3: 30,
+    droneBayM3: 60,
     maxSpeedMps: 400,
     warpSpeedAus: 6.2,
     massKg: 13_000_000,

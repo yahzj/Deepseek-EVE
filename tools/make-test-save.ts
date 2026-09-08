@@ -24,9 +24,10 @@
  *  - redtide 赤潮劫掠队手感试验（2026-09-08，玩家反馈"MK1 满配灰鲭鲨三发被打成破烂"）：
  *         点亮红环 + 声望 6 + 两艘灰鲭鲨级演示船——MK1 满配（设为驾驶，复现反馈场景）与
  *         MK2 满配参考船 + MK1/MK2 全套备件 + 弹药（换装对比三连发毁伤体感）。
- *  - drone 无人机流实测（2026-09-08，C6 校准：无人机流超模，船长实测定方向）：钱包 +5000 万
- *         + 声望 10 + 全星系点亮 + 三艘对照船——大白鲨·无人机重装（calibrate D3，设为驾驶）/
- *         虎鲨·无人机中装（D2）/ 灰鲭鲨·炮流参考（S2）+ rack/tac 全套备件 + 4 型无人机足量。
+ *  - drone 无人机舱大改实测（2026-09-08，新船清单装载制）：钱包 +5000 万 + 声望 10（可买
+ *         哨兵级奇货）+ 全星系点亮 + 三艘对照船——蜂群级·无人机中装（calibrate D2，droneLoad
+ *         清单注入，设为驾驶）/ 哨兵级·无人机重装（D3）/ 灰鲭鲨·炮流参考（S2）+ rack/tac 全套
+ *         备件 + 4 型无人机仓库足量（战斗只放飞清单）。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -408,11 +409,11 @@ function injectRedtide(state: GameState): string[] {
   return notes
 }
 
-/** drone（2026-09-08 无人机流实测档：battle-calibrate 无人机行显示"满技能超炮流"，
- * 供船长实测手感后定数值方向）：钱包 +5000 万 + 声望 10 + 全星系点亮 + 三艘对照演示船——
- * ①大白鲨·无人机重装 = calibrate D3 配装（rack3×2+tac3×2+rack2，高 5 全占增幅件）设为驾驶；
- * ②虎鲨·无人机中装 = D2（rack2×2+tac2×2）；③灰鲭鲨·炮流参考 = S2（4×动能 MK2 + 支援）。
- * 装备库备 rack/tac MK1-3 全套；仓库 + 货仓预置 4 型无人机足量；弹药三型足量（可临时换炮对照）。 */
+/** drone（2026-09-08 无人机舱大改实测档：battle-calibrate 无人机行 = 新船清单装载（见 D1-D3），
+ * 供船长实测定数值方向后校准）：钱包 +5000 万 + 声望 10 + 全星系点亮 + 三艘对照演示船——
+ * ①蜂群级·无人机中装 = calibrate D2 配装（rack2×2+tac2×2，droneLoad 清单注入）设为驾驶；
+ * ②哨兵级·无人机重装 = D3（rack3×2+tac3×2，droneLoad 清单注入）；③灰鲭鲨·炮流参考 = S2（4×动能 MK2 + 支援）。
+ * 装备库备 rack/tac MK1-3 全套；仓库预置 4 型无人机足量（战斗只放飞清单；仓库余量不自动出战）；弹药三型足量。 */
 function injectDrone(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
@@ -424,25 +425,27 @@ function injectDrone(state: GameState): string[] {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
   }
   notes.push(`点亮全部星系（${GALAXIES.length}）`)
-  // ① 大白鲨·无人机重装（calibrate D3）→ 驾驶
-  const uidA = addShipToFleet(state, 'sh-whiteshark')
+  // ① 蜂群级·无人机中装（calibrate D2 配装 + 清单）→ 驾驶
+  const uidA = addShipToFleet(state, 'sh-swarm')
   const sA = state.fleet[uidA]!
-  sA.customName = '无人机重装·D3(驾驶)'
+  sA.customName = '蜂群·无人机中装(驾驶)'
   sA.fitted = {
-    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', 'mod-drone-rack-2'],
-    mid: [],
-    low: [],
-  }
-  state.shipId = uidA
-  // ② 虎鲨·无人机中装（calibrate D2）
-  const uidB = addShipToFleet(state, 'sh-tigershark')
-  const sB = state.fleet[uidB]!
-  sB.customName = '无人机中装·D2'
-  sB.fitted = {
     high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'],
     mid: [],
     low: [],
   }
+  sA.droneLoad = { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }
+  state.shipId = uidA
+  // ② 哨兵级·无人机重装（calibrate D3 配装 + 清单）
+  const uidB = addShipToFleet(state, 'sh-sentinel')
+  const sB = state.fleet[uidB]!
+  sB.customName = '哨兵·无人机重装'
+  sB.fitted = {
+    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
+    mid: [],
+    low: [],
+  }
+  sB.droneLoad = { 'drone-heavy': 4, 'drone-sentry': 6 }
   // ③ 灰鲭鲨·炮流参考（calibrate S2）
   const uidC = addShipToFleet(state, 'sh-mako')
   const sC = state.fleet[uidC]!
@@ -452,8 +455,9 @@ function injectDrone(state: GameState): string[] {
     mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
     low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
-  notes.push(`新增演示船 ×3：${uidA}（大白鲨·无人机重装 D3，已设为驾驶）、${uidB}（虎鲨·无人机中装 D2）、${uidC}（灰鲭鲨·炮流参考 S2）——舰船页切驾驶逐船对照`)
-  // 无人机库存：驾驶船货仓 + 仓库（装载按舱容/CPU 贪心，货仓优先）
+  notes.push(`新增演示船 ×3：${uidA}（蜂群级·无人机中装 D2，已设为驾驶）、${uidB}（哨兵级·无人机重装 D3）、${uidC}（灰鲭鲨·炮流参考 S2）——舰船页切驾驶逐船对照`)
+  // 无人机库存：只放仓库（战斗装载只读各船 droneLoad 清单——2026-09-08 无人机舱大改，
+  // 仓库余量不自动出战；装配页「无人机舱」弹层可改配/补装）
   const drones: Array<[string, string, number]> = [
     ['drone-sentry', '雷鸥哨戒', 40],
     ['drone-heavy', '猎鹰攻坚', 60],
@@ -462,8 +466,7 @@ function injectDrone(state: GameState): string[] {
   ]
   for (const [id, nm, n] of drones) {
     state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + n
-    sA.cargo[id] = (sA.cargo[id] ?? 0) + Math.ceil(n / 2)
-    notes.push(`仓库 + 货仓预置 ${nm} 无人机（共 ${n + Math.ceil(n / 2)} 架；${nm}·${id}）`)
+    notes.push(`仓库预置 ${nm} 无人机 ×${n}（${id}；装入见装配页「无人机舱」）`)
   }
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 2_000
@@ -482,7 +485,7 @@ function injectDrone(state: GameState): string[] {
     }
   }
   notes.push('全舰耐久回满')
-  notes.push('测试路径：星图·战斗悬赏逐威胁开战 → 观察无人机流（重装/中装）击杀时长、残血与"无人机不吃弹药"体感 → 舰船页切 S2 炮流参考打同目标对照（校准口径：D2/D3 vs S1/S2/S4）→ 装配页增删 甲板扩展/战术导控 看装载架数与单发变化 → 手感结论交船长定数值方向')
+  notes.push('测试路径：星图·战斗悬赏逐威胁开战 → 观察无人机流（蜂群中装/哨兵重装）击杀时长、残血与体感 → 舰船页切 S2 炮流参考打同目标对照（校准口径：D2/D3 vs S1/S2/S4）→ 装配页「无人机舱」增删 甲板扩展/战术导控 看可装载架数与清单 CPU 预占 → 手感结论交船长定数值方向')
   return notes
 }
 

@@ -289,7 +289,7 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
   const othAvg = b.others.reduce((a, x) => a + x, 0) / b.others.length
   check(indAvg < othAvg, `tier ${tier} 工业系平均总血量（${Math.round(indAvg)}）应低于非工业系（${Math.round(othAvg)}）`)
 }
-check(SHIPS.length === 19, `舰船应为 19 艘，实际 ${SHIPS.length}`)
+check(SHIPS.length === 21, `舰船应为 21 艘，实际 ${SHIPS.length}`)
 console.log(`· 舰船：${SHIPS.length} 艘（role 分布：${['industrial', 'armed', 'armored', 'hauler'].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(' ')})`)
 
 /* ── V10.5 战斗数值契约：弹药 / 无人机 / 装备字段 ── */

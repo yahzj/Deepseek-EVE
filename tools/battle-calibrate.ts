@@ -30,11 +30,12 @@ const LOADOUTS: Loadout[] = [
   { name: 'S1 虎鲨4×MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'] },
   { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
   { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
-  /* ── 无人机流行（2026-09-08 二号：C6 评估——此前校准从未覆盖无人机；增幅件全占高槽、
-     库存足量由引擎按 dmg/CPU 贪心装载；同船炮流对照见 S1/S2/S4）── */
-  { name: 'D1 隼枭无人机轻装(rack1×2+tac1)', ship: 'sh-falconet', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 40, 'drone-assault': 20, 'drone-heavy': 12, 'drone-sentry': 6 } },
-  { name: 'D2 虎鲨无人机中装(rack2×2+tac2×2)', ship: 'sh-tigershark', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-scout': 40, 'drone-assault': 20, 'drone-heavy': 16, 'drone-sentry': 10 } },
-  { name: 'D3 大白鲨无人机重装(rack3×2+tac3×2+rack2)', ship: 'sh-whiteshark', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', 'mod-drone-rack-2'], drones: { 'drone-scout': 40, 'drone-assault': 24, 'drone-heavy': 20, 'drone-sentry': 16 } },
+  /* ── 无人机流行（2026-09-08 无人机舱大改：装载只读 droneLoad 清单（不再仓库贪心）；
+     各行清单 = 该船「装配后余 CPU × 舱容」内可装的合法满载组合（战斗只放飞已装入的，
+     超额由 UI 预占互斥，不会出现）；同船炮流对照见 S1/S2/S4）── */
+  { name: 'D1 蜂群无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 20, 'drone-sentry': 1 } },
+  { name: 'D2 蜂群无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } },
+  { name: 'D3 哨兵无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } },
 ]
 
 const FULL_SKILLS: Record<string, number> = {
@@ -71,11 +72,9 @@ function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, 
   state.shipId = shipId
   for (const [id, lv] of Object.entries(skills)) state.skills.trained[id] = lv
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[key] = 5_000
-  // 2026-09-08（无人机行）：注入无人机库存（装载按舱容+CPU 贪心，见 combat 单位构建）
-  for (const [id, n] of Object.entries(ld.drones ?? {})) {
-    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + n
-  }
+  // 2026-09-08（无人机舱大改：装载只读清单——写入驾驶船 droneLoad，仓库库存不再参与装载）
   const entry = state.fleet[shipId]!
+  if (ld.drones && Object.keys(ld.drones).length > 0) entry.droneLoad = { ...ld.drones }
   entry.fitted = { high: [...(ld.high ?? [])], mid: [...(ld.mid ?? [])], low: [...(ld.low ?? [])] }
   repairDeprecatedModules(state, ctx as SimContext)
   return state
