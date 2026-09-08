@@ -75,7 +75,7 @@ export const TABLES: readonly TableSpec[] = [
       col('id', 'id', 'id'),
       col('名称', 'name', 'str'),
       col('kind(ore矿石/mineral矿物/gas气体/ice冰矿/ammo弹药/drone无人机)', 'kind', 'enum', {
-        vals: ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone'],
+        vals: ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'kit'],
       }),
       col('单位体积m3', 'unitM3', 'num', { min: 0.0001 }),
       col('空间站收购价ISK', 'baseSellPriceIsk', 'num', { min: 0 }),
@@ -89,7 +89,7 @@ export const TABLES: readonly TableSpec[] = [
       }),
       col('伤害基数dmg', 'dmg', 'num', { min: 0.0001 }),
       col('CPU占用cpuUse(无人机)', 'cpuUse', 'num', { min: 0 }),
-      col('修理恢复repairRestore(0~1)', 'repairRestore', 'num', { min: 0, max: 1 }),
+      col('修理恢复repairRestore(0~1)', 'repairRestore', 'num', { min: 0, max: 100 }),
       col('描述', 'description', 'str'),
     ],
   },
@@ -100,8 +100,8 @@ export const TABLES: readonly TableSpec[] = [
     cols: [
       col('id', 'id', 'id'),
       col('名称', 'name', 'str'),
-      col('家族slot(miner采矿/cargo货舱/turret动能炮/missile导弹架/laser激光炮/shield护盾/armor装甲/propulsion推进/drone-rack甲板扩展/drone-tac战术导控/support支援)', 'slot', 'enum', {
-        vals: ['miner', 'cargo', 'turret', 'missile', 'laser', 'shield', 'armor', 'propulsion', 'drone-rack', 'drone-tac', 'support'],
+      col('家族slot(miner采矿/cargo货舱/turret动能炮/missile导弹架/laser激光炮/shield护盾/armor装甲/propulsion推进/drone-rack甲板扩展/drone-tac战术导控/support支援/salvager打捞器)', 'slot', 'enum', {
+        vals: ['miner', 'cargo', 'turret', 'missile', 'laser', 'shield', 'armor', 'propulsion', 'drone-rack', 'drone-tac', 'support', 'salvager'],
       }),
       col('物理槽rack(high/mid/low)', 'rack', 'enum', { vals: ['high', 'mid', 'low'] }),
       col('bonus原值(采矿产量/货舱容量加成；0.2=+20%)', 'bonus', 'num', { min: -1, max: 5 }),
@@ -230,7 +230,7 @@ export const TABLES: readonly TableSpec[] = [
       col('rarity(common常驻/rare稀有/exotic限定)', 'rarity', 'enum', { vals: ['common', 'rare', 'exotic'] }),
       col('基准价basePrice(池商品=均衡价；单件=供应价)', 'basePrice', 'num', { min: 0.0001 }),
       col('常驻·目标库存poolTarget', 'poolTarget', 'num', { min: 0, int: true }),
-      col('常驻·供应流量supplyFlow', 'supplyFlow', 'num', { min: 0, int: true }),
+      col('常驻·供应流量supplyFlow', 'supplyFlow', 'num', { min: 0 }),
       col('稀有/限定·供应倍数supplyMultiplier', 'supplyMultiplier', 'num', { min: 0 }),
       col('收购档位demandMultiplier（2026-09-08：单件 common 0.6/rare 0.65/exotic 1.0，池商品留空=原料平价、池耗材 0.6）', 'demandMultiplier', 'num', { min: 0 }),
       col('可否卖出playerSellable(空=默认可)', 'playerSellable', 'bool'),
