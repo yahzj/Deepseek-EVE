@@ -19,7 +19,7 @@ import type { FittedModules, GameState } from './state'
 import { createInitialState } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { addShipToFleet } from './shipyard'
-import { advanceBattleFor, startBattleFor } from './combat'
+import { advanceBattleFor, startBattleFor, waveGapTotalMs } from './combat'
 
 /** 蒙特卡洛局数（2026-09-09 船长确认 N=21：临界 ±11pp、预热 ~0.5s 分帧完成） */
 export const BOUNTY_MC_RUNS = 21
@@ -94,7 +94,7 @@ export function estimateBountyWinOn(
     if (!pl0) continue
     const a0 = pl0.hp.a
     const h0 = pl0.hp.h
-    ev.gameMs = bal.maxBattleMs + 5_000
+    ev.gameMs = bal.maxBattleMs + 5_000 + waveGapTotalMs(anomaly, bal) // 预算外预留波次演出窗口（2026-09-09）
     advanceBattleFor(ev, ctx, battle, uid, anomalyId)
     const pl = battle.units['player']
     if (!pl) continue

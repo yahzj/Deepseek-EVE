@@ -776,6 +776,10 @@ function cleanBattle(raw: unknown): BattleState | null {
       typeof b.waveIdx === 'number' && Number.isFinite(b.waveIdx) && b.waveIdx > 0
         ? Math.floor(b.waveIdx)
         : undefined,
+    waveClearAt:
+      typeof b.waveClearAt === 'number' && Number.isFinite(b.waveClearAt) && b.waveClearAt > 0
+        ? b.waveClearAt
+        : undefined,
   }
 }
 

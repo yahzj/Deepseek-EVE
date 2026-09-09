@@ -908,7 +908,9 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
   } else if (exp.battle) {
     const b = exp.battle
-    const elapsed = Math.max(0, state.gameMs - b.startedAtGameMs)
+    // 2026-09-09：进度按"战斗时钟"（lastTick−startedAt）而非墙钟——多波次演出窗口与击杀慢镜
+    // 期间战斗时钟冻结（不计 maxBattleMs 超时），进度条随之停走，避免间隙空耗把进度顶满
+    const elapsed = Math.max(0, b.lastTickGameMs - b.startedAtGameMs)
     totalMs = ctx.balance.battle.maxBattleMs
     remainingMs = Math.max(0, totalMs - elapsed)
     percent = Math.min(100, (elapsed / totalMs) * 100)

@@ -70,15 +70,15 @@ const meSpeedRef = useRef(200)
   const keyRef = useRef(1)
   const boltsRef = useRef<BoltV[]>([])
   const flashRef = useRef<FlashV[]>([])
-  /** 已被击毁的敌方单位（永久登记：残骸淡出不复活） */
+  /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
-  /** 爆炸特效的计划开始墙钟：tag → 墙钟（= 检测到死亡时刻 + 弹道飞行时长，让致死弹着弹后再炸） */
-  const boomRef = useRef<Map<string, number>>(new Map())
   /**
-   * V18B 残骸锚（2026-09-05 补位收拢）：tag → 死亡时刻在敌方队列中的坐标 + 爆炸计划时刻。
-   * 单位被击毁后立即从队列撤出（剩余敌舰补位收拢），残骸在本锚点原地播放爆炸并淡出。
+   * 2026-09-09 二轮（船长反馈"切换突兀/爆炸未播完/边爆边换位"）：尸骸不再撤出队列另走锚点层，
+   * 而是原位占用队列槽整段演出——tag → 爆炸计划墙钟（= 检测到死亡时刻 + 致死弹道飞行时长，
+   * 让致死弹着弹后再炸）；演出期 = boomAt → boomAt + BOOM_LIFE + WRECK_FADE_MS（灰化爆炸 + 淡出）。
+   * 淡出完成但右侧仍有演出期尸骸时原位占位保留，整批演完才一起撤出（一次收拢，无压爆换位）。
    */
-  const wreckRef = useRef<Map<string, { x: number; y: number; boomAt: number }>>(new Map())
+  const corpseAtRef = useRef<Map<string, number>>(new Map())
   /** 各单位上一次渲染的血量总和（用于检测"本拍刚死"，避免复活旧尸爆炸） */
   const prevHpRef = useRef<Map<string, number>>(new Map())
   const hpInitRef = useRef(false)
@@ -95,19 +95,6 @@ const meSpeedRef = useRef(200)
   // 滑条两端距（卸载冲刷也要用）
   if (arcs) {
     mapRef.current = { openM: arcs.openM, nearM: arcs.nearM }
-  }
-
-  /** 实测某敌舰可视中心（lane 坐标，DOM）。量的是舰体 .app-sprite 框（名字是绝对定位
-   *  不占流，单位框即舰体框）——残骸/爆炸锚点与“舰体现在所在处”同框，切换零跳变。 */
-  const measureFoeCenter = (tag: string): { x: number; y: number } | null => {
-    const lane = laneRef.current
-    if (!lane) return null
-    const unit = lane.querySelector<HTMLElement>(`.app-bts-unit[data-tag="${CSS.escape(tag)}"]`)
-    if (!unit) return null
-    const host = unit.querySelector<HTMLElement>('.app-sprite') ?? unit
-    const lr = lane.getBoundingClientRect()
-    const dr = host.getBoundingClientRect()
-    return { x: dr.left - lr.left + dr.width / 2, y: dr.top - lr.top + dr.height / 2 }
   }
 
   // ── 阶段推进：live →（分出胜负）→ outro →（引擎结算完成）→ report ──
@@ -280,18 +267,48 @@ const meSpeedRef = useRef(200)
   const meShip = fleetDefOf(state, engine.ctx, state.shipId)
   const meRole: ShipRole = meShip?.role ?? 'industrial'
   const foeTags = Object.keys(combat.foeHp)
-  /** V18B 补位收拢：敌方队列只排存活单位（死单位撤出，剩余补位前移；残骸走独立残骸层） */
+  /** 存活敌舰（血条/命中对象用；与视觉行 foeRowTags 不同——视觉行含演出期尸骸占位） */
   const foeAliveTags = foeTags.filter((t) => !deadRef.current.has(t))
-  const origIdxOf = (tag: string): number => Math.max(0, foeTags.indexOf(tag))
+  // 2026-09-09 多波修复：主/僚判定不靠"队列首位"——多波多小队的主舰 tag 为 w{n}-foe-{k}
+  // （旧判定把第 2 艘主舰当僚机：小尺寸 +「·僚机」字样）；主舰 = foe-0 或 wave 主编号，僚机带 -e{..} 或 legacy foe-N
+  const isFoeMainTag = (tag: string): boolean => tag === 'foe-0' || (tag.includes('-foe-') && !tag.includes('-e'))
+  const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  /** 敌舰族形键（悬赏卡 → 族 A~G；远征/未列卡/异常 → F 制式巡逻兜底，与资产 FOE_ART 键同源） */
+  const foeKey = foeFamilyOf(state.expedition.anomalyId)
+  const foeClassBase = foeClassName(foeAnomaly?.tactic, foeAnomaly?.defProfile)
   const ended = battle.ended !== null
   const defeat = battle.ended === 'foe'
 
   const realDist = battle.distanceM // 引擎实时距离（交火中每 ~100ms 更新）
   const visM = smoothM !== null ? smoothM : realDist // 视觉插值距离（舰列/弧/游标平滑用）
-  const foeN = Math.max(1, foeAliveTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
-  const lay = layout(dims, foeN, visM, openM, nearM)
-  const pct = (m: number): number => approachOf(m, openM, nearM) * 100
   const now = performance.now()
+  const pct = (m: number): number => approachOf(m, openM, nearM) * 100
+
+  /* ── 敌方"视觉行"与演出期尸骸（2026-09-09 二轮，船长反馈"切换突兀/爆炸未播完/边爆边换位"）：
+     尸骸不撤队、原位占槽演完整段（boomAt 前原样停留 → boomAt 起灰化 + 爆炸环 → 淡出）；
+     撤出只允许"淡出完成且该尸骸右侧（种子序更靠后）无仍在演出的尸骸"——整批尸骸演完才
+     一起收拢一次，存活舰补位不再压着爆炸动画走。几何/弹道按视觉行序（含占位尸骸）计算。 */
+  const WRECK_FADE_MS = 520 // 尸骸灰舰淡出时长（爆炸环演出期结束后的收尾段）
+  const scanDroppable = (): Set<string> => {
+    const drop = new Set<string>()
+    let laterVisible = false
+    for (let i = foeTags.length - 1; i >= 0; i--) {
+      const tag = foeTags[i]!
+      if (!deadRef.current.has(tag)) continue
+      const ba = corpseAtRef.current.get(tag)
+      if (ba === undefined) {
+        drop.add(tag) // 无演出登记（已撤/开屏前已死）：永不占位
+        continue
+      }
+      if (now < ba + BOOM_LIFE + WRECK_FADE_MS) laterVisible = true
+      else if (!laterVisible) drop.add(tag)
+    }
+    return drop
+  }
+  const dropNow = scanDroppable()
+  const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
+  // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
+  const layFx = layout(dims, Math.max(1, rowFxTags.length), visM, openM, nearM)
 
   /* ── 舰首朝向 = 机动意图（各自"想接近还是想拉开"），而非实际位移：
        拔河中即使被拖退也保持"想接近"的冲顶姿态；到达期望距离（差 <2m）保持现状，对峙不抖动 ── */
@@ -309,27 +326,27 @@ const meSpeedRef = useRef(200)
   if (arrivals.length > 0) {
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
-      // V18B（2026-09-05 修复）：弹道按 fx.to（目标 tag）定位——随机目标下每发飞向各自
-      // 目标而非固定队列首位；目标已死（致死发/残骸期）落向残骸锚；缺 to 旧事件回退首位
+      // V18B（2026-09-05 修复）+ 2026-09-09 二轮：弹道按 fx.to（目标 tag）定位并按"视觉行序"
+      // 取位（含演出期尸骸占位）——随机目标下每发飞向各自目标，不受队列撤出/补位影响
       const isMeShot = fx.side === 'me'
       const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
-      const aimAliveIdx = foeAliveTags.indexOf(aimTag)
+      const aimRowIdx = rowFxTags.indexOf(aimTag)
       let src: Anchor | undefined
       let dst: Anchor | undefined
       if (isMeShot) {
-        src = lay.me
-        const wreck = wreckRef.current.get(aimTag)
-        dst = aimAliveIdx >= 0 ? lay.foe[aimAliveIdx] : (wreck ?? lay.foe[0])
+        src = layFx.me
+        dst = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 目标已撤（旧尸骸）→ 首位兜底
       } else {
-        src = aimAliveIdx >= 0 ? lay.foe[aimAliveIdx] : lay.foe[0] // 发射者（存活敌人）
-        dst = lay.me
+        src = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 发射者（存活敌人）
+        dst = layFx.me
       }
       if (!src || !dst) continue
       if (isMeShot && fx.hit) lastHitTypeRef.current.set(aimTag, fx.type) // 记录最近命中形态（击杀延迟用）
-      const aimOrig = origIdxOf(aimTag)
-      const shooterOrig = origIdxOf(fx.tag)
-      const foeNose = aimOrig === 0 ? NOSE_MAIN : NOSE_ESC
-      const srcNose = isMeShot ? NOSE_MAIN : shooterOrig === 0 ? NOSE_MAIN : NOSE_ESC
+      // 舰艏偏移按主/僚判定（多波主舰 w{n}-foe-* 非队列首位同样是大舰艏；2026-09-09 修复）
+      const aimMain = isFoeMainTag(aimTag)
+      const shooterMain = isFoeMainTag(fx.tag)
+      const foeNose = aimMain ? NOSE_MAIN : NOSE_ESC
+      const srcNose = isMeShot ? NOSE_MAIN : shooterMain ? NOSE_MAIN : NOSE_ESC
       const dstNose = isMeShot ? foeNose : NOSE_MAIN
       const g = boltGeom(fx.side, src, dst, srcNose, dstNose)
       boltsRef.current.push({
@@ -351,7 +368,7 @@ const meSpeedRef = useRef(200)
   boltsRef.current = boltsRef.current.filter((b) => now - b.born < BOLT_LIFE)
   flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE)
 
-  /* ── 敌方单位被击毁检测（hp 归零的瞬间登记残骸 + 爆炸，演出与战斗是否结束无关）── */
+  /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）── */
   if (!hpInitRef.current) {
     for (const tag of foeTags) {
       const hp = combat.foeHp[tag]
@@ -365,42 +382,26 @@ const meSpeedRef = useRef(200)
       const prev = prevHpRef.current.get(tag) ?? 0
       prevHpRef.current.set(tag, sum)
       if (sum === 0 && prev > 0 && !deadRef.current.has(tag)) {
-        deadRef.current.add(tag) // 刚被击毁：登记残骸；爆炸延后到致死弹道着弹后再启动
+        deadRef.current.add(tag) // 刚被击毁：登记尸骸；爆炸延后到致死弹道着弹后再启动
         // 击杀爆炸延迟 = 致死形态的弹道时长（动能 420 / 导弹 760 / 激光 130），
         // 与命中 puff 同时出现——否则导弹击杀会在弹道半途提前变灰/上移
         const killerType = lastHitTypeRef.current.get(tag)
         const killerFly = (killerType ? BOLT_LOOK[killerType]?.fly : undefined) ?? FLY_MS
-        boomRef.current.set(tag, now + killerFly)
-        // V18B-3 死亡演出（2026-09-05 修复“开火瞬间模型偏移”）：锚点一律实测 DOM 舰体中心
-        // （不能回退 lay.foe 几何 y——列流渲染与几何不一致会造成跳变）。爆炸时机=致死弹道着弹
-        // 时刻：本拍不撤队列，敌舰原样停留至爆炸帧（见 foeUnitEls 的僵尸帧），避免“开火同拍
-        // 判死→立刻撤队重排/变灰”造成导弹(760ms)/激光(130ms)击杀在开火瞬间的模型偏移。
-        const gi = Math.max(0, foeAliveTags.indexOf(tag))
-        const c = measureFoeCenter(tag)
-        const fallback = lay.foe[Math.min(gi, lay.foe.length - 1)] ?? lay.foe[0]
-        wreckRef.current.set(tag, {
-          x: c ? c.x : (fallback?.x ?? 0),
-          y: c ? c.y : (fallback?.y ?? 0),
-          boomAt: now + killerFly,
-        })
+        corpseAtRef.current.set(tag, now + killerFly)
       }
     }
   }
-  // 爆炸特效到期只清特效，残骸状态保留
-  for (const [tag, at] of [...boomRef.current.entries()]) {
-    if (now - at > BOOM_LIFE) boomRef.current.delete(tag)
-  }
-  // V18B-3 僵尸帧跟随：判死到爆炸之间敌舰仍留在队列（可能随列左/横移动），每拍用 DOM 实测
-  // 刷新残骸锚点，保证爆炸帧锚点=舰体现处，灰化切换零跳变；爆炸开始后单位已撤、测不到即停。
-  for (const tag of deadRef.current) {
-    const w = wreckRef.current.get(tag)
-    if (!w || now >= w.boomAt) continue
-    const c = measureFoeCenter(tag)
-    if (c) {
-      w.x = c.x
-      w.y = c.y
-    }
-  }
+  // 队列定稿（2026-09-09 二轮）：阵亡检测后再扫一次撤出集——本帧新阵亡的尸骸（boomAt 未到、
+  // 演出期长）计入"演出中"，阻止同帧撤出它左侧已完成淡出的旧尸骸（收拢不撞上新爆炸）；
+  // 撤出即清演出登记：跨波之后该尸骸永不回队占位（波次尸骸不得挤占新波队列）。
+  const dropFinal = scanDroppable()
+  for (const tag of dropFinal) corpseAtRef.current.delete(tag)
+  const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
+  const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
+  const lay = layout(dims, foeN, visM, openM, nearM)
+  /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
+  const wavePending = battle.waveClearAt !== undefined && !ended
+  const waveNext = wavePending && foeAnomaly?.waves && foeAnomaly.waves.length > 1 ? (battle.waveIdx ?? 0) + 2 : 0
 
   /* 射程弧：锚定双方舰艏枪口（与弹道同源、随舰身移动）。
      显示尺与舰列间距共用同一米制比例：sPxPerM = usable/(openM−nearM) px/m。
@@ -531,60 +532,50 @@ const meSpeedRef = useRef(200)
     <i key={f.key} className="app-bts-muzzle" style={{ left: f.x, top: f.y, color: f.color }} />
   ))
 
-  /* 敌方单位行（V18B-3：存活单位 + “僵尸帧”判死单位按原始编队位渲染；僵尸单位原样停留
-     到爆炸帧（boomAt = 致死弹道着弹）才撤出 → 剩余敌舰补位收拢——不在“开火同拍判死”的
-     瞬间撤队/变灰，消除导弹/激光击杀时的模型偏移。外观按原始编队位恒定，不随补位变化） */
-  const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
-  /** 敌舰族形键（悬赏卡 → 族 A~G；远征/未列卡/异常 → F 制式巡逻兜底，与资产 FOE_ART 键同源） */
-  const foeKey = foeFamilyOf(state.expedition.anomalyId)
-  const foeClassBase = foeClassName(foeAnomaly?.tactic, foeAnomaly?.defProfile)
-  // 2026-09-09 多波修复：主/僚判定不靠"队列首位"——多波多小队的主舰 tag 为 w{n}-foe-{k}
-  // （旧判定把第 2 艘主舰当僚机：小尺寸 +「·僚机」字样）；主舰 = foe-0 或 wave 主编号，僚机带 -e{..} 或 legacy foe-N
-  const isFoeMainTag = (tag: string): boolean => tag === 'foe-0' || (tag.includes('-foe-') && !tag.includes('-e'))
-  const foeRowTags = foeTags.filter((tag) => {
-    if (!deadRef.current.has(tag)) return true
-    const w = wreckRef.current.get(tag)
-    return !!w && now < w.boomAt // 僵尸帧：已判死但致死弹道未着弹，保持原样
-  })
+  /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
+     尸骸占原槽整段演出：boomAt（致死弹道着弹）前原样停留 → 灰化 + 爆炸环 → 原位淡出；
+     撤出只发生在整批尸骸全部演完的瞬间（一次收拢，见 scanDroppable），存活舰补位收拢
+     不再压着爆炸/淡出动画走，多个单位同时阵亡也不再互相挤位叠加。 */
   const foeUnitEls = foeRowTags.map((tag) => {
     const isMain = isFoeMainTag(tag)
+    const ba = corpseAtRef.current.get(tag)
+    if (ba === undefined) {
+      // 存活单位
+      return (
+        <div key={tag} data-tag={tag} className="app-bts-unit">
+          <ShipSprite
+            foeKey={foeKey}
+            flip={foeFlip}
+            accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
+            size={isMain ? LAY.MAIN : LAY.ESC}
+          />
+          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+            {isMain ? foeClassBase : `${foeClassBase}·僚机`}
+          </span>
+        </div>
+      )
+    }
+    // 尸骸：sinceBoom < 0 = 僵尸帧（致死弹道未着弹，原样停留）；之后灰化 + 爆炸环 + 淡出
+    const sinceBoom = now - ba
+    const boomLive = sinceBoom >= 0 && sinceBoom < BOOM_LIFE
+    const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
+    const corpseOn = sinceBoom >= 0
     return (
-      <div key={tag} data-tag={tag} className="app-bts-unit">
-        <ShipSprite
-          foeKey={foeKey}
-          flip={foeFlip}
-          accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
-          size={isMain ? LAY.MAIN : LAY.ESC}
-        />
-        <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-          {isMain ? foeClassBase : `${foeClassBase}·僚机`}
+      <div key={tag} data-tag={tag} className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}`}>
+        {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层） */}
+        <span className="app-bts-corpse" style={fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
+          <ShipSprite
+            foeKey={foeKey}
+            flip={foeFlip}
+            accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
+            size={isMain ? LAY.MAIN : LAY.ESC}
+          />
         </span>
-      </div>
-    )
-  })
-  /* V18B-3 残骸层（2026-09-05 单船复测修复）：僵尸帧（boomAt 前）本体仍在队列，本层
-     一律不渲染——旧实现此时 fadeT 为负、灰舰全显，造成“灰舰幻影叠在原位舰体上方”。
-     爆炸帧起才在本体原处渲染：灰舰残骸常驻 + boom 期叠加闪光环，boom 结束后残骸淡出。
-     残骸盒 = 舰体实际比例（size × 0.46×size）以锚点居中——旧正方形盒内舰体图贴左上，
-     视觉中心偏高 ~0.27×size，正是“残骸向上偏移”的来源。 */
-  const WRECK_FADE_MS = 520
-  const wreckEls = [...wreckRef.current.entries()].map(([tag, w]) => {
-    const sinceBoom = now - w.boomAt
-    if (sinceBoom < 0) return null // 僵尸帧：本体仍在队列原样飞行，无残骸幻影
-    const size = isFoeMainTag(tag) ? LAY.MAIN : LAY.ESC // 2026-09-09 多波：主/僚按 tag 判定
-    const h = Math.round(size * 0.46)
-    const boomLive = sinceBoom < BOOM_LIFE
-    const fadeT = (sinceBoom - BOOM_LIFE) / WRECK_FADE_MS
-    if (fadeT >= 1) return null // 淡出完成：不再渲染（锚点留存仅作历史弹道落点）
-    const box = { left: w.x - size / 2, top: w.y - h / 2, width: size, height: h }
-    return (
-      <span key={tag} className="app-bts-wreck" style={{ ...box, opacity: fadeT > 0 ? Math.max(0, 1 - fadeT) : 1 }}>
-        <ShipSprite
-          foeKey={foeKey}
-          flip={foeFlip}
-          accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
-          size={size}
-        />
+        {corpseOn ? null : (
+          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+            {isMain ? foeClassBase : `${foeClassBase}·僚机`}
+          </span>
+        )}
         {boomLive ? (
           <span className="app-bts-boom">
             <i className="b-core" />
@@ -592,7 +583,7 @@ const meSpeedRef = useRef(200)
             <i className="b-ring r2" />
           </span>
         ) : null}
-      </span>
+      </div>
     )
   })
 
@@ -699,7 +690,7 @@ const meSpeedRef = useRef(200)
             </div>
           </div>
 
-          {/* 敌方舰列（V18B：血条只跟存活单位；残骸独立层见下） */}
+          {/* 敌方舰列（血条只跟存活单位；尸骸原位占槽演出见 foeUnitEls） */}
           <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>
             <div className="app-bts-shipRow">{foeUnitEls}</div>
             {foeAliveTags[0] ? (
@@ -717,8 +708,15 @@ const meSpeedRef = useRef(200)
             ))}
           </div>
 
-          {/* V18B 残骸层（死亡锚点爆炸 + 原位淡出；在弹道层之下） */}
-          {wreckEls}
+          {/* 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */}
+          {wavePending ? (
+            <span
+              className="app-bts-wave-hint"
+              style={{ left: lay.foe[0]?.x ?? lay.me.x, top: (lay.foe[0]?.y ?? lay.me.y) + 42 }}
+            >
+              {waveNext > 0 ? `第 ${waveNext}/${foeAnomaly?.waves?.length} 波增援正在接近…` : '敌方增援正在接近…'}
+            </span>
+          ) : null}
 
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}

@@ -403,6 +403,9 @@ export interface BattleState {
   hullEscapeFrac?: number
   /** 多波次（2026-09-09）：当前波索引（0 基；AnomalyDef.waves 缺省/单波不写，读档零迁移） */
   waveIdx?: number
+  /** 多波次演出间隔（2026-09-09 船长反馈）：当前波全灭时刻（lastTick 口径），配合 waveEnterGapMs
+   * 等爆炸/残骸演出播完再刷下一波（零迁移可选字段） */
+  waveClearAt?: number
   /** 已触发自动撤退请求（步进中止，结构保留当前值；由远征结算走轻损撤退路径——绝不弃船） */
   autoEscaped?: boolean
 }

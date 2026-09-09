@@ -6172,12 +6172,8 @@ body {
 
 .app-bts-unit { position: relative; display: inline-flex; }
 
-.app-bts-unit.is-dead .app-sprite { animation: app-bts-fadeout .55s ease .5s forwards; }
-
-@keyframes app-bts-fadeout { to { opacity: 0; } }
-
-/* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升，
- * 给"增援抵达"画面过渡（引擎无喘息语义不变，仅视觉；开局首批同样播一次） */
+/* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升；
+ * 引擎在演出窗口（waveEnterGapMs）结束后才补刷下一波，入场动画即"增援抵达"画面过渡 */
 .app-bts-unit { animation: app-bts-foe-in .55s ease-out both; }
 
 @keyframes app-bts-foe-in {
@@ -6185,13 +6181,34 @@ body {
   to { opacity: 1; transform: none; }
 }
 
-/* V18B（2026-09-05）残骸层：死亡锚点爆炸 + 原位淡出（不占敌方队列；补位由存活列表完成）。
+/* 2026-09-09 多波次二轮（船长反馈"边爆边换位/存活舰与爆炸动画叠加"）：
+   尸骸不再撤队另走残骸层，而是原位占用队列槽演完整段演出——
+   boomAt 起灰化（is-corpse）+ 爆炸环（.app-bts-boom，见下），随后舰体容器内联透明度淡出；
+   队列只在整批尸骸演完后收拢一次，存活舰补位不再压着爆炸动画走。 */
+.app-bts-unit.is-corpse .app-sprite { filter: grayscale(.9) brightness(.72); }
 
-   容器 inline 宽高 = 舰体尺寸（left/top 已按舰体中心对齐），boom 仍按容器 50%/46% 居中 */
+.app-bts-unit.is-corpse .app-bts-name { display: none; }
 
-.app-bts-wreck { position: absolute; z-index: 5; pointer-events: none; }
+.app-bts-corpse { display: inline-flex; }
 
-.app-bts-wreck .app-sprite { filter: grayscale(.85) brightness(.8); }
+/* 波次演出窗口提示（引擎 waveClearAt 冻结窗口内：上一波全灭、增援接近中） */
+.app-bts-wave-hint {
+  position: absolute;
+  z-index: 3;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #ffd9a0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .9);
+  pointer-events: none;
+  animation: app-bts-wavehint 1.5s ease-in-out infinite;
+}
+
+@keyframes app-bts-wavehint {
+  0%, 100% { opacity: .4; }
+  50% { opacity: .95; }
+}
 
 .app-bts-boom { position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: 5; pointer-events: none; }
 

@@ -1025,6 +1025,14 @@ export function persistFleetHullDamage(
   fleetShip.durability = cap.hp.h > 0 ? clamp01(unit.hp.h / cap.hp.h) : 0
 }
 
+/** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs
+ * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
+ * 跨窗口会提前耗尽预算判负。调用方应在预算外加本值（无 waves = 0）。 */
+export function waveGapTotalMs(anomaly: Pick<AnomalyDef, 'waves'> | undefined, bal: BattleBalance): number {
+  const n = anomaly?.waves?.length ?? 1
+  return Math.max(0, n - 1) * Math.max(0, bal.waveEnterGapMs ?? 0)
+}
+
 /** 推进指定战斗（主控远征与 AI 远征通用）；结束后 ended 非空由调用方结算。
  *  favorAdv：AI 远征专属优势量 ∈[−1,1]（null = 玩家手动战斗，无 favor）——
  *  AI 方命中 ×(1+k·adv)（可到 100%），敌方 ×(1−k·adv)（上限保留 97%）。 */
@@ -1072,8 +1080,25 @@ export function advanceBattleFor(
   let guard = 0
   while (state.gameMs > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
-    // 切波：当前波全灭且还有后续波 → 续刷下一波（无喘息：不推进时间、不重置双方状态）
+    // 切波：当前波全灭且还有后续波 → 先走演出窗口（爆炸/残骸播完），窗口结束才续刷下一波。
+    // 窗口语义（2026-09-09 船长反馈"切换突兀/爆炸未播完就刷下一波"）：
+    // - 清空瞬间记 waveClearAt = 战斗时钟 + waveEnterGapMs；窗口内本拍只停表等待
+    //   （battle.lastTickGameMs 不推进——与击杀慢镜同语义：演出时间不计入 maxBattleMs 超时）；
+    // - 实时战斗中游戏时钟与墙钟 1:1，窗口 = 上一波最后一艘的爆炸 + 残骸淡出完整播完；
+    // - 大步长/离线推进下 state.gameMs 越过窗口即立刻续刷，无额外等待。
     if (waves && waveIdx < lastIdx && !curFoes.some((f) => isAlive(battle, f.tag))) {
+      const gapMs = Math.max(0, bal.waveEnterGapMs ?? 0)
+      if (gapMs > 0 && battle.waveClearAt === undefined) {
+        battle.waveClearAt = battle.lastTickGameMs + gapMs
+        const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
+        addLog(
+          state,
+          'warn',
+          `⚔ 第 ${waveIdx + 1}/${waves.length} 波已全灭（${waveName ? waveName + '·' : ''}${anomaly.name}），敌方增援正在从远处入场…`,
+        )
+      }
+      if (gapMs > 0 && battle.waveClearAt !== undefined && state.gameMs < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
+      battle.waveClearAt = undefined
       waveIdx += 1
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)

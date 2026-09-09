@@ -85,4 +85,35 @@ describe('多波次战斗（2026-09-09）', () => {
     expect(tags).toContain('w0-foe-1')
     expect(new Set(tags).size).toBe(tags.length) // 无重复 tag
   })
+
+  it('演出窗口（2026-09-09 船长反馈二轮）：波全灭后战斗时钟冻结等 waveEnterGapMs，窗口结束才刷下一波', () => {
+    const { state, ctx } = world([
+      { units: 1, hpShare: 0.5 },
+      { units: 1, hpShare: 0.5 },
+    ])
+    const battle = startBattleFor(state, ctx, state.shipId, 'ano-wave', 0)!
+    const gap = Math.max(0, ctx.balance.battle.waveEnterGapMs ?? 0)
+    expect(gap).toBeGreaterThan(0)
+    // 白盒：把首波单位打成尸体 → 下一拍推进即应开窗口（战斗时钟冻结于 0，未步进过）
+    battle.units['foe-0']!.hp = { s: 0, a: 0, h: 0 }
+    state.gameMs = 100
+    advanceBattleFor(state, ctx, battle, state.shipId, 'ano-wave')
+    expect(battle.waveClearAt).toBe(battle.lastTickGameMs + gap)
+    expect(battle.units['w1-foe-0']).toBeUndefined() // 窗口未走完：不刷下一波
+    expect(state.logs.some((l) => l.text.includes('第 1/2 波已全灭'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('第 2/2 波来袭'))).toBe(false)
+    // 窗口内继续推进：仍不刷、战斗时钟不推进（演出时间不计 maxBattleMs 超时）
+    state.gameMs = battle.waveClearAt! - 1
+    advanceBattleFor(state, ctx, battle, state.shipId, 'ano-wave')
+    expect(battle.units['w1-foe-0']).toBeUndefined()
+    expect(battle.ended).toBeNull()
+    expect(battle.lastTickGameMs).toBe(0)
+    // 越过窗口：立即补刷并清标记
+    state.gameMs = battle.waveClearAt! + 100
+    advanceBattleFor(state, ctx, battle, state.shipId, 'ano-wave')
+    expect(battle.waveIdx).toBe(1)
+    expect(battle.waveClearAt).toBeUndefined()
+    expect(battle.units['w1-foe-0']).toBeDefined()
+    expect(state.logs.some((l) => l.text.includes('第 2/2 波来袭'))).toBe(true)
+  })
 })

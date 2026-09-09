@@ -11,7 +11,7 @@
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
@@ -89,7 +89,7 @@ function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, 
 function simulate(state: GameState, anomalyId: string): { win: boolean; durMs: number; meRemain: number } {
   const battle = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0)
   if (!battle) return { win: false, durMs: 0, meRemain: 0 }
-  state.gameMs = ctx.balance.battle.maxBattleMs + 5_000
+  state.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(anomalyId), ctx.balance.battle)
   advanceBattleFor(state, ctx as SimContext, battle, state.shipId, anomalyId)
   const durMs = Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs))
   const u = battle.units['player']
