@@ -52,11 +52,23 @@ function effLevelMs(def: SkillDef | undefined, lv: number, factor: number): numb
 
 export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?: string | null }) {
   const [groupTab, setGroupTab] = useState<string>('all')
+  // 目录搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明锁定技能；输入时切搜索结果视图）
+  const [skillQuery, setSkillQuery] = useState('')
   const groups = engine.groups
   // 战斗线预留技能（护盾操作/能量管理/船体加固）隐藏：不进目录、不可见
   const visibleSkills = engine.skills.filter(
     (s) => !HIDDEN_SKILL_IDS.includes(s.id) && (!focusSkillId || s.id === focusSkillId),
   )
+  const q = skillQuery.trim().toLowerCase()
+  const searchHits =
+    q.length > 0
+      ? visibleSkills.filter(
+          (s) =>
+            s.name.toLowerCase().includes(q) ||
+            s.group.toLowerCase().includes(q) ||
+            plainSkillDesc(s.description).toLowerCase().includes(q),
+        )
+      : null
   const tabCount = (g: string): number => visibleSkills.filter((s) => s.group === g).length
   return (
     <div className="page-stack page-wide page-fill">
@@ -67,32 +79,66 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
         <QueueBlock engine={engine} />
       </Panel>
       {/* 船长拍板：技能目录整窗滚（队列面板固定在上） */}
-      <Panel className="is-fill" title="技能目录" right={<span className="app-dim">{visibleSkills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长</span>}>
-        {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类 */}
-        <div className="app-task-tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={groupTab === 'all'}
-            className={`app-tasktab${groupTab === 'all' ? ' is-active' : ''}`}
-            onClick={() => setGroupTab('all')}
-          >
-            全部
-          </button>
-          {groups.map((g) => (
+      <Panel
+        className="is-fill"
+        title="技能目录"
+        right={
+          <span className="app-sk-query-wrap">
+            <input
+              className="app-sk-query"
+              type="text"
+              placeholder="搜索技能…"
+              value={skillQuery}
+              onChange={(e) => setSkillQuery(e.target.value)}
+              spellCheck={false}
+            />
+            <span className="app-dim">
+              {q.length > 0
+                ? `匹配 ${searchHits?.length ?? 0} 技能`
+                : `${visibleSkills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长`}
+            </span>
+          </span>
+        }
+      >
+        {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类；搜索时隐藏 */}
+        {!searchHits ? (
+          <div className="app-task-tabs" role="tablist">
             <button
-              key={g}
               role="tab"
-              aria-selected={groupTab === g}
-              className={`app-tasktab${groupTab === g ? ' is-active' : ''}`}
-              onClick={() => setGroupTab(g)}
+              aria-selected={groupTab === 'all'}
+              className={`app-tasktab${groupTab === 'all' ? ' is-active' : ''}`}
+              onClick={() => setGroupTab('all')}
             >
-              {g}
-              <span className="app-dim"> {tabCount(g)}</span>
+              全部
             </button>
-          ))}
-        </div>
+            {groups.map((g) => (
+              <button
+                key={g}
+                role="tab"
+                aria-selected={groupTab === g}
+                className={`app-tasktab${groupTab === g ? ' is-active' : ''}`}
+                onClick={() => setGroupTab(g)}
+              >
+                {g}
+                <span className="app-dim"> {tabCount(g)}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="app-skill-groups-wide">
-          {focusSkillId ? (
+          {searchHits ? (
+            <div className="app-skill-group">
+              <div className="app-skill-group-tag">搜索结果（{searchHits.length}）</div>
+              {searchHits.map((skill) => (
+                <SkillWideRow key={skill.id} engine={engine} skill={skill} />
+              ))}
+              {searchHits.length === 0 ? (
+                <div className="app-dim" style={{ padding: '6px 4px' }}>
+                  没有匹配「{skillQuery.trim()}」的技能——换个关键词试试（支持名称/分类/说明）。
+                </div>
+              ) : null}
+            </div>
+          ) : focusSkillId ? (
             <div className="app-skill-group">
               <div className="app-skill-group-tag">教程聚焦</div>
               {visibleSkills.map((skill) => (
