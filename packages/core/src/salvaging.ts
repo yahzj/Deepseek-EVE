@@ -2,10 +2,11 @@
  * 打捞作业（B3，2026-09-05 船长定稿：采矿式作业；docs/design/b3-salvage.md）。
  *
  * 模型：
- * - 单趟作业：下达即视为已抵达目标星系，立即自动持续打捞（去程已取消）
- *   （船内每台打捞器按各自周期结算，每轮按 salvageRoundPull 的"体积当量系数"
- *   捞取该星系敌群型号池随机一只残骸入货仓）→ **满仓自动返航** → 到港整仓卸入
- *   物品仓库 → 作业结束（不自动续，手动再派）；去程时间并入返航腿（总行程时间不变）；
+ * - 采矿式**自动循环**（2026-09-09 船长定稿，玩家反馈"打捞只一趟"）：下达即视为已抵达目标星系，
+ *   立即自动持续打捞（去程已取消）（船内每台打捞器按各自周期结算，每轮按 salvageRoundPull 的
+ *   "体积当量系数"捞取该星系敌群型号池随机一只残骸入货仓）→ **满仓自动返航** → 到港整仓卸入
+ *   物品仓库 → autoCycle（默认开）时同星系自动续捞（去程时间并入返航腿，总行程时间不变）；
+ *   勾 stopAfterTrip / 关闭自动循环 = 卸货后收工；手动停止任何时刻可停（偏好跨趟保留，同采矿）；
  * - 满仓判定 = 货仓放不下下一轮捞取量时转返航（残骸 = 重货）；
  * - 打捞期间该星系密度漂移**双向挂起**（engine 每拍把正在打捞的星系传给
  *   advanceWreckDrift）；低安星系打捞"作业中"暴露（出航/返航移动段不暴露，
@@ -105,6 +106,8 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  s.autoCycle = s.autoCycle !== false // 偏好持久：默认开，除非玩家关过（旧档缺省 = 开）
+  s.stopAfterTrip = s.stopAfterTrip === true
   // 船即时到目标星系：点亮探索（与采矿同口径；目标本就要求已探索，此处兜底）
   markExplored(state, galaxyId)
   const shipName = shipDisplayName(state, ctx, state.shipId)
@@ -112,13 +115,29 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   const salvagers = salvagerCyclesOf(state, ctx, state.shipId).length
   const outSec = Math.max(1, Math.round(outboundLegMsFor(state, ctx, galaxyId) / 1000))
   const retSec = Math.max(1, Math.round(legMsFor(state, ctx, galaxyId) / 1000))
+  const loopNote = s.stopAfterTrip
+    ? ' 已勾选「本次返航卸货后停止」：卸完这一趟即收工。'
+    : s.autoCycle
+      ? ' 已启用自动循环：满舱自动返航卸货，卸完自动开始下一趟（可随时手动停止）。'
+      : ' 自动循环已关闭：卸完这一趟即收工。'
   addLog(
     state,
     'info',
     `开始打捞：${galaxy.name}（残骸密度 ${density.toFixed(1)}）。${shipName} 已抵达目标空域，立即开始持续打捞` +
-      `（${salvagers} 台打捞器；满载返航约 ${retSec + outSec} 秒，去程时间已并入返航）卸入仓库后结束（不自动续）。`,
+      `（${salvagers} 台打捞器；满载返航约 ${retSec + outSec} 秒，去程时间已并入返航）。${loopNote}`,
   )
   return { ok: true }
+}
+
+/** 打捞循环偏好 setter（UI 复选框用；联动与采矿同款） */
+export function setSalvageAutoCycle(state: GameState, autoCycle: boolean): void {
+  state.salvaging.autoCycle = autoCycle
+  if (!autoCycle) state.salvaging.stopAfterTrip = false
+}
+
+export function setSalvageStopAfterTrip(state: GameState, stopAfterTrip: boolean): void {
+  state.salvaging.stopAfterTrip = stopAfterTrip
+  if (stopAfterTrip) state.salvaging.autoCycle = true
 }
 
 /** 手动停止（任何阶段；未返航的货物留在船上） */
@@ -238,10 +257,24 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         addLog(
           state,
           'info',
-          `打捞自动返港：${galaxyName} 残骸已卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} m³ 当量）。本次打捞结束——可再派（不自动续）。`,
+          `打捞自动返港：${galaxyName} 残骸已卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} m³ 当量）。`,
         )
-        resetOp(state)
-        break
+        // 按设定收工（勾了「本次返航卸货后停止」/ 关闭自动循环）；否则卸完直接同星系续捞
+        if (s.stopAfterTrip || s.autoCycle === false) {
+          addLog(
+            state,
+            'info',
+            s.stopAfterTrip ? '自动循环已结束（按设定返港后停止）。' : '本次打捞结束（未开启自动循环）。',
+          )
+          resetOp(state)
+          break
+        }
+        // 自动循环：去程已并入刚完成的返航腿 → 卸完直接恢复打捞（无出航相位，与采矿同构）
+        s.phase = 'salvaging'
+        s.cycleAccMs = 0
+        s.tripM3 = 0
+        s.deviceAccMs = {}
+        continue
       }
       // 旧档遗留的出航相位到点：抵达目标星系（点亮探索）后直接打捞
       markExplored(state, galaxyId)

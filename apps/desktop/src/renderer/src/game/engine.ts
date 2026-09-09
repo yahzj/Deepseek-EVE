@@ -78,6 +78,8 @@ import {
   startRefineRun,
   startRecycleRun,
   startSalvageOp,
+  setSalvageAutoCycle,
+  setSalvageStopAfterTrip,
   startScan,
   startTransitHome,
   startSiteDeliverTrip,
@@ -1382,6 +1384,20 @@ export class GameEngine {
   /** 勾选/取消"本次返航后停止" */
   setStopAfterTripAt(stop: boolean): void {
     setMiningStopAfterTrip(this.state, stop)
+    void this.persist()
+    this.notify()
+  }
+
+  /** 打捞自动循环开关（2026-09-09：与采矿同款） */
+  setSalvageAutoCycleAt(autoCycle: boolean): void {
+    setSalvageAutoCycle(this.state, autoCycle)
+    void this.persist()
+    this.notify()
+  }
+
+  /** 打捞"本次返航卸货后停止" */
+  setSalvageStopAfterTripAt(stop: boolean): void {
+    setSalvageStopAfterTrip(this.state, stop)
     void this.persist()
     this.notify()
   }

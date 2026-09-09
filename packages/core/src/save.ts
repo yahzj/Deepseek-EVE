@@ -1623,7 +1623,8 @@ function normalizeState(raw: unknown): GameState {
       ? src.autoLoopAnomalyId
       : null
 
-  // --- B3 打捞作业（2026-09-05 兼容字段）：active + 合法星系才启用，否则空态 ---
+  // --- B3 打捞作业（2026-09-05 兼容字段 + 2026-09-09 自动循环偏好零迁移）：active + 合法星系才启用，否则空态；
+  // autoCycle 缺省按开（!= false），stopAfterTrip 缺省关——与采矿读档口径一致 ---
   const slvRaw = asRaw(src.salvaging)
   const slvGalaxy = typeof slvRaw.galaxyId === 'string' && slvRaw.galaxyId.length > 0 ? slvRaw.galaxyId : null
   const salvaging: GameState['salvaging'] =
@@ -1636,8 +1637,20 @@ function normalizeState(raw: unknown): GameState {
           cycleAccMs: Math.max(0, Math.floor(num(slvRaw.cycleAccMs))),
           tripM3: Math.max(0, num(slvRaw.tripM3) || 0),
           deviceAccMs: {}, // 相位账读档重建（以最短周期为步的推进自然重建）
+          autoCycle: slvRaw.autoCycle !== false,
+          stopAfterTrip: slvRaw.stopAfterTrip === true,
         }
-      : { active: false, galaxyId: null, phase: 'salvaging', phaseAccMs: 0, cycleAccMs: 0, tripM3: 0, deviceAccMs: {} }
+      : {
+          active: false,
+          galaxyId: null,
+          phase: 'salvaging',
+          phaseAccMs: 0,
+          cycleAccMs: 0,
+          tripM3: 0,
+          deviceAccMs: {},
+          autoCycle: true,
+          stopAfterTrip: false,
+        }
 
   // --- B3 星系残骸密度（2026-09-05 兼容字段无版本号）：合法记录保留（密度 ≥0、稀有计数取整）；
   // 非法/缺省 = 无记录（运行时按基础密度推导，不入档） ---

@@ -8,6 +8,8 @@
  *   效率只拉长所驱动作业的时长（÷效率），不影响任何奖励（全额）；
  * - 基础核心空间站直购；伽马/贝塔/阿尔法由远征胜利按威胁概率掉落；
  * - 采矿任务：无风险，满舱自动返航→卸货入物品仓库→再出航（无限循环，直到取消）；
+ * - 打捞任务：同采矿自动循环（2026-09-09 船长定，玩家反馈"AI 打捞只一趟"）——出航→打捞→
+ *   满舱自动返港卸货→同星系再出航，直到取消；低安打捞按既有规则暴露/善后；
  * - 远征任务：只接预估胜率 ≥80% 的悬赏、且船耐久 ≥50%；胜利奖励/战利品/声望全额；
  *   失利扣耐久并按弃船骰判定（规则与主控一致）；耐久 ≤30% 自动维修（钱包付费）；
  * - 核心是空间站资产：任务结束/取消/弃船中断时自动归还核心库。
@@ -346,7 +348,8 @@ export function assignAiExpedition(
   return { ok: true }
 }
 
-/** 玩家指令：指派 AI 打捞任务（B3 单趟：出航 → 打捞 → 满仓自动返港卸货 → 任务结束，核心归还）。
+/** 玩家指令：指派 AI 打捞任务（自动循环，2026-09-09 船长定：与 AI 采矿同构——出航 → 打捞 →
+ * 满仓自动返港卸货 → 同星系自动再出航，**直到取消**才任务结束、核心归还）。
  * 要求：副船高槽装有打捞器；目标星系已探索且有敌群型号池；效率只拉长行程/周期，不减产。 */
 export function assignAiSalvage(
   state: GameState,
@@ -396,7 +399,7 @@ export function assignAiSalvage(
   addLog(
     state,
     'info',
-    `[AI] ${shipName} 出发打捞：${galaxy.name}（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%；满仓自动返港卸货后任务结束）。`,
+    `[AI] ${shipName} 出发打捞：${galaxy.name}（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%；自动循环：满仓返港卸货后自动再出航，取消任务才结束）。`,
   )
   return { ok: true }
 }
@@ -717,7 +720,8 @@ function advanceAiMining(
 type AiMiningTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'mining' }>
 type AiSalvageTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'salvage' }>
 
-/** AI 打捞任务推进（B3 单趟：outbound → salvaging → returning；行程/周期按核心效率拉长，满仓返港后任务结束） */
+/** AI 打捞任务推进（自动循环，2026-09-09 船长定：与 AI 采矿同构——出航 → 打捞 → 满仓返航 →
+ * 到港卸货 → 同星系自动再出航，直到取消；行程/周期按核心效率拉长，满仓返港后不结束） */
 function advanceAiSalvage(
   state: GameState,
   shipId: string,
@@ -761,7 +765,7 @@ function advanceAiSalvage(
       remaining -= need
       task.phaseAccMs = 0
       if (task.phase === 'returning') {
-        // 到港：整仓卸入物品仓库 → 任务结束、核心归还
+        // 到港：整仓卸入物品仓库 → 自动循环（同星系再出航）；取消任务才归还核心
         const cargo = state.fleet[shipId]?.cargo
         let moved = 0
         if (cargo) {
@@ -777,12 +781,14 @@ function advanceAiSalvage(
         addLog(
           state,
           'trade',
-          `[AI·${shipName}] 打捞自动返港：${galaxyName} 残骸已卸入物品仓库（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。打捞任务完成（${aiCoreName(assignment.coreType)} 已归还）。`,
+          `[AI·${shipName}] 打捞自动返港：${galaxyName} 残骸已卸入物品仓库（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。自动循环：继续出航打捞（取消任务即归还${aiCoreName(assignment.coreType)}）。`,
         )
         if (stats) addAiSalvageDone(stats, assignment.coreType) // 2026-09-08：离线结算按次统计（残骸卖出/拆解变现不计入粗估）
-        delete state.aiAssignments[shipId]
-        gainAiCore(state, assignment.coreType)
-        return
+        task.phase = 'outbound'
+        task.phaseAccMs = 0
+        task.tripM3 = 0
+        task.deviceAccMs = {}
+        continue
       }
       // 抵达目标星系
       markExplored(state, task.galaxyId)

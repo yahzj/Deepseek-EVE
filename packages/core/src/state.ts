@@ -271,9 +271,10 @@ export const EMPTY_REFINE_RUN: RefineRunState = {
   batchesDone: 0,
 }
 
-/** B3 打捞作业（采矿式单趟）：立即打捞 → 满仓自动返航（去程并入）→ 到港整仓卸入仓库 → 结束（不自动续）。
+/** B3 打捞作业（采矿式自动循环，2026-09-09 船长定：默认自动循环，满舱返航卸货后同星系自动续捞）：
+ * 立即打捞 → 满仓自动返航（去程并入）→ 到港整仓卸入仓库 → 自动续捞（stopAfterTrip/关闭循环则收工）。
  * tripM3 = 本趟捞取体积当量累计（展示/日志）；deviceAccMs = 各周期档的打捞器相位（周期 ms → 累计）。
- * outbound 相位仅旧档遗留兼容。 */
+ * autoCycle/stopAfterTrip = 作业偏好，跨趟持久（同采矿 MiningState 语义）；outbound 相位仅旧档遗留兼容。 */
 export interface SalvageOpState {
   active: boolean
   /** 目标星系 id（null = 无作业） */
@@ -287,6 +288,10 @@ export interface SalvageOpState {
   tripM3: number
   /** 打捞器相位账：周期 ms → 已累计 ms */
   deviceAccMs: Record<string, number>
+  /** 自动循环（默认开）：卸货后同星系自动续捞；关闭 = 本趟收工 */
+  autoCycle: boolean
+  /** 「本次返航卸货后停止」：勾选后强制自动循环开、卸完这一趟即收工（与采矿同款联动） */
+  stopAfterTrip: boolean
 }
 
 /** 打捞作业空态（新档 / 作业结束） */
@@ -298,6 +303,8 @@ export const EMPTY_SALVAGE_OP: SalvageOpState = {
   cycleAccMs: 0,
   tripM3: 0,
   deviceAccMs: {},
+  autoCycle: true,
+  stopAfterTrip: false,
 }
 
 /** 远征作业状态（去程取消 → 交火 battle → 返航 back；battle 为实时状态机；返航 = 2×单程） */

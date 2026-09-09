@@ -295,7 +295,7 @@ describe('AI 打捞任务', () => {
     ctx = makeTestCtx()
   })
 
-  it('返航腿与主控同口径：部分货载按占比缩放（25 m³ → 实返航 30 秒，不再 ÷核心效率）', () => {
+  it('返航腿与主控同口径：部分货载按占比缩放（25 m³ → 实返航 30 秒，不再 ÷核心效率）→ 到港卸货后自动循环续趟', () => {
     // 手工构造"返航中"打捞任务（galaxy-hub 本地：基准腿 = localLegMs 120s）+ 25 m³ 货载
     // → 120s×0.25=30s 实返航（卷B2⑥ 不再 ÷0.4——旧 ÷0.4 口径需 75s，旧满仓口径需 300s）
     state.fleet['sandcat2']!.cargo['ore-a'] = 25 // 计数 = 体积（m³）
@@ -306,8 +306,13 @@ describe('AI 打捞任务', () => {
     }
     advanceGame(state, 29_999, ctx)
     expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('returning')
-    advanceGame(state, 1, ctx) // 第 30 秒整：到港卸货 → 单趟任务结束、核心归还（回归点：÷0.4 口径下此刻仍在返航）
+    advanceGame(state, 1, ctx) // 第 30 秒整：到港卸货 → 自动循环：同星系再出航（任务不结束、核心不归还）
     expect(countWare(state, 'ore-a')).toBe(25)
+    expect(state.aiAssignments['sandcat2']).toBeDefined()
+    expect((state.aiAssignments['sandcat2']!.task as { phase: string }).phase).toBe('outbound')
+    expect(countAiCore(state, 'basic')).toBe(1) // 循环中：核心仍占用
+    // 取消任务 → 归还核心
+    expect(cancelAiTask(state, 'sandcat2', ctx)).toBe(true)
     expect(state.aiAssignments['sandcat2']).toBeUndefined()
     expect(countAiCore(state, 'basic')).toBe(2) // 占用 1 枚已归还
   })
