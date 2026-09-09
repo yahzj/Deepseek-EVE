@@ -850,13 +850,14 @@ body {
 
 }
 
-/* ---------- 矿带卡片网格（星图页-矿带开采：矩形卡片 + 卡内操作容器） ---------- */
+/* ---------- 矿带卡片网格（星图页-矿带开采 / 工业页炉卡 / 回收残骸：矩形卡片 + 卡内操作容器） ----------
+   2026-09-09 船长：卡片行数自适应——宽度足够时同行更多（下限 240px，容器越宽列越多） */
 
 .app-belt-grid {
 
   display: grid;
 
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 
   gap: 10px;
 
@@ -864,13 +865,13 @@ body {
 
 }
 
-/* 蓝图书架紧凑小卡网格（船长 2026-09-05：书+数量+状态+学习/出售） */
+/* 蓝图书架紧凑小卡网格（船长 2026-09-05：书+数量+状态+学习/出售；2026-09-09 行数自适应下限 190px） */
 
 .app-shelf-grid {
 
   display: grid;
 
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
 
   gap: 8px;
 
@@ -1906,6 +1907,14 @@ body {
 
   margin-top: 6px;
 
+  /* 队列过长时窗内滚动（2026-09-09 船长：防挤占下方技能目录）——上限约 4 行 chip */
+
+  max-height: 148px;
+
+  overflow-y: auto;
+
+  padding-right: 4px;
+
 }
 
 .app-train-chip {
@@ -1971,6 +1980,172 @@ body {
   border-bottom: 1px dotted var(--wui-border);
 
   margin-bottom: 2px;
+
+}
+
+/* 技能目录 · 图标模式（2026-09-09 船长：技能卡自适应网格——宽度足够同行更多；样式对齐 app-hand 族） */
+
+.app-skill-grid {
+
+  display: grid;
+
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+
+  gap: 8px;
+
+  margin: 6px 0 2px;
+
+}
+
+.app-skill-card {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  border: 1px solid rgba(255, 255, 255, .08);
+
+  background: rgba(10, 17, 27, .45);
+
+  border-radius: 6px;
+
+  padding: 7px 8px;
+
+  min-height: 86px;
+
+}
+
+.app-skill-card.is-training {
+
+  border-color: rgba(127, 212, 255, .55);
+
+  box-shadow: 0 0 8px rgba(127, 212, 255, .18);
+
+}
+
+.app-skill-card-top {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  min-width: 0;
+
+}
+
+.app-skill-card-icon {
+
+  flex: none;
+
+  width: 26px;
+
+  height: 26px;
+
+}
+
+.app-skill-card-name {
+
+  font-size: 12.5px;
+
+  font-weight: 600;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  min-width: 0;
+
+}
+
+.app-skill-card-sub {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  font-size: 10.5px;
+
+  color: var(--wui-text-dim);
+
+}
+
+.app-skill-card-lv {
+
+  margin-left: auto;
+
+  flex: none;
+
+  font-family: var(--wui-mono);
+
+  font-size: 11px;
+
+  color: var(--wui-text-dim);
+
+}
+
+.app-skill-card-lv.is-has {
+
+  color: var(--wui-gold);
+
+}
+
+.app-skill-card-lv.is-max {
+
+  color: var(--wui-green);
+
+}
+
+.app-skill-card-actions {
+
+  margin-top: auto;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  flex-wrap: wrap;
+
+  min-height: 26px;
+
+}
+
+.app-skill-card-eta {
+
+  font-size: 10.5px;
+
+  color: var(--wui-text-dim);
+
+}
+
+.app-skill-card-bar {
+
+  height: 3px;
+
+  border-radius: 2px;
+
+  overflow: hidden;
+
+  background: rgba(255, 255, 255, .08);
+
+}
+
+.app-skill-card-bar i {
+
+  display: block;
+
+  height: 100%;
+
+  background: #7fd4ff;
 
 }
 
