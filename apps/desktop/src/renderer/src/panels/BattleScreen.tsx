@@ -446,6 +446,11 @@ const meSpeedRef = useRef(200)
   /* 弹药（显示层） */
   const ammoChips = DMG_ORDER.filter((t) => arcs.ammo[ammoKey(t)] > 0)
 
+  /* 船体维修装置状态（2026-09-09）：运转中（绿点呼吸）/ 组件耗尽停机（暗红）；徽标在弹药旁 */
+  const repairRt = battle?.repair
+  const repairTotal = repairRt ? Object.values(repairRt.kits).reduce((a, b) => a + b, 0) : 0
+  const repairRunning = repairRt ? repairRt.units.some((u) => !u.stopped) : false
+
   /* 距离滑条：值 = 接近度×1000（0 最远拉开 → 1000 贴脸），右拖 = 接近 */
   const desireM = Math.min(openM, Math.max(nearM, combat.myDesireM))
   const sliderV = dragV ?? approachOf(desireM, openM, nearM) * 1000
@@ -756,6 +761,19 @@ const meSpeedRef = useRef(200)
                     {DMG_LABEL[t]}×{arcs.ammo[ammoKey(t)].toLocaleString('zh-CN')}
                   </span>
                 ))}
+              </span>
+            ) : null}
+            {repairRt ? (
+              <span
+                className={`app-bts-repair${repairRunning ? '' : ' is-down'}`}
+                title={
+                  repairRunning
+                    ? '船体维修装置运转中：每 5 秒自动修复装甲/结构，每跳消耗 1 枚对应修理组件'
+                    : '船体维修装置已停机：修理组件耗尽（或开战时未备组件）——装甲/结构不再自动修复'
+                }
+              >
+                <i /> {repairRunning ? '维修装置运转中' : '维修装置停机'}
+                <span className="app-dim">组件 ×{repairTotal.toLocaleString('zh-CN')}</span>
               </span>
             ) : null}
           </div>

@@ -397,24 +397,39 @@ for (const m of MODULES) {
     check(m.reloadMs !== undefined && m.reloadMs > 0 && Number.isInteger(m.reloadMs), `激光炮 ${m.id} reloadMs 非法`)
     check(m.dmgMult !== undefined && m.dmgMult > 0, `激光炮 ${m.id} dmgMult 非法`)
   } else if (m.slot === 'support') {
-    // V18.1 支援件：恰好一类效果字段（伤害稳定器按系/射速/命中/闪避互斥），值域合法
+    // V18.1 支援件：恰好一类效果字段（伤害稳定器按系/射速/命中/闪避互斥），值域合法；
+    // 2026-09-09 维修装置：修复系 = repairArmorHp/repairHullHp 可同带（装甲+结构双层修复）——
+    // 修复系与旧四类效果互斥（一件只给一个功能系）
     const stabKeys = Object.entries(m.damageTypeBonusPct ?? {}).filter(([, v]) => (v ?? 0) > 0).length
     const hasRof = m.reloadCutPct !== undefined
     const hasHit = m.hitBonusPct !== undefined
     const hasEva = m.evasionGapPct !== undefined
-    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避）`)
-    for (const [t, val] of Object.entries(m.damageTypeBonusPct ?? {})) {
-      if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
-        errors.push(`支援件 ${m.id} damageTypeBonusPct.${t} 非法：${String(val)}`)
+    const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
+    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复）`)
+    if (hasRepair) {
+      // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
+      check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
+        `支援件 ${m.id} 修复值非法（需 [0, 100] 且至少一层 > 0）`)
+      const interval = m.repairIntervalMs ?? 5_000
+      check(Number.isInteger(interval) && interval >= 2_000 && interval <= 60_000, `支援件 ${m.id} repairIntervalMs 非法（需 2000~60000 毫秒）`)
+      check(m.repairKit === 'repairkit-civ' || m.repairKit === 'repairkit-mil', `支援件 ${m.id} 必须指明消耗组件（民用/军用修理组件）`)
+      check(m.rack === 'mid', `支援件 ${m.id}（修复）应为中槽，实际 ${m.rack}`)
+      check(m.reloadCutPct === undefined && m.hitBonusPct === undefined && m.evasionGapPct === undefined && stabKeys === 0,
+        `支援件 ${m.id} 修复系不得与其它支援效果同带`)
+    } else {
+      for (const [t, val] of Object.entries(m.damageTypeBonusPct ?? {})) {
+        if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
+          errors.push(`支援件 ${m.id} damageTypeBonusPct.${t} 非法：${String(val)}`)
+        }
       }
+      if (hasRof) check((m.reloadCutPct ?? 0) > 0 && (m.reloadCutPct ?? 0) <= 0.9, `支援件 ${m.id} reloadCutPct 非法（需 (0, 0.9]）`)
+      if (hasHit) check((m.hitBonusPct ?? 0) > 0 && (m.hitBonusPct ?? 0) <= 0.9, `支援件 ${m.id} hitBonusPct 非法（需 (0, 0.9]）`)
+      if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
+      // 归槽语义：伤害/射速 = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
+      if (stabKeys > 0 || hasRof) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速）应为低槽，实际 ${m.rack}`)
+      if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
     }
-    if (hasRof) check((m.reloadCutPct ?? 0) > 0 && (m.reloadCutPct ?? 0) <= 0.9, `支援件 ${m.id} reloadCutPct 非法（需 (0, 0.9]）`)
-    if (hasHit) check((m.hitBonusPct ?? 0) > 0 && (m.hitBonusPct ?? 0) <= 0.9, `支援件 ${m.id} hitBonusPct 非法（需 (0, 0.9]）`)
-    if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
-    // 归槽语义：伤害/射速 = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
-    if (stabKeys > 0 || hasRof) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速）应为低槽，实际 ${m.rack}`)
-    if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)
   }

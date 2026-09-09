@@ -26,6 +26,8 @@ import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 export const BATTLE_STEP_MS = 100
 /** 步数守卫上限（防失控循环） */
 export const BATTLE_MAX_STEPS = 40_000
+/** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
+export const REPAIR_PULSE_MS = 5_000
 
 /** 三层血量形状 */
 export interface Hp3 {
@@ -821,9 +823,136 @@ export function ammoKeyOf(t: DamageType): AmmoKey {
   return t === 'kinetic' ? 'kin' : t === 'explosive' ? 'exp' : 'pla'
 }
 
-/* ═══════════ 战斗状态推进 ═══════════ */
+/* ═══════════ 2026-09-09 船体维修装置（战斗中自动修复装甲/结构） ═══════════ */
+/* 船长定稿：中槽支援件；每 5 秒一跳，逐台修复装甲/结构（各层满则额度转投另一层），
+ * 每台每跳消耗 1 枚对应修理组件；组件耗尽自动停机；与弹药预载同哲学——开战装载、结束退还。 */
 
-/** 初始化战斗动态状态 */
+/** 当前船已装配的维修装置（带 repairArmorHp/repairHullHp 的装配件，按位序） */
+export function fittedRepairModules(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
+  const ship = state.fleet[shipId]
+  if (!ship) return []
+  return allFittedModules(ship.fitted, ctx).filter((d) => (d.repairArmorHp ?? 0) > 0 || (d.repairHullHp ?? 0) > 0)
+}
+
+/**
+ * 维修装置开战预载：装配快照 + 组件装载（货舱优先、仓库兜底，单型一次抽足）。
+ * 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1（多波演出窗口冻结战斗时钟，余量防不足）；
+ * 库存不足的装置直接标记停机（组件一枚没有 = 开战即停）。无装置返回 null。
+ * 返回结构的 nextPulseAtMs 恒为 undefined——由 startBattleFor 按开战时刻赋值
+ * （全部装置停机则保持 undefined = 不调度）。
+ */
+export function preloadRepairFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  maxBattleMs: number,
+): import('./state').BattleState['repair'] | null {
+  const defs = fittedRepairModules(state, ctx, shipId)
+  if (defs.length === 0) return null
+  const units: import('./state').BattleRepairUnit[] = []
+  const need = new Map<string, number>()
+  const perUnit = Math.max(1, Math.ceil(maxBattleMs / REPAIR_PULSE_MS)) + 1
+  for (const d of defs) {
+    const kitId = d.repairKit ?? 'repairkit-civ'
+    units.push({
+      moduleId: d.id,
+      kitId,
+      armorPerPulse: Math.max(0, Math.round(d.repairArmorHp ?? 0)),
+      hullPerPulse: Math.max(0, Math.round(d.repairHullHp ?? 0)),
+      stopped: false,
+    })
+    need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
+  }
+  // 装载（与 loadAmmo 同序：货舱优先、仓库兜底）
+  const kits: Record<string, number> = {}
+  for (const [kitId, wantTotal] of need) {
+    let want = wantTotal
+    const inCargo = Math.floor(cargoItemsOf(state)[kitId] ?? 0)
+    const fromCargo = Math.min(want, inCargo)
+    if (fromCargo > 0) {
+      removeItem(state, kitId, fromCargo)
+      want -= fromCargo
+    }
+    if (want > 0) {
+      const fromWare = Math.min(want, countWare(state, kitId))
+      if (fromWare > 0) {
+        removeWare(state, kitId, fromWare)
+        want -= fromWare
+      }
+    }
+    const got = wantTotal - want
+    if (got > 0) kits[kitId] = got
+  }
+  // 一枚组件都没装到的装置 → 开战即停机（脉冲逻辑跳过；缺料提示由 startBattleFor 日志给出）
+  for (const u of units) {
+    if ((kits[u.kitId] ?? 0) <= 0) u.stopped = true
+  }
+  return { units, kits, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
+}
+
+/** 退还维修装置预载的未用组件（回仓库；与弹药退还同哲学）——战斗结束/撤退收场调用；幂等 */
+export function refundRepairKits(
+  state: GameState,
+  repair: import('./state').BattleState['repair'],
+): void {
+  if (!repair || !repair.kits || Object.isFrozen(repair.kits)) return
+  for (const [id, n] of Object.entries(repair.kits)) {
+    if (n > 0) addWare(state, id, Math.floor(n))
+  }
+  repair.kits = {}
+}
+
+/**
+ * 单次维修脉冲（advanceBattleFor 在到期脉冲处调用）：
+ * 逐台未停机装置修复——每层通道修复量 = 该层额度，某层已满（或补满）后，该层剩余额度
+ * 转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
+ * 1 枚对应组件并计入消耗；组件耗尽该台停机（日志一次）。修复上限 = 出场满值口径
+ * （advanceBattleFor 重建的 me，与保险检查同源——可把入场残值修回满血）。
+ */
+function pulseRepairs(
+  state: GameState,
+  ctx: SimContext,
+  b: import('./state').BattleState,
+  me: UnitSpec,
+): void {
+  const r = b.repair
+  const meRt = b.units['player']
+  if (!r || !meRt || r.nextPulseAtMs === undefined) return
+  const capA = Math.max(0, me.hp.a)
+  const capH = Math.max(0, me.hp.h)
+  const hp = meRt.hp
+  let active = 0
+  for (const u of r.units) {
+    if (u.stopped) continue
+    active += 1
+    const kitNow = r.kits[u.kitId] ?? 0
+    if (kitNow <= 0) {
+      // 组件耗尽（预载余额用光）：本台停机，日志一次
+      u.stopped = true
+      const modName = ctx.modules.get(u.moduleId)?.name ?? u.moduleId
+      const kitName = ctx.items.get(u.kitId)?.name ?? u.kitId
+      addLog(state, 'warn', `🔧 ${modName}的${kitName}耗尽，自动停机——战斗中装甲/结构修复暂停。`)
+      continue
+    }
+    // 额度分配：各层先按自身额度补缺口，层满后剩余额度转投另一层（总上限 = 甲 + 结构额度）
+    const da = Math.max(0, capA - hp.a)
+    const dh = Math.max(0, capH - hp.h)
+    let ag = Math.min(u.armorPerPulse, da)
+    let hg = Math.min(u.hullPerPulse, dh)
+    if (ag < u.armorPerPulse && hg < dh) hg += Math.min(u.armorPerPulse - ag, dh - hg) // 甲通道剩余 → 结构
+    if (hg < u.hullPerPulse && ag < da) ag += Math.min(u.hullPerPulse - hg, da - ag) // 结构通道剩余 → 甲
+    if (ag <= 0 && hg <= 0) continue // 痊愈空转：不耗组件
+    hp.a += ag
+    hp.h += hg
+    r.kits[u.kitId] = kitNow - 1
+    r.kitsUsed += 1
+  }
+  r.pulses += 1
+  if (active === 0) r.nextPulseAtMs = undefined // 全部停机：停调度
+  else r.nextPulseAtMs += REPAIR_PULSE_MS
+}
+
+
 export function createBattleState(
   me: UnitSpec,
   foes: UnitSpec[],
@@ -929,6 +1058,26 @@ export function startBattleFor(
     const key = ammoKeyOf(t as DamageType)
     const loaded = loadAmmo(state, ctx, t as DamageType, n)
     battle.ammo[key] += loaded[key]
+  }
+  // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
+  // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）
+  const repair = preloadRepairFor(state, ctx, shipId, bal.maxBattleMs)
+  if (repair) {
+    const ready = repair.units.filter((u) => !u.stopped)
+    if (ready.length > 0) {
+      repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
+      const parts: string[] = []
+      for (const u of repair.units) {
+        const n = repair.kits[u.kitId] ?? 0
+        parts.push(`${ctx.modules.get(u.moduleId)?.name ?? u.moduleId}${u.stopped ? `（缺${ctx.items.get(u.kitId)?.name ?? u.kitId}停机）` : ` ×${n}枚组件`}`)
+      }
+      addLog(state, 'info', `🔧 船体维修装置待命：${parts.join('、')}——战斗中每 5 秒自动修复装甲/结构。`)
+    } else {
+      const first = repair.units[0]!
+      const kitName = ctx.items.get(first.kitId)?.name ?? first.kitId
+      addLog(state, 'warn', `🔧 已装维修装置但货舱/仓库没有${kitName}——本场不会自动修复，请先补给。`)
+    }
+    battle.repair = repair
   }
   return battle
 }
@@ -1183,6 +1332,20 @@ export function advanceBattleFor(
       if (pl && pl.hp.h < me.hp.h * battle.hullEscapeFrac) {
         battle.autoEscaped = true
         break
+      }
+    }
+    // 船体维修装置脉冲（2026-09-09）：本拍内到期的脉冲补齐——修复发生在受伤结算之后
+    // （≤1 拍延迟，保守口径）；战斗结束/自动撤退后不再补跳
+    if (!battle.ended && battle.repair?.nextPulseAtMs !== undefined && battle.repair.nextPulseAtMs <= battle.lastTickGameMs) {
+      let guardR = 0
+      while (
+        !battle.ended &&
+        battle.repair.nextPulseAtMs !== undefined &&
+        battle.repair.nextPulseAtMs <= battle.lastTickGameMs &&
+        guardR < BATTLE_MAX_STEPS
+      ) {
+        pulseRepairs(state, ctx, battle, me)
+        guardR++
       }
     }
   }

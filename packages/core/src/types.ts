@@ -689,6 +689,15 @@ export interface ModuleDef {
   /* ═══ B3 打捞器（salvager 家族：高槽无伤害件；升级只缩短周期） ═══ */
   /** 打捞器单轮周期毫秒（每台每轮捞 1 具残骸；MK1/2/3 = 10s/8s/6s） */
   salvageCycleMs?: number
+  /* ═══ 2026-09-09 船体维修装置（支援件族·中槽；战斗中自动修复装甲/结构，每脉冲消耗一枚修理组件） ═══ */
+  /** 每脉冲修复装甲 HP（受损优先；单层满则全额给另一层） */
+  repairArmorHp?: number
+  /** 每脉冲修复结构 HP */
+  repairHullHp?: number
+  /** 脉冲间隔毫秒（缺省 = REPAIR_PULSE_DEFAULT_MS 5000 = 5 秒一跳） */
+  repairIntervalMs?: number
+  /** 每脉冲消耗的修理组件 id（民用级 = 民用修理组件；MK1/MK2 = 军用修理组件） */
+  repairKit?: string
   /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */
   /** 伤害稳定器（按系）：该系炮台单发伤害加成（0.06 = +6%；多件加算 Σ；只作用于炮台，
    * 不叠加到无人机——无人机归战术导控管） */

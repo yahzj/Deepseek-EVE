@@ -30,10 +30,14 @@ import {
   ammoLoadTotals,
   steerStep,
   spreadWinChance,
+  preloadRepairFor,
+  refundRepairKits,
+  REPAIR_PULSE_MS,
 } from '../src/combat'
 import { addShipToFleet } from '../src/shipyard'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 import { addModule, effectiveCpu, fitModule } from '../src/equipment'
+import { addItem } from '../src/inventory'
 
 const BAL = () => makeTestCtx().balance.battle
 
@@ -814,5 +818,134 @@ describe('V18B 敌人近盲带（2026-09-05 船长拍板：与玩家区分——
     const ratio = soft.loss / full.loss
     expect(ratio).toBeGreaterThan(0.25)
     expect(ratio).toBeLessThan(0.35)
+  })
+})
+
+describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/结构，每脉冲消耗一枚修理组件）', () => {
+  const kit = (id: string, name: string) => ({
+    id,
+    name,
+    kind: 'kit' as const,
+    unitM3: 1,
+    baseSellPriceIsk: 3_000,
+    description: `测试${name}`,
+  })
+  /** 默认世界：巨型血条沙猫（修复缺口恒大、敌 45 秒杀不死） + 弱维修装置 mod-rep（5/5/5 秒/民用组件） */
+  function repWorld(opts?: { cargoKits?: number; wareKits?: number; seed?: number }) {
+    const state = createInitialState({ nowWallMs: 0, seed: opts?.seed ?? 41 })
+    state.wallet.isk = 100_000
+    const ctx = makeTestCtx({
+      ships: [ship('sandcat', { shieldHp: 5_000, armorHp: 5_000, hullHp: 5_000 })],
+      modules: [moduleDef('mod-rep', 'support', 0, { rack: 'mid', cpuUse: 6, repairArmorHp: 5, repairHullHp: 5, repairKit: 'kit-civ' })],
+      items: [kit('kit-civ', '民用修理组件')],
+      anomalies: [anomaly('ano-rep', 'galaxy-hub', { threat: 40, reward: 1_000 })],
+    })
+    if ((opts?.cargoKits ?? 0) > 0) addItem(state, 'kit-civ', opts?.cargoKits ?? 0)
+    if ((opts?.wareKits ?? 0) > 0) state.warehouse.items['kit-civ'] = (state.warehouse.items['kit-civ'] ?? 0) + (opts?.wareKits ?? 0)
+    return { state, ctx }
+  }
+
+  it('开战预载：装配快照 + 货舱优先/仓库兜底装载；结束退还（幂等）', () => {
+    const { state, ctx } = repWorld({ cargoKits: 3, wareKits: 5 })
+    addModule(state, 'mod-rep', 1)
+    expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
+    const load = preloadRepairFor(state, ctx, 'sandcat', ctx.balance.battle.maxBattleMs)
+    expect(load).not.toBeNull()
+    expect(load!.units).toHaveLength(1)
+    expect(load!.units[0]).toMatchObject({ moduleId: 'mod-rep', kitId: 'kit-civ', armorPerPulse: 5, hullPerPulse: 5, stopped: false })
+    // 单台预载上限 = ⌈整场最长战斗 / 5s⌉ + 1 → 3+5 全被抽走（want ≫ 库存）
+    expect(load!.kits['kit-civ']).toBe(8)
+    expect(state.fleet['sandcat'].cargo['kit-civ'] ?? 0).toBe(0)
+    expect(state.warehouse.items['kit-civ'] ?? 0).toBe(0)
+    // 退还：未用组件全部回仓库；幂等（第二次调用不重复入账）
+    refundRepairKits(state, load!)
+    expect(state.warehouse.items['kit-civ']).toBe(8)
+    expect(load!.kits['kit-civ'] ?? 0).toBe(0)
+    refundRepairKits(state, load!)
+    expect(state.warehouse.items['kit-civ']).toBe(8)
+  })
+
+  it('组件一枚没有：装置开战即停机（stopped），预载结构仍在但无账本', () => {
+    const { state, ctx } = repWorld()
+    addModule(state, 'mod-rep', 1)
+    expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
+    const load = preloadRepairFor(state, ctx, 'sandcat', ctx.balance.battle.maxBattleMs)
+    expect(load).not.toBeNull()
+    expect(load!.units[0]!.stopped).toBe(true)
+    expect(load!.kits['kit-civ'] ?? 0).toBe(0)
+    expect(load!.nextPulseAtMs).toBeUndefined()
+    expect(load!.pulses).toBe(0)
+  })
+
+  it('战斗推进自动调度：45 秒 9 跳、每跳修 10 点并扣 1 枚组件（同种子双跑对照 = 精确回血）', () => {
+    /** 同 seed 双跑：有/无维修装置。修复不消耗 rng、不改变弹道判定 → 敌方输出两跑逐拍相同，
+     *  最终血差 = 9 跳 × 10 修复量（缺口恒大、每跳修满额度），可精确断言。 */
+    const run = (fitted: boolean) => {
+      const { state, ctx } = repWorld({ cargoKits: 300 })
+      if (fitted) {
+        addModule(state, 'mod-rep', 1)
+        expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
+      }
+      const battle = startBattleFor(state, ctx, 'sandcat', 'ano-rep', 0)!
+      const meRt = battle.units['player']!
+      meRt.hp = { s: 0, a: 3_000, h: 2_000 } // 手动制造大缺口（盾打空、甲/结构重残）
+      state.gameMs = 45_000
+      advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-rep')
+      const r = battle.repair
+      return {
+        ended: battle.ended,
+        a: meRt.hp.a,
+        h: meRt.hp.h,
+        pulses: r?.pulses ?? 0,
+        kitsUsed: r?.kitsUsed ?? 0,
+        kitsLeft: r?.kits['kit-civ'] ?? 0,
+      }
+    }
+    const withRep = run(true)
+    const without = run(false)
+    expect(without.ended).toBeNull()
+    expect(withRep.ended).toBeNull() // 巨型血条 vs 40 威胁 × 45 秒：双方都打不死对方
+    expect(withRep.pulses).toBe(9) // 5s/10s/…/45s 共 9 跳
+    expect(withRep.kitsUsed).toBe(9) // 缺口恒大 → 每跳都实际修复、都扣 1 枚
+    expect(withRep.kitsLeft).toBe(121 - 9) // 单台预载上限 = ⌈10 分钟 / 5s⌉ + 1 = 121 枚
+    // 修复真实回血：有装置组比无装置组多回 9×10 点（敌方输出两跑相同）
+    expect(withRep.a + withRep.h).toBe(without.a + without.h + 90)
+    expect(withRep.a).toBeGreaterThan(without.a)
+  })
+
+  it('组件耗尽自动停机：余额 0 后停调度、写停机日志', () => {
+    const { state, ctx } = repWorld({ cargoKits: 300 })
+    addModule(state, 'mod-rep', 1)
+    expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
+    const battle = startBattleFor(state, ctx, 'sandcat', 'ano-rep', 0)!
+    const meRt = battle.units['player']!
+    meRt.hp = { s: 0, a: 3_000, h: 2_000 }
+    battle.repair!.kits['kit-civ'] = 2 // 只留 2 枚 → 第 3 个到期脉冲耗尽停机
+    const logs0 = state.logs.length
+    state.gameMs = 62_000
+    advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-rep')
+    // 5s/10s 两跳各扣 1 枚；15s 到期跳发现余额 0 → 停机并日志；20s 到期跳已全停 → 停调度
+    expect(battle.repair!.pulses).toBe(4)
+    expect(battle.repair!.kitsUsed).toBe(2)
+    expect(battle.repair!.units[0]!.stopped).toBe(true)
+    expect(battle.repair!.nextPulseAtMs).toBeUndefined() // 全部停机 → 停调度
+    expect(state.logs.slice(logs0).some((l) => l.text.includes('耗尽'))).toBe(true)
+  })
+
+  it('痊愈空转不烧组件：满血推进不消耗、只计脉冲', () => {
+    const { state, ctx } = repWorld({ cargoKits: 300 })
+    addModule(state, 'mod-rep', 1)
+    expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
+    const battle = startBattleFor(state, ctx, 'sandcat', 'ano-rep', 0)!
+    const meRt = battle.units['player']!
+    meRt.hp = { s: 5_000, a: 5_000, h: 5_000 } // 满血（盾回充/敌伤窗口内可能打破，故立刻改满）
+    state.gameMs = 6_000
+    advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-rep')
+    // 6 秒只有 1 个到期脉冲（5s）；该跳时若无缺口则痊愈空转：不扣组件
+    expect(battle.repair!.pulses).toBeGreaterThanOrEqual(1)
+    // 玩家满血且 6 秒内敌火 ≤ 修复 → 若第一跳时已无缺口则不消耗
+    if (battle.repair!.pulses >= 1 && meRt.hp.a >= 5_000 && meRt.hp.h >= 5_000) {
+      expect(battle.repair!.kitsUsed).toBe(0)
+    }
   })
 })

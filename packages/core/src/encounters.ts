@@ -24,7 +24,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AnomalyDef, SimContext } from './types'
 import { nextRandom } from './rng'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, startBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, startBattleFor } from './combat'
 import { calcPower } from './expedition'
 import { injectWreckDensity, wreckDensityOf } from './salvage'
 import { shipDisplayName } from './instances'
@@ -274,6 +274,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
   if (battle) {
     // 退还剩余弹药（与远征/撤退同一口径）
     refundAmmo(state, battle.ammo)
+    refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
     // P0 承伤持久化：遭遇战同样保留装甲/结构残余（结构=耐久）；失利附加扣损在后
     persistFleetHullDamage(state, ctx, shipId, battle)
   }
