@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 敌舰族群 C：异形生物舰(裂谷/星髓/噬口/深渊:有机曲线 + 发光裂隙 + 非对称肢节,磷光绿点缀) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#cfd8c8; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#cfd8c8; stroke-width:1; opacity:.4 }
+    .bio  { fill:none; stroke:#8dff9e; stroke-width:1.6; opacity:.9 }
+    .biof { fill:#8dff9e }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="48" r="1.2"/><circle class="star" cx="514" cy="62" r="1"/><circle class="star" cx="476" cy="238" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <!-- 有机体:不对称肉瘤船 + 前螯肢 + 后卷尾,无引擎(自行发光) -->
+    <path class="hull" d="M200 52 C202 38 188 30 168 28 C138 26 110 32 92 46 C76 58 62 62 52 58 C60 66 76 74 100 76 C134 79 168 72 190 62 C202 57 206 54 200 52 Z"/>
+    <!-- 前螯肢（双颚咬合结构） -->
+    <path class="hull" d="M200 44 C214 36 224 40 228 48 M200 62 C214 70 224 66 228 58"/>
+    <path class="biof" cx="0" d=""/>
+    <!-- 发光裂隙（能量脉线:青绿,非引擎而是生物发光） -->
+    <path class="bio" d="M118 30 C120 42 118 54 116 66 M150 27 C150 40 152 56 150 72"/>
+    <path class="bio" d="M176 32 C178 44 176 56 178 66" opacity=".7"/>
+    <!-- 眼点（前端感觉器） -->
+    <circle class="biof" cx="212" cy="44" r="1.6"/>
+    <circle class="biof" cx="212" cy="62" r="1.6"/>
+    <!-- 背刺/肢节 -->
+    <path class="hull" d="M96 34 l6 -8 M124 30 l4 -9 M150 28 l-2 -9" opacity=".85"/>
+    <!-- 腹触丝 -->
+    <path class="hull" d="M120 76 c-4 8 2 12 -6 18 M150 78 c2 8 -4 14 2 20" opacity=".8"/>
+  </g>
+  <text class="note" x="40" y="286">敌族 C：异形生物舰(裂谷·星髓·噬口·深渊类)— 草稿(不对称有机体 + 螯颚 + 生物发光裂隙)</text>
+</svg>

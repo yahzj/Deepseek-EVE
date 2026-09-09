@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 敌舰族群 B：训练靶机/武装拾荒者(低威胁:方块化靶机 + 警告涂装,黄黑斜纹) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#e9d9c8; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#e9d9c8; stroke-width:1; opacity:.38 }
+    .acc  { fill:none; stroke:#ffd166; stroke-width:1.6 }
+    .accf { fill:#ffd166 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="48" r="1.2"/><circle class="star" cx="510" cy="62" r="1"/><circle class="star" cx="478" cy="238" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M36 55 L26 58 L36 61 Z" opacity=".8"/>
+    <!-- 方块化靶机体（简单几何,圆角箱 + 顶靶标） -->
+    <path class="hull" d="M198 56 L188 42 L108 40 C88 40 74 45 66 51 L58 56 L64 64 C74 71 92 75 112 75 L174 73 Z"/>
+    <!-- 靶标环（顶徽:同心圆靶 = 训练机识别） -->
+    <circle class="accf" cx="150" cy="34" r="7" fill="none"/>
+    <circle class="accf" cx="150" cy="34" r="2.4"/>
+    <!-- 黄黑警告斜纹（可活动区条） -->
+    <path class="panel" d="M104 46 L120 70 M118 46 L134 70 M132 46 L148 70" opacity=".7"/>
+    <!-- 前小炮（低威胁单管） -->
+    <path class="hull" d="M198 52 L216 52 L216 56 L198 58 Z"/>
+    <!-- 侧舱盖 -->
+    <path class="panel" d="M84 52 h14 M84 64 h14"/>
+    <!-- 尾鳍/单引擎 -->
+    <path class="hull" d="M72 68 l6 10 h-10 z" opacity=".7"/>
+    <path class="hull" d="M64 44 h8 v15 h-8 z" opacity=".85"/>
+    <path class="warm" d="M54 47 h8 v9 h-8 z"/>
+  </g>
+  <text class="note" x="40" y="286">敌族 B：训练靶机/武装拾荒者(演习场·新港·拾荒类)— 草稿(方块化 + 靶标环 + 黄黑警告斜纹)</text>
+</svg>
