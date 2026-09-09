@@ -2,7 +2,7 @@
  * 星图页（标签页结构）：本地矿带开采（主控 + AI 副船指派）/ 星图·远征调度 / 战斗悬赏 / 残骸打捞 / 任务中心。
  * 顶部二级标签切换各功能区（配合左侧主菜单「出港」展开选择，见 App）。
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AI_CORE_ORDER,
   aiCoreName,
@@ -39,6 +39,12 @@ import { isk, MONEY_GLYPH } from './common'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'task'
+/** 跨页跳转目标（2026-09-09 船长定：工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮数秒自清） */
+export interface MapGotoTarget {
+  tab: 'mine' | 'salvage'
+  ids: string[]
+  seq: number
+}
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'star', label: '星图·远征', icon: 'nav-map' },
   { key: 'mine', label: '矿带开采', icon: 'nav-mine' },
@@ -47,10 +53,36 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'task', label: '任务中心', icon: 'nav-task' },
 ]
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
+  mapGoto?: MapGotoTarget | null
 }) {
+  // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
+  // seq 只在跨页跳转时递增，普通切回本页不重放）
+  const [hlIds, setHlIds] = useState<string[]>([])
+  const lastGotoSeq = useRef(-1)
+  useEffect(() => {
+    if (!mapGoto || mapGoto.tab !== mapTab || mapGoto.seq === lastGotoSeq.current) return
+    lastGotoSeq.current = mapGoto.seq
+    setHlIds(mapGoto.ids)
+    const t = window.setTimeout(() => setHlIds([]), 3500)
+    const raf = requestAnimationFrame(() => {
+      for (const id of mapGoto.ids) {
+        const el = document.querySelector(`[data-card-id="${id}"]`)
+        if (el) {
+          el.scrollIntoView({ block: 'center' })
+          break
+        }
+      }
+    })
+    return () => {
+      window.clearTimeout(t)
+      cancelAnimationFrame(raf)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapGoto?.seq, mapTab])
+
   return (
     <div className="page-stack page-fill">
       {/* ───── 功能标签页（免滚动切换） ───── */}
@@ -71,10 +103,10 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProp
         ))}
       </div>
 
-      {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'mine' ? hlIds : []} /> : null}
       {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
-      {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'task' ? <TaskPanel engine={engine} onToast={onToast} /> : null}
     </div>
   )
@@ -82,7 +114,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab }: PageProp
 
 /* ═══════════════ 标签二：矿带开采（矿带 = 常驻矩形卡片，操作入卡） ═══════════════ */
 
-function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onToast: ToastFn; focusIds?: readonly string[] }) {
   const state = engine.state
   const view = miningStatus(state, engine.ctx)
   const activeBeltId = view.active ? state.mining.beltId : null
@@ -159,6 +191,7 @@ function MiningTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }
             engine={engine}
             onToast={onToast}
             isActiveBelt={belt.id === activeBeltId}
+            focus={focusIds.includes(belt.id)}
             canStart={!view.active}
             onStart={handleStart}
             onStop={handleStop}
@@ -176,6 +209,7 @@ function BeltCard({
   engine,
   onToast,
   isActiveBelt,
+  focus = false,
   canStart,
   onStart,
   onStop,
@@ -185,6 +219,7 @@ function BeltCard({
   engine: GameEngine
   onToast: ToastFn
   isActiveBelt: boolean
+  focus?: boolean
   canStart: boolean
   onStart: (beltId: string) => void
   onStop: () => void
@@ -265,7 +300,10 @@ function BeltCard({
   }
 
   return (
-    <div className={`app-belt-card${isActiveBelt ? ' is-active' : ''}${locked ? ' is-locked' : ''}`}>
+    <div
+      className={`app-belt-card${isActiveBelt ? ' is-active' : ''}${locked ? ' is-locked' : ''}${focus ? ' is-goto' : ''}`}
+      data-card-id={belt.id}
+    >
       <div className="app-belt-head">
         <span className="app-belt-name">
           {belt.name}
@@ -449,7 +487,7 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   }
 }
 
-function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onToast: ToastFn; focusIds?: readonly string[] }) {
   const state = engine.state
   const me = state.salvaging
   // 正在该星系打捞的 AI 副船（名册：快速取消用）
@@ -522,6 +560,7 @@ function SalvageTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn 
               density={density}
               aiWorkers={workers}
               isActive={me.active && me.galaxyId === g.id}
+              focus={focusIds.includes(g.id)}
               activeAnywhere={me.active}
               idleShips={idleShips}
               engine={engine}
@@ -568,6 +607,7 @@ function WreckCard({
   density,
   aiWorkers,
   isActive,
+  focus = false,
   activeAnywhere,
   idleShips,
   engine,
@@ -581,6 +621,7 @@ function WreckCard({
   density: number
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
   isActive: boolean
+  focus?: boolean
   activeAnywhere: boolean
   idleShips: string[]
   engine: GameEngine
@@ -613,7 +654,10 @@ function WreckCard({
   const flavorParts = partList.slice(0, 4).concat(partList.length > 4 ? [`… 等${partList.length}组`] : [])
 
   return (
-    <div className={`app-belt-card${isActive ? ' is-active' : ''}`}>
+    <div
+      className={`app-belt-card${isActive ? ' is-active' : ''}${focus ? ' is-goto' : ''}`}
+      data-card-id={g.id}
+    >
       <div className="app-belt-head">
         <span className="app-belt-name">
           {g.name}

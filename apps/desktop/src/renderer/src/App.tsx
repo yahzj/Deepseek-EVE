@@ -25,7 +25,7 @@ import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MapPage } from './pages/MapPage'
-import type { MapTab } from './pages/MapPage'
+import type { MapGotoTarget, MapTab } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
@@ -413,6 +413,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [mktFocus, setMktFocus] = useState<{ key: string; seq: number } | null>(null)
   // 舰船页卡片"装配"→ 装配页默认目标船（船长 2026-09-05：入口在舰队卡片；离开装配页即清，再次直进默认当前驾驶船）
   const [fitShipId, setFitShipId] = useState<string | null>(null)
+  // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
+  const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
   useEffect(() => {
     if (page !== 'fit') setFitShipId(null)
     // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
@@ -579,6 +581,13 @@ export function App({ engine }: { engine: GameEngine }) {
     }
     setMapTab(t)
   }
+  // 工业页 → 星图定位（2026-09-09 船长定）：切页 + 目标标签页 + 卡高亮 seq（MapPage 一次性应用；
+  // 标签页切换走 changeMapTab 尊重教程步骤锁——被锁时只切页不切签，高亮不触发）
+  const gotoMapTab = (tab: 'mine' | 'salvage', ids: string[]): void => {
+    changePage('map')
+    changeMapTab(tab)
+    setMapGoto((p) => ({ tab, ids, seq: (p?.seq ?? 0) + 1 }))
+  }
   const changeShipTab = (t: ShipTab): void => {
     if (tutShipTab && t !== tutShipTab) {
       showToast('当前教程步骤请使用舰船页对应标签（见引导卡）。', true)
@@ -737,10 +746,11 @@ export function App({ engine }: { engine: GameEngine }) {
                   setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
                   changePage('market')
                 }}
+                onGotoMap={gotoMapTab}
               />
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
-            {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} /> : null}
+            {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} mapGoto={mapGoto} /> : null}
           </div>
         </main>
         <div className="app-log-dock">
