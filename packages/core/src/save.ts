@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 存档：序列化、读取、版本迁移、容错修复。
  *
  * 设计说明（中文）：
@@ -1570,7 +1570,7 @@ function normalizeState(raw: unknown): GameState {
     finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
     legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
   }
-  // --- 运输任务（2026-09-09 两站运输：可选字段、旧档零迁移；active 需目标端点字段可读） ---
+  // --- 长途运输（2026-09-09 两站运输：可选字段、旧档零迁移；active 需目标端点字段可读） ---
   const haulRaw = asRaw(src.hauling)
   const haulTo = typeof haulRaw.toSiteId === 'string' || haulRaw.toSiteId === null ? haulRaw.toSiteId : null
   const haulFrom = typeof haulRaw.fromSiteId === 'string' || haulRaw.fromSiteId === null ? haulRaw.fromSiteId : null

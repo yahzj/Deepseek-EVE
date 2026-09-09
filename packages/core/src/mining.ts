@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 采矿作业（M1 基础 + v7 自动循环状态机 + T4 显式行程/换驾驶善后）。
  *
  * 模型（中文说明）：
@@ -191,7 +191,7 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
   }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '运输任务进行中：先停止（活动栏「停止运输」，到站即止）再开采。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。' }
   // 挂星系的采集点必须能从母港到达（无航路 → 拒绝）
   if (belt.galaxyId && belt.galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, belt.galaxyId)

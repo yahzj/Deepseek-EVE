@@ -1,5 +1,5 @@
-/**
- * 任务中心 · 运输任务（2026-09-09 船长定稿 + 当日改）：
+﻿/**
+ * 星图页「长途运输」标签（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁。定稿 + 当日改）：
  * - 任意两座「已建成」站点之间的真实航程往返运输（自动循环）；
  * - **不要求停靠在航线端点**：停靠在任意协会站点即可接单，不在端点时引擎先飞"就位段"
  *   到较近端点，再按所选航线循环；
@@ -87,14 +87,14 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
     const r = engine.startHaulingAt(aId, bId)
     if (!r.ok) onToast(r.error ?? '无法开始运输。', true)
     else if (dockedOk && (docked === aId || docked === bId))
-      onToast('运输任务开始：虚拟货物占满货仓，往返航行中……')
-    else onToast('运输任务开始：先飞就位段到较近端点，随后自动往返（虚拟货物占满货仓）。')
+      onToast('长途运输开始：虚拟货物占满货仓，往返航行中……')
+    else onToast('长途运输开始：先飞就位段到较近端点，随后自动往返（虚拟货物占满货仓）。')
   }
 
   function stopNow(): void {
     const r = engine.stopHaulingNow()
     if (!r.ok) onToast(r.error ?? '停止失败。', true)
-    else onToast('运输任务已停止：舰船已即时返港停靠出发站（无惩罚）。')
+    else onToast('长途运输已停止：舰船已即时返港停靠出发站（无惩罚）。')
   }
 
   return (
@@ -148,7 +148,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                 ) : (
                   <div className="app-haul-actions">
                     {haulingActive ? (
-                      <span className="app-dim">运输任务进行中（见上方航线卡）——先停止才能换线。</span>
+                      <span className="app-dim">长途运输进行中（见上方航线卡）——先停止才能换线。</span>
                     ) : !dockedOk ? (
                       <span className="app-dim">先返航停靠到任意空间站即可开始（不要求是航线端点）。</span>
                     ) : null}

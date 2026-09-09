@@ -1,5 +1,5 @@
-/**
- * 运输任务（2026-09-09 船长定稿：docs/design/announcement-draft-20260909 之外的新玩法）：
+﻿/**
+ * 长途运输（2026-09-09 船长定稿：docs/design/announcement-draft-20260909 之外的新玩法）：
  * 玩家驾驶船在两座「已建成」站点（母港 ⇄ 副站 / 副站 ⇄ 副站）之间做真实航程的往返运输，
  * 循环自动续跑（与悬赏「重复清剿」同款体验），可随时"到站即停"。
  *
@@ -103,15 +103,15 @@ function setLeg(state: GameState, ctx: SimContext, fromId: string | null, toId: 
 }
 
 /**
- * 玩家指令：开始运输任务（在所选航线的两个端点间往返循环）。
+ * 玩家指令：开始长途运输（在所选航线的两个端点间往返循环）。
  * 2026-09-09 改（船长定）：**不要求停靠在航线端点**——停靠在任意协会站点即可接单；
  * 若当前停靠不在端点，先飞一段"就位航段"到较近端点（真实航程、按段计酬），随后按
  * A⇄B 循环。须停靠空间站（母港或已建成副站；野外不能接）。
  */
 export function startHauling(state: GameState, aSiteId: string | null, bSiteId: string | null, ctx: SimContext): CommandResult {
-  if (state.hauling.active) return { ok: false, error: '运输任务进行中：先停止（顶部活动栏）再换线。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（顶部活动栏）再换线。' }
   // 前置：停靠在空间站（母港或已建成副站）
-  if (state.awayGalaxy !== null) return { ok: false, error: '舰船在野外：先返航到空间站再安排运输任务。' }
+  if (state.awayGalaxy !== null) return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。' }
   const endpoints = haulEndpoints(state, ctx)
   const a = endpoints.find((e) => e.siteId === aSiteId)
   const b = endpoints.find((e) => e.siteId === bSiteId)
@@ -163,17 +163,17 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   addLog(
     state,
     'info',
-    `运输任务开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
+    `长途运输开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
       (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
       `，到站结算报酬约 ${perLeg.toLocaleString('zh-CN')} ISK${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
   )
   return { ok: true }
 }
 
-/** 玩家指令：停止运输任务（立即响应：中止当前航段并**即时返港停靠出发站**，无需返程时间；无惩罚） */
+/** 玩家指令：停止长途运输（立即响应：中止当前航段并**即时返港停靠出发站**，无需返程时间；无惩罚） */
 export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
   const h = state.hauling
-  if (!h.active) return { ok: false, error: '没有进行中的运输任务。' }
+  if (!h.active) return { ok: false, error: '没有进行中的长途运输。' }
   const originId = h.fromSiteId // 本段出发站（null = 母港）
   const originName = haulEndpointName(ctx, originId)
   h.active = false
@@ -187,11 +187,11 @@ export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
   // 2026-09-09（船长定）：终止即瞬时返港——不再安排真实折返航程，船直接停靠回出发站
   state.awayGalaxy = null
   state.dockedSite = originId === null ? null : originId
-  addLog(state, 'info', `运输任务已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`)
+  addLog(state, 'info', `长途运输已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`)
   return { ok: true }
 }
 
-/** 引擎内部：推进运输任务（真实航程腿逐段飞行 → 到站结算 → 按所选航线自动续段） */
+/** 引擎内部：推进长途运输（真实航程腿逐段飞行 → 到站结算 → 按所选航线自动续段） */
 export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContext): void {
   const h = state.hauling
   if (!h.active || deltaMs <= 0) return
@@ -209,7 +209,7 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
       addLog(
         state,
         'trade',
-        `运输任务 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
+        `长途运输 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
       )
       // 到站（母港 = dockedSite null；随后立即续下一段）
       state.awayGalaxy = null
@@ -219,26 +219,26 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
       if (!setLeg(state, ctx, at, nextTo)) {
         // 航线异常（端点不可达等防御）：就地结束并提示
         h.active = false
-        addLog(state, 'warn', `运输任务异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`)
+        addLog(state, 'warn', `长途运输异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`)
         break
       }
       const departTo = haulEndpointName(ctx, h.toSiteId)
-      addLog(state, 'info', `运输任务继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`)
+      addLog(state, 'info', `长途运输继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`)
     }
   }
 }
 
-/** 引擎内部：换驾驶时终止运输任务（虚拟货无残留、无惩罚；不额外安排返航——旧船停靠位置即结束） */
+/** 引擎内部：换驾驶时终止长途运输（虚拟货无残留、无惩罚；不额外安排返航——旧船停靠位置即结束） */
 export function cancelHaulingOnSwitch(state: GameState, ctx: SimContext): void {
   if (!state.hauling.active) return
   const wasTo = haulEndpointName(ctx, state.hauling.toSiteId)
   state.hauling = emptyHauling()
   state.dockedSite = null
   state.awayGalaxy = null
-  addLog(state, 'info', `运输任务已随切换驾驶终止（原航线「… → ${wasTo}」；虚拟货物无残留、无惩罚）。`)
+  addLog(state, 'info', `长途运输已随切换驾驶终止（原航线「… → ${wasTo}」；虚拟货物无残留、无惩罚）。`)
 }
 
-/** 引擎内部：运输任务期间驾驶船被虚拟货物占用的货仓容积（其余时刻 0；UI 展示"已用/剩余"用） */
+/** 引擎内部：长途运输期间驾驶船被虚拟货物占用的货仓容积（其余时刻 0；UI 展示"已用/剩余"用） */
 export function haulingOccupiedM3(state: GameState, ctx: SimContext): number {
   if (!state.hauling.active) return 0
   return cargoCapacityM3Of(state, ctx, state.shipId)

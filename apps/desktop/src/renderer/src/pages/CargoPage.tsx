@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 货仓页（T3）：顶部"查看船"选择条可切换查看舰队任一艘船的货仓。
  * - 每艘船一枚 chip：船名 + （驾驶中）标记 + 出勤徽标（shipBusyLabel）；
  * - 默认查看驾驶船；驾驶船变更后自动跟随；选中船不存在（卖/弃船）自动回驾驶船；
@@ -56,7 +56,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const cargo = cargoOfShip(state, targetId)
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
-  // 2026-09-09 运输任务：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
+  // 2026-09-09 长途运输：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
   const haulOcc = isPiloted && state.hauling.active ? haulingOccupiedM3(state, engine.ctx) : 0
   const rows = Object.entries(cargo).filter(([, n]) => n > 0)
 
@@ -153,7 +153,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
-              ⚠ 运输任务进行中：货仓由虚拟运输货物占满（可用 0 m³）——到站自动结算报酬；任务期间不能装卸与出售。
+              ⚠ 长途运输进行中：货仓由虚拟运输货物占满（可用 0 m³）——到站自动结算报酬；任务期间不能装卸与出售。
             </div>
           ) : null}
           {isPiloted ? (

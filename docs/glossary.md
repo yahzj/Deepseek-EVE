@@ -136,6 +136,7 @@
 | 未建成不视为任何站点 | 2026-09-08 船长定（彻底收口）：副站完成全部档位（建成）前**不提供停靠/泊位/卸货/维修/换驾驶等任何站内功能**——引擎停靠落点只认已建成站；advanceGame 逐 tick `reconcileDockSanity` 把旧档残留的未建成/未知停靠纠正为"工地现场野外停留"（幂等、只记一次日志）；维修/换驾驶对未建成停靠一律拒办 | location.ts reconcileDockSanity；stationSites stage ≥ tiers.length；shipyard.ts |
 | 建站交付航线 | 2026-09-08 船长定（同日 v2 修订：物理载货模型）：「前往工地交付」指令（星图该星系行动区 + 建站任务卡双入口）——出发时把货仓装满建材（仓库按名单顺序装载，上限 = min(空闲 m³, 全站剩余需求)，保留船上原货），按**真实航程**前往工地星系（transit.delivery.phase = to-site，loaded 携带本趟装载明细）；到点**只清空本趟装载**（cargoOnly：不补扣仓库，白跑场景结构性消除）并**自动返航**（to-station）；仓库还有建材就**自动续趟**，直到①全部档位建成（就地停靠新站）或②仓库建材耗尽（终止：事件日志 + 一次性弹窗提示）；**随时可取消**（= 停止整个循环，无惩罚、立即返航停靠最近已建成站、本趟装载随进港卸回仓库） | location.ts startSiteDeliverTrip / cancelSiteDeliverTrip / arriveDeliverSite / continueDeliverLoop；ShipTransitState.delivery.loaded |
 | 成交静默 | 2026-09-08 船长定：站内让利吸收与巡游抢单的成交日志及市场 UI 提示全部与普通簿面成交同模板（「挂单成交/挂单买入成交」），**不向玩家披露让利/巡游通道**（机制与价线纪律保留，仅玩家可见层静默） | market.ts settleStationTake/settleSnatch*；MarketPage 价格指引 |
+| 长途运输 | 2026-09-09 船长定稿（原称「运输任务」，同日独立改名定稿）：星图页独立标签（残骸打捞之后），**至少建成一座副空间站解锁**（母港之外的端点）；任意两座已建成站点间真实航程往返循环（虚拟货物占满货仓、不产生真实物品、到站自动结算续段）；可随时停止（即时返港出发站，无惩罚）；换驾驶 = 立即终止 | hauling.ts；HaulingPanel（星图「长途运输」标签）；HAUL_RATE_PER_M3_MIN |
 
 ## 八、舰船尺寸大分类（2026-09-09 船长定：全船统一 5 档，按等效质量落档；armored ×0.65 修正）
 

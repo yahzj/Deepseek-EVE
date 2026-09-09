@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 星图探索（V13，设计已确认）：
  *
  * 规则（中文说明）：
@@ -139,7 +139,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '运输任务进行中：先停止（活动栏「停止运输」，到站即止）再扫描。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再扫描。' }
 
   // 出发地 = 当前位置（野外停留点或空间站）；作业开始时清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)

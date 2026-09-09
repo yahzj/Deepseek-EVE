@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
  * 职责（中文说明）：
@@ -111,7 +111,7 @@ import {
   BOUNTY_MC_RUNS,
   buildEvalState,
   estimateBountyWinOn,
-  // 2026-09-09 运输任务
+  // 2026-09-09 长途运输
   startHauling,
   stopHauling,
   haulEndpoints,
@@ -1205,7 +1205,7 @@ export class GameEngine {
     return result
   }
 
-  /** 2026-09-09 运输任务：开始（任选一条两端点航线；不要求当前停靠在端点——引擎先飞就位段） */
+  /** 2026-09-09 长途运输：开始（任选一条两端点航线；不要求当前停靠在端点——引擎先飞就位段） */
   startHaulingAt(aSiteId: string | null, bSiteId: string | null): CommandResult {
     const result = startHauling(this.state, aSiteId, bSiteId, this.ctx)
     if (result.ok) {
@@ -1215,7 +1215,7 @@ export class GameEngine {
     return result
   }
 
-  /** 2026-09-09 运输任务：停止（立即响应：中止当前航段并自动返航出发站，无惩罚） */
+  /** 2026-09-09 长途运输：停止（立即响应：中止当前航段并自动返航出发站，无惩罚） */
   stopHaulingNow(): CommandResult {
     const result = stopHauling(this.state, this.ctx)
     if (result.ok) {

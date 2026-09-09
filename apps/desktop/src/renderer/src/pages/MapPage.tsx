@@ -13,6 +13,7 @@ import {
   getMiningParams,
   idleAiShipIds,
   isExplored,
+  isSiteBuilt,
   marketGoodOf,
   marketQuote,
   miningStatus,
@@ -33,12 +34,13 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
+import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH } from './common'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
-export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'task'
+export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'task'
 /** 跨页跳转目标（2026-09-09 船长定：工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮数秒自清） */
 export interface MapGotoTarget {
   tab: 'mine' | 'salvage'
@@ -50,6 +52,8 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'mine', label: '矿带开采', icon: 'nav-mine' },
   { key: 'bounty', label: '战斗悬赏', icon: 'nav-bounty' },
   { key: 'salvage', label: '残骸打捞', icon: 'nav-salvage' },
+  /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
+  { key: 'haul', label: '长途运输', icon: 'nav-haul' },
   { key: 'task', label: '任务中心', icon: 'nav-task' },
 ]
 
@@ -102,6 +106,9 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapGoto?.seq, mapTab])
 
+  // 长途运输解锁门（2026-09-09 船长）：至少建成一座副空间站（母港之外的第二端点）才有航线
+  const builtStationCount = [...engine.ctx.stations.values()].filter((s) => isSiteBuilt(engine.state, s)).length
+
   return (
     <div className="page-stack page-fill">
       {/* ───── 功能标签页（免滚动切换） ───── */}
@@ -112,7 +119,14 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
             role="tab"
             aria-selected={mapTab === t.key}
             className={`app-subtab${mapTab === t.key ? ' is-active' : ''}`}
-            onClick={() => onMapTab?.(t.key)}
+            onClick={() => {
+              // 长途运输未解锁（未建成副空间站）：点击给引导提示，不切标签
+              if (t.key === 'haul' && builtStationCount < 1) {
+                onToast('长途运输需要先建成至少一座副空间站（与母港之间才有航线可跑）——建站指引见「任务中心 · 重要任务/资源任务」。', true)
+                return
+              }
+              onMapTab?.(t.key)
+            }}
           >
             <span className="app-tab-ico">
               <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
@@ -126,6 +140,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
       {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
+      {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'task' ? <TaskPanel engine={engine} onToast={onToast} /> : null}
     </div>
   )

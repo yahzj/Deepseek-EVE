@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 测试门槛存档生成器（船长 2026-09-04 约定：B 批次 / 新玩法数值交付时配可测存档）。
  *
  * 用法：npx tsx tools/make-test-save.ts <feature>
@@ -35,7 +35,7 @@
  *         + 声望 13 + 全星系点亮 + 各族代表演示船 ×5（锤头鲨炮巡 MK3 满配驾驶/牛鲨突击巡/玄武
  *         重装旗舰/皇带鱼货舰/座头鲸矿舰）+ 弹药装备库（真机目测我方各族船形与敌族 A~G 型形，
  *         细节锚点/比例问题回传，详见 ship-battle-art 验收清单）。
- *  - hauling 运输任务实测（2026-09-09，两站往返运输）：红环/烬火两座副站标记"建成"并入基地网络
+ *  - hauling 长途运输实测（2026-09-09，两站往返运输）：红环/烬火两座副站标记"建成"并入基地网络
  *         + 点亮两星系 + 钱包 +300 万 + 蝠鲼级重载货舰（7000 m³ 大货舱）设为驾驶——任务中心「运输
  *         任务」页签可见 母港⇄红环 / 母港⇄烬火 / 红环⇄烬火 三条航线（报酬随容量与航程预览），
  *         点开始 → 顶部活动栏进度/停止运输（到站即止）→ 事件日志到站结算 → 货仓页看虚拟满载占用。
@@ -639,7 +639,7 @@ function injectShipArt(state: GameState): string[] {
   return notes
 }
 
-/** hauling（2026-09-09 运输任务实测）：两座副站标记建成 + 点亮星系 + 大货舱货舰驾驶 */
+/** hauling（2026-09-09 长途运输实测）：两座副站标记建成 + 点亮星系 + 大货舱货舰驾驶 */
 function injectHauling(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
@@ -662,7 +662,7 @@ function injectHauling(state: GameState): string[] {
   // 两座副站"建成"（stage = 档位数），并入基地网络 → 与母港互为运输端点
   state.stationSites['site-redring'] = { stage: 3, delivered: {} }
   state.stationSites['site-cinder'] = { stage: 3, delivered: {} }
-  notes.push('红环前哨站 / 烬火前哨站 标记建成（并网）；任务中心「运输任务」应出现 3 条航线（母港⇄红环、母港⇄烬火、红环⇄烬火）')
+  notes.push('红环前哨站 / 烬火前哨站 标记建成（并网）；任务中心「长途运输」应出现 3 条航线（母港⇄红环、母港⇄烬火、红环⇄烬火）')
   for (const g of ['galaxy-redring', 'galaxy-cinder']) {
     if (!state.exploredGalaxies.includes(g)) state.exploredGalaxies.push(g)
   }
@@ -677,7 +677,7 @@ function injectHauling(state: GameState): string[] {
   }
   state.shipId = uid
   notes.push('新增蝠鲼级重载货舰（已设为驾驶；货仓较大 → 每段报酬可观）')
-  notes.push('测试路径：星图 → 任务中心 →「运输任务」页签 → 任选一条航线「开始运输」→ 顶部活动栏看进度与「停止运输」（= 到站即止）→ 事件日志看每段到站报酬 → 货仓页看「虚拟货物占满货仓」→ 停靠副站后换一条航线 / 切换驾驶（任务终止）对照')
+  notes.push('测试路径：星图 → 星图 →「长途运输」标签 → 任选一条航线「开始运输」→ 顶部活动栏看进度与「停止运输」（= 到站即止）→ 事件日志看每段到站报酬 → 货仓页看「虚拟货物占满货仓」→ 停靠副站后换一条航线 / 切换驾驶（任务终止）对照')
   return notes
 }
 

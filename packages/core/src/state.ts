@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 游戏状态：一份存档里保存的全部内容。
  *
  * 设计要点（中文说明）：
@@ -751,7 +751,7 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
   dockedSite: string | null
-  /** 2026-09-09 运输任务（两座已建成站点间真实航程往返循环；虚拟货物占满货仓、不产生真实物品） */
+  /** 2026-09-09 长途运输（两座已建成站点间真实航程往返循环；虚拟货物占满货仓、不产生真实物品） */
   hauling: HaulingState
   /** T9 通讯剧本已读标记：剧本 id -> true */
   dialogueSeen: Record<string, boolean>
@@ -764,7 +764,7 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   deliveryNotice?: string | null
 }
 
-/** 运输任务状态（2026-09-09 船长定稿：任意两座已建成站点间真实航程往返循环；当日改：接单不要求停在端点，
+/** 长途运输状态（2026-09-09 船长定稿：任意两座已建成站点间真实航程往返循环；当日改：接单不要求停在端点，
  * 先"就位航段"驶往较近端点，再按所选航线两端点循环） */
 export interface HaulingState {
   active: boolean

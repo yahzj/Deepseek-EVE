@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 舰队（v7 船坞）：拥有/丢失舰船、切换驾驶、耐久与维修。
  * 每艘船的 货仓/装备/耐久 都存在 fleet[uid] 里，随船生死。
  * v17（T5-B）：fleet 键 = 实例 uid——同型可多艘（第 1 艘 = 船型 id，
@@ -93,7 +93,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   }
   const def = fleetDefOf(state, ctx, shipId)
   if (!def) return { ok: false, error: `未知舰船：${shipId}。` }
-  // 2026-09-09 运输任务：换驾驶 = 立即终止（虚拟货无残留、无惩罚）
+  // 2026-09-09 长途运输：换驾驶 = 立即终止（虚拟货无残留、无惩罚）
   if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
   // T8：驾驶船不在站内（野外停留/返航途中）时不可切换
   if (state.awayGalaxy !== null) {

@@ -1,5 +1,5 @@
-/**
- * 运输任务（2026-09-09 船长定稿 + 当日改：不要求停在端点、任意站接单先就位；停止 = 立即返航出发站）：
+﻿/**
+ * 长途运输（2026-09-09 船长定稿 + 当日改：不要求停在端点、任意站接单先就位；停止 = 立即返航出发站）：
  * 两站间真实航程往返循环、虚拟满载不产真实货物。
  * 覆盖：开始前置（建成/同点/野外/互斥）、自动清仓、端点接单直接对开、非端点接单就位段、
  * 两段结算与自动续段、立即停止返航、换驾驶终止、各作业互斥、存档往返与旧档缺字段默认。
@@ -53,7 +53,7 @@ function startRoute(state: GameState, ctx: SimContext) {
   return startHauling(state, null, 'site-test', ctx)
 }
 
-describe('运输任务（2026-09-09）', () => {
+describe('长途运输（2026-09-09）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -130,7 +130,7 @@ describe('运输任务（2026-09-09）', () => {
     expect(state.hauling.toSiteId).toBe('site-test')
     expect(state.awayGalaxy).toBe('galaxy-hub')
     expect(state.wallet.isk - w0).toBe(reward * 2)
-    expect(state.logs.filter((l) => l.text.includes('运输任务 · 已运抵')).length).toBe(2)
+    expect(state.logs.filter((l) => l.text.includes('长途运输 · 已运抵')).length).toBe(2)
   })
 
   it('停止 = 立即响应且即时返港：中止任务、无需返程时间，船直接停靠回出发站；无后续报酬', () => {

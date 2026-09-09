@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 活动总览（T1）：顶部活动窗口的数据源——把当前所有进行中的"活动/作业"聚合成统一只读视图。
  *
  * 扩展约定（未来耗时作业，如"提炼耗时化"）：新增作业种类只需
@@ -146,14 +146,14 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 运输任务（2026-09-09：两站间真实航程往返；到站自动结算续段；停止 = 立即返航出发站） ──
+  // ── 长途运输（2026-09-09：两站间真实航程往返；到站自动结算续段；停止 = 立即返航出发站） ──
   const hg = state.hauling
   if (hg.active) {
     const leg = Math.max(1, hg.legMs)
     out.push({
       id: 'hauling',
       kind: 'hauling',
-      label: `运输任务 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
+      label: `长途运输 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
       sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 本段实际约 ${Math.max(1, travelMinutesEff(state, ctx, hg.legMinutes))} 分钟`,
       percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
       remainingMs: Math.max(0, leg - hg.phaseAccMs),

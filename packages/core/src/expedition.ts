@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 远征（M3 + V12 两阶段 + 2026-09-06"完成即返航"语义）：派舰船去远方星系的异常点。
  * 流程 = 去程取消（定稿：下达即开战，无出航等待）→ 实时交火(battle) →
  * （胜利 = 结算后自动返航 back，返航 = 目标星系↔母港 2×单程、不可召回；
@@ -214,7 +214,7 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '运输任务进行中：先停止（活动栏「停止运输」，到站即止）再出击。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
     return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（当前 ${standing}），多完成低级目标攒声望。` }
