@@ -1159,3 +1159,37 @@ describe('商品下架（市场目录收缩防御，2026-09-09：蓝图船成品
     expect(state.fleet['big']!.customName).toBe('待售蓝图船')
   })
 })
+
+describe('蓝图船二手出售通道（2026-09-09 船长：允许玩家出售——只收不卖，市场不出成品现货）', () => {
+  it('蓝图船（priceIsk=0 + playerBuyable=false）可挂售并成交入账；抽取窗不给该船刷现货', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 13 })
+    const ctx = makeTestCtx({
+      marketGoods: [
+        { key: 'ship-delist', kind: 'ship', refId: 'big', rarity: 'rare', basePrice: 500_000, demandMultiplier: 0.65, playerBuyable: false },
+        { key: 'it-min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 8, poolTarget: 3_000, supplyFlow: 10 },
+      ],
+      ships: [ship('big', { price: 0 })] /* 蓝图船：图鉴「仅可制造」，成品无现货但允许二手出售 */,
+    })
+    advanceGame(state, 61_000, ctx)
+    const uid = addShipToFleet(state, 'big')
+    state.fleet[uid]!.customName = '蓝图船·待售'
+    state.shipId = 'sandcat'
+    state.market.npcBuy['ship-delist'] = [] // 清掉随机收购单 → 整船转限价卖单（escrow 锁船）
+    const res = sellShipAtMarket(state, ctx, 'big')
+    expect(res.ok).toBe(true)
+    const order = state.orders[0]!
+    expect(state.escrowShips[order.id]).toBeDefined()
+    // NPC 收购单到达 → 二手成交（税后入账、escrow 清）
+    state.market.npcBuy['ship-delist'] = [{ price: 500_000, qty: 1, expiresAtGameMs: state.gameMs + 1_000_000 }]
+    const wallet0 = state.wallet.isk
+    advanceGame(state, 60_000, ctx)
+    expect(order.filled).toBe(1)
+    expect(order.qty).toBe(0)
+    expect(state.escrowShips[order.id]).toBeUndefined()
+    expect(state.wallet.isk).toBeGreaterThan(wallet0)
+    expect(state.orders).toHaveLength(0)
+    // 大步推进跨稀有抽取窗：playerBuyable=false 的船永不出现在供给侧（成品无现货，只收不卖）
+    advanceGame(state, 12 * 60_000, ctx)
+    expect(state.market.npcSell['ship-delist']?.length ?? 0).toBe(0)
+  })
+})
