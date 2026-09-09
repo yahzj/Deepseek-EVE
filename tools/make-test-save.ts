@@ -42,6 +42,9 @@
  *  - hullrep 船体维修装置实测（2026-09-09，中槽自动修复装甲/结构）：灰鲭鲨级驾驶带 MK2 维修装置
  *         + 带伤出场（装甲 55%）——开战即见装甲在脉冲下回升、每 5 秒扣 1 枚军用组件、组件耗尽停机
  *         + 战报返还；另有同型无维修对照船；三档装置与组件备件齐全。
+ *  - lockrep 目标锁定阵列 × 维修装置联合实测（2026-09-09，新高槽 target-lock + 中槽修复件）：
+ *         锤头鲨级 ×2——驾驶船 4×动能MK3 + 锁定阵列MK3 + 维修装置MK2（带伤出场装甲 60%，集火
+ *         金标与修复脉冲同场可见）；无件对照船同火力；锁定/维修三档备件与组件齐全。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -753,6 +756,82 @@ function injectHullrep(state: GameState): string[] {
   return notes
 }
 
+/** lockrep（2026-09-09 目标锁定阵列 × 船体维修装置联合实测）：锤头鲨级 ×2——
+ * ①「集火+维修·锤头」设为驾驶：4×动能MK3 + 高槽 锁定阵列MK3 + 中槽 维修装置MK2/盾抗/索敌/陀螺，
+ *   带伤出场（装甲 60%——开战即见集火金标与修复脉冲同场）；②「无件·对照」同火力无两件；
+ * 锁定/维修三档备件与组件齐全（换装看多件递减与停机语义）。声望 13 全悬赏可接（含穹顶长盘）。 */
+function injectLockrep(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（从干净停靠起点出击）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  if ('deliver' in state.sideTasks && state.sideTasks.deliver !== null) state.sideTasks.deliver = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('已清空进行中的主控作业——从干净停靠起点出击')
+  state.wallet.isk += 8_000_000
+  notes.push('钱包 +8,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（全悬赏可接，含穹顶守卫长盘）')
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
+  }
+  notes.push(`点亮全部星系（${GALAXIES.length}）`)
+  // ① 锤头鲨级·集火+维修（设为驾驶，带伤出场）
+  const uid = addShipToFleet(state, 'sh-hammerhead')
+  const s = state.fleet[uid]!
+  s.customName = '集火+维修·锤头'
+  s.fitted = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'],
+    mid: ['mod-hullrep-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2', null],
+  } // CPU 4×52+26(锁)+26(修)+15×4(中)+15×2(低) = 336/360
+  s.durability = 0.8
+  s.armorPct = 0.6 // 带伤出场：维修上限 = 满值 → 开战后装甲可见回升（演示修复能力）
+  state.shipId = uid
+  // ② 同火力无件对照（无锁定阵列 / 无维修装置）
+  const uid2 = addShipToFleet(state, 'sh-hammerhead')
+  const s2 = state.fleet[uid2]!
+  s2.customName = '无件·对照'
+  s2.fitted = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', null],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', null],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2', null],
+  }
+  notes.push(`新增锤头鲨级 ×2：${uid}（集火+维修·锤头：4×动能MK3 + 锁定阵列MK3 + 维修装置MK2，已设为驾驶——带伤出场装甲 60%）与 ${uid2}（无件·对照，同火力；舰船页切换对比）`)
+  // 补给：两船货舱带足组件（维修每 5 秒跳耗 1 枚军用）+ 三型弹药
+  for (const sh of [s, s2]) {
+    sh.cargo['repairkit-mil'] = (sh.cargo['repairkit-mil'] ?? 0) + 80
+    sh.cargo['repairkit-civ'] = (sh.cargo['repairkit-civ'] ?? 0) + 20
+    sh.cargo['ammo-kinetic-l'] = (sh.cargo['ammo-kinetic-l'] ?? 0) + 800
+    sh.cargo['ammo-plasma-l'] = (sh.cargo['ammo-plasma-l'] ?? 0) + 300
+    sh.cargo['ammo-explosive-l'] = (sh.cargo['ammo-explosive-l'] ?? 0) + 300
+  }
+  notes.push('两船货仓各带 军用修理组件 ×80 / 民用 ×20 + 三型弹药（维修装置开战自动预载，结束退还未用）')
+  // 备件：锁定/维修三档 + 火力支援件（自组换装）
+  for (const m of ['mod-lock-1', 'mod-lock-2', 'mod-lock-3', 'mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
+  }
+  notes.push('装备库备 目标锁定阵列 MK1/2/3 ×2 + 船体维修装置 民用级/MK1/MK2 ×2（装配页换装对照信息卡与多装递减标签）')
+  for (const m of ['mod-turret-kin-3', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-stab-kin-2', 'mod-armor-kin-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
+  }
+  notes.push('装备库备 动能MK3 与支援件 ×2（对照船改装/补充用）')
+  state.warehouse.items['repairkit-mil'] = (state.warehouse.items['repairkit-mil'] ?? 0) + 300
+  state.warehouse.items['repairkit-civ'] = (state.warehouse.items['repairkit-civ'] ?? 0) + 100
+  notes.push('仓库补 军用修理组件 ×300 / 民用 ×100')
+  notes.push('测试路径：装配页看 锁定阵列/维修装置 信息卡 → 星图 → 带僚机悬赏（深渊之门卫队/幽灵舰信号/奥罗武装残骸群）开战 → 敌方首位敌舰**金色呼吸 + ◈ 集火标记**，观察整队火力逐艘击毁（不再分散磨血）；切「无件·对照」打同目标感受随机分散差异 → 长盘（穹顶守卫 3 波）看维修装置绿点脉冲随受伤回升、组件逐跳扣减 → 装配页加装第 2 件锁定阵列看「多装递减」标签与加深叠加 → 货仓组件清空再开战看「缺组件停机」暗红徽标 → 结算后确认未用组件退回仓库')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -768,6 +847,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   wave: injectWave,
   hauling: injectHauling,
   hullrep: injectHullrep,
+  lockrep: injectLockrep,
 }
 function main(): void {
   const feature = process.argv[2]
