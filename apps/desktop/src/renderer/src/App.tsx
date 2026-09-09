@@ -602,7 +602,7 @@ export function App({ engine }: { engine: GameEngine }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep])
-  // S5：到达技能页 → 特典即时归档（人工智能专家 Lv1，免训练等待——船长复测：学习该技能没有加速）
+  // S5：到达技能页 → 特典即时归档（AI 核心操作学 Lv1，免训练等待——船长复测：学习该技能没有加速）
   const skillSeenStep = useRef(-1)
   useEffect(() => {
     if (tutStep === ONB_SKILL && page === 'skills' && skillSeenStep.current !== ONB_SKILL) {

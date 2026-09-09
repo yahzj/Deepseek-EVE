@@ -51,12 +51,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 230, poolTarget: 1_000, supplyFlow: 16 },
   { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 400, supplyFlow: 6 },
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
-  { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 6, demandMultiplier: 0.6, poolTarget: 4_000, supplyFlow: 150 },
-  { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 3_800, supplyFlow: 140 },
-  { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 3_500, supplyFlow: 120 },
+  { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 4_000, supplyFlow: 150 }, // 2026-09-08 工业收益体检：低周转行只升不砍（净率→≥20%）
+  { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 3_800, supplyFlow: 140 },
+  { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 3_500, supplyFlow: 120 },
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
-  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_000, demandMultiplier: 0.6, poolTarget: 300, supplyFlow: 4 },
-  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 21_000, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1.5 },
+  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 300, supplyFlow: 4 },
+  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1.5 },
   // ── 无人机（V10 占位：NPC 补给池） ──
   { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 200, supplyFlow: 4 },
   { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 2 },
@@ -68,8 +68,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-miner-civ', kind: 'module', refId: 'mod-miner-civ', rarity: 'common', basePrice: 9_000, demandMultiplier: 0.6 },
   { key: 'mod-cargo-civ', kind: 'module', refId: 'mod-cargo-civ', rarity: 'common', basePrice: 8_000, demandMultiplier: 0.6 },
   { key: 'mod-turret-civ', kind: 'module', refId: 'mod-turret-civ', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.6 },
-  { key: 'mod-miner-1', kind: 'module', refId: 'mod-miner-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
-  { key: 'mod-cargo-1', kind: 'module', refId: 'mod-cargo-1', rarity: 'common', basePrice: 28_000, demandMultiplier: 0.6 },
+  { key: 'mod-miner-1', kind: 'module', refId: 'mod-miner-1', rarity: 'common', basePrice: 31_200, demandMultiplier: 0.6 },
+  { key: 'mod-cargo-1', kind: 'module', refId: 'mod-cargo-1', rarity: 'common', basePrice: 29_200, demandMultiplier: 0.6 },
   { key: 'mod-turret-kin-1', kind: 'module', refId: 'mod-turret-kin-1', rarity: 'common', basePrice: 53_000, demandMultiplier: 0.6 },
   { key: 'mod-missile-1', kind: 'module', refId: 'mod-missile-1', rarity: 'common', basePrice: 62_000, demandMultiplier: 0.6 },
   { key: 'mod-laser-1', kind: 'module', refId: 'mod-laser-1', rarity: 'common', basePrice: 66_000, demandMultiplier: 0.6 },

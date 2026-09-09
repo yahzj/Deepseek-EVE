@@ -95,16 +95,16 @@ describe('V10：气体/冰矿接入采集与精炼循环', () => {
     expect(r.error).toContain('没有对应的可采集资源')
   })
 
-  it('精炼炉接受气体/冰矿（循环运转：10 单位/批、6 秒兜底批参），产物入仓库；产出倍率公式（基础 100%）', () => {
+  it('精炼炉接受气体/冰矿（循环运转：10 单位/批、6 秒兜底批参），产物入仓库；产出倍率公式（基础 120%）', () => {
     state.warehouse.items['gas-x'] = 100
     expect(startRefineRun(state, 'gas-x', 'pilot', ctx).ok).toBe(true)
     advanceGame(state, 61_000, ctx) // 10 批 × 6s → 料尽自动停
     advanceGame(state, 10_000, ctx) // 收尾拍：让 gas 炉彻底停（pilot 位空出，2026-09-06 起整批语义）
-    expect(countWare(state, 'min-a')).toBe(200) // floor(10×2×1.0)=20/批 ×10
+    expect(countWare(state, 'min-a')).toBe(240) // floor(10×2×1.2)=24/批 ×10
     state.warehouse.items['ice-x'] = 100
     expect(startRefineRun(state, 'ice-x', 'pilot', ctx).ok).toBe(true)
     advanceGame(state, 61_000, ctx)
-    expect(countWare(state, 'min-b')).toBe(150) // floor(10×1.5×1.0)=15/批 ×10
+    expect(countWare(state, 'min-b')).toBe(180) // floor(10×1.5×1.2)=18/批 ×10
   })
 
   it('弹药/矿物无配方不能精炼', () => {

@@ -10,9 +10,9 @@
  *   refineCycleMs；缺失兜底 10 单位/6 秒）；启动即把全部库存锁定入炉（货仓优先取用），
  *   每批到点按产出倍率出矿物入物品仓库并自动续批，直到料尽自动停炉（核心归还）；
  * - 停止即止：已完成批已出货，剩余锁定原料全额退回物品仓库；
- * - 产出倍率（玩家口径；旧称收率）= 基础 100%（配方按 100% 基准标定）+ 精炼学 8%/级 +
- *   高级回收处理 4%/级，上限 160%；每批结算按当时技能取值（2026-09-08 船长定稿：
- *   基础即满额产出，技能只负责把倍率推高到 160%——配方数值已按此基准标定）；
+ * - 产出倍率（玩家口径；旧称收率）2026-09-08 工业收益体检再定：基础 120%（无技能净率 ≈+20%）+
+ *   精炼学 +6%/级 + 高级回收处理 +3%/级，满级合计 165%（技能本身加成较原下调约 20%）；
+ *   每批结算按当时技能取值；
  * - AI 核心驱动：单批周期 ÷核心效率（核心只提速不减产，与副船任务同口径）。
  * - 卖出（V9 起）不再有"固定价卖给空间站"：货先锁定进市场 escrow，按 NPC 收购簿
  *   即时市价成交（吃穿簿的剩余自动转限价卖单）；池商品在均衡时收购价 = 基准价，
@@ -48,8 +48,9 @@ export function sellPriceMultiplier(state: GameState): number {
   return 1 + Math.min(0.15, standingOf(state, DSI_FACTION_ID) * 0.01)
 }
 
-/** 按当前技能计算精炼产出倍率（玩家口径：1.0 = 100%，1.6 = 160%；旧称收率）。
- * 2026-09-08（船长定：移除 160% 上限护栏——双技能封顶 5 级，加算自然到 160%，上限仅防未来越界） */
+/** 按当前技能计算精炼产出倍率（玩家口径：1.2 = 120%（无技能，净率 ≈+20%）、满级 1.65 = 165%）。
+ * 2026-09-08 船长再定（工业工位收益体检）：基础 100%→120%（无技能净率抬到约两成）、
+ * 技能每级加成下调约 20%（精炼学 +6%、高级回收 +3%），满级倍率 165% */
 export function refineRate(state: GameState, ctx: SimContext): number {
   const bal = ctx.balance.refining
   const level1 = state.skills.trained[bal.rateSkillId] ?? 0
@@ -180,7 +181,7 @@ export function startRefineRun(
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   } else {
-    const capBlock = aiCoreCapBlock(state, ctx)
+    const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
@@ -197,7 +198,7 @@ export function startRefineRun(
     const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
     if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   }
-  // 工业自动化（industrial-automation，2026-09-08 船长定：手动与 AI 核心驱动同享）：
+  // 产线节拍学（原"工业自动化"，id industrial-automation；2026-09-08 船长定：手动与 AI 核心驱动同享）：
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
@@ -279,7 +280,7 @@ export function startRecycleRun(
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   } else {
-    const capBlock = aiCoreCapBlock(state, ctx)
+    const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入回收炉。` }

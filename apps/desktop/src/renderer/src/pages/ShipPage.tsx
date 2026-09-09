@@ -9,6 +9,7 @@ import {
   aiCoreName,
   aiTaskView,
   aiEfficiency,
+  industryAiBonus,
   countAiCore,
   goodLockedReason,
   idleAiShipIds,
@@ -509,6 +510,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const state = engine.state
   const cap = aiCoreCap(state, engine.ctx)
   const used = aiCoreUsed(state)
+  const industryBonus = industryAiBonus(state, engine.ctx) // 2026-09-08 工业专用扩容（仅站内产业）
   const idleShips = idleAiShipIds(state)
   // 计数口径同源（2026-09-08 玩家反馈"执行中 N 与实际行数对不上"）：used 含 AI 副船 +
   // AI 核心驱动的精炼/回收炉与制造线（后者在工业页管理）；本页列表只列副船 → 标题拆分展示，
@@ -558,13 +560,18 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     <Panel
       className="is-fill"
       title="AI 指挥中心"
-      right={<span className="app-dim">AI 核心启用 {used}/{cap}</span>}
+      right={
+        <span className="app-dim">
+          AI 核心启用 {used}/{cap}
+          {industryBonus > 0 ? ` +${industryBonus} 工业` : ''}
+        </span>
+      }
     >
       {/* 名额与核心库 */}
       <div className="app-ai-status">
         <span className="app-dim">
-          AI 核心启用上限 {cap} 枚（AI 副船任务与站内精炼炉/回收炉/制造线共用；上限由 AI 核心上限技能决定）
-          {cap === 0 ? '（先到「技能」页训练 AI 核心上限技能）' : ''}
+          AI 核心启用上限 {cap} 枚（AI 副船任务与站内精炼炉/回收炉/制造线共用；上限由「AI 核心操作学」决定）
+          {industryBonus > 0 ? '；站内产业另获「工业自动化」扩容 '+industryBonus+' 枚工业专用工位（仅炉/线可用，不占副船名额）' : '；站内产业可通过「工业自动化」（每级 +2 枚工业专用工位）扩产'}{cap === 0 && industryBonus <= 0 ? '（先到「技能」页训练 AI 核心操作学）' : ''}
         </span>
         <div className="app-core-badges">
           {AI_CORE_ORDER.map((type) => (
@@ -647,7 +654,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           </button>
         </div>
       ) : (
-        <div className="app-dim app-inv-empty">AI 核心上限为 0：先训练提升 AI 核心上限的技能（如「人工智能专家」），再购买基础 AI 核心即可启用第一枚。</div>
+        <div className="app-dim app-inv-empty">
+          AI 核心共用上限为 0：先训练「AI 核心操作学」（rank2 入门向，每级 +1 枚共用上限）即可指派副船；站内产业也可先练「工业自动化」解锁工业专用工位（每级 +2 枚）。
+        </div>
       )}
 
       {/* 执行中列表 */}

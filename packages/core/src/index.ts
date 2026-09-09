@@ -446,6 +446,7 @@ export {
   aiCoreCap,
   aiCoreUsed,
   aiCoreCapBlock,
+  industryAiBonus,
   idleAiShipIds,
   buyBasicAiCore,
   assignAiMining,

@@ -15,7 +15,7 @@
  *   「AI 核心上限」——同时启用总数受 AI 核心上限技能约束、与 AI 副船任务共用，
  *   完成/取消自动归还）；
  * - 耗时链同炉：主控线 = 工业理论 × 批量生产学（现有公式）；AI 线 = 基础耗时 ÷ 核心效率再乘
- *   工业自动化 −5%/级（下限 60%）。
+ *   产线节拍学（原"工业自动化"）−5%/级（下限 60%）。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
@@ -80,16 +80,16 @@ export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: Bui
   const level = state.skills.trained[bal.timeSkillId] ?? 0
   const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
   // 2026-09-08（船长定：移除「最多缩短 60%」下限护栏；工业理论×批量生产学乘算本身有界）
-  const ratio = Math.max(0, (1 - bal.timePerLevel * level) * (1 - 0.04 * batchLv))
+  const ratio = Math.max(0, (1 - bal.timePerLevel * level) * (1 - 0.03 * batchLv))
   // 调试模式 debugQuick：制造固定 1 秒
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }
 
-/** 材料学（materials）−2%/级 × 组件标准化（component-standardization）−1%/级：乘算折扣（下限 70%） */
+/** 材料学（materials）−1.5%/级 × 组件标准化（component-standardization）−0.8%/级（2026-09-08 技能加成下调约 20%）：乘算折扣（下限 70%） */
 export function materialFactor(state: GameState): number {
   const lv1 = Math.min(5, state.skills.trained['materials'] ?? 0)
   const lv2 = Math.min(5, state.skills.trained['component-standardization'] ?? 0)
-  return Math.max(0.7, (1 - 0.02 * lv1) * (1 - 0.01 * lv2))
+  return Math.max(0.7, (1 - 0.015 * lv1) * (1 - 0.008 * lv2))
 }
 
 /** 材料学折扣后的实际需求数量（预览/扣料/取消退回同口径） */
@@ -162,7 +162,7 @@ export function startManufacturing(
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   } else {
-    const capBlock = aiCoreCapBlock(state, ctx)
+    const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
@@ -174,7 +174,7 @@ export function startManufacturing(
     return { ok: false, error: `材料不足：${missing.join('、')}。` }
   }
   // 耗时链：calcBuildDurationMs（工业理论 × 批量生产学）为共同基准；AI 先 ÷核心效率；
-  // 工业自动化 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
+  // 产线节拍学 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
   let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
   if (worker !== 'pilot') {
     const eff = aiEfficiency(state, ctx, worker)

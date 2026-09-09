@@ -16,15 +16,17 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     localLegMs: 120 * 1000,
   },
   refining: {
-    baseRate: 1.0, // 基础产出倍率 100%（2026-09-08 船长定稿：初始即满额产出，配方已按 ÷2 等价迁移）
-    rateSkillId: 'refining', // 精炼学：产出倍率每级 +8%
-    ratePerLevel: 0.08,
-    secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +4%
-    secondRatePerLevel: 0.04,
+    // 2026-09-08 船长再定（工业工位收益体检）：无技能净率抬到 ≈+20%（基础倍率 100% → 120%），
+    // 技能本身每级加成在原值上下调约 20% → 精炼学 +6%、高级回收 +3%（就近取整），满级倍率 165%
+    baseRate: 1.2,
+    rateSkillId: 'refining', // 精炼学：产出倍率每级 +6%
+    ratePerLevel: 0.06,
+    secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +3%
+    secondRatePerLevel: 0.03,
   },
   manufacturing: {
-    timeSkillId: 'industry', // 工业理论：每级 -5% 制造时间
-    timePerLevel: 0.05,
+    timeSkillId: 'industry', // 工业理论：每级 -4% 制造时间（2026-09-08 技能加成下调约 20%，原 -5%）
+    timePerLevel: 0.04,
   },
   combat: {
     basePower: 10, // 初始舰炮火力 10
@@ -41,7 +43,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     durabilityFactor: 0.6, // 耐久惩罚：× (0.4 + 0.6×durability)
   },
   aiCore: {
-    skillId: 'ai-expert', // 唯一「AI 核心上限」技能：LvN = 可同时启用 N 枚 AI 核心（AI 副船任务与站内 AI 设施共用；后续上限技能在 ai.ts aiCoreCap 叠加）
+    skillId: 'ai-expert', // 共用「AI 核心上限」技能：LvN = 可同时启用 N 枚 AI 核心（AI 副船任务与站内 AI 设施共用；后续上限技能在 ai.ts aiCoreCap 叠加）
+    // 2026-09-08 船长定：工业专用扩容——industrySkillIds 内技能每级 +industrySlotsPerLevel 枚
+    // 「工业专用 AI 工位」（只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
+    // 将来新增"工业 AI 专用扩容技能"只需往该表追加 id）
+    industrySkillIds: ['industrial-ai-cap'],
+    industrySlotsPerLevel: 2,
     dispatchSkillId: 'ai-core-dispatch', // AI 核心调度学（卷B3⑩，2026-09-08 船长定）：核心驱动作业效率累加区
     dispatchPerLevel: 0.02, // 每级 +2 个百分点（基础 40% → 满级 50%；伽马 60%/贝塔 70%/阿尔法 85%，封顶 100%）
     basicPriceIsk: 25_000, // 基础核心直购价

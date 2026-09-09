@@ -20,16 +20,16 @@ describe('精炼与市场（M1 经济）', () => {
     ctx = makeTestCtx()
   })
 
-  describe('精炼产出倍率（2026-09-08 船长定稿：基础 100%、技能上限 160%）', () => {
-    it('无技能 = 基础 100%', () => {
-      expect(refineRate(state, ctx)).toBe(1.0)
+  describe('精炼产出倍率（2026-09-08 工业收益体检再定：基础 120%、技能每级 +6%/+3%，满级 165%）', () => {
+    it('无技能 = 基础 120%（无技能净率 ≈+20%）', () => {
+      expect(refineRate(state, ctx)).toBe(1.2)
     })
 
-    it('精炼学 5 级 = 140%；再加高级回收处理 5 级顶到上限 160%', () => {
+    it('精炼学 5 级 = 150%；再加高级回收处理 5 级 = 165%（满级）', () => {
       state.skills.trained['refining'] = 5
-      expect(refineRate(state, ctx)).toBeCloseTo(1.4, 10)
-      state.skills.trained['reprocessing'] = 5 // 1.4 + 0.2 = 1.6 → cap 1.6（浮点误差见 toBeCloseTo）
-      expect(refineRate(state, ctx)).toBeCloseTo(1.6, 10)
+      expect(refineRate(state, ctx)).toBeCloseTo(1.5, 10)
+      state.skills.trained['reprocessing'] = 5 // 1.2 + 0.3 + 0.15 = 1.65（浮点误差见 toBeCloseTo）
+      expect(refineRate(state, ctx)).toBeCloseTo(1.65, 10)
     })
   })
 
@@ -53,28 +53,28 @@ describe('精炼与市场（M1 经济）', () => {
       expect(countItem(state, 'ore-a')).toBe(totalUnits)
       expect(state.refineRuns).toHaveLength(1)
       expect(state.refineRuns[0]!.worker).toBe('pilot')
-      // 半途：1 批到点扣 10 单位（货仓优先），产物按 100% 产出倍率入仓库
+      // 半途：1 批到点扣 10 单位（货仓优先），产物按 120% 产出倍率入仓库
       advanceGame(state, 7_000, ctx)
       expect(countItem(state, 'ore-a')).toBe(90)
-      expect(countWare(state, 'min-a')).toBe(20) // floor(10×2×1.0)
-      expect(countWare(state, 'min-b')).toBe(5) // floor(10×0.5×1.0)
+      expect(countWare(state, 'min-a')).toBe(24) // floor(10×2×1.2)
+      expect(countWare(state, 'min-b')).toBe(6) // floor(10×0.5×1.2)
       // 跑完剩余：库存耗尽自动停（整批 10×10，无尾料）
       advanceGame(state, 60_000, ctx)
       expect(state.refineRuns).toHaveLength(0)
       expect(countItem(state, 'ore-a')).toBe(0)
-      expect(countWare(state, 'min-a')).toBe(200)
-      expect(countWare(state, 'min-b')).toBe(50)
+      expect(countWare(state, 'min-a')).toBe(240)
+      expect(countWare(state, 'min-b')).toBe(60)
       expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
       expect(state.logs.some((l) => l.text.includes('精炼所得'))).toBe(true)
     })
 
-    it('产出倍率技能影响每批结算：精炼学 5 级 = 140%（每批 floor 后累计）', () => {
+    it('产出倍率技能影响每批结算：精炼学 5 级 = 150%（每批 floor 后累计）', () => {
       state.skills.trained['refining'] = 5
       state.fleet[state.shipId].cargo['ore-a'] = totalUnits
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       advanceGame(state, 61_000, ctx)
-      expect(countWare(state, 'min-a')).toBe(280) // floor(10×2×1.4)=28/批 ×10
-      expect(countWare(state, 'min-b')).toBe(70) // floor(10×0.5×1.4)=7/批 ×10
+      expect(countWare(state, 'min-a')).toBe(300) // floor(10×2×1.5)=30/批 ×10
+      expect(countWare(state, 'min-b')).toBe(70) // floor(10×0.5×1.5)=7/批 ×10
     })
 
     it('货仓+仓库一并供料；中途停炉：已完成批保留，余料本来就在仓库无需退回', () => {
@@ -84,7 +84,7 @@ describe('精炼与市场（M1 经济）', () => {
       expect(countItem(state, 'ore-a')).toBe(30)
       expect(countWare(state, 'ore-a')).toBe(70)
       advanceGame(state, 7_000, ctx) // 1 批完成（货仓扣 10）
-      expect(countWare(state, 'min-a')).toBe(20)
+      expect(countWare(state, 'min-a')).toBe(24)
       const stopId = runIdOf('ore-a')
       const st = stopRefineRun(state, ctx, stopId)
       expect(st.ok).toBe(true)
@@ -103,13 +103,13 @@ describe('精炼与市场（M1 经济）', () => {
       expect(state.refineRuns[0]!.cycleMs).toBe(15_000) // 6000 ÷ 0.4
       expect(countAiCore(state, 'basic')).toBe(0) // 占用
       advanceGame(state, 16_000, ctx) // 第 1 批（10 单位）完成
-      expect(countWare(state, 'min-a')).toBe(20)
-      expect(countWare(state, 'min-b')).toBe(5)
+      expect(countWare(state, 'min-a')).toBe(24)
+      expect(countWare(state, 'min-b')).toBe(6)
       expect(countWare(state, 'ore-a')).toBe(5)
       advanceGame(state, 16_000, ctx) // 余 5 不足一批 → 2026-09-06 起停工保留，不再吃小批
       expect(state.refineRuns).toHaveLength(0)
-      expect(countWare(state, 'min-a')).toBe(20) // 只有整批产出
-      expect(countWare(state, 'min-b')).toBe(5)
+      expect(countWare(state, 'min-a')).toBe(24) // 只有整批产出
+      expect(countWare(state, 'min-b')).toBe(6)
       expect(countWare(state, 'ore-a')).toBe(5) // 余料保留
       expect(countAiCore(state, 'basic')).toBe(1) // 归还
       expect(state.logs.some((l) => l.text.includes('余量不足一批'))).toBe(true)
@@ -144,7 +144,7 @@ describe('精炼与市场（M1 经济）', () => {
       advanceGame(state, 16_000, ctx)
       // pilot：批 1（6s）、批 2（12s）→ 扣 20；核心两台各批 1（15s）→ 扣 20
       expect(countWare(state, 'ore-a')).toBe(60)
-      expect(countWare(state, 'min-a')).toBe(80) // 每批 20 × 4 批 × (2×1.0)
+      expect(countWare(state, 'min-a')).toBe(96) // 每批 20 × 4 批 × (2×1.2) → floor 各批 24×4
       expect(state.refineRuns).toHaveLength(3)
       // 全部继续推进直到库存耗尽（各自尾批自然收尾）
       advanceGame(state, 200_000, ctx)

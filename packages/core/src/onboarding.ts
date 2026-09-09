@@ -28,7 +28,7 @@ export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批�
 export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
 export const ONB_REPAIR = 4 // 修复：港内维修鲣鱼至完好
 export const ONB_TRIAL = 5 // 试炼：演习场讨伐令（教学战加成）
-export const ONB_SKILL = 6 // 技能归档：人工智能专家 Lv1 特典
+export const ONB_SKILL = 6 // 技能归档：AI 核心操作学 Lv1 特典
 export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
 export const ONB_EPILOGUE = 8 // 收尾演出（渲染层播放后调用 finishTutorial）
 export const ONB_DONE = 99
@@ -158,13 +158,13 @@ export function claimTutorialTrialReward(state: GameState, anomalyId: string | n
   if (s === ONB_TRIAL) state.onboarding.step = ONB_SKILL
 }
 
-/** S5 特典：恢复记忆档案 → 人工智能专家 Lv1（免书免训练费，仅教程一次；幂等） */
+/** S5 特典：恢复记忆档案 → AI 核心操作学 Lv1（免书免训练费，仅教程一次；幂等） */
 export function grantTutorialSkill(state: GameState): boolean {
   if (state.onboarding.step < ONB_SKILL || state.onboarding.step >= ONB_DONE) return false
   const cur = state.skills.trained[TUTORIAL_SKILL_ID] ?? 0
   if (cur >= 1) return false
   state.skills.trained[TUTORIAL_SKILL_ID] = 1
-  addLog(state, 'levelup', '记忆档案恢复：「人工智能专家」已归档至 Lv1——你可以指挥一艘 AI 副船了。')
+  addLog(state, 'levelup', '记忆档案恢复：「AI 核心操作学」已归档至 Lv1——你可以指挥一艘 AI 副船了。')
   return true
 }
 
@@ -267,7 +267,7 @@ export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const cur = state.skills.trained[TUTORIAL_SKILL_ID] ?? 0
   if (cur < 1) {
     state.skills.trained[TUTORIAL_SKILL_ID] = 1
-    addLog(state, 'levelup', '记忆档案恢复：「人工智能专家」已归档至 Lv1。')
+    addLog(state, 'levelup', '记忆档案恢复：「AI 核心操作学」已归档至 Lv1。')
   }
   const fal = state.fleet['sh-falconet']
   if (fal) {
