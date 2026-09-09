@@ -27,7 +27,10 @@
  *  - drone 无人机舱大改实测（2026-09-08，新船清单装载制）：钱包 +5000 万 + 声望 10（可买
  *         王鲭级奇货）+ 全星系点亮 + 三艘对照船——梭鱼级·无人机中装（calibrate D2，droneLoad
  *         清单注入，设为驾驶）/ 王鲭级·无人机重装（D3）/ 灰鲭鲨·炮流参考（S2）+ rack/tac 全套
- *         备件 + 4 型无人机仓库足量（战斗只放飞清单）。
+ *          备件 + 4 型无人机仓库足量（战斗只放飞清单）。
+ *  - cruiser 巡洋舰线实测（2026-09-09，尺寸分级新增 T3 巡洋四艘）：钱包 +6000 万 + 声望 13
+ *         + 全星系点亮 + 锤头鲨炮巡（驾驶）/电鳐激光巡/长尾鲨导弹巡/牛鲨突击巡 ×4，MK3 满配
+ *         + 支援 + 三族武器/支援备件 + 弹药（实测巡洋对 D~E 段手感与三族差异，定数值方向）。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -489,6 +492,56 @@ function injectDrone(state: GameState): string[] {
   return notes
 }
 
+/** cruiser（2026-09-09 巡洋舰线实测档：T3 巡洋四艘对照——锤头鲨炮击/长尾鲨导弹/电鳐激光/
+ * 牛鲨突击，均 MK3 满配 + 支援;声望 13(全悬赏可接,含穹顶)+ 全星系点亮;钱包 +6000 万)。
+ * 目的:实测巡洋对 D~E 段手感与三族武器差异(校准口径 = calibrate T3 行),回传定数值方向。 */
+function injectCruiser(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 60_000_000
+  notes.push('钱包 +60,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（可接全部悬赏含穹顶守卫）')
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
+  }
+  notes.push(`点亮全部星系（${GALAXIES.length}）`)
+  const mk3s: Array<[string, string, string, string[], string[], string[]]> = [
+    // [船, 家族武器, 自定义名, high, mid, low]
+    ['sh-hammerhead', 'mod-turret-kin-3', '锤头鲨·炮击巡洋(驾驶)', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-rof-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
+    ['sh-electricray', 'mod-laser-3', '电鳐·激光巡洋', ['mod-laser-3', 'mod-laser-3', 'mod-laser-3', 'mod-laser-3', 'mod-laser-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-rof-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
+    ['sh-thresher', 'mod-missile-3', '长尾鲨·导弹巡洋', ['mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-rof-2'], ['mod-stab-kin-2', 'mod-armor-kin-2']],
+    ['sh-bullshark', 'mod-turret-kin-3', '牛鲨·突击巡洋', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']],
+  ]
+  const uids: string[] = []
+  mk3s.forEach(([shipId, _w, name, high, mid, low], i) => {
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  notes.push(`新增巡洋 ×4：${uids[0]}（锤头鲨·炮击巡洋 MK3 满配，已设为驾驶）、${uids[1]}（电鳐·激光巡洋）、${uids[2]}（长尾鲨·导弹巡洋）、${uids[3]}（牛鲨·突击巡洋）——舰船页切驾驶逐船对照`)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  notes.push('仓库弹药三型 ×5000（三族武器各自供弹）')
+  for (const m of ['mod-turret-kin-3', 'mod-missile-3', 'mod-laser-3', 'mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
+  }
+  notes.push('装备库备 MK3 三族武器与支援件 ×3（可自组换装）')
+  for (const s of Object.values(state.fleet)) {
+    if (s) {
+      s.durability = 1
+      s.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push('测试路径：星图·战斗悬赏从 D 段逐威胁开战（天底 66 → 噬口 80 → 坟场/虚海 88 → 穹顶 96）→ 逐船切驾驶对照三族武器与船体手感（校准口径：T3 电鳐 26s/牛鲨 32s/锤头 39s/长尾鲨 53s @96 顶，全技能）→ 装配页换装试配 → 体感结论回传定巡洋数值方向')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -499,6 +552,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   repair: injectRepair,
   redtide: injectRedtide,
   drone: injectDrone,
+  cruiser: injectCruiser,
 }
 function main(): void {
   const feature = process.argv[2]
