@@ -58,7 +58,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '掘洞级采矿艇',
     role: 'industrial',
     slots: { high: 2, mid: 2, low: 1 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 2,
+    tier: 1,
     cargoM3: 1800,
     cycleSeconds: 11,
     oreUnitsPerCycle: 18,
@@ -85,7 +85,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '鲸吞级采矿艇',
     role: 'industrial',
     slots: { high: 2, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 2,
     cargoM3: 4500,
     cycleSeconds: 10,
     oreUnitsPerCycle: 34,
@@ -112,7 +112,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '开拓级采矿艇',
     role: 'industrial',
     slots: { high: 3, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 2,
     cargoM3: 5200,
     cycleSeconds: 9,
     oreUnitsPerCycle: 38,
@@ -139,7 +139,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '鲸王级采矿艇',
     role: 'industrial',
     slots: { high: 3, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 4,
+    tier: 3,
     cargoM3: 7_000,
     cycleSeconds: 8,
     oreUnitsPerCycle: 58,
@@ -193,7 +193,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '蝠鲼级重载货舰',
     role: 'hauler', // 2026-09-09 船长定：货舰与矿船分族（原归 industrial 名称易误导），鲸盟制造、航运编列
     slots: { high: 3, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 4,
     cargoM3: 26_000,
     cycleSeconds: 36,
     oreUnitsPerCycle: 110,
@@ -220,7 +220,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '皇带鱼级旗舰货舰',
     role: 'hauler', // 2026-09-09 船长定：货舰与矿船分族（原归 industrial 名称易误导），鲸盟制造、航运编列
     slots: { high: 2, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 4,
+    tier: 5,
     cargoM3: 36_000,
     cycleSeconds: 33,
     oreUnitsPerCycle: 129,
@@ -246,7 +246,7 @@ export const SHIPS: readonly ShipDef[] = [
   // ══════════ 掠食者武装线（盾厚炮强；带无人机舱；锁定强） ══════════
   {
     id: 'sh-falconet',
-    name: '隼枭级武装艇',
+    name: '鲣鱼级护卫舰', // 2026-09-09 海鲜命名统一(原隼枭级武装艇)
     role: 'armed',
     slots: { high: 3, mid: 2, low: 1 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 1,
@@ -274,10 +274,10 @@ export const SHIPS: readonly ShipDef[] = [
   },
   {
     id: 'sh-shrike',
-    name: '伯劳级武装护卫舰',
+    name: '马鲛级护卫舰', // 2026-09-09 海鲜命名统一(原伯劳级武装护卫舰)
     role: 'armed',
     slots: { high: 3, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 2,
+    tier: 1,
     cargoM3: 1050,
     cycleSeconds: 15,
     oreUnitsPerCycle: 8,
@@ -305,7 +305,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '虎鲨级武装护卫舰',
     role: 'armed',
     slots: { high: 4, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 2,
+    tier: 1,
     cargoM3: 1500,
     cycleSeconds: 14,
     oreUnitsPerCycle: 11,
@@ -333,7 +333,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '灰鲭鲨级驱逐舰',
     role: 'armed',
     slots: { high: 4, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 2,
     cargoM3: 2300,
     cycleSeconds: 13,
     oreUnitsPerCycle: 15,
@@ -361,7 +361,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '大白鲨级炮舰',
     role: 'armed',
     slots: { high: 5, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 2,
     cargoM3: 3200,
     cycleSeconds: 13,
     oreUnitsPerCycle: 18,
@@ -388,10 +388,10 @@ export const SHIPS: readonly ShipDef[] = [
   // ══════════ 无人机平台延伸（掠食者同系：大机舱 + 高槽多为甲板扩展/导控阵列位） ══════════
   {
     id: 'sh-swarm',
-    name: '蜂群级无人机护卫',
+    name: '梭鱼级无人机护卫', // 2026-09-09 海鲜命名统一(原蜂群级无人机护卫)
     role: 'armed',
     slots: { high: 5, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 2,
     cargoM3: 2600,
     cycleSeconds: 13,
     oreUnitsPerCycle: 16,
@@ -416,10 +416,10 @@ export const SHIPS: readonly ShipDef[] = [
   },
   {
     id: 'sh-sentinel',
-    name: '哨兵级无人机母舰',
+    name: '王鲭级无人机母舰', // 2026-09-09 海鲜命名统一(原哨兵级无人机母舰)
     role: 'armed',
     slots: { high: 6, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 4,
+    tier: 3,
     cargoM3: 3600,
     cycleSeconds: 13,
     oreUnitsPerCycle: 15,
@@ -586,7 +586,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '剑鱼级大型货舰',
     role: 'hauler',
     slots: { high: 2, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    tier: 4,
     cargoM3: 14000,
     cycleSeconds: 12,
     oreUnitsPerCycle: 16,
