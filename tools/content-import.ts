@@ -489,15 +489,26 @@ async function main(): Promise<void> {
   const objs = collectObjects(sf, spec.idProp)
 
   const changes: Change[] = []
+  let derivedSkipped = 0
   for (let i = 0; i < dataRows.length; i++) {
     const id = csvIds[i]!
     if (!sourceIds.has(id)) continue
     const info = objs.get(id)
     if (!info) {
+      // 2026-09-09：派生只读行放行——残骸收购卡（wreck-*）= marketCatalog.ts WRECK_BUY_GOODS
+      // 由敌群表动态 map 生成（1:1，无字面量对象块可回写），改卡应改敌群表/代码而非表格；
+      // 导出会带上它们，导入时跳过而不是整体报错。
+      if (tableName === 'market' && id.startsWith('wreck-')) {
+        derivedSkipped += 1
+        continue
+      }
       err(`源文件找不到 ${id} 的对象块（id 在数据目录但源文件缺失？）`)
       continue
     }
     planRow(spec, info, dataRows[i]!, headIdx, srcText, sf, changes)
+  }
+  if (derivedSkipped > 0) {
+    console.log(`ℹ️ 跳过 ${derivedSkipped} 行派生只读卡（wreck-* 残骸收购卡由敌群表生成，改动请走敌群表/代码）`)
   }
 
   if (errors.length > 0) {

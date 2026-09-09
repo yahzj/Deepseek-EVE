@@ -141,7 +141,7 @@ export const TABLES: readonly TableSpec[] = [
     cols: [
       col('id', 'id', 'id'),
       col('名称', 'name', 'str'),
-      col('档次tier(1~4)', 'tier', 'num', { min: 1, max: 4, int: true }),
+      col('档次tier(1~5)', 'tier', 'num', { min: 1, max: 5, int: true }), // 2026-09-09 舰船尺寸分级：新增旗舰 T5（皇带鱼级）
       col('角色role(industrial工业/armed武装/armored重装/hauler航运)', 'role', 'enum', {
         vals: ['industrial', 'armed', 'armored', 'hauler'],
       }),
