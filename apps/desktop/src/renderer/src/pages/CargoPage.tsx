@@ -13,6 +13,7 @@ import {
   cargoOfShip,
   cargoUsedM3Of,
   fleetDefOf,
+  haulingOccupiedM3,
   isAtHomeLike,
   itemKindLabel,
   marketGoodOf,
@@ -55,6 +56,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const cargo = cargoOfShip(state, targetId)
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
+  // 2026-09-09 运输任务：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
+  const haulOcc = isPiloted && state.hauling.active ? haulingOccupiedM3(state, engine.ctx) : 0
   const rows = Object.entries(cargo).filter(([, n]) => n > 0)
 
   // 图标/列表切换（手册同款；网格为浏览视图）
@@ -144,10 +147,15 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         </div>
         <div className="app-cargo-head">
           <ProgressBar
-            value={cap > 0 ? (used / cap) * 100 : 0}
-            tone={cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
-            label={`${targetName} · 已占用 ${m3(used)} / ${cap > 0 ? cap.toLocaleString('zh-CN') : '—'} m³`}
+            value={cap > 0 ? ((used + haulOcc) / cap) * 100 : 0}
+            tone={haulOcc > 0 ? 'warn' : cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
+            label={`${targetName} · 已占用 ${m3(used + haulOcc)} / ${cap > 0 ? cap.toLocaleString('zh-CN') : '—'} m³`}
           />
+          {haulOcc > 0 ? (
+            <div className="app-dim" style={{ marginTop: 2 }}>
+              ⚠ 运输任务进行中：货仓由虚拟运输货物占满（可用 0 m³）——到站自动结算报酬；任务期间不能装卸与出售。
+            </div>
+          ) : null}
           {isPiloted ? (
             <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={rows.length === 0}>
               全部卸入仓库

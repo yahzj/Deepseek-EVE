@@ -6972,6 +6972,14 @@ body {
 
 /* ============ T9 建站族 + 通讯器 ============ */
 
+
+/* 2026-09-09 运输任务（任务中心新族）：航线行 + 进行中提示（先复刻任务卡同级样式） */
+.app-haul-list { display: flex; flex-direction: column; gap: 8px; }
+.app-haul-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--wui-border); border-radius: 8px; background: rgba(10,17,27,0.45); }
+.app-haul-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.app-haul-route { font-weight: 700; color: var(--wui-text); }
+.app-haul-actions { display: flex; align-items: center; gap: 8px; }
+.app-haul-active { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; padding: 8px 10px; border: 1px solid rgba(79,216,196,0.35); border-radius: 8px; background: rgba(20,40,40,0.25); }
 .app-task-family {
 
   font-size: 11px;
