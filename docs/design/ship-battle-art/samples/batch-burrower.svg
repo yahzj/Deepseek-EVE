@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 鲸盟采矿族 4a-2/6：掘洞级采矿艇(T1:双钻头钻机 + 履腹板 + 大料斗) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#5ee6c8; stroke-width:1.6 }
+    .accf { fill:#5ee6c8 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="48" r="1.2"/><circle class="star" cx="514" cy="64" r="1"/><circle class="star" cx="474" cy="238" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M36 55 L26 58 L36 61 Z" opacity=".9"/>
+    <!-- 方正钻机艇（比沙猫宽厚） -->
+    <path class="hull" d="M198 58 L188 42 L106 40 C86 40 70 45 62 51 L54 56 L60 64 C72 72 92 76 114 76 L172 74 Z"/>
+    <!-- 双钻头（上下平行前伸,掘洞特征） -->
+    <path class="hull" d="M198 50 L228 47 L228 51 L198 55 Z"/>
+    <path class="hull" d="M198 60 L228 57 L228 61 L198 65 Z"/>
+    <circle class="accf" cx="231" cy="49" r="1.9"/>
+    <circle class="accf" cx="231" cy="59" r="1.9"/>
+    <!-- 前部导料槽 -->
+    <path class="panel" d="M186 66 L200 72"/>
+    <!-- 顶部作业塔 -->
+    <path class="hull" d="M146 40 h14 v9 h-14 z"/>
+    <path class="panel" d="M149 43 h8"/>
+    <!-- 腹板（履带感折线） -->
+    <path class="panel" d="M84 76 h44 M90 78 h32" opacity=".6"/>
+    <!-- 料斗盖线 -->
+    <path class="panel" d="M106 52 h36 M106 62 h36"/>
+    <!-- 尾鳍 -->
+    <path class="hull" d="M70 70 l7 11 h-11 z" opacity=".7"/>
+    <!-- 单宽引擎 -->
+    <path class="hull" d="M60 44 h9 v16 h-9 z" opacity=".85"/>
+    <path class="warm" d="M50 47 h8 v10 h-8 z"/>
+    <circle class="accf" cx="132" cy="76" r="1.4"/>
+  </g>
+  <text class="note" x="40" y="286">掘洞级采矿艇 · burrower · 护卫 T1·采矿型 — 草稿(双钻头钻机 + 腹板 + 导料槽)</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 鲸盟采矿族 4a-1/6：沙猫级采矿艇(T1 新手:微型作业艇 + 单钻臂 + 顶塔) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#5ee6c8; stroke-width:1.6 }
+    .accf { fill:#5ee6c8 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="46" r="1.2"/><circle class="star" cx="512" cy="62" r="1"/><circle class="star" cx="478" cy="238" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M38 55 L28 58 L38 61 Z" opacity=".9"/>
+    <!-- 微型方正作业艇 -->
+    <path class="hull" d="M196 58 L186 44 L108 42 C90 42 76 46 68 52 L60 56 L64 64 C74 71 92 74 112 74 L170 72 Z"/>
+    <!-- 前伸单钻臂 -->
+    <path class="hull" d="M196 52 L222 50 L222 54 L196 58 Z"/>
+    <circle class="accf" cx="225" cy="52" r="2"/>
+    <!-- 顶部作业塔（短） -->
+    <path class="hull" d="M150 42 h13 v8 h-13 z"/>
+    <!-- 料斗舱盖线 -->
+    <path class="panel" d="M108 50 h34 M108 62 h34 M142 44 v26"/>
+    <!-- 尾鳍 -->
+    <path class="hull" d="M74 68 l6 10 h-10 z" opacity=".7"/>
+    <!-- 单引擎 -->
+    <path class="hull" d="M64 46 h8 v13 h-8 z" opacity=".85"/>
+    <path class="warm" d="M54 48 h8 v8 h-8 z"/>
+    <circle class="accf" cx="128" cy="74" r="1.4"/>
+  </g>
+  <text class="note" x="40" y="286">沙猫级采矿艇 · sandcat · 护卫 T1·采矿型 — 草稿(微型作业艇 + 前钻臂 + 顶作业塔)</text>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 鲸盟采矿族 4a-3/6：鲸吞级采矿艇(T2:张鲸口收集器 + 圆腹大舱 + 双塔) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#5ee6c8; stroke-width:1.6 }
+    .accf { fill:#5ee6c8 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="50" cy="46" r="1.2"/><circle class="star" cx="512" cy="62" r="1"/><circle class="star" cx="476" cy="240" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M38 55 L28 58 L38 61 Z" opacity=".9"/>
+    <!-- 圆腹大矿船 -->
+    <path class="hull" d="M196 56 C190 40 160 34 124 34 C94 34 74 42 64 52 L56 58 L62 68 C76 77 100 82 128 82 L180 76 Z"/>
+    <!-- 张鲸口收集器（前部上颚弧 + 下颚弧,鲸吞特征） -->
+    <path class="hull" d="M196 46 C212 42 226 46 232 54 M196 60 C212 66 226 68 232 64"/>
+    <path class="hull" d="M232 54 C230 60 226 63 220 63" opacity=".8"/>
+    <!-- 双作业塔 -->
+    <path class="hull" d="M150 34 h14 v10 h-14 z M120 35 h12 v8 h-12 z"/>
+    <path class="panel" d="M153 37 h8 M123 38 h7"/>
+    <!-- 圆腹分舱线 -->
+    <path class="panel" d="M128 36 C126 52 126 66 128 80 M96 38 C92 52 92 66 96 80 M158 38 C160 52 160 66 158 78" opacity=".55"/>
+    <!-- 尾鳍 -->
+    <path class="hull" d="M72 74 l8 13 h-13 z" opacity=".7"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M62 44 h8 v14 h-8 z M62 62 h8 v14 h-8 z" opacity=".85"/>
+    <path class="warm" d="M52 47 h8 v8 h-8 z M52 65 h8 v8 h-8 z"/>
+    <circle class="accf" cx="140" cy="82" r="1.5"/>
+  </g>
+  <text class="note" x="40" y="286">鲸吞级采矿艇 · whale · 驱逐 T2·采矿型 — 草稿(张鲸口收集器 + 圆腹大舱 + 双塔)</text>
+</svg>

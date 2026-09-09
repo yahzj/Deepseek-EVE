@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 鲸盟采矿族 4a-4/6：开拓级采矿艇(T2:前横梁采集架多钻 + 宽体平台) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#5ee6c8; stroke-width:1.6 }
+    .accf { fill:#5ee6c8 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="48" r="1.2"/><circle class="star" cx="510" cy="62" r="1"/><circle class="star" cx="480" cy="238" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M34 55 L24 58 L34 61 Z" opacity=".9"/>
+    <!-- 宽体作业平台 -->
+    <path class="hull" d="M202 56 C196 40 168 34 132 34 C102 34 80 42 68 52 L60 57 L66 66 C78 74 100 78 128 78 L184 74 Z"/>
+    <!-- 前横梁采集架（并排三小钻,开拓特征） -->
+    <path class="hull" d="M202 46 h20 M202 54 h24 M202 62 h20" stroke-width="2"/>
+    <circle class="accf" cx="226" cy="46" r="1.7"/>
+    <circle class="accf" cx="226" cy="54" r="2"/>
+    <circle class="accf" cx="226" cy="62" r="1.7"/>
+    <!-- 后桥平台 -->
+    <path class="hull" d="M128 34 h14 v10 h-14 z"/>
+    <path class="panel" d="M131 37 h8"/>
+    <!-- 舱盖线 -->
+    <path class="panel" d="M104 48 h24 M104 60 h24 M134 48 v28"/>
+    <!-- 尾鳍 -->
+    <path class="hull" d="M76 72 l7 12 h-12 z" opacity=".7"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M64 44 h8 v13 h-8 z M64 61 h8 v13 h-8 z" opacity=".85"/>
+    <path class="warm" d="M54 47 h8 v7 h-8 z M54 64 h8 v7 h-8 z"/>
+    <circle class="accf" cx="148" cy="78" r="1.5"/>
+  </g>
+  <text class="note" x="40" y="286">开拓级采矿艇 · pioneer · 驱逐 T2·采矿型(蓝图造) — 草稿(前横梁三钻采集架 + 宽平台)</text>
+</svg>

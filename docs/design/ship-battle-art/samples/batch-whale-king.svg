@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 鲸盟采矿族 4a-6/6：鲸王级采矿艇(T3·矿旗舰:巨体六钻 + 双巨塔 + 鲸口收集器) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#5ee6c8; stroke-width:1.6 }
+    .accf { fill:#5ee6c8 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="46" cy="48" r="1.2"/><circle class="star" cx="516" cy="64" r="1"/><circle class="star" cx="474" cy="240" r="1.2"/><circle class="star" cx="68" cy="252" r="1"/><circle class="star" cx="290" cy="32" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M34 52 L22 55 L34 58 Z" opacity=".9"/>
+    <path class="warm" d="M34 66 L22 69 L34 72 Z" opacity=".9"/>
+    <!-- 采矿旗舰巨体 -->
+    <path class="hull" d="M204 54 C198 36 164 28 120 28 C86 28 64 38 54 50 L46 56 L54 66 C70 78 96 84 130 84 L192 78 Z"/>
+    <!-- 鲸口收集器（大口多层弧 = 旗舰识别） -->
+    <path class="hull" d="M204 42 C222 36 238 44 244 54 C240 62 228 68 214 68"/>
+    <path class="panel" d="M214 44 C224 42 234 46 240 54 C236 60 228 64 220 64" opacity=".7"/>
+    <!-- 六钻组（上下两层各三管） -->
+    <path class="hull" d="M196 46 h26 M196 52 h28 M196 58 h28 M196 64 h26" stroke-width="1.9"/>
+    <circle class="accf" cx="224" cy="46" r="1.6"/><circle class="accf" cx="224" cy="52" r="1.8"/><circle class="accf" cx="224" cy="58" r="1.8"/><circle class="accf" cx="224" cy="64" r="1.6"/>
+    <!-- 双巨塔（王座感） -->
+    <path class="hull" d="M150 28 h16 v12 h-16 z M118 30 h13 v10 h-13 z"/>
+    <path class="hull" d="M158 28 V18"/>
+    <path class="panel" d="M121 33 h8 M153 31 h10"/>
+    <!-- 巨舱分舱 -->
+    <path class="panel" d="M96 34 v46 M126 30 v50 M160 34 v46 M104 50 h72 M104 60 h72"/>
+    <!-- 尾鳍 -->
+    <path class="hull" d="M70 78 l9 15 h-14 z" opacity=".7"/>
+    <!-- 四引擎 -->
+    <path class="hull" d="M58 44 h9 v12 h-9 z M58 60 h9 v12 h-9 z M70 44 h9 v12 h-9 z M70 60 h9 v12 h-9 z" opacity=".85"/>
+    <path class="warm" d="M48 46 h8 v8 h-8 z M48 62 h8 v8 h-8 z M60 46 h8 v8 h-8 z M60 62 h8 v8 h-8 z"/>
+    <circle class="accf" cx="120" cy="84" r="1.7"/>
+  </g>
+  <text class="note" x="40" y="286">鲸王级采矿艇 · whale-king · 巡洋 T3·采矿旗舰型 — 草稿(巨体 + 鲸口收集器 + 六钻 + 双巨塔)</text>
+</svg>
