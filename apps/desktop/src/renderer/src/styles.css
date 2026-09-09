@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
 
    鎼存梻鏁ょ痪褍绔风仦鈧弽宄扮础閿涘牏绮嶆禒鍫曗偓姘辨暏閺嶅嘲绱￠悽?@whale/ui 閹绘劒绶甸敍宀冾潌閸?index.css閿?   ============================================================ */
 
@@ -2420,6 +2420,22 @@ body {
 
 }
 
+/* 固定标题行的自滚内容容器（仓库 tab 用：面板标题/搜索/切换冻结，内容在面板体内滚动，2026-09-10 船长） */
+
+.app-win-fill {
+
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  overflow: hidden;
+
+}
+
 .page-stack {
 
   display: flex;
@@ -2551,7 +2567,7 @@ body {
 .app-swin-star { fill: #d7e7f4; opacity: 0.6; }
 /* 机库结构件：顶棚横梁/墙柱/地板停靠格/引导灯（主题青系低饱和线稿） */
 .app-swin-hangar path { fill: none; stroke: #6f9fc4; stroke-width: 1; opacity: 0.4; }
-.app-swin-hangar-lamp { fill: #a9ecff; opacity: 0.9; }
+.app-swin-hangar-lamp { fill: #a9ecff; opacity: 0.9; }
 /* 作业飘浮物漂移/自转（g 元素 CSS 动画） */
 .app-swin-drift { opacity: 0; animation-timing-function: linear; animation-iteration-count: infinite; transform-box: fill-box; transform-origin: center; }
 .app-swin-drift path { fill: none; stroke-width: 1.1; stroke-linejoin: round; stroke: currentColor; }

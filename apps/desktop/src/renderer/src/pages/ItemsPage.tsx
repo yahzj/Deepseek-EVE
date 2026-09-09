@@ -137,30 +137,27 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   }
 
   return (
-    <>
-      {/* 仓库抬头：图标/列表切换 + 搜索栏同排于标题行，两种视图都显示（2026-09-09 船长）；
-          样式与技能目录标题栏一致——机制细节见手册玩法速览（装卸/精炼/制造条目），此处不再铺说明段 */}
-      <Panel
-        title="仓库"
-        right={
-          <span className="app-head-search-wrap">
-            <ItemViewBar mode={mode} onChange={setMode} />
-            <input
-              className="app-head-search"
-              type="text"
-              placeholder="搜索仓库…"
-              value={wareQuery}
-              onChange={(e) => setWareQuery(e.target.value)}
-              spellCheck={false}
-            />
-            <span className="app-dim">
-              {wq.length > 0 ? `匹配 ${hitTotal} 种` : `${hitTotal} 种 · 无限容量 · 不随船`}
-            </span>
+    <Panel
+      className="is-fill"
+      title="仓库"
+      right={
+        <span className="app-head-search-wrap">
+          <ItemViewBar mode={mode} onChange={setMode} />
+          <input
+            className="app-head-search"
+            type="text"
+            placeholder="搜索仓库…"
+            value={wareQuery}
+            onChange={(e) => setWareQuery(e.target.value)}
+            spellCheck={false}
+          />
+          <span className="app-dim">
+            {wq.length > 0 ? `匹配 ${hitTotal} 种` : `${hitTotal} 种 · 无限容量 · 不随船`}
           </span>
-        }
-      >
-        {null}
-      </Panel>
+        </span>
+      }
+    >
+      {/* 仓库内容在面板体内滚动：标题行（搜索/切换）固定不随内容滚走（2026-09-10 船长：同技能目录标题栏） */}
       {wq.length > 0 && hitTotal === 0 ? (
         <div className="app-dim app-note">
           没有匹配「{wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。
@@ -492,7 +489,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           />
         )
       })() : null}
-    </>
+    </Panel>
   )
 }
 
@@ -521,14 +518,17 @@ export function ItemsPage(props: PageProps & Partial<ItemNavProps>) {
           <span>货仓</span>
         </button>
       </div>
-      {/* 船长拍板：物品页整标签一窗滚——活跃标签内容包进二级滚动窗（CargoPage 内层不再产生双滚动） */}
-      <div className="app-win-body">
-        {tab === 'cargo' ? (
+      {/* 船长拍板：物品页整标签一窗滚——活跃标签内容包进二级滚动窗（CargoPage 内层不再产生双滚动）；
+          仓库 tab = 固定标题行的自滚面板（同技能目录，抬头不随内容滚走，2026-09-10 船长） */}
+      {tab === 'cargo' ? (
+        <div className="app-win-body">
           <CargoPage {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
-        ) : (
+        </div>
+      ) : (
+        <div className="app-win-fill">
           <WarehouseView {...props} onGotoMarket={props.onGotoMarket ?? (() => undefined)} />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
