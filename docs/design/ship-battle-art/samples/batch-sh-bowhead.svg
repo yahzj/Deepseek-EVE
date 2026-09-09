@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 蜃楼/鲸盟货运族 3b-4/5：蝠鲼级重载货舰(T4 主力·鲸盟造:扁宽翼舱 + 尾刺桁 = 识别) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ffd166; stroke-width:1.6 }
+    .accf { fill:#ffd166 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="48" r="1.2"/><circle class="star" cx="514" cy="62" r="1"/><circle class="star" cx="474" cy="240" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M30 55 L20 58 L30 61 Z" opacity=".9"/>
+    <!-- 扁宽重载翼舱体（蝠鲼:宽前缘 + 平背） -->
+    <path class="hull" d="M198 58 C196 46 176 38 146 36 L110 36 C80 36 62 44 54 52 L48 56 L54 62 C66 70 88 74 116 74 L168 74 Z"/>
+    <!-- 翼缘前筋（上/下斜线,像展开的鳐翼前缘） -->
+    <path class="hull" d="M54 44 C44 40 36 38 30 38 M54 70 C44 74 36 76 30 76" opacity=".75"/>
+    <!-- 宽货舱平顶 + 段盖线 -->
+    <path class="hull" d="M110 36 h88"/>
+    <path class="panel" d="M116 36 v34 M130 36 v34 M146 36 v34 M162 36 v32"/>
+    <path class="panel" d="M112 46 h80 M112 56 h80 M112 64 h80" opacity=".5"/>
+    <!-- 尾刺桁（蝠鲼细尾,识别特征） -->
+    <path class="hull" d="M54 56 L34 58 M40 60 L30 62" opacity=".85"/>
+    <!-- 前桥低位 -->
+    <path class="hull" d="M170 38 h13 v7 h-13 z"/>
+    <path class="panel" d="M172 41 h9"/>
+    <!-- 大引擎 ×2 -->
+    <path class="hull" d="M60 46 h9 v11 h-9 z M60 61 h9 v11 h-9 z" opacity=".85"/>
+    <path class="warm" d="M50 48 h8 v7 h-8 z M50 63 h8 v7 h-8 z"/>
+    <circle class="accf" cx="130" cy="76" r="1.6"/>
+  </g>
+  <text class="note" x="40" y="286">蝠鲼级重载货舰 · sh-bowhead · 主力 T4·航运(鲸盟造) — 草稿(扁宽翼舱 + 尾刺桁 + 宽平货顶)</text>
+</svg>

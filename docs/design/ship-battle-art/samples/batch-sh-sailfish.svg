@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 蜃楼航运族 3b-2/5：旗鱼级高速货舰(T3:长箱 + 高背鳍天线条 = 识别特征) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ffd166; stroke-width:1.6 }
+    .accf { fill:#ffd166 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="48" r="1.2"/><circle class="star" cx="514" cy="64" r="1"/><circle class="star" cx="474" cy="240" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M34 54 L24 57 L34 60 Z" opacity=".9"/>
+    <!-- 长货箱体 -->
+    <path class="hull" d="M212 60 L200 44 L112 42 C88 42 70 46 58 52 L48 56 L52 64 C64 72 88 76 116 76 L182 74 Z"/>
+    <!-- 高背鳍天线条（旗鱼帆:竖立细高板,识别特征） -->
+    <path class="hull" d="M136 42 L140 20 L152 20 L156 42"/>
+    <path class="panel" d="M141 30 h10 M142 36 h10"/>
+    <!-- 中后桥楼 -->
+    <path class="hull" d="M164 42 h14 v9 h-14 z"/>
+    <path class="panel" d="M167 45 h8"/>
+    <!-- 货舱盖线 ×3 段 -->
+    <path class="panel" d="M92 52 h30 M92 62 h30 M124 50 h20 M124 62 h20 M146 50 h14"/>
+    <!-- 尾小鳍 -->
+    <path class="hull" d="M66 68 l6 12 h-10 z" opacity=".7"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M56 44 h8 v13 h-8 z M56 61 h8 v13 h-8 z" opacity=".85"/>
+    <path class="warm" d="M46 47 h8 v7 h-8 z M46 64 h8 v7 h-8 z"/>
+    <circle class="accf" cx="120" cy="78" r="1.4"/>
+    <circle class="warm" cx="96" cy="48" r="1.1"/>
+  </g>
+  <text class="note" x="40" y="286">旗鱼级高速货舰 · sh-sailfish · 巡洋 T3·航运型 — 草稿(长箱 + 高背鳍天线条 + 中后桥)</text>
+</svg>

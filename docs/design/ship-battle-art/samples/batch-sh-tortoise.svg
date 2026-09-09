@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 甲壳重装族 3a-1/3：陆龟级重装艇(T2 重装:圆拱龟壳 + 分层甲 + 小点防) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#cdd6e0; stroke-width:1.6 }
+    .accf { fill:#cdd6e0 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="48" r="1.2"/><circle class="star" cx="510" cy="64" r="1"/><circle class="star" cx="480" cy="238" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M36 55 L26 58 L36 61 Z" opacity=".9"/>
+    <!-- 拱背甲（龟壳弧顶） -->
+    <path class="hull" d="M52 62 C56 40 96 32 140 34 C176 36 194 46 198 58 L200 64 L56 70 Z"/>
+    <path class="panel" d="M56 64 C64 46 98 40 138 42"/>
+    <!-- 腹甲平板 -->
+    <path class="hull" d="M48 68 h156"/>
+    <!-- 壳纹分块（背甲板块） -->
+    <path class="panel" d="M84 36 C84 44 84 54 84 64 M118 34 C118 42 118 54 118 64 M150 34 C150 44 150 54 150 64"/>
+    <path class="panel" d="M60 52 C80 46 100 44 120 44 M160 44 C176 46 190 50 200 56" opacity=".5"/>
+    <!-- 首部观察缝 -->
+    <path class="hull" d="M200 60 h6 v4 h-6 z"/>
+    <!-- 点防小炮 -->
+    <path class="hull" d="M84 30 h9 v6 h-9 z M93 30 v-4"/>
+    <path class="hull" d="M150 28 h8 v5 h-8 z M158 28 v-3"/>
+    <!-- 小引擎 -->
+    <path class="hull" d="M60 44 h8 v16 h-8 z" opacity=".85"/>
+    <path class="warm" d="M50 48 h8 v8 h-8 z"/>
+    <!-- 舷灯 -->
+    <circle class="accf" cx="120" cy="70" r="1.5"/>
+  </g>
+  <text class="note" x="40" y="286">陆龟级重装艇 · sh-tortoise · 驱逐 T2·重装型 — 草稿(拱背甲 + 壳纹板块 + 腹甲平板)</text>
+</svg>

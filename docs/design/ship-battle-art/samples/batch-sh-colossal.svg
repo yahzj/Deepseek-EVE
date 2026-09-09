@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 蜃楼/鲸盟货运族 3b-5/5：皇带鱼级旗舰货舰(T5 旗舰·鲸盟造:超长多舱 + 丝带背鳍列 = 识别) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ffd166; stroke-width:1.6 }
+    .accf { fill:#ffd166 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="46" cy="46" r="1.2"/><circle class="star" cx="516" cy="64" r="1"/><circle class="star" cx="478" cy="236" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M30 55 L18 58 L30 61 Z" opacity=".9"/>
+    <!-- 超长多舱箱体（旗舰级:贯穿画布最长） -->
+    <path class="hull" d="M212 60 L200 46 L96 44 C72 44 52 48 40 54 L32 56 L40 62 C54 70 80 76 108 76 L186 74 Z"/>
+    <!-- 丝带背鳍列（皇带鱼:顶部多根细丝鳍,识别特征） -->
+    <path class="hull" d="M96 44 v-8 M120 44 v-11 M146 44 v-13 M172 44 v-10"/>
+    <circle class="accf" cx="120" cy="32" r="1.1"/>
+    <circle class="accf" cx="146" cy="30" r="1.2"/>
+    <!-- 前后双桥楼（旗舰指挥双位） -->
+    <path class="hull" d="M172 44 h15 v10 h-15 z"/>
+    <path class="panel" d="M175 47 h9 M175 51 h9"/>
+    <path class="hull" d="M84 46 h12 v8 h-12 z" opacity=".8"/>
+    <!-- 货舱分段线 ×4（大型模块舱段感） -->
+    <path class="panel" d="M104 48 v26 M126 47 v28 M150 46 v28 M98 54 h98 M98 62 h98"/>
+    <!-- 尾鳍 -->
+    <path class="hull" d="M52 66 l6 14 h-10 z" opacity=".7"/>
+    <!-- 大引擎 ×2 + 上小辅 -->
+    <path class="hull" d="M58 46 h9 v12 h-9 z M58 62 h9 v12 h-9 z" opacity=".85"/>
+    <path class="warm" d="M48 48 h8 v8 h-8 z M48 64 h8 v8 h-8 z"/>
+    <circle class="accf" cx="118" cy="78" r="1.6"/>
+  </g>
+  <text class="note" x="40" y="286">皇带鱼级旗舰货舰 · sh-colossal · 旗舰 T5(鲸盟造) — 草稿(超长多舱 + 丝带背鳍列 + 前后双桥)</text>
+</svg>

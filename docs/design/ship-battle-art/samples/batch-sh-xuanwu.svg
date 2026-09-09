@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 甲壳重装族 3a-3/3：玄武级重装旗舰(T4:三层拱甲 + 巨厚舰体 + 4 引擎 + 多炮组) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#cdd6e0; stroke-width:1.6 }
+    .accf { fill:#cdd6e0 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="48" r="1.2"/><circle class="star" cx="516" cy="62" r="1"/><circle class="star" cx="476" cy="240" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M34 52 L22 55 L34 58 Z" opacity=".9"/>
+    <path class="warm" d="M34 66 L22 69 L34 72 Z" opacity=".9"/>
+    <!-- 巨厚三层拱甲旗舰体 -->
+    <path class="hull" d="M44 70 C50 40 96 26 140 28 C184 30 206 46 210 60 L212 66 L46 78 Z"/>
+    <!-- 三层甲叠（拱层线） -->
+    <path class="panel" d="M56 62 C64 42 100 34 140 36 M60 54 C70 38 102 32 140 33 M62 70 C68 48 100 38 140 40" opacity=".6"/>
+    <path class="panel" d="M84 30 C84 42 84 56 84 70 M110 28 C110 40 110 56 110 72 M152 29 C152 42 152 56 152 72 M178 34 C176 48 176 60 176 72"/>
+    <!-- 前观察塔（玄武首） -->
+    <path class="hull" d="M200 60 h8 v6 h-8 z"/>
+    <!-- 炮组 ×3（前后 + 中高台） -->
+    <path class="hull" d="M92 24 h10 v7 h-10 z M102 24 v-6"/>
+    <path class="hull" d="M138 24 h10 v7 h-10 z M148 24 v-6"/>
+    <path class="hull" d="M120 52 h9 v6 h-9 z M129 52 v-4"/>
+    <path class="hull" d="M170 30 h8 v6 h-8 z M178 30 v-4"/>
+    <!-- 四引擎 -->
+    <path class="hull" d="M54 44 h8 v12 h-8 z M54 60 h8 v12 h-8 z M66 44 h8 v12 h-8 z M66 60 h8 v12 h-8 z" opacity=".85"/>
+    <path class="warm" d="M44 46 h8 v8 h-8 z M44 62 h8 v8 h-8 z M56 46 h8 v8 h-8 z M56 62 h8 v8 h-8 z"/>
+    <circle class="accf" cx="130" cy="78" r="1.7"/>
+  </g>
+  <text class="note" x="40" y="286">玄武级重装旗舰 · sh-xuanwu · 主力 T4·重装旗舰型 — 草稿(三层拱甲巨体 + 四引擎 + 三炮组)</text>
+</svg>

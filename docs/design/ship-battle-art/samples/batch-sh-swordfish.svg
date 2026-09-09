@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 蜃楼航运族 3b-3/5：剑鱼级大型货舰(T3·奇货:大箱 + 前桥 + 长喙鼻桁 = 识别特征) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ffd166; stroke-width:1.6 }
+    .accf { fill:#ffd166 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="50" cy="46" r="1.2"/><circle class="star" cx="512" cy="62" r="1"/><circle class="star" cx="478" cy="238" r="1.2"/><circle class="star" cx="66" cy="254" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M34 54 L24 57 L34 60 Z" opacity=".9"/>
+    <!-- 大型货箱体 -->
+    <path class="hull" d="M206 60 L192 44 L104 42 C80 42 62 46 52 52 L44 56 L50 64 C62 72 86 76 114 76 L176 74 Z"/>
+    <!-- 剑鱼长喙（舰首前伸导航桁,识别特征） -->
+    <path class="hull" d="M206 54 L238 48 L238 52 L206 60 Z" opacity=".85"/>
+    <!-- 前桥楼 -->
+    <path class="hull" d="M162 42 h15 v9 h-15 z"/>
+    <path class="panel" d="M165 45 h9 M165 49 h9"/>
+    <!-- 货舱盖 ×3 -->
+    <path class="panel" d="M90 52 h32 M90 64 h32 M124 50 h24 M124 64 h24 M150 50 h16"/>
+    <path class="panel" d="M122 44 v30"/>
+    <!-- 尾小鳍 -->
+    <path class="hull" d="M58 68 l6 12 h-10 z" opacity=".7"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M52 44 h8 v13 h-8 z M52 61 h8 v13 h-8 z" opacity=".85"/>
+    <path class="warm" d="M42 47 h8 v7 h-8 z M42 64 h8 v7 h-8 z"/>
+    <circle class="accf" cx="112" cy="78" r="1.5"/>
+  </g>
+  <text class="note" x="40" y="286">剑鱼级大型货舰 · sh-swordfish · 主力 T4·航运奇货 — 草稿(大箱 + 前桥 + 长喙导航桁)</text>
+</svg>

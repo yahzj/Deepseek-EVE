@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 甲壳重装族 3a-2/3：玳瑁级重装巡舰(T3:前后双拱壳 + 中部装甲脊) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#cdd6e0; stroke-width:1.6 }
+    .accf { fill:#cdd6e0 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="50" cy="46" r="1.2"/><circle class="star" cx="514" cy="62" r="1"/><circle class="star" cx="476" cy="238" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/><circle class="star" cx="280" cy="36" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M32 55 L22 58 L32 61 Z" opacity=".9"/>
+    <path class="warm" d="M32 68 L22 71 L32 74 Z" opacity=".8"/>
+    <!-- 前后双拱壳重装体 -->
+    <path class="hull" d="M46 66 C52 40 96 30 138 32 C170 34 192 44 198 58 L200 64 L48 74 Z"/>
+    <!-- 中部装甲脊（连接双拱） -->
+    <path class="hull" d="M138 32 C138 44 138 54 138 66"/>
+    <!-- 壳纹 -->
+    <path class="panel" d="M74 36 C78 46 78 58 78 70 M104 33 C106 46 106 58 106 70 M172 36 C168 48 168 58 168 70" opacity=".55"/>
+    <path class="panel" d="M60 52 C84 44 108 40 132 42 M172 40 C186 44 196 52 200 58"/>
+    <!-- 前观察塔 -->
+    <path class="hull" d="M190 58 h8 v5 h-8 z"/>
+    <!-- 前后点防炮 -->
+    <path class="hull" d="M92 28 h9 v6 h-9 z M101 28 v-5"/>
+    <path class="hull" d="M158 28 h8 v5 h-8 z M166 28 v-4"/>
+    <path class="hull" d="M120 30 h7 v5 h-7 z"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M56 46 h8 v14 h-8 z M56 63 h8 v14 h-8 z" opacity=".85"/>
+    <path class="warm" d="M46 49 h8 v8 h-8 z M46 66 h8 v8 h-8 z"/>
+    <circle class="accf" cx="112" cy="74" r="1.5"/>
+  </g>
+  <text class="note" x="40" y="286">玳瑁级重装巡舰 · sh-hawksbill · 巡洋 T3·重装型 — 草稿(双拱壳 + 中部装甲脊 + 多炮位)</text>
+</svg>

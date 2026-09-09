@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 蜃楼航运族 3b-1/5：飞鱼级快运舰(T2:流线快船 + 前桥 + 跃飞小翼) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ffd166; stroke-width:1.6 }
+    .accf { fill:#ffd166 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="46" r="1.2"/><circle class="star" cx="512" cy="62" r="1"/><circle class="star" cx="478" cy="238" r="1.2"/><circle class="star" cx="66" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M36 54 L26 57 L36 60 Z" opacity=".9"/>
+    <!-- 低流线箱体（斜鼻快运） -->
+    <path class="hull" d="M210 58 L196 42 L120 40 C96 40 78 44 66 50 L56 54 L60 62 C72 70 96 74 124 74 L176 72 Z"/>
+    <!-- 前部桥楼（快运操控前置） -->
+    <path class="hull" d="M162 40 h15 v9 h-15 z"/>
+    <path class="panel" d="M165 43 h9 M165 47 h9"/>
+    <!-- 跃飞小翼（上/下） -->
+    <path class="hull" d="M116 40 L138 24 L147 24 L128 40"/>
+    <path class="hull" d="M116 74 L138 88 L147 88 L128 74"/>
+    <!-- 货舱盖线 -->
+    <path class="panel" d="M92 50 h44 M92 62 h44 M136 44 v28"/>
+    <!-- 尾小鳍 -->
+    <path class="hull" d="M70 66 l6 12 h-10 z" opacity=".7"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M60 44 h8 v12 h-8 z M60 60 h8 v12 h-8 z" opacity=".85"/>
+    <path class="warm" d="M50 47 h8 v6 h-8 z M50 63 h8 v6 h-8 z"/>
+    <circle class="accf" cx="108" cy="57" r="1.4"/>
+  </g>
+  <text class="note" x="40" y="286">飞鱼级快运舰 · sh-flyingfish · 驱逐 T2·航运型 — 草稿(低流线快船 + 前桥 + 跃飞翼)</text>
+</svg>
