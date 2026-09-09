@@ -32,6 +32,8 @@ import {
   builtStationCount,
   builtSellBoost,
   absorbViaStation,
+  ensureMarket,
+  slowSupplyDraw,
 } from '../src/market'
 import { occupyAiCore } from '../src/ai'
 import { DEFAULT_BALANCE } from '../src/balance'
@@ -1113,6 +1115,60 @@ describe('建站收购网络扩容：卖出侧 ×1.5^N（单件商品放大；�
     }
     expect(run([])).toBe(20)
     expect(run([siteDef('a', 2), siteDef('b', 2)])).toBe(20) // 扩容不作用池品
+  })
+})
+
+describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权重减半、奇货掷骰减半）', () => {
+  it('稀有抽取：蓝图书命中 ≈ 普通商品一半（同池对照大样本）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 77 })
+    const ctx = makeTestCtx({
+      marketGoods: [
+        { key: 'bp-x', kind: 'blueprint', refId: 'bp-x', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65 },
+        { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65 },
+      ],
+      modules: [moduleDef('mod-x', 'turret', 0)],
+    })
+    ensureMarket(state, ctx)
+    let bpHits = 0
+    let modHits = 0
+    for (let i = 0; i < 400; i++) {
+      state.market.npcSell['bp-x'] = [] // 簿有 10 张上限：每轮清空后统计"本轮实抽张数"
+      state.market.npcSell['mod-x'] = []
+      slowSupplyDraw(state, ctx, i * 600_000)
+      bpHits += state.market.npcSell['bp-x']!.length
+      modHits += state.market.npcSell['mod-x']!.length
+    }
+    expect(bpHits).toBeGreaterThan(0)
+    expect(modHits).toBeGreaterThan(bpHits) // 蓝图书更少见
+    const ratio = bpHits / (bpHits + modHits)
+    expect(ratio).toBeGreaterThan(0.2) // 0.5/1.5 = 1/3 附近
+    expect(ratio).toBeLessThan(0.45)
+  })
+
+  it('奇货掷骰：蓝图书命中 ≈ 普通商品一半', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 79 })
+    const ctx = makeTestCtx({
+      marketGoods: [
+        { key: 'bp-y', kind: 'blueprint', refId: 'bp-y', rarity: 'exotic', basePrice: 10_000, demandMultiplier: 1.0 },
+        { key: 'mod-y', kind: 'module', refId: 'mod-y', rarity: 'exotic', basePrice: 10_000, demandMultiplier: 1.0 },
+      ],
+      modules: [moduleDef('mod-y', 'turret', 0)],
+    })
+    ensureMarket(state, ctx)
+    let bpHits = 0
+    let modHits = 0
+    for (let i = 0; i < 5_000; i++) {
+      state.market.npcSell['bp-y'] = []
+      state.market.npcSell['mod-y'] = []
+      slowSupplyDraw(state, ctx, i * 600_000)
+      bpHits += state.market.npcSell['bp-y']!.length
+      modHits += state.market.npcSell['mod-y']!.length
+    }
+    expect(bpHits).toBeGreaterThan(0)
+    expect(modHits).toBeGreaterThan(bpHits)
+    const ratio = bpHits / (bpHits + modHits)
+    expect(ratio).toBeGreaterThan(0.15)
+    expect(ratio).toBeLessThan(0.45)
   })
 })
 
