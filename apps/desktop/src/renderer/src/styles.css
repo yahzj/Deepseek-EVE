@@ -4418,8 +4418,12 @@ body {
 
 .app-mkt-side.is-disabled:hover { color: #7d95a8; }
 
-/* 交易动作按钮贴行右端（挂单贴切换行右 / 市价贴数量行右 / 全部卖出贴单价行右；不占满拉伸） */
-.app-mkt-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* 交易面板布局（2026-09-09 船长布局：左列字段区 + 右侧按钮容器——挂单/市价/(卖出侧)全卖
+   纵向整体，按钮等宽撑近容器宽，与字段行并排成整体） */
+.app-mkt-trade-body { display: flex; align-items: stretch; gap: 12px; }
+.app-mkt-trade-fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.app-mkt-actions { flex: 0 0 118px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.app-mkt-actions .app-btn { width: 100%; }
 
 .app-fit-modal-head {
 

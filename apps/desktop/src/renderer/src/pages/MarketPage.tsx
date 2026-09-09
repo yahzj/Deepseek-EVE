@@ -685,60 +685,60 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           </div>
         </div>
         <div className="app-mkt-trade">
-          {/* 交易面板（2026-09-09 船长布局：挂单按钮贴切换行右端、市价按钮贴数量行右端、
-              卖出侧「全部卖出」贴单价行右端——各行右侧对齐、按钮不拉伸占满） */}
-          <div className="app-mkt-trade-row">
-            <div className="app-mkt-sides" role="tablist">
-              <button
-                role="tab"
-                aria-selected={tab === 'buy'}
-                disabled={!buyable}
-                className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
-                onClick={() => setTab('buy')}
-                title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
-              >
-                买入
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'sell'}
-                className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
-                onClick={() => setTab('sell')}
-              >
-                卖出
-              </button>
+          {/* 交易面板（2026-09-09 船长布局：左列 = 买/卖切换 + 数量/单价输入；右侧按钮容器 =
+              挂单/市价/(卖出侧)全部卖出 纵向整体，按钮等宽撑近容器宽） */}
+          <div className="app-mkt-trade-body">
+            <div className="app-mkt-trade-fields">
+              <div className="app-mkt-trade-row">
+                <div className="app-mkt-sides" role="tablist">
+                  <button
+                    role="tab"
+                    aria-selected={tab === 'buy'}
+                    disabled={!buyable}
+                    className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
+                    onClick={() => setTab('buy')}
+                    title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
+                  >
+                    买入
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={tab === 'sell'}
+                    className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
+                    onClick={() => setTab('sell')}
+                  >
+                    卖出
+                  </button>
+                </div>
+              </div>
+              <div className="app-mkt-trade-row">
+                <span className="app-dim">数量</span>
+                <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+                {tab === 'sell' ? (
+                  <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部持有（${holdings}）`}>
+                    全部
+                  </button>
+                ) : null}
+              </div>
+              <div className="app-mkt-trade-row">
+                <span className="app-dim">单价</span>
+                <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
+                <span className="app-dim">ISK</span>
+              </div>
             </div>
-            <span className="app-mkt-actions">
+            <div className="app-mkt-actions">
               <button className="app-btn is-small" onClick={doPlace}>
                 {tab === 'buy' ? '挂买单' : '挂卖单'}
               </button>
-            </span>
-          </div>
-          <div className="app-mkt-trade-row">
-            <span className="app-dim">数量</span>
-            <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
-            {tab === 'sell' ? (
-              <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部持有（${holdings}）`}>
-                全部
-              </button>
-            ) : null}
-            <span className="app-mkt-actions">
               <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
                 {tab === 'buy' ? '市价买入' : '市价卖出'}
               </button>
-            </span>
-          </div>
-          <div className="app-mkt-trade-row">
-            <span className="app-dim">单价</span>
-            <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-            <span className="app-dim">ISK</span>
-            {tab === 'sell' ? (
-              <span className="app-mkt-actions">
+              {tab === 'sell' ? (
                 <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
                   全部卖出（{holdings}）
                 </button>
-              </span>
-            ) : null}
+              ) : null}
+            </div>
           </div>
           {/* 价格指引（2026-09-08 船长定：不向玩家披露站内吸收/巡游通道——只保留普通撮合语义的指导文案） */}
           <div className="app-dim app-sr-eta">
