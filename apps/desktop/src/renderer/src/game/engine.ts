@@ -654,9 +654,26 @@ export class GameEngine {
       }
       const restore = await saveBridge.restore(name)
       if (!restore.ok) return { ok: false, error: restore.error ?? '写回存档失败。' }
+      // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
+      // （≥60 秒且简报非空则弹出离线简报卡；墙钟在未来则跳过）。日志仍会话级不落盘。
+      const now = Date.now()
+      const wallFrom = parsed.savedAtWallMs
+      if (wallFrom > 0 && now > wallFrom) {
+        const before = snapshotBasics(parsed.state)
+        const stats = newSettleStats()
+        const { overflowMs } = offlineSplit(now - wallFrom)
+        simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
+        this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
+        if (this.offlineReport !== null) {
+          addLog(parsed.state, 'info', offlineReportLogText(this.offlineReport))
+        }
+      } else {
+        this.offlineReport = null
+      }
       this.state = parsed.state
-      this.offlineReport = null
       // 2026-09-08 船长定：日志会话级（写盘剥离）——恢复备份不做强制清空，本局日志接续显示
+      const saved = await this.persist() // 落盘（墙钟锚 = 现在 → 下次启动不会重复结算）
+      if (!saved) return { ok: false, error: '写回存档失败（存储空间不足或文件被占用）。' }
       this.notify()
       return { ok: true }
     } catch (err) {
