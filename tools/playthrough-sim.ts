@@ -15,6 +15,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import {
+  aiCoreCapBlock,
   aiCoreShipUsed,
   aiCoreIndustryUsed,
   industryAiBonus,
@@ -187,8 +188,9 @@ const BENIGN_SELL_ERRS = ['没有可卖的库存。', '收购簿为空', '暂时
 function isBenignSellErr(err?: string): boolean {
   return !!err && BENIGN_SELL_ERRS.some((p) => err.includes(p))
 }
-/** 叙事性 warn（低安首入提示/遭遇横幅等引擎按设计发 warn 的玩家向日志）不计引擎异常 */
-const BENIGN_NARRATIVE_WARN = ['首次进入低安', '低安遭遇', '被盯上了', '被咬下一块装甲', '被洗劫']
+/** 叙事性 warn（低安首入提示/遭遇横幅等引擎按设计发 warn 的玩家向日志）不计引擎异常
+ * 2026-09-09：补「被劫」——低安被抢结算的另一种措辞（有货被劫/无货被洗劫同档，AI 副船亦适用） */
+const BENIGN_NARRATIVE_WARN = ['首次进入低安', '低安遭遇', '被盯上了', '被咬下一块装甲', '被洗劫', '被劫']
 
 function auditLogs(): void {
   for (let i = lastLogIdx; i < state.logs.length; i++) {
@@ -586,7 +588,10 @@ function doLearnCraft(): void {
   }
   // 劳动者制（2026-09：pilot 开线占手动工作位、互斥采矿/远征/精炼）——
   // 有闲置 AI 核心优先用核心驱动（不挡主控），否则由主控亲自开（忙时下轮再试）
-  const worker: 'pilot' | 'basic' = countAiCore(state, 'basic') > 0 ? 'basic' : 'pilot'
+  // 2026-09-09：口径对齐引擎 aiCoreCapBlock('industry')——仅核心库存>0 不够，
+  // 启用上限（技能 AI 核心操作学）已满时引擎会拒单，此前误报制造失败
+  const basicFree = countAiCore(state, 'basic') > 0 && aiCoreCapBlock(state, ctx, 'industry') === null
+  const worker: 'pilot' | 'basic' = basicFree ? 'basic' : 'pilot'
   if (worker === 'pilot' && pilotLineBusy()) return
   const r = startManufacturing(state, bp.id, worker, ctx)
   if (r.ok) {
