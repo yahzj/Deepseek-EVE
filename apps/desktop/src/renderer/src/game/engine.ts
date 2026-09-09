@@ -104,9 +104,14 @@ import {
   onTutorialSkillPageOpened,
   tutorialAccelWait,
   ONB_AWAKEN,
+  // 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；预热缓存）
+  BOUNTY_MC_RUNS,
+  buildEvalState,
+  estimateBountyWinOn,
 } from '@whale/core'
 import type {
   AiCoreType,
+  BountyWinMC,
   CommandResult,
   GameState,
   ModuleSlot,
@@ -336,6 +341,63 @@ export class GameEngine {
   /** 优化：本场远征是否由"连续出击"自动发起（期间战斗界面默认最小化，不自动弹全屏战场） */
   private autoSortie = false
 
+  /* ═══ 悬赏胜率蒙特卡洛缓存（2026-09-09 船长确认 N=21：战力指纹变化 → 分帧全板预热） ═══ */
+  private winCache = new Map<string, BountyWinMC>() // anomalyId → 当前指纹下的预估结果
+  private winFpCur = ''
+  private winEval: { ev: GameState; uid: string } | null = null // 战力评估快照（fp 变化时重建）
+  private winQueue: string[] = []
+  private winLastPumpAt = 0
+
+  /** 战力指纹：驾驶船 + 装配 + 无人机清单 + 技能 + 当前耐久（任一变化 → 全板胜率失效重算） */
+  private winFingerprint(): string {
+    const st = this.state
+    const uid = st.shipId
+    const f = st.fleet[uid]
+    const tr = st.skills.trained
+    let sk = ''
+    for (const k of Object.keys(tr).sort()) sk += `${k}:${tr[k]};`
+    return `${uid}|${f?.defId}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${sk}`
+  }
+
+  /**
+   * 悬赏胜率 MC 预热泵（挂在每秒心跳尾；战斗交火期跳过避免挤占实时推进）：
+   * 指纹变化 → 重建评估快照 + 全板入队；每批预算 ~60ms、节流 ≥400ms，批完成 notify 一次，
+   * 悬赏卡数字随批从旧口径变准（全板约 1~3 秒）。评估用独立快照/种子，不消耗真实存档 rng。
+   */
+  private pumpWinCache(now: number): void {
+    if (this.state.expedition.phase === 'battle' && !!this.state.expedition.battle) return
+    if (now - this.winLastPumpAt < 400) return
+    const fp = this.winFingerprint()
+    if (fp !== this.winFpCur) {
+      this.winFpCur = fp
+      this.winCache.clear()
+      this.winEval = buildEvalState(this.state, this.state.shipId)
+      this.winQueue = this.anomalies.map((a) => a.id)
+    }
+    if (this.winQueue.length === 0) return
+    const snap = this.winEval
+    if (!snap) {
+      this.winQueue = []
+      return
+    }
+    this.winLastPumpAt = now
+    const until = now + 60
+    let done = 0
+    while (this.winQueue.length > 0 && Date.now() < until) {
+      const id = this.winQueue.shift()!
+      const a = this.ctx.anomalies.get(id)
+      if (!a) continue
+      this.winCache.set(id, estimateBountyWinOn(snap.ev, this.ctx, a, snap.uid, BOUNTY_MC_RUNS))
+      done += 1
+    }
+    if (done > 0) this.notify()
+  }
+
+  /** 悬赏卡读胜率缓存（2026-09-09）；未就绪返回 null → 调用方临时回退旧口径显示，预热完成后随 notify 变准 */
+  winEstimateOf(anomalyId: string): BountyWinMC | null {
+    return this.winCache.get(anomalyId) ?? null
+  }
+
   /** UI 查询：当前是否处于"自动连击发起的远征"（战斗界面不自动弹出） */
   autoSortieNow(): boolean {
     return this.autoSortie
@@ -516,6 +578,8 @@ export class GameEngine {
     }
     // 连击远征结束后复位标记（下一场手动出击照常自动弹战场）
     if (this.autoSortie && !this.state.expedition.active) this.autoSortie = false
+    // 悬赏胜率 MC 预热（2026-09-09：指纹变化时分帧重算；节流+预算防卡 UI）
+    this.pumpWinCache(now)
   }
 
   /** 保存存档（2026-09-08 船长定：事件日志不落盘——写盘前剥离 logs，

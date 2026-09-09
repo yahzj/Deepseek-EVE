@@ -1349,9 +1349,11 @@ export function bountyDamageForecast(
 }
 
 /**
- * 悬赏展示胜率（带伤预警口径，2026-09-08 船长定）：= 原显示胜率（满耐久基准 + logit 扩散）
- * − 预计装甲损耗×winPenaltyArmorPerFull − 预计结构损耗×winPenaltyHullPerFull（结构伤扣更重），
- * 下限 2%。只作用于玩家可见的悬赏卡/远征视图——实际结算与 AI/模拟工具仍用原 battleWinPreview。
+ * 【已退役的展示口径，2026-09-09】悬赏展示胜率 = 稳态解析 + 带伤扣分(旧方案)——探针实测双向
+ * 大偏差(显示 2% 却常胜),被 winEstimate.ts 蒙特卡洛推演(玩家可见)取代。本函数保留仅作：
+ * ①缓存预热完成前的临时回退显示；②活动远征视图/测试兼容。结算与 AI/工具口径 battleWinPreview 不变。
+ * = 原显示胜率（满耐久基准 + logit 扩散）− 预计装甲损耗×winPenaltyArmorPerFull
+ * − 预计结构损耗×winPenaltyHullPerFull（结构伤扣更重），下限 2%。
  */
 export function bountyWinPercentGuarded(
   state: GameState,

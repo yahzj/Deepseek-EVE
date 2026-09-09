@@ -431,6 +431,10 @@ export {
 } from './combat'
 export type { WeaponSpec, UnitSpec, Hp3 } from './combat'
 
+// 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；旧稳态 bountyWinPercentGuarded 仅兼容遗留调用）
+export { BOUNTY_MC_RUNS, buildEvalState, estimateBountyWinOn, estimateBountyWinMC } from './winEstimate'
+export type { BountyWinMC } from './winEstimate'
+
 export {
   AI_CORE_ORDER,
   aiCoreName,

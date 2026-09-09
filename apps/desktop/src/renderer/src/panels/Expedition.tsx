@@ -1361,11 +1361,15 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const state = engine.state
   const galaxy = engine.ctx.galaxies.get(anomaly.galaxyId)
   const power = calcPower(state, engine.ctx)
-  // V12：预估胜率与引擎结算同源（期望推演）
-  // 2026-09-08：悬赏展示胜率 = 带伤预警口径（预计伤及装甲/结构 → 显示下调；结算不变）
-  const pWin = bountyWinPercentGuarded(state, engine.ctx, anomaly) * 100
-  const fc = bountyDamageForecast(state, engine.ctx, anomaly)
-  const chance = Math.round(pWin)
+  // 2026-09-09：展示胜率 = 蒙特卡洛推演缓存（N=21 局：按当前耐久/装配实战模拟，含护盾回充与
+  // 敌方减员，带伤影响内建——替代旧"带伤预警扣分"口径）；缓存未就绪（换船/换装后预热中）
+  // 时临时回退旧口径显示，预热完成随引擎心跳自动变准
+  const mc = engine.winEstimateOf(anomaly.id)
+  const fc = bountyDamageForecast(state, engine.ctx, anomaly) // 仅缓存未就绪时回退用
+  const armorLoss = mc ? mc.armorLoss : fc.armorLoss
+  const hullLoss = mc ? mc.hullLoss : fc.hullLoss
+  const pWin = mc ? mc.winRate * 100 : bountyWinPercentGuarded(state, engine.ctx, anomaly) * 100
+  const chance = Math.min(98, Math.max(2, Math.round(pWin))) // 下限 2%：保留"仍有希望"语义
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
   // 奖励/小时（2026-09-08：胜利自动返航——基准 = 目标星系最近已建成站；本地悬赏（目标=基准）
@@ -1490,7 +1494,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         火力 {power} → 预估胜率{' '}
         <b
           className={`app-win-${chanceTone}`}
-          title={`带伤预警口径：本场预计损耗装甲 ≈${Math.round(fc.armorLoss * 100)}%、结构 ≈${Math.round(fc.hullLoss * 100)}%（伤及装甲会下调胜率，伤及结构下调更多）——实际结算仍按实时战斗`}
+          title={`按当前船况实测推演：预计损耗装甲 ≈${Math.round(armorLoss * 100)}%、结构 ≈${Math.round(hullLoss * 100)}%（胜率与损耗同一推演取平均；单局结果仍有随机波动）`}
         >
           {Math.round(chance)}%
         </b>
