@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 掠食者武装族 草稿批 2-3/4：电鳐级激光巡洋舰(T3:扁宽鳐形翼体 + 舰首激光束列 + 放电纹) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+    .accf { fill:#ff8373 }.warm { fill:#ffd98a }
+    .volt { fill:none; stroke:#5fd0ff; stroke-width:1.2; opacity:.8 }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="46" r="1.2"/><circle class="star" cx="512" cy="62" r="1"/><circle class="star" cx="478" cy="238" r="1.2"/><circle class="star" cx="66" cy="254" r="1"/><circle class="star" cx="286" cy="34" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M34 55 L24 58 L34 61 Z" opacity=".9"/>
+    <!-- 扁宽鳐形翼体（上下缘 = 展开的翼缘线） -->
+    <path class="hull" d="M56 55 C44 42 34 34 26 28 L14 22 M56 55 C44 68 34 76 26 82 L14 88"/>
+    <path class="hull" d="M206 55 L190 40 L96 38 C74 38 62 44 56 55 C62 66 74 72 96 72 L190 70 Z"/>
+    <!-- 翼前缘两条主筋 -->
+    <path class="hull" d="M30 30 L96 42 M30 80 L96 68" opacity=".8"/>
+    <!-- 舰首激光束列（多细管朝右 = 放电炮组） -->
+    <path class="hull" d="M196 46 h22 M196 52 h26 M196 58 h26 M196 64 h22" stroke-width="1.7"/>
+    <path class="acc" d="M218 46 l6 0 M222 52 l6 0 M222 58 l6 0 M218 64 l6 0" stroke-width="1.5"/>
+    <!-- 能量线圈/放电纹（青色语义 = 能量武器） -->
+    <path class="volt" d="M120 46 L132 55 L126 66 M142 46 L154 55 L148 66"/>
+    <!-- 顶舱矮 + 光学件 -->
+    <path class="hull" d="M156 38 h16 v8 h-16 z"/>
+    <circle class="accf" cx="164" cy="42" r="1.6"/>
+    <!-- 侧舷小炮 -->
+    <path class="hull" d="M104 60 h7 v4 h-7 z M111 60 v6"/>
+    <!-- 双窄引擎 -->
+    <path class="hull" d="M60 46 h9 v11 h-9 z M60 60 h9 v11 h-9 z" opacity=".85"/>
+    <path class="warm" d="M50 48 h8 v7 h-8 z M50 62 h8 v7 h-8 z"/>
+    <path class="panel" d="M96 44 h40 M96 66 h40 M136 46 v16"/>
+    <circle class="warm" cx="88" cy="55" r="1.2"/>
+  </g>
+  <text class="note" x="40" y="286">电鳐级激光巡洋舰 · sh-electricray · 巡洋 T3 — 草稿(扁宽鳐翼体 + 激光束列 + 放电纹[青])</text>
+</svg>

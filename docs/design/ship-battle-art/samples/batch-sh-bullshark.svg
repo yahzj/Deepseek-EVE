@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 掠食者武装族 草稿批 2-4/4：牛鲨级突击巡洋舰(T3:短粗 + 圆钝撞角首 + 重装甲斜块 + 前置大炮) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+    .accf { fill:#ff8373 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="50" cy="48" r="1.2"/><circle class="star" cx="514" cy="64" r="1"/><circle class="star" cx="476" cy="240" r="1.2"/><circle class="star" cx="68" cy="252" r="1"/><circle class="star" cx="288" cy="34" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M30 54 L20 57 L30 60 Z" opacity=".9"/>
+    <path class="warm" d="M30 68 L20 71 L30 74 Z" opacity=".8"/>
+    <!-- 短粗突击舰体 -->
+    <path class="hull" d="M206 58 L180 36 L112 34 C84 34 66 42 56 50 L48 57 L56 65 C68 74 90 79 118 79 L170 77 Z"/>
+    <!-- 圆钝撞角装甲首（前段多层护块） -->
+    <path class="hull" d="M206 58 L224 54 L226 62 L206 70 Z"/>
+    <path class="hull" d="M196 38 h12 v8 h-12 z"/>
+    <path class="panel" d="M196 42 L206 40 M196 58 L208 56 M196 70 L204 72" opacity=".6"/>
+    <!-- 前置大口径炮（突击火力核心） -->
+    <path class="hull" d="M180 42 h15 v12 h-15 z"/>
+    <path class="hull" d="M195 45 L226 46" stroke-width="3"/>
+    <path class="acc" d="M226 46 L232 46" stroke-width="2"/>
+    <!-- 厚装甲斜分段（上层甲板护块） -->
+    <path class="panel" d="M132 36 L150 74 M152 35 L170 74 M96 38 L112 76 M116 36 L128 76" opacity=".55"/>
+    <!-- 厚实舰桥（前移低矮 + 观察缝） -->
+    <path class="hull" d="M158 28 h19 v10 h-19 z"/>
+    <path class="panel" d="M161 31 h13 M161 35 h13"/>
+    <!-- 双大引擎 -->
+    <path class="hull" d="M52 46 h10 v12 h-10 z M52 62 h10 v12 h-10 z" opacity=".85"/>
+    <path class="warm" d="M42 48 h8 v8 h-8 z M42 64 h8 v8 h-8 z"/>
+    <!-- 尾腹鳍 -->
+    <path class="hull" d="M72 78 l6 14 h-12 z" opacity=".7"/>
+    <!-- 舷灯 -->
+    <circle class="accf" cx="130" cy="80" r="1.6"/>
+    <circle class="warm" cx="90" cy="40" r="1.2"/>
+  </g>
+  <text class="note" x="40" y="286">牛鲨级突击巡洋舰 · sh-bullshark · 巡洋 T3 — 草稿(短粗突击体 + 撞角装甲首 + 前置大口径炮)</text>
+</svg>

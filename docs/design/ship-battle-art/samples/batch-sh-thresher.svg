@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 掠食者武装族 草稿批 2-2/4：长尾鲨级导弹巡洋舰(T3:修长舰体 + 背斜导弹箱组 + 尾部桁翼) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+    .accf { fill:#ff8373 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="48" r="1.2"/><circle class="star" cx="516" cy="64" r="1"/><circle class="star" cx="474" cy="240" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/><circle class="star" cx="280" cy="36" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M22 55 L12 58 L22 61 Z" opacity=".9"/>
+    <!-- 修长巡洋舰体 -->
+    <path class="hull" d="M224 57 L192 40 L118 38 C92 38 74 44 62 51 L52 57 L60 63 C72 70 94 74 122 74 L178 74 Z"/>
+    <!-- 长尾桁（舰尾下方延伸 = 名称特征） -->
+    <path class="hull" d="M62 62 h34 M84 66 h24 M96 62 h14"/>
+    <path class="hull" d="M74 70 L98 84 L106 84 L88 70"/>
+    <!-- 背斜导弹发射箱组 ×3（前高后低,箱面带格线） -->
+    <path class="hull" d="M150 30 L184 26 L186 34 L152 38 Z"/>
+    <path class="panel" d="M154 31 L186 27 M157 33 L188 29"/>
+    <path class="hull" d="M126 32 L152 30 L154 38 L128 40 Z"/>
+    <path class="hull" d="M108 35 L126 33 L128 41 L110 43 Z"/>
+    <!-- 导弹尾焰小件（发射位前缘一点缀） -->
+    <circle class="accf" cx="118" cy="34" r="1.2"/>
+    <!-- 舰桥矮位前段 -->
+    <path class="hull" d="M168 42 h14 v9 h-14 z"/>
+    <path class="panel" d="M171 45 h8"/>
+    <!-- 侧舷近防炮 ×1 + 前小炮 -->
+    <path class="hull" d="M196 48 h9 v5 h-9 z M205 48 v-4"/>
+    <path class="hull" d="M224 57 L238 59 L238 62 L224 64 Z"/>
+    <!-- 单宽引擎口 + 腹鳍 -->
+    <path class="hull" d="M46 50 h10 v14 h-10 z"/>
+    <path class="warm" d="M36 52 h8 v10 h-8 z"/>
+    <path class="hull" d="M56 66 l8 14 h-12 z" opacity=".7"/>
+    <!-- 舷线 -->
+    <path class="panel" d="M98 52 h30 M98 68 h30 M136 44 v26"/>
+    <circle class="warm" cx="102" cy="56" r="1.1"/>
+  </g>
+  <text class="note" x="40" y="286">长尾鲨级导弹巡洋舰 · sh-thresher · 巡洋 T3 — 草稿(背斜导弹箱组 ×3 + 长尾桁翼 + 腹鳍)</text>
+</svg>

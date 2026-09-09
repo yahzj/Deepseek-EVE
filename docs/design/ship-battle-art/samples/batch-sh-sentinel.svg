@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 掠食者武装族 草稿批 2-1/4：王鲭级无人机母舰(T3 巡洋:大型平顶机库 + 后置塔台 + 4 引擎) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+    .accf { fill:#ff8373 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="50" cy="46" r="1.2"/><circle class="star" cx="514" cy="62" r="1"/><circle class="star" cx="476" cy="238" r="1.2"/><circle class="star" cx="66" cy="254" r="1"/><circle class="star" cx="290" cy="32" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M26 50 L16 53 L26 56 Z" opacity=".9"/>
+    <path class="warm" d="M26 64 L16 67 L26 70 Z" opacity=".9"/>
+    <!-- 大型宽体母舰轮廓（低矮平顶） -->
+    <path class="hull" d="M214 60 L198 42 L96 40 C72 40 56 46 48 54 L42 60 L48 68 C60 78 82 82 106 82 L176 82 L202 74 Z"/>
+    <!-- 平顶机库甲板（格口段 = 机库盖板线） -->
+    <path class="hull" d="M88 40 h104"/>
+    <path class="panel" d="M92 40 v8 M100 40 v8 M108 40 v8 M116 40 v8 M124 40 v8 M132 40 v8 M140 40 v8 M148 40 v8 M156 40 v8 M164 40 v8 M172 40 v8 M180 40 v8"/>
+    <path class="panel" d="M88 48 h104 M88 56 h96"/>
+    <!-- 后置指挥塔台（母舰识别） -->
+    <path class="hull" d="M162 26 h17 v14 h-17 z"/>
+    <path class="hull" d="M170.5 26 V18"/>
+    <path class="panel" d="M165 29 h11 M165 34 h11"/>
+    <!-- 舰首小型点防炮 ×2 -->
+    <path class="hull" d="M196 46 h10 v5 h-10 z M206 46 v-5"/>
+    <path class="hull" d="M196 60 h8 v4 h-8 z M204 60 v6"/>
+    <!-- 4 引擎口（两上两下并排） -->
+    <path class="hull" d="M48 46 h9 v9 h-9 z M48 58 h9 v9 h-9 z M60 46 h9 v9 h-9 z M60 58 h9 v9 h-9 z" opacity=".85"/>
+    <path class="warm" d="M38 47 h8 v6 h-8 z M38 60 h8 v6 h-8 z M50 47 h8 v6 h-8 z M50 60 h8 v6 h-8 z"/>
+    <!-- 甲板前缘导流斜线 -->
+    <path class="panel" d="M76 50 L56 64 M80 54 L60 68"/>
+    <circle class="accf" cx="148" cy="82" r="1.6"/>
+    <circle class="warm" cx="96" cy="34" r="1.2"/>
+  </g>
+  <text class="note" x="40" y="286">王鲭级无人机母舰 · sh-sentinel · 巡洋 T3·无人机型 — 草稿(平顶格口机库 + 后置塔台 + 四引擎 + 点防炮)</text>
+</svg>
