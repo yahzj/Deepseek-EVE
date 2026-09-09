@@ -13,9 +13,10 @@ import { scanStatus } from './explore'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
-import { expeditionStatus, bountyCooldownRemainingMs } from './expedition'
+import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor } from './expedition'
 import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
+import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -105,18 +106,37 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 主控打捞（B3：单趟作业；2026-09-06 补行——玩家上报活动栏不显示） ──
+  // ── 主控打捞（B3：单趟作业；2026-09-09 补齐活动栏进度条——出航/返航 = 行程进度，
+  //    打捞中 = 主循环周期进度（最短打捞器周期档），与矿带页 salvageProgressOf 同源） ──
   const svg = state.salvaging
   if (svg.active) {
     const gName = svg.galaxyId ? (ctx.galaxies.get(svg.galaxyId)?.name ?? svg.galaxyId) : ''
     const phaseTxt = svg.phase === 'returning' ? '返航卸货' : svg.phase === 'outbound' ? '出航' : '打捞中'
+    let percent: number | null = null
+    let remainingMs: number | null = null
+    if (svg.galaxyId) {
+      if (svg.phase === 'outbound') {
+        const leg = Math.max(1, outboundLegMsFor(state, ctx, svg.galaxyId))
+        percent = Math.min(100, Math.round((svg.phaseAccMs / leg) * 100))
+        remainingMs = Math.max(0, leg - svg.phaseAccMs)
+      } else if (svg.phase === 'returning') {
+        // 返航腿 = 满载返航 + 空船去程（去程并入返航）
+        const leg = Math.max(1, legMsFor(state, ctx, svg.galaxyId) + outboundLegMsFor(state, ctx, svg.galaxyId))
+        percent = Math.min(100, Math.round((svg.phaseAccMs / leg) * 100))
+        remainingMs = Math.max(0, leg - svg.phaseAccMs)
+      } else {
+        const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+        const step = cycles.length > 0 ? Math.min(...cycles) : 0
+        if (step > 0) percent = Math.min(100, Math.round((svg.cycleAccMs / step) * 100))
+      }
+    }
     out.push({
       id: 'salvage',
       kind: 'salvage',
       label: gName ? `打捞 · ${gName}` : '打捞作业',
       sub: phaseTxt,
-      percent: null,
-      remainingMs: null,
+      percent,
+      remainingMs: svg.phase === 'salvaging' ? null : remainingMs, // 打捞循环 = 周期条（无总剩余），行程 = 剩余倒计时
       stopable: true,
       stop: 'stop-salvage',
     })
@@ -220,6 +240,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       const aName = ctx.anomalies.get(loopId)?.name ?? loopId
       const cdMs = bountyCooldownRemainingMs(state, loopId)
       const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
+      // 冷却段给进度条（总时长按当前驾驶船扫描属性估算；等待其它作业结束无确定终点 → 无条）
+      let percent: number | null = null
+      if (cdMs > 0) {
+        const total = Math.max(1, bountyCooldownMsFor(state, ctx))
+        percent = Math.min(100, Math.max(0, Math.round(((total - cdMs) / total) * 100)))
+      }
       out.push({
         id: 'loop',
         kind: 'loop',
@@ -229,7 +255,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
           : cdMs > 0
             ? `目标「${aName}」——正在扫描新敌人`
             : `目标「${aName}」——即将自动再出击`,
-        percent: null,
+        percent,
         remainingMs: cdMs > 0 ? cdMs : null,
         stopable: true,
         stop: 'stop-loop',

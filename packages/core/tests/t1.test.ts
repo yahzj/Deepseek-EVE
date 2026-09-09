@@ -9,10 +9,11 @@ import { createInitialState } from '../src/state'
 import { advanceGame, enqueueSkill } from '../src/engine'
 import { activityOverview } from '../src/activity'
 import { cancelManufacturing, startManufacturing } from '../src/manufacturing'
-import { recallExpedition, startExpedition } from '../src/expedition'
+import { bountyCooldownMsFor, recallExpedition, setAutoLoopBounty, startExpedition } from '../src/expedition'
 import { startMining } from '../src/mining'
 import { startScan } from '../src/explore'
-import { makeTestCtx, skill } from './helpers'
+import { advanceSalvageOp, legMsFor, outboundLegMsFor, startSalvageOp } from '../src/salvaging'
+import { makeTestCtx, moduleDef, skill } from './helpers'
 
 describe('T1 统一停止指令', () => {
   let state: GameState
@@ -137,5 +138,65 @@ describe('T1 activityOverview 视图', () => {
     expect(ai.id).toBe('ai-sh-falconet')
     expect(ai.stop).toBe('cancel-ai')
     expect(ai.stopParam).toBe('sh-falconet')
+  })
+
+  it('主控打捞出卡带进度条(2026-09-09 补齐)：打捞中=打捞器周期进度；出航/返航=行程进度+精确剩余', () => {
+    const st = createInitialState({ nowWallMs: 0, seed: 7 })
+    st.exploredGalaxies.push('galaxy-far')
+    const ct = makeTestCtx({ modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })] })
+    st.fleet[st.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    expect(startSalvageOp(st, 'galaxy-far', ct).ok).toBe(true)
+    expect(st.salvaging.phase).toBe('salvaging')
+    // 打捞中：半周期 → 50% 周期条；打捞循环无总剩余
+    advanceSalvageOp(st, 500, ct)
+    let v = activityOverview(st, ct).find((a) => a.kind === 'salvage')!
+    expect(v.sub).toBe('打捞中')
+    expect(v.percent).toBe(50)
+    expect(v.remainingMs).toBeNull()
+    // 出航（旧档遗留相位）：行程进度 = 已走 / 出航腿
+    st.salvaging.phase = 'outbound'
+    const outLeg = outboundLegMsFor(st, ct, 'galaxy-far')
+    st.salvaging.phaseAccMs = Math.round(outLeg / 2)
+    v = activityOverview(st, ct).find((a) => a.kind === 'salvage')!
+    expect(v.sub).toBe('出航')
+    expect(v.percent).toBeGreaterThanOrEqual(48)
+    expect(v.percent).toBeLessThanOrEqual(52)
+    expect(v.remainingMs).toBe(outLeg - Math.round(outLeg / 2))
+    // 返航：行程进度（去程并入返航）+ 精确剩余
+    st.salvaging.phase = 'returning'
+    const retLeg = legMsFor(st, ct, 'galaxy-far') + outboundLegMsFor(st, ct, 'galaxy-far')
+    st.salvaging.phaseAccMs = Math.round(retLeg / 2)
+    v = activityOverview(st, ct).find((a) => a.kind === 'salvage')!
+    expect(v.sub).toBe('返航卸货')
+    expect(v.percent).toBeGreaterThanOrEqual(48)
+    expect(v.percent).toBeLessThanOrEqual(52)
+    expect(v.remainingMs).toBe(retLeg - Math.round(retLeg / 2))
+  })
+
+  it('重复清剿等待行带进度条(2026-09-09 补齐)：冷却中=冷却进度+剩余；将出击/等作业=无条(无确定终点)', () => {
+    const st = createInitialState({ nowWallMs: 0, seed: 9 })
+    const ct = makeTestCtx({})
+    expect(setAutoLoopBounty(st, ct, 'ano-a').ok).toBe(true)
+    const total = bountyCooldownMsFor(st, ct)
+    st.bountyCooldowns['ano-a'] = st.gameMs + total // 冷却刚开始
+    let v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
+    expect(v.sub).toContain('正在扫描新敌人')
+    expect(v.percent).toBe(0)
+    expect(v.remainingMs).toBe(total)
+    // 冷却过半 → 约 50%
+    st.bountyCooldowns['ano-a'] = st.gameMs + Math.round(total / 2)
+    v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
+    expect(v.percent).toBeGreaterThanOrEqual(48)
+    expect(v.percent).toBeLessThanOrEqual(52)
+    // 冷却结束、无其它作业 → 即将再出击：无条
+    st.bountyCooldowns['ano-a'] = st.gameMs - 1
+    v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
+    expect(v.sub).toContain('即将自动再出击')
+    expect(v.percent).toBeNull()
+    // 等待当前作业结束 → 无条（busyOther 提示文案）
+    st.mining.active = true
+    v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
+    expect(v.sub).toContain('等待当前作业结束')
+    expect(v.percent).toBeNull()
   })
 })
