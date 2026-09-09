@@ -1078,11 +1078,18 @@ export function advanceBattleFor(
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
       for (const f of curFoes) seedUnit(battle, f, { enterReload: true }) // 增援入场装填（转场窗口）
+      // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
+      // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
+      // 0 = 原地续战（旧行为），1 = 完整回到开战距离
+      const reopen = bal.waveReopenFrac ?? 0
+      if (reopen > 0 && Number.isFinite(openM)) {
+        battle.distanceM = Math.round(openM * reopen + battle.distanceM * (1 - reopen))
+      }
       const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
       addLog(
         state,
         'warn',
-        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + '·' : ''}${anomaly.name}）：敌方增援抵达，战斗继续。`,
+        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + '·' : ''}${anomaly.name}）：敌方增援自远处入场，重新接近中。`,
       )
       continue
     }

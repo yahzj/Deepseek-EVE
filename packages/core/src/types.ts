@@ -475,6 +475,9 @@ export interface BattleBalance {
   hitMax: number
   /** P0 承伤持久化：护盾战中被动回充（每秒回充 = 满盾 × 此比例；0 = 关，初值见 balance） */
   shieldRegenPerSec: number
+  /** 多波次转场（2026-09-09 船长建议）：下一波出现时把战斗距离向开战距离回拉的比例
+   * （0 = 原地续战；1 = 完整回到开战距离重新接近；默认初值见 balance） */
+  waveReopenFrac: number
   /** 炮术学每级单发伤害加成（0.05 = +5%/级） */
   gunneryDmgPerLevel: number
   /** V18B 武器族技能（2026-09-05 一号按交接底稿接入）：模块槽族 → 专精技能 id；
