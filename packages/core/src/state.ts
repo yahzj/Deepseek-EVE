@@ -344,12 +344,14 @@ export interface ExpeditionState {
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */
 export interface BattleUnitRt {
-  /** 单位标识：我方 'player'；敌方 'foe-0'（主力）/ 'foe-1..n'（僚机） */
+  /** 单位标识：我方 'player'；敌方 'foe-0'（主力）/ 'foe-1..n'（僚机）/ 多波多小队 w{n}-foe-{k}（2026-09-09） */
   tag: string
   side: 'me' | 'foe'
   name: string
   /** 三层当前血量（盾/甲/结构） */
   hp: { s: number; a: number; h: number }
+  /** 三层满血量（血条分母；2026-09-09 多波起写——波次/读档单位 UI 血条以本字段为准，旧档缺省由 UI 兜底） */
+  hpMax?: { s: number; a: number; h: number }
   /** 每武器装填倒计时 ms（0 = 可开火；与静态武器卡顺序一一对应） */
   weapons: number[]
 }

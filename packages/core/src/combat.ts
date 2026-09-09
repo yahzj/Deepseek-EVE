@@ -605,12 +605,16 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
   }
   const specs: UnitSpec[] = []
   for (let k = 0; k < waveUnits; k++) {
-    // 首波第一小队沿用旧命名（foe-0 主 / foe-1.. 僚），其余小队与后续波用前缀避免 tag 冲突
-    const isLegacyLead = prefix === '' && k === 0
-    specs.push(make(isLegacyLead ? 'foe-0' : `${prefix}foe-${k}`, anomaly.name, mainThreat, mainType))
+    // tag 唯一性（2026-09-09 多波修复）：仅首波第一小队沿用旧命名（foe-0 主 / foe-1.. 僚，
+    // 兼容旧 UI/测试的"主+僚"假想）；其余小队（同波第 2 队起）与后续波统一 w{波}-foe-{队} 前缀，
+    // 避免与 legacy 僚机 tag（foe-1..n）撞名造成单位覆盖/血条参照错位。
+    const legacySquad = prefix === '' && k === 0
+    const squadPrefix = legacySquad ? '' : `${prefix === '' ? 'w0-' : prefix}`
+    const mainTag = legacySquad ? 'foe-0' : `${squadPrefix}foe-${k}`
+    specs.push(make(mainTag, anomaly.name, mainThreat, mainType))
     for (let i = 1; i <= escorts; i++) {
       specs.push(
-        make(isLegacyLead ? `foe-${i}` : `${prefix}foe-${k}-e${i}`, `${anomaly.name}·僚机`, mainThreat * 0.6, mainType),
+        make(legacySquad ? `foe-${i}` : `${squadPrefix}foe-${k}-e${i}`, `${anomaly.name}·僚机`, mainThreat * 0.6, mainType),
       )
     }
   }
@@ -778,6 +782,7 @@ export function createBattleState(
       side: spec.side,
       name: spec.name,
       hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+      hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       weapons: spec.weapons.map(() => 0),
     }
   }
@@ -795,15 +800,18 @@ export function createBattleState(
   }
 }
 
-/** 按规格把单位补入战斗（多波续刷/读档补缺用；已存在（含 hp 归零的尸体）不覆盖） */
-function seedUnit(b: import('./state').BattleState, spec: UnitSpec): void {
+/** 按规格把单位补入战斗（多波续刷/读档补缺用；已存在（含 hp 归零的尸体）不覆盖）。
+ * enterReload（2026-09-09 波次转场）：增援单位入场需先完成一轮装填（weapons 满倒计时）
+ * 才开火——给"增援抵达"一段自然哑火窗口（≈一次装填时长），不改变任何结算语义。 */
+function seedUnit(b: import('./state').BattleState, spec: UnitSpec, opts: { enterReload?: boolean } = {}): void {
   if (b.units[spec.tag]) return
   b.units[spec.tag] = {
     tag: spec.tag,
     side: spec.side,
     name: spec.name,
     hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
-    weapons: spec.weapons.map(() => 0),
+    hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+    weapons: opts.enterReload ? spec.weapons.map((w) => Math.max(1, w.reloadMs)) : spec.weapons.map(() => 0),
   }
 }
 
@@ -957,8 +965,15 @@ export function battleArcsFor(
   }
   if (!Number.isFinite(foeMin)) foeMin = 0
   const openM = battleOpenM(me, foes, bal)
+  // 各单位三层满血量（UI 垂直血条按各自满值比例绘制）：以战斗实况单位为准——
+  // 2026-09-09 多波修复：foes 仅按"单波默认"重建，波次增援/多小队单位（w{n}-foe-* 等）不在其内，
+  // 曾致后续波敌人血条为空（数值正常）；现优先 battle.units[tag].hpMax（引擎生成时写入），
+  // 旧档缺省 hpMax 时以当前血兜底（读档中断局近似满值显示）。
   const foeMaxHp: Record<string, { s: number; a: number; h: number }> = {}
-  for (const f of foes) foeMaxHp[f.tag] = { s: f.hp.s, a: f.hp.a, h: f.hp.h }
+  for (const [tag, u] of Object.entries(battle.units)) {
+    if (u.side !== 'foe') continue
+    foeMaxHp[tag] = u.hpMax ?? { s: Math.max(0.001, u.hp.s), a: Math.max(0.001, u.hp.a), h: Math.max(0.001, u.hp.h) }
+  }
   return {
     nearM: bal.minDistanceM,
     openM,
@@ -1052,7 +1067,8 @@ export function advanceBattleFor(
       : createFoeSpecs(anomaly, bal)
   let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
   let curFoes = specsOf(waveIdx)
-  for (const f of curFoes) seedUnit(battle, f) // 开战/读档补缺
+  // 开战首波由 startBattleFor 生成（无装填延迟）；此处只兜读档中断补缺（视为增援入场）
+  for (const f of curFoes) seedUnit(battle, f, { enterReload: true })
   let guard = 0
   while (state.gameMs > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
@@ -1061,7 +1077,7 @@ export function advanceBattleFor(
       waveIdx += 1
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
-      for (const f of curFoes) seedUnit(battle, f)
+      for (const f of curFoes) seedUnit(battle, f, { enterReload: true }) // 增援入场装填（转场窗口）
       const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
       addLog(
         state,

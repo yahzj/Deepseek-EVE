@@ -6176,6 +6176,15 @@ body {
 
 @keyframes app-bts-fadeout { to { opacity: 0; } }
 
+/* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升，
+ * 给"增援抵达"画面过渡（引擎无喘息语义不变，仅视觉；开局首批同样播一次） */
+.app-bts-unit { animation: app-bts-foe-in .55s ease-out both; }
+
+@keyframes app-bts-foe-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+
 /* V18B（2026-09-05）残骸层：死亡锚点爆炸 + 原位淡出（不占敌方队列；补位由存活列表完成）。
 
    容器 inline 宽高 = 舰体尺寸（left/top 已按舰体中心对齐），boom 仍按容器 50%/46% 居中 */

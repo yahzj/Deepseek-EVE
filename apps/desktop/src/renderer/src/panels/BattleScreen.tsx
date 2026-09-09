@@ -538,23 +538,26 @@ const meSpeedRef = useRef(200)
   /** 敌舰族形键（悬赏卡 → 族 A~G；远征/未列卡/异常 → F 制式巡逻兜底，与资产 FOE_ART 键同源） */
   const foeKey = foeFamilyOf(state.expedition.anomalyId)
   const foeClassBase = foeClassName(foeAnomaly?.tactic, foeAnomaly?.defProfile)
+  // 2026-09-09 多波修复：主/僚判定不靠"队列首位"——多波多小队的主舰 tag 为 w{n}-foe-{k}
+  // （旧判定把第 2 艘主舰当僚机：小尺寸 +「·僚机」字样）；主舰 = foe-0 或 wave 主编号，僚机带 -e{..} 或 legacy foe-N
+  const isFoeMainTag = (tag: string): boolean => tag === 'foe-0' || (tag.includes('-foe-') && !tag.includes('-e'))
   const foeRowTags = foeTags.filter((tag) => {
     if (!deadRef.current.has(tag)) return true
     const w = wreckRef.current.get(tag)
     return !!w && now < w.boomAt // 僵尸帧：已判死但致死弹道未着弹，保持原样
   })
   const foeUnitEls = foeRowTags.map((tag) => {
-    const orig = origIdxOf(tag)
+    const isMain = isFoeMainTag(tag)
     return (
       <div key={tag} data-tag={tag} className="app-bts-unit">
         <ShipSprite
           foeKey={foeKey}
           flip={foeFlip}
           accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
-          size={orig === 0 ? LAY.MAIN : LAY.ESC}
+          size={isMain ? LAY.MAIN : LAY.ESC}
         />
-        <span className="app-bts-name" style={{ color: orig === 0 ? '#ffb3a6' : '#d8a08f' }}>
-          {orig === 0 ? foeClassBase : `${foeClassBase}·僚机`}
+        <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+          {isMain ? foeClassBase : `${foeClassBase}·僚机`}
         </span>
       </div>
     )
@@ -568,8 +571,7 @@ const meSpeedRef = useRef(200)
   const wreckEls = [...wreckRef.current.entries()].map(([tag, w]) => {
     const sinceBoom = now - w.boomAt
     if (sinceBoom < 0) return null // 僵尸帧：本体仍在队列原样飞行，无残骸幻影
-    const orig = origIdxOf(tag)
-    const size = orig === 0 ? LAY.MAIN : LAY.ESC
+    const size = isFoeMainTag(tag) ? LAY.MAIN : LAY.ESC // 2026-09-09 多波：主/僚按 tag 判定
     const h = Math.round(size * 0.46)
     const boomLive = sinceBoom < BOOM_LIFE
     const fadeT = (sinceBoom - BOOM_LIFE) / WRECK_FADE_MS

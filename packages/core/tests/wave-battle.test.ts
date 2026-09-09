@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
-import { startBattleFor, advanceBattleFor } from '../src/combat'
+import { startBattleFor, advanceBattleFor, createFoeSpecs } from '../src/combat'
 import { anomaly, makeTestCtx } from './helpers'
 
 function world(waves: { units: number; hpShare: number }[] | undefined) {
@@ -39,6 +39,7 @@ describe('多波次战斗（2026-09-09）', () => {
     expect(battle.ended).toBe('me')
     expect(battle.waveIdx).toBe(1)
     expect(battle.units['w1-foe-0']).toBeDefined()
+    expect(battle.units['w1-foe-0']!.hpMax).toBeDefined() // 血条分母随单位写入
     expect(state.logs.some((l) => l.text.includes('第 2/2 波来袭'))).toBe(true)
   })
 
@@ -66,5 +67,22 @@ describe('多波次战斗（2026-09-09）', () => {
     const b2 = startBattleFor(two.state, two.ctx, two.state.shipId, 'ano-wave', 0)!
     const firstHp = b2.units['foe-0']!.hp.s + b2.units['foe-0']!.hp.a + b2.units['foe-0']!.hp.h
     expect(firstHp).toBeCloseTo(fullHp * 0.5, 6)
+    // hpMax = 初始满血（UI 血条分母；此前缺失致波次单位血条为空）
+    expect(b1.units['foe-0']!.hpMax).toEqual(b1.units['foe-0']!.hp)
+    expect(b2.units['foe-0']!.hpMax).toEqual(b2.units['foe-0']!.hp)
+  })
+
+  it('多小队 tag 唯一（2026-09-09 修复）：首波 units=2 生成 foe-0 + w0-foe-1（不与 legacy 僚机撞名）', () => {
+    const { ctx } = world(undefined)
+    const bal = ctx.balance.battle
+    const specs = createFoeSpecs(
+      { ...anomaly('ano-wave', 'galaxy-hub', { threat: 10 }), waves: [{ units: 2, hpShare: 1 }] },
+      bal,
+      { units: 2 },
+    )
+    const tags = specs.map((s) => s.tag)
+    expect(tags).toContain('foe-0')
+    expect(tags).toContain('w0-foe-1')
+    expect(new Set(tags).size).toBe(tags.length) // 无重复 tag
   })
 })

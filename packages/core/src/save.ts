@@ -713,6 +713,16 @@ function cleanBattle(raw: unknown): BattleState | null {
         }
       }
       if (weapons.length === 0) weapons.push(0)
+      const hpMaxRaw = asRaw(u.hpMax)
+      const hpMaxOk =
+        hpMaxRaw !== null &&
+        typeof hpMaxRaw === 'object' &&
+        typeof (hpMaxRaw as RawState).s === 'number' &&
+        Number.isFinite((hpMaxRaw as RawState).s) &&
+        typeof (hpMaxRaw as RawState).a === 'number' &&
+        Number.isFinite((hpMaxRaw as RawState).a) &&
+        typeof (hpMaxRaw as RawState).h === 'number' &&
+        Number.isFinite((hpMaxRaw as RawState).h)
       units[tag] = {
         tag,
         side,
@@ -722,6 +732,15 @@ function cleanBattle(raw: unknown): BattleState | null {
           a: Math.max(0, numf(hpRaw.a, 0)),
           h: Math.max(0, numf(hpRaw.h, 0)),
         },
+        ...(hpMaxOk
+          ? {
+              hpMax: {
+                s: Math.max(0, (hpMaxRaw as RawState).s as number),
+                a: Math.max(0, (hpMaxRaw as RawState).a as number),
+                h: Math.max(0, (hpMaxRaw as RawState).h as number),
+              },
+            }
+          : {}),
         weapons,
       }
     }
