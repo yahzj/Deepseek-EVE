@@ -21,6 +21,8 @@ import {
   assignAiMining,
   assignAiSalvage,
   battleWinPreview,
+  buildEvalState,
+  estimateBountyWinOn,
   bountyCooldownRemainingMs,
   buyAtMarket,
   buyBasicAiCore,
@@ -662,7 +664,7 @@ function doBounty(): void {
   let best: AnomalyDef | null = null
   let bestScore = 0.5
   for (const a of canDo) {
-    const w = battleWinPreview(state, ctx, a)
+    const w = winOf(state, ctx, a)
     if (w > bestScore) {
       bestScore = w
       best = a
@@ -681,7 +683,7 @@ function doFarm(): void {
   // 通关目标仍挂起时，boss 达到 85%+ 就留给「最终验证」；通关后（万亿现金目标）boss 悬赏也进刷钱池
   if (WANTS.boss && !goalDone.boss) {
     const boss = ctx.anomalies.get('ano-vault-sentinel')
-    if (boss && battleWinPreview(state, ctx, boss) >= 0.85) return
+    if (boss && winOf(state, ctx, boss) >= 0.85) return
   }
   const candidates = ANOMALY_LIST.filter(
     (a) =>
@@ -689,7 +691,7 @@ function doFarm(): void {
       isExplored(state, a.galaxyId) &&
       bountyCooldownRemainingMs(state, a.id) <= 0,
   )
-    .map((a) => ({ a, w: battleWinPreview(state, ctx, a) }))
+    .map((a) => ({ a, w: winOf(state, ctx, a) }))
     .filter((x) => x.w > 0.6)
     .sort((x, y) => y.a.rewardIsk * y.w - x.a.rewardIsk * x.w)
   const pick = candidates[0]
@@ -972,11 +974,38 @@ function doPilotSalvageSession(): void {
   lastPilotSalvageDay = day()
 }
 
+/* ═══════════ 胜率口径：多波卡（steady 稳态对长盘多波系统失真，实测 100% vs 预估 11~37%）走
+ * 与实战完全同构的蒙特卡洛（winEstimate，N=9），带配置指纹缓存（船+装配+技能+卡，满耐久口径）；
+ * 单波卡维持 battleWinPreview（廉价、经实测校准良好）。2026-09-09 船长拍板校准方向。 */
+const mcCache = new Map<string, number>()
+function winOf(state: GameState, ctx: SimContext, a: AnomalyDef): number {
+  if (!a.waves || a.waves.length === 0) return battleWinPreview(state, ctx, a)
+  const entry = state.fleet[state.shipId]
+  const defId = entry?.defId ?? state.shipId
+  const skillKey = Object.entries(state.skills.trained)
+    .sort(([x], [y]) => (x < y ? -1 : 1))
+    .map(([k, v]) => `${k}@${v}`)
+    .join(',')
+  const key = `${defId}|${JSON.stringify(entry?.fitted ?? {})}|${skillKey}|${a.id}`
+  const hit = mcCache.get(key)
+  if (hit !== undefined) return hit
+  const snap = buildEvalState(state, state.shipId)
+  if (!snap) return battleWinPreview(state, ctx, a)
+  const f = snap.ev.fleet[snap.uid]
+  if (f) {
+    f.armorPct = 1 // 满耐久口径：模拟"修满后挑战"的决策视角
+    f.durability = 1
+  }
+  const r = estimateBountyWinOn(snap.ev, ctx, a, snap.uid, 9)
+  mcCache.set(key, r.winRate)
+  return r.winRate
+}
+
 /* ═══════════ 最终目标（连打 5 局） ═══════════ */
 function tryFinalRun(): boolean {
   const boss = ctx.anomalies.get('ano-vault-sentinel')!
   if (standing() < boss.standingReq) return false
-  const w0 = battleWinPreview(state, ctx, boss)
+  const w0 = winOf(state, ctx, boss)
   if (w0 < 0.85) return false
   mark(`最终验证：预估胜率 ${Math.round(w0 * 100)}% 连打 5 局`)
   for (let i = 0; i < 5; i++) {
@@ -1045,7 +1074,7 @@ function holeWatch(): boolean {
   const cur = fleetDefOf(state, ctx, state.shipId)
   const weaponCount = (state.fleet[state.shipId]?.fitted.high ?? []).filter(Boolean).length
   const boss = ctx.anomalies.get('ano-vault-sentinel')
-  const bossW = boss ? battleWinPreview(state, ctx, boss) : 0
+  const bossW = boss ? winOf(state, ctx, boss) : 0
   // 训练毕业（全部 62 技能满 5 级）才算顶配——real-training 下未毕业不算
   const trainingDone = [...ctx.skills.keys()].every((id) => (state.skills.trained[id] ?? 0) >= 5)
   // 顶配达成登记：训练毕业 + 武装船 + ≥3 武器 + 声望解锁 + 星系全亮
@@ -1218,7 +1247,7 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
       } else if (!state.expedition.active) {
         // 全部点亮 + 声望达标：按目标分流
         const bossDef = ctx.anomalies.get('ano-vault-sentinel')
-        const bossW = bossDef ? battleWinPreview(state, ctx, bossDef) : 0
+        const bossW = bossDef ? winOf(state, ctx, bossDef) : 0
         if (WANTS.boss && !goalDone.boss) {
           if (bossW >= 0.85) {
             if (tryFinalRun()) {
@@ -1239,7 +1268,7 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
       // 采矿兜底（早期未就绪或打赏冷却空窗）；boss 冲刺就绪时不挖矿以免拖延最终验证
       if (!allGoalsDone() && !state.expedition.active && !state.scanning.active && !state.salvaging.active && !state.mining.active) {
         const bossDef2 = ctx.anomalies.get('ano-vault-sentinel')
-        const bossW2 = bossDef2 ? battleWinPreview(state, ctx, bossDef2) : 0
+        const bossW2 = bossDef2 ? winOf(state, ctx, bossDef2) : 0
         if (!(WANTS.boss && !goalDone.boss && bossW2 >= 0.85)) doMine()
       }
     } else if (state.gameMs % 1_800_000 < STEP_MS) {
@@ -1320,7 +1349,7 @@ const bossFinal = ctx.anomalies.get('ano-vault-sentinel')
 if (bossFinal) {
   const cur = fleetDefOf(state, ctx, state.shipId)
   lines.push(
-    `终局评估：当前驾驶 ${cur?.name ?? state.shipId} 对 ano-vault-sentinel 预估胜率 ${Math.round(battleWinPreview(state, ctx, bossFinal) * 100)}%`,
+    `终局评估：当前驾驶 ${cur?.name ?? state.shipId} 对 ano-vault-sentinel 预估胜率 ${Math.round(winOf(state, ctx, bossFinal) * 100)}%`,
   )
 }
 const report = lines.join('\n')
