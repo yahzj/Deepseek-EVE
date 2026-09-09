@@ -1,4 +1,4 @@
-// 由 tools/_gen-shipart.cjs 生成(一次性,已删):舰形资产转录(三号 2026-09-09)
+﻿// 由 tools/_gen-shipart.cjs 生成(一次性,已删):舰形资产转录(三号 2026-09-09)
 import type { ReactNode } from 'react'
 export const SHIP_ART_EXTRA: Record<string, ReactNode> = {
   "sh-shrike": (
@@ -477,7 +477,7 @@ export const SHIP_ART_EXTRA: Record<string, ReactNode> = {
   ),
   "whale-king": (
     <g>
-      <path d="M204 54 C198 36 164 28 120 28 C86 28 64 38 54 50 L46 56 L54 66 C70 78 96 84 130 84 L192 78 Z"/>
+      <path d="M204 54 C198 36 164 28 120 28 C86 28 66 38 58 48 L58 64 L66 70 C78 78 96 84 130 84 L192 78 Z"/>
           
           <path d="M204 42 C222 36 238 44 244 54 C240 62 228 68 214 68"/>
           <path className="shipart-panel" d="M214 44 C224 42 234 46 240 54 C236 60 228 64 220 64" opacity=".7"/>
