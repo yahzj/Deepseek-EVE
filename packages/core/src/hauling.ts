@@ -16,7 +16,7 @@ import { addLog, HOME_GALAXY_ID } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
-import { shortestTravelMinutes, travelLegMs } from './travel'
+import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
 import { cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { siteProgress } from './station'
 import { shipDisplayName } from './instances'
@@ -66,6 +66,11 @@ export function dockedHaulEndpoint(state: GameState): string | null {
 /** 单段报酬估算（容量 × 费率 × 标称分钟；floor 取整） */
 export function haulLegReward(capacityM3: number, legMinutes: number): number {
   return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * legMinutes)
+}
+
+/** 展示/日志用的实际航程分钟（吃航行技能与调试快进；四舍五入 ≥1） */
+function effMinutesOf(state: GameState, ctx: SimContext, nominalMinutes: number): number {
+  return Math.max(1, Math.round(travelMinutesEff(state, ctx, nominalMinutes)))
 }
 
 /** 空态 */
@@ -159,7 +164,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     state,
     'info',
     `运输任务开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
-      (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${h.legMinutes} 分钟`) +
+      (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
       `，到站结算报酬约 ${perLeg.toLocaleString('zh-CN')} ISK${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
   )
   return { ok: true }
@@ -204,7 +209,7 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
       addLog(
         state,
         'trade',
-        `运输任务 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（货仓 ${cap.toLocaleString('zh-CN')} m³ · 航程约 ${Math.max(1, Math.round(h.legMinutes))} 分钟）。`,
+        `运输任务 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
       )
       // 到站（母港 = dockedSite null；随后立即续下一段）
       state.awayGalaxy = null

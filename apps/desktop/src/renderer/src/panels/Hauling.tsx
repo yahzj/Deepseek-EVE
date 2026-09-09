@@ -7,12 +7,12 @@
  * - 任务中货仓被虚拟货物占满（见货仓页提示）。
  */
 import {
-  HAUL_RATE_PER_M3_MIN,
   cargoCapacityM3Of,
   dockedHaulEndpoint,
   haulEndpoints,
   haulLegReward,
   shortestTravelMinutes,
+  travelMinutesEff,
   shipDisplayName,
 } from '@whale/core'
 import { ProgressBar } from '@whale/ui'
@@ -113,6 +113,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         <div className="app-haul-list">
           {routes.map((rt) => {
             const isActive = rt.key === activeKey
+            const effMin = Math.max(1, travelMinutesEff(state, ctx, rt.minutes))
             const perLeg = haulLegReward(cap, rt.minutes)
             const perRound = perLeg * 2
             const canStart = dockedOk && !busy && !haulingActive
@@ -127,11 +128,11 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                     {rt.aName} ⇄ {rt.bName}
                     {isActive ? <span className="app-chip app-haul-running">运输中</span> : null}
                   </span>
-                  <span className="app-dim">单程约 {rt.minutes} 分钟</span>
+                  <span className="app-dim">单程约 {effMin} 分钟（按当前航行技能）</span>
                 </div>
                 <div className="app-haul-line app-dim">
                   {shipName}（货仓 {cap.toLocaleString('zh-CN')} m³）· 单段约 {isk(perLeg)} ISK · 往返一趟约 {isk(perRound)} ISK ·
-                  满速时薪约 {isk(Math.round(cap * HAUL_RATE_PER_M3_MIN * 60))} ISK
+                  时薪约 {isk(Math.round((perLeg / effMin) * 60))} ISK（按当前航行技能）
                 </div>
                 {isActive ? (
                   <div className="app-haul-line">

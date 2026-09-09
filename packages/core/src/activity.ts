@@ -18,6 +18,7 @@ import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
 import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
+import { travelMinutesEff } from './travel'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -153,7 +154,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: 'hauling',
       kind: 'hauling',
       label: `运输任务 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
-      sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 航程约 ${Math.max(1, Math.round(hg.legMinutes))} 分钟`,
+      sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 本段实际约 ${Math.max(1, travelMinutesEff(state, ctx, hg.legMinutes))} 分钟`,
       percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
       remainingMs: Math.max(0, leg - hg.phaseAccMs),
       stopable: true,
