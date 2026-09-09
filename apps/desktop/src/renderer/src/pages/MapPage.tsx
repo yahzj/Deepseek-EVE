@@ -53,6 +53,25 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'task', label: '任务中心', icon: 'nav-task' },
 ]
 
+/* 矿带 / 打捞排序（2026-09-09 船长拍板：危险=所在星系安全等级 sec 降序=安全在前，为默认；
+ * 选择存本地，键形如 whale-idle:*-sort）。 */
+type BeltSortKey = 'danger' | 'galaxy' | 'value' | 'name'
+const BELT_SORT_KEY = 'whale-idle:mine-sort'
+const BELT_SORT_LABEL: Record<BeltSortKey, string> = {
+  danger: '危险（安全优先）',
+  galaxy: '星系名称',
+  value: '矿石价值最高',
+  name: '矿带名称',
+}
+type WreckSortKey = 'danger' | 'galaxy' | 'density' | 'name'
+const WRECK_SORT_KEY = 'whale-idle:salvage-sort'
+const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
+  danger: '危险（安全优先）',
+  galaxy: '星系名称',
+  density: '残骸密度最高',
+  name: '名称',
+}
+
 export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
@@ -118,6 +137,62 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   const state = engine.state
   const view = miningStatus(state, engine.ctx)
   const activeBeltId = view.active ? state.mining.beltId : null
+  const [sort, setSort] = useState<BeltSortKey>(() => {
+    try {
+      const v = localStorage.getItem(BELT_SORT_KEY)
+      return v === 'danger' || v === 'galaxy' || v === 'value' || v === 'name' ? v : 'danger'
+    } catch {
+      return 'danger'
+    }
+  })
+
+  function changeSort(next: BeltSortKey): void {
+    setSort(next)
+    try {
+      localStorage.setItem(BELT_SORT_KEY, next)
+    } catch {
+      // 忽略
+    }
+  }
+
+  // 排序行数据（与矿带卡内效率行同口径：矿石价值 = 每小时产出估价，按物品 baseSellPriceIsk 加权）
+  const beltRows = engine.belts.map((belt) => {
+    const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
+    const mp = getMiningParams(state, engine.ctx, { beltId: belt.id })
+    let valuePerHour: number | null = null
+    if (mp) {
+      const cyclesPerHour = 3_600_000 / mp.cycleMs
+      const rows = belt.outputs?.length ? belt.outputs : [{ itemId: belt.oreId, weight: 1 }]
+      const wsum = rows.reduce((s, r) => s + r.weight, 0)
+      let valuePerUnit = 0
+      for (const r of rows) {
+        const d = engine.ctx.items.get(r.itemId)
+        valuePerUnit += (r.weight / wsum) * (d?.baseSellPriceIsk ?? 0)
+      }
+      valuePerHour = Math.round(Math.round(mp.unitsPerCycle * cyclesPerHour) * valuePerUnit)
+    }
+    return { belt, galaxyName: galaxy?.name ?? '母港', sec: galaxy?.security ?? 1, valuePerHour }
+  })
+  const byBeltName = (x: (typeof beltRows)[number], y: (typeof beltRows)[number]): number =>
+    x.belt.name.localeCompare(y.belt.name, 'zh-Hans-CN') || x.belt.id.localeCompare(y.belt.id)
+  const sortedBelts = [...beltRows].sort((x, y) => {
+    if (sort === 'danger') {
+      if (x.sec !== y.sec) return y.sec - x.sec // sec 降序 = 安全在前
+      return byBeltName(x, y)
+    }
+    if (sort === 'galaxy') {
+      const g = x.galaxyName.localeCompare(y.galaxyName, 'zh-Hans-CN')
+      if (g !== 0) return g
+      return byBeltName(x, y)
+    }
+    if (sort === 'value') {
+      const xv = x.valuePerHour ?? -1
+      const yv = y.valuePerHour ?? -1
+      if (xv !== yv) return yv - xv
+      return byBeltName(x, y)
+    }
+    return byBeltName(x, y)
+  })
 
   function handleStart(beltId: string): void {
     // T4 延后项：远征中（确认后）走"取消远征再开采"转场入口
@@ -182,9 +257,21 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
         </label>
       </div>
 
+      {/* 矿带排序行（默认：危险 = 星系安全等级降序 = 安全在前；选择存本地） */}
+      <div className="app-task-sortrow">
+        <span className="app-dim">矿带排序：</span>
+        <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as BeltSortKey)}>
+          {(Object.keys(BELT_SORT_LABEL) as BeltSortKey[]).map((k) => (
+            <option key={k} value={k}>
+              {BELT_SORT_LABEL[k]}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* 矿带一览：矩形卡片挨个排布，主控/AI 操作都在卡内 */}
       <div className="app-belt-grid">
-        {engine.belts.map((belt) => (
+        {sortedBelts.map(({ belt }) => (
           <BeltCard
             key={belt.id}
             belt={belt}
@@ -490,6 +577,24 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
 function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onToast: ToastFn; focusIds?: readonly string[] }) {
   const state = engine.state
   const me = state.salvaging
+  const [sort, setSort] = useState<WreckSortKey>(() => {
+    try {
+      const v = localStorage.getItem(WRECK_SORT_KEY)
+      return v === 'danger' || v === 'galaxy' || v === 'density' || v === 'name' ? v : 'danger'
+    } catch {
+      return 'danger'
+    }
+  })
+
+  function changeSort(next: WreckSortKey): void {
+    setSort(next)
+    try {
+      localStorage.setItem(WRECK_SORT_KEY, next)
+    } catch {
+      // 忽略
+    }
+  }
+
   // 正在该星系打捞的 AI 副船（名册：快速取消用）
   const aiWorkersBy = new Map<string, Array<{ sid: string; coreType: AiCoreType }>>()
   for (const [sid, a] of Object.entries(state.aiAssignments)) {
@@ -499,14 +604,29 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       aiWorkersBy.set(a.task.galaxyId, list)
     }
   }
-  const galaxies = [...engine.ctx.galaxies.values()]
+  // 2026-09-09 排序（默认危险=sec 降序=安全在前；旧硬排 wreckDensity 降序退役，改为可选「残骸密度最高」）
+  const wreckRows = [...engine.ctx.galaxies.values()]
     .filter((g) => isExplored(state, g.id) && engine.anomalies.some((x) => x.galaxyId === g.id))
     .map((g) => ({
       galaxy: g,
+      sec: g.security ?? 1,
       density: wreckDensityOf(state, g.id, engine.ctx),
       workers: aiWorkersBy.get(g.id) ?? [],
     }))
-    .sort((a, b) => b.density - a.density)
+  const byWreckName = (x: (typeof wreckRows)[number], y: (typeof wreckRows)[number]): number =>
+    x.galaxy.name.localeCompare(y.galaxy.name, 'zh-Hans-CN') || x.galaxy.id.localeCompare(y.galaxy.id)
+  const sortedGalaxies = [...wreckRows].sort((x, y) => {
+    if (sort === 'danger') {
+      if (x.sec !== y.sec) return y.sec - x.sec // sec 降序 = 安全在前
+      return byWreckName(x, y)
+    }
+    if (sort === 'galaxy' || sort === 'name') return byWreckName(x, y)
+    if (sort === 'density') {
+      if (x.density !== y.density) return y.density - x.density
+      return byWreckName(x, y)
+    }
+    return byWreckName(x, y)
+  })
   const idleShips = idleAiShipIds(state)
 
   const phaseText = (): string => {
@@ -549,29 +669,42 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 
-      {galaxies.length === 0 ? (
+      {sortedGalaxies.length === 0 ? (
         <div className="app-dim app-inv-empty">还没有可打捞的星系——先扫描探索点亮星图（星系内要有悬赏目标才会产生残骸）。</div>
       ) : (
-        <div className="app-belt-grid">
-          {galaxies.map(({ galaxy: g, density, workers }) => (
-            <WreckCard
-              key={g.id}
-              galaxy={g}
-              density={density}
-              aiWorkers={workers}
-              isActive={me.active && me.galaxyId === g.id}
-              focus={focusIds.includes(g.id)}
-              activeAnywhere={me.active}
-              idleShips={idleShips}
-              engine={engine}
-              onStart={() => startAt(g.id)}
-              onStop={stopNow}
-              onAiAssign={assignAi}
-              onAiCancel={cancelAi}
-              onToast={onToast}
-            />
-          ))}
-        </div>
+        <>
+          {/* 打捞排序行（默认：危险 = 星系安全等级降序 = 安全在前；选择存本地） */}
+          <div className="app-task-sortrow">
+            <span className="app-dim">打捞排序：</span>
+            <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as WreckSortKey)}>
+              {(Object.keys(WRECK_SORT_LABEL) as WreckSortKey[]).map((k) => (
+                <option key={k} value={k}>
+                  {WRECK_SORT_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="app-belt-grid">
+            {sortedGalaxies.map(({ galaxy: g, density, workers }) => (
+              <WreckCard
+                key={g.id}
+                galaxy={g}
+                density={density}
+                aiWorkers={workers}
+                isActive={me.active && me.galaxyId === g.id}
+                focus={focusIds.includes(g.id)}
+                activeAnywhere={me.active}
+                idleShips={idleShips}
+                engine={engine}
+                onStart={() => startAt(g.id)}
+                onStop={stopNow}
+                onAiAssign={assignAi}
+                onAiCancel={cancelAi}
+                onToast={onToast}
+              />
+            ))}
+          </div>
+        </>
       )}
     </Panel>
   )

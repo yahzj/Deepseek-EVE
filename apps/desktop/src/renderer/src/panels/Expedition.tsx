@@ -145,13 +145,13 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
 
 /** 星图页「任务中心」标签内容：统一任务目录（T10）。
  * - 任务族：当前 = 悬赏（22 张，完整沿用其机制）；建站/引导等族随后续内容加入同一框架；
- * - 排序（船长定稿）：距离 / 星系 / 奖励 / 声望 / 默认（可接取冒泡在前，其余按名称）——
- *   可接取 = 声望满足且星系已探索；选择存本地。
+ * - 悬赏页排序（2026-09-09 船长拍板，BountyPanel 用）：危险（默认 = 目标星系安全等级 sec 降序、
+ *   安全在前）/ 距离 / 星系 / 奖励 / 声望——旧「默认（可接取优先）」退役；选择存本地。
  */
-type TaskSort = 'default' | 'distance' | 'galaxy' | 'reward' | 'standing'
+type TaskSort = 'danger' | 'distance' | 'galaxy' | 'reward' | 'standing'
 const TASK_SORT_KEY = 'whale-idle:task-sort'
 const TASK_SORT_LABEL: Record<TaskSort, string> = {
-  default: '默认（可接取优先 · 名称）',
+  danger: '危险（安全优先）',
   distance: '距离最近',
   galaxy: '星系名称',
   reward: '奖励最高',
@@ -264,9 +264,10 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
   const [sort, setSort] = useState<TaskSort>(() => {
     try {
       const v = localStorage.getItem(TASK_SORT_KEY)
-      return v === 'default' || v === 'distance' || v === 'galaxy' || v === 'reward' || v === 'standing' ? v : 'default'
+      // 旧存值 'default'（可接取优先，已退役）一律按新默认 'danger' 读取
+      return v === 'danger' || v === 'distance' || v === 'galaxy' || v === 'reward' || v === 'standing' ? v : 'danger'
     } catch {
-      return 'default'
+      return 'danger'
     }
   })
 
@@ -279,22 +280,28 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
     }
   }
 
-  // —— 悬赏任务排序（默认=可接取冒泡+名称；次级均按名称） ——
+  // —— 悬赏任务排序（2026-09-09：默认 = 危险 = 目标星系安全等级 sec 降序、安全在前；次级均按名称） ——
   const byName = (x: { a: AnomalyDef }, y: { a: AnomalyDef }): number =>
     x.a.name.localeCompare(y.a.name, 'zh-Hans-CN') || x.a.id.localeCompare(y.a.id)
+  const galaxySecOf = (a: AnomalyDef): number => engine.ctx.galaxies.get(a.galaxyId)?.security ?? 1
   const items = engine.anomalies.map((a) => {
     const galaxy = engine.ctx.galaxies.get(a.galaxyId)
     const mins = shortestTravelMinutes(engine.ctx, originGalaxyOf(state, engine.ctx), a.galaxyId)
     return {
       a,
       galaxyName: galaxy?.name ?? a.galaxyId,
-      can: (standingOf(state, DSI_FACTION_ID) >= (a.standingReq ?? 0)) && (galaxy ? isExplored(state, galaxy.id) : true),
       dist: Number.isFinite(mins) ? mins : Number.POSITIVE_INFINITY,
       reward: a.rewardIsk,
       standing: a.standingGain,
     }
   })
   const sorted = [...items].sort((x, y) => {
+    if (sort === 'danger') {
+      const gx = galaxySecOf(x.a)
+      const gy = galaxySecOf(y.a)
+      if (gx !== gy) return gy - gx // sec 降序 = 安全在前
+      return byName(x, y)
+    }
     if (sort === 'distance') {
       if (x.dist !== y.dist) return x.dist - y.dist
       return byName(x, y)
@@ -312,7 +319,6 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
       if (x.standing !== y.standing) return y.standing - x.standing
       return byName(x, y)
     }
-    if (x.can !== y.can) return x.can ? -1 : 1
     return byName(x, y)
   })
 
@@ -320,7 +326,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
     <Panel
       className="is-fill"
       title="战斗悬赏"
-      right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 可接取排序</span>}
+      right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 默认：危险（安全优先）</span>}
     >
       <div className="app-task-sortrow">
         <span className="app-dim">悬赏排序：</span>
