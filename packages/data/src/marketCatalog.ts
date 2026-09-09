@@ -197,6 +197,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // V10 顶级船（声望解锁）
   { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 6 },
   { key: 'ship-whiteshark', kind: 'ship', refId: 'sh-whiteshark', rarity: 'exotic', basePrice: 1_100_000, demandMultiplier: 1.0, standingReq: 7 },
+  // 掠食者巡洋舰线（2026-09-09 尺寸分级：T3 巡洋入奇货；声望/价格随 A4 渠道重锚复核）
+  { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'exotic', basePrice: 3_400_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'exotic', basePrice: 3_800_000, demandMultiplier: 1.0, standingReq: 9 },
+  { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'exotic', basePrice: 4_400_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 1_250_000, demandMultiplier: 1.0, standingReq: 8 },
   { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 2_200_000, demandMultiplier: 1.0, standingReq: 9 },
   { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 5_500_000, demandMultiplier: 1.0, standingReq: 11 },
