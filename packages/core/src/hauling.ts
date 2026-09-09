@@ -165,14 +165,12 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   return { ok: true }
 }
 
-/** 玩家指令：停止运输任务（立即停止：中止当前航段并返航出发站；无惩罚、无战利品残留） */
+/** 玩家指令：停止运输任务（立即响应：中止当前航段并**即时返港停靠出发站**，无需返程时间；无惩罚） */
 export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
   const h = state.hauling
   if (!h.active) return { ok: false, error: '没有进行中的运输任务。' }
-  const originName = haulEndpointName(ctx, h.fromSiteId)
-  const originGalaxy = endpointGalaxy(ctx, h.fromSiteId)
-  // 返航所需时间 = 本段已飞时间（回程掉头折返；至少 1 秒）
-  const backMs = Math.max(1_000, h.phaseAccMs)
+  const originId = h.fromSiteId // 本段出发站（null = 母港）
+  const originName = haulEndpointName(ctx, originId)
   h.active = false
   h.routeA = null
   h.routeB = null
@@ -181,17 +179,10 @@ export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
   h.legMinutes = 0
   h.legMs = 0
   h.phaseAccMs = 0
-  // 折返航程交给返航行程推进（真实航程，到港自动停靠/卸货语义沿用）
-  const t = state.transit
-  t.active = true
-  t.fromGalaxy = null
-  t.toGalaxy = originGalaxy
-  t.finishAtGameMs = state.gameMs + backMs
-  t.legMs = backMs
-  t.delivery = null
+  // 2026-09-09（船长定）：终止即瞬时返港——不再安排真实折返航程，船直接停靠回出发站
   state.awayGalaxy = null
-  const mins = Math.max(1, Math.round(backMs / 60_000))
-  addLog(state, 'info', `运输任务已停止：舰船立即返航「${originName}」（约 ${mins} 分钟到站，无惩罚）。`)
+  state.dockedSite = originId === null ? null : originId
+  addLog(state, 'info', `运输任务已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`)
   return { ok: true }
 }
 

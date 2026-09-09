@@ -94,7 +94,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   function stopNow(): void {
     const r = engine.stopHaulingNow()
     if (!r.ok) onToast(r.error ?? '停止失败。', true)
-    else onToast('运输任务已停止：舰船正在返航出发站（无惩罚）。')
+    else onToast('运输任务已停止：舰船已即时返港停靠出发站（无惩罚）。')
   }
 
   return (
@@ -102,7 +102,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
       <div className="app-dim app-exp-idle">
         在任意已建成站点（母港或副空间站）停靠即可接单：任选两座站点之间的航线往返运输，每段按
         「货仓容量 × 费率 × 航程」结算报酬；不在航线端点时会先飞「就位段」到较近端点，再自动循环。
-        随时可停止（活动栏或航线卡「停止运输」= 立即返航出发站）。
+        随时可停止（活动栏或航线卡「停止运输」= 即时返港，无需返程时间）。
       </div>
 
       {endpoints.length < 2 ? (
@@ -140,7 +140,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                       tone="warn"
                       label={`本段驶往「${h.toSiteId === null ? '母港' : ctx.stations.get(h.toSiteId!)?.name ?? '空间站'}」· 剩余约 ${fmtMin(Math.max(0, h.legMs - h.phaseAccMs))}`}
                     />
-                    <button className="app-btn is-small" onClick={stopNow} title="立即停止：中止当前航段并返航出发站（无惩罚）">
+                    <button className="app-btn is-small" onClick={stopNow} title="立即停止：即时返港停靠出发站，无需返程时间（无惩罚）">
                       停止运输
                     </button>
                   </div>

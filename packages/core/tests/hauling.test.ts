@@ -133,19 +133,17 @@ describe('运输任务（2026-09-09）', () => {
     expect(state.logs.filter((l) => l.text.includes('运输任务 · 已运抵')).length).toBe(2)
   })
 
-  it('停止 = 立即响应：任务即刻终止并自动返航出发站；无后续报酬（不再等到站）', () => {
+  it('停止 = 立即响应且即时返港：中止任务、无需返程时间，船直接停靠回出发站；无后续报酬', () => {
     startRoute(state, ctx)
     advanceGame(state, 60_000, ctx) // 航行中（半程）
     const w0 = state.wallet.isk
     const r = stopHauling(state, ctx)
     expect(r.ok).toBe(true)
     expect(state.hauling.active).toBe(false) // 立即停止（有响应）
-    expect(state.transit.active).toBe(true) // 已转入返航行程
-    expect(state.wallet.isk).toBe(w0) // 未完成段不结算
-    advanceGame(state, 120_000, ctx) // 返航到站（60s 回程 + 富余）
-    expect(state.transit.active).toBe(false)
-    expect(state.dockedSite).toBeNull() // 停靠回母港（出发站）
+    expect(state.transit.active).toBe(false) // 不再安排真实折返航程
     expect(state.awayGalaxy).toBeNull()
+    expect(state.dockedSite).toBeNull() // 即时停靠回出发站（母港）
+    expect(state.wallet.isk).toBe(w0) // 未完成段不结算
     const w1 = state.wallet.isk
     advanceGame(state, 240_000, ctx)
     expect(state.wallet.isk).toBe(w1) // 不再有后续报酬

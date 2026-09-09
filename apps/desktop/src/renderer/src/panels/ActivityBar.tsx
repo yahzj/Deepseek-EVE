@@ -104,7 +104,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.bountyLoopAt(null), '重复清剿已停止。')
       break
     case 'stop-hauling':
-      run(engine.stopHaulingNow(), '运输任务已停止：舰船正在返航出发站（无惩罚）。')
+      run(engine.stopHaulingNow(), '运输任务已停止：舰船已即时返港停靠出发站（无惩罚）。')
       break
   }
 }
