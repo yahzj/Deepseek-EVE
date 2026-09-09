@@ -143,7 +143,7 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
       {totalMs > 0 ? (
         <div className="app-dim app-train-total">
           队列总时长 ≈ {formatDurationMs(totalMs)}
-          {view.head !== null ? `（含训练中本级剩余 ${formatDurationMs(view.head.remainingMs)}）` : ''}——↑ 前移一位，最前一位再 ↑ = 顶替当前训练（原训练退回排队并保留进度）。
+          {view.head !== null ? `（含训练中本级剩余 ${formatDurationMs(view.head.remainingMs)}）` : ''}——⇈ 置顶 = 立刻成为当前训练（原训练退回排队并保留本级进度）；↑↓ 微调先后。
         </div>
       ) : null}
       {view.pending.length > 0 ? (
@@ -152,7 +152,14 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
             <span key={`${p.skillId}-${p.queueIndex}`} className="app-chip app-train-chip">
               <button
                 className="app-train-arrow"
-                title={p.queueIndex === 1 ? '移到最前 = 顶替当前训练：这条立刻开始练，原训练退回排队并保留本级进度' : '前移一位'}
+                title="置顶：这条立刻成为当前训练（跳到最前），原训练退回排队并保留本级进度"
+                onClick={() => engine.moveQueueAt(p.queueIndex, 0)}
+              >
+                ⇈
+              </button>
+              <button
+                className="app-train-arrow"
+                title={p.queueIndex === 1 ? '已是最前一位——再 ⇈ 就是置顶（当前训练与它互换）' : '前移一位'}
                 onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex - 1)}
               >
                 ↑
