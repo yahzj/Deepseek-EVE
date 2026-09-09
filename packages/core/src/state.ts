@@ -744,6 +744,8 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
   dockedSite: string | null
+  /** 2026-09-09 运输任务（两座已建成站点间真实航程往返循环；虚拟货物占满货仓、不产生真实物品） */
+  hauling: HaulingState
   /** T9 通讯剧本已读标记：剧本 id -> true */
   dialogueSeen: Record<string, boolean>
   /** T9 待自动播放的通讯剧本 id（首次抵达等触发；null = 无） */
@@ -753,6 +755,34 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 不落档——重启后由新触发的终点重新写入）
    */
   deliveryNotice?: string | null
+}
+
+/** 运输任务状态（2026-09-09 船长定：任意两座已建成站点间真实航程往返循环、可与悬赏一样自动重复） */
+export interface HaulingState {
+  active: boolean
+  /** 任务两端的起点站点 id（null = 母港；否则为已建成副站 id） */
+  fromSiteId: string | null
+  /** 当前航段的目的站点 id（null = 母港；到站后与 from 互换续跑） */
+  toSiteId: string | null
+  /** 本段标称航程分钟（出发时锁定；报酬结算按它 = 货仓容量×费率×分钟） */
+  legMinutes: number
+  /** 本段真实航程毫秒（出发时锁定；吃航行技能与调试 1 秒快进） */
+  legMs: number
+  /** 本段已航行毫秒 */
+  phaseAccMs: number
+  /** 玩家点了停止：完成当前航段、到站即止（不再续下一段） */
+  stopNext: boolean
+}
+
+/** 空态默认值 */
+export const EMPTY_HAULING: HaulingState = {
+  active: false,
+  fromSiteId: null,
+  toSiteId: null,
+  legMinutes: 0,
+  legMs: 0,
+  phaseAccMs: 0,
+  stopNext: false,
 }
 
 /** T9 一个建站点的建造进度 */
@@ -1126,6 +1156,7 @@ export function createInitialState(opts?: {
     autoLoopAnomalyId: null,
     stationSites: {},
     dockedSite: null,
+    hauling: EMPTY_HAULING,
     dialogueSeen: {},
     pendingDialogue: null,
     debugQuick: false,

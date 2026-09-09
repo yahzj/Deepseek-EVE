@@ -28,6 +28,7 @@ import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
+import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
@@ -77,6 +78,7 @@ export function advanceGame(
   advanceRefining(state, ctx, opts?.settleStats)
   advanceExpedition(state, ctx, opts?.freezeBattle)
   advanceScanning(state, ctx)
+  advanceHauling(state, d, ctx)
   advanceAi(state, d, ctx, opts?.settleStats)
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
   advanceEncounterWatch(state, ctx, d, opts?.freezeBattle)

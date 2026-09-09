@@ -1543,6 +1543,19 @@ function normalizeState(raw: unknown): GameState {
     finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
     legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
   }
+  // --- 运输任务（2026-09-09 两站运输：可选字段、旧档零迁移；active 需目标端点字段可读） ---
+  const haulRaw = asRaw(src.hauling)
+  const haulTo = typeof haulRaw.toSiteId === 'string' || haulRaw.toSiteId === null ? haulRaw.toSiteId : null
+  const haulFrom = typeof haulRaw.fromSiteId === 'string' || haulRaw.fromSiteId === null ? haulRaw.fromSiteId : null
+  const hauling = {
+    active: haulRaw.active === true && haulTo !== undefined,
+    fromSiteId: haulFrom ?? null,
+    toSiteId: haulTo ?? null,
+    legMinutes: Math.max(0, Math.floor(num(haulRaw.legMinutes))),
+    legMs: Math.max(0, Math.floor(num(haulRaw.legMs))),
+    phaseAccMs: Math.max(0, Math.floor(num(haulRaw.phaseAccMs))),
+    stopNext: haulRaw.stopNext === true,
+  }
   // --- 精炼炉运转工位表（v20 多工位并行、原料不锁定；兼容 v19 起 refineRuns 与更早 refineRun 兜底） ---
   const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {
     const r = asRaw(rawRun)
@@ -1903,6 +1916,7 @@ function normalizeState(raw: unknown): GameState {
     awayGalaxy,
     transit,
     standby,
+    hauling,
     refineRuns,
     refineSeq,
     salvaging,
