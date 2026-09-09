@@ -2,6 +2,7 @@
  * 舰船蓝图（M5 + V10）：用矿物制造商店买不到的定制舰船，造好入船坞。
  * V10 新增：座头鲸级（稀有现货的替代制造线）与皇带鱼级（鲸盟旗舰货舰，材料含星髓/冥铁/虚空晶；
  * 2026-09-09 船长定随船改名——原巨灵鲸级）。
+ * 2026-09-09 船长定：舰船制造速度 ×2（耗时 ÷2，全 4 张）。
  */
 
 import type { ShipBlueprintDef } from '@whale/core'
@@ -17,7 +18,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 2_500 },
       { itemId: 'min-nocxium', count: 500 },
     ],
-    buildSeconds: 150 * 60,
+    buildSeconds: 75 * 60, // ×2 提速（原 150*60=9000s）
     buildCostIsk: 250_000,
     priceIsk: 150_000,
     description: '开拓级定制艇图纸：货舱 5200 m³，9 秒循环产 38 单位——比鲸吞级高两成。',
@@ -32,7 +33,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 8_000 },
       { itemId: 'min-nocxium', count: 2_000 },
     ],
-    buildSeconds: 360 * 60,
+    buildSeconds: 180 * 60, // ×2 提速（原 360*60=21600s）
     buildCostIsk: 900_000,
     priceIsk: 600_000,
     description: '鲸王级总装图纸：货舱 10000 m³，8 秒循环产 58 单位。造完它，你就是深空工业的传说。',
@@ -47,7 +48,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 2_600 },
       { itemId: 'min-isotope', count: 700 },
     ],
-    buildSeconds: 180 * 60,
+    buildSeconds: 90 * 60, // ×2 提速（原 180*60=10800s）
     buildCostIsk: 420_000,
     priceIsk: 260_000,
     description: '座头鲸级矿舰总装图纸：货舱 19000 m³、30 秒循环产 140 单位——采矿舰族的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
@@ -66,7 +67,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-darkiron', count: 800 },
       { itemId: 'min-voidcrystal', count: 120 },
     ],
-    buildSeconds: 480 * 60,
+    buildSeconds: 240 * 60, // ×2 提速（原 480*60=28800s）
     buildCostIsk: 2_400_000,
     priceIsk: 900_000,
     description: '皇带鱼级旗舰货舰总装图纸（限定奇货）：三万六千立方货舱的移动要塞——材料清单本身就是一份远征地图。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）
