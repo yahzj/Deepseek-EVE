@@ -6,8 +6,7 @@
  * - 精炼配方 = 「产出倍率基准下每 1 单位资源的矿物产出」（玩家口径：产出倍率，旧称收率；
  *   balance.refining 基础倍率 1.2（无技能净率 ≈+20%）、精炼学 +6%/级、高级回收处理 +3%/级、
  *   满级倍率 1.65（技能本身每级加成较原值下调约 20%）。2026-09-08 工业工位收益体检再定
- *   （配方仍按倍率 1.0 时代的 perOre 值，由引擎倍率驱动产值；perOre 取整允许 ±2pp 漂移；
- *   护栏见 tools/content-check.ts）；
+ *   （配方仍按倍率 1.0 时代的 perOre 值，由引擎倍率驱动产值；perOre 取整允许 ±2pp 漂移）；
  * - 新矿物只由新资源产出 → 不稀释旧矿价值；V10 起高价值采集点需协会声望（见 belts.ts）；
  * - 弹药/无人机为占位消耗品：市场流通、可囤可回卖，战斗系统开放后启用消耗。
  */
@@ -27,8 +26,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-tritanium', perOre: 1.175 },
       { mineralId: 'min-pyerite', perOre: 0.34 },
     ],
-    refineBatchUnits: 20,
-    refineCycleMs: 24_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 10_000,
   },
   {
     id: 'ore-scorched',
@@ -41,8 +40,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-pyerite', perOre: 0.985 },
       { mineralId: 'min-mexallon', perOre: 0.35 },
     ],
-    refineBatchUnits: 20,
-    refineCycleMs: 24_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 12_000,
   },
   {
     id: 'ore-hemorphite',
@@ -55,8 +54,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-nocxium', perOre: 0.53 },
       { mineralId: 'min-tritanium', perOre: 1.445 },
     ],
-    refineBatchUnits: 18,
-    refineCycleMs: 11_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 14_000,
   },
   {
     id: 'ore-glowstone',
@@ -69,8 +68,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.64 },
       { mineralId: 'min-tritanium', perOre: 2.15 },
     ],
-    refineBatchUnits: 18,
-    refineCycleMs: 11_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 26_000,
   },
   {
     id: 'ore-sunshard',
@@ -83,8 +82,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.075 },
       { mineralId: 'min-pyerite', perOre: 0.77 },
     ],
-    refineBatchUnits: 18,
-    refineCycleMs: 11_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 30_000,
   },
   {
     id: 'ore-voidshard',
@@ -98,8 +97,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.095 },
       { mineralId: 'min-nocxium', perOre: 0.24 },
     ],
-    refineBatchUnits: 58,
-    refineCycleMs: 8_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 45_000,
   },
   {
     id: 'ore-nebulite',
@@ -112,8 +111,8 @@ export const ORES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.5 },
       { mineralId: 'min-starcore', perOre: 0.685 },
     ],
-    refineBatchUnits: 58,
-    refineCycleMs: 8_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 50_000,
   },
 ]
 
@@ -198,8 +197,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 1.43 },
       { mineralId: 'min-tritanium', perOre: 0.92 },
     ],
-    refineBatchUnits: 18,
-    refineCycleMs: 11_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 18_000,
   },
   {
     id: 'gas-phosphor',
@@ -213,8 +212,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-starcore', perOre: 0.81 },
       { mineralId: 'min-mexallon', perOre: 0.63 },
     ],
-    refineBatchUnits: 34,
-    refineCycleMs: 10_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 24_000,
   },
   {
     id: 'gas-ionstorm',
@@ -228,8 +227,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-darkiron', perOre: 0.065 },
       { mineralId: 'min-isotope', perOre: 0.315 },
     ],
-    refineBatchUnits: 34,
-    refineCycleMs: 10_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 20_000,
   },
   {
     id: 'gas-aurora',
@@ -242,8 +241,8 @@ export const GASES: readonly ItemDef[] = [
       { mineralId: 'min-starcore', perOre: 0.735 },
       { mineralId: 'min-darkiron', perOre: 0.25 },
     ],
-    refineBatchUnits: 34,
-    refineCycleMs: 10_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 28_000,
   },
 ]
 
@@ -260,8 +259,8 @@ export const ICES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 2.475 },
       { mineralId: 'min-mexallon', perOre: 0.73 },
     ],
-    refineBatchUnits: 18,
-    refineCycleMs: 11_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 33_000,
   },
   {
     id: 'ice-marrow',
@@ -275,8 +274,8 @@ export const ICES: readonly ItemDef[] = [
       { mineralId: 'min-isotope', perOre: 1.21 },
       { mineralId: 'min-mexallon', perOre: 0.44 },
     ],
-    refineBatchUnits: 34,
-    refineCycleMs: 10_000,
+    refineBatchUnits: 100,
+    refineCycleMs: 48_000,
   },
   {
     id: 'ice-darkstar',
@@ -292,8 +291,8 @@ export const ICES: readonly ItemDef[] = [
     ],
     // 2026-09-09 顶阶档校准：58/8s 会使 120% 产出倍率净率 135.9% 超护栏(≤135%)——取 42/5.8s
     // （吞吐 ≈26,069/h，净率 132.7% 带内；min-darkiron 高价使 floor 阶梯敏感）
-    refineBatchUnits: 42,
-    refineCycleMs: 5_800,
+    refineBatchUnits: 100,
+    refineCycleMs: 60_000,
   },
 ]
 
