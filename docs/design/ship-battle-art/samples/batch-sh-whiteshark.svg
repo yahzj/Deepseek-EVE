@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 掠食者武装族 草稿批 3/4：大白鲨级炮舰(驱逐·奇货精装:优雅长身 + 背鳍 + 双联主炮) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+    .accf { fill:#ff8373 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="48" r="1.2"/><circle class="star" cx="512" cy="64" r="1"/><circle class="star" cx="478" cy="240" r="1.2"/><circle class="star" cx="68" cy="252" r="1"/><circle class="star" cx="276" cy="36" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M28 54 L18 57 L28 60 Z" opacity=".9"/>
+    <!-- 细长低矮炮舰体（优雅流线） -->
+    <path class="hull" d="M226 55 L196 38 L112 38 C86 38 64 44 54 50 L44 56 L52 62 C66 70 90 74 116 74 L176 74 Z"/>
+    <!-- 大白鲨背鳍（顶部识别特征） -->
+    <path class="hull" d="M148 38 L158 18 L171 19 L164 38"/>
+    <!-- 长后掠尾翼 -->
+    <path class="hull" d="M110 38 L136 14 L147 14 L126 38"/>
+    <!-- 下尾翼 -->
+    <path class="hull" d="M110 74 L136 98 L147 98 L126 74"/>
+    <!-- 舰首双联主炮 -->
+    <path class="hull" d="M196 42 h14 v12 h-14 z"/>
+    <path class="hull" d="M210 45 L242 47" stroke-width="1.8"/>
+    <path class="hull" d="M210 51 L242 53" stroke-width="1.8"/>
+    <path class="acc" d="M242 47 L244 47.5 M242 53 L244 53.5" stroke-width="1.6"/>
+    <!-- 脊炮塔 ×2（后部稍低） -->
+    <path class="hull" d="M156 40 h12 v9 h-12 z"/>
+    <path class="hull" d="M168 42 L196 44" stroke-width="2.4"/>
+    <path class="hull" d="M118 41 h10 v8 h-10 z"/>
+    <path class="hull" d="M128 43 L150 44" stroke-width="2.1"/>
+    <!-- 侧舷短炮 ×2 -->
+    <path class="hull" d="M108 62 h7 v4 h-7 z M113 62 v6"/>
+    <path class="hull" d="M84 63 h6 v4 h-6 z M88 63 v5"/>
+    <!-- 高挑主舰桥 + 桅杆天线 -->
+    <path class="hull" d="M172 22 h15 v13 h-15 z"/>
+    <path class="hull" d="M179.5 22 V14"/>
+    <path class="panel" d="M175 25 h9 M175 29 h9"/>
+    <!-- 双引擎 -->
+    <path class="hull" d="M52 46 h9 v11 h-9 z M52 60 h9 v11 h-9 z" opacity=".85"/>
+    <path class="warm" d="M42 48 h8 v7 h-8 z M42 62 h8 v7 h-8 z"/>
+    <!-- 长舷窗列（精装质感） -->
+    <path class="panel" d="M126 46 h24 M126 50 h24 M126 66 h24"/>
+    <circle class="accf" cx="140" cy="56" r="1.5"/>
+  </g>
+  <text class="note" x="40" y="286">大白鲨级炮舰 · sh-whiteshark · 驱逐 T2·奇货精装 — 草稿(细长流线 + 背鳍 + 舰首双联主炮)</text>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 掠食者武装族 草稿批 2/4：虎鲨级武装护卫舰(重火宽身,虎斑斜纹 + 前移舰桥) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+    .accf { fill:#ff8373 }.warm { fill:#ffd98a }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="46" r="1.2"/><circle class="star" cx="516" cy="62" r="1"/><circle class="star" cx="474" cy="238" r="1.2"/><circle class="star" cx="64" cy="254" r="1"/><circle class="star" cx="280" cy="34" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M26 52 L16 55 L26 58 Z" opacity=".9"/>
+    <path class="warm" d="M26 66 L16 69 L26 72 Z" opacity=".75"/>
+    <!-- 短粗宽舰体（重火护卫底盘） -->
+    <path class="hull" d="M206 55 L178 36 L122 34 C94 34 74 40 62 48 L52 55 L60 63 C74 72 96 76 122 76 L170 74 Z"/>
+    <!-- 上后掠尾翼 -->
+    <path class="hull" d="M108 36 L130 20 L140 20 L122 36"/>
+    <!-- 下后掠尾翼 -->
+    <path class="hull" d="M108 76 L130 92 L140 92 L122 76"/>
+    <!-- 脊炮塔 ×2 -->
+    <path class="hull" d="M150 36 h13 v9 h-13 z"/>
+    <path class="hull" d="M163 39 L196 41" stroke-width="2.6"/>
+    <path class="acc" d="M196 41 L202 41.5" stroke-width="1.8"/>
+    <path class="hull" d="M112 37 h11 v8 h-11 z"/>
+    <path class="hull" d="M123 39 L144 40" stroke-width="2.2"/>
+    <!-- 前下副炮 + 侧舷炮 -->
+    <path class="hull" d="M198 58 h12 v5 h-12 z M198 58 l-6 -4"/>
+    <path class="hull" d="M92 64 h8 v5 h-8 z M100 64 v8"/>
+    <!-- 前移舰桥（矮塔前位） -->
+    <path class="hull" d="M170 30 h16 v10 h-16 z"/>
+    <path class="panel" d="M173 33 h10 M173 37 h10"/>
+    <!-- 虎斑斜纹面板（识别特征） -->
+    <path class="panel" d="M96 42 L112 70 M112 38 L128 70 M128 36 L142 70" opacity=".55"/>
+    <!-- 双宽引擎口 -->
+    <path class="hull" d="M48 44 h9 v12 h-9 z M48 60 h9 v12 h-9 z" opacity=".85"/>
+    <path class="warm" d="M38 46 h8 v8 h-8 z M38 62 h8 v8 h-8 z"/>
+    <circle class="accf" cx="140" cy="80" r="1.4"/>
+    <circle class="warm" cx="86" cy="42" r="1.1"/>
+  </g>
+  <text class="note" x="40" y="286">虎鲨级武装护卫舰 · sh-tigershark · 护卫 T1(重火) — 草稿(宽身 + 脊炮×2 + 虎斑斜纹 + 前移舰桥)</text>
+</svg>

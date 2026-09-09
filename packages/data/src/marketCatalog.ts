@@ -192,16 +192,17 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
 
   // ══════════ 限定奇货（exotic：极低概率、寿命 4 分钟、天价） ══════════
 
-  { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 4_800_000, demandMultiplier: 1.0 },
-  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 600_000, demandMultiplier: 1.0 },
+  // 鲸王级采矿艇（奇货·仅制造）：船与蓝图均需声望 11（2026-09-09 船长定：特殊船声望调高）
+  { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 4_800_000, demandMultiplier: 1.0, standingReq: 11 },
+  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 600_000, demandMultiplier: 1.0, standingReq: 11 },
   // V10 顶级船（声望解锁）
-  { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 6 },
+  { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 10 }, // 2026-09-09 船长定：无人机母舰声望 6→10
   { key: 'ship-whiteshark', kind: 'ship', refId: 'sh-whiteshark', rarity: 'exotic', basePrice: 1_100_000, demandMultiplier: 1.0, standingReq: 7 },
-  // 掠食者巡洋舰线（2026-09-09 尺寸分级：T3 巡洋入奇货；声望/价格随 A4 渠道重锚复核）
-  { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'exotic', basePrice: 3_400_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'exotic', basePrice: 3_800_000, demandMultiplier: 1.0, standingReq: 9 },
-  { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'exotic', basePrice: 4_400_000, demandMultiplier: 1.0, standingReq: 10 },
+  // 掠食者巡洋舰线（2026-09-09 尺寸分级：T3 巡洋入奇货；价位 2026-09-09 船长定档：按战力 9/11/13/15M）
+  { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'exotic', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'exotic', basePrice: 15_000_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'exotic', basePrice: 11_000_000, demandMultiplier: 1.0, standingReq: 9 },
+  { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'exotic', basePrice: 13_000_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 1_250_000, demandMultiplier: 1.0, standingReq: 8 },
   { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 2_200_000, demandMultiplier: 1.0, standingReq: 9 },
   { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 5_500_000, demandMultiplier: 1.0, standingReq: 11 },
