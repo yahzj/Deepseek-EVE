@@ -372,6 +372,7 @@ export function assignAiSalvage(
   }
   let hasPool = false
   for (const a of ctx.anomalies.values()) {
+    if (a.hidden) continue // B1 遭遇模板不入打捞池（与主控抽池同口径，2026-09-09）
     if (a.galaxyId === galaxyId) {
       hasPool = true
       break

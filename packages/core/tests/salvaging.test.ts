@@ -122,6 +122,45 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.logs.some((l) => l.text.includes('未开启自动循环'))).toBe(true)
   })
 
+  it('打捞池排除 B1 hidden 遭遇模板（2026-09-09 船长现场：母港捞出狂徒/深空屠夫残骸的根因）', () => {
+    // 星系内同时有真实悬赏敌群 + hidden 遭遇模板（威胁更高、galaxyId 占位）：
+    // 抽池必须只出真实敌群残骸，模板残骸永不产出；纯模板星系不可开捞/派单
+    // （用不与 makeTestCtx 默认档冲突的自定义星系 galaxy-x）
+    const state = fittedState(9)
+    state.exploredGalaxies.push('galaxy-x')
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    const ctxMix = makeTestCtx({
+      ships: [ship('sandcat', { cargo: 800 })],
+      galaxies: [{ ...galaxy('galaxy-x', '异乡'), security: -0.6 }],
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-x', travelMinutes: 2 }],
+      anomalies: [
+        anomaly('ano-x', 'galaxy-x', { threat: 40, tactic: 'brawl' }),
+        { ...anomaly('enc-x', 'galaxy-x', { threat: 200, tactic: 'brawl' }), hidden: true },
+      ],
+      modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })],
+    })
+    expect(startSalvageOp(state, 'galaxy-x', ctxMix).ok).toBe(true)
+    advanceSalvageOp(state, 20_000, ctxMix) // ~20 轮：若模板入池（威胁 200 主导）必然抽到模板
+    expect(countItem(state, 'wreck-enc-x') + countWare(state, 'wreck-enc-x')).toBe(0) // 模板残骸永不产出
+    expect(countItem(state, 'wreck-ano-x') + countWare(state, 'wreck-ano-x')).toBeGreaterThan(0)
+    // 纯 hidden 模板星系：不可开捞（无可打捞敌群）
+    expect(stopSalvageOp(state, ctxMix)).toBe(true) // 先停掉上场景的作业
+    const ctxOnlyHidden = makeTestCtx({
+      ships: [ship('sandcat', { cargo: 800 })],
+      galaxies: [{ ...galaxy('galaxy-x', '异乡'), security: -0.6 }],
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-x', travelMinutes: 2 }],
+      anomalies: [{ ...anomaly('enc-x', 'galaxy-x', { threat: 40 }), hidden: true }],
+      modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })],
+    })
+    const r = startSalvageOp(state, 'galaxy-x', ctxOnlyHidden)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('没有可打捞')
+    state.skills.trained['ai-expert'] = 1
+    state.aiCores.basic = 1
+    state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: ['mod-salvager-1'], mid: [], low: [] } }
+    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-x', ctxOnlyHidden).ok).toBe(false)
+  })
+
   it('AI 打捞任务：指派（需打捞器/名额/核心）→ 自动循环（多趟返港卸货）→ 取消才结束、核心归还', () => {
     const state = fittedState(7)
     state.debugQuick = true

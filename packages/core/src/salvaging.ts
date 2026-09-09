@@ -57,10 +57,14 @@ export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: stri
   return cycles
 }
 
-/** 目标星系可打捞的敌群型号池（该星系悬赏/遭遇群；按威胁加权抽型号） */
+/** 目标星系可打捞的敌群型号池（该星系悬赏群；2026-09-09 修复：按威胁加权抽型号）。
+ * B1 低安遭遇模板（hidden: true，galaxyId 仅占位）**不入池**——遭遇群残骸只在击杀发生星系
+ * 按注入路径成立；抽池与悬赏目录/打捞列表同口径（此前把 enc-pirate 模板算进母港池，
+ * 导致在母港能捞出从未在母港出现的「狂徒巡逻编队/深空屠夫舰队」残骸）。 */
 function wreckPoolOf(ctx: SimContext, galaxyId: string): Array<{ anomalyId: string; threat: number }> {
   const pool: Array<{ anomalyId: string; threat: number }> = []
   for (const a of ctx.anomalies.values()) {
+    if (a.hidden) continue // B1 遭遇模板不进打捞池（悬赏目录同口径）
     if (a.galaxyId === galaxyId) pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
   }
   return pool
@@ -181,10 +185,7 @@ export function pullOneWreck(
   galaxyId: string,
   cycleMsReal: number,
 ): { itemId: string; mul: number; volumeM3: number } | null {
-  const pool: Array<{ anomalyId: string; threat: number }> = []
-  for (const a of ctx.anomalies.values()) {
-    if (a.galaxyId === galaxyId) pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
-  }
+  const pool = wreckPoolOf(ctx, galaxyId) // 同源池：hidden 遭遇模板不入池
   if (pool.length === 0) return null
   let acc = 0
   const total = pool.reduce((n, p) => n + p.threat, 0)
