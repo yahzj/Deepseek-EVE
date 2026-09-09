@@ -27,8 +27,8 @@ const LOADOUTS: Loadout[] = [
   { name: '虎鲨2kin2+支援(索敌/陀螺/稳定)', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-rof-2'] },
   { name: '鲸王+动能MK3×3', ship: 'whale-king', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'] },
   /* ── P1 阶段锚行（2026-09-06 战力拉长设计稿：威胁重标按"阶段真实可及配装"标定）── */
-  { name: 'S1 虎鲨4×MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'] },
-  { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
+  { name: 'S1 虎鲨4×MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-1'] }, // 2026-09-09 敌速口径（船长）：低技能参考行带矢量推进器 MK1（无技能玩家标配）
+  { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 2026-09-09 敌速口径（船长）：中位参考行带 MK2（弃闪避陀螺保盾容+索敌——站桩对射卡不吃闪避）
   { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
   /* ── T3 巡洋舰线（2026-09-09 尺寸分级新增；MK3 满配 + 支援对照 S4 上层）── */
   { name: 'T3电鳐激光巡5×laser3+支援', ship: 'sh-electricray', high: ['mod-laser-3', 'mod-laser-3', 'mod-laser-3', 'mod-laser-3', 'mod-laser-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
