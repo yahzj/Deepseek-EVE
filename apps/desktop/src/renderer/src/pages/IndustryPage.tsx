@@ -52,11 +52,22 @@ function manualBusyNote(state: GameState): string | null {
  * 原料不锁定、每批实时扣取——运转中的单位以"名册行"列出（各自批进度条 + 停），
  * 下方按钮可继续加开单位；没有单位的卡保持静态数据与启动区。
  */
-function FurnaceCard({ def, engine, onToast, highlight = false }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast']; highlight?: boolean }): ReactNode {
+function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast']; highlight?: boolean; onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void }): ReactNode {
   const state = engine.state
   const isWreck = def.kind === 'wreck'
   const rate = refineRate(state, engine.ctx)
   const total = oreAvailable(state, def.id)
+  // 2026-09-09 船长定：「去矿带/去打捞」跳转目标——矿石/气体/冰 → 出产该原料的全部主矿带；
+  // 残骸 → 其来源敌群星系（recycleProfileOf 一对一；打捞星系须已探索才会出现在星图卡列表）
+  const gotoTarget: { tab: 'mine' | 'salvage'; ids: string[] } | null = isWreck
+    ? (() => {
+        const src = recycleProfileOf(engine.ctx, def.id)
+        return src ? { tab: 'salvage' as const, ids: [src.galaxyId] } : null
+      })()
+    : (() => {
+        const belts = engine.belts.filter((b) => b.oreId === def.id)
+        return belts.length > 0 ? { tab: 'mine' as const, ids: belts.map((b) => b.id) } : null
+      })()
   // 该资源当前全部运转单位（同资源可多台）
   const runs = engine.refineRunViews().filter((v) => v.itemId === def.id)
   const running = runs.length > 0
@@ -168,6 +179,20 @@ function FurnaceCard({ def, engine, onToast, highlight = false }: { def: ItemDef
     <div className={`app-belt-card${highlight ? ' is-goto' : ''}`} key={def.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
+        {gotoTarget && onGotoMap ? (
+          <button
+            className="app-btn is-small"
+            style={{ marginLeft: 'auto' }}
+            title={
+              isWreck
+                ? '前往星图「残骸打捞」定位该残骸的来源星系（打捞后残骸带回站内回收拆解）'
+                : `前往星图「矿带开采」定位出产该原料的矿带${gotoTarget.ids.length > 1 ? `（共 ${gotoTarget.ids.length} 处，全部高亮）` : ''}`
+            }
+            onClick={() => onGotoMap(gotoTarget.tab, gotoTarget.ids)}
+          >
+            {isWreck ? '去打捞' : '去矿带'}
+          </button>
+        ) : null}
       </div>
       <div className="app-belt-desc">
         {isWreck ? '每批拆解 = 保底矿物 + 概率彩头（来源与低出率物见下两行）' : def.description}
@@ -273,7 +298,10 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   )
 }
 
-export function IndustryPage({ engine, onToast, onGotoMarket }: PageProps & { onGotoMarket?: (goodKey: string) => void }) {
+export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageProps & {
+  onGotoMarket?: (goodKey: string) => void
+  onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void
+}) {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
 
@@ -389,7 +417,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket }: PageProps & { on
               <div className="app-bay-title">♨ 可精炼资源（{oreDefs.length}）——循环运转到料尽自动停炉</div>
               <div className="app-belt-grid">
                 {oreDefs.map((def) => (
-                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} highlight={focusOreId === def.id} />
+                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} highlight={focusOreId === def.id} onGotoMap={onGotoMap} />
                 ))}
               </div>
             </>
@@ -400,7 +428,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket }: PageProps & { on
               <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底矿物 + 概率彩头</div>
               <div className="app-belt-grid">
                 {wreckDefs.map((def) => (
-                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} />
+                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
                 ))}
               </div>
             </>

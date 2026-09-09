@@ -213,6 +213,13 @@ export interface ManufacturingRunState {
   finishAtGameMs: number
   /** 本次作业总耗时（毫秒，开工时按当时技能锁定，中途升技能不影响） */
   durationMs: number
+  /** 连续生产（2026-09-09 船长定）：true = 本件完成后自动续做同一蓝图（劳动者保持占用），
+   *  直到 达到 repeatGoal 件 / 材料不足 / 被取消或关闭开关；缺省 false */
+  autoRepeat?: boolean
+  /** 目标件数（>0 达数即停；缺省/0 = 直到材料不足自动停） */
+  repeatGoal?: number
+  /** 本线累计产出件数（含首件；连续生产计数与停线汇总日志用） */
+  produced?: number
 }
 
 /**

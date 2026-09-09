@@ -249,6 +249,15 @@ function BlueprintCard({
     else onToast('已取消该条制造线：材料全额退回物品仓库（AI 核心已归还），其余线不受影响。')
   }
 
+  // 2026-09-09 船长定：连续生产——线行滑动开关 + 目标件数（留空 = 直到材料不足自动停）
+  const [goalDrafts, setGoalDrafts] = useState<Record<number, string>>({})
+  function commitLoop(runId: number, on: boolean, goalText: string): void {
+    const n = Number.parseInt(goalText, 10)
+    const goal = Number.isFinite(n) && n > 0 ? n : null
+    const r = engine.setManufacturingLoopAt(runId, on, on ? goal : null)
+    if (!r.ok) onToast(r.error ?? '开关操作失败', true)
+  }
+
   const feedTxt = short.length > 0 ? short.join('；') : ''
   // 2026-09-08（二号·组装机收益体检 A 项）：卡面补「净 ≈ISK/h」——产物现货基准价 − 材料收价
   // （材料学折扣后），按当前技能单件耗时折算每小时；未计销路与成交税（卖出按空间站收购档约
@@ -387,6 +396,42 @@ function BlueprintCard({
                 </span>
                 <span className="app-progress-mini" title={`制造进度 ${v.percent}%`}>
                   <i style={{ width: `${v.percent}%` }} />
+                </span>
+                {/* 连续生产开关（2026-09-09 船长定）：完成一件自动续做同一物品；目标件数留空 = 直到材料不足 */}
+                <span className="app-mf-loop">
+                  <label
+                    className="app-toggle"
+                    title="连续生产：本件完成后自动续做同一物品（劳动者/核心保持占用）；达成目标件数或材料不足时自动停线"
+                  >
+                    <input
+                      type="checkbox"
+                      className="app-toggle-input"
+                      checked={v.autoRepeat}
+                      onChange={(e) => commitLoop(v.id, e.target.checked, goalDrafts[v.id] ?? '')}
+                    />
+                    <span className="app-toggle-track" aria-hidden="true" />
+                    <span className="app-toggle-label">循环</span>
+                  </label>
+                  {v.autoRepeat ? (
+                    <span className="app-mf-goal">
+                      目标
+                      <input
+                        type="number"
+                        min={1}
+                        className="app-mf-goal-input"
+                        placeholder="∞"
+                        value={goalDrafts[v.id] ?? (v.repeatGoal > 0 ? String(v.repeatGoal) : '')}
+                        onChange={(e) => setGoalDrafts((p) => ({ ...p, [v.id]: e.target.value }))}
+                        onBlur={(e) => commitLoop(v.id, true, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitLoop(v.id, true, (e.target as HTMLInputElement).value)
+                        }}
+                        title="目标件数：留空 = 直到材料不足自动停；回车/失焦生效"
+                      />
+                      件
+                      {v.produced > 0 ? `·已产 ${v.produced}` : ''}
+                    </span>
+                  ) : null}
                 </span>
                 <button
                   className="app-btn is-small is-warn"

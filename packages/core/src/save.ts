@@ -1322,7 +1322,18 @@ function normalizeState(raw: unknown): GameState {
       r.worker === 'pilot' || r.worker === 'basic' || r.worker === 'gamma' || r.worker === 'beta' || r.worker === 'alpha'
         ? r.worker
         : undefined // 缺省 = 劳动者制前的旧作业豁免（不占核心/名额，跑到自然完成）
-    return { active: true, id: -1, blueprintId: bp, worker, finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))), durationMs: Math.max(0, Math.floor(num(r.durationMs))) }
+    return {
+      active: true,
+      id: -1,
+      blueprintId: bp,
+      worker,
+      finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))),
+      durationMs: Math.max(0, Math.floor(num(r.durationMs))),
+      // 连续生产字段透传（2026-09-09 船长定；零迁移可选字段）
+      ...(r.autoRepeat === true ? { autoRepeat: true as const } : {}),
+      ...(Math.floor(num(r.repeatGoal)) > 0 ? { repeatGoal: Math.floor(num(r.repeatGoal)) } : {}),
+      ...(Math.floor(num(r.produced)) > 0 ? { produced: Math.floor(num(r.produced)) } : {}),
+    }
   }
   let pilotSeen = false // 主控亲自制造全局限 1 条（引擎保证；防御读档里出现重复）
   const pushMf = (rawRun: unknown): void => {
