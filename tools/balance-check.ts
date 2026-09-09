@@ -391,15 +391,19 @@ const strategyC: Strategy = {
 /* ───────── 买船辅助 ───────── */
 
 function maybeBuyNextShip(state: GameState, ctx: SimContext, result: StrategyResult): void {
-  // 只允许向更高档买：当前船 tier < 目标船 tier 才考虑（防止买完鲸吞又买回掘洞）
-  const current = ctx.ships.get(state.shipId)
+  // 只允许沿升级梯子向前买（防止买完鲸吞又买回掘洞）。
+  // 2026-09-09 修正：舰船尺寸分级后沙猫/掘洞同为 T1，原"目标 tier > 当前 tier"门槛
+  // 会永久卡死 12 万换掘洞的必经升级（A 流 24h 钱包卡在 89 万 < 鲸吞 90 万 → 伪影性崩盘），
+  // 改为按梯子内位置比较（梯子外的当前船视作位置 -1；等价于"当前价位 < 目标价位"，
+  // 同 tier 高价位船可正常购买）。
   const order = ['burrower', 'whale']
-  for (const shipId of order) {
-    const ship = ctx.ships.get(shipId)
+  const currentIdx = order.indexOf(state.shipId) // 不在梯子内 = -1
+  for (let i = 0; i < order.length; i++) {
+    if (i <= currentIdx) continue
+    const ship = ctx.ships.get(order[i])
     if (!ship) continue
-    if (current && current.tier >= ship.tier) continue
     if (state.wallet.isk >= ship.priceIsk) {
-      const r = buyShip(state, shipId, ctx)
+      const r = buyShip(state, order[i], ctx)
       if (r.ok) {
         result.milestones.push(`买船：${ship.name}（${ship.priceIsk.toLocaleString('zh-CN')} ISK）`)
         return // 一次只买一艘
