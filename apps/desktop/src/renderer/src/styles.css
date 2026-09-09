@@ -7852,3 +7852,14 @@ body {
 /* ---------- fix: flex-shrink override so is-fill panels collapse into remaining height (2026-09-08) ---------- */
 
 .page-stack > .wui-panel.is-fill { flex-shrink: 1; }
+
+/* 舰船独立矢量形资产层（三号 2026-09-09；无类元素 = 主轮廓继承 currentColor 2.2） */
+.shipart-panel { stroke-width: 1; opacity: .4; fill: none; }
+.shipart-acc { stroke-width: 1.6; fill: none; }
+.shipart-accf { fill: currentColor; stroke: none; }
+.shipart-volt { stroke: #5fd0ff; stroke-width: 1.4; fill: none; opacity: .85; }
+/* 敌族发光件（异形磷光绿 / 守墓磷光冰蓝；实心点用 -fill 版） */
+.shipart-volt-g { stroke: #8dff9e; stroke-width: 1.5; fill: none; opacity: .9; }
+.shipart-volt-i { stroke: #8fc7ff; stroke-width: 1.5; fill: none; opacity: .9; }
+.shipart-fill-g { fill: #8dff9e; stroke: none; opacity: .9; }
+.shipart-fill-i { fill: #8fc7ff; stroke: none; opacity: .9; }

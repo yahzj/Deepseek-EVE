@@ -9,8 +9,10 @@
  * - 数据逐舰补录中：已录 defId 走独立形；未录 defId 回退 role 旧形（组件内放大适配）。
  */
 import type { ReactNode } from 'react'
+import { FOE_ART_EXTRA, SHIP_ART_EXTRA } from './shipArtData'
 
 export const SHIP_ART: Record<string, ReactNode> = {
+  ...SHIP_ART_EXTRA,
   /* ── 鲣鱼级护卫舰（箭头机身 + 后掠双翼 + 机头炮） ── */
   'sh-falconet': (
     <g>
@@ -76,6 +78,7 @@ export const SHIP_ART: Record<string, ReactNode> = {
 
 /** 敌舰族群形（键 = FOE_FAMILY 中的族字母；未录族 → 'F' 制式巡逻形兜底） */
 export const FOE_ART: Record<string, ReactNode> = {
+  ...FOE_ART_EXTRA,
   /* A 海盗突击舰（粗短破旧 + 角旗 + 斜排劫掠炮） */
   A: (
     <g>
