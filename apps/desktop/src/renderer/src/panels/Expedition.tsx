@@ -1486,7 +1486,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
               ? ''
               : !Number.isFinite(retMins)
                 ? ''
-                : ` · 胜利自动返航约 ${Math.max(1, Math.round(retMins * 2))} 分钟（不可召回）`
+                : ` · 胜利自动返航约 ${Math.max(1, Math.round(travelMinutesEff(state, engine.ctx, retMins) * 2))} 分钟（不可召回）`
           return (
             <>
               即时开战 · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
