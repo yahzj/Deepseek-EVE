@@ -799,7 +799,7 @@ export const EMPTY_HAULING: HaulingState = {
 export interface StationSiteProgress {
   /** 已完成的档位数（0/1/2/3；3 = 建成并入空间站清单） */
   stage: number
-  /** 当前档已缴单位数（按 acceptItemIds 任意混合累计；跨档清零重计） */
+  /** 当前档已缴（按逐档材料单项累计；升档清零重计，2026-09-09） */
   delivered: Record<string, number>
 }
 

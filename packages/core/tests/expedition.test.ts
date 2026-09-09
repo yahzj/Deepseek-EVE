@@ -211,10 +211,9 @@ describe('远征自动返航最近建成站（2026-09-08 船长定：所有自�
       name: '远郊前哨',
       galaxyId: 'galaxy-far',
       standingReq: 0,
-      acceptItemIds: ['ore-a'],
       tiers: [
-        { name: '奠基', count: 100, unlockDesc: '泊位' },
-        { name: '建成', count: 150, unlockDesc: '并入网络' },
+        { name: '档1', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '施工推进' },
+        { name: '档2', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '建成并入空间站清单' },
       ],
       introDialogueId: null,
       doneDialogueId: null,

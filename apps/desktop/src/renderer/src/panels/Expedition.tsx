@@ -39,6 +39,8 @@ import {
   travelMinutesEff,
   playerAtSite,
   tierNeedOf,
+  billNeedOf,
+  stationBillView,
   transitStatus,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
@@ -1310,10 +1312,11 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
         if (prog && prog.stage >= site.tiers.length) return null // 已建成：不需要交付航线
         if (!isExplored(state, galaxy.id)) return null
         const tripOn = state.transit.active && state.transit.delivery?.siteId === site.id
-        // 交付循环只装仓库建材（每趟装满货仓空闲空间；船上原有货物不受影响）
-        const mat = site.acceptItemIds.reduce((s0, id) => s0 + (state.warehouse.items[id] ?? 0), 0)
+        // 交付循环只装仓库建材（当前档材料单；2026-09-09 逐档材料单口径）
+        const billRowsHere = stationBillView(state, engine.ctx, site)
+        const mat = billRowsHere.reduce((s0, r) => s0 + (state.warehouse.items[r.itemId] ?? 0), 0)
         const freeM3 = Math.max(0, Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)))
-        const matNames = site.acceptItemIds.map((id) => engine.ctx.items.get(id)?.name ?? id).join(' / ')
+        const matNames = billRowsHere.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join('、')
         const canSend =
           !tripOn && !state.transit.active && !state.standby.active && state.awayGalaxy === null && !pilotBusy && mat > 0 && freeM3 > 0
         const title = tripOn
@@ -1326,14 +1329,14 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
                 ? '货仓已满载——先腾出空闲货仓再安排交付循环'
                 : mat <= 0
                   ? `仓库建材不足（需要：${matNames}）——备料后再出发`
-                  : `一键交付循环：每趟把货仓装满本星系建材（当前空闲 ${freeM3} m³）→ 真实航程到点自动清仓交付 → 自动返港续趟，直到副站建成或仓库建材耗尽（随时可取消停止）`
+                  : `一键交付循环：每趟把货仓装满当前档材料单建材（当前空闲 ${freeM3} m³）→ 真实航程到点自动清仓交付 → 自动返港续趟，直到副站建成或仓库建材耗尽（随时可取消停止）`
         return (
           <div className="app-ga-row">
             <span className="app-ga-main">
               <span className="app-ico"><Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} /></span>
               建站交付 · {site.name}
               <span className="app-dim app-ga-desc">
-                仓库建材 {mat.toLocaleString('zh-CN')} 单位（需要 {matNames}）· 货仓空闲 {freeM3.toLocaleString('zh-CN')} m³——装满出发，到点清仓交付，自动循环至建成或仓库耗尽
+                仓库建材 {mat.toLocaleString('zh-CN')} 单位（当前档需要 {matNames}）· 货仓空闲 {freeM3.toLocaleString('zh-CN')} m³——装满出发，到点清仓交付，自动循环至建成或仓库耗尽
               </span>
             </span>
             <button
@@ -1860,15 +1863,18 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
         const prog = state.stationSites[site.id] ?? { stage: 0, delivered: {} }
         const built = prog.stage >= site.tiers.length
         const tier = !built ? site.tiers[prog.stage]! : null
-        const delTotal = site.acceptItemIds.reduce((sum, id) => sum + (prog.delivered[id] ?? 0), 0)
-        const need = tier ? tierNeedOf(state, site, prog.stage) : 0
-        const remain = tier ? Math.max(0, need - delTotal) : 0
-        const itemId = selItem[site.id] ?? site.acceptItemIds[0]!
+        // 2026-09-09：逐档材料单视图（当前档每项需求/已缴/剩余）
+        const billRows = !built ? stationBillView(state, engine.ctx, site) : []
+        const need = billRows.reduce((s, r) => s + r.need, 0)
+        const delTotal = billRows.reduce((s, r) => s + r.delivered, 0)
+        const remain = billRows.reduce((s, r) => s + r.remaining, 0)
+        const itemId = selItem[site.id] ?? billRows[0]?.itemId ?? ''
         // 工地现场 = 停靠该站，或野外停留于站点星系（2026-09-06 修复：现场交付无需"先停靠"）
         const presentAtSite = playerAtSite(state, site)
-        const availOf = (itemId: string): number =>
-          (state.warehouse.items[itemId] ?? 0) + (state.fleet[state.shipId]?.cargo[itemId] ?? 0)
-        const avail = site.acceptItemIds.reduce((s, id) => s + availOf(id), 0)
+        const availOf = (id: string): number =>
+          (state.warehouse.items[id] ?? 0) + (state.fleet[state.shipId]?.cargo[id] ?? 0)
+        const selRow = billRows.find((r) => r.itemId === itemId)
+        const avail = itemId ? availOf(itemId) : 0
         // 2026-09-08 一键「前往工地交付」＝交付循环（物理载货：装仓库建材→到点清仓→自动续趟→建成或仓库耗尽终止）
         const tripOn = state.transit.active && state.transit.delivery?.siteId === site.id
         const tripReadyDock = state.awayGalaxy === null
@@ -1881,14 +1887,14 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
           state.transit.active ||
           state.refineRuns.some((r) => r.active && r.worker === 'pilot') ||
           state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
-        const wareStock = site.acceptItemIds.reduce((s, id) => s + (state.warehouse.items[id] ?? 0), 0)
+        const wareStock = billRows.reduce((s, r) => s + (state.warehouse.items[r.itemId] ?? 0), 0)
         const tripFreeM3 = Math.max(
           0,
           Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)),
         )
         const tripBlocked =
           tripOn || !tripReadyDock || tripBusy || wareStock <= 0 || tripFreeM3 <= 0
-        const want = Math.min(Math.max(0, Math.floor(qty)), remain, avail)
+        const want = Math.min(Math.max(0, Math.floor(qty)), selRow ? selRow.remaining : 0, avail)
         const intro = site.introDialogueId ? engine.dialogues.find((d) => d.id === site.introDialogueId) : undefined
         return (
           <div key={site.id} className={`app-station-card${built ? ' is-built' : ''}`}>
@@ -1920,25 +1926,32 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             </div>
             <div className="app-dim">{site.description}</div>
             {(() => {
-              const mats = site.acceptItemIds.map((id) => engine.ctx.items.get(id)?.name ?? id)
-              const srcBelts = [...engine.ctx.belts.values()].filter((b) => b.galaxyId === site.galaxyId)
-              const req = srcBelts.length > 0 ? Math.max(...srcBelts.map((b) => b.standingReq ?? 0)) : 0
-              const vol = engine.ctx.items.get(site.acceptItemIds[0] ?? '')?.unitM3
+              // 2026-09-09：展示各档材料单（精炼矿物；排除原矿）
+              const billTxt = (t: (typeof site.tiers)[number]): string =>
+                t.bill.map((b) => `${engine.ctx.items.get(b.itemId)?.name ?? b.itemId}×${b.count.toLocaleString('zh-CN')}`).join(' + ')
               return (
                 <div className="app-station-mats">
-                  所需物资：<b>{mats.join(' / ')}</b>
-                  {srcBelts.length > 0 ? ` —— 产自「${srcBelts.map((b) => b.name).join('、')}」` : ''}
-                  {req > 0 ? `（需协会声望 ${req} 方可开采）` : ''}
-                  {vol !== undefined ? ` · 每单位占 ${vol} m³ 货舱` : ''}。两种物资可任意组合，按档位累计提交。
+                  建材（精炼矿物，逐档材料单）：
+                  {site.tiers.map((t, i) => (
+                    <div key={t.name} className="app-dim">
+                      {i + 1}·{t.name}：{billTxt(t)}
+                    </div>
+                  ))}
+                  <span className="app-dim">全部材料由采矿 → 精炼产出；可「前往工地交付」自动运料，或到现场手动逐项提交。</span>
                 </div>
               )
             })()}
             <div className="app-station-tiers">
-              {site.tiers.map((t, i) => (
-                <span key={t.name} className={`app-station-tier${prog.stage > i ? ' is-done' : ''}${prog.stage === i && !built ? ' is-cur' : ''}`}>
-                  {i + 1}·{t.name}：{t.unlockDesc}（{tierNeedOf(state, site, i).toLocaleString('zh-CN')} 单位建材）{prog.stage > i ? ' ✓' : ''}
-                </span>
-              ))}
+              {site.tiers.map((t, i) => {
+                const billTxt = t.bill
+                  .map((b) => `${engine.ctx.items.get(b.itemId)?.name ?? b.itemId}×${billNeedOf(state, site, i, b.itemId).toLocaleString('zh-CN')}`)
+                  .join(' + ')
+                return (
+                  <span key={t.name} className={`app-station-tier${prog.stage > i ? ' is-done' : ''}${prog.stage === i && !built ? ' is-cur' : ''}`}>
+                    {i + 1}·{t.name}：{billTxt}（{tierNeedOf(state, site, i).toLocaleString('zh-CN')} 单位）{prog.stage > i ? ' ✓' : ''}
+                  </span>
+                )
+              })}
             </div>
             {!explored ? (
               <div className="app-dim">该星系尚未探索——先到星图上扫描点亮。</div>
@@ -1947,8 +1960,19 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             ) : tier ? (
               <>
                 <div className="app-station-progress">
-                  本档已缴 {Math.min(delTotal, need).toLocaleString('zh-CN')} / {need.toLocaleString('zh-CN')} 单位
-                  {remain === 0 ? '（凑齐后自动结算档位）' : ''}
+                  {billRows.length > 0 ? (
+                    <div>
+                      {billRows.map((r) => (
+                        <div key={r.itemId} className="app-dim">
+                          {r.itemName}：已缴 {r.delivered.toLocaleString('zh-CN')} / {r.need.toLocaleString('zh-CN')}
+                          {r.remaining > 0 ? `（还差 ${r.remaining.toLocaleString('zh-CN')}）` : ' ✓'}
+                        </div>
+                      ))}
+                      <span className="app-dim">
+                        本档共差 {remain.toLocaleString('zh-CN')} 单位{remain === 0 ? '（凑齐后自动结算档位）' : ''}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
                 {presentAtSite ? (
                   <div className="app-station-deliver">
@@ -1958,9 +1982,9 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                       value={itemId}
                       onChange={(e) => setSelItem((prev) => ({ ...prev, [site.id]: e.target.value }))}
                     >
-                      {site.acceptItemIds.map((id) => (
-                        <option key={id} value={id}>
-                          {engine.ctx.items.get(id)?.name ?? id}（手头 {availOf(id).toLocaleString('zh-CN')}）
+                      {billRows.map((r) => (
+                        <option key={r.itemId} value={r.itemId}>
+                          {r.itemName}（手头 {availOf(r.itemId).toLocaleString('zh-CN')} · 还差 {r.remaining.toLocaleString('zh-CN')}）
                         </option>
                       ))}
                     </select>
@@ -1990,7 +2014,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                 ) : (
                   <div className="app-station-deliver">
                     <span className="app-dim">
-                      不在工地现场：可一键「前往工地交付」——每趟把货仓装满本星系建材，按真实航程驶往工地，到点自动清仓交付；仓库还有建材就自动续趟，直到副站建成或仓库建材耗尽（耗尽会弹窗提示）；途中可在顶部活动栏取消（= 停止循环）。
+                      不在工地现场：可一键「前往工地交付」——每趟把货仓装满当前档材料单建材，按真实航程驶往工地，到点自动清仓交付；仓库还有建材就自动续趟，直到副站建成或仓库建材耗尽（耗尽会弹窗提示）；途中可在顶部活动栏取消（= 停止循环）。
                     </span>
                     <button
                       className="app-btn is-small is-primary"
@@ -2005,7 +2029,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                               : tripFreeM3 <= 0
                                 ? '货仓已满载——先腾出空闲货仓再安排交付循环'
                                 : wareStock <= 0
-                                  ? `仓库建材不足（需要 ${site.acceptItemIds.map((id) => engine.ctx.items.get(id)?.name ?? id).join(' / ')}）——备料后再出发`
+                                  ? `仓库建材不足（当前档需要 ${billRows.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join('、')}）——备料后再出发`
                                   : `从「${galaxy?.name ?? site.galaxyId}」出发：装满货仓（空闲 ${tripFreeM3.toLocaleString('zh-CN')} m³）→ 到点清仓自动交付 → 自动返港续趟至建成或仓库耗尽（可随时取消）`
                       }
                       onClick={() => {

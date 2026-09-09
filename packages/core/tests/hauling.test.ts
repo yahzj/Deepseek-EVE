@@ -25,10 +25,9 @@ function siteDef(): StationSiteDef {
     name: '测试前哨站',
     galaxyId: 'galaxy-far',
     standingReq: 0,
-    acceptItemIds: ['ore-a'],
     tiers: [
-      { name: '奠基', count: 100, unlockDesc: '施工推进' },
-      { name: '建成', count: 150, unlockDesc: '建成并入空间站清单' },
+      { name: '奠基', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '施工推进' },
+      { name: '建成', bill: [{ itemId: 'ore-a', count: 150 }], unlockDesc: '建成并入空间站清单' },
     ],
     introDialogueId: 'dlg-intro',
     doneDialogueId: null,
