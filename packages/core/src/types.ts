@@ -889,10 +889,10 @@ export interface SimContext {
 export interface StationTierDef {
   /** 档位名（如 奠基/完善/建成） */
   name: string
-  /** 本档缴交总单位数（接受该站 acceptItemIds 中的任意混合） */
-  count: number
+  /** 2026-09-09（船长定）本档材料单：物品 × 数量，逐项交齐才升档（建材 = 精炼矿物，排除原矿） */
+  bill: ReadonlyArray<{ itemId: string; count: number }>
   /** 本档交付完成后解锁的能力描述（展示 + 语义见 core station.ts） */
-  unlockDesc: string
+  unlockDesc?: string
 }
 
 /** 副空间站建站点定义（T9；位于既有星系，见 data/src/stations.ts） */
@@ -904,9 +904,7 @@ export interface StationSiteDef {
   galaxyId: string
   /** 建站任务接取的声望门槛（0 = 探索点亮即可） */
   standingReq: number
-  /** 收料物（该星系常见产出；提交接受其中任意组合） */
-  acceptItemIds: readonly string[]
-  /** 分档要求（顺序推进） */
+  /** 分档要求（顺序推进；2026-09-09 起每档自带材料单，不再有整站收料清单） */
   tiers: readonly StationTierDef[]
   /** 首次抵达介绍剧本 id（data dialogues.ts；null = 无） */
   introDialogueId: string | null

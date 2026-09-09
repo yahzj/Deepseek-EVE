@@ -57,11 +57,10 @@ function stationSite(id: string, galaxyId: string, name: string) {
     name,
     galaxyId,
     standingReq: 0,
-    acceptItemIds: ['ore-a'],
-    tiers: [
-      { name: '奠基', count: 10, unlockDesc: 'x' },
-      { name: '完善', count: 10, unlockDesc: 'x' },
-      { name: '建成', count: 10, unlockDesc: 'x' },
+        tiers: [
+      { name: '档1', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '施工推进' },
+      { name: '档2', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '设备安装' },
+      { name: '档3', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '建成并入空间站清单' },
     ],
     introDialogueId: null,
     doneDialogueId: null,
