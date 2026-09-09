@@ -261,6 +261,7 @@ export {
   materialFactor,
   matNeedCount,
   startManufacturing,
+  setManufacturingLoop,
   advanceManufacturing,
   manufacturingRunViews,
   manufacturingManualActive,

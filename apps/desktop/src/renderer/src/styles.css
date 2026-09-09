@@ -7852,3 +7852,20 @@ body {
 /* ---------- fix: flex-shrink override so is-fill panels collapse into remaining height (2026-09-08) ---------- */
 
 .page-stack > .wui-panel.is-fill { flex-shrink: 1; }
+
+/* ---------- 组装机连续生产开关（2026-09-09 船长定：线行滑动开关 + 目标件数） ---------- */
+
+.app-mf-loop { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+
+.app-toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; font-size: 11px; color: rgba(220, 232, 244, 0.85); }
+.app-toggle-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.app-toggle-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: rgba(255, 255, 255, 0.18); transition: background 0.15s ease; flex: none; }
+.app-toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #d8e6f2; transition: left 0.15s ease, background 0.15s ease; }
+.app-toggle-input:checked + .app-toggle-track { background: rgba(79, 216, 196, 0.85); }
+.app-toggle-input:checked + .app-toggle-track::after { left: 16px; background: #fff; }
+.app-toggle-input:focus-visible + .app-toggle-track { outline: 1px solid rgba(79, 216, 196, 0.9); }
+
+.app-mf-goal { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: rgba(220, 232, 244, 0.7); white-space: nowrap; }
+.app-mf-goal-input { width: 46px; padding: 1px 4px; font-size: 11px; color: inherit; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(127, 227, 255, 0.25); border-radius: 4px; }
+.app-mf-goal-input:focus { outline: none; border-color: rgba(79, 216, 196, 0.8); }
+

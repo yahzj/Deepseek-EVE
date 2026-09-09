@@ -82,6 +82,7 @@
 ---
 
 ## 变更记录（本文件）
+- 2026-09-09：**组装机连续生产（一号；船长反馈"生产物品无法连续生产"+ 卡片滑动开关建议，选项批复）**——制造线行内自绘滑动开关「循环」（每线独立；手动/AI 线均可）：完成一件自动续做同一蓝图，可设目标件数（留空 = 直到材料不足自动停）；autoRepeat/repeatGoal/produced 可选字段零迁移（save 透传）；advanceManufacturing 相位推进（finishAt += 新耗时）跨离线大 delta 同帧连续结算多件，AI 核心循环期间保持占用、停线归还；停线汇总日志（达目标/缺料/数据缺失）；旧作业豁免线不参与循环；UI 线行滑块 + 目标数字输入（新样式 .app-toggle/.app-mf-loop，青色同主题）；glossary 登记「连续生产」；core 555/555（+5）+ typecheck ×4 + desktop build 绿【待验收/待发布】。
 - 2026-09-09：**精炼炉运转分档校准 O8 ✅（一号；船长批准四档参考矿船桶）**——14 条配方批量/周期对齐四档桶（富凡/灼烧 20/24s≈3,000/h；希莫/辉云/曦棱/氖云/蓝霜 18/11s≈5,891/h；磷光/离子/极光/寒髓 34/10s≈12,240/h；玄晶/星幽 58/8s≈26,100/h；暗星冰 42/5.8s≈26,069/h——58/8s 时净率 135.9% 超护栏故降批，132.7% 带内）；perOre 不动；旧 260s/80s 长周期顶阶批参作废（批量放大后 floor 取整损失反而收窄：玄晶冥铁 41%→9%）；content:check 全绿 + core 550 + typecheck ×4；refine-cycles.md 头注更新；审核表已同步内容工作簿 content-csv/【待验收/待发布】。
 - 2026-09-09：**AI 核心启用判定修复（一号；玩家反馈"工业核心全开无法进行副船活动"，commit dc2e08d）**——站内工业占用先抵「工业自动化」扩容工位、超出扩容才占共用上限（ship scope 判定 = 副船占用 + max(0, 工业占用−扩容) ≥ 共用上限；industry scope 全量口径不变）；占用拆分 `aiCoreShipUsed/aiCoreIndustryUsed`，AI 指挥中心标题改 `已用/共用+扩容`、playthrough-sim 同口径；回归测试 +2；core 550/550 + typecheck ×4 + desktop build 绿【待验收/待发布】；细则落档 docs/design/industry-ai-slot-expansion.md §六。
 - 2026-09-08：**AI 核心统一启用上限（二号；玩家反馈"AI 核心可无限制启动精炼炉"，船长定口径：同时启用的 AI 核心总数受「人工智能专家」限制、与用途无关）**——上限 = AI 核心上限技能贡献之和（现唯一 = ai-expert，后续技能在 `aiCoreCap` 叠加；Lv0 = 0）；AI 副船任务与站内 AI 精炼炉/回收炉/制造线共用同一启用上限（`aiCoreCapBlock` 统一守卫，旧作业豁免线不计）；存量超限不中断、计入占用；`maxAiSlots/aiSlotsUsed` → `aiCoreCap/aiCoreUsed`；skills 描述/ShipPage/手册/头注/tools 口径同步；core 515 绿 + typecheck ×4 绿【待验收/待发布：推送闸门内；公告待审稿递船长】。

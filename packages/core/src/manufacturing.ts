@@ -16,6 +16,9 @@
  *   完成/取消自动归还）；
  * - 耗时链同炉：主控线 = 工业理论 × 批量生产学（现有公式）；AI 线 = 基础耗时 ÷ 核心效率再乘
  *   产线节拍学（原"工业自动化"）−5%/级（下限 60%）。
+ * - 2026-09-09（船长拍板：组装机卡片滑动开关「连续生产」）：运行中的线可开 autoRepeat——
+ *   完成一件自动续做同一蓝图（劳动者/核心持续占用，相位推进可跨离线大 delta 连续结算），
+ *   到 达目标件数 / 材料不足 自动停线并写汇总日志；开关关闭 = 完成当前件后停止。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
@@ -236,62 +239,135 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
   return { ok: true }
 }
 
+/**
+ * 玩家指令：开/关该制造线的「连续生产」（2026-09-09 船长定：组装机卡片滑动开关——
+ * 同一线完成一件后自动续做同一蓝图；goal > 0 = 达成件数即停，缺省/0 = 直到材料不足自动停）。
+ * 只允许运行中的线切换；手动（pilot）与 AI 核心驱动的线均可；劳动者占用保持不变。
+ */
+export function setManufacturingLoop(
+  state: GameState,
+  runId: number,
+  on: boolean,
+  goal?: number | null,
+): CommandResult {
+  const run = state.manufacturingRuns.find((r) => r.id === runId && r.active)
+  if (!run) return { ok: false, error: '没有找到该制造线（已完成或已取消）。' }
+  run.autoRepeat = on === true
+  const g = Number.isFinite(goal) ? Math.floor(goal ?? 0) : 0
+  run.repeatGoal = on && g > 0 ? g : undefined
+  return { ok: true }
+}
+
 /** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点；
- * AI 核心驱动的线到点完成即归还核心。stats = 离线结算统计器（可选，见 settleStats.ts） */
+ * AI 核心驱动的线到点完成即归还核心。stats = 离线结算统计器（可选，见 settleStats.ts）
+ * 连续生产（2026-09-09 船长定）：autoRepeat 线完成一件后立即续做同一蓝图（劳动者保持占用），
+ * 相位推进 finishAt 可跨大 delta 连续结算多件；停止条件 = 达 repeatGoal / 材料不足 / 数据缺失 /
+ * 开关已关（完成最后一件即止）；停止时移除线并归还核心、写一条停线汇总日志。 */
 export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: SettleStats): void {
   for (let i = state.manufacturingRuns.length - 1; i >= 0; i--) {
     const mf = state.manufacturingRuns[i]!
     if (!mf.active || state.gameMs < mf.finishAtGameMs) continue
 
     const blueprintId = mf.blueprintId
-    const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
-    state.manufacturingRuns.splice(i, 1)
     const worker = mf.worker
     const byCore = worker !== undefined && worker !== 'pilot'
-    if (byCore) releaseAiCore(state, worker)
-    if (!buildable) {
-      addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
-      continue
+    const auto = mf.autoRepeat === true
+    let guard = 0
+    let stopWhy = '' // 连续生产线收尾原因（非循环线恒为空；空 = 正常完成停止/开关已关）
+
+    /** 结算当前这一件（产出入账 + 完成日志 + 离线统计）；数据缺失抛错由调用处 catch 语义处理 */
+    const settlePiece = (buildable: NonNullable<ReturnType<typeof findBuildable>>): boolean => {
+      const coreType = byCore ? (worker as AiCoreType) : undefined
+      if (buildable.kind === 'module') {
+        const moduleDef = buildable.moduleId ? ctx.modules.get(buildable.moduleId) : undefined
+        if (!moduleDef) return false
+        addModule(state, moduleDef.id)
+        addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
+        if (stats && coreType) {
+          addAiMakeDone(stats, coreType)
+          addAiIncome(stats, coreType, marketBasePrice(ctx, 'module', moduleDef.id))
+        }
+      } else if (buildable.kind === 'ship') {
+        const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
+        if (!shipDef) return false
+        addShipToFleet(state, shipDef.id)
+        addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
+        if (stats && coreType) {
+          addAiMakeDone(stats, coreType)
+          addAiIncome(stats, coreType, marketBasePrice(ctx, 'ship', shipDef.id))
+        }
+      } else {
+        // 2026-09-05 弹药蓝图：物品类产物按 outputUnits 批量入物品仓库
+        const itemDef = buildable.itemId ? ctx.items.get(buildable.itemId) : undefined
+        if (!itemDef) return false
+        const n = Math.max(1, buildable.outputUnits ?? 1)
+        addWare(state, itemDef.id, n)
+        addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
+        if (stats && coreType) {
+          addAiMakeDone(stats, coreType)
+          addAiIncome(stats, coreType, n * (itemDef.baseSellPriceIsk ?? 0))
+        }
+      }
+      return true
     }
 
-    if (buildable.kind === 'module') {
-      const moduleDef = buildable.moduleId ? ctx.modules.get(buildable.moduleId) : undefined
-      if (!moduleDef) {
-        addLog(state, 'warn', '制造作业引用的装备数据缺失，产出已丢弃（数据异常）。')
-        continue
+    while (state.gameMs >= mf.finishAtGameMs) {
+      if (++guard > 100_000) {
+        stopWhy = '连续推进超过保护上限，循环已中断'
+        break
       }
-      addModule(state, moduleDef.id)
-      addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
-      if (stats && byCore) {
-        addAiMakeDone(stats, worker)
-        addAiIncome(stats, worker, marketBasePrice(ctx, 'module', moduleDef.id))
+      const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
+      if (!buildable) {
+        addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
+        stopWhy = '蓝图数据缺失'
+        break
       }
-    } else if (buildable.kind === 'ship') {
-      const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
-      if (!shipDef) {
-        addLog(state, 'warn', '制造作业引用的舰船数据缺失，产出已丢弃（数据异常）。')
-        continue
+      mf.produced = (mf.produced ?? 0) + 1
+      if (!settlePiece(buildable)) {
+        addLog(state, 'warn', '制造作业引用的产物数据缺失，产出已丢弃（数据异常）。')
+        stopWhy = '产物数据缺失'
+        break
       }
-      addShipToFleet(state, shipDef.id)
-      addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
-      if (stats && byCore) {
-        addAiMakeDone(stats, worker)
-        addAiIncome(stats, worker, marketBasePrice(ctx, 'ship', shipDef.id))
+      if (!auto) break
+      const goal = mf.repeatGoal && mf.repeatGoal > 0 ? mf.repeatGoal : null
+      if (goal !== null && (mf.produced ?? 0) >= goal) {
+        stopWhy = `已达成目标 ${goal} 件`
+        break
       }
-    } else {
-      // 2026-09-05 弹药蓝图：物品类产物按 outputUnits 批量入物品仓库
-      const itemDef = buildable.itemId ? ctx.items.get(buildable.itemId) : undefined
-      if (!itemDef) {
-        addLog(state, 'warn', '制造作业引用的物品数据缺失，产出已丢弃（数据异常）。')
-        continue
+      const missing = missingMaterials(state, ctx, buildable.spec)
+      if (missing.length > 0) {
+        stopWhy = `材料不足（缺 ${missing.join('、')}）`
+        break
       }
-      const n = Math.max(1, buildable.outputUnits ?? 1)
-      addWare(state, itemDef.id, n)
-      addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
-      if (stats && byCore) {
-        addAiMakeDone(stats, worker)
-        addAiIncome(stats, worker, n * (itemDef.baseSellPriceIsk ?? 0))
+      // 续做下一件：即时扣料、按当前技能重算耗时并相位推进（劳动者/核心保持占用）
+      let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
+      if (worker !== undefined && worker !== 'pilot') {
+        const eff = aiEfficiency(state, ctx, worker)
+        durationMs = Math.max(1, Math.round(durationMs / eff))
       }
+      const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
+      if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0, 1 - 0.05 * autoLv)))
+      for (const need of buildable.spec.materials) {
+        removeWare(state, need.itemId, matNeedCount(state, need.count))
+      }
+      mf.finishAtGameMs += durationMs
+      mf.durationMs = durationMs
+    }
+
+    // 收尾判定：单件线 / 开关已关（auto 已在完成时置假）/ 带停因（达目标/缺料/数据缺失）→ 移除线并归还核心；
+    // 连续生产正常续产中（已重排下一件到点）→ 线保留到下一 tick
+    const lineEnds = !auto || stopWhy !== '' || mf.autoRepeat !== true
+    if (!lineEnds) continue
+    state.manufacturingRuns.splice(i, 1)
+    if (byCore) releaseAiCore(state, worker)
+    if (auto && stopWhy) {
+      const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
+      const name = buildable ? productNameOf(ctx, buildable, blueprintId ?? '') : (blueprintId ?? '')
+      addLog(
+        state,
+        'info',
+        `连续生产停止：${name}（共 ${mf.produced ?? 1} 件）——${stopWhy}${byCore ? '；AI 核心已归还核心库' : ''}`,
+      )
     }
   }
 }
@@ -315,6 +391,12 @@ export interface ManufacturingView {
   /** 总耗时毫秒 */
   durationMs: number
   percent: number
+  /** 连续生产开关状态（2026-09-09 船长定：组装机线行滑动开关） */
+  autoRepeat: boolean
+  /** 目标件数（>0 达数即停；0/缺省 = 直到材料不足） */
+  repeatGoal: number
+  /** 本线累计产出件数（含首件） */
+  produced: number
 }
 
 function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): ManufacturingView {
@@ -335,6 +417,9 @@ function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): M
     remainingMs,
     durationMs: mf.durationMs,
     percent,
+    autoRepeat: mf.autoRepeat === true,
+    repeatGoal: mf.repeatGoal && mf.repeatGoal > 0 ? mf.repeatGoal : 0,
+    produced: mf.produced ?? 0,
   }
 }
 

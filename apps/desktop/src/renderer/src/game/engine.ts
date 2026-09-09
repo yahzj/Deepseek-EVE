@@ -69,6 +69,7 @@ import {
   setMiningAutoCycle,
   setMiningStopAfterTrip,
   simulateOffline,
+  setManufacturingLoop,
   startExpedition,
   startExpeditionFromMining,
   startManufacturing,
@@ -1102,6 +1103,16 @@ export class GameEngine {
   /** v21：取消指定制造线（按线号；材料全额退回仓库；制造费已取消无退费一说） */
   cancelManufacturingAt(runId: number | string): CommandResult {
     const result = cancelManufacturing(this.state, this.ctx, Number(runId))
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 组装机连续生产开关（2026-09-09 船长定：线行滑动开关；goal>0 = 达件数即停，0/缺省 = 直到材料不足） */
+  setManufacturingLoopAt(runId: number | string, on: boolean, goal?: number | null): CommandResult {
+    const result = setManufacturingLoop(this.state, Number(runId), on, goal ?? null)
     if (result.ok) {
       void this.persist()
       this.notify()

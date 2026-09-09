@@ -151,4 +151,5 @@
 | 术语 | 定义 | 出处/规则 |
 |---|---|---|
 | 重复清剿 | 2026-09-08 船长定稿用词（原玩家向「连续出击/连击」；09-06 设计稿曾拟「巡回讨伐」，以本条为准）：悬赏打完自动回港、冷却结束自动再出发（每趟真实往返）；**返航途中也可在活动栏停止**（不影响本趟返航）；货仓不足/耐久不足/战败自动暂停 | autoLoopAnomalyId；activity.ts loop 行；engine bountyLoopAt |
+| 连续生产 | 2026-09-09 船长定稿（组装机卡片线行滑动开关「循环」）：同一制造线完成一件后自动续做同一蓝图（劳动者/核心保持占用，离线大推进同帧连续结算）；停止条件 = 目标件数（线行可设，留空 = 直到材料不足）或材料不足；取消/关开关 = 完成当前件即止 | manufacturing.ts autoRepeat/repeatGoal/produced；setManufacturingLoop |
 | 远征善后返航（换船） | 返航（expedition.phase='back'）中切换驾驶：本趟返航转为旧船自动账本（shipReturns reason='expedition'，按剩余航程到港自动卸货），并立即停止重复清剿；出击/交火中仍不可换船 | shipyard.ts changeShip；mining.ts advanceShipReturns |

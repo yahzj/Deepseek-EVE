@@ -21,8 +21,10 @@ import {
   manufacturingRunViews,
   missingMaterials,
   ownsBlueprint,
+  setManufacturingLoop,
   startManufacturing,
 } from '../src/manufacturing'
+import { countAiCore, gainAiCore } from '../src/ai'
 import { makeTestCtx, moduleDef } from './helpers'
 
 describe('蓝图学习（V9 消耗品制）', () => {
@@ -397,5 +399,91 @@ describe('装备装配与加成', () => {
     expect(fitModule(state, 'mod-t2', ctxT2).ok).toBe(true)
     expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-t2')
     expect(countModule(state, 'mod-t')).toBe(1) // 卸下的旧炮台退回装备库
+  })
+})
+
+
+describe('连续生产（2026-09-09 船长定：组装机卡片滑动开关；同一蓝图自动续做同一物品）', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 1 })
+    ctx = makeTestCtx()
+    state.skills.trained['ai-expert'] = 5 // AI 线上限资格
+    state.blueprintStock['bp-a'] = 1
+    learnBlueprint(state, ctx, 'bp-a') // bp-a：10×min-a / 600s → mod-a
+  })
+
+  it('手动线开启循环：材料不足自动停线（共 2 件）并写停线汇总日志', () => {
+    state.warehouse.items['min-a'] = 25
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const id = state.manufacturingRuns[0]!.id
+    expect(setManufacturingLoop(state, id, true, null).ok).toBe(true)
+    expect(state.manufacturingRuns[0]!.autoRepeat).toBe(true)
+    advanceGame(state, 1_250_000, ctx)
+    expect(countModule(state, 'mod-a')).toBe(2) // 600s × 2
+    expect(state.manufacturingRuns).toHaveLength(0) // 缺料自动停线
+    expect(state.warehouse.items['min-a'] ?? 0).toBe(5)
+    expect(state.logs.some((l) => l.text.includes('连续生产停止') && l.text.includes('材料不足'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('共 2 件'))).toBe(true)
+  })
+
+  it('目标件数达成即停：造 2 件后停线、余料保留', () => {
+    state.warehouse.items['min-a'] = 35
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const id = state.manufacturingRuns[0]!.id
+    expect(setManufacturingLoop(state, id, true, 2).ok).toBe(true)
+    expect(state.manufacturingRuns[0]!.repeatGoal).toBe(2)
+    advanceGame(state, 1_250_000, ctx)
+    expect(countModule(state, 'mod-a')).toBe(2)
+    expect(state.manufacturingRuns).toHaveLength(0)
+    expect(state.warehouse.items['min-a'] ?? 0).toBe(15) // 只用 2 件材料
+    expect(state.logs.some((l) => l.text.includes('已达成目标 2 件'))).toBe(true)
+  })
+
+  it('中途关闭开关：当前件完成后即停、不再续做', () => {
+    state.warehouse.items['min-a'] = 35
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const id = state.manufacturingRuns[0]!.id
+    expect(setManufacturingLoop(state, id, true, null).ok).toBe(true)
+    advanceGame(state, 599_999, ctx)
+    advanceGame(state, 1, ctx) // 第 1 件完成并续开
+    expect(countModule(state, 'mod-a')).toBe(1)
+    expect(state.manufacturingRuns).toHaveLength(1) // 循环中（线保持占用）
+    expect(setManufacturingLoop(state, id, false, null).ok).toBe(true)
+    expect(state.manufacturingRuns[0]!.autoRepeat).toBe(false)
+    advanceGame(state, 600_000, ctx) // 第 2 件完成，之后不再续
+    expect(countModule(state, 'mod-a')).toBe(2)
+    expect(state.manufacturingRuns).toHaveLength(0)
+    expect(state.warehouse.items['min-a'] ?? 0).toBe(15)
+    expect(state.logs.some((l) => l.text.includes('连续生产停止'))).toBe(false) // 开关关闭 = 正常完成停线
+  })
+
+  it('AI 核心线循环：核心持续占用、缺料停线时自动归还；大推进连续结算多件', () => {
+    gainAiCore(state, 'basic', 1)
+    state.warehouse.items['min-a'] = 25
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
+    const id = state.manufacturingRuns[0]!.id
+    expect(countAiCore(state, 'basic')).toBe(0) // 核心已占用
+    expect(setManufacturingLoop(state, id, true, null).ok).toBe(true)
+    // basic 效率 40%：单件 1,500,000ms；3,050,000ms 大推进 = 连续 2 件后缺料停
+    advanceGame(state, 3_050_000, ctx)
+    expect(countModule(state, 'mod-a')).toBe(2)
+    expect(state.manufacturingRuns).toHaveLength(0)
+    expect(countAiCore(state, 'basic')).toBe(1) // 已归还
+    expect(state.logs.some((l) => l.text.includes('连续生产停止') && l.text.includes('AI 核心已归还'))).toBe(true)
+  })
+
+  it('校验：未知线号拒绝；goal 0/缺省 = 不限件数；关闭时不记目标', () => {
+    expect(setManufacturingLoop(state, 999, true, null).ok).toBe(false)
+    state.warehouse.items['min-a'] = 20
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const id = state.manufacturingRuns[0]!.id
+    expect(setManufacturingLoop(state, id, true, 0).ok).toBe(true)
+    expect(state.manufacturingRuns[0]!.autoRepeat).toBe(true)
+    expect(state.manufacturingRuns[0]!.repeatGoal).toBeUndefined()
+    expect(setManufacturingLoop(state, id, false, 3).ok).toBe(true)
+    expect(state.manufacturingRuns[0]!.repeatGoal).toBeUndefined()
   })
 })
