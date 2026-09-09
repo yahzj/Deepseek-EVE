@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 测试门槛存档生成器（船长 2026-09-04 约定：B 批次 / 新玩法数值交付时配可测存档）。
  *
  * 用法：npx tsx tools/make-test-save.ts <feature>
@@ -446,7 +446,7 @@ function injectDrone(state: GameState): string[] {
     mid: [],
     low: [],
   }
-  sA.droneLoad = { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }
+  sA.droneLoad = { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } // calibrate D2 同款（2026-09-09 体积档 5/10/20/40：220/230m³）
   state.shipId = uidA
   // ② 王鲭级·无人机重装（calibrate D3 配装 + 清单）
   const uidB = addShipToFleet(state, 'sh-sentinel')
