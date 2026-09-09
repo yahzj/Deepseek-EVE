@@ -15,7 +15,9 @@
  */
 import { writeFileSync } from 'node:fs'
 import {
-  aiCoreUsed,
+  aiCoreShipUsed,
+  aiCoreIndustryUsed,
+  industryAiBonus,
   assignAiMining,
   assignAiSalvage,
   battleWinPreview,
@@ -386,7 +388,8 @@ function doAi(): void {
       }
     }
   }
-  if (aiCoreUsed(state) >= max) return
+  // 副船名额判定与引擎 aiCoreCapBlock 同口径（工业占用先抵工业扩容，超出部分才占共用名额）
+  if (aiCoreShipUsed(state) + Math.max(0, aiCoreIndustryUsed(state) - industryAiBonus(state, ctx)) >= max) return
   const idle = idleAiShipIds(state)
   if (idle.length === 0) {
     // 买一艘便宜工业船给 AI 用
