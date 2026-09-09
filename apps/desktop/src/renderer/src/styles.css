@@ -1218,6 +1218,42 @@ body {
 
 }
 
+/* 2026-09-09 切换驾驶脉冲（船长定：无缝切换易误判——成功后新驾驶船卡与「当前驾驶」行各做一次约 0.8 秒青绿高亮，动画后回落常驻金框样式；纯光影不占布局） */
+
+.app-ship-card.is-current.is-switch-pulse {
+
+  animation: app-fx-switch-card 0.8s ease-out 1;
+
+}
+
+@keyframes app-fx-switch-card {
+
+  0% { border-color: var(--wui-gold); box-shadow: 0 0 8px rgba(232, 180, 90, 0.12); }
+
+  25% { border-color: #4fd8c4; box-shadow: 0 0 0 2px rgba(79, 216, 196, 0.55), 0 0 18px rgba(79, 216, 196, 0.7); }
+
+  60% { border-color: #4fd8c4; box-shadow: 0 0 0 2px rgba(79, 216, 196, 0.28), 0 0 10px rgba(79, 216, 196, 0.4); }
+
+  100% { border-color: var(--wui-gold); box-shadow: 0 0 8px rgba(232, 180, 90, 0.12); }
+
+}
+
+.app-pilot-name.is-pulse {
+
+  animation: app-fx-switch-line 0.8s ease-out 1;
+
+}
+
+@keyframes app-fx-switch-line {
+
+  0%, 100% { color: inherit; text-shadow: none; }
+
+  35% { color: #a6f2ea; text-shadow: 0 0 10px rgba(79, 216, 196, 0.85); }
+
+  70% { color: #a6f2ea; text-shadow: 0 0 6px rgba(79, 216, 196, 0.5); }
+
+}
+
 .app-ship-top {
 
   display: flex;
