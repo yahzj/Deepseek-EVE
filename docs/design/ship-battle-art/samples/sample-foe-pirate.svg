@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 样稿 4/4：海盗突击舰（敌舰族群样张 · "赤潮"海盗主题）
+       风格：同线稿语言 + 锈红点缀 + 破旧特征（补丁面板线、天线角旗、斜排副炮） -->
+  <defs>
+    <style>
+      .sky { fill:#0b1016 }
+      .star { fill:#dfe9f2; opacity:.5 }
+      .hull { fill:none; stroke:#e9d9c8; stroke-width:2.2; stroke-linejoin:round }
+      .panel { fill:none; stroke:#e9d9c8; stroke-width:1; opacity:.38 }
+      .acc  { fill:none; stroke:#ff6b52; stroke-width:1.6 }
+      .accf { fill:#ff6b52 }
+      .warm { fill:#ffb46b }
+      .note { fill:#8aa0b8; font: 11px monospace }
+    </style>
+  </defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="52" cy="52" r="1.2"/><circle class="star" cx="506" cy="64" r="1"/><circle class="star" cx="478" cy="236" r="1.2"/><circle class="star" cx="88" cy="250" r="1"/><circle class="star" cx="300" cy="36" r="1"/>
+
+  <g transform="translate(40 76) scale(2.2)">
+    <!-- 尾焰（锈橙，单大引擎偏上） -->
+    <path class="warm" d="M34 50 L14 53 L34 56 Z" opacity=".95"/>
+    <!-- 破旧主舰体：粗短 + 尖喙舰首（锯齿补甲感用分段面板表达） -->
+    <path class="hull" d="M200 52 L206 56 L200 60 L192 66 L150 70 L86 70 C64 70 52 64 44 58 L38 53 L44 48 C52 42 66 40 92 40 L166 40 L188 44 Z"/>
+    <!-- 舰首喙口（小型撞角） -->
+    <path class="hull" d="M200 52 L216 54 L216 57 L200 60 Z" opacity=".8"/>
+    <!-- 顶部天线 + 角旗 -->
+    <path class="hull" d="M150 40 L150 24 M150 24 L140 16"/>
+    <path class="accf" d="M150 24 L138 22 L150 17 Z" opacity=".85"/>
+    <!-- 补丁面板（斜拼 / 断线 = 战损重修质感） -->
+    <path class="panel" d="M120 42 v26 M92 42 v26 M152 42 v24"/>
+    <path class="panel" d="M110 46 L132 66 M96 66 L118 44" stroke-dasharray="4 3"/>
+    <!-- 斜排副炮（上舷 3 门，朝右上 = 劫掠攻击姿态） -->
+    <path class="hull" d="M96 58 h8 v4 h-8 z M104 58 l-2 -6"/>
+    <path class="hull" d="M124 58 h8 v4 h-8 z M132 58 l-2 -6"/>
+    <path class="hull" d="M152 58 h8 v4 h-8 z M160 58 l-2 -6"/>
+    <!-- 大引擎口 -->
+    <path class="hull" d="M44 46 h10 v14 h-10 z M44 49 h10 M44 57 h10"/>
+    <!-- 撞角后侧挂架（战利品杆） -->
+    <path class="hull" d="M186 56 L198 60 M186 60 L196 63" opacity=".8"/>
+    <!-- 警示舷灯（锈红闪） -->
+    <circle class="accf" cx="176" cy="60" r="1.6"/>
+  </g>
+
+  <text class="note" x="40" y="286">海盗突击舰（赤潮族样张）· 敌舰群系 A — 样稿 D（粗短破旧 + 角旗天线 + 斜排劫掠炮）</text>
+</svg>
