@@ -19,6 +19,7 @@ import type { SimContext, SkillCatalog } from './types'
 import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
+import { reconcilePilotShip } from './shipyard'
 import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
 import { advanceExpedition } from './expedition'
@@ -67,6 +68,8 @@ export function advanceGame(
   advanceShipReturns(state, d, ctx)
   // 2026-09-08（船长定）：未建成建站点不视为任何站点——停靠残留纠正为工地现场停留（幂等）
   reconcileDockSanity(state, ctx)
+  // 2026-09-09（船长定）：驾驶船可用性自愈——缺失或被 AI 执勤占用时改派空闲船/补发保底沙猫（幂等）
+  reconcilePilotShip(state, ctx)
   // T8 显式返航行程（野外→空间站）/ 建站交付航线（真实航程；到点自动交付 + 自动返航）
   advanceTransit(state, ctx)
   advanceStandby(state, ctx)

@@ -15,6 +15,7 @@
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
 import { addLog } from './state'
+import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { SimContext } from './types'
@@ -75,7 +76,8 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   const galaxy = ctx.galaxies.get(galaxyId)
   if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
-  if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法出发打捞。' }
+  const pilotBlock = pilotUnavailableReason(state)
+  if (pilotBlock) return { ok: false, error: pilotBlock }
   if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
     return { ok: false, error: '打捞需要打捞器：请先在舰船高槽装上打捞器（MK1/2/3）再出发。' }
   }
