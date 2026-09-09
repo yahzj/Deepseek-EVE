@@ -795,7 +795,7 @@ export class GameEngine {
     return result
   }
 
-  /** T4 延后项：远征中直接转开采（UI 两步确认后调用；取消远征并停清剿） */
+  /** T4 延后项：远征中直接转开采（UI 两步确认后调用；取消远征并停止清剿） */
   startMiningFromExpeditionAt(beltId: string): CommandResult {
     const result = startMiningFromExpedition(this.state, beltId, this.ctx)
     if (result.ok) {
@@ -1346,7 +1346,7 @@ export class GameEngine {
 
   /**
    * 优化：玩家手动退出全屏战场时的兜底——若本场战斗由"重复清剿"自动发起且尚未结束，
-   * 视为玩家想收手：停清剿（避免冷却结束后又自动进入战斗）。
+   * 视为玩家想收手：停止清剿（避免冷却结束后又自动进入战斗）。
    */
   onBattleViewClosed(): void {
     const exp = this.state.expedition

@@ -180,46 +180,61 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
   if (ev.active) {
     const inBattle = ev.phase === 'combat'
     const canStop = inBattle || ev.recallable
+    // 2026-09-08（船长）：重复清剿中的本趟返航不另开独立活动行——在本次讨伐行内提供
+    // 「停止清剿」（胜利返航原本不可召回，但允许停掉后续自动再出击）
+    const loopReturning = state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === ev.anomalyId && ev.phase === 'back'
+    let sub: string
+    let stopable: boolean
+    let stop: ActivityStopKind | null
+    if (loopReturning) {
+      sub = '返航中 · 重复清剿中——停止清剿后本趟返航照常完成'
+      stopable = true
+      stop = 'stop-loop'
+    } else if (inBattle) {
+      sub = '实时交火中'
+      stopable = true
+      stop = 'retreat-battle'
+    } else {
+      sub = `${ev.phaseLabel}（${ev.galaxyName}）`
+      stopable = canStop
+      stop = canStop ? 'recall-expedition' : null
+    }
     out.push({
       id: 'expedition',
       kind: 'expedition',
       label: ev.anomalyName,
-      sub: inBattle ? '实时交火中' : `${ev.phaseLabel}（${ev.galaxyName}）`,
+      sub,
       percent: ev.percent,
       remainingMs: ev.remainingMs,
-      // 交火中可"撤退"；去程/失利返航可"召回"；胜利返航不可召回（路程必付）
-      stopable: canStop,
-      stop: inBattle ? 'retreat-battle' : canStop ? 'recall-expedition' : null,
+      stopable,
+      stop,
     })
   }
 
-  // ── 重复清剿（autoLoop：打完冷却后自动再出发；含出击/返航途中——2026-09-08 船长：
-  // 返航中也要能在活动栏停止讨伐，故不再因 inFlight 隐藏） ──
+  // ── 重复清剿（autoLoop：非出击/非返航的等待/冷却窗口行——2026-09-08 船长：出击/返航期间
+  // 不再显示独立行，停止入口并入上方本次讨伐行） ──
   const loopId = state.autoLoopAnomalyId
   if (loopId !== null) {
-    const aName = ctx.anomalies.get(loopId)?.name ?? loopId
     const inFlight = state.expedition.active && state.expedition.anomalyId === loopId
-    const inBack = inFlight && state.expedition.phase === 'back'
-    const cdMs = bountyCooldownRemainingMs(state, loopId)
-    const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
-    out.push({
-      id: 'loop',
-      kind: 'loop',
-      label: '重复清剿',
-      sub: inBack
-        ? `目标「${aName}」——本趟返航中，可在此停止讨伐（返回后不再自动出击）`
-        : inFlight
-          ? `目标「${aName}」——本次出击中，可随时停止讨伐`
-          : busyOther
-            ? `目标「${aName}」——等待当前作业结束，自动再出击`
-            : cdMs > 0
-              ? `目标「${aName}」——正在扫描新敌人`
-              : `目标「${aName}」——即将自动再出击`,
-      percent: null,
-      remainingMs: cdMs > 0 ? cdMs : null,
-      stopable: true,
-      stop: 'stop-loop',
-    })
+    if (!inFlight) {
+      const aName = ctx.anomalies.get(loopId)?.name ?? loopId
+      const cdMs = bountyCooldownRemainingMs(state, loopId)
+      const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
+      out.push({
+        id: 'loop',
+        kind: 'loop',
+        label: '重复清剿',
+        sub: busyOther
+          ? `目标「${aName}」——等待当前作业结束，自动再出击`
+          : cdMs > 0
+            ? `目标「${aName}」——正在扫描新敌人`
+            : `目标「${aName}」——即将自动再出击`,
+        percent: null,
+        remainingMs: cdMs > 0 ? cdMs : null,
+        stopable: true,
+        stop: 'stop-loop',
+      })
+    }
   }
 
   // ── AI 副船任务（每条） ──

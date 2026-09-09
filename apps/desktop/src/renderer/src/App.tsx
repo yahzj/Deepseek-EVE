@@ -916,7 +916,7 @@ export function App({ engine }: { engine: GameEngine }) {
           engine={engine}
           onToast={showToast}
           onClose={() => {
-            // 手动退出战场：若正处于"讨伐自动发起的战斗"→ 停清剿（避免冷却后又自动开战）
+            // 手动退出战场：若正处于"讨伐自动发起的战斗"→ 停止清剿（避免冷却后又自动开战）
             engine.onBattleViewClosed()
             setBattleOpen(false)
           }}
