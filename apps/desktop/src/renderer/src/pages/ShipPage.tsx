@@ -672,7 +672,17 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             className="app-btn is-primary is-small"
             onClick={handleAssign}
             disabled={!shipId || (mode === 'salvage' && !salvageGalaxyId) || usableCores.length === 0}
-            title={usableCores.length === 0 ? '没有闲置的 AI 核心——先购入基础核心或等远征掉落' : undefined}
+            title={
+              !shipId
+                ? idleShips.length === 0
+                  ? '先选择空闲舰船——当前没有可指派的舰船（舰船均在执勤/出航中）'
+                  : '先在下拉中选择一艘空闲舰船'
+                : mode === 'salvage' && !salvageGalaxyId
+                  ? '先选择打捞目标星系（需已探索且有敌群残骸的星系）'
+                  : usableCores.length === 0
+                    ? '没有可用的 AI 核心——先购入基础核心或等远征掉落'
+                    : undefined
+            }
           >
             指派任务
           </button>
