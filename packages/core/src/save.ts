@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 存档：序列化、读取、版本迁移、容错修复。
  *
  * 设计说明（中文）：
@@ -1289,6 +1289,14 @@ function normalizeState(raw: unknown): GameState {
     lastTickGameMs: Math.max(0, Math.floor(num(marketRaw.lastTickGameMs))),
     orderSeq: Math.max(Math.max(0, Math.floor(num(marketRaw.orderSeq))), maxOrderId),
     priceHistory: histories as GameState['market']['priceHistory'],
+    // P2 稀有/奇货抽取节拍基准（2026-09-09 修复：必须随档透传——此前白名单漏掉本键，
+    // 每次读档（启动/恢复存档）都被 ensureMarket 重置回"开市前 10 分钟"→ 恢复后首窗重复
+    // 抽取一次、抽取相位随每次读档漂移，多次倒档重放会叠加出异常供给单；旧档无键 = undefined，
+    // 由 ensureMarket 按旧逻辑补基准，零迁移）
+    slowDrawLastGameMs:
+      typeof marketRaw.slowDrawLastGameMs === 'number' && Number.isFinite(marketRaw.slowDrawLastGameMs)
+        ? Math.max(0, Math.floor(marketRaw.slowDrawLastGameMs))
+        : undefined,
   }
 
   // --- 我的挂单（v9）：非法字段丢弃 ---
