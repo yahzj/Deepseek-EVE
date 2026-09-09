@@ -51,7 +51,7 @@ function stopLabel(v: ActivityView): string {
     case 'cancel-deliver-trip':
       return '取消交付'
     case 'stop-loop':
-      return '停清剿'
+      return '停止清剿'
     default:
       return ''
   }
