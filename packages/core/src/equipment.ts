@@ -104,6 +104,7 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   if (def.evasionGapPct !== undefined) return { group: 'gap', kind: 'evasion' }
   if (def.hitBonusPct !== undefined) return { group: 'curve', kind: 'hit' }
   if (def.speedBonusPct !== undefined) return { group: 'curve', kind: 'speed' }
+  if (def.lockDmgBonus !== undefined) return { group: 'curve', kind: 'lock' }
   const sk = resistKey(def.shieldResistAdd)
   if (sk) return { group: 'gap', kind: `shield-${sk}` }
   const ak = resistKey(def.armorResistAdd)

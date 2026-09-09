@@ -891,6 +891,37 @@ export const MODULES: readonly ModuleDef[] = [
     repairKit: 'repairkit-mil',
     description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 18 点（单层满则全额给另一层），每跳消耗 1 枚军用修理组件；组件耗尽自动停机——高配巡洋/主力舰的持久战底牌。',
   },
+
+  /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；
+     装上任意一件即触发集火模式——本舰全部武器不再随机分散，改打存活编队首位（主舰优先、
+     击毁自动接力）；加深按档位 8/12/20%，多件 EVE 曲线收敛（见 equipment.stackingOf）） ═══ */
+  {
+    id: 'mod-lock-1',
+    name: '目标锁定阵列 MK1',
+    slot: 'target-lock',
+    rack: 'high',
+    cpuUse: 6,
+    lockDmgBonus: 0.08,
+    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +8%（本舰全部武器；同类多装收益递减）。',
+  },
+  {
+    id: 'mod-lock-2',
+    name: '目标锁定阵列 MK2',
+    slot: 'target-lock',
+    rack: 'high',
+    cpuUse: 14,
+    lockDmgBonus: 0.12,
+    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +12%（本舰全部武器；同类多装收益递减）。',
+  },
+  {
+    id: 'mod-lock-3',
+    name: '目标锁定阵列 MK3',
+    slot: 'target-lock',
+    rack: 'high',
+    cpuUse: 26,
+    lockDmgBonus: 0.2,
+    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器；同类多装收益递减）。',
+  },
 ]
 
 /** 构建"装备 id → 定义"目录 */

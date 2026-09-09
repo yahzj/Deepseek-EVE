@@ -157,6 +157,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
       }
       break
     }
+    case 'target-lock':
+      // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深
+      body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
+      break
   }
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
   return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
@@ -444,6 +448,12 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         .join(' / ')
       lines.push({ k: '自动维修', v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）` })
       lines.push({ k: '运转消耗', v: `每跳消耗 ${kitName} ×1；组件耗尽自动停机——请确认货舱/仓库备足组件再出击` })
+    }
+  } else if (mod.slot === 'target-lock') {
+    // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深
+    lines.push({ k: '集火模式', v: '装上即生效：全部武器不再随机分散，改打存活编队首位（主舰优先，击毁自动接力）' })
+    if (mod.lockDmgBonus !== undefined) {
+      lines.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}（本舰全部武器：炮台/导弹/激光/无人机）` })
     }
   }
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）

@@ -861,6 +861,8 @@ export interface ExpeditionView {
     foeHp: Record<string, { s: number; a: number; h: number; name: string }>
     shots: number
     hits: number
+    /** 锁定装置集火目标 tag（2026-09-09：驾驶船装配含 target-lock 件时为存活编队首位；否则 null） */
+    lockTag: string | null
   } | null
 }
 
@@ -925,18 +927,32 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   }
   const combat =
     exp.phase === 'battle' && exp.battle
-      ? {
-          distanceM: Math.round(exp.battle.distanceM),
-          myDesireM: Math.round(exp.battle.myDesireM),
-          meHp: { ...(exp.battle.units['player']?.hp ?? { s: 0, a: 0, h: 0 }) },
-          foeHp: Object.fromEntries(
-            Object.entries(exp.battle.units)
-              .filter(([, u]) => u.side === 'foe')
-              .map(([tag, u]) => [tag, { s: Math.round(u.hp.s), a: Math.round(u.hp.a), h: Math.round(u.hp.h), name: u.name }]),
-          ),
-          shots: exp.battle.stats.meShots,
-          hits: exp.battle.stats.meHits,
-        }
+      ? (() => {
+          // 2026-09-09 锁定装置：集火目标 = 存活编队首位（装配含 target-lock 件才显示；无锁定 = null）
+          let lockTag: string | null = null
+          if (familyModules(state, ctx, state.shipId, 'target-lock').length > 0) {
+            for (const [tag, u] of Object.entries(exp.battle!.units)) {
+              if (u.side !== 'foe') continue
+              if (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0) {
+                lockTag = tag
+                break
+              }
+            }
+          }
+          return {
+            distanceM: Math.round(exp.battle!.distanceM),
+            myDesireM: Math.round(exp.battle!.myDesireM),
+            meHp: { ...(exp.battle!.units['player']?.hp ?? { s: 0, a: 0, h: 0 }) },
+            foeHp: Object.fromEntries(
+              Object.entries(exp.battle!.units)
+                .filter(([, u]) => u.side === 'foe')
+                .map(([tag, u]) => [tag, { s: Math.round(u.hp.s), a: Math.round(u.hp.a), h: Math.round(u.hp.h), name: u.name }]),
+            ),
+            shots: exp.battle!.stats.meShots,
+            hits: exp.battle!.stats.meHits,
+            lockTag,
+          }
+        })()
       : null
 
   return {

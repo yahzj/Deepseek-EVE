@@ -548,9 +548,10 @@ const meSpeedRef = useRef(200)
     const isMain = isFoeMainTag(tag)
     const ba = corpseAtRef.current.get(tag)
     if (ba === undefined) {
-      // 存活单位
+      // 存活单位（锁定装置集火目标高亮：金色呼吸描边）
+      const locked = tag === combat.lockTag
       return (
-        <div key={tag} data-tag={tag} className="app-bts-unit">
+        <div key={tag} data-tag={tag} className={`app-bts-unit${locked ? ' is-locked' : ''}`}>
           <ShipSprite
             foeKey={foeKey}
             flip={foeFlip}
@@ -558,7 +559,7 @@ const meSpeedRef = useRef(200)
             size={isMain ? LAY.MAIN : LAY.ESC}
           />
           <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-            {foeNameOf(tag)}
+            {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
           </span>
         </div>
       )

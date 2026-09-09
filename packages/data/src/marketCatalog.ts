@@ -167,6 +167,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 船体维修装置 MK1/MK2（消耗型修复件：2026-09-09 船长定档位价对位——MK1 对标支援件 MK2 档、MK2 对标支援件 MK3 档）
   { key: 'mod-hullrep-1', kind: 'module', refId: 'mod-hullrep-1', rarity: 'rare', basePrice: 185_000, demandMultiplier: 0.65 },
   { key: 'mod-hullrep-2', kind: 'module', refId: 'mod-hullrep-2', rarity: 'rare', basePrice: 920_000, demandMultiplier: 0.65 },
+  // 目标锁定阵列（2026-09-09 高槽 target-lock：集火 + 被锁目标受击加深；MK1 常驻、MK2/3 稀有——价档对齐索敌阵列同梯队）
+  { key: 'mod-lock-1', kind: 'module', refId: 'mod-lock-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
+  { key: 'mod-lock-2', kind: 'module', refId: 'mod-lock-2', rarity: 'rare', basePrice: 180_000, demandMultiplier: 0.65 },
+  { key: 'mod-lock-3', kind: 'module', refId: 'mod-lock-3', rarity: 'rare', basePrice: 880_000, demandMultiplier: 0.65 },
   /* ═══ B3 打捞器（2026-09-05；高槽无伤害件：升级只减周期；初价按低耗件梯队，可调） ═══ */
   { key: 'mod-salvager-1', kind: 'module', refId: 'mod-salvager-1', rarity: 'common', basePrice: 20_000, demandMultiplier: 0.6 },
   { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 130_000, demandMultiplier: 0.65 },

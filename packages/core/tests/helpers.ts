@@ -168,6 +168,8 @@ export function moduleDef(
     repairHullHp?: number
     repairIntervalMs?: number
     repairKit?: string
+    // 目标锁定阵列（2026-09-09：高槽 target-lock——集火 + 被锁目标受击加深）
+    lockDmgBonus?: number
   },
 ): ModuleDef {
   return {
@@ -203,6 +205,7 @@ export function moduleDef(
     ...(opts?.repairHullHp !== undefined ? { repairHullHp: opts.repairHullHp } : {}),
     ...(opts?.repairIntervalMs !== undefined ? { repairIntervalMs: opts.repairIntervalMs } : {}),
     ...(opts?.repairKit !== undefined ? { repairKit: opts.repairKit } : {}),
+    ...(opts?.lockDmgBonus !== undefined ? { lockDmgBonus: opts.lockDmgBonus } : {}),
   }
 }
 

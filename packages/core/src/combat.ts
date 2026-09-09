@@ -89,6 +89,9 @@ export interface UnitSpec {
   speedMps: number
   agility: number
   weapons: WeaponSpec[]
+  /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
+   *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
+  lockedDmgBonus?: number
   foeTactic: FoeTactic | null
 }
 
@@ -231,6 +234,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const shieldDefs = familyModules(state, ctx, shipId, 'shield')
   const armorDefs = familyModules(state, ctx, shipId, 'armor')
   const propDefs = familyModules(state, ctx, shipId, 'propulsion')
+  const targetLockDefs = familyModules(state, ctx, shipId, 'target-lock') // 2026-09-09 锁定装置（高槽）
   // V18B：武器形态分家——turret（动能炮）与 missile（导弹架）与 laser（激光炮）都进武器池
   const turretDefs = [
     ...familyModules(state, ctx, shipId, 'turret'),
@@ -302,6 +306,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const propSpeeds = propDefs.map((p) => p.speedBonusPct ?? 0)
   const speedEq = curveMult(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
+  // 锁定装置（2026-09-09 船长拍板：集火 + 被锁目标受击加深 8/12/20% 档；多件 EVE 曲线收敛）
+  const lockEq = curveMult(targetLockDefs.map((m) => m.lockDmgBonus ?? 0))
 
   const weapons: WeaponSpec[] = []
   const gunneryLv = state.skills.trained[ctx.balance.combat.gunnerySkillId] ?? 0
@@ -456,6 +462,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)),
     agility: ship.agility,
     weapons,
+    // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
+    ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),
     foeTactic: null,
   }
 }
@@ -1398,7 +1406,9 @@ function stepBattle(
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
       // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人——
       // 修复旧"每步缓存单一集火目标、齐射轮内打已死目标浪费火力"的问题。
-      const foeTarget = randomAliveFoe(state, b, foes)
+      // 2026-09-09 锁定装置：装上即切换"集火模式"——不再随机，全部武器打存活编队首位
+      // （主舰优先，击毁自动接力下一艘；rng 零消耗，可复现性保持）
+      const foeTarget = me.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
       if (!foeTarget) continue
       let type: DamageType
       let dmg: number
@@ -1440,7 +1450,9 @@ function stepBattle(
       if (hit) {
         b.stats.meHits += 1
         const rt = b.units[foeTarget.tag]!
-        const r = applyDamage(rt.hp, {}, dmg, type)
+        // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
+        const dmgLocked = me.lockedDmgBonus ? Math.round(dmg * (1 + me.lockedDmgBonus)) : dmg
+        const r = applyDamage(rt.hp, {}, dmgLocked, type)
         rt.hp = r.hp
         b.stats.meDmg += r.dealt
       }
@@ -1535,6 +1547,13 @@ export function steerStep(cur: number, desire: number, speedMps: number, dtSec: 
 function isAlive(b: import('./state').BattleState, tag: string): boolean {
   const u = b.units[tag]
   return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
+}
+
+/** 锁定目标（2026-09-09 锁定装置）：存活编队首位（foes 生成序 = 主舰优先），
+ * 主舰击毁自动接力下一艘——集火永不卡空；确定性、不消耗 rng */
+function firstAliveFoe(foes: UnitSpec[], b: import('./state').BattleState): UnitSpec | null {
+  for (const f of foes) if (isAlive(b, f.tag)) return f
+  return null
 }
 
 /**

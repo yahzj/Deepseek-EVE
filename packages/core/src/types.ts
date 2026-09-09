@@ -590,6 +590,7 @@ export type ModuleSlot =
   | 'drone-rack'
   | 'drone-tac'
   | 'support'
+  | 'target-lock'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
 export type RackSlot = 'high' | 'mid' | 'low'
@@ -713,6 +714,10 @@ export interface ModuleDef {
   /** 姿态陀螺（闪避）：被命中缺口削减（0.1 = 被命中率再 ×0.9）；全船生效；
    * 多件缺口复合 1−Π(1−xᵢ)，见 equipment.gapCombine */
   evasionGapPct?: number
+  /* ═══ 2026-09-09 锁定装置（target-lock 家族·高槽；集火 + 被锁目标受击加深） ═══ */
+  /** 锁定加深（0.08 = 被锁定目标受本舰伤害 ×1.08；多件 EVE 曲线收敛见 stackingOf/curveMult；
+   *  装上任意一件即触发集火：本舰全部武器不再随机分散，改打存活编队首位（主舰优先、击毁自动接力） */
+  lockDmgBonus?: number
 }
 
 /** 舰船蓝图（M5：用矿物制造舰船，产物进入船坞） */
