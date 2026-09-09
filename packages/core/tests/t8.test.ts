@@ -105,10 +105,11 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     }
     expect(state.expedition.phase).toBe('back')
     expect(state.expedition.returnReason).toBe('victory')
-    // 胜利返航按 目标↔母港 2×单程重算（与出发地无关）：剩余应接近整段 2×单程（检测步长 500ms 内）
+    // 胜利返航按 目标↔母港 2×单程重算（与出发地无关）：剩余应接近整段 2×单程
+    // （检测步长 500ms + 击杀慢镜结算窗口 ≤1.5s → 容差 5s，2026-09-09 返航起点提前到停表时刻）
     const homeLeg = travelLegMs(state, ctx, shortestTravelMinutes(ctx, 'galaxy-hub', 'galaxy-far'))
     const remain = state.expedition.finishAtGameMs - state.gameMs
-    expect(remain).toBeGreaterThan(homeLeg * 2 - 1_500)
+    expect(remain).toBeGreaterThan(homeLeg * 2 - 5_000)
     expect(remain).toBeLessThanOrEqual(homeLeg * 2)
     expect(state.awayGalaxy).toBeNull()
     // 返航到港后停靠母港（驻留结束）
