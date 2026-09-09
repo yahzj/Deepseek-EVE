@@ -138,7 +138,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
 
   return (
     <>
-      {/* 仓库抬头：图标/列表切换 + 搜索栏同排于标题行，两种视图都显示（2026-09-09 船长） */}
+      {/* 仓库抬头：图标/列表切换 + 搜索栏同排于标题行，两种视图都显示（2026-09-09 船长）；
+          样式与技能目录标题栏一致——机制细节见手册玩法速览（装卸/精炼/制造条目），此处不再铺说明段 */}
       <Panel
         title="仓库"
         right={
@@ -152,13 +153,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               onChange={(e) => setWareQuery(e.target.value)}
               spellCheck={false}
             />
-            {wq.length > 0 ? <span className="app-dim">匹配 {hitTotal} 种</span> : null}
+            <span className="app-dim">
+              {wq.length > 0 ? `匹配 ${hitTotal} 种` : `${hitTotal} 种 · 无限容量 · 不随船`}
+            </span>
           </span>
         }
       >
-        <div className="app-dim app-note">
-          仓库：无限容量 · 不随船 · 永不遗失。精炼产物自动入仓，制造材料从仓库扣除。资源（矿石/气体/冰矿）可卖出，也可装到当前驾驶的船上（受货仓空间限制）。
-        </div>
+        {null}
       </Panel>
       {wq.length > 0 && hitTotal === 0 ? (
         <div className="app-dim app-note">
