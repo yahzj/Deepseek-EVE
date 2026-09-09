@@ -331,17 +331,51 @@ export const AMMO: readonly ItemDef[] = [
     damageType: 'plasma',
     dmg: 9,
   },
+  /* ═══ 弹药 MK2（2026-09-09 船长拍板：三族各出一档高级版——纯数值上级、克制表同基础；
+   * dmg 8/9/12、市场 45/60/80、蓝图书稀有可造；装配页按族选档、连打消耗当前配置弹） ═══ */
+  {
+    id: 'ammo-kinetic-2',
+    name: '动能弹 MK2',
+    kind: 'ammo',
+    unitM3: 0.02,
+    baseSellPriceIsk: 45,
+    description: '动能弹 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.5）。攻坚用高级弹药。',
+    damageType: 'kinetic',
+    dmg: 8,
+  },
+  {
+    id: 'ammo-explosive-2',
+    name: '爆破导弹 MK2',
+    kind: 'ammo',
+    unitM3: 0.02,
+    baseSellPriceIsk: 60,
+    description: '爆破导弹 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
+    damageType: 'explosive',
+    dmg: 9,
+  },
+  {
+    id: 'ammo-plasma-2',
+    name: '能量弹药 MK2',
+    kind: 'ammo',
+    unitM3: 0.02,
+    baseSellPriceIsk: 80,
+    description: '能量弹药 MK2：高密度充能电池弹——光束必中、对护盾 ×1.25、对甲/结构 ×1。激光炮攻坚专用。',
+    damageType: 'plasma',
+    dmg: 12,
+  },
 ]
 
 /** 无人机（V10.5 战斗数值契约就位：自带伤害源不耗弹；放飞占用船体 CPU——V10.5b 带宽并入；
  * 携带上限受无人机舱容积（ship.droneBayM3）与 CPU 双约束；defense（V11）= 三层血量/回避契约，
- * v1 并入主船火力不单独承伤，"可被击落"机制启用时零迁移） */
+ * v1 并入主船火力不单独承伤，"可被击落"机制启用时零迁移）
+ * 体积档（2026-09-09 船长拍板）：unitM3 按机种大小分 5/10/20/40 四档——机巢能装几架由体积主导
+ * （小护卫带蜂鸟/赤鸢、炮舰带猎鹰、母舰带雷鸥；甲板扩展 +m³ 恢复意义），每架 CPU 不变 */
 export const DRONES: readonly ItemDef[] = [
   {
     id: 'drone-scout',
     name: '蜂鸟侦察无人机',
     kind: 'drone',
-    unitM3: 1.5,
+    unitM3: 5, // 体积档 1/4：轻型侦察机（2026-09-09 船长：体积 5/10/20/40 四档，机巢架数由体积主导）
     baseSellPriceIsk: 900,
     description: '轻型侦察无人机：动能点射（破盾）。',
     damageType: 'kinetic',
@@ -353,7 +387,7 @@ export const DRONES: readonly ItemDef[] = [
     id: 'drone-assault',
     name: '赤鸢战斗无人机',
     kind: 'drone',
-    unitM3: 3,
+    unitM3: 10, // 体积档 2/4：轻型战斗（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 2200,
     description: '轻型战斗无人机：高爆打击（拆甲）。',
     damageType: 'explosive',
@@ -365,7 +399,7 @@ export const DRONES: readonly ItemDef[] = [
     id: 'drone-heavy',
     name: '猎鹰攻坚无人机',
     kind: 'drone',
-    unitM3: 6,
+    unitM3: 20, // 体积档 3/4：重型攻坚（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 5000,
     description: '重型攻坚无人机：能量脉冲（通用）。',
     damageType: 'plasma',
@@ -377,7 +411,7 @@ export const DRONES: readonly ItemDef[] = [
     id: 'drone-sentry',
     name: '雷鸥哨戒无人机',
     kind: 'drone',
-    unitM3: 10,
+    unitM3: 40, // 体积档 4/4：重型哨戒（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 9500,
     description: '哨戒无人机：重型能量炮组，航程极远。',
     damageType: 'plasma',

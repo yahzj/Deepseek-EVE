@@ -3696,6 +3696,86 @@ body {
 
 }
 
+/* 弹药档位（2026-09-09 弹药 MK2：装配页出战前选档——按弹族选基础弹/MK2；参照无人机舱区布局） */
+
+.app-fit-ammotier {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+
+  margin-top: 8px;
+
+  padding-top: 8px;
+
+  padding-bottom: 8px;
+
+  border-top: 1px dashed rgba(85, 112, 140, 0.35);
+
+}
+
+.app-fit-ammotier-row {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  font-size: 11px;
+
+  min-height: 18px;
+
+}
+
+.app-fit-ammotier-opts {
+
+  display: inline-flex;
+
+  gap: 4px;
+
+}
+
+.app-fit-ammotier-opt {
+
+  padding: 1px 8px;
+
+  font-size: 11px;
+
+  line-height: 16px;
+
+  color: var(--wui-text, #cfe3f5);
+
+  background: rgba(64, 88, 112, 0.35);
+
+  border: 1px solid rgba(120, 150, 180, 0.35);
+
+  border-radius: 3px;
+
+  cursor: pointer;
+
+}
+
+.app-fit-ammotier-opt:hover {
+
+  border-color: rgba(140, 190, 235, 0.8);
+
+}
+
+.app-fit-ammotier-opt.is-active {
+
+  color: #0e1a26;
+
+  background: #8fd0ff;
+
+  border-color: #8fd0ff;
+
+  font-weight: 600;
+
+}
+
 .app-fit-dronebay-head {
 
   display: flex;
@@ -6149,6 +6229,12 @@ body {
 
 .app-bts-ammo { margin-left: auto; display: inline-flex; gap: 8px; font-family: var(--wui-mono); font-size: 11px; }
 
+/* 船体维修装置状态徽标（2026-09-09：运转 = 绿点呼吸；组件耗尽停机 = 暗红停跳） */
+.app-bts-repair { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.08); background: rgba(10,17,27,.5); border-radius: 4px; padding: 2px 7px; color: var(--wui-text-dim); font-size: 11px; }
+.app-bts-repair i { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #6fd98a; box-shadow: 0 0 6px rgba(111,217,138,.85); animation: app-bts-repair-pulse 1.6s ease-in-out infinite; }
+.app-bts-repair.is-down i { background: #e0685f; box-shadow: none; animation: none; }
+@keyframes app-bts-repair-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
 .app-bts-sliderRow { display: flex; align-items: center; gap: 10px; }
 
 .app-bts-sideLabel { font-size: 11px; flex: none; }
@@ -6179,17 +6265,53 @@ body {
 
 .app-bts-unit { position: relative; display: inline-flex; }
 
-.app-bts-unit.is-dead .app-sprite { animation: app-bts-fadeout .55s ease .5s forwards; }
+/* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升；
+ * 引擎在演出窗口（waveEnterGapMs）结束后才补刷下一波，入场动画即"增援抵达"画面过渡 */
+.app-bts-unit { animation: app-bts-foe-in .55s ease-out both; }
 
-@keyframes app-bts-fadeout { to { opacity: 0; } }
+@keyframes app-bts-foe-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
 
-/* V18B（2026-09-05）残骸层：死亡锚点爆炸 + 原位淡出（不占敌方队列；补位由存活列表完成）。
+/* 2026-09-09 多波次二轮（船长反馈"边爆边换位/存活舰与爆炸动画叠加"）：
+   尸骸不再撤队另走残骸层，而是原位占用队列槽演完整段演出——
+   boomAt 起灰化（is-corpse）+ 爆炸环（.app-bts-boom，见下），随后舰体容器内联透明度淡出；
+   队列只在整批尸骸演完后收拢一次，存活舰补位不再压着爆炸动画走。 */
+.app-bts-unit.is-corpse .app-sprite { filter: grayscale(.9) brightness(.72); }
 
-   容器 inline 宽高 = 舰体尺寸（left/top 已按舰体中心对齐），boom 仍按容器 50%/46% 居中 */
+.app-bts-unit.is-corpse .app-bts-name { display: none; }
 
-.app-bts-wreck { position: absolute; z-index: 5; pointer-events: none; }
+.app-bts-corpse { display: inline-flex; }
 
-.app-bts-wreck .app-sprite { filter: grayscale(.85) brightness(.8); }
+/* 锁定装置集火目标（2026-09-09）：金色呼吸描边 + 名称 ◈ 前缀——本舰全部武器集火对象 */
+.app-bts-unit.is-locked .app-sprite { filter: drop-shadow(0 0 6px rgba(255, 208, 90, .95)); animation: app-bts-lockpulse 1.2s ease-in-out infinite; }
+
+.app-bts-unit.is-locked .app-bts-name { color: #ffd98f !important; }
+
+@keyframes app-bts-lockpulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 208, 90, .7)); }
+  50% { filter: drop-shadow(0 0 10px rgba(255, 224, 120, 1)); }
+}
+
+/* 波次演出窗口提示（引擎 waveClearAt 冻结窗口内：上一波全灭、增援接近中） */
+.app-bts-wave-hint {
+  position: absolute;
+  z-index: 3;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #ffd9a0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .9);
+  pointer-events: none;
+  animation: app-bts-wavehint 1.5s ease-in-out infinite;
+}
+
+@keyframes app-bts-wavehint {
+  0%, 100% { opacity: .4; }
+  50% { opacity: .95; }
+}
 
 .app-bts-boom { position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: 5; pointer-events: none; }
 
@@ -6979,6 +7101,14 @@ body {
 
 /* ============ T9 建站族 + 通讯器 ============ */
 
+
+/* 2026-09-09 长途运输（任务中心新族）：航线行 + 进行中提示（先复刻任务卡同级样式） */
+.app-haul-list { display: flex; flex-direction: column; gap: 8px; }
+.app-haul-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--wui-border); border-radius: 8px; background: rgba(10,17,27,0.45); }
+.app-haul-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.app-haul-route { font-weight: 700; color: var(--wui-text); }
+.app-haul-actions { display: flex; align-items: center; gap: 8px; }
+.app-haul-active { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; padding: 8px 10px; border: 1px solid rgba(79,216,196,0.35); border-radius: 8px; background: rgba(20,40,40,0.25); }
 .app-task-family {
 
   font-size: 11px;

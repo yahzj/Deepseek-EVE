@@ -1,4 +1,4 @@
-/**
+﻿/**
  * T8/T9 位置模型（多空间站版）：
  * - 舰船空闲时的"野外停留" = awayGalaxy；否则停靠空间站 = 母港（dockedSite=null）
  *   或已建成的副空间站（dockedSite = 站点 id）；
@@ -17,7 +17,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext, StationSiteDef } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
-import { deliverStationResources, noteStationSiteAt, siteProgress, tierNeedOf, tierRemaining } from './station'
+import { deliverStationResources, noteStationSiteAt, siteProgress, tierRemaining, stationBillView, stationBillText, billNeedOf } from './station'
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */
@@ -131,6 +131,7 @@ export function isIdleField(state: GameState): boolean {
  * 换港返航即时到站（定稿：去程取消）：下达即停靠目标站（finishAtGameMs = 当前时刻，无航行等待）。
  */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：请先停止（活动栏「停止运输」，到站即止）。' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再返航。' }
   if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。' }
   if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。' }
@@ -214,42 +215,44 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
 
 /* ─────────── 2026-09-08 建站交付航线 v2（船长定稿：物理载货模型 + 自动多趟循环） ─────────── */
 
-/** 从当前档到全部建成的剩余总需求（单位）：∑各剩余档需求 − 当前档已缴 */
-function totalSiteRemaining(state: GameState, site: StationSiteDef): number {
-  const prog = siteProgress(state, site.id)
-  let total = 0
-  for (let k = prog.stage; k < site.tiers.length; k += 1) total += tierNeedOf(state, site, k)
-  for (const id of site.acceptItemIds) total -= prog.delivered[id] ?? 0
-  return Math.max(0, total)
-}
-
 /**
  * 出发装载（2026-09-08 船长定：出发时把货仓装满建材，到点清空货仓——不再到点从仓库扣缴，
- * 途中任何仓库变动都不会造成白跑）：
- * - 只搬「该工地接受名单」的建材，按名单顺序装满货仓空闲空间，保留船上原有货物；
- * - 装载上限 = min(货仓空闲容积, 全站剩余需求)，超出需量不装（避免运回来又卸回去的空转）；
- * - 返回本次装载明细（空对象 = 无货可装）。
+ * 途中任何仓库变动都不会造成白跑；2026-09-09 逐档材料单版）：
+ * - 可装范围 = **当前档 + 后续各档材料单里的同名材料**（同材料跨档连缴不空转；材料单外物品不装）；
+ * - 单材料上限 = 该材料在当前档的剩余 + 后续各档的全部需求（当前档已缴部分扣除）；
+ * - 保留船上原有货物；返回本次装载明细（空对象 = 无货可装）。
  */
 function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDef): Record<string, number> {
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
   const used = cargoUsedM3Of(state, ctx, state.shipId)
   let freeM3 = Math.max(0, Math.floor(cap - used))
-  let needUnits = totalSiteRemaining(state, site)
-  if (freeM3 <= 0 || needUnits <= 0) return {}
+  if (freeM3 <= 0) return {}
+  const prog = siteProgress(state, site.id)
+  if (prog.stage >= site.tiers.length) return {}
+  // 各材料的跨档合计剩余（当前档扣已缴；后续档全量）
+  const remainMap: Record<string, number> = {}
+  for (let k = prog.stage; k < site.tiers.length; k += 1) {
+    const tier = site.tiers[k]!
+    for (const item of tier.bill) {
+      let rem = remainMap[item.itemId] ?? 0
+      rem += billNeedOf(state, site, k, item.itemId)
+      if (k === prog.stage) rem -= prog.delivered[item.itemId] ?? 0
+      remainMap[item.itemId] = Math.max(0, rem)
+    }
+  }
   const ware = state.warehouse.items
   const cargo = cargoOfShip(state, state.shipId)
   const loaded: Record<string, number> = {}
-  for (const id of site.acceptItemIds) {
-    if (freeM3 <= 0 || needUnits <= 0) break
+  for (const [id, rem] of Object.entries(remainMap)) {
+    if (freeM3 <= 0 || rem <= 0) continue
     const unitM3 = Math.max(0.01, ctx.items.get(id)?.unitM3 ?? 1)
-    const take = Math.max(0, Math.min(ware[id] ?? 0, Math.floor(freeM3 / unitM3), needUnits))
+    const take = Math.max(0, Math.min(ware[id] ?? 0, Math.floor(freeM3 / unitM3), rem))
     if (take <= 0) continue
     ware[id] = (ware[id] ?? 0) - take
     if (ware[id] <= 0) delete ware[id]
     cargo[id] = (cargo[id] ?? 0) + take
     loaded[id] = take
     freeM3 -= Math.round(take * unitM3)
-    needUnits -= take
   }
   return loaded
 }
@@ -301,7 +304,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   if (loadedTotal <= 0) {
     return {
       ok: false,
-      error: `仓库没有可装载的建材（需要：${site.acceptItemIds.map((i) => ctx.items.get(i)?.name ?? i).join(' / ')}）——备料后再一键出发。`,
+      error: `仓库没有可装载的建材（当前档需要：${stationBillText(state, ctx, site)}）——备料后再一键出发。`,
     }
   }
   const fromName = ctx.galaxies.get(from)?.name ?? '空间站'
@@ -404,28 +407,27 @@ function arriveDeliverSite(
   state.dockedSite = null
   addLog(state, 'info', `⚑ 交付航线：舰船已抵达「${galaxyName}」——「${site.name}」工地，本趟装载的建材自动清仓交付中。`)
   noteStationSiteAt(state, ctx, site.galaxyId)
-  // 本趟装载账本（旧版在途档无 loaded → 以货仓现存接受建材为账本，只清货仓、不碰仓库）
+  // 本趟装载账本：新档 = 出发时装载的全部材料；旧版在途档无 loaded → 以货仓现存当前档材料为账本
   const ledger: Record<string, number> = {}
   const cargo = cargoOfShip(state, state.shipId)
   if (loaded && Object.keys(loaded).length > 0) {
-    for (const id of site.acceptItemIds) ledger[id] = loaded[id] ?? 0
+    for (const id of Object.keys(loaded)) ledger[id] = loaded[id] ?? 0
   } else {
-    for (const id of site.acceptItemIds) ledger[id] = cargo[id] ?? 0
+    for (const row of stationBillView(state, ctx, site)) ledger[row.itemId] = cargo[row.itemId] ?? 0
   }
   let delivered = 0
   let guard = 0
-  while (guard++ < 60) {
-    const need = tierRemaining(state, site)
-    if (need <= 0) break
+  while (guard++ < 80) {
+    const rows = stationBillView(state, ctx, site)
+    if (rows.length === 0) break // 已建成或无材料单
     let any = false
-    for (const id of site.acceptItemIds) {
-      const needNow = tierRemaining(state, site)
-      if (needNow <= 0) break
-      const onHand = Math.max(0, Math.min(ledger[id] ?? 0, cargo[id] ?? 0, needNow))
+    for (const row of rows) {
+      if (row.remaining <= 0) continue
+      const onHand = Math.max(0, Math.min(ledger[row.itemId] ?? 0, cargo[row.itemId] ?? 0, row.remaining))
       if (onHand <= 0) continue
-      const r = deliverStationResources(state, ctx, site.id, id, onHand, { cargoOnly: true })
+      const r = deliverStationResources(state, ctx, site.id, row.itemId, onHand, { cargoOnly: true })
       if (r.ok) {
-        ledger[id] = (ledger[id] ?? 0) - onHand
+        ledger[row.itemId] = (ledger[row.itemId] ?? 0) - onHand
         any = true
         delivered += onHand
       }
@@ -564,6 +566,7 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再转场。' }
   const s = state.standby
   if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。' }

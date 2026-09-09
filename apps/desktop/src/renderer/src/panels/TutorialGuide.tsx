@@ -42,8 +42,8 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
   3: {
     title: '出售：把矿石换成 ISK',
     lines: [
-      '交付只扣除了 20 单位——刚才挖的富凡晶石大部分还留在仓库里，空间站不会自动收购；',
-      '前往「物品」页 → 仓库标签 → 富凡晶石行点「市价卖出」（确认窗口里可只卖一部分）；',
+      '前往「物品」页 → 仓库标签，找到富凡晶石行点「市价卖出」（确认窗口里可只卖一部分）——把矿石换成 ISK 即完成本步；',
+      '交付只扣除了 20 单位——刚才挖的富凡晶石大部分还留在仓库里，空间站不会自动收购，所以要亲手卖出；',
       '卖出任意数量即完成本步——也可以留一些矿石，以后精炼或制造用。',
     ],
     go: { page: 'items' },
@@ -251,6 +251,16 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
     }
   }
   if (!def) return { text: '', go: { page: 'map' }, goLabel: '', targets: [] }
+  // 步骤 3（卖矿石）：指引条给明确动作句（2026-09-09 船长反馈——原取 lines[0] 为背景解释，
+  // 玩家不知道下一步干嘛）；引导卡全文见 GUIDE_BY_STEP[3]
+  if (step === 3) {
+    return {
+      text: '把矿石换成 ISK：前往「物品」页 → 仓库标签，富凡晶石点「市价卖出」',
+      go: def.go,
+      goLabel: def.goLabel,
+      targets: ['物品', '仓库', '市价卖出', '卖出'],
+    }
+  }
   const byStep: Record<number, string[]> = {
     2: ['出港', '任务中心', '交付矿石'],
     3: ['物品', '仓库', '市价卖出', '卖出'],

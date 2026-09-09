@@ -157,6 +157,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
       }
       break
     }
+    case 'target-lock':
+      // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深
+      body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
+      break
   }
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
   return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
@@ -240,6 +244,22 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     lines.push({ k: '结构抗性', v: resistsText(ship.hullResist) })
     if (ship.powerBonus !== undefined && ship.powerBonus > 0) {
       lines.push({ k: '火力加成', v: `+${Math.round(ship.powerBonus * 100)}%` })
+    }
+    // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——本族武器单发加成、跨族可用无加成
+    if (ship.weaponFamilyBonus !== undefined) {
+      for (const [t, v] of Object.entries(ship.weaponFamilyBonus)) {
+        if ((v ?? 0) > 0) {
+          lines.push({
+            k: '武器族加成',
+            v: (
+              <>
+                <DmgChip t={t as DamageType} label={`${DMG_LABEL[t as DamageType]}伤`} />
+                <span className="app-dim">{` 本族武器单发 +${pct(v ?? 0)}（装别族武器无加成）`}</span>
+              </>
+            ),
+          })
+        }
+      }
     }
     // V16.1：命中加成/回避率上主属性（装配台主要属性区内可见）
     if (ship.hitBonus !== undefined) lines.push({ k: '命中加成', v: `+${Math.round(ship.hitBonus * 100)}%` })
@@ -416,6 +436,24 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     }
     if (mod.evasionGapPct !== undefined) {
       lines.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}——敌命中 60% 时 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}；全船生效` })
+    }
+    // 船体维修装置（2026-09-09 船长定：中槽自动修复装甲/结构；每脉冲消耗一枚对应修理组件）
+    if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
+      const kitName =
+        mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
+      const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
+      const perPulse = [mod.repairArmorHp, mod.repairHullHp]
+        .filter((x): x is number => (x ?? 0) > 0)
+        .map((x) => fmt(x!))
+        .join(' / ')
+      lines.push({ k: '自动维修', v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）` })
+      lines.push({ k: '运转消耗', v: `每跳消耗 ${kitName} ×1；组件耗尽自动停机——请确认货舱/仓库备足组件再出击` })
+    }
+  } else if (mod.slot === 'target-lock') {
+    // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深
+    lines.push({ k: '集火模式', v: '装上即生效：全部武器不再随机分散，改打存活编队首位（主舰优先，击毁自动接力）' })
+    if (mod.lockDmgBonus !== undefined) {
+      lines.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}（本舰全部武器：炮台/导弹/激光/无人机）` })
     }
   }
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）

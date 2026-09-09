@@ -11,12 +11,21 @@
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
 
-type Loadout = { name: string; ship: string; high: string[]; mid?: string[]; low?: string[]; drones?: Record<string, number> }
+type Loadout = {
+  name: string
+  ship: string
+  high: string[]
+  mid?: string[]
+  low?: string[]
+  drones?: Record<string, number>
+  /** 弹药 MK2（2026-09-09）：本行开战预载弹档（装配档位 ammoPref；缺省 = 基础弹） */
+  ammoTier?: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>>
+}
 const LOADOUTS: Loadout[] = [
   { name: '裸船(基础舰炮)', ship: 'sh-falconet', high: [] },
   { name: '鲣鱼+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
@@ -27,8 +36,8 @@ const LOADOUTS: Loadout[] = [
   { name: '虎鲨2kin2+支援(索敌/陀螺/稳定)', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-rof-2'] },
   { name: '鲸王+动能MK3×3', ship: 'whale-king', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'] },
   /* ── P1 阶段锚行（2026-09-06 战力拉长设计稿：威胁重标按"阶段真实可及配装"标定）── */
-  { name: 'S1 虎鲨4×MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'] },
-  { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
+  { name: 'S1 虎鲨4×MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-1'] }, // 2026-09-09 敌速口径（船长）：低技能参考行带矢量推进器 MK1（无技能玩家标配）
+  { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 2026-09-09 敌速口径（船长）：中位参考行带 MK2（弃闪避陀螺保盾容+索敌——站桩对射卡不吃闪避）
   { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
   /* ── T3 巡洋舰线（2026-09-09 尺寸分级新增；MK3 满配 + 支援对照 S4 上层）── */
   { name: 'T3电鳐激光巡5×laser3+支援', ship: 'sh-electricray', high: ['mod-laser-3', 'mod-laser-3', 'mod-laser-3', 'mod-laser-3', 'mod-laser-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
@@ -38,9 +47,12 @@ const LOADOUTS: Loadout[] = [
   /* ── 无人机流行（2026-09-08 无人机舱大改：装载只读 droneLoad 清单（不再仓库贪心）；
      各行清单 = 该船「装配后余 CPU × 舱容」内可装的合法满载组合（战斗只放飞已装入的，
      超额由 UI 预占互斥，不会出现）；同船炮流对照见 S1/S2/S4）── */
-  { name: 'D1 梭鱼无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 20, 'drone-sentry': 1 } },
-  { name: 'D2 梭鱼无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } },
-  { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } },
+  { name: 'D1 梭鱼无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 10, 'drone-heavy': 1 } }, // 舱 190m³（rack1×2）：12×5+10×10+1×20 = 180 满载（2026-09-09 体积档 5/10/20/40）
+  { name: 'D2 梭鱼无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 舱 230m³（rack2×2）：10×10+4×20+1×40 = 220（2026-09-09 体积档）
+  { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }, // 舱 460m³：4×20+6×40 = 320（2026-09-09 体积档后仍可满载）
+  /* ── 弹药 MK2 变体（2026-09-09：顶配参考行 + 动能弹 MK2——攻坚耗材定位，E 段失衡与否验证） ── */
+  { name: 'S4+动能弹MK2(5×kin3+支援)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
+  { name: 'T3牛鲨+动能弹MK2(重盾)', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
 ]
 
 const FULL_SKILLS: Record<string, number> = {
@@ -81,6 +93,11 @@ function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, 
   const entry = state.fleet[shipId]!
   if (ld.drones && Object.keys(ld.drones).length > 0) entry.droneLoad = { ...ld.drones }
   entry.fitted = { high: [...(ld.high ?? [])], mid: [...(ld.mid ?? [])], low: [...(ld.low ?? [])] }
+  // 弹药 MK2（2026-09-09）：变体行带档位 + 仓库补足 MK2 弹（预载需求同基础弹量）
+  if (ld.ammoTier) {
+    entry.ammoPref = { ...ld.ammoTier }
+    for (const id of Object.values(ld.ammoTier)) state.warehouse.items[id] = 5_000
+  }
   repairDeprecatedModules(state, ctx as SimContext)
   return state
 }
@@ -89,7 +106,7 @@ function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, 
 function simulate(state: GameState, anomalyId: string): { win: boolean; durMs: number; meRemain: number } {
   const battle = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0)
   if (!battle) return { win: false, durMs: 0, meRemain: 0 }
-  state.gameMs = ctx.balance.battle.maxBattleMs + 5_000
+  state.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(anomalyId), ctx.balance.battle)
   advanceBattleFor(state, ctx as SimContext, battle, state.shipId, anomalyId)
   const durMs = Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs))
   const u = battle.units['player']

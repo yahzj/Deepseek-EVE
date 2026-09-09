@@ -139,6 +139,9 @@ export interface ShipDef {
   agility: number
   /** 基础火力加成（V10.5 契约：战斗系统启用；本轮引擎不读取） */
   powerBonus?: number
+  /** 船体武器族加成（EVE 式族加成，2026-09-09 船长拍板：四族巡洋分型——只作用于对应弹型的
+   *  三族武器条目单发，装别族武器无加成但仍可用；无人机/基础舰炮不受；值 = 比例，如 0.12 = +12%） */
+  weaponFamilyBonus?: Partial<Record<DamageType, number>>
   /* ═══ V10.5 战斗数值契约（三层血量；引擎战斗实现后启用） ═══ */
   /** 护盾层基础量（抽象战斗单位） */
   shieldHp?: number
@@ -475,6 +478,12 @@ export interface BattleBalance {
   hitMax: number
   /** P0 承伤持久化：护盾战中被动回充（每秒回充 = 满盾 × 此比例；0 = 关，初值见 balance） */
   shieldRegenPerSec: number
+  /** 多波次转场（2026-09-09 船长建议）：下一波出现时把战斗距离向开战距离回拉的比例
+   * （0 = 原地续战；1 = 完整回到开战距离重新接近；默认初值见 balance） */
+  waveReopenFrac: number
+  /** 多波次演出间隔（2026-09-09 船长反馈）：一波全灭后空转等待该时长（爆炸/残骸演出播完）
+   * 再刷下一波；0 = 立即续刷（旧行为） */
+  waveEnterGapMs: number
   /** 炮术学每级单发伤害加成（0.05 = +5%/级） */
   gunneryDmgPerLevel: number
   /** V18B 武器族技能（2026-09-05 一号按交接底稿接入）：模块槽族 → 专精技能 id；
@@ -581,6 +590,7 @@ export type ModuleSlot =
   | 'drone-rack'
   | 'drone-tac'
   | 'support'
+  | 'target-lock'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
 export type RackSlot = 'high' | 'mid' | 'low'
@@ -683,6 +693,15 @@ export interface ModuleDef {
   /* ═══ B3 打捞器（salvager 家族：高槽无伤害件；升级只缩短周期） ═══ */
   /** 打捞器单轮周期毫秒（每台每轮捞 1 具残骸；MK1/2/3 = 10s/8s/6s） */
   salvageCycleMs?: number
+  /* ═══ 2026-09-09 船体维修装置（支援件族·中槽；战斗中自动修复装甲/结构，每脉冲消耗一枚修理组件） ═══ */
+  /** 每脉冲修复装甲 HP（受损优先；单层满则全额给另一层） */
+  repairArmorHp?: number
+  /** 每脉冲修复结构 HP */
+  repairHullHp?: number
+  /** 脉冲间隔毫秒（缺省 = REPAIR_PULSE_DEFAULT_MS 5000 = 5 秒一跳） */
+  repairIntervalMs?: number
+  /** 每脉冲消耗的修理组件 id（民用级 = 民用修理组件；MK1/MK2 = 军用修理组件） */
+  repairKit?: string
   /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */
   /** 伤害稳定器（按系）：该系炮台单发伤害加成（0.06 = +6%；多件加算 Σ；只作用于炮台，
    * 不叠加到无人机——无人机归战术导控管） */
@@ -695,6 +714,10 @@ export interface ModuleDef {
   /** 姿态陀螺（闪避）：被命中缺口削减（0.1 = 被命中率再 ×0.9）；全船生效；
    * 多件缺口复合 1−Π(1−xᵢ)，见 equipment.gapCombine */
   evasionGapPct?: number
+  /* ═══ 2026-09-09 锁定装置（target-lock 家族·高槽；集火 + 被锁目标受击加深） ═══ */
+  /** 锁定加深（0.08 = 被锁定目标受本舰伤害 ×1.08；多件 EVE 曲线收敛见 stackingOf/curveMult；
+   *  装上任意一件即触发集火：本舰全部武器不再随机分散，改打存活编队首位（主舰优先、击毁自动接力） */
+  lockDmgBonus?: number
 }
 
 /** 舰船蓝图（M5：用矿物制造舰船，产物进入船坞） */
@@ -838,6 +861,12 @@ export interface AnomalyDef {
    * 缺省 1。命中侧不变——只缩放 shotDmg；时长/HP 验收带以 battle-calibrate 矩阵为准。
    */
   foeDmgMul?: number
+  /**
+   * 多波次（2026-09-09 低安顶段悬赏；docs/design/wave-battles-20260909.md）：
+   * 敌方分批入场——每波 units 个"主舰+僚机"小队（escorts 随卡），血量 = 总血 × hpShare。
+   * 整场仍为一次悬赏（声望/奖金/残骸按原卡整场结算）；缺省 = 单波（现行为）。
+   */
+  waves?: ReadonlyArray<{ units: number; hpShare: number }>
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean
@@ -877,10 +906,10 @@ export interface SimContext {
 export interface StationTierDef {
   /** 档位名（如 奠基/完善/建成） */
   name: string
-  /** 本档缴交总单位数（接受该站 acceptItemIds 中的任意混合） */
-  count: number
+  /** 2026-09-09（船长定）本档材料单：物品 × 数量，逐项交齐才升档（建材 = 精炼矿物，排除原矿） */
+  bill: ReadonlyArray<{ itemId: string; count: number }>
   /** 本档交付完成后解锁的能力描述（展示 + 语义见 core station.ts） */
-  unlockDesc: string
+  unlockDesc?: string
 }
 
 /** 副空间站建站点定义（T9；位于既有星系，见 data/src/stations.ts） */
@@ -892,9 +921,7 @@ export interface StationSiteDef {
   galaxyId: string
   /** 建站任务接取的声望门槛（0 = 探索点亮即可） */
   standingReq: number
-  /** 收料物（该星系常见产出；提交接受其中任意组合） */
-  acceptItemIds: readonly string[]
-  /** 分档要求（顺序推进） */
+  /** 分档要求（顺序推进；2026-09-09 起每档自带材料单，不再有整站收料清单） */
   tiers: readonly StationTierDef[]
   /** 首次抵达介绍剧本 id（data dialogues.ts；null = 无） */
   introDialogueId: string | null

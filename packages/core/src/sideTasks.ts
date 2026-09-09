@@ -12,15 +12,16 @@
  *   矿石/气体/冰（均有精炼配方）的矿带星系已探索；弹药/修理组件/无人机等 NPC 直供无矿带依赖
  *   恒可刷；物品仓库已有该货恒放行）；每次用 rng 抽 2 个不重复商品，需要量
  *   need = round(poolTarget × (0.01 + rng×0.02)) 取整到 10、至少 10；
- * - 刷出时的市场影响（防"买来秒交"）：对含某物品 X 的任务，从 npcSell 簿合计削减 30% 在售量
+ * - 刷出时的市场影响（防"买来秒交"）：对含某物品 X 的任务，从 npcSell 簿合计削减 SPAWN_SUPPLY_CUT(0.45)
+ *   在售量（2026-09-09 随收益上调 30%→45%）
  *   （逐单从尾扣减至 0 移除），并把 pool.q 扣掉同等数量（模拟 NPC 买走一部分），同时
  *   pool.shock += 0.05（上限 0.4）——使随后补单/报价变贵；
  * - 奖励（税前锚定，2026-09-06 船长拍板）：基准单价 = 刷出瞬间该商品收购价
  *   （marketQuote().buy，池商品收购价 = 均衡价 levelOf；簿面无收购单时回落 levelOf），
  *   再按任务族乘系数并向下取整到整百（至少 100）——
- *   资源任务 rewardIsk = need × 收购价 × RESOURCE_TASK_MARGIN(1.04)，附加守卫：刷出时有供应价
- *   sell 时强制 reward < need×sell（1.04 边沿溢出则钳到 floor((need×sell−1)/100)×100），
- *   保证"市价买入即交"必亏；快递任务 rewardIsk = need × 收购价 × COURIER_TASK_MARGIN(1.30)
+ *   资源任务 rewardIsk = need × 收购价 × RESOURCE_TASK_MARGIN(1.15，2026-09-09 上调)，附加守卫：刷出时有
+ *   供应价 sell 时强制 reward < need×sell（边沿溢出则钳到 floor((need×sell−1)/100)×100），
+ *   保证"市价买入即交"必亏；快递任务 rewardIsk = need × 收购价 × COURIER_TASK_MARGIN(1.50，2026-09-09 上调)
  *   （运费补偿型利润：快递含真实航行耗时，不设买货守卫）；不给声望；
  * - 快递（2026-09-06 真实航行投送）：刷出时把目标绑定到一座已建成副站（stationId/galaxyId）；
  *   玩家两步操作——"出发投送"（仓库需足量）把 need 从物品仓库锁定扣出并转入
@@ -48,16 +49,21 @@ import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
 import { originGalaxyOf } from './location'
 
 /**
- * 资源任务奖励系数（2026-09-06 船长拍板）：need × 刷出时收购价（税前）× 1.04 → 整百。
- * 仍 < 刷出时供应价（sell ≈ L×1.06），配买货守卫保证"市价买入交付"必亏。
+ * 资源任务奖励系数（2026-09-06 船长拍板 ×1.04；2026-09-09 船长定上调 → ×1.15）：
+ * need × 刷出时收购价（税前）→ 整百。仍强制 < 刷出时供应价（sell ≈ L×1.06 视商品而定，
+ * 边沿自动钳制），配买货守卫保证"市价买入交付"必亏。
  */
-export const RESOURCE_TASK_MARGIN = 1.04
+export const RESOURCE_TASK_MARGIN = 1.15
 
 /**
- * 快递任务奖励系数：need × 刷出时收购价（税前）× 1.30 → 整百。
- * 快递含真实航行耗时（运费补偿型利润），不设买货守卫。
+ * 快递任务奖励系数（2026-09-06 ×1.30；2026-09-09 船长定上调 → ×1.50）：
+ * need × 刷出时收购价（税前）→ 整百。快递含真实航行耗时（运费补偿型利润），不设买货守卫。
  */
-export const COURIER_TASK_MARGIN = 1.3
+export const COURIER_TASK_MARGIN = 1.5
+
+/** 任务刷出时对商品在售常驻供应的削减比例（2026-09-09 船长定随收益上调：0.30 → 0.45）：
+ * 协会包收该资源 → 市场在售订单减少（20 分钟板存续期间持续可见，常驻订单自然重铺后恢复） */
+export const SPAWN_SUPPLY_CUT = 0.45
 
 /** 本板刷新周期毫秒 = 市场「补给刷新」节奏（与常驻订单寿命一致，默认 20 分钟） */
 function boardPeriodMs(ctx: SimContext): number {
@@ -212,12 +218,11 @@ function rollNeed(state: GameState, poolTarget: number): number {
 }
 
 /**
- * 奖励（税前锚定，2026-09-06 船长拍板）：
+ * 奖励（税前锚定，2026-09-06 船长拍板；2026-09-09 费率上调：资源 ×1.15 / 快递 ×1.50）：
  * 基准单价 = 刷出瞬间该商品收购价 marketQuote().buy（池商品收购价 = 均衡价 L；簿面无收购单时
- * 回落 levelOf）；reward = need × 基准单价 × 系数（资源 1.04 / 快递 1.30），向下取整到整百、
- * 至少 100。资源任务附加守卫：刷出时有供应价 sell 时强制 reward < need×sell（若 1.04 边沿溢出
- * 则把 reward 钳到 floor((need×sell−1)/100)×100）——市价买入交付必亏；快递为运费补偿型（真实
- * 航行耗时换运费利润），不设买货守卫。
+ * 回落 levelOf）；reward = need × 基准单价 × 系数，向下取整到整百、至少 100。资源任务附加守卫：
+ * 刷出时有供应价 sell 时强制 reward < need×sell（边沿溢出则把 reward 钳到 floor((need×sell−1)/100)×100）
+ * ——市价买入交付必亏；快递为运费补偿型（真实航行耗时换运费利润），不设买货守卫。
  */
 function rewardIskFor(
   state: GameState,
@@ -236,8 +241,8 @@ function rewardIskFor(
   return reward
 }
 
-/** 刷出市场影响（对单个商品一次）：npcSell 合计削减 30% 在售量（逐单从尾扣减至 0 移除），
- *  pool.q 扣掉同等数量，pool.shock += 0.05（上限 0.4） */
+/** 刷出市场影响（对单个商品一次）：npcSell 合计削减 SPAWN_SUPPLY_CUT 在售量（逐单从尾扣减至 0 移除），
+ *  pool.q 扣掉同等数量，pool.shock += 0.05（上限 0.4）；削减比例随报酬上调（2026-09-09 船长定 0.45） */
 function applySpawnMarketImpact(state: GameState, def: MarketGoodDef): void {
   const pool = state.market.pools[def.key]
   if (!pool) return
@@ -246,7 +251,7 @@ function applySpawnMarketImpact(state: GameState, def: MarketGoodDef): void {
     let total = 0
     for (const o of sellList) total += o.qty
     if (total > 0) {
-      const removeQty = Math.round(total * 0.3)
+      const removeQty = Math.round(total * SPAWN_SUPPLY_CUT)
       let rem = removeQty
       for (let i = sellList.length - 1; i >= 0 && rem > 0; i--) {
         const o = sellList[i]!

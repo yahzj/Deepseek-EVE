@@ -713,6 +713,16 @@ function cleanBattle(raw: unknown): BattleState | null {
         }
       }
       if (weapons.length === 0) weapons.push(0)
+      const hpMaxRaw = asRaw(u.hpMax)
+      const hpMaxOk =
+        hpMaxRaw !== null &&
+        typeof hpMaxRaw === 'object' &&
+        typeof (hpMaxRaw as RawState).s === 'number' &&
+        Number.isFinite((hpMaxRaw as RawState).s) &&
+        typeof (hpMaxRaw as RawState).a === 'number' &&
+        Number.isFinite((hpMaxRaw as RawState).a) &&
+        typeof (hpMaxRaw as RawState).h === 'number' &&
+        Number.isFinite((hpMaxRaw as RawState).h)
       units[tag] = {
         tag,
         side,
@@ -722,6 +732,15 @@ function cleanBattle(raw: unknown): BattleState | null {
           a: Math.max(0, numf(hpRaw.a, 0)),
           h: Math.max(0, numf(hpRaw.h, 0)),
         },
+        ...(hpMaxOk
+          ? {
+              hpMax: {
+                s: Math.max(0, (hpMaxRaw as RawState).s as number),
+                a: Math.max(0, (hpMaxRaw as RawState).a as number),
+                h: Math.max(0, (hpMaxRaw as RawState).h as number),
+              },
+            }
+          : {}),
         weapons,
       }
     }
@@ -753,7 +772,31 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 序号续发：以清洗后尾部序号 +1 为基准（旧档无 seq 字段时按序重排，见 cleanFx）
     fxSeq: fx.length > 0 ? fx[fx.length - 1]!.seq + 1 : 0,
     ended: endedRaw === 'me' || endedRaw === 'foe' ? endedRaw : null,
+    waveIdx:
+      typeof b.waveIdx === 'number' && Number.isFinite(b.waveIdx) && b.waveIdx > 0
+        ? Math.floor(b.waveIdx)
+        : undefined,
+    waveClearAt:
+      typeof b.waveClearAt === 'number' && Number.isFinite(b.waveClearAt) && b.waveClearAt > 0
+        ? b.waveClearAt
+        : undefined,
+    // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
+    ammoIds: cleanAmmoIdMap(b.ammoIds),
   }
+}
+
+/** 弹药 id 映射清洗（弹药 MK2：kinetic/explosive/plasma 键下的非空字符串 id；坏值丢键） */
+function cleanAmmoIdMap(raw: unknown): Partial<Record<'kinetic' | 'explosive' | 'plasma', string>> | undefined {
+  const r = asRaw(raw)
+  let out: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>> | undefined
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const v = r[t]
+    if (typeof v === 'string' && v.length > 0) {
+      if (!out) out = {}
+      out[t] = v
+    }
+  }
+  return out
 }
 
 /** 清洗战斗可视化事件环（白名单字段；坏事件丢弃，缺失给空）。seq 按环内顺序重排（旧档无 seq 也能续播） */
@@ -873,6 +916,7 @@ function normalizeState(raw: unknown): GameState {
     cargo: Record<string, number>
     fitted: FittedModules
     droneLoad?: Record<string, number>
+    ammoPref?: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>>
   } => ({
     defId,
     customName: null,
@@ -942,6 +986,8 @@ function normalizeState(raw: unknown): GameState {
       cargo: cargoMap,
       fitted,
       droneLoad,
+      // 弹药 MK2（2026-09-09）：档位偏好透传（键 = 伤害类型；坏值丢键，引擎侧再防御未知 id）
+      ammoPref: cleanAmmoIdMap(shipRaw.ammoPref),
     }
   }
   if (Object.keys(fleet).length === 0) {
@@ -1262,6 +1308,14 @@ function normalizeState(raw: unknown): GameState {
     lastTickGameMs: Math.max(0, Math.floor(num(marketRaw.lastTickGameMs))),
     orderSeq: Math.max(Math.max(0, Math.floor(num(marketRaw.orderSeq))), maxOrderId),
     priceHistory: histories as GameState['market']['priceHistory'],
+    // P2 稀有/奇货抽取节拍基准（2026-09-09 修复：必须随档透传——此前白名单漏掉本键，
+    // 每次读档（启动/恢复存档）都被 ensureMarket 重置回"开市前 10 分钟"→ 恢复后首窗重复
+    // 抽取一次、抽取相位随每次读档漂移，多次倒档重放会叠加出异常供给单；旧档无键 = undefined，
+    // 由 ensureMarket 按旧逻辑补基准，零迁移）
+    slowDrawLastGameMs:
+      typeof marketRaw.slowDrawLastGameMs === 'number' && Number.isFinite(marketRaw.slowDrawLastGameMs)
+        ? Math.max(0, Math.floor(marketRaw.slowDrawLastGameMs))
+        : undefined,
   }
 
   // --- 我的挂单（v9）：非法字段丢弃 ---
@@ -1542,6 +1596,22 @@ function normalizeState(raw: unknown): GameState {
     galaxyId: stbGalaxy,
     finishAtGameMs: Math.max(0, Math.floor(num(stbRaw.finishAtGameMs))),
     legMs: Math.max(0, Math.floor(num(stbRaw.legMs))),
+  }
+  // --- 长途运输（2026-09-09 两站运输：可选字段、旧档零迁移；active 需目标端点字段可读） ---
+  const haulRaw = asRaw(src.hauling)
+  const haulTo = typeof haulRaw.toSiteId === 'string' || haulRaw.toSiteId === null ? haulRaw.toSiteId : null
+  const haulFrom = typeof haulRaw.fromSiteId === 'string' || haulRaw.fromSiteId === null ? haulRaw.fromSiteId : null
+  const haulA = typeof haulRaw.routeA === 'string' || haulRaw.routeA === null ? haulRaw.routeA : null
+  const haulB = typeof haulRaw.routeB === 'string' || haulRaw.routeB === null ? haulRaw.routeB : null
+  const hauling = {
+    active: haulRaw.active === true && haulTo !== undefined,
+    routeA: haulA ?? null,
+    routeB: haulB ?? null,
+    fromSiteId: haulFrom ?? null,
+    toSiteId: haulTo ?? null,
+    legMinutes: Math.max(0, Math.floor(num(haulRaw.legMinutes))),
+    legMs: Math.max(0, Math.floor(num(haulRaw.legMs))),
+    phaseAccMs: Math.max(0, Math.floor(num(haulRaw.phaseAccMs))),
   }
   // --- 精炼炉运转工位表（v20 多工位并行、原料不锁定；兼容 v19 起 refineRuns 与更早 refineRun 兜底） ---
   const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {
@@ -1903,6 +1973,7 @@ function normalizeState(raw: unknown): GameState {
     awayGalaxy,
     transit,
     standby,
+    hauling,
     refineRuns,
     refineSeq,
     salvaging,

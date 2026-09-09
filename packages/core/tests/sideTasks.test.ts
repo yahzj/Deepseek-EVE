@@ -57,11 +57,10 @@ function stationSite(id: string, galaxyId: string, name: string) {
     name,
     galaxyId,
     standingReq: 0,
-    acceptItemIds: ['ore-a'],
-    tiers: [
-      { name: '奠基', count: 10, unlockDesc: 'x' },
-      { name: '完善', count: 10, unlockDesc: 'x' },
-      { name: '建成', count: 10, unlockDesc: 'x' },
+        tiers: [
+      { name: '档1', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '施工推进' },
+      { name: '档2', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '设备安装' },
+      { name: '档3', bill: [{ itemId: 'ore-a', count: 100 }], unlockDesc: '建成并入空间站清单' },
     ],
     introDialogueId: null,
     doneDialogueId: null,
@@ -351,10 +350,10 @@ describe('v24 时效任务：税前锚定奖励（资源钳制 / 快递无守卫
 })
 
 describe('v24 时效任务：刷出时的市场影响（防"买来秒交"）', () => {
-  it('削减 npcSell 合计 30%（逐单从尾扣至 0）、pool.q 同扣、shock +0.05（上限 0.4）；reward 按刷出时收购价×1.04 锚定', () => {
+  it('削减 npcSell 合计 45%（2026-09-09 随收益上调 30%→45%；逐单从尾扣至 0）、pool.q 同扣、shock +0.05；reward 按刷出时收购价×新费率锚定', () => {
     const { state, ctx } = makeWorld()
     marketQuote(state, ctx, 'it-ore-a') // 开盘（池 q = 2000、shock = 0）
-    // 手工簿面：收购保持开盘均衡价（12/8）；单一供应单（qty 1000）→ 削减 300；直接调用推进器不跨整点
+    // 手工簿面：收购保持开盘均衡价（12/8）；单一供应单（qty 1000）→ 削减 450；直接调用推进器不跨整点
     state.market.npcSell['it-ore-a'] = [{ price: 15, qty: 1_000, expiresAtGameMs: 9_999_999_999 }]
     state.market.npcSell['it-min-a'] = [{ price: 15, qty: 1_000, expiresAtGameMs: 9_999_999_999 }]
     const qBefore = state.market.pools['it-ore-a']!.q
@@ -366,12 +365,12 @@ describe('v24 时效任务：刷出时的市场影响（防"买来秒交"）', (
     expect(boardOf(state).resource).toHaveLength(2)
     for (const t of boardOf(state).resource) {
       const q = marketQuote(state, ctx, t.goodKey)
-      expect(t.rewardIsk).toBe(expectResourceReward(t.need, q.buy!, q.sell)) // 按刷出时收购价×1.04 计（sell=15 不触发钳制）
+      expect(t.rewardIsk).toBe(expectResourceReward(t.need, q.buy!, q.sell)) // 按刷出时收购价×新费率计（sell=15 不触发钳制）
     }
-    // 削减：1000 → 700（从尾单扣至 0 移除）；pool.q 同步扣 300；shock +0.05
+    // 削减：1000 → 550（从尾单扣至 0 移除）；pool.q 同步扣 450；shock +0.05
     const sellTotal = state.market.npcSell['it-ore-a']!.reduce((s, o) => s + o.qty, 0)
-    expect(sellTotal).toBe(700)
-    expect(state.market.pools['it-ore-a']!.q).toBe(qBefore - 300)
+    expect(sellTotal).toBe(550)
+    expect(state.market.pools['it-ore-a']!.q).toBe(qBefore - 450)
     expect(state.market.pools['it-ore-a']!.shock).toBeCloseTo(0.05, 9)
     // 冲击上限：连刷 20 个整点不越过 0.4
     for (let i = 0; i < 20; i++) {

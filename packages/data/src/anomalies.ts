@@ -61,13 +61,14 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-redring-raiders',
     name: '赤潮劫掠舰队',
-    foeHpOverride: 410, // P1 微调轮（2026-09-06）：B2 虎鲨4MK2 中位胜率上 85% 线（原 80%），时长保 35~40s
+    foeHpOverride: 340, // 巡洋时代复调轮 r1（2026-09-09）：B2 墙点——S1 虎鲨4MK2 中位胜率 60%→目标 ≥85%（压血缩磨损，原 410）
     galaxyId: 'galaxy-redring',
     threat: 34,
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { plasma: 2 },
-    foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
+    foeDmgMul: 0.27, // 巡洋时代复调轮 r3（2026-09-09）：kite 墙点顺滑——S1 中位 80%→≥85%（磨损再降档，r2=0.30 后 80%）
+    foeSpeedMps: 204, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 151）
     standingReq: 3,
     standingGain: 1,
     rewardIsk: 75000,
@@ -78,7 +79,13 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-gravekeeper',
     name: '坟场守墓人',
-    foeHpOverride: 2450, // P1 重标 pass-2（2026-09-06，待终审）：E1 段灰鲭鲨4×MK3 中位 ~70s
+    foeHpOverride: 3600, // 巡洋时代复调轮 r4（2026-09-09）：E 段——锤头鲨中位 53s✅；无技能参考 60%→≥70% 宽容线（原 r1 3900）
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 421, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 357；×1.30 实测打穿无技能宽容线）
+    waves: [
+      { units: 2, hpShare: 0.55 },
+      { units: 1, hpShare: 0.45 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-grave',
     threat: 88,
     tactic: 'brawl',
@@ -95,6 +102,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-ghost-signal',
     name: '幽灵舰信号',
     foeHpOverride: 555, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~50s
+    foeSpeedMps: 234, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 173）
     galaxyId: 'galaxy-redring',
     threat: 46,
     tactic: 'kite',
@@ -112,6 +120,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-abyss-guard',
     name: '深渊之门卫队',
     foeHpOverride: 540, // P1 微调轮（2026-09-06）：C 段墙点（kite+僚）中位 ~50s
+    foeSpeedMps: 234, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 173）
     galaxyId: 'galaxy-abyss',
     threat: 45,
     tactic: 'kite',
@@ -133,7 +142,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-titan-wreck',
     name: '泰坦残骸勘探',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~60s
-    foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：远古残骸老化自动炮台——单发重但失准）
+    foeSpeedMps: 374, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 317）
+    foeHitRate: 0.65, // 低安敌人命中率 +10（2026-09-09 船长定；原低命中特例 0.55——远古残骸老化自动炮台，单发重但失准）
     galaxyId: 'galaxy-abyss',
     threat: 60,
     tactic: 'brawl',
@@ -150,6 +160,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-auro-raiders',
     name: '奥罗武装残骸群',
     foeHpOverride: 1740, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~66s
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 375, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 318）
     galaxyId: 'galaxy-auro',
     threat: 62,
     tactic: 'brawl',
@@ -170,6 +182,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-starcore-boss',
     name: '星髓巢穴',
     foeHpOverride: 1530, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~80s
+    foeSpeedMps: 409, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 347；×1.30 实测打穿无技能宽容线）
     galaxyId: 'galaxy-starcore',
     threat: 72,
     tactic: 'brawl',
@@ -190,6 +203,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-cinder-siege',
     name: '烬火围攻战',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~48s
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 282, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 239）
     galaxyId: 'galaxy-cinder',
     threat: 42,
     standingReq: 6,
@@ -203,6 +218,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-echo-haunt',
     name: '回音残舰',
     foeHpOverride: 2035, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~56s
+    foeSpeedMps: 288, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 244）
     galaxyId: 'galaxy-echo',
     threat: 52,
     standingReq: 6,
@@ -216,6 +232,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-nadir-static',
     name: '天底静区封锁',
     foeHpOverride: 2040, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~74s
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 316, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 268）
     galaxyId: 'galaxy-nadir',
     threat: 66,
     standingReq: 9,
@@ -228,7 +246,13 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-maw-hunt',
     name: '噬口猎杀令',
-    foeHpOverride: 2460, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~86s
+    foeHpOverride: 4000, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~55s（原 2460）
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 325, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 275）
+    waves: [
+      { units: 2, hpShare: 0.5 },
+      { units: 1, hpShare: 0.5 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-maw',
     threat: 80,
     standingReq: 11,
@@ -241,7 +265,14 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-vault-sentinel',
     name: '穹顶守卫',
-    foeHpOverride: 4100, // P1 重标（2026-09-06，待终审）：E 段大白鲨5MK3 中位 ~84s（效率差基准）
+    foeHpOverride: 5600, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 55s→目标 ~75s（原 4100）
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 356, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 302）
+    waves: [
+      { units: 2, hpShare: 0.35 },
+      { units: 2, hpShare: 0.35 },
+      { units: 1, hpShare: 0.3 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-vault',
     threat: 96,
     standingReq: 13,
@@ -254,7 +285,14 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-voidedge-warden',
     name: '虚海守望者',
-    foeHpOverride: 2450, // P1 重标 pass-2（2026-09-06，待终审）：E1 段灰鲭鲨4×MK3 中位 ~70s
+    foeHpOverride: 4300, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~60s（原 2450）
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 329, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 279）
+    waves: [
+      { units: 2, hpShare: 0.35 },
+      { units: 2, hpShare: 0.35 },
+      { units: 1, hpShare: 0.3 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-voidedge',
     threat: 88,
     standingReq: 12,
@@ -314,6 +352,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-haze-ambush',
     name: '灰霾伏击团清剿令',
     foeHpOverride: 430, // P1 重标 pass-2（2026-09-06，待终审）：B2 段虎鲨4MK2 中位 ~43s
+    foeSpeedMps: 201, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 149）
     galaxyId: 'galaxy-haze',
     threat: 28,
     tactic: 'kite',
@@ -330,14 +369,15 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-mirage-hijackers',
     name: '蜃影导航劫持令',
-    foeHpOverride: 650, // P1 微调轮（2026-09-06）：C 段墙点（kite+僚）中位 ~52s
+    foeHpOverride: 560, // 巡洋时代复调轮 r1（2026-09-09）：C 段墙点——S2 灰鲭鲨4MK2 中位胜率 60%→目标 ≥85%（kite 磨损缩压，原 650）
     galaxyId: 'galaxy-mirage',
     threat: 48,
     tactic: 'kite',
     defProfile: 'shield',
     escorts: 1,
     dmgMix: { plasma: 2 },
-    foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
+    foeDmgMul: 0.30, // 巡洋时代复调轮 r2（2026-09-09）：kite 墙点顺滑——S2 中位 60%→≥85%（磨损降档，原 0.35）
+    foeSpeedMps: 235, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 174）
     standingReq: 5,
     standingGain: 2,
     rewardIsk: 190_000,
@@ -349,6 +389,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-chasm-aberrations',
     name: '裂谷畸变体猎杀令',
     foeHpOverride: 1815, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~62s
+    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
+    foeSpeedMps: 372, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 315）
     galaxyId: 'galaxy-chasm',
     threat: 58,
     tactic: 'brawl',

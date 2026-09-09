@@ -166,6 +166,7 @@ export {
   unfitSlot,
   unfitAt,
   adjustDroneLoad,
+  setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   fittedBonuses,
   fittedCpuUsed,
   // 2026-09-08 无人机舱大改：装载清单 CPU/体积（装配页预算条、装配校验、战斗装载同源）
@@ -401,14 +402,36 @@ export type { TransitView, StandbyView } from './location'
 export {
   siteProgress,
   isSiteBuilt,
-  tierRemaining,
   tierNeedOf,
+  tierRemaining,
+  tierBillOf,
+  billNeedOf,
+  billDeliveredOf,
+  billRemainingOf,
+  stationBillView,
+  stationBillText,
+  tierFulfilled,
   deliverStationResources,
   onArriveAtGalaxy,
   playDialogue,
   playerAtSite,
 } from './station'
+export type { StationBillRow } from './station'
 export type { StationSiteProgress } from './state'
+
+export {
+  startHauling,
+  stopHauling,
+  advanceHauling,
+  cancelHaulingOnSwitch,
+  haulEndpoints,
+  dockedHaulEndpoint,
+  haulEndpointName,
+  haulLegReward,
+  haulingOccupiedM3,
+  HAUL_RATE_PER_M3_MIN,
+} from './hauling'
+export type { HaulEndpoint } from './hauling'
 
 export {
   battleWinPreview,
@@ -425,6 +448,10 @@ export {
   mergeResist,
   foeMainDamageType,
   foeLayerSplit,
+  foeClassName,
+  foeMainTagOf,
+  foeUnitNameOf,
+  FOE_LIGHT_WORD,
   createPlayerSpec,
   playerAmmoType,
   typeLayerMult,
@@ -539,6 +566,7 @@ export {
   courierDelivering,
   startCourierDelivery,
   RESOURCE_TASK_MARGIN,
+  SPAWN_SUPPLY_CUT,
   COURIER_TASK_MARGIN,
 } from './sideTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'

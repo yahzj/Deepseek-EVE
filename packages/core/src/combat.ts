@@ -14,6 +14,7 @@
  *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
 import type { GameState } from './state'
+import { addLog } from './state'
 import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeTactic, ModuleDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
@@ -25,6 +26,8 @@ import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 export const BATTLE_STEP_MS = 100
 /** 步数守卫上限（防失控循环） */
 export const BATTLE_MAX_STEPS = 40_000
+/** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
+export const REPAIR_PULSE_MS = 5_000
 
 /** 三层血量形状 */
 export interface Hp3 {
@@ -86,6 +89,9 @@ export interface UnitSpec {
   speedMps: number
   agility: number
   weapons: WeaponSpec[]
+  /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
+   *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
+  lockedDmgBonus?: number
   foeTactic: FoeTactic | null
 }
 
@@ -177,6 +183,22 @@ const AMMO_IDS: Record<DamageType, string> = {
   plasma: 'ammo-plasma-l',
 }
 
+/** 本船弹药 id 解析（弹药 MK2，2026-09-09）：
+ * battle 覆盖（开战实装/缺货回退，见 BattleState.ammoIds）> 船装配档位偏好（ammoPref）> 基础弹 */
+function ammoIdFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  type: DamageType,
+  battleIds?: Partial<Record<DamageType, string>> | null,
+): string {
+  const override = battleIds?.[type]
+  if (override && ctx.items.has(override)) return override
+  const pref = state.fleet[shipId]?.ammoPref?.[type]
+  if (pref && ctx.items.has(pref)) return pref
+  return AMMO_IDS[type]
+}
+
 function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): number {
   return Math.max(20, maxSpeedMps * bal.speedFactor * (1 + (agility - 0.5) * 2 * bal.agilitySpeedBonus))
 }
@@ -217,7 +239,15 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
 }
 
 /** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船数据缺失） */
-export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: string): UnitSpec | null {
+/** 我方规格快照（手动/AI/MC/预估同源）。
+ * ammoIds（弹药 MK2，2026-09-09）：战斗内实装弹 id 覆盖（缺货回退等）——
+ * 推进/视图重建传 battle.ammoIds 使伤害与实装弹种一致；缺省 = 船装配 ammoPref，再缺省 = 基础弹。 */
+export function createPlayerSpec(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  ammoIds?: Partial<Record<DamageType, string>> | null,
+): UnitSpec | null {
   const ship = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
   if (!ship || !fleet) return null
@@ -228,6 +258,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const shieldDefs = familyModules(state, ctx, shipId, 'shield')
   const armorDefs = familyModules(state, ctx, shipId, 'armor')
   const propDefs = familyModules(state, ctx, shipId, 'propulsion')
+  const targetLockDefs = familyModules(state, ctx, shipId, 'target-lock') // 2026-09-09 锁定装置（高槽）
   // V18B：武器形态分家——turret（动能炮）与 missile（导弹架）与 laser（激光炮）都进武器池
   const turretDefs = [
     ...familyModules(state, ctx, shipId, 'turret'),
@@ -299,6 +330,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
   const propSpeeds = propDefs.map((p) => p.speedBonusPct ?? 0)
   const speedEq = curveMult(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
+  // 锁定装置（2026-09-09 船长拍板：集火 + 被锁目标受击加深 8/12/20% 档；多件 EVE 曲线收敛）
+  const lockEq = curveMult(targetLockDefs.map((m) => m.lockDmgBonus ?? 0))
 
   const weapons: WeaponSpec[] = []
   const gunneryLv = state.skills.trained[ctx.balance.combat.gunnerySkillId] ?? 0
@@ -332,7 +365,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const count = group.length
     const type = turret.damageType ?? 'kinetic'
     const mult = turret.dmgMult ?? 1
-    const ammoDef = ctx.items.get(AMMO_IDS[type])
+    const ammoDef = ctx.items.get(ammoIdFor(state, ctx, shipId, type, ammoIds))
     // V18B 武器族专精技能：按模块槽族取专精技能（turret→动能炮术 / missile→导弹发射学 /
     // laser→激光炮学），乘算于 dmgScale（炮术学）之上——族与族互不串乘
     const famKey = turret.slot === 'missile' || turret.slot === 'laser' || turret.slot === 'turret' ? turret.slot : null
@@ -345,7 +378,10 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       if (engLv > 0) famMult *= 1 + 0.03 * engLv
     }
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
-    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]))
+    // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——按本武器固定弹型乘入，
+    // 装别族武器 = 无加成（仍可用）；无人机与基础舰炮不在此链上，天然豁免
+    const shipFam = ship.weaponFamilyBonus?.[type] ?? 0
+    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]) * (1 + shipFam))
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
     const fireLv = Math.min(5, state.skills.trained['fire-control'] ?? 0)
     const fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1
@@ -450,6 +486,8 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)),
     agility: ship.agility,
     weapons,
+    // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
+    ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),
     foeTactic: null,
   }
 }
@@ -522,10 +560,79 @@ export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
 }
 
 /** 展开敌方编队（threat 卡面 = 总战力；血/火力威胁线性，射程/速度走虚拟装配模板） */
-export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpec[] {
+/** createFoeSpecs 波次参数（2026-09-09 多波；缺省 = 单波现状） */
+export interface FoeSpecOpts {
+  /** 本波"主舰+僚机"小队数（escorts 随卡不变） */
+  units?: number
+  /** 本波分得的敌总血比例（0~1；缺省 1 = 全量） */
+  hpShare?: number
+  /** tag 前缀（第 2 波起用，避免与首波/旧档 tag 冲突；首波 = '' 保持 foe-0/foe-1 旧命名） */
+  tagPrefix?: string
+}
+
+/* ═══════════ 敌舰显示名（2026-09-09 船长拍板：同一悬赏内规格/属性不同的敌舰名字不同；
+   名字只由"异常属性 × 单位规格"推导，引擎建档与界面显示同源，存档字符串仅作兜底） ═══════════ */
+
+/** 敌舰"舰种名"按 战术 × 血型（9 类；满规格主体用本名，弱规格单位加词缀） */
+const FOE_CLASS: Record<string, Record<string, string>> = {
+  brawl: { shield: '突击护卫舰', armor: '攻坚重甲舰', balanced: '突击炮艇' },
+  orbit: { shield: '巡逻护卫舰', armor: '装甲巡逻舰', balanced: '环绕护航舰' },
+  kite: { shield: '狙击护卫舰', armor: '远程装甲舰', balanced: '狙击炮艇' },
+}
+
+/** 规格词缀（前缀）：轻装 = 单舰规格 ≤ 本场最强档 ×FOE_LIGHT_FRAC（现覆盖僚机 ×0.6 份额与
+ *  明显低血波，见 foeUnitNameOf）；"精锐"档预留——若将来出现相对规格 >1 的头目单位，
+ *  在此增加精锐前缀分支即可（词缀判定与血量数值解耦，纯命名）。 */
+export const FOE_LIGHT_WORD = '轻装'
+const FOE_LIGHT_FRAC = 0.6
+const FOE_CLASS_FALLBACK = '敌方舰艇'
+
+/** 舰种名（战术 × 血型；与卡面"敌型/战术"口径一致） */
+export function foeClassName(tactic: string | undefined, profile: string | undefined): string {
+  return FOE_CLASS[tactic ?? 'orbit']?.[profile ?? 'balanced'] ?? FOE_CLASS_FALLBACK
+}
+
+/** 主/僚判定（按 tag 结构，2026-09-09 多波）：主舰 = foe-0 或 w{n}-foe-{k}；
+ *  僚机 = legacy foe-N（N≥1，旧单波 escorts）或 *-e{i}（各小队 escort）。 */
+export function foeMainTagOf(tag: string): boolean {
+  if (tag === 'foe-0') return true
+  if (/^foe-\d+$/.test(tag)) return false
+  return tag.includes('-foe-') && !tag.includes('-e')
+}
+
+/** 单位所在波的血档（tag 前缀 w{n}- 反查波表；首波/无波表 = 1） */
+function waveHpShareOf(tag: string, anomaly: AnomalyDef): number {
+  const waves = anomaly.waves
+  if (!waves || waves.length === 0) return 1
+  const m = /^w(\d+)-/.exec(tag)
+  const idx = m ? Math.min(waves.length - 1, parseInt(m[1]!, 10)) : 0
+  return Math.max(0.001, waves[idx]!.hpShare ?? 1)
+}
+
+/** 敌舰单位显示名（船长 2026-09-09 拍板：舰种名 + 规格词缀）：
+ * - 满规格主体（主舰、血档不弱）= 舰种名（9 类原样）；
+ * - 僚机（份额 ×0.6）或 明显低血波主舰（hpShare ≤ 同卡最强波 ×0.6）→ 轻装 + 舰种名；
+ *   例：攻坚重甲舰 → 轻装攻坚重甲舰（替代旧「悬赏名·僚机」两套命名）；
+ * - 单卡单波/波间差异小（如穹顶 .857 比值）不触发——避免无感知差异的伪区分。 */
+export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
+  const base = foeClassName(anomaly.tactic, anomaly.defProfile)
+  if (!foeMainTagOf(tag)) return `${FOE_LIGHT_WORD}${base}`
+  const waves = anomaly.waves
+  if (waves && waves.length > 0) {
+    let maxShare = 0.001
+    for (const w of waves) maxShare = Math.max(maxShare, w.hpShare ?? 0)
+    if (waveHpShareOf(tag, anomaly) / maxShare <= FOE_LIGHT_FRAC) return `${FOE_LIGHT_WORD}${base}`
+  }
+  return base
+}
+
+export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
   const tactic = anomaly.tactic ?? 'orbit'
   const split = PROFILE_SPLIT[anomaly.defProfile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
   const escorts = Math.max(0, Math.min(2, anomaly.escorts ?? 0))
+  const waveUnits = Math.max(1, Math.floor(opts.units ?? 1))
+  const hpShare = opts.hpShare ?? 1
+  const prefix = opts.tagPrefix ?? ''
   const mainThreat = anomaly.threat / (1 + 0.6 * escorts)
   const mainType = pickTopType(anomaly.dmgMix)
   // C4-#3：射程 = 基础带 ×(1 + 侧重×((T−10)/90)) → 封顶（clamp 保持 min < max）
@@ -534,7 +641,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
   const growT = Math.min(1, Math.max(0, (anomaly.threat - 10) / 90))
   const cap = bal.foeRangeCapM ?? 15_000
   const rangeMax = Math.min(cap, Math.round(rangeBase.max * (1 + growMul * growT)))
-  const rangeMin = Math.min(rangeMax - 1, Math.round(rangeBase.min * (1 + growMul * growT)))
+  const rangeMin = Math.max(1, Math.min(rangeMax - 1, Math.round(rangeBase.min * (1 + growMul * growT))))
   // C4-#3：速度 = 参考船速(段) × m_base(threat) × tactic 系数 → cap（≤参考 ×foeSpeedCapMul）
   const refSpeed = foeRefSpeedMps(anomaly.threat, bal)
   const spdCap = Math.round(refSpeed * (bal.foeSpeedCapMul ?? 1.2))
@@ -543,8 +650,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
 
   const make = (tag: string, name: string, uThreat: number, type: DamageType): UnitSpec => {
     // C4：总血 = 时长曲线反推表值（P1：单卡 foeHpOverride 优先 = 独立标定，脱离曲线）；
-    // 按威胁份额分配（主体/僚机 = uThreat/T × 总血）
-    const baseHp = anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)
+    // 多波（2026-09-09）：本波分得 总血 × hpShare，波内按威胁份额分配（主体/僚机 = uThreat/T × 波血）
+    const baseHp = (anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)) * hpShare
     const unitHp = (baseHp * uThreat) / Math.max(1, anomaly.threat)
     const totalHp = unitHp
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
@@ -589,9 +696,19 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance): UnitSpe
       foeTactic: tactic,
     }
   }
-  const specs: UnitSpec[] = [make('foe-0', anomaly.name, mainThreat, mainType)]
-  for (let i = 1; i <= escorts; i++) {
-    specs.push(make(`foe-${i}`, `${anomaly.name}·僚机`, mainThreat * 0.6, mainType))
+  const specs: UnitSpec[] = []
+  for (let k = 0; k < waveUnits; k++) {
+    // tag 唯一性（2026-09-09 多波修复）：仅首波第一小队沿用旧命名（foe-0 主 / foe-1.. 僚，
+    // 兼容旧 UI/测试的"主+僚"假想）；其余小队（同波第 2 队起）与后续波统一 w{波}-foe-{队} 前缀，
+    // 避免与 legacy 僚机 tag（foe-1..n）撞名造成单位覆盖/血条参照错位。
+    const legacySquad = prefix === '' && k === 0
+    const squadPrefix = legacySquad ? '' : `${prefix === '' ? 'w0-' : prefix}`
+    const mainTag = legacySquad ? 'foe-0' : `${squadPrefix}foe-${k}`
+    specs.push(make(mainTag, foeUnitNameOf(anomaly, mainTag), mainThreat, mainType))
+    for (let i = 1; i <= escorts; i++) {
+      const escortTag = legacySquad ? `foe-${i}` : `${squadPrefix}foe-${k}-e${i}`
+      specs.push(make(escortTag, foeUnitNameOf(anomaly, escortTag), mainThreat * 0.6, mainType))
+    }
   }
   return specs
 }
@@ -680,14 +797,20 @@ export function ammoLoadTotals(
  * V17.2 单型装载：只装载炮台固定弹种的那一型（炮族制——炮台 damageType 决定弹种，
  * battle.ammo 其余键恒 0；开火/退还/UI dominant 仍走既有三键结构，无需第二套）。
  * 货仓优先、仓库兜底；返回实装各型数量（只有目标型非零）。
+ * （基础弹装载：旧语义保留，测试/兼容用；开战装载请走 loadAmmoTier 按档装载）
  */
 export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, total: number): { kin: number; exp: number; pla: number } {
   const out = { kin: 0, exp: 0, pla: 0 }
-  if (total <= 0) return out
-  const id = AMMO_IDS[type]
   const key = ammoKeyOf(type)
+  out[key] = loadAmmoOf(state, ctx, AMMO_IDS[type], total)
+  return out
+}
+
+/** 装载指定弹 id（货仓优先、仓库兜底，单型一次抽足）；返回实装数 */
+function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {
+  if (total <= 0) return 0
   const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
-  if (stock <= 0) return out
+  if (stock <= 0) return 0
   let want = Math.min(stock, total)
   let got = 0
   const fromCargo = Math.min(want, Math.floor(cargoItemsOf(state)[id] ?? 0))
@@ -704,19 +827,47 @@ export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, to
       got += fromWare
     }
   }
-  out[key] = got
-  return out
+  return got
 }
 
-/** 剩余弹药退回物品仓库 */
-export function refundAmmo(state: GameState, ammo: { kin: number; exp: number; pla: number }): void {
+/**
+ * 开战按档装载（弹药 MK2，2026-09-09 船长拍板：出战前选档——船装配 ammoPref 决定本场弹种；
+ * 该档库存不足 → 整族回退基础弹（fellBack = true，由调用方日志提示），不卡远征）。
+ * 返回实装数 + 实装弹 id（写 battle.ammoIds 供推进/退还/视图对齐）。
+ */
+export function loadAmmoTier(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  type: DamageType,
+  total: number,
+): { loaded: number; id: string; fellBack: boolean } {
+  const prefId = state.fleet[shipId]?.ammoPref?.[type]
+  const wantId = prefId && ctx.items.has(prefId) ? prefId : null
+  let id = AMMO_IDS[type]
+  let fellBack = false
+  if (wantId !== null) {
+    const have = Math.floor((cargoItemsOf(state)[wantId] ?? 0) + countWare(state, wantId))
+    if (have >= total) id = wantId
+    else fellBack = true // 配置档不足整批 → 整族回退基础弹
+  }
+  const loaded = loadAmmoOf(state, ctx, id, total)
+  return { loaded, id, fellBack }
+}
+
+/** 剩余弹药退回物品仓库（弹药 MK2：按实装弹 id 原样退回；ids 缺省 = 基础弹语义） */
+export function refundAmmo(
+  state: GameState,
+  ammo: { kin: number; exp: number; pla: number },
+  ids?: Partial<Record<DamageType, string>> | null,
+): void {
   const map: Array<[DamageType, number]> = [
     ['kinetic', ammo.kin],
     ['explosive', ammo.exp],
     ['plasma', ammo.pla],
   ]
   for (const [t, n] of map) {
-    if (n > 0) addWare(state, AMMO_IDS[t], Math.floor(n))
+    if (n > 0) addWare(state, ids?.[t] ?? AMMO_IDS[t], Math.floor(n))
   }
 }
 
@@ -741,9 +892,136 @@ export function ammoKeyOf(t: DamageType): AmmoKey {
   return t === 'kinetic' ? 'kin' : t === 'explosive' ? 'exp' : 'pla'
 }
 
-/* ═══════════ 战斗状态推进 ═══════════ */
+/* ═══════════ 2026-09-09 船体维修装置（战斗中自动修复装甲/结构） ═══════════ */
+/* 船长定稿：中槽支援件；每 5 秒一跳，逐台修复装甲/结构（各层满则额度转投另一层），
+ * 每台每跳消耗 1 枚对应修理组件；组件耗尽自动停机；与弹药预载同哲学——开战装载、结束退还。 */
 
-/** 初始化战斗动态状态 */
+/** 当前船已装配的维修装置（带 repairArmorHp/repairHullHp 的装配件，按位序） */
+export function fittedRepairModules(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
+  const ship = state.fleet[shipId]
+  if (!ship) return []
+  return allFittedModules(ship.fitted, ctx).filter((d) => (d.repairArmorHp ?? 0) > 0 || (d.repairHullHp ?? 0) > 0)
+}
+
+/**
+ * 维修装置开战预载：装配快照 + 组件装载（货舱优先、仓库兜底，单型一次抽足）。
+ * 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1（多波演出窗口冻结战斗时钟，余量防不足）；
+ * 库存不足的装置直接标记停机（组件一枚没有 = 开战即停）。无装置返回 null。
+ * 返回结构的 nextPulseAtMs 恒为 undefined——由 startBattleFor 按开战时刻赋值
+ * （全部装置停机则保持 undefined = 不调度）。
+ */
+export function preloadRepairFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  maxBattleMs: number,
+): import('./state').BattleState['repair'] | null {
+  const defs = fittedRepairModules(state, ctx, shipId)
+  if (defs.length === 0) return null
+  const units: import('./state').BattleRepairUnit[] = []
+  const need = new Map<string, number>()
+  const perUnit = Math.max(1, Math.ceil(maxBattleMs / REPAIR_PULSE_MS)) + 1
+  for (const d of defs) {
+    const kitId = d.repairKit ?? 'repairkit-civ'
+    units.push({
+      moduleId: d.id,
+      kitId,
+      armorPerPulse: Math.max(0, Math.round(d.repairArmorHp ?? 0)),
+      hullPerPulse: Math.max(0, Math.round(d.repairHullHp ?? 0)),
+      stopped: false,
+    })
+    need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
+  }
+  // 装载（与 loadAmmo 同序：货舱优先、仓库兜底）
+  const kits: Record<string, number> = {}
+  for (const [kitId, wantTotal] of need) {
+    let want = wantTotal
+    const inCargo = Math.floor(cargoItemsOf(state)[kitId] ?? 0)
+    const fromCargo = Math.min(want, inCargo)
+    if (fromCargo > 0) {
+      removeItem(state, kitId, fromCargo)
+      want -= fromCargo
+    }
+    if (want > 0) {
+      const fromWare = Math.min(want, countWare(state, kitId))
+      if (fromWare > 0) {
+        removeWare(state, kitId, fromWare)
+        want -= fromWare
+      }
+    }
+    const got = wantTotal - want
+    if (got > 0) kits[kitId] = got
+  }
+  // 一枚组件都没装到的装置 → 开战即停机（脉冲逻辑跳过；缺料提示由 startBattleFor 日志给出）
+  for (const u of units) {
+    if ((kits[u.kitId] ?? 0) <= 0) u.stopped = true
+  }
+  return { units, kits, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
+}
+
+/** 退还维修装置预载的未用组件（回仓库；与弹药退还同哲学）——战斗结束/撤退收场调用；幂等 */
+export function refundRepairKits(
+  state: GameState,
+  repair: import('./state').BattleState['repair'],
+): void {
+  if (!repair || !repair.kits || Object.isFrozen(repair.kits)) return
+  for (const [id, n] of Object.entries(repair.kits)) {
+    if (n > 0) addWare(state, id, Math.floor(n))
+  }
+  repair.kits = {}
+}
+
+/**
+ * 单次维修脉冲（advanceBattleFor 在到期脉冲处调用）：
+ * 逐台未停机装置修复——每层通道修复量 = 该层额度，某层已满（或补满）后，该层剩余额度
+ * 转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
+ * 1 枚对应组件并计入消耗；组件耗尽该台停机（日志一次）。修复上限 = 出场满值口径
+ * （advanceBattleFor 重建的 me，与保险检查同源——可把入场残值修回满血）。
+ */
+function pulseRepairs(
+  state: GameState,
+  ctx: SimContext,
+  b: import('./state').BattleState,
+  me: UnitSpec,
+): void {
+  const r = b.repair
+  const meRt = b.units['player']
+  if (!r || !meRt || r.nextPulseAtMs === undefined) return
+  const capA = Math.max(0, me.hp.a)
+  const capH = Math.max(0, me.hp.h)
+  const hp = meRt.hp
+  let active = 0
+  for (const u of r.units) {
+    if (u.stopped) continue
+    active += 1
+    const kitNow = r.kits[u.kitId] ?? 0
+    if (kitNow <= 0) {
+      // 组件耗尽（预载余额用光）：本台停机，日志一次
+      u.stopped = true
+      const modName = ctx.modules.get(u.moduleId)?.name ?? u.moduleId
+      const kitName = ctx.items.get(u.kitId)?.name ?? u.kitId
+      addLog(state, 'warn', `🔧 ${modName}的${kitName}耗尽，自动停机——战斗中装甲/结构修复暂停。`)
+      continue
+    }
+    // 额度分配：各层先按自身额度补缺口，层满后剩余额度转投另一层（总上限 = 甲 + 结构额度）
+    const da = Math.max(0, capA - hp.a)
+    const dh = Math.max(0, capH - hp.h)
+    let ag = Math.min(u.armorPerPulse, da)
+    let hg = Math.min(u.hullPerPulse, dh)
+    if (ag < u.armorPerPulse && hg < dh) hg += Math.min(u.armorPerPulse - ag, dh - hg) // 甲通道剩余 → 结构
+    if (hg < u.hullPerPulse && ag < da) ag += Math.min(u.hullPerPulse - hg, da - ag) // 结构通道剩余 → 甲
+    if (ag <= 0 && hg <= 0) continue // 痊愈空转：不耗组件
+    hp.a += ag
+    hp.h += hg
+    r.kits[u.kitId] = kitNow - 1
+    r.kitsUsed += 1
+  }
+  r.pulses += 1
+  if (active === 0) r.nextPulseAtMs = undefined // 全部停机：停调度
+  else r.nextPulseAtMs += REPAIR_PULSE_MS
+}
+
+
 export function createBattleState(
   me: UnitSpec,
   foes: UnitSpec[],
@@ -757,6 +1035,7 @@ export function createBattleState(
       side: spec.side,
       name: spec.name,
       hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+      hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       weapons: spec.weapons.map(() => 0),
     }
   }
@@ -771,6 +1050,21 @@ export function createBattleState(
     fx: [],
     fxSeq: 0,
     ended: null,
+  }
+}
+
+/** 按规格把单位补入战斗（多波续刷/读档补缺用；已存在（含 hp 归零的尸体）不覆盖）。
+ * enterReload（2026-09-09 波次转场）：增援单位入场需先完成一轮装填（weapons 满倒计时）
+ * 才开火——给"增援抵达"一段自然哑火窗口（≈一次装填时长），不改变任何结算语义。 */
+function seedUnit(b: import('./state').BattleState, spec: UnitSpec, opts: { enterReload?: boolean } = {}): void {
+  if (b.units[spec.tag]) return
+  b.units[spec.tag] = {
+    tag: spec.tag,
+    side: spec.side,
+    name: spec.name,
+    hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+    hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+    weapons: opts.enterReload ? spec.weapons.map((w) => Math.max(1, w.reloadMs)) : spec.weapons.map(() => 0),
   }
 }
 
@@ -812,7 +1106,11 @@ export function startBattleFor(
   }
   // 序章·苏醒：教学战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
   if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
-  const foes = createFoeSpecs(anomaly, bal)
+  // 多波（2026-09-09）：开战只生成第一波；后续波由 advanceBattleFor 在敌方全灭时补刷
+  const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
+  const foes = waves
+    ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
+    : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
   // 期望距离记忆可能来自更远射程的战斗：钳到本次开战距离内
   const rawDesire = desireM !== undefined && desireM > 0 ? Math.round(desireM) : desiredRangeFor(me, 'mid', bal)
@@ -824,11 +1122,42 @@ export function startBattleFor(
   battle.distanceM = openM
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
+  // 2026-09-09 弹药 MK2：按船装配档位（ammoPref）装载；配置档库存不足整族回退基础弹 +
+  // 日志提示；实装弹 id 写入 battle.ammoIds（推进/退还/视图与实际弹种对齐）
   const totals = ammoLoadTotals(me, bal, state)
+  const ammoIds: Partial<Record<DamageType, string>> = {}
   for (const [t, n] of Object.entries(totals)) {
-    const key = ammoKeyOf(t as DamageType)
-    const loaded = loadAmmo(state, ctx, t as DamageType, n)
-    battle.ammo[key] += loaded[key]
+    const type = t as DamageType
+    const key = ammoKeyOf(type)
+    const res = loadAmmoTier(state, ctx, shipId, type, n)
+    battle.ammo[key] += res.loaded
+    if (state.fleet[shipId]?.ammoPref?.[type] && res.loaded > 0) ammoIds[type] = res.id
+    if (res.fellBack && res.loaded > 0) {
+      const wantName = ctx.items.get(state.fleet[shipId]!.ammoPref![type]!)?.name ?? type
+      const useName = ctx.items.get(res.id)?.name ?? type
+      addLog(state, 'warn', `⚙ ${wantName}库存不足，本场改用${useName}（预载 ${res.loaded} 发）。`)
+    }
+  }
+  if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
+  // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
+  // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）
+  const repair = preloadRepairFor(state, ctx, shipId, bal.maxBattleMs)
+  if (repair) {
+    const ready = repair.units.filter((u) => !u.stopped)
+    if (ready.length > 0) {
+      repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
+      const parts: string[] = []
+      for (const u of repair.units) {
+        const n = repair.kits[u.kitId] ?? 0
+        parts.push(`${ctx.modules.get(u.moduleId)?.name ?? u.moduleId}${u.stopped ? `（缺${ctx.items.get(u.kitId)?.name ?? u.kitId}停机）` : ` ×${n}枚组件`}`)
+      }
+      addLog(state, 'info', `🔧 船体维修装置待命：${parts.join('、')}——战斗中每 5 秒自动修复装甲/结构。`)
+    } else {
+      const first = repair.units[0]!
+      const kitName = ctx.items.get(first.kitId)?.name ?? first.kitId
+      addLog(state, 'warn', `🔧 已装维修装置但货舱/仓库没有${kitName}——本场不会自动修复，请先补给。`)
+    }
+    battle.repair = repair
   }
   return battle
 }
@@ -873,6 +1202,8 @@ export function battleArcsFor(
   /** 敌方当前战术期望距离（与引擎推进同口径：按战术系数换算后钳制在开战距离内）——UI 判断敌舰意图方向用 */
   foeDesireM: number
   ammo: { kin: number; exp: number; pla: number }
+  /** 弹药 MK2（2026-09-09）：本场实装弹名（键 → 弹药卡名；缺省 = UI 用默认弹型名） */
+  ammoNames?: Partial<Record<'kin' | 'exp' | 'pla', string>>
   me: Array<{
     label: string
     kind: 'gun' | 'beam' | 'fixed'
@@ -892,7 +1223,7 @@ export function battleArcsFor(
   const battle = state.expedition.battle
   if (!anomaly || !battle) return null
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, state.shipId)
+  const me = createPlayerSpec(state, ctx, state.shipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
   if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
   const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
@@ -920,13 +1251,29 @@ export function battleArcsFor(
   }
   if (!Number.isFinite(foeMin)) foeMin = 0
   const openM = battleOpenM(me, foes, bal)
+  // 各单位三层满血量（UI 垂直血条按各自满值比例绘制）：以战斗实况单位为准——
+  // 2026-09-09 多波修复：foes 仅按"单波默认"重建，波次增援/多小队单位（w{n}-foe-* 等）不在其内，
+  // 曾致后续波敌人血条为空（数值正常）；现优先 battle.units[tag].hpMax（引擎生成时写入），
+  // 旧档缺省 hpMax 时以当前血兜底（读档中断局近似满值显示）。
   const foeMaxHp: Record<string, { s: number; a: number; h: number }> = {}
-  for (const f of foes) foeMaxHp[f.tag] = { s: f.hp.s, a: f.hp.a, h: f.hp.h }
+  for (const [tag, u] of Object.entries(battle.units)) {
+    if (u.side !== 'foe') continue
+    foeMaxHp[tag] = u.hpMax ?? { s: Math.max(0.001, u.hp.s), a: Math.max(0.001, u.hp.a), h: Math.max(0.001, u.hp.h) }
+  }
+  // 弹药 MK2（2026-09-09）：本场实装弹名（仅当与基础弹不同时提供；UI 兜底用弹型名）
+  const ammoNames: Partial<Record<'kin' | 'exp' | 'pla', string>> = {}
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const id = battle.ammoIds?.[t]
+    if (!id) continue
+    const def = ctx.items.get(id)
+    if (def?.name && id !== AMMO_IDS[t]) ammoNames[ammoKeyOf(t)] = def.name
+  }
   return {
     nearM: bal.minDistanceM,
     openM,
     foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
+    ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
     meReload,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
@@ -973,6 +1320,14 @@ export function persistFleetHullDamage(
   fleetShip.durability = cap.hp.h > 0 ? clamp01(unit.hp.h / cap.hp.h) : 0
 }
 
+/** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs
+ * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
+ * 跨窗口会提前耗尽预算判负。调用方应在预算外加本值（无 waves = 0）。 */
+export function waveGapTotalMs(anomaly: Pick<AnomalyDef, 'waves'> | undefined, bal: BattleBalance): number {
+  const n = anomaly?.waves?.length ?? 1
+  return Math.max(0, n - 1) * Math.max(0, bal.waveEnterGapMs ?? 0)
+}
+
 /** 推进指定战斗（主控远征与 AI 远征通用）；结束后 ended 非空由调用方结算。
  *  favorAdv：AI 远征专属优势量 ∈[−1,1]（null = 玩家手动战斗，无 favor）——
  *  AI 方命中 ×(1+k·adv)（可到 100%），敌方 ×(1−k·adv)（上限保留 97%）。 */
@@ -988,7 +1343,7 @@ export function advanceBattleFor(
   const anomaly = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
   if (!anomaly) return
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, shipId)
+  const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
   if (!me) {
     battle.ended = 'foe'
     return
@@ -1002,11 +1357,64 @@ export function advanceBattleFor(
     favorAdv === null
       ? null
       : { meMul: 1 + bal.aiFavorStrength * favorAdv, foeMul: 1 - bal.aiFavorStrength * favorAdv }
+  // 多波次（2026-09-09）：按 AnomalyDef.waves 分批推进；无 waves = 单波（现行为）
+  const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
+  const lastIdx = waves ? waves.length - 1 : 0
+  const specsOf = (wi: number): UnitSpec[] =>
+    waves
+      ? createFoeSpecs(anomaly, bal, {
+          units: waves[wi]!.units,
+          hpShare: waves[wi]!.hpShare,
+          tagPrefix: wi === 0 ? '' : `w${wi}-`,
+        })
+      : createFoeSpecs(anomaly, bal)
+  let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
+  let curFoes = specsOf(waveIdx)
+  // 开战首波由 startBattleFor 生成（无装填延迟）；此处只兜读档中断补缺（视为增援入场）
+  for (const f of curFoes) seedUnit(battle, f, { enterReload: true })
   let guard = 0
   while (state.gameMs > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
+    // 切波：当前波全灭且还有后续波 → 先走演出窗口（爆炸/残骸播完），窗口结束才续刷下一波。
+    // 窗口语义（2026-09-09 船长反馈"切换突兀/爆炸未播完就刷下一波"）：
+    // - 清空瞬间记 waveClearAt = 战斗时钟 + waveEnterGapMs；窗口内本拍只停表等待
+    //   （battle.lastTickGameMs 不推进——与击杀慢镜同语义：演出时间不计入 maxBattleMs 超时）；
+    // - 实时战斗中游戏时钟与墙钟 1:1，窗口 = 上一波最后一艘的爆炸 + 残骸淡出完整播完；
+    // - 大步长/离线推进下 state.gameMs 越过窗口即立刻续刷，无额外等待。
+    if (waves && waveIdx < lastIdx && !curFoes.some((f) => isAlive(battle, f.tag))) {
+      const gapMs = Math.max(0, bal.waveEnterGapMs ?? 0)
+      if (gapMs > 0 && battle.waveClearAt === undefined) {
+        battle.waveClearAt = battle.lastTickGameMs + gapMs
+        const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
+        addLog(
+          state,
+          'warn',
+          `⚔ 第 ${waveIdx + 1}/${waves.length} 波已全灭（${waveName ? waveName + '·' : ''}${anomaly.name}），敌方增援正在从远处入场…`,
+        )
+      }
+      if (gapMs > 0 && battle.waveClearAt !== undefined && state.gameMs < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
+      battle.waveClearAt = undefined
+      waveIdx += 1
+      battle.waveIdx = waveIdx
+      curFoes = specsOf(waveIdx)
+      for (const f of curFoes) seedUnit(battle, f, { enterReload: true }) // 增援入场装填（转场窗口）
+      // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
+      // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
+      // 0 = 原地续战（旧行为），1 = 完整回到开战距离
+      const reopen = bal.waveReopenFrac ?? 0
+      if (reopen > 0 && Number.isFinite(openM)) {
+        battle.distanceM = Math.round(openM * reopen + battle.distanceM * (1 - reopen))
+      }
+      const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
+      addLog(
+        state,
+        'warn',
+        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + '·' : ''}${anomaly.name}）：敌方增援自远处入场，重新接近中。`,
+      )
+      continue
+    }
     const dt = Math.min(BATTLE_STEP_MS, state.gameMs - battle.lastTickGameMs)
-    stepBattle(state, battle, me, foes, foeDesire, openM, bal, dt, favor)
+    stepBattle(state, battle, me, curFoes, foeDesire, openM, bal, dt, favor, waves ? waveIdx < lastIdx : false)
     battle.lastTickGameMs += dt
     // 连续作战保险（2026-09-08 船长定，仅巡回场次 battle.hullEscapeFrac 有值）：
     // 本场结构损失过半（剩余 < 满值结构 × 阈值）→ 中止步进并请求自动撤退，绝不拖到弃船
@@ -1015,6 +1423,20 @@ export function advanceBattleFor(
       if (pl && pl.hp.h < me.hp.h * battle.hullEscapeFrac) {
         battle.autoEscaped = true
         break
+      }
+    }
+    // 船体维修装置脉冲（2026-09-09）：本拍内到期的脉冲补齐——修复发生在受伤结算之后
+    // （≤1 拍延迟，保守口径）；战斗结束/自动撤退后不再补跳
+    if (!battle.ended && battle.repair?.nextPulseAtMs !== undefined && battle.repair.nextPulseAtMs <= battle.lastTickGameMs) {
+      let guardR = 0
+      while (
+        !battle.ended &&
+        battle.repair.nextPulseAtMs !== undefined &&
+        battle.repair.nextPulseAtMs <= battle.lastTickGameMs &&
+        guardR < BATTLE_MAX_STEPS
+      ) {
+        pulseRepairs(state, ctx, battle, me)
+        guardR++
       }
     }
   }
@@ -1036,6 +1458,7 @@ function stepBattle(
   bal: BattleBalance,
   dtMs: number,
   favor: { meMul: number; foeMul: number } | null = null,
+  hasMoreWaves = false, // 多波（2026-09-09）：本波清空但还有后续波 → 不判胜，由推进方切波续刷
 ): void {
   const dtSec = dtMs / 1000
 
@@ -1063,7 +1486,9 @@ function stepBattle(
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
       // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人——
       // 修复旧"每步缓存单一集火目标、齐射轮内打已死目标浪费火力"的问题。
-      const foeTarget = randomAliveFoe(state, b, foes)
+      // 2026-09-09 锁定装置：装上即切换"集火模式"——不再随机，全部武器打存活编队首位
+      // （主舰优先，击毁自动接力下一艘；rng 零消耗，可复现性保持）
+      const foeTarget = me.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
       if (!foeTarget) continue
       let type: DamageType
       let dmg: number
@@ -1105,7 +1530,9 @@ function stepBattle(
       if (hit) {
         b.stats.meHits += 1
         const rt = b.units[foeTarget.tag]!
-        const r = applyDamage(rt.hp, {}, dmg, type)
+        // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
+        const dmgLocked = me.lockedDmgBonus ? Math.round(dmg * (1 + me.lockedDmgBonus)) : dmg
+        const r = applyDamage(rt.hp, {}, dmgLocked, type)
         rt.hp = r.hp
         b.stats.meDmg += r.dealt
       }
@@ -1170,7 +1597,8 @@ function stepBattle(
     return
   }
   if (!foeAlive) {
-    b.ended = 'me'
+    // 多波未完：本波清空不判胜（推进方下一拍切波续刷）；末波清空 = 胜利
+    if (!hasMoreWaves) b.ended = 'me'
     return
   }
   if (b.lastTickGameMs - b.startedAtGameMs >= bal.maxBattleMs) {
@@ -1199,6 +1627,13 @@ export function steerStep(cur: number, desire: number, speedMps: number, dtSec: 
 function isAlive(b: import('./state').BattleState, tag: string): boolean {
   const u = b.units[tag]
   return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
+}
+
+/** 锁定目标（2026-09-09 锁定装置）：存活编队首位（foes 生成序 = 主舰优先），
+ * 主舰击毁自动接力下一艘——集火永不卡空；确定性、不消耗 rng */
+function firstAliveFoe(foes: UnitSpec[], b: import('./state').BattleState): UnitSpec | null {
+  for (const f of foes) if (isAlive(b, f.tag)) return f
+  return null
 }
 
 /**
@@ -1232,7 +1667,11 @@ function steadyDistance(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance): num
 
 /** 预估胜率核心（确定性期望推演；不消耗 rng）。
  * meMul/foeMul = 命中率缩放系数（AI favor 用；玩家手动 = 1/1），返回未扩散的模型胜率 raw ∈ [0,1] */
-/** 稳态预览引擎（battleWinPreview 与带伤预警共用同一公式源——DPS/承伤/tick 换算与展示一一对应） */
+/** 稳态预览引擎（battleWinPreview 与带伤预警共用同一公式源——DPS/承伤/tick 换算与展示一一对应）。
+ * 2026-09-09 修正（real sim 终验暴露低估，docs/design/wave-battles-20260909.md）：
+ * ① 多波卡：敌方总血 = 全波预算；敌方火力 = 峰值波（各波不同时在场，不吃全波火力加成）；
+ * ② 护盾回充进承伤模型（引擎 shieldRegenPerSec 实回，长盘显著）——回充窗口 ≈ 直到装甲击穿，
+ *    净敌火 = foeDps − 回充率，破甲时间 tA = (盾+甲)/(净敌火)，可承受总伤 = 总 EHP + 回充量。 */
 function steadyPreview(
   state: GameState,
   ctx: SimContext,
@@ -1252,11 +1691,16 @@ function steadyPreview(
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
   if (!me) return null
-  const foes = createFoeSpecs(anomaly, bal)
+  // 敌血总预算（多波 = 全波；foeHpOverride/曲线同 createFoeSpecs 口径）
+  const baseHp = anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)
+  const foeHpTotal = baseHp
+  // 敌方火力按"峰值波小队数"计（同族单位射程/单发相同；多波不吃全波同时在场加成）
+  const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
+  const peakUnits = waves ? Math.max(...waves.map((w) => w.units)) : 1
+  const foes = peakUnits > 1 ? createFoeSpecs(anomaly, bal, { units: peakUnits }) : createFoeSpecs(anomaly, bal)
   const steady = steadyDistance(me, foes, bal)
 
   const meHpTotal = me.hp.s + me.hp.a + me.hp.h
-  const foeHpTotal = foes.reduce((a, f) => a + f.hp.s + f.hp.a + f.hp.h, 0)
 
   // 我方 DPS：逐武器（V17.2 炮台 = 固定弹种：按炮型 × 敌方血型克制精确计算；
   // V18B-2 激光 beam = 命中恒 1（必中）且按稳态距离折算威力衰减）
@@ -1289,7 +1733,7 @@ function steadyPreview(
   }
   // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——
   // 2026-09-08：能量 beam 必中（hit=1）且威力走 beamPowerFactor/盲带，与实时引擎同源）
-  let foeDps = 0
+  let foeDpsPeak = 0
   for (const f of foes) {
     const w = f.weapons[0]!
     const isBeam = w.kind === 'beam'
@@ -1298,10 +1742,27 @@ function steadyPreview(
     const power = isBeam ? (steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(steady, w)) : steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
     const shot = Math.max(1, Math.round((w.shotDmg ?? 0) * power))
     const mult = avgLayerMult(meHpTotal, me, w.fixedType ?? 'kinetic')
-    foeDps += (shot * mult * hit * 1000) / w.reloadMs
+    foeDpsPeak += (shot * mult * hit * 1000) / w.reloadMs
   }
+  // 2026-09-09 减员修正（稳态把"敌人满员全程输出"当真相，多单位/多波严重高估承伤）：
+  // 我方逐个击毁敌方单位 → 敌方在场火力近似线性衰减，全程平均 ≈ 峰值 × (N+1)/(2N)
+  // （N = 峰值波单位数；随机目标下各单位击杀时刻 ≈ 按血量比例均匀分布）
+  const foeUnitN = Math.max(1, foes.length)
+  const foeDps = foeDpsPeak * ((foeUnitN + 1) / (2 * foeUnitN))
 
-  const ttrMe = foeDps > 0 ? meHpTotal / Math.max(1e-9, foeDps * foeMul) : Infinity // 我被击毁所需秒数
+  // 承伤窗口含护盾回充（2026-09-09 修正）：净敌火 = foeDps×foeMul − 回充率；
+  // 回充持续到装甲击穿（引擎语义：甲/结构任一在即回盾）→ 破甲前可承受总伤 = 盾+甲+回充量
+  const foeDpsNet = foeDps * foeMul
+  const regenPerSec = bal.shieldRegenPerSec * me.hp.s // 每秒回充 = 满盾 × 费率
+  let ttrMe: number
+  if (regenPerSec > 0 && me.hp.s > 0 && foeDpsNet > regenPerSec) {
+    const tA = (me.hp.s + me.hp.a) / (foeDpsNet - regenPerSec) // 装甲被击穿时刻（此后无回充）
+    ttrMe = (meHpTotal + regenPerSec * tA) / foeDpsNet
+  } else if (regenPerSec > 0 && foeDpsNet <= regenPerSec) {
+    ttrMe = Number.POSITIVE_INFINITY // 回充顶住敌火：只有超时血比才可能落败
+  } else {
+    ttrMe = foeDpsNet > 0 ? meHpTotal / foeDpsNet : Number.POSITIVE_INFINITY
+  }
   const ttrFoe = meDps > 0 ? foeHpTotal / Math.max(1e-9, meDps * meMul) : Infinity // 我击毁敌方所需秒数
   return { me, meHpTotal, foeHpTotal, meDps, foeDps, ttrMe, ttrFoe }
 }

@@ -35,6 +35,16 @@
  *         + 声望 13 + 全星系点亮 + 各族代表演示船 ×5（锤头鲨炮巡 MK3 满配驾驶/牛鲨突击巡/玄武
  *         重装旗舰/皇带鱼货舰/座头鲸矿舰）+ 弹药装备库（真机目测我方各族船形与敌族 A~G 型形，
  *         细节锚点/比例问题回传，详见 ship-battle-art 验收清单）。
+ *  - hauling 长途运输实测（2026-09-09，两站往返运输）：红环/烬火两座副站标记"建成"并入基地网络
+ *         + 点亮两星系 + 钱包 +300 万 + 蝠鲼级重载货舰（7000 m³ 大货舱）设为驾驶——任务中心「运输
+ *         任务」页签可见 母港⇄红环 / 母港⇄烬火 / 红环⇄烬火 三条航线（报酬随容量与航程预览），
+ *         点开始 → 顶部活动栏进度/停止运输（到站即止）→ 事件日志到站结算 → 货仓页看虚拟满载占用。
+ *  - hullrep 船体维修装置实测（2026-09-09，中槽自动修复装甲/结构）：灰鲭鲨级驾驶带 MK2 维修装置
+ *         + 带伤出场（装甲 55%）——开战即见装甲在脉冲下回升、每 5 秒扣 1 枚军用组件、组件耗尽停机
+ *         + 战报返还；另有同型无维修对照船；三档装置与组件备件齐全。
+ *  - lockrep 目标锁定阵列 × 维修装置联合实测（2026-09-09，新高槽 target-lock + 中槽修复件）：
+ *         锤头鲨级 ×2——驾驶船 4×动能MK3 + 锁定阵列MK3 + 维修装置MK2（带伤出场装甲 60%，集火
+ *         金标与修复脉冲同场可见）；无件对照船同火力；锁定/维修三档备件与组件齐全。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -77,6 +87,7 @@ function genericPrep(state: GameState): void {
     galaxyId: null,
     name: '',
     threat: 0,
+    anomalyId: null,
     origin: '',
     invitedAtGameMs: 0,
     deadlineGameMs: 0,
@@ -441,7 +452,7 @@ function injectDrone(state: GameState): string[] {
     mid: [],
     low: [],
   }
-  sA.droneLoad = { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }
+  sA.droneLoad = { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } // calibrate D2 同款（2026-09-09 体积档 5/10/20/40：220/230m³）
   state.shipId = uidA
   // ② 王鲭级·无人机重装（calibrate D3 配装 + 清单）
   const uidB = addShipToFleet(state, 'sh-sentinel')
@@ -546,6 +557,42 @@ function injectCruiser(state: GameState): string[] {
   return notes
 }
 
+/** wave（多波次低安顶段实测，2026-09-09 二号）：基于 cruiser 门槛 + 中位战斗技能（与
+ * battle:calibrate MID_SKILLS 同源 20 键 ×3——多波验收口径 = 中位列）+ 灰鲭鲨 MK2 上一档对照船。
+ * 对应 docs/design/wave-battles-20260909.md（首批 4 卡：噬口 2 波/坟场 2 波/虚海 3 波/穹顶 3 波）。 */
+function injectWave(state: GameState): string[] {
+  const notes = injectCruiser(state)
+  const midSkillIds = [
+    'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control',
+    'reload-drills', 'drone-warfare', 'drone-servicing', 'ammunition-condensing',
+    'shield-operation', 'energy-management', 'hull-upgrades', 'shield-tuning', 'armor-tuning',
+    'armed-ops', 'armored-ops', 'vector-maneuvering', 'evasion-maneuvering',
+    'targeting-integration', 'ship-systems-engineering',
+  ]
+  for (const k of midSkillIds) state.skills.trained[k] = 3
+  notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 主验收行同口径）')
+  // 上一档对照船：灰鲭鲨 4×MK2 + 支援（calibrate S2 行）——穹顶多波下应"磨不过"（实测 0%）
+  const uid = addShipToFleet(state, 'sh-mako')
+  const s = state.fleet[uid]!
+  s.customName = '灰鲭鲨·MK2（上一档对照）'
+  s.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  s.durability = 1
+  s.armorPct = 1
+  state.moduleBay['mod-turret-kin-2'] = (state.moduleBay['mod-turret-kin-2'] ?? 0) + 3
+  notes.push('新增灰鲭鲨·MK2（上一档对照，不设驾驶）——用它与锤头鲨打同一张多波卡对照强度差')
+  notes.push(
+    '测试路径（多波验收口径）：星图·战斗悬赏 → 虚海 88（3 波 2+2+1）/穹顶 96（3 波 2+2+1）开战——' +
+      '留意战斗日志「第 N/3 波来袭：敌方增援抵达」与增援舰入场节奏；锤头鲨（驾驶，中位技能）单场约 70~140s、' +
+      '战后残血 70~112%；逐船切驾驶对照三族（电鳐快 / 长尾鲨慢 / 牛鲨最肉）；换「灰鲭鲨·MK2」打同一张卡对照' +
+      '上一档被关门（穹顶磨不过）——体感结论回传（单场时长/压力/波次节奏是否合适）。',
+  )
+  return notes
+}
+
 /** shipart（舰船战斗图形目测门槛，2026-09-09 三号）：新规格 240×110 战斗图形全量接入后，
  * 船长真机目测用——钱包/声望/全星系点亮 + 各族代表演示船（逐艘切驾驶开战看形）+ 弹药装备库。
  * 战斗画面重点：我方各族船形（舰首朝右/族色件/引擎挂点/炮口锚/大小比例）与敌族 A~G 型形。 */
@@ -598,6 +645,193 @@ function injectShipArt(state: GameState): string[] {
   return notes
 }
 
+/** hauling（2026-09-09 长途运输实测）：两座副站标记建成 + 点亮星系 + 大货舱货舰驾驶 */
+function injectHauling(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（真档可能在采矿/远征等；运输接单要求空闲停靠）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  if ('deliver' in state.sideTasks && state.sideTasks.deliver !== null) state.sideTasks.deliver = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('已清空进行中的主控作业（采矿/打捞/远征/扫描/待命/行程/手动炉线）——从干净停靠起点接运输')
+  state.wallet.isk += 3_000_000
+  notes.push('钱包 +3,000,000 ISK')
+  // 两座副站"建成"（stage = 档位数），并入基地网络 → 与母港互为运输端点
+  state.stationSites['site-redring'] = { stage: 3, delivered: {} }
+  state.stationSites['site-cinder'] = { stage: 3, delivered: {} }
+  notes.push('红环前哨站 / 烬火前哨站 标记建成（并网）；任务中心「长途运输」应出现 3 条航线（母港⇄红环、母港⇄烬火、红环⇄烬火）')
+  for (const g of ['galaxy-redring', 'galaxy-cinder']) {
+    if (!state.exploredGalaxies.includes(g)) state.exploredGalaxies.push(g)
+  }
+  notes.push('点亮 红环航道 / 烬火星区')
+  // 大货舱演示船（货运本职）：蝠鲼级重载货舰设为驾驶
+  const uid = addShipToFleet(state, 'sh-bowhead')
+  const s = state.fleet[uid]
+  if (s) {
+    s.customName = '运输试验·蝠鲼'
+    s.durability = 1
+    s.armorPct = 1
+  }
+  state.shipId = uid
+  notes.push('新增蝠鲼级重载货舰（已设为驾驶；货仓较大 → 每段报酬可观）')
+  notes.push('测试路径：星图 → 星图 →「长途运输」标签 → 任选一条航线「开始运输」→ 顶部活动栏看进度与「停止运输」（= 到站即止）→ 事件日志看每段到站报酬 → 货仓页看「虚拟货物占满货仓」→ 停靠副站后换一条航线 / 切换驾驶（任务终止）对照')
+  return notes
+}
+
+/** hullrep（2026-09-09 船体维修装置实测）：灰鲭鲨级 ×2——试验船带 MK2 维修装置且带伤出场
+ * （装甲 55%：维修上限 = 出场满值 → 开战即可见装甲在脉冲下回升），对照船无装置同配装；
+ * 三档装置/两档组件备件齐全，开任意中低威胁悬赏即可观察 5 秒脉冲、组件扣减、耗尽停机与返还。 */
+function injectHullrep(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（从干净停靠起点出击）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  if ('deliver' in state.sideTasks && state.sideTasks.deliver !== null) state.sideTasks.deliver = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('已清空进行中的主控作业——从干净停靠起点出击')
+  state.wallet.isk += 5_000_000
+  notes.push('钱包 +5,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 6)
+  notes.push('协会声望升至 6（可接各档战斗悬赏）')
+  if (!state.exploredGalaxies.includes('galaxy-redring')) state.exploredGalaxies.push('galaxy-redring')
+  notes.push('点亮 红环航道')
+  // 试验船：灰鲭鲨级 + 船体维修装置 MK2（中槽第 1 位）+ 动能 MK2 四炮 + 盾抗/索敌 —— 设为驾驶
+  const uid = addShipToFleet(state, 'sh-mako')
+  const s = state.fleet[uid]!
+  s.customName = '维修试验·MK2'
+  s.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-hullrep-2', 'mod-shield-kin-2', 'mod-track-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  s.durability = 0.75
+  s.armorPct = 0.55 // 带伤出场：维修上限 = 满值 → 开战后装甲可见回升（演示修复能力）
+  state.shipId = uid
+  // 对照船：同配装但中槽换成 陀螺（无维修）
+  const uid2 = addShipToFleet(state, 'sh-mako')
+  const s2 = state.fleet[uid2]!
+  s2.customName = '无维修·对照'
+  s2.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  notes.push(`新增灰鲭鲨级 ×2：${uid}（维修试验·MK2，已设为驾驶——带伤出场装甲 55%，战斗中自动修复）与 ${uid2}（无维修·对照，舰船页切换对比）`)
+  // 补给：试验船货仓带足军用组件（每 5 秒跳耗 1 枚）；对照船同样给足但不会消耗
+  for (const sh of [s, s2]) {
+    sh.cargo['repairkit-mil'] = (sh.cargo['repairkit-mil'] ?? 0) + 60
+    sh.cargo['repairkit-civ'] = (sh.cargo['repairkit-civ'] ?? 0) + 20
+    sh.cargo['ammo-kinetic-l'] = (sh.cargo['ammo-kinetic-l'] ?? 0) + 600
+    sh.cargo['ammo-plasma-l'] = (sh.cargo['ammo-plasma-l'] ?? 0) + 300
+    sh.cargo['ammo-explosive-l'] = (sh.cargo['ammo-explosive-l'] ?? 0) + 300
+  }
+  notes.push('两船货仓各带 军用修理组件 ×60 / 民用 ×20 + 三型弹药（维修装置开战自动预载，结束退还未用）')
+  // 备件：三档装置 + 两档组件（仓库/装备库）
+  for (const m of ['mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
+  }
+  notes.push('装备库备 三档维修装置 ×2（民用级 / MK1 / MK2——装配页换装对照信息卡数值与 CPU）')
+  state.warehouse.items['repairkit-mil'] = (state.warehouse.items['repairkit-mil'] ?? 0) + 300
+  state.warehouse.items['repairkit-civ'] = (state.warehouse.items['repairkit-civ'] ?? 0) + 100
+  notes.push('仓库补 军用修理组件 ×300 / 民用 ×100（组件不足时装置开战即停机，可先移除货仓组件对照缺料提示）')
+  notes.push('测试路径：装配页看 维修装置信息卡（每 5 秒修复量 / 组件消耗 / CPU）→ 星图 → 战斗悬赏（红环「赤潮劫掠舰队」或母港中低威胁目标）开战 → 右上「维修装置运转中 · 组件 ×N」绿点徽标随脉冲呼吸 → 观察装甲/结构血条在受伤后回升 → 事件日志「组件耗尽自动停机」→ 结算后日志/货仓确认未用组件退回仓库 → 舰船页切换「无维修·对照」同目标再打一轮对比')
+  return notes
+}
+
+/** lockrep（2026-09-09 目标锁定阵列 × 船体维修装置联合实测）：锤头鲨级 ×2——
+ * ①「集火+维修·锤头」设为驾驶：4×动能MK3 + 高槽 锁定阵列MK3 + 中槽 维修装置MK2/盾抗/索敌/陀螺，
+ *   带伤出场（装甲 60%——开战即见集火金标与修复脉冲同场）；②「无件·对照」同火力无两件；
+ * 锁定/维修三档备件与组件齐全（换装看多件递减与停机语义）。声望 13 全悬赏可接（含穹顶长盘）。 */
+function injectLockrep(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（从干净停靠起点出击）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  if ('deliver' in state.sideTasks && state.sideTasks.deliver !== null) state.sideTasks.deliver = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('已清空进行中的主控作业——从干净停靠起点出击')
+  state.wallet.isk += 8_000_000
+  notes.push('钱包 +8,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（全悬赏可接，含穹顶守卫长盘）')
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
+  }
+  notes.push(`点亮全部星系（${GALAXIES.length}）`)
+  // ① 锤头鲨级·集火+维修（设为驾驶，带伤出场）
+  const uid = addShipToFleet(state, 'sh-hammerhead')
+  const s = state.fleet[uid]!
+  s.customName = '集火+维修·锤头'
+  s.fitted = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'],
+    mid: ['mod-hullrep-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2', null],
+  } // CPU 4×52+26(锁)+26(修)+15×4(中)+15×2(低) = 336/360
+  s.durability = 0.8
+  s.armorPct = 0.6 // 带伤出场：维修上限 = 满值 → 开战后装甲可见回升（演示修复能力）
+  state.shipId = uid
+  // ② 同火力无件对照（无锁定阵列 / 无维修装置）
+  const uid2 = addShipToFleet(state, 'sh-hammerhead')
+  const s2 = state.fleet[uid2]!
+  s2.customName = '无件·对照'
+  s2.fitted = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', null],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', null],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2', null],
+  }
+  notes.push(`新增锤头鲨级 ×2：${uid}（集火+维修·锤头：4×动能MK3 + 锁定阵列MK3 + 维修装置MK2，已设为驾驶——带伤出场装甲 60%）与 ${uid2}（无件·对照，同火力；舰船页切换对比）`)
+  // 补给：两船货舱带足组件（维修每 5 秒跳耗 1 枚军用）+ 三型弹药
+  for (const sh of [s, s2]) {
+    sh.cargo['repairkit-mil'] = (sh.cargo['repairkit-mil'] ?? 0) + 80
+    sh.cargo['repairkit-civ'] = (sh.cargo['repairkit-civ'] ?? 0) + 20
+    sh.cargo['ammo-kinetic-l'] = (sh.cargo['ammo-kinetic-l'] ?? 0) + 800
+    sh.cargo['ammo-plasma-l'] = (sh.cargo['ammo-plasma-l'] ?? 0) + 300
+    sh.cargo['ammo-explosive-l'] = (sh.cargo['ammo-explosive-l'] ?? 0) + 300
+  }
+  notes.push('两船货仓各带 军用修理组件 ×80 / 民用 ×20 + 三型弹药（维修装置开战自动预载，结束退还未用）')
+  // 备件：锁定/维修三档 + 火力支援件（自组换装）
+  for (const m of ['mod-lock-1', 'mod-lock-2', 'mod-lock-3', 'mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
+  }
+  notes.push('装备库备 目标锁定阵列 MK1/2/3 ×2 + 船体维修装置 民用级/MK1/MK2 ×2（装配页换装对照信息卡与多装递减标签）')
+  for (const m of ['mod-turret-kin-3', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-stab-kin-2', 'mod-armor-kin-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
+  }
+  notes.push('装备库备 动能MK3 与支援件 ×2（对照船改装/补充用）')
+  state.warehouse.items['repairkit-mil'] = (state.warehouse.items['repairkit-mil'] ?? 0) + 300
+  state.warehouse.items['repairkit-civ'] = (state.warehouse.items['repairkit-civ'] ?? 0) + 100
+  notes.push('仓库补 军用修理组件 ×300 / 民用 ×100')
+  notes.push('测试路径：装配页看 锁定阵列/维修装置 信息卡 → 星图 → 带僚机悬赏（深渊之门卫队/幽灵舰信号/奥罗武装残骸群）开战 → 敌方首位敌舰**金色呼吸 + ◈ 集火标记**，观察整队火力逐艘击毁（不再分散磨血）；切「无件·对照」打同目标感受随机分散差异 → 长盘（穹顶守卫 3 波）看维修装置绿点脉冲随受伤回升、组件逐跳扣减 → 装配页加装第 2 件锁定阵列看「多装递减」标签与加深叠加 → 货仓组件清空再开战看「缺组件停机」暗红徽标 → 结算后确认未用组件退回仓库')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -610,6 +844,10 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   drone: injectDrone,
   cruiser: injectCruiser,
   shipart: injectShipArt,
+  wave: injectWave,
+  hauling: injectHauling,
+  hullrep: injectHullrep,
+  lockrep: injectLockrep,
 }
 function main(): void {
   const feature = process.argv[2]

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 活动总览（T1）：顶部活动窗口的数据源——把当前所有进行中的"活动/作业"聚合成统一只读视图。
  *
  * 扩展约定（未来耗时作业，如"提炼耗时化"）：新增作业种类只需
@@ -17,6 +17,8 @@ import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor } from
 import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
 import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
+import { haulEndpointName } from './hauling'
+import { travelMinutesEff } from './travel'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -33,6 +35,7 @@ export type ActivityKind =
   | 'standby'
   | 'loop'
   | 'courier'
+  | 'hauling'
 
 /** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
@@ -48,6 +51,7 @@ export type ActivityStopKind =
   | 'recall-standby'
   | 'cancel-deliver-trip'
   | 'stop-loop'
+  | 'stop-hauling'
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
@@ -139,6 +143,22 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: svg.phase === 'salvaging' ? null : remainingMs, // 打捞循环 = 周期条（无总剩余），行程 = 剩余倒计时
       stopable: true,
       stop: 'stop-salvage',
+    })
+  }
+
+  // ── 长途运输（2026-09-09：两站间真实航程往返；到站自动结算续段；停止 = 立即返航出发站） ──
+  const hg = state.hauling
+  if (hg.active) {
+    const leg = Math.max(1, hg.legMs)
+    out.push({
+      id: 'hauling',
+      kind: 'hauling',
+      label: `长途运输 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
+      sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 本段实际约 ${Math.max(1, travelMinutesEff(state, ctx, hg.legMinutes))} 分钟`,
+      percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
+      remainingMs: Math.max(0, leg - hg.phaseAccMs),
+      stopable: true,
+      stop: 'stop-hauling',
     })
   }
 

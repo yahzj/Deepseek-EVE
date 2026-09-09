@@ -58,13 +58,14 @@ const ammos = itemDefs.filter((i) => i.kind === 'ammo')
 const drones = itemDefs.filter((i) => i.kind === 'drone')
 const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
-// 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3）
-check(itemDefs.length === 31, `物品总数应为 31，实际 ${itemDefs.length}`)
+// 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3；
+// 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34）
+check(itemDefs.length === 34, `物品总数应为 34，实际 ${itemDefs.length}`)
 check(ores.length === 7, `矿石应为 7 种，实际 ${ores.length}`)
 check(minerals.length === 8, `矿物应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
-check(ammos.length === 3, `弹药应为 3 种（每型单档通用弹），实际 ${ammos.length}`)
+check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
 check(drones.length === 4, `无人机应为 4 种，实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
@@ -276,17 +277,28 @@ for (const a of ammos) {
   check(a.damageType !== undefined && DMG_TYPES.has(a.damageType), `弹药 ${a.id} damageType 缺失或非法`)
   check((a.dmg ?? 0) > 0 && Number.isFinite(a.dmg), `弹药 ${a.id} dmg 缺失或非正`)
 }
-// V18（口径取消）：弹药每型只留单档（-l 通用弹），三型齐全且能量基数最高
+// V18（口径取消）+ 2026-09-09 弹药 MK2：每族 2 件 = 基础弹（-l）+ MK2（-2），各档能量基数最高
 for (const t of DMG_TYPES) {
-  const count = ammos.filter((a) => a.damageType === t).length
-  check(count === 1, `弹药：${t} 型应恰有 1 件通用弹，实际 ${count}`)
+  const list = ammos.filter((a) => a.damageType === t)
+  check(list.length === 2, `弹药：${t} 型应恰有 2 件（基础 -l + MK2 -2），实际 ${list.length}`)
+  check(list.some((a) => a.id.endsWith('-l')), `弹药：${t} 型缺基础弹（-l）`)
+  check(list.some((a) => a.id.endsWith('-2')), `弹药：${t} 型缺 MK2 弹（-2）`)
 }
 {
-  const byType = (t: string) => ammos.find((a) => a.damageType === t)?.dmg ?? 0
-  check(
-    byType('plasma') > byType('kinetic') && byType('plasma') > byType('explosive'),
-    '弹药：能量(plasma)基数应最高（通用弹凭基数在结构层胜出）',
-  )
+  // 能量(plasma)基数最高契约按档成立（基础 6/7/9、MK2 8/9/12 各自档内 plasma 最高）
+  for (const suffix of ['-l', '-2']) {
+    const byType = (t: string) => ammos.find((a) => a.damageType === t && a.id.endsWith(suffix))?.dmg ?? 0
+    check(
+      byType('plasma') > byType('kinetic') && byType('plasma') > byType('explosive'),
+      `弹药：能量(plasma)基数应最高（${suffix} 档），实际 kin=${byType('kinetic')} exp=${byType('explosive')} pla=${byType('plasma')}`,
+    )
+  }
+  // MK2 纯数值上级契约：同族 MK2 dmg > 基础（防未来反超/混档）
+  for (const t of DMG_TYPES) {
+    const base = ammos.find((a) => a.damageType === t && a.id.endsWith('-l'))
+    const mk2 = ammos.find((a) => a.damageType === t && a.id.endsWith('-2'))
+    check((mk2?.dmg ?? 0) > (base?.dmg ?? 0), `弹药：${t} MK2 单发应高于基础弹`)
+  }
 }
 for (const d of drones) {
   check(d.damageType !== undefined && DMG_TYPES.has(d.damageType), `无人机 ${d.id} damageType 缺失或非法`)
@@ -397,26 +409,47 @@ for (const m of MODULES) {
     check(m.reloadMs !== undefined && m.reloadMs > 0 && Number.isInteger(m.reloadMs), `激光炮 ${m.id} reloadMs 非法`)
     check(m.dmgMult !== undefined && m.dmgMult > 0, `激光炮 ${m.id} dmgMult 非法`)
   } else if (m.slot === 'support') {
-    // V18.1 支援件：恰好一类效果字段（伤害稳定器按系/射速/命中/闪避互斥），值域合法
+    // V18.1 支援件：恰好一类效果字段（伤害稳定器按系/射速/命中/闪避互斥），值域合法；
+    // 2026-09-09 维修装置：修复系 = repairArmorHp/repairHullHp 可同带（装甲+结构双层修复）——
+    // 修复系与旧四类效果互斥（一件只给一个功能系）
     const stabKeys = Object.entries(m.damageTypeBonusPct ?? {}).filter(([, v]) => (v ?? 0) > 0).length
     const hasRof = m.reloadCutPct !== undefined
     const hasHit = m.hitBonusPct !== undefined
     const hasEva = m.evasionGapPct !== undefined
-    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避）`)
-    for (const [t, val] of Object.entries(m.damageTypeBonusPct ?? {})) {
-      if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
-        errors.push(`支援件 ${m.id} damageTypeBonusPct.${t} 非法：${String(val)}`)
+    const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
+    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复）`)
+    if (hasRepair) {
+      // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
+      check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
+        `支援件 ${m.id} 修复值非法（需 [0, 100] 且至少一层 > 0）`)
+      const interval = m.repairIntervalMs ?? 5_000
+      check(Number.isInteger(interval) && interval >= 2_000 && interval <= 60_000, `支援件 ${m.id} repairIntervalMs 非法（需 2000~60000 毫秒）`)
+      check(m.repairKit === 'repairkit-civ' || m.repairKit === 'repairkit-mil', `支援件 ${m.id} 必须指明消耗组件（民用/军用修理组件）`)
+      check(m.rack === 'mid', `支援件 ${m.id}（修复）应为中槽，实际 ${m.rack}`)
+      check(m.reloadCutPct === undefined && m.hitBonusPct === undefined && m.evasionGapPct === undefined && stabKeys === 0,
+        `支援件 ${m.id} 修复系不得与其它支援效果同带`)
+    } else {
+      for (const [t, val] of Object.entries(m.damageTypeBonusPct ?? {})) {
+        if (!DMG_TYPES.has(t) || typeof val !== 'number' || !Number.isFinite(val) || val <= 0 || val > 0.9) {
+          errors.push(`支援件 ${m.id} damageTypeBonusPct.${t} 非法：${String(val)}`)
+        }
       }
+      if (hasRof) check((m.reloadCutPct ?? 0) > 0 && (m.reloadCutPct ?? 0) <= 0.9, `支援件 ${m.id} reloadCutPct 非法（需 (0, 0.9]）`)
+      if (hasHit) check((m.hitBonusPct ?? 0) > 0 && (m.hitBonusPct ?? 0) <= 0.9, `支援件 ${m.id} hitBonusPct 非法（需 (0, 0.9]）`)
+      if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
+      // 归槽语义：伤害/射速 = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
+      if (stabKeys > 0 || hasRof) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速）应为低槽，实际 ${m.rack}`)
+      if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
     }
-    if (hasRof) check((m.reloadCutPct ?? 0) > 0 && (m.reloadCutPct ?? 0) <= 0.9, `支援件 ${m.id} reloadCutPct 非法（需 (0, 0.9]）`)
-    if (hasHit) check((m.hitBonusPct ?? 0) > 0 && (m.hitBonusPct ?? 0) <= 0.9, `支援件 ${m.id} hitBonusPct 非法（需 (0, 0.9]）`)
-    if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
-    // 归槽语义：伤害/射速 = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
-    if (stabKeys > 0 || hasRof) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速）应为低槽，实际 ${m.rack}`)
-    if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)
+  } else if (m.slot === 'target-lock') {
+    // 2026-09-09 目标锁定阵列（高槽 target-lock）：携带 lockDmgBonus 值域合法、必须高槽、
+    // 不携带其它效果/武器参数
+    check((m.lockDmgBonus ?? 0) > 0 && (m.lockDmgBonus ?? 0) <= 0.9, `锁定装置 ${m.id} lockDmgBonus 非法（需 (0, 0.9]）`)
+    check(m.rack === 'high', `锁定装置 ${m.id} 应为高槽，实际 ${m.rack}`)
+    check(m.bonus === undefined && m.damageType === undefined && m.maxRangeM === undefined, `锁定装置 ${m.id} 不应携带工业/武器参数`)
   }
 }
 

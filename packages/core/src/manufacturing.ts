@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 蓝图制造（M2/M5/V9 限时批次；v21 多工位并行，产物：装备或舰船）。
  *
  * 模型（中文说明）：
@@ -164,6 +164,7 @@ export function startManufacturing(
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自制造。' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }

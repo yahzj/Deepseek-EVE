@@ -22,7 +22,7 @@
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, buildSimContext } from '@whale/data'
-import { advanceBattleFor, startBattleFor } from '../packages/core/src/combat'
+import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
 import { bountyCooldownMsFor } from '../packages/core/src/expedition'
 import { getMiningParams } from '../packages/core/src/mining'
@@ -58,7 +58,7 @@ function makeState(shipId: string, ld: Loadout, seed: number): GameState {
 function simulate(state: GameState, anomalyId: string): { win: boolean; durMs: number; shots: number } {
   const battle = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0)
   if (!battle) return { win: false, durMs: 0, shots: 0 }
-  state.gameMs = ctx.balance.battle.maxBattleMs + 5_000
+  state.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(anomalyId), ctx.balance.battle)
   advanceBattleFor(state, ctx as SimContext, battle, state.shipId, anomalyId)
   const durMs = Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs))
   return { win: battle.ended === 'me', durMs, shots: battle.stats.meShots }

@@ -538,25 +538,29 @@ function spawnExoticSupply(state: GameState, ctx: SimContext, def: MarketGoodDef
 }
 
 /** 每 RARE_DRAW_PERIOD_MS 一次（10 分钟）：rare 加权有放回抽取 + 奇货掷骰（超上限随机抽选）。
- * 抽取时刻 = 常规 60s 窗口的整倍数对齐点（slowDrawLastGameMs 由 ensureMarket 开盘补齐）。 */
-function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
+ * 抽取时刻 = 常规 60s 窗口的整倍数对齐点（slowDrawLastGameMs 由 ensureMarket 开盘补齐）。
+ * 导出仅供"蓝图书抽取减半"回归测试白盒调用；引擎内部推进走 processWindow。 */
+export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
   const stat = rarePoolStats(state, ctx)
   // ── rare：N 张加权有放回抽取（同窗可重复抽中同一类型）──
   const n = rareDrawCount(state, ctx, stat)
   if (n > 0) {
     const defs: MarketGoodDef[] = []
     let totalW = 0
+    // 蓝图书权重 ×0.5（2026-09-09 船长定：全蓝图书出现概率 −50%）；闸内另乘 RARE_LOCKED_WEIGHT
+    const wOf = (def: MarketGoodDef): number =>
+      (def.kind === 'blueprint' ? 0.5 : 1) * (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1)
     for (const def of ctx.marketGoods.values()) {
       if (def.rarity !== 'rare' || def.playerBuyable === false) continue // 只收商品（残骸等）不出供给单
       defs.push(def)
-      totalW += bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1
+      totalW += wOf(def)
     }
     for (let i = 0; i < n; i++) {
       const hit = nextRandom(state.rng) * totalW
       let acc = 0
       for (const def of defs) {
         const locked = bmGateLocked(state, def)
-        acc += locked ? RARE_LOCKED_WEIGHT : 1
+        acc += (def.kind === 'blueprint' ? 0.5 : 1) * (locked ? RARE_LOCKED_WEIGHT : 1)
         if (hit < acc) {
           spawnRareSupply(state, ctx, def, now, locked)
           break
@@ -564,12 +568,13 @@ function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
       }
     }
   }
-  // ── 奇货：每件独立掷骰（0.8% × 现货抢购学）；命中 > EXOTIC_CAP_PER_DRAW 张 → 随机抽选保留 ──
+  // ── 奇货：每件独立掷骰（0.8% × 现货抢购学；蓝图书再 ×0.5）；命中 > EXOTIC_CAP_PER_DRAW 张 → 随机抽选保留 ──
   const sweep = sweepMul(state)
   const winners: MarketGoodDef[] = []
   for (const def of ctx.marketGoods.values()) {
     if (def.rarity !== 'exotic' || def.playerBuyable === false) continue
-    if (nextRandom(state.rng) < ctx.balance.market.exoticWindowChance * sweep) winners.push(def)
+    const chance = ctx.balance.market.exoticWindowChance * sweep * (def.kind === 'blueprint' ? 0.5 : 1)
+    if (nextRandom(state.rng) < chance) winners.push(def)
   }
   while (winners.length > EXOTIC_CAP_PER_DRAW) {
     winners.splice(Math.floor(nextRandom(state.rng) * winners.length), 1) // 随机抽选（每次删一张，结果均匀）
@@ -692,7 +697,13 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       // 单件平价品：维持供应线与低价收购线（收购单 qty 3/张 ×建站扩容 boost，2026-09-08 件数放大 + 2026-09-09 扩容）
       const boost = builtSellBoost(state, ctx)
       if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), Math.max(1, Math.round(3 * boost)))
-      if (def.playerBuyable !== false && (sellList.length < 2 || nextRandom(state.rng) < 0.85)) {
+      // 常驻供给：蓝图书出现概率 −50%（2026-09-09 船长定——蓝图不走"簿薄必补"保底，纯 0.425 掷骰；
+      // 收购侧不变：玩家回卖蓝图不受影响）
+      const sellChance = def.kind === 'blueprint' ? 0.425 : 0.85
+      if (
+        def.playerBuyable !== false &&
+        (def.kind === 'blueprint' ? nextRandom(state.rng) < sellChance : sellList.length < 2 || nextRandom(state.rng) < sellChance)
+      ) {
         npcPushSell(state, ctx, def, poolQ, now, lifeMs, Math.round(sellPrice(def, L) * priceJitter(state)), 1)
       }
     }
@@ -729,6 +740,9 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
   for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0
   for (const order of [...state.orders]) {
     if (order.qty <= 0) continue
+    // 商品下架防御（2026-09-09 市场目录收缩，如蓝图船成品现货退役）：目录外的旧挂单不再撮合
+    // ——否则命中残留簿面会走 depositGood 空目录分支（钱已扣、货到不了）；订单保留可手动撤单
+    if (!ctx.marketGoods.has(order.good)) continue
     if (order.side === 'sell') {
       const buyList = mk.npcBuy[order.good] ?? []
       const sorted = [...buyList].sort((a, b) => b.price - a.price)

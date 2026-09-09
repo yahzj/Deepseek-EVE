@@ -32,6 +32,7 @@ import {
   desiredRangeFor,
   persistFleetHullDamage,
   refundAmmo,
+  refundRepairKits,
   startBattleFor,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
@@ -214,6 +215,7 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
     return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（当前 ${standing}），多完成低级目标攒声望。` }
@@ -387,7 +389,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   }
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
-  refundAmmo(state, battle.ammo)
+  refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
+  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
@@ -536,7 +539,8 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
   if (!battle) return
-  refundAmmo(state, battle.ammo)
+  refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
+  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
@@ -857,6 +861,8 @@ export interface ExpeditionView {
     foeHp: Record<string, { s: number; a: number; h: number; name: string }>
     shots: number
     hits: number
+    /** 锁定装置集火目标 tag（2026-09-09：驾驶船装配含 target-lock 件时为存活编队首位；否则 null） */
+    lockTag: string | null
   } | null
 }
 
@@ -907,7 +913,9 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
   } else if (exp.battle) {
     const b = exp.battle
-    const elapsed = Math.max(0, state.gameMs - b.startedAtGameMs)
+    // 2026-09-09：进度按"战斗时钟"（lastTick−startedAt）而非墙钟——多波次演出窗口与击杀慢镜
+    // 期间战斗时钟冻结（不计 maxBattleMs 超时），进度条随之停走，避免间隙空耗把进度顶满
+    const elapsed = Math.max(0, b.lastTickGameMs - b.startedAtGameMs)
     totalMs = ctx.balance.battle.maxBattleMs
     remainingMs = Math.max(0, totalMs - elapsed)
     percent = Math.min(100, (elapsed / totalMs) * 100)
@@ -919,18 +927,32 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   }
   const combat =
     exp.phase === 'battle' && exp.battle
-      ? {
-          distanceM: Math.round(exp.battle.distanceM),
-          myDesireM: Math.round(exp.battle.myDesireM),
-          meHp: { ...(exp.battle.units['player']?.hp ?? { s: 0, a: 0, h: 0 }) },
-          foeHp: Object.fromEntries(
-            Object.entries(exp.battle.units)
-              .filter(([, u]) => u.side === 'foe')
-              .map(([tag, u]) => [tag, { s: Math.round(u.hp.s), a: Math.round(u.hp.a), h: Math.round(u.hp.h), name: u.name }]),
-          ),
-          shots: exp.battle.stats.meShots,
-          hits: exp.battle.stats.meHits,
-        }
+      ? (() => {
+          // 2026-09-09 锁定装置：集火目标 = 存活编队首位（装配含 target-lock 件才显示；无锁定 = null）
+          let lockTag: string | null = null
+          if (familyModules(state, ctx, state.shipId, 'target-lock').length > 0) {
+            for (const [tag, u] of Object.entries(exp.battle!.units)) {
+              if (u.side !== 'foe') continue
+              if (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0) {
+                lockTag = tag
+                break
+              }
+            }
+          }
+          return {
+            distanceM: Math.round(exp.battle!.distanceM),
+            myDesireM: Math.round(exp.battle!.myDesireM),
+            meHp: { ...(exp.battle!.units['player']?.hp ?? { s: 0, a: 0, h: 0 }) },
+            foeHp: Object.fromEntries(
+              Object.entries(exp.battle!.units)
+                .filter(([, u]) => u.side === 'foe')
+                .map(([tag, u]) => [tag, { s: Math.round(u.hp.s), a: Math.round(u.hp.a), h: Math.round(u.hp.h), name: u.name }]),
+            ),
+            shots: exp.battle!.stats.meShots,
+            hits: exp.battle!.stats.meHits,
+            lockTag,
+          }
+        })()
       : null
 
   return {

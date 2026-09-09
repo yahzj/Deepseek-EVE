@@ -34,6 +34,7 @@ import {
   enqueueSkill,
   fitModule,
   adjustDroneLoad,
+  setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   goStandbyAt,
   goodLockedReason,
   learnBlueprint,
@@ -111,11 +112,20 @@ import {
   BOUNTY_MC_RUNS,
   buildEvalState,
   estimateBountyWinOn,
+  // 2026-09-09 长途运输
+  startHauling,
+  stopHauling,
+  haulEndpoints,
+  haulEndpointName,
+  haulLegReward,
+  haulingOccupiedM3,
+  HAUL_RATE_PER_M3_MIN,
 } from '@whale/core'
 import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  DamageType,
   GameState,
   ModuleSlot,
   RackSlot,
@@ -646,9 +656,26 @@ export class GameEngine {
       }
       const restore = await saveBridge.restore(name)
       if (!restore.ok) return { ok: false, error: restore.error ?? '写回存档失败。' }
+      // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
+      // （≥60 秒且简报非空则弹出离线简报卡；墙钟在未来则跳过）。日志仍会话级不落盘。
+      const now = Date.now()
+      const wallFrom = parsed.savedAtWallMs
+      if (wallFrom > 0 && now > wallFrom) {
+        const before = snapshotBasics(parsed.state)
+        const stats = newSettleStats()
+        const { overflowMs } = offlineSplit(now - wallFrom)
+        simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
+        this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
+        if (this.offlineReport !== null) {
+          addLog(parsed.state, 'info', offlineReportLogText(this.offlineReport))
+        }
+      } else {
+        this.offlineReport = null
+      }
       this.state = parsed.state
-      this.offlineReport = null
       // 2026-09-08 船长定：日志会话级（写盘剥离）——恢复备份不做强制清空，本局日志接续显示
+      const saved = await this.persist() // 落盘（墙钟锚 = 现在 → 下次启动不会重复结算）
+      if (!saved) return { ok: false, error: '写回存档失败（存储空间不足或文件被占用）。' }
       this.notify()
       return { ok: true }
     } catch (err) {
@@ -1062,6 +1089,16 @@ export class GameEngine {
     return result
   }
 
+  /** 2026-09-09 弹药 MK2：设置弹族档位（itemId = null 恢复基础弹；shipId 缺省 = 当前驾驶船） */
+  setAmmoTierAt(type: DamageType, itemId: string | null, shipId?: string): CommandResult {
+    const result = setAmmoTier(this.state, this.ctx, type, itemId, shipId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
   /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
     const result = startExpedition(this.state, anomalyId, this.ctx)
@@ -1173,6 +1210,26 @@ export class GameEngine {
   /** 切换到船坞里的另一艘船 */
   changeShipAt(shipId: string): CommandResult {
     const result = changeShip(this.state, shipId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-09 长途运输：开始（任选一条两端点航线；不要求当前停靠在端点——引擎先飞就位段） */
+  startHaulingAt(aSiteId: string | null, bSiteId: string | null): CommandResult {
+    const result = startHauling(this.state, aSiteId, bSiteId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-09 长途运输：停止（立即响应：中止当前航段并自动返航出发站，无惩罚） */
+  stopHaulingNow(): CommandResult {
+    const result = stopHauling(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

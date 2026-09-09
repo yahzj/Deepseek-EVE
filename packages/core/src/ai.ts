@@ -35,6 +35,7 @@ import {
   aiFavorAdv,
   aiWinPreview,
   refundAmmo,
+  refundRepairKits,
   startBattleFor,
 } from './combat'
 import { durabilityOf, loseShip, repairShip } from './shipyard'
@@ -555,6 +556,19 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, st
       addLog(state, 'warn', `[AI] ${shipId} 已不在舰队中，任务中断（${aiCoreName(assignment.coreType)} 已归还）。`)
       continue
     }
+    // 2026-09-09（修复自愈）：作业船已被切换为驾驶船（换船入口漏召回的历史坏态/竞态残留）——
+    // AI 面板只列副船、该任务不可见也无法取消，核心会被永久占用（玩家反馈"伽玛核心不见了"）。
+    // 引擎每拍检测并召回：任务终止、核心归还核心库（与"船没了/矿带缺失"同级清理）。
+    if (shipId === state.shipId) {
+      delete state.aiAssignments[shipId]
+      gainAiCore(state, assignment.coreType)
+      addLog(
+        state,
+        'warn',
+        `[AI] ${shipDisplayName(state, ctx, shipId)} 已是驾驶船——原 AI 任务自动召回（${aiCoreName(assignment.coreType)} 已归还核心库）。`,
+      )
+      continue
+    }
     if (assignment.task.kind === 'mining') {
       advanceAiMining(state, shipId, assignment, deltaMs, ctx, stats)
     } else if (assignment.task.kind === 'salvage') {
@@ -922,8 +936,9 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   const task = assignment.task as AiExpeditionTaskState
   const battle = task.battle!
   const shipName = shipDisplayName(state, ctx, shipId)
-  // 弹药剩余退回物品仓库
-  refundAmmo(state, battle.ammo)
+  // 弹药剩余退回物品仓库（弹药 MK2：按实装弹 id 退回）
+  refundAmmo(state, battle.ammo, battle.ammoIds)
+  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   const anomaly = ctx.anomalies.get(task.anomalyId)
   if (!anomaly) {
     delete state.aiAssignments[shipId]

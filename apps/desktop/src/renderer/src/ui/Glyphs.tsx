@@ -375,6 +375,16 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.6 8.4a4.4 4.4 0 0 1 2.4-1.2" />
     </g>
   ),
+  /* 长途运输（2026-09-09：货箱 + 右侧运输箭头——两站航线货运） */
+  'nav-haul': (
+    <g>
+      <rect x="4.6" y="10.2" width="9" height="7" rx="1.3" />
+      <path d="M9.1 6.9v3.3" />
+      <path d="M9.1 6.9l-1.8 1.8M9.1 6.9l1.8 1.8" />
+      <path d="M15.6 13.7h3.6" />
+      <path d="M17.4 11.9l1.8 1.8-1.8 1.8" />
+    </g>
+  ),
   fallback: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -431,6 +441,7 @@ export const NAV_TONES: Record<string, string> = {
   'nav-mine': '#b5e35f',
   'nav-bounty': '#ff8373',
   'nav-salvage': '#6fe3f0',
+  'nav-haul': '#ffc46b',
   'nav-task': '#8fa9d8',
   'nav-ai': '#ff8ab5',
   'nav-shop': '#f7c35c',

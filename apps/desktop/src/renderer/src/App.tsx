@@ -565,6 +565,7 @@ export function App({ engine }: { engine: GameEngine }) {
     mine: '矿带开采',
     bounty: '战斗悬赏',
     salvage: '残骸打捞',
+    haul: '长途运输',
     task: '任务中心',
   }
   const changePage = (p: PageKey): void => {

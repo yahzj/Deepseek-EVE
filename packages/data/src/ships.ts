@@ -478,7 +478,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 41_000,
     signatureM: 96,
     scanResMm: 520,
-    description: '掠食者武装部门的新锐导弹巡洋舰：以长尾为名的远距猎手，齐射导弹先声夺人（限定奇货）。',
+    weaponFamilyBonus: { explosive: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族爆破导弹 +12%）
+    description: '掠食者武装部门的新锐导弹巡洋舰：以长尾为名的远距猎手，齐射导弹先声夺人——舰体为导弹阵列特调，爆破导弹威力额外加成（限定奇货）。',
   },
   {
     id: 'sh-electricray',
@@ -506,7 +507,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 40_000,
     signatureM: 100,
     scanResMm: 510,
-    description: '掠食者武装部门的光束巡洋舰：高压电弧般的激光炮阵列，接敌即烧穿护盾（限定奇货）。',
+    weaponFamilyBonus: { plasma: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族能量激光 +12%）
+    description: '掠食者武装部门的光束巡洋舰：高压电弧般的激光炮阵列，接敌即烧穿护盾——舰体光束聚焦阵列特调，能量武器威力额外加成（限定奇货）。',
   },
   {
     id: 'sh-hammerhead',
@@ -534,7 +536,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 39_000,
     signatureM: 105,
     scanResMm: 500,
-    description: '掠食者武装部门的炮击主力：重炮动能阵列齐射的中坚，深空讨伐的舰队长矛（限定奇货）。',
+    weaponFamilyBonus: { kinetic: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族动能炮 +12%）
+    description: '掠食者武装部门的炮击主力：重炮动能阵列齐射的中坚，深空讨伐的舰队长矛——舰体动能炮组特调，动能武器威力额外加成（限定奇货）。',
   },
   {
     id: 'sh-bullshark',
@@ -562,7 +565,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 40_000,
     signatureM: 118,
     scanResMm: 480,
-    description: '掠食者武装部门最凶悍的咬合者：厚盾重炮的突击巡洋舰，专为贴脸近战而生（限定奇货）。',
+    weaponFamilyBonus: { kinetic: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族动能炮 +12%）
+    description: '掠食者武装部门最凶悍的咬合者：厚盾重炮的突击巡洋舰，专为贴脸近战而生——舰体动能炮组特调，动能武器威力额外加成（限定奇货）。',
   },
 
   // ══════════ 甲壳重装线（装甲/结构最厚 + 装甲层高抗） ══════════

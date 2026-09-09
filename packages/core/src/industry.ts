@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 精炼炉运转 / 市场出售（V9：卖出并入市场订单簿）/ 舰船购买。
  *
  * 精炼模型（工业细化，2026-09-04 船长定稿：运转周期制；2026-09-05 船长拍板多工位并行）：
@@ -180,6 +180,7 @@ export function startRefineRun(
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
@@ -279,6 +280,7 @@ export function startRecycleRun(
     if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }

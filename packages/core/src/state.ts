@@ -9,7 +9,7 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, FittedModules, ModuleSlot } from './types'
+import type { AiCoreType, DamageType, FittedModules, ModuleSlot } from './types'
 import { emptyFitted } from './labels'
 
 export type { FittedModules } from './types'
@@ -115,6 +115,9 @@ export interface FleetShipState {
   /** 无人机舱装载清单（2026-09-08 无人机舱大改）：droneId -> 架数（0 = 不存）；
    *  战斗只放飞此清单（不再自动从仓库贪心）；CPU 预占计入船体预算；旧档缺省 = 空 = 无无人机 */
   droneLoad?: Record<string, number>
+  /** 弹药档位偏好（2026-09-09 弹药 MK2）：damageType -> 弹 itemId（如 'ammo-kinetic-2'）；
+   *  缺省 = 基础弹。开战预载按此装载（库存不足整族回退基础 + 日志）；连打/离线同源消耗 */
+  ammoPref?: Partial<Record<DamageType, string>>
 }
 
 /** 采矿作业状态（自动循环：采掘 → 返航（去程并入）→ 卸货 的自动循环；去程相位仅旧档兼容） */
@@ -344,12 +347,14 @@ export interface ExpeditionState {
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */
 export interface BattleUnitRt {
-  /** 单位标识：我方 'player'；敌方 'foe-0'（主力）/ 'foe-1..n'（僚机） */
+  /** 单位标识：我方 'player'；敌方 'foe-0'（主力）/ 'foe-1..n'（僚机）/ 多波多小队 w{n}-foe-{k}（2026-09-09） */
   tag: string
   side: 'me' | 'foe'
   name: string
   /** 三层当前血量（盾/甲/结构） */
   hp: { s: number; a: number; h: number }
+  /** 三层满血量（血条分母；2026-09-09 多波起写——波次/读档单位 UI 血条以本字段为准，旧档缺省由 UI 兜底） */
+  hpMax?: { s: number; a: number; h: number }
   /** 每武器装填倒计时 ms（0 = 可开火；与静态武器卡顺序一一对应） */
   weapons: number[]
 }
@@ -388,6 +393,10 @@ export interface BattleState {
   units: Record<string, BattleUnitRt>
   /** 我方剩余弹药（出发预载后按开火即时扣减；开火弹型 = 剩余最多型，平局 kin→exp→pla） */
   ammo: { kin: number; exp: number; pla: number }
+  /** 弹药 MK2（2026-09-09）：本场实装弹 itemId（damageType → id；开战装载时写，缺货回退也写）。
+   * 战斗推进/视图重建我方规格时以此覆盖装配档位偏好（伤害与实际弹种一致）；
+   * 缺省 = 无覆盖（按船装配 ammoPref/基础弹），旧档零迁移 */
+  ammoIds?: Partial<Record<DamageType, string>>
   /** 战斗累计统计（战报/小剧场用） */
   stats: { meShots: number; meHits: number; meDmg: number; foeShots: number; foeHits: number }
   /** 可视化开火事件环（最新 48 条；战斗画面动画回放用，不影响结算） */
@@ -399,8 +408,43 @@ export interface BattleState {
   /** 连续作战保险（2026-09-08 船长定，仅巡回场次）：本场结构剩余低于该比例（相对满值结构，
    * 如 0.5 = 损失过半）→ 步进中自动中止并请求撤退（autoEscaped 置位）；非巡回战斗缺省不设 */
   hullEscapeFrac?: number
+  /** 多波次（2026-09-09）：当前波索引（0 基；AnomalyDef.waves 缺省/单波不写，读档零迁移） */
+  waveIdx?: number
+  /** 多波次演出间隔（2026-09-09 船长反馈）：当前波全灭时刻（lastTick 口径），配合 waveEnterGapMs
+   * 等爆炸/残骸演出播完再刷下一波（零迁移可选字段） */
+  waveClearAt?: number
   /** 已触发自动撤退请求（步进中止，结构保留当前值；由远征结算走轻损撤退路径——绝不弃船） */
   autoEscaped?: boolean
+  /** 船体维修装置运行态（2026-09-09 船长定；零迁移可选——旧档缺省 = 本场无维修装置介入）。
+   * 与弹药预载同哲学：开战把货舱（仓库兜底）中的对应修理组件移入 kits 账本，战斗中不可补给；
+   * 每 REPAIR_PULSE_MS 一次脉冲，各台未停机装置修复装甲/结构并扣 1 枚组件，耗尽即停机；
+   * 战斗结束未用组件退回仓库（见 combat.refundRepairKits）。 */
+  repair?: {
+    /** 装置运行快照（开战按装配写入；组件耗尽自动停机 stopped = true） */
+    units: BattleRepairUnit[]
+    /** 预载组件账本（item id → 枚数；脉冲逐枚扣减；余额 0 = 该型装置停机） */
+    kits: Record<string, number>
+    /** 下一脉冲战斗时刻（开战 = startedAt + 间隔；全部停机后清空 = 停调度） */
+    nextPulseAtMs?: number
+    /** 累计脉冲次数（战报展示；痊愈空转的脉冲也计数） */
+    pulses: number
+    /** 累计消耗组件枚数 */
+    kitsUsed: number
+  }
+}
+
+/** 船体维修装置单台运行快照（2026-09-09：开战写入，离线续算不依赖当前装配） */
+export interface BattleRepairUnit {
+  /** 装置模块 id（战报/UI 引用） */
+  moduleId: string
+  /** 本台每脉冲消耗的修理组件 id（民用级 = repairkit-civ；MK1/MK2 = repairkit-mil） */
+  kitId: string
+  /** 每脉冲修复装甲 HP（0 = 本台不修该层；满则额度转投另一层） */
+  armorPerPulse: number
+  /** 每脉冲修复结构 HP */
+  hullPerPulse: number
+  /** 组件耗尽自动停机（不再参与后续脉冲） */
+  stopped: boolean
 }
 
 /* ═══════════════ V9：市场状态 ═══════════════ */
@@ -744,6 +788,8 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
   dockedSite: string | null
+  /** 2026-09-09 长途运输（两座已建成站点间真实航程往返循环；虚拟货物占满货仓、不产生真实物品） */
+  hauling: HaulingState
   /** T9 通讯剧本已读标记：剧本 id -> true */
   dialogueSeen: Record<string, boolean>
   /** T9 待自动播放的通讯剧本 id（首次抵达等触发；null = 无） */
@@ -755,11 +801,42 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   deliveryNotice?: string | null
 }
 
+/** 长途运输状态（2026-09-09 船长定稿：任意两座已建成站点间真实航程往返循环；当日改：接单不要求停在端点，
+ * 先"就位航段"驶往较近端点，再按所选航线两端点循环） */
+export interface HaulingState {
+  active: boolean
+  /** 玩家所选航线的两个端点（null = 母港；否则为已建成副站 id）——循环只在这两点间往返 */
+  routeA: string | null
+  routeB: string | null
+  /** 当前航段的起点站点 id（就位段 = 接单时的停靠站；其后 = 上一段到站） */
+  fromSiteId: string | null
+  /** 当前航段的目的站点 id */
+  toSiteId: string | null
+  /** 本段标称航程分钟（出发时锁定；报酬结算按它 = 货仓容量×费率×分钟） */
+  legMinutes: number
+  /** 本段真实航程毫秒（出发时锁定；吃航行技能与调试 1 秒快进） */
+  legMs: number
+  /** 本段已航行毫秒 */
+  phaseAccMs: number
+}
+
+/** 空态默认值 */
+export const EMPTY_HAULING: HaulingState = {
+  active: false,
+  routeA: null,
+  routeB: null,
+  fromSiteId: null,
+  toSiteId: null,
+  legMinutes: 0,
+  legMs: 0,
+  phaseAccMs: 0,
+}
+
 /** T9 一个建站点的建造进度 */
 export interface StationSiteProgress {
   /** 已完成的档位数（0/1/2/3；3 = 建成并入空间站清单） */
   stage: number
-  /** 当前档已缴单位数（按 acceptItemIds 任意混合累计；跨档清零重计） */
+  /** 当前档已缴（按逐档材料单项累计；升档清零重计，2026-09-09） */
   delivered: Record<string, number>
 }
 
@@ -1126,6 +1203,7 @@ export function createInitialState(opts?: {
     autoLoopAnomalyId: null,
     stationSites: {},
     dockedSite: null,
+    hauling: { ...EMPTY_HAULING },
     dialogueSeen: {},
     pendingDialogue: null,
     debugQuick: false,

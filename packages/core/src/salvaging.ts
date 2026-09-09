@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 打捞作业（B3，2026-09-05 船长定稿：采矿式作业；docs/design/b3-salvage.md）。
  *
  * 模型：
@@ -78,6 +78,7 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。' }
   if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
     return { ok: false, error: '打捞需要打捞器：请先在舰船高槽装上打捞器（MK1/2/3）再出发。' }
   }
