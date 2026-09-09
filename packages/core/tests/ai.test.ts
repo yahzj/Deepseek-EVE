@@ -20,6 +20,7 @@ import {
   aiTaskView,
   assignAiExpedition,
   assignAiMining,
+  advanceAi,
   buyBasicAiCore,
   cancelAiTask,
   countAiCore,
@@ -31,6 +32,7 @@ import { aiWinPreview } from '../src/combat'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { startManufacturing, cancelManufacturing } from '../src/manufacturing'
 import { learnBlueprint } from '../src/market'
+import { changeShip } from '../src/shipyard'
 
 /** 基础核心的市场卡（测试世界不自动生成核心，手动补一张） */
 const CORE_BASIC_GOOD: MarketGoodDef = {
@@ -492,5 +494,45 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
     state.manufacturingRuns.push({ active: true, id: 99, blueprintId: 'bp-a', finishAtGameMs: 0, durationMs: 1000 })
     expect(aiCoreUsed(state)).toBe(0)
     expect(aiCoreCap(state, ctx)).toBe(0)
+  })
+})
+
+describe('AI 执勤船 × 切换驾驶（2026-09-09 bug 回归：伽玛核心丢失）', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.skills.trained['ai-expert'] = 1
+    state.fleet['sandcat2'] = {
+      durability: 1,
+      cargo: {},
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
+    }
+    const bal = makeTestCtx().balance
+    ctx = makeTestCtx({ balance: { ...bal, richVeinChance: 0 } })
+    gainAiCore(state, 'gamma', 1)
+  })
+
+  it('切换驾驶到 AI 执勤中的副船：任务自动召回、伽玛核心归还（不再卡死消失）', () => {
+    expect(assignAiMining(state, 'sandcat2', 'gamma', 'belt-a', ctx).ok).toBe(true)
+    expect(countAiCore(state, 'gamma')).toBe(0) // 出库占用
+    expect(state.aiAssignments['sandcat2']).toBeDefined()
+    // 玩家直接切换驾驶到这艘执勤船（旧实现漏召回 → 任务隐形占用核心）
+    expect(changeShip(state, 'sandcat2', ctx).ok).toBe(true)
+    expect(state.shipId).toBe('sandcat2')
+    expect(state.aiAssignments['sandcat2']).toBeUndefined() // 任务已召回
+    expect(countAiCore(state, 'gamma')).toBe(1) // 核心归还核心库
+  })
+
+  it('历史坏态兜底：作业船已是驾驶船时 advanceAi 直接召回并归还核心（覆盖换船入口漏召回路径）', () => {
+    expect(assignAiMining(state, 'sandcat2', 'gamma', 'belt-a', ctx).ok).toBe(true)
+    // 模拟坏态：不经过换船入口，直接把执勤船设为驾驶船（旧档/竞态残留；advanceGame 的
+    // reconcilePilotShip 会改派驾驶，本用例直接驱动 advanceAi 验证引擎层兜底分支）
+    state.shipId = 'sandcat2'
+    advanceAi(state, 2_000, ctx)
+    expect(state.aiAssignments['sandcat2']).toBeUndefined()
+    expect(countAiCore(state, 'gamma')).toBe(1)
+    expect(state.shipId).toBe('sandcat2') // 兜底只召回任务，不改驾驶归属
   })
 })

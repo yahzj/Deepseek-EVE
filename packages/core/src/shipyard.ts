@@ -14,6 +14,7 @@ import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
 import { retireSalvageShip } from './salvaging'
 import { cancelHaulingOnSwitch } from './hauling'
+import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
@@ -155,6 +156,12 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   // 打捞作业中：直接切换成功——旧船按其打捞阶段自动返航到港卸货，作业结束（2026-09-09 与采矿同构）
   if (state.salvaging.active) {
     retireSalvageShip(state, ctx)
+  }
+  // 2026-09-09（修复：切驾驶到 AI 执勤中的副船后核心卡死）：目标船若有 AI 任务，先召回并归还核心——
+  // 否则任务仍挂在该船名下继续占用核心，而船已变驾驶船（AI 面板只列副船），该任务既不可见也无法取消，
+  // 核心随之「消失」（玩家场景：伽玛核心挖矿船被切去跑运输后，伽玛核心不见了）。
+  if (shipId in state.aiAssignments) {
+    cancelAiTask(state, shipId, ctx)
   }
   state.shipId = shipId
   addLog(state, 'info', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`)
