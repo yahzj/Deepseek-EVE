@@ -5840,9 +5840,9 @@ body {
 
 .app-info-row { display: flex; gap: 8px; line-height: 1.6; }
 
-.app-info-key { flex: 0 0 88px; color: var(--wui-text-dim); white-space: nowrap; }
+.app-info-key { flex: 0 1 88px; min-width: 0; color: var(--wui-text-dim); overflow-wrap: anywhere; }
 
-.app-info-val { color: var(--wui-text); min-width: 0; }
+.app-info-val { color: var(--wui-text); min-width: 0; overflow-wrap: anywhere; }
 
 .app-info-note { margin-top: 5px; padding-top: 4px; border-top: 1px dashed var(--wui-border); color: var(--wui-text-dim); font-size: 10.5px; line-height: 1.5; }
 
