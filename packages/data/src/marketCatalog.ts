@@ -181,9 +181,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 舰船蓝图（造船；稀有）
   { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'rare', basePrice: 150_000, demandMultiplier: 0.65 },
   { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'rare', basePrice: 260_000, demandMultiplier: 0.65 },
-  // 稀有舰船（V10 四条族线中坚）
+  // 稀有舰船（V10 四条族线中坚；蓝图船不入现货——开拓级等靠舰船蓝图制造，图鉴标「仅可制造」）
   { key: 'ship-whale', kind: 'ship', refId: 'whale', rarity: 'rare', basePrice: 900_000, demandMultiplier: 0.65 },
-  { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65 },
   { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 1_350_000, demandMultiplier: 0.65 },
   { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'rare', basePrice: 1_900_000, demandMultiplier: 0.65 },
   { key: 'ship-falconet', kind: 'ship', refId: 'sh-falconet', rarity: 'rare', basePrice: 42_000, demandMultiplier: 0.65 },
@@ -198,7 +197,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
 
   // ══════════ 限定奇货（exotic：极低概率、寿命 4 分钟、天价） ══════════
 
-  { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 4_800_000, demandMultiplier: 1.0, standingReq: 11 },
+  // 鲸王级成品现货 2026-09-09 船长定下架：仅留蓝图书奇货（鲸王 = 蓝图船，图鉴标「仅可制造」——
+  // 市场只供其造船蓝图书，不再直接卖成品）
   { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 600_000, demandMultiplier: 1.0, standingReq: 11 },
   // V10 顶级船（声望解锁）
   { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 10 }, // 2026-09-09 船长定:无人机母舰声望 6→10

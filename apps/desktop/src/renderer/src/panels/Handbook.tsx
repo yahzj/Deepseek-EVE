@@ -172,14 +172,14 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
       for (const line of shipInfoLines(shipDef)) rows.push([line.k, line.v])
       rows.push(['说明', '已生效战斗数值：抗性为整数主抗制，增强器以缺口乘入合成（上限 90%）'])
-      rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场偶尔闪现）' : '市场流通'])
+      rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场无现货：舰船蓝图船厂定制 / 特殊渠道）' : '市场流通'])
     } else {
       const role = String(r.role ?? 'industrial')
       rows.push(['定位 / 档次', `${roleName(role)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
       rows.push(['货舱容量', `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
       rows.push(['采集性能', `${Number(r.cycleSeconds ?? 0)} 秒 × ${Number(r.oreUnitsPerCycle ?? 0)} 单位/循环`])
       rows.push(['动力（机动 / 跃迁充能）', `${Math.round(Number(r.agility ?? 0) * 100)}%`])
-      if (Number(r.priceIsk ?? 0) <= 0) rows.push(['获取方式', '仅可制造（市场偶尔闪现）'])
+      if (Number(r.priceIsk ?? 0) <= 0) rows.push(['获取方式', '仅可制造（市场无现货：舰船蓝图船厂定制 / 特殊渠道）'])
     }
   } else if (cell.tab === 'blueprints') {
     const materials = (r.materials as Array<{ itemId: string; count: number }> | undefined) ?? []

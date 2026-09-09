@@ -729,6 +729,9 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
   for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0
   for (const order of [...state.orders]) {
     if (order.qty <= 0) continue
+    // 商品下架防御（2026-09-09 市场目录收缩，如蓝图船成品现货退役）：目录外的旧挂单不再撮合
+    // ——否则命中残留簿面会走 depositGood 空目录分支（钱已扣、货到不了）；订单保留可手动撤单
+    if (!ctx.marketGoods.has(order.good)) continue
     if (order.side === 'sell') {
       const buyList = mk.npcBuy[order.good] ?? []
       const sorted = [...buyList].sort((a, b) => b.price - a.price)
