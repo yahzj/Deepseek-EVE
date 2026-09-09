@@ -28,23 +28,24 @@ export const SHIP_ART: Record<string, ReactNode> = {
       <circle className="shipart-accf" cx="86" cy="55" r="1.4" />
     </g>
   ),
-  /* ── 灰鲭鲨级驱逐舰（低趴长身 + 脊炮 ×2 + 上下双引擎） ── */
+  /* ── 灰鲭鲨级驱逐舰（低趴长身 + 脊炮 ×2 + 上下双引擎 + 前掠翼；2026-09-09 方向可读性修正
+        v3 定稿：舰艏单点流线锐锥 x236 + 尾端平切喷口面 + 前掠翼恢复(船长确认)——尖头平尾,
+        方向一眼可辨） ── */
   'sh-mako': (
     <g>
-      <path d="M212 56 L168 41 L104 41 C76 41 60 45 50 51 L44 56 L50 61 C60 67 76 71 104 71 L156 71 Z" />
-      <path d="M212 56 L226 52 L226 60 L212 56 Z" opacity=".75" />
-      <path d="M104 41 L132 20 L142 20 L122 41" />
-      <path d="M104 71 L132 92 L142 92 L122 71" />
-      <path d="M54 44 h8 v24 h-8 z M62 44 h8 v24 h-8 z" opacity=".8" />
+      <path d="M236 56 L198 36 L118 36 C86 36 66 44 58 50 L52 50 L52 62 L58 66 C66 72 86 76 118 76 L190 76 Z" />
+      <path d="M104 36 L132 15 L142 15 L122 36" />
+      <path d="M104 76 L132 97 L142 97 L122 76" />
+      <path d="M38 46 h12 v8 h-12 z M38 60 h12 v8 h-12 z" opacity=".85" />
       <path d="M138 42 h12 v8 h-12 z" />
-      <path d="M150 42 L176 42" strokeWidth="2.6" />
-      <path className="shipart-acc" d="M176 42 L180 42" />
+      <path d="M150 42 L194 42" strokeWidth="2.6" />
+      <path className="shipart-acc" d="M194 42 L200 42" />
       <path d="M92 43 h10 v7 h-10 z" />
       <path d="M102 43 L122 44" strokeWidth="2.2" />
       <path d="M158 62 h8 v4 h-8 z M164 62 v7" />
       <path d="M112 63 h6 v4 h-6 z M116 63 v6" />
       <path className="shipart-panel" d="M146 47 h16 v7 h-16 z M148 48.5 h12 M148 52 h12" />
-      <path className="shipart-panel" d="M80 48 h36 M80 64 h36 M126 44 v24 M104 55 h80" />
+      <path className="shipart-panel" d="M80 48 h36 M80 64 h36 M126 44 v24 M104 55 h76" />
       <circle className="shipart-accf" cx="98" cy="56" r="1.4" />
       <circle className="shipart-accf" cx="150" cy="66" r="1" />
     </g>
