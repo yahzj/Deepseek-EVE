@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
 
    鎼存梻鏁ょ痪褍绔风仦鈧弽宄扮础閿涘牏绮嶆禒鍫曗偓姘辨暏閺嶅嘲绱￠悽?@whale/ui 閹绘劒绶甸敍宀冾潌閸?index.css閿?   ============================================================ */
 
@@ -2521,45 +2521,56 @@ body {
 }
 .app-shipwin .app-sprite { line-height: 0; }
 .app-shipwin .app-sprite svg { display: block; }
-/* ── 场景背景层（2026-09-10 船长：背景随当前活动场景变化，纯 CSS） ── */
-.app-shipwin-bg { position: absolute; inset: 0; pointer-events: none; }
-.app-shipwin.is-docked .app-shipwin-bg { background: radial-gradient(130% 90% at 18% 0%, rgba(66, 140, 200, 0.22), transparent 55%), linear-gradient(180deg, #0d1b2d, #081220); }
-.app-shipwin.is-docked .app-shipwin-bg::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(110, 210, 255, 0.5), transparent); }
-.app-shipwin.is-work-mine .app-shipwin-bg { background: radial-gradient(110% 100% at 80% 110%, rgba(150, 100, 40, 0.3), transparent 60%), linear-gradient(180deg, #1c1206, #0f0a04); }
-.app-shipwin.is-work-salvage .app-shipwin-bg { background: radial-gradient(120% 90% at 20% 100%, rgba(110, 150, 170, 0.18), transparent 55%), linear-gradient(180deg, #121a21, #080d12); }
-.app-shipwin.is-work-scan .app-shipwin-bg { background: radial-gradient(100% 80% at 50% 0%, rgba(60, 130, 220, 0.16), transparent 60%), linear-gradient(180deg, #0a1426, #050b18); }
-.app-shipwin.is-work-scan .app-shipwin-bg::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(110, 220, 255, 0.55), transparent); animation: app-swin-scan 2.2s linear infinite; }
-.app-shipwin.is-travel .app-shipwin-bg { background: linear-gradient(180deg, #071224, #0a1c36); }
-.app-shipwin.is-travel .app-shipwin-bg::before,
-.app-shipwin.is-travel .app-shipwin-bg::after { content: ''; position: absolute; left: 0; width: 46px; height: 1px; background: linear-gradient(90deg, transparent, rgba(150, 200, 255, 0.55), transparent); animation: app-swin-speed 1.5s linear infinite; }
-.app-shipwin.is-travel .app-shipwin-bg::before { top: 10px; }
-.app-shipwin.is-travel .app-shipwin-bg::after { top: 38px; animation-delay: 0.75s; }
-.app-shipwin.is-field .app-shipwin-bg { background: radial-gradient(90% 70% at 30% 20%, rgba(110, 130, 190, 0.14), transparent 60%), linear-gradient(180deg, #0d1120, #0a0e18); }
-.app-shipwin.is-combat .app-shipwin-bg { background: radial-gradient(120% 100% at 50% 120%, rgba(255, 70, 40, 0.3), transparent 60%), linear-gradient(180deg, #240a07, #120504); }
-.app-shipwin.is-combat .app-shipwin-bg::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(255, 150, 80, 0.9), transparent); animation: app-swin-fireglow 0.9s ease-in-out infinite; }
+/* ── 场景背景层（2026-09-10 船长：底色随场景变化、主题深蓝青系收敛；换场景交叉淡入淡出） ── */
+.app-shipwin-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.app-shipwin-bg.is-cur { animation: app-swin-bgin 0.45s ease; }
+.app-shipwin-bg.is-prev { animation: app-swin-bgout 0.45s ease forwards; }
+/* 底色（差异克制在主题青蓝黑系内的明暗与微色温；语义色只出现在光效点缀上） */
+.bg-docked { background: linear-gradient(180deg, #0c1a2c, #0a1522); }
+.bg-docked::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(150, 220, 255, 0.4), transparent); }
+.bg-work-mine { background: radial-gradient(110% 90% at 80% 110%, rgba(190, 160, 110, 0.12), transparent 60%), linear-gradient(180deg, #0e1a24, #0a141d); }
+.bg-work-salvage { background: radial-gradient(120% 90% at 20% 100%, rgba(130, 170, 190, 0.12), transparent 55%), linear-gradient(180deg, #0e1820, #0a1016); }
+.bg-work-scan { background: radial-gradient(100% 80% at 50% 0%, rgba(90, 160, 230, 0.14), transparent 60%), linear-gradient(180deg, #0b1828, #08111e); }
+.bg-work-scan::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(130, 220, 255, 0.4), transparent); animation: app-swin-scan 2.2s linear infinite; }
+.bg-travel { background: linear-gradient(180deg, #0a1729, #0c2036); }
+.bg-travel::before,
+.bg-travel::after { content: ''; position: absolute; left: 0; width: 46px; height: 1px; background: linear-gradient(90deg, transparent, rgba(170, 215, 255, 0.5), transparent); animation: app-swin-speed 1.5s linear infinite; }
+.bg-travel::before { top: 10px; }
+.bg-travel::after { top: 38px; animation-delay: 0.75s; }
+.bg-field { background: radial-gradient(90% 70% at 30% 20%, rgba(120, 150, 205, 0.12), transparent 60%), linear-gradient(180deg, #0d1522, #0a101b); }
+.bg-combat { background: radial-gradient(120% 100% at 50% 120%, rgba(220, 90, 60, 0.16), transparent 60%), linear-gradient(180deg, #17101a, #0c0a10); }
+.bg-combat::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(255, 140, 90, 0.8), transparent); animation: app-swin-fireglow 0.9s ease-in-out infinite; }
+@keyframes app-swin-bgin { from { opacity: 0; } to { opacity: 1; } }
+@keyframes app-swin-bgout { from { opacity: 1; } to { opacity: 0; } }
 @keyframes app-swin-scan { 0% { top: 0; opacity: 0.3; } 15% { opacity: 0.9; } 85% { opacity: 0.9; } 100% { top: 100%; opacity: 0.3; } }
-@keyframes app-swin-speed { 0% { transform: translateX(-60px); opacity: 0; } 15% { opacity: 0.9; } 85% { opacity: 0.9; } 100% { transform: translateX(180px); opacity: 0; } }
+/* 星光带方向（2026-09-10 修正）：舰艏朝右 = 向右航行 → 背景星带自右向左流动 */
+@keyframes app-swin-speed { 0% { transform: translateX(160px); opacity: 0; } 15% { opacity: 0.9; } 85% { opacity: 0.9; } 100% { transform: translateX(-90px); opacity: 0; } }
 @keyframes app-swin-fireglow { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-/* ── 场景物件层 = SVG 线稿（2026-09-10 船长：视觉物件一律 SVG 绘制、与舰船图形同语言，
-   禁止 CSS 拼形状——规则见 conventions 第九章）：漂移 = g 元素平移；残骸件自带旋转 ── */
-.app-shipwin-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+/* ── 星空 / 机库 / 远景物件层 = SVG 线稿（舰后；视觉物件一律 SVG，规则见 conventions 第九章） ── */
+.app-shipwin-sky { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.app-swin-star { fill: #d7e7f4; opacity: 0.6; }
+/* 机库结构件：顶棚横梁/墙柱/地板停靠格/引导灯（主题青系低饱和线稿） */
+.app-swin-hangar path { fill: none; stroke: #6f9fc4; stroke-width: 1; opacity: 0.4; }
+.app-swin-hangar-lamp { fill: #a9ecff; opacity: 0.9; }
+/* 作业飘浮物漂移/自转（g 元素 CSS 动画） */
 .app-swin-drift { opacity: 0; animation-timing-function: linear; animation-iteration-count: infinite; transform-box: fill-box; transform-origin: center; }
 .app-swin-drift path { fill: none; stroke-width: 1.1; stroke-linejoin: round; stroke: currentColor; }
-.app-swin-drift.is-rock { color: #b3945f; animation-name: app-swin-drift; }
-.app-swin-drift.is-rock.is-small { color: #8f7a52; }
-.app-swin-drift.is-debris { color: #8fa6b8; animation-name: app-swin-drift-spin; }
-.app-swin-drift.is-debris.is-small { color: #6f8598; }
+.app-swin-drift.is-rock { color: #9fb3a8; animation-name: app-swin-drift; }
+.app-swin-drift.is-rock.is-small { color: #8ba094; }
+.app-swin-drift.is-debris { color: #8fb0c4; animation-name: app-swin-drift-spin; }
+.app-swin-drift.is-debris.is-small { color: #7592a6; }
 .app-swin-drift.is-probe { color: #9fe8ff; animation-name: app-swin-drift; }
 .app-swin-drift.is-probe.is-small { color: #c9f1ff; }
 @keyframes app-swin-drift { 0% { transform: translateX(150px); opacity: 0; } 6% { opacity: 0.95; } 90% { opacity: 0.8; } 100% { transform: translateX(-34px); opacity: 0; } }
 @keyframes app-swin-drift-spin { 0% { transform: translateX(150px) rotate(0deg); opacity: 0; } 6% { opacity: 0.95; } 90% { opacity: 0.8; } 100% { transform: translateX(-34px) rotate(260deg); opacity: 0; } }
-/* ── 交火开火闪光：舰艏炮口双菱形（外圈柔光 + 内芯），opacity 节奏闪烁 ── */
+/* ── 交火炮口火光（舰前层 SVG） ── */
+.app-shipwin-mz { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .app-swin-muzzle { opacity: 0; animation: app-swin-fire 1.15s linear infinite; }
 .app-swin-muzzle.is-low { animation-duration: 1.05s; }
 @keyframes app-swin-fire { 0%, 82% { opacity: 0; } 88% { opacity: 1; } 93% { opacity: 0.6; } 100% { opacity: 0; } }
 /* 切换驾驶的交叉过渡层（2026-09-10：旧舰淡出左移 / 新舰自右滑入淡入，互不覆盖状态动画——
    过渡动画挂图层元素，舰体自身的浮动/摇摆/震动动画仍挂在 .app-sprite 上不受影响） */
-.app-shipwin-stack { position: relative; width: 112px; height: 52px; flex: 0 0 auto; }
+.app-shipwin-stack { position: relative; z-index: 2; width: 112px; height: 52px; flex: 0 0 auto; }
 .app-shipwin-layer { position: absolute; left: 0; top: 0; }
 .app-shipwin-layer.is-leave { animation: app-swin-leave 0.45s ease forwards; }
 .app-shipwin-layer.is-enter { animation: app-swin-enter 0.45s ease; }
