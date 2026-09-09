@@ -1188,9 +1188,9 @@ export class GameEngine {
     return result
   }
 
-  /** 2026-09-09 运输任务：开始（目标端点 = 另一座已建成站；null = 母港） */
-  startHaulingAt(toSiteId: string | null): CommandResult {
-    const result = startHauling(this.state, toSiteId, this.ctx)
+  /** 2026-09-09 运输任务：开始（任选一条两端点航线；不要求当前停靠在端点——引擎先飞就位段） */
+  startHaulingAt(aSiteId: string | null, bSiteId: string | null): CommandResult {
+    const result = startHauling(this.state, aSiteId, bSiteId, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -1198,9 +1198,9 @@ export class GameEngine {
     return result
   }
 
-  /** 2026-09-09 运输任务：停止（完成当前航段、到站即止） */
+  /** 2026-09-09 运输任务：停止（立即响应：中止当前航段并自动返航出发站，无惩罚） */
   stopHaulingNow(): CommandResult {
-    const result = stopHauling(this.state)
+    const result = stopHauling(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

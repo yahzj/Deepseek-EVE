@@ -1570,14 +1570,17 @@ function normalizeState(raw: unknown): GameState {
   const haulRaw = asRaw(src.hauling)
   const haulTo = typeof haulRaw.toSiteId === 'string' || haulRaw.toSiteId === null ? haulRaw.toSiteId : null
   const haulFrom = typeof haulRaw.fromSiteId === 'string' || haulRaw.fromSiteId === null ? haulRaw.fromSiteId : null
+  const haulA = typeof haulRaw.routeA === 'string' || haulRaw.routeA === null ? haulRaw.routeA : null
+  const haulB = typeof haulRaw.routeB === 'string' || haulRaw.routeB === null ? haulRaw.routeB : null
   const hauling = {
     active: haulRaw.active === true && haulTo !== undefined,
+    routeA: haulA ?? null,
+    routeB: haulB ?? null,
     fromSiteId: haulFrom ?? null,
     toSiteId: haulTo ?? null,
     legMinutes: Math.max(0, Math.floor(num(haulRaw.legMinutes))),
     legMs: Math.max(0, Math.floor(num(haulRaw.legMs))),
     phaseAccMs: Math.max(0, Math.floor(num(haulRaw.phaseAccMs))),
-    stopNext: haulRaw.stopNext === true,
   }
   // --- 精炼炉运转工位表（v20 多工位并行、原料不锁定；兼容 v19 起 refineRuns 与更早 refineRun 兜底） ---
   const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {

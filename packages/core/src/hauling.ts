@@ -63,12 +63,6 @@ export function dockedHaulEndpoint(state: GameState): string | null {
   return state.dockedSite // null = 母港；否则副站 id
 }
 
-/** 两段端点是否同一点 / 是否零航程 */
-function routeMinutesOf(ctx: SimContext, a: HaulEndpoint, b: HaulEndpoint): number {
-  const m = shortestTravelMinutes(ctx, a.galaxyId, b.galaxyId)
-  return Number.isFinite(m) ? m : 0
-}
-
 /** 单段报酬估算（容量 × 费率 × 标称分钟；floor 取整） */
 export function haulLegReward(capacityM3: number, legMinutes: number): number {
   return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * legMinutes)
@@ -76,23 +70,51 @@ export function haulLegReward(capacityM3: number, legMinutes: number): number {
 
 /** 空态 */
 function emptyHauling(): HaulingState {
-  return { active: false, fromSiteId: null, toSiteId: null, legMinutes: 0, legMs: 0, phaseAccMs: 0, stopNext: false }
+  return { active: false, routeA: null, routeB: null, fromSiteId: null, toSiteId: null, legMinutes: 0, legMs: 0, phaseAccMs: 0 }
 }
 
-/** 玩家指令：开始运输任务（目标端点 = 已建成站；须停靠另一端点上） */
-export function startHauling(state: GameState, toSiteId: string | null, ctx: SimContext): CommandResult {
-  if (state.hauling.active) return { ok: false, error: '运输任务进行中：先停止（顶部活动栏）或等它到站。' }
+/** 端点所在星系（null = 母港） */
+
+
+/** 两站间标称航程分钟（不可达/同点 = 0） */
+function minutesBetween(ctx: SimContext, aId: string | null, bId: string | null): number {
+  const m = shortestTravelMinutes(ctx, endpointGalaxy(ctx, aId), endpointGalaxy(ctx, bId))
+  return Number.isFinite(m) ? m : 0
+}
+
+/** 设定当前航段（from → to）：锁分钟与真实毫秒 */
+function setLeg(state: GameState, ctx: SimContext, fromId: string | null, toId: string | null): boolean {
+  const minutes = minutesBetween(ctx, fromId, toId)
+  if (!(minutes > 0)) return false
+  const h = state.hauling
+  h.fromSiteId = fromId
+  h.toSiteId = toId
+  h.legMinutes = Math.max(1, Math.round(minutes))
+  h.legMs = Math.max(1, travelLegMs(state, ctx, h.legMinutes))
+  h.phaseAccMs = 0
+  state.dockedSite = null
+  state.awayGalaxy = endpointGalaxy(ctx, fromId)
+  return true
+}
+
+/**
+ * 玩家指令：开始运输任务（在所选航线的两个端点间往返循环）。
+ * 2026-09-09 改（船长定）：**不要求停靠在航线端点**——停靠在任意协会站点即可接单；
+ * 若当前停靠不在端点，先飞一段"就位航段"到较近端点（真实航程、按段计酬），随后按
+ * A⇄B 循环。须停靠空间站（母港或已建成副站；野外不能接）。
+ */
+export function startHauling(state: GameState, aSiteId: string | null, bSiteId: string | null, ctx: SimContext): CommandResult {
+  if (state.hauling.active) return { ok: false, error: '运输任务进行中：先停止（顶部活动栏）再换线。' }
   // 前置：停靠在空间站（母港或已建成副站）
   if (state.awayGalaxy !== null) return { ok: false, error: '舰船在野外：先返航到空间站再安排运输任务。' }
-  const fromEndpoint = dockedHaulEndpoint(state)
-  const targets = haulEndpoints(state, ctx)
-  const to = targets.find((e) => e.siteId === toSiteId)
-  if (!to) return { ok: false, error: toSiteId === null ? '运输目标缺失。' : '目标站点尚未建成，无法运输。' }
-  if (to.siteId === fromEndpoint) return { ok: false, error: '出发站与目的站相同——请选另一座站点。' }
-  const from = targets.find((e) => e.siteId === fromEndpoint)
-  if (!from) return { ok: false, error: '当前停靠点不在协会基地网络内，无法接运输任务。' }
-  const minutes = routeMinutesOf(ctx, from, to)
-  if (minutes <= 0) return { ok: false, error: '两站之间没有可用航路（或同处一星系），无法运输。' }
+  const endpoints = haulEndpoints(state, ctx)
+  const a = endpoints.find((e) => e.siteId === aSiteId)
+  const b = endpoints.find((e) => e.siteId === bSiteId)
+  if (!a || !b) return { ok: false, error: '航线端点缺失或尚未建成——请选择两座已建成站点之间的航线。' }
+  if (a.siteId === b.siteId) return { ok: false, error: '航线两端相同——请选两座不同的站点。' }
+  if (minutesBetween(ctx, a.siteId, b.siteId) <= 0) {
+    return { ok: false, error: '这两座站点之间没有可用航路（或同处一星系），无法运输。' }
+  }
   // 忙碌互斥（与远征同级）
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：先停止开采。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：先停止打捞。' }
@@ -111,40 +133,69 @@ export function startHauling(state: GameState, toSiteId: string | null, ctx: Sim
   if (cap <= 0) return { ok: false, error: '当前舰船没有可用货仓，无法承运。' }
   // 自动清仓：真实货物卸入仓库（虚拟货物占满货仓，语义干净）
   const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
-  const shipName = shipDisplayName(state, ctx, state.shipId)
-  const legMs = travelLegMs(state, ctx, minutes)
-  const perLeg = haulLegReward(cap, minutes)
-  state.hauling = {
-    active: true,
-    fromSiteId: from.siteId,
-    toSiteId: to.siteId,
-    legMinutes: minutes,
-    legMs,
-    phaseAccMs: 0,
-    stopNext: false,
+  const dockHere = dockedHaulEndpoint(state) // 接单时的停靠端点（可能是航线端点，也可能不是）
+  // 第一段目标：停靠即端点 → 直接对开；否则飞往较近的端点（就位段）
+  let firstTo: string | null
+  if (dockHere === a.siteId || dockHere === b.siteId) {
+    firstTo = dockHere === a.siteId ? b.siteId : a.siteId
+  } else {
+    const toA = minutesBetween(ctx, dockHere, a.siteId)
+    const toB = minutesBetween(ctx, dockHere, b.siteId)
+    if (!(toA > 0) && !(toB > 0)) return { ok: false, error: '当前停靠点不在协会航线网内，无法接单。' }
+    firstTo = toB > 0 && (toA <= 0 || toB < toA) ? b.siteId : a.siteId
   }
-  // 出航：离开停靠（位置交给航段表达——与建站交付同口径：awayGalaxy=出发星系，站内门天然关闭）
-  state.dockedSite = null
-  state.awayGalaxy = from.galaxyId
+  const shipName = shipDisplayName(state, ctx, state.shipId)
+  const h = state.hauling
+  h.active = true
+  h.routeA = a.siteId
+  h.routeB = b.siteId
+  if (!setLeg(state, ctx, dockHere, firstTo)) {
+    h.active = false
+    return { ok: false, error: '无法从当前位置就位到该航线——航路不可达。' }
+  }
+  const perLeg = haulLegReward(cap, h.legMinutes)
+  const isPos = dockHere !== a.siteId && dockHere !== b.siteId
   addLog(
     state,
     'info',
-    `运输任务开始：${shipName} 承运「${from.name} → ${to.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）——` +
-      `单段航程约 ${minutes} 分钟，到站结算报酬约 ${perLeg.toLocaleString('zh-CN')} ISK${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
+    `运输任务开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
+      (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${h.legMinutes} 分钟`) +
+      `，到站结算报酬约 ${perLeg.toLocaleString('zh-CN')} ISK${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
   )
   return { ok: true }
 }
 
-/** 玩家指令：停止运输任务（完成当前航段、到站即止；无惩罚） */
-export function stopHauling(state: GameState): CommandResult {
-  if (!state.hauling.active) return { ok: false, error: '没有进行中的运输任务。' }
-  if (state.hauling.stopNext) return { ok: false, error: '运输任务已安排在到站后停止。' }
-  state.hauling.stopNext = true
-  addLog(state, 'info', '运输任务将在下一站停靠后停止（当前航段照常结算）。')
+/** 玩家指令：停止运输任务（立即停止：中止当前航段并返航出发站；无惩罚、无战利品残留） */
+export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
+  const h = state.hauling
+  if (!h.active) return { ok: false, error: '没有进行中的运输任务。' }
+  const originName = haulEndpointName(ctx, h.fromSiteId)
+  const originGalaxy = endpointGalaxy(ctx, h.fromSiteId)
+  // 返航所需时间 = 本段已飞时间（回程掉头折返；至少 1 秒）
+  const backMs = Math.max(1_000, h.phaseAccMs)
+  h.active = false
+  h.routeA = null
+  h.routeB = null
+  h.fromSiteId = null
+  h.toSiteId = null
+  h.legMinutes = 0
+  h.legMs = 0
+  h.phaseAccMs = 0
+  // 折返航程交给返航行程推进（真实航程，到港自动停靠/卸货语义沿用）
+  const t = state.transit
+  t.active = true
+  t.fromGalaxy = null
+  t.toGalaxy = originGalaxy
+  t.finishAtGameMs = state.gameMs + backMs
+  t.legMs = backMs
+  t.delivery = null
+  state.awayGalaxy = null
+  const mins = Math.max(1, Math.round(backMs / 60_000))
+  addLog(state, 'info', `运输任务已停止：舰船立即返航「${originName}」（约 ${mins} 分钟到站，无惩罚）。`)
   return { ok: true }
 }
 
-/** 引擎内部：推进运输任务（真实航程腿逐段飞行 → 到站结算 → 自动续下一段 / 到站即停） */
+/** 引擎内部：推进运输任务（真实航程腿逐段飞行 → 到站结算 → 按所选航线自动续段） */
 export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContext): void {
   const h = state.hauling
   if (!h.active || deltaMs <= 0) return
@@ -164,30 +215,24 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
         'trade',
         `运输任务 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（货仓 ${cap.toLocaleString('zh-CN')} m³ · 航程约 ${Math.max(1, Math.round(h.legMinutes))} 分钟）。`,
       )
-      // 到站停靠（母港 = dockedSite null）
+      // 到站（母港 = dockedSite null；随后立即续下一段）
       state.awayGalaxy = null
       state.dockedSite = h.toSiteId === null ? null : h.toSiteId
-      if (h.stopNext) {
+      const at = h.toSiteId
+      const nextTo = at === h.routeA ? h.routeB : h.routeA
+      if (!setLeg(state, ctx, at, nextTo)) {
+        // 航线异常（端点不可达等防御）：就地结束并提示
         h.active = false
-        h.phaseAccMs = 0
-        addLog(state, 'info', `运输任务已停止：舰船停靠在「${arrived}」。`)
+        addLog(state, 'warn', `运输任务异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`)
         break
       }
-      // 换向续下一段：同一条航线（标称分钟保持出发时锁定值；真实毫秒按当前船重算，吸收航程技能在途变化）
-      const nextFrom = h.toSiteId
-      h.toSiteId = h.fromSiteId
-      h.fromSiteId = nextFrom
-      h.legMs = Math.max(1, travelLegMs(state, ctx, h.legMinutes))
-      h.phaseAccMs = 0
-      state.dockedSite = null
-      state.awayGalaxy = endpointGalaxy(ctx, h.fromSiteId)
       const departTo = haulEndpointName(ctx, h.toSiteId)
       addLog(state, 'info', `运输任务继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`)
     }
   }
 }
 
-/** 引擎内部：换驾驶时终止运输任务（虚拟货无残留、无惩罚） */
+/** 引擎内部：换驾驶时终止运输任务（虚拟货无残留、无惩罚；不额外安排返航——旧船停靠位置即结束） */
 export function cancelHaulingOnSwitch(state: GameState, ctx: SimContext): void {
   if (!state.hauling.active) return
   const wasTo = haulEndpointName(ctx, state.hauling.toSiteId)
