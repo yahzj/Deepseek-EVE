@@ -2508,6 +2508,7 @@ body {
 
 /* 左侧导航「出港」上方的驾驶舰船状态窗（2026-09-10 船长：无文字、按活动给轻动效；与导航同级观感） */
 .app-shipwin {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -2520,6 +2521,39 @@ body {
 }
 .app-shipwin .app-sprite { line-height: 0; }
 .app-shipwin .app-sprite svg { display: block; }
+/* ── 场景背景层（2026-09-10 船长：背景随当前活动场景变化，纯 CSS） ── */
+.app-shipwin-bg { position: absolute; inset: 0; pointer-events: none; }
+.app-shipwin.is-docked .app-shipwin-bg { background: radial-gradient(130% 90% at 18% 0%, rgba(66, 140, 200, 0.22), transparent 55%), linear-gradient(180deg, #0d1b2d, #081220); }
+.app-shipwin.is-docked .app-shipwin-bg::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(110, 210, 255, 0.5), transparent); }
+.app-shipwin.is-work-mine .app-shipwin-bg { background: radial-gradient(110% 100% at 80% 110%, rgba(150, 100, 40, 0.3), transparent 60%), linear-gradient(180deg, #1c1206, #0f0a04); }
+.app-shipwin.is-work-salvage .app-shipwin-bg { background: radial-gradient(120% 90% at 20% 100%, rgba(110, 150, 170, 0.18), transparent 55%), linear-gradient(180deg, #121a21, #080d12); }
+.app-shipwin.is-work-scan .app-shipwin-bg { background: radial-gradient(100% 80% at 50% 0%, rgba(60, 130, 220, 0.16), transparent 60%), linear-gradient(180deg, #0a1426, #050b18); }
+.app-shipwin.is-work-scan .app-shipwin-bg::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(110, 220, 255, 0.55), transparent); animation: app-swin-scan 2.2s linear infinite; }
+.app-shipwin.is-travel .app-shipwin-bg { background: linear-gradient(180deg, #071224, #0a1c36); }
+.app-shipwin.is-travel .app-shipwin-bg::before,
+.app-shipwin.is-travel .app-shipwin-bg::after { content: ''; position: absolute; left: 0; width: 46px; height: 1px; background: linear-gradient(90deg, transparent, rgba(150, 200, 255, 0.55), transparent); animation: app-swin-speed 1.5s linear infinite; }
+.app-shipwin.is-travel .app-shipwin-bg::before { top: 10px; }
+.app-shipwin.is-travel .app-shipwin-bg::after { top: 38px; animation-delay: 0.75s; }
+.app-shipwin.is-field .app-shipwin-bg { background: radial-gradient(90% 70% at 30% 20%, rgba(110, 130, 190, 0.14), transparent 60%), linear-gradient(180deg, #0d1120, #0a0e18); }
+.app-shipwin.is-combat .app-shipwin-bg { background: radial-gradient(120% 100% at 50% 120%, rgba(255, 70, 40, 0.3), transparent 60%), linear-gradient(180deg, #240a07, #120504); }
+.app-shipwin.is-combat .app-shipwin-bg::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(255, 150, 80, 0.9), transparent); animation: app-swin-fireglow 0.9s ease-in-out infinite; }
+@keyframes app-swin-scan { 0% { top: 0; opacity: 0.3; } 15% { opacity: 0.9; } 85% { opacity: 0.9; } 100% { top: 100%; opacity: 0.3; } }
+@keyframes app-swin-speed { 0% { transform: translateX(-60px); opacity: 0; } 15% { opacity: 0.9; } 85% { opacity: 0.9; } 100% { transform: translateX(180px); opacity: 0; } }
+@keyframes app-swin-fireglow { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+/* ── 作业场景飘浮物：右入左出（采矿小行星 / 打捞残骸碎片 / 扫描信号点） ── */
+.app-swin-drift { position: absolute; left: 100%; opacity: 0; pointer-events: none; animation-name: app-swin-drift; animation-timing-function: linear; animation-iteration-count: infinite; }
+.app-swin-drift.is-rock { width: 13px; height: 10px; background: radial-gradient(circle at 32% 30%, #8d7c5c, #4c4030 72%); border-radius: 46% 54% 58% 42% / 52% 58% 42% 48%; box-shadow: inset -2px -2px 3px rgba(0, 0, 0, 0.5); }
+.app-swin-drift.is-rock.is-small { width: 8px; height: 6px; background: #6d5e46; }
+.app-swin-drift.is-debris { width: 12px; height: 7px; background: linear-gradient(135deg, #5c6873, #262d35); clip-path: polygon(0 32%, 42% 0, 100% 18%, 84% 100%, 24% 82%); box-shadow: 0 0 3px rgba(130, 170, 200, 0.3); animation-name: app-swin-drift-spin; }
+.app-swin-drift.is-debris.is-small { width: 8px; height: 5px; opacity: 0.85; }
+.app-swin-drift.is-probe { width: 4px; height: 4px; border-radius: 50%; background: #9fe8ff; box-shadow: 0 0 6px 1px rgba(120, 220, 255, 0.85); }
+.app-swin-drift.is-probe.is-small { width: 3px; height: 3px; background: #c9f1ff; box-shadow: 0 0 5px rgba(150, 230, 255, 0.7); }
+@keyframes app-swin-drift { 0% { transform: translateX(0); opacity: 0; } 7% { opacity: 0.95; } 90% { opacity: 0.8; } 100% { transform: translateX(-172px); opacity: 0; } }
+@keyframes app-swin-drift-spin { 0% { transform: translateX(0) rotate(0deg); opacity: 0; } 7% { opacity: 0.95; } 90% { opacity: 0.8; } 100% { transform: translateX(-172px) rotate(240deg); opacity: 0; } }
+/* ── 交火开火闪光：贴舰艏炮口（主炮口上 / 副炮口下交替节奏） ── */
+.app-swin-muzzle { position: absolute; right: -3px; width: 8px; height: 8px; background: #fff3c4; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: 0 0 6px 1px rgba(255, 210, 90, 0.95); opacity: 0; animation: app-swin-fire 1.15s linear infinite; pointer-events: none; }
+.app-swin-muzzle.is-low { width: 6px; height: 6px; background: #ffe7a0; box-shadow: 0 0 5px 1px rgba(255, 200, 90, 0.8); }
+@keyframes app-swin-fire { 0%, 84% { opacity: 0; transform: scale(0.3); } 88% { opacity: 1; transform: scale(1.3); } 93% { opacity: 0.65; transform: scale(1); } 100% { opacity: 0; transform: scale(0.3); } }
 /* 切换驾驶的交叉过渡层（2026-09-10：旧舰淡出左移 / 新舰自右滑入淡入，互不覆盖状态动画——
    过渡动画挂图层元素，舰体自身的浮动/摇摆/震动动画仍挂在 .app-sprite 上不受影响） */
 .app-shipwin-stack { position: relative; width: 112px; height: 52px; flex: 0 0 auto; }
@@ -2529,7 +2563,9 @@ body {
 @keyframes app-swin-leave { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-10px); } }
 @keyframes app-swin-enter { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 .app-shipwin.is-docked .app-sprite svg { animation: app-swin-breathe 3.2s ease-in-out infinite; filter: drop-shadow(0 0 7px rgba(120, 200, 255, 0.16)); }
-.app-shipwin.is-work .app-sprite { animation: app-swin-float 2.4s ease-in-out infinite; }
+.app-shipwin.is-work-mine .app-sprite,
+.app-shipwin.is-work-salvage .app-sprite,
+.app-shipwin.is-work-scan .app-sprite { animation: app-swin-float 2.4s ease-in-out infinite; }
 .app-shipwin.is-travel .app-sprite { animation: app-swin-sway 1.9s ease-in-out infinite; }
 .app-shipwin.is-field .app-sprite svg { filter: drop-shadow(0 0 6px rgba(120, 150, 190, 0.14)); }
 .app-shipwin.is-combat { border-color: rgba(255, 110, 90, 0.55); box-shadow: 0 0 14px rgba(255, 90, 70, 0.18) inset; }
