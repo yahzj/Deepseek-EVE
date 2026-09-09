@@ -146,7 +146,7 @@ function main(): void {
   console.log(`彩头 EV/h：基础件 ${Math.round(baseEv).toLocaleString('zh-CN')} + MK2(低安) ${Math.round(mk2Ev).toLocaleString('zh-CN')} + 碎片 ${Math.round(fragEv).toLocaleString('zh-CN')} ≈ ${Math.round(bonusEv).toLocaleString('zh-CN')} ISK（≤ 保底 10% = ${Math.round(target * 0.1).toLocaleString('zh-CN')}；满技能保底下占比 ≈ ${((bonusEv / (target * FULL_SKILL_MULT)) * 100).toFixed(1)}%）`)
   console.log('AI 核心档折算（炉周期 ÷ 效率，再乘技能项）：' + [0.4, 0.5, 0.6, 0.75].map((e) => `${Math.round(e * 100)}% → 无技能 ${Math.round(target * e).toLocaleString('zh-CN')} / 满技能 ${Math.round(target * e * FULL_SKILL_MULT).toLocaleString('zh-CN')} ISK/h`).join('；'))
   console.log('v20 多炉并行复核（2026-09-05 二号，一号变更记录点名）：')
-  console.log('  · 炉位规则：主控 1 台（100%）+ 每台 AI 炉 1 枚核心（效率 40/50/60/75%）——同时启用总数受「AI 核心上限」技能约束（2026-09-08 船长定：AI 副船任务与站内设施共用上限，Lv0 无法启用；上限 = 人工智能专家等级，后续技能可再叠加）；')
+  console.log('  · 炉位规则：主控 1 台（100%）+ 每台 AI 炉 1 枚核心（效率 40/50/60/75%）——同时启用总数受「AI 核心上限」技能约束（2026-09-08 船长定：AI 副船任务与站内设施共用上限，Lv0 无法启用；上限 = AI 核心操作学等级，后续技能可再叠加）；')
   console.log('  · 每台炉独立按上表 EV（common 满技能 ≈143.5k×eff），合计 = Σeff × 单炉 EV；')
   console.log('  · 典型场景（common，满技能，锚 82k）：主炉+basic(1.4)≈201k/h；+gamma(1.9)≈273k/h；+beta(2.5)≈359k/h；+alpha(3.25)≈466k/h')
   console.log('  · 复核结论：2026-09-06 锚从 55k 提至 82k（Y 5.8/2.06/0.62，船长定档）；核心炉收益高但受「打捞供料（低密满技能 ~7.5k m³/h vs 满技能合计炉速 1800×3.25≈5.9k m³/h，仍供大于求）」')

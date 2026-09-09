@@ -15,7 +15,7 @@
  *   「AI 核心上限」——同时启用总数受 AI 核心上限技能约束、与 AI 副船任务共用，
  *   完成/取消自动归还）；
  * - 耗时链同炉：主控线 = 工业理论 × 批量生产学（现有公式）；AI 线 = 基础耗时 ÷ 核心效率再乘
- *   工业自动化 −5%/级（下限 60%）。
+ *   产线节拍学（原"工业自动化"）−5%/级（下限 60%）。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
@@ -162,7 +162,7 @@ export function startManufacturing(
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
   } else {
-    const capBlock = aiCoreCapBlock(state, ctx)
+    const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
@@ -174,7 +174,7 @@ export function startManufacturing(
     return { ok: false, error: `材料不足：${missing.join('、')}。` }
   }
   // 耗时链：calcBuildDurationMs（工业理论 × 批量生产学）为共同基准；AI 先 ÷核心效率；
-  // 工业自动化 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
+  // 产线节拍学 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
   let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
   if (worker !== 'pilot') {
     const eff = aiEfficiency(state, ctx, worker)

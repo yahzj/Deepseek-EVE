@@ -110,7 +110,7 @@ function injectB1(state: GameState): string[] {
   // AI 副船名额与核心（实测"副船同遇"门槛）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 3)
   state.aiCores['basic'] = (state.aiCores['basic'] ?? 0) + 4
-  notes.push('人工智能专家 Lv3 + 基础核心 ×4（AI 核心启用上限 3 枚——AI 副船任务与站内设施共用）')
+  notes.push('AI 核心操作学 Lv3 + 基础核心 ×4（AI 核心启用上限 3 枚——AI 副船任务与站内设施共用）')
   // 全舰回满耐久（遭遇伤害测试以干净耐久起步）
   for (const s of Object.values(state.fleet)) s.durability = 1
   notes.push('全舰耐久回满')
@@ -309,7 +309,7 @@ function injectB3(state: GameState): string[] {
   // 5) AI 打捞任务门槛（名额 1 + 基础核心）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 1)
   state.aiCores.basic = (state.aiCores.basic ?? 0) + 1
-  notes.push('「人工智能专家」Lv1 + 基础 AI 核心 ×1（可试 AI 打捞任务）')
+  notes.push('「AI 核心操作学」Lv1 + 基础 AI 核心 ×1（可试 AI 打捞任务）')
   notes.push('测试路径：星图远征面板「残骸打捞」开捞（或 AI 指挥中心打捞任务）→ 满仓自动返港 → 工业页残骸回收开箱（保底矿物 + 彩头/碎片）→ 装备库与仓库核收')
   return notes
 }

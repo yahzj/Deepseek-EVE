@@ -12,6 +12,8 @@ import { countWare } from '../src/inventory'
 import {
   aiCoreCap,
   aiCoreUsed,
+  aiCoreCapBlock,
+  industryAiBonus,
   aiEfficiency,
   aiTaskView,
   assignAiExpedition,
@@ -75,10 +77,37 @@ describe('AI 核心库与名额', () => {
     expect(countAiCore(state, 'basic')).toBe(1)
   })
 
-  it('启用上限 = AI 核心上限技能贡献（现唯一 = 人工智能专家等级）；Lv0 = 0 不能启用', () => {
+  it('启用上限 = AI 核心上限技能贡献（现唯一 = AI 核心操作学等级）；Lv0 = 0 不能启用', () => {
     expect(aiCoreCap(state, ctx)).toBe(0)
     state.skills.trained['ai-expert'] = 2
     expect(aiCoreCap(state, ctx)).toBe(2)
+  })
+
+  it('工业专用扩容（2026-09-08 船长定）：「工业自动化」每级 +2 枚，只对站内产业生效', () => {
+    expect(industryAiBonus(state, ctx)).toBe(0)
+    state.skills.trained['industrial-ai-cap'] = 2
+    expect(industryAiBonus(state, ctx)).toBe(4) // 每级 +2（balance aiCore.industrySlotsPerLevel）
+    // ai-expert = 0：AI 副船（默认 ship scope）仍被共用上限为 0 拦截；
+    // 站内产业（industry scope）可先用工业扩容工位（used 0 < 0+4）
+    expect(aiCoreCapBlock(state, ctx)).not.toBeNull()
+    expect(aiCoreCapBlock(state, ctx) ?? '').toContain('AI 核心上限为 0')
+    expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull()
+    // 共用上限满、扩容还有空余：产业照常放行（副船仍拦截）
+    state.skills.trained['ai-expert'] = 1
+    state.fleet['sandcat2'] = {
+      durability: 1,
+      armorPct: 1,
+      cargo: {},
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
+    }
+    state.aiAssignments['sandcat2'] = {
+      coreType: 'basic',
+      startedAtGameMs: 0,
+      task: { kind: 'mining', beltId: '', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+    }
+    expect(aiCoreUsed(state)).toBe(1)
+    expect(aiCoreCapBlock(state, ctx)).not.toBeNull() // 1/1 满 → 副船拒
+    expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull() // 1 < 1+4 → 产业可开
   })
 })
 

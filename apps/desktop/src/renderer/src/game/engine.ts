@@ -1553,7 +1553,7 @@ export class GameEngine {
     return result
   }
 
-  /** 序章·苏醒 S5：玩家到达技能页 → 特典即时归档（人工智能专家 Lv1，免训练等待）并进入分身步骤 */
+  /** 序章·苏醒 S5：玩家到达技能页 → 特典即时归档（AI 核心操作学 Lv1，免训练等待）并进入分身步骤 */
   prologueSkillOpened(): CommandResult {
     const result = onTutorialSkillPageOpened(this.state)
     if (result.ok) {

@@ -353,8 +353,13 @@ export interface BalanceConfig {
     durabilityFactor: number
   }
   aiCore: {
-    /** 提升「同时启用 AI 核心上限」的技能 id（现唯一 = 人工智能专家；多技能叠加见 ai.ts aiCoreCap） */
+    /** 提升「同时启用 AI 核心上限」的技能 id（共用上限 = AI 副船任务 + 站内 AI 设施；多技能叠加见 ai.ts aiCoreCap） */
     skillId: string
+    /** 2026-09-08 船长定：工业专用扩容技能表——表内技能每级 +industrySlotsPerLevel 枚
+     * 「工业专用 AI 工位」（只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限） */
+    industrySkillIds: readonly string[]
+    /** 工业专用扩容：每级新增工位枚数 */
+    industrySlotsPerLevel: number
     /** 卷B3⑩（2026-09-08 船长定）：AI 核心调度学 id——核心驱动的全部作业效率在核心档位之上
      *  每级 +2 个百分点累加（如基础核心 40% → 满级 50%；封顶 100%；返航腿不参与，卷B2⑥ 口径） */
     dispatchSkillId: string

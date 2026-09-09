@@ -95,8 +95,8 @@ export function releaseAiCore(state: GameState, type: AiCoreType): void {
 }
 
 /** 同时启用 AI 核心的总数上限 = 各「AI 核心上限」技能贡献之和
- * （现唯一 = 人工智能专家等级；后续新增上限技能在此叠加——船长 2026-09-08 定：
- * AI 副船任务与站内 AI 设施共用同一上限，不再按用途分池） */
+ * （现唯一 = AI 核心操作学等级（原"人工智能专家"，2026-09-08 更名降 rank2）；后续上限技能在此叠加——船长 2026-09-08 定：
+ * AI 副船任务与站内 AI 设施共用同一上限，不再按用途分池；站内产业另有工业专用扩容见 industryAiBonus） */
 export function aiCoreCap(state: GameState, ctx: SimContext): number {
   let cap = 0
   cap += state.skills.trained[ctx.balance.aiCore.skillId] ?? 0
@@ -116,16 +116,36 @@ export function aiCoreUsed(state: GameState): number {
   return used
 }
 
+/** 工业专用 AI 工位扩容（2026-09-08 船长定）：balance.aiCore.industrySkillIds 内技能每级
+ * +industrySlotsPerLevel 枚——只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
+ * 将来新增"工业 AI 专用扩容技能"只需往平衡表追加 id */
+export function industryAiBonus(state: GameState, ctx: SimContext): number {
+  const bal = ctx.balance.aiCore
+  if (!bal || !Array.isArray(bal.industrySkillIds)) return 0
+  let bonus = 0
+  for (const id of bal.industrySkillIds) {
+    bonus += (state.skills.trained[id] ?? 0) * (bal.industrySlotsPerLevel ?? 0)
+  }
+  return bonus
+}
+
 /** AI 核心启用守卫（任何启用点共用）：null = 可启用；否则返回拒绝文案（上限未解锁 / 已满）。
+ * scope = 'ship'：AI 副船任务，只受共用上限约束；
+ * scope = 'industry'：站内精炼炉/回收炉/制造线，上限 = 共用上限 + 工业专用扩容（industryAiBonus）。
  * 船长 2026-09-08 定：存量超限（读档/技能变化）不中断运行，但同样计入 aiCoreUsed——
  * 想再启用新的必须先把占用降到上限以内。 */
-export function aiCoreCapBlock(state: GameState, ctx: SimContext): string | null {
+export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' | 'industry' = 'ship'): string | null {
   const cap = aiCoreCap(state, ctx)
-  if (cap <= 0) {
-    return 'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「人工智能专家」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线共用上限）。'
+  const bonus = scope === 'industry' ? industryAiBonus(state, ctx) : 0
+  const eff = cap + bonus
+  if (eff <= 0) {
+    return 'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「AI 核心操作学」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线共用上限）。'
   }
   const used = aiCoreUsed(state)
-  if (used >= cap) {
+  if (used >= eff) {
+    if (scope === 'industry' && bonus > 0) {
+      return `AI 核心启用已满（${used}/${eff}：共用上限 ${cap} + 工业扩容 ${bonus}）：先停用其它 AI 核心（AI 副船任务或站内炉/线），或训练「工业自动化」再扩工业工位。`
+    }
     return `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线）再启用新的。`
   }
   return null

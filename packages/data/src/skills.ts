@@ -141,10 +141,17 @@ export const SKILLS: readonly SkillDef[] = [
   },
   {
     id: 'industrial-automation',
-    name: '工业自动化',
+    name: '产线节拍学', // 2026-09-08 船长定：原名"工业自动化"让位给新的工业 AI 工位扩容技能，本技能按真实效果改名
     group: '工业',
     rank: 3,
-    description: '自动化作业调度：精炼炉与组装机的作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧；手动与 AI 核心驱动同享，与炉心熔炼学/批量生产学乘算叠加）。',
+    description: '产线节拍优化：精炼炉与组装机的作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧；手动与 AI 核心驱动同享，与炉心熔炼学/批量生产学乘算叠加）。',
+  },
+  {
+    id: 'industrial-ai-cap',
+    name: '工业自动化', // 2026-09-08 船长定：新 rank4——为站内产业扩容 AI 工位（每级 +2，仅产业生效）
+    group: '工业',
+    rank: 4,
+    description: '自动化产线扩容：AI 核心驱动的站内精炼炉/回收炉/制造线，在 AI 核心共用上限之外每级 +⟦2⟧ 枚工业专用工位（满级 +⟦10⟧；仅对站内产业生效，不增加 AI 副船任务上限；每个工位仍占用一枚实体 AI 核心）。',
   },
   {
     id: 'astro-geology',
@@ -371,10 +378,10 @@ export const SKILLS: readonly SkillDef[] = [
   },
   {
     id: 'ai-expert',
-    name: '人工智能专家',
+    name: 'AI 核心操作学', // 2026-09-08 船长定：原名"人工智能专家"（rank4）；降为 rank2 入门 + 更名，与 rank5「AI 核心调度学」成阶梯
     group: '工程',
-    rank: 4,
-    description: 'AI 指挥框架：每级 +⟦1 枚⟧ 可同时启用的 AI 核心上限（AI 副船任务与站内精炼炉/回收炉/制造线共用该上限）。',
+    rank: 2,
+    description: 'AI 核心的接入与指挥框架：每级 +⟦1⟧ 枚可同时启用的 AI 核心上限（AI 副船任务与站内精炼炉/回收炉/制造线共用该上限）。',
   },
   {
     id: 'ai-core-dispatch',
