@@ -634,6 +634,16 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
         )
         continue
       }
+      if (r.reason === 'salvage') {
+        addLog(
+          state,
+          'info',
+          moved > 0
+            ? `${name} 已随打捞善后返航到港：残骸已卸入物品仓库（${moved.toLocaleString('zh-CN')} m³ 当量）。`
+            : `${name} 已随打捞善后返航到港（货仓为空）。`,
+        )
+        continue
+      }
       addLog(
         state,
         'info',

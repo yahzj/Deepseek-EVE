@@ -150,8 +150,9 @@ export interface ShipReturnState {
   /** 已走毫秒（≤ legMs；到港条件 = 累计 ≥ legMs） */
   phaseAccMs: number
   /** 善后来源（2026-09-08 船长定）：'mining' = 采矿换船（缺省）/ 'expedition' = 返航中换船
-   *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算） */
-  reason?: 'mining' | 'expedition'
+   *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算）/ 'salvage' = 打捞换船
+   *  （2026-09-09：与采矿同构——打捞作业中换船，旧船自动返航到港卸货） */
+  reason?: 'mining' | 'expedition' | 'salvage'
 }
 
 /**
@@ -509,7 +510,7 @@ export interface AiMiningTask {
   rvLeft?: number
 }
 
-/** AI 副船任务：打捞（B3 单趟：outbound → salvaging → returning；满仓自动返港卸货后任务结束） */
+/** AI 副船任务：打捞（自动循环，2026-09-09 船长定：outbound → salvaging → returning → 同星系再出航，直到取消） */
 export interface AiSalvageTask {
   kind: 'salvage'
   /** 目标星系 id（已探索；有敌群型号池） */
@@ -810,7 +811,7 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   standby: StandbyState
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
-  /** B3 打捞作业（2026-09-05：采矿式单趟；兼容字段无版本号，旧档载入 = 空态） */
+  /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
   salvaging: SalvageOpState
   /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
   galaxyWrecks: Record<string, WreckGalaxyRecord>

@@ -163,6 +163,45 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   return true
 }
 
+/** 打捞善后（换驾驶时引擎内部调用，2026-09-09 与采矿 retireMiningShip 同构）：
+ * 把当前驾驶船正在进行的打捞转成"自动返航账本"（shipReturns，reason='salvage'）——
+ * 打捞中 = 按货仓占比缩放的满载返航全长（去程并入）；返航中 = 继续剩余；
+ * 旧档遗留出航相位按空船腿折算折返。到港由 advanceShipReturns 自动整仓卸货，
+ * 打捞作业随之结束（autoCycle/stopAfterTrip 偏好跨趟保留，同采矿）。 */
+export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
+  const s = state.salvaging
+  if (!s.active || !s.galaxyId) return false
+  const galaxyId = s.galaxyId
+  const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+  // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
+  const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
+  const legMs = scaledReturnMs(fullLeg, state, ctx, state.shipId)
+  const phaseAccMs =
+    s.phase === 'outbound'
+      ? Math.min(legMs, s.phaseAccMs * 2) // 旧档遗留出航腿为空船半程：折返按 2×折算已走（同采矿）
+      : s.phase === 'returning'
+        ? s.phaseAccMs
+        : 0
+  const oldShip = state.fleet[state.shipId]
+  const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
+  state.shipReturns[state.shipId] = {
+    beltId: null,
+    legMs: Math.max(1, legMs),
+    phaseAccMs: Math.min(legMs, Math.max(0, phaseAccMs)),
+    reason: 'salvage',
+  }
+  const shipName = shipDisplayName(state, ctx, state.shipId)
+  const remainSec = Math.max(0, Math.round((legMs - phaseAccMs) / 1000))
+  // 结束作业（偏好字段 autoCycle/stopAfterTrip 保留，供下次作业沿用）
+  resetOp(state)
+  addLog(
+    state,
+    'info',
+    `打捞已随换船结束：${shipName} 从「${galaxyName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+  )
+  return true
+}
+
 /**
  * 完好舰体命中率（卷B3⑨，2026-09-08 船长定稿：概率按"该打捞轮占用的分钟数"换算——
  * 与富矿脉⑥同哲学：以分钟为纲，掷点节奏不受打捞器数量/周期与 AI 效率影响）：

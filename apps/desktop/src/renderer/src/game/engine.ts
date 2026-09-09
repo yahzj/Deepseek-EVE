@@ -818,7 +818,7 @@ export class GameEngine {
     return ok
   }
 
-  /** B3：开始打捞作业（采矿式单趟；需高槽打捞器） */
+  /** B3：开始打捞作业（采矿式自动循环，默认卸货后续捞；需高槽打捞器） */
   startSalvageOpAt(galaxyId: string): CommandResult {
     const result = startSalvageOp(this.state, galaxyId, this.ctx)
     if (result.ok) {
@@ -1510,7 +1510,7 @@ export class GameEngine {
     return result
   }
 
-  /** B3：指派 AI 打捞任务（单趟：出航→打捞→满仓返港卸货→结束） */
+  /** B3：指派 AI 打捞任务（自动循环：出航→打捞→满仓返港卸货→同星系再出航，取消才结束） */
   assignAiSalvageAt(shipId: string, coreType: AiCoreType, galaxyId: string): CommandResult {
     const result = assignAiSalvage(this.state, shipId, coreType, galaxyId, this.ctx)
     if (result.ok) {

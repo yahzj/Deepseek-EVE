@@ -12,6 +12,7 @@ import { emptyFitted, uidDefId } from './labels'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
+import { retireSalvageShip } from './salvaging'
 import { scaledReturnMs } from './trips'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
@@ -79,7 +80,7 @@ export function ownsShip(state: GameState, shipId: string): boolean {
   return shipId in state.fleet
 }
 
-/** 玩家指令：切换到拥有的另一艘船驾驶（采矿作业中可直接切换——旧船自动返航卸货善后，采矿随之结束） */
+/** 玩家指令：切换到拥有的另一艘船驾驶（采矿/打捞作业中可直接切换——旧船自动返航卸货善后，作业随之结束） */
 export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   if (shipId === state.shipId) {
     return { ok: false, error: `正在驾驶的就是 ${shipDisplayName(state, ctx, shipId)}。` }
@@ -147,6 +148,10 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   // 采矿作业中：直接切换成功——旧船按其当前阶段自动返航（到港自动卸货入仓库），采矿作业随之结束
   if (state.mining.active) {
     retireMiningShip(state, ctx)
+  }
+  // 打捞作业中：直接切换成功——旧船按其打捞阶段自动返航到港卸货，作业结束（2026-09-09 与采矿同构）
+  if (state.salvaging.active) {
+    retireSalvageShip(state, ctx)
   }
   state.shipId = shipId
   addLog(state, 'info', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`)
@@ -226,6 +231,15 @@ export function loseShip(state: GameState, shipId: string, ctx: SimContext, reas
     state.mining.phaseAccMs = 0
     state.mining.cycleAccMs = 0
     state.mining.rvLeft = 0
+  }
+  if (state.salvaging.active && !state.fleet[state.shipId]) {
+    state.salvaging.active = false
+    state.salvaging.galaxyId = null
+    state.salvaging.phase = 'salvaging'
+    state.salvaging.phaseAccMs = 0
+    state.salvaging.cycleAccMs = 0
+    state.salvaging.tripM3 = 0
+    state.salvaging.deviceAccMs = {}
   }
 }
 
