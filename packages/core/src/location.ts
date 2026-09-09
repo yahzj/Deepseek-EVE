@@ -12,6 +12,7 @@
  *   行程随时可取消（无惩罚，取消即立即返航停靠最近已建成站）。
  */
 import { addLog, HOME_GALAXY_ID } from './state'
+import { pilotUnavailableReason } from './shipyard'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext, StationSiteDef } from './types'
@@ -561,6 +562,8 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
+  const pilotBlock = pilotUnavailableReason(state)
+  if (pilotBlock) return { ok: false, error: pilotBlock }
   const s = state.standby
   if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。' }

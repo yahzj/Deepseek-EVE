@@ -15,6 +15,7 @@
  *   （见 events.ts EXPLORE_EVENTS）。
  */
 import { addLog, HOME_GALAXY_ID } from './state'
+import { pilotUnavailableReason } from './shipyard'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
@@ -136,7 +137,8 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港扫描。' }
   }
-  if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法开始扫描。' }
+  const pilotBlock = pilotUnavailableReason(state)
+  if (pilotBlock) return { ok: false, error: pilotBlock }
 
   // 出发地 = 当前位置（野外停留点或空间站）；作业开始时清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)

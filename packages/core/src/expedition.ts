@@ -17,7 +17,7 @@ import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
 import { nextRandom } from './rng'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
-import { loseShip, repairWithKits } from './shipyard'
+import { loseShip, pilotUnavailableReason, repairWithKits } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
@@ -212,7 +212,8 @@ export function bountyRewardFactor(state: GameState): number {
 function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
-  if (!state.fleet[state.shipId]) return { ok: false, error: '当前舰船数据缺失，无法出航。' }
+  const pilotBlock = pilotUnavailableReason(state)
+  if (pilotBlock) return { ok: false, error: pilotBlock }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
     return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（当前 ${standing}），多完成低级目标攒声望。` }

@@ -46,3 +46,15 @@
   个体特征:家族感 = 轮廓族型一致,个体差异 = 舰桥/炮塔/舱段/翼形按 desc 特征),敌族 7 型 ×
   细节变体,再接入与构建。
 - 每位"族"先用一张族母型(如武装族 = 现有 armed 形改进)做基底,出全族草稿批看一次,再精修。
+
+## 六、接入与目测状态（2026-09-09 更新）
+
+- 样稿阶段 ✅ → **已全量接入**：本目录 samples/ 仅为早期草稿存档；实际战斗资产在
+  `apps/desktop/src/renderer/src/ui/shipArt.tsx`（SHIP_ART = 玩家 25 舰全表 + FOE_ART 敌族表）与
+  `shipArtData.tsx`（SHIP_ART_EXTRA / FOE_ART_EXTRA 转录资产表）；敌族映射 = FOE_FAMILY
+  （22 张悬赏卡 → 族 A~G，缺省 F 制式巡逻）。
+- 新规格已生效：画布 240×110、舰首朝右、styles.css `.shipart-*` 层与敌族发光件、
+  battleViewCore 枪口锚已随新画布换算（66→79 / 35→39）。
+- **待船长真机目测**：测试档 `npx tsx tools/make-test-save.ts shipart`（已生成于
+  docs/test-saves/，档案清单见 docs/test-saves/README.md）；目测/细节验收清单 =
+  `acceptance-visual-20260909.md`（本目录）；目测通过后收口合入 main。

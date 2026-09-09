@@ -15,6 +15,7 @@ import type { BattleFx, DamageType, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
+import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
@@ -534,6 +535,8 @@ const meSpeedRef = useRef(200)
      到爆炸帧（boomAt = 致死弹道着弹）才撤出 → 剩余敌舰补位收拢——不在“开火同拍判死”的
      瞬间撤队/变灰，消除导弹/激光击杀时的模型偏移。外观按原始编队位恒定，不随补位变化） */
   const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  /** 敌舰族形键（悬赏卡 → 族 A~G；远征/未列卡/异常 → F 制式巡逻兜底，与资产 FOE_ART 键同源） */
+  const foeKey = foeFamilyOf(state.expedition.anomalyId)
   const foeClassBase = foeClassName(foeAnomaly?.tactic, foeAnomaly?.defProfile)
   const foeRowTags = foeTags.filter((tag) => {
     if (!deadRef.current.has(tag)) return true
@@ -545,9 +548,9 @@ const meSpeedRef = useRef(200)
     return (
       <div key={tag} data-tag={tag} className="app-bts-unit">
         <ShipSprite
-          role={orig === 0 ? 'armed' : 'hauler'}
+          foeKey={foeKey}
           flip={foeFlip}
-          accent={orig === 0 ? '#ff8373' : '#c25a4a'}
+          accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
           size={orig === 0 ? LAY.MAIN : LAY.ESC}
         />
         <span className="app-bts-name" style={{ color: orig === 0 ? '#ffb3a6' : '#d8a08f' }}>
@@ -575,9 +578,9 @@ const meSpeedRef = useRef(200)
     return (
       <span key={tag} className="app-bts-wreck" style={{ ...box, opacity: fadeT > 0 ? Math.max(0, 1 - fadeT) : 1 }}>
         <ShipSprite
-          role={orig === 0 ? 'armed' : 'hauler'}
+          foeKey={foeKey}
           flip={foeFlip}
-          accent={orig === 0 ? '#ff8373' : '#c25a4a'}
+          accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
           size={size}
         />
         {boomLive ? (
@@ -688,7 +691,7 @@ const meSpeedRef = useRef(200)
           {/* 我方舰列 */}
           <div className={`app-bts-col is-me${defeat ? ' is-crippled' : ''}`} ref={meColRef} style={{ left: lay.meLeft }}>
             <span className="app-bts-name">{meShip?.name}</span>
-            <ShipSprite role={meRole} accent={ROLE_ACCENT[meRole]} size={LAY.MAIN} flip={meFlip} />
+            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={LAY.MAIN} flip={meFlip} />
             <div className="app-bts-hpWrap">
               <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
             </div>

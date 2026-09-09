@@ -18,9 +18,11 @@ const ROLE_ACCENT: Record<string, string> = {
 
 /* 画面几何常量（px） */
 const LAY = { PAD: 36, GAP: 84, TOP: 26, MAIN: 170, ESC: 90, ROW_GAP: 4 }
-/** 舰艏（枪口）距舰体中心：主力舰 = hull 尖端 124/140 ×170 − 半宽 85 ≈ 66px；僚机小舰 ≈ 35px */
-const NOSE_MAIN = 66
-const NOSE_ESC = 35
+/** 舰艏（枪口）距舰体中心（px）：新 240×110 独立形舰艏尖典型位于本地坐标 x≈232
+ *（距画布中心 120 = 112 单位）→ 主力舰 112×170/240 ≈ 79px；僚机小舰 112×90/240 ≈ 42px。
+ * 旧 role 剪影（140 画布、尖端距中心 54）对应 66/35，此值已随新形换算更新。 */
+const NOSE_MAIN = 79
+const NOSE_ESC = 42
 
 /** 敌方"舰种"显示名（按战术 × 血型映射；代替通缉名展示在舰船上方） */
 const FOE_CLASS: Record<string, Record<string, string>> = {

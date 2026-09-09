@@ -31,6 +31,10 @@
  *  - cruiser 巡洋舰线实测（2026-09-09，尺寸分级新增 T3 巡洋四艘）：钱包 +6000 万 + 声望 13
  *         + 全星系点亮 + 锤头鲨炮巡（驾驶）/电鳐激光巡/长尾鲨导弹巡/牛鲨突击巡 ×4，MK3 满配
  *         + 支援 + 三族武器/支援备件 + 弹药（实测巡洋对 D~E 段手感与三族差异，定数值方向）。
+ *  - shipart 舰船战斗图形目测（2026-09-09 三号，新规格 240×110 图形全量接入后）：钱包 +6000 万
+ *         + 声望 13 + 全星系点亮 + 各族代表演示船 ×5（锤头鲨炮巡 MK3 满配驾驶/牛鲨突击巡/玄武
+ *         重装旗舰/皇带鱼货舰/座头鲸矿舰）+ 弹药装备库（真机目测我方各族船形与敌族 A~G 型形，
+ *         细节锚点/比例问题回传，详见 ship-battle-art 验收清单）。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -542,6 +546,58 @@ function injectCruiser(state: GameState): string[] {
   return notes
 }
 
+/** shipart（舰船战斗图形目测门槛，2026-09-09 三号）：新规格 240×110 战斗图形全量接入后，
+ * 船长真机目测用——钱包/声望/全星系点亮 + 各族代表演示船（逐艘切驾驶开战看形）+ 弹药装备库。
+ * 战斗画面重点：我方各族船形（舰首朝右/族色件/引擎挂点/炮口锚/大小比例）与敌族 A~G 型形。 */
+function injectShipArt(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 60_000_000
+  notes.push('钱包 +60,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（可接全部悬赏）')
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
+  }
+  notes.push(`点亮全部星系（${GALAXIES.length}）——各类敌族遭遇均可出发`)
+  // 各族代表演示船：驾驶 = 锤头鲨（武装 T3 炮巡 MK3 满配，可扫全段）；其余各族可战对照
+  const lineup: Array<[string, string, string[], string[], string[]]> = [
+    // [shipId, 自定义名, high, mid, low]
+    ['sh-hammerhead', '锤头鲨·炮击巡洋(驾驶)', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-rof-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
+    ['sh-bullshark', '牛鲨·突击巡洋', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']],
+    ['sh-xuanwu', '玄武·重装旗舰', ['mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']],
+    ['sh-colossal', '皇带鱼·旗舰货舰', ['mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
+    ['sh-humpback', '座头鲸·矿舰', ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
+  ]
+  const uids: string[] = []
+  lineup.forEach(([shipId, name, high, mid, low], i) => {
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  notes.push(`新增各族演示船 ×5：${uids[0]}（锤头鲨·炮击巡洋 MK3 满配，已设为驾驶）、${uids[1]}（牛鲨·突击巡洋 MK3）、${uids[2]}（玄武·重装旗舰）、${uids[3]}（皇带鱼·旗舰货舰）、${uids[4]}（座头鲸·矿舰）——舰船页切驾驶逐艘对照造型（武装/重装/航运/工业族）`)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  notes.push('仓库弹药三型 ×5000（动能炮/激光/导弹各自供弹）')
+  for (const m of ['mod-turret-kin-3', 'mod-missile-3', 'mod-laser-3', 'mod-turret-kin-2', 'mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
+  }
+  notes.push('装备库备 MK2/MK3 武器与支援件 ×3（可自组换装）')
+  for (const s of Object.values(state.fleet)) {
+    if (s) {
+      s.durability = 1
+      s.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push('测试路径：星图·战斗悬赏逐敌族开战对照造型——A 海盗（赤潮/碎晶/灰霾/蜃影/边境海盗/信标猎手）、B 靶机（演习场/新港护航/占港拾荒）、C 异形（裂谷畸变/星髓/噬口/深渊之门）、D 守墓（坟场/虚海/穹顶/幽灵舰）、E 泰坦（泰坦残骸/奥罗残骸）、F 制式巡逻（低安遭遇伏击）、G 烬火流亡（烬火/回音/天底静区）；重点看新规格 240×110：舰首朝右、族色件与敌族发光件、尾焰/枪口闪光落点、敌我大小比例、受击/残骸表现、翻转移位；细节锚点与比例问题回传（详见 ship-battle-art 验收清单文档）')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -553,6 +609,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   redtide: injectRedtide,
   drone: injectDrone,
   cruiser: injectCruiser,
+  shipart: injectShipArt,
 }
 function main(): void {
   const feature = process.argv[2]
