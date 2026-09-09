@@ -234,6 +234,11 @@ export interface MarketGoodDef {
    * 可绕过常驻拦截买入；常驻挂单不开放。达标后整批解锁：恢复正常权重/正常价（不转为常驻商品）。
    * 与 standingReq 正交：standingReq = 纯硬拦（现役顶船维持，不加暗市）。 */
   bmStanding?: number
+  /** 数字稀有度（2026-09-09 船长拍板：稀有度入物品本体——data 层 RARITY_TIER 表，
+   * 构建 SimContext 时按 refId 填充；市场/图鉴/未来掉落统一查）。档位：1 常驻层、
+   * 2/3 稀有订单层（2 大众/3 高阶）、4 奇货层。与 rarity 渠道分离：**只驱动稀有订单渠道
+   * 的刷新权重**（卖单抽取 + NPC 收购窗），奇货渠道出率与数字不挂钩 */
+  rarityTier?: number
 }
 
 /** 市场平衡参数 */
@@ -251,6 +256,9 @@ export interface MarketBalance {
   rareWindowChance: number
   /** 限定商品每个抽取窗（10 分钟）独立掷骰的出单概率：0.8%×现货抢购学（约每件每 20.8 小时一轮） */
   exoticWindowChance: number
+  /** 数字稀有度 3 档权重（2026-09-09 船长拍板：稀有订单渠道按数字分层——3 档（高阶）刷新
+   * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗；系数经 market-rarity-sim 校准） */
+  rareTier3Weight: number
   /** 窗口净成交量超过该比例（相对参考量）时触发冲击 */
   shockTriggerRatio: number
   /** 每次冲击的价格偏移（比例，可正可负；叠加无上限） */

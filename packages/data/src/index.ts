@@ -13,6 +13,8 @@ export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
+// 2026-09-09 数字稀有度表（物品本体属性；市场/图鉴/未来掉落统一查）
+export { RARITY_TIER, rarityTierOf } from './rarityTier'
 export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'

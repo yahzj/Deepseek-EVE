@@ -16,6 +16,7 @@
  */
 
 import type { MarketGoodDef } from '@whale/core'
+import { rarityTierOf } from './rarityTier' // 2026-09-09 数字稀有度表（物品本体属性，市场调用）
 import { wreckItemIdOf } from '@whale/core'
 import { ANOMALIES } from './anomalies'
 import { GALAXIES } from './universe'
@@ -401,7 +402,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   ...WRECK_BUY_GOODS,
 ]
 
-/** 构建市场商品目录 */
+/** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：
+ * 稀有度入物品本体，市场调用；与渠道 rarity 分离，只驱动稀有订单渠道刷新权重） */
 export function buildMarketGoodsCatalog(): ReadonlyMap<string, MarketGoodDef> {
-  return new Map(MARKET_GOODS.map((g) => [g.key, g]))
+  return new Map(MARKET_GOODS.map((g) => [g.key, { ...g, rarityTier: rarityTierOf(g.refId) }]))
 }

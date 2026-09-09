@@ -80,6 +80,12 @@ const SECONDHAND_PER_LEVEL = 0.02
 const RARE_LIFE_MUL = 4
 /** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量） */
 const EXOTIC_CAP_PER_DRAW = 2
+/** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
+ * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
+ * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。系数经 market-rarity-sim 校准） */
+function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
+  return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.25) : 1
+}
 
 /** 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续） */
 function sellStandingMult(state: GameState, def: MarketGoodDef | undefined): number {
@@ -547,9 +553,10 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
   if (n > 0) {
     const defs: MarketGoodDef[] = []
     let totalW = 0
-    // 蓝图书权重 ×0.5（2026-09-09 船长定：全蓝图书出现概率 −50%）；闸内另乘 RARE_LOCKED_WEIGHT
+    // 蓝图书权重 ×0.5（2026-09-09 船长定：全蓝图书出现概率 −50%）；闸内另乘 RARE_LOCKED_WEIGHT；
+    // 数字稀有度 3 档 ×RARE_TIER3_WEIGHT（2026-09-09：稀有订单层内分层，2 大众基准 1）
     const wOf = (def: MarketGoodDef): number =>
-      (def.kind === 'blueprint' ? 0.5 : 1) * (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1)
+      (def.kind === 'blueprint' ? 0.5 : 1) * (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
     for (const def of ctx.marketGoods.values()) {
       if (def.rarity !== 'rare' || def.playerBuyable === false) continue // 只收商品（残骸等）不出供给单
       defs.push(def)
@@ -560,7 +567,7 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
       let acc = 0
       for (const def of defs) {
         const locked = bmGateLocked(state, def)
-        acc += (def.kind === 'blueprint' ? 0.5 : 1) * (locked ? RARE_LOCKED_WEIGHT : 1)
+        acc += (def.kind === 'blueprint' ? 0.5 : 1) * (locked ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
         if (hit < acc) {
           spawnRareSupply(state, ctx, def, now, locked)
           break
@@ -710,8 +717,9 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
   } else if (def.rarity === 'rare') {
     // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 3% ×建站扩容；qty 2/张 ×扩容；2026-09-08 船长定；
     // 闸内 ×4 收购价同规则；寿命同供给侧 36 分钟）
+    // 2026-09-09 数字稀有度：稀有订单层内分层——3 档收购概率 ×rareTierWeight（同卖单权重表）
     const boost = builtSellBoost(state, ctx)
-    if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.03 * boost)) {
+    if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.03 * boost * rareTierWeight(def, ctx))) {
       npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), Math.max(1, Math.round(2 * boost)), locked)
     }
   } else if (def.rarity === 'exotic') {

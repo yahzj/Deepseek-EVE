@@ -1172,6 +1172,43 @@ describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权�
   })
 })
 
+describe('数字稀有度分层（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，只驱动稀有订单渠道权重）', () => {
+  it('tier3 权重 0 → 永不命中（tier2 正常）；权重 1 → 两档同权近似对半；0.25 → tier3 显著低于 tier2', () => {
+    const run = (w: number): { t2: number; t3: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 20260909 })
+      const ctx = makeTestCtx({
+        marketGoods: [
+          { key: 'mod-t2', kind: 'module', refId: 'mod-t2', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65, rarityTier: 2 },
+          { key: 'mod-t3', kind: 'module', refId: 'mod-t3', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65, rarityTier: 3 },
+        ],
+        modules: [moduleDef('mod-t2', 'turret', 0), moduleDef('mod-t3', 'turret', 0)],
+      })
+      ctx.balance.market.rareTier3Weight = w
+      ensureMarket(state, ctx)
+      let t2 = 0
+      let t3 = 0
+      for (let i = 0; i < 300; i++) {
+        state.market.npcSell['mod-t2'] = []
+        state.market.npcSell['mod-t3'] = []
+        slowSupplyDraw(state, ctx, i * 600_000)
+        t2 += state.market.npcSell['mod-t2']!.length
+        t3 += state.market.npcSell['mod-t3']!.length
+      }
+      return { t2, t3 }
+    }
+    const zero = run(0)
+    expect(zero.t2).toBeGreaterThan(0)
+    expect(zero.t3).toBe(0) // 权重 0：tier3 永不命中
+    const q = run(0.25)
+    expect(q.t2).toBeGreaterThan(q.t3 * 2) // 0.25：tier3 命中显著低于 tier2
+    const one = run(1)
+    expect(one.t3).toBeGreaterThan(q.t3) // 权重上调 → tier3 命中上升
+    const share = one.t3 / (one.t2 + one.t3)
+    expect(share).toBeGreaterThan(0.25) // 均权对照：近似对半（宽界防随机噪声）
+    expect(share).toBeLessThan(0.75)
+  })
+})
+
 describe('商品下架（市场目录收缩防御，2026-09-09：蓝图船成品现货退役）', () => {
   it('目录外的旧买单不再撮合：不扣钱、订单保留（可手动撤单）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 9 })

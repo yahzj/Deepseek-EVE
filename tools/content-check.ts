@@ -25,6 +25,7 @@ import {
   SHIP_BLUEPRINTS,
   SHIPS,
   ANOMALIES_FLAVORED,
+  RARITY_TIER,
   buildItemCatalog,
   buildSimContext,
 } from '@whale/data'
@@ -106,6 +107,28 @@ for (const g of MARKET_GOODS) {
 }
 check(goodKeys.size === MARKET_GOODS.length, `市场卡键重复（${MARKET_GOODS.length - goodKeys.size} 处）`)
 console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
+
+/* ── 数字稀有度表（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，市场调用）── */
+{
+  const tableKeys = new Set(Object.keys(RARITY_TIER))
+  const refSet = new Set(MARKET_GOODS.map((g) => g.refId))
+  check(tableKeys.size === MARKET_GOODS.length, `稀有度表键数 ${tableKeys.size} ≠ 市场卡数 ${MARKET_GOODS.length}`)
+  for (const ref of refSet) {
+    if (!tableKeys.has(ref)) errors.push(`市场卡 ${ref} 缺稀有度表项（RARITY_TIER）`)
+  }
+  for (const k of tableKeys) {
+    if (!refSet.has(k)) errors.push(`稀有度表多余键 ${k}（无对应市场卡）`)
+    const v = RARITY_TIER[k]!
+    check(Number.isInteger(v) && v >= 1 && v <= 4, `稀有度表 ${k} 值非法：${v}（应为 1~4 整数）`)
+  }
+  // 渠道一致性：common 必须 1；rare 只能 2/3；exotic 只能 3/4（低值奇货可标 3，船长 2026-09-09）
+  for (const g of MARKET_GOODS) {
+    const v = RARITY_TIER[g.refId] ?? 0
+    if (g.rarity === 'common') check(v === 1, `稀有度表 ${g.refId}：common 渠道应为 1，实际 ${v}`)
+    else if (g.rarity === 'rare') check(v === 2 || v === 3, `稀有度表 ${g.refId}：rare 渠道应为 2/3，实际 ${v}`)
+    else check(v === 3 || v === 4, `稀有度表 ${g.refId}：exotic 渠道应为 3/4，实际 ${v}`)
+  }
+}
 
 // 每种物品必须有市场卡（防死物品）
 for (const item of itemDefs) {
