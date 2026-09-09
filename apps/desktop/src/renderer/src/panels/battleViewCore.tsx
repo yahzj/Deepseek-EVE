@@ -24,15 +24,6 @@ const LAY = { PAD: 36, GAP: 84, TOP: 26, MAIN: 170, ESC: 90, ROW_GAP: 4 }
 const NOSE_MAIN = 79
 const NOSE_ESC = 42
 
-/** 敌方"舰种"显示名（按战术 × 血型映射；代替通缉名展示在舰船上方） */
-const FOE_CLASS: Record<string, Record<string, string>> = {
-  brawl: { shield: '突击护卫舰', armor: '攻坚重甲舰', balanced: '突击炮艇' },
-  orbit: { shield: '巡逻护卫舰', armor: '装甲巡逻舰', balanced: '环绕护航舰' },
-  kite: { shield: '狙击护卫舰', armor: '远程装甲舰', balanced: '狙击炮艇' },
-}
-function foeClassName(tactic: string | undefined, profile: string | undefined): string {
-  return FOE_CLASS[tactic ?? 'orbit']?.[profile ?? 'balanced'] ?? '敌方舰艇'
-}
 /** 弹道飞行时长 ms（撞点特效靠 CSS 动画延迟到此刻出现） */
 const FLY_MS = 420
 /** 弹道/闪光元素存活时间（略长于自身动画；渲染时惰性清理） */
@@ -260,8 +251,6 @@ export {
   LAY,
   NOSE_MAIN,
   NOSE_ESC,
-  FOE_CLASS,
-  foeClassName,
   FLY_MS,
   BOLT_LIFE,
   FLASH_LIFE,

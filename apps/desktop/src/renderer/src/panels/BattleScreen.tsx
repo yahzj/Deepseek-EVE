@@ -10,7 +10,7 @@
  * 已抽到 ./battleViewCore.tsx——动画/表现类改动请先落在那里的常量与纯函数。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf } from '@whale/core'
 import type { BattleFx, DamageType, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -19,7 +19,7 @@ import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
-  FOE_CLASS, foeClassName, FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE,
+  FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
 } from './battleViewCore'
@@ -270,12 +270,15 @@ const meSpeedRef = useRef(200)
   /** 存活敌舰（血条/命中对象用；与视觉行 foeRowTags 不同——视觉行含演出期尸骸占位） */
   const foeAliveTags = foeTags.filter((t) => !deadRef.current.has(t))
   // 2026-09-09 多波修复：主/僚判定不靠"队列首位"——多波多小队的主舰 tag 为 w{n}-foe-{k}
-  // （旧判定把第 2 艘主舰当僚机：小尺寸 +「·僚机」字样）；主舰 = foe-0 或 wave 主编号，僚机带 -e{..} 或 legacy foe-N
-  const isFoeMainTag = (tag: string): boolean => tag === 'foe-0' || (tag.includes('-foe-') && !tag.includes('-e'))
+  // （旧判定把第 2 艘主舰当僚机：小尺寸 + 僚机字样）；判定与引擎同源（core foeMainTagOf）
+  const isFoeMainTag = foeMainTagOf
   const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
   /** 敌舰族形键（悬赏卡 → 族 A~G；远征/未列卡/异常 → F 制式巡逻兜底，与资产 FOE_ART 键同源） */
   const foeKey = foeFamilyOf(state.expedition.anomalyId)
-  const foeClassBase = foeClassName(foeAnomaly?.tactic, foeAnomaly?.defProfile)
+  /** 敌舰显示名（2026-09-09 命名统一：引擎同源推导——舰种名 + 规格词缀，弱规格 = 轻装 X；
+   *  异常数据缺失时回退档内单位名/tag——旧档存档字符串不直接参与显示） */
+  const foeNameOf = (tag: string): string =>
+    foeAnomaly ? foeUnitNameOf(foeAnomaly, tag) : (combat.foeHp[tag]?.name ?? tag)
   const ended = battle.ended !== null
   const defeat = battle.ended === 'foe'
 
@@ -550,7 +553,7 @@ const meSpeedRef = useRef(200)
             size={isMain ? LAY.MAIN : LAY.ESC}
           />
           <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-            {isMain ? foeClassBase : `${foeClassBase}·僚机`}
+            {foeNameOf(tag)}
           </span>
         </div>
       )
@@ -573,7 +576,7 @@ const meSpeedRef = useRef(200)
         </span>
         {corpseOn ? null : (
           <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-            {isMain ? foeClassBase : `${foeClassBase}·僚机`}
+            {foeNameOf(tag)}
           </span>
         )}
         {boomLive ? (
@@ -703,7 +706,7 @@ const meSpeedRef = useRef(200)
             ) : null}
             {foeAliveTags.slice(1).map((tag) => (
               <div key={tag} className="app-bts-hpWrap">
-                <HpTri hp={combat.foeHp[tag]!} max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }} label={combat.foeHp[tag]!.name} />
+                <HpTri hp={combat.foeHp[tag]!} max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }} label={foeNameOf(tag)} />
               </div>
             ))}
           </div>

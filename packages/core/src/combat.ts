@@ -533,6 +533,62 @@ export interface FoeSpecOpts {
   tagPrefix?: string
 }
 
+/* ═══════════ 敌舰显示名（2026-09-09 船长拍板：同一悬赏内规格/属性不同的敌舰名字不同；
+   名字只由"异常属性 × 单位规格"推导，引擎建档与界面显示同源，存档字符串仅作兜底） ═══════════ */
+
+/** 敌舰"舰种名"按 战术 × 血型（9 类；满规格主体用本名，弱规格单位加词缀） */
+const FOE_CLASS: Record<string, Record<string, string>> = {
+  brawl: { shield: '突击护卫舰', armor: '攻坚重甲舰', balanced: '突击炮艇' },
+  orbit: { shield: '巡逻护卫舰', armor: '装甲巡逻舰', balanced: '环绕护航舰' },
+  kite: { shield: '狙击护卫舰', armor: '远程装甲舰', balanced: '狙击炮艇' },
+}
+
+/** 规格词缀（前缀）：轻装 = 单舰规格 ≤ 本场最强档 ×FOE_LIGHT_FRAC（现覆盖僚机 ×0.6 份额与
+ *  明显低血波，见 foeUnitNameOf）；"精锐"档预留——若将来出现相对规格 >1 的头目单位，
+ *  在此增加精锐前缀分支即可（词缀判定与血量数值解耦，纯命名）。 */
+export const FOE_LIGHT_WORD = '轻装'
+const FOE_LIGHT_FRAC = 0.6
+const FOE_CLASS_FALLBACK = '敌方舰艇'
+
+/** 舰种名（战术 × 血型；与卡面"敌型/战术"口径一致） */
+export function foeClassName(tactic: string | undefined, profile: string | undefined): string {
+  return FOE_CLASS[tactic ?? 'orbit']?.[profile ?? 'balanced'] ?? FOE_CLASS_FALLBACK
+}
+
+/** 主/僚判定（按 tag 结构，2026-09-09 多波）：主舰 = foe-0 或 w{n}-foe-{k}；
+ *  僚机 = legacy foe-N（N≥1，旧单波 escorts）或 *-e{i}（各小队 escort）。 */
+export function foeMainTagOf(tag: string): boolean {
+  if (tag === 'foe-0') return true
+  if (/^foe-\d+$/.test(tag)) return false
+  return tag.includes('-foe-') && !tag.includes('-e')
+}
+
+/** 单位所在波的血档（tag 前缀 w{n}- 反查波表；首波/无波表 = 1） */
+function waveHpShareOf(tag: string, anomaly: AnomalyDef): number {
+  const waves = anomaly.waves
+  if (!waves || waves.length === 0) return 1
+  const m = /^w(\d+)-/.exec(tag)
+  const idx = m ? Math.min(waves.length - 1, parseInt(m[1]!, 10)) : 0
+  return Math.max(0.001, waves[idx]!.hpShare ?? 1)
+}
+
+/** 敌舰单位显示名（船长 2026-09-09 拍板：舰种名 + 规格词缀）：
+ * - 满规格主体（主舰、血档不弱）= 舰种名（9 类原样）；
+ * - 僚机（份额 ×0.6）或 明显低血波主舰（hpShare ≤ 同卡最强波 ×0.6）→ 轻装 + 舰种名；
+ *   例：攻坚重甲舰 → 轻装攻坚重甲舰（替代旧「悬赏名·僚机」两套命名）；
+ * - 单卡单波/波间差异小（如穹顶 .857 比值）不触发——避免无感知差异的伪区分。 */
+export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
+  const base = foeClassName(anomaly.tactic, anomaly.defProfile)
+  if (!foeMainTagOf(tag)) return `${FOE_LIGHT_WORD}${base}`
+  const waves = anomaly.waves
+  if (waves && waves.length > 0) {
+    let maxShare = 0.001
+    for (const w of waves) maxShare = Math.max(maxShare, w.hpShare ?? 0)
+    if (waveHpShareOf(tag, anomaly) / maxShare <= FOE_LIGHT_FRAC) return `${FOE_LIGHT_WORD}${base}`
+  }
+  return base
+}
+
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
   const tactic = anomaly.tactic ?? 'orbit'
   const split = PROFILE_SPLIT[anomaly.defProfile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
@@ -611,11 +667,10 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     const legacySquad = prefix === '' && k === 0
     const squadPrefix = legacySquad ? '' : `${prefix === '' ? 'w0-' : prefix}`
     const mainTag = legacySquad ? 'foe-0' : `${squadPrefix}foe-${k}`
-    specs.push(make(mainTag, anomaly.name, mainThreat, mainType))
+    specs.push(make(mainTag, foeUnitNameOf(anomaly, mainTag), mainThreat, mainType))
     for (let i = 1; i <= escorts; i++) {
-      specs.push(
-        make(legacySquad ? `foe-${i}` : `${squadPrefix}foe-${k}-e${i}`, `${anomaly.name}·僚机`, mainThreat * 0.6, mainType),
-      )
+      const escortTag = legacySquad ? `foe-${i}` : `${squadPrefix}foe-${k}-e${i}`
+      specs.push(make(escortTag, foeUnitNameOf(anomaly, escortTag), mainThreat * 0.6, mainType))
     }
   }
   return specs
