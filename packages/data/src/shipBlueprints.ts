@@ -1,6 +1,7 @@
 /**
  * 舰船蓝图（M5 + V10）：用矿物制造商店买不到的定制舰船，造好入船坞。
- * V10 新增：座头鲸级（稀有现货的替代制造线）与巨灵鲸级（旗舰货舰，材料含星髓/冥铁/虚空晶）。
+ * V10 新增：座头鲸级（稀有现货的替代制造线）与皇带鱼级（鲸盟旗舰货舰，材料含星髓/冥铁/虚空晶；
+ * 2026-09-09 船长定随船改名——原巨灵鲸级）。
  */
 
 import type { ShipBlueprintDef } from '@whale/core'
@@ -49,11 +50,11 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 180 * 60,
     buildCostIsk: 420_000,
     priceIsk: 260_000,
-    description: '座头鲸级矿舰总装图纸：货舱 9000 m³、10 秒循环产 40 单位——比鲸吞级更能装更能挖。',
+    description: '座头鲸级矿舰总装图纸：货舱 19000 m³、30 秒循环产 140 单位——采矿舰族的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
   },
   {
     id: 'sbp-colossal',
-    name: '巨灵鲸级舰船蓝图',
+    name: '皇带鱼级舰船蓝图', // 2026-09-09 船长定：随船改名（原巨灵鲸级）
     shipId: 'sh-colossal',
     materials: [
       { itemId: 'min-tritanium', count: 80_000 },
@@ -68,7 +69,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 480 * 60,
     buildCostIsk: 2_400_000,
     priceIsk: 900_000,
-    description: '巨灵鲸级旗舰货舰总装图纸（限定奇货）：货舱 26000 m³ 的移动要塞——材料清单本身就是一份远征地图。',
+    description: '皇带鱼级旗舰货舰总装图纸（限定奇货）：三万六千立方货舱的移动要塞——材料清单本身就是一份远征地图。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）
   },
 ]
 

@@ -296,7 +296,7 @@ describe('技能补全 P3a：物流/容量/执照/维修', () => {
     state.skills.trained['deep-space-logistics'] = 5
     expect(cargoCapacityM3Of(state, ctx, state.shipId)).toBe(Math.round(base * 1.15 * 1.2))
   })
-  it('工业舰操作（默认沙猫=industrial）：满级采矿产量 ×1.2', () => {
+  it('采矿舰操作（默认沙猫=industrial）：满级采矿产量 ×1.2', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 18 })
     const ctx = makeTestCtx({ belts: [belt('belt-io', 'ore-a')] })
     const base = fleetDefOf(state, ctx, state.shipId)!.oreUnitsPerCycle

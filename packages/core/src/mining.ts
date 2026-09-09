@@ -101,7 +101,7 @@ export function getMiningParams(
     const deepLv = Math.min(5, state.skills.trained['deep-space-harvesting'] ?? 0)
     if (deepLv > 0) prodMult *= 1 + 0.05 * deepLv
   }
-  // 工业舰操作（industrial-ops）：工业族舰船专精 +4%/级
+  // 采矿舰操作（industrial-ops，展示名 2026-09-09 随徽标改）：采矿族舰船专精 +4%/级
   if (ship.role === 'industrial') {
     const opsLv = Math.min(5, state.skills.trained['industrial-ops'] ?? 0)
     if (opsLv > 0) prodMult *= 1 + 0.04 * opsLv

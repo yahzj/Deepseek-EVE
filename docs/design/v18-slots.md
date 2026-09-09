@@ -105,8 +105,6 @@ ModuleDef.slot 保留六家族值（turret/miner/shield/armor/propulsion/cargo�
 | industrial | pioneer 先驱级 | 3 | 3 / 2 / 2 | 7 | 武装化工业（矿炮兼） |
 | industrial | whale-king 鲸王级 | 4 | 3 / 3 / 2 | 8 | 旗舰采矿（多矿枪） |
 | industrial | sh-humpback 座头鲸级 | 3 | 1 / 2 / 3 | 6 | 货向（低槽扩舱） |
-| industrial | sh-bowhead 弓头鲸级 | 3 | 1 / 2 / 3 | 6 | 货向 |
-| industrial | sh-colossal 巨灵鲸级 | 4 | 2 / 3 / 3 | 8 | 旗舰货舰 |
 | armed | sh-falconet 隼鹰级 | 1 | 3 / 2 / 1 | 6 | 入门战斗（炮位多） |
 | armed | sh-shrike 伯劳级 | 2 | 3 / 2 / 2 | 7 | 制式巡逻 |
 | armed | sh-tigershark 虎鲨级 | 2 | 4 / 2 / 2 | 8 | 多炮火力 |
@@ -118,6 +116,8 @@ ModuleDef.slot 保留六家族值（turret/miner/shield/armor/propulsion/cargo�
 | hauler | sh-flyingfish 飞鱼级 | 2 | 1 / 2 / 2 | 5 | 快运 |
 | hauler | sh-sailfish 旗鱼级 | 3 | 1 / 3 / 3 | 7 | 远洋货 |
 | hauler | sh-swordfish 剑鱼级 | 3 | 2 / 2 / 3 | 7 | 武装货运（低安自保） |
+| hauler | sh-bowhead 蝠鲼级 | 3 | 1 / 2 / 3 | 6 | 鲸盟重载货舰（2026-09-09 由 industrial 改列） |
+| hauler | sh-colossal 皇带鱼级 | 4 | 2 / 3 / 3 | 8 | 鲸盟旗舰货舰（2026-09-09 由 industrial 改列） |
 
 ## 五、装配交互（复数安装）与 CPU 校验
 

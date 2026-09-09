@@ -110,9 +110,10 @@ export function itemKindLabel(kind: ItemKind): string {
   return ITEM_KIND_LABELS[kind] ?? kind
 }
 
-/** 舰船角色中文名（船卡徽标用；V10 占位展示） */
+/** 舰船角色中文名（船卡徽标用；V10 占位展示；2026-09-09 船长定：industrial 展示名「工业」→「采矿」
+ * ——两艘货舰分出后工业线全为矿舰，标签更直观。role id 不变，存档零迁移） */
 export const SHIP_ROLE_LABELS: Record<ShipRole, string> = {
-  industrial: '工业',
+  industrial: '采矿',
   armed: '武装',
   armored: '重装',
   hauler: '航运',

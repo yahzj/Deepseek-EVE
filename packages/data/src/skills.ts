@@ -55,10 +55,10 @@ export const SKILLS: readonly SkillDef[] = [
   },
   {
     id: 'industrial-ops',
-    name: '工业舰操作',
+    name: '采矿舰操作', // 2026-09-09 船长定：与 UI 徽标「采矿」一致（原"工业舰操作"）；id 不变
     group: '舰船',
     rank: 3,
-    description: '工业舰族专精驾驶：驾驶工业族舰船时采集产量每级 +⟦4%⟧。',
+    description: '采矿舰族专精驾驶：驾驶采矿舰族舰船时采集产量每级 +⟦4%⟧。',
   },
   {
     id: 'armed-ops',
