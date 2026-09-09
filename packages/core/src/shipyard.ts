@@ -107,11 +107,34 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
       return { ok: false, error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，换驾驶需在母港或已建成的副站进行。` }
     }
   }
-  if (state.expedition.active) {
+  if (state.expedition.active && state.expedition.phase === 'back') {
+    // 2026-09-08（船长定）：返航中允许换船——本次返航转为旧船"远征善后"账本（剩余航程照走、
+    // 到港自动卸货入仓库），并立即停止重复清剿
+    const exp = state.expedition
+    const oldShip = state.shipId
+    const oldName = shipDisplayName(state, ctx, oldShip)
+    const remainMs = Math.max(1, exp.finishAtGameMs - state.gameMs)
+    state.shipReturns[oldShip] = { beltId: null, legMs: remainMs, phaseAccMs: 0, reason: 'expedition' }
+    if (state.autoLoopAnomalyId !== null) {
+      state.autoLoopAnomalyId = null
+      addLog(state, 'info', '重复清剿已停止（返航中切换驾驶）。')
+    }
+    exp.active = false
+    exp.anomalyId = null
+    exp.battle = null
+    exp.phase = 'out'
+    exp.finishAtGameMs = 0
+    exp.returnReason = undefined
+    addLog(
+      state,
+      'info',
+      `远征返航转旧船善后：${oldName} 约 ${Math.max(1, Math.round(remainMs / 1000))} 秒后到港并自动卸货入仓库（战果已在交火结算时入账）。`,
+    )
+  } else if (state.expedition.active) {
     return {
       ok: false,
       error:
-        '远征在途/返航中：切换驾驶会中断本次远征（无战果）。请先在顶部活动栏「召回远征」（交火中无法召回），或等战报返回后再换船。',
+        '远征出击/交火中：切换驾驶会中断本次远征（无战果）。请先在顶部活动栏召回远征（交火中可撤退），或等战报返回后再换船。',
     }
   }
   if (state.scanning.active) {
@@ -309,7 +332,7 @@ export function isShipLocked(state: GameState, shipId: string): boolean {
 
 /**
  * T8 修理组件（P2 定稿）：优先用货仓中的修理组件（itemDef.repairRestore = 基础回复 HP）
- * 修复驾驶船结构/装甲至 target（连续出击阈值默认 0.5），或组件耗尽；返回消耗件数。
+ * 修复驾驶船结构/装甲至 target（重复清剿阈值默认 0.5），或组件耗尽；返回消耗件数。
  * 每次回复 = 基础 HP × 层容量增幅 × 抢修工程学（与手动同口径）。
  */
 export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5): number {

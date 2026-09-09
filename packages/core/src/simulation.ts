@@ -5,7 +5,7 @@
  * - 技能队列照常推进（升级事件会出现在日志里）；
  * - 采矿作业若在挖，会按循环批量结算产出（货舱满了会停在离线期间——日志会记满舱）；
  * - 制造作业到点自动完成出装备；
- * - 连续出击（巡回讨伐）开着时：按 30s 分片推进并在片边界以在线同款条件自动再出发——
+ * - 重复清剿（重复清剿）开着时：按 30s 分片推进并在片边界以在线同款条件自动再出发——
  *   离线期间持续讨伐并有战果（2026-09-08 玩家反馈修复；关闭 freezeBattle 的调试快进不触发）；
  * - 结算完成后写摘要：离线多久、采集到哪些矿石、超出上限多少未结算。
  */
@@ -26,9 +26,9 @@ export { formatDurationMs } from './time'
 export const DEFAULT_OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
 
 /**
- * 离线分片步长（毫秒）——仅「连续出击（巡回讨伐）」开着时启用：
+ * 离线分片步长（毫秒）——仅「重复清剿（重复清剿）」开着时启用：
  * 在线时自动再出发由心跳驱动，离线大推进不会触发；分片推进并在每片边界按在线同款条件尝试再出发
- * （2026-09-08 玩家反馈：连击期间离线无战斗无收益）。
+ * （2026-09-08 玩家反馈：讨伐期间离线无战斗无收益）。
  */
 export const OFFLINE_LOOP_CHUNK_MS = 30_000
 
@@ -78,7 +78,7 @@ export function simulateOffline(
   const before = state.logs.length
   addLog(state, 'info', `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`)
   const advOpts = { freezeBattle: opts?.freezeBattle, settleStats: opts?.stats }
-  // 连续出击（巡回讨伐）开着时：在线由心跳驱动自动再出发，离线大推进不会触发——
+  // 重复清剿（重复清剿）开着时：在线由心跳驱动自动再出发，离线大推进不会触发——
   // 改分片推进，每片边界按在线同款条件尝试再出发（最后一片结束后不触发，避免开出不完整单）。
   const driveLoop = !opts?.freezeBattle && state.autoLoopAnomalyId !== null
   if (driveLoop) {

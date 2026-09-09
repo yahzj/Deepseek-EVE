@@ -1014,7 +1014,7 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
           if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
           else onToast('已使用一枚修理组件（基础 HP×容量增幅）。')
         }}
-        title="只能在停留/停靠时手动使用；连续出击出发前低于 50% 会自动消耗组件"
+        title="只能在停留/停靠时手动使用；重复清剿出发前低于 50% 会自动消耗组件"
       >
         组件 ×{kits}
       </button>
@@ -1084,7 +1084,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
       setMineAskBelt(beltId)
       onToast(
         '⇄ 远征中开采 = 转场：本次远征将取消（无战果）' +
-          (state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : '') +
+          (state.autoLoopAnomalyId !== null ? '，重复清剿同步停止' : '') +
           '——再点一次确认。',
         true,
       )
@@ -1407,7 +1407,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const inFlightOther = state.expedition.active && !inFlightSelf
   // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
-  // T8：重复冷却 + 连续出击状态；优化：其它作业（采矿/扫描/返航/非本目标的远征）中不可开启
+  // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/扫描/返航/非本目标的远征）中不可开启
   const cdRemain = bountyCooldownRemainingMs(state, anomaly.id)
   const looping = state.autoLoopAnomalyId === anomaly.id
   const busyOther =
@@ -1544,14 +1544,14 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
               !reqMet || unexplored
                 ? '先满足声望/探索条件'
                 : busyOther
-                  ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启连击'
+                  ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启讨伐'
                   : looping
                     ? '停止自动循环（当前这一单会打完）'
-                    : '开启巡回讨伐：胜利后自动返航到港（去程并入返航），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
+                    : '开启重复清剿：胜利后自动返航到港（去程并入返航），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
             }
             onClick={toggleLoop}
           >
-            {looping ? '停止连击' : (<><span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>连续出击</>)}
+            {looping ? '停止讨伐' : (<><span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>重复清剿</>)}
           </button>
           <button
             className={`app-btn is-small ${miningActive && !goAsk ? 'is-warn is-primary' : goAsk ? 'is-dim' : 'is-primary'}`}

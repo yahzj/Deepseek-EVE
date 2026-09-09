@@ -457,12 +457,12 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       addLog(
         state,
         'info',
-        `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站自动卸货入仓库，可维修或让连续出击自动续打。`,
+        `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站自动卸货入仓库，可维修或让重复清剿自动续打。`,
       )
     }
     return
   } else {
-    // 失利：扣耐久 + 弃船骰 + 维修费（沿用旧机制）；若正处于连续出击环 → 停环
+    // 失利：扣耐久 + 弃船骰 + 维修费（沿用旧机制）；若正处于重复清剿环 → 停环
     if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
       stopAutoLoopReason(state, '本次出击失利，舰队自动返航（可修整后再开）。')
     }
@@ -511,7 +511,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
  * 玩家指令：战斗中主动撤退（Q1乙 轻损：只损失少量舰船耐久、无弃船骰、按比例维修费；
  * 耐久结算带下限保护——不足 0 时压到 5% 并显著告警，绝不因撤退直接弃船）。
  * 实现口径：扣损 = 战败扣损骰 ×0.5（约 8%~15%，最低 1%）——数值小，玩家侧只描述"少量损失"。
- * 仅"正在交火且未分胜负"时可撤；撤退即手动收手 → 同时停止连续出击（Q3甲）。
+ * 仅"正在交火且未分胜负"时可撤；撤退即手动收手 → 同时停止重复清剿（Q3甲）。
  */
 export function retreatBattle(state: GameState, ctx: SimContext): CommandResult {
   const exp = state.expedition
@@ -527,7 +527,7 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
 
 /**
  * 撤退结算核心（2026-09-08：手动撤退与巡回自动撤退共用）：
- * 承伤写回 → 半损扣耐久（最低 1%）→ 下限 5% 保护（绝不弃船）→ 维修费 → 停连击 → 转返航。
+ * 承伤写回 → 半损扣耐久（最低 1%）→ 下限 5% 保护（绝不弃船）→ 维修费 → 停清剿 → 转返航。
  * mode = 'auto' 时由连续作战保险触发（本场结构损失过半），日志与停环文案区分来源。
  */
 function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' | 'auto'): void {
@@ -572,10 +572,10 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
       ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
       : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
   )
-  // 收手 → 停连击（若有；手动撤退与自动撤退都会终止连续出击）
+  // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
-    addLog(state, 'info', mode === 'manual' ? '连续出击已停止（手动撤退）。' : '连续出击已停止（本场结构损失过半，自动撤退）。')
+    addLog(state, 'info', mode === 'manual' ? '重复清剿已停止（手动撤退）。' : '重复清剿已停止（本场结构损失过半，自动撤退）。')
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
@@ -726,7 +726,7 @@ export function recallExpedition(state: GameState, ctx: SimContext): CommandResu
   return { ok: true }
 }
 
-/* ───────── T8 悬赏重复冷却与连续出击 ───────── */
+/* ───────── T8 悬赏重复冷却与重复清剿 ───────── */
 
 /** 冷却基础 10 秒（船长定稿：较原方案大幅缩减）；分辨率越高冷却越短 */
 export const BOUNTY_COOLDOWN_BASE_MS = 10_000
@@ -756,15 +756,15 @@ export function bountyCooldownRemainingMs(state: GameState, anomalyId: string): 
   return remain
 }
 
-/** 连续出击开关（落档：重启后自动恢复）；null = 关闭 */
+/** 重复清剿开关（落档：重启后自动恢复）；null = 关闭 */
 export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: string | null): CommandResult {
   state.autoLoopAnomalyId = anomalyId
   if (anomalyId === null) {
-    addLog(state, 'info', '连续出击已停止。')
+    addLog(state, 'info', '重复清剿已停止。')
   } else {
     const def = ctx.anomalies.get(anomalyId)
     const name = def?.name ?? anomalyId
-    addLog(state, 'info', `连续出击已开启：「${name}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。`)
+    addLog(state, 'info', `重复清剿已开启：「${name}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。`)
   }
   return { ok: true }
 }
@@ -772,11 +772,11 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
 /** 停环并记录原因（日志+清开关） */
 function stopAutoLoopReason(state: GameState, reason: string): void {
   state.autoLoopAnomalyId = null
-  addLog(state, 'warn', `连续出击已暂停：${reason}`)
+  addLog(state, 'warn', `重复清剿已暂停：${reason}`)
 }
 
 /**
- * 连续出击推进（在线心跳调用；落档开关在重开档后从可出发条件自动恢复）：
+ * 重复清剿推进（在线心跳调用；落档开关在重开档后从可出发条件自动恢复）：
  * 忙（远征/采矿/扫描/返航行程）或冷却中 → 等待；条件不满足 → 停环并记原因。
  * 返回 null = 继续等待/已再出发；否则 = 停止原因。
  */
@@ -818,7 +818,7 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
   if (freeCargoM3(state, ctx) < lootM3) {
-    stopAutoLoopReason(state, `货仓剩余空间不足以装载「${anomaly.name}」的缴获——舰船已在母港，请卸货后重新开启连击。`)
+    stopAutoLoopReason(state, `货仓剩余空间不足以装载「${anomaly.name}」的缴获——舰船已在母港，请卸货后重新开启讨伐。`)
     return '货仓空间不足'
   }
   // 出发（内部含声望/冷却/探索/位置全部校验）

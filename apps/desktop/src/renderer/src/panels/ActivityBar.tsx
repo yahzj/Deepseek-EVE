@@ -51,7 +51,7 @@ function stopLabel(v: ActivityView): string {
     case 'cancel-deliver-trip':
       return '取消交付'
     case 'stop-loop':
-      return '停连击'
+      return '停清剿'
     default:
       return ''
   }
@@ -98,7 +98,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.cancelDeliverTripNow(), '交付航线已取消（无惩罚）：已停止交付循环，舰船立即返航停靠最近空间站（本趟装载随进港卸回仓库）。')
       break
     case 'stop-loop':
-      run(engine.bountyLoopAt(null), '连续出击已停止。')
+      run(engine.bountyLoopAt(null), '重复清剿已停止。')
       break
   }
 }
@@ -221,7 +221,7 @@ export function ActivityBar({
                       : v.stop === 'remove-training'
                         ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
                         : v.stop === 'retreat-battle'
-                          ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止连续出击）'
+                          ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）'
                           : undefined
           }
           onClick={(e) => {
