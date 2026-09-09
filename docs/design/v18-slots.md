@@ -106,7 +106,7 @@ ModuleDef.slot 保留六家族值（turret/miner/shield/armor/propulsion/cargo�
 | industrial | whale-king 鲸王级 | 4 | 3 / 3 / 2 | 8 | 旗舰采矿（多矿枪） |
 | industrial | sh-humpback 座头鲸级 | 3 | 1 / 2 / 3 | 6 | 货向（低槽扩舱） |
 | armed | sh-falconet 隼鹰级 | 1 | 3 / 2 / 1 | 6 | 入门战斗（炮位多） |
-| armed | sh-shrike 伯劳级 | 2 | 3 / 2 / 2 | 7 | 制式巡逻 |
+| armed | sh-shrike 马鲛级 | 2 | 3 / 2 / 2 | 7 | 制式巡逻 |
 | armed | sh-tigershark 虎鲨级 | 2 | 4 / 2 / 2 | 8 | 多炮火力 |
 | armed | sh-mako 鲭鲨级 | 3 | 4 / 3 / 2 | 9 | 火力 + 电子位 |
 | armed | sh-whiteshark 白鲨级 | 3 | 5 / 3 / 2 | 10 | 炮舰巅峰 |

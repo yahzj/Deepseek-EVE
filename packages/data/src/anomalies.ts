@@ -28,7 +28,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-pirate-post',
     name: '边境海盗前哨',
-    foeHpOverride: 150, // P1 重标 pass-2（2026-09-06，待终审）：A 段隼枭3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
+    foeHpOverride: 150, // P1 重标 pass-2（2026-09-06，待终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
     galaxyId: 'galaxy-kor',
     threat: 12,
     tactic: 'brawl',
@@ -44,7 +44,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-abandoned-platform',
     name: '占港武装通缉',
-    foeHpOverride: 292, // P1 重标 pass-2（2026-09-06，待终审）：A 段隼枭3×MK1 中位 ~36s
+    foeHpOverride: 292, // P1 重标 pass-2（2026-09-06，待终审）：A 段鲣鱼3×MK1 中位 ~36s
     foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：武装拾荒者乱射——打得重但准头差；缺省 0.85）
     galaxyId: 'galaxy-dust',
     threat: 16,
@@ -275,7 +275,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingReq: 1,
     standingGain: 1,
     rewardIsk: 6_400, // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
-    foeHpOverride: 75, // P1 战斗引入 pass-2（2026-09-06）：隼枭2×MK1零技≈30s；裸船可磨(60%/122s)不卡死；顺滑待实测
+    foeHpOverride: 75, // P1 战斗引入 pass-2（2026-09-06）：鲣鱼2×MK1零技≈30s；裸船可磨(60%/122s)不卡死；顺滑待实测
     loot: [{ itemId: 'min-pyerite', units: 25 }],
     combatSeconds: 180,
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',

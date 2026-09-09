@@ -84,7 +84,7 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     expect(deliverTutorialOre(s, ctx).ok).toBe(false) // 仓库不足
   })
 
-  it('隼枭修满 → 自动进入试炼步骤', () => {
+  it('鲣鱼修满 → 自动进入试炼步骤', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
     s.onboarding.step = ONB_REPAIR
     s.fleet['sh-falconet']!.armorPct = 1

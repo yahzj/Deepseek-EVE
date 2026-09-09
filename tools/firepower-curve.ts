@@ -12,7 +12,7 @@ const SEEDS = [1, 7, 13, 29, 51, 77, 101, 137]
 type Stage = { name: string; ship: string; high: string[]; mid?: string[]; low?: string[] }
 const STAGES: Stage[] = [
   { name: '裸船·基础舰炮', ship: 'sandcat', high: [] },
-  { name: '隼枭+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
+  { name: '鲣鱼+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
   { name: '虎鲨+2×动能MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'] },
   { name: '虎鲨三族混装', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-laser-2', 'mod-missile-2'] },
   { name: '虎鲨2×MK2+支援满', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-rof-2'] },

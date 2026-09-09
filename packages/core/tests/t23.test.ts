@@ -1,5 +1,5 @@
 /**
- * v23 序章·苏醒（2026-09-05 船长拍板）：prologue 新档默认（零资金/隼枭带伤/无预置炮台弹药）
+ * v23 序章·苏醒（2026-09-05 船长拍板）：prologue 新档默认（零资金/鲣鱼带伤/无预置炮台弹药）
  * 与 v22→v23 迁移（补 onboarding/importantTasks）回归测试。
  */
 import { describe, expect, it } from 'vitest'
@@ -7,7 +7,7 @@ import { createInitialState, DEFAULT_START_ISK, serializeSaveFile, loadSaveFile 
 import type { GameState } from '../src/state'
 
 describe('v23 序章·苏醒', () => {
-  it('prologue 新档：零资金、隼枭默认驾驶且带 80% 损伤、沙猫在库、无预置炮台弹药、onboarding step 0', () => {
+  it('prologue 新档：零资金、鲣鱼默认驾驶且带 80% 损伤、沙猫在库、无预置炮台弹药、onboarding step 0', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
     expect(s.version).toBe(24)
     expect(s.wallet.isk).toBe(0)

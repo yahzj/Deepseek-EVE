@@ -3,7 +3,7 @@
  * + 战斗稳定收益的配置需求依据）。
  *
  * 做法：对每张玩家悬赏（按声望门槛/威胁升序），用"该威胁档的参考装配"（与
- * balance.foeRefFire 同口径：≤16 隼枭+动能MK1 / ≤40 虎鲨+2×动能MK2 / >40 鲸王+3×动能MK3，
+ * balance.foeRefFire 同口径：≤16 鲣鱼+动能MK1 / ≤40 虎鲨+2×动能MK2 / >40 鲸王+3×动能MK3，
  * 无技能）跑 SEEDS 场确定性实战（advanceBattleFor 真实结算），得出：
  *   胜率% / 平均交火秒 / 平均弹药耗（发）
  * 再叠加现行经济口径（2026-09-06 自动返航定稿）：
@@ -36,7 +36,7 @@ const SEEDS = [1, 7, 13, 29, 51]
 type Loadout = { name: string; ship: string; high: string[] }
 /** 参考装配（= foeRefFire 校准档；无技能档） */
 const BAND_FITS: Array<{ upToThreat: number; ld: Loadout }> = [
-  { upToThreat: 16, ld: { name: '隼枭+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] } },
+  { upToThreat: 16, ld: { name: '鲣鱼+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] } },
   { upToThreat: 40, ld: { name: '虎鲨+2×动能MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'] } },
   { upToThreat: 9999, ld: { name: '鲸王+3×动能MK3', ship: 'whale-king', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'] } },
 ]
@@ -105,7 +105,7 @@ function main(): void {
   }
 
   console.log('══ 悬赏收益对照（参考装配 × 现行经济口径；5 种子实战平均）══')
-  console.log('参考装配按威胁档：≤16 隼枭+动能MK1 / ≤40 虎鲨+2×动能MK2 / >40 鲸王+3×动能MK3（无技能）')
+  console.log('参考装配按威胁档：≤16 鲣鱼+动能MK1 / ≤40 虎鲨+2×动能MK2 / >40 鲸王+3×动能MK3（无技能）')
   console.log('单局周期 = 交火 + max(返航2×单程, 重复冷却)；冷却与返航并行计时（冷却基数 10s，随船扫描属性缩短）')
   console.log(
     [

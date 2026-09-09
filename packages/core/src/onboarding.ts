@@ -11,7 +11,7 @@
  * 规则要点：
  * - 教程期间 UI 锁线性引导（渲染层）；本模块负责状态判定/自动推进与奖励发放（幂等）；
  * - 教学战（步骤 4 + ano-training + 主控）给玩家舰 命中/回避 +0.5（仅该战）；
- * - 跳过教程 = 全额结算（发齐所有未领奖励 + 隼枭修至完好），step → 99；
+ * - 跳过教程 = 全额结算（发齐所有未领奖励 + 鲣鱼修至完好），step → 99；
  * - 奖励发放均以 importantTasks 的 done 标记去重，不双发。
  */
 import type { GameState } from './state'
@@ -26,7 +26,7 @@ export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
 export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批矿物」
 export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
-export const ONB_REPAIR = 4 // 修复：港内维修隼枭至完好
+export const ONB_REPAIR = 4 // 修复：港内维修鲣鱼至完好
 export const ONB_TRIAL = 5 // 试炼：演习场讨伐令（教学战加成）
 export const ONB_SKILL = 6 // 技能归档：人工智能专家 Lv1 特典
 export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
@@ -132,10 +132,10 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
     state.onboarding.step = ONB_SELL
     // 基线 = 交付后的钱包（含奖励）；此后钱包超基线 = 卖出矿石得款（装船/挪货不动钱包，不会误推进）
     state.onboarding.sellIskBaseline = state.wallet.isk
-    // 维修的是"当前驾驶船"——此时先切回隼枭，避免玩家仍驾矿船导致维修错船/矿船出战（船长复测反馈）
+    // 维修的是"当前驾驶船"——此时先切回鲣鱼，避免玩家仍驾矿船导致维修错船/矿船出战（船长复测反馈）
     if (state.shipId !== 'sh-falconet' && state.fleet['sh-falconet']) {
       state.shipId = 'sh-falconet'
-      addLog(state, 'info', '已把驾驶切回隼枭级武装艇——接下来港内维修的对象是它。')
+      addLog(state, 'info', '已把驾驶切回鲣鱼级护卫舰——接下来港内维修的对象是它。')
     }
     addLog(state, 'info', '交付只扣除 20 单位，其余富凡晶石留在物品仓库——去「物品」页把它们卖成 ISK（教学目标）。')
   }
@@ -206,20 +206,20 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
     if (base !== undefined && state.wallet.isk > base) {
       state.onboarding.step = ONB_REPAIR
       state.onboarding.sellIskBaseline = undefined
-      addLog(state, 'info', '矿石已售出。前往舰船页维修隼枭至完好（装甲/结构 100%）。')
+      addLog(state, 'info', '矿石已售出。前往舰船页维修鲣鱼至完好（装甲/结构 100%）。')
     }
     return
   }
   if (s === ONB_REPAIR) {
     const f = state.fleet['sh-falconet']
     if (f && (f.armorPct ?? 0) >= 0.999 && f.durability >= 0.999) {
-      // 试炼将使用隼枭出战：先切驾驶再放行（防玩家仍驾矿船进入战斗——船长复测反馈）
+      // 试炼将使用鲣鱼出战：先切驾驶再放行（防玩家仍驾矿船进入战斗——船长复测反馈）
       if (state.shipId !== 'sh-falconet' && state.fleet['sh-falconet']) {
         state.shipId = 'sh-falconet'
-        addLog(state, 'info', '驾驶已切回隼枭级武装艇——试炼由它出战。')
+        addLog(state, 'info', '驾驶已切回鲣鱼级护卫舰——试炼由它出战。')
       }
       state.onboarding.step = ONB_TRIAL
-      addLog(state, 'info', '隼枭已修复完好。前往「战斗悬赏」接受演习场讨伐令（试炼）。')
+      addLog(state, 'info', '鲣鱼已修复完好。前往「战斗悬赏」接受演习场讨伐令（试炼）。')
     }
     return
   }
@@ -245,7 +245,7 @@ export function finishTutorial(state: GameState): CommandResult {
   return { ok: true }
 }
 
-/** 跳过教程：全额结算（发齐未领奖励 + 隼枭修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */
+/** 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */
 export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const s = state.onboarding.step
   const inProgress = s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)
@@ -276,6 +276,6 @@ export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   }
   state.onboarding.step = ONB_DONE
   publishFindHumans(state)
-  addLog(state, 'system', '教程已跳过：教程奖励已全额结算，隼枭已修复完好。祝航程顺利。')
+  addLog(state, 'system', '教程已跳过：教程奖励已全额结算，鲣鱼已修复完好。祝航程顺利。')
   return { ok: true }
 }

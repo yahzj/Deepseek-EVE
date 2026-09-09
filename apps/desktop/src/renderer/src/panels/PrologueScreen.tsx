@@ -194,7 +194,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
       ) : null}
       {err && phase === 'wake' ? <div className="app-pro-err">{err}</div> : null}
       {phase !== 'open' ? (
-        <button className="app-pro-skip" onClick={skip} title="跳过教程：立即全额结算奖励并修好隼枭">
+        <button className="app-pro-skip" onClick={skip} title="跳过教程：立即全额结算奖励并修好鲣鱼">
           跳过教程 ›
         </button>
       ) : null}

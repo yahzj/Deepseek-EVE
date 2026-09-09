@@ -1523,7 +1523,7 @@ export class GameEngine {
     return result
   }
 
-  /** 序章·苏醒：跳过（含演出阶段）——全额结算奖励 + 隼枭修满，教程结束 */
+  /** 序章·苏醒：跳过（含演出阶段）——全额结算奖励 + 鲣鱼修满，教程结束 */
   prologueSkip(): CommandResult {
     const result = skipTutorial(this.state, this.ctx)
     if (result.ok) {

@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, stackingOf, layerMultText } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -225,7 +225,7 @@ export function slotListText(ship?: ShipDef): string {
 /** 舰船统一信息行：基础 + V10.5b 面板分组（护盾/装甲/结构区块各自血量与三系抗性；CPU/无人机舱） */
 export function shipInfoLines(ship: ShipDef): InfoLine[] {
   const lines: InfoLine[] = [
-    { k: '定位 / 档次', v: `${shipRoleLabel(ship.role)} · T${ship.tier}` },
+    { k: '定位 / 档次', v: `${shipRoleLabel(ship.role)} · ${shipSizeLabel(ship.tier)} T${ship.tier}` },
     { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },
     { k: '采集性能', v: `${ship.cycleSeconds} 秒 × ${ship.oreUnitsPerCycle} 单位/循环` },
     { k: '动力（机动 / 跃迁充能）', v: `${Math.round(ship.agility * 100)}%` },

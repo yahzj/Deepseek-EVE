@@ -14,7 +14,7 @@ const bal = ctx.balance.battle
 type Ref = { name: string; ship: string; high: string[]; tMin: number; tMax: number }
 // 参考装配段表：threat 段 → 推荐动能装（协会制式；非工业船）
 const REFS: Ref[] = [
-  { name: '隼枭+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'], tMin: 6, tMax: 16 },
+  { name: '鲣鱼+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'], tMin: 6, tMax: 16 },
   { name: '虎鲨+2×动能MK2', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'], tMin: 17, tMax: 40 },
   { name: '鲸王+3×动能MK3', ship: 'whale-king', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], tMin: 41, tMax: 96 },
 ]

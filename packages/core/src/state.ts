@@ -27,7 +27,7 @@ export const DEFAULT_PILOT_NAME = '深空学徒'
 /** 初始资金（ISK）——经典开局（测试/模拟基准）：够买船但买不起第二艘。
  * 真实新游戏走序章 prologue 分支（零资金，见 createInitialState） */
 export const DEFAULT_START_ISK = 10_000
-/** 初始自带舰船 id（经典开局 = 沙猫矿艇；序章 prologue = 隼枭武装艇带伤） */
+/** 初始自带舰船 id（经典开局 = 沙猫矿艇；序章 prologue = 鲣鱼武装艇带伤） */
 export const DEFAULT_START_SHIP_ID = 'sandcat'
 /** AI 核心最高等级 */
 export const MAX_AI_CORE_LEVEL = 5
@@ -859,7 +859,7 @@ export interface ImportantTaskState {
 
 /** 第二十三版存档结构（历史版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：
  * onboarding 教程进度（老档迁移为 -1 = 不触发）与重要任务状态（importantTasks）。
- * 新档默认调整随 createInitialState：零初始资金、默认驾驶隼枭带 80% 损伤、装备库/仓库
+ * 新档默认调整随 createInitialState：零初始资金、默认驾驶鲣鱼带 80% 损伤、装备库/仓库
  * 不再预置炮台与弹药（炮台与弹药改由教学战斗任务奖励）。v22→v23 迁移只补默认字段，无结构变化。 */
 export type GameStateV23 = Omit<GameStateV22, 'version'> & {
   version: 23
@@ -956,10 +956,10 @@ export function addLog(state: GameState, kind: LogKind, text: string): void {
 
 /**
  * 创建一份全新的初始存档。
- * - 默认（经典开局，测试/模拟基准）：10,000 ISK、沙猫矿艇默认驾驶、机库另有隼枭、
+ * - 默认（经典开局，测试/模拟基准）：10,000 ISK、沙猫矿艇默认驾驶、机库另有鲣鱼、
  *   装备库 1×轻型炮台 MK1、仓库三型弹各 60（历史行为，测试大量依赖）；
  * - prologue:true（序章·苏醒 2026-09-05 船长拍板，真实新游戏入口用）：
- *   零初始资金、默认驾驶=隼枭（装甲/耐久 80% 供维修教学）、沙猫同在机库、
+ *   零初始资金、默认驾驶=鲣鱼（装甲/耐久 80% 供维修教学）、沙猫同在机库、
  *   装备库/仓库无预置炮台弹药（改由教学战斗任务奖励）。
  */
 export function createInitialState(opts?: {
@@ -992,7 +992,7 @@ export function createInitialState(opts?: {
     shipId: prologue ? 'sh-falconet' : DEFAULT_START_SHIP_ID,
     fleet: prologue
       ? {
-          // 隼枭级武装艇：默认驾驶，带 80% 装甲/耐久损伤（重要任务奖金→港内维修教学闭环，母港维修费 ≈1,584 ISK）
+          // 鲣鱼级护卫舰：默认驾驶，带 80% 装甲/耐久损伤（重要任务奖金→港内维修教学闭环，母港维修费 ≈1,584 ISK）
           'sh-falconet': {
             defId: 'sh-falconet',
             customName: null,
@@ -1020,7 +1020,7 @@ export function createInitialState(opts?: {
             cargo: {},
             fitted: emptyFitted(),
           },
-          // 经典开局同历史：机库另有隼枭武装艇待命
+          // 经典开局同历史：机库另有鲣鱼武装艇待命
           'sh-falconet': {
             defId: 'sh-falconet',
             customName: null,
@@ -1137,10 +1137,10 @@ export function createInitialState(opts?: {
   if (prologue) {
     addLog(state, 'system', '舰载系统苏醒：隐秘泊位·母港。')
     addLog(state, 'warn', '自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。')
-    addLog(state, 'info', '初始资金 0 ISK：一切从采集第一舱矿石开始。隼枭级武装艇（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。')
+    addLog(state, 'info', '初始资金 0 ISK：一切从采集第一舱矿石开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。')
   } else {
     addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')
-    addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} ISK 已到账；沙猫级采矿艇已停靠机库，另有隼枭级武装艇待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
+    addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} ISK 已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
   }
   addLog(state, 'info', '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。')
   return state

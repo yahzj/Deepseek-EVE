@@ -50,9 +50,9 @@ export const GUIDE_BY_STEP: Record<number, GuideDef> = {
     goLabel: '前往物品页',
   },
   4: {
-    title: '修复：隼枭级武装艇',
+    title: '修复：鲣鱼级护卫舰',
     lines: [
-      '用任务赏金在舰船页对隼枭执行「港内维修」（装甲/结构恢复至 100%）。',
+      '用任务赏金在舰船页对鲣鱼执行「港内维修」（装甲/结构恢复至 100%）。',
       '完成后进入试炼步骤。',
     ],
     go: { page: 'ship', shipTab: 'fleet' },
@@ -171,7 +171,7 @@ export function TutorialGuide({
           onClick={() => {
             engine.prologueSkip()
           }}
-          title="跳过教程：立即全额结算奖励并修好隼枭"
+          title="跳过教程：立即全额结算奖励并修好鲣鱼"
         >
           跳过教程 ›
         </button>

@@ -95,6 +95,8 @@ export {
   itemKindLabel,
   SHIP_ROLE_LABELS,
   shipRoleLabel,
+  SHIP_SIZE_CLASS,
+  shipSizeLabel,
   MINEABLE_KINDS,
   isMineableItem,
   emptyFitted,

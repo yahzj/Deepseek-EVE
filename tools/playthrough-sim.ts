@@ -437,7 +437,7 @@ function doAi(): void {
 
 /**
  * 驾驶船策略：在港空闲时始终换驾舰队里最强武装/装甲船（powerBonus 最高）。
- * 修复 v1.0 缺陷：useFreeFalconet 每次回港都把驾驶切回白送隼枭，导致升级船永远只停在仓库、
+ * 修复 v1.0 缺陷：useFreeFalconet 每次回港都把驾驶切回白送鲣鱼，导致升级船永远只停在仓库、
  * 终局战力被免费艇封顶（顶配 68% 黑洞——2026-09-05 记录，模拟器自身策略缺陷）。
  */
 function useFreeFalconet(): void {

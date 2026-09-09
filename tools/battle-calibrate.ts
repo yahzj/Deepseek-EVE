@@ -19,10 +19,10 @@ const SEEDS = [1, 7, 13, 29, 51]
 type Loadout = { name: string; ship: string; high: string[]; mid?: string[]; low?: string[]; drones?: Record<string, number> }
 const LOADOUTS: Loadout[] = [
   { name: '裸船(基础舰炮)', ship: 'sh-falconet', high: [] },
-  { name: '隼枭+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
-  { name: '隼枭+动能MK3', ship: 'sh-falconet', high: ['mod-turret-kin-3'] },
-  { name: '隼枭+导弹MK3', ship: 'sh-falconet', high: ['mod-missile-3'] },
-  { name: '隼枭+激光MK3', ship: 'sh-falconet', high: ['mod-laser-3'] },
+  { name: '鲣鱼+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
+  { name: '鲣鱼+动能MK3', ship: 'sh-falconet', high: ['mod-turret-kin-3'] },
+  { name: '鲣鱼+导弹MK3', ship: 'sh-falconet', high: ['mod-missile-3'] },
+  { name: '鲣鱼+激光MK3', ship: 'sh-falconet', high: ['mod-laser-3'] },
   { name: '虎鲨三族混装(2kin2+laser2+missile2)', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-laser-2', 'mod-missile-2'] },
   { name: '虎鲨2kin2+支援(索敌/陀螺/稳定)', ship: 'sh-tigershark', high: ['mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-rof-2'] },
   { name: '鲸王+动能MK3×3', ship: 'whale-king', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'] },
@@ -33,9 +33,9 @@ const LOADOUTS: Loadout[] = [
   /* ── 无人机流行（2026-09-08 无人机舱大改：装载只读 droneLoad 清单（不再仓库贪心）；
      各行清单 = 该船「装配后余 CPU × 舱容」内可装的合法满载组合（战斗只放飞已装入的，
      超额由 UI 预占互斥，不会出现）；同船炮流对照见 S1/S2/S4）── */
-  { name: 'D1 蜂群无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 20, 'drone-sentry': 1 } },
-  { name: 'D2 蜂群无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } },
-  { name: 'D3 哨兵无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } },
+  { name: 'D1 梭鱼无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 20, 'drone-sentry': 1 } },
+  { name: 'D2 梭鱼无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-scout': 8, 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } },
+  { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } },
 ]
 
 const FULL_SKILLS: Record<string, number> = {

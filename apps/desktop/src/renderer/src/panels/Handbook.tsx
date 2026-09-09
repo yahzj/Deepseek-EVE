@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, SHIP_ROLE_LABELS, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
@@ -174,7 +174,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场偶尔闪现）' : '市场流通'])
     } else {
       const role = String(r.role ?? 'industrial')
-      rows.push(['定位 / 档次', `${roleName(role)} · T${Number(r.tier ?? 0)}`])
+      rows.push(['定位 / 档次', `${roleName(role)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
       rows.push(['货舱容量', `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
       rows.push(['采集性能', `${Number(r.cycleSeconds ?? 0)} 秒 × ${Number(r.oreUnitsPerCycle ?? 0)} 单位/循环`])
       rows.push(['动力（机动 / 跃迁充能）', `${Math.round(Number(r.agility ?? 0) * 100)}%`])
@@ -360,7 +360,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
       tab: 'ships',
       glyph: role,
       name: ship.name,
-      sub: `${roleName(role)} · T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
+      sub: `${roleName(role)} · ${shipSizeLabel(ship.tier)} T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
       raw: ship as unknown as RawData,
     }
   })

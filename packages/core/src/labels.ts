@@ -123,6 +123,20 @@ export function shipRoleLabel(role: ShipRole): string {
   return SHIP_ROLE_LABELS[role] ?? role
 }
 
+/** 舰船尺寸大分类名（2026-09-09 船长定：护卫 T1 / 驱逐 T2 / 巡洋 T3 / 主力 T4 / 旗舰 T5；
+ * 由等效质量落档的 tier 决定；船名内的旧规格词（炮舰/巡舰/母舰/艇…）作为子分类保留） */
+export const SHIP_SIZE_CLASS: Record<number, string> = {
+  1: '护卫舰',
+  2: '驱逐舰',
+  3: '巡洋舰',
+  4: '主力舰',
+  5: '旗舰',
+}
+
+export function shipSizeLabel(tier: number): string {
+  return SHIP_SIZE_CLASS[tier] ?? ''
+}
+
 /** 可被矿船直接采集的资源大类（矿石/气体/冰矿） */
 export const MINEABLE_KINDS: ReadonlySet<ItemKind> = new Set(['ore', 'gas', 'ice'])
 
