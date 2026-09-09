@@ -549,7 +549,7 @@ function BeltCard({
           <button
             className="app-btn is-small"
             disabled={locked || !aiShipId || usableCores.length === 0}
-            title={locked ? (unexplored ? '所在星系未探索' : `需声望 ${belt.standingReq}`) : aiShipId ? '指派 AI 副船开采此矿带' : '先选择空闲副船'}
+            title={locked ? (unexplored ? '所在星系未探索' : `需声望 ${belt.standingReq}`) : usableCores.length === 0 ? '没有可用的 AI 核心——先购入基础核心或等远征掉落' : aiShipId ? '指派 AI 副船开采此矿带' : '先在下拉中选择空闲副船'}
             onClick={() => onAiAssign(belt.id, aiShipId, effCore)}
           >
             指派 AI 开采
@@ -924,7 +924,7 @@ function WreckCard({
           <button
             className="app-btn is-small"
             disabled={activeAnywhere || !aiShipId || usableCores.length === 0}
-            title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : aiShipId ? '指派 AI 副船打捞此星系（自动循环，取消任务才结束）' : '先选择空闲副船'}
+            title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : usableCores.length === 0 ? '没有可用的 AI 核心——先购入基础核心或等远征掉落' : aiShipId ? '指派 AI 副船打捞此星系（自动循环，取消任务才结束）' : '先在下拉中选择空闲副船'}
             onClick={() => onAiAssign(g.id, aiShipId, effCore)}
           >
             指派 AI 打捞

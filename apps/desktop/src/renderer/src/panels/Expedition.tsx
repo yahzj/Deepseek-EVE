@@ -1173,7 +1173,20 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             </option>
           ))}
         </select>
-        <button className="app-btn is-small" disabled={!aiShip || !aiCoreAvailable} onClick={handleAiStandby}>
+        <button
+          className="app-btn is-small"
+          disabled={!aiShip || !aiCoreAvailable}
+          onClick={handleAiStandby}
+          title={
+            !aiShip
+              ? idleShips.length === 0
+                ? '没有空闲舰船可派去巡逻（舰船均在执勤/出航中）'
+                : '先在上方选择一艘空闲副船'
+              : !aiCoreAvailable
+                ? '没有可用的 AI 核心或名额已满——先购入基础核心、取消占用任务或训练「AI 核心操作学」'
+                : undefined
+          }
+        >
           派去掩护巡逻
         </button>
       </div>
