@@ -685,43 +685,34 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           </div>
         </div>
         <div className="app-mkt-trade">
-          {/* 首行：买/卖方向切换 + 交易按钮并列（船长 2026-09-09：切换右侧不再空旷、详情卡省一行
-              高度，缓解与下方「我的挂单」抢窗口高度） */}
-          <div className="app-mkt-trade-top">
-          <div className="app-mkt-sides" role="tablist">
-            <button
-              role="tab"
-              aria-selected={tab === 'buy'}
-              disabled={!buyable}
-              className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
-              onClick={() => setTab('buy')}
-              title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
-            >
-              买入
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === 'sell'}
-              className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
-              onClick={() => setTab('sell')}
-            >
-              卖出
-            </button>
-          </div>
-          {/* 交易按钮（2026-09-09：由面板底部上移与买/卖切换同排；挂单/市价/（卖出侧）全部卖出） */}
-          <div className="app-mkt-trade-btns">
-            <button className="app-btn is-small" onClick={doPlace}>
-              {tab === 'buy' ? '挂买单' : '挂卖单'}
-            </button>
-            <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
-              {tab === 'buy' ? '市价买入' : '市价卖出'}
-            </button>
-            {tab === 'sell' ? (
-              <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
-                全部卖出（{holdings}）
+          {/* 交易面板（2026-09-09 船长布局：挂单按钮贴切换行右端、市价按钮贴数量行右端、
+              卖出侧「全部卖出」贴单价行右端——各行右侧对齐、按钮不拉伸占满） */}
+          <div className="app-mkt-trade-row">
+            <div className="app-mkt-sides" role="tablist">
+              <button
+                role="tab"
+                aria-selected={tab === 'buy'}
+                disabled={!buyable}
+                className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
+                onClick={() => setTab('buy')}
+                title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
+              >
+                买入
               </button>
-            ) : null}
-          </div>
+              <button
+                role="tab"
+                aria-selected={tab === 'sell'}
+                className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
+                onClick={() => setTab('sell')}
+              >
+                卖出
+              </button>
+            </div>
+            <span className="app-mkt-actions">
+              <button className="app-btn is-small" onClick={doPlace}>
+                {tab === 'buy' ? '挂买单' : '挂卖单'}
+              </button>
+            </span>
           </div>
           <div className="app-mkt-trade-row">
             <span className="app-dim">数量</span>
@@ -731,11 +722,23 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 全部
               </button>
             ) : null}
+            <span className="app-mkt-actions">
+              <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
+                {tab === 'buy' ? '市价买入' : '市价卖出'}
+              </button>
+            </span>
           </div>
           <div className="app-mkt-trade-row">
             <span className="app-dim">单价</span>
             <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
             <span className="app-dim">ISK</span>
+            {tab === 'sell' ? (
+              <span className="app-mkt-actions">
+                <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
+                  全部卖出（{holdings}）
+                </button>
+              </span>
+            ) : null}
           </div>
           {/* 价格指引（2026-09-08 船长定：不向玩家披露站内吸收/巡游通道——只保留普通撮合语义的指导文案） */}
           <div className="app-dim app-sr-eta">
