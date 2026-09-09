@@ -95,7 +95,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), 'AI 任务已取消（核心已归还）。')
       break
     case 'cancel-deliver-trip':
-      run(engine.cancelDeliverTripNow(), '交付航线已取消（无惩罚）：舰船立即返航停靠最近空间站。')
+      run(engine.cancelDeliverTripNow(), '交付航线已取消（无惩罚）：已停止交付循环，舰船立即返航停靠最近空间站（本趟装载随进港卸回仓库）。')
       break
     case 'stop-loop':
       run(engine.bountyLoopAt(null), '连续出击已停止。')
@@ -213,7 +213,7 @@ export function ActivityBar({
                 : v.stop === 'recall-expedition'
                   ? '召回远征：中止任务返回母港（无战果）'
                   : v.stop === 'cancel-deliver-trip'
-                    ? '取消交付航线：无惩罚，舰船立即返航停靠最近已建成空间站'
+                    ? '取消交付航线：无惩罚，停止整个交付循环，舰船立即返航停靠最近已建成空间站（本趟装载随进港卸回仓库）'
                     : v.stop === 'stop-scan'
                     ? '终止扫描：就地扫描进度保存，下次续扫'
                     : v.stop === 'stop-salvage'

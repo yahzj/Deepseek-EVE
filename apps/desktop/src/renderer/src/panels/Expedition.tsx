@@ -16,6 +16,8 @@ import {
   bountyCooldownRemainingMs,
   bountyRewardFactor,
   calcPower,
+  cargoCapacityM3Of,
+  cargoUsedM3Of,
   countAiCore,
   expeditionStatus,
   fleetDefOf,
@@ -1292,7 +1294,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           </button>
         </div>
       )}
-      {/* 2026-09-08 建站交付航线（船长定）：该星系有未建成工地 → 一键从空间站前往，到达自动交付并自动返航 */}
+      {/* 2026-09-08 建站交付航线 v2（船长定稿：物理载货 + 自动多趟循环）——该星系有未建成工地 → 一键交付循环 */}
       {(() => {
         const site = [...engine.ctx.stations.values()].find((s) => s.galaxyId === galaxy.id)
         if (!site) return null
@@ -1300,29 +1302,30 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
         if (prog && prog.stage >= site.tiers.length) return null // 已建成：不需要交付航线
         if (!isExplored(state, galaxy.id)) return null
         const tripOn = state.transit.active && state.transit.delivery?.siteId === site.id
-        const mat = site.acceptItemIds.reduce(
-          (s0, id) => s0 + (state.warehouse.items[id] ?? 0) + (state.fleet[state.shipId]?.cargo[id] ?? 0),
-          0,
-        )
+        // 交付循环只装仓库建材（每趟装满货仓空闲空间；船上原有货物不受影响）
+        const mat = site.acceptItemIds.reduce((s0, id) => s0 + (state.warehouse.items[id] ?? 0), 0)
+        const freeM3 = Math.max(0, Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)))
         const matNames = site.acceptItemIds.map((id) => engine.ctx.items.get(id)?.name ?? id).join(' / ')
         const canSend =
-          !tripOn && !state.transit.active && !state.standby.active && state.awayGalaxy === null && !pilotBusy && mat > 0
+          !tripOn && !state.transit.active && !state.standby.active && state.awayGalaxy === null && !pilotBusy && mat > 0 && freeM3 > 0
         const title = tripOn
-          ? '交付航线进行中（顶部活动栏可查看进度/取消）'
+          ? '交付循环进行中（顶部活动栏可查看进度/取消）'
           : state.awayGalaxy !== null
             ? '舰船在野外：先返航空间站（母港或已建成副站）再出发'
             : pilotBusy || state.standby.active || state.transit.active
               ? '驾驶船有进行中的作业（采矿/远征/扫描/返航/掩护巡逻）——结束后才能出发'
-              : mat <= 0
-                ? `仓库建材不足（需要：${matNames}）——备料后再出发`
-                : `从当前停靠空间站按真实航程前往「${site.name}」工地：到达后自动交付建材并自动返航最近空间站（可随时取消）`
+              : freeM3 <= 0
+                ? '货仓已满载——先腾出空闲货仓再安排交付循环'
+                : mat <= 0
+                  ? `仓库建材不足（需要：${matNames}）——备料后再出发`
+                  : `一键交付循环：每趟把货仓装满本星系建材（当前空闲 ${freeM3} m³）→ 真实航程到点自动清仓交付 → 自动返港续趟，直到副站建成或仓库建材耗尽（随时可取消停止）`
         return (
           <div className="app-ga-row">
             <span className="app-ga-main">
               <span className="app-ico"><Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} /></span>
               建站交付 · {site.name}
               <span className="app-dim app-ga-desc">
-                仓库+货仓建材 {mat.toLocaleString('zh-CN')} 单位（需要 {matNames}）——到点自动交付、随后自动返航
+                仓库建材 {mat.toLocaleString('zh-CN')} 单位（需要 {matNames}）· 货仓空闲 {freeM3.toLocaleString('zh-CN')} m³——装满出发，到点清仓交付，自动循环至建成或仓库耗尽
               </span>
             </span>
             <button
@@ -1332,11 +1335,11 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
               onClick={() => {
                 const r = engine.deliverTripAt(site.id)
                 if (!r.ok) onToast(r.error ?? '无法出发', true)
-                else onToast(`已启程前往「${site.name}」工地自动交付——活动栏可查看进度/取消。`)
+                else onToast(`已启程前往「${site.name}」工地（交付循环）——活动栏可查看进度/取消。`)
               }}
             >
               <span className="app-ico"><Glyph name="ico-home" size={13} color={ICO_TONES['ico-home']} /></span>
-              {tripOn ? '交付航线中' : '前往工地交付'}
+              {tripOn ? '交付循环中' : '前往工地交付'}
             </button>
           </div>
         )
@@ -1854,7 +1857,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
         const availOf = (itemId: string): number =>
           (state.warehouse.items[itemId] ?? 0) + (state.fleet[state.shipId]?.cargo[itemId] ?? 0)
         const avail = site.acceptItemIds.reduce((s, id) => s + availOf(id), 0)
-        // 2026-09-08 一键「前往工地交付」状态（真实航程；到点自动交付并自动返航；途中可取消）
+        // 2026-09-08 一键「前往工地交付」＝交付循环（物理载货：装仓库建材→到点清仓→自动续趟→建成或仓库耗尽终止）
         const tripOn = state.transit.active && state.transit.delivery?.siteId === site.id
         const tripReadyDock = state.awayGalaxy === null
         const tripBusy =
@@ -1866,6 +1869,13 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
           state.transit.active ||
           state.refineRuns.some((r) => r.active && r.worker === 'pilot') ||
           state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
+        const wareStock = site.acceptItemIds.reduce((s, id) => s + (state.warehouse.items[id] ?? 0), 0)
+        const tripFreeM3 = Math.max(
+          0,
+          Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)),
+        )
+        const tripBlocked =
+          tripOn || !tripReadyDock || tripBusy || wareStock <= 0 || tripFreeM3 <= 0
         const want = Math.min(Math.max(0, Math.floor(qty)), remain, avail)
         const intro = site.introDialogueId ? engine.dialogues.find((d) => d.id === site.introDialogueId) : undefined
         return (
@@ -1968,30 +1978,32 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                 ) : (
                   <div className="app-station-deliver">
                     <span className="app-dim">
-                      不在工地现场：可一键「前往工地交付」——舰船从当前停靠空间站按真实航程出发，到点自动交付建材并自动返航最近空间站；途中可在顶部活动栏取消。
+                      不在工地现场：可一键「前往工地交付」——每趟把货仓装满本星系建材，按真实航程驶往工地，到点自动清仓交付；仓库还有建材就自动续趟，直到副站建成或仓库建材耗尽（耗尽会弹窗提示）；途中可在顶部活动栏取消（= 停止循环）。
                     </span>
                     <button
                       className="app-btn is-small is-primary"
-                      disabled={tripOn || !tripReadyDock || tripBusy || avail <= 0}
+                      disabled={tripBlocked}
                       title={
                         tripOn
-                          ? '交付航线进行中（顶部活动栏可查看进度/取消）'
+                          ? '交付循环进行中（顶部活动栏可查看进度/取消）'
                           : !tripReadyDock
                             ? '舰船在野外：先「返航空间站」（母港或已建成副站）再出发'
                             : tripBusy
                               ? '驾驶船有进行中的作业（采矿/远征/扫描/打捞/掩护巡逻/返航/亲自开线）——结束后才能出发'
-                              : avail <= 0
-                                ? `仓库建材不足（需要 ${site.acceptItemIds.map((id) => engine.ctx.items.get(id)?.name ?? id).join(' / ')}）——备料后再出发`
-                                : `从「${galaxy?.name ?? site.galaxyId}」出发按真实航程前往「${site.name}」工地：到达自动交付、随后自动返航`
+                              : tripFreeM3 <= 0
+                                ? '货仓已满载——先腾出空闲货仓再安排交付循环'
+                                : wareStock <= 0
+                                  ? `仓库建材不足（需要 ${site.acceptItemIds.map((id) => engine.ctx.items.get(id)?.name ?? id).join(' / ')}）——备料后再出发`
+                                  : `从「${galaxy?.name ?? site.galaxyId}」出发：装满货仓（空闲 ${tripFreeM3.toLocaleString('zh-CN')} m³）→ 到点清仓自动交付 → 自动返港续趟至建成或仓库耗尽（可随时取消）`
                       }
                       onClick={() => {
                         const r = engine.deliverTripAt(site.id)
                         if (!r.ok) onToast(r.error ?? '无法出发', true)
-                        else onToast(`已启程前往「${site.name}」工地自动交付——活动栏可查看进度/取消。`)
+                        else onToast(`已启程前往「${site.name}」工地（交付循环）——活动栏可查看进度/取消。`)
                       }}
                     >
                       <span className="app-ico"><Glyph name="ico-home" size={13} color={ICO_TONES["ico-home"]} /></span>
-                      {tripOn ? '交付航线中' : '前往工地交付'}
+                      {tripOn ? '交付循环中' : '前往工地交付'}
                     </button>
                   </div>
                 )}

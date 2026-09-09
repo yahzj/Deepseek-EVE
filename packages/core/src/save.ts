@@ -1489,18 +1489,37 @@ function normalizeState(raw: unknown): GameState {
       typeof transitRaw.legMs === 'number' && Number.isFinite(transitRaw.legMs)
         ? Math.max(0, Math.floor(transitRaw.legMs))
         : 0,
-    // 2026-09-08 建站交付航线（可选字段：siteId 合法且 phase 合规才启用，旧档回退 null）
+    // 2026-09-08 建站交付航线（可选字段：siteId 合法且 phase 合规才启用，旧档回退 null；
+    // v2 起 to-site 腿携带本趟装载明细 loaded，供到点"只清货仓"交付）
     delivery: (() => {
       const deliveryRaw = asRaw(transitRaw.active === true ? transitRaw.delivery : undefined)
       if (
-        transitRaw.active === true &&
-        typeof deliveryRaw.siteId === 'string' &&
-        deliveryRaw.siteId.length > 0 &&
-        (deliveryRaw.phase === 'to-site' || deliveryRaw.phase === 'to-station')
+        !(
+          transitRaw.active === true &&
+          typeof deliveryRaw.siteId === 'string' &&
+          deliveryRaw.siteId.length > 0 &&
+          (deliveryRaw.phase === 'to-site' || deliveryRaw.phase === 'to-station')
+        )
       ) {
-        return { siteId: deliveryRaw.siteId, phase: deliveryRaw.phase as 'to-site' | 'to-station' }
+        return null
       }
-      return null
+      let loaded: Record<string, number> | undefined
+      const loadedRaw = asRaw(deliveryRaw.loaded)
+      const loadedEntries = Object.entries(loadedRaw)
+      if (loadedEntries.length > 0) {
+        const out: Record<string, number> = {}
+        for (const [k, v] of loadedEntries) {
+          if (k.length === 0) continue
+          const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 0
+          if (n > 0) out[k] = n
+        }
+        if (Object.keys(out).length > 0) loaded = out
+      }
+      return {
+        siteId: deliveryRaw.siteId,
+        phase: deliveryRaw.phase as 'to-site' | 'to-station',
+        ...(loaded !== undefined ? { loaded } : {}),
+      }
     })(),
   }
   // --- B1.5 主控待命行程（v17.1 兼容字段）：active 且目标合法才启用 ---
