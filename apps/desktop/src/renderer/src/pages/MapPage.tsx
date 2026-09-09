@@ -364,7 +364,7 @@ function BeltCard({
                   : mineAsk
                     ? '确认已展开在下方——用面板按钮操作'
                     : expeditionOn
-                      ? '远征中：点击展开转开采确认（将取消本次远征并停止连击）'
+                      ? '远征中：点击展开转开采确认（将取消本次远征并停止讨伐）'
                       : undefined
           }
           onClick={mineStartClick}
@@ -377,7 +377,7 @@ function BeltCard({
             <div className="app-sell-warn">
               ⚠ 远征中开采 = <b>转场</b>：本次远征将立即取消——
               <b> 无战果、无返程</b>
-              {state.autoLoopAnomalyId !== null ? '，连续出击同步停止' : ''}，随即在「{belt.name}」开始采矿。
+              {state.autoLoopAnomalyId !== null ? '，重复清剿同步停止' : ''}，随即在「{belt.name}」开始采矿。
             </div>
             <div className="app-sell-confirm-btns">
               <button className="app-btn is-small is-danger" onClick={mineStartClick}>

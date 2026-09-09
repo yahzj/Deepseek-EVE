@@ -87,7 +87,7 @@ export function SaveManager({
     else onToast(r.path ? `已导出：${r.path}` : '备份已开始下载。')
   }
 
-  /** 删除备份（两连击确认；只删备份文件，不影响当前档） */
+  /** 删除备份（两讨伐确认；只删备份文件，不影响当前档） */
   async function handleDeleteBackup(name: string): Promise<void> {
     if (armDelete !== name) {
       setArmDelete(name) // 第一次点：进入确认态
@@ -155,7 +155,7 @@ export function SaveManager({
                       className={`app-btn is-small${armDelete === b.name ? ' is-warn' : ''}`}
                       onClick={() => void handleDeleteBackup(b.name)}
                       disabled={busy}
-                      title={armDelete === b.name ? '再点一次确认删除（只删这份备份，不影响当前档）' : '删除这份备份（两连击确认）'}
+                      title={armDelete === b.name ? '再点一次确认删除（只删这份备份，不影响当前档）' : '删除这份备份（两讨伐确认）'}
                     >
                       {armDelete === b.name ? '再点确认删除' : '删除'}
                     </button>

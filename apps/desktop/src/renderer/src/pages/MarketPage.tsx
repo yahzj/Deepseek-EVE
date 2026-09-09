@@ -530,12 +530,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     leftover: number
   } | null>(null)
 
-  function setDefaults(side: 'buy' | 'sell'): void {
-    setTab(side)
-    // 默认价 = 与引擎通道同源的价线（收购价线/供应价线）；簿价含 jitter 不作通道基准
+  // 打开详情时按初始页签预填一次默认价/数量（此后切换页签保留手填值，2026-09-08 船长定）
+  const initRef = useRef<'buy' | 'sell'>(buyable ? 'buy' : 'sell')
+  useEffect(() => {
+    initRef.current = buyable ? 'buy' : 'sell'
+    const side = initRef.current
     setPrice(Math.max(1, side === 'buy' ? quote.sell ?? askLineOf(state, engine.ctx, good.key) : buyLineOf(state, engine.ctx, good.key)))
     setQty(side === 'sell' ? Math.max(1, holdings) : 1)
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [good.key])
   function doBuy(): void {
     if (lock) {
       onToast(`暂不能买入：${lock}。`, true)
@@ -579,8 +582,14 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     const n = Math.max(1, Math.floor(qty || 1))
     const p = Math.max(1, Math.floor(price || 1))
     if (tab === 'buy') {
+      // 2026-09-08（船长反馈）：声望不足等门槛原因要明示，不再笼统报"价格或数量无效"
+      const gate = lock ?? bmGateReason(state, good)
+      if (gate) {
+        onToast(`挂买单失败：${gate}。`, true)
+        return
+      }
       const id = engine.placeBuyOrderAt(good.key, p, n)
-      if (id === null) onToast('挂买单失败：价格或数量无效。', true)
+      if (id === null) onToast('挂买单失败：该商品当前不接受这个价格的挂单（可先试市价买入）。', true)
       else {
         const exoNote =
           good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
@@ -618,21 +627,6 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       }
     >
       <div className="app-mkt-detail">
-        {good.kind === 'blueprint' ? (
-          <div className="app-mkt-detail-badges">
-            {state.learnedRecipes.includes(good.refId) ? (
-              <span className="app-chip is-learned">已学习（可无限自制）</span>
-            ) : null}
-            {(state.blueprintStock[good.refId] ?? 0) > 0 ? (
-              <span className="app-chip is-stock">
-                已获得 ×{(state.blueprintStock[good.refId] ?? 0).toLocaleString('zh-CN')}
-              </span>
-            ) : null}
-            {!state.learnedRecipes.includes(good.refId) && (state.blueprintStock[good.refId] ?? 0) <= 0 ? (
-              <span className="app-chip is-dim">尚未获得</span>
-            ) : null}
-          </div>
-        ) : null}
         <div className="app-mkt-detail-left">
           <PriceChart hist={hist} />
           {hist.length >= 2 ? (
@@ -698,9 +692,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               aria-selected={tab === 'buy'}
               disabled={!buyable}
               className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
-              onClick={() => {
-                if (buyable) setDefaults('buy')
-              }}
+              onClick={() => setTab('buy')}
               title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
             >
               买入
@@ -709,7 +701,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               role="tab"
               aria-selected={tab === 'sell'}
               className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
-              onClick={() => setDefaults('sell')}
+              onClick={() => setTab('sell')}
             >
               卖出
             </button>

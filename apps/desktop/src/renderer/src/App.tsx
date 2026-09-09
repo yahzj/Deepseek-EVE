@@ -478,7 +478,7 @@ export function App({ engine }: { engine: GameEngine }) {
   // 玩家手动退出战场后（battleOpen=false 而 inBattle 仍 true）不会再被自动弹回
   const prevInBattleRef = useRef(false)
   useEffect(() => {
-    // 优化：连续出击自动发起的远征默认最小化战斗界面（仍可用右上角「⚔ 战斗中」主动进入）
+    // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用右上角「⚔ 战斗中」主动进入）
     if (inBattle && !prevInBattleRef.current && !engine.autoSortieNow()) setBattleOpen(true)
     prevInBattleRef.current = inBattle
   }, [inBattle])
@@ -916,7 +916,7 @@ export function App({ engine }: { engine: GameEngine }) {
           engine={engine}
           onToast={showToast}
           onClose={() => {
-            // 手动退出战场：若正处于"连击自动发起的战斗"→ 停连击（避免冷却后又自动开战）
+            // 手动退出战场：若正处于"讨伐自动发起的战斗"→ 停清剿（避免冷却后又自动开战）
             engine.onBattleViewClosed()
             setBattleOpen(false)
           }}

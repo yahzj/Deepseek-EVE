@@ -223,7 +223,7 @@ describe('T4 延后项：采矿 ↔ 远征 转场', () => {
 
   it('远征即时交火（去程取消）：交火中不能直接转开采——被拒且远征原样', () => {
     const { state, ctx } = world()
-    state.autoLoopAnomalyId = 'ano-a' // 模拟连击发起
+    state.autoLoopAnomalyId = 'ano-a' // 模拟清剿发起
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     expect(state.expedition.active).toBe(true)
     expect(state.expedition.phase).toBe('battle') // 去程取消：下达即开战
@@ -232,7 +232,7 @@ describe('T4 延后项：采矿 ↔ 远征 转场', () => {
     expect(r.error).toContain('交火')
     expect(state.expedition.active).toBe(true)
     expect(state.mining.active).toBe(false)
-    expect(state.autoLoopAnomalyId).toBe('ano-a') // 未转场 → 连击不被停止
+    expect(state.autoLoopAnomalyId).toBe('ano-a') // 未转场 → 清剿不被停止
   })
 
   it('交火中不能转开采：拒绝且远征原样', () => {

@@ -1,5 +1,5 @@
 /**
- * T8 星系停留 / 连续出击 / 重复冷却 / 修理组件优先 / 返航空间站（位置模型）。
+ * T8 星系停留 / 重复清剿 / 重复冷却 / 修理组件优先 / 返航空间站（位置模型）。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -118,7 +118,7 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
   })
 })
 
-describe('T8 连续出击（2026-09-06 巡回讨伐：自动返航到港后自动再出击）', () => {
+describe('T8 重复清剿（2026-09-06 重复清剿：自动返航到港后自动再出击）', () => {
   it('开启落档；胜利自动返航期间等待；到港冷却结束自动再出发（巡回多轮）；战利品放不下/耐久不足自动暂停', () => {
     const { state, ctx } = worldWithFarBounty()
     expect(setAutoLoopBounty(state, ctx, 'ano-far-easy').ok).toBe(true)

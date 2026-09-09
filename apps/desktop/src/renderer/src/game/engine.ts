@@ -341,7 +341,7 @@ export class GameEngine {
   private pendingMs = 0
   /** 心跳周期毫秒（2026-09-08 降频优化：挂机 500ms；战斗/教学加速/远征去程边界保持 100ms） */
   private pumpMs = 100
-  /** 优化：本场远征是否由"连续出击"自动发起（期间战斗界面默认最小化，不自动弹全屏战场） */
+  /** 优化：本场远征是否由"重复清剿"自动发起（期间战斗界面默认最小化，不自动弹全屏战场） */
   private autoSortie = false
 
   /* ═══ 悬赏胜率蒙特卡洛缓存（2026-09-09 船长确认 N=21：战力指纹变化 → 分帧全板预热） ═══ */
@@ -401,7 +401,7 @@ export class GameEngine {
     return this.winCache.get(anomalyId) ?? null
   }
 
-  /** UI 查询：当前是否处于"自动连击发起的远征"（战斗界面不自动弹出） */
+  /** UI 查询：当前是否处于"自动讨伐发起的远征"（战斗界面不自动弹出） */
   autoSortieNow(): boolean {
     return this.autoSortie
   }
@@ -583,14 +583,14 @@ export class GameEngine {
       this.pendingMs = 0
       this.notify()
     }
-    // T8 连续出击（落档开关）：整秒心跳后检查自动再出发/暂停条件
+    // T8 重复清剿（落档开关）：整秒心跳后检查自动再出发/暂停条件
     if (this.state.autoLoopAnomalyId !== null) {
       const wasActive = this.state.expedition.active
       const reason = advanceAutoLoopBounty(this.state, this.ctx)
-      if (!wasActive && this.state.expedition.active) this.autoSortie = true // 本次由连击自动发起
+      if (!wasActive && this.state.expedition.active) this.autoSortie = true // 本次由讨伐自动发起
       if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
     }
-    // 连击远征结束后复位标记（下一场手动出击照常自动弹战场）
+    // 讨伐远征结束后复位标记（下一场手动出击照常自动弹战场）
     if (this.autoSortie && !this.state.expedition.active) this.autoSortie = false
     // 悬赏胜率 MC 预热（2026-09-09：指纹变化时分帧重算；节流+预算防卡 UI）
     this.pumpWinCache(now)
@@ -795,7 +795,7 @@ export class GameEngine {
     return result
   }
 
-  /** T4 延后项：远征中直接转开采（UI 两步确认后调用；取消远征并停连击） */
+  /** T4 延后项：远征中直接转开采（UI 两步确认后调用；取消远征并停清剿） */
   startMiningFromExpeditionAt(beltId: string): CommandResult {
     const result = startMiningFromExpedition(this.state, beltId, this.ctx)
     if (result.ok) {
@@ -1247,7 +1247,7 @@ export class GameEngine {
     }
     return result
   }
-  /** 战斗中撤退：轻损脱离并自动返航（同时停止连续出击） */
+  /** 战斗中撤退：轻损脱离并自动返航（同时停止重复清剿） */
   retreatNow(): CommandResult {
     const result = retreatBattle(this.state, this.ctx)
     if (result.ok) {
@@ -1257,7 +1257,7 @@ export class GameEngine {
     return result
   }
 
-  /** T8：悬赏连续出击开关（落档）；null = 停止 */
+  /** T8：悬赏重复清剿开关（落档）；null = 停止 */
   bountyLoopAt(anomalyId: string | null): CommandResult {
     const result = setAutoLoopBounty(this.state, this.ctx, anomalyId)
     if (result.ok) {
@@ -1345,15 +1345,15 @@ export class GameEngine {
   }
 
   /**
-   * 优化：玩家手动退出全屏战场时的兜底——若本场战斗由"连续出击"自动发起且尚未结束，
-   * 视为玩家想收手：停连击（避免冷却结束后又自动进入战斗）。
+   * 优化：玩家手动退出全屏战场时的兜底——若本场战斗由"重复清剿"自动发起且尚未结束，
+   * 视为玩家想收手：停清剿（避免冷却结束后又自动进入战斗）。
    */
   onBattleViewClosed(): void {
     const exp = this.state.expedition
     if (this.autoSortie && exp.active && exp.phase === 'battle') {
       this.state.autoLoopAnomalyId = null
       this.autoSortie = false
-      addLog(this.state, 'info', '连续出击已停止（手动退出战场）。')
+      addLog(this.state, 'info', '重复清剿已停止（手动退出战场）。')
       void this.persist()
       this.notify()
     }

@@ -412,13 +412,13 @@ describe('连续作战保险', () => {
     expect(exp.active).toBe(true)
     expect(exp.phase).toBe('back') // 已自动撤退转返航
     expect(exp.returnReason).toBe('retreat')
-    expect(state.autoLoopAnomalyId).toBeNull() // 撤退即终止连续出击
+    expect(state.autoLoopAnomalyId).toBeNull() // 撤退即终止重复清剿
     expect(state.fleet[shipId]).toBeDefined() // 船没丢
     const dur = state.fleet[shipId]!.durability
     expect(dur).toBeGreaterThan(0.05) // 下限保护
     expect(dur).toBeLessThan(0.5) // 本场已残
     expect(state.logs.some((l) => l.text.includes('自动撤退'))).toBe(true)
-    expect(state.logs.some((l) => l.text.includes('连续出击已停止'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('重复清剿已停止'))).toBe(true)
     // 返航到港：作业完整结束
     advanceGame(state, 10 * 60_000, ctx)
     expect(state.expedition.active).toBe(false)

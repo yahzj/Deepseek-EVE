@@ -1,5 +1,5 @@
 /**
- * 战斗中"撤退"（Q1乙 轻损 / Q3甲 同时停连击）：仅损失少量耐久（≈战败扣损的半量）、无弃船骰、
+ * 战斗中"撤退"（Q1乙 轻损 / Q3甲 同时停清剿）：仅损失少量耐久（≈战败扣损的半量）、无弃船骰、
  * 耐久下限保护（绝不 ≤0 弃船）、转自动返航。
  */
 import { describe, expect, it } from 'vitest'
@@ -54,7 +54,7 @@ describe('战斗中撤退（轻损）', () => {
     expect(state.logs.some((l) => l.text.includes('濒临崩溃'))).toBe(true)
   })
 
-  it('战斗已分胜负（结算窗口）时不可撤退；撤退同时停止连续出击', () => {
+  it('战斗已分胜负（结算窗口）时不可撤退；撤退同时停止重复清剿', () => {
     const { state, ctx } = world()
     state.autoLoopAnomalyId = 'ano-a'
     enterBattle(state, ctx)
@@ -73,7 +73,7 @@ describe('战斗中撤退（轻损）', () => {
     expect(r.ok).toBe(false)
     expect(r.error).toContain('胜负')
 
-    // 重新进入未分胜负的战斗并撤退 → 连击停环
+    // 重新进入未分胜负的战斗并撤退 → 清剿停环
     state.expedition.active = false
     state.expedition.battle = null
     state.autoLoopAnomalyId = 'ano-a'

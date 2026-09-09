@@ -193,29 +193,33 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 连续出击（autoLoop：打完冷却后自动再出发；悬赏冷却/等待空窗也记录为玩家活动——船长 2026-09-05） ──
+  // ── 重复清剿（autoLoop：打完冷却后自动再出发；含出击/返航途中——2026-09-08 船长：
+  // 返航中也要能在活动栏停止讨伐，故不再因 inFlight 隐藏） ──
   const loopId = state.autoLoopAnomalyId
   if (loopId !== null) {
+    const aName = ctx.anomalies.get(loopId)?.name ?? loopId
     const inFlight = state.expedition.active && state.expedition.anomalyId === loopId
-    if (!inFlight) {
-      const aName = ctx.anomalies.get(loopId)?.name ?? loopId
-      const cdMs = bountyCooldownRemainingMs(state, loopId)
-      const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
-      out.push({
-        id: 'loop',
-        kind: 'loop',
-        label: '连续出击',
-        sub: busyOther
-          ? `目标「${aName}」——等待当前作业结束，自动再出击`
-          : cdMs > 0
-            ? `目标「${aName}」——正在扫描新敌人`
-            : `目标「${aName}」——即将自动再出击`,
-        percent: null,
-        remainingMs: cdMs > 0 ? cdMs : null,
-        stopable: true,
-        stop: 'stop-loop',
-      })
-    }
+    const inBack = inFlight && state.expedition.phase === 'back'
+    const cdMs = bountyCooldownRemainingMs(state, loopId)
+    const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
+    out.push({
+      id: 'loop',
+      kind: 'loop',
+      label: '重复清剿',
+      sub: inBack
+        ? `目标「${aName}」——本趟返航中，可在此停止讨伐（返回后不再自动出击）`
+        : inFlight
+          ? `目标「${aName}」——本次出击中，可随时停止讨伐`
+          : busyOther
+            ? `目标「${aName}」——等待当前作业结束，自动再出击`
+            : cdMs > 0
+              ? `目标「${aName}」——正在扫描新敌人`
+              : `目标「${aName}」——即将自动再出击`,
+      percent: null,
+      remainingMs: cdMs > 0 ? cdMs : null,
+      stopable: true,
+      stop: 'stop-loop',
+    })
   }
 
   // ── AI 副船任务（每条） ──

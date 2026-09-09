@@ -129,7 +129,7 @@ describe('P0 承伤持久化', () => {
     expect(r.error).toContain('没有修理组件')
   })
 
-  it('修理组件（自动链，P2 固定回复）：连续出击阈值下按 70HP 换算恢复结构+装甲至目标', () => {
+  it('修理组件（自动链，P2 固定回复）：重复清剿阈值下按 70HP 换算恢复结构+装甲至目标', () => {
     const ctx: SimContext = makeTestCtx({
       ships: [ship('sandcat', { shieldHp: 100, armorHp: 200, hullHp: 200 })],
       items: [

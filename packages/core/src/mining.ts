@@ -258,7 +258,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
 /**
  * T4 延后项（船长 2026-09-04 定稿）：远征中直接转开采。
  * 前置校验全部通过后：取消当前远征（交火中除外——须先打完或撤退），
- * 若该远征由「连续出击」自动发起则连击同步停止；随后按普通采矿从母港/空间站出发。
+ * 若该远征由「重复清剿」自动发起则讨伐同步停止；随后按普通采矿从母港/空间站出发。
  * 直接调用 startMining 在远征中仍会被拒绝——本入口是确认后的唯一转场路径。
  */
 export function startMiningFromExpedition(state: GameState, beltId: string, ctx: SimContext): CommandResult {
@@ -269,10 +269,10 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
   if (exp.phase === 'battle') {
     return { ok: false, error: '交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。' }
   }
-  // 转场即手动收手：由连击发起的本次远征同步停止连击（同撤退口径）
+  // 转场即手动收手：由讨伐发起的本次远征同步停止讨伐（同撤退口径）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
-    addLog(state, 'info', '连续出击已停止（转开采）。')
+    addLog(state, 'info', '重复清剿已停止（转开采）。')
   }
   // 召回式取消远征（无战果；battle 已排除）→ 船回到母港/空间站，随后照常开矿
   const recalled = recallExpedition(state, ctx)
@@ -624,6 +624,16 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
       delete state.shipReturns[shipId]
       const moved = unloadCargoOfShipToWarehouse(state, shipId)
       const name = shipDisplayName(state, ctx, shipId)
+      if (r.reason === 'expedition') {
+        addLog(
+          state,
+          'info',
+          moved > 0
+            ? `${name} 已随远征善后返航到港：货仓已卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。`
+            : `${name} 已随远征善后返航到港（货仓为空）。`,
+        )
+        continue
+      }
       addLog(
         state,
         'info',

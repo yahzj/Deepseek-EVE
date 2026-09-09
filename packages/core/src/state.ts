@@ -143,12 +143,15 @@ export interface MiningState {
 
 /** T4 换船善后：旧船自动返航到港的记录（key = 船 id，独立于主控采矿推进） */
 export interface ShipReturnState {
-  /** 原矿带 id（日志/语义用；null = 未知） */
+  /** 原矿带 id（日志/语义用；null = 未知——远征返航善后无矿带） */
   beltId: string | null
   /** 返航单程总长（毫秒，换船时按旧船行程锁定） */
   legMs: number
   /** 已走毫秒（≤ legMs；到港条件 = 累计 ≥ legMs） */
   phaseAccMs: number
+  /** 善后来源（2026-09-08 船长定）：'mining' = 采矿换船（缺省）/ 'expedition' = 返航中换船
+   *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算） */
+  reason?: 'mining' | 'expedition'
 }
 
 /**
@@ -720,7 +723,7 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   transit: ShipTransitState
   /** T8 悬赏重复冷却：悬赏 id -> 冷却结束的游戏内时刻 */
   bountyCooldowns: Record<string, number>
-  /** T8 连续出击：当前自动循环的悬赏 id（null = 关闭） */
+  /** T8 重复清剿：当前自动循环的悬赏 id（null = 关闭） */
   autoLoopAnomalyId: string | null
   /** T9 建站进度：站点 id -> 进度（档位 stage 从 0 起；delivered 已缴物品单位） */
   stationSites: Record<string, StationSiteProgress>

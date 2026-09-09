@@ -1111,7 +1111,7 @@ function normalizeState(raw: unknown): GameState {
   }
 
   // --- T4 换船善后返航（v16.1 兼容字段）：字段非法则整条丢弃；已走时间封顶单程 ---
-  const shipReturns: Record<string, { beltId: string | null; legMs: number; phaseAccMs: number }> = {}
+  const shipReturns: Record<string, { beltId: string | null; legMs: number; phaseAccMs: number; reason?: 'mining' | 'expedition' }> = {}
   const shipReturnsRaw = asRaw(src.shipReturns)
   for (const [shipKey, retRaw] of Object.entries(shipReturnsRaw)) {
     if (shipKey.length === 0) continue
@@ -1124,7 +1124,8 @@ function normalizeState(raw: unknown): GameState {
       typeof r.phaseAccMs === 'number' && Number.isFinite(r.phaseAccMs)
         ? Math.min(legMs, Math.max(0, Math.floor(r.phaseAccMs)))
         : 0
-    shipReturns[shipKey] = { beltId, legMs, phaseAccMs }
+    const reason = r.reason === 'expedition' ? ('expedition' as const) : r.reason === 'mining' ? ('mining' as const) : undefined
+    shipReturns[shipKey] = reason ? { beltId, legMs, phaseAccMs, reason } : { beltId, legMs, phaseAccMs }
   }
 
   // --- 采矿作业（v2 起；v7 起为自动循环状态机） ---
@@ -1469,7 +1470,7 @@ function normalizeState(raw: unknown): GameState {
     returning: scanRaw.returning === true,
   }
 
-  // --- T8 野外停留 / 返航行程 / 悬赏冷却 / 连续出击（v16.1 兼容字段） ---
+  // --- T8 野外停留 / 返航行程 / 悬赏冷却 / 重复清剿（v16.1 兼容字段） ---
   const awayGalaxy =
     typeof src.awayGalaxy === 'string' && src.awayGalaxy.length > 0 ? src.awayGalaxy : null
   const transitRaw = asRaw(src.transit)
