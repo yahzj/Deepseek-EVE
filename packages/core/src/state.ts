@@ -167,9 +167,17 @@ export interface ShipTransitState {
   finishAtGameMs: number
   /** 本次行程总毫秒（显示用） */
   legMs: number
-  /** 建站交付航线标记（2026-09-08 船长定）：siteId = 工地；phase = to-site（前往交付）/
-   * to-station（交付后自动返航）。null = 普通返航行程。 */
-  delivery: { siteId: string; phase: 'to-site' | 'to-station' } | null
+  /**
+   * 建站交付航线标记（2026-09-08 船长定，v2 物理载货模型）：
+   * siteId = 工地；phase = to-site（前往交付）/ to-station（交付后自动返航）；
+   * loaded = 本趟出发时装入货仓的建材明细（到点只清空本趟装载，不再从仓库补扣）。
+   * null = 普通返航行程。
+   */
+  delivery: {
+    siteId: string
+    phase: 'to-site' | 'to-station'
+    loaded?: Record<string, number>
+  } | null
 }
 
 /** B1.5 主控"前往星系掩护巡逻"（原"待命"）：下达即时就位——船转场目标星系野外停留（awayGalaxy）；
@@ -722,6 +730,11 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   dialogueSeen: Record<string, boolean>
   /** T9 待自动播放的通讯剧本 id（首次抵达等触发；null = 无） */
   pendingDialogue: string | null
+  /**
+   * 2026-09-08 交付循环系统提示（一次性：渲染层读到即清并弹窗；可选字段、零迁移，
+   * 不落档——重启后由新触发的终点重新写入）
+   */
+  deliveryNotice?: string | null
 }
 
 /** T9 一个建站点的建造进度 */

@@ -59,8 +59,10 @@ export function tierRemaining(state: GameState, site: StationSiteDef): number {
 }
 
 /**
- * 玩家指令：在目标副站提交资源（任意接受名单组合；从物品仓库 + 驾驶船货仓扣取）。
+ * 玩家指令：在目标副站提交资源（任意接受名单组合；默认从物品仓库 + 驾驶船货仓扣取）。
  * 前置：舰船停靠在该站点（母港/别处仓库无法"跨航区施工"）。
+ * 2026-09-08（交付航线 v2）：opts.cargoOnly = true 时只从驾驶船货仓扣（到点清空本趟装载，
+ * 不触碰仓库——物理载货模型用；其余校验/推进/日志同口径）。
  */
 export function deliverStationResources(
   state: GameState,
@@ -68,7 +70,9 @@ export function deliverStationResources(
   siteId: string,
   itemId: string,
   units: number,
+  opts?: { cargoOnly?: boolean },
 ): CommandResult {
+  const cargoOnly = opts?.cargoOnly === true
   const site = ctx.stations.get(siteId)
   if (!site) return { ok: false, error: `未知建站点：${siteId}。` }
   let prog = state.stationSites[siteId]
@@ -115,13 +119,15 @@ export function deliverStationResources(
 
   const itemName = ctx.items.get(itemId)?.name ?? itemId
   let took = 0
-  // 1) 物品仓库
-  const ware = state.warehouse.items
-  const fromWare = Math.min(need, ware[itemId] ?? 0)
-  if (fromWare > 0) {
-    ware[itemId] = (ware[itemId] ?? 0) - fromWare
-    if (ware[itemId] <= 0) delete ware[itemId]
-    took += fromWare
+  // 1) 物品仓库（cargoOnly 模式跳过：到点只清本趟装载，不补扣仓库）
+  if (!cargoOnly) {
+    const ware = state.warehouse.items
+    const fromWare = Math.min(need, ware[itemId] ?? 0)
+    if (fromWare > 0) {
+      ware[itemId] = (ware[itemId] ?? 0) - fromWare
+      if (ware[itemId] <= 0) delete ware[itemId]
+      took += fromWare
+    }
   }
   // 2) 驾驶船货仓
   if (took < need) {
@@ -134,7 +140,10 @@ export function deliverStationResources(
     }
   }
   if (took <= 0) {
-    return { ok: false, error: `没有可提交的 ${itemName}（仓库与货仓都为空）。` }
+    return {
+      ok: false,
+      error: cargoOnly ? `本趟货仓没有可提交的 ${itemName}（清仓交付只动本趟装载，不扣仓库）。` : `没有可提交的 ${itemName}（仓库与货仓都为空）。`,
+    }
   }
   // 需求直减见 tierNeedOf（建筑工程学 −8%/级）：交付一律按实收计件
   prog.delivered[itemId] = (prog.delivered[itemId] ?? 0) + took

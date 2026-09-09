@@ -444,6 +444,14 @@ export function App({ engine }: { engine: GameEngine }) {
     toastTimer.current = window.setTimeout(() => setToast(null), 3200)
   }
 
+  // 2026-09-08 引擎系统通知（交付循环终止弹窗）：engine 心跳/离线结算后调用
+  useEffect(() => {
+    engine.onSystemNotice = (msg) => showToast(msg, true)
+    return () => {
+      engine.onSystemNotice = null
+    }
+  }, [engine])
+
   // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
   const [showSaveManager, setShowSaveManager] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)

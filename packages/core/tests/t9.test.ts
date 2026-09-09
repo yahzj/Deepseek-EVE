@@ -282,68 +282,99 @@ describe('建筑工程学改版（2026-09-08 船长定：建材需求直减每�
   })
 })
 
-/* ═══════════ 2026-09-08 建站交付航线（真实航程；自动交付 + 自动返航；可取消）+ 未建成收口 ═══════════ */
+/* ═══════════ 2026-09-08 建站交付航线 v2（船长定稿：出发装载→到点清货仓→自动多趟循环）+ 未建成收口 ═══════════ */
 
-describe('建站交付航线（2026-09-08 船长定）', () => {
-  /** debugQuick：星系际航程固定 1 秒，两条腿可快速走完 */
-  function tripWorld(oreInWare: number) {
+describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自动循环）', () => {
+  /** debugQuick：星系际航程固定 1 秒；capacity 可把小船货仓压小以制造多趟 */
+  function tripWorld(oreInWare: number, capacity?: number) {
     const { state, ctx } = world()
     state.debugQuick = true
     state.exploredGalaxies = ['galaxy-hub', 'galaxy-far']
     state.warehouse.items['ore-a'] = oreInWare
+    if (capacity !== undefined) {
+      const defId = state.fleet[state.shipId]!.defId
+      const def = defId ? ctx.ships.get(defId) : undefined
+      if (def) (def as { cargoM3: number }).cargoM3 = capacity
+    }
     return { state, ctx }
   }
 
-  it('前置校验：野外/作业/未探明/无建材时拒发；建材不足时正常出发', () => {
-    const { state, ctx } = tripWorld(0)
+  const cargo = (state: GameState): Record<string, number> => state.fleet[state.shipId]!.cargo
+
+  it('前置校验：野外/作业/未探明/仓库无料/货仓满载均拒发；出发即把仓库建材装入货仓', () => {
+    const { state, ctx } = tripWorld(0, 60)
     state.awayGalaxy = 'galaxy-far' // 野外
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false)
     state.awayGalaxy = null
     state.exploredGalaxies = ['galaxy-hub'] // 未探明
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false)
     state.exploredGalaxies = ['galaxy-hub', 'galaxy-far']
-    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false) // 无建材
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false) // 仓库无料
     state.warehouse.items['ore-a'] = 10
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
     expect(state.awayGalaxy).toBe('galaxy-hub') // 出发星系 = 出发地（航行中不视为站内）
     expect(state.dockedSite).toBeNull()
-    expect(state.transit.delivery).toEqual({ siteId: 'site-test', phase: 'to-site' })
+    expect(state.transit.delivery).toEqual({ siteId: 'site-test', phase: 'to-site', loaded: { 'ore-a': 10 } })
+    expect(state.warehouse.items['ore-a']).toBeUndefined() // 仓库建材已随船装走
+    expect(cargo(state)['ore-a']).toBe(10)
+    // 货仓满载（空容积 0）→ 拒绝
+    const { state: s2, ctx: c2 } = tripWorld(10, 0)
+    expect(startSiteDeliverTrip(s2, c2, 'site-test').ok).toBe(false)
   })
 
-  it('端到端：去程到点 → 自动交付 → 自动返航最近空间站 → 停靠完成', () => {
-    const { state, ctx } = tripWorld(120) // 首档 100 + 余 20
+  it('端到端：出发装货 → 到点只清空本趟装载（不碰仓库）→ 返港后仓库耗尽 → 终止并写一次性提示', () => {
+    const { state, ctx } = tripWorld(120) // 首档 100 + 档 2 并入 20
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
-    advanceGame(state, 900, ctx) // 去程未到点：仍在途、未交付
+    expect(cargo(state)['ore-a']).toBe(120)
+    advanceGame(state, 900, ctx) // 去程未到点：货物仍在船
     expect(state.transit.active).toBe(true)
-    expect(state.stationSites['site-test']).toBeUndefined()
-    advanceGame(state, 200, ctx) // 到点：野外停留 + 自动交付 100 → 档 1，余 20 也并入档 2 → 自动返航
+    expect(cargo(state)['ore-a']).toBe(120)
+    advanceGame(state, 200, ctx) // 到点：清货仓交付 100 → 档 1；余 20 并入档 2 → 自动返航
     expect(state.awayGalaxy).toBe('galaxy-far')
     expect(siteProgress(state, 'site-test').stage).toBe(1)
-    expect(state.warehouse.items['ore-a']).toBeUndefined() // 120 全数缴出
-    expect(siteProgress(state, 'site-test').delivered).toEqual({ 'ore-a': 20 }) // 档 2 已缴 20
+    expect(cargo(state)['ore-a']).toBeUndefined() // 货仓已清空
+    expect(state.warehouse.items['ore-a']).toBeUndefined() // 全程不补扣仓库
+    expect(siteProgress(state, 'site-test').delivered).toEqual({ 'ore-a': 20 })
     expect(state.transit.delivery!.phase).toBe('to-station')
-    advanceGame(state, 2_000, ctx) // 返程到港：回母港
+    advanceGame(state, 2_000, ctx) // 返程到港：回母港；仓库无料 → 循环终止 + 一次性提示
     expect(state.transit.active).toBe(false)
-    expect(state.transit.delivery).toBeNull()
     expect(state.awayGalaxy).toBeNull()
     expect(state.dockedSite).toBeNull()
-    expect(state.logs.some((l) => l.text.includes('本次自动交付建材 120'))).toBe(true)
-    expect(state.logs.some((l) => l.text.includes('交付任务收尾'))).toBe(true)
+    expect(state.deliveryNotice ?? '').toContain('交付循环已结束')
+    expect(state.deliveryNotice ?? '').toContain('还差 130')
+    expect(state.logs.some((l) => l.text.includes('交付循环已结束'))).toBe(true)
   })
 
-  it('建材足够一次建成：自动交付全部档位 → 就地停靠新落成的副站', () => {
+  it('仓库足量一次建成：装载上限 = 全站剩余需求 → 到点清仓全部档位 → 就地停靠新落成的副站', () => {
     const { state, ctx } = tripWorld(500)
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    expect(cargo(state)['ore-a']).toBe(250) // 上限 = 全站需求 100+150，不多装
+    expect(state.warehouse.items['ore-a']).toBe(250)
     advanceGame(state, 1_100, ctx) // 去程到点（1000ms）+ 余量
     expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
     expect(state.awayGalaxy).toBeNull()
     expect(state.dockedSite).toBe('site-test')
     expect(state.transit.active).toBe(false)
-    expect(state.warehouse.items['ore-a']).toBe(250) // 500 - 250
+    expect(state.warehouse.items['ore-a']).toBe(250) // 只消耗随船 250
     expect(state.logs.some((l) => l.text.includes('达成「建成」'))).toBe(true)
   })
 
-  it('途中取消（去程）：无惩罚、立即返航停靠出发站', () => {
+  it('自动多趟（小货仓 60）：装 60→清 60→返航→再装…直到建成，全程无需玩家操作', () => {
+    const { state, ctx } = tripWorld(250, 60) // 全站需求 250、单趟只能装 60 → 5 趟
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    let guard = 0
+    while (!isSiteBuilt(state, ctx.stations.get('site-test')!) && guard++ < 40) {
+      advanceGame(state, 1_500, ctx)
+    }
+    expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
+    expect(state.warehouse.items['ore-a']).toBeUndefined() // 250 全部运抵
+    expect(cargo(state)['ore-a']).toBeUndefined()
+    const departures = state.logs.filter((l) => l.text.startsWith('⚑ 建站交付航线：舰船自')).length
+    expect(departures).toBe(5)
+    expect(state.transit.active).toBe(false)
+  })
+
+  it('途中取消（去程）：无惩罚、停止循环不再自动续趟、本趟装载随进港卸回仓库', () => {
     const { state, ctx } = tripWorld(200)
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
     advanceGame(state, 300, ctx) // 仍在途
@@ -354,25 +385,16 @@ describe('建站交付航线（2026-09-08 船长定）', () => {
     expect(state.awayGalaxy).toBeNull()
     expect(state.dockedSite).toBeNull() // 出发站 = 母港
     expect(state.stationSites['site-test']).toBeUndefined() // 未交付任何建材
-    expect(state.logs.some((l) => l.text.includes('交付航线已取消'))).toBe(true)
+    expect(state.warehouse.items['ore-a']).toBe(200) // 装载随进港卸回仓库
+    expect(state.logs.some((l) => l.text.includes('已停止交付循环'))).toBe(true)
+    advanceGame(state, 10_000, ctx) // 不自动续趟
+    expect(state.transit.active).toBe(false)
+    expect(state.logs.filter((l) => l.text.startsWith('⚑ 建站交付航线：舰船自')).length).toBe(1)
   })
 
   it('取消前置：无在途交付航线时拒绝', () => {
     const { state, ctx } = tripWorld(200)
     expect(cancelSiteDeliverTrip(state, ctx).ok).toBe(false)
-  })
-
-  it('到达即全部建材不足：空跑后自动返航（档位不动）', () => {
-    const { state, ctx } = tripWorld(0)
-    state.warehouse.items['ore-a'] = 0
-    // 出发前置要求有建材：先放 1 单位让出发合法，途中清空仓库模拟不可交付
-    state.warehouse.items['ore-a'] = 1
-    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
-    state.warehouse.items['ore-a'] = 0
-    advanceGame(state, 1_100, ctx)
-    expect(siteProgress(state, 'site-test').stage).toBe(0)
-    expect(state.transit.delivery!.phase).toBe('to-station') // 照常自动返航
-    expect(state.logs.some((l) => l.text.includes('仓库与货仓没有可交付的建材'))).toBe(true)
   })
 })
 

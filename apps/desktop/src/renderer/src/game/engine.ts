@@ -330,6 +330,9 @@ export class GameEngine {
   /** 本次启动的离线简报（没有离线结算时为 null；读完界面手动关闭） */
   offlineReport: OfflineReport | null = null
 
+  /** 引擎侧系统通知（2026-09-08 交付循环终止弹窗）：App 注入 toast；见 drainSystemNotice */
+  onSystemNotice: ((msg: string) => void) | null = null
+
   private listeners = new Set<Listener>()
   private lastRealMs = 0
   private intervalId: number | null = null
@@ -447,7 +450,17 @@ export class GameEngine {
     const t0 = rec ? performance.now() : 0
     const bucket = this.currentBucket()
     advanceGame(this.state, ms, this.ctx)
+    this.drainSystemNotice()
     if (rec) perfHub.recordAdvance(bucket, performance.now() - t0)
+  }
+
+  /** 一次性系统提示（2026-09-08 交付循环终止弹窗）：引擎写入 state.deliveryNotice →
+   * 心跳/离线结算后读取 → toast 一次并清除（不落档，重启后由新触发点重新写入） */
+  private drainSystemNotice(): void {
+    const n = this.state.deliveryNotice
+    if (!n) return
+    this.state.deliveryNotice = null
+    if (this.onSystemNotice) this.onSystemNotice(n)
   }
 
   private notify(): void {
@@ -489,6 +502,7 @@ export class GameEngine {
       const stats = newSettleStats()
       const { overflowMs } = offlineSplit(now - lastSavedWall)
       simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats })
+      this.drainSystemNotice()
       this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs, stats)
       // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
       // 离线补时产生的日志照常显示，另补一条报告汇总单条（钱包/收获明细，关闭简报后仍可查证）
