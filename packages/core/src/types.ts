@@ -139,6 +139,9 @@ export interface ShipDef {
   agility: number
   /** 基础火力加成（V10.5 契约：战斗系统启用；本轮引擎不读取） */
   powerBonus?: number
+  /** 船体武器族加成（EVE 式族加成，2026-09-09 船长拍板：四族巡洋分型——只作用于对应弹型的
+   *  三族武器条目单发，装别族武器无加成但仍可用；无人机/基础舰炮不受；值 = 比例，如 0.12 = +12%） */
+  weaponFamilyBonus?: Partial<Record<DamageType, number>>
   /* ═══ V10.5 战斗数值契约（三层血量；引擎战斗实现后启用） ═══ */
   /** 护盾层基础量（抽象战斗单位） */
   shieldHp?: number

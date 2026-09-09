@@ -346,7 +346,10 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
       if (engLv > 0) famMult *= 1 + 0.03 * engLv
     }
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
-    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]))
+    // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——按本武器固定弹型乘入，
+    // 装别族武器 = 无加成（仍可用）；无人机与基础舰炮不在此链上，天然豁免
+    const shipFam = ship.weaponFamilyBonus?.[type] ?? 0
+    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]) * (1 + shipFam))
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
     const fireLv = Math.min(5, state.skills.trained['fire-control'] ?? 0)
     const fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1

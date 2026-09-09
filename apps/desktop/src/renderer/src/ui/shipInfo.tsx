@@ -241,6 +241,22 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     if (ship.powerBonus !== undefined && ship.powerBonus > 0) {
       lines.push({ k: '火力加成', v: `+${Math.round(ship.powerBonus * 100)}%` })
     }
+    // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——本族武器单发加成、跨族可用无加成
+    if (ship.weaponFamilyBonus !== undefined) {
+      for (const [t, v] of Object.entries(ship.weaponFamilyBonus)) {
+        if ((v ?? 0) > 0) {
+          lines.push({
+            k: '武器族加成',
+            v: (
+              <>
+                <DmgChip t={t as DamageType} label={`${DMG_LABEL[t as DamageType]}伤`} />
+                <span className="app-dim">{` 本族武器单发 +${pct(v ?? 0)}（装别族武器无加成）`}</span>
+              </>
+            ),
+          })
+        }
+      }
+    }
     // V16.1：命中加成/回避率上主属性（装配台主要属性区内可见）
     if (ship.hitBonus !== undefined) lines.push({ k: '命中加成', v: `+${Math.round(ship.hitBonus * 100)}%` })
     if (ship.evasion !== undefined) lines.push({ k: '回避率', v: `${Math.round(ship.evasion * 100)}%` })

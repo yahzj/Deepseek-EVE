@@ -62,6 +62,7 @@
 |---|---|---|
 | CPU | 全船唯一硬装配约束：全位 cpuUse 合计 + 无人机放飞 ≤ 船体 cpu | CPU 类技能讨论挂起（B3 后） |
 | 无人机体积档 | 无人机 unitM3 按机种大小分 5/10/20/40 四档（蜂鸟/赤鸢/猎鹰/雷鸥）——机巢可装架数由体积主导（小护卫带蜂鸟赤鸢、炮舰带猎鹰、母舰带雷鸥），每架 CPU 不变、甲板扩展 +m³ 有效（2026-09-09 船长拍板；此前 CPU 先卡死装载、大舱"装不满"） | items.ts DRONES |
+| 武器族加成 | 船体级"本族武器"加成（EVE 式族加成；2026-09-09 船长拍板四族巡洋分型）：ShipDef.weaponFamilyBonus 按伤害类型键，只乘入该弹型三族武器（炮台/导弹/激光）单发，装别族武器无加成但仍可用；无人机与基础舰炮豁免。现挂 4 艘巡洋 ×12%（长尾鲨=高爆 / 电鳐=能量 / 锤头·牛鲨=动能） | ShipDef.weaponFamilyBonus；createPlayerSpec |
 | 收敛 | V18.1 防超模三类：缺口复合 1−Π(1−x)（抗/闪避）、EVE 曲线（命中/速度）、加算（伤害/射速/容量） | |
 | 武器三族 | 动能炮台(turret/kinetic)、导弹架(missile/explosive)、激光(laser/plasma 必中光束) | V18B 形态分家 |
 | 弹药键 | ammo.kin/exp/pla ↔ ammo-kinetic-l/explosive-l/plasma-l（动能弹/爆破导弹/能量弹药） | |
