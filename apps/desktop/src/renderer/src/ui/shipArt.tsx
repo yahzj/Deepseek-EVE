@@ -113,6 +113,19 @@ export const FOE_ART: Record<string, ReactNode> = {
   ),
 }
 
+/** 敌族轮廓浊色（敌我区分用；继承 currentColor 的元素 = 主轮廓 / .shipart-acc / .shipart-accf；
+ *  发光件 .shipart-volt-g/-i/.fill-g/-i 为资产内固定族色不随此表；主舰与僚机同族同色，
+ *  靠体量(LAY.MAIN/ESC)与名称后缀区分） */
+export const FOE_ACCENT: Record<string, string> = {
+  A: '#ff6b52', // 海盗舰系：锈红（README §二 已定）
+  B: '#e0c864', // 靶机/拾荒：警告黄
+  C: '#9fe6a4', // 异形生物：磷光绿（同 volt-g）
+  D: '#9fd0f2', // 守墓古舰：磷光冰蓝（同 volt-i）
+  E: '#d9b98c', // 泰坦巨构：残铁棕
+  F: '#ffab5e', // 制式巡逻：琥珀灯条
+  G: '#cd9fdd', // 烬火流亡：聚落紫
+}
+
 /** 悬赏卡 → 敌舰族群（22 张非 hidden 卡全表；缺省 F） */
 export const FOE_FAMILY: Record<string, string> = {
   'ano-redring-raiders': 'A', // 赤潮
