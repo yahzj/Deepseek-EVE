@@ -12,6 +12,8 @@ import { countWare } from '../src/inventory'
 import {
   aiCoreCap,
   aiCoreUsed,
+  aiCoreShipUsed,
+  aiCoreIndustryUsed,
   aiCoreCapBlock,
   industryAiBonus,
   aiEfficiency,
@@ -24,7 +26,7 @@ import {
   gainAiCore,
   idleAiShipIds,
 } from '../src/ai'
-import { anomaly, makeTestCtx, fittedOf } from './helpers'
+import { anomaly, makeTestCtx, fittedOf, ship } from './helpers'
 import { aiWinPreview } from '../src/combat'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { startManufacturing, cancelManufacturing } from '../src/manufacturing'
@@ -394,6 +396,53 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
     expect(r.error).toContain('AI 核心启用已满')
     expect(cancelAiTask(state, 'sandcat2', ctx)).toBe(true)
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true) // 副船取消后名额释放
+  })
+
+  it('玩家反馈修复（2026-09-09）：站内工业占用先抵工业扩容工位——工业核心全开不再拦截副船任务', () => {
+    state.skills.trained['ai-expert'] = 1 // 共用 1
+    state.skills.trained['industrial-ai-cap'] = 1 // 工业扩容 2 → 站内总容量 1+2=3
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(aiCoreIndustryUsed(state)).toBe(2)
+    expect(aiCoreUsed(state)).toBe(2)
+    // 旧实现把 2 台全计进共用名额 → 误判 2/1 已满 → 副船被拦；修复后扩容先被抵用、共用名额空着
+    expect(aiCoreCapBlock(state, ctx)).toBeNull()
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
+    // 副船 1 + 炉 2 = 3 = 1+2 全满：站内再开拒（工业 scope 按全量口径）
+    const r = startRefineRun(state, 'ore-a', 'basic', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('AI 核心启用已满')
+    // 副船再派同样拒（副船已占满共用 1/1，扩容不归副船）
+    state.fleet['sandcat3'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
+    const r2 = assignAiMining(state, 'sandcat3', 'basic', 'belt-a', ctx)
+    expect(r2.ok).toBe(false)
+    expect(r2.error).toContain('AI 核心启用已满')
+  })
+
+  it('工业占用超出工业扩容的部分，才计入副船共用名额（与引擎同口径）', () => {
+    state.skills.trained['ai-expert'] = 2 // 共用 2
+    state.skills.trained['industrial-ai-cap'] = 1 // 工业扩容 2 → 站内总容量 2+2=4
+    // sandcat3 不在默认 ctx 舰船目录 → 本测试用追加了该船的 ctx2 指派对
+    const ctx2 = makeTestCtx({ ships: [ship('sandcat3', { cargo: 100, cycle: 6, perCycle: 5 })] })
+    state.fleet['sandcat3'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
+    gainAiCore(state, 'basic', 2) // 合计 5 颗：炉 3 + 船 2
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true) // 第 3 台：2 台抵扩容 + 1 台挤占共用
+    expect(aiCoreIndustryUsed(state)).toBe(3)
+    // 工业挤占 1 枚共用名额 → 副船只剩 1 名额
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
+    const r2 = assignAiMining(state, 'sandcat3', 'basic', 'belt-a', ctx2)
+    expect(r2.ok).toBe(false)
+    expect(r2.error).toContain('AI 核心启用已满')
+    // 停 1 台炉 → 挤占清零 → 第二艘副船可派
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    const r3 = assignAiMining(state, 'sandcat3', 'basic', 'belt-a', ctx2)
+    expect(r3.ok).toBe(true)
+    // 工业侧全量口径不变：副船 2 + 炉 2 = 4 = 2+2 → 站内再开拒
+    const r4 = startRefineRun(state, 'ore-a', 'basic', ctx)
+    expect(r4.ok).toBe(false)
+    expect(r4.error).toContain('AI 核心启用已满')
   })
 
   it('制造线同池：Lv2 炉+线并行；第三处（副船）满额拒；停/取消后释放', () => {

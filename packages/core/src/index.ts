@@ -445,6 +445,8 @@ export {
   gainAiCore,
   aiCoreCap,
   aiCoreUsed,
+  aiCoreShipUsed,
+  aiCoreIndustryUsed,
   aiCoreCapBlock,
   industryAiBonus,
   idleAiShipIds,

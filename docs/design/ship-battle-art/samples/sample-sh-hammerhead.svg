@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 样稿 3/4：锤头鲨级炮击巡洋舰（掠食者武装 · T3 巡洋，本批主角）
+       特征：粗壮巡洋舰体 + "锤头"宽扁舰首装甲头 + 三联主炮 + 双大引擎 -->
+  <defs>
+    <style>
+      .sky { fill:#0b1016 }
+      .star { fill:#dfe9f2; opacity:.5 }
+      .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
+      .panel { fill:none; stroke:#dfe9f2; stroke-width:1; opacity:.4 }
+      .acc  { fill:none; stroke:#ff8373; stroke-width:1.6 }
+      .accf { fill:#ff8373 }
+      .warm { fill:#ffd98a }
+      .note { fill:#8aa0b8; font: 11px monospace }
+    </style>
+  </defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="54" cy="48" r="1.2"/><circle class="star" cx="508" cy="70" r="1"/><circle class="star" cx="470" cy="230" r="1.2"/><circle class="star" cx="82" cy="252" r="1"/><circle class="star" cx="292" cy="34" r="1"/><circle class="star" cx="352" cy="266" r="1.1"/>
+
+  <g transform="translate(40 76) scale(2.2)">
+    <!-- 尾焰（双大引擎，锚点 x26/40 y55） -->
+    <path class="warm" d="M26 50 L12 54 L26 58 Z" opacity=".9"/>
+    <path class="warm" d="M26 66 L12 70 L26 74 Z" opacity=".9"/>
+    <!-- 粗壮主舰体 -->
+    <path class="hull" d="M206 58 L182 36 L128 30 L92 30 C70 33 56 42 50 52 L45 60 L50 70 C58 78 76 84 100 85 L160 85 L196 78 L212 66 Z"/>
+    <!-- 锤头舰首（宽扁装甲头 + 前伸主炮塔平台） -->
+    <path class="hull" d="M196 78 L214 62 L224 62 L206 86 Z" opacity=".85"/>
+    <path class="hull" d="M214 62 L232 58 L232 66 L224 66 Z"/>
+    <!-- 舰桥（双塔：前后矮塔 + 顶桁） -->
+    <path class="hull" d="M164 30 h18 v14 h-18 z M148 30 h12 v11 h-12 z"/>
+    <path class="hull" d="M150 26 L182 26" opacity=".8"/>
+    <path class="panel" d="M167 32 h12 M153 32 h6"/>
+    <!-- 三联主炮（前炮塔 + 双联后炮塔，炮管朝右） -->
+    <path class="hull" d="M196 50 h14 v10 h-14 z"/>
+    <path class="hull" d="M210 51 L246 52" stroke-width="2.8"/>
+    <path class="acc"  d="M246 52 L252 52" stroke-width="2"/>
+    <path class="hull" d="M150 46 h12 v9 h-12 z"/>
+    <path class="hull" d="M162 47 L196 48" stroke-width="2.2"/>
+    <path class="hull" d="M150 62 h12 v9 h-12 z"/>
+    <path class="hull" d="M162 63 L196 64" stroke-width="2.2"/>
+    <!-- 侧舷副炮位 ×2 -->
+    <path class="hull" d="M100 60 h8 v5 h-8 z M106 60 v8"/>
+    <path class="hull" d="M70 58 h7 v4 h-7 z M75 58 v6"/>
+    <!-- 装甲分块面板 -->
+    <path class="panel" d="M96 34 v50 M128 32 v52 M62 44 v24"/>
+    <path class="panel" d="M104 84 L120 96 L138 96 L124 85 M158 84 L168 96"/>
+    <!-- 双大引擎短舱 -->
+    <path class="hull" d="M54 42 h8 v26 h-8 z M62 42 h8 v26 h-8 z" opacity=".85"/>
+    <path class="warm" d="M42 46 h9 v8 h-9 z M42 64 h9 v8 h-9 z"/>
+    <!-- 舷灯/警示灯 -->
+    <circle class="accf" cx="140" cy="85" r="1.6"/>
+    <circle class="warm" cx="92" cy="40" r="1.2"/>
+  </g>
+
+  <text class="note" x="40" y="286">锤头鲨级炮击巡洋舰 · sh-hammerhead · 巡洋 T3 — 样稿 C（粗壮舰体 + 锤头装甲首 + 三联主炮）</text>
+</svg>

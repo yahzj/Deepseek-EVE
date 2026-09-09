@@ -6,6 +6,8 @@ import {
   AI_CORE_ORDER,
   aiCoreCap,
   aiCoreUsed,
+  aiCoreShipUsed,
+  aiCoreIndustryUsed,
   aiCoreName,
   aiTaskView,
   aiEfficiency,
@@ -509,14 +511,17 @@ export function ShipPage({
 function AiCommandPanel({ engine, onToast }: PageProps) {
   const state = engine.state
   const cap = aiCoreCap(state, engine.ctx)
-  const used = aiCoreUsed(state)
   const industryBonus = industryAiBonus(state, engine.ctx) // 2026-09-08 工业专用扩容（仅站内产业）
   const idleShips = idleAiShipIds(state)
-  // 计数口径同源（2026-09-08 玩家反馈"执行中 N 与实际行数对不上"）：used 含 AI 副船 +
+  // 计数口径同源（2026-09-08 玩家反馈"执行中 N 与实际行数对不上"）：总启用数含 AI 副船 +
   // AI 核心驱动的精炼/回收炉与制造线（后者在工业页管理）；本页列表只列副船 → 标题拆分展示，
-  // 保证「标题数 = 行数」不被生产条目撑出假差额
-  const assignN = Object.keys(state.aiAssignments).length
-  const prodN = Math.max(0, used - assignN)
+  // 保证「标题数 = 行数」不被生产条目撑出假差额。
+  // 2026-09-09 玩家反馈修复：副船名额只受共用上限约束——站内工业占用先抵工业扩容工位，
+  // 超出扩容的部分才计入共用名额（与引擎 aiCoreCapBlock 同口径，见 @whale/core aiCoreCapBlock）
+  const assignN = aiCoreShipUsed(state)
+  const prodN = aiCoreIndustryUsed(state)
+  const used = aiCoreUsed(state)
+  const totalCap = cap + industryBonus
 
   const [shipId, setShipId] = useState('')
   const [coreType, setCoreType] = useState<AiCoreType>('basic')
@@ -562,8 +567,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       title="AI 指挥中心"
       right={
         <span className="app-dim">
-          AI 核心启用 {used}/{cap}
-          {industryBonus > 0 ? ` +${industryBonus} 工业` : ''}
+          AI 核心启用 {used}/{totalCap}
+          {industryBonus > 0 ? `（共用 ${cap} + 工业扩容 ${industryBonus}）` : ''}
         </span>
       }
     >
@@ -571,7 +576,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       <div className="app-ai-status">
         <span className="app-dim">
           AI 核心启用上限 {cap} 枚（AI 副船任务与站内精炼炉/回收炉/制造线共用；上限由「AI 核心操作学」决定）
-          {industryBonus > 0 ? '；站内产业另获「工业自动化」扩容 '+industryBonus+' 枚工业专用工位（仅炉/线可用，不占副船名额）' : '；站内产业可通过「工业自动化」（每级 +2 枚工业专用工位）扩产'}{cap === 0 && industryBonus <= 0 ? '（先到「技能」页训练 AI 核心操作学）' : ''}
+          {industryBonus > 0 ? '；站内产业另获「工业自动化」扩容 '+industryBonus+' 枚工业专用工位（仅炉/线可用——工业占用先抵这 '+industryBonus+' 枚，不占副船名额；超出扩容的部分才占用共用上限）' : '；站内产业可通过「工业自动化」（每级 +2 枚工业专用工位）扩产'}{cap === 0 && industryBonus <= 0 ? '（先到「技能」页训练 AI 核心操作学）' : ''}
         </span>
         <div className="app-core-badges">
           {AI_CORE_ORDER.map((type) => (
