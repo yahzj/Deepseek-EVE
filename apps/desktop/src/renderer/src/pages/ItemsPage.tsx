@@ -130,13 +130,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
 
   return (
     <>
-      <ItemViewBar mode={mode} onChange={setMode} />
-      {mode === 'list' ? (
-        <>
+      {/* 仓库抬头：图标/列表切换 + 搜索栏同排于标题行，两种视图都显示（2026-09-09 船长） */}
       <Panel
         title="仓库"
         right={
           <span className="app-head-search-wrap">
+            <ItemViewBar mode={mode} onChange={setMode} />
             <input
               className="app-head-search"
               type="text"
@@ -145,14 +144,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               onChange={(e) => setWareQuery(e.target.value)}
               spellCheck={false}
             />
-            <span className="app-dim">
-              {wq.length > 0 ? `匹配 ${hitTotal} 种` : '无限容量 · 不随船 · 永不遗失'}
-            </span>
+            {wq.length > 0 ? <span className="app-dim">匹配 {hitTotal} 种</span> : null}
           </span>
         }
       >
         <div className="app-dim app-note">
-          精炼产物自动入仓，制造材料从仓库扣除。资源（矿石/气体/冰矿）可卖出，也可装到当前驾驶的船上（受货仓空间限制）。
+          仓库：无限容量 · 不随船 · 永不遗失。精炼产物自动入仓，制造材料从仓库扣除。资源（矿石/气体/冰矿）可卖出，也可装到当前驾驶的船上（受货仓空间限制）。
         </div>
       </Panel>
       {wq.length > 0 && hitTotal === 0 ? (
@@ -160,7 +157,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           没有匹配「{wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。
         </div>
       ) : null}
-
+      {mode === 'list' ? (
+        <>
       {ITEM_KIND_ORDER.map((kind) => {
         const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
         // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索时任一空类都隐藏
@@ -293,11 +291,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       ) : (
         <>
           <div className="app-dim app-note">图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。</div>
-          {wq.length > 0 && hitTotal === 0 ? (
-            <div className="app-dim app-note">
-              没有匹配「{wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。
-            </div>
-          ) : null}
           {ITEM_KIND_ORDER.map((kind) => {
             const kindRows2 = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
             if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wq.length > 0)) return null
