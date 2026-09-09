@@ -222,6 +222,19 @@ describe('市场存档往返（回归：零值 digest 读档后不丢键）', ()
     expect(loaded.state.market.digest['it-min-a']).toBeDefined()
     expect(() => advanceGame(loaded.state, 61_000, ctx)).not.toThrow()
   })
+
+  it('稀有/奇货抽取节拍基准随档透传（2026-09-09 修复：读档不得重置 → 重启/恢复不再重复抽取）', () => {
+    // 手动摆一个抽取基准（模拟运行中已推进到某节拍窗）→ 序列化/读档往返后原样保留
+    state.market.slowDrawLastGameMs = 123_450_000
+    const text = serializeSaveFile(state, 123_456)
+    const loaded = loadSaveFile(text)
+    expect(loaded.state.market.slowDrawLastGameMs).toBe(123_450_000)
+    // 旧档无此键（undefined）→ 仍由 ensureMarket 补基准（零迁移兜底不变）
+    const raw = JSON.parse(text) as { state: GameState }
+    delete raw.state.market.slowDrawLastGameMs
+    const legacy = loadSaveFile(JSON.stringify(raw))
+    expect(legacy.state.market.slowDrawLastGameMs).toBeUndefined()
+  })
 })
 
 describe('舰船市场：出售需满足条件，成交入账', () => {
