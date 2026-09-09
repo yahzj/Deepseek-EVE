@@ -445,12 +445,9 @@ export interface EncounterBalance {
   lootTakenMaxPct: number
   /** 被抢（无货时）：至多损失钱包 ISK 比例 */
   iskTakenMaxPct: number
-  /** 遭遇强度：承担船火力 × [foePowerMin..foePowerMax] */
-  foePowerMin: number
-  foePowerMax: number
-  /** 击退 / 胜利缴获：ISK ≈ 威胁 × [lootIskMin..lootIskMax] */
-  lootIskMin: number
-  lootIskMax: number
+  /** 击退 / 胜利缴获（2026-09-09 船长定）：= 伏击敌群（当地可见悬赏敌群）赏金 × 本系数（0.5 = 五折）；
+   *  旧档遗留无 anomalyId 的遭遇按 威胁 × 1 兜底；缴获不计首胜/声望 */
+  lootFracOfBounty: number
 }
 
 /** V12.1 星图航行平衡常量 */

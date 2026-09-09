@@ -12,7 +12,8 @@ import { advanceGame } from '../src/engine'
 import { startMining } from '../src/mining'
 import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
-import { makeTestCtx, belt, galaxy } from './helpers'
+import { makeTestCtx, belt, galaxy, anomaly } from './helpers'
+import { wreckDensityOf } from '../src/salvage'
 
 /** 遭遇战模板（与 data 同形，测试 ctx 独立注册） */
 function encTiers(): AnomalyDef[] {
@@ -120,6 +121,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
         galaxyId: 'galaxy-far',
         name: '伏击劫掠队',
         threat: 999,
+        anomalyId: null, // 旧档遗留形态（无伏击敌群 id → 就近兜底）
         origin: '测试',
         invitedAtGameMs: state.gameMs,
         deadlineGameMs: state.gameMs + 60_000,
@@ -159,7 +161,8 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
       shipId: state.shipId,
       galaxyId: 'galaxy-far',
       name: '伏击劫掠队',
-      threat: 6, // 比沙猫火力低 → 应战胜算高
+      threat: 6, // 旧档遗留形态（无伏击敌群 id）：应战兜底走档位模板
+      anomalyId: null,
       origin: '测试',
       invitedAtGameMs: state.gameMs,
       deadlineGameMs: state.gameMs + 60_000,
@@ -183,7 +186,8 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
       shipId: state.shipId,
       galaxyId: 'galaxy-far',
       name: '伏击劫掠队',
-      threat: 6, // 比沙猫火力低 → 应战胜算高（若被瞬结会立刻打完，此处应保持进行中）
+      threat: 6, // 旧档遗留形态（无伏击敌群 id）：应战兜底走档位模板（若被瞬结会立刻打完，此处应保持进行中）
+      anomalyId: null,
       origin: '测试',
       invitedAtGameMs: state.gameMs,
       deadlineGameMs: state.gameMs + 60_000,
@@ -213,6 +217,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
       galaxyId: 'galaxy-far',
       name: '巡逻队拦截',
       threat: 30,
+      anomalyId: null,
       origin: '测试',
       invitedAtGameMs: state.gameMs,
       deadlineGameMs: state.gameMs + 60_000,
@@ -232,6 +237,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
       galaxyId: 'galaxy-far',
       name: '巡逻队拦截',
       threat: 20,
+      anomalyId: null,
       origin: '测试',
       invitedAtGameMs: 100,
       deadlineGameMs: 100 + 60_000,
@@ -250,6 +256,74 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(legacy.encounter.active).toBe(false)
     expect(legacy.lowSecNotified).toBe(false)
     void ctx
+  })
+
+  it('伏击敌群 = 当地星系可见悬赏敌群（2026-09-09 船长定）：无悬赏星系不伏击；命中后 threat/名字/anomalyId 即该悬赏卡', () => {
+    const ghost = { sec: -0.9, base: { ...makeTestCtx().balance.encounter, ambushChanceAtZero: 1, ambushChancePerSec: 0 } }
+    const world = (visible: boolean) => {
+      const ctx = makeTestCtx({
+        quietEvents: true,
+        galaxies: [{ ...galaxy('galaxy-ghost', '鬼域'), security: ghost.sec }],
+        edges: [{ from: 'galaxy-hub', to: 'galaxy-ghost', travelMinutes: 2 }],
+        belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-g', 'ore-a', '低安带', { galaxyId: 'galaxy-ghost' })],
+        anomalies: [
+          ...encTiers().map((a) => ({ ...a, galaxyId: 'galaxy-ghost' })), // 旧隐藏模板占位（不算敌群）
+          ...(visible ? [anomaly('ano-ghost', 'galaxy-ghost', { threat: 55, reward: 88_000, tactic: 'brawl' })] : []),
+        ],
+        balance: { ...makeTestCtx().balance, encounter: ghost.base },
+      })
+      const state = createInitialState({ nowWallMs: 0, seed: 3 })
+      state.exploredGalaxies.push('galaxy-ghost')
+      state.mining.active = true
+      state.mining.beltId = 'belt-g'
+      state.mining.phase = 'mining'
+      state.lowSecPresence['galaxy-ghost'] = -600_000 // 早已过入场缓冲
+      return { state, ctx }
+    }
+    // 无可见悬赏：必不伏击（遇袭率已拉到 100%）
+    const none = world(false)
+    for (let i = 0; i < 20; i += 1) expect(rollLowSecAmbush(none.state, none.ctx)).toBe(false)
+    expect(none.state.encounter.active).toBe(false)
+    // 放入一张可见悬赏 → 立即伏击且敌群 = 该卡（威胁/名字/anomalyId 原样）
+    const withFoe = world(true)
+    let hit = false
+    for (let i = 0; i < 20 && !hit; i += 1) hit = rollLowSecAmbush(withFoe.state, withFoe.ctx)
+    expect(hit).toBe(true)
+    const enc = withFoe.state.encounter
+    expect(enc.anomalyId).toBe('ano-ghost')
+    expect(enc.threat).toBe(55)
+    expect(enc.name).toBe('目标ano-ghost')
+  })
+
+  it('击退缴获 = 伏击敌群赏金 ×50% 且胜利留残骸（2026-09-09 船长定，只给 ISK 不计首胜）', () => {
+    const { state, ctx } = lowWorld()
+    // 敌群 ano-a（赏金 5,000 → 击退缴 2,500；威胁 8 → 每胜注入残骸密度 8×0.4=3.2）
+    const d0 = wreckDensityOf(state, 'galaxy-far', ctx)
+    const wallet0 = state.wallet.isk
+    state.fleet[state.shipId]!.cargo['ore-a'] = 100 // 被抢只动货不碰钱包（防现金扰动）
+    let guard = 0
+    while (guard++ < 80) {
+      state.encounter = {
+        active: true,
+        shipId: state.shipId,
+        galaxyId: 'galaxy-far',
+        name: '目标ano-a',
+        threat: 8,
+        anomalyId: 'ano-a',
+        origin: '测试',
+        invitedAtGameMs: state.gameMs,
+        deadlineGameMs: state.gameMs - 1,
+        battle: null,
+      }
+      advanceGame(state, 1000, ctx) // 已超时 → 立即文字结算
+      expect(state.encounter.active).toBe(false)
+      if (state.logs.some((l) => l.text.includes('成功击退来敌'))) break
+    }
+    const wins = (state.wallet.isk - wallet0) / 2500
+    expect(Number.isInteger(wins) && wins >= 1).toBe(true) // 每次击退恰为 5,000×50%
+    expect(state.logs.filter((l) => l.text.includes('缴获 2,500 ISK')).length).toBe(wins)
+    const d1 = wreckDensityOf(state, 'galaxy-far', ctx)
+    expect(d1).toBeGreaterThan(d0 + 3.2 * wins - 2) // 每胜注入威胁×0.4（闲置漂移误差 <2）
   })
 })
 

@@ -771,10 +771,12 @@ export interface EncounterState {
   shipId: string | null
   /** 事发星系（sec<0） */
   galaxyId: string | null
-  /** 事件展示名（文案池按低安深度选） */
+  /** 事件展示名（伏击敌群名；旧档兜底 = 文案池名） */
   name: string
-  /** 遭遇强度（编队总战力 ≈ 承担船火力 × 0.6~1.05） */
+  /** 遭遇强度（2026-09-09 船长定：= 当地星系可见悬赏敌群的威胁，随机抽池；不再随船火力缩放） */
   threat: number
+  /** 伏击敌群 = 当地星系可见悬赏敌群 id（2026-09-09；null = 旧档遗留，按威胁就近兜底） */
+  anomalyId: string | null
   /** 来源说明：主控采掘/打捞/扫描/驻留 或 副船任务（2026-09-06：移动不暴露） */
   origin: string
   /** 产生时刻（游戏毫秒） */
@@ -1134,6 +1136,7 @@ export function createInitialState(opts?: {
       galaxyId: null,
       name: '',
       threat: 0,
+      anomalyId: null,
       origin: '',
       invitedAtGameMs: 0,
       deadlineGameMs: 0,
