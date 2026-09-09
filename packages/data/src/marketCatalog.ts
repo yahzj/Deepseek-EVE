@@ -251,8 +251,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-lock-2', kind: 'blueprint', refId: 'bp-lock-2', rarity: 'rare', basePrice: 450000, demandMultiplier: 0.65 }, // 目标锁定阵列 MK2（蓝图=产物×2.5）
   { key: 'bp-lock-3', kind: 'blueprint', refId: 'bp-lock-3', rarity: 'rare', basePrice: 2640000, demandMultiplier: 0.65, standingReq: 4 }, // 目标锁定阵列 MK3（蓝图=产物×3）
   // 舰船蓝图（造船；稀有）
-  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'rare', basePrice: 150_000, demandMultiplier: 0.65 },
-  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'rare', basePrice: 260_000, demandMultiplier: 0.65 },
+  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）
+  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 4_050_000, demandMultiplier: 1.0, standingReq: 11 }, // 座头鲸级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）
   // 稀有舰船（V10 四条族线中坚）
   { key: 'ship-whale', kind: 'ship', refId: 'whale', rarity: 'rare', basePrice: 900_000, demandMultiplier: 0.65 },
   // 蓝图船（2026-09-09 船长：成品无现货、只收不卖）——玩家已拥有的开拓级可二手挂售，NPC 收购，
@@ -275,7 +275,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 鲸王级成品 2026-09-09 船长定只收不卖：蓝图船无现货——市场只供其造船蓝图书（sbp 奇货）；
   // 玩家已拥有的鲸王级可二手挂售（NPC 收购），成品永不出售
   { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 4_800_000, demandMultiplier: 1.0, standingReq: 11, playerBuyable: false },
-  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 600_000, demandMultiplier: 1.0, standingReq: 11 },
+  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 19_200_000, demandMultiplier: 1.0, standingReq: 11 },
   // V10 顶级船（声望解锁）
   { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 10 }, // 2026-09-09 船长定:无人机母舰声望 6→10
   { key: 'ship-whiteshark', kind: 'ship', refId: 'sh-whiteshark', rarity: 'exotic', basePrice: 1_100_000, demandMultiplier: 1.0, standingReq: 7 },
@@ -287,7 +287,30 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 1_250_000, demandMultiplier: 1.0, standingReq: 8 },
   { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 2_200_000, demandMultiplier: 1.0, standingReq: 9 },
   { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 5_500_000, demandMultiplier: 1.0, standingReq: 11 },
-  { key: 'sbp-colossal', kind: 'blueprint', refId: 'sbp-colossal', rarity: 'exotic', basePrice: 900_000, demandMultiplier: 1.0, standingReq: 11 },
+  // 2026-09-09 全舰船蓝图化（第二批）：全部可造舰船开放蓝图书；蓝图价 = 船市场价 × 档位系数（≤30 万 ×2 / 30~100 万 ×2.5 / 100~400 万 ×3 / >400 万 ×4）；船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11
+  { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 掘洞级（蓝图=船价×2）
+  { key: 'sbp-whale', kind: 'blueprint', refId: 'sbp-whale', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65 }, // 鲸吞级（蓝图=船价×2.5）
+  { key: 'sbp-bowhead', kind: 'blueprint', refId: 'sbp-bowhead', rarity: 'exotic', basePrice: 5700000, demandMultiplier: 1.0, standingReq: 11 }, // 蝠鲼级（蓝图=船价×3）
+  { key: 'sbp-falconet', kind: 'blueprint', refId: 'sbp-falconet', rarity: 'rare', basePrice: 80000, demandMultiplier: 0.65 }, // 鲣鱼级（蓝图=船价×2）
+  { key: 'sbp-shrike', kind: 'blueprint', refId: 'sbp-shrike', rarity: 'rare', basePrice: 220000, demandMultiplier: 0.65 }, // 马鲛级（蓝图=船价×2）
+  { key: 'sbp-tigershark', kind: 'blueprint', refId: 'sbp-tigershark', rarity: 'rare', basePrice: 480000, demandMultiplier: 0.65 }, // 虎鲨级（蓝图=船价×2）
+  { key: 'sbp-mako', kind: 'blueprint', refId: 'sbp-mako', rarity: 'rare', basePrice: 1200000, demandMultiplier: 0.65 }, // 灰鲭鲨级（蓝图=船价×2.5）
+  { key: 'sbp-whiteshark', kind: 'blueprint', refId: 'sbp-whiteshark', rarity: 'exotic', basePrice: 3300000, demandMultiplier: 1.0, standingReq: 11 }, // 大白鲨级（蓝图=船价×3）
+  { key: 'sbp-swarm', kind: 'blueprint', refId: 'sbp-swarm', rarity: 'rare', basePrice: 1550000, demandMultiplier: 0.65 }, // 梭鱼级（蓝图=船价×2.5）
+  { key: 'sbp-sentinel', kind: 'blueprint', refId: 'sbp-sentinel', rarity: 'exotic', basePrice: 7800000, demandMultiplier: 1.0, standingReq: 11 }, // 王鲭级（蓝图=船价×3）
+  { key: 'sbp-thresher', kind: 'blueprint', refId: 'sbp-thresher', rarity: 'exotic', basePrice: 36000000, demandMultiplier: 1.0, standingReq: 11 }, // 长尾鲨级（蓝图=船价×4）
+  { key: 'sbp-electricray', kind: 'blueprint', refId: 'sbp-electricray', rarity: 'exotic', basePrice: 60000000, demandMultiplier: 1.0, standingReq: 11 }, // 电鳐级（蓝图=船价×4）
+  { key: 'sbp-hammerhead', kind: 'blueprint', refId: 'sbp-hammerhead', rarity: 'exotic', basePrice: 44000000, demandMultiplier: 1.0, standingReq: 11 }, // 锤头鲨级（蓝图=船价×4）
+  { key: 'sbp-bullshark', kind: 'blueprint', refId: 'sbp-bullshark', rarity: 'exotic', basePrice: 52000000, demandMultiplier: 1.0, standingReq: 11 }, // 牛鲨级（蓝图=船价×4）
+  { key: 'sbp-tortoise', kind: 'blueprint', refId: 'sbp-tortoise', rarity: 'rare', basePrice: 830000, demandMultiplier: 0.65 }, // 陆龟级（蓝图=船价×2.5）
+  { key: 'sbp-hawksbill', kind: 'blueprint', refId: 'sbp-hawksbill', rarity: 'rare', basePrice: 1900000, demandMultiplier: 0.65 }, // 玳瑁级（蓝图=船价×2.5）
+  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 6600000, demandMultiplier: 1.0, standingReq: 11 }, // 玄武级（蓝图=船价×3）
+  { key: 'sbp-flyingfish', kind: 'blueprint', refId: 'sbp-flyingfish', rarity: 'rare', basePrice: 420000, demandMultiplier: 0.65 }, // 飞鱼级（蓝图=船价×2）
+  { key: 'sbp-sailfish', kind: 'blueprint', refId: 'sbp-sailfish', rarity: 'rare', basePrice: 1200000, demandMultiplier: 0.65 }, // 旗鱼级（蓝图=船价×2.5）
+  { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 3750000, demandMultiplier: 1.0, standingReq: 11 }, // 剑鱼级（蓝图=船价×3）
+
+// 旧 4 张：pioneer 1200000×3=3,600,000；whale-king 4800000×4=19,200,000；humpback 1350000×3=4,050,000；colossal 5500000×4=22,000,000（材料保留原单不动）
+  { key: 'sbp-colossal', kind: 'blueprint', refId: 'sbp-colossal', rarity: 'exotic', basePrice: 22_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 皇带鱼级（蓝图=船价×4；2026-09-09 全蓝图化定价）
   // 异星原型装备（V10：超档收藏，无蓝图，需声望 10）
   { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, standingReq: 10 },
