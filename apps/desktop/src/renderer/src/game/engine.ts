@@ -1425,6 +1425,16 @@ export class GameEngine {
     return moved
   }
 
+  /** 2026-09-09（船长口径 A）：卸下货仓里指定条目（物品 → 物品仓库；模块 → 装备库分流）；返回卸入数量 */
+  unloadCargoItem(itemId: string): number {
+    const moved = unloadCargoToWarehouse(this.state, itemId)
+    if (moved > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return moved
+  }
+
   /** 把仓库里的某种物品尽量装到当前船（受容量限制）；返回装入数量 */
   loadWareToCargoFit(itemId: string): number {
     const loaded = loadWarehouseToCargoFit(this.state, itemId, this.ctx)

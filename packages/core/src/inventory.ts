@@ -5,12 +5,24 @@
  * - 货仓（cargo）：属于当前驾驶的船；挖矿/战利品入货仓，占船容量，弃船即遗失；
  * - 物品仓库（warehouse）：属于飞行员/空间站，无限容量、永不遗失；
  *   精炼产物入仓库，制造材料从仓库扣除；
+ * - 2026-09-09（船长口径 A）：货仓 = 可携带物都可装船——仓库物品（含矿物/弹药/无人机）全放开，
+ *   装备（模块）也可装入（占位体积 MODULE_CARGO_UNIT_M3），纯搬运携带、消费链路不变；
+ *   卸货按 id 分流：模块回 moduleBay（装备库）、其余回 warehouse.items；
  * - 船在 data 缺失或弃船瞬间 fleet 条目会短暂为空：所有辅助函数都做容错（按空处理）。
  */
 import type { FleetShipState, GameState } from './state'
 import type { SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { familyModules } from './equipment'
+
+/** 模块装船的占位体积（m³/件，2026-09-09 船长定：装备无体积字段，携带占用 1 m³；不影响装配/战斗） */
+export const MODULE_CARGO_UNIT_M3 = 1
+
+/** 模块 id 前缀判定（数据规范：modules.ts 全部 id 以 'mod-' 开头，与物品 id 空间不冲突；
+ *  用于货仓装卸分流——模块卸回 moduleBay，其余回 warehouse.items） */
+export function isModuleCargoId(id: string): boolean {
+  return id.startsWith('mod-')
+}
 
 /* ───────── 基础访问（容错） ───────── */
 
@@ -84,12 +96,13 @@ export function removeWare(state: GameState, itemId: string, units: number): boo
 
 /* ───────── 货仓体积（可指定船，含该船货舱槽装备加成） ───────── */
 
-/** 指定船货仓已占用体积（m³；矿石/气体/冰矿按压缩技术折算体积） */
+/** 指定船货仓已占用体积（m³；矿石/气体/冰矿按压缩技术折算体积；模块 = 占位体积 1 m³/件） */
 export function cargoUsedM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   let used = 0
   for (const [itemId, units] of Object.entries(cargoOfShip(state, shipId))) {
     const def = ctx.items.get(itemId)
-    used += units * cargoUnitM3(state, def)
+    if (def) used += units * cargoUnitM3(state, def)
+    else if (ctx.modules.get(itemId)) used += units * MODULE_CARGO_UNIT_M3
   }
   return used
 }
@@ -143,22 +156,23 @@ export function freeCargoM3(state: GameState, ctx: SimContext): number {
 /* ───────── 跨仓搬运（装卸） ───────── */
 
 /**
- * 指定船货仓 → 仓库（卸货）：返回搬入仓库的单位数。
- * （T4 换船善后：旧船自动返航到港后整仓卸入物品仓库；写操作只经它，防"换船洗仓"。）
+ * 指定船货仓 → 仓库（卸货分流：模块回装备库 moduleBay、其余回物品仓库 warehouse.items）。
+ * 返回搬入的单位数。（T4 换船善后：旧船自动返航到港后整仓卸入；写操作只经它，防"换船洗仓"。）
  */
 export function unloadCargoOfShipToWarehouse(state: GameState, shipId: string): number {
   const cargo = cargoOfShip(state, shipId)
   let moved = 0
   for (const [id, units] of Object.entries(cargo)) {
     if (units === undefined || units <= 0) continue
-    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
+    if (isModuleCargoId(id)) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
+    else state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
     delete cargo[id]
     moved += units
   }
   return moved
 }
 
-/** 货仓 → 仓库（卸货）：返回搬入仓库的单位数 */
+/** 货仓 → 仓库（卸货分流：模块回 moduleBay、其余回 warehouse.items）；返回搬入仓库的单位数 */
 export function unloadCargoToWarehouse(state: GameState, itemId?: string): number {
   const cargo = cargoItemsOf(state)
   const targetIds = itemId ? [itemId] : Object.keys(cargo)
@@ -166,7 +180,8 @@ export function unloadCargoToWarehouse(state: GameState, itemId?: string): numbe
   for (const id of targetIds) {
     const units = cargo[id]
     if (units === undefined || units <= 0) continue
-    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
+    if (isModuleCargoId(id)) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
+    else state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
     delete cargo[id]
     moved += units
   }
@@ -185,10 +200,27 @@ export function loadWarehouseToCargo(state: GameState, itemId: string, units: nu
   return 0
 }
 
-/** 仓库 → 货仓（按当前船的剩余空间尽量装）；返回实际装船单位数 */
+/**
+ * 仓库 → 货仓（按当前船的剩余空间尽量装，物品/模块通用）；返回实际装船单位数。
+ * 物品按各自单位体积（矿物/弹药等 0.01~1.5 m³）；模块 = 占位体积 MODULE_CARGO_UNIT_M3（1 m³/件），
+ * 从 moduleBay（装备库）扣取。2026-09-09 船长口径 A：仓库可携带物（除舰船）都可装船。
+ */
 export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: SimContext): number {
   const def = ctx.items.get(itemId)
-  if (!def || def.unitM3 <= 0) return 0
-  const maxBySpace = Math.floor(freeCargoM3(state, ctx) / cargoUnitM3(state, def))
-  return loadWarehouseToCargo(state, itemId, maxBySpace)
+  const mod = def ? undefined : ctx.modules.get(itemId)
+  if (!def && !mod) return 0
+  const unit = def ? cargoUnitM3(state, def) : MODULE_CARGO_UNIT_M3
+  if (unit <= 0) return 0
+  const maxBySpace = Math.floor(freeCargoM3(state, ctx) / unit)
+  const amount = Math.min(def ? countWare(state, itemId) : (state.moduleBay[itemId] ?? 0), maxBySpace)
+  if (amount <= 0) return 0
+  if (def) {
+    if (!removeWare(state, itemId, amount)) return 0
+  } else {
+    const rest = (state.moduleBay[itemId] ?? 0) - amount
+    if (rest <= 0) delete state.moduleBay[itemId]
+    else state.moduleBay[itemId] = rest
+  }
+  addItem(state, itemId, amount)
+  return amount
 }

@@ -56,8 +56,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const modHits = wq.length > 0 ? modRows.filter(([id]) => hitMod(id)) : modRows
   const hitTotal = itemHits.length + modHits.length
 
-  /** 可装回船上搬运的分类（资源类；矿物留在仓库当制造料，弹药/无人机等占位货只卖不搬） */
-  const LOADABLE_KINDS = new Set(['ore', 'gas', 'ice'])
+  // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
+  // 装备（模块）装船见 handleLoadMod（占位 1 m³/件）
 
   const KIND_EMPTY: Record<string, string> = {
     ore: '仓库里没有矿石（自动卸货的矿会先到这里）。',
@@ -83,6 +83,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   function goMarket(kind: 'item' | 'module', id: string): void {
     const good = marketGoodOf(engine.ctx, kind, id)
     if (good) onGotoMarket(good.key)
+  }
+
+  /** 2026-09-09（船长口径 A）：装备装船 = 携带（占位 1 m³/件，从装备库扣）；装配台取料仍只认装备库 */
+  function handleLoadMod(id: string): void {
+    const def = engine.ctx.modules.get(id)
+    const loaded = engine.loadWareToCargoFit(id)
+    if (loaded === 0) onToast('船上没有足够空间（模块装船占位 1 m³/件）。', true)
+    else onToast(`已装船 ${def?.name ?? id}×${loaded.toLocaleString('zh-CN')}（占位 1 m³/件；装配请先卸回装备库）。`)
   }
 
   // 出售数量选择（船长 2026-09-05：支持只卖一部分）
@@ -200,11 +208,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         </span>
                       </div>
                       <div className="app-inv-btns">
-                        {LOADABLE_KINDS.has(def.kind) ? (
-                          <button className="app-btn is-small" onClick={() => handleLoad(id)}>
-                            装到船上
-                          </button>
-                        ) : null}
+                        <button className="app-btn is-small" onClick={() => handleLoad(id)} title="装到当前驾驶船的货仓（按单位体积占舱；停靠空间站时装卸）">
+                          装到船上
+                        </button>
                         {buy !== undefined ? (
                           <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
                             市价卖出
@@ -259,8 +265,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     </span>
                   </div>
                   <div className="app-inv-btns">
-                    <button className="app-btn is-small" disabled title="安装与卸下请到「装配」页">
-                      装配页使用
+                    <button
+                      className="app-btn is-small"
+                      onClick={() => handleLoadMod(id)}
+                      title="装入船货仓携带（占位 1 m³/件）；安装到槽位请到「装配」页——装配台取料自装备库，船上装备需先卸回"
+                    >
+                      装到船上
                     </button>
                     {modGood && modGood.playerSellable !== false ? (
                       <button className="app-btn is-small is-primary" onClick={() => setSellMod(id)}>
@@ -351,11 +361,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               <InfoTable lines={itemInfoLines(pickItemDef, (id) => engine.ctx.items.get(id)?.name)} />
               <div className="app-dim app-itempick-note">{pickItemDef.description}</div>
               <div className="app-itempick-actions">
-                {LOADABLE_KINDS.has(pickItemDef.kind) ? (
-                  <button className="app-btn is-small" onClick={() => handleLoad(pickItem)}>
-                    装到船上
-                  </button>
-                ) : null}
+                <button className="app-btn is-small" onClick={() => handleLoad(pickItem)} title="装到当前驾驶船的货仓（按单位体积占舱）">
+                  装到船上
+                </button>
                 {pickItemBuy !== undefined ? (
                   <button
                     className="app-btn is-primary is-small"
@@ -405,8 +413,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               <InfoTable lines={moduleInfoLines(pickModDef)} />
               <div className="app-dim app-itempick-note">{pickModDef.description}</div>
               <div className="app-itempick-actions">
-                <button className="app-btn is-small" title="安装与卸下请到「装配」页">
-                  装配页使用
+                <button
+                  className="app-btn is-small"
+                  onClick={() => handleLoadMod(pickMod)}
+                  title="装入船货仓携带（占位 1 m³/件）；安装到槽位请到「装配」页（装配台取料自装备库，船上装备需先卸回）"
+                >
+                  装到船上
                 </button>
                 {marketGoodOf(engine.ctx, 'module', pickMod) ? (
                   <button

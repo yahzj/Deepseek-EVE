@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import {
   ITEM_KIND_ORDER,
+  SLOT_LABELS,
   cargoCapacityM3Of,
   cargoOfShip,
   cargoUsedM3Of,
@@ -20,7 +21,7 @@ import {
   shipDisplayName,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
-import { ItemHover, InfoTable, itemInfoLines } from '../ui/shipInfo'
+import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
@@ -56,6 +57,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
   const rows = Object.entries(cargo).filter(([, n]) => n > 0)
+  // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；占位 1 m³/件
+  const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
 
   // 图标/列表切换（手册同款；网格为浏览视图）
   const [view, setView] = useItemView()
@@ -78,6 +81,22 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const pickDef = pickId ? engine.ctx.items.get(pickId) : undefined
   const pickUnits = pickId ? (cargo[pickId] ?? 0) : 0
   const pickBuy = pickId ? itemBuyQuote(engine, pickId) : undefined
+  // 2026-09-09：船载装备（模块）点选（与物品点选分开——模块信息/卸回装备库）
+  const [pickMod, setPickMod] = useState<string | null>(null)
+  const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
+  const pickModUnits = pickMod ? (cargo[pickMod] ?? 0) : 0
+
+  /** 2026-09-09（船长口径 A）：单行卸货——物品 → 物品仓库；模块 → 装备库（引擎分流） */
+  function handleUnloadOne(id: string): void {
+    const moved = engine.unloadCargoItem(id)
+    if (moved === 0) onToast('货仓里没有该条目。', true)
+    else {
+      const isMod = engine.ctx.modules.get(id) !== undefined
+      onToast(isMod ? `已把船载装备卸回装备库 ×${moved.toLocaleString('zh-CN')}。` : `已卸入物品仓库 ×${moved.toLocaleString('zh-CN')}。`)
+    }
+    setPickId(null)
+    setPickMod(null)
+  }
   // 出售数量选择（船长 2026-09-05：支持只卖一部分）
   const [sellId, setSellId] = useState<string | null>(null)
   const sellDef = sellId ? engine.ctx.items.get(sellId) : undefined
@@ -252,6 +271,45 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           </Panel>
         )
       })}
+
+      {/* 船载装备（2026-09-09 船长口径 A：模块可入货仓携带；占位 1 m³/件，卸回装备库） */}
+      {modRows.length > 0 ? (
+        <Panel
+          title="装备（船载）"
+          right={<span className="app-dim">{modRows.length} 种 · 占位 1 m³/件</span>}
+        >
+          <ul className="app-inv-list">
+            {modRows.map(([id, units]) => {
+              const def = engine.ctx.modules.get(id)
+              if (!def) return null
+              return (
+                <li
+                  key={id}
+                  className="app-inv-row"
+                  title={`${def.description}——船载仅携带；装配台取料自装备库，船载装备需先卸回。`}
+                >
+                  <div className="app-inv-main">
+                    <span className="app-inv-name">{def.name}</span>
+                    <span className="app-inv-count">
+                      ×{units.toLocaleString('zh-CN')}（占位 {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
+                      {def.cpuUse}
+                    </span>
+                  </div>
+                  <div className="app-inv-btns">
+                    {isPiloted ? (
+                      <button className="app-btn is-small is-primary" onClick={() => handleUnloadOne(id)}>
+                        卸回装备库
+                      </button>
+                    ) : (
+                      <span className="app-dim app-sr-eta">只读查看</span>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </Panel>
+      ) : null}
         </>
       ) : (
         <>
@@ -285,6 +343,28 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               )
             })
           )}
+
+          {/* 船载装备（图标卡；2026-09-09 船长口径 A：模块可入货仓携带） */}
+          {modRows.length > 0 ? (
+            <Panel
+              title="装备（船载）"
+              right={<span className="app-dim">{modRows.length} 种 · 占位 1 m³/件</span>}
+            >
+              <ItemGlyphGrid
+                cells={modRows.map(([id, units]) => {
+                  const def = engine.ctx.modules.get(id)
+                  return {
+                    key: id,
+                    glyph: def?.slot ?? 'mod',
+                    name: def?.name ?? id,
+                    sub: `×${units.toLocaleString('zh-CN')} · 占位 ${m3(units)}`,
+                    title: def?.description,
+                  }
+                })}
+                onPick={(key) => setPickMod(key)}
+              />
+            </Panel>
+          ) : null}
 
           {pickDef && pickId ? (
             <ItemActionModal onClose={() => setPickId(null)}>
@@ -333,6 +413,37 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     ↖ 查看市场订单
                   </button>
                 ) : null}
+              </div>
+            </ItemActionModal>
+          ) : null}
+
+          {/* 船载装备点选（模块信息 + 卸回装备库；2026-09-09） */}
+          {pickModDef && pickMod ? (
+            <ItemActionModal onClose={() => setPickMod(null)}>
+              <div className="app-itempick-head">
+                <span className="app-itempick-icon">
+                  <Glyph name={pickModDef.slot} size={40} color={toneOf(pickModDef.slot)} />
+                </span>
+                <div className="app-itempick-info">
+                  <div className="app-itempick-name">{pickModDef.name}</div>
+                  <div className="app-dim">
+                    ×{pickModUnits.toLocaleString('zh-CN')}（占位 {m3(pickModUnits)}）·{' '}
+                    {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU {pickModDef.cpuUse}
+                  </div>
+                </div>
+              </div>
+              <InfoTable lines={moduleInfoLines(pickModDef)} />
+              <div className="app-dim app-itempick-note">
+                {pickModDef.description}——船载仅携带：装配台取料自装备库，船载装备需先卸回。
+              </div>
+              <div className="app-itempick-actions">
+                {!isPiloted ? (
+                  <div className="app-dim">正在查看「{targetName}」——只读：装卸仅对当前驾驶船可用。</div>
+                ) : (
+                  <button className="app-btn is-primary is-small" onClick={() => handleUnloadOne(pickMod)}>
+                    卸回装备库
+                  </button>
+                )}
               </div>
             </ItemActionModal>
           ) : null}
