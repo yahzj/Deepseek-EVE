@@ -272,8 +272,8 @@ function settleFight(state: GameState, ctx: SimContext): void {
   const bal = ctx.balance.encounter
   const fleetShip = state.fleet[shipId]
   if (battle) {
-    // 退还剩余弹药（与远征/撤退同一口径）
-    refundAmmo(state, battle.ammo)
+    // 退还剩余弹药（与远征/撤退同一口径；弹药 MK2 按实装弹 id 退回）
+    refundAmmo(state, battle.ammo, battle.ammoIds)
     refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
     // P0 承伤持久化：遭遇战同样保留装甲/结构残余（结构=耐久）；失利附加扣损在后
     persistFleetHullDamage(state, ctx, shipId, battle)

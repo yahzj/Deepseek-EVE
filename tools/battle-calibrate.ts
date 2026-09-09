@@ -16,7 +16,16 @@ import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startB
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
 
-type Loadout = { name: string; ship: string; high: string[]; mid?: string[]; low?: string[]; drones?: Record<string, number> }
+type Loadout = {
+  name: string
+  ship: string
+  high: string[]
+  mid?: string[]
+  low?: string[]
+  drones?: Record<string, number>
+  /** 弹药 MK2（2026-09-09）：本行开战预载弹档（装配档位 ammoPref；缺省 = 基础弹） */
+  ammoTier?: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>>
+}
 const LOADOUTS: Loadout[] = [
   { name: '裸船(基础舰炮)', ship: 'sh-falconet', high: [] },
   { name: '鲣鱼+动能MK1', ship: 'sh-falconet', high: ['mod-turret-kin-1'] },
@@ -41,6 +50,9 @@ const LOADOUTS: Loadout[] = [
   { name: 'D1 梭鱼无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 10, 'drone-heavy': 1 } }, // 舱 190m³（rack1×2）：12×5+10×10+1×20 = 180 满载（2026-09-09 体积档 5/10/20/40）
   { name: 'D2 梭鱼无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 舱 230m³（rack2×2）：10×10+4×20+1×40 = 220（2026-09-09 体积档）
   { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }, // 舱 460m³：4×20+6×40 = 320（2026-09-09 体积档后仍可满载）
+  /* ── 弹药 MK2 变体（2026-09-09：顶配参考行 + 动能弹 MK2——攻坚耗材定位，E 段失衡与否验证） ── */
+  { name: 'S4+动能弹MK2(5×kin3+支援)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
+  { name: 'T3牛鲨+动能弹MK2(重盾)', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
 ]
 
 const FULL_SKILLS: Record<string, number> = {
@@ -81,6 +93,11 @@ function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, 
   const entry = state.fleet[shipId]!
   if (ld.drones && Object.keys(ld.drones).length > 0) entry.droneLoad = { ...ld.drones }
   entry.fitted = { high: [...(ld.high ?? [])], mid: [...(ld.mid ?? [])], low: [...(ld.low ?? [])] }
+  // 弹药 MK2（2026-09-09）：变体行带档位 + 仓库补足 MK2 弹（预载需求同基础弹量）
+  if (ld.ammoTier) {
+    entry.ammoPref = { ...ld.ammoTier }
+    for (const id of Object.values(ld.ammoTier)) state.warehouse.items[id] = 5_000
+  }
   repairDeprecatedModules(state, ctx as SimContext)
   return state
 }

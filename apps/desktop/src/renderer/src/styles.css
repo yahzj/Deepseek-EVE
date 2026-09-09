@@ -3696,6 +3696,86 @@ body {
 
 }
 
+/* 弹药档位（2026-09-09 弹药 MK2：装配页出战前选档——按弹族选基础弹/MK2；参照无人机舱区布局） */
+
+.app-fit-ammotier {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+
+  margin-top: 8px;
+
+  padding-top: 8px;
+
+  padding-bottom: 8px;
+
+  border-top: 1px dashed rgba(85, 112, 140, 0.35);
+
+}
+
+.app-fit-ammotier-row {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  font-size: 11px;
+
+  min-height: 18px;
+
+}
+
+.app-fit-ammotier-opts {
+
+  display: inline-flex;
+
+  gap: 4px;
+
+}
+
+.app-fit-ammotier-opt {
+
+  padding: 1px 8px;
+
+  font-size: 11px;
+
+  line-height: 16px;
+
+  color: var(--wui-text, #cfe3f5);
+
+  background: rgba(64, 88, 112, 0.35);
+
+  border: 1px solid rgba(120, 150, 180, 0.35);
+
+  border-radius: 3px;
+
+  cursor: pointer;
+
+}
+
+.app-fit-ammotier-opt:hover {
+
+  border-color: rgba(140, 190, 235, 0.8);
+
+}
+
+.app-fit-ammotier-opt.is-active {
+
+  color: #0e1a26;
+
+  background: #8fd0ff;
+
+  border-color: #8fd0ff;
+
+  font-weight: 600;
+
+}
+
 .app-fit-dronebay-head {
 
   display: flex;

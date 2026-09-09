@@ -780,7 +780,23 @@ function cleanBattle(raw: unknown): BattleState | null {
       typeof b.waveClearAt === 'number' && Number.isFinite(b.waveClearAt) && b.waveClearAt > 0
         ? b.waveClearAt
         : undefined,
+    // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
+    ammoIds: cleanAmmoIdMap(b.ammoIds),
   }
+}
+
+/** 弹药 id 映射清洗（弹药 MK2：kinetic/explosive/plasma 键下的非空字符串 id；坏值丢键） */
+function cleanAmmoIdMap(raw: unknown): Partial<Record<'kinetic' | 'explosive' | 'plasma', string>> | undefined {
+  const r = asRaw(raw)
+  let out: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>> | undefined
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const v = r[t]
+    if (typeof v === 'string' && v.length > 0) {
+      if (!out) out = {}
+      out[t] = v
+    }
+  }
+  return out
 }
 
 /** 清洗战斗可视化事件环（白名单字段；坏事件丢弃，缺失给空）。seq 按环内顺序重排（旧档无 seq 也能续播） */
@@ -900,6 +916,7 @@ function normalizeState(raw: unknown): GameState {
     cargo: Record<string, number>
     fitted: FittedModules
     droneLoad?: Record<string, number>
+    ammoPref?: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>>
   } => ({
     defId,
     customName: null,
@@ -969,6 +986,8 @@ function normalizeState(raw: unknown): GameState {
       cargo: cargoMap,
       fitted,
       droneLoad,
+      // 弹药 MK2（2026-09-09）：档位偏好透传（键 = 伤害类型；坏值丢键，引擎侧再防御未知 id）
+      ammoPref: cleanAmmoIdMap(shipRaw.ammoPref),
     }
   }
   if (Object.keys(fleet).length === 0) {

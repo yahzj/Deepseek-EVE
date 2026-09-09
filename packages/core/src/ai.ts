@@ -936,8 +936,8 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   const task = assignment.task as AiExpeditionTaskState
   const battle = task.battle!
   const shipName = shipDisplayName(state, ctx, shipId)
-  // 弹药剩余退回物品仓库
-  refundAmmo(state, battle.ammo)
+  // 弹药剩余退回物品仓库（弹药 MK2：按实装弹 id 退回）
+  refundAmmo(state, battle.ammo, battle.ammoIds)
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   const anomaly = ctx.anomalies.get(task.anomalyId)
   if (!anomaly) {

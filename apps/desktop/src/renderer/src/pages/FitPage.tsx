@@ -7,6 +7,7 @@
 import { useState, type ReactNode } from 'react'
 import type {
   DamageResists,
+  DamageType,
   FittedModules,
   GameState,
   ModuleDef,
@@ -474,6 +475,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </div>
             )
           })}
+          {/* 弹药档位（2026-09-09 弹药 MK2：有武器弹族才显示；无人机舱上方） */}
+          <AmmoTierSection engine={engine} onToast={onToast} target={effectiveTarget} />
           {/* 无人机舱（2026-09-08 大改：低槽组下方；容量条 + 型卡流 + 装入弹层） */}
           <DroneBaySection engine={engine} onToast={onToast} target={effectiveTarget} />
         </div>
@@ -562,6 +565,81 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/* ═══════════════ 弹药档位（2026-09-09 弹药 MK2：出战前选档——装配页按弹族选基础弹/MK2；
+开战预载按所选档消耗（库存不足整族回退基础弹 + 日志）；连打/离线同源。未设 = 基础弹） ═══════════════ */
+
+const AMMO_SLOT_TYPES: Array<{ slot: 'turret' | 'missile' | 'laser'; type: DamageType }> = [
+  { slot: 'turret', type: 'kinetic' },
+  { slot: 'missile', type: 'explosive' },
+  { slot: 'laser', type: 'plasma' },
+]
+
+/** 弹药档位区：只显示装了对应武器（炮台/导弹架/激光炮）的弹族 */
+function AmmoTierSection({
+  engine,
+  onToast,
+  target,
+}: {
+  engine: PageProps['engine']
+  onToast: PageProps['onToast']
+  target: string
+}) {
+  const state = engine.state
+  const ctx = engine.ctx
+  const ship = state.fleet[target]
+  const highIds = new Set((ship?.fitted?.high ?? []).filter((id): id is string => typeof id === 'string'))
+  const rows = AMMO_SLOT_TYPES.map(({ slot, type }) => {
+    const hasWeapon = [...highIds].some((id) => ctx.modules.get(id)?.slot === slot)
+    if (!hasWeapon) return null
+    const mk2 = ctx.items.get(`ammo-${type}-2`)
+    const baseName = ctx.items.get(`ammo-${type}-l`)?.name ?? DMG_LABEL[type]
+    if (!mk2) return null
+    const pref = ship?.ammoPref?.[type]
+    const onMk2 = pref === mk2.id
+    const haveMk2 = countWare(state, mk2.id)
+    return (
+      <div key={type} className="app-fit-ammotier-row">
+        <DmgChip t={type} label={baseName} />
+        <span className="app-fit-ammotier-opts">
+          <button
+            className={`app-fit-ammotier-opt${!onMk2 ? ' is-active' : ''}`}
+            onClick={() => {
+              const r = engine.setAmmoTierAt(type, null, target)
+              if (!r.ok) onToast(r.error ?? '设置失败', true)
+            }}
+            title={`${baseName}：本船${baseName}档（未设 = 基础弹）`}
+          >
+            {baseName}
+          </button>
+          <button
+            className={`app-fit-ammotier-opt${onMk2 ? ' is-active' : ''}`}
+            onClick={() => {
+              const r = engine.setAmmoTierAt(type, mk2.id, target)
+              if (!r.ok) onToast(r.error ?? '设置失败', true)
+            }}
+            title={`${mk2.name}：单发更高（${mk2.dmg ?? '?'} vs ${ctx.items.get(`ammo-${type}-l`)?.dmg ?? '?'}）；开战按档预载，库存不足整族回退${baseName}。仓库 ×${haveMk2}`}
+          >
+            {mk2.name}
+          </button>
+        </span>
+        <span className="app-dim">
+          {haveMk2 > 0 ? `仓库 ×${fmt(haveMk2)}` : `${mk2.name}无库存（将回退${baseName}）`}
+        </span>
+      </div>
+    )
+  }).filter((x): x is NonNullable<typeof x> => x !== null)
+  if (rows.length === 0) return null
+  return (
+    <div className="app-fit-ammotier">
+      <div className="app-fit-dronebay-head">
+        <span className="app-fit-dronebay-title">弹药档位</span>
+        <span className="app-dim">（出发预载按所选档消耗；连打同源）</span>
+      </div>
+      {rows}
     </div>
   )
 }

@@ -213,6 +213,40 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 1_300,
     description: '能量弹药生产线图纸：类晶体胶体充能电池组（120 发/批，对护盾 ×1.25）。',
   },
+  /* ═══ 弹药 MK2 蓝图（2026-09-09 船长拍板：三族高级弹稀有书可造；材料≈市价 55% 锚沿用） ═══ */
+  {
+    id: 'bp-ammo-kinetic-2',
+    name: '动能弹 MK2 生产线蓝图',
+    itemId: 'ammo-kinetic-2',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 ISK ≈ 5,400×0.55
+    buildSeconds: 10,
+    buildCostIsk: 90,
+    priceIsk: 6_000,
+    description: '动能弹 MK2 生产线图纸：超噬合金弹芯轧制（120 发/批，对护盾 ×1.5）。',
+  },
+  {
+    id: 'bp-ammo-explosive-2',
+    name: '爆破导弹 MK2 生产线蓝图',
+    itemId: 'ammo-explosive-2',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 ISK ≈ 7,200×0.55
+    buildSeconds: 10,
+    buildCostIsk: 120,
+    priceIsk: 8_500,
+    description: '爆破导弹 MK2 生产线图纸：同位聚晶双级装药弹头（120 发/批，对装甲 ×1.5）。',
+  },
+  {
+    id: 'bp-ammo-plasma-2',
+    name: '能量弹药 MK2 生产线蓝图',
+    itemId: 'ammo-plasma-2',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 ISK ≈ 9,600×0.56
+    buildSeconds: 10,
+    buildCostIsk: 160,
+    priceIsk: 12_000,
+    description: '能量弹药 MK2 生产线图纸：星髓晶高密充能电池组（120 发/批，对护盾 ×1.25）。',
+  },
   /* ═══ 修理组件蓝图（2026-09-05 P2 定稿：材料≈市价 55% 锚，参数可调） ═══ */
   {
     id: 'bp-repairkit-civ',

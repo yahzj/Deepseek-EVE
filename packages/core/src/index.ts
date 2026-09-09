@@ -166,6 +166,7 @@ export {
   unfitSlot,
   unfitAt,
   adjustDroneLoad,
+  setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   fittedBonuses,
   fittedCpuUsed,
   // 2026-09-08 无人机舱大改：装载清单 CPU/体积（装配页预算条、装配校验、战斗装载同源）

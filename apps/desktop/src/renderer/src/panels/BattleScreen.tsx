@@ -759,7 +759,7 @@ const meSpeedRef = useRef(200)
               <span className="app-bts-ammo">
                 {ammoChips.map((t) => (
                   <span key={t} className={`app-a-chip app-a-${t}`}>
-                    {DMG_LABEL[t]}×{arcs.ammo[ammoKey(t)].toLocaleString('zh-CN')}
+                    {arcs.ammoNames?.[ammoKey(t)] ?? DMG_LABEL[t]}×{arcs.ammo[ammoKey(t)].toLocaleString('zh-CN')}
                   </span>
                 ))}
               </span>

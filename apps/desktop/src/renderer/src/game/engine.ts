@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
  * 职责（中文说明）：
@@ -34,6 +34,7 @@ import {
   enqueueSkill,
   fitModule,
   adjustDroneLoad,
+  setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   goStandbyAt,
   goodLockedReason,
   learnBlueprint,
@@ -124,6 +125,7 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  DamageType,
   GameState,
   ModuleSlot,
   RackSlot,
@@ -1080,6 +1082,16 @@ export class GameEngine {
   /** 2026-09-08 无人机舱：清单调整（delta>0 装入/δ<0 卸下；shipId 缺省 = 当前驾驶船） */
   adjustDroneLoadAt(droneId: string, delta: number, shipId?: string): CommandResult {
     const result = adjustDroneLoad(this.state, this.ctx, droneId, delta, shipId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-09 弹药 MK2：设置弹族档位（itemId = null 恢复基础弹；shipId 缺省 = 当前驾驶船） */
+  setAmmoTierAt(type: DamageType, itemId: string | null, shipId?: string): CommandResult {
+    const result = setAmmoTier(this.state, this.ctx, type, itemId, shipId)
     if (result.ok) {
       void this.persist()
       this.notify()

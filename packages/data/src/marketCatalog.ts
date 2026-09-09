@@ -54,6 +54,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 4_000, supplyFlow: 150 }, // 2026-09-08 工业收益体检：低周转行只升不砍（净率→≥20%）
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 3_800, supplyFlow: 140 },
   { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 3_500, supplyFlow: 120 },
+  // ── 弹药 MK2（2026-09-09 船长拍板：攻坚/提速消耗品；补给池高价低耗节流，参数可调） ──
+  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'common', basePrice: 45, demandMultiplier: 0.6, poolTarget: 1_200, supplyFlow: 20 },
+  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'common', basePrice: 60, demandMultiplier: 0.6, poolTarget: 1_000, supplyFlow: 16 },
+  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'common', basePrice: 80, demandMultiplier: 0.6, poolTarget: 800, supplyFlow: 12 },
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
   { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 300, supplyFlow: 4 },
   { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1.5 },
@@ -97,6 +101,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-ammo-kinetic', kind: 'blueprint', refId: 'bp-ammo-kinetic', rarity: 'common', basePrice: 900, demandMultiplier: 0.6 },
   { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1_100, demandMultiplier: 0.6 },
   { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6 },
+  // 弹药 MK2 生产线蓝图（2026-09-09：稀有书；书价 = 弹价 ×130~145 与基础弹同构）
+  { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'rare', basePrice: 6_000, demandMultiplier: 0.6 },
+  { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'rare', basePrice: 8_500, demandMultiplier: 0.6 },
+  { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'rare', basePrice: 12_000, demandMultiplier: 0.6 },
   // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
   { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 3_600, demandMultiplier: 0.6 },
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 9_000, demandMultiplier: 0.6 },

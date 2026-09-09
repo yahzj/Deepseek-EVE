@@ -389,7 +389,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   }
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
-  refundAmmo(state, battle.ammo)
+  refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
   persistFleetHullDamage(state, ctx, state.shipId, battle)
@@ -539,7 +539,7 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
   if (!battle) return
-  refundAmmo(state, battle.ammo)
+  refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)

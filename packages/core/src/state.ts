@@ -9,7 +9,7 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, FittedModules, ModuleSlot } from './types'
+import type { AiCoreType, DamageType, FittedModules, ModuleSlot } from './types'
 import { emptyFitted } from './labels'
 
 export type { FittedModules } from './types'
@@ -115,6 +115,9 @@ export interface FleetShipState {
   /** 无人机舱装载清单（2026-09-08 无人机舱大改）：droneId -> 架数（0 = 不存）；
    *  战斗只放飞此清单（不再自动从仓库贪心）；CPU 预占计入船体预算；旧档缺省 = 空 = 无无人机 */
   droneLoad?: Record<string, number>
+  /** 弹药档位偏好（2026-09-09 弹药 MK2）：damageType -> 弹 itemId（如 'ammo-kinetic-2'）；
+   *  缺省 = 基础弹。开战预载按此装载（库存不足整族回退基础 + 日志）；连打/离线同源消耗 */
+  ammoPref?: Partial<Record<DamageType, string>>
 }
 
 /** 采矿作业状态（自动循环：采掘 → 返航（去程并入）→ 卸货 的自动循环；去程相位仅旧档兼容） */
@@ -390,6 +393,10 @@ export interface BattleState {
   units: Record<string, BattleUnitRt>
   /** 我方剩余弹药（出发预载后按开火即时扣减；开火弹型 = 剩余最多型，平局 kin→exp→pla） */
   ammo: { kin: number; exp: number; pla: number }
+  /** 弹药 MK2（2026-09-09）：本场实装弹 itemId（damageType → id；开战装载时写，缺货回退也写）。
+   * 战斗推进/视图重建我方规格时以此覆盖装配档位偏好（伤害与实际弹种一致）；
+   * 缺省 = 无覆盖（按船装配 ammoPref/基础弹），旧档零迁移 */
+  ammoIds?: Partial<Record<DamageType, string>>
   /** 战斗累计统计（战报/小剧场用） */
   stats: { meShots: number; meHits: number; meDmg: number; foeShots: number; foeHits: number }
   /** 可视化开火事件环（最新 48 条；战斗画面动画回放用，不影响结算） */

@@ -331,6 +331,38 @@ export const AMMO: readonly ItemDef[] = [
     damageType: 'plasma',
     dmg: 9,
   },
+  /* ═══ 弹药 MK2（2026-09-09 船长拍板：三族各出一档高级版——纯数值上级、克制表同基础；
+   * dmg 8/9/12、市场 45/60/80、蓝图书稀有可造；装配页按族选档、连打消耗当前配置弹） ═══ */
+  {
+    id: 'ammo-kinetic-2',
+    name: '动能弹 MK2',
+    kind: 'ammo',
+    unitM3: 0.02,
+    baseSellPriceIsk: 45,
+    description: '动能弹 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.5）。攻坚用高级弹药。',
+    damageType: 'kinetic',
+    dmg: 8,
+  },
+  {
+    id: 'ammo-explosive-2',
+    name: '爆破导弹 MK2',
+    kind: 'ammo',
+    unitM3: 0.02,
+    baseSellPriceIsk: 60,
+    description: '爆破导弹 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
+    damageType: 'explosive',
+    dmg: 9,
+  },
+  {
+    id: 'ammo-plasma-2',
+    name: '能量弹药 MK2',
+    kind: 'ammo',
+    unitM3: 0.02,
+    baseSellPriceIsk: 80,
+    description: '能量弹药 MK2：高密度充能电池弹——光束必中、对护盾 ×1.25、对甲/结构 ×1。激光炮攻坚专用。',
+    damageType: 'plasma',
+    dmg: 12,
+  },
 ]
 
 /** 无人机（V10.5 战斗数值契约就位：自带伤害源不耗弹；放飞占用船体 CPU——V10.5b 带宽并入；

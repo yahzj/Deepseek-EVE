@@ -21,7 +21,7 @@
 import { addLog } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists } from './types'
+import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists, DamageType } from './types'
 import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
@@ -323,6 +323,42 @@ export function adjustDroneLoad(
   else load[droneId] = next
   fleet.droneLoad = Object.keys(load).length > 0 ? load : undefined
   addLog(state, 'info', `${delta > 0 ? '装入' : '卸下'} ${def.name} ×${Math.abs(delta)}（舱内 ×${next > 0 ? next : 0}）。`)
+  return { ok: true }
+}
+
+/** 弹药 MK2 档位三族键 */
+const AMMO_TYPES: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
+
+/**
+ * 弹药档位设置（2026-09-09 船长拍板：出战前选档——装配页按弹族选基础弹/弹药 MK2；
+ * 开战预载按此装载，库存不足整族回退基础弹；连打/离线同源消耗当前配置）。
+ * itemId = null → 恢复基础弹（删键）。shipId 缺省 = 当前驾驶船。
+ */
+export function setAmmoTier(
+  state: GameState,
+  ctx: SimContext,
+  type: DamageType,
+  itemId: string | null,
+  shipId: string = state.shipId,
+): CommandResult {
+  const fleet = state.fleet[shipId]
+  if (!fleet) return { ok: false, error: '该舰船数据缺失，无法设置弹药档位。' }
+  if (!AMMO_TYPES.includes(type)) return { ok: false, error: '未知弹药类型。' }
+  if (itemId !== null) {
+    const def = ctx.items.get(itemId)
+    if (!def || def.kind !== 'ammo') return { ok: false, error: '只能选择弹药物品。' }
+    if (def.damageType !== type) return { ok: false, error: `${def.name} 不属于 ${type} 系弹药。` }
+    // 可选档 = 该族基础弹（-l）或 MK2 弹（-2）；未知档位拒绝（未来加档在此扩展）
+    if (itemId !== `ammo-${type}-l` && itemId !== `ammo-${type}-2`) {
+      return { ok: false, error: `${def.name} 不是可选的弹药档位。` }
+    }
+  }
+  const pref = { ...(fleet.ammoPref ?? {}) }
+  if (itemId === null) delete pref[type]
+  else pref[type] = itemId
+  fleet.ammoPref = Object.keys(pref).length > 0 ? pref : undefined
+  const name = itemId === null ? '基础弹' : (ctx.items.get(itemId)?.name ?? itemId)
+  addLog(state, 'info', `已设${type}系弹药档位：${name}（开战按此预载）。`)
   return { ok: true }
 }
 

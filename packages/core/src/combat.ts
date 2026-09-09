@@ -183,6 +183,22 @@ const AMMO_IDS: Record<DamageType, string> = {
   plasma: 'ammo-plasma-l',
 }
 
+/** 本船弹药 id 解析（弹药 MK2，2026-09-09）：
+ * battle 覆盖（开战实装/缺货回退，见 BattleState.ammoIds）> 船装配档位偏好（ammoPref）> 基础弹 */
+function ammoIdFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  type: DamageType,
+  battleIds?: Partial<Record<DamageType, string>> | null,
+): string {
+  const override = battleIds?.[type]
+  if (override && ctx.items.has(override)) return override
+  const pref = state.fleet[shipId]?.ammoPref?.[type]
+  if (pref && ctx.items.has(pref)) return pref
+  return AMMO_IDS[type]
+}
+
 function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): number {
   return Math.max(20, maxSpeedMps * bal.speedFactor * (1 + (agility - 0.5) * 2 * bal.agilitySpeedBonus))
 }
@@ -223,7 +239,15 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
 }
 
 /** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船数据缺失） */
-export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: string): UnitSpec | null {
+/** 我方规格快照（手动/AI/MC/预估同源）。
+ * ammoIds（弹药 MK2，2026-09-09）：战斗内实装弹 id 覆盖（缺货回退等）——
+ * 推进/视图重建传 battle.ammoIds 使伤害与实装弹种一致；缺省 = 船装配 ammoPref，再缺省 = 基础弹。 */
+export function createPlayerSpec(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  ammoIds?: Partial<Record<DamageType, string>> | null,
+): UnitSpec | null {
   const ship = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
   if (!ship || !fleet) return null
@@ -341,7 +365,7 @@ export function createPlayerSpec(state: GameState, ctx: SimContext, shipId: stri
     const count = group.length
     const type = turret.damageType ?? 'kinetic'
     const mult = turret.dmgMult ?? 1
-    const ammoDef = ctx.items.get(AMMO_IDS[type])
+    const ammoDef = ctx.items.get(ammoIdFor(state, ctx, shipId, type, ammoIds))
     // V18B 武器族专精技能：按模块槽族取专精技能（turret→动能炮术 / missile→导弹发射学 /
     // laser→激光炮学），乘算于 dmgScale（炮术学）之上——族与族互不串乘
     const famKey = turret.slot === 'missile' || turret.slot === 'laser' || turret.slot === 'turret' ? turret.slot : null
@@ -773,14 +797,20 @@ export function ammoLoadTotals(
  * V17.2 单型装载：只装载炮台固定弹种的那一型（炮族制——炮台 damageType 决定弹种，
  * battle.ammo 其余键恒 0；开火/退还/UI dominant 仍走既有三键结构，无需第二套）。
  * 货仓优先、仓库兜底；返回实装各型数量（只有目标型非零）。
+ * （基础弹装载：旧语义保留，测试/兼容用；开战装载请走 loadAmmoTier 按档装载）
  */
 export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, total: number): { kin: number; exp: number; pla: number } {
   const out = { kin: 0, exp: 0, pla: 0 }
-  if (total <= 0) return out
-  const id = AMMO_IDS[type]
   const key = ammoKeyOf(type)
+  out[key] = loadAmmoOf(state, ctx, AMMO_IDS[type], total)
+  return out
+}
+
+/** 装载指定弹 id（货仓优先、仓库兜底，单型一次抽足）；返回实装数 */
+function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {
+  if (total <= 0) return 0
   const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
-  if (stock <= 0) return out
+  if (stock <= 0) return 0
   let want = Math.min(stock, total)
   let got = 0
   const fromCargo = Math.min(want, Math.floor(cargoItemsOf(state)[id] ?? 0))
@@ -797,19 +827,47 @@ export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, to
       got += fromWare
     }
   }
-  out[key] = got
-  return out
+  return got
 }
 
-/** 剩余弹药退回物品仓库 */
-export function refundAmmo(state: GameState, ammo: { kin: number; exp: number; pla: number }): void {
+/**
+ * 开战按档装载（弹药 MK2，2026-09-09 船长拍板：出战前选档——船装配 ammoPref 决定本场弹种；
+ * 该档库存不足 → 整族回退基础弹（fellBack = true，由调用方日志提示），不卡远征）。
+ * 返回实装数 + 实装弹 id（写 battle.ammoIds 供推进/退还/视图对齐）。
+ */
+export function loadAmmoTier(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  type: DamageType,
+  total: number,
+): { loaded: number; id: string; fellBack: boolean } {
+  const prefId = state.fleet[shipId]?.ammoPref?.[type]
+  const wantId = prefId && ctx.items.has(prefId) ? prefId : null
+  let id = AMMO_IDS[type]
+  let fellBack = false
+  if (wantId !== null) {
+    const have = Math.floor((cargoItemsOf(state)[wantId] ?? 0) + countWare(state, wantId))
+    if (have >= total) id = wantId
+    else fellBack = true // 配置档不足整批 → 整族回退基础弹
+  }
+  const loaded = loadAmmoOf(state, ctx, id, total)
+  return { loaded, id, fellBack }
+}
+
+/** 剩余弹药退回物品仓库（弹药 MK2：按实装弹 id 原样退回；ids 缺省 = 基础弹语义） */
+export function refundAmmo(
+  state: GameState,
+  ammo: { kin: number; exp: number; pla: number },
+  ids?: Partial<Record<DamageType, string>> | null,
+): void {
   const map: Array<[DamageType, number]> = [
     ['kinetic', ammo.kin],
     ['explosive', ammo.exp],
     ['plasma', ammo.pla],
   ]
   for (const [t, n] of map) {
-    if (n > 0) addWare(state, AMMO_IDS[t], Math.floor(n))
+    if (n > 0) addWare(state, ids?.[t] ?? AMMO_IDS[t], Math.floor(n))
   }
 }
 
@@ -1064,12 +1122,23 @@ export function startBattleFor(
   battle.distanceM = openM
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
+  // 2026-09-09 弹药 MK2：按船装配档位（ammoPref）装载；配置档库存不足整族回退基础弹 +
+  // 日志提示；实装弹 id 写入 battle.ammoIds（推进/退还/视图与实际弹种对齐）
   const totals = ammoLoadTotals(me, bal, state)
+  const ammoIds: Partial<Record<DamageType, string>> = {}
   for (const [t, n] of Object.entries(totals)) {
-    const key = ammoKeyOf(t as DamageType)
-    const loaded = loadAmmo(state, ctx, t as DamageType, n)
-    battle.ammo[key] += loaded[key]
+    const type = t as DamageType
+    const key = ammoKeyOf(type)
+    const res = loadAmmoTier(state, ctx, shipId, type, n)
+    battle.ammo[key] += res.loaded
+    if (state.fleet[shipId]?.ammoPref?.[type] && res.loaded > 0) ammoIds[type] = res.id
+    if (res.fellBack && res.loaded > 0) {
+      const wantName = ctx.items.get(state.fleet[shipId]!.ammoPref![type]!)?.name ?? type
+      const useName = ctx.items.get(res.id)?.name ?? type
+      addLog(state, 'warn', `⚙ ${wantName}库存不足，本场改用${useName}（预载 ${res.loaded} 发）。`)
+    }
   }
+  if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
   // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
   // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）
   const repair = preloadRepairFor(state, ctx, shipId, bal.maxBattleMs)
@@ -1133,6 +1202,8 @@ export function battleArcsFor(
   /** 敌方当前战术期望距离（与引擎推进同口径：按战术系数换算后钳制在开战距离内）——UI 判断敌舰意图方向用 */
   foeDesireM: number
   ammo: { kin: number; exp: number; pla: number }
+  /** 弹药 MK2（2026-09-09）：本场实装弹名（键 → 弹药卡名；缺省 = UI 用默认弹型名） */
+  ammoNames?: Partial<Record<'kin' | 'exp' | 'pla', string>>
   me: Array<{
     label: string
     kind: 'gun' | 'beam' | 'fixed'
@@ -1152,7 +1223,7 @@ export function battleArcsFor(
   const battle = state.expedition.battle
   if (!anomaly || !battle) return null
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, state.shipId)
+  const me = createPlayerSpec(state, ctx, state.shipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
   if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
   const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
@@ -1189,11 +1260,20 @@ export function battleArcsFor(
     if (u.side !== 'foe') continue
     foeMaxHp[tag] = u.hpMax ?? { s: Math.max(0.001, u.hp.s), a: Math.max(0.001, u.hp.a), h: Math.max(0.001, u.hp.h) }
   }
+  // 弹药 MK2（2026-09-09）：本场实装弹名（仅当与基础弹不同时提供；UI 兜底用弹型名）
+  const ammoNames: Partial<Record<'kin' | 'exp' | 'pla', string>> = {}
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const id = battle.ammoIds?.[t]
+    if (!id) continue
+    const def = ctx.items.get(id)
+    if (def?.name && id !== AMMO_IDS[t]) ammoNames[ammoKeyOf(t)] = def.name
+  }
   return {
     nearM: bal.minDistanceM,
     openM,
     foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
+    ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
     meReload,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
@@ -1263,7 +1343,7 @@ export function advanceBattleFor(
   const anomaly = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
   if (!anomaly) return
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, shipId)
+  const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
   if (!me) {
     battle.ended = 'foe'
     return
