@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 敌舰族群 G：流亡舰队(烬火/回音/天底静区:蜂窝舱段 + 补丁帆 + 集群难民舰,暗橙) -->
+  <defs><style>
+    .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
+    .hull { fill:none; stroke:#e8d8c0; stroke-width:2.2; stroke-linejoin:round }
+    .panel { fill:none; stroke:#e8d8c0; stroke-width:1; opacity:.4 }
+    .acc  { fill:none; stroke:#ffa04d; stroke-width:1.6 }
+    .accf { fill:#ffa04d }.warm { fill:#ffb46b }
+    .note { fill:#8aa0b8; font: 11px monospace }
+  </style></defs>
+  <rect class="sky" width="560" height="300" rx="14"/>
+  <circle class="star" cx="48" cy="46" r="1.2"/><circle class="star" cx="514" cy="62" r="1"/><circle class="star" cx="476" cy="238" r="1.2"/><circle class="star" cx="64" cy="252" r="1"/>
+  <g transform="translate(40 74) scale(2.2)">
+    <path class="warm" d="M32 55 L22 58 L32 61 Z" opacity=".85"/>
+    <!-- 流亡舰体:蜂窝舱堆叠（多圆柱舱并排 = 居住舱段特征） -->
+    <path class="hull" d="M204 56 C200 42 176 36 138 36 C104 36 80 44 66 54 L58 60 L66 68 C80 76 106 80 140 80 L186 76 Z"/>
+    <!-- 蜂窝舱段（圆端舱 ×3,堆叠感） -->
+    <path class="hull" d="M96 48 h22 v14 h-22 z M120 46 h22 v18 h-22 z M144 44 h20 v20 h-20 z" opacity=".7"/>
+    <circle class="accf" cx="107" cy="55" r="3.4" fill="none"/>
+    <circle class="accf" cx="131" cy="55" r="3.8" fill="none"/>
+    <circle class="accf" cx="154" cy="54" r="3.6" fill="none"/>
+    <!-- 补丁帆（帆桁 + 补丁布:多层斜布条 = 太阳能帆修补感） -->
+    <path class="hull" d="M128 36 V14"/>
+    <path class="hull" d="M118 22 l10 8 M128 30 l10 -6" opacity=".9"/>
+    <!-- 前小炮（流亡自卫） -->
+    <path class="hull" d="M204 54 L220 53 L220 57 L204 60 Z"/>
+    <!-- 拼凑面板 -->
+    <path class="panel" d="M82 62 l10 -18 M94 64 l8 -18" stroke-dasharray="4 3"/>
+    <!-- 单宽引擎 -->
+    <path class="hull" d="M62 46 h10 v14 h-10 z" opacity=".85"/>
+    <path class="warm" d="M52 48 h8 v10 h-8 z"/>
+    <circle class="accf" cx="176" cy="40" r="1.3"/>
+  </g>
+  <text class="note" x="40" y="286">敌族 G：流亡舰队(烬火·回音·天底静区类)— 草稿(蜂窝居住舱 + 补丁帆桁 + 拼凑装甲)</text>
+</svg>
