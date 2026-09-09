@@ -35,6 +35,10 @@
  *         + 声望 13 + 全星系点亮 + 各族代表演示船 ×5（锤头鲨炮巡 MK3 满配驾驶/牛鲨突击巡/玄武
  *         重装旗舰/皇带鱼货舰/座头鲸矿舰）+ 弹药装备库（真机目测我方各族船形与敌族 A~G 型形，
  *         细节锚点/比例问题回传，详见 ship-battle-art 验收清单）。
+ *  - hauling 运输任务实测（2026-09-09，两站往返运输）：红环/烬火两座副站标记"建成"并入基地网络
+ *         + 点亮两星系 + 钱包 +300 万 + 蝠鲼级重载货舰（7000 m³ 大货舱）设为驾驶——任务中心「运输
+ *         任务」页签可见 母港⇄红环 / 母港⇄烬火 / 红环⇄烬火 三条航线（报酬随容量与航程预览），
+ *         点开始 → 顶部活动栏进度/停止运输（到站即止）→ 事件日志到站结算 → 货仓页看虚拟满载占用。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -598,6 +602,48 @@ function injectShipArt(state: GameState): string[] {
   return notes
 }
 
+/** hauling（2026-09-09 运输任务实测）：两座副站标记建成 + 点亮星系 + 大货舱货舰驾驶 */
+function injectHauling(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（真档可能在采矿/远征等；运输接单要求空闲停靠）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  if ('deliver' in state.sideTasks && state.sideTasks.deliver !== null) state.sideTasks.deliver = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('已清空进行中的主控作业（采矿/打捞/远征/扫描/待命/行程/手动炉线）——从干净停靠起点接运输')
+  state.wallet.isk += 3_000_000
+  notes.push('钱包 +3,000,000 ISK')
+  // 两座副站"建成"（stage = 档位数），并入基地网络 → 与母港互为运输端点
+  state.stationSites['site-redring'] = { stage: 3, delivered: {} }
+  state.stationSites['site-cinder'] = { stage: 3, delivered: {} }
+  notes.push('红环前哨站 / 烬火前哨站 标记建成（并网）；任务中心「运输任务」应出现 3 条航线（母港⇄红环、母港⇄烬火、红环⇄烬火）')
+  for (const g of ['galaxy-redring', 'galaxy-cinder']) {
+    if (!state.exploredGalaxies.includes(g)) state.exploredGalaxies.push(g)
+  }
+  notes.push('点亮 红环航道 / 烬火星区')
+  // 大货舱演示船（货运本职）：蝠鲼级重载货舰设为驾驶
+  const uid = addShipToFleet(state, 'sh-bowhead')
+  const s = state.fleet[uid]
+  if (s) {
+    s.customName = '运输试验·蝠鲼'
+    s.durability = 1
+    s.armorPct = 1
+  }
+  state.shipId = uid
+  notes.push('新增蝠鲼级重载货舰（已设为驾驶；货仓较大 → 每段报酬可观）')
+  notes.push('测试路径：星图 → 任务中心 →「运输任务」页签 → 任选一条航线「开始运输」→ 顶部活动栏看进度与「停止运输」（= 到站即止）→ 事件日志看每段到站报酬 → 货仓页看「虚拟货物占满货仓」→ 停靠副站后换一条航线 / 切换驾驶（任务终止）对照')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -610,6 +656,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   drone: injectDrone,
   cruiser: injectCruiser,
   shipart: injectShipArt,
+  hauling: injectHauling,
 }
 function main(): void {
   const feature = process.argv[2]

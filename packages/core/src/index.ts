@@ -411,6 +411,20 @@ export {
 export type { StationSiteProgress } from './state'
 
 export {
+  startHauling,
+  stopHauling,
+  advanceHauling,
+  cancelHaulingOnSwitch,
+  haulEndpoints,
+  dockedHaulEndpoint,
+  haulEndpointName,
+  haulLegReward,
+  haulingOccupiedM3,
+  HAUL_RATE_PER_M3_MIN,
+} from './hauling'
+export type { HaulEndpoint } from './hauling'
+
+export {
   battleWinPreview,
   bountyDamageForecast,
   bountyWinPercentGuarded,

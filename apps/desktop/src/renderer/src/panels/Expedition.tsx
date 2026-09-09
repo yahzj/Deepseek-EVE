@@ -47,6 +47,7 @@ import { MONEY_GLYPH } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, ProfileChip } from '../ui/shipInfo'
 import { ImportantTasks } from './ImportantTasks'
+import { HaulingPanel } from './Hauling'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
@@ -160,11 +161,13 @@ const TASK_SORT_LABEL: Record<TaskSort, string> = {
 
 /* 选项卡分类（船长优化）：重要 / 资源（建站） / 快递——任务可属于多类（如建站=重要+资源） */
 /* 注：悬赏任务已从任务中心抽出，独立成出港「战斗悬赏」标签（见 BountyPanel，船长 2026-09-05） */
-type TaskTabKey = 'important' | 'resource' | 'courier'
+/* 2026-09-09：新增「运输任务」族（两站往返，见 HaulingPanel） */
+type TaskTabKey = 'important' | 'resource' | 'courier' | 'hauling'
 const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
   { key: 'important', label: '重要任务' },
   { key: 'resource', label: '资源任务' },
   { key: 'courier', label: '快递任务' },
+  { key: 'hauling', label: '运输任务' },
 ]
 const TASK_TAB_KEY = 'whale-idle:task-tab'
 
@@ -172,7 +175,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {
       const v = localStorage.getItem(TASK_TAB_KEY)
-      return v === 'important' || v === 'resource' || v === 'courier' ? v : 'important'
+      return v === 'important' || v === 'resource' || v === 'courier' || v === 'hauling' ? v : 'important'
     } catch {
       return 'important'
     }
@@ -247,10 +250,15 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
             <div className="app-dim app-exp-idle">暂无建站任务——抵达对应星系后出现。</div>
           )}
         </div>
-      ) : (
+      ) : tab === 'courier' ? (
         <div>
           {/* v24：快递时效任务（建成任一副空间站后解锁；未解锁时给建设提示） */}
           <SideTasksArea engine={engine} onToast={onToast} kind="courier" />
+        </div>
+      ) : (
+        <div>
+          {/* 2026-09-09：运输任务（两站往返；虚拟满载） */}
+          <HaulingPanel engine={engine} onToast={onToast} />
         </div>
       )}
       </div>

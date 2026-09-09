@@ -111,6 +111,14 @@ import {
   BOUNTY_MC_RUNS,
   buildEvalState,
   estimateBountyWinOn,
+  // 2026-09-09 运输任务
+  startHauling,
+  stopHauling,
+  haulEndpoints,
+  haulEndpointName,
+  haulLegReward,
+  haulingOccupiedM3,
+  HAUL_RATE_PER_M3_MIN,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -1173,6 +1181,26 @@ export class GameEngine {
   /** 切换到船坞里的另一艘船 */
   changeShipAt(shipId: string): CommandResult {
     const result = changeShip(this.state, shipId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-09 运输任务：开始（目标端点 = 另一座已建成站；null = 母港） */
+  startHaulingAt(toSiteId: string | null): CommandResult {
+    const result = startHauling(this.state, toSiteId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-09 运输任务：停止（完成当前航段、到站即止） */
+  stopHaulingNow(): CommandResult {
+    const result = stopHauling(this.state)
     if (result.ok) {
       void this.persist()
       this.notify()

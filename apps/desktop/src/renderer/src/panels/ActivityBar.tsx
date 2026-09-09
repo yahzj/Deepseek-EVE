@@ -24,6 +24,7 @@ const KIND_ICON: Record<string, string> = {
   transit: 'ico-home',
   loop: 'ico-loop',
   courier: 'nav-task',
+  hauling: 'nav-task',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -52,6 +53,8 @@ function stopLabel(v: ActivityView): string {
       return '取消交付'
     case 'stop-loop':
       return '停止清剿'
+    case 'stop-hauling':
+      return '停止运输'
     default:
       return ''
   }
@@ -100,6 +103,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
     case 'stop-loop':
       run(engine.bountyLoopAt(null), '重复清剿已停止。')
       break
+    case 'stop-hauling':
+      run(engine.stopHaulingNow(), '运输任务将在到站后停止（本段报酬照常结算）。')
+      break
   }
 }
 
@@ -124,6 +130,8 @@ function goFor(kind: string): { page: string; mapTab?: string } {
     case 'standby':
       return { page: 'map', mapTab: 'star' }
     case 'courier':
+      return { page: 'map', mapTab: 'task' }
+    case 'hauling':
       return { page: 'map', mapTab: 'task' }
     case 'loop':
       return { page: 'map', mapTab: 'bounty' }
