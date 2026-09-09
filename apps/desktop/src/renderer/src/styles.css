@@ -2510,9 +2510,9 @@ body {
 .app-shipwin {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   margin: 0 0 8px;
-  padding: 5px 4px;
+  padding: 6px 10px 6px 6px;
   border: 1px solid rgba(85, 112, 140, 0.35);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(30, 50, 74, 0.28), rgba(8, 14, 24, 0.5));

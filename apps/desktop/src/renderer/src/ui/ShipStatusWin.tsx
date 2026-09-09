@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 左侧导航「出港」上方的驾驶舰船状态窗（2026-09-10 船长定）：
  * - 只展示当前驾驶舰船的独立矢量形（与战斗画面同款 25 舰资产），内部无任何文字；
  * - 根据驾驶船当前活动给"些许表现不同"（纯 CSS 轻动画，不碰引擎）：
@@ -47,7 +47,7 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
 
   return (
     <div className={`app-shipwin is-${cls}`} aria-hidden="true">
-      <ShipSprite shipId={def.id} role={def.role} size={146} engine={engineOn} />
+      <ShipSprite shipId={def.id} role={def.role} size={112} engine={engineOn} />
     </div>
   )
 }
