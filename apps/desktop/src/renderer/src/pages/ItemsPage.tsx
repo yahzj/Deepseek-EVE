@@ -27,8 +27,34 @@ export interface ItemNavProps {
 /** 仓库主视图（含装备库分组） */
 function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
+  // 仓库搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明过滤仓库物品与装备库）
+  const [wareQuery, setWareQuery] = useState('')
+  const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
   const modRows = Object.entries(state.moduleBay).filter(([, n]) => n > 0)
+  const hitItem = (id: string): boolean => {
+    if (wq.length === 0) return true
+    const def = engine.ctx.items.get(id)
+    if (!def) return false
+    return (
+      def.name.toLowerCase().includes(wq) ||
+      (ITEM_KIND_LABELS[def.kind] ?? '').toLowerCase().includes(wq) ||
+      (def.description ?? '').toLowerCase().includes(wq)
+    )
+  }
+  const hitMod = (id: string): boolean => {
+    if (wq.length === 0) return true
+    const def = engine.ctx.modules.get(id)
+    if (!def) return false
+    return (
+      def.name.toLowerCase().includes(wq) ||
+      (SLOT_LABELS[def.slot] ?? '').toLowerCase().includes(wq) ||
+      (def.description ?? '').toLowerCase().includes(wq)
+    )
+  }
+  const itemHits = wq.length > 0 ? rows.filter(([id]) => hitItem(id)) : rows
+  const modHits = wq.length > 0 ? modRows.filter(([id]) => hitMod(id)) : modRows
+  const hitTotal = itemHits.length + modHits.length
 
   /** 可装回船上搬运的分类（资源类；矿物留在仓库当制造料，弹药/无人机等占位货只卖不搬） */
   const LOADABLE_KINDS = new Set(['ore', 'gas', 'ice'])
@@ -96,7 +122,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   // 图标/列表切换（手册同款；网格为浏览视图）
   const [mode, setMode] = useItemView()
   const modCells: ItemGridCell[] = []
-  for (const [id, units] of modRows) {
+  for (const [id, units] of modHits) {
     const def = engine.ctx.modules.get(id)
     if (!def) continue
     modCells.push({ key: id, glyph: def.slot, name: def.name, sub: `×${units.toLocaleString('zh-CN')}`, title: def.description })
@@ -107,16 +133,38 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       <ItemViewBar mode={mode} onChange={setMode} />
       {mode === 'list' ? (
         <>
-      <Panel title="仓库" right={<span className="app-dim">无限容量 · 不随船 · 永不遗失</span>}>
+      <Panel
+        title="仓库"
+        right={
+          <span className="app-head-search-wrap">
+            <input
+              className="app-head-search"
+              type="text"
+              placeholder="搜索仓库…"
+              value={wareQuery}
+              onChange={(e) => setWareQuery(e.target.value)}
+              spellCheck={false}
+            />
+            <span className="app-dim">
+              {wq.length > 0 ? `匹配 ${hitTotal} 种` : '无限容量 · 不随船 · 永不遗失'}
+            </span>
+          </span>
+        }
+      >
         <div className="app-dim app-note">
           精炼产物自动入仓，制造材料从仓库扣除。资源（矿石/气体/冰矿）可卖出，也可装到当前驾驶的船上（受货仓空间限制）。
         </div>
       </Panel>
+      {wq.length > 0 && hitTotal === 0 ? (
+        <div className="app-dim app-note">
+          没有匹配「{wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。
+        </div>
+      ) : null}
 
       {ITEM_KIND_ORDER.map((kind) => {
-        const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
-        // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示
-        if (kindRows.length === 0 && kind !== 'ore' && kind !== 'mineral') return null
+        const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
+        // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索时任一空类都隐藏
+        if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wq.length > 0)) return null
         return (
           <Panel
             key={kind}
@@ -191,13 +239,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         title="装备（装备库）"
         right={<span className="app-dim">{modRows.length} 种 · 空间站库存</span>}
       >
-        {modRows.length === 0 ? (
+        {modHits.length === 0 ? (
           <div className="app-dim app-inv-empty">
-            装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。
+            {wq.length > 0
+              ? `没有匹配「${wareQuery.trim()}」的装备。`
+              : '装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。'}
           </div>
         ) : (
           <ul className="app-inv-list">
-            {modRows.map(([id, units]) => {
+            {modHits.map(([id, units]) => {
               const def = engine.ctx.modules.get(id)
               if (!def) return null
               const modGood = marketGoodOf(engine.ctx, 'module', id)
@@ -243,9 +293,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       ) : (
         <>
           <div className="app-dim app-note">图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。</div>
+          {wq.length > 0 && hitTotal === 0 ? (
+            <div className="app-dim app-note">
+              没有匹配「{wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。
+            </div>
+          ) : null}
           {ITEM_KIND_ORDER.map((kind) => {
-            const kindRows2 = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
-            if (kindRows2.length === 0 && kind !== 'ore' && kind !== 'mineral') return null
+            const kindRows2 = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
+            if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wq.length > 0)) return null
             const cells: ItemGridCell[] = kindRows2.map(([id, units]) => {
               const def = engine.ctx.items.get(id)
               return {
@@ -277,7 +332,11 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             {modCells.length > 0 ? (
               <ItemGlyphGrid cells={modCells} onPick={(key) => setPickMod(key)} />
             ) : (
-              <div className="app-dim app-inv-empty">装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。</div>
+              <div className="app-dim app-inv-empty">
+                {wq.length > 0
+                  ? `没有匹配「${wareQuery.trim()}」的装备。`
+                  : '装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。'}
+              </div>
             )}
           </Panel>
 

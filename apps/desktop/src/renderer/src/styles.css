@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
 
    鎼存梻鏁ょ痪褍绔风仦鈧弽宄扮础閿涘牏绮嶆禒鍫曗偓姘辨暏閺嶅嘲绱￠悽?@whale/ui 閹绘劒绶甸敍宀冾潌閸?index.css閿?   ============================================================ */
 
@@ -4859,11 +4859,11 @@ body {
 
 }
 
-/* 技能目录·标题内搜索（2026-09-09 船长：标题行内搜索栏，锁定特定技能；观感同市场搜索框） */
-.app-sk-query-wrap { display: inline-flex; align-items: center; gap: 8px; }
-.app-sk-query { width: 150px; padding: 3px 8px; border: 1px solid var(--wui-border); border-radius: 5px; background: rgba(8, 16, 28, 0.8); color: var(--wui-text); font-family: inherit; font-size: 12px; }
-.app-sk-query:focus { outline: none; border-color: var(--wui-accent); }
-.app-sk-query::placeholder { color: var(--wui-text-dim); opacity: 0.85; }
+/* 标题行内搜索栏（2026-09-09 船长：技能目录 / 仓库标题内搜索；观感同市场搜索框） */
+.app-head-search-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.app-head-search { width: 150px; padding: 3px 8px; border: 1px solid var(--wui-border); border-radius: 5px; background: rgba(8, 16, 28, 0.8); color: var(--wui-text); font-family: inherit; font-size: 12px; }
+.app-head-search:focus { outline: none; border-color: var(--wui-accent); }
+.app-head-search::placeholder { color: var(--wui-text-dim); opacity: 0.85; }
 
 /* 市场搜索框 */
 .app-mkt-search-input {

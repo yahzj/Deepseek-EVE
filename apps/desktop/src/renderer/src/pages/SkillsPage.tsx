@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 技能页：训练队列 + 全部技能（紧凑行），主窗口宽版。
  * T2：连锁训练（同技能逐级追加）、取消保留进度可续接、队列条目顺延、
  * 说明内 ⟦效果数值⟧ 高亮、各级训练时长展示。
@@ -83,9 +83,9 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
         className="is-fill"
         title="技能目录"
         right={
-          <span className="app-sk-query-wrap">
+          <span className="app-head-search-wrap">
             <input
-              className="app-sk-query"
+              className="app-head-search"
               type="text"
               placeholder="搜索技能…"
               value={skillQuery}
