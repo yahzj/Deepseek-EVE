@@ -685,7 +685,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           </div>
         </div>
         <div className="app-mkt-trade">
-          {/* 买/卖方向切换：独立分段开关样式，与下方交易按钮明确区分（船长 2026-09-05） */}
+          {/* 首行：买/卖方向切换 + 交易按钮并列（船长 2026-09-09：切换右侧不再空旷、详情卡省一行
+              高度，缓解与下方「我的挂单」抢窗口高度） */}
+          <div className="app-mkt-trade-top">
           <div className="app-mkt-sides" role="tablist">
             <button
               role="tab"
@@ -705,6 +707,21 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             >
               卖出
             </button>
+          </div>
+          {/* 交易按钮（2026-09-09：由面板底部上移与买/卖切换同排；挂单/市价/（卖出侧）全部卖出） */}
+          <div className="app-mkt-trade-btns">
+            <button className="app-btn is-small" onClick={doPlace}>
+              {tab === 'buy' ? '挂买单' : '挂卖单'}
+            </button>
+            <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
+              {tab === 'buy' ? '市价买入' : '市价卖出'}
+            </button>
+            {tab === 'sell' ? (
+              <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
+                全部卖出（{holdings}）
+              </button>
+            ) : null}
+          </div>
           </div>
           <div className="app-mkt-trade-row">
             <span className="app-dim">数量</span>
@@ -767,20 +784,6 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 </>
               )
             })()}
-          </div>
-          <div className="app-mkt-trade-btns">
-            {/* 2026-09-08 船长：挂单按钮前置到市价买卖之前（挂单/市价/（卖出侧）全部卖出） */}
-            <button className="app-btn is-small" onClick={doPlace}>
-              {tab === 'buy' ? '挂买单' : '挂卖单'}
-            </button>
-            <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
-              {tab === 'buy' ? '市价买入' : '市价卖出'}
-            </button>
-            {tab === 'sell' ? (
-              <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
-                全部卖出（{holdings}）
-              </button>
-            ) : null}
           </div>
         </div>
       </div>

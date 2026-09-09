@@ -4436,6 +4436,12 @@ body {
 
 .app-mkt-trade-btns .is-sellall { flex: 0 0 auto; padding-inline: 10px; }
 
+/* 交易首行（2026-09-09 船长：买/卖切换 + 交易按钮并列——切换左侧固定、按钮等分填满右侧，
+   消除切换右侧空旷并省一行高度；详情卡与下方「我的挂单」高度竞争缓解） */
+.app-mkt-trade-top { display: flex; align-items: center; gap: 12px; }
+.app-mkt-trade-top > .app-mkt-sides { flex: 0 0 auto; }
+.app-mkt-trade-top > .app-mkt-trade-btns { flex: 1 1 auto; padding-top: 0; border-top: none; }
+
 .app-fit-modal-head {
 
   display: flex;
