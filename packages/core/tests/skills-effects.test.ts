@@ -44,19 +44,19 @@ describe('技能补全：舰船操控学（航行时间每级 −2%）', () => {
   })
 })
 
-describe('技能补全：材料学（制造消耗每级 −2%）', () => {
-  it('满级 matNeedCount = ×0.9 向下取整（至少 1）；缺口预览同口径', () => {
+describe('技能补全：材料学（制造消耗每级 −1.5%，2026-09-08 技能加成下调约 20%）', () => {
+  it('满级 matNeedCount = ×0.925 向下取整（至少 1）；缺口预览同口径', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 2 })
     const ctx = makeTestCtx()
     expect(matNeedCount(state, 100)).toBe(100) // 零级
     state.skills.trained['materials'] = 5
-    expect(matNeedCount(state, 100)).toBe(90)
+    expect(matNeedCount(state, 100)).toBe(92) // floor(100 × 0.925)
     expect(matNeedCount(state, 1)).toBe(1) // 保底 1
-    // 缺料预览：100 → 折扣后 90，仓库 90 够、89 差 1
+    // 缺料预览：100 → 折扣后 92，仓库 92 够、91 差 1
     const spec = { materials: [{ itemId: 'ore-a', count: 100 }], buildSeconds: 60, buildCostIsk: 1000 } as const
-    state.warehouse.items['ore-a'] = 90
+    state.warehouse.items['ore-a'] = 92
     expect(missingMaterials(state, ctx, spec)).toEqual([])
-    state.warehouse.items['ore-a'] = 89
+    state.warehouse.items['ore-a'] = 91
     const miss = missingMaterials(state, ctx, spec)
     expect(miss.length).toBe(1)
     expect(miss[0]).toContain('还差 1')
@@ -202,11 +202,11 @@ describe('技能补全 P1：制造双技（批量生产学/组件标准化）', 
     const t0 = calcBuildDurationMs(state, ctx, spec)
     state.skills.trained['batch-production'] = 5
     const t5 = calcBuildDurationMs(state, ctx, spec)
-    expect(t5).toBe(Math.round(t0 * 0.8)) // −4%×5
-    // 组件标准化满级：材料学基础上再 −5%（总 ×0.95）
+    expect(t5).toBe(Math.round(t0 * 0.85)) // −3%×5
+    // 组件标准化满级：材料学基础上再 −4%（总 ×0.96）
     expect(matNeedCount(state, 100)).toBe(100)
     state.skills.trained['component-standardization'] = 5
-    expect(matNeedCount(state, 100)).toBe(95)
+    expect(matNeedCount(state, 100)).toBe(96)
   })
 })
 

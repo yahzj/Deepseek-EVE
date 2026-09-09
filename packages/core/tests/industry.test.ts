@@ -20,16 +20,16 @@ describe('精炼与市场（M1 经济）', () => {
     ctx = makeTestCtx()
   })
 
-  describe('精炼产出倍率（2026-09-08 工业收益体检再定：基础 120%、技能每级 +4%/+2%，满级 150%）', () => {
+  describe('精炼产出倍率（2026-09-08 工业收益体检再定：基础 120%、技能每级 +6%/+3%，满级 165%）', () => {
     it('无技能 = 基础 120%（无技能净率 ≈+20%）', () => {
       expect(refineRate(state, ctx)).toBe(1.2)
     })
 
-    it('精炼学 5 级 = 140%；再加高级回收处理 5 级 = 150%（满级）', () => {
+    it('精炼学 5 级 = 150%；再加高级回收处理 5 级 = 165%（满级）', () => {
       state.skills.trained['refining'] = 5
-      expect(refineRate(state, ctx)).toBeCloseTo(1.4, 10)
-      state.skills.trained['reprocessing'] = 5 // 1.2 + 0.2 + 0.1 = 1.5（浮点误差见 toBeCloseTo）
       expect(refineRate(state, ctx)).toBeCloseTo(1.5, 10)
+      state.skills.trained['reprocessing'] = 5 // 1.2 + 0.3 + 0.15 = 1.65（浮点误差见 toBeCloseTo）
+      expect(refineRate(state, ctx)).toBeCloseTo(1.65, 10)
     })
   })
 
@@ -68,13 +68,13 @@ describe('精炼与市场（M1 经济）', () => {
       expect(state.logs.some((l) => l.text.includes('精炼所得'))).toBe(true)
     })
 
-    it('产出倍率技能影响每批结算：精炼学 5 级 = 140%（每批 floor 后累计）', () => {
+    it('产出倍率技能影响每批结算：精炼学 5 级 = 150%（每批 floor 后累计）', () => {
       state.skills.trained['refining'] = 5
       state.fleet[state.shipId].cargo['ore-a'] = totalUnits
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       advanceGame(state, 61_000, ctx)
-      expect(countWare(state, 'min-a')).toBe(280) // floor(10×2×1.4)=28/批 ×10
-      expect(countWare(state, 'min-b')).toBe(70) // floor(10×0.5×1.4)=7/批 ×10
+      expect(countWare(state, 'min-a')).toBe(300) // floor(10×2×1.5)=30/批 ×10
+      expect(countWare(state, 'min-b')).toBe(70) // floor(10×0.5×1.5)=7/批 ×10
     })
 
     it('货仓+仓库一并供料；中途停炉：已完成批保留，余料本来就在仓库无需退回', () => {

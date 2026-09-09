@@ -17,16 +17,16 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   },
   refining: {
     // 2026-09-08 船长再定（工业工位收益体检）：无技能净率抬到 ≈+20%（基础倍率 100% → 120%），
-    // 满技净率在原数值上下调约两成 → 技能每级加半（精炼学 +4%、高级回收 +2%），满级倍率 150%
+    // 技能本身每级加成在原值上下调约 20% → 精炼学 +6%、高级回收 +3%（就近取整），满级倍率 165%
     baseRate: 1.2,
-    rateSkillId: 'refining', // 精炼学：产出倍率每级 +4%
-    ratePerLevel: 0.04,
-    secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +2%
-    secondRatePerLevel: 0.02,
+    rateSkillId: 'refining', // 精炼学：产出倍率每级 +6%
+    ratePerLevel: 0.06,
+    secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +3%
+    secondRatePerLevel: 0.03,
   },
   manufacturing: {
-    timeSkillId: 'industry', // 工业理论：每级 -5% 制造时间
-    timePerLevel: 0.05,
+    timeSkillId: 'industry', // 工业理论：每级 -4% 制造时间（2026-09-08 技能加成下调约 20%，原 -5%）
+    timePerLevel: 0.04,
   },
   combat: {
     basePower: 10, // 初始舰炮火力 10
