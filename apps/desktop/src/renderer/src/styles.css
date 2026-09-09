@@ -7853,7 +7853,6 @@ body {
 
 .page-stack > .wui-panel.is-fill { flex-shrink: 1; }
 
-<<<<<<< HEAD
 /* 舰船独立矢量形资产层（三号 2026-09-09；无类元素 = 主轮廓继承 currentColor 2.2） */
 .shipart-panel { stroke-width: 1; opacity: .4; fill: none; }
 .shipart-acc { stroke-width: 1.6; fill: none; }
@@ -7864,7 +7863,6 @@ body {
 .shipart-volt-i { stroke: #8fc7ff; stroke-width: 1.5; fill: none; opacity: .9; }
 .shipart-fill-g { fill: #8dff9e; stroke: none; opacity: .9; }
 .shipart-fill-i { fill: #8fc7ff; stroke: none; opacity: .9; }
-=======
 /* ---------- 组装机连续生产开关（2026-09-09 船长定：线行滑动开关 + 目标件数） ---------- */
 
 .app-mf-loop { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
@@ -7881,4 +7879,3 @@ body {
 .app-mf-goal-input { width: 46px; padding: 1px 4px; font-size: 11px; color: inherit; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(127, 227, 255, 0.25); border-radius: 4px; }
 .app-mf-goal-input:focus { outline: none; border-color: rgba(79, 216, 196, 0.8); }
 
->>>>>>> main
