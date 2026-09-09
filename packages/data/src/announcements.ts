@@ -18,6 +18,16 @@ export interface AnnouncementDef {
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
+    id: '2026-09-08-industry-profit',
+    title: '精炼与组装机收益再调：新手有赚头，制造不白干',
+    date: '2026-09-08',
+    tag: '数值',
+    bullets: [
+      '没有任何精炼技能时，精炼炉的炼矿收益上调：收益不再约等于直接卖原料，而是能获得约两成的净收益；',
+      '组装机若干低收益配方（弹药、修理组件与部分民用装备）的市场价格上调：制造这些物品不再接近白干；舰船与高级装备的收益维持不变。',
+    ],
+  },
+  {
     id: '2026-09-08-industry-ai-slots',
     title: 'AI 与工业调度焕新：核心门槛降低，产线铺得更开',
     date: '2026-09-08',
