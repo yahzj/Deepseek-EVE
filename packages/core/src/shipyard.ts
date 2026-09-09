@@ -13,6 +13,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
 import { retireSalvageShip } from './salvaging'
+import { cancelHaulingOnSwitch } from './hauling'
 import { scaledReturnMs } from './trips'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
@@ -91,6 +92,8 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   }
   const def = fleetDefOf(state, ctx, shipId)
   if (!def) return { ok: false, error: `未知舰船：${shipId}。` }
+  // 2026-09-09 运输任务：换驾驶 = 立即终止（虚拟货无残留、无惩罚）
+  if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
   // T8：驾驶船不在站内（野外停留/返航途中）时不可切换
   if (state.awayGalaxy !== null) {
     const where = state.transit.active
