@@ -79,6 +79,10 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-gravekeeper',
     name: '坟场守墓人',
     foeHpOverride: 3600, // 巡洋时代复调轮 r4（2026-09-09）：E 段——锤头鲨中位 53s✅；无技能参考 60%→≥70% 宽容线（原 r1 3900）
+    waves: [
+      { units: 2, hpShare: 0.55 },
+      { units: 1, hpShare: 0.45 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-grave',
     threat: 88,
     tactic: 'brawl',
@@ -229,6 +233,10 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-maw-hunt',
     name: '噬口猎杀令',
     foeHpOverride: 4000, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~55s（原 2460）
+    waves: [
+      { units: 2, hpShare: 0.5 },
+      { units: 1, hpShare: 0.5 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-maw',
     threat: 80,
     standingReq: 11,
@@ -242,6 +250,11 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-vault-sentinel',
     name: '穹顶守卫',
     foeHpOverride: 5600, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 55s→目标 ~75s（原 4100）
+    waves: [
+      { units: 2, hpShare: 0.35 },
+      { units: 2, hpShare: 0.35 },
+      { units: 1, hpShare: 0.3 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-vault',
     threat: 96,
     standingReq: 13,
@@ -255,6 +268,11 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-voidedge-warden',
     name: '虚海守望者',
     foeHpOverride: 4300, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~60s（原 2450）
+    waves: [
+      { units: 2, hpShare: 0.35 },
+      { units: 2, hpShare: 0.35 },
+      { units: 1, hpShare: 0.3 },
+    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-voidedge',
     threat: 88,
     standingReq: 12,

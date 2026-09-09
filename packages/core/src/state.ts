@@ -399,6 +399,8 @@ export interface BattleState {
   /** 连续作战保险（2026-09-08 船长定，仅巡回场次）：本场结构剩余低于该比例（相对满值结构，
    * 如 0.5 = 损失过半）→ 步进中自动中止并请求撤退（autoEscaped 置位）；非巡回战斗缺省不设 */
   hullEscapeFrac?: number
+  /** 多波次（2026-09-09）：当前波索引（0 基；AnomalyDef.waves 缺省/单波不写，读档零迁移） */
+  waveIdx?: number
   /** 已触发自动撤退请求（步进中止，结构保留当前值；由远征结算走轻损撤退路径——绝不弃船） */
   autoEscaped?: boolean
 }

@@ -753,6 +753,10 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 序号续发：以清洗后尾部序号 +1 为基准（旧档无 seq 字段时按序重排，见 cleanFx）
     fxSeq: fx.length > 0 ? fx[fx.length - 1]!.seq + 1 : 0,
     ended: endedRaw === 'me' || endedRaw === 'foe' ? endedRaw : null,
+    waveIdx:
+      typeof b.waveIdx === 'number' && Number.isFinite(b.waveIdx) && b.waveIdx > 0
+        ? Math.floor(b.waveIdx)
+        : undefined,
   }
 }
 

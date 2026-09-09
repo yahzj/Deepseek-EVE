@@ -838,6 +838,12 @@ export interface AnomalyDef {
    * 缺省 1。命中侧不变——只缩放 shotDmg；时长/HP 验收带以 battle-calibrate 矩阵为准。
    */
   foeDmgMul?: number
+  /**
+   * 多波次（2026-09-09 低安顶段悬赏；docs/design/wave-battles-20260909.md）：
+   * 敌方分批入场——每波 units 个"主舰+僚机"小队（escorts 随卡），血量 = 总血 × hpShare。
+   * 整场仍为一次悬赏（声望/奖金/残骸按原卡整场结算）；缺省 = 单波（现行为）。
+   */
+  waves?: ReadonlyArray<{ units: number; hpShare: number }>
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean
