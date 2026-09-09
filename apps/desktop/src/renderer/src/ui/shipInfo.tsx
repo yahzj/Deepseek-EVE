@@ -433,6 +433,18 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.evasionGapPct !== undefined) {
       lines.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}——敌命中 60% 时 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}；全船生效` })
     }
+    // 船体维修装置（2026-09-09 船长定：中槽自动修复装甲/结构；每脉冲消耗一枚对应修理组件）
+    if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
+      const kitName =
+        mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
+      const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
+      const perPulse = [mod.repairArmorHp, mod.repairHullHp]
+        .filter((x): x is number => (x ?? 0) > 0)
+        .map((x) => fmt(x!))
+        .join(' / ')
+      lines.push({ k: '自动维修', v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）` })
+      lines.push({ k: '运转消耗', v: `每跳消耗 ${kitName} ×1；组件耗尽自动停机——请确认货舱/仓库备足组件再出击` })
+    }
   }
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
   const st = stackingOf(mod)

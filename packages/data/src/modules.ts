@@ -855,6 +855,42 @@ export const MODULES: readonly ModuleDef[] = [
     salvageCycleMs: 6_000,
     description: '残骸打捞（高槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）；同类可多装（市场稀有）。',
   },
+  /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
+      每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；
+      三档：民用级 / MK1 / MK2） ═══ */
+  {
+    id: 'mod-hullrep-civ',
+    name: '民用船体维修装置',
+    slot: 'support',
+    rack: 'mid',
+    cpuUse: 6,
+    repairArmorHp: 5,
+    repairHullHp: 5,
+    repairKit: 'repairkit-civ',
+    description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 5 点（单层满则全额给另一层），每跳消耗 1 枚民用修理组件；组件耗尽自动停机——保命件，修不过敌方火力。',
+  },
+  {
+    id: 'mod-hullrep-1',
+    name: '船体维修装置 MK1',
+    slot: 'support',
+    rack: 'mid',
+    cpuUse: 14,
+    repairArmorHp: 10,
+    repairHullHp: 10,
+    repairKit: 'repairkit-mil',
+    description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 10 点（单层满则全额给另一层），每跳消耗 1 枚军用修理组件；组件耗尽自动停机——显著延寿，修不过敌方火力。',
+  },
+  {
+    id: 'mod-hullrep-2',
+    name: '船体维修装置 MK2',
+    slot: 'support',
+    rack: 'mid',
+    cpuUse: 26,
+    repairArmorHp: 18,
+    repairHullHp: 18,
+    repairKit: 'repairkit-mil',
+    description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 18 点（单层满则全额给另一层），每跳消耗 1 枚军用修理组件；组件耗尽自动停机——高配巡洋/主力舰的持久战底牌。',
+  },
 ]
 
 /** 构建"装备 id → 定义"目录 */

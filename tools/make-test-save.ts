@@ -39,6 +39,9 @@
  *         + 点亮两星系 + 钱包 +300 万 + 蝠鲼级重载货舰（7000 m³ 大货舱）设为驾驶——任务中心「运输
  *         任务」页签可见 母港⇄红环 / 母港⇄烬火 / 红环⇄烬火 三条航线（报酬随容量与航程预览），
  *         点开始 → 顶部活动栏进度/停止运输（到站即止）→ 事件日志到站结算 → 货仓页看虚拟满载占用。
+ *  - hullrep 船体维修装置实测（2026-09-09，中槽自动修复装甲/结构）：灰鲭鲨级驾驶带 MK2 维修装置
+ *         + 带伤出场（装甲 55%）——开战即见装甲在脉冲下回升、每 5 秒扣 1 枚军用组件、组件耗尽停机
+ *         + 战报返还；另有同型无维修对照船；三档装置与组件备件齐全。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -681,6 +684,75 @@ function injectHauling(state: GameState): string[] {
   return notes
 }
 
+/** hullrep（2026-09-09 船体维修装置实测）：灰鲭鲨级 ×2——试验船带 MK2 维修装置且带伤出场
+ * （装甲 55%：维修上限 = 出场满值 → 开战即可见装甲在脉冲下回升），对照船无装置同配装；
+ * 三档装置/两档组件备件齐全，开任意中低威胁悬赏即可观察 5 秒脉冲、组件扣减、耗尽停机与返还。 */
+function injectHullrep(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（从干净停靠起点出击）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  if ('deliver' in state.sideTasks && state.sideTasks.deliver !== null) state.sideTasks.deliver = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('已清空进行中的主控作业——从干净停靠起点出击')
+  state.wallet.isk += 5_000_000
+  notes.push('钱包 +5,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 6)
+  notes.push('协会声望升至 6（可接各档战斗悬赏）')
+  if (!state.exploredGalaxies.includes('galaxy-redring')) state.exploredGalaxies.push('galaxy-redring')
+  notes.push('点亮 红环航道')
+  // 试验船：灰鲭鲨级 + 船体维修装置 MK2（中槽第 1 位）+ 动能 MK2 四炮 + 盾抗/索敌 —— 设为驾驶
+  const uid = addShipToFleet(state, 'sh-mako')
+  const s = state.fleet[uid]!
+  s.customName = '维修试验·MK2'
+  s.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-hullrep-2', 'mod-shield-kin-2', 'mod-track-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  s.durability = 0.75
+  s.armorPct = 0.55 // 带伤出场：维修上限 = 满值 → 开战后装甲可见回升（演示修复能力）
+  state.shipId = uid
+  // 对照船：同配装但中槽换成 陀螺（无维修）
+  const uid2 = addShipToFleet(state, 'sh-mako')
+  const s2 = state.fleet[uid2]!
+  s2.customName = '无维修·对照'
+  s2.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  notes.push(`新增灰鲭鲨级 ×2：${uid}（维修试验·MK2，已设为驾驶——带伤出场装甲 55%，战斗中自动修复）与 ${uid2}（无维修·对照，舰船页切换对比）`)
+  // 补给：试验船货仓带足军用组件（每 5 秒跳耗 1 枚）；对照船同样给足但不会消耗
+  for (const sh of [s, s2]) {
+    sh.cargo['repairkit-mil'] = (sh.cargo['repairkit-mil'] ?? 0) + 60
+    sh.cargo['repairkit-civ'] = (sh.cargo['repairkit-civ'] ?? 0) + 20
+    sh.cargo['ammo-kinetic-l'] = (sh.cargo['ammo-kinetic-l'] ?? 0) + 600
+    sh.cargo['ammo-plasma-l'] = (sh.cargo['ammo-plasma-l'] ?? 0) + 300
+    sh.cargo['ammo-explosive-l'] = (sh.cargo['ammo-explosive-l'] ?? 0) + 300
+  }
+  notes.push('两船货仓各带 军用修理组件 ×60 / 民用 ×20 + 三型弹药（维修装置开战自动预载，结束退还未用）')
+  // 备件：三档装置 + 两档组件（仓库/装备库）
+  for (const m of ['mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
+  }
+  notes.push('装备库备 三档维修装置 ×2（民用级 / MK1 / MK2——装配页换装对照信息卡数值与 CPU）')
+  state.warehouse.items['repairkit-mil'] = (state.warehouse.items['repairkit-mil'] ?? 0) + 300
+  state.warehouse.items['repairkit-civ'] = (state.warehouse.items['repairkit-civ'] ?? 0) + 100
+  notes.push('仓库补 军用修理组件 ×300 / 民用 ×100（组件不足时装置开战即停机，可先移除货仓组件对照缺料提示）')
+  notes.push('测试路径：装配页看 维修装置信息卡（每 5 秒修复量 / 组件消耗 / CPU）→ 星图 → 战斗悬赏（红环「赤潮劫掠舰队」或母港中低威胁目标）开战 → 右上「维修装置运转中 · 组件 ×N」绿点徽标随脉冲呼吸 → 观察装甲/结构血条在受伤后回升 → 事件日志「组件耗尽自动停机」→ 结算后日志/货仓确认未用组件退回仓库 → 舰船页切换「无维修·对照」同目标再打一轮对比')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   b1: injectB1,
   standby: injectStandby,
@@ -695,6 +767,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   shipart: injectShipArt,
   wave: injectWave,
   hauling: injectHauling,
+  hullrep: injectHullrep,
 }
 function main(): void {
   const feature = process.argv[2]

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 远征（M3 + V12 两阶段 + 2026-09-06"完成即返航"语义）：派舰船去远方星系的异常点。
  * 流程 = 去程取消（定稿：下达即开战，无出航等待）→ 实时交火(battle) →
  * （胜利 = 结算后自动返航 back，返航 = 目标星系↔母港 2×单程、不可召回；
@@ -32,6 +32,7 @@ import {
   desiredRangeFor,
   persistFleetHullDamage,
   refundAmmo,
+  refundRepairKits,
   startBattleFor,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
@@ -389,6 +390,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
   refundAmmo(state, battle.ammo)
+  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
@@ -538,6 +540,7 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   const battle = exp.battle
   if (!battle) return
   refundAmmo(state, battle.ammo)
+  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)

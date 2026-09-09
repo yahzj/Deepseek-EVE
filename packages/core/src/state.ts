@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 游戏状态：一份存档里保存的全部内容。
  *
  * 设计要点（中文说明）：
@@ -408,6 +408,36 @@ export interface BattleState {
   waveClearAt?: number
   /** 已触发自动撤退请求（步进中止，结构保留当前值；由远征结算走轻损撤退路径——绝不弃船） */
   autoEscaped?: boolean
+  /** 船体维修装置运行态（2026-09-09 船长定；零迁移可选——旧档缺省 = 本场无维修装置介入）。
+   * 与弹药预载同哲学：开战把货舱（仓库兜底）中的对应修理组件移入 kits 账本，战斗中不可补给；
+   * 每 REPAIR_PULSE_MS 一次脉冲，各台未停机装置修复装甲/结构并扣 1 枚组件，耗尽即停机；
+   * 战斗结束未用组件退回仓库（见 combat.refundRepairKits）。 */
+  repair?: {
+    /** 装置运行快照（开战按装配写入；组件耗尽自动停机 stopped = true） */
+    units: BattleRepairUnit[]
+    /** 预载组件账本（item id → 枚数；脉冲逐枚扣减；余额 0 = 该型装置停机） */
+    kits: Record<string, number>
+    /** 下一脉冲战斗时刻（开战 = startedAt + 间隔；全部停机后清空 = 停调度） */
+    nextPulseAtMs?: number
+    /** 累计脉冲次数（战报展示；痊愈空转的脉冲也计数） */
+    pulses: number
+    /** 累计消耗组件枚数 */
+    kitsUsed: number
+  }
+}
+
+/** 船体维修装置单台运行快照（2026-09-09：开战写入，离线续算不依赖当前装配） */
+export interface BattleRepairUnit {
+  /** 装置模块 id（战报/UI 引用） */
+  moduleId: string
+  /** 本台每脉冲消耗的修理组件 id（民用级 = repairkit-civ；MK1/MK2 = repairkit-mil） */
+  kitId: string
+  /** 每脉冲修复装甲 HP（0 = 本台不修该层；满则额度转投另一层） */
+  armorPerPulse: number
+  /** 每脉冲修复结构 HP */
+  hullPerPulse: number
+  /** 组件耗尽自动停机（不再参与后续脉冲） */
+  stopped: boolean
 }
 
 /* ═══════════════ V9：市场状态 ═══════════════ */

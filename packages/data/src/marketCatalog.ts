@@ -149,6 +149,9 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-rof-1', kind: 'module', refId: 'mod-rof-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
   { key: 'mod-track-1', kind: 'module', refId: 'mod-track-1', rarity: 'common', basePrice: 26_000, demandMultiplier: 0.6 },
   { key: 'mod-gyro-1', kind: 'module', refId: 'mod-gyro-1', rarity: 'common', basePrice: 24_000, demandMultiplier: 0.6 },
+  // 船体维修装置（2026-09-09：中槽自动修复件——消耗型；民用级常驻、MK1/MK2 稀有现货；
+  // 2026-09-09 船长定：价格档位对位升一级 = 民用级对标支援件 MK1 档、MK1 对标 MK2 档、MK2 对标 MK3 档）
+  { key: 'mod-hullrep-civ', kind: 'module', refId: 'mod-hullrep-civ', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
   { key: 'mod-stab-kin-2', kind: 'module', refId: 'mod-stab-kin-2', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
   { key: 'mod-stab-exp-2', kind: 'module', refId: 'mod-stab-exp-2', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
   { key: 'mod-stab-pla-2', kind: 'module', refId: 'mod-stab-pla-2', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
@@ -161,6 +164,9 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-rof-3', kind: 'module', refId: 'mod-rof-3', rarity: 'rare', basePrice: 920_000, demandMultiplier: 0.65 },
   { key: 'mod-track-3', kind: 'module', refId: 'mod-track-3', rarity: 'rare', basePrice: 800_000, demandMultiplier: 0.65 },
   { key: 'mod-gyro-3', kind: 'module', refId: 'mod-gyro-3', rarity: 'rare', basePrice: 750_000, demandMultiplier: 0.65 },
+  // 船体维修装置 MK1/MK2（消耗型修复件：2026-09-09 船长定档位价对位——MK1 对标支援件 MK2 档、MK2 对标支援件 MK3 档）
+  { key: 'mod-hullrep-1', kind: 'module', refId: 'mod-hullrep-1', rarity: 'rare', basePrice: 185_000, demandMultiplier: 0.65 },
+  { key: 'mod-hullrep-2', kind: 'module', refId: 'mod-hullrep-2', rarity: 'rare', basePrice: 920_000, demandMultiplier: 0.65 },
   /* ═══ B3 打捞器（2026-09-05；高槽无伤害件：升级只减周期；初价按低耗件梯队，可调） ═══ */
   { key: 'mod-salvager-1', kind: 'module', refId: 'mod-salvager-1', rarity: 'common', basePrice: 20_000, demandMultiplier: 0.6 },
   { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 130_000, demandMultiplier: 0.65 },

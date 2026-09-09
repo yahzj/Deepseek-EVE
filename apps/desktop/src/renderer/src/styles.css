@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
 
    鎼存梻鏁ょ痪褍绔风仦鈧弽宄扮础閿涘牏绮嶆禒鍫曗偓姘辨暏閺嶅嘲绱￠悽?@whale/ui 閹绘劒绶甸敍宀冾潌閸?index.css閿?   ============================================================ */
 
@@ -6141,6 +6141,12 @@ body {
 .app-bts-chip.is-foe i { border-radius: 2px; }
 
 .app-bts-ammo { margin-left: auto; display: inline-flex; gap: 8px; font-family: var(--wui-mono); font-size: 11px; }
+
+/* 船体维修装置状态徽标（2026-09-09：运转 = 绿点呼吸；组件耗尽停机 = 暗红停跳） */
+.app-bts-repair { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.08); background: rgba(10,17,27,.5); border-radius: 4px; padding: 2px 7px; color: var(--wui-text-dim); font-size: 11px; }
+.app-bts-repair i { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #6fd98a; box-shadow: 0 0 6px rgba(111,217,138,.85); animation: app-bts-repair-pulse 1.6s ease-in-out infinite; }
+.app-bts-repair.is-down i { background: #e0685f; box-shadow: none; animation: none; }
+@keyframes app-bts-repair-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
 .app-bts-sliderRow { display: flex; align-items: center; gap: 10px; }
 
