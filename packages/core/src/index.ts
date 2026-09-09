@@ -564,7 +564,8 @@ export {
   courierTaskUnlocked,
   courierDelivering,
   startCourierDelivery,
-  RESOURCE_TASK_MARGIN,`n  SPAWN_SUPPLY_CUT,
+  RESOURCE_TASK_MARGIN,
+  SPAWN_SUPPLY_CUT,
   COURIER_TASK_MARGIN,
 } from './sideTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
