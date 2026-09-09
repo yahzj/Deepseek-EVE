@@ -2520,6 +2520,14 @@ body {
 }
 .app-shipwin .app-sprite { line-height: 0; }
 .app-shipwin .app-sprite svg { display: block; }
+/* 切换驾驶的交叉过渡层（2026-09-10：旧舰淡出左移 / 新舰自右滑入淡入，互不覆盖状态动画——
+   过渡动画挂图层元素，舰体自身的浮动/摇摆/震动动画仍挂在 .app-sprite 上不受影响） */
+.app-shipwin-stack { position: relative; width: 112px; height: 52px; flex: 0 0 auto; }
+.app-shipwin-layer { position: absolute; left: 0; top: 0; }
+.app-shipwin-layer.is-leave { animation: app-swin-leave 0.45s ease forwards; }
+.app-shipwin-layer.is-enter { animation: app-swin-enter 0.45s ease; }
+@keyframes app-swin-leave { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-10px); } }
+@keyframes app-swin-enter { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 .app-shipwin.is-docked .app-sprite svg { animation: app-swin-breathe 3.2s ease-in-out infinite; filter: drop-shadow(0 0 7px rgba(120, 200, 255, 0.16)); }
 .app-shipwin.is-work .app-sprite { animation: app-swin-float 2.4s ease-in-out infinite; }
 .app-shipwin.is-travel .app-sprite { animation: app-swin-sway 1.9s ease-in-out infinite; }
