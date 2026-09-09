@@ -37,6 +37,7 @@ import {
 import { Panel } from '@whale/ui'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
+import { ShipSprite } from '../ui/ShipSprite'
 import type { PageProps } from './common'
 
 
@@ -356,6 +357,22 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         <div className="app-fit-cols">
           <div className="app-fit-col-left">
         {shipDef ? (
+          <>
+            {/* 舰船形象 + 间接属性（船长 2026-09-09：左栏顶部插入独立舰影，间接属性移其右侧；
+                窗口不足 1180px 时隐藏间接列——高度守恒：原底部间接块整体上移占位） */}
+            <div className="app-fit-stage">
+              <div className="app-fit-stage-art">
+                <ShipSprite shipId={shipDef.id} role={shipDef.role} size={280} engine={false} />
+              </div>
+              {shipIndirectLines(shipDef).length > 0 ? (
+                <div className="app-fit-indirect">
+                  <div className="app-info-note app-fit-indirect-note">
+                    间接属性（速度参与战斗机动与航行；信号/锁定/质量为设定展示，不参与战斗公式）
+                  </div>
+                  <InfoTable lines={shipIndirectLines(shipDef)} />
+                </div>
+              ) : null}
+            </div>
           <div className="app-fit-shipinfo">
             <span className="app-fit-shipinfo-head">
               {/* 血量徽章 = 装后合成值（装备/技能生效后）；火力增幅已从徽章移入下方属性行（船长 2026-09-05） */}
@@ -401,13 +418,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               ]}
               note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按 EVE 式乘入合成（上限 90%）；多装与「动力」细则见手册速览「装配」。`}
             />
-            {shipIndirectLines(shipDef).length > 0 ? (
-              <div className="app-fit-shipinfo-low">
-                <div className="app-info-note">间接属性（速度参与战斗机动与航行；信号/锁定/质量为设定展示，不参与战斗公式）</div>
-                <InfoTable lines={shipIndirectLines(shipDef)} />
-              </div>
-            ) : null}
           </div>
+          </>
         ) : null}
           </div>
           <div className="app-fit-col-right">
