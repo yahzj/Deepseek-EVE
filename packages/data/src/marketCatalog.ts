@@ -101,10 +101,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-ammo-kinetic', kind: 'blueprint', refId: 'bp-ammo-kinetic', rarity: 'common', basePrice: 1350, demandMultiplier: 0.6 },
   { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1650, demandMultiplier: 0.6 },
   { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1950, demandMultiplier: 0.6 },
-  // 弹药 MK2 生产线蓝图（2026-09-09：稀有书；书价 ×1.5 与全蓝图化补给线同批）
-  { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'rare', basePrice: 9_000, demandMultiplier: 0.6 },
-  { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'rare', basePrice: 12_750, demandMultiplier: 0.6 },
-  { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'rare', basePrice: 18_000, demandMultiplier: 0.6 },
+  // 弹药 MK2 生产线蓝图（2026-09-09：奇货书——船长追加拍板 rare→exotic；书价 ×1.5 与全蓝图化补给线同批；
+  // 收购档随奇货惯例 1.0L 全价回收，与全部 exotic 蓝图书行一致）
+  { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'exotic', basePrice: 9_000, demandMultiplier: 1.0 },
+  { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'exotic', basePrice: 12_750, demandMultiplier: 1.0 },
+  { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'exotic', basePrice: 18_000, demandMultiplier: 1.0 },
   // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
   { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 5400, demandMultiplier: 0.6 },
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 13500, demandMultiplier: 0.6 },
