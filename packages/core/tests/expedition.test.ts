@@ -228,7 +228,10 @@ describe('远征自动返航最近建成站（2026-09-08 船长定：所有自�
     st.exploredGalaxies.push('galaxy-far')
     st.stationSites['site-far'] = { stage: 2, delivered: {} } // 已建成
     expect(startExpedition(st, 'ano-far-v', c).ok).toBe(true)
-    advanceGame(st, 10 * 60_000, c) // 打赢（结算在 chunk 末尾）
+    // 小步推进直到转入返航段（2026-09-09：返航从战斗停表时刻起算——大步长会把返航一并结算到家）
+    for (let i = 0; i < 600 && !(st.expedition.active && st.expedition.phase === 'back'); i++) {
+      advanceGame(st, 500, c)
+    }
     expect(st.expedition.phase).toBe('back') // 本地返航段
     advanceGame(st, 125_000, c) // 走完 120s 返港段
     expect(st.expedition.active).toBe(false)
@@ -266,14 +269,18 @@ describe('返航段进度条（2026-09-08 玩家反馈：仅倒计时变、进�
     st.wallet.isk = 500_000
     const c = makeTestCtx({ anomalies: [anomaly('ano-bar', 'galaxy-hub', { threat: 1, reward: 1_000 })] })
     expect(startExpedition(st, 'ano-bar', c).ok).toBe(true)
-    advanceGame(st, 10 * 60_000, c) // 打赢（结算在 chunk 末尾 → 进入 back，返航段 120s）
+    // 小步推进直到转入返航段（2026-09-09 修复后返航从战斗停表时刻起算；大步长会直接把返航结算完）
+    for (let i = 0; i < 600 && !(st.expedition.active && st.expedition.phase === 'back'); i++) {
+      advanceGame(st, 500, c)
+    }
     expect(st.expedition.phase).toBe('back')
     const v0 = expeditionStatus(st, c)
     expect(v0.phase).toBe('back')
-    expect(v0.percent).toBe(0) // 刚转入返航段：进度从 0 起（回归：旧分母 outMs×2=0 → 恒 0/卡死）
+    expect(v0.percent).toBeLessThan(5) // 刚转入返航段：进度接近 0（回归：旧分母 outMs×2=0 → 恒 0/卡死）
     advanceGame(st, 60_000, c)
     const v1 = expeditionStatus(st, c)
-    expect(v1.percent).toBe(50) // 120s 段过半
+    expect(v1.percent).toBeGreaterThan(v0.percent) // 进度随剩余时间推进
+    expect(v1.percent).toBeGreaterThan(40) // 120s 段已过半附近
     advanceGame(st, 61_000, c)
     expect(st.expedition.active).toBe(false) // 返航完成
   })

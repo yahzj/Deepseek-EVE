@@ -452,8 +452,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         : ctx.galaxies.get(ret.base)?.name ?? ret.base
     exp.phase = 'back'
     exp.returnReason = 'victory'
-    exp.returnAtGameMs = state.gameMs // 2026-09-08：返航段起点（进度分母用）
-    exp.finishAtGameMs = state.gameMs + backMs
+    // 返航计时起点 = 战斗停表时刻（击杀/超时拍；2026-09-09 修复：此前按结算时的 state.gameMs
+    // 起算——离线大步长下战斗结束即结算，离线剩余时间全部浪费，"上线才刚开始返航"）
+    const endAt = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
+    exp.returnAtGameMs = endAt
+    exp.finishAtGameMs = endAt + backMs
     if (ret.base === anomaly.galaxyId || anomaly.galaxyId === HOME_GALAXY_ID) {
       // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
       addLog(state, 'info', '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。')
@@ -505,9 +508,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   exp.battle = null
   exp.phase = 'back'
   exp.returnReason = 'defeat'
-  exp.returnAtGameMs = state.gameMs // 2026-09-08：返航段起点（进度分母用）
+  // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：同胜利路径——离线大步长下不让离线剩余浪费）
+  const endAtD = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
+  exp.returnAtGameMs = endAtD
   const retD = returnBackMs(state, ctx, anomaly.galaxyId)
-  exp.finishAtGameMs = state.gameMs + (retD.ms > 0 ? retD.ms : exp.outMs * 2)
+  exp.finishAtGameMs = endAtD + (retD.ms > 0 ? retD.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
 }
 
@@ -586,9 +591,12 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   exp.battle = null
   exp.phase = 'back'
   exp.returnReason = 'retreat'
-  exp.returnAtGameMs = state.gameMs // 2026-09-08：返航段起点（进度分母用）
+  // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：自动撤退由大步长推进触发时,离线剩余时间
+  // 应计入返航,而不是从结算时（=离线末）才起步）
+  const endAtR = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
+  exp.returnAtGameMs = endAtR
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
-  exp.finishAtGameMs = state.gameMs + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
+  exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
 }
 
