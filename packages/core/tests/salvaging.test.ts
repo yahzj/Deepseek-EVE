@@ -1,14 +1,16 @@
 /**
- * B3 打捞作业（采矿式单趟）测试（2026-09-05 船长定稿口径）：
- * 装配门槛（需打捞器）/ 出航→打捞结算（密度下降、残骸入货仓）/ 满仓自动返航卸货结束 /
- * 手动停止。
+ * B3 打捞作业（采矿式自动循环，2026-09-09 船长定：默认满仓返航卸货后同星系自动续捞）测试：
+ * 装配门槛（需打捞器）/ 即时打捞结算（密度下降、残骸入货仓）/ 满仓自动返航卸货后自动续捞 /
+ * stopAfterTrip 单趟收工 / 手动停止 / AI 打捞任务循环。
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import { advanceSalvageOp, assayChanceOf, pullOneWreck, salvagerCyclesOf, startSalvageOp, stopSalvageOp } from '../src/salvaging'
+import { advanceSalvageOp, assayChanceOf, pullOneWreck, salvagerCyclesOf, setSalvageAutoCycle, setSalvageStopAfterTrip, startSalvageOp, stopSalvageOp } from '../src/salvaging'
 import { injectWreckDensity, wreckDensityOf } from '../src/salvage'
-import { assignAiSalvage, advanceAi } from '../src/ai'
+import { assignAiSalvage, advanceAi, cancelAiTask } from '../src/ai'
+import { advanceShipReturns } from '../src/mining'
+import { changeShip } from '../src/shipyard'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 import { countItem, countWare } from '../src/inventory'
@@ -32,7 +34,7 @@ function fittedState(seed: number, cargoM3 = 800) {
   return state
 }
 
-describe('打捞作业（采矿式单趟：去程取消，指令即打捞）', () => {
+describe('打捞作业（采矿式自动循环：去程取消，指令即打捞）', () => {
   it('没有打捞器不能出发；装上打捞器即可合法开捞（下达即打捞）', () => {
     const state = fittedState(1)
     const ctx = ctxOf()
@@ -65,24 +67,153 @@ describe('打捞作业（采矿式单趟：去程取消，指令即打捞）', (
     expect(countItem(state, wreckId)).toBeGreaterThan(0)
   })
 
-  it('满仓（放不下下一轮）→ 自动返航（去程并入，按货仓占比缩放）→ 到港卸入仓库 → 作业结束（不自动续）', () => {
+  it('满仓→自动返航卸货→自动循环（默认开）：卸入仓库后同星系自动续捞、跨趟多次返港', () => {
     const state = fittedState(5)
-    const ctx = ctxOf(1.5) // 小货仓：第一轮捞取就放不下
+    const ctx = ctxOf(20) // 小货仓：几轮就满，便于快速跨趟
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
-    // 逐拍推进到转返航（返航腿随货仓占比缩放，不再用固定毫秒断言）
+    expect(state.salvaging.autoCycle).toBe(true) // 默认开
+    // 逐拍推进到转返航（返航腿随货仓占比缩放，不用固定毫秒断言）
     let guard = 0
     while (state.salvaging.phase !== 'returning' && state.salvaging.active && guard++ < 500) {
       advanceSalvageOp(state, 100, ctx)
     }
     expect(state.salvaging.phase).toBe('returning')
-    advanceSalvageOp(state, 200_000, ctx) // 足够覆盖缩放后的返航腿
+    advanceSalvageOp(state, 60_000, ctx) // 覆盖多趟：卸货 → 续捞 → 再满 → 再返航…
+    expect(state.salvaging.active).toBe(true) // 自动循环：作业不结束
+    expect(state.salvaging.galaxyId).toBe('galaxy-far') // 同星系续捞
+    expect(state.logs.filter((l) => l.text.includes('打捞自动返港')).length).toBeGreaterThanOrEqual(2) // 至少卸了两趟
+    const wreckId = 'wreck-ano-far'
+    expect(countWare(state, wreckId)).toBeGreaterThan(0) // 残骸已卸入物品仓库
+    // 手动停止：本轮作业结束（偏好保留）
+    expect(stopSalvageOp(state, ctx)).toBe(true)
     expect(state.salvaging.active).toBe(false)
-    expect(state.logs.some((l) => l.text.includes('打捞自动返港'))).toBe(true)
-    expect(state.logs.some((l) => l.text.includes('不自动续'))).toBe(true)
   })
 
-  it('AI 打捞任务：指派（需打捞器/名额/核心）→ 单趟往返 → 满仓返港卸货 → 任务结束核心归还', () => {
+  it('勾「本次返航卸货后停止」：卸完这一趟即收工（自动循环已结束）', () => {
+    const state = fittedState(6)
+    const ctx = ctxOf(1.5) // 小货仓：第一轮就放不下 → 立即返航
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    setSalvageStopAfterTrip(state, true) // 与采矿同款联动：autoCycle 被置回开
+    expect(state.salvaging.autoCycle).toBe(true)
+    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    let guard = 0
+    while (state.salvaging.phase !== 'returning' && state.salvaging.active && guard++ < 500) {
+      advanceSalvageOp(state, 100, ctx)
+    }
+    expect(state.salvaging.phase).toBe('returning')
+    advanceSalvageOp(state, 60_000, ctx)
+    expect(state.salvaging.active).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('自动循环已结束'))).toBe(true)
+  })
+
+  it('关闭自动循环：仍满仓返航卸货，但卸完即收工（单趟，不续捞）', () => {
+    const state = fittedState(8)
+    const ctx = ctxOf(1.5)
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    setSalvageAutoCycle(state, false)
+    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    let guard = 0
+    while (state.salvaging.phase !== 'returning' && state.salvaging.active && guard++ < 500) {
+      advanceSalvageOp(state, 100, ctx)
+    }
+    expect(state.salvaging.phase).toBe('returning')
+    advanceSalvageOp(state, 60_000, ctx)
+    expect(state.salvaging.active).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('打捞自动返港'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('未开启自动循环'))).toBe(true)
+  })
+
+  it('打捞池排除 B1 hidden 遭遇模板（2026-09-09 船长现场：母港捞出狂徒/深空屠夫残骸的根因）', () => {
+    // 星系内同时有真实悬赏敌群 + hidden 遭遇模板（威胁更高、galaxyId 占位）：
+    // 抽池必须只出真实敌群残骸，模板残骸永不产出；纯模板星系不可开捞/派单
+    // （用不与 makeTestCtx 默认档冲突的自定义星系 galaxy-x）
+    const state = fittedState(9)
+    state.exploredGalaxies.push('galaxy-x')
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    const ctxMix = makeTestCtx({
+      ships: [ship('sandcat', { cargo: 800 })],
+      galaxies: [{ ...galaxy('galaxy-x', '异乡'), security: -0.6 }],
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-x', travelMinutes: 2 }],
+      anomalies: [
+        anomaly('ano-x', 'galaxy-x', { threat: 40, tactic: 'brawl' }),
+        { ...anomaly('enc-x', 'galaxy-x', { threat: 200, tactic: 'brawl' }), hidden: true },
+      ],
+      modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })],
+    })
+    expect(startSalvageOp(state, 'galaxy-x', ctxMix).ok).toBe(true)
+    advanceSalvageOp(state, 20_000, ctxMix) // ~20 轮：若模板入池（威胁 200 主导）必然抽到模板
+    expect(countItem(state, 'wreck-enc-x') + countWare(state, 'wreck-enc-x')).toBe(0) // 模板残骸永不产出
+    expect(countItem(state, 'wreck-ano-x') + countWare(state, 'wreck-ano-x')).toBeGreaterThan(0)
+    // 纯 hidden 模板星系：不可开捞（无可打捞敌群）
+    expect(stopSalvageOp(state, ctxMix)).toBe(true) // 先停掉上场景的作业
+    const ctxOnlyHidden = makeTestCtx({
+      ships: [ship('sandcat', { cargo: 800 })],
+      galaxies: [{ ...galaxy('galaxy-x', '异乡'), security: -0.6 }],
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-x', travelMinutes: 2 }],
+      anomalies: [{ ...anomaly('enc-x', 'galaxy-x', { threat: 40 }), hidden: true }],
+      modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })],
+    })
+    const r = startSalvageOp(state, 'galaxy-x', ctxOnlyHidden)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('没有可打捞')
+    state.skills.trained['ai-expert'] = 1
+    state.aiCores.basic = 1
+    state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: ['mod-salvager-1'], mid: [], low: [] } }
+    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-x', ctxOnlyHidden).ok).toBe(false)
+  })
+
+  it('打捞中切换驾驶（采矿同构善后 2026-09-09）：旧船自动返航到港卸货、作业结束、循环偏好保留', () => {
+    const state = fittedState(11)
+    state.debugQuick = true
+    const ctx = ctxOf(100)
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    // 第二艘船（无打捞器）作切换目标
+    state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: [], mid: [], low: [] } }
+    injectWreckDensity(state, ctx, 'galaxy-far', 20)
+    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    advanceSalvageOp(state, 4_000, ctx) // 就地捞几轮入旧船货仓（不足满仓，仍在地作业）
+    const oldShip = state.shipId
+    const cargoBefore = Object.values(state.fleet[oldShip]!.cargo).reduce((a, b) => a + b, 0)
+    expect(cargoBefore).toBeGreaterThan(0)
+    const r = changeShip(state, 'sandcat2', ctx)
+    expect(r.ok).toBe(true)
+    expect(state.shipId).toBe('sandcat2')
+    expect(state.salvaging.active).toBe(false) // 作业随换船结束（不再以新船"续捞"）
+    expect(state.shipReturns[oldShip]).toBeDefined() // 旧船善后返航账本
+    expect(state.salvaging.autoCycle).toBe(true) // 循环偏好跨趟保留
+    expect(state.logs.some((l) => l.text.includes('打捞已随换船结束'))).toBe(true)
+    advanceShipReturns(state, 60_000, ctx) // 覆盖善后返航腿（debugQuick 1 秒）
+    expect(state.shipReturns[oldShip]).toBeUndefined() // 到港清账
+    expect(state.logs.some((l) => l.text.includes('打捞善后返航到港'))).toBe(true)
+    expect(countWare(state, 'wreck-ano-far')).toBeGreaterThan(0) // 残骸已卸入物品仓库
+  })
+
+  it('打捞返航中切换驾驶：善后接续剩余返航腿，到港卸货清账', () => {
+    const state = fittedState(12)
+    state.debugQuick = true
+    const ctx = ctxOf(100)
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: [], mid: [], low: [] } }
+    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    // 手工置为返航相位：满仓货载 + 返航刚开始
+    state.salvaging.phase = 'returning'
+    state.salvaging.phaseAccMs = 0
+    state.salvaging.tripM3 = 40
+    state.fleet[state.shipId]!.cargo['wreck-ano-far'] = 40
+    const oldShip = state.shipId
+    expect(changeShip(state, 'sandcat2', ctx).ok).toBe(true)
+    expect(state.salvaging.active).toBe(false)
+    const ret = state.shipReturns[oldShip]
+    expect(ret).toBeDefined()
+    expect(ret!.reason).toBe('salvage')
+    expect(ret!.legMs).toBeGreaterThan(0)
+    advanceShipReturns(state, 60_000, ctx)
+    expect(state.shipReturns[oldShip]).toBeUndefined()
+    expect(countWare(state, 'wreck-ano-far')).toBe(40)
+  })
+
+  it('AI 打捞任务：指派（需打捞器/名额/核心）→ 自动循环（多趟返港卸货）→ 取消才结束、核心归还', () => {
     const state = fittedState(7)
     state.debugQuick = true
     const ctx = ctxOf(100)
@@ -96,15 +227,20 @@ describe('打捞作业（采矿式单趟：去程取消，指令即打捞）', (
     // 装上打捞器 → 出发
     state.fleet['sandcat2']!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-far', ctx).ok).toBe(true)
-    // 大推进：出航（效率 40% 拉长）→ 打捞（基础周期 1s ÷40% = 2.5s/轮）→ 满仓（100 m³）→ 返航 → 结束
+    // 大推进：出航（效率 40% 拉长）→ 打捞（基础周期 1s ÷40% = 2.5s/轮）→ 满仓（100 m³）→ 返航 →
+    // 卸货 → 自动循环再出航（多趟）；核心持续占用直到取消
     injectWreckDensity(state, ctx, 'galaxy-far', 40)
     state.gameMs = 0
-    advanceAi(state, 200_000, ctx)
-    expect(state.aiAssignments['sandcat2']).toBeUndefined() // 任务结束
-    expect(state.aiCores.basic).toBe(1) // 核心已归还
+    advanceAi(state, 300_000, ctx)
+    expect(state.aiAssignments['sandcat2']).toBeDefined() // 循环中：任务未结束
+    expect(state.aiCores.basic).toBe(0) // 核心仍被占用
     const wreckId = 'wreck-ano-far'
-    expect(countItem(state, wreckId) + countWare(state, wreckId)).toBeGreaterThan(0) // 残骸已入物品仓库
-    expect(state.logs.some((l) => l.text.includes('打捞任务完成'))).toBe(true)
+    expect(countWare(state, wreckId)).toBeGreaterThan(0) // 残骸已卸入物品仓库（至少一趟）
+    expect(state.logs.filter((l) => l.text.includes('[AI') && l.text.includes('打捞自动返港')).length).toBeGreaterThanOrEqual(2) // 至少两趟
+    // 取消任务 → 结束并归还核心
+    expect(cancelAiTask(state, 'sandcat2', ctx)).toBe(true)
+    expect(state.aiAssignments['sandcat2']).toBeUndefined()
+    expect(state.aiCores.basic).toBe(1)
   })
 
   it('漂流物打捞学：残骸打捞量每级 +12%（Lv5 = ×1.6；主控/AI 同源 pullOneWreck）', () => {

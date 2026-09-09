@@ -106,7 +106,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 主控打捞（B3：单趟作业；2026-09-09 补齐活动栏进度条——出航/返航 = 行程进度，
+  // ── 主控打捞（B3：自动循环作业；2026-09-09 补齐活动栏进度条——出航/返航 = 行程进度，
   //    打捞中 = 主循环周期进度（最短打捞器周期档），与矿带页 salvageProgressOf 同源） ──
   const svg = state.salvaging
   if (svg.active) {

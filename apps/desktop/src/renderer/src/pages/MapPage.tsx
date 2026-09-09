@@ -545,7 +545,7 @@ function BeltCard({
   )
 }
 
-/* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式单趟） ═══════════════ */
+/* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式自动循环） ═══════════════ */
 
 /** 打捞速率与拆解估价（当前驾驶船装配/技能 × 当前密度现算；展示用近似；回收卡同口径共用 RECYCLE_POOL_AVG_ISK） */
 function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyId: string, density: number): { eff: string | null; val: string | null } {
@@ -651,12 +651,16 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
     }
     const r = engine.assignAiSalvageAt(shipId, coreType, galaxyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
-    else onToast('AI 副船已出发打捞（满仓自动返港卸货后任务结束）。')
+    else onToast('AI 副船已出发打捞（自动循环：满仓返港卸货后自动再出航，取消任务才结束）。')
   }
   function cancelAi(sid: string): void {
     if (engine.cancelAiTaskAt(sid)) onToast('AI 打捞任务已取消（核心已归还）。')
     else onToast('取消失败：任务状态异常。', true)
   }
+
+  // 循环偏好（与采矿同款：默认自动循环；「本次返航卸货后停止」= 做单趟）
+  const autoCycleOn = me.autoCycle !== false
+  const stopAfterTripOn = me.stopAfterTrip === true
 
   return (
     <Panel
@@ -665,9 +669,31 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
       <div className="app-dim app-note">
-        驾驶船高槽装打捞器即可开捞：单趟作业、满仓自动返航卸货；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。
+        驾驶船高槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。
       </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
+
+      {/* 打捞循环设置行（2026-09-09 船长定：与采矿同款；自动循环默认开） */}
+      <div className="app-mining-settings">
+        <label className="app-check">
+          <input
+            type="checkbox"
+            checked={autoCycleOn}
+            disabled={me.active}
+            onChange={(e) => engine.setSalvageAutoCycleAt(e.target.checked)}
+          />
+          自动循环（满舱返航卸入仓库 → 去程并入返航 → 自动再打捞）
+        </label>
+        <label className="app-check">
+          <input
+            type="checkbox"
+            checked={stopAfterTripOn}
+            disabled={!autoCycleOn || !me.active}
+            onChange={(e) => engine.setSalvageStopAfterTripAt(e.target.checked)}
+          />
+          本次返航卸货后停止
+        </label>
+      </div>
 
       {sortedGalaxies.length === 0 ? (
         <div className="app-dim app-inv-empty">还没有可打捞的星系——先扫描探索点亮星图（星系内要有悬赏目标才会产生残骸）。</div>
@@ -860,7 +886,7 @@ function WreckCard({
           <button
             className="app-btn is-small is-primary"
             disabled={activeAnywhere}
-            title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需高槽打捞器；单趟，满仓自动返航）'}
+            title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需高槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
             onClick={onStart}
           >
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>开始打捞
@@ -883,7 +909,7 @@ function WreckCard({
           <button
             className="app-btn is-small"
             disabled={activeAnywhere || !aiShipId || usableCores.length === 0}
-            title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : aiShipId ? '指派 AI 副船打捞此星系（满仓自动返港后任务结束）' : '先选择空闲副船'}
+            title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : aiShipId ? '指派 AI 副船打捞此星系（自动循环，取消任务才结束）' : '先选择空闲副船'}
             onClick={() => onAiAssign(g.id, aiShipId, effCore)}
           >
             指派 AI 打捞

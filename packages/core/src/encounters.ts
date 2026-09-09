@@ -5,23 +5,32 @@
  * - 2026-09-06（船长纠正：移动状态不暴露）——航行/返航/转场途中一律不计暴露；
  *   远征只剩交火与自动返航（均非就地作业）→ 不再进入暴露面；交火中也不暴露；
  * - 承担规则：同星系内我方在场船中"停留船"优先承担（区域一次；事件后该星系 5 分钟冷却）；
+ * - **伏击敌群（2026-09-09 船长定）：从事发星系的可见悬赏敌群中随机抽一个**（无悬赏敌群的
+ *   星系 = 无海盗活动，不触发伏击；旧 hidden 四档模板退役，仅作旧档遗留遭遇的战斗兜底）；
+ *   威胁 = 该敌群威胁（不再随承担船火力缩放）；
  * - 形态：离线（含大步离线结算）直接文字三档结算；在线命中产生"伏击待决"邀约，
  *   玩家可「迎战」（进入 V12 实时战斗，自动打完）或「快速脱离」；60 秒（游戏时间）未响应
  *   自动按文字结算——超时判定用 gameMs，离线大步长天然瞬间超时，无需在线标志；
  * - 文字三档（Q2 甲）：击退（缴获 ISK）/ 受损（耐久 −5%~15%，底 clamp 5% 绝不弃船）/
  *   被抢（至多 30% 船上货，无货抢至多 5% 钱包）；
+ * - **缴获（2026-09-09 船长定）：击退与应战全歼同额 = 伏击敌群悬赏赏金 × 50%**
+ *   （缴获评估学 ×1.1/级照旧；只给 ISK，不计首胜/声望，防与悬赏体系双吃）；
+ *   胜利（两路径皆）向事发星系注入残骸密度（威胁 ×0.4，与远征胜利同款）——被击毁的
+ *   伏击敌群残骸可打捞回收；
  * - 首次进入低安弹提示并写日志（lowSecNotified 一次性标记），规则入手册「航行须知」。
  */
 import { addLog } from './state'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
-import type { SimContext } from './types'
+import type { AnomalyDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { advanceBattleFor, persistFleetHullDamage, refundAmmo, startBattleFor } from './combat'
 import { calcPower } from './expedition'
+import { injectWreckDensity, wreckDensityOf } from './salvage'
 import { shipDisplayName } from './instances'
 
-/** B1 遭遇战敌方模板档位（data ANOMALIES hidden 条目；threat 为档位标尺） */
+/** 旧档遗留兜底档位（data ANOMALIES hidden 条目）：仅无 anomalyId 的旧遭遇应战/命名用；
+ * 新伏击一律抽当地可见悬赏敌群，不再走此表 */
 const ENC_TIERS: ReadonlyArray<{ id: string; threat: number }> = [
   { id: 'enc-pirate-1', threat: 10 },
   { id: 'enc-pirate-2', threat: 22 },
@@ -29,13 +38,60 @@ const ENC_TIERS: ReadonlyArray<{ id: string; threat: number }> = [
   { id: 'enc-pirate-4', threat: 70 },
 ]
 
-/** 就近匹配遭遇强度 → 战斗模板 id（threat 存档位与档位贴齐，保证存档后仍稳定匹配） */
+/** 就近匹配遭遇强度 → 战斗模板 id（threat 存档位与档位贴齐，保证存档后仍稳定匹配；旧档兜底用） */
 function tierIdOf(threat: number): string {
   let best = ENC_TIERS[0]!
   for (const t of ENC_TIERS) {
     if (Math.abs(t.threat - threat) < Math.abs(best.threat - threat)) best = t
   }
   return best.id
+}
+
+/** 事发星系可见悬赏敌群池（hidden 遭遇模板不算——2026-09-09 与打捞抽池/悬赏目录同口径） */
+function localBountyPoolOf(ctx: SimContext, galaxyId: string): AnomalyDef[] {
+  const out: AnomalyDef[] = []
+  for (const a of ctx.anomalies.values()) {
+    if (a.hidden) continue
+    if (a.galaxyId === galaxyId) out.push(a)
+  }
+  return out
+}
+
+/** 伏击敌群解析：优先 encounter.anomalyId；旧档遗留按事发星系可见敌群就近威胁兜底（仍无 → null） */
+function foeOf(state: GameState, ctx: SimContext): AnomalyDef | null {
+  const enc = state.encounter
+  if (enc.anomalyId) {
+    const direct = ctx.anomalies.get(enc.anomalyId)
+    if (direct && !direct.hidden) return direct
+  }
+  if (!enc.galaxyId) return null
+  let best: AnomalyDef | null = null
+  let bestDist = Number.POSITIVE_INFINITY
+  for (const a of localBountyPoolOf(ctx, enc.galaxyId)) {
+    const dist = Math.abs(a.threat - enc.threat)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = a
+    }
+  }
+  return best
+}
+
+/** 击退/全歼缴获（2026-09-09 船长定）：伏击敌群赏金 × lootFracOfBounty（缺敌群 = 旧档按威胁×1 兜底）；
+ * 只给 ISK，不计首胜/声望 */
+function lootOf(state: GameState, ctx: SimContext, seizeF: number): number {
+  const foe = foeOf(state, ctx)
+  const base = foe ? Math.max(0, foe.rewardIsk) : Math.max(1, Math.round(state.encounter.threat))
+  return Math.max(1, Math.round(base * ctx.balance.encounter.lootFracOfBounty * seizeF))
+}
+
+/** 胜利（击退/全歼）→ 向事发星系注入残骸密度（威胁 ×0.4，与远征胜利同款；无敌群 = 按存档威胁兜底） */
+function dropWrecks(state: GameState, ctx: SimContext): void {
+  const enc = state.encounter
+  if (!enc.galaxyId) return
+  const foe = foeOf(state, ctx)
+  const threat = foe ? Math.max(1, foe.threat) : Math.max(1, enc.threat)
+  injectWreckDensity(state, ctx, enc.galaxyId, threat)
 }
 
 /** 星系安全等级（数据缺失按高安 +1 处理，不惹麻烦） */
@@ -109,6 +165,7 @@ function clearEncounter(state: GameState): void {
     galaxyId: null,
     name: '',
     threat: 0,
+    anomalyId: null,
     origin: '',
     invitedAtGameMs: 0,
     deadlineGameMs: 0,
@@ -151,9 +208,16 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
   const seizeF = 1 + 0.1 * Math.min(5, state.skills.trained['seizure-appraisal'] ?? 0)
   const survF = 1 - 0.12 * Math.min(5, state.skills.trained['lowsec-survival'] ?? 0)
   if (r < wWin) {
-    const loot = Math.max(1, Math.round(threat * (bal.lootIskMin + nextRandom(state.rng) * (bal.lootIskMax - bal.lootIskMin)) * seizeF))
+    // 2026-09-09：缴获 = 伏击敌群赏金 ×50%（缴获评估学照旧）；击退同样留下敌舰残骸
+    const loot = lootOf(state, ctx, seizeF)
     state.wallet.isk += loot
-    addLog(state, 'info', `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} ISK，全身而退。`)
+    dropWrecks(state, ctx)
+    const d = state.encounter.galaxyId ? wreckDensityOf(state, state.encounter.galaxyId, ctx) : null
+    addLog(
+      state,
+      'info',
+      `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
+    )
   } else if (r < wWin + wLose) {
     const loss = Math.round((bal.duraLossMin + nextRandom(state.rng) * (bal.duraLossMax - bal.duraLossMin)) * 1000) / 1000
     if (fleetShip) {
@@ -214,17 +278,17 @@ function settleFight(state: GameState, ctx: SimContext): void {
     persistFleetHullDamage(state, ctx, shipId, battle)
   }
   if (battle && battle.ended === 'me') {
-    const loot = Math.max(
-      1,
-      Math.round(
-        enc.threat *
-          (bal.lootIskMin + nextRandom(state.rng) * (bal.lootIskMax - bal.lootIskMin)) *
-          1.6 *
-          (1 + 0.1 * Math.min(5, state.skills.trained['seizure-appraisal'] ?? 0)),
-      ),
-    )
+    // 2026-09-09：全歼缴获 = 伏击敌群赏金 ×50%（与文字击退同额；缴获评估学照旧）；全歼留下敌舰残骸
+    const seizeF = 1 + 0.1 * Math.min(5, state.skills.trained['seizure-appraisal'] ?? 0)
+    const loot = lootOf(state, ctx, seizeF)
     state.wallet.isk += loot
-    addLog(state, 'info', `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK。`)
+    dropWrecks(state, ctx)
+    const d = state.encounter.galaxyId ? wreckDensityOf(state, state.encounter.galaxyId, ctx) : null
+    addLog(
+      state,
+      'info',
+      `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
+    )
   } else {
     const loss = Math.round((bal.duraLossMin + nextRandom(state.rng) * (bal.duraLossMax - bal.duraLossMin)) * 1000) / 1000
     if (fleetShip) {
@@ -290,7 +354,7 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
         }
         return
       }
-      advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, tierIdOf(enc.threat), null)
+      advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, foeKeyOf(enc), null)
       if (enc.battle.ended) settleFight(state, ctx)
       return
     }
@@ -341,27 +405,28 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale
     // 使"每小时遇袭期望"保持与无技能基线一致（船长定：按期望值不变进行修改）
     if (cadenceScale < 1) p = Math.min(0.9, p * Math.max(0, cadenceScale))
     if (nextRandom(state.rng) >= p) continue
-    spawnEncounter(state, ctx, exp)
-    return true // 一次到点至多一次遭遇（占用本段事件时机）
+    if (spawnEncounter(state, ctx, exp)) return true // 一次到点至多一次遭遇（占用本段事件时机）
+    // 该星系无可见悬赏敌群 = 无海盗活动 → 不伏击，继续看其它暴露（不占用事件时机）
   }
   return false
 }
 
-/** 命中 → 产生一次遭遇（区域事件：同星系冷却；承担者 = 该星系最高优先在场船） */
-function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure): void {
+/** 命中 → 产生一次遭遇（2026-09-09：伏击敌群 = 事发星系可见悬赏敌群随机抽一个；无池 = 不伏击）。
+ * 返回是否真正产生（占用区域冷却与事件时机）。 */
+function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure): boolean {
   const bal = ctx.balance.encounter
+  const pool = localBountyPoolOf(ctx, exp.galaxyId)
+  if (pool.length === 0) return false
+  const foe = pool[Math.floor(nextRandom(state.rng) * pool.length)]!
   state.encounterZoneCooldown[exp.galaxyId] = state.gameMs + bal.zoneCooldownMs
-  const power = Math.max(1, calcPower(state, ctx, exp.shipId))
-  const factor = bal.foePowerMin + nextRandom(state.rng) * (bal.foePowerMax - bal.foePowerMin)
-  const threat = Math.max(4, Math.round(power * factor))
-  const template = ctx.anomalies.get(tierIdOf(threat))
   const shipName = shipDisplayName(state, ctx, exp.shipId)
   state.encounter = {
     active: true,
     shipId: exp.shipId,
     galaxyId: exp.galaxyId,
-    name: template?.name ?? '巡逻队',
-    threat,
+    name: foe.name,
+    threat: Math.max(1, foe.threat),
+    anomalyId: foe.id,
     origin: `${shipName} · ${exp.kind}`,
     invitedAtGameMs: state.gameMs,
     deadlineGameMs: state.gameMs + bal.inviteWaitMs,
@@ -370,15 +435,21 @@ function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure): void 
   addLog(
     state,
     'warn',
-    `⚠ 低安遭遇（${ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId}·${template?.name ?? '不明编队'}）：${shipName}（${exp.kind}中）被盯上了——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
+    `⚠ 低安遭遇（${ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId}·「${foe.name}」）：${shipName}（${exp.kind}中）遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
   )
+  return true
+}
+
+/** 战斗用敌群键：新遭遇 = 伏击敌群 anomalyId；旧档遗留（无 anomalyId）= 威胁就近兜底档 */
+function foeKeyOf(enc: GameState['encounter']): string {
+  return enc.anomalyId ?? tierIdOf(Math.max(1, enc.threat))
 }
 
 /** 玩家指令：迎战（进入 V12 实时战斗，自动打完出战报） */
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。' }
-  const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, tierIdOf(enc.threat), state.gameMs)
+  const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs)
   if (!battle) return { ok: false, error: '遭遇数据异常，无法开战。' }
   enc.battle = battle
   addLog(state, 'info', '已应战：遭遇战打响（引擎自动推演，战报稍后）。')

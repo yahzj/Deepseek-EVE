@@ -88,10 +88,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     duraLossMax: 0.15, // 受损档：耐久 −5%~15%（底 clamp 5%）
     lootTakenMaxPct: 0.3, // 被抢：至多 30% 船上货
     iskTakenMaxPct: 0.05, // 无货被抢：至多 5% 钱包
-    foePowerMin: 0.6,
-    foePowerMax: 1.05, // 遭遇强度 ≈ 承担船火力 × 0.6~1.05
-    lootIskMin: 0.2,
-    lootIskMax: 0.6, // 击退缴获 = 威胁 × 20%~60%
+    lootFracOfBounty: 0.5, // 2026-09-09 船长定：击退/胜利缴获 = 当地悬赏敌群赏金 ×50%（旧档兜底 = 威胁 ×1）
   },
   travel: {
     warpRefAus: 3.0, // 基准跃迁速度：沙猫级 3.5 → 航程 ×0.857（快 14%）；2.8 慢船 → ×1.07

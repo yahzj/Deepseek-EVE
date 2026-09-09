@@ -12,6 +12,7 @@ import { emptyFitted, uidDefId } from './labels'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
+import { retireSalvageShip } from './salvaging'
 import { scaledReturnMs } from './trips'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
@@ -79,7 +80,7 @@ export function ownsShip(state: GameState, shipId: string): boolean {
   return shipId in state.fleet
 }
 
-/** 玩家指令：切换到拥有的另一艘船驾驶（采矿作业中可直接切换——旧船自动返航卸货善后，采矿随之结束） */
+/** 玩家指令：切换到拥有的另一艘船驾驶（采矿/打捞作业中可直接切换——旧船自动返航卸货善后，作业随之结束） */
 export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   if (shipId === state.shipId) {
     return { ok: false, error: `正在驾驶的就是 ${shipDisplayName(state, ctx, shipId)}。` }
@@ -148,6 +149,10 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   if (state.mining.active) {
     retireMiningShip(state, ctx)
   }
+  // 打捞作业中：直接切换成功——旧船按其打捞阶段自动返航到港卸货，作业结束（2026-09-09 与采矿同构）
+  if (state.salvaging.active) {
+    retireSalvageShip(state, ctx)
+  }
   state.shipId = shipId
   addLog(state, 'info', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`)
   return { ok: true }
@@ -206,18 +211,8 @@ export function loseShip(state: GameState, shipId: string, ctx: SimContext, reas
   delete state.fleet[shipId]
   addLog(state, 'warn', `${reason}：${display} 已损毁，船上的货仓与装备一并遗失。`)
 
-  // 当前驾驶船被弃 → 自动切到另一艘
-  if (wasCurrent) {
-    const other = Object.keys(state.fleet)[0]
-    if (other) {
-      state.shipId = other
-      addLog(state, 'info', `已自动切换到 ${shipDisplayName(state, ctx, other)}。`)
-    } else {
-      // 一艘不剩：协会免费补发初始沙猫（保底）
-      state.shipId = addShipToFleet(state, DEFAULT_START_SHIP_ID)
-      addLog(state, 'info', '协会补助：一艘全新的沙猫级采矿艇已停靠机库（保底舰船）。')
-    }
-  }
+  // 当前驾驶船被弃 → 自动补驾驶（2026-09-09 船长定：只选空闲船；全被 AI 占用或一艘不剩 → 保底沙猫，绝不占用 AI 执勤中的船）
+  if (wasCurrent) reconcilePilotShip(state, ctx)
 
   // 数据异常守卫：作业引用的船已经没了就强制停下
   if (state.mining.active && !state.fleet[state.shipId]) {
@@ -227,6 +222,53 @@ export function loseShip(state: GameState, shipId: string, ctx: SimContext, reas
     state.mining.cycleAccMs = 0
     state.mining.rvLeft = 0
   }
+  if (state.salvaging.active && !state.fleet[state.shipId]) {
+    state.salvaging.active = false
+    state.salvaging.galaxyId = null
+    state.salvaging.phase = 'salvaging'
+    state.salvaging.phaseAccMs = 0
+    state.salvaging.cycleAccMs = 0
+    state.salvaging.tripM3 = 0
+    state.salvaging.deviceAccMs = {}
+  }
+}
+
+/** 2026-09-09（船长定）：驾驶船不可用原因——数据缺失 或 正被 AI 执勤占用（弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠） */
+export function pilotUnavailableReason(state: GameState): string | null {
+  if (!state.fleet[state.shipId]) return '当前驾驶的舰船数据缺失——请到舰船页检查舰队。'
+  if (state.aiAssignments[state.shipId] !== undefined) {
+    return '当前驾驶的舰船正被 AI 执勤占用（采矿/打捞/掩护巡逻）——请先取消该船 AI 任务，或切换其它舰船。'
+  }
+  return null
+}
+
+/**
+ * 2026-09-09（船长定）：保证存在可驾驶船（幂等自愈，弃船补驾驶与引擎逐 tick 共用）——
+ * 驾驶船缺失或被 AI 执勤占用时：优先改派"空闲"（未 AI 占用）舰船；无空闲（全被 AI 占用
+ * 或一艘不剩）→ 协会补发保底沙猫，绝不让 AI 执勤中的船兼任驾驶船。修正发生时记一条日志。
+ */
+export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
+  const reason = pilotUnavailableReason(state)
+  if (reason === null) return
+  const wasBusy = state.fleet[state.shipId] !== undefined
+  const idle = Object.keys(state.fleet).find((id) => state.aiAssignments[id] === undefined)
+  if (idle !== undefined) {
+    state.shipId = idle
+    addLog(
+      state,
+      'info',
+      wasBusy
+        ? '驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。'
+        : '驾驶中的舰船数据缺失——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。',
+    )
+    return
+  }
+  state.shipId = addShipToFleet(state, DEFAULT_START_SHIP_ID)
+  addLog(
+    state,
+    'info',
+    '协会补助：一艘全新的沙猫级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。',
+  )
 }
 
 /** 当前船耐久 0~1 */

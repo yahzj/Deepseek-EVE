@@ -1,7 +1,7 @@
 /**
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AI_CORE_ORDER,
   aiCoreCap,
@@ -67,6 +67,17 @@ export function ShipPage({
   const [sellConfirmId, setSellConfirmId] = useState<string | null>(null)
   // T7：扫描在途换船＝警告确认（模式甲：确认后先终止扫描——进度保留——再切换）
   const [scanSwitchId, setScanSwitchId] = useState<string | null>(null)
+  // 2026-09-09 切换驾驶高亮（船长定：无缝切换易误判）：成功后目标船卡 + 「当前驾驶」行做一次约 0.8 秒脉冲
+  const [switchFxUid, setSwitchFxUid] = useState<string | null>(null)
+  const switchFxTimer = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (switchFxTimer.current !== null) window.clearTimeout(switchFxTimer.current)
+  }, [])
+  function flashSwitchPilot(uid: string): void {
+    setSwitchFxUid(uid)
+    if (switchFxTimer.current !== null) window.clearTimeout(switchFxTimer.current)
+    switchFxTimer.current = window.setTimeout(() => setSwitchFxUid(null), 800)
+  }
   // T5-B：正在改名（输入框展开）的船实例 + 草稿
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -90,6 +101,7 @@ export function ShipPage({
     }
     const r = engine.changeShipAt(id)
     if (!r.ok) onToast(r.error ?? '切换失败', true)
+    else flashSwitchPilot(id)
   }
 
   /** 确认：终止扫描（进度保留）→ 切换驾驶 */
@@ -102,7 +114,10 @@ export function ShipPage({
     }
     const r = engine.changeShipAt(id)
     if (!r.ok) onToast(r.error ?? '切换失败', true)
-    else onToast('已终止扫描（进度保留，可续扫）并切换驾驶。')
+    else {
+      onToast('已终止扫描（进度保留，可续扫）并切换驾驶。')
+      flashSwitchPilot(id)
+    }
   }
 
   function handleRepair(id: string): void {
@@ -180,7 +195,9 @@ export function ShipPage({
         right={
           <span className="app-dim">
             {Object.keys(state.fleet).length} 艘 · 当前驾驶：
-            {shipDisplayName(state, ctx, state.shipId)}
+            <span className={`app-pilot-name${switchFxUid !== null ? ' is-pulse' : ''}`}>
+              {shipDisplayName(state, ctx, state.shipId)}
+            </span>
           </span>
         }
       >
@@ -219,7 +236,9 @@ export function ShipPage({
             const canSell = !isCurrent && !isWorking && !isLockedShip
             return (
               <ShipHover key={uid} ship={def} block>
-                <div className={`app-ship-card${isCurrent ? ' is-current' : ''}`}>
+                <div
+                  className={`app-ship-card${isCurrent ? ' is-current' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
+                >
                 <div className="app-ship-top">
                   <span className="app-ship-name">
                     {displayName}

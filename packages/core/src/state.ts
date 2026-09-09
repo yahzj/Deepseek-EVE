@@ -150,8 +150,9 @@ export interface ShipReturnState {
   /** 已走毫秒（≤ legMs；到港条件 = 累计 ≥ legMs） */
   phaseAccMs: number
   /** 善后来源（2026-09-08 船长定）：'mining' = 采矿换船（缺省）/ 'expedition' = 返航中换船
-   *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算） */
-  reason?: 'mining' | 'expedition'
+   *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算）/ 'salvage' = 打捞换船
+   *  （2026-09-09：与采矿同构——打捞作业中换船，旧船自动返航到港卸货） */
+  reason?: 'mining' | 'expedition' | 'salvage'
 }
 
 /**
@@ -271,9 +272,10 @@ export const EMPTY_REFINE_RUN: RefineRunState = {
   batchesDone: 0,
 }
 
-/** B3 打捞作业（采矿式单趟）：立即打捞 → 满仓自动返航（去程并入）→ 到港整仓卸入仓库 → 结束（不自动续）。
+/** B3 打捞作业（采矿式自动循环，2026-09-09 船长定：默认自动循环，满舱返航卸货后同星系自动续捞）：
+ * 立即打捞 → 满仓自动返航（去程并入）→ 到港整仓卸入仓库 → 自动续捞（stopAfterTrip/关闭循环则收工）。
  * tripM3 = 本趟捞取体积当量累计（展示/日志）；deviceAccMs = 各周期档的打捞器相位（周期 ms → 累计）。
- * outbound 相位仅旧档遗留兼容。 */
+ * autoCycle/stopAfterTrip = 作业偏好，跨趟持久（同采矿 MiningState 语义）；outbound 相位仅旧档遗留兼容。 */
 export interface SalvageOpState {
   active: boolean
   /** 目标星系 id（null = 无作业） */
@@ -287,6 +289,10 @@ export interface SalvageOpState {
   tripM3: number
   /** 打捞器相位账：周期 ms → 已累计 ms */
   deviceAccMs: Record<string, number>
+  /** 自动循环（默认开）：卸货后同星系自动续捞；关闭 = 本趟收工 */
+  autoCycle: boolean
+  /** 「本次返航卸货后停止」：勾选后强制自动循环开、卸完这一趟即收工（与采矿同款联动） */
+  stopAfterTrip: boolean
 }
 
 /** 打捞作业空态（新档 / 作业结束） */
@@ -298,6 +304,8 @@ export const EMPTY_SALVAGE_OP: SalvageOpState = {
   cycleAccMs: 0,
   tripM3: 0,
   deviceAccMs: {},
+  autoCycle: true,
+  stopAfterTrip: false,
 }
 
 /** 远征作业状态（去程取消 → 交火 battle → 返航 back；battle 为实时状态机；返航 = 2×单程） */
@@ -502,7 +510,7 @@ export interface AiMiningTask {
   rvLeft?: number
 }
 
-/** AI 副船任务：打捞（B3 单趟：outbound → salvaging → returning；满仓自动返港卸货后任务结束） */
+/** AI 副船任务：打捞（自动循环，2026-09-09 船长定：outbound → salvaging → returning → 同星系再出航，直到取消） */
 export interface AiSalvageTask {
   kind: 'salvage'
   /** 目标星系 id（已探索；有敌群型号池） */
@@ -763,10 +771,12 @@ export interface EncounterState {
   shipId: string | null
   /** 事发星系（sec<0） */
   galaxyId: string | null
-  /** 事件展示名（文案池按低安深度选） */
+  /** 事件展示名（伏击敌群名；旧档兜底 = 文案池名） */
   name: string
-  /** 遭遇强度（编队总战力 ≈ 承担船火力 × 0.6~1.05） */
+  /** 遭遇强度（2026-09-09 船长定：= 当地星系可见悬赏敌群的威胁，随机抽池；不再随船火力缩放） */
   threat: number
+  /** 伏击敌群 = 当地星系可见悬赏敌群 id（2026-09-09；null = 旧档遗留，按威胁就近兜底） */
+  anomalyId: string | null
   /** 来源说明：主控采掘/打捞/扫描/驻留 或 副船任务（2026-09-06：移动不暴露） */
   origin: string
   /** 产生时刻（游戏毫秒） */
@@ -803,7 +813,7 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   standby: StandbyState
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
-  /** B3 打捞作业（2026-09-05：采矿式单趟；兼容字段无版本号，旧档载入 = 空态） */
+  /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
   salvaging: SalvageOpState
   /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
   galaxyWrecks: Record<string, WreckGalaxyRecord>
@@ -1126,6 +1136,7 @@ export function createInitialState(opts?: {
       galaxyId: null,
       name: '',
       threat: 0,
+      anomalyId: null,
       origin: '',
       invitedAtGameMs: 0,
       deadlineGameMs: 0,

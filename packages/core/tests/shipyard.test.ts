@@ -9,6 +9,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { addShipToFleet, changeShip, loseShip, ownsShip, repairCostIsk, repairShip, durabilityOf } from '../src/shipyard'
 import { startExpedition } from '../src/expedition'
+import { startMining } from '../src/mining'
 import { makeTestCtx, ship } from './helpers'
 
 describe('舰队', () => {
@@ -106,5 +107,55 @@ describe('舰队', () => {
     advanceGame(state, 60_000, brutalCtx)
     expect(state.logs.length).toBeGreaterThan(0)
     expect(state.shipId.length).toBeGreaterThan(0) // 档始终合法
+  })
+
+  describe('2026-09-09 驾驶船可用性（船长定：弃船补驾驶绝不接管 AI 执勤船；无空闲 → 保底沙猫）', () => {
+    /** AI 掩护巡逻驻留指派（仅作"占用"标记，推进时驻留态无副作用） */
+    function busyFalconet() {
+      state.aiAssignments['sh-falconet'] = {
+        coreType: 'basic',
+        startedAtGameMs: 0,
+        task: { kind: 'standby', galaxyId: 'galaxy-far', finishAtGameMs: 0, outMs: 1, phase: 'stand' },
+      }
+    }
+
+    it('弃船补驾驶只选空闲船：AI 执勤中的船不被接管，任务原样保留', () => {
+      addShipToFleet(state, 'sandcat2')
+      busyFalconet()
+      loseShip(state, 'sandcat', ctx, '测试弃船')
+      expect(state.shipId).toBe('sandcat2') // 优先空闲船（不取舰队首艘 = AI 船）
+      expect(state.aiAssignments['sh-falconet']).toBeDefined()
+      expect(ownsShip(state, 'sh-falconet')).toBe(true)
+    })
+
+    it('弃船时余船全被 AI 占用 → 补发保底沙猫，不抢 AI 船', () => {
+      busyFalconet()
+      loseShip(state, 'sandcat', ctx, '测试弃船')
+      expect(state.shipId).toBe('sandcat') // 原船已弃，新补一艘同型保底
+      expect(Object.keys(state.fleet).sort()).toEqual(['sandcat', 'sh-falconet'])
+      expect(state.aiAssignments['sh-falconet']).toBeDefined()
+      expect(state.logs.some((l) => l.text.includes('补助'))).toBe(true)
+    })
+
+    it('驾驶船被 AI 占用时出港被拒（采矿）；引擎推进一次即自愈改派空闲船', () => {
+      addShipToFleet(state, 'sandcat2')
+      // 构造坏态（旧 bug 产物：弃船误把 AI 执勤船设为驾驶船）
+      state.shipId = 'sh-falconet'
+      busyFalconet()
+      const r = startMining(state, 'belt-a', ctx)
+      expect(r.ok).toBe(false)
+      expect(r.error ?? '').toContain('AI 执勤')
+      advanceGame(state, 1_000, ctx)
+      expect(state.shipId).toBe('sandcat') // 自愈改派空闲船（舰队序第一艘空闲 = 沙猫，绝不留在 AI 船）
+      expect(state.aiAssignments[state.shipId]).toBeUndefined()
+      expect(state.aiAssignments['sh-falconet']).toBeDefined() // AI 任务不受影响
+    })
+
+    it('旧档坏态自愈：驾驶船键缺失 → 引擎推进自动改派（档始终有船可开）', () => {
+      state.shipId = '已损毁的船'
+      advanceGame(state, 1_000, ctx)
+      expect(state.fleet[state.shipId]).toBeDefined()
+      expect(Object.keys(state.fleet)).toContain(state.shipId)
+    })
   })
 })

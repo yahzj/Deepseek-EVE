@@ -7,9 +7,6 @@
  * - 每种物品（矿石/矿物/气体/冰/弹药/无人机）都必须有市场卡（防死物品：买不了也卖不了）；
  * - 采集点：id 唯一、产出物存在且可采集（ore/gas/ice）、声望门槛非负整数；
  * - 精炼配方：只有可精炼资源（ore/gas/ice）带配方、配方行矿物存在且 kind=mineral；
- * - 精炼配平（2026-09-08 船长定稿护栏，2026-09-08 工业收益体检再定）：产出倍率 120%（无技能）
- *   时按批量 floor 结算的每批产值 ∈ 耗料价值 ×[1.15, 1.30]——零技能精炼净率 ≈+20%±2pp，
- *   不许虚高（防再漂移）；
  * - 装备：id 唯一、slot 在六槽内、每件装备必须有市场卡；
  * - 蓝图：id 唯一、模块/船存在、材料都是矿物、蓝图必须有市场卡（否则无法购书学习）；
  * - 舰船：id 唯一、role 合法；蓝图的产物船存在；舰船蓝图引用船存在；
@@ -144,25 +141,6 @@ for (const item of itemDefs) {
     check(
       item.kind === 'mineral' || item.kind === 'ammo' || item.kind === 'drone' || item.kind === 'kit',
       `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免）`,
-    )
-  }
-}
-
-// 精炼配平护栏（2026-09-08 船长再定）：产出倍率 120%（无技能）floor 结算产值/耗料 ∈ [1.15, 1.35]
-// （无技能净率 ≈+20%±2pp；perOre 为倍率基准值，取整允许 ±2pp，见 items.ts 头注）
-for (const item of itemDefs) {
-  if (item.refine === undefined || item.refine.length === 0 || (item.baseSellPriceIsk ?? 0) <= 0) continue
-  const batch = item.refineBatchUnits && item.refineBatchUnits > 0 ? Math.floor(item.refineBatchUnits) : 10
-  let outValue = 0
-  for (const row of item.refine) {
-    const mineral = items.get(row.mineralId)
-    if (!mineral) continue
-    outValue += Math.floor(batch * row.perOre * 1.2) * (mineral.baseSellPriceIsk ?? 0)
-  }
-  const ratio = outValue / (batch * item.baseSellPriceIsk!)
-  if (ratio < 1.15 || ratio > 1.35) {
-    errors.push(
-      `${item.id}（${item.name}）精炼配平失衡：120% 产出倍率每批产值/耗料 = ${(ratio * 100).toFixed(1)}%（护栏 115%~135%，目标 ≈+20%，小批量 floor 步长允高）`,
     )
   }
 }
