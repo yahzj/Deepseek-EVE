@@ -4,7 +4,7 @@
  * （高 = 炮台/采集器/无人机装置；中 = 盾系/推进；低 = 甲系/货舱扩展）。
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type {
   DamageResists,
   FittedModules,
@@ -248,6 +248,31 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) + droneCpuUsed(droneLoadOf, engine.ctx) : 0
   // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
+  // ── 舰船形象区自适应（船长 2026-09-09：窗口缩窄优先缩小舰影，图缩到下限仍不够才隐藏间接列；
+  //    实测容器宽度分档，避免间接文字被图形顶出窗口） ──
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const [stageFit, setStageFit] = useState({ art: 280, indirect: true })
+  useLayoutEffect(() => {
+    const el = stageRef.current
+    if (!el) return
+    const update = (): void => {
+      // stage 有 padding+border：内容可用宽 = clientWidth − 左右装饰
+      const avail = el.clientWidth - 22
+      const INDIRECT_MIN = 250 // 间接列表可读最小宽（11px 行 + 折行余量）
+      const GAP = 12
+      const MIN_ART = 190 // 舰影可读下限（再小就藏间接、图占主位）
+      const MAX_ART = 300
+      const keepIndirect = avail >= MIN_ART + GAP + INDIRECT_MIN
+      let art = keepIndirect ? Math.min(MAX_ART, Math.max(MIN_ART, avail - GAP - INDIRECT_MIN)) : Math.min(MAX_ART, Math.round(avail * 0.92))
+      if (art < 130) art = 130
+      setStageFit((old) => (old.art === art && old.indirect === keepIndirect ? old : { art, indirect: keepIndirect }))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   function handleUnfit(rack: RackSlot, index: number): void {
     if (engine.unfitAtAt(rack, index, effectiveTarget)) onToast('装备已卸下并放回装备库。')
   }
@@ -359,16 +384,14 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         {shipDef ? (
           <>
             {/* 舰船形象 + 间接属性（船长 2026-09-09：左栏顶部插入独立舰影，间接属性移其右侧；
-                窗口不足 1180px 时隐藏间接列——高度守恒：原底部间接块整体上移占位） */}
-            <div className="app-fit-stage">
+                窄窗优先缩小舰影，图缩至下限仍不够时隐藏间接列——高度守恒：原底部间接块整体上移占位） */}
+            <div className="app-fit-stage" ref={stageRef}>
               <div className="app-fit-stage-art">
-                <ShipSprite shipId={shipDef.id} role={shipDef.role} size={280} engine={false} />
+                <ShipSprite shipId={shipDef.id} role={shipDef.role} size={stageFit.art} engine={false} />
               </div>
-              {shipIndirectLines(shipDef).length > 0 ? (
+              {stageFit.indirect && shipIndirectLines(shipDef).length > 0 ? (
                 <div className="app-fit-indirect">
-                  <div className="app-info-note app-fit-indirect-note">
-                    间接属性（速度参与战斗机动与航行；信号/锁定/质量为设定展示，不参与战斗公式）
-                  </div>
+                  <div className="app-info-note app-fit-indirect-note">间接属性</div>
                   <InfoTable lines={shipIndirectLines(shipDef)} />
                 </div>
               ) : null}

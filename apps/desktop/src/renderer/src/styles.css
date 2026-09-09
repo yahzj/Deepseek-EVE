@@ -5869,17 +5869,14 @@ body {
 .app-tip .app-combat-badges { margin-bottom: 5px; }
 
 /* 舰船形象 + 间接属性展示区（装配台左栏顶部；船长 2026-09-09：形象左置、间接属性右侧纵列；
-   窄窗（≤1180px）隐藏间接列——高度守恒：原底部间接块整体上移占位，页面总高不变） */
+   自适应由 FitPage 容器实测驱动——窄窗优先缩小舰影（stageFit.art），图缩至下限仍不够时
+   不再渲染间接列；总高守恒：原底部间接块整体上移占位） */
 .app-fit-stage { display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin-bottom: 10px; border: 1px dashed var(--wui-border); border-radius: 6px; background: rgba(10,17,27,0.4); }
 .app-fit-stage-art { flex: 0 0 auto; line-height: 0; }
 .app-fit-stage-art .app-sprite svg { filter: drop-shadow(0 0 8px rgba(120, 200, 255, 0.18)); }
 .app-fit-indirect { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; opacity: 0.78; }
 .app-fit-indirect .app-info-table { font-size: 10.5px; }
 .app-fit-indirect-note { margin-top: 0; }
-@media (max-width: 1180px) {
-  .app-fit-indirect { display: none; }
-  .app-fit-stage { justify-content: center; }
-}
 
 .app-fit-shipinfo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding: 8px 10px; border: 1px dashed var(--wui-border); border-radius: 6px; background: rgba(10,17,27,0.4); }
 
