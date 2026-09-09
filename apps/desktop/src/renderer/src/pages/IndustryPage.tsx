@@ -369,7 +369,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket }: PageProps & { on
           title="精炼炉"
           right={
             <span className="app-dim">
-              产出倍率 {Math.round(rate * 100)}%（基础 100% · 精炼学 +8%/级 · 高级回收处理 +4%/级，上限 160%）· 运转 {runningCount} 台
+              产出倍率 {Math.round(rate * 100)}%（基础 120% · 精炼学 +4%/级 · 高级回收处理 +2%/级，上限 150%）· 运转 {runningCount} 台
             </span>
           }
         >

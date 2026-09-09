@@ -16,11 +16,13 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     localLegMs: 120 * 1000,
   },
   refining: {
-    baseRate: 1.0, // 基础产出倍率 100%（2026-09-08 船长定稿：初始即满额产出，配方已按 ÷2 等价迁移）
-    rateSkillId: 'refining', // 精炼学：产出倍率每级 +8%
-    ratePerLevel: 0.08,
-    secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +4%
-    secondRatePerLevel: 0.04,
+    // 2026-09-08 船长再定（工业工位收益体检）：无技能净率抬到 ≈+20%（基础倍率 100% → 120%），
+    // 满技净率在原数值上下调约两成 → 技能每级加半（精炼学 +4%、高级回收 +2%），满级倍率 150%
+    baseRate: 1.2,
+    rateSkillId: 'refining', // 精炼学：产出倍率每级 +4%
+    ratePerLevel: 0.04,
+    secondRateSkillId: 'reprocessing', // 高级回收处理：产出倍率每级 +2%
+    secondRatePerLevel: 0.02,
   },
   manufacturing: {
     timeSkillId: 'industry', // 工业理论：每级 -5% 制造时间
