@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 主界面壳（V14.1 UI 版）：
  * - 顶栏：游戏名 / 飞行员 / ISK / 在线时长 / 保存 / 重置
  * - 顶部总菜单（原在窗口底部，移至顶部）：舰船 · 装配 · 物品 · 市场 · 工业 · 技能 · 星图
@@ -35,6 +35,7 @@ import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPan
 import { ActivityBar } from './panels/ActivityBar'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
+import { ShipStatusWin } from './ui/ShipStatusWin'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -677,6 +678,7 @@ export function App({ engine }: { engine: GameEngine }) {
       {/* ───── 工作区：左导航栏 + 主窗口（活动窗口置于主列顶部，宽度与主窗口一致）+ 事件日志 ───── */}
       <div className="app-workspace">
         <nav className="app-nav-side">
+          <ShipStatusWin engine={engine} />
           {NAV_ITEMS.map((item) => (
             <button
               key={item.key}
