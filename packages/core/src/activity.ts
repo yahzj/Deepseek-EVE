@@ -145,7 +145,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 运输任务（2026-09-09：两站间真实航程往返；到站自动结算续段；可"到站即停"） ──
+  // ── 运输任务（2026-09-09：两站间真实航程往返；到站自动结算续段；停止 = 立即返航出发站） ──
   const hg = state.hauling
   if (hg.active) {
     const leg = Math.max(1, hg.legMs)
@@ -153,11 +153,11 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: 'hauling',
       kind: 'hauling',
       label: `运输任务 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
-      sub: `虚拟货物满载 · 航程约 ${Math.max(1, Math.round(hg.legMinutes))} 分钟${hg.stopNext ? ' · 到站即停' : ''}`,
+      sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 航程约 ${Math.max(1, Math.round(hg.legMinutes))} 分钟`,
       percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
       remainingMs: Math.max(0, leg - hg.phaseAccMs),
       stopable: true,
-      stop: hg.stopNext ? null : 'stop-hauling',
+      stop: 'stop-hauling',
     })
   }
 

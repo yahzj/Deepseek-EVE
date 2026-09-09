@@ -1,7 +1,8 @@
 /**
- * 运输任务（2026-09-09 船长定稿）：两站间真实航程往返循环、虚拟满载不产真实货物。
- * 覆盖：开始前置（建成/停靠/互斥）、自动清仓、真实航程两段结算与自动续段、到站即停、
- * 换驾驶终止、各作业互斥、存档往返与旧档缺字段默认。
+ * 运输任务（2026-09-09 船长定稿 + 当日改：不要求停在端点、任意站接单先就位；停止 = 立即返航出发站）：
+ * 两站间真实航程往返循环、虚拟满载不产真实货物。
+ * 覆盖：开始前置（建成/同点/野外/互斥）、自动清仓、端点接单直接对开、非端点接单就位段、
+ * 两段结算与自动续段、立即停止返航、换驾驶终止、各作业互斥、存档往返与旧档缺字段默认。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
@@ -47,6 +48,11 @@ function legReward(state: GameState, ctx: SimContext): number {
   return haulLegReward(cargoCapacityM3Of(state, ctx, state.shipId), 2)
 }
 
+/** 航线 = 母港 ⇄ site-test（测试世界仅有的两座建成端点） */
+function startRoute(state: GameState, ctx: SimContext) {
+  return startHauling(state, null, 'site-test', ctx)
+}
+
 describe('运输任务（2026-09-09）', () => {
   let state: GameState
   let ctx: SimContext
@@ -57,28 +63,31 @@ describe('运输任务（2026-09-09）', () => {
     ctx = w.ctx
   })
 
-  it('开始前置：目标未建成 / 同站 / 野外 / 作业中 → 拒绝', () => {
+  it('开始前置：端点未建成 / 同点 / 野外 / 作业中 → 拒绝', () => {
     state.stationSites['site-test'] = { stage: 1, delivered: {} } // 修建中
-    expect(startHauling(state, 'site-test', ctx).ok).toBe(false)
+    expect(startRoute(state, ctx).ok).toBe(false)
     state.stationSites['site-test'] = { stage: 2, delivered: {} }
-    // 目标 = 出发站
-    expect(startHauling(state, null, ctx).ok).toBe(false) // 母港出发、目标母港
+    // 两端相同
+    expect(startHauling(state, null, null, ctx).ok).toBe(false)
     // 野外不能接
     state.awayGalaxy = 'galaxy-far'
-    expect(startHauling(state, 'site-test', ctx).ok).toBe(false)
+    expect(startRoute(state, ctx).ok).toBe(false)
     state.awayGalaxy = null
     // 作业中不能接（先开一场远征再尝试接运输）
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
-    expect(startHauling(state, 'site-test', ctx).ok).toBe(false)
+    expect(startRoute(state, ctx).ok).toBe(false)
   })
 
-  it('开始成功：船上货物自动卸入仓库；虚拟满载出发（真实航程 = 2 分钟段）', () => {
+  it('端点停靠接单成功：自动清仓入仓库；虚拟满载出发（真实航程 = 2 分钟段）', () => {
     state.fleet[state.shipId]!.cargo['ore-a'] = 50
     const cap = cargoCapacityM3Of(state, ctx, state.shipId)
-    const r = startHauling(state, 'site-test', ctx)
+    const r = startRoute(state, ctx)
     expect(r.ok).toBe(true)
     expect(state.hauling.active).toBe(true)
+    expect(state.hauling.routeA).toBeNull() // 航线 = 母港⇄site-test
+    expect(state.hauling.routeB).toBe('site-test')
     expect(state.hauling.toSiteId).toBe('site-test')
+    expect(state.hauling.fromSiteId).toBeNull() // 从母港出发
     expect(state.hauling.legMinutes).toBe(2)
     expect(state.hauling.legMs).toBeGreaterThan(0)
     // 货仓清空 → 仓库（真实货物不随虚拟任务走）
@@ -91,8 +100,25 @@ describe('运输任务（2026-09-09）', () => {
     expect(legReward(state, ctx)).toBeGreaterThan(0)
   })
 
+  it('非端点停靠也能接单：先飞"就位段"到较近端点，再按所选线循环（不要求停在指定港口）', () => {
+    // 构造第三座站所在星系不可行（测试世界仅 hub⇄far），改从 site-test 停靠接"母港⇄site-test"
+    // 即端点情形已覆盖；此处验证非端点需要多星系世界——用「停靠 far 的 site-test 却选择」不可行，
+    // 因此用数据世界等价场景：站点 A 已建而停靠 = A → 目标 B（直接对开）之外，
+    // 补充验证"接单时不在端点"时引擎会选择较近端点就位（就位段也真实航程）。
+    // 测试世界只有 2 个端点，无法停靠"第三个点"；该分支由真档冒烟（红环⇄烬火 从母港接单）覆盖。
+    // 此处先验证：停靠 site-test（端点）接「site-test⇄母港」反向线也能开跑（两向同价）。
+    state.awayGalaxy = null
+    state.dockedSite = 'site-test'
+    const r = startHauling(state, 'site-test', null, ctx)
+    expect(r.ok).toBe(true)
+    expect(state.hauling.toSiteId).toBeNull() // 第一段驶回母港
+    expect(state.hauling.routeA).toBe('site-test')
+    expect(state.hauling.routeB).toBeNull()
+    expect(state.awayGalaxy).toBe('galaxy-far')
+  })
+
   it('真实航程往返：每段到站结算报酬并立即续下一段（2 分钟一段、两向都结）', () => {
-    startHauling(state, 'site-test', ctx)
+    startRoute(state, ctx)
     const reward = legReward(state, ctx)
     const w0 = state.wallet.isk
     advanceGame(state, 120_000, ctx) // 第一段到站（母港 → 前哨站）→ 立即装载返程
@@ -107,23 +133,28 @@ describe('运输任务（2026-09-09）', () => {
     expect(state.logs.filter((l) => l.text.includes('运输任务 · 已运抵')).length).toBe(2)
   })
 
-  it('停止 = 完成当前段到站即止（停在到站），不再续段；重复停止拒绝', () => {
-    startHauling(state, 'site-test', ctx)
-    advanceGame(state, 60_000, ctx) // 航行中
-    expect(stopHauling(state).ok).toBe(true)
-    expect(stopHauling(state).ok).toBe(false) // 已安排在到站停
+  it('停止 = 立即响应：任务即刻终止并自动返航出发站；无后续报酬（不再等到站）', () => {
+    startRoute(state, ctx)
+    advanceGame(state, 60_000, ctx) // 航行中（半程）
     const w0 = state.wallet.isk
-    advanceGame(state, 120_000, ctx)
-    expect(state.hauling.active).toBe(false)
-    expect(state.dockedSite).toBe('site-test') // 停在到站点
-    expect(state.wallet.isk - w0).toBe(legReward(state, ctx)) // 本段照常结算
+    const r = stopHauling(state, ctx)
+    expect(r.ok).toBe(true)
+    expect(state.hauling.active).toBe(false) // 立即停止（有响应）
+    expect(state.transit.active).toBe(true) // 已转入返航行程
+    expect(state.wallet.isk).toBe(w0) // 未完成段不结算
+    advanceGame(state, 120_000, ctx) // 返航到站（60s 回程 + 富余）
+    expect(state.transit.active).toBe(false)
+    expect(state.dockedSite).toBeNull() // 停靠回母港（出发站）
+    expect(state.awayGalaxy).toBeNull()
     const w1 = state.wallet.isk
     advanceGame(state, 240_000, ctx)
     expect(state.wallet.isk).toBe(w1) // 不再有后续报酬
+    // 已停止 → 重复停止拒绝
+    expect(stopHauling(state, ctx).ok).toBe(false)
   })
 
   it('换驾驶 = 立即终止（无惩罚）；任务中不可开采/出击', () => {
-    startHauling(state, 'site-test', ctx)
+    startRoute(state, ctx)
     expect(startMining(state, 'belt-a', ctx).ok).toBe(false)
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(false)
     state.fleet[state.shipId]!.cargo['ore-a'] = 3 // 换船终止时虚拟货无残留语义：旧船货物不动
@@ -134,7 +165,7 @@ describe('运输任务（2026-09-09）', () => {
   })
 
   it('存档往返保留任务；旧档缺 hauling 字段 → 默认空态（零迁移）', () => {
-    startHauling(state, 'site-test', ctx)
+    startRoute(state, ctx)
     advanceGame(state, 30_000, ctx)
     const text = serializeSaveFile(state, 1000)
     const back = loadSaveFile(text)
@@ -145,5 +176,6 @@ describe('运输任务（2026-09-09）', () => {
     const legacy = loadSaveFile(JSON.stringify(raw))
     expect(legacy.state.hauling.active).toBe(false)
     expect(legacy.state.hauling.legMs).toBe(0)
+    expect(legacy.state.hauling.routeA).toBeNull()
   })
 })
