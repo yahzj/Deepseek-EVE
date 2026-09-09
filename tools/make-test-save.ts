@@ -77,6 +77,7 @@ function genericPrep(state: GameState): void {
     galaxyId: null,
     name: '',
     threat: 0,
+    anomalyId: null,
     origin: '',
     invitedAtGameMs: 0,
     deadlineGameMs: 0,
@@ -546,6 +547,42 @@ function injectCruiser(state: GameState): string[] {
   return notes
 }
 
+/** wave（多波次低安顶段实测，2026-09-09 二号）：基于 cruiser 门槛 + 中位战斗技能（与
+ * battle:calibrate MID_SKILLS 同源 20 键 ×3——多波验收口径 = 中位列）+ 灰鲭鲨 MK2 上一档对照船。
+ * 对应 docs/design/wave-battles-20260909.md（首批 4 卡：噬口 2 波/坟场 2 波/虚海 3 波/穹顶 3 波）。 */
+function injectWave(state: GameState): string[] {
+  const notes = injectCruiser(state)
+  const midSkillIds = [
+    'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control',
+    'reload-drills', 'drone-warfare', 'drone-servicing', 'ammunition-condensing',
+    'shield-operation', 'energy-management', 'hull-upgrades', 'shield-tuning', 'armor-tuning',
+    'armed-ops', 'armored-ops', 'vector-maneuvering', 'evasion-maneuvering',
+    'targeting-integration', 'ship-systems-engineering',
+  ]
+  for (const k of midSkillIds) state.skills.trained[k] = 3
+  notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 主验收行同口径）')
+  // 上一档对照船：灰鲭鲨 4×MK2 + 支援（calibrate S2 行）——穹顶多波下应"磨不过"（实测 0%）
+  const uid = addShipToFleet(state, 'sh-mako')
+  const s = state.fleet[uid]!
+  s.customName = '灰鲭鲨·MK2（上一档对照）'
+  s.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  s.durability = 1
+  s.armorPct = 1
+  state.moduleBay['mod-turret-kin-2'] = (state.moduleBay['mod-turret-kin-2'] ?? 0) + 3
+  notes.push('新增灰鲭鲨·MK2（上一档对照，不设驾驶）——用它与锤头鲨打同一张多波卡对照强度差')
+  notes.push(
+    '测试路径（多波验收口径）：星图·战斗悬赏 → 虚海 88（3 波 2+2+1）/穹顶 96（3 波 2+2+1）开战——' +
+      '留意战斗日志「第 N/3 波来袭：敌方增援抵达」与增援舰入场节奏；锤头鲨（驾驶，中位技能）单场约 70~140s、' +
+      '战后残血 70~112%；逐船切驾驶对照三族（电鳐快 / 长尾鲨慢 / 牛鲨最肉）；换「灰鲭鲨·MK2」打同一张卡对照' +
+      '上一档被关门（穹顶磨不过）——体感结论回传（单场时长/压力/波次节奏是否合适）。',
+  )
+  return notes
+}
+
 /** shipart（舰船战斗图形目测门槛，2026-09-09 三号）：新规格 240×110 战斗图形全量接入后，
  * 船长真机目测用——钱包/声望/全星系点亮 + 各族代表演示船（逐艘切驾驶开战看形）+ 弹药装备库。
  * 战斗画面重点：我方各族船形（舰首朝右/族色件/引擎挂点/炮口锚/大小比例）与敌族 A~G 型形。 */
@@ -610,6 +647,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   drone: injectDrone,
   cruiser: injectCruiser,
   shipart: injectShipArt,
+  wave: injectWave,
 }
 function main(): void {
   const feature = process.argv[2]
