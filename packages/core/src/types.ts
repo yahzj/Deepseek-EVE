@@ -268,6 +268,10 @@ export interface MarketBalance {
   absorbPerPoint: number
   /** 站内让利吸收：折价放大上限（默认 5×；折价 10% 即封顶） */
   absorbMaxMul: number
+  /** 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，玩家"单件商品"卖出吞吐 ×本值，
+   * 乘法叠加无封顶：boost = builtSellMulPerSite^N（N = 已建成副站数）。只作用于单件商品
+   * （装备/蓝图/船等件货的 NPC 收购单与站内吸收配额），池商品不受影响。 */
+  builtSellMulPerSite: number
   /** 参考成交量（用于冲击归一化）：默认 = poolTarget 的该比例 */
   referenceVolRatio: number
   /** 贸易税（销售税）：玩家卖出成交按此比例征税（ISK 回收阀） */

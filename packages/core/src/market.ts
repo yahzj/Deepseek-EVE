@@ -39,6 +39,26 @@ import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
 
+/* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，协会收购网扩容，
+ * 玩家"单件商品"卖出吞吐 ×1.5，乘法叠加无封顶——只作用于单件商品（装备/蓝图/船等件货的
+ * NPC 收购单与站内吸收配额），池商品（矿石/矿物/弹药等大宗）不受影响。见
+ * docs/design/market-station-sell-expansion.md）═══════════ */
+
+/** 已建成副站数（stage ≥ 全部档位；驱动卖出扩容倍率） */
+export function builtStationCount(state: GameState, ctx: SimContext): number {
+  let n = 0
+  for (const site of ctx.stations.values()) {
+    const p = state.stationSites[site.id]
+    if (p && p.stage >= site.tiers.length) n += 1
+  }
+  return n
+}
+
+/** 玩家卖出侧扩容倍率 = builtSellMulPerSite^N（N = 已建成副站数；池商品不乘） */
+export function builtSellBoost(state: GameState, ctx: SimContext): number {
+  return Math.pow(ctx.balance.market.builtSellMulPerSite, builtStationCount(state, ctx))
+}
+
 /* ═══════════ P2 稀有/奇货供给节拍常量（2026-09-06 船长定稿）═══════
  * 完整设计见 docs/design/power-ladder-rework.md「P2 稀有配额制」；
  * 下列为默认值（船长暂定），随时可复核调参（改常量 + 测试 + 文档同步即可）。 */
@@ -669,22 +689,25 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
         }
       }
     } else {
-      // 单件平价品：维持供应线与低价收购线（收购单 qty 3/张，2026-09-08 船长定件数放大）
-      if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), 3)
+      // 单件平价品：维持供应线与低价收购线（收购单 qty 3/张 ×建站扩容 boost，2026-09-08 件数放大 + 2026-09-09 扩容）
+      const boost = builtSellBoost(state, ctx)
+      if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), Math.max(1, Math.round(3 * boost)))
       if (def.playerBuyable !== false && (sellList.length < 2 || nextRandom(state.rng) < 0.85)) {
         npcPushSell(state, ctx, def, poolQ, now, lifeMs, Math.round(sellPrice(def, L) * priceJitter(state)), 1)
       }
     }
   } else if (def.rarity === 'rare') {
-    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 3%；qty 2/张，2026-09-08 船长定；
+    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 3% ×建站扩容；qty 2/张 ×扩容；2026-09-08 船长定；
     // 闸内 ×4 收购价同规则；寿命同供给侧 36 分钟）
-    if (sellable && nextRandom(state.rng) < 0.03) {
-      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), 2, locked)
+    const boost = builtSellBoost(state, ctx)
+    if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.03 * boost)) {
+      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), Math.max(1, Math.round(2 * boost)), locked)
     }
   } else if (def.rarity === 'exotic') {
-    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 1%；寿命同供给侧 6h；qty 1 维持稀缺节奏）
-    if (sellable && nextRandom(state.rng) < 0.01) {
-      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L)), 1)
+    // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 1% ×建站扩容；寿命同供给侧 6h；qty ×扩容）
+    const boost = builtSellBoost(state, ctx)
+    if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.01 * boost)) {
+      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L)), Math.max(1, Math.round(boost)))
     }
   }
 }
@@ -910,8 +933,7 @@ function absorbMulOf(bal: MarketBalance, price: number, buyBid: number): number 
   return Math.min(bal.absorbMaxMul, 1 + bal.absorbPerPoint * pct)
 }
 
-/**
- * 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩）：每 60s 窗撮合簿之后执行。
+/** 站内让利吸收（2026-09-08 船长定：吸收量与价格挂钩；每 60s 窗撮合簿之后执行；export 供测试白盒）。
  * 语义 = 每窗总吸收保底：吃簿不够才站内补差，绝不叠加——
  * 对每张卖单算"当窗配额 F×E"（F = 基础吸收额、E = 折价倍率）；吃簿量 < 配额的部分
  * 计入该单补差结余（小数结转），结余整数部分以挂单价直接卖给站内，余数跨窗结转。
@@ -920,7 +942,7 @@ function absorbMulOf(bal: MarketBalance, price: number, buyBid: number): number 
  * 簿厚（吃簿 ≥ 配额）时当窗只走簿面，站内不额外收——平价常态与现状长期持平，
  * 折价（让利）才把配额拉到 ×E，实现"压价换吞吐、最高 ×5"。
  */
-function absorbViaStation(state: GameState, ctx: SimContext): void {
+export function absorbViaStation(state: GameState, ctx: SimContext): void {
   const bal = ctx.balance.market
   for (const order of state.orders) {
     if (order.side !== 'sell' || order.qty <= 0) continue
@@ -930,7 +952,9 @@ function absorbViaStation(state: GameState, ctx: SimContext): void {
     const L = priceLevel(state, ctx, def, poolQ)
     const buyBid = Math.round(buyPrice(def, L))
     if (order.price > buyBid) continue // 高于买盘价：等簿价，不累计额度
-    const F = absorbBaseQtyOf(def)
+    const F0 = absorbBaseQtyOf(def)
+    // 建站收购扩容（2026-09-09 船长定）：只放大单件商品吸收配额，池商品不乘
+    const F = def.poolTarget && def.poolTarget > 0 ? F0 : F0 * builtSellBoost(state, ctx)
     const E = absorbMulOf(bal, order.price, buyBid)
     const bookFill = order.windowFilled ?? 0
     if (bookFill < F * E) {

@@ -116,6 +116,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     digestPerWindow: 0.15, // 内部消化队列每窗口消化 15%（冲突订单随时间推进消化）
     absorbPerPoint: 0.4, // 让利吸收：每折价 1 个百分点放大 +40%（折 5% → ×3、折 10% → ×5 封顶）
     absorbMaxMul: 5, // 让利吸收上限倍数（2026-09-08 船长定：最大约 5 倍常规窗吸收）
+    builtSellMulPerSite: 1.5, // 建站收购网络扩容（2026-09-09 船长定：每建成副站 ×1.5，乘法叠加无封顶，仅单件商品卖出侧）
     referenceVolRatio: 1 / 120, // 参考成交量默认 = poolTarget × (1/120)
     salesTaxRate: 0.05, // 贸易税（销售税）5%：卖出成交按成交额征税（挂单/买入不收）
     taxSkillAId: 'accounting', // 会计学：每级 -8% 贸易税

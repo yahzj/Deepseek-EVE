@@ -3,7 +3,7 @@
  * 内部消化、池库存、声望加成、蓝图学习/回卖、舰船市场出售。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SimContext, MarketGoodDef } from '../src/types'
+import type { SimContext, MarketGoodDef, StationSiteDef } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
@@ -29,6 +29,9 @@ import {
   bmGateReason,
   salesTaxRate,
   sellShipAtMarket,
+  builtStationCount,
+  builtSellBoost,
+  absorbViaStation,
 } from '../src/market'
 import { occupyAiCore } from '../src/ai'
 import { DEFAULT_BALANCE } from '../src/balance'
@@ -1022,5 +1025,81 @@ describe('残骸收购卡（2026-09-08 船长定：残骸可到市场出售—�
     const r = buyAtMarket(state, ctx, 'wreck-ano-x', 10)
     expect(r.bought).toBe(0)
     expect(placeBuyOrder(state, ctx, 'wreck-ano-x', 30, 10)).toBeNull()
+  })
+})
+
+/* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，单件商品卖出侧 ×1.5^N） ═══════════ */
+
+describe('建站收购网络扩容：卖出侧 ×1.5^N（单件商品放大；池品不乘）', () => {
+  const siteDef = (id: string, tiersN: number): StationSiteDef => ({
+    id,
+    name: `测试站${id}`,
+    galaxyId: 'galaxy-far',
+    standingReq: 0,
+    acceptItemIds: ['min-a'],
+    tiers: Array.from({ length: tiersN }, (_, i) => ({ name: `档${i + 1}`, count: 100, unlockDesc: '测试' })),
+    introDialogueId: null,
+    doneDialogueId: null,
+    description: '测试建站点',
+  })
+
+  it('builtStationCount / builtSellBoost 真值：0 站 =1；未建成不计；2 座建成 = 1.5² = 2.25', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 1 })
+    const ctx = makeTestCtx({ stations: [siteDef('a', 2), siteDef('b', 2)] })
+    expect(builtStationCount(state, ctx)).toBe(0)
+    expect(builtSellBoost(state, ctx)).toBe(1)
+    state.stationSites['a'] = { stage: 1, delivered: {} } // 只建一半 = 未建成
+    expect(builtStationCount(state, ctx)).toBe(0)
+    state.stationSites['a'] = { stage: 2, delivered: {} }
+    expect(builtStationCount(state, ctx)).toBe(1)
+    state.stationSites['b'] = { stage: 2, delivered: {} }
+    expect(builtStationCount(state, ctx)).toBe(2)
+    expect(builtSellBoost(state, ctx)).toBeCloseTo(2.25)
+  })
+
+  it('common 单件商品：站内吸收补差随扩容放大（一窗 0 站 1 件 / 2 站 2 件，确定性白盒）', () => {
+    const mkCtx = (stations: StationSiteDef[]) =>
+      makeTestCtx({
+        quietEvents: true,
+        items: [mineral('g-item', 100)],
+        balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+        marketGoods: [{ key: 'g-item', kind: 'item', refId: 'g-item', rarity: 'common', basePrice: 100, demandMultiplier: 0.6 }],
+        stations,
+      })
+    const run = (stations: StationSiteDef[]): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 7 })
+      const ctx = mkCtx(stations)
+      for (const site of stations) state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} } // 全部建成
+      marketQuote(state, ctx, 'g-item')
+      state.market.npcBuy['g-item'] = []
+      state.market.npcSell['g-item'] = []
+      placeSellOrder(state, ctx, 'g-item', 60, 10) // 平价（common 单件收购线 0.6L = 60）
+      absorbViaStation(state, ctx) // 一窗站内补差（簿为空：补差 = F×boost 全额）
+      return state.orders[0]?.qty ?? 0 // 剩余件数
+    }
+    expect(run([])).toBe(9) // F = 1 件/窗
+    expect(run([siteDef('a', 2), siteDef('b', 2)])).toBe(8) // F = 1×2.25 → 取整 2 件
+  })
+
+  it('池商品不受扩容影响：站内吸收补差同为 supplyFlow（0/2 站均一窗 10 件）', () => {
+    const mkCtx = (stations: StationSiteDef[]) =>
+      makeTestCtx({
+        quietEvents: true,
+        balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+        marketGoods: [{ key: 'min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 8, poolTarget: 3_000, supplyFlow: 10 }],
+        stations,
+      })
+    const run = (stations: StationSiteDef[]): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 5 })
+      const ctx = mkCtx(stations)
+      marketQuote(state, ctx, 'min-a')
+      state.market.npcBuy['min-a'] = []
+      state.market.npcSell['min-a'] = []
+      placeSellOrder(state, ctx, 'min-a', 8, 30)
+      absorbViaStation(state, ctx) // 一窗：池品 F = supplyFlow = 10，不乘扩容
+      return state.orders[0]?.qty ?? 0
+    }
+    expect(run([])).toBe(20)
+    expect(run([siteDef('a', 2), siteDef('b', 2)])).toBe(20) // 扩容不作用池品
   })
 })
