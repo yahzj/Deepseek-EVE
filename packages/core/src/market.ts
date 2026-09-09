@@ -745,7 +745,12 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
       if (order.qty > 0) {
         const bdef = ctx.marketGoods.get(order.good)
         if (bdef && bdef.playerBuyable !== false && !bmGateLocked(state, bdef)) {
-          const ask = Math.round(sellPrice(bdef, priceLevel(state, ctx, bdef, state.market.pools[order.good]?.q ?? 0)))
+          const Lp = priceLevel(state, ctx, bdef, state.market.pools[order.good]?.q ?? 0)
+          // 2026-09-08 船长定（奇货专项·试跑口径，待实测复核）：奇货买侧越线基准 = 20L，
+          // 取代供应价线 ≈1L——正常挂单（0.1L~1L）相对 20L 的偏离 s≈95%+，每窗命中率被
+          // e^(−14s) 压到 ~3e−7 量级（约数年一见），奇货供给实际回归抽取节拍、不再被低挂
+          // 套走，同时保留天文级小概率而非硬禁；稀有/普通仍按供应价线判定。
+          const ask = Math.round(bdef.rarity === 'exotic' ? Lp * 20 : sellPrice(bdef, Lp))
           if (order.price < ask) {
             const s = ask > 0 ? (ask - order.price) / ask : 1
             const pRoll = Math.min(1, bal.snatchBuyChance * Math.exp(-bal.snatchBuyDecay * s))

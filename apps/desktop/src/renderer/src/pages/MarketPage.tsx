@@ -581,7 +581,13 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     if (tab === 'buy') {
       const id = engine.placeBuyOrderAt(good.key, p, n)
       if (id === null) onToast('挂买单失败：价格或数量无效。', true)
-      else onToast(`已挂买单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK。`)
+      else {
+        const exoNote =
+          good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
+            ? `。注意：挂价低于奇货参考价（约 ${isk(askLineOf(state, engine.ctx, good.key))} ISK），可能长期无法成交——建议挂到参考价附近`
+            : ''
+        onToast(`已挂买单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK${exoNote}。`)
+      }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
       if (!r.ok) onToast(r.error ?? '挂卖单失败。', true)
@@ -743,6 +749,23 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                   )
                 }
                 return <>平价挂卖（= 收购价 {isk(bid)}）：按当前收购通道优先撮合成交</>
+              }
+              // 奇货专项提示（2026-09-08 船长定）：挂单价低于奇货参考价时提醒并给出合适价位
+              //（口径保密：不披露 20L/巡游机制，只讲"稀见到货 + 参考价"）
+              if (good.rarity === 'exotic') {
+                const exoLine = askLineOf(state, engine.ctx, good.key)
+                if (p >= exoLine) {
+                  return (
+                    <>
+                      挂价已达奇货参考价（约 {isk(exoLine)} ISK）：协会奇货到货（行情价上下浮动）时会直接按单成交
+                    </>
+                  )
+                }
+                return (
+                  <>
+                    挂价 {isk(p)} ISK 低于奇货参考价（约 {isk(exoLine)} ISK）：奇货只按稀见到货，挂太低很可能长期无人接单——建议把挂价提到参考价附近（{isk(exoLine)} ISK 上下），到货即按单成交
+                  </>
+                )
               }
               const ask = quote.sell ?? askLineOf(state, engine.ctx, good.key)
               if (p >= ask) return <>平价买入（= 供应价 {isk(ask)}）：现买现得</>

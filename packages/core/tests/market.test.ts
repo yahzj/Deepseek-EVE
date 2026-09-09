@@ -938,6 +938,32 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
   })
 
+  it('奇货买侧专项（2026-09-08 船长定·试跑）：越线基准改为 20L → 低挂 1000 窗零供货；common 对照照常供货', () => {
+    state = createInitialState({ nowWallMs: 0, seed: 77 })
+    state.wallet.isk = 100_000_000
+    ctx = makeTestCtx({
+      quietEvents: true,
+      balance: quietBalance(),
+      modules: [moduleDef('mod-x3', 'turret', 0)],
+      marketGoods: [
+        { key: 'mod-x3', kind: 'module', refId: 'mod-x3', rarity: 'exotic', basePrice: 10_000, demandMultiplier: 1.0 },
+        { key: 'mod-a', kind: 'module', refId: 'mod-a', rarity: 'common', basePrice: 100, demandMultiplier: 0.6 },
+      ],
+    })
+    marketQuote(state, ctx, 'mod-x3')
+    marketQuote(state, ctx, 'mod-a')
+    // 奇货：0.9L 低挂（旧基准 1L 下 s=10% ≈4.9%/窗 必大量成交；新基准 20L → s≈95.5% ≈ 数十万年一见）
+    placeBuyOrder(state, ctx, 'mod-x3', 9_000, 100)
+    // common 对照：0.9L 低挂照旧走 20%·e^(−1.4) ≈4.9%/窗
+    placeBuyOrder(state, ctx, 'mod-a', 90, 100)
+    advanceGame(state, 1_000 * 60_000, ctx)
+    const exoticLeft = state.orders.find((o) => o.good === 'mod-x3')?.qty ?? 0
+    const commonLeft = state.orders.find((o) => o.good === 'mod-a')?.qty ?? 0
+    expect(exoticLeft).toBe(100) // 奇货零供货：回归抽取节拍
+    expect(commonLeft).toBeLessThan(100) // common 对照组照常被巡游供货
+    expect(state.logs.filter((l) => l.text.startsWith('挂单买入成交：')).length).toBeGreaterThan(0)
+  })
+
   it('巡游采购单次件数随贴线放大且与池订单生成量挂钩（方案 B 2026-09-08 船长定）：贴线 ≈ 半档簿量，越远越小', () => {
     const poolDef = { key: 'p', kind: 'item' as const, refId: 'p', rarity: 'common' as const, basePrice: 10, poolTarget: 1_000, supplyFlow: 20 }
     const singleDef = { key: 'm', kind: 'module' as const, refId: 'm', rarity: 'common' as const, basePrice: 100 }
