@@ -6755,6 +6755,20 @@ body {
 
 .app-bts-drones { position: absolute; z-index: 5; pointer-events: none; }
 
+/* 机群被点防击落的坠落演出（2026-09-10）：SVG 线稿（冲击环 + 八向爆散线 + 三片碎屑），
+   只动 transform/opacity（约定第十四章：不碰 filter/box-shadow/宽高）；落点与机体共用同一坐标系 */
+.app-bts-drone-wreck { position: absolute; display: block; opacity: .95; animation: app-bts-wreck-fall 760ms ease-out 1 forwards; }
+.app-bts-drone-wreck svg { display: block; overflow: visible; }
+.app-bts-wreck-ring { fill: none; transform-box: fill-box; transform-origin: center; animation: app-bts-wreck-ring 420ms ease-out 1 forwards; }
+.app-bts-wreck-rays { animation: app-bts-wreck-rays 300ms ease-out 1 forwards; }
+.app-bts-wreck-bit { animation: app-bts-wreck-bit 700ms ease-in 1 forwards; }
+.app-bts-wreck-bit.is-b { animation-delay: 90ms; }
+.app-bts-wreck-bit.is-c { animation-delay: 160ms; }
+@keyframes app-bts-wreck-fall { 0% { transform: translate(0, 0); } 35% { transform: translate(0, 3px); } 100% { transform: translate(0, 22px); opacity: 0; } }
+@keyframes app-bts-wreck-ring { 0% { transform: scale(.35); opacity: .95; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes app-bts-wreck-rays { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes app-bts-wreck-bit { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(0, 14px); opacity: 0; } }
+
 .app-bts-wing { position: absolute; left: 0; top: 0; }
 
 /* 收舱态：常驻挂载但 display:none —— 既不做每轮挂载/卸载（省 GC），也不参与绘制/动画（省绘制） */
@@ -6934,6 +6948,9 @@ body {
 .app-bts-report-text { font-size: 13px; line-height: 1.75; color: var(--wui-text); border-top: 1px dashed rgba(255,255,255,.12); border-bottom: 1px dashed rgba(255,255,255,.12); padding: 10px 2px; }
 
 .app-bts-report-stats { font-size: 11.5px; font-family: var(--wui-mono); color: var(--wui-text-dim); }
+
+/* 战报「机群损失」行（2026-09-10 点防上线）：与战绩行同款，用告警色区分 */
+.app-bts-report-stats.is-loss { color: #ffb3a3; }
 
 .app-bts-report-note { font-size: 11px; color: var(--wui-text-dim); }
 

@@ -1736,7 +1736,7 @@ function normalizeState(raw: unknown): GameState {
 
   // --- B3 星系残骸密度（2026-09-05 兼容字段无版本号）：合法记录保留（密度 ≥0、稀有计数取整）；
   // 非法/缺省 = 无记录（运行时按基础密度推导，不入档） ---
-  const galaxyWrecks: Record<string, { density: number; rare: number }> = {}
+  const galaxyWrecks: Record<string, { density: number; rare: number; rareBy?: Record<string, number> }> = {}
   const gwRaw = asRaw(src.galaxyWrecks)
   for (const [galaxyId, gw] of Object.entries(gwRaw)) {
     if (galaxyId.length === 0 || typeof gw !== 'object' || gw === null) continue
@@ -1744,9 +1744,18 @@ function normalizeState(raw: unknown): GameState {
     const density = g.density
     const rare = g.rare
     if (typeof density !== 'number' || !Number.isFinite(density) || density < 0) continue
+    // 稀有残骸按敌群记账（2026-09-10 兼容字段）：只收正整数的敌群计数（白名单重建，防字段被丢）
+    const rareByRaw = asRaw(g.rareBy)
+    const rareBy: Record<string, number> = {}
+    for (const [anomalyId, n] of Object.entries(rareByRaw)) {
+      if (anomalyId.length === 0) continue
+      if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+      rareBy[anomalyId] = Math.floor(n)
+    }
     galaxyWrecks[galaxyId] = {
       density,
       rare: typeof rare === 'number' && Number.isFinite(rare) ? Math.max(0, Math.floor(rare)) : 0,
+      ...(Object.keys(rareBy).length > 0 ? { rareBy } : {}),
     }
   }
 
@@ -1865,22 +1874,30 @@ function normalizeState(raw: unknown): GameState {
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
-    listKind: 'resource' | 'courier',
+    listKind: 'resource' | 'courier' | 'bounty',
   ): GameState['sideTasks']['resource'] => {
     const out: GameState['sideTasks']['resource'] = []
     if (!Array.isArray(rawList)) return out
     for (const item of rawList) {
       if (typeof item !== 'object' || item === null) continue
       const r = asRaw(item)
-      const kind = r.kind === 'courier' ? 'courier' : 'resource'
+      const kind = r.kind === 'courier' ? 'courier' : r.kind === 'bounty' ? 'bounty' : 'resource'
       if (kind !== listKind) continue
       const id = Math.floor(num(r.id))
       const need = Math.floor(num(r.need))
       const rewardIsk = Math.floor(num(r.rewardIsk))
       const goodKey = typeof r.goodKey === 'string' ? r.goodKey : ''
       const refId = typeof r.refId === 'string' ? r.refId : ''
-      if (!Number.isFinite(id) || id <= 0 || goodKey.length === 0 || refId.length === 0) continue
-      if (!Number.isFinite(need) || need <= 0) continue
+      if (!Number.isFinite(id) || id <= 0) continue
+      // 资源/快递必须有物品与数量；赏金任务按目标悬赏校验（2026-09-10）
+      if (kind === 'bounty') {
+        const anomalyId = typeof r.anomalyId === 'string' ? r.anomalyId : ''
+        const tier = Math.floor(num(r.lairTier))
+        if (anomalyId.length === 0 || tier < 1 || tier > 3) continue
+      } else {
+        if (goodKey.length === 0 || refId.length === 0) continue
+        if (!Number.isFinite(need) || need <= 0) continue
+      }
       const task: GameState['sideTasks']['resource'][number] = {
         id,
         kind,
@@ -1894,6 +1911,11 @@ function normalizeState(raw: unknown): GameState {
       const galaxyId = typeof r.galaxyId === 'string' && r.galaxyId.length > 0 ? r.galaxyId : ''
       if (stationId.length > 0) task.stationId = stationId
       if (galaxyId.length > 0) task.galaxyId = galaxyId
+      if (kind === 'bounty') {
+        task.anomalyId = typeof r.anomalyId === 'string' ? r.anomalyId : ''
+        task.lairTier = Math.floor(num(r.lairTier)) as 1 | 2 | 3
+        if (typeof r.lairName === 'string' && r.lairName.length > 0) task.lairName = r.lairName
+      }
       out.push(task)
     }
     return out
@@ -1933,16 +1955,18 @@ function normalizeState(raw: unknown): GameState {
   const stRaw = asRaw(src.sideTasks)
   const sideTaskResource = cleanSideTaskList(stRaw.resource, 'resource')
   const sideTaskCourier = cleanSideTaskList(stRaw.courier, 'courier')
+  const sideTaskBounty = cleanSideTaskList(stRaw.bounty, 'bounty') // 赏金任务（v24 兼容字段：老档缺省 = 空）
   const stSeqRaw = Math.floor(num(stRaw.seq))
   let sideTaskSeq = Number.isFinite(stSeqRaw) ? Math.max(1, stSeqRaw) : 1
   // 分配器兜底：不能低于现存任务最大 id（防未来刷新撞号；正常档 seq ≥ 现存最大 id，天然不动）
-  for (const t of [...sideTaskResource, ...sideTaskCourier]) sideTaskSeq = Math.max(sideTaskSeq, t.id)
+  for (const t of [...sideTaskResource, ...sideTaskCourier, ...sideTaskBounty]) sideTaskSeq = Math.max(sideTaskSeq, t.id)
   const sideTaskWindow = Math.max(0, Math.floor(num(stRaw.window)))
   const sideTasks = {
     seq: sideTaskSeq,
     window: sideTaskWindow,
     resource: sideTaskResource,
     courier: sideTaskCourier,
+    bounty: sideTaskBounty,
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 

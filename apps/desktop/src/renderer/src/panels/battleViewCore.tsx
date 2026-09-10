@@ -33,6 +33,8 @@ const BOLT_LIFE = FLY_MS + 500
 const FLASH_LIFE = 340
 /** 敌舰爆炸演出生命周期 ms（渲染时清理；爆炸 CSS 动画 ~1.25s） */
 const BOOM_LIFE = 1700
+/** 机群被点防击落的坠落演出生命周期 ms（小爆炸环 + 碎片下坠；渲染时清理） */
+const DRONE_DOWN_LIFE = 760
 
 /** 战斗背景视差星层配置：far 慢 / mid 中 / near 快（追逐机动时差速最明显） */
 const STAR_LAYERS = [
@@ -248,6 +250,8 @@ interface OutroSnap {
   meDmg: number
   foeShots: number
   foeHits: number
+  /** 本场机群战损（机型 id → 击落架数；2026-09-10 点防上线，战报「机群损失」行用；空 = 无损失） */
+  droneLost?: Record<string, number>
 }
 
 /** 在日志中找本场战斗的战报原文（时间在开战之后、含"战报"的最新一条） */
@@ -272,6 +276,7 @@ export {
   BOLT_LIFE,
   FLASH_LIFE,
   BOOM_LIFE,
+  DRONE_DOWN_LIFE,
   STAR_LAYERS,
   genStars,
   clamp01,

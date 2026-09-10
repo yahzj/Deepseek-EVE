@@ -857,6 +857,8 @@ export interface LootRow {
 }
 
 /** 异常空间/悬赏目标（远征目的地） */
+/** 敌族字母（A 海盗舰系 / B 武装拾荒者 / C 异形生物 / D 守墓古舰 / E 泰坦巨构 / F 制式巡逻 / G 烬火流亡） */
+export type FoeFamily = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
 export interface AnomalyDef {
   id: string
   name: string
@@ -917,6 +919,16 @@ export interface AnomalyDef {
   /* ═══ B3.1 敌群特色回收（2026-09-06 船长定档；可缺省 → 三档基础池/三层彩头默认） ═══ */
   /** 保底矿物权重池（同档矿物）；池均价 ≈ 档基数 × m（m = 危险度溢价 × 威胁线性，content-check 断言） */
   recyclePool?: ReadonlyArray<readonly [string, number]>
+  /* ═══ 赏金任务·敌人窝点（2026-09-10 船长定） ═══ */
+  /** 敌族（A~G；与美术层 FOE_ART 族字母同源）——决定窝点三档称呼与专属装备分配 */
+  foeFamily?: FoeFamily
+  /** 窝点名的核心词（有值 = 可作为赏金任务的窝点目标；教学卡刻意留空） */
+  lairCore?: string
+  /** 窝点三档称呼覆盖（缺省走族级词表 FOE_LAIR_TIERS） */
+  lairTierNames?: readonly [string, string, string]
+  /** 该敌群的专属装备池（2026-09-10 船长定：稀有残骸「高级箱」的额外掉落优先在此掷；
+   *  每个敌族至少一件，只从高级箱出、不进市场不设蓝图） */
+  lairGear?: readonly string[]
   /** 玩家可见的"残骸产出倾向"一句话 */
   recycleNote?: string
   /** 主题追加件集（2026-09-08"追加"语义：只在默认池上追加，默认池一件不少；武器不入主题，

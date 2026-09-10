@@ -39,6 +39,10 @@ import {
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
 import { claimTutorialTrialReward } from './onboarding'
+import { isLairCandidate, lairAnomalyOf, lairBaseRewardIsk, lairNameOf, lairTierForStanding, LAIR_RARE_WRECK_GAIN } from './lairs'
+import type { LairTier } from './lairs'
+import { injectRareWreck } from './salvage'
+import { settleBountyTaskVictory } from './sideTasks'
 
 /** 母港星系 id（内容层约定；与 state.HOME_GALAXY_ID 同值，经此转发保持既有 import 面不变） */
 export { HOME_GALAXY_ID }
@@ -248,16 +252,27 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   return { ok: true }
 }
 
-/** 玩家指令：出发远征（V12：out → battle → back；opts.desireM = 期望距离偏好） */
+/** 玩家指令：出发远征（V12：out → battle → back；opts.desireM = 期望距离偏好；
+ *  opts.lairTier = 赏金任务·窝点档位（非空 = 本次打的是派生窝点，威胁/波次/僚机按档位强化、
+ *  奖金与稀有残骸按窝点口径结算，见 lairs.ts）。 */
 export function startExpedition(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number },
+  opts?: { desireM?: number; lairTier?: LairTier },
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)!
+  // 窝点校验：目标必须可作窝点（有核心词），且档位不超过当前声望允许的上限
+  if (opts?.lairTier !== undefined) {
+    if (!isLairCandidate(anomaly)) {
+      return { ok: false, error: '该目标不是敌人窝点，无法作为赏金任务目标。' }
+    }
+    if (opts.lairTier > lairTierForStanding(standingOf(state, DSI_FACTION_ID))) {
+      return { ok: false, error: '声望不足：该档位窝点暂不可接（提升协会声望后开放更高档）。' }
+    }
+  }
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
@@ -284,15 +299,17 @@ export function startExpedition(
   exp.eventId = rollTravelEvent(state, ctx)
   exp.eventFired = false
   exp.returnReason = undefined
+  exp.lairTier = opts?.lairTier // 赏金任务·窝点档位（普通悬赏 = undefined）
   // 期望距离偏好：本次显式传入优先；否则沿用上次记忆（默认在开战时取有效射程中点）
   if (opts?.desireM !== undefined) {
     exp.desirePrefM = Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM))
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
+  const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
   addLog(
     state,
     'info',
-    `⚔ 远征开始（${anomaly.name}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。`,
+    `⚔ 远征开始（${outName}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。`,
   )
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
   if (exp.eventId) maybeFireTravelEvent(state, ctx)
@@ -319,7 +336,7 @@ export function startExpeditionFromMining(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number },
+  opts?: { desireM?: number; lairTier?: LairTier },
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
@@ -353,7 +370,7 @@ export function startExpeditionFromMining(
   addLog(
     state,
     'warn',
-    `采矿已结束（${shipName} 转战悬赏「${anomaly.name}」）：离开「${beltName}」${trip > 0 ? `——本趟采得的 ${trip} 单位${ore?.name ?? ''}仍在船上` : '（本趟尚无收获）'}，记得回港卸货。`,
+    `采矿已结束（${shipName} 转战悬赏「${opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name}」）：离开「${beltName}」${trip > 0 ? `——本趟采得的 ${trip} 单位${ore?.name ?? ''}仍在船上` : '（本趟尚无收获）'}，记得回港卸货。`,
   )
   return startExpedition(state, anomalyId, ctx, opts)
 }
@@ -377,10 +394,12 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   // V18B-1：武器形态分家——炮台（turret）与导弹架（missile）都算"已装武器"
   const hasTurret =
     familyModules(state, ctx, shipId, 'turret').length > 0 || familyModules(state, ctx, shipId, 'missile').length > 0
+  const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : ''
   addLog(
     state,
     'info',
-    `⚔ 抵达目标（${anomaly?.name ?? ''}）：进入交火。${hasTurret ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}`,
+    `⚔ 抵达目标（${targetName}）：进入交火。${hasTurret ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}` +
+      (exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''),
   )
   return true
 }
@@ -393,10 +412,18 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   if (!battle || !anomaly) {
     exp.active = false
     exp.battle = null
+    exp.lairTier = undefined
     return
   }
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
+  // 赏金任务·窝点（2026-09-10）：本场是否打的是派生窝点，档位来自出击时锁定的 exp.lairTier。
+  // 战报/奖金/残骸投放/失利维修费统一按"本场实际目标卡"走（窝点 = 主题悬赏按档位强化），
+  // 避免"打了窝点却按主题悬赏报账"。普通悬赏 battleCard === anomaly，行为与旧版一致。
+  const lairTier = exp.lairTier
+  const battleCard = lairTier ? lairAnomalyOf(anomaly, lairTier) : anomaly
+  const displayName = battleCard.name
+  const baseRewardIsk = lairTier ? lairBaseRewardIsk(anomaly, lairTier) : anomaly.rewardIsk
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
   // 且要在战报文案之前落账（战报要引用损失摘要）
   const droneLostText = settleDroneLosses(state, ctx, state.shipId, battle)
@@ -421,7 +448,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // ── 胜利：奖金 ±浮动 + 情报彩蛋 + 战利品 + 声望 ──
     const jitter = ctx.balance.rewardJitter
     const roll = 1 - jitter + 2 * jitter * nextRandom(state.rng)
-    let reward = Math.max(0, Math.round(anomaly.rewardIsk * roll * bountyRewardFactor(state)))
+    let reward = Math.max(0, Math.round(baseRewardIsk * roll * bountyRewardFactor(state)))
     if (nextRandom(state.rng) < 0.15) {
       const texts = [
         '舰队返航时打捞到一枚漂流信标，协会收购了上面的航路情报',
@@ -441,8 +468,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     state.wallet.isk += reward
-    // B3 击杀注入（2026-09-10 船长定）：威胁 ×0.4 × (1 + 0.2×敌人数)，无上限
-    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(anomaly.threat, bountyEnemyCount(anomaly)))
+    // B3 击杀注入（2026-09-10 船长定）：威胁 ×0.4 × (1 + 0.2×敌人数)，无上限（窝点按强化后威胁算）
+    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(battleCard.threat, bountyEnemyCount(battleCard)))
     const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）
     const firstBlood = !state.completedBounties.includes(anomaly.id)
@@ -457,14 +484,22 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'trade',
-      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}，${standPart}` +
-        `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}，${standPart}` +
+        `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`,
     )
+    // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
+    // （按敌群记账、打捞必得）②命中本板该条赏金任务 → 酬金入账 + 下板 + 引导文案。
+    // 投放不依赖任务是否还在板上：任务已过期也照样算窝点战果（打都打了，战利品不能吞）。
+    if (lairTier) {
+      injectRareWreck(state, anomaly.galaxyId, anomaly.id, LAIR_RARE_WRECK_GAIN[lairTier])
+      settleBountyTaskVictory(state, ctx, anomaly.id, LAIR_RARE_WRECK_GAIN[lairTier])
+    }
     // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)
     // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
     exp.battle = null
+    exp.lairTier = undefined // 窝点一次性：结算完清档位，重复清剿回到主题悬赏（否则会无限复打窝点）
     exp.eventId = null
     exp.eventFired = false
     const ret = returnBackMs(state, ctx, anomaly.galaxyId)
@@ -503,33 +538,36 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     let abandoned = false
     if (durabilityAfter <= 0) {
       abandoned = true
-    } else if (nextRandom(state.rng) < abandonChance(state, anomaly.threat, ctx)) {
+    } else if (nextRandom(state.rng) < abandonChance(state, battleCard.threat, ctx)) {
       abandoned = true
     }
     if (abandoned) {
       // 弃船：无维修费，船+货仓+装备全损
-      addLog(state, 'warn', `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：遭重创（交火 ${durTxt}）……`)
-      loseShip(state, state.shipId, ctx, `远征失利（${galaxy?.name ?? ''}·${anomaly.name}）后遭追击`)
+      addLog(state, 'warn', `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}）……`)
+      loseShip(state, state.shipId, ctx, `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`)
       exp.active = false
       exp.battle = null
       exp.anomalyId = null
+      exp.lairTier = undefined
       return
     }
     if (fleetShip && loss > 0) {
       fleetShip.durability = Math.max(0, Math.round((fleetShip.durability - loss) * 1000) / 1000)
     }
-    const repair = Math.min(state.wallet.isk, Math.floor(anomaly.rewardIsk * bal.defeatCostRatio))
+    // 维修费按本场目标强度计（窝点 = 强化后奖金 × 比例）：越硬的窝点打输越贵，与"酬金跟强度"同口径
+    const repair = Math.min(state.wallet.isk, Math.floor(baseRewardIsk * bal.defeatCostRatio))
     state.wallet.isk -= repair
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''
     addLog(
       state,
       'warn',
-      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${dronePartLose}练练炮术学，记得给船做保养。`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${dronePartLose}练练炮术学，记得给船做保养。`,
     )
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）
   exp.battle = null
+  exp.lairTier = undefined // 窝点档位随本场结束作废（含失利；任务仍在板上可再打一次）
   exp.phase = 'back'
   exp.returnReason = 'defeat'
   // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：同胜利路径——离线大步长下不让离线剩余浪费）
@@ -596,11 +634,12 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   if (fleetShip) {
     fleetShip.durability = Math.min(1, durabilityAfter)
   }
-  // 维修费（战败口径 ×0.5，按钱包余量）
-  const repair = Math.min(state.wallet.isk, Math.floor((anomaly?.rewardIsk ?? 0) * bal.defeatCostRatio * 0.5))
+  // 维修费（战败口径 ×0.5，按钱包余量；窝点按档位强化后奖金计）
+  const retreatBaseIsk = anomaly ? (exp.lairTier ? lairBaseRewardIsk(anomaly, exp.lairTier) : anomaly.rewardIsk) : 0
+  const repair = Math.min(state.wallet.isk, Math.floor(retreatBaseIsk * bal.defeatCostRatio * 0.5))
   state.wallet.isk -= repair
   const shipName = shipDisplayName(state, ctx, state.shipId)
-  const targetName = anomaly?.name ?? exp.anomalyId ?? '目标'
+  const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : exp.anomalyId ?? '目标'
   addLog(
     state,
     'warn',
@@ -623,6 +662,7 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
+  exp.lairTier = undefined // 撤退/自动撤退：本场作废，窝点档位不带到下一场
   exp.phase = 'back'
   exp.returnReason = 'retreat'
   // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：自动撤退由大步长推进触发时,离线剩余时间
@@ -667,6 +707,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         exp.active = false
         exp.anomalyId = null
         exp.battle = null
+        exp.lairTier = undefined
         addLog(state, 'warn', '远征目标数据缺失，舰队无功而返（数据异常）。')
         return
       }
@@ -679,6 +720,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         if (!ok) {
           exp.active = false
           exp.anomalyId = null
+          exp.lairTier = undefined
           addLog(state, 'warn', '远征目标数据缺失，舰队无功而返（数据异常）。')
           return
         }
@@ -694,7 +736,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         }
         return
       }
-      advanceBattleFor(state, ctx, exp.battle, state.shipId, exp.anomalyId)
+      advanceBattleFor(state, ctx, exp.battle, state.shipId, exp.anomalyId, null, exp.lairTier)
       // 连续作战保险：巡回场次结构损失过半 → 立即轻损撤退（停环、绝不弃船）
       if (exp.battle.autoEscaped) {
         settleBattleRetreat(state, ctx, 'auto')
@@ -725,6 +767,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     exp.phase = 'out'
     exp.finishAtGameMs = 0
     exp.returnReason = undefined
+    exp.lairTier = undefined
     const siteName = state.dockedSite !== null ? ctx.stations.get(state.dockedSite)?.name ?? state.dockedSite : null
     const unloadedNote = moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''
     addLog(
@@ -754,10 +797,15 @@ export function recallExpedition(state: GameState, ctx: SimContext): CommandResu
     return { ok: false, error: '胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。' }
   }
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
-  const name = anomaly?.name ?? exp.anomalyId ?? '目标'
+  const name = anomaly
+    ? exp.lairTier
+      ? lairNameOf(anomaly, exp.lairTier)
+      : anomaly.name
+    : exp.anomalyId ?? '目标'
   exp.active = false
   exp.anomalyId = null
   exp.battle = null
+  exp.lairTier = undefined
   exp.phase = 'out'
   exp.finishAtGameMs = 0
   exp.eventId = null
@@ -912,6 +960,8 @@ export interface ExpeditionView {
     /** 锁定装置集火目标 tag（2026-09-09：驾驶船装配含 target-lock 件时为存活编队首位；否则 null） */
     lockTag: string | null
   } | null
+  /** 赏金任务·窝点档位（1/2/3；null = 本趟打的是常驻悬赏） */
+  lairTier: 1 | 2 | 3 | null
 }
 
 export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionView {
@@ -933,10 +983,13 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     power: 0,
     winPercent: 0,
     combat: null,
+    lairTier: null as 1 | 2 | 3 | null,
   }
   if (!exp.active || exp.anomalyId === null) return base
 
-  const threat = anomaly?.threat ?? 0
+  // 窝点（赏金任务目标）：展示名/威胁/胜率估算一律按档位强化后的卡（与战斗、结算同口径）
+  const card = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier) : anomaly
+  const threat = card?.threat ?? 0
   const power = exp.power
   const phase: 'out' | 'combat' | 'back' = exp.phase === 'battle' ? 'combat' : exp.phase
   const phaseLabel =
@@ -969,9 +1022,9 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     percent = Math.min(100, (elapsed / totalMs) * 100)
   }
   let winPercent = 0
-  if (anomaly && exp.phase !== 'battle') {
+  if (card && exp.phase !== 'battle') {
     // 2026-09-08：悬赏展示胜率走"带伤预警"口径（预计伤及装甲/结构 → 显示下调，结算不变）
-    winPercent = Math.round(bountyWinPercentGuarded(state, ctx, anomaly, state.shipId) * 100)
+    winPercent = Math.round(bountyWinPercentGuarded(state, ctx, card, state.shipId) * 100)
   }
   const combat =
     exp.phase === 'battle' && exp.battle
@@ -1006,7 +1059,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   return {
     active: true,
     anomalyId: exp.anomalyId,
-    anomalyName: anomaly?.name ?? exp.anomalyId,
+    anomalyName: card?.name ?? exp.anomalyId,
     galaxyName: galaxy?.name ?? '',
     remainingMs,
     totalMs,
@@ -1018,6 +1071,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     power,
     winPercent,
     combat,
+    lairTier: exp.lairTier ?? null,
   }
 }
 

@@ -36,7 +36,7 @@ import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
-  FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE,
+  FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
 } from './battleViewCore'
@@ -154,6 +154,10 @@ const meSpeedRef = useRef(200)
   const droneElsRef = useRef<Map<string, HTMLSpanElement>>(new Map())
   /** 上次写入的 transform（值未变就不写，避免每帧无谓的样式失效与重排） */
   const droneWritesRef = useRef<Map<string, string>>(new Map())
+  /** 机群被点防击落的坠落演出（2026-09-10）：登记"刚被打掉那架"的落点，CSS 演完即清（只动 transform/opacity） */
+  const droneDownRef = useRef<Array<{ key: number; artId: string; x: number; y: number; born: number }>>([])
+  /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
+  const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
   const droneDriveRef = useRef<{
     foeN: number
@@ -204,6 +208,9 @@ const meSpeedRef = useRef(200)
           meDmg: battle!.stats.meDmg,
           foeShots: battle!.stats.foeShots,
           foeHits: battle!.stats.foeHits,
+          // 机群战损（2026-09-10）：战报弹层要显示"机群损失"行——结算后战场数据会清空，
+          // 必须在分出胜负的这一刻快照下来（battleArcsFor 的 droneLost 届时已取不到）
+          ...(battle!.droneLost && Object.keys(battle!.droneLost).length > 0 ? { droneLost: { ...battle!.droneLost } } : {}),
         }
         setStage('outro')
       } else if (!view.combat) {
@@ -411,6 +418,16 @@ const meSpeedRef = useRef(200)
                 {snap.foeShots} / 命中 {snap.foeHits} · 交火 {durSec}s
               </div>
             ) : null}
+            {/* 机群战损（2026-09-10 点防上线）：被击落的无人机永久损失，战报里逐型列出架数 */}
+            {snap?.droneLost && Object.keys(snap.droneLost).length > 0 ? (
+              <div className="app-bts-report-stats is-loss">
+                机群损失：
+                {Object.entries(snap.droneLost)
+                  .map(([artId, n]) => `${droneModelOf(artId)?.name ?? artId} ×${n}`)
+                  .join('、')}
+                （无人机舱清单已扣除，回港需补充）
+              </div>
+            ) : null}
             <div className="app-bts-report-note">奖励/战利品已入账，舰队自动返航中；本报告 6 秒后自动关闭（完整记录见右侧事件日志）。</div>
             <button className="app-btn" onClick={onClose}>
               收下战报 · 返回
@@ -499,8 +516,32 @@ const meSpeedRef = useRef(200)
         环裁剪丢旧事件不影响：序号跳跃即自动跳过丢失部分） ── */
   const arrivals = battle.fx.filter((f) => f.seq > fxSeqRef.current)
   if (arrivals.length > 0) {
+    // 本帧各机型的"击落落点游标"：同一拍被打掉两架时逐架往前取位（不叠在同一处）
+    const downCursor = new Map<string, number>()
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
+      /**
+       * 机群被点防击落（2026-09-10 点防上线）：这条事件**不是开火**——引擎在打空一架时推
+       * src='drone' + droneDown 的 fx（见 combat.resolvePointDefense）。此处必须提前拦下：
+       * ① 不画弹道、不打命中闪光（否则会在母舰与敌舰之间画出一道不存在的射击）；
+       * ② 登记坠落演出——落点取"本帧即将消失的那一架"：引擎的存活架数已经减 1，
+       *    渲染层机体数随之减 1，消失的正是上一帧的末位机体（dronePrevShowRef）。
+       */
+      if (fx.droneDown) {
+        const model = droneModelOf(fx.artId)
+        if (model) {
+          const artId = fx.artId!
+          const prevShow = downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
+          const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
+          downCursor.set(artId, lane)
+          const st = droneSortieRef.current.get(artId)
+          const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
+          const layDown = layout(dims, Math.max(1, rowFxTags.length), visDistRef.current, openM, nearM)
+          const pose = dronePoseAt(model, lane, st, layDown, elapsed)
+          droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now })
+        }
+        continue
+      }
       // V18B（2026-09-05 修复）+ 2026-09-09 二轮：弹道按 fx.to（目标 tag）定位并按"视觉行序"
       // 取位（含演出期尸骸占位）——随机目标下每发飞向各自目标，不受队列撤出/补位影响
       const isMeShot = fx.side === 'me'
@@ -607,6 +648,10 @@ const meSpeedRef = useRef(200)
   // 惰性清理过期元素（渲染输出不再包含它们即从 DOM 移除；延迟弹道按 delay 延长存活）
   boltsRef.current = boltsRef.current.filter((b) => now - b.born < BOLT_LIFE + (b.delay ?? 0))
   flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE + (f.delay ?? 0))
+  // 击落坠落演出：CSS 演完即清（不留常驻 DOM，也不做逐帧 JS 动画）
+  if (droneDownRef.current.length > 0) {
+    droneDownRef.current = droneDownRef.current.filter((d) => now - d.born < DRONE_DOWN_LIFE)
+  }
 
   /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）── */
   if (!hpInitRef.current) {
@@ -866,6 +911,8 @@ const meSpeedRef = useRef(200)
             ? 'back'
             : 'deck'
       const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
+      // 记下本帧渲染的机体数：下一拍的击落演出靠它定位"即将消失的末位机体"（见 fx 消费处）
+      dronePrevShowRef.current.set(w.artId!, show)
       return { artId: w.artId!, model, phase, elapsed, st, show, total: w.count ?? 1 }
     })
   /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
@@ -1057,6 +1104,29 @@ const meSpeedRef = useRef(200)
                     {w.total > w.show ? <span className="app-bts-drone-more">×{w.total}</span> : null}
                   </div>
               ))}
+              {/* 被点防击落的机体：原位小爆炸 + 碎片下坠（截图位与机体同一坐标系，见 .app-bts-drone-wreck） */}
+              {droneDownRef.current.map((d) => {
+                const model = droneModelOf(d.artId)
+                if (!model) return null
+                return (
+                  <span
+                    key={d.key}
+                    className="app-bts-drone-wreck"
+                    style={{ left: d.x - lay.me.x, top: d.y - lay.me.y, color: model.tint }}
+                  >
+                    <svg viewBox="-14 -11 28 22" width="30" height="24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                      {/* 冲击环（向外扩散淡出） */}
+                      <circle className="app-bts-wreck-ring" cx="0" cy="0" r="5" />
+                      {/* 爆散射线（八向短线） */}
+                      <path className="app-bts-wreck-rays" d="M0 -6 L0 -10 M4.4 -4.4 L7.4 -7.4 M6 0 L10 0 M4.4 4.4 L7.4 7.4 M0 6 L0 10 M-4.4 4.4 L-7.4 7.4 M-6 0 L-10 0 M-4.4 -4.4 L-7.4 -7.4" />
+                      {/* 崩落碎屑（三片，各自下坠） */}
+                      <path className="app-bts-wreck-bit" d="M-3 -1 l2.6 1.2 l-2.6 1.6 z" />
+                      <path className="app-bts-wreck-bit is-b" d="M1.6 -2.2 l2.4 1 l-2.2 1.8 z" />
+                      <path className="app-bts-wreck-bit is-c" d="M-0.6 2 l2.2 1 l-2 1.6 z" />
+                    </svg>
+                  </span>
+                )
+              })}
             </div>
           ) : null}
 

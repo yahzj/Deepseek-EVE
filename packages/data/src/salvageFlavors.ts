@@ -31,7 +31,7 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-cinder-siege': { mk2: ['mod-armor-pla-2', 'mod-stab-pla-2'] }, // 烬火围攻：能量甲+等离子稳定
   'ano-chasm-aberrations': { mk2: ['mod-stab-kin-2', 'mod-armor-exp-2'] }, // 裂谷畸变：动能稳定+高爆甲
   'ano-nadir-static': { mk2: ['mod-rof-2', 'mod-track-2'] }, // 天底封锁：射速+索敌
-  'ano-starcore-boss': { mk2: ['mod-drone-tac-2', 'mod-drone-rack-2'] }, // 星髓巢穴：战术导控+甲板扩展（武器清出）
+  'ano-starcore-boss': { mk2: ['mod-drone-tac-2', 'mod-drone-rack-2'] }, // 星髓虫群：战术导控+甲板扩展（武器清出）
   'ano-maw-hunt': { mk2: ['mod-prop-2', 'mod-gyro-2'] }, // 噬口猎杀：矢量推进+陀螺
   'ano-voidedge-warden': { mk2: ['mod-shield-pla-2', 'mod-rof-2'] }, // 虚海守望：能量盾+射速
   'ano-gravekeeper': { mk2: ['mod-shield-pla-2', 'mod-armor-plate-2'] }, // 坟场守墓：能量盾+增厚
@@ -112,7 +112,7 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   },
   'ano-starcore-boss': {
     recyclePool: [['min-starcore', 48], ['min-isotope', 52]],
-    recycleNote: '星髓巢穴残骸：星髓晶为主——名副其实',
+    recycleNote: '星髓虫群残骸：星髓晶为主——名副其实',
   },
   'ano-maw-hunt': {
     recyclePool: [['min-starcore', 60], ['min-isotope', 40]],

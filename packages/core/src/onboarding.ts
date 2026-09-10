@@ -219,7 +219,7 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
         addLog(state, 'info', '驾驶已切回鲣鱼级护卫舰——试炼由它出战。')
       }
       state.onboarding.step = ONB_TRIAL
-      addLog(state, 'info', '鲣鱼已修复完好。前往「战斗悬赏」接受演习场讨伐令（试炼）。')
+      addLog(state, 'info', '鲣鱼已修复完好。前往「常驻悬赏」接受演习场讨伐令（试炼）。')
     }
     return
   }

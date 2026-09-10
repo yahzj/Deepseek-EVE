@@ -8,6 +8,9 @@ import {
   FRAGMENT_RECIPES,
   fragmentItemDefOf,
   fragmentItemIdOf,
+  isLairCandidate,
+  rareWreckItemDefOf,
+  rareWreckItemIdOf,
   wreckItemDefOf,
   wreckItemIdOf,
 } from '@whale/core'
@@ -35,6 +38,14 @@ export function buildSimContext(): SimContext {
     const id = wreckItemIdOf(a.id)
     if (items.has(id)) continue
     items.set(id, wreckItemDefOf(a.id, a.name, a.threat))
+  }
+  // 赏金任务·窝点：可作窝点目标（有核心词）的敌群各配一件「稀有残骸」物品——
+  // 只有击败窝点才会落在该星系残骸场、打捞时**必得**，回站精炼炉当「高级箱」开（额外掉落）。
+  for (const a of anomalies.values()) {
+    if (!isLairCandidate(a)) continue
+    const id = rareWreckItemIdOf(a.id)
+    if (items.has(id)) continue
+    items.set(id, rareWreckItemDefOf(a.id, a.name))
   }
   const modules = buildModuleCatalog()
   // B3：碎片物品按"有逆向配方的装备"生成

@@ -10,7 +10,7 @@ import type { ItemDef } from '../src/types'
 import { createInitialState } from '../src/state'
 import { addModule, fitModule } from '../src/equipment'
 import { advanceBattleFor, battleArcsFor, createPlayerSpec, pushBattleFx, startBattleFor } from '../src/combat'
-import { makeTestCtx, moduleDef, ship } from './helpers'
+import { makeTestCtx, anomaly, moduleDef, ship } from './helpers'
 
 const droneDef: ItemDef = {
   id: 'drone-x',
@@ -100,6 +100,40 @@ describe('无人机战斗动画·武器来源字段（2026-09-10 船长批）', 
     expect(droneArcs[0]!.label.endsWith('×3')).toBe(true)
     expect(droneArcs[0]!.maxM).toBe(2500)
     expect(arcs.meReload).toHaveLength(arcs.me.length)
+  })
+
+  it('点防击落事件带 droneDown 标记（表现层据此出坠落演出，且不得当成一次开火画弹道）', () => {
+    // 2026-09-10 加（点防上线 + 表现层坠落演出）：击落事件与"开火事件"同为 src='drone'，
+    // 表现层必须能区分——否则会在母舰与敌舰之间画出一道并不存在的射击。
+    const state = createInitialState({ nowWallMs: 0, seed: 61 })
+    const ctx = makeTestCtx({
+      // 一碰就碎的机型：点防一击即击落，测试无需长跑
+      items: [{ ...droneDef, defense: { shieldHp: 1, armorHp: 1, hullHp: 1, evasion: 0 } }],
+      // 皮厚的测试船：先活着挨到点防射程（4000m）内——点防只在射程内开火
+      ships: [ship('sandcat', { droneBayM3: 40, cpu: 200, shieldHp: 6000, armorHp: 6000, hullHp: 6000 })],
+      anomalies: [anomaly('ano-pd', 'galaxy-hub', { threat: 200 })], // 高威胁 → 点防拉满
+    })
+    state.fleet[state.shipId].cargo = {}
+    state.fleet[state.shipId].droneLoad = { 'drone-x': 3 }
+    const battle = startBattleFor(state, ctx, state.shipId, 'ano-pd', 0, 1200)!
+    state.expedition.anomalyId = 'ano-pd'
+    state.expedition.battle = battle
+    for (let i = 0; i < 40; i++) {
+      if (battle.droneLost && Object.keys(battle.droneLost).length > 0) break
+      if (battle.ended !== null) break
+      state.gameMs += 3_000
+      advanceBattleFor(state, ctx, battle, state.shipId, 'ano-pd')
+    }
+    const downs = battle.fx.filter((f) => f.droneDown === true)
+    expect(downs.length).toBeGreaterThan(0)
+    const d = downs[0]!
+    expect(d.side).toBe('me')
+    expect(d.src).toBe('drone')
+    expect(d.artId).toBe('drone-x')
+    expect(d.hit).toBe(true)
+    // 战报数据同源：射程弧回传的 droneLost 与本场记录一致
+    const arcs = battleArcsFor(state, ctx)!
+    expect(arcs.droneLost).toEqual(battle.droneLost)
   })
 
   it('实战开火事件确实带无人机来源与机型（表现层据此出机群/弹道，缺此则"弹道不显示"）', () => {

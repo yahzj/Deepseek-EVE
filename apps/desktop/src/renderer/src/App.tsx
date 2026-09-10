@@ -564,7 +564,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const MAP_TAB_LABEL: Record<MapTab, string> = {
     star: '星图·远征',
     mine: '矿带开采',
-    bounty: '战斗悬赏',
+    bounty: '常驻悬赏',
     salvage: '残骸打捞',
     haul: '长途运输',
     task: '任务中心',
