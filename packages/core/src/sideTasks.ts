@@ -48,7 +48,7 @@ import { countWare, removeWare } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
 import { originGalaxyOf } from './location'
 import { DSI_FACTION_ID, standingOf as factionStandingOf } from './expedition'
-import { isLairCandidate, lairNameOf, lairTaskRewardIsk } from './lairs'
+import { factionBaseRewardIsk, hasLairCore, isLairCandidate, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
 import type { AnomalyDef } from './types'
 
@@ -394,10 +394,11 @@ function spawnBountyTasks(state: GameState, ctx: SimContext): void {
     if (!list.some((x) => x.galaxyId === a.galaxyId)) list.push(a)
     poolByZone.set(zone, list)
   }
-  // ① 抽地点（逐区、各区独立抽）
+  // ① 抽地点（逐区、各区独立抽）；派系活跃星系的席位已让给派系那条 → 从池里剔除
+  const factionGid = factionGalaxyId(state)
   const picks: AnomalyDef[] = []
   for (const plan of BOUNTY_ZONE_PLAN) {
-    const candidates = [...(poolByZone.get(plan.zone) ?? [])]
+    const candidates = [...(poolByZone.get(plan.zone) ?? [])].filter((a) => a.galaxyId !== factionGid)
     const slots = Math.min(plan.count, candidates.length)
     for (let i = 0; i < slots; i += 1) {
       picks.push(candidates.splice(nextInt(state.rng, candidates.length), 1)[0]!)
@@ -497,7 +498,58 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
   if (dayStart <= last) return
   board.bounty = []
   board.bountyWindow = dayStart
+  // 派系活跃先选（它选的星系从常规席位抽签池里剔除），再抽 5 席
+  spawnFactionActivity(state, ctx)
   spawnBountyTasks(state, ctx)
+}
+
+/* ── 敌对派系活跃（2026-09-10 船长定：每天一个中安/低安星系，只作用于该星系的常驻悬赏） ── */
+
+/**
+ * 选当天的派系活跃星系（每天一条、置顶显示）：
+ * - 候选 = 已探索的**中安/低安**星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的；
+ * - 该星系的**全部可见悬赏**当天吃 +10% 奖金 / +10% 威胁；胜利后按概率掉稀有残骸；
+ * - **不因打赢而下板**：当天可反复刷（掉落概率按"日均刷取次数"审数，见 FACTION_RARE_DROP_CHANCE）。
+ */
+function spawnFactionActivity(state: GameState, ctx: SimContext): void {
+  const board = state.sideTasks
+  const pool: AnomalyDef[] = []
+  for (const a of ctx.anomalies.values()) {
+    if (!hasLairCore(a)) continue
+    if (!(a.rewardIsk > 0)) continue
+    if (!state.exploredGalaxies.includes(a.galaxyId)) continue
+    const zone = securityZoneOf(ctx, a.galaxyId)
+    if (zone === '高安') continue
+    if (!pool.some((x) => x.galaxyId === a.galaxyId)) pool.push(a)
+  }
+  board.faction = null
+  if (pool.length === 0) return
+  const pick = pool[nextInt(state.rng, pool.length)]!
+  board.seq += 1
+  board.faction = {
+    id: board.seq,
+    kind: 'faction',
+    goodKey: '',
+    refId: '',
+    need: 0,
+    // 展示口径 = 加成后的悬赏奖金（实付在战斗结算里按卡 ×1.1 现算）
+    rewardIsk: factionBaseRewardIsk(pick),
+    anomalyId: pick.id,
+    galaxyId: pick.galaxyId,
+    factionAnomalyName: pick.name,
+  }
+}
+
+/** 当日派系活跃目标星系（null = 今日无/未开板）——战斗与界面共用同一个判定口 */
+export function factionGalaxyId(state: GameState): string | null {
+  const f = state.sideTasks.faction
+  return f && f.galaxyId ? f.galaxyId : null
+}
+
+/** 某张悬赏卡当天是否吃派系活跃加成（该星系当日全部可见悬赏都吃） */
+export function isFactionBounty(state: GameState, anomaly: AnomalyDef): boolean {
+  const gid = factionGalaxyId(state)
+  return gid !== null && anomaly.galaxyId === gid && anomaly.hidden !== true
 }
 
 /** 快递在途投送只读视图（UI 渲染用；remainingMs 随 gameMs 自然缩短） */
@@ -520,8 +572,10 @@ export interface SideTaskBoardView {
   resource: readonly SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才有） */
   courier: readonly SideTask[]
-  /** 赏金任务（当日板；已探索星系里的高难窝点，每天 2 张） */
+  /** 赏金任务（当日板；已探索星系里的高难窝点，每天 5 席） */
   bounty: readonly SideTask[]
+  /** 敌对派系活跃（当日一条、界面置顶；目标 = 该星系**常驻悬赏**，+10% 奖金/+10% 威胁、胜利概率掉稀有残骸） */
+  faction: SideTask | null
   /** 快递任务当前是否解锁（已建成任一副空间站） */
   courierUnlocked: boolean
   /** 快递投送在途挂账视图（一次一笔；null = 无） */
@@ -560,6 +614,7 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
     resource: board.resource,
     courier: board.courier,
     bounty: board.bounty,
+    faction: board.faction ?? null,
     courierUnlocked: courierTaskUnlocked(state, ctx),
     deliver: d
       ? {
@@ -606,7 +661,7 @@ export function settleBountyTaskVictory(
     state,
     'trade',
     `赏金任务完成：${task.lairName ?? anomalyId} 已肃清（${galaxyName}），酬金 ${task.rewardIsk.toLocaleString('zh-CN')} ISK 已入账；` +
-      `战场留下稀有残骸 ×${rareGain}——可前往该星系打捞，回站后在精炼炉开「高级箱」。`,
+      `战场留下稀有残骸 ×${rareGain}——可前往该星系打捞（协会回收炉暂不受理，先入库封存）。`,
   )
 }
 

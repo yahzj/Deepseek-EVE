@@ -17,7 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
@@ -1868,20 +1868,29 @@ function normalizeState(raw: unknown): GameState {
     importantTasks[key] = {
       done: r.done === true,
       delivered: typeof r.delivered === 'number' && Number.isFinite(r.delivered) ? Math.max(0, Math.floor(r.delivered)) : undefined,
+      // 阶段目标里程碑（键存在才写；否则保持缺省，避免给所有任务塞字段）
+      ...(r.allExplored === true ? { allExplored: true } : {}),
     }
   }
 
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
-    listKind: 'resource' | 'courier' | 'bounty',
+    listKind: 'resource' | 'courier' | 'bounty' | 'faction',
   ): GameState['sideTasks']['resource'] => {
     const out: GameState['sideTasks']['resource'] = []
     if (!Array.isArray(rawList)) return out
     for (const item of rawList) {
       if (typeof item !== 'object' || item === null) continue
       const r = asRaw(item)
-      const kind = r.kind === 'courier' ? 'courier' : r.kind === 'bounty' ? 'bounty' : 'resource'
+      const kind: SideTask['kind'] =
+        r.kind === 'courier'
+          ? 'courier'
+          : r.kind === 'bounty'
+            ? 'bounty'
+            : r.kind === 'faction'
+              ? 'faction'
+              : 'resource'
       if (kind !== listKind) continue
       const id = Math.floor(num(r.id))
       const need = Math.floor(num(r.need))
@@ -1889,11 +1898,15 @@ function normalizeState(raw: unknown): GameState {
       const goodKey = typeof r.goodKey === 'string' ? r.goodKey : ''
       const refId = typeof r.refId === 'string' ? r.refId : ''
       if (!Number.isFinite(id) || id <= 0) continue
-      // 资源/快递必须有物品与数量；赏金任务按目标悬赏校验（2026-09-10）
+      // 资源/快递必须有物品与数量；赏金任务按目标悬赏+档位校验；派系活跃按目标星系校验（2026-09-10）
       if (kind === 'bounty') {
         const anomalyId = typeof r.anomalyId === 'string' ? r.anomalyId : ''
         const tier = Math.floor(num(r.lairTier))
         if (anomalyId.length === 0 || tier < 1 || tier > 3) continue
+      } else if (kind === 'faction') {
+        const anomalyId = typeof r.anomalyId === 'string' ? r.anomalyId : ''
+        const galaxyId = typeof r.galaxyId === 'string' ? r.galaxyId : ''
+        if (anomalyId.length === 0 || galaxyId.length === 0) continue
       } else {
         if (goodKey.length === 0 || refId.length === 0) continue
         if (!Number.isFinite(need) || need <= 0) continue
@@ -1915,6 +1928,12 @@ function normalizeState(raw: unknown): GameState {
         task.anomalyId = typeof r.anomalyId === 'string' ? r.anomalyId : ''
         task.lairTier = Math.floor(num(r.lairTier)) as 1 | 2 | 3
         if (typeof r.lairName === 'string' && r.lairName.length > 0) task.lairName = r.lairName
+      }
+      if (kind === 'faction') {
+        task.anomalyId = typeof r.anomalyId === 'string' ? r.anomalyId : ''
+        if (typeof r.factionAnomalyName === 'string' && r.factionAnomalyName.length > 0) {
+          task.factionAnomalyName = r.factionAnomalyName
+        }
       }
       out.push(task)
     }
@@ -1956,6 +1975,8 @@ function normalizeState(raw: unknown): GameState {
   const sideTaskResource = cleanSideTaskList(stRaw.resource, 'resource')
   const sideTaskCourier = cleanSideTaskList(stRaw.courier, 'courier')
   const sideTaskBounty = cleanSideTaskList(stRaw.bounty, 'bounty') // 赏金任务（v24 兼容字段：老档缺省 = 空）
+  // 派系活跃（v24 兼容字段：老档缺省 = null；单条，取列表解析的第一条）
+  const sideTaskFaction = cleanSideTaskList(stRaw.faction === null || stRaw.faction === undefined ? [] : [stRaw.faction], 'faction')[0] ?? null
   const stSeqRaw = Math.floor(num(stRaw.seq))
   let sideTaskSeq = Number.isFinite(stSeqRaw) ? Math.max(1, stSeqRaw) : 1
   // 分配器兜底：不能低于现存任务最大 id（防未来刷新撞号；正常档 seq ≥ 现存最大 id，天然不动）
@@ -1970,6 +1991,7 @@ function normalizeState(raw: unknown): GameState {
     resource: sideTaskResource,
     courier: sideTaskCourier,
     bounty: sideTaskBounty,
+    faction: sideTaskFaction,
     bountyWindow: sideTaskBountyWindow,
     deliver: cleanCourierDeliver(stRaw.deliver),
   }

@@ -17,7 +17,7 @@
  * - 打输/撤退：任务不下板（可再来），不投放稀有残骸，窝点档位随本场作废。
  */
 import { describe, expect, it } from 'vitest'
-import type { GameState } from '../src/state'
+import type { GameState, SideTask } from '../src/state'
 import type { SimContext } from '../src/types'
 import {
   BOUNTY_BOARD_PERIOD_MS,
@@ -33,10 +33,17 @@ import {
   RARE_BOX_MINERAL_UNITS,
   RARE_WRECK_VOLUME_M3,
   advanceGame,
+  addWare,
   bountyDamageForecast,
   bountyDayStartWallMs,
+  bountyRewardFactor,
   bountyWinPercentGuarded,
   createInitialState,
+  FACTION_RARE_DROP_CHANCE,
+  FACTION_RARE_DROP_COUNT,
+  factionAnomalyOf,
+  factionBaseRewardIsk,
+  isFactionBounty,
   hasLairCore,
   injectRareWreck,
   isLairCandidate,
@@ -57,6 +64,7 @@ import {
   settleBountyTaskVictory,
   sideTaskBoard,
   startExpedition,
+  startRecycleRun,
 } from '../src/index'
 import { resolveBattleOutcome } from '../src/expedition'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
@@ -298,35 +306,39 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     }
   })
 
-  it('恰好 3 个地点 → 外围/核心/深层各一张（船长点名的例子）', () => {
+  it('恰好 3 个地点（已排除派系星系）→ 外围/核心/深层各一张（船长点名的例子）', () => {
     const { state, ctx } = makeWorld()
-    // 中安只剩 up to 1（hub）、低安 up to 2（far、low2）→ 共 3 席
-    markExplored(state, 'galaxy-hub')
-    markExplored(state, 'galaxy-far')
-    markExplored(state, 'galaxy-low2')
+    // 探索 4 个中安/低安星系：派系活跃先占一个 → 常规席位恰好剩 3 个
+    markExplored(state, 'galaxy-hub') // 中安
+    markExplored(state, 'galaxy-far') // 低安
+    markExplored(state, 'galaxy-low2') // 低安
+    markExplored(state, 'galaxy-low3') // 低安
     openBountyBoard(state, ctx)
+    expect(state.sideTasks.faction).not.toBeNull()
     const board = state.sideTasks.bounty
     expect(board).toHaveLength(3)
     expect(board.map((t) => t.lairTier!).sort()).toEqual([1, 2, 3])
-    expect(board.map((t) => securityZoneOf(ctx, t.galaxyId!)).sort()).toEqual(['中安', '低安', '低安'])
+    // 派系星系不从常规席位重复出现
+    expect(board.every((t) => t.galaxyId !== state.sideTasks.faction!.galaxyId)).toBe(true)
   })
 
-  it('2 个地点 → 两个不同档位；1 个地点 → 随机一档（抽不满就少发，不跨区补位）', () => {
+  it('2 个地点 → 两个不同档位；只剩 1 个星系时常规席为 0（抽不满就少发，不跨区补位）', () => {
     const two = makeWorld(5)
     markExplored(two.state, 'galaxy-hub') // 中安 1
     markExplored(two.state, 'galaxy-far') // 低安 1
+    markExplored(two.state, 'galaxy-low2') // 低安 2
     openBountyBoard(two.state, two.ctx)
     const twoBoard = two.state.sideTasks.bounty
-    expect(twoBoard).toHaveLength(2)
+    expect(twoBoard).toHaveLength(2) // 3 个候选 - 派系 1 = 2 席
     expect(new Set(twoBoard.map((t) => t.lairTier)).size).toBe(2)
 
+    // 只剩一个可选中安/低安星系：它被派系活跃占走 → 常规席位 0（派系那条仍在）
     const one = makeWorld(7)
-    markExplored(one.state, 'galaxy-hub') // 只有中安 1 个候选
+    markExplored(one.state, 'galaxy-hub')
     openBountyBoard(one.state, one.ctx)
-    const oneBoard = one.state.sideTasks.bounty
-    expect(oneBoard).toHaveLength(1)
-    expect([1, 2, 3]).toContain(oneBoard[0]!.lairTier)
-    expect(oneBoard[0]!.galaxyId).toBe('galaxy-hub')
+    expect(one.state.sideTasks.faction).not.toBeNull()
+    expect(one.state.sideTasks.faction!.galaxyId).toBe('galaxy-hub')
+    expect(one.state.sideTasks.bounty).toHaveLength(0)
   })
 
   it('未探索星系的候选不入池；无核心词卡永不入板；同 seed 双跑完全一致（确定性）', () => {
@@ -425,40 +437,51 @@ describe('赏金任务 · 出击校验（目的 = 窝点；档位不再受声望
 })
 
 describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
-  /** 板上唯一那张 = 母港（中安 · 海盗）窝点；按它被发的档位出征并结算 */
-  function aboardLair(seed = 5): { state: GameState; ctx: SimContext; tier: 1 | 2 | 3; rewardIsk: number } {
+  /**
+   * 取板上任意一条常规席位（派系活跃会占掉一个星系，故不能写死具体星系），
+   * 按它被发的档位出征并结算——断言全部按"这条任务自己"的数据走。
+   */
+  function aboardLair(
+    seed = 5,
+  ): { state: GameState; ctx: SimContext; task: SideTask; tier: 1 | 2 | 3; rewardIsk: number; galaxyId: string } {
     const { state, ctx } = makeWorld(seed)
+    markExplored(state, 'galaxy-mid2')
+    markExplored(state, 'galaxy-low2')
+    markExplored(state, 'galaxy-low3')
     openBountyBoard(state, ctx)
-    const task = state.sideTasks.bounty.find((t) => t.anomalyId === LAIR_HUB.id)!
+    const task = state.sideTasks.bounty[0]!
+    expect(task, '板上应有常规席位（候选不足时补探索星系）').toBeTruthy()
     const tier = task.lairTier as 1 | 2 | 3
-    const r = startExpedition(state, LAIR_HUB.id, ctx, { lairTier: tier })
+    const r = startExpedition(state, task.anomalyId!, ctx, { lairTier: tier })
     expect(r.ok, r.error ?? '').toBe(true)
-    return { state, ctx, tier, rewardIsk: task.rewardIsk }
+    return { state, ctx, task, tier, rewardIsk: task.rewardIsk, galaxyId: task.galaxyId! }
   }
 
   it('打赢窝点：酬金入账 + 该条下板 + 稀有残骸 ×档位件数落在该星系 + 日志引导', () => {
-    const { state, ctx, tier, rewardIsk } = aboardLair()
+    const { state, ctx, task, tier, rewardIsk, galaxyId } = aboardLair()
     const iskBefore = state.wallet.isk
     state.expedition.battle!.ended = 'me'
     resolveBattleOutcome(state, ctx)
     expect(state.wallet.isk).toBeGreaterThanOrEqual(iskBefore + rewardIsk)
-    expect(state.sideTasks.bounty.some((t) => t.anomalyId === LAIR_HUB.id)).toBe(false)
-    expect(rareWreckCountOf(state, 'galaxy-hub')).toBe(LAIR_RARE_WRECK_GAIN[tier])
-    expect(state.galaxyWrecks['galaxy-hub']!.rareBy).toEqual({ [LAIR_HUB.id]: LAIR_RARE_WRECK_GAIN[tier] })
+    expect(state.sideTasks.bounty.some((t) => t.anomalyId === task.anomalyId)).toBe(false)
+    expect(rareWreckCountOf(state, galaxyId)).toBe(LAIR_RARE_WRECK_GAIN[tier])
+    expect(state.galaxyWrecks[galaxyId]!.rareBy).toEqual({ [task.anomalyId!]: LAIR_RARE_WRECK_GAIN[tier] })
     const texts = state.logs.map((l) => l.text).join('\n')
-    expect(texts).toContain(lairNameOf(LAIR_HUB, tier))
+    expect(texts).toContain(lairNameOf(ctx.anomalies.get(task.anomalyId!)!, tier))
     expect(texts).toContain('赏金任务完成')
-    expect(texts).toContain('高级箱')
+    // 稀有残骸暂不开放精炼炉（2026-09-10 船长定）：日志只引导"打捞+入库封存"，不再承诺开箱
+    expect(texts).toContain('打捞')
+    expect(texts).not.toContain('高级箱')
     expect(state.expedition.lairTier).toBeUndefined()
   })
 
   it('打输窝点：不结算酬金、不投放稀有残骸、任务仍在板上（可再来）', () => {
-    const { state, ctx } = aboardLair(9)
+    const { state, ctx, task, galaxyId } = aboardLair(9)
     state.expedition.battle!.ended = 'foe'
     resolveBattleOutcome(state, ctx)
-    expect(state.sideTasks.bounty.some((t) => t.anomalyId === LAIR_HUB.id)).toBe(true)
-    expect(rareWreckCountOf(state, 'galaxy-hub')).toBe(0)
-    expect(state.galaxyWrecks['galaxy-hub']?.rareBy ?? {}).toEqual({})
+    expect(state.sideTasks.bounty.some((t) => t.anomalyId === task.anomalyId)).toBe(true)
+    expect(rareWreckCountOf(state, galaxyId)).toBe(0)
+    expect(state.galaxyWrecks[galaxyId]?.rareBy ?? {}).toEqual({})
     expect(state.expedition.lairTier).toBeUndefined()
   })
 
@@ -482,11 +505,11 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
   })
 
   it('结算幂等：同一张任务重复结算只入账一次酬金', () => {
-    const { state, ctx, rewardIsk } = aboardLair(21)
+    const { state, ctx, task, rewardIsk } = aboardLair(21)
     const before = state.wallet.isk
-    settleBountyTaskVictory(state, ctx, LAIR_HUB.id, 1)
+    settleBountyTaskVictory(state, ctx, task.anomalyId!, 1)
     expect(state.wallet.isk).toBe(before + rewardIsk)
-    settleBountyTaskVictory(state, ctx, LAIR_HUB.id, 1)
+    settleBountyTaskVictory(state, ctx, task.anomalyId!, 1)
     expect(state.wallet.isk).toBe(before + rewardIsk)
   })
 })
@@ -513,6 +536,18 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(rare.rare).toBe(true)
     expect(rare.lairGear).toEqual(['mod-a']) // 卡级池覆盖
     expect(rare.anomalyId).toBe(LAIR_HUB.id)
+  })
+
+  it('稀有残骸**暂不开放精炼炉**（2026-09-10 船长定）：核心侧拒绝启动回收（高级箱链路留待开放）', () => {
+    const { state, ctx } = makeWorld(19)
+    addWare(state, rareWreckItemIdOf(LAIR_HUB.id), RARE_WRECK_VOLUME_M3 * 2) // 两件，够一批
+    const r = startRecycleRun(state, rareWreckItemIdOf(LAIR_HUB.id), 'pilot', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('稀有残骸')
+    // 同口径下普通残骸照常可回收（只是本用例没备料 → 报"没有"而不是"不受理"）
+    const normal = startRecycleRun(state, 'wreck-ano-lair-hub', 'pilot', ctx)
+    expect(normal.ok).toBe(false)
+    expect(normal.error).not.toContain('不受理')
   })
 
   it('额外掉落必定有货：含矿物一批（数量按档位）且至少一件装备（专属或主题件）', () => {
@@ -547,22 +582,109 @@ describe('赏金任务 · 存档往返与老档兼容', () => {
     const loaded = loadSaveFile(serializeSaveFile(state, 0))
     expect(loaded.state.sideTasks.bounty).toEqual(state.sideTasks.bounty)
     expect(loaded.state.sideTasks.bounty.every((t) => t.lairTier !== undefined)).toBe(true)
+    expect(loaded.state.sideTasks.faction).toEqual(state.sideTasks.faction) // 派系活跃单条也要落档
     expect(loaded.state.sideTasks.bountyWindow).toBe(bountyDayStartWallMs(T0))
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.rare).toBe(2)
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.rareBy).toEqual({ [LAIR_HUB.id]: 2 })
   })
 
-  it('老档（无 bounty / 无 bountyWindow / 无 rareBy 字段）读入：补空板与日界 0，其余无损', () => {
+  it('老档（无 bounty / 无 faction / 无 bountyWindow / 无 rareBy 字段）读入：补空板与日界 0，其余无损', () => {
     const { state, ctx } = makeWorld(43)
     state.galaxyWrecks['galaxy-hub'] = { density: 12 } as never
     const raw = state as unknown as Record<string, unknown>
     delete (raw.sideTasks as Record<string, unknown>).bounty
+    delete (raw.sideTasks as Record<string, unknown>).faction
     delete (raw.sideTasks as Record<string, unknown>).bountyWindow
     const loaded = loadSaveFile(serializeSaveFile(raw as unknown as GameState, 0))
     expect(loaded.state.sideTasks.bounty).toEqual([])
+    expect(loaded.state.sideTasks.faction).toBeNull()
     expect(loaded.state.sideTasks.bountyWindow).toBe(0)
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.density).toBe(12)
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.rareBy).toBeUndefined()
     expect(ctx.anomalies.get(LAIR_HUB.id)).toBeTruthy()
+  })
+})
+
+describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安星系，只作用于常驻悬赏）', () => {
+  it('刷出：每天 1 条、只选**中安/低安**星系；把它从常规席位池剔除；高安星系不可能当选', () => {
+    const { state, ctx } = makeWorld(11)
+    exploreAll(state)
+    openBountyBoard(state, ctx)
+    const f = state.sideTasks.faction!
+    expect(f).toBeTruthy()
+    expect(f.kind).toBe('faction')
+    expect(securityZoneOf(ctx, f.galaxyId!)).not.toBe('高安')
+    expect(f.galaxyId).not.toBe('galaxy-high')
+    // 展示口径：条目的 rewardIsk = 该卡奖金 ×1.1
+    const card = ctx.anomalies.get(f.anomalyId!)!
+    expect(f.rewardIsk).toBe(factionBaseRewardIsk(card))
+    // 常规席位里不含派系星系（避免同星系两条）
+    expect(state.sideTasks.bounty.every((t) => t.galaxyId !== f.galaxyId)).toBe(true)
+    // 逐日重选：跨到次日重开板 → 派系条目换成新的一条（id 递增）
+    openBountyBoard(state, ctx, T0 + BOUNTY_BOARD_PERIOD_MS)
+    expect(state.sideTasks.faction!.id).toBeGreaterThan(f.id)
+  })
+
+  it('加成只作用于该星系常驻悬赏：威胁 ×1.1、奖金 ×1.1、胜利按概率掉稀有残骸；打赢不下板', () => {
+    const { state, ctx } = makeWorld(5)
+    exploreAll(state)
+    openBountyBoard(state, ctx)
+    const f = state.sideTasks.faction!
+    const card = ctx.anomalies.get(f.anomalyId!)!
+    // 判定口：该星系全部可见悬赏都吃加成，别的星系不吃
+    expect(isFactionBounty(state, card)).toBe(true)
+    expect(isFactionBounty(state, ctx.anomalies.get(LAIR_LOW3.id)!)).toBe(
+      ctx.anomalies.get(LAIR_LOW3.id)!.galaxyId === f.galaxyId,
+    )
+    // 派生卡：威胁 ×1.1（四舍五入），其余字段继承
+    const boost = factionAnomalyOf(card)
+    expect(boost.threat).toBe(Math.round(card.threat * 1.1))
+    expect(boost.rewardIsk).toBe(card.rewardIsk)
+    expect(factionBaseRewardIsk(card)).toBe(Math.round(card.rewardIsk * 1.1))
+    // 出征该悬赏（不带档位）→ 本场吃加成；战报/结算按加成后的卡
+    state.standings[DSI_FACTION_ID] = 99
+    const r = startExpedition(state, card.id, ctx)
+    expect(r.ok, r.error ?? '').toBe(true)
+    expect(state.expedition.factionActive).toBe(true)
+    const iskBefore = state.wallet.isk
+    const wrecksBefore = rareWreckCountOf(state, f.galaxyId!)
+    state.expedition.battle!.ended = 'me'
+    resolveBattleOutcome(state, ctx)
+    // 奖金 ≥ 加成后的基础值（含赏金猎手学 ×1、情报彩蛋可能 +10%）
+    const boosted = Math.round(factionBaseRewardIsk(card) * bountyRewardFactor(state))
+    expect(state.wallet.isk - iskBefore).toBeGreaterThanOrEqual(boosted)
+    // 稀有残骸按概率掉：要么 0 要么 FACTION_RARE_DROP_COUNT（可反复刷 → 条目仍在板上）
+    const gained = rareWreckCountOf(state, f.galaxyId!) - wrecksBefore
+    expect([0, FACTION_RARE_DROP_COUNT]).toContain(gained)
+    expect(state.sideTasks.faction).not.toBeNull()
+    expect(state.expedition.factionActive).toBeUndefined()
+  })
+
+  it('多局统计：掉落频率逼近 FACTION_RARE_DROP_CHANCE（概率口径可复现）', () => {
+    const { state, ctx } = makeWorld(7)
+    exploreAll(state)
+    openBountyBoard(state, ctx)
+    const f = state.sideTasks.faction!
+    const card = ctx.anomalies.get(f.anomalyId!)!
+    state.standings[DSI_FACTION_ID] = 99
+    let hits = 0
+    const runs = 40
+    for (let i = 0; i < runs; i += 1) {
+      state.expedition.active = false
+      state.expedition.battle = null
+      const r = startExpedition(state, card.id, ctx)
+      expect(r.ok, r.error ?? '').toBe(true)
+      const before = rareWreckCountOf(state, f.galaxyId!)
+      state.expedition.battle!.ended = 'me'
+      resolveBattleOutcome(state, ctx)
+      if (rareWreckCountOf(state, f.galaxyId!) > before) hits += 1
+      state.bountyCooldowns = {} // 清冷却：本测试只关心掉落概率（重复冷却另有测试）
+      state.wallet.isk = 1_000_000 // 防破产（维修费与本测试无关）
+    }
+    const rate = hits / runs
+    // 二项分布 sd ≈ 0.063（n=40, p=0.2）→ 给足 3sd 余量
+    expect(rate).toBeGreaterThan(FACTION_RARE_DROP_CHANCE - 0.25)
+    expect(rate).toBeLessThan(FACTION_RARE_DROP_CHANCE + 0.25)
+    expect(hits).toBeGreaterThan(0)
   })
 })

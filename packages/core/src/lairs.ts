@@ -56,6 +56,36 @@ export const LAIR_TASK_REWARD_MUL: Record<LairTier, number> = { 1: 0.5, 2: 0.75,
 /** 击败窝点 → 该星系稀有残骸 +本件数（随难度递增） */
 export const LAIR_RARE_WRECK_GAIN: Record<LairTier, number> = { 1: 1, 2: 2, 3: 3 }
 
+/* ═══════════ 敌对派系活跃（2026-09-10 船长定：每天选中一个中安/低安星系） ═══════════ */
+
+/**
+ * 派系活跃 · 目标悬赏的奖金加成（2026-09-10 船长定：+10%）。
+ * **只作用于该星系的常驻悬赏（普通悬赏）**——与赏金任务的窝点无关（船长同日明确）；
+ * 该星系当天从常规赏金席位抽签池里剔除（避免同星系两条）。
+ */
+export const FACTION_BOUNTY_REWARD_MUL = 1.1
+/** 派系活跃 · 目标悬赏的威胁加成（+10%）：威胁驱动敌舰属性（血量/火力/速度/射程），不是纯数字 */
+export const FACTION_BOUNTY_THREAT_MUL = 1.1
+/**
+ * 派系活跃 · 胜利后掉落稀有残骸的概率（**船长 2026-09-10 定：10%**）。
+ * 口径：该目标当天**可反复刷**（不像赏金任务那样打完下板），所以概率按"每天平均能刷几次"审算——
+ * 见 `npm run faction:audit`（当前均值 ≈3.5 趟/时 → 4 小时 ≈14 趟 → P=10% 期望 ≈1.4 件/天）。
+ * 命中一次掉 `FACTION_RARE_DROP_COUNT` 件，进该星系残骸场（打捞必得，与窝点同一条链路）。
+ */
+export const FACTION_RARE_DROP_CHANCE = 0.1
+/** 派系活跃 · 命中一次掉几件稀有残骸 */
+export const FACTION_RARE_DROP_COUNT = 1
+
+/** 派系活跃派生卡：只改威胁（×1.1），其余继承——名字沿用原悬赏名，界面另挂「派系活跃」徽标 */
+export function factionAnomalyOf(anomaly: AnomalyDef): AnomalyDef {
+  return { ...anomaly, threat: Math.round(anomaly.threat * FACTION_BOUNTY_THREAT_MUL) }
+}
+
+/** 派系活跃目标的基础奖金 = 主题悬赏奖金 ×1.1（胜利结算沿用既有浮动与技能系数） */
+export function factionBaseRewardIsk(anomaly: AnomalyDef): number {
+  return Math.round(anomaly.rewardIsk * FACTION_BOUNTY_REWARD_MUL)
+}
+
 /* ═══════════ 名称（船长 2026-09-10 词表定稿） ═══════════ */
 
 /** 敌族 → 三档称呼（[一档, 二档, 三档]；二三档是"地点"语义） */
