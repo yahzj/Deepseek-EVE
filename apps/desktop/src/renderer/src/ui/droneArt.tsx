@@ -112,10 +112,47 @@ export const DRONE_BACK_ANIM_MS = 420
  * 两套实现都保留，切换本常量即可（CSS 两套 keyframes 均保留）。
  */
 export const DRONE_STYLE: 'sortie' | 'formation' = 'sortie'
-/** 出击制：飞到攻击阵位的时长（ms；与 styles.css keyframes 一致） */
+/** 出击制：飞到攻击阵位的时长（ms；与逐帧插值一致） */
 export const DRONE_SORTIE_OUT_MS = 560
-/** 出击制：返航时长（ms；与 styles.css keyframes 一致） */
+/** 出击制：返航时长（ms） */
 export const DRONE_SORTIE_BACK_MS = 620
+/** 出击制：开火后在阵位停留时长（ms）——留出齐射观感，然后掉头返航 */
+export const DRONE_DWELL_MS = 400
+
+/**
+ * 出击节拍（2026-09-10 船长六次定："无人机的 Y 轴固定在一点、停留位置与弹道位置对不上"）。
+ *
+ * 根因：无人机装填周期约 2.2s，而"无开火 1.2s 回巢"——每轮开火之间无人机早已飞回母舰，
+ * 于是它**几乎总在机库口同一高度**，而弹道按时出现在攻击阵位（阵位在敌舰侧、Y 分层）。
+ *
+ * 现改为**与开火周期对齐的循环**（起点 = 上一次开火时刻 S，周期 = 该型装填 reloadMs）：
+ * - [S, S+停留)          → 停在攻击阵位（刚打完，Y 分层可见）
+ * - [S+停留, S+停留+返航) → 掉头沿下凸弧返航
+ * - 之后                → 收舱待命
+ * - [下次开火−去程, 下次开火) → 沿上凸弧出击，**恰好在开火时刻抵达阵位**
+ * 首次出击（尚无开火记录）按"现在起飞"处理：立刻出发、到位待命，首发弹道等它到位再显示。
+ * 无人机位置与弹道位置由同一函数给出 → 结构上不可能再错位。
+ */
+export function droneCycleAt(
+  now: number,
+  last: number | undefined,
+  reloadMs: number,
+): { phase: 'deck' | 'out' | 'back'; t: number; delay: number } {
+  const reload = Math.max(DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS, reloadMs)
+  const eff = last ?? now - Math.max(0, reload - DRONE_SORTIE_OUT_MS)
+  const dwellEnd = eff + DRONE_DWELL_MS
+  const backEnd = dwellEnd + DRONE_SORTIE_BACK_MS
+  const due = eff + reload
+  const depart = due - DRONE_SORTIE_OUT_MS
+  if (now < dwellEnd) return { phase: 'out', t: 1, delay: 0 } // 停在阵位（开火后停留段）
+  if (now < backEnd) return { phase: 'back', t: Math.min(1, (now - dwellEnd) / DRONE_SORTIE_BACK_MS), delay: 0 }
+  if (now < depart) return { phase: 'deck', t: 0, delay: 0 } // 已收舱，等下一轮
+  if (now < due) {
+    const t = Math.min(1, (now - depart) / DRONE_SORTIE_OUT_MS)
+    return { phase: 'out', t, delay: Math.round((1 - t) * DRONE_SORTIE_OUT_MS) }
+  }
+  return { phase: 'out', t: 1, delay: 0 } // 到点未开火（引擎延迟）：仍在阵位待命
+}
 
 /**
  * 出击制攻击阵位（绝对画面 px；2026-09-10 船长三次定："只去固定地点会大量重叠"）：
