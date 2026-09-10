@@ -36,6 +36,7 @@ import {
   aiWinPreview,
   refundAmmo,
   refundRepairKits,
+  settleDroneLosses,
   startBattleFor,
 } from './combat'
 import { durabilityOf, loseShip, repairShip } from './shipyard'
@@ -936,6 +937,8 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   const task = assignment.task as AiExpeditionTaskState
   const battle = task.battle!
   const shipName = shipDisplayName(state, ctx, shipId)
+  // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：AI 副船同样照扣（口径一致）
+  settleDroneLosses(state, ctx, shipId, battle)
   // 弹药剩余退回物品仓库（弹药 MK2：按实装弹 id 退回）
   refundAmmo(state, battle.ammo, battle.ammoIds)
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库

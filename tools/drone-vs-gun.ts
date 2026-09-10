@@ -129,9 +129,12 @@ function dpsOfCfg(cfg: Cfg): Dps | null {
   return spec ? dpsOf(spec) : null
 }
 
-/** 真实模拟：胜率 / 中位交火秒 / 我方残血比（同 battle-calibrate 口径） */
-function battle(cfg: Cfg, anomalyId: string): { winRate: number; medSec: number; remain: number } {
-  const rows: Array<{ win: boolean; sec: number; remain: number }> = []
+/** 真实模拟：胜率 / 中位交火秒 / 我方残血比 / 机群战损（同 battle-calibrate 口径） */
+function battle(
+  cfg: Cfg,
+  anomalyId: string,
+): { winRate: number; medSec: number; remain: number; lost: number; lostTypes: Record<string, number> } {
+  const rows: Array<{ win: boolean; sec: number; remain: number; lost: number; types: Record<string, number> }> = []
   for (const seed of SEEDS) {
     const state = makeState(cfg, seed)
     const b = startBattleFor(state, ctx, cfg.ship, anomalyId, 0)
@@ -143,20 +146,30 @@ function battle(cfg: Cfg, anomalyId: string): { winRate: number; medSec: number;
     advanceBattleFor(state, ctx, b, cfg.ship, anomalyId)
     const u = b.units['player']
     const hp = u ? u.hp.s + u.hp.a + u.hp.h : 0
+    const types: Record<string, number> = {}
+    for (const [id, cnt] of Object.entries(b.droneLost ?? {})) {
+      types[(ctx.items.get(id)?.name ?? id).replace(/无人机$/, '')] = cnt
+    }
     rows.push({
       win: b.ended === 'me',
       sec: Math.round(
         Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs)) / 1000,
       ),
       remain: maxHp > 0 ? hp / maxHp : 0,
+      lost: Object.values(b.droneLost ?? {}).reduce((s, x) => s + x, 0),
+      types,
     })
   }
-  if (rows.length === 0) return { winRate: 0, medSec: 0, remain: 0 }
+  if (rows.length === 0) return { winRate: 0, medSec: 0, remain: 0, lost: 0, lostTypes: {} }
   const secs = rows.map((r) => r.sec).sort((a, b) => a - b)
+  const lostTypes: Record<string, number> = {}
+  for (const r of rows) for (const [k, v] of Object.entries(r.types)) lostTypes[k] = (lostTypes[k] ?? 0) + v
   return {
     winRate: Math.round((rows.filter((r) => r.win).length / rows.length) * 100),
     medSec: secs[Math.floor(secs.length / 2)]!,
     remain: rows.reduce((s, r) => s + r.remain, 0) / rows.length,
+    lost: rows.reduce((s, r) => s + r.lost, 0) / rows.length,
+    lostTypes,
   }
 }
 
@@ -321,12 +334,13 @@ const BATTLE_CFGS: Cfg[] = [
   SWARM_CFGS[2]!,
   SWARM_CFGS[3]!,
 ]
-console.log('\n══ 表 3：实战（满技能，5 种子；格 = 胜率%/中位秒/我方残血%）══')
+console.log('\n══ 表 3：实战（满技能，5 种子；格 = 胜率%/中位秒/我方残血%/机群战损架数）══')
 console.log(`配置\t${cardHeader.join('\t')}`)
 for (const cfg of BATTLE_CFGS) {
   const cells = CARDS.map((id) => {
     const r = battle(cfg, id)
-    return `${r.winRate}%/${r.medSec}s/${Math.round(r.remain * 100)}%`
+    const lostDetail = Object.keys(r.lostTypes).length > 0 ? `(${Object.entries(r.lostTypes).map(([k, v]) => `${k}×${(v / SEEDS.length).toFixed(1)}`).join('+')})` : ''
+    return `${r.winRate}%/${r.medSec}s/${Math.round(r.remain * 100)}%/${r.lost.toFixed(1)}架${lostDetail}`
   })
   console.log(`${cfg.name}\t${cells.join('\t')}`)
 }

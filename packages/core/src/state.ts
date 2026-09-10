@@ -9,7 +9,7 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, DamageType, FittedModules, ModuleSlot } from './types'
+import type { AiCoreType, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
 import { emptyFitted } from './labels'
 
 export type { FittedModules } from './types'
@@ -382,6 +382,9 @@ export interface BattleFx {
   artId?: string
   /** 是否命中目标 */
   hit: boolean
+  /** 机群被击落标记（2026-09-10 船长「无人机可被击落」）：本事件表示该架无人机被点防击落
+   * （UI 出小爆炸/坠落演出；缺省 = 普通开火事件） */
+  droneDown?: boolean
 }
 
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
@@ -436,6 +439,30 @@ export interface BattleState {
     /** 累计消耗组件枚数 */
     kitsUsed: number
   }
+  /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
+  /** 逐架生存池：键 = 我方武器条目下标（仅 src='drone' 的条目）；开战由 startBattleFor 写入。
+   * 缺省 = 本次改动前已在进行的战斗（照旧打完，不折损） */
+  dronePools?: Record<number, DronePoolEntry>
+  /** 本场已击落架数（机型 id → 架数）；结算时按此**永久扣除**无人机舱清单 */
+  droneLost?: Record<string, number>
+  /** 敌方点防调度（当前波）：每舰冷却剩余毫秒（与敌编队同序）与每秒射击次数；缺省 = 无点防 */
+  pdCd?: number[]
+  pdRate?: number
+  /** 开战时的机群清单快照（机型 id → 架数；用于战后判定"机群战损过半"→ 停重复清剿） */
+  droneLoadAtStart?: Record<string, number>
+}
+
+/** 单架无人机的战斗生存池（开战自机型 DroneDefense 写入；被点防打空即击落）
+ * 装备模块阻力/回避随池携带——战斗跨会话续算不依赖当时的仓库/装配状态 */
+export interface DronePoolEntry {
+  s: number
+  a: number
+  h: number
+  alive: boolean
+  /** 机型闪避（点防命中率 = balance.pdAcc − 本值） */
+  evasion: number
+  /** 机型三层抗性（点防伤害逐层消费用） */
+  resists?: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
 }
 
 /** 船体维修装置单台运行快照（2026-09-09：开战写入，离线续算不依赖当前装配） */
@@ -811,6 +838,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 引擎写入 → 心跳读取即清并 toast（不落档、零迁移）
    */
   autoLoopStopNotice?: string | null
+  /**
+   * 2026-09-10 机群战损一次性提示（船长定「无人机可被击落」+ 永久损失制）：
+   * 战斗结算扣掉被击落的无人机后写入（含机型与架数），心跳读取即清并 toast——
+   * 同 deliveryNotice 模式（不落档、零迁移）
+   */
+  droneLossNotice?: string | null
   /**
    * 2026-09-10 玩家标记（收藏）：四类界面各自一份 id 清单，被标记项在**默认排序**下置顶
    * （2026-09-10 船长定：舰队等有排序下拉的列表只在「默认排序」生效）。

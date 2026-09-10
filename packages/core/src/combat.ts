@@ -1162,6 +1162,41 @@ export function startBattleFor(
     }
   }
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
+  // 机群生存池（2026-09-10 船长「无人机可被击落」）：按武器条目下标建池——只有 src='drone'
+  // 的条目参战；机型三层血/抗性/闪避取自物品本体（DroneDefense，四型定位契约见 data/droneRoles.ts）
+  const pools: Record<number, import('./state').DronePoolEntry> = {}
+  me.weapons.forEach((w, i) => {
+    if (w.src !== 'drone' || !w.artId) return
+    const d = ctx.items.get(w.artId)?.defense
+    pools[i] = {
+      s: Math.max(1, Math.round(d?.shieldHp ?? 1)),
+      a: Math.max(1, Math.round(d?.armorHp ?? 1)),
+      h: Math.max(1, Math.round(d?.hullHp ?? 1)),
+      alive: true,
+      evasion: clamp(0, 0.9, d?.evasion ?? 0),
+      ...(d
+        ? {
+            resists: {
+              ...(d.shieldResist ? { shield: d.shieldResist } : {}),
+              ...(d.armorResist ? { armor: d.armorResist } : {}),
+              ...(d.hullResist ? { hull: d.hullResist } : {}),
+            },
+          }
+        : {}),
+    }
+  })
+  if (Object.keys(pools).length > 0) {
+    battle.dronePools = pools
+    battle.droneLost = {}
+    // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）
+    battle.droneLoadAtStart = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
+  }
+  // 敌方点防调度（每舰一份冷却；威胁低于起始值不设）
+  const rate = pdRateFor(anomaly.threat, bal)
+  if (rate > 0 && Object.keys(pools).length > 0) {
+    battle.pdRate = rate
+    battle.pdCd = foes.map(() => Math.round(1000 / rate))
+  }
   // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
   // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）
   const repair = preloadRepairFor(state, ctx, shipId, bal.maxBattleMs)
@@ -1247,6 +1282,8 @@ export function battleArcsFor(
   foe: { minM: number; maxM: number; type: DamageType }
   /** 各单位三层满血量（UI 垂直血条按各自满值比例绘制） */
   maxHp: { me: { s: number; a: number; h: number }; foe: Record<string, { s: number; a: number; h: number }> }
+  /** 机群战损（2026-09-10）：本场已击落架数（机型 id → 架数）；缺省 = 无损失 */
+  droneLost?: Record<string, number>
 } | null {
   const anomaly = state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
   const battle = state.expedition.battle
@@ -1278,6 +1315,8 @@ export function battleArcsFor(
   const droneAt = new Map<string, number>()
   const droneN: number[] = []
   me.weapons.forEach((w, i) => {
+    // 2026-09-10 船长「无人机可被击落」：被点防打掉的架次不出现在射程弧/机群计数里
+    if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
     else if (w.kind === 'beam') type = battle.ammo.pla > 0 ? 'plasma' : null // 激光吃能量弹药键
@@ -1368,6 +1407,8 @@ export function battleArcsFor(
     meReload,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
+    // 机群战损（2026-09-10）：本场已击落架数（UI 战报/提示用；缺省 = 无损失）
+    ...(battle.droneLost && Object.keys(battle.droneLost).length > 0 ? { droneLost: battle.droneLost } : {}),
   }
 }
 
@@ -1410,8 +1451,54 @@ export function persistFleetHullDamage(
   fleetShip.durability = cap.hp.h > 0 ? clamp01(unit.hp.h / cap.hp.h) : 0
 }
 
-/** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs
- * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
+/**
+ * 机群战损结算（2026-09-10 船长拍板「无人机可被击落」+ **永久损失制**）：
+ * 把本场被点防击落的架数从该船无人机舱清单里**永久扣除**（清单是"带上船的那批"，
+ * 本就不在仓库里——扣清单即真实损失），并写事件日志 + 一次性提示（渲染层读到弹 toast）。
+ * 胜负/撤退都照扣（打掉的飞机不会因为撤退飞回来）；在 resolveBattleOutcome 等结算入口调用，
+ * 且必须在其它结算之前（战报文案要用损失摘要）。
+ * 返回损失摘要文案（无损失 = null）。
+ */
+export function settleDroneLosses(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  battle: import('./state').BattleState | null,
+): string | null {
+  const lost = battle?.droneLost
+  if (!lost) return null
+  const fleetShip = state.fleet[shipId]
+  if (!fleetShip) return null
+  const load: Record<string, number> = { ...(fleetShip.droneLoad ?? {}) }
+  const parts: string[] = []
+  let total = 0
+  for (const [id, n] of Object.entries(lost)) {
+    if (!n || n <= 0) continue
+    const have = load[id] ?? 0
+    const cut = Math.min(have, n)
+    if (cut > 0) {
+      const left = have - cut
+      if (left > 0) load[id] = left
+      else delete load[id]
+    }
+    total += cut
+    parts.push(`${ctx.items.get(id)?.name ?? id}×${cut}`)
+  }
+  if (total <= 0) return null
+  fleetShip.droneLoad = Object.keys(load).length > 0 ? load : undefined
+  // 结算后清空战损账本（调用幂等：重复结算不会重复扣；战报/日志已带损失摘要）
+  battle!.droneLost = undefined
+  const text = parts.join('、')
+  addLog(
+    state,
+    'warn',
+    `⚠ 机群战损：${text}（合计 ${total} 架）被敌方点防击落——已从无人机舱清单永久损失，回港后需在装配页补充。`,
+  )
+  state.droneLossNotice = `机群战损：${text} 被点防击落（永久损失），回港后请补充无人机舱清单。`
+  return text
+}
+
+/** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
  * 跨窗口会提前耗尽预算判负。调用方应在预算外加本值（无 waves = 0）。 */
 export function waveGapTotalMs(anomaly: Pick<AnomalyDef, 'waves'> | undefined, bal: BattleBalance): number {
   const n = anomaly?.waves?.length ?? 1
@@ -1488,6 +1575,10 @@ export function advanceBattleFor(
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
       for (const f of curFoes) seedUnit(battle, f, { enterReload: true }) // 增援入场装填（转场窗口）
+      // 点防调度随波重建（pdCd 与敌编队同序）
+      if (battle.pdRate && battle.dronePools) {
+        battle.pdCd = curFoes.map(() => Math.round(1000 / battle.pdRate!))
+      }
       // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
       // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
       // 0 = 原地续战（旧行为），1 = 完整回到开战距离
@@ -1538,6 +1629,98 @@ export function advanceBattle(state: GameState, ctx: SimContext): void {
   if (battle) advanceBattleFor(state, ctx, battle, state.shipId, state.expedition.anomalyId)
 }
 
+/* ══════════ 敌方点防（2026-09-10 船长拍板「无人机可被击落」，永久损失制） ══════════ */
+
+/** 单舰点防射速（次/秒）：威胁低于 pdThreatFloor 无点防，随后线性升到 pdRatePerSec 满档 */
+export function pdRateFor(threat: number, bal: BattleBalance): number {
+  const t = (threat - bal.pdThreatFloor) / Math.max(1, bal.pdThreatSpan)
+  if (t <= 0) return 0
+  return bal.pdRatePerSec * Math.min(1, t)
+}
+
+/** 存活放飞条目下标（点防选靶 / 开火跳过共用） */
+function aliveDroneIndices(b: import('./state').BattleState): number[] {
+  const pools = b.dronePools
+  if (!pools) return []
+  const out: number[] = []
+  for (const [k, p] of Object.entries(pools)) if (p.alive) out.push(Number(k))
+  return out
+}
+
+/** 本场放飞总架数（损失上限分母） */
+function droneTotalCount(b: import('./state').BattleState): number {
+  return b.dronePools ? Object.keys(b.dronePools).length : 0
+}
+
+/** 本场已击落架数 */
+export function droneLostCount(b: import('./state').BattleState): number {
+  return Object.values(b.droneLost ?? {}).reduce((s, n) => s + n, 0)
+}
+
+/**
+ * 点防结算（每拍调用）：每艘存活敌舰按各自冷却对**点防射程内存活的我方无人机**射击——
+ * 命中率 = pdAcc − 机型闪避（不用敌方通用命中加成，突出"闪避"的定位价值）；
+ * 命中按 pdDmg 走机型三层抗性消费；血量打空 = 该架本场击落（停火 + 计入 droneLost）。
+ * 损失上限 pdMaxLossFrac 防团灭；全程消费 state.rng，确定性可复现。
+ */
+function resolvePointDefense(
+  state: GameState,
+  b: import('./state').BattleState,
+  me: UnitSpec,
+  foes: UnitSpec[],
+  bal: BattleBalance,
+  dtMs: number,
+): void {
+  const pools = b.dronePools
+  const rate = b.pdRate ?? 0
+  if (!pools || rate <= 0) return
+  if (b.pdCd === undefined) b.pdCd = foes.map(() => Math.round(1000 / rate))
+  const total = droneTotalCount(b)
+  const maxLoss = Math.max(1, Math.floor(total * bal.pdMaxLossFrac))
+  for (let fi = 0; fi < foes.length; fi++) {
+    if (!isAlive(b, foes[fi]!.tag)) continue
+    let cd = (b.pdCd[fi] ?? Math.round(1000 / rate)) - dtMs
+    // 本次推进内可能跨多拍：按冷却补齐循环（guard 防呆）
+    let guard = 0
+    while (cd <= 0 && guard < 64) {
+      guard++
+      cd += Math.round(1000 / rate)
+      // 距离筛：点防只在射程内有效（哨戒 5km 常在射程外 → 靠距离活命）
+      if (b.distanceM > bal.pdRangeM) break
+      if (droneLostCount(b) >= maxLoss) break
+      const cands = aliveDroneIndices(b)
+      if (cands.length === 0) break
+      const idx = cands[Math.min(cands.length - 1, Math.floor(nextRandom(state.rng) * cands.length))]!
+      const pool = pools[idx]!
+      const w = me.weapons[idx]!
+      const pHit = clamp(0, 1, bal.pdAcc - pool.evasion)
+      if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
+      const res = applyDamage({ s: pool.s, a: pool.a, h: pool.h }, pool.resists ?? {}, bal.pdDmg, 'kinetic')
+      pool.s = res.hp.s
+      pool.a = res.hp.a
+      pool.h = res.hp.h
+      if (pool.s + pool.a + pool.h <= 0) {
+        pool.alive = false
+        const artId = w.artId ?? 'drone'
+        b.droneLost = { ...(b.droneLost ?? {}) }
+        b.droneLost[artId] = (b.droneLost[artId] ?? 0) + 1
+        // 击落演出事件（side='me' + src='drone' + droneDown：UI 出小爆炸/坠落）
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs + dtMs,
+          side: 'me',
+          tag: 'player',
+          type: 'kinetic',
+          src: 'drone',
+          artId,
+          hit: true,
+          droneDown: true,
+        })
+      }
+    }
+    b.pdCd[fi] = cd
+  }
+}
+
 function stepBattle(
   state: GameState,
   b: import('./state').BattleState,
@@ -1567,6 +1750,8 @@ function stepBattle(
   if (meRt && isAlive(b, 'player')) {
     for (let wi = 0; wi < me.weapons.length; wi++) {
       const w = me.weapons[wi]!
+      // 2026-09-10 船长「无人机可被击落」：已被点防打掉的架次不再开火（条目保留占位）
+      if (w.src === 'drone' && b.dronePools?.[wi]?.alive === false) continue
       const cd = meRt.weapons[wi] ?? 0
       if (cd > 0) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
@@ -1680,6 +1865,9 @@ function stepBattle(
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: fHit })
   }
+
+  // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
+  resolvePointDefense(state, b, me, foes, bal, dtMs)
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
   // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）──

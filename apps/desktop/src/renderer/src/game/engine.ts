@@ -490,6 +490,13 @@ export class GameEngine {
       this.state.autoLoopStopNotice = null
       if (this.onSystemNotice) this.onSystemNotice(loopStop)
     }
+    // 2026-09-10 追加：机群战损提示 state.droneLossNotice（无人机可被击落·永久损失制；
+    // 战斗结算扣清单后写入，同一通道 toast 一次）
+    const droneLoss = this.state.droneLossNotice
+    if (droneLoss) {
+      this.state.droneLossNotice = null
+      if (this.onSystemNotice) this.onSystemNotice(droneLoss)
+    }
   }
 
   private notify(): void {

@@ -475,6 +475,10 @@ export {
   layerMultText,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
+  // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
+  pdRateFor,
+  droneLostCount,
+  settleDroneLosses,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
 
