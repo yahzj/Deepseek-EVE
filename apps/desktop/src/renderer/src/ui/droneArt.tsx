@@ -116,42 +116,57 @@ export const DRONE_STYLE: 'sortie' | 'formation' = 'sortie'
 export const DRONE_SORTIE_OUT_MS = 560
 /** 出击制：返航时长（ms） */
 export const DRONE_SORTIE_BACK_MS = 620
-/** 出击制：开火后在阵位停留时长（ms）——留出齐射观感，然后掉头返航 */
-export const DRONE_DWELL_MS = 400
 
 /**
- * 出击节拍（2026-09-10 船长六次定："无人机的 Y 轴固定在一点、停留位置与弹道位置对不上"）。
+ * 出击制单轮时序（2026-09-10 船长七次定："每次飞出时 Y 轴随机分布、到达位置后开火、开火结束立刻返回"）：
  *
- * 根因：无人机装填周期约 2.2s，而"无开火 1.2s 回巢"——每轮开火之间无人机早已飞回母舰，
- * 于是它**几乎总在机库口同一高度**，而弹道按时出现在攻击阵位（阵位在敌舰侧、Y 分层）。
- *
- * 现改为**与开火周期对齐的循环**（起点 = 上一次开火时刻 S，周期 = 该型装填 reloadMs）：
- * - [S, S+停留)          → 停在攻击阵位（刚打完，Y 分层可见）
- * - [S+停留, S+停留+返航) → 掉头沿下凸弧返航
- * - 之后                → 收舱待命
- * - [下次开火−去程, 下次开火) → 沿上凸弧出击，**恰好在开火时刻抵达阵位**
- * 首次出击（尚无开火记录）按"现在起飞"处理：立刻出发、到位待命，首发弹道等它到位再显示。
- * 无人机位置与弹道位置由同一函数给出 → 结构上不可能再错位。
+ * 一轮 = 放出（`DRONE_SORTIE_OUT_MS`）→ **到位瞬间开火**（弹道即在此刻出现）→ 立刻掉头返航（`DRONE_SORTIE_BACK_MS`）。
+ * 无人机可见时长 = 去程 + 返程，开火是这一轮的"顶点"；两轮之间在机库待命（引擎装填决定节奏）。
+ * 无人机位置与弹道位置共用同一轮的随机阵位 → 不会错位；战斗开始时首轮同样从机库口飞出，不会直接出现在敌侧。
  */
-export function droneCycleAt(
-  now: number,
-  last: number | undefined,
-  reloadMs: number,
-): { phase: 'deck' | 'out' | 'back'; t: number; delay: number } {
-  const reload = Math.max(DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS, reloadMs)
-  const eff = last ?? now - Math.max(0, reload - DRONE_SORTIE_OUT_MS)
-  const dwellEnd = eff + DRONE_DWELL_MS
-  const backEnd = dwellEnd + DRONE_SORTIE_BACK_MS
-  const due = eff + reload
-  const depart = due - DRONE_SORTIE_OUT_MS
-  if (now < dwellEnd) return { phase: 'out', t: 1, delay: 0 } // 停在阵位（开火后停留段）
-  if (now < backEnd) return { phase: 'back', t: Math.min(1, (now - dwellEnd) / DRONE_SORTIE_BACK_MS), delay: 0 }
-  if (now < depart) return { phase: 'deck', t: 0, delay: 0 } // 已收舱，等下一轮
-  if (now < due) {
-    const t = Math.min(1, (now - depart) / DRONE_SORTIE_OUT_MS)
-    return { phase: 'out', t, delay: Math.round((1 - t) * DRONE_SORTIE_OUT_MS) }
+export interface DroneSortie {
+  /** 本轮放出时刻（ms） */
+  startAt: number
+  /** 本轮每架的阵位随机偏移（相对敌舰锚点；Y 轴随机分布，避免叠在一起） */
+  offs: { x: number; y: number }[]
+}
+
+/** 生成一轮的随机阵位偏移（Y 轴随机分布；X 亦轻微抖动，避免同高度成排） */
+export function droneRandomOffsets(count: number): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = []
+  for (let i = 0; i < count; i++) {
+    out.push({
+      x: 42 + Math.round(Math.random() * 26), // 距敌舰（我方一侧）42~68px
+      y: Math.round((Math.random() - 0.5) * 96), // Y 轴 ±48px 随机
+    })
   }
-  return { phase: 'out', t: 1, delay: 0 } // 到点未开火（引擎延迟）：仍在阵位待命
+  return out
+}
+
+/** 本轮第 lane 架的绝对攻击阵位（敌舰我方一侧 + 本轮随机偏移） */
+export function droneStationFrom(
+  foe: { x: number; y: number },
+  dir: number,
+  off: { x: number; y: number },
+): { x: number; y: number } {
+  return { x: foe.x - dir * off.x, y: foe.y + off.y }
+}
+
+/** 单轮航路位置（t=0 在起/终点，t=1 在另一端；back=false 为出击段，true 为返航段） */
+export function dronePathPos(
+  t: number,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  arcH: number,
+  back: boolean,
+): { x: number; y: number } {
+  const e = back ? (t * t * t) : (1 - Math.pow(1 - t, 3))
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + (back ? arcH : -arcH) }
+  // 二次贝塞尔：控制点 C 使 e=0.5 恰好经过 mid（去程上凸、返程下凸）
+  const cx = 2 * mid.x - (from.x + to.x) / 2
+  const cy = 2 * mid.y - (from.y + to.y) / 2
+  const u = 1 - e
+  return { x: u * u * from.x + 2 * u * e * cx + e * e * to.x, y: u * u * from.y + 2 * u * e * cy + e * e * to.y }
 }
 
 /**
@@ -195,24 +210,6 @@ export function droneEaseIn(t: number): number {
 }
 
 /**
- * 出击制航路位置（绝对画面 px）——给定时刻沿**上凸弧线**去、沿**下凸弧线**回。
- *
- * 2026-09-10 船长五次定："无人机依旧是飞到固定地点"——原因是先前把位移交给 CSS 关键帧
- * （`forwards` 冻结在动画结束时的终点），敌舰移动后阵位变了，机体却停在旧坐标。
- * 现改为**逐帧由本函数插值定位**：终点实时跟敌舰更新，曲线形状保持不变。
+ * 出击制航路位置（绝对画面 px）——给定时刻沿**上凸弧线**去、沿**下凸弧线**回
+ * （与上方同名函数重复的历史实现已合并，仅保留前一份定义）。
  */
-export function dronePathPos(
-  t: number,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  arcH: number,
-  back: boolean,
-): { x: number; y: number } {
-  const e = back ? droneEaseIn(t) : droneEaseOut(t)
-  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + (back ? arcH : -arcH) }
-  // 二次贝塞尔：控制点 C 使 e=0.5 恰好经过 mid
-  const cx = 2 * mid.x - (from.x + to.x) / 2
-  const cy = 2 * mid.y - (from.y + to.y) / 2
-  const u = 1 - e
-  return { x: u * u * from.x + 2 * u * e * cx + e * e * to.x, y: u * u * from.y + 2 * u * e * cy + e * e * to.y }
-}
