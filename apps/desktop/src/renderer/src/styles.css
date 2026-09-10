@@ -8790,7 +8790,15 @@ body {
 .shipart-fill-i { fill: #8fc7ff; stroke: none; opacity: .9; }
 /* ---------- 组装机连续生产开关（2026-09-09 船长定：线行滑动开关 + 目标件数） ---------- */
 
-.app-mf-loop { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+/* （2026-09-10 起 `.app-mf-loop` 逐线控件容器随"循环制造"上移到卡片级而删除，改用 `.app-belt-loop`） */
+
+/* 组装机卡片级「循环制造」控制条（2026-09-10 船长定：开关与目标件数从逐行上移到整张生产卡）——
+   与线行名册同族（同一描边/底色家族，压低一档饱和度以示"卡片级、非单线"）；
+   固定 min-height：开关切换（目标输入框进出）不改变行高，避免卡面跳动 */
+.app-belt-loop { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-height: 24px; padding: 3px 6px; border: 1px dashed rgba(127, 227, 255, 0.22); border-radius: 5px; background: rgba(127, 227, 255, 0.035); font-size: 11px; color: rgba(220, 232, 244, 0.85); }
+.app-mf-made { color: var(--wui-accent); font-variant-numeric: tabular-nums; }
+.app-mf-why { color: var(--wui-amber); }
+.app-mf-note { margin-left: auto; white-space: nowrap; }
 
 .app-toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; font-size: 11px; color: rgba(220, 232, 244, 0.85); }
 .app-toggle-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }

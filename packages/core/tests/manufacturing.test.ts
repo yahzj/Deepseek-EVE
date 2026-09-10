@@ -17,6 +17,7 @@ import { learnBlueprint } from '../src/market'
 import {
   calcBuildDurationMs,
   cancelManufacturing,
+  manufacturingLoopOf,
   manufacturingManualActive,
   manufacturingRunViews,
   missingMaterials,
@@ -402,88 +403,120 @@ describe('装备装配与加成', () => {
   })
 })
 
-
-describe('连续生产（2026-09-09 船长定：组装机卡片滑动开关；同一蓝图自动续做同一物品）', () => {
+describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条制造线上移到整张生产卡；全卡合计口径）', () => {
   let state: GameState
   let ctx: SimContext
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
-    ctx = makeTestCtx()
-    state.skills.trained['ai-expert'] = 5 // AI 线上限资格
+    ctx = makeTestCtx() // bp-a：10×min-a / 600 秒 → mod-a（主控线 600s/件；基础核心 40% 效率 → 1500s/件）
+    state.skills.trained['ai-expert'] = 5 // AI 核心上限资格（多线并行）
     state.blueprintStock['bp-a'] = 1
-    learnBlueprint(state, ctx, 'bp-a') // bp-a：10×min-a / 600s → mod-a
+    learnBlueprint(state, ctx, 'bp-a')
   })
 
-  it('手动线开启循环：材料不足自动停线（共 2 件）并写停线汇总日志', () => {
-    state.warehouse.items['min-a'] = 25
+  it('卡片开关作用于该卡全部线（含主控亲自）：两线一起循环，合计 = 全卡之和', () => {
+    gainAiCore(state, 'basic', 1)
+    state.warehouse.items['min-a'] = 100
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
-    const id = state.manufacturingRuns[0]!.id
-    expect(setManufacturingLoop(state, id, true, null).ok).toBe(true)
-    expect(state.manufacturingRuns[0]!.autoRepeat).toBe(true)
-    advanceGame(state, 1_250_000, ctx)
-    expect(countModule(state, 'mod-a')).toBe(2) // 600s × 2
-    expect(state.manufacturingRuns).toHaveLength(0) // 缺料自动停线
-    expect(state.warehouse.items['min-a'] ?? 0).toBe(5)
-    expect(state.logs.some((l) => l.text.includes('连续生产停止') && l.text.includes('材料不足'))).toBe(true)
-    expect(state.logs.some((l) => l.text.includes('共 2 件'))).toBe(true)
-  })
-
-  it('目标件数达成即停：造 2 件后停线、余料保留', () => {
-    state.warehouse.items['min-a'] = 35
-    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
-    const id = state.manufacturingRuns[0]!.id
-    expect(setManufacturingLoop(state, id, true, 2).ok).toBe(true)
-    expect(state.manufacturingRuns[0]!.repeatGoal).toBe(2)
-    advanceGame(state, 1_250_000, ctx)
-    expect(countModule(state, 'mod-a')).toBe(2)
-    expect(state.manufacturingRuns).toHaveLength(0)
-    expect(state.warehouse.items['min-a'] ?? 0).toBe(15) // 只用 2 件材料
-    expect(state.logs.some((l) => l.text.includes('已达成目标 2 件'))).toBe(true)
-  })
-
-  it('中途关闭开关：当前件完成后即停、不再续做', () => {
-    state.warehouse.items['min-a'] = 35
-    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
-    const id = state.manufacturingRuns[0]!.id
-    expect(setManufacturingLoop(state, id, true, null).ok).toBe(true)
-    advanceGame(state, 599_999, ctx)
-    advanceGame(state, 1, ctx) // 第 1 件完成并续开
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
+    // 线行视图读到的是**同一张卡**的开关（不是逐线各自的状态）
+    expect(manufacturingRunViews(state, ctx).map((v) => v.loopOn)).toEqual([false, false])
+    expect(setManufacturingLoop(state, 'bp-a', true, null).ok).toBe(true)
+    expect(manufacturingRunViews(state, ctx).map((v) => v.loopOn)).toEqual([true, true])
+    // 600s：主控线第 1 件完成 → 自动续做（合计 +1；AI 线仍在跑第 1 件）
+    advanceGame(state, 600_000, ctx)
     expect(countModule(state, 'mod-a')).toBe(1)
-    expect(state.manufacturingRuns).toHaveLength(1) // 循环中（线保持占用）
-    expect(setManufacturingLoop(state, id, false, null).ok).toBe(true)
-    expect(state.manufacturingRuns[0]!.autoRepeat).toBe(false)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(1)
+    expect(state.manufacturingRuns).toHaveLength(2)
+    // 1200s：主控线第 2 件完成（合计 2）；AI 线第 1 件到 1500s 才完成
+    advanceGame(state, 600_000, ctx)
+    expect(countModule(state, 'mod-a')).toBe(2)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(2)
+    expect(state.manufacturingRuns).toHaveLength(2)
+    // 1500s：AI 线第 1 件完成 → 合计 3（两线的产出都算进同一张卡）
+    advanceGame(state, 300_000, ctx)
+    expect(countModule(state, 'mod-a')).toBe(3)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(3)
+  })
+
+  it('目标件数 = 全卡合计：达标即停、开关自动关并标停因；在跑件跑完（最多超产 = 线数−1）', () => {
+    gainAiCore(state, 'basic', 1)
+    state.warehouse.items['min-a'] = 100
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
+    expect(setManufacturingLoop(state, 'bp-a', true, 2).ok).toBe(true)
+    advanceGame(state, 1_200_000, ctx) // 主控线连出 2 件 → 全卡合计达标
+    const loop = manufacturingLoopOf(state, 'bp-a')
+    expect(loop.on).toBe(false) // 自动关开关
+    expect(loop.goal).toBe(2)
+    expect(loop.produced).toBe(2) // 合计停在目标数上（停线依据）
+    expect(loop.stopWhy).toBe('已达成目标 2 件') // 卡片上要标停因
+    expect(state.logs.some((l) => l.text.includes('循环制造停止') && l.text.includes('本卡合计 2 件'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('其余 1 条线跑完当前件即停'))).toBe(true)
+    // 在跑的那条（AI 线）跑完当前件即止：合计不再增长，实际产出 = 3（超产 1 = 线数 − 1）
+    advanceGame(state, 300_000, ctx) // t=1500s
+    expect(countModule(state, 'mod-a')).toBe(3)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(2)
+    expect(state.manufacturingRuns).toHaveLength(0)
+    expect(countAiCore(state, 'basic')).toBe(1) // 核心已归还
+  })
+
+  it('「关→开」= 开一批新循环（合计与停因清零）；开关本来就开着时改目标不动已累计合计', () => {
+    state.warehouse.items['min-a'] = 100
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    expect(setManufacturingLoop(state, 'bp-a', true, 5).ok).toBe(true)
+    advanceGame(state, 600_000, ctx)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(1)
+    // 改目标件数：合计保留（改数字不该把进度重置）
+    expect(setManufacturingLoop(state, 'bp-a', true, 3).ok).toBe(true)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(1)
+    expect(manufacturingLoopOf(state, 'bp-a').goal).toBe(3)
+    // 手动关：当前件完成后停、不写停因（玩家主动收手，不是自动停线）
+    expect(setManufacturingLoop(state, 'bp-a', false, null).ok).toBe(true)
+    expect(manufacturingLoopOf(state, 'bp-a').stopWhy).toBe('')
     advanceGame(state, 600_000, ctx) // 第 2 件完成，之后不再续
     expect(countModule(state, 'mod-a')).toBe(2)
     expect(state.manufacturingRuns).toHaveLength(0)
-    expect(state.warehouse.items['min-a'] ?? 0).toBe(15)
-    expect(state.logs.some((l) => l.text.includes('连续生产停止'))).toBe(false) // 开关关闭 = 正常完成停线
+    expect(state.logs.some((l) => l.text.includes('循环制造停止'))).toBe(false)
+    // 再开 = 新一批：合计从 0 重新计、停因已清
+    expect(setManufacturingLoop(state, 'bp-a', true, null).ok).toBe(true)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(0)
+    expect(manufacturingLoopOf(state, 'bp-a').stopWhy).toBe('')
   })
 
-  it('AI 核心线循环：核心持续占用、缺料停线时自动归还；大推进连续结算多件', () => {
+  it('开关可先开、后开线自动继承（无需线在跑）；缺料自动停线并记停因', () => {
     gainAiCore(state, 'basic', 1)
     state.warehouse.items['min-a'] = 25
+    expect(setManufacturingLoop(state, 'bp-a', true, null).ok).toBe(true) // 预制循环（此刻无线）
     expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
-    const id = state.manufacturingRuns[0]!.id
-    expect(countAiCore(state, 'basic')).toBe(0) // 核心已占用
-    expect(setManufacturingLoop(state, id, true, null).ok).toBe(true)
-    // basic 效率 40%：单件 1,500,000ms；3,050,000ms 大推进 = 连续 2 件后缺料停
-    advanceGame(state, 3_050_000, ctx)
+    advanceGame(state, 3_000_000, ctx) // AI 线 1500s/件 → 连出 2 件（20 单位）后缺料
     expect(countModule(state, 'mod-a')).toBe(2)
+    expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(2)
+    expect(manufacturingLoopOf(state, 'bp-a').on).toBe(false)
+    expect(manufacturingLoopOf(state, 'bp-a').stopWhy).toContain('材料不足')
     expect(state.manufacturingRuns).toHaveLength(0)
-    expect(countAiCore(state, 'basic')).toBe(1) // 已归还
-    expect(state.logs.some((l) => l.text.includes('连续生产停止') && l.text.includes('AI 核心已归还'))).toBe(true)
+    expect(countAiCore(state, 'basic')).toBe(1)
+    expect(state.logs.some((l) => l.text.includes('循环制造停止') && l.text.includes('AI 核心已归还'))).toBe(true)
   })
 
-  it('校验：未知线号拒绝；goal 0/缺省 = 不限件数；关闭时不记目标', () => {
-    expect(setManufacturingLoop(state, 999, true, null).ok).toBe(false)
-    state.warehouse.items['min-a'] = 20
+  it('校验：空蓝图 id 拒绝；goal 0/缺省 = 不限件数；手动关闭不带目标', () => {
+    expect(setManufacturingLoop(state, '', true, null).ok).toBe(false)
+    state.warehouse.items['min-a'] = 25
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
-    const id = state.manufacturingRuns[0]!.id
-    expect(setManufacturingLoop(state, id, true, 0).ok).toBe(true)
-    expect(state.manufacturingRuns[0]!.autoRepeat).toBe(true)
-    expect(state.manufacturingRuns[0]!.repeatGoal).toBeUndefined()
-    expect(setManufacturingLoop(state, id, false, 3).ok).toBe(true)
-    expect(state.manufacturingRuns[0]!.repeatGoal).toBeUndefined()
+    expect(setManufacturingLoop(state, 'bp-a', true, 0).ok).toBe(true)
+    expect(manufacturingLoopOf(state, 'bp-a').on).toBe(true)
+    expect(manufacturingLoopOf(state, 'bp-a').goal).toBe(0) // 0/缺省 = 直到材料不足
+    advanceGame(state, 1_250_000, ctx) // 2 件后缺料自动停线
+    expect(manufacturingLoopOf(state, 'bp-a').stopWhy).toContain('材料不足')
+    expect(countModule(state, 'mod-a')).toBe(2)
+    // 自动停线后再打开 = 新一批：合计与停因一起清零
+    expect(setManufacturingLoop(state, 'bp-a', true, null).ok).toBe(true)
+    const loop = manufacturingLoopOf(state, 'bp-a')
+    expect(loop.on).toBe(true)
+    expect(loop.produced).toBe(0)
+    expect(loop.stopWhy).toBe('')
   })
 })
+
+

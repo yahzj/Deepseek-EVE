@@ -67,6 +67,7 @@ export type {
   FleetShipState,
   MiningState,
   ManufacturingRunState,
+  ManufacturingLoopState,
   ExpeditionState,
   MarketPoolState,
   MarketDigestEntry,
@@ -272,12 +273,13 @@ export {
   matNeedCount,
   startManufacturing,
   setManufacturingLoop,
+  manufacturingLoopOf,
   advanceManufacturing,
   manufacturingRunViews,
   manufacturingManualActive,
   findBuildable,
 } from './manufacturing'
-export type { BuildSpec, ManufacturingView } from './manufacturing'
+export type { BuildSpec, ManufacturingView, ManufacturingLoopView } from './manufacturing'
 
 export {
   ensureMarket,

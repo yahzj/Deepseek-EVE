@@ -1211,7 +1211,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <div className="app-inv-text">
                   <span className="app-inv-name">组装机 · {v.productName}</span>
                   <span className="app-inv-count">
-                    {v.workerLabel}核心 · {v.autoRepeat ? `连续生产${v.repeatGoal > 0 ? `（目标 ${v.repeatGoal} 件）` : ''}` : '单件生产'}
+                    {/* 循环制造为卡片级（2026-09-10 船长定）：这里显示该卡合计进度，不再按线各写各的 */}
+                    {v.workerLabel}核心 ·{' '}
+                    {v.loopOn
+                      ? `循环制造 · 本卡合计 ${v.loopProduced.toLocaleString('zh-CN')}${v.loopGoal > 0 ? `/${v.loopGoal.toLocaleString('zh-CN')}` : ''} 件`
+                      : '单件生产'}
                   </span>
                   <span className="app-inv-count">
                     <AiTaskBar
