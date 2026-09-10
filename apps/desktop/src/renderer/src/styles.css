@@ -2472,6 +2472,13 @@ body {
 
 }
 
+/* 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放对应卡片最左侧；屏幕宽度不足时隐藏图形）：
+   只改舰队卡（.is-fleet）为横排——同页市场页卡片（.app-ship-card 不带 is-fleet）保持原纵向排布；
+   舰影列宽固定（= ShipPage FLEET_ART_W，gap 同 FLEET_ART_GAP），显隐由列表容器实测宽驱动，不留空位 */
+.app-ship-card.is-fleet { display: flex; align-items: center; gap: 10px; }
+.app-ship-card.is-fleet .app-ship-art { flex: 0 0 auto; line-height: 0; }
+.app-ship-card.is-fleet .app-ship-main { flex: 1 1 auto; min-width: 0; }
+
 .app-win-fill {
 
   flex: 1 1 auto;

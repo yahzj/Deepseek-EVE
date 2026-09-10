@@ -1,7 +1,7 @@
 /**
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   AI_CORE_ORDER,
   aiCoreCap,
@@ -26,15 +26,38 @@ import {
   manufacturingRunViews,
   isAtHomeLike,
 } from '@whale/core'
-import type { AiCoreType, FleetShipState } from '@whale/core'
+import type { AiCoreType, FleetShipState, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
+import { ShipSprite } from '../ui/ShipSprite'
 import { AiTaskBar } from '../ui/aiProgress'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
 import type { PageProps } from './common'
 import { isk } from './common'
+
+// ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
+//    屏幕宽度不足时隐藏舰船图形）──
+/** 舰影列宽（固定尺寸，内容变化不引起卡片跳动） */
+const FLEET_ART_W = 132
+/** 舰影列与右侧信息列的间距（与 .app-ship-card.is-fleet 的 gap 保持一致） */
+const FLEET_ART_GAP = 10
+/** 右侧信息列可读下限（名称+徽章行 / 装配工具行 / 耐久与按钮行；再窄就藏舰影） */
+const FLEET_MAIN_MIN = 560
+
+/**
+ * 舰队卡片舰影（置卡片最左侧）。
+ * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props 恒定即整棵 SVG 子树跳过 diff，
+ * 不为列表里的每艘船每 tick 重算——图形是纯展示件，与引擎状态无关。
+ */
+const FleetArt = memo(function FleetArt({ shipId, role }: { shipId: string; role: ShipRole }) {
+  return (
+    <div className="app-ship-art" aria-hidden="true">
+      <ShipSprite shipId={shipId} role={role} size={FLEET_ART_W} engine={false} />
+    </div>
+  )
+})
 
 /** 市场稀有度中文标签 */
 function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
@@ -115,6 +138,24 @@ export function ShipPage({
   const [fleetQ, setFleetQ] = useState('')
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('all')
   const [fleetSort, setFleetSort] = useState<FleetSort>('default')
+
+  // ── 舰影列自适应（2026-09-10 船长：每艘船的舰船形象置卡片最左侧；屏幕宽度不足时隐藏图形）──
+  // 判定取舰队列表容器的**实测宽**（clientWidth 已扣竖向滚动条），不用窗口宽猜：
+  // 卡片高由右侧信息列决定（舰影更矮），故舰影显示/隐藏不会反过来改变容器宽，无振荡。
+  const fleetScrollRef = useRef<HTMLDivElement | null>(null)
+  const [fleetArt, setFleetArt] = useState(false)
+  useLayoutEffect(() => {
+    const el = fleetScrollRef.current
+    if (!el) return
+    const update = (): void => {
+      const show = el.clientWidth >= FLEET_ART_W + FLEET_ART_GAP + FLEET_MAIN_MIN
+      setFleetArt((old) => (old === show ? old : show))
+    }
+    update() // 首帧先量一次（布局阶段、绘制前，无闪烁）
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [activeTab])
 
   /** 舰队里所有船实例（v17：同型多艘各自成卡；当前驾驶在前） */
   const fleetEntries = Object.entries(state.fleet)
@@ -322,7 +363,7 @@ export function ShipPage({
             {fleetShown.length} 艘{fq.length > 0 || fleetFilter !== 'all' ? '（已筛选）' : ''}
           </span>
         </div>
-        <div className="app-fleet-scroll">
+        <div className="app-fleet-scroll" ref={fleetScrollRef}>
         {scanSwitchId ? (
           <div className="app-sell-confirm" style={{ marginTop: 0, marginBottom: 8 }}>
             <div className="app-sell-warn" style={{ background: 'transparent' }}>
@@ -366,8 +407,11 @@ export function ShipPage({
             return (
               <ShipHover key={uid} ship={def} block>
                 <div
-                  className={`app-ship-card${isCurrent ? ' is-current' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
+                  className={`app-ship-card is-fleet${isCurrent ? ' is-current' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
                 >
+                {/* 舰影列：固定尺寸、置卡片最左侧；容器过窄时整列不渲染（样式 .app-ship-card.is-fleet） */}
+                {fleetArt ? <FleetArt shipId={def.id} role={def.role} /> : null}
+                <div className="app-ship-main">
                 <div className="app-ship-top">
                   <span className="app-ship-name">
                     {displayName}
@@ -564,6 +608,7 @@ export function ShipPage({
                     </div>
                   </div>
                 ) : null}
+                </div>
                 </div>
               </ShipHover>
             )
