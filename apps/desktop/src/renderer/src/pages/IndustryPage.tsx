@@ -27,6 +27,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
+import { AiSlotText } from '../ui/aiSlots'
 import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3 } from './common'
@@ -403,15 +404,19 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
           className="is-fill win-fixed-body"
           title="精炼炉"
           right={
-            <span className="app-dim">
-              产出倍率 {Math.round(rate * 100)}%（基础 120% · 精炼学 +6%/级 · 高级回收处理 +3%/级，上限 165%）· 运转 {runningCount} 台
-            </span>
+            <>
+              <span
+                className="app-dim"
+                title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底口径另算"
+              >
+                产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台
+              </span>
+              <AiSlotText state={state} ctx={engine.ctx} />
+            </>
           }
         >
           <div className="app-dim app-note">
-            同资源可多单位并行：你亲自运转限 1 台，每枚 AI 核心各驱动一台（同时启用的 AI 核心总数受 AI 核心上限技能约束，与 AI 副船任务共用）；原料不锁定，
-            每批到点从「货仓 + 仓库」实时扣取、耗尽即停。运转单位在卡上以名册行显示（各自批进度 + 停）。下面列出全部可精炼资源——没有原料的卡会提示先去采集或购买；
-            <b>卡头星标</b>标记（收藏）的资源会置顶显示。
+            你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。
           </div>
           <div className="app-win-body">
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (
