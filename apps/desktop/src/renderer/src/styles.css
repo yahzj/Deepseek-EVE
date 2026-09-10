@@ -3374,6 +3374,14 @@ body {
 
 }
 
+.app-select:focus {
+
+  outline: none;
+
+  border-color: var(--wui-accent);
+
+}
+
 .app-select:disabled {
 
   opacity: 0.5;
@@ -5319,6 +5327,14 @@ body {
   font-family: inherit;
 
   font-size: 12px;
+
+}
+
+.app-mkt-kind:focus {
+
+  outline: none;
+
+  border-color: var(--wui-accent);
 
 }
 
