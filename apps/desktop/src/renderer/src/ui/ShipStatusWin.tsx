@@ -19,6 +19,20 @@ import type { GameState } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite } from './ShipSprite'
 import { mountsOf } from './shipMounts'
+import { toneOf } from './Glyphs'
+
+/**
+ * 状态窗配色（船长 2026-09-10「作业时整窗统一到工作色」）：
+ * - **作业场景（采掘 / 打捞）→ 该工作的颜色**，与 AI 指挥中心的工作动画同源
+ *   （ui/aiWorkFx.tsx 的 `.app-inv-fx.is-mining` / `.is-salvage` = #b5e35f / #6fe3f0；
+ *   背景氛围与漂移物也在 styles.css 里同步到这两个色）；
+ * - **其余场景 → 角色色**（Glyphs 的 TONES 角色槽色：工业绿 / 武装红 / 重装橙 / 航运蓝，
+ *   与战场 ROLE_ACCENT、舰队卡族色同值）——舰体与其尾焰（currentColor）一起上色。
+ */
+const WORK_ACCENT: Partial<Record<ShipwinScene, string>> = {
+  'work-mine': '#b5e35f',
+  'work-salvage': '#6fe3f0',
+}
 
 const SWITCH_MS = 520 // 稍长于 CSS 过渡(450ms)，旧层完全结束后再卸载
 const BG_SWITCH_MS = 480 // 背景交叉淡入淡出时长余量
@@ -76,6 +90,8 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
   const cls = sceneOfShipwin(state)
   const engineOn = cls === 'combat' || cls === 'travel' || cls === 'work-mine' || cls === 'work-salvage' || cls === 'work-scan'
   if (!def) return null
+  /** 舰体配色：作业场景用工作色、其余用角色色（见 WORK_ACCENT 注释） */
+  const accent = WORK_ACCENT[cls] ?? toneOf(def.role)
 
   // ── 切换驾驶交叉过渡（旧舰淡出左移 / 新舰滑入淡入） ──
   const prevRef = useRef<{ id: string; role: ShipRole } | null>(null)
@@ -194,11 +210,11 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
       <div className="app-shipwin-stack">
         {leaving !== null ? (
           <div className="app-shipwin-layer is-leave">
-            <ShipSprite shipId={leaving.id} role={leaving.role} size={112} engine={false} />
+            <ShipSprite shipId={leaving.id} role={leaving.role} size={112} engine={false} accent={toneOf(leaving.role)} />
           </div>
         ) : null}
         <div className="app-shipwin-layer is-enter">
-          <ShipSprite shipId={def.id} role={def.role} size={112} engine={engineOn} />
+          <ShipSprite shipId={def.id} role={def.role} size={112} engine={engineOn} accent={accent} />
         </div>
         {/* 交火炮口火光（2026-09-10 船长批：按驾驶舰真实炮口挂载，与舰形同画布坐标系；
             无原生炮（货/矿舰等）回退舰艏前缘单点） */}
