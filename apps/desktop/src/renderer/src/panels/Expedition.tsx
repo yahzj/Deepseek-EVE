@@ -664,6 +664,19 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   for (const a of engine.anomalies) {
     bountyByGalaxy.set(a.galaxyId, (bountyByGalaxy.get(a.galaxyId) ?? 0) + 1)
   }
+  /* 赏金任务（当日板）按星系归组（2026-09-10 船长：普通赏金任务也要在星图上显示——
+     样式与"未探索剪影上的悬赏情报徽标"同款，并在对应星系上给出剩余时间）。
+     任务自带 galaxyId（刷出时绑定窝点所在星系）；倒计时 = 当日板剩余（每天本地 0 点整板替换，
+     口径与任务中心那行「距下批刷新」完全同源）。 */
+  const board = engine.sideTasksView()
+  const tasksByGalaxy = new Map<string, SideTask[]>()
+  for (const t of board.bounty) {
+    if (t.galaxyId === undefined) continue
+    const arr = tasksByGalaxy.get(t.galaxyId)
+    if (arr) arr.push(t)
+    else tasksByGalaxy.set(t.galaxyId, [t])
+  }
+  const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
 
   const scanMinutesOf = (): number => {
     // 2026-09-06：作业 = 就地扫描窗口（去程已取消；完成自动返航，返航不占等待）
@@ -888,6 +901,20 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   ⚔{bounty}
                 </text>
               ) : null}
+              {/* 赏金任务徽标（2026-09-10 船长）：与悬赏情报同款样式，换符号（⚑）与配色区分；
+                  下一行是当日板剩余时间（任务有效期的倒计时） */}
+              {(tasksByGalaxy.get(g.id)?.length ?? 0) > 0 ? (
+                <>
+                  <text x={p.x} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-task">
+                    ⚑{tasksByGalaxy.get(g.id)!.length}
+                  </text>
+                  {taskEtaText.length > 0 ? (
+                    <text x={p.x} y={p.y - 23} textAnchor="middle" className="app-map-bounty-eta">
+                      剩余 {taskEtaText}
+                    </text>
+                  ) : null}
+                </>
+              ) : null}
               <NodeLabel name={frontier ? '未知信号' : g.name} x={p.x} y={p.y} cls={cls + secExtra} />
             </g>
           )
@@ -934,6 +961,19 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               <div className="app-map-detail-desc">{selected.description}</div>
               {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介 */}
               <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} />
+              {/* 赏金任务（当日板）落在这个星系时的提示（2026-09-10 船长：星图上要能看出哪些星系有任务） */}
+              {(tasksByGalaxy.get(selected.id)?.length ?? 0) > 0 ? (
+                <div className="app-map-taskline">
+                  <span className="app-ico">
+                    <Glyph name="nav-task" size={12} color={NAV_TONES['nav-task']} />
+                  </span>
+                  赏金任务 {tasksByGalaxy.get(selected.id)!.length} 个：
+                  {tasksByGalaxy.get(selected.id)!
+                    .map((t) => `${t.lairName ?? t.anomalyId ?? '窝点'}（${t.rewardIsk.toLocaleString('zh-CN')} ISK）`)
+                    .join('、')}
+                  {taskEtaText.length > 0 ? ` · 剩余 ${taskEtaText}（每天 0 点换新）` : ''}
+                </div>
+              ) : null}
               <div className="app-dim">
                 距母港（{hubName}）{view.active ? ' · 远征中' : ''}
               </div>
