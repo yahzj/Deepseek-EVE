@@ -1927,26 +1927,45 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const expired = view.remainingMs <= 0
           const unexplored = t.galaxyId ? !isExplored(state, t.galaxyId) : true
           const notCandidate = base ? !isLairCandidate(base) : true
+          // 声望门槛 = **接取条件**（2026-09-10 船长定）：不够也能在板上看见，但出发被拒
+          const reqStanding = base?.standingReq ?? 0
+          const standingMet = standing >= reqStanding
           const lockedTxt = !base || notCandidate
             ? '该窝点情报已失效（目标数据缺失），等下一批刷新'
-            : unexplored
-              ? '目标星系当前不可达（未探索/无航路）——先探索该星系再出击'
-              : expired
-                ? '本批任务已到期，等下一批刷新'
-                : inFlightSelf
-                  ? '舰队正在该窝点交火中'
-                  : inFlightOther
-                    ? '舰队正忙于别处（远征/巡逻等）——先等当前作业结束'
-                    : state.scanning.active || state.transit.active
-                      ? '扫描探索/换港途中——先结束当前作业'
-                      : undefined
+            : !standingMet
+              ? `协会声望不足（需 ${reqStanding}，当前 ${standing}）——多完成低级目标攒声望后再接这条赏金任务`
+              : unexplored
+                ? '目标星系当前不可达（未探索/无航路）——先探索该星系再出击'
+                : expired
+                  ? '本批任务已到期，等下一批刷新'
+                  : inFlightSelf
+                    ? '舰队正在该窝点交火中'
+                    : inFlightOther
+                      ? '舰队正忙于别处（远征/巡逻等）——先等当前作业结束'
+                      : state.scanning.active || state.transit.active
+                        ? '扫描探索/换港途中——先结束当前作业'
+                        : undefined
           const canGo = lockedTxt === undefined || (goAsk === t.id && !inFlightOther)
           return (
-            <div key={t.id} className="app-station-card">
+            <div key={t.id} className={`app-station-card${standingMet ? '' : ' is-locked'}`}>
               <div className="app-station-head">
                 <span className="app-station-name">
                   ⚑ 赏金任务：{t.lairName ?? card?.name ?? t.anomalyId}
                   <em className="app-chip">{LAIR_TIER_LABELS[tier]}窝点</em>
+                  {reqStanding > 0 ? (
+                    <em className={`app-chip${standingMet ? '' : ' is-dim'}`} title={`接取门槛：协会声望 ${reqStanding}（当前 ${standing}）`}>
+                      {standingMet ? (
+                        `需声望 ${reqStanding}`
+                      ) : (
+                        <>
+                          <span className="app-ico">
+                            <Glyph name="ico-lock" size={12} color={ICO_TONES['ico-lock']} />
+                          </span>
+                          需声望 {reqStanding}
+                        </>
+                      )}
+                    </em>
+                  ) : null}
                 </span>
                 <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
               </div>

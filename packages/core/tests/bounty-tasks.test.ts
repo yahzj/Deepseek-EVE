@@ -143,7 +143,6 @@ describe('赏金任务 · 20 分钟整点板刷出', () => {
   it('刷出：每轮 2 张（候选不足按实际数）；同轮不重复星系；档位与酬金在刷出时锁定', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-far') // 两个候选星系都探索过
-    state.standings[DSI_FACTION_ID] = 4 // 达到 ano-lair-b 的声望门槛（仍是 0~5 的一档）
     openBoard(state, ctx)
     const board = state.sideTasks
     expect(board.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND)
@@ -160,6 +159,20 @@ describe('赏金任务 · 20 分钟整点板刷出', () => {
       expect(t.need).toBe(0)
       expect(t.goodKey).toBe('')
     }
+  })
+
+  it('声望不再是刷出门槛（2026-09-10 船长定）：声望 0 也刷出需声望 4 的卡，改由「接取」把关', () => {
+    const { state, ctx } = makeWorld()
+    markExplored(state, 'galaxy-far')
+    expect(state.standings[DSI_FACTION_ID] ?? 0).toBe(0)
+    openBoard(state, ctx)
+    const board = state.sideTasks.bounty
+    expect(board).toHaveLength(BOUNTY_TASKS_PER_ROUND)
+    // LAIR_B 的声望门槛 4 > 当前声望 0：照样在板上（门槛与当前声望一并展示，出发时拒）
+    const gated = board.find((t) => t.anomalyId === 'ano-lair-b')!
+    expect(gated).toBeTruthy()
+    expect(ctx.anomalies.get('ano-lair-b')!.standingReq).toBeGreaterThan(0)
+    expect(gated.rewardIsk).toBe(lairTaskRewardIsk(LAIR_B, 1))
   })
 
   it('声望 6 → 二档（更高威胁、更高酬金）；未探索星系不入池；无核心词卡永不出现在赏金任务', () => {
@@ -180,7 +193,6 @@ describe('赏金任务 · 20 分钟整点板刷出', () => {
   it('每轮整板替换：跨过下一个整点 → 赏金任务换新（id 递增、旧任务作废，无惩罚）', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-far')
-    state.standings[DSI_FACTION_ID] = 4
     openBoard(state, ctx)
     const first = state.sideTasks.bounty.map((t) => t.id)
     expect(first.length).toBeGreaterThan(0)
@@ -209,6 +221,21 @@ describe('赏金任务 · 出击校验（目的 = 窝点，难度不超声望上
     expect(state.expedition.lairTier).toBe(1)
     // 远征视图按窝点口径展示（名称/威胁 = 强化后）
     expect(state.expedition.battle).not.toBeNull()
+  })
+
+  it('接取门槛 = 声望：声望不足拒接（任务仍在板上），达标后即可接', () => {
+    const { state, ctx } = makeWorld()
+    markExplored(state, 'galaxy-far')
+    // 声望 0 < ano-lair-b 门槛 4 → 拒接（提示声望与当前值）
+    const denied = startExpedition(state, 'ano-lair-b', ctx, { lairTier: 1 })
+    expect(denied.ok).toBe(false)
+    expect(denied.error).toContain('声望 4')
+    expect(state.expedition.active).toBe(false)
+    // 声望达标 → 可接（档位仍在声望允许的上限内）
+    state.standings[DSI_FACTION_ID] = 4
+    const ok = startExpedition(state, 'ano-lair-b', ctx, { lairTier: 1 })
+    expect(ok.ok).toBe(true)
+    expect(state.expedition.lairTier).toBe(1)
   })
 })
 
