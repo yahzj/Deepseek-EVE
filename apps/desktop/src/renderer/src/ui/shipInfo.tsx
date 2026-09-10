@@ -175,6 +175,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
       const gap = resistGapText(mod.armorResistAdd)
       if (gap) parts.push(gap)
+      // 结构层容量（E 族巨构骨架）：短行也要看得见"最后那段血更厚"
+      if ((mod.hullHpBonus ?? 0) > 0) parts.push(`结构 +${pct(mod.hullHpBonus ?? 0)}`)
       // 2026-09-10 船长：重甲件的机动代价（陵寝装甲层 −25%）——短行也带代价（同推进器「命中×0.85」写法）
       if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(`速度×${(1 - (mod.speedPenaltyPct ?? 0)).toFixed(2)}`)
       body = parts.join(' · ')
@@ -537,8 +539,19 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       lines.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}（本舰全部武器：炮台/导弹/激光/无人机）` })
     }
   }
-  // 结构层抗性（异形生体损管腔等）：模块级入口，任何槽位都可能带——独立一行，
-  // 与盾/甲抗性同一种"乘入制"写法（2026-09-10 修：此前该字段在界面上完全没有呈现）
+  // 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开，
+  // 语义各自成行——容量 = 最后那段血更厚、抗性 = 那段血更耐打
+  if ((mod.hullHpBonus ?? 0) > 0) {
+    lines.push({
+      k: '结构容量',
+      v: (
+        <>
+          <span>{`+${pct(mod.hullHpBonus ?? 0)}`}</span>
+          <span className="app-dim">（护盾/装甲被打穿后的最后一段血量；多件加算，技能再乘于其上）</span>
+        </>
+      ),
+    })
+  }
   const hullRow = resistAddLine('结构抗性（乘入制）', mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）

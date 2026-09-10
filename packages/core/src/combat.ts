@@ -286,6 +286,10 @@ export function createPlayerSpec(
   for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
   let armorHpMult = 1
   for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
+  // 结构层容量（2026-09-10 船长：E 族巨构骨架引出）——任何槽位都可能带，按件加算求和，
+  // 与甲容同口径；技能（船体加固理论/重装舰操作）再乘于其上
+  let hullHpMult = 1
+  for (const m of allFittedModules(fitted, ctx)) hullHpMult += m.hullHpBonus ?? 0
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
@@ -295,7 +299,7 @@ export function createPlayerSpec(
   const hp: Hp3 = {
     s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv),
     a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * hullSkillMult,
-    h: (ship.hullHp ?? 0) * hullSkillMult,
+    h: (ship.hullHp ?? 0) * Math.max(1, hullHpMult) * hullSkillMult,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)

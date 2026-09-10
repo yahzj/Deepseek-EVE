@@ -698,6 +698,12 @@ export interface ModuleDef {
   /** 容量件（装甲增厚板）：装甲层容量加成——抗性件不携带本字段；V18.1 多件加算 */
   armorHpBonus?: number
   /**
+   * **结构层容量**加成（2026-09-10 船长：E 族巨构骨架——"结构层是全游戏唯一没有容量模块的一层"）：
+   * 0.6 = 结构血量 +60%。多件加算求和（与 armorHpBonus 同口径），生效处 = combat.createPlayerSpec
+   * 的 hp.h（船体加固理论等技能再乘于其上）；抗性层仍走 hullResistAdd，两者互不替代。
+   */
+  hullHpBonus?: number
+  /**
    * 装甲件**常驻速度代价**（2026-09-10 船长：陵寝装甲层"装甲 +110% 但速度 −25%"）：
    * 0.25 = 战斗机动速度 ×0.75。**多件只取最重一件**（与推进器失稳 hitPenalty 同口径——
    * 重甲不会叠成静止）；生效处 = combat.createPlayerSpec 的 speedMps。

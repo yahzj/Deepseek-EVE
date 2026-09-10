@@ -463,6 +463,13 @@ for (const m of MODULES) {
       )
       check(hasCap, `装甲 ${m.id} 带 speedPenaltyPct 却不给容量——机动代价只挂在容量件上`)
     }
+    // 2026-09-10 船长：**结构层容量**（E 族巨构骨架引出）——值域 (0, 2]，通常与装甲容量同件
+    if (m.hullHpBonus !== undefined) {
+      check(
+        m.hullHpBonus > 0 && m.hullHpBonus <= 2,
+        `装甲 ${m.id} hullHpBonus 非法（需 (0, 2]，结构层容量加成）`,
+      )
+    }
   } else if (m.slot === 'propulsion') {
     // 2026-09-08 船长：取消 speedBonusPct ≤0.9 上限护栏（推进器提速档位改由设计定；命中代价 hitPenalty 仍受检）
     check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)

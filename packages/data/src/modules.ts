@@ -1103,6 +1103,27 @@ export const MODULES: readonly ModuleDef[] = [
       '泰坦巨构（E 族）窝点专属：拆自巨构核心舱段的主炮——**十秒一发的重锤**，单发威力是攻坚炮台的三倍多，代价是弹道笨重、**越远越打不中**（射程带尽头几近失的），基础命中也只有七成。爆炸弹头破甲极强、拆盾乏力，是"贴到中距离换血"的巨构思路；结构简单得出奇，CPU 占用只有 22。',
   },
   {
+    id: 'mod-lair-hangar-e',
+    name: '深层机库',
+    slot: 'drone-rack',
+    rack: 'high',
+    droneBayBonusM3: 95,
+    cpuUse: 50,
+    description:
+      '泰坦巨构（E 族）窝点专属：巨构舰体深处的整层机库——无人机舱 **+95 m³**（比无人机甲板扩展 MK3 还大三分之一：可多带 19 架侦察机 / 9 架战斗机 / 4 架攻坚机）。囤得起、放得出，代价是 50 点 CPU；真正卡放飞数量的仍是 CPU 带宽，机库只保证你带得够多。',
+  },
+  {
+    id: 'mod-lair-frame-e',
+    name: '巨构骨架',
+    slot: 'armor',
+    rack: 'low',
+    armorHpBonus: 0.3,
+    hullHpBonus: 0.6,
+    cpuUse: 50,
+    description:
+      '泰坦巨构（E 族）窝点专属：整段拆下的巨构龙骨——**结构层容量 +60%**（护盾与装甲都被打穿之后，最后那段血比别人厚出六成；这是全游戏唯一能加厚结构层的模块）＋ 装甲容量 +30%。巨构造物不讲机动，只讲撑到最后。',
+  },
+  {
     id: 'mod-lair-drone-rack-g',
     name: '流亡蜂群巢',
     slot: 'drone-rack',
