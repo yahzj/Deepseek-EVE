@@ -48,8 +48,9 @@ export const LAIR_WAVES: Record<LairTier, ReadonlyArray<{ units: number; hpShare
     { units: 1, hpShare: 0.5 },
   ],
 }
-/** 声望 → 档位门槛（达到 6 升二档、达到 11 升三档） */
-export const LAIR_TIER_STANDING: Record<LairTier, number> = { 1: 0, 2: 6, 3: 11 }
+/** 声望 → 档位门槛：**已退役（2026-09-10 船长定）**——档位改由"日板席位"决定
+ *  （中安席位 = 外围/核心、低安席位 = 核心/深层，每天三档必现），不再随声望封顶；
+ *  接取门槛改由**卡自身声望要求**（`AnomalyDef.standingReq`）把关。 */
 /** 赏金任务酬金 = 窝点基础奖金 × 本比例（跟强度递增；刷出时锁定） */
 export const LAIR_TASK_REWARD_MUL: Record<LairTier, number> = { 1: 0.5, 2: 0.75, 3: 1.0 }
 /** 击败窝点 → 该星系稀有残骸 +本件数（随难度递增） */
@@ -60,7 +61,7 @@ export const LAIR_RARE_WRECK_GAIN: Record<LairTier, number> = { 1: 1, 2: 2, 3: 3
 /** 敌族 → 三档称呼（[一档, 二档, 三档]；二三档是"地点"语义） */
 export const FOE_LAIR_TIERS: Record<FoeFamily, readonly [string, string, string]> = {
   A: ['小头目', '藏货据点', '隐蔽船坞'], // 海盗舰系
-  B: ['小队头目', '拾荒营地', '隐蔽拆解场'], // 武装拾荒者
+  B: ['小队头目', '拾荒营地', '隐蔽拆解场'], // 武装拾荒者【已停用：2026-09-10 船长定取消 B 族窝点/赏金任务，词表留档】
   C: ['虫群头目', '虫巢', '隐秘孵化地'], // 异形生物
   D: ['守卫舰长', '残舰泊地', '隐秘陵寝'], // 守墓古舰
   E: ['警戒机群', '核心舱段', '深层机库'], // 泰坦巨构
@@ -76,11 +77,12 @@ const LAIR_TIER_FALLBACK: readonly [string, string, string] = ['头目', '据点
  * 敌族 → 专属装备池（稀有残骸·高级箱额外掉落优先掷此池）。
  * 只在**打赢窝点 → 捞回稀有残骸 → 精炼炉开高级箱**这条链路上产出：无蓝图、不上市场、不入常规掉落。
  * 卡级 `AnomalyDef.lairGear` 可覆盖之。
- * F 族（制式巡逻）刻意留空：当前只有隐藏遭遇模板、没有窝点成员，故无专属件。
+ * - **B 族（武装拾荒者）留空**：2026-09-10 船长定取消 B 族窝点/赏金任务，专属件（拾荒者拆解臂）一并撤下；
+ * - **F 族（制式巡逻）留空**：当前只有隐藏遭遇模板、没有窝点成员，故无专属件。
  */
 export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   A: ['mod-lair-turret-a'], // 劫掠者转管炮
-  B: ['mod-lair-salvager-b'], // 拾荒者拆解臂
+  B: [], // 【已停用】原「拾荒者拆解臂」随 B 族窝点取消撤下
   C: ['mod-lair-armor-c'], // 生体甲壳板
   D: ['mod-lair-shield-d'], // 陵墓护盾阵列
   E: ['mod-lair-turret-e'], // 巨构残骸炮
@@ -94,19 +96,25 @@ export function lairGearOf(anomaly: AnomalyDef): readonly string[] {
   return anomaly.foeFamily ? FOE_LAIR_GEAR[anomaly.foeFamily] : []
 }
 
-/** 当前声望对应的窝点档位（船长：窝点最高难度由声望决定） */
-export function lairTierForStanding(standing: number): LairTier {
-  if (standing >= LAIR_TIER_STANDING[3]) return 3
-  if (standing >= LAIR_TIER_STANDING[2]) return 2
-  return 1
+/**
+ * 该卡是否具备窝点派生能力（非隐藏 + 有核心词）——**只有名字/派生能力，不含"是否派发"的判断**。
+ * 稀有残骸物品的注册范围按它走：包含已停用的 B 族，好让旧档里可能已存在的 B 族稀有残骸
+ * 仍能被识别、进精炼炉开高级箱（只是不再新增）。
+ */
+export function hasLairCore(anomaly: AnomalyDef): boolean {
+  if (anomaly.hidden === true) return false
+  return (anomaly.lairCore ?? '') !== ''
 }
 
-/** 该卡能否作为窝点目标（有核心词即可；教学卡「演习场讨伐令」刻意不设核心词） */
+/**
+ * 该卡能否作为窝点目标（= 赏金任务主体）。
+ * - 有核心词、非隐藏、奖金 > 0（教学卡「演习场讨伐令」刻意不设核心词，故不入池）；
+ * - **B 族（武装拾荒者）排除**：2026-09-10 船长定取消 B 族相关的残骸与赏金任务。
+ */
 export function isLairCandidate(anomaly: AnomalyDef): boolean {
-  if (anomaly.hidden === true) return false
-  if ((anomaly.lairCore ?? '') === '') return false
-  if (!(anomaly.rewardIsk > 0)) return false
-  return true
+  if (!hasLairCore(anomaly)) return false
+  if (anomaly.foeFamily === 'B') return false
+  return anomaly.rewardIsk > 0
 }
 
 /** 窝点名的核心词（无 = 不可作窝点目标） */
