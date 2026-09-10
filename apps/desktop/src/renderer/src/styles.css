@@ -2127,6 +2127,19 @@ body {
 
 }
 
+/* 技能效果全文（2026-09-10 船长定：卡面直接显示效果，不再只藏悬停；⟦…⟧ 数值走 .app-eff 高亮） */
+.app-skill-card-desc {
+
+  font-size: 11px;
+
+  line-height: 1.5;
+
+  color: rgba(206, 222, 238, 0.86);
+
+  overflow-wrap: anywhere;
+
+}
+
 .app-skill-card-bar {
 
   height: 3px;
