@@ -90,17 +90,24 @@ export interface UnitSpec {
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
   evasion: number
   hitBonus: number
-  /** V17.1 开火失稳乘子：推进器装配后 <1（命中整体 ×hitMul）；V18.1 多件推进器只取
-   * 最重（削减最大）一件；索敌命中件走 WeaponSpec.eqHitMul，不并入本字段 */
+  /** V17.1 开火失稳乘子（**点火期值**）：推进器点火期间命中整体 ×hitMul；V18.1 多件推进器只取
+   * 最重（削减最大）一件；**2026-09-10 船长：代价只在点火期生效** → 冷却期不用本字段（见 stepBattle 的 meAtk） */
   hitMul?: number
   signatureM: number
   scanResMm: number
+  /** 基础战斗机动速度（不含推进器）——推进器改为周期爆发（见 thrusterBoost），
+   *  实际机动 = 本值 ×(1 + 爆发期内的 thrusterBoost) */
   speedMps: number
   agility: number
   weapons: WeaponSpec[]
+  /** 推进器爆发倍率（2026-09-10 船长定：多件 EVE 曲线收敛后的合成值 − 1，如 MK1 = 0.4）；
+   *  **只在爆发窗口内生效**（`thrusterPhase` 判定），冷却期不生效 → 缺省 0 = 无推进器 */
+  thrusterBoost?: number
   /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
    *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
   lockedDmgBonus?: number
+  /** 高威胁近战敌突进（2026-09-10 船长定）：仅"威胁 ≥ 门槛 且 战术 = brawl"的敌卡为 true */
+  foeCanCharge?: boolean
   foeTactic: FoeTactic | null
 }
 
@@ -243,6 +250,66 @@ function ammoIdFor(
 
 function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): number {
   return Math.max(20, maxSpeedMps * bal.speedFactor * (1 + (agility - 0.5) * 2 * bal.agilitySpeedBonus))
+}
+
+/**
+ * 开火失稳乘子的**当前有效值**（2026-09-10 船长：推进器失稳代价只在**点火期**生效）：
+ * 点火期 = 装配值（`1 − 最重一件 hitPenalty`）；冷却期 = 1（没点火就不失稳）。
+ */
+export function effectiveHitMul(spec: Pick<UnitSpec, 'hitMul'>, boosting: boolean): number {
+  return boosting ? (spec.hitMul ?? 1) : 1
+}
+
+/**
+ * 推进器周期状态（2026-09-10 船长定：**爆发 60 秒 → 冷却 60 秒，开场即启动**）。
+ * **由战斗时钟推导**（`lastTickGameMs - startedAtGameMs`）→ 不占任何存档字段、战中重载不丢。
+ * 引擎（距离步进取我方机动）与界面（战斗界面底部推进器冷却格）**同源读这一个函数**。
+ */
+export function thrusterPhase(
+  battle: Pick<import('./state').BattleState, 'lastTickGameMs' | 'startedAtGameMs'>,
+  bal: BattleBalance,
+): { boosting: boolean; remainMs: number; cycleMs: number; posMs: number } {
+  const cycleMs = Math.max(1, bal.thrusterBoostMs + bal.thrusterCooldownMs)
+  const elapsed = Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs)
+  const posMs = elapsed % cycleMs
+  const boosting = posMs < bal.thrusterBoostMs
+  return { boosting, posMs, cycleMs, remainMs: boosting ? bal.thrusterBoostMs - posMs : cycleMs - posMs }
+}
+
+/**
+ * 高威胁近战敌突进状态机（2026-09-10 船长定）：
+ * 够不着（距离在自己武器射程之外）→ **突进**（机动 ×`foeChargeMul`，仍走拔河公式）；
+ * **进入射程后再维持 `foeChargeMaxHoldMs`（2 秒）** → 突进结束；
+ * 随后 `foeChargeCooldownMs`（20 秒）冷却，期满且再次够不着才能重启。
+ * 只对 `foeCanCharge`（威胁 ≥ `foeChargeThreatFloor` 且战术 = brawl）的敌人生效；无总时长上限。
+ */
+function updateFoeCharge(
+  b: import('./state').BattleState,
+  foes: UnitSpec[],
+  bal: BattleBalance,
+  nowMs: number,
+): void {
+  if (!foes.some((f) => isAlive(b, f.tag) && f.foeCanCharge)) return
+  const w = foes[0]?.weapons[0]
+  const inFoeRange = w ? inRange(b.distanceM, w) : false
+  if (b.foeChargeOn) {
+    if (inFoeRange) {
+      if (b.foeChargeEnteredAtMs === undefined) b.foeChargeEnteredAtMs = nowMs
+      if (nowMs - b.foeChargeEnteredAtMs >= bal.foeChargeMaxHoldMs) {
+        b.foeChargeOn = false
+        b.foeChargeEnteredAtMs = undefined
+        b.foeChargeCdUntilMs = nowMs + bal.foeChargeCooldownMs
+      }
+    } else {
+      b.foeChargeEnteredAtMs = undefined // 尚未进射程：持续突进（冷却不启动）
+    }
+    return
+  }
+  const cdUntil = b.foeChargeCdUntilMs ?? 0
+  if (nowMs >= cdUntil && !inFoeRange) {
+    b.foeChargeOn = true
+    b.foeChargeEnteredAtMs = undefined
+  }
 }
 
 /** 逐件缺口乘入（对 out 原位改：每系 res = 1−(1−res)(1−add)） */
@@ -589,17 +656,21 @@ export function createPlayerSpec(
     evasion,
     hitBonus: (ship.hitBonus ?? 0) * (1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)),
     // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
+    // 2026-09-10 船长：本值 = **点火期**的命中乘子；冷却期不开火失稳（stepBattle 用 meAtk 置 1）
     hitMul: 1 - worstPen,
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
     // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛；矢量机动操作（舰船）再乘 +5%/级
     // 2026-09-10 船长：装甲件的**常驻速度代价**（如陵寝装甲层 −25%）——多件只取最重一件
     // （与推进器失稳 hitPenalty 同口径：重甲不会叠成静止），钳制到 [0.1, 1]
+    // 2026-09-10 船长（推进器周期化）：**基础速度不含推进器**——推进器改走 thrusterBoost，
+    // 只在爆发窗口内生效（见 thrusterPhase），冷却期回到本值。
     speedMps:
       (ship.maxSpeedMps ?? 200) *
-      Math.max(1, speedEq) *
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
       Math.max(0.1, 1 - worstSpeedPen),
+    // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去
+    ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
     agility: ship.agility,
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
@@ -802,6 +873,14 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
       scanResMm: 450,
       speedMps: foeSpeed, // C4-#3 虚拟装配推导（整编队同速；anomaly.foeSpeedMps 覆盖优先）
       agility: 0.3,
+      // 高威胁近战敌突进（2026-09-10 船长定）：威胁 ≥ 门槛 且 战术 = brawl 才有资格；
+      // ⚠ 船长同日追加：**暂时先取消实装，仅实现功能** → 受 foeChargeEnabled 总开关（默认 false）约束，
+      //   开关关闭时不会有任何敌人拿到资格，机制整套保留待启用。
+      ...(bal.foeChargeEnabled === true &&
+      anomaly.threat >= bal.foeChargeThreatFloor &&
+      (anomaly.tactic ?? 'orbit') === 'brawl'
+        ? { foeCanCharge: true }
+        : {}),
       weapons: [
         {
           label: `${name} 武器组`,
@@ -1451,6 +1530,10 @@ export function battleArcsFor(
   maxHp: { me: { s: number; a: number; h: number }; foe: Record<string, { s: number; a: number; h: number }> }
   /** 机群战损（2026-09-10）：本场已击落架数（机型 id → 架数）；缺省 = 无损失 */
   droneLost?: Record<string, number>
+  /** 推进器爆发倍率（2026-09-10 船长定：0 = 未装；点火期乘在战斗机动上）——UI 冷却格显示用 */
+  thrusterBoost: number
+  /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
+  foeCanCharge: boolean
 } | null {
   const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
   const battle = state.expedition.battle
@@ -1576,6 +1659,9 @@ export function battleArcsFor(
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
     // 机群战损（2026-09-10）：本场已击落架数（UI 战报/提示用；缺省 = 无损失）
     ...(battle.droneLost && Object.keys(battle.droneLost).length > 0 ? { droneLost: battle.droneLost } : {}),
+    // 推进器爆发倍率与敌方突进资格（2026-09-10 船长定）——UI 与引擎同源
+    thrusterBoost: me.thrusterBoost ?? 0,
+    foeCanCharge: foes.some((f) => f.foeCanCharge === true),
   }
 }
 
@@ -1959,9 +2045,20 @@ function stepBattle(
 
   // ── 距离机动（无过冲转向：每方朝自己期望距离推进，剩余距离不足本步航程时只走剩余，
   //    到位即停；双方意图相反时在中间形成无振荡角力平衡，杜绝"到点来回抖动"）──
-  const meV = combatSpeed(me.speedMps, me.agility, bal)
+  // 2026-09-10 船长（推进器周期爆发）：我方机动 = 基础机动 ×(1 + 推进器爆发倍率)——**只在爆发窗口内**；
+  // 冷却期回到基础值（不再常驻加成）。
+  const thruster = thrusterPhase(b, bal)
+  const meV =
+    combatSpeed(me.speedMps, me.agility, bal) *
+    (1 + (thruster.boosting ? (me.thrusterBoost ?? 0) : 0))
+  // 开火失稳代价同样只在点火期生效（2026-09-10 船长：没点火就不失稳）——
+  // 每次开火取当前有效乘子，冷却期 = 1（不改 me 本身，避免污染其它读法）
+  const meAtk: UnitSpec = thruster.boosting ? me : { ...me, hitMul: effectiveHitMul(me, false) }
   let foeV = 0
   for (const f of foes) if (isAlive(b, f.tag)) foeV = Math.max(foeV, combatSpeed(f.speedMps, f.agility, bal))
+  // 2026-09-10 船长（高威胁近战敌突进）：够不着时临时加速 ×倍率（进射程 2 秒后结束、冷却 20 秒）
+  updateFoeCharge(b, foes, bal, b.lastTickGameMs)
+  if (b.foeChargeOn) foeV *= bal.foeChargeMul
   // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
   const foeDesireClamped = Math.min(openM, foeDesire)
   const rate = steerStep(b.distanceM, b.myDesireM, meV, dtSec) + steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
@@ -2021,7 +2118,7 @@ function stepBattle(
       b.stats.meShots += 1
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
-      const meHit = autoHit ? 1 : hitChance(w, me, foeTarget, b.distanceM, bal)
+      const meHit = autoHit ? 1 : hitChance(w, meAtk, foeTarget, b.distanceM, bal)
       const meHitEff = autoHit ? 1 : favor ? clamp(0, 1, meHit * favor.meMul) : meHit
       const hit = dmg > 0 && (autoHit || nextRandom(state.rng) < meHitEff)
       if (hit) {

@@ -8,12 +8,20 @@
  * - 装配行：裸船 / 三族 MK1·MK2·MK3 / 三形态混装演示 / 支援件满 / 无人机流 D1-D3
  *   （2026-09-08 二号 C6：此前校准从未覆盖无人机——见 LOADOUTS 无人机段）。
  * - 技能档：无技能 / 中位技能（战斗系 Lv3）/ 全战斗技能 5。
+ * - **可选开关 `--charge`**（2026-09-10 船长「这几个需要先跑通战斗再决策」）：**只把本工具的上下文**
+ *   里 `foeChargeEnabled` 置 true，用来跑"高威胁近战敌突进若启用了会怎样"的对照矩阵。
+ *   **不动引擎默认值**（balance 里仍是 false = 未实装）——纯测量，供决策，不改游戏。
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
 import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
-const ctx = buildSimContext()
+const BASE_CTX = buildSimContext()
+/** 敌突进对照开关（只影响本工具；引擎默认仍是"未实装"） */
+const CHARGE_ON = process.argv.includes('--charge')
+const ctx: SimContext = CHARGE_ON
+  ? { ...BASE_CTX, balance: { ...BASE_CTX.balance, battle: { ...BASE_CTX.balance.battle, foeChargeEnabled: true } } }
+  : BASE_CTX
 const SEEDS = [1, 7, 13, 29, 51]
 
 type Loadout = {
@@ -53,6 +61,15 @@ const LOADOUTS: Loadout[] = [
   { name: 'D2 梭鱼无人机中装(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 舱 230m³：10×10+4×20+1×40 = 220；3 高槽
   { name: 'D2b 梭鱼(rack2×2+tac3·槽位吃紧后升级)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 同舱容，单件导控 MK2→MK3（+25%→+40%；CPU 30+45+130=205 ≤ 235）
   { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }, // 舱 460m³：4×20+6×40 = 320；4 高槽恰好占满
+  /* ── 2026-09-10 重大机制变更后的「预想装配」适配行（船长：预想装配最好也适配更新）──
+     ①**混伤适配（常驻 8:2 = 主系 80% + 副系 20%）**：原锚行一律「盾抗动能 + 甲抗动能」只堆主系；
+       但**动能对甲层本就 ×0.5 克制**（类型克制表：动能 盾 ×1.5 / 甲 ×0.5），在甲层再堆动能抗属低效，
+       混伤后副系（能量）绕开主抗 → 适配版 = **盾抗主系、甲抗副系**（覆盖两系）。
+     ②**推进器周期点火适配（点火 60 秒 / 冷却 60 秒、顶档 +130%）**：原装配表**没有任何 MK3 推进器行**
+       （S1 用 MK1、S2 用 MK2）→ 补一行顶档高机动参照，与同船无推进器版对比。 */
+  { name: 'S2 双抗(盾动能·甲能量)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] }, // 混伤适配：甲层换副系能量抗（对照 S2 原行 = 甲抗动能）
+  { name: 'S4 双抗(盾动能·甲能量)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] }, // 同上，顶配锚行版
+  { name: 'T3锤头鲨+推进器MK3(周期点火)', ship: 'sh-hammerhead', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-prop-3'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 换掉闪避陀螺（点火期 +130% 机动，闪避价值下降）
   /* ── 弹药 MK2 变体（2026-09-09：顶配参考行 + 动能弹 MK2——攻坚耗材定位，E 段失衡与否验证） ── */
   { name: 'S4+动能弹MK2(5×kin3+支援)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
   { name: 'T3牛鲨+动能弹MK2(重盾)', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
@@ -130,6 +147,11 @@ function initHpOf(shipId: string): number {
 async function main(): Promise<void> {
   const threats = [...ANOMALIES].sort((a, b) => a.threat - b.threat)
   console.log('══ C4 战斗校准（真实模拟胜率）══')
+  console.log(
+    CHARGE_ON
+      ? '⚠ 对照模式：**高威胁近战敌突进已临时开启**（威胁≥60 且 brawl、够不着时机动 ×2、进射程维持 2s、冷却 20s）——仅本工具，引擎默认仍为未实装'
+      : '（敌突进按出厂默认 = 未实装；要看启用后的对照加 `--charge`）',
+  )
   console.log('威胁梯度：' + threats.map((a) => `${a.name}=${a.threat}`).join(' '))
   // 时长预期行（C4 血量曲线 D(T)，纯对射口径；模拟时长含接近期故应 ≥ D）
   const dExpect = (t: number): number =>

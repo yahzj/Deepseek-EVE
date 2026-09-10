@@ -66,20 +66,23 @@ describe('V17.1：抗性缺口合成（EVE 式乘入未抗部分）', () => {
   })
 })
 
-describe('V17.1：矢量推进器 = 加力推进（速度 + 常驻命中代价）', () => {
-  it('装推进器：单位速度 ×(1+speedBonusPct)，命中乘子 = 1−hitPenalty', () => {
+describe('V17.1：矢量推进器 = 加力推进（**2026-09-10 起为周期点火**：速度进 thrusterBoost + 常驻命中代价）', () => {
+  it('装推进器：基础速度不含加成，加成进 thrusterBoost（点火期才乘）；命中乘子 = 1−hitPenalty', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const ctx = makeTestCtx({
       modules: [moduleDef('mod-prop-x2', 'propulsion', 0, { speedBonusPct: 0.3, hitPenalty: 0.12, cpuUse: 15 })],
     })
     const plain = createPlayerSpec(state, ctx, 'sandcat')!
     expect(plain.speedMps).toBeCloseTo(260, 6) // helpers.ship 默认 maxSpeedMps 260
+    expect(plain.thrusterBoost).toBeUndefined() // 无推进器 = 无爆发
     expect(plain.hitMul).toBe(1) // 无推进器不失稳
     state.moduleBay['mod-prop-x2'] = 1
     expect(fitModule(state, 'mod-prop-x2', ctx).ok).toBe(true)
     const boosted = createPlayerSpec(state, ctx, 'sandcat')!
-    expect(boosted.speedMps).toBeCloseTo(260 * 1.3, 6)
-    expect(boosted.hitMul).toBeCloseTo(0.88, 10)
+    // 2026-09-10 船长：推进器不再常驻提速——基础速度不变，加成放进 thrusterBoost（点火窗口内才生效）
+    expect(boosted.speedMps).toBeCloseTo(260, 6)
+    expect(boosted.thrusterBoost).toBeCloseTo(0.3, 9)
+    expect(boosted.hitMul).toBeCloseTo(0.88, 10) // 失稳代价仍是常驻
   })
 
   it('命中惩罚乘入 hitChance（×hitMul）——胜率预估同源，敌方不受影响', () => {

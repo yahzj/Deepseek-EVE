@@ -92,6 +92,7 @@ const L_S2: Loadout = { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high
 const L_S4: Loadout = { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: S4_HIGH, mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 const L_T3H: Loadout = { name: 'T3 锤头鲨炮巡5×kin3+支援', ship: 'sh-hammerhead', high: S4_HIGH, mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 const L_D3: Loadout = { name: 'D3 王鲭无人机重装', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }
+const L_T3M: Loadout = { name: 'T3 长尾鲨导弹巡5×msl3+支援', ship: 'sh-thresher', high: ['mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 
 const L_NONE: Loadout = { name: 'S2 无抗件(对照)', ship: 'sh-mako', high: S2_HIGH, mid: ['mod-prop-2', 'mod-track-2'], low: ['mod-stab-kin-2'] }
 const L_HARD_MAIN: Loadout = { name: 'S2 硬化主系', ship: 'sh-mako', high: S2_HIGH, mid: ['mod-prop-2', 'mod-shield-@@-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-@@-2'] }
@@ -306,14 +307,14 @@ function ctxWithShare(subShare: number): SimContext {
   return { ...ctx, anomalies: m }
 }
 
-function simulate(state: GameState, c: SimContext, anomalyId: string): { win: boolean; durMs: number; meRemain: number } {
+function simulate(state: GameState, c: SimContext, anomalyId: string): { win: boolean; durMs: number; meRemain: number; foeShots: number } {
   const battle = startBattleFor(state, c, state.shipId, anomalyId, 0)
-  if (!battle) return { win: false, durMs: 0, meRemain: 0 }
+  if (!battle) return { win: false, durMs: 0, meRemain: 0, foeShots: 0 }
   state.gameMs = c.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(c.anomalies.get(anomalyId), c.balance.battle)
   advanceBattleFor(state, c, battle, state.shipId, anomalyId)
   const durMs = Math.min(c.balance.battle.maxBattleMs, Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs))
   const u = battle.units['player']
-  return { win: battle.ended === 'me', durMs, meRemain: u ? u.hp.s + u.hp.a + u.hp.h : 0 }
+  return { win: battle.ended === 'me', durMs, meRemain: u ? u.hp.s + u.hp.a + u.hp.h : 0, foeShots: battle.stats.foeShots }
 }
 
 function initHpOf(shipId: string): number {
@@ -321,22 +322,24 @@ function initHpOf(shipId: string): number {
   return def ? (def.shieldHp ?? 0) + (def.armorHp ?? 0) + (def.hullHp ?? 0) : 0
 }
 
-type Cell = { winPct: number; durS: number; remPct: number }
+type Cell = { winPct: number; durS: number; remPct: number; foeShots: number }
 
 function runCell(ld: Loadout, card: AnomalyDef, skills: Record<string, number>, c: SimContext): Cell {
   const initHp = initHpOf(ld.ship)
-  let wins = 0, durSum = 0, ends = 0, remSum = 0
+  let wins = 0, durSum = 0, ends = 0, remSum = 0, shotsSum = 0
   for (const seed of SEEDS) {
     const state = makeState(ld.ship, ld, skills, seed)
     const r = simulate(state, c, card.id)
     if (r.win) wins++
     if (r.durMs > 0) { durSum += r.durMs; ends++ }
     remSum += r.meRemain
+    shotsSum += r.foeShots
   }
   return {
     winPct: Math.round((wins / SEEDS.length) * 100),
     durS: ends > 0 ? Math.round(durSum / ends / 1000) : 0,
     remPct: initHp > 0 ? Math.round((remSum / SEEDS.length / initHp) * 100) : 0,
+    foeShots: Math.round(shotsSum / SEEDS.length),
   }
 }
 
@@ -523,6 +526,78 @@ function sectionE(): void {
   console.log('      若抬高旋钮后胜率仍在 90% 以上，说明缺的不是火力而是别的（血量/波次/机制）。')
 }
 
+/* ═══════════ F. 推进器档位对照（2026-09-10 船长「推进器周期爆发」落地后的效果核对） ═══════════
+ * 推进器不再常驻：点火 60 秒 / 冷却 60 秒。本段用**同一艘船换中槽推进器档位**打同一批卡，
+ * 看"够不着"是否被治好（判据：敌开火次数）——旧口径下 S2 中位对短射程敌一律满血 0 次开火。 */
+
+function sectionF(): void {
+  console.log('\n════════ F. 推进器档位对照（点火 60s / 冷却 60s；9 种子；中位技能）════════')
+  const base = {
+    ship: 'sh-mako',
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  const tiers: Array<{ label: string; mid: string[] }> = [
+    { label: '无推进器（陀螺）', mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'] },
+    { label: 'MK1（+40% 点火）', mid: ['mod-prop-1', 'mod-shield-kin-2', 'mod-track-2'] },
+    { label: 'MK2（+80% 点火）', mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'] },
+    { label: 'MK3（+130% 点火）', mid: ['mod-prop-3', 'mod-shield-kin-2', 'mod-track-2'] },
+  ]
+  const targets: Array<{ id: string; label: string }> = [
+    { id: 'ano-starcore-boss', label: '星髓虫群 72（近战 2.65km）' },
+    { id: 'ano-titan-wreck', label: '泰坦残骸勘探 60（近战 2.6km）' },
+    { id: 'ano-gravekeeper', label: '坟场守墓人 88（近战 2.8km）' },
+    { id: 'ano-abyss-guard', label: '深渊之门卫队 45（狙击 13.3km·对照）' },
+  ]
+  for (const t of targets) {
+    const card = ctx.anomalies.get(t.id)
+    if (!card) continue
+    console.log(`\n${t.label}`)
+    for (const tier of tiers) {
+      const ld: Loadout = { name: tier.label, ...base, mid: tier.mid }
+      const c = runCell(ld, card, MID_SKILLS, ctx)
+      console.log(`  ${tier.label.padEnd(22)}胜率 ${String(c.winPct).padStart(3)}% · 时长 ${String(c.durS).padStart(3)}s · 残血 ${String(c.remPct).padStart(4)}% · 敌开火 ${String(c.foeShots).padStart(3)} 次`)
+    }
+  }
+  console.log('\n读法：**敌开火次数**是"够不够得着"的直接判据——旧口径（常驻推进器）对近战卡恒为 0；')
+  console.log('      推进器周期化后，若战斗跨过 60 秒点火期，冷却段玩家变慢 → 敌开火次数应显著上升。')
+}
+
+/* ═══════════ G. E 段单卡降伤对照（若选"动数"这一路：给 E 段四卡压敌伤会怎样） ═══════════
+ * E 段四卡当前都**没有** `foeDmgMul`（= 1）——本段把 1.0（现值）/0.9/0.85/0.8/0.7 逐档跑一遍，
+ * 给船长"要动多少才够"的实测依据（配合 §9/§10：换装救不回来，只能走单卡数值或机制）。 */
+
+function sectionG(): void {
+  console.log('\n════════ G. E 段单卡降伤对照（9 种子 · 中位技能；1.0 = 现值）════════')
+  const targets: Array<{ id: string; label: string }> = [
+    { id: 'ano-maw-hunt', label: '噬口猎杀令 80（2 波·orbit 7.1km）' },
+    { id: 'ano-gravekeeper', label: '坟场守墓人 88（2 波·brawl 2.8km）' },
+    { id: 'ano-voidedge-warden', label: '虚海守望者 88（3 波·orbit 7.4km）' },
+    { id: 'ano-vault-sentinel', label: '穹顶守卫 96（3 波·orbit 7.7km）' },
+  ]
+  const steps = [1, 0.9, 0.85, 0.8, 0.7]
+  const rows: Array<{ label: string; ld: Loadout }> = [
+    { label: 'S4 大白鲨5×MK3+支援', ld: L_S4 },
+    { label: 'T3锤头鲨炮巡5×kin3+支援', ld: L_T3H },
+    { label: 'T3长尾鲨导弹巡5×msl3+支援', ld: L_T3M },
+  ]
+  for (const t of targets) {
+    const card = ctx.anomalies.get(t.id)
+    if (!card) continue
+    console.log(`\n${t.label}　（敌伤倍率 ${steps.map((v) => (v === 1 ? '1.0现值' : v)).join(' / ')}）`)
+    for (const r of rows) {
+      const cells: string[] = []
+      for (const v of steps) {
+        const c = runCell(r.ld, card, MID_SKILLS, ctxWithFoeDmg(t.id, v))
+        cells.push(`${v === 1 ? '★' : ' '}${c.winPct}%|${c.durS}s|${c.remPct}%`.padStart(17))
+      }
+      console.log(`  ${r.label.padEnd(30)}${cells.join(' ')}`)
+    }
+  }
+  console.log('\n读法：只动"被卡住的那几格"（如 S4 虚海 11% / 穹顶 0%）——降到多少能让中位档过关、')
+  console.log('      同时**不把满技能档变得太轻松**（满技能已能过，若降太多会失去 E 段作为终局墙的意义）。')
+}
+
 /* 证据落盘：stdout 同步镜像一份到 battle-data（复核材料与既有校准矩阵同目录） */
 const MIRROR: string[] = []
 const origLog = console.log.bind(console)
@@ -540,6 +615,8 @@ function main(): void {
   if (want('B')) sectionB()
   if (want('D')) sectionD()
   if (want('E')) sectionE()
+  if (want('F')) sectionF()
+  if (want('G')) sectionG()
   console.log('\n（探针结束）')
   const out = path.join('docs', 'design', 'battle-data', 'mixed-damage-review-20260910.txt')
   if (only === '') {

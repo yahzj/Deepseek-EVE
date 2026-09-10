@@ -79,7 +79,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '矢量机动操作',
     group: '舰船',
     rank: 2,
-    description: '矢量喷口操控：战斗机动速度每级 +⟦5%⟧（满级 +⟦25%⟧；与推进器速度加成乘算，星图航行加速不受影响）。',
+    description: '矢量喷口操控：战斗机动速度每级 +⟦5%⟧（满级 +⟦25%⟧；与推进器点火加成乘算，星图航行加速不受影响）。',
   },
   {
     id: 'evasion-maneuvering',

@@ -7,6 +7,12 @@
  * 初值 = v1 机械规则（common→1；rare ≤50 万→2、>50 万→3；exotic→4），
  * 豁免/调整直接改本表（content:check 护栏：键集 = 市场卡全集、值 ∈ 1~4）。
  * 新增/删除市场卡必须同步本表。
+ *
+ * **2026-09-10 船长定（装备价对齐同级武器价 的同批收口）**：MK2/MK3 装备价上调后，
+ * 12 件 MK3 装备（护盾增强器三系 / 护盾扩展器 / 装甲镀层三系 / 装甲增厚板 / 矢量推进器 /
+ * 无人机甲板扩展 / 中继天线 / 导控阵列）**由 2 升 3**——它们与其余 MK3 装备同级同价量级，
+ * 却因初值规则（当时只要 17~42 万）留在"大众档"，会以约 1 小时/件的频率供货（高阶档是 8 小时级）。
+ * 升档后**档位与价格解耦**：日后调价不再自动触发改档，档位是人审结果。
  */
 export const RARITY_TIER: Readonly<Record<string, number>> = {
   'alpha': 4,
@@ -130,16 +136,16 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'min-voidcrystal': 1,
   'mod-armor-exp-1': 1,
   'mod-armor-exp-2': 2,
-  'mod-armor-exp-3': 2,
+  'mod-armor-exp-3': 3,
   'mod-armor-kin-1': 1,
   'mod-armor-kin-2': 2,
-  'mod-armor-kin-3': 2,
+  'mod-armor-kin-3': 3,
   'mod-armor-pla-1': 1,
   'mod-armor-pla-2': 2,
-  'mod-armor-pla-3': 2,
+  'mod-armor-pla-3': 3,
   'mod-armor-plate-1': 1,
   'mod-armor-plate-2': 2,
-  'mod-armor-plate-3': 2,
+  'mod-armor-plate-3': 3,
   'mod-cargo-1': 1,
   'mod-cargo-2': 2,
   'mod-cargo-3': 3,
@@ -147,13 +153,13 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-cargo-proto': 4,
   'mod-drone-rack-1': 1,
   'mod-drone-rack-2': 2,
-  'mod-drone-rack-3': 2,
+  'mod-drone-rack-3': 3,
   'mod-drone-relay-1': 1,
   'mod-drone-relay-2': 2,
-  'mod-drone-relay-3': 2,
+  'mod-drone-relay-3': 3,
   'mod-drone-tac-1': 1,
   'mod-drone-tac-2': 2,
-  'mod-drone-tac-3': 2,
+  'mod-drone-tac-3': 3,
   'mod-gyro-1': 1,
   'mod-gyro-2': 2,
   'mod-gyro-3': 3,
@@ -177,7 +183,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-missile-3': 3,
   'mod-prop-1': 1,
   'mod-prop-2': 2,
-  'mod-prop-3': 2,
+  'mod-prop-3': 3,
   'mod-rof-1': 1,
   'mod-rof-2': 2,
   'mod-rof-3': 3,
@@ -186,16 +192,16 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-salvager-3': 3,
   'mod-shield-exp-1': 1,
   'mod-shield-exp-2': 2,
-  'mod-shield-exp-3': 2,
+  'mod-shield-exp-3': 3,
   'mod-shield-ext-1': 1,
   'mod-shield-ext-2': 2,
-  'mod-shield-ext-3': 2,
+  'mod-shield-ext-3': 3,
   'mod-shield-kin-1': 1,
   'mod-shield-kin-2': 2,
-  'mod-shield-kin-3': 2,
+  'mod-shield-kin-3': 3,
   'mod-shield-pla-1': 1,
   'mod-shield-pla-2': 2,
-  'mod-shield-pla-3': 2,
+  'mod-shield-pla-3': 3,
   'mod-stab-exp-1': 1,
   'mod-stab-exp-2': 2,
   'mod-stab-exp-3': 3,

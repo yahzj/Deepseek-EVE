@@ -285,7 +285,8 @@ export interface MarketBalance {
   /** 限定商品每个抽取窗（10 分钟）独立掷骰的出单概率：0.8%×现货抢购学（约每件每 20.8 小时一轮） */
   exoticWindowChance: number
   /** 数字稀有度 3 档权重（2026-09-09 船长拍板：稀有订单渠道按数字分层——3 档（高阶）刷新
-   * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗；系数经 market-rarity-sim 校准） */
+   * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗。**2026-09-10 船长定 0.25 → 0.15**，
+   * 经 `market-rarity-sim` 复跑校准：tier3 占比 10% → 6%、单行间隔 5.7h → 8.3h） */
   rareTier3Weight: number
   /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**，稀有抽取与奇货掷骰**两个渠道都乘此值**） */
   blueprintWeight: number
@@ -595,8 +596,26 @@ export interface BattleBalance {
   /** 弹药预载：估计交战时长上限 ms 与余量系数（出发按射速预载，结束退回） */
   ammoTimeCapMs: number
   ammoMargin: number
-  /** 战斗时长硬上限：超时按双方剩余血量比判胜（未分出胜负的保险） */
+  /** 战斗时长硬上限：打满即判负并按被迫撤退结算（2026-09-10 船长定；旧口径"按剩余血量比判胜"已作废） */
   maxBattleMs: number
+  /* ═══ 推进器周期爆发（2026-09-10 船长定：60 秒爆发 / 60 秒冷却 / 开场即启动）═══ */
+  /** 爆发窗口时长（毫秒）；周期由战斗时钟推导，不占存档字段 */
+  thrusterBoostMs: number
+  /** 冷却窗口时长（毫秒）；冷却期内推进器**不提供任何速度加成** */
+  thrusterCooldownMs: number
+  /* ═══ 高威胁近战敌突进（2026-09-10 船长定：×2 / 进射程维持 2 秒 / 冷却 20 秒）═══
+   * ⚠ 船长 2026-09-10：**暂时先取消实装，仅实现功能** → `foeChargeEnabled` 默认 false，
+   *   机制齐备但任何战斗都不触发；启用只改这一个开关。 */
+  /** 突进总开关（默认 false = 未实装） */
+  foeChargeEnabled: boolean
+  /** 突进期敌机动倍率（临时加速，仍走距离拔河公式） */
+  foeChargeMul: number
+  /** 进入自己武器射程后再维持多久，随后突进结束 */
+  foeChargeMaxHoldMs: number
+  /** 突进冷却（毫秒）：这段时间内不能再次突进 */
+  foeChargeCooldownMs: number
+  /** 突进威胁门槛：只有威胁 ≥ 此值、且战术为近战（brawl）的敌卡会突进（与 pdThreatFloor 同口径） */
+  foeChargeThreatFloor: number
   /** 预估胜率扩散（logit 拉伸倍数，0.5 为不动点）：越高胜率加成越高、越低胜率惩罚越重——
    * 作用于悬赏展示与 AI 接单门槛（实际战斗结算不变） */
   winSpread: number

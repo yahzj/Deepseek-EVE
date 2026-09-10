@@ -468,6 +468,15 @@ export interface BattleState {
   /** 撤离来源（配合 autoEscaped；缺省 = 'hull'，旧档零迁移）：
    *  'hull' = 结构损失过半自动撤退；'timeout' = 打满战斗上限（判负，按被迫撤退处理） */
   escapeReason?: 'hull' | 'timeout'
+  /* ═══ 高威胁近战敌突进（2026-09-10 船长定）：够不着时机动 ×2、进射程 2 秒后结束、冷却 20 秒 ═══
+   * 三个字段都是**可选、零迁移**；`cleanBattle` 白名单未收录（与 hullEscapeFrac 同待遇：
+   * 战中重载会重置突进循环）。 */
+  /** 当前是否处于突进中 */
+  foeChargeOn?: boolean
+  /** 本次突进"进入自己武器射程"的时刻（用于再维持 2 秒后结束） */
+  foeChargeEnteredAtMs?: number
+  /** 突进冷却结束时刻（战斗时钟口径） */
+  foeChargeCdUntilMs?: number
   /** 船体维修装置运行态（2026-09-09 船长定；零迁移可选——旧档缺省 = 本场无维修装置介入）。
    * 与弹药预载同哲学：开战把货舱（仓库兜底）中的对应修理组件移入 kits 账本，战斗中不可补给；
    * 每 REPAIR_PULSE_MS 一次脉冲，各台未停机装置修复装甲/结构并扣 1 枚组件，耗尽即停机；
