@@ -2193,6 +2193,19 @@ body {
 
 }
 
+/* 技能效果全文（2026-09-10 船长定：卡面直接显示效果，不再只藏悬停；⟦…⟧ 数值走 .app-eff 高亮） */
+.app-skill-card-desc {
+
+  font-size: 11px;
+
+  line-height: 1.5;
+
+  color: rgba(206, 222, 238, 0.86);
+
+  overflow-wrap: anywhere;
+
+}
+
 .app-skill-card-bar {
 
   height: 3px;
@@ -5875,11 +5888,31 @@ body {
 
 }
 
-.app-hand-body {
+/* ---------- 手册改版布局（2026-09-10 船长：顶部标签页 → 左侧导航栏；图鉴按类型分组照仓库） ---------- */
 
-  min-height: 240px;
+/* 双栏大窗（只作用于手册，不动 .app-modal-wide 的其它使用者） */
+.app-hand-modal { width: min(1180px, 92vw); height: min(780px, 88vh); max-width: calc(100vw - 40px); max-height: min(780px, calc(100vh - 60px)); }
 
-}
+.app-hand-split { display: flex; flex: 1 1 auto; min-height: 0; }
+
+/* 左侧导航：与全站导航同族观感（24 行 高亮/悬停），窄窗下自身可滚 */
+.app-hand-nav { display: flex; flex-direction: column; gap: 2px; flex: 0 0 168px; padding: 10px 8px; border-right: 1px solid var(--wui-border); overflow-y: auto; min-height: 0; }
+.app-hand-navitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--wui-text-dim); font-family: inherit; font-size: 12.5px; text-align: left; cursor: pointer; transition: all 0.15s; }
+.app-hand-navitem:hover { color: var(--wui-text); background: rgba(15, 26, 40, 0.6); }
+.app-hand-navitem.is-active { color: var(--wui-accent); border-color: var(--wui-border); background: rgba(79, 216, 196, 0.08); }
+
+/* 右侧内容：固定顶栏（搜索 + 视图切换 + 计数）+ 可滚内容区 */
+.app-hand-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; min-height: 0; }
+.app-hand-topbar { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid var(--wui-border); }
+.app-hand-topbar .app-head-search { width: 220px; }
+.app-hand-topbar .app-hand-viewbar { margin: 0; }
+.app-hand-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* 关键：分组小节（面板）与说明小节一律按内容自然高度排布，**不参与压缩**——
+   否则每个面板（.wui-panel 自带 min-height:0 + 体内 overflow:auto）会被压成几十像素高、
+   各自长出一个小滚动条，图鉴内容根本看不全（2026-09-10 船长反馈）；
+   高度装不下时由外层 .app-hand-scroll 统一滚动。 */
+.app-hand-scroll > * { flex: 0 0 auto; }
 
 .app-hand-guide {
 

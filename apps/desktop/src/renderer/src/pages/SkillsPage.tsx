@@ -390,7 +390,8 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
   )
 }
 
-/** 技能目录 · 图标卡（2026-09-09 船长：与列表行同状态同操作，卡面去长文——悬停看全文） */
+/** 技能目录 · 图标卡（2026-09-09 船长：与列表行同状态同操作；
+ *  2026-09-10 船长：技能效果直接显示在卡面（不再只藏悬停）——全文 + 数值高亮，悬停仍给各级时长） */
 function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: SkillDef }) {
   const st = skillUiState(engine, skill)
   const { current, head, mine, isTraining, maxed, title, waitMs, position, saved, def, lastQueued } = st
@@ -420,6 +421,10 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
       </div>
       <div className="app-skill-card-sub">
         {skill.group} · 难度 {skill.rank} · {statusTxt}
+      </div>
+      {/* 技能效果全文（与列表视图同源渲染：⟦…⟧ 关键数值照样高亮；2026-09-10 船长定） */}
+      <div className="app-skill-card-desc">
+        <SkillDescText text={skill.description} />
       </div>
       {isTraining && head ? (
         <div className="app-skill-card-bar">
