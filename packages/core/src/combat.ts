@@ -1705,11 +1705,18 @@ export function persistFleetHullDamage(
 }
 
 /**
- * 机群战损结算（2026-09-10 船长拍板「无人机可被击落」+ **永久损失制**）：
+ * 机群战损结算（2026-09-10 船长拍板「无人机可被击落」+ **永久损失制**；
+ * 2026-09-11 船长：「当回收损坏的无人机时，**优先回收高价值的**」）：
  * 把本场被点防击落的架数从该船无人机舱清单里**永久扣除**（清单是"带上船的那批"，
  * 本就不在仓库里——扣清单即真实损失），并写事件日志 + 一次性提示（渲染层读到弹 toast）。
  * 胜负/撤退都照扣（打掉的飞机不会因为撤退飞回来）；在 resolveBattleOutcome 等结算入口调用，
  * 且必须在其它结算之前（战报文案要用损失摘要）。
+ *
+ * **回收分配（2026-09-11 起）**：总回收架数仍 = round(总损坏 × 回收率)（**回收率数值不动**），
+ * 但名额的分配改为**优先高价值**：
+ *   ①每型先取 floor(损坏数 × 回收率)；
+ *   ②余数名额按**机型基准价从高到低**依次补满（某型补到"损坏数"就换下一型）。
+ * 排序读 `ctx.items` 的 `baseSellPriceIsk`（不写死顺序，日后调价自动跟随；同价按 id 稳定排序）。
  * 返回损失摘要文案（无损失 = null）。
  */
 export function settleDroneLosses(
@@ -1722,47 +1729,90 @@ export function settleDroneLosses(
   if (!lost) return null
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return null
-  // 战后回收（2026-09-10 船长：回收损坏机体的 10%，回收学每级 +8%、满级 50%）——
-  // 按机型四舍五入取回，**回无人机舱清单**继续服役；未回收部分才永久损失
   const rate = droneRecoveryRate(state)
   const load: Record<string, number> = { ...(fleetShip.droneLoad ?? {}) }
-  const lostParts: string[] = []
-  const backParts: string[] = []
+
+  // ── ① 先算出各型的损坏数（按清单实有数封顶）与基础名额 floor(损坏×回收率) ──
+  type Row = { id: string; name: string; value: number; lost: number; back: number }
+  const rows: Row[] = []
   let total = 0
-  let recovered = 0
   for (const [id, n] of Object.entries(lost)) {
     if (!n || n <= 0) continue
-    const have = load[id] ?? 0
-    const cut = Math.min(have, n)
-    const back = Math.min(cut, Math.round(cut * rate)) // 回收（不超过损坏数）
-    const gone = cut - back
-    if (gone > 0) {
-      const left = have - gone
-      if (left > 0) load[id] = left
-      else delete load[id]
-    }
+    const def = ctx.items.get(id)
+    const cut = Math.min(load[id] ?? 0, n)
+    if (cut <= 0) continue
+    rows.push({
+      id,
+      name: def?.name ?? id,
+      value: def?.baseSellPriceIsk ?? 0,
+      lost: cut,
+      back: Math.floor(cut * rate),
+    })
     total += cut
-    recovered += back
-    const name = ctx.items.get(id)?.name ?? id
-    lostParts.push(`${name}×${cut}`)
-    if (back > 0) backParts.push(`${name}×${back}`)
   }
   if (total <= 0) return null
+
+  // ── ② 余数名额按价值从高到低补满（总回收数 = round(总损坏 × 回收率)，与旧口径一致）──
+  let rest = Math.max(0, Math.round(total * rate) - rows.reduce((s, r) => s + r.back, 0))
+  const byValue = [...rows].sort((a, b) => b.value - a.value || a.id.localeCompare(b.id))
+  for (const r of byValue) {
+    if (rest <= 0) break
+    const room = r.lost - r.back
+    if (room <= 0) continue
+    const add = Math.min(room, rest)
+    r.back += add
+    rest -= add
+  }
+
+  // ── ③ 落库：扣除净损失、回收的留在清单继续服役 ──
+  let recovered = 0
+  for (const r of rows) {
+    const gone = r.lost - r.back
+    recovered += r.back
+    if (gone > 0) {
+      const left = (load[r.id] ?? 0) - gone
+      if (left > 0) load[r.id] = left
+      else delete load[r.id]
+    }
+  }
   fleetShip.droneLoad = Object.keys(load).length > 0 ? load : undefined
   // 结算后清空战损账本（调用幂等：重复结算不会重复扣；战报/日志已带损失摘要）
   battle!.droneLost = undefined
-  const text = lostParts.join('、')
+
+  // 展示口径：具名清单按价值降序（高价值在前，与"优先回收"的观感一致）
+  const lostParts = byValue.map((r) => `${r.name}×${r.lost}`)
+  const backParts = byValue.filter((r) => r.back > 0).map((r) => `${r.name}×${r.back}`)
   const ratePct = Math.round(rate * 100)
+  const text = lostParts.join('、')
   const backTxt = backParts.length > 0 ? `，其中 ${backParts.join('、')} 已回收修复归队` : ''
   addLog(
     state,
     'warn',
-    `⚠ 机群战损：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
+    `⚠ 机群战损：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
   )
   state.droneLossNotice =
     recovered > 0
-      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%），净损失 ${total - recovered} 架。`
-      : `机群战损：${text} 被近防炮击落（回收率 ${ratePct}%），回港后请补充无人机舱清单。`
+      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%，优先回收高价值），净损失 ${total - recovered} 架。`
+      : `机群战损：${text} 被近防炮击落、共 ${total} 架（回收率 ${ratePct}%，优先回收高价值）——本场没有回收成功，已从无人机舱清单扣除，回港后请补充。`
+  // 结构化结果（2026-09-11：战报弹层要显示"回收了哪些、净损失哪些"；与 battle 起手时刻配对，
+  // 避免并行会话/AI 战斗的结果串场）——只在**当前驾驶船**的结算里写，AI 副船的损失不进战报
+  if (state.shipId === shipId) {
+    state.droneLossReport = {
+      battleStartedAtGameMs: battle?.startedAtGameMs ?? 0,
+      rate,
+      total,
+      recovered,
+      gone: total - recovered,
+      rows: byValue.map((r) => ({
+        id: r.id,
+        name: r.name,
+        value: r.value,
+        lost: r.lost,
+        back: r.back,
+        gone: r.lost - r.back,
+      })),
+    }
+  }
   return text
 }
 

@@ -26,6 +26,7 @@ import {
   SHIPS,
   ANOMALIES_FLAVORED,
   RARITY_TIER,
+  SKILLS,
   DRONE_ROLE_SPECS,
   DRONE_ROLE_ANCHORS,
   droneRoleIssues,
@@ -37,7 +38,9 @@ import {
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  DEFAULT_BALANCE,
   ITEM_KIND_ORDER,
+  MAX_SKILL_LEVEL,
   MODULE_SLOTS,
   MINEABLE_KINDS,
   RACK_SLOTS,
@@ -894,6 +897,39 @@ for (const m of MODULES) {
     `· 派系活跃：候选 ${factionPool.size} 个中安/低安星系（掉落概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% ×${FACTION_RARE_DROP_COUNT} 件，船长 2026-09-10 核定）`,
   )
   console.log(`· 窝点契约：${lairCards} 张窝点卡（稀有残骸 + 三档称呼 + 专属装备齐备，覆盖 ${famWithGear.size} 个敌族）`)
+}
+
+/* ── AI 扩容技能契约（2026-09-11 加）：工业专用工位扩容表里的技能 id 必须真实存在 ──
+ * 背景：`balance.aiCore.industrySkillSlots` 是「技能 id → 每级工位数」的表；**写错 id 不会报错**，
+ * 只会静默不生效（玩家练满也没工位）——在这里拦住；同时打印"满级合计"，与设计口径对照。 */
+{
+  const table = DEFAULT_BALANCE.aiCore.industrySkillSlots
+  const ids = Object.keys(table ?? {})
+  check(ids.length > 0, 'AI 扩容技能契约：工业专用工位扩容表不得为空')
+  const catalog = new Map(SKILLS.map((s) => [s.id, s]))
+  let total = 0
+  const shown: string[] = []
+  for (const id of ids) {
+    const per = table[id] ?? 0
+    const def = catalog.get(id)
+    check(Boolean(def), `AI 扩容技能契约：${id} 不在技能目录中（写错 id 会静默不生效）`)
+    check(Number.isInteger(per) && per > 0, `AI 扩容技能契约：${id} 的每级工位数应为正整数，实际 ${per}`)
+    total += per * MAX_SKILL_LEVEL
+    shown.push(`${def?.name ?? id}(rank${def?.rank ?? '?'}) +${per}/级`)
+  }
+  // 反向护栏（2026-09-11）：技能说明里承诺了「工业专用工位」的技能，必须在扩容表里——
+  // 否则会出现"练满也不生效"的静默失效（删表/改名/新增技能漏登记都会被抓到）。
+  for (const s of SKILLS) {
+    if (!s.description.includes('工业专用工位')) continue
+    check(
+      ids.includes(s.id),
+      `AI 扩容技能契约：技能「${s.name}」(${s.id}) 说明里承诺工业专用工位，却不在 balance.aiCore.industrySkillSlots 表里（练满也不生效）`,
+    )
+  }
+  const sharedCap = MAX_SKILL_LEVEL // 共用上限满级 = AI 核心操作学满级（每级 +1）
+  console.log(
+    `· AI 扩容技能契约：${ids.length} 个工业工位技能（${shown.join('、')}）→ 满级站内工位 = 共用 ${sharedCap} + 扩容 ${total} = ${sharedCap + total}`,
+  )
 }
 
 /* ── 输出 ── */

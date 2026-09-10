@@ -44,11 +44,10 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   },
   aiCore: {
     skillId: 'ai-expert', // 共用「AI 核心上限」技能：LvN = 可同时启用 N 枚 AI 核心（AI 副船任务与站内 AI 设施共用；后续上限技能在 ai.ts aiCoreCap 叠加）
-    // 2026-09-08 船长定：工业专用扩容——industrySkillIds 内技能每级 +industrySlotsPerLevel 枚
+    // 2026-09-08 船长定、2026-09-11 改为**按技能记系数**：工业专用扩容——表内技能每级 +对应枚数
     // 「工业专用 AI 工位」（只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
-    // 将来新增"工业 AI 专用扩容技能"只需往该表追加 id）
-    industrySkillIds: ['industrial-ai-cap'],
-    industrySlotsPerLevel: 2,
+    // 每个工位仍占用一枚实体 AI 核心）。新增"工业 AI 专用扩容技能"只需往该表追加一行。
+    industrySkillSlots: { 'industrial-ai-cap-basic': 1, 'industrial-ai-cap': 2 } as Readonly<Record<string, number>>,
     dispatchSkillId: 'ai-core-dispatch', // AI 核心调度学（卷B3⑩，2026-09-08 船长定）：核心驱动作业效率累加区
     dispatchPerLevel: 0.02, // 每级 +2 个百分点（基础 40% → 满级 50%；伽马 60%/贝塔 70%/阿尔法 85%，封顶 100%）
     basicPriceIsk: 25_000, // 基础核心直购价

@@ -96,22 +96,80 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(dronesInArcs).toBe(pools.length - lost)
     expect(arcs.droneLost).toEqual(battle.droneLost)
 
-    // 损失扣除：基础回收率 20%（按机型四舍五入）→ 净损失 = 损坏 − 回收
+    // 损失扣除（2026-09-11 口径：每型先 floor(损坏×回收率)，余数名额按机型价值从高到低补满）
     const before = battle.droneLost!
     const rate = droneRecoveryRate(state)
     expect(rate).toBeCloseTo(0.2, 6) // 无技能 = 基础 20%
     const text = settleDroneLosses(state, ctx, state.shipId, battle)
     expect(text).toBeTruthy()
     const load = state.fleet[state.shipId]!.droneLoad ?? {}
+    const rep = state.droneLossReport!
+    const totalLost = Object.values(before).reduce((s, n) => s + n, 0)
+    expect(rep.total).toBe(totalLost)
+    expect(rep.recovered).toBe(Math.round(totalLost * rate)) // 总回收数仍 = round(总损坏×回收率)（回收率不动）
+    expect(rep.gone).toBe(totalLost - rep.recovered)
     for (const [id, n] of Object.entries(before)) {
-      const back = Math.round(n * rate)
-      expect(load[id] ?? 0).toBe(Math.max(0, (LOAD as Record<string, number>)[id]! - (n - back)))
+      const row = rep.rows.find((r) => r.id === id)!
+      expect(row.lost).toBeLessThanOrEqual(n)
+      expect(row.back).toBeGreaterThanOrEqual(Math.floor(row.lost * rate)) // 基础名额不低于 floor
+      expect(row.back).toBeLessThanOrEqual(row.lost)
+      expect(load[id] ?? 0).toBe(Math.max(0, (LOAD as Record<string, number>)[id]! - row.gone))
     }
-    expect(state.droneLossNotice).toContain('机群战损')
+    // 余数确实按价值优先：低价值机型拿到余数 ⇒ 更高价值机型必须已用满自己的余量
+    const byValue = [...rep.rows].sort((a, b) => b.value - a.value || a.id.localeCompare(b.id))
+    for (let i = 0; i < byValue.length; i += 1) {
+      for (let j = i + 1; j < byValue.length; j += 1) {
+        const hi = byValue[i]!
+        const lo = byValue[j]!
+        const hiRoom = hi.lost - Math.floor(hi.lost * rate)
+        const hiUsed = hi.back - Math.floor(hi.lost * rate)
+        const loUsed = lo.back - Math.floor(lo.lost * rate)
+        if (loUsed > 0) expect(hiUsed).toBe(hiRoom)
+      }
+    }
+    expect(state.droneLossNotice).toContain('优先回收高价值')
     // 日志已写
     expect(state.logs.some((l) => l.text.includes('机群战损'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('优先回收高价值'))).toBe(true)
     // 仓库中的补充库存不受影响（回港可再装）
     expect(countWare(state, 'drone-heavy')).toBe(4)
+  })
+
+  it('优先回收高价值（2026-09-11 船长）：余数名额给最贵的机型，其余净损失', () => {
+    // 合成战损：四型各坏 1 架（总 4 架 × 20% = 0.8 → 1 个名额；每型 floor(0.2) 均为 0）
+    // → 这 1 个名额必须给最贵的哨戒机（9,500），其余三型净损失
+    const load = { 'drone-scout': 1, 'drone-assault': 1, 'drone-heavy': 1, 'drone-sentry': 1 }
+    const state = makeState(31, load)
+    const fake = {
+      droneLost: { ...load },
+      startedAtGameMs: 123,
+    } as unknown as BattleState
+    settleDroneLosses(state, ctx, state.shipId, fake)
+    const rep = state.droneLossReport!
+    expect(rep.total).toBe(4)
+    expect(rep.recovered).toBe(1)
+    expect(rep.battleStartedAtGameMs).toBe(123)
+    // 明细按机型价值降序：哨戒 9500 > 攻坚 5000 > 战斗 2200 > 侦察 900
+    expect(rep.rows.map((r) => r.id)).toEqual(['drone-sentry', 'drone-heavy', 'drone-assault', 'drone-scout'])
+    const sentry = rep.rows.find((r) => r.id === 'drone-sentry')!
+    expect(sentry.back).toBe(1)
+    expect(sentry.gone).toBe(0)
+    for (const id of ['drone-scout', 'drone-assault', 'drone-heavy']) {
+      const row = rep.rows.find((r) => r.id === id)!
+      expect(row.back).toBe(0)
+      expect(row.gone).toBe(1)
+    }
+    // 清单：只减掉"净损失"，回收的哨戒机留在清单里继续服役
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-sentry': 1 })
+  })
+
+  it('战报结构化结果只写当前驾驶船（AI 副船的结算不串进战报）', () => {
+    const state = makeState(41, { 'drone-heavy': 2 })
+    const other = addShipToFleet(state, 'sh-falconet')
+    state.fleet[other]!.droneLoad = { 'drone-heavy': 2 }
+    const fake = { droneLost: { 'drone-heavy': 2 }, startedAtGameMs: 7 } as unknown as BattleState
+    settleDroneLosses(state, ctx, other, fake) // 结算的是"别的船"
+    expect(state.droneLossReport ?? null).toBeNull() // 当前驾驶船未结算 → 不写战报数据
   })
 
   it('无距离豁免（2026-09-10 船长：放飞出去就在威胁之下）＋哨戒机优先豁免：先打非哨戒机', () => {

@@ -18,8 +18,10 @@ import type { GameState, SimContext } from '@whale/core'
 export interface IndustryAiSlots {
   /** 共用上限（AI 核心操作学等级） */
   sharedCap: number
-  /** 工业专用扩容（工业自动化：只对炉/线生效） */
+  /** 工业专用扩容（工业自动化基础 + 工业自动化…：只对炉/线生效） */
   bonus: number
+  /** 工业扩容的逐技能构成（2026-09-11：提示里逐项列出，让玩家看得出这几点从哪来） */
+  bonusRows: Array<{ id: string; name: string; level: number; perLevel: number; slots: number }>
   /** 站内工业可启动上限 = 共用上限 + 工业扩容 */
   cap: number
   /** 当前站内工业占用（AI 精炼炉/回收炉 + AI 制造线） */
@@ -38,9 +40,22 @@ export function aiIndustrySlots(state: GameState, ctx: SimContext): IndustryAiSl
   const bonus = industryAiBonus(state, ctx)
   const refineUsed = state.refineRuns.filter((r) => r.worker !== 'pilot').length
   const makeUsed = state.manufacturingRuns.filter((r) => r.worker !== undefined && r.worker !== 'pilot').length
+  // 扩容逐技能构成：与引擎同一张表（balance.aiCore.industrySkillSlots），名字取技能目录
+  const table = ctx.balance?.aiCore?.industrySkillSlots ?? {}
+  const bonusRows = Object.entries(table).map(([id, perLevel]) => {
+    const level = state.skills.trained[id] ?? 0
+    return {
+      id,
+      name: ctx.skills.get(id)?.name ?? id,
+      level,
+      perLevel: perLevel ?? 0,
+      slots: level * (perLevel ?? 0),
+    }
+  })
   return {
     sharedCap,
     bonus,
+    bonusRows,
     cap: sharedCap + bonus,
     used: aiCoreIndustryUsed(state),
     refineUsed,
@@ -51,10 +66,15 @@ export function aiIndustrySlots(state: GameState, ctx: SimContext): IndustryAiSl
 
 /** 悬停提示：上限怎么来的、占用算在哪（数字对不上时照这里核对） */
 export function aiSlotTip(slots: IndustryAiSlots): string {
-  const { sharedCap, bonus, cap, used, refineUsed, makeUsed, shipUsed } = slots
+  const { sharedCap, bonus, bonusRows, cap, used, refineUsed, makeUsed, shipUsed } = slots
+  // 逐技能写明贡献（未练的技能也列出，便于玩家知道该练什么）
+  const detail =
+    bonusRows.length > 0
+      ? bonusRows.map((r) => `${r.name} ${r.level} 级 → +${r.slots}`).join('、')
+      : '暂无扩容技能'
   return (
     `站内 AI 核心可启动上限 ${cap} 枚 = 共用上限 ${sharedCap}（AI 核心操作学）` +
-    `+ 工业专用扩容 ${bonus}（工业自动化）；当前占用 ${used} 枚（精炼炉/回收炉 ${refineUsed} 台 + 制造线 ${makeUsed} 条）。` +
+    `+ 工业专用扩容 ${bonus}（${detail}）；当前占用 ${used} 枚（精炼炉/回收炉 ${refineUsed} 台 + 制造线 ${makeUsed} 条）。` +
     `AI 副船任务另占 ${shipUsed} 艘，与站内工业共用同一总上限。`
   )
 }

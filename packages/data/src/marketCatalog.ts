@@ -26,31 +26,41 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
 
   // ── 矿石（池模型：玩家售矿主渠道；收购平价，池淤积压价） ──
   // 2026-09-05 船长：低级矿石/矿物是海量消耗品，池量与流量按"越低级越大"放大（稀有矿保持小）
-  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 12, poolTarget: 60_000, supplyFlow: 5_000 },
-  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 18, poolTarget: 40_000, supplyFlow: 2_000 },
-  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 55, poolTarget: 9_000, supplyFlow: 150 },
-  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 150, poolTarget: 15_000, supplyFlow: 300 },
-  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 115, poolTarget: 14_000, supplyFlow: 330 },
-  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 340, poolTarget: 3_000, supplyFlow: 60 },
-  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 490, poolTarget: 1_200, supplyFlow: 20 },
+  // 【2026-09-10 船长定：**按玩家生产能力标定**（原值按感觉定，17 个矿带里 15 个覆盖比 <1 = 采了卖不掉）。
+  //   基准 = 掘洞级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
+  //   规则 = **按单价分层覆盖比**：≤20 ISK → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
+  //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
+  //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
+  //   低阶几乎不动（富凡 ×1.0、灼烧 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
+  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 12, poolTarget: 598_920, supplyFlow: 4_991 },
+  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 18, poolTarget: 598_920, supplyFlow: 4_991 },
+  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 55, poolTarget: 239_640, supplyFlow: 1_997 },
+  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 150, poolTarget: 184_680, supplyFlow: 1_539 },
+  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 115, poolTarget: 184_680, supplyFlow: 1_539 },
+  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 340, poolTarget: 92_400, supplyFlow: 770 },
+  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 490, poolTarget: 61_560, supplyFlow: 513 },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
-  { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 300_000, supplyFlow: 10_000 },
-  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 180_000, supplyFlow: 6_000 },
-  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 90_000, supplyFlow: 3_000 },
-  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 15_000, supplyFlow: 400 },
-  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 24_000, supplyFlow: 500 },
-  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 9_000, supplyFlow: 120 },
-  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 2_500, supplyFlow: 20 },
+  // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
+  //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722
+  //   ——冥铁/星髓/超噬/同位聚晶原覆盖比 0.16~0.82×（炼出来卖不掉），三钛/类银/类晶体本就 ≥5.7× 故仅微调；
+  //   虚空晶无精炼来源（回收彩头），池不动。】
+  { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 2_722_080, supplyFlow: 22_684 },
+  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_901_640, supplyFlow: 15_847 },
+  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 675_720, supplyFlow: 5_631 },
+  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 350_880, supplyFlow: 2_924 },
+  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 940_920, supplyFlow: 7_841 },
+  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 178_440, supplyFlow: 1_487 },
+  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 30_960, supplyFlow: 258 },
   { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 500, supplyFlow: 3 },
   // ── 气体（V10 池商品） ──
-  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 2_500, supplyFlow: 45 },
-  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 330, poolTarget: 700, supplyFlow: 10 },
-  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 230, poolTarget: 800, supplyFlow: 12 },
-  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 330, poolTarget: 450, supplyFlow: 6 },
+  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },
+  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },
+  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 230, poolTarget: 114_000, supplyFlow: 950 },
+  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },
   // ── 冰矿（V10 池商品） ──
-  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 150, poolTarget: 2_000, supplyFlow: 35 },
-  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 230, poolTarget: 1_000, supplyFlow: 16 },
-  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 400, supplyFlow: 6 },
+  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 150, poolTarget: 227_880, supplyFlow: 1_899 },
+  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 230, poolTarget: 114_000, supplyFlow: 950 },
+  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 114_000, supplyFlow: 950 },
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 4_000, supplyFlow: 150 }, // 2026-09-08 工业收益体检：低周转行只升不砍（净率→≥20%）
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 3_800, supplyFlow: 140 },

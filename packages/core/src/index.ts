@@ -89,6 +89,7 @@ export type {
   BattleFx,
   EventsState,
   GameState,
+  DroneLossReport,
 } from './state'
 
 export {
