@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
-import type { BattleFx, DamageType, ShipRole } from '@whale/core'
+import type { BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -188,6 +188,8 @@ const meSpeedRef = useRef(200)
   /** 分出胜负时的结算快照（resolve 后 battle 会被清空，报告数据靠它） */
   const outroRef = useRef<OutroSnap | null>(null)
   const reportTextRef = useRef('')
+  /** 机群战损结算结果（2026-09-11）：进入 report 阶段那一刻从引擎取，供战报两行明细 */
+  const droneReportRef = useRef<DroneLossReport | null>(null)
   const flushTimerRef = useRef<number | null>(null)
   const dragValRef = useRef<number | null>(null)
   const mapRef = useRef<{ openM: number; nearM: number }>({ openM: 1, nearM: 200 })
@@ -225,6 +227,11 @@ const meSpeedRef = useRef(200)
     } else if (stage === 'outro' && !view.combat) {
       // 引擎已结算（killcam 走完）→ 战报文本（resolve 日志已写入）
       const snap = outroRef.current
+      // 机群战损结算结果（2026-09-11）：结算刚在这一刻完成，读取结构化结果；
+      // 用战斗起手时刻配对，避免并行战斗（AI 副船等）的结果串场
+      const dr = state.droneLossReport ?? null
+      droneReportRef.current =
+        dr && (!snap || dr.battleStartedAtGameMs === snap.startedAtGameMs) ? dr : null
       const report =
         lastBattleReport(state.logs, snap?.startedAtGameMs ?? 0) ??
         (snap?.kind === 'me' ? '大捷：敌方编队全灭，舰队开始返航。' : '失利：舰队被迫撤离，详情见事件日志。')
@@ -234,10 +241,11 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, battle?.ended, view.combat === null])
 
-  // 战报自动关闭：report 展示 6 秒后自动返回（按钮可随时提前关闭）
+  // 战报自动关闭：report 展示 12 秒后自动返回（按钮可随时提前关闭）
+  // 2026-09-11 船长：「战斗报告持续时间延长」——6 秒 → 12 秒（新增机群回收明细后 6 秒读不完）
   useEffect(() => {
     if (stage !== 'report') return
-    const t = window.setTimeout(() => onClose(), 6000)
+    const t = window.setTimeout(() => onClose(), 12_000)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
@@ -409,6 +417,7 @@ const meSpeedRef = useRef(200)
   /* ═══════════ 战报弹层（stage = report：引擎已结算返航，战场数据已清空） ═══════════ */
   if (stage === 'report') {
     const snap = outroRef.current
+    const droneReport = droneReportRef.current
     const won = snap?.kind === 'me'
     const durSec = Math.max(1, Math.round((snap?.durMs ?? 0) / 1000))
     const fallback = won ? '敌方编队已全灭。' : '舰队被迫撤离。'
@@ -424,8 +433,29 @@ const meSpeedRef = useRef(200)
                 {snap.foeShots} / 命中 {snap.foeHits} · 交火 {durSec}s
               </div>
             ) : null}
-            {/* 机群战损（2026-09-10 点防上线）：被击落的无人机永久损失，战报里逐型列出架数 */}
-            {snap?.droneLost && Object.keys(snap.droneLost).length > 0 ? (
+            {/* 机群战损（2026-09-11 船长：优先回收高价值 + 在战报里显示）：
+                第一行 = 汇总（损坏 / 回收归队 / 净损失），第二行 = 逐型明细（回收 ｜ 净损失，按机型价值降序） */}
+            {droneReport ? (
+              <>
+                <div className="app-bts-report-stats is-loss">
+                  机群战损：损坏 {droneReport.total} 架 · 回收 {droneReport.recovered} 架归队（回收率{' '}
+                  {Math.round(droneReport.rate * 100)}% · 优先回收高价值）· 净损失 {droneReport.gone} 架
+                </div>
+                <div className="app-bts-report-stats is-loss">
+                  回收：
+                  {droneReport.rows
+                    .filter((r) => r.back > 0)
+                    .map((r) => `${r.name}×${r.back}`)
+                    .join('、') || '无'}
+                  {' ｜ '}净损失：
+                  {droneReport.rows
+                    .filter((r) => r.gone > 0)
+                    .map((r) => `${r.name}×${r.gone}`)
+                    .join('、') || '无'}
+                  （无人机舱清单已扣除，回港需补充）
+                </div>
+              </>
+            ) : snap?.droneLost && Object.keys(snap.droneLost).length > 0 ? (
               <div className="app-bts-report-stats is-loss">
                 机群损失：
                 {Object.entries(snap.droneLost)
@@ -434,7 +464,7 @@ const meSpeedRef = useRef(200)
                 （无人机舱清单已扣除，回港需补充）
               </div>
             ) : null}
-            <div className="app-bts-report-note">奖励/战利品已入账，舰队自动返航中；本报告 6 秒后自动关闭（完整记录见右侧事件日志）。</div>
+            <div className="app-bts-report-note">奖励/战利品已入账，舰队自动返航中；本报告 12 秒后自动关闭（完整记录见右侧事件日志）。</div>
             <button className="app-btn" onClick={onClose}>
               收下战报 · 返回
             </button>

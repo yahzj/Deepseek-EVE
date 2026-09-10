@@ -505,6 +505,24 @@ export interface BattleState {
   droneLoadAtStart?: Record<string, number>
 }
 
+/** 机群战损结算结果（结构化，2026-09-11 船长「在战斗报告中显示」）：
+ * 战报弹层据此展示两行——汇总（损坏/回收/净损失）+ 逐型明细（回收名单 ｜ 净损失名单）。
+ * rows 按**机型基准价降序**（高价值在前，与"优先回收高价值"的观感一致）。 */
+export interface DroneLossReport {
+  /** 该场战斗起手时刻（与战报快照配对，避免并行战斗结果串场） */
+  battleStartedAtGameMs: number
+  /** 本场回收率（0~1） */
+  rate: number
+  /** 损坏合计架数 */
+  total: number
+  /** 回收归队合计架数 */
+  recovered: number
+  /** 净损失合计 = total − recovered */
+  gone: number
+  /** 逐型明细（按机型价值降序） */
+  rows: Array<{ id: string; name: string; value: number; lost: number; back: number; gone: number }>
+}
+
 /** 单架无人机的战斗生存池（开战自机型 DroneDefense 写入；被点防打空即击落）
  * 装备模块阻力/回避随池携带——战斗跨会话续算不依赖当时的仓库/装配状态 */
 export interface DronePoolEntry {
@@ -902,6 +920,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 同 deliveryNotice 模式（不落档、零迁移）
    */
   droneLossNotice?: string | null
+  /**
+   * 2026-09-11 船长：「在战斗报告中显示」——机群战损的**结构化**结算结果（谁回收了、谁净损失），
+   * 战报弹层读取后展示两行明细（汇总 + 逐型）；同 droneLossNotice 模式：**不落档、零迁移**，
+   * 且只在**当前驾驶船**的结算里写入（AI 副船的损失不进战报，避免串场）
+   */
+  droneLossReport?: DroneLossReport | null
   /**
    * 2026-09-10 玩家标记（收藏）：四类界面各自一份 id 清单，被标记项在**默认排序**下置顶
    * （2026-09-10 船长定：舰队等有排序下拉的列表只在「默认排序」生效）。
