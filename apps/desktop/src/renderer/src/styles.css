@@ -6522,7 +6522,7 @@ body {
 
 .app-bts-arcs { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 
-.app-bts-col { position: absolute; top: 10px; z-index: 2; display: flex; flex-direction: column; align-items: center; width: max-content; max-width: 340px; }
+.app-bts-col { position: absolute; top: 54px; z-index: 2; display: flex; flex-direction: column; align-items: center; width: max-content; max-width: 340px; }
 
 .app-bts-col.is-foe { align-items: center; }
 
@@ -7416,7 +7416,7 @@ body {
 
 /* V16.4 layout: col top space for names; stable sync (no partial transitions) (ASCII-safe) */
 
-.app-bts-col { top: 26px; }
+.app-bts-col { top: 54px; /* 与 battleViewCore LAY.TOP 同步（2026-09-10 整体下移，给无人机上凸弧留空间） */ }
 
 .app-bts-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; font-weight: 700; color: #e6eef7; text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 6px rgba(0,0,0,.6); letter-spacing: .4px; pointer-events: none; z-index: 3; }
 
