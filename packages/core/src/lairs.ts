@@ -111,13 +111,14 @@ const LAIR_TIER_FALLBACK: readonly [string, string, string] = ['头目', '据点
  * - **F 族（制式巡逻）留空**：当前只有隐藏遭遇模板、没有窝点成员，故无专属件。
  */
 export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
-  A: ['mod-lair-turret-a'], // 劫掠者转管炮
+  // A 族（海盗）：2026-09-10 船长逐件过审（三件齐）——泼弹近战炮 / 贴脸导弹巢 / 搬赃舱
+  A: ['mod-lair-turret-a', 'mod-lair-missile-a', 'mod-lair-cargo-a'],
   B: [], // 【已停用】原「拾荒者拆解臂」随 B 族窝点取消撤下
-  C: ['mod-lair-armor-c'], // 生体甲壳板
-  D: ['mod-lair-shield-d'], // 陵墓护盾阵列
-  E: ['mod-lair-turret-e'], // 巨构残骸炮
+  C: ['mod-lair-armor-c'], // 生体甲壳板（另两件待逐件过审）
+  D: ['mod-lair-shield-d'], // 陵墓护盾阵列（另两件待逐件过审）
+  E: ['mod-lair-turret-e'], // 巨构残骸炮（另两件待逐件过审）
   F: [],
-  G: ['mod-lair-drone-rack-g'], // 流亡蜂群巢
+  G: ['mod-lair-drone-rack-g'], // 流亡蜂群巢（另两件待逐件过审）
 }
 
 /** 该卡的专属装备池（卡级优先，其次按敌族；都没有 = 空池） */

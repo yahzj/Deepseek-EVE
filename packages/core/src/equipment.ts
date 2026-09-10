@@ -49,6 +49,19 @@ export function countModule(state: GameState, moduleId: string): number {
   return state.moduleBay[moduleId] ?? 0
 }
 
+/**
+ * 该装备的**当前持有总数**（装备库 + 所有舰船已装配位；2026-09-10 船长：
+ * 敌族专属装备"集齐前不重复掉落"的判定口径 = 当前持有，不引入永久收集记录）。
+ */
+export function ownedModuleCount(state: GameState, moduleId: string): number {
+  let n = countModule(state, moduleId)
+  for (const ship of Object.values(state.fleet)) {
+    if (!ship?.fitted) continue
+    for (const id of allFittedIds(ship.fitted)) if (id === moduleId) n += 1
+  }
+  return n
+}
+
 /** 装备入库（制造完成/卸下） */
 export function addModule(state: GameState, moduleId: string, count = 1): void {
   if (count <= 0) return

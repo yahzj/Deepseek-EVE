@@ -20,7 +20,7 @@
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
-import { addModule } from './equipment'
+import { addModule, ownedModuleCount } from './equipment'
 import { addWare } from './inventory'
 import { lairGearOf } from './lairs'
 
@@ -392,10 +392,14 @@ export function rollRareBoxExtra(
   const modules: string[] = []
   const minerals: Array<{ mineralId: string; units: number }> = []
   const notes: string[] = []
-  // ① 专属装备
-  const gear = profile.lairGear ?? []
-  if (gear.length > 0 && nextRandom(state.rng) < (RARE_BOX_GEAR_CHANCE[profile.tier] ?? 0)) {
-    const pick = gear[nextInt(state.rng, gear.length)]!
+  // ① 专属装备（2026-09-10 船长：**集齐前不重复掉落**——该族池中还有玩家未持有的件时，
+  //    只从"未持有"里均匀抽；三件（或该族全部）都到手后恢复均匀随机、允许重复。
+  //    判定口径 = 当前持有（装备库 + 已装配位，见 equipment.ownedModuleCount））
+  const gearAll = profile.lairGear ?? []
+  const gear = gearAll.filter((id) => ownedModuleCount(state, id) <= 0)
+  const gearPool = gear.length > 0 ? gear : gearAll
+  if (gearPool.length > 0 && nextRandom(state.rng) < (RARE_BOX_GEAR_CHANCE[profile.tier] ?? 0)) {
+    const pick = gearPool[nextInt(state.rng, gearPool.length)]!
     modules.push(pick)
     notes.push(`专属装备「${ctx.modules.get(pick)?.name ?? pick}」`)
   } else {
