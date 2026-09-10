@@ -24,6 +24,12 @@ export type LairTier = 1 | 2 | 3
 
 /** 档位威胁系数：主题悬赏威胁 × 本值 = 窝点威胁 */
 export const LAIR_THREAT_MUL: Record<LairTier, number> = { 1: 1.3, 2: 1.6, 3: 2.0 }
+/**
+ * 赏金倍率（2026-09-10 船长定：2/4/8）：窝点奖金 = 主题悬赏奖金 × 本值。
+ * **只管钱、不管难度**——威胁/波次/僚机仍走 LAIR_THREAT_MUL（难度不动），
+ * 三档奖金差距拉开成 2/4/8 倍，一档也明确高于常驻悬赏原值。
+ */
+export const LAIR_REWARD_MUL: Record<LairTier, number> = { 1: 2, 2: 4, 3: 8 }
 /** 僚机增量（在主题悬赏基础上加；总数上限沿用引擎的 0~2） */
 export const LAIR_ESCORT_BONUS: Record<LairTier, number> = { 1: 0, 2: 1, 3: 1 }
 /**
@@ -119,9 +125,9 @@ export function lairNameOf(anomaly: AnomalyDef, tier: LairTier): string {
   return `${lairCoreOf(anomaly)}·${lairTierWordOf(anomaly, tier)}`
 }
 
-/** 窝点基础奖金 = 主题悬赏奖金 × 档位系数（胜利结算沿用既有浮动与技能系数） */
+/** 窝点基础奖金 = 主题悬赏奖金 ×**赏金倍率**（2/4/8；胜利结算沿用既有浮动与技能系数） */
 export function lairBaseRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
-  return Math.round(anomaly.rewardIsk * LAIR_THREAT_MUL[tier])
+  return Math.round(anomaly.rewardIsk * LAIR_REWARD_MUL[tier])
 }
 
 /** 赏金任务酬金（刷出时锁定）= 窝点基础奖金 × 档位酬金比例 */
@@ -132,7 +138,8 @@ export function lairTaskRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
 /**
  * 派生窝点卡（开战/结算/展示统一走这里，数据文件不改）：改威胁、加僚机与波次、换显示名。
  * 其余字段（战术性格、血型、伤害配比、命中、抗性缺口、回收池…）全部继承主题悬赏 —— 窝点与
- * 该星系特色敌人同源。
+ * 该星系特色敌人同源。**奖金不在这里改**：卡上的 `rewardIsk` 仍是主题悬赏原值，
+ * 窝点奖金一律经 `lairBaseRewardIsk`（×赏金倍率 2/4/8）取，避免同一字段两种口径。
  */
 export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const waves = LAIR_WAVES[tier]

@@ -1,10 +1,13 @@
 /**
  * 赏金任务 · 敌人窝点（2026-09-10 船长定）：
- * - 任务中心「赏金任务」= 临时战斗任务，与时效任务共用 20 分钟整点板；每轮 2 张，过期作废、无惩罚；
- * - 目标不是普通悬赏照搬，而是按该星系主题悬赏**派生**的窝点：威胁 ×档位系数、加僚机与波次
- *   （波次威胁大头后置）、三档称呼按敌族定制（外围/核心/深层，均为"地点"语义）；
+ * - 任务中心「赏金任务」= 临时战斗任务，**独立日板**：24 小时一轮、每天本地 0 点整板替换；
+ *   每天 2 张（`BOUNTY_TASKS_PER_ROUND`），过期作废、无惩罚；资源/快递仍是 20 分钟板，两者互不影响；
+ * - 声望门槛 = **接取条件**（不够也照刷，出发时拒）；
+ * - 目标不是普通悬赏照搬，而是按该星系主题悬赏**派生**的窝点：威胁 ×档位系数（1.3/1.6/2.0）、
+ *   加僚机与波次（波次威胁大头后置）、三档称呼按敌族定制（外围/核心/深层，均为"地点"语义）；
  * - 档位上限由**协会声望**决定（0~5 一档 / 6~10 二档 / 11+ 三档）；
- * - 打赢：窝点奖金（档位放大）+ 赏金任务酬金入账 + 该星系稀有残骸 ×档位件数（打捞必得）
+ * - **赏金倍率 2/4/8**（2026-09-10 船长定）：窝点奖金 = 主题悬赏奖金 ×2/×4/×8，威胁不受影响；
+ * - 打赢：窝点奖金（赏金倍率放大）+ 赏金任务酬金入账 + 该星系稀有残骸 ×档位件数（打捞必得）
  *   → 回站精炼炉「残骸回收」当**高级箱**开（常规保底 + 必定额外掉落，含该敌群专属装备）；
  * - 打输/撤退：任务不下板（可再来），不投放稀有残骸，窝点档位随本场作废。
  */
@@ -12,16 +15,19 @@ import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import {
+  BOUNTY_BOARD_PERIOD_MS,
   BOUNTY_TASKS_PER_ROUND,
   DEFAULT_BALANCE,
   DSI_FACTION_ID,
   FOE_LAIR_TIERS,
   LAIR_RARE_WRECK_GAIN,
+  LAIR_REWARD_MUL,
   LAIR_TASK_REWARD_MUL,
   LAIR_THREAT_MUL,
   RARE_BOX_MINERAL_UNITS,
   RARE_WRECK_VOLUME_M3,
   advanceGame,
+  bountyDayStartWallMs,
   createInitialState,
   injectRareWreck,
   isLairCandidate,
@@ -45,9 +51,14 @@ import {
 import { resolveBattleOutcome } from '../src/expedition'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
 
+/** 20 分钟板周期（资源/快递仍在用） */
 const PERIOD = DEFAULT_BALANCE.market.orderLifeMs.common
-/** 越过首个 20 分钟整点后多推进 1 秒（与 sideTasks.test 同口径） */
-const FIRST_OPEN_MS = PERIOD + 1_000
+/**
+ * 赏金日板的基准墙钟 = 某个"**本地正午**"：先取任意时刻的本地日界再 +12h。
+ * 这样任何时区下它都落在该自然日的中段——"当天稍晚（+6h）不换板 / 次日（+24h）换板"两断言都不受时区影响
+ * （直接写 UTC 正午在 UTC+8 等时区会变成当地 20:00，+6h 就跨日了）。
+ */
+const T0 = bountyDayStartWallMs(Date.UTC(2026, 8, 10, 12, 0, 0)) + 12 * 3_600_000
 
 const LAIR_A = anomaly('ano-lair-a', 'galaxy-hub', {
   threat: 4,
@@ -83,9 +94,12 @@ function makeWorld(seed = 31): { state: GameState; ctx: SimContext } {
   return { state, ctx }
 }
 
-/** 推进到首个整点：刷出当轮板（含赏金任务） */
-function openBoard(state: GameState, ctx: SimContext): void {
-  advanceGame(state, FIRST_OPEN_MS, ctx)
+/**
+ * 开赏金日板：推进一小片游戏时间 + 传入"某日正午"的墙钟 → 日界刷新触发（每天本地 0 点换板）。
+ * `wallMs` 显式传入即可模拟"跨到下一天"（默认 T0 = 2026-09-10 正午 UTC）。
+ */
+function openBountyBoard(state: GameState, ctx: SimContext, wallMs: number = T0): void {
+  advanceGame(state, 1_000, ctx, { nowWallMs: wallMs })
 }
 
 describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () => {
@@ -124,11 +138,18 @@ describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () 
     expect(lairNameOf(LAIR_B, 3)).toBe(`拾荒团·${FOE_LAIR_TIERS.B[2]}`)
   })
 
-  it('奖金与酬金口径：窝点基础奖金 = 主题奖金 ×档位系数；酬金 = 基础奖金 ×档位比例（跟强度走）', () => {
-    const t = 2
-    expect(lairBaseRewardIsk(LAIR_A, t)).toBe(Math.round(20_000 * LAIR_THREAT_MUL[t]))
-    expect(lairTaskRewardIsk(LAIR_A, t)).toBe(Math.round(lairBaseRewardIsk(LAIR_A, t) * LAIR_TASK_REWARD_MUL[t]))
-    // 高强度（三档）酬金 > 低强度（一档）——酬金跟强度递增
+  it('赏金倍率 2/4/8：窝点奖金 = 主题奖金 ×2/×4/×8（威胁不受影响）；酬金 = 奖金 ×0.5/0.75/1.0', () => {
+    expect(LAIR_REWARD_MUL).toEqual({ 1: 2, 2: 4, 3: 8 })
+    for (const t of [1, 2, 3] as const) {
+      // 奖金：×赏金倍率
+      expect(lairBaseRewardIsk(LAIR_A, t)).toBe(20_000 * LAIR_REWARD_MUL[t])
+      // 威胁：仍走原档位系数（与倍率解耦）
+      expect(lairAnomalyOf(LAIR_A, t).threat).toBe(Math.round(LAIR_A.threat * LAIR_THREAT_MUL[t]))
+      // 酬金：窝点奖金 ×档位比例（跟强度递增）
+      expect(lairTaskRewardIsk(LAIR_A, t)).toBe(Math.round(lairBaseRewardIsk(LAIR_A, t) * LAIR_TASK_REWARD_MUL[t]))
+    }
+    expect(LAIR_REWARD_MUL[1]).toBeGreaterThan(1) // 一档也明确高于常驻悬赏原值
+    expect(lairBaseRewardIsk(LAIR_A, 3)).toBe(lairBaseRewardIsk(LAIR_A, 1) * 4)
     expect(lairTaskRewardIsk(LAIR_A, 3)).toBeGreaterThan(lairTaskRewardIsk(LAIR_A, 1))
   })
 
@@ -139,11 +160,11 @@ describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () 
   })
 })
 
-describe('赏金任务 · 20 分钟整点板刷出', () => {
+describe('赏金任务 · 日板刷出（24 小时 · 每天本地 0 点）', () => {
   it('刷出：每轮 2 张（候选不足按实际数）；同轮不重复星系；档位与酬金在刷出时锁定', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-far') // 两个候选星系都探索过
-    openBoard(state, ctx)
+    openBountyBoard(state, ctx)
     const board = state.sideTasks
     expect(board.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND)
     const galaxies = board.bounty.map((t) => t.galaxyId)
@@ -165,7 +186,7 @@ describe('赏金任务 · 20 分钟整点板刷出', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-far')
     expect(state.standings[DSI_FACTION_ID] ?? 0).toBe(0)
-    openBoard(state, ctx)
+    openBountyBoard(state, ctx)
     const board = state.sideTasks.bounty
     expect(board).toHaveLength(BOUNTY_TASKS_PER_ROUND)
     // LAIR_B 的声望门槛 4 > 当前声望 0：照样在板上（门槛与当前声望一并展示，出发时拒）
@@ -179,7 +200,7 @@ describe('赏金任务 · 20 分钟整点板刷出', () => {
     const { state, ctx } = makeWorld()
     state.standings[DSI_FACTION_ID] = 6
     // far 未探索：只应刷出 hub 的窝点（1 张）
-    openBoard(state, ctx)
+    openBountyBoard(state, ctx)
     expect(state.sideTasks.bounty).toHaveLength(1)
     const only = state.sideTasks.bounty[0]!
     expect(only.anomalyId).toBe('ano-lair-a')
@@ -190,20 +211,58 @@ describe('赏金任务 · 20 分钟整点板刷出', () => {
     expect(state.sideTasks.bounty.some((t) => t.anomalyId === 'ano-a')).toBe(false)
   })
 
-  it('每轮整板替换：跨过下一个整点 → 赏金任务换新（id 递增、旧任务作废，无惩罚）', () => {
+  it('整板替换 = 每天本地 0 点：跨到次日换新（id 递增、旧任务作废，无惩罚），当日不换', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-far')
-    openBoard(state, ctx)
+    openBountyBoard(state, ctx, T0)
     const first = state.sideTasks.bounty.map((t) => t.id)
     expect(first.length).toBeGreaterThan(0)
-    advanceGame(state, PERIOD, ctx)
+    expect(state.sideTasks.bountyWindow).toBe(bountyDayStartWallMs(T0))
+    // 同一天内：推进 20 分钟板的一个周期（gameMs 跨过 20 分钟整点）→ 赏金板不动（两套板彼此独立）
+    advanceGame(state, PERIOD, ctx, { nowWallMs: T0 + PERIOD })
+    expect(state.sideTasks.bounty.map((t) => t.id)).toEqual(first)
+    // 当天稍晚：仍不换
+    advanceGame(state, PERIOD, ctx, { nowWallMs: T0 + 6 * 3_600_000 })
+    expect(state.sideTasks.bounty.map((t) => t.id)).toEqual(first)
+    // 跨到次日（+24h）：整板换新
+    openBountyBoard(state, ctx, T0 + BOUNTY_BOARD_PERIOD_MS)
     const second = state.sideTasks.bounty
     expect(second).toHaveLength(BOUNTY_TASKS_PER_ROUND)
     expect(second.every((t) => t.id > Math.max(...first))).toBe(true)
-    // 面板视图同步暴露赏金列表与剩余时间
-    const view = sideTaskBoard(state, ctx)
+    expect(state.sideTasks.bountyWindow).toBe(bountyDayStartWallMs(T0 + BOUNTY_BOARD_PERIOD_MS))
+    // 面板视图：赏金列表 + 日板倒计时（距下一个本地 0 点，≤24 小时）
+    const view = sideTaskBoard(state, ctx, T0 + BOUNTY_BOARD_PERIOD_MS)
     expect(view.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND)
-    expect(view.remainingMs).toBeGreaterThan(0)
+    expect(view.bountyOpened).toBe(true)
+    expect(view.bountyRemainingMs).toBeGreaterThan(0)
+    expect(view.bountyRemainingMs).toBeLessThanOrEqual(BOUNTY_BOARD_PERIOD_MS)
+  })
+
+  it('离线跨夜：一次大推进只按末界刷一次（中间那些天的板早已作废）', () => {
+    const { state, ctx } = makeWorld()
+    markExplored(state, 'galaxy-far')
+    openBountyBoard(state, ctx, T0)
+    const first = state.sideTasks.bounty.map((t) => t.id)
+    // 离线 3 天（末刻仍在"某日正午"）→ 只补最后一道日界
+    openBountyBoard(state, ctx, T0 + 3 * BOUNTY_BOARD_PERIOD_MS)
+    const now = state.sideTasks.bounty
+    expect(now).toHaveLength(BOUNTY_TASKS_PER_ROUND)
+    expect(now.every((t) => t.id > Math.max(...first))).toBe(true)
+    expect(state.sideTasks.bountyWindow).toBe(bountyDayStartWallMs(T0 + 3 * BOUNTY_BOARD_PERIOD_MS))
+    // 再刷一次同一天：不动（幂等）
+    const ids = now.map((t) => t.id)
+    openBountyBoard(state, ctx, T0 + 3 * BOUNTY_BOARD_PERIOD_MS + 3_600_000)
+    expect(state.sideTasks.bounty.map((t) => t.id)).toEqual(ids)
+  })
+
+  it('无有效墙钟（旧档首帧）不开日板；拿到真实墙钟后立刻开板', () => {
+    const { state, ctx } = makeWorld()
+    markExplored(state, 'galaxy-far')
+    advanceGame(state, 1_000, ctx) // 不传墙钟 + savedAtWallMs = 0（老档）
+    expect(state.sideTasks.bountyWindow).toBe(0)
+    expect(state.sideTasks.bounty).toHaveLength(0)
+    openBountyBoard(state, ctx, T0)
+    expect(state.sideTasks.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND)
   })
 })
 
@@ -243,7 +302,7 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
   /** 造一个"板上已有该窝点赏金任务 + 舰队已抵达"的局面 */
   function aboardLair(seed = 5): { state: GameState; ctx: SimContext; taskId: number; rewardIsk: number } {
     const { state, ctx } = makeWorld(seed)
-    openBoard(state, ctx)
+    openBountyBoard(state, ctx)
     const task = state.sideTasks.bounty.find((t) => t.anomalyId === 'ano-lair-a')!
     const r = startExpedition(state, 'ano-lair-a', ctx, { lairTier: task.lairTier })
     expect(r.ok).toBe(true)
@@ -367,21 +426,25 @@ describe('赏金任务 · 存档往返与老档兼容', () => {
   it('bounty 板与稀有残骸记账（rare/rareBy）落档保真', () => {
     const { state, ctx } = makeWorld(41)
     markExplored(state, 'galaxy-far')
-    openBoard(state, ctx)
+    openBountyBoard(state, ctx, T0)
     injectRareWreck(state, 'galaxy-hub', 'ano-lair-a', 2)
     const loaded = loadSaveFile(serializeSaveFile(state, 0))
     expect(loaded.state.sideTasks.bounty).toEqual(state.sideTasks.bounty)
+    // 日界（本地 0 点墙钟）必须落档：否则读档后会被当成"未开板"重刷一次
+    expect(loaded.state.sideTasks.bountyWindow).toBe(bountyDayStartWallMs(T0))
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.rare).toBe(2)
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.rareBy).toEqual({ 'ano-lair-a': 2 })
   })
 
-  it('老档（无 bounty / 无 rareBy 字段）读入：补空板、残骸记录不含归族表，其余无损', () => {
+  it('老档（无 bounty / 无 bountyWindow / 无 rareBy 字段）读入：补空板与日界 0、残骸记录不含归族表，其余无损', () => {
     const { state, ctx } = makeWorld(43)
     state.galaxyWrecks['galaxy-hub'] = { density: 12 } as never
     const raw = state as unknown as Record<string, unknown>
     delete (raw.sideTasks as Record<string, unknown>).bounty
+    delete (raw.sideTasks as Record<string, unknown>).bountyWindow
     const loaded = loadSaveFile(serializeSaveFile(raw as unknown as GameState, 0))
     expect(loaded.state.sideTasks.bounty).toEqual([])
+    expect(loaded.state.sideTasks.bountyWindow).toBe(0)
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.density).toBe(12)
     expect(loaded.state.galaxyWrecks['galaxy-hub']!.rareBy).toBeUndefined()
     expect(Object.keys(loaded.state.galaxyWrecks)).toEqual(['galaxy-hub'])
