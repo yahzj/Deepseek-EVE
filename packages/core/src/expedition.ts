@@ -634,9 +634,10 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
 /**
  * 撤退结算核心（2026-09-08：手动撤退与巡回自动撤退共用）：
  * 承伤写回 → 半损扣耐久（最低 1%）→ 下限 5% 保护（绝不弃船）→ 维修费 → 停清剿 → 转返航。
- * mode = 'auto' 时由连续作战保险触发（本场结构损失过半），日志与停环文案区分来源。
+ * mode 三档：'manual' 玩家主动撤退；'auto' 连续作战保险（本场结构损失过半）；
+ * 'timeout' **战斗打满上限判负**（2026-09-10 船长定：超时不再按残血比判胜，视同被迫撤退）。
  */
-function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' | 'auto'): void {
+function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' | 'auto' | 'timeout'): void {
   const exp = state.expedition
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
@@ -661,9 +662,11 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
     addLog(
       state,
       'warn',
-      mode === 'auto'
-        ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
-        : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
+      mode === 'timeout'
+        ? '⚠ 超时撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
+        : mode === 'auto'
+          ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
+          : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
     )
   }
   if (fleetShip) {
@@ -678,9 +681,11 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   addLog(
     state,
     'warn',
-    mode === 'auto'
-      ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
-      : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
+    mode === 'timeout'
+      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
+      : mode === 'auto'
+        ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
+        : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
   )
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
@@ -690,7 +695,9 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
     const text =
       mode === 'manual'
         ? `重复清剿已停止（手动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
-        : `重复清剿已停止（本场结构损失过半，自动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
+        : mode === 'timeout'
+          ? `重复清剿已停止（战斗超时）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
+          : `重复清剿已停止（本场结构损失过半，自动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
     addLog(state, 'info', text)
     // 2026-09-10 船长定：除事件日志外，玩家在线时弹窗告知（心跳读取即清）
     if (mode === 'auto') state.autoLoopStopNotice = text
@@ -775,9 +782,11 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         return
       }
       advanceBattleFor(state, ctx, exp.battle, state.shipId, exp.anomalyId, null, exp.lairTier)
-      // 连续作战保险：巡回场次结构损失过半 → 立即轻损撤退（停环、绝不弃船）
+      // 撤离请求两个来源（都走同一轻损撤退结算，只在文案上区分）：
+      // ①连续作战保险——巡回场次结构损失过半；②**战斗超时判负**（2026-09-10 船长定）。
+      // 来源见 battle.escapeReason，缺省 = 'hull'（旧档/旧口径零迁移）。
       if (exp.battle.autoEscaped) {
-        settleBattleRetreat(state, ctx, 'auto')
+        settleBattleRetreat(state, ctx, exp.battle.escapeReason === 'timeout' ? 'timeout' : 'auto')
         if (!exp.active) return
         continue // 已转 back：若返航已到点则同帧回家
       }

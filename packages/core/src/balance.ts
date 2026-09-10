@@ -199,7 +199,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     tacticDesireFactor: { brawl: 0.2, orbit: 0.55, kite: 0.85 },
     ammoTimeCapMs: 4 * 60_000, // 弹药预载：按 4 分钟最大交战时长估算
     ammoMargin: 1.5, // 预载余量 ×1.5
-    maxBattleMs: 10 * 60_000, // 战斗硬上限：超时按剩余血量比判胜
+    maxBattleMs: 10 * 60_000, // 战斗硬上限：打满即判负（2026-09-10 船长定），结算按被迫撤退处理
     // P0 承伤持久化：护盾战中被动回充（每秒回满盾的 2%；P2 随流派平衡再校准）
     shieldRegenPerSec: 0.02,
     waveReopenFrac: 0.5, // 多波次转场（2026-09-09 船长建议）：下一波把距离向开战距离回拉 50%（0=原地/1=回满，可随时调）

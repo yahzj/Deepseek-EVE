@@ -82,3 +82,35 @@ describe('战斗中撤退（轻损）', () => {
     expect(state.autoLoopAnomalyId).toBeNull()
   })
 })
+
+/* ═══════════ 战斗超时判负（2026-09-10 船长定） ═══════════
+ * 旧口径：打满 maxBattleMs 按剩余血量比判定，且 meRatio >= bestFoe 即判我方胜
+ * （= 平局算赢）→ "打不死敌人但敌人也打不着我"的风筝流可白拿全额赏金。
+ * 新口径：打满上限**一律判负**，并视同**被迫撤退**（轻损结算、停重复清剿、转返航）。 */
+describe('战斗超时判负（视同被迫撤退）', () => {
+  it('打满战斗上限 → 判负 + 轻损撤退：无赏金、停清剿、绝不弃船、日志写明超时', () => {
+    const { state, ctx } = world()
+    state.autoLoopAnomalyId = 'ano-a' // 巡回场：超时撤退须同时停环（船长定）
+    enterBattle(state, ctx)
+    const b = state.expedition.battle!
+    // 双方都打不死对方 → 必然走到超时判定（不依赖击杀取样运气）
+    const units = Object.values(b.units) as Array<{ hp: { s: number; a: number; h: number } }>
+    for (const u of units) u.hp = { s: 1e9, a: 1e9, h: 1e9 }
+    const iskBefore = state.wallet.isk
+    const durBefore = durabilityOf(state, state.shipId)
+    // 一步推到上限之外：战斗时钟走满 → 超时判定 → 撤退结算
+    advanceGame(state, ctx.balance.battle.maxBattleMs + 5_000, ctx)
+
+    expect(b.ended).toBe('foe') // 判负（旧口径在此为我方满血/敌未死 → 会判 'me'）
+    expect(b.escapeReason).toBe('timeout') // 走的是"超时"来源，不是结构损失过半
+    expect(state.wallet.isk).toBeLessThanOrEqual(iskBefore) // 判负：拿不到赏金（反被扣维修费）
+    expect(state.logs.some((l) => l.kind === 'warn' && l.text.includes('战斗超时'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('舰船被迫撤退，正在返航'))).toBe(true)
+    expect(state.autoLoopAnomalyId).toBeNull() // 超时 = 收手，停重复清剿
+    expect(state.logs.some((l) => l.text.includes('重复清剿已停止（战斗超时）'))).toBe(true)
+    const durAfter = durabilityOf(state, state.shipId)
+    expect(durAfter).toBeGreaterThanOrEqual(0.05) // 下限保护：绝不因超时弃船
+    expect(durAfter).toBeLessThan(durBefore) // 轻损（战败扣损骰的一半）
+    expect(state.fleet[state.shipId]).toBeDefined() // 船还在
+  })
+})

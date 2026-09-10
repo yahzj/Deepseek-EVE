@@ -12,6 +12,8 @@
  *     故"无抗件 / 硬化主系 / 硬化副系"三者血量完全相同——差异 100% 来自抗性取向）。
  *  B. **实战复核**（真实模拟）：纯主系 / 9:1 / 8:2 三臂**同种子**对照 胜率·时长·残血。
  *  C. **份额灵敏度标价**：7:3 与 6:4（与 A 同口径，只换份额；窝点真实战斗含威胁倍率与波次，不在本工具内）。
+ *  D. **P1 复调轮口径复跑**（2026-09-10 船长「重跑 P1 口径」）：复刻 `power-ladder-rework.md` §五
+ *     定稿表的行与列，按今日口径重跑 + 纯主系对照列，用于把下滑**归因**到混伤或更早的漂移。
  *
  * 口径保证：各臂的**敌总伤、武器形态、命中、近盲、距离衰减完全一致**（只改伤害构成），
  * 故承伤差异 100% 来自"各系各吃各的层抗与层位克制"——这正是要复核的副作用。
@@ -400,6 +402,64 @@ function sectionB(): void {
   void detail
 }
 
+/* ═══════════ D. P1 复调轮口径复跑（2026-09-10 船长：重跑 P1 口径） ═══════════
+ * 复刻 docs/design/power-ladder-rework.md §五「定稿验收」那张表的行与列，按**今日口径**重跑，
+ * 并同时给「纯主系口径」一列做归因——差异若在纯系口径下同样存在，就不是混伤造成的，而是
+ * 09-09 之后其它批次（多波次/敌速上调/巡洋数值/点防等）的漂移。 */
+
+/** P1 定稿表（2026-09-09 r4，5 种子）：'胜率|秒|残血%'，'—' = 当批未测该格 */
+const P1_BASELINE: Record<string, Record<string, string>> = {
+  '锤头鲨炮巡·中位': { 噬口: '100%|50s|107%', 坟场: '100%|50s|112%', 虚海: '100%|54s|107%', 穹顶: '100%|72s|109%', 赤潮: '100%|37s', 蜃影: '100%|51s' },
+  '锤头鲨炮巡·无技能': { 噬口: '100%|104s|76%', 坟场: '100%|114s|64%', 虚海: '100%|112s|68%', 穹顶: '100%|129s|47%' },
+  'S2 灰鲭鲨MK2·中位': { 噬口: '100%|87s', 坟场: '100%|93s', 虚海: '100%|101s', 穹顶: '100%|127s|69%', 赤潮: '100%|47s', 蜃影: '100%|64s|29%' },
+  'S1 虎鲨4MK2·中位': { 赤潮: '100%|52s' },
+  'S4 大白鲨5MK3·中位': { 噬口: '100%|52s', 坟场: '100%|55s', 虚海: '100%|56s', 穹顶: '100%|69s' },
+}
+
+const P1_COLS: Array<{ key: string; id: string }> = [
+  { key: '噬口', id: 'ano-maw-hunt' },
+  { key: '坟场', id: 'ano-gravekeeper' },
+  { key: '虚海', id: 'ano-voidedge-warden' },
+  { key: '穹顶', id: 'ano-vault-sentinel' },
+  { key: '赤潮', id: 'ano-redring-raiders' },
+  { key: '蜃影', id: 'ano-mirage-hijackers' },
+]
+
+const P1_ROWS: Array<{ label: string; ld: Loadout; skills: Record<string, number> }> = [
+  { label: '锤头鲨炮巡·中位', ld: L_T3H, skills: MID_SKILLS },
+  { label: '锤头鲨炮巡·无技能', ld: L_T3H, skills: {} },
+  { label: 'S2 灰鲭鲨MK2·中位', ld: L_S2, skills: MID_SKILLS },
+  { label: 'S1 虎鲨4MK2·中位', ld: L_S1, skills: MID_SKILLS },
+  { label: 'S4 大白鲨5MK3·中位', ld: L_S4, skills: MID_SKILLS },
+]
+
+function sectionD(): void {
+  console.log('\n════════ D. P1 复调轮口径复跑（2026-09-09 定稿 vs 今日；9 种子）════════')
+  console.log('每格 = 今日(8:2 当前口径) 胜率|秒|残血% ／ 今日(纯主系口径) ／ P1 定稿(09-09)')
+  console.log('归因读法：若「今日纯系」也已明显低于「P1 定稿」，则该格的下滑**不是混伤造成的**，')
+  console.log('          而是 09-09 之后其它批次（多波次/敌速上调/点阵/数值等）的漂移。')
+  const armPure = ctxWithShare(0)
+  const armNow = ctxWithShare(0.2)
+  for (const row of P1_ROWS) {
+    console.log(`\n—— ${row.label} ——`)
+    for (const col of P1_COLS) {
+      const card = ctx.anomalies.get(col.id)
+      if (!card) {
+        console.log(`  ${col.key}：目标卡缺失`)
+        continue
+      }
+      const base = P1_BASELINE[row.label]?.[col.key]
+      const now = runCell(row.ld, card, row.skills, armNow)
+      const pure = runCell(row.ld, card, row.skills, armPure)
+      const f = (c: Cell): string => `${c.winPct}%|${c.durS}s|${c.remPct}%`
+      console.log(
+        `  ${col.key.padEnd(4)} 今日8:2 ${f(now).padEnd(13)} 今日纯系 ${f(pure).padEnd(13)} P1定稿 ${(base ?? '—（当批未测）').padEnd(13)}` +
+          (base === undefined ? '' : now.winPct < pure.winPct || now.remPct < pure.remPct ? '  ← 混伤亦有影响' : ''),
+      )
+    }
+  }
+}
+
 /* 证据落盘：stdout 同步镜像一份到 battle-data（复核材料与既有校准矩阵同目录） */
 const MIRROR: string[] = []
 const origLog = console.log.bind(console)
@@ -408,10 +468,12 @@ console.log = (...args: unknown[]): void => {
   origLog(...args)
 }
 
+/** 复用一次 S4/满技能的逐卡结果（避免重复跑） */
 function main(): void {
   origLog('（探针运行中，输出会同时镜像到 docs/design/battle-data/mixed-damage-review-20260910.txt）')
   sectionA()
   sectionB()
+  sectionD()
   console.log('\n（探针结束）')
   const out = path.join('docs', 'design', 'battle-data', 'mixed-damage-review-20260910.txt')
   mkdirSync(path.dirname(out), { recursive: true })
