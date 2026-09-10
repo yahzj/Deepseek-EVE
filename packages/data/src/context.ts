@@ -8,7 +8,7 @@ import {
   FRAGMENT_RECIPES,
   fragmentItemDefOf,
   fragmentItemIdOf,
-  isLairCandidate,
+  hasLairCore,
   rareWreckItemDefOf,
   rareWreckItemIdOf,
   wreckItemDefOf,
@@ -39,10 +39,12 @@ export function buildSimContext(): SimContext {
     if (items.has(id)) continue
     items.set(id, wreckItemDefOf(a.id, a.name, a.threat))
   }
-  // 赏金任务·窝点：可作窝点目标（有核心词）的敌群各配一件「稀有残骸」物品——
+  // 赏金任务·窝点：具备窝点派生能力（有核心词、非隐藏）的敌群各配一件「稀有残骸」物品——
   // 只有击败窝点才会落在该星系残骸场、打捞时**必得**，回站精炼炉当「高级箱」开（额外掉落）。
+  // 用 hasLairCore（不是 isLairCandidate）：已停用的 B 族也注册，好让旧档里可能已存在的
+  // B 族稀有残骸仍能被识别、能正常开箱（只是不再新增产出）。
   for (const a of anomalies.values()) {
-    if (!isLairCandidate(a)) continue
+    if (!hasLairCore(a)) continue
     const id = rareWreckItemIdOf(a.id)
     if (items.has(id)) continue
     items.set(id, rareWreckItemDefOf(a.id, a.name))

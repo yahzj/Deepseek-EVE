@@ -39,7 +39,7 @@ import {
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
 import { claimTutorialTrialReward } from './onboarding'
-import { isLairCandidate, lairAnomalyOf, lairBaseRewardIsk, lairNameOf, lairTierForStanding, LAIR_RARE_WRECK_GAIN } from './lairs'
+import { isLairCandidate, lairAnomalyOf, lairBaseRewardIsk, lairNameOf, LAIR_RARE_WRECK_GAIN } from './lairs'
 import type { LairTier } from './lairs'
 import { injectRareWreck } from './salvage'
 import { settleBountyTaskVictory } from './sideTasks'
@@ -264,14 +264,11 @@ export function startExpedition(
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)!
-  // 窝点校验：目标必须可作窝点（有核心词），且档位不超过当前声望允许的上限
-  if (opts?.lairTier !== undefined) {
-    if (!isLairCandidate(anomaly)) {
-      return { ok: false, error: '该目标不是敌人窝点，无法作为赏金任务目标。' }
-    }
-    if (opts.lairTier > lairTierForStanding(standingOf(state, DSI_FACTION_ID))) {
-      return { ok: false, error: '声望不足：该档位窝点暂不可接（提升协会声望后开放更高档）。' }
-    }
+  // 窝点校验：目标必须可作窝点（有核心词、非隐藏、非 B 族）。
+  // 2026-09-10 船长定：档位不再由声望封顶（改由日板席位决定），接取门槛只看卡自身声望要求
+  // ——后者已在 expeditionPreflight 里把关。
+  if (opts?.lairTier !== undefined && !isLairCandidate(anomaly)) {
+    return { ok: false, error: '该目标不是敌人窝点，无法作为赏金任务目标。' }
   }
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
