@@ -1649,17 +1649,26 @@ export function pdEnabledFor(threat: number, bal: BattleBalance): boolean {
   return threat >= bal.pdThreatFloor
 }
 
-/** 存活且**可被近防炮锁定**的放飞条目下标——排除哨戒机（2026-09-10 船长：近防炮不打哨戒无人机） */
-function aliveDroneIndices(b: import('./state').BattleState, sentryIds: ReadonlySet<string> = SENTRY_DRONE_IDS): number[] {
+/**
+ * 近防炮可选靶（存活放飞条目下标）：
+ * - 默认**排除哨戒机**（2026-09-10 船长：近防炮不打哨戒无人机）；
+ * - **非哨戒机全被摧毁后，近防炮转而攻击哨戒机**（2026-09-10 船长追加）——
+ *   即"机群里还有别的机型就先打别的，只剩哨戒机时才打它"。
+ */
+function aliveDroneIndices(
+  b: import('./state').BattleState,
+  sentryIds: ReadonlySet<string> = SENTRY_DRONE_IDS,
+): number[] {
   const pools = b.dronePools
   if (!pools) return []
-  const out: number[] = []
+  const others: number[] = []
+  const sentries: number[] = []
   for (const [k, p] of Object.entries(pools)) {
     if (!p.alive) continue
-    if (p.artId && sentryIds.has(p.artId)) continue // 哨戒机不参与被锁定
-    out.push(Number(k))
+    if (p.artId && sentryIds.has(p.artId)) sentries.push(Number(k))
+    else others.push(Number(k))
   }
-  return out
+  return others.length > 0 ? others : sentries
 }
 
 /** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
@@ -1678,7 +1687,8 @@ export function droneLostCount(b: import('./state').BattleState): number {
 /**
  * 近防炮结算（每拍调用；2026-09-10 船长口径）：
  * - 每艘点防舰**独立**按 `pdJudgementMs`（0.5s）判定一次；
- * - 随机挑一架**正在攻击的放飞无人机**（存活、非哨戒机）→ 按 `pdAcc − 机型闪避` 掷命中；
+ * - 随机挑一架**正在攻击的放飞无人机**（存活；**默认不打哨戒机，但非哨戒机全灭后转而打它**）
+ *   → 按 `pdAcc − 机型闪避` 掷命中；
  * - 命中按 `pdDmg` 走该机型三层抗性；血量打空 = 该架本场击落（停火 + 计入 droneLost）；
  * - **不看距离**（放飞出去就在威胁之下）；单场击落上限 `pdMaxLossFrac` 防团灭；
  * - 近防炮不参与敌舰对玩家的常规攻击（独立系统）；全程消费 state.rng，确定性可复现。
