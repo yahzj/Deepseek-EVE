@@ -13,8 +13,8 @@
 | 任务类型 | 先读这些(按序) |
 |---|---|
 | **任何改动** | 本文件 §2 四步闸门 · §3 验证闭环 · §4 工作区与合入纪律 |
-| 改 UI / 页面 / 视觉物件 | `development-conventions.md` **§九**(UI 与视觉一致性) + 同级相似界面代码 |
-| 改战斗 / 表现层 / 动画 | §九 + `docs/design/` 里对应设计稿(如 `drone-combat-animation-20260910.md`) |
+| 改 UI / 页面 / 视觉物件 | `development-conventions.md` **§九**(UI 与视觉一致性) + **§十四**(表现层实现与性能纪律) + 同级相似界面代码 |
+| 改战斗 / 表现层 / 动画 | §九 + **§十四** + `docs/design/` 里对应设计稿(如 `drone-combat-animation-20260910.md`) |
 | 改数值 / 经济 / 平衡 | §一(闸门) §二(验证) §八 + 对应设计稿 + `tools/*`(校准脚本,如 `battle:calibrate`) |
 | 改存档结构 / 迁移 | §八 + `docs/architecture.md` + 只读真档或先备份 |
 | 写/改玩家可见文案 | §十三(文案纯净与设定) §十一(术语) + `docs/glossary.md` |
@@ -26,7 +26,7 @@
 | 交付可测存档 | §八 + `docs/test-saves/` + `tools/make-test-save.ts` |
 
 **文档清单(用途一览)**
-- `docs/development-conventions.md` — 约定**权威正文**(一~十三章);第十四章只留指针。
+- `docs/development-conventions.md` — 约定**权威正文**(一~十四章);第十五章只留变更记录指针。
 - `docs/development-conventions-changelog.md` — 约定与 AGENTS.md 的**历次变更记录**(最新在前;干活不必读)。
 - `docs/architecture.md` — 架构与模块边界。
 - `docs/glossary.md` — **术语权威**;新术语先登记再用。
