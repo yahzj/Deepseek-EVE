@@ -18,7 +18,7 @@
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, createFoeSpecs, createPlayerSpec, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, createPlayerSpec, foeHpOfThreat, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const BASE_CTX = buildSimContext()
 /** 敌突进对照开关（只影响本工具；引擎默认仍是"未实装"） */
@@ -27,38 +27,47 @@ const CHARGE_ON = process.argv.includes('--charge')
 const PROPOSAL = process.argv.includes('--proposal')
 
 /**
- * 敌速重标提案（2026-09-10 船长口径：brawl 1.25→1.40×、orbit 0.95→1.05×、kite 维持现状）。
+ * 敌速重标提案（2026-09-10 船长裁决：**固定锚定** + **参考"速度中位线的船只"**；近战卡逐张审核）。
  *
- * 比率定义 = **敌战斗机动 ÷ 玩家战斗机动**，玩家取"该威胁段参考船（220/250/280/300/320 船速）、
- * 敏捷 0.5、无矢量机动学、不装推进器"。换算：敌速(存储值) = 比率 × 参考船速 ÷ 0.94
- * （敌方敏捷固定 0.3 → 战斗机动 = 存储值 ×0.6×0.94；玩家 = 参考船速 ×0.6）。
+ * **基准船** = 船池按 `maxSpeedMps` 排序取中位（工具运行时自己算，池子变了基准跟着变）——
+ * 当前 = **长尾鲨级导弹巡洋舰**（船速 272 / 敏捷 0.54）→ **基准战斗机动 = 272 ×0.6×(1+(0.54−0.5)×2×0.15)
+ * ≈ 165.2 m/s**（无技能、不装推进器）。
+ * 比率定义 = **敌战斗机动 ÷ 基准战斗机动**；换算 `存储速度 = 比率 × 基准战斗机动 ÷ 0.564`
+ * （敌方敏捷固定 0.3 → 战斗机动 = 存储值 ×0.6×0.94）。
  * s = clamp((威胁−6)/90, 0, 1)：brawl 比率 = 1.25+0.15s，orbit 比率 = 0.95+0.10s。
- * kite 维持现状（落在船长给的口径带 0.65~0.80 内，且是"玩家可追上钻近盲"的设计支点）。
+ * kite 维持现状（比率为基准的 0.69~0.80×，本就落在船长给的口径带 0.65~0.80 内）。
  */
+const REF_SHIP = [...SHIPS].sort((a, b) => (a.maxSpeedMps ?? 0) - (b.maxSpeedMps ?? 0))[
+  Math.floor(SHIPS.length / 2)
+]!
+const REF_COMBAT = (REF_SHIP.maxSpeedMps ?? 0) * 0.6 * (1 + ((REF_SHIP.agility ?? 0.5) - 0.5) * 2 * 0.15)
+/** 敌速存储值换算：战斗机动 → 存储值（敌敏捷 0.3） */
+const spin = (r: number): number => Math.round((REF_COMBAT * r) / (0.6 * 0.94))
+
 const PROPOSED_FOE_SPEED: Record<string, number> = {
   // brawl（11 张）：1.25→1.40×
-  'ano-training': 293,
-  'ano-harbor-escort': 294,
-  'ano-pirate-post': 335,
-  'ano-shard-bandits': 339,
-  'enc-pirate-3': 389,
-  'ano-chasm-aberrations': 398,
-  'ano-titan-wreck': 399,
-  'ano-auro-raiders': 400,
-  'enc-pirate-4': 433,
-  'ano-starcore-boss': 434,
-  'ano-gravekeeper': 443,
+  'ano-training': spin(1.25), // 366
+  'ano-harbor-escort': spin(1.25 + 0.15 * (4 / 90)), // 368
+  'ano-pirate-post': spin(1.26), // 369
+  'ano-shard-bandits': spin(1.25 + 0.15 * (14 / 90)), // 373
+  'enc-pirate-3': spin(1.25 + 0.15 * (34 / 90)), // 383
+  'ano-chasm-aberrations': spin(1.25 + 0.15 * (52 / 90)), // 391
+  'ano-titan-wreck': spin(1.34), // 392
+  'ano-auro-raiders': spin(1.25 + 0.15 * (56 / 90)), // 393
+  'enc-pirate-4': spin(1.25 + 0.15 * (64 / 90)), // 397
+  'ano-starcore-boss': spin(1.36), // 398
+  'ano-gravekeeper': spin(1.25 + 0.15 * (82 / 90)), // 406
   // orbit（10 张）：0.95→1.05×
-  'enc-pirate-1': 223,
-  'ano-abandoned-platform': 256,
-  'ano-lantern-saboteurs': 257,
-  'enc-pirate-2': 257,
-  'ano-cinder-siege': 295,
-  'ano-echo-haunt': 298,
-  'ano-nadir-static': 324,
-  'ano-maw-hunt': 329,
-  'ano-voidedge-warden': 332,
-  'ano-vault-sentinel': 357,
+  'enc-pirate-1': spin(0.95 + 0.1 * (4 / 90)), // 279
+  'ano-abandoned-platform': spin(0.95 + 0.1 * (10 / 90)), // 281
+  'ano-lantern-saboteurs': spin(0.95 + 0.1 * (16 / 90)), // 283
+  'enc-pirate-2': spin(0.95 + 0.1 * (16 / 90)), // 283
+  'ano-cinder-siege': spin(0.99), // 290
+  'ano-echo-haunt': spin(0.95 + 0.1 * (46 / 90)), // 293
+  'ano-nadir-static': spin(0.95 + 0.1 * (60 / 90)), // 298
+  'ano-maw-hunt': spin(0.95 + 0.1 * (74 / 90)), // 302
+  'ano-voidedge-warden': spin(0.95 + 0.1 * (82 / 90)), // 305
+  'ano-vault-sentinel': spin(1.05), // 307
   // kite（5 张）：维持现状
   'ano-haze-ambush': 201,
   'ano-redring-raiders': 204,
@@ -283,8 +292,11 @@ async function main(): Promise<void> {
   }
 
   /* C4-#3 校验段：敌方虚拟装配推导结果（射程/速度 vs 玩家参考） */
-  console.log('\n—— 敌方虚拟装配校验（射程=封顶后最大值；速度 = **敌战斗机动 ÷ 同段参考船战斗机动**）——')
-  console.log('（2026-09-10 更正读数：旧「近战贴脸系数」把敌速（船速池单位）除以玩家**战斗**速度，单位混算、虚高约 1.67 倍）')
+  console.log('\n—— 敌方虚拟装配校验（射程 = 封顶后最大值；速度 = **敌战斗机动 ÷ 基准船战斗机动**）——')
+  console.log(
+    `（基准船 = 速度中位线船只 ${REF_SHIP.name}：船速 ${REF_SHIP.maxSpeedMps} / 敏捷 ${REF_SHIP.agility}` +
+      ` → 战斗机动 ${REF_COMBAT.toFixed(1)} m/s；2026-09-10 更正读数：旧「近战贴脸系数」单位混算、虚高约 1.67 倍）`,
+  )
   const foeAgilityMul = 0.6 * (1 + (0.3 - 0.5) * 2 * bal.agilitySpeedBonus)
   for (const a of threats) {
     const eff = ctx.anomalies.get(a.id) ?? a
@@ -292,14 +304,12 @@ async function main(): Promise<void> {
     const f0 = foes[0]!
     const fmax = f0.weapons[0]!.maxRangeM
     const capped = fmax >= bal.foeRangeCapM ? ' *封顶' : ''
-    const ref = foeRefSpeedMps(eff.threat, bal)
     const foeCombat = f0.speedMps * foeAgilityMul
-    const refCombat = ref * bal.speedFactor
-    const ratio = foeCombat / Math.max(1, refCombat)
+    const ratio = foeCombat / Math.max(1, REF_COMBAT)
     console.log(
       `${String(eff.threat).padStart(3)} ${eff.name.padEnd(12)} ${String(eff.tactic ?? 'orbit').padEnd(6)} ` +
-        `敌射程 ${(fmax / 1000).toFixed(1)}km${capped}  敌速 ${f0.speedMps}（参考船 ${ref}）  ` +
-        `战斗机动 ${Math.round(foeCombat)} vs 参考船 ${Math.round(refCombat)} → **×${ratio.toFixed(2)}**`,
+        `敌射程 ${(fmax / 1000).toFixed(1)}km${capped}  敌速 ${f0.speedMps}  ` +
+        `战斗机动 ${Math.round(foeCombat)} → **×${ratio.toFixed(2)}** 基准船`,
     )
   }
   /* 速度口径校验（提案预演用）：把"目标比率"与"玩家实际战斗机动"对上——
@@ -332,6 +342,57 @@ async function main(): Promise<void> {
             KEY_CARDS.map((c, i) => `${c.label} ${cells[i]}`).join('  '),
         )
       }
+    }
+  }
+  /* 近战卡虚拟装配逐卡对照（船长 2026-09-10：近战卡给出对比和虚拟装配，由船长一一审核） */
+  if (PROPOSAL) {
+    const baseBal = BASE_CTX.balance.battle
+    const brawls = [...BASE_CTX.anomalies.values()]
+      .filter((a) => (a.tactic ?? 'orbit') === 'brawl')
+      .sort((a, b) => a.threat - b.threat)
+    console.log('\n════ 近战(brawl)卡虚拟装配逐卡对照（现状 → 提案；供船长逐张审核）════')
+    console.log(
+      `基准船 = ${REF_SHIP.name}（船速 ${REF_SHIP.maxSpeedMps} / 敏捷 ${REF_SHIP.agility}）` +
+        ` → 基准战斗机动 ${REF_COMBAT.toFixed(1)} m/s；敌速存储值 = 比率 × ${REF_COMBAT.toFixed(1)} ÷ 0.564`,
+    )
+    for (const cur of brawls) {
+      const next = ctx.anomalies.get(cur.id)!
+      const f0 = createFoeSpecs(cur, baseBal)[0]! // 现状（出厂 bal，含出厂 cap）
+      const f1 = createFoeSpecs(next, bal)[0]! // 提案
+      const w = f0.weapons[0]!
+      const pos = bal.tacticDesireFactor[cur.tactic ?? 'orbit'] ?? 0.5
+      const desire = Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM))
+      const waves = cur.waves && cur.waves.length > 0 ? cur.waves : [{ units: 1, hpShare: 1 }]
+      const hpBase = cur.foeHpOverride ?? foeHpOfThreat(cur.threat, baseBal)
+      const hpTotal = hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)
+      const escorts = cur.escorts ?? 0
+      const c0 = f0.speedMps * foeAgilityMul
+      const c1 = f1.speedMps * foeAgilityMul
+      const shot = w.shotsByType ? Object.entries(w.shotsByType).map(([t, d]) => `${t} ${d}`).join(' + ') : `${w.fixedType ?? ''} ${w.shotDmg}`
+      console.log(`\n── 威胁 ${cur.threat} · ${cur.name}（${cur.id}）──`)
+      console.log(`  射程带       ${w.minRangeM}~${w.maxRangeM} m　期望交距 **${desire} m**（带内 ${(pos * 100).toFixed(0)}%）`)
+      console.log(
+        `  编队         ${waves.map((x, i) => `第${i + 1}波 ${x.units ?? 1}队×${(x.hpShare ?? 1).toFixed(2)}`).join(' · ')}` +
+          `　僚机 ${escorts}/队`,
+      )
+      console.log(
+        `  总血         ${hpTotal}（各波基准 ${hpBase}）　首波主体三层 ${Math.round(f0.hp.s)}/${Math.round(f0.hp.a)}/${Math.round(f0.hp.h)}`,
+      )
+      console.log(
+        `  火力         总 DPS ${(cur.threat * bal.foeDpsPerThreat).toFixed(1)}（威胁×${bal.foeDpsPerThreat}）` +
+          `　单发 ${shot}（每 ${(w.reloadMs / 1000).toFixed(1)}s）　命中 ${(w.hitRate * 100).toFixed(0)}%　近盲×${w.blindDmgMul}`,
+      )
+      console.log(
+        `  伤害构成     ${Object.entries(cur.dmgMix ?? {}).map(([t, v]) => `${t} ${v}`).join(' : ') || '（缺省动能）'}` +
+          `　foeDmgMul ${cur.foeDmgMul ?? 1}　落点衰减 ${w.falloff}`,
+      )
+      console.log(
+        `  速度         现状 ${f0.speedMps}（战斗机动 ${Math.round(c0)}）→ 提案 **${f1.speedMps}**（战斗机动 ${Math.round(c1)}）`,
+      )
+      console.log(
+        `  相对基准     现状 ${(c0 / REF_COMBAT).toFixed(2)}× → 提案 **${(c1 / REF_COMBAT).toFixed(2)}×**` +
+          `　净贴近速度 现状 ${Math.round(c0 - REF_COMBAT)} m/s → 提案 **+${Math.round(c1 - REF_COMBAT)} m/s**（正 = 敌更快）`,
+      )
     }
   }
   void bal
