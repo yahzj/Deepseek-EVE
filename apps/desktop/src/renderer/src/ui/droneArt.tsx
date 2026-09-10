@@ -148,32 +148,3 @@ export function droneArcHeight(lane: number): number {
 export function droneTakeoff(lane: number): { x: number; y: number } {
   return { x: (lane % 3) * 6 - 6, y: -10 + (lane % 2) * 5 }
 }
-
-/** 缓动（与 CSS 出击/返航 keyframes 的 ease-out / ease-in 对应，用于推算无人机**当前位置**） */
-export function droneEaseOut(t: number): number {
-  return 1 - Math.pow(1 - t, 3)
-}
-export function droneEaseIn(t: number): number {
-  return t * t * t
-}
-
-/**
- * 出击制航路位置（绝对画面 px）——给定时刻沿**上凸弧线**去、沿**下凸弧线**回；
- * 表现层用它把弹道起点挂到无人机**当前实际位置**（2026-09-10 船长："未到达指定位置之前就开火了"）。
- * 与 CSS keyframes 用同一组控制点（中点 = 两端中点再抬/降弧高），因此与画面基本同步。
- */
-export function dronePathPos(
-  t: number,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  arcH: number,
-  back: boolean,
-): { x: number; y: number } {
-  const e = back ? droneEaseIn(t) : droneEaseOut(t)
-  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + (back ? arcH : -arcH) }
-  // 二次贝塞尔：控制点 C 使 t=0.5 恰好经过 mid
-  const cx = 2 * mid.x - (from.x + to.x) / 2
-  const cy = 2 * mid.y - (from.y + to.y) / 2
-  const u = 1 - e
-  return { x: u * u * from.x + 2 * u * e * cx + e * e * to.x, y: u * u * from.y + 2 * u * e * cy + e * e * to.y }
-}

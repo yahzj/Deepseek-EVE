@@ -27,7 +27,6 @@ import {
   DRONE_STYLE,
   droneArcHeight,
   droneModelOf,
-  dronePathPos,
   droneSortieStation,
   droneTakeoff,
 } from '../ui/droneArt'
@@ -114,31 +113,6 @@ const meSpeedRef = useRef(200)
   const droneLastShotRef = useRef<Map<string, number>>(new Map())
   const droneLaunchRef = useRef<Map<string, number>>(new Map())
   const droneSlotRef = useRef<Map<string, number>>(new Map())
-
-  /**
-   * 无人机当前位置（绝对 px；2026-09-10 船长三次定）：
-   * 出击 = 沿**上凸曲线**飞到敌侧攻击阵位，返航 = 沿**下凸曲线**飞回机库口；
-   * 弹道起点挂在此处，因此"未到位就先开火"时弹道会跟着无人机在航路上走，而不是凭空出现在阵位。
-   */
-  const dronePosAt = (model: DroneModel, lane: number, artId: string, lv: { me: Anchor; foe: Anchor[] }): Anchor => {
-    const station = droneStationOf(model, lane, lv, true)
-    if (DRONE_STYLE !== 'sortie' || model.resident) return station
-    const off = droneTakeoff(lane)
-    const base = { x: lv.me.x + off.x, y: lv.me.y + off.y }
-    const last = droneLastShotRef.current.get(artId) ?? now
-    const launch = droneLaunchRef.current.get(artId) ?? now
-    const idle = now - last
-    const arc = droneArcHeight(lane)
-    if (idle < DRONE_BACK_MS) {
-      const t = Math.min(1, Math.max(0, (now - launch) / DRONE_SORTIE_OUT_MS))
-      return dronePathPos(t, base, station, arc, false)
-    }
-    if (idle < DRONE_BACK_TOTAL) {
-      const t = Math.min(1, Math.max(0, (idle - DRONE_BACK_MS) / DRONE_SORTIE_BACK_MS))
-      return dronePathPos(t, station, base, arc, true)
-    }
-    return base
-  }
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -428,22 +402,30 @@ const meSpeedRef = useRef(200)
       let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
       let from: Anchor | null = null
+      let droneDelay = 0
       if (dm) {
         const key = dm.resident ? `res:${fx.artId}` : `fly:${fx.artId}`
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
         const lane = n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))
         const prevShot = droneLastShotRef.current.get(fx.artId!)
-        // 新一轮出击 = 上一轮已收舱完毕（含返航动画）：记下出击起点，供航路插值用
+        // 新一轮出击 = 上一轮已收舱完毕：记下出击起点（正常应由"进入射程"提前置位，此处兜底）
         if (!dm.resident && (prevShot === undefined || now - prevShot >= DRONE_BACK_TOTAL)) {
           droneLaunchRef.current.set(fx.artId!, now)
         }
         droneLastShotRef.current.set(fx.artId!, now)
-        // 出弹位：出击制 = 无人机**当前航路位置**（曲线插值，未到位时弹道随之在航路上）；机群制 = 编队位
-        from =
-          DRONE_STYLE === 'sortie' && !dm.resident
-            ? dronePosAt(dm, lane, fx.artId!, layFx)
-            : droneStationOf(dm, lane, layFx, isMeShot)
+        /**
+         * 出弹位（2026-09-10 船长四次定："开火位置依旧不对，疑似刚飞出就开火"）：
+         * 根因 = launchAt 由开火事件置位 → 新一轮首发的航路进度 t 恒为 0，弹道必然出在机库口/母舰侧。
+         * 现改为：弹道一律从**攻击阵位**发出；若此刻无人机仍在飞行途中（t<1），
+         * 该发弹道**延迟到无人机抵达阵位再显示**（delay = (1−t)×去程时长）——既不丢发，位置也对。
+         */
+        if (DRONE_STYLE === 'sortie' && !dm.resident) {
+          const launch = droneLaunchRef.current.get(fx.artId!) ?? now
+          const t = Math.min(1, Math.max(0, (now - launch) / DRONE_SORTIE_OUT_MS))
+          if (t < 1) droneDelay = Math.round((1 - t) * DRONE_SORTIE_OUT_MS)
+        }
+        from = droneStationOf(dm, lane, layFx, isMeShot)
       } else {
         mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
         const mz = mounts?.muzzles
@@ -466,6 +448,7 @@ const meSpeedRef = useRef(200)
         angDeg: g.angDeg,
         born: now,
         ...(dm ? { drone: fx.artId } : {}),
+        ...(droneDelay > 0 ? { delay: droneDelay } : {}),
       })
       flashRef.current.push({
         key: keyRef.current++,
@@ -474,13 +457,14 @@ const meSpeedRef = useRef(200)
         x: g.x1,
         y: g.y1,
         ...(dm ? { small: true } : {}),
+        ...(droneDelay > 0 ? { delay: droneDelay } : {}),
       })
     }
     if (flashRef.current.length > 6) flashRef.current.splice(0, flashRef.current.length - 6)
   }
-  // 惰性清理过期元素（渲染输出不再包含它们即从 DOM 移除）
-  boltsRef.current = boltsRef.current.filter((b) => now - b.born < BOLT_LIFE)
-  flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE)
+  // 惰性清理过期元素（渲染输出不再包含它们即从 DOM 移除；延迟弹道按 delay 延长存活）
+  boltsRef.current = boltsRef.current.filter((b) => now - b.born < BOLT_LIFE + (b.delay ?? 0))
+  flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE + (f.delay ?? 0))
 
   /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）── */
   if (!hpInitRef.current) {
@@ -632,6 +616,7 @@ const meSpeedRef = useRef(200)
                 background: color,
                 boxShadow: `0 0 6px ${color}, 0 0 12px ${color}66`,
                 animationDuration: `${look.fly}ms`,
+                animationDelay: `${bv.delay ?? 0}ms`,
                 '--fly': `${Math.max(24, bv.len)}px`,
                 '--dot': `${dm.bolt.width + 3}px`,
               } as CSSProperties
@@ -644,7 +629,7 @@ const meSpeedRef = useRef(200)
               top: 0,
               borderColor: color,
               boxShadow: `0 0 10px ${color}`,
-              animationDelay: `${look.fly}ms`,
+              animationDelay: `${(bv.delay ?? 0) + look.fly}ms`,
               animationDuration: bv.type === 'plasma' ? '180ms' : '420ms',
             }}
           />
@@ -683,27 +668,40 @@ const meSpeedRef = useRef(200)
     <i
       key={f.key}
       className={`app-bts-muzzle${f.small ? ' is-small' : ''}`}
-      style={{ left: f.x, top: f.y, color: f.color }}
+      style={{ left: f.x, top: f.y, color: f.color, animationDelay: `${f.delay ?? 0}ms` }}
     />
   ))
 
-  /* 无人机机群层（2026-09-10 船长批：放飞-回巢 / 哨戒常驻下方，每型上限 6 架 + ×N 徽标）——
+  /* 无人机机群层（2026-09-10 船长批；每型上限 6 架 + ×N 徽标）——
      数据源 = 射程弧里已合并的「机型 ×N」无人机条目（src='drone'）；渲染按单位锚点定位，
-     未来副本机制的多船舰队只要把友军单位的机群也喂进这一层即可（接口已按单位设计）。 */
+     未来副本机制的多船舰队只要把友军单位的机群也喂进这一层即可（接口已按单位设计）。
+     放出时机（2026-09-10 船长四次定）：**进入该型射程即放出**（不等开火），
+     无人机先飞到攻击阵位待命，避免"刚飞出就开火"导致弹道出现在母舰侧。 */
   const droneWings = arcs.me
     .filter((w) => w.src === 'drone' && !!w.artId)
     .map((w) => {
       const model = droneModelOf(w.artId)!
       const last = droneLastShotRef.current.get(w.artId!) ?? -Infinity
       const idle = now - last
-      // 常驻型（雷鸥哨戒）始终伴飞且只显 1 架；放飞型：开火后放飞、1.2s 无开火回巢、回巢动画播完收起
+      const inRange = realDist >= w.minM && realDist <= w.maxM
+      const finished = idle >= DRONE_BACK_TOTAL
+      if (!model.resident && DRONE_STYLE === 'sortie') {
+        if (inRange && (!droneLaunchRef.current.has(w.artId!) || finished)) {
+          droneLaunchRef.current.set(w.artId!, now) // 进入射程：放出（新一轮）
+        } else if (!inRange && finished) {
+          droneLaunchRef.current.delete(w.artId!) // 已收舱：下次进射程重新放出
+        }
+      }
+      // 常驻型（雷鸥哨戒）始终伴飞且只显 1 架；放飞型：放飞 → 1.2s 无开火回巢 → 回巢动画播完收起
       const phase: 'out' | 'back' | 'deck' = model.resident
         ? 'out'
         : idle < DRONE_BACK_MS
           ? 'out'
           : idle < DRONE_BACK_TOTAL
             ? 'back'
-            : 'deck'
+            : inRange
+              ? 'out' // 已在射程内待命（尚未开火或刚停火）：保持放出状态
+              : 'deck'
       const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
       return { artId: w.artId!, model, phase, show, total: w.count ?? 1 }
     })

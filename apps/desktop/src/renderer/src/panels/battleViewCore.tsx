@@ -182,6 +182,8 @@ interface BoltV {
   born: number
   /** 无人机机型 id（2026-09-10：弹点按机型形制渲染——蜂群小弹点；缺省 = 普通弹道） */
   drone?: string
+  /** 显示延迟（ms；2026-09-10：无人机飞行途中开火 → 弹道等其抵达阵位再显示，位置才对） */
+  delay?: number
 }
 interface FlashV {
   key: number
@@ -191,6 +193,8 @@ interface FlashV {
   y: number
   /** 小型闪光（无人机机群出弹：体积小于母舰炮口闪光） */
   small?: boolean
+  /** 显示延迟（ms；与弹道同源） */
+  delay?: number
 }
 
 /** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家）：
