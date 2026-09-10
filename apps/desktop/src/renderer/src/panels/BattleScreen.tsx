@@ -55,6 +55,38 @@ function droneHomeStation(model: DroneModel, lane: number, lay: { me: Anchor; fo
   return { x: lay.me.x + slot.x, y: lay.me.y + slot.y }
 }
 
+/**
+ * 无人机姿态（绝对画面 px + 朝向；2026-09-10 船长"无人机移动不连贯"修复）：
+ * 位置不再依赖 React 重渲染（33ms 循环仅在距离变化时才 setState → 敌舰就位后无人机只剩 10Hz 通知刷新，
+ * 表现为 10fps 步进）。本函数被 **rAF 循环**直接调用，把 transform 写进 DOM → 恒定 60fps 平滑。
+ */
+function dronePoseAt(
+  model: DroneModel,
+  lane: number,
+  st: DroneSortie | undefined,
+  lay: { me: Anchor; foe: Anchor[] },
+  elapsed: number,
+): { x: number; y: number; heading: number } {
+  const base = DRONE_STYLE === 'sortie' && !model.resident ? droneTakeoff(lane) : model.slots[lane % model.slots.length]!
+  const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
+  const arc = droneArcHeight(lane)
+  const foeA = lay.foe[0] ?? lay.me
+  const off = st?.offs[lane % (st.offs.length || 1)] ?? { x: 46, y: 0 }
+  const station =
+    DRONE_STYLE === 'sortie' && !model.resident ? droneStationFrom(foeA, 1, off) : droneHomeStation(model, lane, lay)
+  if (DRONE_STYLE === 'sortie' && !model.resident) {
+    if (elapsed >= DRONE_SORTIE_OUT_MS) {
+      const t = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS) / DRONE_SORTIE_BACK_MS))
+      const p = dronePathPos(t, station, baseAbs, arc, true)
+      return { x: p.x, y: p.y, heading: -1 } // 返航：掉头
+    }
+    const t = Math.min(1, Math.max(0, elapsed / DRONE_SORTIE_OUT_MS))
+    const p = dronePathPos(t, baseAbs, station, arc, false)
+    return { x: p.x, y: p.y, heading: 1 }
+  }
+  return { x: station.x, y: station.y, heading: 1 }
+}
+
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
   const state = engine.state
   const view = expeditionStatus(state, engine.ctx)
@@ -104,6 +136,18 @@ const meSpeedRef = useRef(200)
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
   const droneSortieRef = useRef<Map<string, DroneSortie>>(new Map())
+  /* ── 无人机位置驱动（2026-09-10 船长"无人机移动不连贯"修复）：
+        位置不再走 React 渲染（33ms 循环仅在距离变化时 setState → 敌舰就位后只剩 10Hz 通知，
+        表现为 10fps 步进）；改为 rAF 循环直接写 transform（容器 + 每架），恒定 60fps 平滑。 ── */
+  const droneBoxRef = useRef<HTMLDivElement>(null)
+  const droneElsRef = useRef<Map<string, HTMLSpanElement>>(new Map())
+  const visDistRef = useRef(0)
+  const droneDriveRef = useRef<{
+    foeN: number
+    openM: number
+    nearM: number
+    wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean }>
+  }>({ foeN: 1, openM: 1, nearM: 200, wings: [] })
   /** ⚠ 临时性能探针状态（2026-09-10 卡顿诊断，定位后删除） */
   const probeRef = useRef<{
     raf: number
@@ -262,6 +306,7 @@ const meSpeedRef = useRef(200)
         const t = clamp01((now - s.cur.w) / 100)
         vis = s.prev.m + (s.cur.m - s.prev.m) * t
       }
+      visDistRef.current = vis // 供无人机 rAF 驱动使用（与舰列/弧同一插值距离）
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
@@ -283,6 +328,39 @@ const meSpeedRef = useRef(200)
       }
     }, 33)
     return () => window.clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /* 无人机位置驱动（rAF，恒定 60fps；与 React 重渲染节奏解耦） */
+  useEffect(() => {
+    let alive = true
+    let raf = 0
+    const drive = (): void => {
+      if (!alive) return
+      const d = droneDriveRef.current
+      if (d.wings.length > 0) {
+        const layLoop = layout(dimsRef.current, Math.max(1, d.foeN), visDistRef.current, d.openM, d.nearM)
+        const box = droneBoxRef.current
+        if (box) box.style.transform = `translate3d(${layLoop.me.x}px, ${layLoop.me.y}px, 0)`
+        const nowMs = performance.now()
+        for (const w of d.wings) {
+          if (w.deck) continue // 收舱（display:none）不写位置
+          const elapsed = w.st ? nowMs - w.st.startAt : Number.POSITIVE_INFINITY
+          for (let i = 0; i < w.show; i++) {
+            const el = droneElsRef.current.get(`${w.artId}|${i}`)
+            if (!el) continue
+            const pose = dronePoseAt(w.model, i, w.st, layLoop, elapsed)
+            el.style.transform = `translate3d(${pose.x - layLoop.me.x}px, ${pose.y - layLoop.me.y}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
+          }
+        }
+      }
+      raf = window.requestAnimationFrame(drive)
+    }
+    raf = window.requestAnimationFrame(drive)
+    return () => {
+      alive = false
+      window.cancelAnimationFrame(raf)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -782,6 +860,14 @@ const meSpeedRef = useRef(200)
       const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
       return { artId: w.artId!, model, phase, elapsed, st, show, total: w.count ?? 1 }
     })
+  /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
+  visDistRef.current = visM
+  droneDriveRef.current = {
+    foeN: Math.max(1, foeRowTags.length),
+    openM,
+    nearM,
+    wings: droneWings.map((w) => ({ artId: w.artId, model: w.model, show: w.show, st: w.st, deck: w.phase === 'deck' })),
+  }
 
   /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
      尸骸占原槽整段演出：boomAt（致死弹道着弹）前原样停留 → 灰化 + 爆炸环 → 原位淡出；
@@ -927,73 +1013,39 @@ const meSpeedRef = useRef(200)
             </div>
           </div>
 
-          {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻母舰下方且只显 1 架） */}
+          {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 起飞即出击-到位开火-立刻返航；雷鸥哨戒常驻伴飞）；
+              位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐 */}
           {droneWings.length > 0 ? (
-            <div className="app-bts-drones" style={{ left: lay.me.x, top: lay.me.y }} aria-hidden="true">
+            <div className="app-bts-drones" ref={droneBoxRef} aria-hidden="true">
               {droneWings.map((w) => (
                   <div
                     key={w.artId}
                     className={`app-bts-wing is-${w.phase}${w.phase === 'deck' ? ' is-deck' : ''}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ' is-formation'}`}
                   >
-                    {Array.from({ length: w.show }, (_, i) => {
-                      // 起飞/停泊基准位：出击制 = 机库口；机群制与哨戒 = 母舰编队/伴飞位
-                      const base =
-                        DRONE_STYLE === 'sortie' && !w.model.resident ? droneTakeoff(i) : w.model.slots[i % w.model.slots.length]!
-                      const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
-                      const arc = droneArcHeight(i)
-                      const foeA = lay.foe[0] ?? lay.me
-                      // 出击制：本轮随机阵位（Y 轴随机分布）→ 到位开火 → 立刻返航；与弹道同源
-                      const off = w.st?.offs[i % (w.st.offs.length || 1)] ?? { x: 46, y: 0 }
-                      const station =
-                        DRONE_STYLE === 'sortie' && !w.model.resident
-                          ? droneStationFrom(foeA, 1, off)
-                          : droneHomeStation(w.model, i, lay)
-                      let px = station.x
-                      let py = station.y
-                      let heading = 1
-                      if (DRONE_STYLE === 'sortie' && !w.model.resident) {
-                        if (w.phase === 'back') {
-                          const t = Math.min(1, Math.max(0, (w.elapsed - DRONE_SORTIE_OUT_MS) / DRONE_SORTIE_BACK_MS))
-                          const p = dronePathPos(t, station, baseAbs, arc, true)
-                          px = p.x
-                          py = p.y
-                          heading = -1 // 开火结束立刻返航：掉头（机头朝母舰）
-                        } else {
-                          const t = Math.min(1, Math.max(0, w.elapsed / DRONE_SORTIE_OUT_MS))
-                          const p = dronePathPos(t, baseAbs, station, arc, false)
-                          px = p.x
-                          py = p.y
-                        }
-                      }
-                      return (
-                        <span
-                          key={i}
-                          className="app-bts-drone"
-                          style={
-                            {
-                              // 位置走 transform（GPU 合成，不再每帧改 left/top 引发布局+重绘）——
-                              // 2026-09-10 船长十一次定"击毁敌人后画面明显卡顿"的性能优化之一
-                              left: 0,
-                              top: 0,
-                              color: w.model.tint,
-                              transform: `translate3d(${px - lay.me.x}px, ${py - lay.me.y}px, 0) translate(-50%, -50%) scaleX(${heading})`,
-                            } as CSSProperties
-                          }
+                    {Array.from({ length: w.show }, (_, i) => (
+                      <span
+                        key={i}
+                        ref={(el) => {
+                          const key = `${w.artId}|${i}`
+                          if (el) droneElsRef.current.set(key, el)
+                          else droneElsRef.current.delete(key)
+                        }}
+                        className="app-bts-drone"
+                        style={{ left: 0, top: 0, color: w.model.tint }}
+                      >
+                        <svg
+                          viewBox="-13 -8 26 16"
+                          width="22"
+                          height="14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
                         >
-                          <svg
-                            viewBox="-13 -8 26 16"
-                            width="22"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinejoin="round"
-                          >
-                            {w.model.art}
-                          </svg>
-                        </span>
-                      )
-                    })}
+                          {w.model.art}
+                        </svg>
+                      </span>
+                    ))}
                     {w.total > w.show ? <span className="app-bts-drone-more">×{w.total}</span> : null}
                   </div>
               ))}
