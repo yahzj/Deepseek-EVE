@@ -43,6 +43,29 @@ describe('训练时长公式', () => {
     expect(totalTimeToLevel(a, 3, 2)).toBe(0)
   })
 
+  it('每个 rank 档都有专属基础时长，且「满级总时长」随 rank 严格递增（防新增 rank 漏配档底）', () => {
+    // 2026-09-10 加：rank 5（AI 核心调度学）此前漏配档底 → 落默认 60 秒档，
+    // 满级 7.25h 反而比 rank3（11.2h）/rank4（67.3h）便宜，与「低档快高档慢」相反。
+    const totals = [1, 2, 3, 4, 5].map((r) => totalTimeToLevel(def('x', r), 0, 5))
+    for (let i = 1; i < totals.length; i++) {
+      expect(totals[i]!).toBeGreaterThan(totals[i - 1]!)
+    }
+    // 逐档锚点（小时，便于人读）
+    const hours = totals.map((t) => t / 3_600_000)
+    expect(hours[0]).toBeCloseTo(1.45, 2) // r1 ≈1.4h
+    expect(hours[1]).toBeCloseTo(2.9, 1) // r2 ≈2.9h
+    expect(hours[2]).toBeCloseTo(11.24, 1) // r3 ≈11.2h
+    expect(hours[3]).toBeCloseTo(67.28, 1) // r4 ≈67.3h
+    expect(hours[4]).toBeCloseTo(89.66, 1) // r5 ≈89.7h（阶梯 ×2/×4/×6/×8）
+  })
+
+  it('rank5 档底 742 秒：Lv1 单级 3,710,000ms、满级 322,770,000ms', () => {
+    const a = def('a', 5)
+    expect(skillLevelTimeMs(a, 1)).toBe(3_710_000) // 742s × rank5 × 系数1
+    expect(skillLevelTimeMs(a, 5)).toBe(742_000 * 5 * 64)
+    expect(totalTimeToLevel(a, 0, 5)).toBe(742_000 * 5 * 87)
+  })
+
   it('队列总时长 = 各项剩余时长之和', () => {
     const cat = new Map([['a', def('a', 1)], ['b', def('b', 2)]])
     const trained = { a: 1 }
