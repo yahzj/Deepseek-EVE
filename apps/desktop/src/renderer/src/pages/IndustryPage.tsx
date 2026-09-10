@@ -370,7 +370,14 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
     },
     { mods: ctx.modules, items: ctx.items, droneUnits: RARE_BOX_DRONE_UNITS },
   )
-  return <FlavorTip featureLabel={feature.label} parts={[...feature.named, ...feature.generic]} />
+  return (
+    <FlavorTip
+      featureLabel={feature.label}
+      named={feature.named}
+      generic={feature.generic}
+      tone={feature.tone}
+    />
+  )
 }
 
 export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageProps & {
