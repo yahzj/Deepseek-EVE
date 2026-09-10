@@ -186,6 +186,39 @@ export function applyDamage(
 
 /* ═══════════ 构建 ═══════════ */
 
+/**
+ * 结算敌人一发（2026-09-10 船长：窝点混伤）：
+ * 武器带 `shotsByType`（混伤，主 60% / 副 40%）→ 按构成**逐系**调用 `applyDamage`
+ * （各系吃各自的 `typeLayerMult` 与层抗，逐系依次消费 盾→甲→结构）；
+ * 纯系武器（无 `shotsByType`）→ 与旧行为一字不差。
+ * `totalDmg` 是本次开火的总伤害（含近盲/距离折扣），按构成比例分摊、**总量不变**。
+ * 返回更新后的三层血量（调用方直接赋值）。导出供回归测试直接验证"混伤绕过单系抗"。
+ */
+export function applyFoeShot(
+  hp: Hp3,
+  resists: UnitSpec['resists'],
+  weapon: WeaponSpec,
+  totalDmg: number,
+  mainType: DamageType,
+): Hp3 {
+  const shots = weapon.shotsByType
+  const entries = shots ? Object.entries(shots).filter(([, v]) => (v ?? 0) > 0) : []
+  if (entries.length <= 1) return applyDamage(hp, resists, totalDmg, mainType).hp
+  const sum = entries.reduce((s, [, v]) => s + (v ?? 0), 0)
+  if (sum <= 0) return applyDamage(hp, resists, totalDmg, mainType).hp
+  // 主系在前（与构成降序一致：shotsByType 由 splitShotByComposition 生成 → 主系份额最大）
+  let next = hp
+  let left = totalDmg
+  entries.forEach(([t, v], i) => {
+    const dmg = i === entries.length - 1 ? left : Math.max(1, Math.round((totalDmg * (v ?? 0)) / sum))
+    const take = Math.max(0, Math.min(left, dmg))
+    if (take <= 0) return
+    next = applyDamage(next, resists, take, t as DamageType).hp
+    left -= take
+  })
+  return next
+}
+
 const AMMO_IDS: Record<DamageType, string> = {
   kinetic: 'ammo-kinetic-l',
   explosive: 'ammo-explosive-l',
@@ -239,6 +272,45 @@ export function mergeResist(base: DamageResists | undefined, add: DamageResists 
 /** 敌方编队主伤害类型（V17 导出；卡面 dmgMix 取最高权重，缺省 = 动能）——悬赏卡展示/玩家配抗参考 */
 export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
   return pickTopType(anomaly.dmgMix)
+}
+
+/**
+ * 敌方**火力构成**（2026-09-10 船长：混伤）——战斗、胜率预估与界面**同源单点**：
+ * 返回按份额降序的 `[{ type, share }]`（份额归一化、和 = 1）。
+ * - 写了两系及以上（常驻悬赏/低安遇袭 8:2、窝点派生 6:4）→ 逐系份额；
+ * - 只写一系 / 未写（教学卡）→ 单条 `{ 主系, 1 }`（纯系）。
+ */
+export function foeDamageComposition(anomaly: AnomalyDef): Array<{ type: DamageType; share: number }> {
+  const rows = (['kinetic', 'explosive', 'plasma'] as const)
+    .map((t) => ({ type: t, w: anomaly.dmgMix?.[t] ?? 0 }))
+    .filter((r) => r.w > 0)
+  if (rows.length <= 1) return [{ type: rows[0]?.type ?? 'kinetic', share: 1 }]
+  const total = rows.reduce((s, r) => s + r.w, 0)
+  return rows
+    .map((r) => ({ type: r.type, share: r.w / total }))
+    .sort((a, b) => b.share - a.share || a.type.localeCompare(b.type))
+}
+
+/**
+ * 把一次开火的总伤害按火力构成**拆成逐系单发**（2026-09-10：窝点混伤）。
+ * 取整口径：先按份额分配、**最后一条吃余数**，保证 Σ = 总单发（敌总伤不变，只改构成）。
+ * 返回空数组 = 总伤为 0（调用方跳过）。
+ */
+export function splitShotByComposition(
+  shotDmg: number,
+  comp: ReadonlyArray<{ type: DamageType; share: number }>,
+): Array<{ type: DamageType; dmg: number }> {
+  if (shotDmg <= 0) return []
+  if (comp.length <= 1) return [{ type: comp[0]?.type ?? 'kinetic', dmg: shotDmg }]
+  const out: Array<{ type: DamageType; dmg: number }> = []
+  let left = shotDmg
+  comp.forEach((c, i) => {
+    const dmg = i === comp.length - 1 ? left : Math.max(1, Math.round(shotDmg * c.share))
+    const take = Math.min(left, dmg)
+    out.push({ type: c.type, dmg: take })
+    left -= take
+  })
+  return out.filter((r) => r.dmg > 0)
 }
 
 /** 敌方血型层占比（V17.2 导出；悬赏卡"敌型"展示——与 createFoeSpecs 同源）：
@@ -708,6 +780,16 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
       1,
       Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1) * (anomaly.foeDmgMul ?? 1)),
     )
+    // 2026-09-10 船长（窝点混伤）：按火力构成拆成逐系单发（Σ = 总单发，敌总伤不变）。
+    // 纯系卡只有一条 → 与旧行为完全一致；混伤卡 = 主 60% / 副 40% 两键。
+    const shotSplit = splitShotByComposition(shotDmg, foeDamageComposition(anomaly))
+    const multiShots: Partial<Record<DamageType, number>> | undefined =
+      shotSplit.length > 1
+        ? shotSplit.reduce<Partial<Record<DamageType, number>>>((acc, r) => {
+            acc[r.type] = (acc[r.type] ?? 0) + r.dmg
+            return acc
+          }, {})
+        : undefined
     return {
       tag,
       name,
@@ -726,8 +808,10 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
           // 2026-09-08（船长定）：能量（plasma）= 光束必中（开火即中、无视回避），
           // **近盲带保留**（带内威力 ×blindDmgMul）；动能/爆炸 = fixed 命中模型 + 逐卡命中率
           kind: type === 'plasma' ? 'beam' : 'fixed',
-          fixedType: type,
+          fixedType: type, // 形态/命中/近盲/表现层配色一律按**主系**（混伤只改伤害构成）
           shotDmg,
+          // 混伤：逐系单发（真实结算与胜率预估都读它；纯系卡为 undefined）
+          ...(multiShots ? { shotsByType: multiShots } : {}),
           maxRangeM: rangeMax,
           minRangeM: rangeMin,
           // V18B：敌人近盲带伤害比例（船长 2026-09-05：与玩家区分——近盲带内不停火、伤害打折）
@@ -757,11 +841,12 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
   return specs
 }
 
+/** 主系（权重最高；未写/空 = 动能）——**正权重键才参战**（2026-09-10 语义变更：旧"缺省键权重 1"作废） */
 function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): DamageType {
   let best: DamageType = 'kinetic'
-  let bestW = -1
+  let bestW = 0
   for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
-    const w = mix?.[t] ?? 1
+    const w = mix?.[t] ?? 0
     if (w > bestW) {
       bestW = w
       best = t
@@ -1983,8 +2068,8 @@ function stepBattle(
       const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(b.distanceM, w)
       const dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * pow))
       b.stats.foeHits += 1
-      const r = applyDamage(meRt.hp, me.resists, dmg, fType)
-      meRt.hp = r.hp
+      // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
+      meRt.hp = applyFoeShot(meRt.hp, me.resists, w, dmg, fType)
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: true })
       continue
     }
@@ -1996,8 +2081,7 @@ function stepBattle(
     const fHit = nextRandom(state.rng) < foeHitEff
     if (fHit) {
       b.stats.foeHits += 1
-      const r = applyDamage(meRt.hp, me.resists, shotDmg, fType)
-      meRt.hp = r.hp
+      meRt.hp = applyFoeShot(meRt.hp, me.resists, w, shotDmg, fType)
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: fHit })
   }
@@ -2156,6 +2240,13 @@ function steadyPreview(
   }
   // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——
   // 2026-09-08：能量 beam 必中（hit=1）且威力走 beamPowerFactor/盲带，与实时引擎同源）
+  // 2026-09-10 船长（窝点混伤）：克制倍率按**火力构成加权求和**（与实时逐系结算同源，
+  // 否则"卡面写混伤、预估按纯系算"会骗人）
+  const foeComp = foeDamageComposition(anomaly)
+  const foeCompWeighted = (type: DamageType): number =>
+    foeComp.length <= 1
+      ? avgLayerMult(meHpTotal, me, type)
+      : foeComp.reduce((s, c) => s + c.share * avgLayerMult(meHpTotal, me, c.type), 0)
   let foeDpsPeak = 0
   for (const f of foes) {
     const w = f.weapons[0]!
@@ -2164,7 +2255,7 @@ function steadyPreview(
     if (hit <= 0) continue
     const power = isBeam ? (steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(steady, w)) : steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
     const shot = Math.max(1, Math.round((w.shotDmg ?? 0) * power))
-    const mult = avgLayerMult(meHpTotal, me, w.fixedType ?? 'kinetic')
+    const mult = foeCompWeighted(w.fixedType ?? 'kinetic')
     foeDpsPeak += (shot * mult * hit * 1000) / w.reloadMs
   }
   // 2026-09-09 减员修正（稳态把"敌人满员全程输出"当真相，多单位/多波严重高估承伤）：

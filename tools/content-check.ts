@@ -54,6 +54,9 @@ import {
   lairGearOf,
   lairLevelOf,
   lairNameOf,
+  lairAnomalyOf,
+  subDamageTypeOf,
+  type DamageType,
   rareWreckItemIdOf,
   recycleTierOf,
   rackOf,
@@ -639,6 +642,45 @@ for (const m of MODULES) {
     }
   }
   console.log(`· B3.1 主题追加件：${lootCards} 张卡（sec<0.5 增幅件；武器白名单仅穹顶守卫 × MK3 三武）`)
+}
+
+/* ── 敌方混伤契约（2026-09-10 船长定）──
+ * ①**除教学卡外**每张敌军卡必须写**两系** `dmgMix`（主 8 : 副 2 = 80%/20%）——
+ *   教学卡（演习场讨伐令）保持纯系：不给新手第一场上混伤；
+ * ②副系必须 = 该敌族签名副系序里第一个"不与主系相同"的系（`lairs.subDamageTypeOf`）；
+ * ③窝点派生卡（`lairAnomalyOf`）= 同一主系 + **6:4**（60%/40%）；主系**不许变**。 */
+{
+  const TEACHING_CARD = 'ano-training'
+  let mixed = 0
+  const positive = (mix: Partial<Record<string, number>> | undefined): Array<[string, number]> =>
+    Object.entries(mix ?? {}).filter(([, v]) => typeof v === 'number' && v > 0) as Array<[string, number]>
+  for (const def of ANOMALIES_FLAVORED) {
+    if (def.id === TEACHING_CARD) {
+      check(positive(def.dmgMix).length <= 1, `混伤契约：教学卡 ${def.id} 应保持纯系（不写两系 dmgMix）`)
+      continue
+    }
+    const rows = positive(def.dmgMix)
+    check(rows.length === 2, `混伤契约：${def.name} 应写两系 dmgMix（主 8 : 副 2），实际 ${rows.length} 系`)
+    if (rows.length !== 2) continue
+    const sorted = [...rows].sort((a, b) => b[1] - a[1])
+    check(sorted[0]![1] === 8 && sorted[1]![1] === 2, `混伤契约：${def.name} 权重应为主 8 : 副 2，实际 ${sorted[0]![1]}:${sorted[1]![1]}`)
+    const main = sorted[0]![0] as DamageType
+    const sub = sorted[1]![0] as DamageType
+    check(
+      sub === subDamageTypeOf(def, main),
+      `混伤契约：${def.name} 副系 ${sub} 与族签名序列不符（应为 ${subDamageTypeOf(def, main)}）`,
+    )
+    // 窝点派生：同主系 + 6:4
+    const lair = lairAnomalyOf(def, 3)
+    const lRows = positive(lair.dmgMix)
+    const lSorted = [...lRows].sort((a, b) => b[1] - a[1])
+    check(
+      lRows.length === 2 && lSorted[0]![1] === 6 && lSorted[1]![1] === 4 && (lSorted[0]![0] as DamageType) === main,
+      `混伤契约：${def.name} 窝点派生应为同一主系 ${main} + 副系 6:4，实际 ${JSON.stringify(lair.dmgMix)}`,
+    )
+    mixed += 1
+  }
+  console.log(`· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系`)
 }
 
 /* ── 图标覆盖契约（2026-09-10 加）：每个物品种类 / 装备槽位 / 舰船族都必须有 Glyphs 图形与色调 ──

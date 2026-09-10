@@ -482,6 +482,11 @@ export {
   foeDesiredRange,
   mergeResist,
   foeMainDamageType,
+  // 2026-09-10 船长（窝点混伤）：敌方火力构成单点（战斗 / 胜率预估 / 任务卡文案同源）
+  foeDamageComposition,
+  splitShotByComposition,
+  applyFoeShot,
+  createFoeSpecs,
   foeLayerSplit,
   foeClassName,
   foeMainTagOf,
@@ -650,5 +655,10 @@ export {
   lairBaseRewardIsk,
   lairTaskRewardIsk,
   lairAnomalyOf,
+  // 2026-09-10 船长（混伤）：窝点副系与配比常量（内容体检 / 界面 / 测试同源）
+  LAIR_SUB_DMG_SHARE,
+  FOE_SUB_DMG,
+  foeMainDamageTypeOf,
+  subDamageTypeOf,
 } from './lairs'
 export type { LairTier } from './lairs'

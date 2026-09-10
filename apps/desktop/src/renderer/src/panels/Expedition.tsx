@@ -25,7 +25,6 @@ import {
   expeditionStatus,
   fleetDefOf,
   foeLayerSplit,
-  foeMainDamageType,
   formatDurationMs,
   frontierGalaxyIds,
   idleAiShipIds,
@@ -59,7 +58,7 @@ import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH } from '../pages/common'
 import type { ToastFn } from '../pages/common'
-import { DmgChip, ProfileChip } from '../ui/shipInfo'
+import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 
@@ -1714,9 +1713,13 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           {Math.round(chance)}%
         </b>
         {!reqMet ? <span className="app-dim">（声望 {standing}/{anomaly.standingReq}）</span> : null}
-        {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据 */}
-        <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入），伤害构成见卡面">
-          {' '}· 敌主伤 <DmgChip t={foeMainDamageType(anomaly)} />
+        {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据
+            2026-09-10 船长（混伤）：改为「敌火力 主 80% · 副 20%」——构成与战斗结算同源 */}
+        <span
+          className="app-dim"
+          title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透。常驻悬赏主系 80% + 副系 20%，窝点（赏金任务）为 60% / 40%"
+        >
+          {' '}· 敌火力 <FoeDamageMix anomaly={anomaly} />
         </span>
         {/* V17.2：敌方血型色 chip——选弹种依据：动能克盾 ×1.5 / 高爆克甲 ×1.5 */}
         {(() => {
@@ -2174,8 +2177,11 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     >
                       {chance2}%
                     </b>
-                    <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入）">
-                      {' '}· 敌主伤 <DmgChip t={foeMainDamageType(boostCard)} />
+                    <span
+                      className="app-dim"
+                      title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透（常驻悬赏 80% / 20%）"
+                    >
+                      {' '}· 敌火力 <FoeDamageMix anomaly={boostCard} />
                     </span>
                   </div>
                   <div className="app-ano-reward">
@@ -2320,8 +2326,11 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                   {Math.round(chance)}%
                 </b>
                 {card ? (
-                  <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入）">
-                    {' '}· 敌主伤 <DmgChip t={foeMainDamageType(card)} />
+                  <span
+                    className="app-dim"
+                    title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透。赏金任务（窝点）敌人的混伤更重：主 60% / 副 40%"
+                  >
+                    {' '}· 敌火力 <FoeDamageMix anomaly={card} />
                   </span>
                 ) : null}
                 {card

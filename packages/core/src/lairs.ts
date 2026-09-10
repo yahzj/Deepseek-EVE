@@ -17,7 +17,7 @@
  * 数值（威胁系数、波次占比、僚机增量、酬金比例、稀有残骸件数）都是**可调常量**，
  * 集中在文件顶部，等船长定数后改这里一处即可。
  */
-import type { AnomalyDef, FoeFamily } from './types'
+import type { AnomalyDef, DamageType, FoeFamily } from './types'
 
 /** 窝点档位：1 外围 / 2 核心 / 3 深层 */
 export type LairTier = 1 | 2 | 3
@@ -203,21 +203,71 @@ export function lairTaskRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
 }
 
 /**
- * 派生窝点卡（开战/结算/展示统一走这里，数据文件不改）：改威胁、加僚机与波次、换显示名。
- * 其余字段（战术性格、血型、伤害配比、命中、抗性缺口、回收池…）全部继承主题悬赏 —— 窝点与
- * 该星系特色敌人同源。**奖金不在这里改**：卡上的 `rewardIsk` 仍是主题悬赏原值，
- * 窝点奖金一律经 `lairBaseRewardIsk`（×赏金倍率 2/4/8）取，避免同一字段两种口径。
+ * 窝点混伤（2026-09-10 船长：「给所有赏金任务的敌人添加额外攻击的副伤害类型，让其攻击造成混伤
+ * （主类型占大部分），并需要在任务中告知玩家」）：
+ * **只有窝点（赏金任务）的敌人**打混伤——常驻悬赏与低安遇袭维持纯系（船长指定范围）。
+ * 配比 = 主 **60%** / 副 **40%**（船长定），主系永远沿用主题卡原有主系、**不许变**；
+ * 敌**总伤不变**（只是构成变化）。副系按**族签名优先序**取第一个"不与主系相同"的系。
+ */
+export const LAIR_SUB_DMG_SHARE = 0.4
+
+/** 敌族签名副伤害类型（优先序：撞主系则顺延到下一个） */
+export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
+  A: ['kinetic', 'explosive', 'plasma'], // 海盗：缴获改装的实弹/破片弹头
+  B: ['kinetic', 'explosive', 'plasma'], // 武装拾荒者【已停用，留表兜底】
+  C: ['explosive', 'plasma', 'kinetic'], // 异形：酸液与生物爆破
+  D: ['plasma', 'kinetic', 'explosive'], // 守墓古舰：古舰的能量副炮
+  E: ['plasma', 'explosive', 'kinetic'], // 泰坦巨构：巨构能量核心
+  F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【无窝点成员，留表兜底】
+  G: ['explosive', 'kinetic', 'plasma'], // 烬火流亡：拼装火药与土制弹头
+}
+
+/**
+ * 派生窝点卡（开战/结算/展示统一走这里，数据文件不改）：改威胁、加僚机与波次、换显示名，
+ * 并把敌人火力改成**混伤**（主 60% / 副 40%，§LAIR_SUB_DMG_SHARE）。
+ * 其余字段（战术性格、血型、命中、抗性缺口、回收池…）全部继承主题悬赏 —— 窝点与该星系特色敌人同源。
+ * **奖金不在这里改**：卡上的 `rewardIsk` 仍是主题悬赏原值，窝点奖金一律经 `lairBaseRewardIsk`
+ * （×赏金倍率 2/4/8）取，避免同一字段两种口径。
  */
 export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const waves = LAIR_WAVES[tier]
+  const main = foeMainDamageTypeOf(anomaly)
+  const sub = subDamageTypeOf(anomaly, main)
+  const mainWeight = Math.round((1 - LAIR_SUB_DMG_SHARE) * 10)
+  const subWeight = Math.round(LAIR_SUB_DMG_SHARE * 10)
   return {
     ...anomaly,
     name: lairNameOf(anomaly, tier),
     threat: Math.round(anomaly.threat * LAIR_THREAT_MUL[tier]),
     escorts: Math.min(2, (anomaly.escorts ?? 0) + LAIR_ESCORT_BONUS[tier]),
     ...(waves ? { waves } : {}),
+    // 混伤：窝点用 **6:4**（比常驻悬赏的 8:2 更"混"——窝点本就是更硬的特色敌人）；
+    // 显式两系权重即开启混伤（引擎按"正权重键 ≥ 2 系"判定，见 combat.foeDamageComposition）；
+    // 主系与主题卡一致（派生态不许改敌人主伤害类型）
+    dmgMix: { [main]: mainWeight, [sub]: subWeight },
   }
 }
+
+/** 主题卡的**主伤害类型**（= dmgMix 最高权重；正权重键才参战、未写 = 动能，与 combat 同源口径） */
+export function foeMainDamageTypeOf(anomaly: AnomalyDef): DamageType {
+  let best: DamageType = 'kinetic'
+  let bestW = 0
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const w = anomaly.dmgMix?.[t] ?? 0
+    if (w > bestW) {
+      bestW = w
+      best = t
+    }
+  }
+  return best
+}
+
+/** 窝点副伤害类型：族签名优先序里第一个 ≠ 主系的系（族未登记则按兜底序） */
+export function subDamageTypeOf(anomaly: AnomalyDef, main: DamageType = foeMainDamageTypeOf(anomaly)): DamageType {
+  const seq = (anomaly.foeFamily ? FOE_SUB_DMG[anomaly.foeFamily] : undefined) ?? FOE_SUB_DMG.A
+  return seq.find((t) => t !== main) ?? 'kinetic'
+}
+
 
 /** 档位中文（界面徽标与日志用） */
 export const LAIR_TIER_LABELS: Record<LairTier, string> = { 1: '外围', 2: '核心', 3: '深层' }
