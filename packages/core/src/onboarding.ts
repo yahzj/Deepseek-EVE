@@ -245,8 +245,25 @@ export function finishTutorial(state: GameState): CommandResult {
   return { ok: true }
 }
 
-/** 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */
-export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
+/** 「寻找人类」阶段目标：探索全部星系（里程碑只记一次）。
+ *  2026-09-10 船长定：给这条贯穿任务加上可追踪目标——**探索全部星系、寻找人类踪迹**；
+ *  达成时写一条日志，任务本身仍为进行中（完成方法未知，见 TASK_FIND_HUMANS 的原始口径）。
+ *  廉价检查：未发布/已完成/已记里程碑时立即返回。 */
+export function advanceFindHumans(state: GameState, ctx: SimContext): void {
+  const task = state.importantTasks[TASK_FIND_HUMANS]
+  if (!task || task.done || task.allExplored === true) return
+  for (const g of ctx.galaxies.keys()) {
+    if (!state.exploredGalaxies.includes(g)) return
+  }
+  task.allExplored = true
+  addLog(
+    state,
+    'info',
+    '◆ 寻找人类：全部星系的深空扫描已完成——没有人类信号，只有更多残骸与沉默。也许线索不在这片星域，也许它藏得更深。',
+  )
+}
+
+/** 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const s = state.onboarding.step
   const inProgress = s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)
   if (!inProgress) return { ok: false, error: '教程尚未开始或已完成。' }

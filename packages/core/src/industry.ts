@@ -35,6 +35,7 @@ import {
   RECYCLE_CYCLE_MS,
   FRAGMENT_RECIPES,
   fragmentItemIdOf,
+  isRareWreck,
   recycleProfileOf,
   rollRecycleGuarantee,
   rollRareBoxExtra,
@@ -244,6 +245,11 @@ export function startRecycleRun(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
+  // 稀有残骸（2026-09-10 船长定：**暂不开放精炼炉**）——战利品照掉、照捞、照入库，
+  // 但协会回收炉目前不受理这类残骸，先封存；高级箱链路（rollRareBoxExtra）代码保留待开。
+  if (isRareWreck(wreckItemId)) {
+    return { ok: false, error: '协会回收炉暂不受理稀有残骸——先入库封存（打捞与存储不受影响）。' }
+  }
   if (!isAtHomeLike(state, ctx)) {
     return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
   }

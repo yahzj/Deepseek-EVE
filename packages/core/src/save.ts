@@ -1868,6 +1868,8 @@ function normalizeState(raw: unknown): GameState {
     importantTasks[key] = {
       done: r.done === true,
       delivered: typeof r.delivered === 'number' && Number.isFinite(r.delivered) ? Math.max(0, Math.floor(r.delivered)) : undefined,
+      // 阶段目标里程碑（键存在才写；否则保持缺省，避免给所有任务塞字段）
+      ...(r.allExplored === true ? { allExplored: true } : {}),
     }
   }
 

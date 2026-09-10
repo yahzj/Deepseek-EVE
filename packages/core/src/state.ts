@@ -1031,6 +1031,8 @@ export interface ImportantTaskState {
   done: boolean
   /** 可交付任务的累计已交数量（按任务 id 语义使用） */
   delivered?: number
+  /** 「寻找人类」阶段目标：已探索全部星系（里程碑只记一次；2026-09-10 船长定） */
+  allExplored?: boolean
 }
 
 /** 第二十三版存档结构（历史版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：

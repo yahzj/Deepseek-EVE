@@ -33,6 +33,7 @@ import {
   RARE_BOX_MINERAL_UNITS,
   RARE_WRECK_VOLUME_M3,
   advanceGame,
+  addWare,
   bountyDamageForecast,
   bountyDayStartWallMs,
   bountyRewardFactor,
@@ -63,6 +64,7 @@ import {
   settleBountyTaskVictory,
   sideTaskBoard,
   startExpedition,
+  startRecycleRun,
 } from '../src/index'
 import { resolveBattleOutcome } from '../src/expedition'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
@@ -467,7 +469,9 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
     const texts = state.logs.map((l) => l.text).join('\n')
     expect(texts).toContain(lairNameOf(ctx.anomalies.get(task.anomalyId!)!, tier))
     expect(texts).toContain('赏金任务完成')
-    expect(texts).toContain('高级箱')
+    // 稀有残骸暂不开放精炼炉（2026-09-10 船长定）：日志只引导"打捞+入库封存"，不再承诺开箱
+    expect(texts).toContain('打捞')
+    expect(texts).not.toContain('高级箱')
     expect(state.expedition.lairTier).toBeUndefined()
   })
 
@@ -532,6 +536,18 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(rare.rare).toBe(true)
     expect(rare.lairGear).toEqual(['mod-a']) // 卡级池覆盖
     expect(rare.anomalyId).toBe(LAIR_HUB.id)
+  })
+
+  it('稀有残骸**暂不开放精炼炉**（2026-09-10 船长定）：核心侧拒绝启动回收（高级箱链路留待开放）', () => {
+    const { state, ctx } = makeWorld(19)
+    addWare(state, rareWreckItemIdOf(LAIR_HUB.id), RARE_WRECK_VOLUME_M3 * 2) // 两件，够一批
+    const r = startRecycleRun(state, rareWreckItemIdOf(LAIR_HUB.id), 'pilot', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('稀有残骸')
+    // 同口径下普通残骸照常可回收（只是本用例没备料 → 报"没有"而不是"不受理"）
+    const normal = startRecycleRun(state, 'wreck-ano-lair-hub', 'pilot', ctx)
+    expect(normal.ok).toBe(false)
+    expect(normal.error).not.toContain('不受理')
   })
 
   it('额外掉落必定有货：含矿物一批（数量按档位）且至少一件装备（专属或主题件）', () => {

@@ -827,7 +827,7 @@ function WreckCard({
   }
   const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? ` 等${notes.length}种倾向` : '')
   const flavorParts = partList.slice(0, 4).concat(partList.length > 4 ? [`… 等${partList.length}组`] : [])
-  // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得 → 回站精炼炉开高级箱）
+  // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回收炉暂不受理）
   const rareBy = state.galaxyWrecks[g.id]?.rareBy ?? {}
   const rareRefs = Object.entries(rareBy).filter(([, n]) => n > 0)
   const rareCount = rareRefs.reduce((s, [, n]) => s + n, 0)
@@ -868,7 +868,7 @@ function WreckCard({
         {rareCount > 0 ? (
           <>
             {' · '}
-            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³），回站精炼炉「残骸回收」按高级箱开（常规保底之外必定额外掉落，含该敌群专属装备）`}>
+            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；协会回收炉暂不受理此类残骸，先入库封存`}>
               稀有残骸 ×{rareCount}
             </em>
           </>

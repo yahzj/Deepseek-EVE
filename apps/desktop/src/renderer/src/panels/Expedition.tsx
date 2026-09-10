@@ -203,6 +203,12 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
     })
     .map((site) => site.id)
   const stationCount = visStationIds.length
+  // 已完成（建成）的副站不再占位（船长 2026-09-10：已完成的重要任务一律隐藏）
+  const unbuiltStationIds = visStationIds.filter((id) => {
+    const site = engine.ctx.stations.get(id)
+    const prog = state.stationSites[id]
+    return !!site && (prog?.stage ?? 0) < site.tiers.length
+  })
 
   function changeTab(next: TaskTabKey): void {
     setTab(next)
@@ -237,13 +243,16 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
       {tab === 'important' ? (
         <div>
           <ImportantTasks engine={engine} onToast={onToast} />
-          {stationCount > 0 ? (
+          {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>
               <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（泊位/卸货/维修/补给/换驾驶与全部站内功能建成后一次性开放）。</div>
               <div className="app-station-list">
-                <StationCard engine={engine} onToast={onToast} siteIds={visStationIds} />
+                <StationCard engine={engine} onToast={onToast} siteIds={unbuiltStationIds} />
               </div>
             </>
+          ) : stationCount > 0 ? (
+            // 已建成的副站卡不再占位（船长 2026-09-10：已完成的重要任务一律隐藏）
+            <div className="app-dim app-exp-idle">副站建设已全部完成——建成站点已并入空间站网络。</div>
           ) : (
             <div className="app-dim app-exp-idle">暂无建站任务——抵达对应星系后出现。</div>
           )}
@@ -252,13 +261,15 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
         <div>
           {/* v24：资源时效任务（每 20 分钟补给周期整板刷新，仓库足量交付即结；原 StationCard 建站内容保留在下方） */}
           <SideTasksArea engine={engine} onToast={onToast} kind="resource" />
-          {stationCount > 0 ? (
+          {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>
               <div className="app-task-family">建站提交 · 本星系出产物资（分档施工；建成后开放全部站内功能）</div>
               <div className="app-station-list">
-                <StationCard engine={engine} onToast={onToast} siteIds={visStationIds} />
+                <StationCard engine={engine} onToast={onToast} siteIds={unbuiltStationIds} />
               </div>
             </>
+          ) : stationCount > 0 ? (
+            <div className="app-dim app-exp-idle">副站建设已全部完成——建成站点已并入空间站网络。</div>
           ) : (
             <div className="app-dim app-exp-idle">暂无建站任务——抵达对应星系后出现。</div>
           )}
@@ -2041,7 +2052,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                   </div>
                   <div className="app-ano-desc">
                     该星系敌群正在集中活动：当天它的全部悬赏奖金 +10%、敌人威胁 +10%；肃清有概率留下稀有残骸，
-                    捞回站内精炼炉开「高级箱」可换该敌群专属装备。
+                    打捞必得、先带回仓库存放。
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
@@ -2194,7 +2205,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 <span className="app-lair-key">稀有残骸</span> ×{rareGain}
               </div>
               <div className="app-ano-desc">
-                肃清后该星系留下稀有残骸——打捞必得，回站精炼炉开「高级箱」可换该敌群专属装备。
+                肃清后该星系留下稀有残骸——打捞必得，先带回仓库存放。
               </div>
               <div className="app-station-deliver">
                 <span className="app-dim">
