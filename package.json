@@ -29,6 +29,7 @@
     "battle:mixed-review": "tsx tools/mixed-damage-review.ts",
     "bounty:econ": "tsx tools/bounty-econ.ts",
     "price:audit": "tsx tools/price-audit.ts",
+    "liquidity:audit": "tsx tools/liquidity-audit.ts",
     "manufacture:econ": "tsx tools/manufacture-econ.ts"
   },
   "devDependencies": {
