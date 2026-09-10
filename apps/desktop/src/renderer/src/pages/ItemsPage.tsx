@@ -11,7 +11,7 @@ import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
-import { ItemGlyphGrid, ItemViewBar, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
+import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -196,7 +196,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     >
                       <div className="app-inv-main">
                         <span className="app-inv-name">
-                          {def.name}
+                          <RowGlyph glyph={def.kind} /> {def.name}
                           {def.kind !== 'ore' && def.kind !== 'mineral' ? (
                             <span className="app-dim">（{ITEM_KIND_LABELS[def.kind]}）</span>
                           ) : null}
@@ -256,7 +256,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               return (
                 <li key={id} className="app-inv-row" title={def.description}>
                   <div className="app-inv-main">
-                    <span className="app-inv-name">{def.name}</span>
+                    <span className="app-inv-name">
+                      <RowGlyph glyph={def.slot} /> {def.name}
+                    </span>
                     <span className="app-inv-count">
                       ×{units.toLocaleString('zh-CN')} · {SLOT_LABELS[def.slot] ?? def.slot} · CPU {def.cpuUse}
                       {def.dmgMult !== undefined ? ` · 火力 ×${def.dmgMult}` : ''}

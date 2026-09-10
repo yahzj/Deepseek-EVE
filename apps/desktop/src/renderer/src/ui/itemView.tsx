@@ -6,7 +6,7 @@
  * ── 内部标签（供检索，船长 2026-09-05）──
  * 本文件 = 「图标/列表视图切换」样式族的唯一实现，覆盖：手册（Handbook，同款 app-hand-*）、
  * 物品页仓库 / 货仓、装配页装备列表 等一切「icon-list-view」界面。
- * 检索入口：`grep data-ui-group="icon-list-view"`（渲染层）或 grep `ItemViewBar|ItemGlyphGrid`。
+ * 检索入口：`grep data-ui-group="icon-list-view"`（渲染层）或 grep `ItemViewBar|ItemGlyphGrid|RowGlyph`。
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Glyph, toneOf } from './Glyphs'
@@ -66,6 +66,20 @@ export function kindExtraNote(kind: string): string | null {
     return '弹药在战斗中自动消耗：开战时从 仓库/货仓 按需取用（货仓优先）；放仓库同样出战且不随船遗失——货仓里的弹药可随时卸回仓库更安全。'
   }
   return null
+}
+
+/**
+ * 列表视图行首小图标（手册图鉴同款：`<RowGlyph glyph={…} /> 名称`）。
+ * 2026-09-10 船长：物品页仓库与货仓的**列表模式**照手册图鉴在名字前加对应图标。
+ * 键口径与图鉴一致——物品取 `def.kind`、装备取 `def.slot`（同一个 Glyphs 图标库 + toneOf 色调）。
+ * 本组件 = 该行首图标的唯一实现（手册/物品页/货仓共用），样式沿用图鉴行样式 `.app-hand-row-glyph`。
+ */
+export function RowGlyph({ glyph }: { glyph: string }) {
+  return (
+    <span className="app-hand-row-glyph" style={{ color: toneOf(glyph) }}>
+      <Glyph name={glyph} size={15} color="currentColor" />
+    </span>
+  )
 }
 
 /** 图标网格（手册 app-hand-grid/cell 同款；供物品/装备浏览用，可选点击回调） */

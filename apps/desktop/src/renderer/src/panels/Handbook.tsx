@@ -18,6 +18,7 @@ import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { BLUEPRINT_SUBS, MODULE_SUBS, SHIP_SUBS, moduleSubKeyOf } from '../ui/itemSubs'
+import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 
@@ -391,15 +392,6 @@ function CellDetail({
         <div className="app-dim app-detail-tip">点击窗口外部任意位置关闭</div>
       </div>
     </div>
-  )
-}
-
-/** 行内小图标（列表视图前缀） */
-function RowGlyph({ glyph }: { glyph: string }) {
-  return (
-    <span className="app-hand-row-glyph" style={{ color: toneOf(glyph) }}>
-      <Glyph name={glyph} size={15} color="currentColor" />
-    </span>
   )
 }
 
