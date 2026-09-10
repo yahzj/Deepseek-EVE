@@ -32,6 +32,8 @@ import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
 import { ShipSprite } from '../ui/ShipSprite'
 import { AiTaskBar } from '../ui/aiProgress'
+import { AiWorkFx } from '../ui/aiWorkFx'
+import type { AiWorkKind } from '../ui/aiWorkFx'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
 import type { PageProps } from './common'
@@ -1129,9 +1131,15 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   ? `前往 ${g?.name ?? task.galaxyId} 掩护巡逻（去程中）`
                   : `掩护巡逻：${g?.name ?? task.galaxyId}`
             }
+            // 工作动画差分（2026-09-10 船长定 6 类，判据取引擎真值 task.kind）：远征已软下线，
+            // 老档残留兜底显示时按掩护巡逻呈现（不新造第七种动画）
+            const fxKind: AiWorkKind =
+              task.kind === 'mining' ? 'mining' : task.kind === 'salvage' ? 'salvage' : 'standby'
             return (
               <li key={sid} className="app-inv-row">
-                <div className="app-inv-main">
+                <div className="app-inv-main is-aiwork">
+                  <AiWorkFx kind={fxKind} />
+                  <div className="app-inv-text">
                   <span className="app-inv-name">{shipDisplayName(state, engine.ctx, sid)}</span>
                   <span className="app-inv-count">
                     {desc} · {aiCoreName(assignment.coreType)}（效率 {Math.round(eff * 100)}%）
@@ -1139,6 +1147,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <span className="app-inv-count">
                     <AiTaskBar view={aiView} />
                   </span>
+                  </div>
                 </div>
                 <div className="app-inv-btns">
                   <button
@@ -1162,35 +1171,44 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             站内工业 AI：可在上方直接指派，参数调整在工业页卡片；这里可随时停止（核心自动归还）。
           </div>
           <ul className="app-inv-list">
-            {aiRefineRuns.map((v) => (
-              <li key={`rf-${v.id}`} className="app-inv-row">
-                <div className="app-inv-main">
-                  <span className="app-inv-name">
-                    {v.itemId && engine.ctx.items.get(v.itemId)?.kind === 'wreck' ? '回收炉' : '精炼炉'} · {v.itemName}
-                  </span>
-                  <span className="app-inv-count">
-                    {v.workerLabel}核心 · 已 {v.batchesDone} 批（每批 {v.batchUnits.toLocaleString('zh-CN')} 单位）
-                  </span>
-                  <span className="app-inv-count">
-                    <AiTaskBar
-                      view={{ kind: 'ai', phase: 'refine', label: '本批', percent: v.percent, remainingMs: v.remainingMs }}
-                    />
-                  </span>
-                </div>
-                <div className="app-inv-btns">
-                  <button
-                    className="app-btn is-small is-warn"
-                    onClick={() => handleStopIndustry(v.id, false)}
-                    title="停这台炉：已完成批保留；原料未锁定无需退回，AI 核心自动归还"
-                  >
-                    停止
-                  </button>
-                </div>
-              </li>
-            ))}
+            {aiRefineRuns.map((v) => {
+              // 回收炉 vs 精炼炉：料是残骸即回收炉——同一判据同时驱动文案与动画差分（只写一处）
+              const isReclaim = v.itemId !== null && engine.ctx.items.get(v.itemId)?.kind === 'wreck'
+              return (
+                <li key={`rf-${v.id}`} className="app-inv-row">
+                  <div className="app-inv-main is-aiwork">
+                    <AiWorkFx kind={isReclaim ? 'reclaim' : 'refine'} />
+                    <div className="app-inv-text">
+                    <span className="app-inv-name">
+                      {isReclaim ? '回收炉' : '精炼炉'} · {v.itemName}
+                    </span>
+                    <span className="app-inv-count">
+                      {v.workerLabel}核心 · 已 {v.batchesDone} 批（每批 {v.batchUnits.toLocaleString('zh-CN')} 单位）
+                    </span>
+                    <span className="app-inv-count">
+                      <AiTaskBar
+                        view={{ kind: 'ai', phase: 'refine', label: '本批', percent: v.percent, remainingMs: v.remainingMs }}
+                      />
+                    </span>
+                    </div>
+                  </div>
+                  <div className="app-inv-btns">
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => handleStopIndustry(v.id, false)}
+                      title="停这台炉：已完成批保留；原料未锁定无需退回，AI 核心自动归还"
+                    >
+                      停止
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
             {aiMakeRuns.map((v) => (
               <li key={`mf-${v.id}`} className="app-inv-row">
-                <div className="app-inv-main">
+                <div className="app-inv-main is-aiwork">
+                  <AiWorkFx kind="craft" />
+                  <div className="app-inv-text">
                   <span className="app-inv-name">组装机 · {v.productName}</span>
                   <span className="app-inv-count">
                     {v.workerLabel}核心 · {v.autoRepeat ? `连续生产${v.repeatGoal > 0 ? `（目标 ${v.repeatGoal} 件）` : ''}` : '单件生产'}
@@ -1200,6 +1218,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                       view={{ kind: 'ai', phase: 'make', label: '本件', percent: v.percent, remainingMs: v.remainingMs }}
                     />
                   </span>
+                  </div>
                 </div>
                 <div className="app-inv-btns">
                   <button
