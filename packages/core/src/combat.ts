@@ -479,8 +479,10 @@ export function createPlayerSpec(
           // 雷鸥哨戒 5000；旧值 2600 兜底；中继天线百分比乘入）
           maxRangeM: Math.round((def.maxRangeM ?? 2600) * droneRangeMult),
           minRangeM: 200,
-          hitRate: 0.6,
-          falloff: 0.35,
+          // 命中（2026-09-10 船长：下放到机型本体，不再硬编码 0.6/0.35）——
+          // 侦察/战斗/攻坚三型 0.75 且**命中不随距离衰减**（falloff 1）；哨戒 1.10 保留正常衰减 0.35
+          hitRate: def.hitRate ?? 0.6,
+          falloff: def.falloff ?? 0.35,
           reloadMs: droneReload,
         })
       }

@@ -319,14 +319,22 @@ describe('贸易税（V9+：5% 销售税 + 减免技能）', () => {
     state.wallet.isk = 100_000
     const buy = buyAtMarket(state, ctx, 'it-min-a', 1)
     expect(buy.total).toBe(9) // 供应价 9，无税
-    // 手动挂卖单（免费）→ 窗口撮合成交 → 税后入账
-    state.warehouse.items['ore-a'] = 50
-    expect(listSellHolding(state, ctx, 'it-ore-a', 12, 50).ok).toBe(true)
+
+    // ① 挂价高于收购簿（不成交）：挂单免费、货进托管、留在挂单表等窗口
+    state.warehouse.items['ore-a'] = 100
+    const walletBeforeList = state.wallet.isk
+    expect(listSellHolding(state, ctx, 'it-ore-a', 40, 50).ok).toBe(true)
+    expect(state.wallet.isk).toBe(walletBeforeList) // 挂单不收费
     expect(state.orders).toHaveLength(1)
     expect(state.escrowItems['it-ore-a'] ?? 0).toBe(50)
+
+    // ② 挂价压到收购价线（12 = 开盘收购价）：2026-09-10 起挂出瞬间即与簿面对冲成交，同样扣税
     const walletBefore = state.wallet.isk
-    advanceGame(state, 60_000, ctx) // 挂单价 12 = 开盘收购价 12 → 全成交
-    expect(state.orders).toHaveLength(0)
+    const r = listSellHolding(state, ctx, 'it-ore-a', 12, 50)
+    expect(r.ok).toBe(true)
+    expect(r.filled).toBe(50) // 挂出即成交（同价算成交）
+    expect(r.resting).toBe(0)
+    expect(state.orders).toHaveLength(1) // 只剩 ① 那张高价单
     expect(state.wallet.isk).toBe(walletBefore + (600 - Math.round(600 * 0.05))) // 税后 570
     expect(state.logs.some((l) => l.text.includes('贸易税'))).toBe(true)
   })
@@ -1218,8 +1226,11 @@ describe('商品下架（市场目录收缩防御，2026-09-09：蓝图船成品
     })
     advanceGame(state, 61_000, ctx) // 开市 + 开盘铺簿（npcSell 阶梯有货）
     expect(state.market.npcSell['it-delist']?.length ?? 0).toBeGreaterThan(0)
-    const order = placeBuyOrder(state, ctx, 'it-delist', 1_000_000, 3) // 高价买单：无防御必吃簿
+    // 低价买单（低于供应簿 → 挂出时不与簿面对冲）：留在挂单表里，模拟"旧档残留挂单"
+    // （2026-09-10 起与簿面对冲的挂单会在挂出瞬间成交，故这里用不吃簿的价格构造残留单）
+    const order = placeBuyOrder(state, ctx, 'it-delist', 1, 3)
     expect(order).not.toBeNull()
+    expect(state.orders).toHaveLength(1)
     // 模拟商品下架：目录移除该 key，但簿面/挂单残留（旧档真实场景）
     ;(ctx.marketGoods as unknown as Map<string, MarketGoodDef>).delete('it-delist')
     const walletBefore = state.wallet.isk

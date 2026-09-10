@@ -428,6 +428,21 @@ function GoodRow({
 
 /* ═══════════════ 市场栏（标题 + 有货冒泡列表；搜索/类型过滤已提升到页面级跨栏） ═══════════════ */
 
+/** 挂单回执文案（2026-09-10 船长定：挂单瞬间先与现有簿面对冲 → 回执写明即时成交部分） */
+function placeOrderToast(
+  side: '买' | '卖',
+  name: string,
+  want: number,
+  price: number,
+  filled: number,
+  resting: number,
+): string {
+  const n = (v: number): string => v.toLocaleString('zh-CN')
+  if (filled <= 0) return `已挂${side}单：${name}×${n(want)} @ ${isk(price)} ISK（挂在簿上，等对手单成交）`
+  if (resting <= 0) return `${side}单已即时成交：${name}×${n(filled)} @ ${isk(price)} ISK`
+  return `${side}单已即时成交 ${n(filled)} 件，余 ${n(resting)} 件挂单 @ ${isk(price)} ISK`
+}
+
 /** 有货冒泡上浮（供应簿有现货的排前面）；其余保持目录稳定顺序。
  *  2026-09-10 船长定：默认排序下已标记（收藏）的商品置顶——两栏与搜索结果都是这一套默认口径。 */
 function stockedFirst(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
@@ -685,19 +700,20 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
         onToast(`挂买单失败：${gate}。`, true)
         return
       }
-      const id = engine.placeBuyOrderAt(good.key, p, n)
-      if (id === null) onToast('挂买单失败：该商品当前不接受这个价格的挂单（可先试市价买入）。', true)
+      const res = engine.placeBuyOrderAt(good.key, p, n)
+      if (res === null) onToast('挂买单失败：该商品当前不接受这个价格的挂单（可先试市价买入）。', true)
       else {
+        // 2026-09-10：挂单瞬间会先与现有卖单簿面对冲成交 → 回执写明即时成交部分
         const exoNote =
           good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
             ? `。注意：挂价低于奇货参考价（约 ${isk(askLineOf(state, engine.ctx, good.key))} ISK），可能长期无法成交——建议挂到参考价附近`
             : ''
-        onToast(`已挂买单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK${exoNote}。`)
+        onToast(`${placeOrderToast('买', name, n, p, res.filled, res.resting)}${exoNote}。`)
       }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
       if (!r.ok) onToast(r.error ?? '挂卖单失败。', true)
-      else onToast(`已挂卖单：${name}×${n.toLocaleString('zh-CN')} @ ${isk(p)} ISK。`)
+      else onToast(`${placeOrderToast('卖', name, n, p, r.filled ?? 0, r.resting ?? n)}。`)
     }
   }
   /**
