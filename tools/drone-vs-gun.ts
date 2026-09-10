@@ -60,9 +60,20 @@ const FULL_SKILLS: Record<string, number> = {
   'ship-systems-engineering': 5,
 }
 
-/** 中/低槽火力向支援件（各行统一，差异只来自高槽选择；注意：这些件对无人机火力无效） */
-const SUP_MID = ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2']
-const SUP_LOW = ['mod-stab-kin-2', 'mod-rof-2', 'mod-armor-kin-2']
+/** 中/低槽支援件（按**该船实际布局**给满，不得超位——超位会被 repair 链裁掉/或虚高）：
+ * - 炮击流：盾容 + 索敌（命中）+ 陀螺 / 稳定器（单发）+ 射速计算机——三者对炮台有效；
+ * - 无人机流：盾容 + 陀螺 / 甲容 + 装甲板——**支援件对无人机火力无效**（2026-09-10 船长口径），
+ *   故无人机流派取纯生存向配装（索敌/稳定器/射速对无人机是纯浪费 CPU）。 */
+const SUP_GUN = {
+  mid3: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+  mid2: ['mod-shield-kin-2', 'mod-track-2'],
+  low2: ['mod-stab-kin-2', 'mod-rof-2'],
+}
+const SUP_DRONE = {
+  mid3: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-gyro-2'],
+  mid2: ['mod-shield-kin-2', 'mod-gyro-2'],
+  low2: ['mod-armor-kin-2', 'mod-armor-plate-2'],
+}
 
 const D3_FLEET = { 'drone-heavy': 4, 'drone-sentry': 6 } // 官方 D3 口径（4 猎鹰 + 6 雷鸥 = 320 m³）
 const FALCON16 = { 'drone-heavy': 16 } // 舱容最优（16 猎鹰 = 320 m³，每 m³ 伤害最高的三型之一）
@@ -279,21 +290,21 @@ console.log(
 
 /* ══════════ 表 2：真实装配流派对比（CPU/舱容按现网真实钳制）══════════ */
 const SWARM_CFGS: Cfg[] = [
-  { name: '梭鱼·纯炮 3×MK3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·纯炮 2×MK3+锁定3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 D2(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 D2b(rack2×2+tac3)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 rack2×2+中继3(射程向)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-relay-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·纯炮 3×MK3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: SUP_GUN.mid3, low: SUP_GUN.low2 },
+  { name: '梭鱼·纯炮 2×MK3+锁定3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'], mid: SUP_GUN.mid3, low: SUP_GUN.low2 },
+  { name: '梭鱼·无人机 D2(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_DRONE.mid3, low: SUP_DRONE.low2 },
+  { name: '梭鱼·无人机 D2b(rack2×2+tac3)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_DRONE.mid3, low: SUP_DRONE.low2 },
+  { name: '梭鱼·无人机 rack2×2+中继3(射程向)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-relay-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_DRONE.mid3, low: SUP_DRONE.low2 },
 ]
 const SENT_CFGS: Cfg[] = [
-  { name: '王鲭·纯炮 4×MK3', ship: SENT, high: Array(4).fill('mod-turret-kin-3'), mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·纯炮 4×MK3', ship: SENT, high: Array(4).fill('mod-turret-kin-3'), mid: SUP_GUN.mid2, low: SUP_GUN.low2 },
   { name: '王鲭·纯炮 4×MK3（无中/低槽支援件）', ship: SENT, high: Array(4).fill('mod-turret-kin-3') },
-  { name: '王鲭·纯炮 3×MK3+锁定3', ship: SENT, high: [...Array(3).fill('mod-turret-kin-3'), 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3+锁定3（挤掉1件导控）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-lock-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 rack3+tac3+中继3×2（射程向）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3', 'mod-drone-relay-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·混装 2炮+rack3+tac3', ship: SENT, high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-drone-rack-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机满舱16猎鹰(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: FALCON16, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·纯炮 3×MK3+锁定3', ship: SENT, high: [...Array(3).fill('mod-turret-kin-3'), 'mod-lock-3'], mid: SUP_GUN.mid2, low: SUP_GUN.low2 },
+  { name: '王鲭·无人机 D3(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·无人机 D3+锁定3（挤掉1件导控）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-lock-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·无人机 rack3+tac3+中继3×2（射程向）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3', 'mod-drone-relay-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·混装 2炮+rack3+tac3', ship: SENT, high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-drone-rack-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·无人机满舱16猎鹰(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: FALCON16, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
 ]
 for (const [title, cfgs] of [
   ['══ 表 2a：梭鱼级（3 高槽 / 机巢 160m³ / CPU 235；2026-09-10 高槽 5→3）真实装配对比 ══', SWARM_CFGS],
@@ -366,8 +377,8 @@ for (const sc of SCENARIOS) {
       ship: SENT,
       high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
       drones: sc.fleet,
-      mid: SUP_MID,
-      low: SUP_LOW,
+      mid: SUP_DRONE.mid2,
+      low: SUP_DRONE.low2,
     }
     const d = dpsOfCfg(cfg)
     const g = battle(cfg, 'ano-gravekeeper')
