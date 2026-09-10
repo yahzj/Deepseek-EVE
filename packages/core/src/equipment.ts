@@ -251,8 +251,16 @@ export function fitModule(
   return { ok: true }
 }
 
-/** 玩家指令：按 槽类+位序 卸下某船某位的装备（放回装备库；shipId 缺省 = 当前驾驶船） */
-export function unfitAt(state: GameState, rack: RackSlot, index: number, shipId: string = state.shipId): boolean {
+/** 玩家指令：按 槽类+位序 卸下某船某位的装备（放回装备库；shipId 缺省 = 当前驾驶船）。
+ * ctx 传入时（UI/工具一律传）：卸下「无人机甲板扩展」等导致机舱变小的件后，
+ * **超出容量的无人机自动卸下并退回仓库**（2026-09-10 船长；见 trimDroneLoadToBay）。 */
+export function unfitAt(
+  state: GameState,
+  rack: RackSlot,
+  index: number,
+  shipId: string = state.shipId,
+  ctx?: SimContext,
+): boolean {
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return false
   const bays = rackBays(fitted, rack)
@@ -262,6 +270,7 @@ export function unfitAt(state: GameState, rack: RackSlot, index: number, shipId:
   bays[index] = null
   addModule(state, moduleId)
   addLog(state, 'info', `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`)
+  if (ctx) trimDroneLoadToBay(state, ctx, shipId)
   return true
 }
 
@@ -277,6 +286,57 @@ function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): numbe
     }
   }
   return cap
+}
+
+/**
+ * 机舱超容整理（2026-09-10 船长：卸下「无人机甲板扩展」后，超出机舱的无人机也要卸下）：
+ * 机舱容量变小（卸甲板扩展 / 旧档槽位裁短）导致清单装不下时，**按清单逆序逐架卸下并退回仓库**
+ * （与 createPlayerSpec 的"超量逆序剔除"同口径），并写事件日志 + 一次性提示（渲染层弹 toast）。
+ * 返回被卸下的摘要（文案；无超容 = null）。
+ */
+export function trimDroneLoadToBay(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string = state.shipId,
+): string | null {
+  const fleet = state.fleet[shipId]
+  const current = fleet?.droneLoad
+  if (!fleet || !current) return null
+  const cap = droneBayCapOf(state, ctx, shipId)
+  let used = droneLoadM3(current, ctx)
+  if (used <= cap + 1e-6) return null
+  const load: Record<string, number> = { ...current }
+  const keys = Object.keys(load)
+  const removed: Record<string, number> = {}
+  while (used > cap + 1e-6) {
+    let took = false
+    for (let i = keys.length - 1; i >= 0; i--) {
+      const id = keys[i]!
+      const n = load[id] ?? 0
+      if (n <= 0) continue
+      const left = n - 1
+      if (left > 0) load[id] = left
+      else delete load[id]
+      used -= ctx.items.get(id)?.unitM3 ?? 0
+      removed[id] = (removed[id] ?? 0) + 1
+      addWare(state, id, 1) // 退回物品仓库（可从仓库重新装入）
+      took = true
+      break
+    }
+    if (!took) break // 防御：清单已空仍超容（内容异常）→ 停手
+  }
+  fleet.droneLoad = Object.keys(load).length > 0 ? load : undefined
+  const text = Object.entries(removed)
+    .map(([id, n]) => `${ctx.items.get(id)?.name ?? id}×${n}`)
+    .join('、')
+  addLog(
+    state,
+    'warn',
+    `⚠ 无人机舱容量缩小（现 ${Math.round(used * 10) / 10}/${cap} m³）：已自动卸下超出的 ${text} 并退回仓库。`,
+  )
+  // 一次性提示（渲染层读到即清并弹 toast；与机群战损共用同一通道）
+  state.droneLossNotice = `机舱容量不足：已自动卸下 ${text} 并退回仓库。`
+  return text
 }
 
 /**
@@ -507,6 +567,10 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
       `装备修复：旧件按动能款迁移 ${fittedMoved + bayMoved} 件；悬空退回 ${slotEmptied} 件；` +
         (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : ''),
     )
+  }
+  // 槽位对齐可能裁掉甲板扩展 → 机舱变小：超出容量的无人机同样自动卸下（2026-09-10 船长口径）
+  for (const uid of Object.keys(state.fleet)) {
+    if (state.fleet[uid]?.defId) trimDroneLoadToBay(state, ctx, uid)
   }
 }
 

@@ -1102,9 +1102,10 @@ export class GameEngine {
     return result
   }
 
-  /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船） */
+  /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船）。
+   *  2026-09-10 船长：传 ctx——卸下甲板扩展后机舱变小，超出容量的无人机随之自动卸下退回仓库 */
   unfitAtAt(rack: RackSlot, index: number, shipId?: string): boolean {
-    const ok = unfitAt(this.state, rack, index, shipId)
+    const ok = unfitAt(this.state, rack, index, shipId, this.ctx)
     if (ok) {
       void this.persist()
       this.notify()

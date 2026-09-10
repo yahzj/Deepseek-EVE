@@ -176,6 +176,8 @@ export {
   // 2026-09-08 无人机舱大改：装载清单 CPU/体积（装配页预算条、装配校验、战斗装载同源）
   droneCpuUsed,
   droneLoadM3,
+  // 2026-09-10 船长：卸下甲板扩展等导致机舱变小 → 超出容量的无人机自动卸下并退回仓库
+  trimDroneLoadToBay,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
   migrateDeprecatedAmmo,
