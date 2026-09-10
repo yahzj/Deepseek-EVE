@@ -380,8 +380,13 @@ export class GameEngine {
 
   /**
    * 悬赏胜率 MC 预热泵（挂在每秒心跳尾；战斗交火期跳过避免挤占实时推进）：
-   * 指纹变化 → 重建评估快照 + 全板入队；每批预算 ~60ms、节流 ≥400ms，批完成 notify 一次，
-   * 悬赏卡数字随批从旧口径变准（全板约 1~3 秒）。评估用独立快照/种子，不消耗真实存档 rng。
+   * 指纹变化 → 重建评估快照 + 全板入队；每批预算 + 节流 + 每批条数上限，批完成 notify 一次，
+   * 悬赏卡数字随批从旧口径变准（全板约几秒）。评估用独立快照/种子，不消耗真实存档 rng。
+   *
+   * 2026-09-10 船长反馈"击毁敌人后画面明显卡顿"定位（perfHub 快照：adv ≤0.7ms、commit ≤6.4ms，
+   * 但 long = 1×63ms、FPS min 19.8，且恰好落在战斗结束那一刻）：原单批预算 60ms 会把
+   * 全板重算（真档实测 26 条共 ~70ms）**塞进同一个任务** → 一次 ~60ms 的可见卡顿。
+   * 现改：单批预算 8ms + 每批最多 2 条 → 同样工作量摊到十几拍（每拍 ≤10ms，肉眼无感）。
    */
   private pumpWinCache(now: number): void {
     if (this.state.expedition.phase === 'battle' && !!this.state.expedition.battle) return
@@ -400,9 +405,9 @@ export class GameEngine {
       return
     }
     this.winLastPumpAt = now
-    const until = now + 60
+    const until = now + 8 // 单批预算 8ms（原 60ms：会在战斗结束那一下形成一次长任务）
     let done = 0
-    while (this.winQueue.length > 0 && Date.now() < until) {
+    while (this.winQueue.length > 0 && done < 2 && Date.now() < until) {
       const id = this.winQueue.shift()!
       const a = this.ctx.anomalies.get(id)
       if (!a) continue
