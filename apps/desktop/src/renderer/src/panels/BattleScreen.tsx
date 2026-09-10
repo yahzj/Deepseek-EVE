@@ -141,6 +141,8 @@ const meSpeedRef = useRef(200)
         表现为 10fps 步进）；改为 rAF 循环直接写 transform（容器 + 每架），恒定 60fps 平滑。 ── */
   const droneBoxRef = useRef<HTMLDivElement>(null)
   const droneElsRef = useRef<Map<string, HTMLSpanElement>>(new Map())
+  /** 上次写入的 transform（值未变就不写，避免每帧无谓的样式失效与重排） */
+  const droneWritesRef = useRef<Map<string, string>>(new Map())
   const visDistRef = useRef(0)
   const droneDriveRef = useRef<{
     foeN: number
@@ -341,16 +343,28 @@ const meSpeedRef = useRef(200)
       if (d.wings.length > 0) {
         const layLoop = layout(dimsRef.current, Math.max(1, d.foeN), visDistRef.current, d.openM, d.nearM)
         const box = droneBoxRef.current
-        if (box) box.style.transform = `translate3d(${layLoop.me.x}px, ${layLoop.me.y}px, 0)`
+        const w0 = droneWritesRef.current
+        if (box) {
+          const tb = `translate3d(${layLoop.me.x.toFixed(1)}px, ${layLoop.me.y.toFixed(1)}px, 0)`
+          if (w0.get('@box') !== tb) {
+            box.style.transform = tb
+            w0.set('@box', tb)
+          }
+        }
         const nowMs = performance.now()
         for (const w of d.wings) {
           if (w.deck) continue // 收舱（display:none）不写位置
           const elapsed = w.st ? nowMs - w.st.startAt : Number.POSITIVE_INFINITY
           for (let i = 0; i < w.show; i++) {
-            const el = droneElsRef.current.get(`${w.artId}|${i}`)
+            const key = `${w.artId}|${i}`
+            const el = droneElsRef.current.get(key)
             if (!el) continue
             const pose = dronePoseAt(w.model, i, w.st, layLoop, elapsed)
-            el.style.transform = `translate3d(${pose.x - layLoop.me.x}px, ${pose.y - layLoop.me.y}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
+            const t = `translate3d(${(pose.x - layLoop.me.x).toFixed(1)}px, ${(pose.y - layLoop.me.y).toFixed(1)}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
+            if (w0.get(key) !== t) {
+              el.style.transform = t
+              w0.set(key, t)
+            }
           }
         }
       }
@@ -365,6 +379,7 @@ const meSpeedRef = useRef(200)
   }, [])
 
   // 尺寸测量（列宽由固定内容决定；窗口变化只影响 lane 宽）
+  const measureRef = useRef<() => void>(() => {})
   useEffect(() => {
     const measure = (): void => {
       const lane = laneRef.current
@@ -379,6 +394,7 @@ const meSpeedRef = useRef(200)
         d.W === next.W && d.H === next.H && d.meW === next.meW && d.foeW === next.foeW ? d : next,
       )
     }
+    measureRef.current = measure
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
@@ -633,6 +649,13 @@ const meSpeedRef = useRef(200)
   if (dropFinal.size > 0) probeRef.current.lastDropAt = now
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
+  /* 2026-09-10 船长"击毁小型敌人后无人机落弹位置有误"修复：
+     敌列宽度 dims.foeW 原先只在挂载/窗口变化时测一次。击毁一艘僚舰后敌列 DOM 实际变窄、测量值却仍是旧的，
+     而锚点按"(dims.foeW − rowW)/2 居中"推算 → 锚点整体右移、舰体在 DOM 里靠左 → 弹道落点偏右（无人机瞄中心最明显）。
+     现改为**编队数量变化即重新测量**（波次增援同样覆盖）。 */
+  useEffect(() => {
+    measureRef.current()
+  }, [foeN])
   const lay = layout(dims, foeN, visM, openM, nearM)
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
