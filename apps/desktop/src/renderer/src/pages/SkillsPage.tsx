@@ -300,9 +300,20 @@ function nextLevelAction(
   st: ReturnType<typeof skillUiState>,
   engine: PageProps['engine'],
   skill: SkillDef,
-): { label: string; onClick: () => void; title?: string; eta?: ReactNode } | null {
+): { label: string; onClick: () => void; title?: string; eta?: ReactNode; disabled?: boolean } | null {
   const { current, lastQueued, def, tf, isTraining, maxed } = st
   if (maxed) return null
+  // 2026-09-10 修复（玩家反馈"AI 核心调度学能升到 LV6"）：队列里同技能已排到满级时不再喊下一级——
+  // 原实现无条件用 lastQueued + 1 出文案，技能在 Lv4 且已排 Lv5 时按钮写出「追加→Lv6」，
+  // 点下去只会被引擎拒绝（trainNextLevel 的满级/超限校验）。此处改为置灰说明，文案不越上限。
+  if (lastQueued >= MAX_SKILL_LEVEL) {
+    return {
+      label: '已排队到满级',
+      onClick: () => engine.trainNextLevel(skill.id),
+      title: `队列里已排到 Lv${MAX_SKILL_LEVEL}（技能上限），无法再追加。`,
+      disabled: true,
+    }
+  }
   const label = isTraining || st.mine.length > 0 ? `追加→Lv${lastQueued + 1}` : `训练→Lv${current + 1}`
   const targetLv = lastQueued + 1
   return {
@@ -327,7 +338,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
           </span>
           {action ? (
             <>
-              <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title}>
+              <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title} disabled={action.disabled}>
                 {action.label}
               </button>
               {action.eta}
@@ -345,7 +356,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
           </span>
           {action ? (
             <>
-              <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title}>
+              <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title} disabled={action.disabled}>
                 {action.label}
               </button>
               {action.eta}
@@ -359,7 +370,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
       <div className="app-sr-training">
         {action ? (
           <>
-            <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title}>
+            <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title} disabled={action.disabled}>
               {action.label}
             </button>
             {action.eta}
@@ -433,7 +444,7 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
       ) : null}
       <div className="app-skill-card-actions">
         {action ? (
-          <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title}>
+          <button className="app-btn is-primary is-small" onClick={action.onClick} title={action.title} disabled={action.disabled}>
             {action.label}
           </button>
         ) : null}
