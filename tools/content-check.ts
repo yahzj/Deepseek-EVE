@@ -407,6 +407,13 @@ for (const m of MODULES) {
     if (hasBay) check((m.droneBayBonusM3 ?? 0) <= 500, `无人机甲板 ${m.id} droneBayBonusM3 越界`)
     if (hasDmg) check((m.droneDmgBonus ?? 0) <= 1, `战术导控 ${m.id} droneDmgBonus 越界`)
   }
+  if (m.slot === 'drone-relay') {
+    // 2026-09-10 无人机中继天线：百分比射程加成（值域 (0, 2]，多件线性求和乘入机型射程）
+    check(
+      (m.droneRangeBonusPct ?? 0) > 0 && (m.droneRangeBonusPct ?? 0) <= 2,
+      `无人机中继天线 ${m.id} droneRangeBonusPct 非法（需 (0, 2]）`,
+    )
+  }
   if (m.slot === 'miner' || m.slot === 'cargo') {
     // V17：工业槽保留加成系数形态
     check((m.bonus ?? 0) > 0 && Number.isFinite(m.bonus), `工业装备 ${m.id} bonus 缺失或非法（V17 仅工业槽使用）`)

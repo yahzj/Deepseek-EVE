@@ -1132,6 +1132,26 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 30,
     description: '烬火流亡（G 族）窝点专属：流亡者拼装的无人机巢舱——无人机舱 +55 m³，一舰放飞多到离谱的蜂群。',
   },
+  {
+    id: 'mod-lair-drone-tac-g',
+    name: '流亡蜂群导控',
+    slot: 'drone-tac',
+    rack: 'high',
+    droneDmgBonus: 0.45,
+    cpuUse: 32,
+    description:
+      '烬火流亡（G 族）窝点专属：从残舰上拆回来的蜂群控制台——放飞无人机单发伤害 **+45%**（比战术导控阵列 MK3 还高五个点，CPU 却只吃 32：流亡者没有新零件，只有好手艺）。',
+  },
+  {
+    id: 'mod-lair-drone-relay-g',
+    name: '流亡中继桅',
+    slot: 'drone-relay',
+    rack: 'high',
+    droneRangeBonusPct: 0.65,
+    cpuUse: 34,
+    description:
+      '烬火流亡（G 族）窝点专属：用废桅杆拼起来的中继阵——放飞无人机射程 **+65%**（蜂鸟 4125 m / 赤鸢 4950 m / 猎鹰 5775 m / 雷鸥 8250 m）。比无人机中继天线 MK3 近一档，却省下 12 点 CPU。',
+  },
 ]
 
 /** 构建"装备 id → 定义"目录 */

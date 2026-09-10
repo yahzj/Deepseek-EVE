@@ -118,7 +118,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   D: ['mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d'], // 陵墓护盾阵列 / 守墓者长炮 / 陵寝装甲层（最强敌族，对标异星档）
   E: ['mod-lair-turret-e', 'mod-lair-hangar-e', 'mod-lair-frame-e'], // 巨构残骸炮 / 深层机库 / 巨构骨架（2026-09-10 船长逐件过审：档位「略高于 MK3」、仍低于 D）
   F: [],
-  G: ['mod-lair-drone-rack-g'], // 流亡蜂群巢（另两件待逐件过审）
+  G: ['mod-lair-drone-rack-g', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'], // 流亡蜂群巢 / 流亡蜂群导控 / 流亡中继桅（无人机全套专族：机库 + 伤害 + 射程）
 }
 
 /** 该卡的专属装备池（卡级优先，其次按敌族；都没有 = 空池） */

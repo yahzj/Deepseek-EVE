@@ -115,7 +115,7 @@ const LAIR_MID3 = anomaly('ano-lair-mid3', 'galaxy-mid3', {
   lairCore: '测试守墓者',
   foeFamily: 'D',
 })
-/** 低安 · 烬火（族级专属池 = 流亡蜂群巢；用于族池兜底断言） */
+/** 低安 · 烬火（族级专属池 = G 族无人机全套三件；用于族池兜底断言） */
 const LAIR_LOW1 = anomaly('ano-lair-low1', 'galaxy-far', {
   threat: 30,
   reward: 60_000,
@@ -560,9 +560,13 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(extra.note.length).toBeGreaterThan(0)
   })
 
-  it('族级池兜底（G 族 → 流亡蜂群巢）；B 族已撤池；无族无卡级池 → 主题追加件', () => {
+  it('族级池兜底（G 族 → 无人机全套三件）；B 族已撤池；无族无卡级池 → 主题追加件', () => {
     const { state, ctx } = makeWorld(29)
-    expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_LOW1.id))!.lairGear).toEqual(['mod-lair-drone-rack-g'])
+    expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_LOW1.id))!.lairGear).toEqual([
+      'mod-lair-drone-rack-g',
+      'mod-lair-drone-tac-g',
+      'mod-lair-drone-relay-g',
+    ])
     expect(lairGearOf(LAIR_B)).toEqual([])
     expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_B.id))!.lairGear).toBeUndefined()
     const nf = recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_NF.id))!
