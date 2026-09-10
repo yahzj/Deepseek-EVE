@@ -51,6 +51,7 @@ import {
   hasLairCore,
   isLairCandidate,
   lairGearOf,
+  lairLevelOf,
   lairNameOf,
   rareWreckItemIdOf,
   recycleTierOf,
@@ -698,6 +699,52 @@ for (const m of MODULES) {
     check(
       FOE_LAIR_GEAR[fam].length > 0,
       `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
+    )
+  }
+  /* ── 窝点地图级别契约（2026-09-10 船长定：档位由地图级别硬封顶） ──
+   * ①每张窝点候选卡必须**显式标级**（`lairLevel` 缺省 3 只是"漏标不误伤"，不是可省；
+   *   忘了标级的地图会永远出全档，与"越低级的图越出不了高档位"直接冲突）；
+   * ②每个有窝点成员的敌族**至少一张 3 级**（船长 2026-09-10 定）——否则该族在日板上永远打不到深层；
+   * ③（提示，不拦）同族内"级别更高而奖金更低"属反常，多半是标反了。 */
+  {
+    const levelByFam = new Map<string, number[]>()
+    for (const def of ANOMALIES_FLAVORED) {
+      if (!isLairCandidate(def)) continue
+      const fam = def.foeFamily ?? '?'
+      const lv = def.lairLevel
+      check(
+        lv === 1 || lv === 2 || lv === 3,
+        `窝点级别契约：${def.name} 未标 lairLevel（须显式写 1/2/3——1 = 只出外围、2 = 到核心、3 = 全档）`,
+      )
+      if (lv === 1 || lv === 2 || lv === 3) levelByFam.set(fam, [...(levelByFam.get(fam) ?? []), lv])
+    }
+    for (const [fam, levels] of levelByFam) {
+      check(
+        levels.includes(3),
+        `窝点级别契约：敌族 ${fam} 没有任何 3 级地图（船长 2026-09-10 定：每族至少一张 3 级，否则该族永远出不了深层档）`,
+      )
+      const cards = [...ANOMALIES_FLAVORED].filter((d) => isLairCandidate(d) && d.foeFamily === fam)
+      for (const lo of cards) {
+        for (const hi of cards) {
+          if (lairLevelOf(hi) > lairLevelOf(lo) && hi.rewardIsk < lo.rewardIsk) {
+            warn.push(
+              `窝点级别提示：${fam} 族「${hi.name}」（级别 ${lairLevelOf(hi)}）奖金低于「${lo.name}」（级别 ${lairLevelOf(lo)}）——请复核级别是否标反`,
+            )
+          }
+        }
+      }
+    }
+    const levelCount = { 1: 0, 2: 0, 3: 0 }
+    let total = 0
+    for (const levels of levelByFam.values()) {
+      for (const l of levels) {
+        levelCount[l as 1 | 2 | 3] += 1
+        total += 1
+      }
+    }
+    console.log(
+      `· 窝点级别契约：${total} 张候选卡全数显式标级（L1×${levelCount[1]} / L2×${levelCount[2]} / L3×${levelCount[3]}），` +
+        `${levelByFam.size} 个敌族各至少一张 3 级`,
     )
   }
   /* 专属装备的"来源唯一"契约（2026-09-10 加）：这批装备**只能**从高级箱（稀有残骸额外掉落）出——

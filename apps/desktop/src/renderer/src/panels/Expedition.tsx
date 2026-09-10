@@ -11,6 +11,7 @@ import {
   HOME_GALAXY_ID,
   LAIR_RARE_WRECK_GAIN,
   LAIR_TIER_LABELS,
+  lairLevelOf,
   SCAN_WINDOW_MS,
   aiCoreName,
   bountyDamageForecast,
@@ -2296,6 +2297,12 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 {waves >= 2 ? (
                   <span>
                     <span className="app-lair-key">守军</span> {waves} 波
+                  </span>
+                ) : null}
+                {/* 地图级别提示（2026-09-10 船长定）：级别 < 3 的星系出不了高档位，不写清楚玩家会当成 bug */}
+                {base && lairLevelOf(base) < 3 ? (
+                  <span title="该星系的窝点深度上限：地图级别越低，越高档位的赏金任务越不会派到这里（1 级只出外围、2 级到核心、3 级全档）">
+                    <span className="app-lair-key">本区上限</span> {LAIR_TIER_LABELS[lairLevelOf(base)]}
                   </span>
                 ) : null}
               </div>

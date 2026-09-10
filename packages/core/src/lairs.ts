@@ -4,8 +4,10 @@
  * 设计（船长口径）：
  * - 赏金任务不是"再刷一遍普通悬赏"，而是**难度更高的特色敌人窝点**：以该星系的主题悬赏为底
  *   派生强化（威胁 ×档位系数、外加波次与僚机），敌人类型与该星系特色一致；
- * - **最高难度由玩家声望决定**：声望 0~5 只出「外围窝点」、6~10「核心窝点」、11+「深层窝点」，
- *   且只有「主题悬赏声望门槛 ≤ 当前声望」的星系会刷出任务；
+ * - **档位由"地图级别"封顶**（2026-09-10 船长定）：每张窝点卡标一个 `lairLevel`（1/2/3），
+ *   它是该地图的**档位上限**——1 级图只出外围、2 级图到核心、3 级图全档；族内越低级的地图
+ *   出高档位赏金的概率越低。旧规则（档位随玩家声望封顶）已退役，且**每天三档各一张的保底已取消**；
+ *   接取门槛仍看卡自身声望要求（`AnomalyDef.standingReq`）；
  * - 窝点**只作为赏金任务目标存在**（不入星图常驻悬赏列表、不入档：任务里只记「主题悬赏 id + 档位」，
  *   开战时现算强化卡）；
  * - 三档称呼按**敌族**分别定制（见 FOE_LAIR_TIERS；船长 2026-09-10 词表定稿），
@@ -49,7 +51,7 @@ export const LAIR_WAVES: Record<LairTier, ReadonlyArray<{ units: number; hpShare
   ],
 }
 /** 声望 → 档位门槛：**已退役（2026-09-10 船长定）**——档位改由"日板席位"决定
- *  （中安席位 = 外围/核心、低安席位 = 核心/深层，每天三档必现），不再随声望封顶；
+ *  （席位地点的**地图级别**决定档位上限，见 lairLevelOf；不再随声望封顶）；
  *  接取门槛改由**卡自身声望要求**（`AnomalyDef.standingReq`）把关。 */
 /** 赏金任务酬金 = 窝点基础奖金 × 本比例（跟强度递增；刷出时锁定） */
 export const LAIR_TASK_REWARD_MUL: Record<LairTier, number> = { 1: 0.5, 2: 0.75, 3: 1.0 }
@@ -162,6 +164,28 @@ export function lairTierWordOf(anomaly: AnomalyDef, tier: LairTier): string {
 /** 窝点显示名：核心词 + 档位词（如「星髓虫群·隐秘孵化地」） */
 export function lairNameOf(anomaly: AnomalyDef, tier: LairTier): string {
   return `${lairCoreOf(anomaly)}·${lairTierWordOf(anomaly, tier)}`
+}
+
+/* ═══════════ 窝点地图级别（2026-09-10 船长定：族内越低级的地图越出不了高档位） ═══════════ */
+
+/** 地图级别的兜底值 = 3（不限制）；只用于"漏标不误伤"，content-check 强制每张窝点候选卡显式标级 */
+export const LAIR_LEVEL_DEFAULT: LairTier = 3
+
+/**
+ * 该卡的**档位上限**（= 地图级别）：1 = 只能出外围、2 = 到核心、3 = 全档。
+ * 语义是**硬封顶**（不是加权）：日板发档时在该卡 `[1..lairLevel]` 内均匀随机，
+ * 故"越低级的图出高档位赏金的概率越低"，1 级图永远出不了核心/深层。
+ */
+export function lairLevelOf(anomaly: AnomalyDef): LairTier {
+  return anomaly.lairLevel ?? LAIR_LEVEL_DEFAULT
+}
+
+/** 该卡在此地图级别下**可能**出现的档位集合（外围 → 深层，升序） */
+export function lairTiersOf(anomaly: AnomalyDef): LairTier[] {
+  const max = lairLevelOf(anomaly)
+  const out: LairTier[] = []
+  for (let t = 1; t <= max; t += 1) out.push(t as LairTier)
+  return out
 }
 
 /** 窝点基础奖金 = 主题悬赏奖金 ×**赏金倍率**（2/4/8；胜利结算沿用既有浮动与技能系数） */

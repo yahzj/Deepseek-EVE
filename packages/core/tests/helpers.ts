@@ -289,6 +289,8 @@ export function anomaly(
     foeFamily?: AnomalyDef['foeFamily']
     /** 该敌群专属装备池（稀有残骸高级箱额外掉落优先掷此池） */
     lairGear?: readonly string[]
+    /** 窝点地图级别（档位上限：1 = 只出外围、2 = 到核心、3 = 全档；缺省 = 3） */
+    lairLevel?: AnomalyDef['lairLevel']
     /** 回收特色池/追加件（高级箱矿物与主题件来源） */
     recyclePool?: AnomalyDef['recyclePool']
     recycleLoot?: AnomalyDef['recycleLoot']
@@ -312,6 +314,7 @@ export function anomaly(
     ...(opts?.lairCore !== undefined ? { lairCore: opts.lairCore } : {}),
     ...(opts?.foeFamily !== undefined ? { foeFamily: opts.foeFamily } : {}),
     ...(opts?.lairGear !== undefined ? { lairGear: opts.lairGear } : {}),
+    ...(opts?.lairLevel !== undefined ? { lairLevel: opts.lairLevel } : {}),
     ...(opts?.recyclePool !== undefined ? { recyclePool: opts.recyclePool } : {}),
     ...(opts?.recycleLoot !== undefined ? { recycleLoot: opts.recycleLoot } : {}),
     ...(opts?.hidden !== undefined ? { hidden: opts.hidden } : {}),
