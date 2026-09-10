@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { advanceGame } from '../src/engine'
-import { fireMarketOrderEvent, fireMarketShockEvent, eventCadenceFactor } from '../src/events'
+import { fireMarketOrderEvent, fireMarketShockEvent, eventCadenceFactor, exploredRewardMul } from '../src/events'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
@@ -66,6 +66,18 @@ describe('随机事件系统（V11）', () => {
     // 间隔 ∈ [10,30] 分钟 → 8h 事件数 ∈ [16, 48]（留余量断言）
     expect(n).toBeGreaterThanOrEqual(12)
     expect(n).toBeLessThanOrEqual(52)
+  })
+
+  it('事件现金 · 已探索星系加成（2026-09-10 船长：每星系 +10%，封顶 ×2）', () => {
+    const { state, ctx } = makeWorld()
+    const ev = ctx.balance.events
+    const n0 = state.exploredGalaxies.length // 新档默认已点亮母港等若干星系
+    const mul = (n: number): number => Math.min(2, 1 + n * 0.1)
+    expect(exploredRewardMul(state, ev)).toBeCloseTo(mul(n0), 6)
+    state.exploredGalaxies = Array.from({ length: n0 + 5 }, (_, i) => `g${i}`)
+    expect(exploredRewardMul(state, ev)).toBeCloseTo(mul(n0 + 5), 6) // +5 星系 = +50%
+    state.exploredGalaxies = Array.from({ length: 50 }, (_, i) => `g${i}`)
+    expect(exploredRewardMul(state, ev)).toBe(2) // 封顶 ×2
   })
 
   it('市场大类 A（行情突变动）能落地：冲击/池库存/大宗单进入簿面', () => {
