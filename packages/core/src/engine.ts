@@ -113,6 +113,14 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
       addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`)
       continue
     }
+    // 技能上限纵深防御（2026-09-10 玩家反馈"AI 核心调度学能升到 LV6"排查）：入队口与读档都已限制
+    // ≤ MAX_SKILL_LEVEL，这里再夹一道——将来任何新增写入路径塞进超限目标时，等级也只停在 5 并出队，
+    // 不会出现 Lv6（效果公式另有 Math.min(5, …)，见 ai.ts）。
+    if (current >= MAX_SKILL_LEVEL) {
+      state.skills.queue.shift()
+      addLog(state, 'warn', `${def.name} 已是 Lv${MAX_SKILL_LEVEL}（技能上限），队列中该项已自动移除。`)
+      continue
+    }
     // 冲当前这一级还差多久（调试模式 debugQuick：每级固定 1 秒；高效学习法缩时）
     const levelMs = state.debugQuick
       ? 1000
@@ -265,7 +273,8 @@ export function moveQueueItem(state: GameState, fromIndex: number, toIndex: numb
   for (const it of queue) {
     const r = (ranks.get(it.skillId) ?? 0) + 1
     ranks.set(it.skillId, r)
-    it.targetLevel = (state.skills.trained[it.skillId] ?? 0) + r
+    // 重算目标等级：已学 + 队内第 N 条；再夹一道技能上限（正常入队已保证 ≤5，此处防异常档/将来新路径）
+    it.targetLevel = Math.min(MAX_SKILL_LEVEL, (state.skills.trained[it.skillId] ?? 0) + r)
     const saved = progOf.get(it.skillId)
     it.progressMs = saved !== undefined && r === 1 && it.targetLevel === saved.targetLevel ? saved.progressMs : 0
   }
