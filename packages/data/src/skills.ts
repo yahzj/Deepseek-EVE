@@ -336,7 +336,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '无人机耐久学',
     group: '战斗',
     rank: 2,
-    description: '机体加固与冗余线路（基础档）：无人机三层血量（护盾 / 装甲 / 结构）每级 +⟦6%⟧（满级 +⟦30%⟧，直接放大全血条）。',
+    description: '机体加固与冗余线路（基础档）：无人机三层血量（护盾 / 装甲 / 结构）每级 +⟦4%⟧（满级 +⟦20%⟧，直接放大全血条）。',
   },
   {
     id: 'drone-reinforce',
