@@ -2,7 +2,7 @@
  * 点防调参工具（2026-09-10 船长拍板「无人机可被击落」配套；正式工具，可复跑）。
  *
  * 用法：npx tsx tools/pd-tune.ts
- *      （不带参数 = 用 balance.ts 现值；试档：`--acc 0.55,0.4 --dmg 3,8 [--cap 0.4] [--period 500]`）
+ *      （不带参数 = 用 balance.ts 现值；试档：`--acc 0.55,0.4 --dmg 3,8 [--period 500]`）
  *
  * 机制（2026-09-10 船长口径）：威胁 ≥ pdThreatFloor(60) 的敌舰各装一台近防炮，
  * **每 pdJudgementMs(500ms) 独立判定一次**：随机挑一架**正在攻击的放飞无人机**（哨戒机不被打）
@@ -54,9 +54,7 @@ function run(c: SimContext, card: string, seed: number, load: Record<string, num
   return b
 }
 
-type PdPatch = Partial<
-  Record<'pdAcc' | 'pdDmg' | 'pdJudgementMs' | 'pdThreatFloor' | 'pdMaxLossFrac', number>
->
+type PdPatch = Partial<Record<'pdAcc' | 'pdDmg' | 'pdJudgementMs' | 'pdThreatFloor', number>>
 const patched = (pd: PdPatch): SimContext => ({
   ...base,
   balance: { ...base.balance, battle: { ...base.balance.battle, ...pd } },
@@ -64,7 +62,7 @@ const patched = (pd: PdPatch): SimContext => ({
 
 /**
  * 命令行传参（不改源码试档，按位配对）：
- *   npx tsx tools/pd-tune.ts --acc 0.55,0.4,0.25 --dmg 3,8,14 [--cap 0.4] [--period 500]
+ *   npx tsx tools/pd-tune.ts --acc 0.55,0.4,0.25 --dmg 3,8,14 [--period 500]
  * 不给参数 = 用 balance.ts 现值。
  */
 function parseArgs(): Array<{ label: string; pd: PdPatch }> {
@@ -81,7 +79,6 @@ function parseArgs(): Array<{ label: string; pd: PdPatch }> {
   }
   const accs = nums('--acc')
   const dmgs = nums('--dmg') ?? []
-  const caps = nums('--cap') ?? []
   const periods = nums('--period') ?? []
   if (!accs && dmgs.length === 0) return [{ label: '现值', pd: {} }]
   const rows = Math.max(accs?.length ?? 0, dmgs.length)
@@ -94,12 +91,10 @@ function parseArgs(): Array<{ label: string; pd: PdPatch }> {
     const pd: PdPatch = {}
     if (acc !== undefined) pd.pdAcc = acc
     if (dmg !== undefined) pd.pdDmg = dmg
-    const cap = at(caps, i)
     const per = at(periods, i)
-    if (cap !== undefined) pd.pdMaxLossFrac = cap
     if (per !== undefined) pd.pdJudgementMs = per
     out.push({
-      label: `acc${pd.pdAcc ?? base.balance.battle.pdAcc} d${pd.pdDmg ?? base.balance.battle.pdDmg}${cap !== undefined ? ` cap${cap}` : ''}${per !== undefined ? ` ${per}ms` : ''}`,
+      label: `acc${pd.pdAcc ?? base.balance.battle.pdAcc} d${pd.pdDmg ?? base.balance.battle.pdDmg}${per !== undefined ? ` ${per}ms` : ''}`,
       pd,
     })
   }
@@ -145,7 +140,7 @@ for (const combo of SWEEP) {
 }
 console.log(
   `\n机制换算：威胁门槛 ${base.balance.battle.pdThreatFloor}（低于此值无敌近防炮）｜判定周期 ${base.balance.battle.pdJudgementMs}ms/舰｜` +
-    `命中 = acc − 机型闪避｜单场击落上限 ${(base.balance.battle.pdMaxLossFrac * 100).toFixed(0)}%｜` +
+    `命中 = acc − 机型闪避｜**战斗内可 100% 损坏**（无单场上限）｜战后按回收率找回（基础 10%，回收学满级 50%）｜` +
     `哨戒机默认不被打、**非哨戒机全灭后转打哨戒机**\n` +
     `代表卡是否有点防：噬口(80)=${pdEnabledFor(80, base.balance.battle)}、坟场(88)=${pdEnabledFor(88, base.balance.battle)}、穹顶(96)=${pdEnabledFor(96, base.balance.battle)}`,
 )

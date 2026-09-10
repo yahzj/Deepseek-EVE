@@ -463,16 +463,17 @@ export function createPlayerSpec(
       if (n <= 0) continue
       bayUsed += perM3 * n
       cpuLeft -= perCpu * n
-      // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）；
-      // 2026-09-10 船长：再加**船体无人机专属加成**（ship.droneDmgBonus，王鲭 +12%/梭鱼 +8%）
-      // ——无人机舰的加成从"只喂炮台的 powerBonus"改为"喂机群的专属加成"，三者乘算
+      // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级 +
+      // **无人机打击学（drone-strike）+4%/级**（2026-09-10 船长：高阶伤害技能）；三者乘算；
+      // 2026-09-10 船长：再加船体无人机专属加成（ship.droneDmgBonus，王鲭 +12%/梭鱼 +8%）
       // 2026-09-10 船长：单发 ×2 与装填 ×2 同步（每轮更重、节奏更舒缓，净 DPS 不变）
       const shot = Math.round(
         (def.dmg ?? 0) *
           2 *
           (1 + droneDmgBonus) *
           (1 + (ship.droneDmgBonus ?? 0)) *
-          (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0)),
+          (1 + DRONE_SKILL.warfarePerLevel * droneSkillLv(state, 'drone-warfare')) *
+          (1 + DRONE_SKILL.strikePerLevel * droneSkillLv(state, 'drone-strike')),
       )
       for (let i = 0; i < n; i++) {
         weapons.push({
@@ -1184,16 +1185,19 @@ export function startBattleFor(
   // 机群生存池（2026-09-10 船长「无人机可被击落」）：按武器条目下标建池——只有 src='drone'
   // 的条目参战；机型三层血/抗性/闪避取自物品本体（DroneDefense，四型定位契约见 data/droneRoles.ts）
   const pools: Record<number, import('./state').DronePoolEntry> = {}
+  // 无人机线技能（2026-09-10 船长）：耐久学放大三层血（"全血条"）、规避学提闪避（封顶 0.9）
+  const durMul = 1 + DRONE_SKILL.durabilityPerLevel * droneSkillLv(state, 'drone-durability')
+  const evaMul = 1 + DRONE_SKILL.evasionPerLevel * droneSkillLv(state, 'drone-evasion')
   me.weapons.forEach((w, i) => {
     if (w.src !== 'drone' || !w.artId) return
     const d = ctx.items.get(w.artId)?.defense
     pools[i] = {
-      s: Math.max(1, Math.round(d?.shieldHp ?? 1)),
-      a: Math.max(1, Math.round(d?.armorHp ?? 1)),
-      h: Math.max(1, Math.round(d?.hullHp ?? 1)),
+      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
+      a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
+      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul)),
       alive: true,
       artId: w.artId,
-      evasion: clamp(0, 0.9, d?.evasion ?? 0),
+      evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
       ...(d
         ? {
             resists: {
@@ -1487,32 +1491,47 @@ export function settleDroneLosses(
   if (!lost) return null
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return null
+  // 战后回收（2026-09-10 船长：回收损坏机体的 10%，回收学每级 +8%、满级 50%）——
+  // 按机型四舍五入取回，**回无人机舱清单**继续服役；未回收部分才永久损失
+  const rate = droneRecoveryRate(state)
   const load: Record<string, number> = { ...(fleetShip.droneLoad ?? {}) }
-  const parts: string[] = []
+  const lostParts: string[] = []
+  const backParts: string[] = []
   let total = 0
+  let recovered = 0
   for (const [id, n] of Object.entries(lost)) {
     if (!n || n <= 0) continue
     const have = load[id] ?? 0
     const cut = Math.min(have, n)
-    if (cut > 0) {
-      const left = have - cut
+    const back = Math.min(cut, Math.round(cut * rate)) // 回收（不超过损坏数）
+    const gone = cut - back
+    if (gone > 0) {
+      const left = have - gone
       if (left > 0) load[id] = left
       else delete load[id]
     }
     total += cut
-    parts.push(`${ctx.items.get(id)?.name ?? id}×${cut}`)
+    recovered += back
+    const name = ctx.items.get(id)?.name ?? id
+    lostParts.push(`${name}×${cut}`)
+    if (back > 0) backParts.push(`${name}×${back}`)
   }
   if (total <= 0) return null
   fleetShip.droneLoad = Object.keys(load).length > 0 ? load : undefined
   // 结算后清空战损账本（调用幂等：重复结算不会重复扣；战报/日志已带损失摘要）
   battle!.droneLost = undefined
-  const text = parts.join('、')
+  const text = lostParts.join('、')
+  const ratePct = Math.round(rate * 100)
+  const backTxt = backParts.length > 0 ? `，其中 ${backParts.join('、')} 已回收修复归队` : ''
   addLog(
     state,
     'warn',
-    `⚠ 机群战损：${text}（合计 ${total} 架）被敌方点防击落——已从无人机舱清单永久损失，回港后需在装配页补充。`,
+    `⚠ 机群战损：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
   )
-  state.droneLossNotice = `机群战损：${text} 被点防击落（永久损失），回港后请补充无人机舱清单。`
+  state.droneLossNotice =
+    recovered > 0
+      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%），净损失 ${total - recovered} 架。`
+      : `机群战损：${text} 被近防炮击落（回收率 ${ratePct}%），回港后请补充无人机舱清单。`
   return text
 }
 
@@ -1648,13 +1667,39 @@ export function advanceBattle(state: GameState, ctx: SimContext): void {
   if (battle) advanceBattleFor(state, ctx, battle, state.shipId, state.expedition.anomalyId)
 }
 
-/* ══════════ 敌舰近防炮（2026-09-10 船长拍板「无人机可被击落」，永久损失制） ══════════ */
+/* ══════════ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制） ══════════ */
+
+/** 无人机线技能系数（2026-09-10 船长：四条新技能；接线点集中在此，改数值 = 同步 skills.ts 的 ⟦…⟧） */
+export const DRONE_SKILL = {
+  /** 无人机作战学：单发伤害 +5%/级（既有） */
+  warfarePerLevel: 0.05,
+  /** 无人机打击学：单发伤害再 +4%/级（与作战学乘算，满级再 ×1.2） */
+  strikePerLevel: 0.04,
+  /** 无人机耐久学：三层血量 +10%/级（满级 ×1.5） */
+  durabilityPerLevel: 0.1,
+  /** 无人机规避学：闪避 +4%/级（相对乘算，闪避封顶 0.9） */
+  evasionPerLevel: 0.04,
+  /** 无人机回收学：战后回收损坏机体，基础 10% + 8%/级（满级 50%） */
+  recoveryBase: 0.1,
+  recoveryPerLevel: 0.08,
+  recoveryMax: 0.5,
+} as const
+
+/** 无人机技能等级读取（0~5） */
+function droneSkillLv(state: GameState, id: string): number {
+  return Math.min(5, state.skills.trained[id] ?? 0)
+}
+
+/** 战后损坏机体的回收比例（2026-09-10 船长：基础 10%，回收学满级 50%） */
+export function droneRecoveryRate(state: GameState): number {
+  const rate = DRONE_SKILL.recoveryBase + DRONE_SKILL.recoveryPerLevel * droneSkillLv(state, 'drone-recovery')
+  return Math.min(DRONE_SKILL.recoveryMax, rate)
+}
 
 /** 该威胁的敌舰是否装近防炮（威胁 < pdThreatFloor 不装；2026-09-10 船长：60） */
 export function pdEnabledFor(threat: number, bal: BattleBalance): boolean {
   return threat >= bal.pdThreatFloor
 }
-
 /**
  * 近防炮可选靶（存活放飞条目下标）：
  * - 默认**排除哨戒机**（2026-09-10 船长：近防炮不打哨戒无人机）；
@@ -1680,10 +1725,7 @@ function aliveDroneIndices(
 /** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
 const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry'])
 
-/** 本场放飞总架数（损失上限分母） */
-function droneTotalCount(b: import('./state').BattleState): number {
-  return b.dronePools ? Object.keys(b.dronePools).length : 0
-}
+/** 存活放飞条目下标（近防炮选靶 / 开火跳过共用）；`droneTotalCount` 已随"取消单场上限"移除用途 */
 
 /** 本场已击落架数 */
 export function droneLostCount(b: import('./state').BattleState): number {
@@ -1696,7 +1738,8 @@ export function droneLostCount(b: import('./state').BattleState): number {
  * - 随机挑一架**正在攻击的放飞无人机**（存活；**默认不打哨戒机，但非哨戒机全灭后转而打它**）
  *   → 按 `pdAcc − 机型闪避` 掷命中；
  * - 命中按 `pdDmg` 走该机型三层抗性；血量打空 = 该架本场击落（停火 + 计入 droneLost）；
- * - **不看距离**（放飞出去就在威胁之下）；单场击落上限 `pdMaxLossFrac` 防团灭；
+ * - **不看距离**（放飞出去就在威胁之下）；**战斗内可 100% 损坏**（2026-09-10 船长：
+ *   取消原 50% 单场上限）——战后按回收率找回一部分（见 settleDroneLosses）；
  * - 近防炮不参与敌舰对玩家的常规攻击（独立系统）；全程消费 state.rng，确定性可复现。
  */
 function resolvePointDefense(
@@ -1711,8 +1754,6 @@ function resolvePointDefense(
   // 无近防炮调度 = 本场敌舰未达威胁门槛（或本改动前的旧战斗）：不结算
   if (!pools || b.pdCd === undefined) return
   const period = Math.max(100, Math.round(bal.pdJudgementMs))
-  const total = droneTotalCount(b)
-  const maxLoss = Math.max(1, Math.floor(total * bal.pdMaxLossFrac))
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue
     let cd = (b.pdCd[fi] ?? period) - dtMs
@@ -1720,7 +1761,6 @@ function resolvePointDefense(
     while (cd <= 0 && guard < 64) {
       guard++
       cd += period
-      if (droneLostCount(b) >= maxLoss) break
       const cands = aliveDroneIndices(b)
       if (cands.length === 0) break
       const idx = cands[Math.min(cands.length - 1, Math.floor(nextRandom(state.rng) * cands.length))]!

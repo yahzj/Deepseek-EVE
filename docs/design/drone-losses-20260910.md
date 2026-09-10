@@ -26,7 +26,20 @@
 | 伤害 | 每次命中 `pdDmg`（走该机型三层抗性：盾→甲→结构） |
 | 距离 | **不看距离**——放飞出去就在威胁之下（"毕竟你要飞过去"） |
 | 定位 | 近防炮**只打无人机**，不参与敌舰对玩家的常规攻击 |
-| 上限 | 单场最多击落本场放飞总数的 50%（防团灭） |
+| 上限 | **无单场上限**（2026-09-10 船长：战斗内可 **100% 损坏**机群；原 50% 上限已移除） |
+| 战后回收 | **回收损坏机体的 10%**（基础）——「无人机回收学」每级 +8%、**满级 50%**；回收的机体**回无人机舱清单**继续服役，未回收部分才永久损失（按机型四舍五入取回） |
+
+### 1b. 无人机线技能（2026-09-10 船长拍板，四条新技能）
+
+| 技能 | rank | 效果（每级） | 满级 | 接线点 |
+| --- | --- | --- | --- | --- |
+| 无人机打击学 `drone-strike` | 4 | 单发伤害 **+4%** | +20% | `combat.ts` 单发式（与作战学/导控/船体专属乘算） |
+| 无人机耐久学 `drone-durability` | 2 | 三层血（全血条）**+10%** | +50% | 开战生存池构建（盾/甲/结构同乘） |
+| 无人机回收学 `drone-recovery` | 3 | 损坏回收率 **+8%** | 10% → **50%** | `settleDroneLosses` |
+| 无人机规避学 `drone-evasion` | 4 | 闪避 **+4%**（相对乘算，封顶 90%） | +20% | 开战生存池构建 |
+
+（既有两条：无人机作战学 +5%/级 伤害、无人机整备学 −4%/级 装填；数值常量集中在
+`combat.ts` 的 `DRONE_SKILL`，文案 ⟦…⟧ 在 `data/skills.ts`。）
 
 ### 2. 逐架生存与击落
 
@@ -89,14 +102,15 @@
 
 | 层 | 改动 |
 | --- | --- |
-| `packages/core/src/balance.ts` + `types.ts` | 点防参数（**终值**）：`pdThreatFloor 45`、`pdThreatSpan 65`、`pdRatePerSec 1.2`（满档每舰每秒）、`pdAcc 0.55`（直接减机型闪避）、`pdDmg 14`、`pdRangeM 4000`、`pdMaxLossFrac 0.5`（单场击落上限） |
-| `packages/core/src/combat.ts` | ① `pdRateFor(threat)` 威胁派生射速；② `resolvePointDefense` 每拍逐舰结算（距离筛 → 随机挑存活机 → 命中掷骰（`pdAcc − 机型闪避`）→ `applyDamage` 走机型三层抗性 → 打空即击落 + 记 `droneLost` + 推 `droneFx`）；③ 我方开火循环跳过已击落架；④ `battleArcsFor` 只统计存活架并回传 `droneLost`；⑤ 新增 `settleDroneLosses()`（**永久扣除清单** + 事件日志 + 一次性提示；结算即清账、幂等）；⑥ 新增 `droneLostCount()` |
-| `packages/core/src/state.ts` | `BattleFx.droneDown`（击落演出事件）、`BattleState.dronePools / droneLost / pdCd / pdRate / droneLoadAtStart`（运行态，可选字段零迁移）、`GameState.droneLossNotice`（一次性提示，不落档） |
-| 结算接线 | 三条战斗出口全覆盖：**主控远征**（胜利/失利/撤退三路径）、**遭遇战**、**AI 副船**——一律照扣（打掉的飞机不会因为撤退飞回来） |
-| 自动流程安全阀 | 重复清剿：本场机群战损过半（余量 < 50%）→ 停环并提示补货（`resolveBattleOutcome`） |
-| 玩家可见文案 | 手册「装配」条目、物品分类说明、装配页「无人机舱」标题——**删除"不消耗、不被击落"**，改为"敌方点防会击落机群，被击落后自清单永久损失，回港需补充；侦察机靠闪避、攻坚机靠厚甲、哨戒机靠射程活下来" |
+| `packages/core/src/balance.ts` + `types.ts` | 近防炮参数（**终值**）：`pdThreatFloor 60`、`pdJudgementMs 500`、`pdAcc 0.5`、`pdDmg 5`（**无单场上限**——2026-09-10 船长：战斗内可 100% 损坏） |
+| `packages/core/src/combat.ts` | ① `pdEnabledFor(threat)` 威胁门槛；② `resolvePointDefense` 每拍逐舰结算（随机挑存活机 → 命中掷骰（`pdAcc − 机型闪避`）→ `applyDamage` 走机型三层抗性 → 打空即击落 + 记 `droneLost` + 推 `droneDown` 演出事件）；③ 我方开火循环跳过已击落架；④ `battleArcsFor` 只统计存活架并回传 `droneLost`；⑤ `settleDroneLosses()`（**按回收率找回一部分 + 净损失扣清单** + 事件日志 + 一次性提示；结算即清账、幂等）；⑥ `DRONE_SKILL` 常量表 + `droneRecoveryRate()` |
+| `packages/core/src/state.ts` | `BattleFx.droneDown`（击落演出事件）、`BattleState.dronePools / droneLost / pdCd / droneLoadAtStart`（运行态，可选字段零迁移）、`GameState.droneLossNotice`（一次性提示，不落档） |
+| `packages/data/src/skills.ts` | 四条新技能：无人机打击学 / 耐久学 / 回收学 / 规避学（战斗组，rank 4/2/3/4） |
+| 结算接线 | 三条战斗出口全覆盖：**主控远征**（胜利/失利/撤退三路径）、**遭遇战**、**AI 副船**——一律照扣（打掉的飞机不会因为撤退飞回来）；回收同样在三处生效 |
+| 自动流程安全阀 | 重复清剿：本场净损失过半（余量 < 50%）→ 停环并提示补货（`resolveBattleOutcome`） |
+| 玩家可见文案 | 手册「装配」条目、物品分类说明、装配页「无人机舱」标题——删除"不消耗、不被击落"，改为"近防炮会击落机群、战后按回收率找回、未回收才永久损失" |
 | 提示通道 | `engine.drainSystemNotice` 增读 `droneLossNotice` → 在线弹 toast（与交付/停环同通道） |
-| 测试（core） | 新增 `tests/drone-loss.test.ts`（5 项）：低威胁无点防不掉架、高威胁必损且不超上限、射程归零则无损（距离保护）、同种子确定性一致、结算幂等且清单不扣穿 |
+| 测试（core） | `tests/drone-loss.test.ts`（6 项：低威胁无损、高威胁必损且**无上限**、无距离豁免、转火哨戒机、确定性、结算幂等）＋ `tests/drone-skills.test.ts`（5 项：打击/耐久/规避/回收四项技能数值与实战影响） |
 | 工具 | 新增 `tools/pd-tune.ts`（`npm run battle:pd-tune`）：真实引擎复测胜率/交火秒/损失架数与机型/战损估值占奖励比；`tools/drone-vs-gun.ts` 表 3 增「机群战损」列 |
 | 文档 | 词典增「点防」「机群战损」；本稿转已确认；roadmap 记录本批 |
 

@@ -224,7 +224,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     pdJudgementMs: 500, // 判定周期：每艘点防舰每 0.5 秒判定一次伤害
     pdAcc: 0.5, // 判定命中率（直接减机型闪避；不叠敌方通用命中加成，突出"闪避"价值）
     pdDmg: 5, // 命中单发伤害（走该机型三层抗性）
-    pdMaxLossFrac: 0.5, // 单场最多击落比例（相对本场放飞总数，防团灭）
+    // 2026-09-10 船长：**取消单场击落上限**——战斗内可 100% 损坏机群；
+    // 战后按回收率找回一部分（基础 10%，无人机回收学满级 50%，见 combat.droneRecoveryRate）
   },
   events: {
     enabled: true, // 随机事件总开关（测试可整体关闭）
