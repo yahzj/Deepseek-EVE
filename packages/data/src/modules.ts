@@ -403,6 +403,36 @@ export const MODULES: readonly ModuleDef[] = [
     description: '放飞无人机单发伤害 +40%（市场稀有，无蓝图）。无人机甲板舰的指挥核心。',
   },
 
+  // ══════════ 无人机中继天线（2026-09-10 船长拍板：高槽装置——延长无人机作战半径；百分比
+  //  求和乘入机型基础射程，多件线性可叠；市场现货 + 蓝图双渠道，MK3 学习声望 4） ══════════
+  {
+    id: 'mod-drone-relay-1',
+    name: '无人机中继天线 MK1',
+    slot: 'drone-relay',
+    rack: 'high',
+    droneRangeBonusPct: 0.2,
+    cpuUse: 6,
+    description: '制导中继天线：放飞无人机射程 +20%。给近战机群补一点交战距离。',
+  },
+  {
+    id: 'mod-drone-relay-2',
+    name: '无人机中继天线 MK2',
+    slot: 'drone-relay',
+    rack: 'high',
+    droneRangeBonusPct: 0.45,
+    cpuUse: 16,
+    description: '制导中继天线：放飞无人机射程 +45%。中远程无人机的扩容方案。',
+  },
+  {
+    id: 'mod-drone-relay-3',
+    name: '无人机中继天线 MK3',
+    slot: 'drone-relay',
+    rack: 'high',
+    droneRangeBonusPct: 0.8,
+    cpuUse: 46, // 2026-09-10 船长：MK3 CPU 38 → 46（顶配装置高占用）
+    description: '制导中继天线：放飞无人机射程 +80%（市场稀有）。哨戒无人机可深入激光炮带。',
+  },
+
   // ══════════ 护盾增强器（shield 抗性件：纯抗性，分系缺口乘入） ══════════
   {
     id: 'mod-shield-kin-1',

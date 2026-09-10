@@ -454,6 +454,50 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '「战术导控阵列 MK3」的完整制造工艺。战术导控阵列的相控计算单元图纸——火控数据链路压铸成型。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
+    id: 'bp-drone-relay-1',
+    name: '无人机中继天线 MK1蓝图',
+    moduleId: 'mod-drone-relay-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 400 }, // 3,200 ISK
+      { itemId: 'min-pyerite', count: 130 }, // 1,560 ISK
+      { itemId: 'min-mexallon', count: 80 }, // 1,600 ISK
+    ], // 6,360 ≈ 15,000×0.42
+    buildSeconds: 180, // 无人机中继天线 MK1（2026-09-10；材料≈产物价×0.42、蓝图=产物×2）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 30000,
+    description: '「无人机中继天线 MK1」的完整制造工艺。制导中继天线的信号转发单元图纸——无人机指令链路中继放大。制式量产版式——各船厂通用接口，学会即可在组装机量产。',
+  },
+  {
+    id: 'bp-drone-relay-2',
+    name: '无人机中继天线 MK2蓝图',
+    moduleId: 'mod-drone-relay-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 2600 }, // 20,800 ISK
+      { itemId: 'min-pyerite', count: 790 }, // 9,480 ISK
+      { itemId: 'min-mexallon', count: 375 }, // 7,500 ISK
+      { itemId: 'min-nocxium', count: 280 }, // 25,200 ISK
+    ], // 62,980 ≈ 150,000×0.42
+    buildSeconds: 900, // 无人机中继天线 MK2（2026-09-10；材料≈产物价×0.42、蓝图=产物×2.5）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 375000,
+    description: '「无人机中继天线 MK2」的完整制造工艺。制导中继天线的信号转发单元图纸——双频段中继与抗干扰滤波。加固量产版式——关键应力点做双层冗余。',
+  },
+  {
+    id: 'bp-drone-relay-3',
+    name: '无人机中继天线 MK3蓝图',
+    moduleId: 'mod-drone-relay-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 5460 }, // 43,680 ISK
+      { itemId: 'min-pyerite', count: 1735 }, // 20,820 ISK
+      { itemId: 'min-mexallon', count: 1040 }, // 20,800 ISK
+      { itemId: 'min-nocxium', count: 900 }, // 81,000 ISK
+    ], // 166,300 ≈ 400,000×0.42
+    buildSeconds: 2000, // 无人机中继天线 MK3（2026-09-10；材料≈产物价×0.42、蓝图=产物×3）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 1200000,
+    description: '「无人机中继天线 MK3」的完整制造工艺。制导中继天线的信号转发单元图纸——远程相位阵与星间链路。顶配工艺版式——高级材料与精密加工在此交汇。',
+  },
+  {
     id: 'bp-shield-kin-1',
     name: '护盾增强器 MK1·动能型蓝图',
     moduleId: 'mod-shield-kin-1',
