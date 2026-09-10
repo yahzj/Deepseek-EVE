@@ -201,6 +201,9 @@ export {
 
 export { fleetDefOf, shipDisplayName } from './instances'
 
+export { markedIds, isMarked, markTargetExists, toggleMark, clearMarks, pruneMarks, MARK_KIND_TEXT } from './marks'
+export type { MarkKind } from './marks'
+
 export {
   getMiningParams,
   oneLegMs,
@@ -570,4 +573,5 @@ export {
   COURIER_TASK_MARGIN,
 } from './sideTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
-export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24 } from './state'
+export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
+export { emptyMarks } from './state'

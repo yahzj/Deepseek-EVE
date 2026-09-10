@@ -120,6 +120,8 @@ import {
   haulLegReward,
   haulingOccupiedM3,
   HAUL_RATE_PER_M3_MIN,
+  // 2026-09-10 玩家标记（收藏）
+  toggleMark,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -127,6 +129,7 @@ import type {
   CommandResult,
   DamageType,
   GameState,
+  MarkKind,
   ModuleSlot,
   RackSlot,
   RefineRunView,
@@ -1240,6 +1243,16 @@ export class GameEngine {
   /** T5：锁定/解锁舰船（防误售，跨会话持久化） */
   lockShipAt(shipId: string, locked: boolean): CommandResult {
     const result = lockShip(this.state, shipId, locked, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 2026-09-10 玩家标记（收藏）：切换一条标记（市场商品 / 精炼资源 / 蓝图 / 舰船）。 */
+  toggleMarkAt(kind: MarkKind, id: string): CommandResult {
+    const result = toggleMark(this.state, this.ctx, kind, id)
     if (result.ok) {
       void this.persist()
       this.notify()
