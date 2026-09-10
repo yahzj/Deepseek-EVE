@@ -18,7 +18,19 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
-import { DRONE_BACK_ANIM_MS, DRONE_BACK_MS, DRONE_SHOW_MAX, DRONE_STYLE, droneModelOf, droneSortieStation, droneTakeoff } from '../ui/droneArt'
+import {
+  DRONE_BACK_ANIM_MS,
+  DRONE_BACK_MS,
+  DRONE_SHOW_MAX,
+  DRONE_SORTIE_BACK_MS,
+  DRONE_SORTIE_OUT_MS,
+  DRONE_STYLE,
+  droneArcHeight,
+  droneModelOf,
+  dronePathPos,
+  droneSortieStation,
+  droneTakeoff,
+} from '../ui/droneArt'
 import type { DroneModel } from '../ui/droneArt'
 import {
   BOLT_LOOK,
@@ -28,6 +40,9 @@ import {
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
+
+/** 回巢段总时长（ms，含动画）：出击制 = 返航 620ms；机群制 = 收队 420ms（两制式各自与 CSS keyframes 对齐） */
+const DRONE_BACK_TOTAL = DRONE_BACK_MS + (DRONE_STYLE === 'sortie' ? DRONE_SORTIE_BACK_MS : DRONE_BACK_ANIM_MS)
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -95,9 +110,35 @@ const meSpeedRef = useRef(200)
   const flashRef = useRef<FlashV[]>([])
   /** 2026-09-10 炮口轮换计数（key = 'me' 或敌方 tag；多炮口舰逐发轮换开火点） */
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
-  /** 2026-09-10 无人机机群：机型 → 最近一次开火时刻（放飞/回巢节拍）与出弹位轮换 */
+  /** 2026-09-10 无人机机群：机型 → 最近一次开火时刻（放飞/回巢节拍）、本次出击开始时刻、出弹位轮换 */
   const droneLastShotRef = useRef<Map<string, number>>(new Map())
+  const droneLaunchRef = useRef<Map<string, number>>(new Map())
   const droneSlotRef = useRef<Map<string, number>>(new Map())
+
+  /**
+   * 无人机当前位置（绝对 px；2026-09-10 船长三次定）：
+   * 出击 = 沿**上凸曲线**飞到敌侧攻击阵位，返航 = 沿**下凸曲线**飞回机库口；
+   * 弹道起点挂在此处，因此"未到位就先开火"时弹道会跟着无人机在航路上走，而不是凭空出现在阵位。
+   */
+  const dronePosAt = (model: DroneModel, lane: number, artId: string, lv: { me: Anchor; foe: Anchor[] }): Anchor => {
+    const station = droneStationOf(model, lane, lv, true)
+    if (DRONE_STYLE !== 'sortie' || model.resident) return station
+    const off = droneTakeoff(lane)
+    const base = { x: lv.me.x + off.x, y: lv.me.y + off.y }
+    const last = droneLastShotRef.current.get(artId) ?? now
+    const launch = droneLaunchRef.current.get(artId) ?? now
+    const idle = now - last
+    const arc = droneArcHeight(lane)
+    if (idle < DRONE_BACK_MS) {
+      const t = Math.min(1, Math.max(0, (now - launch) / DRONE_SORTIE_OUT_MS))
+      return dronePathPos(t, base, station, arc, false)
+    }
+    if (idle < DRONE_BACK_TOTAL) {
+      const t = Math.min(1, Math.max(0, (idle - DRONE_BACK_MS) / DRONE_SORTIE_BACK_MS))
+      return dronePathPos(t, station, base, arc, true)
+    }
+    return base
+  }
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -392,9 +433,17 @@ const meSpeedRef = useRef(200)
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
         const lane = n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))
-        // 出弹位：出击制（默认）= 敌舰侧的攻击阵位（无人机飞到敌人身边开火）；机群制 = 母舰上侧编队位
-        from = droneStationOf(dm, lane, layFx, isMeShot)
+        const prevShot = droneLastShotRef.current.get(fx.artId!)
+        // 新一轮出击 = 上一轮已收舱完毕（含返航动画）：记下出击起点，供航路插值用
+        if (!dm.resident && (prevShot === undefined || now - prevShot >= DRONE_BACK_TOTAL)) {
+          droneLaunchRef.current.set(fx.artId!, now)
+        }
         droneLastShotRef.current.set(fx.artId!, now)
+        // 出弹位：出击制 = 无人机**当前航路位置**（曲线插值，未到位时弹道随之在航路上）；机群制 = 编队位
+        from =
+          DRONE_STYLE === 'sortie' && !dm.resident
+            ? dronePosAt(dm, lane, fx.artId!, layFx)
+            : droneStationOf(dm, lane, layFx, isMeShot)
       } else {
         mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
         const mz = mounts?.muzzles
@@ -652,7 +701,7 @@ const meSpeedRef = useRef(200)
         ? 'out'
         : idle < DRONE_BACK_MS
           ? 'out'
-          : idle < DRONE_BACK_MS + DRONE_BACK_ANIM_MS
+          : idle < DRONE_BACK_TOTAL
             ? 'back'
             : 'deck'
       const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
@@ -832,12 +881,21 @@ const meSpeedRef = useRef(200)
                       const base =
                         DRONE_STYLE === 'sortie' && !w.model.resident ? droneTakeoff(i) : w.model.slots[i % w.model.slots.length]!
                       const station = droneStationOf(w.model, i, lay, true)
-                      // 位移量必须相对**基准位**计算（曾按舰锚点算导致终点偏移：无人机一直偏在舰上方）
+                      // 位移量必须相对**基准位**计算（曾按舰锚点算导致终点偏移：无人机一直偏在舰上方）；
+                      // 曲线航路：去程中点抬升 arc（上凸）、返程中点下压 arc（下凸）
+                      const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
+                      const arc = droneArcHeight(i)
+                      const outMid = { x: (baseAbs.x + station.x) / 2, y: (baseAbs.y + station.y) / 2 - arc }
+                      const backMid = { x: (baseAbs.x + station.x) / 2, y: (baseAbs.y + station.y) / 2 + arc }
                       const vars =
                         DRONE_STYLE === 'sortie'
                           ? ({
-                              '--dx': `${station.x - (lay.me.x + base.x)}px`,
-                              '--dy': `${station.y - (lay.me.y + base.y)}px`,
+                              '--dx': `${station.x - baseAbs.x}px`,
+                              '--dy': `${station.y - baseAbs.y}px`,
+                              '--mx': `${outMid.x - baseAbs.x}px`,
+                              '--my': `${outMid.y - baseAbs.y}px`,
+                              '--nx': `${backMid.x - baseAbs.x}px`,
+                              '--ny': `${backMid.y - baseAbs.y}px`,
                             } as CSSProperties)
                           : {}
                       return (
