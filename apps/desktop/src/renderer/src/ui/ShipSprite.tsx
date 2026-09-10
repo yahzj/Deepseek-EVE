@@ -37,13 +37,16 @@ function hullPath(role: ShipRole): string {
 /** 引擎尾焰（旧 140×64 画布形；放在舰尾、船头朝右 => 尾焰在左） */
 const EXHAUST_LEGACY = 'M10 24 L2 30 L10 36 L14 30 Z'
 
-/** 引擎尾焰（新 240×110 画布形：菱形右尖在 (24,51.6) = 贴喷口口沿锚点；2026-09-10 起
- *  逐口挂载：<g translate(口沿x−24, 口沿y−51.6)> 使右尖恰好抵住每枚喷口，焰向左喷出） */
+/** 引擎尾焰（新 240×110 画布形：菱形右尖在 (24,51.6)；2026-09-10 起逐口挂载，
+ *  <g translate(口沿x−24−EXHAUST_GAP, 口沿y−51.6)>：右尖与喷口口沿留一点空隙，焰向左喷出） */
 const EXHAUST = 'M17.1 41.3 L3.4 51.6 L17.1 61.9 L24 51.6 Z'
+/** 尾焰与喷口口沿的空隙（画布本地单位；2026-09-10 船长：完全贴口不美观，留一点距离） */
+const EXHAUST_GAP = 5
 
 /**
  * 尾焰挂载（2026-09-10 船长批：数量/位置对齐引擎喷口）：
- * - 有挂点数据 → 按 engines 每口一枚（同尺寸）；engines 为空（有机体异形等）→ 不画；
+ * - 有挂点数据 → 按 engines 每口一枚（同尺寸，右尖距口沿留 EXHAUST_GAP 空隙）；
+ *   engines 为空（有机体异形等）→ 不画；
  * - 无挂点数据（未转录的形）→ 回退旧单焰，观感不变。
  */
 function Exhausts({ shipId, foeKey }: { shipId?: string; foeKey?: string }) {
@@ -54,7 +57,7 @@ function Exhausts({ shipId, foeKey }: { shipId?: string; foeKey?: string }) {
   return (
     <>
       {mounts.engines.map((p, i) => (
-        <g key={i} transform={`translate(${p.x - 24} ${p.y - 51.6})`}>
+        <g key={i} transform={`translate(${p.x - 24 - EXHAUST_GAP} ${p.y - 51.6})`}>
           <path className="app-sprite-exhaust" d={EXHAUST} fill="currentColor" stroke="none" opacity="0.85" />
         </g>
       ))}
