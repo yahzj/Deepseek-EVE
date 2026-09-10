@@ -19,6 +19,7 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
 import {
+  DRONE_DWELL_MS,
   DRONE_SHOW_MAX,
   DRONE_SORTIE_BACK_MS,
   DRONE_SORTIE_OUT_MS,
@@ -55,11 +56,47 @@ function droneHomeStation(model: DroneModel, lane: number, lay: { me: Anchor; fo
   return { x: lay.me.x + slot.x, y: lay.me.y + slot.y }
 }
 
+/**
+ * 无人机姿态（绝对画面 px + 朝向；2026-09-10 船长"无人机移动不连贯"修复）：
+ * 位置不再依赖 React 重渲染（33ms 循环仅在距离变化时才 setState → 敌舰就位后无人机只剩 10Hz 通知刷新，
+ * 表现为 10fps 步进）。本函数被 **rAF 循环**直接调用，把 transform 写进 DOM → 恒定 60fps 平滑。
+ */
+function dronePoseAt(
+  model: DroneModel,
+  lane: number,
+  st: DroneSortie | undefined,
+  lay: { me: Anchor; foe: Anchor[] },
+  elapsed: number,
+): { x: number; y: number; heading: number } {
+  const base = DRONE_STYLE === 'sortie' && !model.resident ? droneTakeoff(lane) : model.slots[lane % model.slots.length]!
+  const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
+  const arc = droneArcHeight(lane)
+  const foeA = lay.foe[0] ?? lay.me
+  const off = st?.offs[lane % (st.offs.length || 1)] ?? { x: 46, y: 0 }
+  const station =
+    DRONE_STYLE === 'sortie' && !model.resident ? droneStationFrom(foeA, 1, off) : droneHomeStation(model, lane, lay)
+  if (DRONE_STYLE === 'sortie' && !model.resident) {
+    if (elapsed < DRONE_SORTIE_OUT_MS) {
+      const t = Math.min(1, Math.max(0, elapsed / DRONE_SORTIE_OUT_MS))
+      const p = dronePathPos(t, baseAbs, station, arc, false)
+      return { x: p.x, y: p.y, heading: 1 }
+    }
+    if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) return { x: station.x, y: station.y, heading: 1 } // 到位驻留
+    const t = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS))
+    const p = dronePathPos(t, station, baseAbs, arc, true)
+    return { x: p.x, y: p.y, heading: -1 } // 返航：掉头
+  }
+  return { x: station.x, y: station.y, heading: 1 }
+}
+
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
   const state = engine.state
   const view = expeditionStatus(state, engine.ctx)
   const arcs = battleArcsFor(state, engine.ctx)
   const battle = state.expedition.battle
+  /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
+  const droneCountOf = new Map<string, number>()
+  for (const w of arcs?.me ?? []) if (w.src === 'drone' && w.artId) droneCountOf.set(w.artId, w.count ?? 1)
 
   const [stage, setStage] = useState<Stage>('live')
   const [retreatAsk, setRetreatAsk] = useState(false)
@@ -74,6 +111,10 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   /* ── 背景星场（三层视差：直接操作 DOM transform，追逐/拉锯差速滚动） ── */
   const dimsRef = useRef(dims)
   dimsRef.current = dims
+  /** 尺寸重测入口（列宽随编队数量变化；由 33ms 循环按需调用——放在守卫之前的 hook 区声明） */
+  const measureRef = useRef<() => void>(() => {})
+  /** 列宽核对节拍（33ms 循环每 10 拍核对一次 ≈330ms） */
+  const widthCheckRef = useRef(0)
   const starLayerRefs = useRef<Array<HTMLDivElement | null>>([])
   const starOffRef = useRef<number[]>([0, 0, 0])
   const starStateRef = useRef({ v: 70, dir: 1 })
@@ -104,6 +145,20 @@ const meSpeedRef = useRef(200)
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
   const droneSortieRef = useRef<Map<string, DroneSortie>>(new Map())
+  /* ── 无人机位置驱动（2026-09-10 船长"无人机移动不连贯"修复）：
+        位置不再走 React 渲染（33ms 循环仅在距离变化时 setState → 敌舰就位后只剩 10Hz 通知，
+        表现为 10fps 步进）；改为 rAF 循环直接写 transform（容器 + 每架），恒定 60fps 平滑。 ── */
+  const droneBoxRef = useRef<HTMLDivElement>(null)
+  const droneElsRef = useRef<Map<string, HTMLSpanElement>>(new Map())
+  /** 上次写入的 transform（值未变就不写，避免每帧无谓的样式失效与重排） */
+  const droneWritesRef = useRef<Map<string, string>>(new Map())
+  const visDistRef = useRef(0)
+  const droneDriveRef = useRef<{
+    foeN: number
+    openM: number
+    nearM: number
+    wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean }>
+  }>({ foeN: 1, openM: 1, nearM: 200, wings: [] })
   /** ⚠ 临时性能探针状态（2026-09-10 卡顿诊断，定位后删除） */
   const probeRef = useRef<{
     raf: number
@@ -262,6 +317,18 @@ const meSpeedRef = useRef(200)
         const t = clamp01((now - s.cur.w) / 100)
         vis = s.prev.m + (s.cur.m - s.prev.m) * t
       }
+      visDistRef.current = vis // 供无人机 rAF 驱动使用（与舰列/弧同一插值距离）
+      /* 列宽核对（~330ms 一次）：编队数量变化会改变敌列 DOM 宽度，若不重测则锚点偏移、
+         弹道落点偏右（2026-09-10 船长"击毁小型敌人后无人机落弹位置有误"）。放在本循环而非
+         useEffect，是因为渲染体在 `!view.combat` 时会提前 return，守卫之后不得再出现 hook。 */
+      if (++widthCheckRef.current >= 10) {
+        widthCheckRef.current = 0
+        const fw = foeColRef.current?.offsetWidth
+        const mw = meColRef.current?.offsetWidth
+        if ((fw && Math.abs(fw - dimsRef.current.foeW) > 2) || (mw && Math.abs(mw - dimsRef.current.meW) > 2)) {
+          measureRef.current()
+        }
+      }
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
@@ -286,7 +353,53 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 尺寸测量（列宽由固定内容决定；窗口变化只影响 lane 宽）
+  /* 无人机位置驱动（rAF，恒定 60fps；与 React 重渲染节奏解耦） */
+  useEffect(() => {
+    let alive = true
+    let raf = 0
+    const drive = (): void => {
+      if (!alive) return
+      const d = droneDriveRef.current
+      if (d.wings.length > 0) {
+        const layLoop = layout(dimsRef.current, Math.max(1, d.foeN), visDistRef.current, d.openM, d.nearM)
+        const box = droneBoxRef.current
+        const w0 = droneWritesRef.current
+        if (box) {
+          const tb = `translate3d(${layLoop.me.x.toFixed(1)}px, ${layLoop.me.y.toFixed(1)}px, 0)`
+          if (w0.get('@box') !== tb) {
+            box.style.transform = tb
+            w0.set('@box', tb)
+          }
+        }
+        const nowMs = performance.now()
+        for (const w of d.wings) {
+          if (w.deck) continue // 收舱（display:none）不写位置
+          const elapsed = w.st ? nowMs - w.st.startAt : Number.POSITIVE_INFINITY
+          for (let i = 0; i < w.show; i++) {
+            const key = `${w.artId}|${i}`
+            const el = droneElsRef.current.get(key)
+            if (!el) continue
+            const pose = dronePoseAt(w.model, i, w.st, layLoop, elapsed)
+            const t = `translate3d(${(pose.x - layLoop.me.x).toFixed(1)}px, ${(pose.y - layLoop.me.y).toFixed(1)}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
+            if (w0.get(key) !== t) {
+              el.style.transform = t
+              w0.set(key, t)
+            }
+          }
+        }
+      }
+      raf = window.requestAnimationFrame(drive)
+    }
+    raf = window.requestAnimationFrame(drive)
+    return () => {
+      alive = false
+      window.cancelAnimationFrame(raf)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /** 尺寸测量（列宽由固定内容决定；窗口变化只影响 lane 宽）
+   *  2026-09-10：列宽会随编队数量变化（击毁僚舰/波次增援），故除 resize 外由 33ms 循环按需重测 */
   useEffect(() => {
     const measure = (): void => {
       const lane = laneRef.current
@@ -301,6 +414,7 @@ const meSpeedRef = useRef(200)
         d.W === next.W && d.H === next.H && d.meW === next.meW && d.foeW === next.foeW ? d : next,
       )
     }
+    measureRef.current = measure
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
@@ -462,25 +576,36 @@ const meSpeedRef = useRef(200)
         const key = dm.resident ? `res:${fx.artId}` : `fly:${fx.artId}`
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
-        const lane = n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))
-        /**
-         * 单轮出击（2026-09-10 船长七次定："每次飞出时 Y 轴随机分布、到达位置后开火、开火结束立刻返回"）：
-         * - 收到该型开火事件时，若上一轮已结束 → 开一轮新的（生成**本轮随机阵位**，Y 轴随机分布）；
-         * - 弹道一律从本轮阵位出，并**延迟到无人机抵达那一刻**才显示（不丢发、位置与机体一致）；
-         * - 战斗开始时同样从机库口飞出（不再直接出现在敌侧）。
-         */
         const foeA = layFx.foe[0] ?? layFx.me
         const dir = isMeShot ? 1 : -1
-        const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_SORTIE_BACK_MS
         if (DRONE_STYLE === 'sortie' && !dm.resident) {
+          /**
+           * 2026-09-10 船长"弹道发射位置和无人机对不上（小概率）"修复——两处确定性缺陷：
+           * ① 道次原按 6 取模，但渲染机体数是 min(架数,6)：带 2~5 架时弹道会从"没有机体的道位"发出；
+           * ② 无人机已在返航途中开火时，弹道仍从敌侧阵位发出（机体已不在那里）。
+           * 现改为：道次按**实际机体数**取模；返航阶段开火则弹道**从无人机当前位置**发出（边退边打）。
+           */
+          const count = Math.max(1, Math.min(droneCountOf.get(fx.artId!) ?? 1, DRONE_SHOW_MAX))
+          const lane = n % count
           const prev = droneSortieRef.current.get(fx.artId!)
+          const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
           const st = !prev || now - prev.startAt >= cycleMs + 40 ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) } : prev
           droneSortieRef.current.set(fx.artId!, st)
           const off = st.offs[lane % st.offs.length]!
-          from = droneStationFrom(foeA, dir, off)
-          droneDelay = Math.max(0, Math.round(st.startAt + DRONE_SORTIE_OUT_MS - now))
+          const elapsed = now - st.startAt
+          if (elapsed < DRONE_SORTIE_OUT_MS) {
+            // 仍在出击途中：弹道自阵位出，延到"无人机抵达"那一刻显示
+            from = droneStationFrom(foeA, dir, off)
+            droneDelay = Math.round(DRONE_SORTIE_OUT_MS - elapsed)
+          } else if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) {
+            // 已到位：阵位出弹，立即显示
+            from = droneStationFrom(foeA, dir, off)
+          } else {
+            // 返航中：弹道就从无人机当前位置出（与机体一致）
+            from = dronePoseAt(dm, lane, st, layFx, elapsed)
+          }
         } else {
-          from = droneHomeStation(dm, lane, layFx)
+          from = droneHomeStation(dm, n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX)), layFx)
         }
       } else {
         mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
@@ -555,6 +680,9 @@ const meSpeedRef = useRef(200)
   if (dropFinal.size > 0) probeRef.current.lastDropAt = now
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
+  /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
+     守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
+     现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
   const lay = layout(dims, foeN, visM, openM, nearM)
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
@@ -770,11 +898,11 @@ const meSpeedRef = useRef(200)
     .map((w) => {
       const model = droneModelOf(w.artId!)!
       const st = droneSortieRef.current.get(w.artId!)
-      const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_SORTIE_BACK_MS
+      const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
       const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
       const phase: 'out' | 'back' | 'deck' = model.resident
         ? 'out'
-        : elapsed < DRONE_SORTIE_OUT_MS
+        : elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS
           ? 'out'
           : elapsed < cycleMs
             ? 'back'
@@ -782,6 +910,14 @@ const meSpeedRef = useRef(200)
       const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
       return { artId: w.artId!, model, phase, elapsed, st, show, total: w.count ?? 1 }
     })
+  /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
+  visDistRef.current = visM
+  droneDriveRef.current = {
+    foeN: Math.max(1, foeRowTags.length),
+    openM,
+    nearM,
+    wings: droneWings.map((w) => ({ artId: w.artId, model: w.model, show: w.show, st: w.st, deck: w.phase === 'deck' })),
+  }
 
   /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
      尸骸占原槽整段演出：boomAt（致死弹道着弹）前原样停留 → 灰化 + 爆炸环 → 原位淡出；
@@ -927,73 +1063,39 @@ const meSpeedRef = useRef(200)
             </div>
           </div>
 
-          {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻母舰下方且只显 1 架） */}
+          {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 起飞即出击-到位开火-立刻返航；雷鸥哨戒常驻伴飞）；
+              位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐 */}
           {droneWings.length > 0 ? (
-            <div className="app-bts-drones" style={{ left: lay.me.x, top: lay.me.y }} aria-hidden="true">
+            <div className="app-bts-drones" ref={droneBoxRef} aria-hidden="true">
               {droneWings.map((w) => (
                   <div
                     key={w.artId}
                     className={`app-bts-wing is-${w.phase}${w.phase === 'deck' ? ' is-deck' : ''}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ' is-formation'}`}
                   >
-                    {Array.from({ length: w.show }, (_, i) => {
-                      // 起飞/停泊基准位：出击制 = 机库口；机群制与哨戒 = 母舰编队/伴飞位
-                      const base =
-                        DRONE_STYLE === 'sortie' && !w.model.resident ? droneTakeoff(i) : w.model.slots[i % w.model.slots.length]!
-                      const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
-                      const arc = droneArcHeight(i)
-                      const foeA = lay.foe[0] ?? lay.me
-                      // 出击制：本轮随机阵位（Y 轴随机分布）→ 到位开火 → 立刻返航；与弹道同源
-                      const off = w.st?.offs[i % (w.st.offs.length || 1)] ?? { x: 46, y: 0 }
-                      const station =
-                        DRONE_STYLE === 'sortie' && !w.model.resident
-                          ? droneStationFrom(foeA, 1, off)
-                          : droneHomeStation(w.model, i, lay)
-                      let px = station.x
-                      let py = station.y
-                      let heading = 1
-                      if (DRONE_STYLE === 'sortie' && !w.model.resident) {
-                        if (w.phase === 'back') {
-                          const t = Math.min(1, Math.max(0, (w.elapsed - DRONE_SORTIE_OUT_MS) / DRONE_SORTIE_BACK_MS))
-                          const p = dronePathPos(t, station, baseAbs, arc, true)
-                          px = p.x
-                          py = p.y
-                          heading = -1 // 开火结束立刻返航：掉头（机头朝母舰）
-                        } else {
-                          const t = Math.min(1, Math.max(0, w.elapsed / DRONE_SORTIE_OUT_MS))
-                          const p = dronePathPos(t, baseAbs, station, arc, false)
-                          px = p.x
-                          py = p.y
-                        }
-                      }
-                      return (
-                        <span
-                          key={i}
-                          className="app-bts-drone"
-                          style={
-                            {
-                              // 位置走 transform（GPU 合成，不再每帧改 left/top 引发布局+重绘）——
-                              // 2026-09-10 船长十一次定"击毁敌人后画面明显卡顿"的性能优化之一
-                              left: 0,
-                              top: 0,
-                              color: w.model.tint,
-                              transform: `translate3d(${px - lay.me.x}px, ${py - lay.me.y}px, 0) translate(-50%, -50%) scaleX(${heading})`,
-                            } as CSSProperties
-                          }
+                    {Array.from({ length: w.show }, (_, i) => (
+                      <span
+                        key={i}
+                        ref={(el) => {
+                          const key = `${w.artId}|${i}`
+                          if (el) droneElsRef.current.set(key, el)
+                          else droneElsRef.current.delete(key)
+                        }}
+                        className="app-bts-drone"
+                        style={{ left: 0, top: 0, color: w.model.tint }}
+                      >
+                        <svg
+                          viewBox="-13 -8 26 16"
+                          width="22"
+                          height="14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
                         >
-                          <svg
-                            viewBox="-13 -8 26 16"
-                            width="22"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinejoin="round"
-                          >
-                            {w.model.art}
-                          </svg>
-                        </span>
-                      )
-                    })}
+                          {w.model.art}
+                        </svg>
+                      </span>
+                    ))}
                     {w.total > w.show ? <span className="app-bts-drone-more">×{w.total}</span> : null}
                   </div>
               ))}

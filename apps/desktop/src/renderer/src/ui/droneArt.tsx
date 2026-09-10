@@ -121,6 +121,8 @@ export const DRONE_STYLE: 'sortie' | 'formation' = 'sortie'
 export const DRONE_SORTIE_OUT_MS = 560
 /** 出击制：返航时长（ms；同上撤回收紧：460→620） */
 export const DRONE_SORTIE_BACK_MS = 620
+/** 出击制：到位后的驻留时长（ms）——保证"到位才开火"有个稳定的开火窗口，也让机体/弹道位置一致 */
+export const DRONE_DWELL_MS = 220
 /** 无人机弹道提速系数（2026-09-10 船长九次定"弹道速度加快"；乘在弹型基础飞行时长上） */
 export const DRONE_FLY_MUL = 0.55
 
