@@ -92,6 +92,7 @@ const L_S2: Loadout = { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high
 const L_S4: Loadout = { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: S4_HIGH, mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 const L_T3H: Loadout = { name: 'T3 锤头鲨炮巡5×kin3+支援', ship: 'sh-hammerhead', high: S4_HIGH, mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 const L_D3: Loadout = { name: 'D3 王鲭无人机重装', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }
+const L_T3M: Loadout = { name: 'T3 长尾鲨导弹巡5×msl3+支援', ship: 'sh-thresher', high: ['mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 
 const L_NONE: Loadout = { name: 'S2 无抗件(对照)', ship: 'sh-mako', high: S2_HIGH, mid: ['mod-prop-2', 'mod-track-2'], low: ['mod-stab-kin-2'] }
 const L_HARD_MAIN: Loadout = { name: 'S2 硬化主系', ship: 'sh-mako', high: S2_HIGH, mid: ['mod-prop-2', 'mod-shield-@@-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-@@-2'] }
@@ -562,6 +563,41 @@ function sectionF(): void {
   console.log('      推进器周期化后，若战斗跨过 60 秒点火期，冷却段玩家变慢 → 敌开火次数应显著上升。')
 }
 
+/* ═══════════ G. E 段单卡降伤对照（若选"动数"这一路：给 E 段四卡压敌伤会怎样） ═══════════
+ * E 段四卡当前都**没有** `foeDmgMul`（= 1）——本段把 1.0（现值）/0.9/0.85/0.8/0.7 逐档跑一遍，
+ * 给船长"要动多少才够"的实测依据（配合 §9/§10：换装救不回来，只能走单卡数值或机制）。 */
+
+function sectionG(): void {
+  console.log('\n════════ G. E 段单卡降伤对照（9 种子 · 中位技能；1.0 = 现值）════════')
+  const targets: Array<{ id: string; label: string }> = [
+    { id: 'ano-maw-hunt', label: '噬口猎杀令 80（2 波·orbit 7.1km）' },
+    { id: 'ano-gravekeeper', label: '坟场守墓人 88（2 波·brawl 2.8km）' },
+    { id: 'ano-voidedge-warden', label: '虚海守望者 88（3 波·orbit 7.4km）' },
+    { id: 'ano-vault-sentinel', label: '穹顶守卫 96（3 波·orbit 7.7km）' },
+  ]
+  const steps = [1, 0.9, 0.85, 0.8, 0.7]
+  const rows: Array<{ label: string; ld: Loadout }> = [
+    { label: 'S4 大白鲨5×MK3+支援', ld: L_S4 },
+    { label: 'T3锤头鲨炮巡5×kin3+支援', ld: L_T3H },
+    { label: 'T3长尾鲨导弹巡5×msl3+支援', ld: L_T3M },
+  ]
+  for (const t of targets) {
+    const card = ctx.anomalies.get(t.id)
+    if (!card) continue
+    console.log(`\n${t.label}　（敌伤倍率 ${steps.map((v) => (v === 1 ? '1.0现值' : v)).join(' / ')}）`)
+    for (const r of rows) {
+      const cells: string[] = []
+      for (const v of steps) {
+        const c = runCell(r.ld, card, MID_SKILLS, ctxWithFoeDmg(t.id, v))
+        cells.push(`${v === 1 ? '★' : ' '}${c.winPct}%|${c.durS}s|${c.remPct}%`.padStart(17))
+      }
+      console.log(`  ${r.label.padEnd(30)}${cells.join(' ')}`)
+    }
+  }
+  console.log('\n读法：只动"被卡住的那几格"（如 S4 虚海 11% / 穹顶 0%）——降到多少能让中位档过关、')
+  console.log('      同时**不把满技能档变得太轻松**（满技能已能过，若降太多会失去 E 段作为终局墙的意义）。')
+}
+
 /* 证据落盘：stdout 同步镜像一份到 battle-data（复核材料与既有校准矩阵同目录） */
 const MIRROR: string[] = []
 const origLog = console.log.bind(console)
@@ -580,6 +616,7 @@ function main(): void {
   if (want('D')) sectionD()
   if (want('E')) sectionE()
   if (want('F')) sectionF()
+  if (want('G')) sectionG()
   console.log('\n（探针结束）')
   const out = path.join('docs', 'design', 'battle-data', 'mixed-damage-review-20260910.txt')
   if (only === '') {

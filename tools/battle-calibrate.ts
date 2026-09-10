@@ -8,12 +8,20 @@
  * - 装配行：裸船 / 三族 MK1·MK2·MK3 / 三形态混装演示 / 支援件满 / 无人机流 D1-D3
  *   （2026-09-08 二号 C6：此前校准从未覆盖无人机——见 LOADOUTS 无人机段）。
  * - 技能档：无技能 / 中位技能（战斗系 Lv3）/ 全战斗技能 5。
+ * - **可选开关 `--charge`**（2026-09-10 船长「这几个需要先跑通战斗再决策」）：**只把本工具的上下文**
+ *   里 `foeChargeEnabled` 置 true，用来跑"高威胁近战敌突进若启用了会怎样"的对照矩阵。
+ *   **不动引擎默认值**（balance 里仍是 false = 未实装）——纯测量，供决策，不改游戏。
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
 import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
-const ctx = buildSimContext()
+const BASE_CTX = buildSimContext()
+/** 敌突进对照开关（只影响本工具；引擎默认仍是"未实装"） */
+const CHARGE_ON = process.argv.includes('--charge')
+const ctx: SimContext = CHARGE_ON
+  ? { ...BASE_CTX, balance: { ...BASE_CTX.balance, battle: { ...BASE_CTX.balance.battle, foeChargeEnabled: true } } }
+  : BASE_CTX
 const SEEDS = [1, 7, 13, 29, 51]
 
 type Loadout = {
@@ -139,6 +147,11 @@ function initHpOf(shipId: string): number {
 async function main(): Promise<void> {
   const threats = [...ANOMALIES].sort((a, b) => a.threat - b.threat)
   console.log('══ C4 战斗校准（真实模拟胜率）══')
+  console.log(
+    CHARGE_ON
+      ? '⚠ 对照模式：**高威胁近战敌突进已临时开启**（威胁≥60 且 brawl、够不着时机动 ×2、进射程维持 2s、冷却 20s）——仅本工具，引擎默认仍为未实装'
+      : '（敌突进按出厂默认 = 未实装；要看启用后的对照加 `--charge`）',
+  )
   console.log('威胁梯度：' + threats.map((a) => `${a.name}=${a.threat}`).join(' '))
   // 时长预期行（C4 血量曲线 D(T)，纯对射口径；模拟时长含接近期故应 ≥ D）
   const dExpect = (t: number): number =>

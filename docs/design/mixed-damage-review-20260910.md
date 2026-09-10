@@ -331,7 +331,7 @@ S2 灰鲭鲨中位对**全部**短射程（brawl ≈2.2~2.8 km）敌卡的战后
 但类型克制表里**动能对甲层本就 ×0.5**，在甲层再堆动能抗属低效，而混伤后副系（能量）绕开主抗 →
 **适配版 = 盾抗主系、甲抗副系**（覆盖两系）。据此在 `tools/battle-calibrate.ts` 新增 3 行：
 `S2 双抗(盾动能·甲能量)`、`S4 双抗(盾动能·甲能量)`、`T3锤头鲨+推进器MK3(周期点火)`（原表**没有任何 MK3 推进器行**）。
-全矩阵重跑证据：`docs/design/battle-data/calibrate-matrix-mechanics-20260910.txt`（26 悬赏 × 23 行 × 3 技能档）。
+全矩阵重跑证据：`docs/design/battle-data/calibrate-matrix-mechanics-20260910.txt`（26 悬赏 × **24 装配行** × 3 技能档）。
 
 ### 10.1 结论一：**换双抗救不回 E 段**（重要）
 
@@ -364,7 +364,6 @@ S2 灰鲭鲨中位对**全部**短射程（brawl ≈2.2~2.8 km）敌卡的战后
 这一点不直观，**建议写进手册/公告口径**。
 
 ### 10.3 顺带查实：无人机流为什么在近战卡上"贴脸挨打"
-
 矩阵里 D1/D2/D2b 对**坟场守墓人 88**（近战 2.8km）中位档 0%（**26~30 秒暴毙**），而炮流锚行却是
 **100%/135~245s/残血 112%（一点没挨打）**。原因 = **期望距离由自己武器射程决定**：
 无人机行没有炮台，只有兜底的「基础舰炮 0~2500 m」→ 中距期望 = **1250 m** → 它必然站在近战敌（2.8 km）**射程之内**，
@@ -380,7 +379,8 @@ S2 灰鲭鲨中位对**全部**短射程（brawl ≈2.2~2.8 km）敌卡的战后
 |---|---|
 | `docs/design/mixed-damage-review-20260910.md` | 本报告 |
 | `docs/design/battle-data/mixed-damage-review-20260910.txt` | 实测证据原件（A 段全表 + B 段全矩阵 26 档 × 3 装配 × 2 技能档 × 5 口径 + D 段 P1 复跑 + E 段敌伤旋钮对照 + F 段推进器档位对照） |
-| `docs/design/battle-data/calibrate-matrix-mechanics-20260910.txt` | **重大机制变更后的全量校准矩阵**（26 悬赏 × 23 装配行 × 3 技能档；含 §12 的 3 行装配适配版） |
+| `docs/design/battle-data/calibrate-matrix-mechanics-20260910.txt` | **重大机制变更后的全量校准矩阵**（26 悬赏 × **24 装配行** × 3 技能档；含 §10 的 3 行装配适配版） |
+| `docs/design/battle-data/calibrate-matrix-charge-on-whatif-20260910.txt` | **假设对照**（非实装）：把「高威胁近战敌突进」临时开启后的同一矩阵——供"是否实装"决策（`npx tsx tools/battle-calibrate.ts --charge`） |
 | `tools/mixed-damage-review.ts` | 复核工具（**已正式入库**，挂 `npm run battle:mixed-review`）：A 解析式 / B 实战对照 / D P1 复跑 / E 敌伤旋钮 / F 推进器档位（`npx tsx tools/mixed-damage-review.ts E` 可只跑单段；**只跑单段时不覆盖完整证据文件**） |
 | `tools/battle-calibrate.ts` | 校准矩阵工具（装配行在此注册；§10 的适配行已入库） |
 
