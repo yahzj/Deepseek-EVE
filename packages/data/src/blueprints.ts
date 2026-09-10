@@ -40,9 +40,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '强化采集器 MK2 蓝图',
     moduleId: 'mod-miner-2',
     materials: [
-      { itemId: 'min-tritanium', count: 4_500 },
-      { itemId: 'min-pyerite', count: 1_800 },
-      { itemId: 'min-mexallon', count: 600 },
+      { itemId: 'min-tritanium', count: 13_550 },
+      { itemId: 'min-pyerite', count: 5_400 },
+      { itemId: 'min-mexallon', count: 1_800 },
     ],
     buildSeconds: 500, // ×6 提速（原 50*60=3000s）
     buildCostIsk: 60_000,
@@ -54,9 +54,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '货舱扩展 MK2 蓝图',
     moduleId: 'mod-cargo-2',
     materials: [
-      { itemId: 'min-pyerite', count: 2_200 },
-      { itemId: 'min-mexallon', count: 900 },
-      { itemId: 'min-nocxium', count: 200 },
+      { itemId: 'min-pyerite', count: 7_550 },
+      { itemId: 'min-mexallon', count: 3_100 },
+      { itemId: 'min-nocxium', count: 700 },
     ],
     buildSeconds: 700, // ×6 提速（原 70*60=4200s）
     buildCostIsk: 80_000,
@@ -138,11 +138,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '精密采集器 MK3 蓝图',
     moduleId: 'mod-miner-3',
     materials: [
-      { itemId: 'min-tritanium', count: 14_000 },
-      { itemId: 'min-pyerite', count: 5_000 },
-      { itemId: 'min-mexallon', count: 2_000 },
-      { itemId: 'min-isotope', count: 900 },
-      { itemId: 'min-starcore', count: 250 },
+      { itemId: 'min-tritanium', count: 45_500 },
+      { itemId: 'min-pyerite', count: 16_250 },
+      { itemId: 'min-mexallon', count: 6_500 },
+      { itemId: 'min-isotope', count: 2_900 },
+      { itemId: 'min-starcore', count: 800 },
     ],
     buildSeconds: 3000, // ×6 提速（原 300*60=18000s）
     buildCostIsk: 260_000,
@@ -154,10 +154,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '折叠货舱扩展 MK3 蓝图',
     moduleId: 'mod-cargo-3',
     materials: [
-      { itemId: 'min-pyerite', count: 8_000 },
-      { itemId: 'min-mexallon', count: 3_000 },
-      { itemId: 'min-starcore', count: 600 },
-      { itemId: 'min-darkiron', count: 150 },
+      { itemId: 'min-pyerite', count: 20_550 },
+      { itemId: 'min-mexallon', count: 7_700 },
+      { itemId: 'min-starcore', count: 1_550 },
+      { itemId: 'min-darkiron', count: 390 },
     ],
     buildSeconds: 3600, // ×6 提速（原 360*60=21600s）
     buildCostIsk: 240_000,
@@ -385,9 +385,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机甲板扩展 MK2蓝图',
     moduleId: 'mod-drone-rack-2',
     materials: [
-      { itemId: 'min-tritanium', count: 2600 },
-      { itemId: 'min-pyerite', count: 790 },
-      { itemId: 'min-mexallon', count: 375 },
+      { itemId: 'min-tritanium', count: 12_950 },
+      { itemId: 'min-pyerite', count: 3_950 },
+      { itemId: 'min-mexallon', count: 1_850 },
     ],
     buildSeconds: 900, // 无人机甲板扩展 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -399,10 +399,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机甲板扩展 MK3蓝图',
     moduleId: 'mod-drone-rack-3',
     materials: [
-      { itemId: 'min-tritanium', count: 5460 },
-      { itemId: 'min-pyerite', count: 1735 },
-      { itemId: 'min-mexallon', count: 1040 },
-      { itemId: 'min-nocxium', count: 210 },
+      { itemId: 'min-tritanium', count: 46_200 },
+      { itemId: 'min-pyerite', count: 14_700 },
+      { itemId: 'min-mexallon', count: 8_800 },
+      { itemId: 'min-nocxium', count: 1_800 },
     ],
     buildSeconds: 2000, // 无人机甲板扩展 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -428,10 +428,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '战术导控阵列 MK2蓝图',
     moduleId: 'mod-drone-tac-2',
     materials: [
-      { itemId: 'min-tritanium', count: 3530 },
-      { itemId: 'min-pyerite', count: 1120 },
-      { itemId: 'min-mexallon', count: 670 },
-      { itemId: 'min-nocxium', count: 135 },
+      { itemId: 'min-tritanium', count: 10_750 },
+      { itemId: 'min-pyerite', count: 3_400 },
+      { itemId: 'min-mexallon', count: 2_050 },
+      { itemId: 'min-nocxium', count: 410 },
     ],
     buildSeconds: 900, // 战术导控阵列 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -443,10 +443,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '战术导控阵列 MK3蓝图',
     moduleId: 'mod-drone-tac-3',
     materials: [
-      { itemId: 'min-tritanium', count: 8820 },
-      { itemId: 'min-pyerite', count: 2800 },
-      { itemId: 'min-mexallon', count: 1680 },
-      { itemId: 'min-nocxium', count: 335 },
+      { itemId: 'min-tritanium', count: 48_200 },
+      { itemId: 'min-pyerite', count: 15_300 },
+      { itemId: 'min-mexallon', count: 9_200 },
+      { itemId: 'min-nocxium', count: 1_850 },
     ],
     buildSeconds: 2200, // 战术导控阵列 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -472,10 +472,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机中继天线 MK2蓝图',
     moduleId: 'mod-drone-relay-2',
     materials: [
-      { itemId: 'min-tritanium', count: 2600 }, // 20,800 ISK
-      { itemId: 'min-pyerite', count: 790 }, // 9,480 ISK
-      { itemId: 'min-mexallon', count: 375 }, // 7,500 ISK
-      { itemId: 'min-nocxium', count: 280 }, // 25,200 ISK
+      { itemId: 'min-tritanium', count: 8_350 }, // 20,800 ISK
+      { itemId: 'min-pyerite', count: 2_550 }, // 9,480 ISK
+      { itemId: 'min-mexallon', count: 1_200 }, // 7,500 ISK
+      { itemId: 'min-nocxium', count: 900 }, // 25,200 ISK
     ], // 62,980 ≈ 150,000×0.42
     buildSeconds: 900, // 无人机中继天线 MK2（2026-09-10；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -487,10 +487,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机中继天线 MK3蓝图',
     moduleId: 'mod-drone-relay-3',
     materials: [
-      { itemId: 'min-tritanium', count: 5460 }, // 43,680 ISK
-      { itemId: 'min-pyerite', count: 1735 }, // 20,820 ISK
-      { itemId: 'min-mexallon', count: 1040 }, // 20,800 ISK
-      { itemId: 'min-nocxium', count: 900 }, // 81,000 ISK
+      { itemId: 'min-tritanium', count: 30_000 }, // 43,680 ISK
+      { itemId: 'min-pyerite', count: 9_550 }, // 20,820 ISK
+      { itemId: 'min-mexallon', count: 5_700 }, // 20,800 ISK
+      { itemId: 'min-nocxium', count: 4_950 }, // 81,000 ISK
     ], // 166,300 ≈ 400,000×0.42
     buildSeconds: 2000, // 无人机中继天线 MK3（2026-09-10；材料≈产物价×0.42、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -541,9 +541,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾增强器 MK2·动能型蓝图',
     moduleId: 'mod-shield-kin-2',
     materials: [
-      { itemId: 'min-tritanium', count: 810 },
-      { itemId: 'min-pyerite', count: 245 },
-      { itemId: 'min-mexallon', count: 115 },
+      { itemId: 'min-tritanium', count: 11_950 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 1_700 },
     ],
     buildSeconds: 900, // 护盾增强器 MK2·动能型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -555,9 +555,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾增强器 MK2·高爆型蓝图',
     moduleId: 'mod-shield-exp-2',
     materials: [
-      { itemId: 'min-tritanium', count: 810 },
-      { itemId: 'min-pyerite', count: 245 },
-      { itemId: 'min-mexallon', count: 115 },
+      { itemId: 'min-tritanium', count: 11_950 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 1_700 },
     ],
     buildSeconds: 900, // 护盾增强器 MK2·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -569,9 +569,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾增强器 MK2·能量型蓝图',
     moduleId: 'mod-shield-pla-2',
     materials: [
-      { itemId: 'min-tritanium', count: 810 },
-      { itemId: 'min-pyerite', count: 245 },
-      { itemId: 'min-mexallon', count: 115 },
+      { itemId: 'min-tritanium', count: 11_950 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 1_700 },
     ],
     buildSeconds: 900, // 护盾增强器 MK2·能量型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -583,10 +583,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾增强器 MK3·动能型蓝图',
     moduleId: 'mod-shield-kin-3',
     materials: [
-      { itemId: 'min-tritanium', count: 3570 },
-      { itemId: 'min-pyerite', count: 1135 },
-      { itemId: 'min-mexallon', count: 680 },
-      { itemId: 'min-nocxium', count: 135 },
+      { itemId: 'min-tritanium', count: 45_400 },
+      { itemId: 'min-pyerite', count: 14_450 },
+      { itemId: 'min-mexallon', count: 8_650 },
+      { itemId: 'min-nocxium', count: 1_720 },
     ],
     buildSeconds: 1900, // 护盾增强器 MK3·动能型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -598,10 +598,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾增强器 MK3·高爆型蓝图',
     moduleId: 'mod-shield-exp-3',
     materials: [
-      { itemId: 'min-tritanium', count: 3570 },
-      { itemId: 'min-pyerite', count: 1135 },
-      { itemId: 'min-mexallon', count: 680 },
-      { itemId: 'min-nocxium', count: 135 },
+      { itemId: 'min-tritanium', count: 45_400 },
+      { itemId: 'min-pyerite', count: 14_450 },
+      { itemId: 'min-mexallon', count: 8_650 },
+      { itemId: 'min-nocxium', count: 1_720 },
     ],
     buildSeconds: 1900, // 护盾增强器 MK3·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -613,10 +613,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾增强器 MK3·能量型蓝图',
     moduleId: 'mod-shield-pla-3',
     materials: [
-      { itemId: 'min-tritanium', count: 3570 },
-      { itemId: 'min-pyerite', count: 1135 },
-      { itemId: 'min-mexallon', count: 680 },
-      { itemId: 'min-nocxium', count: 135 },
+      { itemId: 'min-tritanium', count: 45_400 },
+      { itemId: 'min-pyerite', count: 14_450 },
+      { itemId: 'min-mexallon', count: 8_650 },
+      { itemId: 'min-nocxium', count: 1_720 },
     ],
     buildSeconds: 1900, // 护盾增强器 MK3·能量型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -641,9 +641,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾扩展器 MK2蓝图',
     moduleId: 'mod-shield-ext-2',
     materials: [
-      { itemId: 'min-tritanium', count: 810 },
-      { itemId: 'min-pyerite', count: 245 },
-      { itemId: 'min-mexallon', count: 115 },
+      { itemId: 'min-tritanium', count: 11_950 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 1_700 },
     ],
     buildSeconds: 900, // 护盾扩展器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -655,10 +655,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾扩展器 MK3蓝图',
     moduleId: 'mod-shield-ext-3',
     materials: [
-      { itemId: 'min-tritanium', count: 3570 },
-      { itemId: 'min-pyerite', count: 1135 },
-      { itemId: 'min-mexallon', count: 680 },
-      { itemId: 'min-nocxium', count: 135 },
+      { itemId: 'min-tritanium', count: 45_400 },
+      { itemId: 'min-pyerite', count: 14_450 },
+      { itemId: 'min-mexallon', count: 8_650 },
+      { itemId: 'min-nocxium', count: 1_720 },
     ],
     buildSeconds: 1900, // 护盾扩展器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -709,9 +709,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲镀层 MK2·动能型蓝图',
     moduleId: 'mod-armor-kin-2',
     materials: [
-      { itemId: 'min-tritanium', count: 980 },
-      { itemId: 'min-pyerite', count: 300 },
-      { itemId: 'min-mexallon', count: 140 },
+      { itemId: 'min-tritanium', count: 12_000 },
+      { itemId: 'min-pyerite', count: 3_700 },
+      { itemId: 'min-mexallon', count: 1_720 },
     ],
     buildSeconds: 900, // 装甲镀层 MK2·动能型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -723,9 +723,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲镀层 MK2·高爆型蓝图',
     moduleId: 'mod-armor-exp-2',
     materials: [
-      { itemId: 'min-tritanium', count: 980 },
-      { itemId: 'min-pyerite', count: 300 },
-      { itemId: 'min-mexallon', count: 140 },
+      { itemId: 'min-tritanium', count: 12_000 },
+      { itemId: 'min-pyerite', count: 3_700 },
+      { itemId: 'min-mexallon', count: 1_720 },
     ],
     buildSeconds: 900, // 装甲镀层 MK2·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -737,9 +737,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲镀层 MK2·能量型蓝图',
     moduleId: 'mod-armor-pla-2',
     materials: [
-      { itemId: 'min-tritanium', count: 980 },
-      { itemId: 'min-pyerite', count: 300 },
-      { itemId: 'min-mexallon', count: 140 },
+      { itemId: 'min-tritanium', count: 12_000 },
+      { itemId: 'min-pyerite', count: 3_700 },
+      { itemId: 'min-mexallon', count: 1_720 },
     ],
     buildSeconds: 900, // 装甲镀层 MK2·能量型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -751,10 +751,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲镀层 MK3·动能型蓝图',
     moduleId: 'mod-armor-kin-3',
     materials: [
-      { itemId: 'min-tritanium', count: 4640 },
-      { itemId: 'min-pyerite', count: 1475 },
-      { itemId: 'min-mexallon', count: 885 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 45_900 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_750 },
+      { itemId: 'min-nocxium', count: 1_730 },
     ],
     buildSeconds: 1900, // 装甲镀层 MK3·动能型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -766,10 +766,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲镀层 MK3·高爆型蓝图',
     moduleId: 'mod-armor-exp-3',
     materials: [
-      { itemId: 'min-tritanium', count: 4640 },
-      { itemId: 'min-pyerite', count: 1475 },
-      { itemId: 'min-mexallon', count: 885 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 45_900 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_750 },
+      { itemId: 'min-nocxium', count: 1_730 },
     ],
     buildSeconds: 1900, // 装甲镀层 MK3·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -781,10 +781,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲镀层 MK3·能量型蓝图',
     moduleId: 'mod-armor-pla-3',
     materials: [
-      { itemId: 'min-tritanium', count: 4640 },
-      { itemId: 'min-pyerite', count: 1475 },
-      { itemId: 'min-mexallon', count: 885 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 45_900 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_750 },
+      { itemId: 'min-nocxium', count: 1_730 },
     ],
     buildSeconds: 1900, // 装甲镀层 MK3·能量型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -809,9 +809,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲增厚板 MK2蓝图',
     moduleId: 'mod-armor-plate-2',
     materials: [
-      { itemId: 'min-tritanium', count: 980 },
-      { itemId: 'min-pyerite', count: 300 },
-      { itemId: 'min-mexallon', count: 140 },
+      { itemId: 'min-tritanium', count: 12_000 },
+      { itemId: 'min-pyerite', count: 3_700 },
+      { itemId: 'min-mexallon', count: 1_720 },
     ],
     buildSeconds: 900, // 装甲增厚板 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -823,10 +823,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '装甲增厚板 MK3蓝图',
     moduleId: 'mod-armor-plate-3',
     materials: [
-      { itemId: 'min-tritanium', count: 4640 },
-      { itemId: 'min-pyerite', count: 1475 },
-      { itemId: 'min-mexallon', count: 885 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 45_900 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_750 },
+      { itemId: 'min-nocxium', count: 1_730 },
     ],
     buildSeconds: 1900, // 装甲增厚板 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -851,9 +851,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '矢量推进器 MK2蓝图',
     moduleId: 'mod-prop-2',
     materials: [
-      { itemId: 'min-tritanium', count: 1125 },
-      { itemId: 'min-pyerite', count: 340 },
-      { itemId: 'min-mexallon', count: 165 },
+      { itemId: 'min-tritanium', count: 12_100 },
+      { itemId: 'min-pyerite', count: 3_650 },
+      { itemId: 'min-mexallon', count: 1_770 },
     ],
     buildSeconds: 900, // 矢量推进器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -865,10 +865,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '矢量推进器 MK3蓝图',
     moduleId: 'mod-prop-3',
     materials: [
-      { itemId: 'min-tritanium', count: 5710 },
-      { itemId: 'min-pyerite', count: 1815 },
-      { itemId: 'min-mexallon', count: 1090 },
-      { itemId: 'min-nocxium', count: 215 },
+      { itemId: 'min-tritanium', count: 46_600 },
+      { itemId: 'min-pyerite', count: 14_800 },
+      { itemId: 'min-mexallon', count: 8_900 },
+      { itemId: 'min-nocxium', count: 1_750 },
     ],
     buildSeconds: 2000, // 矢量推进器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -894,10 +894,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '动能稳定器 MK2蓝图',
     moduleId: 'mod-stab-kin-2',
     materials: [
-      { itemId: 'min-tritanium', count: 4630 },
-      { itemId: 'min-pyerite', count: 1470 },
-      { itemId: 'min-mexallon', count: 880 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 11_400 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 2_150 },
+      { itemId: 'min-nocxium', count: 430 },
     ],
     buildSeconds: 900, // 动能稳定器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -909,11 +909,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '动能稳定器 MK3蓝图',
     moduleId: 'mod-stab-kin-3',
     materials: [
-      { itemId: 'min-tritanium', count: 19950 },
-      { itemId: 'min-pyerite', count: 5950 },
-      { itemId: 'min-mexallon', count: 3360 },
-      { itemId: 'min-nocxium', count: 655 },
-      { itemId: 'min-isotope', count: 1145 },
+      { itemId: 'min-tritanium', count: 50_450 },
+      { itemId: 'min-pyerite', count: 15_050 },
+      { itemId: 'min-mexallon', count: 8_500 },
+      { itemId: 'min-nocxium', count: 1_650 },
+      { itemId: 'min-isotope', count: 2_900 },
     ],
     buildSeconds: 2900, // 动能稳定器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -939,10 +939,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '高爆稳定器 MK2蓝图',
     moduleId: 'mod-stab-exp-2',
     materials: [
-      { itemId: 'min-tritanium', count: 4630 },
-      { itemId: 'min-pyerite', count: 1470 },
-      { itemId: 'min-mexallon', count: 880 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 11_400 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 2_150 },
+      { itemId: 'min-nocxium', count: 430 },
     ],
     buildSeconds: 900, // 高爆稳定器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -954,11 +954,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '高爆稳定器 MK3蓝图',
     moduleId: 'mod-stab-exp-3',
     materials: [
-      { itemId: 'min-tritanium', count: 19950 },
-      { itemId: 'min-pyerite', count: 5950 },
-      { itemId: 'min-mexallon', count: 3360 },
-      { itemId: 'min-nocxium', count: 655 },
-      { itemId: 'min-isotope', count: 1145 },
+      { itemId: 'min-tritanium', count: 50_450 },
+      { itemId: 'min-pyerite', count: 15_050 },
+      { itemId: 'min-mexallon', count: 8_500 },
+      { itemId: 'min-nocxium', count: 1_650 },
+      { itemId: 'min-isotope', count: 2_900 },
     ],
     buildSeconds: 2900, // 高爆稳定器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -984,10 +984,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '等离子稳定器 MK2蓝图',
     moduleId: 'mod-stab-pla-2',
     materials: [
-      { itemId: 'min-tritanium', count: 4630 },
-      { itemId: 'min-pyerite', count: 1470 },
-      { itemId: 'min-mexallon', count: 880 },
-      { itemId: 'min-nocxium', count: 175 },
+      { itemId: 'min-tritanium', count: 11_400 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 2_150 },
+      { itemId: 'min-nocxium', count: 430 },
     ],
     buildSeconds: 900, // 等离子稳定器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -999,11 +999,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '等离子稳定器 MK3蓝图',
     moduleId: 'mod-stab-pla-3',
     materials: [
-      { itemId: 'min-tritanium', count: 19950 },
-      { itemId: 'min-pyerite', count: 5950 },
-      { itemId: 'min-mexallon', count: 3360 },
-      { itemId: 'min-nocxium', count: 655 },
-      { itemId: 'min-isotope', count: 1145 },
+      { itemId: 'min-tritanium', count: 50_450 },
+      { itemId: 'min-pyerite', count: 15_050 },
+      { itemId: 'min-mexallon', count: 8_500 },
+      { itemId: 'min-nocxium', count: 1_650 },
+      { itemId: 'min-isotope', count: 2_900 },
     ],
     buildSeconds: 2900, // 等离子稳定器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1029,10 +1029,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '射速计算机 MK2蓝图',
     moduleId: 'mod-rof-2',
     materials: [
-      { itemId: 'min-tritanium', count: 4080 },
-      { itemId: 'min-pyerite', count: 1295 },
-      { itemId: 'min-mexallon', count: 775 },
-      { itemId: 'min-nocxium', count: 155 },
+      { itemId: 'min-tritanium', count: 11_050 },
+      { itemId: 'min-pyerite', count: 3_500 },
+      { itemId: 'min-mexallon', count: 2_100 },
+      { itemId: 'min-nocxium', count: 420 },
     ],
     buildSeconds: 900, // 射速计算机 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1044,11 +1044,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '射速计算机 MK3蓝图',
     moduleId: 'mod-rof-3',
     materials: [
-      { itemId: 'min-tritanium', count: 17480 },
-      { itemId: 'min-pyerite', count: 5215 },
-      { itemId: 'min-mexallon', count: 2945 },
-      { itemId: 'min-nocxium', count: 570 },
-      { itemId: 'min-isotope', count: 1005 },
+      { itemId: 'min-tritanium', count: 48_950 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_250 },
+      { itemId: 'min-nocxium', count: 1_600 },
+      { itemId: 'min-isotope', count: 2_800 },
     ],
     buildSeconds: 2800, // 射速计算机 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1074,10 +1074,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '索敌阵列 MK2蓝图',
     moduleId: 'mod-track-2',
     materials: [
-      { itemId: 'min-tritanium', count: 3530 },
-      { itemId: 'min-pyerite', count: 1120 },
-      { itemId: 'min-mexallon', count: 670 },
-      { itemId: 'min-nocxium', count: 135 },
+      { itemId: 'min-tritanium', count: 10_750 },
+      { itemId: 'min-pyerite', count: 3_400 },
+      { itemId: 'min-mexallon', count: 2_050 },
+      { itemId: 'min-nocxium', count: 410 },
     ],
     buildSeconds: 900, // 索敌阵列 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1089,11 +1089,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '索敌阵列 MK3蓝图',
     moduleId: 'mod-track-3',
     materials: [
-      { itemId: 'min-tritanium', count: 15200 },
-      { itemId: 'min-pyerite', count: 4535 },
-      { itemId: 'min-mexallon', count: 2560 },
-      { itemId: 'min-nocxium', count: 500 },
-      { itemId: 'min-isotope', count: 870 },
+      { itemId: 'min-tritanium', count: 47_650 },
+      { itemId: 'min-pyerite', count: 14_200 },
+      { itemId: 'min-mexallon', count: 8_050 },
+      { itemId: 'min-nocxium', count: 1_550 },
+      { itemId: 'min-isotope', count: 2_750 },
     ],
     buildSeconds: 2600, // 索敌阵列 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1119,10 +1119,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '姿态陀螺 MK2蓝图',
     moduleId: 'mod-gyro-2',
     materials: [
-      { itemId: 'min-tritanium', count: 3310 },
-      { itemId: 'min-pyerite', count: 1050 },
-      { itemId: 'min-mexallon', count: 630 },
-      { itemId: 'min-nocxium', count: 125 },
+      { itemId: 'min-tritanium', count: 10_650 },
+      { itemId: 'min-pyerite', count: 3_350 },
+      { itemId: 'min-mexallon', count: 2_000 },
+      { itemId: 'min-nocxium', count: 400 },
     ],
     buildSeconds: 900, // 姿态陀螺 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1134,11 +1134,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '姿态陀螺 MK3蓝图',
     moduleId: 'mod-gyro-3',
     materials: [
-      { itemId: 'min-tritanium', count: 14250 },
-      { itemId: 'min-pyerite', count: 4250 },
-      { itemId: 'min-mexallon', count: 2400 },
-      { itemId: 'min-nocxium', count: 465 },
-      { itemId: 'min-isotope', count: 820 },
+      { itemId: 'min-tritanium', count: 47_250 },
+      { itemId: 'min-pyerite', count: 14_100 },
+      { itemId: 'min-mexallon', count: 7_950 },
+      { itemId: 'min-nocxium', count: 1_550 },
+      { itemId: 'min-isotope', count: 2_700 },
     ],
     buildSeconds: 2600, // 姿态陀螺 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1164,10 +1164,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '打捞器 MK2蓝图',
     moduleId: 'mod-salvager-2',
     materials: [
-      { itemId: 'min-tritanium', count: 2865 },
-      { itemId: 'min-pyerite', count: 910 },
-      { itemId: 'min-mexallon', count: 545 },
-      { itemId: 'min-nocxium', count: 110 },
+      { itemId: 'min-tritanium', count: 10_350 },
+      { itemId: 'min-pyerite', count: 3_300 },
+      { itemId: 'min-mexallon', count: 1_950 },
+      { itemId: 'min-nocxium', count: 400 },
     ],
     buildSeconds: 900, // 打捞器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1179,11 +1179,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '打捞器 MK3蓝图',
     moduleId: 'mod-salvager-3',
     materials: [
-      { itemId: 'min-tritanium', count: 14820 },
-      { itemId: 'min-pyerite', count: 4420 },
-      { itemId: 'min-mexallon', count: 2495 },
-      { itemId: 'min-nocxium', count: 485 },
-      { itemId: 'min-isotope', count: 850 },
+      { itemId: 'min-tritanium', count: 47_450 },
+      { itemId: 'min-pyerite', count: 14_150 },
+      { itemId: 'min-mexallon', count: 8_000 },
+      { itemId: 'min-nocxium', count: 1_550 },
+      { itemId: 'min-isotope', count: 2_700 },
     ],
     buildSeconds: 2600, // 打捞器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1209,10 +1209,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '船体维修装置 MK1蓝图',
     moduleId: 'mod-hullrep-1',
     materials: [
-      { itemId: 'min-tritanium', count: 4370 },
-      { itemId: 'min-pyerite', count: 1390 },
-      { itemId: 'min-mexallon', count: 835 },
-      { itemId: 'min-nocxium', count: 165 },
+      { itemId: 'min-tritanium', count: 11_050 },
+      { itemId: 'min-pyerite', count: 3_500 },
+      { itemId: 'min-mexallon', count: 2_100 },
+      { itemId: 'min-nocxium', count: 420 },
     ],
     buildSeconds: 180, // 船体维修装置 MK1（2026-09-09 全蓝图化；材料≈产物价×0.45、蓝图=产物×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1224,11 +1224,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '船体维修装置 MK2蓝图',
     moduleId: 'mod-hullrep-2',
     materials: [
-      { itemId: 'min-tritanium', count: 17480 },
-      { itemId: 'min-pyerite', count: 5215 },
-      { itemId: 'min-mexallon', count: 2945 },
-      { itemId: 'min-nocxium', count: 570 },
-      { itemId: 'min-isotope', count: 1005 },
+      { itemId: 'min-tritanium', count: 48_950 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_250 },
+      { itemId: 'min-nocxium', count: 1_600 },
+      { itemId: 'min-isotope', count: 2_800 },
     ],
     buildSeconds: 2800, // 船体维修装置 MK2（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1254,10 +1254,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '目标锁定阵列 MK2蓝图',
     moduleId: 'mod-lock-2',
     materials: [
-      { itemId: 'min-tritanium', count: 3970 },
-      { itemId: 'min-pyerite', count: 1260 },
-      { itemId: 'min-mexallon', count: 755 },
-      { itemId: 'min-nocxium', count: 150 },
+      { itemId: 'min-tritanium', count: 11_000 },
+      { itemId: 'min-pyerite', count: 3_500 },
+      { itemId: 'min-mexallon', count: 2_100 },
+      { itemId: 'min-nocxium', count: 420 },
     ],
     buildSeconds: 900, // 目标锁定阵列 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1269,11 +1269,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '目标锁定阵列 MK3蓝图',
     moduleId: 'mod-lock-3',
     materials: [
-      { itemId: 'min-tritanium', count: 16720 },
-      { itemId: 'min-pyerite', count: 4985 },
-      { itemId: 'min-mexallon', count: 2815 },
-      { itemId: 'min-nocxium', count: 550 },
-      { itemId: 'min-isotope', count: 955 },
+      { itemId: 'min-tritanium', count: 48_550 },
+      { itemId: 'min-pyerite', count: 14_450 },
+      { itemId: 'min-mexallon', count: 8_150 },
+      { itemId: 'min-nocxium', count: 1_600 },
+      { itemId: 'min-isotope', count: 2_750 },
     ],
     buildSeconds: 2700, // 目标锁定阵列 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
