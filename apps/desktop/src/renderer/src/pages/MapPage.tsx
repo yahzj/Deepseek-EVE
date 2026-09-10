@@ -1,5 +1,5 @@
 /**
- * 星图页（标签页结构）：本地矿带开采（主控 + AI 副船指派）/ 星图·远征调度 / 战斗悬赏 / 残骸打捞 / 任务中心。
+ * 星图页（标签页结构）：本地矿带开采（主控 + AI 副船指派）/ 星图·远征调度 / 常驻悬赏 / 残骸打捞 / 任务中心。
  * 顶部二级标签切换各功能区（配合左侧主菜单「出港」展开选择，见 App）。
  */
 import { useEffect, useRef, useState } from 'react'
@@ -27,6 +27,7 @@ import {
   wreckDensityOf,
   RECYCLE_YIELD_PER_M3,
   RECYCLE_POOL_AVG_ISK,
+  RARE_WRECK_VOLUME_M3,
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
@@ -50,7 +51,7 @@ export interface MapGotoTarget {
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'star', label: '星图·远征', icon: 'nav-map' },
   { key: 'mine', label: '矿带开采', icon: 'nav-mine' },
-  { key: 'bounty', label: '战斗悬赏', icon: 'nav-bounty' },
+  { key: 'bounty', label: '常驻悬赏', icon: 'nav-bounty' },
   { key: 'salvage', label: '残骸打捞', icon: 'nav-salvage' },
   /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
   { key: 'haul', label: '长途运输', icon: 'nav-haul' },
@@ -826,6 +827,13 @@ function WreckCard({
   }
   const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? ` 等${notes.length}种倾向` : '')
   const flavorParts = partList.slice(0, 4).concat(partList.length > 4 ? [`… 等${partList.length}组`] : [])
+  // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得 → 回站精炼炉开高级箱）
+  const rareBy = state.galaxyWrecks[g.id]?.rareBy ?? {}
+  const rareRefs = Object.entries(rareBy).filter(([, n]) => n > 0)
+  const rareCount = rareRefs.reduce((s, [, n]) => s + n, 0)
+  const rareText = rareRefs
+    .map(([aid, n]) => `${engine.ctx.anomalies.get(aid)?.name ?? aid} ×${n}`)
+    .join('、')
 
   return (
     <div
@@ -857,6 +865,14 @@ function WreckCard({
       <div className="app-belt-ore">
         残骸密度 <b>{density.toFixed(1)}</b>
         {lowSec ? '（低安回收箱可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
+        {rareCount > 0 ? (
+          <>
+            {' · '}
+            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³），回站精炼炉「残骸回收」按高级箱开（常规保底之外必定额外掉落，含该敌群专属装备）`}>
+              稀有残骸 ×{rareCount}
+            </em>
+          </>
+        ) : null}
       </div>
       {est.eff || est.val ? (
         <div className="app-belt-econ" title="估算 = 当前打捞器装配 × 当前密度 × 打捞/回收技能（参考值，实际所得以回收拆解结算为准）">

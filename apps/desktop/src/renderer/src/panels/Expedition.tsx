@@ -4,11 +4,14 @@
  */
 import { useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTaskBoardView } from '@whale/core'
+import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskBoardView } from '@whale/core'
 import {
   AI_CORE_ORDER,
   DSI_FACTION_ID,
   HOME_GALAXY_ID,
+  LAIR_RARE_WRECK_GAIN,
+  LAIR_TIER_LABELS,
+  LAIR_TIER_STANDING,
   SCAN_WINDOW_MS,
   aiCoreName,
   bountyDamageForecast,
@@ -27,6 +30,9 @@ import {
   frontierGalaxyIds,
   idleAiShipIds,
   isExplored,
+  isLairCandidate,
+  lairAnomalyOf,
+  lairBaseRewardIsk,
   nearestStationGalaxyId,
   originGalaxyOf,
   scanStatus,
@@ -161,13 +167,15 @@ const TASK_SORT_LABEL: Record<TaskSort, string> = {
 }
 
 /* 选项卡分类（船长优化）：重要 / 资源（建站） / 快递——任务可属于多类（如建站=重要+资源） */
-/* 注：悬赏任务已从任务中心抽出，独立成出港「战斗悬赏」标签（见 BountyPanel，船长 2026-09-05） */
+/* 注：常驻悬赏已从任务中心抽出，独立成出港「常驻悬赏」标签（见 BountyPanel，船长 2026-09-05）；
+ * 2026-09-10 船长定：任务中心设「赏金任务」子页——限时高难窝点目标，与常驻悬赏区分 */
 /* 2026-09-09：长途运输已从任务中心独立为星图「长途运输」标签（残骸打捞之后，见 HaulingPanel；建成副站解锁） */
-type TaskTabKey = 'important' | 'resource' | 'courier'
+type TaskTabKey = 'important' | 'resource' | 'courier' | 'bounty'
 const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
   { key: 'important', label: '重要任务' },
   { key: 'resource', label: '资源任务' },
   { key: 'courier', label: '快递任务' },
+  { key: 'bounty', label: '赏金任务' },
 ]
 const TASK_TAB_KEY = 'whale-idle:task-tab'
 
@@ -176,7 +184,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
     try {
       const v = localStorage.getItem(TASK_TAB_KEY)
       // 旧存 'hauling'（运输任务已独立为星图「长途运输」标签）一律回退「重要任务」
-      return v === 'important' || v === 'resource' || v === 'courier' ? v : 'important'
+      return v === 'important' || v === 'resource' || v === 'courier' || v === 'bounty' ? v : 'important'
     } catch {
       return 'important'
     }
@@ -207,7 +215,7 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
       title="任务中心"
       right={<span className="app-dim">建站 {stationCount} · 抵达对应星系后出现</span>}
     >
-      {/* 子标签固定（固定头+下滚）：重要/资源/快递 常显，下方任务内容独立内滚 */}
+      {/* 子标签固定（固定头+下滚）：重要/资源/快递/赏金任务 常显，下方任务内容独立内滚 */}
       <div className="app-task-tabs" role="tablist">
         {TASK_TABS.map((t) => (
           <button
@@ -256,13 +264,19 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
           {/* v24：快递时效任务（建成任一副空间站后解锁；未解锁时给建设提示） */}
           <SideTasksArea engine={engine} onToast={onToast} kind="courier" />
         </div>
+      ) : tab === 'bounty' ? (
+        <div>
+          {/* 2026-09-10：赏金任务——限时高难「敌人窝点」目标，与资源/快递同周期整板刷新 */}
+          <BountyTasksArea engine={engine} onToast={onToast} />
+        </div>
       ) : null}
       </div>
     </Panel>
   )
 }
 
-/* ─────────── 战斗悬赏（船长 2026-09-05：从「任务中心」抽出，独立成出港顶级标签——悬赏卡列表） ─────────── */
+/* ─────────── 常驻悬赏（船长 2026-09-05：从「任务中心」抽出，独立成出港顶级标签——悬赏卡列表；
+ * 2026-09-10 船长定：改称「常驻悬赏」——与任务中心的「赏金任务」（临时战斗任务）区分） ─────────── */
 export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const [sort, setSort] = useState<TaskSort>(() => {
@@ -329,7 +343,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
   return (
     <Panel
       className="is-fill"
-      title="战斗悬赏"
+      title="常驻悬赏"
       right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 默认：危险（安全优先）</span>}
     >
       <div className="app-task-sortrow">
@@ -1843,6 +1857,147 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
             )
           })}
         </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * 赏金任务区（2026-09-10 船长定）：任务中心第四个子页——临时战斗任务，目标 = 「敌人窝点」。
+ * - 与资源/快递同周期（20 分钟整点）整板刷新，每轮 2 张，过期作废无惩罚；
+ * - 窝点 = 该星系主题悬赏按档位派生（档位上限由协会声望决定）：威胁更高、加僚机与波次；
+ * - 必须亲自出击（AI 不能代劳）；打赢 → 窝点奖金 + 赏金任务酬金入账，并在该星系留下
+ *   稀有残骸 ×档位件数（打捞必得，回站精炼炉「残骸回收」当高级箱开）；
+ * - 卡片结构与资源/快递卡同族（app-station-card 家族），只多一行窝点情报与档位徽标。
+ */
+function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+  const state = engine.state
+  const view = engine.sideTasksView()
+  const periodMin = Math.max(1, Math.round(engine.ctx.balance.market.orderLifeMs.common / 60_000))
+  const tasks = view.bounty
+  const standing = standingOf(state, DSI_FACTION_ID)
+  const tierCap = standing >= LAIR_TIER_STANDING[3] ? 3 : standing >= LAIR_TIER_STANDING[2] ? 2 : 1
+  // T4 延后项：采矿中可「转战」（卡片内联两步确认，与常驻悬赏卡同口径）
+  const [goAsk, setGoAsk] = useState<number | null>(null)
+
+  function go(t: SideTask): void {
+    const miningActive = state.mining.active
+    if (miningActive && goAsk !== t.id) {
+      setGoAsk(t.id)
+      return
+    }
+    setGoAsk(null)
+    const r = engine.startLairExpeditionAt(t.anomalyId ?? '', (t.lairTier ?? 1) as 1 | 2 | 3, miningActive)
+    if (!r.ok) onToast(r.error ?? '无法出发', true)
+    else if (miningActive) onToast('已转战：采矿结束（货随船），舰队正从矿带星系出发。')
+    else onToast('舰队已抵达窝点空域，正在交火！')
+  }
+
+  return (
+    <div className="app-sidetasks">
+      <div className="app-sidetasks-head">
+        <span>赏金任务 · 限时高难目标（指定敌人窝点：亲自出击，AI 不能代劳）</span>
+        {view.opened || tasks.length > 0 ? (
+          <span className="app-st-time" title={`本批任务只存活一轮（${periodMin} 分钟，与常驻订单寿命一致）：到下一个整点整板替换——过期作废、无惩罚（打过的窝点不受影响，稀有残骸照常留在星系里）`}>
+            距下批刷新 {fmtSideClock(view.remainingMs)} · 每 {periodMin} 分钟一轮
+          </span>
+        ) : (
+          <span className="app-dim">首个补给周期（约 {periodMin} 分钟）后开刷</span>
+        )}
+      </div>
+      {tasks.length === 0 ? (
+        <div className="app-dim app-exp-idle">
+          {view.opened
+            ? '本批暂无赏金任务——已完成或已过期，下一批随 20 分钟补给周期整板刷新（已击败的窝点不会重复派发同一条目标）。'
+            : '暂无赏金任务——首个补给周期（约 20 分钟）后自动刷出：协会会标出各已探索星系的敌人窝点，接取后亲自出击。'}
+        </div>
+      ) : (
+        tasks.map((t) => {
+          const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
+          const tier = (t.lairTier ?? 1) as 1 | 2 | 3
+          const card = base ? lairAnomalyOf(base, tier) : undefined
+          const galaxyName = engine.ctx.galaxies.get(t.galaxyId ?? '')?.name ?? t.galaxyId ?? '？'
+          const threatTxt = card ? `威胁 ${card.threat}${base && card.threat !== base.threat ? `（主题悬赏 ${base.threat}）` : ''}` : ''
+          const waves = card?.waves?.length ?? 0
+          const rareGain = LAIR_RARE_WRECK_GAIN[tier]
+          // 窝点奖金 = 主题悬赏奖金 × 档位系数（与结算同口径；不是主题悬赏原值）
+          const lairRewardIsk = base ? lairBaseRewardIsk(base, tier) : 0
+          const inFlightSelf = state.expedition.active && state.expedition.anomalyId === t.anomalyId
+          const inFlightOther = state.expedition.active && !inFlightSelf
+          const expired = view.remainingMs <= 0
+          const unexplored = t.galaxyId ? !isExplored(state, t.galaxyId) : true
+          const notCandidate = base ? !isLairCandidate(base) : true
+          // 声望门槛 = **接取条件**（2026-09-10 船长定）：不够也能在板上看见，但出发被拒
+          const reqStanding = base?.standingReq ?? 0
+          const standingMet = standing >= reqStanding
+          const lockedTxt = !base || notCandidate
+            ? '该窝点情报已失效（目标数据缺失），等下一批刷新'
+            : !standingMet
+              ? `协会声望不足（需 ${reqStanding}，当前 ${standing}）——多完成低级目标攒声望后再接这条赏金任务`
+              : unexplored
+                ? '目标星系当前不可达（未探索/无航路）——先探索该星系再出击'
+                : expired
+                  ? '本批任务已到期，等下一批刷新'
+                  : inFlightSelf
+                    ? '舰队正在该窝点交火中'
+                    : inFlightOther
+                      ? '舰队正忙于别处（远征/巡逻等）——先等当前作业结束'
+                      : state.scanning.active || state.transit.active
+                        ? '扫描探索/换港途中——先结束当前作业'
+                        : undefined
+          const canGo = lockedTxt === undefined || (goAsk === t.id && !inFlightOther)
+          return (
+            <div key={t.id} className={`app-station-card${standingMet ? '' : ' is-locked'}`}>
+              <div className="app-station-head">
+                <span className="app-station-name">
+                  ⚑ 赏金任务：{t.lairName ?? card?.name ?? t.anomalyId}
+                  <em className="app-chip">{LAIR_TIER_LABELS[tier]}窝点</em>
+                  {reqStanding > 0 ? (
+                    <em className={`app-chip${standingMet ? '' : ' is-dim'}`} title={`接取门槛：协会声望 ${reqStanding}（当前 ${standing}）`}>
+                      {standingMet ? (
+                        `需声望 ${reqStanding}`
+                      ) : (
+                        <>
+                          <span className="app-ico">
+                            <Glyph name="ico-lock" size={12} color={ICO_TONES['ico-lock']} />
+                          </span>
+                          需声望 {reqStanding}
+                        </>
+                      )}
+                    </em>
+                  ) : null}
+                </span>
+                <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
+              </div>
+              <div className="app-station-mats">
+                目标星系「{galaxyName}」 · {threatTxt}
+                {waves >= 2 ? ` · ${waves} 波守军` : ''} · 窝点奖金 {MONEY_GLYPH} {lairRewardIsk.toLocaleString('zh-CN')} ISK · 任务酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} ISK
+                （不涨声望）。肃清后该星系留下稀有残骸 ×{rareGain}——打捞必得，回站精炼炉开「高级箱」可换该敌群专属装备。
+              </div>
+              <div className="app-station-deliver">
+                <span className="app-dim">
+                  {state.mining.active
+                    ? '当前采矿中——出发将结束开采（已采的货随船带走）'
+                    : `当前可接档位上限：${LAIR_TIER_LABELS[tierCap]}窝点（声望 ${standing}）`}
+                </span>
+                {inFlightSelf ? (
+                  <span className="app-btn is-small is-primary" aria-disabled title="舰队正在该窝点交火中">
+                    交火中
+                  </span>
+                ) : (
+                  <button
+                    className="app-btn is-small is-primary"
+                    disabled={!canGo}
+                    title={goAsk === t.id ? '再点一次确认转战：采矿立即结束（已采的货随船），舰队从矿带星系出发' : lockedTxt ?? `出击：前往「${galaxyName}」肃清 ${t.lairName ?? ''}`}
+                    onClick={() => go(t)}
+                  >
+                    {goAsk === t.id ? '确认转战出击' : '出发'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })
       )}
     </div>
   )

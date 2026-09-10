@@ -111,14 +111,31 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(countWare(state, 'drone-heavy')).toBe(4)
   })
 
-  it('点防射程保护：射程压到 0 → 不再击落（哨戒靠距离活命的机制来源）', () => {
-    const patched: SimContext = {
+  it('无距离豁免（2026-09-10 船长：放飞出去就在威胁之下）＋哨戒机优先豁免：先打非哨戒机', () => {
+    // 关掉近防炮（威胁门槛抬到极高）→ 完全不掉架；再对比正常值：损失表里不应出现哨戒机
+    const noPd: SimContext = {
       ...ctx,
-      balance: { ...ctx.balance, battle: { ...ctx.balance.battle, pdRangeM: 0 } },
+      balance: { ...ctx.balance, battle: { ...ctx.balance.battle, pdThreatFloor: 999 } },
     }
-    const state = makeState(11)
-    const battle = runBattle(state, HIGH, patched)!
-    expect(Object.values(battle.dronePools ?? {}).every((p) => p.alive)).toBe(true)
+    const stateA = makeState(11)
+    const battleA = runBattle(stateA, HIGH, noPd)!
+    expect(Object.values(battleA.dronePools ?? {}).every((p) => p.alive)).toBe(true)
+
+    const stateB = makeState(11)
+    const battleB = runBattle(stateB, HIGH)!
+    const lostIds = Object.keys(battleB.droneLost ?? {})
+    // 还有非哨戒机存活时，哨戒机不出现在损失表
+    const nonSentryAlive = Object.values(battleB.dronePools ?? {}).some((p) => p.alive && p.artId !== 'drone-sentry')
+    if (nonSentryAlive) expect(lostIds).not.toContain('drone-sentry')
+  })
+
+  it('非哨戒机全灭后近防炮转火哨戒机（2026-09-10 船长追加）', () => {
+    // 只带哨戒机的编队：没有非哨戒机可打 ⇒ 近防炮必须直接打哨戒机
+    const onlySentry = makeState(13, { 'drone-sentry': 6 })
+    const battle = runBattle(onlySentry, HIGH)!
+    const lost = battle.droneLost ?? {}
+    expect(Object.keys(lost)).toEqual(['drone-sentry'])
+    expect(lost['drone-sentry']).toBeGreaterThan(0)
   })
 
   it('确定性：同种子两次运行损失架数与机型完全一致', () => {

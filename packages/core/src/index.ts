@@ -351,6 +351,17 @@ export {
   WRECK_VOLUME_PER_THREAT,
   wreckItemIdOf,
   anomalyIdOfWreck,
+  // 赏金任务·稀有残骸（窝点战果：必得 + 高级箱额外掉落）
+  RARE_WRECK_VOLUME_M3,
+  rareWreckItemIdOf,
+  rareWreckItemDefOf,
+  isRareWreck,
+  injectRareWreck,
+  rareWreckCountOf,
+  pullRareWreck,
+  RARE_BOX_GEAR_CHANCE,
+  RARE_BOX_MINERAL_UNITS,
+  rollRareBoxExtra,
   wreckItemDefOf,
   wreckBaseDensity,
   wreckDensityOf,
@@ -476,7 +487,7 @@ export {
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
-  pdRateFor,
+  pdEnabledFor,
   droneLostCount,
   settleDroneLosses,
 } from './combat'
@@ -586,10 +597,35 @@ export {
   courierTaskUnlocked,
   courierDelivering,
   startCourierDelivery,
+  settleBountyTaskVictory,
   RESOURCE_TASK_MARGIN,
   SPAWN_SUPPLY_CUT,
   COURIER_TASK_MARGIN,
+  BOUNTY_TASKS_PER_ROUND,
 } from './sideTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
 export { emptyMarks } from './state'
+
+/* 赏金任务 · 敌人窝点（2026-09-10）：档位派生、名称、酬金与稀有残骸件数常量 */
+export {
+  FOE_LAIR_TIERS,
+  FOE_LAIR_GEAR,
+  lairGearOf,
+  LAIR_THREAT_MUL,
+  LAIR_ESCORT_BONUS,
+  LAIR_WAVES,
+  LAIR_TIER_STANDING,
+  LAIR_TASK_REWARD_MUL,
+  LAIR_RARE_WRECK_GAIN,
+  LAIR_TIER_LABELS,
+  lairTierForStanding,
+  isLairCandidate,
+  lairCoreOf,
+  lairTierWordOf,
+  lairNameOf,
+  lairBaseRewardIsk,
+  lairTaskRewardIsk,
+  lairAnomalyOf,
+} from './lairs'
+export type { LairTier } from './lairs'

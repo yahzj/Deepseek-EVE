@@ -129,6 +129,7 @@ import type {
   CommandResult,
   DamageType,
   GameState,
+  LairTier,
   MarkKind,
   ModuleSlot,
   RackSlot,
@@ -1144,6 +1145,19 @@ export class GameEngine {
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
   startExpeditionFromMiningAt(anomalyId: string): CommandResult {
     const result = startExpeditionFromMining(this.state, anomalyId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 赏金任务·窝点出击（2026-09-10 船长定）：目标 = 派生窝点，档位随任务锁定
+   *  （威胁/波次/僚机按档位强化、胜利后按窝点口径结算酬金与稀有残骸）。 */
+  startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
+    const result = fromMining
+      ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier })
+      : startExpedition(this.state, anomalyId, this.ctx, { lairTier })
     if (result.ok) {
       void this.persist()
       this.notify()

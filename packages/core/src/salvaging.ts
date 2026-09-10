@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 打捞作业（B3，2026-09-05 船长定稿：采矿式作业；docs/design/b3-salvage.md）。
  *
  * 模型：
@@ -26,7 +26,7 @@ import { actionBlockReason, markExplored } from './explore'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom } from './rng'
-import { salvageRoundPull, rollIntactHullLoot, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
+import { pullRareWreck, RARE_WRECK_VOLUME_M3, salvageRoundPull, rollIntactHullLoot, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
 import { scaledReturnMs } from './trips'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
@@ -227,6 +227,12 @@ export function pullOneWreck(
   galaxyId: string,
   cycleMsReal: number,
 ): { itemId: string; mul: number; volumeM3: number } | null {
+  // 稀有残骸必捞（2026-09-10 船长定：赏金任务窝点战利品——数量随难度，打捞必定捞到、捞完为止）
+  const rareId = pullRareWreck(state, galaxyId)
+  if (rareId) {
+    const mulRare = salvageRoundPull(state, ctx, galaxyId)
+    return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 }
+  }
   const pool = wreckPoolOf(ctx, galaxyId) // 同源池：hidden 遭遇模板不入池
   if (pool.length === 0) return null
   let acc = 0
