@@ -585,7 +585,15 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
-    addLog(state, 'info', mode === 'manual' ? '重复清剿已停止（手动撤退）。' : '重复清剿已停止（本场结构损失过半，自动撤退）。')
+    const armorPct = Math.round((fleetShip?.armorPct ?? 1) * 100)
+    const structPct = Math.round((fleetShip?.durability ?? 1) * 100)
+    const text =
+      mode === 'manual'
+        ? `重复清剿已停止（手动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
+        : `重复清剿已停止（本场结构损失过半，自动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
+    addLog(state, 'info', text)
+    // 2026-09-10 船长定：除事件日志外，玩家在线时弹窗告知（心跳读取即清）
+    if (mode === 'auto') state.autoLoopStopNotice = text
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
@@ -782,10 +790,16 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
   return { ok: true }
 }
 
-/** 停环并记录原因（日志+清开关） */
+/** 停环并记录原因（日志+清开关；2026-09-10 船长定：文案带当前 装甲/结构 数字，
+ * 并写入一次性提示 autoLoopStopNotice——玩家在线时由心跳读取弹窗告知） */
 function stopAutoLoopReason(state: GameState, reason: string): void {
   state.autoLoopAnomalyId = null
-  addLog(state, 'warn', `重复清剿已暂停：${reason}`)
+  const fs = state.fleet[state.shipId]
+  const armorPct = Math.round((fs?.armorPct ?? 1) * 100)
+  const structPct = Math.round((fs?.durability ?? 1) * 100)
+  const text = `重复清剿已暂停：${reason}（当前 装甲 ${armorPct}% / 结构 ${structPct}%）`
+  addLog(state, 'warn', text)
+  state.autoLoopStopNotice = text
 }
 
 /**
