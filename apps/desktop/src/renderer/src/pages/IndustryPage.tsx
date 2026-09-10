@@ -19,6 +19,7 @@ import {
   countAiCore,
   countWare,
   oreAvailable,
+  RARE_WRECK_VOLUME_M3,
   recycleProfileOf,
   refineRate,
 } from '@whale/core'
@@ -115,7 +116,11 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       ? `运转 ${runs.length} 台 · 合计余 ${Math.round(total * 10) / 10} m³`
       : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
   } else if (isWreck) {
-    dataLine = `可用 ${Math.round(total * 10) / 10} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
+    // 稀有残骸：每炉锁死 1 件（30 m³）——数据行写清"一次起炉 = 开一箱"，免得玩家以为能把多件丢进一炉
+    const qty = Math.round(total * 10) / 10
+    dataLine = isRareBox
+      ? `可用 ${qty} m³（${Math.floor(total / RARE_WRECK_VOLUME_M3)} 件）· 每炉锁 ${RARE_WRECK_VOLUME_M3} m³ = 1 件 · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 一次起炉 = 开一箱（想多开就再起一炉，同型可多台并行）`
+      : `可用 ${qty} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
   } else {
     const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
     const cycleS = def.refineCycleMs && def.refineCycleMs > 0 ? Math.round(def.refineCycleMs / 100) / 10 : 6

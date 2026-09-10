@@ -1710,6 +1710,9 @@ function normalizeState(raw: unknown): GameState {
       batchesDone: Math.max(0, Math.floor(num(r.batchesDone))),
     }
     if (recAcc) runOut.recAcc = recAcc
+    // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：只收正数；缺省 = 不限制（老档天然如此）
+    const lockRaw = num(r.lockUnits, 0)
+    if (lockRaw > 0) runOut.lockUnits = Math.floor(lockRaw)
     return runOut
   }
   const refineRuns: GameState['refineRuns'] = []

@@ -92,7 +92,9 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
 
   it('掉落：命中专属即给 10 架进物品仓库，开箱文案写明「×10 架」', () => {
     const state = makeState(7)
-    const extra = drawGear(state)!
+    // 池里只留无人机 → 命中专属必给无人机（命中率改 5/8/10% 后，"反复开箱到出专属"的取样
+    // 会先抽中同池的两个模块，故这里显式收窄池子，只验"命中之后给什么"）
+    const extra = drawGear(state, [BEE])!
     expect(extra.drones).toEqual([{ id: BEE, count: RARE_BOX_DRONE_UNITS }])
     expect(RARE_BOX_DRONE_UNITS).toBe(10)
     expect(extra.note).toContain('流亡蜂无人机')
