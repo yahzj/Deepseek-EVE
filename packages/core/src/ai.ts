@@ -131,15 +131,16 @@ export function aiCoreUsed(state: GameState): number {
   return aiCoreShipUsed(state) + aiCoreIndustryUsed(state)
 }
 
-/** 工业专用 AI 工位扩容（2026-09-08 船长定）：balance.aiCore.industrySkillIds 内技能每级
- * +industrySlotsPerLevel 枚——只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
- * 将来新增"工业 AI 专用扩容技能"只需往平衡表追加 id */
+/** 工业专用 AI 工位扩容（2026-09-08 船长定；2026-09-11 改为**按技能记系数**）：
+ * `balance.aiCore.industrySkillSlots` 表内技能「每级 +对应枚数」（工业自动化基础 +1/级、工业自动化 +2/级…）
+ * ——只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
+ * 新增"工业 AI 专用扩容技能"只需往该表追加一行。 */
 export function industryAiBonus(state: GameState, ctx: SimContext): number {
-  const bal = ctx.balance.aiCore
-  if (!bal || !Array.isArray(bal.industrySkillIds)) return 0
+  const table = ctx.balance?.aiCore?.industrySkillSlots
+  if (!table) return 0
   let bonus = 0
-  for (const id of bal.industrySkillIds) {
-    bonus += (state.skills.trained[id] ?? 0) * (bal.industrySlotsPerLevel ?? 0)
+  for (const [id, perLevel] of Object.entries(table)) {
+    bonus += (state.skills.trained[id] ?? 0) * (perLevel ?? 0)
   }
   return bonus
 }

@@ -87,12 +87,23 @@ describe('AI 核心库与名额', () => {
     expect(aiCoreCap(state, ctx)).toBe(2)
   })
 
-  it('工业专用扩容（2026-09-08 船长定）：「工业自动化」每级 +2 枚，只对站内产业生效', () => {
+  it('工业专用扩容：「工业自动化基础」+1/级、「工业自动化」+2/级，只对站内产业生效（2026-09-11 新增 rank3 技能）', () => {
     expect(industryAiBonus(state, ctx)).toBe(0)
     state.skills.trained['industrial-ai-cap'] = 2
-    expect(industryAiBonus(state, ctx)).toBe(4) // 每级 +2（balance aiCore.industrySlotsPerLevel）
+    expect(industryAiBonus(state, ctx)).toBe(4) // 每级 +2（balance aiCore.industrySkillSlots）
+    // 2026-09-11 船长定：新增 rank3「工业自动化基础」每级 +1，与工业自动化**叠加**
+    state.skills.trained['industrial-ai-cap-basic'] = 3
+    expect(industryAiBonus(state, ctx)).toBe(4 + 3)
+    // 两项都练满：基础 5×1 + 工业自动化 5×2 = 15（站内上限 = 共用 5 + 扩容 15 = 20）
+    state.skills.trained['industrial-ai-cap-basic'] = 5
+    state.skills.trained['industrial-ai-cap'] = 5
+    expect(industryAiBonus(state, ctx)).toBe(15)
+    // 清零新技能 → 回落到只有工业自动化的 10（证明新技能确实进表、不是摆设）
+    state.skills.trained['industrial-ai-cap-basic'] = 0
+    expect(industryAiBonus(state, ctx)).toBe(10)
+    state.skills.trained['industrial-ai-cap-basic'] = 5
     // ai-expert = 0：AI 副船（默认 ship scope）仍被共用上限为 0 拦截；
-    // 站内产业（industry scope）可先用工业扩容工位（used 0 < 0+4）
+    // 站内产业（industry scope）可先用工业扩容工位（used 0 < 0+15）
     expect(aiCoreCapBlock(state, ctx)).not.toBeNull()
     expect(aiCoreCapBlock(state, ctx) ?? '').toContain('AI 核心上限为 0')
     expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull()
@@ -111,7 +122,7 @@ describe('AI 核心库与名额', () => {
     }
     expect(aiCoreUsed(state)).toBe(1)
     expect(aiCoreCapBlock(state, ctx)).not.toBeNull() // 1/1 满 → 副船拒
-    expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull() // 1 < 1+4 → 产业可开
+    expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull() // 1 < 1+15 → 产业可开
   })
 })
 
