@@ -32,10 +32,12 @@ export type RecycleFeatureSrc = {
 export type RecycleFeature = {
   /** 行标签：有具名特色件 = 特色掉落；无 = 其他掉落 */
   label: string
-  /** 具名特色件（该敌群主题件 / 专属装备） */
+  /** 具名特色件（该敌群主题件 / 专属装备）——卡面用最强调色 */
   named: string[]
-  /** 泛化兜底（系列装备 + 蓝图碎片），不具名 */
+  /** 泛化兜底（系列装备 + 蓝图碎片），不具名——卡面用次级灰 */
   generic: string[]
+  /** 行色调：strong = 最强调色（专属装备 / 主题件）；normal = 普通 */
+  tone: 'strong' | 'normal'
 }
 
 /** 蓝图碎片门槛文案（与回收引擎同源：tier 2 → 威胁 ≥17、tier 3 → 威胁 ≥41） */
@@ -62,7 +64,8 @@ function fragClause(threat: number): string | null {
 export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): RecycleFeature {
   const moduleName = (id: string): string => maps.mods.get(id)?.name ?? maps.items?.get(id)?.name ?? id
   const named: string[] = []
-  // 稀有残骸：专属装备优先（开箱额外掉落）→ 整句具名并注明来源（不逐件拆开，避免与主题件混淆）
+  // 稀有残骸（2026-09-10 船长：「稀有残骸的特色掉落只介绍族专属装备」）——
+  // 只具名该敌群专属装备，**不再列主题件、系列装备与蓝图碎片**（普通掉落看数据行与打捞页）。
   const gear = (src.lairGear ?? []).filter((id) => maps.mods.has(id) || maps.items?.has(id) === true)
   if (gear.length > 0) {
     const names = gear.map((id) => {
@@ -71,6 +74,7 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
       return `${moduleName(id)}${suffix}`
     })
     named.push(`${names.join('、')}（该敌群专属装备，每炉必给一件）`)
+    return { label: '特色掉落', named, generic: [], tone: 'strong' }
   }
   // 主题追加件（中安 modules 组、低安 mk2 组）——按敌群特色具名
   const themed = [...(src.loot?.modules ?? []), ...(src.loot?.mk2 ?? [])]
@@ -86,7 +90,7 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
   generic.push(`${named.length > 0 ? '另有' : ''}${series.join('、')}`)
   const frag = fragClause(src.threat)
   if (frag) generic.push(frag)
-  return { label: named.length > 0 ? '特色掉落' : '其他掉落', named, generic }
+  return { label: named.length > 0 ? '特色掉落' : '其他掉落', named, generic, tone: 'normal' }
 }
 
 /** 保底矿物行（工业页回收卡用）：每批期望量 = 批体积 × 档位单方产量 ×(1+8%×提纯学)×池权重占比 */
@@ -106,21 +110,39 @@ export function mineralRowsOf(
   })
 }
 
-/** 提示行组件：产出倾向（星图卡仍显示） / 特色掉落（重命名后可自定义标签）——无内容返回 null */
+/**
+ * 提示行组件：产出倾向（星图卡仍显示） / 特色掉落——无内容返回 null。
+ * 2026-09-10 船长：特色掉落要比说明行**显眼**——具名特色件用最强调色（`.app-belt-feat`），
+ * 泛化兜底（系列装备/蓝图碎片）保持次级灰（`.app-dim` 内嵌）；稀有残骸（tone=strong）整行强调。
+ */
 export function FlavorTip({
   note,
   featureLabel = '特色掉落',
-  parts,
+  named = [],
+  generic = [],
+  tone = 'normal',
 }: {
   note?: string
   featureLabel?: string
-  parts: string[]
+  named?: string[]
+  generic?: string[]
+  tone?: 'strong' | 'normal'
 }) {
-  if (!note && parts.length === 0) return null
+  if (!note && named.length === 0 && generic.length === 0) return null
   return (
     <div className="app-belt-desc is-tip">
       {note ? <div className="app-dim">产出倾向：{note}</div> : null}
-      {parts.length > 0 ? <div className="app-dim">{featureLabel}：{parts.join('；')}</div> : null}
+      {named.length > 0 || generic.length > 0 ? (
+        <div className={`app-belt-feat${tone === 'strong' ? ' is-strong' : ''}`}>
+          {featureLabel}：{named.join('；')}
+          {generic.length > 0 ? (
+            <span className="app-dim">
+              {named.length > 0 ? '；' : ''}
+              {generic.join('；')}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
