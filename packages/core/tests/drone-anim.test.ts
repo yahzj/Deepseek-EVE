@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import type { ItemDef } from '../src/types'
 import { createInitialState } from '../src/state'
 import { addModule, fitModule } from '../src/equipment'
-import { battleArcsFor, createPlayerSpec, pushBattleFx, startBattleFor } from '../src/combat'
+import { advanceBattleFor, battleArcsFor, createPlayerSpec, pushBattleFx, startBattleFor } from '../src/combat'
 import { makeTestCtx, moduleDef, ship } from './helpers'
 
 const droneDef: ItemDef = {
@@ -100,5 +100,26 @@ describe('无人机战斗动画·武器来源字段（2026-09-10 船长批）', 
     expect(droneArcs[0]!.label.endsWith('×3')).toBe(true)
     expect(droneArcs[0]!.maxM).toBe(2500)
     expect(arcs.meReload).toHaveLength(arcs.me.length)
+  })
+
+  it('实战开火事件确实带无人机来源与机型（表现层据此出机群/弹道，缺此则"弹道不显示"）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 55 })
+    const ctx = makeTestCtx({ items: [droneDef], ships: [ship('sandcat', { droneBayM3: 40, cpu: 200 })] })
+    state.fleet[state.shipId].cargo = {}
+    state.fleet[state.shipId].droneLoad = { 'drone-x': 2 }
+    const battle = startBattleFor(state, ctx, state.shipId, 'ano-a', 0)!
+    state.expedition.anomalyId = 'ano-a'
+    state.expedition.battle = battle
+    // 开战距离在远射程外：分片推进到进入无人机射程（2500m）再断言
+    for (let i = 0; i < 20 && battle.ended === null; i++) {
+      state.gameMs += 3_000
+      advanceBattleFor(state, ctx, battle, state.shipId, 'ano-a')
+      if (battle.fx.some((f) => f.side === 'me' && f.src === 'drone')) break
+    }
+    const droneShots = battle.fx.filter((f) => f.side === 'me' && f.src === 'drone')
+    expect(droneShots.length).toBeGreaterThan(0)
+    expect(droneShots.every((f) => f.artId === 'drone-x')).toBe(true)
+    // 非无人机事件不得被误标为无人机（表现层会画错机群）
+    expect(battle.fx.filter((f) => f.side === 'me' && f.src !== 'drone').every((f) => f.artId === undefined)).toBe(true)
   })
 })
