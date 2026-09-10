@@ -26,6 +26,8 @@ import { Panel } from '@whale/ui'
 import { useEffect, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import type { GameEngine } from '../game/engine'
+import { MarkStar, pinMarked } from '../ui/marks'
+import { AiSlotText } from '../ui/aiSlots'
 import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3 } from './common'
@@ -179,20 +181,23 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     <div className={`app-belt-card${highlight ? ' is-goto' : ''}`} key={def.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
-        {gotoTarget && onGotoMap ? (
-          <button
-            className="app-btn is-small"
-            style={{ marginLeft: 'auto' }}
-            title={
-              isWreck
-                ? '前往星图「残骸打捞」定位该残骸的来源星系（打捞后残骸带回站内回收拆解）'
-                : `前往星图「矿带开采」定位出产该原料的矿带${gotoTarget.ids.length > 1 ? `（共 ${gotoTarget.ids.length} 处，全部高亮）` : ''}`
-            }
-            onClick={() => onGotoMap(gotoTarget.tab, gotoTarget.ids)}
-          >
-            {isWreck ? '去打捞' : '去矿带'}
-          </button>
-        ) : null}
+        {/* 卡头右侧：标记星标（2026-09-10 船长） + 去矿带/去打捞跳转 */}
+        <span className="app-belt-head-right">
+          <MarkStar engine={engine} kind="recipes" id={def.id} />
+          {gotoTarget && onGotoMap ? (
+            <button
+              className="app-btn is-small"
+              title={
+                isWreck
+                  ? '前往星图「残骸打捞」定位该残骸的来源星系（打捞后残骸带回站内回收拆解）'
+                  : `前往星图「矿带开采」定位出产该原料的矿带${gotoTarget.ids.length > 1 ? `（共 ${gotoTarget.ids.length} 处，全部高亮）` : ''}`
+              }
+              onClick={() => onGotoMap(gotoTarget.tab, gotoTarget.ids)}
+            >
+              {isWreck ? '去打捞' : '去矿带'}
+            </button>
+          ) : null}
+        </span>
       </div>
       <div className="app-belt-desc">
         {isWreck ? '每批拆解 = 保底矿物 + 概率彩头（来源与低出率物见下两行）' : def.description}
@@ -353,6 +358,9 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
   )
 
   const runningCount = runViews.length
+  /** 2026-09-10 船长定：已标记（收藏）的资源/残骸在各自网格内置顶（组内保持原有顺序） */
+  const oreShown = pinMarked(state, 'recipes', oreDefs, (def) => def.id)
+  const wreckShown = pinMarked(state, 'recipes', wreckDefs, (def) => def.id)
 
   return (
     <div className="page-stack page-fill">
@@ -396,14 +404,19 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
           className="is-fill win-fixed-body"
           title="精炼炉"
           right={
-            <span className="app-dim">
-              产出倍率 {Math.round(rate * 100)}%（基础 120% · 精炼学 +6%/级 · 高级回收处理 +3%/级，上限 165%）· 运转 {runningCount} 台
-            </span>
+            <>
+              <span
+                className="app-dim"
+                title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底口径另算"
+              >
+                产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台
+              </span>
+              <AiSlotText state={state} ctx={engine.ctx} />
+            </>
           }
         >
           <div className="app-dim app-note">
-            同资源可多单位并行：你亲自运转限 1 台，每枚 AI 核心各驱动一台（同时启用的 AI 核心总数受 AI 核心上限技能约束，与 AI 副船任务共用）；原料不锁定，
-            每批到点从「货仓 + 仓库」实时扣取、耗尽即停。运转单位在卡上以名册行显示（各自批进度 + 停）。下面列出全部可精炼资源——没有原料的卡会提示先去采集或购买。
+            你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。
           </div>
           <div className="app-win-body">
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (
@@ -416,7 +429,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
             <>
               <div className="app-bay-title">♨ 可精炼资源（{oreDefs.length}）——循环运转到料尽自动停炉</div>
               <div className="app-belt-grid">
-                {oreDefs.map((def) => (
+                {oreShown.map((def) => (
                   <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} highlight={focusOreId === def.id} onGotoMap={onGotoMap} />
                 ))}
               </div>
@@ -427,7 +440,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
             <>
               <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底矿物 + 概率彩头</div>
               <div className="app-belt-grid">
-                {wreckDefs.map((def) => (
+                {wreckShown.map((def) => (
                   <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
                 ))}
               </div>

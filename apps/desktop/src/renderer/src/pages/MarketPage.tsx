@@ -26,6 +26,7 @@ import type { InfoLine } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
+import { MarkStar, pinMarked } from '../ui/marks'
 
 const KIND_TEXT: Record<string, string> = {
   item: '物品',
@@ -367,6 +368,7 @@ function GoodRow({
         }
       >
         <div className="app-mkt-name-line">
+          <MarkStar engine={engine} kind="goods" id={good.key} />
           <span className="app-inv-name">{name}</span>
           <span className="app-chip is-dim">{kindTextOf(engine.ctx, good)}</span>
           {good.kind === 'blueprint' ? (
@@ -426,14 +428,17 @@ function GoodRow({
 
 /* ═══════════════ 市场栏（标题 + 有货冒泡列表；搜索/类型过滤已提升到页面级跨栏） ═══════════════ */
 
-/** 有货冒泡上浮（供应簿有现货的排前面）；其余保持目录稳定顺序 */
+/** 有货冒泡上浮（供应簿有现货的排前面）；其余保持目录稳定顺序。
+ *  2026-09-10 船长定：默认排序下已标记（收藏）的商品置顶——两栏与搜索结果都是这一套默认口径。 */
 function stockedFirst(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
   const hasStock = new Map(goods.map((g) => [g.key, marketQuote(engine.state, engine.ctx, g.key).sell !== undefined]))
-  return [...goods].sort((a, b) => Number(hasStock.get(b.key)) - Number(hasStock.get(a.key)))
+  const rows = [...goods].sort((a, b) => Number(hasStock.get(b.key)) - Number(hasStock.get(a.key)))
+  return pinMarked(engine.state, 'goods', rows, (g) => g.key)
 }
 
 /** 稀有订单列排序（2026-09-08 船长定：优先置顶"有货的限定奇货"）：
- * ① 有货奇货 → ② 其余有货 → ③ 无货奇货 → ④ 其余无货；组内保持目录稳定顺序 */
+ * ① 有货奇货 → ② 其余有货 → ③ 无货奇货 → ④ 其余无货；组内保持目录稳定顺序；
+ * 2026-09-10 起：已标记商品再置顶一层（本列无用户可选排序，仍属默认口径） */
 function rareOrderRows(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
   const hasStock = new Map(goods.map((g) => [g.key, marketQuote(engine.state, engine.ctx, g.key).sell !== undefined]))
   const tier = (g: MarketGoodDef): number => {
@@ -442,7 +447,8 @@ function rareOrderRows(engine: PageProps['engine'], goods: MarketGoodDef[]): Mar
     if (stocked) return 1
     return g.rarity === 'exotic' ? 2 : 3
   }
-  return [...goods].sort((a, b) => tier(a) - tier(b))
+  const rows = [...goods].sort((a, b) => tier(a) - tier(b))
+  return pinMarked(engine.state, 'goods', rows, (g) => g.key)
 }
 
 function MarketColumn({
@@ -1057,7 +1063,7 @@ export function MarketPage({
     <div className="page-stack page-fill">
       <div className="app-dim app-note">
         协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石/矿物另受库存池调节。
-        每行可「挂单买 / 挂单卖」自定价等待成交。
+        每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。
       </div>
       <div className="app-dim app-note">
         贸易税：卖出成交按成交额收税——当前税率{' '}

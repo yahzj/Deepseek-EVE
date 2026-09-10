@@ -426,6 +426,10 @@ export interface BalanceConfig {
     marketOrderWeight: number
     /** 扫描探索作业进行期间，事件倒计时按 (1 + exploreBoost) 倍速推进（如 1.0 = ×2，事件来得更快） */
     exploreBoost: number
+    /** 随机事件现金奖励 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高——
+     *  奖励 ×(1 + min(cap, 已探索星系数 × 本值))；cap 1 = 封顶 ×2） */
+    exploreBonusPerGalaxy: number
+    exploreBonusCap: number
   }
   /** 富矿脉基础触发率（每分钟，卷B2⑥ 2026-09-08 船长定稿：掷点按"该循环占用分钟数"缩放后判定；
    *  命中 = 连续 2 循环 ×3；0 = 禁用，测试用它关富矿保 rng 时序） */

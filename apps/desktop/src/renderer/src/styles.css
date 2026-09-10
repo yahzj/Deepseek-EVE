@@ -6594,6 +6594,49 @@ body {
 
 .app-bts-puff.is-miss { animation: app-bts-puffmiss .42s ease-out forwards; }
 
+/* ── 无人机机群（2026-09-10 船长批：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻下方只显 1 架；
+      机体为 SVG 线稿——纪律见 conventions 第九章；弹点/命中/闪光均小型化，颜色仍按弹型） ── */
+
+.app-bts-drones { position: absolute; z-index: 5; pointer-events: none; }
+
+.app-bts-wing { position: absolute; left: 0; top: 0; }
+
+.app-bts-wing.is-out { animation: app-bts-wing-out .34s ease-out; }
+
+.app-bts-wing.is-back { animation: app-bts-wing-back .42s ease-in forwards; }
+
+.app-bts-wing.is-resident { animation: none; }
+
+.app-bts-drone { position: absolute; display: block; transform: translate(-50%, -50%); opacity: .95; filter: drop-shadow(0 0 3px currentColor); }
+
+.app-bts-drone svg { display: block; }
+
+.app-bts-wing.is-out .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
+
+.app-bts-wing.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
+
+.app-bts-drone-dot { fill: currentColor; stroke: none; opacity: .9; }
+
+.app-bts-drone-line { opacity: .55; }
+
+.app-bts-drone-more { position: absolute; left: 60px; top: -74px; font-size: 10px; font-family: var(--wui-mono); color: #9fe8ff; opacity: .85; }
+
+.app-bts-wing.is-resident .app-bts-drone-more { top: 46px; left: 18px; }
+
+@keyframes app-bts-wing-out { 0% { opacity: 0; transform: translateY(26px) scale(.7); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+
+@keyframes app-bts-wing-back { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(24px) scale(.75); } }
+
+@keyframes app-bts-drone-hover { 0%, 100% { margin-top: 0; } 50% { margin-top: -3px; } }
+
+.app-bts-bolt.is-drone .app-bts-bolt-bar { border-radius: 2px; }
+
+.app-bts-bolt-tail { position: absolute; left: 2px; top: -0.5px; height: 1px; opacity: .5; }
+
+.app-bts-puff.is-small { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-width: 1px; }
+
+.app-bts-muzzle.is-small { width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; animation-duration: .22s; }
+
 /* V12.3 realtime battle: micro-tween + foe escort hp width (ASCII-safe) */
 
 .app-bts-col, .app-bts-cursor, .app-bts-cur-chip, .app-bts-here { transition: left 80ms linear; }
@@ -8393,3 +8436,16 @@ body {
 .app-mf-goal-input { width: 46px; padding: 1px 4px; font-size: 11px; color: inherit; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(127, 227, 255, 0.25); border-radius: 4px; }
 .app-mf-goal-input:focus { outline: none; border-color: rgba(79, 216, 196, 0.8); }
 
+
+/* ---------- 玩家标记（收藏）星标（2026-09-10 船长定：四处界面同一枚星标按钮，未标记=暗色空心、已标记=金色实心） ---------- */
+/* 小方块图标按钮（复刻 .app-btn.is-small 家族尺寸；星标常驻显示，标记与否不改布局） */
+.app-mark-btn { display: inline-flex; align-items: center; justify-content: center; padding: 2px 5px; background: #101b2a; color: rgba(220, 232, 244, 0.42); border: 1px solid var(--wui-border-bright); border-radius: 3px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.app-mark-btn .app-ico { margin-right: 0; }
+.app-mark-btn:hover { background: #17293f; border-color: var(--wui-accent); color: #ffca58; }
+.app-mark-btn.is-on { color: #ffca58; border-color: rgba(232, 180, 90, 0.55); background: rgba(232, 180, 90, 0.1); }
+/* 已标记的星形实心：填色由 CSS 给（Glyph 本体保持线稿语言） */
+.app-mark-btn.is-on .app-ico path { fill: rgba(255, 202, 88, 0.35); }
+.app-mark-btn:focus-visible { outline: none; border-color: var(--wui-accent); }
+
+/* 卡片头右侧按钮/徽标分组（精炼炉卡、组装机蓝图卡；与 .app-ship-top-right 同款布局） */
+.app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 随机事件系统（V11，设计已确认）：
  *
  * 规则（中文说明）：
@@ -36,40 +36,40 @@ interface FlavorEntry {
 /* ═══════════ 宇宙杂讯 / 奇遇（35 条） ═══════════ */
 
 const MISC_EVENTS: readonly FlavorEntry[] = [
-  { text: '深空漂流货柜被你的牵引光捕获，里面有一箱完好的电路板。', iskMin: 300, iskMax: 900 },
-  { text: '一段协会广播：祝所有矿工满载而归，本周咖啡补给半价。', iskMin: 120, iskMax: 250 },
-  { text: '雷达扫到星门脉冲余波，导航阵列自动微调，省下一点燃料钱。', iskMin: 150, iskMax: 400 },
+  { text: '深空漂流货柜被你的牵引光捕获，里面有一箱完好的电路板。', iskMin: 900, iskMax: 2700 },
+  { text: '一段协会广播：祝所有矿工满载而归，本周咖啡补给半价。', iskMin: 240, iskMax: 500 },
+  { text: '雷达扫到星门脉冲余波，导航阵列自动微调，省下一点燃料钱。', iskMin: 450, iskMax: 1200 },
   { text: '流浪信标闪了几下就熄灭了，像是某个老船长的遗言。' },
-  { text: '货舱角落里滚出一枚旧硬币，上面印着早已消失的联邦徽记。', iskMin: 100, iskMax: 300 },
+  { text: '货舱角落里滚出一枚旧硬币，上面印着早已消失的联邦徽记。', iskMin: 200, iskMax: 600 },
   { text: '远处一颗超新星的余光掠过舷窗，美丽得像一场无声的告别。' },
-  { text: '回收了一团纠缠态矿石碎屑，黑市商贩愿意出价收购。', iskMin: 200, iskMax: 600 },
+  { text: '回收了一团纠缠态矿石碎屑，黑市商贩愿意出价收购。', iskMin: 600, iskMax: 1800 },
   { text: '小行星带里传来规律的回声——可能是某种生物的歌声。' },
   { text: '你的 AI 副船在维护日志里留了一首打油诗。' },
-  { text: '协会送来一批压缩空气罐头，说是上次事故的补偿。', iskMin: 100, iskMax: 200 },
-  { text: '舷窗上粘着一只不知名的星际藤壶，拿去换了点零钱。', iskMin: 150, iskMax: 350 },
-  { text: '某个匿名账户给你转了一笔钱，备注只有两个字：谢谢。', iskMin: 400, iskMax: 1200 },
+  { text: '协会送来一批压缩空气罐头，说是上次事故的补偿。', iskMin: 200, iskMax: 400 },
+  { text: '舷窗上粘着一只不知名的星际藤壶，拿去换了点零钱。', iskMin: 450, iskMax: 1050 },
+  { text: '某个匿名账户给你转了一笔钱，备注只有两个字：谢谢。', iskMin: 1600, iskMax: 4800 },
   { text: '深空无线电里有人在放六十年前的老歌。' },
-  { text: '检修时发现逃生舱里有半瓶没喝完的古老威士忌。', iskMin: 200, iskMax: 500 },
+  { text: '检修时发现逃生舱里有半瓶没喝完的古老威士忌。', iskMin: 600, iskMax: 1500 },
   { text: '一颗微型陨石擦过船壳，留下一个幸运的凹痕。' },
   { text: '星图角落多了一个闪点，再仔细看又消失了。' },
-  { text: '补给站的自动售货机多找了你几个硬币。', iskMin: 80, iskMax: 150 },
-  { text: '你在杂物箱里找到一张过期的抽奖券——居然还能兑奖。', iskMin: 300, iskMax: 800 },
+  { text: '补给站的自动售货机多找了你几个硬币。', iskMin: 160, iskMax: 300 },
+  { text: '你在杂物箱里找到一张过期的抽奖券——居然还能兑奖。', iskMin: 900, iskMax: 2400 },
   { text: '附近的碎石带里飘着一块涂鸦板，画着一艘歪歪扭扭的鲸鱼船。' },
   { text: '老矿工发来一条消息：那片矿带我又补探了一次，坐标发你了。' },
   { text: '驾驶舱的盆栽开花了，据说能带来好运。' },
   { text: '回收站传来哗啦一声——里面是别人扔掉的整套旧书。' },
-  { text: '休眠舱数据里有段前主人的语音备忘，提到某处藏着一笔应急金。', iskMin: 500, iskMax: 1500 },
+  { text: '休眠舱数据里有段前主人的语音备忘，提到某处藏着一笔应急金。', iskMin: 2000, iskMax: 6000 },
   { text: '星门守卫巡逻艇朝你鸣笛致意，像老邻居一样。' },
   { text: '远方的星系间有场没头没尾的烟花秀。' },
-  { text: '某艘游商船甩卖库存，你顺手捡了个便宜。', iskMin: 250, iskMax: 700 },
+  { text: '某艘游商船甩卖库存，你顺手捡了个便宜。', iskMin: 750, iskMax: 2100 },
   { text: '你的名字被写进了协会月刊的“本周深空故事”栏目（没有稿费）。' },
   { text: '推进器喷嘴里卡着一颗幸运星形状的鹅卵石。' },
   { text: '有人在广播里点歌送给你，虽然你根本不认识他。' },
-  { text: '旧货商看走眼，把一块高纯度样品当废料卖给了你。', iskMin: 350, iskMax: 1000 },
+  { text: '旧货商看走眼，把一块高纯度样品当废料卖给了你。', iskMin: 1400, iskMax: 4000 },
   { text: '舰桥值班闹钟响了三次，你才发现它从没修好过。' },
   { text: '一只流浪机械蜘蛛爬进船舱，帮你清了通风管。' },
-  { text: '协会对全星域发布通告：感谢你上周帮忙清理航道（附小额奖金）。', iskMin: 400, iskMax: 800 },
-  { text: '你把一罐过期咖啡寄给了远方的笔友，他回寄了一箱当地特产。', iskMin: 100, iskMax: 300 },
+  { text: '协会对全星域发布通告：感谢你上周帮忙清理航道（附小额奖金）。', iskMin: 1200, iskMax: 2400 },
+  { text: '你把一罐过期咖啡寄给了远方的笔友，他回寄了一箱当地特产。', iskMin: 200, iskMax: 600 },
   { text: '一颗彗星刚好从你头顶掠过——据说看到的人会走一整天好运。' },
 ]
 
@@ -77,10 +77,10 @@ const MISC_EVENTS: readonly FlavorEntry[] = [
 
 const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过一艘幽灵船的轮廓，三秒后一切如常。' },
   { text: '舰桥日志：今天只遇到一群迷路的矿工无人机，帮它们指了路。' },
-  { text: '航线上漂着一座废弃导航灯塔，你顺手修好了它的信标。', iskMin: 150, iskMax: 400 },
+  { text: '航线上漂着一座废弃导航灯塔，你顺手修好了它的信标。', iskMin: 450, iskMax: 1200 },
   { text: '穿过一片宇宙尘埃后，船壳像镀了一层银。' },
   { text: '气象广播：前方星云有间歇性辐射暴，你绕了个小弯。' },
-  { text: '在轨道残骸里捞到一枚完好的推进器喷嘴，修修补补能卖钱。', iskMin: 250, iskMax: 700 },
+  { text: '在轨道残骸里捞到一枚完好的推进器喷嘴，修修补补能卖钱。', iskMin: 750, iskMax: 2100 },
   { text: '某颗行星的阴影里有规律的光点——大概只是采矿平台。' },
   { text: '你的领航 AI 讲了一个关于鲸鱼的冷笑话，你笑了三秒。' },
   { text: '途中偶遇一支迁徙的星际水母群，场面壮观。' },
@@ -89,8 +89,8 @@ const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过�
   { text: '跳跃引擎的嗡鸣声比平时低了一个调，听起来很舒服。' },
   { text: '你在某个废弃站台上捡到一张手绘星图，标注着“金矿在此”。' },
   { text: '远处有两艘商船并排航行，像两只并肩的鲸鱼。' },
-  { text: '航道管理员发来感谢电：你报修的那段航标已更新。', iskMin: 100, iskMax: 250 },
-  { text: '补给舰的货舱门坏了一半，你用胶带和铁丝帮它固定。', iskMin: 100, iskMax: 300 },
+  { text: '航道管理员发来感谢电：你报修的那段航标已更新。', iskMin: 200, iskMax: 500 },
+  { text: '补给舰的货舱门坏了一半，你用胶带和铁丝帮它固定。', iskMin: 200, iskMax: 600 },
   { text: '舷窗外飘过一大片冰晶，折射出彩虹般的碎光。' },
   { text: '你在休息室找到一本别人落下的航行日记，读到凌晨。' },
   { text: '一群流浪汉（其实是太空拾荒者）朝你挥了挥手。' },
@@ -100,12 +100,12 @@ const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过�
   { text: '你成功避开了一块涂了警告漆的岩礁，像玩了一次极限漂移。' },
   { text: '一条加密消息指向某个坐标，打开后是一幅涂鸦——诈骗犯也懂浪漫。' },
   { text: '航行仪显示前方有 0.03% 概率的随机故障，它真的发生了。' },
-  { text: '你帮助一艘失去动力的拖网船脱困，对方给了你一条新鲜的电鱼。', iskMin: 200, iskMax: 500 },
+  { text: '你帮助一艘失去动力的拖网船脱困，对方给了你一条新鲜的电鱼。', iskMin: 600, iskMax: 1500 },
   { text: '深空有一段短暂的“寂静带”，引擎声消失的十秒里世界很安静。' },
   { text: '某颗气态巨行星的云层里，闪电像城市夜景一样连绵不绝。' },
   { text: '返航途中你看到自己的家港灯光，心里突然踏实了。' },
   { text: '舱外作业时手套掉了一只，它飘在身后像一面小旗。' },
-  { text: '协会测量船请你当临时向导，付了一笔咨询费。', iskMin: 300, iskMax: 900 },
+  { text: '协会测量船请你当临时向导，付了一笔咨询费。', iskMin: 900, iskMax: 2700 },
   { text: '你在一颗小行星的背阴面发现了一片废弃的旧采矿架。' },
   { text: '有人把“深空平安”四个字刻在航标背面，你拍照留念。' },
   { text: '跳跃完成的一瞬间，舷窗外的星图像被重新洗过一样。' },
@@ -116,18 +116,18 @@ const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过�
 
 /** 导出供测试/文档核对（扫描期间到点事件强制从本池抽取） */
 export const EXPLORE_EVENTS: readonly FlavorEntry[] = [
-  { text: '深空信标里存着一段旧航路日志——协会情报处付了一笔整理费。', iskMin: 400, iskMax: 1200 },
-  { text: '云层里发现一座废弃的古代观测站，你带回一组完好透镜。', iskMin: 300, iskMax: 900 },
+  { text: '深空信标里存着一段旧航路日志——协会情报处付了一笔整理费。', iskMin: 1600, iskMax: 4800 },
+  { text: '云层里发现一座废弃的古代观测站，你带回一组完好透镜。', iskMin: 900, iskMax: 2700 },
   { text: '扫描波束反射回一串规律信号——像是某种导航网格，已归档。' },
-  { text: '未知残骸里弹出一只休眠的信使无人机，愿意为你跑腿。', iskMin: 100, iskMax: 400 },
+  { text: '未知残骸里弹出一只休眠的信使无人机，愿意为你跑腿。', iskMin: 300, iskMax: 1200 },
   { text: '探测到微弱的引力涟漪：前方可能存在未被标记的质量体。' },
-  { text: '捡到一枚外壳刻着陌生文字的数据库，黑市愿意收购。', iskMin: 500, iskMax: 1500 },
+  { text: '捡到一枚外壳刻着陌生文字的数据库，黑市愿意收购。', iskMin: 2000, iskMax: 6000 },
   { text: '星云边缘的尘埃里有规律的空洞——像是巨物穿行过的痕迹。' },
-  { text: '扫描仪捕捉到一段古老求救信号，破译后是一张藏宝坐标。', iskMin: 300, iskMax: 800 },
+  { text: '扫描仪捕捉到一段古老求救信号，破译后是一张藏宝坐标。', iskMin: 900, iskMax: 2400 },
   { text: '一颗冰封的小行星表面刻着导航箭头，指向更深处。' },
-  { text: '你回收了半个跃迁引擎原型，协会工程部出价收购。', iskMin: 800, iskMax: 2000 },
+  { text: '你回收了半个跃迁引擎原型，协会工程部出价收购。', iskMin: 3200, iskMax: 8000 },
   { text: '远处的虚影闪烁了一下——是海市蜃楼，还是别的什么？' },
-  { text: '一队神秘浮标沿着未知航线排开，你把坐标记进了星图。', iskMin: 200, iskMax: 600 },
+  { text: '一队神秘浮标沿着未知航线排开，你把坐标记进了星图。', iskMin: 600, iskMax: 1800 },
 ]
 
 /* ═══════════ 工具 ═══════════ */
@@ -159,13 +159,20 @@ function logEvent(state: GameState, text: string, amount?: number): void {
   addLog(state, 'info', `✦ ${text}${amount !== undefined && amount > 0 ? `（+${amount.toLocaleString('zh-CN')} ISK）` : ''}`)
 }
 
-function fireFlavor(state: GameState, table: readonly FlavorEntry[]): void {
+/** 事件现金 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高；导出供测试） */
+export function exploredRewardMul(state: GameState, ev: { exploreBonusPerGalaxy: number; exploreBonusCap: number }): number {
+  return 1 + Math.min(ev.exploreBonusCap, state.exploredGalaxies.length * ev.exploreBonusPerGalaxy)
+}
+
+function fireFlavor(state: GameState, ctx: SimContext, table: readonly FlavorEntry[]): void {
   const entry = table[nextInt(state.rng, table.length)]!
   let amount: number | undefined
   if (entry.iskMin !== undefined && entry.iskMax !== undefined) {
     // 事件分红学（event-dividend）：随机事件现金奖励 +15%/级
     const divLv = Math.min(5, state.skills.trained['event-dividend'] ?? 0)
-    const raw = entry.iskMin + nextInt(state.rng, entry.iskMax - entry.iskMin + 1)
+    let raw = entry.iskMin + nextInt(state.rng, entry.iskMax - entry.iskMin + 1)
+    // 已探索星系加成（船长 2026-09-10：×1 + 每星系 +10%，封顶 ×2——星图走得越远，奇遇越值钱）
+    raw = Math.round(raw * exploredRewardMul(state, ctx.balance.events))
     amount = divLv > 0 ? Math.round(raw * (1 + 0.15 * divLv)) : raw
     state.wallet.isk += amount
   }
@@ -232,32 +239,41 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext): void {
 
 /**
  * 市场大类 B：市场奇货（公开导出，测试可直接调用）。
- * 变体：0 神秘出货（稀有/限定商品当场刷一件供应单，随稀有度寿命过期）/
- *       1 神秘买家（以近乎现货价的天价收购稀有/限定商品 ×1）。
+ * 变体：0 黑市溢价现货（2026-09-10 船长定：真·高价应急渠道——稀有/限定商品当场刷一件
+ *       供应单，开价 = 行情价 ×1.8~2.0，寿命仅 8 分钟"手慢无"，花钱免蹲货）/
+ *       1 神秘买家（以近乎现货价的天价收购稀有/限定商品 ×1，寿命按稀有度）。
  */
+export const BLACK_MARKET_LIFE_MS = 8 * 60_000 // 黑市溢价现货时限（船长：比稀有 9 分钟/奇货 6 小时更短）
 export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
   ensureMarket(state, ctx)
   const goods = rareGoods(ctx)
   if (goods.length === 0) {
     // 目录里没有稀有货（测试环境等）：退回奇遇文本，保持事件系统可用
-    fireFlavor(state, MISC_EVENTS)
+    fireFlavor(state, ctx, MISC_EVENTS)
     return
   }
   const def = goods[nextInt(state.rng, goods.length)]!
   const mk = state.market
-  const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
-  const lifeMin = Math.round(lifeMs / 60_000)
   const level = levelOf(state, ctx, def.key)
   const name = goodName(ctx, def.key)
 
   if (nextInt(state.rng, 2) === 0) {
-    const price = clampPrice(ctx, def, Math.round(level * (0.95 + nextRandom(state.rng) * 0.1)))
-    mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
-    logEvent(state, `黑市商人突然挂出一件「${name}」：${price.toLocaleString('zh-CN')} ISK，仅存约 ${lifeMin} 分钟，手慢无。`)
+    // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
+    const mul = 1.8 + nextRandom(state.rng) * 0.2
+    const price = clampPrice(ctx, def, Math.round(level * mul))
+    mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + BLACK_MARKET_LIFE_MS })
+    logEvent(
+      state,
+      `黑市商人挂出一件「${name}」：开价 ${price.toLocaleString('zh-CN')} ISK（约为行情价 ×${mul.toFixed(1)} 的溢价现货），仅存 ${Math.round(BLACK_MARKET_LIFE_MS / 60_000)} 分钟，手慢无——急用免蹲货，不差钱可出手。`,
+    )
   } else {
+    const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
     const price = clampPrice(ctx, def, Math.round(level * (1.0 + nextRandom(state.rng) * 0.35)))
     mk.npcBuy[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
-    logEvent(state, `神秘买家以 ${price.toLocaleString('zh-CN')} ISK 的天价求购「${name}」×1——远高于常态收购价，约 ${lifeMin} 分钟内有效。`)
+    logEvent(
+      state,
+      `神秘买家以 ${price.toLocaleString('zh-CN')} ISK 的天价求购「${name}」×1——远高于常态收购价，约 ${Math.round(lifeMs / 60_000)} 分钟内有效。`,
+    )
   }
 }
 
@@ -266,15 +282,15 @@ export function fireOneEvent(state: GameState, ctx: SimContext): void {
   const b = ctx.balance.events
   // V13：扫描探索作业进行期间，到点事件强制走「探索发现」池
   if (state.scanning.active) {
-    fireFlavor(state, EXPLORE_EVENTS)
+    fireFlavor(state, ctx, EXPLORE_EVENTS)
     return
   }
   const total = b.miscWeight + b.voyageWeight + b.marketShockWeight + b.marketOrderWeight
   let r = nextRandom(state.rng) * total
   if ((r -= b.miscWeight) < 0) {
-    fireFlavor(state, MISC_EVENTS)
+    fireFlavor(state, ctx, MISC_EVENTS)
   } else if ((r -= b.voyageWeight) < 0) {
-    fireFlavor(state, VOYAGE_EVENTS)
+    fireFlavor(state, ctx, VOYAGE_EVENTS)
   } else if ((r -= b.marketShockWeight) < 0) {
     fireMarketShockEvent(state, ctx)
   } else {

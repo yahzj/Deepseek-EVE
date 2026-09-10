@@ -180,6 +180,8 @@ interface BoltV {
   len: number
   angDeg: number
   born: number
+  /** 无人机机型 id（2026-09-10：弹点按机型形制渲染——蜂群小弹点；缺省 = 普通弹道） */
+  drone?: string
 }
 interface FlashV {
   key: number
@@ -187,6 +189,8 @@ interface FlashV {
   color: string
   x: number
   y: number
+  /** 小型闪光（无人机机群出弹：体积小于母舰炮口闪光） */
+  small?: boolean
 }
 
 /** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家）：
@@ -199,18 +203,25 @@ export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }>
   plasma: { fly: 130, dash: null },
 }
 
-/** 开火事件 → 弹道几何：起点 = 源舰枪口（舰艏前缘），终点 = 目标舰枪口侧命中点。
- *  nose 按舰种取 NOSE_MAIN/NOSE_ESC，弹道与射程弧（同为枪口锚定）视觉一致。 */
+/** 开火事件 → 弹道几何：起点 = 源舰炮口（2026-09-10 起优先真实炮口 muzzle；muzzle 为空时
+ *  回退舰艏前缘，nose 按舰种取 NOSE_MAIN/NOSE_ESC），终点 = 目标舰枪口侧命中点。
+ *  换算：挂点为 240×110 画布本地坐标 → 画面 px = 锚点 + 画布偏移 × (artW/240)；
+ *  敌侧 dir = −1（敌舰以镜像姿态朝我开火时炮口恰在 −x 侧，与既有舰艏锚同语义）。 */
 function boltGeom(
   side: 'me' | 'foe',
   src: Anchor,
   dst: Anchor,
   srcNose: number,
   dstNose: number,
+  muzzle?: Anchor | null,
+  artW?: number,
+  /** 显式起点（2026-09-10：无人机弹道自机群位置起飞，优先于 muzzle/舰艏回退） */
+  from?: Anchor | null,
 ): { x1: number; y1: number; len: number; angDeg: number } {
   const dir = side === 'me' ? 1 : -1
-  const sx = src.x + dir * srcNose
-  const sy = src.y
+  const s = artW && artW > 0 ? artW / 240 : 1
+  const sx = from ? from.x : muzzle ? src.x + dir * (muzzle.x - 120) * s : src.x + dir * srcNose
+  const sy = from ? from.y : muzzle ? src.y + (muzzle.y - 55) * s : src.y
   const tx = dst.x - dir * dstNose
   const ty = dst.y
   const dx = tx - sx

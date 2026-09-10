@@ -27,6 +27,7 @@ import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
 import { AiTaskBar } from '../ui/aiProgress'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { MarkStar, pinMarked } from '../ui/marks'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -134,7 +135,8 @@ export function ShipPage({
       }
       return true
     })
-    if (fleetSort === 'default') return list
+    // 2026-09-10 船长定：已标记（收藏）的船在「默认排序」下置顶；按名称/耐久/舰族排序时置顶不生效
+    if (fleetSort === 'default') return pinMarked(state, 'ships', list, (x) => x.uid)
     const sorted = [...list]
     sorted.sort((a, b) => {
       if (fleetSort === 'name') {
@@ -363,6 +365,7 @@ export function ShipPage({
                     ) : null}
                   </span>
                   <span className="app-ship-top-right">
+                    <MarkStar engine={engine} kind="ships" id={uid} />
                     {isCurrent ? (
                       <span className="app-chip">驾驶中</span>
                     ) : isWorking ? (

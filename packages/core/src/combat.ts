@@ -36,12 +36,19 @@ export interface Hp3 {
   h: number
 }
 
+/** 武器来源（2026-09-10 船长批：无人机战斗动画差异化地基——纯展示字段，不参与任何数值结算） */
+export type WeaponSrc = 'turret' | 'missile' | 'laser' | 'drone' | 'base'
+
 /** 静态武器卡 */
 export interface WeaponSpec {
   label: string
   /** gun = 我方炮台/导弹架（吃弹药，按 shotsByType 给单发伤害）；beam = 激光炮（必中、
    * 逐发扣能量弹药、威力随距离衰减）；fixed = 固定单发（基础舰炮/无人机/敌方） */
   kind: 'gun' | 'beam' | 'fixed'
+  /** 武器来源（展示层用：无人机机群/弹道形制据此区分；缺省 = 旧口径不区分） */
+  src?: WeaponSrc
+  /** 无人机机型 id（src='drone' 时携带：drone-scout/assault/heavy/sentry —— UI 按机型出机体与弹点） */
+  artId?: string
   /** fixed/beam 的固定伤害类型（beam = plasma 能量弹药键） */
   fixedType?: DamageType
   /** fixed/beam 单发伤害 */
@@ -343,6 +350,7 @@ export function createPlayerSpec(
   weapons.push({
     label: '基础舰炮',
     kind: 'fixed',
+    src: 'base',
     fixedType: 'kinetic',
     shotDmg: Math.round(8 * dmgScale),
     maxRangeM: 2500,
@@ -392,6 +400,7 @@ export function createPlayerSpec(
       weapons.push({
         label: count > 1 ? `${turret.name}×${count}` : turret.name,
         kind: 'beam',
+        src: 'laser',
         fixedType: 'plasma',
         shotDmg: perShot * count,
         maxRangeM: turret.maxRangeM,
@@ -407,6 +416,7 @@ export function createPlayerSpec(
     weapons.push({
       label: count > 1 ? `${turret.name}×${count}` : turret.name,
       kind: 'gun',
+      src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,
       eqHitMul: hitEq > 1 ? hitEq : undefined,
       maxRangeM: turret.maxRangeM,
@@ -457,6 +467,9 @@ export function createPlayerSpec(
         weapons.push({
           label: def.name,
           kind: 'fixed',
+          // 2026-09-10 船长批：无人机 = 独立来源 + 机型 id（每架一条条目；UI 按其放飞机群/出弹）
+          src: 'drone',
+          artId: droneId,
           fixedType: def.damageType ?? 'kinetic',
           shotDmg: shot,
           // 射程 = 机型基础 × 中继乘数（2026-09-10 船长：蜂鸟 2500/赤鸢 3000/猎鹰 3500/
@@ -1217,6 +1230,12 @@ export function battleArcsFor(
     maxM: number
     /** 武器装填周期毫秒（静态；UI 冷却条分母） */
     reloadMs: number
+    /** 武器来源（2026-09-10：无人机条目据此出机群/弹道；缺省 = 旧口径） */
+    src?: WeaponSrc
+    /** 无人机机型 id（src='drone'）；UI 按机型出机体与弹点 */
+    artId?: string
+    /** 该条目合并的架数（无人机同机型多架合并为「机型 ×N」一条；非无人机为 1） */
+    count?: number
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
@@ -1233,15 +1252,76 @@ export function battleArcsFor(
   const foes = createFoeSpecs(anomaly, bal)
   const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
   const dominant = nextAmmoType(battle.ammo)
-  const meArcs = me.weapons.map((w) => {
+  /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
+  const meRt = battle.units['player']?.weapons ?? []
+  /**
+   * 2026-09-10 船长批：无人机逐架条目在弧列表里合并为「机型 ×N」一条（16 架蜂鸟不再 16 条弧/16 条冷却条）。
+   * 冷却剩余取组内最小值（任一可开火即视为群就绪）；非无人机条目原样一条。
+   */
+  const meArcs: Array<{
+    label: string
+    kind: 'gun' | 'beam' | 'fixed'
+    type: DamageType | null
+    minM: number
+    maxM: number
+    reloadMs: number
+    src?: WeaponSrc
+    artId?: string
+    count?: number
+  }> = []
+  const meReload: number[] = []
+  const droneAt = new Map<string, number>()
+  const droneN: number[] = []
+  me.weapons.forEach((w, i) => {
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
     else if (w.kind === 'beam') type = battle.ammo.pla > 0 ? 'plasma' : null // 激光吃能量弹药键
     else if (ammoLeft > 0) type = dominant // 炮台弹型动态（消耗中可能切换）
-    return { label: w.label, kind: w.kind, type, minM: w.minRangeM, maxM: w.maxRangeM, reloadMs: w.reloadMs }
+    const rem = Math.max(0, Math.floor(meRt[i] ?? 0))
+    if (w.src === 'drone') {
+      const key = w.artId ?? 'drone'
+      const at = droneAt.get(key)
+      if (at !== undefined) {
+        droneN[at] = (droneN[at] ?? 1) + 1
+        meReload[at] = Math.min(meReload[at] ?? rem, rem)
+        return
+      }
+      droneAt.set(key, meArcs.length)
+      droneN.push(1)
+      meArcs.push({
+        label: w.label,
+        kind: w.kind,
+        type,
+        minM: w.minRangeM,
+        maxM: w.maxRangeM,
+        reloadMs: w.reloadMs,
+        src: w.src,
+        artId: w.artId,
+        count: 1,
+      })
+      meReload.push(rem)
+      return
+    }
+    meArcs.push({
+      label: w.label,
+      kind: w.kind,
+      type,
+      minM: w.minRangeM,
+      maxM: w.maxRangeM,
+      reloadMs: w.reloadMs,
+      src: w.src,
+      count: 1,
+    })
+    meReload.push(rem)
   })
-  // 我方各武器当前装填剩余（与 meArcs 同序：units['player'].weapons；单位缺失给空数组）
-  const meReload = (battle.units['player']?.weapons ?? []).map((n) => Math.max(0, Math.floor(n)))
+  meArcs.forEach((a, i) => {
+    const n = droneN[droneAt.get(a.artId ?? '') ?? -1]
+    if (a.src === 'drone' && n !== undefined) {
+      a.count = n
+      if (n > 1) a.label = `${a.label}×${n}`
+    }
+  })
+  // 我方各武器当前装填剩余已在上面与 meArcs 同步构建（无人机按机型合并、组内取最小值）
   // 敌方整编队聚合：min/max 跨各单位武器取极值（min 以 +∞ 起步——否则 0 初值会把
   // 近盲带最小射程吞成 0，底部"敌方 X~Ym"显示错误，2026-09-08 玩家反馈）
   let foeMin = Number.POSITIVE_INFINITY
@@ -1541,7 +1621,16 @@ function stepBattle(
         rt.hp = r.hp
         b.stats.meDmg += r.dealt
       }
-      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'me', tag: 'player', to: foeTarget.tag, type, hit })
+      pushBattleFx(b, {
+        atMs: b.lastTickGameMs + dtMs,
+        side: 'me',
+        tag: 'player',
+        to: foeTarget.tag,
+        type,
+        src: w.src,
+        artId: w.artId,
+        hit,
+      })
     }
   }
 

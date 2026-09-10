@@ -205,6 +205,9 @@ export {
 
 export { fleetDefOf, shipDisplayName } from './instances'
 
+export { markedIds, isMarked, markTargetExists, toggleMark, clearMarks, pruneMarks, MARK_KIND_TEXT } from './marks'
+export type { MarkKind } from './marks'
+
 export {
   getMiningParams,
   oneLegMs,
@@ -463,7 +466,7 @@ export {
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
 } from './combat'
-export type { WeaponSpec, UnitSpec, Hp3 } from './combat'
+export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
 
 // 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；旧稳态 bountyWinPercentGuarded 仅兼容遗留调用）
 export { BOUNTY_MC_RUNS, buildEvalState, estimateBountyWinOn, estimateBountyWinMC } from './winEstimate'
@@ -574,4 +577,5 @@ export {
   COURIER_TASK_MARGIN,
 } from './sideTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
-export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24 } from './state'
+export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
+export { emptyMarks } from './state'

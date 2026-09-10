@@ -220,6 +220,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     voyageWeight: 35, // 航行叙事（舰桥日志/航道见闻）
     marketShockWeight: 15, // 市场行情突变动（冲击/池/大宗单）
     marketOrderWeight: 10, // 市场奇货（稀有品突现供应单 / 极高价收购单）
-    exploreBoost: 1.0, // 扫描探索期间事件倒计时 ×2（V13：探索时段更"热闹"）
+    exploreBoost: 1.0, // 扫描探索作业期间事件倒计时 ×2（V13：探索时段更"热闹"）
+    exploreBonusPerGalaxy: 0.1, // 随机事件现金 · 每已探索星系 +10%（2026-09-10 船长）
+    exploreBonusCap: 1, // 探索加成封顶：最多 ×2
   },
 }
