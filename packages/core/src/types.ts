@@ -595,6 +595,21 @@ export interface BattleBalance {
   winPenaltyArmorPerFull: number
   /** 结构损耗预警扣分系数（结构伤比装甲伤扣得更重 = 船长的"更大幅度下调"） */
   winPenaltyHullPerFull: number
+  /* ═══ 敌方点防（2026-09-10 船长拍板「无人机可被击落」，永久损失制）═══ */
+  /** 点防起始威胁：威胁 ≤ 此值的敌舰不设点防 */
+  pdThreatFloor: number
+  /** 满档跨度：威胁 ≥ floor + span 时点防满档（强度按威胁线性缩放） */
+  pdThreatSpan: number
+  /** 满档时每艘敌舰每秒点防射击次数（多舰叠加） */
+  pdRatePerSec: number
+  /** 点防基础命中（直接与机型闪避相减；不叠敌方通用命中加成） */
+  pdAcc: number
+  /** 点防单发伤害（走该机型三层抗性） */
+  pdDmg: number
+  /** 点防射程 m：放飞无人机在此距离内才可能被击落（哨戒 5km 常在射程外） */
+  pdRangeM: number
+  /** 单场点防最多击落比例（相对本场放飞总数；防止一次团灭） */
+  pdMaxLossFrac: number
 }
 
 /**

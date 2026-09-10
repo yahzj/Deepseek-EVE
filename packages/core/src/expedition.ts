@@ -33,6 +33,7 @@ import {
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKits,
+  settleDroneLosses,
   startBattleFor,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
@@ -396,6 +397,20 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   }
   const won = battle.ended === 'me'
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
+  // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
+  // 且要在战报文案之前落账（战报要引用损失摘要）
+  const droneLostText = settleDroneLosses(state, ctx, state.shipId, battle)
+  // 机群战损过大 → 停重复清剿（永久损失制安全阀：2026-09-10 船长拍板）
+  const droneBefore = Object.values(battle.droneLoadAtStart ?? {}).reduce((s, n) => s + n, 0)
+  const droneAfter = Object.values(state.fleet[state.shipId]?.droneLoad ?? {}).reduce((s, n) => s + n, 0)
+  const droneAttrition =
+    droneBefore > 0 && droneAfter / droneBefore < 0.5 && state.autoLoopAnomalyId === exp.anomalyId
+  if (droneAttrition) {
+    stopAutoLoopReason(
+      state,
+      `机群战损过半（${droneBefore} → ${droneAfter} 架）——请先补充无人机舱清单（装配页装入）再开启重复清剿。`,
+    )
+  }
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
@@ -438,10 +453,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const stats = `交火 ${durTxt}（开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}，我方护盾余 ${Math.round(battle.units['player']?.hp.s ?? 0)}/甲 ${Math.round(battle.units['player']?.hp.a ?? 0)}/结构 ${Math.round(battle.units['player']?.hp.h ?? 0)}）`
     const lootPart = lootText.length > 0 ? `，缴获 ${lootText.join('、')}` : ''
     const standPart = firstBlood ? `协会声望 +${anomaly.standingGain}` : '该悬赏已首胜过：本次无额外声望'
+    const dronePart = droneLostText ? `，机群战损 ${droneLostText}` : ''
     addLog(
       state,
       'trade',
-      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}，${standPart}` +
+      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
     )
     // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
@@ -505,10 +521,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const repair = Math.min(state.wallet.isk, Math.floor(anomaly.rewardIsk * bal.defeatCostRatio))
     state.wallet.isk -= repair
     const shipName = shipDisplayName(state, ctx, state.shipId)
+    const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''
     addLog(
       state,
       'warn',
-      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。练练炮术学，记得给船做保养。`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${anomaly.name}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${dronePartLose}练练炮术学，记得给船做保养。`,
     )
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）
@@ -551,6 +568,8 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
   if (!battle) return
+  // 机群战损（2026-09-10 船长「无人机可被击落」）：撤退也照扣——被打掉的飞机不会飞回来
+  settleDroneLosses(state, ctx, state.shipId, battle)
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）

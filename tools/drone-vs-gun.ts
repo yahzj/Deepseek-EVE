@@ -60,9 +60,20 @@ const FULL_SKILLS: Record<string, number> = {
   'ship-systems-engineering': 5,
 }
 
-/** 中/低槽火力向支援件（各行统一，差异只来自高槽选择；注意：这些件对无人机火力无效） */
-const SUP_MID = ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2']
-const SUP_LOW = ['mod-stab-kin-2', 'mod-rof-2', 'mod-armor-kin-2']
+/** 中/低槽支援件（按**该船实际布局**给满，不得超位——超位会被 repair 链裁掉/或虚高）：
+ * - 炮击流：盾容 + 索敌（命中）+ 陀螺 / 稳定器（单发）+ 射速计算机——三者对炮台有效；
+ * - 无人机流：盾容 + 陀螺 / 甲容 + 装甲板——**支援件对无人机火力无效**（2026-09-10 船长口径），
+ *   故无人机流派取纯生存向配装（索敌/稳定器/射速对无人机是纯浪费 CPU）。 */
+const SUP_GUN = {
+  mid3: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+  mid2: ['mod-shield-kin-2', 'mod-track-2'],
+  low2: ['mod-stab-kin-2', 'mod-rof-2'],
+}
+const SUP_DRONE = {
+  mid3: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-gyro-2'],
+  mid2: ['mod-shield-kin-2', 'mod-gyro-2'],
+  low2: ['mod-armor-kin-2', 'mod-armor-plate-2'],
+}
 
 const D3_FLEET = { 'drone-heavy': 4, 'drone-sentry': 6 } // 官方 D3 口径（4 猎鹰 + 6 雷鸥 = 320 m³）
 const FALCON16 = { 'drone-heavy': 16 } // 舱容最优（16 猎鹰 = 320 m³，每 m³ 伤害最高的三型之一）
@@ -129,9 +140,12 @@ function dpsOfCfg(cfg: Cfg): Dps | null {
   return spec ? dpsOf(spec) : null
 }
 
-/** 真实模拟：胜率 / 中位交火秒 / 我方残血比（同 battle-calibrate 口径） */
-function battle(cfg: Cfg, anomalyId: string): { winRate: number; medSec: number; remain: number } {
-  const rows: Array<{ win: boolean; sec: number; remain: number }> = []
+/** 真实模拟：胜率 / 中位交火秒 / 我方残血比 / 机群战损（同 battle-calibrate 口径） */
+function battle(
+  cfg: Cfg,
+  anomalyId: string,
+): { winRate: number; medSec: number; remain: number; lost: number; lostTypes: Record<string, number> } {
+  const rows: Array<{ win: boolean; sec: number; remain: number; lost: number; types: Record<string, number> }> = []
   for (const seed of SEEDS) {
     const state = makeState(cfg, seed)
     const b = startBattleFor(state, ctx, cfg.ship, anomalyId, 0)
@@ -143,20 +157,30 @@ function battle(cfg: Cfg, anomalyId: string): { winRate: number; medSec: number;
     advanceBattleFor(state, ctx, b, cfg.ship, anomalyId)
     const u = b.units['player']
     const hp = u ? u.hp.s + u.hp.a + u.hp.h : 0
+    const types: Record<string, number> = {}
+    for (const [id, cnt] of Object.entries(b.droneLost ?? {})) {
+      types[(ctx.items.get(id)?.name ?? id).replace(/无人机$/, '')] = cnt
+    }
     rows.push({
       win: b.ended === 'me',
       sec: Math.round(
         Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs)) / 1000,
       ),
       remain: maxHp > 0 ? hp / maxHp : 0,
+      lost: Object.values(b.droneLost ?? {}).reduce((s, x) => s + x, 0),
+      types,
     })
   }
-  if (rows.length === 0) return { winRate: 0, medSec: 0, remain: 0 }
+  if (rows.length === 0) return { winRate: 0, medSec: 0, remain: 0, lost: 0, lostTypes: {} }
   const secs = rows.map((r) => r.sec).sort((a, b) => a - b)
+  const lostTypes: Record<string, number> = {}
+  for (const r of rows) for (const [k, v] of Object.entries(r.types)) lostTypes[k] = (lostTypes[k] ?? 0) + v
   return {
     winRate: Math.round((rows.filter((r) => r.win).length / rows.length) * 100),
     medSec: secs[Math.floor(secs.length / 2)]!,
     remain: rows.reduce((s, r) => s + r.remain, 0) / rows.length,
+    lost: rows.reduce((s, r) => s + r.lost, 0) / rows.length,
+    lostTypes,
   }
 }
 
@@ -266,21 +290,21 @@ console.log(
 
 /* ══════════ 表 2：真实装配流派对比（CPU/舱容按现网真实钳制）══════════ */
 const SWARM_CFGS: Cfg[] = [
-  { name: '梭鱼·纯炮 3×MK3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·纯炮 2×MK3+锁定3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 D2(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 D2b(rack2×2+tac3)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 rack2×2+中继3(射程向)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-relay-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·纯炮 3×MK3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: SUP_GUN.mid3, low: SUP_GUN.low2 },
+  { name: '梭鱼·纯炮 2×MK3+锁定3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'], mid: SUP_GUN.mid3, low: SUP_GUN.low2 },
+  { name: '梭鱼·无人机 D2(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_DRONE.mid3, low: SUP_DRONE.low2 },
+  { name: '梭鱼·无人机 D2b(rack2×2+tac3)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_DRONE.mid3, low: SUP_DRONE.low2 },
+  { name: '梭鱼·无人机 rack2×2+中继3(射程向)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-relay-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_DRONE.mid3, low: SUP_DRONE.low2 },
 ]
 const SENT_CFGS: Cfg[] = [
-  { name: '王鲭·纯炮 4×MK3', ship: SENT, high: Array(4).fill('mod-turret-kin-3'), mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·纯炮 4×MK3', ship: SENT, high: Array(4).fill('mod-turret-kin-3'), mid: SUP_GUN.mid2, low: SUP_GUN.low2 },
   { name: '王鲭·纯炮 4×MK3（无中/低槽支援件）', ship: SENT, high: Array(4).fill('mod-turret-kin-3') },
-  { name: '王鲭·纯炮 3×MK3+锁定3', ship: SENT, high: [...Array(3).fill('mod-turret-kin-3'), 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3+锁定3（挤掉1件导控）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-lock-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 rack3+tac3+中继3×2（射程向）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3', 'mod-drone-relay-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·混装 2炮+rack3+tac3', ship: SENT, high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-drone-rack-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机满舱16猎鹰(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: FALCON16, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·纯炮 3×MK3+锁定3', ship: SENT, high: [...Array(3).fill('mod-turret-kin-3'), 'mod-lock-3'], mid: SUP_GUN.mid2, low: SUP_GUN.low2 },
+  { name: '王鲭·无人机 D3(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·无人机 D3+锁定3（挤掉1件导控）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-lock-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·无人机 rack3+tac3+中继3×2（射程向）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3', 'mod-drone-relay-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·混装 2炮+rack3+tac3', ship: SENT, high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-drone-rack-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
+  { name: '王鲭·无人机满舱16猎鹰(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: FALCON16, mid: SUP_DRONE.mid2, low: SUP_DRONE.low2 },
 ]
 for (const [title, cfgs] of [
   ['══ 表 2a：梭鱼级（3 高槽 / 机巢 160m³ / CPU 235；2026-09-10 高槽 5→3）真实装配对比 ══', SWARM_CFGS],
@@ -321,12 +345,13 @@ const BATTLE_CFGS: Cfg[] = [
   SWARM_CFGS[2]!,
   SWARM_CFGS[3]!,
 ]
-console.log('\n══ 表 3：实战（满技能，5 种子；格 = 胜率%/中位秒/我方残血%）══')
+console.log('\n══ 表 3：实战（满技能，5 种子；格 = 胜率%/中位秒/我方残血%/机群战损架数）══')
 console.log(`配置\t${cardHeader.join('\t')}`)
 for (const cfg of BATTLE_CFGS) {
   const cells = CARDS.map((id) => {
     const r = battle(cfg, id)
-    return `${r.winRate}%/${r.medSec}s/${Math.round(r.remain * 100)}%`
+    const lostDetail = Object.keys(r.lostTypes).length > 0 ? `(${Object.entries(r.lostTypes).map(([k, v]) => `${k}×${(v / SEEDS.length).toFixed(1)}`).join('+')})` : ''
+    return `${r.winRate}%/${r.medSec}s/${Math.round(r.remain * 100)}%/${r.lost.toFixed(1)}架${lostDetail}`
   })
   console.log(`${cfg.name}\t${cells.join('\t')}`)
 }
@@ -352,8 +377,8 @@ for (const sc of SCENARIOS) {
       ship: SENT,
       high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
       drones: sc.fleet,
-      mid: SUP_MID,
-      low: SUP_LOW,
+      mid: SUP_DRONE.mid2,
+      low: SUP_DRONE.low2,
     }
     const d = dpsOfCfg(cfg)
     const g = battle(cfg, 'ano-gravekeeper')

@@ -746,6 +746,7 @@ function DroneBaySection({
       <div className="app-fit-dronebay-head">
         <span className="app-fit-dronebay-title">
           无人机舱
+          <span className="app-dim">（敌方点防会击落机群，被击落后自清单永久损失）</span>
           {droneCpu > 0 ? (
             <span className="app-dim">（清单占用 CPU {droneCpu}）</span>
           ) : null}

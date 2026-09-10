@@ -24,7 +24,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AnomalyDef, SimContext } from './types'
 import { nextRandom } from './rng'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, startBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, settleDroneLosses, startBattleFor } from './combat'
 import { calcPower } from './expedition'
 import {
   injectWreckDensity,
@@ -281,6 +281,8 @@ function settleFight(state: GameState, ctx: SimContext): void {
   const bal = ctx.balance.encounter
   const fleetShip = state.fleet[shipId]
   if (battle) {
+    // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：遭遇战同样照扣
+    settleDroneLosses(state, ctx, shipId, battle)
     // 退还剩余弹药（与远征/撤退同一口径；弹药 MK2 按实装弹 id 退回）
     refundAmmo(state, battle.ammo, battle.ammoIds)
     refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
