@@ -806,6 +806,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    */
   deliveryNotice?: string | null
   /**
+   * 2026-09-10 重复清剿停环一次性提示（船长定：除事件日志外，玩家在线时弹窗告知）：
+   * 文案自带当前 装甲/结构 百分比，便于玩家判断停在哪一层；同 deliveryNotice 模式——
+   * 引擎写入 → 心跳读取即清并 toast（不落档、零迁移）
+   */
+  autoLoopStopNotice?: string | null
+  /**
    * 2026-09-10 玩家标记（收藏）：四类界面各自一份 id 清单，被标记项在**默认排序**下置顶
    * （2026-09-10 船长定：舰队等有排序下拉的列表只在「默认排序」生效）。
    * 兼容字段、零迁移、不升版本号：老档缺省 = 四类全空，由 normalizeState 补默认并剪枝。

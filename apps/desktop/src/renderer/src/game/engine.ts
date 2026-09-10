@@ -471,12 +471,20 @@ export class GameEngine {
   }
 
   /** 一次性系统提示（2026-09-08 交付循环终止弹窗）：引擎写入 state.deliveryNotice →
-   * 心跳/离线结算后读取 → toast 一次并清除（不落档，重启后由新触发点重新写入） */
+   * 心跳/离线结算后读取 → toast 一次并清除（不落档，重启后由新触发点重新写入）
+   * 2026-09-10 追加：重复清剿停环提示 state.autoLoopStopNotice（船长定：除日志外在线弹窗告知，
+   * 文案自带 装甲/结构 百分比）——同一通道，各自清空 */
   private drainSystemNotice(): void {
     const n = this.state.deliveryNotice
-    if (!n) return
-    this.state.deliveryNotice = null
-    if (this.onSystemNotice) this.onSystemNotice(n)
+    if (n) {
+      this.state.deliveryNotice = null
+      if (this.onSystemNotice) this.onSystemNotice(n)
+    }
+    const loopStop = this.state.autoLoopStopNotice
+    if (loopStop) {
+      this.state.autoLoopStopNotice = null
+      if (this.onSystemNotice) this.onSystemNotice(loopStop)
+    }
   }
 
   private notify(): void {
@@ -1428,19 +1436,12 @@ export class GameEngine {
   }
 
   /**
-   * 优化：玩家手动退出全屏战场时的兜底——若本场战斗由"重复清剿"自动发起且尚未结束，
-   * 视为玩家想收手：停止清剿（避免冷却结束后又自动进入战斗）。
+   * 2026-09-10 修复（船长定位：重复清剿中"退出战场"会打断连击）：
+   * 「退出战场」= 仅关闭全屏观看界面——战斗后台照常推进、连击照常继续。
+   * 原实现在"连击自动发起的战斗"中退出即清 autoLoopAnomalyId（视为收手），
+   * 导致玩家只是退出观看就被停环；如需中止请用战场内「⚑ 撤退」（撤退才停环）。
+   * autoSortie 仅保留"连击自动发起的战斗默认最小化界面"用途，不再参与停环。
    */
-  onBattleViewClosed(): void {
-    const exp = this.state.expedition
-    if (this.autoSortie && exp.active && exp.phase === 'battle') {
-      this.state.autoLoopAnomalyId = null
-      this.autoSortie = false
-      addLog(this.state, 'info', '重复清剿已停止（手动退出战场）。')
-      void this.persist()
-      this.notify()
-    }
-  }
 
   /* ─────────────── v7 操作（自动循环 / 装卸 / 维修 / AI 核心） ─────────────── */
 
