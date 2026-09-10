@@ -82,9 +82,10 @@ const RARE_LIFE_MUL = 4
 const EXOTIC_CAP_PER_DRAW = 2
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
  * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
- * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。系数经 market-rarity-sim 校准） */
+ * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。**2026-09-10 船长定 0.25 → 0.15**，
+ * 系数经 market-rarity-sim 复跑校准） */
 function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
-  return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.25) : 1
+  return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.15) : 1
 }
 
 /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**）——稀有卖单抽取与奇货掷骰**两个渠道共用**；
