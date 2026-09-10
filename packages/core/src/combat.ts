@@ -1185,8 +1185,11 @@ export function startBattleFor(
   // 机群生存池（2026-09-10 船长「无人机可被击落」）：按武器条目下标建池——只有 src='drone'
   // 的条目参战；机型三层血/抗性/闪避取自物品本体（DroneDefense，四型定位契约见 data/droneRoles.ts）
   const pools: Record<number, import('./state').DronePoolEntry> = {}
-  // 无人机线技能（2026-09-10 船长）：耐久学放大三层血（"全血条"）、规避学提闪避（封顶 0.9）
-  const durMul = 1 + DRONE_SKILL.durabilityPerLevel * droneSkillLv(state, 'drone-durability')
+  // 无人机线技能（2026-09-10 船长）：耐久学（基础档）与强化学（进阶档）**乘算**放大三层血
+  // （"全血条"）、规避学提闪避（封顶 0.9）
+  const durMul =
+    (1 + DRONE_SKILL.durabilityPerLevel * droneSkillLv(state, 'drone-durability')) *
+    (1 + DRONE_SKILL.reinforcePerLevel * droneSkillLv(state, 'drone-reinforce'))
   const evaMul = 1 + DRONE_SKILL.evasionPerLevel * droneSkillLv(state, 'drone-evasion')
   me.weapons.forEach((w, i) => {
     if (w.src !== 'drone' || !w.artId) return
@@ -1675,10 +1678,12 @@ export const DRONE_SKILL = {
   warfarePerLevel: 0.05,
   /** 无人机打击学：单发伤害再 +4%/级（与作战学乘算，满级再 ×1.2） */
   strikePerLevel: 0.04,
-  /** 无人机耐久学：三层血量 +10%/级（满级 ×1.5） */
-  durabilityPerLevel: 0.1,
-  /** 无人机规避学：闪避 +4%/级（相对乘算，闪避封顶 0.9） */
-  evasionPerLevel: 0.04,
+  /** 无人机耐久学（基础档）：三层血量 +6%/级（满级 +30%） */
+  durabilityPerLevel: 0.06,
+  /** 无人机强化学（进阶档）：三层血量再 +6%/级（满级再 +30%；与耐久学**乘算**） */
+  reinforcePerLevel: 0.06,
+  /** 无人机规避学：闪避 +2%/级（满级 +10%；相对乘算，闪避封顶 0.9） */
+  evasionPerLevel: 0.02,
   /** 无人机回收学：战后回收损坏机体，基础 10% + 8%/级（满级 50%） */
   recoveryBase: 0.1,
   recoveryPerLevel: 0.08,
