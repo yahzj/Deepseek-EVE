@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 货仓页（T3）：顶部"查看船"选择条可切换查看舰队任一艘船的货仓。
  * - 每艘船一枚 chip：船名 + （驾驶中）标记 + 出勤徽标（shipBusyLabel）；
  * - 默认查看驾驶船；驾驶船变更后自动跟随；选中船不存在（卖/弃船）自动回驾驶船；
@@ -60,7 +60,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   // 2026-09-09 长途运输：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
   const haulOcc = isPiloted && state.hauling.active ? haulingOccupiedM3(state, engine.ctx) : 0
   const rows = Object.entries(cargo).filter(([, n]) => n > 0)
-  // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；占位 1 m³/件
+  // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；按 1 m³/件 计入货舱
   const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
 
   // 图标/列表切换（手册同款；网格为浏览视图）
@@ -282,11 +282,11 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         )
       })}
 
-      {/* 船载装备（2026-09-09 船长口径 A：模块可入货仓携带；占位 1 m³/件，卸回装备库） */}
+      {/* 船载装备（2026-09-09 船长口径 A：模块可入货仓携带，按 1 m³/件 计入货舱；卸回装备库） */}
       {modRows.length > 0 ? (
         <Panel
           title="装备（船载）"
-          right={<span className="app-dim">{modRows.length} 种 · 占位 1 m³/件</span>}
+          right={<span className="app-dim">{modRows.length} 种 · 按 1 m³/件 计入货舱</span>}
         >
           <ul className="app-inv-list">
             {modRows.map(([id, units]) => {
@@ -303,7 +303,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       <RowGlyph glyph={def.slot} /> {def.name}
                     </span>
                     <span className="app-inv-count">
-                      ×{units.toLocaleString('zh-CN')}（占位 {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
+                      ×{units.toLocaleString('zh-CN')}（计入货舱 {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
                       {def.cpuUse}
                     </span>
                   </div>
@@ -360,7 +360,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           {modRows.length > 0 ? (
             <Panel
               title="装备（船载）"
-              right={<span className="app-dim">{modRows.length} 种 · 占位 1 m³/件</span>}
+              right={<span className="app-dim">{modRows.length} 种 · 按 1 m³/件 计入货舱</span>}
             >
               <ItemGlyphGrid
                 cells={modRows.map(([id, units]) => {
@@ -369,7 +369,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     key: id,
                     glyph: def?.slot ?? 'mod',
                     name: def?.name ?? id,
-                    sub: `×${units.toLocaleString('zh-CN')} · 占位 ${m3(units)}`,
+                    sub: `×${units.toLocaleString('zh-CN')} · 计入货舱 ${m3(units)}`,
                     title: def?.description,
                   }
                 })}
@@ -439,7 +439,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickModDef.name}</div>
                   <div className="app-dim">
-                    ×{pickModUnits.toLocaleString('zh-CN')}（占位 {m3(pickModUnits)}）·{' '}
+                    ×{pickModUnits.toLocaleString('zh-CN')}（计入货舱 {m3(pickModUnits)}）·{' '}
                     {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU {pickModDef.cpuUse}
                   </div>
                 </div>
