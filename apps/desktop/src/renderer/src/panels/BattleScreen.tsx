@@ -111,6 +111,10 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   /* ── 背景星场（三层视差：直接操作 DOM transform，追逐/拉锯差速滚动） ── */
   const dimsRef = useRef(dims)
   dimsRef.current = dims
+  /** 尺寸重测入口（列宽随编队数量变化；由 33ms 循环按需调用——放在守卫之前的 hook 区声明） */
+  const measureRef = useRef<() => void>(() => {})
+  /** 列宽核对节拍（33ms 循环每 10 拍核对一次 ≈330ms） */
+  const widthCheckRef = useRef(0)
   const starLayerRefs = useRef<Array<HTMLDivElement | null>>([])
   const starOffRef = useRef<number[]>([0, 0, 0])
   const starStateRef = useRef({ v: 70, dir: 1 })
@@ -314,6 +318,17 @@ const meSpeedRef = useRef(200)
         vis = s.prev.m + (s.cur.m - s.prev.m) * t
       }
       visDistRef.current = vis // 供无人机 rAF 驱动使用（与舰列/弧同一插值距离）
+      /* 列宽核对（~330ms 一次）：编队数量变化会改变敌列 DOM 宽度，若不重测则锚点偏移、
+         弹道落点偏右（2026-09-10 船长"击毁小型敌人后无人机落弹位置有误"）。放在本循环而非
+         useEffect，是因为渲染体在 `!view.combat` 时会提前 return，守卫之后不得再出现 hook。 */
+      if (++widthCheckRef.current >= 10) {
+        widthCheckRef.current = 0
+        const fw = foeColRef.current?.offsetWidth
+        const mw = meColRef.current?.offsetWidth
+        if ((fw && Math.abs(fw - dimsRef.current.foeW) > 2) || (mw && Math.abs(mw - dimsRef.current.meW) > 2)) {
+          measureRef.current()
+        }
+      }
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
@@ -383,8 +398,8 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 尺寸测量（列宽由固定内容决定；窗口变化只影响 lane 宽）
-  const measureRef = useRef<() => void>(() => {})
+  /** 尺寸测量（列宽由固定内容决定；窗口变化只影响 lane 宽）
+   *  2026-09-10：列宽会随编队数量变化（击毁僚舰/波次增援），故除 resize 外由 33ms 循环按需重测 */
   useEffect(() => {
     const measure = (): void => {
       const lane = laneRef.current
@@ -665,13 +680,9 @@ const meSpeedRef = useRef(200)
   if (dropFinal.size > 0) probeRef.current.lastDropAt = now
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
-  /* 2026-09-10 船长"击毁小型敌人后无人机落弹位置有误"修复：
-     敌列宽度 dims.foeW 原先只在挂载/窗口变化时测一次。击毁一艘僚舰后敌列 DOM 实际变窄、测量值却仍是旧的，
-     而锚点按"(dims.foeW − rowW)/2 居中"推算 → 锚点整体右移、舰体在 DOM 里靠左 → 弹道落点偏右（无人机瞄中心最明显）。
-     现改为**编队数量变化即重新测量**（波次增援同样覆盖）。 */
-  useEffect(() => {
-    measureRef.current()
-  }, [foeN])
+  /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
+     守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
+     现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
   const lay = layout(dims, foeN, visM, openM, nearM)
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
