@@ -854,6 +854,43 @@ body {
 
 }
 
+/* ---------- 星图显示模式切换（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ---------- */
+
+.app-map-viewbar {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  flex: 0 0 auto;
+
+  padding: 0 2px 2px;
+
+}
+
+/* 敌族标签（2026-09-11 船长：按敌族划分颜色、标签化展示，与安全等级色阶明显区分）——
+   颜色由各族修饰类给出，rect/text 一律 currentColor，遵守「视觉物件走 SVG」纪律 */
+
+.app-map-famchip { color: #8aa0b8; }
+
+.app-map-famchip.is-fam-A { color: #ff6b52; }
+
+.app-map-famchip.is-fam-B { color: #e0c864; }
+
+.app-map-famchip.is-fam-C { color: #9fe6a4; }
+
+.app-map-famchip.is-fam-D { color: #9fd0f2; }
+
+.app-map-famchip.is-fam-E { color: #d9b98c; }
+
+.app-map-famchip.is-fam-F { color: #ffab5e; }
+
+.app-map-famchip.is-fam-G { color: #cd9fdd; }
+
+.app-map-famchip.is-unknown { color: #6b7f94; }
+
 /* 2026-09-10 船长：残骸回收卡「特色掉落」行要比说明行显眼（最强调色，与公告标题/战报标题同族）——
    具名特色件走本类；泛化兜底（系列装备与蓝图碎片）内嵌 .app-dim 保持次级 */
 .app-belt-feat {
