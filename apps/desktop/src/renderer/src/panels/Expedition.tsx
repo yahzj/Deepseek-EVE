@@ -1920,8 +1920,9 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const threatTxt = card ? `威胁 ${card.threat}${base && card.threat !== base.threat ? `（主题悬赏 ${base.threat}）` : ''}` : ''
           const waves = card?.waves?.length ?? 0
           const rareGain = LAIR_RARE_WRECK_GAIN[tier]
-          // 窝点奖金 = 主题悬赏奖金 × 档位系数（与结算同口径；不是主题悬赏原值）
-          const lairRewardIsk = base ? lairBaseRewardIsk(base, tier) : 0
+          // 窝点奖金 = 主题悬赏奖金 × 档位系数 × 赏金猎手学系数（2026-09-10 船长：展示口径必须
+          // 与结算口径一致——此前漏乘技能系数，玩家反馈"卡片赏金和到账不一样"）
+          const lairRewardIsk = base ? Math.round(lairBaseRewardIsk(base, tier) * bountyRewardFactor(state)) : 0
           const inFlightSelf = state.expedition.active && state.expedition.anomalyId === t.anomalyId
           const inFlightOther = state.expedition.active && !inFlightSelf
           const expired = view.remainingMs <= 0
