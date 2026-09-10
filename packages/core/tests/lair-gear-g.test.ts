@@ -10,16 +10,27 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, DRONE_ROLE_ANCHORS, droneRoleIssues, droneRoleLadderIssues } from '@whale/data'
-import { addShipToFleet, countWare, createInitialState, ownedItemCount } from '../src/index'
+import {
+  addShipToFleet,
+  addWare,
+  countWare,
+  createInitialState,
+  ownedItemCount,
+  rareWreckItemIdOf,
+  RARE_WRECK_VOLUME_M3,
+  startRecycleRun,
+} from '../src/index'
 import { createPlayerSpec } from '../src/combat'
 import { addModule } from '../src/equipment'
+import { advanceRefining } from '../src/industry'
 import { FOE_LAIR_GEAR } from '../src/lairs'
-import { RARE_BOX_DRONE_UNITS, rollRareBoxExtra, type RecycleProfile } from '../src/salvage'
+import { RARE_BOX_DRONE_UNITS, RARE_BOX_GEAR_CHANCE, rollRareBoxExtra, type RecycleProfile } from '../src/salvage'
 import type { GameState } from '../src/state'
 
 const ctx = buildSimContext()
 const BEE = 'drone-exile-bee'
 const CARRIER = 'sh-swarm' // 梭鱼级：高 4 槽 / 机巢 160 m³ / CPU 320 / 无人机专属加成 +8%
+const LAIR_CARD = 'ano-cinder-siege' // G 族窝点候选（烬火围攻战）
 
 function makeState(seed = 31): GameState {
   return createInitialState({ nowWallMs: 0, seed })
@@ -92,7 +103,9 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
 
   it('掉落：命中专属即给 10 架进物品仓库，开箱文案写明「×10 架」', () => {
     const state = makeState(7)
-    const extra = drawGear(state)!
+    // 池里只留无人机 → 命中专属必给无人机（命中率改 5/8/10% 后，"反复开箱到出专属"的取样
+    // 会先抽中同池的两个模块，故这里显式收窄池子，只验"命中之后给什么"）
+    const extra = drawGear(state, [BEE])!
     expect(extra.drones).toEqual([{ id: BEE, count: RARE_BOX_DRONE_UNITS }])
     expect(RARE_BOX_DRONE_UNITS).toBe(10)
     expect(extra.note).toContain('流亡蜂无人机')
@@ -161,5 +174,31 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
     expect(countWare(state, BEE)).toBe(0)
     const spec = createPlayerSpec(state, ctx, uid)!
     expect(spec.weapons.filter((w) => w.artId === BEE)).toHaveLength(6) // 30 m³ / 5 m³
+  })
+
+  it('高级箱链路（2026-09-10 解禁）：开箱真把 10 架发进物品仓库、并计入回收明细「无人机 N 架」', () => {
+    // 专属命中率当日被压到 5/8/10%（一号定稿）→ 本用例把命中率**临时拉满**，
+    // 只验"命中之后的入仓链路"（物品仓库 + 回收明细台账 + 事件日志），不依赖取样运气
+    const saved = { ...RARE_BOX_GEAR_CHANCE }
+    try {
+      for (const k of Object.keys(RARE_BOX_GEAR_CHANCE)) RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = 1
+      const state = createInitialState({ nowWallMs: 0, seed: 41 })
+      const rareId = rareWreckItemIdOf(LAIR_CARD)!
+      addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2)
+      addModule(state, 'mod-lair-drone-tac-g', 1) // 另外两件视为已持有 → 池里只留无人机
+      addModule(state, 'mod-lair-drone-relay-g', 1)
+      const started = startRecycleRun(state, rareId, 'pilot', ctx)
+      expect(started.ok).toBe(true)
+      state.gameMs += 60_000
+      advanceRefining(state, ctx)
+      expect(countWare(state, BEE)).toBe(RARE_BOX_DRONE_UNITS) // 一次 10 架进物品仓库
+      const run = state.refineRuns[0]!
+      expect(run.recAcc?.drone?.[BEE]).toBe(RARE_BOX_DRONE_UNITS) // 回收明细按架数计
+      expect(state.logs.some((l) => l.text.includes('高级箱') && l.text.includes('流亡蜂无人机'))).toBe(true)
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = v
+      }
+    }
   })
 })

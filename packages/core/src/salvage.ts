@@ -86,8 +86,8 @@ export function isRareWreck(itemId: string): boolean {
 /**
  * 稀有残骸物品定义。**计数即体积**——与普通残骸同一台账口径（unitM3 = 1，数量就是 m³）：
  * 打捞到 1 件 = 入库 `RARE_WRECK_VOLUME_M3`（30）单位 = 30 m³ 货舱/回收批数。
- * **2026-09-10 船长定：暂不开放精炼炉**（协会回收炉不受理此类残骸）——照掉、照捞、照入库封存；
- * 高级箱链路（`rollRareBoxExtra`）代码保留待开。
+ * **2026-09-10 船长定：已解禁**（二号五族专属装备齐备后开放）——与普通残骸同一条回收链路，
+ * 区别只在"首批触发一次高级箱"（`profile.rare === true`；**一炉一箱**，按炉结算不按件累积）。
  */
 export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): ItemDef {
   return {
@@ -96,7 +96,7 @@ export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): Item
     kind: 'wreck',
     unitM3: 1,
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：协会回收炉暂时不受理此类残骸，先在仓库存放。`,
+    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——常规保底之外必定额外掉落一件（该敌群专属装备，未出则给主题件），并附一批高阶矿物。`,
   }
 }
 
@@ -372,8 +372,10 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
 
 /* ═══════════ 高级箱（稀有残骸额外掉落，2026-09-10 船长定） ═══════════ */
 
-/** 专属装备命中率（按回收档位；可调常量，待船长定数） */
-export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.25, risky: 0.4, dire: 0.55 }
+/** 专属装备命中率（按回收档位；2026-09-10 船长定：**5% / 8% / 10%**，原 25/40/55 太容易——
+ *  专属装备一周就全齐；降下来后集齐一族约 3~6 天。未命中必给该敌群主题件，
+ *  且命中给的是**不可出售**的专属件、未命中给的是**可出售**的主题件，所以"非命中"收益不受影响） */
+export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.05, risky: 0.08, dire: 0.1 }
 
 /**
  * 专属**无人机**一次掉落架数（2026-09-10 船长：G 族「流亡蜂无人机」）。

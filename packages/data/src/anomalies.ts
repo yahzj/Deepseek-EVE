@@ -42,7 +42,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     threat: 12,
     tactic: 'brawl',
     defProfile: 'armor',
-    dmgMix: { explosive: 2 },
+    dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 1,
     standingGain: 1,
     rewardIsk: 12_000,
@@ -61,7 +61,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     threat: 16,
     tactic: 'orbit',
     defProfile: 'balanced',
-    dmgMix: { kinetic: 2 },
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 2,
     standingGain: 1,
     rewardIsk: 20_000,
@@ -80,7 +80,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     threat: 34,
     tactic: 'kite',
     defProfile: 'shield',
-    dmgMix: { plasma: 2 },
+    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeDmgMul: 0.27, // 巡洋时代复调轮 r3（2026-09-09）：kite 墙点顺滑——S1 中位 80%→≥85%（磨损再降档，r2=0.30 后 80%）
     foeSpeedMps: 204, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 151）
     standingReq: 3,
@@ -107,7 +107,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     threat: 88,
     tactic: 'brawl',
     defProfile: 'armor',
-    dmgMix: { kinetic: 2 },
+    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 12,
     standingGain: 4,
     rewardIsk: 1100000,
@@ -129,7 +129,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'kite',
     defProfile: 'shield',
     escorts: 1,
-    dmgMix: { explosive: 2 },
+    dmgMix: { explosive: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 5,
     standingGain: 2,
     rewardIsk: 165000,
@@ -151,7 +151,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'kite',
     defProfile: 'shield',
     escorts: 1,
-    dmgMix: { plasma: 2, kinetic: 1 },
+    dmgMix: { plasma: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
     standingReq: 6,
     standingGain: 2,
@@ -162,6 +162,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-titan-wreck',
+    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '泰坦残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
@@ -195,7 +196,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'brawl',
     defProfile: 'armor',
     escorts: 2,
-    dmgMix: { kinetic: 2, explosive: 1 },
+    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 8,
     standingGain: 3,
     rewardIsk: 310000,
@@ -216,7 +217,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'brawl',
     defProfile: 'armor',
     escorts: 2,
-    dmgMix: { plasma: 2, kinetic: 1 },
+    dmgMix: { plasma: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeDmgMul: 0.35, // 能量光束必中后等效回退初值（2026-09-08；待实测复核可调）
     standingReq: 10,
     standingGain: 3,
@@ -229,6 +230,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   // ── 星图拓展（V12 深空悬赏：20 星系网络的远端目标） ──
   {
     id: 'ano-cinder-siege',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '烬火围攻军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 42、奖金 15 万）
@@ -247,6 +249,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-echo-haunt',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '回音残舰', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：回音荒区
@@ -264,6 +267,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-nadir-static',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '天底封锁军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 66、奖金 35 万）
@@ -295,6 +299,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-maw',
     threat: 80,
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 11,
     standingGain: 4,
     rewardIsk: 850000,
@@ -304,6 +309,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-vault-sentinel',
+    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '穹顶守卫', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 96、奖金 150 万）
@@ -327,6 +333,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-voidedge-warden',
+    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 88、奖金 110 万）
@@ -351,6 +358,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   // ══════════ V16.1 内容补充：为空缺星系添加的长期悬赏 ══════════
   {
     id: 'ano-harbor-escort',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '新港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     name: '新港商路护航令',
@@ -375,6 +383,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeHpOverride: 285, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~38s
     galaxyId: 'galaxy-shard',
     threat: 20,
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'brawl',
     defProfile: 'armor',
     standingReq: 2,
@@ -393,6 +402,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeHpOverride: 365, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~40s
     galaxyId: 'galaxy-lantern',
     threat: 22,
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'orbit',
     defProfile: 'balanced',
     standingReq: 2,
@@ -415,7 +425,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'kite',
     defProfile: 'shield',
     escorts: 1,
-    dmgMix: { explosive: 2 },
+    dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 3,
     standingGain: 1,
     rewardIsk: 60_000,
@@ -435,7 +445,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'kite',
     defProfile: 'shield',
     escorts: 1,
-    dmgMix: { plasma: 2 },
+    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeDmgMul: 0.30, // 巡洋时代复调轮 r2（2026-09-09）：kite 墙点顺滑——S2 中位 60%→≥85%（磨损降档，原 0.35）
     foeSpeedMps: 235, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 174）
     standingReq: 5,
@@ -459,7 +469,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     tactic: 'brawl',
     defProfile: 'balanced',
     escorts: 1,
-    dmgMix: { kinetic: 2 },
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 7,
     standingGain: 3,
     rewardIsk: 250_000,
@@ -471,6 +481,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   /* ═══ B1 低安遭遇战模板（hidden：不进悬赏目录；threat 档位供遭遇强度就近匹配） ═══ */
   {
     id: 'enc-pirate-1',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '流窜海盗快艇',
     galaxyId: 'galaxy-hub',
     threat: 10,
@@ -485,6 +496,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'enc-pirate-2',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '伏击劫掠队',
     galaxyId: 'galaxy-hub',
     threat: 22,
@@ -500,6 +512,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'enc-pirate-3',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '狂徒巡逻编队',
     galaxyId: 'galaxy-hub',
     threat: 40,
@@ -515,6 +528,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'enc-pirate-4',
+    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '深空屠夫舰队',
     galaxyId: 'galaxy-hub',
     threat: 70,

@@ -13,8 +13,8 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
-import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
-import { ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
+import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
+import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -235,6 +235,27 @@ export function resistsText(r: DamageResists | undefined): string {
     .filter((x) => x.v > 0)
   if (parts.length === 0) return '无'
   return parts.map((x) => `${DMG_LABEL[x.t]} ${pct(x.v)}`).join(' · ')
+}
+
+/**
+ * 敌方**火力构成**（2026-09-10 船长：混伤——「需要在任务中告知玩家」）：
+ * 单系 = 一个色 chip；两系 = 逐系 chip + 百分比（常驻悬赏 80%/20%、窝点 60%/40%）。
+ * 数据源 = core 单点 `foeDamageComposition`（与战斗结算、胜率预估同源，卡面不会与实战脱节）。
+ */
+export function FoeDamageMix({ anomaly }: { anomaly: AnomalyDef }): ReactNode {
+  const comp = foeDamageComposition(anomaly)
+  if (comp.length <= 1) return <DmgChip t={comp[0]?.type ?? 'kinetic'} />
+  return (
+    <>
+      {comp.map((c, i) => (
+        <span key={c.type} className="app-stack-inline">
+          {i > 0 ? <span className="app-dim"> · </span> : null}
+          <DmgChip t={c.type} />
+          <span className="app-dim">{` ${Math.round(c.share * 100)}%`}</span>
+        </span>
+      ))}
+    </>
+  )
 }
 
 /** 跃迁充能速率（派生展示）：动力(agility)越高充能越快 = agility×200%（0.5 → 100% 基准） */

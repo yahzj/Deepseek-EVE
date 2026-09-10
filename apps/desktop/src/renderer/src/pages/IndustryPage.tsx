@@ -18,8 +18,8 @@ import {
   aiEfficiency,
   countAiCore,
   countWare,
-  isRareWreck,
   oreAvailable,
+  RARE_WRECK_VOLUME_M3,
   recycleProfileOf,
   refineRate,
 } from '@whale/core'
@@ -116,7 +116,11 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       ? `运转 ${runs.length} 台 · 合计余 ${Math.round(total * 10) / 10} m³`
       : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
   } else if (isWreck) {
-    dataLine = `可用 ${Math.round(total * 10) / 10} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
+    // 稀有残骸：每炉锁死 1 件（30 m³）——数据行写清"一次起炉 = 开一箱"，免得玩家以为能把多件丢进一炉
+    const qty = Math.round(total * 10) / 10
+    dataLine = isRareBox
+      ? `可用 ${qty} m³（${Math.floor(total / RARE_WRECK_VOLUME_M3)} 件）· 每炉锁 ${RARE_WRECK_VOLUME_M3} m³ = 1 件 · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 一次起炉 = 开一箱（想多开就再起一炉，同型可多台并行）`
+      : `可用 ${qty} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
   } else {
     const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
     const cycleS = def.refineCycleMs && def.refineCycleMs > 0 ? Math.round(def.refineCycleMs / 100) / 10 : 6
@@ -390,13 +394,10 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
   /** B3：可回收的残骸（货仓+仓库有货或在炉中；残骸计数 = 体积 m³）。
    *  ⚠ 残骸定义按敌群运行时生成、只存在于 ctx.items——engine.items(静态目录) 里没有，
    *  之前从这里取列表导致回收卡永远不出现（2026-09-06 玩家上报）。
-   *  **稀有残骸除外**（2026-09-10 船长定：暂不开放精炼炉）——卡片不出现、核心侧也拒绝启动；
-   *  它仍在仓库/货仓里正常存在（打捞与存储不受影响）。 */
+   *  **稀有残骸已解禁**（船长 2026-09-10：二号五族专属装备齐备后开放）——与普通残骸同列表，
+   *  卡片带「高级箱」徽标；区别只在"首批触发一次高级箱"（一炉一箱）。 */
   const wreckDefs = allItemDefs.filter(
-    (def) =>
-      def.kind === 'wreck' &&
-      !isRareWreck(def.id) &&
-      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
+    (def) => def.kind === 'wreck' && (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
   )
 
   const runningCount = runViews.length
