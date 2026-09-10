@@ -145,6 +145,8 @@ const meSpeedRef = useRef(200)
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
   const droneSortieRef = useRef<Map<string, DroneSortie>>(new Map())
+  /** 出弹位轮换计数（key = 'fly:机型' / 'res:机型'；同一型多架轮流出弹） */
+  const droneSlotRef = useRef<Map<string, number>>(new Map())
   /* ── 无人机位置驱动（2026-09-10 船长"无人机移动不连贯"修复）：
         位置不再走 React 渲染（33ms 循环仅在距离变化时 setState → 敌舰就位后只剩 10Hz 通知，
         表现为 10fps 步进）；改为 rAF 循环直接写 transform（容器 + 每架），恒定 60fps 平滑。 ── */
@@ -159,70 +161,6 @@ const meSpeedRef = useRef(200)
     nearM: number
     wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean }>
   }>({ foeN: 1, openM: 1, nearM: 200, wings: [] })
-  /** ⚠ 临时性能探针状态（2026-09-10 卡顿诊断，定位后删除） */
-  const probeRef = useRef<{
-    raf: number
-    last: number
-    n: number
-    sum: number
-    min: number
-    max: number
-    next: number
-    shown: number
-    /** 最近一次"尸骸撤出队列"（船体消失）的时刻——用于把卡顿与该瞬间关联 */
-    lastDropAt: number
-  }>({ raf: 0, last: 0, n: 0, sum: 0, min: 9999, max: 0, next: 0, shown: 0, lastDropAt: 0 })
-
-  /**
-   * ⚠ 临时性能探针 v3（2026-09-10 船长反馈"船体消失后开始卡顿"，诊断用，定位后删除）：
-   * 用 requestAnimationFrame 量**真实帧时长**（含样式/绘制/GC），每 2 秒汇总；
-   * 只要窗口内**平均 >25ms 或 单帧最差 >35ms** 就弹一条：帧均/最差/最低 + **DOM 节点数**（泄漏）
-   * + **JS 堆**（GC 线索）+ 场上对象数 + **距最近一次撤尸的秒数**（把卡顿钉到"船体消失"那一刻）。
-   */
-  useEffect(() => {
-    let alive = true
-    const p = probeRef.current
-    p.next = performance.now() + 2000
-    const loop = (): void => {
-      if (!alive) return
-      const t = performance.now()
-      if (p.last > 0) {
-        const d = t - p.last
-        p.n += 1
-        p.sum += d
-        if (d < p.min) p.min = d
-        if (d > p.max) p.max = d
-      }
-      p.last = t
-      if (t >= p.next) {
-        if (p.n > 0) {
-          const avg = p.sum / p.n
-          if ((avg > 25 || p.max > 35) && p.shown < 16) {
-            p.shown += 1
-            const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
-            const heapMB = mem ? Math.round(mem.usedJSHeapSize / 1048576) : -1
-            const dropAgo = p.lastDropAt > 0 ? (t - p.lastDropAt) / 1000 : -1
-            onToast(
-              `[性能] 帧均${avg.toFixed(0)} 最差${p.max.toFixed(0)} 最低${p.min.toFixed(0)}ms · 节点${document.getElementsByTagName('*').length} 堆${heapMB}MB · 弹${boltsRef.current.length} 闪${flashRef.current.length} 尸${corpseAtRef.current.size}${dropAgo >= 0 && dropAgo < 6 ? ` · 撤尸${dropAgo.toFixed(1)}s前` : ''}`,
-            )
-          }
-        }
-        p.n = 0
-        p.sum = 0
-        p.min = 9999
-        p.max = 0
-        p.next = t + 2000
-      }
-      p.raf = window.requestAnimationFrame(loop)
-    }
-    p.raf = window.requestAnimationFrame(loop)
-    return () => {
-      alive = false
-      window.cancelAnimationFrame(p.raf)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  const droneSlotRef = useRef<Map<string, number>>(new Map())
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -698,8 +636,6 @@ const meSpeedRef = useRef(200)
   // 撤出即清演出登记：跨波之后该尸骸永不回队占位（波次尸骸不得挤占新波队列）。
   const dropFinal = scanDroppable()
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
-  // ⚠ 临时探针标记：记下"尸骸撤出队列（船体消失）"的时刻，供卡顿关联
-  if (dropFinal.size > 0) probeRef.current.lastDropAt = now
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
