@@ -391,6 +391,7 @@ export {
   RECYCLE_MK2_MODULES,
   RECYCLE_CHANCE,
   FRAGMENT_RECIPES,
+  fragmentPoolOf,
   fragmentItemIdOf,
   fragmentItemDefOf,
   recycleTierOf,

@@ -16,6 +16,7 @@ import {
   RECYCLE_BASE_MODULES,
   RECYCLE_MK2_MODULES,
   FRAGMENT_RECIPES,
+  fragmentPoolOf,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
@@ -139,7 +140,7 @@ function main(): void {
   for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
     const r = FRAGMENT_RECIPES[moduleId]!
     const bpPrice = ctx.marketGoods.get(r.blueprintId)?.basePrice ?? 0
-    const p = r.need === 1000 ? RECYCLE_CHANCE.fragT3 : RECYCLE_CHANCE.fragT2
+    const p = r.tier === 3 ? RECYCLE_CHANCE.fragT3 : RECYCLE_CHANCE.fragT2
     fragEv += FURNACE_M3_H * p * (bpPrice / r.need)
   }
   const bonusEv = baseEv + mk2Ev + fragEv
@@ -160,18 +161,15 @@ function main(): void {
    * 口径：
    * - 碎片路线 = 残骸回收批里逐 m³ 掷概率（fragT2/fragT3），**且按同档池均分**——
    *   MK2 碎片 3 张蓝图共享一个池、MK3 同理（rollRecycleLoot 的 t2Pool/t3Pool），故"某一张书"的
-   *   每 m³ 命中率 = 档位概率 ÷ 池大小；集齐 need 片（100/1000）后在母港「逆向研究」解锁（redeemFragments）。
+   *   每 m³ 命中率 = 档位概率 ÷ 池大小；集齐 need 片（2026-09-10 船长定：MK2 25 片 / MK3 250 片，
+   *   只降门槛不动概率）后在母港「逆向研究」解锁（redeemFragments）。
    * - 市场路线 = 直接买蓝图书（marketCatalog 的 blueprint 卡，价格 = 蓝图商店价 priceIsk；MK3 需协会声望 4）。
    * - 两条路线的时间基准统一为"同一条打捞→回收生产线"：碎片路线看**炉时要多少小时**，
    *   市场路线看**赚够书价要多少小时**（按各档保底 EV/h）。回收炉是瓶颈（供料侧通常富余，见上）。
    */
   console.log('══ 蓝图两条获取路线对比（打捞凑碎片 vs 市场买书，2026-09-10 船长）══')
-  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
-  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
+  const t2Pool = fragmentPoolOf(ctx, 2)
+  const t3Pool = fragmentPoolOf(ctx, 3)
   const tierEvNo = (tier: keyof typeof POOLS): number => FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
   const tierEvFull = (tier: keyof typeof POOLS): number => tierEvNo(tier) * FULL_SKILL_MULT
   console.log(
@@ -192,7 +190,7 @@ function main(): void {
       const bp = ctx.blueprints.get(r.blueprintId)
       const good = ctx.marketGoods.get(r.blueprintId)
       const price = good?.basePrice ?? bp?.priceIsk ?? 0
-      const perM3 = (r.need === 100 ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3) / Math.max(1, pool.length)
+      const perM3 = (r.tier === 2 ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3) / Math.max(1, pool.length)
       const m3Need = r.need / perM3
       const hoursNo = m3Need / FURNACE_M3_H
       const hoursFull = m3Need / FURNACE_M3_H_FULL
@@ -209,10 +207,10 @@ function main(): void {
           ` → **单张口径慢 ≈ ${ratio.toFixed(0)}×**`,
       )
     }
-    // 整档口径（公平比较）：碎片在池内均分 → 拿到"某一张"100 片时，另外两张也各约 100 片
+    // 整档口径（公平比较）：碎片在池内均分 → 拿到"某一张"的集齐片数时，另外两张也各约同样多
     // （碎片总数 = m³ × 档概率），即一趟等于把该档 3 张书全部凑齐 → 应与"买齐 3 张"比。
     const chance = label === 'MK2' ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3
-    const need = label === 'MK2' ? 100 : 1000
+    const need = FRAGMENT_RECIPES[pool[0]!]!.need
     const m3All = (need * pool.length) / chance
     const hoursAllNo = m3All / FURNACE_M3_H
     const hoursAllFull = m3All / FURNACE_M3_H_FULL
@@ -230,8 +228,9 @@ function main(): void {
     )
   }
   console.log(
-    '结论：碎片路线的定位是**长线收藏彩头**（同一趟平行凑齐整档 3 张），实际效率约为"赚钱买书"的 1/20；' +
-      '完好舰体（3 片/次 ×30%）与已关闭的高级箱（稀有残骸）只是额外涓流，不改量级。市场才是正经获取途径（MK3 需声望 4）。',
+    '结论：门槛下调（MK2 25 片 / MK3 250 片，2026-09-10 船长定）后，碎片路线整档约为"赚钱买书"的 1/7——' +
+      '定位仍是长线彩头，但已从"没人会走"变成真能顺路拿到；完好舰体（3 片/次 ×30%）与已封存的高级箱（稀有残骸）' +
+      '只是额外涓流，不改量级。市场（蓝图书）才是正经获取途径，且 2026-09-10 起蓝图书权重 50%→5%、寿命 6 小时。',
   )
 }
 

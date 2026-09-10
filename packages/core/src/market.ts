@@ -87,6 +87,12 @@ function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
   return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.25) : 1
 }
 
+/** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**）——稀有卖单抽取与奇货掷骰**两个渠道共用**；
+ * 非蓝图行 = 1。降到 5% 后蓝图让出的份额全部回到同渠道的现货装备/商品上（稀有渠道每窗张数不变）。 */
+function blueprintWeight(def: MarketGoodDef, ctx: SimContext): number {
+  return def.kind === 'blueprint' ? (ctx.balance.market.blueprintWeight ?? 0.05) : 1
+}
+
 /** 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续） */
 function sellStandingMult(state: GameState, def: MarketGoodDef | undefined): number {
   if (!def || def.kind !== 'item') return 1
@@ -517,8 +523,11 @@ function priceJitter(state: GameState): number {
   return 1 + (nextRandom(state.rng) - 0.5) * 0.04
 }
 
-/** 订单寿命：rare ×RARE_LIFE_MUL（36 分钟）；奇货/常驻按 balance（奇货 6h，2026-09-06 船长定） */
+/** 订单寿命：rare ×RARE_LIFE_MUL（36 分钟）；**蓝图书另按 balance.blueprintLifeMs（6 小时，
+ *  2026-09-10 船长定）**——权重降到 5% 后书出得稀，36 分钟只会让玩家错过；
+ *  奇货/常驻按 balance（奇货 6h，2026-09-06 船长定） */
 function orderLifeMsOf(def: MarketGoodDef, bal: MarketBalance): number {
+  if (def.kind === 'blueprint' && def.rarity === 'rare') return Math.round(bal.blueprintLifeMs)
   return Math.round(bal.orderLifeMs[def.rarity] * (def.rarity === 'rare' ? RARE_LIFE_MUL : 1))
 }
 
@@ -545,7 +554,7 @@ function spawnExoticSupply(state: GameState, ctx: SimContext, def: MarketGoodDef
 
 /** 每 RARE_DRAW_PERIOD_MS 一次（10 分钟）：rare 加权有放回抽取 + 奇货掷骰（超上限随机抽选）。
  * 抽取时刻 = 常规 60s 窗口的整倍数对齐点（slowDrawLastGameMs 由 ensureMarket 开盘补齐）。
- * 导出仅供"蓝图书抽取减半"回归测试白盒调用；引擎内部推进走 processWindow。 */
+ * 导出仅供"蓝图书权重口径"回归测试白盒调用；引擎内部推进走 processWindow。 */
 export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
   const stat = rarePoolStats(state, ctx)
   // ── rare：N 张加权有放回抽取（同窗可重复抽中同一类型）──
@@ -553,10 +562,10 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
   if (n > 0) {
     const defs: MarketGoodDef[] = []
     let totalW = 0
-    // 蓝图书权重 ×0.5（2026-09-09 船长定：全蓝图书出现概率 −50%）；闸内另乘 RARE_LOCKED_WEIGHT；
-    // 数字稀有度 3 档 ×RARE_TIER3_WEIGHT（2026-09-09：稀有订单层内分层，2 大众基准 1）
+    // 蓝图书权重 ×blueprintWeight（2026-09-10 船长定 5%；旧值 0.5）；闸内另乘 RARE_LOCKED_WEIGHT；
+    // 数字稀有度 3 档 ×rareTier3Weight（2026-09-09：稀有订单层内分层，2 大众基准 1）
     const wOf = (def: MarketGoodDef): number =>
-      (def.kind === 'blueprint' ? 0.5 : 1) * (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
+      blueprintWeight(def, ctx) * (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
     for (const def of ctx.marketGoods.values()) {
       if (def.rarity !== 'rare' || def.playerBuyable === false) continue // 只收商品（残骸等）不出供给单
       defs.push(def)
@@ -567,7 +576,7 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
       let acc = 0
       for (const def of defs) {
         const locked = bmGateLocked(state, def)
-        acc += (def.kind === 'blueprint' ? 0.5 : 1) * (locked ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
+        acc += blueprintWeight(def, ctx) * (locked ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
         if (hit < acc) {
           spawnRareSupply(state, ctx, def, now, locked)
           break
@@ -575,12 +584,13 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
       }
     }
   }
-  // ── 奇货：每件独立掷骰（0.8% × 现货抢购学；蓝图书再 ×0.5）；命中 > EXOTIC_CAP_PER_DRAW 张 → 随机抽选保留 ──
+  // ── 奇货：每件独立掷骰（0.8% × 现货抢购学；蓝图书再 ×blueprintWeight，同 5% 口径）；
+  //    命中 > EXOTIC_CAP_PER_DRAW 张 → 随机抽选保留 ──
   const sweep = sweepMul(state)
   const winners: MarketGoodDef[] = []
   for (const def of ctx.marketGoods.values()) {
     if (def.rarity !== 'exotic' || def.playerBuyable === false) continue
-    const chance = ctx.balance.market.exoticWindowChance * sweep * (def.kind === 'blueprint' ? 0.5 : 1)
+    const chance = ctx.balance.market.exoticWindowChance * sweep * blueprintWeight(def, ctx)
     if (nextRandom(state.rng) < chance) winners.push(def)
   }
   while (winners.length > EXOTIC_CAP_PER_DRAW) {

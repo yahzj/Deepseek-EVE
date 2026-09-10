@@ -511,16 +511,28 @@ export const RECYCLE_MK2_MODULES: readonly string[] = [
 ]
 /** 每 m³ 概率（P3 按真实市场均价反推，EV/批 10m³ ≈ 保底 10% 上限 ≈ 38 ISK）：
  * 基础件池均价 ~23.3k → 0.0001；低安 MK2 池均价 ~251k → 0.000004；
- * 碎片片值（蓝图市价÷所需片数）MK2 ~567 / MK3 ~177 → 0.0006 / 0.0009 */
+ * 碎片：2026-09-10 船长定 **只降集齐门槛、概率不动**（MK2 25 片 / MK3 250 片）——
+ * 门槛下调后单片价值相应上升（MK2 蓝图 45.25 万 ÷ 25 ≈ 1.8 万/片、MK3 297.3 万 ÷ 250 ≈ 1.19 万/片），
+ * 碎片路线整档从"约买书工时的 28 倍"降到约 7 倍（见 tools/salvage-econ.ts 两条路线对比表）。 */
 export const RECYCLE_CHANCE = { base: 0.00008, mk2: 0.000003, fragT2: 0.00045, fragT3: 0.0007 }
-/** 蓝图碎片配方：模块 → 蓝图 id + 所需片数（MK2 100 / MK3 1000；异星 10000 预留） */
-export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; need: number }> = {
-  'mod-miner-2': { blueprintId: 'bp-miner-2', need: 100 },
-  'mod-cargo-2': { blueprintId: 'bp-cargo-2', need: 100 },
-  'mod-turret-kin-2': { blueprintId: 'bp-turret-2', need: 100 },
-  'mod-miner-3': { blueprintId: 'bp-miner-3', need: 1000 },
-  'mod-cargo-3': { blueprintId: 'bp-cargo-3', need: 1000 },
-  'mod-turret-kin-3': { blueprintId: 'bp-turret-3', need: 1000 },
+/**
+ * 蓝图碎片配方：模块 → 蓝图 id + **档位** + 集齐片数。
+ * `tier` 是显式字段：池拆分、威胁门槛、界面提示一律读它——2026-09-10 船长把门槛从 100/1000
+ * 降到 25/250，若仍沿用"片数 == 100"当档位判据，改门槛会把两个池一起打成空数组（碎片全不出）。
+ */
+export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; tier: 2 | 3; need: number }> = {
+  'mod-miner-2': { blueprintId: 'bp-miner-2', tier: 2, need: 25 },
+  'mod-cargo-2': { blueprintId: 'bp-cargo-2', tier: 2, need: 25 },
+  'mod-turret-kin-2': { blueprintId: 'bp-turret-2', tier: 2, need: 25 },
+  'mod-miner-3': { blueprintId: 'bp-miner-3', tier: 3, need: 250 },
+  'mod-cargo-3': { blueprintId: 'bp-cargo-3', tier: 3, need: 250 },
+  'mod-turret-kin-3': { blueprintId: 'bp-turret-3', tier: 3, need: 250 },
+}
+/** 该档位碎片池（只收蓝图已注册的模块）；回收开箱与完好舰体彩头共用 */
+export function fragmentPoolOf(ctx: SimContext, tier: 2 | 3): string[] {
+  return Object.keys(FRAGMENT_RECIPES).filter(
+    (m) => FRAGMENT_RECIPES[m]!.tier === tier && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
+  )
 }
 /** 碎片物品 id（蓝图碎片按目标装备注册） */
 export function fragmentItemIdOf(moduleId: string): string {
@@ -576,8 +588,8 @@ export function rollRecycleLoot(
     appendMk2.length > 0 && mk2Pool.length > 0
       ? RECYCLE_CHANCE.mk2 * (defMk2Avg / (avgPriceOf(mk2Pool) || defMk2Avg))
       : RECYCLE_CHANCE.mk2
-  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
-  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
+  const t2Pool = fragmentPoolOf(ctx, 2)
+  const t3Pool = fragmentPoolOf(ctx, 3)
   for (let i = 0; i < batchUnits; i++) {
     if (basePool.length > 0 && nextRandom(state.rng) < baseChance) {
       modules.push(basePool[Math.floor(nextRandom(state.rng) * basePool.length)]!)
@@ -639,12 +651,8 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
     }
   }
   // ③ 碎片层（凑逆向收藏的尾缀）
-  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
-  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
+  const t2Pool = fragmentPoolOf(ctx, 2)
+  const t3Pool = fragmentPoolOf(ctx, 3)
   if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T2_CHANCE) {
     const m = t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!
     addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T2_COUNT)

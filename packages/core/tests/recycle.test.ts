@@ -10,7 +10,7 @@ import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
-import { recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */
 function mineral(id: string, price: number): ItemDef {
@@ -222,13 +222,15 @@ describe('残骸回收批（精炼炉运转）', () => {
 })
 
 describe('蓝图碎片逆向研究', () => {
-  it('集齐 100 片 → 永久解锁蓝图（learnedRecipes）；重复/不足被拒', () => {
+  it('集齐 25 片 → 永久解锁蓝图（learnedRecipes）；重复/不足被拒', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 41 })
     const ctx = ctxOf()
     const fragId = 'frag-mod-miner-2'
     expect(ctx.items.get(fragId)).toBeDefined() // 上下文已生成碎片物品
+    // 门槛 25 片（2026-09-10 船长定：MK2 100 → 25）
+    expect(FRAGMENT_RECIPES['mod-miner-2']!.need).toBe(25)
     // 不足
-    addWare(state, fragId, 99)
+    addWare(state, fragId, 24)
     expect(redeemFragments(state, ctx, 'mod-miner-2').ok).toBe(false)
     // 集齐
     addWare(state, fragId, 1)
@@ -238,6 +240,15 @@ describe('蓝图碎片逆向研究', () => {
     expect(countWareItem(state, fragId)).toBe(0)
     // 已掌握 → 拒绝（防碎片空转）
     expect(redeemFragments(state, ctx, 'mod-miner-2').ok).toBe(false)
+  })
+
+  it('档位是显式字段（tier），不再由片数反推：MK2 25 片 / MK3 250 片', () => {
+    const t2 = Object.entries(FRAGMENT_RECIPES).filter(([, r]) => r.tier === 2)
+    const t3 = Object.entries(FRAGMENT_RECIPES).filter(([, r]) => r.tier === 3)
+    expect(t2.map(([, r]) => r.need)).toEqual([25, 25, 25])
+    expect(t3.map(([, r]) => r.need)).toEqual([250, 250, 250])
+    expect(t2.map(([m]) => m).sort()).toEqual(['mod-cargo-2', 'mod-miner-2', 'mod-turret-kin-2'])
+    expect(t3.map(([m]) => m).sort()).toEqual(['mod-cargo-3', 'mod-miner-3', 'mod-turret-kin-3'])
   })
 })
 

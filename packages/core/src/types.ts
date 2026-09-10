@@ -280,6 +280,12 @@ export interface MarketBalance {
   /** 数字稀有度 3 档权重（2026-09-09 船长拍板：稀有订单渠道按数字分层——3 档（高阶）刷新
    * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗；系数经 market-rarity-sim 校准） */
   rareTier3Weight: number
+  /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**，稀有抽取与奇货掷骰**两个渠道都乘此值**） */
+  blueprintWeight: number
+  /** 蓝图书在稀有渠道的订单寿命（毫秒；2026-09-10 船长定 6 小时）——
+   *  权重降到 5% 后书出现得稀，若仍只挂 36 分钟玩家基本只会错过；
+   *  奇货渠道的蓝图原本就走 exotic 档 6 小时，与此一致。 */
+  blueprintLifeMs: number
   /** 窗口净成交量超过该比例（相对参考量）时触发冲击 */
   shockTriggerRatio: number
   /** 每次冲击的价格偏移（比例，可正可负；叠加无上限） */

@@ -1126,8 +1126,8 @@ describe('建站收购网络扩容：卖出侧 ×1.5^N（单件商品放大；�
   })
 })
 
-describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权重减半、奇货掷骰减半）', () => {
-  it('稀有抽取：蓝图书命中 ≈ 普通商品一半（同池对照大样本）', () => {
+describe('蓝图书出现概率 −95%（2026-09-10 船长定：权重 50% → 5%，稀有抽取与奇货掷骰两渠道同乘）', () => {
+  it('稀有抽取：蓝图书权重 5% → 命中占比 ≈ 1/21（对照普通商品权重 1）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 77 })
     const ctx = makeTestCtx({
       marketGoods: [
@@ -1139,7 +1139,7 @@ describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权�
     ensureMarket(state, ctx)
     let bpHits = 0
     let modHits = 0
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 4_000; i++) {
       state.market.npcSell['bp-x'] = [] // 簿有 10 张上限：每轮清空后统计"本轮实抽张数"
       state.market.npcSell['mod-x'] = []
       slowSupplyDraw(state, ctx, i * 600_000)
@@ -1149,11 +1149,12 @@ describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权�
     expect(bpHits).toBeGreaterThan(0)
     expect(modHits).toBeGreaterThan(bpHits) // 蓝图书更少见
     const ratio = bpHits / (bpHits + modHits)
-    expect(ratio).toBeGreaterThan(0.2) // 0.5/1.5 = 1/3 附近
-    expect(ratio).toBeLessThan(0.45)
+    // 权重 0.05 / (0.05 + 1) = 1/21 ≈ 0.0476
+    expect(ratio).toBeGreaterThan(0.02)
+    expect(ratio).toBeLessThan(0.08)
   })
 
-  it('奇货掷骰：蓝图书命中 ≈ 普通商品一半', () => {
+  it('奇货掷骰：蓝图书同样 ×5%（命中占比 ≈ 1/21）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 79 })
     const ctx = makeTestCtx({
       marketGoods: [
@@ -1165,7 +1166,7 @@ describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权�
     ensureMarket(state, ctx)
     let bpHits = 0
     let modHits = 0
-    for (let i = 0; i < 5_000; i++) {
+    for (let i = 0; i < 40_000; i++) {
       state.market.npcSell['bp-y'] = []
       state.market.npcSell['mod-y'] = []
       slowSupplyDraw(state, ctx, i * 600_000)
@@ -1175,8 +1176,34 @@ describe('蓝图书出现概率 −50%（2026-09-09 船长定：稀有抽取权�
     expect(bpHits).toBeGreaterThan(0)
     expect(modHits).toBeGreaterThan(bpHits)
     const ratio = bpHits / (bpHits + modHits)
-    expect(ratio).toBeGreaterThan(0.15)
-    expect(ratio).toBeLessThan(0.45)
+    expect(ratio).toBeGreaterThan(0.02)
+    expect(ratio).toBeLessThan(0.08)
+  })
+
+  it('蓝图书稀有单寿命 6 小时（普通稀有单仍 36 分钟，2026-09-10 船长定）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 81 })
+    const ctx = makeTestCtx({
+      marketGoods: [
+        { key: 'bp-z', kind: 'blueprint', refId: 'bp-z', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65 },
+        { key: 'mod-z', kind: 'module', refId: 'mod-z', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65 },
+      ],
+      modules: [moduleDef('mod-z', 'turret', 0)],
+    })
+    ensureMarket(state, ctx)
+    let bpLife = 0
+    let modLife = 0
+    for (let i = 0; i < 4_000 && (bpLife === 0 || modLife === 0); i++) {
+      const now = i * 600_000
+      state.market.npcSell['bp-z'] = [] // 每窗清空 → 只留本窗新单
+      state.market.npcSell['mod-z'] = []
+      slowSupplyDraw(state, ctx, now)
+      const bp = state.market.npcSell['bp-z']![0]
+      const mod = state.market.npcSell['mod-z']![0]
+      if (bp) bpLife = bp.expiresAtGameMs - now
+      if (mod) modLife = mod.expiresAtGameMs - now
+    }
+    expect(bpLife).toBe(6 * 3_600_000) // 蓝图书：6 小时
+    expect(modLife).toBe(36 * 60_000) // 普通稀有装备：36 分钟
   })
 })
 

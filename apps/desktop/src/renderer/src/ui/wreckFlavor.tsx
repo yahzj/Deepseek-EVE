@@ -29,11 +29,11 @@ export function recycleFlavorParts(
     const mk2 = namesOf(src.loot?.mk2, RECYCLE_MK2_MODULES)
     if (mk2.length > 0) parts.push(`低安专属：${mk2.join('、')}`)
   }
-  // 高威胁出蓝图碎片（集片门槛与回收开箱引擎同款：T2 100 片 / T3 1000 片）
+  // 高威胁出蓝图碎片（门槛与回收开箱引擎同款：按配方档位 tier 2 → 威胁 ≥17、tier 3 → 威胁 ≥41）
   const frags: string[] = []
   for (const m of Object.keys(FRAGMENT_RECIPES)) {
     const r = FRAGMENT_RECIPES[m]!
-    const eligible = r.need === 100 ? src.threat >= 17 : r.need === 1000 ? src.threat >= 41 : false
+    const eligible = r.tier === 2 ? src.threat >= 17 : r.tier === 3 ? src.threat >= 41 : false
     if (eligible && mods.has(m)) frags.push(`${moduleName(m)}蓝图碎片（集 ${r.need} 片）`)
   }
   if (frags.length > 0) {
