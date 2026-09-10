@@ -691,6 +691,12 @@ export interface ModuleDef {
   shieldResistAdd?: DamageResists
   /** 容量件（装甲增厚板）：装甲层容量加成——抗性件不携带本字段；V18.1 多件加算 */
   armorHpBonus?: number
+  /**
+   * 装甲件**常驻速度代价**（2026-09-10 船长：陵寝装甲层"装甲 +110% 但速度 −25%"）：
+   * 0.25 = 战斗机动速度 ×0.75。**多件只取最重一件**（与推进器失稳 hitPenalty 同口径——
+   * 重甲不会叠成静止）；生效处 = combat.createPlayerSpec 的 speedMps。
+   */
+  speedPenaltyPct?: number
   /** 抗性件（装甲镀层·X型）：按系缺口削减抗性（语义同上 shieldResistAdd） */
   armorResistAdd?: DamageResists
   /**

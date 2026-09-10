@@ -342,6 +342,8 @@ export function createPlayerSpec(
   const propSpeeds = propDefs.map((p) => p.speedBonusPct ?? 0)
   const speedEq = curveMult(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
+  // 装甲件常驻速度代价（2026-09-10 船长：陵寝装甲层 −25%）——多件取最重一件（与上面的失稳同口径）
+  const worstSpeedPen = Math.max(0, ...allFittedModules(fitted, ctx).map((m) => m.speedPenaltyPct ?? 0))
   // 锁定装置（2026-09-09 船长拍板：集火 + 被锁目标受击加深 8/12/20% 档；多件 EVE 曲线收敛）
   const lockEq = curveMult(targetLockDefs.map((m) => m.lockDmgBonus ?? 0))
 
@@ -515,10 +517,13 @@ export function createPlayerSpec(
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
     // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛；矢量机动操作（舰船）再乘 +5%/级
+    // 2026-09-10 船长：装甲件的**常驻速度代价**（如陵寝装甲层 −25%）——多件只取最重一件
+    // （与推进器失稳 hitPenalty 同口径：重甲不会叠成静止），钳制到 [0.1, 1]
     speedMps:
       (ship.maxSpeedMps ?? 200) *
       Math.max(1, speedEq) *
-      (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)),
+      (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
+      Math.max(0.1, 1 - worstSpeedPen),
     agility: ship.agility,
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）

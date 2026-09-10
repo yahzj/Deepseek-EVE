@@ -124,6 +124,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
       const gap = resistGapText(mod.armorResistAdd)
       if (gap) parts.push(gap)
+      // 2026-09-10 船长：重甲件的机动代价（陵寝装甲层 −25%）——短行也带代价（同推进器「命中×0.85」写法）
+      if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(`速度×${(1 - (mod.speedPenaltyPct ?? 0)).toFixed(2)}`)
       body = parts.join(' · ')
       break
     }
@@ -330,6 +332,19 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
           <>
             <DmgChip t={entries[0]![0] as DamageType} />
             <span className="app-dim">{` ${tail}`}</span>
+          </>
+        ),
+      })
+    }
+    // 重甲件的机动代价（2026-09-10 船长：陵寝装甲层 −25%）——多件不叠加、取最重一件
+    if ((mod.speedPenaltyPct ?? 0) > 0) {
+      const pen = mod.speedPenaltyPct ?? 0
+      lines.push({
+        k: '机动代价',
+        v: (
+          <>
+            <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
+            <span className="app-dim">{`（−${pct(pen)}；只影响接敌与拉开距离的机动，不改命中；多件不叠加，取最重一件）`}</span>
           </>
         ),
       })
