@@ -222,7 +222,8 @@ const REAL_DRONE_CPU: Record<string, number> = Object.fromEntries(
   DRONE_IDS.map((id) => [id, ctx.items.get(id)?.cpuUse ?? 0]),
 )
 
-/* ══════════ 表 1：免 CPU 约束的槽位边际（基准船 王鲭级：6 高槽 / 机巢 320m³ / CPU 320）══════════ */
+/* ══════════ 表 1：免 CPU 约束的槽位边际（基准船 王鲭级：4 高槽 / 机巢 320m³ / CPU 320；
+ * 2026-09-10 船长：无人机专用舰高槽 −2，王鲭 6→4、梭鱼 5→3）══════════ */
 const SENT = 'sh-sentinel'
 /** 装载清单给足以免舱容被清单卡住：甲板扩展的边际 = 舱容换架数 */
 const BIG_FLEET = { 'drone-heavy': 40 }
@@ -265,26 +266,25 @@ console.log(
 
 /* ══════════ 表 2：真实装配流派对比（CPU/舱容按现网真实钳制）══════════ */
 const SWARM_CFGS: Cfg[] = [
-  { name: '梭鱼·纯炮 4×MK3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', null], mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·纯炮 3×MK3+锁定3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3', null], mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 D2(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2', null], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 D2+中继3', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2', 'mod-drone-relay-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
-  { name: '梭鱼·无人机 rack3×2+tac3×2', ship: 'sh-swarm', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', null], drones: { 'drone-heavy': 4, 'drone-sentry': 6 }, mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·纯炮 3×MK3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·纯炮 2×MK3+锁定3', ship: 'sh-swarm', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·无人机 D2(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·无人机 D2b(rack2×2+tac3)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
+  { name: '梭鱼·无人机 rack2×2+中继3(射程向)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-relay-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }, mid: SUP_MID, low: SUP_LOW },
 ]
 const SENT_CFGS: Cfg[] = [
-  { name: '王鲭·纯炮 6×MK3', ship: SENT, high: Array(6).fill('mod-turret-kin-3'), mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·纯炮 6×MK3（无中/低槽支援件）', ship: SENT, high: Array(6).fill('mod-turret-kin-3') },
-  { name: '王鲭·纯炮 5×MK3+锁定3', ship: SENT, high: [...Array(5).fill('mod-turret-kin-3'), 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', null, null], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3+锁定3', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', 'mod-lock-3', null], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机 D3+中继3×2', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', 'mod-drone-relay-3', 'mod-drone-relay-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·混装 4炮+rack3+tac3', ship: SENT, high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-drone-rack-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机满舱16猎鹰(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', null, null], drones: FALCON16, mid: SUP_MID, low: SUP_LOW },
-  { name: '王鲭·无人机满舱16猎鹰+锁定3', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', 'mod-lock-3', null], drones: FALCON16, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·纯炮 4×MK3', ship: SENT, high: Array(4).fill('mod-turret-kin-3'), mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·纯炮 4×MK3（无中/低槽支援件）', ship: SENT, high: Array(4).fill('mod-turret-kin-3') },
+  { name: '王鲭·纯炮 3×MK3+锁定3', ship: SENT, high: [...Array(3).fill('mod-turret-kin-3'), 'mod-lock-3'], mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·无人机 D3(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·无人机 D3+锁定3（挤掉1件导控）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-lock-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·无人机 rack3+tac3+中继3×2（射程向）', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3', 'mod-drone-relay-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·混装 2炮+rack3+tac3', ship: SENT, high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-drone-rack-3', 'mod-drone-tac-3'], drones: D3_FLEET, mid: SUP_MID, low: SUP_LOW },
+  { name: '王鲭·无人机满舱16猎鹰(rack3×2+tac3×2)', ship: SENT, high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: FALCON16, mid: SUP_MID, low: SUP_LOW },
 ]
 for (const [title, cfgs] of [
-  ['══ 表 2a：梭鱼级（5 高槽 / 机巢 160m³ / CPU 235）真实装配对比 ══', SWARM_CFGS],
-  ['══ 表 2b：王鲭级（6 高槽 / 机巢 320m³ / CPU 320）真实装配对比 ══', SENT_CFGS],
+  ['══ 表 2a：梭鱼级（3 高槽 / 机巢 160m³ / CPU 235；2026-09-10 高槽 5→3）真实装配对比 ══', SWARM_CFGS],
+  ['══ 表 2b：王鲭级（4 高槽 / 机巢 320m³ / CPU 320；2026-09-10 高槽 6→4）真实装配对比 ══', SENT_CFGS],
 ] as const) {
   console.log(`\n${title}`)
   console.log('配置\t高槽占用\t名义DPS\t有效DPS@2km\t名义/高槽\t有效@2km/高槽\t放飞机群\t名义分组(炮/弹/光/机/基础)')
@@ -309,17 +309,17 @@ const cardHeader = CARDS.map((id) => {
   return `${a?.name ?? id}(威胁${a?.threat ?? '?'})`
 })
 const BATTLE_CFGS: Cfg[] = [
-  SENT_CFGS[0]!, // 纯炮 6×MK3（+支援）
-  SENT_CFGS[1]!, // 纯炮 6×MK3（无支援）
-  SENT_CFGS[2]!, // 纯炮 5×MK3+锁定3
+  SENT_CFGS[0]!, // 纯炮 4×MK3（+支援）
+  SENT_CFGS[1]!, // 纯炮 4×MK3（无支援）
+  SENT_CFGS[2]!, // 纯炮 3×MK3+锁定3
   SENT_CFGS[3]!, // 无人机 D3
-  SENT_CFGS[4]!, // 无人机 D3+锁定3
-  SENT_CFGS[5]!, // 无人机 D3+中继3×2
+  SENT_CFGS[4]!, // 无人机 D3+锁定3（挤掉 1 件导控）
+  SENT_CFGS[5]!, // 无人机 rack3+tac3+中继3×2（射程向）
   SENT_CFGS[7]!, // 无人机满舱16猎鹰
-  SENT_CFGS[8]!, // 无人机满舱16猎鹰+锁定3
-  SENT_CFGS[6]!, // 混装 4炮+rack3+tac3
+  SENT_CFGS[6]!, // 混装 2炮+rack3+tac3
   SWARM_CFGS[0]!,
   SWARM_CFGS[2]!,
+  SWARM_CFGS[3]!,
 ]
 console.log('\n══ 表 3：实战（满技能，5 种子；格 = 胜率%/中位秒/我方残血%）══')
 console.log(`配置\t${cardHeader.join('\t')}`)
@@ -350,7 +350,7 @@ for (const sc of SCENARIOS) {
     const cfg: Cfg = {
       name: sc.name,
       ship: SENT,
-      high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', null, null],
+      high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
       drones: sc.fleet,
       mid: SUP_MID,
       low: SUP_LOW,
@@ -385,7 +385,7 @@ console.log(
   const dr = dpsOfCfg(SENT_CFGS[3]!)
   const drFull = dpsOfCfg(SENT_CFGS[7]!)
   if (gun && dr) {
-    console.log('\n══ 汇总（王鲭级，真实 CPU/舱容约束）══')
+    console.log('\n══ 汇总（王鲭级 4 高槽，真实 CPU/舱容约束）══')
     console.log(
       `名义 DPS：炮流 ${n(gun.nominal)} vs 无人机流(D3) ${n(dr.nominal)} → ${Math.round((dr.nominal / gun.nominal) * 100)}%｜满舱机群 ${n(drFull?.nominal ?? 0)} → ${Math.round(((drFull?.nominal ?? 0) / gun.nominal) * 100)}%`,
     )
@@ -393,7 +393,7 @@ console.log(
       `有效 DPS@2km：炮流 ${n(gun.eff2k)} vs 无人机流(D3) ${n(dr.eff2k)} → ${Math.round((dr.eff2k / gun.eff2k) * 100)}%｜满舱机群 ${n(drFull?.eff2k ?? 0)} → ${Math.round(((drFull?.eff2k ?? 0) / gun.eff2k) * 100)}%`,
     )
     console.log(
-      `每高槽有效@2km：炮流 ${n(gun.eff2k / 6)} vs 无人机流(D3) ${n(dr.eff2k / 4)}（${Math.round((dr.eff2k / 4 / (gun.eff2k / 6) - 1) * 100)}%）｜满舱机群 ${n((drFull?.eff2k ?? 0) / 4)}`,
+      `同槽口径（两边都占满 4 高槽）每高槽有效@2km：炮流 ${n(gun.eff2k / 4)} vs 无人机流(D3) ${n(dr.eff2k / 4)}（${Math.round((dr.eff2k / 4 / (gun.eff2k / 4) - 1) * 100)}%）｜满舱机群 ${n((drFull?.eff2k ?? 0) / 4)}`,
     )
     if (gunNoSup) {
       console.log(

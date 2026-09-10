@@ -46,10 +46,13 @@ const LOADOUTS: Loadout[] = [
   { name: 'T3牛鲨突击巡5×kin3+重盾', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'] },
   /* ── 无人机流行（2026-09-08 无人机舱大改：装载只读 droneLoad 清单（不再仓库贪心）；
      各行清单 = 该船「装配后余 CPU × 舱容」内可装的合法满载组合（战斗只放飞已装入的，
-     超额由 UI 预占互斥，不会出现）；同船炮流对照见 S1/S2/S4）── */
-  { name: 'D1 梭鱼无人机轻装(rack1×2+tac1×2)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 10, 'drone-heavy': 1 } }, // 舱 190m³（rack1×2）：12×5+10×10+1×20 = 180 满载（2026-09-09 体积档 5/10/20/40）
-  { name: 'D2 梭鱼无人机中装(rack2×2+tac2×2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 舱 230m³（rack2×2）：10×10+4×20+1×40 = 220（2026-09-09 体积档）
-  { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }, // 舱 460m³：4×20+6×40 = 320（2026-09-09 体积档后仍可满载）
+     超额由 UI 预占互斥，不会出现）；同船炮流对照见 S1/S2/S4）
+     ── 2026-09-10 船长：无人机专用舰高槽 −2（梭鱼 5→3、王鲭 6→4）——D1/D2 由四槽改三槽，
+        新增 D2b 展示"槽位吃紧后把单件导控升到 MK3"的取舍；D3 四槽恰好占满 ── */
+  { name: 'D1 梭鱼无人机轻装(rack1×2+tac1)', ship: 'sh-swarm', high: ['mod-drone-rack-1', 'mod-drone-rack-1', 'mod-drone-tac-1'], drones: { 'drone-scout': 12, 'drone-assault': 10, 'drone-heavy': 1 } }, // 舱 190m³（rack1×2）：12×5+10×10+1×20 = 180 满载（2026-09-09 体积档 5/10/20/40）；3 高槽
+  { name: 'D2 梭鱼无人机中装(rack2×2+tac2)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 舱 230m³：10×10+4×20+1×40 = 220；3 高槽
+  { name: 'D2b 梭鱼(rack2×2+tac3·槽位吃紧后升级)', ship: 'sh-swarm', high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-3'], drones: { 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 } }, // 同舱容，单件导控 MK2→MK3（+25%→+40%；CPU 30+45+130=205 ≤ 235）
+  { name: 'D3 王鲭无人机重装(rack3×2+tac3×2)', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }, // 舱 460m³：4×20+6×40 = 320；4 高槽恰好占满
   /* ── 弹药 MK2 变体（2026-09-09：顶配参考行 + 动能弹 MK2——攻坚耗材定位，E 段失衡与否验证） ── */
   { name: 'S4+动能弹MK2(5×kin3+支援)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
   { name: 'T3牛鲨+动能弹MK2(重盾)', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },

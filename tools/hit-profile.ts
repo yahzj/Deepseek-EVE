@@ -39,7 +39,7 @@ addShipToFleet(state, SHIP)
 state.shipId = SHIP
 for (const [k, v] of Object.entries(SKILLS)) state.skills.trained[k] = v
 state.fleet[SHIP]!.fitted = {
-  high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3', null, null],
+  high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], // 王鲭 4 高槽（2026-09-10 高槽 6→4）
   mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
   low: ['mod-stab-kin-2', 'mod-rof-2', 'mod-armor-kin-2'],
 }

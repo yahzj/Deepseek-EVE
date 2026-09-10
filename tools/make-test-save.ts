@@ -448,7 +448,7 @@ function injectDrone(state: GameState): string[] {
   const sA = state.fleet[uidA]!
   sA.customName = '梭鱼·无人机中装(驾驶)'
   sA.fitted = {
-    high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-tac-2'],
+    high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], // 2026-09-10 船长：梭鱼高槽 5→3（D2 三槽口径）
     mid: [],
     low: [],
   }
