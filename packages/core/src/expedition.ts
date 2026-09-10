@@ -22,7 +22,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
-import { injectWreckDensity, wreckDensityOf } from './salvage'
+import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import {
   advanceBattleFor,
   battleOpenM,
@@ -426,8 +426,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     state.wallet.isk += reward
-    // B3 击杀注入（2026-09-05）：胜利为该星系残骸密度 +威胁×0.4（无上限）
-    injectWreckDensity(state, ctx, anomaly.galaxyId, anomaly.threat)
+    // B3 击杀注入（2026-09-10 船长定）：威胁 ×0.4 × (1 + 0.2×敌人数)，无上限
+    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(anomaly.threat, bountyEnemyCount(anomaly)))
     const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）
     const firstBlood = !state.completedBounties.includes(anomaly.id)

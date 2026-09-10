@@ -25,7 +25,7 @@ import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
-import { injectWreckDensity, wreckDensityOf } from './salvage'
+import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
 import { scaledReturnMs } from './trips'
 import { actionBlockReason, markExplored } from './explore'
@@ -958,8 +958,8 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       Math.round(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng)) * bountyRewardFactor(state)),
     )
     state.wallet.isk += reward
-    // B3 击杀注入（2026-09-05）：AI 远征胜利与该星系主控胜利同源（威胁×0.4）
-    injectWreckDensity(state, ctx, anomaly.galaxyId, anomaly.threat)
+    // B3 击杀注入（2026-09-10 船长定）：AI 远征胜利与主控同源——威胁 ×0.4 × (1 + 0.2×敌人数)
+    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(anomaly.threat, bountyEnemyCount(anomaly)))
     const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // AI 结算不发放声望、不写入首胜清单：协会声望只属于"亲手完成"（悬赏卡与指派解锁均以主控首胜为准）
     const lootText: string[] = []

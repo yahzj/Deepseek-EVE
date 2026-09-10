@@ -20,9 +20,13 @@ function ctxOf(cargo = 800) {
     ships: [ship('sandcat', { cargo })],
     galaxies: [
       { ...galaxy('galaxy-hub', '母港'), security: 1.0 },
-      { ...galaxy('galaxy-far', '远方'), security: -0.6 },
+      // 2026-09-10：改用无可见悬赏卡的自造星系——基础密度回退安全等级曲线（sec −0.6 → 33），
+      // 使打捞机制用例不受「基础密度 = 该星系悬赏 ×20 次」新口径影响（默认星系 galaxy-far 上挂
+      // 有测试卡 ano-hard，会让 base 暴涨到数百、单轮即满仓，掩盖机制断言）
+      { ...galaxy('galaxy-scrap', '废场'), security: -0.6 },
     ],
-    anomalies: [anomaly('ano-far', 'galaxy-far', { threat: 40, tactic: 'brawl' })],
+    edges: [{ from: 'galaxy-hub', to: 'galaxy-scrap', travelMinutes: 2 }],
+    anomalies: [anomaly('ano-far', 'galaxy-scrap', { threat: 40, tactic: 'brawl' })],
     modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })],
   })
 }
@@ -30,7 +34,7 @@ function ctxOf(cargo = 800) {
 function fittedState(seed: number, cargoM3 = 800) {
   const state = createInitialState({ nowWallMs: 0, seed })
   state.debugQuick = true // 调试模式：行程腿固定 1 秒
-  state.exploredGalaxies.push('galaxy-far')
+  state.exploredGalaxies.push('galaxy-scrap')
   return state
 }
 
@@ -38,11 +42,11 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
   it('没有打捞器不能出发；装上打捞器即可合法开捞（下达即打捞）', () => {
     const state = fittedState(1)
     const ctx = ctxOf()
-    const noSalvager = startSalvageOp(state, 'galaxy-far', ctx)
+    const noSalvager = startSalvageOp(state, 'galaxy-scrap', ctx)
     expect(noSalvager.ok).toBe(false)
     expect(noSalvager.error).toContain('打捞器')
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
-    const ok = startSalvageOp(state, 'galaxy-far', ctx)
+    const ok = startSalvageOp(state, 'galaxy-scrap', ctx)
     expect(ok.ok).toBe(true)
     expect(state.salvaging.phase).toBe('salvaging') // 去程取消：指令即进入打捞
   })
@@ -51,9 +55,11 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     const state = fittedState(3)
     const ctx = ctxOf()
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
-    injectWreckDensity(state, ctx, 'galaxy-far', 60) // base(sec−0.6 → 34) + 24 = 58
-    const d0 = wreckDensityOf(state, 'galaxy-far', ctx)
-    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    // 2026-09-10：机制用例固定密度（新口径下 base = 该星系悬赏 ×20 次 = 384，单轮量会随
+    // mul = 密度/10 放大到远超测试货仓，掩盖「入仓/放干」断言）——此处显式置低密度
+    state.galaxyWrecks['galaxy-scrap'] = { density: 30, rare: 0 }
+    const d0 = wreckDensityOf(state, 'galaxy-scrap', ctx)
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     // 5 秒 = 打捞 ~5 轮（周期 1s；无出航等待）
     advanceSalvageOp(state, 5_000, ctx)
     expect(state.salvaging.active).toBe(true)
@@ -61,7 +67,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.tripM3).toBeGreaterThan(0)
     const wreckId = 'wreck-ano-far'
     expect(countItem(state, wreckId) + countWare(state, wreckId)).toBeGreaterThan(0)
-    expect(wreckDensityOf(state, 'galaxy-far', ctx)).toBeLessThan(d0) // 放干扣减生效
+    expect(wreckDensityOf(state, 'galaxy-scrap', ctx)).toBeLessThan(d0) // 放干扣减生效
     // 手动停止：货物留在船上
     expect(stopSalvageOp(state, ctx)).toBe(true)
     expect(countItem(state, wreckId)).toBeGreaterThan(0)
@@ -71,7 +77,8 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     const state = fittedState(5)
     const ctx = ctxOf(20) // 小货仓：几轮就满，便于快速跨趟
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
-    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    state.galaxyWrecks['galaxy-scrap'] = { density: 20, rare: 0 } // 固定低密度（mul 2）：几轮满仓而非单轮溢出
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     expect(state.salvaging.autoCycle).toBe(true) // 默认开
     // 逐拍推进到转返航（返航腿随货仓占比缩放，不用固定毫秒断言）
     let guard = 0
@@ -81,7 +88,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.phase).toBe('returning')
     advanceSalvageOp(state, 60_000, ctx) // 覆盖多趟：卸货 → 续捞 → 再满 → 再返航…
     expect(state.salvaging.active).toBe(true) // 自动循环：作业不结束
-    expect(state.salvaging.galaxyId).toBe('galaxy-far') // 同星系续捞
+    expect(state.salvaging.galaxyId).toBe('galaxy-scrap') // 同星系续捞
     expect(state.logs.filter((l) => l.text.includes('打捞自动返港')).length).toBeGreaterThanOrEqual(2) // 至少卸了两趟
     const wreckId = 'wreck-ano-far'
     expect(countWare(state, wreckId)).toBeGreaterThan(0) // 残骸已卸入物品仓库
@@ -96,7 +103,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     setSalvageStopAfterTrip(state, true) // 与采矿同款联动：autoCycle 被置回开
     expect(state.salvaging.autoCycle).toBe(true)
-    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     let guard = 0
     while (state.salvaging.phase !== 'returning' && state.salvaging.active && guard++ < 500) {
       advanceSalvageOp(state, 100, ctx)
@@ -112,7 +119,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     const ctx = ctxOf(1.5)
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     setSalvageAutoCycle(state, false)
-    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     let guard = 0
     while (state.salvaging.phase !== 'returning' && state.salvaging.active && guard++ < 500) {
       advanceSalvageOp(state, 100, ctx)
@@ -170,8 +177,9 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     // 第二艘船（无打捞器）作切换目标
     state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: [], mid: [], low: [] } }
-    injectWreckDensity(state, ctx, 'galaxy-far', 20)
-    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    injectWreckDensity(state, ctx, 'galaxy-scrap', 20)
+    state.galaxyWrecks['galaxy-scrap'] = { density: 40, rare: 0 } // 固定低密度（mul 4）：4 秒几轮入舱、不足满仓
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     advanceSalvageOp(state, 4_000, ctx) // 就地捞几轮入旧船货仓（不足满仓，仍在地作业）
     const oldShip = state.shipId
     const cargoBefore = Object.values(state.fleet[oldShip]!.cargo).reduce((a, b) => a + b, 0)
@@ -195,7 +203,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     const ctx = ctxOf(100)
     state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: [], mid: [], low: [] } }
-    expect(startSalvageOp(state, 'galaxy-far', ctx).ok).toBe(true)
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     // 手工置为返航相位：满仓货载 + 返航刚开始
     state.salvaging.phase = 'returning'
     state.salvaging.phaseAccMs = 0
@@ -223,13 +231,13 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     state.fleet['sandcat2'] = { defId: 'sandcat2', customName: null, durability: 1, cargo: {}, fitted: { high: ['mod-salvager-1'], mid: [], low: [] } }
     // 无打捞器 → 拒绝
     state.fleet['sandcat2']!.fitted = { high: [], mid: [], low: [] }
-    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-far', ctx).ok).toBe(false)
+    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-scrap', ctx).ok).toBe(false)
     // 装上打捞器 → 出发
     state.fleet['sandcat2']!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
-    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-far', ctx).ok).toBe(true)
+    expect(assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-scrap', ctx).ok).toBe(true)
     // 大推进：出航（效率 40% 拉长）→ 打捞（基础周期 1s ÷40% = 2.5s/轮）→ 满仓（100 m³）→ 返航 →
     // 卸货 → 自动循环再出航（多趟）；核心持续占用直到取消
-    injectWreckDensity(state, ctx, 'galaxy-far', 40)
+    injectWreckDensity(state, ctx, 'galaxy-scrap', 40)
     state.gameMs = 0
     advanceAi(state, 300_000, ctx)
     expect(state.aiAssignments['sandcat2']).toBeDefined() // 循环中：任务未结束
@@ -248,8 +256,8 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
       const state = fittedState(3)
       const ctx = ctxOf()
       if (lv > 0) state.skills.trained['salvage-diving'] = lv
-      state.galaxyWrecks['galaxy-far'] = { density: 34, rare: 0 }
-      const pulled = pullOneWreck(state, ctx, 'galaxy-far', 1000)!
+      state.galaxyWrecks['galaxy-scrap'] = { density: 34, rare: 0 }
+      const pulled = pullOneWreck(state, ctx, 'galaxy-scrap', 1000)!
       return pulled.volumeM3
     }
     const v0 = mk(0)

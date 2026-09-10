@@ -26,7 +26,13 @@ import type { AnomalyDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, startBattleFor } from './combat'
 import { calcPower } from './expedition'
-import { injectWreckDensity, wreckDensityOf } from './salvage'
+import {
+  injectWreckDensity,
+  strongestBountyInjection,
+  WRECK_ENCOUNTER_INJECT_FRAC,
+  WRECK_INJECT_PER_THREAT,
+  wreckDensityOf,
+} from './salvage'
 import { shipDisplayName } from './instances'
 
 /** 旧档遗留兜底档位（data ANOMALIES hidden 条目）：仅无 anomalyId 的旧遭遇应战/命名用；
@@ -85,13 +91,16 @@ function lootOf(state: GameState, ctx: SimContext, seizeF: number): number {
   return Math.max(1, Math.round(base * ctx.balance.encounter.lootFracOfBounty * seizeF))
 }
 
-/** 胜利（击退/全歼）→ 向事发星系注入残骸密度（威胁 ×0.4，与远征胜利同款；无敌群 = 按存档威胁兜底） */
+/** 胜利（击退/全歼）→ 向事发星系注入残骸密度（2026-09-10 船长定：= 该星系**最强悬赏卡**
+ *  的注入量 ×0.5，与悬赏口径同源；星系无可见悬赏卡时回退旧口径 威胁×0.4） */
 function dropWrecks(state: GameState, ctx: SimContext): void {
   const enc = state.encounter
   if (!enc.galaxyId) return
   const foe = foeOf(state, ctx)
   const threat = foe ? Math.max(1, foe.threat) : Math.max(1, enc.threat)
-  injectWreckDensity(state, ctx, enc.galaxyId, threat)
+  const strongest = strongestBountyInjection(enc.galaxyId, ctx)
+  const amount = strongest !== null ? strongest * WRECK_ENCOUNTER_INJECT_FRAC : threat * WRECK_INJECT_PER_THREAT
+  injectWreckDensity(state, ctx, enc.galaxyId, amount)
 }
 
 /** 星系安全等级（数据缺失按高安 +1 处理，不惹麻烦） */

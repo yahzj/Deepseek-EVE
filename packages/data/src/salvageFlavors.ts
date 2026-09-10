@@ -61,16 +61,19 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recycleNote: '灰霾伏击团残骸：类晶体胶体偏多',
   },
   'ano-shard-bandits': {
-    recyclePool: [['min-nocxium', 14], ['min-mexallon', 86]],
-    recycleNote: '碎晶带劫匪残骸：晶体胶体中裹着超噬矿镀层',
+    // 2026-09-10 重校（基础密度口径变更致本卡档位 险→常：均价须回到 m×常档基数 9.8 = 10.58）
+    recyclePool: [['min-tritanium', 11], ['min-pyerite', 20]], // (8×11+12×20)/31 = 10.58
+    recycleNote: '碎晶带劫匪残骸：三钛结构料与类银装甲板',
   },
   'ano-redring-raiders': {
-    recyclePool: [['min-nocxium', 16], ['min-mexallon', 84]],
-    recycleNote: '赤潮劫掠舰队残骸：超噬矿与胶体合金',
+    // 2026-09-10 重校（本卡档位 险→危：均价须回到 m×危档基数 92.4 = 104.97）
+    recyclePool: [['min-starcore', 6], ['min-nocxium', 56]], // (245×6+90×56)/62 = 105.0
+    recycleNote: '赤潮劫掠舰队残骸：星髓晶髓材与超噬矿甲',
   },
   'ano-ghost-signal': {
-    recyclePool: [['min-nocxium', 18], ['min-mexallon', 82]],
-    recycleNote: '幽灵舰残骸：超噬矿含量升高',
+    // 2026-09-10 重校（本卡档位 险→危：均价须回到 m×危档基数 92.4 = 109.40）
+    recyclePool: [['min-starcore', 7], ['min-nocxium', 49]], // (245×7+90×49)/56 = 109.375
+    recycleNote: '幽灵舰残骸：星髓晶含量飙升',
   },
   'ano-echo-haunt': {
     recyclePool: [['min-isotope', 38], ['min-mexallon', 62]],
@@ -93,16 +96,19 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recycleNote: '泰坦残骸：星髓晶浓度极高',
   },
   'ano-cinder-siege': {
-    recyclePool: [['min-starcore', 46], ['min-isotope', 54]],
-    recycleNote: '烬火围攻残骸：余烬中的星髓晶',
+    // 2026-09-10 重校（本卡档位 危→常：均价须回到 m×常档基数 9.8 = 15.05）
+    recyclePool: [['min-pyerite', 13], ['min-mexallon', 8]], // (12×13+20×8)/21 = 15.048
+    recycleNote: '烬火围攻残骸：焦壳下的类银与类晶体胶体',
   },
   'ano-chasm-aberrations': {
-    recyclePool: [['min-starcore', 47], ['min-isotope', 53]],
-    recycleNote: '裂谷畸变体残骸：星髓晶富集',
+    // 2026-09-10 重校（本卡档位 危→险：均价须回到 m×险档基数 27.6 = 43.18）
+    recyclePool: [['min-isotope', 12], ['min-mexallon', 6]], // (55×12+20×6)/18 = 43.33
+    recycleNote: '裂谷畸变体残骸：同位聚晶富集',
   },
   'ano-nadir-static': {
-    recyclePool: [['min-starcore', 47], ['min-isotope', 53]],
-    recycleNote: '天底封锁残骸：星髓晶富集',
+    // 2026-09-10 重校（本卡档位 危→险：均价须回到 m×险档基数 27.6 = 42.74）
+    recyclePool: [['min-isotope', 13], ['min-mexallon', 7]], // (55×13+20×7)/20 = 42.75
+    recycleNote: '天底封锁残骸：同位聚晶与类晶体胶体',
   },
   'ano-starcore-boss': {
     recyclePool: [['min-starcore', 48], ['min-isotope', 52]],

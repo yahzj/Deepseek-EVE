@@ -2,29 +2,36 @@
  * B3 残骸密度引擎（2026-09-05 船长定稿，见 docs/design/b3-salvage.md / docs/glossary.md）。
  *
  * 模型（每星系一个标量池）：
- * - 基础密度 base = round(10 + 15×(1−security)) ∈ [10,40]：只随危险度（低安越危险越高）；
+ * - 基础密度 base（2026-09-10 船长拍板：**按各自星系算**）= 该星系全部可见悬赏卡「完成 20 次」
+ *   的注入量之和（两卡求和；无可见卡回退旧安全等级曲线 10~40 兜底）；
  * - 保底线 WRECK_FLOOR=5（全图固定）：≤ 此值打捞不扣密度、进入保底稳态（半效）；
- * - 击杀注入：远征胜利（主控/AI）Δ = 威胁 ×0.4，无上限；
+ * - 击杀注入（2026-09-10 船长定）：Δ = 威胁 ×0.4 × (1 + 0.2×敌人数)，无上限（敌人数 = 主舰+
+ *   僚机+多波全部单位）；低安遇袭 = 该星系**最强悬赏卡**注入量 ×0.5；
  * - 闲置漂移（星系无打捞进行中才结算）：>base 线性衰减回 base（48h 放完）、
  *   <base 线性回升回 base（4h 回满）；离线照算；回到 base 自动清记录；
  * - 打捞放干守恒：每轮（每台每周期）扣 = 当前超出保底线量的 2%（1/50）——指数式，
- *   密度越高扣得越快；同速率守恒参照：4×MK1 打捞 ≈ 玩家 50 场/h（威胁45）的注入，
- *   平衡点 ≈ 基础密度；超出量趋零时进位到保底线（避免渐近尾数）；
+ *   密度越高扣得越快；
  * - 保底稳态：密度 ≤5 → 不扣密度，单轮仍产 1 份（体积系数 ×0.5），可持续半效捞。
  *
  * 存档：state.galaxyWrecks（星系 id → 密度/稀有计数）；无记录 = 当前即基础密度
  * （base 由 security 推导不入档；兼容字段，无版本号）。
  */
 import type { GameState, WreckGalaxyRecord } from './state'
-import type { ItemDef, SimContext } from './types'
+import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import { addModule } from './equipment'
 import { addWare } from './inventory'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、半效保底 */
 export const WRECK_FLOOR = 5
-/** 击杀注入系数：Δ = 威胁 ×0.4（每场胜利，无上限） */
+/** 击杀注入系数：Δ = 威胁 ×0.4 × (1 + 0.2×敌人数)（2026-09-10 船长拍板：与悬赏敌人总数挂钩） */
 export const WRECK_INJECT_PER_THREAT = 0.4
+/** 击杀注入：每个敌人额外 +20%（2026-09-10 船长定） */
+export const WRECK_INJECT_ENEMY_BONUS = 0.2
+/** 星系基础密度基准（2026-09-10 船长定）：= 该星系全部可见悬赏卡「完成 20 次」的注入量之和 */
+export const WRECK_BASE_BOUNTY_RUNS = 20
+/** 低安遇袭（文字结算伏击）残骸注入 = 该星系**最强悬赏卡**注入量 × 本值（2026-09-10 船长定） */
+export const WRECK_ENCOUNTER_INJECT_FRAC = 0.5
 /** 放干守恒：每轮（每台每周期）扣当前超出量的 2%（=1/50，N0=50 台·轮参照） */
 export const WRECK_DRAIN_SHARE = 1 / 50
 /** 超出量小于此值 → 进位到保底线（指数式渐近的尾数收口） */
@@ -64,12 +71,52 @@ export function anomalyIdOfWreck(itemId: string): string | null {
   return itemId.startsWith('wreck-') ? itemId.slice('wreck-'.length) : null
 }
 
-/** 星系基础密度 = round(10 + 15×(1−security))，clamp [10,40]；未知星系按中安 0.5 兜底 */
-export function wreckBaseDensity(galaxyId: string, ctx: SimContext): number {
+/** 悬赏敌人总数（主舰+僚机+多波全部单位；无波表 = 1）——2026-09-10 残骸注入按此加成 */
+export function bountyEnemyCount(anomaly: Pick<AnomalyDef, 'waves'>): number {
+  const w = anomaly.waves
+  if (!w || w.length === 0) return 1
+  return Math.max(1, w.reduce((s, x) => s + x.units, 0))
+}
+
+/** 悬赏胜利的残骸注入量（2026-09-10 船长定）：威胁 ×0.4 × (1 + 0.2×敌人数) */
+export function bountyWreckInjection(threat: number, units: number): number {
+  return threat * WRECK_INJECT_PER_THREAT * (1 + WRECK_INJECT_ENEMY_BONUS * units)
+}
+
+/** 旧口径兜底：星系安全等级曲线（现仅"该星系无可见悬赏卡"时回退使用） */
+function wreckBaseDensityBySecurity(galaxyId: string, ctx: SimContext): number {
   const g = ctx.galaxies.get(galaxyId)
   const sec = typeof g?.security === 'number' && Number.isFinite(g.security) ? g.security : 0.5
   const v = 10 + 15 * (1 - sec)
   return Math.min(40, Math.max(10, Math.round(v)))
+}
+
+/**
+ * 星系基础密度（2026-09-10 船长拍板：**按各自星系算**）：
+ * = 该星系全部可见悬赏卡「完成 20 次」的注入量之和（两卡求和；含敌人数加成）；
+ * 无可见悬赏卡的星系回退旧的安全等级曲线（防御，目前 20 星系都有卡）。
+ */
+export function wreckBaseDensity(galaxyId: string, ctx: SimContext): number {
+  let sum = 0
+  let anyCard = false
+  for (const a of ctx.anomalies.values()) {
+    if (a.hidden === true || a.galaxyId !== galaxyId) continue
+    anyCard = true
+    sum += bountyWreckInjection(a.threat, bountyEnemyCount(a))
+  }
+  if (!anyCard) return wreckBaseDensityBySecurity(galaxyId, ctx)
+  return Math.max(1, Math.round(sum * WRECK_BASE_BOUNTY_RUNS))
+}
+
+/** 该星系最强悬赏卡的注入量（无可见卡 = null）——低安遇袭注入按其 ×0.5 计（2026-09-10 船长定） */
+export function strongestBountyInjection(galaxyId: string, ctx: SimContext): number | null {
+  let best: number | null = null
+  for (const a of ctx.anomalies.values()) {
+    if (a.hidden === true || a.galaxyId !== galaxyId) continue
+    const v = bountyWreckInjection(a.threat, bountyEnemyCount(a))
+    if (best === null || v > best) best = v
+  }
+  return best
 }
 
 /** 当前残骸密度（无记录 = 基础密度） */
@@ -85,13 +132,13 @@ function recordOf(state: GameState, galaxyId: string, ctx: SimContext): WreckGal
 }
 
 /**
- * 击杀注入（远征胜利结算调用，主控与 AI 同源）：Δ = 威胁 ×0.4，无上限。
- * 只对该星系敌舰所属的战役胜利生效（低安遭遇是否注入见 P2 记录）。
+ * 注入残骸密度（给出定量；悬赏胜利 = bountyWreckInjection(...)，低安遇袭 = 最强卡×0.5）。
+ * 无上限；只对该星系。
  */
-export function injectWreckDensity(state: GameState, ctx: SimContext, galaxyId: string, threat: number): void {
-  if (threat <= 0) return
+export function injectWreckDensity(state: GameState, ctx: SimContext, galaxyId: string, amount: number): void {
+  if (!(amount > 0)) return
   const rec = recordOf(state, galaxyId, ctx)
-  rec.density += threat * WRECK_INJECT_PER_THREAT
+  rec.density += amount
   state.galaxyWrecks[galaxyId] = rec
 }
 
@@ -177,7 +224,8 @@ export const RECYCLE_POOL_AVG_ISK: Record<RecycleTier, number> = {
   dire: 92.4,
 }
 
-/** 回收矿物池档（按残骸所属星系基础密度；常 10-19 / 险 20-29 / 危 30-40） */
+/** 回收矿物池档（按残骸所属星系基础密度；2026-09-10 阈值随基础密度抬等比上移：
+ *  常 <428（旧 10-19）/ 险 428-641（旧 20-29）/ 危 ≥642（旧 30-40）） */
 export type RecycleTier = 'common' | 'risky' | 'dire'
 export const RECYCLE_TIER_LABELS: Record<RecycleTier, string> = { common: '常', risky: '险', dire: '危' }
 
@@ -203,10 +251,18 @@ const RECYCLE_POOLS: Record<RecycleTier, ReadonlyArray<readonly [string, number]
   ],
 }
 
-/** 打捞所得残骸回收时所属档（按其敌群星系基础密度） */
+/** 回收档位等比系数（2026-09-10 船长拍板）：基础密度抬高后阈值同比例上移——
+ * 系数 = 新/旧基础密度均值比（≈21.4）→ 险线 428 / 危线 642（旧 20/30 ×21.4） */
+export const RECYCLE_TIER_COEF = 21.4
+/** 风险档阈值（旧 20 × 系数 ≈ 428） */
+export const RECYCLE_TIER_RISKY = Math.round(20 * RECYCLE_TIER_COEF)
+/** 危险档阈值（旧 30 × 系数 ≈ 642） */
+export const RECYCLE_TIER_DIRE = Math.round(30 * RECYCLE_TIER_COEF)
+
+/** 残骸回收所属档（按其敌群星系基础密度；阈值已随 2026-09-10 基础密度抬高等比上移） */
 export function recycleTierOf(baseDensity: number): RecycleTier {
-  if (baseDensity >= 30) return 'dire'
-  if (baseDensity >= 20) return 'risky'
+  if (baseDensity >= RECYCLE_TIER_DIRE) return 'dire'
+  if (baseDensity >= RECYCLE_TIER_RISKY) return 'risky'
   return 'common'
 }
 
