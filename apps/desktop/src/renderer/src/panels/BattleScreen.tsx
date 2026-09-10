@@ -19,6 +19,7 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
 import {
+  DRONE_DWELL_MS,
   DRONE_SHOW_MAX,
   DRONE_SORTIE_BACK_MS,
   DRONE_SORTIE_OUT_MS,
@@ -75,14 +76,15 @@ function dronePoseAt(
   const station =
     DRONE_STYLE === 'sortie' && !model.resident ? droneStationFrom(foeA, 1, off) : droneHomeStation(model, lane, lay)
   if (DRONE_STYLE === 'sortie' && !model.resident) {
-    if (elapsed >= DRONE_SORTIE_OUT_MS) {
-      const t = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS) / DRONE_SORTIE_BACK_MS))
-      const p = dronePathPos(t, station, baseAbs, arc, true)
-      return { x: p.x, y: p.y, heading: -1 } // 返航：掉头
+    if (elapsed < DRONE_SORTIE_OUT_MS) {
+      const t = Math.min(1, Math.max(0, elapsed / DRONE_SORTIE_OUT_MS))
+      const p = dronePathPos(t, baseAbs, station, arc, false)
+      return { x: p.x, y: p.y, heading: 1 }
     }
-    const t = Math.min(1, Math.max(0, elapsed / DRONE_SORTIE_OUT_MS))
-    const p = dronePathPos(t, baseAbs, station, arc, false)
-    return { x: p.x, y: p.y, heading: 1 }
+    if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) return { x: station.x, y: station.y, heading: 1 } // 到位驻留
+    const t = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS))
+    const p = dronePathPos(t, station, baseAbs, arc, true)
+    return { x: p.x, y: p.y, heading: -1 } // 返航：掉头
   }
   return { x: station.x, y: station.y, heading: 1 }
 }
@@ -92,6 +94,9 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const view = expeditionStatus(state, engine.ctx)
   const arcs = battleArcsFor(state, engine.ctx)
   const battle = state.expedition.battle
+  /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
+  const droneCountOf = new Map<string, number>()
+  for (const w of arcs?.me ?? []) if (w.src === 'drone' && w.artId) droneCountOf.set(w.artId, w.count ?? 1)
 
   const [stage, setStage] = useState<Stage>('live')
   const [retreatAsk, setRetreatAsk] = useState(false)
@@ -556,25 +561,36 @@ const meSpeedRef = useRef(200)
         const key = dm.resident ? `res:${fx.artId}` : `fly:${fx.artId}`
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
-        const lane = n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))
-        /**
-         * 单轮出击（2026-09-10 船长七次定："每次飞出时 Y 轴随机分布、到达位置后开火、开火结束立刻返回"）：
-         * - 收到该型开火事件时，若上一轮已结束 → 开一轮新的（生成**本轮随机阵位**，Y 轴随机分布）；
-         * - 弹道一律从本轮阵位出，并**延迟到无人机抵达那一刻**才显示（不丢发、位置与机体一致）；
-         * - 战斗开始时同样从机库口飞出（不再直接出现在敌侧）。
-         */
         const foeA = layFx.foe[0] ?? layFx.me
         const dir = isMeShot ? 1 : -1
-        const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_SORTIE_BACK_MS
         if (DRONE_STYLE === 'sortie' && !dm.resident) {
+          /**
+           * 2026-09-10 船长"弹道发射位置和无人机对不上（小概率）"修复——两处确定性缺陷：
+           * ① 道次原按 6 取模，但渲染机体数是 min(架数,6)：带 2~5 架时弹道会从"没有机体的道位"发出；
+           * ② 无人机已在返航途中开火时，弹道仍从敌侧阵位发出（机体已不在那里）。
+           * 现改为：道次按**实际机体数**取模；返航阶段开火则弹道**从无人机当前位置**发出（边退边打）。
+           */
+          const count = Math.max(1, Math.min(droneCountOf.get(fx.artId!) ?? 1, DRONE_SHOW_MAX))
+          const lane = n % count
           const prev = droneSortieRef.current.get(fx.artId!)
+          const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
           const st = !prev || now - prev.startAt >= cycleMs + 40 ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) } : prev
           droneSortieRef.current.set(fx.artId!, st)
           const off = st.offs[lane % st.offs.length]!
-          from = droneStationFrom(foeA, dir, off)
-          droneDelay = Math.max(0, Math.round(st.startAt + DRONE_SORTIE_OUT_MS - now))
+          const elapsed = now - st.startAt
+          if (elapsed < DRONE_SORTIE_OUT_MS) {
+            // 仍在出击途中：弹道自阵位出，延到"无人机抵达"那一刻显示
+            from = droneStationFrom(foeA, dir, off)
+            droneDelay = Math.round(DRONE_SORTIE_OUT_MS - elapsed)
+          } else if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) {
+            // 已到位：阵位出弹，立即显示
+            from = droneStationFrom(foeA, dir, off)
+          } else {
+            // 返航中：弹道就从无人机当前位置出（与机体一致）
+            from = dronePoseAt(dm, lane, st, layFx, elapsed)
+          }
         } else {
-          from = droneHomeStation(dm, lane, layFx)
+          from = droneHomeStation(dm, n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX)), layFx)
         }
       } else {
         mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
@@ -871,11 +887,11 @@ const meSpeedRef = useRef(200)
     .map((w) => {
       const model = droneModelOf(w.artId!)!
       const st = droneSortieRef.current.get(w.artId!)
-      const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_SORTIE_BACK_MS
+      const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
       const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
       const phase: 'out' | 'back' | 'deck' = model.resident
         ? 'out'
-        : elapsed < DRONE_SORTIE_OUT_MS
+        : elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS
           ? 'out'
           : elapsed < cycleMs
             ? 'back'
