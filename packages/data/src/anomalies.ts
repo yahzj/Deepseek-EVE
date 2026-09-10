@@ -29,6 +29,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-pirate-post',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '边境海盗', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
     foeHpOverride: 150, // P1 重标 pass-2（2026-09-06，待终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
     galaxyId: 'galaxy-kor',
@@ -66,6 +67,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-redring-raiders',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '赤潮劫掠团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族次强（红环航道）
     name: '赤潮劫掠舰队',
     foeHpOverride: 340, // 巡洋时代复调轮 r1（2026-09-09）：B2 墙点——S1 虎鲨4MK2 中位胜率 60%→目标 ≥85%（压血缩磨损，原 410）
     galaxyId: 'galaxy-redring',
@@ -86,6 +88,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-gravekeeper',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '坟场守墓者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：暗星坟场（威胁 88、奖金 110 万）
     name: '坟场守墓人',
     foeHpOverride: 3600, // 巡洋时代复调轮 r4（2026-09-09）：E 段——锤头鲨中位 53s✅；无技能参考 60%→≥70% 宽容线（原 r1 3900）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -110,6 +113,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-ghost-signal',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '幽灵舰', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：D 族最弱（红环航道，奖金 16.5 万）
+    // 注：同星系的 A 族「赤潮劫掠舰队」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '幽灵舰信号',
     foeHpOverride: 555, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~50s
     foeSpeedMps: 234, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 173）
@@ -130,6 +135,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-abyss-guard',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '深渊潜伏群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：C 族最弱（深渊之门，奖金 16 万）
+    // 注：同星系的 E 族「泰坦残骸勘探」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '深渊之门卫队',
     foeHpOverride: 540, // P1 微调轮（2026-09-06）：C 段墙点（kite+僚）中位 ~50s
     foeSpeedMps: 234, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 173）
@@ -154,6 +161,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-titan-wreck',
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '泰坦残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
     name: '泰坦残骸勘探',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~60s
     foeSpeedMps: 374, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 317）
@@ -174,6 +182,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-auro-raiders',
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '奥罗武装残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
     name: '奥罗武装残骸群',
     foeHpOverride: 1740, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~66s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -198,6 +207,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-starcore-boss',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '星髓虫群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
     name: '星髓虫群', // 2026-09-10 船长：与 C 族窝点档位词（虫巢/隐秘孵化地）冲突，改名（id 不变）
     foeHpOverride: 1530, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~80s
     foeSpeedMps: 409, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 347；×1.30 实测打穿无技能宽容线）
@@ -221,6 +231,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-cinder-siege',
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '烬火围攻军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 42、奖金 15 万）
     name: '烬火围攻战',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~48s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -238,6 +249,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-echo-haunt',
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '回音残舰', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：回音荒区
     name: '回音残舰',
     foeHpOverride: 2035, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~56s
     foeSpeedMps: 288, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 244）
@@ -254,6 +266,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-nadir-static',
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '天底封锁军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 66、奖金 35 万）
     name: '天底静区封锁',
     foeHpOverride: 2040, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~74s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -271,6 +284,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-maw-hunt',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '噬口猎食群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 80、奖金 85 万）
     name: '噬口猎杀令',
     foeHpOverride: 4000, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~55s（原 2460）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -292,6 +306,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-vault-sentinel',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '穹顶守卫', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 96、奖金 150 万）
     name: '穹顶守卫',
     foeHpOverride: 5600, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 55s→目标 ~75s（原 4100）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -314,6 +329,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-voidedge-warden',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 88、奖金 110 万）
     name: '虚海守望者',
     foeHpOverride: 4300, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~60s（原 2450）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
@@ -354,6 +370,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-shard-bandits',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '碎晶劫匪', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
     name: '碎晶带劫匪通缉',
     foeHpOverride: 285, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~38s
     galaxyId: 'galaxy-shard',
@@ -371,6 +388,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-lantern-saboteurs',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '信标猎手', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灯塔长廊
     name: '信标猎手悬赏',
     foeHpOverride: 365, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~40s
     galaxyId: 'galaxy-lantern',
@@ -388,6 +406,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-haze-ambush',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '灰霾伏击团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灰霾带
     name: '灰霾伏击团清剿令',
     foeHpOverride: 430, // P1 重标 pass-2（2026-09-06，待终审）：B2 段虎鲨4MK2 中位 ~43s
     foeSpeedMps: 201, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 149）
@@ -408,6 +427,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-mirage-hijackers',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '蜃影劫持团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 48、奖金 19 万）
     name: '蜃影导航劫持令',
     foeHpOverride: 560, // 巡洋时代复调轮 r1（2026-09-09）：C 段墙点——S2 灰鲭鲨4MK2 中位胜率 60%→目标 ≥85%（kite 磨损缩压，原 650）
     galaxyId: 'galaxy-mirage',
@@ -429,6 +449,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-chasm-aberrations',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '裂谷畸变群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：裂谷深带
     name: '裂谷畸变体猎杀令',
     foeHpOverride: 1815, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~62s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）

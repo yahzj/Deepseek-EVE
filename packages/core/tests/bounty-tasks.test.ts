@@ -4,8 +4,9 @@
  *   资源/快递仍是 20 分钟板，两者互不影响；
  * - **抽地点**：按安全等级分区抽，**高安不派发**、排除高安后按候选数比例分 → 中安 2 席 + 低安 3 席
  *   （共 5 个地点/天）；各区独立抽、抽不满就少发（不跨区补位）；同一天不重复星系；
- * - **发档位**：三档（外围/核心/深层）**随机发放**，但**保证每天每个档位至least一张**——
- *   5 席 = 三档各 1 + 余下 2 席随机；恰好 3 席 = 三档各 1；2 席 = 两个不同档位；1 席 = 随机一档；
+ * - **发档位**：档位由**该地点的地图级别封顶**（2026-09-10 船长定）——`AnomalyDef.lairLevel`
+ *   1 = 只出外围、2 = 到核心、3 = 全档；逐卡独立掷、**没有三档保底**（当天候选全是低级图就可能没有深层席）；
+ *   族内越低级的地图出高档位赏金的概率越低；另有族级契约「每个敌族至少一张 3 级」；
  * - **B 族（武装拾荒者）取消**：不入窝点候选、不出赏金任务、不出稀有残骸与专属装备（词表留档）；
  * - 声望门槛（`AnomalyDef.standingReq`）= **接取条件**（不够也照刷，出发时拒）；
  *   旧规则「窝点档位上限由声望决定」已退役（档位改由日板发放）；
@@ -50,7 +51,9 @@ import {
   lairAnomalyOf,
   lairBaseRewardIsk,
   lairGearOf,
+  lairLevelOf,
   lairNameOf,
+  lairTiersOf,
   lairTaskRewardIsk,
   loadSaveFile,
   markExplored,
@@ -273,7 +276,7 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(BOUNTY_TASKS_PER_ROUND).toBe(5)
   })
 
-  it('全图已探索：5 张 = 中安 2 + 低安 3；档位随机但**三档各至少一张**；高安与 B 族绝不出现', () => {
+  it('全图已探索：5 张 = 中安 2 + 低安 3；档位 ≤ 各地图级别（无三档保底）；高安与 B 族绝不出现', () => {
     const { state, ctx } = makeWorld()
     exploreAll(state)
     openBountyBoard(state, ctx)
@@ -289,15 +292,12 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(board.some((t) => t.anomalyId === LAIR_HIGH.id)).toBe(false)
     expect(board.some((t) => t.anomalyId === LAIR_B.id)).toBe(false)
     expect(board.some((t) => t.galaxyId === 'galaxy-high' || t.galaxyId === 'galaxy-bn')).toBe(false)
-    // 档位：三档各至少一张（5 席 = 3 保底 + 2 随机）
-    const tiers = board.map((t) => t.lairTier!).sort()
-    expect(tiers).toContain(1)
-    expect(tiers).toContain(2)
-    expect(tiers).toContain(3)
-    expect(tiers).toHaveLength(5)
+    // 档位：每席都 ≤ 该地点地图级别（本测试的卡都没标级 → 默认 3 = 全档）
+    expect(board).toHaveLength(5)
     // 卡面口径：显示名/酬金随所发档位锁定
     for (const t of board) {
       const card = ctx.anomalies.get(t.anomalyId!)!
+      expect(t.lairTier! >= 1 && t.lairTier! <= lairLevelOf(card)).toBe(true)
       expect(t.lairName).toBe(lairNameOf(card, t.lairTier!))
       expect(t.rewardIsk).toBe(lairTaskRewardIsk(card, t.lairTier!))
       expect(t.kind).toBe('bounty')
@@ -306,7 +306,7 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     }
   })
 
-  it('恰好 3 个地点（已排除派系星系）→ 外围/核心/深层各一张（船长点名的例子）', () => {
+  it('恰好 3 个地点（已排除派系星系）→ 3 席、档位各自 ≤ 级别、派系星系不重复出现', () => {
     const { state, ctx } = makeWorld()
     // 探索 4 个中安/低安星系：派系活跃先占一个 → 常规席位恰好剩 3 个
     markExplored(state, 'galaxy-hub') // 中安
@@ -317,12 +317,15 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(state.sideTasks.faction).not.toBeNull()
     const board = state.sideTasks.bounty
     expect(board).toHaveLength(3)
-    expect(board.map((t) => t.lairTier!).sort()).toEqual([1, 2, 3])
+    for (const t of board) {
+      const card = ctx.anomalies.get(t.anomalyId!)!
+      expect(t.lairTier! <= lairLevelOf(card)).toBe(true)
+    }
     // 派系星系不从常规席位重复出现
     expect(board.every((t) => t.galaxyId !== state.sideTasks.faction!.galaxyId)).toBe(true)
   })
 
-  it('2 个地点 → 两个不同档位；只剩 1 个星系时常规席为 0（抽不满就少发，不跨区补位）', () => {
+  it('2 个地点 → 2 席（档位可同可不同，不再靠保底凑档）；只剩 1 个星系时常规席为 0', () => {
     const two = makeWorld(5)
     markExplored(two.state, 'galaxy-hub') // 中安 1
     markExplored(two.state, 'galaxy-far') // 低安 1
@@ -330,7 +333,8 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     openBountyBoard(two.state, two.ctx)
     const twoBoard = two.state.sideTasks.bounty
     expect(twoBoard).toHaveLength(2) // 3 个候选 - 派系 1 = 2 席
-    expect(new Set(twoBoard.map((t) => t.lairTier)).size).toBe(2)
+    expect(twoBoard.every((t) => t.lairTier! >= 1 && t.lairTier! <= 3)).toBe(true)
+    expect(new Set(twoBoard.map((t) => t.galaxyId)).size).toBe(2)
 
     // 只剩一个可选中安/低安星系：它被派系活跃占走 → 常规席位 0（派系那条仍在）
     const one = makeWorld(7)
@@ -397,6 +401,142 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(fresh.state.sideTasks.bounty).toHaveLength(0)
     openBountyBoard(fresh.state, fresh.ctx, T0)
     expect(fresh.state.sideTasks.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND)
+  })
+})
+
+describe('赏金任务 · 地图级别封顶档位（2026-09-10 船长定：族内越低级的图越出不了高档位）', () => {
+  /** 只放一座 1 级图 + 几座 3 级图的测试世界（星系级别用 lairLevel 显式标定） */
+  function makeLevelWorld(levelByCard: number): { state: GameState; ctx: SimContext } {
+    const gals = [
+      galaxy('galaxy-hub', '母港', { security: 0.1 }),
+      galaxy('galaxy-mid2', '中安二号', { security: 0.2 }),
+      galaxy('galaxy-far', '远方', { security: -0.5 }),
+      galaxy('galaxy-low2', '低安二号', { security: -0.9 }),
+      galaxy('galaxy-low3', '低安三号', { security: -0.7 }),
+    ]
+    const cards = [
+      anomaly('ano-lv-low', 'galaxy-hub', { threat: 5, reward: 10_000, lairCore: '低阶团', foeFamily: 'A', lairLevel: levelByCard as 1 | 2 | 3 }),
+      anomaly('ano-lv-full', 'galaxy-far', { threat: 30, reward: 60_000, lairCore: '高阶团', foeFamily: 'A', lairLevel: 3 }),
+      anomaly('ano-lv-full2', 'galaxy-low2', { threat: 32, reward: 70_000, lairCore: '高阶团二', foeFamily: 'A', lairLevel: 3 }),
+      anomaly('ano-lv-full3', 'galaxy-low3', { threat: 34, reward: 80_000, lairCore: '高阶团三', foeFamily: 'A', lairLevel: 3 }),
+      anomaly('ano-lv-mid', 'galaxy-mid2', { threat: 12, reward: 40_000, lairCore: '中阶团', foeFamily: 'A', lairLevel: 2 }),
+    ]
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const edges = gals
+      .filter((g) => g.id !== 'galaxy-hub' && g.id !== 'galaxy-far')
+      .map((g) => ({ from: 'galaxy-hub', to: g.id, travelMinutes: 2 }))
+    const ctx = makeTestCtx({ quietEvents: true, galaxies: gals, edges, anomalies: cards })
+    for (const g of gals) markExplored(state, g.id)
+    return { state, ctx }
+  }
+
+  it('级别语义：1 = 只出外围、2 = 到核心、3 = 全档；缺省（未标级）= 3 不限制', () => {
+    const lv1 = anomaly('ano-t1', 'galaxy-hub', { lairCore: 'A', foeFamily: 'A', lairLevel: 1 })
+    const lv2 = anomaly('ano-t2', 'galaxy-hub', { lairCore: 'B', foeFamily: 'A', lairLevel: 2 })
+    const lv3 = anomaly('ano-t3', 'galaxy-hub', { lairCore: 'C', foeFamily: 'A', lairLevel: 3 })
+    const none = anomaly('ano-t4', 'galaxy-hub', { lairCore: 'D', foeFamily: 'A' })
+    expect(lairLevelOf(lv1)).toBe(1)
+    expect(lairTiersOf(lv1)).toEqual([1])
+    expect(lairTiersOf(lv2)).toEqual([1, 2])
+    expect(lairTiersOf(lv3)).toEqual([1, 2, 3])
+    expect(lairLevelOf(none)).toBe(3) // 漏标不误伤：默认全档
+    expect(lairTiersOf(none)).toEqual([1, 2, 3])
+  })
+
+  it('1 级图：连刷多天，落到它头上的档位**恒为外围**（永远出不了核心/深层）', () => {
+    const { state, ctx } = makeLevelWorld(1)
+    let seenLow = 0
+    for (let day = 0; day < 40; day += 1) {
+      openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
+      for (const t of state.sideTasks.bounty) {
+        if (t.anomalyId !== 'ano-lv-low') continue
+        seenLow += 1
+        expect(t.lairTier).toBe(1)
+        expect(t.lairName).toBe(lairNameOf(ctx.anomalies.get('ano-lv-low')!, 1))
+      }
+    }
+    expect(seenLow).toBeGreaterThan(0) // 40 天里必然抽中过这张图（6 个候选、每天 5 席）
+  })
+
+  it('3 级图：大样本下三档都出现过（全档 = 上限 3，不是"只出深层"）', () => {
+    const { state, ctx } = makeLevelWorld(3)
+    const seen = new Set<number>()
+    for (let day = 0; day < 60; day += 1) {
+      openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
+      for (const t of state.sideTasks.bounty) {
+        const card = ctx.anomalies.get(t.anomalyId!)!
+        expect(t.lairTier! <= lairLevelOf(card)).toBe(true) // 封顶不变式
+        if (lairLevelOf(card) === 3) seen.add(t.lairTier!)
+      }
+    }
+    expect([...seen].sort()).toEqual([1, 2, 3])
+  })
+
+  it('2 级图：只会出外围或核心，深层永远轮不到它', () => {
+    const { state, ctx } = makeLevelWorld(2)
+    const seen = new Set<number>()
+    for (let day = 0; day < 60; day += 1) {
+      openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
+      for (const t of state.sideTasks.bounty) {
+        if (t.anomalyId !== 'ano-lv-mid') continue
+        seen.add(t.lairTier!)
+      }
+    }
+    expect([...seen].sort()).toEqual([1, 2])
+  })
+
+  it('取消三档保底：同一天可能一张深层都没有（低级图占多数时必然出现）', () => {
+    // 只留 1 级图与 2 级图：任何一天的板都不该出现 3 档
+    const state = createInitialState({ nowWallMs: 0, seed: 17 })
+    const gals = [
+      galaxy('galaxy-hub', '母港', { security: 0.1 }),
+      galaxy('galaxy-far', '远方', { security: -0.5 }),
+      galaxy('galaxy-low2', '低安二号', { security: -0.9 }),
+    ]
+    const cards = [
+      anomaly('ano-only1', 'galaxy-hub', { threat: 5, reward: 10_000, lairCore: '低阶团', foeFamily: 'A', lairLevel: 1 }),
+      anomaly('ano-only2', 'galaxy-far', { threat: 30, reward: 60_000, lairCore: '中阶团', foeFamily: 'A', lairLevel: 2 }),
+      anomaly('ano-only3', 'galaxy-low2', { threat: 32, reward: 70_000, lairCore: '中阶团二', foeFamily: 'A', lairLevel: 2 }),
+    ]
+    const edges = gals.filter((g) => g.id !== 'galaxy-hub' && g.id !== 'galaxy-far').map((g) => ({ from: 'galaxy-hub', to: g.id, travelMinutes: 2 }))
+    const ctx = makeTestCtx({ quietEvents: true, galaxies: gals, edges, anomalies: cards })
+    for (const g of gals) markExplored(state, g.id)
+    let noDeepDays = 0
+    for (let day = 0; day < 30; day += 1) {
+      openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
+      const tiers = state.sideTasks.bounty.map((t) => t.lairTier!)
+      expect(tiers.every((t) => t <= 2)).toBe(true) // 保底已取消：没有深层也不会硬塞
+      if (!tiers.includes(3)) noDeepDays += 1
+    }
+    expect(noDeepDays).toBe(30) // 世界内根本没有 3 级图 → 一天深层都不会有
+  })
+
+  it('同星系两张卡：代表卡取**级别最高**的那张（级别低的永不入板）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 23 })
+    const gals = [galaxy('galaxy-hub', '母港', { security: 0.1 }), galaxy('galaxy-far', '远方', { security: -0.5 })]
+    const cards = [
+      // 同一星系（母港）两张：低级别 D 族卡 vs 高级别 A 族卡
+      anomaly('ano-same-low', 'galaxy-hub', { threat: 5, reward: 10_000, lairCore: '弱团', foeFamily: 'D', lairLevel: 1 }),
+      anomaly('ano-same-high', 'galaxy-hub', { threat: 20, reward: 50_000, lairCore: '强团', foeFamily: 'A', lairLevel: 3 }),
+      anomaly('ano-other', 'galaxy-far', { threat: 30, reward: 60_000, lairCore: '别处团', foeFamily: 'A', lairLevel: 3 }),
+    ]
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      galaxies: gals,
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-far', travelMinutes: 2 }],
+      anomalies: cards,
+    })
+    for (const g of gals) markExplored(state, g.id)
+    let sameGalaxySeen = 0
+    for (let day = 0; day < 30; day += 1) {
+      openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
+      for (const t of state.sideTasks.bounty) {
+        if (t.galaxyId !== 'galaxy-hub') continue
+        sameGalaxySeen += 1
+        expect(t.anomalyId).toBe('ano-same-high') // 级别更高的那张上位
+      }
+    }
+    expect(sameGalaxySeen).toBeGreaterThan(0)
   })
 })
 

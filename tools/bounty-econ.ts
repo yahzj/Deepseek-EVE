@@ -20,7 +20,7 @@
  *
  * 运行：npm run bounty:econ （等价 npx tsx tools/bounty-econ.ts）
  */
-import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
+import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, isLairCandidate, lairLevelOf, markExplored, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
@@ -196,6 +196,72 @@ function main(): void {
   void BOUNTY_COOLDOWN_BASE_MS
   void fleetDefOf
   void HOME
+  lairTierBoardBench()
+}
+
+/* ══════════ 赏金任务·日板档位分布（2026-09-10 船长定：档位由地图级别封顶） ══════════
+ * 口径：全图已探索、走**真实引擎**赞助（advanceGame + 日界墙钟，逐日读 state.sideTasks.bounty；
+ *      派系活跃占一个星系属引擎真实行为，已含在内）；日板 = 中安 2 席 + 低安 3 席；
+ *      每席档位 = 该卡 `[1..lairLevelOf]` 内均匀随机（硬封顶），**无三档保底**。
+ * 用途：改地图级别表（data/anomalies.ts 的 lairLevel）或席位表后复跑，核对
+ *      「每天打不打得到深层」这一体感指标，以及"每族至少一张 3 级"是否还成立。
+ */
+function lairTierBoardBench(days = 120): void {
+  const state = createInitialState({ nowWallMs: 0, seed: 20260910 })
+  for (const g of ctx.galaxies.values()) markExplored(state, g.id)
+  // 基准墙钟 = 某日"本地正午"（与测试同口径：任何时区下都落在自然日中段）
+  const t0 = bountyDayStartWallMs(Date.UTC(2026, 8, 10, 12, 0, 0)) + 12 * 3_600_000
+  const tierTotal: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
+  const tierDays: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
+  const cardHits = new Map<string, number>()
+  let allThreeDays = 0
+  let seats = 0
+  for (let d = 0; d < days; d += 1) {
+    advanceGame(state, 1_000, ctx, { nowWallMs: t0 + d * BOUNTY_BOARD_PERIOD_MS })
+    const board = state.sideTasks.bounty
+    seats += board.length
+    const has = new Set<1 | 2 | 3>()
+    for (const t of board) {
+      const tier = (t.lairTier ?? 1) as 1 | 2 | 3
+      tierTotal[tier] += 1
+      has.add(tier)
+      cardHits.set(t.anomalyId ?? '?', (cardHits.get(t.anomalyId ?? '?') ?? 0) + 1)
+    }
+    for (const tier of [1, 2, 3] as const) if (has.has(tier)) tierDays[tier] += 1
+    if (has.size === 3) allThreeDays += 1
+  }
+  const per = (n: number): string => (n / days).toFixed(2)
+  const pct = (n: number): string => `${((n / days) * 100).toFixed(1)}%`
+  const candidates = [...ctx.anomalies.values()].filter((a) => isLairCandidate(a))
+  const levelCount: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
+  const famLevel3 = new Map<string, number>()
+  for (const a of candidates) {
+    levelCount[lairLevelOf(a)] += 1
+    const fam = a.foeFamily ?? '?'
+    if (lairLevelOf(a) === 3) famLevel3.set(fam, (famLevel3.get(fam) ?? 0) + 1)
+  }
+  console.log('')
+  console.log(`══ 赏金任务·日板档位分布（${days} 天，真实引擎赞助；档位由地图级别封顶）══`)
+  console.log(
+    `候选卡 ${candidates.length} 张：级别 L1×${levelCount[1]} / L2×${levelCount[2]} / L3×${levelCount[3]}；` +
+      `每族 3 级张数 ${[...famLevel3.entries()].map(([f, n]) => `${f}=${n}`).join(' · ')}`,
+  )
+  console.log(
+    `每天档位张数期望：外围 ${per(tierTotal[1])} · 核心 ${per(tierTotal[2])} · 深层 ${per(tierTotal[3])}（共 ${(seats / days).toFixed(1)} 席/天）`,
+  )
+  console.log(
+    `当天至少有一张：外围 ${pct(tierDays[1])} · 核心 ${pct(tierDays[2])} · 深层 ${pct(tierDays[3])}；三档齐全的天数 ${pct(allThreeDays)}（旧规则 100%）`,
+  )
+  const top = [...cardHits.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
+  console.log(
+    '上板最频繁：' +
+      top
+        .map(([id, n]) => {
+          const a = ctx.anomalies.get(id)!
+          return `${a.name}（L${lairLevelOf(a)}）${((n / days) * 100).toFixed(0)} 次/百天`
+        })
+        .join(' · '),
+  )
 }
 
 main()
