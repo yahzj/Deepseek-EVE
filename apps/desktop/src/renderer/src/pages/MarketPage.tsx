@@ -27,6 +27,8 @@ import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
+import { SUB_ALL, subPasses, SUBS_OF_KIND } from '../ui/itemSubs'
+import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
   item: '物品',
@@ -40,95 +42,7 @@ const KIND_OPTIONS = ['all', 'item', 'wreck', 'module', 'ship', 'blueprint', 'ai
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
 
-/* ── 类型下的子分类（2026-09-10 船长：类型分类再加一级，便于精确定位商品） ── */
-const SUB_ALL = 'sub-all'
-interface SubOption {
-  key: string
-  label: string
-}
-const ITEM_SUBS: SubOption[] = [
-  { key: 'ore', label: '矿石' },
-  { key: 'mineral', label: '矿物' },
-  { key: 'gas', label: '气体' },
-  { key: 'ice', label: '冰矿' },
-  { key: 'ammo', label: '弹药' },
-  { key: 'drone', label: '无人机' },
-  { key: 'kit', label: '修理组件' },
-]
-/** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
-const MODULE_SUBS: SubOption[] = [
-  { key: 'prod', label: '采集与货舱' },
-  { key: 'weapon', label: '武器' },
-  { key: 'shield', label: '护盾' },
-  { key: 'armor', label: '装甲' },
-  { key: 'prop', label: '推进器' },
-  { key: 'drone', label: '无人机装置' },
-  { key: 'support', label: '支援件（辅助与维修）' },
-  { key: 'salvager', label: '打捞器' },
-  { key: 'lock', label: '目标锁定' },
-]
-const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
-  prod: ['miner', 'cargo'],
-  weapon: ['turret', 'laser', 'missile'],
-  shield: ['shield'],
-  armor: ['armor'],
-  prop: ['propulsion'],
-  drone: ['drone-rack', 'drone-tac', 'drone-relay'], // 2026-09-10 + 无人机中继天线
-  support: ['support'],
-  salvager: ['salvager'],
-  lock: ['target-lock'],
-}
-const SHIP_SUBS: SubOption[] = [
-  { key: 'industrial', label: '采矿舰' },
-  { key: 'hauler', label: '货运舰' },
-  { key: 'armed', label: '武装舰' },
-  { key: 'armored', label: '重装舰' },
-]
-const BLUEPRINT_SUBS: SubOption[] = [
-  { key: 'module', label: '装备蓝图' },
-  { key: 'ship', label: '舰船蓝图' },
-  { key: 'supply', label: '补给蓝图（弹药·修理组件）' },
-]
-const CORE_SUBS: SubOption[] = [
-  { key: 'basic', label: '基础核心' },
-  { key: 'gamma', label: '伽马核心' },
-  { key: 'beta', label: '贝塔核心' },
-  { key: 'alpha', label: '阿尔法核心' },
-]
-/** 主类型 → 可用子分类（wreck 残骸无二级） */
-const SUBS_OF_KIND: Partial<Record<Exclude<KindFilter, 'all'>, SubOption[]>> = {
-  item: ITEM_SUBS,
-  module: MODULE_SUBS,
-  ship: SHIP_SUBS,
-  blueprint: BLUEPRINT_SUBS,
-  aicore: CORE_SUBS,
-}
-/** 子分类判定（good 是否属于所选子类；sub = SUB_ALL 恒真） */
-function subPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter, sub: string): boolean {
-  if (sub === SUB_ALL || kind === 'all' || kind === 'wreck') return true
-  if (kind === 'item') {
-    const it = ctx.items.get(good.refId)
-    return it?.kind === sub
-  }
-  if (kind === 'module') {
-    const mod = ctx.modules.get(good.refId)
-    if (!mod) return false
-    return (MODULE_SUB_SLOTS[sub] ?? []).includes(mod.slot)
-  }
-  if (kind === 'ship') {
-    const ship = ctx.ships.get(good.refId)
-    return (ship?.role ?? '') === sub
-  }
-  if (kind === 'blueprint') {
-    const eq = ctx.blueprints.get(good.refId)
-    if (eq) return eq.moduleId !== undefined ? sub === 'module' : sub === 'supply'
-    const shipBp = ctx.shipBlueprints.get(good.refId)
-    return shipBp ? sub === 'ship' : false
-  }
-  if (kind === 'aicore') return good.refId === sub
-  return true
-}
-
+/* 类型子分类表已抽到 ui/itemSubs.ts（市场页与手册图鉴共用同一套口径） */
 /** 目录条目对应的物品定义（item 类才查物品表） */
 function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
   return good.kind === 'item' ? ctx.items.get(good.refId) : undefined
