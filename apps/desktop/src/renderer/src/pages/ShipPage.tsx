@@ -37,6 +37,17 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 
 /** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05） */
 export type ShipTab = 'fleet' | 'ai' | 'shop'
+/** 舰队检索（2026-09-10 船长：排序 + 筛选 + 搜索，控件样式与仓库/技能目录统一） */
+type FleetFilter = 'all' | 'pilot' | 'ai' | 'idle' | 'damaged'
+type FleetSort = 'default' | 'name' | 'durability' | 'role'
+const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'pilot', label: '驾驶中' },
+  { key: 'ai', label: 'AI 执勤' },
+  { key: 'idle', label: '空闲' },
+  { key: 'damaged', label: '待维修' },
+]
+const FLEET_ROLE_ORDER = ['industrial', 'armed', 'armored', 'hauler']
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
   { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
@@ -81,6 +92,10 @@ export function ShipPage({
   // T5-B：正在改名（输入框展开）的船实例 + 草稿
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
+  // 2026-09-10 舰队检索：搜索词 / 状态筛选 / 排序键
+  const [fleetQ, setFleetQ] = useState('')
+  const [fleetFilter, setFleetFilter] = useState<FleetFilter>('all')
+  const [fleetSort, setFleetSort] = useState<FleetSort>('default')
 
   /** 舰队里所有船实例（v17：同型多艘各自成卡；当前驾驶在前） */
   const fleetEntries = Object.entries(state.fleet)
@@ -92,6 +107,52 @@ export function ShipPage({
         a.def.tier - b.def.tier ||
         a.uid.localeCompare(b.uid),
     )
+
+  /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤，再按所选键排序；默认保持机库序） */
+  const fq = fleetQ.trim().toLowerCase()
+  const fleetShown = (() => {
+    const list = fleetEntries.filter(({ uid, ship }) => {
+      if (fq.length > 0) {
+        const name = shipDisplayName(state, ctx, uid).toLowerCase()
+        const defName = (ctx.ships.get(ship.defId ?? uid)?.name ?? '').toLowerCase()
+        if (!name.includes(fq) && !defName.includes(fq)) return false
+      }
+      if (fleetFilter !== 'all') {
+        const dur = durabilityOf(state, uid)
+        const armor = ship.armorPct ?? 1
+        const isPilot = uid === state.shipId
+        const isAi = uid in state.aiAssignments
+        const ok =
+          fleetFilter === 'pilot'
+            ? isPilot
+            : fleetFilter === 'ai'
+              ? isAi
+              : fleetFilter === 'idle'
+                ? !isPilot && !isAi
+                : dur < 1 || armor < 1 // damaged：耐久或装甲未满 = 待维修
+        if (!ok) return false
+      }
+      return true
+    })
+    if (fleetSort === 'default') return list
+    const sorted = [...list]
+    sorted.sort((a, b) => {
+      if (fleetSort === 'name') {
+        return shipDisplayName(state, ctx, a.uid).localeCompare(shipDisplayName(state, ctx, b.uid), 'zh-CN')
+      }
+      if (fleetSort === 'durability') {
+        const da = durabilityOf(state, a.uid)
+        const db = durabilityOf(state, b.uid)
+        if (da !== db) return da - db // 坏船在前（待修优先）
+        return (a.ship.armorPct ?? 1) - (b.ship.armorPct ?? 1)
+      }
+      const ra = FLEET_ROLE_ORDER.indexOf(a.def.role ?? 'industrial')
+      const rb = FLEET_ROLE_ORDER.indexOf(b.def.role ?? 'industrial')
+      if (ra !== rb) return ra - rb
+      return a.def.tier - b.def.tier
+    })
+    return sorted
+  })()
 
   function handleSwitch(id: string): void {
     // 扫描探索在途：先弹确认（终止扫描=已扫窗口进度保留，可续扫），确认后才执行
@@ -190,7 +251,7 @@ export function ShipPage({
         <>
       {/* ───── 我的舰队 ───── */}
       <Panel
-        className="is-fill"
+        className="is-fill app-fleet-panel"
         title="我的舰队"
         right={
           <span className="app-dim">
@@ -201,6 +262,47 @@ export function ShipPage({
           </span>
         }
       >
+        {/* 舰队工具条（2026-09-10 船长：搜索/状态筛选/排序；样式与仓库、技能目录同款）——固定在列表上方不随滚动 */}
+        <div className="app-fleet-toolbar">
+          <span className="app-head-search-wrap">
+            <input
+              className="app-head-search"
+              type="text"
+              placeholder="搜索舰船…"
+              value={fleetQ}
+              onChange={(e) => setFleetQ(e.target.value)}
+              spellCheck={false}
+            />
+          </span>
+          <div className="app-task-tabs app-fleet-tabs" role="tablist">
+            {FLEET_FILTER_TABS.map((t) => (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={fleetFilter === t.key}
+                className={`app-tasktab${fleetFilter === t.key ? ' is-active' : ''}`}
+                onClick={() => setFleetFilter(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <select
+            className="app-select"
+            value={fleetSort}
+            onChange={(e) => setFleetSort(e.target.value as FleetSort)}
+            title="排序方式"
+          >
+            <option value="default">默认排序</option>
+            <option value="name">按名称</option>
+            <option value="durability">耐久（待修优先）</option>
+            <option value="role">按舰船族</option>
+          </select>
+          <span className="app-dim">
+            {fleetShown.length} 艘{fq.length > 0 || fleetFilter !== 'all' ? '（已筛选）' : ''}
+          </span>
+        </div>
+        <div className="app-fleet-scroll">
         {scanSwitchId ? (
           <div className="app-sell-confirm" style={{ marginTop: 0, marginBottom: 8 }}>
             <div className="app-sell-warn" style={{ background: 'transparent' }}>
@@ -217,8 +319,15 @@ export function ShipPage({
             </div>
           </div>
         ) : null}
+        {fleetShown.length === 0 ? (
+          <div className="app-dim app-note">
+            {Object.keys(state.fleet).length === 0
+              ? '机库里还没有舰船。'
+              : `没有匹配的舰船${fq.length > 0 ? `（关键词「${fleetQ.trim()}」）` : '（当前筛选）'}——换个关键词或筛选条件试试。`}
+          </div>
+        ) : (
         <div className="app-ship-list">
-          {fleetEntries.map(({ uid, ship: shipState, def }) => {
+          {fleetShown.map(({ uid, ship: shipState, def }) => {
             const dur = durabilityOf(state, uid)
             const armor = shipState.armorPct ?? 1 // P0 承伤持久化：装甲残余（跨场保留）
             const kitCount = (['repairkit-civ', 'repairkit-mil'] as const).reduce((n, id) => n + (shipState.cargo[id] ?? 0), 0)
@@ -438,6 +547,8 @@ export function ShipPage({
               </ShipHover>
             )
           })}
+        </div>
+        )}
         </div>
       </Panel>
       </>

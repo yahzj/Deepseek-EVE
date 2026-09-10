@@ -2422,6 +2422,56 @@ body {
 
 /* 固定标题行的自滚内容容器（仓库 tab 用：面板标题/搜索/切换冻结，内容在面板体内滚动，2026-09-10 船长） */
 
+/* 舰队工具条与滚动（2026-09-10 船长：我的舰队排序/筛选/搜索；标题行与工具条固定，列表滚动） */
+
+.app-fleet-panel > .wui-panel-body {
+
+  display: flex;
+
+  flex-direction: column;
+
+  overflow: hidden;
+
+}
+
+.app-fleet-toolbar {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding-bottom: 10px;
+
+  border-bottom: 1px dashed var(--wui-border);
+
+  margin-bottom: 10px;
+
+  flex-shrink: 0;
+
+}
+
+.app-fleet-tabs {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+}
+
+.app-fleet-scroll {
+
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+  overflow-y: auto;
+
+}
+
 .app-win-fill {
 
   flex: 1 1 auto;
