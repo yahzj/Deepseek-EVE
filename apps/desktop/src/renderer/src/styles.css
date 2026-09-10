@@ -6522,7 +6522,7 @@ body {
 
 .app-bts-arcs { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 
-.app-bts-col { position: absolute; top: 10px; z-index: 2; display: flex; flex-direction: column; align-items: center; width: max-content; max-width: 340px; }
+.app-bts-col { position: absolute; top: 54px; z-index: 2; display: flex; flex-direction: column; align-items: center; width: max-content; max-width: 340px; }
 
 .app-bts-col.is-foe { align-items: center; }
 
@@ -6600,9 +6600,19 @@ body {
 
 .app-bts-wing { position: absolute; left: 0; top: 0; }
 
-.app-bts-drone { position: absolute; display: block; transform: translate(-50%, -50%); opacity: .95; filter: drop-shadow(0 0 3px currentColor); }
+/* 收舱态：常驻挂载但 display:none —— 既不做每轮挂载/卸载（省 GC），也不参与绘制/动画（省绘制） */
+.app-bts-wing.is-deck { display: none; }
+
+/* 无人机机体：位置由内联 transform(translate3d) 驱动 → 走合成层，不逐帧布局/重绘；
+   去掉逐机 drop-shadow 滤镜（18 架同时挂滤镜在低端 GPU 上明显掉帧，2026-09-10 船长反馈卡顿） */
+.app-bts-drone { position: absolute; display: block; left: 0; top: 0; opacity: .95; will-change: transform; }
 
 .app-bts-drone svg { display: block; }
+
+/* 漂浮微动效放在内层 svg 上（transform，不碰外层位置；也不再动 margin 引起每帧布局） */
+.app-bts-wing.is-sortie .app-bts-drone svg,
+.app-bts-wing.is-formation.is-out .app-bts-drone svg,
+.app-bts-wing.is-resident .app-bts-drone svg { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
 
 .app-bts-drone-dot { fill: currentColor; stroke: none; opacity: .9; }
 
@@ -6611,8 +6621,6 @@ body {
 .app-bts-drone-more { position: absolute; left: 60px; top: -74px; font-size: 10px; font-family: var(--wui-mono); color: #9fe8ff; opacity: .85; }
 
 /* 哨戒常驻伴飞（2026-09-10 船长二次定：位置改到母舰**上方**）——两制式共用 */
-.app-bts-wing.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
-
 .app-bts-wing.is-resident .app-bts-drone-more { top: -34px; left: 26px; }
 
 /* ══════ 旧方案·机群制（保留区；仅 DRONE_STYLE='formation' 时挂 .is-formation，与出击制完全隔离，
@@ -6622,35 +6630,14 @@ body {
 
 .app-bts-wing.is-formation.is-back { animation: app-bts-wing-back .42s ease-in forwards; }
 
-.app-bts-wing.is-formation.is-out .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
-
 @keyframes app-bts-wing-out { 0% { opacity: 0; transform: translateY(26px) scale(.7); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 
 @keyframes app-bts-wing-back { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(24px) scale(.75); } }
 
-/* ══════ 出击制（默认；2026-09-10 船长："放出无人机靠近敌人攻击后返回" + "开火后转向返回"）：
-        自机库口放出 → 飞抵敌侧攻击阵位（--dx/--dy，相对**起飞点**计算）→ 无开火 1.2s → 掉头返航 ══════ */
+/* ══════ 出击制（默认）：位置由渲染层逐帧插值写入外层 transform(translate3d)；
+        漂浮微动挂在内层 svg（见上），两层互不干扰 ══════ */
 
-.app-bts-wing.is-sortie.is-out .app-bts-drone { animation: app-bts-drone-sortie-out .56s ease-out forwards, app-bts-drone-hover 2.6s ease-in-out infinite; }
-
-.app-bts-wing.is-sortie.is-back .app-bts-drone { animation: app-bts-drone-sortie-back .62s ease-in forwards; }
-
-/* 返航：先在阵位掉头（scaleX 翻转 → 机头朝母舰），再沿**下凸曲线**飞回机库口收起 */
-@keyframes app-bts-drone-sortie-out {
-  0% { transform: translate(-50%, -50%); opacity: 0; }
-  14% { opacity: 1; }
-  50% { transform: translate(-50%, -50%) translate(var(--mx, 0px), var(--my, 0px)); opacity: 1; }
-  100% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)); opacity: 1; }
-}
-
-@keyframes app-bts-drone-sortie-back {
-  0% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) scaleX(1); opacity: 1; }
-  18% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) scaleX(-1); opacity: 1; }
-  62% { transform: translate(-50%, -50%) translate(var(--nx, 0px), var(--ny, 0px)) scaleX(-1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) translate(0, 0) scaleX(-1); opacity: 0; }
-}
-
-@keyframes app-bts-drone-hover { 0%, 100% { margin-top: 0; } 50% { margin-top: -3px; } }
+@keyframes app-bts-drone-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
 .app-bts-bolt.is-drone .app-bts-bolt-bar { border-radius: 2px; }
 
@@ -6705,11 +6692,14 @@ body {
    尸骸不再撤队另走残骸层，而是原位占用队列槽演完整段演出——
    boomAt 起灰化（is-corpse）+ 爆炸环（.app-bts-boom，见下），随后舰体容器内联透明度淡出；
    队列只在整批尸骸演完后收拢一次，存活舰补位不再压着爆炸动画走。 */
-.app-bts-unit.is-corpse .app-sprite { filter: grayscale(.9) brightness(.72); }
+/* 2026-09-10 性能：尸骸"灰化"不再用 filter（grayscale+brightness 会把整份舰体矢量重新栅格化，
+   击毁瞬间一次 ~50ms 绘制尖峰＝船长反馈的"击毁后卡顿"）——改为渲染层把 accent 传成灰色，零滤镜成本。 */
+
+.app-bts-unit.is-corpse .app-sprite { opacity: .82; }
 
 .app-bts-unit.is-corpse .app-bts-name { display: none; }
 
-.app-bts-corpse { display: inline-flex; }
+.app-bts-corpse { display: inline-flex; will-change: opacity; /* 淡出走合成层：不逐帧重绘带滤镜的舰体 */ }
 
 /* 锁定装置集火目标（2026-09-09）：金色呼吸描边 + 名称 ◈ 前缀——本舰全部武器集火对象 */
 .app-bts-unit.is-locked .app-sprite { filter: drop-shadow(0 0 6px rgba(255, 208, 90, .95)); animation: app-bts-lockpulse 1.2s ease-in-out infinite; }
@@ -6742,11 +6732,11 @@ body {
 
 .app-bts-boom { position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: 5; pointer-events: none; }
 
-.app-bts-boom i { position: absolute; display: block; }
+.app-bts-boom i { position: absolute; display: block; will-change: transform, opacity; /* 独立合成层：缩放动画不再逐帧重栅格化阴影 */ }
 
 .app-bts-boom .b-core { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: radial-gradient(circle, #fff 0 35%, #ffe9b0 60%, rgba(255,160,77,0) 78%); animation: app-bts-bcore .32s ease-out forwards; }
 
-.app-bts-boom .b-ring { width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; border: 3px solid rgba(255,208,138,.95); box-shadow: 0 0 14px rgba(255,150,60,.8), inset 0 0 10px rgba(255,190,90,.55); animation: app-bts-bring 1.1s ease-out forwards; }
+.app-bts-boom .b-ring { width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; border: 3px solid rgba(255,208,138,.95); box-shadow: 0 0 10px rgba(255,150,60,.75); animation: app-bts-bring 1.1s ease-out forwards; }
 
 .app-bts-boom .b-ring.r2 { border-color: rgba(255,150,70,.7); animation-duration: 1.05s; animation-delay: .12s; }
 
@@ -7432,7 +7422,7 @@ body {
 
 /* V16.4 layout: col top space for names; stable sync (no partial transitions) (ASCII-safe) */
 
-.app-bts-col { top: 26px; }
+.app-bts-col { top: 54px; /* 与 battleViewCore LAY.TOP 同步（2026-09-10 整体下移，给无人机上凸弧留空间） */ }
 
 .app-bts-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; font-weight: 700; color: #e6eef7; text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 6px rgba(0,0,0,.6); letter-spacing: .4px; pointer-events: none; z-index: 3; }
 

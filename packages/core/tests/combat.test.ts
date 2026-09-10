@@ -655,7 +655,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     expect(resOf('tun-ar', 'armor', (s) => (s.skills.trained['shield-tuning'] = 5), 'armor')).toBeCloseTo(0.4, 10)
   })
 
-  it('无人机整备学：满级无人机装填 ×0.8（2200 → 1760）；放飞 CPU 判定不受技能影响', () => {
+  it('无人机整备学：满级无人机装填 ×0.8（4400 → 3520）；放飞 CPU 判定不受技能影响', () => {
     const droneDef: ItemDef = {
       id: 'd-srv',
       name: '无人机S',
@@ -677,8 +677,9 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
       return { reloadMs: w.reloadMs }
     }
     // 装填折减：满级 ×0.8（与武器装填技术同口径：每级 −4% 乘算，无下限护栏）
-    expect(entry(() => undefined).reloadMs).toBe(2200)
-    expect(entry((s) => (s.skills.trained['drone-servicing'] = 5)).reloadMs).toBe(1760)
+    // 2026-09-10 船长：装填基准 2200→4400ms（单发同步 ×2，净 DPS 不变，只为配合出击-返航动画节奏）
+    expect(entry(() => undefined).reloadMs).toBe(4400)
+    expect(entry((s) => (s.skills.trained['drone-servicing'] = 5)).reloadMs).toBe(3520)
     // CPU 判定不被技能放宽（CPU = 装配 + 放飞共用静态预算，技能不折减放飞成本）：
     // cpu 12、单架 cpuUse 5 → 无论技能等级都只放飞 2 架
     const launched = (extra: (s: GameState) => void): number => {

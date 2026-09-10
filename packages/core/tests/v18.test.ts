@@ -99,12 +99,12 @@ describe('V18 无人机流', () => {
     const ctx = makeCtx([carrier])
     pilot(state, carrier, { 'drone-assault': 2 })
     const plainShot = createPlayerSpec(state, ctx, state.shipId)!.weapons.find((w) => w.label === DRONE_ASSAULT.name)?.shotDmg
-    expect(plainShot).toBe(6) // 无导控 = 无人机基数
+    expect(plainShot).toBe(12) // 无导控 = 无人机基数（2026-09-10 单发 ×2：赤鸢 6→12）
 
     state.moduleBay['mod-drone-tac-2'] = 1
     expect(fitModule(state, 'mod-drone-tac-2', ctx).ok).toBe(true)
     const boostedShot = createPlayerSpec(state, ctx, state.shipId)!.weapons.find((w) => w.label === DRONE_ASSAULT.name)?.shotDmg
-    expect(boostedShot).toBe(Math.round(6 * 1.25)) // 导控乘入
+    expect(boostedShot).toBe(Math.round(12 * 1.25)) // 导控乘入（基数已随 2026-09-10 ×2 更新）
   })
 
   it('CPU 余量约束：装置占用 CPU 后放飞数受限（cpu 30 / 每架 4 → ≤7）', () => {

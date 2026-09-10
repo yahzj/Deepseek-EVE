@@ -16,8 +16,10 @@ const ROLE_ACCENT: Record<string, string> = {
   hauler: '#ffd166',
 }
 
-/* 画面几何常量（px） */
-const LAY = { PAD: 36, GAP: 84, TOP: 26, MAIN: 170, ESC: 90, ROW_GAP: 4 }
+/* 画面几何常量（px）
+   2026-09-10 船长：整体下移（TOP 26→54）——无人机上凸出击弧会在顶部被裁掉，给上方留出弧线空间。
+   注意：CSS `.app-bts-col` 的 top 必须与本值保持一致（舰列视觉位置与锚点同源）。 */
+const LAY = { PAD: 36, GAP: 84, TOP: 54, MAIN: 170, ESC: 90, ROW_GAP: 4 }
 /** 舰艏（枪口）距舰体中心（px）：新 240×110 独立形舰艏尖典型位于本地坐标 x≈232
  *（距画布中心 120 = 112 单位）→ 主力舰 112×170/240 ≈ 79px；僚机小舰 112×90/240 ≈ 42px。
  * 旧 role 剪影（140 画布、尖端距中心 54）对应 66/35，此值已随新形换算更新。 */
@@ -182,6 +184,8 @@ interface BoltV {
   born: number
   /** 无人机机型 id（2026-09-10：弹点按机型形制渲染——蜂群小弹点；缺省 = 普通弹道） */
   drone?: string
+  /** 显示延迟（ms；2026-09-10：无人机飞行途中开火 → 弹道等其抵达阵位再显示，位置才对） */
+  delay?: number
 }
 interface FlashV {
   key: number
@@ -191,6 +195,8 @@ interface FlashV {
   y: number
   /** 小型闪光（无人机机群出弹：体积小于母舰炮口闪光） */
   small?: boolean
+  /** 显示延迟（ms；与弹道同源） */
+  delay?: number
 }
 
 /** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家）：
