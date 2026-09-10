@@ -29,11 +29,15 @@ import {
   buildItemCatalog,
   buildSimContext,
 } from '@whale/data'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
+  ITEM_KIND_ORDER,
   MODULE_SLOTS,
   MINEABLE_KINDS,
   RACK_SLOTS,
   RECYCLE_POOL_AVG_ISK,
+  SHIP_ROLE_LABELS,
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
@@ -561,6 +565,35 @@ for (const m of MODULES) {
     }
   }
   console.log(`· B3.1 主题追加件：${lootCards} 张卡（sec<0.5 增幅件；武器白名单仅穹顶守卫 × MK3 三武）`)
+}
+
+/* ── 图标覆盖契约（2026-09-10 加）：每个物品种类 / 装备槽位 / 舰船族都必须有 Glyphs 图形与色调 ──
+ * 背景：仓库·货仓·图鉴·工业页卡片的行首图标一律按 kind / slot / role 取图形，缺键会**静默**落兜底圆环徽
+ *（当天补齐的正是 wreck / fragment / kit / salvager / target-lock 五个键）——新增内容种类时在此拦住。 */
+{
+  const glyphPath = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'ui', 'Glyphs.tsx')
+  if (!existsSync(glyphPath)) {
+    check(false, `图标契约：找不到渲染层图标库 ${glyphPath}（文件移位请同步本检查）`)
+  } else {
+    const glyphSrc = readFileSync(glyphPath, 'utf8')
+    const keysOf = (block: string): Set<string> => {
+      const m = glyphSrc.match(new RegExp(`${block}: Record<string, (?:string|ReactNode)> = \\{([\\s\\S]*?)\\n\\}`))
+      return new Set([...(m?.[1] ?? '').matchAll(/^\s*'?([A-Za-z0-9-]+)'?:/gm)].map((x) => x[1]))
+    }
+    const shapes = keysOf('SHAPES')
+    const tones = keysOf('TONES')
+    const needed = [...ITEM_KIND_ORDER, ...MODULE_SLOTS, ...Object.keys(SHIP_ROLE_LABELS), 'blueprint']
+    for (const key of needed) {
+      check(shapes.has(key), `图标契约：${key} 缺 Glyphs 图形（列表/卡片行首会落兜底圆环徽；请在 ui/Glyphs.tsx 补 SHAPES.${key}）`)
+      check(tones.has(key), `图标契约：${key} 缺 TONES 色调（未知键一律落默认灰）`)
+    }
+    if (needed.every((key) => shapes.has(key) && tones.has(key))) {
+      console.log(
+        `· 图标契约：物品 ${ITEM_KIND_ORDER.length} 类 + 槽位 ${MODULE_SLOTS.length} 个 + 舰船族 ${Object.keys(SHIP_ROLE_LABELS).length} 个 图形/色调齐备` +
+          `（图标库共 ${shapes.size}/${tones.size} 键）`,
+      )
+    }
+  }
 }
 
 /* ── 输出 ── */

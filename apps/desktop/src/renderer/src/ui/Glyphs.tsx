@@ -55,6 +55,31 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6 6l2.6 2.6M18 6l-2.6 2.6M6 18l2.6-2.6M18 18l-2.6-2.6" />
     </g>
   ),
+  /* ── 残骸 / 修理组件（2026-09-10 补齐：此前这两个种类无图形，列表里落兜底圆环徽） ── */
+  wreck: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M7.6 10.2l7.6-1.5.6 4.4-7.4 1.6z" />
+      <path d="M11.4 8.9l-1 2.6 1.7 1.3-1.2 2.1" />
+      <circle cx="16.2" cy="15.6" r="1" />
+    </g>
+  ),
+  kit: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8.3 15.7l4.9-4.9" />
+      <path d="M13.4 8.2l2.4 2.4-1.7 1.7-2.4-2.4z" />
+      <path d="M9 15l-1.2 1.2" />
+    </g>
+  ),
+  fragment: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M13.6 7.4l3 2.6-1.4 4.6-4.6.4-1.6-3.4z" />
+      <path d="M12.2 11.2l1.6 1.4" />
+      <path d="M8.6 15.4l1.4.8" />
+    </g>
+  ),
   /* ── 装备（方框徽：外框 + 内部机件） ── */
   miner: (
     <g>
@@ -142,6 +167,22 @@ const SHAPES: Record<string, ReactNode> = {
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
       <path d="M12 15.2V9.4M9.8 11.4L12 9l2.2 2.4" />
+    </g>
+  ),
+  /* 打捞器 / 锁定装置（2026-09-10 补齐：此前这两个槽位无图形，列表里落兜底圆环徽） */
+  salvager: (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M12 8.6v4.2" />
+      <path d="M9.2 14.6l2.8-1.8 2.8 1.8" />
+      <path d="M9.2 15.6v-1M14.8 15.6v-1" />
+    </g>
+  ),
+  'target-lock': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 7.6v1.8M12 14.6v1.8M7.6 12h1.8M14.6 12h1.8" />
     </g>
   ),
   /* ── 舰船角色（大形徽：双层几何轮廓） ── */
@@ -418,6 +459,9 @@ export const TONES: Record<string, string> = {
   ice: '#9ce6f5',
   ammo: '#ff8373',
   drone: '#ffc46b',
+  wreck: '#b8a37a', // 残骸：旧黄铜/锈色（回收料的观感）
+  kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
+  fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
   miner: '#5ee6c8',
   cargo: '#ffd166',
   turret: '#ff8373',
@@ -430,6 +474,8 @@ export const TONES: Record<string, string> = {
   'drone-tac': '#ffb454',
   'drone-relay': '#7fc7ff', // 2026-09-10 中继天线：通讯青（与导控黄/甲板橙区分）
   support: '#ff8ab5',
+  salvager: '#6fe3f0', // 打捞器：与「打捞」同色
+  'target-lock': '#ffca58', // 锁定装置：准星亮黄
   industrial: '#5ee6c8',
   armed: '#ff8373',
   armored: '#cdd6e0',

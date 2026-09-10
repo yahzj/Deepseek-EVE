@@ -28,6 +28,7 @@ import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
+import { RowGlyph } from '../ui/itemView'
 import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3 } from './common'
@@ -180,7 +181,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   return (
     <div className={`app-belt-card${highlight ? ' is-goto' : ''}`} key={def.id}>
       <div className="app-belt-head">
-        <span className="app-belt-name">{isWreck ? `⚒ ${def.name}` : def.name}</span>
+        <span className="app-belt-name">
+          <RowGlyph glyph={def.kind} /> {def.name}
+        </span>
         {/* 卡头右侧：标记星标（2026-09-10 船长） + 去矿带/去打捞跳转 */}
         <span className="app-belt-head-right">
           <MarkStar engine={engine} kind="recipes" id={def.id} />
