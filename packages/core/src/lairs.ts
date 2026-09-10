@@ -109,6 +109,8 @@ const LAIR_TIER_FALLBACK: readonly [string, string, string] = ['头目', '据点
  * 敌族 → 专属装备池（稀有残骸·高级箱额外掉落优先掷此池）。
  * 只在**打赢窝点 → 捞回稀有残骸 → 精炼炉开高级箱**这条链路上产出：无蓝图、不上市场、不入常规掉落。
  * 卡级 `AnomalyDef.lairGear` 可覆盖之。
+ * **池内元素可以是模块 id 或物品 id**（2026-09-10 船长：G 族第一件改为专属无人机"物品"）——
+ * 取件时按 `ctx.modules` / `ctx.items` 判别：模块进装备库、无人机物品进物品仓库（`rollRareBoxExtra`）。
  * - **B 族（武装拾荒者）留空**：2026-09-10 船长定取消 B 族窝点/赏金任务，专属件（拾荒者拆解臂）一并撤下；
  * - **F 族（制式巡逻）留空**：当前只有隐藏遭遇模板、没有窝点成员，故无专属件。
  */
@@ -120,7 +122,9 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   D: ['mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d'], // 陵墓护盾阵列 / 守墓者长炮 / 陵寝装甲层（最强敌族，对标异星档）
   E: ['mod-lair-turret-e', 'mod-lair-hangar-e', 'mod-lair-frame-e'], // 巨构残骸炮 / 深层机库 / 巨构骨架（2026-09-10 船长逐件过审：档位「略高于 MK3」、仍低于 D）
   F: [],
-  G: ['mod-lair-drone-rack-g', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'], // 流亡蜂群巢 / 流亡蜂群导控 / 流亡中继桅（无人机全套专族：机库 + 伤害 + 射程）
+  // G 族（烬火流亡）：2026-09-10 船长——第一件由机库模块「流亡蜂群巢」改为**专属侦查无人机「流亡蜂无人机」**
+  // （一次掉 ×10 架；无人机是消耗品，打光后再刷可补），另两件为无人机导控 / 中继天线
+  G: ['drone-exile-bee', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'],
 }
 
 /** 该卡的专属装备池（卡级优先，其次按敌族；都没有 = 空池） */

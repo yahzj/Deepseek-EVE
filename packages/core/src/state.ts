@@ -277,12 +277,15 @@ export interface RefineRunState {
   /** 已完成批数（展示用） */
   batchesDone: number
   /** 炉内所得累计（2026-09-06 兼容字段：停炉/料尽/自然结束时写明细日志用；
-   *  refine 炉只用 min（产物矿物）；recycle 炉 = 保底矿物(min) + 彩头装备(mod) + 蓝图碎片(frag)；
+   *  refine 炉只用 min（产物矿物）；recycle 炉 = 保底矿物(min) + 彩头装备(mod) +
+   *  **专属无人机(drone，2026-09-10 增：按架数)** + 蓝图碎片(frag)；
    *  normalize 清洗兜底，无版本号） */
   recAcc?: {
     min: Record<string, number>
     mod: Record<string, number>
     frag: Record<string, number>
+    /** 专属无人机（物品）所得：id → 架数 */
+    drone?: Record<string, number>
   }
 }
 

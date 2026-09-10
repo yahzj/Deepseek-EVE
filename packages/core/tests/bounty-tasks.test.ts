@@ -700,10 +700,10 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(extra.note.length).toBeGreaterThan(0)
   })
 
-  it('族级池兜底（G 族 → 无人机全套三件）；B 族已撤池；无族无卡级池 → 主题追加件', () => {
+  it('族级池兜底（G 族 → 专属无人机 + 两个无人机模块）；B 族已撤池；无族无卡级池 → 主题追加件', () => {
     const { state, ctx } = makeWorld(29)
     expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_LOW1.id))!.lairGear).toEqual([
-      'mod-lair-drone-rack-g',
+      'drone-exile-bee',
       'mod-lair-drone-tac-g',
       'mod-lair-drone-relay-g',
     ])

@@ -1124,15 +1124,6 @@ export const MODULES: readonly ModuleDef[] = [
       '泰坦巨构（E 族）窝点专属：整段拆下的巨构龙骨——**结构层容量 +60%**（护盾与装甲都被打穿之后，最后那段血比别人厚出六成；这是全游戏唯一能加厚结构层的模块）＋ 装甲容量 +30%。巨构造物不讲机动，只讲撑到最后。',
   },
   {
-    id: 'mod-lair-drone-rack-g',
-    name: '流亡蜂群巢',
-    slot: 'drone-rack',
-    rack: 'high',
-    droneBayBonusM3: 55,
-    cpuUse: 30,
-    description: '烬火流亡（G 族）窝点专属：流亡者拼装的无人机巢舱——无人机舱 +55 m³，一舰放飞多到离谱的蜂群。',
-  },
-  {
     id: 'mod-lair-drone-tac-g',
     name: '流亡蜂群导控',
     slot: 'drone-tac',

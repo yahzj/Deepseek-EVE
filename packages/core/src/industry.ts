@@ -227,7 +227,7 @@ export function startRefineRun(
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     batchesDone: 0,
-    recAcc: { min: {}, mod: {}, frag: {} }, // 炉内所得累计（停炉/料尽/自然结束时写明细日志；精炼只用 min）
+    recAcc: { min: {}, mod: {}, frag: {}, drone: {} }, // 炉内所得累计（停炉/料尽/自然结束时写明细日志；精炼只用 min）
   })
   // 2026-09-06：不再写开工日志（活动栏/卡片已实时可见，开工即写会刷屏）；结束/停炉日志统一带所得明细
   return { ok: true }
@@ -315,7 +315,7 @@ export function startRecycleRun(
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     batchesDone: 0,
-    recAcc: { min: {}, mod: {}, frag: {} }, // 回收所得累计（停炉/料尽/自然结束时写明细日志）
+    recAcc: { min: {}, mod: {}, frag: {}, drone: {} }, // 回收所得累计（停炉/料尽/自然结束时写明细日志）
   })
   // 2026-09-06：不再写开工日志（同精炼炉口径；结束/停炉日志统一带回收所得明细）
   return { ok: true }
@@ -326,7 +326,12 @@ export function startRecycleRun(
 function yieldNoteFor(
   state: GameState,
   ctx: SimContext,
-  rec: { min: Record<string, number>; mod: Record<string, number>; frag: Record<string, number> },
+  rec: {
+    min: Record<string, number>
+    mod: Record<string, number>
+    frag: Record<string, number>
+    drone?: Record<string, number>
+  },
   kind: 'refine' | 'recycle',
 ): string {
   const nameOf = (id: string): string => ctx.items.get(id)?.name ?? id
@@ -345,6 +350,8 @@ function yieldNoteFor(
   if (kind === 'recycle') {
     const loot: string[] = []
     if (Object.keys(rec.mod).length > 0) loot.push(`装备 ${fmt(rec.mod)}`)
+    const dr = rec.drone ?? {}
+    if (Object.keys(dr).length > 0) loot.push(`无人机 ${fmt(dr)} 架`)
     if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
     if (loot.length > 0) parts.push(`彩头：${loot.join('；')}`)
   }
@@ -495,6 +502,13 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
                   break
                 }
               }
+            }
+            for (const row of extra.drones) {
+              // 专属无人机（2026-09-10 船长）：一次 RARE_BOX_DRONE_UNITS 架进物品仓库（消耗品，非装备）
+              addWare(state, row.id, row.count)
+              acc.drone = acc.drone ?? {}
+              acc.drone[row.id] = (acc.drone[row.id] ?? 0) + row.count
+              batchIncome += row.count * (ctx.items.get(row.id)?.baseSellPriceIsk ?? 0)
             }
             for (const row of extra.minerals) {
               addWare(state, row.mineralId, row.units)

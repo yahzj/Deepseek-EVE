@@ -20,7 +20,7 @@
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
-import { addModule, ownedModuleCount } from './equipment'
+import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare } from './inventory'
 import { lairGearOf } from './lairs'
 
@@ -374,12 +374,21 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
 
 /** 专属装备命中率（按回收档位；可调常量，待船长定数） */
 export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.25, risky: 0.4, dire: 0.55 }
+
+/**
+ * 专属**无人机**一次掉落架数（2026-09-10 船长：G 族「流亡蜂无人机」）。
+ * 无人机是消耗品（会被点防击落、永久损失），而专属型号无蓝图不可造 → 一次给一批，
+ * 打光之后同族池会重新把它放回抽取（见 `ownedItemCount` 口径）。
+ */
+export const RARE_BOX_DRONE_UNITS = 10
 /** 额外掉落附带的高阶矿物单位数（按档位；可调常量） */
 export const RARE_BOX_MINERAL_UNITS: Record<RecycleTier, number> = { common: 300, risky: 120, dire: 40 }
 
 /**
  * 稀有残骸开箱的"必定额外掉落"（每件稀有残骸只结算一次，由回收批次的首批触发）：
  * ① 先掷该敌群专属装备（`lairGear`，按档位命中率）——命中即出 1 件；
+ *    **池内元素可以是模块 id 或物品 id**（2026-09-10 船长：G 族第一件 = 专属无人机"物品"）：
+ *    模块 → `modules`（进装备库）；无人机物品 → `drones`（一次 `RARE_BOX_DRONE_UNITS` 架，进物品仓库）；
  * ② 未命中 → 出一件该敌群主题追加件（recycleLoot；池空则跳过）；
  * ③ 无论命中与否，再附一批高阶矿物（数量按档位，从该敌群/档位池加权抽 1 种）。
  * 返回 undefined = 本次没有额外掉落（无专属池且无主题件且无矿物池的极端情况）。
@@ -388,20 +397,36 @@ export function rollRareBoxExtra(
   state: GameState,
   ctx: SimContext,
   profile: RecycleProfile,
-): { modules: string[]; minerals: Array<{ mineralId: string; units: number }>; note: string } | undefined {
+): {
+  modules: string[]
+  drones: Array<{ id: string; count: number }>
+  minerals: Array<{ mineralId: string; units: number }>
+  note: string
+} | undefined {
   const modules: string[] = []
+  const drones: Array<{ id: string; count: number }> = []
   const minerals: Array<{ mineralId: string; units: number }> = []
   const notes: string[] = []
   // ① 专属装备（2026-09-10 船长：**集齐前不重复掉落**——该族池中还有玩家未持有的件时，
   //    只从"未持有"里均匀抽；三件（或该族全部）都到手后恢复均匀随机、允许重复。
-  //    判定口径 = 当前持有（装备库 + 已装配位，见 equipment.ownedModuleCount））
+  //    判定口径 = 当前持有：模块看装备库 + 已装配位（equipment.ownedModuleCount）、
+  //    无人机物品看物品仓库 + 各船机舱架数（equipment.ownedItemCount）——打光后重新进池）
   const gearAll = profile.lairGear ?? []
-  const gear = gearAll.filter((id) => ownedModuleCount(state, id) <= 0)
+  const gear = gearAll.filter((id) =>
+    ctx.modules.has(id) ? ownedModuleCount(state, id) <= 0 : ownedItemCount(state, id) <= 0,
+  )
   const gearPool = gear.length > 0 ? gear : gearAll
   if (gearPool.length > 0 && nextRandom(state.rng) < (RARE_BOX_GEAR_CHANCE[profile.tier] ?? 0)) {
     const pick = gearPool[nextInt(state.rng, gearPool.length)]!
-    modules.push(pick)
-    notes.push(`专属装备「${ctx.modules.get(pick)?.name ?? pick}」`)
+    const modDef = ctx.modules.get(pick)
+    if (modDef) {
+      modules.push(pick)
+      notes.push(`专属装备「${modDef.name}」`)
+    } else {
+      const itemDef = ctx.items.get(pick)
+      drones.push({ id: pick, count: RARE_BOX_DRONE_UNITS })
+      notes.push(`专属装备「${itemDef?.name ?? pick}」×${RARE_BOX_DRONE_UNITS} 架`)
+    }
   } else {
     // ② 主题追加件（未出专属时保底一件主题件；池可空）
     const theme = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
@@ -428,8 +453,8 @@ export function rollRareBoxExtra(
     minerals.push({ mineralId: chosen, units })
     notes.push(`${ctx.items.get(chosen)?.name ?? chosen} ×${units}`)
   }
-  if (modules.length === 0 && minerals.length === 0) return undefined
-  return { modules, minerals, note: notes.join('、') }
+  if (modules.length === 0 && drones.length === 0 && minerals.length === 0) return undefined
+  return { modules, drones, minerals, note: notes.join('、') }
 }
 
 export interface RecycleProfile {

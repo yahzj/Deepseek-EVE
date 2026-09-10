@@ -18,6 +18,7 @@ export { RARITY_TIER, rarityTierOf } from './rarityTier'
 // 2026-09-10 无人机四型定位契约（新增机型受 content:check 与 core 测试双重守卫）
 export {
   DRONE_ROLE_SPECS,
+  DRONE_ROLE_ANCHORS,
   droneTotalHp,
   droneRoleIssues,
   droneRoleLadderIssues,

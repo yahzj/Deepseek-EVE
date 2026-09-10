@@ -73,14 +73,64 @@ export function droneTotalHp(def: ItemDef): number {
   return (d?.shieldHp ?? 0) + (d?.armorHp ?? 0) + (d?.hullHp ?? 0)
 }
 
+/**
+ * **锚点机型**（2026-09-10 船长：专属无人机引出）：四型各有唯一"制式锚点"，
+ * 区间校验的基准与阶梯比较**只认锚点**——于是新增同类型号（专属强化型）不会打乱四型阶梯。
+ */
+export const DRONE_ROLE_ANCHORS: Record<DroneClass, string> = {
+  scout: 'drone-scout',
+  combat: 'drone-assault',
+  assault: 'drone-heavy',
+  sentry: 'drone-sentry',
+}
+
+/** 专属强化型的硬边界（豁免区间校验后仍不得越界——防止数据手滑写出荒谬值） */
+const HARD_BOUNDS = {
+  evasion: [0, 0.9],
+  dmg: [1, 200],
+  totalHp: [1, 500],
+  rangeM: [500, 20_000],
+  hitRate: [0.2, 2],
+} as const
+
+/** 专属强化型单机硬边界校验（返回违规说明；空数组 = 合规） */
+function exclusiveHardBoundIssues(def: ItemDef): string[] {
+  const out: string[] = []
+  const ev = def.defense?.evasion
+  if (ev === undefined) out.push(`${def.id} 缺少 defense.evasion`)
+  else if (ev < HARD_BOUNDS.evasion[0] || ev > HARD_BOUNDS.evasion[1]) {
+    out.push(`${def.id} 闪避 ${ev} 越出硬边界 ${HARD_BOUNDS.evasion[0]}~${HARD_BOUNDS.evasion[1]}`)
+  }
+  const hp = droneTotalHp(def)
+  if (hp < HARD_BOUNDS.totalHp[0] || hp > HARD_BOUNDS.totalHp[1]) {
+    out.push(`${def.id} 三层总血 ${hp} 越出硬边界 ${HARD_BOUNDS.totalHp[0]}~${HARD_BOUNDS.totalHp[1]}`)
+  }
+  const dmg = def.dmg ?? 0
+  if (dmg < HARD_BOUNDS.dmg[0] || dmg > HARD_BOUNDS.dmg[1]) {
+    out.push(`${def.id} 单发 ${dmg} 越出硬边界 ${HARD_BOUNDS.dmg[0]}~${HARD_BOUNDS.dmg[1]}`)
+  }
+  if (def.maxRangeM !== undefined && (def.maxRangeM < HARD_BOUNDS.rangeM[0] || def.maxRangeM > HARD_BOUNDS.rangeM[1])) {
+    out.push(`${def.id} 射程 ${def.maxRangeM} 越出硬边界 ${HARD_BOUNDS.rangeM[0]}~${HARD_BOUNDS.rangeM[1]}`)
+  }
+  const hit = def.hitRate
+  if (hit === undefined) out.push(`${def.id} 缺少 hitRate`)
+  else if (hit < HARD_BOUNDS.hitRate[0] || hit > HARD_BOUNDS.hitRate[1]) {
+    out.push(`${def.id} 命中 ${hit} 越出硬边界 ${HARD_BOUNDS.hitRate[0]}~${HARD_BOUNDS.hitRate[1]}`)
+  }
+  return out
+}
+
 function inBand(v: number, band: readonly [number, number]): boolean {
   return v >= band[0] && v <= band[1]
 }
 
-/** 单机定位校验：类档位区间（返回违规说明；空数组 = 合规） */
+/** 单机定位校验：类档位区间（返回违规说明；空数组 = 合规）。
+ * **专属强化型**（`def.exclusive`：2026-09-10 船长裁决）豁免区间校验，只受硬边界约束——
+ * 于是「专属强化侦察机」可以火力高于制式战斗机，而不算破坏四型定位。 */
 export function droneRoleIssues(def: ItemDef, scoutDmg: number): string[] {
   const cls = def.droneClass
   if (!cls) return [`${def.id} 缺少 droneClass（四型定位契约必填）`]
+  if (def.exclusive === true) return exclusiveHardBoundIssues(def)
   const spec = DRONE_ROLE_SPECS[cls]
   const out: string[] = []
   const evasion = def.defense?.evasion
@@ -121,13 +171,16 @@ export function droneRoleIssues(def: ItemDef, scoutDmg: number): string[] {
  * ① 闪避：侦察 > 战斗 > 哨戒 > 攻坚（严格）
  * ② 血量：攻坚 > 战斗 > 侦察，且哨戒 ≤ 侦察 ×1.6（"血量与侦察机相仿"）且 < 战斗
  * ③ 单发：侦察 < 战斗 < 攻坚 < 哨戒
+ * **只比较锚点机型**（DRONE_ROLE_ANCHORS，2026-09-10：专属强化型不参与阶梯——
+ * 否则一台火力拉满的专属侦察机会把"侦察机火力最低"的阶梯判成违规）。
  * 缺失某一类时不报错（允许尚未实装的机型缺席），但已存在的类之间必须成立。
  */
 export function droneRoleLadderIssues(drones: readonly ItemDef[]): string[] {
   const out: string[] = []
   const byClass = new Map<DroneClass, ItemDef>()
-  for (const d of drones) {
-    if (d.droneClass) byClass.set(d.droneClass, d)
+  for (const [cls, anchorId] of Object.entries(DRONE_ROLE_ANCHORS) as Array<[DroneClass, string]>) {
+    const anchor = drones.find((d) => d.id === anchorId)
+    if (anchor) byClass.set(cls, anchor)
   }
   const ev = (c: DroneClass): number | null => byClass.get(c)?.defense?.evasion ?? null
   const hp = (c: DroneClass): number | null => {
