@@ -180,6 +180,8 @@ interface BoltV {
   len: number
   angDeg: number
   born: number
+  /** 无人机机型 id（2026-09-10：弹点按机型形制渲染——蜂群小弹点；缺省 = 普通弹道） */
+  drone?: string
 }
 interface FlashV {
   key: number
@@ -187,6 +189,8 @@ interface FlashV {
   color: string
   x: number
   y: number
+  /** 小型闪光（无人机机群出弹：体积小于母舰炮口闪光） */
+  small?: boolean
 }
 
 /** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家）：
@@ -211,11 +215,13 @@ function boltGeom(
   dstNose: number,
   muzzle?: Anchor | null,
   artW?: number,
+  /** 显式起点（2026-09-10：无人机弹道自机群位置起飞，优先于 muzzle/舰艏回退） */
+  from?: Anchor | null,
 ): { x1: number; y1: number; len: number; angDeg: number } {
   const dir = side === 'me' ? 1 : -1
   const s = artW && artW > 0 ? artW / 240 : 1
-  const sx = muzzle ? src.x + dir * (muzzle.x - 120) * s : src.x + dir * srcNose
-  const sy = muzzle ? src.y + (muzzle.y - 55) * s : src.y
+  const sx = from ? from.x : muzzle ? src.x + dir * (muzzle.x - 120) * s : src.x + dir * srcNose
+  const sy = from ? from.y : muzzle ? src.y + (muzzle.y - 55) * s : src.y
   const tx = dst.x - dir * dstNose
   const ty = dst.y
   const dx = tx - sx

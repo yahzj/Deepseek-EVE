@@ -375,6 +375,11 @@ export interface BattleFx {
   to?: string
   /** 本次开火弹种（炮台 = 当时实际消耗的弹型） */
   type: 'kinetic' | 'explosive' | 'plasma'
+  /** 武器来源（2026-09-10 船长批：无人机动画差异化的展示字段；旧事件/测试构造缺省 →
+   *  UI 按旧口径回退，不区分来源）。取值同 WeaponSpec.src */
+  src?: 'turret' | 'missile' | 'laser' | 'drone' | 'base'
+  /** 无人机机型 id（src='drone' 时携带：drone-scout/assault/heavy/sentry） */
+  artId?: string
   /** 是否命中目标 */
   hit: boolean
 }

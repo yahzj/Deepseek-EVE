@@ -17,6 +17,7 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
+import { DRONE_BACK_ANIM_MS, DRONE_BACK_MS, DRONE_SHOW_MAX, droneModelOf } from '../ui/droneArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
@@ -73,6 +74,9 @@ const meSpeedRef = useRef(200)
   const flashRef = useRef<FlashV[]>([])
   /** 2026-09-10 炮口轮换计数（key = 'me' 或敌方 tag；多炮口舰逐发轮换开火点） */
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
+  /** 2026-09-10 无人机机群：机型 → 最近一次开火时刻（放飞/回巢节拍）与出弹位轮换 */
+  const droneLastShotRef = useRef<Map<string, number>>(new Map())
+  const droneSlotRef = useRef<Map<string, number>>(new Map())
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -356,17 +360,30 @@ const meSpeedRef = useRef(200)
       const dstNose = isMeShot ? foeNose : NOSE_MAIN
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
+      // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
+      const dm = fx.src === 'drone' ? droneModelOf(fx.artId) : undefined
       const artW = isMeShot ? LAY.MAIN : shooterMain ? LAY.MAIN : LAY.ESC
-      const mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
-      const mz = mounts?.muzzles
+      let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
-      if (mz && mz.length > 0) {
-        const k = isMeShot ? 'me' : fx.tag
-        const n = muzzleCountRef.current.get(k) ?? 0
-        muzzleCountRef.current.set(k, n + 1)
-        muzzlePt = mz[n % mz.length]!
+      let from: Anchor | null = null
+      if (dm) {
+        const key = dm.resident ? `res:${fx.artId}` : `fly:${fx.artId}`
+        const n = droneSlotRef.current.get(key) ?? 0
+        droneSlotRef.current.set(key, n + 1)
+        const slot = dm.slots[n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))] ?? dm.slots[0]!
+        from = { x: src.x + slot.x, y: src.y + slot.y }
+        droneLastShotRef.current.set(fx.artId!, now)
+      } else {
+        mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
+        const mz = mounts?.muzzles
+        if (mz && mz.length > 0) {
+          const k = isMeShot ? 'me' : fx.tag
+          const n = muzzleCountRef.current.get(k) ?? 0
+          muzzleCountRef.current.set(k, n + 1)
+          muzzlePt = mz[n % mz.length]!
+        }
       }
-      const g = boltGeom(fx.side, src, dst, srcNose, dstNose, muzzlePt, artW)
+      const g = boltGeom(fx.side, src, dst, srcNose, dstNose, muzzlePt, artW, from)
       boltsRef.current.push({
         key: keyRef.current++,
         color: DMG_COLOR[fx.type],
@@ -377,8 +394,16 @@ const meSpeedRef = useRef(200)
         len: g.len,
         angDeg: g.angDeg,
         born: now,
+        ...(dm ? { drone: fx.artId } : {}),
       })
-      flashRef.current.push({ key: keyRef.current++, at: now, color: DMG_COLOR[fx.type], x: g.x1, y: g.y1 })
+      flashRef.current.push({
+        key: keyRef.current++,
+        at: now,
+        color: DMG_COLOR[fx.type],
+        x: g.x1,
+        y: g.y1,
+        ...(dm ? { small: true } : {}),
+      })
     }
     if (flashRef.current.length > 6) flashRef.current.splice(0, flashRef.current.length - 6)
   }
@@ -523,22 +548,32 @@ const meSpeedRef = useRef(200)
         }}
       />
     ) : null
+    const dm = bv.drone ? droneModelOf(bv.drone) : undefined
+    // 无人机蜂群弹点（2026-09-10）：机型决定弹点形制（更小更细 + 可选拖尾），颜色仍按弹型
+    const barH = dm ? dm.bolt.width : bv.type === 'plasma' ? 1 : bv.type === 'explosive' ? 6 : 4
     return (
-      <div key={bv.key} className={`app-bts-bolt is-${bv.type}`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
+      <div
+        key={bv.key}
+        className={`app-bts-bolt is-${bv.type}${dm ? ' is-drone' : ''}`}
+        style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}
+      >
         <i
           className="app-bts-bolt-bar"
           style={{
-            width: bv.len,
-            height: bv.type === 'plasma' ? 1 : bv.type === 'explosive' ? 6 : 4,
-            top: bv.type === 'plasma' ? 0 : -2,
-            background: barBg,
-            boxShadow: `0 0 8px ${color}`,
+            width: dm ? Math.min(bv.len, dm.bolt.len) : bv.len,
+            height: barH,
+            top: dm ? -barH / 2 : bv.type === 'plasma' ? 0 : -2,
+            background: dm
+              ? `linear-gradient(90deg, ${color} 0%, ${color}dd 70%, transparent 100%)`
+              : barBg,
+            boxShadow: dm ? `0 0 4px ${color}` : `0 0 8px ${color}`,
             animationDuration: `${look.fly}ms`,
           }}
         />
+        {dm && dm.bolt.tail ? <i className="app-bts-bolt-tail" style={{ width: dm.bolt.len * 1.6, background: `linear-gradient(90deg, ${color}55, transparent)` }} /> : null}
         {beamLine}
         <i
-          className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'}`}
+          className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'}${dm ? ' is-small' : ''}`}
           style={{
             left: bv.len,
             top: 0,
@@ -552,8 +587,33 @@ const meSpeedRef = useRef(200)
     )
   })
   const muzzleEls = flashRef.current.map((f) => (
-    <i key={f.key} className="app-bts-muzzle" style={{ left: f.x, top: f.y, color: f.color }} />
+    <i
+      key={f.key}
+      className={`app-bts-muzzle${f.small ? ' is-small' : ''}`}
+      style={{ left: f.x, top: f.y, color: f.color }}
+    />
   ))
+
+  /* 无人机机群层（2026-09-10 船长批：放飞-回巢 / 哨戒常驻下方，每型上限 6 架 + ×N 徽标）——
+     数据源 = 射程弧里已合并的「机型 ×N」无人机条目（src='drone'）；渲染按单位锚点定位，
+     未来副本机制的多船舰队只要把友军单位的机群也喂进这一层即可（接口已按单位设计）。 */
+  const droneWings = arcs.me
+    .filter((w) => w.src === 'drone' && !!w.artId)
+    .map((w) => {
+      const model = droneModelOf(w.artId)!
+      const last = droneLastShotRef.current.get(w.artId!) ?? -Infinity
+      const idle = now - last
+      // 常驻型（雷鸥哨戒）始终伴飞且只显 1 架；放飞型：开火后放飞、1.2s 无开火回巢、回巢动画播完收起
+      const phase: 'out' | 'back' | 'deck' = model.resident
+        ? 'out'
+        : idle < DRONE_BACK_MS
+          ? 'out'
+          : idle < DRONE_BACK_MS + DRONE_BACK_ANIM_MS
+            ? 'back'
+            : 'deck'
+      const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
+      return { artId: w.artId!, model, phase, show, total: w.count ?? 1 }
+    })
 
   /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
      尸骸占原槽整段演出：boomAt（致死弹道着弹）前原样停留 → 灰化 + 爆炸环 → 原位淡出；
@@ -713,6 +773,41 @@ const meSpeedRef = useRef(200)
               <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
             </div>
           </div>
+
+          {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻母舰下方且只显 1 架） */}
+          {droneWings.length > 0 ? (
+            <div className="app-bts-drones" style={{ left: lay.me.x, top: lay.me.y }} aria-hidden="true">
+              {droneWings.map((w) =>
+                w.phase === 'deck' ? null : (
+                  <div key={w.artId} className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}`}>
+                    {Array.from({ length: w.show }, (_, i) => {
+                      const slot = w.model.slots[i % w.model.slots.length]!
+                      return (
+                        <span
+                          key={i}
+                          className="app-bts-drone"
+                          style={{ left: slot.x, top: slot.y, color: w.model.tint, animationDelay: `${(i % 4) * 0.18}s` }}
+                        >
+                          <svg
+                            viewBox="-13 -8 26 16"
+                            width="22"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinejoin="round"
+                          >
+                            {w.model.art}
+                          </svg>
+                        </span>
+                      )
+                    })}
+                    {w.total > w.show ? <span className="app-bts-drone-more">×{w.total}</span> : null}
+                  </div>
+                ),
+              )}
+            </div>
+          ) : null}
 
           {/* 敌方舰列（血条只跟存活单位；尸骸原位占槽演出见 foeUnitEls） */}
           <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>

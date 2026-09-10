@@ -6594,6 +6594,49 @@ body {
 
 .app-bts-puff.is-miss { animation: app-bts-puffmiss .42s ease-out forwards; }
 
+/* ── 无人机机群（2026-09-10 船长批：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻下方只显 1 架；
+      机体为 SVG 线稿——纪律见 conventions 第九章；弹点/命中/闪光均小型化，颜色仍按弹型） ── */
+
+.app-bts-drones { position: absolute; z-index: 5; pointer-events: none; }
+
+.app-bts-wing { position: absolute; left: 0; top: 0; }
+
+.app-bts-wing.is-out { animation: app-bts-wing-out .34s ease-out; }
+
+.app-bts-wing.is-back { animation: app-bts-wing-back .42s ease-in forwards; }
+
+.app-bts-wing.is-resident { animation: none; }
+
+.app-bts-drone { position: absolute; display: block; transform: translate(-50%, -50%); opacity: .95; filter: drop-shadow(0 0 3px currentColor); }
+
+.app-bts-drone svg { display: block; }
+
+.app-bts-wing.is-out .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
+
+.app-bts-wing.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
+
+.app-bts-drone-dot { fill: currentColor; stroke: none; opacity: .9; }
+
+.app-bts-drone-line { opacity: .55; }
+
+.app-bts-drone-more { position: absolute; left: 60px; top: -74px; font-size: 10px; font-family: var(--wui-mono); color: #9fe8ff; opacity: .85; }
+
+.app-bts-wing.is-resident .app-bts-drone-more { top: 46px; left: 18px; }
+
+@keyframes app-bts-wing-out { 0% { opacity: 0; transform: translateY(26px) scale(.7); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+
+@keyframes app-bts-wing-back { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(24px) scale(.75); } }
+
+@keyframes app-bts-drone-hover { 0%, 100% { margin-top: 0; } 50% { margin-top: -3px; } }
+
+.app-bts-bolt.is-drone .app-bts-bolt-bar { border-radius: 2px; }
+
+.app-bts-bolt-tail { position: absolute; left: 2px; top: -0.5px; height: 1px; opacity: .5; }
+
+.app-bts-puff.is-small { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-width: 1px; }
+
+.app-bts-muzzle.is-small { width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; animation-duration: .22s; }
+
 /* V12.3 realtime battle: micro-tween + foe escort hp width (ASCII-safe) */
 
 .app-bts-col, .app-bts-cursor, .app-bts-cur-chip, .app-bts-here { transition: left 80ms linear; }
