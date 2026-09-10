@@ -377,7 +377,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 5, // 体积档 1/4：轻型侦察机（2026-09-09 船长：体积 5/10/20/40 四档，机巢架数由体积主导）
     baseSellPriceIsk: 900,
-    description: '轻型侦察无人机：动能点射（破盾）。',
+    description: '轻型侦察无人机：动能点射（破盾）。机体轻快——闪避最高、装甲最薄。',
     damageType: 'kinetic',
     dmg: 3,
     cpuUse: 4,
@@ -393,7 +393,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 10, // 体积档 2/4：轻型战斗（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 2200,
-    description: '轻型战斗无人机：高爆打击（拆甲）。',
+    description: '轻型战斗无人机：高爆打击（拆甲）。属性均衡——机群的主力机型。',
     damageType: 'explosive',
     dmg: 6,
     cpuUse: 7,
@@ -401,7 +401,8 @@ export const DRONES: readonly ItemDef[] = [
     droneClass: 'combat', // 2026-09-10：无人机 · 战斗机
     hitRate: 0.75, // 2026-09-10 船长
     falloff: 1, // 命中不随距离衰减
-    defense: { shieldHp: 10, armorHp: 6, hullHp: 18, shieldResist: { kinetic: 0.1 }, evasion: 0.4 },
+    // 2026-09-10 定位调整：属性平均档（闪避 25%、血居中）
+    defense: { shieldHp: 12, armorHp: 8, hullHp: 20, shieldResist: { kinetic: 0.1 }, evasion: 0.25 },
   },
   {
     id: 'drone-heavy',
@@ -409,7 +410,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 20, // 体积档 3/4：重型攻坚（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 5000,
-    description: '重型攻坚无人机：能量脉冲（通用）。',
+    description: '重型攻坚无人机：能量脉冲（通用）。厚甲重击——血量最厚、闪避最低。',
     damageType: 'plasma',
     dmg: 12,
     cpuUse: 11,
@@ -417,7 +418,8 @@ export const DRONES: readonly ItemDef[] = [
     droneClass: 'assault', // 2026-09-10：无人机 · 攻坚机
     hitRate: 0.75, // 2026-09-10 船长
     falloff: 1, // 命中不随距离衰减
-    defense: { shieldHp: 20, armorHp: 12, hullHp: 34, armorResist: { explosive: 0.1, plasma: 0.05 }, evasion: 0.32 },
+    // 2026-09-10 定位调整：血量最厚（97）+ 闪避最低（10%）+ 装甲向抗性（抗拆甲）
+    defense: { shieldHp: 30, armorHp: 22, hullHp: 45, armorResist: { explosive: 0.15 }, hullResist: { kinetic: 0.05 }, evasion: 0.1 },
   },
   {
     id: 'drone-sentry',
@@ -425,7 +427,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 40, // 体积档 4/4：重型哨戒（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 9500,
-    description: '哨戒无人机：重型能量炮组，航程极远——但距离越远越难命中。',
+    description: '哨戒无人机：重型能量炮组，航程极远——但距离越远越难命中；机体轻薄，生存与侦察机相仿。',
     damageType: 'plasma',
     dmg: 20,
     cpuUse: 16,
@@ -433,7 +435,8 @@ export const DRONES: readonly ItemDef[] = [
     droneClass: 'sentry', // 2026-09-10：无人机 · 哨戒机
     hitRate: 1.1, // 2026-09-10 船长：哨戒基础命中 110%（近距被 100% 上限截断，用于抵消回避）
     falloff: 0.35, // 2026-09-10 船长：哨戒**保留正常命中衰减**（射程端点 ×0.35）——独有代价
-    defense: { shieldHp: 30, armorHp: 20, hullHp: 55, shieldResist: { kinetic: 0.1, explosive: 0.1 }, hullResist: { kinetic: 0.05 }, evasion: 0.25 },
+    // 2026-09-10 定位调整：血量与侦察机相仿（23）+ 闪避次低（18%）——狙击平台靠距离活命
+    defense: { shieldHp: 8, armorHp: 5, hullHp: 10, shieldResist: { kinetic: 0.1 }, evasion: 0.18 },
   },
 ]
 
