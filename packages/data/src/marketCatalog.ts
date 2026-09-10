@@ -88,9 +88,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-shield-ext-1', kind: 'module', refId: 'mod-shield-ext-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
   { key: 'mod-armor-plate-1', kind: 'module', refId: 'mod-armor-plate-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
   { key: 'mod-prop-1', kind: 'module', refId: 'mod-prop-1', rarity: 'common', basePrice: 6_000, demandMultiplier: 0.6 },
-  // V18 无人机装置（高槽；市场专供无蓝图）
+  // V18 无人机装置（高槽；现货 + 蓝图双渠道——2026-09-09 全蓝图化后有书可学）
   { key: 'mod-drone-rack-1', kind: 'module', refId: 'mod-drone-rack-1', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.6 },
   { key: 'mod-drone-tac-1', kind: 'module', refId: 'mod-drone-tac-1', rarity: 'common', basePrice: 18_000, demandMultiplier: 0.6 },
+  { key: 'mod-drone-relay-1', kind: 'module', refId: 'mod-drone-relay-1', rarity: 'common', basePrice: 15_000, demandMultiplier: 0.6 }, // 无人机中继天线 MK1（2026-09-10 现货）
   // 低级蓝图（价格 = 蓝图商店价；买来学习后永久可造，重复蓝图回卖按 common 档 0.6L 收购）
   { key: 'bp-miner-1', kind: 'blueprint', refId: 'bp-miner-1', rarity: 'common', basePrice: 62400, demandMultiplier: 0.6 },
   { key: 'bp-cargo-1', kind: 'blueprint', refId: 'bp-cargo-1', rarity: 'common', basePrice: 58400, demandMultiplier: 0.6 },
@@ -163,6 +164,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-prop-2', kind: 'module', refId: 'mod-prop-2', rarity: 'rare', basePrice: 39_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-rack-2', kind: 'module', refId: 'mod-drone-rack-2', rarity: 'rare', basePrice: 90_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-tac-2', kind: 'module', refId: 'mod-drone-tac-2', rarity: 'rare', basePrice: 160_000, demandMultiplier: 0.65 },
+  { key: 'mod-drone-relay-2', kind: 'module', refId: 'mod-drone-relay-2', rarity: 'rare', basePrice: 150_000, demandMultiplier: 0.65 }, // 无人机中继天线 MK2（2026-09-10 现货）
   { key: 'mod-shield-kin-3', kind: 'module', refId: 'mod-shield-kin-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.65 },
   { key: 'mod-shield-exp-3', kind: 'module', refId: 'mod-shield-exp-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.65 },
   { key: 'mod-shield-pla-3', kind: 'module', refId: 'mod-shield-pla-3', rarity: 'rare', basePrice: 170_000, demandMultiplier: 0.65 },
@@ -176,6 +178,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-prop-3', kind: 'module', refId: 'mod-prop-3', rarity: 'rare', basePrice: 272_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-rack-3', kind: 'module', refId: 'mod-drone-rack-3', rarity: 'rare', basePrice: 260_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-tac-3', kind: 'module', refId: 'mod-drone-tac-3', rarity: 'rare', basePrice: 420_000, demandMultiplier: 0.65 },
+  { key: 'mod-drone-relay-3', kind: 'module', refId: 'mod-drone-relay-3', rarity: 'rare', basePrice: 400_000, demandMultiplier: 0.65 }, // 无人机中继天线 MK3（2026-09-10 现货）
   // V18.1 支援件（伤害稳定器/射速计算机 = 低槽；索敌阵列/姿态陀螺 = 中槽；MK1 常驻、MK2/3 稀有）
   { key: 'mod-stab-kin-1', kind: 'module', refId: 'mod-stab-kin-1', rarity: 'common', basePrice: 34_000, demandMultiplier: 0.6 },
   { key: 'mod-stab-exp-1', kind: 'module', refId: 'mod-stab-exp-1', rarity: 'common', basePrice: 34_000, demandMultiplier: 0.6 },
@@ -225,6 +228,9 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-drone-rack-3', kind: 'blueprint', refId: 'bp-drone-rack-3', rarity: 'rare', basePrice: 780000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机甲板扩展 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-drone-tac-2', kind: 'blueprint', refId: 'bp-drone-tac-2', rarity: 'rare', basePrice: 400000, demandMultiplier: 0.65 }, // 战术导控阵列 MK2（蓝图=产物×2.5）
   { key: 'bp-drone-tac-3', kind: 'blueprint', refId: 'bp-drone-tac-3', rarity: 'rare', basePrice: 1260000, demandMultiplier: 0.65, standingReq: 4 }, // 战术导控阵列 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-drone-relay-1', kind: 'blueprint', refId: 'bp-drone-relay-1', rarity: 'common', basePrice: 30000, demandMultiplier: 0.6 }, // 无人机中继天线 MK1（蓝图=产物×2）
+  { key: 'bp-drone-relay-2', kind: 'blueprint', refId: 'bp-drone-relay-2', rarity: 'rare', basePrice: 375000, demandMultiplier: 0.65 }, // 无人机中继天线 MK2（蓝图=产物×2.5）
+  { key: 'bp-drone-relay-3', kind: 'blueprint', refId: 'bp-drone-relay-3', rarity: 'rare', basePrice: 1200000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机中继天线 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-shield-kin-2', kind: 'blueprint', refId: 'bp-shield-kin-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾增强器 MK2·动能型（蓝图=产物×2.5）
   { key: 'bp-shield-exp-2', kind: 'blueprint', refId: 'bp-shield-exp-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾增强器 MK2·高爆型（蓝图=产物×2.5）
   { key: 'bp-shield-pla-2', kind: 'blueprint', refId: 'bp-shield-pla-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾增强器 MK2·能量型（蓝图=产物×2.5）

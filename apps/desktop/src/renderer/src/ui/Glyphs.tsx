@@ -118,6 +118,17 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8 8l1.8 1.8M16 8l-1.8 1.8M8 16l1.8-1.8M16 16l-1.8-1.8" />
     </g>
   ),
+  /* 2026-09-10 无人机中继天线（方框徽：中继塔 + 信号弧） */
+  'drone-relay': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M12 16.5v-4.2" />
+      <path d="M12 12.6l1 1-1 1-1-1z" />
+      <circle cx="12" cy="8.2" r="0.9" />
+      <path d="M8.8 10.6c-1.1.7-1.1 2.5 0 3.2" fill="none" />
+      <path d="M15.2 10.6c1.1.7 1.1 2.5 0 3.2" fill="none" />
+    </g>
+  ),
   /* V18B-2 激光炮（方框徽：光束横贯） */
   laser: (
     <g>
@@ -411,6 +422,7 @@ export const TONES: Record<string, string> = {
   propulsion: '#ffb454',
   'drone-rack': '#ffc46b',
   'drone-tac': '#ffb454',
+  'drone-relay': '#7fc7ff', // 2026-09-10 中继天线：通讯青（与导控黄/甲板橙区分）
   support: '#ff8ab5',
   industrial: '#5ee6c8',
   armed: '#ff8373',

@@ -170,6 +170,8 @@ export function moduleDef(
     repairKit?: string
     // 目标锁定阵列（2026-09-09：高槽 target-lock——集火 + 被锁目标受击加深）
     lockDmgBonus?: number
+    // 无人机中继天线（2026-09-10：高槽 drone-relay——放飞无人机射程加成）
+    droneRangeBonusPct?: number
   },
 ): ModuleDef {
   return {
@@ -206,6 +208,7 @@ export function moduleDef(
     ...(opts?.repairIntervalMs !== undefined ? { repairIntervalMs: opts.repairIntervalMs } : {}),
     ...(opts?.repairKit !== undefined ? { repairKit: opts.repairKit } : {}),
     ...(opts?.lockDmgBonus !== undefined ? { lockDmgBonus: opts.lockDmgBonus } : {}),
+    ...(opts?.droneRangeBonusPct !== undefined ? { droneRangeBonusPct: opts.droneRangeBonusPct } : {}),
   }
 }
 

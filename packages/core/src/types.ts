@@ -87,6 +87,9 @@ export interface ItemDef {
   cpuUse?: number
   /** 生存包（仅无人机；V11：三层血量/抗性/回避契约） */
   defense?: DroneDefense
+  /** 武器射程上限（仅无人机；2026-09-10 船长拍板按机型分类——蜂鸟 2500/赤鸢 3000/
+   * 猎鹰 3500/雷鸥哨戒 5000；combat 读此值，缺省兜底 2600；射程扩展装置在此基础上叠加） */
+  maxRangeM?: number
   /**
    * T8 修理组件 seam（内容后续添加，如"纳米修理组件"）：单件可修复的船体耐久比例（0~1）。
    * 重复清剿等自动流程会优先消耗货仓内这类物品修复耐久（按耐久 < 0.5 阈值判定），
@@ -597,6 +600,7 @@ export type ModuleSlot =
   | 'propulsion'
   | 'drone-rack'
   | 'drone-tac'
+  | 'drone-relay'
   | 'support'
   | 'target-lock'
 
@@ -692,12 +696,15 @@ export interface ModuleDef {
   dmgMult?: number
   /** 装配占用 CPU（V17 起装配校验生效：模块合计不得超过船体 cpu；与无人机放飞共用） */
   cpuUse?: number
-  /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展，
-     有 droneDmgBonus = 战术导控；归槽 rack = high，见 labels.rackOf） ═══ */
+  /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展、
+     有 droneDmgBonus = 战术导控、有 droneRangeBonusPct = 中继天线；归槽 rack = high，见 labels.rackOf） ═══ */
   /** 无人机甲板扩展：+droneBayM3（携带/放飞上限扩容；线性可叠件） */
   droneBayBonusM3?: number
   /** 战术导控阵列：放飞无人机单发伤害加成（0.12 = +12%；线性求和乘入；线性可叠件） */
   droneDmgBonus?: number
+  /** 无人机中继天线（2026-09-10 船长拍板百分比制）：放飞无人机射程上限加成
+   * （0.2 = +20%；求和后乘入机型基础射程；线性可叠件——MK1/2/3 = 0.2/0.45/0.8） */
+  droneRangeBonusPct?: number
   /* ═══ B3 打捞器（salvager 家族：高槽无伤害件；升级只缩短周期） ═══ */
   /** 打捞器单轮周期毫秒（每台每轮捞 1 具残骸；MK1/2/3 = 10s/8s/6s） */
   salvageCycleMs?: number

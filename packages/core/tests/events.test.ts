@@ -89,9 +89,10 @@ describe('随机事件系统（V11）', () => {
     expect(seen.has('acquisitionWeek') || seen.has('dumping') || seen.has('shortwave') || seen.has('bulk')).toBe(true)
   })
 
-  it('市场大类 B（奇货）事件单入簿：寿命按稀有度（≤9 分钟），买卖两向都出现过', () => {
+  it('市场大类 B（奇货）：黑市溢价现货（×1.8~2.0、寿命 8 分钟手慢无）与神秘买家收购都入簿', () => {
     let sells = 0
     let buys = 0
+    let sawBlack = false
     for (let i = 0; i < 2; i++) {
       const { state, ctx } = makeWorld()
       for (let k = 0; k < 40; k++) {
@@ -99,16 +100,21 @@ describe('随机事件系统（V11）', () => {
       }
       const mk = state.market
       for (const o of mk.npcSell['mod-r'] ?? []) {
-        expect(o.expiresAtGameMs - state.gameMs).toBeLessThanOrEqual(9 * 60_000 + 1000)
+        // 2026-09-10（船长）：黑市 = 高价应急渠道——开价 ≈行情价 ×1.8~2.0，仅存 8 分钟
+        expect(o.expiresAtGameMs - state.gameMs).toBeLessThanOrEqual(8 * 60_000 + 1000)
+        expect(o.price).toBeGreaterThanOrEqual(20_000 * 1.5) // ≥基准价 1.5×（宽松防噪声）
         expect(o.qty).toBe(1)
         sells += 1
       }
       for (const o of mk.npcBuy['mod-r'] ?? []) {
-        expect(o.expiresAtGameMs - state.gameMs).toBeLessThanOrEqual(9 * 60_000 + 1000)
+        expect(o.expiresAtGameMs - state.gameMs).toBeLessThanOrEqual(9 * 60_000 + 1000) // 神秘买家寿命按稀有度
         buys += 1
       }
+      const texts = state.logs.map((l) => l.text).join('|')
+      if (texts.includes('黑市商人挂出一件') && texts.includes('溢价现货')) sawBlack = true
     }
     expect(sells + buys).toBeGreaterThan(0)
+    expect(sawBlack).toBe(true) // 文案与机制一致：明示溢价
   })
 
   it('v10 档迁移到 v11：events 默认播种为 0，往返保留 nextAtGameMs', () => {

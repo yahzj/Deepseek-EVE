@@ -232,9 +232,11 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext): void {
 
 /**
  * 市场大类 B：市场奇货（公开导出，测试可直接调用）。
- * 变体：0 神秘出货（稀有/限定商品当场刷一件供应单，随稀有度寿命过期）/
- *       1 神秘买家（以近乎现货价的天价收购稀有/限定商品 ×1）。
+ * 变体：0 黑市溢价现货（2026-09-10 船长定：真·高价应急渠道——稀有/限定商品当场刷一件
+ *       供应单，开价 = 行情价 ×1.8~2.0，寿命仅 8 分钟"手慢无"，花钱免蹲货）/
+ *       1 神秘买家（以近乎现货价的天价收购稀有/限定商品 ×1，寿命按稀有度）。
  */
+export const BLACK_MARKET_LIFE_MS = 8 * 60_000 // 黑市溢价现货时限（船长：比稀有 9 分钟/奇货 6 小时更短）
 export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
   ensureMarket(state, ctx)
   const goods = rareGoods(ctx)
@@ -245,19 +247,26 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
   }
   const def = goods[nextInt(state.rng, goods.length)]!
   const mk = state.market
-  const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
-  const lifeMin = Math.round(lifeMs / 60_000)
   const level = levelOf(state, ctx, def.key)
   const name = goodName(ctx, def.key)
 
   if (nextInt(state.rng, 2) === 0) {
-    const price = clampPrice(ctx, def, Math.round(level * (0.95 + nextRandom(state.rng) * 0.1)))
-    mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
-    logEvent(state, `黑市商人突然挂出一件「${name}」：${price.toLocaleString('zh-CN')} ISK，仅存约 ${lifeMin} 分钟，手慢无。`)
+    // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
+    const mul = 1.8 + nextRandom(state.rng) * 0.2
+    const price = clampPrice(ctx, def, Math.round(level * mul))
+    mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + BLACK_MARKET_LIFE_MS })
+    logEvent(
+      state,
+      `黑市商人挂出一件「${name}」：开价 ${price.toLocaleString('zh-CN')} ISK（约为行情价 ×${mul.toFixed(1)} 的溢价现货），仅存 ${Math.round(BLACK_MARKET_LIFE_MS / 60_000)} 分钟，手慢无——急用免蹲货，不差钱可出手。`,
+    )
   } else {
+    const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
     const price = clampPrice(ctx, def, Math.round(level * (1.0 + nextRandom(state.rng) * 0.35)))
     mk.npcBuy[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
-    logEvent(state, `神秘买家以 ${price.toLocaleString('zh-CN')} ISK 的天价求购「${name}」×1——远高于常态收购价，约 ${lifeMin} 分钟内有效。`)
+    logEvent(
+      state,
+      `神秘买家以 ${price.toLocaleString('zh-CN')} ISK 的天价求购「${name}」×1——远高于常态收购价，约 ${Math.round(lifeMs / 60_000)} 分钟内有效。`,
+    )
   }
 }
 

@@ -39,6 +39,95 @@ const KIND_OPTIONS = ['all', 'item', 'wreck', 'module', 'ship', 'blueprint', 'ai
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
 
+/* ── 类型下的子分类（2026-09-10 船长：类型分类再加一级，便于精确定位商品） ── */
+const SUB_ALL = 'sub-all'
+interface SubOption {
+  key: string
+  label: string
+}
+const ITEM_SUBS: SubOption[] = [
+  { key: 'ore', label: '矿石' },
+  { key: 'mineral', label: '矿物' },
+  { key: 'gas', label: '气体' },
+  { key: 'ice', label: '冰矿' },
+  { key: 'ammo', label: '弹药' },
+  { key: 'drone', label: '无人机' },
+  { key: 'kit', label: '修理组件' },
+]
+/** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
+const MODULE_SUBS: SubOption[] = [
+  { key: 'prod', label: '采集与货舱' },
+  { key: 'weapon', label: '武器' },
+  { key: 'shield', label: '护盾' },
+  { key: 'armor', label: '装甲' },
+  { key: 'prop', label: '推进器' },
+  { key: 'drone', label: '无人机装置' },
+  { key: 'support', label: '支援件（辅助与维修）' },
+  { key: 'salvager', label: '打捞器' },
+  { key: 'lock', label: '目标锁定' },
+]
+const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
+  prod: ['miner', 'cargo'],
+  weapon: ['turret', 'laser', 'missile'],
+  shield: ['shield'],
+  armor: ['armor'],
+  prop: ['propulsion'],
+  drone: ['drone-rack', 'drone-tac', 'drone-relay'], // 2026-09-10 + 无人机中继天线
+  support: ['support'],
+  salvager: ['salvager'],
+  lock: ['target-lock'],
+}
+const SHIP_SUBS: SubOption[] = [
+  { key: 'industrial', label: '采矿舰' },
+  { key: 'hauler', label: '货运舰' },
+  { key: 'armed', label: '武装舰' },
+  { key: 'armored', label: '重装舰' },
+]
+const BLUEPRINT_SUBS: SubOption[] = [
+  { key: 'module', label: '装备蓝图' },
+  { key: 'ship', label: '舰船蓝图' },
+  { key: 'supply', label: '补给蓝图（弹药·修理组件）' },
+]
+const CORE_SUBS: SubOption[] = [
+  { key: 'basic', label: '基础核心' },
+  { key: 'gamma', label: '伽马核心' },
+  { key: 'beta', label: '贝塔核心' },
+  { key: 'alpha', label: '阿尔法核心' },
+]
+/** 主类型 → 可用子分类（wreck 残骸无二级） */
+const SUBS_OF_KIND: Partial<Record<Exclude<KindFilter, 'all'>, SubOption[]>> = {
+  item: ITEM_SUBS,
+  module: MODULE_SUBS,
+  ship: SHIP_SUBS,
+  blueprint: BLUEPRINT_SUBS,
+  aicore: CORE_SUBS,
+}
+/** 子分类判定（good 是否属于所选子类；sub = SUB_ALL 恒真） */
+function subPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter, sub: string): boolean {
+  if (sub === SUB_ALL || kind === 'all' || kind === 'wreck') return true
+  if (kind === 'item') {
+    const it = ctx.items.get(good.refId)
+    return it?.kind === sub
+  }
+  if (kind === 'module') {
+    const mod = ctx.modules.get(good.refId)
+    if (!mod) return false
+    return (MODULE_SUB_SLOTS[sub] ?? []).includes(mod.slot)
+  }
+  if (kind === 'ship') {
+    const ship = ctx.ships.get(good.refId)
+    return (ship?.role ?? '') === sub
+  }
+  if (kind === 'blueprint') {
+    const eq = ctx.blueprints.get(good.refId)
+    if (eq) return eq.moduleId !== undefined ? sub === 'module' : sub === 'supply'
+    const shipBp = ctx.shipBlueprints.get(good.refId)
+    return shipBp ? sub === 'ship' : false
+  }
+  if (kind === 'aicore') return good.refId === sub
+  return true
+}
+
 /** 目录条目对应的物品定义（item 类才查物品表） */
 function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
   return good.kind === 'item' ? ctx.items.get(good.refId) : undefined
@@ -373,7 +462,7 @@ function MarketColumn({
     // is-fill + 去掉列表自身 max-height 帽：列表交给 Panel body 二级内滚（一级页不滚）
     <Panel className="is-fill" title={title} right={right}>
       {rows.length === 0 ? (
-        <div className="app-dim app-inv-empty">没有匹配的订单（试试清空搜索或切换类型）。</div>
+        <div className="app-dim app-inv-empty">没有匹配的订单（试试清空搜索、切换类型或子分类）。</div>
       ) : (
         <ul className="app-inv-list">
           {rows.map((good) => (
@@ -931,20 +1020,27 @@ export function MarketPage({
   // 页面级全局搜索（船长 2026-09-05）：搜索栏从两栏内取出；输入/类型过滤时同时检索常驻与稀有订单
   // （常驻与稀有的商品集不重叠——rarity 单值归属，跨栏合并不会重复条目）。
   const [kind, setKind] = useState<KindFilter>('all')
+  const [sub, setSub] = useState<string>(SUB_ALL)
   const query = kw.trim().toLowerCase()
   const filterActive = query.length > 0 || kind !== 'all'
+  const kindSubs: SubOption[] | undefined = kind !== 'all' ? SUBS_OF_KIND[kind] : undefined
+  /** 切换主类型时子分类回到"全部子类" */
+  const changeKind = (v: KindFilter): void => {
+    setKind(v)
+    setSub(SUB_ALL)
+  }
   /** 「我的挂单」行内跳转：按该商品搜索（跨栏合并显示）并打开行情详情（2026-09-08 船长定） */
   const jumpToOrder = (goodKey: string): void => {
     setKw(goodKey)
-    setKind('all')
+    changeKind('all')
     setSelKey(goodKey)
   }
-  const filteredAll = useMemo(
-    () =>
+  const filteredAll = useMemo(    () =>
       stockedFirst(
         engine,
         goods.filter((good) => {
           if (kind !== 'all' && !kindPasses(engine.ctx, good, kind)) return false
+          if (sub !== SUB_ALL && !subPasses(engine.ctx, good, kind, sub)) return false
           if (query.length > 0) {
             const name = goodName(engine.ctx, good.key).toLowerCase()
             if (!name.includes(query) && !good.key.toLowerCase().includes(query)) return false
@@ -952,7 +1048,7 @@ export function MarketPage({
           return true
         }),
       ),
-    [goods, engine, kind, query, engine.state.gameMs],
+    [goods, engine, kind, sub, query, engine.state.gameMs],
   )
 
   return (
@@ -984,7 +1080,7 @@ export function MarketPage({
               value={kw}
               onChange={(e) => setKw(e.target.value)}
             />
-            <select className="app-mkt-kind" value={kind} onChange={(e) => setKind(e.target.value as KindFilter)}>
+            <select className="app-mkt-kind" value={kind} onChange={(e) => changeKind(e.target.value as KindFilter)}>
               <option value="all">全部类型</option>
               {KIND_OPTIONS.filter((k) => k !== 'all').map((k) => (
                 <option key={k} value={k}>
@@ -992,13 +1088,34 @@ export function MarketPage({
                 </option>
               ))}
             </select>
+            {kindSubs ? (
+              <select
+                className="app-mkt-kind"
+                value={sub}
+                onChange={(e) => setSub(e.target.value)}
+                title={`${KIND_TEXT[kind]}下的子分类`}
+              >
+                <option value={SUB_ALL}>全部{KIND_TEXT[kind]}</option>
+                {kindSubs.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
           </div>
 
           {filterActive ? (
             /* ── 搜索/过滤激活：跨栏合并结果（常驻 + 稀有一次搜全；GoodRow 自带稀有度徽标区分） ── */
             <MarketColumn
               engine={engine}
-              title={query.length > 0 ? `搜索结果：${kw.trim()}` : `全部 ${KIND_TEXT[kind] ?? kind}`}
+              title={
+                query.length > 0
+                  ? `搜索结果：${kw.trim()}`
+                  : `全部 ${KIND_TEXT[kind] ?? kind}${
+                      sub !== SUB_ALL && kindSubs ? ` · ${kindSubs.find((s) => s.key === sub)?.label ?? ''}` : ''
+                    }`
+              }
               right={<span className="app-dim">常驻与稀有订单一次搜全（商品按稀有度徽标区分）</span>}
               rows={filteredAll}
               selKey={activeSelKey}
