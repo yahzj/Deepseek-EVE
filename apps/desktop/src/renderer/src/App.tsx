@@ -14,6 +14,7 @@ import { formatDurationMs, shipDisplayName, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
+import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { TutorialGuide, TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
@@ -131,10 +132,13 @@ function readNum(key: string, def: number, min: number, max: number): number {
 const ZOOM_KEY = 'whale-idle:ui-zoom'
 const FS_KEY = 'whale-idle:ui-fs'
 
-/** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs */
+/** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
+ *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张 */
 function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onClose: () => void }) {
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
   const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, 1.25))
+  /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
+  const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
   useEffect(() => {
     const el = root.current
     if (!el) return
@@ -153,7 +157,7 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-settings-title">设置</div>
-        <div className="app-settings-sub">界面缩放与字体大小，即时生效 · 自动记忆</div>
+        <div className="app-settings-sub">界面缩放、字体大小与宇宙背景，即时生效 · 缩放与字号自动记忆</div>
         <div className="app-settings-list">
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -170,6 +174,25 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
             </div>
             <input className="app-settings-slider" type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
             <div className="app-settings-desc">独立于界面缩放，只调整文字（85%~125%）</div>
+          </div>
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">宇宙背景</span>
+              <span className="app-settings-val">{bg ? bg.label : '未启用'}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className="app-btn is-small"
+                onClick={() => setBg(rerollSpaceBg())}
+                disabled={!bg}
+                title="换成另一张随机底图（立即生效）"
+              >
+                换一张
+              </button>
+            </div>
+            <div className="app-settings-desc">
+              {bg ? `${bg.total} 张无缝星图铺在界面最底层，每次启动随机一张；这里换的这张本场有效（下次启动仍随机）` : '背景图缺失：当前用的是默认深色底'}
+            </div>
           </div>
         </div>
         <div className="app-settings-foot">
