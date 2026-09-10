@@ -256,9 +256,16 @@ export const DEFAULT_TEST_BLUEPRINTS: readonly BlueprintDef[] = [
   blueprint('bp-b', 'mod-b', [{ itemId: 'min-b', count: 8 }], { buildSeconds: 300, buildCost: 300, price: 800 }),
 ]
 
-/** 快速造星系 */
-export function galaxy(id: string, name = `星系${id}`): GalaxyDef {
-  return { id, name, x: 0, y: 0, description: '测试用星系' }
+/** 快速造星系（opts.security：安全等级——赏金日板按 高安 ≥0.5 / 中安 ≥0 / 低安 <0 分区抽地点） */
+export function galaxy(id: string, name = `星系${id}`, opts?: { security?: number }): GalaxyDef {
+  return {
+    id,
+    name,
+    x: 0,
+    y: 0,
+    ...(opts?.security !== undefined ? { security: opts.security } : {}),
+    description: '测试用星系',
+  }
 }
 
 /** 快速造异常目标 */
@@ -285,6 +292,8 @@ export function anomaly(
     /** 回收特色池/追加件（高级箱矿物与主题件来源） */
     recyclePool?: AnomalyDef['recyclePool']
     recycleLoot?: AnomalyDef['recycleLoot']
+    /** 隐藏卡（遭遇模板；隐藏卡不作窝点候选、无稀有残骸登记） */
+    hidden?: boolean
   },
 ): AnomalyDef {
   return {
@@ -305,6 +314,7 @@ export function anomaly(
     ...(opts?.lairGear !== undefined ? { lairGear: opts.lairGear } : {}),
     ...(opts?.recyclePool !== undefined ? { recyclePool: opts.recyclePool } : {}),
     ...(opts?.recycleLoot !== undefined ? { recycleLoot: opts.recycleLoot } : {}),
+    ...(opts?.hidden !== undefined ? { hidden: opts.hidden } : {}),
     description: '测试用异常点',
   }
 }

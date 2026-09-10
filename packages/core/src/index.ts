@@ -600,6 +600,8 @@ export {
   courierDelivering,
   startCourierDelivery,
   settleBountyTaskVictory,
+  BOUNTY_ZONE_PLAN,
+  securityZoneOf,
   BOUNTY_BOARD_PERIOD_MS,
   bountyDayStartWallMs,
   bountyBoardRemainingMs,
@@ -608,7 +610,7 @@ export {
   COURIER_TASK_MARGIN,
   BOUNTY_TASKS_PER_ROUND,
 } from './sideTasks'
-export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
+export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
 export { emptyMarks } from './state'
 
@@ -621,11 +623,10 @@ export {
   LAIR_REWARD_MUL,
   LAIR_ESCORT_BONUS,
   LAIR_WAVES,
-  LAIR_TIER_STANDING,
   LAIR_TASK_REWARD_MUL,
   LAIR_RARE_WRECK_GAIN,
   LAIR_TIER_LABELS,
-  lairTierForStanding,
+  hasLairCore,
   isLairCandidate,
   lairCoreOf,
   lairTierWordOf,

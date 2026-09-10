@@ -1,15 +1,16 @@
 /**
  * T1 顶部活动窗口：常驻显示「玩家活动」与「技能训练」两个分区（各带待机文案），
- * 提供统一终止入口；AI 活动不逐条显示，用 ⚙×N 小图标徽标（点击跳 AI 指挥中心）。
+ * 提供统一终止入口；AI 活动不逐条显示，用两枚小图标徽标（副船 / 工业，各自跳转）。
  * 布局：垂直排布，固定高度上限，内容多时内部滚动（船长 2026-09-05）。
  */
-import { activityOverview } from '@whale/core'
+import { activityOverview, aiCoreIndustryUsed, aiCoreShipUsed } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationMs } from '@whale/core'
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -158,12 +159,14 @@ export function ActivityBar({
 }) {
   const state = engine.state
   const all = activityOverview(state, engine.ctx)
-  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用 ⚙×N 徽标
+  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用徽标
   // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
-  const aiAll = all.filter((i) => i.kind === 'ai')
-  const aiShips = aiAll.filter((i) => i.stop === 'cancel-ai').length
-  const aiProd = aiAll.length - aiShips
-  const aiCount = aiAll.length
+  // 2026-09-10 船长：徽标**拆成两枚**——「副船」与「工业」各一枚（图标与配色不同，便于辨识）；
+  //   数字取 core 单点（与 AI 指挥中心标题行同源），不再从活动列表反推
+  const aiShips = aiCoreShipUsed(state)
+  const aiProd = aiCoreIndustryUsed(state)
+  /** AI 核心占用说明（与 AI 指挥中心/工业页同源的单点文案，挂在两枚徽标的悬停里） */
+  const aiSlotsNote = aiSlotTip(aiIndustrySlots(state, engine.ctx))
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
   // 撤退需二次确认（轻损但有代价）
@@ -258,28 +261,32 @@ export function ActivityBar({
     <div className="app-activitybar">
       <div className="app-activitybar-hd">
         <span className="app-activitybar-title">活动</span>
-        {aiCount > 0 ? (
+        {/* AI 徽标（2026-09-10 船长：拆成两枚，图标 / 配色 / 去处各不相同）——
+            ① 副船：AI 核心图标（粉）+「副船 ×N」，点进「舰船」的 AI 指挥中心；
+            ② 工业：工业页图标（薄荷）+「工业 ×N」，点进「工业」页（AI 炉/线的停止在那儿）。
+            计数为 0 的那一枚不显示（无事可看时不占位）。 */}
+        {aiShips > 0 ? (
           <button
-            className="app-activitybar-ai"
-            title={
-              aiProd > 0 && aiShips > 0
-                ? `${aiShips} 艘 AI 副船 · ${aiProd} 条 AI 生产运行中——点击前往「舰船」AI 指挥中心（AI 生产线的取消在工业页）`
-                : aiProd > 0
-                  ? `${aiProd} 条 AI 生产运行中——点击前往「工业」页查看/取消`
-                  : `${aiCount} 艘 AI 副船正在执行任务——点击前往「舰船」页 AI 指挥中心`
-            }
-            onClick={() => {
-              if (aiShips > 0 || aiProd === 0) {
-                if (onAiCenter) onAiCenter()
-              } else if (onGoPage) {
-                onGoPage('industry')
-              }
-            }}
+            className="app-activitybar-ai is-ship"
+            title={`AI 副船 ${aiShips} 艘：正在执行采矿 / 打捞 / 掩护巡逻——点击前往「舰船」的 AI 指挥中心。\n${aiSlotsNote}`}
+            onClick={() => onAiCenter?.()}
           >
             <span className="app-ico">
               <Glyph name="nav-ai" size={13} color={NAV_TONES['nav-ai']} />
             </span>
-            ×{aiCount}
+            副船 ×{aiShips}
+          </button>
+        ) : null}
+        {aiProd > 0 ? (
+          <button
+            className="app-activitybar-ai is-industry"
+            title={`站内 AI 作业 ${aiProd} 条：精炼炉 / 回收炉 / 制造线——点击前往「工业」页查看或停止。\n${aiSlotsNote}`}
+            onClick={() => onGoPage?.('industry')}
+          >
+            <span className="app-ico">
+              <Glyph name="nav-industry" size={13} color={NAV_TONES['nav-industry']} />
+            </span>
+            工业 ×{aiProd}
           </button>
         ) : null}
       </div>

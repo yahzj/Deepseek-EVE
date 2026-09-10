@@ -957,7 +957,8 @@ export const MODULES: readonly ModuleDef[] = [
      获取渠道：只在精炼炉「残骸回收」开**稀有残骸（高级箱）**时掉落——打赢赏金任务的敌人窝点、
      把该星系留下的稀有残骸捞回站内开箱，才可能拿到对应敌族的专属件。**无蓝图、不上市场**，
      也不进任何常规掉落池；按敌族取池（见 core/lairs.ts 的 FOE_LAIR_GEAR）。
-     F 族（制式巡逻）刻意不配专属件：当前只有隐藏遭遇模板、没有窝点成员。 */
+     留空的两族：**B 族（武装拾荒者）**——2026-09-10 船长定取消 B 族窝点/赏金任务，原
+     「拾荒者拆解臂」一并撤下；**F 族（制式巡逻）**——只有隐藏遭遇模板、没有窝点成员。 */
   {
     id: 'mod-lair-turret-a',
     name: '劫掠者转管炮',
@@ -973,15 +974,6 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 0.8,
     cpuUse: 32,
     description: '海盗（A 族）窝点专属：缴获改装的多管动能炮——转管泼弹、射速极快，单发威力偏低；贴身缠斗最凶。',
-  },
-  {
-    id: 'mod-lair-salvager-b',
-    name: '拾荒者拆解臂',
-    slot: 'salvager',
-    rack: 'high',
-    salvageCycleMs: 4000,
-    cpuUse: 20,
-    description: '拾荒者（B 族）窝点专属：废船改装的液压拆解臂——单台每 4 秒拆解一具残骸（比量产打捞器更快），打捞作业与舰船页打捞器同槽竞争。',
   },
   {
     id: 'mod-lair-armor-c',

@@ -252,7 +252,9 @@ body {
 
   border-bottom: 1px solid var(--wui-border);
 
-  background: linear-gradient(180deg, #0a1320, #060b12);
+  /* 2026-09-10 船长：顶栏也半透明（原来是不透明纯色，在整体变亮的界面里显得"过于黑"）——
+     与面板同档 alpha 0.88，宇宙底图在顶栏下透出同等的微光，全站观感一致 */
+  background: linear-gradient(180deg, rgba(10, 19, 32, 0.88), rgba(6, 11, 18, 0.88));
 
 }
 
@@ -7241,6 +7243,37 @@ body {
 .app-activitybar-ai:hover {
 
   background: rgba(120, 200, 255, 0.12);
+
+}
+
+/* AI 徽标两枚（2026-09-10 船长：拆成"副船 / 工业"两枚，要能辨识）——
+   边框与底色分别跟随各自图标色调（副船 = AI 核心粉、工业 = 工业薄荷），加上文字标签与悬停说明，
+   一眼可分且点进各自页面 */
+.app-activitybar-ai.is-ship {
+
+  border-color: rgba(255, 138, 181, 0.38);
+
+  background: rgba(255, 138, 181, 0.06);
+
+}
+
+.app-activitybar-ai.is-ship:hover {
+
+  background: rgba(255, 138, 181, 0.15);
+
+}
+
+.app-activitybar-ai.is-industry {
+
+  border-color: rgba(66, 217, 176, 0.38);
+
+  background: rgba(66, 217, 176, 0.06);
+
+}
+
+.app-activitybar-ai.is-industry:hover {
+
+  background: rgba(66, 217, 176, 0.15);
 
 }
 

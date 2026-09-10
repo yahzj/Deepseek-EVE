@@ -44,6 +44,7 @@ import {
   RECYCLE_POOL_AVG_ISK,
   SHIP_ROLE_LABELS,
   FOE_LAIR_GEAR,
+  BOUNTY_ZONE_PLAN,
   isLairCandidate,
   lairGearOf,
   lairNameOf,
@@ -629,17 +630,22 @@ for (const m of MODULES) {
 /* ── 赏金任务·敌人窝点契约（2026-09-10 加）：可作窝点目标的敌群必须齐备"派生所需的三件套" ──
  * ①稀有残骸物品（窝点战利品，打捞必得 → 高级箱）已注册进 ctx.items；
  * ②三档称呼词齐全（敌族词表或卡级覆盖）；
- * ③该敌族的**专属装备**至少一件，且 id 必须真实存在（F 族刻意留空：无窝点成员）。 */
+ * ③该敌族的**专属装备**至少一件，且 id 必须真实存在（B/F 两族留空，见下）。
+ * 另：**B 族（武装拾荒者）已取消**——任何 B 族卡都不得成为窝点候选（船长 2026-09-10 定）。 */
 {
   let lairCards = 0
   const famWithGear = new Set<string>()
   const lairCtx = buildSimContext()
   for (const def of ANOMALIES_FLAVORED) {
+    if (def.foeFamily === 'B') {
+      check(!isLairCandidate(def), `窝点契约：B 族已取消（2026-09-10 船长定），${def.name} 不得作为窝点候选`)
+      check(FOE_LAIR_GEAR.B.length === 0, `窝点契约：B 族专属装备应已撤下，实际 ${FOE_LAIR_GEAR.B.join('、')}`)
+    }
     if (!isLairCandidate(def)) continue
     lairCards += 1
     const rareId = rareWreckItemIdOf(def.id)
     const rareDef = lairCtx.items.get(rareId)
-    check(!!rareDef, `窝点契约：${def.name} 缺稀有残骸物品 ${rareId}（data/context.ts 需按 isLairCandidate 注册）`)
+    check(!!rareDef, `窝点契约：${def.name} 缺稀有残骸物品 ${rareId}（data/context.ts 需按 hasLairCore 注册）`)
     if (rareDef) {
       check(rareDef.kind === 'wreck', `窝点契约：稀有残骸 ${rareId} 种类应为 wreck，实际 ${rareDef.kind}`)
       check(
@@ -660,6 +666,23 @@ for (const m of MODULES) {
     check(
       FOE_LAIR_GEAR[fam].length > 0,
       `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
+    )
+  }
+  // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽
+  const zoneCount = { 中安: 0, 低安: 0 }
+  for (const def of ANOMALIES_FLAVORED) {
+    if (!isLairCandidate(def)) continue
+    const sec = lairCtx.galaxies.get(def.galaxyId)?.security
+    const v = typeof sec === 'number' && Number.isFinite(sec) ? sec : 0.5
+    if (v >= 0.5) continue
+    if (v >= 0) zoneCount.中安 += 1
+    else zoneCount.低安 += 1
+  }
+  for (const plan of BOUNTY_ZONE_PLAN) {
+    const have = plan.zone === '高安' ? 0 : zoneCount[plan.zone as '中安' | '低安']
+    check(
+      have >= plan.count,
+      `日板席位：${plan.zone} 需 ${plan.count} 个候选地点，实际只有 ${have} 个（抽不满就少发，请补内容）`,
     )
   }
   console.log(`· 窝点契约：${lairCards} 张窝点卡（稀有残骸 + 三档称呼 + 专属装备齐备，覆盖 ${famWithGear.size} 个敌族）`)

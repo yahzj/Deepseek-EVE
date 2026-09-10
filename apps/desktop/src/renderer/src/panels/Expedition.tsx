@@ -11,7 +11,6 @@ import {
   HOME_GALAXY_ID,
   LAIR_RARE_WRECK_GAIN,
   LAIR_TIER_LABELS,
-  LAIR_TIER_STANDING,
   SCAN_WINDOW_MS,
   aiCoreName,
   bountyDamageForecast,
@@ -1885,7 +1884,6 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
   const view = engine.sideTasksView()
   const tasks = view.bounty
   const standing = standingOf(state, DSI_FACTION_ID)
-  const tierCap = standing >= LAIR_TIER_STANDING[3] ? 3 : standing >= LAIR_TIER_STANDING[2] ? 2 : 1
   // T4 延后项：采矿中可「转战」（卡片内联两步确认，与常驻悬赏卡同口径）
   const [goAsk, setGoAsk] = useState<number | null>(null)
 
@@ -1902,10 +1900,17 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
     else onToast('舰队已抵达窝点空域，正在交火！')
   }
 
+  // 当日席位构成（档位随机发放，但保证每天三档各至少一张）：按实际板统计，供头部摘要
+  const tierCount = (lv: 1 | 2 | 3): number => tasks.filter((t) => (t.lairTier ?? 1) === lv).length
+  const tierSummary = `本日 ${tasks.length} 席：${LAIR_TIER_LABELS[1]} ${tierCount(1)} · ${LAIR_TIER_LABELS[2]} ${tierCount(2)} · ${LAIR_TIER_LABELS[3]} ${tierCount(3)}`
+
   return (
     <div className="app-sidetasks">
       <div className="app-sidetasks-head">
-        <span>赏金任务 · 每日高难目标（指定敌人窝点：亲自出击，AI 不能代劳）</span>
+        <span>
+          赏金任务 · 每日高难目标（指定敌人窝点：亲自出击，AI 不能代劳）
+          {tasks.length > 0 ? <span className="app-dim"> · {tierSummary}</span> : null}
+        </span>
         {view.bountyOpened || tasks.length > 0 ? (
           <span
             className="app-st-time"
@@ -1991,7 +1996,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 <span className="app-dim">
                   {state.mining.active
                     ? '当前采矿中——出发将结束开采（已采的货随船带走）'
-                    : `当前可接档位上限：${LAIR_TIER_LABELS[tierCap]}窝点（声望 ${standing}）`}
+                    : `当前协会声望 ${standing}——卡面「需声望」达标即可接（档位由每日席位发放，与声望无关）`}
                 </span>
                 {inFlightSelf ? (
                   <span className="app-btn is-small is-primary" aria-disabled title="舰队正在该窝点交火中">
