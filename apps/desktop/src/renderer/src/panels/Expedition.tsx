@@ -719,12 +719,8 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   const STACK_HALF_W = 14
   const STACK_Y1 = -35
   const STACK_Y2 = -11
-  const stackClear = (g: GalaxyDef, dx: number, halfW: number, y1: number, y2: number): boolean => {
-    const p = posOf(g)
-    const ax1 = p.x + dx - halfW
-    const ax2 = p.x + dx + halfW
-    const ay1 = p.y + y1
-    const ay2 = p.y + y2
+  /** 与其它节点的圆点带（±9）/名称带（±23 × [中心+12, 中心+38]）是否相交——徽标避让的公共判定 */
+  const bandClear = (g: GalaxyDef, ax1: number, ax2: number, ay1: number, ay2: number): boolean => {
     for (const other of engine.galaxies) {
       if (other.id === g.id) continue
       const op = posOf(other)
@@ -734,11 +730,32 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
     }
     return true
   }
+  const stackClear = (g: GalaxyDef, dx: number, halfW: number, y1: number, y2: number): boolean => {
+    const p = posOf(g)
+    return bandClear(g, p.x + dx - halfW, p.x + dx + halfW, p.y + y1, p.y + y2)
+  }
   const stackDx = (g: GalaxyDef, halfW: number, y1: number, y2: number): number => {
     for (const dx of STACK_DX_TRIES) {
       if (stackClear(g, dx, halfW, y1, y2)) return dx
     }
     return 0
+  }
+  /**
+   * 敌对派系活跃标记（✦ + 「敌对派系活跃」全称）的**纵向**避让（2026-09-10 船长：要与星系按钮对齐）。
+   * 原来这组标记沿用徽标栈的**左右平移**（stackDx）躲邻居 → 整组会偏到星系旁边，看着不像"选中这个星系"；
+   * 船长定：**横向永远居中在星系圆点正上方**，遇到邻居节点冲突改为整组**上抬** 12 / 24 单位
+   * （上抬不破坏对齐感；星图顶部另有 MAP_PAD_TOP 留白，抬到会被裁切就不采用）。
+   */
+  const FACTION_HALF_W = 27 // 「敌对派系活跃」6 字 × (8.5px + 0.5 字距) ≈ 54 → 半宽 27
+  const FACTION_MARK_TOP = 41 // 标记组顶端相对星系中心的高度（全称标签顶边 ≈ 中心 −34 −7）
+  const FACTION_DY_TRIES = [0, -12, -24] as const
+  const factionDy = (g: GalaxyDef): number => {
+    const p = posOf(g)
+    for (const dy of FACTION_DY_TRIES) {
+      if (p.y + dy - FACTION_MARK_TOP < -MAP_PAD_TOP) continue // 抬出画布：不采用（宁可让位也不裁切）
+      if (bandClear(g, p.x - FACTION_HALF_W, p.x + FACTION_HALF_W, p.y + dy - 40, p.y + dy - 16)) return dy
+    }
+    return 0 // 兜底：保持居中（对齐优先，宁可压住邻居）
   }
   /* 敌对派系活跃（2026-09-10 船长：对应星系上要显示剩余时间）——当日选中的中安/低安星系，
      该星系常驻悬赏 +10% 奖金/+10% 威胁、胜利概率掉稀有残骸、每天本地 0 点重选。
@@ -965,8 +982,10 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
-              {/* 敌对派系活跃（2026-09-10 船长：改红色 + 用方框选中目标星系 + 文字写全称）——
-                  ①红色方框选中该星系（画在圆点之前，圆点压上层）②红色圆点 + 呼吸脉动
+              {/* 敌对派系活跃（2026-09-10 船长：改红色 + 用方框选中目标星系 + 文字写全称；
+                  2026-09-10 追加：**与星系按钮对齐**——✦ 与全称标签横向永远居中在圆点正上方，
+                  不再为躲邻居而左右平移，冲突时整组上抬（factionDy）；标记自带闪缩脉动，见 styles.css）——
+                  ①红色方框选中该星系（画在圆点之前，圆点压上层）②红色圆点 + 伸缩脉动
                   ③红色 ✦ 徽标 + 上方「敌对派系活跃」全称标签 ④星系名加粗（颜色仍交给安全等级色阶）
                   该星系已被排除在赏金任务抽签池外，故不会与 ⚑ 徽标叠在同一节点 */}
               {isFactionNode ? (
@@ -980,13 +999,13 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                     className="app-map-faction-box"
                   />
                   {(() => {
-                    const dx = stackDx(g, 26, -40, -16)
+                    const dy = factionDy(g)
                     return (
                       <>
-                        <text x={p.x + dx} y={p.y - 20} textAnchor="middle" className="app-map-bounty is-faction">
+                        <text x={p.x} y={p.y - 20 + dy} textAnchor="middle" className="app-map-bounty is-faction">
                           ✦
                         </text>
-                        <text x={p.x + dx} y={p.y - 34} textAnchor="middle" className="app-map-faction-cap">
+                        <text x={p.x} y={p.y - 34 + dy} textAnchor="middle" className="app-map-faction-cap">
                           敌对派系活跃
                         </text>
                       </>

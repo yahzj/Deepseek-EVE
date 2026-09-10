@@ -17,6 +17,7 @@ import {
   aiCoreName,
   aiEfficiency,
   countAiCore,
+  countWare,
   isRareWreck,
   oreAvailable,
   recycleProfileOf,
@@ -158,7 +159,6 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         return units > 0 ? { def: mineral, units } : null
       })
       .filter((x): x is { def: ItemDef; units: number } => x !== null)
-    const outText = outs.map((o) => `${o.def.name}×${o.units}`).join('、') || '（当前无产出）'
     const batchValue = outs.reduce((s, o) => s + o.units * (o.def.baseSellPriceIsk ?? 0), 0)
     // 2026-09-08：净口径 = 每批产物收价 − 每批耗料（原料同样按站内收价；原料可卖，不扣即虚高）
     const costPerBatch = batch * (def.baseSellPriceIsk ?? 0)
@@ -167,7 +167,21 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     const netH = Math.round(netPerBatch * (3_600_000 / cycleMs))
     econ = (
       <div className="app-belt-econ">
-        <div>♨ 每批产出：{outText}</div>
+        {/* 2026-09-10 船长：产出做成「♨ 产出：」标题 + 每种产物缩进一行，行尾带自己拥有的数量
+            （站内物品仓库口径，与同卡材料行「（仓库 N）」同款写法；市场页「持有 N」亦同源） */}
+        {outs.length === 0 ? (
+          <div>♨ 产出：（当前无产出）</div>
+        ) : (
+          <>
+            <div>♨ 产出：</div>
+            {outs.map((o) => (
+              <div key={o.def.id} className="app-belt-out">
+                {o.def.name} ×{o.units.toLocaleString('zh-CN')}
+                <span className="app-dim">（仓库 {countWare(state, o.def.id).toLocaleString('zh-CN')}）</span>
+              </div>
+            ))}
+          </>
+        )}
         {batchValue > 0 ? (
           <div
             className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
