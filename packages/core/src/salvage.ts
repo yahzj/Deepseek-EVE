@@ -21,7 +21,7 @@ import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
 import { addModule, ownedModuleCount } from './equipment'
-import { addWare } from './inventory'
+import { addWare, countWare } from './inventory'
 import { lairGearOf } from './lairs'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、进入保底稳态（2026-09-10 船长拍板 5 → 10） */
@@ -528,11 +528,23 @@ export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; tier: 2 | 3
   'mod-cargo-3': { blueprintId: 'bp-cargo-3', tier: 3, need: 250 },
   'mod-turret-kin-3': { blueprintId: 'bp-turret-3', tier: 3, need: 250 },
 }
-/** 该档位碎片池（只收蓝图已注册的模块）；回收开箱与完好舰体彩头共用 */
-export function fragmentPoolOf(ctx: SimContext, tier: 2 | 3): string[] {
-  return Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.tier === tier && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
+/**
+ * 该档位碎片池：只收**玩家还没拿到蓝图**的模块（2026-09-10 船长定「集齐前不重复」）。
+ * 移出池子的两种情况：
+ * ① 已学会该蓝图（`learnedRecipes`，含从市场买书学会的）——碎片对它已无意义；
+ * ② 碎片已集齐门槛（≥ `need`）但还没去母港逆向——再给就是多余的（碎片不可出售、无市场卡）。
+ * 三张书全部到手后该档池为空 → 该档不再出碎片（不报错、不降级抽别的）。
+ * 回收开箱与完好舰体彩头共用本池。
+ */
+export function fragmentPoolOf(state: GameState, ctx: SimContext, tier: 2 | 3): string[] {
+  return Object.keys(FRAGMENT_RECIPES).filter((m) => {
+    const r = FRAGMENT_RECIPES[m]!
+    if (r.tier !== tier) return false
+    if (!ctx.blueprints.has(r.blueprintId)) return false
+    if (state.learnedRecipes.includes(r.blueprintId)) return false
+    if (countWare(state, fragmentItemIdOf(m)) >= r.need) return false
+    return true
+  })
 }
 /** 碎片物品 id（蓝图碎片按目标装备注册） */
 export function fragmentItemIdOf(moduleId: string): string {
@@ -546,7 +558,7 @@ export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef
     kind: 'fragment',
     unitM3: 0.02,
     baseSellPriceIsk: 1,
-    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片可在母港逆向解锁「${moduleName}」蓝图（无需市场）。`,
+    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片可在母港逆向解锁「${moduleName}」蓝图（无需市场）。集齐前不会重复掉落同一本书的碎片——拿到蓝图后它就不再出现。`,
   }
 }
 
@@ -588,8 +600,8 @@ export function rollRecycleLoot(
     appendMk2.length > 0 && mk2Pool.length > 0
       ? RECYCLE_CHANCE.mk2 * (defMk2Avg / (avgPriceOf(mk2Pool) || defMk2Avg))
       : RECYCLE_CHANCE.mk2
-  const t2Pool = fragmentPoolOf(ctx, 2)
-  const t3Pool = fragmentPoolOf(ctx, 3)
+  const t2Pool = fragmentPoolOf(state, ctx, 2)
+  const t3Pool = fragmentPoolOf(state, ctx, 3)
   for (let i = 0; i < batchUnits; i++) {
     if (basePool.length > 0 && nextRandom(state.rng) < baseChance) {
       modules.push(basePool[Math.floor(nextRandom(state.rng) * basePool.length)]!)
@@ -651,8 +663,8 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
     }
   }
   // ③ 碎片层（凑逆向收藏的尾缀）
-  const t2Pool = fragmentPoolOf(ctx, 2)
-  const t3Pool = fragmentPoolOf(ctx, 3)
+  const t2Pool = fragmentPoolOf(state, ctx, 2)
+  const t3Pool = fragmentPoolOf(state, ctx, 3)
   if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T2_CHANCE) {
     const m = t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!
     addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T2_COUNT)
