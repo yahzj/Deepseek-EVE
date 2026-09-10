@@ -1644,8 +1644,11 @@ body {
 
 }
 
-/* 敌对派系活跃目标方框（船长 2026-09-10：用方框选中目标星系）——纯描边线稿 + 呼吸脉动，
-   画在节点圆点之前（圆点压在上层）；34×34 足以框住圆点（最大 r=11 的母港形） */
+/* 敌对派系活跃目标方框（船长 2026-09-10：用方框选中目标星系）——纯描边线稿 + **闪缩**脉动，
+   画在节点圆点之前（圆点压在上层）；34×34 足以框住圆点（最大 r=11 的母港形节点）。
+   2026-09-10 追加：脉动改为"一缩一放 + 亮度呼吸"（船长：会闪缩），周期 2.4s → 1.6s；
+   SVG 元素要显式给 transform-box/origin 才会绕**自身中心**缩放（否则绕用户坐标原点飞走）；
+   只动 transform/opacity（约定第十四章：不碰 filter/box-shadow） */
 .app-map-faction-box {
 
   fill: none;
@@ -1656,7 +1659,11 @@ body {
 
   pointer-events: none;
 
-  animation: app-map-faction-breathe 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+
+  transform-origin: center;
+
+  animation: app-map-faction-pulse 1.6s ease-in-out infinite;
 
 }
 
@@ -1727,8 +1734,8 @@ body {
 
 }
 
-/* 敌对派系活跃（2026-09-10 船长：改红色 + 方框选中）——节点圆点换红色实心 + 呼吸脉动；
-   is-sel 在其后，选中态照常覆盖 */
+/* 敌对派系活跃（2026-09-10 船长：改红色 + 方框选中）——节点圆点换红色实心 + **闪缩**脉动；
+   is-sel 在其后，选中态照常覆盖配色（脉动照旧） */
 .app-map-dot.is-faction {
 
   fill: rgba(255, 106, 94, 0.45);
@@ -1737,15 +1744,20 @@ body {
 
   stroke-width: 2;
 
-  animation: app-map-faction-breathe 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+
+  transform-origin: center;
+
+  animation: app-map-faction-pulse 1.6s ease-in-out infinite;
 
 }
 
-@keyframes app-map-faction-breathe {
+/* 闪缩脉动：1 → 0.85 缩放 + 亮度 1 → 0.55（方框与圆点同相位，一缩一放） */
+@keyframes app-map-faction-pulse {
 
-  0%, 100% { opacity: 0.62; }
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
 
-  50% { opacity: 1; }
+  50% { opacity: 1; transform: scale(1); }
 
 }
 
