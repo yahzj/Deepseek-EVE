@@ -386,6 +386,17 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
 const MAP_W = 700
 const MAP_H = 300
 /**
+ * 画布边缘留白（2026-09-10 船长：星图边缘要挪出足够位置）。
+ * 节点上方要叠「徽标 + 倒计时」两层（最高到节点中心上方约 33 单位），贴顶星系会顶出画布被裁；
+ * 这里把可视范围向上扩 PAD_TOP、左右各扩 PAD_X——**内容坐标仍按 (0,0)-(700,300) 记账**
+ * （布局数据 / 本地覆盖 / 编辑器坐标一律不变，只改 viewBox 的可视范围）。
+ */
+const MAP_PAD_TOP = 14
+const MAP_PAD_X = 8
+/** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
+const MAP_VB_W = MAP_W + MAP_PAD_X * 2
+const MAP_VB_H = MAP_H + MAP_PAD_TOP
+/**
  * 布局本地覆盖键（v2，2026-09-05）：船长本地排版坐标已合入内置默认（universe.ts，并整体左移 14），
  * 旧键 v1（whale-idle:starmap-layout，09-04 编辑器排版本）一律不再读取——
  * 旧本地覆盖会遮蔽新默认（此前改内置坐标看不到变化即此因）；今后编辑器排完版「保存并复制 JSON」合入默认即可。
@@ -693,7 +704,39 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
     if (arr) arr.push(t)
     else tasksByGalaxy.set(t.galaxyId, [t])
   }
-  const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
+  const taskEtaText = board.bountyOpened ? fmtDayClockShort(board.bountyRemainingMs) : ''
+  /**
+   * 徽标栈（节点上方两层：符号徽标 + 短倒计时）的避让偏移（2026-09-10 船长：缩短格式 + 边缘挪位）。
+   * 星图节点是固定坐标系（布局数据/本地覆盖都是 (0,0)-(700,300)），故不靠 DOM 测量、直接按坐标算：
+   * 依次尝试 0 / ±15 / ±26 / ±36 的横向偏移，取第一个"不与邻居冲突"的位置——
+   * 冲突判定 = 与**别的节点**的圆点带（±9）或名称带（±23 × [中心+12, 中心+38]）相交；
+   * 都不行就用 0（居中保底）。徽标与倒计时整体平移，保持两层对齐、信息不丢。
+   */
+  const STACK_DX_TRIES = [0, 15, -15, 26, -26, 36, -36] as const
+  const STACK_HALF_W = 14
+  const STACK_Y1 = -35
+  const STACK_Y2 = -11
+  const stackClear = (g: GalaxyDef, dx: number): boolean => {
+    const p = posOf(g)
+    const ax1 = p.x + dx - STACK_HALF_W
+    const ax2 = p.x + dx + STACK_HALF_W
+    const ay1 = p.y + STACK_Y1
+    const ay2 = p.y + STACK_Y2
+    for (const other of engine.galaxies) {
+      if (other.id === g.id) continue
+      const op = posOf(other)
+      const dotHit = ax1 < op.x + 9 && ax2 > op.x - 9 && ay1 < op.y + 9 && ay2 > op.y - 9
+      const labelHit = ax1 < op.x + 23 && ax2 > op.x - 23 && ay1 < op.y + 38 && ay2 > op.y + 12
+      if (dotHit || labelHit) return false
+    }
+    return true
+  }
+  const stackDx = (g: GalaxyDef): number => {
+    for (const dx of STACK_DX_TRIES) {
+      if (stackClear(g, dx)) return dx
+    }
+    return 0
+  }
   /* 敌对派系活跃（2026-09-10 船长：对应星系上要显示剩余时间）——当日选中的中安/低安星系，
      该星系常驻悬赏 +10% 奖金/+10% 威胁、胜利概率掉稀有残骸、每天本地 0 点重选。
      判定走 core 单点 `factionGalaxyId`（与战斗、任务中心同一个口径）；
@@ -782,12 +825,12 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
     }
   }
 
-  // 拖拽：换算到 viewBox 坐标
+  // 拖拽：换算到 viewBox 坐标（可视范围含边缘留白 → 先减留白再换算）
   function toViewBox(e: { clientX: number; clientY: number }, svg: SVGSVGElement): { x: number; y: number } {
     const r = svg.getBoundingClientRect()
     return {
-      x: Math.min(MAP_W - 14, Math.max(14, ((e.clientX - r.left) / r.width) * MAP_W)),
-      y: Math.min(MAP_H - 10, Math.max(10, ((e.clientY - r.top) / r.height) * MAP_H)),
+      x: Math.min(MAP_W - 14, Math.max(14, ((e.clientX - r.left) / r.width) * MAP_VB_W - MAP_PAD_X)),
+      y: Math.min(MAP_H - 10, Math.max(10, ((e.clientY - r.top) / r.height) * MAP_VB_H - MAP_PAD_TOP)),
     }
   }
 
@@ -815,7 +858,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
 
   return (
     <div className="app-starmap-wrap">
-      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className={`app-starmap${editing ? ' is-editing' : ''}`} role="img" aria-label="星图">
+      <svg viewBox={`${-MAP_PAD_X} ${-MAP_PAD_TOP} ${MAP_VB_W} ${MAP_VB_H}`} className={`app-starmap${editing ? ' is-editing' : ''}`} role="img" aria-label="星图">
         {/* 航线（V13 迷雾）：双亮实线带分钟；涉及剪影暗化无分钟；剪影连向更深处只画半段虚化提示 */}
         {mapEdges.map((e, idx) => {
           const pa = posOf(e.from)
@@ -928,31 +971,41 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               {/* 赏金任务徽标（2026-09-10 船长）：与悬赏情报同款样式，换符号（⚑）与配色区分；
                   下一行是当日板剩余时间（任务有效期的倒计时） */}
               {(tasksByGalaxy.get(g.id)?.length ?? 0) > 0 ? (
-                <>
-                  <text x={p.x} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-task">
-                    ⚑{tasksByGalaxy.get(g.id)!.length}
-                  </text>
-                  {taskEtaText.length > 0 ? (
-                    <text x={p.x} y={p.y - 23} textAnchor="middle" className="app-map-bounty-eta">
-                      剩余 {taskEtaText}
-                    </text>
-                  ) : null}
-                </>
+                (() => {
+                  const dx = stackDx(g)
+                  return (
+                    <>
+                      <text x={p.x + dx} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-task">
+                        ⚑{tasksByGalaxy.get(g.id)!.length}
+                      </text>
+                      {taskEtaText.length > 0 ? (
+                        <text x={p.x + dx} y={p.y - 23} textAnchor="middle" className="app-map-bounty-eta">
+                          {taskEtaText}
+                        </text>
+                      ) : null}
+                    </>
+                  )
+                })()
               ) : null}
               {/* 敌对派系活跃（2026-09-10 船长）：与悬赏情报/赏金任务同款徽标样式，换符号（✦）
                   与配色（琥珀，与任务中心那条「今日置顶」同族）；第二行是当日剩余时间。
                   该星系已被排除在赏金任务抽签池外，故不会与上面的 ⚑ 徽标叠在同一节点 */}
               {factionGalaxy === g.id ? (
-                <>
-                  <text x={p.x} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-faction">
-                    ✦
-                  </text>
-                  {taskEtaText.length > 0 ? (
-                    <text x={p.x} y={p.y - 23} textAnchor="middle" className="app-map-bounty-eta is-faction">
-                      剩余 {taskEtaText}
-                    </text>
-                  ) : null}
-                </>
+                (() => {
+                  const dx = stackDx(g)
+                  return (
+                    <>
+                      <text x={p.x + dx} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-faction">
+                        ✦
+                      </text>
+                      {taskEtaText.length > 0 ? (
+                        <text x={p.x + dx} y={p.y - 23} textAnchor="middle" className="app-map-bounty-eta is-faction">
+                          {taskEtaText}
+                        </text>
+                      ) : null}
+                    </>
+                  )
+                })()
               ) : null}
               <NodeLabel name={frontier ? '未知信号' : g.name} x={p.x} y={p.y} cls={cls + secExtra} />
             </g>
@@ -1806,6 +1859,15 @@ function fmtDayClock(ms: number): string {
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+/** h:mm（星图节点用的短格式；2026-09-10 船长定"缩短格式"——去掉秒与「剩余」前缀省出横向空间，
+ *  精确到秒的完整倒计时仍在任务中心头部与星系弹窗里） */
+function fmtDayClockShort(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  return `${h}:${String(m).padStart(2, '0')}`
 }
 
 /** 时效任务区：资源 = 限时收购（协会收商品，仓库足量直接交付）；快递 = 副站真实航行投送
