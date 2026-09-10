@@ -1594,24 +1594,10 @@ body {
 }
 
 /* 赏金任务徽标（2026-09-10 船长：普通赏金任务也上星图）——与悬赏情报徽标同款样式，
-   换符号（⚑）与配色（任务族蓝灰）区分；第二行是当日板剩余时间（任务有效期倒计时） */
+   换符号（⚑）与配色（任务族蓝灰）区分；**节点上不显示倒计时**（船长复查：不需要） */
 .app-map-bounty.is-task {
 
   fill: #8fa9d8;
-
-}
-
-.app-map-bounty-eta {
-
-  fill: #8fa9d8;
-
-  opacity: 0.75;
-
-  font-size: 8.5px;
-
-  font-family: var(--wui-mono);
-
-  pointer-events: none;
 
 }
 
@@ -1632,17 +1618,28 @@ body {
 
 }
 
-/* 敌对派系活跃徽标（2026-09-10 船长：与悬赏情报/赏金任务徽标同款，换符号 ✦ 与配色区分）——
-   配色取任务中心那条「今日置顶」的琥珀族（chip is-rare #f4c95d / 置顶卡描边同族） */
+/* 敌对派系活跃徽标（2026-09-10 船长：要够显眼）——同款徽标换符号 ✦ 与琥珀配色；
+   节点本身另有三处强调（琥珀圆点+呼吸脉动、琥珀加粗星系名、下方「派系活跃」文字标签），见 is-faction 规则 */
 .app-map-bounty.is-faction {
 
   fill: #f4c95d;
 
+  font-size: 11px;
+
 }
 
-.app-map-bounty-eta.is-faction {
+/* 派系活跃文字标签（节点上方一行；比徽标更直白，保证"够显眼"） */
+.app-map-faction-cap {
 
   fill: #f4c95d;
+
+  font-size: 8.5px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.5px;
+
+  pointer-events: none;
 
 }
 
@@ -1713,6 +1710,28 @@ body {
 
 }
 
+/* 敌对派系活跃（2026-09-10 船长：要够显眼）——节点圆点换琥珀实心 + 呼吸脉动；
+   零额外占位（不加光环：最近邻点只隔 14 单位，加环会套住邻点）；is-sel 在其后，选中态照常覆盖 */
+.app-map-dot.is-faction {
+
+  fill: rgba(244, 201, 93, 0.45);
+
+  stroke: #f4c95d;
+
+  stroke-width: 2;
+
+  animation: app-map-faction-breathe 2.4s ease-in-out infinite;
+
+}
+
+@keyframes app-map-faction-breathe {
+
+  0%, 100% { opacity: 0.62; }
+
+  50% { opacity: 1; }
+
+}
+
 .app-map-dot.is-sel {
 
   fill: rgba(79, 216, 196, 0.4);
@@ -1734,6 +1753,14 @@ body {
 .app-map-label.is-hub {
 
   fill: var(--wui-gold);
+
+  font-weight: 700;
+
+}
+
+/* 派系活跃星系的名称：加粗即可（**颜色交给安全等级色阶**——低安紫红/中安黄 是既有语义，
+   不能被派系色覆盖；"显眼"由琥珀圆点+呼吸、✦ 徽标、下方「派系活跃」文字标签三处承担） */
+.app-map-label.is-faction {
 
   font-weight: 700;
 
