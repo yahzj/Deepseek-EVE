@@ -460,6 +460,69 @@ function sectionD(): void {
   }
 }
 
+/* ═══════════ E. 敌伤旋钮对照（foeDmgMul 抬高：这两张卡"够不够威胁"） ═══════════
+ * 深渊之门卫队(45) / 星髓虫群(72) 是**仅剩两处**仍挂 `foeDmgMul 0.35` 的能量主系卡
+ * （能量=光束必中，玩家闪避对它们完全无效 → 当年用 0.35 做等效回退，标注"待实测复核"）。
+ * 本段把旋钮逐档抬高，看"到底要多少才够威胁"，并与同段邻居（未挂本旋钮 = 1.0）对照。 */
+
+/** 覆盖某张卡的 foeDmgMul（其余内容不变） */
+function ctxWithFoeDmg(anomalyId: string, mul: number): SimContext {
+  const m = new Map(ctx.anomalies)
+  const a = m.get(anomalyId)
+  if (!a) return ctx
+  m.set(anomalyId, { ...a, foeDmgMul: mul })
+  return { ...ctx, anomalies: m }
+}
+
+const FOE_DMG_STEPS = [0.35, 0.5, 0.7, 1.0]
+
+function sectionE(): void {
+  console.log('\n════════ E. 敌伤旋钮对照（foeDmgMul 抬高；9 种子）════════')
+  console.log('对象：仅剩两处仍挂 0.35 的能量主系卡（光束必中 → 闪避对它们无效）。')
+  console.log('参照行：同段邻居（未挂本旋钮，等效 1.0）——用来看"够不够"应该跟谁比。')
+  const targets: Array<{ id: string; label: string; target: string }> = [
+    { id: 'ano-abyss-guard', label: '深渊之门卫队 45（C 族·能量 8:爆炸 2·kite）', target: '自注标定：S2 灰鲭鲨MK2 中位 ~50s' },
+    { id: 'ano-starcore-boss', label: '星髓虫群 72（C 族·能量 8:爆炸 2·brawl 厚甲+2 僚机）', target: '自注标定：S2 灰鲭鲨MK2 中位 ~80s' },
+  ]
+  const refs: Array<{ id: string; label: string }> = [
+    { id: 'ano-ghost-signal', label: '幽灵舰信号 46（D 族·爆炸 8:能量 2）' },
+    { id: 'ano-cinder-siege', label: '烬火围攻战 42（G 族·动能 8:爆炸 2）' },
+    { id: 'ano-starcore-boss-ref', label: '' },
+  ]
+  const rows: Array<{ label: string; ld: Loadout }> = [
+    { label: 'S2 灰鲭鲨4×MK2+支援 · 中位', ld: L_S2 },
+    { label: 'T3 锤头鲨炮巡5×kin3+支援 · 中位', ld: L_T3H },
+  ]
+  console.log(`\n—— 被调对象（${FOE_DMG_STEPS.map((v) => (v === 0.35 ? '0.35当前' : String(v))).join(' / ')}）——`)
+  for (const t of targets) {
+    const card = ctx.anomalies.get(t.id)
+    if (!card) {
+      console.log(`  ${t.label}：卡缺失`)
+      continue
+    }
+    console.log(`\n${t.label}　【${t.target}】`)
+    for (const r of rows) {
+      const cells: string[] = []
+      for (const v of FOE_DMG_STEPS) {
+        const c = runCell(r.ld, card, MID_SKILLS, ctxWithFoeDmg(t.id, v))
+        cells.push(`${v === 0.35 ? '★' : ''}${c.winPct}%|${c.durS}s|${c.remPct}%`.padStart(17))
+      }
+      console.log(`  ${r.label.padEnd(34)}${cells.join(' ')}`)
+    }
+  }
+  console.log('\n—— 同段邻居参照（未挂本旋钮 = 1.0；用来看"合格线"长什么样）——')
+  for (const rf of refs) {
+    const card = ctx.anomalies.get(rf.id)
+    if (!card || !rf.label) continue
+    for (const r of rows) {
+      const c = runCell(r.ld, card, MID_SKILLS, ctx)
+      console.log(`  ${rf.label.padEnd(34)}${r.label.slice(-3)} ${String(c.winPct).padStart(4)}%|${String(c.durS).padStart(3)}s|${String(c.remPct).padStart(4)}%`)
+    }
+  }
+  console.log('\n读法：目标卡的时长若**远短于邻居**、残血若**远高于邻居**，才算"威胁不够"；')
+  console.log('      若抬高旋钮后胜率仍在 90% 以上，说明缺的不是火力而是别的（血量/波次/机制）。')
+}
+
 /* 证据落盘：stdout 同步镜像一份到 battle-data（复核材料与既有校准矩阵同目录） */
 const MIRROR: string[] = []
 const origLog = console.log.bind(console)
@@ -470,15 +533,23 @@ console.log = (...args: unknown[]): void => {
 
 /** 复用一次 S4/满技能的逐卡结果（避免重复跑） */
 function main(): void {
-  origLog('（探针运行中，输出会同时镜像到 docs/design/battle-data/mixed-damage-review-20260910.txt）')
-  sectionA()
-  sectionB()
-  sectionD()
+  const only = (process.argv[2] ?? '').toUpperCase() // 可选：只跑指定段（如 `E` / `AD`），缺省全跑
+  const want = (s: string): boolean => only === '' || only.includes(s)
+  origLog(`（探针运行中，输出会同时镜像到 docs/design/battle-data/mixed-damage-review-20260910.txt${only ? `；仅跑 ${only} 段` : ''}）`)
+  if (want('A')) sectionA()
+  if (want('B')) sectionB()
+  if (want('D')) sectionD()
+  if (want('E')) sectionE()
   console.log('\n（探针结束）')
   const out = path.join('docs', 'design', 'battle-data', 'mixed-damage-review-20260910.txt')
-  mkdirSync(path.dirname(out), { recursive: true })
-  writeFileSync(out, `${MIRROR.join('\n')}\n`, 'utf8')
-  origLog(`已写入证据文件：${out}`)
+  if (only === '') {
+    mkdirSync(path.dirname(out), { recursive: true })
+    writeFileSync(out, `${MIRROR.join('\n')}\n`, 'utf8')
+    origLog(`已写入证据文件：${out}`)
+  } else {
+    // 只跑单段时**不覆盖**证据文件（否则会把完整证据截断成只剩这一段）
+    origLog(`（只跑了 ${only} 段：未覆盖证据文件 ${out}；要刷新完整证据请不带参数跑一遍）`)
+  }
 }
 
 void main()
