@@ -22,6 +22,7 @@
     "content:export": "tsx tools/content-export.ts",
     "content:import": "tsx tools/content-import.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts",
+    "battle:drone-vs-gun": "tsx tools/drone-vs-gun.ts",
     "bounty:econ": "tsx tools/bounty-econ.ts",
     "manufacture:econ": "tsx tools/manufacture-econ.ts"
   },
