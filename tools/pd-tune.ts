@@ -2,20 +2,20 @@
  * 点防调参工具（2026-09-10 船长拍板「无人机可被击落」配套；正式工具，可复跑）。
  *
  * 用法：npx tsx tools/pd-tune.ts
- *      （不带参数 = 用 balance.ts 现值；带参数试档：`--rate 0.8 --dmg 12 --range 3500 --acc 0.5 --cap 0.4`，
- *        多组用逗号：`--rate 0.6,1.2,1.8`（其余参数按位对应，缺省取现值））
+ *      （不带参数 = 用 balance.ts 现值；试档：`--acc 0.55,0.4 --dmg 3,8 [--cap 0.4] [--period 500]`）
  *
- * 用途：改 `balance.pdRatePerSec / pdDmg / pdRangeM / pdAcc / pdThreatFloor / pdMaxLossFrac`
- * 后，用真实引擎（满战斗技能 + D3 满编机群 + 支援件）在代表卡上复测：
- * 胜率 / 中位交火秒 / 机群战损架数与机型 / 战损估值（ISK）——用于把"损失量级"锚在
- * 「有痛感但不劝退」的区间（战损估值占该卡奖励的百分之几）。
+ * 机制（2026-09-10 船长口径）：威胁 ≥ pdThreatFloor(60) 的敌舰各装一台近防炮，
+ * **每 pdJudgementMs(500ms) 独立判定一次**：随机挑一架**正在攻击的放飞无人机**（哨戒机不被打）
+ * → `pdAcc − 机型闪避` 掷命中 → 命中按 `pdDmg` 走机型三层抗性；血量打空即击落（战后永久损失）。
+ * 近防炮不看距离、也不参与敌舰对玩家的常规攻击。
  *
- * 改数值请直接改 `packages/core/src/balance.ts` 的 `pd*` 参数后复跑本工具。
+ * 本工具用真实引擎（满战斗技能 + D3 满编机群 + 合法流派配装）复测：
+ * 胜率 / 中位交火秒 / 机群战损架数与机型 / 战损估值（ISK）——用于定 pdAcc 与 pdDmg。
  */
 import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '@whale/core'
 import type { SimContext } from '@whale/core'
-import { advanceBattleFor, pdRateFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
+import { advanceBattleFor, pdEnabledFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const base = buildSimContext()
 const SHIP = 'sh-sentinel' // 王鲭 4 高槽 / 机巢 320（无人机专用舰）
@@ -55,7 +55,7 @@ function run(c: SimContext, card: string, seed: number, load: Record<string, num
 }
 
 type PdPatch = Partial<
-  Record<'pdRatePerSec' | 'pdDmg' | 'pdRangeM' | 'pdAcc' | 'pdThreatFloor' | 'pdMaxLossFrac', number>
+  Record<'pdAcc' | 'pdDmg' | 'pdJudgementMs' | 'pdThreatFloor' | 'pdMaxLossFrac', number>
 >
 const patched = (pd: PdPatch): SimContext => ({
   ...base,
@@ -63,9 +63,9 @@ const patched = (pd: PdPatch): SimContext => ({
 })
 
 /**
- * 命令行传参（不改源码试档）：
- *   npx tsx tools/pd-tune.ts --rate 0.8 --dmg 12 --range 3500 --acc 0.5 --cap 0.4
- * 可给多组（用 `;` 分隔），例如 `--rate 0.8,1.2,1.8`（其余参数取现值）。
+ * 命令行传参（不改源码试档，按位配对）：
+ *   npx tsx tools/pd-tune.ts --acc 0.55,0.4,0.25 --dmg 3,8,14 [--cap 0.4] [--period 500]
+ * 不给参数 = 用 balance.ts 现值。
  */
 function parseArgs(): Array<{ label: string; pd: PdPatch }> {
   const argv = process.argv.slice(2)
@@ -79,28 +79,31 @@ function parseArgs(): Array<{ label: string; pd: PdPatch }> {
     const vals = raw.split(',').map((v) => Number(v)).filter((v) => Number.isFinite(v))
     return vals.length > 0 ? vals : undefined
   }
-  const rates = nums('--rate')
-  if (!rates) return [{ label: '现值', pd: {} }] // 无参数 = 用 balance.ts 现值
+  const accs = nums('--acc')
   const dmgs = nums('--dmg') ?? []
-  const ranges = nums('--range') ?? []
-  const accs = nums('--acc') ?? []
   const caps = nums('--cap') ?? []
-  const at = <T>(arr: T[], i: number): T | undefined => (arr.length === 0 ? undefined : arr[Math.min(i, arr.length - 1)])
-  return rates.map((rate, i) => {
-    const pd: PdPatch = { pdRatePerSec: rate }
-    const d = at(dmgs, i)
-    const rg = at(ranges, i)
-    const ac = at(accs, i)
-    const cp = at(caps, i)
-    if (d !== undefined) pd.pdDmg = d
-    if (rg !== undefined) pd.pdRangeM = rg
-    if (ac !== undefined) pd.pdAcc = ac
-    if (cp !== undefined) pd.pdMaxLossFrac = cp
-    return {
-      label: `r${rate}${d !== undefined ? ` d${d}` : ''}${rg !== undefined ? ` rng${rg}` : ''}${ac !== undefined ? ` acc${ac}` : ''}`,
+  const periods = nums('--period') ?? []
+  if (!accs && dmgs.length === 0) return [{ label: '现值', pd: {} }]
+  const rows = Math.max(accs?.length ?? 0, dmgs.length)
+  const at = <T>(arr: T[], i: number): T | undefined =>
+    arr.length === 0 ? undefined : arr[Math.min(i, arr.length - 1)]
+  const out: Array<{ label: string; pd: PdPatch }> = []
+  for (let i = 0; i < rows; i++) {
+    const acc = accs ? accs[Math.min(i, accs.length - 1)]! : undefined
+    const dmg = dmgs.length > 0 ? dmgs[Math.min(i, dmgs.length - 1)]! : undefined
+    const pd: PdPatch = {}
+    if (acc !== undefined) pd.pdAcc = acc
+    if (dmg !== undefined) pd.pdDmg = dmg
+    const cap = at(caps, i)
+    const per = at(periods, i)
+    if (cap !== undefined) pd.pdMaxLossFrac = cap
+    if (per !== undefined) pd.pdJudgementMs = per
+    out.push({
+      label: `acc${pd.pdAcc ?? base.balance.battle.pdAcc} d${pd.pdDmg ?? base.balance.battle.pdDmg}${cap !== undefined ? ` cap${cap}` : ''}${per !== undefined ? ` ${per}ms` : ''}`,
       pd,
-    }
-  })
+    })
+  }
+  return out
 }
 
 const SWEEP = parseArgs()
@@ -141,7 +144,7 @@ for (const combo of SWEEP) {
   }
 }
 console.log(
-  `\n射速换算：pdRateFor(威胁 80)=${pdRateFor(80, base.balance.battle).toFixed(2)}/s、` +
-    `88=${pdRateFor(88, base.balance.battle).toFixed(2)}/s、96=${pdRateFor(96, base.balance.battle).toFixed(2)}/s` +
-    `（floor=${base.balance.battle.pdThreatFloor} span=${base.balance.battle.pdThreatSpan} 满档=${base.balance.battle.pdRatePerSec}/s；低于 floor 的敌舰无点防）`,
+  `\n机制换算：威胁门槛 ${base.balance.battle.pdThreatFloor}（低于此值无敌近防炮）｜判定周期 ${base.balance.battle.pdJudgementMs}ms/舰｜` +
+    `命中 = acc − 机型闪避｜单场击落上限 ${(base.balance.battle.pdMaxLossFrac * 100).toFixed(0)}%｜哨戒机免疫（近防炮不打雷鸥）\n` +
+    `代表卡是否有点防：噬口(80)=${pdEnabledFor(80, base.balance.battle)}、坟场(88)=${pdEnabledFor(88, base.balance.battle)}、穹顶(96)=${pdEnabledFor(96, base.balance.battle)}`,
 )

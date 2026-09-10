@@ -1173,6 +1173,7 @@ export function startBattleFor(
       a: Math.max(1, Math.round(d?.armorHp ?? 1)),
       h: Math.max(1, Math.round(d?.hullHp ?? 1)),
       alive: true,
+      artId: w.artId,
       evasion: clamp(0, 0.9, d?.evasion ?? 0),
       ...(d
         ? {
@@ -1191,11 +1192,9 @@ export function startBattleFor(
     // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）
     battle.droneLoadAtStart = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
   }
-  // 敌方点防调度（每舰一份冷却；威胁低于起始值不设）
-  const rate = pdRateFor(anomaly.threat, bal)
-  if (rate > 0 && Object.keys(pools).length > 0) {
-    battle.pdRate = rate
-    battle.pdCd = foes.map(() => Math.round(1000 / rate))
+  // 近防炮调度（威胁 ≥ pdThreatFloor 的敌舰各装一台；与敌编队同序、独立冷却）
+  if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
+    battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
   }
   // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
   // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）
@@ -1575,9 +1574,9 @@ export function advanceBattleFor(
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
       for (const f of curFoes) seedUnit(battle, f, { enterReload: true }) // 增援入场装填（转场窗口）
-      // 点防调度随波重建（pdCd 与敌编队同序）
-      if (battle.pdRate && battle.dronePools) {
-        battle.pdCd = curFoes.map(() => Math.round(1000 / battle.pdRate!))
+      // 近防炮调度随波重建（pdCd 与敌编队同序）
+      if (battle.pdCd && battle.dronePools) {
+        battle.pdCd = curFoes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
       }
       // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
       // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
@@ -1629,23 +1628,28 @@ export function advanceBattle(state: GameState, ctx: SimContext): void {
   if (battle) advanceBattleFor(state, ctx, battle, state.shipId, state.expedition.anomalyId)
 }
 
-/* ══════════ 敌方点防（2026-09-10 船长拍板「无人机可被击落」，永久损失制） ══════════ */
+/* ══════════ 敌舰近防炮（2026-09-10 船长拍板「无人机可被击落」，永久损失制） ══════════ */
 
-/** 单舰点防射速（次/秒）：威胁低于 pdThreatFloor 无点防，随后线性升到 pdRatePerSec 满档 */
-export function pdRateFor(threat: number, bal: BattleBalance): number {
-  const t = (threat - bal.pdThreatFloor) / Math.max(1, bal.pdThreatSpan)
-  if (t <= 0) return 0
-  return bal.pdRatePerSec * Math.min(1, t)
+/** 该威胁的敌舰是否装近防炮（威胁 < pdThreatFloor 不装；2026-09-10 船长：60） */
+export function pdEnabledFor(threat: number, bal: BattleBalance): boolean {
+  return threat >= bal.pdThreatFloor
 }
 
-/** 存活放飞条目下标（点防选靶 / 开火跳过共用） */
-function aliveDroneIndices(b: import('./state').BattleState): number[] {
+/** 存活且**可被近防炮锁定**的放飞条目下标——排除哨戒机（2026-09-10 船长：近防炮不打哨戒无人机） */
+function aliveDroneIndices(b: import('./state').BattleState, sentryIds: ReadonlySet<string> = SENTRY_DRONE_IDS): number[] {
   const pools = b.dronePools
   if (!pools) return []
   const out: number[] = []
-  for (const [k, p] of Object.entries(pools)) if (p.alive) out.push(Number(k))
+  for (const [k, p] of Object.entries(pools)) {
+    if (!p.alive) continue
+    if (p.artId && sentryIds.has(p.artId)) continue // 哨戒机不参与被锁定
+    out.push(Number(k))
+  }
   return out
 }
+
+/** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
+const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry'])
 
 /** 本场放飞总架数（损失上限分母） */
 function droneTotalCount(b: import('./state').BattleState): number {
@@ -1658,10 +1662,12 @@ export function droneLostCount(b: import('./state').BattleState): number {
 }
 
 /**
- * 点防结算（每拍调用）：每艘存活敌舰按各自冷却对**点防射程内存活的我方无人机**射击——
- * 命中率 = pdAcc − 机型闪避（不用敌方通用命中加成，突出"闪避"的定位价值）；
- * 命中按 pdDmg 走机型三层抗性消费；血量打空 = 该架本场击落（停火 + 计入 droneLost）。
- * 损失上限 pdMaxLossFrac 防团灭；全程消费 state.rng，确定性可复现。
+ * 近防炮结算（每拍调用；2026-09-10 船长口径）：
+ * - 每艘点防舰**独立**按 `pdJudgementMs`（0.5s）判定一次；
+ * - 随机挑一架**正在攻击的放飞无人机**（存活、非哨戒机）→ 按 `pdAcc − 机型闪避` 掷命中；
+ * - 命中按 `pdDmg` 走该机型三层抗性；血量打空 = 该架本场击落（停火 + 计入 droneLost）；
+ * - **不看距离**（放飞出去就在威胁之下）；单场击落上限 `pdMaxLossFrac` 防团灭；
+ * - 近防炮不参与敌舰对玩家的常规攻击（独立系统）；全程消费 state.rng，确定性可复现。
  */
 function resolvePointDefense(
   state: GameState,
@@ -1672,21 +1678,18 @@ function resolvePointDefense(
   dtMs: number,
 ): void {
   const pools = b.dronePools
-  const rate = b.pdRate ?? 0
-  if (!pools || rate <= 0) return
-  if (b.pdCd === undefined) b.pdCd = foes.map(() => Math.round(1000 / rate))
+  // 无近防炮调度 = 本场敌舰未达威胁门槛（或本改动前的旧战斗）：不结算
+  if (!pools || b.pdCd === undefined) return
+  const period = Math.max(100, Math.round(bal.pdJudgementMs))
   const total = droneTotalCount(b)
   const maxLoss = Math.max(1, Math.floor(total * bal.pdMaxLossFrac))
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue
-    let cd = (b.pdCd[fi] ?? Math.round(1000 / rate)) - dtMs
-    // 本次推进内可能跨多拍：按冷却补齐循环（guard 防呆）
+    let cd = (b.pdCd[fi] ?? period) - dtMs
     let guard = 0
     while (cd <= 0 && guard < 64) {
       guard++
-      cd += Math.round(1000 / rate)
-      // 距离筛：点防只在射程内有效（哨戒 5km 常在射程外 → 靠距离活命）
-      if (b.distanceM > bal.pdRangeM) break
+      cd += period
       if (droneLostCount(b) >= maxLoss) break
       const cands = aliveDroneIndices(b)
       if (cands.length === 0) break

@@ -476,7 +476,7 @@ export {
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
-  pdRateFor,
+  pdEnabledFor,
   droneLostCount,
   settleDroneLosses,
 } from './combat'

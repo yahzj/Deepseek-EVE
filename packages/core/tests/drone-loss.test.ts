@@ -111,14 +111,21 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(countWare(state, 'drone-heavy')).toBe(4)
   })
 
-  it('点防射程保护：射程压到 0 → 不再击落（哨戒靠距离活命的机制来源）', () => {
-    const patched: SimContext = {
+  it('无距离豁免（2026-09-10 船长：放飞出去就在威胁之下）＋哨戒机免疫：雷鸥不被打、其他机型会掉', () => {
+    // 关掉近防炮（威胁门槛抬到极高）→ 完全不掉架；再对比正常值：只有非哨戒机型进损失表
+    const noPd: SimContext = {
       ...ctx,
-      balance: { ...ctx.balance, battle: { ...ctx.balance.battle, pdRangeM: 0 } },
+      balance: { ...ctx.balance, battle: { ...ctx.balance.battle, pdThreatFloor: 999 } },
     }
-    const state = makeState(11)
-    const battle = runBattle(state, HIGH, patched)!
-    expect(Object.values(battle.dronePools ?? {}).every((p) => p.alive)).toBe(true)
+    const stateA = makeState(11)
+    const battleA = runBattle(stateA, HIGH, noPd)!
+    expect(Object.values(battleA.dronePools ?? {}).every((p) => p.alive)).toBe(true)
+
+    const stateB = makeState(11)
+    const battleB = runBattle(stateB, HIGH)!
+    const lostIds = Object.keys(battleB.droneLost ?? {})
+    // 哨戒机（drone-sentry）永不出现在损失表（近防炮不打它）
+    expect(lostIds).not.toContain('drone-sentry')
   })
 
   it('确定性：同种子两次运行损失架数与机型完全一致', () => {

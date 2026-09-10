@@ -445,9 +445,8 @@ export interface BattleState {
   dronePools?: Record<number, DronePoolEntry>
   /** 本场已击落架数（机型 id → 架数）；结算时按此**永久扣除**无人机舱清单 */
   droneLost?: Record<string, number>
-  /** 敌方点防调度（当前波）：每舰冷却剩余毫秒（与敌编队同序）与每秒射击次数；缺省 = 无点防 */
+  /** 近防炮调度（当前波）：每舰判定冷却剩余毫秒（与敌编队同序）；缺省 = 无近防炮 */
   pdCd?: number[]
-  pdRate?: number
   /** 开战时的机群清单快照（机型 id → 架数；用于战后判定"机群战损过半"→ 停重复清剿） */
   droneLoadAtStart?: Record<string, number>
 }
@@ -459,9 +458,11 @@ export interface DronePoolEntry {
   a: number
   h: number
   alive: boolean
-  /** 机型闪避（点防命中率 = balance.pdAcc − 本值） */
+  /** 机型 id（近防炮据此跳过哨戒机——2026-09-10 船长：近防炮不打哨戒无人机） */
+  artId?: string
+  /** 机型闪避（近防炮命中率 = balance.pdAcc − 本值） */
   evasion: number
-  /** 机型三层抗性（点防伤害逐层消费用） */
+  /** 机型三层抗性（近防炮伤害逐层消费用） */
   resists?: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
 }
 
