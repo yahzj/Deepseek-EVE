@@ -402,6 +402,14 @@ core 测试 + typecheck ×4 + 对应体检工具绿 → 合入 main（d2 侧解�
   （pullOneWreck 增 cycleMsReal 参）。
 
 ## ⑩ 执行记录（AI 核心调度学，r5 首个满级 ≈7.3h）
+
+> **2026-09-10 更正（经办：三号）**：上文与「待船长拍板 ⑩-2」里的「r5 满级 ≈7.3h、为全游戏
+> 最长档」**口径有误**——当时按「rank 只线性乘时长」估算，漏了 `RANK_BASE_MS` 只有 rank1~4 档、
+> rank5 会落默认 60 秒档这件事；实际 rank3 = 11.2h、rank4 = 67.3h，都比 7.3h 长，与「低档快高档慢」
+> 相反。船长 2026-09-10 定：**无视 48h 栅栏，按之前 rank 的规则修正** → 补 rank5 档底 **742 秒**
+> （阶梯 ×2/×4/×6 的下一级 ×8，按比值外推 = r4 的 67.3h × 4/3）→ **满级 ≈89.7h**，r5 才真正成为
+> 全游戏最长档。口径以 `packages/core/src/training.ts` 头注与 `docs/design/skill-rank-dispersion.md`
+> 的阶梯表为准。
 - 新增技能 `ai-core-dispatch`「AI 核心调度学」（工程·rank5；名称/描述玩家向定稿）；效率
   累加接在 aiEfficiency 单点：eff' = 核心档位 + 0.02×级（balance aiCore
   dispatchSkillId/dispatchPerLevel；基础 40% → 满级 50%，封顶 100%）。**返回腿不 ÷eff
