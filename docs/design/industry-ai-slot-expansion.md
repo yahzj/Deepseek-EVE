@@ -17,6 +17,15 @@
 
 - `industryAiBonus(state, ctx)` = Σ(balance.aiCore.industrySkillIds 内技能等级 × industrySlotsPerLevel)
   ——**只对站内产业生效**；平衡表字段即"未来追加工业 AI 专用扩容技能"的挂点。
+
+> **2026-09-10 变更注（一号补，本条为准）**：上述两个字段已**收口为一个映射表** ——
+> `balance.aiCore.industrySkillIds: string[] + industrySlotsPerLevel: number`（一批技能共用同一系数）
+> → **`balance.aiCore.industrySkillSlots: { 技能id: 每级工位数 }`**（逐技能给系数），
+> `industryAiBonus` 改为遍历该表求和；新增 rank3「**工业自动化基础**」（`industrial-ai-cap-basic`，**+1/级**）
+> 与既有的 rank4「工业自动化」（+2/级）叠加。**故 §四 的"站内最多 15 枚工位"已作废，现值 = 5 共用 +（5×1 + 5×2 = 15）扩容 = 20**。
+> `content:check` 增**双向护栏**「AI 扩容技能契约」：①表里每个 id 必须在技能目录中真实存在、系数为正整数
+> （写错 id 只会静默不生效）；②说明里承诺"工业专用工位"的技能必须登记在表里。界面（`ui/aiSlots.tsx`）
+> 的工位提示改为**逐技能列出构成**，未练的技能也列出。
 - `aiCoreCapBlock(state, ctx, scope = 'ship')`：
   - scope='ship'（AI 副船指派等）：上限 = aiCoreCap（共用，不变）；
   - scope='industry'（精炼炉/回收炉/制造线启动）：上限 = aiCoreCap + industryAiBonus。
