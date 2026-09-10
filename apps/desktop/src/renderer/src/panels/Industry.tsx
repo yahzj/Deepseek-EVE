@@ -25,6 +25,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
+import { AiSlotText } from '../ui/aiSlots'
 import { MONEY_GLYPH } from '../pages/common'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
@@ -635,7 +636,14 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     <Panel
       className="is-fill win-fixed-body"
       title="组装机"
-      right={<span className="app-dim">制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}</span>}
+      right={
+        <>
+          <span className="app-dim">
+            制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}
+          </span>
+          <AiSlotText state={state} ctx={engine.ctx} />
+        </>
+      }
     >
       {/* 筛选与说明固定（固定头+下滚）：类型标签行/说明常显，卡网格独立内滚 */}
       <div className="app-task-tabs" role="tablist">
@@ -652,9 +660,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ))}
       </div>
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工；制造免费，只耗材料与时间。劳动者规则与精炼炉一致（<b>主控亲自全局限 1 条</b>或
-        <b>一枚 AI 核心驱动一条线</b>，同时启用的 AI 核心总数受 AI 核心上限技能约束、与 AI 副船任务共用）；同一蓝图可多条、不同蓝图并行。蓝图按类型与价格排序，<b>卡头星标</b>标记（收藏）的蓝图置顶显示。
-        悬停「产物」名称可查看成品属性；卡面 ≈ISK/h 为净收益估算（现货价口径，未计销路）；点需求材料右侧的「去精炼/去市场」可跳转找料。
+        已学会的配方才能开工，制造免费只耗材料与时间；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
       </div>
 
       <div className="app-win-body">

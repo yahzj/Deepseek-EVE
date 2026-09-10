@@ -6,7 +6,7 @@
  * 物品大类（kind）只影响展示分组与"是否能被采集/精炼"的判断，不落盘。
  */
 
-import type { FittedModules, ItemDef, ItemKind, ModuleSlot, RackSlot, ShipRole, ShipSlots } from './types'
+import type { DroneClass, FittedModules, ItemDef, ItemKind, ModuleSlot, RackSlot, ShipRole, ShipSlots } from './types'
 
 /** 槽位展示顺序（装配页从上到下的渲染顺序；V18.1 支援件排尾、V18B 武器形态随武器） */
 export const MODULE_SLOTS: readonly ModuleSlot[] = [
@@ -120,6 +120,25 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
 
 export function itemKindLabel(kind: ItemKind): string {
   return ITEM_KIND_LABELS[kind] ?? kind
+}
+
+/** 无人机分类中文名（2026-09-10 船长拍板：界面「种类」与无人机子属性合并显示） */
+export const DRONE_CLASS_LABELS: Record<DroneClass, string> = {
+  scout: '侦察机',
+  combat: '战斗机',
+  assault: '攻坚机',
+  sentry: '哨戒机',
+}
+
+/** 「种类」文案单点（2026-09-10 船长：无人机把归类子属性一起显示在种类中）：
+ * 无人机 → 「无人机 · 侦察机」；其余物品 → 大类名（矿石/弹药/修理组件…）。
+ * 市场行、物品仓库/货仓、图鉴/手册悬浮卡统一走此函数。 */
+export function itemKindText(item: { kind: ItemKind; droneClass?: DroneClass }): string {
+  const base = itemKindLabel(item.kind)
+  if (item.kind === 'drone' && item.droneClass !== undefined) {
+    return `${base} · ${DRONE_CLASS_LABELS[item.droneClass] ?? item.droneClass}`
+  }
+  return base
 }
 
 /** 舰船角色中文名（船卡徽标用；V10 占位展示；2026-09-09 船长定：industrial 展示名「工业」→「采矿」

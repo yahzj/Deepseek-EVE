@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -134,10 +134,12 @@ function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
   return good.kind === 'item' ? ctx.items.get(good.refId) : undefined
 }
 
-/** 行/悬停的分类文案：残骸类物品单独显示「残骸」（2026-09-08 船长定），其余按商品大类 */
+/** 行/悬停的分类文案：残骸类物品单独显示「残骸」（2026-09-08 船长定），
+ * 其余物品走 itemKindText 单点（2026-09-10：无人机 → 无人机 · 侦察机，子属性并入种类） */
 function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): string {
   const it = itemDefOf(ctx, good)
-  return it?.kind === 'wreck' ? '残骸' : (KIND_TEXT[good.kind] ?? good.kind)
+  if (it) return it.kind === 'wreck' ? '残骸' : itemKindText(it)
+  return KIND_TEXT[good.kind] ?? good.kind
 }
 
 /** 类型过滤判定：「残骸」= item 类里物品大类为残骸者；「物品」不再包含残骸（单独成类） */

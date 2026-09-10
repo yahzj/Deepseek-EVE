@@ -8,6 +8,7 @@ export type {
   SkillCatalog,
   ItemDef,
   ItemKind,
+  DroneClass, // 2026-09-10 无人机分类（侦察机/战斗机/攻坚机/哨戒机）
   DamageType,
   DamageResists,
   DroneDefense,
@@ -93,6 +94,9 @@ export {
   ITEM_KIND_ORDER,
   ITEM_KIND_LABELS,
   itemKindLabel,
+  // 2026-09-10 无人机分类并入「种类」显示（无人机 · 侦察机；市场/仓库/图鉴/手册单点）
+  DRONE_CLASS_LABELS,
+  itemKindText,
   SHIP_ROLE_LABELS,
   shipRoleLabel,
   SHIP_SIZE_CLASS,

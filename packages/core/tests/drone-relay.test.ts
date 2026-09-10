@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { createPlayerSpec } from '../src/combat'
+import { itemKindText, DRONE_CLASS_LABELS } from '../src/labels'
 import { makeTestCtx, moduleDef, ship } from './helpers'
 import type { ItemDef } from '../src/types'
 
@@ -68,5 +69,16 @@ describe('无人机射程分类 + 中继天线（2026-09-10）', () => {
     expect(droneRanges(dbl.state, dbl.ctx as never)['蜂鸟']).toBe(Math.round(2500 * 1.4))
     const top = world({ relays: ['mod-relay-3'], load: { 'drone-sentry': 1 } })
     expect(droneRanges(top.state, top.ctx as never)['雷鸥']).toBe(Math.round(5000 * 1.8))
+  })
+
+  it('分类并入「种类」：无人机 · 侦察机/战斗机/攻坚机/哨戒机；非无人机与缺分类走大类兜底', () => {
+    expect(itemKindText({ kind: 'drone', droneClass: 'scout' })).toBe('无人机 · 侦察机')
+    expect(itemKindText({ kind: 'drone', droneClass: 'combat' })).toBe('无人机 · 战斗机')
+    expect(itemKindText({ kind: 'drone', droneClass: 'assault' })).toBe('无人机 · 攻坚机')
+    expect(itemKindText({ kind: 'drone', droneClass: 'sentry' })).toBe('无人机 · 哨戒机')
+    expect(DRONE_CLASS_LABELS.scout).toBe('侦察机')
+    expect(itemKindText({ kind: 'drone' })).toBe('无人机') // 旧档/缺字段兜底
+    expect(itemKindText({ kind: 'ore' })).toBe('矿石')
+    expect(itemKindText({ kind: 'ammo' })).toBe('弹药')
   })
 })
