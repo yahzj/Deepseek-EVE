@@ -407,7 +407,8 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.6,
     evasion: 0.12,
     hitBonus: 0.16,
-    powerBonus: 0.45,
+    powerBonus: 0.25, // 2026-09-10 船长：无人机舰火力加成削弱（0.45→0.25）——该笔加成只喂炮台
+    droneDmgBonus: 0.08, // 2026-09-10 船长：改为无人机专属加成 +8%（T2 档，对称于巡洋舰族加成）
     shieldHp: 180,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
     armorHp: 90,
@@ -435,7 +436,8 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.52,
     evasion: 0.08,
     hitBonus: 0.16,
-    powerBonus: 0.6,
+    powerBonus: 0.3, // 2026-09-10 船长：无人机母舰火力加成削弱（0.6→0.3）——原来与长尾鲨同级，但只喂炮台
+    droneDmgBonus: 0.12, // 2026-09-10 船长：改为无人机专属加成 +12%（与其它巡洋舰的族加成同档）
     shieldHp: 210,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
     armorHp: 105,
