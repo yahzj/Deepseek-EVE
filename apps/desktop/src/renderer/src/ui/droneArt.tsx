@@ -117,15 +117,27 @@ export const DRONE_SORTIE_OUT_MS = 560
 /** 出击制：返航时长（ms；与 styles.css keyframes 一致） */
 export const DRONE_SORTIE_BACK_MS = 620
 
-/** 出击制攻击阵位（绝对画面 px）：贴近目标舰的母舰一侧，按 lane 分道避免重叠 */
+/**
+ * 出击制攻击阵位（绝对画面 px；2026-09-10 船长三次定："只去固定地点会大量重叠"）：
+ * 以目标舰为圆心做**新月形分层**——中间道最贴近敌舰、外侧道后退并上下拉开，
+ * 6 架在 y 上相隔 20px、x 上再分三档，保证彼此不压在一起。
+ */
 export function droneSortieStation(
   lane: number,
   foe: { x: number; y: number },
   dir: number,
   foeNose: number,
 ): { x: number; y: number } {
-  const laneY = (lane - (DRONE_SHOW_MAX - 1) / 2) * 13
-  return { x: foe.x - dir * (foeNose + 46 + (lane % 3) * 14), y: foe.y + laneY }
+  const k = lane - (DRONE_SHOW_MAX - 1) / 2 // −2.5 .. 2.5
+  return {
+    x: foe.x - dir * (foeNose + 42 + Math.abs(k) * 11 + (lane % 2) * 15),
+    y: foe.y + k * 20,
+  }
+}
+
+/** 出击航路弧高（px；每道不同 → 曲线互相错开，不再叠成一团） */
+export function droneArcHeight(lane: number): number {
+  return 34 + lane * 11
 }
 
 /**
@@ -135,4 +147,33 @@ export function droneSortieStation(
  */
 export function droneTakeoff(lane: number): { x: number; y: number } {
   return { x: (lane % 3) * 6 - 6, y: -10 + (lane % 2) * 5 }
+}
+
+/** 缓动（与 CSS 出击/返航 keyframes 的 ease-out / ease-in 对应，用于推算无人机**当前位置**） */
+export function droneEaseOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
+export function droneEaseIn(t: number): number {
+  return t * t * t
+}
+
+/**
+ * 出击制航路位置（绝对画面 px）——给定时刻沿**上凸弧线**去、沿**下凸弧线**回；
+ * 表现层用它把弹道起点挂到无人机**当前实际位置**（2026-09-10 船长："未到达指定位置之前就开火了"）。
+ * 与 CSS keyframes 用同一组控制点（中点 = 两端中点再抬/降弧高），因此与画面基本同步。
+ */
+export function dronePathPos(
+  t: number,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  arcH: number,
+  back: boolean,
+): { x: number; y: number } {
+  const e = back ? droneEaseIn(t) : droneEaseOut(t)
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + (back ? arcH : -arcH) }
+  // 二次贝塞尔：控制点 C 使 t=0.5 恰好经过 mid
+  const cx = 2 * mid.x - (from.x + to.x) / 2
+  const cy = 2 * mid.y - (from.y + to.y) / 2
+  const u = 1 - e
+  return { x: u * u * from.x + 2 * u * e * cx + e * e * to.x, y: u * u * from.y + 2 * u * e * cy + e * e * to.y }
 }

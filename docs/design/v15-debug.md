@@ -18,8 +18,11 @@
 | 采矿 | 循环 1 秒（getMiningParams）、周转腿 1 秒（oneLegMs）；产量/满舱逻辑照常 |
 | 制造 | 批次 1 秒（calcBuildDurationMs） |
 | 星系际航行 | 单程 1 秒（travelLegMs）；展示 1 分钟（travelMinutesEff） |
+| 本地腿（进出港 / 返航） | 1 秒（miningReturnLegMs、oneLegMs/oneOutboundLegMs、salvaging legMsFor/outboundLegMsFor） |
+| 悬赏战后返航 | 1 秒（2026-09-10 修复：本地目标此前写死 `LOCAL_RETURN_MS=120s` 不吃 debugQuick，非本地本就是 `travelLegMs×2`） |
 | 扫描探索 | 作业固定 1 秒完成点亮（startScan） |
 | 交火 | **保留实时战斗**（T11：调试器不跳过战斗——战斗需要真实验证）；去程 1 秒进战后按实时引擎推进，其余与正常一致 |
+| 击杀慢镜（结算窗口） | 不变（1.5 秒演出窗口；只影响结算延迟，不影响结果）。2026-09-10 船长定：**调试模式也不压缩**，保留击杀/战败演出 |
 | 市场 | 刷单/价格节奏不缩短（经济时钟；用离线快进观察长线） |
 
 ## 三、实现要点

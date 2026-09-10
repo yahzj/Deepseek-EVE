@@ -43,8 +43,15 @@ import { claimTutorialTrialReward } from './onboarding'
 export { HOME_GALAXY_ID }
 
 /** 本地悬赏返航段（2026-09-08 船长定）：目标星系 = 返航基准（母港本地/建成站本地）时，
- * 返港固定 120s（= balance.mining.localLegMs 本地满载单程，对齐矿工本地返航成本；防零航程白刷） */
+ * 返港固定 120s（= balance.mining.localLegMs 本地满载单程，对齐矿工本地返航成本；防零航程白刷）。
+ * 2026-09-10 修复：调试模式（debugQuick）下与采矿/打捞/返航空间站的本地腿同口径压到 1 秒——
+ * 此前写死 120s，调试时"战斗后的返航"永远 2 分钟，改不动。 */
 const LOCAL_RETURN_MS = 120_000
+
+/** 本地段时长的调试快进（与 travelLegMs / miningReturnLegMs / legMsFor 的 debugQuick 口径一致） */
+function localLegMs(state: GameState, fullMs: number): number {
+  return state.debugQuick ? 1_000 : fullMs
+}
 
 /** 自动返航基准（2026-09-08 船长定：所有自动返航一律选"最近已建成空间站"，无建成副站 = 母港） */
 function returnBaseGalaxy(state: GameState, ctx: SimContext, fromGalaxy: string): string {
@@ -52,11 +59,11 @@ function returnBaseGalaxy(state: GameState, ctx: SimContext, fromGalaxy: string)
 }
 
 /** 从"战场星系"转入返航段的统一时长：基准 = 目标星系最近已建成站；
- * 目标星系即基准（母港本地 / 建成站本地）→ 固定 LOCAL_RETURN_MS；否则 2×单程（去程并入返航）。
+ * 目标星系即基准（母港本地 / 建成站本地）→ 固定 LOCAL_RETURN_MS（调试模式 1 秒）；否则 2×单程（去程并入返航）。
  * 航路不可达时返回 0（调用方用 outMs×2 兜底）。 */
 function returnBackMs(state: GameState, ctx: SimContext, targetGalaxy: string): { ms: number; base: string } {
   const base = returnBaseGalaxy(state, ctx, targetGalaxy)
-  if (base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) return { ms: LOCAL_RETURN_MS, base }
+  if (base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) return { ms: localLegMs(state, LOCAL_RETURN_MS), base }
   const mins = shortestTravelMinutes(ctx, base, targetGalaxy)
   const ms = Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * 2 : 0
   return { ms, base }
