@@ -199,18 +199,23 @@ export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }>
   plasma: { fly: 130, dash: null },
 }
 
-/** 开火事件 → 弹道几何：起点 = 源舰枪口（舰艏前缘），终点 = 目标舰枪口侧命中点。
- *  nose 按舰种取 NOSE_MAIN/NOSE_ESC，弹道与射程弧（同为枪口锚定）视觉一致。 */
+/** 开火事件 → 弹道几何：起点 = 源舰炮口（2026-09-10 起优先真实炮口 muzzle；muzzle 为空时
+ *  回退舰艏前缘，nose 按舰种取 NOSE_MAIN/NOSE_ESC），终点 = 目标舰枪口侧命中点。
+ *  换算：挂点为 240×110 画布本地坐标 → 画面 px = 锚点 + 画布偏移 × (artW/240)；
+ *  敌侧 dir = −1（敌舰以镜像姿态朝我开火时炮口恰在 −x 侧，与既有舰艏锚同语义）。 */
 function boltGeom(
   side: 'me' | 'foe',
   src: Anchor,
   dst: Anchor,
   srcNose: number,
   dstNose: number,
+  muzzle?: Anchor | null,
+  artW?: number,
 ): { x1: number; y1: number; len: number; angDeg: number } {
   const dir = side === 'me' ? 1 : -1
-  const sx = src.x + dir * srcNose
-  const sy = src.y
+  const s = artW && artW > 0 ? artW / 240 : 1
+  const sx = muzzle ? src.x + dir * (muzzle.x - 120) * s : src.x + dir * srcNose
+  const sy = muzzle ? src.y + (muzzle.y - 55) * s : src.y
   const tx = dst.x - dir * dstNose
   const ty = dst.y
   const dx = tx - sx

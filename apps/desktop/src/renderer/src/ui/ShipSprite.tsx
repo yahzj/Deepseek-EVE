@@ -6,13 +6,15 @@
  *    面板线/族件/发光件类规则见 styles.css .shipart-*）；
  * ② 未命中（异常旧档/未录形）→ 回退 V12 role 线描剪影（140×64 放大适配，观感同旧版）。
  * 翻转 = 绕舰体中心 scaleX(-1)（CSS 过渡平滑转身，船头跟随运动方向）。
- * 引擎尾焰统一画在舰体左端（新画布形 = 旧尾焰按 ×240/140 等比缩放平移），脉冲动画沿用
- * .app-sprite-exhaust（纯 opacity 动画，与画布坐标无关）。
+ * 引擎尾焰 2026-09-10 船长批：数量/位置对齐各舰引擎喷口——按 shipMounts.engines 逐口
+ * 挂载（同尺寸焰形；喷口点 = 口沿左缘中点，焰形右尖恰好抵口）；未收录挂点的形回退旧单焰；
+ * 脉冲动画沿用 .app-sprite-exhaust（纯 opacity/scale 动画，逐口由 <g> 平移隔离，互不干扰）。
  */
 import type { ReactNode } from 'react'
 import type { ShipRole } from '@whale/core'
 import { SHIP_ROLE_LABELS } from '@whale/core'
 import { FOE_ART, SHIP_ART } from './shipArt'
+import { mountsOf } from './shipMounts'
 
 /** role → 线描舰形路径（回退形；船头朝右，viewBox 0 0 140 64） */
 function hullPath(role: ShipRole): string {
@@ -35,9 +37,30 @@ function hullPath(role: ShipRole): string {
 /** 引擎尾焰（旧 140×64 画布形；放在舰尾、船头朝右 => 尾焰在左） */
 const EXHAUST_LEGACY = 'M10 24 L2 30 L10 36 L14 30 Z'
 
-/** 引擎尾焰（新 240×110 画布形 = 旧形按 ×(240/140) 等比缩放、平移到新画布中心 120,55：
- *  旧画布中心 70,32 → (P-(70,32))×240/140+(120,55)，保留旧观感的相对位置与比例） */
+/** 引擎尾焰（新 240×110 画布形：菱形右尖在 (24,51.6) = 贴喷口口沿锚点；2026-09-10 起
+ *  逐口挂载：<g translate(口沿x−24, 口沿y−51.6)> 使右尖恰好抵住每枚喷口，焰向左喷出） */
 const EXHAUST = 'M17.1 41.3 L3.4 51.6 L17.1 61.9 L24 51.6 Z'
+
+/**
+ * 尾焰挂载（2026-09-10 船长批：数量/位置对齐引擎喷口）：
+ * - 有挂点数据 → 按 engines 每口一枚（同尺寸）；engines 为空（有机体异形等）→ 不画；
+ * - 无挂点数据（未转录的形）→ 回退旧单焰，观感不变。
+ */
+function Exhausts({ shipId, foeKey }: { shipId?: string; foeKey?: string }) {
+  const mounts = mountsOf(shipId, foeKey)
+  if (!mounts) {
+    return <path className="app-sprite-exhaust" d={EXHAUST} fill="currentColor" stroke="none" opacity="0.85" />
+  }
+  return (
+    <>
+      {mounts.engines.map((p, i) => (
+        <g key={i} transform={`translate(${p.x - 24} ${p.y - 51.6})`}>
+          <path className="app-sprite-exhaust" d={EXHAUST} fill="currentColor" stroke="none" opacity="0.85" />
+        </g>
+      ))}
+    </>
+  )
+}
 
 /** 舰体本地画布（与 .app-sprite 容器同比例：0.458 ≈ 容器高宽比 0.46，meet 无信箱边） */
 const VB = '0 0 240 110'
@@ -81,7 +104,7 @@ export function ShipSprite({
             strokeWidth="2.2" // 主轮廓线宽（无类元素；面板/族件等 CSS 类自带线宽覆盖此值）
             strokeLinejoin="round"
           >
-            {engine ? <path className="app-sprite-exhaust" d={EXHAUST} fill="currentColor" stroke="none" opacity="0.85" /> : null}
+            {engine ? <Exhausts shipId={shipId} foeKey={foeKey} /> : null}
             {art}
           </g>
         </svg>

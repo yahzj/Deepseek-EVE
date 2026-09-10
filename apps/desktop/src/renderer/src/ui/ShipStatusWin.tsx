@@ -18,6 +18,7 @@ import { fleetDefOf } from '@whale/core'
 import type { GameState } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite } from './ShipSprite'
+import { mountsOf } from './shipMounts'
 
 const SWITCH_MS = 520 // 稍长于 CSS 过渡(450ms)，旧层完全结束后再卸载
 const BG_SWITCH_MS = 480 // 背景交叉淡入淡出时长余量
@@ -179,20 +180,30 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
         <div className="app-shipwin-layer is-enter">
           <ShipSprite shipId={def.id} role={def.role} size={112} engine={engineOn} />
         </div>
+        {/* 交火炮口火光（2026-09-10 船长批：按驾驶舰真实炮口挂载，与舰形同画布坐标系；
+            无原生炮（货/矿舰等）回退舰艏前缘单点） */}
+        {cls === 'combat' ? <MuzzleFlash defId={def.id} /> : null}
       </div>
-      {/* 交火炮口火光（舰前） */}
-      {cls === 'combat' ? (
-        <svg className="app-shipwin-mz" viewBox={`0 0 ${FX_W} ${FX_H}`} preserveAspectRatio="none">
-          <g className="app-swin-muzzle" style={{ animationDelay: '0s' }}>
-            <path d="M106 19.1 l8.2 5.2 -8.2 5.2 -8.2 -5.2 Z" fill="rgba(255,220,140,.25)" stroke="none" />
-            <path d="M106 21.1 l5 3.2 -5 3.2 -5 -3.2 Z" fill="#ffe9a8" stroke="none" />
-          </g>
-          <g className="app-swin-muzzle is-low" style={{ animationDelay: '0.55s' }}>
-            <path d="M105 27.5 l6.8 4.4 -6.8 4.4 -6.8 -4.4 Z" fill="rgba(255,214,130,.28)" stroke="none" />
-            <path d="M105 29.7 l4.2 2.7 -4.2 2.7 -4.2 -2.7 Z" fill="#ffe0a0" stroke="none" />
-          </g>
-        </svg>
-      ) : null}
     </div>
+  )
+}
+
+/** 交火火光挂载：muzzles 每口一焰（双相位交替闪烁），空表回退舰艏前缘 */
+function MuzzleFlash({ defId }: { defId: string }) {
+  const mounts = mountsOf(defId, undefined)
+  const mz = mounts?.muzzles && mounts.muzzles.length > 0 ? mounts.muzzles : [{ x: 215, y: 55 }]
+  return (
+    <svg className="app-shipwin-mz" viewBox="0 0 240 110">
+      {mz.map((p, i) => (
+        <g
+          key={i}
+          className={`app-swin-muzzle${i % 2 === 1 ? ' is-low' : ''}`}
+          style={{ animationDelay: `${(i % 2) * 0.55}s` }}
+        >
+          <path d={`M${p.x} ${p.y - 5.2} l8.2 5.2 -8.2 5.2 -8.2 -5.2 Z`} fill="rgba(255,220,140,.25)" stroke="none" />
+          <path d={`M${p.x} ${p.y - 3.2} l5 3.2 -5 3.2 -5 -3.2 Z`} fill="#ffe9a8" stroke="none" />
+        </g>
+      ))}
+    </svg>
   )
 }

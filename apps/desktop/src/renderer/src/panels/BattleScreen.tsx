@@ -16,6 +16,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
+import { mountsOf } from '../ui/shipMounts'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
@@ -70,6 +71,8 @@ const meSpeedRef = useRef(200)
   const keyRef = useRef(1)
   const boltsRef = useRef<BoltV[]>([])
   const flashRef = useRef<FlashV[]>([])
+  /** 2026-09-10 炮口轮换计数（key = 'me' 或敌方 tag；多炮口舰逐发轮换开火点） */
+  const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -351,7 +354,19 @@ const meSpeedRef = useRef(200)
       const foeNose = aimMain ? NOSE_MAIN : NOSE_ESC
       const srcNose = isMeShot ? NOSE_MAIN : shooterMain ? NOSE_MAIN : NOSE_ESC
       const dstNose = isMeShot ? foeNose : NOSE_MAIN
-      const g = boltGeom(fx.side, src, dst, srcNose, dstNose)
+      // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
+      // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
+      const artW = isMeShot ? LAY.MAIN : shooterMain ? LAY.MAIN : LAY.ESC
+      const mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
+      const mz = mounts?.muzzles
+      let muzzlePt: Anchor | null = null
+      if (mz && mz.length > 0) {
+        const k = isMeShot ? 'me' : fx.tag
+        const n = muzzleCountRef.current.get(k) ?? 0
+        muzzleCountRef.current.set(k, n + 1)
+        muzzlePt = mz[n % mz.length]!
+      }
+      const g = boltGeom(fx.side, src, dst, srcNose, dstNose, muzzlePt, artW)
       boltsRef.current.push({
         key: keyRef.current++,
         color: DMG_COLOR[fx.type],
