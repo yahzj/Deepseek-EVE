@@ -670,7 +670,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 0.4,
     hitPenalty: 0.05,
     cpuUse: 5,
-    description: '加力推进：点火期间战斗速度 +40%，持续 60 秒后进入 60 秒冷却（开场即点火）。代价 = 开火命中 ×0.95（常驻）。逼近/脱离更快，输出略失稳。',
+    description: '加力推进：点火期间战斗速度 +40%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.95。逼近/脱离更快，输出略失稳。',
   },
   {
     id: 'mod-prop-2',
@@ -680,7 +680,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 0.8,
     hitPenalty: 0.12,
     cpuUse: 15,
-    description: '加力推进：点火期间战斗速度 +80%，持续 60 秒后进入 60 秒冷却（开场即点火）。代价 = 开火命中 ×0.88（常驻）。高机动舰标配，风筝战术的引擎。',
+    description: '加力推进：点火期间战斗速度 +80%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.88。高机动舰标配，风筝战术的引擎。',
   },
   {
     id: 'mod-prop-3',
@@ -690,7 +690,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 1.3,
     hitPenalty: 0.2,
     cpuUse: 40,
-    description: '加力推进：点火期间战斗速度 +130%，持续 60 秒后进入 60 秒冷却（开场即点火）。代价 = 开火命中 ×0.80（常驻）。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
+    description: '加力推进：点火期间战斗速度 +130%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.80。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
   },
 
   // ══════════ V18.1 支援件（support：低槽 = 伤害稳定器/射速计算机；中槽 = 索敌阵列/姿态陀螺） ══════════

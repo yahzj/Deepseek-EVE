@@ -90,8 +90,8 @@ export interface UnitSpec {
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
   evasion: number
   hitBonus: number
-  /** V17.1 开火失稳乘子：推进器装配后 <1（命中整体 ×hitMul）；V18.1 多件推进器只取
-   * 最重（削减最大）一件；索敌命中件走 WeaponSpec.eqHitMul，不并入本字段 */
+  /** V17.1 开火失稳乘子（**点火期值**）：推进器点火期间命中整体 ×hitMul；V18.1 多件推进器只取
+   * 最重（削减最大）一件；**2026-09-10 船长：代价只在点火期生效** → 冷却期不用本字段（见 stepBattle 的 meAtk） */
   hitMul?: number
   signatureM: number
   scanResMm: number
@@ -250,6 +250,14 @@ function ammoIdFor(
 
 function combatSpeed(maxSpeedMps: number, agility: number, bal: BattleBalance): number {
   return Math.max(20, maxSpeedMps * bal.speedFactor * (1 + (agility - 0.5) * 2 * bal.agilitySpeedBonus))
+}
+
+/**
+ * 开火失稳乘子的**当前有效值**（2026-09-10 船长：推进器失稳代价只在**点火期**生效）：
+ * 点火期 = 装配值（`1 − 最重一件 hitPenalty`）；冷却期 = 1（没点火就不失稳）。
+ */
+export function effectiveHitMul(spec: Pick<UnitSpec, 'hitMul'>, boosting: boolean): number {
+  return boosting ? (spec.hitMul ?? 1) : 1
 }
 
 /**
@@ -648,6 +656,7 @@ export function createPlayerSpec(
     evasion,
     hitBonus: (ship.hitBonus ?? 0) * (1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)),
     // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
+    // 2026-09-10 船长：本值 = **点火期**的命中乘子；冷却期不开火失稳（stepBattle 用 meAtk 置 1）
     hitMul: 1 - worstPen,
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
@@ -2042,6 +2051,9 @@ function stepBattle(
   const meV =
     combatSpeed(me.speedMps, me.agility, bal) *
     (1 + (thruster.boosting ? (me.thrusterBoost ?? 0) : 0))
+  // 开火失稳代价同样只在点火期生效（2026-09-10 船长：没点火就不失稳）——
+  // 每次开火取当前有效乘子，冷却期 = 1（不改 me 本身，避免污染其它读法）
+  const meAtk: UnitSpec = thruster.boosting ? me : { ...me, hitMul: effectiveHitMul(me, false) }
   let foeV = 0
   for (const f of foes) if (isAlive(b, f.tag)) foeV = Math.max(foeV, combatSpeed(f.speedMps, f.agility, bal))
   // 2026-09-10 船长（高威胁近战敌突进）：够不着时临时加速 ×倍率（进射程 2 秒后结束、冷却 20 秒）
@@ -2106,7 +2118,7 @@ function stepBattle(
       b.stats.meShots += 1
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
-      const meHit = autoHit ? 1 : hitChance(w, me, foeTarget, b.distanceM, bal)
+      const meHit = autoHit ? 1 : hitChance(w, meAtk, foeTarget, b.distanceM, bal)
       const meHitEff = autoHit ? 1 : favor ? clamp(0, 1, meHit * favor.meMul) : meHit
       const hit = dmg > 0 && (autoHit || nextRandom(state.rng) < meHitEff)
       if (hit) {

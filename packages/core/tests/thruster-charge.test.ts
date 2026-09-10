@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState, SimContext } from '../src/index'
-import { addShipToFleet, createInitialState, createPlayerSpec, repairDeprecatedModules, thrusterPhase } from '../src/index'
+import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, repairDeprecatedModules, thrusterPhase } from '../src/index'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { advanceBattleFor, createFoeSpecs, startBattleFor } from '../src/combat'
 import { anomaly, galaxy, makeTestCtx, moduleDef } from './helpers'
@@ -73,6 +73,16 @@ describe('推进器周期爆发（2026-09-10 船长定：点火 60 秒 / 冷却 
     const firstMul = 1 + one.thrusterBoost!
     const secondMul = (1 + two.thrusterBoost!) / firstMul
     expect(secondMul).toBeLessThan(firstMul) // 递减：第二件的乘数 < 第一件的乘数
+  })
+
+  it('失稳代价只在点火期生效（2026-09-10 船长追加）：点火期 = 装配值，冷却期 = 1', () => {
+    const { state, ctx } = world()
+    withThruster(state, ctx, ['mod-prop-2']) // hitPenalty 0.12
+    const spec = createPlayerSpec(state, ctx, state.shipId)!
+    expect(spec.hitMul).toBeCloseTo(0.88, 10) // 装配值（点火期）
+    expect(effectiveHitMul(spec, true)).toBeCloseTo(0.88, 10)
+    expect(effectiveHitMul(spec, false)).toBe(1) // 冷却期：没点火就不失稳
+    expect(effectiveHitMul({}, true)).toBe(1) // 无推进器恒为 1
   })
 })
 

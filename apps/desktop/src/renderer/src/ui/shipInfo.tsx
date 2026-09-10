@@ -416,7 +416,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       })
     }
     if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) {
-      lines.push({ k: '常驻代价', v: `开火命中 ×${(1 - mod.hitPenalty).toFixed(2)}（全部武器，进胜率预估）` })
+      lines.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - mod.hitPenalty).toFixed(2)}（全部武器，进胜率预估；冷却期不失效稳）` })
     }
     lines.push({ k: '说明', v: '弃船逃生 / 跃迁充能仍随船体动力，不受模块影响' })
   } else if (mod.slot === 'turret') {
