@@ -1,8 +1,9 @@
 /**
- * 重要任务 · 序章/贯穿（2026-09-05 船长拍板规则更新）：
- * - 教程任务卡（补给协议/试炼）只在“进行中”展示——**已完成即隐藏**；
- * - 教程完成(含跳过)后发布贯穿任务「寻找人类」：正常发布、不告诉做法、确实无法完成；
- * - 显示范围：教程相关卡在对应步骤窗口（交付=2、试炼=5）且未完成时出现；「寻找人类」教程结束后常驻。
+ * 重要任务 · 序章/贯穿（2026-09-05 船长拍板规则更新；2026-09-10 船长补定）：
+ * - **已完成的重要任务一律隐藏**：教程任务卡（补给协议/试炼）只在“进行中”展示；
+ * - 教程完成(含跳过)后发布贯穿任务「寻找人类」：正常发布、不告诉做法；
+ * - 「寻找人类」阶段目标（2026-09-10 船长定）：**探索全部星系、寻找人类踪迹**——带进度显示，
+ *   全部探索完毕后标为"阶段目标已完成"（任务本身仍进行中，完成方法未知）。
  */
 import {
   ONB_DELIVER,
@@ -21,13 +22,18 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
   const state = engine.state
   const oreDone = state.importantTasks[TASK_ORE_DELIVER]?.done === true
   const trialDone = state.importantTasks[TASK_TRIAL_WIN]?.done === true
-  const findHumanOn = state.importantTasks[TASK_FIND_HUMANS] !== undefined && state.importantTasks[TASK_FIND_HUMANS]!.done !== true
+  const findTask = state.importantTasks[TASK_FIND_HUMANS]
+  const findHumanOn = findTask !== undefined && findTask.done !== true
   const oreName = engine.ctx.items.get(TUTORIAL_DELIVER_ITEM)?.name ?? TUTORIAL_DELIVER_ITEM
   const have = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
   const step = state.onboarding.step
   // 已完成的任务隐藏（船长 2026-09-05）；教程卡仅在对应步骤窗口且未完成时出现
   const showOre = !oreDone && step >= ONB_DELIVER && step <= ONB_DIVIDE
   const showTrial = !trialDone && step >= ONB_TRIAL && step <= ONB_DIVIDE
+  // 「寻找人类」阶段目标进度：已探索星系 / 全图星系
+  const galaxyTotal = engine.ctx.galaxies.size
+  const exploredN = [...engine.ctx.galaxies.keys()].filter((g) => state.exploredGalaxies.includes(g)).length
+  const allExplored = findTask?.allExplored === true || (galaxyTotal > 0 && exploredN >= galaxyTotal)
 
   const deliver = (): void => {
     const r = engine.deliverTutorialOreAt()
@@ -70,7 +76,16 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
           <div className="app-imp-card-body">
             人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；在这座章鱼宇宙人统治的母港继续航行，或许终会有所发现。
           </div>
-          <div className="app-imp-card-state">状态：进行中 · 完成方法未知</div>
+          {/* 任务目标（船长 2026-09-10 定）：探索全部星系、寻找人类踪迹——带进度 */}
+          <div className="app-imp-card-goal">
+            <span className="app-imp-goal-key">任务目标</span> 探索全部星系，寻找人类踪迹
+            <span className="app-dim">
+              （已探索 {exploredN}/{galaxyTotal} 星系{allExplored ? ' · 已完成' : ''}）
+            </span>
+          </div>
+          <div className="app-imp-card-state">
+            {allExplored ? '状态：进行中 · 阶段目标已完成——全图无人类踪迹，线索仍未知' : '状态：进行中 · 完成方法未知'}
+          </div>
         </div>
       ) : null}
     </div>

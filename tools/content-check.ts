@@ -45,6 +45,9 @@ import {
   SHIP_ROLE_LABELS,
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
+  FACTION_RARE_DROP_CHANCE,
+  FACTION_RARE_DROP_COUNT,
+  hasLairCore,
   isLairCandidate,
   lairGearOf,
   lairNameOf,
@@ -685,6 +688,23 @@ for (const m of MODULES) {
       `日板席位：${plan.zone} 需 ${plan.count} 个候选地点，实际只有 ${have} 个（抽不满就少发，请补内容）`,
     )
   }
+  // 敌对派系活跃（2026-09-10）：候选 = 中安/低安星系的常驻悬赏（非隐藏、有核心词、奖金 > 0）——
+  // 至少要有 1 个，否则这条置顶任务永远刷不出来
+  const factionPool = new Set<string>()
+  for (const def of ANOMALIES_FLAVORED) {
+    if (!hasLairCore(def) || !(def.rewardIsk > 0)) continue
+    const sec = lairCtx.galaxies.get(def.galaxyId)?.security
+    const v = typeof sec === 'number' && Number.isFinite(sec) ? sec : 0.5
+    if (v >= 0.5) continue
+    factionPool.add(def.galaxyId)
+  }
+  check(
+    factionPool.size > 0,
+    '派系活跃：中安/低安至少要有一个可作目标的星系（常驻悬赏），否则这条置顶任务永远刷不出来',
+  )
+  console.log(
+    `· 派系活跃：候选 ${factionPool.size} 个中安/低安星系（掉落概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% ×${FACTION_RARE_DROP_COUNT} 件，待船长核定）`,
+  )
   console.log(`· 窝点契约：${lairCards} 张窝点卡（稀有残骸 + 三档称呼 + 专属装备齐备，覆盖 ${famWithGear.size} 个敌族）`)
 }
 

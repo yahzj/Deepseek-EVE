@@ -32,7 +32,7 @@ import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
-import { advanceOnboardingAuto } from './onboarding'
+import { advanceFindHumans, advanceOnboardingAuto } from './onboarding'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -99,6 +99,8 @@ export function advanceGame(
   advanceSideTasks(state, ctx, opts?.nowWallMs)
   // 序章·苏醒：教程自动推进判定（采集达标/修复完成/技能归档/分身就位；廉价，仅教程进行中）
   advanceOnboardingAuto(state, ctx)
+  // 贯穿任务「寻找人类」阶段目标：探索全部星系（里程碑只记一次；未发布/已完成时零开销）
+  advanceFindHumans(state, ctx)
 }
 
 /** 技能队列推进（内部函数，不对外） */

@@ -699,7 +699,7 @@ describe('v24 时效任务：存档 v23→v24 迁移 / 老档读入 / 往返', (
     raw.version = 23
     const loaded = loadSaveFile(serializeSaveFile(raw as unknown as GameState, 0))
     expect(loaded.state.version).toBe(24)
-    expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [], bounty: [], bountyWindow: 0, deliver: null })
+    expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null })
     expect(loaded.state.wallet.isk).toBe(10_000) // 其余字段无损
     const ctx = makeTestCtx({
       quietEvents: true,

@@ -1,0 +1,100 @@
+/**
+ * 敌对派系活跃 · 掉落概率审数（正式工具，2026-09-10 加）：
+ * 按**当前真实内容**推算"每天平均能刷几次"，据此给出不同掉落概率下的期望日产出，
+ * 供船长核定 `FACTION_RARE_DROP_CHANCE`（core/lairs.ts）。
+ *
+ * 口径（与引擎同源）：
+ * - 候选 = 中安/低安星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的卡（高安不派发派系活跃）；
+ * - 每趟耗时 = 交火 D(威胁) + 胜利返航（去程并入返航 = 2×单程；本地卡固定 120s） + 重复冷却
+ *   （bountyCooldownMsFor，受驾驶船扫描属性影响，默认 ≈10s）；
+ * - D(T) = 击杀秒数刻度（balance.battle.foeHpCurve*：5s→90s，指数 1.6，与 foeHpOfThreat 同源）；
+ * - 返航起点按"母港出发"算（真实玩家多在母港整备）。
+ *
+ * 用法：npm run faction:audit
+ */
+import { ANOMALIES_FLAVORED, GALAXIES, buildSimContext } from '@whale/data'
+import {
+  DEFAULT_BALANCE,
+  FACTION_RARE_DROP_CHANCE,
+  HOME_GALAXY_ID,
+  bountyCooldownMsFor,
+  createInitialState,
+  hasLairCore,
+  shortestTravelMinutes,
+  travelLegMs,
+  travelMinutesEff,
+} from '@whale/core'
+
+const ctx = buildSimContext()
+const state = createInitialState({ nowWallMs: 0, seed: 1 })
+const gName = new Map(GALAXIES.map((g) => [g.id, g.name]))
+const gSec = new Map(GALAXIES.map((g) => [g.id, g.security ?? 0.5]))
+const bal = DEFAULT_BALANCE.battle
+
+/** 击杀秒数刻度 D(T)：与 combat.foeHpOfThreat 同源（威胁 → 参考火力下的击杀秒数） */
+function killSeconds(threat: number): number {
+  const t = Math.min(1, Math.max(0, (threat - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat))
+  return bal.foeHpCurveDMin + bal.foeHpCurveDSpan * Math.pow(t, bal.foeHpCurveExp)
+}
+
+interface Row {
+  galaxy: string
+  zone: string
+  card: string
+  threat: number
+  killS: number
+  backS: number
+  cdS: number
+  tripS: number
+  perHour: number
+}
+
+const rows: Row[] = []
+for (const a of ANOMALIES_FLAVORED) {
+  if (!hasLairCore(a) || !(a.rewardIsk > 0)) continue
+  const sec = gSec.get(a.galaxyId) ?? 0.5
+  if (sec >= 0.5) continue // 高安不派发派系活跃
+  const home = a.galaxyId === HOME_GALAXY_ID
+  const mins = shortestTravelMinutes(ctx, HOME_GALAXY_ID, a.galaxyId)
+  const backS = home ? 120 : Number.isFinite(mins) ? travelLegMs(state, ctx, travelMinutesEff(state, ctx, mins) * 2) / 1000 : NaN
+  const cdS = bountyCooldownMsFor(state, ctx) / 1000
+  const killS = killSeconds(a.threat)
+  const tripS = killS + backS + cdS
+  rows.push({
+    galaxy: gName.get(a.galaxyId) ?? a.galaxyId,
+    zone: sec < 0 ? '低安' : '中安',
+    card: a.name,
+    threat: a.threat,
+    killS: Math.round(killS),
+    backS: Math.round(backS),
+    cdS: Math.round(cdS),
+    tripS: Math.round(tripS),
+    perHour: 3600 / tripS,
+  })
+}
+
+rows.sort((x, y) => x.tripS - y.tripS)
+console.log('星系\t分区\t悬赏\t威胁\t交火秒\t返航秒\t冷却秒\t每趟秒\t趟/小时\t趟/4h\t趟/8h')
+for (const r of rows) {
+  console.log(
+    `${r.galaxy}\t${r.zone}\t${r.card}\t${r.threat}\t${r.killS}\t${r.backS}\t${r.cdS}\t${r.tripS}\t` +
+      `${r.perHour.toFixed(1)}\t${((4 * 3600) / r.tripS).toFixed(1)}\t${((8 * 3600) / r.tripS).toFixed(1)}`,
+  )
+}
+
+const n = Math.max(1, rows.length)
+const avgPerHour = rows.reduce((s, r) => s + r.perHour, 0) / n
+const avg4h = rows.reduce((s, r) => s + (4 * 3600) / r.tripS, 0) / n
+console.log(
+  `\n均值：${avgPerHour.toFixed(1)} 趟/时 → 4 小时 ≈${avg4h.toFixed(1)} 趟、8 小时 ≈${((avg4h / 4) * 8).toFixed(1)} 趟` +
+    `（最快 ${rows[0]?.perHour.toFixed(1)} / 最慢 ${rows[rows.length - 1]?.perHour.toFixed(1)} 趟/时）`,
+)
+console.log(`\n对照：当日 5 席常规赏金若全清 = 档位件数（外围 1 / 核心 2 / 深层 3 各按抽到的档位）→ 约 8~11 件/天`)
+console.log(`当前占位值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（待船长核定）`)
+for (const p of [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]) {
+  const mark = Math.abs(p - FACTION_RARE_DROP_CHANCE) < 1e-9 ? ' ← 当前' : ''
+  console.log(
+    `  P=${String(Math.round(p * 100)).padStart(2)}% → 期望日产出：4h 刷 ≈${(avg4h * p).toFixed(1)} 件 · ` +
+      `2h 刷 ≈${((avg4h / 2) * p).toFixed(1)} 件 · 1h 刷 ≈${((avg4h / 4) * p).toFixed(1)} 件${mark}`,
+  )
+}

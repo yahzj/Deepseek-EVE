@@ -346,6 +346,9 @@ export interface ExpeditionState {
   /** 赏金任务·窝点档位（2026-09-10 兼容字段）：非空 = 本次远征打的是派生窝点
    *  （威胁/波次/僚机按档位强化，奖金与稀有残骸按窝点口径结算）；旧档与普通悬赏 = 未设 */
   lairTier?: 1 | 2 | 3
+  /** 敌对派系活跃（2026-09-10 兼容字段）：true = 本次远征打的是当日派系活跃星系的**常驻悬赏**
+   *  （威胁 ×1.1、奖金 ×1.1、胜利有概率掉稀有残骸）；与 lairTier 互斥（派系只针对普通悬赏） */
+  factionActive?: boolean
 }
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */
@@ -1028,6 +1031,8 @@ export interface ImportantTaskState {
   done: boolean
   /** 可交付任务的累计已交数量（按任务 id 语义使用） */
   delivered?: number
+  /** 「寻找人类」阶段目标：已探索全部星系（里程碑只记一次；2026-09-10 船长定） */
+  allExplored?: boolean
 }
 
 /** 第二十三版存档结构（历史版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：
@@ -1044,8 +1049,9 @@ export type GameStateV23 = Omit<GameStateV22, 'version'> & {
 export interface SideTask {
   /** 稳定 id（state.sideTasks.seq 分配；UI 作 key、完成时定位） */
   id: number
-  /** 任务族：resource 资源任务 / courier 快递任务 / bounty 赏金任务（打掉指定星系的高难窝点） */
-  kind: 'resource' | 'courier' | 'bounty'
+  /** 任务族：resource 资源任务 / courier 快递任务 / bounty 赏金任务（打掉指定星系的高难窝点）
+   *  / faction 敌对派系活跃（当天选中星系的**常驻悬赏**加成，逐日重选、不因打赢而下板） */
+  kind: 'resource' | 'courier' | 'bounty' | 'faction'
   /** 目标物品的市场商品 key（ctx.marketGoods 键；刷出时锁定的报价来源） */
   goodKey: string
   /** 目标物品 refId（state.warehouse.items 按它计数、出发/完成时扣取） */
@@ -1064,6 +1070,8 @@ export interface SideTask {
   lairTier?: 1 | 2 | 3
   /** 赏金任务：窝点显示名（刷出时定格——含核心词与档位称呼，供界面与日志直显） */
   lairName?: string
+  /** 派系活跃：目标星系的**常驻悬赏**名（界面直显；该星系当日所有可见悬赏都吃 +10% 加成） */
+  factionAnomalyName?: string
 }
 
 /**
@@ -1112,6 +1120,9 @@ export interface SideTasksState {
   /** 赏金任务（**当日板**；2026-09-10 船长定：每天 2 张高难窝点，24 小时一轮、
    *  **每天本地 0 点整板替换**，与资源/快递的 20 分钟板彼此独立；老档缺省 = 空数组，零迁移） */
   bounty: SideTask[]
+  /** 敌对派系活跃（2026-09-10 船长定：每天一个中安/低安星系，该星系**常驻悬赏** +10% 奖金/+10% 威胁、
+   *  胜利有概率掉稀有残骸；逐日重选、打赢不下板 → 当天可反复刷；老档缺省 null） */
+  faction: SideTask | null
   /** 赏金板日界（本地 0 点的墙钟毫秒；0 = 未开板）——下一日界到点时整板替换。
    *  兼容字段（无版本号变化）：老档缺省 0，首次拿到有效墙钟即开板。 */
   bountyWindow: number
@@ -1319,7 +1330,7 @@ export function createInitialState(opts?: {
     galaxyWrecks: {},
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
-    sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；deliver = 快递投送在途挂账，缺省 null）
+    sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
     logs: [],
   }
   if (prologue) {
