@@ -365,20 +365,32 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       : 0)
 
   // 船体维修装置·运转消耗提示（2026-09-10 船长：消耗的修理组件常被忽略）——
-  // 装了维修装置就列出"每跳吃什么组件、现在有多少"，0 枚直接红字告警
+  // 装了维修装置就列出"每跳吃什么组件、现在有多少"，0 枚直接红字告警；
+  // 无消耗自愈件（异形生体件 repairFree）单列一行：不吃组件、永不停机
   const repairKitRows: { kitId: string; name: string; stock: number; perJumpSecs: number }[] = []
+  const freeRepairRows: { name: string; secs: number; armor: number; hull: number }[] = []
   if (fitted) {
     for (const id of Object.values(fitted).flat()) {
       if (typeof id !== 'string' || id.length === 0) continue
       const mod = engine.ctx.modules.get(id)
       if (!mod || ((mod.repairArmorHp ?? 0) <= 0 && (mod.repairHullHp ?? 0) <= 0)) continue
+      const secs = Math.max(1, Math.round((mod.repairIntervalMs ?? 5_000) / 1_000))
+      if (mod.repairFree === true) {
+        freeRepairRows.push({
+          name: mod.name,
+          secs,
+          armor: mod.repairArmorHp ?? 0,
+          hull: mod.repairHullHp ?? 0,
+        })
+        continue
+      }
       const kitId = mod.repairKit ?? 'repairkit-civ'
       if (repairKitRows.some((r) => r.kitId === kitId)) continue
       repairKitRows.push({
         kitId,
         name: engine.ctx.items.get(kitId)?.name ?? kitId,
         stock: (state.fleet[effectiveTarget]?.cargo?.[kitId] ?? 0) + countWare(state, kitId),
-        perJumpSecs: Math.max(1, Math.round((mod.repairIntervalMs ?? 5_000) / 1_000)),
+        perJumpSecs: secs,
       })
     }
   }
@@ -463,6 +475,26 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     ),
                   }
                 }),
+                // 无消耗自愈件（异形生体件）：不吃组件、永不停机——单列一行，避免玩家误以为要备料
+                ...(freeRepairRows.length > 0
+                  ? [
+                      {
+                        k: '生体自愈（无消耗）',
+                        v: (
+                          <>
+                            <em className="app-chip is-ok">无需组件</em>
+                            <span className="app-dim">
+                              {' '}
+                              {freeRepairRows
+                                .map((r) => `${r.name}：每 ${r.secs} 秒修甲 ${r.armor} / 结构 ${r.hull}`)
+                                .join('；')}
+                              （战斗中自动生效，不会因缺料停机；同型多件按 EVE 曲线递减）
+                            </span>
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
                 // 装后合成预览（V18.1：收敛件多装最终值；血量由顶部徽章承担不重复列出——与最上方徽章同源）
                 ...(spec
                   ? [

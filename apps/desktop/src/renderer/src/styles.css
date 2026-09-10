@@ -8882,6 +8882,7 @@ body {
 .app-starmap { flex: 0 1 auto; min-height: 200px; box-sizing: border-box; }.app-map-editbar { flex: 0 0 auto; } /* 星图自适应：布局编辑条（开发工具）保持自然高度，不参与压缩 */
 /* 维修装置·运转消耗高亮（2026-09-10 船长：消耗的修理组件常被玩家忽略）——沿用既有 is-* 修饰体例 */
 .app-chip.is-cost { color: #ffcf6e; border-color: rgba(255, 207, 110, 0.5); background: rgba(255, 207, 110, 0.1); }
+.app-chip.is-ok { color: #6ee7b7; border-color: rgba(110, 231, 183, 0.45); background: rgba(110, 231, 183, 0.08); } /* 无消耗自愈（异形生体件） */
 .app-kit-stock.is-bad { color: var(--wui-red); font-weight: 600; }
 .app-kit-stock.is-warn { color: var(--wui-amber); font-weight: 600; }
 .app-kit-stock.is-ok { color: var(--wui-text-dim); }
