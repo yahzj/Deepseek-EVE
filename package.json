@@ -19,6 +19,7 @@
     "balance": "tsx tools/balance-check.ts",
     "salvage:econ": "tsx tools/salvage-econ.ts",
     "content:check": "tsx tools/content-check.ts",
+    "faction:audit": "tsx tools/faction-audit.ts",
     "content:export": "tsx tools/content-export.ts",
     "content:import": "tsx tools/content-import.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts",

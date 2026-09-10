@@ -7820,6 +7820,15 @@ body {
 
 }
 
+/* 敌对派系活跃（2026-09-10 船长定：当日置顶那一条）——琥珀描边 + 微底，与"建成"绿边同族 */
+.app-station-card.is-faction {
+
+  border-color: rgba(217, 160, 90, 0.55);
+
+  background: linear-gradient(180deg, rgba(46, 36, 14, 0.35), rgba(10, 17, 27, 0.5));
+
+}
+
 .app-station-head {
 
   display: flex;

@@ -29,7 +29,12 @@ import {
   frontierGalaxyIds,
   idleAiShipIds,
   isExplored,
+  isFactionBounty,
   isLairCandidate,
+  factionAnomalyOf,
+  factionBaseRewardIsk,
+  FACTION_RARE_DROP_CHANCE,
+  FACTION_RARE_DROP_COUNT,
   lairAnomalyOf,
   lairBaseRewardIsk,
   nearestStationGalaxyId,
@@ -1416,14 +1421,16 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const state = engine.state
   const galaxy = engine.ctx.galaxies.get(anomaly.galaxyId)
   const power = calcPower(state, engine.ctx)
-  // 2026-09-09：展示胜率 = 蒙特卡洛推演缓存（N=21 局：按当前耐久/装配实战模拟，含护盾回充与
-  // 敌方减员，带伤影响内建——替代旧"带伤预警扣分"口径）；缓存未就绪（换船/换装后预热中）
-  // 时临时回退旧口径显示，预热完成随引擎心跳自动变准
-  const mc = engine.winEstimateOf(anomaly.id)
-  const fc = bountyDamageForecast(state, engine.ctx, anomaly) // 仅缓存未就绪时回退用
+  // 敌对派系活跃（2026-09-10 船长定）：该星系当天的**全部悬赏**吃 +10% 奖金 / +10% 威胁。
+  // 展示必须与实战一致（展示=到账）：威胁/奖金/胜率都按加成后的卡算；蒙特卡洛缓存按卡 id 建键、
+  // 算的是未加成卡，故派系卡一律走"带伤预警"解析口径（与赏金任务卡同源）。
+  const factionHit = isFactionBounty(state, anomaly)
+  const shownCard = factionHit ? factionAnomalyOf(anomaly) : anomaly
+  const mc = factionHit ? null : engine.winEstimateOf(anomaly.id)
+  const fc = bountyDamageForecast(state, engine.ctx, shownCard) // 仅缓存未就绪/派系卡用
   const armorLoss = mc ? mc.armorLoss : fc.armorLoss
   const hullLoss = mc ? mc.hullLoss : fc.hullLoss
-  const pWin = mc ? mc.winRate * 100 : bountyWinPercentGuarded(state, engine.ctx, anomaly) * 100
+  const pWin = mc ? mc.winRate * 100 : bountyWinPercentGuarded(state, engine.ctx, shownCard) * 100
   const chance = Math.min(98, Math.max(2, Math.round(pWin))) // 下限 2%：保留"仍有希望"语义
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
@@ -1434,7 +1441,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const retMins = localTarget ? NaN : shortestTravelMinutes(engine.ctx, retBase, anomaly.galaxyId)
   const retMs = localTarget ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
   const roundTripMs = Math.max(1, combatMs + retMs)
-  const grossIsk = anomaly.rewardIsk * bountyRewardFactor(state)
+  const grossIsk = (factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
   const iskPerHourTxt =
     iskPerHour >= 1000
@@ -1499,9 +1506,16 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   return (
     <div className={`app-ano-card${locked ? ' is-locked' : ''}`}>
       <div className="app-ano-top">
-        <span className="app-ano-name">{anomaly.name}</span>
+        <span className="app-ano-name">
+          {anomaly.name}
+          {factionHit ? (
+            <em className="app-chip is-rare" title="敌对派系活跃（当日置顶）：该星系全部悬赏奖金 +10%、敌人威胁 +10%，胜利有概率掉稀有残骸">
+              派系活跃
+            </em>
+          ) : null}
+        </span>
         <span className={`app-chip${locked ? ' is-dim' : ''}`}>
-          {unexplored ? (<><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>星系未探索</>) : reqMet ? `威胁 ${anomaly.threat}` : (<><span className="app-ico"><Glyph name="ico-lock" size={12} color={ICO_TONES["ico-lock"]} /></span>需声望 ${anomaly.standingReq}</>)}
+          {unexplored ? (<><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>星系未探索</>) : reqMet ? `威胁 ${shownCard.threat}${factionHit ? '（+10%）' : ''}` : (<><span className="app-ico"><Glyph name="ico-lock" size={12} color={ICO_TONES["ico-lock"]} /></span>需声望 ${anomaly.standingReq}</>)}
         </span>
       </div>
       <div className="app-ano-meta">
@@ -1574,7 +1588,8 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
         })()}
       </div>
       <div className="app-ano-reward">
-        奖金 {Math.round(anomaly.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
+        奖金 {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
+        {factionHit ? <span className="app-dim" title={`派系活跃加成：原始奖金 ${anomaly.rewardIsk.toLocaleString('zh-CN')} ×1.1`}>（派系活跃 +10%）</span> : null}
         {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title="该悬赏已首胜：重复完成不再获得声望，可转向新目标提升协会声望">（已首胜）</span> : null}
       </div>
@@ -1903,6 +1918,25 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
   // 当日席位构成（档位随机发放，但保证每天三档各至少一张）：按实际板统计，供头部摘要
   const tierCount = (lv: 1 | 2 | 3): number => tasks.filter((t) => (t.lairTier ?? 1) === lv).length
   const tierSummary = `本日 ${tasks.length} 席：${LAIR_TIER_LABELS[1]} ${tierCount(1)} · ${LAIR_TIER_LABELS[2]} ${tierCount(2)} · ${LAIR_TIER_LABELS[3]} ${tierCount(3)}`
+  // 敌对派系活跃（2026-09-10 船长定：置顶那一条）——目标 = 当日选中星系的**常驻悬赏**（不是窝点）
+  const faction = view.faction
+  const factionCard = faction?.anomalyId ? engine.ctx.anomalies.get(faction.anomalyId) : undefined
+  const factionGalaxy = faction?.galaxyId ? engine.ctx.galaxies.get(faction.galaxyId) : undefined
+
+  function goFaction(): void {
+    const miningActive = state.mining.active
+    if (miningActive && goAsk !== faction!.id) {
+      setGoAsk(faction!.id)
+      return
+    }
+    setGoAsk(null)
+    const r = miningActive
+      ? engine.startExpeditionFromMiningAt(faction!.anomalyId ?? '')
+      : engine.startExpeditionAt(faction!.anomalyId ?? '')
+    if (!r.ok) onToast(r.error ?? '无法出发', true)
+    else if (miningActive) onToast('已转战：采矿结束（货随船），舰队正从矿带星系出发。')
+    else onToast('舰队已抵达目标空域，正在交火！')
+  }
 
   return (
     <div className="app-sidetasks">
@@ -1910,6 +1944,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
         <span>
           赏金任务 · 每日高难目标（指定敌人窝点：亲自出击，AI 不能代劳）
           {tasks.length > 0 ? <span className="app-dim"> · {tierSummary}</span> : null}
+          {faction ? <span className="app-dim"> · 派系活跃 1</span> : null}
         </span>
         {view.bountyOpened || tasks.length > 0 ? (
           <span
@@ -1929,7 +1964,111 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
             : '暂无赏金任务——每天 0 点自动刷出：协会会标出各已探索星系的敌人窝点，接取后亲自出击。'}
         </div>
       ) : (
-        tasks.map((t) => {
+        <>
+          {/* ── 敌对派系活跃（2026-09-10 船长定）：置顶一条；目标 = 该星系**常驻悬赏**（不是窝点），
+              奖金 ×1.1、威胁 ×1.1、胜利概率掉稀有残骸；**打赢不下板**，当天可反复刷 ── */}
+          {faction && factionCard && factionGalaxy ? (
+            (() => {
+              const boostCard = factionAnomalyOf(factionCard)
+              const sec = factionGalaxy.security
+              const fc2 = bountyDamageForecast(state, engine.ctx, boostCard)
+              const pWin2 = bountyWinPercentGuarded(state, engine.ctx, boostCard, state.shipId) * 100
+              const chance2 = Math.min(98, Math.max(2, Math.round(pWin2)))
+              const tone2 = chance2 >= 70 ? '高' : chance2 >= 40 ? '中' : '低'
+              const reward2 = factionBaseRewardIsk(factionCard)
+              const inFlightSelf2 = state.expedition.active && state.expedition.anomalyId === faction.anomalyId
+              const inFlightOther2 = state.expedition.active && !inFlightSelf2
+              const exploreOk2 = isExplored(state, factionGalaxy.id)
+              const cd2 = bountyCooldownRemainingMs(state, faction.anomalyId ?? '')
+              const locked2 = !exploreOk2
+                ? '目标星系当前不可达（未探索/无航路）——先探索该星系再出击'
+                : state.scanning.active || state.transit.active
+                  ? '扫描探索/换港途中——先结束当前作业'
+                  : inFlightSelf2
+                    ? '舰队正在该星系交火中'
+                    : inFlightOther2
+                      ? '舰队正忙于别处（远征/巡逻等）——先等当前作业结束'
+                      : cd2 > 0
+                        ? `「${factionCard.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.ceil(cd2 / 1000))} 秒`
+                        : undefined
+              const canGo2 = locked2 === undefined || (goAsk === faction.id && !inFlightOther2)
+              return (
+                <div className="app-station-card is-faction">
+                  <div className="app-station-head">
+                    <span className="app-station-name">
+                      ⚑ 敌对派系活跃：{factionCard.name}
+                      <em className="app-chip is-rare">今日置顶</em>
+                      <em className="app-chip" title="派系活跃只作用于该星系的常驻悬赏（与赏金任务的窝点无关）">
+                        常驻悬赏加成
+                      </em>
+                    </span>
+                    <span className="app-dim">剩余 {fmtDayClock(view.bountyRemainingMs)}</span>
+                  </div>
+                  <div className="app-lair-kv">
+                    <span>目标星系「{factionGalaxy.name}」</span>
+                    {sec !== undefined ? (
+                      <span className={`app-sec-chip app-sec-chip-${secTone(sec)}`} title="该星系安全等级（负数 = 高危）">
+                        {secText(sec)}
+                      </span>
+                    ) : null}
+                    <span>
+                      <span className="app-lair-key">威胁</span> {boostCard.threat}
+                      <span className="app-dim">（原 {factionCard.threat}，+10%）</span>
+                    </span>
+                    <span>
+                      <span className="app-lair-key">奖金</span> {MONEY_GLYPH} {reward2.toLocaleString('zh-CN')} ISK
+                      <span className="app-dim">（原 {factionCard.rewardIsk.toLocaleString('zh-CN')}，+10%）</span>
+                    </span>
+                  </div>
+                  <div className="app-ano-win">
+                    火力 {calcPower(state, engine.ctx)} → <span className="app-lair-key">预估胜率</span>{' '}
+                    <b
+                      className={`app-win-${tone2}`}
+                      title={`按该星系常驻悬赏（威胁 +10% 后）推演：预计损耗装甲 ≈${Math.round(fc2.armorLoss * 100)}%、结构 ≈${Math.round(fc2.hullLoss * 100)}%`}
+                    >
+                      {chance2}%
+                    </b>
+                    <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入）">
+                      {' '}· 敌主伤 <DmgChip t={foeMainDamageType(boostCard)} />
+                    </span>
+                  </div>
+                  <div className="app-ano-reward">
+                    <span className="app-lair-key">稀有残骸</span>{' '}
+                    {Math.round(FACTION_RARE_DROP_CHANCE * 100)}% 概率 ×{FACTION_RARE_DROP_COUNT}
+                    <span className="app-dim" title="命中则落在该星系残骸场（打捞必得）；本条打赢不下板，当天可反复刷">
+                      （胜利掉落，可反复刷）
+                    </span>
+                  </div>
+                  <div className="app-ano-desc">
+                    该星系敌群正在集中活动：当天它的全部悬赏奖金 +10%、敌人威胁 +10%；肃清有概率留下稀有残骸，
+                    捞回站内精炼炉开「高级箱」可换该敌群专属装备。
+                  </div>
+                  <div className="app-station-deliver">
+                    <span className="app-dim">
+                      {state.mining.active
+                        ? '当前采矿中——出发将结束开采（已采的货随船带走）'
+                        : `当前协会声望 ${standing}（该悬赏门槛 ${factionCard.standingReq}）`}
+                    </span>
+                    {inFlightSelf2 ? (
+                      <span className="app-btn is-small is-primary" aria-disabled title="舰队正在该星系交火中">
+                        交火中
+                      </span>
+                    ) : (
+                      <button
+                        className="app-btn is-small is-primary"
+                        disabled={!canGo2}
+                        title={goAsk === faction.id ? '再点一次确认转战：采矿立即结束，舰队从矿带星系出发' : locked2 ?? `出击：前往「${factionGalaxy.name}」打「${factionCard.name}」（吃到派系活跃加成）`}
+                        onClick={goFaction}
+                      >
+                        {goAsk === faction.id ? '确认转战出击' : '出发'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()
+          ) : null}
+          {tasks.map((t) => {
           const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
           const tier = (t.lairTier ?? 1) as 1 | 2 | 3
           const card = base ? lairAnomalyOf(base, tier) : undefined
@@ -2080,7 +2219,8 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               </div>
             </div>
           )
-        })
+        })}
+        </>
       )}
     </div>
   )
