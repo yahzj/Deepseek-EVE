@@ -2691,11 +2691,13 @@ body {
 .app-shipwin-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .app-shipwin-bg.is-cur { animation: app-swin-bgin 0.45s ease; }
 .app-shipwin-bg.is-prev { animation: app-swin-bgout 0.45s ease forwards; }
-/* 底色（差异克制在主题青蓝黑系内的明暗与微色温；语义色只出现在光效点缀上） */
+/* 底色（差异克制在主题青蓝黑系内的明暗与微色温；语义色只出现在光效点缀上）
+   2026-09-10 船长「作业时整窗统一到工作色」：采掘 / 打捞两个场景的氛围光与底色改为对应工作色
+   （采掘绿 #b5e35f / 打捞青 #6fe3f0，与 ui/aiWorkFx.tsx 的工作动画同源），其余场景不动 */
 .bg-docked { background: linear-gradient(180deg, #0c1a2c, #0a1522); }
 .bg-docked::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(150, 220, 255, 0.4), transparent); }
-.bg-work-mine { background: radial-gradient(110% 90% at 80% 110%, rgba(190, 160, 110, 0.12), transparent 60%), linear-gradient(180deg, #0e1a24, #0a141d); }
-.bg-work-salvage { background: radial-gradient(120% 90% at 20% 100%, rgba(130, 170, 190, 0.12), transparent 55%), linear-gradient(180deg, #0e1820, #0a1016); }
+.bg-work-mine { background: radial-gradient(110% 90% at 80% 110%, rgba(181, 227, 95, 0.13), transparent 60%), linear-gradient(180deg, #101c1a, #0a1410); }
+.bg-work-salvage { background: radial-gradient(120% 90% at 20% 100%, rgba(111, 227, 240, 0.13), transparent 55%), linear-gradient(180deg, #0d1a20, #091217); }
 .bg-work-scan { background: radial-gradient(100% 80% at 50% 0%, rgba(90, 160, 230, 0.14), transparent 60%), linear-gradient(180deg, #0b1828, #08111e); }
 .bg-work-scan::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(130, 220, 255, 0.4), transparent); animation: app-swin-scan 2.2s linear infinite; }
 .bg-travel { background: linear-gradient(180deg, #0a1729, #0c2036); }
@@ -2727,12 +2729,17 @@ body {
 .app-swin-drift.is-debris.is-small { color: #7592a6; }
 .app-swin-drift.is-probe { color: #9fe8ff; animation-name: app-swin-drift; }
 .app-swin-drift.is-probe.is-small { color: #c9f1ff; }
+/* 作业场景的漂移物也统一到工作色（2026-09-10 船长「整窗统一到工作色」） */
+.app-shipwin.is-work-mine .app-swin-drift.is-rock { color: #b5e35f; }
+.app-shipwin.is-work-mine .app-swin-drift.is-rock.is-small { color: #8fb44a; }
+.app-shipwin.is-work-salvage .app-swin-drift.is-debris { color: #6fe3f0; }
+.app-shipwin.is-work-salvage .app-swin-drift.is-debris.is-small { color: #57b8c4; }
 @keyframes app-swin-drift { 0% { transform: translateX(150px); opacity: 0; } 6% { opacity: 0.95; } 90% { opacity: 0.8; } 100% { transform: translateX(-34px); opacity: 0; } }
 @keyframes app-swin-drift-spin { 0% { transform: translateX(150px) rotate(0deg); opacity: 0; } 6% { opacity: 0.95; } 90% { opacity: 0.8; } 100% { transform: translateX(-34px) rotate(260deg); opacity: 0; } }
 /* ── 驾驶舰船作业特效（2026-09-10 船长：采掘 / 打捞要与 AI 指挥中心的工作动画近似——
       同一套配色与"激光确实打到某物"的画法；配色与 ui/aiWorkFx.tsx 的工作动画同源：采掘绿 #b5e35f / 打捞青 #6fe3f0。
       全部只动 transform/opacity（约定第十四章），不加 filter/box-shadow。 ── */
-.app-swin-work { pointer-events: none; }
+.app-swin-work { pointer-events: none; /* 2026-09-10 船长：船体在浮动，采集对象也要跟着一起上下——同周期（2.4s）同位移（-2.5px），两者始终同步、激光不脱靶 */ animation: app-swin-float 2.4s ease-in-out infinite; }
 .app-swin-work.is-mine { color: #b5e35f; }
 .app-swin-work.is-salvage { color: #6fe3f0; }
 .app-swin-wbeam { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; animation: app-swin-wbeam 1.1s ease-in-out infinite; }
