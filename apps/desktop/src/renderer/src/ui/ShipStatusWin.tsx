@@ -137,6 +137,16 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
       <g key="m2" className="app-swin-drift is-rock is-small" style={{ animationDelay: '1.6s', animationDuration: '4.4s' }}>
         <path d="M1 4 L6 1 L9 3 L8 6 L3 7 Z" />
       </g>,
+      /* 2026-09-10 船长：采掘要有"激光打到矿岩上"——与 AI 指挥中心的工作动画同款语言
+         （同色、同形、同节奏；舰首在本地坐标约 x=104，故光束自舰体内侧射出、矿岩落在右侧空档） */
+      <g key="mine-fx" className="app-swin-work is-mine">
+        <path className="app-swin-wbeam" d="M104 33 H131" />
+        <path className="app-swin-wrock" d="M131 27 l5 0 l3 5 l-3 5 l-5 0 l-3 -5 z" />
+        <path className="app-swin-wrock" d="M134 30 l2 3 -2 3" strokeOpacity="0.45" />
+        <rect className="app-swin-wchip" x="124" y="24" width="2.6" height="2.6" />
+        <rect className="app-swin-wchip is-late" x="128" y="38" width="2.6" height="2.6" />
+        <rect className="app-swin-wchip is-late2" x="119" y="40" width="2.6" height="2.6" />
+      </g>,
     )
   } else if (cls === 'work-salvage') {
     sky.push(
@@ -146,6 +156,16 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
       </g>,
       <g key="s2" className="app-swin-drift is-debris is-small" style={{ animationDelay: '1.9s', animationDuration: '4s' }}>
         <path d="M0 3 L5 1 L7 4 L4 6 Z" />
+      </g>,
+      /* 2026-09-10 船长：打捞要有"牵引光束 + 扫描弧扫到残片上"——同样沿用 AI 工作动画的设计语言 */
+      <g key="salvage-fx" className="app-swin-work is-salvage">
+        <path className="app-swin-wcone" d="M104 33 L137 23 L137 43 Z" fill="currentColor" fillOpacity="0.1" />
+        <path className="app-swin-wbeam" d="M104 33 H137" />
+        <path className="app-swin-warc" d="M123 19 C126 14 130 11 136 9" />
+        <path className="app-swin-wrock" d="M133 21 l7 3 l-5 4 z" />
+        <path className="app-swin-wrock is-b" d="M138 37 l6 -2 l1 4 z" />
+        <rect className="app-swin-wchip" x="126" y="28" width="2.6" height="2.6" />
+        <rect className="app-swin-wchip is-late" x="130" y="35" width="2.6" height="2.6" />
       </g>,
     )
   } else if (cls === 'work-scan') {
