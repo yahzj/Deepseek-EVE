@@ -78,6 +78,57 @@ function gapTo25Example(add: DamageResists | undefined): string {
 }
 
 /**
+ * 缺口抗性"分系"行（盾/甲/结构三层共用同一写法）：
+ * 逐系列出 chip + 缺口值（**三系件必须三系都看得见**——2026-09-10 修：此前只渲染第一系，
+ * 陵墓护盾阵列/生体甲壳板这类"三系各 +X%"的件会被玩家误读成只抗一种）；
+ * 尾注统一"乘入制 + 90% 上限"（示例取首个非零系）。
+ */
+function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | null {
+  const entries = (['kinetic', 'explosive', 'plasma'] as const)
+    .map((t) => ({ t, v: add?.[t] ?? 0 }))
+    .filter((x) => x.v > 0)
+  if (entries.length === 0) return null
+  const ex = gapTo25Example(add)
+  return {
+    k,
+    v: (
+      <>
+        {entries.map((x, i) => (
+          <span key={x.t} className="app-stack-inline">
+            {i > 0 ? <span className="app-dim"> · </span> : null}
+            <DmgChip t={x.t} />
+            <span className="app-dim">{` +${pct(x.v)}`}</span>
+          </span>
+        ))}
+        <span className="app-dim">{`（乘入制${ex ? `：${ex}` : ''}；上限 90%）`}</span>
+      </>
+    ),
+  }
+}
+
+/**
+ * 维修系短缀（维修装置 / 异形无消耗自愈件）：每跳修复量与"是否吃组件"。
+ * 2026-09-10 修：此前短效文案没有修复分支 → 民用/军用维修装置与生体损管腔在
+ * 装配台槽位行、装备库行、手册网格里只剩"名字 + CPU"，玩家看不到它到底修多少。
+ */
+function repairShortText(mod: ModuleDef): string {
+  const arm = mod.repairArmorHp ?? 0
+  const hul = mod.repairHullHp ?? 0
+  if (arm <= 0 && hul <= 0) return ''
+  const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
+  const amt = [arm > 0 ? `甲${fmt(arm)}` : '', hul > 0 ? `结构${fmt(hul)}` : ''].filter(Boolean).join(' / ')
+  return `每 ${secs} 秒 ${amt}${mod.repairFree === true ? '（无消耗）' : '（耗组件）'}`
+}
+
+/** 结构层抗性短缀（任何槽位都可能带）：`结构抗 动能+25% 爆炸+25% 能量+25%` */
+function hullResistShortText(mod: ModuleDef): string {
+  const bits = (['kinetic', 'explosive', 'plasma'] as const)
+    .filter((t) => (mod.hullResistAdd?.[t] ?? 0) > 0)
+    .map((t) => `${DMG_LABEL[t]}+${pct(mod.hullResistAdd![t]!)}`)
+  return bits.length > 0 ? `结构抗 ${bits.join(' ')}` : ''
+}
+
+/**
  * 装备一行式短效果（装配台槽位行 / 装备库行共用；V17：各战斗家族显示真实进公式参数）。
  * 空槽文本由调用方自给；抗性为"缺口削减"值（合成规则见 moduleInfoLines 注释行）。
  */
@@ -168,6 +219,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
       body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
       break
   }
+  // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）与结构层抗性——短行不丢关键效果
+  const extras = [repairShortText(mod), hullResistShortText(mod)].filter(Boolean).join(' · ')
+  if (extras) body = body ? `${body} · ${extras}` : extras
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
   return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
 }
@@ -306,36 +360,12 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: '货舱容量', v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'shield') {
     if (mod.shieldHpBonus !== undefined) lines.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const entries = Object.entries(mod.shieldResistAdd ?? {}).filter(([, val]) => (val ?? 0) > 0)
-    if (entries.length > 0) {
-      const ex = gapTo25Example(mod.shieldResistAdd)
-      const tail = ex ? `抗 +${pct(entries[0]![1]!)}（乘入制：${ex}；上限 90%）` : `抗 +${pct(entries[0]![1]!)}（乘入制，上限 90%）`
-      lines.push({
-        k: '护盾抗性（乘入制）',
-        v: (
-          <>
-            <DmgChip t={entries[0]![0] as DamageType} />
-            <span className="app-dim">{` ${tail}`}</span>
-          </>
-        ),
-      })
-    }
+    const row = resistAddLine('护盾抗性（乘入制）', mod.shieldResistAdd)
+    if (row) lines.push(row)
   } else if (mod.slot === 'armor') {
     if (mod.armorHpBonus !== undefined) lines.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const entries = Object.entries(mod.armorResistAdd ?? {}).filter(([, val]) => (val ?? 0) > 0)
-    if (entries.length > 0) {
-      const ex = gapTo25Example(mod.armorResistAdd)
-      const tail = ex ? `抗 +${pct(entries[0]![1]!)}（乘入制：${ex}；上限 90%）` : `抗 +${pct(entries[0]![1]!)}（乘入制，上限 90%）`
-      lines.push({
-        k: '装甲抗性（乘入制）',
-        v: (
-          <>
-            <DmgChip t={entries[0]![0] as DamageType} />
-            <span className="app-dim">{` ${tail}`}</span>
-          </>
-        ),
-      })
-    }
+    const row = resistAddLine('装甲抗性（乘入制）', mod.armorResistAdd)
+    if (row) lines.push(row)
     // 重甲件的机动代价（2026-09-10 船长：陵寝装甲层 −25%）——多件不叠加、取最重一件
     if ((mod.speedPenaltyPct ?? 0) > 0) {
       const pen = mod.speedPenaltyPct ?? 0
@@ -507,6 +537,10 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       lines.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}（本舰全部武器：炮台/导弹/激光/无人机）` })
     }
   }
+  // 结构层抗性（异形生体损管腔等）：模块级入口，任何槽位都可能带——独立一行，
+  // 与盾/甲抗性同一种"乘入制"写法（2026-09-10 修：此前该字段在界面上完全没有呈现）
+  const hullRow = resistAddLine('结构抗性（乘入制）', mod.hullResistAdd)
+  if (hullRow) lines.push(hullRow)
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
   const st = stackingOf(mod)
   if (st.group === 'flat') {
