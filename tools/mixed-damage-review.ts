@@ -542,9 +542,14 @@ function main(): void {
   if (want('E')) sectionE()
   console.log('\n（探针结束）')
   const out = path.join('docs', 'design', 'battle-data', 'mixed-damage-review-20260910.txt')
-  mkdirSync(path.dirname(out), { recursive: true })
-  writeFileSync(out, `${MIRROR.join('\n')}\n`, 'utf8')
-  origLog(`已写入证据文件：${out}`)
+  if (only === '') {
+    mkdirSync(path.dirname(out), { recursive: true })
+    writeFileSync(out, `${MIRROR.join('\n')}\n`, 'utf8')
+    origLog(`已写入证据文件：${out}`)
+  } else {
+    // 只跑单段时**不覆盖**证据文件（否则会把完整证据截断成只剩这一段）
+    origLog(`（只跑了 ${only} 段：未覆盖证据文件 ${out}；要刷新完整证据请不带参数跑一遍）`)
+  }
 }
 
 void main()
