@@ -545,14 +545,15 @@ export const MODULES: readonly ModuleDef[] = [
     description: '护盾容量 +60%。全站功率输送的巨型护盾发生器（市场稀有）。',
   },
 
-  // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入） ══════════
+  // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入）
+  // 2026-09-10 船长定：装甲容量与抗性相关装备 CPU **统一下调 20%**（四舍五入到整数） ══════════
   {
     id: 'mod-armor-kin-1',
     name: '装甲镀层 MK1·动能型',
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { kinetic: 0.25 },
-    cpuUse: 5,
+    cpuUse: 4,
     description: '动能抗 +25%（乘入制：0 基础船 +25%，25% 基础船 → 44%，上限 90%）。动能破甲弹的克制镀层。',
   },
   {
@@ -561,7 +562,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { explosive: 0.25 },
-    cpuUse: 5,
+    cpuUse: 4,
     description: '高爆抗 +25%（乘入制，上限 90%）。高爆对装甲是双倍伤害——这是第一道防线。',
   },
   {
@@ -570,7 +571,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { plasma: 0.25 },
-    cpuUse: 5,
+    cpuUse: 4,
     description: '能量抗 +25%（乘入制，上限 90%）。隔热镀层方案。',
   },
   {
@@ -579,7 +580,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { kinetic: 0.4 },
-    cpuUse: 15,
+    cpuUse: 12,
     description: '动能抗 +40%（乘入制：0 基础船 +40%，25% 基础船 → 55%，上限 90%）。复合夹层结构，动能弹的噩梦。',
   },
   {
@@ -588,7 +589,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { explosive: 0.4 },
-    cpuUse: 15,
+    cpuUse: 12,
     description: '高爆抗 +40%（乘入制，上限 90%）。爆震格栅装甲，重炮手眼中最硬的骨头。',
   },
   {
@@ -597,7 +598,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { plasma: 0.4 },
-    cpuUse: 15,
+    cpuUse: 12,
     description: '能量抗 +40%（乘入制，上限 90%）。陶瓷隔热层叠技术。',
   },
   {
@@ -606,7 +607,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { kinetic: 0.55 },
-    cpuUse: 40,
+    cpuUse: 32,
     description: '动能抗 +55%（乘入制：0 基础船 +55%，25% 基础船 → 66%，上限 90%）。要塞级复合装甲（市场稀有）。',
   },
   {
@@ -615,7 +616,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { explosive: 0.55 },
-    cpuUse: 40,
+    cpuUse: 32,
     description: '高爆抗 +55%（乘入制，上限 90%）。顶住高爆齐射的移动堡垒（市场稀有）。',
   },
   {
@@ -624,7 +625,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorResistAdd: { plasma: 0.55 },
-    cpuUse: 40,
+    cpuUse: 32,
     description: '能量抗 +55%（乘入制，上限 90%）。能硬抗能量炮的烧蚀装甲（市场稀有）。',
   },
 
@@ -635,7 +636,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorHpBonus: 0.2,
-    cpuUse: 5,
+    cpuUse: 4,
     description: '装甲容量 +20%。经典堆甲方案，只加厚度、不挑弹种。',
   },
   {
@@ -644,7 +645,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorHpBonus: 0.45,
-    cpuUse: 15,
+    cpuUse: 12,
     description: '装甲容量 +45%。加厚夹层，装甲舰的中坚配置。',
   },
   {
@@ -653,7 +654,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'armor',
     rack: 'low',
     armorHpBonus: 0.8,
-    cpuUse: 40,
+    cpuUse: 32,
     description: '装甲容量 +80%。全站重工浇铸的复合装甲层（市场稀有）。',
   },
 
@@ -887,13 +888,14 @@ export const MODULES: readonly ModuleDef[] = [
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；
-      三档：民用级 / MK1 / MK2） ═══ */
+      三档：民用级 / MK1 / MK2）
+      2026-09-10 船长定：船体维修装置 CPU **统一上调 20%**（四舍五入到整数：6→7 / 14→17 / 26→31） ═══ */
   {
     id: 'mod-hullrep-civ',
     name: '民用船体维修装置',
     slot: 'support',
     rack: 'mid',
-    cpuUse: 6,
+    cpuUse: 7,
     repairArmorHp: 5,
     repairHullHp: 5,
     repairKit: 'repairkit-civ',
@@ -904,7 +906,7 @@ export const MODULES: readonly ModuleDef[] = [
     name: '船体维修装置 MK1',
     slot: 'support',
     rack: 'mid',
-    cpuUse: 14,
+    cpuUse: 17,
     repairArmorHp: 10,
     repairHullHp: 10,
     repairKit: 'repairkit-mil',
@@ -915,7 +917,7 @@ export const MODULES: readonly ModuleDef[] = [
     name: '船体维修装置 MK2',
     slot: 'support',
     rack: 'mid',
-    cpuUse: 26,
+    cpuUse: 31,
     repairArmorHp: 18,
     repairHullHp: 18,
     repairKit: 'repairkit-mil',
@@ -1081,9 +1083,9 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorHpBonus: 1.1,
     speedPenaltyPct: 0.25,
-    cpuUse: 52,
+    cpuUse: 42,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝级复合重甲——装甲容量 **+110%**（比装甲增厚板 MK3 还厚四成），代价是**战斗机动速度 −25%**（多件不叠加、取最重一件）与 52 点 CPU：装它等于少一门重炮、也跑不快。守墓者从来不需要追人。',
+      '守墓古舰（D 族）窝点专属：陵寝级复合重甲——装甲容量 **+110%**（比装甲增厚板 MK3 还厚四成），代价是**战斗机动速度 −25%**（多件不叠加、取最重一件）与 42 点 CPU：装它等于少一门重炮、也跑不快。守墓者从来不需要追人。',
   },
   {
     id: 'mod-lair-turret-e',

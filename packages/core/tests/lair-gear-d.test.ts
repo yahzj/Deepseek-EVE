@@ -5,7 +5,7 @@
  * - D2 守墓者长炮：**基础命中 100%** 的 12 km 点名炮——射速降到攻坚炮台 MK3 的四成、
  *   单发提到 2.02 倍，**总输出 ≈ MK3 的八成（−19.3%：原「保证 DPS −10%」之上再降一成）**，远端衰减更轻；
  * - D3 陵寝装甲层：装甲容量 **+110%**（比装甲增厚板 MK3 的 +80% 还厚），代价 = **战斗速度 −25%**
- *   （多件不叠加、取最重一件；与推进器失稳同口径）与 52 CPU。
+ *   （多件不叠加、取最重一件；与推进器失稳同口径）与 **42 CPU**（2026-09-10 船长定：装甲容量/抗性件统降 20%，52 → 42）。
  * 三件合起来 = 守墓舰性格：重盾 + 超远程点名 + 走不动的重甲（D 族为敌族池之一，见 FOE_LAIR_GEAR.D）。
  */
 import { describe, expect, it } from 'vitest'
@@ -133,10 +133,11 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     expect(withProp.speedMps / propOnly.speedMps).toBeCloseTo(0.75, 6)
   })
 
-  it('D 族三件同装合法：CPU 42 + 62 + 52 = 156 < 灰鲭鲨 195', () => {
+  it('D 族三件同装合法：CPU 42 + 62 + 42 = 146 < 灰鲭鲨 195', () => {
     const ids = FOE_LAIR_GEAR.D.map((id) => ctx.modules.get(id)!)
     const total = ids.reduce((s, m) => s + (m.cpuUse ?? 0), 0)
-    expect(total).toBe(156)
+    // 2026-09-10 船长定：陵寝装甲层 CPU 52 → 42（装甲容量/抗性相关件统降 20%），合计 156 → 146
+    expect(total).toBe(146)
     const ship = ctx.ships.get(SHIP)!
     expect(total).toBeLessThan(ship.cpu ?? 0)
   })
