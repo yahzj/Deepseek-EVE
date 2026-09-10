@@ -148,3 +148,34 @@ export function droneArcHeight(lane: number): number {
 export function droneTakeoff(lane: number): { x: number; y: number } {
   return { x: (lane % 3) * 6 - 6, y: -10 + (lane % 2) * 5 }
 }
+
+/** 缓动（去程 ease-out / 返程 ease-in；与逐帧插值配套） */
+export function droneEaseOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
+export function droneEaseIn(t: number): number {
+  return t * t * t
+}
+
+/**
+ * 出击制航路位置（绝对画面 px）——给定时刻沿**上凸弧线**去、沿**下凸弧线**回。
+ *
+ * 2026-09-10 船长五次定："无人机依旧是飞到固定地点"——原因是先前把位移交给 CSS 关键帧
+ * （`forwards` 冻结在动画结束时的终点），敌舰移动后阵位变了，机体却停在旧坐标。
+ * 现改为**逐帧由本函数插值定位**：终点实时跟敌舰更新，曲线形状保持不变。
+ */
+export function dronePathPos(
+  t: number,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  arcH: number,
+  back: boolean,
+): { x: number; y: number } {
+  const e = back ? droneEaseIn(t) : droneEaseOut(t)
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + (back ? arcH : -arcH) }
+  // 二次贝塞尔：控制点 C 使 e=0.5 恰好经过 mid
+  const cx = 2 * mid.x - (from.x + to.x) / 2
+  const cy = 2 * mid.y - (from.y + to.y) / 2
+  const u = 1 - e
+  return { x: u * u * from.x + 2 * u * e * cx + e * e * to.x, y: u * u * from.y + 2 * u * e * cy + e * e * to.y }
+}

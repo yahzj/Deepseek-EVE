@@ -27,6 +27,7 @@ import {
   DRONE_STYLE,
   droneArcHeight,
   droneModelOf,
+  dronePathPos,
   droneSortieStation,
   droneTakeoff,
 } from '../ui/droneArt'
@@ -875,38 +876,50 @@ const meSpeedRef = useRef(200)
                     className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ' is-formation'}`}
                   >
                     {Array.from({ length: w.show }, (_, i) => {
-                      // 起飞/停泊基准位：出击制 = 机库口（舰体中部上方一点）；机群制 = 母舰上侧编队位
+                      // 起飞/停泊基准位：出击制 = 机库口；机群制 = 母舰上侧编队位
                       const base =
                         DRONE_STYLE === 'sortie' && !w.model.resident ? droneTakeoff(i) : w.model.slots[i % w.model.slots.length]!
                       const station = droneStationOf(w.model, i, lay, true)
-                      // 位移量必须相对**基准位**计算（曾按舰锚点算导致终点偏移：无人机一直偏在舰上方）；
-                      // 曲线航路：去程中点抬升 arc（上凸）、返程中点下压 arc（下凸）
                       const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
                       const arc = droneArcHeight(i)
-                      const outMid = { x: (baseAbs.x + station.x) / 2, y: (baseAbs.y + station.y) / 2 - arc }
-                      const backMid = { x: (baseAbs.x + station.x) / 2, y: (baseAbs.y + station.y) / 2 + arc }
-                      const vars =
-                        DRONE_STYLE === 'sortie'
-                          ? ({
-                              '--dx': `${station.x - baseAbs.x}px`,
-                              '--dy': `${station.y - baseAbs.y}px`,
-                              '--mx': `${outMid.x - baseAbs.x}px`,
-                              '--my': `${outMid.y - baseAbs.y}px`,
-                              '--nx': `${backMid.x - baseAbs.x}px`,
-                              '--ny': `${backMid.y - baseAbs.y}px`,
-                            } as CSSProperties)
-                          : {}
+                      /**
+                       * 位置由 **逐帧 JS 插值**决定（2026-09-10 船长五次定"依旧是飞到固定地点"修正）：
+                       * 先前交给 CSS 关键帧 + forwards → 终止值冻结在动画结束那一刻，敌舰移动后阵位变了
+                       * 机体却停在旧坐标（看起来就是"飞到某个固定地点不动"）。现在每帧按当前阵位重算：
+                       * 去程 = 上凸曲线（baseAbs→station）、返程 = 下凸曲线（station→baseAbs，并掉头）。
+                       */
+                      let px = baseAbs.x
+                      let py = baseAbs.y
+                      let heading = 1
+                      if (DRONE_STYLE === 'sortie' && !w.model.resident) {
+                        const launch = droneLaunchRef.current.get(w.artId) ?? now
+                        const idle = now - (droneLastShotRef.current.get(w.artId) ?? -Infinity)
+                        if (idle < DRONE_BACK_MS) {
+                          const t = Math.min(1, Math.max(0, (now - launch) / DRONE_SORTIE_OUT_MS))
+                          const p = dronePathPos(t, baseAbs, station, arc, false)
+                          px = p.x
+                          py = p.y
+                        } else {
+                          const t = Math.min(1, Math.max(0, (idle - DRONE_BACK_MS) / DRONE_SORTIE_BACK_MS))
+                          const p = dronePathPos(t, station, baseAbs, arc, true)
+                          px = p.x
+                          py = p.y
+                          heading = -1 // 返航：掉头（机头朝母舰）
+                        }
+                      } else {
+                        px = station.x
+                        py = station.y
+                      }
                       return (
                         <span
                           key={i}
                           className="app-bts-drone"
                           style={
                             {
-                              left: base.x,
-                              top: base.y,
+                              left: px - lay.me.x,
+                              top: py - lay.me.y,
                               color: w.model.tint,
-                              animationDelay: `${(i % 4) * 0.12}s`,
-                              ...vars,
+                              transform: `translate(-50%, -50%) scaleX(${heading})`,
                             } as CSSProperties
                           }
                         >
