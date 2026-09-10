@@ -5,8 +5,35 @@
 > 并回报船长同步本文件。所有会话(一号/二号/新助手)开工先读本文件。
 
 ## 0. 开工顺序
-1. 读本文件 → 2. 读 `docs/development-conventions.md` → 3. `docs/architecture.md`
-   与相关 `docs/design/…` → 4. 看代码现状,不凭记忆/猜测写。
+1. 读本文件 → 2. 按下面「目录索引」只读**本次任务需要**的那几份 → 3. 看代码现状,不凭记忆/猜测写。
+   (例外:首次接手/大工程开工/压缩后续接,才通读 `docs/development-conventions.md`。)
+
+## 0.1 目录索引(按任务类型指路——不必通读全部文档)
+
+| 任务类型 | 先读这些(按序) |
+|---|---|
+| **任何改动** | 本文件 §2 四步闸门 · §3 验证闭环 · §4 工作区与合入纪律 |
+| 改 UI / 页面 / 视觉物件 | `development-conventions.md` **§九**(UI 与视觉一致性) + 同级相似界面代码 |
+| 改战斗 / 表现层 / 动画 | §九 + `docs/design/` 里对应设计稿(如 `drone-combat-animation-20260910.md`) |
+| 改数值 / 经济 / 平衡 | §一(闸门) §二(验证) §八 + 对应设计稿 + `tools/*`(校准脚本,如 `battle:calibrate`) |
+| 改存档结构 / 迁移 | §八 + `docs/architecture.md` + 只读真档或先备份 |
+| 写/改玩家可见文案 | §十三(文案纯净与设定) §十一(术语) + `docs/glossary.md` |
+| 准备更新公告 | §十二(公告与发布审核) + `docs/design/announcement-draft-*.md`(待审稿) |
+| 新建/收尾工具 | §十(工具纪律:正式入库 / `_` 临时探针收尾处置) |
+| 多 agent 并行 / 合入 / 推送 | §三(工作区与合入纪律、推送闸门) |
+| 交接 / 续接 / 被压缩后 | §六 + `docs/roadmap.md`(最近批次与状态) |
+| 查历史决策与旧口径 | `docs/roadmap.md` + `development-conventions-changelog.md` + `docs/design/*` |
+| 交付可测存档 | §八 + `docs/test-saves/` + `tools/make-test-save.ts` |
+
+**文档清单(用途一览)**
+- `docs/development-conventions.md` — 约定**权威正文**(一~十三章);第十四章只留指针。
+- `docs/development-conventions-changelog.md` — 约定与 AGENTS.md 的**历次变更记录**(最新在前;干活不必读)。
+- `docs/architecture.md` — 架构与模块边界。
+- `docs/glossary.md` — **术语权威**;新术语先登记再用。
+- `docs/roadmap.md` — 路线图 + 批次变更记录(找"某功能做到哪了"看这里)。
+- `docs/design/*` — 各系统设计稿(89 份)与公告待审稿 `announcement-draft-*.md`。
+- `docs/test-saves/` — 可复现测试档说明;`packages/data/src/announcements.ts` — 公告数据(仅经船长批准后写入)。
+
 
 ## 1. 语言与汇报
 - 一律中文:面向船长的沟通、思考呈现、总结、文档、代码注释、游戏文案、日志。
@@ -85,4 +112,5 @@
   见约定第八章),让船长能立刻实测,不手工改档。
 
 ---
-_维护:本文件内容变更需同步 `docs/development-conventions.md` 变更记录;细则冲突以该文档为准。_
+_维护:本文件或 `docs/development-conventions.md` 的内容变更,一律在 `docs/development-conventions-changelog.md`
+顶部追加一条;细则冲突以 `docs/development-conventions.md` 为准。_
