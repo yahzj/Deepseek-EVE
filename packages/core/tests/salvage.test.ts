@@ -128,13 +128,13 @@ describe('闲置漂移（打捞中挂起；回 base 自动清记录）', () => {
     expect(wreckDensityOf(state, 'galaxy-grave', ctx)).toBe(40)
   })
 
-  it('<base：4h 线性回升回 base（打捞到底后的回流），到 base 记录清除', () => {
+  it('<base：96h 线性回升回 base（2026-09-10 船长：恢复速度大幅下调），到 base 记录清除', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 9 })
     const ctx = ctxOf()
     state.galaxyWrecks['galaxy-kor'] = { density: 5, rare: 0 } // base18 下方（打捞到底）
-    advanceWreckDrift(state, ctx, WRECK_RECOVER_MS / 4) // 1h → +25% 间距
+    advanceWreckDrift(state, ctx, WRECK_RECOVER_MS / 4) // 1/4 段 → +25% 间距
     expect(state.galaxyWrecks['galaxy-kor']!.density).toBeCloseTo(5 + 13 * 0.25, 10)
-    advanceWreckDrift(state, ctx, WRECK_RECOVER_MS) // 满 4h → 回 base
+    advanceWreckDrift(state, ctx, WRECK_RECOVER_MS) // 满 96h → 回 base
     expect(state.galaxyWrecks['galaxy-kor']).toBeUndefined()
   })
 
@@ -143,7 +143,7 @@ describe('闲置漂移（打捞中挂起；回 base 自动清记录）', () => {
     const ctx = ctxOf()
     state.galaxyWrecks['galaxy-grave'] = { density: 88, rare: 0 }
     state.galaxyWrecks['galaxy-kor'] = { density: 5, rare: 0 }
-    advanceWreckDrift(state, ctx, WRECK_DECAY_MS, 'galaxy-grave') // 挂起 grave；kor 正常回升
+    advanceWreckDrift(state, ctx, WRECK_RECOVER_MS, 'galaxy-grave') // 挂起 grave；kor 正常回升（96h 满程）
     expect(state.galaxyWrecks['galaxy-grave']!.density).toBe(88)
     expect(state.galaxyWrecks['galaxy-kor']).toBeUndefined() // kor 已回 base 清记录
   })
@@ -162,22 +162,22 @@ describe('残骸物品（按敌群注册；乙案：计数 = 体积 → unit 恒
   })
 })
 
-describe('打捞放干守恒（每轮扣当前超出量 2%，保底线 5）', () => {
-  it('密度越高每瓢越肥（mul = max(0.5, d/10)），扣减随超出量指数放干', () => {
+describe('打捞放干守恒（每轮扣当前超出量 2%，保底线 10）', () => {
+  it('密度越高每瓢越肥（mul = max(0.5, d/10)，分母不变），扣减随超出量指数放干', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 13 })
     const ctx = ctxOf()
     state.galaxyWrecks['galaxy-grave'] = { density: 40, rare: 0 } // 无卡低安兜底 base 40
     const mul1 = salvageRoundPull(state, ctx, 'galaxy-grave')
     expect(mul1).toBe(4)
-    expect(state.galaxyWrecks['galaxy-grave']!.density).toBeCloseTo(40 - 35 * 0.02, 10) // 39.3
-    // 连续多轮 → 向保底线收敛（每轮扣 2% 超出量；间距 <0.05 进位到保底线 5）
+    expect(state.galaxyWrecks['galaxy-grave']!.density).toBeCloseTo(40 - 30 * 0.02, 10) // 超出量 = 40−10 → 39.4
+    // 连续多轮 → 向保底线收敛（每轮扣 2% 超出量；间距 <0.05 进位到保底线 10）
     for (let i = 0; i < 400; i++) salvageRoundPull(state, ctx, 'galaxy-grave')
     const d = state.galaxyWrecks['galaxy-grave']!.density
-    expect(d).toBe(5) // 进位收口
-    // 保底稳态：≤5 后不扣密度、mul 恒 0.5（半效），且不再写记录变化
-    state.galaxyWrecks['galaxy-grave'] = { density: 5, rare: 0 }
+    expect(d).toBe(10) // 进位收口（2026-09-10 保底线 5 → 10）
+    // 保底稳态：≤10 不扣密度；mul 分母不变（d/10）→ 密度 10 时系数 = 1.0
+    state.galaxyWrecks['galaxy-grave'] = { density: 10, rare: 0 }
     const mulFloor = salvageRoundPull(state, ctx, 'galaxy-grave')
-    expect(mulFloor).toBe(0.5)
-    expect(state.galaxyWrecks['galaxy-grave']!.density).toBe(5)
+    expect(mulFloor).toBe(1)
+    expect(state.galaxyWrecks['galaxy-grave']!.density).toBe(10)
   })
 })
