@@ -523,7 +523,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       addLog(
         state,
         'trade',
-        `✦ 派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（协会回收炉暂不受理，先入库封存）。`,
+        `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（协会回收炉暂不受理，先入库封存）。`,
       )
     }
     // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
