@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
 import type { BattleFx, DamageType, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -94,6 +94,8 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const view = expeditionStatus(state, engine.ctx)
   const arcs = battleArcsFor(state, engine.ctx)
   const battle = state.expedition.battle
+  /** 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源 */
+  const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle) : null
   /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
   const droneCountOf = new Map<string, number>()
   for (const w of arcs?.me ?? []) if (w.src === 'drone' && w.artId) droneCountOf.set(w.artId, w.count ?? 1)
@@ -111,6 +113,9 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   /* ── 背景星场（三层视差：直接操作 DOM transform，追逐/拉锯差速滚动） ── */
   const dimsRef = useRef(dims)
   dimsRef.current = dims
+  /** 推进器爆发倍率（0 = 未装；每渲染同步给 33ms 循环用——与 dimsRef 同款模式） */
+  const thrusterBoostRef = useRef(0)
+  thrusterBoostRef.current = arcs?.thrusterBoost ?? 0
   /** 尺寸重测入口（列宽随编队数量变化；由 33ms 循环按需调用——放在守卫之前的 hook 区声明） */
   const measureRef = useRef<() => void>(() => {})
   /** 列宽核对节拍（33ms 循环每 10 拍核对一次 ≈330ms） */
@@ -259,7 +264,7 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine.state.expedition.battle?.startedAtGameMs])
 
-  // 星空视差速率：开战时锁定一次驾驶船战斗速度（装配/技能静态，战斗期间不变）
+  // 星空视差速率：基准 = 驾驶船基础战斗速度（装配/技能静态）——每帧再按推进器点火态放大（见 33ms 循环）
   useEffect(() => {
     if (!engine.state.expedition.battle) return
     const spec = createPlayerSpec(engine.state, engine.ctx, engine.state.shipId)
@@ -299,12 +304,13 @@ const meSpeedRef = useRef(200)
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
-      // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（推进器/技能已折算），
-      // 对峙（已到位）时保持原流向以巡航速度流动（双方高速同向的体感）。
+      // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（技能已折算）——
+      // 2026-09-10 推进器周期化后：点火期额外乘爆发倍率（星空跑得更快 = 加速的直观反馈）。
       const st = starStateRef.current
       const gap = b.myDesireM - b.distanceM // <0 = 想接近（前进/向右）；>0 = 想拉开（后退/向左）
       if (Math.abs(gap) > 2) st.dir = gap < 0 ? 1 : -1 // +1 = 星空向左流 / −1 = 向右流
-      const vMag = Math.min(240, 40 + meSpeedRef.current * 0.32) // 40px/s 底速 + 船速比例（~300m/s → 136px/s）
+      const boostNow = thrusterPhase(b, engine.ctx.balance.battle).boosting ? thrusterBoostRef.current : 0
+      const vMag = Math.min(320, 40 + meSpeedRef.current * (1 + boostNow) * 0.32) // 40px/s 底速 + 船速比例
       const target = st.dir * vMag
       st.v += (target - st.v) * 0.12 // 速度连续渐变
       const offs = starOffRef.current
@@ -1186,6 +1192,13 @@ const meSpeedRef = useRef(200)
               敌方 {arcs.foe.minM.toLocaleString('zh-CN')}~{arcs.foe.maxM.toLocaleString('zh-CN')}m
               <span className={`app-a-chip app-a-${arcs.foe.type}`}>{DMG_LABEL[arcs.foe.type]}</span>
             </span>
+            {/* 敌方突进标记（2026-09-10 船长定：高威胁近战敌在够不着时突进机动 ×2）——
+                复用同级"运行态 chip"样式（红点 = 告警态），不自造新类 */}
+            {battle?.foeChargeOn ? (
+              <span className="app-bts-repair is-down" title="敌方正在突进：够不着你时机动翻倍逼近——进入其射程后仍会维持 2 秒，随后冷却 20 秒">
+                <i /> 敌突进中
+              </span>
+            ) : null}
             {ammoChips.length > 0 ? (
               <span className="app-bts-ammo">
                 {ammoChips.map((t) => (
@@ -1242,6 +1255,37 @@ const meSpeedRef = useRef(200)
                 </span>
               )
             })}
+            {/* 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——
+                复刻同级"装填冷却"格结构（色点 + 名称 + 冷却条 + 倒计时/就绪） */}
+            {thruster && arcs && arcs.thrusterBoost > 0 ? (
+              <span
+                className={`app-bts-reload${thruster.boosting ? ' is-ready' : ''}`}
+                title={
+                  thruster.boosting
+                    ? `推进器点火中：战斗中机动 +${Math.round(arcs.thrusterBoost * 100)}%，剩 ${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)} 秒后进入冷却`
+                    : `推进器冷却中：剩 ${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)} 秒——冷却期间无加速，回到基础机动`
+                }
+              >
+                <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? '#6fd98a' : '#8aa0b8' }} />
+                <span className="app-bts-reload-name">推进器</span>
+                <span className="app-bts-reload-track">
+                  <i
+                    className="app-bts-reload-fill"
+                    style={{
+                      width: `${
+                        thruster.boosting
+                          ? 100
+                          : Math.min(100, Math.max(0, (1 - thruster.remainMs / Math.max(1, engine.ctx.balance.battle.thrusterCooldownMs)) * 100))
+                      }%`,
+                      background: thruster.boosting ? '#6fd98a' : '#8aa0b8',
+                    }}
+                  />
+                </span>
+                <span className="app-bts-reload-ms">
+                  {thruster.boosting ? `推进 ${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)}s` : `${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)}s`}
+                </span>
+              </span>
+            ) : null}
           </div>
           <div className="app-bts-sliderRow">
             <span className="app-dim app-bts-sideLabel">◀ 拉开</span>

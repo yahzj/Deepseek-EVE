@@ -242,7 +242,7 @@ describe('V18.1 装配与战斗集成', () => {
     expect(spec.resists.shield?.kinetic).toBeCloseTo(0.75, 9)
   })
 
-  it('推进器多件：速度 EVE 曲线（+15% 与 +50% → ×1.696），命中代价只取最重（×0.80）', () => {
+  it('推进器多件：**爆发倍率**按 EVE 曲线（+15% 与 +50% → ×1.696），命中代价只取最重（×0.80）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 6 })
     const { shipDef } = makeBed()
     shipDef.maxSpeedMps = 300
@@ -260,8 +260,9 @@ describe('V18.1 装配与战斗集成', () => {
     expect(fitModule(state, 'mod-p1', ctx).ok).toBe(true)
     expect(fitModule(state, 'mod-p3', ctx).ok).toBe(true)
     const spec = createPlayerSpec(state, ctx, state.shipId)!
-    const expectSpeed = 300 * curveMult([0.5, 0.15])
-    expect(spec.speedMps).toBeCloseTo(expectSpeed, 6)
+    // 2026-09-10 船长：推进器改周期点火——基础速度不变，EVE 曲线作用在**爆发倍率**上
+    expect(spec.speedMps).toBeCloseTo(300, 6)
+    expect(1 + (spec.thrusterBoost ?? 0)).toBeCloseTo(curveMult([0.5, 0.15]), 6)
     expect(spec.hitMul).toBeCloseTo(0.8, 9) // 最重代价 0.2，而非 0.95×0.8
   })
 

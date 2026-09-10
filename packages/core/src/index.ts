@@ -504,6 +504,8 @@ export {
   pdEnabledFor,
   droneLostCount,
   settleDroneLosses,
+  // 推进器周期爆发（2026-09-10 船长定）：引擎与战斗界面同源读这一个函数
+  thrusterPhase,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
 

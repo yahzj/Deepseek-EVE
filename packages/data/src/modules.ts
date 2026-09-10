@@ -658,36 +658,39 @@ export const MODULES: readonly ModuleDef[] = [
     description: '装甲容量 +80%。全站重工浇铸的复合装甲层（市场稀有）。',
   },
 
-  // ══════════ 矢量推进器（propulsion：加力推进 + 常驻命中代价） ══════════
+  // ══════════ 矢量推进器（propulsion：**周期爆发式**加力 + 常驻命中代价） ══════════
+  // 2026-09-10 船长定：推进器不再常驻提速——改为**爆发 60 秒 / 冷却 60 秒**（开场即启动），
+  // 爆发幅度 MK1 +40% / MK2 +80% / MK3 +130%；冷却期内不提供任何速度加成。
+  // 战斗界面底部「装填冷却」行会同步显示推进器冷却倒计时。
   {
     id: 'mod-prop-1',
     name: '矢量推进器 MK1',
     slot: 'propulsion',
     rack: 'mid',
-    speedBonusPct: 0.3,
+    speedBonusPct: 0.4,
     hitPenalty: 0.05,
     cpuUse: 5,
-    description: '加力推进：战斗速度 +30%，代价 = 开火命中 ×0.95（常驻）。逼近/脱离更快，输出略失稳。',
+    description: '加力推进：点火期间战斗速度 +40%，持续 60 秒后进入 60 秒冷却（开场即点火）。代价 = 开火命中 ×0.95（常驻）。逼近/脱离更快，输出略失稳。',
   },
   {
     id: 'mod-prop-2',
     name: '矢量推进器 MK2',
     slot: 'propulsion',
     rack: 'mid',
-    speedBonusPct: 0.6,
+    speedBonusPct: 0.8,
     hitPenalty: 0.12,
     cpuUse: 15,
-    description: '加力推进：战斗速度 +60%，代价 = 开火命中 ×0.88（常驻）。高机动舰标配，风筝战术的引擎。',
+    description: '加力推进：点火期间战斗速度 +80%，持续 60 秒后进入 60 秒冷却（开场即点火）。代价 = 开火命中 ×0.88（常驻）。高机动舰标配，风筝战术的引擎。',
   },
   {
     id: 'mod-prop-3',
     name: '矢量推进器 MK3',
     slot: 'propulsion',
     rack: 'mid',
-    speedBonusPct: 1,
+    speedBonusPct: 1.3,
     hitPenalty: 0.2,
     cpuUse: 40,
-    description: '加力推进：战斗速度 +100%，代价 = 开火命中 ×0.80（常驻）。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
+    description: '加力推进：点火期间战斗速度 +130%，持续 60 秒后进入 60 秒冷却（开场即点火）。代价 = 开火命中 ×0.80（常驻）。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
   },
 
   // ══════════ V18.1 支援件（support：低槽 = 伤害稳定器/射速计算机；中槽 = 索敌阵列/姿态陀螺） ══════════
