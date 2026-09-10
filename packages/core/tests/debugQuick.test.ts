@@ -9,7 +9,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame, enqueueSkill } from '../src/engine'
 import { startMining, miningStatus } from '../src/mining'
 import { startManufacturing } from '../src/manufacturing'
-import { startExpedition } from '../src/expedition'
+import { startExpedition, resolveBattleOutcome } from '../src/expedition'
 import { startScan, isExplored } from '../src/explore'
 import { makeTestCtx, skill, belt, anomaly } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -91,6 +91,32 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     for (let i = 0; i < 40 && s.scanning.active; i++) advanceGame(s, 20_000, ctx)
     expect(s.scanning.active).toBe(false)
     expect(s.awayGalaxy).toBeNull()
+  })
+
+  it('本地悬赏（母港目标）战后返航：调试模式 1 秒、普通模式仍 2 分钟（2026-09-10 修复写死 120s）', () => {
+    // 本地返航段（目标星系 = 返航基准）此前写死 LOCAL_RETURN_MS=120s，不吃 debugQuick——
+    // 调试模式下"战斗后的返航"永远要等 2 分钟（船长 2026-09-10 反馈）。现在与其它本地腿同口径。
+    const localCtx = makeTestCtx({ quietEvents: true, skills: [skill('nav-1')] })
+    const world = (quick: boolean): GameState => {
+      const s = freshState(quick)
+      expect(startExpedition(s, 'ano-a', localCtx).ok).toBe(true) // ano-a 在母港 = 本地目标
+      expect(s.expedition.phase).toBe('battle') // 去程取消：下达即交火
+      const b = s.expedition.battle!
+      b.lastTickGameMs = s.gameMs
+      b.ended = 'me' // 模拟胜负已分（结算窗口由 killcam 控制，测试直连结算函数）
+      resolveBattleOutcome(s, localCtx)
+      expect(s.expedition.phase).toBe('back')
+      return s
+    }
+
+    const quick = world(true)
+    expect(quick.expedition.finishAtGameMs - (quick.expedition.returnAtGameMs ?? 0)).toBe(1_000)
+    advanceGame(quick, 1_000, localCtx) // 1 秒后到港
+    expect(quick.expedition.active).toBe(false)
+    expect(quick.awayGalaxy).toBeNull()
+
+    const normal = world(false)
+    expect(normal.expedition.finishAtGameMs - (normal.expedition.returnAtGameMs ?? 0)).toBe(120_000)
   })
 
   it('debugQuick=false 时以上路径不变（抽样：制造仍按原时长）', () => {
