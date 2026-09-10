@@ -428,7 +428,8 @@ const meSpeedRef = useRef(200)
           muzzlePt = mz[n % mz.length]!
         }
       }
-      const g = boltGeom(fx.side, src, dst, srcNose, dstNose, muzzlePt, artW, from)
+      // 无人机瞄准敌舰**中心点**（2026-09-10 船长八次定）：炮台/激光仍打舰艏侧命中点，无人机不打前缘
+      const g = boltGeom(fx.side, src, dst, srcNose, dm ? 0 : dstNose, muzzlePt, artW, from)
       boltsRef.current.push({
         key: keyRef.current++,
         color: DMG_COLOR[fx.type],
