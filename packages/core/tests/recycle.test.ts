@@ -25,7 +25,10 @@ function ctxOf() {
       { ...galaxy('galaxy-grave', '坟场'), security: -1.0 },
     ],
     anomalies: [
-      anomaly('ano-grave', 'galaxy-grave', { threat: 60, tactic: 'brawl' }),
+      // 2026-09-10：基础密度 = 该星系悬赏「20 次注入」之和（威胁×0.4×(1+0.2×敌数)×20）——
+      // 危档需 base ≥642：threat 100 单敌 → 20×48 = 960 ✓（旧口径 sec−1.0 → base 40 即危档）
+      anomaly('ano-grave', 'galaxy-grave', { threat: 100, tactic: 'brawl' }),
+      // 常档：threat 30 单敌 → 20×14.4 = 288 <428 ✓
       anomaly('ano-kor', 'galaxy-kor', { threat: 30, tactic: 'orbit' }),
     ],
     items: [
@@ -63,11 +66,11 @@ describe('回收画像与保底矿物滚动', () => {
   it('残骸按其敌群星系危险度分档；低安标记正确', () => {
     const ctx = ctxOf()
     const grave = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
-    expect(grave.tier).toBe('dire') // 坟场 base40
+    expect(grave.tier).toBe('dire') // 坟场：base = 20×(100×0.4×1.2) = 960 ≥642 → 危池
     expect(grave.lowSec).toBe(true)
-    expect(grave.threat).toBe(60)
+    expect(grave.threat).toBe(100)
     const kor = recycleProfileOf(ctx, wreckItemIdOf('ano-kor'))!
-    expect(kor.tier).toBe('common') // 柯尔 base18 <20 → 常池
+    expect(kor.tier).toBe('common') // 柯尔：base = 288 <428 → 常池
     expect(kor.lowSec).toBe(false)
   })
 

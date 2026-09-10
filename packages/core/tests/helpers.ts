@@ -273,6 +273,8 @@ export function anomaly(
     standingGain?: number
     tactic?: AnomalyDef['tactic']
     escorts?: number
+    /** 多波表（2026-09-10：残骸基础密度/注入按敌人数——测试需要构造多波卡） */
+    waves?: AnomalyDef['waves']
   },
 ): AnomalyDef {
   return {
@@ -287,6 +289,7 @@ export function anomaly(
     combatSeconds: opts?.combatSeconds ?? 120,
     tactic: opts?.tactic,
     escorts: opts?.escorts,
+    ...(opts?.waves !== undefined ? { waves: opts.waves } : {}),
     description: '测试用异常点',
   }
 }
