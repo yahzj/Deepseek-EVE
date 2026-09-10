@@ -21,7 +21,7 @@ import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
-import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine } from './equipment'
+import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
@@ -286,6 +286,10 @@ export function createPlayerSpec(
   for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
   let armorHpMult = 1
   for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
+  // 结构层容量（2026-09-10 船长：E 族巨构骨架引出）——任何槽位都可能带，按件加算求和，
+  // 与甲容同口径；技能（船体加固理论/重装舰操作）再乘于其上
+  let hullHpMult = 1
+  for (const m of allFittedModules(fitted, ctx)) hullHpMult += m.hullHpBonus ?? 0
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
@@ -295,7 +299,7 @@ export function createPlayerSpec(
   const hp: Hp3 = {
     s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv),
     a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * hullSkillMult,
-    h: (ship.hullHp ?? 0) * hullSkillMult,
+    h: (ship.hullHp ?? 0) * Math.max(1, hullHpMult) * hullSkillMult,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -312,7 +316,10 @@ export function createPlayerSpec(
   }
   tune(shieldRes, Math.min(5, state.skills.trained['shield-tuning'] ?? 0))
   tune(armorRes, Math.min(5, state.skills.trained['armor-tuning'] ?? 0))
-  const resists = { shield: shieldRes, armor: armorRes, hull: ship.hullResist ?? {} }
+  // 结构层抗性（2026-09-10 船长：模块首次可加壳抗——hullResistAdd，按系缺口复合，上限 0.9）
+  const hullRes = mergeResist(ship.hullResist, undefined)
+  for (const m of allFittedModules(fitted, ctx)) if (m.hullResistAdd) applyAdds(hullRes, m.hullResistAdd)
+  const resists = { shield: shieldRes, armor: armorRes, hull: hullRes }
 
   // V18.1 支援件合成：
   // - 伤害稳定器（按系加算）+ 射速计算机（装填缩短加算）只进炮台条目；
@@ -339,6 +346,8 @@ export function createPlayerSpec(
   const propSpeeds = propDefs.map((p) => p.speedBonusPct ?? 0)
   const speedEq = curveMult(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
+  // 装甲件常驻速度代价（2026-09-10 船长：陵寝装甲层 −25%）——多件取最重一件（与上面的失稳同口径）
+  const worstSpeedPen = Math.max(0, ...allFittedModules(fitted, ctx).map((m) => m.speedPenaltyPct ?? 0))
   // 锁定装置（2026-09-09 船长拍板：集火 + 被锁目标受击加深 8/12/20% 档；多件 EVE 曲线收敛）
   const lockEq = curveMult(targetLockDefs.map((m) => m.lockDmgBonus ?? 0))
 
@@ -512,10 +521,13 @@ export function createPlayerSpec(
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
     // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛；矢量机动操作（舰船）再乘 +5%/级
+    // 2026-09-10 船长：装甲件的**常驻速度代价**（如陵寝装甲层 −25%）——多件只取最重一件
+    // （与推进器失稳 hitPenalty 同口径：重甲不会叠成静止），钳制到 [0.1, 1]
     speedMps:
       (ship.maxSpeedMps ?? 200) *
       Math.max(1, speedEq) *
-      (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)),
+      (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
+      Math.max(0.1, 1 - worstSpeedPen),
     agility: ship.agility,
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
@@ -953,7 +965,28 @@ export function preloadRepairFor(
   const units: import('./state').BattleRepairUnit[] = []
   const need = new Map<string, number>()
   const perUnit = Math.max(1, Math.ceil(maxBattleMs / REPAIR_PULSE_MS)) + 1
+  // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
+  // （权重 100%/87%/57%/28%/11%，与"命中/速度"同类；不吃组件故必须收敛，否则叠装失控）
+  const freeSeen = new Map<string, number>()
   for (const d of defs) {
+    const isFree = d.repairFree === true
+    let w = 1
+    if (isFree) {
+      const n = (freeSeen.get(d.id) ?? 0) + 1
+      freeSeen.set(d.id, n)
+      w = stackWeight(n)
+    }
+    if (isFree) {
+      units.push({
+        moduleId: d.id,
+        kitId: '',
+        free: true,
+        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w)),
+        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w)),
+        stopped: false,
+      })
+      continue
+    }
     const kitId = d.repairKit ?? 'repairkit-civ'
     units.push({
       moduleId: d.id,
@@ -985,7 +1018,9 @@ export function preloadRepairFor(
     if (got > 0) kits[kitId] = got
   }
   // 一枚组件都没装到的装置 → 开战即停机（脉冲逻辑跳过；缺料提示由 startBattleFor 日志给出）
+  // 无消耗自愈件不参与组件检查（永不因缺料停机）
   for (const u of units) {
+    if (u.free) continue
     if ((kits[u.kitId] ?? 0) <= 0) u.stopped = true
   }
   return { units, kits, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
@@ -1026,6 +1061,19 @@ function pulseRepairs(
   for (const u of r.units) {
     if (u.stopped) continue
     active += 1
+    // 无消耗自愈件（repairFree）：不看组件余额、不扣组件、永不停机
+    if (u.free) {
+      const da0 = Math.max(0, capA - hp.a)
+      const dh0 = Math.max(0, capH - hp.h)
+      let ag0 = Math.min(u.armorPerPulse, da0)
+      let hg0 = Math.min(u.hullPerPulse, dh0)
+      if (ag0 < u.armorPerPulse && hg0 < dh0) hg0 += Math.min(u.armorPerPulse - ag0, dh0 - hg0)
+      if (hg0 < u.hullPerPulse && ag0 < da0) ag0 += Math.min(u.hullPerPulse - hg0, da0 - ag0)
+      if (ag0 <= 0 && hg0 <= 0) continue
+      hp.a += ag0
+      hp.h += hg0
+      continue
+    }
     const kitNow = r.kits[u.kitId] ?? 0
     if (kitNow <= 0) {
       // 组件耗尽（预载余额用光）：本台停机，日志一次
@@ -1234,8 +1282,14 @@ export function startBattleFor(
       repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
       const parts: string[] = []
       for (const u of repair.units) {
+        const modName = ctx.modules.get(u.moduleId)?.name ?? u.moduleId
+        // 无消耗自愈件（生体件）：不吃组件，单列说明
+        if (u.free) {
+          parts.push(`${modName}（自愈：每跳修甲 ${u.armorPerPulse} / 结构 ${u.hullPerPulse}，无需组件）`)
+          continue
+        }
         const n = repair.kits[u.kitId] ?? 0
-        parts.push(`${ctx.modules.get(u.moduleId)?.name ?? u.moduleId}${u.stopped ? `（缺${ctx.items.get(u.kitId)?.name ?? u.kitId}停机）` : ` ×${n}枚组件`}`)
+        parts.push(`${modName}${u.stopped ? `（缺${ctx.items.get(u.kitId)?.name ?? u.kitId}停机）` : ` ×${n}枚组件`}`)
       }
       addLog(state, 'info', `🔧 船体维修装置待命：${parts.join('、')}——战斗中每 5 秒自动修复装甲/结构。`)
     } else {

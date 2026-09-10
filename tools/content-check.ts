@@ -7,8 +7,8 @@
  * - 每种物品（矿石/矿物/气体/冰/弹药/无人机）都必须有市场卡（防死物品：买不了也卖不了）；
  * - 采集点：id 唯一、产出物存在且可采集（ore/gas/ice）、声望门槛非负整数；
  * - 精炼配方：只有可精炼资源（ore/gas/ice）带配方、配方行矿物存在且 kind=mineral；
- * - 装备：id 唯一、slot 在六槽内、每件装备必须有市场卡；
- * - 蓝图：id 唯一、模块/船存在、材料都是矿物、蓝图必须有市场卡（否则无法购书学习）；
+ * - 装备：id 唯一、slot 在六槽内、参数按家族齐备；**窝点专属装备例外**（无市场卡、无蓝图，只从高级箱出，见下方契约）；
+ * - 蓝图：id 唯一、模块/船存在、材料都是矿物；蓝图卡存在时其 refId 必须解析到真实蓝图（否则无法购书学习）；
  * - 舰船：id 唯一、role 合法；蓝图的产物船存在；舰船蓝图引用船存在；
  * - 市场卡：refId 解析 + 池商品必须有 poolTarget/supplyFlow、单件门槛/倍数字段数值合法。
  *
@@ -27,6 +27,7 @@ import {
   ANOMALIES_FLAVORED,
   RARITY_TIER,
   DRONE_ROLE_SPECS,
+  DRONE_ROLE_ANCHORS,
   droneRoleIssues,
   droneRoleLadderIssues,
   droneTotalHp,
@@ -47,9 +48,11 @@ import {
   BOUNTY_ZONE_PLAN,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FRAGMENT_RECIPES,
   hasLairCore,
   isLairCandidate,
   lairGearOf,
+  lairLevelOf,
   lairNameOf,
   rareWreckItemIdOf,
   recycleTierOf,
@@ -75,19 +78,21 @@ const gases = itemDefs.filter((i) => i.kind === 'gas')
 const ices = itemDefs.filter((i) => i.kind === 'ice')
 const ammos = itemDefs.filter((i) => i.kind === 'ammo')
 const drones = itemDefs.filter((i) => i.kind === 'drone')
-/** 无人机四型定位契约的单发基准 = 侦察机单发（2026-09-10 船长拍板） */
-const scoutDmg = drones.find((d) => d.droneClass === 'scout')?.dmg ?? 0
+/** 无人机四型定位契约的单发基准 = **锚点侦察机**单发（2026-09-10 船长拍板；
+ * 专属强化机型不参与基准——见 data/droneRoles.ts 的 DRONE_ROLE_ANCHORS） */
+const scoutDmg = drones.find((d) => d.id === DRONE_ROLE_ANCHORS.scout)?.dmg ?? 0
 const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
 // 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3；
-// 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34）
-check(itemDefs.length === 34, `物品总数应为 34，实际 ${itemDefs.length}`)
+// 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34；
+// 2026-09-10 G 族专属无人机「流亡蜂无人机」→ 无人机 4→5 种、物品总数 34→35）
+check(itemDefs.length === 35, `物品总数应为 35，实际 ${itemDefs.length}`)
 check(ores.length === 7, `矿石应为 7 种，实际 ${ores.length}`)
 check(minerals.length === 8, `矿物应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
-check(drones.length === 4, `无人机应为 4 种，实际 ${drones.length}`)
+check(drones.length === 5, `无人机应为 5 种（四型制式锚点 + 专属强化型），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -150,9 +155,14 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
   }
 }
 
-// 每种物品必须有市场卡（防死物品）
+// 每种物品必须有市场卡（防死物品）——**专属型号除外**（2026-09-10 船长：敌族窝点高级箱专属，
+// 无蓝图、不上市场、不入常规掉落：渠道唯一由下方「来源唯一契约」正向断言）
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
+  if (item.exclusive === true) {
+    check(!good, `专属物品 ${item.id} 不得上市场（专属型号只能从窝点高级箱产出）`)
+    continue
+  }
   if (!good) {
     errors.push(`物品 ${item.id}（${item.name}）没有市场卡——将无法买卖（死物品）`)
   } else if (good.rarity !== 'common') {
@@ -371,21 +381,23 @@ for (const d of drones) {
     }
   }
   // 2026-09-10 四型定位契约（船长拍板；新增机型必须落在区间内——契约定义见 data/droneRoles.ts）
+  // 专属强化型（exclusive）由船长裁决豁免区间校验，只受硬边界约束（会打印在下面的清单里）
   for (const issue of droneRoleIssues(d, scoutDmg)) errors.push(issue)
 }
 {
-  // 跨四类阶梯（闪避严格递减 / 血量与单发阶梯 / 哨戒血量与侦察机相仿）
+  // 跨四类阶梯（闪避严格递减 / 血量与单发阶梯 / 哨戒血量与侦察机相仿）——**只比锚点机型**
   const ladderIssues = droneRoleLadderIssues(drones as never)
   for (const issue of ladderIssues) errors.push(`无人机定位契约：${issue}`)
   if (drones.length > 0) {
-    const scout = drones.find((d) => d.droneClass === 'scout')
+    const base = drones.find((d) => d.id === DRONE_ROLE_ANCHORS.scout)
     console.log(
       `· 无人机四型定位：${drones
         .map((d) => {
           const cls = d.droneClass ?? '?'
-          return `${DRONE_ROLE_SPECS[cls as keyof typeof DRONE_ROLE_SPECS]?.label ?? cls} 闪避 ${d.defense?.evasion ?? '—'}·血 ${droneTotalHp(d)}·单发 ${d.dmg ?? 0}`
+          const tag = d.exclusive === true ? '专属' : DRONE_ROLE_SPECS[cls as keyof typeof DRONE_ROLE_SPECS]?.label ?? cls
+          return `${tag} 闪避 ${d.defense?.evasion ?? '—'}·血 ${droneTotalHp(d)}·单发 ${d.dmg ?? 0}`
         })
-        .join('　')}（单发基准 = 侦察机 ${scoutDmg}）`,
+        .join('　')}（单发基准 = 锚点侦察机 ${base?.name ?? '—'} ${scoutDmg}）`,
     )
   }
 }
@@ -405,6 +417,13 @@ for (const m of MODULES) {
     check(hasBay !== hasDmg, `无人机装置 ${m.id} 必须且只能给一个效果字段（bay/dmg）`)
     if (hasBay) check((m.droneBayBonusM3 ?? 0) <= 500, `无人机甲板 ${m.id} droneBayBonusM3 越界`)
     if (hasDmg) check((m.droneDmgBonus ?? 0) <= 1, `战术导控 ${m.id} droneDmgBonus 越界`)
+  }
+  if (m.slot === 'drone-relay') {
+    // 2026-09-10 无人机中继天线：百分比射程加成（值域 (0, 2]，多件线性求和乘入机型射程）
+    check(
+      (m.droneRangeBonusPct ?? 0) > 0 && (m.droneRangeBonusPct ?? 0) <= 2,
+      `无人机中继天线 ${m.id} droneRangeBonusPct 非法（需 (0, 2]）`,
+    )
   }
   if (m.slot === 'miner' || m.slot === 'cargo') {
     // V17：工业槽保留加成系数形态
@@ -453,6 +472,22 @@ for (const m of MODULES) {
         }
       }
     }
+    // 2026-09-10 船长：重甲件的**机动代价**（陵寝装甲层 −25%）——值域 (0, 0.9]；
+    // 只挂在容量件上（抗性件不该借代价换额外厚度），多件不叠加、战斗内取最重一件
+    if (m.speedPenaltyPct !== undefined) {
+      check(
+        m.speedPenaltyPct > 0 && m.speedPenaltyPct <= 0.9,
+        `装甲 ${m.id} speedPenaltyPct 非法（需 (0, 0.9]，战斗速度代价）`,
+      )
+      check(hasCap, `装甲 ${m.id} 带 speedPenaltyPct 却不给容量——机动代价只挂在容量件上`)
+    }
+    // 2026-09-10 船长：**结构层容量**（E 族巨构骨架引出）——值域 (0, 2]，通常与装甲容量同件
+    if (m.hullHpBonus !== undefined) {
+      check(
+        m.hullHpBonus > 0 && m.hullHpBonus <= 2,
+        `装甲 ${m.id} hullHpBonus 非法（需 (0, 2]，结构层容量加成）`,
+      )
+    }
   } else if (m.slot === 'propulsion') {
     // 2026-09-08 船长：取消 speedBonusPct ≤0.9 上限护栏（推进器提速档位改由设计定；命中代价 hitPenalty 仍受检）
     check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
@@ -496,7 +531,12 @@ for (const m of MODULES) {
         `支援件 ${m.id} 修复值非法（需 [0, 100] 且至少一层 > 0）`)
       const interval = m.repairIntervalMs ?? 5_000
       check(Number.isInteger(interval) && interval >= 2_000 && interval <= 60_000, `支援件 ${m.id} repairIntervalMs 非法（需 2000~60000 毫秒）`)
-      check(m.repairKit === 'repairkit-civ' || m.repairKit === 'repairkit-mil', `支援件 ${m.id} 必须指明消耗组件（民用/军用修理组件）`)
+      // 2026-09-10 船长：异形生体件 = **无消耗自愈**（repairFree）——与消耗件互斥：
+      // 要么指明民用/军用修理组件，要么标 repairFree（不吃组件、永不停机）
+      check(
+        (m.repairKit === 'repairkit-civ' || m.repairKit === 'repairkit-mil') !== (m.repairFree === true),
+        `支援件 ${m.id} 必须二选一：指明消耗组件（民用/军用修理组件）或标 repairFree（无消耗自愈）`,
+      )
       check(m.rack === 'mid', `支援件 ${m.id}（修复）应为中槽，实际 ${m.rack}`)
       check(m.reloadCutPct === undefined && m.hitBonusPct === undefined && m.evasionGapPct === undefined && stabKeys === 0,
         `支援件 ${m.id} 修复系不得与其它支援效果同带`)
@@ -662,13 +702,119 @@ for (const m of MODULES) {
     const gear = lairGearOf(def)
     if (def.foeFamily && def.foeFamily !== 'F') famWithGear.add(def.foeFamily)
     for (const id of gear) {
-      check(moduleIdSet.has(id), `窝点契约：${def.name} 专属装备 ${id} 不存在（modules.ts 未登记）`)
+      // 池内元素可以是模块或专属物品（2026-09-10 船长：G 族第一件 = 专属无人机"物品"）
+      check(
+        moduleIdSet.has(id) || lairCtx.items.has(id),
+        `窝点契约：${def.name} 专属装备 ${id} 不存在（modules.ts / items.ts 均未登记）`,
+      )
     }
   }
   for (const fam of famWithGear) {
     check(
       FOE_LAIR_GEAR[fam].length > 0,
       `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
+    )
+  }
+  /* ── 窝点地图级别契约（2026-09-10 船长定：档位由地图级别硬封顶） ──
+   * ①每张窝点候选卡必须**显式标级**（`lairLevel` 缺省 3 只是"漏标不误伤"，不是可省；
+   *   忘了标级的地图会永远出全档，与"越低级的图越出不了高档位"直接冲突）；
+   * ②每个有窝点成员的敌族**至少一张 3 级**（船长 2026-09-10 定）——否则该族在日板上永远打不到深层；
+   * ③（提示，不拦）同族内"级别更高而奖金更低"属反常，多半是标反了。 */
+  {
+    const levelByFam = new Map<string, number[]>()
+    for (const def of ANOMALIES_FLAVORED) {
+      if (!isLairCandidate(def)) continue
+      const fam = def.foeFamily ?? '?'
+      const lv = def.lairLevel
+      check(
+        lv === 1 || lv === 2 || lv === 3,
+        `窝点级别契约：${def.name} 未标 lairLevel（须显式写 1/2/3——1 = 只出外围、2 = 到核心、3 = 全档）`,
+      )
+      if (lv === 1 || lv === 2 || lv === 3) levelByFam.set(fam, [...(levelByFam.get(fam) ?? []), lv])
+    }
+    for (const [fam, levels] of levelByFam) {
+      check(
+        levels.includes(3),
+        `窝点级别契约：敌族 ${fam} 没有任何 3 级地图（船长 2026-09-10 定：每族至少一张 3 级，否则该族永远出不了深层档）`,
+      )
+      const cards = [...ANOMALIES_FLAVORED].filter((d) => isLairCandidate(d) && d.foeFamily === fam)
+      for (const lo of cards) {
+        for (const hi of cards) {
+          if (lairLevelOf(hi) > lairLevelOf(lo) && hi.rewardIsk < lo.rewardIsk) {
+            warn.push(
+              `窝点级别提示：${fam} 族「${hi.name}」（级别 ${lairLevelOf(hi)}）奖金低于「${lo.name}」（级别 ${lairLevelOf(lo)}）——请复核级别是否标反`,
+            )
+          }
+        }
+      }
+    }
+    const levelCount = { 1: 0, 2: 0, 3: 0 }
+    let total = 0
+    for (const levels of levelByFam.values()) {
+      for (const l of levels) {
+        levelCount[l as 1 | 2 | 3] += 1
+        total += 1
+      }
+    }
+    console.log(
+      `· 窝点级别契约：${total} 张候选卡全数显式标级（L1×${levelCount[1]} / L2×${levelCount[2]} / L3×${levelCount[3]}），` +
+        `${levelByFam.size} 个敌族各至少一张 3 级`,
+    )
+  }
+  /* 专属装备的"来源唯一"契约（2026-09-10 加；2026-09-10 扩到专属**物品**）：
+   * 这批东西**只能**从高级箱（稀有残骸额外掉落）出——不得有蓝图（造不出来）、
+   * 不得有市场卡（买不到也卖不掉）、不得有碎片逆向配方、不得混进任何敌群的常规残骸主题池
+   * （否则普通残骸就能刷出窝点专属，稀释窝点价值）。
+   * 2026-09-10 船长：G 族第一件改为**无人机物品**（`item.exclusive`），同一套契约对它同样成立。 */
+  {
+    const lairGearIds = new Set<string>(Object.values(FOE_LAIR_GEAR).flat())
+    const bpByModule = new Map<string, string>()
+    for (const bp of BLUEPRINTS) if (bp.moduleId) bpByModule.set(bp.moduleId, bp.id)
+    let marketCards = 0
+    let itemGear = 0
+    for (const id of lairGearIds) {
+      const isModule = lairCtx.modules.has(id)
+      const itemDef = lairCtx.items.get(id)
+      check(
+        isModule || itemDef !== undefined,
+        `来源唯一契约：窝点专属 ${id} 既不是装备也不是物品（id 无法解析）`,
+      )
+      const kindText = isModule ? '装备' : '物品'
+      if (!isModule) {
+        if (itemDef) {
+          itemGear += 1
+          check(
+            itemDef.exclusive === true,
+            `来源唯一契约：窝点专属物品 ${id} 必须标 exclusive（专属型号：无蓝图、不上市场、不入常规掉落）`,
+          )
+          check(
+            itemDef.kind === 'drone',
+            `来源唯一契约：窝点专属物品 ${id} 目前只支持无人机类（kind = ${itemDef.kind}）`,
+          )
+        }
+      }
+      const bp = bpByModule.get(id)
+      check(!bp, `来源唯一契约：窝点专属${kindText} ${id} 不得有蓝图（现被 ${bp} 产出；专属装备只能从高级箱出）`)
+      const card = [...lairCtx.marketGoods.values()].find((g) => g.key === id || g.refId === id)
+      if (card) marketCards += 1
+      check(!card, `来源唯一契约：窝点专属${kindText} ${id} 不得有市场卡（现被 ${card?.key} 上架；专属装备只能从高级箱出）`)
+      const frag = FRAGMENT_RECIPES[id]
+      check(
+        !frag,
+        `来源唯一契约：窝点专属${kindText} ${id} 不得有碎片逆向配方（现指向 ${frag?.blueprintId}；专属装备只能从高级箱出）`,
+      )
+      for (const def of ANOMALIES_FLAVORED) {
+        const inPool = [...(def.recycleLoot?.modules ?? []), ...(def.recycleLoot?.mk2 ?? [])].includes(id)
+        check(
+          !inPool,
+          `来源唯一契约：窝点专属${kindText} ${id} 不得混进 ${def.name} 的常规残骸主题池（专属装备只能从高级箱出）`,
+        )
+      }
+    }
+    check(marketCards === 0, `来源唯一契约：窝点专属装备共 ${marketCards} 件出现在市场上架（应为 0）`)
+    console.log(
+      `· 来源唯一契约：${lairGearIds.size} 件窝点专属（装备 ${lairGearIds.size - itemGear} + 专属物品 ${itemGear}）` +
+        `无蓝图、无市场卡、无碎片配方、不进常规掉落池（唯一来源＝高级箱）`,
     )
   }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽

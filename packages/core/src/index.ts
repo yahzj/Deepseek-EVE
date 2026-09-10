@@ -179,6 +179,8 @@ export {
   droneLoadM3,
   // 2026-09-10 船长：卸下甲板扩展等导致机舱变小 → 超出容量的无人机自动卸下并退回仓库
   trimDroneLoadToBay,
+  // 2026-09-10 船长（G 族专属无人机）：物品持有总数（仓库 + 各船机舱）——「集齐前不重复掉落」判定口径
+  ownedItemCount,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
   migrateDeprecatedAmmo,
@@ -391,6 +393,7 @@ export {
   RECYCLE_MK2_MODULES,
   RECYCLE_CHANCE,
   FRAGMENT_RECIPES,
+  fragmentPoolOf,
   fragmentItemIdOf,
   fragmentItemDefOf,
   recycleTierOf,
@@ -641,6 +644,9 @@ export {
   lairCoreOf,
   lairTierWordOf,
   lairNameOf,
+  LAIR_LEVEL_DEFAULT,
+  lairLevelOf,
+  lairTiersOf,
   lairBaseRewardIsk,
   lairTaskRewardIsk,
   lairAnomalyOf,

@@ -68,6 +68,19 @@ export function addModule(state: GameState, moduleId: string, count = 1): void {
   state.moduleBay[moduleId] = countModule(state, moduleId) + count
 }
 
+/**
+ * 该**物品**（无人机等消耗品）的当前持有总数 = 物品仓库 + 所有舰船机舱清单里的架数。
+ * 2026-09-10 船长（G 族专属无人机引出）：「集齐前不重复掉落」对无人机按此口径判定——
+ * 手上还有就不重复掉（该族池优先给别的件）；**打光之后重新进池**，等于"再刷一次就能补回来"。
+ */
+export function ownedItemCount(state: GameState, itemId: string): number {
+  let n = countWare(state, itemId)
+  for (const ship of Object.values(state.fleet)) {
+    n += ship?.droneLoad?.[itemId] ?? 0
+  }
+  return n
+}
+
 /** 装备出库（装配/取出），数量不足返回 false */
 export function removeModule(state: GameState, moduleId: string, count = 1): boolean {
   const current = countModule(state, moduleId)

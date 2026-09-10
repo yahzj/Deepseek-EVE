@@ -106,6 +106,13 @@ export interface ItemDef {
    * 用完仍不足才停下提示返港维修。
    */
   repairRestore?: number
+  /**
+   * **专属型号**（2026-09-10 船长：G 族「流亡蜂无人机」引出）：只能从敌族窝点·高级箱产出——
+   * 无蓝图（不可造）、不上市场、不入常规掉落池。护栏据此断言渠道唯一；
+   * 无人机定位契约（data/droneRoles.ts）对专属型号**豁免四型区间校验**（仍受硬边界约束），
+   * 于是"专属强化型 + 制式型"可以同类共存，而不破坏四型本身的定位口径。
+   */
+  exclusive?: boolean
 }
 
 /** 无人机分类（2026-09-10 船长拍板；与射程分类一一对应：侦察机 2500 / 战斗机 3000 /
@@ -280,6 +287,12 @@ export interface MarketBalance {
   /** 数字稀有度 3 档权重（2026-09-09 船长拍板：稀有订单渠道按数字分层——3 档（高阶）刷新
    * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗；系数经 market-rarity-sim 校准） */
   rareTier3Weight: number
+  /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**，稀有抽取与奇货掷骰**两个渠道都乘此值**） */
+  blueprintWeight: number
+  /** 蓝图书在稀有渠道的订单寿命（毫秒；2026-09-10 船长定 6 小时）——
+   *  权重降到 5% 后书出现得稀，若仍只挂 36 分钟玩家基本只会错过；
+   *  奇货渠道的蓝图原本就走 exotic 档 6 小时，与此一致。 */
+  blueprintLifeMs: number
   /** 窗口净成交量超过该比例（相对参考量）时触发冲击 */
   shockTriggerRatio: number
   /** 每次冲击的价格偏移（比例，可正可负；叠加无上限） */
@@ -598,8 +611,7 @@ export interface BattleBalance {
    * 预计结构损耗额外按 winPenaltyHullPerFull；实际结算与 AI/模拟预估一律不变） */
   winPenaltyArmorPerFull: number
   /** 结构损耗预警扣分系数（结构伤比装甲伤扣得更重 = 船长的"更大幅度下调"） */
-  winPenaltyHullPerFull: number
-  /* ═══ 敌舰近防炮（2026-09-10 船长拍板「无人机可被击落」，永久损失制）═══ */
+  winPenaltyHullPerFull: number  /* ═══ 敌舰近防炮（2026-09-10 船长拍板「无人机可被击落」，永久损失制）═══ */
   /** 点防起始威胁：威胁 < 此值的敌舰不装近防炮（2026-09-10 船长：60） */
   pdThreatFloor: number
   /** 判定周期（毫秒）：每艘点防舰每 0.5 秒判定一次伤害 */
@@ -692,6 +704,18 @@ export interface ModuleDef {
   shieldResistAdd?: DamageResists
   /** 容量件（装甲增厚板）：装甲层容量加成——抗性件不携带本字段；V18.1 多件加算 */
   armorHpBonus?: number
+  /**
+   * **结构层容量**加成（2026-09-10 船长：E 族巨构骨架——"结构层是全游戏唯一没有容量模块的一层"）：
+   * 0.6 = 结构血量 +60%。多件加算求和（与 armorHpBonus 同口径），生效处 = combat.createPlayerSpec
+   * 的 hp.h（船体加固理论等技能再乘于其上）；抗性层仍走 hullResistAdd，两者互不替代。
+   */
+  hullHpBonus?: number
+  /**
+   * 装甲件**常驻速度代价**（2026-09-10 船长：陵寝装甲层"装甲 +110% 但速度 −25%"）：
+   * 0.25 = 战斗机动速度 ×0.75。**多件只取最重一件**（与推进器失稳 hitPenalty 同口径——
+   * 重甲不会叠成静止）；生效处 = combat.createPlayerSpec 的 speedMps。
+   */
+  speedPenaltyPct?: number
   /** 抗性件（装甲镀层·X型）：按系缺口削减抗性（语义同上 shieldResistAdd） */
   armorResistAdd?: DamageResists
   /**
@@ -746,8 +770,21 @@ export interface ModuleDef {
   repairHullHp?: number
   /** 脉冲间隔毫秒（缺省 = REPAIR_PULSE_DEFAULT_MS 5000 = 5 秒一跳） */
   repairIntervalMs?: number
-  /** 每脉冲消耗的修理组件 id（民用级 = 民用修理组件；MK1/MK2 = 军用修理组件） */
+  /** 每脉冲消耗的修理组件 id（民用级 = 民用修理组件；MK1/MK2 = 军用修理组件）。
+   * **无消耗件（生体自愈）不填本字段，改填 repairFree** */
   repairKit?: string
+  /**
+   * 无消耗自动修复（2026-09-10 船长：异形生体件的自愈能力）——与 repairKit 互斥：
+   * 脉冲修复**不扣任何组件、永不停机**；修复量在多件同型间按 EVE 曲线收敛
+   * （见 combat.preloadRepairFor：权重 100%/87%/57%/28%/11%）。
+   */
+  repairFree?: boolean
+  /**
+   * 结构层（hull）抗性缺口削减（2026-09-10 船长：异形损管件"大幅提高结构抗性"）——
+   * 语义与 shieldResistAdd/armorResistAdd 相同（按系缺口复合，上限 0.9）；
+   * 此前只有船体自带 hullResist，模块无法加，本字段为模块侧入口。
+   */
+  hullResistAdd?: DamageResists
   /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */
   /** 伤害稳定器（按系）：该系炮台单发伤害加成（0.06 = +6%；多件加算 Σ；只作用于炮台，
    * 不叠加到无人机——无人机归战术导控管） */
@@ -931,6 +968,14 @@ export interface AnomalyDef {
   /** 该敌群的专属装备池（2026-09-10 船长定：稀有残骸「高级箱」的额外掉落优先在此掷；
    *  每个敌族至少一件，只从高级箱出、不进市场不设蓝图） */
   lairGear?: readonly string[]
+  /**
+   * 窝点地图级别（2026-09-10 船长定）：1 = 只能出外围档、2 = 到核心档、3 = 全档。
+   * 语义 = 该地图的**档位上限**（硬封顶，非加权）：日板发档时在该卡 `[1..lairLevel]` 内均匀随机，
+   * 族内越低级的地图出高档位赏金的概率越低（1 级 = 永远出不了核心/深层）。
+   * 缺省 = 3（不限制；缺省值只为"漏标不误伤"，content-check 强制每张窝点候选卡显式标级）。
+   * 另有族级下限契约：每个有窝点成员的敌族**至少一张 3 级**（船长 2026-09-10 定）。
+   */
+  lairLevel?: 1 | 2 | 3
   /** 玩家可见的"残骸产出倾向"一句话 */
   recycleNote?: string
   /** 主题追加件集（2026-09-08"追加"语义：只在默认池上追加，默认池一件不少；武器不入主题，

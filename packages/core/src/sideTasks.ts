@@ -48,7 +48,7 @@ import { countWare, removeWare } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
 import { originGalaxyOf } from './location'
 import { DSI_FACTION_ID, standingOf as factionStandingOf } from './expedition'
-import { factionBaseRewardIsk, hasLairCore, isLairCandidate, lairNameOf, lairTaskRewardIsk } from './lairs'
+import { factionBaseRewardIsk, hasLairCore, isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
 import type { AnomalyDef } from './types'
 
@@ -347,51 +347,42 @@ export const BOUNTY_ZONE_PLAN: ReadonlyArray<{ zone: SecurityZone; count: number
 ]
 
 /**
- * 当日档位分配（船长 2026-09-10 定：**随机发放，但保证每天每个档位至少一个**）：
- * - 地点数 ≥ 3：先给外围/核心/深层各一张（顺序随机），余下席位在三个档位里随机（可重复）；
- * - 地点数 = 2：随机取两个**不同**档位；= 1：随机一个档位；
- * - 返回的档位表已打乱——与"哪个地点抽到哪档"解耦（地点来源只决定"在哪打"，不决定"多深"）。
+ * 当日档位分配（船长 2026-09-10 定：**由该地点地图级别封顶，逐卡独立掷，取消三档保底**）：
+ * - 档位 = 在该卡 `[1..lairLevelOf(卡)]` 内均匀随机（硬封顶）：1 级图只出外围、2 级图到核心、3 级图全档；
+ * - **不再保证"每天三档各至少一张"**（旧 rollLairTiers 的三档保底与洗牌随本改动退役）：
+ *   当天候选全是低级图时，就可能一天都没有深层席——这是船长明确选择的取舍；
+ * - 旧实现还要"再洗一次牌让档位与地点解耦"，本改动正是要建立"地点级别 → 档位上限"的关联，故一并去掉。
  */
-function rollLairTiers(state: GameState, count: number): LairTier[] {
-  const all: LairTier[] = [1, 2, 3]
-  // 洗牌（Fisher–Yates，确定性走 state.rng）
-  for (let i = all.length - 1; i > 0; i -= 1) {
-    const j = nextInt(state.rng, i + 1)
-    const tmp = all[i]!
-    all[i] = all[j]!
-    all[j] = tmp
-  }
-  const tiers = all.slice(0, Math.min(count, all.length))
-  while (tiers.length < count) tiers.push(all[nextInt(state.rng, all.length)]!)
-  // 再洗一次：让"先抽到的地点"不被系统性地配上某个档位
-  for (let i = tiers.length - 1; i > 0; i -= 1) {
-    const j = nextInt(state.rng, i + 1)
-    const tmp = tiers[i]!
-    tiers[i] = tiers[j]!
-    tiers[j] = tmp
-  }
-  return tiers
+function rollLairTierFor(state: GameState, anomaly: AnomalyDef): LairTier {
+  const max = lairLevelOf(anomaly)
+  return (1 + nextInt(state.rng, max)) as LairTier
 }
 
 /**
- * 赏金任务刷出（2026-09-10 船长定；当日修订②③④）：
+ * 赏金任务刷出（2026-09-10 船长定；当日修订②③④，同日晚些按船长新口径再改档位规则）：
  * 候选 = 已探索星系里「主题悬赏可作窝点（有核心词、非隐藏、奖金 > 0、**非 B 族**）」的卡
  * ——**声望不是刷出条件**，门槛只作**接取条件**（不够也能看见，出发被拒，见 expedition 前置检查）。
- * ① 按 `BOUNTY_ZONE_PLAN` 逐区抽地点（各区独立、抽不满少发）；
- * ② 档位由 `rollLairTiers` **随机发放并保证三档各至少一张**；
+ * ① 按 `BOUNTY_ZONE_PLAN` 逐区抽地点（各区独立、抽不满少发）；同星系只留一张代表卡，
+ *    **代表卡取该星系级别最高的一张**（并列取奖金最高）——否则"同星系两张卡谁进池"会由数据顺序决定，
+ *    档位上限跟着随机漂移；
+ * ② 档位 = 该地点**地图级别封顶**后逐卡独立掷（`rollLairTierFor`），**不再有三档保底**；
  * ③ 酬金与显示名随档位一并锁定（酬金 = 窝点奖金 × 档位比例）。
  * 与资源/快递不同：赏金任务不触碰市场（不产生刷单影响）。
  */
 function spawnBountyTasks(state: GameState, ctx: SimContext): void {
   const board = state.sideTasks
-  // 每区候选：可作窝点 + 星系已探索 + 同区不重复星系（每个星系最多一张）
+  // 每区候选：可作窝点 + 星系已探索 + 同区不重复星系（每个星系留级别最高的那张代表卡）
   const poolByZone = new Map<SecurityZone, AnomalyDef[]>()
   for (const a of ctx.anomalies.values()) {
     if (!isLairCandidate(a)) continue
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
     const zone = securityZoneOf(ctx, a.galaxyId)
     const list = poolByZone.get(zone) ?? []
-    if (!list.some((x) => x.galaxyId === a.galaxyId)) list.push(a)
+    const idx = list.findIndex((x) => x.galaxyId === a.galaxyId)
+    if (idx < 0) list.push(a)
+    else if (lairLevelOf(a) > lairLevelOf(list[idx]!) || (lairLevelOf(a) === lairLevelOf(list[idx]!) && a.rewardIsk > list[idx]!.rewardIsk)) {
+      list[idx] = a // 同星系再遇：级别更高者上位（并列取奖金更高）
+    }
     poolByZone.set(zone, list)
   }
   // ① 抽地点（逐区、各区独立抽）；派系活跃星系的席位已让给派系那条 → 从池里剔除
@@ -405,11 +396,10 @@ function spawnBountyTasks(state: GameState, ctx: SimContext): void {
     }
   }
   if (picks.length === 0) return
-  // ② 档位随机发放（保证三档各至少一张）
-  const tiers = rollLairTiers(state, picks.length)
+  // ② 档位 = 该地点地图级别封顶（逐卡独立掷，无三档保底）
   // ③ 落板
-  picks.forEach((pick, i) => {
-    const tier = tiers[i]!
+  for (const pick of picks) {
+    const tier = rollLairTierFor(state, pick)
     board.seq += 1
     board.bounty.push({
       id: board.seq,
@@ -423,7 +413,7 @@ function spawnBountyTasks(state: GameState, ctx: SimContext): void {
       lairTier: tier,
       lairName: lairNameOf(pick, tier),
     })
-  })
+  }
 }
 
 /** 引擎推进：快递投送到站结算——gameMs ≥ arriveAtGameMs 即到站：停靠目标副站（dockedSite =

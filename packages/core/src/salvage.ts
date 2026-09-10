@@ -20,8 +20,8 @@
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
-import { addModule, ownedModuleCount } from './equipment'
-import { addWare } from './inventory'
+import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
+import { addWare, countWare } from './inventory'
 import { lairGearOf } from './lairs'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、进入保底稳态（2026-09-10 船长拍板 5 → 10） */
@@ -374,12 +374,21 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
 
 /** 专属装备命中率（按回收档位；可调常量，待船长定数） */
 export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.25, risky: 0.4, dire: 0.55 }
+
+/**
+ * 专属**无人机**一次掉落架数（2026-09-10 船长：G 族「流亡蜂无人机」）。
+ * 无人机是消耗品（会被点防击落、永久损失），而专属型号无蓝图不可造 → 一次给一批，
+ * 打光之后同族池会重新把它放回抽取（见 `ownedItemCount` 口径）。
+ */
+export const RARE_BOX_DRONE_UNITS = 10
 /** 额外掉落附带的高阶矿物单位数（按档位；可调常量） */
 export const RARE_BOX_MINERAL_UNITS: Record<RecycleTier, number> = { common: 300, risky: 120, dire: 40 }
 
 /**
  * 稀有残骸开箱的"必定额外掉落"（每件稀有残骸只结算一次，由回收批次的首批触发）：
  * ① 先掷该敌群专属装备（`lairGear`，按档位命中率）——命中即出 1 件；
+ *    **池内元素可以是模块 id 或物品 id**（2026-09-10 船长：G 族第一件 = 专属无人机"物品"）：
+ *    模块 → `modules`（进装备库）；无人机物品 → `drones`（一次 `RARE_BOX_DRONE_UNITS` 架，进物品仓库）；
  * ② 未命中 → 出一件该敌群主题追加件（recycleLoot；池空则跳过）；
  * ③ 无论命中与否，再附一批高阶矿物（数量按档位，从该敌群/档位池加权抽 1 种）。
  * 返回 undefined = 本次没有额外掉落（无专属池且无主题件且无矿物池的极端情况）。
@@ -388,20 +397,36 @@ export function rollRareBoxExtra(
   state: GameState,
   ctx: SimContext,
   profile: RecycleProfile,
-): { modules: string[]; minerals: Array<{ mineralId: string; units: number }>; note: string } | undefined {
+): {
+  modules: string[]
+  drones: Array<{ id: string; count: number }>
+  minerals: Array<{ mineralId: string; units: number }>
+  note: string
+} | undefined {
   const modules: string[] = []
+  const drones: Array<{ id: string; count: number }> = []
   const minerals: Array<{ mineralId: string; units: number }> = []
   const notes: string[] = []
   // ① 专属装备（2026-09-10 船长：**集齐前不重复掉落**——该族池中还有玩家未持有的件时，
   //    只从"未持有"里均匀抽；三件（或该族全部）都到手后恢复均匀随机、允许重复。
-  //    判定口径 = 当前持有（装备库 + 已装配位，见 equipment.ownedModuleCount））
+  //    判定口径 = 当前持有：模块看装备库 + 已装配位（equipment.ownedModuleCount）、
+  //    无人机物品看物品仓库 + 各船机舱架数（equipment.ownedItemCount）——打光后重新进池）
   const gearAll = profile.lairGear ?? []
-  const gear = gearAll.filter((id) => ownedModuleCount(state, id) <= 0)
+  const gear = gearAll.filter((id) =>
+    ctx.modules.has(id) ? ownedModuleCount(state, id) <= 0 : ownedItemCount(state, id) <= 0,
+  )
   const gearPool = gear.length > 0 ? gear : gearAll
   if (gearPool.length > 0 && nextRandom(state.rng) < (RARE_BOX_GEAR_CHANCE[profile.tier] ?? 0)) {
     const pick = gearPool[nextInt(state.rng, gearPool.length)]!
-    modules.push(pick)
-    notes.push(`专属装备「${ctx.modules.get(pick)?.name ?? pick}」`)
+    const modDef = ctx.modules.get(pick)
+    if (modDef) {
+      modules.push(pick)
+      notes.push(`专属装备「${modDef.name}」`)
+    } else {
+      const itemDef = ctx.items.get(pick)
+      drones.push({ id: pick, count: RARE_BOX_DRONE_UNITS })
+      notes.push(`专属装备「${itemDef?.name ?? pick}」×${RARE_BOX_DRONE_UNITS} 架`)
+    }
   } else {
     // ② 主题追加件（未出专属时保底一件主题件；池可空）
     const theme = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
@@ -428,8 +453,8 @@ export function rollRareBoxExtra(
     minerals.push({ mineralId: chosen, units })
     notes.push(`${ctx.items.get(chosen)?.name ?? chosen} ×${units}`)
   }
-  if (modules.length === 0 && minerals.length === 0) return undefined
-  return { modules, minerals, note: notes.join('、') }
+  if (modules.length === 0 && drones.length === 0 && minerals.length === 0) return undefined
+  return { modules, drones, minerals, note: notes.join('、') }
 }
 
 export interface RecycleProfile {
@@ -511,16 +536,40 @@ export const RECYCLE_MK2_MODULES: readonly string[] = [
 ]
 /** 每 m³ 概率（P3 按真实市场均价反推，EV/批 10m³ ≈ 保底 10% 上限 ≈ 38 ISK）：
  * 基础件池均价 ~23.3k → 0.0001；低安 MK2 池均价 ~251k → 0.000004；
- * 碎片片值（蓝图市价÷所需片数）MK2 ~567 / MK3 ~177 → 0.0006 / 0.0009 */
+ * 碎片：2026-09-10 船长定 **只降集齐门槛、概率不动**（MK2 25 片 / MK3 250 片）——
+ * 门槛下调后单片价值相应上升（MK2 蓝图 45.25 万 ÷ 25 ≈ 1.8 万/片、MK3 297.3 万 ÷ 250 ≈ 1.19 万/片），
+ * 碎片路线整档从"约买书工时的 28 倍"降到约 7 倍（见 tools/salvage-econ.ts 两条路线对比表）。 */
 export const RECYCLE_CHANCE = { base: 0.00008, mk2: 0.000003, fragT2: 0.00045, fragT3: 0.0007 }
-/** 蓝图碎片配方：模块 → 蓝图 id + 所需片数（MK2 100 / MK3 1000；异星 10000 预留） */
-export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; need: number }> = {
-  'mod-miner-2': { blueprintId: 'bp-miner-2', need: 100 },
-  'mod-cargo-2': { blueprintId: 'bp-cargo-2', need: 100 },
-  'mod-turret-kin-2': { blueprintId: 'bp-turret-2', need: 100 },
-  'mod-miner-3': { blueprintId: 'bp-miner-3', need: 1000 },
-  'mod-cargo-3': { blueprintId: 'bp-cargo-3', need: 1000 },
-  'mod-turret-kin-3': { blueprintId: 'bp-turret-3', need: 1000 },
+/**
+ * 蓝图碎片配方：模块 → 蓝图 id + **档位** + 集齐片数。
+ * `tier` 是显式字段：池拆分、威胁门槛、界面提示一律读它——2026-09-10 船长把门槛从 100/1000
+ * 降到 25/250，若仍沿用"片数 == 100"当档位判据，改门槛会把两个池一起打成空数组（碎片全不出）。
+ */
+export const FRAGMENT_RECIPES: Record<string, { blueprintId: string; tier: 2 | 3; need: number }> = {
+  'mod-miner-2': { blueprintId: 'bp-miner-2', tier: 2, need: 25 },
+  'mod-cargo-2': { blueprintId: 'bp-cargo-2', tier: 2, need: 25 },
+  'mod-turret-kin-2': { blueprintId: 'bp-turret-2', tier: 2, need: 25 },
+  'mod-miner-3': { blueprintId: 'bp-miner-3', tier: 3, need: 250 },
+  'mod-cargo-3': { blueprintId: 'bp-cargo-3', tier: 3, need: 250 },
+  'mod-turret-kin-3': { blueprintId: 'bp-turret-3', tier: 3, need: 250 },
+}
+/**
+ * 该档位碎片池：只收**玩家还没拿到蓝图**的模块（2026-09-10 船长定「集齐前不重复」）。
+ * 移出池子的两种情况：
+ * ① 已学会该蓝图（`learnedRecipes`，含从市场买书学会的）——碎片对它已无意义；
+ * ② 碎片已集齐门槛（≥ `need`）但还没去母港逆向——再给就是多余的（碎片不可出售、无市场卡）。
+ * 三张书全部到手后该档池为空 → 该档不再出碎片（不报错、不降级抽别的）。
+ * 回收开箱与完好舰体彩头共用本池。
+ */
+export function fragmentPoolOf(state: GameState, ctx: SimContext, tier: 2 | 3): string[] {
+  return Object.keys(FRAGMENT_RECIPES).filter((m) => {
+    const r = FRAGMENT_RECIPES[m]!
+    if (r.tier !== tier) return false
+    if (!ctx.blueprints.has(r.blueprintId)) return false
+    if (state.learnedRecipes.includes(r.blueprintId)) return false
+    if (countWare(state, fragmentItemIdOf(m)) >= r.need) return false
+    return true
+  })
 }
 /** 碎片物品 id（蓝图碎片按目标装备注册） */
 export function fragmentItemIdOf(moduleId: string): string {
@@ -534,7 +583,7 @@ export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef
     kind: 'fragment',
     unitM3: 0.02,
     baseSellPriceIsk: 1,
-    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片可在母港逆向解锁「${moduleName}」蓝图（无需市场）。`,
+    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片可在母港逆向解锁「${moduleName}」蓝图（无需市场）。集齐前不会重复掉落同一本书的碎片——拿到蓝图后它就不再出现。`,
   }
 }
 
@@ -576,8 +625,8 @@ export function rollRecycleLoot(
     appendMk2.length > 0 && mk2Pool.length > 0
       ? RECYCLE_CHANCE.mk2 * (defMk2Avg / (avgPriceOf(mk2Pool) || defMk2Avg))
       : RECYCLE_CHANCE.mk2
-  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
-  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter((m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId))
+  const t2Pool = fragmentPoolOf(state, ctx, 2)
+  const t3Pool = fragmentPoolOf(state, ctx, 3)
   for (let i = 0; i < batchUnits; i++) {
     if (basePool.length > 0 && nextRandom(state.rng) < baseChance) {
       modules.push(basePool[Math.floor(nextRandom(state.rng) * basePool.length)]!)
@@ -639,12 +688,8 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
     }
   }
   // ③ 碎片层（凑逆向收藏的尾缀）
-  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
-  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter(
-    (m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
-  )
+  const t2Pool = fragmentPoolOf(state, ctx, 2)
+  const t3Pool = fragmentPoolOf(state, ctx, 3)
   if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T2_CHANCE) {
     const m = t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!
     addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T2_COUNT)

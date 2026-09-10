@@ -78,6 +78,57 @@ function gapTo25Example(add: DamageResists | undefined): string {
 }
 
 /**
+ * 缺口抗性"分系"行（盾/甲/结构三层共用同一写法）：
+ * 逐系列出 chip + 缺口值（**三系件必须三系都看得见**——2026-09-10 修：此前只渲染第一系，
+ * 陵墓护盾阵列/生体甲壳板这类"三系各 +X%"的件会被玩家误读成只抗一种）；
+ * 尾注统一"乘入制 + 90% 上限"（示例取首个非零系）。
+ */
+function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | null {
+  const entries = (['kinetic', 'explosive', 'plasma'] as const)
+    .map((t) => ({ t, v: add?.[t] ?? 0 }))
+    .filter((x) => x.v > 0)
+  if (entries.length === 0) return null
+  const ex = gapTo25Example(add)
+  return {
+    k,
+    v: (
+      <>
+        {entries.map((x, i) => (
+          <span key={x.t} className="app-stack-inline">
+            {i > 0 ? <span className="app-dim"> · </span> : null}
+            <DmgChip t={x.t} />
+            <span className="app-dim">{` +${pct(x.v)}`}</span>
+          </span>
+        ))}
+        <span className="app-dim">{`（乘入制${ex ? `：${ex}` : ''}；上限 90%）`}</span>
+      </>
+    ),
+  }
+}
+
+/**
+ * 维修系短缀（维修装置 / 异形无消耗自愈件）：每跳修复量与"是否吃组件"。
+ * 2026-09-10 修：此前短效文案没有修复分支 → 民用/军用维修装置与生体损管腔在
+ * 装配台槽位行、装备库行、手册网格里只剩"名字 + CPU"，玩家看不到它到底修多少。
+ */
+function repairShortText(mod: ModuleDef): string {
+  const arm = mod.repairArmorHp ?? 0
+  const hul = mod.repairHullHp ?? 0
+  if (arm <= 0 && hul <= 0) return ''
+  const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
+  const amt = [arm > 0 ? `甲${fmt(arm)}` : '', hul > 0 ? `结构${fmt(hul)}` : ''].filter(Boolean).join(' / ')
+  return `每 ${secs} 秒 ${amt}${mod.repairFree === true ? '（无消耗）' : '（耗组件）'}`
+}
+
+/** 结构层抗性短缀（任何槽位都可能带）：`结构抗 动能+25% 爆炸+25% 能量+25%` */
+function hullResistShortText(mod: ModuleDef): string {
+  const bits = (['kinetic', 'explosive', 'plasma'] as const)
+    .filter((t) => (mod.hullResistAdd?.[t] ?? 0) > 0)
+    .map((t) => `${DMG_LABEL[t]}+${pct(mod.hullResistAdd![t]!)}`)
+  return bits.length > 0 ? `结构抗 ${bits.join(' ')}` : ''
+}
+
+/**
  * 装备一行式短效果（装配台槽位行 / 装备库行共用；V17：各战斗家族显示真实进公式参数）。
  * 空槽文本由调用方自给；抗性为"缺口削减"值（合成规则见 moduleInfoLines 注释行）。
  */
@@ -124,6 +175,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
       const gap = resistGapText(mod.armorResistAdd)
       if (gap) parts.push(gap)
+      // 结构层容量（E 族巨构骨架）：短行也要看得见"最后那段血更厚"
+      if ((mod.hullHpBonus ?? 0) > 0) parts.push(`结构 +${pct(mod.hullHpBonus ?? 0)}`)
+      // 2026-09-10 船长：重甲件的机动代价（陵寝装甲层 −25%）——短行也带代价（同推进器「命中×0.85」写法）
+      if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(`速度×${(1 - (mod.speedPenaltyPct ?? 0)).toFixed(2)}`)
       body = parts.join(' · ')
       break
     }
@@ -166,6 +221,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
       body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
       break
   }
+  // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）与结构层抗性——短行不丢关键效果
+  const extras = [repairShortText(mod), hullResistShortText(mod)].filter(Boolean).join(' · ')
+  if (extras) body = body ? `${body} · ${extras}` : extras
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
   return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
 }
@@ -304,32 +362,21 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: '货舱容量', v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'shield') {
     if (mod.shieldHpBonus !== undefined) lines.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const entries = Object.entries(mod.shieldResistAdd ?? {}).filter(([, val]) => (val ?? 0) > 0)
-    if (entries.length > 0) {
-      const ex = gapTo25Example(mod.shieldResistAdd)
-      const tail = ex ? `抗 +${pct(entries[0]![1]!)}（乘入制：${ex}；上限 90%）` : `抗 +${pct(entries[0]![1]!)}（乘入制，上限 90%）`
-      lines.push({
-        k: '护盾抗性（乘入制）',
-        v: (
-          <>
-            <DmgChip t={entries[0]![0] as DamageType} />
-            <span className="app-dim">{` ${tail}`}</span>
-          </>
-        ),
-      })
-    }
+    const row = resistAddLine('护盾抗性（乘入制）', mod.shieldResistAdd)
+    if (row) lines.push(row)
   } else if (mod.slot === 'armor') {
     if (mod.armorHpBonus !== undefined) lines.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const entries = Object.entries(mod.armorResistAdd ?? {}).filter(([, val]) => (val ?? 0) > 0)
-    if (entries.length > 0) {
-      const ex = gapTo25Example(mod.armorResistAdd)
-      const tail = ex ? `抗 +${pct(entries[0]![1]!)}（乘入制：${ex}；上限 90%）` : `抗 +${pct(entries[0]![1]!)}（乘入制，上限 90%）`
+    const row = resistAddLine('装甲抗性（乘入制）', mod.armorResistAdd)
+    if (row) lines.push(row)
+    // 重甲件的机动代价（2026-09-10 船长：陵寝装甲层 −25%）——多件不叠加、取最重一件
+    if ((mod.speedPenaltyPct ?? 0) > 0) {
+      const pen = mod.speedPenaltyPct ?? 0
       lines.push({
-        k: '装甲抗性（乘入制）',
+        k: '机动代价',
         v: (
           <>
-            <DmgChip t={entries[0]![0] as DamageType} />
-            <span className="app-dim">{` ${tail}`}</span>
+            <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
+            <span className="app-dim">{`（−${pct(pen)}；只影响接敌与拉开距离的机动，不改命中；多件不叠加，取最重一件）`}</span>
           </>
         ),
       })
@@ -448,26 +495,42 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.evasionGapPct !== undefined) {
       lines.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}——敌命中 60% 时 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}；全船生效` })
     }
-    // 船体维修装置（2026-09-09 船长定：中槽自动修复装甲/结构；每脉冲消耗一枚对应修理组件）
+    // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
-      const kitName =
-        mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
       const perPulse = [mod.repairArmorHp, mod.repairHullHp]
         .filter((x): x is number => (x ?? 0) > 0)
         .map((x) => fmt(x!))
         .join(' / ')
-      lines.push({ k: '自动维修', v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）` })
-      // 2026-09-10 船长：运转消耗高亮（玩家常忽略"每跳要吃一枚组件"）——组件名用琥珀色标记
+      const isFree = mod.repairFree === true
       lines.push({
-        k: '运转消耗',
-        v: (
-          <>
-            <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
-            <span className="app-dim">（每 {secs} 秒一枚；组件耗尽即自动停机——请确认货舱/仓库备足再出击）</span>
-          </>
-        ),
+        k: isFree ? '生体自愈' : '自动维修',
+        v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）`,
       })
+      if (isFree) {
+        // 无消耗自愈（异形生体件）：不吃组件、永不停机；同型多件按 EVE 曲线递减
+        lines.push({
+          k: '运转消耗',
+          v: (
+            <>
+              <em className="app-chip is-ok">无消耗</em>
+              <span className="app-dim">（不吃修理组件、永不停机——生体组织自己长回来；同型多件修复量按 EVE 曲线递减）</span>
+            </>
+          ),
+        })
+      } else {
+        const kitName =
+          mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
+        lines.push({
+          k: '运转消耗',
+          v: (
+            <>
+              <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
+              <span className="app-dim">（每 {secs} 秒一枚；组件耗尽即自动停机——请确认货舱/仓库备足再出击）</span>
+            </>
+          ),
+        })
+      }
     }
   } else if (mod.slot === 'target-lock') {
     // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深
@@ -476,6 +539,21 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       lines.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}（本舰全部武器：炮台/导弹/激光/无人机）` })
     }
   }
+  // 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开，
+  // 语义各自成行——容量 = 最后那段血更厚、抗性 = 那段血更耐打
+  if ((mod.hullHpBonus ?? 0) > 0) {
+    lines.push({
+      k: '结构容量',
+      v: (
+        <>
+          <span>{`+${pct(mod.hullHpBonus ?? 0)}`}</span>
+          <span className="app-dim">（护盾/装甲被打穿后的最后一段血量；多件加算，技能再乘于其上）</span>
+        </>
+      ),
+    })
+  }
+  const hullRow = resistAddLine('结构抗性（乘入制）', mod.hullResistAdd)
+  if (hullRow) lines.push(hullRow)
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
   const st = stackingOf(mod)
   if (st.group === 'flat') {

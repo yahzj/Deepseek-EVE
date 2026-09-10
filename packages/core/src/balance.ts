@@ -106,6 +106,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     rareWindowChance: 0.1, // 遗留字段（P2 配额制后 unused，保留兼容数据/档；见 types.ts 注）
     exoticWindowChance: 0.008, // 限定商品每抽取窗（10 分钟）0.8% 独立掷骰（约每件每 20.8h 一轮；2026-09-06 船长定窗口 10 分钟）
     rareTier3Weight: 0.25, // 数字稀有度 3 档刷新权重乘子（2 档 = 1；2026-09-09 初值，market-rarity-sim 校准中）
+    blueprintWeight: 0.05, // 蓝图书权重乘子（2026-09-10 船长定：50% → 5%，稀有抽取 + 奇货掷骰两渠道都乘）
+    blueprintLifeMs: 6 * 3_600_000, // 蓝图书稀有单寿命 6 小时（2026-09-10 船长定：权重降到 5% 后 36 分钟太短，玩家只会错过）
     shockTriggerRatio: 2, // 窗口净成交量 > 参考量 ×2 时触发冲击
     shockPerTrigger: 0.05, // 每次触发 +5% 方向偏移（无上限叠加，见"冲击动量"）
     shockDecayHalfMs: 6 * 60_000, // 冲击衰减半程 6 分钟

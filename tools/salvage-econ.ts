@@ -16,6 +16,8 @@ import {
   RECYCLE_BASE_MODULES,
   RECYCLE_MK2_MODULES,
   FRAGMENT_RECIPES,
+  fragmentPoolOf,
+  createInitialState,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
@@ -24,6 +26,8 @@ import {
 } from '@whale/core'
 
 const ctx = buildSimContext()
+/** 空档玩家（未学任何蓝图、无碎片）——碎片池是"按玩家状态"算的（集齐前不重复），故取一张干净档 */
+const freshState = createInitialState({ nowWallMs: 0, seed: 1 })
 /** 炉时（m³/h，劳动者 100%、无技能） */
 const FURNACE_M3_H = Math.round(RECYCLE_BATCH_M3 * (3_600_000 / RECYCLE_CYCLE_MS))
 /** 采矿参照（平衡检查中段口径——其策略均先练采矿技术 5；线性可调） */
@@ -132,18 +136,26 @@ function main(): void {
     )
   }
   console.log(`· B3.1 特色池 ${rows} 张，超差 ${bad} 张（≥21 为满配）`)
-  // 彩头 EV（每 m³ 概率 × 均价；MK2 仅低安池子、碎片按各自片值；概率不受技能影响）
+  // 彩头 EV（每 m³ 概率 × 均价；MK2 仅低安池子；**碎片不计入 EV**——
+  // 2026-09-10 船长定：碎片不可出售、无市场卡，是"进度"不是产出，单列到下面的碎片进度行）
   const baseEv = FURNACE_M3_H * RECYCLE_CHANCE.base * baseAvg
   const mk2Ev = FURNACE_M3_H * RECYCLE_CHANCE.mk2 * mk2Avg
-  let fragEv = 0
-  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
-    const r = FRAGMENT_RECIPES[moduleId]!
-    const bpPrice = ctx.marketGoods.get(r.blueprintId)?.basePrice ?? 0
-    const p = r.need === 1000 ? RECYCLE_CHANCE.fragT3 : RECYCLE_CHANCE.fragT2
-    fragEv += FURNACE_M3_H * p * (bpPrice / r.need)
+  const bonusEv = baseEv + mk2Ev
+  console.log(`彩头 EV/h（只算可兑现件）：基础件 ${Math.round(baseEv).toLocaleString('zh-CN')} + MK2(低安) ${Math.round(mk2Ev).toLocaleString('zh-CN')} ≈ ${Math.round(bonusEv).toLocaleString('zh-CN')} ISK（≤ 保底 10% = ${Math.round(target * 0.1).toLocaleString('zh-CN')}；满技能保底下占比 ≈ ${((bonusEv / (target * FULL_SKILL_MULT)) * 100).toFixed(1)}%）`)
+  // 碎片进度（只给"大概还差多少残骸"，2026-09-10 船长定：不要过度详细）
+  // 口径：集齐前不重复 → 凑齐该档三张书恰好 3 × need 片；m³ = 片数 ÷ 档概率；炉时 = m³ ÷ 炉速
+  {
+    const t2Need = FRAGMENT_RECIPES['mod-miner-2']!.need
+    const t3Need = FRAGMENT_RECIPES['mod-miner-3']!.need
+    const t2M3 = (t2Need * 3) / RECYCLE_CHANCE.fragT2
+    const t3M3 = (t3Need * 3) / RECYCLE_CHANCE.fragT3
+    const fmt = (m: number): string => Math.round(m).toLocaleString('zh-CN')
+    console.log(
+      `碎片进度（不计 ISK；集齐前不重复 → 三张书合计 ${t2Need * 3} / ${t3Need * 3} 片）：` +
+        `凑齐 MK2 三张 ≈ 需 ${fmt(t2M3)} m³ 残骸（炉时 ${(t2M3 / FURNACE_M3_H).toFixed(0)}h 无技能 / ${(t2M3 / FURNACE_M3_H_FULL).toFixed(0)}h 满技能）· ` +
+        `MK3 三张 ≈ ${fmt(t3M3)} m³（${(t3M3 / FURNACE_M3_H).toFixed(0)}h / ${(t3M3 / FURNACE_M3_H_FULL).toFixed(0)}h）`,
+    )
   }
-  const bonusEv = baseEv + mk2Ev + fragEv
-  console.log(`彩头 EV/h：基础件 ${Math.round(baseEv).toLocaleString('zh-CN')} + MK2(低安) ${Math.round(mk2Ev).toLocaleString('zh-CN')} + 碎片 ${Math.round(fragEv).toLocaleString('zh-CN')} ≈ ${Math.round(bonusEv).toLocaleString('zh-CN')} ISK（≤ 保底 10% = ${Math.round(target * 0.1).toLocaleString('zh-CN')}；满技能保底下占比 ≈ ${((bonusEv / (target * FULL_SKILL_MULT)) * 100).toFixed(1)}%）`)
   console.log('AI 核心档折算（炉周期 ÷ 效率，再乘技能项）：' + [0.4, 0.5, 0.6, 0.75].map((e) => `${Math.round(e * 100)}% → 无技能 ${Math.round(target * e).toLocaleString('zh-CN')} / 满技能 ${Math.round(target * e * FULL_SKILL_MULT).toLocaleString('zh-CN')} ISK/h`).join('；'))
   console.log('v20 多炉并行复核（2026-09-05 二号，一号变更记录点名）：')
   console.log('  · 炉位规则：主控 1 台（100%）+ 每台 AI 炉 1 枚核心（效率 40/50/60/75%）——同时启用总数受「AI 核心上限」技能约束（2026-09-08 船长定：AI 副船任务与站内设施共用上限，Lv0 无法启用；上限 = AI 核心操作学等级，后续技能可再叠加）；')
@@ -155,6 +167,82 @@ function main(): void {
   console.log('  · 4×MK1 低密度(mul≈1) ≈ 3.9k → 满技能 ≈ 7.5k m³/h；满技能炉速 1800 m³/h → 仍富余（仓库缓冲，AI 炉可 24/7）；')
   console.log('  · 深空平衡密度(mul≈3.6)：无技能 ≈ 14k → 满技能 ≈ 27k m³/h → 炉速仍是瓶颈，积压明显——批容量为 P3 旋钮（如调 20 m³/批）。')
   console.log(`校准注：锚 X 的口径含「采矿技术 5」（模拟策略统一前置）；回收链两行（无技能/满技能）为同链成长差；若采矿侧再把护卫舰操作/地质学等点满，X 同步抬升 ≈ ×1.8（富凡级口径），两链满级比例仍落在 ×1~×1.3 上下——目测以本表为主。2026-09-06 锚 82k（×1.65）。`)
+
+  /* ══════════ 蓝图两条获取路线对比（2026-09-10 船长：打捞回收凑碎片 vs 市场买书）══════════
+   * 口径：
+   * - 碎片路线 = 残骸回收批里逐 m³ 掷概率（fragT2/fragT3），**且按同档池均分**——
+   *   MK2 碎片 3 张蓝图共享一个池、MK3 同理（rollRecycleLoot 的 t2Pool/t3Pool），故"某一张书"的
+   *   每 m³ 命中率 = 档位概率 ÷ 池大小；集齐 need 片（2026-09-10 船长定：MK2 25 片 / MK3 250 片，
+   *   只降门槛不动概率）后在母港「逆向研究」解锁（redeemFragments）。
+   * - 市场路线 = 直接买蓝图书（marketCatalog 的 blueprint 卡，价格 = 蓝图商店价 priceIsk；MK3 需协会声望 4）。
+   * - 两条路线的时间基准统一为"同一条打捞→回收生产线"：碎片路线看**炉时要多少小时**，
+   *   市场路线看**赚够书价要多少小时**（按各档保底 EV/h）。回收炉是瓶颈（供料侧通常富余，见上）。
+   */
+  console.log('══ 蓝图两条获取路线对比（打捞凑碎片 vs 市场买书，2026-09-10 船长）══')
+  const t2Pool = fragmentPoolOf(freshState, ctx, 2)
+  const t3Pool = fragmentPoolOf(freshState, ctx, 3)
+  const tierEvNo = (tier: keyof typeof POOLS): number => FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
+  const tierEvFull = (tier: keyof typeof POOLS): number => tierEvNo(tier) * FULL_SKILL_MULT
+  console.log(
+    `· 碎片概率：fragT2 ${RECYCLE_CHANCE.fragT2}/m³（威胁 ≥17）· fragT3 ${RECYCLE_CHANCE.fragT3}/m³（威胁 ≥41）；` +
+      `同档池大小 MK2 ${t2Pool.length} 张 / MK3 ${t3Pool.length} 张 → 单张书命中率 = 档概率 ÷ 池大小`,
+  )
+  console.log(
+    `· 生产线基准：炉时 无技能 ${FURNACE_M3_H} m³/h → 满技能 ${FURNACE_M3_H_FULL} m³/h；` +
+      `保底 EV/h 无技能 险 ${Math.round(tierEvNo('risky')).toLocaleString('zh-CN')} / 危 ${Math.round(tierEvNo('dire')).toLocaleString('zh-CN')}，` +
+      `满技能 险 ${Math.round(tierEvFull('risky')).toLocaleString('zh-CN')} / 危 ${Math.round(tierEvFull('dire')).toLocaleString('zh-CN')}`,
+  )
+  for (const [label, pool, tier] of [
+    ['MK2', t2Pool, 'risky'],
+    ['MK3', t3Pool, 'dire'],
+  ] as const) {
+    for (const moduleId of pool) {
+      const r = FRAGMENT_RECIPES[moduleId]!
+      const bp = ctx.blueprints.get(r.blueprintId)
+      const good = ctx.marketGoods.get(r.blueprintId)
+      const price = good?.basePrice ?? bp?.priceIsk ?? 0
+      const perM3 = (r.tier === 2 ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3) / Math.max(1, pool.length)
+      const m3Need = r.need / perM3
+      const hoursNo = m3Need / FURNACE_M3_H
+      const hoursFull = m3Need / FURNACE_M3_H_FULL
+      const buyHoursNo = price / tierEvNo(tier)
+      const buyHoursFull = price / tierEvFull(tier)
+      const mineralDuring = m3Need * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
+      const ratio = hoursFull / Math.max(0.0001, buyHoursFull)
+      console.log(
+        `· ${label} ${bp?.name ?? r.blueprintId}：市场 ${good?.rarity ?? '?'} ${price.toLocaleString('zh-CN')} ISK` +
+          `${good?.standingReq ? `（需声望 ${good.standingReq}）` : ''}` +
+          ` ｜ 碎片路线 需 ${Math.round(m3Need).toLocaleString('zh-CN')} m³ = 炉时 ${Math.round(hoursNo).toLocaleString('zh-CN')} h（无技能）/ ${Math.round(hoursFull).toLocaleString('zh-CN')} h（满技能）` +
+          `（期间回收保底产出 ≈ ${Math.round(mineralDuring).toLocaleString('zh-CN')} ISK）` +
+          ` ｜ 买书等价工时 ${buyHoursNo.toFixed(1)} h（无技能）/ ${buyHoursFull.toFixed(1)} h（满技能）` +
+          ` → **单张口径慢 ≈ ${ratio.toFixed(0)}×**`,
+      )
+    }
+    // 整档口径（公平比较）：碎片在池内均分 → 拿到"某一张"的集齐片数时，另外两张也各约同样多
+    // （碎片总数 = m³ × 档概率），即一趟等于把该档 3 张书全部凑齐 → 应与"买齐 3 张"比。
+    const chance = label === 'MK2' ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3
+    const need = FRAGMENT_RECIPES[pool[0]!]!.need
+    const m3All = (need * pool.length) / chance
+    const hoursAllNo = m3All / FURNACE_M3_H
+    const hoursAllFull = m3All / FURNACE_M3_H_FULL
+    const priceAll = pool.reduce((s, m) => {
+      const r = FRAGMENT_RECIPES[m]!
+      return s + (ctx.marketGoods.get(r.blueprintId)?.basePrice ?? 0)
+    }, 0)
+    const buyAllNo = priceAll / tierEvNo(tier)
+    const buyAllFull = priceAll / tierEvFull(tier)
+    console.log(
+      `  ▸ **整档 ${label}（一趟凑齐全部 ${pool.length} 张书）**：需 ${Math.round(m3All).toLocaleString('zh-CN')} m³ = 炉时 ${Math.round(hoursAllNo).toLocaleString('zh-CN')} h（无技能）/ ${Math.round(hoursAllFull).toLocaleString('zh-CN')} h（满技能）` +
+        ` ｜ 买齐 ${pool.length} 张合计 ${priceAll.toLocaleString('zh-CN')} ISK = ${buyAllNo.toFixed(1)} h（无技能）/ ${buyAllFull.toFixed(1)} h（满技能）` +
+        ` → **整档口径慢 ≈ ${(hoursAllFull / Math.max(0.0001, buyAllFull)).toFixed(0)}×**` +
+        `（同期回收保底产出 ≈ ${Math.round(m3All * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)).toLocaleString('zh-CN')} ISK，远超买书价——即"时间才是唯一成本"）`,
+    )
+  }
+  console.log(
+    '结论：门槛下调（MK2 25 片 / MK3 250 片，2026-09-10 船长定）后，碎片路线整档约为"赚钱买书"的 1/7——' +
+      '定位仍是长线彩头，但已从"没人会走"变成真能顺路拿到；完好舰体（3 片/次 ×30%）与已封存的高级箱（稀有残骸）' +
+      '只是额外涓流，不改量级。市场（蓝图书）才是正经获取途径，且 2026-09-10 起蓝图书权重 50%→5%、寿命 6 小时。',
+  )
 }
 
 void main()
