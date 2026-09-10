@@ -52,7 +52,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadSaveFile, serializeSaveFile, addShipToFleet } from '@whale/core'
+import { loadSaveFile, serializeSaveFile, addShipToFleet, rareWreckItemIdOf, RARE_WRECK_VOLUME_M3 } from '@whale/core'
 import type { GameState } from '@whale/core'
 import { GALAXIES } from '@whale/data'
 
@@ -94,6 +94,65 @@ function genericPrep(state: GameState): void {
     battle: null,
   }
   state.encounterZoneCooldown = {}
+}
+
+/**
+ * 稀有残骸·高级箱实机测试门槛（2026-09-10 船长：解禁 + 命中率 5/8/10% + 每炉锁死 1 件）：
+ * 五族稀有残骸各备若干（各档位都有，能实测"一炉一件一箱"与"集齐前不重复"）、普通残骸做对照、
+ * AI 核心够开多台并行；另备碎片少量与已集齐各一，便于顺带核对"碎片池集齐即移出"。
+ */
+function injectRareBox(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  notes.push('钱包 +30,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 12)
+  notes.push('协会声望升至 12（深层窝点门槛与暗市闸全过；也够买高级蓝图书）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——赏金任务日板与全部稀有残骸来源可达`)
+  // ① 五族稀有残骸进仓库（计数即体积：1 件 = 30 单位 = 30 m³）
+  const rareSet: Array<[string, string, number]> = [
+    ['ano-mirage-hijackers', 'A 海盗·蜃影劫持团', 3],
+    ['ano-maw-hunt', 'C 异形·噬口猎食群', 2],
+    ['ano-vault-sentinel', 'D 守墓古舰·穹顶守卫', 2],
+    ['ano-titan-wreck', 'E 泰坦巨构·泰坦残骸勘探', 2],
+    ['ano-nadir-static', 'G 烬火流亡·天底封锁军', 2],
+  ]
+  const per = RARE_WRECK_VOLUME_M3
+  for (const [anomalyId, label, count] of rareSet) {
+    const id = rareWreckItemIdOf(anomalyId)
+    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + per * count
+    notes.push(`仓库预置稀有残骸「${label}」×${count} 件（${per * count} m³）`)
+  }
+  notes.push(`合计 11 件稀有残骸（${per * 11} m³）——工业页「残骸回收」里每族一张卡，各带「高级箱」徽标`)
+  // ② 普通残骸做对照（不锁量：仍是"整批直到料尽"）
+  state.warehouse.items['wreck-ano-gravekeeper'] = (state.warehouse.items['wreck-ano-gravekeeper'] ?? 0) + 100
+  state.warehouse.items['wreck-ano-abyss-guard'] = (state.warehouse.items['wreck-ano-abyss-guard'] ?? 0) + 100
+  notes.push('仓库预置普通残骸 坟场守墓人/深渊之门卫队 各 100 m³（对照：普通残骸不锁量、整批拆到料尽）')
+  // ③ 多台并行：AI 核心上限技能 + 基础核心（主控 1 台 + AI 各 1 台）
+  state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 2)
+  state.aiCores.basic = Math.max(state.aiCores.basic ?? 0, 2)
+  notes.push('「AI 核心操作学」Lv2 + 基础 AI 核心 ×2——可同时开 3 台炉（主控 1 + AI 2）验证逐件开箱')
+  // ④ 碎片对照：差几片的、已集齐的各一，便于核对"集齐前不重复"与逆向研究
+  state.warehouse.items['frag-mod-miner-2'] = (state.warehouse.items['frag-mod-miner-2'] ?? 0) + 20
+  state.warehouse.items['frag-mod-turret-kin-3'] = (state.warehouse.items['frag-mod-turret-kin-3'] ?? 0) + 250
+  notes.push('仓库预置 MK2 碎片（强化采集器）×20（差 5 片到 25）与 MK3 碎片（攻坚炮台）×250（已够逆向）')
+  for (const s of Object.values(state.fleet)) s.durability = 1
+  notes.push('全舰耐久回满')
+  notes.push(
+    '测试路径：① 工业页「精炼炉」→ 稀有残骸卡数据行应显示「每炉锁 30 m³ = 1 件 · 一次起炉 = 开一箱」→ 起炉；' +
+      '② 3 批（约 75 秒）后应自动停并写日志「本炉定额完成（每炉 30 m³ = 1 件，共 3 批）· 余料仍在货仓/仓库」；' +
+      '③ 每次起炉最多开 1 箱，日志有「✦ 高级箱：稀有残骸开箱额外掉落——…」；把 11 件逐件开完 ≈ 11 箱；' +
+      '④ 同一台炉连开两轮应各得 1 箱；对照普通残骸卡：不锁量、会一直拆到料尽；' +
+      '⑤ 精炼炉卡产出行应逐行显示「（仓库 N）」、组装机产物行显示「（装备库/仓库/机库 N）」。',
+  )
+  return notes
 }
 
 /** B1：低安遭遇测试门槛 */
@@ -833,6 +892,7 @@ function injectLockrep(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  rarebox: injectRareBox,
   b1: injectB1,
   standby: injectStandby,
   refine: injectRefine,
