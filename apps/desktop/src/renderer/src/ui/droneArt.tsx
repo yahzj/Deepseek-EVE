@@ -103,3 +103,26 @@ export const DRONE_SHOW_MAX = 6
 export const DRONE_BACK_MS = 1200
 /** 回巢动画时长（ms；与 styles.css 的 keyframes 时长一致） */
 export const DRONE_BACK_ANIM_MS = 420
+
+/**
+ * 演出制式（2026-09-10 船长二次定："放出无人机靠近敌人攻击后返回"）：
+ * - `sortie`（默认，出击制）= 无人机自母舰放出 → 飞到敌舰侧的攻击阵位开火 → 无开火 1.2s 返回母舰；
+ * - `formation`（保留，机群制）= 无人机在母舰上侧编队巡飞，弹道自编队位起飞。
+ * 两套实现都保留，切换本常量即可（CSS 两套 keyframes 均保留）。
+ */
+export const DRONE_STYLE: 'sortie' | 'formation' = 'sortie'
+/** 出击制：飞到攻击阵位的时长（ms；与 styles.css keyframes 一致） */
+export const DRONE_SORTIE_OUT_MS = 560
+/** 出击制：返航时长（ms；与 styles.css keyframes 一致） */
+export const DRONE_SORTIE_BACK_MS = 620
+
+/** 出击制攻击阵位（绝对画面 px）：贴近目标舰的母舰一侧，按 lane 分道避免重叠 */
+export function droneSortieStation(
+  lane: number,
+  foe: { x: number; y: number },
+  dir: number,
+  foeNose: number,
+): { x: number; y: number } {
+  const laneY = (lane - (DRONE_SHOW_MAX - 1) / 2) * 13
+  return { x: foe.x - dir * (foeNose + 46 + (lane % 3) * 14), y: foe.y + laneY }
+}

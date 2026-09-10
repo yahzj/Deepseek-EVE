@@ -10,6 +10,7 @@
  * 已抽到 ./battleViewCore.tsx——动画/表现类改动请先落在那里的常量与纯函数。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf } from '@whale/core'
 import type { BattleFx, DamageType, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -17,7 +18,8 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
-import { DRONE_BACK_ANIM_MS, DRONE_BACK_MS, DRONE_SHOW_MAX, droneModelOf } from '../ui/droneArt'
+import { DRONE_BACK_ANIM_MS, DRONE_BACK_MS, DRONE_SHOW_MAX, DRONE_STYLE, droneModelOf, droneSortieStation } from '../ui/droneArt'
+import type { DroneModel } from '../ui/droneArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
@@ -26,6 +28,25 @@ import {
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
+
+/**
+ * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
+ * - 出击制（默认 `sortie`）= 飞到敌舰侧的攻击阵位开火（哨戒常驻型例外：始终随母舰下方伴飞）；
+ * - 机群制（保留 `formation`）= 母舰上侧编队巡飞，弹道自编队位起飞。
+ */
+function droneStationOf(
+  model: DroneModel,
+  lane: number,
+  lay: { me: Anchor; foe: Anchor[] },
+  meShot: boolean,
+): Anchor {
+  if (DRONE_STYLE === 'sortie' && !model.resident) {
+    const foe = lay.foe[0] ?? lay.me
+    return droneSortieStation(lane, foe, meShot ? 1 : -1, NOSE_MAIN)
+  }
+  const slot = model.slots[lane % Math.max(1, Math.min(model.slots.length, DRONE_SHOW_MAX))] ?? model.slots[0]!
+  return { x: lay.me.x + slot.x, y: lay.me.y + slot.y }
+}
 
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
   const state = engine.state
@@ -370,8 +391,9 @@ const meSpeedRef = useRef(200)
         const key = dm.resident ? `res:${fx.artId}` : `fly:${fx.artId}`
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
-        const slot = dm.slots[n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))] ?? dm.slots[0]!
-        from = { x: src.x + slot.x, y: src.y + slot.y }
+        const lane = n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX))
+        // 出弹位：出击制（默认）= 敌舰侧的攻击阵位（无人机飞到敌人身边开火）；机群制 = 母舰上侧编队位
+        from = droneStationOf(dm, lane, layFx, isMeShot)
         droneLastShotRef.current.set(fx.artId!, now)
       } else {
         mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)
@@ -549,31 +571,53 @@ const meSpeedRef = useRef(200)
       />
     ) : null
     const dm = bv.drone ? droneModelOf(bv.drone) : undefined
-    // 无人机蜂群弹点（2026-09-10）：机型决定弹点形制（更小更细 + 可选拖尾），颜色仍按弹型
-    const barH = dm ? dm.bolt.width : bv.type === 'plasma' ? 1 : bv.type === 'explosive' ? 6 : 4
+    // 无人机弹道（2026-09-10 船长反馈修复）：普通弹条靠 scaleX(.05→1) 曳光，弹条过短会"看不见"——
+    // 无人机改画**可见的小曳光点**：亮点沿弹道飞行（--fly = 行程 px），宽度不再依赖弹条长度
+    if (dm) {
+      return (
+        <div key={bv.key} className={`app-bts-bolt is-${bv.type} is-drone`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
+          <i
+            className="app-bts-bolt-dot"
+            style={
+              {
+                background: color,
+                boxShadow: `0 0 6px ${color}, 0 0 12px ${color}66`,
+                animationDuration: `${look.fly}ms`,
+                '--fly': `${Math.max(24, bv.len)}px`,
+                '--dot': `${dm.bolt.width + 3}px`,
+              } as CSSProperties
+            }
+          />
+          <i
+            className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'} is-small`}
+            style={{
+              left: bv.len,
+              top: 0,
+              borderColor: color,
+              boxShadow: `0 0 10px ${color}`,
+              animationDelay: `${look.fly}ms`,
+              animationDuration: bv.type === 'plasma' ? '180ms' : '420ms',
+            }}
+          />
+        </div>
+      )
+    }
     return (
-      <div
-        key={bv.key}
-        className={`app-bts-bolt is-${bv.type}${dm ? ' is-drone' : ''}`}
-        style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}
-      >
+      <div key={bv.key} className={`app-bts-bolt is-${bv.type}`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
         <i
           className="app-bts-bolt-bar"
           style={{
-            width: dm ? Math.min(bv.len, dm.bolt.len) : bv.len,
-            height: barH,
-            top: dm ? -barH / 2 : bv.type === 'plasma' ? 0 : -2,
-            background: dm
-              ? `linear-gradient(90deg, ${color} 0%, ${color}dd 70%, transparent 100%)`
-              : barBg,
-            boxShadow: dm ? `0 0 4px ${color}` : `0 0 8px ${color}`,
+            width: bv.len,
+            height: bv.type === 'plasma' ? 1 : bv.type === 'explosive' ? 6 : 4,
+            top: bv.type === 'plasma' ? 0 : -2,
+            background: barBg,
+            boxShadow: `0 0 8px ${color}`,
             animationDuration: `${look.fly}ms`,
           }}
         />
-        {dm && dm.bolt.tail ? <i className="app-bts-bolt-tail" style={{ width: dm.bolt.len * 1.6, background: `linear-gradient(90deg, ${color}55, transparent)` }} /> : null}
         {beamLine}
         <i
-          className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'}${dm ? ' is-small' : ''}`}
+          className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'}`}
           style={{
             left: bv.len,
             top: 0,
@@ -779,14 +823,30 @@ const meSpeedRef = useRef(200)
             <div className="app-bts-drones" style={{ left: lay.me.x, top: lay.me.y }} aria-hidden="true">
               {droneWings.map((w) =>
                 w.phase === 'deck' ? null : (
-                  <div key={w.artId} className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}`}>
+                  <div
+                    key={w.artId}
+                    className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ''}`}
+                  >
                     {Array.from({ length: w.show }, (_, i) => {
-                      const slot = w.model.slots[i % w.model.slots.length]!
+                      const home = w.model.slots[i % w.model.slots.length]!
+                      const station = droneStationOf(w.model, i, lay, true)
+                      const vars =
+                        DRONE_STYLE === 'sortie'
+                          ? ({ '--dx': `${station.x - lay.me.x}px`, '--dy': `${station.y - lay.me.y}px` } as CSSProperties)
+                          : {}
                       return (
                         <span
                           key={i}
                           className="app-bts-drone"
-                          style={{ left: slot.x, top: slot.y, color: w.model.tint, animationDelay: `${(i % 4) * 0.18}s` }}
+                          style={
+                            {
+                              left: home.x,
+                              top: home.y,
+                              color: w.model.tint,
+                              animationDelay: `${(i % 4) * 0.12}s`,
+                              ...vars,
+                            } as CSSProperties
+                          }
                         >
                           <svg
                             viewBox="-13 -8 26 16"
