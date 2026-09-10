@@ -5,7 +5,12 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { GameEngine } from './game/engine'
 import { runAutoPerf } from './game/autoPerf'
+import { applySpaceBg } from './ui/spaceBg'
 import './styles.css'
+
+// 宇宙背景（2026-09-10 船长）：启动时抽一张无缝贴图并写入 --space-bg；
+// 放在首帧渲染之前，避免先闪一下纯色底
+applySpaceBg()
 
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)

@@ -56,6 +56,17 @@ body {
 
 }
 
+/* 宇宙背景（2026-09-10 船长：32 张 512×512 无缝贴图，启动随机一张，整层平铺 + 深色压暗）——
+   只作**界面最底层**：战斗画面与序章自带不透明底，底图不会透进去；舰船图形与战场星野一律不动。
+   底图 URL 由 main.tsx 启动时写入 --space-bg（见 ui/spaceBg.ts，无图时 var 兜底 none = 原深色底）。 */
+.app-root {
+  background-color: #060b13;
+  background-image: linear-gradient(rgba(6, 11, 19, 0.72), rgba(6, 11, 19, 0.72)), var(--space-bg, none);
+  background-repeat: no-repeat, repeat;
+  background-position: center center, center center;
+  background-size: cover, 512px 512px;
+}
+
 /* ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：visualViewport 真实可见区铺满）──
    整窗 rotate(-90°) + 等比缩放；--mob-w/--mob-h/--mob-scale/--mob-x/--mob-y 由 JS 按可见区计算 ── */
 
