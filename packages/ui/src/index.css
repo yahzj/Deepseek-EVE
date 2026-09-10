@@ -20,8 +20,11 @@
 }
 
 /* ---------- 面板 ---------- */
+/* 2026-09-10 船长：面板半透明（alpha 0.88）——界面最底层是宇宙星图（见 renderer 的 .app-root），
+   0.88 让星云/星点透出微光而不影响读字（船长选定"方案A"：面板 0.88 + 蒙层 0.55）；
+   战斗画面不使用 .wui-panel（其自带不透明底），故战斗背景不受影响。 */
 .wui-panel {
-  background: linear-gradient(180deg, var(--wui-bg-panel), #080e16);
+  background: linear-gradient(180deg, rgba(10, 17, 27, 0.88), rgba(8, 14, 22, 0.88));
   border: 1px solid var(--wui-border);
   border-radius: 4px;
   display: flex;

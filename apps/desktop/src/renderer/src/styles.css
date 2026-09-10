@@ -58,10 +58,11 @@ body {
 
 /* 宇宙背景（2026-09-10 船长：32 张 512×512 无缝贴图，启动随机一张，整层平铺 + 深色压暗）——
    只作**界面最底层**：战斗画面与序章自带不透明底，底图不会透进去；舰船图形与战场星野一律不动。
-   底图 URL 由 main.tsx 启动时写入 --space-bg（见 ui/spaceBg.ts，无图时 var 兜底 none = 原深色底）。 */
+   底图 URL 由 main.tsx 启动时写入 --space-bg（见 ui/spaceBg.ts，无图时 var 兜底 none = 原深色底）。
+   蒙层 55%（船长选定「方案A」：与面板 alpha 0.88 配套，见 packages/ui/src/index.css）。 */
 .app-root {
   background-color: #060b13;
-  background-image: linear-gradient(rgba(6, 11, 19, 0.72), rgba(6, 11, 19, 0.72)), var(--space-bg, none);
+  background-image: linear-gradient(rgba(6, 11, 19, 0.55), rgba(6, 11, 19, 0.55)), var(--space-bg, none);
   background-repeat: no-repeat, repeat;
   background-position: center center, center center;
   background-size: cover, 512px 512px;
