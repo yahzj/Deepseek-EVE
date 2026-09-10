@@ -539,9 +539,9 @@ function sectionF(): void {
   }
   const tiers: Array<{ label: string; mid: string[] }> = [
     { label: '无推进器（陀螺）', mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'] },
-    { label: 'MK1（+40% 点火）', mid: ['mod-prop-1', 'mod-shield-kin-2', 'mod-track-2'] },
-    { label: 'MK2（+80% 点火）', mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'] },
-    { label: 'MK3（+130% 点火）', mid: ['mod-prop-3', 'mod-shield-kin-2', 'mod-track-2'] },
+    { label: 'MK1（+30% 点火）', mid: ['mod-prop-1', 'mod-shield-kin-2', 'mod-track-2'] },
+    { label: 'MK2（+60% 点火）', mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'] },
+    { label: 'MK3（+100% 点火）', mid: ['mod-prop-3', 'mod-shield-kin-2', 'mod-track-2'] },
   ]
   const targets: Array<{ id: string; label: string }> = [
     { id: 'ano-starcore-boss', label: '星髓虫群 72（近战 2.65km）' },

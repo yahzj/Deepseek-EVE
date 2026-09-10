@@ -14,7 +14,11 @@
  * - 耗时 = 蓝图 buildSeconds × (1 − 5%/级×工业理论) × (1 − 4%/级×批量生产学)
  *   （与 calcBuildDurationMs 同式；无技能 ×1、满技能 ×0.6）；AI 线 = ÷核心效率 ×
  *   (1 − 5%/级×工业自动化，满级 ×0.75)（AI 仅效率差，产出一件同样耗时；返航/出航无关）；
- * - 劳动者价值/h = 单件净收益 ÷ 单件耗时 × 3600（一条线同时一件；供料与市场消化另议）。
+ * - 劳动者价值/h = 单件净收益 ÷ 单件耗时 × 3600（一条线同时一件；供料与市场消化另议）；
+ * - **料/价 = 材料成本 ÷ 成品现货价**（2026-09-10 船长定"组装机生产的物品贩卖"平衡口径）：
+ *   仓库既有同族锚 = **45%**（MK1 全线 / 民用 / 弹药 / 修理组件实测 44.8~51%），
+ *   低于 40% 打 ⚠（= 成品价动过、配方没跟上——本次已按锚补齐 46 张非武器件；
+ *   武器族 33~42% 属其族内一致带，不动）。
  *
  * 用法：npm run manufacture:econ
  */
@@ -83,10 +87,14 @@ function rows(
   const net5Base = p.base - mat5
   const net5Acq = p.acq - mat5
   const grossPct = mat0 > 0 ? Math.round((net0Base / mat0) * 100) : 0
+  // 料/价（2026-09-10 补锚口径）：仓库既有同族锚 = 45%（MK1/民用/弹药/修理组件实测 44.8~51%），
+  // 低于 40% 视为"价动了、配方没跟上"（本次已按锚补齐 46 张非武器件；武器族 33~42% 属族内一致带，不动）
+  const matRatioPct = p.base > 0 ? Math.round((mat0 / p.base) * 1000) / 10 : 0
+  const ratioFlag = matRatioPct < 40 ? '⚠' : ''
   const h = (net: number, sec: number): number => Math.round((net / Math.max(1, sec)) * 3600)
   const aiSec = (sec: number, eff: number): number => Math.round((sec / eff) * AUTO5)
   console.log(
-    `${bpId.padEnd(10)} ${name.padEnd(14)} 毛利${grossPct}% 材料${mat0}/${mat5} ` +
+    `${bpId.padEnd(10)} ${name.padEnd(14)} 毛利${grossPct}% 料/价${matRatioPct}%${ratioFlag} 材料${mat0}/${mat5} ` +
       `现货${p.base}→收${p.acq}(${p.acqRatio}) 耗时${sec0}s/${sec5}s ` +
       `净/h(现货):无技${h(net0Base, sec0)} 满技${h(net5Base, sec5)} AI基础${h(net5Base, aiSec(sec5, EFF.basic))}` +
       ` AI阿尔法${h(net5Base, aiSec(sec5, EFF.alpha))} ` +

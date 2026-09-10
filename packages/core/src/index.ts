@@ -440,6 +440,8 @@ export type { TransitView, StandbyView } from './location'
 export {
   siteProgress,
   isSiteBuilt,
+  stationSiteAtGalaxy,
+  isGalaxyStationBuilt,
   tierNeedOf,
   tierRemaining,
   tierBillOf,
@@ -620,6 +622,7 @@ export {
   securityZoneOf,
   factionGalaxyId,
   isFactionBounty,
+  factionPoolOf,
   BOUNTY_BOARD_PERIOD_MS,
   bountyDayStartWallMs,
   bountyBoardRemainingMs,

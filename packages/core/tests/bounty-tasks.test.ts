@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState, SideTask } from '../src/state'
-import type { SimContext } from '../src/types'
+import type { SimContext, StationSiteDef } from '../src/types'
 import {
   BOUNTY_BOARD_PERIOD_MS,
   BOUNTY_TASKS_PER_ROUND,
@@ -69,6 +69,8 @@ import {
   sideTaskBoard,
   startExpedition,
   startRecycleRun,
+  factionPoolOf,
+  isGalaxyStationBuilt,
 } from '../src/index'
 import { resolveBattleOutcome } from '../src/expedition'
 import { advanceRefining } from '../src/industry'
@@ -174,7 +176,7 @@ const LAIR_NF = anomaly('ano-lair-nf', 'galaxy-nf', {
 
 const ALL_LAIR_CARDS = [LAIR_HUB, LAIR_MID2, LAIR_MID3, LAIR_LOW1, LAIR_LOW2, LAIR_LOW3, LAIR_LOW4, LAIR_HIGH, LAIR_B, LAIR_NF]
 
-function makeWorld(seed = 31): { state: GameState; ctx: SimContext } {
+function makeWorld(seed = 31, stations: StationSiteDef[] = []): { state: GameState; ctx: SimContext } {
   const state = createInitialState({ nowWallMs: 0, seed })
   // 航路：母港 ↔ 各测试星系（galaxy-far 已有默认航线，跳过以免重复）
   const edges = GALAXIES.filter((g) => g.id !== 'galaxy-hub' && g.id !== 'galaxy-far').map((g) => ({
@@ -182,7 +184,7 @@ function makeWorld(seed = 31): { state: GameState; ctx: SimContext } {
     to: g.id,
     travelMinutes: 2,
   }))
-  const ctx = makeTestCtx({ quietEvents: true, galaxies: GALAXIES, edges, anomalies: ALL_LAIR_CARDS })
+  const ctx = makeTestCtx({ quietEvents: true, galaxies: GALAXIES, edges, anomalies: ALL_LAIR_CARDS, stations })
   return { state, ctx }
 }
 
@@ -821,6 +823,40 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     // 逐日重选：跨到次日重开板 → 派系条目换成新的一条（id 递增）
     openBountyBoard(state, ctx, T0 + BOUNTY_BOARD_PERIOD_MS)
     expect(state.sideTasks.faction!.id).toBeGreaterThan(f.id)
+  })
+
+  it('已建成副站的星系不进派系活跃池（2026-09-10 船长定：口径 = 已建成才排除，在建不算）', () => {
+    const site: StationSiteDef = {
+      id: 'site-lair-low3',
+      name: '测试前哨站',
+      galaxyId: LAIR_LOW3.galaxyId,
+      standingReq: 0,
+      tiers: [
+        { name: '奠基', bill: [{ itemId: 'min-tritanium', count: 100 }], unlockDesc: '施工推进' },
+        { name: '建成', bill: [{ itemId: 'min-tritanium', count: 150 }], unlockDesc: '建成并入空间站清单' },
+      ],
+      introDialogueId: 'dlg-site-test',
+      doneDialogueId: null,
+      description: '测试站点',
+    }
+    const { state, ctx } = makeWorld(11, [site])
+    exploreAll(state)
+    const before = factionPoolOf(state, ctx)
+    // 前提：该星系本来就在候选池里（有窝点卡、非高安）；在建（stage 0 = 未建成）仍可当选
+    expect(before.some((a) => a.galaxyId === site.galaxyId)).toBe(true)
+    expect(isGalaxyStationBuilt(state, ctx, site.galaxyId)).toBe(false)
+    // 建成 → 出池，且只少这一个星系
+    state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+    expect(isGalaxyStationBuilt(state, ctx, site.galaxyId)).toBe(true)
+    const after = factionPoolOf(state, ctx)
+    expect(after.some((a) => a.galaxyId === site.galaxyId)).toBe(false)
+    expect(after.length).toBe(before.length - 1)
+    // 连续 40 天刷新：抽中的星系永不是已建成星系
+    for (let i = 1; i <= 40; i += 1) {
+      openBountyBoard(state, ctx, T0 + i * BOUNTY_BOARD_PERIOD_MS)
+      const f = state.sideTasks.faction
+      if (f) expect(f.galaxyId).not.toBe(site.galaxyId)
+    }
   })
 
   it('加成只作用于该星系常驻悬赏：威胁 ×1.1、奖金 ×1.1、胜利按概率掉稀有残骸；打赢不下板', () => {

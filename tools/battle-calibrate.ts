@@ -11,17 +11,99 @@
  * - **可选开关 `--charge`**（2026-09-10 船长「这几个需要先跑通战斗再决策」）：**只把本工具的上下文**
  *   里 `foeChargeEnabled` 置 true，用来跑"高威胁近战敌突进若启用了会怎样"的对照矩阵。
  *   **不动引擎默认值**（balance 里仍是 false = 未实装）——纯测量，供决策，不改游戏。
+ * - **可选开关 `--proposal`**（2026-09-10 船长「决定对速度进行重新调整」）：按提案的**敌速重标口径**
+ *   替换全 26 卡敌速（`PROPOSED_FOE_SPEED`），并可叠加 `--dps=<值>`（foeDpsPerThreat）与
+ *   `--hpmul=<倍率>`（逐卡总血同乘）做灵敏度扫描。**同样只改本工具上下文**：引擎默认值与
+ *   `data/anomalies.ts` 一律不动 —— 纯预演，供船长审核后再落码。
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, createPlayerSpec, foeHpOfThreat, foeRefSpeedMps, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const BASE_CTX = buildSimContext()
 /** 敌突进对照开关（只影响本工具；引擎默认仍是"未实装"） */
 const CHARGE_ON = process.argv.includes('--charge')
-const ctx: SimContext = CHARGE_ON
-  ? { ...BASE_CTX, balance: { ...BASE_CTX.balance, battle: { ...BASE_CTX.balance.battle, foeChargeEnabled: true } } }
-  : BASE_CTX
+/** 敌速重标提案预演开关（只影响本工具；引擎与 data 一律不动） */
+const PROPOSAL = process.argv.includes('--proposal')
+
+/**
+ * 敌速重标提案（2026-09-10 船长口径：brawl 1.25→1.40×、orbit 0.95→1.05×、kite 维持现状）。
+ *
+ * 比率定义 = **敌战斗机动 ÷ 玩家战斗机动**，玩家取"该威胁段参考船（220/250/280/300/320 船速）、
+ * 敏捷 0.5、无矢量机动学、不装推进器"。换算：敌速(存储值) = 比率 × 参考船速 ÷ 0.94
+ * （敌方敏捷固定 0.3 → 战斗机动 = 存储值 ×0.6×0.94；玩家 = 参考船速 ×0.6）。
+ * s = clamp((威胁−6)/90, 0, 1)：brawl 比率 = 1.25+0.15s，orbit 比率 = 0.95+0.10s。
+ * kite 维持现状（落在船长给的口径带 0.65~0.80 内，且是"玩家可追上钻近盲"的设计支点）。
+ */
+const PROPOSED_FOE_SPEED: Record<string, number> = {
+  // brawl（11 张）：1.25→1.40×
+  'ano-training': 293,
+  'ano-harbor-escort': 294,
+  'ano-pirate-post': 335,
+  'ano-shard-bandits': 339,
+  'enc-pirate-3': 389,
+  'ano-chasm-aberrations': 398,
+  'ano-titan-wreck': 399,
+  'ano-auro-raiders': 400,
+  'enc-pirate-4': 433,
+  'ano-starcore-boss': 434,
+  'ano-gravekeeper': 443,
+  // orbit（10 张）：0.95→1.05×
+  'enc-pirate-1': 223,
+  'ano-abandoned-platform': 256,
+  'ano-lantern-saboteurs': 257,
+  'enc-pirate-2': 257,
+  'ano-cinder-siege': 295,
+  'ano-echo-haunt': 298,
+  'ano-nadir-static': 324,
+  'ano-maw-hunt': 329,
+  'ano-voidedge-warden': 332,
+  'ano-vault-sentinel': 357,
+  // kite（5 张）：维持现状
+  'ano-haze-ambush': 201,
+  'ano-redring-raiders': 204,
+  'ano-abyss-guard': 234,
+  'ano-ghost-signal': 234,
+  'ano-mirage-hijackers': 235,
+}
+
+function argNum(name: string): number | undefined {
+  const hit = process.argv.find((a) => a.startsWith(`--${name}=`))
+  if (!hit) return undefined
+  const v = Number(hit.slice(name.length + 3))
+  return Number.isFinite(v) ? v : undefined
+}
+const PROPOSAL_DPS = argNum('dps')
+const PROPOSAL_HP_MUL = argNum('hpmul')
+/** 只对 brawl（近战）卡生效的总血乘数——用于"速度上调后近战卡血量该压多少"的灵敏度扫描 */
+const PROPOSAL_BRAWL_HP_MUL = argNum('brawlmul')
+
+/** 组装本工具上下文：只有被开关点名的部分会被覆盖，其余与出厂一致 */
+function buildCtx(): SimContext {
+  let c = BASE_CTX
+  if (CHARGE_ON) {
+    c = { ...c, balance: { ...c.balance, battle: { ...c.balance.battle, foeChargeEnabled: true } } }
+  }
+  if (PROPOSAL) {
+    const battle = { ...c.balance.battle, foeSpeedCapMul: 1.55 }
+    if (PROPOSAL_DPS !== undefined) battle.foeDpsPerThreat = PROPOSAL_DPS
+    const anomalies = new Map(c.anomalies)
+    for (const [id, a] of c.anomalies) {
+      const next = { ...a }
+      const spd = PROPOSED_FOE_SPEED[id]
+      if (spd !== undefined) next.foeSpeedMps = spd
+      const mul = (a.tactic ?? 'orbit') === 'brawl' ? PROPOSAL_BRAWL_HP_MUL : PROPOSAL_HP_MUL
+      if (mul !== undefined) {
+        next.foeHpOverride = Math.round((a.foeHpOverride ?? foeHpOfThreat(a.threat, battle)) * mul)
+      }
+      anomalies.set(id, next)
+    }
+    c = { ...c, anomalies, balance: { ...c.balance, battle } }
+  }
+  return c
+}
+
+const ctx: SimContext = buildCtx()
 const SEEDS = [1, 7, 13, 29, 51]
 
 type Loadout = {
@@ -65,11 +147,11 @@ const LOADOUTS: Loadout[] = [
      ①**混伤适配（常驻 8:2 = 主系 80% + 副系 20%）**：原锚行一律「盾抗动能 + 甲抗动能」只堆主系；
        但**动能对甲层本就 ×0.5 克制**（类型克制表：动能 盾 ×1.5 / 甲 ×0.5），在甲层再堆动能抗属低效，
        混伤后副系（能量）绕开主抗 → 适配版 = **盾抗主系、甲抗副系**（覆盖两系）。
-     ②**推进器周期点火适配（点火 60 秒 / 冷却 60 秒、顶档 +130%）**：原装配表**没有任何 MK3 推进器行**
+     ②**推进器周期点火适配（点火 60 秒 / 冷却 60 秒、顶档 +100%）**：原装配表**没有任何 MK3 推进器行**
        （S1 用 MK1、S2 用 MK2）→ 补一行顶档高机动参照，与同船无推进器版对比。 */
   { name: 'S2 双抗(盾动能·甲能量)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] }, // 混伤适配：甲层换副系能量抗（对照 S2 原行 = 甲抗动能）
   { name: 'S4 双抗(盾动能·甲能量)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] }, // 同上，顶配锚行版
-  { name: 'T3锤头鲨+推进器MK3(周期点火)', ship: 'sh-hammerhead', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-prop-3'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 换掉闪避陀螺（点火期 +130% 机动，闪避价值下降）
+  { name: 'T3锤头鲨+推进器MK3(周期点火)', ship: 'sh-hammerhead', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-prop-3'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 换掉闪避陀螺（点火期 +100% 机动，闪避价值下降）
   /* ── 弹药 MK2 变体（2026-09-09：顶配参考行 + 动能弹 MK2——攻坚耗材定位，E 段失衡与否验证） ── */
   { name: 'S4+动能弹MK2(5×kin3+支援)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
   { name: 'T3牛鲨+动能弹MK2(重盾)', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
@@ -153,6 +235,15 @@ async function main(): Promise<void> {
       : '（敌突进按出厂默认 = 未实装；要看启用后的对照加 `--charge`）',
   )
   console.log('威胁梯度：' + threats.map((a) => `${a.name}=${a.threat}`).join(' '))
+  if (PROPOSAL) {
+    console.log(
+      '⚠ 预演模式：**敌速按重标提案替换**（brawl 1.25→1.40× / orbit 0.95→1.05× / kite 维持现状）' +
+        '——仅本工具，引擎默认与 data/anomalies.ts 一律未改',
+    )
+    if (PROPOSAL_DPS !== undefined) console.log(`  ・foeDpsPerThreat → ${PROPOSAL_DPS}（出厂 0.8）`)
+    if (PROPOSAL_HP_MUL !== undefined) console.log(`  ・全卡总血 ×${PROPOSAL_HP_MUL}`)
+    if (PROPOSAL_BRAWL_HP_MUL !== undefined) console.log(`  ・近战(brawl)卡总血 ×${PROPOSAL_BRAWL_HP_MUL}`)
+  }
   // 时长预期行（C4 血量曲线 D(T)，纯对射口径；模拟时长含接近期故应 ≥ D）
   const dExpect = (t: number): number =>
     Math.round((bal.foeHpCurveDMin + bal.foeHpCurveDSpan * Math.pow(Math.min(1, Math.max(0, (t - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat)), bal.foeHpCurveExp)) * 10) / 10
@@ -192,24 +283,56 @@ async function main(): Promise<void> {
   }
 
   /* C4-#3 校验段：敌方虚拟装配推导结果（射程/速度 vs 玩家参考） */
-  console.log('\n—— 敌方虚拟装配校验（射程=封顶后最大值；速度 vs 无推进玩家战斗速度折算 ×0.6）——')
-  const playerSpeeds = SHIPS.map((s) => (s.maxSpeedMps ?? 0) * 0.6)
-  const sorted = [...playerSpeeds].sort((a, b) => a - b)
-  const med = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0
-  console.log(
-    `玩家无推进战斗速度（×0.6 近似）：min ${Math.round(sorted[0] ?? 0)} / 中位 ${Math.round(med)} / max ${Math.round(sorted[sorted.length - 1] ?? 0)} m/s`,
-  )
+  console.log('\n—— 敌方虚拟装配校验（射程=封顶后最大值；速度 = **敌战斗机动 ÷ 同段参考船战斗机动**）——')
+  console.log('（2026-09-10 更正读数：旧「近战贴脸系数」把敌速（船速池单位）除以玩家**战斗**速度，单位混算、虚高约 1.67 倍）')
+  const foeAgilityMul = 0.6 * (1 + (0.3 - 0.5) * 2 * bal.agilitySpeedBonus)
   for (const a of threats) {
-    const foes = createFoeSpecs(a, bal)
+    const eff = ctx.anomalies.get(a.id) ?? a
+    const foes = createFoeSpecs(eff, bal)
     const f0 = foes[0]!
     const fmax = f0.weapons[0]!.maxRangeM
     const capped = fmax >= bal.foeRangeCapM ? ' *封顶' : ''
-    const ref = foeRefSpeedMps(a.threat, bal)
+    const ref = foeRefSpeedMps(eff.threat, bal)
+    const foeCombat = f0.speedMps * foeAgilityMul
+    const refCombat = ref * bal.speedFactor
+    const ratio = foeCombat / Math.max(1, refCombat)
     console.log(
-      `${String(a.threat).padStart(3)} ${a.name.padEnd(12)} ${String(a.tactic ?? 'orbit').padEnd(6)} ` +
-        `敌射程 ${(fmax / 1000).toFixed(1)}km${capped}  敌速 ${f0.speedMps}（参考船 ${ref} → ${Math.round((f0.speedMps / Math.max(1, ref)) * 100)}%）  ` +
-        `近战贴脸系数: ${(f0.speedMps / Math.max(1, med)).toFixed(2)}×玩家中位`,
+      `${String(eff.threat).padStart(3)} ${eff.name.padEnd(12)} ${String(eff.tactic ?? 'orbit').padEnd(6)} ` +
+        `敌射程 ${(fmax / 1000).toFixed(1)}km${capped}  敌速 ${f0.speedMps}（参考船 ${ref}）  ` +
+        `战斗机动 ${Math.round(foeCombat)} vs 参考船 ${Math.round(refCombat)} → **×${ratio.toFixed(2)}**`,
     )
+  }
+  /* 速度口径校验（提案预演用）：把"目标比率"与"玩家实际战斗机动"对上——
+   * 段参考船只是口径基准；玩家在该段实际会开的船 + 该技能档才是真实分母。 */
+  if (PROPOSAL) {
+    const KEY_CARDS = [
+      { id: 'ano-pirate-post', label: '边境12' },
+      { id: 'enc-pirate-3', label: '狂徒40' },
+      { id: 'ano-titan-wreck', label: '泰坦60' },
+      { id: 'ano-starcore-boss', label: '星髓72' },
+      { id: 'ano-gravekeeper', label: '坟场88' },
+    ]
+    const KEY_ROWS = [0, 8, 9, 10, 13, 18]
+    console.log('\n—— 速度口径校验（敌战斗机动 ÷ 玩家实际战斗机动；冷却期口径、不含点火）——')
+    for (const [ti, skillName] of ['无技能', '中位', '满技能'].entries()) {
+      const skills = ti === 0 ? {} : ti === 1 ? MID_SKILLS : FULL_SKILLS
+      for (const ri of KEY_ROWS) {
+        const ld = LOADOUTS[ri]!
+        const st = makeState(ld.ship, ld, skills, 1)
+        const spec = createPlayerSpec(st, ctx as SimContext, ld.ship)
+        const meV = spec.speedMps * bal.speedFactor * (1 + (spec.agility - 0.5) * 2 * bal.agilitySpeedBonus)
+        const cells = KEY_CARDS.map(({ id }) => {
+          const a = ctx.anomalies.get(id)!
+          const f = createFoeSpecs(a, bal)[0]!
+          const foeV = f.speedMps * foeAgilityMul
+          return `${(foeV / Math.max(1, meV)).toFixed(2)}×`
+        })
+        console.log(
+          `${skillName.padEnd(4)} ${ld.name.padEnd(30)} 我 ${String(Math.round(meV)).padStart(3)} m/s  ` +
+            KEY_CARDS.map((c, i) => `${c.label} ${cells[i]}`).join('  '),
+        )
+      }
+    }
   }
   void bal
 }

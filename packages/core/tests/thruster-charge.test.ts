@@ -2,7 +2,7 @@
  * 推进器周期爆发 + 高威胁近战敌突进（2026-09-10 船长定，设计稿 docs/design/thruster-charge-20260910.md）：
  *
  * - **推进器**：不再常驻提速 → 点火 **60 秒** → 冷却 **60 秒**，**开场即点火**；
- *   点火期机动 ×(1+爆发倍率)（MK1 +40%/MK2 +80%/MK3 +130%，多件 EVE 曲线收敛），冷却期回基础值。
+ *   点火期机动 ×(1+爆发倍率)（MK1 +30%/MK2 +60%/MK3 +100%，多件 EVE 曲线收敛），冷却期回基础值。
  *   周期由**战斗时钟推导**（`thrusterPhase`），不占存档字段。
  * - **敌突进**：仅「威胁 ≥ 60 且 战术 = brawl」的敌卡；够不着时机动 **×2**；
  *   进入自己武器射程后再维持 **2 秒** → 突进结束；随后 **20 秒冷却**。
@@ -19,9 +19,9 @@ function world(): { state: GameState; ctx: SimContext } {
   const ctx = makeTestCtx({
     quietEvents: true,
     modules: [
-      moduleDef('mod-prop-1', 'propulsion', 0, { speedBonusPct: 0.4, hitPenalty: 0.05 }),
-      moduleDef('mod-prop-2', 'propulsion', 0, { speedBonusPct: 0.8, hitPenalty: 0.12 }),
-      moduleDef('mod-prop-3', 'propulsion', 0, { speedBonusPct: 1.3, hitPenalty: 0.2 }),
+      moduleDef('mod-prop-1', 'propulsion', 0, { speedBonusPct: 0.3, hitPenalty: 0.05 }),
+      moduleDef('mod-prop-2', 'propulsion', 0, { speedBonusPct: 0.6, hitPenalty: 0.12 }),
+      moduleDef('mod-prop-3', 'propulsion', 0, { speedBonusPct: 1, hitPenalty: 0.2 }),
     ],
   })
   const state = createInitialState({ nowWallMs: 0, seed: 7 })
