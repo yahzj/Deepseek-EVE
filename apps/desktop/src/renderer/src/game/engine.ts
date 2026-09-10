@@ -466,12 +466,13 @@ export class GameEngine {
     return exp.active && exp.phase === 'battle' && !!exp.battle ? 'battle' : 'idle'
   }
 
-  /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销） */
+  /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销）。
+   *  nowWallMs = 现实墙钟：赏金日板按它对齐"每天本地 0 点"整板替换（游戏内时间泵变速不影响）。 */
   private advanceSlice(ms: number): void {
     const rec = perfHub.recording
     const t0 = rec ? performance.now() : 0
     const bucket = this.currentBucket()
-    advanceGame(this.state, ms, this.ctx)
+    advanceGame(this.state, ms, this.ctx, { nowWallMs: Date.now() })
     this.drainSystemNotice()
     if (rec) perfHub.recordAdvance(bucket, performance.now() - t0)
   }
@@ -1102,9 +1103,10 @@ export class GameEngine {
     return result
   }
 
-  /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船） */
+  /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船）。
+   *  2026-09-10 船长：传 ctx——卸下甲板扩展后机舱变小，超出容量的无人机随之自动卸下退回仓库 */
   unfitAtAt(rack: RackSlot, index: number, shipId?: string): boolean {
-    const ok = unfitAt(this.state, rack, index, shipId)
+    const ok = unfitAt(this.state, rack, index, shipId, this.ctx)
     if (ok) {
       void this.persist()
       this.notify()
@@ -1435,9 +1437,9 @@ export class GameEngine {
 
   /* ─────────────── v24 任务中心·时效任务（资源 / 快递，定时刷新限时有效） ─────────────── */
 
-  /** 任务板只读视图：资源/快递任务列表 + 到期倒计时（未开盘/未解锁状态一并返回） */
+  /** 任务板只读视图：资源/快递（20 分钟整点）+ 赏金（每天本地 0 点）两套倒计时一并返回 */
   sideTasksView(): ReturnType<typeof sideTaskBoard> {
-    return sideTaskBoard(this.state, this.ctx)
+    return sideTaskBoard(this.state, this.ctx, Date.now())
   }
 
   /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */

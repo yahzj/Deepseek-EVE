@@ -77,7 +77,13 @@ export function simulateOffline(
   // 记录结算前的日志条数（必须在写"离线归来"之前取，否则把这条也算进去）
   const before = state.logs.length
   addLog(state, 'info', `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`)
-  const advOpts = { freezeBattle: opts?.freezeBattle, settleStats: opts?.stats }
+  // nowWallMs = 离线末刻：赏金日板按**现实墙钟**对齐"每天本地 0 点"——离线跨过 0 点即整板换新
+  // （跨多日只补最后一道界：中间那些天的板早已作废）。
+  const advOpts = {
+    freezeBattle: opts?.freezeBattle,
+    settleStats: opts?.stats,
+    nowWallMs: lastSavedWallMs + deltaMs,
+  }
   // 重复清剿（重复清剿）开着时：在线由心跳驱动自动再出发，离线大推进不会触发——
   // 改分片推进，每片边界按在线同款条件尝试再出发（最后一片结束后不触发，避免开出不完整单）。
   const driveLoop = !opts?.freezeBattle && state.autoLoopAnomalyId !== null

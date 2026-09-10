@@ -1691,12 +1691,22 @@ export function Communicator({
   )
 }
 
-/* ─────────── v24 任务中心·时效任务（资源 / 快递：随 20 分钟补给周期整板刷新，限时有效） ─────────── */
+/* ─────────── v24 任务中心·时效任务（资源 / 快递：随 20 分钟补给周期整板刷新，限时有效；
+   2026-09-10 追加：赏金任务 = 独立日板，24 小时一轮、每天本地 0 点整板替换） ─────────── */
 
 /** mm:ss（向上取整到秒；与市场页下次补给同口径） */
 function fmtSideClock(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000))
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+/** h:mm:ss（日板倒计时：赏金一轮 24 小时，mm:ss 不够看） */
+function fmtDayClock(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
 /** 时效任务区：资源 = 限时收购（协会收商品，仓库足量直接交付）；快递 = 副站真实航行投送
@@ -1873,7 +1883,6 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
 function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const view = engine.sideTasksView()
-  const periodMin = Math.max(1, Math.round(engine.ctx.balance.market.orderLifeMs.common / 60_000))
   const tasks = view.bounty
   const standing = standingOf(state, DSI_FACTION_ID)
   const tierCap = standing >= LAIR_TIER_STANDING[3] ? 3 : standing >= LAIR_TIER_STANDING[2] ? 2 : 1
@@ -1896,20 +1905,23 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
   return (
     <div className="app-sidetasks">
       <div className="app-sidetasks-head">
-        <span>赏金任务 · 限时高难目标（指定敌人窝点：亲自出击，AI 不能代劳）</span>
-        {view.opened || tasks.length > 0 ? (
-          <span className="app-st-time" title={`本批任务只存活一轮（${periodMin} 分钟，与常驻订单寿命一致）：到下一个整点整板替换——过期作废、无惩罚（打过的窝点不受影响，稀有残骸照常留在星系里）`}>
-            距下批刷新 {fmtSideClock(view.remainingMs)} · 每 {periodMin} 分钟一轮
+        <span>赏金任务 · 每日高难目标（指定敌人窝点：亲自出击，AI 不能代劳）</span>
+        {view.bountyOpened || tasks.length > 0 ? (
+          <span
+            className="app-st-time"
+            title="本批任务只存活一天：每天本地 0 点整板替换——过期作废、无惩罚（打过的窝点不受影响，稀有残骸照常留在星系里）"
+          >
+            距下批刷新 {fmtDayClock(view.bountyRemainingMs)} · 每天 0 点换新
           </span>
         ) : (
-          <span className="app-dim">首个补给周期（约 {periodMin} 分钟）后开刷</span>
+          <span className="app-dim">每日 0 点开板</span>
         )}
       </div>
       {tasks.length === 0 ? (
         <div className="app-dim app-exp-idle">
-          {view.opened
-            ? '本批暂无赏金任务——已完成或已过期，下一批随 20 分钟补给周期整板刷新（已击败的窝点不会重复派发同一条目标）。'
-            : '暂无赏金任务——首个补给周期（约 20 分钟）后自动刷出：协会会标出各已探索星系的敌人窝点，接取后亲自出击。'}
+          {view.bountyOpened
+            ? '本日暂无赏金任务——已完成或已过期，明天 0 点整板刷新（已击败的窝点不会重复派发同一条目标）。'
+            : '暂无赏金任务——每天 0 点自动刷出：协会会标出各已探索星系的敌人窝点，接取后亲自出击。'}
         </div>
       ) : (
         tasks.map((t) => {
@@ -1920,8 +1932,9 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const threatTxt = card ? `威胁 ${card.threat}${base && card.threat !== base.threat ? `（主题悬赏 ${base.threat}）` : ''}` : ''
           const waves = card?.waves?.length ?? 0
           const rareGain = LAIR_RARE_WRECK_GAIN[tier]
-          // 窝点奖金 = 主题悬赏奖金 × 档位系数（与结算同口径；不是主题悬赏原值）
-          const lairRewardIsk = base ? lairBaseRewardIsk(base, tier) : 0
+          // 窝点奖金 = 主题悬赏奖金 × 档位系数 × 赏金猎手学系数（2026-09-10 船长：展示口径必须
+          // 与结算口径一致——此前漏乘技能系数，玩家反馈"卡片赏金和到账不一样"）
+          const lairRewardIsk = base ? Math.round(lairBaseRewardIsk(base, tier) * bountyRewardFactor(state)) : 0
           const inFlightSelf = state.expedition.active && state.expedition.anomalyId === t.anomalyId
           const inFlightOther = state.expedition.active && !inFlightSelf
           const expired = view.remainingMs <= 0
@@ -1967,7 +1980,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     </em>
                   ) : null}
                 </span>
-                <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
+                <span className="app-dim">剩余 {fmtDayClock(view.bountyRemainingMs)}</span>
               </div>
               <div className="app-station-mats">
                 目标星系「{galaxyName}」 · {threatTxt}

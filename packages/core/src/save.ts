@@ -674,7 +674,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     const next: RawState = { ...raw }
     const st = asRaw(next.sideTasks)
     if (st === null || typeof st !== 'object') {
-      next.sideTasks = { seq: 1, window: 0, resource: [], courier: [], deliver: null }
+      next.sideTasks = { seq: 1, window: 0, resource: [], courier: [], bounty: [], bountyWindow: 0, deliver: null }
     }
     return next
   },
@@ -1961,12 +1961,16 @@ function normalizeState(raw: unknown): GameState {
   // 分配器兜底：不能低于现存任务最大 id（防未来刷新撞号；正常档 seq ≥ 现存最大 id，天然不动）
   for (const t of [...sideTaskResource, ...sideTaskCourier, ...sideTaskBounty]) sideTaskSeq = Math.max(sideTaskSeq, t.id)
   const sideTaskWindow = Math.max(0, Math.floor(num(stRaw.window)))
+  // 赏金日界（本地 0 点墙钟毫秒；v24 兼容字段：老档缺省 0 = 未开板，首次拿到有效墙钟即开板）
+  const bountyWindowRaw = Math.floor(num(stRaw.bountyWindow))
+  const sideTaskBountyWindow = Number.isFinite(bountyWindowRaw) && bountyWindowRaw > 0 ? bountyWindowRaw : 0
   const sideTasks = {
     seq: sideTaskSeq,
     window: sideTaskWindow,
     resource: sideTaskResource,
     courier: sideTaskCourier,
     bounty: sideTaskBounty,
+    bountyWindow: sideTaskBountyWindow,
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 

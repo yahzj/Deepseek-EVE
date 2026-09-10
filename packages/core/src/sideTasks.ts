@@ -281,7 +281,6 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
   board.window = boundaryMs
   board.resource = []
   board.courier = []
-  board.bounty = []
   const pool = sideTaskCandidateGoods(state, ctx)
   // 候选不足 2 种（无法抽满"2 条不重复"）的整点不刷——真实数据目录 30+ 商品，正常整点照常
   if (pool.length < 2) return
@@ -318,7 +317,6 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
     const def = ctx.marketGoods.get(key)
     if (def) applySpawnMarketImpact(state, def)
   }
-  spawnBountyTasks(state, ctx)
 }
 
 /**
@@ -383,8 +381,15 @@ function advanceCourierDeliveries(state: GameState, ctx: SimContext): void {
  * 只在那一点刷一次（中间周期只推进窗口号、不重复扣量/抬价；船长 2026-09-05 拍板取
  * "仅末窗执行"，防 8 小时 24 轮冲击/扣量过度影响市场）。在途投送按真实时间推进照常结算。
  */
-export function advanceSideTasks(state: GameState, ctx: SimContext): void {
+/**
+ * 引擎推进：时效任务板。
+ * - 资源/快递：市场「补给刷新」20 分钟一轮（`orderLifeMs.common`，按 gameMs 对齐）；
+ * - 赏金：**独立日板**（2026-09-10 船长定）——24 小时一轮、**每天本地 0 点整板替换**，
+ *   按**现实墙钟**对齐（`nowWallMs`），与 20 分钟板互不影响。
+ */
+export function advanceSideTasks(state: GameState, ctx: SimContext, nowWallMs?: number): void {
   advanceCourierDeliveries(state, ctx)
+  advanceBountyBoard(state, ctx, nowWallMs)
   const board = state.sideTasks
   const period = boardPeriodMs(ctx)
   const nowBoundary = state.market.lastTickGameMs
@@ -392,6 +397,44 @@ export function advanceSideTasks(state: GameState, ctx: SimContext): void {
   // 末个已越过的 20 分钟整点（board.window 为 0 = 未开盘，首个整点 = 开盘后第一个 20 分钟点）
   const targetBoundary = board.window + Math.floor((nowBoundary - board.window) / period) * period
   refreshBoard(state, ctx, targetBoundary)
+}
+
+/* ═══════════ 赏金日板（2026-09-10 船长定：24 小时一轮、每天本地 0 点整板替换） ═══════════ */
+
+/** 赏金板周期 = 24 小时（一轮内有效；到下一个本地 0 点整板替换） */
+export const BOUNTY_BOARD_PERIOD_MS = 24 * 3_600_000
+
+/** 本地 0 点（该墙钟时刻所在自然日的起点；用本地时区，与玩家作息对齐） */
+export function bountyDayStartWallMs(nowWallMs: number): number {
+  const d = new Date(nowWallMs)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+/** 距下一个本地 0 点的剩余毫秒（墙钟；0 = 无法判定（无有效墙钟）时按 0 处理） */
+export function bountyBoardRemainingMs(nowWallMs: number): number {
+  if (!Number.isFinite(nowWallMs) || nowWallMs <= 0) return 0
+  const next = bountyDayStartWallMs(nowWallMs) + BOUNTY_BOARD_PERIOD_MS
+  return Math.max(0, next - nowWallMs)
+}
+
+/**
+ * 赏金板按日界刷新：`bountyWindow` = 上一次刷出的日界（本地 0 点墙钟毫秒）。
+ * - 未跨日 → 原样保留（**声望/档位/酬金都在刷出时锁定，轮内不变**）；
+ * - 跨日（含离线一夜/多日）→ 整板清空重刷，日界推进到"当前所在自然日的 0 点"
+ *   （跨多日只补最后一道界：中间那些天的板早已作废）；
+ * - 无有效墙钟（旧档 savedAtWallMs = 0）→ 不开日板（首次拿到真实墙钟时再开）。
+ */
+function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: number): void {
+  const board = state.sideTasks
+  const now = nowWallMs ?? state.savedAtWallMs
+  if (!Number.isFinite(now) || now <= 0) return
+  const dayStart = bountyDayStartWallMs(now)
+  const last = board.bountyWindow ?? 0
+  if (dayStart <= last) return
+  board.bounty = []
+  board.bountyWindow = dayStart
+  spawnBountyTasks(state, ctx)
 }
 
 /** 快递在途投送只读视图（UI 渲染用；remainingMs 随 gameMs 自然缩短） */
@@ -414,7 +457,7 @@ export interface SideTaskBoardView {
   resource: readonly SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才有） */
   courier: readonly SideTask[]
-  /** 赏金任务（当前轮；已探索星系里的高难窝点，每轮 2 张） */
+  /** 赏金任务（当日板；已探索星系里的高难窝点，每天 2 张） */
   bounty: readonly SideTask[]
   /** 快递任务当前是否解锁（已建成任一副空间站） */
   courierUnlocked: boolean
@@ -424,10 +467,16 @@ export interface SideTaskBoardView {
   opened: boolean
   /** 距下一个 20 分钟整点（本轮到点整板替换）的剩余毫秒；未开盘 = 距首个整点 */
   remainingMs: number
+  /** 赏金日板已开板（至少刷出过一次）；false = 还没拿到有效墙钟（旧档首帧） */
+  bountyOpened: boolean
+  /** 距下一个本地 0 点（赏金整板替换）的剩余毫秒（墙钟；未开板 = 0） */
+  bountyRemainingMs: number
 }
 
-/** 只读查询：任务板 + 到期倒计时 + 快递在途投送（UI 展示资源/快递时效任务区用） */
-export function sideTaskBoard(state: GameState, ctx: SimContext): SideTaskBoardView {
+/** 只读查询：任务板 + 到期倒计时 + 快递在途投送（UI 展示资源/快递时效任务区用）。
+ *  倒计时两套：`remainingMs` = 资源/快递的 20 分钟整点；`bountyRemainingMs` = 赏金每日 0 点。
+ *  nowWallMs = 当前墙钟（UI 心跳传入；缺省退 `state.savedAtWallMs`）。 */
+export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: number): SideTaskBoardView {
   const board = state.sideTasks
   const period = boardPeriodMs(ctx)
   const opened = board.window > 0
@@ -440,6 +489,9 @@ export function sideTaskBoard(state: GameState, ctx: SimContext): SideTaskBoardV
     const nextPoint = (Math.floor(state.gameMs / period) + 1) * period
     remainingMs = Math.max(0, nextPoint - state.gameMs)
   }
+  const bountyWindow = board.bountyWindow ?? 0
+  const now = nowWallMs ?? state.savedAtWallMs
+  const bountyOpened = bountyWindow > 0
   const d = board.deliver
   return {
     resource: board.resource,
@@ -460,6 +512,8 @@ export function sideTaskBoard(state: GameState, ctx: SimContext): SideTaskBoardV
       : null,
     opened,
     remainingMs,
+    bountyOpened,
+    bountyRemainingMs: bountyOpened ? bountyBoardRemainingMs(now) : 0,
   }
 }
 

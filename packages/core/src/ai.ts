@@ -954,7 +954,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   const durTxt = formatBattleDur(battle.lastTickGameMs - battle.startedAtGameMs)
 
   if (won) {
-    // ── 胜利：奖励全额，战利品直接入物品仓库 ──
+    // ── 胜利：奖励全额（**无浮动**，与主控同口径：2026-09-10 船长取消奖金浮动），战利品直接入物品仓库 ──
     const jitter = ctx.balance.rewardJitter
     const reward = Math.max(
       0,

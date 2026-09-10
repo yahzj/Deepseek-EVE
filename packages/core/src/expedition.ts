@@ -445,7 +445,9 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   if (won) {
-    // ── 胜利：奖金 ±浮动 + 情报彩蛋 + 战利品 + 声望 ──
+    // ── 胜利：奖金（**无浮动 = 卡片展示值**，2026-09-10 船长）+ 情报彩蛋 + 战利品 + 声望 ──
+    // rewardJitter 现为 0 → roll 恒为 1，展示口径（卡片 `rewardIsk × bountyRewardFactor`）即到账口径；
+    // 保留本式以便将来需要时一行调回（唯一随机奖励 = 情报彩蛋 +10%，会在日志里说明）
     const jitter = ctx.balance.rewardJitter
     const roll = 1 - jitter + 2 * jitter * nextRandom(state.rng)
     let reward = Math.max(0, Math.round(baseRewardIsk * roll * bountyRewardFactor(state)))

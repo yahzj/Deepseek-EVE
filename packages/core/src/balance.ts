@@ -73,7 +73,9 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   intactHullRatePerMin: 0.0008,
   intactMk2Chance: 0.04, // 命中后的低安 MK2 层（sec<0；默认 MK2 池均价 ≈251k → 大奖层频率压低）
   travelEventChance: 0.3, // 远征出发 30% 概率遇到途中事件
-  rewardJitter: 0.15, // 远征奖金浮动 ±15%
+  // 远征奖金浮动（2026-09-10 船长拍板**取消**：玩家反馈"卡片赏金与实际到账不一样"——
+  // 现口径 = 卡片展示值即到账值；唯一随机性保留给"情报彩蛋" +10%，且该条会在日志里说明）
+  rewardJitter: 0,
   // B1 低安遭遇（2026-09-04 定稿：占用随机事件时机——事件线到点判定；到达缓冲 5 分钟；
   // 到点遇袭率 sec=0 → 5%、sec=−1 → 20%；实测后回调）
   encounter: {
