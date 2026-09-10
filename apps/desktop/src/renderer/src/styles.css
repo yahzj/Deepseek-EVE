@@ -252,7 +252,9 @@ body {
 
   border-bottom: 1px solid var(--wui-border);
 
-  background: linear-gradient(180deg, #0a1320, #060b12);
+  /* 2026-09-10 船长：顶栏也半透明（原来是不透明纯色，在整体变亮的界面里显得"过于黑"）——
+     与面板同档 alpha 0.88，宇宙底图在顶栏下透出同等的微光，全站观感一致 */
+  background: linear-gradient(180deg, rgba(10, 19, 32, 0.88), rgba(6, 11, 18, 0.88));
 
 }
 
