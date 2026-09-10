@@ -17,6 +17,7 @@ import {
   RECYCLE_MK2_MODULES,
   FRAGMENT_RECIPES,
   fragmentPoolOf,
+  createInitialState,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
@@ -25,6 +26,8 @@ import {
 } from '@whale/core'
 
 const ctx = buildSimContext()
+/** 空档玩家（未学任何蓝图、无碎片）——碎片池是"按玩家状态"算的（集齐前不重复），故取一张干净档 */
+const freshState = createInitialState({ nowWallMs: 0, seed: 1 })
 /** 炉时（m³/h，劳动者 100%、无技能） */
 const FURNACE_M3_H = Math.round(RECYCLE_BATCH_M3 * (3_600_000 / RECYCLE_CYCLE_MS))
 /** 采矿参照（平衡检查中段口径——其策略均先练采矿技术 5；线性可调） */
@@ -133,18 +136,26 @@ function main(): void {
     )
   }
   console.log(`· B3.1 特色池 ${rows} 张，超差 ${bad} 张（≥21 为满配）`)
-  // 彩头 EV（每 m³ 概率 × 均价；MK2 仅低安池子、碎片按各自片值；概率不受技能影响）
+  // 彩头 EV（每 m³ 概率 × 均价；MK2 仅低安池子；**碎片不计入 EV**——
+  // 2026-09-10 船长定：碎片不可出售、无市场卡，是"进度"不是产出，单列到下面的碎片进度行）
   const baseEv = FURNACE_M3_H * RECYCLE_CHANCE.base * baseAvg
   const mk2Ev = FURNACE_M3_H * RECYCLE_CHANCE.mk2 * mk2Avg
-  let fragEv = 0
-  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
-    const r = FRAGMENT_RECIPES[moduleId]!
-    const bpPrice = ctx.marketGoods.get(r.blueprintId)?.basePrice ?? 0
-    const p = r.tier === 3 ? RECYCLE_CHANCE.fragT3 : RECYCLE_CHANCE.fragT2
-    fragEv += FURNACE_M3_H * p * (bpPrice / r.need)
+  const bonusEv = baseEv + mk2Ev
+  console.log(`彩头 EV/h（只算可兑现件）：基础件 ${Math.round(baseEv).toLocaleString('zh-CN')} + MK2(低安) ${Math.round(mk2Ev).toLocaleString('zh-CN')} ≈ ${Math.round(bonusEv).toLocaleString('zh-CN')} ISK（≤ 保底 10% = ${Math.round(target * 0.1).toLocaleString('zh-CN')}；满技能保底下占比 ≈ ${((bonusEv / (target * FULL_SKILL_MULT)) * 100).toFixed(1)}%）`)
+  // 碎片进度（只给"大概还差多少残骸"，2026-09-10 船长定：不要过度详细）
+  // 口径：集齐前不重复 → 凑齐该档三张书恰好 3 × need 片；m³ = 片数 ÷ 档概率；炉时 = m³ ÷ 炉速
+  {
+    const t2Need = FRAGMENT_RECIPES['mod-miner-2']!.need
+    const t3Need = FRAGMENT_RECIPES['mod-miner-3']!.need
+    const t2M3 = (t2Need * 3) / RECYCLE_CHANCE.fragT2
+    const t3M3 = (t3Need * 3) / RECYCLE_CHANCE.fragT3
+    const fmt = (m: number): string => Math.round(m).toLocaleString('zh-CN')
+    console.log(
+      `碎片进度（不计 ISK；集齐前不重复 → 三张书合计 ${t2Need * 3} / ${t3Need * 3} 片）：` +
+        `凑齐 MK2 三张 ≈ 需 ${fmt(t2M3)} m³ 残骸（炉时 ${(t2M3 / FURNACE_M3_H).toFixed(0)}h 无技能 / ${(t2M3 / FURNACE_M3_H_FULL).toFixed(0)}h 满技能）· ` +
+        `MK3 三张 ≈ ${fmt(t3M3)} m³（${(t3M3 / FURNACE_M3_H).toFixed(0)}h / ${(t3M3 / FURNACE_M3_H_FULL).toFixed(0)}h）`,
+    )
   }
-  const bonusEv = baseEv + mk2Ev + fragEv
-  console.log(`彩头 EV/h：基础件 ${Math.round(baseEv).toLocaleString('zh-CN')} + MK2(低安) ${Math.round(mk2Ev).toLocaleString('zh-CN')} + 碎片 ${Math.round(fragEv).toLocaleString('zh-CN')} ≈ ${Math.round(bonusEv).toLocaleString('zh-CN')} ISK（≤ 保底 10% = ${Math.round(target * 0.1).toLocaleString('zh-CN')}；满技能保底下占比 ≈ ${((bonusEv / (target * FULL_SKILL_MULT)) * 100).toFixed(1)}%）`)
   console.log('AI 核心档折算（炉周期 ÷ 效率，再乘技能项）：' + [0.4, 0.5, 0.6, 0.75].map((e) => `${Math.round(e * 100)}% → 无技能 ${Math.round(target * e).toLocaleString('zh-CN')} / 满技能 ${Math.round(target * e * FULL_SKILL_MULT).toLocaleString('zh-CN')} ISK/h`).join('；'))
   console.log('v20 多炉并行复核（2026-09-05 二号，一号变更记录点名）：')
   console.log('  · 炉位规则：主控 1 台（100%）+ 每台 AI 炉 1 枚核心（效率 40/50/60/75%）——同时启用总数受「AI 核心上限」技能约束（2026-09-08 船长定：AI 副船任务与站内设施共用上限，Lv0 无法启用；上限 = AI 核心操作学等级，后续技能可再叠加）；')
@@ -168,8 +179,8 @@ function main(): void {
    *   市场路线看**赚够书价要多少小时**（按各档保底 EV/h）。回收炉是瓶颈（供料侧通常富余，见上）。
    */
   console.log('══ 蓝图两条获取路线对比（打捞凑碎片 vs 市场买书，2026-09-10 船长）══')
-  const t2Pool = fragmentPoolOf(ctx, 2)
-  const t3Pool = fragmentPoolOf(ctx, 3)
+  const t2Pool = fragmentPoolOf(freshState, ctx, 2)
+  const t3Pool = fragmentPoolOf(freshState, ctx, 3)
   const tierEvNo = (tier: keyof typeof POOLS): number => FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
   const tierEvFull = (tier: keyof typeof POOLS): number => tierEvNo(tier) * FULL_SKILL_MULT
   console.log(
