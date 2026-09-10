@@ -8,20 +8,22 @@
  *    究竟换来多少火力"：炮台 vs 战术导控/甲板扩展/中继天线/目标锁定。用于回答"高槽本身
  *    值多少 DPS"，排除 CPU 挤压的干扰。
  * ② **真实装配的流派对比**——CPU/舱容都按现网真实钳制（无人机 = 装置 CPU + 每架 CPU 双份），
- *    同船内比纯炮流 / 无人机流 / 混装：名义 DPS、命中修正 DPS、每高槽 DPS、真实放飞机群。
+ *    同船内比纯炮流 / 无人机流 / 混装：名义 DPS、有效 DPS@2km、每高槽 DPS、真实放飞机群。
  * ③ **实战**——代表卡 5 种子真实引擎：胜率 / 中位交火秒 / 我方残血%。
  * ④ **情景推演**——把候选调整（导控加成、无人机 CPU、机群清单）临时注入 `ctx` 后重跑，
- *    给出"调到多少能拉平"的菜单；推演结束恢复原值，不改任何源码。
+ *    测各旋钮的边际；推演结束恢复原值，不改任何源码。
  *
  * 名义 DPS = Σ 单发 ÷ 装填（gun 取 shotsByType 首键，beam/fixed 取 shotDmg）；
- * 命中修正 DPS = 名义 × 武器命中率（beam 必中 = 1；无人机 0.6；炮台 hitRate×eqHitMul）。
- * 名义口径不含距离衰减/接近期/目标抗性——真实差异看表 ③④。
+ * 有效 DPS@2km = 名义 × 引擎 hitChance（参考距离 2 km、敌回避 12%，含 100% 上限/距离衰减/
+ * 索敌与失稳乘子；射程不足 2 km 的武器按 0 计）——比"自报命中率"更接近实战。
+ * 名义口径不含接近期/目标抗性——真实差异看表 ③④。
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type ModuleDef } from '@whale/core'
 import { buildSimContext } from '@whale/data'
 import {
   advanceBattleFor,
   createPlayerSpec,
+  hitChance,
   startBattleFor,
   waveGapTotalMs,
   type UnitSpec,
@@ -30,6 +32,9 @@ import {
 
 const ctx = buildSimContext()
 const SEEDS = [1, 7, 13, 29, 51]
+/** 有效 DPS 的统一参考口径：参考距离 2 km（代表卡常见缠斗距离）、敌方回避 12% */
+const REF_DIST = 2000
+const REF_EVASION = 0.12
 const DRONE_IDS = ['drone-scout', 'drone-assault', 'drone-heavy', 'drone-sentry'] as const
 
 const FULL_SKILLS: Record<string, number> = {
@@ -87,13 +92,17 @@ function makeState(cfg: Cfg, seed = 1): GameState {
 
 interface Dps {
   nominal: number
+  /** 各武器自报命中率口径（不含距离/回避；雷鸥 1.10 会被 100% 上限截断，仅作连续性参考） */
   hitAdj: number
+  /** 有效 DPS@2km：走引擎 hitChance（含 100% 上限、距离衰减、守方回避 12%、索敌/失稳乘子） */
+  eff2k: number
   bySrc: Record<string, number>
   drones: Record<string, number>
 }
 function dpsOf(spec: UnitSpec): Dps {
   let nominal = 0
   let hitAdj = 0
+  let eff2k = 0
   const bySrc: Record<string, number> = {}
   const drones: Record<string, number> = {}
   for (const w of spec.weapons as WeaponSpec[]) {
@@ -101,12 +110,15 @@ function dpsOf(spec: UnitSpec): Dps {
     const dps = (per / Math.max(1, w.reloadMs)) * 1000
     const hit = w.kind === 'beam' ? 1 : (w.hitRate ?? 0.5) * (w.eqHitMul ?? 1)
     const src = w.src ?? 'base'
+    const inRef = REF_DIST >= w.minRangeM && REF_DIST <= w.maxRangeM
+    const eff = w.kind === 'beam' ? 1 : inRef ? hitChance(w, spec, { evasion: REF_EVASION }, REF_DIST, ctx.balance.battle) : 0
     nominal += dps
     hitAdj += dps * hit
+    eff2k += dps * eff
     bySrc[src] = (bySrc[src] ?? 0) + dps
     if (w.src === 'drone' && w.artId) drones[w.artId] = (drones[w.artId] ?? 0) + 1
   }
-  return { nominal, hitAdj, bySrc, drones }
+  return { nominal, hitAdj, eff2k, bySrc, drones }
 }
 
 function specOf(cfg: Cfg, seed = 1): UnitSpec | null {
@@ -215,7 +227,7 @@ const SENT = 'sh-sentinel'
 /** 装载清单给足以免舱容被清单卡住：甲板扩展的边际 = 舱容换架数 */
 const BIG_FLEET = { 'drone-heavy': 40 }
 console.log('══ 表 1a：一件高槽换多少火力（王鲭级；免 CPU 约束口径——无人机每架 CPU 压到 1，仅留舱容）══')
-console.log('配置\t高槽件CPU\t机群CPU\t名义DPS\t命中修正DPS\tΔ名义/槽\tΔ有效/槽\t放飞机群\t名义分组(炮/弹/光/机/基础)')
+console.log('配置\t高槽件CPU\t机群CPU\t名义DPS\t有效DPS@2km\tΔ名义/槽\tΔ有效@2km/槽\t放飞机群\t名义分组(炮/弹/光/机/基础)')
 withDroneCpuCheap(() => {
   const rows: Array<{ label: string; cfg: Cfg; gearCpu: number }> = [
     { label: '1×攻坚炮台MK3（无无人机）', cfg: { name: '', ship: SENT, high: ['mod-turret-kin-3'] }, gearCpu: 52 },
@@ -238,10 +250,10 @@ withDroneCpuCheap(() => {
     let dEff = ''
     if (prev && slots > prev.slots) {
       dNom = n((d.nominal - prev.d.nominal) / (slots - prev.slots))
-      dEff = n((d.hitAdj - prev.d.hitAdj) / (slots - prev.slots))
+      dEff = n((d.eff2k - prev.d.eff2k) / (slots - prev.slots))
     }
     console.log(
-      `${r.label}\t${r.gearCpu}\t${fleetCpu}\t${n(d.nominal)}\t${n(d.hitAdj)}\t${dNom || '—'}\t${dEff || '—'}\t` +
+      `${r.label}\t${r.gearCpu}\t${fleetCpu}\t${n(d.nominal)}\t${n(d.eff2k)}\t${dNom || '—'}\t${dEff || '—'}\t` +
         `${fleetText(d.drones)}（${droneTotal(d)}架/${m3Used(d)}m³）\t${groupText(d)}`,
     )
     prev = { d, slots }
@@ -275,7 +287,7 @@ for (const [title, cfgs] of [
   ['══ 表 2b：王鲭级（6 高槽 / 机巢 320m³ / CPU 320）真实装配对比 ══', SENT_CFGS],
 ] as const) {
   console.log(`\n${title}`)
-  console.log('配置\t高槽占用\t名义DPS\t命中修正DPS\tDPS/高槽\t有效DPS/高槽\t放飞机群\t名义分组(炮/弹/光/机/基础)')
+  console.log('配置\t高槽占用\t名义DPS\t有效DPS@2km\t名义/高槽\t有效@2km/高槽\t放飞机群\t名义分组(炮/弹/光/机/基础)')
   for (const cfg of cfgs) {
     const d = dpsOfCfg(cfg)
     if (!d) {
@@ -284,7 +296,7 @@ for (const [title, cfgs] of [
     }
     const slots = cfg.high.filter(Boolean).length
     console.log(
-      `${cfg.name}\t${slots}\t${n(d.nominal)}\t${n(d.hitAdj)}\t${n(d.nominal / Math.max(1, slots))}\t${n(d.hitAdj / Math.max(1, slots))}\t` +
+      `${cfg.name}\t${slots}\t${n(d.nominal)}\t${n(d.eff2k)}\t${n(d.nominal / Math.max(1, slots))}\t${n(d.eff2k / Math.max(1, slots))}\t` +
         `${fleetText(d.drones)}（${droneTotal(d)}架/${m3Used(d)}m³）\t${groupText(d)}`,
     )
   }
@@ -320,7 +332,7 @@ for (const cfg of BATTLE_CFGS) {
 }
 
 /* ══════════ 表 4：情景推演（候选调整注入后重跑；不改源码）══════════ */
-console.log('\n══ 表 4：情景推演（无人机流拉平方案；王鲭级；导控/CPU 临时注入，跑完恢复）══')
+console.log('\n══ 表 4：情景推演（导控 / 无人机 CPU 旋钮敏感度；王鲭级；临时注入后重跑，跑完恢复）══')
 const SCENARIOS: Array<{ name: string; tac3Bonus?: number; droneCpuMul?: number; fleet: Record<string, number> }> = [
   { name: 'S0 现状（导控40%，无人机CPU现价，D3）', fleet: D3_FLEET },
   { name: 'S1 导控MK3 40→60%，D3', tac3Bonus: 0.6, fleet: D3_FLEET },
@@ -328,10 +340,10 @@ const SCENARIOS: Array<{ name: string; tac3Bonus?: number; droneCpuMul?: number;
   { name: 'S3 导控60% + 无人机CPU×0.65，满舱16猎鹰', tac3Bonus: 0.6, droneCpuMul: 0.65, fleet: FALCON16 },
   { name: 'S4 导控60% + 无人机CPU×0.5，满舱16猎鹰', tac3Bonus: 0.6, droneCpuMul: 0.5, fleet: FALCON16 },
 ]
-console.log('情景\t名义DPS\t命中修正DPS\t放飞机群\t坟场88 胜/秒/残血\t穹顶96 胜/秒/残血')
+console.log('情景\t名义DPS\t有效DPS@2km\t放飞机群\t坟场88 胜/秒/残血\t穹顶96 胜/秒/残血')
 const gunBase = dpsOfCfg(SENT_CFGS[0]!)
 console.log(
-  `  （炮流对照：${SENT_CFGS[0]!.name} 名义 ${n(gunBase?.nominal ?? 0)}｜有效 ${n(gunBase?.hitAdj ?? 0)}｜实战场次见下）`,
+  `  （炮流对照：${SENT_CFGS[0]!.name} 名义 ${n(gunBase?.nominal ?? 0)}｜有效@2km ${n(gunBase?.eff2k ?? 0)}｜实战场次见下）`,
 )
 for (const sc of SCENARIOS) {
   withPatch({ tac3Bonus: sc.tac3Bonus, droneCpuMul: sc.droneCpuMul }, () => {
@@ -351,7 +363,7 @@ for (const sc of SCENARIOS) {
       return
     }
     console.log(
-      `${sc.name}\t${n(d.nominal)}\t${n(d.hitAdj)}\t${fleetText(d.drones)}（${droneTotal(d)}架/${m3Used(d)}m³）\t` +
+      `${sc.name}\t${n(d.nominal)}\t${n(d.eff2k)}\t${fleetText(d.drones)}（${droneTotal(d)}架/${m3Used(d)}m³）\t` +
         `${g.winRate}%/${g.medSec}s/${Math.round(g.remain * 100)}%\t${v.winRate}%/${v.medSec}s/${Math.round(v.remain * 100)}%`,
     )
   })
@@ -378,14 +390,14 @@ console.log(
       `名义 DPS：炮流 ${n(gun.nominal)} vs 无人机流(D3) ${n(dr.nominal)} → ${Math.round((dr.nominal / gun.nominal) * 100)}%｜满舱机群 ${n(drFull?.nominal ?? 0)} → ${Math.round(((drFull?.nominal ?? 0) / gun.nominal) * 100)}%`,
     )
     console.log(
-      `有效 DPS（命中修正）：炮流 ${n(gun.hitAdj)} vs 无人机流(D3) ${n(dr.hitAdj)} → ${Math.round((dr.hitAdj / gun.hitAdj) * 100)}%｜满舱机群 ${n(drFull?.hitAdj ?? 0)} → ${Math.round(((drFull?.hitAdj ?? 0) / gun.hitAdj) * 100)}%`,
+      `有效 DPS@2km：炮流 ${n(gun.eff2k)} vs 无人机流(D3) ${n(dr.eff2k)} → ${Math.round((dr.eff2k / gun.eff2k) * 100)}%｜满舱机群 ${n(drFull?.eff2k ?? 0)} → ${Math.round(((drFull?.eff2k ?? 0) / gun.eff2k) * 100)}%`,
     )
     console.log(
-      `每高槽有效：炮流 ${n(gun.hitAdj / 6)} vs 无人机流(D3) ${n(dr.hitAdj / 4)}（${Math.round((dr.hitAdj / 4 / (gun.hitAdj / 6) - 1) * 100)}%）`,
+      `每高槽有效@2km：炮流 ${n(gun.eff2k / 6)} vs 无人机流(D3) ${n(dr.eff2k / 4)}（${Math.round((dr.eff2k / 4 / (gun.eff2k / 6) - 1) * 100)}%）｜满舱机群 ${n((drFull?.eff2k ?? 0) / 4)}`,
     )
     if (gunNoSup) {
       console.log(
-        `支援件贡献（炮流）：名义 ${n(gunNoSup.nominal)}→${n(gun.nominal)}；有效 ${n(gunNoSup.hitAdj)}→${n(gun.hitAdj)}（${Math.round((gun.hitAdj / gunNoSup.hitAdj - 1) * 100)}%）——无人机流拿不到这部分`,
+        `支援件贡献（炮流）：名义 ${n(gunNoSup.nominal)}→${n(gun.nominal)}；有效@2km ${n(gunNoSup.eff2k)}→${n(gun.eff2k)}（${Math.round((gun.eff2k / gunNoSup.eff2k - 1) * 100)}%）——无人机流拿不到这部分`,
       )
     }
   }

@@ -491,6 +491,15 @@ export function itemCombatLines(item: ItemDef): InfoLine[] {
     if (item.maxRangeM !== undefined) {
       lines.push({ k: '射程上限', v: `${fmt(item.maxRangeM)} m（中继天线百分比乘入）` })
     }
+    // 2026-09-10 船长：命中/衰减下放到机型本体——侦察/战斗/攻坚三型命中不随距离衰减，
+    // 哨戒保留正常衰减（射程端点倍率）。与导弹架"追踪命中"同款表述口径。
+    if (item.hitRate !== undefined) {
+      const ff = item.falloff ?? 0.35
+      lines.push({
+        k: '放飞命中',
+        v: ff >= 1 ? `${pct(item.hitRate)}（不随距离衰减）` : `${pct(item.hitRate)}（射程端点 ×${ff.toFixed(2)}）`,
+      })
+    }
   }
   if (item.kind === 'drone' && item.defense) {
     const d = item.defense
