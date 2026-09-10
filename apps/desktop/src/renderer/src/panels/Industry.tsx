@@ -455,34 +455,38 @@ function BlueprintCard({
             >
               手动制造
             </button>
-            {usableCores.length > 0 ? (
-              <div className="app-belt-ai">
-                <select
-                  className="app-select"
-                  value={core ?? ''}
-                  onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-                  title="选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用并计入 AI 核心启用上限——上限由 AI 核心上限技能决定，与 AI 副船任务共用）"
-                >
-                  {usableCores.map((t) => (
+            {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10） */}
+            <div className="app-belt-ai">
+              <select
+                className="app-select"
+                value={usableCores.length === 0 ? '' : (core ?? '')}
+                onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
+                disabled={usableCores.length === 0}
+                title={
+                  usableCores.length === 0
+                    ? '无可用 AI 核心：核心库为空或全部已在占用中——去市场购入「基础 AI 核心」（空间站直购），或先取消占用中的任务、训练「AI 核心操作学」/「工业自动化」扩容'
+                    : '选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用并计入 AI 核心启用上限——上限由 AI 核心上限技能决定，与 AI 副船任务共用）'
+                }
+              >
+                {usableCores.length === 0 ? (
+                  <option value="">无可用 AI 核心</option>
+                ) : (
+                  usableCores.map((t) => (
                     <option key={t} value={t}>
                       {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
                     </option>
-                  ))}
-                </select>
-                <button
-                  className="app-btn is-small"
-                  disabled={!core || short.length > 0}
-                  title={aiTitle}
-                  onClick={() => core && runWith(core)}
-                >
-                  AI 制造
-                </button>
-              </div>
-            ) : (
-              <button className="app-btn is-small" disabled title="没有 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。">
+                  ))
+                )}
+              </select>
+              <button
+                className="app-btn is-small"
+                disabled={!core || short.length > 0}
+                title={core ? aiTitle : '无可用 AI 核心：先去市场购入「基础 AI 核心」，或等占用中的核心归还'}
+                onClick={() => core && runWith(core)}
+              >
                 AI 制造
               </button>
-            )}
+            </div>
           </>
         ) : lock ? (
           <button className="app-btn is-small" disabled title={lock}>
