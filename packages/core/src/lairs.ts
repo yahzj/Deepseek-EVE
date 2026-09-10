@@ -116,7 +116,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   B: [], // 【已停用】原「拾荒者拆解臂」随 B 族窝点取消撤下
   C: ['mod-lair-armor-c', 'mod-lair-dc-c', 'mod-lair-laser-c'], // 生体甲壳板 / 生体损管腔 / 酸液喷吐器（船长逐件过审）
   D: ['mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d'], // 陵墓护盾阵列 / 守墓者长炮 / 陵寝装甲层（最强敌族，对标异星档）
-  E: ['mod-lair-turret-e'], // 巨构残骸炮（另两件待逐件过审）
+  E: ['mod-lair-turret-e'], // 巨构残骸炮（2026-09-10 船长修订：十秒一发的重锤、名义 DPS = 攻坚炮台 MK3 的 109.5%；另两件待逐件过审）
   F: [],
   G: ['mod-lair-drone-rack-g'], // 流亡蜂群巢（另两件待逐件过审）
 }
