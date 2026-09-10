@@ -65,11 +65,11 @@ const LOADOUTS: Loadout[] = [
      ①**混伤适配（常驻 8:2 = 主系 80% + 副系 20%）**：原锚行一律「盾抗动能 + 甲抗动能」只堆主系；
        但**动能对甲层本就 ×0.5 克制**（类型克制表：动能 盾 ×1.5 / 甲 ×0.5），在甲层再堆动能抗属低效，
        混伤后副系（能量）绕开主抗 → 适配版 = **盾抗主系、甲抗副系**（覆盖两系）。
-     ②**推进器周期点火适配（点火 60 秒 / 冷却 60 秒、顶档 +130%）**：原装配表**没有任何 MK3 推进器行**
+     ②**推进器周期点火适配（点火 60 秒 / 冷却 60 秒、顶档 +100%）**：原装配表**没有任何 MK3 推进器行**
        （S1 用 MK1、S2 用 MK2）→ 补一行顶档高机动参照，与同船无推进器版对比。 */
   { name: 'S2 双抗(盾动能·甲能量)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] }, // 混伤适配：甲层换副系能量抗（对照 S2 原行 = 甲抗动能）
   { name: 'S4 双抗(盾动能·甲能量)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] }, // 同上，顶配锚行版
-  { name: 'T3锤头鲨+推进器MK3(周期点火)', ship: 'sh-hammerhead', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-prop-3'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 换掉闪避陀螺（点火期 +130% 机动，闪避价值下降）
+  { name: 'T3锤头鲨+推进器MK3(周期点火)', ship: 'sh-hammerhead', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-prop-3'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }, // 换掉闪避陀螺（点火期 +100% 机动，闪避价值下降）
   /* ── 弹药 MK2 变体（2026-09-09：顶配参考行 + 动能弹 MK2——攻坚耗材定位，E 段失衡与否验证） ── */
   { name: 'S4+动能弹MK2(5×kin3+支援)', ship: 'sh-whiteshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
   { name: 'T3牛鲨+动能弹MK2(重盾)', ship: 'sh-bullshark', high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], mid: ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2'], ammoTier: { kinetic: 'ammo-kinetic-2' } },
