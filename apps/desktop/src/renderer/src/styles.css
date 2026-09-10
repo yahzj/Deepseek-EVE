@@ -6594,46 +6594,15 @@ body {
 
 .app-bts-puff.is-miss { animation: app-bts-puffmiss .42s ease-out forwards; }
 
-/* ── 无人机机群（2026-09-10 船长批：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻下方只显 1 架；
-      机体为 SVG 线稿——纪律见 conventions 第九章；弹点/命中/闪光均小型化，颜色仍按弹型） ── */
+/* ── 无人机机群（2026-09-10 船长批；机体为 SVG 线稿——纪律见 conventions 第九章；颜色仍按弹型） ── */
 
 .app-bts-drones { position: absolute; z-index: 5; pointer-events: none; }
 
 .app-bts-wing { position: absolute; left: 0; top: 0; }
 
-.app-bts-wing.is-out:not(.is-sortie) { animation: app-bts-wing-out .34s ease-out; }
-
-.app-bts-wing.is-back:not(.is-sortie) { animation: app-bts-wing-back .42s ease-in forwards; }
-
-.app-bts-wing.is-resident { animation: none; }
-
 .app-bts-drone { position: absolute; display: block; transform: translate(-50%, -50%); opacity: .95; filter: drop-shadow(0 0 3px currentColor); }
 
 .app-bts-drone svg { display: block; }
-
-.app-bts-wing.is-out .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
-
-.app-bts-wing.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
-
-/* 出击制（2026-09-10 船长："放出无人机靠近敌人攻击后返回"）：机体自母舰飞至敌侧攻击阵位（--dx/--dy），
-   无开火 1.2s 后原路返航；哨戒常驻型不参与出击（is-resident 保持伴飞）。机群制那套 keyframes 保留。 */
-
-.app-bts-wing.is-sortie.is-out .app-bts-drone { animation: app-bts-drone-sortie-out .56s ease-out forwards, app-bts-drone-hover 2.6s ease-in-out infinite; }
-
-.app-bts-wing.is-sortie.is-back .app-bts-drone { animation: app-bts-drone-sortie-back .62s ease-in forwards; }
-
-.app-bts-wing.is-sortie.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
-
-@keyframes app-bts-drone-sortie-out {
-  0% { transform: translate(-50%, -50%); opacity: 0; }
-  14% { opacity: 1; }
-  100% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)); opacity: 1; }
-}
-
-@keyframes app-bts-drone-sortie-back {
-  0% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)); opacity: 1; }
-  100% { transform: translate(-50%, -50%); opacity: 0; }
-}
 
 .app-bts-drone-dot { fill: currentColor; stroke: none; opacity: .9; }
 
@@ -6641,11 +6610,43 @@ body {
 
 .app-bts-drone-more { position: absolute; left: 60px; top: -74px; font-size: 10px; font-family: var(--wui-mono); color: #9fe8ff; opacity: .85; }
 
-.app-bts-wing.is-resident .app-bts-drone-more { top: 46px; left: 18px; }
+/* 哨戒常驻伴飞（2026-09-10 船长二次定：位置改到母舰**上方**）——两制式共用 */
+.app-bts-wing.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
+
+.app-bts-wing.is-resident .app-bts-drone-more { top: -34px; left: 26px; }
+
+/* ══════ 旧方案·机群制（保留区；仅 DRONE_STYLE='formation' 时挂 .is-formation，与出击制完全隔离，
+        不再用 :not() 交叉匹配——2026-09-10 船长：旧方案要单独隔开，避免干扰出击制） ══════ */
+
+.app-bts-wing.is-formation.is-out { animation: app-bts-wing-out .34s ease-out; }
+
+.app-bts-wing.is-formation.is-back { animation: app-bts-wing-back .42s ease-in forwards; }
+
+.app-bts-wing.is-formation.is-out .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
 
 @keyframes app-bts-wing-out { 0% { opacity: 0; transform: translateY(26px) scale(.7); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 
 @keyframes app-bts-wing-back { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(24px) scale(.75); } }
+
+/* ══════ 出击制（默认；2026-09-10 船长："放出无人机靠近敌人攻击后返回" + "开火后转向返回"）：
+        自机库口放出 → 飞抵敌侧攻击阵位（--dx/--dy，相对**起飞点**计算）→ 无开火 1.2s → 掉头返航 ══════ */
+
+.app-bts-wing.is-sortie.is-out .app-bts-drone { animation: app-bts-drone-sortie-out .56s ease-out forwards, app-bts-drone-hover 2.6s ease-in-out infinite; }
+
+.app-bts-wing.is-sortie.is-back .app-bts-drone { animation: app-bts-drone-sortie-back .62s ease-in forwards; }
+
+/* 返航：先在阵位掉头（scaleX 翻转 → 机头朝母舰），再飞回机库口收起 */
+@keyframes app-bts-drone-sortie-out {
+  0% { transform: translate(-50%, -50%); opacity: 0; }
+  14% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)); opacity: 1; }
+}
+
+@keyframes app-bts-drone-sortie-back {
+  0% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) scaleX(1); opacity: 1; }
+  22% { transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) scaleX(-1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(0, 0) scaleX(-1); opacity: 0; }
+}
 
 @keyframes app-bts-drone-hover { 0%, 100% { margin-top: 0; } 50% { margin-top: -3px; } }
 
