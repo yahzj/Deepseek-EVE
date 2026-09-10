@@ -114,7 +114,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   // A 族（海盗）：2026-09-10 船长逐件过审（三件齐）——泼弹近战炮 / 贴脸导弹巢 / 搬赃舱
   A: ['mod-lair-turret-a', 'mod-lair-missile-a', 'mod-lair-cargo-a'],
   B: [], // 【已停用】原「拾荒者拆解臂」随 B 族窝点取消撤下
-  C: ['mod-lair-armor-c'], // 生体甲壳板（另两件待逐件过审）
+  C: ['mod-lair-armor-c', 'mod-lair-dc-c', 'mod-lair-laser-c'], // 生体甲壳板 / 生体损管腔 / 酸液喷吐器（船长逐件过审）
   D: ['mod-lair-shield-d'], // 陵墓护盾阵列（另两件待逐件过审）
   E: ['mod-lair-turret-e'], // 巨构残骸炮（另两件待逐件过审）
   F: [],

@@ -476,8 +476,11 @@ export interface DronePoolEntry {
 export interface BattleRepairUnit {
   /** 装置模块 id（战报/UI 引用） */
   moduleId: string
-  /** 本台每脉冲消耗的修理组件 id（民用级 = repairkit-civ；MK1/MK2 = repairkit-mil） */
+  /** 本台每脉冲消耗的修理组件 id（民用级 = repairkit-civ；MK1/MK2 = repairkit-mil）；
+   * **无消耗件（repairFree）不看本字段** */
   kitId: string
+  /** 无消耗自愈（2026-09-10 船长：异形生体件）——脉冲不扣组件、永不停机 */
+  free?: boolean
   /** 每脉冲修复装甲 HP（0 = 本台不修该层；满则额度转投另一层） */
   armorPerPulse: number
   /** 每脉冲修复结构 HP */

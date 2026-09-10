@@ -598,8 +598,7 @@ export interface BattleBalance {
    * 预计结构损耗额外按 winPenaltyHullPerFull；实际结算与 AI/模拟预估一律不变） */
   winPenaltyArmorPerFull: number
   /** 结构损耗预警扣分系数（结构伤比装甲伤扣得更重 = 船长的"更大幅度下调"） */
-  winPenaltyHullPerFull: number
-  /* ═══ 敌舰近防炮（2026-09-10 船长拍板「无人机可被击落」，永久损失制）═══ */
+  winPenaltyHullPerFull: number  /* ═══ 敌舰近防炮（2026-09-10 船长拍板「无人机可被击落」，永久损失制）═══ */
   /** 点防起始威胁：威胁 < 此值的敌舰不装近防炮（2026-09-10 船长：60） */
   pdThreatFloor: number
   /** 判定周期（毫秒）：每艘点防舰每 0.5 秒判定一次伤害 */
@@ -746,8 +745,21 @@ export interface ModuleDef {
   repairHullHp?: number
   /** 脉冲间隔毫秒（缺省 = REPAIR_PULSE_DEFAULT_MS 5000 = 5 秒一跳） */
   repairIntervalMs?: number
-  /** 每脉冲消耗的修理组件 id（民用级 = 民用修理组件；MK1/MK2 = 军用修理组件） */
+  /** 每脉冲消耗的修理组件 id（民用级 = 民用修理组件；MK1/MK2 = 军用修理组件）。
+   * **无消耗件（生体自愈）不填本字段，改填 repairFree** */
   repairKit?: string
+  /**
+   * 无消耗自动修复（2026-09-10 船长：异形生体件的自愈能力）——与 repairKit 互斥：
+   * 脉冲修复**不扣任何组件、永不停机**；修复量在多件同型间按 EVE 曲线收敛
+   * （见 combat.preloadRepairFor：权重 100%/87%/57%/28%/11%）。
+   */
+  repairFree?: boolean
+  /**
+   * 结构层（hull）抗性缺口削减（2026-09-10 船长：异形损管件"大幅提高结构抗性"）——
+   * 语义与 shieldResistAdd/armorResistAdd 相同（按系缺口复合，上限 0.9）；
+   * 此前只有船体自带 hullResist，模块无法加，本字段为模块侧入口。
+   */
+  hullResistAdd?: DamageResists
   /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */
   /** 伤害稳定器（按系）：该系炮台单发伤害加成（0.06 = +6%；多件加算 Σ；只作用于炮台，
    * 不叠加到无人机——无人机归战术导控管） */

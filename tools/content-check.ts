@@ -496,7 +496,12 @@ for (const m of MODULES) {
         `支援件 ${m.id} 修复值非法（需 [0, 100] 且至少一层 > 0）`)
       const interval = m.repairIntervalMs ?? 5_000
       check(Number.isInteger(interval) && interval >= 2_000 && interval <= 60_000, `支援件 ${m.id} repairIntervalMs 非法（需 2000~60000 毫秒）`)
-      check(m.repairKit === 'repairkit-civ' || m.repairKit === 'repairkit-mil', `支援件 ${m.id} 必须指明消耗组件（民用/军用修理组件）`)
+      // 2026-09-10 船长：异形生体件 = **无消耗自愈**（repairFree）——与消耗件互斥：
+      // 要么指明民用/军用修理组件，要么标 repairFree（不吃组件、永不停机）
+      check(
+        (m.repairKit === 'repairkit-civ' || m.repairKit === 'repairkit-mil') !== (m.repairFree === true),
+        `支援件 ${m.id} 必须二选一：指明消耗组件（民用/军用修理组件）或标 repairFree（无消耗自愈）`,
+      )
       check(m.rack === 'mid', `支援件 ${m.id}（修复）应为中槽，实际 ${m.rack}`)
       check(m.reloadCutPct === undefined && m.hitBonusPct === undefined && m.evasionGapPct === undefined && stabKeys === 0,
         `支援件 ${m.id} 修复系不得与其它支援效果同带`)

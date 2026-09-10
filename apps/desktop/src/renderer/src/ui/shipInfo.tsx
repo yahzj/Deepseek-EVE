@@ -448,26 +448,42 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.evasionGapPct !== undefined) {
       lines.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}——敌命中 60% 时 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}；全船生效` })
     }
-    // 船体维修装置（2026-09-09 船长定：中槽自动修复装甲/结构；每脉冲消耗一枚对应修理组件）
+    // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
-      const kitName =
-        mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
       const perPulse = [mod.repairArmorHp, mod.repairHullHp]
         .filter((x): x is number => (x ?? 0) > 0)
         .map((x) => fmt(x!))
         .join(' / ')
-      lines.push({ k: '自动维修', v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）` })
-      // 2026-09-10 船长：运转消耗高亮（玩家常忽略"每跳要吃一枚组件"）——组件名用琥珀色标记
+      const isFree = mod.repairFree === true
       lines.push({
-        k: '运转消耗',
-        v: (
-          <>
-            <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
-            <span className="app-dim">（每 {secs} 秒一枚；组件耗尽即自动停机——请确认货舱/仓库备足再出击）</span>
-          </>
-        ),
+        k: isFree ? '生体自愈' : '自动维修',
+        v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）`,
       })
+      if (isFree) {
+        // 无消耗自愈（异形生体件）：不吃组件、永不停机；同型多件按 EVE 曲线递减
+        lines.push({
+          k: '运转消耗',
+          v: (
+            <>
+              <em className="app-chip is-ok">无消耗</em>
+              <span className="app-dim">（不吃修理组件、永不停机——生体组织自己长回来；同型多件修复量按 EVE 曲线递减）</span>
+            </>
+          ),
+        })
+      } else {
+        const kitName =
+          mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
+        lines.push({
+          k: '运转消耗',
+          v: (
+            <>
+              <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
+              <span className="app-dim">（每 {secs} 秒一枚；组件耗尽即自动停机——请确认货舱/仓库备足再出击）</span>
+            </>
+          ),
+        })
+      }
     }
   } else if (mod.slot === 'target-lock') {
     // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深
