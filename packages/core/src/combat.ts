@@ -1787,6 +1787,7 @@ export function advanceBattleFor(
       const pl = battle.units['player']
       if (pl && pl.hp.h < me.hp.h * battle.hullEscapeFrac) {
         battle.autoEscaped = true
+        battle.escapeReason = 'hull'
         break
       }
     }
@@ -2109,11 +2110,14 @@ function stepBattle(
     return
   }
   if (b.lastTickGameMs - b.startedAtGameMs >= bal.maxBattleMs) {
-    // 超时保险：剩余血量比（我方全编队 vs 敌方最优存活单位）
-    const meRatio = totalHpRatio(b, 'player', me)
-    let bestFoe = 0
-    for (const f of foes) bestFoe = Math.max(bestFoe, totalHpRatio(b, f.tag, f))
-    b.ended = meRatio >= bestFoe ? 'me' : 'foe'
+    // 超时判负（2026-09-10 船长定）：打满战斗上限**不再按剩余血量比判胜**（旧口径
+    // "meRatio >= bestFoe 即我方胜"= 平局算赢，已作废），一律判负并按**撤退**处理——
+    // 置 autoEscaped 交给结算侧走轻损撤退路径（远征据 escapeReason 区分文案）。
+    // 动机：旧口径下"打不死但打不着我"的风筝流可白拿全额赏金（见 docs/design/
+    // mixed-damage-review-20260910.md §6、docs/design/timeout-defeat-20260910.md）。
+    b.ended = 'foe'
+    b.autoEscaped = true
+    b.escapeReason = 'timeout'
   }
 }
 
@@ -2152,14 +2156,6 @@ function randomAliveFoe(state: import('./state').GameState, b: import('./state')
   if (alive.length === 0) return null
   const i = Math.min(alive.length - 1, Math.floor(nextRandom(state.rng) * alive.length))
   return alive[i]!
-}
-
-function totalHpRatio(b: import('./state').BattleState, tag: string, spec: UnitSpec): number {
-  const u = b.units[tag]
-  if (!u) return 0
-  const init = spec.hp.s + spec.hp.a + spec.hp.h
-  if (init <= 0) return 0
-  return (u.hp.s + u.hp.a + u.hp.h) / init
 }
 
 /* ═══════════ 预估胜率（确定性期望推演；UI/AI 门槛同源，不消耗 rng） ═══════════ */
