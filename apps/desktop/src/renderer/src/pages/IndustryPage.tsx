@@ -58,6 +58,9 @@ function manualBusyNote(state: GameState): string | null {
 function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast']; highlight?: boolean; onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void }): ReactNode {
   const state = engine.state
   const isWreck = def.kind === 'wreck'
+  // 残骸回收画像（威胁/星系危险度/特色池；稀有残骸另有 rare 标记与专属装备池）——卡头徽标与估价共用
+  const wreckProfile = isWreck ? recycleProfileOf(engine.ctx, def.id) : null
+  const isRareBox = wreckProfile?.rare === true
   const rate = refineRate(state, engine.ctx)
   const total = oreAvailable(state, def.id)
   // 2026-09-09 船长定：「去矿带/去打捞」跳转目标——矿石/气体/冰 → 出产该原料的全部主矿带；
@@ -123,7 +126,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（残骸可直接出售应急、也可拆解；回收无耗料可扣，展示估算非结算）
   let econ: ReactNode = null
   if (isWreck) {
-    const profile = recycleProfileOf(engine.ctx, def.id)
+    const profile = wreckProfile
     if (profile) {
       const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
       const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
@@ -183,6 +186,14 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       <div className="app-belt-head">
         <span className="app-belt-name">
           <RowGlyph glyph={def.kind} /> {def.name}
+          {isRareBox ? (
+            <em
+              className="app-chip is-rare"
+              title="高级箱：赏金任务（敌人窝点）战利品——常规保底之外必定额外掉落：先掷该敌群专属装备，未出则给该敌群主题件，并附一批高阶矿物（每件只结算一次，由首批触发）"
+            >
+              高级箱
+            </em>
+          ) : null}
         </span>
         {/* 卡头右侧：标记星标（2026-09-10 船长） + 去矿带/去打捞跳转 */}
         <span className="app-belt-head-right">
@@ -203,7 +214,11 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         </span>
       </div>
       <div className="app-belt-desc">
-        {isWreck ? '每批拆解 = 保底矿物 + 概率彩头（来源与低出率物见下两行）' : def.description}
+        {isWreck
+          ? isRareBox
+            ? '每批拆解 = 保底矿物 + 概率彩头；此外开箱即触发高级箱额外掉落（保底之外必定再给：专属装备/主题件 + 高阶矿物，每件只结算一次）'
+            : '每批拆解 = 保底矿物 + 概率彩头（来源与低出率物见下两行）'
+          : def.description}
       </div>
       {isWreck ? <WreckFlavorRow def={def} engine={engine} /> : null}
       <div className="app-belt-ore">{dataLine}</div>

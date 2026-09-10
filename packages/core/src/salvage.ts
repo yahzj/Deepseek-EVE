@@ -19,9 +19,10 @@
  */
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
-import { nextRandom } from './rng'
+import { nextInt, nextRandom } from './rng'
 import { addModule } from './equipment'
 import { addWare } from './inventory'
+import { lairGearOf } from './lairs'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、进入保底稳态（2026-09-10 船长拍板 5 → 10） */
 export const WRECK_FLOOR = 10
@@ -67,8 +68,79 @@ export function wreckItemIdOf(anomalyId: string): string {
   return `wreck-${anomalyId}`
 }
 
+/* ═══════════ 稀有残骸（2026-09-10 船长定：赏金任务·窝点战利品，开启词典预留的"高级箱"口子） ═══════════ */
+
+/** 稀有残骸单件体积（m³/件；体积即回收开箱的批数来源） */
+export const RARE_WRECK_VOLUME_M3 = 30
+
+/** 稀有残骸物品 id（按敌群注册：窝点战利品继承该敌群的特色池与专属装备） */
+export function rareWreckItemIdOf(anomalyId: string): string {
+  return `wreck-rare-${anomalyId}`
+}
+
+/** 是否稀有残骸 */
+export function isRareWreck(itemId: string): boolean {
+  return itemId.startsWith('wreck-rare-')
+}
+
+/**
+ * 稀有残骸物品定义。**计数即体积**——与普通残骸同一台账口径（unitM3 = 1，数量就是 m³）：
+ * 打捞到 1 件 = 入库 `RARE_WRECK_VOLUME_M3`（30）单位 = 30 m³ 货舱/回收批数，回收卡显示的口径随之对齐。
+ * 唯一变现 = 精炼炉「残骸回收」高级箱（无市场卡）。
+ */
+export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): ItemDef {
+  return {
+    id: rareWreckItemIdOf(anomalyId),
+    name: `稀有残骸（${anomalyName}）`,
+    kind: 'wreck',
+    unitM3: 1,
+    baseSellPriceIsk: 1,
+    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：只能在精炼炉「残骸回收」开箱——除常规保底外必定产出额外掉落（含该敌群的专属装备）。`,
+  }
+}
+
+/** 击败窝点 → 该星系稀有残骸入库（按敌群记账；高级箱开箱时按敌群取特色池） */
+export function injectRareWreck(state: GameState, galaxyId: string, anomalyId: string, count: number): void {
+  if (count <= 0 || galaxyId.length === 0 || anomalyId.length === 0) return
+  const rec = state.galaxyWrecks[galaxyId] ?? { density: 0, rare: 0 }
+  rec.rare = Math.max(0, Math.floor((rec.rare ?? 0) + count))
+  const by = { ...(rec.rareBy ?? {}) }
+  by[anomalyId] = Math.max(0, Math.floor((by[anomalyId] ?? 0) + count))
+  rec.rareBy = by
+  state.galaxyWrecks[galaxyId] = rec
+}
+
+/** 该星系某敌群的稀有残骸存量（界面展示用） */
+export function rareWreckCountOf(state: GameState, galaxyId: string): number {
+  return Math.max(0, Math.floor(state.galaxyWrecks[galaxyId]?.rare ?? 0))
+}
+
+/**
+ * 打捞一轮里"必捞一件稀有残骸"的判定（船长 2026-09-10：稀有残骸打捞必定捞到、数量随难度）：
+ * 该星系有存量 → 扣 1 件并返回其物品 id（按记账顺序取，保证与产出它的敌群同主题）；
+ * 无存量返回 null（本轮回落到常规残骸池）。
+ */
+export function pullRareWreck(state: GameState, galaxyId: string): string | null {
+  const rec = state.galaxyWrecks[galaxyId]
+  if (!rec) return null
+  const by = rec.rareBy ?? {}
+  const keys = Object.keys(by).filter((k) => (by[k] ?? 0) > 0)
+  let anomalyId = keys.length > 0 ? keys[0]! : ''
+  if (anomalyId === '') {
+    // 旧口径兜底（只有 rare 计数、无归族记账）：不产出（避免张冠李戴）
+    return null
+  }
+  by[anomalyId] = (by[anomalyId] ?? 0) - 1
+  if (by[anomalyId]! <= 0) delete by[anomalyId]
+  rec.rareBy = by
+  rec.rare = Math.max(0, (rec.rare ?? 0) - 1)
+  state.galaxyWrecks[galaxyId] = rec
+  return rareWreckItemIdOf(anomalyId)
+}
+
 /** 残骸物品 id → 敌群（悬赏/遭遇）id；非残骸物品返回 null */
 export function anomalyIdOfWreck(itemId: string): string | null {
+  if (isRareWreck(itemId)) return itemId.slice('wreck-rare-'.length)
   return itemId.startsWith('wreck-') ? itemId.slice('wreck-'.length) : null
 }
 
@@ -287,7 +359,72 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
     pool: anomaly.recyclePool,
     note: anomaly.recycleNote,
     loot: anomaly.recycleLoot,
+    // 稀有残骸（2026-09-10）：保底照常，另走"必定额外掉落"的高级箱；专属装备池只挂给高级箱
+    ...(isRareWreck(wreckItemId)
+      ? (() => {
+          const gear = lairGearOf(anomaly)
+          return gear.length > 0 ? { rare: true, lairGear: gear } : { rare: true }
+        })()
+      : {}),
   }
+}
+
+/* ═══════════ 高级箱（稀有残骸额外掉落，2026-09-10 船长定） ═══════════ */
+
+/** 专属装备命中率（按回收档位；可调常量，待船长定数） */
+export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.25, risky: 0.4, dire: 0.55 }
+/** 额外掉落附带的高阶矿物单位数（按档位；可调常量） */
+export const RARE_BOX_MINERAL_UNITS: Record<RecycleTier, number> = { common: 300, risky: 120, dire: 40 }
+
+/**
+ * 稀有残骸开箱的"必定额外掉落"（每件稀有残骸只结算一次，由回收批次的首批触发）：
+ * ① 先掷该敌群专属装备（`lairGear`，按档位命中率）——命中即出 1 件；
+ * ② 未命中 → 出一件该敌群主题追加件（recycleLoot；池空则跳过）；
+ * ③ 无论命中与否，再附一批高阶矿物（数量按档位，从该敌群/档位池加权抽 1 种）。
+ * 返回 undefined = 本次没有额外掉落（无专属池且无主题件且无矿物池的极端情况）。
+ */
+export function rollRareBoxExtra(
+  state: GameState,
+  ctx: SimContext,
+  profile: RecycleProfile,
+): { modules: string[]; minerals: Array<{ mineralId: string; units: number }>; note: string } | undefined {
+  const modules: string[] = []
+  const minerals: Array<{ mineralId: string; units: number }> = []
+  const notes: string[] = []
+  // ① 专属装备
+  const gear = profile.lairGear ?? []
+  if (gear.length > 0 && nextRandom(state.rng) < (RARE_BOX_GEAR_CHANCE[profile.tier] ?? 0)) {
+    const pick = gear[nextInt(state.rng, gear.length)]!
+    modules.push(pick)
+    notes.push(`专属装备「${ctx.modules.get(pick)?.name ?? pick}」`)
+  } else {
+    // ② 主题追加件（未出专属时保底一件主题件；池可空）
+    const theme = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
+    if (theme.length > 0) {
+      const pick = theme[nextInt(state.rng, theme.length)]!
+      modules.push(pick)
+      notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? pick}」`)
+    }
+  }
+  // ③ 高阶矿物一批（从该敌群特色池或档位池加权抽 1 种）
+  const pool = profile.pool ?? RECYCLE_POOLS[profile.tier]
+  const units = RARE_BOX_MINERAL_UNITS[profile.tier] ?? 0
+  if (pool.length > 0 && units > 0) {
+    const total = pool.reduce((s, row) => s + row[1], 0)
+    let roll = nextRandom(state.rng) * total
+    let chosen = pool[0]![0]
+    for (const [id, w] of pool) {
+      roll -= w
+      if (roll <= 0) {
+        chosen = id
+        break
+      }
+    }
+    minerals.push({ mineralId: chosen, units })
+    notes.push(`${ctx.items.get(chosen)?.name ?? chosen} ×${units}`)
+  }
+  if (modules.length === 0 && minerals.length === 0) return undefined
+  return { modules, minerals, note: notes.join('、') }
 }
 
 export interface RecycleProfile {
@@ -303,6 +440,10 @@ export interface RecycleProfile {
   note?: string
   /** 主题追加件（2026-09-08"追加"语义：默认池 + 敌群增幅件；缺省 = 三层默认，无追加） */
   loot?: { modules?: readonly string[]; mk2?: readonly string[] }
+  /** 是否稀有残骸（2026-09-10：赏金任务窝点战利品）——开箱走"高级箱"：保底照常 + **必定**额外掉落 */
+  rare?: boolean
+  /** 该敌群的专属装备池（稀有残骸额外掉落优先在此掷；缺省 = 未配置） */
+  lairGear?: readonly string[]
 }
 
 /**

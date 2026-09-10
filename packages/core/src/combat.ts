@@ -16,6 +16,8 @@
 import type { GameState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeTactic, ModuleDef, SimContext } from './types'
+import { lairAnomalyOf } from './lairs'
+import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
@@ -1105,6 +1107,17 @@ export function pushBattleFx(
 /** 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（数据缺失）。
  * atGameMs = 开战时刻（应传"到港时刻"，让离线大推进能把后续时间全部推完）。
  * desireM = 玩家期望距离偏好（缺省 = 主武器有效射程中点）。 */
+/** 本场战斗的目标卡（2026-09-10）：赏金任务·窝点按 tier 现场派生强化卡（威胁/波次/僚机/名称）；
+ *  普通悬赏、低安遭遇（lairTier 未设）一律返回原卡。战斗构建、推进、展示共用此口，避免口径漂移。 */
+export function battleAnomalyOf(
+  ctx: SimContext,
+  anomalyId: string | null | undefined,
+  lairTier?: LairTier,
+): AnomalyDef | undefined {
+  const base = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
+  if (!base) return undefined
+  return lairTier ? lairAnomalyOf(base, lairTier) : base
+}
 export function startBattleFor(
   state: GameState,
   ctx: SimContext,
@@ -1114,7 +1127,7 @@ export function startBattleFor(
   desireM?: number,
 ): import('./state').BattleState | null {
   if (!anomalyId) return null
-  const anomaly = ctx.anomalies.get(anomalyId)
+  const anomaly = battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier)
   if (!anomaly) return null
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
@@ -1226,7 +1239,7 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
   me: { minM: number; maxM: number; name: string }
   foe: { minM: number; maxM: number }
 } | null {
-  const anomaly = state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier)
   if (!anomaly) return null
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, state.shipId)
@@ -1285,7 +1298,7 @@ export function battleArcsFor(
   /** 机群战损（2026-09-10）：本场已击落架数（机型 id → 架数）；缺省 = 无损失 */
   droneLost?: Record<string, number>
 } | null {
-  const anomaly = state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier)
   const battle = state.expedition.battle
   if (!anomaly || !battle) return null
   const bal = ctx.balance.battle
@@ -1515,9 +1528,10 @@ export function advanceBattleFor(
   shipId: string,
   anomalyId: string | null,
   favorAdv: number | null = null,
+  lairTier?: LairTier,
 ): void {
   if (!battle || battle.ended) return
-  const anomaly = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
+  const anomaly = battleAnomalyOf(ctx, anomalyId, lairTier)
   if (!anomaly) return
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）

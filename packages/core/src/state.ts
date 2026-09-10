@@ -343,6 +343,9 @@ export interface ExpeditionState {
   battle: BattleState | null
   /** 玩家期望距离偏好（米；战斗内拖动/战术选择写入，下次出发自动沿用；未设则用有效射程中点） */
   desirePrefM?: number
+  /** 赏金任务·窝点档位（2026-09-10 兼容字段）：非空 = 本次远征打的是派生窝点
+   *  （威胁/波次/僚机按档位强化，奖金与稀有残骸按窝点口径结算）；旧档与普通悬赏 = 未设 */
+  lairTier?: 1 | 2 | 3
 }
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */
@@ -935,10 +938,13 @@ export interface EncounterState {
 
 /** B3 星系残骸记录（2026-09-05；密度模型见 docs/design/b3-salvage.md）：
  * density = 当前残骸密度（无记录 = 基础密度，由 security 推导不入档）；
- * rare = 稀有残骸计数（预留，暂不实现）。 */
+ * rare = 稀有残骸计数（2026-09-10 启用：赏金任务窝点战利品，打捞必出 → 精炼炉开"高级箱"）。 */
 export interface WreckGalaxyRecord {
   density: number
   rare: number
+  /** 稀有残骸按敌群记账（敌群 id → 存量件数）：窝点战利品继承该敌群的回收特色池与专属装备；
+   *  老档缺省 = 无（只认 rare 总数，不产出稀有件，避免张冠李戴） */
+  rareBy?: Record<string, number>
 }
 
 /** 第十八版存档结构（当前版本）：v18 = v17 + V18 槽位制（fitted 六槽 Record →
@@ -1037,8 +1043,8 @@ export type GameStateV23 = Omit<GameStateV22, 'version'> & {
 export interface SideTask {
   /** 稳定 id（state.sideTasks.seq 分配；UI 作 key、完成时定位） */
   id: number
-  /** 任务族：resource 资源任务 / courier 快递任务 */
-  kind: 'resource' | 'courier'
+  /** 任务族：resource 资源任务 / courier 快递任务 / bounty 赏金任务（打掉指定星系的高难窝点） */
+  kind: 'resource' | 'courier' | 'bounty'
   /** 目标物品的市场商品 key（ctx.marketGoods 键；刷出时锁定的报价来源） */
   goodKey: string
   /** 目标物品 refId（state.warehouse.items 按它计数、出发/完成时扣取） */
@@ -1049,8 +1055,14 @@ export interface SideTask {
   rewardIsk: number
   /** 快递目标副站 id（kind='courier' 刷出时绑定；老档缺省时出发按"最近已建成副站"兜底解析） */
   stationId?: string
-  /** 快递目标副站所在星系 id（kind='courier' 刷出时绑定） */
+  /** 快递目标副站所在星系 id（kind='courier' 刷出时绑定）；赏金任务 = 窝点所在星系 */
   galaxyId?: string
+  /** 赏金任务：目标主题悬赏 id（窝点由它派生；kind='bounty' 时非空） */
+  anomalyId?: string
+  /** 赏金任务：窝点档位（刷出时按当时声望定格；1 外围 / 2 核心 / 3 深层） */
+  lairTier?: 1 | 2 | 3
+  /** 赏金任务：窝点显示名（刷出时定格——含核心词与档位称呼，供界面与日志直显） */
+  lairName?: string
 }
 
 /**
@@ -1096,6 +1108,9 @@ export interface SideTasksState {
   resource: SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才刷，至多 2 条） */
   courier: SideTask[]
+  /** 赏金任务（当前轮；2026-09-10 船长定：每轮 2 张高难窝点，与资源/快递同一块时效板；
+   *  老档缺省 = 空数组，零迁移） */
+  bounty: SideTask[]
   /** 快递投送在途挂账（一次一笔；null = 无）。整板刷新不清除在途投送，到站仍按原任务结算 */
   deliver: CourierDeliveryState | null
 }
@@ -1300,7 +1315,7 @@ export function createInitialState(opts?: {
     galaxyWrecks: {},
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
-    sideTasks: { seq: 1, window: 0, resource: [], courier: [], deliver: null }, // v24：任务中心·时效任务板（首个 20 分钟整点后由引擎开刷；deliver = 快递投送在途挂账，缺省 null）
+    sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], deliver: null }, // v24：任务中心·时效任务板（首个 20 分钟整点后由引擎开刷；deliver = 快递投送在途挂账，缺省 null）
     logs: [],
   }
   if (prologue) {

@@ -5,7 +5,8 @@
  * 以及两张测试蓝图 bp-a（造 mod-a，10 单位矿粉甲，10 分钟）与 bp-b（造 mod-b）。
  */
 import { DEFAULT_BALANCE } from '../src/balance'
-import { FRAGMENT_RECIPES, fragmentItemDefOf, fragmentItemIdOf, wreckItemDefOf, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentItemDefOf, fragmentItemIdOf, rareWreckItemDefOf, rareWreckItemIdOf, wreckItemDefOf, wreckItemIdOf } from '../src/salvage'
+import { isLairCandidate } from '../src/lairs'
 import type {
   AnomalyDef,
   BalanceConfig,
@@ -275,6 +276,15 @@ export function anomaly(
     escorts?: number
     /** 多波表（2026-09-10：残骸基础密度/注入按敌人数——测试需要构造多波卡） */
     waves?: AnomalyDef['waves']
+    /** 赏金任务·窝点（2026-09-10）：核心词非空 = 可作窝点目标 */
+    lairCore?: string
+    /** 敌族（决定窝点三档称呼词） */
+    foeFamily?: AnomalyDef['foeFamily']
+    /** 该敌群专属装备池（稀有残骸高级箱额外掉落优先掷此池） */
+    lairGear?: readonly string[]
+    /** 回收特色池/追加件（高级箱矿物与主题件来源） */
+    recyclePool?: AnomalyDef['recyclePool']
+    recycleLoot?: AnomalyDef['recycleLoot']
   },
 ): AnomalyDef {
   return {
@@ -290,6 +300,11 @@ export function anomaly(
     tactic: opts?.tactic,
     escorts: opts?.escorts,
     ...(opts?.waves !== undefined ? { waves: opts.waves } : {}),
+    ...(opts?.lairCore !== undefined ? { lairCore: opts.lairCore } : {}),
+    ...(opts?.foeFamily !== undefined ? { foeFamily: opts.foeFamily } : {}),
+    ...(opts?.lairGear !== undefined ? { lairGear: opts.lairGear } : {}),
+    ...(opts?.recyclePool !== undefined ? { recyclePool: opts.recyclePool } : {}),
+    ...(opts?.recycleLoot !== undefined ? { recycleLoot: opts.recycleLoot } : {}),
     description: '测试用异常点',
   }
 }
@@ -456,6 +471,13 @@ export function makeTestCtx(opts?: {
     const id = wreckItemIdOf(a.id)
     if (itemsMap.has(id)) continue
     itemsMap.set(id, wreckItemDefOf(a.id, a.name, a.threat))
+  }
+  // 赏金任务·窝点：可作窝点目标的敌群各配一件「稀有残骸」（与 data 层 buildSimContext 同口径）
+  for (const a of anomalies) {
+    if (!isLairCandidate(a)) continue
+    const id = rareWreckItemIdOf(a.id)
+    if (itemsMap.has(id)) continue
+    itemsMap.set(id, rareWreckItemDefOf(a.id, a.name))
   }
   const modulesMap = new Map(modules.map((m) => [m.id, m]))
   // B3：碎片物品按"有逆向配方的装备"生成（模块在上下文里才生成，名称取模块名）

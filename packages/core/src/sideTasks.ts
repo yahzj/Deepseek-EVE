@@ -47,6 +47,9 @@ import { isExplored } from './explore'
 import { countWare, removeWare } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
 import { originGalaxyOf } from './location'
+import { DSI_FACTION_ID, standingOf as factionStandingOf } from './expedition'
+import { isLairCandidate, lairNameOf, lairTaskRewardIsk, lairTierForStanding } from './lairs'
+import type { AnomalyDef } from './types'
 
 /**
  * 资源任务奖励系数（2026-09-06 船长拍板 ×1.04；2026-09-09 船长定上调 → ×1.15）：
@@ -64,6 +67,9 @@ export const COURIER_TASK_MARGIN = 1.5
 /** 任务刷出时对商品在售常驻供应的削减比例（2026-09-09 船长定随收益上调：0.30 → 0.45）：
  * 协会包收该资源 → 市场在售订单减少（20 分钟板存续期间持续可见，常驻订单自然重铺后恢复） */
 export const SPAWN_SUPPLY_CUT = 0.45
+
+/** 每轮赏金任务张数（2026-09-10 船长定：与资源/快递同一块时效板，每轮 2 张高难窝点） */
+export const BOUNTY_TASKS_PER_ROUND = 2
 
 /** 本板刷新周期毫秒 = 市场「补给刷新」节奏（与常驻订单寿命一致，默认 20 分钟） */
 function boardPeriodMs(ctx: SimContext): number {
@@ -275,6 +281,7 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
   board.window = boundaryMs
   board.resource = []
   board.courier = []
+  board.bounty = []
   const pool = sideTaskCandidateGoods(state, ctx)
   // 候选不足 2 种（无法抽满"2 条不重复"）的整点不刷——真实数据目录 30+ 商品，正常整点照常
   if (pool.length < 2) return
@@ -310,6 +317,48 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
   for (const key of affected) {
     const def = ctx.marketGoods.get(key)
     if (def) applySpawnMarketImpact(state, def)
+  }
+  spawnBountyTasks(state, ctx)
+}
+
+/**
+ * 赏金任务刷出（2026-09-10 船长定）：每轮 2 张**高难窝点**（候选不足按实际数），
+ * 候选 = 已探索星系里「主题悬赏可作窝点（有核心词、非隐藏、奖金 > 0）且声望门槛 ≤ 当前声望」的卡；
+ * 同轮不重复星系；档位按**刷出时的声望**定格（0~5 外围 / 6~10 核心 / 11+ 深层），
+ * 酬金与显示名一并锁定（酬金 = 窝点基础奖金 × 档位比例，随强度递增）。
+ * 与资源/快递不同：赏金任务不触碰市场（不产生刷单影响）。
+ */
+function spawnBountyTasks(state: GameState, ctx: SimContext): void {
+  const board = state.sideTasks
+  const standing = factionStandingOf(state, DSI_FACTION_ID)
+  const tier = lairTierForStanding(standing)
+  const pool: AnomalyDef[] = []
+  for (const a of ctx.anomalies.values()) {
+    if (!isLairCandidate(a)) continue
+    if (a.standingReq > standing) continue
+    if (!state.exploredGalaxies.includes(a.galaxyId)) continue
+    pool.push(a)
+  }
+  if (pool.length === 0) return
+  // 同轮不重复星系（每个星系一张主题悬赏 → 抽不同卡）
+  const byGalaxy = new Map<string, AnomalyDef>()
+  for (const a of pool) if (!byGalaxy.has(a.galaxyId)) byGalaxy.set(a.galaxyId, a)
+  const candidates = [...byGalaxy.values()]
+  for (let i = 0; i < BOUNTY_TASKS_PER_ROUND && candidates.length > 0; i += 1) {
+    const pick = candidates.splice(nextInt(state.rng, candidates.length), 1)[0]!
+    board.seq += 1
+    board.bounty.push({
+      id: board.seq,
+      kind: 'bounty',
+      goodKey: '',
+      refId: '',
+      need: 0,
+      rewardIsk: lairTaskRewardIsk(pick, tier),
+      anomalyId: pick.id,
+      galaxyId: pick.galaxyId,
+      lairTier: tier,
+      lairName: lairNameOf(pick, tier),
+    })
   }
 }
 
@@ -363,6 +412,8 @@ export interface SideTaskBoardView {
   resource: readonly SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才有） */
   courier: readonly SideTask[]
+  /** 赏金任务（当前轮；已探索星系里的高难窝点，每轮 2 张） */
+  bounty: readonly SideTask[]
   /** 快递任务当前是否解锁（已建成任一副空间站） */
   courierUnlocked: boolean
   /** 快递投送在途挂账视图（一次一笔；null = 无） */
@@ -391,6 +442,7 @@ export function sideTaskBoard(state: GameState, ctx: SimContext): SideTaskBoardV
   return {
     resource: board.resource,
     courier: board.courier,
+    bounty: board.bounty,
     courierUnlocked: courierTaskUnlocked(state, ctx),
     deliver: d
       ? {
@@ -407,6 +459,36 @@ export function sideTaskBoard(state: GameState, ctx: SimContext): SideTaskBoardV
     opened,
     remainingMs,
   }
+}
+
+/**
+ * 赏金任务完成（2026-09-10 船长定）：由战斗**胜利结算**调用（失败/撤退不会走到这里）。
+ * 命中本板赏金任务（按目标悬赏 id）→ ①追加酬金入账 ②该条下板 ③写日志（含"可前往打捞"引导）。
+ * 未命中 = 无事发生（普通常驻悬赏/别的目标）。
+ *
+ * 稀有残骸的**投放**不在这里：由出击侧（expedition）按本场实际档位统一投放——这样即使任务
+ * 已过期下板，玩家照样打完窝点、照样能捞到稀有残骸；本函数只负责酬金与文案。
+ */
+export function settleBountyTaskVictory(
+  state: GameState,
+  ctx: SimContext,
+  anomalyId: string,
+  rareGain: number,
+): void {
+  const board = state.sideTasks
+  const idx = (board.bounty ?? []).findIndex((t) => t.anomalyId === anomalyId)
+  if (idx < 0) return
+  const task = board.bounty[idx]!
+  board.bounty.splice(idx, 1)
+  state.wallet.isk += task.rewardIsk
+  const galaxyId = task.galaxyId ?? ctx.anomalies.get(anomalyId)?.galaxyId ?? ''
+  const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+  addLog(
+    state,
+    'trade',
+    `赏金任务完成：${task.lairName ?? anomalyId} 已肃清（${galaxyName}），酬金 ${task.rewardIsk.toLocaleString('zh-CN')} ISK 已入账；` +
+      `战场留下稀有残骸 ×${rareGain}——可前往该星系打捞，回站后在精炼炉开「高级箱」。`,
+  )
 }
 
 /** 是否正在快递投送（在途；一次一笔）。其余出航作业的 start* 守卫据此拒绝并发 */

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 精炼炉运转 / 市场出售（V9：卖出并入市场订单簿）/ 舰船购买。
  *
  * 精炼模型（工业细化，2026-09-04 船长定稿：运转周期制；2026-09-05 船长拍板多工位并行）：
@@ -37,6 +37,7 @@ import {
   fragmentItemIdOf,
   recycleProfileOf,
   rollRecycleGuarantee,
+  rollRareBoxExtra,
   rollRecycleLoot,
 } from './salvage'
 import { addAiIncome, addAiRefineBatch, type SettleStats } from './settleStats'
@@ -474,6 +475,29 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         for (const modId of loot.modules) acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
         for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
         r.recAcc = acc
+        // 高级箱（2026-09-10 船长定）：稀有残骸开箱除常规保底外**必定**额外掉落一件——
+        // 每件稀有残骸只结算一次（该台炉处理它的第一批），内容见 salvage.rollRareBoxExtra
+        if (profile.rare === true && r.batchesDone === 0) {
+          const extra = rollRareBoxExtra(state, ctx, profile)
+          if (extra) {
+            for (const modId of extra.modules) {
+              state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1
+              acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
+              for (const g of ctx.marketGoods.values()) {
+                if (g.kind === 'module' && g.refId === modId) {
+                  batchIncome += g.basePrice ?? 0
+                  break
+                }
+              }
+            }
+            for (const row of extra.minerals) {
+              addWare(state, row.mineralId, row.units)
+              acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
+              batchIncome += row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0)
+            }
+            addLog(state, 'trade', `✦ 高级箱：稀有残骸开箱额外掉落——${extra.note}。`)
+          }
+        }
       } else {
         // 精炼批：产物矿物入库，并累计进 r.recAcc.min（停炉/结束日志出明细）
         const rate = refineRate(state, ctx)

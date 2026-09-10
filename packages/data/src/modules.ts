@@ -952,6 +952,80 @@ export const MODULES: readonly ModuleDef[] = [
     lockDmgBonus: 0.2,
     description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器；同类多装收益递减）。',
   },
+
+  /* ═══ 2026-09-10 赏金任务·窝点专属装备（船长认可草案；**数值为占位初值，等船长定数后改这里**） ═══
+     获取渠道：只在精炼炉「残骸回收」开**稀有残骸（高级箱）**时掉落——打赢赏金任务的敌人窝点、
+     把该星系留下的稀有残骸捞回站内开箱，才可能拿到对应敌族的专属件。**无蓝图、不上市场**，
+     也不进任何常规掉落池；按敌族取池（见 core/lairs.ts 的 FOE_LAIR_GEAR）。
+     F 族（制式巡逻）刻意不配专属件：当前只有隐藏遭遇模板、没有窝点成员。 */
+  {
+    id: 'mod-lair-turret-a',
+    name: '劫掠者转管炮',
+    slot: 'turret',
+    rack: 'high',
+    damageType: 'kinetic',
+    ammoPerEngagement: 40,
+    maxRangeM: 3600,
+    minRangeM: 180,
+    hitRate: 0.8,
+    falloff: 0.3,
+    reloadMs: 1500,
+    dmgMult: 0.8,
+    cpuUse: 32,
+    description: '海盗（A 族）窝点专属：缴获改装的多管动能炮——转管泼弹、射速极快，单发威力偏低；贴身缠斗最凶。',
+  },
+  {
+    id: 'mod-lair-salvager-b',
+    name: '拾荒者拆解臂',
+    slot: 'salvager',
+    rack: 'high',
+    salvageCycleMs: 4000,
+    cpuUse: 20,
+    description: '拾荒者（B 族）窝点专属：废船改装的液压拆解臂——单台每 4 秒拆解一具残骸（比量产打捞器更快），打捞作业与舰船页打捞器同槽竞争。',
+  },
+  {
+    id: 'mod-lair-armor-c',
+    name: '生体甲壳板',
+    slot: 'armor',
+    rack: 'low',
+    armorResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 },
+    cpuUse: 34,
+    description: '异形生物（C 族）窝点专属：层叠生体甲壳——动能/高爆/能量三系减伤各 +30%（乘入制，上限 90%）。单系不如专精镀层，但一板吃三系。',
+  },
+  {
+    id: 'mod-lair-shield-d',
+    name: '陵墓护盾阵列',
+    slot: 'shield',
+    rack: 'mid',
+    shieldResistAdd: { kinetic: 0.28, explosive: 0.28, plasma: 0.28 },
+    cpuUse: 34,
+    description: '守墓古舰（D 族）窝点专属：陵寝守备用的全能重盾——三系减伤各 +28%（乘入制，上限 90%）。单系不如专精增强器，胜在不用猜对手弹种。',
+  },
+  {
+    id: 'mod-lair-turret-e',
+    name: '巨构残骸炮',
+    slot: 'turret',
+    rack: 'high',
+    damageType: 'explosive',
+    ammoPerEngagement: 12,
+    maxRangeM: 7200,
+    minRangeM: 900,
+    hitRate: 0.62,
+    falloff: 0.9,
+    reloadMs: 5200,
+    dmgMult: 1.9,
+    cpuUse: 44,
+    description: '泰坦巨构（E 族）窝点专属：拆自巨构核心舱段的超远程重炮——单发威力极高、装填极慢，近距有射击盲区。',
+  },
+  {
+    id: 'mod-lair-drone-rack-g',
+    name: '流亡蜂群巢',
+    slot: 'drone-rack',
+    rack: 'high',
+    droneBayBonusM3: 55,
+    cpuUse: 30,
+    description: '烬火流亡（G 族）窝点专属：流亡者拼装的无人机巢舱——无人机舱 +55 m³，一舰放飞多到离谱的蜂群。',
+  },
 ]
 
 /** 构建"装备 id → 定义"目录 */

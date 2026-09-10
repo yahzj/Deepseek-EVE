@@ -40,8 +40,14 @@ import {
   MODULE_SLOTS,
   MINEABLE_KINDS,
   RACK_SLOTS,
+  RARE_WRECK_VOLUME_M3,
   RECYCLE_POOL_AVG_ISK,
   SHIP_ROLE_LABELS,
+  FOE_LAIR_GEAR,
+  isLairCandidate,
+  lairGearOf,
+  lairNameOf,
+  rareWreckItemIdOf,
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
@@ -618,6 +624,45 @@ for (const m of MODULES) {
       )
     }
   }
+}
+
+/* ── 赏金任务·敌人窝点契约（2026-09-10 加）：可作窝点目标的敌群必须齐备"派生所需的三件套" ──
+ * ①稀有残骸物品（窝点战利品，打捞必得 → 高级箱）已注册进 ctx.items；
+ * ②三档称呼词齐全（敌族词表或卡级覆盖）；
+ * ③该敌族的**专属装备**至少一件，且 id 必须真实存在（F 族刻意留空：无窝点成员）。 */
+{
+  let lairCards = 0
+  const famWithGear = new Set<string>()
+  const lairCtx = buildSimContext()
+  for (const def of ANOMALIES_FLAVORED) {
+    if (!isLairCandidate(def)) continue
+    lairCards += 1
+    const rareId = rareWreckItemIdOf(def.id)
+    const rareDef = lairCtx.items.get(rareId)
+    check(!!rareDef, `窝点契约：${def.name} 缺稀有残骸物品 ${rareId}（data/context.ts 需按 isLairCandidate 注册）`)
+    if (rareDef) {
+      check(rareDef.kind === 'wreck', `窝点契约：稀有残骸 ${rareId} 种类应为 wreck，实际 ${rareDef.kind}`)
+      check(
+        rareDef.unitM3 === 1,
+        `窝点契约：稀有残骸 ${rareId} 必须沿用"计数即体积"台账（unitM3 = 1，1 件 = ${RARE_WRECK_VOLUME_M3} 单位 = ${RARE_WRECK_VOLUME_M3} m³），实际 unitM3=${rareDef.unitM3}`,
+      )
+    }
+    const names = [1, 2, 3].map((t) => lairNameOf(def, t as 1 | 2 | 3))
+    for (const n of names) check(n.trim().length > 0 && !n.endsWith('·'), `窝点契约：${def.name} 档位称呼为空（name=${n}）`)
+    check(new Set(names).size === 3, `窝点契约：${def.name} 三档称呼重复（${names.join(' / ')}）`)
+    const gear = lairGearOf(def)
+    if (def.foeFamily && def.foeFamily !== 'F') famWithGear.add(def.foeFamily)
+    for (const id of gear) {
+      check(moduleIdSet.has(id), `窝点契约：${def.name} 专属装备 ${id} 不存在（modules.ts 未登记）`)
+    }
+  }
+  for (const fam of famWithGear) {
+    check(
+      FOE_LAIR_GEAR[fam].length > 0,
+      `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
+    )
+  }
+  console.log(`· 窝点契约：${lairCards} 张窝点卡（稀有残骸 + 三档称呼 + 专属装备齐备，覆盖 ${famWithGear.size} 个敌族）`)
 }
 
 /* ── 输出 ── */
