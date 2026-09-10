@@ -8393,3 +8393,16 @@ body {
 .app-mf-goal-input { width: 46px; padding: 1px 4px; font-size: 11px; color: inherit; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(127, 227, 255, 0.25); border-radius: 4px; }
 .app-mf-goal-input:focus { outline: none; border-color: rgba(79, 216, 196, 0.8); }
 
+
+/* ---------- 玩家标记（收藏）星标（2026-09-10 船长定：四处界面同一枚星标按钮，未标记=暗色空心、已标记=金色实心） ---------- */
+/* 小方块图标按钮（复刻 .app-btn.is-small 家族尺寸；星标常驻显示，标记与否不改布局） */
+.app-mark-btn { display: inline-flex; align-items: center; justify-content: center; padding: 2px 5px; background: #101b2a; color: rgba(220, 232, 244, 0.42); border: 1px solid var(--wui-border-bright); border-radius: 3px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.app-mark-btn .app-ico { margin-right: 0; }
+.app-mark-btn:hover { background: #17293f; border-color: var(--wui-accent); color: #ffca58; }
+.app-mark-btn.is-on { color: #ffca58; border-color: rgba(232, 180, 90, 0.55); background: rgba(232, 180, 90, 0.1); }
+/* 已标记的星形实心：填色由 CSS 给（Glyph 本体保持线稿语言） */
+.app-mark-btn.is-on .app-ico path { fill: rgba(255, 202, 88, 0.35); }
+.app-mark-btn:focus-visible { outline: none; border-color: var(--wui-accent); }
+
+/* 卡片头右侧按钮/徽标分组（精炼炉卡、组装机蓝图卡；与 .app-ship-top-right 同款布局） */
+.app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }

@@ -17,10 +17,11 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
 import { SCAN_WINDOW_MS } from './explore'
+import { pruneMarks } from './marks'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -1013,6 +1014,17 @@ function normalizeState(raw: unknown): GameState {
     if (value === true && shipKey in fleet) shipLocks[shipKey] = true
   }
 
+  // --- 2026-09-10 玩家标记（收藏；v24 兼容字段，无版本号变化）：四类清单白名单重建 ---
+  // 逐类只收非空字符串；去重与"舰船必须在舰队里"的剪枝由末尾 pruneMarks(normalized) 统一做
+  // （那里 fleet 已建好）。老档缺 marks = 四类全空。
+  const marks: MarksState = { goods: [], recipes: [], blueprints: [], ships: [] }
+  const marksRaw = asRaw(src.marks)
+  for (const kind of ['goods', 'recipes', 'blueprints', 'ships'] as const) {
+    for (const id of Object.values(asRaw(marksRaw[kind]))) {
+      if (typeof id === 'string' && id.length > 0) marks[kind].push(id)
+    }
+  }
+
   // --- 物品仓库（v7） ---
   const warehouseItems: Record<string, number> = {}
   const wareRaw = asRaw(asRaw(src.warehouse).items)
@@ -1952,6 +1964,7 @@ function normalizeState(raw: unknown): GameState {
     aiAssignments: aiAssignments as GameState['aiAssignments'],
     shipReturns: shipReturns as GameState['shipReturns'],
     shipLocks: shipLocks as GameState['shipLocks'],
+    marks,
     mining,
     moduleBay,
     learnedRecipes,
@@ -1993,6 +2006,8 @@ function normalizeState(raw: unknown): GameState {
     sideTasks,
     logs,
   }
+  // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）
+  pruneMarks(normalized)
   return normalized
 }
 

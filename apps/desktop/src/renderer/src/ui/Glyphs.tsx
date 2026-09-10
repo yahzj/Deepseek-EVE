@@ -339,6 +339,12 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6.2 5.2c3.8-2 6.4.6 9.8-.9v7c-3.4 1.5-6-1.1-9.8.9z" />
     </g>
   ),
+  /* 玩家标记（收藏）星标（2026-09-10）：五角星线稿，未标记=空心、已标记=金色实心（填色由 CSS 给） */
+  'ico-star': (
+    <g>
+      <path d="M12 3.6L14.12 9.09L19.99 9.4L15.42 13.11L16.94 18.8L12 15.6L7.06 18.8L8.58 13.11L4.01 9.4L9.88 9.09Z" />
+    </g>
+  ),
   'ico-scan': (
     <g>
       <circle cx="12" cy="12" r="5.6" />
@@ -466,6 +472,7 @@ export const ICO_TONES: Record<string, string> = {
   'ico-clock': '#ffe08a',
   'ico-loop': '#6fe3f0',
   'ico-flag': '#ffca58',
+  'ico-star': '#ffca58',
   'ico-scan': '#b78bff',
   'ico-swap': '#7de3a8',
   'ico-cross': '#ff8373',

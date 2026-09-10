@@ -769,7 +769,8 @@ export type GameStateV15 = Omit<GameStateV14, 'version'> & {
  * - shipReturns：T4 换船善后返航账本；
  * - shipLocks：T5 船只锁定；
  * - T8：awayGalaxy 野外停留 / transit 返航空间站行程 / bountyCooldowns / autoLoopAnomalyId；
- * - T9：stationSites 建站进度 / dockedSite 停靠副站 / dialogueSeen 剧本已读 / pendingDialogue 待播通讯 */
+ * - T9：stationSites 建站进度 / dockedSite 停靠副站 / dialogueSeen 剧本已读 / pendingDialogue 待播通讯
+ * - 2026-09-10：marks 玩家标记（收藏）四类 id 清单（老档缺省 = 全空） */
 export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   version: 16
   /** T4 换驾驶善后：自动返航的旧船：船 id -> 返航记录（到港自动卸货后移除） */
@@ -799,6 +800,30 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 不落档——重启后由新触发的终点重新写入）
    */
   deliveryNotice?: string | null
+  /**
+   * 2026-09-10 玩家标记（收藏）：四类界面各自一份 id 清单，被标记项在**默认排序**下置顶
+   * （2026-09-10 船长定：舰队等有排序下拉的列表只在「默认排序」生效）。
+   * 兼容字段、零迁移、不升版本号：老档缺省 = 四类全空，由 normalizeState 补默认并剪枝。
+   */
+  marks: MarksState
+}
+
+/** 玩家标记（收藏）四类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
+ *  blueprint 组装机蓝图卡 / ship 舰队船卡（按船实例，同型多艘各自独立） */
+export interface MarksState {
+  /** 市场商品 key（ctx.marketGoods 键） */
+  goods: string[]
+  /** 可精炼资源 / 可回收残骸的物品 id（ctx.items 键） */
+  recipes: string[]
+  /** 蓝图 id（装备/弹药蓝图 + 舰船蓝图） */
+  blueprints: string[]
+  /** 舰队船实例 id（state.fleet 键） */
+  ships: string[]
+}
+
+/** 空标记表（每类一份空清单；注意取新对象，勿共享可变数组） */
+export function emptyMarks(): MarksState {
+  return { goods: [], recipes: [], blueprints: [], ships: [] }
 }
 
 /** 长途运输状态（2026-09-09 船长定稿：任意两座已建成站点间真实航程往返循环；当日改：接单不要求停在端点，
@@ -1151,6 +1176,7 @@ export function createInitialState(opts?: {
     aiAssignments: {},
     shipReturns: {},
     shipLocks: {},
+    marks: emptyMarks(),
     market: {
       pools: {},
       npcBuy: {},
