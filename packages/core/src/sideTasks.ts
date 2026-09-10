@@ -42,7 +42,7 @@ import type { CommandResult } from './engine'
 import type { BeltDef, MarketGoodDef, SimContext, StationSiteDef } from './types'
 import { nextInt, nextRandom } from './rng'
 import { marketQuote, levelOf } from './market'
-import { isSiteBuilt } from './station'
+import { isGalaxyStationBuilt, isSiteBuilt } from './station'
 import { isExplored } from './explore'
 import { countWare, removeWare } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
@@ -496,22 +496,36 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
 /* ── 敌对派系活跃（2026-09-10 船长定：每天一个中安/低安星系，只作用于该星系的常驻悬赏） ── */
 
 /**
- * 选当天的派系活跃星系（每天一条、置顶显示）：
- * - 候选 = 已探索的**中安/低安**星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的；
- * - 该星系的**全部可见悬赏**当天吃 +10% 奖金 / +10% 威胁；胜利后按概率掉稀有残骸；
- * - **不因打赢而下板**：当天可反复刷（掉落概率按"日均刷取次数"审数，见 FACTION_RARE_DROP_CHANCE）。
+ * 派系活跃候选池（每星系一席 = 代表卡）：
+ * - 条件 = 有核心词（窝点卡）+ 奖金 > 0 + **已探索** + **非高安**；
+ * - **2026-09-10 船长定：已建成副站的星系排除出抽取范围**（玩家的家不再被派系活跃锁定）。
+ *   口径 = **已建成**（`isGalaxyStationBuilt`）才排除，在建/未开工的工地仍可当选；
+ *   抽取只在日板刷新时发生 ⇒ **次日起生效**（当日已抽中的不动）；
+ *   候选为空（例如候选星系全已建站）= 当日不发派系活跃（`spawnFactionActivity` 里 return）。
  */
-function spawnFactionActivity(state: GameState, ctx: SimContext): void {
-  const board = state.sideTasks
+export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
   const pool: AnomalyDef[] = []
   for (const a of ctx.anomalies.values()) {
     if (!hasLairCore(a)) continue
     if (!(a.rewardIsk > 0)) continue
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
-    const zone = securityZoneOf(ctx, a.galaxyId)
-    if (zone === '高安') continue
+    if (securityZoneOf(ctx, a.galaxyId) === '高安') continue
+    if (isGalaxyStationBuilt(state, ctx, a.galaxyId)) continue
     if (!pool.some((x) => x.galaxyId === a.galaxyId)) pool.push(a)
   }
+  return pool
+}
+
+/**
+ * 选当天的派系活跃星系（每天一条、置顶显示）：
+ * - 候选 = `factionPoolOf`（已探索的**中安/低安**星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的，
+ *   且**排除已建成副站的星系**——2026-09-10 船长定）；
+ * - 该星系的**全部可见悬赏**当天吃 +10% 奖金 / +10% 威胁；胜利后按概率掉稀有残骸；
+ * - **不因打赢而下板**：当天可反复刷（掉落概率按"日均刷取次数"审数，见 FACTION_RARE_DROP_CHANCE）。
+ */
+function spawnFactionActivity(state: GameState, ctx: SimContext): void {
+  const board = state.sideTasks
+  const pool = factionPoolOf(state, ctx)
   board.faction = null
   if (pool.length === 0) return
   const pick = pool[nextInt(state.rng, pool.length)]!

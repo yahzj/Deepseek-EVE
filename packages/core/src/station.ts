@@ -22,6 +22,22 @@ export function isSiteBuilt(state: GameState, site: StationSiteDef): boolean {
   return siteProgress(state, site.id).stage >= site.tiers.length
 }
 
+/** 该星系的建站点（一个星系至多一个；缺省 = 无建站点） */
+export function stationSiteAtGalaxy(ctx: SimContext, galaxyId: string): StationSiteDef | undefined {
+  for (const s of ctx.stations.values()) if (s.galaxyId === galaxyId) return s
+  return undefined
+}
+
+/**
+ * 该星系是否已有**已建成**副站（2026-09-10 船长定：敌对派系活跃的抽取要把这类星系排除——
+ * 玩家的家不再被派系活跃锁定）。口径 = **已建成**（`stage >= tiers.length`）才算；
+ * 在建/未开工的工地不算（仍可被派系活跃选中）。
+ */
+export function isGalaxyStationBuilt(state: GameState, ctx: SimContext, galaxyId: string): boolean {
+  const site = stationSiteAtGalaxy(ctx, galaxyId)
+  return site !== undefined && isSiteBuilt(state, site)
+}
+
 /** 档位材料单（越界 = 空表） */
 export function tierBillOf(site: StationSiteDef, tierIndex: number): ReadonlyArray<{ itemId: string; count: number }> {
   const tier = site.tiers[tierIndex]

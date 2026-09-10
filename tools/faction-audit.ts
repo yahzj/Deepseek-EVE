@@ -6,6 +6,7 @@
  *
  * 口径（与引擎同源）：
  * - 候选 = 中安/低安星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的卡（高安不派发派系活跃）；
+ *   **2026-09-10 船长定：已建成副站的星系排除出抽取范围**（尾部"候选池盘点"小节列出全仓建站点与口径）；
  * - 每趟耗时 = 交火 D(威胁) + 胜利返航（去程并入返航 = 2×单程；本地卡固定 120s） + 重复冷却
  *   （bountyCooldownMsFor，受驾驶船扫描属性影响，默认 ≈10s）；
  * - D(T) = 击杀秒数刻度（balance.battle.foeHpCurve*：5s→90s，指数 1.6，与 foeHpOfThreat 同源）；
@@ -20,7 +21,9 @@ import {
   HOME_GALAXY_ID,
   bountyCooldownMsFor,
   createInitialState,
+  factionPoolOf,
   hasLairCore,
+  markExplored,
   shortestTravelMinutes,
   travelLegMs,
   travelMinutesEff,
@@ -99,3 +102,20 @@ for (const p of [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]) {
       `2h 刷 ≈${((avg4h / 2) * p).toFixed(1)} 件 · 1h 刷 ≈${((avg4h / 4) * p).toFixed(1)} 件${mark}`,
   )
 }
+
+/* ── 候选池盘点（2026-09-10 船长定：已建成副站的星系排除出抽取范围） ── */
+// 口径 = 全图已探索（与本工具其余小节同法：审计看"最终形态"，不按新档的未探索状态算）
+for (const g of ctx.galaxies.values()) markExplored(state, g.id)
+const pool = factionPoolOf(state, ctx)
+const siteGalaxies = new Set([...ctx.stations.values()].map((s) => s.galaxyId))
+console.log(`\n候选池：${pool.length} 个中安/低安星系（已探索口径、每星系一席）`)
+console.log(`  其中有建站点的星系 **${pool.filter((a) => siteGalaxies.has(a.galaxyId)).length}** 个：`)
+for (const s of ctx.stations.values()) {
+  const inPool = pool.some((a) => a.galaxyId === s.galaxyId)
+  console.log(
+    `    · ${gName.get(s.galaxyId) ?? s.galaxyId} → ${s.name}（${s.tiers.length} 档）` +
+      `${inPool ? '〔**建成后即被排除**；本工具按"全未建成"的新档口径统计，故仍在池内〕' : '〔不在候选池〕'}`,
+  )
+}
+console.log('  口径 = **已建成**（stage ≥ 档位数）才排除；在建/未开工的工地仍可当选；抽取只在日板刷新时发生 ⇒ 次日起生效。')
+console.log('  候选全被排除时：当日不发派系活跃（`spawnFactionActivity` 里 pool 空即 return）。')
