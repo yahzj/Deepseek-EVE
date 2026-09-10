@@ -33,6 +33,7 @@ import {
   isLairCandidate,
   factionAnomalyOf,
   factionBaseRewardIsk,
+  factionGalaxyId,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
   lairAnomalyOf,
@@ -693,6 +694,13 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
     else tasksByGalaxy.set(t.galaxyId, [t])
   }
   const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
+  /* 敌对派系活跃（2026-09-10 船长：对应星系上要显示剩余时间）——当日选中的中安/低安星系，
+     该星系常驻悬赏 +10% 奖金/+10% 威胁、胜利概率掉稀有残骸、每天本地 0 点重选。
+     判定走 core 单点 `factionGalaxyId`（与战斗、任务中心同一个口径）；
+     倒计时与赏金日板同一界（每天 0 点整板替换）；该星系已被排除在赏金任务抽签池外，
+     故「✦ 派系活跃」与「⚑ 赏金任务」两枚徽标不会落在同一个节点上。 */
+  const factionGalaxy = factionGalaxyId(state)
+  const factionName = state.sideTasks.faction?.factionAnomalyName ?? ''
 
   const scanMinutesOf = (): number => {
     // 2026-09-06：作业 = 就地扫描窗口（去程已取消；完成自动返航，返航不占等待）
@@ -931,6 +939,21 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   ) : null}
                 </>
               ) : null}
+              {/* 敌对派系活跃（2026-09-10 船长）：与悬赏情报/赏金任务同款徽标样式，换符号（✦）
+                  与配色（琥珀，与任务中心那条「今日置顶」同族）；第二行是当日剩余时间。
+                  该星系已被排除在赏金任务抽签池外，故不会与上面的 ⚑ 徽标叠在同一节点 */}
+              {factionGalaxy === g.id ? (
+                <>
+                  <text x={p.x} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-faction">
+                    ✦
+                  </text>
+                  {taskEtaText.length > 0 ? (
+                    <text x={p.x} y={p.y - 23} textAnchor="middle" className="app-map-bounty-eta is-faction">
+                      剩余 {taskEtaText}
+                    </text>
+                  ) : null}
+                </>
+              ) : null}
               <NodeLabel name={frontier ? '未知信号' : g.name} x={p.x} y={p.y} cls={cls + secExtra} />
             </g>
           )
@@ -988,6 +1011,17 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                     .map((t) => `${t.lairName ?? t.anomalyId ?? '窝点'}（${t.rewardIsk.toLocaleString('zh-CN')} ISK）`)
                     .join('、')}
                   {taskEtaText.length > 0 ? ` · 剩余 ${taskEtaText}（每天 0 点换新）` : ''}
+                </div>
+              ) : null}
+              {/* 敌对派系活跃（2026-09-10 船长）：与任务中心那条置顶卡同一个判定口（core factionGalaxyId），
+                  口径同步 = 该星系全部常驻悬赏奖金 +10%、敌人威胁 +10%、胜利按概率掉稀有残骸；
+                  不因打赢而下板，每天本地 0 点重新选星系 → 剩余时间与赏金日板同一界 */}
+              {factionGalaxy === selected.id ? (
+                <div className="app-map-taskline is-faction">
+                  <span className="app-ico">✦</span>
+                  敌对派系活跃：该星系全部常驻悬赏奖金 +10%、敌人威胁 +10%，胜利有概率掉稀有残骸
+                  {factionName.length > 0 ? ` · 头号目标「${factionName}」` : ''}
+                  {taskEtaText.length > 0 ? ` · 剩余 ${taskEtaText}（每天 0 点重选）` : ''}
                 </div>
               ) : null}
               <div className="app-dim">

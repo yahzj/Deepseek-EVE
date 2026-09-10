@@ -1632,6 +1632,27 @@ body {
 
 }
 
+/* 敌对派系活跃徽标（2026-09-10 船长：与悬赏情报/赏金任务徽标同款，换符号 ✦ 与配色区分）——
+   配色取任务中心那条「今日置顶」的琥珀族（chip is-rare #f4c95d / 置顶卡描边同族） */
+.app-map-bounty.is-faction {
+
+  fill: #f4c95d;
+
+}
+
+.app-map-bounty-eta.is-faction {
+
+  fill: #f4c95d;
+
+}
+
+/* 星系行动弹窗里的派系活跃行（与赏金任务行同款，换琥珀配色） */
+.app-map-taskline.is-faction {
+
+  color: #e3cb96;
+
+}
+
 .app-map-detail-name.app-map-frontier-name {
 
   color: rgba(140, 168, 196, 0.9);
