@@ -10,6 +10,7 @@ import {
   calcBuildDurationMs,
   countAiCore,
   countWare,
+  countModule,
   formatDurationMs,
   manufacturingLoopOf,
   manufacturingRunViews,
@@ -190,6 +191,8 @@ function BlueprintCard({
   kindLabel,
   productGlyph,
   productBase,
+  ownedCount,
+  ownedWhere,
   onNeedMineral,
 }: {
   engine: GameEngine
@@ -209,6 +212,10 @@ function BlueprintCard({
   productGlyph: string
   /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
+  /** 自己已有多少产物（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"） */
+  ownedCount: number
+  /** 上面这个数字从哪儿数来的（仓库 / 装备库 / 机库），写进产物行括注 */
+  ownedWhere: string
   /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
   onNeedMineral?: (itemId: string) => void
 }) {
@@ -323,6 +330,9 @@ function BlueprintCard({
 
       <div className="app-belt-ore">
         产物：{productNode ?? <span className="app-gold">{productLabel}</span>}
+        <span className="app-dim" title={`自己已有的成品数量：${ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）`}>
+          （{ownedWhere} {ownedCount.toLocaleString('zh-CN')}）
+        </span>
         {running ? (
           <>
             {' '}
@@ -542,8 +552,14 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     running: boolean
     canStart: boolean
     productBase: number
+    /** 自己已有多少产物（产物行尾显示）与它的来处（仓库/装备库/机库） */
+    ownedCount: number
+    ownedWhere: string
     bookPrice: number
   }> = []
+  /** 机库同型艘数（与市场页「持有」同口径：core 自然库存对舰船恒 0，故单独数机库） */
+  const shipStockOf = (shipId: string): number =>
+    Object.entries(state.fleet).filter(([uid, e]) => (e.defId ?? uid) === shipId).length
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
@@ -571,6 +587,9 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
         productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
+        // 舰船产物：机库同型艘数（与市场页「持有」同口径；core 自然库存对舰船恒 0）
+        ownedCount: shipStockOf(sbp.shipId),
+        ownedWhere: '机库',
         bookPrice: bookPriceOf(engine, sbp.id, 0),
       })
     }
@@ -594,6 +613,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
         productBase: moduleDef ? productBaseOf(engine, 'module', bp.moduleId!) : 0,
+        ownedCount: moduleDef ? countModule(state, bp.moduleId!) : 0, // 装备产物 → 装备库件数
+        ownedWhere: '装备库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
       })
     }
@@ -625,6 +646,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         running: runViews.some((v) => v.blueprintId === bp.id),
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
         productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, units) : 0,
+        ownedCount: itemDef ? countWare(state, bp.itemId) : 0, // 弹药/物品产物 → 物品仓库单位数
+        ownedWhere: '仓库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
       })
     }
@@ -709,6 +732,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
               kindLabel={it.kindLabel}
               productGlyph={it.productGlyph}
               productBase={it.productBase}
+              ownedCount={it.ownedCount}
+              ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}
             />
           ))}
