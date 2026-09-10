@@ -13,10 +13,10 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '开拓级舰船蓝图',
     shipId: 'pioneer',
     materials: [
-      { itemId: 'min-tritanium', count: 12_000 },
-      { itemId: 'min-pyerite', count: 6_000 },
-      { itemId: 'min-mexallon', count: 2_500 },
-      { itemId: 'min-nocxium', count: 500 },
+      { itemId: 'min-tritanium', count: 24_650 },
+      { itemId: 'min-pyerite', count: 12_300 },
+      { itemId: 'min-mexallon', count: 5_150 },
+      { itemId: 'min-nocxium', count: 1_050 },
     ],
     buildSeconds: 75 * 60, // ×2 提速（原 150*60=9000s）
     buildCostIsk: 250_000,
@@ -28,10 +28,10 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '鲸王级舰船蓝图',
     shipId: 'whale-king',
     materials: [
-      { itemId: 'min-tritanium', count: 35_000 },
-      { itemId: 'min-pyerite', count: 18_000 },
-      { itemId: 'min-mexallon', count: 8_000 },
-      { itemId: 'min-nocxium', count: 2_000 },
+      { itemId: 'min-tritanium', count: 90_450 },
+      { itemId: 'min-pyerite', count: 46_500 },
+      { itemId: 'min-mexallon', count: 20_650 },
+      { itemId: 'min-nocxium', count: 5_150 },
     ],
     buildSeconds: 180 * 60, // ×2 提速（原 360*60=21600s）
     buildCostIsk: 900_000,
@@ -43,10 +43,10 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '座头鲸级舰船蓝图',
     shipId: 'sh-humpback',
     materials: [
-      { itemId: 'min-tritanium', count: 16_000 },
-      { itemId: 'min-pyerite', count: 7_000 },
-      { itemId: 'min-mexallon', count: 2_600 },
-      { itemId: 'min-isotope', count: 700 },
+      { itemId: 'min-tritanium', count: 32_150 },
+      { itemId: 'min-pyerite', count: 14_050 },
+      { itemId: 'min-mexallon', count: 5_200 },
+      { itemId: 'min-isotope', count: 1_400 },
     ],
     buildSeconds: 90 * 60, // ×2 提速（原 180*60=10800s）
     buildCostIsk: 420_000,
@@ -77,8 +77,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '掘洞级舰船蓝图',
     shipId: 'burrower',
     materials: [
-      { itemId: 'min-tritanium', count: 2310 },
-      { itemId: 'min-pyerite', count: 660 },
+      { itemId: 'min-tritanium', count: 4_750 },
+      { itemId: 'min-pyerite', count: 1_350 },
     ],
     buildSeconds: 480, // 掘洞级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -90,9 +90,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '鲸吞级舰船蓝图',
     shipId: 'whale',
     materials: [
-      { itemId: 'min-tritanium', count: 13610 },
-      { itemId: 'min-pyerite', count: 4130 },
-      { itemId: 'min-mexallon', count: 1980 },
+      { itemId: 'min-tritanium', count: 27_850 },
+      { itemId: 'min-pyerite', count: 8_450 },
+      { itemId: 'min-mexallon', count: 4_050 },
     ],
     buildSeconds: 3360, // 鲸吞级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -104,10 +104,10 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '蝠鲼级舰船蓝图',
     shipId: 'sh-bowhead',
     materials: [
-      { itemId: 'min-tritanium', count: 21950 },
-      { itemId: 'min-pyerite', count: 6970 },
-      { itemId: 'min-mexallon', count: 4180 },
-      { itemId: 'min-nocxium', count: 840 },
+      { itemId: 'min-tritanium', count: 44_850 },
+      { itemId: 'min-pyerite', count: 14_250 },
+      { itemId: 'min-mexallon', count: 8_550 },
+      { itemId: 'min-nocxium', count: 1_700 },
     ],
     buildSeconds: 7140, // 蝠鲼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -119,8 +119,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '鲣鱼级舰船蓝图',
     shipId: 'sh-falconet',
     materials: [
-      { itemId: 'min-tritanium', count: 810 },
-      { itemId: 'min-pyerite', count: 230 },
+      { itemId: 'min-tritanium', count: 1_650 },
+      { itemId: 'min-pyerite', count: 450 },
     ],
     buildSeconds: 180, // 鲣鱼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -132,8 +132,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '马鲛级舰船蓝图',
     shipId: 'sh-shrike',
     materials: [
-      { itemId: 'min-tritanium', count: 2120 },
-      { itemId: 'min-pyerite', count: 610 },
+      { itemId: 'min-tritanium', count: 4_300 },
+      { itemId: 'min-pyerite', count: 1_250 },
     ],
     buildSeconds: 420, // 马鲛级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -145,8 +145,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '虎鲨级舰船蓝图',
     shipId: 'sh-tigershark',
     materials: [
-      { itemId: 'min-tritanium', count: 4620 },
-      { itemId: 'min-pyerite', count: 1320 },
+      { itemId: 'min-tritanium', count: 9_450 },
+      { itemId: 'min-pyerite', count: 2_700 },
     ],
     buildSeconds: 900, // 虎鲨级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -158,9 +158,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '灰鲭鲨级舰船蓝图',
     shipId: 'sh-mako',
     materials: [
-      { itemId: 'min-tritanium', count: 7260 },
-      { itemId: 'min-pyerite', count: 2200 },
-      { itemId: 'min-mexallon', count: 1060 },
+      { itemId: 'min-tritanium', count: 14_850 },
+      { itemId: 'min-pyerite', count: 4_500 },
+      { itemId: 'min-mexallon', count: 2_150 },
     ],
     buildSeconds: 1800, // 灰鲭鲨级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -172,9 +172,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '大白鲨级舰船蓝图',
     shipId: 'sh-whiteshark',
     materials: [
-      { itemId: 'min-tritanium', count: 16640 },
-      { itemId: 'min-pyerite', count: 5040 },
-      { itemId: 'min-mexallon', count: 2420 },
+      { itemId: 'min-tritanium', count: 34_050 },
+      { itemId: 'min-pyerite', count: 10_300 },
+      { itemId: 'min-mexallon', count: 4_950 },
     ],
     buildSeconds: 4140, // 大白鲨级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -186,9 +186,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '梭鱼级舰船蓝图',
     shipId: 'sh-swarm',
     materials: [
-      { itemId: 'min-tritanium', count: 9380 },
-      { itemId: 'min-pyerite', count: 2840 },
-      { itemId: 'min-mexallon', count: 1360 },
+      { itemId: 'min-tritanium', count: 19_200 },
+      { itemId: 'min-pyerite', count: 5_800 },
+      { itemId: 'min-mexallon', count: 2_800 },
     ],
     buildSeconds: 2340, // 梭鱼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -200,10 +200,10 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '王鲭级舰船蓝图',
     shipId: 'sh-sentinel',
     materials: [
-      { itemId: 'min-tritanium', count: 30030 },
-      { itemId: 'min-pyerite', count: 9530 },
-      { itemId: 'min-mexallon', count: 5720 },
-      { itemId: 'min-nocxium', count: 1140 },
+      { itemId: 'min-tritanium', count: 61_450 },
+      { itemId: 'min-pyerite', count: 19_500 },
+      { itemId: 'min-mexallon', count: 11_700 },
+      { itemId: 'min-nocxium', count: 2_350 },
     ],
     buildSeconds: 9780, // 王鲭级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -215,11 +215,11 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '长尾鲨级舰船蓝图',
     shipId: 'sh-thresher',
     materials: [
-      { itemId: 'min-tritanium', count: 94050 },
-      { itemId: 'min-pyerite', count: 28050 },
-      { itemId: 'min-mexallon', count: 15840 },
-      { itemId: 'min-nocxium', count: 3080 },
-      { itemId: 'min-isotope', count: 5400 },
+      { itemId: 'min-tritanium', count: 192_400 },
+      { itemId: 'min-pyerite', count: 57_400 },
+      { itemId: 'min-mexallon', count: 32_400 },
+      { itemId: 'min-nocxium', count: 6_300 },
+      { itemId: 'min-isotope', count: 11_050 },
     ],
     buildSeconds: 14400, // 长尾鲨级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -231,11 +231,11 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '电鳐级舰船蓝图',
     shipId: 'sh-electricray',
     materials: [
-      { itemId: 'min-tritanium', count: 156750 },
-      { itemId: 'min-pyerite', count: 46750 },
-      { itemId: 'min-mexallon', count: 26400 },
-      { itemId: 'min-nocxium', count: 5130 },
-      { itemId: 'min-isotope', count: 9000 },
+      { itemId: 'min-tritanium', count: 320_650 },
+      { itemId: 'min-pyerite', count: 95_650 },
+      { itemId: 'min-mexallon', count: 54_000 },
+      { itemId: 'min-nocxium', count: 10_500 },
+      { itemId: 'min-isotope', count: 18_400 },
     ],
     buildSeconds: 14400, // 电鳐级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -247,11 +247,11 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '锤头鲨级舰船蓝图',
     shipId: 'sh-hammerhead',
     materials: [
-      { itemId: 'min-tritanium', count: 114950 },
-      { itemId: 'min-pyerite', count: 34280 },
-      { itemId: 'min-mexallon', count: 19360 },
-      { itemId: 'min-nocxium', count: 3760 },
-      { itemId: 'min-isotope', count: 6600 },
+      { itemId: 'min-tritanium', count: 235_150 },
+      { itemId: 'min-pyerite', count: 70_150 },
+      { itemId: 'min-mexallon', count: 39_600 },
+      { itemId: 'min-nocxium', count: 7_700 },
+      { itemId: 'min-isotope', count: 13_500 },
     ],
     buildSeconds: 14400, // 锤头鲨级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -263,11 +263,11 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '牛鲨级舰船蓝图',
     shipId: 'sh-bullshark',
     materials: [
-      { itemId: 'min-tritanium', count: 135850 },
-      { itemId: 'min-pyerite', count: 40520 },
-      { itemId: 'min-mexallon', count: 22880 },
-      { itemId: 'min-nocxium', count: 4450 },
-      { itemId: 'min-isotope', count: 7800 },
+      { itemId: 'min-tritanium', count: 277_850 },
+      { itemId: 'min-pyerite', count: 82_900 },
+      { itemId: 'min-mexallon', count: 46_800 },
+      { itemId: 'min-nocxium', count: 9_100 },
+      { itemId: 'min-isotope', count: 15_950 },
     ],
     buildSeconds: 14400, // 牛鲨级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -279,9 +279,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '陆龟级舰船蓝图',
     shipId: 'sh-tortoise',
     materials: [
-      { itemId: 'min-tritanium', count: 4990 },
-      { itemId: 'min-pyerite', count: 1510 },
-      { itemId: 'min-mexallon', count: 730 },
+      { itemId: 'min-tritanium', count: 10_200 },
+      { itemId: 'min-pyerite', count: 3_100 },
+      { itemId: 'min-mexallon', count: 1_500 },
     ],
     buildSeconds: 1260, // 陆龟级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -293,9 +293,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玳瑁级舰船蓝图',
     shipId: 'sh-hawksbill',
     materials: [
-      { itemId: 'min-tritanium', count: 11500 },
-      { itemId: 'min-pyerite', count: 3480 },
-      { itemId: 'min-mexallon', count: 1670 },
+      { itemId: 'min-tritanium', count: 23_550 },
+      { itemId: 'min-pyerite', count: 7_100 },
+      { itemId: 'min-mexallon', count: 3_400 },
     ],
     buildSeconds: 2880, // 玳瑁级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -307,10 +307,10 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玄武级舰船蓝图',
     shipId: 'sh-xuanwu',
     materials: [
-      { itemId: 'min-tritanium', count: 25410 },
-      { itemId: 'min-pyerite', count: 8070 },
-      { itemId: 'min-mexallon', count: 4840 },
-      { itemId: 'min-nocxium', count: 970 },
+      { itemId: 'min-tritanium', count: 51_950 },
+      { itemId: 'min-pyerite', count: 16_500 },
+      { itemId: 'min-mexallon', count: 9_900 },
+      { itemId: 'min-nocxium', count: 2_000 },
     ],
     buildSeconds: 8280, // 玄武级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -322,8 +322,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '飞鱼级舰船蓝图',
     shipId: 'sh-flyingfish',
     materials: [
-      { itemId: 'min-tritanium', count: 4040 },
-      { itemId: 'min-pyerite', count: 1160 },
+      { itemId: 'min-tritanium', count: 8_250 },
+      { itemId: 'min-pyerite', count: 2_350 },
     ],
     buildSeconds: 780, // 飞鱼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -335,9 +335,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '旗鱼级舰船蓝图',
     shipId: 'sh-sailfish',
     materials: [
-      { itemId: 'min-tritanium', count: 7260 },
-      { itemId: 'min-pyerite', count: 2200 },
-      { itemId: 'min-mexallon', count: 1060 },
+      { itemId: 'min-tritanium', count: 14_850 },
+      { itemId: 'min-pyerite', count: 4_500 },
+      { itemId: 'min-mexallon', count: 2_150 },
     ],
     buildSeconds: 1800, // 旗鱼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -349,9 +349,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '剑鱼级舰船蓝图',
     shipId: 'sh-swordfish',
     materials: [
-      { itemId: 'min-tritanium', count: 18910 },
-      { itemId: 'min-pyerite', count: 5730 },
-      { itemId: 'min-mexallon', count: 2750 },
+      { itemId: 'min-tritanium', count: 38_650 },
+      { itemId: 'min-pyerite', count: 11_700 },
+      { itemId: 'min-mexallon', count: 5_600 },
     ],
     buildSeconds: 4680, // 剑鱼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
