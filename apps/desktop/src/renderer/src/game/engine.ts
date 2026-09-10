@@ -987,25 +987,34 @@ export class GameEngine {
     }
   }
 
-  /** 挂限价买单（等 NPC 补给/降价自动成交）；返回新订单 id（失败返回 null） */
-  placeBuyOrderAt(goodKey: string, price: number, qty: number): number | null {
+  /** 挂限价买单（等 NPC 补给/降价自动成交）；返回新订单 id（失败返回 null）
+   *  2026-09-10 起挂单瞬间会先与现有卖单簿面对冲成交，回执带回成交量（filled / resting） */
+  placeBuyOrderAt(
+    goodKey: string,
+    price: number,
+    qty: number,
+  ): { orderId: number; want: number; filled: number; resting: number } | null {
     const order = placeBuyOrder(this.state, this.ctx, goodKey, price, qty)
-    if (order) {
-      void this.persist()
-      this.notify()
-    }
-    return order ? order.id : null
+    if (!order) return null
+    void this.persist()
+    this.notify()
+    // 全部即时成交的单已移出挂单表，但返回的订单对象仍带成交量（filled / 剩余 qty）
+    return { orderId: order.id, want: qty, filled: order.filled, resting: order.qty }
   }
 
-  /** 挂限价卖单（货从自然库存锁定：物品→仓库、装备→装备库、蓝图→蓝图书架） */
-  placeSellOrderAt(goodKey: string, price: number, qty: number): CommandResult {
+  /** 挂限价卖单（货从自然库存锁定：物品→仓库、装备→装备库、蓝图→蓝图书架）
+   *  2026-09-10 起挂单瞬间会先与现有收购单簿面对冲成交，回执带回成交量（filled / resting） */
+  placeSellOrderAt(
+    goodKey: string,
+    price: number,
+    qty: number,
+  ): { ok: boolean; error?: string; orderId?: number; price?: number; filled?: number; resting?: number } {
     const res = listSellHolding(this.state, this.ctx, goodKey, price, qty)
     if (res.ok) {
       void this.persist()
       this.notify()
-      return { ok: true }
     }
-    return { ok: false, error: res.error ?? '挂单失败。' }
+    return res
   }
 
   /** 撤销自己的挂单（货物退回对应库存） */
