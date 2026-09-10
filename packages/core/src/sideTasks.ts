@@ -322,10 +322,13 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
 }
 
 /**
- * 赏金任务刷出（2026-09-10 船长定）：每轮 2 张**高难窝点**（候选不足按实际数），
- * 候选 = 已探索星系里「主题悬赏可作窝点（有核心词、非隐藏、奖金 > 0）且声望门槛 ≤ 当前声望」的卡；
+ * 赏金任务刷出（2026-09-10 船长定；同日修订②）：每轮 2 张**高难窝点**（候选不足按实际数），
+ * 候选 = 已探索星系里「主题悬赏可作窝点（有核心词、非隐藏、奖金 > 0）」的卡——**声望不是刷出条件**。
+ * 声望门槛（`AnomalyDef.standingReq`）改作**接取条件**：不够也能在板上看见（门槛与当前声望一并展示），
+ * 但「出发」被拒（见 expedition 的出征前置检查），声望达标后即可接。
  * 同轮不重复星系；档位按**刷出时的声望**定格（0~5 外围 / 6~10 核心 / 11+ 深层），
- * 酬金与显示名一并锁定（酬金 = 窝点基础奖金 × 档位比例，随强度递增）。
+ * 酬金与显示名一并锁定（酬金 = 窝点基础奖金 × 档位比例，随强度递增）；轮内声望提升不改本轮
+ * 已锁定的档位/酬金，下一轮整板按新声望刷新。
  * 与资源/快递不同：赏金任务不触碰市场（不产生刷单影响）。
  */
 function spawnBountyTasks(state: GameState, ctx: SimContext): void {
@@ -335,7 +338,6 @@ function spawnBountyTasks(state: GameState, ctx: SimContext): void {
   const pool: AnomalyDef[] = []
   for (const a of ctx.anomalies.values()) {
     if (!isLairCandidate(a)) continue
-    if (a.standingReq > standing) continue
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
     pool.push(a)
   }

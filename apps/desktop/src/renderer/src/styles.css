@@ -7750,6 +7750,13 @@ body {
 
 }
 
+/* 声望门槛未达（2026-09-10 船长定：声望是接取条件）——与常驻悬赏卡 .app-ano-card.is-locked 同口径 */
+.app-station-card.is-locked {
+
+  opacity: 0.62;
+
+}
+
 .app-station-head {
 
   display: flex;
