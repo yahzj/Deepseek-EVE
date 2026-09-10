@@ -6600,8 +6600,8 @@ body {
 
 .app-bts-wing { position: absolute; left: 0; top: 0; }
 
-/* 收舱态：常驻挂载仅切透明度（2026-09-10 性能：不再每轮出击挂载/卸载 18 个机体 DOM，减少 GC 抖动） */
-.app-bts-wing.is-deck { opacity: 0; }
+/* 收舱态：常驻挂载但 display:none —— 既不做每轮挂载/卸载（省 GC），也不参与绘制/动画（省绘制） */
+.app-bts-wing.is-deck { display: none; }
 
 /* 无人机机体：位置由内联 transform(translate3d) 驱动 → 走合成层，不逐帧布局/重绘；
    去掉逐机 drop-shadow 滤镜（18 架同时挂滤镜在低端 GPU 上明显掉帧，2026-09-10 船长反馈卡顿） */

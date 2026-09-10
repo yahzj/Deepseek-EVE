@@ -104,8 +104,63 @@ const meSpeedRef = useRef(200)
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
   const droneSortieRef = useRef<Map<string, DroneSortie>>(new Map())
-  /** ⚠ 临时性能探针状态（同上，诊断后删除） */
-  const probeRef = useRef<{ last: number; n: number; params: number[] }>({ last: 0, n: 0, params: [] })
+  /** ⚠ 临时性能探针状态（2026-09-10 卡顿诊断，定位后删除） */
+  const probeRef = useRef<{ raf: number; last: number; n: number; sum: number; min: number; next: number; shown: number }>({
+    raf: 0,
+    last: 0,
+    n: 0,
+    sum: 0,
+    min: 9999,
+    next: 0,
+    shown: 0,
+  })
+
+  /**
+   * ⚠ 临时性能探针 v2（2026-09-10 船长反馈"击毁敌人后画面开始卡顿"，诊断用，定位后删除）：
+   * 用 requestAnimationFrame 量**真实帧时长**（含样式/绘制/GC，不只看 JS），每 2 秒汇总；
+   * 若均值 >25ms（≈<40fps）就弹一条：帧均/最低 + **DOM 节点数**（泄漏探测）+ **JS 堆**（GC 线索）
+   * + 场上对象数（弹道/闪光/尸骸）。节点数与堆不涨＝绘制问题；两者持续涨＝泄漏；锯齿状跌＝GC。
+   */
+  useEffect(() => {
+    let alive = true
+    const p = probeRef.current
+    p.next = performance.now() + 2000
+    const loop = (): void => {
+      if (!alive) return
+      const t = performance.now()
+      if (p.last > 0) {
+        const d = t - p.last
+        p.n += 1
+        p.sum += d
+        if (d < p.min) p.min = d
+      }
+      p.last = t
+      if (t >= p.next) {
+        if (p.n > 0) {
+          const avg = p.sum / p.n
+          if (avg > 25 && p.shown < 12) {
+            p.shown += 1
+            const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+            const heapMB = mem ? Math.round(mem.usedJSHeapSize / 1048576) : -1
+            onToast(
+              `[性能] 帧均${avg.toFixed(0)}ms 最低${p.min.toFixed(0)}ms · 节点${document.getElementsByTagName('*').length} 堆${heapMB}MB · 弹${boltsRef.current.length} 闪${flashRef.current.length} 尸${corpseAtRef.current.size}`,
+            )
+          }
+        }
+        p.n = 0
+        p.sum = 0
+        p.min = 9999
+        p.next = t + 2000
+      }
+      p.raf = window.requestAnimationFrame(loop)
+    }
+    p.raf = window.requestAnimationFrame(loop)
+    return () => {
+      alive = false
+      window.cancelAnimationFrame(p.raf)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const droneSlotRef = useRef<Map<string, number>>(new Map())
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
@@ -189,21 +244,6 @@ const meSpeedRef = useRef(200)
     const iv = window.setInterval(() => {
       const b = engine.state.expedition.battle
       const now = performance.now()
-      /**
-       * ⚠ 临时性能探针（2026-09-10 船长反馈"击毁敌人后画面明显卡顿"，诊断用，定位后删除）：
-       * 本循环每 33ms 一跳；若某跳迟到 >90ms，说明主线程被占住了（引擎推进/React 提交/重绘皆可），
-       * 把迟到毫秒数与当时场上对象数（弹道/闪光/尸骸/机群）弹到屏上，供船长复现时回报。
-       */
-      {
-        const p = probeRef.current
-        const late = now - p.last
-        p.last = now
-        if (late > 90 && late < 5000 && p.n < 20) {
-          p.n += 1
-          p.params = [Math.round(late), boltsRef.current.length, flashRef.current.length, deadRef.current.size]
-          onToast(`[性能] 卡 ${Math.round(late)}ms · 弹${p.params[1]} 闪${p.params[2]} 尸${p.params[3]}`)
-        }
-      }
       if (!b) return
       const s = moveSnapRef.current
       if (!s.cur || s.cur.m !== b.distanceM) {
