@@ -1933,13 +1933,21 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
           const tier = (t.lairTier ?? 1) as 1 | 2 | 3
           const card = base ? lairAnomalyOf(base, tier) : undefined
-          const galaxyName = engine.ctx.galaxies.get(t.galaxyId ?? '')?.name ?? t.galaxyId ?? '？'
-          const threatTxt = card ? `威胁 ${card.threat}${base && card.threat !== base.threat ? `（主题悬赏 ${base.threat}）` : ''}` : ''
+          const galaxy = engine.ctx.galaxies.get(t.galaxyId ?? '')
+          const galaxyName = galaxy?.name ?? t.galaxyId ?? '？'
           const waves = card?.waves?.length ?? 0
           const rareGain = LAIR_RARE_WRECK_GAIN[tier]
-          // 窝点奖金 = 主题悬赏奖金 × 档位系数 × 赏金猎手学系数（2026-09-10 船长：展示口径必须
-          // 与结算口径一致——此前漏乘技能系数，玩家反馈"卡片赏金和到账不一样"）
+          // 胜率预估（2026-09-10 船长定：赏金卡也要有）——按**本档位强化后的卡**算，与实战同口径；
+          // 口径 = 带伤预警推演（与常驻悬赏卡缓存未就绪时的回退同一套），损耗同一推演给出。
+          const power = calcPower(state, engine.ctx)
+          const fc = card ? bountyDamageForecast(state, engine.ctx, card) : null
+          const pWin = card ? bountyWinPercentGuarded(state, engine.ctx, card, state.shipId) * 100 : 0
+          const chance = Math.min(98, Math.max(2, Math.round(pWin)))
+          const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
+          // 赏金 = 窝点奖金 + 任务酬金（胜利时**一起到账**）：2026-09-10 船长定——两张卡别写两个数，
+          // 合并成一条「赏金」。窝点奖金含赏金猎手学系数（展示=到账），任务酬金为刷出时锁定值。
           const lairRewardIsk = base ? Math.round(lairBaseRewardIsk(base, tier) * bountyRewardFactor(state)) : 0
+          const totalIsk = lairRewardIsk + t.rewardIsk
           const inFlightSelf = state.expedition.active && state.expedition.anomalyId === t.anomalyId
           const inFlightOther = state.expedition.active && !inFlightSelf
           const expired = view.remainingMs <= 0
@@ -1987,10 +1995,67 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 </span>
                 <span className="app-dim">剩余 {fmtDayClock(view.bountyRemainingMs)}</span>
               </div>
-              <div className="app-station-mats">
-                目标星系「{galaxyName}」 · {threatTxt}
-                {waves >= 2 ? ` · ${waves} 波守军` : ''} · 窝点奖金 {MONEY_GLYPH} {lairRewardIsk.toLocaleString('zh-CN')} ISK · 任务酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} ISK
-                （不涨声望）。肃清后该星系留下稀有残骸 ×{rareGain}——打捞必得，回站精炼炉开「高级箱」可换该敌群专属装备。
+              {/* 目标行：星系 + 安全等级 + 威胁 + 守军波次（关键字变色；2026-09-10 船长定） */}
+              <div className="app-lair-kv">
+                <span>目标「{galaxyName}」</span>
+                {galaxy?.security !== undefined ? (
+                  <span className={`app-sec-chip app-sec-chip-${secTone(galaxy.security)}`} title="该星系安全等级（负数 = 高危）">
+                    {secText(galaxy.security)}
+                  </span>
+                ) : null}
+                {card ? (
+                  <span>
+                    <span className="app-lair-key">威胁</span> {card.threat}
+                    {base && card.threat !== base.threat ? <span className="app-dim">（主题 {base.threat}）</span> : null}
+                  </span>
+                ) : null}
+                {waves >= 2 ? (
+                  <span>
+                    <span className="app-lair-key">守军</span> {waves} 波
+                  </span>
+                ) : null}
+              </div>
+              {/* 胜率行：与常驻悬赏卡同口径（火力 → 预估胜率%·损耗 + 敌主伤/敌型 chip） */}
+              <div className="app-ano-win">
+                火力 {power} → <span className="app-lair-key">预估胜率</span>{' '}
+                <b
+                  className={`app-win-${chanceTone}`}
+                  title={
+                    card
+                      ? `按本档位强化后的窝点实测推演：预计损耗装甲 ≈${Math.round((fc?.armorLoss ?? 0) * 100)}%、结构 ≈${Math.round((fc?.hullLoss ?? 0) * 100)}%（单局结果仍有随机波动）`
+                      : '目标数据缺失，无法评估'
+                  }
+                >
+                  {Math.round(chance)}%
+                </b>
+                {card ? (
+                  <span className="app-dim" title="敌方编队主伤害类型：护盾/装甲增强器按此配抗（缺口乘入）">
+                    {' '}· 敌主伤 <DmgChip t={foeMainDamageType(card)} />
+                  </span>
+                ) : null}
+                {card
+                  ? (() => {
+                      const p = card.defProfile ?? 'balanced'
+                      const cn = p === 'shield' ? '盾厚' : p === 'armor' ? '甲厚' : '均衡'
+                      return (
+                        <span className="app-dim" title="敌方三层血量占比——动能弹拆盾 ×1.5、高爆破甲 ×1.5">
+                          {' '}· 敌型 <ProfileChip profile={p} text={cn} />
+                        </span>
+                      )
+                    })()
+                  : null}
+              </div>
+              {/* 收益行：赏金 = 窝点奖金 + 任务酬金（合并成一条，避免两个数重复）；稀有残骸为战利品 */}
+              <div className="app-ano-reward">
+                <span className="app-lair-key">赏金</span> {MONEY_GLYPH} {totalIsk.toLocaleString('zh-CN')} ISK
+                <span className="app-dim" title={`窝点奖金 ${lairRewardIsk.toLocaleString('zh-CN')}（含赏金猎手学系数）+ 任务酬金 ${t.rewardIsk.toLocaleString('zh-CN')}（刷出时锁定）——胜利时一起入账`}>
+                  {' '}（奖金 {lairRewardIsk.toLocaleString('zh-CN')} + 酬金 {t.rewardIsk.toLocaleString('zh-CN')}）
+                </span>
+                {' · '}
+                <span className="app-lair-key">稀有残骸</span> ×{rareGain}
+              </div>
+              <div className="app-ano-desc">
+                肃清后该星系留下稀有残骸——打捞必得，回站精炼炉开「高级箱」可换该敌群专属装备。
               </div>
               <div className="app-station-deliver">
                 <span className="app-dim">
