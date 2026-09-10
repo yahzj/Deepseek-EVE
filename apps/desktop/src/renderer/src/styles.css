@@ -7244,6 +7244,37 @@ body {
 
 }
 
+/* AI 徽标两枚（2026-09-10 船长：拆成"副船 / 工业"两枚，要能辨识）——
+   边框与底色分别跟随各自图标色调（副船 = AI 核心粉、工业 = 工业薄荷），加上文字标签与悬停说明，
+   一眼可分且点进各自页面 */
+.app-activitybar-ai.is-ship {
+
+  border-color: rgba(255, 138, 181, 0.38);
+
+  background: rgba(255, 138, 181, 0.06);
+
+}
+
+.app-activitybar-ai.is-ship:hover {
+
+  background: rgba(255, 138, 181, 0.15);
+
+}
+
+.app-activitybar-ai.is-industry {
+
+  border-color: rgba(66, 217, 176, 0.38);
+
+  background: rgba(66, 217, 176, 0.06);
+
+}
+
+.app-activitybar-ai.is-industry:hover {
+
+  background: rgba(66, 217, 176, 0.15);
+
+}
+
 /* 连续出击小标记 */
 
 .app-activitybar-loop-mini {
