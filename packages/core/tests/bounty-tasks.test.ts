@@ -70,6 +70,7 @@ import {
   startRecycleRun,
 } from '../src/index'
 import { resolveBattleOutcome } from '../src/expedition'
+import { advanceRefining } from '../src/industry'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
 
 /** 20 分钟板周期（资源/快递仍在用） */
@@ -609,9 +610,9 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
     const texts = state.logs.map((l) => l.text).join('\n')
     expect(texts).toContain(lairNameOf(ctx.anomalies.get(task.anomalyId!)!, tier))
     expect(texts).toContain('赏金任务完成')
-    // 稀有残骸暂不开放精炼炉（2026-09-10 船长定）：日志只引导"打捞+入库封存"，不再承诺开箱
+    // 稀有残骸已解禁（船长 2026-09-10）：日志引导"打捞 → 回站开高级箱"
     expect(texts).toContain('打捞')
-    expect(texts).not.toContain('高级箱')
+    expect(texts).toContain('高级箱')
     expect(state.expedition.lairTier).toBeUndefined()
   })
 
@@ -678,16 +679,41 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(rare.anomalyId).toBe(LAIR_HUB.id)
   })
 
-  it('稀有残骸**暂不开放精炼炉**（2026-09-10 船长定）：核心侧拒绝启动回收（高级箱链路留待开放）', () => {
+  it('稀有残骸**已解禁**（船长 2026-09-10：五族专属装备齐备后开放）：可起炉，首批触发一次高级箱', () => {
     const { state, ctx } = makeWorld(19)
-    addWare(state, rareWreckItemIdOf(LAIR_HUB.id), RARE_WRECK_VOLUME_M3 * 2) // 两件，够一批
-    const r = startRecycleRun(state, rareWreckItemIdOf(LAIR_HUB.id), 'pilot', ctx)
-    expect(r.ok).toBe(false)
-    expect(r.error).toContain('稀有残骸')
-    // 同口径下普通残骸照常可回收（只是本用例没备料 → 报"没有"而不是"不受理"）
+    const rareId = rareWreckItemIdOf(LAIR_HUB.id)
+    addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2) // 两件（60 m³）
+    const r = startRecycleRun(state, rareId, 'pilot', ctx)
+    expect(r.ok).toBe(true)
+    // 与普通残骸同一口径：料不足一批/未知物品等校验照旧（这里验"不再被拒"）
     const normal = startRecycleRun(state, 'wreck-ano-lair-hub', 'pilot', ctx)
-    expect(normal.ok).toBe(false)
+    expect(normal.ok).toBe(false) // 该用例没备普通残骸 → 报"没有"而非"不受理"
     expect(normal.error).not.toContain('不受理')
+    expect(normal.error).not.toContain('稀有')
+  })
+
+  it('一炉一箱（船长定：按炉结算、不按件累积）：两件同炉只开一箱，产出并入炉内台账', () => {
+    const { state, ctx } = makeWorld(31)
+    const rareId = rareWreckItemIdOf(LAIR_HUB.id)
+    addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2) // 60 m³ = 2 件 = 6 批
+    const started = startRecycleRun(state, rareId, 'pilot', ctx)
+    expect(started.ok).toBe(true)
+    const runId = state.refineRuns.find((x) => x.itemId === rareId)!.id
+    const boxes = (): number => state.logs.filter((l) => l.text.includes('✦ 高级箱')).length
+    // 第 1 批：高级箱结算（必给一件）
+    state.gameMs += 30_000
+    advanceRefining(state, ctx)
+    expect(boxes()).toBe(1)
+    // 再走 3 批（共 4 批、吃掉 40 m³，料还有剩）：**不再开第二箱**——一炉只结算一次
+    for (let i = 0; i < 3; i += 1) {
+      state.gameMs += 30_000
+      advanceRefining(state, ctx)
+    }
+    expect(boxes()).toBe(1)
+    const run = state.refineRuns.find((x) => x.id === runId)!
+    expect(run.batchesDone).toBe(4)
+    const modTotal = Object.values(run.recAcc?.mod ?? {}).reduce((s, n) => s + n, 0)
+    expect(modTotal).toBeGreaterThanOrEqual(1) // 高级箱那件已入炉内台账（常规彩头另计）
   })
 
   it('额外掉落必定有货：含矿物一批（数量按档位）且至少一件装备（专属或主题件）', () => {

@@ -35,7 +35,6 @@ import {
   RECYCLE_CYCLE_MS,
   FRAGMENT_RECIPES,
   fragmentItemIdOf,
-  isRareWreck,
   recycleProfileOf,
   rollRecycleGuarantee,
   rollRareBoxExtra,
@@ -245,11 +244,9 @@ export function startRecycleRun(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  // 稀有残骸（2026-09-10 船长定：**暂不开放精炼炉**）——战利品照掉、照捞、照入库，
-  // 但协会回收炉目前不受理这类残骸，先封存；高级箱链路（rollRareBoxExtra）代码保留待开。
-  if (isRareWreck(wreckItemId)) {
-    return { ok: false, error: '协会回收炉暂不受理稀有残骸——先入库封存（打捞与存储不受影响）。' }
-  }
+  // 稀有残骸已开放（船长 2026-09-10：二号五族专属装备齐备后解禁）——它与普通残骸同一条链路，
+  // 区别只在"首批触发一次高级箱"（`profile.rare === true`，见下方结算处）：
+  // 一炉一箱（船长定：按炉结算，不按件累积），其余保底/彩头/碎片照常。
   if (!isAtHomeLike(state, ctx)) {
     return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
   }
@@ -488,8 +485,8 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         for (const modId of loot.modules) acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
         for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
         r.recAcc = acc
-        // 高级箱（2026-09-10 船长定）：稀有残骸开箱除常规保底外**必定**额外掉落一件——
-        // 每件稀有残骸只结算一次（该台炉处理它的第一批），内容见 salvage.rollRareBoxExtra
+        // 高级箱（2026-09-10 船长定，同日解禁）：稀有残骸开箱除常规保底外**必定**额外掉落一件——
+        // 一炉只结算一次（该台炉处理它的第一批），内容见 salvage.rollRareBoxExtra
         if (profile.rare === true && r.batchesDone === 0) {
           const extra = rollRareBoxExtra(state, ctx, profile)
           if (extra) {

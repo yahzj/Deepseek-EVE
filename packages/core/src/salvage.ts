@@ -86,8 +86,8 @@ export function isRareWreck(itemId: string): boolean {
 /**
  * 稀有残骸物品定义。**计数即体积**——与普通残骸同一台账口径（unitM3 = 1，数量就是 m³）：
  * 打捞到 1 件 = 入库 `RARE_WRECK_VOLUME_M3`（30）单位 = 30 m³ 货舱/回收批数。
- * **2026-09-10 船长定：暂不开放精炼炉**（协会回收炉不受理此类残骸）——照掉、照捞、照入库封存；
- * 高级箱链路（`rollRareBoxExtra`）代码保留待开。
+ * **2026-09-10 船长定：已解禁**（二号五族专属装备齐备后开放）——与普通残骸同一条回收链路，
+ * 区别只在"首批触发一次高级箱"（`profile.rare === true`；**一炉一箱**，按炉结算不按件累积）。
  */
 export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): ItemDef {
   return {
@@ -96,7 +96,7 @@ export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): Item
     kind: 'wreck',
     unitM3: 1,
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：协会回收炉暂时不受理此类残骸，先在仓库存放。`,
+    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——常规保底之外必定额外掉落一件（该敌群专属装备，未出则给主题件），并附一批高阶矿物。`,
   }
 }
 
