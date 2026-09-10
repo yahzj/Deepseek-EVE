@@ -37,7 +37,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '边境海盗', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
-    foeHpOverride: 150, // P1 重标 pass-2（2026-09-06，待终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
+    foeHpOverride: 150, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
     galaxyId: 'galaxy-kor',
     threat: 12,
     tactic: 'brawl',
@@ -55,7 +55,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '占港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     name: '占港武装通缉',
-    foeHpOverride: 292, // P1 重标 pass-2（2026-09-06，待终审）：A 段鲣鱼3×MK1 中位 ~36s
+    foeHpOverride: 292, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~36s
     foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：武装拾荒者乱射——打得重但准头差；缺省 0.85）
     galaxyId: 'galaxy-dust',
     threat: 16,
@@ -210,7 +210,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '星髓虫群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
     name: '星髓虫群', // 2026-09-10 船长：与 C 族窝点档位词（虫巢/隐秘孵化地）冲突，改名（id 不变）
-    foeHpOverride: 1530, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~80s
+    foeHpOverride: 1530, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：D 段灰鲭鲨4MK2 中位 ~80s
     foeSpeedMps: 409, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 347；×1.30 实测打穿无技能宽容线）
     galaxyId: 'galaxy-starcore',
     threat: 72,
@@ -272,7 +272,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '天底封锁军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 66、奖金 35 万）
     name: '天底静区封锁',
-    foeHpOverride: 2040, // P1 重标（2026-09-06，待终审）：D 段灰鲭鲨4MK2 中位 ~74s
+    foeHpOverride: 2040, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：D 段灰鲭鲨4MK2 中位 ~74s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
     foeSpeedMps: 316, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 268）
     galaxyId: 'galaxy-nadir',
@@ -380,7 +380,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '碎晶劫匪', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
     name: '碎晶带劫匪通缉',
-    foeHpOverride: 285, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~38s
+    foeHpOverride: 285, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~38s
     galaxyId: 'galaxy-shard',
     threat: 20,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -399,7 +399,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '信标猎手', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灯塔长廊
     name: '信标猎手悬赏',
-    foeHpOverride: 365, // P1 重标（2026-09-06，待终审）：B 段虎鲨4MK2 中位 ~40s
+    foeHpOverride: 365, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~40s
     galaxyId: 'galaxy-lantern',
     threat: 22,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -418,7 +418,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '灰霾伏击团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灰霾带
     name: '灰霾伏击团清剿令',
-    foeHpOverride: 430, // P1 重标 pass-2（2026-09-06，待终审）：B2 段虎鲨4MK2 中位 ~43s
+    foeHpOverride: 430, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：B2 段虎鲨4MK2 中位 ~43s
     foeSpeedMps: 201, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 149）
     galaxyId: 'galaxy-haze',
     threat: 28,
