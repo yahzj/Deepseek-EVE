@@ -5914,43 +5914,94 @@ body {
    高度装不下时由外层 .app-hand-scroll 统一滚动。 */
 .app-hand-scroll > * { flex: 0 0 auto; }
 
+/* 玩法速览 / 航行须知（2026-09-10 船长：原平铺两列过于紧凑 → 每条词条独立成卡） */
 .app-hand-guide {
 
   display: flex;
 
   flex-direction: column;
 
-  gap: 4px;
+  gap: 16px;
+
+  font-size: calc(var(--ui-fs, 1) * 12.5px);
 
 }
 
-.app-hand-guide-row {
+.app-hand-sect {
 
   display: flex;
 
-  gap: 10px;
+  flex-direction: column;
 
-  line-height: 1.55;
+  gap: 8px;
 
 }
 
-.app-hand-guide-key {
+.app-hand-cards {
 
-  flex: 0 0 64px;
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 9px;
+
+}
+
+.app-hand-card {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  padding: 9px 11px;
+
+  border: 1px solid var(--wui-border);
+
+  border-radius: 8px;
+
+  background: rgba(10, 17, 27, 0.45);
+
+}
+
+.app-hand-card-title {
+
+  font-size: calc(var(--ui-fs, 1) * 12px);
+
+  font-weight: 600;
 
   color: var(--wui-accent);
 
 }
 
+.app-hand-card-body {
+
+  font-size: calc(var(--ui-fs, 1) * 12.5px);
+
+  line-height: 1.75;
+
+  color: rgba(206, 222, 238, 0.9);
+
+  overflow-wrap: anywhere;
+
+}
+
 .app-hand-notes {
 
-  margin: 4px 0 0;
+  margin: 0;
 
   padding-left: 18px;
 
   color: var(--wui-text-dim);
 
-  line-height: 1.7;
+  line-height: 1.75;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
 
 }
 

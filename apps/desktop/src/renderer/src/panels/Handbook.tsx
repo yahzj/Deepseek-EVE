@@ -712,7 +712,8 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     )
   }
 
-  /** 说明类页面的小节渲染（分组标题 + 词条行；空组隐藏） */
+  /** 说明类页面的小节渲染（分组标题 + 每条一张卡；空组隐藏）
+   *  2026-09-10 船长：原平铺两列过于紧凑 → 每条词条独立成卡（词条名作卡内标题、正文另起一行） */
   function renderSects(sects: RuleSect[]): ReactNode {
     const shown = sects
       .map((s) => ({ ...s, rows: s.rows.filter(hitRow) }))
@@ -723,25 +724,27 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     return (
       <div className="app-hand-guide">
         {shown.map((s) => (
-          <div key={s.title}>
+          <div key={s.title} className="app-hand-sect">
             <div className="app-bay-title">{s.title}</div>
-            {s.rows.map(([k, v]) => (
-              <div key={k} className="app-hand-guide-row">
-                <b className="app-hand-guide-key">{k}</b>
-                <span>{v}</span>
-              </div>
-            ))}
+            <div className="app-hand-cards">
+              {s.rows.map(([k, v]) => (
+                <div key={k} className="app-hand-card">
+                  <div className="app-hand-card-title">{k}</div>
+                  <div className="app-hand-card-body">{v}</div>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
         {tab === 'guide' ? (
-          <>
+          <div className="app-hand-sect">
             <div className="app-bay-title">小贴士</div>
             <ul className="app-hand-notes">
               {GUIDE_NOTES.filter((n) => q === '' || n.toLowerCase().includes(q)).map((n) => (
                 <li key={n}>{n}</li>
               ))}
             </ul>
-          </>
+          </div>
         ) : null}
       </div>
     )

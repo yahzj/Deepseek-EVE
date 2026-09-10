@@ -26,6 +26,10 @@ import {
   SHIPS,
   ANOMALIES_FLAVORED,
   RARITY_TIER,
+  DRONE_ROLE_SPECS,
+  droneRoleIssues,
+  droneRoleLadderIssues,
+  droneTotalHp,
   buildItemCatalog,
   buildSimContext,
 } from '@whale/data'
@@ -61,6 +65,8 @@ const gases = itemDefs.filter((i) => i.kind === 'gas')
 const ices = itemDefs.filter((i) => i.kind === 'ice')
 const ammos = itemDefs.filter((i) => i.kind === 'ammo')
 const drones = itemDefs.filter((i) => i.kind === 'drone')
+/** 无人机四型定位契约的单发基准 = 侦察机单发（2026-09-10 船长拍板） */
+const scoutDmg = drones.find((d) => d.droneClass === 'scout')?.dmg ?? 0
 const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
 // 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3；
@@ -353,6 +359,24 @@ for (const d of drones) {
         errors.push(`无人机 ${d.id} defense.${r}.${t} 非法：${String(val)}`)
       }
     }
+  }
+  // 2026-09-10 四型定位契约（船长拍板；新增机型必须落在区间内——契约定义见 data/droneRoles.ts）
+  for (const issue of droneRoleIssues(d, scoutDmg)) errors.push(issue)
+}
+{
+  // 跨四类阶梯（闪避严格递减 / 血量与单发阶梯 / 哨戒血量与侦察机相仿）
+  const ladderIssues = droneRoleLadderIssues(drones as never)
+  for (const issue of ladderIssues) errors.push(`无人机定位契约：${issue}`)
+  if (drones.length > 0) {
+    const scout = drones.find((d) => d.droneClass === 'scout')
+    console.log(
+      `· 无人机四型定位：${drones
+        .map((d) => {
+          const cls = d.droneClass ?? '?'
+          return `${DRONE_ROLE_SPECS[cls as keyof typeof DRONE_ROLE_SPECS]?.label ?? cls} 闪避 ${d.defense?.evasion ?? '—'}·血 ${droneTotalHp(d)}·单发 ${d.dmg ?? 0}`
+        })
+        .join('　')}（单发基准 = 侦察机 ${scoutDmg}）`,
+    )
   }
 }
 for (const m of MODULES) {
