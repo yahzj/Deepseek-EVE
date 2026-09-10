@@ -2614,7 +2614,7 @@ body {
 @keyframes app-swin-fireglow { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 /* ── 星空 / 机库 / 远景物件层 = SVG 线稿（舰后；视觉物件一律 SVG，规则见 conventions 第九章） ── */
 .app-shipwin-sky { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-.app-swin-star { fill: #d7e7f4; opacity: 0.6; }
+.app-swin-star { fill: #d7e7f4; opacity: 0.5; /* 2026-09-10 船长批:星点仅点缀,低对比不压舰体线稿 */ }
 /* 机库结构件：顶棚横梁/墙柱/地板停靠格/引导灯（主题青系低饱和线稿） */
 .app-swin-hangar path { fill: none; stroke: #6f9fc4; stroke-width: 1; opacity: 0.4; }
 .app-swin-hangar-lamp { fill: #a9ecff; opacity: 0.9; }
