@@ -382,6 +382,7 @@ export const DRONES: readonly ItemDef[] = [
     dmg: 3,
     cpuUse: 4,
     maxRangeM: 2500, // 射程分类 1/4：近身护航（2026-09-10 船长：前三型大幅缩减、哨戒独享远程）
+    droneClass: 'scout', // 2026-09-10 分类入本体：「种类」显示 无人机 · 侦察机
     defense: { shieldHp: 6, armorHp: 3, hullHp: 10, evasion: 0.45 },
   },
   {
@@ -395,6 +396,7 @@ export const DRONES: readonly ItemDef[] = [
     dmg: 6,
     cpuUse: 7,
     maxRangeM: 3000, // 射程分类 2/4：中近缠斗（2026-09-10 船长）
+    droneClass: 'combat', // 2026-09-10：无人机 · 战斗机
     defense: { shieldHp: 10, armorHp: 6, hullHp: 18, shieldResist: { kinetic: 0.1 }, evasion: 0.4 },
   },
   {
@@ -408,6 +410,7 @@ export const DRONES: readonly ItemDef[] = [
     dmg: 12,
     cpuUse: 11,
     maxRangeM: 3500, // 射程分类 3/4：攻坚中程（2026-09-10 船长）
+    droneClass: 'assault', // 2026-09-10：无人机 · 攻坚机
     defense: { shieldHp: 20, armorHp: 12, hullHp: 34, armorResist: { explosive: 0.1, plasma: 0.05 }, evasion: 0.32 },
   },
   {
@@ -421,6 +424,7 @@ export const DRONES: readonly ItemDef[] = [
     dmg: 20,
     cpuUse: 16,
     maxRangeM: 5000, // 射程分类 4/4：远程哨戒（2026-09-10 船长——哨戒独享远程，兑现"航程极远"）
+    droneClass: 'sentry', // 2026-09-10：无人机 · 哨戒机
     defense: { shieldHp: 30, armorHp: 20, hullHp: 55, shieldResist: { kinetic: 0.1, explosive: 0.1 }, hullResist: { kinetic: 0.05 }, evasion: 0.25 },
   },
 ]

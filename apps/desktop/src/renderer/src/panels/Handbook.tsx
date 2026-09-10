@@ -7,7 +7,8 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, itemKindText, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
+import type { DroneClass, ItemKind } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
@@ -139,7 +140,11 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
 
   if (cell.tab === 'items') {
     const kind = String(r.kind ?? '')
-    rows.push(['种类', kindName(kind)])
+    // 2026-09-10 船长：无人机把归类子属性并入「种类」（无人机 · 侦察机）——走 core 单点
+    rows.push([
+      '种类',
+      itemKindText({ kind: kind as ItemKind, droneClass: r.droneClass as DroneClass | undefined }),
+    ])
     rows.push(['单位体积', `${Number(r.unitM3 ?? 0)} m³`])
     // V10.5：弹药/无人机补充伤害契约（与其它界面统一由 shipInfo 生成）
     const itemId = String(r.id ?? '')
@@ -484,7 +489,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
                       >
                         <div className="app-inv-name">
                           <RowGlyph glyph={item.kind} /> {item.name}
-                          <span className="app-chip is-dim">{kindName(item.kind)}</span>
+                          <span className="app-chip is-dim">{itemKindText(item)}</span>
                           <span className="app-dim"> · {item.unitM3} m³/单位</span>
                         </div>
                         <div className="app-dim">{item.description}</div>

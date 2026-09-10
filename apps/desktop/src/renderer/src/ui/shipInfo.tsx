@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
-import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
+import { ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -488,6 +488,9 @@ export function itemCombatLines(item: ItemDef): InfoLine[] {
   if (item.kind === 'drone' && item.cpuUse !== undefined) {
     lines.push({ k: '放飞 CPU', v: fmt(item.cpuUse) })
     lines.push({ k: '占用舱容', v: `${item.unitM3} m³/架` })
+    if (item.maxRangeM !== undefined) {
+      lines.push({ k: '射程上限', v: `${fmt(item.maxRangeM)} m（中继天线百分比乘入）` })
+    }
   }
   if (item.kind === 'drone' && item.defense) {
     const d = item.defense
@@ -629,7 +632,7 @@ export function ModuleHover({
 /** 物品统一信息行（悬浮窗数据源：种类/体积/收价 + 精炼 + 弹药无人机战斗行 + 修理组件） */
 export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | undefined): InfoLine[] {
   const lines: InfoLine[] = [
-    { k: '种类', v: ITEM_KIND_LABELS[item.kind] ?? item.kind },
+    { k: '种类', v: itemKindText(item) }, // 2026-09-10 无人机：无人机 · 侦察机（子属性并入种类）
     { k: '单位体积', v: `${item.unitM3} m³` },
   ]
   if ((item.baseSellPriceIsk ?? 0) > 0) {

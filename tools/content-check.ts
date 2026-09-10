@@ -327,6 +327,16 @@ for (const d of drones) {
   check(d.damageType !== undefined && DMG_TYPES.has(d.damageType), `无人机 ${d.id} damageType 缺失或非法`)
   check((d.dmg ?? 0) > 0 && Number.isFinite(d.dmg), `无人机 ${d.id} dmg 缺失或非正`)
   check((d.cpuUse ?? 0) > 0 && Number.isInteger(d.cpuUse), `无人机 ${d.id} cpuUse 缺失或非法（V10.5b 放飞占 CPU）`)
+  // 2026-09-10 射程分类 + 分类字段契约（船长：机型分类入本体，界面「种类」显示无人机 · 侦察机）
+  const DRONE_CLASS_RANGE: Record<string, number> = { scout: 2500, combat: 3000, assault: 3500, sentry: 5000 }
+  const dc = d.droneClass
+  check(dc !== undefined && DRONE_CLASS_RANGE[dc] !== undefined, `无人机 ${d.id} droneClass 缺失或非法：${String(dc)}`)
+  if (dc !== undefined && DRONE_CLASS_RANGE[dc] !== undefined) {
+    check(
+      d.maxRangeM === DRONE_CLASS_RANGE[dc],
+      `无人机 ${d.id}（${dc}）射程应为 ${DRONE_CLASS_RANGE[dc]}，实际 ${String(d.maxRangeM)}`,
+    )
+  }
   // V11：无人机生存包契约（三层血量必填、回避与抗性界内）
   const def = d.defense
   check(!!def && (def.shieldHp ?? 0) > 0 && (def.armorHp ?? 0) > 0 && (def.hullHp ?? 0) > 0, `无人机 ${d.id} defense 缺失或三层血量非正（V11）`)
