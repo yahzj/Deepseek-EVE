@@ -11,6 +11,7 @@ import {
   countAiCore,
   countWare,
   formatDurationMs,
+  manufacturingLoopOf,
   manufacturingRunViews,
   marketLockedReason,
   matNeedCount,
@@ -255,12 +256,15 @@ function BlueprintCard({
     else onToast('已取消该条制造线：材料全额退回物品仓库（AI 核心已归还），其余线不受影响。')
   }
 
-  // 2026-09-09 船长定：连续生产——线行滑动开关 + 目标件数（留空 = 直到材料不足自动停）
-  const [goalDrafts, setGoalDrafts] = useState<Record<number, string>>({})
-  function commitLoop(runId: number, on: boolean, goalText: string): void {
+  // 2026-09-10 船长定：循环制造（开关 + 目标件数）从逐条制造线**上移到整张生产卡**——
+  // 一张卡一个开关，作用于该卡全部制造线（含主控亲自那条），打开后新开的线自动继承；
+  // 目标件数 = 全卡合计；「关→开」= 开一批新循环（合计与停因清零）。判定/计数都在 core。
+  const loop = manufacturingLoopOf(state, blueprintId)
+  const [goalDraft, setGoalDraft] = useState('')
+  function commitLoop(on: boolean, goalText: string): void {
     const n = Number.parseInt(goalText, 10)
     const goal = Number.isFinite(n) && n > 0 ? n : null
-    const r = engine.setManufacturingLoopAt(runId, on, on ? goal : null)
+    const r = engine.setManufacturingLoopAt(blueprintId, on, on ? goal : null)
     if (!r.ok) onToast(r.error ?? '开关操作失败', true)
   }
 
@@ -385,7 +389,57 @@ function BlueprintCard({
       </div>
 
       <div className="app-belt-actions">
-        {/* 该蓝图逐条制造线名册（每行：劳动者 + 剩余 + 进度 + 取消）——精炼炉运转名册同款结构 */}
+        {/* 循环制造（2026-09-10 船长定：开关与目标件数**单独领出来挂在生产卡上**，不再逐线各一份）——
+            作用于本卡全部制造线（含主控亲自那条），新开的线自动继承；目标件数 = 全卡合计口径 */}
+        {owned || running ? (
+          <div className="app-belt-loop">
+            <label
+              className="app-toggle"
+              title={`循环制造：本卡全部制造线完成一件后自动续做同一蓝图（含主控亲自那条；劳动者/核心保持占用）；${loop.on ? '关闭后' : '打开后'}本卡在跑的线完成当前件即止`}
+            >
+              <input
+                type="checkbox"
+                className="app-toggle-input"
+                checked={loop.on}
+                onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
+              />
+              <span className="app-toggle-track" aria-hidden="true" />
+              <span className="app-toggle-label">循环制造</span>
+            </label>
+            {loop.on ? (
+              <span className="app-mf-goal">
+                目标
+                <input
+                  type="number"
+                  min={1}
+                  className="app-mf-goal-input"
+                  placeholder="∞"
+                  value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
+                  onChange={(e) => setGoalDraft(e.target.value)}
+                  onBlur={(e) => {
+                    setGoalDraft('')
+                    commitLoop(true, e.target.value)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setGoalDraft('')
+                      commitLoop(true, (e.target as HTMLInputElement).value)
+                    }
+                  }}
+                  title="目标件数：本卡全部制造线合计做到这么多件就停（留空 = 直到材料不足自动停）；回车/失焦生效"
+                />
+                件<em className="app-dim">（全卡合计）</em>
+              </span>
+            ) : null}
+            {loop.produced > 0 ? <span className="app-mf-made">已产 {loop.produced.toLocaleString('zh-CN')} 件</span> : null}
+            {loop.stopWhy.length > 0 ? <span className="app-mf-why">已停线：{loop.stopWhy}</span> : null}
+            <span className="app-dim app-mf-note">
+              作用于本卡全部制造线{runs.length > 0 ? `（当前 ${runs.length} 条）` : ''}
+            </span>
+          </div>
+        ) : null}
+        {/* 该蓝图逐条制造线名册（每行：劳动者 + 剩余 + 进度 + 取消）——精炼炉运转名册同款结构；
+            2026-09-10 起循环开关已在卡片级，行内不再各带一份 */}
         {runs.length > 0 ? (
           <div className="app-belt-workers" style={{ marginTop: 2 }}>
             {runs.map((v) => (
@@ -399,42 +453,6 @@ function BlueprintCard({
                 </span>
                 <span className="app-progress-mini" title={`制造进度 ${v.percent}%`}>
                   <i style={{ width: `${v.percent}%` }} />
-                </span>
-                {/* 连续生产开关（2026-09-09 船长定）：完成一件自动续做同一物品；目标件数留空 = 直到材料不足 */}
-                <span className="app-mf-loop">
-                  <label
-                    className="app-toggle"
-                    title="连续生产：本件完成后自动续做同一物品（劳动者/核心保持占用）；达成目标件数或材料不足时自动停线"
-                  >
-                    <input
-                      type="checkbox"
-                      className="app-toggle-input"
-                      checked={v.autoRepeat}
-                      onChange={(e) => commitLoop(v.id, e.target.checked, goalDrafts[v.id] ?? '')}
-                    />
-                    <span className="app-toggle-track" aria-hidden="true" />
-                    <span className="app-toggle-label">循环</span>
-                  </label>
-                  {v.autoRepeat ? (
-                    <span className="app-mf-goal">
-                      目标
-                      <input
-                        type="number"
-                        min={1}
-                        className="app-mf-goal-input"
-                        placeholder="∞"
-                        value={goalDrafts[v.id] ?? (v.repeatGoal > 0 ? String(v.repeatGoal) : '')}
-                        onChange={(e) => setGoalDrafts((p) => ({ ...p, [v.id]: e.target.value }))}
-                        onBlur={(e) => commitLoop(v.id, true, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitLoop(v.id, true, (e.target as HTMLInputElement).value)
-                        }}
-                        title="目标件数：留空 = 直到材料不足自动停；回车/失焦生效"
-                      />
-                      件
-                      {v.produced > 0 ? `·已产 ${v.produced}` : ''}
-                    </span>
-                  ) : null}
                 </span>
                 <button
                   className="app-btn is-small is-warn"

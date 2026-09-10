@@ -83,6 +83,62 @@ describe('制造多线读档回归（卷B3 修复 2026-09-08：玩家反馈组�
   })
 })
 
+describe('循环制造上移到卡片级的老档归并（2026-09-10 船长定：无版本号变化，读档时归并）', () => {
+  /** 造一份"改动前的 v24 档"：逐线 autoRepeat/repeatGoal/produced，且没有 manufacturingLoops */
+  const legacyText = (
+    runs: Array<{ blueprintId: string; autoRepeat?: boolean; repeatGoal?: number; produced?: number }>,
+  ): string => {
+    const state = createInitialState({ nowWallMs: 0, seed: 9 })
+    state.manufacturingRuns = runs.map((r, i) => ({
+      active: true,
+      id: i + 1,
+      blueprintId: r.blueprintId,
+      finishAtGameMs: 100_000,
+      durationMs: 60_000,
+      autoRepeat: r.autoRepeat,
+      repeatGoal: r.repeatGoal,
+      produced: r.produced,
+    }))
+    const file = JSON.parse(serializeSaveFile(state, 0)) as { state: Record<string, unknown> }
+    delete file.state.manufacturingLoops // 模拟改动前写下的档（没有新字段）
+    return JSON.stringify(file)
+  }
+
+  it('逐线开关归并到卡片：on = 任一为真、produced = 各线之和、目标 = 各线之和', () => {
+    const loaded = loadSaveFile(legacyText([
+      { blueprintId: 'bp-a', autoRepeat: true, repeatGoal: 3, produced: 2 },
+      { blueprintId: 'bp-a', autoRepeat: true, repeatGoal: 4, produced: 1 },
+      { blueprintId: 'bp-b' }, // 没开循环的线 → 该卡不建配置
+    ]))
+    expect(loaded.state.manufacturingLoops['bp-a']).toEqual({ on: true, goal: 7, produced: 3 })
+    expect(loaded.state.manufacturingLoops['bp-b']).toBeUndefined()
+    // 逐线旧字段不再随档保留（引擎不再读写它们）
+    for (const r of loaded.state.manufacturingRuns) {
+      expect(r.autoRepeat).toBeUndefined()
+      expect(r.repeatGoal).toBeUndefined()
+      expect(r.produced).toBeUndefined()
+    }
+  })
+
+  it('只要有任一条线是「无目标」，卡片就无目标（跑到材料不足）；新字段存在时优先、不与老字段重复计数', () => {
+    const loaded = loadSaveFile(legacyText([
+      { blueprintId: 'bp-a', autoRepeat: true, repeatGoal: 10, produced: 4 },
+      { blueprintId: 'bp-a', autoRepeat: true, produced: 2 }, // 无目标线 → 卡片无目标
+    ]))
+    expect(loaded.state.manufacturingLoops['bp-a']).toEqual({ on: true, produced: 6 })
+    expect(loaded.state.manufacturingLoops['bp-a']!.goal).toBeUndefined()
+
+    // 新档字段（含停因）随档往返；同档若已带新字段，则不叠加老字段的合计
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    state.manufacturingLoops['bp-a'] = { on: false, goal: 5, produced: 5, stopWhy: '已达成目标 5 件' }
+    const round = loadSaveFile(serializeSaveFile(state, 0))
+    expect(round.state.manufacturingLoops['bp-a']).toEqual({ on: false, goal: 5, produced: 5, stopWhy: '已达成目标 5 件' })
+    // 空记录不留档（开关关、无目标、无合计、无停因）
+    const clean = loadSaveFile(serializeSaveFile(createInitialState({ nowWallMs: 0, seed: 12 }), 0))
+    expect(clean.state.manufacturingLoops).toEqual({})
+  })
+})
+
 describe('旧版本迁移链（v0 → … → v9）', () => {
   it('v0 草图档一路迁移到 v9：技能与队列保留，各系统补默认值', () => {
     const v0Text = JSON.stringify({

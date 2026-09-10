@@ -1379,6 +1379,12 @@ function normalizeState(raw: unknown): GameState {
     // --- 制造作业线表（v21 多工位；兼容 v20 及更早单例 manufacturing 兜底） ---
   const manufacturingRuns: GameState['manufacturingRuns'] = []
   let manufacturingSeq = 1
+  /**
+   * 老档「逐线连续生产」归并暂存（2026-09-10 船长定：开关/目标件数上移到卡片级）。
+   * 归并口径（船长逐条确认）：on = 任一条线为真；produced = 各线之和；
+   * goal = 各线目标之和，但**只要有任一条线是「无目标」→ 卡片也无目标**（跑到材料不足）。
+   */
+  const legacyLoops: Record<string, { produced: number; goalSum: number; openEnded: boolean }> = {}
   const sanitizeMfRun = (rawRun: unknown): GameState['manufacturingRuns'][number] | null => {
     const r = asRaw(rawRun)
     const bp = typeof r.blueprintId === 'string' && r.blueprintId.length > 0 ? r.blueprintId : null
@@ -1395,10 +1401,8 @@ function normalizeState(raw: unknown): GameState {
       worker,
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))),
       durationMs: Math.max(0, Math.floor(num(r.durationMs))),
-      // 连续生产字段透传（2026-09-09 船长定；零迁移可选字段）
-      ...(r.autoRepeat === true ? { autoRepeat: true as const } : {}),
-      ...(Math.floor(num(r.repeatGoal)) > 0 ? { repeatGoal: Math.floor(num(r.repeatGoal)) } : {}),
-      ...(Math.floor(num(r.produced)) > 0 ? { produced: Math.floor(num(r.produced)) } : {}),
+      // 逐线连续生产字段（autoRepeat/repeatGoal/produced）**不再写入**：2026-09-10 船长定，
+      // 循环制造上移到卡片级；老档里这三位在下面统一归并进 manufacturingLoops（见 legacyLoops）
     }
   }
   let pilotSeen = false // 主控亲自制造全局限 1 条（引擎保证；防御读档里出现重复）
@@ -1419,10 +1423,45 @@ function normalizeState(raw: unknown): GameState {
     run.id = manufacturingSeq
     manufacturingSeq += 1
     manufacturingRuns.push(run)
+    // 老档逐线循环字段 → 暂存待归并（只认 autoRepeat=true 的线；新档不会有这些字段）
+    if (raw.autoRepeat === true && run.blueprintId) {
+      const cur = (legacyLoops[run.blueprintId] ??= { produced: 0, goalSum: 0, openEnded: false })
+      cur.produced += Math.max(0, Math.floor(num(raw.produced)))
+      const g = Math.floor(num(raw.repeatGoal))
+      if (g > 0) cur.goalSum += g
+      else cur.openEnded = true
+    }
   }
   if (Array.isArray(src.manufacturingRuns)) { for (const rawRun of src.manufacturingRuns) pushMf(rawRun) }
   if (manufacturingRuns.length === 0 && src.manufacturing !== undefined) { pushMf(src.manufacturing) }
   if (typeof src.manufacturingSeq === 'number' && Number.isFinite(src.manufacturingSeq)) { manufacturingSeq = Math.max(manufacturingSeq, Math.floor(src.manufacturingSeq)) }
+  // --- 组装机循环制造（卡片级；2026-09-10 船长定：开关/目标件数从逐线移到整卡）---
+  // ① 新档字段直接读（存在时优先，避免与老档逐线字段重复计数）；② 老档逐线字段按上面的口径归并
+  const manufacturingLoops: GameState['manufacturingLoops'] = {}
+  for (const [bp, rawLoop] of Object.entries(asRaw(src.manufacturingLoops))) {
+    if (typeof bp !== 'string' || bp.length === 0) continue
+    const l = asRaw(rawLoop)
+    const on = l.on === true
+    const goal = Math.floor(num(l.goal))
+    const produced = Math.max(0, Math.floor(num(l.produced)))
+    const stopWhy = typeof l.stopWhy === 'string' && l.stopWhy.length > 0 ? l.stopWhy : ''
+    if (!on && goal <= 0 && produced <= 0 && stopWhy.length === 0) continue // 空记录不留档
+    manufacturingLoops[bp] = {
+      on,
+      ...(goal > 0 ? { goal } : {}),
+      ...(produced > 0 ? { produced } : {}),
+      ...(stopWhy.length > 0 ? { stopWhy } : {}),
+    }
+  }
+  for (const [bp, leg] of Object.entries(legacyLoops)) {
+    if (manufacturingLoops[bp] !== undefined) continue // 新字段优先（同档不会两者并存）
+    const goal = leg.openEnded ? 0 : leg.goalSum
+    manufacturingLoops[bp] = {
+      on: true,
+      ...(goal > 0 ? { goal } : {}),
+      ...(leg.produced > 0 ? { produced: leg.produced } : {}),
+    }
+  }
 // --- 势力声望（v4） ---
   const standings: Record<string, number> = {}
   const standingsRaw = asRaw(src.standings)
@@ -2025,6 +2064,7 @@ function normalizeState(raw: unknown): GameState {
     escrowShips,
     manufacturingRuns,
     manufacturingSeq,
+    manufacturingLoops,
     standings,
     expedition,
     events,

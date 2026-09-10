@@ -7,8 +7,8 @@
  * - 每种物品（矿石/矿物/气体/冰/弹药/无人机）都必须有市场卡（防死物品：买不了也卖不了）；
  * - 采集点：id 唯一、产出物存在且可采集（ore/gas/ice）、声望门槛非负整数；
  * - 精炼配方：只有可精炼资源（ore/gas/ice）带配方、配方行矿物存在且 kind=mineral；
- * - 装备：id 唯一、slot 在六槽内、每件装备必须有市场卡；
- * - 蓝图：id 唯一、模块/船存在、材料都是矿物、蓝图必须有市场卡（否则无法购书学习）；
+ * - 装备：id 唯一、slot 在六槽内、参数按家族齐备；**窝点专属装备例外**（无市场卡、无蓝图，只从高级箱出，见下方契约）；
+ * - 蓝图：id 唯一、模块/船存在、材料都是矿物；蓝图卡存在时其 refId 必须解析到真实蓝图（否则无法购书学习）；
  * - 舰船：id 唯一、role 合法；蓝图的产物船存在；舰船蓝图引用船存在；
  * - 市场卡：refId 解析 + 池商品必须有 poolTarget/supplyFlow、单件门槛/倍数字段数值合法。
  *
@@ -47,6 +47,7 @@ import {
   BOUNTY_ZONE_PLAN,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FRAGMENT_RECIPES,
   hasLairCore,
   isLairCandidate,
   lairGearOf,
@@ -683,6 +684,38 @@ for (const m of MODULES) {
     check(
       FOE_LAIR_GEAR[fam].length > 0,
       `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
+    )
+  }
+  /* 专属装备的"来源唯一"契约（2026-09-10 加）：这批装备**只能**从高级箱（稀有残骸额外掉落）出——
+   * 不得有蓝图（造不出来）、不得有市场卡（买不到也卖不掉）、不得有碎片逆向配方、
+   * 不得混进任何敌群的常规残骸主题池（否则普通残骸就能刷出窝点专属，稀释窝点价值）。 */
+  {
+    const lairGearIds = new Set<string>(Object.values(FOE_LAIR_GEAR).flat())
+    const bpByModule = new Map<string, string>()
+    for (const bp of BLUEPRINTS) if (bp.moduleId) bpByModule.set(bp.moduleId, bp.id)
+    let marketCards = 0
+    for (const id of lairGearIds) {
+      const bp = bpByModule.get(id)
+      check(!bp, `来源唯一契约：窝点专属装备 ${id} 不得有蓝图（现被 ${bp} 产出；专属装备只能从高级箱出）`)
+      const card = [...lairCtx.marketGoods.values()].find((g) => g.key === id || g.refId === id)
+      if (card) marketCards += 1
+      check(!card, `来源唯一契约：窝点专属装备 ${id} 不得有市场卡（现被 ${card?.key} 上架；专属装备只能从高级箱出）`)
+      const frag = FRAGMENT_RECIPES[id]
+      check(
+        !frag,
+        `来源唯一契约：窝点专属装备 ${id} 不得有碎片逆向配方（现指向 ${frag?.blueprintId}；专属装备只能从高级箱出）`,
+      )
+      for (const def of ANOMALIES_FLAVORED) {
+        const inPool = [...(def.recycleLoot?.modules ?? []), ...(def.recycleLoot?.mk2 ?? [])].includes(id)
+        check(
+          !inPool,
+          `来源唯一契约：窝点专属装备 ${id} 不得混进 ${def.name} 的常规残骸主题池（专属装备只能从高级箱出）`,
+        )
+      }
+    }
+    check(marketCards === 0, `来源唯一契约：窝点专属装备共 ${marketCards} 件出现在市场上架（应为 0）`)
+    console.log(
+      `· 来源唯一契约：${lairGearIds.size} 件窝点专属装备无蓝图、无市场卡、无碎片配方、不进常规掉落池（唯一来源＝高级箱）`,
     )
   }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽

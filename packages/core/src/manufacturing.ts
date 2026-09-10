@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 蓝图制造（M2/M5/V9 限时批次；v21 多工位并行，产物：装备或舰船）。
  *
  * 模型（中文说明）：
@@ -19,6 +19,10 @@
  * - 2026-09-09（船长拍板：组装机卡片滑动开关「连续生产」）：运行中的线可开 autoRepeat——
  *   完成一件自动续做同一蓝图（劳动者/核心持续占用，相位推进可跨离线大 delta 连续结算），
  *   到 达目标件数 / 材料不足 自动停线并写汇总日志；开关关闭 = 完成当前件后停止。
+ * - 2026-09-10（船长定：开关与目标件数**从逐条制造线上移到整张生产卡**）：一张卡（= 一个蓝图）
+ *   只有一个开关、一个目标件数与一个「本轮全卡合计」计数，**该卡全部制造线共用**（含主控亲自那条），
+ *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
+ *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
 import { addLog } from './state'
 import type { CommandResult } from './engine'
@@ -241,29 +245,79 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
 }
 
 /**
- * 玩家指令：开/关该制造线的「连续生产」（2026-09-09 船长定：组装机卡片滑动开关——
- * 同一线完成一件后自动续做同一蓝图；goal > 0 = 达成件数即停，缺省/0 = 直到材料不足自动停）。
- * 只允许运行中的线切换；手动（pilot）与 AI 核心驱动的线均可；劳动者占用保持不变。
+ * 玩家指令：开/关这张生产卡的「循环制造」（2026-09-10 船长定：开关与目标件数挂在卡片上，
+ * 作用于**该卡全部制造线**——含主控亲自那条；打开后新开的线自动继承；目标件数 = 全卡合计）。
+ * - 从「关」到「开」= 开一批新循环：本轮合计 `produced` 与停因 `stopWhy` 一起清零；
+ *   开关本来就开着时只更新目标件数（**不动**已累计的合计，避免改数字把进度重置）；
+ * - 关闭 = 该卡在跑的线完成当前件后停（不写停因，属玩家主动收手）；
+ * - 卡片无需正在生产：先开开关、后开线同样生效（预制循环）。
  */
 export function setManufacturingLoop(
   state: GameState,
-  runId: number,
+  blueprintId: string,
   on: boolean,
   goal?: number | null,
 ): CommandResult {
-  const run = state.manufacturingRuns.find((r) => r.id === runId && r.active)
-  if (!run) return { ok: false, error: '没有找到该制造线（已完成或已取消）。' }
-  run.autoRepeat = on === true
+  if (typeof blueprintId !== 'string' || blueprintId.length === 0) {
+    return { ok: false, error: '没有找到这张生产卡（蓝图数据缺失）。' }
+  }
   const g = Number.isFinite(goal) ? Math.floor(goal ?? 0) : 0
-  run.repeatGoal = on && g > 0 ? g : undefined
+  const prev = state.manufacturingLoops[blueprintId]
+  if (on) {
+    const already = prev?.on === true
+    state.manufacturingLoops[blueprintId] = {
+      on: true,
+      goal: g > 0 ? g : undefined,
+      produced: already ? (prev?.produced ?? 0) : 0,
+      stopWhy: already ? prev?.stopWhy : undefined,
+    }
+  } else {
+    state.manufacturingLoops[blueprintId] = {
+      on: false,
+      goal: g > 0 ? g : prev?.goal && prev.goal > 0 ? prev.goal : undefined,
+      produced: prev?.produced ?? 0,
+      stopWhy: undefined,
+    }
+  }
   return { ok: true }
 }
 
+/** 卡片级循环配置的只读视图（界面显示用；缺省 = 未开启过 → 不循环、无目标、合计 0） */
+export interface ManufacturingLoopView {
+  /** 开关是否打开 */
+  on: boolean
+  /** 目标件数（0 = 不限，直到材料不足） */
+  goal: number
+  /** 本轮全卡合计产出件数 */
+  produced: number
+  /** 上一次自动停线原因（空 = 无） */
+  stopWhy: string
+}
+
+/** 取某张生产卡的循环配置视图（界面/文案统一走这里，不要各自读 state） */
+export function manufacturingLoopOf(state: GameState, blueprintId: string | null): ManufacturingLoopView {
+  const l = blueprintId ? state.manufacturingLoops[blueprintId] : undefined
+  return {
+    on: l?.on === true,
+    goal: l?.goal && l.goal > 0 ? l.goal : 0,
+    produced: l?.produced ?? 0,
+    stopWhy: l?.stopWhy ?? '',
+  }
+}
+
+/** 内部：取卡片循环配置（可写引用；无线/无配置返回 undefined） */
+function loopRefOf(state: GameState, blueprintId: string | null): GameState['manufacturingLoops'][string] | undefined {
+  return blueprintId ? state.manufacturingLoops[blueprintId] : undefined
+}
+
+
 /** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点；
  * AI 核心驱动的线到点完成即归还核心。stats = 离线结算统计器（可选，见 settleStats.ts）
- * 连续生产（2026-09-09 船长定）：autoRepeat 线完成一件后立即续做同一蓝图（劳动者保持占用），
- * 相位推进 finishAt 可跨大 delta 连续结算多件；停止条件 = 达 repeatGoal / 材料不足 / 数据缺失 /
- * 开关已关（完成最后一件即止）；停止时移除线并归还核心、写一条停线汇总日志。 */
+ * 循环制造（2026-09-10 上移到卡片级）：开关与目标件数按蓝图读 state.manufacturingLoops，
+ * 该卡全部线共用——完成一件后自动续做同一蓝图（劳动者保持占用、相位推进 finishAt 可跨大 delta
+ * 连续结算多件），本轮合计 produced 逐件累加；停止条件 = 合计达目标件数 / 材料不足 / 数据缺失 /
+ * 开关已关（完成最后一件即止）。自动停线时把 `on` 置假并记 `stopWhy`（每卡一条汇总日志），
+ * 该卡其它线跑完当前件即止、核心归还。 */
 export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: SettleStats): void {
   for (let i = state.manufacturingRuns.length - 1; i >= 0; i--) {
     const mf = state.manufacturingRuns[i]!
@@ -272,9 +326,12 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
     const blueprintId = mf.blueprintId
     const worker = mf.worker
     const byCore = worker !== undefined && worker !== 'pilot'
-    const auto = mf.autoRepeat === true
+    // 卡片级循环（2026-09-10 船长定）：同一张卡的线共用开关/目标/合计，实时读、不往线上写副本
+    const loop = loopRefOf(state, blueprintId)
+    const auto = loop?.on === true
     let guard = 0
-    let stopWhy = '' // 连续生产线收尾原因（非循环线恒为空；空 = 正常完成停止/开关已关）
+    let stopWhy = '' // 收尾原因（非循环线恒为空；空 = 正常完成停止/开关已关）
+
 
     /** 结算当前这一件（产出入账 + 完成日志 + 离线统计）；数据缺失抛错由调用处 catch 语义处理 */
     const settlePiece = (buildable: NonNullable<ReturnType<typeof findBuildable>>): boolean => {
@@ -323,15 +380,17 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         stopWhy = '蓝图数据缺失'
         break
       }
-      mf.produced = (mf.produced ?? 0) + 1
+      // 本轮全卡合计（2026-09-10：卡片级计数，**开关打开期间**逐件累加——含首件；
+      // 达成目标时停在"正好等于目标"的件数上，随后收尾的在跑件不再计入，故合计即停线依据）
+      if (loop && loop.on === true) loop.produced = (loop.produced ?? 0) + 1
       if (!settlePiece(buildable)) {
         addLog(state, 'warn', '制造作业引用的产物数据缺失，产出已丢弃（数据异常）。')
         stopWhy = '产物数据缺失'
         break
       }
       if (!auto) break
-      const goal = mf.repeatGoal && mf.repeatGoal > 0 ? mf.repeatGoal : null
-      if (goal !== null && (mf.produced ?? 0) >= goal) {
+      const goal = loop && loop.goal && loop.goal > 0 ? loop.goal : null
+      if (goal !== null && (loop?.produced ?? 0) >= goal) {
         stopWhy = `已达成目标 ${goal} 件`
         break
       }
@@ -355,20 +414,31 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       mf.durationMs = durationMs
     }
 
-    // 收尾判定：单件线 / 开关已关（auto 已在完成时置假）/ 带停因（达目标/缺料/数据缺失）→ 移除线并归还核心；
-    // 连续生产正常续产中（已重排下一件到点）→ 线保留到下一 tick
-    const lineEnds = !auto || stopWhy !== '' || mf.autoRepeat !== true
+    // 收尾判定：单件线 / 开关已关 / 带停因（达目标/缺料/数据缺失）→ 移除线并归还核心；
+    // 循环正常续产中（已重排下一件到点）→ 线保留到下一 tick
+    const lineEnds = !auto || stopWhy !== ''
     if (!lineEnds) continue
     state.manufacturingRuns.splice(i, 1)
     if (byCore) releaseAiCore(state, worker)
     if (auto && stopWhy) {
-      const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
-      const name = buildable ? productNameOf(ctx, buildable, blueprintId ?? '') : (blueprintId ?? '')
-      addLog(
-        state,
-        'info',
-        `连续生产停止：${name}（共 ${mf.produced ?? 1} 件）——${stopWhy}${byCore ? '；AI 核心已归还核心库' : ''}`,
-      )
+      // 卡片级自动停线（2026-09-10 船长定：达成目标/材料不足 → 自动关开关 + 卡片上标停因）。
+      // 同一 tick 内同卡多条线一起到点时**只结一次账**（后面的线读到 on=false 即自然收尾、不重复记日志）
+      const rest = blueprintId
+        ? state.manufacturingRuns.filter((r) => r.active && r.blueprintId === blueprintId).length
+        : 0
+      const b = blueprintId ? findBuildable(ctx, blueprintId) : null
+      const nm = b ? productNameOf(ctx, b, blueprintId ?? '') : (blueprintId ?? '')
+      if (loop && loop.on === true) {
+        loop.on = false
+        loop.stopWhy = stopWhy
+        addLog(
+          state,
+          'info',
+          `循环制造停止：${nm}（本卡合计 ${loop.produced ?? 0} 件）——${stopWhy}${
+            rest > 0 ? `；本卡其余 ${rest} 条线跑完当前件即停` : ''
+          }${byCore ? '；AI 核心已归还核心库' : ''}`,
+        )
+      }
     }
   }
 }
@@ -392,12 +462,12 @@ export interface ManufacturingView {
   /** 总耗时毫秒 */
   durationMs: number
   percent: number
-  /** 连续生产开关状态（2026-09-09 船长定：组装机线行滑动开关） */
-  autoRepeat: boolean
-  /** 目标件数（>0 达数即停；0/缺省 = 直到材料不足） */
-  repeatGoal: number
-  /** 本线累计产出件数（含首件） */
-  produced: number
+  /** 本卡「循环制造」开关（2026-09-10 卡片级：同卡各线读到的是**同一个**开关，不是逐线状态） */
+  loopOn: boolean
+  /** 本卡循环目标件数（全卡合计口径；0/缺省 = 直到材料不足） */
+  loopGoal: number
+  /** 本卡本轮合计产出件数（开关打开期间累加；与同卡其它线共享） */
+  loopProduced: number
 }
 
 function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): ManufacturingView {
@@ -407,6 +477,7 @@ function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): M
   const percent =
     mf.durationMs > 0 ? Math.min(100, Math.max(0, Math.round(((mf.durationMs - remainingMs) / mf.durationMs) * 100))) : 0
   const worker = mf.worker ?? null
+  const loop = manufacturingLoopOf(state, mf.blueprintId)
   return {
     active: mf.active,
     id: mf.id,
@@ -418,9 +489,9 @@ function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): M
     remainingMs,
     durationMs: mf.durationMs,
     percent,
-    autoRepeat: mf.autoRepeat === true,
-    repeatGoal: mf.repeatGoal && mf.repeatGoal > 0 ? mf.repeatGoal : 0,
-    produced: mf.produced ?? 0,
+    loopOn: loop.on,
+    loopGoal: loop.goal,
+    loopProduced: loop.produced,
   }
 }
 

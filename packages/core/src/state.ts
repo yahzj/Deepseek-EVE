@@ -217,13 +217,37 @@ export interface ManufacturingRunState {
   finishAtGameMs: number
   /** 本次作业总耗时（毫秒，开工时按当时技能锁定，中途升技能不影响） */
   durationMs: number
-  /** 连续生产（2026-09-09 船长定）：true = 本件完成后自动续做同一蓝图（劳动者保持占用），
-   *  直到 达到 repeatGoal 件 / 材料不足 / 被取消或关闭开关；缺省 false */
+  /** 【兼容只读·2026-09-10 起停用】旧逐线连续生产字段——循环制造已上移到卡片级
+   *  （见 ManufacturingLoopState）；这几个字段只用于读老档时归并，引擎不再写入。 */
   autoRepeat?: boolean
-  /** 目标件数（>0 达数即停；缺省/0 = 直到材料不足自动停） */
+  /** 【兼容只读·2026-09-10 起停用】旧逐线目标件数（读档归并到卡片配置） */
   repeatGoal?: number
-  /** 本线累计产出件数（含首件；连续生产计数与停线汇总日志用） */
+  /** 【兼容只读·2026-09-10 起停用】旧逐线累计产出件数（读档归并到卡片合计） */
   produced?: number
+}
+
+/**
+ * 组装机「循环制造」卡片级配置（2026-09-10 船长定：开关与目标件数从逐条制造线上移到整张生产卡）。
+ *
+ * 口径（船长逐条确认）：
+ * - key = 蓝图 id（一张生产卡一个配置），**该卡全部制造线共用**——含主控亲自那条；
+ *   开关打开后新开的线自动继承（判定实时读本配置，不往线上写副本）；
+ * - `produced` = **本轮全卡合计**产出件数（自上次「关→开」起算，开关打开期间逐件累加）；
+ * - 目标件数 = 全卡合计口径：合计达到目标即不再续做；此刻在跑的那几件跑完再停
+ *   （最多超产 = 同时在跑线数 − 1，不砍已扣料的在跑件）；
+ * - 自动停线（达成目标 / 材料不足 / 数据缺失）→ `on` 置假并写入 `stopWhy`（卡片上标明停因），
+ *   该卡其它线跑完当前件即止；下次「关→开」时 `produced` 与 `stopWhy` 一起清零；
+ * - 手动关开关 = 完成当前件后停（不写停因）；缺省/无键 = 不循环。
+ */
+export interface ManufacturingLoopState {
+  /** 开关：true = 本卡全部制造线完成一件后自动续做同一蓝图（劳动者/核心保持占用） */
+  on: boolean
+  /** 目标件数（>0 达数即停；缺省/0 = 直到材料不足自动停） */
+  goal?: number
+  /** 本轮全卡合计产出件数（开关打开期间累加） */
+  produced?: number
+  /** 上一次自动停线原因（界面提示；重新打开开关 / 手动关闭时清空） */
+  stopWhy?: string
 }
 
 /**
@@ -1141,6 +1165,12 @@ export interface SideTasksState {
 export type GameStateV24 = Omit<GameStateV23, 'version'> & {
   version: 24
   sideTasks: SideTasksState
+  /**
+   * 组装机「循环制造」卡片级配置（2026-09-10 船长定：开关/目标件数从逐条制造线上移到整张生产卡；
+   * 兼容字段、无版本号变化——缺省 {} = 全部不循环，老档的逐线字段在读档时归并到这里，
+   * 之后引擎只读写本字段）。key = 蓝图 id，见 ManufacturingLoopState。
+   */
+  manufacturingLoops: Record<string, ManufacturingLoopState>
 }
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
@@ -1283,6 +1313,7 @@ export function createInitialState(opts?: {
     },
     manufacturingRuns: [],
     manufacturingSeq: 1,
+    manufacturingLoops: {},
     standings: {},
     expedition: {
       active: false,

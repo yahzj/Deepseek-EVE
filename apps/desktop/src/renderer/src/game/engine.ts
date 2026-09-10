@@ -1197,9 +1197,12 @@ export class GameEngine {
     return result
   }
 
-  /** 组装机连续生产开关（2026-09-09 船长定：线行滑动开关；goal>0 = 达件数即停，0/缺省 = 直到材料不足） */
-  setManufacturingLoopAt(runId: number | string, on: boolean, goal?: number | null): CommandResult {
-    const result = setManufacturingLoop(this.state, Number(runId), on, goal ?? null)
+  /** 组装机「循环制造」开关（2026-09-10 船长定：挂在**整张生产卡**上——按蓝图 id 定位，
+   *  作用于该卡全部制造线（含主控亲自那条），打开后新开的线自动继承；
+   *  目标件数 = 全卡合计（0/缺省 = 直到材料不足）；「关→开」= 开一批新循环，合计清零）
+   *  @param blueprintId 蓝图 id（= 生产卡） */
+  setManufacturingLoopAt(blueprintId: string, on: boolean, goal?: number | null): CommandResult {
+    const result = setManufacturingLoop(this.state, blueprintId, on, goal ?? null)
     if (result.ok) {
       void this.persist()
       this.notify()

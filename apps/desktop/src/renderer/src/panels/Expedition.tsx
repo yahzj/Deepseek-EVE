@@ -393,6 +393,8 @@ const MAP_H = 300
  */
 const MAP_PAD_TOP = 20
 const MAP_PAD_X = 8
+/** 敌对派系活跃"选中方框"边长（2026-09-10 船长：用方框选中目标星系）——34 足以框住最大 r=11 的母港形节点 */
+const FACTION_BOX_M = 34
 /** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
 const MAP_VB_H = MAP_H + MAP_PAD_TOP
@@ -963,6 +965,35 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
+              {/* 敌对派系活跃（2026-09-10 船长：改红色 + 用方框选中目标星系 + 文字写全称）——
+                  ①红色方框选中该星系（画在圆点之前，圆点压上层）②红色圆点 + 呼吸脉动
+                  ③红色 ✦ 徽标 + 上方「敌对派系活跃」全称标签 ④星系名加粗（颜色仍交给安全等级色阶）
+                  该星系已被排除在赏金任务抽签池外，故不会与 ⚑ 徽标叠在同一节点 */}
+              {isFactionNode ? (
+                <>
+                  <rect
+                    x={p.x - FACTION_BOX_M / 2}
+                    y={p.y - FACTION_BOX_M / 2}
+                    width={FACTION_BOX_M}
+                    height={FACTION_BOX_M}
+                    rx={2}
+                    className="app-map-faction-box"
+                  />
+                  {(() => {
+                    const dx = stackDx(g, 26, -40, -16)
+                    return (
+                      <>
+                        <text x={p.x + dx} y={p.y - 20} textAnchor="middle" className="app-map-bounty is-faction">
+                          ✦
+                        </text>
+                        <text x={p.x + dx} y={p.y - 34} textAnchor="middle" className="app-map-faction-cap">
+                          敌对派系活跃
+                        </text>
+                      </>
+                    )
+                  })()}
+                </>
+              ) : null}
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -982,25 +1013,6 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                 <text x={p.x + stackDx(g, 14, -24, -10)} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-task">
                   ⚑{tasksByGalaxy.get(g.id)!.length}
                 </text>
-              ) : null}
-              {/* 敌对派系活跃（2026-09-10 船长：要够显眼）——三处同色强调：
-                  ①节点圆点换琥珀并呼吸脉动（零额外占位，不加环：邻点只隔 14 单位会撞）
-                  ②星系名换琥珀加粗 ③节点上方 ✦ 徽标 + 「派系活跃」文字标签
-                  （该星系已被排除在赏金任务抽签池外，故不会与 ⚑ 徽标叠在同一节点） */}
-              {isFactionNode ? (
-                (() => {
-                  const dx = stackDx(g, 20, -38, -14)
-                  return (
-                    <>
-                      <text x={p.x + dx} y={p.y - 20} textAnchor="middle" className="app-map-bounty is-faction">
-                        ✦
-                      </text>
-                      <text x={p.x + dx} y={p.y - 34} textAnchor="middle" className="app-map-faction-cap">
-                        派系活跃
-                      </text>
-                    </>
-                  )
-                })()
               ) : null}
               <NodeLabel name={frontier ? '未知信号' : g.name} x={p.x} y={p.y} cls={cls + secExtra + (isFactionNode ? ' is-faction' : '')} />
             </g>
@@ -1643,7 +1655,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           {anomaly.name}
           {factionHit ? (
             <em className="app-chip is-rare" title="敌对派系活跃（当日置顶）：该星系全部悬赏奖金 +10%、敌人威胁 +10%，胜利有概率掉稀有残骸">
-              派系活跃
+              敌对派系活跃
             </em>
           ) : null}
         </span>
@@ -1722,7 +1734,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       </div>
       <div className="app-ano-reward">
         奖金 {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
-        {factionHit ? <span className="app-dim" title={`派系活跃加成：原始奖金 ${anomaly.rewardIsk.toLocaleString('zh-CN')} ×1.1`}>（派系活跃 +10%）</span> : null}
+        {factionHit ? <span className="app-dim" title={`敌对派系活跃加成：原始奖金 ${anomaly.rewardIsk.toLocaleString('zh-CN')} ×1.1`}>（敌对派系活跃 +10%）</span> : null}
         {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title="该悬赏已首胜：重复完成不再获得声望，可转向新目标提升协会声望">（已首胜）</span> : null}
       </div>
@@ -2077,7 +2089,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
         <span>
           赏金任务 · 每日高难目标（指定敌人窝点：亲自出击，AI 不能代劳）
           {tasks.length > 0 ? <span className="app-dim"> · {tierSummary}</span> : null}
-          {faction ? <span className="app-dim"> · 派系活跃 1</span> : null}
+          {faction ? <span className="app-dim"> · 敌对派系活跃 1</span> : null}
         </span>
         {view.bountyOpened || tasks.length > 0 ? (
           <span
@@ -2131,7 +2143,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     <span className="app-station-name">
                       ⚑ 敌对派系活跃：{factionCard.name}
                       <em className="app-chip is-rare">今日置顶</em>
-                      <em className="app-chip" title="派系活跃只作用于该星系的常驻悬赏（与赏金任务的窝点无关）">
+                      <em className="app-chip" title="敌对派系活跃只作用于该星系的常驻悬赏（与赏金任务的窝点无关）">
                         常驻悬赏加成
                       </em>
                     </span>
@@ -2190,7 +2202,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       <button
                         className="app-btn is-small is-primary"
                         disabled={!canGo2}
-                        title={goAsk === faction.id ? '再点一次确认转战：采矿立即结束，舰队从矿带星系出发' : locked2 ?? `出击：前往「${factionGalaxy.name}」打「${factionCard.name}」（吃到派系活跃加成）`}
+                        title={goAsk === faction.id ? '再点一次确认转战：采矿立即结束，舰队从矿带星系出发' : locked2 ?? `出击：前往「${factionGalaxy.name}」打「${factionCard.name}」（吃到敌对派系活跃加成）`}
                         onClick={goFaction}
                       >
                         {goAsk === faction.id ? '确认转战出击' : '出发'}
