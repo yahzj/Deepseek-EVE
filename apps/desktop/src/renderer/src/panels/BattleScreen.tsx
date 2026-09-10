@@ -22,6 +22,7 @@ import {
   DRONE_SHOW_MAX,
   DRONE_SORTIE_BACK_MS,
   DRONE_SORTIE_OUT_MS,
+  DRONE_FLY_MUL,
   DRONE_STYLE,
   droneArcHeight,
   droneModelOf,
@@ -597,8 +598,38 @@ const meSpeedRef = useRef(200)
       />
     ) : null
     const dm = bv.drone ? droneModelOf(bv.drone) : undefined
-    // 无人机弹道（2026-09-10 船长反馈修复）：普通弹条靠 scaleX(.05→1) 曳光，弹条过短会"看不见"——
-    // 无人机改画**可见的小曳光点**：亮点沿弹道飞行（--fly = 行程 px），宽度不再依赖弹条长度
+    // 无人机弹道（2026-09-10）：飞行时长按机型提速（DRONE_FLY_MUL）；
+    // 蜂鸟/赤鸢/猎鹰 = 可见小曳光点（--fly = 行程 px）；哨戒 = 仿主舰的**细曳光条**（更细，不发小弹点）
+    const flyMs = dm ? Math.max(60, Math.round(look.fly * DRONE_FLY_MUL)) : look.fly
+    if (dm && dm.bolt.style === 'beam') {
+      return (
+        <div key={bv.key} className={`app-bts-bolt is-${bv.type} is-drone is-sentry`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
+          <i
+            className="app-bts-bolt-bar"
+            style={{
+              width: bv.len,
+              height: dm.bolt.width,
+              top: -dm.bolt.width / 2,
+              background: barBg,
+              boxShadow: `0 0 6px ${color}`,
+              animationDuration: `${flyMs}ms`,
+              animationDelay: `${bv.delay ?? 0}ms`,
+            }}
+          />
+          <i
+            className={`app-bts-puff${bv.hit ? ' is-hit' : ' is-miss'} is-small`}
+            style={{
+              left: bv.len,
+              top: 0,
+              borderColor: color,
+              boxShadow: `0 0 10px ${color}`,
+              animationDelay: `${(bv.delay ?? 0) + flyMs}ms`,
+              animationDuration: bv.type === 'plasma' ? '180ms' : '420ms',
+            }}
+          />
+        </div>
+      )
+    }
     if (dm) {
       return (
         <div key={bv.key} className={`app-bts-bolt is-${bv.type} is-drone`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
@@ -608,7 +639,7 @@ const meSpeedRef = useRef(200)
               {
                 background: color,
                 boxShadow: `0 0 6px ${color}, 0 0 12px ${color}66`,
-                animationDuration: `${look.fly}ms`,
+                animationDuration: `${flyMs}ms`,
                 animationDelay: `${bv.delay ?? 0}ms`,
                 '--fly': `${Math.max(24, bv.len)}px`,
                 '--dot': `${dm.bolt.width + 3}px`,
@@ -622,7 +653,7 @@ const meSpeedRef = useRef(200)
               top: 0,
               borderColor: color,
               boxShadow: `0 0 10px ${color}`,
-              animationDelay: `${(bv.delay ?? 0) + look.fly}ms`,
+              animationDelay: `${(bv.delay ?? 0) + flyMs}ms`,
               animationDuration: bv.type === 'plasma' ? '180ms' : '420ms',
             }}
           />

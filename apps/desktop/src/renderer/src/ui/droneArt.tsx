@@ -23,8 +23,8 @@ export interface DroneModel {
   resident?: boolean
   /** 编队悬浮位（px，相对母舰锚点；放飞后就位、回巢前离位） */
   slots: DroneSlot[]
-  /** 蜂群弹点形制：len = 弹点长度(px)、width = 粗细(px)、tail = 是否拖尾细线 */
-  bolt: { len: number; width: number; tail: boolean }
+  /** 蜂群弹点形制：style = 'dot' 小弹点（蜂鸟/赤鸢/猎鹰）｜'beam' 细曳光条（哨戒，仿主舰攻击但更细） */
+  bolt: { style: 'dot' | 'beam'; len: number; width: number; tail: boolean }
   /** 机体形（本地 −12..12 × −7..7 画布，线稿；currentColor 描边） */
   art: ReactNode
 }
@@ -44,7 +44,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     name: '蜂鸟',
     tint: '#9fe8ff',
     slots: SLOTS_HIGH(-26),
-    bolt: { len: 7, width: 1.6, tail: false },
+    bolt: { style: 'dot', len: 7, width: 1.6, tail: false },
     art: (
       <g>
         <path d="M12 0 L-2 -3 L-9 -6 L-4 -2 L-11 0 L-4 2 L-9 6 L-2 3 Z" />
@@ -56,7 +56,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     name: '赤鸢',
     tint: '#ffb98a',
     slots: SLOTS_HIGH(-46),
-    bolt: { len: 10, width: 2.2, tail: false },
+    bolt: { style: 'dot', len: 10, width: 2.2, tail: false },
     art: (
       <g>
         <path d="M11 0 L1 -2 L-2 -8 L-5 -2 L-11 0 L-5 2 L-2 8 L1 2 Z" />
@@ -68,7 +68,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     name: '猎鹰',
     tint: '#cdd6e0',
     slots: SLOTS_HIGH(-64),
-    bolt: { len: 14, width: 3, tail: true },
+    bolt: { style: 'dot', len: 14, width: 3, tail: true },
     art: (
       <g>
         <path d="M11 1 H-3 L-8 5 H-12 L-7 1 V-1 L-12 -5 H-8 L-3 -1 H11 Z" />
@@ -82,7 +82,8 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     resident: true,
     // 2026-09-10 船长二次定：哨戒常驻伴飞位置改到**母舰上方**
     slots: [{ x: 30, y: -22 }],
-    bolt: { len: 9, width: 1.8, tail: true },
+    // 哨戒：仿主舰攻击的**细曳光条**（2026-09-10 船长九次定：不发单发小弹点），线宽更细
+    bolt: { style: 'beam', len: 9, width: 2, tail: false },
     art: (
       <g>
         <circle cx="0" cy="0" r="4.4" />
@@ -112,10 +113,12 @@ export const DRONE_BACK_ANIM_MS = 420
  * 两套实现都保留，切换本常量即可（CSS 两套 keyframes 均保留）。
  */
 export const DRONE_STYLE: 'sortie' | 'formation' = 'sortie'
-/** 出击制：飞到攻击阵位的时长（ms；与逐帧插值一致） */
-export const DRONE_SORTIE_OUT_MS = 560
-/** 出击制：返航时长（ms） */
-export const DRONE_SORTIE_BACK_MS = 620
+/** 出击制：飞到攻击阵位的时长（ms；2026-09-10 船长九次定"开火动画更短一些"：560→420） */
+export const DRONE_SORTIE_OUT_MS = 420
+/** 出击制：返航时长（ms；同上收紧：620→460） */
+export const DRONE_SORTIE_BACK_MS = 460
+/** 无人机弹道提速系数（2026-09-10 船长九次定"弹道速度加快"；乘在弹型基础飞行时长上） */
+export const DRONE_FLY_MUL = 0.55
 
 /**
  * 出击制单轮时序（2026-09-10 船长七次定："每次飞出时 Y 轴随机分布、到达位置后开火、开火结束立刻返回"）：
