@@ -8748,3 +8748,8 @@ body {
 /* 星图：容器够高时尺寸与观感不变；装不下时整体等比缩小（SVG 按 viewBox 居中留白），任何窗口尺寸都不出滚动条；
    保底高度 200px——窗口被压到极矮时宁可面板内滚动，也不把星图压成一条线；border-box 顺带消掉 width:100% 与 1px 边框叠加的 2px 溢出 */
 .app-starmap { flex: 0 1 auto; min-height: 200px; box-sizing: border-box; }.app-map-editbar { flex: 0 0 auto; } /* 星图自适应：布局编辑条（开发工具）保持自然高度，不参与压缩 */
+/* 维修装置·运转消耗高亮（2026-09-10 船长：消耗的修理组件常被玩家忽略）——沿用既有 is-* 修饰体例 */
+.app-chip.is-cost { color: #ffcf6e; border-color: rgba(255, 207, 110, 0.5); background: rgba(255, 207, 110, 0.1); }
+.app-kit-stock.is-bad { color: var(--wui-red); font-weight: 600; }
+.app-kit-stock.is-warn { color: var(--wui-amber); font-weight: 600; }
+.app-kit-stock.is-ok { color: var(--wui-text-dim); }
