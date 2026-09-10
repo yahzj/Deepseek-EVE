@@ -72,7 +72,7 @@ const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   shield: ['shield'],
   armor: ['armor'],
   prop: ['propulsion'],
-  drone: ['drone-rack', 'drone-tac'],
+  drone: ['drone-rack', 'drone-tac', 'drone-relay'], // 2026-09-10 + 无人机中继天线
   support: ['support'],
   salvager: ['salvager'],
   lock: ['target-lock'],
