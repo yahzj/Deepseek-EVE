@@ -140,6 +140,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'drone-tac':
       body = `无人机伤害 +${pctOpt(mod.droneDmgBonus)}`
       break
+    case 'drone-relay':
+      // 2026-09-10 无人机中继天线：放飞无人机射程加成
+      body = `无人机射程 +${pctOpt(mod.droneRangeBonusPct)}`
+      break
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
       const dmg = mod.damageTypeBonusPct
@@ -406,6 +410,13 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   } else if (mod.slot === 'drone-tac') {
     if (mod.droneDmgBonus !== undefined) {
       lines.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus)}（乘入放飞无人机单发；线性可叠）` })
+    }
+  } else if (mod.slot === 'drone-relay') {
+    if (mod.droneRangeBonusPct !== undefined) {
+      lines.push({
+        k: '无人机射程',
+        v: `+${pct(mod.droneRangeBonusPct)}（乘入放飞无人机机型射程：蜂鸟 2500 / 赤鸢 3000 / 猎鹰 3500 / 雷鸥 5000 m；线性可叠）`,
+      })
     }
   } else if (mod.slot === 'support') {
     // V18.1 支援件：按效果字段渲染（低槽 = 稳定器/射速计算机；中槽 = 索敌/陀螺）

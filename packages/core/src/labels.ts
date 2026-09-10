@@ -21,6 +21,7 @@ export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'propulsion',
   'drone-rack',
   'drone-tac',
+  'drone-relay',
   'support',
   'target-lock',
 ]
@@ -38,6 +39,7 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   propulsion: '推进器',
   'drone-rack': '无人机甲板扩展',
   'drone-tac': '战术导控阵列',
+  'drone-relay': '无人机中继天线',
   support: '支援件',
   'target-lock': '锁定装置',
 }
@@ -76,7 +78,13 @@ export function shipSlotsOf(ship: { slots?: ShipSlots }): ShipSlots {
  * armor・cargo（甲系・货舱）→ low；
  * support（V18.1 支援件）必须显式标注 rack（伤害/射速 = low、命中/闪避 = mid）。
  */
-export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3?: number; droneDmgBonus?: number }): RackSlot {
+export function rackOf(def: {
+  slot: ModuleSlot
+  rack?: RackSlot
+  droneBayBonusM3?: number
+  droneDmgBonus?: number
+  droneRangeBonusPct?: number
+}): RackSlot {
   if (def.rack !== undefined) return def.rack
   if (
     def.slot === 'turret' ||
@@ -86,6 +94,7 @@ export function rackOf(def: { slot: ModuleSlot; rack?: RackSlot; droneBayBonusM3
     def.slot === 'miner' ||
     def.slot === 'drone-rack' ||
     def.slot === 'drone-tac' ||
+    def.slot === 'drone-relay' ||
     def.slot === 'target-lock'
   )
     return 'high'

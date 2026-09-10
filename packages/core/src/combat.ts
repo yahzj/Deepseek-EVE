@@ -267,9 +267,9 @@ export function createPlayerSpec(
   ]
   // V18.1 支援件（中/低槽：伤害/射速/命中/闪避，效果字段判别）
   const supportDefs = allFittedModules(fitted, ctx).filter((d) => d.slot === 'support')
-  // 无人机装置（高槽 rack 件；甲板扩展/战术导控按字段判别）
+  // 无人机装置（高槽 rack 件；甲板扩展/战术导控/中继天线按字段判别）
   const droneGear = allFittedModules(fitted, ctx).filter(
-    (d) => d.droneBayBonusM3 !== undefined || d.droneDmgBonus !== undefined,
+    (d) => d.droneBayBonusM3 !== undefined || d.droneDmgBonus !== undefined || d.droneRangeBonusPct !== undefined,
   )
 
   // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
@@ -422,9 +422,12 @@ export function createPlayerSpec(
   // 装配变化导致舱容/CPU 不足时按清单顺序整型裁到装得下，装不下的类型跳过）
   let bayLimit = ship.droneBayM3 ?? 0
   let droneDmgBonus = 0
+  // 无人机中继天线（2026-09-10 船长：百分比制求和乘入机型基础射程；多件线性可叠）
+  let droneRangeMult = 1
   for (const g of droneGear) {
     bayLimit += g.droneBayBonusM3 ?? 0
     droneDmgBonus += g.droneDmgBonus ?? 0
+    droneRangeMult += g.droneRangeBonusPct ?? 0
   }
   let bayUsed = 0
   let cpuLeft = effectiveCpu(state, ctx, ship) - fittedCpuUsed(fitted, ctx)
@@ -456,7 +459,9 @@ export function createPlayerSpec(
           kind: 'fixed',
           fixedType: def.damageType ?? 'kinetic',
           shotDmg: shot,
-          maxRangeM: 2600,
+          // 射程 = 机型基础 × 中继乘数（2026-09-10 船长：蜂鸟 2500/赤鸢 3000/猎鹰 3500/
+          // 雷鸥哨戒 5000；旧值 2600 兜底；中继天线百分比乘入）
+          maxRangeM: Math.round((def.maxRangeM ?? 2600) * droneRangeMult),
           minRangeM: 200,
           hitRate: 0.6,
           falloff: 0.35,
