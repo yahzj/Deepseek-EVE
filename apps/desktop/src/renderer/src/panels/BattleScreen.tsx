@@ -752,12 +752,13 @@ const meSpeedRef = useRef(200)
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     return (
       <div key={tag} data-tag={tag} className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}>
-        {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层） */}
+        {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
+            尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
         <span className="app-bts-corpse" style={fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
           <ShipSprite
             foeKey={foeKey}
             flip={foeFlip}
-            accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
+            accent={corpseOn ? '#6b7280' : FOE_ACCENT[foeKey] ?? '#ff8373'}
             size={isMain ? LAY.MAIN : LAY.ESC}
           />
         </span>
@@ -881,11 +882,10 @@ const meSpeedRef = useRef(200)
           {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 放飞-回巢于母舰上侧；雷鸥哨戒常驻母舰下方且只显 1 架） */}
           {droneWings.length > 0 ? (
             <div className="app-bts-drones" style={{ left: lay.me.x, top: lay.me.y }} aria-hidden="true">
-              {droneWings.map((w) =>
-                w.phase === 'deck' ? null : (
+              {droneWings.map((w) => (
                   <div
                     key={w.artId}
-                    className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ' is-formation'}`}
+                    className={`app-bts-wing is-${w.phase}${w.phase === 'deck' ? ' is-deck' : ''}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ' is-formation'}`}
                   >
                     {Array.from({ length: w.show }, (_, i) => {
                       // 起飞/停泊基准位：出击制 = 机库口；机群制与哨戒 = 母舰编队/伴飞位
@@ -948,8 +948,7 @@ const meSpeedRef = useRef(200)
                     })}
                     {w.total > w.show ? <span className="app-bts-drone-more">×{w.total}</span> : null}
                   </div>
-                ),
-              )}
+              ))}
             </div>
           ) : null}
 
