@@ -20,7 +20,7 @@
  *
  * 运行：npm run bounty:econ （等价 npx tsx tools/bounty-econ.ts）
  */
-import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, isLairCandidate, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
+import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, isLairCandidate, LAIR_RARE_WRECK_GAIN, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
@@ -201,12 +201,16 @@ function main(): void {
 }
 
 /* ══════════ 稀有残骸「高级箱」对照（2026-09-10 船长定：命中率 5/8/10%、每炉锁 1 件） ══════════
- * 口径：真实引擎 rollRareBoxExtra（每张代表卡掷 2 万次）；日供给 = 全清日板的档位件数
- *      （外围 1 / 核心 2 / 深层 3，与日板档位分布小节同源）＋ 敌对派系活跃期望
- *      （= `faction:audit` 的审数基线"4 小时专注刷 ≈14 趟" × FACTION_RARE_DROP_CHANCE；
- *       2026-09-10 船长把概率定为 5%，故 ≈0.7 件/天——不再写死，避免与常数漂移）。
+ * 口径：真实引擎 rollRareBoxExtra，**全候选卡逐卡**掷 8 千次；箱子档位 = 该卡稀有残骸的固定档
+ *      （profile.tier：外围 / 核心 / 深层箱）。每箱可兑现**只算能卖钱的那部分**（主题件按市场
+ *      基准价、矿物按物品基准价）——命中的专属装备不可出售，故不计入。
+ *      日供给 = 全清日板的档位件数（外围 1 / 核心 2 / 深层 3，LAIR_RARE_WRECK_GAIN）
+ *      ＋ 敌对派系活跃期望（= `faction:audit` 的审数基线"4 小时专注刷 ≈14 趟" ×
+ *      FACTION_RARE_DROP_CHANCE；2026-09-10 船长定为 5%，故 ≈0.7 件/天——不写死，避免与常数漂移）。
+ *      **期望日产出**走真实引擎赞助 120 天日板（advanceGame + 日界墙钟，全图已探索），
+ *      逐席按 LAIR_RARE_WRECK_GAIN 展开件数后乘该卡每箱可兑现。
  * 用途：改 RARE_BOX_GEAR_CHANCE / RARE_BOX_MINERAL_UNITS / LAIR_RARE_WRECK_GAIN /
- *      FACTION_RARE_DROP_CHANCE 后复跑，核对"专属装备到手节奏"与"每箱可兑现收益"两条线。
+ *      FACTION_RARE_DROP_CHANCE 后复跑，核对"专属装备到手节奏"与"每箱可兑现收益（含日产出合计）"两条线。
  */
 function rareBoxBench(): void {
   const state = createInitialState({ nowWallMs: 0, seed: 20260910 })
@@ -214,15 +218,6 @@ function rareBoxBench(): void {
   const fmt = (n: number): string => Math.round(n).toLocaleString('zh-CN')
   console.log('')
   console.log('══ 稀有残骸·高级箱对照（真实引擎；命中率 5/8/10%、每炉锁 1 件 = 30 m³）══')
-  const reps: string[] = []
-  const seenFam = new Set<string>()
-  for (const a of ctx.anomalies.values()) {
-    if (!isLairCandidate(a)) continue
-    const fam = a.foeFamily ?? '?'
-    if (seenFam.has(fam)) continue
-    seenFam.add(fam)
-    reps.push(a.id)
-  }
   /** 日供给：按各档席位 × 该档件数（与日板档位分布小节同口径） */
   const FACTION_RUNS_PER_DAY = 14 // faction:audit 基线：均值 3.5 趟/时 × 4 小时专注刷
   const factionPerDay = FACTION_RUNS_PER_DAY * FACTION_RARE_DROP_CHANCE
@@ -230,16 +225,17 @@ function rareBoxBench(): void {
   console.log(
     `· 日供给 ≈${supplyPerDay.toFixed(1)} 件/天（全清日板 8.4 + 派系活跃 ${factionPerDay.toFixed(1)}，概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%）`,
   )
-  for (const id of reps) {
-    const a = ctx.anomalies.get(id)!
-    const profile = recycleProfileOf(ctx, rareWreckItemIdOf(id))!
+  const candidates = [...ctx.anomalies.values()].filter((a) => isLairCandidate(a))
+  const trials = 8_000
+  const perBox = new Map<string, number>()
+  for (const a of candidates) {
+    const profile = recycleProfileOf(ctx, rareWreckItemIdOf(a.id))!
     const tierN: 1 | 2 | 3 = profile.tier === 'common' ? 1 : profile.tier === 'risky' ? 2 : 3
     const p = RARE_BOX_GEAR_CHANCE[profile.tier]
     let gear = 0
     let themeIsk = 0
     let mineralIsk = 0
     let mineralUnits = 0
-    const trials = 20_000
     for (let i = 0; i < trials; i += 1) {
       state.moduleBay = {}
       state.fleet = {}
@@ -267,13 +263,55 @@ function rareBoxBench(): void {
     const perGear = gear / trials
     const perTheme = themeIsk / trials
     const perMineral = mineralIsk / trials
+    const cash = perTheme + perMineral
+    perBox.set(a.id, cash)
     const boxesPerFamily = 3 / p
     console.log(
-      `· ${a.name}（${tierLabel[tierN]}档）：专属命中 ${(perGear * 100).toFixed(1)}% ｜ 主题件兜底 ≈${fmt(perTheme)} ISK` +
-        ` ｜ 矿物 ${Math.round(mineralUnits / trials)} 单位 ≈${fmt(perMineral)} ISK ｜ 每箱可兑现 ≈${fmt(perTheme + perMineral)} ISK` +
+      `· ${a.name}（L${lairLevelOf(a)}·${tierLabel[tierN]}箱）：专属命中 ${(perGear * 100).toFixed(1)}% ｜ 主题件兜底 ≈${fmt(perTheme)} ISK` +
+        ` ｜ 矿物 ${Math.round(mineralUnits / trials)} 单位 ≈${fmt(perMineral)} ISK ｜ 每箱可兑现 ≈${fmt(cash)} ISK` +
         ` ｜ 集齐一族三件 ≈${boxesPerFamily.toFixed(0)} 箱 → ≈${(boxesPerFamily / supplyPerDay).toFixed(1)} 天`,
     )
   }
+  const values = [...perBox.values()].sort((x, y) => x - y)
+  const meanPerBox = values.reduce((s, v) => s + v, 0) / values.length
+  console.log(
+    `· 每箱可兑现分布（${candidates.length} 张卡）：最低 ≈${fmt(values[0]!)} ｜ 中位 ≈${fmt(values[Math.floor(values.length / 2)]!)} ｜ 最高 ≈${fmt(values[values.length - 1]!)} ｜ 均值 ≈${fmt(meanPerBox)} ISK`,
+  )
+  // ── 期望日产出：真实引擎赞助 120 天日板，逐席按档位展开件数
+  const days = 120
+  const board = createInitialState({ nowWallMs: 0, seed: 20260910 })
+  for (const g of ctx.galaxies.values()) markExplored(board, g.id)
+  const t0 = bountyDayStartWallMs(Date.UTC(2026, 8, 10, 12, 0, 0)) + 12 * 3_600_000
+  const byTier: Record<1 | 2 | 3, { boxes: number; isk: number }> = {
+    1: { boxes: 0, isk: 0 },
+    2: { boxes: 0, isk: 0 },
+    3: { boxes: 0, isk: 0 },
+  }
+  let boardBoxes = 0
+  let boardIsk = 0
+  for (let d = 0; d < days; d += 1) {
+    advanceGame(board, 1_000, ctx, { nowWallMs: t0 + d * BOUNTY_BOARD_PERIOD_MS })
+    for (const t of board.sideTasks.bounty) {
+      const tier = (t.lairTier ?? 1) as 1 | 2 | 3
+      const boxes = LAIR_RARE_WRECK_GAIN[tier] ?? 1
+      const isk = boxes * (perBox.get(t.anomalyId ?? '') ?? 0)
+      byTier[tier].boxes += boxes
+      byTier[tier].isk += isk
+      boardBoxes += boxes
+      boardIsk += isk
+    }
+  }
+  console.log(`· 期望日产出（全清日板 + 派系活跃；真实引擎赞助 ${days} 天，全图已探索）：`)
+  for (const tier of [1, 2, 3] as const) {
+    console.log(
+      `    ${tierLabel[tier]}档席位 ${(byTier[tier].boxes / days).toFixed(2)} 件/天 → ≈${fmt(byTier[tier].isk / days)} ISK/天`,
+    )
+  }
+  console.log(`    日板合计 ${(boardBoxes / days).toFixed(2)} 件/天 → ≈${fmt(boardIsk / days)} ISK/天`)
+  console.log(
+    `    派系活跃 ${factionPerDay.toFixed(2)} 件/天 → ≈${fmt(factionPerDay * meanPerBox)} ISK/天（按全体候选卡均值估）`,
+  )
+  console.log(`    **合计 ≈${fmt(boardIsk / days + factionPerDay * meanPerBox)} ISK/天**`)
   console.log(
     `· 参照：每箱必给一件（专属或主题件）+ 一批高阶矿物；稀有残骸每件 ${RARE_WRECK_VOLUME_M3} m³，每炉锁 1 件（3 批拆完）。`,
   )
