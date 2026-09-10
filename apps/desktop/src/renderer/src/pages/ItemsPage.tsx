@@ -57,7 +57,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const hitTotal = itemHits.length + modHits.length
 
   // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
-  // 装备（模块）装船见 handleLoadMod（占位 1 m³/件）
+  // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
 
   const KIND_EMPTY: Record<string, string> = {
     ore: '仓库里没有矿石（自动卸货的矿会先到这里）。',
@@ -85,12 +85,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     if (good) onGotoMarket(good.key)
   }
 
-  /** 2026-09-09（船长口径 A）：装备装船 = 携带（占位 1 m³/件，从装备库扣）；装配台取料仍只认装备库 */
+  /** 2026-09-09（船长口径 A）：装备装船 = 携带（按 1 m³/件 计入货舱，从装备库扣）；装配台取料仍只认装备库 */
   function handleLoadMod(id: string): void {
     const def = engine.ctx.modules.get(id)
     const loaded = engine.loadWareToCargoFit(id)
-    if (loaded === 0) onToast('船上没有足够空间（模块装船占位 1 m³/件）。', true)
-    else onToast(`已装船 ${def?.name ?? id}×${loaded.toLocaleString('zh-CN')}（占位 1 m³/件；装配请先卸回装备库）。`)
+    if (loaded === 0) onToast('船上没有足够空间（模块按 1 m³/件 计入货舱）。', true)
+    else onToast(`已装船 ${def?.name ?? id}×${loaded.toLocaleString('zh-CN')}（按 1 m³/件 计入货舱；装配请先卸回装备库）。`)
   }
 
   // 出售数量选择（船长 2026-09-05：支持只卖一部分）
@@ -268,7 +268,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     <button
                       className="app-btn is-small"
                       onClick={() => handleLoadMod(id)}
-                      title="装入船货仓携带（占位 1 m³/件）；安装到槽位请到「装配」页——装配台取料自装备库，船上装备需先卸回"
+                      title="装入船货仓携带（按 1 m³/件 计入货舱）；安装到槽位请到「装配」页——装配台取料自装备库，船上装备需先卸回"
                     >
                       装到船上
                     </button>
@@ -416,7 +416,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 <button
                   className="app-btn is-small"
                   onClick={() => handleLoadMod(pickMod)}
-                  title="装入船货仓携带（占位 1 m³/件）；安装到槽位请到「装配」页（装配台取料自装备库，船上装备需先卸回）"
+                  title="装入船货仓携带（按 1 m³/件 计入货舱）；安装到槽位请到「装配」页（装配台取料自装备库，船上装备需先卸回）"
                 >
                   装到船上
                 </button>
