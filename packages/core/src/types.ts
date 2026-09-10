@@ -285,7 +285,8 @@ export interface MarketBalance {
   /** 限定商品每个抽取窗（10 分钟）独立掷骰的出单概率：0.8%×现货抢购学（约每件每 20.8 小时一轮） */
   exoticWindowChance: number
   /** 数字稀有度 3 档权重（2026-09-09 船长拍板：稀有订单渠道按数字分层——3 档（高阶）刷新
-   * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗；系数经 market-rarity-sim 校准） */
+   * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗。**2026-09-10 船长定 0.25 → 0.15**，
+   * 经 `market-rarity-sim` 复跑校准：tier3 占比 10% → 6%、单行间隔 5.7h → 8.3h） */
   rareTier3Weight: number
   /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**，稀有抽取与奇货掷骰**两个渠道都乘此值**） */
   blueprintWeight: number
