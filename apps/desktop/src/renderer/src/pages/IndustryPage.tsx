@@ -167,17 +167,20 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     const netH = Math.round(netPerBatch * (3_600_000 / cycleMs))
     econ = (
       <div className="app-belt-econ">
-        {/* 2026-09-10 船长：每种产出**单独占一行**，行尾显示自己拥有多少个成品（站内物品仓库口径，
-            与组装机材料行「（仓库 N）」同款写法；市场页「持有 N」亦同源） */}
+        {/* 2026-09-10 船长：产出做成「♨ 产出：」标题 + 每种产物缩进一行，行尾带自己拥有的数量
+            （站内物品仓库口径，与同卡材料行「（仓库 N）」同款写法；市场页「持有 N」亦同源） */}
         {outs.length === 0 ? (
-          <div>♨ 每批产出：（当前无产出）</div>
+          <div>♨ 产出：（当前无产出）</div>
         ) : (
-          outs.map((o) => (
-            <div key={o.def.id}>
-              ♨ {o.def.name} ×{o.units.toLocaleString('zh-CN')}
-              <span className="app-dim">（仓库 {countWare(state, o.def.id).toLocaleString('zh-CN')}）</span>
-            </div>
-          ))
+          <>
+            <div>♨ 产出：</div>
+            {outs.map((o) => (
+              <div key={o.def.id} className="app-belt-out">
+                {o.def.name} ×{o.units.toLocaleString('zh-CN')}
+                <span className="app-dim">（仓库 {countWare(state, o.def.id).toLocaleString('zh-CN')}）</span>
+              </div>
+            ))}
+          </>
         )}
         {batchValue > 0 ? (
           <div
