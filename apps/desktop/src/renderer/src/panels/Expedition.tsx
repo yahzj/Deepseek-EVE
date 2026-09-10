@@ -439,12 +439,15 @@ function readLabelMode(): LabelMode {
   }
 }
 
-/** 族标签字宽估算（SVG 里量不了 DOM：按字号 + 字距估；几何自检探针用同一公式） */
-const FAM_CHIP_CHAR_W = 9.5
-const FAM_CHIP_PAD_X = 4.5
+/** 族标签字宽估算（SVG 里量不了 DOM：按字号 + 内边距估；几何自检探针用同一公式）。
+ *  **2026-09-11 修**：文字字号与星系名一致 = 11px（styles.css `.app-map-famchip-text`），
+ *  中文全角字宽 ≈ 字号 → 每字 11、左右各留 5；初版按 9.5 且未给字号，实机撑出标签框（船长发现）。 */
+const FAM_CHIP_CHAR_W = 11
+const FAM_CHIP_PAD_X = 5
 const FAM_CHIP_GAP = 3
-const FAM_CHIP_H = 13
-const FAM_CHIP_Y = 13 // 标签顶边相对星系中心的高度（与 NodeLabel 的 +21 基线大致同带）
+const FAM_CHIP_H = 14
+const FAM_CHIP_Y = 12 // 标签顶边相对星系中心的高度（文字基线 ≈ 中心 +22.5，与名称基线 +21 同带）
+const FAM_CHIP_BASE = 10.5 // 文字基线相对标签顶边（11px 字在 14 高里的垂直居中）
 const famChipW = (text: string): number => text.length * FAM_CHIP_CHAR_W + FAM_CHIP_PAD_X * 2
 
 type LayoutMap = Record<string, { x: number; y: number }>
@@ -498,7 +501,7 @@ function FamChips({
         return (
           <g key={`${c.text}-${i}`} className={`app-map-famchip${c.dim ? ' is-unknown' : ` is-fam-${c.fam}`}`}>
             <rect x={rx} y={y + FAM_CHIP_Y} width={w} height={FAM_CHIP_H} rx={3} fill="currentColor" fillOpacity={0.14} stroke="currentColor" strokeOpacity={0.55} strokeWidth={0.8} />
-            <text x={rx + w / 2} y={y + FAM_CHIP_Y + 9.4} textAnchor="middle" fill="currentColor" className="app-map-famchip-text">
+            <text x={rx + w / 2} y={y + FAM_CHIP_Y + FAM_CHIP_BASE} textAnchor="middle" fill="currentColor" className="app-map-famchip-text">
               {c.text}
             </text>
           </g>
