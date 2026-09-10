@@ -10,9 +10,19 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, DRONE_ROLE_ANCHORS, droneRoleIssues, droneRoleLadderIssues } from '@whale/data'
-import { addShipToFleet, countWare, createInitialState, ownedItemCount } from '../src/index'
+import {
+  addShipToFleet,
+  addWare,
+  countWare,
+  createInitialState,
+  ownedItemCount,
+  rareWreckItemIdOf,
+  RARE_WRECK_VOLUME_M3,
+  startRecycleRun,
+} from '../src/index'
 import { createPlayerSpec } from '../src/combat'
 import { addModule } from '../src/equipment'
+import { advanceRefining } from '../src/industry'
 import { FOE_LAIR_GEAR } from '../src/lairs'
 import { RARE_BOX_DRONE_UNITS, rollRareBoxExtra, type RecycleProfile } from '../src/salvage'
 import type { GameState } from '../src/state'
@@ -20,6 +30,7 @@ import type { GameState } from '../src/state'
 const ctx = buildSimContext()
 const BEE = 'drone-exile-bee'
 const CARRIER = 'sh-swarm' // 梭鱼级：高 4 槽 / 机巢 160 m³ / CPU 320 / 无人机专属加成 +8%
+const LAIR_CARD = 'ano-cinder-siege' // G 族窝点候选（烬火围攻战）
 
 function makeState(seed = 31): GameState {
   return createInitialState({ nowWallMs: 0, seed })
@@ -161,5 +172,34 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
     expect(countWare(state, BEE)).toBe(0)
     const spec = createPlayerSpec(state, ctx, uid)!
     expect(spec.weapons.filter((w) => w.artId === BEE)).toHaveLength(6) // 30 m³ / 5 m³
+  })
+
+  it('高级箱链路（2026-09-10 解禁）：开箱真把 10 架发进物品仓库、并计入回收明细「无人机 N 架」', () => {
+    // 稀有残骸高级箱：G 族窝点 → 池里只留无人机（另外两件视为已持有）→ 出箱必是无人机
+    let hit: { ware: number; acc: number; inLog: boolean } | null = null
+    for (let seed = 41; seed < 141 && !hit; seed += 1) {
+      const state = createInitialState({ nowWallMs: 0, seed })
+      const rareId = rareWreckItemIdOf(LAIR_CARD)!
+      if (!rareId) break
+      addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2)
+      addModule(state, 'mod-lair-drone-tac-g', 1)
+      addModule(state, 'mod-lair-drone-relay-g', 1)
+      const started = startRecycleRun(state, rareId, 'pilot', ctx)
+      if (!started.ok) continue
+      state.gameMs += 60_000
+      advanceRefining(state, ctx)
+      const ware = countWare(state, BEE)
+      if (ware <= 0) continue
+      const run = state.refineRuns[0]!
+      hit = {
+        ware,
+        acc: run.recAcc?.drone?.[BEE] ?? 0,
+        inLog: state.logs.some((l) => l.text.includes('高级箱') && l.text.includes('流亡蜂无人机')),
+      }
+    }
+    expect(hit).not.toBeNull()
+    expect(hit!.ware).toBe(RARE_BOX_DRONE_UNITS) // 一次 10 架进物品仓库
+    expect(hit!.acc).toBe(RARE_BOX_DRONE_UNITS) // 回收明细台账按架数计
+    expect(hit!.inLog).toBe(true) // 日志写明「专属装备「流亡蜂无人机」×10 架」
   })
 })
