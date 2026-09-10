@@ -608,8 +608,6 @@ export interface BattleBalance {
   pdAcc: number
   /** 命中单发伤害（走该机型三层抗性） */
   pdDmg: number
-  /** 单场最多击落比例（相对本场放飞总数；防止一次团灭） */
-  pdMaxLossFrac: number
 }
 
 /**

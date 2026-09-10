@@ -16,6 +16,7 @@ import {
 import {
   advanceBattleFor,
   battleArcsFor,
+  droneRecoveryRate,
   settleDroneLosses,
   startBattleFor,
   waveGapTotalMs,
@@ -80,14 +81,13 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(state.fleet[state.shipId]!.droneLoad).toEqual(LOAD)
   })
 
-  it('高威胁（有点防）会击落：机群递减、损失不超上限、清单被永久扣除', () => {
+  it('高威胁（有点防）会击落：机群递减、清单被扣除（战斗内可 100% 损坏，无单场上限）', () => {
     const state = makeState(7)
     const battle = runBattle(state, HIGH)!
     const pools = Object.values(battle.dronePools ?? {})
     const lost = pools.filter((p) => !p.alive).length
     expect(lost).toBeGreaterThan(0) // 硬卡必有点防战损
-    const cap = Math.max(1, Math.floor(pools.length * ctx.balance.battle.pdMaxLossFrac))
-    expect(lost).toBeLessThanOrEqual(cap)
+    expect(lost).toBeLessThanOrEqual(pools.length) // 2026-09-10 船长：上限已取消，最多整队损坏
     expect(battle.droneLost).toEqual(expect.any(Object))
 
     // 射程弧只统计存活架（UI 机群数量递减）
@@ -96,13 +96,16 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(dronesInArcs).toBe(pools.length - lost)
     expect(arcs.droneLost).toEqual(battle.droneLost)
 
-    // 永久损失：清单扣除、仓库不动（清单是"带上船的那批"）
+    // 损失扣除：基础回收率 10%（按机型四舍五入）→ 净损失 = 损坏 − 回收
     const before = battle.droneLost!
+    const rate = droneRecoveryRate(state)
+    expect(rate).toBeCloseTo(0.1, 6) // 无技能 = 基础 10%
     const text = settleDroneLosses(state, ctx, state.shipId, battle)
     expect(text).toBeTruthy()
     const load = state.fleet[state.shipId]!.droneLoad ?? {}
     for (const [id, n] of Object.entries(before)) {
-      expect((load[id] ?? 0)).toBe(Math.max(0, (LOAD as Record<string, number>)[id]! - n))
+      const back = Math.round(n * rate)
+      expect(load[id] ?? 0).toBe(Math.max(0, (LOAD as Record<string, number>)[id]! - (n - back)))
     }
     expect(state.droneLossNotice).toContain('机群战损')
     // 日志已写
