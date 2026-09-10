@@ -292,6 +292,28 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
+  /**
+   * 已被摧毁敌方单位的**进场预登记**（2026-09-10 船长："多舰船战斗时退出战斗界面再进来，
+   * 已被摧毁的敌人会重新出现（血量0）"修复）：
+   * deadRef/corpseAtRef 都是组件局部状态，退出战场即卸载清空；再进来时引擎里 hp 已归零的敌人
+   * 会被当成存活单位重新渲染。现于**每次战斗开始（含重进战场）**按 battle.units 真值预登记：
+   * 已摧毁 → 直接视为"已撤出队列"（无残骸演出登记 → 不再出队，也不会重放爆炸）。
+   * 同时清空血量缓存并重置首帧标记，避免把"进场时的既成伤亡"误判成本帧新阵亡。
+   */
+  useEffect(() => {
+    const b = engine.state.expedition.battle
+    if (!b) return
+    deadRef.current = new Set(
+      Object.values(b.units)
+        .filter((u) => u.side === 'foe' && u.hp.s + u.hp.a + u.hp.h <= 0)
+        .map((u) => u.tag),
+    )
+    corpseAtRef.current.clear()
+    prevHpRef.current.clear()
+    hpInitRef.current = false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine.state.expedition.battle?.startedAtGameMs])
+
   // 星空视差速率：开战时锁定一次驾驶船战斗速度（装配/技能静态，战斗期间不变）
   useEffect(() => {
     if (!engine.state.expedition.battle) return
