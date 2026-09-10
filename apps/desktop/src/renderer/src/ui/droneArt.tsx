@@ -113,10 +113,12 @@ export const DRONE_BACK_ANIM_MS = 420
  * 两套实现都保留，切换本常量即可（CSS 两套 keyframes 均保留）。
  */
 export const DRONE_STYLE: 'sortie' | 'formation' = 'sortie'
-/** 出击制：飞到攻击阵位的时长（ms；2026-09-10 船长九次定"开火动画更短一些"：560→420） */
-export const DRONE_SORTIE_OUT_MS = 420
-/** 出击制：返航时长（ms；同上收紧：620→460） */
-export const DRONE_SORTIE_BACK_MS = 460
+/** 出击制：飞到攻击阵位的时长（ms）
+ *  2026-09-10 船长十次定：**撤回节奏收紧**（420→560），出击/返航恢复原时长；
+ *  同批的弹道提速（DRONE_FLY_MUL）与哨戒细曳光保留。 */
+export const DRONE_SORTIE_OUT_MS = 560
+/** 出击制：返航时长（ms；同上撤回收紧：460→620） */
+export const DRONE_SORTIE_BACK_MS = 620
 /** 无人机弹道提速系数（2026-09-10 船长九次定"弹道速度加快"；乘在弹型基础飞行时长上） */
 export const DRONE_FLY_MUL = 0.55
 
