@@ -33,7 +33,9 @@ import {
   RARE_BOX_MINERAL_UNITS,
   RARE_WRECK_VOLUME_M3,
   advanceGame,
+  bountyDamageForecast,
   bountyDayStartWallMs,
+  bountyWinPercentGuarded,
   createInitialState,
   hasLairCore,
   injectRareWreck,
@@ -235,6 +237,22 @@ describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () 
     expect(isLairCandidate(LAIR_B)).toBe(false)
     expect(hasLairCore(LAIR_B)).toBe(true)
     expect(lairGearOf(LAIR_B)).toEqual([]) // B 族专属装备一并撤下
+  })
+  it('胜率预估按**强化后的窝点卡**算（2026-09-10：赏金卡也要胜率）：档位越高损耗越高、胜率不升', () => {
+    const { state, ctx } = makeWorld(5)
+    const fcBase = bountyDamageForecast(state, ctx, LAIR_HUB)
+    const fc1 = bountyDamageForecast(state, ctx, lairAnomalyOf(LAIR_HUB, 1))
+    const fc3 = bountyDamageForecast(state, ctx, lairAnomalyOf(LAIR_HUB, 3))
+    // 窝点比主题悬赏更硬 → 预计承伤不降；三档 ≥ 一档 ≥ 原卡；解析胜率（未钳制）反向单调
+    expect(fc1.armorLoss + fc1.hullLoss).toBeGreaterThanOrEqual(fcBase.armorLoss + fcBase.hullLoss)
+    expect(fc3.armorLoss + fc3.hullLoss).toBeGreaterThanOrEqual(fc1.armorLoss + fc1.hullLoss)
+    expect(fcBase.rawWin).toBeGreaterThanOrEqual(fc1.rawWin)
+    expect(fc1.rawWin).toBeGreaterThanOrEqual(fc3.rawWin)
+    // 展示口径同源：档位越高，预估胜率不升（强化卡走的是同一套推演）
+    const w1 = bountyWinPercentGuarded(state, ctx, lairAnomalyOf(LAIR_HUB, 1), state.shipId)
+    const w3 = bountyWinPercentGuarded(state, ctx, lairAnomalyOf(LAIR_HUB, 3), state.shipId)
+    expect(w3).toBeLessThanOrEqual(w1)
+    expect(w1).toBeLessThanOrEqual(bountyWinPercentGuarded(state, ctx, LAIR_HUB, state.shipId))
   })
 })
 
