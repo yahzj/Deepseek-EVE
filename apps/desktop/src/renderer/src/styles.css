@@ -5822,6 +5822,12 @@ body {
 .app-hand-topbar .app-hand-viewbar { margin: 0; }
 .app-hand-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 
+/* 关键：分组小节（面板）与说明小节一律按内容自然高度排布，**不参与压缩**——
+   否则每个面板（.wui-panel 自带 min-height:0 + 体内 overflow:auto）会被压成几十像素高、
+   各自长出一个小滚动条，图鉴内容根本看不全（2026-09-10 船长反馈）；
+   高度装不下时由外层 .app-hand-scroll 统一滚动。 */
+.app-hand-scroll > * { flex: 0 0 auto; }
+
 .app-hand-guide {
 
   display: flex;
