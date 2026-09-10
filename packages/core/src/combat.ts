@@ -463,10 +463,16 @@ export function createPlayerSpec(
       if (n <= 0) continue
       bayUsed += perM3 * n
       cpuLeft -= perCpu * n
-      // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）
+      // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）；
+      // 2026-09-10 船长：再加**船体无人机专属加成**（ship.droneDmgBonus，王鲭 +12%/梭鱼 +8%）
+      // ——无人机舰的加成从"只喂炮台的 powerBonus"改为"喂机群的专属加成"，三者乘算
       // 2026-09-10 船长：单发 ×2 与装填 ×2 同步（每轮更重、节奏更舒缓，净 DPS 不变）
       const shot = Math.round(
-        (def.dmg ?? 0) * 2 * (1 + droneDmgBonus) * (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0)),
+        (def.dmg ?? 0) *
+          2 *
+          (1 + droneDmgBonus) *
+          (1 + (ship.droneDmgBonus ?? 0)) *
+          (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0)),
       )
       for (let i = 0; i < n; i++) {
         weapons.push({
