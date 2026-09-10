@@ -23,8 +23,9 @@ export interface DroneModel {
   resident?: boolean
   /** 编队悬浮位（px，相对母舰锚点；放飞后就位、回巢前离位） */
   slots: DroneSlot[]
-  /** 蜂群弹点形制：style = 'dot' 小弹点（蜂鸟/赤鸢/猎鹰）｜'beam' 细曳光条（哨戒，仿主舰攻击但更细） */
-  bolt: { style: 'dot' | 'beam'; len: number; width: number; tail: boolean }
+  /** 蜂群弹点形制：style = 'dot' 小弹点（蜂鸟/赤鸢/猎鹰）｜'beam' 细曳光条（哨戒，仿主舰攻击但更细）
+   *  flyMul = 该机型弹道飞行时长的系数（缺省用 DRONE_FLY_MUL；哨戒更长，2026-09-10 船长十一次定） */
+  bolt: { style: 'dot' | 'beam'; len: number; width: number; tail: boolean; flyMul?: number }
   /** 机体形（本地 −12..12 × −7..7 画布，线稿；currentColor 描边） */
   art: ReactNode
 }
@@ -82,8 +83,9 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     resident: true,
     // 2026-09-10 船长二次定：哨戒常驻伴飞位置改到**母舰上方**
     slots: [{ x: 30, y: -22 }],
-    // 哨戒：仿主舰攻击的**细曳光条**（2026-09-10 船长九次定：不发单发小弹点），线宽更细
-    bolt: { style: 'beam', len: 9, width: 2, tail: false },
+    // 哨戒：仿主舰攻击的**细曳光条**（2026-09-10 船长九次定：不发单发小弹点），线宽更细；
+    // 飞行时长更长（flyMul 1.6 = 主舰基础 ×1.6，2026-09-10 船长十一次定"哨戒弹道持续时间长一些"）
+    bolt: { style: 'beam', len: 9, width: 2, tail: false, flyMul: 1.6 },
     art: (
       <g>
         <circle cx="0" cy="0" r="4.4" />

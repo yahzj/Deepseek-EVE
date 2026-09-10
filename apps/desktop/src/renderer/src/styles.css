@@ -6600,9 +6600,16 @@ body {
 
 .app-bts-wing { position: absolute; left: 0; top: 0; }
 
-.app-bts-drone { position: absolute; display: block; transform: translate(-50%, -50%); opacity: .95; filter: drop-shadow(0 0 3px currentColor); }
+/* 无人机机体：位置由内联 transform(translate3d) 驱动 → 走合成层，不逐帧布局/重绘；
+   去掉逐机 drop-shadow 滤镜（18 架同时挂滤镜在低端 GPU 上明显掉帧，2026-09-10 船长反馈卡顿） */
+.app-bts-drone { position: absolute; display: block; left: 0; top: 0; opacity: .95; will-change: transform; }
 
 .app-bts-drone svg { display: block; }
+
+/* 漂浮微动效放在内层 svg 上（transform，不碰外层位置；也不再动 margin 引起每帧布局） */
+.app-bts-wing.is-sortie .app-bts-drone svg,
+.app-bts-wing.is-formation.is-out .app-bts-drone svg,
+.app-bts-wing.is-resident .app-bts-drone svg { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
 
 .app-bts-drone-dot { fill: currentColor; stroke: none; opacity: .9; }
 
@@ -6611,8 +6618,6 @@ body {
 .app-bts-drone-more { position: absolute; left: 60px; top: -74px; font-size: 10px; font-family: var(--wui-mono); color: #9fe8ff; opacity: .85; }
 
 /* 哨戒常驻伴飞（2026-09-10 船长二次定：位置改到母舰**上方**）——两制式共用 */
-.app-bts-wing.is-resident .app-bts-drone { animation: app-bts-drone-hover 3.4s ease-in-out infinite; }
-
 .app-bts-wing.is-resident .app-bts-drone-more { top: -34px; left: 26px; }
 
 /* ══════ 旧方案·机群制（保留区；仅 DRONE_STYLE='formation' 时挂 .is-formation，与出击制完全隔离，
@@ -6622,19 +6627,14 @@ body {
 
 .app-bts-wing.is-formation.is-back { animation: app-bts-wing-back .42s ease-in forwards; }
 
-.app-bts-wing.is-formation.is-out .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
-
 @keyframes app-bts-wing-out { 0% { opacity: 0; transform: translateY(26px) scale(.7); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 
 @keyframes app-bts-wing-back { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(24px) scale(.75); } }
 
-/* ══════ 出击制（默认；2026-09-10 船长："放出无人机靠近敌人攻击后返回"）：
-        位置由渲染层**逐帧插值**（dronePathPos）写入 left/top——去程上凸曲线、返程下凸曲线并掉头；
-        此处只挂漂浮动画（margin-top，不碰 transform，避免覆盖逐帧位置） ══════ */
+/* ══════ 出击制（默认）：位置由渲染层逐帧插值写入外层 transform(translate3d)；
+        漂浮微动挂在内层 svg（见上），两层互不干扰 ══════ */
 
-.app-bts-wing.is-sortie .app-bts-drone { animation: app-bts-drone-hover 2.6s ease-in-out infinite; }
-
-@keyframes app-bts-drone-hover { 0%, 100% { margin-top: 0; } 50% { margin-top: -3px; } }
+@keyframes app-bts-drone-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
 .app-bts-bolt.is-drone .app-bts-bolt-bar { border-radius: 2px; }
 
@@ -6693,7 +6693,7 @@ body {
 
 .app-bts-unit.is-corpse .app-bts-name { display: none; }
 
-.app-bts-corpse { display: inline-flex; }
+.app-bts-corpse { display: inline-flex; will-change: opacity; /* 淡出走合成层：不逐帧重绘带滤镜的舰体 */ }
 
 /* 锁定装置集火目标（2026-09-09）：金色呼吸描边 + 名称 ◈ 前缀——本舰全部武器集火对象 */
 .app-bts-unit.is-locked .app-sprite { filter: drop-shadow(0 0 6px rgba(255, 208, 90, .95)); animation: app-bts-lockpulse 1.2s ease-in-out infinite; }

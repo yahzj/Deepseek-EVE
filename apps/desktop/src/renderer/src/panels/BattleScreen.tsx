@@ -598,9 +598,9 @@ const meSpeedRef = useRef(200)
       />
     ) : null
     const dm = bv.drone ? droneModelOf(bv.drone) : undefined
-    // 无人机弹道（2026-09-10）：飞行时长按机型提速（DRONE_FLY_MUL）；
+    // 无人机弹道（2026-09-10）：飞行时长按机型系数（哨戒更长、其余提速 DRONE_FLY_MUL）；
     // 蜂鸟/赤鸢/猎鹰 = 可见小曳光点（--fly = 行程 px）；哨戒 = 仿主舰的**细曳光条**（更细，不发小弹点）
-    const flyMs = dm ? Math.max(60, Math.round(look.fly * DRONE_FLY_MUL)) : look.fly
+    const flyMs = dm ? Math.max(60, Math.round(look.fly * (dm.bolt.flyMul ?? DRONE_FLY_MUL))) : look.fly
     if (dm && dm.bolt.style === 'beam') {
       return (
         <div key={bv.key} className={`app-bts-bolt is-${bv.type} is-drone is-sentry`} style={{ left: bv.x1, top: bv.y1, transform: `rotate(${bv.angDeg}deg)` }}>
@@ -721,34 +721,20 @@ const meSpeedRef = useRef(200)
   /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
      尸骸占原槽整段演出：boomAt（致死弹道着弹）前原样停留 → 灰化 + 爆炸环 → 原位淡出；
      撤出只发生在整批尸骸全部演完的瞬间（一次收拢，见 scanDroppable），存活舰补位收拢
-     不再压着爆炸/淡出动画走，多个单位同时阵亡也不再互相挤位叠加。 */
+     不再压着爆炸/淡出动画走，多个单位同时阵亡也不再互相挤位叠加。
+     2026-09-10 性能修复（船长"击毁敌人后画面明显卡顿"）：存活与尸骸**共用同一套 DOM 结构**
+     （此前两个分支结构不同 → 击毁瞬间整份舰体 SVG 被卸载重建，正是卡顿主因）——
+     现只切换 class（is-corpse）与淡出透明度，舰体矢量始终不被重建。 */
   const foeUnitEls = foeRowTags.map((tag) => {
     const isMain = isFoeMainTag(tag)
     const ba = corpseAtRef.current.get(tag)
-    if (ba === undefined) {
-      // 存活单位（锁定装置集火目标高亮：金色呼吸描边）
-      const locked = tag === combat.lockTag
-      return (
-        <div key={tag} data-tag={tag} className={`app-bts-unit${locked ? ' is-locked' : ''}`}>
-          <ShipSprite
-            foeKey={foeKey}
-            flip={foeFlip}
-            accent={FOE_ACCENT[foeKey] ?? '#ff8373'}
-            size={isMain ? LAY.MAIN : LAY.ESC}
-          />
-          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-            {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
-          </span>
-        </div>
-      )
-    }
-    // 尸骸：sinceBoom < 0 = 僵尸帧（致死弹道未着弹，原样停留）；之后灰化 + 爆炸环 + 淡出
-    const sinceBoom = now - ba
-    const boomLive = sinceBoom >= 0 && sinceBoom < BOOM_LIFE
+    const sinceBoom = ba === undefined ? -1 : now - ba
+    const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
+    const locked = !corpseOn && tag === combat.lockTag
+    const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
-    const corpseOn = sinceBoom >= 0
     return (
-      <div key={tag} data-tag={tag} className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}`}>
+      <div key={tag} data-tag={tag} className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}>
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层） */}
         <span className="app-bts-corpse" style={fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
           <ShipSprite
@@ -758,11 +744,9 @@ const meSpeedRef = useRef(200)
             size={isMain ? LAY.MAIN : LAY.ESC}
           />
         </span>
-        {corpseOn ? null : (
-          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-            {foeNameOf(tag)}
-          </span>
-        )}
+        <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+          {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
+        </span>
         {boomLive ? (
           <span className="app-bts-boom">
             <i className="b-core" />
@@ -922,10 +906,12 @@ const meSpeedRef = useRef(200)
                           className="app-bts-drone"
                           style={
                             {
-                              left: px - lay.me.x,
-                              top: py - lay.me.y,
+                              // 位置走 transform（GPU 合成，不再每帧改 left/top 引发布局+重绘）——
+                              // 2026-09-10 船长十一次定"击毁敌人后画面明显卡顿"的性能优化之一
+                              left: 0,
+                              top: 0,
                               color: w.model.tint,
-                              transform: `translate(-50%, -50%) scaleX(${heading})`,
+                              transform: `translate3d(${px - lay.me.x}px, ${py - lay.me.y}px, 0) translate(-50%, -50%) scaleX(${heading})`,
                             } as CSSProperties
                           }
                         >
