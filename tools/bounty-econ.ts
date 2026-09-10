@@ -20,7 +20,7 @@
  *
  * 运行：npm run bounty:econ （等价 npx tsx tools/bounty-econ.ts）
  */
-import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, isLairCandidate, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
+import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, isLairCandidate, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
@@ -202,9 +202,11 @@ function main(): void {
 
 /* ══════════ 稀有残骸「高级箱」对照（2026-09-10 船长定：命中率 5/8/10%、每炉锁 1 件） ══════════
  * 口径：真实引擎 rollRareBoxExtra（每张代表卡掷 2 万次）；日供给 = 全清日板的档位件数
- *      （外围 1 / 核心 2 / 深层 3，与日板档位分布小节同源）＋ 敌对派系活跃 ≈1.4 件/天。
- * 用途：改 RARE_BOX_GEAR_CHANCE / RARE_BOX_MINERAL_UNITS / LAIR_RARE_WRECK_GAIN 后复跑，
- *      核对"专属装备到手节奏"与"每箱可兑现收益"两条线。
+ *      （外围 1 / 核心 2 / 深层 3，与日板档位分布小节同源）＋ 敌对派系活跃期望
+ *      （= `faction:audit` 的审数基线"4 小时专注刷 ≈14 趟" × FACTION_RARE_DROP_CHANCE；
+ *       2026-09-10 船长把概率定为 5%，故 ≈0.7 件/天——不再写死，避免与常数漂移）。
+ * 用途：改 RARE_BOX_GEAR_CHANCE / RARE_BOX_MINERAL_UNITS / LAIR_RARE_WRECK_GAIN /
+ *      FACTION_RARE_DROP_CHANCE 后复跑，核对"专属装备到手节奏"与"每箱可兑现收益"两条线。
  */
 function rareBoxBench(): void {
   const state = createInitialState({ nowWallMs: 0, seed: 20260910 })
@@ -222,8 +224,12 @@ function rareBoxBench(): void {
     reps.push(a.id)
   }
   /** 日供给：按各档席位 × 该档件数（与日板档位分布小节同口径） */
-  const supplyPerDay = 2.36 * 1 + 1.93 * 2 + 0.72 * 3 + 1.4
-  console.log(`· 日供给 ≈${supplyPerDay.toFixed(1)} 件/天（全清日板 8.4 + 派系活跃 1.4）`)
+  const FACTION_RUNS_PER_DAY = 14 // faction:audit 基线：均值 3.5 趟/时 × 4 小时专注刷
+  const factionPerDay = FACTION_RUNS_PER_DAY * FACTION_RARE_DROP_CHANCE
+  const supplyPerDay = 2.36 * 1 + 1.93 * 2 + 0.72 * 3 + factionPerDay
+  console.log(
+    `· 日供给 ≈${supplyPerDay.toFixed(1)} 件/天（全清日板 8.4 + 派系活跃 ${factionPerDay.toFixed(1)}，概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%）`,
+  )
   for (const id of reps) {
     const a = ctx.anomalies.get(id)!
     const profile = recycleProfileOf(ctx, rareWreckItemIdOf(id))!

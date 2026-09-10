@@ -1,7 +1,8 @@
 /**
  * 敌对派系活跃 · 掉落概率审数（正式工具，2026-09-10 加）：
- * 按**当前真实内容**推算"每天平均能刷几次"，据此给出不同掉落概率下的期望日产出，
- * 供船长核定 `FACTION_RARE_DROP_CHANCE`（core/lairs.ts）。
+ * 按**当前真实内容**推算"每天平均能刷几次"，据此给出不同掉落概率下的期望日产出——
+ * 2026-09-10 已由船长据本表核定 `FACTION_RARE_DROP_CHANCE`（core/lairs.ts）为 **5%**；
+ * 后续若要再调，改常数后复跑本工具即可对照（表内会标出当前值）。
  *
  * 口径（与引擎同源）：
  * - 候选 = 中安/低安星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的卡（高安不派发派系活跃）；
@@ -90,7 +91,7 @@ console.log(
     `（最快 ${rows[0]?.perHour.toFixed(1)} / 最慢 ${rows[rows.length - 1]?.perHour.toFixed(1)} 趟/时）`,
 )
 console.log(`\n对照：当日 5 席常规赏金若全清 = 档位件数（外围 1 / 核心 2 / 深层 3 各按抽到的档位）→ 约 8~11 件/天`)
-console.log(`当前占位值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（待船长核定）`)
+console.log(`当前值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（船长 2026-09-10 核定）`)
 for (const p of [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]) {
   const mark = Math.abs(p - FACTION_RARE_DROP_CHANCE) < 1e-9 ? ' ← 当前' : ''
   console.log(
