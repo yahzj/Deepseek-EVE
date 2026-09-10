@@ -1,9 +1,10 @@
 /**
- * 无人机线四条新技能（2026-09-10 船长拍板）：
+ * 无人机线新技能（2026-09-10 船长拍板）：
  * - 无人机打击学（rank4）：单发 +4%/级（与作战学乘算）
- * - 无人机耐久学（rank2）：三层血 +10%/级（"全血条"）
+ * - 无人机耐久学（rank2）：三层血 +6%/级（满级 +30%，"全血条"）
+ * - 无人机强化学（rank4）：三层血再 +6%/级（满级再 +30%，与耐久学**乘算** → 双满 ×1.69）
  * - 无人机回收学（rank3）：战后损坏回收率 10% → 最高 50%
- * - 无人机规避学（rank4）：闪避 +4%/级（相对乘算，封顶 90%）
+ * - 无人机规避学（rank4）：闪避 +2%/级（满级 +10%，相对乘算，封顶 90%）
  * 数值接线在 core/combat.ts（DRONE_SKILL 常量），文案 ⟦…⟧ 在 data/skills.ts。
  */
 import { describe, expect, it } from 'vitest'
@@ -53,7 +54,7 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     )
   })
 
-  it('耐久学：开战生存池三层血 ×(1+10%/级)，满级 ×1.5', () => {
+  it('耐久学（rank2）：三层血 +6%/级，满级 +30%（全血条）', () => {
     const base = makeState()
     const b0 = startBattleFor(base, ctx, base.shipId, HIGH, 0)!
     const heavyPool0 = Object.values(b0.dronePools!).find((p) => p.artId === 'drone-heavy')!
@@ -63,22 +64,35 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     trained.skills.trained['drone-durability'] = 5
     const b1 = startBattleFor(trained, ctx, trained.shipId, HIGH, 0)!
     const heavyPool1 = Object.values(b1.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(heavyPool1.h).toBe(Math.round(45 * 1.5))
-    expect(heavyPool1.s).toBe(Math.round(30 * 1.5))
-    expect(heavyPool1.a).toBe(Math.round(22 * 1.5)) // 全血条三层一起放大
+    expect(heavyPool1.h).toBe(Math.round(45 * 1.3))
+    expect(heavyPool1.s).toBe(Math.round(30 * 1.3))
+    expect(heavyPool1.a).toBe(Math.round(22 * 1.3)) // 全血条三层一起放大
   })
 
-  it('规避学：闪避 ×(1+4%/级)，满级 +20%（封顶 0.9）', () => {
+  it('强化学（rank4）：再 +6%/级、满级再 +30%，与耐久学乘算（双满 = ×1.69）', () => {
+    const both = makeState()
+    both.skills.trained['drone-durability'] = 5
+    both.skills.trained['drone-reinforce'] = 5
+    const b = startBattleFor(both, ctx, both.shipId, HIGH, 0)!
+    const pool = Object.values(b.dronePools!).find((p) => p.artId === 'drone-heavy')!
+    expect(pool.h).toBe(Math.round(45 * 1.3 * 1.3)) // 乘算口径：1.3 × 1.3 = 1.69
+    const onlyReinforce = makeState()
+    onlyReinforce.skills.trained['drone-reinforce'] = 5
+    const b2 = startBattleFor(onlyReinforce, ctx, onlyReinforce.shipId, HIGH, 0)!
+    expect(Object.values(b2.dronePools!).find((p) => p.artId === 'drone-heavy')!.h).toBe(Math.round(45 * 1.3))
+  })
+
+  it('规避学：闪避 +2%/级，满级 +10%（相对乘算，封顶 0.9）', () => {
     const base = makeState()
     const b0 = startBattleFor(base, ctx, base.shipId, HIGH, 0)!
-    const scout0 = Object.values(b0.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(scout0.evasion).toBeCloseTo(0.1, 6)
+    const heavy0 = Object.values(b0.dronePools!).find((p) => p.artId === 'drone-heavy')!
+    expect(heavy0.evasion).toBeCloseTo(0.1, 6)
 
     const trained = makeState()
     trained.skills.trained['drone-evasion'] = 5
     const b1 = startBattleFor(trained, ctx, trained.shipId, HIGH, 0)!
-    const scout1 = Object.values(b1.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(scout1.evasion).toBeCloseTo(0.12, 6) // 0.10 × 1.20
+    const heavy1 = Object.values(b1.dronePools!).find((p) => p.artId === 'drone-heavy')!
+    expect(heavy1.evasion).toBeCloseTo(0.11, 6) // 0.10 × 1.10
   })
 
   it('回收学：回收率 10% → 每级 +8% → 满级封顶 50%', () => {
