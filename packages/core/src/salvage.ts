@@ -372,8 +372,10 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
 
 /* ═══════════ 高级箱（稀有残骸额外掉落，2026-09-10 船长定） ═══════════ */
 
-/** 专属装备命中率（按回收档位；可调常量，待船长定数） */
-export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.25, risky: 0.4, dire: 0.55 }
+/** 专属装备命中率（按回收档位；2026-09-10 船长定：**5% / 8% / 10%**，原 25/40/55 太容易——
+ *  专属装备一周就全齐；降下来后集齐一族约 3~6 天。未命中必给该敌群主题件，
+ *  且命中给的是**不可出售**的专属件、未命中给的是**可出售**的主题件，所以"非命中"收益不受影响） */
+export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.05, risky: 0.08, dire: 0.1 }
 
 /**
  * 专属**无人机**一次掉落架数（2026-09-10 船长：G 族「流亡蜂无人机」）。

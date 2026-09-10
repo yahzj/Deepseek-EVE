@@ -276,6 +276,12 @@ export interface RefineRunState {
   finishAtGameMs: number
   /** 已完成批数（展示用） */
   batchesDone: number
+  /**
+   * 本轮锁定的**剩余可投料量**（2026-09-10 船长定：稀有残骸每炉锁死 1 件 = 30 m³）：
+   * 起炉时按 `RARE_WRECK_VOLUME_M3` 写入、每批扣减，用尽即走"原料耗尽"同一条路径停炉；
+   * **缺省 = 不限制**（普通残骸与精炼炉照旧"整批直到料尽"，老档天然是这个语义 → 零迁移）。
+   */
+  lockUnits?: number
   /** 炉内所得累计（2026-09-06 兼容字段：停炉/料尽/自然结束时写明细日志用；
    *  refine 炉只用 min（产物矿物）；recycle 炉 = 保底矿物(min) + 彩头装备(mod) +
    *  **专属无人机(drone，2026-09-10 增：按架数)** + 蓝图碎片(frag)；
