@@ -398,7 +398,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-swarm',
     name: '梭鱼级无人机护卫', // 2026-09-09 海鲜命名统一:原名 蜂群级无人机护卫
     role: 'armed',
-    slots: { high: 5, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    slots: { high: 3, mid: 3, low: 2 }, // V18 槽位布局；2026-09-10 船长：无人机专用舰高槽 −2（5→3）
     tier: 2,
     cargoM3: 2600,
     cycleSeconds: 13,
@@ -426,7 +426,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-sentinel',
     name: '王鲭级无人机母舰', // 2026-09-09 海鲜命名统一:原名 哨兵级无人机母舰
     role: 'armed',
-    slots: { high: 6, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    slots: { high: 4, mid: 2, low: 2 }, // V18 槽位布局；2026-09-10 船长：无人机专用舰高槽 −2（6→4）
     tier: 3,
     cargoM3: 3600,
     cycleSeconds: 13,
