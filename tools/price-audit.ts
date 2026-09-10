@@ -22,15 +22,24 @@ import { buildSimContext } from '@whale/data'
 const ctx = buildSimContext()
 const WEAPON_SLOTS = new Set(['turret', 'missile', 'laser'])
 const fmt = (n: number): string => Math.round(n).toLocaleString('zh-CN')
-const mkOf = (name: string): string => {
+/**
+ * 档位口径（2026-09-10 船长定：**按档位归**，不按名字里的 MK 编号）：
+ * 船体维修装置只有 civ / MK1 / MK2 三档（无 MK3），其 MK2 是**顶级档**、归第三档（跟 MK3 走）。
+ */
+const TIER_OVERRIDE: Record<string, number> = { 'mod-hullrep-civ': 1, 'mod-hullrep-1': 2, 'mod-hullrep-2': 3 }
+function tierOf(key: string, name: string): number {
+  const o = TIER_OVERRIDE[key]
+  if (o !== undefined) return o
   const m = /MK([123])/.exec(name)
-  return m ? `MK${m[1]}` : '—'
+  return m ? Number(m[1]) : 1
 }
+const tierLabelOf = (t: number): string => `第${t}档（MK${t}）`
 
-type Row = { key: string; name: string; slot: string; rack: string; mk: string; price: number }
+type Row = { key: string; name: string; slot: string; rack: string; tier: number; price: number }
 const rows: Row[] = []
 for (const g of ctx.marketGoods.values()) {
   if (g.kind !== 'module') continue
+  if (g.rarity === 'exotic') continue // 奇货（异星原型）不在本表口径内
   const def = ctx.modules.get(g.refId)
   if (!def) continue
   rows.push({
@@ -38,14 +47,14 @@ for (const g of ctx.marketGoods.values()) {
     name: def.name,
     slot: def.slot,
     rack: def.rack,
-    mk: mkOf(def.name),
+    tier: tierOf(g.key, def.name),
     price: g.basePrice ?? 0,
   })
 }
 
-for (const mk of ['MK2', 'MK3']) {
-  const weapons = rows.filter((r) => r.mk === mk && WEAPON_SLOTS.has(r.slot)).sort((a, b) => a.price - b.price)
-  const gear = rows.filter((r) => r.mk === mk && !WEAPON_SLOTS.has(r.slot)).sort((a, b) => a.price - b.price)
+for (const tier of [2, 3]) {
+  const weapons = rows.filter((r) => r.tier === tier && WEAPON_SLOTS.has(r.slot)).sort((a, b) => a.price - b.price)
+  const gear = rows.filter((r) => r.tier === tier && !WEAPON_SLOTS.has(r.slot)).sort((a, b) => a.price - b.price)
   const wPrices = weapons.map((w) => w.price)
   const wMin = wPrices[0]!
   const wMax = wPrices[wPrices.length - 1]!
@@ -60,7 +69,7 @@ for (const mk of ['MK2', 'MK3']) {
     return Math.round(n / mag) * mag
   }
   console.log('')
-  console.log(`════════ ${mk} ════════`)
+  console.log(`════════ ${tierLabelOf(tier)} ════════`)
   console.log(
     `武器锚点：${wPrices.map(fmt).join(' · ')}（中位 ${fmt(anchor)}）｜ 非武器 ${gear.length} 件：现价 ${fmt(gMin)} ~ ${fmt(gMax)}、中位 ${fmt(gMed)}`,
   )
@@ -85,19 +94,19 @@ for (const mk of ['MK2', 'MK3']) {
     `合计：现 ${fmt(sumBefore)} → 甲案 ${fmt(sumJia)}（×${(sumJia / sumBefore).toFixed(2)}）｜ 丙案 ${fmt(sumBing)}（×${(sumBing / sumBefore).toFixed(2)}）`,
   )
   console.log(
-    `（对照：同级武器合计 ${fmt(wPrices.reduce((s, v) => s + v, 0))}；大众档 MK1 非武器合计 ${fmt(
-      rows.filter((r) => r.mk === 'MK1' && !WEAPON_SLOTS.has(r.slot)).reduce((s, r) => s + r.price, 0),
+    `（对照：同级武器合计 ${fmt(wPrices.reduce((s, v) => s + v, 0))}；第 1 档（MK1）非武器合计 ${fmt(
+      rows.filter((r) => r.tier === 1 && !WEAPON_SLOTS.has(r.slot)).reduce((s, r) => s + r.price, 0),
     )}）`,
   )
 }
 
 console.log('')
-console.log('══ 命名例外检查（缺某档的家族）══')
-const byFamily = new Map<string, string[]>()
+console.log('══ 档位口径检查（家族 → 档位集合；第 3 档缺位者以 overrides 归位）══')
+const byFamily = new Map<string, number[]>()
 for (const r of rows) {
   const fam = r.key.replace(/-civ$/, '').replace(/-[123]$/, '').replace(/-(kin|exp|pla)$/, '')
-  byFamily.set(fam, [...(byFamily.get(fam) ?? []), r.mk])
+  byFamily.set(fam, [...(byFamily.get(fam) ?? []), r.tier].sort((a, b) => a - b))
 }
-for (const [fam, mks] of byFamily) {
-  if (!mks.includes('MK3')) console.log(`· ${fam}：档位 = ${mks.join(' / ')}（**无 MK3**——顶级档是 MK2）`)
+for (const [fam, ts] of byFamily) {
+  if (!ts.includes(3)) console.log(`· ${fam}：档位 = ${ts.join(' / ')}（**无第 3 档**——顶级档即第 2 档）`)
 }
