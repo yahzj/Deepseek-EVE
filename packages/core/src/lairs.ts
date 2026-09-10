@@ -69,12 +69,13 @@ export const FACTION_BOUNTY_REWARD_MUL = 1.1
 /** 派系活跃 · 目标悬赏的威胁加成（+10%）：威胁驱动敌舰属性（血量/火力/速度/射程），不是纯数字 */
 export const FACTION_BOUNTY_THREAT_MUL = 1.1
 /**
- * 派系活跃 · 胜利后掉落稀有残骸的概率（**船长 2026-09-10 定：10%**）。
+ * 派系活跃 · 胜利后掉落稀有残骸的概率（**船长 2026-09-10 定：5%**；同日先由 10% 下调）。
  * 口径：该目标当天**可反复刷**（不像赏金任务那样打完下板），所以概率按"每天平均能刷几次"审算——
- * 见 `npm run faction:audit`（当前均值 ≈3.5 趟/时 → 4 小时 ≈14 趟 → P=10% 期望 ≈1.4 件/天）。
+ * 见 `npm run faction:audit`（均值 ≈3.5 趟/时 → 4 小时 ≈14 趟 → P=5% 期望 ≈0.7 件/天，
+ * 即派系活跃是"顺手多一次摸奖"，不与当日 5 席赏金全清（8~11 件/天）争主供给）。
  * 命中一次掉 `FACTION_RARE_DROP_COUNT` 件，进该星系残骸场（打捞必得，与窝点同一条链路）。
  */
-export const FACTION_RARE_DROP_CHANCE = 0.1
+export const FACTION_RARE_DROP_CHANCE = 0.05
 /** 派系活跃 · 命中一次掉几件稀有残骸 */
 export const FACTION_RARE_DROP_COUNT = 1
 

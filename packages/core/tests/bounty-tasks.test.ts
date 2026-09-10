@@ -866,7 +866,9 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     const card = ctx.anomalies.get(f.anomalyId!)!
     state.standings[DSI_FACTION_ID] = 99
     let hits = 0
-    const runs = 40
+    // 2026-09-10：概率由 10% 下调到 5% 后，40 局的"至少命中一次"会变成 13% 概率的运气用例
+    //（0.95^40 ≈ 0.129）——按仓库口径"测试别靠取样运气"，局数提到 200（0.95^200 ≈ 3.5e-5）。
+    const runs = 200
     for (let i = 0; i < runs; i += 1) {
       state.expedition.active = false
       state.expedition.battle = null
@@ -880,9 +882,9 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
       state.wallet.isk = 1_000_000 // 防破产（维修费与本测试无关）
     }
     const rate = hits / runs
-    // 二项分布 sd ≈ 0.063（n=40, p=0.2）→ 给足 3sd 余量
-    expect(rate).toBeGreaterThan(FACTION_RARE_DROP_CHANCE - 0.25)
-    expect(rate).toBeLessThan(FACTION_RARE_DROP_CHANCE + 0.25)
+    // 二项分布 sd ≈ 0.015（n=200, p=0.05）→ ±0.1 已是 6.5sd，给足余量且不放过口径漂移
+    expect(rate).toBeGreaterThan(FACTION_RARE_DROP_CHANCE - 0.1)
+    expect(rate).toBeLessThan(FACTION_RARE_DROP_CHANCE + 0.1)
     expect(hits).toBeGreaterThan(0)
   })
 })
