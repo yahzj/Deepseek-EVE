@@ -741,6 +741,55 @@ function digestAdd(state: GameState, ctx: SimContext, key: string, qty: number, 
 
 /* ═══════════ 我的限价单撮合（窗口内） ═══════════ */
 
+/**
+ * 吃现有簿面（确定性撮合，与窗口撮合共用同一批结算函数——钱货/税/声望/池/日志同源）：
+ * - 卖单：吃「收购价 ≥ 挂价」的收购单（**同价算成交**），成交价 = 挂单价（既有口径不变）；
+ * - 买单：吃「供应价 ≤ 挂价」的供应单（**同价算成交**），成交价 = 簿面供应价（玩家不亏）；
+ * - 商品已下架（目录外）不撮合（防走 depositGood 空目录分支）。
+ * 只吃簿面、**不掷越线抢单骰**——越线（买单低于供应价线 / 卖单高于收购价线）仍归每 60 秒
+ * 窗口的概率机制（2026-09-08 船长定），挂单瞬间不额外掷骰。
+ */
+function eatBook(state: GameState, ctx: SimContext, order: PlayerOrder): void {
+  if (order.qty <= 0) return
+  if (!ctx.marketGoods.has(order.good)) return
+  if (order.side === 'sell') {
+    const buyList = state.market.npcBuy[order.good] ?? []
+    const sorted = [...buyList].sort((a, b) => b.price - a.price)
+    for (const npc of sorted) {
+      if (order.qty <= 0) break
+      if (npc.price < order.price) continue
+      const idx = buyList.indexOf(npc)
+      if (idx < 0) continue
+      settleSell(state, ctx, order, npc, Math.min(order.qty, npc.qty), idx)
+    }
+  } else {
+    const sellList = state.market.npcSell[order.good] ?? []
+    const sorted = [...sellList].sort((a, b) => a.price - b.price)
+    for (const npc of sorted) {
+      if (order.qty <= 0) break
+      if (npc.price > order.price) continue
+      const idx = sellList.indexOf(npc)
+      if (idx < 0) continue
+      settleBuy(state, ctx, order, npc, idx)
+    }
+  }
+}
+
+/**
+ * 挂单瞬间的簿面核对（2026-09-10 船长定）：与现有簿面对冲（可成交）的挂单**必须立即成交**，
+ * 吃剩的数量才作为挂单等待后续窗口（标准限价单语义）；全部即时成交的单直接移出挂单表
+ * （不再出现在「我的挂单」，也就不必等下一个窗口清理）。
+ * 修复背景：撮合此前只在每 60 秒窗口跑一次，而「挂单买」表单默认预填的正是当前最佳供应价——
+ * 玩家挂出与在售卖单同价的买单却不会成交，改单/等窗后簿面还带 ±2% 抖动重铺，常常长期不成交。
+ */
+function crossOnPlacement(state: GameState, ctx: SimContext, order: PlayerOrder): { filled: number; resting: number } {
+  const before = order.qty
+  eatBook(state, ctx, order)
+  const filled = before - order.qty
+  if (order.qty <= 0) state.orders = state.orders.filter((o) => o !== order)
+  return { filled, resting: order.qty }
+}
+
 function matchPlayerOrders(state: GameState, ctx: SimContext): void {
   const mk = state.market
   const bal = ctx.balance.market
@@ -748,19 +797,9 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
   for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0
   for (const order of [...state.orders]) {
     if (order.qty <= 0) continue
-    // 商品下架防御（2026-09-09 市场目录收缩，如蓝图船成品现货退役）：目录外的旧挂单不再撮合
-    // ——否则命中残留簿面会走 depositGood 空目录分支（钱已扣、货到不了）；订单保留可手动撤单
-    if (!ctx.marketGoods.has(order.good)) continue
+    // 簿面撮合（含商品下架防御，见 eatBook）
+    eatBook(state, ctx, order)
     if (order.side === 'sell') {
-      const buyList = mk.npcBuy[order.good] ?? []
-      const sorted = [...buyList].sort((a, b) => b.price - a.price)
-      for (const npc of sorted) {
-        if (order.qty <= 0) break
-        if (npc.price < order.price) continue
-        const idx = buyList.indexOf(npc)
-        if (idx < 0) continue
-        settleSell(state, ctx, order, npc, Math.min(order.qty, npc.qty), idx)
-      }
       // 越线抢单（卖出侧，2026-09-08 船长定）：簿吃不掉且挂价高于收购价线 → 巡游采购每窗掷骰；
       // 单次件数随溢价收窄放大（snatchSellFill：池商品贴线一次可收几十件，越远越小）
       if (order.qty > 0) {
@@ -777,15 +816,6 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
         }
       }
     } else {
-      const sellList = mk.npcSell[order.good] ?? []
-      const sorted = [...sellList].sort((a, b) => a.price - b.price)
-      for (const npc of sorted) {
-        if (order.qty <= 0) break
-        if (npc.price > order.price) continue
-        const idx = sellList.indexOf(npc)
-        if (idx < 0) continue
-        settleBuy(state, ctx, order, npc, idx)
-      }
       // 越线抢单（买入侧）：簿吃不掉且挂价低于供应价线 → 巡游供货每窗掷骰
       if (order.qty > 0) {
         const bdef = ctx.marketGoods.get(order.good)
@@ -1031,8 +1061,26 @@ export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: strin
   if (qty <= 0 || price <= 0) return null
   const order = pushSellOrder(state, goodKey, price, qty)
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
-  addLog(state, 'trade', `已挂卖单：${goodName(ctx, goodKey)}×${qty.toLocaleString('zh-CN')} @ ${order.price.toLocaleString('zh-CN')} ISK。`)
+  // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
+  const r = crossOnPlacement(state, ctx, order)
+  addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, qty, r))
   return order
+}
+
+/** 挂单回执文案（含即时成交结果；数量单位为件/单位，与既有日志口径一致） */
+function placeOrderLogText(
+  ctx: SimContext,
+  side: 'buy' | 'sell',
+  goodKey: string,
+  price: number,
+  want: number,
+  r: { filled: number; resting: number },
+): string {
+  const name = goodName(ctx, goodKey)
+  const p = price.toLocaleString('zh-CN')
+  if (r.filled <= 0) return `已挂${side === 'buy' ? '买' : '卖'}单：${name}×${want.toLocaleString('zh-CN')} @ ${p} ISK。`
+  if (r.resting <= 0) return `${side === 'buy' ? '买' : '卖'}单已即时成交：${name}×${r.filled.toLocaleString('zh-CN')} @ ${p} ISK（无需再等撮合）。`
+  return `${side === 'buy' ? '买' : '卖'}单已即时成交 ${r.filled.toLocaleString('zh-CN')} 件，余 ${r.resting.toLocaleString('zh-CN')} 件挂单 @ ${p} ISK。`
 }
 
 /** 内部：把卖单写入订单表（不碰 escrow、不打日志） */
@@ -1051,7 +1099,9 @@ function pushSellOrder(state: GameState, goodKey: string, price: number, qty: nu
   return order
 }
 
-/** 挂限价买单（成交时扣钱；货直接入库存）；受声望门槛商品在此拒绝 */
+/** 挂限价买单（成交时扣钱；货直接入库存）；受声望门槛商品在此拒绝。
+ *  2026-09-10 船长定：挂单瞬间先核对现有卖单簿面——与「供应价 ≤ 挂价」的卖单（含同价）立即成交，
+ *  剩余数量才作为挂单等待后续窗口（此前挂单不核对簿面，同价买单会一直挂着不成交）。 */
 export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   const def = ctx.marketGoods.get(goodKey)
   if (!def || qty <= 0 || price <= 0) return null
@@ -1069,7 +1119,8 @@ export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string
     placedAtGameMs: state.gameMs,
   }
   state.orders.push(order)
-  addLog(state, 'trade', `已挂买单：${goodName(ctx, goodKey)}×${qty.toLocaleString('zh-CN')} @ ${order.price.toLocaleString('zh-CN')} ISK。`)
+  const r = crossOnPlacement(state, ctx, order)
+  addLog(state, 'trade', placeOrderLogText(ctx, 'buy', goodKey, order.price, qty, r))
   return order
 }
 
@@ -1319,7 +1370,15 @@ export function placeShipSellOrder(
   }
   state.orders.push(order)
   state.escrowShips[order.id] = hold
-  addLog(state, 'trade', `已挂卖单：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} ISK（可撤销退回机库）。`)
+  // 二手舰船同样先吃簿（2026-09-10 船长定：买卖两侧对称）
+  const r = crossOnPlacement(state, ctx, order)
+  addLog(
+    state,
+    'trade',
+    r.filled > 0
+      ? `卖单已即时成交：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} ISK。`
+      : `已挂卖单：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} ISK（可撤销退回机库）。`,
+  )
   return order
 }
 
@@ -1463,7 +1522,7 @@ export function listSellHolding(
   goodKey: string,
   price: number,
   qty?: number,
-): { ok: boolean; error?: string; orderId?: number; price?: number } {
+): { ok: boolean; error?: string; orderId?: number; price?: number; filled?: number; resting?: number } {
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return { ok: false, error: `未知商品：${goodKey}` }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。' }
@@ -1477,6 +1536,8 @@ export function listSellHolding(
   const n = Math.min(want, available)
   if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。' }
   const order = pushSellOrder(state, goodKey, price, n)
-  addLog(state, 'trade', `已挂卖单：${goodName(ctx, goodKey)}×${n.toLocaleString('zh-CN')} @ ${order.price.toLocaleString('zh-CN')} ISK。`)
-  return { ok: true, orderId: order.id, price: order.price }
+  // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
+  const r = crossOnPlacement(state, ctx, order)
+  addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
+  return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
 }
