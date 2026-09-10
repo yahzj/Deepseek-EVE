@@ -155,6 +155,84 @@ function main(): void {
   console.log('  · 4×MK1 低密度(mul≈1) ≈ 3.9k → 满技能 ≈ 7.5k m³/h；满技能炉速 1800 m³/h → 仍富余（仓库缓冲，AI 炉可 24/7）；')
   console.log('  · 深空平衡密度(mul≈3.6)：无技能 ≈ 14k → 满技能 ≈ 27k m³/h → 炉速仍是瓶颈，积压明显——批容量为 P3 旋钮（如调 20 m³/批）。')
   console.log(`校准注：锚 X 的口径含「采矿技术 5」（模拟策略统一前置）；回收链两行（无技能/满技能）为同链成长差；若采矿侧再把护卫舰操作/地质学等点满，X 同步抬升 ≈ ×1.8（富凡级口径），两链满级比例仍落在 ×1~×1.3 上下——目测以本表为主。2026-09-06 锚 82k（×1.65）。`)
+
+  /* ══════════ 蓝图两条获取路线对比（2026-09-10 船长：打捞回收凑碎片 vs 市场买书）══════════
+   * 口径：
+   * - 碎片路线 = 残骸回收批里逐 m³ 掷概率（fragT2/fragT3），**且按同档池均分**——
+   *   MK2 碎片 3 张蓝图共享一个池、MK3 同理（rollRecycleLoot 的 t2Pool/t3Pool），故"某一张书"的
+   *   每 m³ 命中率 = 档位概率 ÷ 池大小；集齐 need 片（100/1000）后在母港「逆向研究」解锁（redeemFragments）。
+   * - 市场路线 = 直接买蓝图书（marketCatalog 的 blueprint 卡，价格 = 蓝图商店价 priceIsk；MK3 需协会声望 4）。
+   * - 两条路线的时间基准统一为"同一条打捞→回收生产线"：碎片路线看**炉时要多少小时**，
+   *   市场路线看**赚够书价要多少小时**（按各档保底 EV/h）。回收炉是瓶颈（供料侧通常富余，见上）。
+   */
+  console.log('══ 蓝图两条获取路线对比（打捞凑碎片 vs 市场买书，2026-09-10 船长）══')
+  const t2Pool = Object.keys(FRAGMENT_RECIPES).filter(
+    (m) => FRAGMENT_RECIPES[m]!.need === 100 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
+  )
+  const t3Pool = Object.keys(FRAGMENT_RECIPES).filter(
+    (m) => FRAGMENT_RECIPES[m]!.need === 1000 && ctx.blueprints.has(FRAGMENT_RECIPES[m]!.blueprintId),
+  )
+  const tierEvNo = (tier: keyof typeof POOLS): number => FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
+  const tierEvFull = (tier: keyof typeof POOLS): number => tierEvNo(tier) * FULL_SKILL_MULT
+  console.log(
+    `· 碎片概率：fragT2 ${RECYCLE_CHANCE.fragT2}/m³（威胁 ≥17）· fragT3 ${RECYCLE_CHANCE.fragT3}/m³（威胁 ≥41）；` +
+      `同档池大小 MK2 ${t2Pool.length} 张 / MK3 ${t3Pool.length} 张 → 单张书命中率 = 档概率 ÷ 池大小`,
+  )
+  console.log(
+    `· 生产线基准：炉时 无技能 ${FURNACE_M3_H} m³/h → 满技能 ${FURNACE_M3_H_FULL} m³/h；` +
+      `保底 EV/h 无技能 险 ${Math.round(tierEvNo('risky')).toLocaleString('zh-CN')} / 危 ${Math.round(tierEvNo('dire')).toLocaleString('zh-CN')}，` +
+      `满技能 险 ${Math.round(tierEvFull('risky')).toLocaleString('zh-CN')} / 危 ${Math.round(tierEvFull('dire')).toLocaleString('zh-CN')}`,
+  )
+  for (const [label, pool, tier] of [
+    ['MK2', t2Pool, 'risky'],
+    ['MK3', t3Pool, 'dire'],
+  ] as const) {
+    for (const moduleId of pool) {
+      const r = FRAGMENT_RECIPES[moduleId]!
+      const bp = ctx.blueprints.get(r.blueprintId)
+      const good = ctx.marketGoods.get(r.blueprintId)
+      const price = good?.basePrice ?? bp?.priceIsk ?? 0
+      const perM3 = (r.need === 100 ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3) / Math.max(1, pool.length)
+      const m3Need = r.need / perM3
+      const hoursNo = m3Need / FURNACE_M3_H
+      const hoursFull = m3Need / FURNACE_M3_H_FULL
+      const buyHoursNo = price / tierEvNo(tier)
+      const buyHoursFull = price / tierEvFull(tier)
+      const mineralDuring = m3Need * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
+      const ratio = hoursFull / Math.max(0.0001, buyHoursFull)
+      console.log(
+        `· ${label} ${bp?.name ?? r.blueprintId}：市场 ${good?.rarity ?? '?'} ${price.toLocaleString('zh-CN')} ISK` +
+          `${good?.standingReq ? `（需声望 ${good.standingReq}）` : ''}` +
+          ` ｜ 碎片路线 需 ${Math.round(m3Need).toLocaleString('zh-CN')} m³ = 炉时 ${Math.round(hoursNo).toLocaleString('zh-CN')} h（无技能）/ ${Math.round(hoursFull).toLocaleString('zh-CN')} h（满技能）` +
+          `（期间回收保底产出 ≈ ${Math.round(mineralDuring).toLocaleString('zh-CN')} ISK）` +
+          ` ｜ 买书等价工时 ${buyHoursNo.toFixed(1)} h（无技能）/ ${buyHoursFull.toFixed(1)} h（满技能）` +
+          ` → **单张口径慢 ≈ ${ratio.toFixed(0)}×**`,
+      )
+    }
+    // 整档口径（公平比较）：碎片在池内均分 → 拿到"某一张"100 片时，另外两张也各约 100 片
+    // （碎片总数 = m³ × 档概率），即一趟等于把该档 3 张书全部凑齐 → 应与"买齐 3 张"比。
+    const chance = label === 'MK2' ? RECYCLE_CHANCE.fragT2 : RECYCLE_CHANCE.fragT3
+    const need = label === 'MK2' ? 100 : 1000
+    const m3All = (need * pool.length) / chance
+    const hoursAllNo = m3All / FURNACE_M3_H
+    const hoursAllFull = m3All / FURNACE_M3_H_FULL
+    const priceAll = pool.reduce((s, m) => {
+      const r = FRAGMENT_RECIPES[m]!
+      return s + (ctx.marketGoods.get(r.blueprintId)?.basePrice ?? 0)
+    }, 0)
+    const buyAllNo = priceAll / tierEvNo(tier)
+    const buyAllFull = priceAll / tierEvFull(tier)
+    console.log(
+      `  ▸ **整档 ${label}（一趟凑齐全部 ${pool.length} 张书）**：需 ${Math.round(m3All).toLocaleString('zh-CN')} m³ = 炉时 ${Math.round(hoursAllNo).toLocaleString('zh-CN')} h（无技能）/ ${Math.round(hoursAllFull).toLocaleString('zh-CN')} h（满技能）` +
+        ` ｜ 买齐 ${pool.length} 张合计 ${priceAll.toLocaleString('zh-CN')} ISK = ${buyAllNo.toFixed(1)} h（无技能）/ ${buyAllFull.toFixed(1)} h（满技能）` +
+        ` → **整档口径慢 ≈ ${(hoursAllFull / Math.max(0.0001, buyAllFull)).toFixed(0)}×**` +
+        `（同期回收保底产出 ≈ ${Math.round(m3All * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)).toLocaleString('zh-CN')} ISK，远超买书价——即"时间才是唯一成本"）`,
+    )
+  }
+  console.log(
+    '结论：碎片路线的定位是**长线收藏彩头**（同一趟平行凑齐整档 3 张），实际效率约为"赚钱买书"的 1/20；' +
+      '完好舰体（3 片/次 ×30%）与已关闭的高级箱（稀有残骸）只是额外涓流，不改量级。市场才是正经获取途径（MK3 需声望 4）。',
+  )
 }
 
 void main()
