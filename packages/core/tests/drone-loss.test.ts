@@ -96,10 +96,10 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(dronesInArcs).toBe(pools.length - lost)
     expect(arcs.droneLost).toEqual(battle.droneLost)
 
-    // 损失扣除：基础回收率 10%（按机型四舍五入）→ 净损失 = 损坏 − 回收
+    // 损失扣除：基础回收率 20%（按机型四舍五入）→ 净损失 = 损坏 − 回收
     const before = battle.droneLost!
     const rate = droneRecoveryRate(state)
-    expect(rate).toBeCloseTo(0.1, 6) // 无技能 = 基础 10%
+    expect(rate).toBeCloseTo(0.2, 6) // 无技能 = 基础 20%
     const text = settleDroneLosses(state, ctx, state.shipId, battle)
     expect(text).toBeTruthy()
     const load = state.fleet[state.shipId]!.droneLoad ?? {}

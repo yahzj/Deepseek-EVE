@@ -350,7 +350,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '无人机回收学',
     group: '战斗',
     rank: 3,
-    description: '残骸打捞与机体翻修：战斗结束后损坏无人机的回收比例每级 +⟦8%⟧（基础 ⟦10%⟧ → 满级 ⟦50%⟧；回收的机体回舱继续服役）。',
+    description: '残骸打捞与机体翻修：战斗结束后损坏无人机的回收比例每级 +⟦6%⟧（基础 ⟦20%⟧ → 满级 ⟦50%⟧；回收的机体回舱继续服役）。',
   },
   {
     id: 'drone-evasion',

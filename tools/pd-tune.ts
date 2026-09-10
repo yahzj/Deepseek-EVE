@@ -140,7 +140,7 @@ for (const combo of SWEEP) {
 }
 console.log(
   `\n机制换算：威胁门槛 ${base.balance.battle.pdThreatFloor}（低于此值无敌近防炮）｜判定周期 ${base.balance.battle.pdJudgementMs}ms/舰｜` +
-    `命中 = acc − 机型闪避｜**战斗内可 100% 损坏**（无单场上限）｜战后按回收率找回（基础 10%，回收学满级 50%）｜` +
+    `命中 = acc − 机型闪避｜**战斗内可 100% 损坏**（无单场上限）｜战后按回收率找回（基础 20%，回收学满级 50%）｜` +
     `哨戒机默认不被打、**非哨戒机全灭后转打哨戒机**\n` +
     `代表卡是否有点防：噬口(80)=${pdEnabledFor(80, base.balance.battle)}、坟场(88)=${pdEnabledFor(88, base.balance.battle)}、穹顶(96)=${pdEnabledFor(96, base.balance.battle)}`,
 )

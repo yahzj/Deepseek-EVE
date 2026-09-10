@@ -3,7 +3,7 @@
  * - 无人机打击学（rank4）：单发 +4%/级（与作战学乘算）
  * - 无人机耐久学（rank2）：三层血 +4%/级（满级 +20%，"全血条"）
  * - 无人机强化学（rank4）：三层血再 +6%/级（满级再 +30%，与耐久学**乘算** → 双满 ×1.56）
- * - 无人机回收学（rank3）：战后损坏回收率 10% → 最高 50%
+ * - 无人机回收学（rank3）：战后损坏回收率 20% → 最高 50%（2026-09-10 船长：基础 10%→20%）
  * - 无人机规避学（rank4）：闪避 +2%/级（满级 +10%，相对乘算，封顶 90%）
  * 数值接线在 core/combat.ts（DRONE_SKILL 常量），文案 ⟦…⟧ 在 data/skills.ts。
  */
@@ -95,12 +95,12 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     expect(heavy1.evasion).toBeCloseTo(0.11, 6) // 0.10 × 1.10
   })
 
-  it('回收学：回收率 10% → 每级 +8% → 满级封顶 50%', () => {
+  it('回收学：回收率 20% → 每级 +6% → 满级封顶 50%', () => {
     const s0 = makeState()
-    expect(droneRecoveryRate(s0)).toBeCloseTo(0.1, 6)
+    expect(droneRecoveryRate(s0)).toBeCloseTo(0.2, 6)
     const s1 = makeState()
     s1.skills.trained['drone-recovery'] = 3
-    expect(droneRecoveryRate(s1)).toBeCloseTo(0.34, 6) // 0.10 + 0.24
+    expect(droneRecoveryRate(s1)).toBeCloseTo(0.38, 6) // 0.20 + 0.18
     const s5 = makeState()
     s5.skills.trained['drone-recovery'] = 5
     expect(droneRecoveryRate(s5)).toBeCloseTo(0.5, 6)

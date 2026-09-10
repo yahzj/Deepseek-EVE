@@ -1828,9 +1828,9 @@ export const DRONE_SKILL = {
   reinforcePerLevel: 0.06,
   /** 无人机规避学：闪避 +2%/级（满级 +10%；相对乘算，闪避封顶 0.9） */
   evasionPerLevel: 0.02,
-  /** 无人机回收学：战后回收损坏机体，基础 10% + 8%/级（满级 50%） */
-  recoveryBase: 0.1,
-  recoveryPerLevel: 0.08,
+  /** 无人机回收学：战后回收损坏机体，基础 20% + 6%/级（满级 50%）——2026-09-10 船长定：基础 10%→20%、满级仍 50% */
+  recoveryBase: 0.2,
+  recoveryPerLevel: 0.06,
   recoveryMax: 0.5,
 } as const
 
@@ -1839,7 +1839,7 @@ function droneSkillLv(state: GameState, id: string): number {
   return Math.min(5, state.skills.trained[id] ?? 0)
 }
 
-/** 战后损坏机体的回收比例（2026-09-10 船长：基础 10%，回收学满级 50%） */
+/** 战后损坏机体的回收比例（2026-09-10 船长：基础 20%，回收学满级 50%） */
 export function droneRecoveryRate(state: GameState): number {
   const rate = DRONE_SKILL.recoveryBase + DRONE_SKILL.recoveryPerLevel * droneSkillLv(state, 'drone-recovery')
   return Math.min(DRONE_SKILL.recoveryMax, rate)

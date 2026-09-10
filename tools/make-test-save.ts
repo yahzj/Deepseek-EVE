@@ -45,6 +45,13 @@
  *  - lockrep 目标锁定阵列 × 维修装置联合实测（2026-09-09，新高槽 target-lock + 中槽修复件）：
  *         锤头鲨级 ×2——驾驶船 4×动能MK3 + 锁定阵列MK3 + 维修装置MK2（带伤出场装甲 60%，集火
  *         金标与修复脉冲同场可见）；无件对照船同火力；锁定/维修三档备件与组件齐全。
+ *  - etier  E 段顶格混伤实机复核（2026-09-10 船长「④给我相关存档做实机测试」）：三船 = P1 复跑表
+ *         那三行（大白鲨 S4 驾驶 / 锤头鲨炮巡 / 灰鲭鲨 MK2）+ 中位战斗技能 Lv3 + 声望 13 +
+ *         全星系点亮——亲测"中位档在 E 段顶格（虚海 88 / 穹顶 96）到底打不过还是能磨"，
+ *         对照值见 docs/design/power-ladder-rework.md §七。
+ *  - lairgear 五族专属装备 15 件 + 流亡蜂无人机 验收（2026-09-10 船长「⑧需要」）：在 rarebox
+ *         门槛之上把 14 件专属模块 ×2 直接预置进装备库、专属无人机 ×30 架进仓库、另给王鲭级
+ *         无人机重装 ×1（否则专属机无处放飞）——省掉 5/8/10% 掷骰等待，可立刻装配实测。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -652,6 +659,142 @@ function injectWave(state: GameState): string[] {
   return notes
 }
 
+/** etier（2026-09-10 船长「④给我相关存档做实机测试」）：**E 段顶格对敌方混伤的实机复核档**。
+ * 口径完全对齐 P1 复跑表（docs/design/power-ladder-rework.md §七）——三条船就是那三行：
+ *   驾驶 = **S4 大白鲨 5×MK3 + 支援**（同代对照行：虚海 11% / 穹顶 0% —— 本次最可能需要亲测的两格）
+ *   + **锤头鲨炮巡 5×kin3 + 支援**（E 段主验收行：穹顶 33%）
+ *   + **灰鲭鲨 4×MK2 + 支援**（上一档"可磨"行：虚海/穹顶 0%）
+ * 战斗系 20 项技能 = Lv3（中位档，与 battle:calibrate 主验收行同口径）。
+ * 目的：船长亲测"中位档在 E 段顶格到底是打不过、还是能磨"——决定要不要走单卡数值（复跑表四条结论之四）。 */
+function injectEtier(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 60_000_000
+  notes.push('钱包 +60,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（可接全部悬赏，含穹顶守卫 96）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——E 段四卡全部可达`)
+  // 中位战斗技能（与 calibrate MID_SKILLS 同源 20 键 ×3）
+  const midSkillIds = [
+    'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control',
+    'reload-drills', 'drone-warfare', 'drone-servicing', 'ammunition-condensing',
+    'shield-operation', 'energy-management', 'hull-upgrades', 'shield-tuning', 'armor-tuning',
+    'armed-ops', 'armored-ops', 'vector-maneuvering', 'evasion-maneuvering',
+    'targeting-integration', 'ship-systems-engineering',
+  ]
+  for (const k of midSkillIds) state.skills.trained[k] = 3
+  notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 主验收行同口径）')
+  const rows: Array<[string, string, string[], string[], string[]]> = [
+    ['sh-whiteshark', '大白鲨·S4（驾驶·同代对照行）', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2']],
+    ['sh-hammerhead', '锤头鲨·炮巡（E 段主验收行）', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2']],
+    ['sh-mako', '灰鲭鲨·MK2（上一档"可磨"行）', ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2']],
+  ]
+  const uids: string[] = []
+  rows.forEach(([shipId, name, high, mid, low], i) => {
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  notes.push(`新增三船：${uids[0]}（大白鲨 S4 = 驾驶）、${uids[1]}（锤头鲨）、${uids[2]}（灰鲭鲨）——舰船页切驾驶逐行对照`)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  notes.push('仓库弹药三型 ×5000')
+  for (const m of ['mod-turret-kin-3', 'mod-turret-kin-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
+  }
+  notes.push('装备库备件 ×3（可自组换装，试"只堆主系抗 vs 也堆副系抗"的差别）')
+  for (const s of Object.values(state.fleet)) {
+    if (s) {
+      s.durability = 1
+      s.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push(
+    '测试路径（按复跑表逐格对照，建议同一目标打 3 场看稳定性）：星图·战斗悬赏 → ' +
+      '① 噬口猎杀令 80（2 波）② 坟场守墓人 88（2 波）③ 虚海守望者 88（3 波）④ 穹顶守卫 96（3 波）。' +
+      '复跑表参考值（9 种子，中位技能）：大白鲨 S4 = 噬口 100%/残血 77% · 坟场 100%/112% · **虚海 11%** · **穹顶 0%**；' +
+      '锤头鲨 = 噬口 100%/89% · 坟场 100%/112% · 虚海 100%/51% · **穹顶 33%**；灰鲭鲨 = 坟场 100% · **虚海 0% · 穹顶 0%**。' +
+      '重点体感：**虚海/穹顶 是否"明明还有血却被磨死"、还是"根本打不动"**；换装只堆主系抗 vs 兼堆副系抗的差别；' +
+      '结论回传用于决定是否给这两张卡单卡降伤（复跑表四条结论之四）。',
+  )
+  return notes
+}
+
+/** lairgear（2026-09-10 船长「⑧需要」）：**五族专属装备 15 件 + 流亡蜂无人机 验收档**。
+ * 在 rarebox 门槛（五族稀有残骸 + 高级箱 + AI 核心）之上，**把整族专属产出直接预置进装备库/仓库**，
+ * 省掉"开箱靠 5/8/10% 掷骰"的等待——船长可直接装配实测 15 件专属与专属无人机的手感/数值。 */
+function injectLairGear(state: GameState): string[] {
+  const notes = injectRareBox(state)
+  // 五族专属装备：14 件模块（A/C/D/E 各 3 + G 2）+ 1 件专属无人机物品 = 15
+  const gear: Array<[string, string]> = [
+    ['mod-lair-turret-a', 'A 海盗'],
+    ['mod-lair-missile-a', 'A 海盗'],
+    ['mod-lair-cargo-a', 'A 海盗'],
+    ['mod-lair-armor-c', 'C 异形'],
+    ['mod-lair-dc-c', 'C 异形'],
+    ['mod-lair-laser-c', 'C 异形'],
+    ['mod-lair-shield-d', 'D 守墓'],
+    ['mod-lair-turret-d', 'D 守墓'],
+    ['mod-lair-armor-d', 'D 守墓'],
+    ['mod-lair-turret-e', 'E 巨构'],
+    ['mod-lair-hangar-e', 'E 巨构'],
+    ['mod-lair-frame-e', 'E 巨构'],
+    ['mod-lair-drone-tac-g', 'G 流亡'],
+    ['mod-lair-drone-relay-g', 'G 流亡'],
+  ]
+  for (const [id] of gear) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 2
+  notes.push(`装备库预置五族专属装备 14 件 ×2（A/C/D/E 各 3 + G 2）——装配页可直接装上实测（无蓝图、不上市场，正常只能靠高级箱掷骰）`)
+  // 专属无人机（G 族第 3 件）：物品仓库一次给 30 架（正常一箱 10 架）
+  state.warehouse.items['drone-exile-bee'] = (state.warehouse.items['drone-exile-bee'] ?? 0) + 30
+  notes.push('物品仓库预置专属无人机「流亡蜂无人机」×30 架（正常一箱 10 架；装配页「无人机舱」装入清单后即可放飞）')
+  // 四型制式无人机足量（对照专属机与制式机的差别）
+  for (const d of ['drone-scout', 'drone-assault', 'drone-heavy', 'drone-sentry']) {
+    state.warehouse.items[d] = (state.warehouse.items[d] ?? 0) + 40
+  }
+  notes.push('物品仓库预置四型制式无人机各 +40 架（与专属机对照）')
+  // 无人机专用舰 ×1（王鲭级重装，D3 行配置）——否则专属无人机无处放飞
+  const uid = addShipToFleet(state, 'sh-sentinel')
+  const s = state.fleet[uid]!
+  s.customName = '王鲭·无人机重装（专属机实测）'
+  s.fitted = {
+    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  s.durability = 1
+  s.armorPct = 1
+  state.moduleBay['mod-drone-rack-3'] = (state.moduleBay['mod-drone-rack-3'] ?? 0) + 2
+  state.moduleBay['mod-drone-tac-3'] = (state.moduleBay['mod-drone-tac-3'] ?? 0) + 2
+  notes.push(`新增王鲭级无人机重装 ${uid}（机舱 460 m³，rack3×2 + tac3×2）——把「流亡蜂无人机」装入清单后开战实测；近防炮会击落机群（战后按回收率 20% 找回）`)
+  for (const s2 of Object.values(state.fleet)) {
+    if (s2) {
+      s2.durability = 1
+      s2.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push(
+    '测试路径：① 装配页 → 逐件试装 15 件专属装备（对比同级制式件：专属四型定位契约豁免区间校验，数值应明显更强）；' +
+      '② 装配页「无人机舱」→ 把「流亡蜂无人机」装入王鲭（切驾驶）→ 星图开战看机群放飞与专属机表现；' +
+      '③ 工业页起炉稀有残骸，确认高级箱仍按 5/8/10% 掷骰（本档已把成品直接给到手，开箱链路另见 rarebox 档）。',
+  )
+  return notes
+}
+
 /** shipart（舰船战斗图形目测门槛，2026-09-09 三号）：新规格 240×110 战斗图形全量接入后，
  * 船长真机目测用——钱包/声望/全星系点亮 + 各族代表演示船（逐艘切驾驶开战看形）+ 弹药装备库。
  * 战斗画面重点：我方各族船形（舰首朝右/族色件/引擎挂点/炮口锚/大小比例）与敌族 A~G 型形。 */
@@ -908,6 +1051,8 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   hauling: injectHauling,
   hullrep: injectHullrep,
   lockrep: injectLockrep,
+  etier: injectEtier,
+  lairgear: injectLairGear,
 }
 function main(): void {
   const feature = process.argv[2]
