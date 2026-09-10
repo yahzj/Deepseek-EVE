@@ -32,7 +32,7 @@ import {
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
-import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
+import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
 import { HaulingPanel } from '../panels/Hauling'
@@ -816,17 +816,26 @@ function WreckCard({
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[0] ?? 'basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
-  // B3.1：星系卡「回收产出倾向 / 低出率掉落」汇总（= 该星系各悬赏敌群特色池；回收卡同款行，去重合并）
+  // B3.1：星系卡「回收产出倾向 / 特色掉落」汇总（= 该星系各悬赏敌群；回收卡同款行，去重合并）。
+  // 2026-09-10 船长定"说明精简"：特色掉落只讲特色（主题件具名 + 系列泛化），星图卡不加保底矿物块
+  // （星系级没有单一矿池；该星系矿池信息由下面每张悬赏卡各自的回收卡承载）。
   const notes: string[] = []
   const partList: string[] = []
+  let anyNamed = false
   for (const a of anomalies) {
     if (a.recycleNote && !notes.includes(a.recycleNote)) notes.push(a.recycleNote)
-    for (const p of recycleFlavorParts({ lowSec, threat: a.threat, loot: a.recycleLoot, themedOnly: true }, engine.ctx.modules)) {
+    const feature = recycleFeatureOf(
+      { lowSec, threat: a.threat, loot: a.recycleLoot },
+      { mods: engine.ctx.modules, items: engine.ctx.items },
+    )
+    if (feature.named.length > 0) anyNamed = true
+    for (const p of [...feature.named, ...feature.generic]) {
       if (!partList.includes(p)) partList.push(p)
     }
   }
   const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? ` 等${notes.length}种倾向` : '')
   const flavorParts = partList.slice(0, 4).concat(partList.length > 4 ? [`… 等${partList.length}组`] : [])
+  const flavorLabel = anyNamed ? '特色掉落' : '其他掉落'
   // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回站回收炉开高级箱）
   const rareBy = state.galaxyWrecks[g.id]?.rareBy ?? {}
   const rareRefs = Object.entries(rareBy).filter(([, n]) => n > 0)
@@ -853,7 +862,7 @@ function WreckCard({
         ) : null}
       </div>
       <div className="app-belt-desc">该星系敌群残骸：共 {anomalies.length} 类悬赏目标会持续沉积残骸密度。</div>
-      <FlavorTip note={flavorNote} parts={flavorParts} />
+      <FlavorTip note={flavorNote} featureLabel={flavorLabel} parts={flavorParts} />
       {prog ? (
         <div
           className={`app-card-progress${prog.travel ? ' is-travel' : ''}`}

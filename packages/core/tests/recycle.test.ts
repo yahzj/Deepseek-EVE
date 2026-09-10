@@ -10,7 +10,7 @@ import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
-import { FRAGMENT_RECIPES, fragmentPoolOf, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentPoolOf, recycleMineralPoolOf, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */
 function mineral(id: string, price: number): ItemDef {
@@ -108,6 +108,28 @@ describe('回收画像与保底矿物滚动', () => {
     expect(poolIds).toContain(row.mineralId)
     expect(row.units).toBeGreaterThanOrEqual(18) // 36×0.62≈22.3 基准 ±10% → 20~24（2026-09-06 锚 82k 后 Y 上调）
     expect(row.units).toBeLessThanOrEqual(26)
+  })
+
+  it('recycleMineralPoolOf（2026-09-10 界面保底矿物块单点）：特色池优先、缺省回落档位基础池', () => {
+    const base = ctxOf()
+    // 缺省：无特色池 → 回落该档基础池（柯尔 = 常档：三钛 65 / 类银 30 / 类胶 5）
+    const common = recycleProfileOf(base, wreckItemIdOf('ano-kor'))!
+    expect(recycleMineralPoolOf(common)).toEqual([
+      ['min-tritanium', 65],
+      ['min-pyerite', 30],
+      ['min-mexallon', 5],
+    ])
+    // 特色池优先：写了 recyclePool 就绝不给档位池
+    const flavMap = new Map(base.anomalies)
+    flavMap.set('ano-kor', { ...base.anomalies.get('ano-kor')!, recyclePool: [['min-nocxium', 3], ['min-isotope', 1]] })
+    const flavored = recycleProfileOf({ ...base, anomalies: flavMap }, wreckItemIdOf('ano-kor'))!
+    expect(recycleMineralPoolOf(flavored)).toEqual([['min-nocxium', 3], ['min-isotope', 1]])
+    // 与引擎抽取同源：该残骸只出特色池里的矿
+    const state = createInitialState({ nowWallMs: 0, seed: 77 })
+    for (let i = 0; i < 20; i += 1) {
+      const out = rollRecycleGuarantee(state, { ...base, anomalies: flavMap }, flavored, 10)
+      expect(['min-nocxium', 'min-isotope']).toContain(out[0]!.mineralId)
+    }
   })
 })
 

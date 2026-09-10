@@ -341,6 +341,16 @@ export function recycleTierOf(baseDensity: number): RecycleTier {
   return 'common'
 }
 
+/**
+ * 该残骸实际使用的**保底矿物池**（单点：敌群特色池优先、缺省回落档位基础池）。
+ * 引擎 `rollRecycleGuarantee` 与界面「保底矿物」展示**同源**——界面不必复写回落逻辑，
+ * 也不会出现"卡面列的矿物与实际拆出的不一致"。返回权重表：`[矿物 id, 权重][]`
+ * （权重是相对值、和不为 100，展示方按占比折算）。
+ */
+export function recycleMineralPoolOf(profile: RecycleProfile): ReadonlyArray<readonly [string, number]> {
+  return profile.pool && profile.pool.length > 0 ? profile.pool : RECYCLE_POOLS[profile.tier]!
+}
+
 /** 残骸物品 → 回收画像（敌群威胁/星系危险度/特色池；未知物品返回 null） */
 export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleProfile | null {
   const anomalyId = anomalyIdOfWreck(wreckItemId)
@@ -488,7 +498,7 @@ export function rollRecycleGuarantee(
   profile: RecycleProfile,
   volumeM3: number,
 ): Array<{ mineralId: string; units: number }> {
-  const pool = profile.pool && profile.pool.length > 0 ? profile.pool : RECYCLE_POOLS[profile.tier]!
+  const pool = recycleMineralPoolOf(profile)
   let baseUnits = Math.max(1, volumeM3 * RECYCLE_YIELD_PER_M3[profile.tier])
   // 残骸提纯学（salvage-refining，2026-09-05）：保底矿物每级 +8%（独立技能线，不依赖精炼产出倍率）
   const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)

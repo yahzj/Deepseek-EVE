@@ -10,6 +10,7 @@
  * - 页面布局 = 矿带卡同款：资源卡常驻网格；运转中的卡不改样式，只把操作按钮变为「停炉」。
  */
 import {
+  RARE_BOX_DRONE_UNITS,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
@@ -20,6 +21,7 @@ import {
   countWare,
   oreAvailable,
   RARE_WRECK_VOLUME_M3,
+  recycleMineralPoolOf,
   recycleProfileOf,
   refineRate,
 } from '@whale/core'
@@ -31,7 +33,7 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
-import { FlavorTip, recycleFlavorParts } from '../ui/wreckFlavor'
+import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3 } from './common'
 
@@ -141,8 +143,30 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       const evH = Math.round(
         m3h * RECYCLE_YIELD_PER_M3[profile.tier] * RECYCLE_POOL_AVG_ISK[profile.tier] * (1 + 0.08 * refLv),
       )
+      // 2026-09-10 船长：保底矿物仿精炼卡格式逐项列出（标题 + 每矿物缩进一行，行尾「（仓库 N）」同口径）；
+      // 矿池取引擎单点 recycleMineralPoolOf（特色池优先、缺省回落档位池），界面不复写回落逻辑。
+      const mineralRows = mineralRowsOf(
+        recycleMineralPoolOf(profile),
+        { batchM3: RECYCLE_BATCH_M3, yieldPerM3: RECYCLE_YIELD_PER_M3[profile.tier], refiningLevel: refLv },
+        (id) => engine.ctx.items.get(id)?.name ?? id,
+      )
+      const mineralTip =
+        `按当前技能档与敌群矿物比重折算的每批期望产出（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）；` +
+        `实际每批只按权重出其中一种、产量有 ±10% 抖动，以回收拆解结算为准。` +
+        (profile.note ? `敌群特色：${profile.note}` : '')
       econ = (
         <div className="app-belt-econ">
+          {mineralRows.length > 0 ? (
+            <>
+              <div title={mineralTip}>♨ 保底矿物：</div>
+              {mineralRows.map((r) => (
+                <div key={r.id} className="app-belt-out" title={mineralTip}>
+                  {r.name} ×约 {r.units}
+                  <span className="app-dim">（仓库 {countWare(state, r.id).toLocaleString('zh-CN')}）</span>
+                </div>
+              ))}
+            </>
+          ) : null}
           <div
             className="app-belt-econ-val"
             title="按残骸来源危险度池的保底矿物估算（手动炉基准；AI 核心驱动时周期更长）——参考值，实际所得以回收拆解结算为准"
@@ -208,9 +232,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           {isRareBox ? (
             <em
               className="app-chip is-rare"
-              title="高级箱：赏金任务（敌人窝点）战利品——常规保底之外必定额外掉落：先掷该敌群专属装备，未出则给该敌群主题件，并附一批高阶矿物（每件只结算一次，由首批触发）"
+              title="高级箱：常规保底之外必定额外掉落——该敌群专属装备（未出则给主题件）+ 一批高阶矿物，每件只结算一次"
             >
-              高级箱
+              稀有
             </em>
           ) : null}
         </span>
@@ -235,8 +259,8 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       <div className="app-belt-desc">
         {isWreck
           ? isRareBox
-            ? '每批拆解 = 保底矿物 + 概率彩头；此外开箱即触发高级箱额外掉落（保底之外必定再给：专属装备/主题件 + 高阶矿物，每件只结算一次）'
-            : '每批拆解 = 保底矿物 + 概率彩头（来源与低出率物见下两行）'
+            ? '每批拆解 = 保底矿物 + 概率彩头；另触发「高级箱」额外掉落（专属装备/主题件 + 高阶矿物，每件只结算一次）'
+            : '每批拆解 = 保底矿物 + 概率彩头'
           : def.description}
       </div>
       {isWreck ? <WreckFlavorRow def={def} engine={engine} /> : null}
@@ -330,18 +354,23 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   )
 }
 
-/** B3.1：残骸回收卡"产出倾向 / 低出率掉落"说明行（2026-09-06 船长：直接告诉玩家具体低出率物；
- * 行内容与星图打捞页星系卡共用 ui/wreckFlavor） */
+/** B3.1：残骸回收卡「特色掉落」说明行（2026-09-06 船长：直接告诉玩家具体低出率物；
+ *  2026-09-10 船长定"说明精简"：只讲特色（主题件/专属装备具名），其余泛化为系列名；
+ *  行内容与星图打捞页星系卡共用 ui/wreckFlavor） */
 function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   const ctx = engine.ctx
   const profile = recycleProfileOf(ctx, def.id)
   if (!profile) return null
-  return (
-    <FlavorTip
-      note={profile.note}
-      parts={recycleFlavorParts({ lowSec: profile.lowSec, threat: profile.threat, loot: profile.loot }, ctx.modules)}
-    />
+  const feature = recycleFeatureOf(
+    {
+      lowSec: profile.lowSec,
+      threat: profile.threat,
+      loot: profile.loot,
+      lairGear: profile.lairGear,
+    },
+    { mods: ctx.modules, items: ctx.items, droneUnits: RARE_BOX_DRONE_UNITS },
   )
+  return <FlavorTip featureLabel={feature.label} parts={[...feature.named, ...feature.generic]} />
 }
 
 export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageProps & {
