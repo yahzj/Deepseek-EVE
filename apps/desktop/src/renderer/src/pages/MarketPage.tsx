@@ -3,8 +3,8 @@
  *
  * 玩法规则（中文说明，设计 V4/V5 已确认）：
  * - 收购价 = NPC 收玩家的价；供应价 = NPC 卖玩家的价（两者有价差，防倒卖）；
- * - 池商品（矿石/矿物）：站内有库存压力（2026-09-10 起不再显示库存数字，只体现在价格上），
- *   池淤积→收购压价（倾销会砸价），池枯竭→供应断货涨价；价格还受隐藏的"冲击动量"影响（集中买卖会推/砸价，随时间恢复）；
+ * - 池商品（矿石/矿物）：站内库存池（常驻显示），池淤积→收购压价（倾销会砸价），
+ *   池枯竭→供应断货涨价；价格还受隐藏的"冲击动量"影响（集中买卖会推/砸价，随时间恢复）；
  * - 单件商品（装备/蓝图/船/核心）：常驻平价随刷随买；稀有订单低频、限定奇货偶发高价；
  * - 市价买入吃穿簿后剩单会自动转成限价挂单；挂单随时可撤销（货退回原库存）。
  *
@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, rackOf, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -32,13 +32,16 @@ import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
   item: '物品',
-  module: '装备',
+  // 2026-09-10 船长：类型筛选移除「装备」，改为高 / 中 / 低槽三个类型（子分类仍是装备的功能分组）
+  'module-high': '高槽装备',
+  'module-mid': '中槽装备',
+  'module-low': '低槽装备',
   ship: '舰船',
   blueprint: '蓝图',
   aicore: '核心',
   wreck: '残骸',
 }
-const KIND_OPTIONS = ['all', 'item', 'wreck', 'module', 'ship', 'blueprint', 'aicore'] as const
+const KIND_OPTIONS = ['all', 'item', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
 
@@ -49,17 +52,31 @@ function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
 }
 
 /** 行/悬停的分类文案：残骸类物品单独显示「残骸」（2026-09-08 船长定），
+ * 装备按**槽类**显示（高槽装备 / 中槽装备 / 低槽装备；2026-09-10 船长：类型按槽类拆分后行内同步），
  * 其余物品走 itemKindText 单点（2026-09-10：无人机 → 无人机 · 侦察机，子属性并入种类） */
 function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): string {
   const it = itemDefOf(ctx, good)
   if (it) return it.kind === 'wreck' ? '残骸' : itemKindText(it)
+  if (good.kind === 'module') {
+    const mod = ctx.modules.get(good.refId)
+    const rack = mod ? rackOf(mod) : undefined
+    return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? '装备') : '装备'
+  }
   return KIND_TEXT[good.kind] ?? good.kind
 }
 
-/** 类型过滤判定：「残骸」= item 类里物品大类为残骸者；「物品」不再包含残骸（单独成类） */
-function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter): boolean {
+/** 类型过滤判定：「残骸」= item 类里物品大类为残骸者；「物品」不再包含残骸（单独成类）；
+ *  装备按槽类三分（高槽/中槽/低槽装备，2026-09-10 船长：移除「装备」类型）——归槽走 core 单点 rackOf。
+ *  注意：`kind === 'module'` 已不在类型下拉里，但仍保留判定（子分类判定 `subPasses` 与旧调用方兼容）。 */
+function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter | 'module'): boolean {
   if (kind === 'all') return true
   if (kind === 'wreck') return itemDefOf(ctx, good)?.kind === 'wreck'
+  if (kind === 'module' || kind === 'module-high' || kind === 'module-mid' || kind === 'module-low') {
+    if (good.kind !== 'module') return false
+    if (kind === 'module') return true
+    const mod = ctx.modules.get(good.refId)
+    return mod !== undefined && rackOf(mod) === kind.slice('module-'.length)
+  }
   if (good.kind !== kind) return false
   return !(kind === 'item' && itemDefOf(ctx, good)?.kind === 'wreck')
 }
@@ -94,9 +111,11 @@ function earliestSellRemaining(engine: PageProps['engine'], goodKey: string): nu
 
 /* ═══════════════ 单个商品行（行情 + 买卖 + 手动挂单） ═══════════════ */
 
-/** 商品悬停说明（名称/类型/稀有度 + 数据表描述；AI 核心按效率动态描述） */
+/** 商品悬停说明（名称/类型/稀有度 + 数据表描述；AI 核心按效率动态描述）
+ *  2026-09-10 船长：不再写「常驻」（普通商品的常驻标记对玩家没有信息量），只标稀有/限定 */
 function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
-  const head = `${goodName(engine.ctx, good.key)}（${kindTextOf(engine.ctx, good)} · ${RARITY_TEXT[good.rarity] ?? ''}）`
+  const rarity = good.rarity !== 'common' ? ` · ${RARITY_TEXT[good.rarity] ?? ''}` : ''
+  const head = `${goodName(engine.ctx, good.key)}（${kindTextOf(engine.ctx, good)}${rarity}）`
   let desc = ''
   if (good.kind === 'item') desc = engine.ctx.items.get(good.refId)?.description ?? ''
   else if (good.kind === 'module') desc = engine.ctx.modules.get(good.refId)?.description ?? ''
@@ -347,7 +366,6 @@ function GoodRow({
             {' '}
             · 持有 {holdings.toLocaleString('zh-CN')}
           </span>
-          {good.rarity === 'common' ? <span className="app-dim"> · {RARITY_TEXT[good.rarity]}</span> : null}
           {quote.sell === undefined && good.rarity !== 'common' ? (
             <span className="app-dim"> · 常来看看（每 10 分钟刷新一轮到货）</span>
           ) : null}
@@ -663,7 +681,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       title={`市场详情 · ${name}`}
       right={
         <span className="app-dim">
-          中位价 {median !== undefined ? isk(median) : '—'} ISK
+          持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} ISK
           <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
             {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
           </span>
@@ -684,10 +702,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : buyable ? '暂无现货' : '只收不卖'}</b>
             </div>
             <div className="app-mkt-quote">
-              {/* 2026-09-10 船长：不显示空间站「库存池」，改显示玩家自己这件东西的库存 */}
-              <span title={MY_STOCK_TIP}>
-                持有 {myStockOf(state, good).toLocaleString('zh-CN')} 件
-              </span>
+              库存池 {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
             </div>
           </div>
         </div>
@@ -1012,7 +1027,7 @@ export function MarketPage({
   return (
     <div className="page-stack page-fill">
       <div className="app-dim app-note">
-        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石 / 矿物另受空间站库存压力调节（积压压价、缺货抬价）。
+        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石/矿物另受库存池调节。
         每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。
       </div>
       <div className="app-dim app-note">

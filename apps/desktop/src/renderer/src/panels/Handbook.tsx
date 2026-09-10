@@ -12,7 +12,7 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
 import type { DroneClass, ItemKind } from '@whale/core'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -116,7 +116,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
   {
     title: '市场与世界',
     rows: [
-      ['交易', '市场页：常驻供应 / 稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），矿石 / 矿物另受空间站库存压力调节（积压压价、缺货抬价）。'],
+      ['交易', '市场页：常驻供应 / 稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），矿石 / 矿物另受库存池调节。'],
       ['随机事件', '深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。'],
     ],
   },
@@ -508,14 +508,14 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
   /** 分组键：物品按大类 / 装备按槽类 / 舰船按舰族 / 蓝图按产物门类（装备蓝图再按产物槽类） / 技能按技能组 */
   function groupKeyOf(c: GridCell): string {
     if (c.tab === 'items') return String(c.raw.kind ?? '')
-    if (c.tab === 'modules') return moduleSubKeyOf({ slot: String(c.raw.slot ?? ''), rack: c.raw.rack as string | undefined })
+    if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''))
     if (c.tab === 'ships') return String(c.raw.role ?? 'industrial')
     if (c.tab === 'blueprints') {
       // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
       if (c.raw.shipId !== undefined) return 'ship'
       if (c.raw.itemId !== undefined) return 'supply'
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      return mod ? moduleSubKeyOf(mod) : ''
+      return mod ? rackOf(mod) : ''
     }
     return String(c.raw.group ?? '') // skills
   }
