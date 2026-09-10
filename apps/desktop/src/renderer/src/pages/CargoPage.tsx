@@ -29,7 +29,7 @@ import { SellQtyModal } from '../ui/SellQtyModal'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
-import { ItemGlyphGrid, ItemViewBar, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
+import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: '船上没有矿石——到「出港」页开采。',
@@ -243,7 +243,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       className="app-inv-row"
                     >
                       <div className="app-inv-main">
-                        <span className="app-inv-name">{def.name}</span>
+                        <span className="app-inv-name">
+                          <RowGlyph glyph={def.kind} /> {def.name}
+                        </span>
                         <span className="app-inv-count">
                           ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价{' '}
                           {buy !== undefined ? `${isk(buy)} ISK` : '—'}
@@ -297,7 +299,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   title={`${def.description}——船载仅携带；装配台取料自装备库，船载装备需先卸回。`}
                 >
                   <div className="app-inv-main">
-                    <span className="app-inv-name">{def.name}</span>
+                    <span className="app-inv-name">
+                      <RowGlyph glyph={def.slot} /> {def.name}
+                    </span>
                     <span className="app-inv-count">
                       ×{units.toLocaleString('zh-CN')}（占位 {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
                       {def.cpuUse}

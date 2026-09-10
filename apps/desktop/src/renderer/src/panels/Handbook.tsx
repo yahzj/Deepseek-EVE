@@ -1,16 +1,24 @@
 /**
- * 手册 / 图鉴：玩法速览 + 物品/装备/舰船/蓝图/技能图鉴。
- * - 数据页签支持「图标网格 / 列表」两种视图（默认网格，偏好存 localStorage）；
+ * 手册 / 图鉴（2026-09-10 船长改版：顶部标签页 → 左侧导航栏；图鉴按类型分组，样式照仓库；加搜索栏）。
+ *
+ * - 弹层加宽为双栏大窗（左导航 168px + 右内容），导航 7 项：玩法速览 / 航行须知 / 物品 / 装备 / 舰船 / 蓝图 / 技能速查；
+ * - 图鉴按类型分组：分组表与市场页「类型子分类」同源（见 ui/itemSubs.ts），每组 = 仓库同款小节
+ *   （分类名 + 数量 + 卡片网格），空组隐藏；
+ * - 内容区顶栏：搜索 + 图标/列表切换 + 命中计数；搜索只作用于当前页（按名称/分类/说明过滤，
+ *   玩法速览与航行须知按词条过滤），切页自动清空关键词；
+ * - 数据页支持「图标网格 / 列表」两种视图（默认网格，偏好存 localStorage）；
  * - 图标为统一科幻线性 SVG（Glyphs.tsx），按内容体系映射并带分类色调；
- * - 网格模式下点击卡片 → 弹出详情窗（完整字段）；点击窗口外任意位置关闭；
- * - 列表视图保留完整字段（材料/配方等）。
+ * - 网格模式下点击卡片 → 弹出详情窗（完整字段）；点击窗口外任意位置关闭；列表视图保留完整字段。
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, itemKindText, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
 import type { DroneClass, ItemKind } from '@whale/core'
+import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
+import { BLUEPRINT_SUBS, MODULE_SUBS, SHIP_SUBS, moduleSubKeyOf } from '../ui/itemSubs'
+import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 
@@ -24,7 +32,8 @@ type ViewMode = 'grid' | 'list'
 /** 详情行数据 */
 type RawData = Record<string, unknown>
 
-const TABS: Array<{ key: Tab; label: string }> = [
+/** 左侧导航（顺序即展示顺序） */
+const NAV: Array<{ key: Tab; label: string }> = [
   { key: 'guide', label: '玩法速览' },
   { key: 'rules', label: '航行须知' },
   { key: 'items', label: '物品图鉴' },
@@ -33,6 +42,26 @@ const TABS: Array<{ key: Tab; label: string }> = [
   { key: 'blueprints', label: '蓝图图鉴' },
   { key: 'skills', label: '技能速查' },
 ]
+/** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
+const SEARCH_PLACEHOLDER: Record<Tab, string> = {
+  guide: '搜索玩法速览…',
+  rules: '搜索航行须知…',
+  items: '搜索物品图鉴…',
+  modules: '搜索装备图鉴…',
+  ships: '搜索舰船图鉴…',
+  blueprints: '搜索蓝图图鉴…',
+  skills: '搜索技能速查…',
+}
+/** 分组计数量词（与仓库「N 种」同款） */
+const COUNT_UNIT: Record<Tab, string> = {
+  guide: '条',
+  rules: '条',
+  items: '种',
+  modules: '件',
+  ships: '艘',
+  blueprints: '张',
+  skills: '项',
+}
 const VIEW_KEY = 'whale-idle:handbook-view'
 
 function readView(): ViewMode {
@@ -43,61 +72,108 @@ function readView(): ViewMode {
   }
 }
 
-const GUIDE_ROWS: Array<[string, string]> = [
-  ['采矿', '出港页选矿带开采：矿石进当前船货仓；练「采矿技术/采矿护卫舰操作」提产量缩循环。'],
-  ['装卸', '任何舰船进港（停靠空间站）都会自动整仓卸入物品仓库（无限容量、不随船）；货仓页也可手动卸货——空闲停靠的非驾驶船同样可以。出售仍只对当前驾驶船开放。'],
-  ['精炼', '工业页把矿石炼成矿物（产出倍率由精炼学与高级回收处理提升：基础 120%、技能最高 165%——无技能时炼矿净收益约为原料价值的两成）；矿物是制造原料，也可卖出。精炼炉可多单位并行：主控亲自运转限 1 台（占主控工作位），每枚 AI 核心各驱动一台——同时启用的 AI 核心总数受 AI 核心上限技能约束（与 AI 副船任务等共用）；原料不锁定，每批到点从货仓+仓库实时扣取。'],
-  ['回收残骸', '打捞的残骸在工业页开箱拆解：保底矿物按敌群「产出倾向」主题抽取，随 星系危险度×敌群威胁 上浮；另有概率彩头——卡面「低出率掉落」列出的该敌群主题增幅件与高威胁蓝图碎片（MK3 装备只经碎片解锁，唯关底穹顶守卫可直出 MK3 武器）。星图「残骸打捞」页会先标出该星系这些内容。'],
-  ['打捞残骸', '驾驶船高槽装打捞器（无伤害件，升级只减周期）后，在星图「残骸打捞」选星系开捞：自动循环作业，满舱自动返航卸货后自动续捞（勾「本次返航卸货后停止」可做单趟）；低安星系打捞作业中可能遇袭（航行与返航途中不会），规则见「航行须知」。'],
-  ['制造', '市场买蓝图书 → 蓝图书架「学习」后永久可造 → 工业页开工（制造免费，只耗材料与时间，到点自动入库/入坞）。劳动者与精炼炉同一套：主控亲自开线（全局限 1 条、占主控不可离港）或一枚 AI 核心驱动一条线（同时启用的 AI 核心总数受 AI 核心上限技能约束，与 AI 副船任务等共用）。'],
-  ['装配', '装备库里的模块可装到高/中/低槽位（布局见船卡；装配受 CPU 约束），卸下自动退回装备库。抗性按 EVE 式乘入合成（上限 90%）；伤害/射速/容量可全额叠加，命中/闪避/抗性/速度同类多装收益递减；「动力」影响弃船避险与跃迁充能。无人机在装配页「无人机舱」装入清单（舱容 = 无人机舱 + 甲板扩展，与装配共用 CPU），战斗只放飞已装入的；战术导控阵列增伤，不消耗、不被击落。'],
-  ['远征', '星图「悬赏情报」选目标「出发」即开战：按火力胜率结算，胜利得奖金/战利品/声望后自动返航（途中不可召回；停靠最近已建成站，无副站 = 母港）；失利扣耐久、可能弃船，同样自动返航（途中可召回）。去程并入返航（只计返航路程）；母港本地的悬赏固定约 2 分钟返港。'],
-  ['副空间站', '建成的副站并入协会基地网络：市场买卖、精炼与残骸回收、组装机制造、维修补给、换驾驶卸货全部可用——设施与仓库和母港共享（共用同一市场与仓库）；采矿/打捞自动返航、悬赏与扫描的胜利返航都会停到最近已建成的站；手动召回仍回母港。未建成的工地不提供停靠与任何站内功能：人在现场可提交建材，或停靠空间站后一键「前往工地交付」——每趟装满货仓出航，到点清仓自动交付，并自动往返续运直到建站完成或仓库建材耗尽（途中可随时取消）。'],
-  ['AI 副船', '练「AI 核心操作学」（入门向）+ 买基础 AI 核心，可给闲置舰船指派自动采矿/打捞/掩护巡逻任务——核心效率越高越快；同时启用的 AI 核心总数受 AI 核心上限技能约束（Lv0 无法启用），AI 副船与站内精炼炉/回收炉/制造线共用该上限；站内产业可另练「工业自动化」扩容工业专用工位（每级 +2 枚、不占副船名额）。'],
-  ['交易', '市场页：常驻供应/稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），矿石/矿物另受库存池调节。'],
-  ['随机事件', '深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。'],
-  ['耐久与维修', '战斗会磨损「结构」（=耐久）与装甲，损伤跨场保留，结构归零弃船（货随船失）；护盾损失不保留（战斗中被被动回充、脱战回满）。恢复：空间站付费维修（结构+装甲一并修复），或货仓带「修理组件」野外应急（民用/军用两档，市场可买、工业页可自制；重复清剿会自动消耗）。'],
-  ['势力与舰船', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（重装舰）、蜃楼（航运货舰）。舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、主力舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高；同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
-]
+/* ═══════════ 玩法速览（2026-09-10 船长定：5 组 15 条 + 小贴士；见 docs/design/handbook-guide-rework-20260909.md） ═══════════ */
 
-/** 航行须知 · 低安安全规则（B1；2026-09-04 定稿） */
-const RULES_LOWSEC: Array<[string, string]> = [
-  ['安全等级', '星图星系标色：越高越安全。sec ≥ 0.5 高安基本太平；低于 0 越深越危险。'],
-  ['什么会遇袭', '低安只对「停留与就地作业」动手：矿带采掘中、打捞作业中、扫描期间、掩护巡逻驻留都可能撞见巡逻拦截或海盗伏击；航行与返航途中不会遇袭。AI 副船同样适用。'],
-  ['承担者', '同一低安星系我方有船在场时，停泊/停留的船优先成为目标（区域事件一次，事件后该星系冷却一段时间）。'],
-  ['触发节奏', '进入低安作业/驻留约 5 分钟后才可能遇袭（入场缓冲；扫描例外——扫描即暴露、无缓冲）；遇袭判定与随机事件共用时机——事件到点时可能撞上巡逻/伏击，也可能照常出事件。'],
-  ['在线时', '遭遇会弹出「伏击待决」横幅：可「⚔ 迎战」（进入实时战斗，自动打完）或「» 快速脱离」；60 秒未处置自动脱离。'],
-  ['离线时', '离线（含离线结算）遭遇直接文字结算，不会凭空等你去点。'],
-  ['结局三档', '击退：缴获少量 ISK；受损：耐久 −5%~15%（底线 5%，绝不弃船）；被抢：至多 30% 船上货物（无货则抢少量钱包）。'],
-]
+interface GuideGroup {
+  title: string
+  rows: Array<[string, string]>
+}
 
-/** 航行须知 · 重要规则留档（后续新机制持续补充） */
-const RULES_CORE: Array<[string, string]> = [
-  ['采矿 ↔ 远征 转场', '采矿中点悬赏「⇄ 转战出发」= 结束采矿（货随船）并从矿带星系出发；远征中点矿带「⇄ 转开采」= 取消远征（无战果、讨伐同步停）并回港开采。均需两次确认。'],
-  ['重复清剿（重复清剿）', '空闲时可开：胜利后自动返航回港（去程并入返航），冷却结束自动再出发，往复巡回；货仓装不下缴获 / 耐久低于 50% 且修理组件耗尽 / 战败都会自动暂停。'],
-  ['战斗撤退', '交火中可「⚑ 撤退」（活动栏或战场内，两次确认）：轻损脱离、无弃船风险、自动返航并停止讨伐。'],
-  ['船只锁定', '锁定只防误售：驾驶、AI 执勤、维修、改名都不受影响。'],
-  ['重复舰船', '同型可买多艘：第 2 艘起默认带「#N」；可自由改名（10 字内、允许重名），改名后全界面显示自定义名。'],
-  ['货仓与出售', '任何舰船到港即自动卸货入仓库（进港自动整仓卸货，2026-09-08 船长定）；货仓页可手动卸货——空闲停靠的非驾驶船同样可卸。出售与装船只对当前驾驶船，且需停靠空间站（母港或已建成副站——共用同一市场与仓库）。'],
-  ['离线结算', '离线最长结算 8 小时，重启自动结算并弹离线简报。'],
-]
-
-/** 航行须知 · 战斗伤害克制速查（数值与 combat.typeLayerMult 同源；能量对盾 1.25 船长 2026-09-05 改） */
-const RULES_COMBAT: Array<[string, string]> = [
-  ['血条三层', '每艘船血量分 护盾 → 装甲 → 结构 三层依次承受（破层溢出向下渗透）。'],
-  ['伤害克制矩阵', '动能弹：盾 ×1.5 / 甲 ×0.5 / 结构 ×1（专职拆盾）；爆炸弹（高爆/导弹）：盾 ×0.5 / 甲 ×1.5 / 结构 ×1（专职破甲）；能量（等离子弹/激光）：盾 ×1.25 / 甲 ×1 / 结构 ×1（拆盾也强、无弱点）。弹药 chip 颜色 = 对应克制层色（盾蓝/甲红/结构黄），悬停可见矩阵。'],
-  ['抗性乘入', '各层抗性为 EVE 式缺口乘入（上限 90%）：每层受到的伤害 = 层伤害 × 克制倍率 ×（1 − 该层对应系抗性）——配装时看敌方主伤害类型，选对应层抗与弹种。'],
-]
-
-/** 航行须知 · 目标档案（序章·苏醒 2026-09-05：长期目标说明，不承载关键信息） */
-const RULES_GOALS: Array<[string, string]> = [
-  ['寻找人类', '人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；在这座章鱼宇宙人统治的母港继续航行，或许终会有所发现。'],
+const GUIDE_GROUPS: GuideGroup[] = [
+  {
+    title: '生产循环',
+    rows: [
+      ['采矿', '出港页「矿带开采」选带出击：矿石进驾驶船货仓，到港自动整仓卸入物品仓库。练「采矿技术 / 采矿护卫舰操作」提产量、缩循环；「自动循环」与 AI 副船让矿机不停转。'],
+      ['装卸', '任何舰船进港（停靠母港或已建成副站）都会自动整仓卸入物品仓库（无限容量、不随船）；货仓页也可手动卸货——空闲停靠的非驾驶船同样可以。出售仍只对当前驾驶船开放。'],
+      ['精炼', '工业页把矿石炼成矿物（「产出倍率」由精炼学与高级回收处理提升：基础 120%、技能最高 165%——无技能时炼矿净收益约为原料价值两成）；矿物是制造原料，也可卖出。炉位：主控亲自运转限 1 台（占主控工作位），每枚 AI 核心各驱动一台——AI 核心启用数受上限约束，细则见「AI 副船」；原料不锁定，每批到点从货仓 + 仓库实时扣取。'],
+      ['制造与蓝图', '市场可购到所有装备与舰船（协会保底艇、异星原型科技除外）的蓝图书：购图到「蓝图书架」学习一次即永久可造，再到工业页组装机 / 船坞按图备料开工——制造免费，只耗材料与时间，到点自动入库 / 入坞。图纸价格随产物档位升高、在市场上出现得也稀罕；赶时间可以继续直接买成品现货，两条渠道并存。产线由主控（全局限 1 条、占主控不可离港）或一枚 AI 核心驱动（占用 AI 核心上限，见「AI 副船」）。'],
+    ],
+  },
+  {
+    title: '战斗与生存',
+    rows: [
+      ['远征讨伐', '星图「悬赏情报」选目标「出发」即开战：按火力结算，胜利得奖金 / 战利品 / 声望后自动返航（途中不可召回；停靠最近已建成站，无副站 = 母港）；失利扣耐久、可能弃船，同样自动返航（途中可召回）。去程并入返航（只计返航路程）；母港本地的悬赏固定约 2 分钟返港。'],
+      ['装配', '装备库里的模块装到高 / 中 / 低槽位（布局见船卡；受 CPU 约束），卸下自动退回装备库。抗性按乘入式合成（上限 90%）；伤害 / 射速 / 容量可全额叠加，命中 / 闪避 / 抗性 / 速度同类多装收益递减；「动力」影响弃船避险与跃迁充能。无人机在装配页「无人机舱」装入清单（舱容 = 无人机舱 + 甲板扩展，与装配共用 CPU），战斗只放飞已装入的；战术导控阵列增伤、不消耗、不被击落。'],
+      ['耐久与维修', '战斗磨损「结构」（= 耐久）与装甲：损伤跨场保留，结构归零弃船（货随船失）；护盾损失不保留（战斗中被动回充、脱战回满）。恢复：空间站付费维修，或货仓带「修理组件」野外应急（民用 / 军用两档，市场可买、工业页可自制；重复清剿会自动消耗）。想战中续命，可挂「船体维修装置」——每 5 秒自动修复装甲与结构，每跳吃掉一枚修理组件。'],
+    ],
+  },
+  {
+    title: '残骸与回收',
+    rows: [
+      ['打捞残骸', '驾驶船高槽装打捞器（无伤害件，升级只减周期）后，在星图「残骸打捞」选星系开捞：自动循环作业，满舱自动返航卸货后自动续捞（勾「本次返航卸货后停止」可做单趟）；低安星系打捞作业中可能遇袭（航行与返航途中不会），规则见「航行须知」。'],
+      ['回收残骸', '打捞的残骸在工业页开箱拆解：保底矿物按敌群「产出倾向」主题抽取，随 星系危险度 × 敌群威胁 上浮；另有概率彩头——卡面「低出率掉落」列出的该敌群主题增幅件与高威胁蓝图碎片（MK3 装备只经碎片解锁，唯关底穹顶守卫可直出 MK3 武器）。星图「残骸打捞」页会先标出该星系这些内容。'],
+    ],
+  },
+  {
+    title: '副船与扩张',
+    rows: [
+      ['AI 副船', '练「AI 核心操作学」（入门向）+ 买基础 AI 核心，可给闲置舰船指派自动采矿 / 打捞 / 掩护巡逻任务——核心效率越高越快；同时启用的 AI 核心总数受 AI 核心上限技能约束（Lv0 无法启用），AI 副船与站内精炼炉 / 回收炉 / 制造线共用该上限；站内产业可另练「工业自动化」扩容工业专用工位（每级 +2 枚、不占副船名额）。舰船页「AI 指挥中心」可统一指派与取消这些作业。'],
+      ['副空间站', '建成的副站并入协会基地网络：市场买卖、精炼与残骸回收、组装机制造、维修补给、换驾驶卸货全部可用——设施与仓库和母港共享（同一市场与仓库）；采矿 / 打捞自动返航、悬赏与扫描的胜利返航都会停到最近已建成的站；手动召回仍回母港。未建成的工地不提供停靠与任何站内功能：人在现场可提交建材，或停靠空间站后一键「前往工地交付」——每趟装满货仓出航，到点清仓自动交付，并自动往返续运直到建站完成或仓库建材耗尽（途中可随时取消）。'],
+      ['长途运输', '建成至少一座副站后，星图「长途运输」页签开放：选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段；随时「停止运输」会立即返港停靠，无惩罚。'],
+      ['势力与舰船', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（重装舰）、蜃楼（航运货舰）。舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、主力舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高；同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
+    ],
+  },
+  {
+    title: '市场与世界',
+    rows: [
+      ['交易', '市场页：常驻供应 / 稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），矿石 / 矿物另受库存池调节。'],
+      ['随机事件', '深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。'],
+    ],
+  },
 ]
 
 const GUIDE_NOTES: string[] = [
-  '技能训练与采矿/远征并行：训练队列永不停歇，先排要练的技能即可。',
+  '技能训练与采矿 / 远征并行：训练队列永不停歇，先排要练的技能即可。',
   '物品仓库与装备库是空间站资产，弃船不丢；船上的货仓与装备会随船遗失。',
   '离线最长结算 8 小时：下次启动会自动结算并弹离线简报。',
+]
+
+/* ═══════════ 航行须知（文案保持原样，仅改为按小节渲染） ═══════════ */
+
+interface RuleSect {
+  title: string
+  rows: Array<[string, string]>
+}
+
+const RULE_SECTS: RuleSect[] = [
+  {
+    title: '低安安全（安全等级 = 星系风险）',
+    rows: [
+      ['安全等级', '星图星系标色：越高越安全。sec ≥ 0.5 高安基本太平；低于 0 越深越危险。'],
+      ['什么会遇袭', '低安只对「停留与就地作业」动手：矿带采掘中、打捞作业中、扫描期间、掩护巡逻驻留都可能撞见巡逻拦截或海盗伏击；航行与返航途中不会遇袭。AI 副船同样适用。'],
+      ['承担者', '同一低安星系我方有船在场时，停泊 / 停留的船优先成为目标（区域事件一次，事件后该星系冷却一段时间）。'],
+      ['触发节奏', '进入低安作业 / 驻留约 5 分钟后才可能遇袭（入场缓冲；扫描例外——扫描即暴露、无缓冲）；遇袭判定与随机事件共用时机——事件到点时可能撞上巡逻 / 伏击，也可能照常出事件。'],
+      ['在线时', '遭遇会弹出「伏击待决」横幅：可「⚔ 迎战」（进入实时战斗，自动打完）或「» 快速脱离」；60 秒未处置自动脱离。'],
+      ['离线时', '离线（含离线结算）遭遇直接文字结算，不会凭空等你去点。'],
+      ['结局三档', '击退：缴获少量 ISK；受损：耐久 −5%~15%（底线 5%，绝不弃船）；被抢：至多 30% 船上货物（无货则抢少量钱包）。'],
+    ],
+  },
+  {
+    title: '重要规则留档',
+    rows: [
+      ['采矿 ↔ 远征 转场', '采矿中点悬赏「⇄ 转战出发」= 结束采矿（货随船）并从矿带星系出发；远征中点矿带「⇄ 转开采」= 取消远征（无战果、讨伐同步停）并回港开采。均需两次确认。'],
+      ['重复清剿', '空闲时可开：胜利后自动返航回港（去程并入返航），冷却结束自动再出发，往复巡回；货仓装不下缴获 / 耐久低于 50% 且修理组件耗尽 / 战败都会自动暂停。'],
+      ['战斗撤退', '交火中可「⚑ 撤退」（活动栏或战场内，两次确认）：轻损脱离、无弃船风险、自动返航并停止讨伐。'],
+      ['船只锁定', '锁定只防误售：驾驶、AI 执勤、维修、改名都不受影响。'],
+      ['重复舰船', '同型可买多艘：第 2 艘起默认带「#N」；可自由改名（10 字内、允许重名），改名后全界面显示自定义名。'],
+      ['货仓与出售', '任何舰船到港即自动卸货入仓库；货仓页可手动卸货——空闲停靠的非驾驶船同样可卸。出售与装船只对当前驾驶船，且需停靠空间站（母港或已建成副站——共用同一市场与仓库）。'],
+      ['离线结算', '离线最长结算 8 小时，重启自动结算并弹离线简报。'],
+    ],
+  },
+  {
+    title: '战斗 · 伤害克制速查',
+    rows: [
+      ['血条三层', '每艘船血量分 护盾 → 装甲 → 结构 三层依次承受（破层溢出向下渗透）。'],
+      ['伤害克制矩阵', '动能弹：盾 ×1.5 / 甲 ×0.5 / 结构 ×1（专职拆盾）；爆炸弹（高爆 / 导弹）：盾 ×0.5 / 甲 ×1.5 / 结构 ×1（专职破甲）；能量（等离子弹 / 激光）：盾 ×1.25 / 甲 ×1 / 结构 ×1（拆盾也强、无弱点）。弹药 chip 颜色 = 对应克制层色（盾蓝 / 甲红 / 结构黄），悬停可见矩阵。'],
+      ['抗性乘入', '各层抗性为 EVE 式缺口乘入（上限 90%）：每层受到的伤害 = 层伤害 × 克制倍率 ×（1 − 该层对应系抗性）——配装时看敌方主伤害类型，选对应层抗与弹种。'],
+    ],
+  },
+  {
+    title: '目标档案',
+    rows: [
+      ['寻找人类', '人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；在这座章鱼宇宙人统治的母港继续航行，或许终会有所发现。'],
+    ],
+  },
 ]
 
 /* ═══════════ 网格渲染 ═══════════ */
@@ -110,6 +186,38 @@ interface GridCell {
   sub: string
   /** 完整数据（详情窗用） */
   raw: RawData
+}
+
+/** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
+interface CellGroup {
+  key: string
+  label: string
+  cells: GridCell[]
+}
+
+/** 按分组表切分卡片（表内顺序在前，未收录的键兜底追加，避免新增内容漏出图鉴） */
+function groupCells(
+  cells: GridCell[],
+  keyOf: (c: GridCell) => string,
+  order: readonly { key: string; label: string }[],
+): CellGroup[] {
+  const byKey = new Map<string, GridCell[]>()
+  for (const c of cells) {
+    const k = keyOf(c)
+    const arr = byKey.get(k)
+    if (arr) arr.push(c)
+    else byKey.set(k, [c])
+  }
+  const out: CellGroup[] = []
+  for (const o of order) {
+    const arr = byKey.get(o.key)
+    if (arr && arr.length > 0) {
+      out.push({ key: o.key, label: o.label, cells: arr })
+      byKey.delete(o.key)
+    }
+  }
+  for (const [k, arr] of byKey) out.push({ key: k, label: k, cells: arr })
+  return out
 }
 
 function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) => void }) {
@@ -287,43 +395,22 @@ function CellDetail({
   )
 }
 
-/* ═══════════ 数据页签外壳 ═══════════ */
-
-function DataTab({
-  view,
-  onView,
-  cells,
-  renderList,
-  onPick,
+/** 一个分组小节（仓库同款：分类名 + 数量 + 卡片/列表） */
+function GroupSection({
+  label,
+  unit,
+  count,
+  children,
 }: {
-  view: ViewMode
-  onView: (v: ViewMode) => void
-  cells: GridCell[]
-  renderList: () => ReactNode
-  onPick: (c: GridCell) => void
+  label: string
+  unit: string
+  count: number
+  children: ReactNode
 }) {
   return (
-    <>
-      <div className="app-hand-viewbar">
-        <span className="app-dim">显示方式：</span>
-        <button className={`app-hand-viewbtn${view === 'grid' ? ' is-active' : ''}`} onClick={() => onView('grid')}>
-          图标
-        </button>
-        <button className={`app-hand-viewbtn${view === 'list' ? ' is-active' : ''}`} onClick={() => onView('list')}>
-          列表
-        </button>
-      </div>
-      {view === 'grid' ? <IconGrid cells={cells} onPick={onPick} /> : renderList()}
-    </>
-  )
-}
-
-/** 行内小图标（列表视图前缀） */
-function RowGlyph({ glyph }: { glyph: string }) {
-  return (
-    <span className="app-hand-row-glyph" style={{ color: toneOf(glyph) }}>
-      <Glyph name={glyph} size={15} color="currentColor" />
-    </span>
+    <Panel title={label} right={<span className="app-dim">{count} {unit}</span>}>
+      {children}
+    </Panel>
   )
 }
 
@@ -331,16 +418,31 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
   const [tab, setTab] = useState<Tab>('guide')
   const [view, setView] = useState<ViewMode>(readView)
   const [detail, setDetail] = useState<GridCell | null>(null)
+  const [query, setQuery] = useState('')
 
   function changeView(v: ViewMode): void {
     setView(v)
-    setDetail(null)
     try {
       localStorage.setItem(VIEW_KEY, v)
     } catch {
       // 本地存储不可用：忽略
     }
   }
+  /** 切页：清空关键词与详情（各页关键词互不相关，避免"换了页却没结果"的困惑） */
+  function changeTab(t: Tab): void {
+    setTab(t)
+    setQuery('')
+    setDetail(null)
+  }
+
+  const q = query.trim().toLowerCase()
+  const hitCell = (c: GridCell): boolean =>
+    q === '' ||
+    c.name.toLowerCase().includes(q) ||
+    c.sub.toLowerCase().includes(q) ||
+    String(c.raw.description ?? '').toLowerCase().includes(q)
+  const hitRow = ([k, v]: [string, string]): boolean =>
+    q === '' || k.toLowerCase().includes(q) || v.toLowerCase().includes(q)
 
   /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ── */
   const itemCells: GridCell[] = engine.items.map((item) => ({
@@ -400,267 +502,319 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     raw: s as unknown as RawData,
   }))
 
+  /* ── 分组（顺序表与市场页类型子分类同源；空组隐藏） ── */
+  const filtered = (cells: GridCell[]): GridCell[] => cells.filter(hitCell)
+  const showCells = (cells: GridCell[], t: Tab): CellGroup[] => groupCells(cells, groupKeyOf, orderOf(t))
+  /** 分组键：物品按大类 / 装备按槽位子分类 / 舰船按舰族 / 蓝图按产物门类 / 技能按技能组 */
+  function groupKeyOf(c: GridCell): string {
+    if (c.tab === 'items') return String(c.raw.kind ?? '')
+    if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''))
+    if (c.tab === 'ships') return String(c.raw.role ?? 'industrial')
+    if (c.tab === 'blueprints') return c.raw.shipId !== undefined ? 'ship' : c.raw.itemId !== undefined ? 'supply' : 'module'
+    return String(c.raw.group ?? '') // skills
+  }
+  /** 分组顺序表（与市场页同源；装备未收录槽位归「其它」） */
+  function orderOf(t: Tab): Array<{ key: string; label: string }> {
+    if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
+    if (t === 'modules') return MODULE_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: '其它' }])
+    if (t === 'ships') return SHIP_SUBS.map((s) => ({ key: s.key, label: s.label }))
+    if (t === 'blueprints') return BLUEPRINT_SUBS.map((s) => ({ key: s.key, label: s.label }))
+    return engine.groups.map((g) => ({ key: g, label: g })) // skills
+  }
+
+  const codexCells: Record<'items' | 'modules' | 'ships' | 'blueprints' | 'skills', GridCell[]> = {
+    items: itemCells,
+    modules: moduleCells,
+    ships: shipCells,
+    blueprints: bpCells,
+    skills: skillCells,
+  }
+  const isCodex = tab === 'items' || tab === 'modules' || tab === 'ships' || tab === 'blueprints' || tab === 'skills'
+  const groups: CellGroup[] = isCodex ? showCells(filtered(codexCells[tab]), tab) : []
+  const codexHit = isCodex ? groups.reduce((n, g) => n + g.cells.length, 0) : 0
+
+  /** 左侧导航计数：图鉴类 = 条目数（搜索时显示命中数），说明类 = 词条数 */
+  function navCount(t: Tab): number {
+    if (t === 'guide') return GUIDE_GROUPS.reduce((n, g) => n + g.rows.filter(hitRow).length, 0)
+    if (t === 'rules') return RULE_SECTS.reduce((n, s) => n + s.rows.filter(hitRow).length, 0)
+    return codexCells[t].filter(hitCell).length
+  }
+  /** 当前页命中计数文案（搜索态与全量态） */
+  const countText = (): string => {
+    if (tab === 'guide' || tab === 'rules') {
+      const n = navCount(tab)
+      return q === '' ? `${n} ${COUNT_UNIT[tab]}` : `匹配 ${n} ${COUNT_UNIT[tab]}`
+    }
+    return q === '' ? `${codexHit} ${COUNT_UNIT[tab]}` : `匹配 ${codexHit} ${COUNT_UNIT[tab]}`
+  }
+
+  /* ── 列表视图：按分组渲染同一批卡片（沿用原有完整字段行） ── */
+  function renderList(g: CellGroup): ReactNode {
+    const ids = new Set(g.cells.map((c) => c.key))
+    if (tab === 'items') {
+      return (
+        <ul className="app-hand-list">
+          {engine.items
+            .filter((item) => ids.has(item.id))
+            .map((item) => {
+              const refine = (item.refine ?? [])
+                .map((r) => `${engine.ctx.items.get(r.mineralId)?.name ?? r.mineralId}×${r.perOre}`)
+                .join(' + ')
+              return (
+                <ItemHover
+                  key={item.id}
+                  as="li"
+                  item={item}
+                  nameOf={(pid) => engine.ctx.items.get(pid)?.name}
+                  className="app-hand-entry"
+                >
+                  <div className="app-inv-name">
+                    <RowGlyph glyph={item.kind} /> {item.name}
+                    <span className="app-chip is-dim">{itemKindText(item)}</span>
+                    <span className="app-dim"> · {item.unitM3} m³/单位</span>
+                  </div>
+                  <div className="app-dim">{item.description}</div>
+                  {refine ? <div className="app-hand-sub">精炼（产出倍率 100%）→ {refine}</div> : null}
+                </ItemHover>
+              )
+            })}
+        </ul>
+      )
+    }
+    if (tab === 'modules') {
+      return (
+        <ul className="app-hand-list">
+          {engine.modules
+            .filter((mod) => ids.has(mod.id))
+            .map((mod) => (
+              <ModuleHover key={mod.id} as="li" mod={mod} className="app-hand-entry">
+                <div className="app-inv-name">
+                  <RowGlyph glyph={mod.slot} /> {mod.name}
+                  <span className="app-chip is-dim">{slotName(mod.slot)}</span>
+                  <span className="app-gold"> {moduleShortEffect(mod)}</span>
+                </div>
+                <div className="app-dim">{mod.description}</div>
+              </ModuleHover>
+            ))}
+        </ul>
+      )
+    }
+    if (tab === 'ships') {
+      return (
+        <ul className="app-hand-list">
+          {engine.ships
+            .filter((ship) => ids.has(ship.id))
+            .map((ship) => {
+              const role = ship.role ?? 'industrial'
+              return (
+                <ShipHover key={ship.id} as="li" ship={ship} className="app-hand-entry">
+                  <div className="app-inv-name">
+                    <RowGlyph glyph={role} /> {ship.name}
+                    <span className="app-chip is-dim">T{ship.tier}</span>
+                    <span className={`app-chip app-role-chip is-${role}`}>{roleName(role)}</span>
+                    {ship.priceIsk <= 0 ? <span className="app-chip">仅可制造</span> : null}
+                  </div>
+                  <div className="app-dim">
+                    货舱 {ship.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {ship.cycleSeconds} 秒 × {ship.oreUnitsPerCycle} 单位 ·
+                    动力 {Math.round(ship.agility * 100)}%
+                  </div>
+                  <div className="app-hand-sub">
+                    <span className="app-combat-badges">{combatBadges(ship)}</span>
+                    <span className="app-dim">（战斗数值已启用 · 悬停查看完整面板）</span>
+                  </div>
+                  <div className="app-hand-sub">{ship.description}</div>
+                </ShipHover>
+              )
+            })}
+        </ul>
+      )
+    }
+    if (tab === 'blueprints') {
+      return (
+        <ul className="app-hand-list">
+          {engine.blueprints
+            .filter((bp) => ids.has(bp.id))
+            .map((bp) => {
+              const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
+              const isAmmo = bp.itemId !== undefined
+              const product = isAmmo
+                ? `${engine.ctx.items.get(bp.itemId!)?.name ?? bp.itemId!}（弹药）`
+                : `${engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId!}（装备）`
+              return (
+                <InfoHover
+                  key={bp.id}
+                  as="li"
+                  title={bp.name}
+                  lines={[
+                    { k: '产物', v: product },
+                    { k: '材料需求', v: mats },
+                    { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
+                  ]}
+                  note={bp.description}
+                  className="app-hand-entry"
+                >
+                  <div className="app-inv-name">
+                    <RowGlyph glyph="blueprint" /> {bp.name}
+                  </div>
+                  <div className="app-dim">产物：{product}</div>
+                  <div className="app-hand-sub">
+                    材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
+                  </div>
+                  <div className="app-dim">{bp.description}</div>
+                </InfoHover>
+              )
+            })}
+          {engine.shipBlueprints
+            .filter((bp) => ids.has(bp.id))
+            .map((bp) => {
+              const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
+              return (
+                <InfoHover
+                  key={bp.id}
+                  as="li"
+                  title={bp.name}
+                  lines={[
+                    { k: '产物', v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
+                    { k: '材料需求', v: mats },
+                    { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
+                  ]}
+                  note={bp.description}
+                  className="app-hand-entry"
+                >
+                  <div className="app-inv-name">
+                    <RowGlyph glyph="blueprint" /> {bp.name}
+                  </div>
+                  <div className="app-dim">产物：{engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）</div>
+                  <div className="app-hand-sub">
+                    材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
+                  </div>
+                  <div className="app-dim">{bp.description}</div>
+                </InfoHover>
+              )
+            })}
+        </ul>
+      )
+    }
+    return (
+      <ul className="app-hand-list">
+        {engine.skills
+          .filter((s) => ids.has(s.id))
+          .map((s) => (
+            <li key={s.id} className="app-hand-entry">
+              <div className="app-inv-name">
+                {s.name}
+                <span className="app-chip is-dim">难度 {s.rank}</span>
+              </div>
+              <div className="app-dim">{plainSkillDesc(s.description)}</div>
+            </li>
+          ))}
+      </ul>
+    )
+  }
+
+  /** 说明类页面的小节渲染（分组标题 + 词条行；空组隐藏） */
+  function renderSects(sects: RuleSect[]): ReactNode {
+    const shown = sects
+      .map((s) => ({ ...s, rows: s.rows.filter(hitRow) }))
+      .filter((s) => s.rows.length > 0)
+    if (shown.length === 0) {
+      return <div className="app-dim app-inv-empty">没有匹配「{query.trim()}」的词条——换个关键词试试。</div>
+    }
+    return (
+      <div className="app-hand-guide">
+        {shown.map((s) => (
+          <div key={s.title}>
+            <div className="app-bay-title">{s.title}</div>
+            {s.rows.map(([k, v]) => (
+              <div key={k} className="app-hand-guide-row">
+                <b className="app-hand-guide-key">{k}</b>
+                <span>{v}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+        {tab === 'guide' ? (
+          <>
+            <div className="app-bay-title">小贴士</div>
+            <ul className="app-hand-notes">
+              {GUIDE_NOTES.filter((n) => q === '' || n.toLowerCase().includes(q)).map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </div>
+    )
+  }
+
+  const codexEmpty = isCodex && codexHit === 0
+
   return (
     <div className="app-modal-mask" onClick={onClose}>
-      <div className="app-modal app-modal-wide" onClick={(e) => e.stopPropagation()}>
+      <div className="app-modal app-hand-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
           <span className="app-report-title">手册 · 图鉴</span>
           <button className="app-btn is-small" onClick={onClose}>
             ✕ 关闭
           </button>
         </div>
-        <div className="app-modal-tabs">
-          {TABS.map((t) => (
-            <button key={t.key} className={`app-modal-tab${tab === t.key ? ' is-active' : ''}`} onClick={() => setTab(t.key)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="app-modal-body app-hand-body">
-          {tab === 'guide' ? (
-            <div className="app-hand-guide">
-              {GUIDE_ROWS.map(([k, v]) => (
-                <div key={k} className="app-hand-guide-row">
-                  <b className="app-hand-guide-key">{k}</b>
-                  <span>{v}</span>
+        <div className="app-hand-split">
+          {/* 左侧导航（2026-09-10 船长：顶部标签行改侧边导航） */}
+          <nav className="app-hand-nav">
+            {NAV.map((t) => (
+              <button
+                key={t.key}
+                className={`app-hand-navitem${tab === t.key ? ' is-active' : ''}`}
+                onClick={() => changeTab(t.key)}
+              >
+                <span>{t.label}</span>
+                <span className="app-dim">{navCount(t.key)}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="app-hand-main">
+            <div className="app-hand-topbar">
+              <input
+                className="app-head-search"
+                type="search"
+                placeholder={SEARCH_PLACEHOLDER[tab]}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              {isCodex ? (
+                <div className="app-hand-viewbar">
+                  <button className={`app-hand-viewbtn${view === 'grid' ? ' is-active' : ''}`} onClick={() => changeView('grid')}>
+                    图标
+                  </button>
+                  <button className={`app-hand-viewbtn${view === 'list' ? ' is-active' : ''}`} onClick={() => changeView('list')}>
+                    列表
+                  </button>
                 </div>
-              ))}
-              <div className="app-bay-title">小贴士</div>
-              <ul className="app-hand-notes">
-                {GUIDE_NOTES.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
+              ) : null}
+              <span className="app-dim">{countText()}</span>
             </div>
-          ) : null}
-
-          {tab === 'rules' ? (
-            <div className="app-hand-guide">
-              <div className="app-bay-title">低安安全（安全等级 = 星系风险）</div>
-              {RULES_LOWSEC.map(([k, v]) => (
-                <div key={k} className="app-hand-guide-row">
-                  <b className="app-hand-guide-key">{k}</b>
-                  <span>{v}</span>
-                </div>
-              ))}
-              <div className="app-bay-title">重要规则留档</div>
-              {RULES_CORE.map(([k, v]) => (
-                <div key={k} className="app-hand-guide-row">
-                  <b className="app-hand-guide-key">{k}</b>
-                  <span>{v}</span>
-                </div>
-              ))}
-              <div className="app-bay-title">战斗 · 伤害克制速查</div>
-              {RULES_COMBAT.map(([k, v]) => (
-                <div key={k} className="app-hand-guide-row">
-                  <b className="app-hand-guide-key">{k}</b>
-                  <span>{v}</span>
-                </div>
-              ))}
-              <div className="app-bay-title">目标档案</div>
-              {RULES_GOALS.map(([k, v]) => (
-                <div key={k} className="app-hand-guide-row">
-                  <b className="app-hand-guide-key">{k}</b>
-                  <span>{v}</span>
-                </div>
-              ))}
+            <div className="app-hand-scroll">
+              {tab === 'guide' ? renderSects(GUIDE_GROUPS) : null}
+              {tab === 'rules' ? renderSects(RULE_SECTS) : null}
+              {isCodex ? (
+                codexEmpty ? (
+                  <div className="app-dim app-inv-empty">
+                    没有匹配「{query.trim()}」的条目——试试清空搜索或换个关键词。
+                  </div>
+                ) : (
+                  groups.map((g) => (
+                    <GroupSection key={g.key} label={g.label} unit={COUNT_UNIT[tab]} count={g.cells.length}>
+                      {view === 'grid' ? (
+                        <IconGrid cells={g.cells} onPick={setDetail} />
+                      ) : (
+                        renderList(g)
+                      )}
+                    </GroupSection>
+                  ))
+                )
+              ) : null}
             </div>
-          ) : null}
-
-          {tab === 'items' ? (
-            <DataTab
-              view={view}
-              onView={changeView}
-              cells={itemCells}
-              onPick={setDetail}
-              renderList={() => (
-                <ul className="app-hand-list">
-                  {engine.items.map((item) => {
-                    const refine = (item.refine ?? [])
-                      .map((r) => `${engine.ctx.items.get(r.mineralId)?.name ?? r.mineralId}×${r.perOre}`)
-                      .join(' + ')
-                    return (
-                      <ItemHover
-                        key={item.id}
-                        as="li"
-                        item={item}
-                        nameOf={(pid) => engine.ctx.items.get(pid)?.name}
-                        className="app-hand-entry"
-                      >
-                        <div className="app-inv-name">
-                          <RowGlyph glyph={item.kind} /> {item.name}
-                          <span className="app-chip is-dim">{itemKindText(item)}</span>
-                          <span className="app-dim"> · {item.unitM3} m³/单位</span>
-                        </div>
-                        <div className="app-dim">{item.description}</div>
-                        {refine ? <div className="app-hand-sub">精炼（产出倍率 100%）→ {refine}</div> : null}
-                      </ItemHover>
-                    )
-                  })}
-                </ul>
-              )}
-            />
-          ) : null}
-
-          {tab === 'modules' ? (
-            <DataTab
-              view={view}
-              onView={changeView}
-              cells={moduleCells}
-              onPick={setDetail}
-              renderList={() => (
-                <ul className="app-hand-list">
-                  {engine.modules.map((mod) => (
-                    <ModuleHover key={mod.id} as="li" mod={mod} className="app-hand-entry">
-                      <div className="app-inv-name">
-                        <RowGlyph glyph={mod.slot} /> {mod.name}
-                        <span className="app-chip is-dim">{slotName(mod.slot)}</span>
-                        <span className="app-gold"> {moduleShortEffect(mod)}</span>
-                      </div>
-                      <div className="app-dim">{mod.description}</div>
-                    </ModuleHover>
-                  ))}
-                </ul>
-              )}
-            />
-          ) : null}
-
-          {tab === 'ships' ? (
-            <DataTab
-              view={view}
-              onView={changeView}
-              cells={shipCells}
-              onPick={setDetail}
-              renderList={() => (
-                <ul className="app-hand-list">
-                  {engine.ships.map((ship) => {
-                    const role = ship.role ?? 'industrial'
-                    return (
-                      <ShipHover key={ship.id} as="li" ship={ship} className="app-hand-entry">
-                        <div className="app-inv-name">
-                          <RowGlyph glyph={role} /> {ship.name}
-                          <span className="app-chip is-dim">T{ship.tier}</span>
-                          <span className={`app-chip app-role-chip is-${role}`}>{roleName(role)}</span>
-                          {ship.priceIsk <= 0 ? <span className="app-chip">仅可制造</span> : null}
-                        </div>
-                        <div className="app-dim">
-                          货舱 {ship.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {ship.cycleSeconds} 秒 × {ship.oreUnitsPerCycle} 单位 ·
-                          动力 {Math.round(ship.agility * 100)}%
-                        </div>
-                        <div className="app-hand-sub">
-                          <span className="app-combat-badges">{combatBadges(ship)}</span>
-                          <span className="app-dim">（战斗数值已启用 · 悬停查看完整面板）</span>
-                        </div>
-                        <div className="app-hand-sub">{ship.description}</div>
-                      </ShipHover>
-                    )
-                  })}
-                </ul>
-              )}
-            />
-          ) : null}
-
-          {tab === 'blueprints' ? (
-            <DataTab
-              view={view}
-              onView={changeView}
-              cells={bpCells}
-              onPick={setDetail}
-              renderList={() => (
-                <ul className="app-hand-list">
-                  {engine.blueprints.map((bp) => {
-                    const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
-                    const isAmmo = bp.itemId !== undefined
-                    const product = isAmmo
-                      ? `${engine.ctx.items.get(bp.itemId!)?.name ?? bp.itemId!}（弹药）`
-                      : `${engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId!}（装备）`
-                    return (
-                      <InfoHover
-                        key={bp.id}
-                        as="li"
-                        title={bp.name}
-                        lines={[
-                          { k: '产物', v: product },
-                          { k: '材料需求', v: mats },
-                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
-                        ]}
-                        note={bp.description}
-                        className="app-hand-entry"
-                      >
-                        <div className="app-inv-name">
-                          <RowGlyph glyph="blueprint" /> {bp.name}
-                        </div>
-                        <div className="app-dim">产物：{product}</div>
-                        <div className="app-hand-sub">
-                          材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
-                        </div>
-                        <div className="app-dim">{bp.description}</div>
-                      </InfoHover>
-                    )
-                  })}
-                  {engine.shipBlueprints.map((bp) => {
-                    const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
-                    return (
-                      <InfoHover
-                        key={bp.id}
-                        as="li"
-                        title={bp.name}
-                        lines={[
-                          { k: '产物', v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
-                          { k: '材料需求', v: mats },
-                          { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
-                        ]}
-                        note={bp.description}
-                        className="app-hand-entry"
-                      >
-                        <div className="app-inv-name">
-                          <RowGlyph glyph="blueprint" /> {bp.name}
-                        </div>
-                        <div className="app-dim">产物：{engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）</div>
-                        <div className="app-hand-sub">
-                          材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
-                        </div>
-                        <div className="app-dim">{bp.description}</div>
-                      </InfoHover>
-                    )
-                  })}
-                </ul>
-              )}
-            />
-          ) : null}
-
-          {tab === 'skills' ? (
-            <DataTab
-              view={view}
-              onView={changeView}
-              cells={skillCells}
-              onPick={setDetail}
-              renderList={() => (
-                <div>
-                  {engine.groups.map((group) => (
-                    <div key={group}>
-                      <div className="app-bay-title">
-                        <RowGlyph glyph={`group-${group}`} /> {group}
-                      </div>
-                      <ul className="app-hand-list">
-                        {engine.skills
-                          .filter((s) => s.group === group)
-                          .map((s) => (
-                            <li key={s.id} className="app-hand-entry">
-                              <div className="app-inv-name">
-                                {s.name}
-                                <span className="app-chip is-dim">难度 {s.rank}</span>
-                              </div>
-                              <div className="app-dim">{plainSkillDesc(s.description)}</div>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              )}
-            />
-          ) : null}
+          </div>
         </div>
       </div>
       {detail !== null ? <CellDetail engine={engine} cell={detail} onClose={() => setDetail(null)} /> : null}
