@@ -458,7 +458,16 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         .map((x) => fmt(x!))
         .join(' / ')
       lines.push({ k: '自动维修', v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）` })
-      lines.push({ k: '运转消耗', v: `每跳消耗 ${kitName} ×1；组件耗尽自动停机——请确认货舱/仓库备足组件再出击` })
+      // 2026-09-10 船长：运转消耗高亮（玩家常忽略"每跳要吃一枚组件"）——组件名用琥珀色标记
+      lines.push({
+        k: '运转消耗',
+        v: (
+          <>
+            <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
+            <span className="app-dim">（每 {secs} 秒一枚；组件耗尽即自动停机——请确认货舱/仓库备足再出击）</span>
+          </>
+        ),
+      })
     }
   } else if (mod.slot === 'target-lock') {
     // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深

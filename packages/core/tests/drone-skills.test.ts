@@ -1,8 +1,8 @@
 /**
  * 无人机线新技能（2026-09-10 船长拍板）：
  * - 无人机打击学（rank4）：单发 +4%/级（与作战学乘算）
- * - 无人机耐久学（rank2）：三层血 +6%/级（满级 +30%，"全血条"）
- * - 无人机强化学（rank4）：三层血再 +6%/级（满级再 +30%，与耐久学**乘算** → 双满 ×1.69）
+ * - 无人机耐久学（rank2）：三层血 +4%/级（满级 +20%，"全血条"）
+ * - 无人机强化学（rank4）：三层血再 +6%/级（满级再 +30%，与耐久学**乘算** → 双满 ×1.56）
  * - 无人机回收学（rank3）：战后损坏回收率 10% → 最高 50%
  * - 无人机规避学（rank4）：闪避 +2%/级（满级 +10%，相对乘算，封顶 90%）
  * 数值接线在 core/combat.ts（DRONE_SKILL 常量），文案 ⟦…⟧ 在 data/skills.ts。
@@ -54,7 +54,7 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     )
   })
 
-  it('耐久学（rank2）：三层血 +6%/级，满级 +30%（全血条）', () => {
+  it('耐久学（rank2）：三层血 +4%/级，满级 +20%（全血条）', () => {
     const base = makeState()
     const b0 = startBattleFor(base, ctx, base.shipId, HIGH, 0)!
     const heavyPool0 = Object.values(b0.dronePools!).find((p) => p.artId === 'drone-heavy')!
@@ -64,18 +64,18 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     trained.skills.trained['drone-durability'] = 5
     const b1 = startBattleFor(trained, ctx, trained.shipId, HIGH, 0)!
     const heavyPool1 = Object.values(b1.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(heavyPool1.h).toBe(Math.round(45 * 1.3))
-    expect(heavyPool1.s).toBe(Math.round(30 * 1.3))
-    expect(heavyPool1.a).toBe(Math.round(22 * 1.3)) // 全血条三层一起放大
+    expect(heavyPool1.h).toBe(Math.round(45 * 1.2))
+    expect(heavyPool1.s).toBe(Math.round(30 * 1.2))
+    expect(heavyPool1.a).toBe(Math.round(22 * 1.2)) // 全血条三层一起放大
   })
 
-  it('强化学（rank4）：再 +6%/级、满级再 +30%，与耐久学乘算（双满 = ×1.69）', () => {
+  it('强化学（rank4）：再 +6%/级、满级再 +30%，与耐久学乘算（双满 = ×1.56）', () => {
     const both = makeState()
     both.skills.trained['drone-durability'] = 5
     both.skills.trained['drone-reinforce'] = 5
     const b = startBattleFor(both, ctx, both.shipId, HIGH, 0)!
     const pool = Object.values(b.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(pool.h).toBe(Math.round(45 * 1.3 * 1.3)) // 乘算口径：1.3 × 1.3 = 1.69
+    expect(pool.h).toBe(Math.round(45 * 1.2 * 1.3)) // 乘算口径：1.2 × 1.3 = 1.56
     const onlyReinforce = makeState()
     onlyReinforce.skills.trained['drone-reinforce'] = 5
     const b2 = startBattleFor(onlyReinforce, ctx, onlyReinforce.shipId, HIGH, 0)!

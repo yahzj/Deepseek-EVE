@@ -364,6 +364,25 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           )
       : 0)
 
+  // 船体维修装置·运转消耗提示（2026-09-10 船长：消耗的修理组件常被忽略）——
+  // 装了维修装置就列出"每跳吃什么组件、现在有多少"，0 枚直接红字告警
+  const repairKitRows: { kitId: string; name: string; stock: number; perJumpSecs: number }[] = []
+  if (fitted) {
+    for (const id of Object.values(fitted).flat()) {
+      if (typeof id !== 'string' || id.length === 0) continue
+      const mod = engine.ctx.modules.get(id)
+      if (!mod || ((mod.repairArmorHp ?? 0) <= 0 && (mod.repairHullHp ?? 0) <= 0)) continue
+      const kitId = mod.repairKit ?? 'repairkit-civ'
+      if (repairKitRows.some((r) => r.kitId === kitId)) continue
+      repairKitRows.push({
+        kitId,
+        name: engine.ctx.items.get(kitId)?.name ?? kitId,
+        stock: (state.fleet[effectiveTarget]?.cargo?.[kitId] ?? 0) + countWare(state, kitId),
+        perJumpSecs: Math.max(1, Math.round((mod.repairIntervalMs ?? 5_000) / 1_000)),
+      })
+    }
+  }
+
   return (
     <div className="page-stack page-fill">
       <Panel className="is-fill" title="装配台" right={<span className="app-dim">装备随船 · 进入其它船的装配台请在「舰船」页点卡片「⚒ 装配」</span>}>
@@ -423,6 +442,27 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 ...(droneBayTotal > 0
                   ? [{ k: '无人机舱（含甲板扩展）', v: `${droneBayTotal} m³ · 战斗只放飞下方清单中已装入的无人机` }]
                   : []),
+                // 船体维修装置·运转消耗（2026-09-10 船长：消耗组件需高亮；0 枚红字告警）
+                ...repairKitRows.map((r) => {
+                  const cls = r.stock <= 0 ? 'is-bad' : r.stock < 10 ? 'is-warn' : 'is-ok'
+                  const hint =
+                    r.stock <= 0
+                      ? '库存为空——装置开战即停机（不会自动修复）'
+                      : r.stock < 10
+                        ? '存量偏少——长局可能中途停机'
+                        : '存量充足'
+                  return {
+                    k: '维修组件（运转消耗）',
+                    v: (
+                      <>
+                        <em className="app-chip is-cost">{r.name} ×1 / {r.perJumpSecs} 秒</em>
+                        <span className={`app-kit-stock ${cls}`}>
+                          {' '}当前 {r.stock} 枚（{hint}）
+                        </span>
+                      </>
+                    ),
+                  }
+                }),
                 // 装后合成预览（V18.1：收敛件多装最终值；血量由顶部徽章承担不重复列出——与最上方徽章同源）
                 ...(spec
                   ? [
