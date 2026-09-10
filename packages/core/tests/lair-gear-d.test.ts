@@ -1,8 +1,9 @@
 /**
- * D 族「守墓古舰」专属装备（2026-09-10 船长逐件过审：D 族为最强敌族，可对标异星档、略强）：
- * - D1 陵墓护盾阵列：护盾层三系抗各 **+35%**（缺口复合、0.9 封顶）——全能重盾，代价 = 42 CPU；
+ * D 族「守墓古舰」专属装备（2026-09-10 船长逐件过审；**同日定削**：档位回到「最强敌族、强度略高于 MK3」，
+ * 原「可对标异星档、可略强」口径作废——削后立身之本是必中远程炮与三系全能盾，不再靠账面输出）：
+ * - D1 陵墓护盾阵列：护盾层三系抗各 **+30%**（缺口复合、0.9 封顶）——全能重盾，代价 = 42 CPU；
  * - D2 守墓者长炮：**基础命中 100%** 的 12 km 点名炮——射速降到攻坚炮台 MK3 的四成、
- *   单发提到 2.24 倍，**总输出 ≈ MK3 的九成（−10.3%）**，远端衰减更轻；
+ *   单发提到 2.02 倍，**总输出 ≈ MK3 的八成（−19.3%：原「保证 DPS −10%」之上再降一成）**，远端衰减更轻；
  * - D3 陵寝装甲层：装甲容量 **+110%**（比装甲增厚板 MK3 的 +80% 还厚），代价 = **战斗速度 −25%**
  *   （多件不叠加、取最重一件；与推进器失稳同口径）与 52 CPU。
  * 三件合起来 = 守墓舰性格：重盾 + 超远程点名 + 走不动的重甲（D 族为敌族池之一，见 FOE_LAIR_GEAR.D）。
@@ -37,20 +38,26 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     for (const id of FOE_LAIR_GEAR.D) expect(ctx.modules.get(id)).toBeTruthy()
   })
 
-  it('D1 陵墓护盾阵列：护盾三系抗各 +35%（缺口复合）、CPU 42；装甲/结构不受影响', () => {
+  it('D1 陵墓护盾阵列：护盾三系抗各 +30%（缺口复合）、CPU 42；装甲/结构不受影响', () => {
     const plain = createPlayerSpec(makeState(), ctx, SHIP)!
     const withShield = createPlayerSpec(makeState([], ['mod-lair-shield-d']), ctx, SHIP)!
+    // 定稿值钉死：三系各 +30%（2026-09-10 船长定削，原 +35%）
+    expect(ctx.modules.get('mod-lair-shield-d')!.shieldResistAdd).toEqual({
+      kinetic: 0.3,
+      explosive: 0.3,
+      plasma: 0.3,
+    })
     for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
       const base = plain.resists.shield?.[t] ?? 0
       const after = withShield.resists.shield?.[t] ?? 0
-      // 缺口乘入：new = 1 − (1−base) × (1−0.35)
-      expect(after).toBeCloseTo(1 - (1 - base) * 0.65, 6)
+      // 缺口乘入：new = 1 − (1−base) × (1−0.30)
+      expect(after).toBeCloseTo(1 - (1 - base) * 0.7, 6)
       expect(after).toBeGreaterThan(base)
     }
-    // 灰鲭鲨基础盾抗只有动能 0.5 → 装后动能 0.675（缺口剩一半再削 35%）、另两系各 0.35
-    expect(withShield.resists.shield!.kinetic).toBeCloseTo(0.675, 6)
-    expect(withShield.resists.shield!.explosive).toBeCloseTo(0.35, 6)
-    expect(withShield.resists.shield!.plasma).toBeCloseTo(0.35, 6)
+    // 灰鲭鲨基础盾抗只有动能 0.5 → 装后动能 0.65（缺口剩一半再削 30%）、另两系各 0.30
+    expect(withShield.resists.shield!.kinetic).toBeCloseTo(0.65, 6)
+    expect(withShield.resists.shield!.explosive).toBeCloseTo(0.3, 6)
+    expect(withShield.resists.shield!.plasma).toBeCloseTo(0.3, 6)
     // 装甲/结构层不被盾件影响
     expect(withShield.resists.armor).toEqual(plain.resists.armor)
     expect(withShield.resists.hull).toEqual(plain.resists.hull)
@@ -59,19 +66,21 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     expect(ctx.modules.get('mod-shield-ext-3')!.cpuUse).toBeLessThan(42)
   })
 
-  it('D2 守墓者长炮：射速 −60%、单发 2.24 倍、总输出 ≈ 攻坚炮台 MK3 的九成', () => {
+  it('D2 守墓者长炮：射速 −60%、单发 2.02 倍、总输出 ≈ 攻坚炮台 MK3 的八成', () => {
     const d2 = ctx.modules.get('mod-lair-turret-d')!
     const mk3 = ctx.modules.get('mod-turret-kin-3')!
+    // 定稿值钉死：单发 10.35（2026-09-10 船长定削，原 11.5）
+    expect(d2.dmgMult).toBe(10.35)
     // 射速：装填 ×2.5 → 每秒发数只有四成（即 −60%）
     expect(d2.reloadMs! / mk3.reloadMs!).toBeCloseTo(2.5, 6)
     expect(mk3.reloadMs! / d2.reloadMs!).toBeCloseTo(0.4, 6)
-    // 单发：两倍多（2.24 倍）
-    expect(d2.dmgMult! / mk3.dmgMult!).toBeCloseTo(2.242, 2)
-    // 总输出 = −10.3%（船长定「保证 DPS −10%」）
+    // 单发：两倍（2.02 倍）
+    expect(d2.dmgMult! / mk3.dmgMult!).toBeCloseTo(2.018, 2)
+    // 总输出 = −19.3%（船长原定「保证 DPS −10%」，2026-09-10 追加再降一成）
     const ratio = dps(d2) / dps(mk3)
-    expect(ratio).toBeGreaterThan(0.88)
-    expect(ratio).toBeLessThan(0.92)
-    expect(ratio - 1).toBeCloseTo(-0.1033, 3)
+    expect(ratio).toBeGreaterThan(0.8)
+    expect(ratio).toBeLessThan(0.82)
+    expect(ratio - 1).toBeCloseTo(-0.193, 3)
   })
 
   it('D2 基础命中 100%、12 km 超远程、远端衰减更轻', () => {

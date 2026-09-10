@@ -1052,10 +1052,10 @@ export const MODULES: readonly ModuleDef[] = [
     name: '陵墓护盾阵列',
     slot: 'shield',
     rack: 'mid',
-    shieldResistAdd: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
+    shieldResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 },
     cpuUse: 42,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝守备用的全能重盾——三系减伤各 +35%（缺口复合、多件递减；0.9 封顶）。单系不如专精增强器，胜在不用猜对手弹种；CPU 占用很重（42）。',
+      '守墓古舰（D 族）窝点专属：陵寝守备用的全能重盾——三系减伤各 +30%（缺口复合、多件递减；0.9 封顶）。单系不如专精增强器，胜在不用猜对手弹种；CPU 占用很重（42）。',
   },
   {
     id: 'mod-lair-turret-d',
@@ -1069,10 +1069,10 @@ export const MODULES: readonly ModuleDef[] = [
     hitRate: 1,
     falloff: 0.45,
     reloadMs: 7350,
-    dmgMult: 11.5,
+    dmgMult: 10.35,
     cpuUse: 62,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝守备炮——**基础命中 100%**（必中量级）、12 km 超远程点名，射速只有攻坚炮台的四成、单发威力却是它的两倍多（总输出 ≈ 攻坚炮台的九成）；远端命中衰减也更轻。装填极慢，打空一发就是七秒。',
+      '守墓古舰（D 族）窝点专属：陵寝守备炮——**基础命中 100%**（必中量级）、12 km 超远程点名，射速只有攻坚炮台的四成、单发威力是它的两倍（总输出 ≈ 攻坚炮台的八成）；远端命中衰减也更轻。装填极慢，打空一发就是七秒。',
   },
   {
     id: 'mod-lair-armor-d',
