@@ -26,6 +26,7 @@ import type { ToastFn } from '../pages/common'
 import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
+import { RowGlyph } from '../ui/itemView'
 import { MONEY_GLYPH } from '../pages/common'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
@@ -186,6 +187,7 @@ function BlueprintCard({
   productLabel,
   productNode,
   kindLabel,
+  productGlyph,
   productBase,
   onNeedMineral,
 }: {
@@ -202,6 +204,8 @@ function BlueprintCard({
   productNode?: ReactNode
   /** 产物类别徽标：装备 / 舰船 */
   kindLabel: string
+  /** 产物图标键（与图鉴行同口径：物品/弹药 = 物品 kind、装备 = 槽位、舰船 = 船族；卡名前的 SVG 小图标） */
+  productGlyph: string
   /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
   /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
@@ -287,8 +291,7 @@ function BlueprintCard({
     <div className="app-belt-card">
       <div className="app-belt-head">
         <span className="app-belt-name">
-          {kindLabel === '舰船' ? '◈ ' : kindLabel === '弹药' ? '▣ ' : ''}
-          {name}
+          <RowGlyph glyph={productGlyph} /> {name}
           {running ? (
             <em className="app-belt-flag is-run">
               {kindLabel === '舰船' ? '造船中' : '制造中'}
@@ -511,6 +514,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
   const items: Array<{
     id: string
     kindLabel: string
+    productGlyph: string
     name: string
     description: string
     materials: readonly MaterialNeed[]
@@ -532,6 +536,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       items.push({
         id: sbp.id,
         kindLabel: '舰船',
+        productGlyph: shipDef?.role ?? 'blueprint',
         name: sbp.name,
         description: sbp.description,
         materials: sbp.materials,
@@ -561,6 +566,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       items.push({
         id: bp.id,
         kindLabel: '装备',
+        productGlyph: moduleDef?.slot ?? 'blueprint',
         name: bp.name,
         description: bp.description,
         materials: bp.materials,
@@ -585,6 +591,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       items.push({
         id: bp.id,
         kindLabel: '弹药',
+        productGlyph: itemDef?.kind ?? 'blueprint',
         name: bp.name,
         description: bp.description,
         materials: bp.materials,
@@ -682,6 +689,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
               productLabel={it.productLabel}
               productNode={it.productNode}
               kindLabel={it.kindLabel}
+              productGlyph={it.productGlyph}
               productBase={it.productBase}
               onNeedMineral={onNeedMineral}
             />
