@@ -146,7 +146,7 @@ describe('V18.1 装配与战斗集成', () => {
     expect(exp1.shotsByType!.explosive).toBe(14) // 高爆炮不受动能件影响
     // 无人机（动能）不吃炮台伤害件
     const drone = spec1.weapons.find((w) => w.label === DRONE_SCOUT.name)!
-    expect(drone.shotDmg).toBe(3)
+    // 2026-09-10 船长：无人机单发 ×2（与装填 ×2 同步，净 DPS 不变）\r\n    expect(drone.shotDmg).toBe(6)
   })
 
   it('射速计算机加算：两件 −5% → 装填 ÷1.1', () => {

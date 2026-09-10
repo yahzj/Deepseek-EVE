@@ -442,9 +442,11 @@ export function createPlayerSpec(
   let bayUsed = 0
   let cpuLeft = effectiveCpu(state, ctx, ship) - fittedCpuUsed(fitted, ctx)
   const droneLoad = fleet.droneLoad ?? {}
-  // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——装填 2200ms 基准、
-  // 每级 −4%（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
-  const droneReload = Math.round(2200 * (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
+  // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——每级 −4%
+  //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
+  // 2026-09-10 船长（配合出击-返航动画节奏）：装填基准 2200→**4400ms**、单发同步 ×2
+  // ——每轮更重、节奏更舒缓，**净 DPS 不变**（故既有校准矩阵口径不变，无需复跑）。
+  const droneReload = Math.round(4400 * (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
   if (bayLimit > 0 && cpuLeft > 0) {
     for (const [droneId, want] of Object.entries(droneLoad)) {
       if (!want || want <= 0) continue
@@ -460,8 +462,9 @@ export function createPlayerSpec(
       bayUsed += perM3 * n
       cpuLeft -= perCpu * n
       // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级（第二批，乘算于导控之上）
+      // 2026-09-10 船长：单发 ×2 与装填 ×2 同步（每轮更重、节奏更舒缓，净 DPS 不变）
       const shot = Math.round(
-        (def.dmg ?? 0) * (1 + droneDmgBonus) * (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0)),
+        (def.dmg ?? 0) * 2 * (1 + droneDmgBonus) * (1 + 0.05 * Math.min(5, state.skills.trained['drone-warfare'] ?? 0)),
       )
       for (let i = 0; i < n; i++) {
         weapons.push({
