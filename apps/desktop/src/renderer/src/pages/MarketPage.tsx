@@ -3,8 +3,8 @@
  *
  * 玩法规则（中文说明，设计 V4/V5 已确认）：
  * - 收购价 = NPC 收玩家的价；供应价 = NPC 卖玩家的价（两者有价差，防倒卖）；
- * - 池商品（矿石/矿物）：站内库存池（常驻显示），池淤积→收购压价（倾销会砸价），
- *   池枯竭→供应断货涨价；价格还受隐藏的"冲击动量"影响（集中买卖会推/砸价，随时间恢复）；
+ * - 池商品（矿石/矿物）：站内有库存压力（2026-09-10 起不再显示库存数字，只体现在价格上），
+ *   池淤积→收购压价（倾销会砸价），池枯竭→供应断货涨价；价格还受隐藏的"冲击动量"影响（集中买卖会推/砸价，随时间恢复）；
  * - 单件商品（装备/蓝图/船/核心）：常驻平价随刷随买；稀有订单低频、限定奇货偶发高价；
  * - 市价买入吃穿簿后剩单会自动转成限价挂单；挂单随时可撤销（货退回原库存）。
  *
@@ -18,7 +18,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
-import type { BlueprintDef, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
+import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
 import { InfoHover, ItemHover, itemInfoLines, ModuleHover, moduleInfoLines, ShipHover, shipInfoLines } from '../ui/shipInfo'
@@ -241,6 +241,18 @@ function GoodHover({
   )
 }
 
+/** 「自己的库存」口径说明（悬停用）：与"能卖出的量"同源；已挂单托管的量不计在内 */
+const MY_STOCK_TIP =
+  '自己的库存：物品 → 物品仓库、装备 → 装备库、蓝图 → 图书存量、AI 核心 → 核心库、舰船 → 机库同型艘数；已挂单托管的量不计在内'
+
+/** 玩家自己这件东西的库存（舰船 core 的「自然库存」恒 0，按机库同型艘数单独数） */
+function myStockOf(state: GameState, good: MarketGoodDef): number {
+  if (good.kind === 'ship') {
+    return Object.entries(state.fleet).filter(([uid, e]) => (e.defId ?? uid) === good.refId).length
+  }
+  return naturalHoldings(state, good)
+}
+
 function GoodRow({
   engine,
   good,
@@ -255,7 +267,9 @@ function GoodRow({
   const state = engine.state
   const quote = marketQuote(state, engine.ctx, good.key)
   const trend = marketTrend(state, good.key)
-  const poolQ = good.poolTarget && good.poolTarget > 0 ? (state.market.pools[good.key]?.q ?? 0) : undefined
+  // 2026-09-10 船长：行内不再显示「站内库存」（空间站库存池，玩家看的是自己的货）——
+  // 改显示**玩家自己**这件东西的库存（舰船按机库同型艘数；其余走 core「自然库存」单点）
+  const holdings = myStockOf(state, good)
   const lock = goodLockedReason(state, good)
   const bm = bmGateReason(state, good)
   const lockShow = lock ?? bm // 玩家侧统一观感：暗市对玩家隐身，仅显示声望锁指引（与顶船同款）
@@ -329,7 +343,10 @@ function GoodRow({
               {fmtClock(life)}
             </span>
           ) : null}
-          {poolQ !== undefined ? <span className="app-dim"> · 站内库存 {Math.floor(poolQ).toLocaleString('zh-CN')}</span> : null}
+          <span className="app-dim" title={MY_STOCK_TIP}>
+            {' '}
+            · 持有 {holdings.toLocaleString('zh-CN')}
+          </span>
           {good.rarity === 'common' ? <span className="app-dim"> · {RARITY_TEXT[good.rarity]}</span> : null}
           {quote.sell === undefined && good.rarity !== 'common' ? (
             <span className="app-dim"> · 常来看看（每 10 分钟刷新一轮到货）</span>
@@ -646,7 +663,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       title={`市场详情 · ${name}`}
       right={
         <span className="app-dim">
-          持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} ISK
+          中位价 {median !== undefined ? isk(median) : '—'} ISK
           <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
             {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
           </span>
@@ -667,7 +684,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : buyable ? '暂无现货' : '只收不卖'}</b>
             </div>
             <div className="app-mkt-quote">
-              库存池 {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
+              {/* 2026-09-10 船长：不显示空间站「库存池」，改显示玩家自己这件东西的库存 */}
+              <span title={MY_STOCK_TIP}>
+                持有 {myStockOf(state, good).toLocaleString('zh-CN')} 件
+              </span>
             </div>
           </div>
         </div>
@@ -992,7 +1012,7 @@ export function MarketPage({
   return (
     <div className="page-stack page-fill">
       <div className="app-dim app-note">
-        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石/矿物另受库存池调节。
+        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石 / 矿物另受空间站库存压力调节（积压压价、缺货抬价）。
         每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。
       </div>
       <div className="app-dim app-note">

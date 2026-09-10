@@ -116,7 +116,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
   {
     title: '市场与世界',
     rows: [
-      ['交易', '市场页：常驻供应 / 稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），矿石 / 矿物另受库存池调节。'],
+      ['交易', '市场页：常驻供应 / 稀有订单两栏，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），矿石 / 矿物另受空间站库存压力调节（积压压价、缺货抬价）。'],
       ['随机事件', '深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。'],
     ],
   },
@@ -505,12 +505,18 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
   /* ── 分组（顺序表与市场页类型子分类同源；空组隐藏） ── */
   const filtered = (cells: GridCell[]): GridCell[] => cells.filter(hitCell)
   const showCells = (cells: GridCell[], t: Tab): CellGroup[] => groupCells(cells, groupKeyOf, orderOf(t))
-  /** 分组键：物品按大类 / 装备按槽位子分类 / 舰船按舰族 / 蓝图按产物门类 / 技能按技能组 */
+  /** 分组键：物品按大类 / 装备按槽类 / 舰船按舰族 / 蓝图按产物门类（装备蓝图再按产物槽类） / 技能按技能组 */
   function groupKeyOf(c: GridCell): string {
     if (c.tab === 'items') return String(c.raw.kind ?? '')
-    if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''))
+    if (c.tab === 'modules') return moduleSubKeyOf({ slot: String(c.raw.slot ?? ''), rack: c.raw.rack as string | undefined })
     if (c.tab === 'ships') return String(c.raw.role ?? 'industrial')
-    if (c.tab === 'blueprints') return c.raw.shipId !== undefined ? 'ship' : c.raw.itemId !== undefined ? 'supply' : 'module'
+    if (c.tab === 'blueprints') {
+      // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
+      if (c.raw.shipId !== undefined) return 'ship'
+      if (c.raw.itemId !== undefined) return 'supply'
+      const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
+      return mod ? moduleSubKeyOf(mod) : ''
+    }
     return String(c.raw.group ?? '') // skills
   }
   /** 分组顺序表（与市场页同源；装备未收录槽位归「其它」） */
@@ -518,7 +524,7 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
     if (t === 'modules') return MODULE_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: '其它' }])
     if (t === 'ships') return SHIP_SUBS.map((s) => ({ key: s.key, label: s.label }))
-    if (t === 'blueprints') return BLUEPRINT_SUBS.map((s) => ({ key: s.key, label: s.label }))
+    if (t === 'blueprints') return BLUEPRINT_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: '其它' }])
     return engine.groups.map((g) => ({ key: g, label: g })) // skills
   }
 
