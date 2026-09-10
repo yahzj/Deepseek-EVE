@@ -1109,9 +1109,12 @@ export interface SideTasksState {
   resource: SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才刷，至多 2 条） */
   courier: SideTask[]
-  /** 赏金任务（当前轮；2026-09-10 船长定：每轮 2 张高难窝点，与资源/快递同一块时效板；
-   *  老档缺省 = 空数组，零迁移） */
+  /** 赏金任务（**当日板**；2026-09-10 船长定：每天 2 张高难窝点，24 小时一轮、
+   *  **每天本地 0 点整板替换**，与资源/快递的 20 分钟板彼此独立；老档缺省 = 空数组，零迁移） */
   bounty: SideTask[]
+  /** 赏金板日界（本地 0 点的墙钟毫秒；0 = 未开板）——下一日界到点时整板替换。
+   *  兼容字段（无版本号变化）：老档缺省 0，首次拿到有效墙钟即开板。 */
+  bountyWindow: number
   /** 快递投送在途挂账（一次一笔；null = 无）。整板刷新不清除在途投送，到站仍按原任务结算 */
   deliver: CourierDeliveryState | null
 }
@@ -1316,7 +1319,7 @@ export function createInitialState(opts?: {
     galaxyWrecks: {},
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
-    sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], deliver: null }, // v24：任务中心·时效任务板（首个 20 分钟整点后由引擎开刷；deliver = 快递投送在途挂账，缺省 null）
+    sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；deliver = 快递投送在途挂账，缺省 null）
     logs: [],
   }
   if (prologue) {
