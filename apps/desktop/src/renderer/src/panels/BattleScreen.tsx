@@ -104,6 +104,8 @@ const meSpeedRef = useRef(200)
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
   const droneSortieRef = useRef<Map<string, DroneSortie>>(new Map())
+  /** ⚠ 临时性能探针状态（同上，诊断后删除） */
+  const probeRef = useRef<{ last: number; n: number; params: number[] }>({ last: 0, n: 0, params: [] })
   const droneSlotRef = useRef<Map<string, number>>(new Map())
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
@@ -187,6 +189,21 @@ const meSpeedRef = useRef(200)
     const iv = window.setInterval(() => {
       const b = engine.state.expedition.battle
       const now = performance.now()
+      /**
+       * ⚠ 临时性能探针（2026-09-10 船长反馈"击毁敌人后画面明显卡顿"，诊断用，定位后删除）：
+       * 本循环每 33ms 一跳；若某跳迟到 >90ms，说明主线程被占住了（引擎推进/React 提交/重绘皆可），
+       * 把迟到毫秒数与当时场上对象数（弹道/闪光/尸骸/机群）弹到屏上，供船长复现时回报。
+       */
+      {
+        const p = probeRef.current
+        const late = now - p.last
+        p.last = now
+        if (late > 90 && late < 5000 && p.n < 20) {
+          p.n += 1
+          p.params = [Math.round(late), boltsRef.current.length, flashRef.current.length, deadRef.current.size]
+          onToast(`[性能] 卡 ${Math.round(late)}ms · 弹${p.params[1]} 闪${p.params[2]} 尸${p.params[3]}`)
+        }
+      }
       if (!b) return
       const s = moveSnapRef.current
       if (!s.cur || s.cur.m !== b.distanceM) {
