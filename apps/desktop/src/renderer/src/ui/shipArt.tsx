@@ -156,3 +156,18 @@ export const FOE_FAMILY: Record<string, string> = {
 export function foeFamilyOf(anomalyId: string | null | undefined): string {
   return (anomalyId ? FOE_FAMILY[anomalyId] : undefined) ?? 'F'
 }
+
+/**
+ * 敌族**短名**（2026-09-11 船长：「星图显示敌对派系时文字颜色按敌族划分、标签化展示」）——
+ * 用于星图节点下方的族标签（位置窄，取 2 字短写；词典里的全称是
+ * 「海盗舰系 / 异形生物 / 守墓古舰 / 泰坦巨构 / 烬火流亡」）。
+ */
+export const FOE_FAMILY_LABEL: Record<string, string> = {
+  A: '海盗',
+  B: '拾荒',
+  C: '异形',
+  D: '守墓',
+  E: '巨构',
+  F: '巡逻',
+  G: '流亡',
+}

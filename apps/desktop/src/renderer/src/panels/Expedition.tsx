@@ -2,7 +2,7 @@
  * M3 远征中心：势力声望、星图（SVG）、悬赏任务卡。
  * 中列面板：SkirmishStatus（远征中作业）→ StarMap（可点选）→ Standing → 任务列表。
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskBoardView } from '@whale/core'
 import {
@@ -61,6 +61,7 @@ import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
 export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -417,6 +418,35 @@ try {
  */
 const DEV_EDITOR_KEY = 'whale-idle:dev-layout'
 
+/* ── 星图显示模式（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ── */
+
+/** 三种显示模式：星系名称（默认）/ 安全等级数字 / 敌对派系标签 */
+type LabelMode = 'name' | 'sec' | 'faction'
+/** 本地记忆键（与其它星图偏好同前缀） */
+const LABEL_KEY = 'whale-idle:starmap-label'
+const LABEL_MODES: ReadonlyArray<{ key: LabelMode; label: string; tip: string }> = [
+  { key: 'name', label: '名称', tip: '星系节点下方显示星系名称（默认）' },
+  { key: 'sec', label: '安全等级', tip: '星系节点下方显示安全等级数字（−1.0 高危 ~ +1.0 安全），颜色沿用安全色阶' },
+  { key: 'faction', label: '敌对派系', tip: '星系节点下方显示该星系的敌对派系标签（按敌族配色），星系后方给出该势力的范围光晕' },
+]
+
+function readLabelMode(): LabelMode {
+  try {
+    const v = localStorage.getItem(LABEL_KEY)
+    return v === 'sec' || v === 'faction' ? v : 'name'
+  } catch {
+    return 'name'
+  }
+}
+
+/** 族标签字宽估算（SVG 里量不了 DOM：按字号 + 字距估；几何自检探针用同一公式） */
+const FAM_CHIP_CHAR_W = 9.5
+const FAM_CHIP_PAD_X = 4.5
+const FAM_CHIP_GAP = 3
+const FAM_CHIP_H = 13
+const FAM_CHIP_Y = 13 // 标签顶边相对星系中心的高度（与 NodeLabel 的 +21 基线大致同带）
+const famChipW = (text: string): number => text.length * FAM_CHIP_CHAR_W + FAM_CHIP_PAD_X * 2
+
 type LayoutMap = Record<string, { x: number; y: number }>
 
 function readLayoutOverride(): LayoutMap {
@@ -436,6 +466,45 @@ function NodeLabel({ name, x, y, cls }: { name: string; x: number; y: number; cl
     <text x={x} y={y + 21} textAnchor="middle" className={`app-map-label${cls ?? ''}`}>
       {name}
     </text>
+  )
+}
+
+/**
+ * 敌对派系标签行（2026-09-11 船长：「文字的颜色以敌族进行划分并采用标签化展示，
+ * 以和安全等级明显区分」）——每枚 = SVG 圆角矩形 + 文字，颜色统一取该族色
+ * （`FOE_ACCENT`，与战场敌舰同源；见 styles.css 的 `.app-map-famchip.is-fam-*`）；
+ * 整行以星系圆点为中轴居中，取代名称位置。未探索 = 灰「未知」、无敌情 = 灰「无敌情」。
+ */
+function FamChips({
+  chips,
+  rowW,
+  x,
+  y,
+  cls,
+}: {
+  chips: Array<{ text: string; fam: string; dim?: boolean }>
+  rowW: number
+  x: number
+  y: number
+  cls?: string
+}) {
+  let cursor = x - rowW / 2
+  return (
+    <g className={`app-map-famrow${cls ?? ''}`}>
+      {chips.map((c, i) => {
+        const w = famChipW(c.text)
+        const rx = cursor
+        cursor += w + FAM_CHIP_GAP
+        return (
+          <g key={`${c.text}-${i}`} className={`app-map-famchip${c.dim ? ' is-unknown' : ` is-fam-${c.fam}`}`}>
+            <rect x={rx} y={y + FAM_CHIP_Y} width={w} height={FAM_CHIP_H} rx={3} fill="currentColor" fillOpacity={0.14} stroke="currentColor" strokeOpacity={0.55} strokeWidth={0.8} />
+            <text x={rx + w / 2} y={y + FAM_CHIP_Y + 9.4} textAnchor="middle" fill="currentColor" className="app-map-famchip-text">
+              {c.text}
+            </text>
+          </g>
+        )
+      })}
+    </g>
   )
 }
 
@@ -665,6 +734,18 @@ function autoTidy(posMap: Map<string, Pt>, segNodes: Array<[string, string]>): R
 function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const [editing, setEditing] = useState(false)
+  /**
+   * 星图显示模式（2026-09-11 船长：「在星图上添加切换按钮，让玩家可以快速在：显示星系名称、
+   * 显示安全等级、显示敌对派系 之间切换」）——**三态互斥**，选择存本地、重启保留。
+   */
+  const [labelMode, setLabelMode] = useState<LabelMode>(readLabelMode)
+  useEffect(() => {
+    try {
+      localStorage.setItem(LABEL_KEY, labelMode)
+    } catch {
+      // 存储不可用：本次会话内仍生效，只是不记忆
+    }
+  }, [labelMode])
   const [devEditor] = useState<boolean>(() => {
     try {
       return localStorage.getItem(DEV_EDITOR_KEY) === '1'
@@ -709,6 +790,56 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   // 弹窗里的完整倒计时（h:mm:ss，逐秒刷新；节点上不再显示倒计时，见下方节点注释）
   const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
   /**
+   * 敌对派系归属（2026-09-11 船长：「显示敌对派系」）——由该星系的悬赏卡推导（`ui/shipArt` 的 FOE_FAMILY 全表）：
+   * 排序 = 卡数降序 → 最高威胁降序 → 族字母（稳定）；首位 = **主族**（决定该星系"势力范围"光晕的颜色）。
+   */
+  const familyByGalaxy = new Map<string, Array<{ fam: string; count: number; maxThreat: number }>>()
+  for (const a of engine.anomalies) {
+    const fam = foeFamilyOf(a.id)
+    const arr = familyByGalaxy.get(a.galaxyId) ?? []
+    const hit = arr.find((x) => x.fam === fam)
+    if (hit) {
+      hit.count += 1
+      hit.maxThreat = Math.max(hit.maxThreat, a.threat)
+    } else {
+      arr.push({ fam, count: 1, maxThreat: a.threat })
+    }
+    familyByGalaxy.set(a.galaxyId, arr)
+  }
+  for (const arr of familyByGalaxy.values()) {
+    arr.sort((x, y) => y.count - x.count || y.maxThreat - x.maxThreat || x.fam.localeCompare(y.fam))
+  }
+  /** 节点下方的族标签（最多 2 枚，超出写「等 N 族」；未探索 = 灰「未知」；已探索但无敌情 = 灰「无敌情」） */
+  const familyChipsOf = (gid: string, explored: boolean): Array<{ text: string; fam: string; dim?: boolean }> => {
+    if (!explored) return [{ text: '未知', fam: '', dim: true }]
+    const arr = familyByGalaxy.get(gid) ?? []
+    if (arr.length === 0) return [{ text: '无敌情', fam: '', dim: true }]
+    const chips = arr.slice(0, 2).map((x) => ({ text: FOE_FAMILY_LABEL[x.fam] ?? x.fam, fam: x.fam }))
+    if (arr.length > 2) chips[1] = { text: `等${arr.length}族`, fam: arr[0]!.fam }
+    return chips
+  }
+  /** 主族（势力范围光晕的颜色）：该星系卡数最多的族 */
+  const primaryFamilyOf = (gid: string): string | undefined => familyByGalaxy.get(gid)?.[0]?.fam
+  /** 族标签行的总宽 / 半宽（几何避让用：标签带比名称带更宽时要一起放进去算） */
+  const famRowWidth = (gid: string, explored: boolean): number => {
+    const chips = familyChipsOf(gid, explored)
+    return chips.reduce((s, c) => s + famChipW(c.text), 0) + FAM_CHIP_GAP * Math.max(0, chips.length - 1)
+  }
+  /** 名称/标签带的半宽（节点下方那条信息带）：名称与安全等级 = 现状 23；
+   *  敌对派系 = 该模式下**最宽**的族标签行的一半（不够 23 就仍按 23 保守取） */
+  const labelBandHalfW =
+    labelMode === 'faction'
+      ? Math.max(
+          23,
+          Math.ceil(
+            engine.galaxies.reduce(
+              (m, g) => Math.max(m, famRowWidth(g.id, exploredIds.has(g.id) || isFrontier(g.id)) / 2),
+              0,
+            ),
+          ),
+        )
+      : 23
+  /**
    * 徽标栈（节点上方两层：符号徽标 + 短倒计时）的避让偏移（2026-09-10 船长：缩短格式 + 边缘挪位）。
    * 星图节点是固定坐标系（布局数据/本地覆盖都是 (0,0)-(700,300)），故不靠 DOM 测量、直接按坐标算：
    * 依次尝试 0 / ±15 / ±26 / ±36 的横向偏移，取第一个"不与邻居冲突"的位置——
@@ -719,20 +850,21 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   const STACK_HALF_W = 14
   const STACK_Y1 = -35
   const STACK_Y2 = -11
-  /** 与其它节点的圆点带（±9）/名称带（±23 × [中心+12, 中心+38]）是否相交——徽标避让的公共判定 */
-  const bandClear = (g: GalaxyDef, ax1: number, ax2: number, ay1: number, ay2: number): boolean => {
+  /** 与其它节点的圆点带（±9）/名称带（±labelHalfW × [中心+12, 中心+38]）是否相交——徽标避让的公共判定。
+   *  2026-09-11：名称带半宽改为参数（「敌对派系」模式的族标签行比名称更宽，避让要按实际宽度算）。 */
+  const bandClear = (g: GalaxyDef, ax1: number, ax2: number, ay1: number, ay2: number, labelHalfW = 23): boolean => {
     for (const other of engine.galaxies) {
       if (other.id === g.id) continue
       const op = posOf(other)
       const dotHit = ax1 < op.x + 9 && ax2 > op.x - 9 && ay1 < op.y + 9 && ay2 > op.y - 9
-      const labelHit = ax1 < op.x + 23 && ax2 > op.x - 23 && ay1 < op.y + 38 && ay2 > op.y + 12
+      const labelHit = ax1 < op.x + labelHalfW && ax2 > op.x - labelHalfW && ay1 < op.y + 38 && ay2 > op.y + 12
       if (dotHit || labelHit) return false
     }
     return true
   }
   const stackClear = (g: GalaxyDef, dx: number, halfW: number, y1: number, y2: number): boolean => {
     const p = posOf(g)
-    return bandClear(g, p.x + dx - halfW, p.x + dx + halfW, p.y + y1, p.y + y2)
+    return bandClear(g, p.x + dx - halfW, p.x + dx + halfW, p.y + y1, p.y + y2, labelBandHalfW)
   }
   const stackDx = (g: GalaxyDef, halfW: number, y1: number, y2: number): number => {
     for (const dx of STACK_DX_TRIES) {
@@ -753,7 +885,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
     const p = posOf(g)
     for (const dy of FACTION_DY_TRIES) {
       if (p.y + dy - FACTION_MARK_TOP < -MAP_PAD_TOP) continue // 抬出画布：不采用（宁可让位也不裁切）
-      if (bandClear(g, p.x - FACTION_HALF_W, p.x + FACTION_HALF_W, p.y + dy - 40, p.y + dy - 16)) return dy
+      if (bandClear(g, p.x - FACTION_HALF_W, p.x + FACTION_HALF_W, p.y + dy - 40, p.y + dy - 16, labelBandHalfW)) return dy
     }
     return 0 // 兜底：保持居中（对齐优先，宁可压住邻居）
   }
@@ -878,7 +1010,31 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
 
   return (
     <div className="app-starmap-wrap">
+      {/* 显示模式切换（2026-09-11 船长）：三态互斥、选择存本地；按钮复刻 .app-map-editbar 同族做法（同 wrapper / 同 .app-btn.is-small） */}
+      <div className="app-map-viewbar">
+        {LABEL_MODES.map((m) => (
+          <button
+            key={m.key}
+            className={`app-btn is-small${labelMode === m.key ? ' is-primary' : ''}`}
+            title={m.tip}
+            onClick={() => setLabelMode(m.key)}
+          >
+            {m.label}
+          </button>
+        ))}
+        <span className="app-dim">星图显示：{LABEL_MODES.find((m) => m.key === labelMode)?.label}</span>
+      </div>
       <svg viewBox={`${-MAP_PAD_X} ${-MAP_PAD_TOP} ${MAP_VB_W} ${MAP_VB_H}`} className={`app-starmap${editing ? ' is-editing' : ''}`} role="img" aria-label="星图">
+        {/* 敌对派系"势力范围"光晕的径向渐变（2026-09-11）：每个族一枚，静态光效、不用 filter（第十四章） */}
+        <defs>
+          {Object.entries(FOE_ACCENT).map(([fam, color]) => (
+            <radialGradient key={fam} id={`app-famglow-${fam}`}>
+              <stop offset="0%" stopColor={color} stopOpacity="0.34" />
+              <stop offset="60%" stopColor={color} stopOpacity="0.14" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </radialGradient>
+          ))}
+        </defs>
         {/* 航线（V13 迷雾）：双亮实线带分钟；涉及剪影暗化无分钟；剪影连向更深处只画半段虚化提示 */}
         {mapEdges.map((e, idx) => {
           const pa = posOf(e.from)
@@ -972,6 +1128,19 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
           const cls = isHub ? ' is-hub' : isSel ? ' is-sel' : frontier ? ' is-frontier' : ''
           const bounty = bountyByGalaxy.get(g.id) ?? 0
           const isFactionNode = factionGalaxy === g.id
+          // 显示模式（2026-09-11）：名称 / 安全等级 / 敌对派系（母港恒显名称与金色徽标，不参与族色）
+          const famChips = labelMode === 'faction' && !isHub ? familyChipsOf(g.id, explored) : []
+          const famRowW = famChips.reduce((s, c) => s + famChipW(c.text), 0) + FAM_CHIP_GAP * Math.max(0, famChips.length - 1)
+          const primaryFam = labelMode === 'faction' && !isHub ? primaryFamilyOf(g.id) : undefined
+          /** 节点下方那条信息带的文字与配色（三态各自的取法） */
+          const labelText =
+            isHub || frontier
+              ? isHub
+                ? '母港'
+                : '未知信号'
+              : labelMode === 'sec'
+                ? secText(g.security)
+                : g.name
           return (
             <g
               key={g.id}
@@ -982,6 +1151,11 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
+              {/* 势力范围光晕（2026-09-11 船长：星系后方对应颜色的发光＝这块是这个势力的辐射范围）——
+                  静态径向渐变、低透明度；画在圆点之前（压住航线但不压节点），只有敌族模式且该星系有敌情时渲染 */}
+              {primaryFam ? (
+                <circle cx={p.x} cy={p.y} r={26} fill={`url(#app-famglow-${primaryFam})`} className="app-map-famglow" />
+              ) : null}
               {/* 敌对派系活跃（2026-09-10 船长：改红色 + 用方框选中目标星系 + 文字写全称；
                   2026-09-10 追加：**与星系按钮对齐**——✦ 与全称标签横向永远居中在圆点正上方，
                   不再为躲邻居而左右平移，冲突时整组上抬（factionDy）；标记自带闪缩脉动，见 styles.css）——
@@ -1033,7 +1207,32 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   ⚑{tasksByGalaxy.get(g.id)!.length}
                 </text>
               ) : null}
-              <NodeLabel name={frontier ? '未知信号' : g.name} x={p.x} y={p.y} cls={cls + secExtra + (isFactionNode ? ' is-faction' : '')} />
+              {/* 节点下方信息带（三态）：①名称（默认）②安全等级数字（沿用安全色阶）
+                  ③敌对派系标签（按敌族配色、SVG 圆角标签化，与安全色阶明显区分；最多 2 枚 + 等 N 族） */}
+              {labelMode === 'faction' && !isHub ? (
+                <FamChips
+                  chips={famChips}
+                  rowW={famRowW}
+                  x={p.x}
+                  y={p.y}
+                  cls={cls + (isFactionNode ? ' is-faction' : '')}
+                />
+              ) : (
+                <NodeLabel
+                  name={labelText}
+                  x={p.x}
+                  y={p.y}
+                  cls={
+                    isHub
+                      ? cls
+                      : frontier
+                        ? cls
+                        : labelMode === 'sec'
+                          ? cls + secExtra
+                          : cls + secExtra + (isFactionNode ? ' is-faction' : '')
+                  }
+                />
+              )}
             </g>
           )
         })}
