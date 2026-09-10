@@ -2160,6 +2160,16 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                         ? `「${factionCard.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.ceil(cd2 / 1000))} 秒`
                         : undefined
               const canGo2 = locked2 === undefined || (goAsk === faction.id && !inFlightOther2)
+              // 2026-09-10 船长定：派系置顶卡加「循环剿灭」——**复用同一条重复清剿开关**
+              // （state.autoLoopAnomalyId；与其它悬赏卡的「重复清剿」共用，开这里会顶掉那边），
+              // 引擎零改动：开/关走 engine.bountyLoopAt，推进/自动暂停/停环全沿用既有机器。
+              const loopOn2 = state.autoLoopAnomalyId === faction.anomalyId
+              const busyOther2 =
+                state.mining.active ||
+                state.scanning.active ||
+                state.transit.active ||
+                (state.expedition.active && state.autoLoopAnomalyId !== faction.anomalyId)
+              const reqMet2 = standing >= (factionCard.standingReq ?? 0)
               return (
                 <div className="app-station-card is-faction">
                   <div className="app-station-head">
@@ -2234,6 +2244,37 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                         {goAsk === faction.id ? '确认转战出击' : '出发'}
                       </button>
                     )}
+                    <button
+                      className={`app-btn is-small${loopOn2 ? ' is-warn' : ''}`}
+                      disabled={!reqMet2 || !exploreOk2 || busyOther2}
+                      title={
+                        !reqMet2
+                          ? `需协会声望 ${factionCard.standingReq}（当前 ${standing}）`
+                          : !exploreOk2
+                            ? '先探索该星系才能开启循环剿灭'
+                            : busyOther2
+                              ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启'
+                              : loopOn2
+                                ? '停止循环剿灭（当前这一单会打完）'
+                                : '循环剿灭：打赢就自动返航到港（去程并入返航），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停。与其它悬赏卡的「重复清剿」共用同一个开关——开这里会停掉那边'
+                      }
+                      onClick={() => {
+                        if (!faction.anomalyId) return
+                        const r = engine.bountyLoopAt(loopOn2 ? null : faction.anomalyId)
+                        if (!r.ok) onToast(r.error ?? '操作失败', true)
+                      }}
+                    >
+                      {loopOn2 ? (
+                        '停止剿灭'
+                      ) : (
+                        <>
+                          <span className="app-ico">
+                            <Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} />
+                          </span>
+                          循环剿灭
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               )
