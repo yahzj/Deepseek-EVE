@@ -20,6 +20,11 @@ import {
   marketQuote,
   allFittedIds,
   shipRoleLabel,
+  missingMaterials,
+  oreAvailable,
+  ownsBlueprint,
+  manufacturingRunViews,
+  isAtHomeLike,
 } from '@whale/core'
 import type { AiCoreType, FleetShipState } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
@@ -49,6 +54,19 @@ const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
   { key: 'damaged', label: '待维修' },
 ]
 const FLEET_ROLE_ORDER = ['industrial', 'armed', 'armored', 'hauler']
+
+/** AI 指挥中心可指派的任务类型（2026-09-10 船长：统一全部 AI 可执行活动）——
+ *  副船三类：采矿/打捞/掩护巡逻；站内工业两类：精炼炉与回收炉/组装机制造。
+ *  远征不在其列（引擎软下线，一律拒绝受理）。 */
+type AiAssignMode = 'mining' | 'salvage' | 'standby' | 'refine' | 'craft'
+/** 站内制造线可选的已学会蓝图（含材料单，供缺料判定与提示） */
+interface CraftOption {
+  id: string
+  name: string
+  group: '装备蓝图' | '舰船蓝图' | '弹药蓝图'
+  materials: readonly { itemId: string; count: number }[]
+  buildSeconds: number
+}
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
   { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
@@ -658,16 +676,109 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
   const [shipId, setShipId] = useState('')
   const [coreType, setCoreType] = useState<AiCoreType>('basic')
-  // AI 远征已停用并隐藏（2026-09-05 软下线、2026-09-08 船长定 UI 隐藏）：仅采矿/打捞/掩护巡逻
-  const [mode, setMode] = useState<'mining' | 'salvage'>('mining')
+  // 任务类型（2026-09-10 船长：AI 指挥中心统一指派「AI 现在能执行的全部活动」）——
+  // 副船三类（采矿/打捞/掩护巡逻）+ 站内工业两类（精炼炉与回收炉/组装机制造）。
+  // 远征保持隐藏（引擎软下线，一律拒绝受理）。
+  const [mode, setMode] = useState<AiAssignMode>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
   const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
+  const [standbyGalaxyId, setStandbyGalaxyId] = useState('')
+  const [refineItemId, setRefineItemId] = useState('')
+  const [craftBpId, setCraftBpId] = useState('')
   // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：核心下拉只列有库存类型，
   // 但 state 初值/记忆可能已无库存（如 basic 用光、只剩伽马）→ 提交与实际显示脱节，
   // 引擎仍按旧类型(basic)指派被拒。归一为"当前有库存的类型"再用于显示与提交
   // （与工业页炉卡 usableCores 同款写法）。
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const effCore = usableCores.includes(coreType) ? coreType : (usableCores[0] ?? 'basic')
+  /** 副船任务须有共用上限（「AI 核心操作学」）；站内工业另可用「工业自动化」扩容工位——
+   *  共用上限为 0 而工业扩容 > 0 时，只允许指派站内工业任务（回落显示制造）。 */
+  const shipTasksOk = cap > 0
+  const effMode: AiAssignMode =
+    shipTasksOk || mode === 'refine' || mode === 'craft' ? mode : 'craft'
+
+  /** 站内工业可指派的目标（与工业页卡片同口径）：
+   *  精炼炉 = 全部带精炼配方的资源；回收炉 = 当前有料（货仓或仓库）的残骸；制造线 = 已学会的蓝图。 */
+  const allItemDefs = [...engine.ctx.items.values()]
+  const refineOres = allItemDefs.filter((d) => d.kind !== 'wreck' && (d.refine?.length ?? 0) > 0)
+  const refineWrecks = allItemDefs.filter((d) => d.kind === 'wreck' && oreAvailable(state, d.id) > 0)
+  const refineAll = [...refineOres, ...refineWrecks]
+  const effRefineId = refineAll.some((d) => d.id === refineItemId) ? refineItemId : (refineAll[0]?.id ?? '')
+  const craftAll: CraftOption[] = []
+  for (const bp of engine.blueprints) {
+    if (bp.itemId !== undefined) {
+      const units = bp.outputUnits ?? 1
+      craftAll.push({
+        id: bp.id,
+        name: `${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId} ×${units}`,
+        group: '弹药蓝图',
+        materials: bp.materials,
+        buildSeconds: bp.buildSeconds,
+      })
+    } else {
+      craftAll.push({
+        id: bp.id,
+        name: engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.name,
+        group: '装备蓝图',
+        materials: bp.materials,
+        buildSeconds: bp.buildSeconds,
+      })
+    }
+  }
+  for (const sbp of engine.shipBlueprints) {
+    craftAll.push({
+      id: sbp.id,
+      name: engine.ctx.ships.get(sbp.shipId)?.name ?? sbp.name,
+      group: '舰船蓝图',
+      materials: sbp.materials,
+      buildSeconds: sbp.buildSeconds,
+    })
+  }
+  const craftLearned = craftAll.filter((o) => ownsBlueprint(state, o.id))
+  const effCraftId = craftLearned.some((o) => o.id === craftBpId) ? craftBpId : (craftLearned[0]?.id ?? '')
+  const selCraft = craftLearned.find((o) => o.id === effCraftId) ?? null
+  const selRefine = refineAll.find((d) => d.id === effRefineId) ?? null
+
+  /** 站内工业两类不需要舰船；副船三类需要 */
+  const isIndustryTask = effMode === 'refine' || effMode === 'craft'
+  /** 站内制造线缺料（与工业页卡片同口径 missingMaterials；缺料时不开工并给出清单） */
+  const craftShort =
+    effMode === 'craft' && selCraft
+      ? missingMaterials(state, engine.ctx, {
+          materials: selCraft.materials,
+          buildSeconds: selCraft.buildSeconds,
+          buildCostIsk: 0,
+        })
+      : []
+  const refineHave = effMode === 'refine' && effRefineId ? oreAvailable(state, effRefineId) : 0
+  /** 指派按钮置灰原因（null = 可指派；文案与下方各下拉一一对应） */
+  const assignBlock: string | null =
+    usableCores.length === 0
+      ? '无可用 AI 核心：先去市场购入「基础 AI 核心」，或先取消占用中的任务、训练「AI 核心操作学」提高上限'
+      : isIndustryTask && !isAtHomeLike(state, engine.ctx)
+        ? '站内工业（精炼炉/回收炉/制造线）随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工——先返航停靠'
+        : !isIndustryTask && !shipId
+          ? idleShips.length === 0
+            ? '没有可指派的空闲舰船（舰船均在执勤/出航中）'
+            : '先选择一艘空闲舰船'
+          : effMode === 'salvage' && !salvageGalaxyId
+          ? '先选择打捞目标星系（需已探索且有敌群残骸的星系）'
+          : effMode === 'standby' && !standbyGalaxyId
+            ? '先选择掩护巡逻的目标星系（需已探索的星系）'
+            : effMode === 'refine' && !effRefineId
+              ? '当前没有可精炼的资源或可回收的残骸（先去采集/打捞，或从市场买入原料）'
+              : effMode === 'refine' && refineHave <= 0
+                ? `仓库与货仓里没有「${selRefine?.name ?? ''}」——先补料再开炉`
+                : effMode === 'craft' && !effCraftId
+                  ? '还没有已学会的蓝图——先到工业页「蓝图书架」学习一张'
+                  : effMode === 'craft' && craftShort.length > 0
+                    ? `材料不足：${craftShort.join('；')}`
+                    : null
+
+  /** 站内工业 AI 名册（只列 AI 核心驱动的：worker 非 'pilot'；老档免占用的旧作业不计） */
+  const aiRefineRuns = engine.refineRunViews().filter((v) => v.worker !== 'pilot')
+  const aiMakeRuns = manufacturingRunViews(state, engine.ctx).filter((v) => v.worker !== null && v.worker !== 'pilot')
+
 
   function handleBuyCore(): void {
     const r = engine.buyBasicCoreAt()
@@ -676,14 +787,45 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   }
 
   function handleAssign(): void {
+    // 站内工业两类：不出舰船，直接把一枚 AI 核心接进炉/线（与工业页卡片同一批引擎命令）
+    if (effMode === 'craft') {
+      if (!effCraftId) {
+        onToast('先在「蓝图」下拉里选一张已学会的蓝图。', true)
+        return
+      }
+      const r = engine.startManufacturingAt(effCraftId, effCore)
+      if (!r.ok) onToast(r.error ?? 'AI 制造线开工失败', true)
+      else onToast('AI 制造线已开工（核心已占用，完成或取消时自动归还）。')
+      return
+    }
+    if (effMode === 'refine') {
+      if (!selRefine) {
+        onToast('先在「资源」下拉里选一种可精炼资源或残骸。', true)
+        return
+      }
+      const isWreck = selRefine.kind === 'wreck'
+      const r = isWreck
+        ? engine.startRecycleRunAt(selRefine.id, effCore)
+        : engine.startRefineRunAt(selRefine.id, effCore)
+      if (!r.ok) onToast(r.error ?? 'AI 炉开工失败', true)
+      else
+        onToast(
+          isWreck
+            ? 'AI 回收炉已开工：每批到点实时扣料，耗尽自动停。'
+            : 'AI 精炼炉已开工：每批到点实时扣料，耗尽自动停。',
+        )
+      return
+    }
     if (!shipId) {
       onToast('先选择一艘空闲舰船。', true)
       return
     }
     const r =
-      mode === 'mining'
+      effMode === 'mining'
         ? engine.assignAiMiningAt(shipId, effCore, beltId)
-        : engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
+        : effMode === 'salvage'
+          ? engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
+          : engine.assignAiStandbyAt(shipId, effCore, standbyGalaxyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
     else onToast('AI 任务已下达。')
   }
@@ -692,6 +834,13 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   function handleCancelAi(sid: string): void {
     if (engine.cancelAiTaskAt(sid)) onToast('AI 任务已取消（核心已归还）。')
     else onToast('取消失败：任务状态异常。', true)
+  }
+
+  /** 停止站内工业 AI（炉/制造线）——与工业页卡片同一批引擎命令，核心自动归还 */
+  function handleStopIndustry(runId: number, isMake: boolean): void {
+    const r = isMake ? engine.cancelManufacturingAt(runId) : engine.stopRefineRunAt(runId)
+    if (!r.ok) onToast(r.error ?? '停止失败', true)
+    else onToast(isMake ? '已取消该条 AI 制造线（核心已归还）。' : '已停该台 AI 炉（核心已归还）。')
   }
 
   return (
@@ -723,36 +872,72 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         </div>
       </div>
 
-      {/* 指派表单 */}
-      {cap > 0 ? (
+      {/* 指派表单：共用上限与工业扩容只要有一个 > 0 就能开工（工业 AI 可只用扩容工位） */}
+      {totalCap > 0 ? (
         <div className="app-ai-assign">
           <select
             className="app-select"
-            value={shipId}
+            value={isIndustryTask ? '' : shipId}
             onChange={(e) => setShipId(e.target.value)}
-            title="选择空闲舰船"
+            disabled={isIndustryTask || idleShips.length === 0}
+            title={
+              isIndustryTask
+                ? '站内工业 AI 不需要舰船：核心直接接进精炼炉/回收炉/制造线'
+                : idleShips.length === 0
+                  ? '当前没有空闲舰船可指派（舰船均在执勤/出航中）'
+                  : '选择空闲舰船'
+            }
           >
-            <option value="">— 选择空闲舰船 —</option>
+            <option value="">
+              {isIndustryTask ? '站内工业无需舰船' : idleShips.length === 0 ? '无空闲舰船' : '— 选择空闲舰船 —'}
+            </option>
             {idleShips.map((id) => (
               <option key={id} value={id}>
                 {shipDisplayName(state, engine.ctx, id)}（结构 {Math.round(durabilityOf(state, id) * 100)}%）
               </option>
             ))}
           </select>
-          <select className="app-select" value={effCore} onChange={(e) => setCoreType(e.target.value as AiCoreType)} title="AI 核心类型（同时启用上限内；无库存类型不会列出）">
-            {usableCores.map((t) => (
-              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
-            ))}
+          {/* 核心下拉常驻：无可用核心时置灰并直接显示原因（船长 2026-09-10：无核心必须提示玩家） */}
+          <select
+            className="app-select"
+            value={usableCores.length === 0 ? '' : effCore}
+            onChange={(e) => setCoreType(e.target.value as AiCoreType)}
+            disabled={usableCores.length === 0}
+            title={
+              usableCores.length === 0
+                ? '无可用 AI 核心：核心库为空或全部已在占用中——去市场购入「基础 AI 核心」，或先取消占用中的任务、训练「AI 核心操作学」提高上限'
+                : 'AI 核心类型（一枚核心驱动一项任务；无库存的类型不会列出）'
+            }
+          >
+            {usableCores.length === 0 ? (
+              <option value="">无可用 AI 核心</option>
+            ) : (
+              usableCores.map((t) => (
+                <option key={t} value={t}>
+                  {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                </option>
+              ))
+            )}
           </select>
           <select
             className="app-select"
-            value={mode}
-            onChange={(e) => setMode(e.target.value as 'mining' | 'salvage')}
+            value={effMode}
+            onChange={(e) => setMode(e.target.value as AiAssignMode)}
+            title="任务类型：副船任务（采矿/打捞/掩护巡逻）或站内工业（精炼炉与回收炉/组装机制造）"
           >
-            <option value="mining">采矿任务</option>
-            <option value="salvage">打捞任务</option>
+            <option value="mining" disabled={!shipTasksOk}>
+              副船 · 采矿任务{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
+            </option>
+            <option value="salvage" disabled={!shipTasksOk}>
+              副船 · 打捞任务{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
+            </option>
+            <option value="standby" disabled={!shipTasksOk}>
+              副船 · 掩护巡逻{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
+            </option>
+            <option value="refine">站内 · 精炼炉/回收炉</option>
+            <option value="craft">站内 · 组装机制造</option>
           </select>
-          {mode === 'mining' ? (
+          {effMode === 'mining' ? (
             <select className="app-select" value={beltId} onChange={(e) => setBeltId(e.target.value)}>
               {engine.belts.map((b) => {
                 const standing = standingOfState(state)
@@ -770,7 +955,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 )
               })}
             </select>
-          ) : (
+          ) : effMode === 'salvage' ? (
             <select className="app-select" value={salvageGalaxyId} onChange={(e) => setSalvageGalaxyId(e.target.value)}>
               <option value="">— 选星系（需已探索且有敌群残骸） —</option>
               {[...engine.ctx.galaxies.values()]
@@ -781,42 +966,97 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   </option>
                 ))}
             </select>
+          ) : effMode === 'standby' ? (
+            <select
+              className="app-select"
+              value={standbyGalaxyId}
+              onChange={(e) => setStandbyGalaxyId(e.target.value)}
+              title="副船前往该星系掩护巡逻并留守（到达后可随时取消召回）"
+            >
+              <option value="">— 选星系（需已探索） —</option>
+              {[...engine.ctx.galaxies.values()]
+                .filter((g) => isExplored(state, g.id))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+            </select>
+          ) : effMode === 'refine' ? (
+            <select
+              className="app-select"
+              value={effRefineId}
+              onChange={(e) => setRefineItemId(e.target.value)}
+              title="♨ 精炼炉炼矿石/气体/冰矿；♻ 回收炉拆残骸（仓库或货仓要有料）"
+            >
+              {refineAll.length === 0 ? <option value="">没有可精炼的资源或残骸</option> : null}
+              {refineOres.length > 0 ? (
+                <optgroup label="♨ 可精炼资源">
+                  {refineOres.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}（货仓+仓库 ×{oreAvailable(state, d.id).toLocaleString('zh-CN')}）
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+              {refineWrecks.length > 0 ? (
+                <optgroup label="♻ 残骸回收">
+                  {refineWrecks.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}（可拆 {Math.round(oreAvailable(state, d.id) * 10) / 10} m³）
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+            </select>
+          ) : (
+            <select
+              className="app-select"
+              value={effCraftId}
+              onChange={(e) => setCraftBpId(e.target.value)}
+              title="只列已学会的蓝图（未学会的先去工业页「蓝图书架」学习）；材料不足会开工失败并提示"
+            >
+              {craftLearned.length === 0 ? <option value="">没有已学会的蓝图</option> : null}
+              {(['装备蓝图', '舰船蓝图', '弹药蓝图'] as const).map((group) =>
+                craftLearned.some((o) => o.group === group) ? (
+                  <optgroup key={group} label={group}>
+                    {craftLearned
+                      .filter((o) => o.group === group)
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                ) : null,
+              )}
+            </select>
           )}
           <button
             className="app-btn is-primary is-small"
             onClick={handleAssign}
-            disabled={!shipId || (mode === 'salvage' && !salvageGalaxyId) || usableCores.length === 0}
-            title={
-              !shipId
-                ? idleShips.length === 0
-                  ? '先选择空闲舰船——当前没有可指派的舰船（舰船均在执勤/出航中）'
-                  : '先在下拉中选择一艘空闲舰船'
-                : mode === 'salvage' && !salvageGalaxyId
-                  ? '先选择打捞目标星系（需已探索且有敌群残骸的星系）'
-                  : usableCores.length === 0
-                    ? '没有可用的 AI 核心——先购入基础核心或等远征掉落'
-                    : undefined
-            }
+            disabled={assignBlock !== null}
+            title={assignBlock ?? undefined}
           >
             指派任务
           </button>
         </div>
       ) : (
         <div className="app-dim app-inv-empty">
-          AI 核心共用上限为 0：先训练「AI 核心操作学」（rank2 入门向，每级 +1 枚共用上限）即可指派副船；站内产业也可先练「工业自动化」解锁工业专用工位（每级 +2 枚）。
+          AI 核心上限为 0（共用上限 0 + 工业扩容 0）：先训练「AI 核心操作学」（rank2 入门向，每级 +1 枚共用上限）即可指派副船任务；
+          站内产业也可先练「工业自动化」解锁工业专用工位（每级 +2 枚，仅炉/线可用）。
         </div>
       )}
 
-      {/* 执行中列表 */}
+      {/* 执行中列表：AI 副船任务 + 站内工业 AI（2026-09-10 船长：统一在一处呈现与停止） */}
       <div className="app-bay-title">
-        执行中 · AI 副船 {assignN}
-        {prodN > 0 ? ` · AI 生产 +${prodN}` : ''}
-        {prodN > 0 ? <span className="app-dim">（生产线的取消在工业页卡片）</span> : null}
+        执行中 · AI 副船 {assignN} · 站内工业 {prodN}
       </div>
+      {assignN === 0 && prodN === 0 ? (
+        <div className="app-dim app-inv-empty">没有正在执行的 AI 任务。</div>
+      ) : null}
       {assignN === 0 ? (
-        <div className="app-dim app-inv-empty">
-          {prodN > 0 ? '没有 AI 副船任务（AI 生产线的取消在工业页）。' : '没有正在执行的 AI 任务。'}
-        </div>
+        prodN > 0 ? <div className="app-dim app-inv-empty">没有 AI 副船任务。</div> : null
       ) : (
         <ul className="app-inv-list">
           {Object.entries(state.aiAssignments).map(([sid, assignment]) => {
@@ -869,6 +1109,67 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           })}
         </ul>
       )}
+
+      {/* 站内工业 AI 名册（精炼炉/回收炉 + 制造线）：指派在上方或工业页卡片，这里就地停止 */}
+      {prodN > 0 ? (
+        <>
+          <div className="app-dim app-inv-empty">
+            站内工业 AI：可在上方直接指派，参数调整在工业页卡片；这里可随时停止（核心自动归还）。
+          </div>
+          <ul className="app-inv-list">
+            {aiRefineRuns.map((v) => (
+              <li key={`rf-${v.id}`} className="app-inv-row">
+                <div className="app-inv-main">
+                  <span className="app-inv-name">
+                    {v.itemId && engine.ctx.items.get(v.itemId)?.kind === 'wreck' ? '回收炉' : '精炼炉'} · {v.itemName}
+                  </span>
+                  <span className="app-inv-count">
+                    {v.workerLabel}核心 · 已 {v.batchesDone} 批（每批 {v.batchUnits.toLocaleString('zh-CN')} 单位）
+                  </span>
+                  <span className="app-inv-count">
+                    <AiTaskBar
+                      view={{ kind: 'ai', phase: 'refine', label: '本批', percent: v.percent, remainingMs: v.remainingMs }}
+                    />
+                  </span>
+                </div>
+                <div className="app-inv-btns">
+                  <button
+                    className="app-btn is-small is-warn"
+                    onClick={() => handleStopIndustry(v.id, false)}
+                    title="停这台炉：已完成批保留；原料未锁定无需退回，AI 核心自动归还"
+                  >
+                    停止
+                  </button>
+                </div>
+              </li>
+            ))}
+            {aiMakeRuns.map((v) => (
+              <li key={`mf-${v.id}`} className="app-inv-row">
+                <div className="app-inv-main">
+                  <span className="app-inv-name">组装机 · {v.productName}</span>
+                  <span className="app-inv-count">
+                    {v.workerLabel}核心 · {v.autoRepeat ? `连续生产${v.repeatGoal > 0 ? `（目标 ${v.repeatGoal} 件）` : ''}` : '单件生产'}
+                  </span>
+                  <span className="app-inv-count">
+                    <AiTaskBar
+                      view={{ kind: 'ai', phase: 'make', label: '本件', percent: v.percent, remainingMs: v.remainingMs }}
+                    />
+                  </span>
+                </div>
+                <div className="app-inv-btns">
+                  <button
+                    className="app-btn is-small is-warn"
+                    onClick={() => handleStopIndustry(v.id, true)}
+                    title="取消这条制造线：材料已扣不退，AI 核心自动归还"
+                  >
+                    停止
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </Panel>
   )
 }

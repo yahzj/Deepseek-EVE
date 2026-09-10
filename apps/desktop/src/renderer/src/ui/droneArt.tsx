@@ -80,7 +80,8 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     name: '雷鸥',
     tint: '#8fd7ef',
     resident: true,
-    slots: [{ x: 6, y: 42 }],
+    // 2026-09-10 船长二次定：哨戒常驻伴飞位置改到**母舰上方**
+    slots: [{ x: 30, y: -22 }],
     bolt: { len: 9, width: 1.8, tail: true },
     art: (
       <g>
@@ -125,4 +126,13 @@ export function droneSortieStation(
 ): { x: number; y: number } {
   const laneY = (lane - (DRONE_SHOW_MAX - 1) / 2) * 13
   return { x: foe.x - dir * (foeNose + 46 + (lane % 3) * 14), y: foe.y + laneY }
+}
+
+/**
+ * 出击制起飞点（相对母舰锚点 px）：机库口 = 舰体中部上方一点、按架次轻微错开。
+ * 注意 2026-09-10 修正：起飞点是**位移基准**，攻击阵位的位移必须按"阵位 − 起飞点"计算，
+ * 否则终点会叠加起飞点偏移（曾表现为"无人机始终偏在母舰上方"）。
+ */
+export function droneTakeoff(lane: number): { x: number; y: number } {
+  return { x: (lane % 3) * 6 - 6, y: -10 + (lane % 2) * 5 }
 }

@@ -18,7 +18,7 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
-import { DRONE_BACK_ANIM_MS, DRONE_BACK_MS, DRONE_SHOW_MAX, DRONE_STYLE, droneModelOf, droneSortieStation } from '../ui/droneArt'
+import { DRONE_BACK_ANIM_MS, DRONE_BACK_MS, DRONE_SHOW_MAX, DRONE_STYLE, droneModelOf, droneSortieStation, droneTakeoff } from '../ui/droneArt'
 import type { DroneModel } from '../ui/droneArt'
 import {
   BOLT_LOOK,
@@ -825,14 +825,20 @@ const meSpeedRef = useRef(200)
                 w.phase === 'deck' ? null : (
                   <div
                     key={w.artId}
-                    className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ''}`}
+                    className={`app-bts-wing is-${w.phase}${w.model.resident ? ' is-resident' : ''}${DRONE_STYLE === 'sortie' ? ' is-sortie' : ' is-formation'}`}
                   >
                     {Array.from({ length: w.show }, (_, i) => {
-                      const home = w.model.slots[i % w.model.slots.length]!
+                      // 起飞/停泊基准位：出击制 = 机库口（舰体中部上方一点）；机群制 = 母舰上侧编队位
+                      const base =
+                        DRONE_STYLE === 'sortie' && !w.model.resident ? droneTakeoff(i) : w.model.slots[i % w.model.slots.length]!
                       const station = droneStationOf(w.model, i, lay, true)
+                      // 位移量必须相对**基准位**计算（曾按舰锚点算导致终点偏移：无人机一直偏在舰上方）
                       const vars =
                         DRONE_STYLE === 'sortie'
-                          ? ({ '--dx': `${station.x - lay.me.x}px`, '--dy': `${station.y - lay.me.y}px` } as CSSProperties)
+                          ? ({
+                              '--dx': `${station.x - (lay.me.x + base.x)}px`,
+                              '--dy': `${station.y - (lay.me.y + base.y)}px`,
+                            } as CSSProperties)
                           : {}
                       return (
                         <span
@@ -840,8 +846,8 @@ const meSpeedRef = useRef(200)
                           className="app-bts-drone"
                           style={
                             {
-                              left: home.x,
-                              top: home.y,
+                              left: base.x,
+                              top: base.y,
                               color: w.model.tint,
                               animationDelay: `${(i % 4) * 0.12}s`,
                               ...vars,

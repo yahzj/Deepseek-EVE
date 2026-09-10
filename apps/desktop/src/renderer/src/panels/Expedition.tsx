@@ -1166,12 +1166,27 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             </option>
           ))}
         </select>
-        <select className="app-select" value={effCore} onChange={(e) => setAiCore(e.target.value as AiCoreType)} title="AI 核心（无库存类型不列出）">
-          {usableCores.map((t) => (
-            <option key={t} value={t}>
-              {aiCoreName(t)}
-            </option>
-          ))}
+        {/* 核心下拉常驻：无可用核心时置灰并在控件里直接写明（船长 2026-09-10） */}
+        <select
+          className="app-select"
+          value={usableCores.length === 0 ? '' : effCore}
+          onChange={(e) => setAiCore(e.target.value as AiCoreType)}
+          disabled={!aiCoreAvailable}
+          title={
+            aiCoreAvailable
+              ? 'AI 核心（一枚核心驱动一艘副船；无库存的类型不会列出）'
+              : '无可用 AI 核心：核心库为空或全部已在占用中——去市场购入「基础 AI 核心」（舰船页 AI 指挥中心可直购），或先取消占用中的任务、训练「AI 核心操作学」提高上限'
+          }
+        >
+          {usableCores.length === 0 ? (
+            <option value="">无可用 AI 核心</option>
+          ) : (
+            usableCores.map((t) => (
+              <option key={t} value={t}>
+                {aiCoreName(t)}
+              </option>
+            ))
+          )}
         </select>
         <button
           className="app-btn is-small"
