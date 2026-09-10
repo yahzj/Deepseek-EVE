@@ -61,7 +61,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
 
   return (
     <Panel
-      className="is-fill"
+      className="is-fill app-exp-panel"
       title="深空工业协会 · 远征调度"
       right={<span className="app-standing">声望 {standing}</span>}
     >

@@ -8482,3 +8482,13 @@ body {
 
 /* 卡片头右侧按钮/徽标分组（精炼炉卡、组装机蓝图卡；与 .app-ship-top-right 同款布局） */
 .app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+/* ---------- 星图页自适应（2026-09-10 船长定：全屏/宽屏下星图"过宽→过高"，把面板顶出滚动条） ---------- */
+/* 面板体纵向 flex：状态行等按自然高度，剩余高度全部交给星图容器 */
+.app-exp-panel > .wui-panel-body { display: flex; flex-direction: column; }
+.app-exp-panel > .wui-panel-body > *:not(.app-starmap-wrap) { flex: 0 0 auto; }
+/* 星图容器：可被压缩（min-height:0 才允许收缩），内部列向排列——星图吃高度，提示行/编辑条保持自然高度 */
+.app-starmap-wrap { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+.app-map-hint { flex: 0 0 auto; }
+/* 星图：容器够高时尺寸与观感不变；装不下时整体等比缩小（SVG 按 viewBox 居中留白），任何窗口尺寸都不出滚动条；
+   保底高度 200px——窗口被压到极矮时宁可面板内滚动，也不把星图压成一条线；border-box 顺带消掉 width:100% 与 1px 边框叠加的 2px 溢出 */
+.app-starmap { flex: 0 1 auto; min-height: 200px; box-sizing: border-box; }.app-map-editbar { flex: 0 0 auto; } /* 星图自适应：布局编辑条（开发工具）保持自然高度，不参与压缩 */
