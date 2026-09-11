@@ -5174,6 +5174,13 @@ body {
 
 }
 
+/* 2026-09-11 船长定（装备选择浮层加筛选与搜索，参考市场页）：筛选栏沿用市场页那套表单类名
+   （`.app-mkt-search` / `.app-mkt-search-input` / `.app-mkt-kind`，只做浮层内的排布与间距微调），
+   不自造外观；空态行交给 grid 通栏（与 `app-exp-idle` 家族一致）。 */
+.app-fit-pick-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.app-fit-pick-filter .app-mkt-search-input { flex: 1 1 200px; min-width: 160px; }
+.app-fit-pick-filter .app-exp-idle { grid-column: 1 / -1; }
+
 .app-fit-pick-item {
 
   display: flex;

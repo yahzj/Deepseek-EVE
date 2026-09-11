@@ -32,10 +32,13 @@ import {
 
   shipDisplayName,
   shipSlotsOf,
+  SLOT_LABELS,
   stackingOf,
   stackWeight,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
+// 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
+import { rarityTierOf } from '@whale/data'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -282,8 +285,46 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const [pickBay, setPickBay] = useState<{ rack: RackSlot; index: number } | null>(null)
   // 换装对比段缓存（每候选一段；打开浮层时按当前装配/库存试算一次）
   const [pickDiffs, setPickDiffs] = useState<Map<string, FitSeg[]> | null>(null)
+  // 浮层内的筛选与搜索（2026-09-11 船长定：「添加装备筛选和搜索功能，参考市场页面的」→
+  // 复刻市场页那套「搜索框 + 分类下拉 + 命中计数」的形态；船长补定：**不要子分类**，只按装备分类，
+  // 且**默认稀有度高的排前面**）。筛选只在浮层内生效，不改候选集本身的算法。
+  const [pickKw, setPickKw] = useState('')
+  const [pickSlot, setPickSlot] = useState<string>('all')
+  /** 打开/关闭浮层时重置筛选（与市场页切换类型时子分类归零同哲学） */
+  const pickQuery = pickKw.trim().toLowerCase()
   function candidatesOf(rack: RackSlot): ModuleDef[] {
-    return bayModules.filter((m) => rackOf(m) === rack)
+    const base = bayModules.filter((m) => rackOf(m) === rack)
+    const hit = (m: ModuleDef): boolean => {
+      if (pickSlot !== 'all' && m.slot !== pickSlot) return false
+      if (pickQuery.length === 0) return true
+      // 检索口径与物品页 `hitMod` 同源：名称 / 槽位中文名 / 说明文；另加装备 id（便于按唯一键查，约定 §5）
+      return (
+        m.name.toLowerCase().includes(pickQuery) ||
+        m.id.toLowerCase().includes(pickQuery) ||
+        (SLOT_LABELS[m.slot] ?? '').toLowerCase().includes(pickQuery) ||
+        (m.description ?? '').toLowerCase().includes(pickQuery)
+      )
+    }
+    // 默认排序：**稀有度高的排前面**（档位取物品稀有度表 `RARITY_TIER`，键 = 市场商品键 mod-<id>）；
+    // 同档保持原有稳定顺序（`bayModules` 的目录序），避免每次筛选都跳动。
+    return base
+      .filter(hit)
+      .map((m, i) => ({ m, i, tier: rarityTierOf(`mod-${m.id}`) }))
+      .sort((a, b) => b.tier - a.tier || a.i - b.i)
+      .map((x) => x.m)
+  }
+  /** 浮层当前展示的候选（筛选 + 搜索 + 按稀有度排序；浮层关闭时为空数组） */
+  const pickShown: ModuleDef[] = pickBay ? candidatesOf(pickBay.rack) : []
+  /** 该槽位可选的全部装备里出现过的装备分类（下拉选项；只列实际存在的槽位） */
+  function pickSlotOptions(rack: RackSlot): Array<{ slot: string; label: string; count: number }> {
+    const cnt = new Map<string, number>()
+    for (const m of bayModules) {
+      if (rackOf(m) !== rack) continue
+      cnt.set(m.slot, (cnt.get(m.slot) ?? 0) + 1)
+    }
+    return [...cnt.entries()]
+      .map(([slot, count]) => ({ slot, label: (SLOT_LABELS as Record<string, string>)[slot] ?? slot, count }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'))
   }
   /** 试算"该位卸旧件→装候选"后的同源合成快照（只读模拟：浅拷贝 fitted 链，不触碰真实状态） */
   function tryFitSpec(
@@ -312,6 +353,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     }
   }
   function openPick(rack: RackSlot, index: number): void {
+    // 每次打开都从「全部」看起（与市场页切换类型时子分类归零同哲学）
+    setPickKw('')
+    setPickSlot('all')
     setPickBay({ rack, index })
     const cpuTotal = shipDef ? effectiveCpu(state, engine.ctx, shipDef) : 0
     const segs = new Map<string, FitSeg[]>()
@@ -606,10 +650,42 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             </div>
             <div className="app-dim app-note">
               以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前
-              对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。
+              对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。默认按稀有度从高到低排列。
+            </div>
+            {/* 筛选与搜索（2026-09-11 船长定：参考市场页；复刻 app-mkt-search 那套"搜索框 + 分类下拉 + 命中计数"） */}
+            <div className="app-mkt-search app-fit-pick-filter">
+              <input
+                className="app-mkt-search-input"
+                type="search"
+                placeholder="搜索装备：名称 / 槽位 / 说明"
+                value={pickKw}
+                onChange={(e) => setPickKw(e.target.value)}
+                spellCheck={false}
+              />
+              <select
+                className="app-mkt-kind"
+                value={pickSlot}
+                onChange={(e) => setPickSlot(e.target.value)}
+                title="按装备分类（槽位）筛选"
+              >
+                <option value="all">全部装备分类</option>
+                {pickSlotOptions(pickBay.rack).map((o) => (
+                  <option key={o.slot} value={o.slot}>
+                    {o.label}（{o.count}）
+                  </option>
+                ))}
+              </select>
+              <span className="app-dim">
+                {pickQuery.length > 0 || pickSlot !== 'all'
+                  ? `匹配 ${pickShown.length} 件`
+                  : `${pickShown.length} 件 · 按稀有度排序`}
+              </span>
             </div>
             <div className="app-fit-pickgrid">
-              {candidatesOf(pickBay.rack).map((m) => {
+              {pickShown.length === 0 ? (
+                <div className="app-dim app-exp-idle">没有符合条件的装备——换个关键词或把分类切回「全部装备分类」。</div>
+              ) : null}
+              {pickShown.map((m) => {
                 const segs = pickDiffs?.get(m.id)
                 const sameAsOld = (fitted?.[pickBay.rack]?.[pickBay.index] ?? null) === m.id
                 return (
