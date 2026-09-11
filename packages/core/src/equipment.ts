@@ -135,6 +135,11 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   if (sk) return { group: 'gap', kind: `shield-${sk}` }
   const ak = resistKey(def.armorResistAdd)
   if (ak) return { group: 'gap', kind: `armor-${ak}` }
+  // 结构层抗性（2026-09-11 修）：引擎侧同样走缺口复合（`combat.ts applyAdds`：1−(1−cur)(1−add)、上限 0.9），
+  // 但此前不在本函数判定里 ⇒ 生体损管腔（唯一的 hullResistAdd 件）被标成 **flat**，
+  // 面板与列表短行都写「全额叠加」，与实际的"多装递减"不符。
+  const hk = resistKey(def.hullResistAdd)
+  if (hk) return { group: 'gap', kind: `hull-${hk}` }
   return { group: 'flat', kind: def.slot }
 }
 

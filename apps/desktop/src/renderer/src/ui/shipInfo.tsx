@@ -101,6 +101,21 @@ function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | nu
   }
 }
 
+/** 推进器周期点火后缀（2026-09-11 精简：只留周期与"开场即点火"，"冷却期间无加速"删） */
+const PROP_TAIL = '（60 秒点火 / 60 秒冷却，开场即点火）'
+/** 维修件的每跳修复量文本（跨族行与主分支共用，防两处口径漂移） */
+function repairAmountText(mod: ModuleDef): string {
+  const arm = mod.repairArmorHp ?? 0
+  const hul = mod.repairHullHp ?? 0
+  if (arm > 0 && hul > 0) return arm === hul ? `装甲与结构各 ${fmt(arm)} 点` : `装甲 ${fmt(arm)} / 结构 ${fmt(hul)} 点`
+  if (arm > 0) return `装甲 ${fmt(arm)} 点`
+  return `结构 ${fmt(hul)} 点`
+}
+/** 维修件消耗的组件名（接线单点：repairKit → 物品名） */
+function repairKitName(mod: ModuleDef): string {
+  return mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
+}
+
 /**
  * 维修系短缀（维修装置 / 异形无消耗自愈件）：每跳修复量与"是否吃组件"。
  * 2026-09-10 修：此前短效文案没有修复分支 → 民用/军用维修装置与生体损管腔在
@@ -382,7 +397,7 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   // 装甲族（容量 / 抗性 / 机动代价）
   if (foreign('armor')) {
     if (mod.armorHpBonus !== undefined) out.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const row = resistAddLine('装甲抗性（乘入制）', mod.armorResistAdd)
+    const row = resistAddLine('装甲抗性', mod.armorResistAdd)
     if (row) out.push(row)
     if ((mod.speedPenaltyPct ?? 0) > 0) {
       const pen = mod.speedPenaltyPct ?? 0
@@ -391,7 +406,7 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
         v: (
           <>
             <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
-            <span className="app-dim">{`（−${pct(pen)}；只影响接敌与拉开距离的机动，不改命中；多件不叠加，取最重一件）`}</span>
+            <span className="app-dim">（多件取最重一件）</span>
           </>
         ),
       })
@@ -400,7 +415,7 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   // 护盾族（容量 / 抗性）
   if (foreign('shield')) {
     if (mod.shieldHpBonus !== undefined) out.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const row = resistAddLine('护盾抗性（乘入制）', mod.shieldResistAdd)
+    const row = resistAddLine('护盾抗性', mod.shieldResistAdd)
     if (row) out.push(row)
   }
   // 推进器族（加力推进 / 点火代价）
@@ -410,39 +425,48 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
         k: '加力推进',
         v: (
           <>
-            点火期间战斗速度 +${pct(mod.speedBonusPct)}
-            <span className="app-dim">（点火 60 秒 → 冷却 60 秒，开场即点火；冷却期间无加速）</span>
+            {`点火期间战斗速度 +${pct(mod.speedBonusPct)}`}
+            <span className="app-dim">{PROP_TAIL}</span>
           </>
         ),
       })
     }
     if ((mod.hitPenalty ?? 0) > 0) {
-      out.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}（全部武器，进胜率预估；冷却期不失效稳）` })
+      out.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}` })
     }
   }
   // 维修/自愈（支援槽之外也带得动：生体甲壳板）
   if (foreign('support') && ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0)) {
     const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
-    const perPulse = [mod.repairArmorHp, mod.repairHullHp]
-      .filter((x): x is number => (x ?? 0) > 0)
-      .map((x) => fmt(x))
-      .join(' / ')
     const isFree = mod.repairFree === true
     out.push({
       k: isFree ? '生体自愈' : '自动维修',
-      v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）`,
+      v: `每 ${secs} 秒修复${repairAmountText(mod)}`,
     })
-    if (!isFree) out.push({ k: '运转消耗', v: `每 ${secs} 秒消耗 1 枚对应修理组件（组件耗尽即自动停机）` })
+    out.push({
+      k: '运转消耗',
+      v: isFree ? (
+        <>
+          <em className="app-chip is-ok">无消耗</em>
+          <span className="app-dim">（不吃组件，永不停机）</span>
+        </>
+      ) : (
+        <>
+          <em className="app-chip is-cost">{repairKitName(mod)} ×1 / 跳</em>
+          <span className="app-dim">（耗尽即停机）</span>
+        </>
+      ),
+    })
   }
   // 无人机三族（甲板扩展 / 战术导控 / 中继天线）
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) {
-    out.push({ k: '无人机舱', v: `+${fmt(mod.droneBayBonusM3 ?? 0)} m³` })
+    out.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3 ?? 0)} m³` })
   }
   if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) {
     out.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus ?? 0)}` })
   }
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) {
-    out.push({ k: '无人机射程', v: `+${pct(mod.droneRangeBonusPct ?? 0)}` })
+    out.push({ k: '无人机射程', v: `+${pct(mod.droneRangeBonusPct ?? 0)}（乘入机型射程）` })
   }
   // 支援件四族（炮台伤害 / 射速 / 命中 / 回避）
   if (foreign('support')) {
@@ -453,16 +477,16 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
         v: `${Object.entries(dmg)
           .filter(([, v]) => (v ?? 0) > 0)
           .map(([t, v]) => `${DMG_LABEL[t as DamageType]} +${pct(v ?? 0)}`)
-          .join(' · ')}（只加成对应系炮台单发，不影响无人机）`,
+          .join(' · ')}`,
       })
     }
     if (mod.reloadCutPct !== undefined) out.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}` })
-    if (mod.hitBonusPct !== undefined) out.push({ k: '命中支援', v: `炮台命中 +${pct(mod.hitBonusPct)}` })
-    if (mod.evasionGapPct !== undefined) out.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}（全船生效）` })
+    if (mod.hitBonusPct !== undefined) out.push({ k: '命中支援', v: `炮台命中 ×${(1 + mod.hitBonusPct).toFixed(2)}` })
+    if (mod.evasionGapPct !== undefined) out.push({ k: '回避支援', v: `敌命中 ×${(1 - mod.evasionGapPct).toFixed(2)}（全船生效）` })
   }
   // 目标锁定阵列
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) {
-    out.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
+    out.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
   }
   return out
 }
@@ -529,7 +553,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         v: (
           <>
             {`点火期间战斗速度 +${pct(mod.speedBonusPct)}`}
-            <span className="app-dim">（60 秒点火 / 60 秒冷却，开场即点火）</span>
+            <span className="app-dim">{PROP_TAIL}</span>
           </>
         ),
       })
@@ -652,21 +676,10 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
-      const arm = mod.repairArmorHp ?? 0
-      const hul = mod.repairHullHp ?? 0
-      // 表述按实际修哪层分开（生体损管腔只修结构、生体甲壳板只修装甲；维修装置两层同修）
-      const amount =
-        arm > 0 && hul > 0
-          ? arm === hul
-            ? `装甲与结构各 ${fmt(arm)} 点`
-            : `装甲 ${fmt(arm)} / 结构 ${fmt(hul)} 点`
-          : arm > 0
-            ? `装甲 ${fmt(arm)} 点`
-            : `结构 ${fmt(hul)} 点`
       const isFree = mod.repairFree === true
       lines.push({
         k: isFree ? '生体自愈' : '自动维修',
-        v: `每 ${secs} 秒修复${amount}`,
+        v: `每 ${secs} 秒修复${repairAmountText(mod)}`,
       })
       if (isFree) {
         // 无消耗自愈（异形生体件）：不吃组件、永不停机；同型多件按 EVE 曲线递减
@@ -680,13 +693,11 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
           ),
         })
       } else {
-        const kitName =
-          mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
         lines.push({
           k: '运转消耗',
           v: (
             <>
-              <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
+              <em className="app-chip is-cost">{repairKitName(mod)} ×1 / 跳</em>
               <span className="app-dim">（耗尽即停机）</span>
             </>
           ),

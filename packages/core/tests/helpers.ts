@@ -173,6 +173,8 @@ export function moduleDef(
     lockDmgBonus?: number
     // 无人机中继天线（2026-09-10：高槽 drone-relay——放飞无人机射程加成）
     droneRangeBonusPct?: number
+    // 结构层抗性（2026-09-11：生体损管腔引出——引擎按缺口复合，收敛分组 = gap）
+    hullResistAdd?: Partial<Record<DamageType, number>>
   },
 ): ModuleDef {
   return {
@@ -194,6 +196,7 @@ export function moduleDef(
     ...(opts?.shieldResistAdd !== undefined ? { shieldResistAdd: opts.shieldResistAdd } : {}),
     ...(opts?.armorHpBonus !== undefined ? { armorHpBonus: opts.armorHpBonus } : {}),
     ...(opts?.armorResistAdd !== undefined ? { armorResistAdd: opts.armorResistAdd } : {}),
+    ...(opts?.hullResistAdd !== undefined ? { hullResistAdd: opts.hullResistAdd } : {}),
     ...(opts?.speedBonusPct !== undefined ? { speedBonusPct: opts.speedBonusPct } : {}),
     ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
     ...(opts?.droneBayBonusM3 !== undefined ? { droneBayBonusM3: opts.droneBayBonusM3 } : {}),
