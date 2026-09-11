@@ -14,6 +14,10 @@ function world(waves: { units: number; hpShare: number }[] | undefined) {
     anomalies: [
       {
         ...anomaly('ano-wave', 'galaxy-hub', { threat: 10, tactic: 'brawl' }),
+        // 2026-09-11（自 main 同步远端衰减 0.3 → 0.5 后）：敌人远距离更准，裸初始船扛不住威胁 10 的
+        // brawl 卡；本文件测的是**波次机制**不是平衡 ⇒ 把该卡伤害压到 0.2（血/波表/战术全部照旧）。
+        // ⚠ d2 已退休 `foeDmgMul`（行为恒等）⇒ 此处用**基础单发直写** `foeShotDmg` 表达同一意图。
+        foeShotDmg: 0.2,
         ...(waves ? { waves } : {}),
       },
     ],

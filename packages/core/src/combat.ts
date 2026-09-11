@@ -82,7 +82,7 @@ export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM:
   const { minRangeM: min, maxRangeM: max, falloff } = w
   if (max <= min) return 1
   const t = clamp(0, 1, (dist - min) / (max - min))
-  return Math.max(0, 1 - t * (1 - falloff) * 0.8)
+  return Math.max(0, 1 - t * (1 - falloff)) // 2026-09-11 船长定（自 main 同步）：合并旧修正、去掉 ×0.8 —— 近端 ×1 → 最远端 = falloff
 }
 
 /** 静态单位卡（构建后不进存档） */

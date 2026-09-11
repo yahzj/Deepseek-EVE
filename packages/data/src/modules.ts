@@ -155,7 +155,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 4200,
     minRangeM: 250,
     hitRate: 0.8,
-    falloff: 0.3,
+    falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：我方动能炮台远端命中衰减统一 0.5（民用 0.3 → 0.5）
     reloadMs: 2400,
     dmgMult: 1.0,
   },
@@ -172,7 +172,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 3220, // 2026-09-08 船长定：动能炮射程 −30%（4600→3220），装填等价缩短（2200→1540）
     minRangeM: 250,
     hitRate: 0.8,
-    falloff: 0.3,
+    falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：动能炮台远端命中 0.3 → 0.5
     reloadMs: 1540,
     dmgMult: 1.25,
   },
@@ -189,7 +189,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 5740, // 2026-09-08 船长定：动能炮射程 −30%（8200→5740），装填等价缩短（3400→2380）
     minRangeM: 700,
     hitRate: 0.78,
-    falloff: 0.28,
+    falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：动能炮台远端命中 0.28 → 0.5
     reloadMs: 2380,
     dmgMult: 3.73,
   },
@@ -206,15 +206,17 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 7350, // 2026-09-08 船长定：动能炮射程 −30%（10500→7350），装填等价缩短（4200→2940）
     minRangeM: 1200,
     hitRate: 0.78,
-    falloff: 0.28,
+    falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：动能炮台远端命中 0.28 → 0.5
     reloadMs: 2940,
     dmgMult: 5.13,
   },
   // ══════════ 激光炮（V18B-2 能量系武器形态：消耗能量弹药，必中光束） ══════════
   // 与原能量炮/异星原型（已退役迁移）同伤害系（plasma）/同消耗键，但性格独立：
   // - 必中：射程带内不掷命中（无视距离衰减与回避，锁定即命中）；
-  // - 距离衰减作用在威力而非命中，幅度 = 命中衰减的 0.8 倍（2026-09-08 船长定稿；
-  //   威系数 = 1 − 进度×(1−falloff)×0.8，保底 0）；
+  // - 距离衰减作用在**威力**而非命中——**2026-09-11 船长定（自 main 同步）：合并旧修正、不再与命中衰减挂钩**，
+  //   统一为"近端 ×1 → 最远端 ×该武器 falloff"，激光件一律 **falloff 0.1（最远端威力 ×0.10）**；
+  //   （旧口径 = 命中衰减 ×0.8：falloff 0.30/0.35 → 远端 ×0.44/×0.48，现已作废）
+  //   威系数 = 1 − 进度×(1−falloff)，保底 0）；
   // - minRange 0（光束无弹道近盲）；逐发消耗能量弹药（ammo-plasma-l = 能量弹药）；
   // - 数值初值对照原能量炮 dmgMult 下调（必中优势），进 C4 校准轮复核；
   // - 市场专供（无蓝图；沿用原能量炮渠道与价位）。异星原型 → 原型激光（奇货）。
@@ -231,7 +233,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 4600,
     minRangeM: 0,
     hitRate: 1,
-    falloff: 0.3,
+    falloff: 0.1, // 2026-09-11 船长定（自 main 同步）：能量武器远端统一「最远端威力 ×0.1」（旧 0.3 的 ×0.8 修正已合并作废）
     reloadMs: 2000,
     dmgMult: 1.1,
   },
@@ -248,7 +250,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 8200,
     minRangeM: 0,
     hitRate: 1,
-    falloff: 0.35,
+    falloff: 0.1, // 2026-09-11 船长定（自 main 同步）：远端统一「最远端威力 ×0.1」（旧 0.35 ×0.8 = ×0.48 作废）
     reloadMs: 3200,
     dmgMult: 3,
   },
@@ -265,7 +267,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 10500,
     minRangeM: 0,
     hitRate: 1,
-    falloff: 0.35,
+    falloff: 0.1, // 2026-09-11 船长定（自 main 同步）：远端统一「最远端威力 ×0.1」
     reloadMs: 4000,
     dmgMult: 4.2,
   },
@@ -282,7 +284,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 13000,
     minRangeM: 0,
     hitRate: 1,
-    falloff: 0.3,
+    falloff: 0.1, // 2026-09-11 船长定（自 main 同步）：远端统一「最远端威力 ×0.1」
     reloadMs: 4600,
     dmgMult: 5.1,
   },
@@ -1072,7 +1074,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 12000,
     minRangeM: 1300,
     hitRate: 1,
-    falloff: 0.45,
+    falloff: 0.6, // 2026-09-11 船长定（自 main 同步 · 回调批 11e52e2）：守墓者长炮单件上调 0.45 → 0.6（射程尽头仍有六成命中，比 MK3 的 0.5 更准）
     reloadMs: 7350,
     dmgMult: 10.35,
     cpuUse: 62,

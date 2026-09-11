@@ -83,7 +83,15 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
 
   it('高威胁（有点防）会击落：机群递减、清单被扣除（战斗内可 100% 损坏，无单场上限）', () => {
     const state = makeState(7)
-    const battle = runBattle(state, HIGH)!
+    // 2026-09-11（自 main 同步远端衰减 0.3 → 0.5 后）：敌人远距离更准，穹顶守卫 96 会在机群被点防打光之前
+    // 打死王鲭；本用例测的是**点防打机群**这条链路（威胁 96 ≥ 门槛 60 ⇒ 点防照常生效）⇒ 把该卡伤害压到 0.2
+    // 让战斗活到点防出结果（威胁/点防门槛/机群口径全不变）。
+    // ⚠ d2 已退休 `foeDmgMul`（行为恒等）⇒ 用**基础单发直写** `foeShotDmg` 表达同一意图。
+    const calmCtx: SimContext = {
+      ...ctx,
+      anomalies: new Map([...ctx.anomalies, [HIGH, { ...ctx.anomalies.get(HIGH)!, foeShotDmg: 0.2 }]]),
+    }
+    const battle = runBattle(state, HIGH, calmCtx)!
     const pools = Object.values(battle.dronePools ?? {})
     const lost = pools.filter((p) => !p.alive).length
     expect(lost).toBeGreaterThan(0) // 硬卡必有点防战损

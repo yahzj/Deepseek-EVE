@@ -83,12 +83,15 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     expect(ratio - 1).toBeCloseTo(-0.193, 3)
   })
 
-  it('D2 基础命中 100%、12 km 超远程、远端衰减更轻', () => {
+  it('D2 基础命中 100%、12 km 超远程、远端衰减更轻（0.6 > MK3 的 0.5）', () => {
     const d2 = ctx.modules.get('mod-lair-turret-d')!
     const mk3 = ctx.modules.get('mod-turret-kin-3')!
     expect(d2.hitRate).toBe(1)
     expect(d2.hitRate!).toBeGreaterThan(mk3.hitRate!)
-    expect(d2.falloff!).toBeGreaterThan(mk3.falloff!) // 远端命中衰减更慢
+    // 2026-09-11 船长定（自 main 同步 · 回调批）：窝点专属动能件远端衰减 0.45 → **0.6**（普通 MK3 一律 0.5）
+    // ⇒ 专属件「必中 + 63% 射程 + 远端更准」三条一起成立
+    expect(mk3.falloff).toBe(0.5)
+    expect(d2.falloff!).toBeGreaterThan(mk3.falloff!)
     expect(d2.maxRangeM).toBe(12_000)
     expect(d2.maxRangeM!).toBeGreaterThan(mk3.maxRangeM!)
     // 进战斗：0 技能下条目命中即 100%，射程带 / 装填原样落地
@@ -97,7 +100,7 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     const w = spec.weapons.find((x) => x.src === 'turret')!
     expect(w.label).toBe('守墓者长炮')
     expect(w.hitRate).toBe(1)
-    expect(w.falloff).toBeCloseTo(0.45, 6)
+    expect(w.falloff).toBeCloseTo(0.6, 6)
     expect(w.maxRangeM).toBe(12_000)
     expect(w.minRangeM).toBe(1300)
     expect(w.reloadMs).toBe(7350)
