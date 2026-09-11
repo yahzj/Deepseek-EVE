@@ -1215,13 +1215,16 @@ for (const m of MODULES) {
     let speedCounted = 0
     let speedShipPath = 0
     for (const def of ANOMALIES_FLAVORED) {
-      // 舰级路径（2026-09-11）：速度由**舰级绝对值**决定，故不再要求逐卡 foeSpeedMps；
+      // 舰级路径（2026-09-11）：速度由**舰级登记值**决定，故不再要求逐卡 foeSpeedMps；
       // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
       const mains = (def.ships ?? []).filter((s) => s.escort !== true)
       if (mains.length > 0) {
         speedShipPath++
         for (const slot of mains) {
-          const spd = Math.round(slot.ship.speedMps * (slot.speedMul ?? 1))
+          // 2026-09-11 追加裁决：舰级速度改登记「舰种档 + 倍率」→ 实速 = 舰种基准 × 倍率 × 条目 speedMul
+          const spd = Math.round(
+            HULL_CLASS_BASE_SPEED[slot.ship.hullClassTier] * slot.ship.speedRatio * (slot.speedMul ?? 1),
+          )
           const tactic = slot.tactic ?? slot.ship.tactic
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           const ratio = (spd * foeAgi) / refCombat
@@ -1257,9 +1260,28 @@ for (const m of MODULES) {
    * ② **族一致**：舰级 `family` 必须等于卡的 `foeFamily`；
    * ③ **声明一致**：卡面 `tactic` / `defProfile` / `dmgMix` 必须与"实际会建出的主体单位"一致
    *    （舰级路径下这三项是**卡面口径**，与舰级定义重复，故用契约锁死，防两边漂移）；
-   * ④ **编成合法**：至少一条非僚机条目（要有主体）。 */
+   * ④ **编成合法**：至少一条非僚机条目（要有主体）；
+   * ⑤ **舰种档合法**（2026-09-11 追加裁决「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）：
+   *    每个敌舰级的 `hullClassTier` 必须落在 `1~5`；且**海盗族（family 'A'）不得登记 4 战列舰 / 5 旗舰档**。 */
   {
     const known = new Set(FOE_SHIPS.map((s) => s.id))
+    // ⑤ 舰种档：先校验登记表全表（档位越界 / 海盗配战列级）
+    const PIRATE_BANNED_TIERS: readonly number[] = [4, 5] // 4 战列舰 / 5 旗舰
+    let tiered = 0
+    for (const ship of FOE_SHIPS) {
+      const t = ship.hullClassTier
+      check(
+        Number.isInteger(t) && t >= 1 && t <= 5,
+        `舰级契约：舰级「${ship.name}」（${ship.id}）的舰种档 ${t} 越界（须落在 1~5：1 护卫舰 / 2 驱逐舰 / 3 巡洋舰 / 4 战列舰 / 5 旗舰）`,
+      )
+      if (ship.family === 'A') {
+        check(
+          !PIRATE_BANNED_TIERS.includes(t),
+          `舰级契约：海盗族舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? '未知档'}（T${t}）档——**海盗不配战列级（维护成本大，不符合海盗背景设定）**；海盗舰队只用 1 护卫舰 / 2 驱逐舰 / 3 巡洋舰三档（船长 2026-09-11：「海盗应该是护卫驱逐巡洋构成」）`,
+        )
+      }
+      tiered++
+    }
     const normMix = (m?: Partial<Record<string, number>>): string =>
       Object.entries(m ?? {})
         .filter(([, w]) => (w ?? 0) > 0)
@@ -1316,7 +1338,8 @@ for (const m of MODULES) {
       }
     }
     console.log(
-      `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致`,
+      `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
+        `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档（海盗不配战列级）`,
     )
   }
 

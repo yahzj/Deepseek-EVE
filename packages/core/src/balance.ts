@@ -184,6 +184,15 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     //   `docs/design/enemy-speed-retune-20260910.md`）：基准船 = 速度中位线船只
     //   长尾鲨级（船速 272 / 敏捷 0.54 → 战斗机动 165.2 m/s），比率 = 敌战斗机动 ÷ 165.2，
     //   brawl 低段缓坡 1.10/1.15/1.20 → 1.29~1.48、orbit 0.96~1.20、kite 维持 0.69~0.80。
+    /* ═══ 舰种基准速度（2026-09-11 船长给定；**敌我共用**）═══
+     * 1 护卫舰 340 / 2 驱逐舰 295 / 3 巡洋舰 258 / 4 战列舰 205 / 5 旗舰 155。
+     * **敌舰级实速 = 本表[舰种档] × `FoeShipDef.speedRatio`（编成还有 speedMul 时再乘）后取整**；
+     * 上面那条旧路径（威胁推导，`foeRefSpeedTable` 那段公式）**不读本表**。
+     * ⚠ 数值字面量**只在这一处**：core 不能 import data 包，故 data 包的
+     * `packages/data/src/hullClass.ts` 的 `HULL_CLASS_BASE_SPEED` 直接读本字段（同源、不会漂移）。
+     * 2026-09-11 追加裁决（船长「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）后，
+     * A 族四舰级登记为 1/1/2/3 档——**海盗不配战列级**（维护成本大，不符合海盗背景设定）。 */
+    hullClassBaseSpeedMps: { 1: 340, 2: 295, 3: 258, 4: 205, 5: 155 },
     foeRefSpeedTable: [
       { upToThreat: 10, maxSpeedMps: 220 },
       { upToThreat: 34, maxSpeedMps: 250 },

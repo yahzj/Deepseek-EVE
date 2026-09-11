@@ -15,23 +15,27 @@
  * ② **允许混编**：一张卡引用多个舰级，各自按自己的舰级建档（头目厚且疼、杂鱼薄且轻）；
  * ③ **词缀**：`elite` 舰级 → 「精锐」前缀；僚机 → 「轻装」前缀；
  * ④ **tag 口径**：与旧路径同规则（首队 `foe-0` / 僚机 `foe-1`；同波后续小队 `w0-foe-{k}`）；
- * ⑤ **旧路径不受影响**：无 `ships` 的卡行为逐字不变（仍按威胁推导 + 战术×血型命名）。
+ * ⑤ **旧路径不受影响**：无 `ships` 的卡行为逐字不变（仍按威胁推导 + 战术×血型命名）；
+ * ⑥ **舰种档 + 速度倍率**（2026-09-11 追加裁决「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）：
+ *    实速 = `舰种基准 × speedRatio`，A 族四舰级与原绝对值**逐字一致**（351 / 291 / 201 / 377）。
  */
 import { describe, expect, it } from 'vitest'
+import { FOE_SHIPS } from '@whale/data'
 import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeUnitNameOf } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
 const bal = makeTestCtx().balance.battle
 
-/** 测试用舰级：头目档（精锐、厚且疼） */
+/** 测试用舰级：头目档（精锐、厚且疼）——舰种档 3 巡洋舰，速度 380 = 258 × `380/258` */
 const BOSS: FoeShipDef = {
   id: 't-foe-boss',
   name: '测试头目舰',
   family: 'A',
+  hullClassTier: 3,
+  speedRatio: 380 / 258,
   hp: 400,
   split: { s: 0.2, a: 0.55, h: 0.25 },
-  speedMps: 380,
   shotDmg: 60,
   hitRate: 0.9,
   reloadMs: 4000,
@@ -43,14 +47,15 @@ const BOSS: FoeShipDef = {
   elite: true,
 }
 
-/** 测试用舰级：杂鱼（薄、轻、快） */
+/** 测试用舰级：杂鱼（薄、轻、快）——舰种档 1 护卫舰，速度 350 = 340 × `350/340` */
 const SKIFF: FoeShipDef = {
   id: 't-foe-skiff',
   name: '测试快艇',
   family: 'A',
+  hullClassTier: 1,
+  speedRatio: 350 / 340,
   hp: 100,
   split: { s: 0.2, a: 0.55, h: 0.25 },
-  speedMps: 350,
   shotDmg: 10,
   hitRate: 0.85,
   reloadMs: 4000,
@@ -201,5 +206,55 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
     expect(specs[0]!.tag).toBe('foe-0')
     expect(specs[0]!.name).toBe('攻坚重甲舰')
     expect(hpOf(specs[0]!)).toBeCloseTo(300, 6)
+  })
+})
+
+/**
+ * 舰种档 + 速度倍率（**2026-09-11 追加裁决**：船长「劫掠护卫舰和劫掠狙击舰下落一档，
+ * 只有头目是巡洋舰」）——把速度从"绝对值"改成"**舰种基准 × 倍率**"的**常驻零变化守卫**：
+ * 四条登记舰级的实速必须逐字等于改造前的绝对值（351 / 291 / 201 / 377）。
+ * 与 `content:check`「舰级契约」互为独立写法（引擎实算 vs 内容表校验）。
+ */
+describe('舰种档与速度倍率（A 族四舰级零变化铁证）', () => {
+  it('实速 = 舰种基准 × 倍率，与原绝对值逐字一致（351 / 291 / 201 / 377）', () => {
+    const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
+    const got = FOE_SHIPS.map((ship) => ({
+      id: ship.id,
+      tier: ship.hullClassTier,
+      speed: createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps,
+    }))
+    expect(got).toEqual([
+      { id: 'foe-pirate-skiff', tier: 1, speed: 351 },
+      { id: 'foe-pirate-corvette', tier: 1, speed: 291 },
+      { id: 'foe-pirate-sniper', tier: 2, speed: 201 },
+      { id: 'foe-pirate-warlord', tier: 3, speed: 377 },
+    ])
+  })
+
+  it('舰种档与倍率口径：实速 = round(基准 × 倍率 × 条目 speedMul)（倍率按精确分数登记）', () => {
+    for (const ship of FOE_SHIPS) {
+      const base = bal.hullClassBaseSpeedMps[ship.hullClassTier]
+      expect(createFoeSpecs({ ...anomaly('ano-t-hull-mul', 'galaxy-hub', { threat: 20 }), ships: [{ ship }] }, bal)[0]!.speedMps).toBe(
+        Math.round(base * ship.speedRatio),
+      )
+      // 条目 speedMul：与原绝对值口径同规则（乘后取整）
+      const withMul = createFoeSpecs(
+        { ...anomaly('ano-t-hull-mul2', 'galaxy-hub', { threat: 20 }), ships: [{ ship, speedMul: 1.25 }] },
+        bal,
+      )[0]!.speedMps
+      expect(withMul).toBe(Math.round(base * ship.speedRatio * 1.25))
+    }
+  })
+
+  it('舰种档必须落在 1~5；海盗族（A）不得登记 4 战列舰 / 5 旗舰档（海盗不配战列级）', () => {
+    for (const ship of FOE_SHIPS) {
+      expect(Number.isInteger(ship.hullClassTier)).toBe(true)
+      expect(ship.hullClassTier).toBeGreaterThanOrEqual(1)
+      expect(ship.hullClassTier).toBeLessThanOrEqual(5)
+      if (ship.family === 'A') {
+        // 船长 2026-09-11：「海盗应该是护卫驱逐巡洋构成，战列级强力+维护成本大，不适合海盗的背景设定」
+        expect(ship.hullClassTier).toBeLessThan(4)
+      }
+    }
   })
 })

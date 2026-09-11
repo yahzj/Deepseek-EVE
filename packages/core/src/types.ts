@@ -576,6 +576,15 @@ export interface BattleBalance {
   foeReloadMs: number
   foeFalloff: number
   /* C4-#3 敌方"虚拟装配"模板（2026-09-05 船长拍板：威胁越高全属性越高，侧重随战术风格） */
+  /**
+   * **舰种基准速度**（m/s，**敌我共用**；2026-09-11 船长给定：1 护卫舰 340 / 2 驱逐舰 295 /
+   * 3 巡洋舰 258 / 4 战列舰 205 / 5 旗舰 155）——**敌舰级的实速 = 本表[舰种档] × `FoeShipDef.speedRatio`
+   * （再乘编成条目的 `speedMul`，若有）后取整**；旧路径（威胁推导）不读本表。
+   * ⚠ **数值字面量只在本表这一处**：core 不能 import data 包，故由 data 包
+   * `packages/data/src/hullClass.ts` 的 `HULL_CLASS_BASE_SPEED` **反向读本字段**，避免两包各写一份调参数字而静默漂移。
+   * `content:check`「舰种契约」校验取值落在合理值域 100~500。
+   */
+  hullClassBaseSpeedMps: Record<1 | 2 | 3 | 4 | 5, number>
   /** 参考船速分段表（threat 上界 → 等效船体 maxSpeed m/s；与玩家船速同池，无推进口径） */
   foeRefSpeedTable: ReadonlyArray<{ upToThreat: number; maxSpeedMps: number }>
   /** 敌速基数端点：threat 10 → 玩家参考 ×lo；threat 100 → ×hi（无推进玩家多数持平/略快） */
@@ -921,9 +930,13 @@ export type FoeFamily = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
  * 再根据实际悬赏等进行修正，这样**不会出现动一艘船，其他跟着动**」；同日裁决「**舰级给绝对值**、
  * 卡上用修正、允许混编、先试点」）。
  *
- * **绝对值口径**：血量 / 速度 / 单发 / 装填 / 命中 / 射程带 / 远端衰减 / 血层分布 / 伤害构成
+ * **绝对值口径**：血量 / 单发 / 装填 / 命中 / 射程带 / 远端衰减 / 血层分布 / 伤害构成
  * 全部由舰级写死，不再从"威胁"推导。悬赏卡只负责**编成**（用哪几艘、各几艘、第几波）与**修正**
  * （倍率 / 覆写），见 `AnomalyDef.ships`。
+ *
+ * **速度例外（2026-09-11 船长追加裁决「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）**：
+ * 速度不再写绝对值，改登记**舰种档 + 倍率**——实际速度 = **舰种基准速度 × 倍率**（见 `hullClassTier`
+ * 与 `speedRatio`）。这是**表达方式**的改造，四个舰级的实际速度与原绝对值**逐字一致**（零行为变化）。
  *
  * 目的：**改一艘船的影响面一眼可见，且只限引用它的卡**。旧口径下威胁一变、任一全局常量一变
  * 就是全表联动（本仓已发生过三次：推进器提档废掉全表标定、战术默认值静默改 5 张卡、
@@ -936,12 +949,27 @@ export interface FoeShipDef {
   name: string
   /** 敌族 */
   family: FoeFamily
+  /**
+   * **舰种档**：`1` 护卫舰 / `2` 驱逐舰 / `3` 巡洋舰 / `4` 战列舰 / `5` 旗舰
+   * （2026-09-11 船长追加裁决「**劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰**」）。
+   * ⚠ **档位口径须与 data 包 `packages/data/src/hullClass.ts` 的 `HULL_CLASS_NAME` 档位一致**——
+   * core 在 core 包、**不能反向 import data 包**，故此处写**字面量联合类型**、不引 data 的类型。
+   * 本档同时决定速度基准：实际速度 = `BattleBalance.hullClassBaseSpeedMps[本档] × speedRatio`。
+   * 设定约束：**海盗族（family 'A'）只登记 1~3 档**——「海盗不配战列级（维护成本大，
+   * 不符合海盗背景设定）」，由 `content:check`「舰级契约」与 core 测试双重守卫。
+   */
+  hullClassTier: 1 | 2 | 3 | 4 | 5
+  /**
+   * **速度倍率** = 实际速度 ÷ 舰种基准速度（基准速度 = `BattleBalance.hullClassBaseSpeedMps`，
+   * 与 data 包 `hullClass.ts` 的 `HULL_CLASS_BASE_SPEED` 同源）。
+   * **一律写成精确分数**（如 `351 / 340`），不写小数——保证"实际速度"逐字复现原绝对值。
+   * 实际速度 = `HULL_CLASS_BASE_SPEED[舰种档] × 本倍率`（编成条目还有 `speedMul` 时再乘）后**取整**。
+   */
+  speedRatio: number
   /** 总血（绝对值） */
   hp: number
   /** 三层血量比例（结构 / 装甲 / 护盾），Σ = 1 */
   split: { s: number; a: number; h: number }
-  /** 速度（绝对值，m/s） */
-  speedMps: number
   /** 基础单发（绝对值） */
   shotDmg: number
   /** 命中率 0~1（能量 plasma 为光束必中，不消费本值） */

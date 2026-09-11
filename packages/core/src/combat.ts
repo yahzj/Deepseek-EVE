@@ -899,7 +899,11 @@ export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
 /**
  * **舰级路径建档**：单位属性 = 舰级绝对值 × 本条倍率。
  * - 血：`ship.hp × hpMul`（**不吃威胁份额、不吃 hpShare**）
- * - 单发：`round(ship.shotDmg × dmgMul)`；速度：`round(ship.speedMps × speedMul)`
+ * - 单发：`round(ship.shotDmg × dmgMul)`；
+ *   速度（2026-09-11 追加裁决「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）：
+ *   `round(HULL_CLASS_BASE_SPEED[舰种档] × speedRatio × speedMul)` ——
+ *   **舰种基准 × 倍率**（基准 = `bal.hullClassBaseSpeedMps`，倍率 = `ship.speedRatio` 与条目 `speedMul`）；
+ *   这是**表达方式**的改造，四个 A 族舰级的实速与原绝对值（351/291/201/377）**逐字一致**。
  * - 射程带：两端同乘 `rangeMul` 后取整（保持 min < max）
  * - 主系/命中：可逐条覆写（缺省走舰级）；能量主系一律光束必中
  */
@@ -937,7 +941,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
-      speedMps: Math.round(ship.speedMps * (u.slot.speedMul ?? 1)),
+      // 速度 = 舰种基准速度 × 舰级倍率 × 本条 speedMul（后取整）——2026-09-11 追加裁决：
+      // 「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」；基准表在 BattleBalance
+      // （core 不能 import data 包的 hullClass.ts，故基准随 bal 传入），零行为变化。
+      speedMps: Math.round(bal.hullClassBaseSpeedMps[ship.hullClassTier] * ship.speedRatio * (u.slot.speedMul ?? 1)),
       agility: 0.3,
       // 高威胁近战敌突进：资格 = 威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）
       ...(bal.foeChargeEnabled === true &&
