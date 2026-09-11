@@ -743,6 +743,75 @@ async function main(): Promise<void> {
     }
   }
 
+  /* 敌情名册（船长 2026-09-10：「你将所有敌人输出成表格，我进行审核和调整吧」）——
+   * 输出全 26 张卡的**全部可调参数 + 中位参考行实测**，markdown 表格，供船长逐条审核与调整。 */
+  if (process.argv.includes('--roster')) {
+    const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
+    console.log('\n<!-- ══ 表一：静态参数（全部可调字段）══ -->')
+    console.log(
+      '| 威胁 | 卡 | 族 | 战术 | 射程带 m | 期望交距 | 敌速 | 战斗机动 | 比率 | 编队 | 总血 | 总DPS | 单发 | 命中 | 构成 | 衰减 | 个性口 |',
+    )
+    console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+    const toTier = ['无技能', '中位', '满技能']
+    void toTier
+    for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
+      const f = createFoeSpecs(a, bal)[0]!
+      const w = f.weapons[0]!
+      const pos = bal.tacticDesireFactor[a.tactic ?? 'orbit'] ?? 0.5
+      const desire = Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM))
+      const waves = a.waves && a.waves.length > 0 ? a.waves : [{ units: 1, hpShare: 1 }]
+      const hpBase = a.foeHpOverride ?? foeHpOfThreat(a.threat, bal)
+      const hpTotal = Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0))
+      const comp = Object.entries(a.dmgMix ?? {})
+        .map(([t, v]) => `${t}${v}`)
+        .join(':') || '动能(缺省)'
+      const shot = w.shotsByType
+        ? Object.entries(w.shotsByType)
+            .map(([t, d]) => `${t} ${d}`)
+            .join('+')
+        : String(w.shotDmg)
+      const quirks = [
+        a.foeShotDmg !== undefined ? `单发直写 ${a.foeShotDmg}` : '',
+        a.foeDmgMul !== undefined ? `伤害×${a.foeDmgMul}` : '',
+        a.foeFalloff !== undefined ? `远端衰减 ${a.foeFalloff}` : '',
+        a.foeHitRate !== undefined ? `命中覆写 ${a.foeHitRate}` : '',
+        (a.escorts ?? 0) > 0 ? `僚机 ${a.escorts}` : '',
+      ]
+        .filter(Boolean)
+        .join('；')
+      const fmt = (waves.length > 1 ? `${waves.map((x) => `${x.units ?? 1}队×${(x.hpShare ?? 1).toFixed(2)}`).join('+')}` : `1波${(a.escorts ?? 0) > 0 ? `·僚机${a.escorts}` : ''}`)
+      console.log(
+        `| ${a.threat} | ${a.name} | ${a.foeFamily ?? '—'} | ${a.tactic ?? 'orbit'} | ${w.minRangeM}~${w.maxRangeM} | ${desire} | ${f.speedMps} | ${Math.round(f.speedMps * foeAgilityMul)} | ${((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2)}× | ${fmt} | ${hpTotal} | ${(a.threat * bal.foeDpsPerThreat).toFixed(1)} | ${shot} | ${(w.hitRate * 100).toFixed(0)}% | ${comp} | ${w.falloff} | ${quirks || '—'} |`,
+      )
+    }
+    console.log('\n<!-- ══ 表二：中位参考行实测（S2 灰鲭鲨4×MK2+支援，含 MK2 推进器）══ -->')
+    console.log('| 威胁 | 卡 | 战术 | 胜率 | 时长 | 我方残血 | 敌开火次数 |')
+    console.log('|---|---|---|---|---|---|---|')
+    for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
+      let win = 0
+      let dur = 0
+      let rem = 0
+      let shots = 0
+      for (const seed of SEEDS) {
+        const s = makeState(refLd.ship, refLd, MID_SKILLS, seed)
+        const spec = createPlayerSpec(s, ctx as SimContext, refLd.ship)
+        const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+        const b = startBattleFor(s, ctx as SimContext, s.shipId, a.id, 0)
+        if (!b) continue
+        s.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(a.id), ctx.balance.battle)
+        advanceBattleFor(s, ctx as SimContext, b, s.shipId, a.id)
+        const u = b.units['player']
+        if (b.ended === 'me') win++
+        rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+        dur += Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+        shots += (b.foeShots ?? 0)
+      }
+      console.log(
+        `| ${a.threat} | ${a.name} | ${a.tactic ?? 'orbit'} | ${Math.round((win / SEEDS.length) * 100)}% | ${(dur / SEEDS.length / 1000).toFixed(0)}s | ${(rem / SEEDS.length).toFixed(0)}% | ${Math.round(shots / SEEDS.length)} |`,
+      )
+    }
+  }
+
   void bal
 }
 
