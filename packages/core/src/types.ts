@@ -1004,6 +1004,13 @@ export interface FoeShipDef {
   tactic: FoeTactic
   /** 头目档：显示名加「精锐」前缀（2026-09-11 船长裁决实装；旧 `FOE_LIGHT_WORD` 的预留位） */
   elite?: boolean
+  /**
+   * **期望交战距离（米）**（2026-09-11 船长裁决：「**单独给 B 族添加期望射程修正**」）。
+   * 写了它就**不再用旧全局战术射程表**算"敌人想站在哪"，改用本值；缺省 = 旧行为（零漂移）。
+   * 取值应落在**本舰级自己的射程带内**（`content:check`「期望射程契约」守卫）——
+   * 否则等于让敌人"想站在自己打不到的地方"，又回到"双方 0 开火"。卡上可再覆写，见 `FoeShipSlot.desireRangeM`。
+   */
+  desireRangeM?: number
 }
 
 /**
@@ -1045,6 +1052,17 @@ export interface FoeShipSlot {
   dmgMix?: Partial<Record<DamageType, number>>
   /** 命中覆写（缺省走舰级） */
   hitRate?: number
+  /**
+   * **血层分布覆写**（缺省走舰级；三者和应为 1）。
+   * 用途：**同一舰级被不同卡配成不同血型**——B 族两卡共用「拾荒武装艇」，演习场驱逐令是**均衡型**、
+   * 新港商路护航令是**装甲型**（卡面 `defProfile` 讲的就是主体单位这一份）。2026-09-11 引入。
+   */
+  split?: { s: number; a: number; h: number }
+  /**
+   * **期望交战距离覆写（米）**（缺省走舰级；见 `FoeShipDef.desireRangeM`）。
+   * 条目 > 舰级 > 旧全局表，三级优先；两者都没写 = 零行为变化。
+   */
+  desireRangeM?: number
   /**
    * **单波次内增援·入场时机**（2026-09-11 船长裁决：「**先完成相应的系统机制，不使用。用作后续机制。**」）。
    *

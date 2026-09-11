@@ -1332,7 +1332,7 @@ export function createInitialState(opts?: {
     warehouse: {
       items: prologue
         ? {
-            // 序章·苏醒：仓库不预置弹药——动能弹 120 由教学战斗任务（演习场讨伐令）奖励
+            // 序章·苏醒：仓库不预置弹药——动能弹 120 由教学战斗任务（演习场驱逐令）奖励
           }
         : {
             // 经典开局：三型通用弹药各 60 发

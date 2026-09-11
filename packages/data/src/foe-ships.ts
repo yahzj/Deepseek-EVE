@@ -153,10 +153,73 @@ export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
   elite: true,
 }
 
+/**
+ * B 族 · 一档「拾荒武装艇」——**新手过渡族**的通用小艇（服役：演习场驱逐令 6、新港商路护航令 10）。
+ *
+ * 2026-09-11 船长九条裁决：**武装拾荒者**（移除"靶机"）· **新手过渡族**（威胁 6~20）·
+ * **舰种只登记 T1 护卫舰 / T2 驱逐舰（不得 ≥ T3）** · **战术统一 orbit** · **速度偏慢 `0.80`**。
+ * 舰种档 = **1 护卫舰**（基准 340）→ 实速 = 340 × `0.80` = **272** m/s。
+ *
+ * **基准值口径 = 迁移前"该舰级最低威胁卡"的现状建档值**（与 A 族试点同款）：
+ * 取自「演习场驱逐令」（威胁 6）——血 22（均衡型 0.33 三等分）· 单发 14（**纯动能**，教学卡不写混伤）·
+ * 命中 0.85 · 射程带 1~2200 · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms。
+ * 同档的新港护航卡用条目倍率复现自己的现状值（`hpMul 75/22`、`dmgMul 23/14`、装甲型、8:2 混伤）。
+ */
+export const FOE_SCAV_SKIFF: FoeShipDef = {
+  id: 'foe-scav-skiff',
+  name: '拾荒武装艇',
+  family: 'B',
+  hullClassTier: 1, // 护卫舰（新手过渡族只用 1/2 两档）
+  speedRatio: 0.8, // = 272 / 340（船长「B 族速度按 0.8 走」= 比本档基准慢）
+  hp: 22,
+  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（与现状 foeLayerSplit('balanced') 同口径）
+  shotDmg: 14,
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 1,
+  rangeMaxM: 2200,
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  // 伤害构成：**不写 `dmgMix` = 缺省纯动能**（教学卡保持纯系；新港护航卡在条目上覆写 8:2 混伤）
+  tactic: 'orbit',
+  // 期望交战距离修正（船长：「单独给 B 族添加期望射程修正」）——见 `docs/design/foe-faction-b-scavenger-20260911.md` §四
+  desireRangeM: 1300,
+}
+
+/**
+ * B 族 · 二档「拾荒火力舰」——占港盘踞的火力点（服役：占港武装通缉 16）。
+ *
+ * 舰种档 = **2 驱逐舰**（基准 295）→ 实速 = 295 × `0.80` = **236** m/s（B 族顶格档）。
+ * 基准值取自「占港武装通缉」（威胁 16）的现状建档值：血 292（均衡型）· 单发 58（动能 46 + 爆炸 12）·
+ * 命中 0.85（**卡上覆写为 0.55「乱射」——单卡特征、不升格族级**）· 射程带 366~4815 ·
+ * 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms。
+ */
+export const FOE_SCAV_ARMED: FoeShipDef = {
+  id: 'foe-scav-armed',
+  name: '拾荒火力舰',
+  family: 'B',
+  hullClassTier: 2, // 驱逐舰（B 族顶格）
+  speedRatio: 0.8, // = 236 / 295
+  hp: 292,
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 58,
+  hitRate: 0.85, // 乱射（0.55）挂在占港那张卡的编成条目上
+  reloadMs: 4000,
+  rangeMinM: 366,
+  rangeMaxM: 4815,
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+  desireRangeM: 1800,
+}
+
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
+  FOE_SCAV_SKIFF,
+  FOE_SCAV_ARMED,
 ]

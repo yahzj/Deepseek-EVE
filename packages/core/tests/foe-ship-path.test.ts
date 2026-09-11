@@ -26,7 +26,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, FOE_SHIPS } from '@whale/data'
-import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeUnitNameOf } from '../src/combat'
+import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeUnitNameOf } from '../src/combat'
+import { FOE_LAIR_GEAR, isLairCandidate } from '../src/lairs'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
@@ -228,7 +229,7 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
 describe('舰种档与速度倍率（A 族提速口径）', () => {
   it('实速 = 舰种基准 × 倍率：A 族提速后 = 391 / 374 / 325 / 374', () => {
     const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
-    const got = FOE_SHIPS.map((ship) => ({
+    const got = FOE_SHIPS.filter((s) => s.family === 'A').map((ship) => ({
       id: ship.id,
       tier: ship.hullClassTier,
       speed: createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps,
@@ -243,11 +244,40 @@ describe('舰种档与速度倍率（A 族提速口径）', () => {
 
   it('A 族每档实速都**高于本档舰种基准**（护卫 340 / 驱逐 295 / 巡洋 258）——船长「速度都快」', () => {
     const shell = anomaly('ano-t-hull-overshoot', 'galaxy-hub', { threat: 20 })
-    for (const ship of FOE_SHIPS) {
+    for (const ship of FOE_SHIPS.filter((s) => s.family === 'A')) {
       expect(ship.family).toBe('A')
       expect(ship.speedRatio).toBeGreaterThan(1) // 倍率 > 1 ⇔ 快于本档基准
       const spd = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps
       expect(spd).toBeGreaterThan(bal.hullClassBaseSpeedMps[ship.hullClassTier])
+    }
+  })
+
+  /**
+   * **B 族（武装拾荒者）偏慢口径**（2026-09-11 船长裁决：「**B 族速度按 0.8 走**」+「新手过渡族」）——
+   * 与 A 族**方向相反**：每档实速都**低于**本档舰种基准。两条守卫互为镜像，防日后有人把两族口径写混
+   * （本仓已真实发生过"两个敌速口径混用无人察觉"）。
+   */
+  it('B 族每档实速都**低于本档舰种基准**：拾荒武装艇 272（= 340×0.80）/ 拾荒火力舰 236（= 295×0.80）', () => {
+    const shell = anomaly('ano-t-hull-slow', 'galaxy-hub', { threat: 20 })
+    const got = FOE_SHIPS.filter((s) => s.family === 'B').map((ship) => ({
+      id: ship.id,
+      tier: ship.hullClassTier,
+      speed: createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps,
+    }))
+    expect(got).toEqual([
+      { id: 'foe-scav-skiff', tier: 1, speed: 272 },
+      { id: 'foe-scav-armed', tier: 2, speed: 236 },
+    ])
+    for (const ship of FOE_SHIPS.filter((s) => s.family === 'B')) {
+      expect(ship.speedRatio).toBeLessThan(1) // 倍率 < 1 ⇔ 慢于本档基准
+      const spd = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps
+      expect(spd).toBeLessThan(bal.hullClassBaseSpeedMps[ship.hullClassTier])
+    }
+  })
+
+  it('B 族舰种档只登记 1 护卫舰 / 2 驱逐舰（新手过渡族，不得 ≥ T3）', () => {
+    for (const ship of FOE_SHIPS.filter((s) => s.family === 'B')) {
+      expect(ship.hullClassTier).toBeLessThanOrEqual(2)
     }
   })
 
@@ -371,9 +401,111 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
       const hp = specs.map((u) => u.hp.s + u.hp.a + u.hp.h)
       const bossShare = hp[0]! / hp.reduce((a, b) => a + b, 0)
       expect(bossShare).toBeCloseTo(0.6, 6) // 头目 60% 血不变
-      // `foeDmgMul` 字段不存在（类型上已删除）——这里锁"卡上没有任何逐卡伤害倍率口"
+      // `foeDmgMul` 字段不存在（类型上已删除）——这里锁"卡上没有任何逐卡伤害倍率入口"
       expect(Object.keys(card)).not.toContain('foeDmgMul')
       expect(Object.keys(card.ships![0]!)).not.toContain('foeDmgMul')
     }
+  })
+})
+
+/**
+ * **B 族（武装拾荒者）落码批**（2026-09-11 船长九条裁决 + 四条补充裁决）。
+ *
+ * 本批口径 = **零变化基线**：除「舰级名 / 速度（0.80）/ 战术（orbit）/ 教学卡名」四项**有意改动**外，
+ * 三张卡的逐单位建档值必须与改造前**逐字一致**——故这里把基线读数**写死成断言**
+ * （血三层 / 单发 / 逐系单发 / 命中 / 装填 / 射程带 / 远端衰减 / 近盲），
+ * 谁动了一格都会在这里和 `content:check` 两处一起报出来。
+ *
+ * 基线来源：改造前对三张卡跑 `createFoeSpecs` 导出的逐单位建档值（一次性探针，已删）。
+ */
+describe('B 族（武装拾荒者）落码批', () => {
+  const balB = makeTestCtx().balance.battle
+  const card = (id: string): AnomalyDef => ANOMALIES.find((a) => a.id === id)!
+
+  it('三张卡零变化基线：血/单发/逐系/命中/装填/射程/衰减/近盲 逐字一致', () => {
+    type Row = {
+      id: string
+      hp: [number, number, number]
+      shot: number
+      byType?: Partial<Record<string, number>>
+      hit: number
+      ranges: [number, number]
+    }
+    const rows: Row[] = ['ano-training', 'ano-harbor-escort', 'ano-abandoned-platform'].map((id) => {
+      const u = createFoeSpecs(card(id), balB)[0]!
+      const w = u.weapons[0]!
+      return {
+        id,
+        hp: [u.hp.s, u.hp.a, u.hp.h],
+        shot: w.shotDmg!,
+        ...(w.shotsByType ? { byType: w.shotsByType as Partial<Record<string, number>> } : {}),
+        hit: w.hitRate!,
+        ranges: [w.minRangeM!, w.maxRangeM!],
+      }
+    })
+    // 血量三层按「和 + 逐层」比对（浮点尾差不可避免：7.260000000000001 之类）
+    const wantHp: Record<string, [number, number, number]> = {
+      'ano-training': [7.48, 7.26, 7.26],
+      'ano-harbor-escort': [15, 41.25, 18.75],
+      'ano-abandoned-platform': [99.28, 96.36, 96.36],
+    }
+    for (const r of rows) {
+      const want = wantHp[r.id]!
+      for (let i = 0; i < 3; i++) expect(r.hp[i]!).toBeCloseTo(want[i]!, 6)
+      expect(r.hp[0]! + r.hp[1]! + r.hp[2]!).toBeCloseTo(want[0]! + want[1]! + want[2]!, 6)
+    }
+    // 单发 / 逐系 / 命中 / 射程：整数与有限小数，逐字比对
+    expect(rows.map((r) => ({ id: r.id, shot: r.shot, byType: r.byType, hit: r.hit, ranges: r.ranges }))).toEqual([
+      { id: 'ano-training', shot: 14, byType: undefined, hit: 0.85, ranges: [1, 2200] },
+      { id: 'ano-harbor-escort', shot: 23, byType: { kinetic: 18, explosive: 5 }, hit: 0.85, ranges: [1, 2200] },
+      { id: 'ano-abandoned-platform', shot: 58, byType: { kinetic: 46, explosive: 12 }, hit: 0.55, ranges: [366, 4815] },
+    ])
+    // 衰减/近盲/装填：三张一致（舰级基准口径）
+    for (const id of ['ano-training', 'ano-harbor-escort', 'ano-abandoned-platform']) {
+      const w = createFoeSpecs(card(id), balB)[0]!.weapons[0]!
+      expect(w.falloff).toBe(0.5)
+      expect(w.blindDmgMul).toBe(0.3)
+      expect(w.reloadMs).toBe(4000)
+    }
+  })
+
+  it('体力三档（速度/战术/卡名）是有意改动：272 / 272 / 236 且全部 orbit', () => {
+    expect(createFoeSpecs(card('ano-training'), balB)[0]!.speedMps).toBe(272)
+    expect(createFoeSpecs(card('ano-harbor-escort'), balB)[0]!.speedMps).toBe(272)
+    expect(createFoeSpecs(card('ano-abandoned-platform'), balB)[0]!.speedMps).toBe(236)
+    for (const id of ['ano-training', 'ano-harbor-escort', 'ano-abandoned-platform']) {
+      expect(createFoeSpecs(card(id), balB)[0]!.foeTactic).toBe('orbit')
+    }
+    expect(card('ano-training').name).toBe('演习场驱逐令')
+  })
+
+  it('期望射程修正（船长「单独给 B 族添加期望射程修正」）：三卡各自声明，`foeDesiredRange` 采纳覆写', () => {
+    const want: Record<string, number> = { 'ano-training': 1300, 'ano-harbor-escort': 1300, 'ano-abandoned-platform': 1800 }
+    const me = createFoeSpecs(card('ano-training'), balB)[0]! // 占位玩家单位（本函数不读 me）
+    for (const [id, expectM] of Object.entries(want)) {
+      const foes = createFoeSpecs(card(id), balB)
+      expect(foes[0]!.foeDesireRangeM).toBe(expectM)
+      expect(foeDesiredRange(me, foes, balB)).toBe(expectM)
+      // 取值必须落在自己的射程带内（"想站在自己打不到的地方"= 双方 0 开火的成因）
+      const w = foes[0]!.weapons[0]!
+      expect(expectM).toBeGreaterThanOrEqual(w.minRangeM)
+      expect(expectM).toBeLessThanOrEqual(w.maxRangeM)
+    }
+    // 未写该字段的卡（A 族）保持旧全局表口径 —— 这里用 A 族一张卡做反向断言：
+    // brawl 旧表 = min 0 + 0.2×(2200−0) = **440 m**（本批对它零影响）
+    const pirate = ANOMALIES.find((a) => a.id === 'ano-pirate-post')!
+    const pFoes = createFoeSpecs(pirate, balB)
+    expect(pFoes[0]!.foeDesireRangeM).toBeUndefined()
+    expect(foeDesiredRange(me, pFoes, balB)).toBe(440)
+  })
+
+  it('窝点退出（裁决 8）：B 族两卡不再是窝点候选，专属件池保持空表', () => {
+    const a1 = card('ano-abandoned-platform')
+    const a2 = card('ano-harbor-escort')
+    expect(a1.lairCore).toBeUndefined()
+    expect(a2.lairCore).toBeUndefined()
+    expect(isLairCandidate(a1)).toBe(false)
+    expect(isLairCandidate(a2)).toBe(false)
+    expect(FOE_LAIR_GEAR.B).toEqual([])
   })
 })

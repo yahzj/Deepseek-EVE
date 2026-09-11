@@ -154,7 +154,7 @@ export const FOE_MOUNTS: Record<string, ShipMounts> = {
       { x: 196, y: 63 },
     ],
   },
-  // B 训练靶机/拾荒：单喷口 M64..；无炮 → 回退
+  // B 武装拾荒者：单喷口 M64..；无炮 → 回退
   B: { engines: [{ x: 64, y: 51.5 }], muzzles: [] },
   // C 异形生物舰（有机体，无喷口无炮 → 无尾焰，回退舰艏前缘）
   C: { engines: [], muzzles: [] },

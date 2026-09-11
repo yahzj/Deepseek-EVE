@@ -120,6 +120,18 @@ export interface UnitSpec {
    *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
   foeReinforceAt?: FoeReinforceTrigger
   foeTactic: FoeTactic | null
+  /**
+   * **期望交战距离覆写（米）**（2026-09-11 船长裁决：「**单独给 B 族添加期望射程修正**」）。
+   *
+   * 背景：`foeDesiredRange()` 原本一律按**旧全局战术射程表**（`TACTIC_RANGE[战术] × desireFactor`）
+   * 算敌人"想站在哪"——**不看舰级自己的射程带**。对射程很短的族（拾荒武装艇 1~2200 m）会算出
+   * 2.7~3.5 km 的期望距离：**双方都够不着、0 次开火打满 600 秒**（B 族教学卡实测 0%/600s）。
+   *
+   * 口径：**本字段只在写了它的单位上生效**（卡上覆写 > 舰级默认），其余单位逐字不变
+   * ⇒ **对未登记的族（如 A 族）零行为变化**；取值应落在该舰级自己的射程带内
+   * （由 `content:check`「期望射程契约」守卫）。
+   */
+  foeDesireRangeM?: number
 }
 
 function clamp(min: number, max: number, v: number): number {
@@ -941,7 +953,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const mix = u.slot.dmgMix ?? ship.dmgMix
     const type = pickTopType(mix)
     const totalHp = ship.hp * (u.slot.hpMul ?? 1)
-    const hp: Hp3 = { s: totalHp * ship.split.s, a: totalHp * ship.split.a, h: totalHp * ship.split.h }
+    // 血层分布：条目覆写优先（2026-09-11：同一舰级可被不同卡配成不同血型——B 族两卡共用拾荒武装艇，
+    // 演习场是均衡型、新港护航是装甲型）
+    const split = u.slot.split ?? ship.split
+    const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     const shotDmg = Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp))
     const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
     const multiShots: Partial<Record<DamageType, number>> | undefined =
@@ -1000,6 +1015,11 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         },
       ],
       foeTactic: tactic,
+      // 期望交战距离覆写（2026-09-11 船长：「单独给 B 族添加期望射程修正」）：条目覆写 > 舰级默认；
+      // 两者都没写 ⇒ 不挂本字段 ⇒ 走旧全局表（A 族与所有未登记卡零行为变化）
+      ...((u.slot.desireRangeM ?? ship.desireRangeM) !== undefined
+        ? { foeDesireRangeM: u.slot.desireRangeM ?? ship.desireRangeM }
+        : {}),
     }
   })
 }
@@ -1283,6 +1303,12 @@ export function desiredRangeFor(me: UnitSpec, tactic: 'assault' | 'mid' | 'kite'
  */
 export function foeDesiredRange(_me: UnitSpec, foes: UnitSpec[], bal: BattleBalance): number {
   const tactic = foes[0]?.foeTactic ?? 'orbit'
+  // 期望交战距离覆写（2026-09-11 船长：「单独给 B 族添加期望射程修正」）——只在写了该字段的单位上生效，
+  // 其余（含 A 族全部）逐字走旧全局表 ⇒ 零行为变化。见 UnitSpec.foeDesireRangeM 的口径说明。
+  const override = foes[0]?.foeDesireRangeM
+  if (override !== undefined && override > 0) {
+    return Math.max(bal.minDistanceM, Math.round(override))
+  }
   const band = TACTIC_RANGE[tactic]!
   const pos = clamp(0.05, 0.95, bal.tacticDesireFactor[tactic] ?? 0.5)
   return Math.max(bal.minDistanceM, Math.round(band.min + pos * (band.max - band.min)))

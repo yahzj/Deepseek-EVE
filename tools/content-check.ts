@@ -1142,7 +1142,7 @@ for (const m of MODULES) {
 
 /* ── 敌方混伤契约（2026-09-10 船长定）──
  * ①**除教学卡与纯能量卡外**每张敌军卡必须写**两系** `dmgMix`（主 8 : 副 2 = 80%/20%）——
- *   教学卡（演习场讨伐令）保持纯系：不给新手第一场上混伤；
+ *   教学卡（演习场驱逐令）保持纯系：不给新手第一场上混伤；
  *   纯能量卡（2026-09-10 船长：**深渊之门卫队改为纯能量伤害**）允许只写一系 `plasma`，
  *   但**必须同时显式给 `foeFalloff`**（能量走 `beamPowerFactor` 威力衰减，纯能量卡的火力只能靠它收住）；
  * ②副系必须 = 该敌族签名副系序里第一个"不与主系相同"的系（`lairs.subDamageTypeOf`）；
@@ -1221,10 +1221,20 @@ for (const m of MODULES) {
     }
     /** A 族（海盗）全族提速带：下限 = 快于基准船，上限防失控（船长 2026-09-11 裁定） */
     const PIRATE_SPEED_BAND: readonly [number, number] = [1.0, 1.6]
+    /**
+     * **B 族（武装拾荒者）全族偏慢带**（船长 2026-09-11 裁决：「**B 族速度按 0.8 走**」+「新手过渡族」）。
+     * 该族刻意**慢于基准船**，与旧"战术带"（orbit 0.90~1.25，锚定中位玩家船）**方向相反**：
+     * `speedRatio 0.80` ⇒ 拾荒武装艇 272（比率 ≈0.93）/ 拾荒火力舰 236（比率 ≈0.81）。
+     * ⇒ 本族改按**族口径**校验：**实速必须低于本档舰种基准**（护卫 340 / 驱逐 295）
+     * 且比率落在 **0.75~1.00**（下限防慢到"来不及参战"、上限 = 不许超过基准船）。
+     */
+    const SCAVENGER_SPEED_BAND: readonly [number, number] = [0.75, 1.0]
     let speedCounted = 0
     let speedShipPath = 0
     let pirateReadings = 0
+    let scavReadings = 0
     const pirateSample: string[] = []
+    const scavSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
       // 舰级路径（2026-09-11）：速度由**舰级登记值**决定，故不再要求逐卡 foeSpeedMps；
       // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
@@ -1253,6 +1263,22 @@ for (const m of MODULES) {
             )
             continue
           }
+          if (def.foeFamily === 'B') {
+            // B 族口径（见上方）：低于本档舰种基准 + 落在全族偏慢带
+            scavReadings++
+            scavSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              spd < base,
+              `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未低于本档舰种基准 ${base} m/s**——` +
+                `船长 2026-09-11 裁定 B 族「**速度按 0.8 走**」（新手过渡族、偏慢）`,
+            )
+            check(
+              ratio >= SCAVENGER_SPEED_BAND[0] && ratio <= SCAVENGER_SPEED_BAND[1],
+              `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出全族偏慢带 ` +
+                `${SCAVENGER_SPEED_BAND[0]}~${SCAVENGER_SPEED_BAND[1]}×（下限防"慢到来不及参战"；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           check(
             ratio >= band[0] && ratio <= band[1],
@@ -1278,9 +1304,11 @@ for (const m of MODULES) {
     }
     console.log(
       `· 敌速口径契约：${speedCounted} 张逐卡显式标定 + ${speedShipPath} 张引用舰级速度，比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）；` +
-        `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）`,
+        `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）` +
+        `、B 族 ${scavReadings} 条按**全族偏慢口径**（实速低于本档舰种基准、比率 ${SCAVENGER_SPEED_BAND[0]}~${SCAVENGER_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0) console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join('　')}`)
+    if (scavSample.length > 0) console.log(`  ↳ B 族实测读数（实速/比率）：${scavSample.join('　')}`)
   }
 
   /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
@@ -1371,17 +1399,29 @@ for (const m of MODULES) {
       }
       if (prime && def.defProfile) {
         const want = foeLayerSplit(def.defProfile)
-        const got = prime.ship.split
+        // 有效血型 = **条目覆写优先**（2026-09-11 新增 `FoeShipSlot.split`：同一舰级可被不同卡配成不同血型
+        // ——B 族两卡共用拾荒武装艇，演习场是均衡型、新港护航是装甲型）
+        const got = prime.split ?? prime.ship.split
         check(
           Math.abs(want.s - got.s) < 1e-9 && Math.abs(want.a - got.a) < 1e-9 && Math.abs(want.h - got.h) < 1e-9,
-          `舰级契约：${def.name} 卡面血型 ${def.defProfile}（${want.s}/${want.a}/${want.h}）与主体舰级「${prime.ship.name}」（${got.s}/${got.a}/${got.h}）不一致`,
+          `舰级契约：${def.name} 卡面血型 ${def.defProfile}（${want.s}/${want.a}/${want.h}）与主体编成有效血型「${prime.ship.name}」（${got.s}/${got.a}/${got.h}）不一致`,
+        )
+      }
+      // 条目级血型覆写自身的合法性：三者和为 1（防手写错一位数把血量算漏）
+      for (const s of ships) {
+        if (!s.split) continue
+        const sum = s.split.s + s.split.a + s.split.h
+        check(
+          Math.abs(sum - 1) < 1e-6,
+          `舰级契约：${def.name} 的编成条目「${s.ship.name}」血型覆写三者和 ≠ 1（${s.split.s}+${s.split.a}+${s.split.h} = ${sum}）`,
         )
       }
       if (prime && def.dmgMix) {
         const eff = prime.dmgMix ?? prime.ship.dmgMix
         check(
           normMix(def.dmgMix) === normMix(eff),
-          `舰级契约：${def.name} 卡面伤害构成（${normMix(def.dmgMix)}）与主体舰级有效构成（${normMix(eff)}）不一致`,
+          `舰级契约：${def.name} 卡面伤害构成（${normMix(def.dmgMix)}）与主体编成有效构成（${normMix(eff)}）不一致` +
+            `（⚠ 舰级路径下**卡面 dmgMix 不参与建档**，要改构成必须写在编成条目上）`,
         )
       }
       /* ⑥ **A 族编成契约**（2026-09-11 数值落地批，船长确认）——依据 A 族设定：
@@ -1428,6 +1468,49 @@ for (const m of MODULES) {
     )
   }
 
+  /* ── 期望射程契约（2026-09-11 加）──
+   * 背景：`foeDesiredRange()` 原本一律按**旧全局战术射程表**算敌人"想站在哪"，不看舰级自己的射程带——
+   * 射程很短的族会被算到 2.7~3.5 km 的期望距离，**双方都够不着、0 次开火打满 600 秒**
+   *（B 族教学卡实测 0%/600s，船长裁决「**单独给 B 族添加期望射程修正**」）。
+   * 契约两条：
+   *   ① **取值必须落在该舰级自己的射程带内**（含条目 `rangeMul` / 绝对覆写）——否则等于让敌人
+   *      "想站在自己打不到的地方"，又回到"0 开火"；
+   *   ② **B 族（武装拾荒者）每张舰级路径卡必须显式声明**（卡上或舰级上）——防日后回落成锁死。 */
+  {
+    let declared = 0
+    let scavCards = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      const slots = def.ships ?? []
+      if (slots.length === 0) continue
+      let cardDeclared = false
+      for (const slot of slots) {
+        const want = slot.desireRangeM ?? slot.ship.desireRangeM
+        if (want === undefined) continue
+        cardDeclared = true
+        declared += 1
+        const rangeMul = slot.rangeMul ?? 1
+        const maxM = Math.max(2, slot.rangeMaxM ?? Math.round(slot.ship.rangeMaxM * rangeMul))
+        const minM = Math.max(1, Math.min(maxM - 1, slot.rangeMinM ?? Math.round(slot.ship.rangeMinM * rangeMul)))
+        check(
+          want >= minM && want <= maxM,
+          `期望射程契约：${def.name} 的「${slot.ship.name}」期望交战距离 ${want} m 落在自己的射程带 ${minM}~${maxM} m 之外` +
+            `——等于让敌人"想站在自己打不到的地方"（双方 0 开火的成因）`,
+        )
+      }
+      if (def.foeFamily === 'B') {
+        scavCards += 1
+        check(
+          cardDeclared,
+          `期望射程契约：B 族卡 ${def.name} 未声明期望交战距离（舰级 \`desireRangeM\` 或条目覆写）——` +
+            `船长 2026-09-11 裁决「单独给 B 族添加期望射程修正」：射程短的族必须显式给，否则会回落成双方锁死`,
+        )
+      }
+    }
+    console.log(
+      `· 期望射程契约：${declared} 条编成声明了期望交战距离（取值均落在自身射程带内）；B 族 ${scavCards} 张卡全数显式声明`,
+    )
+  }
+
   /* ── 增援机制未启用契约（2026-09-11 加）──
    * 船长裁决原文：「**先完成相应的系统机制，不使用。用作后续机制。**」
    * 口径：`BattleBalance.foeReinforceEnabled` **关闭期间，任何卡不得携带 `enterAt`**——
@@ -1466,6 +1549,7 @@ for (const m of MODULES) {
   {
     const FAMILY_TACTICS: Partial<Record<string, readonly string[]>> = {
       A: ['brawl', 'orbit', 'kite'], // 鱼龙混杂（船长 2026-09-11）
+      B: ['orbit'], // 武装拾荒者：船长 2026-09-11「**战术性格统一为 orbit**」（新手过渡族）
     }
     let checked = 0
     for (const def of ANOMALIES_FLAVORED) {
@@ -1484,7 +1568,10 @@ for (const m of MODULES) {
       }
     }
     console.log(
-      `· 族→战术契约：${checked} 处族内战术声明均在已裁定范围内（当前仅 A 族已裁定：鱼龙混杂，三种战术全允许）`,
+      `· 族→战术契约：${checked} 处族内战术声明均在已裁定范围内（已裁定族：` +
+        `${Object.entries(FAMILY_TACTICS)
+          .map(([fam, list]) => `${fam} 族 = ${list.join(' / ')}`)
+          .join('；')}）`,
     )
   }
 }

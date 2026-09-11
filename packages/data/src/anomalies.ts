@@ -15,6 +15,8 @@
 import type { AnomalyDef } from '@whale/core'
 import { withRecycleFlavor } from './salvageFlavors'
 import {
+  FOE_SCAV_ARMED,
+  FOE_SCAV_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_SNIPER,
@@ -44,19 +46,23 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // （`shipArt.tsx` 的硬编码 `FOE_FAMILY` 与数据字段各写各的）——现按数据侧补齐为 B，
     // 并删掉美术侧那张硬编码表，敌族一律由 `AnomalyDef.foeFamily` 推导（口径统一）。
     foeFamily: 'B',
-    name: '演习场讨伐令',
+    // B 族落码批（2026-09-11 船长九裁决）：**演习场讨伐令 → 演习场驱逐令**（驱逐到演习场拾荒的拾荒者）·
+    // **战术统一 orbit**（原 brawl）· 迁入**舰级路径**（拾荒武装艇 ×1，N=1 ⇒ 多舰补偿 = 1，单发 = 舰级值）。
+    // 基线：本卡改造前的逐单位建档值（血 22 / 单发 14 / 命中 0.85 / 射程 1~2200 / 衰减 0.5 / 近盲 0.3）
+    // **就是拾荒武装艇这一档的基准值**，故卡上不写任何倍率；**唯一有意改动 = 速度**（322 → 272，船长「按 0.8 走」）。
+    name: '演习场驱逐令',
     galaxyId: 'galaxy-hub',
     threat: 6,
-    tactic: 'brawl',
+    tactic: 'orbit',
     defProfile: 'balanced',
     standingReq: 0,
     standingGain: 1,
     rewardIsk: 3_600, // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 ISK/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
-    foeHpOverride: 22, // P1 战斗引入（2026-09-06）：脱离威胁曲线单列——裸船零技能可过（约 37s）
-    foeSpeedMps: 322, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.10×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 223（= 段参考船 220 ×1.28 口径）
+    // 舰级路径：旧的 `foeHpOverride` / `foeSpeedMps` 不再是读数来源（血/速度/命中/射程一律走舰级表）
+    ships: [{ ship: FOE_SCAV_SKIFF }],
     loot: [],
     combatSeconds: 20,
-    description: '深空工业协会的常设讨伐令：演习场中失控的靶机与训练残骸需要定期清剿。悬赏按次结算、可反复接取——新手的第一张长期单。',
+    description: '深空工业协会的常设驱逐令：演习场一带常有武装拾荒者翻检训练残骸、堵塞航道，协会例行清场。悬赏按次结算、可反复接取——新手的第一张长期单。',
   },
   {
     id: 'ano-pirate-post',
@@ -99,11 +105,15 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-abandoned-platform',
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
-    lairCore: '占港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    // 窝点退出（2026-09-11 船长裁决 8「没有窝点，排除出赏金范围」）：原 `lairCore: '占港拾荒团'` 已删 ⇒
+    // 本卡不再是窝点候选、不参与赏金任务派发（B 族专属件本就是空表，无需移除）。
     name: '占港武装通缉',
-    foeHpOverride: 292, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~36s
-    foeSpeedMps: 286, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.98×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 203
-    foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：武装拾荒者乱射——打得重但准头差；缺省 0.85）
+    // B 族落码批：迁入**舰级路径**（拾荒火力舰 ×1，N=1 ⇒ 多舰补偿 = 1）。
+    // 基线 = 本卡改造前的逐单位建档值（血 292 均衡型 / 单发 58 = 动能 46 + 爆炸 12 / 射程 366~4815 /
+    // 衰减 0.5 / 近盲 0.3）**就是拾荒火力舰这一档的基准值**，故卡上只覆写**乱射命中 0.55**
+    //（船长「乱射不动」——单卡特征、不升格族级，故写在条目上而非舰级）。
+    // **唯一有意改动 = 速度**（286 → 236，船长「按 0.8 走」）。
+    ships: [{ ship: FOE_SCAV_ARMED, hitRate: 0.55 }],
     galaxyId: 'galaxy-dust',
     threat: 16,
     tactic: 'orbit',
@@ -449,17 +459,28 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-harbor-escort',
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
-    lairCore: '新港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    // 窝点退出（2026-09-11 船长裁决 8「没有窝点，排除出赏金范围」）：原 `lairCore: '新港拾荒团'` 已删。
     name: '新港商路护航令',
+    // B 族落码批：迁入**舰级路径**（拾荒武装艇 ×1，N=1 ⇒ 多舰补偿 = 1）。基准卡 = 演习场驱逐令（T6 舰级基准），
+    // 本卡按**精确倍率**复现原建档值：血 75（75/22）· 单发 23（23/14）· 射程 1~2200 与舰级相同（无需覆写）；
+    // **唯一有意改动 = 速度**（337 → 272，船长「按 0.8 走」）。
+    // 卡面**装甲型**与舰级基准（均衡型）不同 ⇒ 条目覆写 `split`（2026-09-11 新增的条目级血型位）。
+    ships: [
+      {
+        ship: FOE_SCAV_SKIFF,
+        hpMul: 75 / 22, // = 原 foeHpOverride 75
+        dmgMul: 23 / 14, // = 原推导单发 23（动能 18 + 爆炸 5）
+        split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（与卡面 defProfile: 'armor' 一致）
+        dmgMix: { kinetic: 8, explosive: 2 }, // 本卡 8:2（舰级基准是纯动能 ⇒ 必须写在条目上，见 core 建档口径）
+      },
+    ],
     galaxyId: 'galaxy-harbor',
     threat: 10,
-    tactic: 'brawl',
+    tactic: 'orbit',
     defProfile: 'armor',
     standingReq: 1,
     standingGain: 1,
     rewardIsk: 6_400, // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
-    foeHpOverride: 75, // P1 战斗引入 pass-2（2026-09-06）：鲣鱼2×MK1零技≈30s；裸船可磨(60%/122s)不卡死；顺滑待实测
-    foeSpeedMps: 337, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.15×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 225
     loot: [],
     combatSeconds: 20,
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',

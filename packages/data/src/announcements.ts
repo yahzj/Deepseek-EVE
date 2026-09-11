@@ -245,7 +245,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     tag: '数值',
     bullets: [
       '大鲸鱼Ⅳ本港的悬赏胜利后需约 2 分钟返港，无法即时往返连刷；',
-      '演习场讨伐令单次奖励上调至 3,600 ISK。',
+      '演习场驱逐令单次奖励上调至 3,600 ISK。',
     ],
   },
   {

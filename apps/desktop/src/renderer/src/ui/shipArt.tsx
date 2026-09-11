@@ -119,7 +119,7 @@ export const FOE_ART: Record<string, ReactNode> = {
  *  靠体量(LAY.MAIN/ESC)与名称后缀区分） */
 export const FOE_ACCENT: Record<string, string> = {
   A: '#ff6b52', // 海盗舰系：锈红（README §二 已定）
-  B: '#e0c864', // 靶机/拾荒：警告黄
+  B: '#e0c864', // 拾荒：警告黄
   C: '#9fe6a4', // 异形生物：磷光绿（同 volt-g）
   D: '#9fd0f2', // 守墓古舰：磷光冰蓝（同 volt-i）
   E: '#d9b98c', // 泰坦巨构：残铁棕

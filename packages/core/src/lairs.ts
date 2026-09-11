@@ -146,7 +146,7 @@ export function hasLairCore(anomaly: AnomalyDef): boolean {
 
 /**
  * 该卡能否作为窝点目标（= 赏金任务主体）。
- * - 有核心词、非隐藏、奖金 > 0（教学卡「演习场讨伐令」刻意不设核心词，故不入池）；
+ * - 有核心词、非隐藏、奖金 > 0（教学卡「演习场驱逐令」刻意不设核心词，故不入池）；
  * - **B 族（武装拾荒者）排除**：2026-09-10 船长定取消 B 族相关的残骸与赏金任务。
  */
 export function isLairCandidate(anomaly: AnomalyDef): boolean {

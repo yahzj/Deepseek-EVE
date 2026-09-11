@@ -526,7 +526,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
       )
     }
-    // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
+    // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)
     // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
