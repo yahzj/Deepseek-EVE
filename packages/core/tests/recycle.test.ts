@@ -396,7 +396,8 @@ describe('稀有残骸：一件 = 一箱（2026-09-11 船长定）', () => {
       advanceRefining(state, ctx) // 只跑 1 批
       const runId = state.refineRuns[0]?.id
       if (runId !== undefined) stopRefineRun(state, ctx, runId)
-      // 前两轮累计 20 m³ → 还没到一箱；第三轮累计 30 m³ → 恰好 1 箱；此后再起停也不再出箱
+      // 箱子按**累计已烧体积**结算：前两轮累计 20 m³ 无箱，第三轮累计到 30 m³ → 1 箱；
+      // 此后每轮都退料重来，但累计不重置 ⇒ 永远不会再出第二箱
       expect(boxes(state)).toBe(round >= 3 ? 1 : 0)
     }
     expect(boxes(state)).toBe(1)
@@ -460,7 +461,7 @@ describe('稀有残骸：一件 = 一箱（2026-09-11 船长定）', () => {
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
     const run = loaded.refineRuns[0]
     expect(run?.claimedUnits).toBe(0) // 修前：字段被丢掉（undefined）⇒ 炉子改吃公共库存
-    expect(run?.rareUnits).toBe(0) // 修前：可开箱数也丢 ⇒ 第一批会照旧开箱
+    expect(run?.rareUnits).toBe(0) // 修前：可开箱数也丢（undefined）⇒ 读档后按"可开箱"处理
     loaded.gameMs = RECYCLE_CYCLE_MS * 2
     advanceRefining(loaded, ctx)
     expect(countWare(loaded, RARE_ID)).toBe(RARE_WRECK_VOLUME_M3) // 公共库存原样未动
