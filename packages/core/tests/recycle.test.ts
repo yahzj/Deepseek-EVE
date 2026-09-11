@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
+import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
 import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
@@ -426,5 +427,67 @@ describe('稀有残骸：一件 = 一箱（2026-09-11 船长定）', () => {
     loaded.state.gameMs = 900_000
     advanceRefining(loaded.state, ctx)
     expect(boxes(loaded.state)).toBe(2)
+  })
+
+  it('料账吃完的最后一批当场收工：不再空转一个批周期（2026-09-11 玩家反馈「稀有残骸空了精炼炉还在运转」）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, RARE_WRECK_VOLUME_M3) // 1 件 = 3 批
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    // 修前：第 3 批结算完，炉子还要挂满一个批周期（等到第 4 个批点才收工）——玩家看到"残骸空了、炉子还在转"
+    state.gameMs = RECYCLE_CYCLE_MS * 3
+    advanceRefining(state, ctx)
+    expect(state.refineRuns).toHaveLength(0)
+    expect(state.logs.some((l) => l.text.includes('本炉定额完成') && l.text.includes('共 3 批'))).toBe(true)
+  })
+
+  it('私有料账不受存档往返影响：归零的料账读档后不会转而吃货仓/仓库里的同类残骸', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    // 造出"料账恰好归零、炉子尚未收工"这一刻（真引擎下这一瞬已被上面那条用例压掉，但丢字段的后果与时机无关）：
+    state.refineRuns.push({
+      active: true,
+      id: state.refineSeq++,
+      worker: 'pilot',
+      recipe: 'recycle',
+      itemId: RARE_ID,
+      batchUnits: RECYCLE_BATCH_M3,
+      cycleMs: RECYCLE_CYCLE_MS,
+      finishAtGameMs: RECYCLE_CYCLE_MS,
+      batchesDone: RARE_WRECK_VOLUME_M3 / RECYCLE_BATCH_M3,
+      lockUnits: 0,
+      claimedUnits: 0,
+      rareBoxEligible: false,
+      recAcc: { min: {}, mod: {}, frag: {}, drone: {} },
+    })
+    addWare(state, RARE_ID, RARE_WRECK_VOLUME_M3) // 玩家刚打捞回的新一件：不该被这台旧炉默默烧掉
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    const run = loaded.refineRuns[0]
+    expect(run?.claimedUnits).toBe(0) // 修前：字段被丢掉（undefined）⇒ 炉子改吃公共库存
+    expect(run?.rareBoxEligible).toBe(false) // 修前：资格结论也丢 ⇒ 第一批会照旧开箱
+    loaded.gameMs = RECYCLE_CYCLE_MS * 2
+    advanceRefining(loaded, ctx)
+    expect(countWare(loaded, RARE_ID)).toBe(RARE_WRECK_VOLUME_M3) // 公共库存原样未动
+    expect(loaded.refineRuns).toHaveLength(0) // 料账空 → 本炉定额完成、收工
+  })
+
+  it('用"已开箱的余料"起的炉子：存档往返后仍不开箱（一件 = 一箱不被读档绕开）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, RARE_WRECK_VOLUME_M3)
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = RECYCLE_CYCLE_MS
+    advanceRefining(state, ctx) // 第 1 批开箱一次
+    expect(boxes(state)).toBe(1)
+    stopRefineRun(state, ctx, state.refineRuns[0]!.id) // 停炉：余 20 m³ 退回（这批料已开过箱）
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true) // 余料仍可精炼，但资格 = false
+    // 第一批到点前存档重开（修前：rareBoxEligible 没落盘 → 读档后按"可开箱"处理 → 又开一箱）
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(loaded.refineRuns[0]!.rareBoxEligible).toBe(false) // 修前：字段没落盘（undefined）⇒ 读档后按"可开箱"处理
+    const boxLogs = (): number => loaded.logs.filter((l) => l.text.includes('高级箱')).length
+    expect(boxLogs()).toBe(1) // 读档前那次开箱
+    loaded.gameMs = RECYCLE_CYCLE_MS * 5
+    advanceRefining(loaded, ctx)
+    expect(boxLogs()).toBe(1) // 读档后照旧不开箱（修前这里会变成 2）
   })
 })

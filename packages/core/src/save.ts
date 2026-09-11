@@ -1710,13 +1710,23 @@ function normalizeState(raw: unknown): GameState {
       batchesDone: Math.max(0, Math.floor(num(r.batchesDone))),
     }
     if (recAcc) runOut.recAcc = recAcc
-    // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：只收正数；缺省 = 不限制（老档天然如此）
-    const lockRaw = num(r.lockUnits, 0)
-    if (lockRaw > 0) runOut.lockUnits = Math.floor(lockRaw)
+    // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：**0 也要保留**（见下方私有料账条）；
+    // 老档/普通炉缺省 = 不限制（天然如此）
+    const lockRaw = num(r.lockUnits, NaN)
+    if (Number.isFinite(lockRaw) && lockRaw >= 0) runOut.lockUnits = Math.floor(lockRaw)
     // 私有料账（2026-09-11 增：稀有残骸"起炉即预占"，停炉退还未用完部分）——**必须保留**，
-    // 否则读档后这批预占的残骸既不在公共库存、也不在料账里 = 凭空消失。只收正数。
-    const claimRaw = num(r.claimedUnits, 0)
-    if (claimRaw > 0) runOut.claimedUnits = Math.floor(claimRaw)
+    // 否则读档后这批预占的残骸既不在公共库存、也不在料账里 = 凭空消失。
+    // 2026-09-11 修（玩家反馈「稀有残骸空了精炼炉还在运转」）：**归零的料账同样要保留**——
+    // 「字段在不在」本身就是语义：有字段 = 这台炉吃自己的私有料账，字段缺失 = 老档/普通料吃公共库存。
+    // 原先只收正数 ⇒ 料账恰好归零的那一刻存档（最后一批刚结算完、炉子尚未收工），读档后字段被丢掉，
+    // 这台炉会转而去吃**货仓/仓库里的同类残骸**（若玩家刚打捞回新的一件，就被这台旧炉默默烧掉）。
+    const claimRaw = num(r.claimedUnits, NaN)
+    if (Number.isFinite(claimRaw) && claimRaw >= 0) runOut.claimedUnits = Math.floor(claimRaw)
+    // 开箱资格（2026-09-11 增：起炉时"未开箱存量 ≥ 一件"的判定结果）——**同样必须保留**：
+    // 缺字段 = "老档/未判定"（按可开箱处理），而 `false` 是**明确的结论**（这批料已经开过箱、不再产箱）。
+    // 原先根本没落盘 ⇒ 用"已开箱的余料"起炉的炉子，只要在第一批到点前存档重开，"不许开箱"这个结论就丢了，
+    // 第一批照旧开箱（"一件 = 一箱"被存档往返绕开）。
+    if (r.rareBoxEligible === true || r.rareBoxEligible === false) runOut.rareBoxEligible = r.rareBoxEligible
     return runOut
   }
   const refineRuns: GameState['refineRuns'] = []

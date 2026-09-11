@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 活动总览（T1）：顶部活动窗口的数据源——把当前所有进行中的"活动/作业"聚合成统一只读视图。
  *
  * 扩展约定（未来耗时作业，如"提炼耗时化"）：新增作业种类只需
@@ -202,11 +202,14 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     const aiProd = rv.worker !== 'pilot'
     const isWreck = rv.itemId ? ctx.items.get(rv.itemId)?.kind === 'wreck' : false
     const remainUnits = rv.itemId ? oreAvailable(state, rv.itemId) : 0
+    // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：稀有残骸炉的料在**本炉私有料账**里，
+    // 玩家在货仓/仓库看到的永远是 0 —— 活动栏改读料账，免得看着像"炉子在烧空气"。
+    const stockNote = rv.claimedUnits !== undefined ? `本炉料余 ×${rv.claimedUnits}` : `仓库余 ×${remainUnits}`
     out.push({
       id: aiProd ? `ai-prod-r:${rv.id}` : `refine:${rv.id}`,
       kind: aiProd ? 'ai' : 'refine',
       label: `${isWreck ? '残骸回收' : '精炼炉'} · ${rv.itemName}`,
-      sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / 仓库余 ×${remainUnits}（每批 ${rv.batchUnits} 单位）`,
+      sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / ${stockNote}（每批 ${rv.batchUnits} 单位）`,
       percent: rv.percent,
       remainingMs: rv.remainingMs,
       stopable: true,

@@ -108,6 +108,12 @@ export interface RefineRunView {
   cycleMs: number
   /** 已完成批数 */
   batchesDone: number
+  /**
+   * 本炉**私有料账**剩余（单位同物品；2026-09-11 增，界面展示用）。
+   * 仅"起炉即预占"的稀有残骸炉有值（起炉时整件从其货仓/仓库扣入本炉），普通残骸炉/精炼炉 = undefined。
+   * 玩家的货仓+仓库里看不到这批料（已被扣走），界面必须靠这个字段告诉玩家"料在炉里、没丢"。
+   */
+  claimedUnits?: number
   /** 当前批进度 0~100 */
   percent: number
   /** 当前批剩余毫秒（v20 原料不锁定，整炉剩余 = 仓库余量决定，不再预估） */
@@ -129,6 +135,7 @@ function refineRunViewOf(state: GameState, ctx: SimContext, r: RefineRunState): 
     batchUnits: r.batchUnits,
     cycleMs: r.cycleMs,
     batchesDone: r.batchesDone,
+    claimedUnits: r.claimedUnits,
   }
   if (!r.active || r.itemId === null || r.cycleMs <= 0) {
     return { ...base, percent: 0, remainingMs: 0 }
@@ -618,6 +625,12 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       }
       r.batchesDone += 1
       r.finishAtGameMs += r.cycleMs // 下一批到点；届时若余料耗尽/不足一批由上方分支自动停炉
+      // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：私有料账**本批已吃完** → 当场收工，
+      // 不再空转一个批周期（把到点时间拨到"现在"，下一轮循环直接进上面的「料尽 = 本炉定额完成」分支）。
+      if (r.claimedUnits !== undefined && r.claimedUnits <= 0) {
+        r.finishAtGameMs = state.gameMs
+        continue
+      }
     }
   }
 }
