@@ -7,9 +7,16 @@
  * core 归槽单点 `rackOf`，见 MarketPage.kindPasses）；**蓝图的「装备蓝图」子分类**则按产物模块的
  * 槽类拆成「高槽 / 中槽 / 低槽装备蓝图」（见 BLUEPRINT_SUBS）。
  *
- * 检索入口：`grep MODULE_SUBS|SUBS_OF_KIND|moduleSubKeyOf`。
+ * **2026-09-11 船长：「应该将消耗品独立出来」**——「物品」一类从三层变四层：
+ * - **物品**（`item`）只留原料类：矿石 / 矿物 / 气体 / 冰矿（+ 动态蓝图碎片）；
+ * - **消耗品**（`consume`，新一级类型）收**用一次就少一件**的三类：**弹药 / 修理组件 / 无人机**；
+ * - **残骸**（`wreck`）自 2026-09-08 起就独立成类；
+ * - 「物品」**不再包含**消耗品与残骸（剔除判定在 `subPasses` 与 `MarketPage.kindPasses` 两处，键集合单点 = `CONSUME_KIND_KEYS`）。
+ * 注意：手册图鉴的物品分组走 core 的 `ITEM_KIND_ORDER`/`ITEM_KIND_LABELS`（按物品大类分），**不受本表拆分影响**。
+ *
+ * 检索入口：`grep MODULE_SUBS|SUBS_OF_KIND|moduleSubKeyOf|CONSUME_SUBS`。
  * - 市场页 MarketPage：类型下拉的一级类型与二级子分类（筛选市场商品目录）；
- * - 手册 Handbook：物品/装备/舰船/蓝图的分组标题与分组判定（同一套键与中文名，避免两页口径漂移）。
+ * - 手册 Handbook：装备/舰船/蓝图的分组标题与分组判定（同一套键与中文名，避免两页口径漂移）。
  * 新增/调整分类只改本文件，两页同时生效。
  */
 import { rackOf } from '@whale/core'
@@ -23,14 +30,26 @@ export interface SubOption {
   label: string
 }
 
+/**
+ * 「物品」的三个消耗性子类（2026-09-11 船长：「应该将消耗品独立出来」——**消耗品独立成一级类型**，
+ * 并从「物品」里剔除，与当年「残骸」独立成类的口径一致）：
+ * 弹药（打完就少）/ 修理组件（战斗中烧）/ 无人机（永久损失制，用一场少一批）。
+ */
+export const CONSUME_SUBS: SubOption[] = [
+  { key: 'ammo', label: '弹药' },
+  { key: 'kit', label: '修理组件' },
+  { key: 'drone', label: '无人机' },
+]
+
+/** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
+export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
+
+/** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类） */
 export const ITEM_SUBS: SubOption[] = [
   { key: 'ore', label: '矿石' },
   { key: 'mineral', label: '矿物' },
   { key: 'gas', label: '气体' },
   { key: 'ice', label: '冰矿' },
-  { key: 'ammo', label: '弹药' },
-  { key: 'drone', label: '无人机' },
-  { key: 'kit', label: '修理组件' },
 ]
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
@@ -91,6 +110,7 @@ export type RackKind = (typeof RACK_KIND_KEYS)[number]
 /** 主类型 → 可用子分类（残骸 wreck 无二级；三个槽类装备类型共用装备的功能子分类） */
 export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   item: ITEM_SUBS,
+  consume: CONSUME_SUBS,
   module: MODULE_SUBS,
   'module-high': MODULE_SUBS,
   'module-mid': MODULE_SUBS,
@@ -105,7 +125,12 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   if (sub === SUB_ALL || kind === 'all' || kind === 'wreck') return true
   if (kind === 'item') {
     const it = ctx.items.get(good.refId)
-    return it?.kind === sub
+    // 消耗品三类已独立成类（2026-09-11 船长），「物品」不再包含它们
+    return it?.kind === sub && !CONSUME_KIND_KEYS.includes(it.kind)
+  }
+  if (kind === 'consume') {
+    const it = ctx.items.get(good.refId)
+    return it !== undefined && CONSUME_KIND_KEYS.includes(it.kind) && it.kind === sub
   }
   if (kind === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(kind)) {
     const mod = ctx.modules.get(good.refId)
