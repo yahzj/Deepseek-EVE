@@ -1576,22 +1576,30 @@ for (const m of MODULES) {
   /** 玩家可见文案禁用的开发/出戏用词（与词典「玩家可见文案禁用彩头/主题件/掉池」同口径，宽清单） */
   const BANNED = ['彩头', '主题件', '掉池', '基础池', '区划', '口径', '断言', '白名单', '体检', '待定', '占位', 'EVE', 'npm']
   /**
-   * 世界观铁律（2026-09-11 船长定，`docs/design/npc-factions-20260911.md`）：章鱼人不追问船里是谁——
-   * NPC 消息不得出现指涉玩家本质的词，也不得用「你的舰船」这类把玩家与船分开的说法（玩家就是那条船）。
+   * 世界观铁律（2026-09-11 船长定，`docs/design/npc-factions-20260911.md`）：
+   * **对外（章鱼人 NPC）玩家是「飞行员」——他们不追问船里是谁**；**对内（船自己的系统）玩家知道自己就是舰载 AI**
+   * （船长 2026-09-11：「外部认知中我们是飞行员，但内部系统中我们知道自己是舰载 AI」）。
    *
-   * 判定方式：先按“玩家本质词”命中，再**豁免既有系统官方名**（`AI 核心` 及其档位名、
-   * `人工智能专家` = 2026-09-08 前的技能旧名）——这些是玩法术语（公告/教程/技能表全在用），
-   * 不是对玩家身份的指涉。豁免清单改动时必须重跑本契约，确认不是把真漂移放过去。
+   * 判定方式：先按"玩家本质词"命中，再**豁免既有系统官方名**（`AI 核心`、`人工智能专家`、
+   * `AI` + 中文的既有系统名，以及「舰载 AI」这一自我认知表述——它正是船内系统的正当说法）。
+   * **豁免是按发件方分级的**：NPC 势力（官方/民间/中立）用完整豁免；
+   * **船内系统（`alignment === '系统'`，如信息库）不吃「舰载 AI」豁免**——它本该知道玩家是什么。
    */
   const PLAYER_ESSENCE = ['AI', '智能', '旧时代', '人类']
   const LORE_EXEMPT = ['AI 核心', '人工智能']
-  const loreHits = (text: string): string[] => {
+  /**
+   * `keepSelfKnowledge = true`（**仅船内系统来源**，如信息库）时额外豁免「舰载 AI / 船载 AI / 舰船 AI」——
+   * 那是玩家自己的系统在说自己的事，正是船长定的"内部系统中我们知道自己是舰载 AI"。
+   * NPC 来源**不给**这条豁免：章鱼人不该知道船里是谁，写了就该被拦（先写反过一次，负向验证抓出来的）。
+   */
+  const SELF_KNOWLEDGE = /舰载\s*AI|船载\s*AI|舰船\s*AI/g
+  const loreHits = (text: string, opts?: { keepSelfKnowledge?: boolean }): string[] => {
     let masked = text
     for (const ex of LORE_EXEMPT) masked = masked.split(ex).join('□'.repeat(ex.length))
-    // 既有系统名的其余写法（「AI 指挥中心」「AI 副船」「AI 作战」等）：**连空格一起**吃掉
-    // （否则残留空格会让「AI空格中文」再次命中）；**纯「AI」或「AI + 非中文（AI）…」仍会命中**——
-    // 那才是把玩家当成 AI 说话的写法。
+    // 既有系统名的其余写法（「AI 指挥中心」「AI 副船」等）：**连空格一起**吃掉；
+    // 纯「AI」或「AI + 非中文」仍会命中（那才是把玩家当成 AI 说话的写法）。
     masked = masked.replace(/AI\s*(?=[\u4e00-\u9fa5])/g, '□□')
+    if (opts?.keepSelfKnowledge) masked = masked.replace(SELF_KNOWLEDGE, '□□□')
     return PLAYER_ESSENCE.filter((w) => masked.includes(w))
   }
   /** 玩家与船不可分离（玩家就是那条船）：直接查说法，不做豁免 */
@@ -1712,7 +1720,8 @@ for (const m of MODULES) {
       for (const w of BANNED) {
         check(!p.includes(w), `通讯 ${m.id} 的玩家可见文案含开发用词「${w}」：${p.slice(0, 24)}…`)
       }
-      for (const w of loreHits(p)) {
+      // 船内系统（信息库）= 玩家自己的系统，可以直说「舰载 AI」这类自我认知；NPC 文案不许（见 loreHits 注释）
+      for (const w of loreHits(p, { keepSelfKnowledge: faction?.alignment === '系统' })) {
         check(false, `通讯 ${m.id} 的文案触碰世界观铁律「${w}」（章鱼人不追问船里是谁）：${p.slice(0, 24)}…`)
       }
       for (const w of LORE_SPLIT) {
