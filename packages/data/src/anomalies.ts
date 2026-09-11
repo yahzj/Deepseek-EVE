@@ -67,7 +67,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 原 `foeHpOverride 22` / `foeSpeedMps 322` 退场——数值由舰级（`foe-scav-skiff`，基准即本卡现状值）供给，
     // **除速度外逐字不变**：血 22 / 单发 14（纯动能）/ 命中 0.85 / 射程 1~2200 / 衰减 0.3 / 近盲 0.3。
     // 速度：旧绝对 322 → **306**（舰级 `speedRatio 0.90`，船长「速度偏慢」——**有意改慢**）。
-    ships: [{ ship: FOE_SCAV_SKIFF }],
+    // ⚠ 舰级按档重排（2026-09-11 甲案）后，舰级值是**档基线**（拾荒武装艇 = T1 156/28），
+    // 卡片自己的目标值由倍率表达 ⇒ 本卡仍是 **血 22 / 单发 14**（船长「新手过渡族」的小艇）。
+    ships: [{ ship: FOE_SCAV_SKIFF, hpMul: 22 / 156, dmgMul: 14 / 28 }],
     galaxyId: 'galaxy-hub',
     threat: 6,
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
@@ -85,25 +87,30 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '边境海盗', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
-    // A 族数值落地批（2026-09-11 船长确认）：编成 = **头目舰 ×1 + 海盗快艇 ×3**（共 4 单位）。
-    // 血：总额 150 → 头目 150×60% = 90（hpMul = 150×3/5 ÷ 360 = 0.25）、每杂鱼 150×40%÷3 = 20（20 ÷ 150）。
-    // 火力：名义总 DPS = 12 × 0.8 × 1.6 = **15.36** → 头目 9.216 / 每杂鱼 2.048；
-    //   单发 = 名义DPS × 4s × 0.62 ÷ 有效命中 → 头目 9.216×4×0.62/0.9 = 25.3952 → **25**，
-    //   杂鱼 2.048×4×0.62/0.85 = 5.9753 → **6**；Σ = 43，名义 Σ = 43.3212 → **取整偏差 0**。
+    // ★ 2026-09-11 船长两条裁定后重编（「边境海盗前哨 T12 减少为 1+2」+「**设定无首领**」）：
+    //   **无首领** ⇒ 全队同一舰级（海盗快艇，卡面装甲型 + 爆炸 8:2 与舰级本体一致，**无需任何覆写**）；
+    //   **1+2 两波** = 第一波 1 艘、第二波 2 艘（`slot.wave` + `anomaly.waves` 驱动，后缀 `w1-`）。
+    //   难度盘守恒：总血仍 **150**（3 艘 × 50）、总单发仍 **43**（首波 15 + 次波 14 ×2）。
+    //   ⚠ 多舰补偿按本卡**单位总数 N=3** ⇒ `2N/(N+1)` = **1.5**（原 N=4 为 1.6），故倍率分母用 1.5。
     ships: [
       {
-        ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (150 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 90/360
-        dmgMul: 25 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 25/(56×1.6)
-        // 头目按**卡面构成**打（头目舰缺省是动能主系；本卡是爆炸主系）——玩家看到的就是实际吃的
-        dmgMix: { explosive: 8, kinetic: 2 },
+        ship: FOE_SHIP_PIRATE_SKIFF,
+        count: 1,
+        wave: 0,
+        hpMul: 50 / FOE_SHIP_PIRATE_SKIFF.hp, // = 50/156（总血 150 的三分之一）
+        dmgMul: 15 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * 1.5), // = 首波单发 15
       },
       {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        count: 3,
-        hpMul: (150 * 2) / 15 / FOE_SHIP_PIRATE_SKIFF.hp, // = 20/150
-        dmgMul: 6 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 6/(28×1.6)
+        count: 2,
+        wave: 1,
+        hpMul: 50 / FOE_SHIP_PIRATE_SKIFF.hp,
+        dmgMul: 14 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * 1.5), // = 次波单发 14（两艘合计 28）
       },
+    ],
+    waves: [
+      { units: 1, hpShare: 1 / 3 },
+      { units: 2, hpShare: 2 / 3 },
     ],
     galaxyId: 'galaxy-kor',
     threat: 12,
@@ -129,7 +136,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 故血 292 / 单发 58 / 射程 366~4815 / 构成 8:2 / 血型均衡**逐字不变**，无需任何倍率。
     // 速度：旧绝对 286 → **271**（舰级 `speedRatio 0.92`，船长「速度偏慢」——**有意改慢**）。
     // ⚠ **乱射（命中 0.55）不动**，但它是**单卡特征**（不是族级签名），故写在**本卡条目**上、不写进舰级。
-    ships: [{ ship: FOE_SCAV_ARMED, hitRate: 0.55 }],
+    // ⚠ 舰级按档重排（2026-09-11 甲案）后，舰级值是**档基线**（拾荒火力舰 = T2 480/65）
+    // ⇒ 本卡目标值由倍率表达：血 **292**、单发 **58**（逐字守恒）。
+    ships: [{ ship: FOE_SCAV_ARMED, hitRate: 0.55, hpMul: 292 / 480, dmgMul: 58 / 65 }],
     galaxyId: 'galaxy-dust',
     threat: 16,
     tactic: 'orbit', // 船长：B 族战术统一 orbit（本卡原即 orbit）
@@ -497,8 +506,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SCAV_SKIFF,
-        hpMul: 75 / 22, // = 原 foeHpOverride 75
-        dmgMul: 23 / 14, // = 原推导单发 23（kinetic 18 + explosive 5）
+        hpMul: 75 / 156, // 目标血 75（舰级按档重排后：拾荒武装艇 T1 档基线 156）
+        dmgMul: 23 / 28, // 目标单发 23（kinetic 18 + explosive 5）
         split: foeLayerSplit('armor'), // 卡面装甲型（舰级基准是均衡型）
         dmgMix: { kinetic: 8, explosive: 2 }, // 本卡 8:2（舰级基准是纯动能）
       },
@@ -522,26 +531,35 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '碎晶带劫匪通缉',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 海盗快艇 ×3**（本卡的快艇是"提速变体"，
     // 保留试点期的 `speedMul 377/351` 与 `rangeMul 2273/2215`：它们乘在新的 −15% 基准与 1.15 基准之上）。
-    // 血：285 → 头目 171（171÷360）、每杂鱼 285×40%÷3 = 38（38÷150）。
-    // 火力：名义总 DPS = 20 × 0.8 × 1.6 = **25.6** → 头目 15.36 / 每杂鱼 3.4133；
-    //   单发（动能主系）→ 头目 15.36×4×0.62/0.9 = 42.3253 → **42**，杂鱼 3.4133×4×0.62/0.85 = 9.9589 → **10**；
-    //   Σ = 72，名义 Σ = 72.2020 → **取整偏差 0**。
+    // ★ 2026-09-11 船长两条裁定后重编（「剩余 2 个卡位 2+2」+「**设定无首领**」）：
+    //   **无首领** ⇒ 全队 = 海盗快艇 ×4（卡面动能 8:2 与舰级本体（爆炸 8:2）不同 ⇒ 条目按卡面覆写 `dmgMix`）；
+    //   **2+2 两波** = 每波 2 艘（`slot.wave` + `anomaly.waves`）。
+    //   难度盘守恒：总血仍 **285**（4 艘 × 71.25）、总单发仍 **72**（4 艘 × 18）；N=4 ⇒ 补偿仍 ×1.6。
     ships: [
       {
-        ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (285 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 171/360
-        dmgMul: 42 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 42/(56×1.6)
-        // 头目缺省构成 = 动能 8:2，与卡面一致（缴获改装的实弹），故**不另写** `dmgMix`
-      },
-      {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        count: 3,
-        hpMul: (285 * 2) / 15 / FOE_SHIP_PIRATE_SKIFF.hp, // = 38/150
-        dmgMul: 10 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 10/(28×1.6)
+        count: 2,
+        wave: 0,
+        hpMul: 71.25 / FOE_SHIP_PIRATE_SKIFF.hp, // = 71.25/156
+        dmgMul: 18 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 18/(28×1.6)
         speedMul: 377 / 351,
         rangeMul: 2273 / 2215,
         dmgMix: { kinetic: 8, explosive: 2 },
       },
+      {
+        ship: FOE_SHIP_PIRATE_SKIFF,
+        count: 2,
+        wave: 1,
+        hpMul: 71.25 / FOE_SHIP_PIRATE_SKIFF.hp,
+        dmgMul: 18 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP),
+        speedMul: 377 / 351,
+        rangeMul: 2273 / 2215,
+        dmgMix: { kinetic: 8, explosive: 2 },
+      },
+    ],
+    waves: [
+      { units: 2, hpShare: 0.5 },
+      { units: 2, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-shard',
     threat: 20,
@@ -567,26 +585,30 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 火力：名义总 DPS = 22 × 0.8 × 1.6 = **28.16** → 头目 16.896 / 每杂鱼 3.7547；
     //   单发（动能主系）→ 头目 16.896×4×0.62/0.9 = 46.5579 → **47**，杂鱼 3.7547×4×0.62/0.85 = 10.9548 → **11**；
     //   Σ = 80，名义 Σ = 79.4222 → **取整偏差 +1**（余数 1 落在 3 艘杂鱼上无法整分，如实记偏差）。
+    // ★ 2026-09-11 船长两条裁定后重编（「剩余 2 个卡位 2+2」+「**设定无首领**」）：
+    //   **无首领** ⇒ 全队 = 劫掠护卫舰 ×4（舰级本体即**均衡型 + orbit + 射程 326~4275 + 动能 8:2**，
+    //   与本卡卡面口径**逐项一致**）⇒ 原先头目那条「血型随卡走覆写」「头目射程多重方案覆写」**随之退役**；
+    //   **2+2 两波** = 每波 2 艘（`slot.wave` + `anomaly.waves`）。
+    //   难度盘守恒：总血仍 **365**（4 艘 × 91.25）、总单发仍 **80**（4 艘 × 20）；N=4 ⇒ 补偿仍 ×1.6。
     ships: [
       {
-        ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (365 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 219/360
-        dmgMul: 47 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 47/(56×1.6)
-        // 血型随卡走（船长裁决①）：卡面 均衡 → 头目条目覆写为均衡型（头目舰本体是装甲型）
-        split: foeLayerSplit('balanced'),
-        // 射程多重方案（船长裁决③）：头目原射程带 1~2210m，在本卡 3199m 的实际交战距离下
-        // **一次都没开火**（探针实测 foe-0 = 0 次）⇒ 按「同卡同带」覆写为杂鱼（劫掠护卫舰）的射程带
-        rangeMinM: FOE_SHIP_PIRATE_CORVETTE.rangeMinM,
-        rangeMaxM: FOE_SHIP_PIRATE_CORVETTE.rangeMaxM,
-        tactic: 'orbit',
-        // 头目缺省构成 = 动能 8:2，与卡面一致，故**不另写** `dmgMix`
+        ship: FOE_SHIP_PIRATE_CORVETTE,
+        count: 2,
+        wave: 0,
+        hpMul: 91.25 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 91.25/364
+        dmgMul: 20 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP), // = 20/(51×1.6)
       },
       {
         ship: FOE_SHIP_PIRATE_CORVETTE,
-        count: 3,
-        hpMul: (365 * 2) / 15 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 48.6667/365
-        dmgMul: 11 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP), // = 11/(51×1.6)
+        count: 2,
+        wave: 1,
+        hpMul: 91.25 / FOE_SHIP_PIRATE_CORVETTE.hp,
+        dmgMul: 20 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP),
       },
+    ],
+    waves: [
+      { units: 2, hpShare: 0.5 },
+      { units: 2, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-lantern',
     threat: 22,

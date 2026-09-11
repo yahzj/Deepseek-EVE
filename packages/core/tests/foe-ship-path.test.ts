@@ -434,36 +434,42 @@ describe('血型随卡走 + 头目射程多重方案（船长 2026-09-11 裁决�
   })
 
   it('六张真卡：**每一条**主体的有效血型都等于卡面 `defProfile`（头目也随卡走）', () => {
+    // ⚠ 2026-09-11 船长追加裁定「边境/碎晶/信标 **设定无首领**」+ 波次 1+2 / 2+2 ⇒
+    //   单位数由 6×4=24 变为 边境 3 + 碎晶 4 + 信标 4 + 灰霾/赤潮/蜃影 各 4 = **23**；
+    //   且三张无首领卡是**两波**编成 ⇒ 逐波核对（wave 0 与 wave 1 的主体都要与卡面血型一致）。
     let checked = 0
     for (const id of CARD_IDS) {
       const card = realCard(id)
       const want = foeLayerSplit(card.defProfile!)
-      for (const [i, u] of createFoeSpecs(card, bal).entries()) {
-        const t = u.hp.s + u.hp.a + u.hp.h
-        expect({ tag: u.tag, s: Number((u.hp.s / t).toFixed(9)) }).toEqual({
-          tag: u.tag,
-          s: Number(want.s.toFixed(9)),
-        })
-        expect(t).toBeGreaterThan(0)
-        i // 逐单位
-        checked++
+      const waves = card.waves?.length ?? 1
+      for (let w = 0; w < waves; w += 1) {
+        const prefix = w === 0 ? '' : `w${w}-`
+        for (const [i, u] of createFoeSpecs(card, bal, waves > 1 ? { tagPrefix: prefix } : {}).entries()) {
+          const t = u.hp.s + u.hp.a + u.hp.h
+          expect({ tag: u.tag, s: Number((u.hp.s / t).toFixed(9)) }).toEqual({
+            tag: u.tag,
+            s: Number(want.s.toFixed(9)),
+          })
+          expect(t).toBeGreaterThan(0)
+          i // 逐单位
+          checked++
+        }
       }
     }
-    expect(checked).toBe(24) // 六张卡 × 4 单位
+    expect(checked).toBe(23) // 六张卡逐单位（含两波卡的两个波）
   })
 
-  it('头目血型确实被覆写：卡面非装甲的四张写了 `split`，装甲两张沿用舰级', () => {
-    const armorFace = ['ano-pirate-post', 'ano-shard-bandits']
-    for (const id of CARD_IDS) {
+  it('头目血型确实被覆写：有头目的三张（灰霾/赤潮/蜃影）写了 `split`', () => {
+    // 边境/碎晶/信标 已按船长「设定无首领」改为同型编队 ⇒ **没有头目条目**，本条只查剩下三张
+    for (const id of ['ano-haze-ambush', 'ano-redring-raiders', 'ano-mirage-hijackers']) {
       const boss = realCard(id).ships![0]!
-      if (armorFace.includes(id)) expect(boss.split).toBeUndefined() // 头目舰本体就是装甲型 → 无需覆写
-      else expect(boss.split).toEqual(foeLayerSplit(realCard(id).defProfile!))
+      expect(boss.split).toEqual(foeLayerSplit(realCard(id).defProfile!))
     }
   })
 
-  it('打不到的头目：四张（信标/灰霾/赤潮/蜃影）射程覆写 = 本卡杂鱼的有效射程带', () => {
+  it('打不到的头目：三张（灰霾/赤潮/蜃影）射程覆写 = 本卡杂鱼的有效射程带', () => {
     // 逐卡核对：覆写的两端必须与该卡**杂鱼条目建出的射程带**逐字相同（同卡同带）
-    for (const id of ['ano-lantern-saboteurs', 'ano-haze-ambush', 'ano-redring-raiders', 'ano-mirage-hijackers']) {
+    for (const id of ['ano-haze-ambush', 'ano-redring-raiders', 'ano-mirage-hijackers']) {
       const card = realCard(id)
       const specs = createFoeSpecs(card, bal)
       const bossW = specs[0]!.weapons[0]!
@@ -471,12 +477,11 @@ describe('血型随卡走 + 头目射程多重方案（船长 2026-09-11 裁决�
       expect({ min: bossW.minRangeM, max: bossW.maxRangeM }).toEqual({ min: minionW.minRangeM, max: minionW.maxRangeM })
       expect(bossW.maxRangeM).toBeGreaterThan(2210) // 已离开头目舰本体的近战带（1~2210m）
     }
-    // 近战两张（边境/碎晶）：不写覆写（写了只会**缩小**头目射程，而它们打不到的原因是整个编队没进入接触窗口）
-    for (const id of ['ano-pirate-post', 'ano-shard-bandits']) {
-      const boss = realCard(id).ships![0]!
-      expect(boss.rangeMinM).toBeUndefined()
-      expect(boss.rangeMaxM).toBeUndefined()
-      expect(createFoeSpecs(realCard(id), bal)[0]!.weapons[0]!.maxRangeM).toBe(FOE_SHIPS[3]!.rangeMaxM) // 仍走舰级
+    // 无首领三张（边境/碎晶/信标）：**全队同型**，逐单位射程带一致（不再有"头目打不到"的问题）
+    for (const id of ['ano-pirate-post', 'ano-shard-bandits', 'ano-lantern-saboteurs']) {
+      const card = realCard(id)
+      const ranges = createFoeSpecs(card, bal).map((u) => `${u.weapons[0]!.minRangeM}~${u.weapons[0]!.maxRangeM}`)
+      expect(new Set(ranges).size).toBe(1)
     }
   })
 })

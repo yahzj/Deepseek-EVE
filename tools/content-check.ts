@@ -1440,47 +1440,86 @@ for (const m of MODULES) {
           )
         }
       }
-      /* ⑥ **A 族编成契约**（2026-09-11 数值落地批，船长确认）——依据 A 族设定：
-       * 「靠数量弥补」（= 杂鱼 ×3）+「一个头目强大带一堆杂鱼」（= 头目 ×1 独占 60% 血）。
-       * a) 编成 = 头目 ×1 + 同族同型杂鱼 ×3（共 4 单位）；b) 头目血量占比 = 60% ±1%（按编成实算）。 */
+      /* ⑥ **A 族编成契约**（2026-09-11 数值落地批 + 同日追加两条裁定）——两个分支：
+       * **分支一 · 有头目**（灰霾/赤潮/蜃影）——依据「靠数量弥补」+「一个头目强大带一堆杂鱼」：
+       *   a) 编成 = 头目 ×1 + 同族同型杂鱼 ×3（共 4 单位）；b) 头目血量占比 = 60% ±1%。
+       * **分支二 · 无首领**（边境/碎晶/信标，船长 2026-09-11「**边境海盗前哨 / 碎晶带劫匪通缉 /
+       *   信标猎手悬赏 都设定无首领**」）——**全队同族同型、无 elite 头目**，且按船长给定的**波次结构**：
+       *   边境「**1+2**」（首波 1 艘 + 次波 2 艘 = 3 单位）、碎晶与信标「**2+2**」（每波 2 艘 = 4 单位），
+       *   并要求登记 `anomaly.waves` 两波（引擎靠它切波；舰级路径的波次由 `slot.wave` 决定）。 */
       if (def.foeFamily === 'A') {
+        /** A 族**无首领**三张卡（船长 2026-09-11 追加裁定）与其波次结构：边境「1+2」、碎晶/信标「2+2」 */
+        const NO_BOSS_A_CARDS: Record<string, { units: number; wave0: number; wave1: number; shape: string }> = {
+          'ano-pirate-post': { units: 3, wave0: 1, wave1: 2, shape: '1+2' },
+          'ano-shard-bandits': { units: 4, wave0: 2, wave1: 2, shape: '2+2' },
+          'ano-lantern-saboteurs': { units: 4, wave0: 2, wave1: 2, shape: '2+2' },
+        }
         const totalUnits = ships.reduce((n, s) => n + unitCount(s), 0)
         const bosses = ships.filter((s) => s.ship.elite === true)
         const minions = ships.filter((s) => s.ship.elite !== true)
         const bossUnits = bosses.reduce((n, s) => n + unitCount(s), 0)
         const minionUnits = minions.reduce((n, s) => n + unitCount(s), 0)
         const minionTypes = new Set(minions.map((s) => s.ship.id))
-        check(
-          bosses.length === 1 && bossUnits === 1,
-          `舰级契约：A 族卡 ${def.name} 的编成应为「**头目舰 ×1** + 杂鱼 ×3」——船长 2026-09-11 设定「**一个头目强大带一堆杂鱼**」；` +
-            `实际头目条目 ${bosses.length} 条 / 头目单位 ${bossUnits} 个（头目 = 登记为 elite 的 A 族舰级）`,
-        )
-        check(
-          minions.length === 1 && minionUnits === 3 && minionTypes.size === 1,
-          `舰级契约：A 族卡 ${def.name} 的编成应为「头目舰 ×1 + **同族同型杂鱼 ×3**」——船长 2026-09-11 设定「**靠数量弥补**」；` +
-            `实际杂鱼条目 ${minions.length} 条（${[...minionTypes].join(' / ')}）/ 杂鱼单位 ${minionUnits} 个（须为 3、且同一条目同型）`,
-        )
-        check(
-          totalUnits === 4,
-          `舰级契约：A 族卡 ${def.name} 编成单位总数应为 **4**（头目 ×1 + 杂鱼 ×3，多舰船补偿系数按 N=4 = 1.6 标定），实际 ${totalUnits}`,
-        )
-        const totalHp = slotsHp(ships)
-        check(totalHp > 0, `舰级契约：A 族卡 ${def.name} 编成总血为 0（无法校验头目血占比）`)
-        const bossHp = slotsHp(bosses)
-        const share = totalHp > 0 ? bossHp / totalHp : 0
-        check(
-          Math.abs(share - 0.6) <= 0.01,
-          `舰级契约：A 族卡 ${def.name} 的**头目血量占比应为 60% ±1%**（按编成实算：Σ舰级血 × hpMul × 数量），实际 ` +
-            `${(share * 100).toFixed(2)}%（头目 ${bossHp.toFixed(2)} / 总血 ${totalHp.toFixed(2)}）——` +
-            `依据船长 2026-09-11 A 族设定：头目强大（独占 60% 血）、杂鱼靠数量弥补（各 40%÷3）`,
-        )
+        const waveUnits = (w: number): number =>
+          ships.filter((s) => (s.wave ?? 0) === w).reduce((n, s) => n + unitCount(s), 0)
+        const noBoss = NO_BOSS_A_CARDS[def.id]
+        if (noBoss) {
+          check(
+            bosses.length === 0 && bossUnits === 0,
+            `舰级契约：A 族卡 ${def.name} 已按船长 2026-09-11 裁定「**设定无首领**」——编成里不得再有 elite 头目；` +
+              `实际 elite 条目 ${bosses.length} 条 / ${bossUnits} 个单位`,
+          )
+          check(
+            minionTypes.size === 1,
+            `舰级契约：A 族卡 ${def.name}（无首领）应为**同族同型**编队（单一舰级）；实际 ${[...minionTypes].join(' / ')}`,
+          )
+          check(
+            totalUnits === noBoss.units,
+            `舰级契约：A 族卡 ${def.name} 的单位总数应为 **${noBoss.units}**（船长「**${noBoss.shape}**」），实际 ${totalUnits}`,
+          )
+          check(
+            waveUnits(0) === noBoss.wave0 && waveUnits(1) === noBoss.wave1,
+            `舰级契约：A 族卡 ${def.name} 的波次结构应为「**${noBoss.shape}**」（首波 ${noBoss.wave0} 艘 + 次波 ${noBoss.wave1} 艘，` +
+              `用 slot.wave 的 0/1 表达）；实际 首波 ${waveUnits(0)} 艘 / 次波 ${waveUnits(1)} 艘`,
+          )
+          check(
+            (def.waves?.length ?? 0) === 2,
+            `舰级契约：A 族卡 ${def.name}（无首领 · ${noBoss.shape}）须登记 anomaly.waves **两波**（引擎据此切波），实际 ${def.waves?.length ?? 0} 波`,
+          )
+        } else {
+          check(
+            bosses.length === 1 && bossUnits === 1,
+            `舰级契约：A 族卡 ${def.name} 的编成应为「**头目舰 ×1** + 杂鱼 ×3」——船长 2026-09-11 设定「**一个头目强大带一堆杂鱼**」；` +
+              `实际头目条目 ${bosses.length} 条 / 头目单位 ${bossUnits} 个（头目 = 登记为 elite 的 A 族舰级）`,
+          )
+          check(
+            minions.length === 1 && minionUnits === 3 && minionTypes.size === 1,
+            `舰级契约：A 族卡 ${def.name} 的编成应为「头目舰 ×1 + **同族同型杂鱼 ×3**」——船长 2026-09-11 设定「**靠数量弥补**」；` +
+              `实际杂鱼条目 ${minions.length} 条（${[...minionTypes].join(' / ')}）/ 杂鱼单位 ${minionUnits} 个（须为 3、且同一条目同型）`,
+          )
+          check(
+            totalUnits === 4,
+            `舰级契约：A 族卡 ${def.name} 编成单位总数应为 **4**（头目 ×1 + 杂鱼 ×3，多舰船补偿系数按 N=4 = 1.6 标定），实际 ${totalUnits}`,
+          )
+          const totalHp = slotsHp(ships)
+          check(totalHp > 0, `舰级契约：A 族卡 ${def.name} 编成总血为 0（无法校验头目血占比）`)
+          const bossHp = slotsHp(bosses)
+          const share = totalHp > 0 ? bossHp / totalHp : 0
+          check(
+            Math.abs(share - 0.6) <= 0.01,
+            `舰级契约：A 族卡 ${def.name} 的**头目血量占比应为 60% ±1%**（按编成实算：Σ舰级血 × hpMul × 数量），实际 ` +
+              `${(share * 100).toFixed(2)}%（头目 ${bossHp.toFixed(2)} / 总血 ${totalHp.toFixed(2)}）——` +
+              `依据船长 2026-09-11 A 族设定：头目强大（独占 60% 血）、杂鱼靠数量弥补（各 40%÷3）`,
+          )
+        }
         aCompositionCards++
       }
     }
     console.log(
       `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
         `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）；` +
-        `A 族编成契约 ${aCompositionCards} 张：头目 ×1 + 同族杂鱼 ×3（共 4 单位）、头目血量 60% ±1%`,
+        `A 族编成契约 ${aCompositionCards} 张：灰霾/赤潮/蜃影 = 头目 ×1 + 同族杂鱼 ×3（共 4 单位）· 头目血量 60% ±1%；` +
+        `边境/碎晶/信标 = **无首领**（同族同型 + 船长给定波次 1+2 / 2+2 / 2+2）`,
     )
   }
 
