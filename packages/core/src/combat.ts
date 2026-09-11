@@ -2626,6 +2626,27 @@ function stepBattle(
     if (!hasMoreWaves) b.ended = 'me'
     return
   }
+  // **无法交战 ⇒ 提前脱战**（2026-09-11 船长裁定「乙2 · 事件为 120 秒」）：
+  // 三件同时成立 —— ①开战满 `bal.cannotEngageMs`；②我方**全程一炮未发**（`stats.meShots === 0`，
+  // 开过一炮就永不触发）；③当前距离仍**在我方最远射程之外**且**敌人已经开火**（`stats.foeShots > 0`，
+  // 即"它在打我、我打不着它"）。判负口径与「超时判负」同源（结算侧走轻损撤退、**不掷弃船骰**），
+  // 只把 `escapeReason` 记为 'cannot-engage'，好让战报写明"我方射程不足"。
+  // 数值一个字不动：这一条只决定**什么时候收场**（灰霾 ②/⑤/③ 原为打满 600 秒触顶；
+  // 蜃影/赤潮三行原是 140/373 秒被打死）。双方都够不着（敌也未开火）**不触发**，仍走 `maxBattleMs`。
+  if (
+    !b.ended &&
+    bal.cannotEngageMs > 0 &&
+    b.lastTickGameMs - b.startedAtGameMs >= bal.cannotEngageMs &&
+    b.stats.meShots === 0 &&
+    b.stats.foeShots > 0
+  ) {
+    const myTopRangeM = me.weapons.reduce((m, w) => Math.max(m, w.maxRangeM), 0)
+    if (b.distanceM > myTopRangeM) {
+      b.ended = 'foe'
+      b.autoEscaped = true
+      b.escapeReason = 'cannot-engage'
+    }
+  }
   if (b.lastTickGameMs - b.startedAtGameMs >= bal.maxBattleMs) {
     // 超时判负（2026-09-10 船长定）：打满战斗上限**不再按剩余血量比判胜**（旧口径
     // "meRatio >= bestFoe 即我方胜"= 平局算赢，已作废），一律判负并按**撤退**处理——

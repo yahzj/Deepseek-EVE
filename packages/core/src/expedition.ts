@@ -30,6 +30,7 @@ import {
   createFoeSpecs,
   createPlayerSpec,
   desiredRangeFor,
+  foeDesiredRange,
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKits,
@@ -637,7 +638,11 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
  * mode 三档：'manual' 玩家主动撤退；'auto' 连续作战保险（本场结构损失过半）；
  * 'timeout' **战斗打满上限判负**（2026-09-10 船长定：超时不再按残血比判胜，视同被迫撤退）。
  */
-function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' | 'auto' | 'timeout'): void {
+function settleBattleRetreat(
+  state: GameState,
+  ctx: SimContext,
+  mode: 'manual' | 'auto' | 'timeout' | 'cannot-engage',
+): void {
   const exp = state.expedition
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const battle = exp.battle
@@ -649,6 +654,11 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
+  // 「无法交战」战报要用的两个数字（**与引擎同源、不手写**）：我方主武器最远射程 + 敌编队典型交距
+  const meSpec = createPlayerSpec(state, ctx, state.shipId)
+  const myTopRangeM = meSpec ? meSpec.weapons.reduce((m, w) => Math.max(m, w.maxRangeM), 0) : 0
+  const foesNow = anomaly ? createFoeSpecs(anomaly, ctx.balance.battle) : []
+  const foeTypicalRangeM = meSpec && foesNow.length > 0 ? foeDesiredRange(meSpec, foesNow, ctx.balance.battle) : 0
 
   // 轻损：正常战败扣损骰 ×0.5；不做弃船骰
   const bal = ctx.balance.combat
@@ -664,7 +674,9 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
       'warn',
       mode === 'timeout'
         ? '⚠ 超时撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
-        : mode === 'auto'
+        : mode === 'cannot-engage'
+          ? '⚠ 无法交战后撤离，船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
+          : mode === 'auto'
           ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
           : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
     )
@@ -683,9 +695,15 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
     'warn',
     mode === 'timeout'
       ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
-      : mode === 'auto'
-        ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
-        : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
+      : mode === 'cannot-engage'
+        ? // 无法交战（2026-09-11 船长裁定「乙2 · 事件为 120 秒」）：写明**我方射程 × 敌站位**，
+          // 让玩家看懂"不是打不过，是够不着"，并知道该换装配（推进器/更远的武器）。
+          `⚔ 无法交战（${targetName}）：我方主武器最远射程 ${myTopRangeM.toLocaleString('zh-CN')} m，` +
+          `敌编队停在约 ${foeTypicalRangeM.toLocaleString('zh-CN')} m 外（交火 ${durTxt}，一炮未发）——` +
+          `${shipName} 已脱离交火并返航。耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
+        : mode === 'auto'
+          ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
+          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
   )
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
@@ -697,10 +715,12 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
         ? `重复清剿已停止（手动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
         : mode === 'timeout'
           ? `重复清剿已停止（战斗超时）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
-          : `重复清剿已停止（本场结构损失过半，自动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
+          : mode === 'cannot-engage'
+            ? `重复清剿已停止（无法交战，已脱离）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
+            : `重复清剿已停止（本场结构损失过半，自动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
     addLog(state, 'info', text)
     // 2026-09-10 船长定：除事件日志外，玩家在线时弹窗告知（心跳读取即清）
-    if (mode === 'auto') state.autoLoopStopNotice = text
+    if (mode === 'auto' || mode === 'cannot-engage') state.autoLoopStopNotice = text
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
@@ -786,7 +806,15 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
       // ①连续作战保险——巡回场次结构损失过半；②**战斗超时判负**（2026-09-10 船长定）。
       // 来源见 battle.escapeReason，缺省 = 'hull'（旧档/旧口径零迁移）。
       if (exp.battle.autoEscaped) {
-        settleBattleRetreat(state, ctx, exp.battle.escapeReason === 'timeout' ? 'timeout' : 'auto')
+        settleBattleRetreat(
+          state,
+          ctx,
+          exp.battle.escapeReason === 'timeout'
+            ? 'timeout'
+            : exp.battle.escapeReason === 'cannot-engage'
+              ? 'cannot-engage'
+              : 'auto',
+        )
         if (!exp.active) return
         continue // 已转 back：若返航已到点则同帧回家
       }
