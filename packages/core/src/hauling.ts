@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 长途运输（2026-09-09 船长定稿：docs/design/announcement-draft-20260909 之外的新玩法）：
  * 玩家驾驶船在两座「已建成」站点（母港 ⇄ 副站 / 副站 ⇄ 副站）之间做真实航程的往返运输，
  * 循环自动续跑（与悬赏「重复清剿」同款体验），可随时"到站即停"。
@@ -7,8 +7,15 @@
  *   不做"去程并入返程"式折算（船长定）。
  * - 货物为**虚拟满载**：开始任务时把驾驶船货仓自动卸空入仓库，任务期间货仓容量被"运输货物"
  *   全部占用（不产生任何真实物品，杜绝货物入库类 bug）；到站结算报酬后自动续下一段。
- * - 报酬 = 货仓容量 × 费率 × 本段标称航程分钟（R=HAUL_RATE_PER_M3_MIN，费率常量可调）：
+ * - 报酬 = 货仓容量 × 费率 × 本段航程分钟（R=HAUL_RATE_PER_M3_MIN，费率常量可调）：
  *   与航程线性挂钩 → 任意航线每小时收益 ≈ 容量×费率×60，不存在"挑最短线刷钱"。
+ * - **2026-09-11 船长改口径（「在跑长途运输时候，所需时间提高，收益也提高」）**：
+ *   ① 航段分钟 **×15**（`HAUL_LEG_TIME_MUL`，含"就位段"）——真实飞行时长随之 ×15，玩家看到的面板时间/日志一并变；
+ *   ② 费率 0.6 → **0.4**，使**单段收益 = 改前的 ×10**（`容量×0.4×新分钟 = 10 × 容量×0.6×旧分钟`）。
+ *   推论：**时薪由 36×容量 降为 24×容量（= 改前的 2/3）**；"与航程线性挂钩、不存在挑短线刷钱"仍成立，
+ *   但旧口径"费率 0.6 = 与同船采矿大致同量级"**已作废**——按新费率实测（母港丰饶之环·富凡晶石 13 ISK/单位）：
+ *   沙猫级 采矿 ≈ 3.9 万 ISK/时 vs 运输 ≈ 1.92 万（≈0.5×）；蝠鲼级重载货舰 采矿 ≈ 14.3 万 vs 运输 ≈ 62.4 万（≈4.4×）。
+ *   航行技能照旧缩短实际时长（`travelMinutesEff`；现下限系数 0.35 ⇒ 105 分钟的实际下限约 37 分钟）。
  * - 互斥：任务中驾驶船忙碌（等同远征），各出港/站内手动作业入口拒绝；换驾驶 = 立即终止
  *   （虚拟货无残留、无惩罚）；AI 副船本版不支持。
  */
@@ -21,8 +28,23 @@ import { cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { siteProgress } from './station'
 import { shipDisplayName } from './instances'
 
-/** 运输报酬费率：ISK / (m³ × 标称航程分钟)。0.6 = 与同船采矿大致同量级（船长选"与现有作业相当"档） */
-export const HAUL_RATE_PER_M3_MIN = 0.6
+/**
+ * 运输报酬费率：ISK / (m³ × 航程分钟)。
+ * 2026-09-11 船长改口径：航段时间 ×15（见 `HAUL_LEG_TIME_MUL`）、单段收益 ×10 ⇒ 费率 0.6 → **0.4**
+ * （0.6 × 10/15 = 0.4，正好把"收益 ×10"落在新航时上）。旧注"0.6 = 与同船采矿大致同量级"已作废。
+ */
+export const HAUL_RATE_PER_M3_MIN = 0.4
+
+/**
+ * 航段时间倍率（2026-09-11 船长：「所需时间提高」）——标称航程分钟 ×本值 = 实际航段分钟。
+ * 与费率（0.6→0.4）配套：单段收益 = 改前 ×10，时薪 = 改前 ×(10/15) = 2/3。
+ */
+export const HAUL_LEG_TIME_MUL = 15
+
+/** 标称航程分钟 → 运输航段分钟（×`HAUL_LEG_TIME_MUL`，至少 1 分钟；面板/引擎同用这一处口径） */
+export function haulLegMinutesOf(nominalMinutes: number): number {
+  return Math.max(1, Math.round(nominalMinutes * HAUL_LEG_TIME_MUL))
+}
 
 /** 站点端点（id = null 表示母港） */
 export interface HaulEndpoint {
@@ -94,7 +116,7 @@ function setLeg(state: GameState, ctx: SimContext, fromId: string | null, toId: 
   const h = state.hauling
   h.fromSiteId = fromId
   h.toSiteId = toId
-  h.legMinutes = Math.max(1, Math.round(minutes))
+  h.legMinutes = haulLegMinutesOf(minutes)
   h.legMs = Math.max(1, travelLegMs(state, ctx, h.legMinutes))
   h.phaseAccMs = 0
   state.dockedSite = null

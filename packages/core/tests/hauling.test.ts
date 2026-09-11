@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 长途运输（2026-09-09 船长定稿 + 当日改：不要求停在端点、任意站接单先就位；停止 = 立即返航出发站）：
  * 两站间真实航程往返循环、虚拟满载不产真实货物。
  * 覆盖：开始前置（建成/同点/野外/互斥）、自动清仓、端点接单直接对开、非端点接单就位段、
@@ -9,7 +9,7 @@ import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
-import { startHauling, stopHauling, haulLegReward } from '../src/hauling'
+import { startHauling, stopHauling, haulLegReward, haulLegMinutesOf, HAUL_LEG_TIME_MUL, HAUL_RATE_PER_M3_MIN } from '../src/hauling'
 import { cargoCapacityM3Of } from '../src/inventory'
 import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
@@ -42,9 +42,9 @@ function world() {
   return { state, ctx }
 }
 
-/** 本测试世界的单段报酬（hub⇄far 标称 2 分钟） */
+/** 本测试世界的单段报酬（hub⇄far 标称 2 分钟 → 航段 2×15 = 30 分钟） */
 function legReward(state: GameState, ctx: SimContext): number {
-  return haulLegReward(cargoCapacityM3Of(state, ctx, state.shipId), 2)
+  return haulLegReward(cargoCapacityM3Of(state, ctx, state.shipId), haulLegMinutesOf(2))
 }
 
 /** 航线 = 母港 ⇄ site-test（测试世界仅有的两座建成端点） */
@@ -87,7 +87,7 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.hauling.routeB).toBe('site-test')
     expect(state.hauling.toSiteId).toBe('site-test')
     expect(state.hauling.fromSiteId).toBeNull() // 从母港出发
-    expect(state.hauling.legMinutes).toBe(2)
+    expect(state.hauling.legMinutes).toBe(haulLegMinutesOf(2)) // ×15 后的航段分钟（船长 2026-09-11）
     expect(state.hauling.legMs).toBeGreaterThan(0)
     // 货仓清空 → 仓库（真实货物不随虚拟任务走）
     expect(Object.keys(state.fleet[state.shipId]!.cargo)).toHaveLength(0)
@@ -116,25 +116,48 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.awayGalaxy).toBe('galaxy-far')
   })
 
-  it('真实航程往返：每段到站结算报酬并立即续下一段（2 分钟一段、两向都结）', () => {
+  it('真实航程往返：每段到站结算报酬并立即续下一段（30 分钟一段、两向都结）', () => {
     startRoute(state, ctx)
     const reward = legReward(state, ctx)
+    const ms = state.hauling.legMs
     const w0 = state.wallet.isk
-    advanceGame(state, 120_000, ctx) // 第一段到站（母港 → 前哨站）→ 立即装载返程
+    advanceGame(state, ms, ctx) // 第一段到站（母港 → 前哨站）→ 立即装载返程
     expect(state.hauling.active).toBe(true)
     expect(state.hauling.toSiteId).toBeNull() // 已换向驶回母港
     expect(state.awayGalaxy).toBe('galaxy-far')
     expect(state.wallet.isk - w0).toBe(reward)
-    advanceGame(state, 120_000, ctx) // 第二段到站（前哨站 → 母港）→ 再驶往前哨站
+    advanceGame(state, ms, ctx) // 第二段到站（前哨站 → 母港）→ 再驶往前哨站
     expect(state.hauling.toSiteId).toBe('site-test')
     expect(state.awayGalaxy).toBe('galaxy-hub')
     expect(state.wallet.isk - w0).toBe(reward * 2)
     expect(state.logs.filter((l) => l.text.includes('长途运输 · 已运抵')).length).toBe(2)
   })
 
+  // 2026-09-11 船长：「在跑长途运输时候，所需时间提高，收益也提高」——
+  // 航段分钟 ×15（HAUL_LEG_TIME_MUL）、费率 0.6 → 0.4 ⇒ 单段收益 = 改前 ×10、时薪 = 改前 ×(10/15) = 2/3。
+  it('时间 ×15 / 收益 ×10（船长 2026-09-11）：航段 = 标称×15；单段收益 = 旧口径×10；时薪 = 旧口径的 2/3', () => {
+    const cap = cargoCapacityM3Of(state, ctx, state.shipId)
+    expect(HAUL_LEG_TIME_MUL).toBe(15)
+    expect(HAUL_RATE_PER_M3_MIN).toBe(0.4)
+    expect(haulLegMinutesOf(2)).toBe(30)
+    const oldPay = Math.floor(cap * 0.6 * 2) // 改前口径：费率 0.6 × 标称 2 分钟
+    const newPay = haulLegReward(cap, haulLegMinutesOf(2))
+    expect(Math.abs(newPay - oldPay * 10)).toBeLessThanOrEqual(10) // 取整误差内正好 ×10
+    // 引擎真按新航段结算
+    startRoute(state, ctx)
+    expect(state.hauling.legMinutes).toBe(30)
+    const w0 = state.wallet.isk
+    advanceGame(state, state.hauling.legMs, ctx)
+    expect(state.wallet.isk - w0).toBe(newPay)
+    // 时薪口径（标称）：容量 × 0.4 × 60 = 旧 容量 × 0.6 × 60 的 2/3
+    const newHourly = Math.round(cap * HAUL_RATE_PER_M3_MIN * 60)
+    const oldHourly = Math.round(cap * 0.6 * 60)
+    expect(newHourly).toBe(Math.round(oldHourly * (10 / 15)))
+  })
+
   it('停止 = 立即响应且即时返港：中止任务、无需返程时间，船直接停靠回出发站；无后续报酬', () => {
     startRoute(state, ctx)
-    advanceGame(state, 60_000, ctx) // 航行中（半程）
+    advanceGame(state, Math.floor(state.hauling.legMs / 2), ctx) // 航行中（半程）
     const w0 = state.wallet.isk
     const r = stopHauling(state, ctx)
     expect(r.ok).toBe(true)

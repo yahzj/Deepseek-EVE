@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 星图页「长途运输」标签（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁。定稿 + 当日改）：
  * - 任意两座「已建成」站点之间的真实航程往返运输（自动循环）；
  * - **不要求停靠在航线端点**：停靠在任意协会站点即可接单，不在端点时引擎先飞"就位段"
@@ -11,6 +11,7 @@ import {
   dockedHaulEndpoint,
   haulEndpoints,
   haulLegReward,
+  haulLegMinutesOf,
   shortestTravelMinutes,
   travelMinutesEff,
   shipDisplayName,
@@ -113,8 +114,10 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         <div className="app-haul-list">
           {routes.map((rt) => {
             const isActive = rt.key === activeKey
-            const effMin = Math.max(1, travelMinutesEff(state, ctx, rt.minutes))
-            const perLeg = haulLegReward(cap, rt.minutes)
+            // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）——面板与引擎不能两算
+            const legMin = haulLegMinutesOf(rt.minutes)
+            const effMin = Math.max(1, travelMinutesEff(state, ctx, legMin))
+            const perLeg = haulLegReward(cap, legMin)
             const perRound = perLeg * 2
             const canStart = dockedOk && !busy && !haulingActive
             return (

@@ -500,8 +500,10 @@ export {
   dockedHaulEndpoint,
   haulEndpointName,
   haulLegReward,
+  haulLegMinutesOf,
   haulingOccupiedM3,
   HAUL_RATE_PER_M3_MIN,
+  HAUL_LEG_TIME_MUL,
 } from './hauling'
 export type { HaulEndpoint } from './hauling'
 
