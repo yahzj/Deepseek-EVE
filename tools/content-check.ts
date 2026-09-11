@@ -42,6 +42,7 @@ import {
   ITEM_KIND_ORDER,
   MAX_SKILL_LEVEL,
   MODULE_SLOTS,
+  typeLayerMult,
   MINEABLE_KINDS,
   RACK_SLOTS,
   RARE_WRECK_VOLUME_M3,
@@ -257,6 +258,125 @@ for (const sbp of SHIP_BLUEPRINTS) {
     MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
     `舰船蓝图 ${sbp.id} 没有市场卡（无法购书学习）`,
   )
+}
+
+/* ── 蓝图说明契约（2026-09-11 加，船长：「部分图纸的说明和实际产物属性对对不上，进行核查」）──
+ * 背景：蓝图说明是玩家**买书时唯一能看到的产物介绍**；历史上多次调数值（炮台射程 −30%、
+ * 舰船货舱调整…）之后说明没跟着改 → 玩家按说明买的图纸与实物不符（本次核出 2 处：
+ * 「重型炮台 MK2」说明仍写 8.2 km 实际 5.74 km；「鲸王级舰船蓝图」说明仍写 10,000 m³ 实际 7,000 m³）。
+ * 此处把**能从数据机械核对**的声明全部钉住；蓝图名与产物名的差异（「X 级舰船蓝图」vs「X 级护卫舰」）
+ * 属命名习惯，只提示不拦。 */
+{
+  const bpCtx = buildSimContext()
+  const modById = new Map(MODULES.map((m) => [m.id, m]))
+  const shipById = new Map(SHIPS.map((s) => [s.id, s]))
+  const goodsByBp = new Map(MARKET_GOODS.filter((g) => g.kind === 'blueprint').map((g) => [g.refId!, g]))
+  const mineralNameOf = (id: string): string => items.get(id)?.name ?? id
+  let claims = 0
+  let nameHints = 0
+  const num = (s: string): number => Number(s.replace(/,/g, ''))
+  for (const bp of [...BLUEPRINTS, ...SHIP_BLUEPRINTS]) {
+    const d = bp.description
+    const out = bp.outputUnits ?? 1
+    const mod = bp.moduleId ? modById.get(bp.moduleId) : undefined
+    const item = bp.itemId ? items.get(bp.itemId) : undefined
+    const ship = (bp as { shipId?: string }).shipId ? shipById.get((bp as { shipId?: string }).shipId!) : undefined
+    const product = mod ?? item ?? ship
+    if (!product) continue // 产物缺失已由上面的用例拦下
+    const pName = product.name
+    // ① 引号内的产物名
+    for (const m of d.matchAll(/「([^」]+)」/g)) {
+      claims += 1
+      check(m[1] === pName, `蓝图说明契约：${bp.id} 说明写「${m[1]}」，实际产物名「${pName}」`)
+    }
+    // ② 每批产出（N 发/个/枚 … 批）
+    for (const m of d.matchAll(/(\d+)\s*[发个枚]/g)) {
+      if (!/批/.test(d.slice(m.index ?? 0, (m.index ?? 0) + 12))) continue
+      claims += 1
+      check(Number(m[1]) === out, `蓝图说明契约：${bp.id} 说明写每批 ${m[1]}，实际 outputUnits = ${out}`)
+    }
+    // ③ 射程（远程/射程 N km）
+    for (const m of d.matchAll(/(?:远程|射程)[^0-9]{0,6}([\d.]+)\s*km/gi)) {
+      if (mod?.maxRangeM === undefined) continue
+      claims += 1
+      check(
+        Math.abs(Number(m[1]) - mod.maxRangeM / 1000) < 0.05,
+        `蓝图说明契约：${bp.id} 说明写射程 ${m[1]} km，实际 maxRangeM = ${mod.maxRangeM} m`,
+      )
+    }
+    // ④ 修理组件基础回复
+    for (const m of d.matchAll(/基础\s*(\d+)\s*HP/gi)) {
+      if (item?.repairRestore === undefined) continue
+      claims += 1
+      check(Number(m[1]) === item.repairRestore, `蓝图说明契约：${bp.id} 说明写基础 ${m[1]} HP，实际 repairRestore = ${item.repairRestore}`)
+    }
+    // ⑤ 弹药克制声明
+    if (item?.damageType) {
+      for (const [layer, word] of [['shield', '护盾'], ['armor', '装甲']] as const) {
+        for (const m of d.matchAll(new RegExp(`对${word}\\s*×\\s*([\\d.]+)`, 'g'))) {
+          claims += 1
+          const real = typeLayerMult(item.damageType, layer)
+          check(
+            Math.abs(Number(m[1]) - real) < 0.01,
+            `蓝图说明契约：${bp.id} 说明写对${word} ×${m[1]}，实际 ${item.damageType} 对${word} ×${real}`,
+          )
+        }
+      }
+    }
+    // ⑥ 声望门槛
+    for (const m of d.matchAll(/声望\s*(\d+)/g)) {
+      const g = goodsByBp.get(bp.id)
+      claims += 1
+      check(
+        g?.standingReq !== undefined && Number(m[1]) === g.standingReq,
+        `蓝图说明契约：${bp.id} 说明写需声望 ${m[1]}，实际市场 standingReq = ${g?.standingReq ?? '（无市场卡）'}`,
+      )
+    }
+    // ⑦ 舰船：货舱 / 循环秒 / 每循环产量
+    if (ship) {
+      for (const m of d.matchAll(/货舱\s*([\d,]+)\s*m³/g)) {
+        claims += 1
+        check(num(m[1]!) === ship.cargoM3, `蓝图说明契约：${bp.id} 说明写货舱 ${m[1]} m³，实际 cargoM3 = ${ship.cargoM3}`)
+      }
+      for (const m of d.matchAll(/循环\s*([\d.]+)\s*秒|([\d.]+)\s*秒\s*循环/g)) {
+        claims += 1
+        check(
+          Math.abs(Number(m[1] ?? m[2]) - ship.cycleSeconds) < 0.01,
+          `蓝图说明契约：${bp.id} 说明写循环 ${m[1] ?? m[2]} 秒，实际 cycleSeconds = ${ship.cycleSeconds}`,
+        )
+      }
+      for (const m of d.matchAll(/产\s*([\d,]+)\s*单位/g)) {
+        claims += 1
+        check(
+          num(m[1]!) === ship.oreUnitsPerCycle,
+          `蓝图说明契约：${bp.id} 说明写产 ${m[1]} 单位，实际 oreUnitsPerCycle = ${ship.oreUnitsPerCycle}`,
+        )
+      }
+    }
+    // ⑧ 说明点名的矿物必须在材料里（矿石放宽：其精炼产物落在材料里即可，如「希莫非特矿带」→ 超噬矿）
+    const mats = new Set(bp.materials.map((x) => x.itemId))
+    const oreFeeds = (oreId: string): boolean => (items.get(oreId)?.refine ?? []).some((r) => mats.has(r.mineralId))
+    for (const def of items.values()) {
+      if (def.kind !== 'mineral' && def.kind !== 'ore') continue
+      if (!def.name || def.name.length < 2 || !d.includes(def.name)) continue
+      if (mats.has(def.id)) continue
+      if (def.kind === 'ore' && oreFeeds(def.id)) continue
+      claims += 1
+      check(false, `蓝图说明契约：${bp.id} 说明点名了「${def.name}」，实际材料只有 ${[...mats].map(mineralNameOf).join(' + ')}`)
+    }
+    // ⑨ CPU 声明
+    for (const m of d.matchAll(/CPU\s*(\d+)|(\d+)\s*点\s*CPU/g)) {
+      const real = mod?.cpuUse ?? ship?.cpu
+      if (real === undefined) continue
+      claims += 1
+      check(Number(m[1] ?? m[2]) === real, `蓝图说明契约：${bp.id} 说明写 CPU ${m[1] ?? m[2]}，实际 = ${real}`)
+    }
+    // ⑩ 蓝图名 vs 产物名：命名习惯差异只提示
+    const base = bp.name.replace(/图纸$|蓝图$/, '').trim()
+    if (!pName.includes(base.replace(/[（(].*?[)）]/g, '').trim())) nameHints += 1
+    void bpCtx
+  }
+  console.log(`· 蓝图说明契约：核对 ${claims} 条数值声明（${BLUEPRINTS.length + SHIP_BLUEPRINTS.length} 张蓝图）；蓝图名与产物名不同写法 ${nameHints} 张（命名习惯，不拦）`)
 }
 
 // 舰船
