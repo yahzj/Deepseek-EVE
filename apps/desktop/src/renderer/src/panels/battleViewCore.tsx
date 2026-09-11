@@ -34,7 +34,7 @@ const FLASH_LIFE = 340
 /** 敌舰爆炸演出生命周期 ms（渲染时清理；爆炸 CSS 动画 ~1.25s） */
 const BOOM_LIFE = 1700
 /** 机群被点防击落的坠落演出生命周期 ms（小爆炸环 + 碎片下坠；渲染时清理） */
-const DRONE_DOWN_LIFE = 760
+const DRONE_DOWN_LIFE = 1500 // 2026-09-11 船长：爆炸演出持续更久（原 760）
 
 /** 战斗背景视差星层配置：far 慢 / mid 中 / near 快（追逐机动时差速最明显） */
 const STAR_LAYERS = [

@@ -6979,17 +6979,17 @@ body {
 
 /* 机群被点防击落的坠落演出（2026-09-10）：SVG 线稿（冲击环 + 八向爆散线 + 三片碎屑），
    只动 transform/opacity（约定第十四章：不碰 filter/box-shadow/宽高）；落点与机体共用同一坐标系 */
-.app-bts-drone-wreck { position: absolute; display: block; opacity: .95; animation: app-bts-wreck-fall 760ms ease-out 1 forwards; }
+.app-bts-drone-wreck { position: absolute; display: block; opacity: .95; animation: app-bts-wreck-fall 1500ms ease-out 1 forwards; } /* 2026-09-11 船长：爆炸持续更久（原 760ms） */
 .app-bts-drone-wreck svg { display: block; overflow: visible; }
-.app-bts-wreck-ring { fill: none; transform-box: fill-box; transform-origin: center; animation: app-bts-wreck-ring 420ms ease-out 1 forwards; }
-.app-bts-wreck-rays { animation: app-bts-wreck-rays 300ms ease-out 1 forwards; }
-.app-bts-wreck-bit { animation: app-bts-wreck-bit 700ms ease-in 1 forwards; }
+.app-bts-wreck-ring { fill: none; transform-box: fill-box; transform-origin: center; animation: app-bts-wreck-ring 900ms ease-out 1 forwards; } /* 冲击环放慢（原 420ms） */
+.app-bts-wreck-rays { animation: app-bts-wreck-rays 640ms ease-out 1 forwards; } /* 爆散线放慢（原 300ms） */
+.app-bts-wreck-bit { animation: app-bts-wreck-bit 1400ms ease-in 1 forwards; } /* 碎屑下坠放慢（原 700ms） */
 .app-bts-wreck-bit.is-b { animation-delay: 90ms; }
 .app-bts-wreck-bit.is-c { animation-delay: 160ms; }
-@keyframes app-bts-wreck-fall { 0% { transform: translate(0, 0); } 35% { transform: translate(0, 3px); } 100% { transform: translate(0, 22px); opacity: 0; } }
+@keyframes app-bts-wreck-fall { 0% { transform: translate(0, 0); } 35% { transform: translate(0, 4px); } 100% { transform: translate(0, 30px); opacity: 0; } } /* 2026-09-11：下坠更远（配合更长的演出） */
 @keyframes app-bts-wreck-ring { 0% { transform: scale(.35); opacity: .95; } 100% { transform: scale(1.5); opacity: 0; } }
 @keyframes app-bts-wreck-rays { 0% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes app-bts-wreck-bit { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(0, 14px); opacity: 0; } }
+@keyframes app-bts-wreck-bit { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(0, 20px); opacity: 0; } }
 
 .app-bts-wing { position: absolute; left: 0; top: 0; }
 
