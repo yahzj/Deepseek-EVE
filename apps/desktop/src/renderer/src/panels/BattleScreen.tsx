@@ -67,8 +67,7 @@ function dronePoseAt(
   st: DroneSortie | undefined,
   lay: { me: Anchor; foe: Anchor[] },
   elapsed: number,
-): { x: number; y: number; heading: number } {
-  const base = DRONE_STYLE === 'sortie' && !model.resident ? droneTakeoff(lane) : model.slots[lane % model.slots.length]!
+): { x: number; y: number; heading: number } {  const base = DRONE_STYLE === 'sortie' && !model.resident ? droneTakeoff(lane) : model.slots[lane % model.slots.length]!
   const baseAbs = { x: lay.me.x + base.x, y: lay.me.y + base.y }
   const arc = droneArcHeight(lane)
   const foeA = lay.foe[0] ?? lay.me
@@ -87,6 +86,34 @@ function dronePoseAt(
     return { x: p.x, y: p.y, heading: -1 } // 返航：掉头
   }
   return { x: station.x, y: station.y, heading: 1 }
+}
+
+/**
+ * **敌方机群姿态**（2026-09-11 机群批 S5）——我方 `dronePoseAt` 的**完整镜像**：
+ * 起点 = **敌舰机库口**（`droneTakeoff` 偏移相对敌舰**水平镜像**），阵位 = **我方舰旁**（`lay.me + off`）
+ * ——因为敌方机群打的是**我方舰**，锚点就是"要打的那一方"（与我方机群锚敌舰同一条口径）。
+ * 朝向：出海/驻留 `heading = -1`（朝我）· 返航 `heading = +1`（掉头）。
+ */
+function foePoseAt(
+  model: DroneModel,
+  lane: number,
+  st: DroneSortie | undefined,
+  lay: { me: Anchor; foe: Anchor[] },
+  elapsed: number,
+): { x: number; y: number; heading: number } {
+  const foeA = lay.foe[0] ?? lay.me
+  const tk = droneTakeoff(lane)
+  const deck = { x: foeA.x - tk.x, y: foeA.y + tk.y }
+  const off = st?.offs[lane % (st.offs.length || 1)] ?? { x: 52, y: 0 }
+  const station = { x: lay.me.x + off.x, y: lay.me.y + off.y }
+  const arc = droneArcHeight(lane)
+  if (elapsed < DRONE_SORTIE_OUT_MS) {
+    const t = Math.min(1, Math.max(0, elapsed / DRONE_SORTIE_OUT_MS))
+    return { ...dronePathPos(t, deck, station, arc, false), heading: -1 }
+  }
+  if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) return { x: station.x, y: station.y, heading: -1 }
+  const t = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS))
+  return { ...dronePathPos(t, station, deck, arc, true), heading: 1 }
 }
 
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
@@ -170,7 +197,8 @@ const meSpeedRef = useRef(200)
     foeN: number
     openM: number
     nearM: number
-    wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean }>
+    /** `foe` 有值 = 该机群属于**敌方单位 tag**（走 `foePoseAt` 镜像几何；元素键加 `foe:` 前缀） */
+    wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean; foe?: string }>
   }>({ foeN: 1, openM: 1, nearM: 200, wings: [] })
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
@@ -359,10 +387,10 @@ const meSpeedRef = useRef(200)
           if (w.deck) continue // 收舱（display:none）不写位置
           const elapsed = w.st ? nowMs - w.st.startAt : Number.POSITIVE_INFINITY
           for (let i = 0; i < w.show; i++) {
-            const key = `${w.artId}|${i}`
+            const key = w.foe ? `foe:${w.foe}:${w.artId}|${i}` : `${w.artId}|${i}`
             const el = droneElsRef.current.get(key)
             if (!el) continue
-            const pose = dronePoseAt(w.model, i, w.st, layLoop, elapsed)
+            const pose = w.foe ? foePoseAt(w.model, i, w.st, layLoop, elapsed) : dronePoseAt(w.model, i, w.st, layLoop, elapsed)
             const t = `translate3d(${(pose.x - layLoop.me.x).toFixed(1)}px, ${(pose.y - layLoop.me.y).toFixed(1)}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
             if (w0.get(key) !== t) {
               el.style.transform = t
@@ -975,13 +1003,27 @@ const meSpeedRef = useRef(200)
       dronePrevShowRef.current.set(w.artId!, show)
       return { artId: w.artId!, model, phase, elapsed, st, show, total: w.count ?? 1 }
     })
+  /** 敌方机群（第二层）：与 `droneWings` 同构——起点换成**敌舰机库口**、阵位在**我方舰旁**（镜像） */
+  const foeWings = (arcs.foeDrones ?? []).filter((w) => w.alive > 0)
   /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
   visDistRef.current = visM
   droneDriveRef.current = {
     foeN: Math.max(1, foeRowTags.length),
     openM,
     nearM,
-    wings: droneWings.map((w) => ({ artId: w.artId, model: w.model, show: w.show, st: w.st, deck: w.phase === 'deck' })),
+    wings: [
+      ...droneWings.map((w) => ({ artId: w.artId, model: w.model, show: w.show, st: w.st, deck: w.phase === 'deck' })),
+      // **敌机也交给同一套驱动**（2026-09-11 S5 修正）：旧版敌机机体不在 `wings` 里 ⇒ 机群层盒子
+      // 从未被平移到我方舰位（玩家不带无人机时 `d.wings` 为空）⇒ 敌机位置全错、还随布局漂移。
+      ...foeWings.map((w) => ({
+        artId: w.artId,
+        model: droneModelOf(w.artId)!,
+        show: Math.min(w.alive, DRONE_SHOW_MAX),
+        st: foeSortieRef.current.get(`${w.tag}:${w.artId}`),
+        deck: false,
+        foe: w.tag,
+      })),
+    ],
   }
 
   /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
@@ -992,10 +1034,6 @@ const meSpeedRef = useRef(200)
      （此前两个分支结构不同 → 击毁瞬间整份舰体 SVG 被卸载重建，正是卡顿主因）——
      现只切换 class（is-corpse）与淡出透明度，舰体矢量始终不被重建。 */
   /** 敌方机群（2026-09-11 机群批 S5）：按敌单位 tag 取该舰的警戒机群（机型 / 机库 / 现存架数） */
-  const foeWingOf = (tag: string): { artId: string; count: number; alive: number } | undefined =>
-    arcs.foeDrones?.find((d) => d.tag === tag)
-  /** **敌方机群（第二层）**：与 `droneWings` 同构——起点换成**敌舰机库口**、阵位在**两舰之间**（镜像） */
-  const foeWings = (arcs.foeDrones ?? []).filter((w) => w.alive > 0)
   const foeUnitEls = foeRowTags.map((tag) => {
     const isMain = isFoeMainTag(tag)
     const ba = corpseAtRef.current.get(tag)
@@ -1181,59 +1219,36 @@ const meSpeedRef = useRef(200)
                 const model = droneModelOf(w.artId)
                 if (!model) return null
                 const show = Math.min(w.alive, DRONE_SHOW_MAX)
-                const st = foeSortieRef.current.get(`${w.tag}:${w.artId}`)
-                const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
-                const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
-                const fdx = (lay.foe[0]?.x ?? lay.me.x) - lay.me.x
-                const fdy = (lay.foe[0]?.y ?? lay.me.y) - lay.me.y
-                // 敌舰机库口：与我方 `droneTakeoff` 同一组偏移，但**相对敌舰水平镜像**（敌舰朝向我方）
-                // ⇒ 起点落在敌舰舰体上（旧口径 `fdx + 12` 会落到舰体左上角，船长实测反馈过）
-                const deckAt = (lane: number): { x: number; y: number } => {
-                  const tk = droneTakeoff(lane)
-                  return { x: fdx - tk.x, y: fdy + tk.y }
-                }
+                // 位置**不在这里算**：与本方机群一样交给 rAF 驱动层（`droneDriveRef.wings` 里带 `foe` 的那些），
+                // 驱动按 `foePoseAt` 写 transform（含 translate(-50%,-50%) 居中与 scaleX(heading) 朝向）。
+                // ⚠ 旧版在这里自己写 left/top ⇒ 机群层盒子只有"我方有机群"时才被平移到我方舰位，
+                //   玩家不带无人机时敌机全部落在未平移的盒子里（船长实测：位置错、还随布局漂移）。
                 return (
                   <div key={`foe-${w.tag}-${w.artId}`} className="app-bts-wing is-sortie">
-                    {Array.from({ length: show }, (_, i) => {
-                      const off = st?.offs[i % Math.max(1, st.offs.length)] ?? { x: 52, y: 0 }
-                      // 阵位 = **我方舰旁**（绝对 = `lay.me + off`；本层原点就是我方舰位 ⇒ 局部 = `off`）
-                      // ——与弹道层同源（那边锚点 `layFx.me` + `dir = -1`）⇒ 弹道必然从机体出。
-                      const station = { x: off.x, y: off.y }
-                      const deck = deckAt(i)
-                      let pos = deck
-                      let facing = -1 // 出海：朝我（镜像）
-                      if (st) {
-                        if (elapsed < DRONE_SORTIE_OUT_MS) {
-                          pos = dronePathPos(elapsed / DRONE_SORTIE_OUT_MS, deck, station, droneArcHeight(i), false)
-                        } else if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) {
-                          pos = station
-                        } else if (elapsed < cycleMs) {
-                          const t = (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS
-                          pos = dronePathPos(t, station, deck, droneArcHeight(i), true)
-                          facing = 1 // 返航：掉头朝敌舰
-                        }
-                      }
-                      return (
-                        <span
-                          key={i}
-                          className="app-bts-drone"
-                          style={{ position: 'absolute', left: pos.x, top: pos.y, color: model.tint }}
+                    {Array.from({ length: show }, (_, i) => (
+                      <span
+                        key={i}
+                        ref={(el) => {
+                          const k = `foe:${w.tag}:${w.artId}|${i}`
+                          if (el) droneElsRef.current.set(k, el)
+                          else droneElsRef.current.delete(k)
+                        }}
+                        className="app-bts-drone"
+                        style={{ color: model.tint }}
+                      >
+                        <svg
+                          viewBox="-13 -8 26 16"
+                          width="22"
+                          height="14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
                         >
-                          <svg
-                            viewBox="-13 -8 26 16"
-                            width="22"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinejoin="round"
-                            style={{ transform: `scaleX(${facing})` }}
-                          >
-                            {model.art}
-                          </svg>
-                        </span>
-                      )
-                    })}
+                          {model.art}
+                        </svg>
+                      </span>
+                    ))}
                     {w.count > show ? <span className="app-bts-drone-more">×{w.alive}</span> : null}
                   </div>
                 )
