@@ -83,12 +83,15 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     expect(ratio - 1).toBeCloseTo(-0.193, 3)
   })
 
-  it('D2 基础命中 100%、12 km 超远程、远端衰减更轻', () => {
+  it('D2 基础命中 100%、12 km 超远程、远端衰减（2026-09-11 起 MK3 统一 0.5 ⇒ 本件 0.45 相对更重）', () => {
     const d2 = ctx.modules.get('mod-lair-turret-d')!
     const mk3 = ctx.modules.get('mod-turret-kin-3')!
     expect(d2.hitRate).toBe(1)
     expect(d2.hitRate!).toBeGreaterThan(mk3.hitRate!)
-    expect(d2.falloff!).toBeGreaterThan(mk3.falloff!) // 远端命中衰减更慢
+    // 2026-09-11 船长定「我方动能炮台远端命中衰减统一 0.5」后，D 族专属件的 0.45 反而比 MK3 更重
+    // ——它的立身之本从"衰减更轻"改为「**必中 + 63% 射程**」（口径见 core/lairs.ts D 族池注释）。
+    expect(mk3.falloff).toBe(0.5)
+    expect(d2.falloff!).toBeLessThan(mk3.falloff!)
     expect(d2.maxRangeM).toBe(12_000)
     expect(d2.maxRangeM!).toBeGreaterThan(mk3.maxRangeM!)
     // 进战斗：0 技能下条目命中即 100%，射程带 / 装填原样落地
