@@ -54,7 +54,10 @@
   `shipArtData.tsx`（SHIP_ART_EXTRA / FOE_ART_EXTRA 转录资产表）；敌族映射 = FOE_FAMILY
   （22 张悬赏卡 → 族 A~G，缺省 F 制式巡逻）。
 - 新规格已生效：画布 240×110、舰首朝右、styles.css `.shipart-*` 层与敌族发光件、
-  battleViewCore 枪口锚已随新画布换算（66→79 / 35→39）。
-- **待船长真机目测**：测试档 `npx tsx tools/make-test-save.ts shipart`（已生成于
-  docs/test-saves/，档案清单见 docs/test-saves/README.md）；目测/细节验收清单 =
-  `acceptance-visual-20260909.md`（本目录）；目测通过后收口合入 main。
+  battleViewCore 舰艏/枪口锚已随新画布换算（**主力舰 66→79、僚机 35→42**，见 `panels/battleViewCore.tsx`
+  的 `NOSE_MAIN/NOSE_ESC`；**不是 39**——39 是 09-10 挂点对齐批之前的中间读数）。
+- **2026-09-10 追加（已收口）**：战斗图形整批**已收口并合入 main**（roadmap 2026-09-09 条目），
+  后续同批加入的还有**真实挂点炮口锚**（`muzzle` 优先、为空回落舰艏锚）与**按舰族分型**；
+  现在待船长真机目测的是**挂点对齐后的效果**（见 `mounts-20260910.md`），不再是"能否接入"。
+- **测试档**：`npx tsx tools/make-test-save.ts shipart`（已生成于 docs/test-saves/，档案清单见
+  docs/test-saves/README.md）；目测/细节验收清单 = `acceptance-visual-20260909.md`（本目录）。
