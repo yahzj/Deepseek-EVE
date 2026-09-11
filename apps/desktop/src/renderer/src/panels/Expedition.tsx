@@ -2327,7 +2327,11 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           <span className="app-dim">每日 0 点开板</span>
         )}
       </div>
-      {tasks.length === 0 ? (
+      {/* 2026-09-11 修复（玩家反馈「清空赏金任务后敌对派系活跃消失了」）：派系活跃卡**不随 5 席清空而消失**——
+          原先它被放在「tasks.length === 0 ? 空态 : 列表」的**列表分支里**，玩家打完全部 5 席后整块被空态替换，
+          于是置顶的派系活跃卡一起被吞掉（而 core 侧当天照常生效：该星系常驻悬赏 +10% 奖金/威胁、照常掉稀有残骸）。
+          现改为：只要当天有派系活跃（`factionCard` 可解析）就照常渲染，空态行只在"确实没有派系卡"时占位。 */}
+      {tasks.length === 0 && !(faction && factionCard && factionGalaxy) ? (
         <div className="app-dim app-exp-idle">
           {view.bountyOpened
             ? '本日暂无赏金任务——已完成或已过期，明天 0 点整板刷新（已击败的窝点不会重复派发同一条目标）。'
@@ -2481,6 +2485,13 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 </div>
               )
             })()
+          ) : null}
+          {/* 5 席已清空时：派系活跃卡仍在（上方），这里补一行说明为什么席位是空的 */}
+          {tasks.length === 0 ? (
+            <div className="app-dim app-exp-idle">
+              本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」当天仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、
+              胜利照常掉稀有残骸）；明天 0 点整板刷新。
+            </div>
           ) : null}
           {tasks.map((t) => {
           const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
