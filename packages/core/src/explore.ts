@@ -28,6 +28,18 @@ export const SCAN_WINDOW_MS = 10 * 60_000
 /** 低安扫描时长惩罚系数（船长 2026-09-05 定：目标星系 sec < 0.5 时，窗口 ×[1 + 0.8×(0.5−sec)]；
  *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
 export const SCAN_LOWSEC_PENALTY = 0.8
+/** 全游戏安全等级下限（`data/universe.ts` 最危险的星系 = −1.0）——用于算扫描窗口的**合法上限** */
+export const SEC_FLOOR = -1
+
+/**
+ * 扫描窗口的**合法上限**（毫秒；无技能 + 最危险星系）＝ `SCAN_WINDOW_MS` ×(1 + 0.8×(0.5−(−1))) = **×2.2**。
+ * 用途：**读档兜底**——`save.normalizeState` 没有 ctx、拿不到目标星系的安全等级，只能按"全游戏可能出现的
+ * 最大有效窗口"钳制；**不能**拿基准 `SCAN_WINDOW_MS` 去钳，否则低安星系（窗口最长 22 分钟）的续扫进度
+ * 会在读档时被截断（2026-09-11 修复）。技能只缩短窗口，故上限与技能无关。
+ */
+export function maxScanWindowMs(): number {
+  return Math.round(SCAN_WINDOW_MS * (1 + SCAN_LOWSEC_PENALTY * (0.5 - SEC_FLOOR)))
+}
 
 /** 信号分析学（−8%/级）× 信号过滤学（−6%/级）× 星图测绘学（−6%/级）乘算：扫描窗口技能系数
  * （2026-09-08 船长定：移除「总下限 40%」护栏；三技能封顶 5 级乘积 0.294，乘算本身有界）

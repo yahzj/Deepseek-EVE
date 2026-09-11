@@ -20,7 +20,7 @@ import {
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
-import { SCAN_WINDOW_MS } from './explore'
+import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
@@ -1869,13 +1869,19 @@ function normalizeState(raw: unknown): GameState {
   const pendingDialogue =
     typeof src.pendingDialogue === 'string' && src.pendingDialogue.length > 0 ? src.pendingDialogue : null
 
-  // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒（上限 SCAN_WINDOW_MS） ---
+  // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
+  // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 低安最深惩罚 ×2.2 = 22 分钟）——
+  // 2026-09-11 修复：原按基准 `SCAN_WINDOW_MS`（10 分钟）钳，而低安星系的有效窗口最长 22 分钟，
+  // 于是"在低安扫了 10 分钟以上 → 终止 → 重开存档"会把进度截回 10 分钟（白扫一段）。
+  // 本函数没有 ctx（拿不到目标星系安全等级），故只能按全游戏最大可能窗口兜底；
+  // 消费侧（`scanWindowMsFor` 起步/续扫）仍按**该星系实际窗口**再钳一次。
+  const scanLimit = maxScanWindowMs()
   const scanProgressRaw = asRaw(src.scanProgress)
   const scanProgress: Record<string, number> = {}
   for (const [key, value] of Object.entries(scanProgressRaw)) {
     if (key.length === 0) continue
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-      scanProgress[key] = Math.min(SCAN_WINDOW_MS, Math.floor(value))
+      scanProgress[key] = Math.min(scanLimit, Math.floor(value))
     }
   }
 

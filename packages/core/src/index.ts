@@ -244,6 +244,8 @@ export {
   advanceScanning,
   SCAN_WINDOW_MS,
   SCAN_LOWSEC_PENALTY,
+  SEC_FLOOR,
+  maxScanWindowMs,
   scanWindowMsOf,
   scanWindowMsFor,
 } from './explore'
