@@ -567,8 +567,8 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
  *   ① 虫群规模 6~12 只/卡、分波更多  ② **只有噬口有头目**（全族唯一 · `elite`）
  *   ③ 首领血量/火力占比 **80%**（其余每只小虫 2%）  ④ 总血 / 总火力**守恒**
  *   ⑤ 族级结构修正：T1 护卫舰 ×2（星髓幼虫 / 畸变幼虫）+ T2 驱逐舰 ×1（星髓成虫）+ T4 巨兽
- *   ⑥ 巨兽：提速 1.35 + 射程 1~4,000（**不动目标距离**）+ 开启**冲锋**
- *      （结束条件 = 到达目标距离、冷却 20 秒）
+ *   ⑥ 巨兽：提速 1.35 + 开启**冲锋**（结束条件 = 到达目标距离、冷却 20 秒）+ **目标距离不动**；
+ *      射程当日先加后**回收**（4,000 → 回原值 2,713，不再覆盖标准站位 3,220m）
  * 本组锁死：**逐卡编成与总盘守恒**、**波次结构**、**稀有头目唯一性**、**目标距离不动**。
  * ⚠ 第一批那组「零变化迁移 / 逐字保持」用例**已按设计作废**（本批正是有意改编成与血量分配）。
  * ══════════════════════════════════════════════════════════════════════════ */
@@ -704,7 +704,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(501) // 总单发取整后仍精确 = 501
     expect(boss.speedMps).toBe(277) // 205 × 1.35（船长「巨兽提速降为 1.35」）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
-    expect(boss.weapons[0]!.maxRangeM).toBe(4000) // 巨兽射程增加（舰级 1~4,000）
+    expect(boss.weapons[0]!.maxRangeM).toBe(2713) // 射程加成已**回收**（回原值，不再覆盖标准站位 3,220m）
     expect(minions.every((x) => x.weapons[0]!.maxRangeM === 2713)).toBe(true) // 小虫 = 卡带
     expect(boss.weapons[0]!.kind).toBe('fixed')
     expect(boss.foeTactic).toBe('brawl')
@@ -713,16 +713,16 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(minions.every((x) => x.foeCanCharge !== true)).toBe(true)
   })
 
-  it('巨兽射程增加但**目标距离不动**：期望交距 = 543 m（由波 0 的小虫带锚定）', () => {
+  it('巨兽**目标距离不动**：期望交距 = 543 m（由波 0 的小虫带锚定；射程加成已回收）', () => {
     const def = card('ano-maw-hunt')
     const w0 = createFoeSpecs(def, bal)
     // 波 0 首个单位 = 畸变幼虫（带 1~2713）⇒ 期望交距 = 1 + 0.20 × (2713 − 1) = 543
     expect(w0[0]!.weapons[0]!.maxRangeM).toBe(2713)
     expect(foeDesiredRange(w0[0]!, w0, bal)).toBe(543)
-    // 巨兽自己的带更长（4,000），但它**不在波 0** ⇒ 拉不动期望交距
+    // 巨兽与全族同档（1~2,713）；首波由小虫锚定 ⇒ 期望交距与开战距离都不随末波改变
     const boss = allWaves(def).find((x) => x.tag === 'w2-foe-3')!
-    expect(boss.weapons[0]!.maxRangeM).toBe(4000)
-    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(4000)
+    expect(boss.weapons[0]!.maxRangeM).toBe(2713)
+    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(2713)
   })
 
   it('稀有头目唯一性：**C 族只有噬口**出现 `elite` 单位，显示名挂「精锐」（A 族头目另计）', () => {
