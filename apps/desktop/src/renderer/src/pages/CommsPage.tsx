@@ -51,8 +51,8 @@ export function CommsPage({
   onGoto,
   focus,
 }: PageProps & {
-  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab` / 舰船标签 `shipTab`） */
-  onGoto: (page: string, tab?: string, shipTab?: string) => void
+  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
+  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
   /** 定位请求（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 选中指定那封（seq 变化即重新选中） */
   focus?: { id: string; seq: number } | null
 }): ReactNode {
@@ -187,10 +187,15 @@ export function CommsPage({
                             </span>
                           ) : null}
                         </div>
-                        {/* 屏幕第二层之后的正文 */}
+                        {/* 屏幕第二层之后的正文；`highlight` 里的段落加**既有强调样式**
+                            （`.app-report-highlight`：暗底 + 左侧强调竖条；2026-09-11 船长：
+                            「将训前简报的任务链内的文字高亮」——按约定第六章复用同级既有样式，不自造新样式） */}
                         <div className="app-comms-lines">
                           {current.paragraphs.map((p, i) => (
-                            <p key={i} className="app-comms-text">
+                            <p
+                              key={i}
+                              className={`app-comms-text${current.highlight?.includes(p) ? ' app-report-highlight' : ''}`}
+                            >
                               {p}
                             </p>
                           ))}
@@ -228,7 +233,7 @@ export function CommsPage({
                     <button
                       className="app-btn is-primary app-comms-goto"
                       title={current.hint.text}
-                      onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab)}
+                      onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab, current.hint!.taskTab)}
                     >
                       <span className="app-comms-goto-text">{current.hint.text}</span>
                       <span className="app-comms-goto-label">前往</span>

@@ -221,6 +221,7 @@ export {
   repairWithKits,
   useOneRepairKit,
   renameShip,
+  hullLayerCaps,
 } from './shipyard'
 
 export { fleetDefOf, shipDisplayName } from './instances'
@@ -499,8 +500,14 @@ export {
   dockedHaulEndpoint,
   haulEndpointName,
   haulLegReward,
+  haulLegMinutesOf,
+  haulBaseReward,
+  haulRewardRange,
+  HAUL_TRIP_MUL_MIN,
+  HAUL_TRIP_MUL_MAX,
   haulingOccupiedM3,
   HAUL_RATE_PER_M3_MIN,
+  HAUL_LEG_TIME_MUL,
 } from './hauling'
 export type { HaulEndpoint } from './hauling'
 

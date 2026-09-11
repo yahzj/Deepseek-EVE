@@ -185,7 +185,16 @@ const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
 ]
 const TASK_TAB_KEY = 'whale-idle:task-tab'
 
-export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+export function TaskPanel({
+  engine,
+  onToast,
+  focusTab = null,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 外部定位请求（2026-09-11 船长：教程步骤 2 跳转任务中心要切到「重要任务」；seq 变化即应用） */
+  focusTab?: { tab: string; seq: number } | null
+}) {
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {
       const v = localStorage.getItem(TASK_TAB_KEY)
@@ -195,6 +204,21 @@ export function TaskPanel({ engine, onToast }: { engine: GameEngine; onToast: To
       return 'important'
     }
   })
+  // 外部定位：本页内层标签会被记住，光切到星图「任务中心」不够——按请求切到指定内层标签
+  const lastFocusSeq = useRef(-1)
+  useEffect(() => {
+    const req = focusTab
+    if (!req || req.seq === lastFocusSeq.current) return
+    lastFocusSeq.current = req.seq
+    if (req.tab === 'important' || req.tab === 'resource' || req.tab === 'courier' || req.tab === 'bounty') {
+      setTab(req.tab)
+      try {
+        localStorage.setItem(TASK_TAB_KEY, req.tab)
+      } catch {
+        // 忽略
+      }
+    }
+  }, [focusTab?.seq])
 
   // 建站任务初期不出现：只有“抵达/探索过”该星系后才解锁（船长 2026-09-05 拍板）
   const state = engine.state

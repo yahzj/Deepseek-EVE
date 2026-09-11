@@ -48,6 +48,15 @@ export interface MapGotoTarget {
   ids: string[]
   seq: number
 }
+/**
+ * 任务中心**内层**标签定位（2026-09-11 船长：「步骤 2/7 跳转任务中心时，不会切到指定标签页」）。
+ * 内层标签（重要任务/资源任务/快递任务/赏金任务）会记住玩家上次的选择，故跳转必须显式带上目标标签；
+ * `seq` 变化即应用一次（与 `MapGotoTarget`/`commsFocus` 同一套"请求 + 序号"做法）。
+ */
+export interface TaskFocusTarget {
+  tab: string
+  seq: number
+}
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'star', label: '星图·远征', icon: 'nav-map' },
   { key: 'mine', label: '矿带开采', icon: 'nav-mine' },
@@ -77,10 +86,12 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   name: '名称',
 }
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, taskFocus = null }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
+  /** 任务中心**内层**标签定位（2026-09-11 船长：步骤 2 跳转要切到「重要任务」；seq 变化即应用） */
+  taskFocus?: TaskFocusTarget | null
 }) {
   // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
   // seq 只在跨页跳转时递增，普通切回本页不重放）
@@ -142,7 +153,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}
-      {mapTab === 'task' ? <TaskPanel engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'task' ? <TaskPanel engine={engine} onToast={onToast} focusTab={taskFocus} /> : null}
     </div>
   )
 }

@@ -486,9 +486,16 @@ export interface EncounterBalance {
   ambushChancePerSec: number
   /** 低安扫描中遇袭率乘数（船长 2026-09-05 定：×1.5，封顶 0.9；扫描即暴露、无入场缓冲） */
   scanAmbushMul: number
-  /** 受损档：耐久扣损区间（底 clamp 5% 绝不弃船） */
-  duraLossMin: number
-  duraLossMax: number
+  /**
+   * 受损档「被咬一口」的伤害系数（**秒**；船长 2026-09-11 定：伤害按**敌人火力**折算）。
+   * 一口伤害 HP = 敌群火力代理（`battle.foeDpsPerThreat` × 威胁 = 敌方总火力/秒）× 本系数，
+   * 施加时**先扣装甲、吸完再进结构**（与日志「被咬下一块装甲」同口径）。
+   * 取代旧 `duraLossMin/duraLossMax`（结构 −5%~15%，与敌群强度无关，2026-09-11 作废）。
+   */
+  hitFirepowerSec: number
+  /** 撤退线（船长 2026-09-11 定）：遭遇了结后**结构低于此比例**的被袭船立刻停手返港待命
+   *  （主控停作业 / 副船中止任务；**不自动维修**，回港等玩家决定）；同时作为低安遭遇战的自动脱离阈值 */
+  retreatHullFrac: number
   /** 被抢：至多损失船上货物比例（无货则抢钱包） */
   lootTakenMaxPct: number
   /** 被抢（无货时）：至多损失钱包 ISK 比例 */
@@ -1443,10 +1450,20 @@ export interface CommsMessageDef {
   subject: string
   /** 正文（逐段） */
   body: readonly string[]
+  /**
+   * 需要**强调显示**的正文段落（可选；2026-09-11 船长：「将训前简报的任务链内的文字高亮」）。
+   * 取值必须与 `body` 里某一段**逐字相等**才生效（`content:check` 有契约盯着），
+   * 界面按它给该段加既有强调样式（离线报告那套 `.app-report-highlight`），其余段落照旧。
+   */
+  highlight?: readonly string[]
   /** 送达条件 */
   trigger: CommsTrigger
-  /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /**
+   * 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签，
+   * `taskTab` 用于星图「任务中心」的**内层**标签（2026-09-11 船长：步骤 2 跳转必须切到「重要任务」——
+   * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
+   */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
   action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
@@ -1479,12 +1496,14 @@ export interface CommsEntryView {
   subject: string
   /** 正文逐段（剧本镜像 = 各发言句 `发言人：内容`） */
   paragraphs: readonly string[]
+  /** 强调显示的段落（与 `paragraphs` 逐字相等的那些；界面加既有强调样式，见 `CommsMessageDef.highlight`） */
+  highlight?: readonly string[]
   /** 送达时的游戏内毫秒 */
   deliveredAtGameMs: number
   /** 是否已读 */
   read: boolean
-  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`shipTab` = 舰船页内标签） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
   action?: CommsActionDef
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */

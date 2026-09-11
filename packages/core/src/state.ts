@@ -483,8 +483,9 @@ export interface BattleState {
    * （2026-09-10 船长定：超时不再按剩余血量比判胜——旧口径"平局算我方胜"已作废）；
    * null = 进行中 */
   ended: 'me' | 'foe' | null
-  /** 连续作战保险（2026-09-08 船长定，仅巡回场次）：本场结构剩余低于该比例（相对满值结构，
-   * 如 0.5 = 损失过半）→ 步进中自动中止并请求撤退（autoEscaped 置位）；非巡回战斗缺省不设 */
+  /** 连续作战保险（2026-09-08 船长定；2026-09-11 起**低安遭遇战同样挂它**）：
+   * 本场结构剩余低于该比例（相对满值结构，如 0.5 = 损失过半）→ 步进中自动中止并请求撤退（autoEscaped 置位）；
+   * 悬赏巡回场次在开战时写入，低安遭遇战按 `encounter.retreatHullFrac` 写入 */
   hullEscapeFrac?: number
   /** 多波次（2026-09-09）：当前波索引（0 基；AnomalyDef.waves 缺省/单波不写，读档零迁移） */
   waveIdx?: number
@@ -498,8 +499,8 @@ export interface BattleState {
    *  'hull' = 结构损失过半自动撤退；'timeout' = 打满战斗上限（判负，按被迫撤退处理） */
   escapeReason?: 'hull' | 'timeout'
   /* ═══ 高威胁近战敌突进（2026-09-10 船长定）：够不着时机动 ×2、进射程 2 秒后结束、冷却 20 秒 ═══
-   * 三个字段都是**可选、零迁移**；`cleanBattle` 白名单未收录（与 hullEscapeFrac 同待遇：
-   * 战中重载会重置突进循环）。 */
+   * 三个字段都是**可选、零迁移**；`cleanBattle` 白名单未收录（撤退保险三项自 2026-09-11 起已收录，
+   * 突进三项仍旧不收录：战中重载会重置突进循环）。 */
   /** 当前是否处于突进中 */
   foeChargeOn?: boolean
   /** 本次突进"进入自己武器射程"的时刻（用于再维持 2 秒后结束） */
@@ -1000,12 +1001,16 @@ export interface HaulingState {
   fromSiteId: string | null
   /** 当前航段的目的站点 id */
   toSiteId: string | null
-  /** 本段标称航程分钟（出发时锁定；报酬结算按它 = 货仓容量×费率×分钟） */
+  /** 本段标称航程分钟（出发时锁定）；航段真实分钟 = 本值 × HAUL_LEG_TIME_MUL（15） */
   legMinutes: number
   /** 本段真实航程毫秒（出发时锁定；吃航行技能与调试 1 秒快进） */
   legMs: number
   /** 本段已航行毫秒 */
   phaseAccMs: number
+  /** 本趟行情倍率（2026-09-11 船长：每趟掷一次 5~10 倍、两段同价；0 = 旧档未掷，结算按区间下限兜底） */
+  tripMul: number
+  /** 本趟还剩几段（一趟往返 = 2；就位段自成一趟 = 1；≤0 时下一段起换新行情） */
+  tripLegsLeft: number
 }
 
 /** 空态默认值 */
@@ -1018,6 +1023,8 @@ export const EMPTY_HAULING: HaulingState = {
   legMinutes: 0,
   legMs: 0,
   phaseAccMs: 0,
+  tripMul: 0,
+  tripLegsLeft: 0,
 }
 
 /** T9 一个建站点的建造进度 */

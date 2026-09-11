@@ -773,6 +773,13 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 序号续发：以清洗后尾部序号 +1 为基准（旧档无 seq 字段时按序重排，见 cleanFx）
     fxSeq: fx.length > 0 ? fx[fx.length - 1]!.seq + 1 : 0,
     ended: endedRaw === 'me' || endedRaw === 'foe' ? endedRaw : null,
+    // 连续作战保险（2026-09-11：由"白名单未收录"改为**随档保留**）——悬赏巡回场次与低安遭遇战都挂它，
+    // 战中重载若丢掉这三项，保险会凭空失效（该撤退的场次会继续打到弃船），与"承伤持久化"同一口径。
+    ...(typeof b.hullEscapeFrac === 'number' && Number.isFinite(b.hullEscapeFrac)
+      ? { hullEscapeFrac: b.hullEscapeFrac }
+      : {}),
+    ...(b.autoEscaped === true ? { autoEscaped: true } : {}),
+    ...(b.escapeReason === 'hull' || b.escapeReason === 'timeout' ? { escapeReason: b.escapeReason } : {}),
     waveIdx:
       typeof b.waveIdx === 'number' && Number.isFinite(b.waveIdx) && b.waveIdx > 0
         ? Math.floor(b.waveIdx)
@@ -1663,6 +1670,10 @@ function normalizeState(raw: unknown): GameState {
     legMinutes: Math.max(0, Math.floor(num(haulRaw.legMinutes))),
     legMs: Math.max(0, Math.floor(num(haulRaw.legMs))),
     phaseAccMs: Math.max(0, Math.floor(num(haulRaw.phaseAccMs))),
+    // 本趟行情倍率（2026-09-11：每趟掷一次 5~10 倍、两段同价）——必须随档保留，
+    // 否则重载会丢本趟价（旧档缺字段 → 0 / 0，结算按区间下限兜底、下一段起重新掷）
+    tripMul: Math.max(0, num(haulRaw.tripMul)),
+    tripLegsLeft: Math.max(0, Math.floor(num(haulRaw.tripLegsLeft))),
   }
   // --- 精炼炉运转工位表（v20 多工位并行、原料不锁定；兼容 v19 起 refineRuns 与更早 refineRun 兜底） ---
   const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {

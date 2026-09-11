@@ -85,8 +85,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     ambushChanceAtZero: 0.05, // 事件到点遇袭率基线（sec = 0）
     ambushChancePerSec: 0.15, // sec 每降 1.0 → +15%（线性，封顶 ~27%）
     scanAmbushMul: 1.5, // 低安扫描中：遇袭概率 ×1.5（封顶 0.9；船长 2026-09-05 定，扫描即暴露、无入场缓冲）
-    duraLossMin: 0.05,
-    duraLossMax: 0.15, // 受损档：耐久 −5%~15%（底 clamp 5%）
+    // 2026-09-11 船长定（低安遇袭重做）：受损档不再用「结构 −5%~15%」的固定骰，改成**按敌人火力**——
+    // 一口伤害 = 敌群火力（威胁 × battle.foeDpsPerThreat）× 本系数（秒），施加时**先扣装甲、吸完再进结构**。
+    // 0.3 秒 = 船长当场圈定档位（标定：威胁 20 一口 4.8 HP、威胁 48 一口 11.5 HP、威胁 88 一口 21.1 HP；
+    // 沙猫级 15 甲/36 结构 → 常见威胁只掉装甲，远超自己档位的敌群才咬到结构）。
+    hitFirepowerSec: 0.3,
+    retreatHullFrac: 0.5, // 撤退线（船长 2026-09-11 定）：结构低于 50% → 被袭船停手返港待命，绝不自动花钱修
     lootTakenMaxPct: 0.3, // 被抢：至多 30% 船上货
     iskTakenMaxPct: 0.05, // 无货被抢：至多 5% 钱包
     lootFracOfBounty: 0.5, // 2026-09-09 船长定：击退/胜利缴获 = 当地悬赏敌群赏金 ×50%（旧档兜底 = 威胁 ×1）

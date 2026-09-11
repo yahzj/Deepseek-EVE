@@ -17,7 +17,7 @@ import { perfHub, perfAutoEnabled } from './game/perf'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
-import { TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
+import { TutorialEpilogue, TutorialSpot, tutorialTaskTabOf, type GuideGo } from './panels/TutorialGuide'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -27,7 +27,7 @@ import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MapPage } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
-import type { MapGotoTarget, MapTab } from './pages/MapPage'
+import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
@@ -442,6 +442,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [fitShipId, setFitShipId] = useState<string | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
+  /** 任务中心内层标签定位请求（教程步骤 2 → 「重要任务」） */
+  const [taskFocus, setTaskFocus] = useState<TaskFocusTarget | null>(null)
   /** 通讯页定位（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 切到通讯页并选中该封教程通讯 */
   const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
   useEffect(() => {
@@ -622,6 +624,13 @@ export function App({ engine }: { engine: GameEngine }) {
     changeMapTab(tab)
     setMapGoto((p) => ({ tab, ids, seq: (p?.seq ?? 0) + 1 }))
   }
+  /**
+   * 任务中心**内层**标签定位（2026-09-11 船长：「步骤 2/7 跳转任务中心时，不会切到指定标签页」）：
+   * 内层标签会记住玩家上次的选择，故跳转要显式发一次请求；seq 变化即应用（同 mapGoto/commsFocus 套路）。
+   */
+  const focusTaskTab = (tab: string): void => {
+    setTaskFocus((p) => ({ tab, seq: (p?.seq ?? 0) + 1 }))
+  }
   const changeShipTab = (t: ShipTab): void => {
     if (tutShipTab && t !== tutShipTab) {
       showToast('当前教程步骤请使用舰船页对应标签（见引导卡）。', true)
@@ -640,6 +649,9 @@ export function App({ engine }: { engine: GameEngine }) {
           setPage(d.pages[0]!)
           if (d.map) setMapTab(d.map)
           if (d.ship) setShipTab(d.ship)
+          // 步骤自带内层标签（步骤 2 → 任务中心「重要任务」）也一并归位
+          const stepTaskTab = tutorialTaskTabOf(tutStep)
+          if (stepTaskTab) focusTaskTab(stepTaskTab)
         }
       }
     }
@@ -795,15 +807,18 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
-            {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} mapGoto={mapGoto} /> : null}
+            {page === 'map' ? (
+              <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} mapGoto={mapGoto} taskFocus={taskFocus} />
+            ) : null}
             {page === 'comms' ? (
               <CommsPage
                 {...pageProps}
                 // 顶部引导条「看详情」的定位请求（seq 变化即重新选中对应那封）
                 focus={commsFocus}
-                // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签（如星图 → 残骸打捞）
-                onGoto={(p, tab, shipTab) => {
+                // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签与任务中心内层标签
+                onGoto={(p, tab, shipTab, taskTab) => {
                   if (p === 'map' && tab) changeMapTab(tab as MapTab)
+                  if (p === 'map' && taskTab) focusTaskTab(taskTab)
                   if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
                   changePage(p as PageKey)
                 }}
@@ -1000,6 +1015,8 @@ export function App({ engine }: { engine: GameEngine }) {
           onGo={(g: GuideGo) => {
             changePage(g.page as PageKey)
             if (g.mapTab) changeMapTab(g.mapTab as MapTab)
+            // 任务中心内层标签（步骤 2：「前往任务中心」要落在「重要任务」）——与通讯「前往」同口径
+            if (g.page === 'map' && g.taskTab) focusTaskTab(g.taskTab)
             if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
           }}
           // 「看详情」：切到通讯页并直接选中本步那封教程通讯（2026-09-11 船长定：教程融入通讯）

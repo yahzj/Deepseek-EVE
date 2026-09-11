@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 星图页「长途运输」标签（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁。定稿 + 当日改）：
  * - 任意两座「已建成」站点之间的真实航程往返运输（自动循环）；
  * - **不要求停靠在航线端点**：停靠在任意协会站点即可接单，不在端点时引擎先飞"就位段"
@@ -10,7 +10,8 @@ import {
   cargoCapacityM3Of,
   dockedHaulEndpoint,
   haulEndpoints,
-  haulLegReward,
+  haulLegMinutesOf,
+  haulRewardRange,
   shortestTravelMinutes,
   travelMinutesEff,
   shipDisplayName,
@@ -113,9 +114,13 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         <div className="app-haul-list">
           {routes.map((rt) => {
             const isActive = rt.key === activeKey
-            const effMin = Math.max(1, travelMinutesEff(state, ctx, rt.minutes))
-            const perLeg = haulLegReward(cap, rt.minutes)
-            const perRound = perLeg * 2
+            // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）；报酬按「改前基准 × 每趟行情 5~10 倍」
+            const legMin = haulLegMinutesOf(rt.minutes)
+            const effMin = Math.max(1, travelMinutesEff(state, ctx, legMin))
+            // 面板**只显示区间**（船长 2026-09-11：不预告本趟实际掷值）；基准用**标称**航程分钟（改前口径）
+            const range = haulRewardRange(cap, rt.minutes)
+            const hourlyMin = Math.round((range.min / effMin) * 60)
+            const hourlyMax = Math.round((range.max / effMin) * 60)
             const canStart = dockedOk && !busy && !haulingActive
             return (
               <div
@@ -131,8 +136,9 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                   <span className="app-dim">单程约 {effMin} 分钟（按当前航行技能）</span>
                 </div>
                 <div className="app-haul-line app-dim">
-                  {shipName}（货仓 {cap.toLocaleString('zh-CN')} m³）· 单段约 {isk(perLeg)} ISK · 往返一趟约 {isk(perRound)} ISK ·
-                  时薪约 {isk(Math.round((perLeg / effMin) * 60))} ISK（按当前航行技能）
+                  {shipName}（货仓 {cap.toLocaleString('zh-CN')} m³）· 单段约 {isk(range.min)} ~ {isk(range.max)} ISK
+                  （行情每趟一价 ×5~10）· 往返一趟约 {isk(range.min * 2)} ~ {isk(range.max * 2)} ISK ·
+                  时薪约 {isk(hourlyMin)} ~ {isk(hourlyMax)} ISK（按当前航行技能）
                 </div>
                 {isActive ? (
                   <div className="app-haul-line">
