@@ -91,7 +91,7 @@ export function CommsPage({
           </>
         }
       >
-        <div className="app-dim app-note">
+        <div className="app-dim app-note app-comms-note">
           协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。
         </div>
         <div className="app-win-body app-comms-body">
