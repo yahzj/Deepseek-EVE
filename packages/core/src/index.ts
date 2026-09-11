@@ -53,6 +53,8 @@ export type {
   DefProfile,
   FoeShipDef,
   FoeShipSlot,
+  FoeDroneDef, // 2026-09-11 敌机机型表（舰载机群；设计稿 foe-drone-system-20260911.md）
+  FoeDroneSlot, // 舰级上的机群登记条目（引用机型 + 架数）
   FoeReinforceTrigger,
   SimContext,
 } from './types'

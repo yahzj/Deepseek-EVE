@@ -1048,6 +1048,60 @@ export interface FoeShipDef {
    * 用途：慢而硬的重型单位（C 族**噬口巨兽**，实速 277）用突进补偿"追不上"。
    */
   foeCanCharge?: boolean
+  /**
+   * **舰载机群登记**（2026-09-11 船长：「**我记得巨构需要制作敌方无人机系统**」· 设计稿
+   * `docs/design/foe-drone-system-20260911.md`）。语义 = **本舰级自带机群**（"巨构的第二套火力"，
+   * E 族据点词「警戒机群」的落点）：机库存量、分批放飞、**打光为止不补充**。
+   *
+   * 玩家武器**默认打不到**它们；只有带**防空属性**（`WeaponSpec.canHitDrones`）的武器能打
+   * （船长 A1：「玩家武器通常不可打，需要带有防空属性的武器」）。
+   * ⚠ **缺省不写 = 无机群、零行为变化**（既有舰级一字不动）。
+   */
+  drones?: readonly FoeDroneSlot[]
+}
+
+/**
+ * **敌机机型**（**绝对值表**，落点 `packages/data/src/foe-drones.ts`）——与舰级表同款纪律：
+ * 数值写死在本表，舰级只登记"用哪个机型、几架"（`FoeDroneSlot`）⇒ **改一个机型的影响面一眼可见**。
+ *
+ * **角色骨架沿用我方四型**（`DroneClass`：侦察/战斗/攻坚/哨戒，决定阵位与演出形制）；
+ * 机体外形与配色是**敌族自己的**（船长 A2 裁定）。
+ * **节奏照我方**（船长 C3 裁定）：单架装填基准 4,400ms、进入射程即放出、单轮出击时序与我方同款。
+ */
+export interface FoeDroneDef {
+  /** 机型 id（同时是 UI 机体与弹点形制的键，与 `WeaponSpec.artId` 同源） */
+  id: string
+  /** 机型名（玩家可见；如「警戒机」） */
+  name: string
+  /** 敌族 */
+  family: FoeFamily
+  /** 角色骨架（与我方 `DroneClass` 同源：scout / combat / assault / sentry） */
+  role: DroneClass
+  /** 三层血 + 抗性 + 回避（与我方 `ItemDef.defense` 同构，复用 `DroneDefense`） */
+  defense: DroneDefense
+  /** 单发（绝对值） */
+  dmg: number
+  /** 伤害系（G 族据此实现"三系无人机"） */
+  damageType: DamageType
+  /** 基础命中（我方制式 0.75；E 族"老化失准"取低值） */
+  hitRate: number
+  /** 命中衰减：`1` = 射程带内恒定（我方侦察/战斗/攻坚三型口径）；哨戒机才保留衰减 */
+  falloff: number
+  /** 射程上限 m（与角色骨架的档位对齐） */
+  maxRangeM: number
+  /** 单架装填周期（毫秒；照我方节奏，基准 4,400ms） */
+  reloadMs: number
+}
+
+/**
+ * 舰级上的**机群登记条目**——舰级只写"**引用哪个机型、几架**"，数值全在机型表里
+ * （与 `FoeShipSlot` 引用 `FoeShipDef` 同款写法）。
+ */
+export interface FoeDroneSlot {
+  /** 引用的敌机机型（直接引用机型表对象，保证"改一个机型只有一处"） */
+  drone: FoeDroneDef
+  /** **机库存量**（打光为止，不补充）；架数按六组实测标定（船长 C3「架次再定」） */
+  count: number
 }
 
 /**
