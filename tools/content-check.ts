@@ -43,6 +43,7 @@ import {
   MAX_SKILL_LEVEL,
   MODULE_SLOTS,
   typeLayerMult,
+  REPAIR_PULSE_MS,
   MINEABLE_KINDS,
   RACK_SLOTS,
   RARE_WRECK_VOLUME_M3,
@@ -375,6 +376,165 @@ for (const sbp of SHIP_BLUEPRINTS) {
     if (!pName.includes(base.replace(/[（(].*?[)）]/g, '').trim())) nameHints += 1
   }
   console.log(`· 蓝图说明契约：核对 ${claims} 条数值声明（${BLUEPRINTS.length + SHIP_BLUEPRINTS.length} 张蓝图）；蓝图名与产物名不同写法 ${nameHints} 张（命名习惯，不拦）`)
+}
+
+/* ── 产物说明契约（2026-09-11 加，船长：「是，扩到全部产物说明」）──
+ * 上一契约钉住的是**蓝图说明**；本契约覆盖**装备与物品自身的说明**——市场卡悬浮面板
+ * （`MarketPage` 的 note 位）与物品/装备悬浮层读的就是这些 `description`，玩家据此判断要不要买。
+ * 做法：把说明里的每个数值声明抽出来，要求它**能被该产物的真实数值解释**：
+ *   ① 直接命中某字段（含 分数→百分数、毫秒→秒、米→千米 三种换算）；
+ *   ② 引擎口径换算命中——装填 −N% 的「约合射速 +M%」= 1/(1−N)−1；抗性示例「25% 基础船 → M%」
+ *      = N + 25%×(1−N)（`gapCombine` 缺口复合）；推进器「命中 ×M」= 1−失稳罚；姿态陀螺
+ *      「敌命中 60% → M%」= 60%×(1−缺口削减)；无人机射程示例 = 机型基础射程 ×(1+加成)；
+ *   ③ 语境常量（点火周期 60 秒、抗性上限 90%、必中 100%、弹种克制倍率、维修脉冲 5 秒…）；
+ *   ④ 与说明里点到名的另一件装备做差（「比 X 还高五个点」「省下 12 点 CPU」）。
+ * 另外单独钉住「无人机舱 +N m³ → 可多带几架」这类换算式：说明里的 N 架必须等于
+ * 地板(舱位 ÷ 该机型体积)——这条是 2026-09-11 抓到「+15 m³ 却写约多带 2-5 架中型」的地方。
+ * 解释不了的声明一律报错：既防"改了数值忘改说明"，也防"新写说明抄错数"。 */
+{
+  const numVal = (s: string): number => Number(s.replace(/,/g, ''))
+  type Claim = { raw: string; value: number; kind: string }
+  const claimsOf = (d: string): Claim[] => {
+    const out: Claim[] = []
+    for (const m of d.matchAll(/[+＋−-]?\s*([\d.]+)\s*%/g)) out.push({ raw: m[0].trim(), value: numVal(m[1]!), kind: 'pct' })
+    for (const m of d.matchAll(/×\s*([\d.]+)/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'mul' })
+    for (const m of d.matchAll(/([\d.]+)\s*km/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'km' })
+    for (const m of d.matchAll(/([\d.]+)\s*m³/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'm3' })
+    for (const m of d.matchAll(/([\d.]+)\s*m(?![³a-zA-Z])/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'm' })
+    for (const m of d.matchAll(/([\d.]+)\s*秒/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'sec' })
+    for (const m of d.matchAll(/([\d.]+)\s*点/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'pt' })
+    for (const m of d.matchAll(/(?:CPU|处理器)[^0-9]{0,6}([\d.]+)/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'cpu' })
+    for (const m of d.matchAll(/([\d.]+)\s*(?:点\s*)?CPU/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'cpu' })
+    return out
+  }
+  const flatNums = (o: unknown, prefix = '', out: Array<[string, number]> = []): Array<[string, number]> => {
+    if (o === null || o === undefined) return out
+    if (typeof o === 'number') {
+      out.push([prefix, o])
+      return out
+    }
+    if (typeof o === 'string' || typeof o === 'boolean') return out
+    if (Array.isArray(o)) {
+      o.forEach((v, i) => flatNums(v, `${prefix}[${i}]`, out))
+      return out
+    }
+    for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+      if (['description', 'name', 'id', 'flavor'].includes(k)) continue
+      flatNums(v, prefix ? `${prefix}.${k}` : k, out)
+    }
+    return out
+  }
+  const droneVolumes = drones.map((d) => d.unitM3).filter((v): v is number => typeof v === 'number')
+  const droneRanges = drones.map((d) => d.maxRangeM).filter((v): v is number => typeof v === 'number')
+  // 语境常量（引擎现行口径；改了这里就等于承认说明可以滞后，故集中在此处便于复核）
+  const ctxConst: Array<[string, number]> = [
+    ['点火周期 60 秒', 60],
+    ['抗性上限', 90],
+    ['必中', 100],
+    ['示例基础抗/基础船', 25],
+    ['维修脉冲', REPAIR_PULSE_MS / 1000],
+    ['动能对护盾', typeLayerMult('kinetic', 'shield')],
+    ['动能对装甲', typeLayerMult('kinetic', 'armor')],
+    ['爆破对装甲', typeLayerMult('explosive', 'armor')],
+    ['爆破对护盾', typeLayerMult('explosive', 'shield')],
+    ['能量对护盾', typeLayerMult('plasma', 'shield')],
+    ['能量对装甲', typeLayerMult('plasma', 'armor')],
+  ]
+  let total = 0
+  let unexplained = 0
+  let countHints = 0
+  const scan = (kindLabel: string, def: { id: string; name: string; description?: string }): void => {
+    const d = def.description ?? ''
+    if (!d) return
+    const claims = claimsOf(d)
+    if (claims.length === 0) return
+    const self = flatNums(def)
+    // ④ 说明里点到名的另一件装备：其数值与差值也算"可解释"
+    const refs = MODULES.filter((o) => o.id !== def.id && d.includes(o.name))
+    const cross = refs.flatMap((o) => flatNums(o).map(([, v]) => v))
+    const crossDiff = refs.flatMap((o) => flatNums(o).flatMap(([, v]) => self.map(([, sv]) => Math.abs(v - sv))))
+    for (const c of claims) {
+      total += 1
+      const cand = new Set<number>()
+      for (const [, v] of self) {
+        cand.add(v)
+        cand.add(v * 100)
+        cand.add(Math.round(v * 100))
+        cand.add(v / 1000) // 毫秒→秒 / 米→千米
+        cand.add(1 - v) // 命中 ×(1−罚)
+        cand.add(60 * (1 - v)) // 姿态陀螺：敌命中 60% → M%
+        cand.add(v + 0.25 * (1 - v)) // 抗性示例：25% 基础船 → M%（取整后比对）
+        cand.add((v + 0.25 * (1 - v)) * 100)
+        cand.add((1 / (1 - v) - 1) * 100) // 装填 −N% 的「约合射速 +M%」
+        for (const dv of droneRanges) cand.add(dv * (1 + v)) // 无人机射程示例
+      }
+      for (const v of cross) {
+        cand.add(v)
+        cand.add(v * 100)
+        cand.add(Math.round(v * 100))
+      }
+      for (const v of crossDiff) {
+        cand.add(v)
+        cand.add(v * 100)
+      }
+      for (const [, v] of ctxConst) {
+        cand.add(v)
+        cand.add(v * 100)
+      }
+      const hit = [...cand].some((x) => Math.abs(x - c.value) < 0.051 || Math.abs(Math.round(x) - c.value) < 0.51)
+      if (!hit) {
+        unexplained += 1
+        check(false, `产物说明契约：${kindLabel} ${def.id} 说明里的「${c.raw}」无法由真实数值解释——说明与实际属性对不上，或说明写了凭空的数`)
+      }
+    }
+    // 「无人机舱 +N m³ → 可多带 N 架」换算式：N 必须等于**某个机型**的地板(舱位 ÷ 该机型体积)
+    for (const m of d.matchAll(/([\d.]+)(?:\s*[-–~]\s*([\d.]+))?\s*架/g)) {
+      const lo = numVal(m[1]!)
+      const hi = m[2] ? numVal(m[2]) : lo
+      if (!/无人机舱|机库/.test(d)) continue
+      countHints += 1
+      const bay = self.find(([k]) => k.includes('droneBay'))?.[1] ?? 0
+      const caps = drones.map((x) => Math.floor(bay / (x.unitM3 ?? 1)))
+      const okCount = caps.includes(lo) && caps.includes(hi)
+      check(
+        okCount,
+        `产物说明契约：${kindLabel} ${def.id} 说明写「${m[0]}」，但按无人机舱位换算不成立（实际可多带 ${drones.map((x, i) => `${x.name} ${caps[i]} 架`).join(' / ')}）`,
+      )
+    }
+    // ⑤ 说明点名的弹种/组件必须与实际接线一致（文字与字段"对不上"的另一半：不是数字错、是名字错）
+    const mod = def as { repairKit?: string; damageTypeBonusPct?: Record<string, number> } & Record<string, unknown>
+    if (mod.repairKit) {
+      const kitName = items.get(mod.repairKit)?.name ?? mod.repairKit
+      check(d.includes(kitName), `产物说明契约：装备 ${def.id} 说明没点到实际消耗的修理组件「${kitName}」（接线 ${mod.repairKit}）`)
+    }
+    const typeWords: Array<[string, DamageType]> = [
+      ['动能', 'kinetic'],
+      ['高爆', 'explosive'],
+      ['爆炸', 'explosive'],
+      ['爆破', 'explosive'],
+      ['等离子', 'plasma'],
+      ['能量', 'plasma'],
+    ]
+    const mapFields = ['damageTypeBonusPct', 'shieldResistAdd', 'armorResistAdd', 'hullResistAdd'] as const
+    for (const f of mapFields) {
+      const keys = Object.keys((mod[f] as Record<string, number> | undefined) ?? {})
+      if (keys.length !== 1) continue
+      // 只看**首句**（抗性/伤害声明的正位）：后文常顺带提其它弹种（如「动能是协会最常用弹种」），
+      // 全句扫描会把正误两种写法都算成"提了两系"从而漏判。
+      const headline = d.split('。')[0] ?? d
+      const mentioned = new Set(typeWords.filter(([w]) => headline.includes(w)).map(([, t]) => t))
+      if (mentioned.size === 1) {
+        const wordOf: Record<string, string> = { kinetic: '动能', explosive: '高爆', plasma: '能量' }
+        check(
+          mentioned.has(keys[0] as DamageType),
+          `产物说明契约：装备 ${def.id} 说明写的是「${wordOf[[...mentioned][0]!] ?? [...mentioned][0]}」系，实际字段 ${f} 挂在「${wordOf[keys[0]!] ?? keys[0]}」上`,
+        )
+      }
+    }
+  }
+  for (const m of MODULES) scan('装备', m)
+  for (const i of ITEMS) scan('物品', i)
+  console.log(`· 产物说明契约：核对 ${total} 条数值声明（装备 ${MODULES.length} 件 + 物品 ${ITEMS.length} 种），其中舱位换算 ${countHints} 处；无法解释 ${unexplained} 条`)
 }
 
 // 舰船

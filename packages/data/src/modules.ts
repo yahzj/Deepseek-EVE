@@ -355,7 +355,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneBayBonusM3: 15,
     cpuUse: 5,
-    description: '外挂无人机甲板：无人机舱 +15 m³（约多带 2-5 架中型/数架轻型）。无人机流的起点。',
+    description: '外挂无人机甲板：无人机舱 +15 m³（可多带 3 架侦察机 / 1 架战斗机）。无人机流的起点。',
   },
   {
     id: 'mod-drone-rack-2',
