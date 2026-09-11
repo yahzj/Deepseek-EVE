@@ -26,6 +26,31 @@ const CHARGE_ON = process.argv.includes('--charge')
 /** 敌速重标提案预演开关（只影响本工具；引擎与 data 一律不动） */
 const PROPOSAL = process.argv.includes('--proposal')
 
+/* ══════════ 下一批预演：战术改判 + 族系冲突（2026-09-10 船长「推进下一批」）══════════
+ * `--tactic`：按族系特色改判个别卡的战术。改战术会**连带射程带（TACTIC_RANGE × 成长）、
+ * 期望交距（tacticDesireFactor）、速度口径**三件一起变，故本表同时给出改判后的敌速。
+ * `--gk=orbit|kite` 用于对"坟场守墓人改到哪一档"做 A/B（默认 orbit）。 */
+const TACTIC_ON = process.argv.includes('--tactic')
+/** 血量求解：在"中位技能 × S2 灰鲭鲨"参考行上，对每张卡二分求"打完剩 TARGET% 残血"所需的 foeHpOverride */
+const SOLVE_HP = process.argv.includes('--solve-hp')
+/** 火力扫描：对手挂 foeDmgMul 的两张能量卡，扫一遍倍率看承伤 */
+const DMG_SWEEP = process.argv.includes('--dmg-sweep')
+const HP_TARGET_PCT = 45
+/** 求解目标：`rem` = 打完剩 TARGET% 残血（orbit/kite 口径）；`dur` = 时长命中该段 D(T)（brawl 口径） */
+const HP_SOLVE_MODE: 'rem' | 'dur' = process.argv.includes('--solve-dur') ? 'dur' : 'rem'
+const GK_TACTIC = (process.argv.find((a) => a.startsWith('--gk='))?.slice(5) ?? 'orbit') as 'orbit' | 'kite'
+const PROPOSED_TACTIC: Record<string, 'brawl' | 'orbit' | 'kite'> = {
+  // D 族「守墓古舰」= 残破古典长舰 + 12 km 必中点名炮 → 不该在 2.8 km 贴脸
+  'ano-gravekeeper': GK_TACTIC,
+  // C 族「异形生物」= 有机曲线 + 螯颚 + 酸液喷吐器 → 「噬口」应贴脸吞噬
+  'ano-maw-hunt': 'brawl',
+}
+/** 改判后的敌速（存储值）：按该战术的新口径带落值 */
+const PROPOSED_TACTIC_SPEED: Record<string, number> = {
+  'ano-gravekeeper': GK_TACTIC === 'kite' ? 234 : 345, // kite 0.80× / orbit 1.18×
+  'ano-maw-hunt': 426, // brawl 1.46×（威胁 80）
+}
+
 /**
  * 敌速重标提案（2026-09-10 船长裁决：**固定锚定** + **参考"速度中位线的船只"**；近战卡逐张审核）。
  *
@@ -123,6 +148,18 @@ function buildCtx(): SimContext {
       anomalies.set(id, next)
     }
     c = { ...c, anomalies, balance: { ...c.balance, battle } }
+  }
+  if (TACTIC_ON) {
+    const anomalies = new Map(c.anomalies)
+    for (const [id, tac] of Object.entries(PROPOSED_TACTIC)) {
+      const a = anomalies.get(id)
+      if (!a) continue
+      const next = { ...a, tactic: tac }
+      const spd = PROPOSED_TACTIC_SPEED[id]
+      if (spd !== undefined) next.foeSpeedMps = spd
+      anomalies.set(id, next)
+    }
+    c = { ...c, anomalies }
   }
   return c
 }
@@ -410,6 +447,266 @@ async function main(): Promise<void> {
       )
     }
   }
+  if (TACTIC_ON) {
+    console.log('\n════ 战术改判预演（族系特色）：现状 → 改判 ════')
+    for (const [id, tac] of Object.entries(PROPOSED_TACTIC)) {
+      const base = BASE_CTX.anomalies.get(id)
+      const next = ctx.anomalies.get(id)
+      if (!base || !next) continue
+      const f0 = createFoeSpecs(base, BASE_CTX.balance.battle)[0]!
+      const f1 = createFoeSpecs(next, bal)[0]!
+      const w0 = f0.weapons[0]!
+      const w1 = f1.weapons[0]!
+      const pos0 = BASE_CTX.balance.battle.tacticDesireFactor[base.tactic ?? 'orbit'] ?? 0.5
+      const pos1 = bal.tacticDesireFactor[tac] ?? 0.5
+      const d0 = Math.round(w0.minRangeM + pos0 * (w0.maxRangeM - w0.minRangeM))
+      const d1 = Math.round(w1.minRangeM + pos1 * (w1.maxRangeM - w1.minRangeM))
+      console.log(
+        `\n── ${base.threat} ${base.name}（${id}）：**${base.tactic ?? 'orbit'} → ${tac}** ──`,
+      )
+      console.log(
+        `  射程带     ${w0.minRangeM}~${w0.maxRangeM} m（期望交距 ${d0} m） → **${w1.minRangeM}~${w1.maxRangeM} m（期望交距 ${d1} m）**`,
+      )
+      console.log(
+        `  速度       ${f0.speedMps}（战斗机动 ${Math.round(f0.speedMps * foeAgilityMul)}）` +
+          ` → **${f1.speedMps}（战斗机动 ${Math.round(f1.speedMps * foeAgilityMul)}）**`,
+      )
+      console.log(`  总血       ${base.foeHpOverride ?? foeHpOfThreat(base.threat, bal)}（本批未重标）`)
+    }
+  }
+  /* 血量求解器（2026-09-10 船长「血量按照战术进行重新划分」）：逐卡二分求目标残血所需的 foeHpOverride */
+  if (SOLVE_HP) {
+    const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
+    console.log(`\n════ 近战/环绕血量求解（参考行 = ${refLd.name} × 中位技能；目标打完剩 ${HP_TARGET_PCT}%）════`)
+    const probe = (id: string, hp: number): { rem: number; dur: number } => {
+      const st = makeState(refLd.ship, refLd, MID_SKILLS, 1)
+      const base = ctx.anomalies.get(id)!
+      const patched: SimContext = {
+        ...(ctx as SimContext),
+        anomalies: new Map(ctx.anomalies).set(id, { ...base, foeHpOverride: hp }),
+      }
+      let rem = 0
+      let dur = 0
+      for (const seed of SEEDS) {
+        const s = makeState(refLd.ship, refLd, MID_SKILLS, seed)
+        const spec = createPlayerSpec(s, patched, refLd.ship)
+        const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+        const b = startBattleFor(s, patched, s.shipId, id, 0)
+        if (!b) continue
+        s.gameMs = patched.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(patched.anomalies.get(id), patched.balance.battle)
+        advanceBattleFor(s, patched, b, s.shipId, id)
+        const u = b.units['player']
+        rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+        dur += Math.min(patched.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+      }
+      return { rem: rem / SEEDS.length, dur: dur / SEEDS.length / 1000 }
+    }
+    for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
+      const cur = a.foeHpOverride ?? foeHpOfThreat(a.threat, bal)
+      const now = probe(a.id, cur)
+      // 目标：brawl 走时长口径（该段 D(T)），orbit/kite 走残血口径
+      const dTarget =
+        bal.foeHpCurveDMin +
+        bal.foeHpCurveDSpan *
+          Math.pow(
+            Math.min(1, Math.max(0, (a.threat - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat)),
+            bal.foeHpCurveExp,
+          )
+      const useDur = HP_SOLVE_MODE === 'dur'
+      // 时长随血量单调递增、残血随血量单调递减 → 二分方向相反
+      const better = (r: { rem: number; dur: number }): boolean => (useDur ? r.dur < dTarget : r.rem > HP_TARGET_PCT)
+      let lo = useDur ? 5 : 5
+      let hi = 40000
+      for (let it = 0; it < 15; it++) {
+        const mid = Math.round((lo + hi) / 2)
+        const r = probe(a.id, mid)
+        if (better(r)) lo = mid
+        else hi = mid
+      }
+      const solved = Math.round((lo + hi) / 2)
+      const got = probe(a.id, solved)
+      const flag = now.rem > 99.5 ? '（现状零承伤 → 残血不是杠杆）' : ''
+      console.log(
+        `${String(a.threat).padStart(3)} ${a.name.padEnd(12)} ${String(a.tactic ?? 'orbit').padEnd(6)} ` +
+          `D(T)=${dTarget.toFixed(0)}s  现血 ${String(cur).padStart(5)}（${now.dur.toFixed(0)}s / 残血 ${now.rem.toFixed(0)}%）→ ` +
+          `**解出 ${String(solved).padStart(5)}**（${got.dur.toFixed(0)}s / 残血 ${got.rem.toFixed(0)}%）${flag}`,
+      )
+    }
+  }
+
+  /* 火力扫描：两张挂 foeDmgMul 的能量卡（船长 2026-09-10「感觉可以上调」）
+   * 2026-09-10 补：同时跑「只堆主系」与「全堆能量抗」两种配装——**配装回报**必须看得出来 */
+  if (DMG_SWEEP) {
+    const FITS: Array<{ label: string; mid: string[]; low: string[] }> = [
+      { label: '只堆主系(动能)', mid: ['mod-shield-kin-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] },
+      { label: '全堆能量抗', mid: ['mod-shield-pla-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-pla-2'] },
+    ]
+    console.log('\n════ 能量卡基础单发扫描（灰鲭鲨 4×动能MK2 × 中位技能；两端配装对照）════')
+    for (const id of ['ano-abyss-guard', 'ano-starcore-boss']) {
+      const a0 = ctx.anomalies.get(id)!
+      const escorts = a0.escorts ?? 0
+      const uThreat = a0.threat / (1 + 0.6 * escorts)
+      const baseShot = uThreat * bal.foeDpsPerThreat * (bal.foeReloadMs / 1000)
+      console.log(
+        `\n── ${a0.threat} ${a0.name}（${id} · ${a0.tactic ?? 'orbit'} · 僚机 ${escorts}）──\n` +
+          `   份额 ${uThreat.toFixed(2)} × 0.8 × 4.0s = **基础单发 ${baseShot.toFixed(1)}**（未乘任何回退）`,
+      )
+      for (const mul of [0.3, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0]) {
+        const patched: SimContext = {
+          ...(ctx as SimContext),
+          anomalies: new Map(ctx.anomalies).set(id, { ...a0, foeShotDmg: Math.round(baseShot * mul) }),
+        }
+        const out: string[] = []
+        for (const fit of FITS) {
+          const ld: Loadout = { name: fit.label, ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: fit.mid, low: fit.low }
+          let rem = 0
+          let dur = 0
+          let win = 0
+          for (const seed of SEEDS) {
+            const s = makeState(ld.ship, ld, MID_SKILLS, seed)
+            const spec = createPlayerSpec(s, patched, ld.ship)
+            const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+            const b = startBattleFor(s, patched, s.shipId, id, 0)
+            if (!b) continue
+            s.gameMs = patched.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(patched.anomalies.get(id), patched.balance.battle)
+            advanceBattleFor(s, patched, b, s.shipId, id)
+            const u = b.units['player']
+            if (b.ended === 'me') win++
+            rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+            dur += Math.min(patched.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+          }
+          out.push(`${fit.label} ${String(Math.round((win / SEEDS.length) * 100)).padStart(3)}%/${(dur / SEEDS.length / 1000).toFixed(0).padStart(3)}s/残 ${(rem / SEEDS.length).toFixed(0).padStart(3)}%`)
+        }
+        console.log(`   单发 ${String(Math.round(baseShot * mul)).padStart(4)}（系数 ${mul.toFixed(2)}）→ ${out.join('　｜　')}`)
+      }
+    }
+  }
+
+  /* 改判卡的血量扫描（船长：先针对战术发生变动的血量调整） */
+  if (process.argv.includes('--hp-sweep')) {
+    const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
+    console.log(`\n════ 改判卡血量扫描（参考行 = ${refLd.name} × 中位技能）════`)
+    for (const id of ['ano-gravekeeper', 'ano-maw-hunt']) {
+      const a0 = ctx.anomalies.get(id)!
+      console.log(`\n── ${a0.threat} ${a0.name}（${id} · 改判后 ${a0.tactic ?? 'orbit'} · 射程带见校验段）──`)
+      for (const hp of [6, 50, 120, 310, 600, 1200, 1844, 2600, 3600, 5200]) {
+        const patched: SimContext = {
+          ...(ctx as SimContext),
+          anomalies: new Map(ctx.anomalies).set(id, { ...a0, foeHpOverride: hp }),
+        }
+        let rem = 0
+        let dur = 0
+        let win = 0
+        for (const seed of SEEDS) {
+          const s = makeState(refLd.ship, refLd, MID_SKILLS, seed)
+          const spec = createPlayerSpec(s, patched, refLd.ship)
+          const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+          const b = startBattleFor(s, patched, s.shipId, id, 0)
+          if (!b) continue
+          s.gameMs = patched.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(patched.anomalies.get(id), patched.balance.battle)
+          advanceBattleFor(s, patched, b, s.shipId, id)
+          const u = b.units['player']
+          if (b.ended === 'me') win++
+          rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+          dur += Math.min(patched.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+        }
+        console.log(
+          `  血量 ${String(hp).padStart(4)} → 胜率 ${String(Math.round((win / SEEDS.length) * 100)).padStart(3)}% · 时长 ${(dur / SEEDS.length / 1000).toFixed(0).padStart(3)}s · 残血 ${(rem / SEEDS.length).toFixed(0).padStart(3)}%`,
+        )
+      }
+    }
+  }
+
+  /* 抗性取向扫描（船长 2026-09-10：「在针对时，有无考虑堆抗性的情况」）——
+   * 同一艘船只换中/低槽的抗性件，看"堆对应系抗性"对能量卡承伤的影响。 */
+  if (process.argv.includes('--resist-sweep')) {
+    const VARIANTS: Array<{ label: string; low: string[]; midNote: string }> = [
+      { label: '只堆主系（动能）＝现行参考行', low: ['mod-stab-kin-2', 'mod-armor-kin-2'], midNote: '盾抗动能' },
+      { label: '盾动能 + 甲能量（双抗）', low: ['mod-stab-kin-2', 'mod-armor-pla-2'], midNote: '盾抗动能' },
+      { label: '**全堆能量抗**（盾能量 + 甲能量）', low: ['mod-stab-kin-2', 'mod-armor-pla-2'], midNote: '盾抗能量' },
+    ]
+    const MIDS: Record<string, string[]> = {
+      盾抗动能: ['mod-shield-kin-2', 'mod-track-2'],
+      盾抗能量: ['mod-shield-pla-2', 'mod-track-2'],
+    }
+    console.log('\n════ 抗性取向扫描（同一艘灰鲭鲨 4×动能MK2；只换抗性件）════')
+    for (const id of ['ano-abyss-guard', 'ano-starcore-boss']) {
+      const a0 = ctx.anomalies.get(id)!
+      console.log(
+        `\n── ${a0.threat} ${a0.name}（${id} · ${a0.tactic ?? 'orbit'} · 主系见 dmgMix）──`,
+      )
+      for (const v of VARIANTS) {
+        const ld: Loadout = { name: v.label, ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: MIDS[v.midNote]!, low: v.low }
+        let rem = 0
+        let dur = 0
+        let win = 0
+        for (const seed of SEEDS) {
+          const s = makeState(ld.ship, ld, MID_SKILLS, seed)
+          const spec = createPlayerSpec(s, ctx as SimContext, ld.ship)
+          const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+          const shieldRes = spec.resists.shield
+          const b = startBattleFor(s, ctx as SimContext, s.shipId, id, 0)
+          if (!b) continue
+          s.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(id), ctx.balance.battle)
+          advanceBattleFor(s, ctx as SimContext, b, s.shipId, id)
+          const u = b.units['player']
+          if (b.ended === 'me') win++
+          if (seed === SEEDS[0]) {
+            console.log(
+              `   ${v.label}：盾抗 动能 ${((1 - (shieldRes.kinetic ?? 0)) * 100).toFixed(0)}% / 爆 ${((1 - (shieldRes.explosive ?? 0)) * 100).toFixed(0)}% / 能量 ${((1 - (shieldRes.plasma ?? 0)) * 100).toFixed(0)}%`,
+            )
+          }
+          rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+          dur += Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+        }
+        console.log(
+          `      → 胜率 ${String(Math.round((win / SEEDS.length) * 100)).padStart(3)}% · 时长 ${(dur / SEEDS.length / 1000).toFixed(0).padStart(3)}s · 残血 ${(rem / SEEDS.length).toFixed(0).padStart(3)}%`,
+        )
+      }
+    }
+  }
+
+  /* 坟场守墓人（改 orbit 后）的"非血量旋钮"扫描（船长 2026-09-10：「血量 3600 是正常吗」）——
+   * 3600 是改判前按 brawl 口径定的；改 orbit 后它靠**命中 0.95 + 两波 + 3600 血**三重叠加把人打死。
+   * 本段扫"降命中 / 去第二波"两条非血量路径，看能否保住威胁 88 该有的血量。 */
+  if (process.argv.includes('--grave-sweep')) {
+    const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
+    const a0 = ctx.anomalies.get('ano-gravekeeper')!
+    console.log(`\n════ 坟场守墓人（orbit · 血 3600）非血量旋钮扫描（参考行 ${refLd.name} × 中位）════`)
+    const cases: Array<{ label: string; patch: Partial<typeof a0> }> = [
+      { label: '现状（命中 0.95 + 两波 0.55/0.45）', patch: {} },
+      { label: '命中 0.95 → 0.85', patch: { foeHitRate: 0.85 } },
+      { label: '命中 0.95 → 0.80', patch: { foeHitRate: 0.8 } },
+      { label: '去第二波（单波 1.0）', patch: { waves: [{ units: 1, hpShare: 1 }] } },
+      { label: '命中 0.85 + 去第二波', patch: { foeHitRate: 0.85, waves: [{ units: 1, hpShare: 1 }] } },
+    ]
+    for (const c of cases) {
+      const patched: SimContext = {
+        ...(ctx as SimContext),
+        anomalies: new Map(ctx.anomalies).set('ano-gravekeeper', { ...a0, ...c.patch }),
+      }
+      let rem = 0
+      let dur = 0
+      let win = 0
+      for (const seed of SEEDS) {
+        const s = makeState(refLd.ship, refLd, MID_SKILLS, seed)
+        const spec = createPlayerSpec(s, patched, refLd.ship)
+        const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+        const b = startBattleFor(s, patched, s.shipId, 'ano-gravekeeper', 0)
+        if (!b) continue
+        s.gameMs = patched.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(patched.anomalies.get('ano-gravekeeper'), patched.balance.battle)
+        advanceBattleFor(s, patched, b, s.shipId, 'ano-gravekeeper')
+        const u = b.units['player']
+        if (b.ended === 'me') win++
+        rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+        dur += Math.min(patched.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+      }
+      console.log(
+        `   ${c.label.padEnd(30)} → 胜率 ${String(Math.round((win / SEEDS.length) * 100)).padStart(3)}% · 时长 ${(dur / SEEDS.length / 1000).toFixed(0).padStart(3)}s · 残血 ${(rem / SEEDS.length).toFixed(0).padStart(3)}%`,
+      )
+    }
+  }
+
   void bal
 }
 

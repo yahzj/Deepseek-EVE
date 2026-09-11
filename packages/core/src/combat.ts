@@ -847,10 +847,14 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     // 非能量单发 = DPS×装填 ÷ 有效命中 × foeHitCompMul（回避>0 期望上升的等效补偿，方案 A）；
     // 能量 effHit=1 不消费补偿；foeDmgMul 为逐卡等效回退/个性口
     const effHit = type === 'plasma' ? 1 : anomaly.foeHitRate ?? bal.foeHitRate
-    const shotDmg = Math.max(
-      1,
-      Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1) * (anomaly.foeDmgMul ?? 1)),
-    )
+    // 2026-09-10 船长：**基础单发可直接写死**（`foeShotDmg`）——短路"威胁份额 × foeDpsPerThreat × 装填 × 补偿"
+    // 这条推导链，用于需要逐卡点名基础伤害的卡（首例 = 深渊之门卫队：推得 90 → 直接定 45）。
+    const shotDmg =
+      anomaly.foeShotDmg ??
+      Math.max(
+        1,
+        Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1) * (anomaly.foeDmgMul ?? 1)),
+      )
     // 2026-09-10 船长（窝点混伤）：按火力构成拆成逐系单发（Σ = 总单发，敌总伤不变）。
     // 纯系卡只有一条 → 与旧行为完全一致；混伤卡 = 主 60% / 副 40% 两键。
     const shotSplit = splitShotByComposition(shotDmg, foeDamageComposition(anomaly))
@@ -896,7 +900,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
           // V18B：敌人近盲带伤害比例（船长 2026-09-05：与玩家区分——近盲带内不停火、伤害打折）
           blindDmgMul: anomaly.blindDmgMul ?? 0.3,
           hitRate: type === 'plasma' ? 1 : anomaly.foeHitRate ?? bal.foeHitRate,
-          falloff: bal.foeFalloff,
+          falloff: anomaly.foeFalloff ?? bal.foeFalloff,
           reloadMs: bal.foeReloadMs,
         },
       ],

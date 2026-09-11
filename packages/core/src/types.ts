@@ -969,10 +969,24 @@ export interface AnomalyDef {
    */
   foeHitRate?: number
   /**
+   * 敌方武器**远端衰减覆写**（缺省走 `battle.foeFalloff` = 0.3）。两条不同的生效路径：
+   * - **动能/爆炸（fixed）** → `distFactor`（命中衰减）：minRange 端 1.0 → maxRange 端 = 本值；
+   * - **能量（plasma 光束）** → `beamPowerFactor`（**威力**衰减）：远端威力 = 1 − (1−本值)×0.8，
+   *   故**本值越大衰减越轻**（0.30 → ×0.44；0.35 → ×0.48）。
+   * 2026-09-10 船长（深渊之门卫队）：逐卡单独调整。
+   */
+  foeFalloff?: number
+  /**
    * 敌伤害乘子（2026-09-08 等效回退口）：能量光束必中化后逐卡校准用（如赤潮类 plasma 卡）。
    * 缺省 1。命中侧不变——只缩放 shotDmg；时长/HP 验收带以 battle-calibrate 矩阵为准。
    */
   foeDmgMul?: number
+  /**
+   * **基础单发直写**（2026-09-10 船长：深渊之门卫队「直接调整基础伤害不行吗」）——写了就**短路**
+   * "威胁份额 × `foeDpsPerThreat` × 装填 × 命中补偿 × `foeDmgMul`"整条推导链，单发即本值。
+   * 用途 = 需要逐卡点名伤害的卡（数值一眼可见、可审）；代价 = 脱离威胁曲线，日后调威胁不会自动跟随。
+   */
+  foeShotDmg?: number
   /**
    * 多波次（2026-09-09 低安顶段悬赏；docs/design/wave-battles-20260909.md）：
    * 敌方分批入场——每波 units 个"主舰+僚机"小队（escorts 随卡），血量 = 总血 × hpShare。
