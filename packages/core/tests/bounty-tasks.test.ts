@@ -70,6 +70,7 @@ import {
   startExpedition,
   startRecycleRun,
   factionPoolOf,
+  factionGalaxyId,
   isGalaxyStationBuilt,
 } from '../src/index'
 import { resolveBattleOutcome } from '../src/expedition'
@@ -892,6 +893,29 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     expect([0, FACTION_RARE_DROP_COUNT]).toContain(gained)
     expect(state.sideTasks.faction).not.toBeNull()
     expect(state.expedition.factionActive).toBeUndefined()
+  })
+
+  it('**清空 5 席赏金任务不影响派系活跃**（2026-09-11 玩家反馈「清空赏金任务后敌对派系活跃消失了」）', () => {
+    // 根因在界面（派系卡原先渲染在"列表非空"分支里，5 席打完就被空态整块替换）——
+    // 这里锁住 **core 侧的不变量**：把 5 席全部打完，派系条目与加成判定必须原样还在。
+    const { state, ctx } = makeWorld(5)
+    exploreAll(state)
+    openBountyBoard(state, ctx)
+    const f = state.sideTasks.faction!
+    const card = ctx.anomalies.get(f.anomalyId!)!
+    expect(state.sideTasks.bounty.length).toBeGreaterThan(0)
+    // 逐条打完常规 5 席（含未开的板）
+    for (const t of [...state.sideTasks.bounty]) settleBountyTaskVictory(state, ctx, t.anomalyId!, 1)
+    expect(state.sideTasks.bounty).toHaveLength(0) // 席位清空
+    // 派系条目仍在、判定口仍指同一星系、加成照常
+    expect(state.sideTasks.faction).not.toBeNull()
+    expect(state.sideTasks.faction!.id).toBe(f.id)
+    expect(factionGalaxyId(state)).toBe(f.galaxyId)
+    expect(isFactionBounty(state, card)).toBe(true)
+    expect(factionBaseRewardIsk(card)).toBe(Math.round(card.rewardIsk * 1.1))
+    // 清空后继续推进时间（同一天内）也不会把派系条目清掉
+    advanceGame(state, 6 * 60 * 60 * 1000, ctx)
+    expect(factionGalaxyId(state)).toBe(f.galaxyId)
   })
 
   it('多局统计：掉落频率逼近 FACTION_RARE_DROP_CHANCE（概率口径可复现）', () => {
