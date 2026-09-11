@@ -2502,8 +2502,20 @@ function stepBattle(
   // 开火失稳代价同样只在点火期生效（2026-09-10 船长：没点火就不失稳）——
   // 每次开火取当前有效乘子，冷却期 = 1（不改 me 本身，避免污染其它读法）
   const meAtk: UnitSpec = thruster.boosting ? me : { ...me, hitMul: effectiveHitMul(me, false) }
+  // **敌编队接近速度 = 存活单位的「平均」战斗机动**（船长 2026-09-11：
+  // 「**能否敌舰移动速度按照敌方是所有船的平均值算**」）。
+  // 原口径是**取最快单位**（`Math.max`）——混编卡里一条快船会把整队拖快：例 穹顶守卫
+  // = 2 静滞卫舰（129）+ 1 守墓长舰（232）⇒ 原口径整队按 **232** 走，与「静滞卫舰是半速炮台」
+  // 的设定相冲；改平均后该队按 **163**（战斗机动 92）走。
+  // 同速编成（单舰卡 / 同型多舰卡，如 A 族头目+同族杂鱼、C 族虫群）**逐字不变**（平均值 = 该速度）。
   let foeV = 0
-  for (const f of foes) if (isAlive(b, f.tag)) foeV = Math.max(foeV, combatSpeed(f.speedMps, f.agility, bal))
+  let foeAliveN = 0
+  for (const f of foes) {
+    if (!isAlive(b, f.tag)) continue
+    foeV += combatSpeed(f.speedMps, f.agility, bal)
+    foeAliveN += 1
+  }
+  if (foeAliveN > 0) foeV /= foeAliveN
   // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
   const foeDesireClamped = Math.min(openM, foeDesire)
   // 2026-09-10 船长（敌突进）：够不着时临时加速 ×倍率。

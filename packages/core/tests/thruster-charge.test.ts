@@ -266,11 +266,14 @@ describe('敌突进/冲锋（2026-09-10 定资格与 ×2；**2026-09-11 船长�
     // 战斗机动换算（敌敏捷 0.3；与 `combat.combatSpeed` 同式，取值来自 balance 而非手抄）
     const b2 = ctx.balance.battle
     const k = b2.speedFactor * (1 + (0.3 - 0.5) * 2 * b2.agilitySpeedBonus)
-    const fastV = 680 * k // 非冲锋者：**不该**被乘
-    const spillV = fastV * b2.foeChargeMul // 旧口径（错）：把"编队最快"整体翻倍
-    const trace = `闭距 ${Math.round(closed)}m / ${seconds}s ⇒ 接近速度 ${closing.toFixed(1)} m/s（非冲锋者 ${fastV.toFixed(1)}、旧口径会是 ${spillV.toFixed(1)}）`
-    expect(closing, `非冲锋单位被翻倍了（${trace}）`).toBeLessThan(fastV * 1.5)
-    expect(closing, `敌人根本没在接近（${trace}）`).toBeGreaterThan(fastV * 0.3)
+    const fastV = 680 * k // 非冲锋者 383.5：**不该**被乘
+    // **编队接近速度 = 存活单位的平均**（船长 2026-09-11「能否敌舰移动速度按照敌方是所有船的平均值算」）
+    // ⇒ 本卡两条不同速单位 = `(680+170)/2 × k`；若冲锋倍率**外溢到整队**，平均值会再翻一倍。
+    const avgV = ((680 + 170) / 2) * k
+    const spillV = avgV * b2.foeChargeMul
+    const trace = `闭距 ${Math.round(closed)}m / ${seconds}s ⇒ 接近速度 ${closing.toFixed(1)} m/s（编队平均 ${avgV.toFixed(1)}、非冲锋者 ${fastV.toFixed(1)}、外溢口径会是 ${spillV.toFixed(1)}）`
+    expect(closing, `冲锋倍率外溢到整队了（${trace}）`).toBeLessThan(avgV * 1.2)
+    expect(closing, `敌人根本没在接近（${trace}）`).toBeGreaterThan(avgV * 0.1)
   })
 
   it('参数口径：突进倍率 ×2、冷却 20 秒、门槛 60（`foeChargeMaxHoldMs` 已停用但保留）', () => {
