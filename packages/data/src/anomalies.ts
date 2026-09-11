@@ -543,7 +543,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         hpMul: 71.25 / FOE_SHIP_PIRATE_SKIFF.hp, // = 71.25/156
         dmgMul: 18 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 18/(28×1.6)
         speedMul: 377 / 351,
-        rangeMul: 2273 / 2215,
+        // rangeMul 退役（2026-09-11 船长「低威胁卡敌人射程延长到 2600」）：统一走舰级带，
+        // 不再用 2273/2215 的微调——两处 rangeMul 一并撤下，本卡快艇射程带 = 舰级 1~2600
         dmgMix: { kinetic: 8, explosive: 2 },
       },
       {
@@ -553,7 +554,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         hpMul: 71.25 / FOE_SHIP_PIRATE_SKIFF.hp,
         dmgMul: 18 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP),
         speedMul: 377 / 351,
-        rangeMul: 2273 / 2215,
+        // rangeMul 退役（2026-09-11 船长「低威胁卡敌人射程延长到 2600」）：统一走舰级带，
+        // 不再用 2273/2215 的微调——两处 rangeMul 一并撤下，本卡快艇射程带 = 舰级 1~2600
         dmgMix: { kinetic: 8, explosive: 2 },
       },
     ],

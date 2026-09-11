@@ -93,7 +93,7 @@ export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
   hitRate: 0.85,
   reloadMs: 4000,
   rangeMinM: 1, // 1 ×0.85 = 0.85 → 1（保留下限 1）
-  rangeMaxM: 1883, // 2215 ×0.85 = 1882.75 → 1883
+  rangeMaxM: 2600, // 2026-09-11 船长定「**低威胁卡敌人射程延长到 2600**」（原 1883 = 2215 ×0.85 射程 −15% 值）
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { explosive: 8, kinetic: 2 },
