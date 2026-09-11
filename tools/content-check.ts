@@ -1218,7 +1218,7 @@ for (const m of MODULES) {
         speedShipPath++
         for (const slot of mains) {
           const spd = Math.round(slot.ship.speedMps * (slot.speedMul ?? 1))
-          const tactic = slot.ship.tactic
+          const tactic = slot.tactic ?? slot.ship.tactic
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           const ratio = (spd * foeAgi) / refCombat
           check(
@@ -1287,12 +1287,13 @@ for (const m of MODULES) {
       check(mains.length >= 1, `舰级契约：${def.name} 没有任何非僚机编成条目（至少需要一艘主体）`)
       const prime = mains[0]
       if (prime && def.tactic) {
-        for (const m of mains) {
-          check(
-            m.ship.tactic === def.tactic,
-            `舰级契约：${def.name} 卡面战术 ${def.tactic} 与主体舰级「${m.ship.name}」的 ${m.ship.tactic} 不一致`,
-          )
-        }
+        // 卡面战术是"这一场怎么打"的摘要；混编允许各主体用不同战术（如狙击头目 + 贴脸杂鱼），
+        // 故契约只要求**卡面战术落在主体们的有效战术集合内**（有效 = 卡上覆写优先，2026-09-11 头目多战术）。
+        const effTactics = new Set(mains.map((m) => m.tactic ?? m.ship.tactic))
+        check(
+          effTactics.has(def.tactic),
+          `舰级契约：${def.name} 卡面战术 ${def.tactic} 不在主体编成的有效战术集合内 [${[...effTactics].join(' / ')}]`,
+        )
       }
       if (prime && def.defProfile) {
         const want = foeLayerSplit(def.defProfile)
@@ -1328,7 +1329,7 @@ for (const m of MODULES) {
       if (!allow) continue
       const tactics =
         def.ships && def.ships.length > 0
-          ? def.ships.filter((x) => x.escort !== true).map((x) => x.ship.tactic)
+          ? def.ships.filter((x) => x.escort !== true).map((x) => x.tactic ?? x.ship.tactic)
           : [def.tactic ?? 'orbit']
       for (const t of tactics) {
         checked++

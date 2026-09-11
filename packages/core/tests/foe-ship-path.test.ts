@@ -155,6 +155,44 @@ describe('舰级路径：词缀与显示名', () => {
   })
 })
 
+describe('舰级路径：头目可配多战术（2026-09-11 船长「头目建议允许多个战术」）', () => {
+  it('同一条头目舰换战术：`tactic` 覆写生效，射程带走**绝对覆写**（否则会出现"想打远战却只有 2.6 km"）', () => {
+    const def: AnomalyDef = {
+      ...anomaly('ano-t-boss-kite', 'galaxy-hub', { threat: 60 }),
+      ships: [{ ship: BOSS, tactic: 'kite', rangeMinM: 1500, rangeMaxM: 12000 }],
+    }
+    const spec = createFoeSpecs(def, bal)[0]!
+    expect(spec.foeTactic).toBe('kite')
+    expect(spec.weapons[0]!.minRangeM).toBe(1500)
+    expect(spec.weapons[0]!.maxRangeM).toBe(12000)
+    // 舰级自身仍是 brawl：头目"强"来自**档位**，"怎么打"由**卡上**定（舰级默认战术不被改动）
+    expect(BOSS.tactic).toBe('brawl')
+    expect(spec.name).toBe(`${FOE_ELITE_WORD}测试头目舰`)
+  })
+
+  it('未覆写时仍走舰级默认战术与舰级射程', () => {
+    const def: AnomalyDef = {
+      ...anomaly('ano-t-boss-def', 'galaxy-hub', { threat: 60 }),
+      ships: [{ ship: BOSS }],
+    }
+    const spec = createFoeSpecs(def, bal)[0]!
+    expect(spec.foeTactic).toBe('brawl')
+    expect(spec.weapons[0]!.minRangeM).toBe(1)
+    expect(spec.weapons[0]!.maxRangeM).toBe(2600)
+  })
+
+  it('混编可各用各的战术（狙击头目 + 贴脸杂鱼同场）', () => {
+    const def: AnomalyDef = {
+      ...anomaly('ano-t-mixed-tactic', 'galaxy-hub', { threat: 50 }),
+      ships: [
+        { ship: BOSS, tactic: 'kite', rangeMinM: 1500, rangeMaxM: 12000 },
+        { ship: SKIFF, count: 2 },
+      ],
+    }
+    expect(createFoeSpecs(def, bal).map((s) => s.foeTactic)).toEqual(['kite', 'brawl', 'brawl'])
+  })
+})
+
 describe('旧路径不受影响（未写 ships 的卡）', () => {
   it('仍按威胁推导建档，命名仍走"战术 × 血型"舰种名', () => {
     const def = anomaly('ano-t-legacy', 'galaxy-hub', { threat: 20, tactic: 'brawl' })

@@ -922,8 +922,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           }, {})
         : undefined
     const rangeMul = u.slot.rangeMul ?? 1
-    const rangeMax = Math.max(2, Math.round(ship.rangeMaxM * rangeMul))
-    const rangeMin = Math.max(1, Math.min(rangeMax - 1, Math.round(ship.rangeMinM * rangeMul)))
+    const rangeMax = Math.max(2, u.slot.rangeMaxM ?? Math.round(ship.rangeMaxM * rangeMul))
+    const rangeMin = Math.max(1, Math.min(rangeMax - 1, u.slot.rangeMinM ?? Math.round(ship.rangeMinM * rangeMul)))
+    // 战术：卡上覆写优先（2026-09-11 船长「头目建议允许多个战术」）——同一条头目舰可配多种打法
+    const tactic = u.slot.tactic ?? ship.tactic
     const name = foeUnitNameOf(anomaly, u.tag)
     return {
       tag: u.tag,
@@ -937,10 +939,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       scanResMm: 450,
       speedMps: Math.round(ship.speedMps * (u.slot.speedMul ?? 1)),
       agility: 0.3,
-      // 高威胁近战敌突进：资格 = 威胁 ≥ 门槛 且 本舰战术 = brawl（总开关默认 false，见旧路径同款注释）
+      // 高威胁近战敌突进：资格 = 威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）
       ...(bal.foeChargeEnabled === true &&
       anomaly.threat >= bal.foeChargeThreatFloor &&
-      ship.tactic === 'brawl'
+      tactic === 'brawl'
         ? { foeCanCharge: true }
         : {}),
       weapons: [
@@ -958,7 +960,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           reloadMs: ship.reloadMs,
         },
       ],
-      foeTactic: ship.tactic,
+      foeTactic: tactic,
     }
   })
 }
