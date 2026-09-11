@@ -651,7 +651,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'compression', per: 0.06, call: 'inventory.ts（矿/气/冰体积）' },
     { skill: 'hold-management', per: 0.03, call: 'inventory.ts（货仓容量）' },
     { skill: 'bounty-hunting', per: 0.08, call: 'expedition.ts bountyRewardFactor' },
-    { skill: 'cartography', per: 0.06, call: null, note: '说明写「前往扫描点的航行耗时 −6%/级」，但扫描任务的**去程已取消**（就地展开），引擎与界面里查无此技能引用——待船长裁决接活或清除' },
+    { skill: 'cartography', per: 0.06, call: 'explore.ts scanSkillFactor（2026-09-11 船长裁决「乙」接活到就地扫描窗口）' },
   ]
   const skillById = new Map(SKILLS.map((s) => [s.id, s]))
   const claimsOfSkill = (d: string): number[] => [...d.matchAll(/⟦([\d.]+)/g)].map((m) => Number(m[1]))

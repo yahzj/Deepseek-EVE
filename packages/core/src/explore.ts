@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 星图探索（V13，设计已确认）：
  *
  * 规则（中文说明）：
@@ -29,12 +29,16 @@ export const SCAN_WINDOW_MS = 10 * 60_000
  *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
 export const SCAN_LOWSEC_PENALTY = 0.8
 
-/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）乘算：扫描窗口技能系数
- * （2026-09-08 船长定：移除「总下限 40%」护栏；双技能封顶 5 级乘积 0.42，乘算本身有界） */
+/** 信号分析学（−8%/级）× 信号过滤学（−6%/级）× 星图测绘学（−6%/级）乘算：扫描窗口技能系数
+ * （2026-09-08 船长定：移除「总下限 40%」护栏；三技能封顶 5 级乘积 0.294，乘算本身有界）
+ * 2026-09-11 船长裁决：星图测绘学原本承诺「前往扫描点的航行耗时 −6%/级」，但扫描任务的**去程早已取消**
+ * （就地展开、总时长 = 就地扫描窗口），该技能自那以后全仓无引用 = 练了没用；现按「乙」接活到**就地扫描窗口**，
+ * 与信号分析学/信号过滤学同处乘算叠加（三技能满级：10 分钟窗口 → 约 2.9 分钟）。 */
 export function scanSkillFactor(state: GameState): number {
   const aLv = Math.min(5, state.skills.trained['signal-analysis'] ?? 0)
   const bLv = Math.min(5, state.skills.trained['signal-filtering'] ?? 0)
-  return Math.max(0, (1 - 0.08 * aLv) * (1 - 0.06 * bLv))
+  const cLv = Math.min(5, state.skills.trained['cartography'] ?? 0)
+  return Math.max(0, (1 - 0.08 * aLv) * (1 - 0.06 * bLv) * (1 - 0.06 * cLv))
 }
 
 /** 扫描窗口（毫秒；不含低安惩罚；旧签名保留给不关心目标星系的调用） */

@@ -117,6 +117,21 @@ describe('技能补全：信号分析学（扫描窗口每级 −8%）', () => {
   })
 })
 
+describe('技能补全：星图测绘学接活到就地扫描窗口（船长 2026-09-11 裁决「乙」，每级 −6%）', () => {
+  it('单技能满级 → 窗口 ×0.7（10 分钟 → 7 分钟）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 21 })
+    state.skills.trained['cartography'] = 5
+    expect(scanWindowMsOf(state)).toBe(Math.round(600_000 * 0.7))
+  })
+  it('与信号分析学、信号过滤学乘算叠加：三技能满级 = 0.6 × 0.7 × 0.7 = 0.294', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 22 })
+    state.skills.trained['signal-analysis'] = 5
+    state.skills.trained['signal-filtering'] = 5
+    state.skills.trained['cartography'] = 5
+    expect(scanWindowMsOf(state)).toBe(Math.round(600_000 * 0.6 * 0.7 * 0.7)) // 176400
+  })
+})
+
 describe('技能补全：深空物流学（货仓容量每级 +4%）', () => {
   it('满级 = 基础容量 ×1.2', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 6 })

@@ -527,7 +527,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '星图测绘学',
     group: '探索',
     rank: 2,
-    description: '航线标定与跳跃窗优化：前往扫描点的航行耗时每级缩短 ⟦6%⟧。',
+    description: '航线标定与跳跃窗优化：就地扫描窗口每级缩短 ⟦6%⟧（满级 −⟦30%⟧；与信号分析学、信号过滤学乘算叠加）。',
   },
   {
     id: 'signal-filtering',
