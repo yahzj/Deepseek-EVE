@@ -113,7 +113,9 @@ export interface UnitSpec {
   /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
    *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
   lockedDmgBonus?: number
-  /** 高威胁近战敌突进（2026-09-10 船长定）：仅"威胁 ≥ 门槛 且 战术 = brawl"的敌卡为 true */
+  /** 敌突进/冲锋（2026-09-10 船长定；资格 2026-09-11 扩为两条来源）：本单位为 true 时，
+   *  够不着则整编队接近速度 ×`foeChargeMul`，**到达目标距离即结束**、冷却 20 秒。
+   *  来源 ① **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）② 老路（威胁 ≥ 门槛 且 brawl）。 */
   foeCanCharge?: boolean
   /** **单波次内增援**（2026-09-11 船长裁决：机制实现、不启用）——本单位的入场触发条件；
    *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
@@ -294,39 +296,47 @@ export function thrusterPhase(
 }
 
 /**
- * 高威胁近战敌突进状态机（2026-09-10 船长定）：
- * 够不着（距离在自己武器射程之外）→ **突进**（机动 ×`foeChargeMul`，仍走拔河公式）；
- * **进入射程后再维持 `foeChargeMaxHoldMs`（2 秒）** → 突进结束；
- * 随后 `foeChargeCooldownMs`（20 秒）冷却，期满且再次够不着才能重启。
- * 只对 `foeCanCharge`（威胁 ≥ `foeChargeThreatFloor` 且战术 = brawl）的敌人生效；无总时长上限。
+ * 高威胁近战敌突进状态机（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）：
+ * 够不着（距离在**自己武器射程之外**）→ **突进**（机动 ×`foeChargeMul`，仍走拔河公式）；
+ * **到达目标距离（敌方期望交距）→ 突进结束**（船长 2026-09-11：「冲锋结束条件修改，**改为到达目标距离**」
+ * ——原口径"进入射程后再维持 2 秒"与其旋钮 `foeChargeMaxHoldMs` **随之停用**）；
+ * 随后 `foeChargeCooldownMs`（**20 秒**）冷却，期满且再次够不着才能重启。
+ * 只对挂了 `foeCanCharge` 的敌人生效——该资格有**两条互相独立**的来源（见 `createFoeSpecsFromShips`）：
+ * **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）与**老路**（威胁 ≥ `foeChargeThreatFloor`
+ * 且战术 = brawl，受总开关 `foeChargeEnabled` 约束）；无总时长上限。
+ *
+ * ⚠ 突进是**编队级**状态（`b.foeChargeOn` 一个标志 + 接近速度取"存活敌最快单位"），不是单舰加速。
  */
 function updateFoeCharge(
   b: import('./state').BattleState,
   foes: UnitSpec[],
   bal: BattleBalance,
   nowMs: number,
+  desireM: number,
 ): void {
-  if (!foes.some((f) => isAlive(b, f.tag) && f.foeCanCharge)) return
-  const w = foes[0]?.weapons[0]
+  // 冲锋者 = **首个存活且挂了资格的单位**
+  const charger = foes.find((f) => f.foeCanCharge === true && isAlive(b, f.tag))
+  if (!charger) return
+  // 两条判据各管一头：
+  // - **启动** = `inFoeRange`（口径未动）：距离在**该冲锋单位自己的武器**射程内。
+  //   ⚠ 2026-09-11 修正取武器口径：原码取 `foes[0].weapons[0]`，只在"冲锋者恰好是编队首位"时等价；
+  //   混编卡下（C 族噬口 = 畸变幼虫 ×N + 噬口巨兽 ×1，巨兽在末波且射程带更长）会按小虫的带判定，
+  //   与机制原始定义「够不着（距离在**自己**武器射程之外）」不符。
+  // - **结束** = `arrived`（2026-09-11 船长改判）：已压到**目标距离**（敌方期望交距 `foeDesire`）。
+  //   因期望交距必落在射程带内（`带.min + 0.2×(带.max − 带.min)` < 带.max），故"到达目标距离"
+  //   必然发生在"进入射程"之后，状态机单向、不会抖动。
+  const w = charger.weapons[0]
   const inFoeRange = w ? inRange(b.distanceM, w) : false
+  const arrived = b.distanceM <= desireM
   if (b.foeChargeOn) {
-    if (inFoeRange) {
-      if (b.foeChargeEnteredAtMs === undefined) b.foeChargeEnteredAtMs = nowMs
-      if (nowMs - b.foeChargeEnteredAtMs >= bal.foeChargeMaxHoldMs) {
-        b.foeChargeOn = false
-        b.foeChargeEnteredAtMs = undefined
-        b.foeChargeCdUntilMs = nowMs + bal.foeChargeCooldownMs
-      }
-    } else {
-      b.foeChargeEnteredAtMs = undefined // 尚未进射程：持续突进（冷却不启动）
+    if (arrived) {
+      b.foeChargeOn = false
+      b.foeChargeCdUntilMs = nowMs + bal.foeChargeCooldownMs
     }
-    return
+    return // 未到目标距离：持续突进（冷却不启动）
   }
   const cdUntil = b.foeChargeCdUntilMs ?? 0
-  if (nowMs >= cdUntil && !inFoeRange) {
-    b.foeChargeOn = true
-    b.foeChargeEnteredAtMs = undefined
-  }
+  if (nowMs >= cdUntil && !inFoeRange) b.foeChargeOn = true
 }
 
 /** 逐件缺口乘入（对 out 原位改：每系 res = 1−(1−res)(1−add)） */
@@ -995,10 +1005,12 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       // （core 不能 import data 包的 hullClass.ts，故基准随 bal 传入），零行为变化。
       speedMps: Math.round(bal.hullClassBaseSpeedMps[ship.hullClassTier] * ship.speedRatio * (u.slot.speedMul ?? 1)),
       agility: 0.3,
-      // 高威胁近战敌突进：资格 = 威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）
-      ...(bal.foeChargeEnabled === true &&
-      anomaly.threat >= bal.foeChargeThreatFloor &&
-      tactic === 'brawl'
+      // 敌突进（冲锋）资格，两条**互相独立**的来源（2026-09-11 船长「给巨兽开启之前做过的冲锋能力」）：
+      //   ① **舰级级 opt-in**（`ship.foeCanCharge`）——无条件放行，**不看**总开关与威胁门槛，
+      //      用于"慢而硬、追不上"的重型单位（C 族噬口巨兽，实速 277）；
+      //   ② 老路：威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）。
+      ...(ship.foeCanCharge === true ||
+      (bal.foeChargeEnabled === true && anomaly.threat >= bal.foeChargeThreatFloor && tactic === 'brawl')
         ? { foeCanCharge: true }
         : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
@@ -2485,11 +2497,13 @@ function stepBattle(
   const meAtk: UnitSpec = thruster.boosting ? me : { ...me, hitMul: effectiveHitMul(me, false) }
   let foeV = 0
   for (const f of foes) if (isAlive(b, f.tag)) foeV = Math.max(foeV, combatSpeed(f.speedMps, f.agility, bal))
-  // 2026-09-10 船长（高威胁近战敌突进）：够不着时临时加速 ×倍率（进射程 2 秒后结束、冷却 20 秒）
-  updateFoeCharge(b, foes, bal, b.lastTickGameMs)
-  if (b.foeChargeOn) foeV *= bal.foeChargeMul
   // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
   const foeDesireClamped = Math.min(openM, foeDesire)
+  // 2026-09-10 船长（敌突进）：够不着时临时加速 ×倍率。
+  // **2026-09-11 船长改判**：结束条件 = **到达目标距离**（`foeDesireClamped`），冷却 20 秒
+  // ——故本调用移到 `foeDesireClamped` 之后（原来用的是"进射程维持 2 秒"）。
+  updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
+  if (b.foeChargeOn) foeV *= bal.foeChargeMul
   const rate = steerStep(b.distanceM, b.myDesireM, meV, dtSec) + steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
   b.distanceM = clamp(bal.minDistanceM, openM, b.distanceM + rate)
 

@@ -1033,6 +1033,21 @@ export interface FoeShipDef {
   tactic: FoeTactic
   /** 头目档：显示名加「精锐」前缀（2026-09-11 船长裁决实装；旧 `FOE_LIGHT_WORD` 的预留位） */
   elite?: boolean
+  /**
+   * **舰级级「敌突进（冲锋）」开关**（2026-09-11 船长：「**给巨兽开启之前做过的冲锋能力**」）。
+   *
+   * 语义 = **无条件给本舰级单位挂 `foeCanCharge`**，与总开关 `BattleBalance.foeChargeEnabled`
+   * （默认 `false`，管"按威胁门槛 + brawl 自动放行"那条路）**互相独立**：
+   * 写 `true` 的舰级**总是**具备突进资格，**不受**总开关与威胁门槛约束。
+   *
+   * 实况（机制本体 2026-09-10 建，见 `combat.updateFoeCharge`）：够不着时整编队接近速度
+   * **×`foeChargeMul`**，**到达目标距离（敌方期望交距）即结束**（船长 2026-09-11 改判：
+   * 「冲锋结束条件修改，改为到达目标距离，冷却时间延长至 20 秒」），冷却 `foeChargeCooldownMs`。
+   * ⚠ **只在有该单位的波次生效**（`stepBattle` 收到的是当前波编制），且是**编队级**状态而非单舰加速。
+   *
+   * 用途：慢而硬的重型单位（C 族**噬口巨兽**，实速 277）用突进补偿"追不上"。
+   */
+  foeCanCharge?: boolean
 }
 
 /**

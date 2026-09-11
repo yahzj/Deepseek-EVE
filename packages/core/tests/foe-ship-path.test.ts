@@ -228,7 +228,7 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
  * 与 `content:check`「敌速口径契约」互为独立写法（引擎实算 vs 内容表校验）。
  */
 describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）', () => {
-  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 418/426/328/398', () => {
+  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 544/544/398/277', () => {
     const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
     const got = FOE_SHIPS.map((ship) => ({
       id: ship.id,
@@ -244,12 +244,14 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // （本批曾一度取 0.90 / 0.92 = 306 / 271，船长裁决「B 族速落实 0.8」后作废）
       { id: 'foe-scav-skiff', tier: 1, speed: 272 },
       { id: 'foe-scav-armed', tier: 2, speed: 236 },
-      // C 族（异形生物）：船长 2026-09-11 裁定②「**C 族速度比 A 海盗还快**」（同档须高于 A 族）
-      // + 裁定③「允许 T4 战列舰（生物巨兽），**T4 例外允许慢**」⇒ 噬口 328 < A 头目 374 是有意例外
-      { id: 'foe-alien-rift', tier: 3, speed: 418 }, // 3 巡洋 258 × 418/258（> A 同档 374）
-      { id: 'foe-alien-starcore', tier: 3, speed: 426 }, // > A 同档 374
-      { id: 'foe-alien-maw', tier: 4, speed: 328 }, // **T4 巨兽例外**：205 × 328/205（慢而硬）
-      { id: 'foe-alien-abyss', tier: 2, speed: 398 }, // 2 驱逐 295 × 398/295（> A 同档 325）
+      // C 族（异形生物）：裁定②「**C 族速度比 A 海盗还快**」（同档须高于 A 族）
+      // + **第二批族级结构修正**（船长：「配了 2 个巡洋级…不符合我对 C 族的设计。护卫舰级应该有 2 种，
+      //   星髓幼虫和畸变幼虫。驱逐级一种，星髓成虫」）⇒ 两条 T3 巡洋（旧裂谷畸变体 / 星髓虫群）**退役**
+      // + 「**两种幼虫提速倍率 1.6**」「**巨兽提速降为 1.35**」
+      { id: 'foe-alien-starcore-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
+      { id: 'foe-alien-rift-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
+      { id: 'foe-alien-starcore-adult', tier: 2, speed: 398 }, // 2 驱逐 295 × 1.35（> A 同档 325）
+      { id: 'foe-alien-maw', tier: 4, speed: 277 }, // **T4 巨兽**：205 × 1.35（慢而硬，用冲锋补偿）
     ])
   })
 
@@ -561,21 +563,29 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
 })
 
 /* ══════════════════════════════════════════════════════════════════════════
- * C 族（异形生物）第一步落码 · 2026-09-11 船长五条裁定
- *   ① 深渊之门卫队改 brawl + 整套重标  ② 速度比 A 海盗还快（同档须高于 A）
- *   ③ 允许 T4 战列舰（生物巨兽），T4 例外允许慢  ④ 分两步（本批 = 迁移 + 口径 + 契约）
- *   ⑤ 立「能量·掷命中」档 + 主系统一为等离子
- * 本组锁死三件事：**零变化迁移**（裂谷/星髓/噬口除有意改动外逐字一致）、
- * **能量形态覆写**（缺省必中 / `spit` 掷命中，且只作用于能量主系）、**速度口径**。
+ * C 族（异形生物）· **第二批「虫群编成 + 稀有头目」** · 2026-09-11 船长裁定
+ *   ① 虫群规模 6~12 只/卡、分波更多  ② **只有噬口有头目**（全族唯一 · `elite`）
+ *   ③ 首领血量/火力占比 **80%**（其余每只小虫 2%）  ④ 总血 / 总火力**守恒**
+ *   ⑤ 族级结构修正：T1 护卫舰 ×2（星髓幼虫 / 畸变幼虫）+ T2 驱逐舰 ×1（星髓成虫）+ T4 巨兽
+ *   ⑥ 巨兽：提速 1.35 + 射程 1~4,000（**不动目标距离**）+ 开启**冲锋**
+ *      （结束条件 = 到达目标距离、冷却 20 秒）
+ * 本组锁死：**逐卡编成与总盘守恒**、**波次结构**、**稀有头目唯一性**、**目标距离不动**。
+ * ⚠ 第一批那组「零变化迁移 / 逐字保持」用例**已按设计作废**（本批正是有意改编成与血量分配）。
  * ══════════════════════════════════════════════════════════════════════════ */
-describe('C 族（异形生物）：零变化迁移 + 能量·掷命中档 + 速度口径', () => {
+describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒', () => {
   const card = (id: string): AnomalyDef => ANOMALIES.find((a) => a.id === id)!
   const C_IDS = ['ano-abyss-guard', 'ano-chasm-aberrations', 'ano-starcore-boss', 'ano-maw-hunt']
-  /** 血量比对用近似（`1815/1.6` 一类分数式在二进制浮点下末位有差，如 680.6250000000001） */
+  /** 血量比对用近似（分数式在二进制浮点下末位有差，如 226.87500000000003） */
   const expectHpClose = (got: readonly number[], want: readonly number[]): void => {
     expect(got).toHaveLength(want.length)
     got.forEach((v, i) => expect(v).toBeCloseTo(want[i]!, 6))
   }
+  /** 取某张卡**全部波次**的单位（首波前缀 `''`；第 n 波 `w{n}-`），展平成一队 */
+  const allWaves = (def: AnomalyDef): ReturnType<typeof createFoeSpecs> =>
+    (def.waves ?? [{ units: 1, hpShare: 1 }]).flatMap((_, i) =>
+      createFoeSpecs(def, bal, { tagPrefix: i === 0 ? '' : `w${i}-` }),
+    )
+  const sum = (xs: readonly number[]): number => xs.reduce((a, b2) => a + b2, 0)
 
   it('四张卡全部迁入舰级路径，编成一律「主体」（`escort` 字段不再使用）', () => {
     for (const id of C_IDS) {
@@ -590,60 +600,142 @@ describe('C 族（异形生物）：零变化迁移 + 能量·掷命中档 + 速
     }
   })
 
-  it('裂谷畸变体猎杀令（T58）：血/单发/逐系/命中/射程/衰减逐字保持，主系改等离子 + 掷命中', () => {
-    const u = createFoeSpecs(card('ano-chasm-aberrations'), bal)
-    expect(u).toHaveLength(2)
-    expectHpClose(u.map(hpOf), [1134.375, 680.625]) // 迁移前 1815/1.6 与 ×0.6
-    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual([76, 45])
-    expect(u[0]!.weapons[0]!.shotsByType).toEqual({ plasma: 61, explosive: 15 }) // 原 kinetic 61（只换系）
+  it('虫群规模 6~12 只/卡；`waves` 覆盖到最后一波，且每一波都有编成条目', () => {
+    for (const id of C_IDS) {
+      const def = card(id)
+      const n = def.ships!.reduce((s, x) => s + (x.count ?? 1), 0)
+      expect(n, `${id} 虫群规模 ${n} 不在 6~12`).toBeGreaterThanOrEqual(6)
+      expect(n, `${id} 虫群规模 ${n} 不在 6~12`).toBeLessThanOrEqual(12)
+      const maxWave = Math.max(...def.ships!.map((x) => x.wave ?? 0))
+      // 波表必须覆盖到最后一波（否则末波单位永不入场）
+      expect(def.waves, id).toHaveLength(maxWave + 1)
+      // 每一波都得有单位（空波会让波次系统瞬间跳过，等于少一波）
+      for (let w = 0; w <= maxWave; w++) {
+        expect(def.ships!.some((x) => (x.wave ?? 0) === w), `${id} 第 ${w + 1} 波没有编成条目`).toBe(true)
+      }
+      expect(allWaves(def)).toHaveLength(n) // 引擎实枚举数 = 编成声明数
+    }
+  })
+
+  it('冲锋资格走**舰级级 opt-in**：`foeCanCharge` 不受总开关与威胁门槛约束（巨兽用的就是这条路）', () => {
+    // 总开关出厂默认关着、威胁也远低于门槛 60 —— opt-in 与"老路"互不影响，照样给资格
+    const shell = anomaly('ano-t-charge', 'galaxy-hub', { threat: 20, tactic: 'brawl' })
+    const charger: FoeShipDef = { ...SKIFF, id: 't-foe-charger', foeCanCharge: true }
+    expect(createFoeSpecs({ ...shell, ships: [{ ship: charger }] }, bal)[0]!.foeCanCharge).toBe(true)
+    // 没写 opt-in 的舰级：总开关关闭 ⇒ 照旧没有资格（零行为变化）
+    expect(
+      createFoeSpecs({ ...shell, ships: [{ ship: { ...SKIFF, id: 't-foe-plain' } }] }, bal)[0]!.foeCanCharge,
+    ).toBeUndefined()
+  })
+
+  it('深渊之门卫队（T45）：星髓幼虫 ×6 / 2 波（3+3）；总血 1,000 精确守恒', () => {
+    const def = card('ano-abyss-guard')
+    const u = allWaves(def)
+    expect(u).toHaveLength(6)
+    expectHpClose(u.map(hpOf), Array.from({ length: 6 }, () => 1000 / 6)) // 原 2 单位 625 + 375
+    expect(sum(u.map(hpOf))).toBeCloseTo(1000, 6)
+    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(Array.from({ length: 6 }, () => 19)) // 112/6 → 19
+    const w = u[0]!.weapons[0]!
+    expect(w.kind).toBe('fixed') // 能量·掷命中（裁定⑤）
+    expect(w.hitRate).toBe(0.9) // 卡上覆写（原光束必中）
+    expect(w.minRangeM).toBe(1)
+    expect(w.maxRangeM).toBe(2600) // 卡带（舰级缺省 2655）
+    expect(w.fixedType).toBe('plasma')
+    expect(u[0]!.speedMps).toBe(544) // 星髓幼虫（原 234）
+    expect(u[0]!.foeTactic).toBe('brawl')
+    expect(card('ano-abyss-guard').dmgMix).toEqual({ plasma: 10 }) // 纯能量卡保持纯系（卡面）
+    // 血型随卡走：卡面 shield（星髓幼虫舰级缺省是装甲型）
+    const h = u[0]!.hp
+    const tot = hpOf(u[0]!)
+    expect(h.s / tot).toBeCloseTo(0.5, 6)
+    expect(h.a / tot).toBeCloseTo(0.25, 6)
+    expect(h.h / tot).toBeCloseTo(0.25, 6)
+  })
+
+  it('裂谷畸变体猎杀令（T58）：畸变幼虫 ×8 / 2 波（4+4）；总血 1,815 精确守恒', () => {
+    const def = card('ano-chasm-aberrations')
+    const u = allWaves(def)
+    expect(u).toHaveLength(8)
+    expectHpClose(u.map(hpOf), Array.from({ length: 8 }, () => 1815 / 8)) // = 226.875
+    expect(sum(u.map(hpOf))).toBeCloseTo(1815, 6)
+    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(Array.from({ length: 8 }, () => 15)) // 121/8 = 15.125 → 15
+    expect(u.map((x) => x.speedMps)).toEqual(Array.from({ length: 8 }, () => 544)) // 408 → 544
     expect(u[0]!.weapons[0]!.kind).toBe('fixed') // 能量·掷命中（裁定⑤）
-    expect(u[0]!.weapons[0]!.fixedType).toBe('plasma')
+    expect(u[0]!.weapons[0]!.fixedType).toBe('plasma') // 主系改等离子
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
-    expect(u[0]!.weapons[0]!.maxRangeM).toBe(2552)
-    expect(u[0]!.weapons[0]!.falloff).toBe(0.5)
-    expect(u.map((x) => x.speedMps)).toEqual([418, 418]) // 408 → 418（有意改快）
+    expect(u[0]!.weapons[0]!.maxRangeM).toBe(2552) // 舰级缺省即卡带（本卡无覆写）
+    expect(u[0]!.weapons[0]!.minRangeM).toBe(1)
     expect(u[0]!.foeTactic).toBe('brawl')
   })
 
-  it('星髓虫群（T72）：血/单发逐字保持；**唯一改动 = 光束必中 → 掷命中 0.95**', () => {
-    const u = createFoeSpecs(card('ano-starcore-boss'), bal)
-    expect(u).toHaveLength(3) // 主体 ×1 + 同型 ×2
-    expectHpClose(u.map(hpOf), [695.4545454545455, 417.27272727272725, 417.27272727272725])
-    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual([105, 63, 63])
+  it('星髓虫群（T72）：星髓幼虫 ×7 + 星髓成虫 ×3（末波），两条舰级共用一个血量倍率', () => {
+    const def = card('ano-starcore-boss')
+    const u = allWaves(def)
+    expect(u).toHaveLength(10)
+    // 幼虫 95.625（×7）+ 成虫 286.875（×3）= 1,530；成虫:幼虫 = 3:1 = 档基线比 624:208
+    expectHpClose(u.map(hpOf), [...Array.from({ length: 7 }, () => 95.625), 286.875, 286.875, 286.875])
+    expect(sum(u.map(hpOf))).toBeCloseTo(1530, 6)
+    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(Array.from({ length: 10 }, () => 23)) // 231/10 → 23
+    // 末波（第 3 波）= 成虫 ×3：带 1~2655 与速 398（T2 驱逐），tag 走 `w2-` 前缀
+    const last = u.filter((x) => x.tag.startsWith('w2-'))
+    expect(last).toHaveLength(3)
+    expect(last.map((x) => x.speedMps)).toEqual([398, 398, 398])
+    expect(last.map((x) => x.weapons[0]!.maxRangeM)).toEqual([2655, 2655, 2655])
+    expect(u.filter((x) => !last.includes(x))).toHaveLength(7)
+    expect(u[0]!.speedMps).toBe(544) // 前两波是幼虫
     expect(u[0]!.weapons[0]!.kind).toBe('fixed') // 原 beam（必中）→ fixed（掷命中）
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
-    expect(u.map((x) => x.speedMps)).toEqual([426, 426, 426]) // 420 → 426
   })
 
-  it('噬口猎杀令（T80）：两波结构与逐波单位血逐字保持；速度 426 → 328（T4 巨兽例外）', () => {
+  it('噬口猎杀令（T80）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 80% 血与火力，总盘 2,766/501 精确守恒', () => {
     const def = card('ano-maw-hunt')
-    const w0 = createFoeSpecs(def, bal, { units: 2, hpShare: 0.5 })
-    const w1 = createFoeSpecs(def, bal, { units: 1, hpShare: 0.5, tagPrefix: 'w1-' })
-    expect(w0).toHaveLength(2)
-    expect(w1).toHaveLength(1)
-    expectHpClose([...w0, ...w1].map(hpOf), [922, 922, 922]) // = 1844 × 0.5（原逐波单位血）
-    expect([...w0, ...w1].map((x) => x.weapons[0]!.shotDmg)).toEqual([167, 167, 167])
-    expect(w0[0]!.weapons[0]!.shotsByType).toEqual({ plasma: 134, explosive: 33 })
-    expect(w0[0]!.speedMps).toBe(328)
-    expect(w0[0]!.weapons[0]!.kind).toBe('fixed')
-    expect(w1[0]!.tag).toBe('w1-foe-0') // 波次 tag 口径与旧多波一致
+    const u = allWaves(def)
+    expect(u).toHaveLength(11)
+    // 末波编成序 = 小虫 ×3（w2-foe-0..2）+ 头目（w2-foe-3）——**小虫排在前**，见下一组用例
+    const boss = u.find((x) => x.tag === 'w2-foe-3')!
+    expect(boss).toBeTruthy()
+    const minions = u.filter((x) => x !== boss)
+    expect(minions).toHaveLength(10)
+    expectHpClose([hpOf(boss)], [2766 * 0.8]) // 首领 2,212.8（80%）
+    expectHpClose(minions.map(hpOf), Array.from({ length: 10 }, () => 2766 * 0.02)) // 每只小虫 55.32（2%）
+    expect(sum(u.map(hpOf))).toBeCloseTo(2766, 6) // 改造前实际总血（922 × 3 单位）
+    expect(boss.weapons[0]!.shotDmg).toBe(401) // 501 × 80% = 400.8 → 401
+    expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(Array.from({ length: 10 }, () => 10))
+    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(501) // 总单发取整后仍精确 = 501
+    expect(boss.speedMps).toBe(277) // 205 × 1.35（船长「巨兽提速降为 1.35」）
+    expect(minions.every((x) => x.speedMps === 544)).toBe(true)
+    expect(boss.weapons[0]!.maxRangeM).toBe(4000) // 巨兽射程增加（舰级 1~4,000）
+    expect(minions.every((x) => x.weapons[0]!.maxRangeM === 2713)).toBe(true) // 小虫 = 卡带
+    expect(boss.weapons[0]!.kind).toBe('fixed')
+    expect(boss.foeTactic).toBe('brawl')
+    // 冲锋：只有巨兽带资格（舰级 opt-in），小虫没有
+    expect(boss.foeCanCharge).toBe(true)
+    expect(minions.every((x) => x.foeCanCharge !== true)).toBe(true)
   })
 
-  it('深渊之门卫队（T45）：裁定① 整套重标（kite 光束点名 → brawl 贴脸真墙）', () => {
-    const u = createFoeSpecs(card('ano-abyss-guard'), bal)
-    expect(u).toHaveLength(2)
-    expectHpClose(u.map(hpOf), [625, 375]) // 卡总血 540 → 1000（主体 625 + 6:4 同型 375；设计初值 700 经六组复核偏软后微调）
-    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual([56, 56]) // 45 → 56
-    const w = u[0]!.weapons[0]!
-    expect(w.kind).toBe('fixed') // 原 beam 必中 → 掷命中
-    expect(w.hitRate).toBe(0.9)
-    expect(w.minRangeM).toBe(1)
-    expect(w.maxRangeM).toBe(2600) // 原 1737~13314
-    expect(w.falloff).toBe(0.5) // 原 0.1（威力衰减口径）→ 命中衰减口径
-    expect(w.fixedType).toBe('plasma')
-    expect(u[0]!.foeTactic).toBe('brawl') // 原 kite
-    expect(u[0]!.speedMps).toBe(398) // 原 234
-    expect(card('ano-abyss-guard').dmgMix).toEqual({ plasma: 10 }) // 纯能量卡保持纯系
+  it('巨兽射程增加但**目标距离不动**：期望交距 = 543 m（由波 0 的小虫带锚定）', () => {
+    const def = card('ano-maw-hunt')
+    const w0 = createFoeSpecs(def, bal)
+    // 波 0 首个单位 = 畸变幼虫（带 1~2713）⇒ 期望交距 = 1 + 0.20 × (2713 − 1) = 543
+    expect(w0[0]!.weapons[0]!.maxRangeM).toBe(2713)
+    expect(foeDesiredRange(w0[0]!, w0, bal)).toBe(543)
+    // 巨兽自己的带更长（4,000），但它**不在波 0** ⇒ 拉不动期望交距
+    const boss = allWaves(def).find((x) => x.tag === 'w2-foe-3')!
+    expect(boss.weapons[0]!.maxRangeM).toBe(4000)
+    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(4000)
+  })
+
+  it('稀有头目唯一性：**C 族只有噬口**出现 `elite` 单位，显示名挂「精锐」（A 族头目另计）', () => {
+    const eliteCCards = new Set<string>()
+    for (const def of ANOMALIES) {
+      if (def.foeFamily !== 'C') continue
+      for (const s of def.ships ?? []) if (s.ship.elite) eliteCCards.add(def.id)
+    }
+    expect([...eliteCCards]).toEqual(['ano-maw-hunt'])
+    const def = card('ano-maw-hunt')
+    expect(foeUnitNameOf(def, 'w2-foe-3')).toBe(`${FOE_ELITE_WORD}噬口巨兽`)
+    expect(foeUnitNameOf(def, 'foe-0')).toBe('畸变幼虫') // 首波首个单位走旧 tag 口径（无 w0- 前缀）
+    expect(foeUnitNameOf(def, 'w2-foe-0')).toBe('畸变幼虫')
   })
 
   it('能量形态覆写（裁定⑤）：缺省 = 光束必中（不消费命中）；`spit` = 掷命中（消费命中、吃回避）', () => {

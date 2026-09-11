@@ -16,10 +16,10 @@ import type { AnomalyDef } from '@whale/core'
 import { foeLayerSplit } from '@whale/core'
 import { withRecycleFlavor } from './salvageFlavors'
 import {
-  FOE_ALIEN_ABYSS,
   FOE_ALIEN_MAW,
   FOE_ALIEN_RIFT,
   FOE_ALIEN_STARCORE,
+  FOE_ALIEN_STARCORE_ADULT,
   FOE_SCAV_ARMED,
   FOE_SCAV_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
@@ -60,16 +60,37 @@ const MIRAGE_RANGE_MUL = 13667 / 11316
 const A_MULTI_SHIP_COMP = 1.6 // = 2N/(N+1)，N = 4
 
 /**
- * **C 族（异形生物）第一步迁移的编成补偿**（2026-09-11 船长裁定④「本批 = 舰级路径迁移 + 族格口径 + 契约」）。
+ * **C 族（异形生物）虫群编成的多舰船补偿**（2026-09-11 船长第二批裁定
+ * 「**虫群编成 + 稀有头目**」「虫群规模比海盗还要大，按 **6~12 只**算」「**分波因此也更多**」）。
  *
- * 与 A 族同款算式口径：**引擎在建档时自动施加 `2N/(N+1)`**（`core/createFoeSpecsFromShips`），
- * 卡上 `dmgMul` 写的是"**设计单发 ÷（舰级单发 × 补偿）**"，故实建档值 = 设计单发（本批 = 迁移前现状值，
- * **零变化**）。本批**不使用**补偿做强度调整（那是"虫群编成 + 头目档"第二批的事）。
- * - `ALIEN_COMP_2`：N = 2（主体 ×1 + 同型 ×1）→ 4/3；
- * - `ALIEN_COMP_3`：N = 3（主体 ×1 + 同型 ×2；噬口为两波 2 + 1）→ 1.5。
+ * 与 A 族同款算式口径：**引擎在建档时自动施加 `2N/(N+1)`**（`core/createFoeSpecsFromShips`，
+ * N = **本卡编成单位总数**），卡上 `dmgMul` 写的是"**设计单发 ÷（舰级单发 × 补偿）**"，
+ * 故引擎实建档值 = 设计单发。虫子多了档位也多，故这里做成**按 N 取值的函数**（不再写死常数）。
+ *
+ * | 卡 | 单位总数 N | 补偿 `2N/(N+1)` |
+ * |---|---|---|
+ * | 深渊之门卫队（星髓幼虫 ×6） | 6 | `12/7` ≈ 1.714286 |
+ * | 裂谷畸变体猎杀令（畸变幼虫 ×8） | 8 | `16/9` ≈ 1.777778 |
+ * | 星髓虫群（星髓幼虫 ×7 + 星髓成虫 ×3） | 10 | `20/11` ≈ 1.818182 |
+ * | 噬口猎杀令（畸变幼虫 ×10 + 噬口巨兽 ×1） | 11 | `22/12` ≈ 1.833333 |
  */
-const ALIEN_COMP_2 = 4 / 3
-const ALIEN_COMP_3 = 1.5
+const ALIEN_COMP = (n: number): number => (2 * n) / (n + 1)
+
+/**
+ * **C 族噬口猎杀令（T80）的总盘锚**——「**总血 / 总火力先守恒**」（船长第二批口径⑤：
+ * 「总血 / 总火力先守恒（`hpMul` 分配 + 单发按 `2N/(N+1)` 反算）⇒ 读数可与改造前逐格对照」）。
+ *
+ * ⚠ **守恒基准 = 现树实际值，不是卡面名义值**：本卡是 C 族唯一的多波卡，而旧多波路径的波血
+ * = `卡总血(threat 曲线) × hpShare`、**波内无僚机时每个单位都拿满波血**
+ * （`unitHp = baseHp × uThreat/threat`，`escorts = 0` ⇒ `uThreat = threat`）⇒
+ * 改造前实际 = `1844 × 0.5 × 3 单位 = 2766`（**不是**卡面 1844）。船长 2026-09-11 确认取 **2766**。
+ * 单发同口径 = `167 × 3 = 501`。
+ */
+const MAW_TOTAL_HP = 2766 // = 922 × 3（改造前实际总血）
+const MAW_TOTAL_DMG = 501 // = 167 × 3（改造前实际总单发）
+/** 稀有头目的血/火力占比（船长：「**首领血量占比提高到 80%**」；火力同比例 ⇒ 每只小虫 2%） */
+const MAW_BOSS_SHARE = 0.8
+const MAW_MINION_SHARE = 0.02
 
 export const ANOMALIES: readonly AnomalyDef[] = [
   {
@@ -279,15 +300,40 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：C 族最弱（深渊之门，奖金 16 万）
     // 注：同星系的 E 族「泰坦残骸勘探」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '深渊之门卫队',
-    // C 族第一步落码（2026-09-11 船长裁定①「**深渊之门卫队改 brawl + 整套重标**」）：
-    // 原为 C 族唯一远程（kite + 1,737~13,314 m 光束点名 + 纯能量必中），与族设定"贴脸撕咬/酸液喷吐"硬冲突。
-    // 现整套重标为"威胁 45 的**贴脸真墙**"：战术 kite → **brawl**、射程 → 1~2600、血 540 → **700**、
-    // 单发 45 → **56**、命中 **0.90**（掷命中）、远端衰减 0.5（**命中**衰减口径）、速度 234 → **398**。
-    // 编成 = **主体 ×1 + 同型 ×1**（沿用原"主 + 僚"的 6:4 血量分配；`escort` 字段按船长「不保留僚机」
-    // 一律不写，两个单位都是主体——与 A 族六卡同口径）。N = 2 ⇒ 补偿 4/3，卡上 `dmgMul` 把它除掉。
+    // C 族第二批（2026-09-11 船长「虫群编成」+ 族级结构修正）：编成改 **星髓幼虫 ×6 / 2 波（3+3）**。
+    // 舰级由 T2「深渊之门卫队」换成 **星髓幼虫**（T1 护卫舰 544 m/s——船长「护卫舰级应该有 2 种，
+    // 星髓幼虫和畸变幼虫」），故本卡条目**覆写**舰级缺省：血型**护盾**（卡面 shield）·
+    // 命中 **0.90**（掷命中）· **纯等离子**（C 族唯一纯能量卡）· 射程 **1~2600**。
+    // **总盘守恒**：总血 **1,000**（原 2 单位 625 + 375）÷ 6 = 每只 **166.667**；
+    // 总单发 **112**（56 + 56）÷ 6 = 18.667 ⇒ 取整 **19**（Σ 114，**+1.79%**，四张卡唯一取舍，见设计稿 §十）。
+    // N = 6 ⇒ 补偿 `12/7`，卡上 `dmgMul` 把它除掉。
     ships: [
-      { ship: FOE_ALIEN_ABYSS, dmgMul: 56 / (56 * ALIEN_COMP_2) }, // 主：血 437.5 / 单发 56
-      { ship: FOE_ALIEN_ABYSS, hpMul: 0.6, dmgMul: 56 / (56 * ALIEN_COMP_2) }, // 同型：血 262.5 / 单发 56
+      {
+        ship: FOE_ALIEN_STARCORE,
+        count: 3,
+        wave: 0,
+        hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp), // = 166.667/208（总血 1,000 的六分之一）
+        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(6)), // 每只单发 19
+        split: foeLayerSplit('shield'), // 血型随卡走（舰级缺省是装甲）
+        hitRate: 0.9, // 掷命中（原光束必中；本卡的单卡特征，不升格为舰级）
+        dmgMix: { plasma: 10 }, // 纯等离子（C 族唯一纯能量卡）
+        rangeMaxM: 2600, // 卡带（舰级缺省 2655）
+      },
+      {
+        ship: FOE_ALIEN_STARCORE,
+        count: 3,
+        wave: 1,
+        hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp),
+        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(6)),
+        split: foeLayerSplit('shield'),
+        hitRate: 0.9,
+        dmgMix: { plasma: 10 },
+        rangeMaxM: 2600,
+      },
+    ],
+    waves: [
+      { units: 3, hpShare: 0.5 },
+      { units: 3, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-abyss',
     threat: 45,
@@ -351,14 +397,43 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '星髓虫群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
     name: '星髓虫群', // 2026-09-10 船长：与 C 族窝点档位词（虫巢/隐秘孵化地）冲突，改名（id 不变）
-    // C 族第一步落码（2026-09-11 船长裁定④/⑤）：迁入**舰级路径**（星髓虫群 ×3）。
-    // **零变化迁移**：血 695.4545 + 417.2727×2、单发 105 + 63×2、射程 1~2655、衰减 0.5、装填 4000 逐字不变；
-    // **有意改动** = ①形态改**能量·掷命中**（原**光束必中** ⇒ 现掷命中 0.95 + 命中随距离衰减 + 吃回避——
-    // 本卡唯一的难度改动，见设计稿 §九 六组实测）②速度 420 → **426**（舰级 `426/258`）。
-    // 主系等离子 8:2 **不变**（本卡原本就是等离子主）。编成 = **主体 ×1 + 同型 ×2**（原 2 僚机，6:4 血量分配不变）。
+    // C 族第二批（2026-09-11 船长「虫群编成」+ 族级结构修正）：编成改
+    // **星髓幼虫 ×7（波 1 ×4、波 2 ×3）+ 星髓成虫 ×3（第 3 波）**，共 10 只 / 3 波。
+    // 船长：「**星髓幼虫给第一张和第三张卡**」+「**星髓成虫给第三张卡最后一波，血量占比要调整**」。
+    // **血量占比调整（本卡唯一的算法取巧）**：成虫:幼虫 = **3:1**，正是两条舰级的档基线比（624:208）
+    // ⇒ 全卡**共用一个血量倍率** `1530 ÷ (7×208 + 3×624) = 1530/3328`，
+    // 于是每只幼虫 **95.625**、每只成虫 **286.875**（Σ = 669.375 + 860.625 = **1,530** 精确守恒），
+    // 波次占比随之 = **25% / 18.75% / 56.25%**（末波是重头）。
+    // **总单发守恒**：原 231（105 + 63×2）÷ 10 = 23.1 ⇒ 取整 **23**（Σ 230，**−0.43%**，见设计稿 §十）。
+    // 形态 = **能量·掷命中**（C 族不保留光束必中：掷命中 0.95 + 命中随距离衰减 + 吃回避）；
+    // 主系等离子 8:2；射程 1~2655（走舰级缺省）。N = 10 ⇒ 补偿 `20/11`。
     ships: [
-      { ship: FOE_ALIEN_STARCORE, dmgMul: 105 / (105 * ALIEN_COMP_3) }, // 主：血 695.4545 / 单发 105
-      { ship: FOE_ALIEN_STARCORE, count: 2, hpMul: 0.6, dmgMul: 63 / (105 * ALIEN_COMP_3) }, // 同型 ×2：血 417.2727 / 单发 63
+      {
+        ship: FOE_ALIEN_STARCORE,
+        count: 4,
+        wave: 0,
+        hpMul: 1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 幼虫 95.625
+        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(10)), // 每只单发 23
+      },
+      {
+        ship: FOE_ALIEN_STARCORE,
+        count: 3,
+        wave: 1,
+        hpMul: 1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp),
+        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(10)),
+      },
+      {
+        ship: FOE_ALIEN_STARCORE_ADULT, // 末波：成虫 ×3（单个血量 = 幼虫 ×3）
+        count: 3,
+        wave: 2,
+        hpMul: 1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 成虫 286.875
+        dmgMul: 23 / (FOE_ALIEN_STARCORE_ADULT.shotDmg * ALIEN_COMP(10)),
+      },
+    ],
+    waves: [
+      { units: 4, hpShare: 0.25 }, // 幼虫 ×4 = 382.5
+      { units: 3, hpShare: 0.1875 }, // 幼虫 ×3 = 286.875
+      { units: 3, hpShare: 0.5625 }, // 成虫 ×3 = 860.625（末波重头）
     ],
     galaxyId: 'galaxy-starcore',
     threat: 72,
@@ -442,22 +517,63 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '噬口猎食群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 80、奖金 85 万）
     name: '噬口猎杀令',
-    // C 族第一步落码（2026-09-11 船长裁定③/④/⑤）：迁入**舰级路径**（噬口巨兽 = **T4 战列档"生物巨兽"**）。
-    // **零变化迁移**（除速度）：逐波单位血 922（原 = 1844 × 波档 0.5）、单发 167、命中 0.95、
-    // 射程 1~2713、衰减 0.5、装填 4000 逐字不变；**两波**结构保留（`slot.wave` 0 = 2 单位 / 1 = 1 单位）。
-    // **有意改动** = ①主系**动能 → 等离子**（C 族酸液签名）②形态 = **能量·掷命中**
-    // ③速度 426 → **328**（**T4 例外允许慢**：4 战列舰基准 205 × `328/205`——是族内唯一破例项，
-    //   ⚠ 本批两处重点复核之一：降速是否让该卡**变简单**）。
+    // C 族第二批（2026-09-11 船长「虫群编成 + 稀有头目」）：编成改
+    // **畸变幼虫 ×10（波 1 ×4、波 2 ×3、波 3 ×3）+ 噬口巨兽 ×1（第 3 波，精锐）**，共 11 单位 / 3 波。
+    // 船长：「**只有噬口有头目出现**」「出现稀少…**因此也更加强大**」「**首领血量占比提高到 80%**」
+    // +「**畸变幼虫给第二张和第四张**」+「巨兽提速降为 1.35，**给巨兽开启之前做过的冲锋能力**」
+    // +「巨兽射程增加但是**不变动目标距离**」。
+    // **总盘守恒**（口径⑤）：总血 **2,766** = 首领 **2,212.8**（80%）+ 每只小虫 **55.32**（2%）×10；
+    //   总单发 **501** = 首领 **401** + 每只小虫 **10** ×10（取整后仍精确 = 501）。
+    //   ⚠ 守恒基准是**现树实际值**（922 × 3 单位），不是卡面名义值 1,844——本卡是 C 族唯一多波卡，
+    //   旧路径"波血 = 卡总血 × hpShare、波内无僚机时每单位拿满波血" ⇒ 实际 = 1844 × 0.5 × 3
+    //   （见 `MAW_TOTAL_HP` 注释）。船长 2026-09-11 确认取 **2,766**，兑现"先落虫群、血量随后"。
+    // **目标距离不动**：期望交距与开战距离都只读**波 0 编制的首个单位**（`foeDesiredRange` / `battleOpenM`），
+    //   故小虫**排在最前**并覆写射程带为 **1~2713** ⇒ 两个距离逐字不变
+    //   （期望交距 = 1 + 0.20×(2713−1) = **543 m**）；巨兽自己的带放到 **1~4,000**（写在舰级上），
+    //   于是"多打得到、但全队想站的位置仍是 543 m"。
+    // **冲锋**：巨兽舰级开 `foeCanCharge` ⇒ 它所在的**第 3 波**里，够不着时整编队接近速度 ×2
+    //   （编队级状态，机制本体 2026-09-10 建）；**结束条件 = 到达目标距离**、冷却 **20 秒**（船长同日改判）。
+    // N = 11 ⇒ 补偿 `22/12`，卡上 `dmgMul` 把它除掉。
     ships: [
-      { ship: FOE_ALIEN_MAW, count: 2, wave: 0, dmgMul: 167 / (167 * ALIEN_COMP_3) }, // 第一波：2 单位 × 922 血 / 167 单发
-      { ship: FOE_ALIEN_MAW, wave: 1, dmgMul: 167 / (167 * ALIEN_COMP_3) }, // 第二波：1 单位 × 922 血 / 167 单发
+      {
+        ship: FOE_ALIEN_RIFT,
+        count: 4,
+        wave: 0,
+        hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp, // 每只小虫 55.32
+        dmgMul: (MAW_TOTAL_DMG * MAW_MINION_SHARE) / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)), // 每只 10
+        rangeMaxM: 2713, // 卡带（锚定期望交距 543 m 与开战距离；舰级缺省 2552）
+      },
+      {
+        ship: FOE_ALIEN_RIFT,
+        count: 3,
+        wave: 1,
+        hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
+        dmgMul: (MAW_TOTAL_DMG * MAW_MINION_SHARE) / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)),
+        rangeMaxM: 2713,
+      },
+      {
+        ship: FOE_ALIEN_RIFT,
+        count: 3,
+        wave: 2,
+        hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
+        dmgMul: (MAW_TOTAL_DMG * MAW_MINION_SHARE) / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)),
+        rangeMaxM: 2713,
+      },
+      {
+        ship: FOE_ALIEN_MAW, // 稀有头目（**全族唯一** · 显示名「精锐噬口巨兽」）
+        wave: 2,
+        hpMul: (MAW_TOTAL_HP * MAW_BOSS_SHARE) / FOE_ALIEN_MAW.hp, // 首领血 2,212.8（80%）
+        dmgMul: (MAW_TOTAL_DMG * MAW_BOSS_SHARE) / (FOE_ALIEN_MAW.shotDmg * ALIEN_COMP(11)), // 首领单发 401
+      },
     ],
     waves: [
-      { units: 2, hpShare: 0.5 },
-      { units: 1, hpShare: 0.5 },
+      { units: 4, hpShare: 0.08 }, // 小虫 ×4 = 221.28
+      { units: 3, hpShare: 0.06 }, // 小虫 ×3 = 165.96
+      { units: 4, hpShare: 0.86 }, // 头目 + 小虫 ×3 = 2,378.76
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     // ⚠ 舰级路径下**血量不由 `hpShare` 决定**（走 `slot.hpMul` 的绝对值），本表在本卡只负责**排波次**；
-    //   `units` 与编成条目一一对应（2 + 1）仅作可读性，改它不会改血量。
+    //   `units` 与编成条目一一对应（4 + 3 + 3 + 1）仅作可读性，改它不会改血量。
+    //   **小虫必须排在巨兽之前**：`foes[0]`（波 0 首个主体单位）= 期望交距 / 开战距离的来源。
     galaxyId: 'galaxy-maw',
     threat: 80,
     tactic: 'brawl', // 2026-09-10 船长（族系改判）：**orbit（原缺省）→ brawl**（C 族＝螯颚/酸液喷吐的贴脸生物）
@@ -760,14 +876,32 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '裂谷畸变群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：裂谷深带
     name: '裂谷畸变体猎杀令',
-    // C 族第一步落码（2026-09-11 船长裁定④/⑤）：迁入**舰级路径**（裂谷畸变体 ×2）。
-    // **零变化迁移**：血 1134.375 + 680.625、单发 76 + 45、命中 0.95、射程 1~2552、衰减 0.5、装填 4000
-    // 逐字不变；**有意改动** = ①主系**动能 → 等离子**（C 族酸液签名，副系爆炸不变）②速度 408 → **418**
-    // （舰级 `418/258`，"同档须高于 A 族 374"）③形态 = **能量·掷命中**（原动能掷命中，命中模型不变）。
-    // 编成 = **主体 ×1 + 同型 ×1**（沿用原"主 + 僚"的 6:4 血量分配；`escort` 不写，两个都是主体）。
+    // C 族第二批（2026-09-11 船长「虫群编成」+ 族级结构修正）：编成改 **畸变幼虫 ×8 / 2 波（4+4）**。
+    // 舰级由 T3「裂谷畸变体」换成 **畸变幼虫**（T1 护卫舰 544 m/s；船长「护卫舰级应该有 2 种，
+    // 星髓幼虫和畸变幼虫」+「畸变幼虫给第二张和第四张」）。本卡**无任何覆写**——
+    // 舰级缺省即卡面口径（均衡型 / 命中 0.95 / 等离子 8:2 / 射程 1~2552）。
+    // **总盘守恒**：总血 **1,815**（原 1134.375 + 680.625）÷ 8 = 每只 **226.875**；
+    // 总单发 **121**（76 + 45）÷ 8 = 15.125 ⇒ 取整 **15**（Σ 120，**−0.83%**，见设计稿 §十）。
+    // N = 8 ⇒ 补偿 `16/9`，卡上 `dmgMul` 把它除掉。
     ships: [
-      { ship: FOE_ALIEN_RIFT, dmgMul: 76 / (76 * ALIEN_COMP_2) }, // 主：血 1134.375 / 单发 76
-      { ship: FOE_ALIEN_RIFT, hpMul: 0.6, dmgMul: 45 / (76 * ALIEN_COMP_2) }, // 同型：血 680.625 / 单发 45
+      {
+        ship: FOE_ALIEN_RIFT,
+        count: 4,
+        wave: 0,
+        hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp), // = 226.875/260（总血 1,815 的八分之一）
+        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(8)), // 每只单发 15
+      },
+      {
+        ship: FOE_ALIEN_RIFT,
+        count: 4,
+        wave: 1,
+        hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp),
+        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(8)),
+      },
+    ],
+    waves: [
+      { units: 4, hpShare: 0.5 },
+      { units: 4, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-chasm',
     threat: 58,
