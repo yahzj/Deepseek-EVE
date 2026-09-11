@@ -40,6 +40,14 @@ import {
   buildItemCatalog,
   buildSimContext,
   RETIRED_LAIR_CARD_IDS,
+  ALIEN_BEAST_SHIP_IDS,
+  COMMS_MESSAGES,
+  COMMS_FACTIONS,
+  FACTION_AVATARS,
+  TUTORIAL_TOTAL,
+  DIALOGUES,
+  STATION_SITES,
+  GALAXIES,
 } from '@whale/data'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -1160,12 +1168,42 @@ for (const m of MODULES) {
       continue
     }
     const rows = positive(def.dmgMix)
-    // 纯能量特例（2026-09-10 船长）：单系 plasma 合法，但必须显式给远端威力衰减
+    // 纯能量特例（2026-09-10 船长：深渊之门卫队改纯能量；2026-09-11 裁定⑤放宽）：
+    // 单系 plasma 合法，但**必须有"收束旋钮"**——远端不许既必中又不衰减：
+    // - **旧威胁推导路径**：必须**显式给 `foeFalloff`**（能量走 `beamPowerFactor` 威力衰减，写缺省 0.30 太轻）；
+    // - **舰级路径**（2026-09-11 裁定⑤「能量·掷命中」档后）：放宽为「**衰减或命中任给其一**」——
+    //   掷命中形态下"命中随距离衰减 + 消费 hitRate"本身就是收束旋钮。契约据此**要求显式声明形态**：
+    //   `energyForm: 'spit'`（掷命中）⇒ 必须 `hitRate < 1`（掷命中的意义就是有掷的成分）；
+    //   缺省 / `'beam'`（必中光束）⇒ 必须显式收紧 `falloff`（≤ 缺省 0.5，不许宽于全局默认）。
     if (rows.length === 1 && rows[0]![0] === 'plasma') {
-      check(
-        def.foeFalloff !== undefined,
-        `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
-      )
+      const pureShips = [...new Map((def.ships ?? []).map((s) => [s.ship.id, s.ship])).values()]
+      if (pureShips.length > 0) {
+        for (const ship of pureShips) {
+          check(
+            ship.energyForm !== undefined,
+            `混伤契约：纯能量卡 ${def.name} 引用的舰级「${ship.name}」未显式声明 energyForm——` +
+              `纯能量必须有收束旋钮：'spit'（能量掷命中：掷命中 + 命中随距离衰减）或 'beam'（必中光束，须收紧 falloff）`,
+          )
+          if (ship.energyForm === 'spit') {
+            check(
+              ship.hitRate < 1,
+              `混伤契约：纯能量卡 ${def.name} 的舰级「${ship.name}」声明了 'spit'（能量掷命中）却给 hitRate ${ship.hitRate}——` +
+                `掷命中形态须给小于 1 的命中率（否则与"必中"无异、收束旋钮形同虚设）`,
+            )
+          } else {
+            check(
+              ship.falloff <= 0.5,
+              `混伤契约：纯能量卡 ${def.name} 的舰级「${ship.name}」走必中光束却给了 falloff ${ship.falloff}——` +
+                `必中光束的远端收束只能靠 falloff，须不宽于全局缺省 0.5`,
+            )
+          }
+        }
+      } else {
+        check(
+          def.foeFalloff !== undefined,
+          `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
+        )
+      }
       pureBeam += 1
       continue
     }
@@ -1191,7 +1229,7 @@ for (const m of MODULES) {
   }
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
-      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 显式 foeFalloff）` : ''}`,
+      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ''}`,
   )
 
   /* ── 敌速口径契约（2026-09-10 加）──
@@ -1227,10 +1265,26 @@ for (const m of MODULES) {
      *  取值与三号 `handover-faction-b-20260911.md` §三 登记的 B 族偏慢带 **0.75~1.00×** 对齐。
      *  **必须用族级带、不能用战术带**：orbit 常规带 0.90~1.25 与"全族慢速"冲突（0.80 口径下拾荒火力舰 0.81× 会被误拦）。 */
     const SCAV_SPEED_BAND: readonly [number, number] = [0.75, 1.0]
+    /** C 族（异形生物）**全族提速带**（船长 2026-09-11 裁定②：「**C 族速度比 A 海盗还快**」）：
+     *  - **倍率口径**（设计稿表格的"倍率"列，即 `speedRatio`）：**1.30~2.10**——四档实测 1.35 / 1.60 / 1.62 / 1.65；
+     *  - **基准船比率口径**（与 A / B 族同度量，见下）：**1.30~2.10**，**T4 巨兽豁免**
+     *    （船长裁定③：「允许 T4 战列舰（生物巨兽）；**T4 例外允许慢**」——噬口巨兽 328 m/s 比率 ≈1.12）；
+     *  - **横向断言**：**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 ⇒ T4 只做白名单登记校验）。 */
+    const ALIEN_SPEED_RATIO_BAND: readonly [number, number] = [1.3, 2.1]
+    const ALIEN_SPEED_BAND: readonly [number, number] = [1.3, 2.1]
+    /** A 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
+    const pirateFastestByTier = new Map<number, number>()
+    for (const ship of FOE_SHIPS) {
+      if (ship.family !== 'A') continue
+      const spd = Math.round(HULL_CLASS_BASE_SPEED[ship.hullClassTier] * ship.speedRatio)
+      pirateFastestByTier.set(ship.hullClassTier, Math.max(pirateFastestByTier.get(ship.hullClassTier) ?? 0, spd))
+    }
     let speedCounted = 0
     let speedShipPath = 0
     let pirateReadings = 0
     const pirateSample: string[] = []
+    let alienReadings = 0
+    const alienSample: string[] = []
     let scavReadings = 0
     const scavSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
@@ -1283,6 +1337,42 @@ for (const m of MODULES) {
             )
             continue
           }
+          if (def.foeFamily === 'C') {
+            // **C 族（异形生物）口径**（船长 2026-09-11 裁定②「C 族速度比 A 海盗还快」+ 裁定③「T4 例外允许慢」）：
+            // ①倍率口径（speedRatio）落全族提速带 1.30~2.10；②基准船比率口径同带，**T4 巨兽豁免**；
+            // ③**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 档 ⇒ 只做巨兽白名单登记校验）。
+            const tier = slot.ship.hullClassTier
+            if (alienSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级被多条编成引用时只校验一次
+            alienReadings++
+            alienSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              slot.ship.speedRatio >= ALIEN_SPEED_RATIO_BAND[0] && slot.ship.speedRatio <= ALIEN_SPEED_RATIO_BAND[1],
+              `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」倍率 ${slot.ship.speedRatio.toFixed(2)}× 越出**全族提速带** ` +
+                `${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×（船长裁定②「C 族速度比 A 海盗还快」）`,
+            )
+            if (tier === 4 || tier === 5) {
+              check(
+                ALIEN_BEAST_SHIP_IDS.includes(slot.ship.id),
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」登记了 T${tier} 档却不在**巨兽白名单**` +
+                  `（ALIEN_BEAST_SHIP_IDS）——船长裁定③只允许「生物巨兽」用 T4，且**允许慢**（本档免比率校验）`,
+              )
+            } else {
+              check(
+                ratio >= ALIEN_SPEED_BAND[0] && ratio <= ALIEN_SPEED_BAND[1],
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
+                  `${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+              )
+            }
+            const aFastest = pirateFastestByTier.get(tier)
+            if (aFastest !== undefined) {
+              check(
+                spd > aFastest,
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于 A 族同档最快** ${aFastest} m/s——` +
+                  `船长裁定②「**C 族速度比 A 海盗还快**」（同档必须更快；T4 巨兽例外不在此列）`,
+              )
+            }
+            continue
+          }
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           check(
             ratio >= band[0] && ratio <= band[1],
@@ -1309,10 +1399,13 @@ for (const m of MODULES) {
     console.log(
       `· 敌速口径契约：${speedCounted} 张逐卡显式标定 + ${speedShipPath} 张引用舰级速度，比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）；` +
         `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）、` +
-        `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）`,
+        `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）、` +
+        `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
+        `同档实速须高于 A 族；T4 巨兽例外允许慢）`,
     )
     if (pirateSample.length > 0) console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join('　')}`)
     if (scavSample.length > 0) console.log(`  ↳ B 族实测读数（实速/比率）：${scavSample.join('　')}`)
+    if (alienSample.length > 0) console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join('　')}`)
   }
 
   /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
@@ -1365,6 +1458,25 @@ for (const m of MODULES) {
             `**武装拾荒者不配 T3 及以上**：船长 2026-09-11 定「**确认为新手过渡种族**」，` +
             `拾荒者开的是拼装小艇 ⇒ 只登记 **1 护卫舰 / 2 驱逐舰两档**`,
         )
+      }
+      if (ship.family === 'C') {
+        // **C 族（异形生物）舰种档**（船长 2026-09-11 裁定③：「**允许 T4 战列舰**（"生物巨兽"）」）：
+        // ①允许 1~4 档（**不配 5 旗舰**——生物再大也是"巨兽"而非"旗舰"编队）；
+        // ②**T4 必须登记为"巨兽"用途**（`ALIEN_BEAST_SHIP_IDS` 白名单）——目的是**防日后随手给杂鱼挂 T4**
+        //   （把战列档当普通量产物用，等于把"巨兽"的意义抹平）。白名单是"显式登记"的代码化表达。
+        check(
+          t <= 4,
+          `舰级契约：异形族舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? '未知档'}（T${t}）档——` +
+            `异形族只允许 1 护卫舰 ~ 4 战列舰（船长裁定③「**允许 T4 战列舰**（生物巨兽）」），**不配 5 旗舰**`,
+        )
+        if (t === 4) {
+          check(
+            ALIEN_BEAST_SHIP_IDS.includes(ship.id),
+            `舰级契约：异形族舰级「${ship.name}」（${ship.id}）登记了 4 战列舰档却**未登记为"巨兽"用途**——` +
+              `T4 是"**生物巨兽**"专档（船长 2026-09-11 裁定③），须显式登记在 \`ALIEN_BEAST_SHIP_IDS\`（packages/data/src/foe-ships.ts）；` +
+              `目的是防日后随手给杂鱼挂 T4`,
+          )
+        }
       }
       tiered++
     }
@@ -1517,7 +1629,8 @@ for (const m of MODULES) {
     }
     console.log(
       `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
-        `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）；` +
+        `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）、` +
+        `异形族（C）允许 T4（须登记为"巨兽"用途：${ALIEN_BEAST_SHIP_IDS.join(' / ')}）且不配 T5；` +
         `A 族编成契约 ${aCompositionCards} 张：灰霾/赤潮/蜃影 = 头目 ×1 + 同族杂鱼 ×3（共 4 单位）· 头目血量 60% ±1%；` +
         `边境/碎晶/信标 = **无首领**（同族同型 + 船长给定波次 1+2 / 2+2 / 2+2）`,
     )
@@ -2069,6 +2182,231 @@ for (const m of MODULES) {
   console.log(
     `· 舰种契约：${matched}/${SHIPS.length} 艘船归类与等效质量一致（${shown}）；` +
       `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join('/')}`,
+  )
+}
+
+/* ── 通讯消息契约（2026-09-11 通讯系统）────────────────────────────────────────────
+   体检口径：id 唯一、字段齐备、触发器字段可解析（星系/技能/站点必须真实存在）、
+   跳转目标页合法（及其页面内标签）、玩家可见文案不含开发用词；
+   剧本（DIALOGUES）侧只查主题与正文可用（它们也要进同一个收件箱）。
+   2026-09-11 v2 扩展：发件方改为「势力 + 部门」引用，故新增
+   **势力契约**（species 恒为章鱼人、部门 id 势力内唯一、立场合法、色调/图标有口径）
+   与**发件方引用契约**（factionId/deptId 必须存在、kind 必须落在势力白名单、每个势力至少被引用一次）。 */
+{
+  const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills', 'comms'])
+  const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
+  /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
+  const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
+  const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial'])
+  const KINDS = new Set(['剧情', '提示', '委托', '教程'])
+  const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
+  /**
+   * 既有线稿图标名（`apps/desktop/src/renderer/src/ui/Glyphs.tsx` 的 `GLYPHS` 表；
+   * 势力 `glyph` 只能复用它们，不许自造图标名——界面查不到会渲染空白）。
+   */
+  const ICON_NAMES = new Set([
+    'drone-rack', 'drone-tac', 'drone-relay', 'target-lock',
+    'nav-map', 'nav-ship', 'nav-fit', 'nav-items', 'nav-market', 'nav-industry', 'nav-skills',
+    'nav-mail', 'nav-mine', 'nav-bounty', 'nav-salvage', 'nav-task', 'nav-ai', 'nav-shop', 'nav-haul',
+    // 官方章鱼人头像（2026-09-11 船长定：代表官方章鱼人；所有 NPC 势力共用，只靠色调区分）
+    'faction-octopus',
+    'ico-home', 'ico-lock', 'ico-clock', 'ico-loop', 'ico-flag', 'ico-star', 'ico-scan',
+    'ico-swap', 'ico-cross', 'ico-crane', 'ico-antenna', 'ico-tact',
+  ])
+  /** 玩家可见文案禁用的开发/出戏用词（与词典「玩家可见文案禁用彩头/主题件/掉池」同口径，宽清单） */
+  const BANNED = ['彩头', '主题件', '掉池', '基础池', '区划', '口径', '断言', '白名单', '体检', '待定', '占位', 'EVE', 'npm']
+  /**
+   * 世界观铁律（2026-09-11 船长定，`docs/design/npc-factions-20260911.md`）：
+   * **对外（章鱼人 NPC）玩家是「飞行员」——他们不追问船里是谁**；**对内（船自己的系统）玩家知道自己就是舰载 AI**
+   * （船长 2026-09-11：「外部认知中我们是飞行员，但内部系统中我们知道自己是舰载 AI」）。
+   *
+   * 判定方式：先按"玩家本质词"命中，再**豁免既有系统官方名**（`AI 核心`、`人工智能专家`、
+   * `AI` + 中文的既有系统名，以及「舰载 AI」这一自我认知表述——它正是船内系统的正当说法）。
+   * **豁免是按发件方分级的**：NPC 势力（官方/民间/中立）用完整豁免；
+   * **船内系统（`alignment === '系统'`，如信息库）不吃「舰载 AI」豁免**——它本该知道玩家是什么。
+   */
+  const PLAYER_ESSENCE = ['AI', '智能', '旧时代', '人类']
+  const LORE_EXEMPT = ['AI 核心', '人工智能']
+  /**
+   * `keepSelfKnowledge = true`（**仅船内系统来源**，如信息库）时额外豁免「舰载 AI / 船载 AI / 舰船 AI / 旧时代」——
+   * 那是玩家自己的系统在说自己的事，正是船长定的"内部系统中我们知道自己是舰载 AI"
+   * （`旧时代` 也在内：序章收尾台词「一艘不该存在的旧时代舰船 AI」本来就是船的自我认知）。
+   * NPC 来源**不给**这条豁免：章鱼人不该知道船里是谁，写了就该被拦（先写反过一次，负向验证抓出来的）。
+   */
+  const SELF_KNOWLEDGE = /舰载\s*AI|船载\s*AI|舰船\s*AI|旧时代/g
+  const loreHits = (text: string, opts?: { keepSelfKnowledge?: boolean }): string[] => {
+    let masked = text
+    for (const ex of LORE_EXEMPT) masked = masked.split(ex).join('□'.repeat(ex.length))
+    // 既有系统名的其余写法（「AI 指挥中心」「AI 副船」等）：**连空格一起**吃掉；
+    // 纯「AI」或「AI + 非中文」仍会命中（那才是把玩家当成 AI 说话的写法）。
+    masked = masked.replace(/AI\s*(?=[\u4e00-\u9fa5])/g, '□□')
+    if (opts?.keepSelfKnowledge) masked = masked.replace(SELF_KNOWLEDGE, '□□□')
+    return PLAYER_ESSENCE.filter((w) => masked.includes(w))
+  }
+  /** 玩家与船不可分离（玩家就是那条船）：直接查说法，不做豁免 */
+  const LORE_SPLIT = ['你的舰船']
+  const galaxyIds = new Set(GALAXIES.map((g) => g.id))
+  const skillIds = new Set(SKILLS.map((s) => s.id))
+  const siteIds = new Set(STATION_SITES.map((s) => s.id))
+
+  /* ① 势力契约（NPC 势力档案本身） */
+  const factionIds = new Set<string>()
+  const deptKeys = new Set<string>()
+  for (const f of COMMS_FACTIONS) {
+    check(f.id.trim().length > 0 && !factionIds.has(f.id), `势力 id 重复或为空：${f.id}`)
+    factionIds.add(f.id)
+    check(f.name.trim().length > 0, `势力 ${f.id} 缺名称`)
+    // 铁律：所有 **NPC** 势力都是章鱼人（防设定漂移）；船内系统（alignment = 系统）不是 NPC，无物种要求
+    const isSystem = f.alignment === '系统'
+    check(
+      isSystem ? f.species.trim().length > 0 : f.species === '章鱼人',
+      isSystem ? `系统来源 ${f.id} 缺物种标注` : `势力 ${f.id} 的物种必须是章鱼人（世界观铁律），实际：${f.species}`,
+    )
+    check(ALIGNMENTS.has(f.alignment), `势力 ${f.id} 立场非法：${f.alignment}`)
+    check(/^#[0-9a-fA-F]{6}$/.test(f.tone), `势力 ${f.id} 色调不是六位十六进制：${f.tone}`)
+    check(ICON_NAMES.has(f.glyph), `势力 ${f.id} 图标不在既有线稿图标表内：${f.glyph}`)
+    // 头像口径（2026-09-11 船长：「头像换成类似核心的SVG」⇒ 按发件方分两种头像）：
+    // 船内系统 → 核心形图标；NPC 势力 → 官方章鱼头。写别的图标会打破"一个符号代表一类发件方"的口径。
+    const wantAvatar = FACTION_AVATARS[f.id] ?? 'faction-octopus'
+    check(
+      f.glyph === wantAvatar,
+      `势力 ${f.id} 的头像应为 ${wantAvatar}（${isSystem ? '船内系统用核心形图标' : 'NPC 用官方章鱼头'}），实际：${f.glyph}`,
+    )
+    check(f.brief.trim().length > 0, `势力 ${f.id} 缺简介（界面「这是谁」说明）`)
+    check(f.kinds.length > 0, `势力 ${f.id} 没有可发内容类型白名单`)
+    for (const k of f.kinds) check(KINDS.has(k), `势力 ${f.id} 白名单里的内容类型非法：${k}`)
+    check(f.departments.length > 0, `势力 ${f.id} 没有部门（发件人写法的后半截）`)
+    const deptIds = new Set<string>()
+    for (const d of f.departments) {
+      check(d.id.trim().length > 0 && !deptIds.has(d.id), `势力 ${f.id} 的部门 id 重复或为空：${d.id}`)
+      deptIds.add(d.id)
+      deptKeys.add(`${f.id}/${d.id}`)
+      check(d.name.trim().length > 0, `势力 ${f.id} 部门 ${d.id} 缺名称`)
+      check(d.brief.trim().length > 0, `势力 ${f.id} 部门 ${d.id} 缺简介`)
+      check(d.kinds.length > 0, `势力 ${f.id} 部门 ${d.id} 没有可发内容类型白名单`)
+      for (const k of d.kinds) {
+        check(KINDS.has(k), `势力 ${f.id} 部门 ${d.id} 白名单里的内容类型非法：${k}`)
+        check(f.kinds.includes(k), `势力 ${f.id} 部门 ${d.id} 白名单「${k}」超出势力白名单`)
+      }
+    }
+  }
+
+  /* ② 发件方引用契约（消息 + 剧本都必须挂靠到真实势力/部门） */
+  const referenced = new Set<string>()
+  const seen = new Set<string>()
+  let hints = 0
+  for (const m of COMMS_MESSAGES) {
+    check(m.id.length > 0 && !seen.has(m.id), `通讯消息 id 重复或为空：${m.id}`)
+    seen.add(m.id)
+    check(m.subject.trim().length > 0, `通讯 ${m.id} 缺主题`)
+    check(m.body.length > 0 && m.body.every((p) => p.trim().length > 0), `通讯 ${m.id} 正文为空段`)
+    // 发件方：势力必须存在；有部门则部门必须在**该势力**下存在；kind 必须落在两级白名单里
+    const faction = COMMS_FACTIONS.find((f) => f.id === m.factionId)
+    check(faction !== undefined, `通讯 ${m.id} 的发件势力不存在：${m.factionId}`)
+    check(KINDS.has(m.kind), `通讯 ${m.id} 内容类型非法：${m.kind}`)
+    if (faction) {
+      referenced.add(faction.id)
+      check(faction.kinds.includes(m.kind), `通讯 ${m.id} 的内容类型「${m.kind}」不在势力 ${faction.id} 白名单内`)
+      if (m.deptId !== undefined) {
+        const dept = faction.departments.find((d) => d.id === m.deptId)
+        check(dept !== undefined, `通讯 ${m.id} 的发件部门不在势力 ${faction.id} 下：${m.deptId}`)
+        if (dept) check(dept.kinds.includes(m.kind), `通讯 ${m.id} 的内容类型「${m.kind}」不在部门 ${m.deptId} 白名单内`)
+      }
+    }
+    check(TRIGGER_KINDS.has(m.trigger.kind), `通讯 ${m.id} 触发器 kind 未知：${m.trigger.kind}`)
+    switch (m.trigger.kind) {
+      case 'day':
+        check(Number.isInteger(m.trigger.days) && m.trigger.days >= 1, `通讯 ${m.id} day.days 应为 ≥1 整数`)
+        break
+      case 'explored':
+        check(Number.isInteger(m.trigger.count) && m.trigger.count >= 1, `通讯 ${m.id} explored.count 应为 ≥1 整数`)
+        break
+      case 'galaxy':
+        check(galaxyIds.has(m.trigger.galaxyId), `通讯 ${m.id} 指向的星系不存在：${m.trigger.galaxyId}`)
+        break
+      case 'skill':
+        check(skillIds.has(m.trigger.skillId), `通讯 ${m.id} 指向的技能不存在：${m.trigger.skillId}`)
+        check(Number.isInteger(m.trigger.level) && m.trigger.level >= 1, `通讯 ${m.id} skill.level 应为 ≥1 整数`)
+        break
+      case 'isk':
+        check(m.trigger.amount > 0, `通讯 ${m.id} isk.amount 应为正数`)
+        break
+      case 'siteBuilt':
+        check(siteIds.has(m.trigger.siteId), `通讯 ${m.id} 指向的建站点不存在：${m.trigger.siteId}`)
+        break
+      case 'tutorial':
+        // 教程通讯：0 = 序章简报（信息库检索重启），1..TUTORIAL_TOTAL = 七步教程（与 core 的 ONB_* 同值）
+        check(
+          Number.isInteger(m.trigger.step) && m.trigger.step >= 0 && m.trigger.step <= TUTORIAL_TOTAL,
+          `通讯 ${m.id} tutorial.step 应在 0..${TUTORIAL_TOTAL}：${m.trigger.step}`,
+        )
+        break
+      default:
+        break
+    }
+    if (m.hint) {
+      hints++
+      check(JUMP_PAGES.has(m.hint.page), `通讯 ${m.id} 跳转目标页非法：${m.hint.page}`)
+      check(m.hint.text.trim().length > 0, `通讯 ${m.id} 跳转提示为空`)
+      if (m.hint.tab !== undefined) {
+        check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持标签跳转，实际页：${m.hint.page}`)
+        check(MAP_TABS.has(m.hint.tab), `通讯 ${m.id} 星图标签非法：${m.hint.tab}`)
+      }
+      if (m.hint.shipTab !== undefined) {
+        check(m.hint.page === 'ship', `通讯 ${m.id} 只有舰船页支持标签跳转，实际页：${m.hint.page}`)
+        check(SHIP_TABS.has(m.hint.shipTab), `通讯 ${m.id} 舰船标签非法：${m.hint.shipTab}`)
+      }
+    }
+    for (const p of [m.subject, ...m.body, ...(m.hint ? [m.hint.text] : [])]) {
+      for (const w of BANNED) {
+        check(!p.includes(w), `通讯 ${m.id} 的玩家可见文案含开发用词「${w}」：${p.slice(0, 24)}…`)
+      }
+      // 船内系统（信息库）= 玩家自己的系统，可以直说「舰载 AI」这类自我认知；NPC 文案不许（见 loreHits 注释）
+      for (const w of loreHits(p, { keepSelfKnowledge: faction?.alignment === '系统' })) {
+        check(false, `通讯 ${m.id} 的文案触碰世界观铁律「${w}」（章鱼人不追问船里是谁）：${p.slice(0, 24)}…`)
+      }
+      for (const w of LORE_SPLIT) {
+        check(!p.includes(w), `通讯 ${m.id} 的文案把玩家与船分开说「${w}」（玩家就是那条船）：${p.slice(0, 24)}…`)
+      }
+    }
+  }
+  for (const d of DIALOGUES) {
+    check(d.lines.length > 0, `通讯剧本 ${d.id} 没有台词`)
+    check(d.title.trim().length > 0, `通讯剧本 ${d.id} 缺标题（收件箱发件人栏）`)
+    for (const w of LORE_SPLIT) {
+      check(!d.title.includes(w), `通讯剧本 ${d.id} 标题把玩家与船分开说「${w}」`)
+    }
+    // 剧本可挂靠势力（挂靠后收件箱里与数据消息同口径）；挂了就必须真实存在
+    if (d.commsFactionId !== undefined) {
+      const faction = COMMS_FACTIONS.find((f) => f.id === d.commsFactionId)
+      check(faction !== undefined, `通讯剧本 ${d.id} 的挂靠势力不存在：${d.commsFactionId}`)
+      if (faction) {
+        referenced.add(faction.id)
+        if (d.commsDeptId !== undefined) {
+          const dept = faction.departments.find((x) => x.id === d.commsDeptId)
+          check(dept !== undefined, `通讯剧本 ${d.id} 的挂靠部门不在势力 ${faction.id} 下：${d.commsDeptId}`)
+        }
+      }
+    } else {
+      check(d.commsDeptId === undefined, `通讯剧本 ${d.id} 有挂靠部门却没有挂靠势力`)
+    }
+    for (const line of d.lines) {
+      for (const w of loreHits(line.text)) {
+        check(false, `通讯剧本 ${d.id} 的台词触碰世界观铁律「${w}」：${line.text.slice(0, 24)}…`)
+      }
+      for (const w of LORE_SPLIT) {
+        check(!line.text.includes(w), `通讯剧本 ${d.id} 的台词把玩家与船分开说「${w}」：${line.text.slice(0, 24)}…`)
+      }
+    }
+  }
+  // 每个势力至少被引用一次（登记了却没人发消息 = 空档案，容易被遗忘）
+  for (const f of COMMS_FACTIONS) {
+    check(referenced.has(f.id), `势力 ${f.id}（${f.name}）已登记但没有任何消息或剧本引用它`)
+  }
+  console.log(
+    `· 通讯消息契约：${COMMS_MESSAGES.length} 条消息（${hints} 条带跳转提示）+ ${DIALOGUES.length} 份剧本，` +
+      `触发器与跳转目标全部可解析；势力档案 ${COMMS_FACTIONS.length} 个（${COMMS_FACTIONS.map((f) => `${f.name}·${f.departments.length} 部门`).join(' / ')}），` +
+      `发件方引用与内容类型白名单全通过`,
   )
 }
 

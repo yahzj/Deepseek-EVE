@@ -6,11 +6,12 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
+import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
 import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
-import { FRAGMENT_RECIPES, fragmentPoolOf, recycleMineralPoolOf, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentPoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleMineralPoolOf, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */
 function mineral(id: string, price: number): ItemDef {
@@ -329,3 +330,164 @@ function countMinerals(state: ReturnType<typeof createInitialState>, ctx: Return
 function countWareItem(state: ReturnType<typeof createInitialState>, id: string): number {
   return state.warehouse.items[id] ?? 0
 }
+
+/* ═══════════ 稀有残骸「一件 = 一箱」（2026-09-11 船长定，修复"一件可被多台炉/多轮各开一箱"）═══
+ * 复现口径（真实引擎）：一件稀有残骸 = 30 m³ = 3 批；高级箱在"本炉第一批"开出。
+ * 修前：并行 N 台炉各吃 1 批 → N 个箱（1 件最多 3 箱）；单炉"跑一批就停再起"同样 3 箱。
+ * 修后两道锁：①起炉即预占整件（并行台拿不到同一件）②开箱资格按"未开箱存量 ≥ 一件"，
+ * 开箱后本件记入 `rareOpenedUnits`（退还的余料再炼不产箱）。 */
+describe('稀有残骸：一件 = 一箱（2026-09-11 船长定）', () => {
+  const RARE_ANOMALY = 'ano-grave'
+  const RARE_ID = rareWreckItemIdOf(RARE_ANOMALY)
+
+  function rareCtx() {
+    return makeTestCtx({
+      galaxies: [
+        { ...galaxy('galaxy-hub', '母港'), security: 1.0 },
+        { ...galaxy('galaxy-grave', '坟场'), security: -1.0 },
+      ],
+      anomalies: [
+        anomaly(RARE_ANOMALY, 'galaxy-grave', { threat: 100, tactic: 'brawl', lairCore: '守墓核心' }),
+      ],
+      items: [mineral('min-tritanium', 8), rareWreckItemDefOf(RARE_ANOMALY, '稀有残骸')],
+    })
+  }
+  const boxes = (state: ReturnType<typeof createInitialState>): number =>
+    state.logs.filter((l) => l.text.includes('高级箱')).length
+
+  it('一件残骸：无论开几台炉，高级箱恒为 1（并行台起炉即被拦下）', () => {
+    for (const furnaces of [1, 2, 3]) {
+      const state = createInitialState({ nowWallMs: 0, seed: 7 })
+      const ctx = rareCtx()
+      addWare(state, RARE_ID, 30)
+      let started = 0
+      for (let i = 0; i < furnaces; i++) if (startRecycleRun(state, RARE_ID, 'pilot', ctx).ok) started += 1
+      // 起炉即预占：第一台把整件扣走，后续台**因无料起不来**（不会白占 AI 核心）
+      expect(started).toBe(1)
+      state.gameMs = 300_000
+      advanceRefining(state, ctx)
+      expect(boxes(state)).toBe(1)
+    }
+  })
+
+  it('两件残骸：开两台炉 → 2 箱（一件一箱的正当用法不受影响）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, 60)
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = 300_000
+    advanceRefining(state, ctx) // 第一件跑完（3 批）自动停炉
+    expect(boxes(state)).toBe(1)
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = 600_000
+    advanceRefining(state, ctx)
+    expect(boxes(state)).toBe(2)
+  })
+
+  it('单炉"跑一批就停、再起"刷不动：3 轮之后仍只有 1 箱', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, 30) // 一件
+    for (let round = 1; round <= 3; round++) {
+      const res = startRecycleRun(state, RARE_ID, 'pilot', ctx)
+      if (!res.ok) break // 料不足以起炉（正常：已开箱的余料 < 一件时起不来）
+      state.gameMs += 30_000
+      advanceRefining(state, ctx) // 只跑 1 批
+      const runId = state.refineRuns[0]?.id
+      if (runId !== undefined) stopRefineRun(state, ctx, runId)
+      expect(boxes(state)).toBe(1) // 恒为 1：第 2、3 轮都不再产箱
+    }
+    expect(boxes(state)).toBe(1)
+    // 停炉退还未用完的余料（进物品仓库，日志写明），仍可继续精炼出矿物
+    expect(state.logs.some((l) => l.text.includes('已退回物品仓库'))).toBe(true)
+  })
+
+  it('新捡到的一件不算"已开箱"：补一件后可再开一箱；开箱账本随存档往返保留', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, 30)
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = 30_000
+    advanceRefining(state, ctx) // 只跑 1 批（开箱即发生）
+    expect(boxes(state)).toBe(1)
+    const runId = state.refineRuns[0]!.id
+    stopRefineRun(state, ctx, runId) // 停炉：余料退回，但记为"已开箱"
+    const opened = state.rareOpenedUnits[RARE_ID] ?? 0
+    expect(opened).toBeGreaterThan(0) // 剩下的 20 m³ 是已开箱的料
+    const loaded = loadSaveFile(serializeSaveFile(state, 1))
+    expect(loaded.state.rareOpenedUnits[RARE_ID]).toBe(opened) // 账本不丢
+    // 只有"已开箱的余料"（20 m³）时起不了炉出箱：先把余料炼完，再补一件
+    expect(startRecycleRun(loaded.state, RARE_ID, 'pilot', ctx).ok).toBe(true) // 余料仍可精炼
+    loaded.state.gameMs = 300_000
+    advanceRefining(loaded.state, ctx)
+    expect(boxes(loaded.state)).toBe(1) // 余料不产箱
+    // 再捡一件（+30）→ 未开箱存量 ≥ 一件 → 可再开一箱
+    addWare(loaded.state, RARE_ID, 30)
+    expect(startRecycleRun(loaded.state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    loaded.state.gameMs = 900_000
+    advanceRefining(loaded.state, ctx)
+    expect(boxes(loaded.state)).toBe(2)
+  })
+
+  it('料账吃完的最后一批当场收工：不再空转一个批周期（2026-09-11 玩家反馈「稀有残骸空了精炼炉还在运转」）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, RARE_WRECK_VOLUME_M3) // 1 件 = 3 批
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    // 修前：第 3 批结算完，炉子还要挂满一个批周期（等到第 4 个批点才收工）——玩家看到"残骸空了、炉子还在转"
+    state.gameMs = RECYCLE_CYCLE_MS * 3
+    advanceRefining(state, ctx)
+    expect(state.refineRuns).toHaveLength(0)
+    expect(state.logs.some((l) => l.text.includes('本炉定额完成') && l.text.includes('共 3 批'))).toBe(true)
+  })
+
+  it('私有料账不受存档往返影响：归零的料账读档后不会转而吃货仓/仓库里的同类残骸', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    // 造出"料账恰好归零、炉子尚未收工"这一刻（真引擎下这一瞬已被上面那条用例压掉，但丢字段的后果与时机无关）：
+    state.refineRuns.push({
+      active: true,
+      id: state.refineSeq++,
+      worker: 'pilot',
+      recipe: 'recycle',
+      itemId: RARE_ID,
+      batchUnits: RECYCLE_BATCH_M3,
+      cycleMs: RECYCLE_CYCLE_MS,
+      finishAtGameMs: RECYCLE_CYCLE_MS,
+      batchesDone: RARE_WRECK_VOLUME_M3 / RECYCLE_BATCH_M3,
+      lockUnits: 0,
+      claimedUnits: 0,
+      rareBoxEligible: false,
+      recAcc: { min: {}, mod: {}, frag: {}, drone: {} },
+    })
+    addWare(state, RARE_ID, RARE_WRECK_VOLUME_M3) // 玩家刚打捞回的新一件：不该被这台旧炉默默烧掉
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    const run = loaded.refineRuns[0]
+    expect(run?.claimedUnits).toBe(0) // 修前：字段被丢掉（undefined）⇒ 炉子改吃公共库存
+    expect(run?.rareBoxEligible).toBe(false) // 修前：资格结论也丢 ⇒ 第一批会照旧开箱
+    loaded.gameMs = RECYCLE_CYCLE_MS * 2
+    advanceRefining(loaded, ctx)
+    expect(countWare(loaded, RARE_ID)).toBe(RARE_WRECK_VOLUME_M3) // 公共库存原样未动
+    expect(loaded.refineRuns).toHaveLength(0) // 料账空 → 本炉定额完成、收工
+  })
+
+  it('用"已开箱的余料"起的炉子：存档往返后仍不开箱（一件 = 一箱不被读档绕开）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = rareCtx()
+    addWare(state, RARE_ID, RARE_WRECK_VOLUME_M3)
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = RECYCLE_CYCLE_MS
+    advanceRefining(state, ctx) // 第 1 批开箱一次
+    expect(boxes(state)).toBe(1)
+    stopRefineRun(state, ctx, state.refineRuns[0]!.id) // 停炉：余 20 m³ 退回（这批料已开过箱）
+    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true) // 余料仍可精炼，但资格 = false
+    // 第一批到点前存档重开（修前：rareBoxEligible 没落盘 → 读档后按"可开箱"处理 → 又开一箱）
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(loaded.refineRuns[0]!.rareBoxEligible).toBe(false) // 修前：字段没落盘（undefined）⇒ 读档后按"可开箱"处理
+    const boxLogs = (): number => loaded.logs.filter((l) => l.text.includes('高级箱')).length
+    expect(boxLogs()).toBe(1) // 读档前那次开箱
+    loaded.gameMs = RECYCLE_CYCLE_MS * 5
+    advanceRefining(loaded, ctx)
+    expect(boxLogs()).toBe(1) // 读档后照旧不开箱（修前这里会变成 2）
+  })
+})

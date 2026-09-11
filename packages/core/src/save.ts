@@ -1710,9 +1710,23 @@ function normalizeState(raw: unknown): GameState {
       batchesDone: Math.max(0, Math.floor(num(r.batchesDone))),
     }
     if (recAcc) runOut.recAcc = recAcc
-    // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：只收正数；缺省 = 不限制（老档天然如此）
-    const lockRaw = num(r.lockUnits, 0)
-    if (lockRaw > 0) runOut.lockUnits = Math.floor(lockRaw)
+    // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：**0 也要保留**（见下方私有料账条）；
+    // 老档/普通炉缺省 = 不限制（天然如此）
+    const lockRaw = num(r.lockUnits, NaN)
+    if (Number.isFinite(lockRaw) && lockRaw >= 0) runOut.lockUnits = Math.floor(lockRaw)
+    // 私有料账（2026-09-11 增：稀有残骸"起炉即预占"，停炉退还未用完部分）——**必须保留**，
+    // 否则读档后这批预占的残骸既不在公共库存、也不在料账里 = 凭空消失。
+    // 2026-09-11 修（玩家反馈「稀有残骸空了精炼炉还在运转」）：**归零的料账同样要保留**——
+    // 「字段在不在」本身就是语义：有字段 = 这台炉吃自己的私有料账，字段缺失 = 老档/普通料吃公共库存。
+    // 原先只收正数 ⇒ 料账恰好归零的那一刻存档（最后一批刚结算完、炉子尚未收工），读档后字段被丢掉，
+    // 这台炉会转而去吃**货仓/仓库里的同类残骸**（若玩家刚打捞回新的一件，就被这台旧炉默默烧掉）。
+    const claimRaw = num(r.claimedUnits, NaN)
+    if (Number.isFinite(claimRaw) && claimRaw >= 0) runOut.claimedUnits = Math.floor(claimRaw)
+    // 开箱资格（2026-09-11 增：起炉时"未开箱存量 ≥ 一件"的判定结果）——**同样必须保留**：
+    // 缺字段 = "老档/未判定"（按可开箱处理），而 `false` 是**明确的结论**（这批料已经开过箱、不再产箱）。
+    // 原先根本没落盘 ⇒ 用"已开箱的余料"起炉的炉子，只要在第一批到点前存档重开，"不许开箱"这个结论就丢了，
+    // 第一批照旧开箱（"一件 = 一箱"被存档往返绕开）。
+    if (r.rareBoxEligible === true || r.rareBoxEligible === false) runOut.rareBoxEligible = r.rareBoxEligible
     return runOut
   }
   const refineRuns: GameState['refineRuns'] = []
@@ -1803,6 +1817,14 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
+  // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---
+  const rareOpenedUnits: Record<string, number> = {}
+  for (const [itemId, n] of Object.entries(asRaw(src.rareOpenedUnits))) {
+    if (itemId.length === 0) continue
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+    rareOpenedUnits[itemId] = Math.floor(n)
+  }
+
   // --- B1 低安遭遇（v17.1 兼容字段）：未激活 = 标准空态（往返幂等）；激活才逐字段容错 ---
   const encRaw = asRaw(src.encounter)
   const encShipId = typeof encRaw.shipId === 'string' && encRaw.shipId.length > 0 ? encRaw.shipId : null
@@ -1868,6 +1890,19 @@ function normalizeState(raw: unknown): GameState {
   }
   const pendingDialogue =
     typeof src.pendingDialogue === 'string' && src.pendingDialogue.length > 0 ? src.pendingDialogue : null
+  // --- 通讯收件箱（2026-09-11）：送达记账 + 已读（两字段都可选；老档读入 = 空收件箱，零迁移） ---
+  // 送达时间钳到 ≥0 的整数（负数/非数值一律丢弃 ⇒ 视作"未送达"，下次推进按触发条件补送）。
+  const commsDelivered: Record<string, number> = {}
+  for (const [key, value] of Object.entries(asRaw(src.commsDelivered))) {
+    if (key.length === 0) continue
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) continue
+    commsDelivered[key] = Math.floor(value)
+  }
+  const commsRead: Record<string, boolean> = {}
+  for (const [key, value] of Object.entries(asRaw(src.commsRead))) {
+    if (key.length === 0) continue
+    if (value === true) commsRead[key] = true
+  }
 
   // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
   // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 低安最深惩罚 ×2.2 = 22 分钟）——
@@ -1899,8 +1934,12 @@ function normalizeState(raw: unknown): GameState {
 
   // --- 序章·苏醒（v23 兼容字段）：教程进度（-1 = 未开始）+ 重要任务状态 ---
   const onboardingRaw = asRaw(src.onboarding)
+  // 2026-09-11：**不能 floor 也不能 round**——简报态是 0.5（`ONB_BRIEFING`），
+  // floor 会压成 0（= 序章演出），round 会抬成 1（= 采集步骤），两者都会把玩家放错地方。
+  // 合法步骤是 -1..99 的整档或半档（0.5），故只做合理性钳制、**半档原样保留**。
+  const stepRaw = onboardingRaw.step
   const onboardingStep =
-    typeof onboardingRaw.step === 'number' && Number.isFinite(onboardingRaw.step) ? Math.floor(onboardingRaw.step) : -1
+    typeof stepRaw === 'number' && Number.isFinite(stepRaw) ? Math.min(99, Math.max(-1, stepRaw)) : -1
   // 出售教学钱包基线（可选；缺省 undefined = 老档/无此步骤时不影响）
   const sellIskBaselineRaw = onboardingRaw.sellIskBaseline
   const onboarding = {
@@ -2101,7 +2140,10 @@ function normalizeState(raw: unknown): GameState {
     dockedSite,
     dialogueSeen,
     pendingDialogue,
+    commsDelivered,
+    commsRead,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
+    rareOpenedUnits,
     onboarding,
     importantTasks,
     sideTasks,

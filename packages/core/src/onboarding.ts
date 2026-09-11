@@ -22,12 +22,18 @@ import { addWare, unloadCargoToWarehouse } from './inventory'
 
 /** -1 = 未开始（老档/经典）；以下为教程进行态 */
 export const ONB_OFF = -1
-export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；由渲染层推进到 1）
+export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；由渲染层推进到 0.5）
+/**
+ * 0.5 = **简报**（2026-09-11 船长定：「教程睁眼动画结束后，不要立刻开始教程任务，
+ * 此时应该指引玩家去通讯查看教程」）——睁眼动画播完先落到这里：全页锁定、只开通讯页，
+ * 玩家读完**舰载信息库**的简报并点「开始教程：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
+ */
+export const ONB_BRIEFING = 0.5
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
 export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批矿物」
 export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
 export const ONB_REPAIR = 4 // 修复：港内维修鲣鱼至完好
-export const ONB_TRIAL = 5 // 试炼：演习场讨伐令（教学战加成）
+export const ONB_TRIAL = 5 // 试炼：演习场驱逐令（教学战加成）
 export const ONB_SKILL = 6 // 技能归档：AI 核心操作学 Lv1 特典
 export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
 export const ONB_EPILOGUE = 8 // 收尾演出（渲染层播放后调用 finishTutorial）
@@ -83,7 +89,7 @@ export function tutorialAccelWait(state: GameState): boolean {
   return state.onboarding.step === ONB_MINE && state.mining.active
 }
 
-/** 教学战判定：教程步骤 4、目标是演习场讨伐令、主控驾驶、任务未领 */
+/** 教学战判定：教程步骤 4、目标是演习场驱逐令、主控驾驶、任务未领 */
 export function isTutorialBattle(state: GameState, anomalyId: string | null, shipId: string): boolean {
   return (
     state.onboarding.step === ONB_TRIAL &&
@@ -99,11 +105,22 @@ export function applyTutorialBuff(spec: { hitBonus: number; evasion: number }): 
   spec.evasion += TUTORIAL_BATTLE_EVASION_BONUS
 }
 
-/** 渲染层：序章演出完成（起名落定）→ 进入采集步骤 */
+/**
+ * 渲染层：序章演出完成（起名落定）→ 进入**简报步骤**（不是直接开始采集）。
+ * 2026-09-11 船长定：睁眼动画结束后先指引玩家去通讯读教程，读完点「开始教程」才进采集。
+ */
 export function beginTutorialAfterAwaken(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_AWAKEN) return { ok: false, error: '当前不在序章演出阶段。' }
+  state.onboarding.step = ONB_BRIEFING
+  addLog(state, 'info', '自检完成——信息库重启，第一份简报已落在导航「通讯」里，看完再开工。')
+  return { ok: true }
+}
+
+/** 通讯简报的「开始教程：采集富凡晶石」→ 进入采集步骤（教程 S1）；幂等：不在简报态则报错 */
+export function startTutorialFromBriefing(state: GameState): CommandResult {
+  if (state.onboarding.step !== ONB_BRIEFING) return { ok: false, error: '当前不在序章简报阶段。' }
   state.onboarding.step = ONB_MINE
-  addLog(state, 'info', '自检完成——行动建议：采集矿石维持运转。导航：母港星域·丰饶之环。')
+  addLog(state, 'info', '行动建议：采集矿石维持运转。导航：母港星域·丰饶之环。')
   return { ok: true }
 }
 
@@ -142,7 +159,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
   return { ok: true }
 }
 
-/** 任务 ②：演习场讨伐令取胜奖励（结算钩子调用；幂等）——轻型炮台 MK1 + 动能弹 120 */
+/** 任务 ②：演习场驱逐令取胜奖励（结算钩子调用；幂等）——轻型炮台 MK1 + 动能弹 120 */
 export function claimTutorialTrialReward(state: GameState, anomalyId: string | null): void {
   if (anomalyId !== 'ano-training' || isTaskDone(state, TASK_TRIAL_WIN)) return
   const s = state.onboarding.step
@@ -153,7 +170,7 @@ export function claimTutorialTrialReward(state: GameState, anomalyId: string | n
   addLog(
     state,
     'trade',
-    `◆ 重要任务完成「试炼·演习场讨伐令」：协会发放 轻型炮台 MK1 ×1、动能弹 ×${TUTORIAL_REWARD_AMMO_N}。`,
+    `◆ 重要任务完成「试炼·演习场驱逐令」：协会发放 轻型炮台 MK1 ×1、动能弹 ×${TUTORIAL_REWARD_AMMO_N}。`,
   )
   if (s === ONB_TRIAL) state.onboarding.step = ONB_SKILL
 }
@@ -173,7 +190,7 @@ export function onTutorialSkillPageOpened(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_SKILL) return { ok: false, error: '当前不在技能归档步骤。' }
   grantTutorialSkill(state)
   state.onboarding.step = ONB_DIVIDE
-  addLog(state, 'info', '把基础 AI 核心装入沙猫，指派采矿作业——那是你的第一个分身。')
+  addLog(state, 'info', '把基础 AI 核心装入沙猫，指派采矿作业——本舰的第一枚分身。')
   return { ok: true }
 }
 
@@ -219,7 +236,7 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
         addLog(state, 'info', '驾驶已切回鲣鱼级护卫舰——试炼由它出战。')
       }
       state.onboarding.step = ONB_TRIAL
-      addLog(state, 'info', '鲣鱼已修复完好。前往「常驻悬赏」接受演习场讨伐令（试炼）。')
+      addLog(state, 'info', '鲣鱼已修复完好。前往「常驻悬赏」接受演习场驱逐令（试炼）。')
     }
     return
   }
@@ -263,9 +280,18 @@ export function advanceFindHumans(state: GameState, ctx: SimContext): void {
   )
 }
 
-/** 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
+/**
+ * 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；战斗进行中拒绝。
+ *
+ * 2026-09-11 修（船长反馈：「如果在最开始就跳过教程，会提示教程还未开始」）：
+ * 「进行中」原先写成 `s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)`，
+ * **简报态 0.5（`ONB_BRIEFING`）两边都不落**，于是刚睁眼点「跳过教程」会被拒。
+ * 改为区间判定 `ONB_AWAKEN <= s < ONB_DONE`——涵盖序章演出(0)/简报(0.5)/七步(1..7)/收尾(8)，
+ * 将来再插中间态也不会漏；老档 `ONB_OFF = -1` 仍走"尚未开始"。
+ */
+export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const s = state.onboarding.step
-  const inProgress = s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)
+  const inProgress = s >= ONB_AWAKEN && s < ONB_DONE
   if (!inProgress) return { ok: false, error: '教程尚未开始或已完成。' }
   if (state.expedition.battle) return { ok: false, error: '交火中不能跳过教程——战斗结束回港后再试。' }
   // 演出阶段跳过：呼号落定为默认 PRTS（未及起名）

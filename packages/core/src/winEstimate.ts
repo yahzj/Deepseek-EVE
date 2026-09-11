@@ -118,7 +118,7 @@ export function estimateBountyWinOn(
   }
 }
 
-/** 便捷入口：对当前档直接评估（内部自建快照，不污染存档）。null = 驾驶船数据缺失。 */
+/** 便捷入口：对当前档直接评估（内部自建快照，不污染存档）。null = 驾驶船记录缺失。 */
 export function estimateBountyWinMC(
   state: GameState,
   ctx: SimContext,

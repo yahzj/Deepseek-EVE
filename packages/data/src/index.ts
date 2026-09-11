@@ -21,6 +21,7 @@ export {
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
+  ALIEN_BEAST_SHIP_IDS,
 } from './foe-ships'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
@@ -47,6 +48,18 @@ export {
 } from './hullClass'
 export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
+export { COMMS_MESSAGES, buildCommsCatalog } from './messages'
+// 2026-09-11 通讯 v2：NPC 势力与船内系统档案（协会 8 部门 + 打捞队工会 + 信息库；发件人与立场口径的唯一权威）
+export {
+  COMMS_FACTIONS,
+  FACTION_OCTOPUS_GLYPH,
+  FACTION_CORE_GLYPH,
+  FACTION_AVATARS,
+  buildCommsFactionCatalog,
+  buildCommsDeptCatalog,
+} from './commsFactions'
+// 2026-09-11 教程融入通讯：序章简报 + 七步教程的文案与跳转（唯一出处；教程通讯与顶部引导条共用）
+export { BRIEFING_INTRO, TUTORIAL_STEPS, TUTORIAL_TOTAL, type TutorialStepDef } from './tutorialSteps'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 
@@ -75,4 +88,8 @@ export type {
   StationSiteDef,
   DialogueScriptDef,
   DialogueLineDef,
+  CommsMessageDef,
+  CommsTrigger,
+  CommsReplyDef,
+  CommsJumpPage,
 } from '@whale/core'

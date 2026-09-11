@@ -88,6 +88,11 @@ import {
   stopRefineRun,
   deliverStationResources,
   playDialogue,
+  commsInbox,
+  commsUnreadCount,
+  markCommsRead,
+  markAllCommsRead,
+  runCommsAction,
   completeSideTask,
   sideTaskBoard,
   courierTaskUnlocked,
@@ -127,6 +132,7 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  CommsActionCommand,
   DamageType,
   GameState,
   LairTier,
@@ -529,8 +535,16 @@ export class GameEngine {
     } catch (err) {
       console.error('读档失败，将开启新档：', err)
       this.state = createInitialState({ prologue: true })
-      const reason = err instanceof SaveError ? err.message : String(err)
-      addLog(this.state, 'warn', `存档读取失败（${reason}），已为你开启新档案。`)
+      // 2026-09-11：玩家可见文案不带技术细节（JSON / 版本号 / 异常字符串）——技术原因只进控制台
+      const why =
+        err instanceof SaveError
+          ? err.code === 'PARSE'
+            ? '存档文件已损坏'
+            : err.code === 'FORMAT'
+              ? '存档文件无法识别（不是本游戏的档案）'
+              : '存档版本不兼容'
+          : '存档文件无法读取'
+      addLog(this.state, 'warn', `${why}——已为你开启新档案。`)
     }
 
     const now = Date.now()
@@ -970,7 +984,7 @@ export class GameEngine {
       void this.persist()
       this.notify()
       if (learn.ok) return { ok: true }
-      return { ok: false, error: learn.error ?? '购买成功但学习失败（数据异常）。' }
+      return { ok: false, error: learn.error ?? '购买成功但学习失败（异常）。' }
     }
     // 簿上无书：按均衡价挂收购单（到货后手动学习）
     const quote = marketQuote(this.state, this.ctx, goodKey)
@@ -1436,6 +1450,51 @@ export class GameEngine {
     void this.persist()
     this.notify()
     return { ok: true }
+  }
+
+  /* ─────────────── 2026-09-11 通讯（收件箱：NPC 消息 + 剧本镜像） ─────────────── */
+
+  /** 收件箱视图（全部已送达消息，按送达时间倒序；含未读标记与跳转提示） */
+  commsInboxView(): ReturnType<typeof commsInbox> {
+    return commsInbox(this.state, this.ctx)
+  }
+
+  /** 未读条数（导航图标闪烁与数字徽标） */
+  commsUnread(): number {
+    return commsUnreadCount(this.state, this.ctx)
+  }
+
+  /** 点开一封通讯 → 标记已读（幂等；没有该消息时返回失败） */
+  markCommsReadAt(id: string): CommandResult {
+    const r = markCommsRead(this.state, id)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 全部标记已读（收件箱头部按钮；返回本次标记条数，0 = 本来就没有未读） */
+  markAllCommsReadNow(): number {
+    const n = markAllCommsRead(this.state, this.ctx)
+    if (n > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return n
+  }
+
+  /**
+   * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「开始教程：采集富凡晶石」。
+   * 点了才从简报态推进到采集步骤；成功后落盘并通知刷新。
+   */
+  runCommsActionAt(command: CommsActionCommand): CommandResult {
+    const r = runCommsAction(this.state, command)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
   }
 
   /* ─────────────── v24 任务中心·时效任务（资源 / 快递，定时刷新限时有效） ─────────────── */

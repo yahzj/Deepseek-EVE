@@ -399,7 +399,7 @@ function arriveDeliverSite(
   if (!site) {
     state.awayGalaxy = null
     state.dockedSite = null
-    addLog(state, 'warn', '交付航线异常：工地数据缺失，舰船已直接返航母港。')
+    addLog(state, 'warn', '交付航线异常：工地已不存在，舰船已直接返航母港。')
     return
   }
   const galaxyName = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
@@ -507,7 +507,7 @@ export function reconcileDockSanity(state: GameState, ctx: SimContext): void {
     'warn',
     site
       ? `「${site.name}」尚未建成：工地不提供停靠——舰船已转为「${galaxyName}」工地现场停留（交付建材可现场提交）。`
-      : '停靠的副站数据缺失：舰船已返回母港。',
+      : '停靠的副站已不存在：舰船已返回母港。',
   )
 }
 

@@ -103,7 +103,7 @@ function dropWrecks(state: GameState, ctx: SimContext): void {
   injectWreckDensity(state, ctx, enc.galaxyId, amount)
 }
 
-/** 星系安全等级（数据缺失按高安 +1 处理，不惹麻烦） */
+/** 星系安全等级（记录缺失按高安 +1 处理，不惹麻烦） */
 function secOf(ctx: SimContext, galaxyId: string | null): number {
   if (galaxyId === null) return 1
   return ctx.galaxies.get(galaxyId)?.security ?? 1
@@ -462,7 +462,7 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。' }
   const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs)
-  if (!battle) return { ok: false, error: '遭遇数据异常，无法开战。' }
+  if (!battle) return { ok: false, error: '遭遇异常，无法开战。' }
   enc.battle = battle
   addLog(state, 'info', '已应战：遭遇战打响（引擎自动推演，战报稍后）。')
   return { ok: true }

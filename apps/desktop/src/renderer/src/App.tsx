@@ -10,14 +10,14 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, shipDisplayName, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
+import { formatDurationMs, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
-import { TutorialGuide, TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
+import { TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -26,6 +26,7 @@ import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MapPage } from './pages/MapPage'
+import { CommsPage } from './pages/CommsPage'
 import type { MapGotoTarget, MapTab } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -47,12 +48,14 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'market', label: '市场', icon: 'nav-market' },
   { key: 'industry', label: '工业', icon: 'nav-industry' },
   { key: 'skills', label: '技能', icon: 'nav-skills' },
+  // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
+  { key: 'comms', label: '通讯', icon: 'nav-mail' },
 ]
 
-type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
+type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -79,7 +82,7 @@ const KIND_DESC: Record<LogKind, string> = {
   info: '信息：无资金变动的流程与搬运（采矿/扫描/制造完成/装配/切船/卸货/离线结算等）',
   queue: '训练：技能队列增删与完成',
   levelup: '升级：技能升级',
-  warn: '警告：异常/失利/数据缺失',
+  warn: '警告：异常/失利/记录缺失',
   trade: '交易：市场成交与挂单、买船买核心、维修费、远征奖金等一切资金往来',
 }
 /** 开关色点（图例）：色值须与 ui index.css 的 wui-log-* 一致 */
@@ -324,8 +327,6 @@ export function App({ engine }: { engine: GameEngine }) {
   const rootRef = useRef<HTMLDivElement>(null)
   // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
   const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
-  // 教程卡防遮挡（手机横屏：目标按钮与右下角教程卡重叠时把卡上移）
-  const [guideLift, setGuideLift] = useState(false)
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
@@ -429,6 +430,8 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [pd, pendingOpen])
 
   const state = engine.state
+  // 通讯未读（2026-09-11 船长定）：导航图标闪烁 + 数字徽标；逐条已读，点开即读
+  const commsUnread = engine.commsUnread()
   const [page, setPage] = useState<PageKey>('map')
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
@@ -439,6 +442,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [fitShipId, setFitShipId] = useState<string | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
+  /** 通讯页定位（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 切到通讯页并选中该封教程通讯 */
+  const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
   useEffect(() => {
     if (page !== 'fit') setFitShipId(null)
     // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
@@ -561,10 +566,11 @@ export function App({ engine }: { engine: GameEngine }) {
 
   const pageProps = { engine, onToast: showToast }
 
-  // ── 序章·苏醒：教程锁定与引导（步骤 1..6 页签/按钮级锁定；7 收尾演出；99 全解锁） ──
+  // ── 序章·苏醒：教程锁定与引导（简报态只开通讯；步骤 1..7 页签/按钮级锁定；8 收尾演出；99 全解锁） ──
   const tutStep = engine.state.onboarding.step
-  const tutLocked = tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE
-  const guideOn = tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE
+  // 简报态（0.5）也算"进行中"：此时除通讯页外全部锁定，顶栏提示去看简报（2026-09-11 船长定）
+  const tutLocked = tutStep >= ONB_BRIEFING && tutStep <= ONB_DIVIDE
+  const guideOn = tutStep === ONB_BRIEFING || (tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE)
   const epiOn = tutStep === ONB_EPILOGUE
   const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
     // 步骤 1 开放 物品页：玩家若取消采矿/返航,可手动把货仓矿石卸入仓库（防卡教程——船长复测反馈）
@@ -578,6 +584,9 @@ export function App({ engine }: { engine: GameEngine }) {
     [ONB_DIVIDE]: { pages: ['ship'], ship: 'ai' },
   }
   const tutCanOpen = (p: PageKey): boolean => {
+    // 2026-09-11 船长定（教程融入通讯）：**通讯页在教程期始终可开**——教程每一步的全文都在那里，
+    // 顶部引导条的「看详情」与收件箱都靠它；其余页面仍按步骤白名单锁定。
+    if (p === 'comms') return true
     if (!tutLocked) return true
     const allow = TUT_LOCK[tutStep]
     return !!allow && allow.pages.includes(p)
@@ -594,7 +603,7 @@ export function App({ engine }: { engine: GameEngine }) {
   }
   const changePage = (p: PageKey): void => {
     if (!tutCanOpen(p)) {
-      showToast('按教程引导进行：先完成当前「教程目标」（右下角引导卡）。', true)
+      showToast('按教程引导进行：先完成顶部指引条上的当前目标（每一步的完整说明在「通讯」页）。', true)
       return
     }
     setPage(p)
@@ -702,20 +711,30 @@ export function App({ engine }: { engine: GameEngine }) {
       <div className="app-workspace">
         <nav className="app-nav-side">
           <ShipStatusWin engine={engine} />
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}`}
-              disabled={tutLocked && !tutCanOpen(item.key)}
-              title={tutLocked && !tutCanOpen(item.key) ? '按教程引导进行：先完成当前「教程目标」' : undefined}
-              onClick={() => changePage(item.key)}
-            >
-              <span className="app-nav-icon">
-                <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
-              </span>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const unreadN = item.key === 'comms' ? commsUnread : 0
+            return (
+              <button
+                key={item.key}
+                className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}`}
+                disabled={tutLocked && !tutCanOpen(item.key)}
+                title={
+                  tutLocked && !tutCanOpen(item.key)
+                    ? '按教程引导进行：先完成当前「教程目标」'
+                    : unreadN > 0
+                      ? `有 ${unreadN} 条未读通讯`
+                      : undefined
+                }
+                onClick={() => changePage(item.key)}
+              >
+                <span className="app-nav-icon">
+                  <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
+                  {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
         </nav>
         <main className="app-page-main">
           <ActivityBar
@@ -777,6 +796,19 @@ export function App({ engine }: { engine: GameEngine }) {
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} mapGoto={mapGoto} /> : null}
+            {page === 'comms' ? (
+              <CommsPage
+                {...pageProps}
+                // 顶部引导条「看详情」的定位请求（seq 变化即重新选中对应那封）
+                focus={commsFocus}
+                // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签（如星图 → 残骸打捞）
+                onGoto={(p, tab, shipTab) => {
+                  if (p === 'map' && tab) changeMapTab(tab as MapTab)
+                  if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
+                  changePage(p as PageKey)
+                }}
+              />
+            ) : null}
           </div>
         </main>
         <div className="app-log-dock">
@@ -960,22 +992,27 @@ export function App({ engine }: { engine: GameEngine }) {
         />
       ) : null}
 
-      {/* 序章·苏醒：教程引导卡（步骤 1..7）与收尾演出（步骤 8） */}
+      {/* 序章·苏醒：教程引导（步骤 1..7；全文在通讯页，顶栏只留步骤进度与跳转）与收尾演出（步骤 8） */}
       {guideOn ? (
-        <>
-          <TutorialSpot
-            engine={engine}
-            step={tutStep}
-            onLift={setGuideLift}
-            onGo={(g: GuideGo) => {
-              changePage(g.page as PageKey)
-              if (g.mapTab) changeMapTab(g.mapTab as MapTab)
-              if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
-            }}
-          />
-          {/* 2026-09-08 船长定：卡内无跳转按钮，跳转走顶部引导条（见 TutorialSpot onGo） */}
-          <TutorialGuide engine={engine} step={tutStep} lifted={guideLift} />
-        </>
+        <TutorialSpot
+          engine={engine}
+          step={tutStep}
+          onGo={(g: GuideGo) => {
+            changePage(g.page as PageKey)
+            if (g.mapTab) changeMapTab(g.mapTab as MapTab)
+            if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
+          }}
+          // 「看详情」：切到通讯页并直接选中本步那封教程通讯（2026-09-11 船长定：教程融入通讯）
+          onDetail={(messageId) => {
+            setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
+            setPage('comms')
+          }}
+          // 「跳过教程」：入口从右下角卡移到顶部引导条（2026-09-11 船长定）
+          onSkip={() => {
+            const r = engine.prologueSkip()
+            if (!r.ok) showToast(r.error ?? '无法跳过教程', true)
+          }}
+        />
       ) : null}
       {epiOn ? (
         <TutorialEpilogue

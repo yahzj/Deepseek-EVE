@@ -154,7 +154,7 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   if (!battle) return { ok: false, error: '当前不在交火中。' }
   const me = createPlayerSpec(state, ctx, state.shipId)
   const anomaly = state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
-  if (!me || !anomaly) return { ok: false, error: '战斗数据缺失。' }
+  if (!me || !anomaly) return { ok: false, error: '战斗记录缺失。' }
   const foes = createFoeSpecs(anomaly, ctx.balance.battle)
   const maxD = battleOpenM(me, foes, ctx.balance.battle)
   const minD = ctx.balance.battle.minDistanceM
@@ -208,7 +208,7 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
   if (effect.kind === 'mineral') {
     const def = ctx.items.get(effect.itemId)
     if (!def) {
-      addLog(state, 'warn', '途中事件的数据缺失（物品不存在），本次事件落空。')
+      addLog(state, 'warn', '途中事件出了岔子，本次事件落空。')
       return
     }
     addItem(state, effect.itemId, effect.units)
@@ -333,7 +333,7 @@ export function startExpedition(
     exp.battle = null
     exp.phase = 'out'
     exp.finishAtGameMs = 0
-    return { ok: false, error: '目标数据缺失，无法开战。' }
+    return { ok: false, error: '目标已不存在，无法开战。' }
   }
   return { ok: true }
 }
@@ -527,7 +527,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
       )
     }
-    // 序章·苏醒：教学战（演习场讨伐令）取胜 → 发放试炼奖励并推进教程步骤
+    // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)
     // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
@@ -772,7 +772,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         exp.battle = null
         exp.lairTier = undefined
     exp.factionActive = undefined
-        addLog(state, 'warn', '远征目标数据缺失，舰队无功而返（数据异常）。')
+        addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。')
         return
       }
       continue // 同一帧继续处理交火（离线大推进直接打到结束）
@@ -786,7 +786,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
           exp.anomalyId = null
           exp.lairTier = undefined
     exp.factionActive = undefined
-          addLog(state, 'warn', '远征目标数据缺失，舰队无功而返（数据异常）。')
+          addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。')
           return
         }
         continue
@@ -966,8 +966,8 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
   }
   const anomaly = ctx.anomalies.get(id)
   if (!anomaly) {
-    stopAutoLoopReason(state, '目标数据缺失。')
-    return '目标数据缺失'
+    stopAutoLoopReason(state, '目标已不存在。')
+    return '目标已不存在'
   }
   const block = actionBlockReason(state, anomaly.galaxyId)
   if (block) {
@@ -977,8 +977,8 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
   if (bountyCooldownRemainingMs(state, id) > 0) return null // 冷却中：等
   const fleetShip = state.fleet[state.shipId]
   if (!fleetShip) {
-    stopAutoLoopReason(state, '当前舰船数据缺失。')
-    return '当前舰船数据缺失'
+    stopAutoLoopReason(state, '舰队里找不到当前舰船。')
+    return '舰队里找不到当前舰船'
   }
   // 装甲/结构门槛（2026-09-08 船长定：提前到装甲——装甲或结构 <50% 即自动修补到 60%，
   // 为战斗内"结构损失过半自动撤退"保险留缓冲；组件不足则停环）

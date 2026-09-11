@@ -31,6 +31,17 @@ export type {
   StationTierDef,
   DialogueScriptDef,
   DialogueLineDef,
+  CommsMessageDef,
+  CommsTrigger,
+  CommsReplyDef,
+  CommsJumpPage,
+  CommsEntryView,
+  CommsFactionDef,
+  CommsDeptDef,
+  CommsFactionAlignment,
+  CommsKind,
+  CommsActionDef,
+  CommsActionCommand,
   AiCoreType,
   BalanceConfig,
   MarketRarity,
@@ -462,6 +473,21 @@ export {
   playerAtSite,
 } from './station'
 export type { StationBillRow } from './station'
+/* 通讯收件箱（2026-09-11 船长定：NPC 发消息补充剧情与任务提示） */
+export {
+  COMMS_DAY_MS,
+  COMMS_REPLIES_ENABLED,
+  advanceComms,
+  commsDialogueKey,
+  commsGameClock,
+  commsInbox,
+  commsTriggerMet,
+  commsUnreadCount,
+  deliverDialogueToComms,
+  markAllCommsRead,
+  markCommsRead,
+  runCommsAction,
+} from './comms'
 export type { StationSiteProgress } from './state'
 
 export {
@@ -520,6 +546,9 @@ export {
   REPAIR_PULSE_MS,
   // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
+  // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
+  // 此前面板用 (1+falloff)/2 自算——旧口径下引擎实际是 ×0.44/×0.48、面板却写 ×0.65/×0.68，属显示值与实战值漂移）
+  beamPowerFactor,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
 
@@ -579,6 +608,7 @@ export {
 export {
   ONB_OFF,
   ONB_AWAKEN,
+  ONB_BRIEFING,
   ONB_MINE,
   ONB_DELIVER,
   ONB_SELL,
@@ -607,6 +637,7 @@ export {
   isTutorialBattle,
   applyTutorialBuff,
   beginTutorialAfterAwaken,
+  startTutorialFromBriefing,
   deliverTutorialOre,
   claimTutorialTrialReward,
   grantTutorialSkill,

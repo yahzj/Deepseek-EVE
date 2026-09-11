@@ -45,7 +45,7 @@ describe('V18B-2 激光炮', () => {
     const w = { minRangeM: 0, maxRangeM: 4600, falloff: 0.3 }
     expect(beamPowerFactor(0, w)).toBeCloseTo(1, 9)
     expect(beamPowerFactor(2300, w)).toBeCloseTo(Math.max(0, 1 - 0.5 * (1 - 0.3)), 9) // = 0.65
-    expect(beamPowerFactor(4600, w)).toBeCloseTo(0.3, 9) // 最远端 = 该武器 falloff 本身（旧口径 ×0.44 作废）
+    expect(beamPowerFactor(4600, w)).toBeCloseTo(0.3, 9) // 最远端 = 该武器 falloff 本身（旧口径 0.44 作废）
     // 激光件现值 falloff 0.1 → 最远端威力 ×0.10
     const laser = { minRangeM: 0, maxRangeM: 4600, falloff: 0.1 }
     expect(beamPowerFactor(4600, laser)).toBeCloseTo(0.1, 9)

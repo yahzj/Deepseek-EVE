@@ -516,6 +516,15 @@ export type FoeTactic = 'brawl' | 'orbit' | 'kite'
 /** 敌方血型（V11）：盾型 / 甲型 / 均衡（决定敌方三层血量比例） */
 export type DefProfile = 'shield' | 'armor' | 'balanced'
 
+/**
+ * **能量武器形态**（2026-09-11 船长裁决⑤：「**立「能量·掷命中」档**」；只对能量主系生效）：
+ * - `'beam'`（缺省）= 激光式**光束必中**（不掷命中、不消费 `hitRate`、守方回避不生效），远端做**威力**衰减；
+ * - `'spit'` = **能量掷命中**（喷吐 / 投射）——掷命中 + 命中随距离衰减、消费 `hitRate` 并吃守方回避，
+ *   层位克制仍走等离子行。
+ * 详见 `FoeShipDef.energyForm`。
+ */
+export type EnergyForm = 'beam' | 'spit'
+
 /** V11 战斗平衡常量（唯一调参处；初值在校准脚本阶段核对） */
 export interface BattleBalance {
   /** 命中率输出钳制：开放边界 0% / 100%（贴脸高加成场合可必中、极端劣势可完全脱靶） */
@@ -990,7 +999,7 @@ export interface FoeShipDef {
   split: { s: number; a: number; h: number }
   /** 基础单发（绝对值） */
   shotDmg: number
-  /** 命中率 0~1（能量 plasma 为光束必中，不消费本值） */
+  /** 命中率 0~1（**能量主系**是否消费本值取决于 `energyForm`：缺省光束必中 → 不消费；`'spit'` 掷命中 → 消费） */
   hitRate: number
   /** 装填（毫秒） */
   reloadMs: number
@@ -999,14 +1008,27 @@ export interface FoeShipDef {
   /** 射程带上限 m */
   rangeMaxM: number
   /**
-   * 远端衰减（缺省 0.3）。两条生效路径：动能/爆炸（fixed）→ `distFactor` 命中衰减；
-   * 能量（plasma 光束）→ `beamPowerFactor` **威力**衰减（**本值越大衰减越轻**）。
+   * 远端衰减（缺省 0.3）。两条生效路径：动能/爆炸（fixed）以及**能量掷命中（`energyForm: 'spit'`）**
+   * → `distFactor` **命中**衰减；能量光束（缺省必中）→ `beamPowerFactor` **威力**衰减
+   * （**此时本值越大衰减越轻**）。
    */
   falloff: number
   /** 近盲带伤害比例（缺省 0.3） */
   blindDmgMul?: number
   /** 伤害构成（缺省纯动能）。主系决定武器形态 / 命中 / 近盲 / 配色，混伤只改伤害构成 */
   dmgMix?: Partial<Record<DamageType, number>>
+  /**
+   * **能量武器形态**（2026-09-11 船长裁决⑤：「**立「能量·掷命中」档**」）——**只对能量主系
+   * （`dmgMix` 主系 = `plasma`）生效**，动能/爆炸主系本来就是掷命中（`fixed`）、不受本字段影响：
+   * - 缺省 / `'beam'` = **激光式光束**：`kind: 'beam'`，**开火必中**（不掷命中、不消费 `hitRate`、
+   *   守方回避也不生效），远端用 `beamPowerFactor` 做**威力**衰减（`falloff` 越小越衰减）；
+   * - `'spit'` = **能量掷命中（喷吐/投射）**：`kind: 'fixed'` —— **掷命中 + 命中随距离衰减**
+   *   （`distFactor`：近端 1 → 最远端 = `falloff`）、**消费 `hitRate` 且吃守方回避**，
+   *   层位克制**仍按等离子行**（对盾 ×1.25 / 对甲 ×1 / 结构 ×1）——与光束同系不同形态。
+   * 用途：把"酸液喷吐 / 等离子投射"这类**能量投射物**与"激光/光束"明确分开（C 族族签名）。
+   * ⚠ **缺省 = 现状**（能量必中光束），故不写本字段的既有舰级**零行为变化**。
+   */
+  energyForm?: EnergyForm
   /** 战术性格 */
   tactic: FoeTactic
   /** 头目档：显示名加「精锐」前缀（2026-09-11 船长裁决实装；旧 `FOE_LIGHT_WORD` 的预留位） */
@@ -1045,7 +1067,8 @@ export interface FoeShipSlot {
    * 其实我们刚刚忘记讨论种族血型了，不过问题不大，**海盗设定鱼龙混杂，那么就什么血型都有**」）。
    *
    * 缺省 = **舰级 `split`**（绝对值口径）；写了则以本条为准（**有效 split = 覆写 ?? 舰级**）。
-   * 用途：同一条舰级（如海盗头目舰 = 装甲型）在**不同卡**上按卡面血型建档——
+   * 用途：同一条舰级在**不同卡**上按卡面血型建档——**头目血型随卡走**（A 族六张卡的头目位）；
+   * B 族两卡共用「拾荒武装艇」也是同一用法（演习场驱逐令**均衡型**、新港商路护航令**装甲型**）。
    * 卡面 `defProfile` 是**卡**的口径（"这场敌人怎么扛"），血型跟着卡走才不会两张卡两种说法。
    * ⚠ **A 族不做族级血型约束**（船长同日裁决：鱼龙混杂 ⇒ 什么血型都有），
    * 故本字段是**逐卡自定**的旋钮，不存在"A 族统一护盾型"这类族级口径。
@@ -1070,6 +1093,11 @@ export interface FoeShipSlot {
   dmgMix?: Partial<Record<DamageType, number>>
   /** 命中覆写（缺省走舰级） */
   hitRate?: number
+  /**
+   * **能量武器形态覆写**（缺省走舰级；见 `FoeShipDef.energyForm`）——用于"同一条船换装不同弹药/喷口"：
+   * 例同一舰级在 A 卡走光束、在 B 卡走掷命中。**只对能量主系生效**。
+   */
+  energyForm?: EnergyForm
   /**
    * **单波次内增援·入场时机**（2026-09-11 船长裁决：「**先完成相应的系统机制，不使用。用作后续机制。**」）。
    *
@@ -1236,6 +1264,12 @@ export interface SimContext {
   stations: ReadonlyMap<string, StationSiteDef>
   /** 市场商品目录（v9） */
   marketGoods: ReadonlyMap<string, MarketGoodDef>
+  /** 通讯消息表（2026-09-11 通讯系统；data/src/messages.ts） */
+  commsMessages: ReadonlyMap<string, CommsMessageDef>
+  /** NPC 势力档案（2026-09-11 通讯 v2；data/src/commsFactions.ts）——解析消息/剧本的发件人与立场 */
+  commsFactions: ReadonlyMap<string, CommsFactionDef>
+  /** 通讯剧本目录（T9 建站介绍/庆贺等；通讯页与剧本共处一个收件箱，见 core/comms.ts） */
+  dialogues: ReadonlyMap<string, DialogueScriptDef>
   balance: BalanceConfig
 }
 
@@ -1279,7 +1313,180 @@ export interface DialogueLineDef {
 /** 通讯剧本（线性文本流；一次完整呈现，逐句镜像进事件日志） */
 export interface DialogueScriptDef {
   id: string
+  /** 发件势力 id（可选：未挂靠时收件箱回落 `title` 原文，立场小片不出现） */
+  commsFactionId?: string
+  /** 发件部门 id（可选；给了部门就必须给势力） */
+  commsDeptId?: string
+  /** 具名联系人（可选；悬停说明用） */
+  commsSigner?: string
   /** 标题（通讯器称呼栏，如 协会 · 基建部） */
   title: string
+  /** 通讯页收件箱里的主题（2026-09-11 通讯系统合并：缺省回落 title；剧本与消息同处一个收件箱） */
+  subject?: string
   lines: readonly DialogueLineDef[]
+}
+
+/* ═══════════════ NPC 势力档案（2026-09-11 通讯 v2 船长定：官方 = 章鱼人；其他 NPC 同为章鱼人、同族不同行会） ═══════════════ */
+
+/**
+ * 势力立场（界面「立场小片」按此着色分档）。
+ * 口径：协会是章鱼人的官方行业组织；打捞队工会等民间行会同族不同行；
+ * **「系统」= 船自己的舰载系统**（2026-09-11 船长定：教程与简报从「信息库」发来），不是 NPC、无物种。
+ */
+export type CommsFactionAlignment = '官方' | '民间' | '中立' | '系统'
+
+/** 通讯内容类型（消息的「内容类型小片」；必须落在发件势力的 `kinds` 白名单里） */
+export type CommsKind = '剧情' | '提示' | '委托' | '教程'
+
+/** 势力下的部门（协会 8 部门、打捞队工会 1 队；部门是发件人写法的后半截） */
+export interface CommsDeptDef {
+  /** 部门 id（势力内唯一；消息用 `deptId` 引用） */
+  id: string
+  /** 部门名（发件人写法：`势力名 · 部门名`） */
+  name: string
+  /** 部门一句话（悬停说明"这是谁"） */
+  brief: string
+  /** 本部门允许发的内容类型白名单（契约强制） */
+  kinds: readonly CommsKind[]
+}
+
+/**
+ * NPC 势力 / 舰载系统（data/src/commsFactions.ts 维护）。
+ * 铁律：**所有 NPC 势力都是章鱼人**（契约强制，防设定漂移）；**船内系统（`alignment: '系统'`）不是 NPC**、无物种。
+ * 章鱼人不追问船里是谁，把玩家当普通承包舰船——NPC 文案不得出现指涉玩家本质的词。
+ */
+export interface CommsFactionDef {
+  /** 稳定 id（消息/剧本按它引用） */
+  id: string
+  /** 名称（玩家可见；协会对外自称「协会」，全名用于发件人与档案） */
+  name: string
+  /** 物种：NPC 恒为「章鱼人」（契约强制）；船内系统写「舰载系统」 */
+  species: string
+  /** 立场：官方 / 民间 / 中立 / 系统（系统 = 船自己的舰载系统，不是 NPC） */
+  alignment: CommsFactionAlignment
+  /** 主题色（与既有系统同源取色；界面小片与图标着色用） */
+  tone: string
+  /** 图标（复用既有 SVG 线稿图标名；NPC 用章鱼头 `faction-octopus`，船内系统用核心 `nav-ai`） */
+  glyph: string
+  /** 势力一句话（界面 tooltip「这是谁」） */
+  brief: string
+  /** 该势力可发内容类型白名单（消息 `kind` 必须落在其中） */
+  kinds: readonly CommsKind[]
+  /** 部门表（通讯发件人的来源；至少一个） */
+  departments: readonly CommsDeptDef[]
+}
+
+/* ═══════════════ 通讯（2026-09-11 船长定：NPC 以"发消息"补充剧情与任务提示） ═══════════════ */
+
+/** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务）。`comms` = 回本页（简报里用） */
+export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'comms'
+
+/**
+ * 通讯消息触发条件（core 每帧廉价判定；**幂等**——条件满足一次即送达，之后重复推进不再送）。
+ * 新增触发器时：`packages/core/src/comms.ts` 的 `triggerMet` 与 `tools/content-check.ts` 的
+ * 「通讯消息契约」两处必须同步（漏一处体检会报错）。
+ */
+export type CommsTrigger =
+  | { kind: 'start' }
+  | { kind: 'day'; days: number }
+  | { kind: 'explored'; count: number }
+  | { kind: 'galaxy'; galaxyId: string }
+  | { kind: 'skill'; skillId: string; level: number }
+  | { kind: 'isk'; amount: number }
+  | { kind: 'siteBuilt'; siteId: string }
+  /**
+   * 序章教程步骤（2026-09-11 船长定：教程融入通讯——每步开始时把该步指引发成一封通讯）。
+   * `step: 0` = 序章简报（`ONB_BRIEFING = 0.5` 时送达），`1..7` = 七步教程。
+   * 判定：简报要 `onboarding.step >= 0.5`（序章演出 `ONB_AWAKEN = 0` 时还不送），第 N 步要 `>= N`；
+   * **跳过教程**（step → 99）后会把前几步一并补送，收件箱里始终留一份完整教程记录。
+   */
+  | { kind: 'tutorial'; step: number }
+
+/** 回复选项（**预留接口：2026-09-11 船长定"预留但不启用"**，见 core COMMS_REPLIES_ENABLED） */
+export interface CommsReplyDef {
+  id: string
+  label: string
+}
+
+/**
+ * 通讯消息自带动作（2026-09-11 教程融入通讯）：点一下让引擎执行一条命令。
+ * 本期只有 `startTutorial`——序章简报那封的「开始教程：采集富凡晶石」，
+ * 点了才从「看简报」推进到采集步骤（船长：睁眼后不要立刻开始教程任务，先指引去看通讯）。
+ */
+export type CommsActionCommand = 'startTutorial'
+
+/** 消息动作按钮 */
+export interface CommsActionDef {
+  /** 按钮文字 */
+  label: string
+  /** 引擎命令（core 的 `runCommsAction` 分发；未知命令报错不崩） */
+  command: CommsActionCommand
+}
+
+/** 通讯消息（NPC → 玩家；data/src/messages.ts 维护，core 按 trigger 送达） */
+export interface CommsMessageDef {
+  /** 稳定 id（已送达/已读都按它记账） */
+  id: string
+  /**
+   * 发件势力 id（data/src/commsFactions.ts）。
+   * **玩家看到的发件人写法由势力 + 部门拼出**（`势力名 · 部门名`），不再在消息里写自由文本；
+   * 解析不到势力时降级显示原文 id（界面不崩，见 core/comms.ts）。
+   */
+  factionId: string
+  /** 发件部门 id（势力内唯一；缺省 = 势力本部，发件人只显示势力名） */
+  deptId?: string
+  /** 具名联系人（可选；作为悬停说明，不写进发件人栏——保持既有发件人写法不变） */
+  signer?: string
+  /** 内容类型（必须落在发件势力/部门的 `kinds` 白名单里） */
+  kind: CommsKind
+  /** 主题（列表主行） */
+  subject: string
+  /** 正文（逐段） */
+  body: readonly string[]
+  /** 送达条件 */
+  trigger: CommsTrigger
+  /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
+  action?: CommsActionDef
+  /** 预留回复选项（本期不启用） */
+  replies?: readonly CommsReplyDef[]
+}
+
+/** 收件箱条目视图（界面用；消息与剧本镜像共用一种结构，见 core/comms.ts） */
+export interface CommsEntryView {
+  /** 稳定键：数据消息 = 消息 id；剧本镜像 = `dlg:<剧本 id>` */
+  id: string
+  /** 来源：数据消息 / T9 剧本镜像 */
+  source: 'message' | 'dialogue'
+  /** 发件人（玩家可见写法：`势力名 · 部门名`；未挂靠/解析失败时降级为原文，见 core/comms.ts） */
+  from: string
+  /** 发件势力名（界面「立场小片」旁的主名；未挂靠时为空串） */
+  factionName: string
+  /** 立场（官方 / 民间 / 中立；未挂靠时为空串） */
+  alignment: CommsFactionAlignment | ''
+  /** 内容类型（剧情 / 提示 / 委托；未挂靠时为空串） */
+  kind: CommsKind | ''
+  /** 具名联系人（可选；悬停说明用） */
+  signer?: string
+  /** 发件方说明「这是谁」（势力 brief + 部门 brief；悬停用） */
+  fromBrief?: string
+  /** 发件势力主题色（未挂靠时为空串，界面回落到默认色） */
+  tone: string
+  /** 发件势力图标名（未挂靠时为空串） */
+  glyph: string
+  /** 主题 */
+  subject: string
+  /** 正文逐段（剧本镜像 = 各发言句 `发言人：内容`） */
+  paragraphs: readonly string[]
+  /** 送达时的游戏内毫秒 */
+  deliveredAtGameMs: number
+  /** 是否已读 */
+  read: boolean
+  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`shipTab` = 舰船页内标签） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
+  action?: CommsActionDef
+  /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
+  replies?: readonly CommsReplyDef[]
 }

@@ -272,7 +272,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
   if (!s.active || deltaMs <= 0) return
   if (!state.fleet[state.shipId]) {
     resetOp(state)
-    addLog(state, 'warn', '当前舰船数据缺失，打捞作业已停止。')
+    addLog(state, 'warn', '找不到当前舰船，打捞作业已停止。')
     return
   }
   let remaining = deltaMs
@@ -282,7 +282,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     const galaxyId = s.galaxyId
     if (!galaxyId) {
       resetOp(state)
-      addLog(state, 'warn', '打捞目标星系数据缺失，作业已停止。')
+      addLog(state, 'warn', '找不到打捞目标星系，作业已停止。')
       return
     }
     // ── 返航阶段（去程并入返航；返航腿按货仓占比缩放——空仓快、满仓=原时长，船长 2026-09-05）──
@@ -335,13 +335,13 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     // ── 打捞阶段：逐台打捞器按各自周期结算 ──
     if (wreckPoolOf(ctx, galaxyId).length === 0) {
       resetOp(state)
-      addLog(state, 'warn', '该星系敌群数据缺失，打捞作业已停止。')
+      addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')
       return
     }
     const cycles = salvagerCyclesOf(state, ctx, state.shipId)
     if (cycles.length === 0) {
       resetOp(state)
-      addLog(state, 'warn', '打捞器数据缺失，打捞作业已停止。')
+      addLog(state, 'warn', '未找到可用的打捞器，打捞作业已停止。')
       return
     }
     // 最短周期为统一推进步（多台各自维护相位）
@@ -362,7 +362,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs)
         if (!pulled) {
           resetOp(state)
-          addLog(state, 'warn', '该星系敌群数据缺失，打捞作业已停止。')
+          addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')
           return
         }
         if (pulled.volumeM3 > freeCargoM3(state, ctx)) {

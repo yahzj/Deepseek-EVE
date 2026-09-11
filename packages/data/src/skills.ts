@@ -383,7 +383,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '护盾调谐学',
     group: '工程',
     rank: 2,
-    description: '护盾谐振调谐：全系抗性每级 +⟦2%⟧（乘入制，上限 ⟦90%⟧；与护盾增强器同类叠加，多来源收益递减）。',
+    description: '护盾谐振调谐：全系抗性每级 +⟦2%⟧（上限 ⟦90%⟧；与护盾增强器同类叠加，多来源收益递减）。',
   },
   {
     id: 'energy-management',
@@ -404,7 +404,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '装甲调谐学',
     group: '工程',
     rank: 3,
-    description: '装甲板晶格微调：全系抗性每级 +⟦2%⟧（乘入制，上限 ⟦90%⟧；与装甲镀层同类叠加，多来源收益递减）。',
+    description: '装甲板晶格微调：全系抗性每级 +⟦2%⟧（上限 ⟦90%⟧；与装甲镀层同类叠加，多来源收益递减）。',
   },
   {
     id: 'repair-engineering',
@@ -511,7 +511,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '事件分红学',
     group: '贸易',
     rank: 2,
-    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧（事件赏钱本身不多，纯属娱乐向的小彩头，不必指望发家）。',
+    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧（事件赏钱本身不多，纯属娱乐向的小惊喜，不必指望发家）。',
   },
 
   // ───────── 探索（2026-09-04 新组） ─────────
@@ -578,7 +578,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '压缩技术',
     group: '物流',
     rank: 3,
-    description: '矿物压缩封装（EVE 同款概念）：矿石/气体/冰矿的货仓占用体积每级 −⟦6%⟧（满级 −⟦30%⟧）。',
+    description: '矿物压缩封装：矿石/气体/冰矿的货仓占用体积每级 −⟦6%⟧（满级 −⟦30%⟧）。',
   },
   {
     id: 'hold-management',

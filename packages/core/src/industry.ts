@@ -108,6 +108,12 @@ export interface RefineRunView {
   cycleMs: number
   /** 已完成批数 */
   batchesDone: number
+  /**
+   * 本炉**私有料账**剩余（单位同物品；2026-09-11 增，界面展示用）。
+   * 仅"起炉即预占"的稀有残骸炉有值（起炉时整件从其货仓/仓库扣入本炉），普通残骸炉/精炼炉 = undefined。
+   * 玩家的货仓+仓库里看不到这批料（已被扣走），界面必须靠这个字段告诉玩家"料在炉里、没丢"。
+   */
+  claimedUnits?: number
   /** 当前批进度 0~100 */
   percent: number
   /** 当前批剩余毫秒（v20 原料不锁定，整炉剩余 = 仓库余量决定，不再预估） */
@@ -129,6 +135,7 @@ function refineRunViewOf(state: GameState, ctx: SimContext, r: RefineRunState): 
     batchUnits: r.batchUnits,
     cycleMs: r.cycleMs,
     batchesDone: r.batchesDone,
+    claimedUnits: r.claimedUnits,
   }
   if (!r.active || r.itemId === null || r.cycleMs <= 0) {
     return { ...base, percent: 0, remainingMs: 0 }
@@ -259,7 +266,7 @@ export function startRecycleRun(
   }
   const profile = recycleProfileOf(ctx, wreckItemId)
   if (!profile) {
-    return { ok: false, error: `「${def.name}」来源数据缺失，无法回收。` }
+    return { ok: false, error: `「${def.name}」来源记录缺失，无法回收。` }
   }
   const available = oreAvailable(state, wreckItemId)
   if (available <= 0) {
@@ -304,10 +311,26 @@ export function startRecycleRun(
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }
   // v20：原料不预锁定——仓库/货仓余量即炉料，每批到点实时扣取；
-  // **稀有残骸另加"每炉锁死 1 件"**（船长 2026-09-10 定）：本轮投料上限 = 一件的体积（30 m³），
-  // 3 批吃完自动停（走既有"料尽"同一条路径）→ 一炉恒等于一件，与"一炉一箱"的高级箱语义合一，
-  // 玩家也不会再把多件丢进同一台炉少拿箱子。普通残骸不写该字段 = 仍是"整批直到料尽"。
+  // **稀有残骸例外（2026-09-11 船长定「甲：起炉即预占」）**：起炉时把这 1 件（`RARE_WRECK_VOLUME_M3`
+  // = 30 m³）**从货仓优先、仓库兜底扣出**，转入本炉**私有料账** `claimedUnits`，每批从私有账扣、
+  // 停炉时未用完的退回仓库。⇒ 一件残骸只能被**一台炉**持有，一件 = 一炉 = 一箱（高级箱语义），
+  // 多台 AI 并行或"跑一批就停再起"都无法把同一件拆成多箱。
+  // （修前 `lockUnits` 只是"起炉时刻的快照"：多台炉共享同一件的额度，任一台吃到 1 批就会在
+  //  「本炉第一批」开箱 ⇒ 一件 30 m³ = 3 批最多被 3 台炉各开 1 箱。）
   const rareLock = isRareWreck(wreckItemId) ? Math.min(RARE_WRECK_VOLUME_M3, available) : undefined
+  // 「一件 = 一箱」第二道锁（2026-09-11）：本炉是否**具备开箱资格** = 该型残骸的"未开箱存量"≥ 一件。
+  // 未开箱存量 = 总存量 − state.rareOpenedUnits（已开过箱、但仍留在库存里的料）。
+  // ⇒ 把"跑一批就停、再起一炉"这条刷法也堵死：一件残骸只能开一箱，哪怕分几炉精炼。
+  const rareEligible =
+    rareLock !== undefined &&
+    Math.max(0, available - Math.max(0, state.rareOpenedUnits[wreckItemId] ?? 0)) >= RARE_WRECK_VOLUME_M3
+  if (rareLock !== undefined && rareLock > 0) {
+    // 预占：货仓优先、仓库兜底（与批结算同一扣料顺序）
+    const fromCargo = Math.min(countItem(state, wreckItemId), rareLock)
+    if (fromCargo > 0) removeItem(state, wreckItemId, fromCargo)
+    const fromWare = rareLock - fromCargo
+    if (fromWare > 0) removeWare(state, wreckItemId, fromWare)
+  }
   state.refineRuns.push({
     active: true,
     id: state.refineSeq++,
@@ -318,7 +341,7 @@ export function startRecycleRun(
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     batchesDone: 0,
-    ...(rareLock !== undefined ? { lockUnits: rareLock } : {}),
+    ...(rareLock !== undefined ? { lockUnits: rareLock, claimedUnits: rareLock, rareBoxEligible: rareEligible } : {}),
     recAcc: { min: {}, mod: {}, frag: {}, drone: {} }, // 回收所得累计（停炉/料尽/自然结束时写明细日志）
   })
   // 2026-09-06：不再写开工日志（同精炼炉口径；结束/停炉日志统一带回收所得明细）
@@ -357,7 +380,8 @@ function yieldNoteFor(
     const dr = rec.drone ?? {}
     if (Object.keys(dr).length > 0) loot.push(`无人机 ${fmt(dr)} 架`)
     if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
-    if (loot.length > 0) parts.push(`彩头：${loot.join('；')}`)
+    // 2026-09-11：日志文案禁用开发用词「彩头」（玩家反馈"不符合游戏设定的名词"）——统一写「额外掉落」
+    if (loot.length > 0) parts.push(`额外掉落：${loot.join('；')}`)
   }
   return parts.length > 0 ? parts.join('；') : ''
 }
@@ -366,21 +390,42 @@ function yieldNoteFor(
  * 玩家指令：停指定的某一台炉（v20 按台号 id 定位，同资源多台互不影响）。
  * 已完成批已出货；v20 原料不锁定故无退料；AI 核心驱动时核心自动归还。
  */
+/**
+ * 归还本炉**私有料账**（2026-09-11 船长定「甲：起炉即预占」）：稀有残骸起炉时从公共库存扣出的
+ * 那 1 件（30 m³），停炉时未用完的部分退回**物品仓库**（与修理组件退还同哲学，不往随时会离港的货仓塞）。
+ * 无私有账（普通残骸/精炼炉）= 空操作。返回实际退回量（日志/测试用）。
+ */
+function refundClaimedUnits(state: GameState, r: RefineRunState): number {
+  const left = Math.max(0, r.claimedUnits ?? 0)
+  if (left <= 0 || !r.itemId) {
+    r.claimedUnits = 0
+    return 0
+  }
+  addWare(state, r.itemId, left)
+  r.claimedUnits = 0
+  return left
+}
+
 export function stopRefineRun(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.refineRuns.findIndex((r) => r.id === runId)
   if (idx < 0) return { ok: false, error: '没有找到该台炉（已停或未启动）。' }
   const [r] = state.refineRuns.splice(idx, 1)
   const def = r.itemId ? ctx.items.get(r.itemId) : undefined
+  const refunded = refundClaimedUnits(state, r)
   if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
   const coreNote = r.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''
   const isRecycle = r.recipe === 'recycle'
   const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
+  const refundNote =
+    refunded > 0
+      ? `未用完的 ${def?.name ?? r.itemId} ${Math.round(refunded * 100) / 100} m³ 已退回物品仓库`
+      : '原料未锁定无需退回，余料仍留在货仓/仓库'
   addLog(
     state,
     'info',
     `${isRecycle ? '残骸回收炉' : '精炼炉'}已停：${def?.name ?? '未知资源'}（已完成 ${r.batchesDone} 批）${coreNote}` +
       (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-      '。原料未锁定无需退回，余料仍留在货仓/仓库。',
+      `。${refundNote}。`,
   )
   return { ok: true }
 }
@@ -401,32 +446,38 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
     }
     const def = ctx.items.get(r.itemId)
     if (!def) {
-      // 数据异常：停炉（无锁定料可退；核心归还）
+      // 异常：停炉（私有料账先退回仓库，避免预占的残骸凭空消失；核心归还）
+      refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '精炼炉运转异常：资源数据缺失，该台已停（AI 核心已归还）。')
+      addLog(state, 'warn', '精炼炉运转异常：资源记录缺失，该台已停（AI 核心已归还）。')
       continue
     }
     let guard = 0
     const isRecycle = r.recipe === 'recycle'
     const profile = isRecycle ? recycleProfileOf(ctx, r.itemId) : null
     if (isRecycle && !profile) {
-      // 残骸来源数据异常：停炉
+      // 残骸来源异常：停炉（同上，先退私有料账）
+      refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '残骸回收运转异常：残骸来源数据缺失，该台已停（AI 核心已归还）。')
+      addLog(state, 'warn', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。')
       continue
     }
     while (r.active && state.gameMs >= r.finishAtGameMs) {
       if (++guard > 100_000) break // 防失控循环
       // v20 实时扣料：仓库/货仓余量决定本批能炼多少；
-      // **本轮锁量**（稀有残骸每炉锁死 1 件，船长 2026-09-10 定）另设上限：可投料 = min(库存, 本轮剩余锁量)
-      const stock = oreAvailable(state, r.itemId)
+      // **私有料账**（稀有残骸 2026-09-11「起炉即预占」）优先：料 = 本炉预占的存量，不再看公共库存
+      const usesClaim = r.claimedUnits !== undefined
+      const stock = usesClaim ? Math.max(0, r.claimedUnits ?? 0) : oreAvailable(state, r.itemId)
       const avail = r.lockUnits !== undefined ? Math.min(stock, r.lockUnits) : stock
       if (avail <= 0) {
         // 原料耗尽 / 本轮定额完成：自动停炉（含被卖光/被并行台抢先的情况）
         const doneBatches = r.batchesDone
-        const lockDone = r.lockUnits !== undefined && stock > 0 // 锁量用尽但仓库还有料 → 本炉定额完成
+        // 定额完成口径：有私有料账（稀有残骸）时，**账清即本炉定额完成**（一炉恒等于一件，仓库还剩几件
+        // 是"再开一炉"的事）；无私有账时沿用旧口径（锁量用尽但仓库还有料）。
+        const lockDone = r.lockUnits !== undefined && (usesClaim || stock > 0)
+        refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
         const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
@@ -450,6 +501,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       // 不再吃"小批尾料"；余料留在货仓/仓库，与"起炉需 ≥ 一批"对称（凑够一批再开）
       if (avail < r.batchUnits) {
         const doneBatches = r.batchesDone
+        refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
         const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
@@ -468,11 +520,16 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       }
       const qty = r.batchUnits // 每批整批扣料（不足一批已在上方停工，不再有小批）
       if (r.lockUnits !== undefined) r.lockUnits -= qty // 本轮锁量递减（≤0 时下一轮走上面的定额完成分支）
-      // 从货仓优先扣料，余下取仓库
-      const fromCargo = Math.min(countItem(state, r.itemId), qty)
-      if (fromCargo > 0) removeItem(state, r.itemId, fromCargo)
-      const fromWare = qty - fromCargo
-      if (fromWare > 0) removeWare(state, r.itemId, fromWare)
+      if (usesClaim) {
+        // 私有料账：起炉时已把料从公共库存扣出，本批只从私有账扣（不再动货仓/仓库）
+        r.claimedUnits = Math.max(0, (r.claimedUnits ?? 0) - qty)
+      } else {
+        // 从货仓优先扣料，余下取仓库
+        const fromCargo = Math.min(countItem(state, r.itemId), qty)
+        if (fromCargo > 0) removeItem(state, r.itemId, fromCargo)
+        const fromWare = qty - fromCargo
+        if (fromWare > 0) removeWare(state, r.itemId, fromWare)
+      }
       let batchIncome = 0 // 2026-09-08：离线结算预估收入（矿物按站内收价；彩头装备按市场基准价粗估；碎片不计）
       if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
@@ -502,8 +559,10 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
         r.recAcc = acc
         // 高级箱（2026-09-10 船长定，同日解禁）：稀有残骸开箱除常规保底外**必定**额外掉落一件——
-        // 一炉只结算一次（该台炉处理它的第一批），内容见 salvage.rollRareBoxExtra
-        if (profile.rare === true && r.batchesDone === 0) {
+        // **一件 = 一箱**（2026-09-11 两道锁）：①按炉结算一次（本炉第一批）②本炉须具开箱资格
+        // （起炉时"未开箱存量 ≥ 一件"）；开箱即把本炉预占的整件记入 rareOpenedUnits，
+        // 于是退还的余料再炼也不产箱——并行多炉与"跑一批就停再起"都刷不动。
+        if (profile.rare === true && r.batchesDone === 0 && r.rareBoxEligible !== false) {
           const extra = rollRareBoxExtra(state, ctx, profile)
           if (extra) {
             for (const modId of extra.modules) {
@@ -530,6 +589,13 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
             }
             addLog(state, 'trade', `✦ 高级箱：稀有残骸开箱额外掉落——${extra.note}。`)
           }
+          // 「一件 = 一箱」第二道锁：本炉预占的这**整件**记为"已开箱"（含之后退还的余料）——
+          // 该件剩下的料仍可精炼出矿物，但不再产箱。
+          // 注：本批已把 lockUnits 扣过一份，故这里加回本批的 qty，记的是**起炉时预占的整件**。
+          const claim = (r.lockUnits ?? 0) + qty
+          if (claim > 0) {
+            state.rareOpenedUnits[r.itemId] = (state.rareOpenedUnits[r.itemId] ?? 0) + claim
+          }
         }
       } else {
         // 精炼批：产物矿物入库，并累计进 r.recAcc.min（停炉/结束日志出明细）
@@ -547,12 +613,24 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         }
         r.recAcc = acc
       }
+      // 「一件 = 一箱」账本：本批**先记账后核销**（开箱的那一批要先把整件记为已开箱，再扣掉本批消耗的
+      // 10 m³），故核销放在批末：这样 `rareOpenedUnits ≤ 存量` 始终成立，且新捡到的整件不会被误判成
+      // "已开箱"（否则第二件残骸就打不出箱子）。
+      if (isRecycle && (state.rareOpenedUnits[r.itemId] ?? 0) > 0) {
+        state.rareOpenedUnits[r.itemId] = Math.max(0, (state.rareOpenedUnits[r.itemId] ?? 0) - qty)
+      }
       if (r.worker !== 'pilot' && stats) {
         addAiRefineBatch(stats, r.worker, isRecycle)
         if (batchIncome > 0) addAiIncome(stats, r.worker, batchIncome)
       }
       r.batchesDone += 1
       r.finishAtGameMs += r.cycleMs // 下一批到点；届时若余料耗尽/不足一批由上方分支自动停炉
+      // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：私有料账**本批已吃完** → 当场收工，
+      // 不再空转一个批周期（把到点时间拨到"现在"，下一轮循环直接进上面的「料尽 = 本炉定额完成」分支）。
+      if (r.claimedUnits !== undefined && r.claimedUnits <= 0) {
+        r.finishAtGameMs = state.gameMs
+        continue
+      }
     }
   }
 }
@@ -678,7 +756,7 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
     return { ok: false, error: `ISK 不足：${ship.name} 收购挂单约 ${est.toLocaleString('zh-CN')} ISK。` }
   }
   const order = placeBuyOrder(state, ctx, good.key, est, 1)
-  if (!order) return { ok: false, error: '挂收购单失败（钱包或参数异常）。' }
+  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
   addLog(state, 'trade', `${ship.name} 市场暂无现货——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} ISK，到货自动停入机库（可随时撤销）。`)
   return { ok: true }
 }

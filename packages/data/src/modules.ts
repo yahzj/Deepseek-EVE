@@ -384,7 +384,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneDmgBonus: 0.12,
     cpuUse: 8,
-    description: '放飞无人机单发伤害 +12%（乘入无人机自身基数）。无人机流派的火力核心。',
+    description: '放飞无人机单发伤害 +12%。无人机流派的火力核心。',
   },
   {
     id: 'mod-drone-tac-2',
@@ -443,7 +443,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { kinetic: 0.2 },
     cpuUse: 5,
-    description: '动能抗 +20%（乘入制：0 基础船面板 +20%，25% 基础船 → 40%，上限 90%）。动能是协会武装最常用弹种——默认悬赏都吃这口。',
+    description: '动能抗 +20%（上限 90%）。动能是协会武装最常用弹种——默认悬赏都吃这口。',
   },
   {
     id: 'mod-shield-exp-1',
@@ -452,7 +452,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { explosive: 0.2 },
     cpuUse: 5,
-    description: '高爆抗 +20%（乘入制，上限 90%）。克制爆破弹与鱼雷型敌人。',
+    description: '高爆抗 +20%（上限 90%）。克制爆破弹与鱼雷型敌人。',
   },
   {
     id: 'mod-shield-pla-1',
@@ -461,7 +461,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { plasma: 0.2 },
     cpuUse: 5,
-    description: '能量抗 +20%（乘入制，上限 90%）。对能量武器的调谐方案。',
+    description: '能量抗 +20%（上限 90%）。对能量武器的调谐方案。',
   },
   {
     id: 'mod-shield-kin-2',
@@ -470,7 +470,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { kinetic: 0.35 },
     cpuUse: 15,
-    description: '动能抗 +35%（乘入制：0 基础船 +35%，25% 基础船 → 51%，上限 90%）。带弹道预测算法的第二代调谐器。',
+    description: '动能抗 +35%（上限 90%）。带弹道预测算法的第二代调谐器。',
   },
   {
     id: 'mod-shield-exp-2',
@@ -479,7 +479,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { explosive: 0.35 },
     cpuUse: 15,
-    description: '高爆抗 +35%（乘入制，上限 90%）。专为爆破弹道优化的护盾频段。',
+    description: '高爆抗 +35%（上限 90%）。专为爆破弹道优化的护盾频段。',
   },
   {
     id: 'mod-shield-pla-2',
@@ -488,7 +488,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { plasma: 0.35 },
     cpuUse: 15,
-    description: '能量抗 +35%（乘入制，上限 90%）。高频能量护盾的稳定方案。',
+    description: '能量抗 +35%（上限 90%）。高频能量护盾的稳定方案。',
   },
   {
     id: 'mod-shield-kin-3',
@@ -497,7 +497,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { kinetic: 0.5 },
     cpuUse: 40,
-    description: '动能抗 +50%（乘入制：0 基础船 +50%，25% 基础船 → 63%，上限 90%）。旗舰级弹道拦截阵列（市场稀有）。',
+    description: '动能抗 +50%（上限 90%）。旗舰级弹道拦截阵列（市场稀有）。',
   },
   {
     id: 'mod-shield-exp-3',
@@ -506,7 +506,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { explosive: 0.5 },
     cpuUse: 40,
-    description: '高爆抗 +50%（乘入制，上限 90%）。可以正面接下爆破弹雨的强化护盾（市场稀有）。',
+    description: '高爆抗 +50%（上限 90%）。可以正面接下爆破弹雨的强化护盾（市场稀有）。',
   },
   {
     id: 'mod-shield-pla-3',
@@ -515,7 +515,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { plasma: 0.5 },
     cpuUse: 40,
-    description: '能量抗 +50%（乘入制，上限 90%）。能量武器时代的盾构解（市场稀有）。',
+    description: '能量抗 +50%（上限 90%）。能量武器时代的盾构解（市场稀有）。',
   },
 
   // ══════════ 护盾扩展器（shield 容量件：纯容量，与抗性件同槽二选一） ══════════
@@ -556,7 +556,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { kinetic: 0.25 },
     cpuUse: 4,
-    description: '动能抗 +25%（乘入制：0 基础船 +25%，25% 基础船 → 44%，上限 90%）。动能破甲弹的克制镀层。',
+    description: '动能抗 +25%（上限 90%）。动能破甲弹的克制镀层。',
   },
   {
     id: 'mod-armor-exp-1',
@@ -565,7 +565,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.25 },
     cpuUse: 4,
-    description: '高爆抗 +25%（乘入制，上限 90%）。高爆对装甲是双倍伤害——这是第一道防线。',
+    description: '高爆抗 +25%（上限 90%）。高爆对装甲是双倍伤害——这是第一道防线。',
   },
   {
     id: 'mod-armor-pla-1',
@@ -574,7 +574,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { plasma: 0.25 },
     cpuUse: 4,
-    description: '能量抗 +25%（乘入制，上限 90%）。隔热镀层方案。',
+    description: '能量抗 +25%（上限 90%）。隔热镀层方案。',
   },
   {
     id: 'mod-armor-kin-2',
@@ -583,7 +583,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { kinetic: 0.4 },
     cpuUse: 12,
-    description: '动能抗 +40%（乘入制：0 基础船 +40%，25% 基础船 → 55%，上限 90%）。复合夹层结构，动能弹的噩梦。',
+    description: '动能抗 +40%（上限 90%）。复合夹层结构，动能弹的噩梦。',
   },
   {
     id: 'mod-armor-exp-2',
@@ -592,7 +592,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.4 },
     cpuUse: 12,
-    description: '高爆抗 +40%（乘入制，上限 90%）。爆震格栅装甲，重炮手眼中最硬的骨头。',
+    description: '高爆抗 +40%（上限 90%）。爆震格栅装甲，重炮手眼中最硬的骨头。',
   },
   {
     id: 'mod-armor-pla-2',
@@ -601,7 +601,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { plasma: 0.4 },
     cpuUse: 12,
-    description: '能量抗 +40%（乘入制，上限 90%）。陶瓷隔热层叠技术。',
+    description: '能量抗 +40%（上限 90%）。陶瓷隔热层叠技术。',
   },
   {
     id: 'mod-armor-kin-3',
@@ -610,7 +610,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { kinetic: 0.55 },
     cpuUse: 32,
-    description: '动能抗 +55%（乘入制：0 基础船 +55%，25% 基础船 → 66%，上限 90%）。要塞级复合装甲（市场稀有）。',
+    description: '动能抗 +55%（上限 90%）。要塞级复合装甲（市场稀有）。',
   },
   {
     id: 'mod-armor-exp-3',
@@ -619,7 +619,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.55 },
     cpuUse: 32,
-    description: '高爆抗 +55%（乘入制，上限 90%）。顶住高爆齐射的移动堡垒（市场稀有）。',
+    description: '高爆抗 +55%（上限 90%）。顶住高爆齐射的移动堡垒（市场稀有）。',
   },
   {
     id: 'mod-armor-pla-3',
@@ -628,7 +628,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { plasma: 0.55 },
     cpuUse: 32,
-    description: '能量抗 +55%（乘入制，上限 90%）。能硬抗能量炮的烧蚀装甲（市场稀有）。',
+    description: '能量抗 +55%（上限 90%）。能硬抗能量炮的烧蚀装甲（市场稀有）。',
   },
 
   // ══════════ 装甲增厚板（armor 容量件：纯容量，与抗性件同槽二选一） ══════════
@@ -705,7 +705,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.06 },
     cpuUse: 5,
-    description: '动能武器支援（低槽）：动能炮台单发伤害 +6%。同类可多装、效果全额叠加。',
+    description: '动能武器支援（低槽）：动能炮台单发伤害 +6%。',
   },
   {
     id: 'mod-stab-kin-2',
@@ -714,7 +714,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.1 },
     cpuUse: 15,
-    description: '动能武器支援（低槽）：动能炮台单发伤害 +10%。同类可多装、效果全额叠加。',
+    description: '动能武器支援（低槽）：动能炮台单发伤害 +10%。',
   },
   {
     id: 'mod-stab-kin-3',
@@ -723,7 +723,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.15 },
     cpuUse: 40,
-    description: '动能武器支援（低槽）：动能炮台单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+    description: '动能武器支援（低槽）：动能炮台单发伤害 +15%（市场稀有）。',
   },
   {
     id: 'mod-stab-exp-1',
@@ -732,7 +732,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.06 },
     cpuUse: 5,
-    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +6%。同类可多装、效果全额叠加。',
+    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +6%。',
   },
   {
     id: 'mod-stab-exp-2',
@@ -741,7 +741,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.1 },
     cpuUse: 15,
-    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +10%。同类可多装、效果全额叠加。',
+    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +10%。',
   },
   {
     id: 'mod-stab-exp-3',
@@ -750,7 +750,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.15 },
     cpuUse: 40,
-    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +15%（市场稀有）。',
   },
   {
     id: 'mod-stab-pla-1',
@@ -759,7 +759,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.06 },
     cpuUse: 5,
-    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +6%。同类可多装、效果全额叠加。',
+    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +6%。',
   },
   {
     id: 'mod-stab-pla-2',
@@ -768,7 +768,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.1 },
     cpuUse: 15,
-    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +10%。同类可多装、效果全额叠加。',
+    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +10%。',
   },
   {
     id: 'mod-stab-pla-3',
@@ -777,7 +777,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.15 },
     cpuUse: 40,
-    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +15%。同类可多装、效果全额叠加（市场稀有）。',
+    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +15%（市场稀有）。',
   },
   {
     id: 'mod-rof-1',
@@ -786,7 +786,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.05,
     cpuUse: 5,
-    description: '炮台射速支援（低槽）：装填间隔 −5%（约合射速 +5%）。同类可多装、效果全额叠加。',
+    description: '炮台射速支援（低槽）：装填间隔 −5%。',
   },
   {
     id: 'mod-rof-2',
@@ -795,7 +795,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.08,
     cpuUse: 15,
-    description: '炮台射速支援（低槽）：装填间隔 −8%（约合射速 +9%）。同类可多装、效果全额叠加。',
+    description: '炮台射速支援（低槽）：装填间隔 −8%。',
   },
   {
     id: 'mod-rof-3',
@@ -804,7 +804,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.12,
     cpuUse: 40,
-    description: '炮台射速支援（低槽）：装填间隔 −12%（约合射速 +14%）。同类可多装、效果全额叠加（市场稀有）。',
+    description: '炮台射速支援（低槽）：装填间隔 −12%（市场稀有）。',
   },
   {
     id: 'mod-track-1',
@@ -813,7 +813,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.08,
     cpuUse: 5,
-    description: '索敌支援（中槽）：炮台命中整体提升 8%。同类多装收益递减。',
+    description: '索敌支援（中槽）：炮台命中整体提升 8%。',
   },
   {
     id: 'mod-track-2',
@@ -822,7 +822,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.12,
     cpuUse: 15,
-    description: '索敌支援（中槽）：炮台命中整体提升 12%。同类多装收益递减。',
+    description: '索敌支援（中槽）：炮台命中整体提升 12%。',
   },
   {
     id: 'mod-track-3',
@@ -831,7 +831,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.16,
     cpuUse: 40,
-    description: '索敌支援（中槽）：炮台命中整体提升 16%。同类多装收益递减（市场稀有）。',
+    description: '索敌支援（中槽）：炮台命中整体提升 16%（市场稀有）。',
   },
   {
     id: 'mod-gyro-1',
@@ -840,7 +840,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.1,
     cpuUse: 5,
-    description: '机动支援（中槽）：被命中缺口削减 10%（敌命中 60% → 54%）。同类多装收益递减。',
+    description: '机动支援（中槽）：被命中缺口削减 10%。',
   },
   {
     id: 'mod-gyro-2',
@@ -849,7 +849,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.15,
     cpuUse: 15,
-    description: '机动支援（中槽）：被命中缺口削减 15%（敌命中 60% → 51%）。同类多装收益递减。',
+    description: '机动支援（中槽）：被命中缺口削减 15%。',
   },
   {
     id: 'mod-gyro-3',
@@ -858,7 +858,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.2,
     cpuUse: 40,
-    description: '机动支援（中槽）：被命中缺口削减 20%（敌命中 60% → 48%）。同类多装收益递减（市场稀有）。',
+    description: '机动支援（中槽）：被命中缺口削减 20%（市场稀有）。',
   },
 
   // ══════════ B3 打捞器（salvager：高槽无伤害件，2026-09-05 船长定稿） ══════════
@@ -871,7 +871,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 2,
     salvageCycleMs: 10_000,
-    description: '残骸打捞（高槽，无伤害）：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。同类可多装。',
+    description: '残骸打捞（高槽，无伤害）：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。',
   },
   {
     id: 'mod-salvager-2',
@@ -880,7 +880,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
-    description: '残骸打捞（高槽，无伤害）：周期缩短至 8 秒/轮（每轮仍 1 具）；同类可多装（市场稀有）。',
+    description: '残骸打捞（高槽，无伤害）：周期缩短至 8 秒/轮（每轮仍 1 具）（市场稀有）。',
   },
   {
     id: 'mod-salvager-3',
@@ -889,7 +889,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,
-    description: '残骸打捞（高槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）；同类可多装（市场稀有）。',
+    description: '残骸打捞（高槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）（市场稀有）。',
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；
@@ -904,7 +904,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 5,
     repairHullHp: 5,
     repairKit: 'repairkit-civ',
-    description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 5 点（单层满则全额给另一层），每跳消耗 1 枚民用修理组件；组件耗尽自动停机——保命件，修不过敌方火力。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 5 点，每跳消耗 1 枚民用修理组件——保命件，修不过敌方火力。',
   },
   {
     id: 'mod-hullrep-1',
@@ -915,7 +915,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 10,
     repairHullHp: 10,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 10 点（单层满则全额给另一层），每跳消耗 1 枚军用修理组件；组件耗尽自动停机——显著延寿，修不过敌方火力。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 10 点，每跳消耗 1 枚军用修理组件——显著延寿，修不过敌方火力。',
   },
   {
     id: 'mod-hullrep-2',
@@ -926,7 +926,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 18,
     repairHullHp: 18,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒自动修复装甲与结构各 18 点（单层满则全额给另一层），每跳消耗 1 枚军用修理组件；组件耗尽自动停机——高配巡洋/主力舰的持久战底牌。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗 1 枚军用修理组件——高配巡洋/主力舰的持久战底牌。',
   },
 
   /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；
@@ -939,7 +939,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     lockDmgBonus: 0.08,
-    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +8%（本舰全部武器；同类多装收益递减）。',
+    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +8%（本舰全部武器）。',
   },
   {
     id: 'mod-lock-2',
@@ -948,7 +948,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 14,
     lockDmgBonus: 0.12,
-    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +12%（本舰全部武器；同类多装收益递减）。',
+    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +12%（本舰全部武器）。',
   },
   {
     id: 'mod-lock-3',
@@ -957,7 +957,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 26,
     lockDmgBonus: 0.2,
-    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器；同类多装收益递减）。',
+    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器）。',
   },
 
   /* ═══ 2026-09-10 赏金任务·窝点专属装备（船长认可草案；**数值为占位初值，等船长定数后改这里**） ═══
@@ -976,7 +976,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 3600,
     minRangeM: 180,
     hitRate: 0.84,
-    falloff: 0.35,
+    falloff: 0.35, // 2026-09-11 船长定：本件**保持 0.35**（只把 D 族守墓者长炮单独上调到 0.6；普通 MK3 为 0.5）
     reloadMs: 1200,
     dmgMult: 1.8,
     cpuUse: 34,
@@ -1022,7 +1022,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairFree: true,
     cpuUse: 30,
     description:
-      '异形生物（C 族）窝点专属：层叠生体甲壳——装甲层三系减伤各 +10%（缺口复合、多件递减），并自带**无消耗自愈**：战斗中每 5 秒自动修复 6 点装甲（不吃修理组件、永不停机；同型多件按曲线递减）。单系抗性远不如专精镀层，胜在能自己长回来。',
+      '异形生物（C 族）窝点专属：层叠生体甲壳——装甲层三系减伤各 +10%，并自带**无消耗自愈**：战斗中每 5 秒自动修复 6 点装甲（不吃组件）。单系抗性远不如专精镀层，胜在能自己长回来。',
   },
   {
     id: 'mod-lair-dc-c',
@@ -1035,7 +1035,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairFree: true,
     cpuUse: 34,
     description:
-      '异形生物（C 族）窝点专属：生体组织长成的损管腔——**结构层三系减伤各 +25%**（大幅加厚船体骨架），并自带无消耗自愈：战斗中每 5 秒自动修复 4 点结构。生物不该有护盾，它靠的是"被打穿也能长回来"。',
+      '异形生物（C 族）窝点专属：生体组织长成的损管腔——**结构层三系减伤各 +25%**，并自带无消耗自愈：战斗中每 5 秒自动修复 4 点结构。生物不该有护盾，它靠的是"被打穿也能长回来"。',
   },
   {
     id: 'mod-lair-laser-c',
@@ -1062,7 +1062,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 },
     cpuUse: 42,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝守备用的全能重盾——三系减伤各 +30%（缺口复合、多件递减；0.9 封顶）。单系不如专精增强器，胜在不用猜对手弹种；CPU 占用很重（42）。',
+      '守墓古舰（D 族）窝点专属：陵寝守备用的全能重盾——三系减伤各 +30%。单系不如专精增强器，胜在不用猜对手弹种；CPU 占用很重（42）。',
   },
   {
     id: 'mod-lair-turret-d',
@@ -1079,7 +1079,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 10.35,
     cpuUse: 62,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝守备炮——**基础命中 100%**（必中量级）、12 km 超远程点名，射速只有攻坚炮台的四成、单发威力是它的两倍（总输出 ≈ 攻坚炮台的八成）；远端命中衰减也更轻。装填极慢，打空一发就是七秒。',
+      '守墓古舰（D 族）窝点专属：陵寝守备炮——**基础命中 100%**（必中量级）、12 km 超远程点名，射速只有攻坚炮台的四成、单发威力是它的两倍（总输出 ≈ 攻坚炮台的八成）；远端命中衰减也更轻（射程尽头仍有六成命中）。装填极慢，打空一发就是七秒。',
   },
   {
     id: 'mod-lair-armor-d',
@@ -1090,7 +1090,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedPenaltyPct: 0.25,
     cpuUse: 42,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝级复合重甲——装甲容量 **+110%**（比装甲增厚板 MK3 还厚四成），代价是**战斗机动速度 −25%**（多件不叠加、取最重一件）与 42 点 CPU：装它等于少一门重炮、也跑不快。守墓者从来不需要追人。',
+      '守墓古舰（D 族）窝点专属：陵寝级复合重甲——装甲容量 **+110%**（比装甲增厚板 MK3 还厚四成），代价是**战斗机动速度 −25%**（多件不叠加）与 42 点 CPU：装它等于少一门重炮、也跑不快。守墓者从来不需要追人。',
   },
   {
     id: 'mod-lair-turret-e',

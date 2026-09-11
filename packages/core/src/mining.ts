@@ -319,7 +319,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     m.beltId = null
     m.phase = 'mining'
     m.rvLeft = 0
-    addLog(state, 'warn', '当前舰船数据缺失，采矿作业已停止。')
+    addLog(state, 'warn', '舰队里找不到当前舰船，采矿作业已停止。')
     return
   }
 
@@ -395,7 +395,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.phase = 'mining'
       m.cycleAccMs = 0
       m.rvLeft = 0
-      addLog(state, 'warn', '矿带/矿石数据缺失，采矿作业已停止。')
+      addLog(state, 'warn', '矿带已不存在，采矿作业已停止。')
       return
     }
     const cycleMs = params.cycleMs
@@ -417,7 +417,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.phase = 'mining'
       m.cycleAccMs = 0
       m.rvLeft = 0
-      addLog(state, 'warn', '矿带产物数据缺失，采矿作业已停止。')
+      addLog(state, 'warn', '矿带产物记录缺失，采矿作业已停止。')
       return
     }
 

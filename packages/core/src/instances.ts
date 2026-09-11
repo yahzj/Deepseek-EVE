@@ -7,7 +7,7 @@ import type { GameState } from './state'
 import type { ShipDef, SimContext } from './types'
 import { uidDefId, uidSeqNum } from './labels'
 
-/** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/数据缺失返回 undefined） */
+/** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/记录缺失返回 undefined） */
 export function fleetDefOf(state: GameState, ctx: SimContext, uid: string): ShipDef | undefined {
   const entry = state.fleet[uid]
   if (!entry) return undefined

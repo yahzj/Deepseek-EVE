@@ -75,8 +75,11 @@ export interface WeaponSpec {
 }
 
 /**
- * 激光威力系数（2026-09-08 船长定：幅度 = 命中衰减的 0.8 倍）——
- * 系数 = 1 − 距离进度 × (1−falloff) × 0.8，保底 0（例 falloff 0.3 → 远端威力 ×0.44）。
+ * 激光威力系数（**2026-09-11 船长定：合并旧修正、不再与命中衰减挂钩**）——
+ * 旧口径 = `1 − 进度 ×(1−falloff) ×0.8`（"幅度 = 命中衰减的 0.8 倍"，falloff 0.3 时远端 ×0.44）；
+ * 新口径 = **近端 ×1 → 最远端 = 该武器 `falloff`（激光件现统一 0.1）**，线性内插、无任何换算系数：
+ *   系数 = 1 − 进度 × (1 − falloff)   （保底 0；falloff 0.1 → 最远端威力 ×0.10）
+ * ⇒ "远端衰减"对能量武器就是**最远端威力倍率本身**，与动能/爆炸的"远端命中倍率"语义对齐、一眼可读。
  */
 export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
   const { minRangeM: min, maxRangeM: max, falloff } = w
@@ -410,7 +413,7 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
   return PROFILE_SPLIT[profile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
 }
 
-/** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船数据缺失） */
+/** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船记录缺失） */
 /** 我方规格快照（手动/AI/MC/预估同源）。
  * ammoIds（弹药 MK2，2026-09-09）：战斗内实装弹 id 覆盖（缺货回退等）——
  * 推进/视图重建传 battle.ammoIds 使伤害与实装弹种一致；缺省 = 船装配 ammoPref，再缺省 = 基础弹。 */
@@ -937,7 +940,9 @@ function foeMultiShipCompMul(anomaly: AnomalyDef): number {
  *   `round(HULL_CLASS_BASE_SPEED[舰种档] × speedRatio × speedMul)` ——
  *   **舰种基准 × 倍率**（基准 = `bal.hullClassBaseSpeedMps`，倍率 = `ship.speedRatio` 与条目 `speedMul`）。
  * - 射程带：两端同乘 `rangeMul` 后取整（保持 min < max）
- * - 主系/命中：可逐条覆写（缺省走舰级）；能量主系一律光束必中
+ * - 主系/命中：可逐条覆写（缺省走舰级）；**能量主系形态**由 `energyForm` 决定——
+ *   缺省/`'beam'` = 光束必中（不消费命中）；`'spit'` = **掷命中**（消费 `hitRate`、命中随距离衰减）。
+ *   2026-09-11 船长裁决⑤「立「能量·掷命中」档」。
  */
 function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts): UnitSpec[] {
   const prefix = opts.tagPrefix ?? ''
@@ -966,6 +971,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const rangeMin = Math.max(1, Math.min(rangeMax - 1, u.slot.rangeMinM ?? Math.round(ship.rangeMinM * rangeMul)))
     // 战术：卡上覆写优先（2026-09-11 船长「头目建议允许多个战术」）——同一条头目舰可配多种打法
     const tactic = u.slot.tactic ?? ship.tactic
+    // 能量武器形态（2026-09-11 船长裁决⑤「立「能量·掷命中」档」）：条目覆写 > 舰级，缺省 = 光束必中。
+    // **只对能量主系生效**：动能/爆炸主系本来就是 fixed 掷命中，本字段不参与。
+    const energyForm = (u.slot.energyForm ?? ship.energyForm) === 'spit' ? ('spit' as const) : ('beam' as const)
+    const isBeam = type === 'plasma' && energyForm === 'beam' // 光束必中（缺省口径，零行为变化）
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**条目写了 `enterAt` 且总开关打开**时
     // 才给单位挂 `foeReinforceAt`——开关关闭时本字段一律不写（与 `foeCanCharge` 同款总开关形态，
     // 这保证"关了就是零行为变化"）。触发条件全无效 = 视为未写 = 开战即在（见 `FoeReinforceTrigger` 注释）。
@@ -997,14 +1006,17 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       weapons: [
         {
           label: `${name} 武器组`,
-          kind: type === 'plasma' ? ('beam' as const) : ('fixed' as const),
+          // 形态（2026-09-11 船长裁决⑤）：能量主系 = 光束必中（缺省）/ 掷命中（`energyForm: 'spit'`）；
+          // 动能/爆炸主系一律 fixed 掷命中，不受本字段影响。
+          kind: isBeam ? ('beam' as const) : ('fixed' as const),
           fixedType: type,
           shotDmg,
           ...(multiShots ? { shotsByType: multiShots } : {}),
           maxRangeM: rangeMax,
           minRangeM: rangeMin,
           blindDmgMul: ship.blindDmgMul ?? 0.3,
-          hitRate: type === 'plasma' ? 1 : (u.slot.hitRate ?? ship.hitRate),
+          // 必中光束不消费命中（恒 1）；掷命中（动能/爆炸 + 能量 spit）走命中率
+          hitRate: isBeam ? 1 : (u.slot.hitRate ?? ship.hitRate),
           falloff: ship.falloff,
           reloadMs: ship.reloadMs,
         },
@@ -1680,7 +1692,7 @@ export function pushBattleFx(
   if (b.fx.length > 48) b.fx.splice(0, b.fx.length - 48)
 }
 
-/** 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（数据缺失）。
+/** 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（记录缺失）。
  * atGameMs = 开战时刻（应传"到港时刻"，让离线大推进能把后续时间全部推完）。
  * desireM = 玩家期望距离偏好（缺省 = 主武器有效射程中点）。 */
 /** 本场战斗的目标卡（2026-09-10）：赏金任务·窝点按 tier 现场派生强化卡（威胁/波次/僚机/名称）；
@@ -1853,7 +1865,7 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
 
 /** 战斗可视化武器卡（战场射程弧/弹药颜色用）：返回双方射程带、当前弹药与开火弹型。
  * 我方逐武器展开：炮台颜色 = 与引擎同口径的"剩余最多弹型"（无弹 null，画虚线灰弧）；
- * 敌方整编队聚合一道（同型同射程）。无战斗/数据缺失返回 null。 */
+ * 敌方整编队聚合一道（同型同射程）。无战斗/记录缺失返回 null。 */
 export function battleArcsFor(
   state: GameState,
   ctx: SimContext,

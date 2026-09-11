@@ -118,7 +118,7 @@ export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildS
   return missing
 }
 
-/** 产物显示名（module=装备 / ship=舰船 / item=弹药等物品；数据缺失回退 fallback） */
+/** 产物显示名（module=装备 / ship=舰船 / item=弹药等物品；记录缺失回退 fallback） */
 function productNameOf(ctx: SimContext, b: NonNullable<ReturnType<typeof findBuildable>>, fallback: string): string {
   if (b.kind === 'item') return ctx.items.get(b.itemId ?? '')?.name ?? fallback
   if (b.kind === 'module') return ctx.modules.get(b.moduleId ?? '')?.name ?? fallback
@@ -239,7 +239,7 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
       `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）。`,
     )
   } else {
-    addLog(state, 'warn', '制造作业已取消（引用的蓝图数据缺失，无材料可退）。')
+    addLog(state, 'warn', '制造作业已取消（引用的蓝图记录缺失，无材料可退）。')
   }
   return { ok: true }
 }
@@ -259,7 +259,7 @@ export function setManufacturingLoop(
   goal?: number | null,
 ): CommandResult {
   if (typeof blueprintId !== 'string' || blueprintId.length === 0) {
-    return { ok: false, error: '没有找到这张生产卡（蓝图数据缺失）。' }
+    return { ok: false, error: '没有找到这张生产卡（蓝图记录缺失）。' }
   }
   const g = Number.isFinite(goal) ? Math.floor(goal ?? 0) : 0
   const prev = state.manufacturingLoops[blueprintId]
@@ -315,7 +315,7 @@ function loopRefOf(state: GameState, blueprintId: string | null): GameState['man
  * AI 核心驱动的线到点完成即归还核心。stats = 离线结算统计器（可选，见 settleStats.ts）
  * 循环制造（2026-09-10 上移到卡片级）：开关与目标件数按蓝图读 state.manufacturingLoops，
  * 该卡全部线共用——完成一件后自动续做同一蓝图（劳动者保持占用、相位推进 finishAt 可跨大 delta
- * 连续结算多件），本轮合计 produced 逐件累加；停止条件 = 合计达目标件数 / 材料不足 / 数据缺失 /
+ * 连续结算多件），本轮合计 produced 逐件累加；停止条件 = 合计达目标件数 / 材料不足 / 记录缺失 /
  * 开关已关（完成最后一件即止）。自动停线时把 `on` 置假并记 `stopWhy`（每卡一条汇总日志），
  * 该卡其它线跑完当前件即止、核心归还。 */
 export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: SettleStats): void {
@@ -333,7 +333,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
     let stopWhy = '' // 收尾原因（非循环线恒为空；空 = 正常完成停止/开关已关）
 
 
-    /** 结算当前这一件（产出入账 + 完成日志 + 离线统计）；数据缺失抛错由调用处 catch 语义处理 */
+    /** 结算当前这一件（产出入账 + 完成日志 + 离线统计）；记录缺失抛错由调用处 catch 语义处理 */
     const settlePiece = (buildable: NonNullable<ReturnType<typeof findBuildable>>): boolean => {
       const coreType = byCore ? (worker as AiCoreType) : undefined
       if (buildable.kind === 'module') {
@@ -376,16 +376,16 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       }
       const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
       if (!buildable) {
-        addLog(state, 'warn', '制造作业引用的蓝图数据缺失，产出已丢弃（数据异常）。')
-        stopWhy = '蓝图数据缺失'
+        addLog(state, 'warn', '制造作业引用的蓝图记录缺失，产出已丢弃（异常）。')
+        stopWhy = '蓝图记录缺失'
         break
       }
       // 本轮全卡合计（2026-09-10：卡片级计数，**开关打开期间**逐件累加——含首件；
       // 达成目标时停在"正好等于目标"的件数上，随后收尾的在跑件不再计入，故合计即停线依据）
       if (loop && loop.on === true) loop.produced = (loop.produced ?? 0) + 1
       if (!settlePiece(buildable)) {
-        addLog(state, 'warn', '制造作业引用的产物数据缺失，产出已丢弃（数据异常）。')
-        stopWhy = '产物数据缺失'
+        addLog(state, 'warn', '制造作业引用的产物记录缺失，产出已丢弃（异常）。')
+        stopWhy = '产物记录缺失'
         break
       }
       if (!auto) break
@@ -414,7 +414,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       mf.durationMs = durationMs
     }
 
-    // 收尾判定：单件线 / 开关已关 / 带停因（达目标/缺料/数据缺失）→ 移除线并归还核心；
+    // 收尾判定：单件线 / 开关已关 / 带停因（达目标/缺料/记录缺失）→ 移除线并归还核心；
     // 循环正常续产中（已重排下一件到点）→ 线保留到下一 tick
     const lineEnds = !auto || stopWhy !== ''
     if (!lineEnds) continue

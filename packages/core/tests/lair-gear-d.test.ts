@@ -88,8 +88,8 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     const mk3 = ctx.modules.get('mod-turret-kin-3')!
     expect(d2.hitRate).toBe(1)
     expect(d2.hitRate!).toBeGreaterThan(mk3.hitRate!)
-    // 2026-09-11 船长定（自 main 同步 · 回调批）：窝点专属动能件远端衰减 0.45 → **0.6**（普通 MK3 一律 0.5）
-    // ⇒ 专属件「必中 + 63% 射程 + 远端更准」三条一起成立
+    // 2026-09-11 船长定：窝点专属动能件远端衰减提高到 **0.6**（普通 MK3 一律 0.5）⇒ 专属件的
+    //「必中 + 63% 射程 + 远端更准」三条一起成立（当日先统一 0.5 时它一度相对更重，本批修回）。
     expect(mk3.falloff).toBe(0.5)
     expect(d2.falloff!).toBeGreaterThan(mk3.falloff!)
     expect(d2.maxRangeM).toBe(12_000)

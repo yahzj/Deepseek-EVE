@@ -970,7 +970,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             className="app-select"
             value={effMode}
             onChange={(e) => setMode(e.target.value as AiAssignMode)}
-            title="任务类型：副船任务（采矿/打捞/掩护巡逻）或站内工业（精炼炉与回收炉/组装机制造）"
+            title="任务类型：副船任务（采矿/打捞/掩护巡逻）或站内工业（精炼炉与回收炉/组装机制造线）"
           >
             <option value="mining" disabled={!shipTasksOk}>
               副船 · 采矿任务{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
@@ -982,7 +982,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               副船 · 掩护巡逻{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
             </option>
             <option value="refine">站内 · 精炼炉/回收炉</option>
-            <option value="craft">站内 · 组装机制造</option>
+            <option value="craft">站内 · 组装机制造线</option>
           </select>
           {effMode === 'mining' ? (
             <select className="app-select" value={beltId} onChange={(e) => setBeltId(e.target.value)}>

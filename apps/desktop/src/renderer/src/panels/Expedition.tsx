@@ -1274,7 +1274,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               <div className="app-map-detail-name">
                 {selected.name}
                 {selected.security !== undefined ? (
-                  <span className={`app-sec-chip app-sec-chip-${secTone(selected.security)}`} title="安全等级（EVE 式：越高越安全，负数 = 高危深渊区）">
+                  <span className={`app-sec-chip app-sec-chip-${secTone(selected.security)}`} title="安全等级（越高越安全，负数 = 高危深渊区）">
                     {secText(selected.security)}
                   </span>
                 ) : null}
@@ -1939,7 +1939,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             2026-09-10 船长（混伤）：改为「敌火力 主 80% · 副 20%」——构成与战斗结算同源 */}
         <span
           className="app-dim"
-          title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透。常驻悬赏主系 80% + 副系 20%，窝点（赏金任务）为 60% / 40%"
+          title="敌方火力构成：两系各自吃对应抗性（按层位抗性分别减免）；只堆主系抗会被副系穿透。常驻悬赏主系 80% + 副系 20%，窝点（赏金任务）为 60% / 40%"
         >
           {' '}· 敌火力 <FoeDamageMix anomaly={anomaly} />
         </span>
@@ -2328,7 +2328,11 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           <span className="app-dim">每日 0 点开板</span>
         )}
       </div>
-      {tasks.length === 0 ? (
+      {/* 2026-09-11 修复（玩家反馈「清空赏金任务后敌对派系活跃消失了」）：派系活跃卡**不随 5 席清空而消失**——
+          原先它被放在「tasks.length === 0 ? 空态 : 列表」的**列表分支里**，玩家打完全部 5 席后整块被空态替换，
+          于是置顶的派系活跃卡一起被吞掉（而 core 侧当天照常生效：该星系常驻悬赏 +10% 奖金/威胁、照常掉稀有残骸）。
+          现改为：只要当天有派系活跃（`factionCard` 可解析）就照常渲染，空态行只在"确实没有派系卡"时占位。 */}
+      {tasks.length === 0 && !(faction && factionCard && factionGalaxy) ? (
         <div className="app-dim app-exp-idle">
           {view.bountyOpened
             ? '本日暂无赏金任务——已完成或已过期，明天 0 点整板刷新（已击败的窝点不会重复派发同一条目标）。'
@@ -2411,7 +2415,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     </b>
                     <span
                       className="app-dim"
-                      title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透（常驻悬赏 80% / 20%）"
+                      title="敌方火力构成：两系各自吃对应抗性（按层位抗性分别减免）；只堆主系抗会被副系穿透（常驻悬赏 80% / 20%）"
                     >
                       {' '}· 敌火力 <FoeDamageMix anomaly={boostCard} />
                     </span>
@@ -2483,6 +2487,13 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               )
             })()
           ) : null}
+          {/* 5 席已清空时：派系活跃卡仍在（上方），这里补一行说明为什么席位是空的 */}
+          {tasks.length === 0 ? (
+            <div className="app-dim app-exp-idle">
+              本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」当天仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、
+              胜利照常掉稀有残骸）；明天 0 点整板刷新。
+            </div>
+          ) : null}
           {tasks.map((t) => {
           const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
           const tier = (t.lairTier ?? 1) as 1 | 2 | 3
@@ -2511,7 +2522,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const reqStanding = base?.standingReq ?? 0
           const standingMet = standing >= reqStanding
           const lockedTxt = !base || notCandidate
-            ? '该窝点情报已失效（目标数据缺失），等下一批刷新'
+            ? '该窝点情报已失效（目标已不存在），等下一批刷新'
             : !standingMet
               ? `协会声望不足（需 ${reqStanding}，当前 ${standing}）——多完成低级目标攒声望后再接这条赏金任务`
               : unexplored
@@ -2583,7 +2594,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                   title={
                     card
                       ? `按本档位强化后的窝点实测推演：预计损耗装甲 ≈${Math.round((fc?.armorLoss ?? 0) * 100)}%、结构 ≈${Math.round((fc?.hullLoss ?? 0) * 100)}%（单局结果仍有随机波动）`
-                      : '目标数据缺失，无法评估'
+                      : '目标已失效，无法评估'
                   }
                 >
                   {Math.round(chance)}%
@@ -2591,7 +2602,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 {card ? (
                   <span
                     className="app-dim"
-                    title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透。赏金任务（窝点）敌人的混伤更重：主 60% / 副 40%"
+                    title="敌方火力构成：两系各自吃对应抗性（按层位抗性分别减免）；只堆主系抗会被副系穿透。赏金任务（窝点）敌人的混伤更重：主 60% / 副 40%"
                   >
                     {' '}· 敌火力 <FoeDamageMix anomaly={card} />
                   </span>
@@ -2786,7 +2797,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             {!explored ? (
               <div className="app-dim">该星系尚未探索——先到星图上扫描点亮。</div>
             ) : built ? (
-              <div className="app-dim">已并入空间站网络 = 母港镜像：本星系采矿返航 / 市场买卖 / 精炼回收 / 组装机制造 / 维修 / 补给 / 换驾驶 / 卸货全可用（共享母港设施与仓库）。</div>
+              <div className="app-dim">已并入空间站网络 = 母港镜像：本星系采矿返航 / 市场买卖 / 精炼回收 / 组装机制造线 / 维修 / 补给 / 换驾驶 / 卸货全可用（共享母港设施与仓库）。</div>
             ) : tier ? (
               <>
                 <div className="app-station-progress">

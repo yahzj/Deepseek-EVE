@@ -12,7 +12,10 @@ import type {
   BalanceConfig,
   BeltDef,
   BlueprintDef,
+  CommsFactionDef,
+  CommsMessageDef,
   DamageType,
+  DialogueScriptDef,
   FittedModules,
   GalaxyDef,
   GalaxyEdgeDef,
@@ -173,6 +176,8 @@ export function moduleDef(
     lockDmgBonus?: number
     // 无人机中继天线（2026-09-10：高槽 drone-relay——放飞无人机射程加成）
     droneRangeBonusPct?: number
+    // 结构层抗性（2026-09-11：生体损管腔引出——引擎按缺口复合，收敛分组 = gap）
+    hullResistAdd?: Partial<Record<DamageType, number>>
   },
 ): ModuleDef {
   return {
@@ -194,6 +199,7 @@ export function moduleDef(
     ...(opts?.shieldResistAdd !== undefined ? { shieldResistAdd: opts.shieldResistAdd } : {}),
     ...(opts?.armorHpBonus !== undefined ? { armorHpBonus: opts.armorHpBonus } : {}),
     ...(opts?.armorResistAdd !== undefined ? { armorResistAdd: opts.armorResistAdd } : {}),
+    ...(opts?.hullResistAdd !== undefined ? { hullResistAdd: opts.hullResistAdd } : {}),
     ...(opts?.speedBonusPct !== undefined ? { speedBonusPct: opts.speedBonusPct } : {}),
     ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
     ...(opts?.droneBayBonusM3 !== undefined ? { droneBayBonusM3: opts.droneBayBonusM3 } : {}),
@@ -460,6 +466,12 @@ export function makeTestCtx(opts?: {
   travelEvents?: Iterable<TravelEventDef>
   stations?: Iterable<StationSiteDef>
   marketGoods?: Iterable<MarketGoodDef>
+  /** 通讯消息表（2026-09-11 通讯系统；缺省空表 = 不送任何消息） */
+  commsMessages?: Iterable<CommsMessageDef>
+  /** NPC 势力档案（2026-09-11 通讯 v2；缺省空表 = 发件人降级显示原文 id） */
+  commsFactions?: Iterable<CommsFactionDef>
+  /** 通讯剧本目录（通讯页与剧本共处一个收件箱；缺省空表） */
+  dialogues?: Iterable<DialogueScriptDef>
   /** 关闭随机事件流（精确断言时间线/日志/rng 的测试用） */
   quietEvents?: boolean
   balance?: BalanceConfig
@@ -530,6 +542,9 @@ export function makeTestCtx(opts?: {
     travelEvents,
     stations,
     marketGoods,
+    commsMessages: new Map(Array.from(opts?.commsMessages ?? [], (m) => [m.id, m])),
+    commsFactions: new Map(Array.from(opts?.commsFactions ?? [], (f) => [f.id, f])),
+    dialogues: new Map(Array.from(opts?.dialogues ?? [], (d) => [d.id, d])),
     balance,
   }
 }

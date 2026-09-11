@@ -151,7 +151,7 @@ describe('闲置漂移（打捞中挂起；回 base 自动清记录）', () => {
 
 describe('残骸物品（按敌群注册；乙案：计数 = 体积 → unit 恒 1 m³，数量即体积）', () => {
   it('id/名称/计数口径正确；id ↔ 敌群互转', () => {
-    const def = wreckItemDefOf('ano-training', '演习场讨伐令', 6)
+    const def = wreckItemDefOf('ano-training', '演习场驱逐令', 6)
     expect(def.id).toBe('wreck-ano-training')
     expect(def.kind).toBe('wreck')
     expect(def.unitM3).toBe(1) // 计数 = 体积（m³）：数量即体积

@@ -235,7 +235,7 @@ export interface ManufacturingRunState {
  * - `produced` = **本轮全卡合计**产出件数（自上次「关→开」起算，开关打开期间逐件累加）；
  * - 目标件数 = 全卡合计口径：合计达到目标即不再续做；此刻在跑的那几件跑完再停
  *   （最多超产 = 同时在跑线数 − 1，不砍已扣料的在跑件）；
- * - 自动停线（达成目标 / 材料不足 / 数据缺失）→ `on` 置假并写入 `stopWhy`（卡片上标明停因），
+ * - 自动停线（达成目标 / 材料不足 / 记录缺失）→ `on` 置假并写入 `stopWhy`（卡片上标明停因），
  *   该卡其它线跑完当前件即止；下次「关→开」时 `produced` 与 `stopWhy` 一起清零；
  * - 手动关开关 = 完成当前件后停（不写停因）；缺省/无键 = 不循环。
  */
@@ -282,6 +282,20 @@ export interface RefineRunState {
    * **缺省 = 不限制**（普通残骸与精炼炉照旧"整批直到料尽"，老档天然是这个语义 → 零迁移）。
    */
   lockUnits?: number
+  /**
+   * **本炉私有料账**（2026-09-11 船长定「甲：起炉即预占」修复「一件稀有残骸被多台炉各开一箱」）：
+   * 稀有残骸起炉时把这 1 件（30 m³）**从货仓/仓库扣出**存进本字段，每批从私有账扣；
+   * 停炉（手动/余量不足/料尽/异常）时未用完的部分**退回仓库**。
+   * ⇒ 一件残骸只能被**一台炉**持有，一件 = 一炉 = 一箱，并行台与"跑一批就停再起"都刷不动。
+   * **缺省 = 无私有账**（普通残骸与精炼炉照旧"实时扣料直到料尽"；老档天然是这个语义 → 零迁移）。
+   */
+  claimedUnits?: number
+  /**
+   * 本炉**具备高级箱开箱资格**（2026-09-11「一件 = 一箱」第二道锁）：起炉时按"该型残骸的未开箱存量 ≥ 一件"
+   * 判定并快照；开箱时把本炉预占的整件记入 `state.rareOpenedUnits`（退还的余料据此不再产箱）。
+   * 缺省 = 无资格（老档/普通残骸天然如此 → 零迁移）。
+   */
+  rareBoxEligible?: boolean
   /** 炉内所得累计（2026-09-06 兼容字段：停炉/料尽/自然结束时写明细日志用；
    *  refine 炉只用 min（产物矿物）；recycle 炉 = 保底矿物(min) + 彩头装备(mod) +
    *  **专属无人机(drone，2026-09-10 增：按架数)** + 蓝图碎片(frag)；
@@ -906,6 +920,14 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   /** T9 待自动播放的通讯剧本 id（首次抵达等触发；null = 无） */
   pendingDialogue: string | null
   /**
+   * 2026-09-11 通讯（收件箱）：消息 id -> 送达时的游戏内毫秒。
+   * 键包含两类来源：`COMMS_MESSAGES` 的数据消息（`msg-*`）与镜像进来的剧本（`dlg:<剧本 id>`）。
+   * 送达即记账 ⇒ 触发器重复判定不会重复送（幂等）；可选字段、零迁移。
+   */
+  commsDelivered?: Record<string, number>
+  /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
+  commsRead?: Record<string, boolean>
+  /**
    * 2026-09-08 交付循环系统提示（一次性：渲染层读到即清并弹窗；可选字段、零迁移，
    * 不落档——重启后由新触发的终点重新写入）
    */
@@ -1050,6 +1072,14 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   salvaging: SalvageOpState
   /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
   galaxyWrecks: Record<string, WreckGalaxyRecord>
+  /**
+   * **已开过高级箱的稀有残骸存量**（2026-09-11 船长定「一件 = 一箱」的第二道锁；
+   * 键 = 稀有残骸物品 id，值 = m³）——高级箱按**件**结算而不是按"炉"结算：
+   * 某件残骸开过箱后，它剩下的料（停炉退还的那部分）仍能继续精炼出矿物，但**不再产箱**；
+   * 起炉时"可开箱资格" = 该型残骸存量 − 本表数量 ≥ 一件体积（30 m³）。
+   * 缺省 = 无记录（老档天然如此 → 零迁移、兼容字段无版本号）。
+   */
+  rareOpenedUnits: Record<string, number>
 }
 
 /** 对外统一称呼：当前版本状态（v24 = v23 + 任务中心·时效任务板 sideTasks） */
@@ -1312,7 +1342,7 @@ export function createInitialState(opts?: {
     warehouse: {
       items: prologue
         ? {
-            // 序章·苏醒：仓库不预置弹药——动能弹 120 由教学战斗任务（演习场讨伐令）奖励
+            // 序章·苏醒：仓库不预置弹药——动能弹 120 由教学战斗任务（演习场驱逐令）奖励
           }
         : {
             // 经典开局：三型通用弹药各 60 发
@@ -1390,6 +1420,8 @@ export function createInitialState(opts?: {
     hauling: { ...EMPTY_HAULING },
     dialogueSeen: {},
     pendingDialogue: null,
+    commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
+    commsRead: {},
     debugQuick: false,
     completedBounties: [],
     encounter: {
@@ -1412,6 +1444,7 @@ export function createInitialState(opts?: {
     refineSeq: 1,
     salvaging: { ...EMPTY_SALVAGE_OP },
     galaxyWrecks: {},
+    rareOpenedUnits: {}, // 已开过高级箱的稀有残骸存量（m³；2026-09-11「一件 = 一箱」第二道锁）
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）

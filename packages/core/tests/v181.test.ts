@@ -104,6 +104,12 @@ describe('V18.1 收敛机制（纯函数）', () => {
     expect(stackingOf(moduleDef('g1', 'support', 0, { rack: 'mid', evasionGapPct: 0.1 }))).toEqual({ group: 'gap', kind: 'evasion' })
     expect(stackingOf(moduleDef('p1', 'propulsion', 0, { speedBonusPct: 0.15 }))).toEqual({ group: 'curve', kind: 'speed' })
     expect(stackingOf(moduleDef('sk1', 'shield', 0, { shieldResistAdd: { kinetic: 0.5 } })).kind).toBe('shield-kinetic')
+    // 2026-09-11 修：结构层抗性同样走缺口复合（引擎 applyAdds），此前被漏判成 flat
+    expect(stackingOf(moduleDef('hk1', 'support', 0, { rack: 'mid', hullResistAdd: { plasma: 0.25 } }))).toEqual({
+      group: 'gap',
+      kind: 'hull-plasma',
+    })
+    expect(stackingOf(moduleDef('lk1', 'support', 0, { rack: 'mid', lockDmgBonus: 0.2 }))).toEqual({ group: 'curve', kind: 'lock' })
   })
 })
 
