@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
+import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -616,7 +616,14 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
     lines.push({ k: '光束特性', v: '必中 · 无近盲' })
     if (mod.falloff !== undefined) {
-      const far = (1 + (mod.falloff ?? 0)) / 2
+      // 2026-09-11 修：此行原来自算 (1+falloff)/2（×0.65/×0.68），而引擎 `beamPowerFactor` 在旧口径下
+      // 实际是最远端 ×0.44/×0.48 —— 面板读数与实战不符。改为**直接问引擎要最远端系数**，
+      // 日后衰减口径再调整（如统一"最远端 = falloff"）面板自动跟随，不会再漂移。
+      const far = beamPowerFactor(mod.maxRangeM ?? 0, {
+        minRangeM: mod.minRangeM ?? 0,
+        maxRangeM: mod.maxRangeM ?? 0,
+        falloff: mod.falloff,
+      })
       lines.push({
         k: '威力衰减',
         v: `远端威力 ×${far.toFixed(2)}`,

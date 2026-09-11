@@ -516,6 +516,9 @@ export {
   REPAIR_PULSE_MS,
   // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
+  // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
+  // 此前面板用 (1+falloff)/2 自算——旧口径下引擎实际是 ×0.44/×0.48、面板却写 ×0.65/×0.68，属显示值与实战值漂移）
+  beamPowerFactor,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
 
