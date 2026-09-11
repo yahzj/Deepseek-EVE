@@ -192,7 +192,7 @@ const meSpeedRef = useRef(200)
   /** 上次写入的 transform（值未变就不写，避免每帧无谓的样式失效与重排） */
   const droneWritesRef = useRef<Map<string, string>>(new Map())
   /** 机群被点防击落的坠落演出（2026-09-10）：登记"刚被打掉那架"的落点，CSS 演完即清（只动 transform/opacity） */
-  const droneDownRef = useRef<Array<{ key: number; artId: string; x: number; y: number; born: number }>>([])
+  const droneDownRef = useRef<Array<{ key: number; artId: string; x: number; y: number; born: number; foe?: boolean }>>([])
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -600,14 +600,27 @@ const meSpeedRef = useRef(200)
         const model = droneModelOf(fx.artId)
         if (model) {
           const artId = fx.artId!
-          const prevShow = downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
-          const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
-          downCursor.set(artId, lane)
-          const st = droneSortieRef.current.get(artId)
-          const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
           const layDown = layout(dims, Math.max(1, rowFxTags.length), visDistRef.current, openM, nearM)
-          const pose = dronePoseAt(model, lane, st, layDown, elapsed)
-          droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now })
+          // **敌机被击落**（2026-09-11 修）：引擎打空一架时也推 droneDown（`side='foe'`）——
+          // 但落点必须用**敌机自己**的状态表与姿态函数；旧口径一律走我方 `droneSortieRef` +
+          // `dronePoseAt` ⇒ 敌机的爆炸被画到**我方机体那一侧**（船长实测："完全无法察觉"）。
+          // lane 取该舰**现存架数**（引擎已减 1，故它就是"刚消失那一架"的位次）。
+          if (fx.side === 'foe') {
+            const st = foeSortieRef.current.get(`${fx.tag}:${artId}`)
+            const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
+            const alive = arcs?.foeDrones?.find((w) => w.tag === fx.tag && w.artId === artId)?.alive ?? 0
+            const lane = Math.max(0, Math.min(alive, DRONE_SHOW_MAX - 1))
+            const pose = foePoseAt(model, lane, st, layDown, elapsed)
+            droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now, foe: true })
+          } else {
+            const prevShow = downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
+            const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
+            downCursor.set(artId, lane)
+            const st = droneSortieRef.current.get(artId)
+            const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
+            const pose = dronePoseAt(model, lane, st, layDown, elapsed)
+            droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now })
+          }
         }
         continue
       }
@@ -1276,10 +1289,12 @@ const meSpeedRef = useRef(200)
                 return (
                   <span
                     key={d.key}
-                    className="app-bts-drone-wreck"
+                    className={`app-bts-drone-wreck${d.foe ? ' is-foe' : ''}`}
                     style={{ left: d.x - lay.me.x, top: d.y - lay.me.y, color: model.tint }}
                   >
-                    <svg viewBox="-14 -11 28 22" width="30" height="24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                    {/* 敌机（警戒机）的击落演出放大 1.5×（2026-09-11 船长："完全无法察觉"）——
+                        族色残铁棕 + 更大的冲击环，让"打下来了"这件事在满屏弹道里也看得见 */}
+                    <svg viewBox="-14 -11 28 22" width={d.foe ? 46 : 30} height={d.foe ? 37 : 24} fill="none" stroke="currentColor" strokeWidth={d.foe ? 1.6 : 1.2} strokeLinecap="round" strokeLinejoin="round">
                       {/* 冲击环（向外扩散淡出） */}
                       <circle className="app-bts-wreck-ring" cx="0" cy="0" r="5" />
                       {/* 爆散射线（八向短线） */}
