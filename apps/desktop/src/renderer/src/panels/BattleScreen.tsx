@@ -1003,7 +1003,8 @@ const meSpeedRef = useRef(200)
     const isMain = isFoeMainTag(tag)
     /** 该舰体积（px；2026-09-11 舰种体积 = 舰级档阶梯，旧路径卡回落 170/90） */
     const size = lay.sizes[rowIdx] ?? LAY.MAIN
-    /** 该舰抬升量（px；错列雁阵——用 `margin-bottom` 实现，不动 transform/入场动画） */
+    /** 该舰抬升量（px；错列雁阵——用 `position:relative + top` 只移动视觉位置：
+     *  不改行高、不碰 `transform`（入场动画在用），也不影响血条/名字的定位基准） */
     const raise = foeRaises[rowIdx] ?? 0
     /** 该舰血条几何（2026-09-11 船长③：血条跟着各舰走——贴各自舰下，拥挤时该梯队内竖排） */
     const bar = foeBarGeoms[rowIdx] ?? { width: 185, dx: 0, dy: 0 }
@@ -1018,7 +1019,7 @@ const meSpeedRef = useRef(200)
         key={tag}
         data-tag={tag}
         className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}
-        style={raise > 0 ? { marginBottom: raise } : undefined}
+        style={raise > 0 ? { top: -raise } : undefined}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
@@ -1030,9 +1031,13 @@ const meSpeedRef = useRef(200)
             size={size}
           />
         </span>
-        <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-          {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
-        </span>
+        {/* 舰名：前排照旧浮在舰体上方；**后排**（抬升后舰顶已到泳道顶）改由该舰血条标签承载
+            （2026-09-11：后排抬升 68 ⇒ 舰顶贴近 y≈0，上方没有 20px 放浮空舰名；锁定标记一并移过去） */}
+        {raise === 0 ? (
+          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+            {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
+          </span>
+        ) : null}
         {/* 血条（2026-09-11 船长③）：贴在本舰正下方（绝对定位，不参与行内布局）；
             尸骸不显示血条（与改造前"只给存活单位画条"一致） */}
         {!corpseOn ? (
@@ -1043,7 +1048,7 @@ const meSpeedRef = useRef(200)
             <HpTri
               hp={combat.foeHp[tag]!}
               max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }}
-              label={raise > 0 ? foeNameOf(tag) : undefined}
+              label={raise > 0 ? `${locked ? '◈ ' : ''}${foeNameOf(tag)}` : undefined}
             />
           </span>
         ) : null}
@@ -1226,7 +1231,10 @@ const meSpeedRef = useRef(200)
           {/* 敌方舰列（2026-09-11 船长③：血条跟着各舰走——已随各舰渲染，列底不再竖排血条；
               尸骸原位占槽演出见 foeUnitEls） */}
           <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>
-            <div className="app-bts-shipRow">{foeUnitEls}</div>
+            {/* 整行 `margin-top` = 下沉补偿（抬升超出上方留白时才非 0，现值 0）——与 layout 的基线同源 */}
+            <div className="app-bts-shipRow" style={lay.foeSink > 0 ? { marginTop: lay.foeSink } : undefined}>
+              {foeUnitEls}
+            </div>
           </div>
 
           {/* 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */}
