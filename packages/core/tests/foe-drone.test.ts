@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, FOE_DRONE_E_ALERT } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
-import { advanceBattleFor, createFoeSpecs, startBattleFor } from '../src/combat'
+import { advanceBattleFor, createFoeSpecs, pickFoeDroneTarget, startBattleFor } from '../src/combat'
 import type { BattleState, GameState } from '../src/state'
 import type { AnomalyDef, FoeShipDef, FoeDroneSlot, SimContext } from '../src/types'
 
@@ -158,5 +158,63 @@ describe('敌方机群：生存池与开火', () => {
     const battle = runBattle(testCard(testShip(undefined, 1)))
     expect(battle.foeDronePools).toBeUndefined()
     expect(battle.fx.some((e) => e.src === 'drone')).toBe(false)
+  })
+})
+
+describe('防空选靶（船长 A1：只有带防空属性的武器能打敌机）', () => {
+  const RANGED = { minRangeM: 1, maxRangeM: 9000 }
+
+  it('本场无机群 ⇒ null，且**不消费 rng**（既有武器一次掷骰都不会多花）', () => {
+    const battle = runBattle(testCard(testShip(undefined, 1)))
+    expect(battle.foeDronePools).toBeUndefined()
+    const state = makeState()
+    const before = structuredClone(state.rng)
+    expect(pickFoeDroneTarget(state, battle, [{ tag: 'foe-0' } as never], 3000, RANGED)).toBeNull()
+    expect(state.rng).toEqual(before)
+  })
+
+  it('武器射程之外 ⇒ null（炮台射程 ≠ 机群射程），且同样不消费 rng', () => {
+    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
+    const battle = runBattle(card)
+    const foes = createFoeSpecs(card, bal)
+    const state = makeState()
+    const before = structuredClone(state.rng)
+    expect(pickFoeDroneTarget(state, battle, foes, 50, { minRangeM: 1, maxRangeM: 10 })).toBeNull()
+    expect(state.rng).toEqual(before)
+  })
+
+  it('射程之内 ⇒ 抽到存活敌机；击落（alive=false）后不再被选中', () => {
+    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
+    const battle = runBattle(card)
+    const foes = createFoeSpecs(card, bal)
+    const state = makeState()
+
+    const first = pickFoeDroneTarget(state, battle, foes, 3000, RANGED)
+    expect(first).toBeTruthy()
+    expect(first!.pool.alive).toBe(true)
+    expect(first!.pool.artId).toBe(FOE_DRONE_E_ALERT.id)
+
+    // 把抽到的那架击落 ⇒ 池里存活数 −1，且它不会再成为目标
+    const pools = battle.foeDronePools![first!.foeTag]!
+    expect(pools).toContain(first!.pool)
+    first!.pool.alive = false
+    const aliveAfter = pools.filter((p) => p.alive).length
+    expect(aliveAfter).toBe(2)
+    for (let i = 0; i < 20; i++) {
+      const again = pickFoeDroneTarget(state, battle, foes, 3000, RANGED)
+      if (again) expect(again.pool.alive).toBe(true)
+    }
+  })
+
+  it('母舰阵亡 ⇒ 其机群不再参战（「机群是舰的一部分」）', () => {
+    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
+    const battle = runBattle(card)
+    const foes = createFoeSpecs(card, bal)
+    const state = makeState()
+    // 把两艘母舰都判为阵亡（血量清零）
+    for (const f of foes) {
+      battle.units[f.tag]!.hp = { s: 0, a: 0, h: 0 }
+    }
+    expect(pickFoeDroneTarget(state, battle, foes, 3000, RANGED)).toBeNull()
   })
 })

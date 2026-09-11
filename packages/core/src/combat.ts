@@ -2559,6 +2559,41 @@ function resolvePointDefense(
   }
 }
 
+/**
+ * **防空选靶**（2026-09-11 机群批 · 船长 A1：「玩家武器通常**不可打**，**需要带有防空属性的武器**」）。
+ *
+ * 从存活敌机里随机抽一架——**消费 `state.rng`**，与既有"每发武器在开火瞬间独立抽取目标"同款口径。
+ * - 只在**该武器自己的射程内**抽（炮台射程 ≠ 机群射程）；抽不到就照旧打舰；
+ * - 已击落的架次跳过（`pool.alive === false`）；母舰阵亡 ⇒ 其机群不再参战（「机群是舰的一部分」）；
+ * - 返回 `null` = 本场无机群 / 全打光 / 不在射程内。
+ *
+ * ⚠ **只有带 `canHitDrones` 的武器会调用本函数** ⇒ 既有武器（含我方无人机）**按构造看不到机群**，
+ * 一次 `nextRandom` 都不会多消耗 ⇒ **零行为变化**。
+ *
+ * **导出仅供回归测试**锁住上面两条语义（零消费 rng / 击落后不再被选）——引擎内部调用，与我方
+ * 无人机的 `pushBattleFx` 同款处理。真实"武器 → 机群"链路在 E 族近防炮落码后由集成用例覆盖。
+ */
+export function pickFoeDroneTarget(
+  state: GameState,
+  b: import('./state').BattleState,
+  foes: readonly UnitSpec[],
+  dist: number,
+  w: { minRangeM: number; maxRangeM: number },
+): { foeTag: string; pool: import('./state').DronePoolEntry } | null {
+  const pools = b.foeDronePools
+  if (!pools) return null
+  if (dist < w.minRangeM || dist > w.maxRangeM) return null
+  const cands: Array<{ foeTag: string; pool: import('./state').DronePoolEntry }> = []
+  for (const f of foes) {
+    if (!isAlive(b, f.tag)) continue
+    for (const p of pools[f.tag] ?? []) {
+      if (p.alive) cands.push({ foeTag: f.tag, pool: p })
+    }
+  }
+  if (cands.length === 0) return null
+  return cands[Math.min(cands.length - 1, Math.floor(nextRandom(state.rng) * cands.length))]!
+}
+
 function stepBattle(
   state: GameState,
   b: import('./state').BattleState,
@@ -2633,8 +2668,16 @@ function stepBattle(
       // 修复旧"每步缓存单一集火目标、齐射轮内打已死目标浪费火力"的问题。
       // 2026-09-09 锁定装置：装上即切换"集火模式"——不再随机，全部武器打存活编队首位
       // （主舰优先，击毁自动接力下一艘；rng 零消耗，可复现性保持）
-      const foeTarget = me.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
-      if (!foeTarget) continue
+      // ── 防空属性（船长 A1）：**只有带 `canHitDrones` 的武器能筛到敌机** ──
+      // 机群不在主目标池里 ⇒ 其余武器（含我方无人机，船长 B1）按构造看不到它们。
+      // 带标记的武器**优先打机群**（防空是它的本职）；无机群/全打光/不在射程 ⇒ 照旧打舰。
+      const droneHit = w.canHitDrones ? pickFoeDroneTarget(state, b, foes, b.distanceM, w) : null
+      const foeTarget = droneHit
+        ? null
+        : me.lockedDmgBonus
+          ? firstAliveFoe(foes, b)
+          : randomAliveFoe(state, b, foes)
+      if (!foeTarget && !droneHit) continue
       let type: DamageType
       let dmg: number
       let autoHit = false
@@ -2672,23 +2715,52 @@ function stepBattle(
       b.stats.meShots += 1
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
-      const meHit = autoHit ? 1 : hitChance(w, meAtk, foeTarget, b.distanceM, bal)
+      // 命中：打机群时守方 = 该架的闪避（`DronePoolEntry.evasion`，机型表绝对值）；
+      // `hitChance` 的守方参数只要 `{ evasion }` ⇒ 不需要为机群造一个假单位。
+      const meHit = autoHit
+        ? 1
+        : hitChance(w, meAtk, droneHit ? { evasion: droneHit.pool.evasion } : foeTarget!, b.distanceM, bal)
       const meHitEff = autoHit ? 1 : favor ? clamp(0, 1, meHit * favor.meMul) : meHit
       const hit = dmg > 0 && (autoHit || nextRandom(state.rng) < meHitEff)
       if (hit) {
         b.stats.meHits += 1
-        const rt = b.units[foeTarget.tag]!
-        // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
-        const dmgLocked = me.lockedDmgBonus ? Math.round(dmg * (1 + me.lockedDmgBonus)) : dmg
-        const r = applyDamage(rt.hp, {}, dmgLocked, type)
-        rt.hp = r.hp
-        b.stats.meDmg += r.dealt
+        if (droneHit) {
+          // 打机群：扣该架的三层血（吃它自己的层抗）；打空 = **击落**（停火 + 小型爆炸演出）。
+          // ⚠ 锁定装置的加深**不作用于机群**（锁定锁的是舰）——防空靠的是射速与命中，不是锁定。
+          const pool = droneHit.pool
+          const r = applyDamage({ s: pool.s, a: pool.a, h: pool.h }, pool.resists ?? {}, dmg, type)
+          pool.s = r.hp.s
+          pool.a = r.hp.a
+          pool.h = r.hp.h
+          b.stats.meDmg += r.dealt
+          if (pool.s + pool.a + pool.h <= 0) {
+            pool.alive = false
+            pushBattleFx(b, {
+              atMs: b.lastTickGameMs + dtMs,
+              side: 'foe',
+              tag: droneHit.foeTag,
+              to: 'player',
+              type,
+              src: 'drone',
+              artId: pool.artId,
+              hit: true,
+              droneDown: true, // 击落演出（与我方被点防打落同款事件类型）
+            })
+          }
+        } else {
+          const rt = b.units[foeTarget!.tag]!
+          // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
+          const dmgLocked = me.lockedDmgBonus ? Math.round(dmg * (1 + me.lockedDmgBonus)) : dmg
+          const r = applyDamage(rt.hp, {}, dmgLocked, type)
+          rt.hp = r.hp
+          b.stats.meDmg += r.dealt
+        }
       }
       pushBattleFx(b, {
         atMs: b.lastTickGameMs + dtMs,
         side: 'me',
         tag: 'player',
-        to: foeTarget.tag,
+        to: droneHit ? droneHit.foeTag : foeTarget!.tag,
         type,
         src: w.src,
         artId: w.artId,
