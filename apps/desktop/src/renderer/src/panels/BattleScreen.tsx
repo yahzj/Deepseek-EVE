@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipEliteOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
 import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -35,7 +35,7 @@ import {
 import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
-  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf,
+  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeRaiseOf, foeBarGeom,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -167,12 +167,14 @@ const meSpeedRef = useRef(200)
   const droneDriveRef = useRef<{
     /** 逐舰体积（px；2026-09-11 舰种体积，见上 `foeSizesFor`） */
     foeSizes: number[]
+    /** 逐舰抬升量（px；错列雁阵，见 `foeRaisesFor`） */
+    foeRaises: number[]
     /** 玩家舰体积（px；无人机阵位/弹道起点按它定标） */
     meSize: number
     openM: number
     nearM: number
     wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean }>
-  }>({ foeSizes: [LAY.MAIN], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [] })
+  }>({ foeSizes: [LAY.MAIN], foeRaises: [0], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [] })
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -345,7 +347,7 @@ const meSpeedRef = useRef(200)
       if (!alive) return
       const d = droneDriveRef.current
       if (d.wings.length > 0) {
-        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.openM, d.nearM, d.meSize)
+        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.openM, d.nearM, d.meSize, d.foeRaises)
         const box = droneBoxRef.current
         const w0 = droneWritesRef.current
         if (box) {
@@ -509,6 +511,12 @@ const meSpeedRef = useRef(200)
   /** 视觉行逐舰体积；全灭瞬间仍保留 1 槽（与改造前 `Math.max(1, n)` 同语义：布局不退化） */
   const foeSizesFor = (tags: readonly string[]): number[] =>
     tags.length ? tags.map(foeSizeOf) : [LAY.MAIN]
+  /** 视觉行逐舰**抬升量**（错列雁阵：前排 0、后排 +72px；2026-09-11 船长定）——
+   *  前排判据 = 本波首舰（`(w{n}-)?foe-0`）或该舰级为头目档（`elite`）；只看 tag 与数据，不看谁还活着 */
+  const foeRaisesFor = (tags: readonly string[]): number[] =>
+    tags.length
+      ? tags.map((t) => foeRaiseOf(t, foeAnomaly ? foeShipEliteOf(foeAnomaly, t) : false))
+      : [0]
   /** 敌舰族形键（2026-09-11 起 = 数据侧 `AnomalyDef.foeFamily`；未列卡/异常 → F 制式巡逻兜底） */
   const foeKey = foeFamilyOf(foeAnomaly)
   /** 敌舰显示名（2026-09-09 命名统一：引擎同源推导——舰种名 + 规格词缀，弱规格 = 轻装 X；
@@ -547,7 +555,7 @@ const meSpeedRef = useRef(200)
   const dropNow = scanDroppable()
   const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
   // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
-  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize)
+  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize, foeRaisesFor(rowFxTags))
   /** 无人机攻击阵位外推量（2026-09-11 舰种体积配套）：阵位基线按改造前的敌舰（T3 = 170px 宽）定，
    *  目标舰更大时阵位同步外推，避免机群压在放大的舰体上；敌舰未变大时不内收（下限 0）。 */
   const droneOutward = Math.max(0, Math.round(((layFx.sizes[0] ?? LAY.MAIN) - LAY.MAIN) / 2))
@@ -586,7 +594,7 @@ const meSpeedRef = useRef(200)
           downCursor.set(artId, lane)
           const st = droneSortieRef.current.get(artId)
           const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
-          const layDown = layout(dims, foeSizesFor(rowFxTags), visDistRef.current, openM, nearM, meSize)
+          const layDown = layout(dims, foeSizesFor(rowFxTags), visDistRef.current, openM, nearM, meSize, foeRaisesFor(rowFxTags))
           const pose = dronePoseAt(model, lane, st, layDown, elapsed)
           droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now })
         }
@@ -734,10 +742,17 @@ const meSpeedRef = useRef(200)
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
+  const foeRaises = foeRaisesFor(foeRowTags) // 逐舰抬升量（px；错列雁阵：主舰基线、其余 +72）
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
-  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize)
+  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize, foeRaises)
+  /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该梯队整组竖排到编队下方） */
+  const foeBarGeoms = foeBarGeom(
+    lay.foe.map((a) => a.x),
+    foeRaises,
+    lay.foeBottom,
+  )
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
   const waveNext = wavePending && foeAnomaly?.waves && foeAnomaly.waves.length > 1 ? (battle.waveIdx ?? 0) + 2 : 0
@@ -970,6 +985,7 @@ const meSpeedRef = useRef(200)
   visDistRef.current = visM
   droneDriveRef.current = {
     foeSizes,
+    foeRaises,
     meSize,
     openM,
     nearM,
@@ -987,6 +1003,10 @@ const meSpeedRef = useRef(200)
     const isMain = isFoeMainTag(tag)
     /** 该舰体积（px；2026-09-11 舰种体积 = 舰级档阶梯，旧路径卡回落 170/90） */
     const size = lay.sizes[rowIdx] ?? LAY.MAIN
+    /** 该舰抬升量（px；错列雁阵——用 `margin-bottom` 实现，不动 transform/入场动画） */
+    const raise = foeRaises[rowIdx] ?? 0
+    /** 该舰血条几何（2026-09-11 船长③：血条跟着各舰走——贴各自舰下，拥挤时该梯队内竖排） */
+    const bar = foeBarGeoms[rowIdx] ?? { width: 185, dx: 0, dy: 0 }
     const ba = corpseAtRef.current.get(tag)
     const sinceBoom = ba === undefined ? -1 : now - ba
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
@@ -994,7 +1014,12 @@ const meSpeedRef = useRef(200)
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     return (
-      <div key={tag} data-tag={tag} className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}>
+      <div
+        key={tag}
+        data-tag={tag}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}
+        style={raise > 0 ? { marginBottom: raise } : undefined}
+      >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
         <span className="app-bts-corpse" style={fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
@@ -1008,6 +1033,20 @@ const meSpeedRef = useRef(200)
         <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
           {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
         </span>
+        {/* 血条（2026-09-11 船长③）：贴在本舰正下方（绝对定位，不参与行内布局）；
+            尸骸不显示血条（与改造前"只给存活单位画条"一致） */}
+        {!corpseOn ? (
+          <span
+            className="app-bts-hpWrap is-unitBar"
+            style={{ width: bar.width, marginLeft: bar.dx, marginTop: bar.dy + 2 }}
+          >
+            <HpTri
+              hp={combat.foeHp[tag]!}
+              max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }}
+              label={raise > 0 ? foeNameOf(tag) : undefined}
+            />
+          </span>
+        ) : null}
         {boomLive ? (
           <span className="app-bts-boom">
             <i className="b-core" />
@@ -1184,22 +1223,10 @@ const meSpeedRef = useRef(200)
             </div>
           ) : null}
 
-          {/* 敌方舰列（血条只跟存活单位；尸骸原位占槽演出见 foeUnitEls） */}
+          {/* 敌方舰列（2026-09-11 船长③：血条跟着各舰走——已随各舰渲染，列底不再竖排血条；
+              尸骸原位占槽演出见 foeUnitEls） */}
           <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>
             <div className="app-bts-shipRow">{foeUnitEls}</div>
-            {foeAliveTags[0] ? (
-              <div className="app-bts-hpWrap">
-                <HpTri
-                  hp={combat.foeHp[foeAliveTags[0]]!}
-                  max={arcs.maxHp.foe[foeAliveTags[0]] ?? { s: 0, a: 0, h: 0 }}
-                />
-              </div>
-            ) : null}
-            {foeAliveTags.slice(1).map((tag) => (
-              <div key={tag} className="app-bts-hpWrap">
-                <HpTri hp={combat.foeHp[tag]!} max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }} label={foeNameOf(tag)} />
-              </div>
-            ))}
           </div>
 
           {/* 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */}

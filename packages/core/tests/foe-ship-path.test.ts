@@ -28,7 +28,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS } from '@whale/data'
-import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipTierOf, foeUnitNameOf } from '../src/combat'
+import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
@@ -208,6 +208,31 @@ describe('舰种档反查：foeShipTierOf（战斗画面体积与舰种挂钩）
       }
     }
     expect(units).toBeGreaterThan(cards.length)
+  })
+})
+
+/**
+ * **头目档反查**（界面用，2026-09-11 船长：敌列错列雁阵「主舰在前、僚机与杂鱼在后」）：
+ * 阵形的**前排判据** = 本波首舰（`(w{n}-)?foe-0`）**或该舰级为头目档** ⇒ 界面需要本查询，
+ * 因为 `foeMainTagOf` 把多波/多小队的 `w{n}-foe-{k}`（k≥1）也算主舰（2026-09-09 放宽口径），
+ * A 族卡的 3 艘杂鱼会被误判成主舰（首次探针即抓到此坑）。
+ */
+describe('头目档反查：foeShipEliteOf（阵形前排判据）', () => {
+  it('只认 `elite` 舰级：头目 true、杂鱼/僚机 false；未编入与旧路径 → false', () => {
+    const def = mixedCard(40)
+    expect(foeShipEliteOf(def, 'foe-0')).toBe(true) // 测试头目舰 = elite
+    expect(foeShipEliteOf(def, 'w0-foe-2')).toBe(false)
+    expect(foeShipEliteOf(def, 'w0-foe-3-e1')).toBe(false)
+    expect(foeShipEliteOf(def, 'foe-9')).toBe(false)
+    expect(foeShipEliteOf(anomaly('ano-t-elite-legacy', 'galaxy-hub', { threat: 30 }), 'foe-0')).toBe(false)
+  })
+
+  it('内容契约：A 族卡的头目位（`foe-0`）确实是头目档，其杂鱼不是', () => {
+    const post = ANOMALIES.find((a) => a.id === 'ano-pirate-post')!
+    expect(foeShipEliteOf(post, 'foe-0')).toBe(true)
+    expect(foeShipEliteOf(post, 'w0-foe-1')).toBe(false)
+    // 与体积档反查相互独立：头目位既能取到档，也能取到头目标记
+    expect(foeShipTierOf(post, 'foe-0')).toBe(3)
   })
 })
 

@@ -535,6 +535,7 @@ export {
   foeMainTagOf,
   foeUnitNameOf,
   foeShipTierOf,
+  foeShipEliteOf,
   FOE_LIGHT_WORD,
   FOE_ELITE_WORD,
   createPlayerSpec,

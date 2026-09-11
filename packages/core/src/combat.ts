@@ -929,6 +929,21 @@ export function foeShipTierOf(anomaly: AnomalyDef, tag: string): 1 | 2 | 3 | 4 |
 }
 
 /**
+ * **敌舰单位是否「头目档」（`FoeShipDef.elite`）**（2026-09-11 船长：敌列错列雁阵"主舰在前、僚机与杂鱼在后"）——
+ * 界面的**只读查询**，与 `foeUnitNameOf`/`foeShipTierOf` 同源（同一份 tag → 舰级反查）。
+ *
+ * ⚠ 界面**不能用 `foeMainTagOf` 当"主舰"**：那条规则把多波/多小队的 `w{n}-foe-{k}`（k≥1）也当主舰
+ * （2026-09-09 为"第 2 艘主舰不再当僚机"而放宽）⇒ A 族卡的 3 艘杂鱼会被判成主舰。阵形用
+ * 「**tag 是本波首舰（`(w{n}-)?foe-0`）或该舰级为头目档**」作"前排"，故需要本查询。
+ *
+ * 旧威胁推导路径（无舰级）→ `false`（这些卡靠 tag 首舰判前排）。
+ */
+export function foeShipEliteOf(anomaly: AnomalyDef, tag: string): boolean {
+  const hit = foeShipAtTag(anomaly, tag)
+  return hit ? hit.ship.elite === true : false
+}
+
+/**
  * **多舰船补偿系数** `2N/(N+1)`（2026-09-11 船长确认「先按照你的提议实现」；N = 本卡编成单位总数）。
  *
  * 动机（数学）：N 个单位**逐个被击毁**时，敌人整场的累计输出 = 单舰基准 × `(N+1)/(2N)`

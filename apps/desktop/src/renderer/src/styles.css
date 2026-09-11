@@ -7079,6 +7079,10 @@ body {
 
 .app-bts-unit { position: relative; display: inline-flex; }
 
+/* 敌舰血条随各舰（2026-09-11 船长③「血条跟着各舰走」）：绝对定位于**本舰正下方**，不参与行内布局，
+ * 故不影响入场/尸骸动画与行底对齐；宽度与级内偏移由 `battleViewCore.foeBarGeom` 逐舰给出（inline style）。 */
+.app-bts-unit > .app-bts-hpWrap.is-unitBar { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); z-index: 3; }
+
 /* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升；
  * 引擎在演出窗口（waveEnterGapMs）结束后才补刷下一波，入场动画即"增援抵达"画面过渡 */
 .app-bts-unit { animation: app-bts-foe-in .55s ease-out both; }
