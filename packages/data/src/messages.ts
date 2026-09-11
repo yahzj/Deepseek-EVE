@@ -40,7 +40,7 @@ const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => 
   factionId: 'archive',
   deptId: 'dept-recall',
   kind: '教程',
-  subject: `教程 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
+  subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
   body: s.lines,
   trigger: { kind: 'tutorial', step: s.step },
   hint: { text: s.goal, page: s.page, ...(s.mapTab ? { tab: s.mapTab } : {}), ...(s.shipTab ? { shipTab: s.shipTab } : {}) },

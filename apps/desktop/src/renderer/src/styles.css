@@ -5174,6 +5174,13 @@ body {
 
 }
 
+/* 2026-09-11 船长定（装备选择浮层加筛选与搜索，参考市场页）：筛选栏沿用市场页那套表单类名
+   （`.app-mkt-search` / `.app-mkt-search-input` / `.app-mkt-kind`，只做浮层内的排布与间距微调），
+   不自造外观；空态行交给 grid 通栏（与 `app-exp-idle` 家族一致）。 */
+.app-fit-pick-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.app-fit-pick-filter .app-mkt-search-input { flex: 1 1 200px; min-width: 160px; }
+.app-fit-pick-filter .app-exp-idle { grid-column: 1 / -1; }
+
 .app-fit-pick-item {
 
   display: flex;
@@ -8989,9 +8996,9 @@ body {
   border-radius: 7px; background: #ff6b52; color: #1c0c08; font-size: 10px; font-weight: 700;
   line-height: 13px; text-align: center; box-shadow: 0 0 6px rgba(255, 90, 60, .85);
 }
-/* 双列：左列消息列表（唯一滚动区）+ 右列通讯器正文。
+/* 双列：左列消息列表 + 右列通讯器正文；两列各自内部滚动（列表 .app-comms-list、屏幕 .app-comms-screen）。
    注意：win-fixed-body 的 .app-win-body 自带 overflow-y:auto（选择器特异性更高），这里用同级选择器
-   把它改成"不滚的弹性列"，让滚动只发生在列表内部（一级页不滚）。 */
+   把它改成"不滚的弹性列"，让滚动只发生在两列内部（一级页不滚）。 */
 .wui-panel.win-fixed-body .app-win-body.app-comms-body { overflow: hidden; display: flex; flex-direction: column; }
 .app-comms-grid { display: grid; grid-template-columns: minmax(210px, 290px) minmax(0, 1fr); gap: 12px; flex: 1 1 auto; min-height: 0; }
 .app-comms-list {
