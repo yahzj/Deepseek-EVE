@@ -111,6 +111,31 @@
 
 ## 六、实施记录（已落地）
 
+### 6.1 点防「六项参数」定稿（2026-09-11 一号补齐 · 现行值已逐项与代码核对）
+
+> **为什么补这一节**：四份交接件（`handover-d3-20260910.md` §3、`handover-verify-20260910.md` §5、
+> `handover-d2-next-20260910.md` §7、`docs/review/announcement-factcheck-20260910.md`）都把待核定项写作
+> 「点防 PD 六参数（**二号设计稿 §八**）」，但 `docs/design/` 里没有以"§八"记参数的定稿件——
+> **参数本体一直在这份稿子的 §一 表与 §六 实施记录里**。本节把它收口成一处，**四份引用统一改指本节**。
+> 核对方式：逐项读 `packages/core/src/balance.ts`（`pdThreatFloor / pdJudgementMs / pdAcc / pdDmg`）
+> 与 `combat.ts`（`pdEnabledFor` / `resolvePointDefense` / `droneRecoveryRate` / `settleDroneLosses`）。
+
+| # | 参数 | 现行值 | 落点 | 说明 / 边界 |
+|---|---|---|---|---|
+| 1 | **装备门槛** `pdThreatFloor` | **60**（威胁 <60 的敌舰不装近防炮） | `balance.ts` | 与 `foeChargeThreatFloor` 同口径；低威胁卡机群完全无损（测试有例） |
+| 2 | **判定周期** `pdJudgementMs` | **500 ms**（每艘点防舰独立判定，多舰叠加） | `balance.ts` | 独立于敌舰常规攻击冷却；判定不看距离 |
+| 3 | **判定命中** `pdAcc` | **0.5**（掷骰 = `pdAcc − 机型闪避`，**不叠**敌方通用命中加成） | `balance.ts` | 突出"闪避"价值：侦察机 0.45 闪避 → 命中 0.05 |
+| 4 | **单发伤害** `pdDmg` | **5**（走该机型三层抗性：盾→甲→结构） | `balance.ts` | 机型四型血 19 / 40 / 97 / 23 → 一发不是必杀，靠累积 |
+| 5 | **单场损失上限** | **无上限**（战斗内可 100% 损坏；**原 50% 上限已移除**，2026-09-10 船长定） | `combat.ts` | 自动流程另有安全阀：重复清剿时净损失过半（余量 <50%）→ 停环并提示补货 |
+| 6 | **战后回收率** | **基础 20% + 回收学 6%/级（满级 50%）**；**逐型先取整、余数名额优先给高价值机型**（价值 = 机型基准价，现算不写死） | `combat.ts` `droneRecoveryRate / settleDroneLosses` | 名额总数 = `round(总损坏 × 回收率)`（守恒：只改"分给谁"）；战报显示回收/净损失明细，战报时长 12 秒 |
+
+**另有两条同批口径（不计入六项，但同属点防行为）**：①**目标选择** = 随机挑一架**正在攻击**的放飞无人机，
+**默认不理会哨戒机**，非哨戒机全灭后才转打哨戒机；②**不看距离**——放飞出去就在威胁之下。
+调参/复跑工具：`npm run battle:pd-tune`（`tools/pd-tune.ts`）。
+
+**待船长一句**：六项**全部维持现值**是否认可（若要动，1/2/3/4 是 `balance.ts` 四个常量、5 是 `combat.ts` 的行为分支、
+6 是 `DRONE_SKILL` 的 `recoveryBase / recoveryPerLevel`）。
+
 | 层 | 改动 |
 | --- | --- |
 | `packages/core/src/balance.ts` + `types.ts` | 近防炮参数（**终值**）：`pdThreatFloor 60`、`pdJudgementMs 500`、`pdAcc 0.5`、`pdDmg 5`（**无单场上限**——2026-09-10 船长：战斗内可 100% 损坏） |
