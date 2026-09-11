@@ -47,7 +47,7 @@
  *         金标与修复脉冲同场可见）；无件对照船同火力；锁定/维修三档备件与组件齐全。
  *  - abyssgate  能量卡火力重标 + 族系改判实机验收（2026-09-10 船长「深渊之门给我个存档测试下」）：
  *   驾驶 = 灰鲭鲨 4×动能MK2 + 支援（中位技能 Lv3）；**四张验收卡 = 深渊之门 45（纯能量·单发直写 45）/
- *   星髓虫群 72（移除回退）/ 噬口猎杀令 80（改 brawl）/ 坟场守墓人 88（改 orbit）**；
+ *   星髓虫群 72（移除回退）/ 噬口猎杀令 80（改 brawl）/ 坟场守墓者 88（改 orbit）**；
  *   装备库备**盾/甲 × 动能/能量**四系抗性件各 3 件 → **换件即换抗**，实测"堆对应抗性"的回报。
  *  - etier  E 段顶格混伤实机复核（2026-09-10 船长「④给我相关存档做实机测试」）：三船 = P1 复跑表
  *         那三行（大白鲨 S4 驾驶 / 锤头鲨炮巡 / 灰鲭鲨 MK2）+ 中位战斗技能 Lv3 + 声望 13 +
@@ -145,7 +145,7 @@ function injectRareBox(state: GameState): string[] {
   // ② 普通残骸做对照（不锁量：仍是"整批直到料尽"）
   state.warehouse.items['wreck-ano-gravekeeper'] = (state.warehouse.items['wreck-ano-gravekeeper'] ?? 0) + 100
   state.warehouse.items['wreck-ano-abyss-guard'] = (state.warehouse.items['wreck-ano-abyss-guard'] ?? 0) + 100
-  notes.push('仓库预置普通残骸 坟场守墓人/深渊之门卫队 各 100 m³（对照：普通残骸不锁量、整批拆到料尽）')
+  notes.push('仓库预置普通残骸 坟场守墓者/深渊之门卫队 各 100 m³（对照：普通残骸不锁量、整批拆到料尽）')
   // ③ 多台并行：AI 核心上限技能 + 基础核心（主控 1 台 + AI 各 1 台）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 2)
   state.aiCores.basic = Math.max(state.aiCores.basic ?? 0, 2)
@@ -393,7 +393,7 @@ function injectB3(state: GameState): string[] {
   // 4) 仓库预置残骸（回收开箱立即可测：保底矿物 + 彩头）
   state.warehouse.items['wreck-ano-gravekeeper'] = (state.warehouse.items['wreck-ano-gravekeeper'] ?? 0) + 100
   state.warehouse.items['wreck-ano-abyss-guard'] = (state.warehouse.items['wreck-ano-abyss-guard'] ?? 0) + 100
-  notes.push('仓库预置 坟场守墓人/深渊之门卫队 残骸各 100 m³——工业页「残骸回收」可直接开箱')
+  notes.push('仓库预置 坟场守墓者/深渊之门卫队 残骸各 100 m³——工业页「残骸回收」可直接开箱')
   // 5) AI 打捞任务门槛（名额 1 + 基础核心）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 1)
   state.aiCores.basic = (state.aiCores.basic ?? 0) + 1
@@ -729,7 +729,7 @@ function injectEtier(state: GameState): string[] {
   notes.push('全舰耐久回满')
   notes.push(
     '测试路径（按复跑表逐格对照，建议同一目标打 3 场看稳定性）：星图·战斗悬赏 → ' +
-      '① 噬口猎杀令 80（2 波）② 坟场守墓人 88（2 波）③ 虚海守望者 88（3 波）④ 穹顶守卫 96（3 波）。' +
+      '① 噬口猎杀令 80（2 波）② 坟场守墓者 88（2 波）③ 虚海守望者 88（3 波）④ 穹顶守卫 96（3 波）。' +
       '复跑表参考值（9 种子，中位技能）：大白鲨 S4 = 噬口 100%/残血 77% · 坟场 100%/112% · **虚海 11%** · **穹顶 0%**；' +
       '锤头鲨 = 噬口 100%/89% · 坟场 100%/112% · 虚海 100%/51% · **穹顶 33%**；灰鲭鲨 = 坟场 100% · **虚海 0% · 穹顶 0%**。' +
       '重点体感：**虚海/穹顶 是否"明明还有血却被磨死"、还是"根本打不动"**；换装只堆主系抗 vs 兼堆副系抗的差别；' +
@@ -1045,7 +1045,7 @@ function injectLockrep(state: GameState): string[] {
  *      判据：**不堆能量抗 → 打不过（实测 0%）**；**换上能量抗件 → 稳过（实测 100% / 残血约 27%）**。
  *   ② **星髓虫群 72**：移除 0.35 逐卡伤害倍率（该字段已于 2026-09-11 整体退休；基础单发 104.7 全额生效；对主力行是死旋钮、只影响被贴脸的薄皮行）。
  *   ③ **噬口猎杀令 80**：orbit → **brawl**（射程带 7.1km→2.7km、速度 338→426、血量 4000→1844）。
- *   ④ **坟场守墓人 88**：brawl → **orbit**（射程带 2.8km→7.4km、速度 433→345；血量 3600 未动，预期 = E 段墙）。
+ *   ④ **坟场守墓者 88**：brawl → **orbit**（射程带 2.8km→7.4km、速度 433→345；血量 3600 未动，预期 = E 段墙）。
  * 配装 = **灰鲭鲨 4×动能MK2 + 支援**（与 `battle:calibrate` 的 S2 锚行同源），战斗系 20 项 = Lv3（中位档）。
  * 换抗方式：装备库里备好**盾/甲 × 动能/能量**四系抗性件各 3 件，**换件即换抗**，直接对比承伤。 */
 function injectAbyssgate(state: GameState): string[] {
@@ -1054,7 +1054,7 @@ function injectAbyssgate(state: GameState): string[] {
   state.wallet.isk += 40_000_000
   notes.push('钱包 +40,000,000 ISK')
   state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
-  notes.push('协会声望升至 13（全悬赏可接：深渊之门 45 / 星髓虫群 72 / 噬口猎杀令 80 / 坟场守墓人 88）')
+  notes.push('协会声望升至 13（全悬赏可接：深渊之门 45 / 星髓虫群 72 / 噬口猎杀令 80 / 坟场守墓者 88）')
   let lit = 0
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) {
