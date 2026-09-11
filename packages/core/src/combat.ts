@@ -638,6 +638,9 @@ export function createPlayerSpec(
       hitRate: (turret.hitRate ?? 0.5) * fireMult,
       falloff: turret.falloff ?? 0.3,
       reloadMs: reload,
+      // 防空属性（2026-09-11 机群批 S4）：装备带 `canHitDrones` ⇒ 该武器能筛到敌方无人机。
+      // 缺省不写 ⇒ 看到不机群（既有装备零行为变化）。
+      ...(turret.canHitDrones ? { canHitDrones: true } : {}),
     })
   }
 

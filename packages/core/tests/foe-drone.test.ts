@@ -61,12 +61,12 @@ function ctxWith(card: AnomalyDef): SimContext {
   return { ...base, anomalies: new Map([...base.anomalies, [card.id, card]]) }
 }
 
-function makeState(seed = 5): GameState {
+function makeState(seed = 5, high: string[] = ['mod-turret-kin-2']): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
   const uid = addShipToFleet(state, 'sh-sentinel') // 王鲭：厚甲多槽，够活到机群开火
   state.shipId = uid
   state.fleet[uid]!.fitted = {
-    high: ['mod-turret-kin-2'],
+    high,
     mid: ['mod-shield-kin-2', 'mod-track-2'],
     low: ['mod-stab-kin-2'],
   }
@@ -75,9 +75,9 @@ function makeState(seed = 5): GameState {
 
 /** 打到 `advMs` 就停。60 秒 = 接近期（开局距离→机群射程 3km，约 10~25 秒）+ 机群数个装填周期；
  *  fx 环缓冲 48 条按"丢最旧"裁剪，机群是**全程持续**开火 ⇒ 最近的事件必在环里。 */
-function runBattle(card: AnomalyDef, advMs = 60_000): BattleState {
+function runBattle(card: AnomalyDef, advMs = 60_000, high?: string[]): BattleState {
   const c = ctxWith(card)
-  const state = makeState()
+  const state = high ? makeState(5, high) : makeState()
   const battle = startBattleFor(state, c, state.shipId, card.id, 0)!
   state.expedition.active = true
   state.expedition.phase = 'battle'
@@ -216,5 +216,44 @@ describe('防空选靶（船长 A1：只有带防空属性的武器能打敌机�
       battle.units[f.tag]!.hp = { s: 0, a: 0, h: 0 }
     }
     expect(pickFoeDroneTarget(state, battle, foes, 3000, RANGED)).toBeNull()
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **E 族近防炮**（2026-09-11 机群批 S4）——玩家侧**首件防空武器**、也是"分族"的第一件。
+ * 船长三条：「需要带有防空属性的武器（为近防炮做铺垫）」·「近防炮分族」·「做 E 族」。
+ * 本组钉住**端到端链路**：装备 `canHitDrones` ⇒ 武器条目带防空属性 ⇒ **真能把机群打下来**；
+ * 负向对照 = 同卡同装配只换普通炮台 ⇒ 一架都打不掉（"默认打不到"）。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe('E 族近防炮：装备 → 防空属性 → 真能打机群', () => {
+  const AA = 'mod-pd-e'
+  const testCardWithDrones = (): AnomalyDef => testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
+
+  it('装备定义带防空属性，且装配后武器条目带上 `canHitDrones`（普通炮台不带）', () => {
+    const mod = base.modules.get(AA)!
+    expect(mod.canHitDrones).toBe(true)
+    expect(base.modules.get('mod-turret-kin-1')!.canHitDrones).toBeUndefined()
+    // 装配 4 门近防炮：射程 1,400、装填 1,500、命中 0.9、无近盲带
+    const state = makeState(5, [AA, AA, AA, AA])
+    const battle = startBattleFor(state, ctxWith(testCardWithDrones()), state.shipId, 'ano-test-foe-drone', 0)!
+    expect(battle).toBeTruthy()
+    // 武器条目在战斗建档时写入；用同一套装配跑一仗并核对 fx 的 src（近防炮属炮台家族）
+    const after = runBattle(testCardWithDrones(), 60_000, [AA, AA, AA, AA])
+    expect(after.fx.some((e) => e.src === 'turret')).toBe(true)
+  })
+
+  it('带近防炮 ⇒ 真打出「击落敌机」事件；换普通炮台 ⇒ 一架都掉不了（负向对照）', () => {
+    const withAA = runBattle(testCardWithDrones(), 60_000, [AA, AA, AA, AA])
+    const downed = withAA.fx.filter((e) => e.droneDown === true && e.side === 'foe')
+    const pools = Object.values(withAA.foeDronePools ?? {}).flat()
+    expect(pools.length).toBe(6) // 2 舰 × 3 架
+    expect(downed.length).toBeGreaterThan(0) // **近防炮打下来了**
+    expect(pools.some((p) => !p.alive)).toBe(true)
+
+    const withGun = runBattle(testCardWithDrones(), 60_000, ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'])
+    const poolsGun = Object.values(withGun.foeDronePools ?? {}).flat()
+    expect(poolsGun.length).toBe(6)
+    expect(withGun.fx.some((e) => e.droneDown === true && e.side === 'foe')).toBe(false)
+    expect(poolsGun.every((p) => p.alive)).toBe(true) // 普通炮台**按构造看不到机群**
   })
 })

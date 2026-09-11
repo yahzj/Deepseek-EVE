@@ -64,6 +64,19 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '折叠货舱技术，核心是超噬矿合金框架——希莫非特矿带的宝藏。',
   },
   {
+    id: 'bp-pd-e',
+    name: '巨构近防炮蓝图',
+    moduleId: 'mod-pd-e',
+    materials: [
+      { itemId: 'min-tritanium', count: 1_600 },
+      { itemId: 'min-mexallon', count: 400 },
+    ],
+    buildSeconds: 180, // 比轻型炮台略快（点防炮结构简单）
+    buildCostIsk: 24_000,
+    priceIsk: 120_000,
+    description: '按巨构残骸上那门警戒炮仿制的点防武器：射程很短、射速很快，是唯一能打敌方机群的炮。带机群的仗，先造它。',
+  },
+  {
     id: 'bp-turret-1',
     name: '轻型炮台 MK1（动能）蓝图',
     moduleId: 'mod-turret-kin-1',

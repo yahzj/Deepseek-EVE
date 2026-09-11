@@ -804,6 +804,16 @@ export interface ModuleDef {
   dmgMult?: number
   /** 装配占用 CPU（V17 起装配校验生效：模块合计不得超过船体 cpu；与无人机放飞共用） */
   cpuUse?: number
+  /**
+   * **防空属性**（2026-09-11 机群批 S4 · 船长 A1：「玩家武器通常**不可打**，**需要带有防空属性的武器**
+   * （**为近防炮做铺垫**）」+「**近防炮分族**」+「**做 E 族**」）。
+   *
+   * 语义：带本标记的武器**能筛到敌方无人机**（`WeaponSpec.canHitDrones`）；
+   * 其余武器（含我方无人机）**按构造看不到机群**。
+   * 玩家侧现只有**近防炮**携带；敌方近防炮是**抽象自动系统**，不走本字段（船长 B3/C1）。
+   * ⚠ 缺省 = 打不到敌机 ⇒ **既有装备零行为变化**。
+   */
+  canHitDrones?: boolean
   /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展、
      有 droneDmgBonus = 战术导控、有 droneRangeBonusPct = 中继天线；归槽 rack = high，见 labels.rackOf） ═══ */
   /** 无人机甲板扩展：+droneBayM3（携带/放飞上限扩容；线性可叠件） */

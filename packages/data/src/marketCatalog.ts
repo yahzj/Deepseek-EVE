@@ -93,6 +93,9 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-miner-1', kind: 'module', refId: 'mod-miner-1', rarity: 'common', basePrice: 31_200, demandMultiplier: 0.6 },
   { key: 'mod-cargo-1', kind: 'module', refId: 'mod-cargo-1', rarity: 'common', basePrice: 29_200, demandMultiplier: 0.6 },
   { key: 'mod-turret-kin-1', kind: 'module', refId: 'mod-turret-kin-1', rarity: 'common', basePrice: 53_000, demandMultiplier: 0.6 },
+  // 巨构近防炮（2026-09-11 机群批 S4）：**唯一能打敌方机群**的武器类型（防空属性），点上架
+  { key: 'mod-pd-e', kind: 'module', refId: 'mod-pd-e', rarity: 'rare', basePrice: 118_000, demandMultiplier: 0.7 },
+  { key: 'bp-pd-e', kind: 'blueprint', refId: 'bp-pd-e', rarity: 'rare', basePrice: 120_000, demandMultiplier: 0.7 },
   { key: 'mod-missile-1', kind: 'module', refId: 'mod-missile-1', rarity: 'common', basePrice: 62_000, demandMultiplier: 0.6 },
   { key: 'mod-laser-1', kind: 'module', refId: 'mod-laser-1', rarity: 'common', basePrice: 66_000, demandMultiplier: 0.6 },
   // 战斗家族 MK1（V17 起真生效：护盾/装甲为分系专精三款、矢量推进器；低价鼓励勤换装）
