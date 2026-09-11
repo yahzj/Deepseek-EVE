@@ -1015,14 +1015,22 @@ const meSpeedRef = useRef(200)
       ...droneWings.map((w) => ({ artId: w.artId, model: w.model, show: w.show, st: w.st, deck: w.phase === 'deck' })),
       // **敌机也交给同一套驱动**（2026-09-11 S5 修正）：旧版敌机机体不在 `wings` 里 ⇒ 机群层盒子
       // 从未被平移到我方舰位（玩家不带无人机时 `d.wings` 为空）⇒ 敌机位置全错、还随布局漂移。
-      ...foeWings.map((w) => ({
-        artId: w.artId,
-        model: droneModelOf(w.artId)!,
-        show: Math.min(w.alive, DRONE_SHOW_MAX),
-        st: foeSortieRef.current.get(`${w.tag}:${w.artId}`),
-        deck: false,
-        foe: w.tag,
-      })),
+      ...foeWings.map((w) => {
+        const st = foeSortieRef.current.get(`${w.tag}:${w.artId}`)
+        const fcyc = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
+        const fel = st ? now - st.startAt : Number.POSITIVE_INFINITY
+        return {
+          artId: w.artId,
+          model: droneModelOf(w.artId)!,
+          show: Math.min(w.alive, DRONE_SHOW_MAX),
+          st,
+          // **收舱待命 = 不显示**（与我方同款：`is-deck` 走 CSS `display:none`）。
+          // ⚠ 旧版常显 ⇒ 敌机在每轮之间**停在敌舰甲板上朝右不动**（船长实测："初始位于敌舰尾部、
+          //   朝向朝右"）——敌机的可见时段应当与我方一致：只有出海那 1.4 秒。
+          deck: !st || fel >= fcyc,
+          foe: w.tag,
+        }
+      }),
     ],
   }
 
@@ -1219,12 +1227,17 @@ const meSpeedRef = useRef(200)
                 const model = droneModelOf(w.artId)
                 if (!model) return null
                 const show = Math.min(w.alive, DRONE_SHOW_MAX)
+                // 收舱待命段与我方同款：加 `is-deck` ⇒ CSS `display:none`（不再"停在敌舰甲板上朝右不动"）
+                const fst = foeSortieRef.current.get(`${w.tag}:${w.artId}`)
+                const fcyc2 = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
+                const fel2 = fst ? now - fst.startAt : Number.POSITIVE_INFINITY
+                const onDeck = !fst || fel2 >= fcyc2
                 // 位置**不在这里算**：与本方机群一样交给 rAF 驱动层（`droneDriveRef.wings` 里带 `foe` 的那些），
                 // 驱动按 `foePoseAt` 写 transform（含 translate(-50%,-50%) 居中与 scaleX(heading) 朝向）。
                 // ⚠ 旧版在这里自己写 left/top ⇒ 机群层盒子只有"我方有机群"时才被平移到我方舰位，
                 //   玩家不带无人机时敌机全部落在未平移的盒子里（船长实测：位置错、还随布局漂移）。
                 return (
-                  <div key={`foe-${w.tag}-${w.artId}`} className="app-bts-wing is-sortie">
+                  <div key={`foe-${w.tag}-${w.artId}`} className={`app-bts-wing is-sortie${onDeck ? ' is-deck' : ''}`}>
                     {Array.from({ length: show }, (_, i) => (
                       <span
                         key={i}
