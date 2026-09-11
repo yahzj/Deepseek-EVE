@@ -272,27 +272,20 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // **单发 184 → 175**：×0.95 **吸收"必中"带来的命中增益**，使**实收/轮守恒**（旧链 `184×0.95 ≈ dps×4×0.62`）；
     //   保留的难度变化只有"层位克制"本身（动能对盾 ×1.5 → 等离子对盾 ×1.25 / 对甲 ×0.5 → ×1.0）。
     // N = 3 ⇒ 补偿 `6/4`，卡上 `dmgMul` 把它除掉。血量旧账（P-03）本批**不动**，等六组读数再定。
+    // 船长 2026-09-11 二次裁定（**削减编成**）：「坟场守墓者削减到**一波 2 艘船**」。
+    // ⇒ 单波 **守墓长舰 ×2**（原 2 波 2+1 = 3 艘）；**每艘的属性不变**（血 1,980 / 单发 175）
+    //   ⇒ 本卡总血 **5,580 → 3,960**、总单发 552 → 350（本轮是船长指定的**强度削减**，不再是守恒口径）。
+    // N = 2 ⇒ 补偿由 `6/4` 变 **`4/3`**，卡上 `dmgMul` 随之重算。
     ships: [
       {
         ship: FOE_D_LONGSHIP,
         count: 2,
-        wave: 0,
-        hpMul: 1980 / FOE_D_LONGSHIP.hp, // 每单位 1,980（改造前波 1 的逐单位血）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每单位单发 175
-      },
-      {
-        ship: FOE_D_LONGSHIP,
-        count: 1,
-        wave: 1,
-        hpMul: 1620 / FOE_D_LONGSHIP.hp, // 每单位 1,620（改造前波 2 的逐单位血）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)),
+        hpMul: 1980 / FOE_D_LONGSHIP.hp, // 每艘 1,980（与削减前同值）
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(2)), // 每艘单发 175
       },
     ],
-    waves: [
-      { units: 2, hpShare: 0.55 },
-      { units: 1, hpShare: 0.45 },
-    ], // **原样保留**：波次结构与 `units` 之和（= 3）都不动 ⇒ **星系的残骸注入量不变**
-    //   （`bountyEnemyCount` 数的正是 `waves[].units` 之和——C 族那次踩过的连带项，本批避开了）
+    waves: [{ units: 2, hpShare: 1 }], // 单波；⚠ `units` 之和 3 → **2** ⇒ 该星系残骸注入量的
+    //   敌人数因子 1.6 → 1.4（−12.5%）—— 这是"削减编成"的**必然连带**，已登记（回收池若需重标另议）
     galaxyId: 'galaxy-grave',
     threat: 88,
     tactic: 'orbit', // 中程（2026-09-10 船长族系改判 brawl → orbit；本次沿用）
@@ -641,34 +634,34 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //   单发 **200**、射程 584~7,677、血型均衡 —— 逐项保留。
     // **改动**：主系 动能 → **等离子（能量）** 8 : 动能 2 + **`beam` 必中**；单发 ×0.95 = **190**（实收守恒）；
     //   射程带 → **562~12,000**（远程档族内最长 = 守墓者长炮的招牌射程）。
+    // 船长 2026-09-11 二次裁定（**削减编成 + 混编**）：「穹顶守卫削减到**1 波 2 静滞卫舰 + 1 守墓长舰**」。
+    // ⇒ 单波 **静滞卫舰 ×2 + 守墓长舰 ×1**（原 3 波 2+2+1 = 5 艘，全是静滞卫舰）。
+    // **两舰级按同一"卡片血量倍率"伸缩**（`k = 1,960 / 1,170`）：静滞卫舰每艘 **1,960**、
+    //   守墓长舰每艘 **1,080 × k = 1,809.23**（同 k ⇒ 各舰级仍按自己的档案锚成比例，不是一律 1,960）。
+    // 单发同款：静滞卫舰每艘 **190**、守墓长舰每艘 **161**（= 105 × `190/124`，同一卡级系数）。
+    // ⇒ 总血 **9,520 → 5,729.23**、总单发 1,000 → 541。N = 5 → **3** ⇒ 补偿 `10/6` → **`6/4`**。
+    // 静滞卫舰排在**首位** ⇒ `foes[0]` 仍是 12 km 带 ⇒ **期望交距 10,284 m 不变**（远程档站姿不变）。
     ships: [
       {
         ship: FOE_D_STASIS,
         count: 2,
-        wave: 0,
-        hpMul: 1960 / FOE_D_STASIS.hp, // 每单位 1,960
-        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(5)), // 每单位单发 190
+        hpMul: 1960 / FOE_D_STASIS.hp, // 每艘 1,960（与削减前同值）
+        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(3)), // 每艘单发 190
       },
       {
-        ship: FOE_D_STASIS,
-        count: 2,
-        wave: 1,
-        hpMul: 1960 / FOE_D_STASIS.hp,
-        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(5)),
-      },
-      {
-        ship: FOE_D_STASIS,
+        ship: FOE_D_LONGSHIP,
         count: 1,
-        wave: 2,
-        hpMul: 1680 / FOE_D_STASIS.hp, // 每单位 1,680（末波）
-        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(5)),
+        // 同一条"卡片血量倍率" k = 1960/1170 ⇒ 1,080 × k = 1,809.23（各舰级按自己的档案锚成比例）
+        hpMul: (1080 * (1960 / FOE_D_STASIS.hp)) / FOE_D_LONGSHIP.hp,
+        dmgMul: 161 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每艘单发 161（= 105 × 190/124）
+        split: foeLayerSplit('balanced'), // 血型随卡走（守墓长舰舰级缺省是装甲型）
+        tactic: 'kite', // 随卡走（本卡是远程档；守墓长舰舰级缺省为 orbit）
+        // 船长 2026-09-11「**穹顶守卫最短射程 +1,500**」按**卡级**理解 ⇒ 本卡含混编的长舰一并取 2,062
+        // （若您要"长舰按自己那一档 1,062"，删掉本行即可——详见设计稿 §7.4）
+        rangeMinM: 2062,
       },
     ],
-    waves: [
-      { units: 2, hpShare: 0.35 },
-      { units: 2, hpShare: 0.35 },
-      { units: 1, hpShare: 0.3 },
-    ], // **原样保留**：波次与 `units` 之和（= 5）不动 ⇒ 残骸注入量不变
+    waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
     galaxyId: 'galaxy-vault',
     threat: 96,
     tactic: 'kite', // 远程（船长「静滞卫舰改为远程」；原 orbit）
@@ -689,37 +682,19 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //   差别落在**卡面血型**（本卡均衡 / 坟场装甲，用条目 `split` 覆写）与**编成规模**（5 单位 vs 3 单位）上
     //   —— 这正是"D 族四张卡平级、只按地点分"的写法。
     // **改动**：主系 动能 → **等离子（能量）** 8 : 动能 2 + **`beam` 必中**；单发 ×0.95 = **175**（实收守恒）。
+    // 船长 2026-09-11 二次裁定（**削减编成**）：「虚海守望者削减到**1 波 3 艘船**」。
+    // ⇒ 单波 **守墓长舰 ×3**（原 3 波 2+2+1 = 5 艘）；**每艘属性不变**（血 1,505 / 单发 175）
+    //   ⇒ 总血 **7,310 → 4,515**、总单发 920 → 525。N = 5 → **3** ⇒ 补偿 `10/6` → **`6/4`**。
     ships: [
       {
         ship: FOE_D_LONGSHIP,
-        count: 2,
-        wave: 0,
-        hpMul: 1505 / FOE_D_LONGSHIP.hp, // 每单位 1,505
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(5)), // 每单位单发 175
+        count: 3,
+        hpMul: 1505 / FOE_D_LONGSHIP.hp, // 每艘 1,505（与削减前同值）
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每艘单发 175
         split: foeLayerSplit('balanced'), // 血型随卡走（舰级缺省是装甲型）
       },
-      {
-        ship: FOE_D_LONGSHIP,
-        count: 2,
-        wave: 1,
-        hpMul: 1505 / FOE_D_LONGSHIP.hp,
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(5)),
-        split: foeLayerSplit('balanced'),
-      },
-      {
-        ship: FOE_D_LONGSHIP,
-        count: 1,
-        wave: 2,
-        hpMul: 1290 / FOE_D_LONGSHIP.hp, // 每单位 1,290（末波）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(5)),
-        split: foeLayerSplit('balanced'),
-      },
     ],
-    waves: [
-      { units: 2, hpShare: 0.35 },
-      { units: 2, hpShare: 0.35 },
-      { units: 1, hpShare: 0.3 },
-    ], // **原样保留**：波次与 `units` 之和（= 5）不动 ⇒ 残骸注入量不变
+    waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 88、奖金 110 万）

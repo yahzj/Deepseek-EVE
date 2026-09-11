@@ -476,7 +476,7 @@ export const FOE_D_LONGSHIP: FoeShipDef = {
   shotDmg: 105, // T3 档基线 124 × 角色 0.85 = 105.4 → 105
   hitRate: 1, // 光束必中
   reloadMs: 4000,
-  rangeMinM: 562,
+  rangeMinM: 1062, // 船长 2026-09-11「守墓长舰的最短射程 +500」（562 → **1,062**）：古舰不贴脸
   rangeMaxM: 7391, // 沿用现状上限（零变化）
   falloff: 0.5,
   blindDmgMul: 0.3,
@@ -503,7 +503,7 @@ export const FOE_D_STASIS: FoeShipDef = {
   shotDmg: 124, // T3 档基线 124 × 角色 1.00 = 124
   hitRate: 1, // 光束必中
   reloadMs: 4000,
-  rangeMinM: 562,
+  rangeMinM: 2062, // 船长 2026-09-11「穹顶守卫最短射程 +1,500」（562 → **2,062**）：族内**最不贴脸**的一档
   rangeMaxM: 12_000, // 远程档最长（守墓者长炮）
   falloff: 0.5,
   blindDmgMul: 0.3,

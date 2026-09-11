@@ -780,7 +780,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       expect(['kite', 'orbit'], s.id).toContain(s.tactic)
       expect(s.energyForm, s.id).toBe('beam') // 「靠必中与射程立身」
       expect(s.dmgMix, s.id).toEqual({ plasma: 8, kinetic: 2 }) // 主系能量 8 : 副系动能 2（族签名顺位）
-      expect(s.rangeMinM, s.id).toBe(562) // 族统一下限（不抬：不留"贴脸安全区"）
+      expect(s.rangeMinM, s.id).toBe(s.id === 'foe-d-ghost' ? 562 : s.id === 'foe-d-longship' ? 1062 : 2062) // 船长：古舰不贴脸（逐档抬升）
     }
     // 速度：越往里越慢；战法：静滞卫舰远程（kite）、另两条中程（orbit）
     expect(graves.map((s) => Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio))).toEqual([325, 258, 129])
@@ -791,28 +791,31 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(Math.max(...graves.filter((s) => s.id !== 'foe-d-stasis').map((s) => s.rangeMaxM))).toBeLessThan(12_000)
   })
 
-  it('D 族四张卡：**总血与层位逐字守恒**（实测基准）、必中、主系能量、僚机改主体', () => {
+  it('D 族四张卡：逐单位值（含船长"削减编成"后的艘数）、必中、主系能量、混编', () => {
     const ids = ['ano-ghost-signal', 'ano-gravekeeper', 'ano-voidedge-warden', 'ano-vault-sentinel']
     const allWaves = (def: AnomalyDef): ReturnType<typeof createFoeSpecs> =>
       (def.waves ?? [{ units: 1, hpShare: 1 }]).flatMap((_, i) =>
         createFoeSpecs(def, bal, { tagPrefix: i === 0 ? '' : `w${i}-` }),
       )
     const sum = (xs: readonly number[]): number => xs.reduce((a, b2) => a + b2, 0)
-    // 改造前实测值（探针 `_probe-d-baseline` 逐单位建档）：总血 / 单位数 / 逐单位血
-    const BEFORE: Record<string, { hp: number; n: number; unit: number[]; shot: number }> = {
+    /** 船长 2026-09-11 **二次裁定"削减编成"后的现状**（探针建档）：
+     *  幽灵舰信号 = 火力对齐后的守恒值；另三张 = 削减前每艘值 × 削减后的艘数。 */
+    const K = 1960 / 1170 // 穹顶守卫的"卡片血量倍率"（两舰级按同一 k 伸缩）
+    const NOW: Record<string, { hp: number; n: number; unit: number[]; shot: number }> = {
       'ano-ghost-signal': { hp: 555, n: 2, unit: [346.875, 208.125], shot: 64 + 38 },
-      'ano-gravekeeper': { hp: 5580, n: 3, unit: [1980, 1980, 1620], shot: 175 * 3 },
-      'ano-voidedge-warden': { hp: 7310, n: 5, unit: [1505, 1505, 1505, 1505, 1290], shot: 175 * 5 },
-      'ano-vault-sentinel': { hp: 9520, n: 5, unit: [1960, 1960, 1960, 1960, 1680], shot: 190 * 5 },
+      'ano-gravekeeper': { hp: 3960, n: 2, unit: [1980, 1980], shot: 175 * 2 }, // 1 波 2 艘（原 2 波 3 艘）
+      'ano-voidedge-warden': { hp: 4515, n: 3, unit: [1505, 1505, 1505], shot: 175 * 3 }, // 1 波 3 艘（原 3 波 5 艘）
+      // 1 波 2 静滞卫舰 + 1 守墓长舰（原 3 波 5 艘）：长舰按同一 k 伸缩 ⇒ 1,080×k = 1,809.23、单发 105×190/124 = 161
+      'ano-vault-sentinel': { hp: 1960 * 2 + 1080 * K, n: 3, unit: [1960, 1960, 1080 * K], shot: 190 + 190 + 161 },
     }
     for (const id of ids) {
       const def = card(id)
-      const want = BEFORE[id]!
+      const want = NOW[id]!
       const u = allWaves(def)
       expect(u, id).toHaveLength(want.n)
-      expectHpClose(u.map(hpOf), want.unit) // **逐单位血逐字**（含末波较小的那一只）
-      expect(sum(u.map(hpOf)), id).toBeCloseTo(want.hp, 6) // **总血守恒**
-      expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0)), id).toBe(want.shot) // 单发 = 旧值 ×0.95（实收守恒）
+      expectHpClose(u.map(hpOf), want.unit) // **逐单位血逐字**
+      expect(sum(u.map(hpOf)), id).toBeCloseTo(want.hp, 6)
+      expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0)), id).toBe(want.shot)
       for (const x of u) {
         expect(x.weapons[0]!.kind, id).toBe('beam') // D 族**保留必中**（不走 C 族那套掷命中）
         expect(x.weapons[0]!.hitRate, id).toBe(1)
@@ -826,11 +829,22 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       expect(def.escorts, id).toBeUndefined()
       // 僚机一律不写（船长「不保留僚机」）
       expect(def.ships!.every((s) => s.escort !== true), id).toBe(true)
-      // ⚠ **波次与 `units` 之和不动** ⇒ 星系残骸注入量（`bountyEnemyCount`）不变
+      // 船长「削减编成」后：三张卡都是**单波**，`units` 之和 = 实际艘数（幽灵舰信号本就不写 waves = 1）
+      expect(def.waves ?? [], id).toHaveLength(id === 'ano-ghost-signal' ? 0 : 1)
       expect(def.waves?.reduce((s, w) => s + w.units, 0) ?? 1, id).toBe(
-        id === 'ano-gravekeeper' ? 3 : id === 'ano-ghost-signal' ? 1 : 5,
+        id === 'ano-ghost-signal' ? 1 : id === 'ano-gravekeeper' ? 2 : 3,
       )
     }
+    // **编成与混编**（船长 2026-09-11 二次裁定）
+    const comp = (id: string): string[] =>
+      card(id)
+        .ships!.flatMap((s) => Array.from({ length: s.count ?? 1 }, () => s.ship.name))
+    expect(comp('ano-ghost-signal')).toEqual(['幽灵舰', '幽灵舰'])
+    expect(comp('ano-gravekeeper')).toEqual(['守墓长舰', '守墓长舰'])
+    expect(comp('ano-voidedge-warden')).toEqual(['守墓长舰', '守墓长舰', '守墓长舰'])
+    expect(comp('ano-vault-sentinel')).toEqual(['静滞卫舰', '静滞卫舰', '守墓长舰']) // **混编**
+    // 静滞卫舰排在首位 ⇒ `foes[0]` 仍是 12 km 带 ⇒ 期望交距随新下限 = 2,062 + 0.85×(12,000−2,062) = **10,509**
+    expect(foeDesiredRange(allWaves(card('ano-vault-sentinel'))[0]!, allWaves(card('ano-vault-sentinel')), bal)).toBe(10509)
     // 战法（船长「静滞卫舰改为远程、幽灵舰为中程」）
     expect(card('ano-vault-sentinel').tactic).toBe('kite')
     expect(card('ano-ghost-signal').tactic).toBe('orbit')
