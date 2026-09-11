@@ -101,6 +101,7 @@
 | **D-01** | `verify` 的成果未并入 `main` | C 族第一步（含取数、B 族回交单、三号各文档批）**全部只在 `verify`**；船长口径「**合并一律由二号做**」 | 二号执行（解冲突口径见 `handover-faction-c-20260911.md` §六） |
 | **D-02** | `verify` 落后 `main` 若干已提交 | 一号的通讯 v2 等已进 `main`，`verify` 尚未同步 | 下次取数时 `git merge main`（只读取数） |
 | **D-03** | 三号"往 main 的合并"曾走通前半程 | 冲突面 = `docs/roadmap.md` + `tools/content-check.ts`（两侧同位置各加一块 ⇒ **都保留**；roadmap 是 CRLF，标记行用 Node 脚本删） | 见 `handover-faction-c-20260911.md` §6.2 |
+| **D-04** | 「舰种体积」批在 verify 全绿、**未进 main** | `verify` = `5feb883`（含 `3ee9d16`，已取 `main` 的 11 个提交、**零冲突**）；四连在合并后的树上复跑全绿（core 909/909）；`main` **可 ff** 但当时**有一号在途未提交改动**（`pages/CommsPage.tsx`、`styles.css` + 两个 `_` 探针） | **船长 2026-09-11 裁决：等一号提交完/协调后再合**；合并前先确认主树干净，再 `git merge --ff-only verify` |
 
 ---
 
