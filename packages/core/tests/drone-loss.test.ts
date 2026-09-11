@@ -87,10 +87,16 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     // 打死王鲭；本用例测的是**点防打机群**这条链路（威胁 96 ≥ 门槛 60 ⇒ 点防照常生效）⇒ 把该卡伤害压到 0.2
     // 让战斗活到点防出结果（威胁/点防门槛/机群口径全不变）。
     // ⚠ d2 已退休 `foeDmgMul`（行为恒等）⇒ 用**基础单发直写** `foeShotDmg` 表达同一意图。
-    const calmCtx: SimContext = {
-      ...ctx,
-      anomalies: new Map([...ctx.anomalies, [HIGH, { ...ctx.anomalies.get(HIGH)!, foeShotDmg: 0.2 }]]),
+    // ⚠ **2026-09-11 D 族落码后本处手法要换**：穹顶守卫已迁入**舰级路径**，而舰级路径读的是
+    // `ship.shotDmg × dmgMul`、**不再读旧路径的 `foeShotDmg`** ⇒ 原来的"基础单发直写 0.2"会**静默失效**
+    // （敌人恢复满伤害并把玩家打死，机群还没轮到点防出结果）。同一意图改在**编成条目引用的舰级**上表达：
+    // 克隆一份把该舰级单发压到 0.2，**不动共享的舰级对象**（否则污染其它用例）。
+    const hi = ctx.anomalies.get(HIGH)!
+    const calmCard: (typeof hi) = {
+      ...hi,
+      ships: hi.ships?.map((s) => ({ ...s, ship: { ...s.ship, shotDmg: 0.2 } })),
     }
+    const calmCtx: SimContext = { ...ctx, anomalies: new Map([...ctx.anomalies, [HIGH, calmCard]]) }
     const battle = runBattle(state, HIGH, calmCtx)!
     const pools = Object.values(battle.dronePools ?? {})
     const lost = pools.filter((p) => !p.alive).length

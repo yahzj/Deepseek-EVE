@@ -252,6 +252,11 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-alien-rift-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
       { id: 'foe-alien-starcore-adult', tier: 2, speed: 398 }, // 2 驱逐 295 × 1.35（> A 同档 325）
       { id: 'foe-alien-maw', tier: 4, speed: 297 }, // **T4 巨兽**：205 × 297/205（慢而硬，用冲锋补偿；船长「单独上调 20 点」）
+      // D 族（守墓古舰）：船长 2026-09-11 亲定「档位 **1 驱逐 2 巡洋**（更高级的船还没出）」+
+      // 「**静滞卫舰改为远程、幽灵舰为中程**」+「幽灵舰 **110%** · 守墓长舰**按正常算** · 静滞卫舰 **50%**」
+      { id: 'foe-d-ghost', tier: 2, speed: 325 }, // 2 驱逐 295 × 1.10
+      { id: 'foe-d-longship', tier: 3, speed: 258 }, // 3 巡洋 258 × 1.00
+      { id: 'foe-d-stasis', tier: 3, speed: 129 }, // 3 巡洋 258 × 0.50（**全族最慢**：守墓者从来不需要追人）
     ])
   })
 
@@ -558,7 +563,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(13) // A 族 6 + B 族 3 + C 族 4
+    expect(checked).toBe(17) // A 族 6 + B 族 3 + C 族 4 + D 族 4
   })
 })
 
@@ -764,6 +769,83 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       expect(w.fixedType).toBe('kinetic')
       expect(w.hitRate).toBe(0.85)
     }
+  })
+
+  it('D 族三条舰级：全远程（不许 brawl）+ 全 `beam` 必中 + 族格"越往里越慢"', () => {
+    const graves = FOE_SHIPS.filter((x) => x.family === 'D')
+    expect(graves.map((s) => s.id)).toEqual(['foe-d-ghost', 'foe-d-longship', 'foe-d-stasis'])
+    expect(graves.map((s) => s.hullClassTier)).toEqual([2, 3, 3]) // 船长「1 驱逐 2 巡洋」，更高级的船还没出
+    for (const s of graves) {
+      expect(s.tactic, s.id).not.toBe('brawl') // 族规：全远程
+      expect(['kite', 'orbit'], s.id).toContain(s.tactic)
+      expect(s.energyForm, s.id).toBe('beam') // 「靠必中与射程立身」
+      expect(s.dmgMix, s.id).toEqual({ plasma: 8, kinetic: 2 }) // 主系能量 8 : 副系动能 2（族签名顺位）
+      expect(s.rangeMinM, s.id).toBe(562) // 族统一下限（不抬：不留"贴脸安全区"）
+    }
+    // 速度：越往里越慢；战法：静滞卫舰远程（kite）、另两条中程（orbit）
+    expect(graves.map((s) => Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio))).toEqual([325, 258, 129])
+    expect(graves.map((s) => s.tactic)).toEqual(['orbit', 'orbit', 'kite'])
+    // 远程档射程最长
+    const stasis = graves.find((s) => s.id === 'foe-d-stasis')!
+    expect(stasis.rangeMaxM).toBe(12_000)
+    expect(Math.max(...graves.filter((s) => s.id !== 'foe-d-stasis').map((s) => s.rangeMaxM))).toBeLessThan(12_000)
+  })
+
+  it('D 族四张卡：**总血与层位逐字守恒**（实测基准）、必中、主系能量、僚机改主体', () => {
+    const ids = ['ano-ghost-signal', 'ano-gravekeeper', 'ano-voidedge-warden', 'ano-vault-sentinel']
+    const allWaves = (def: AnomalyDef): ReturnType<typeof createFoeSpecs> =>
+      (def.waves ?? [{ units: 1, hpShare: 1 }]).flatMap((_, i) =>
+        createFoeSpecs(def, bal, { tagPrefix: i === 0 ? '' : `w${i}-` }),
+      )
+    const sum = (xs: readonly number[]): number => xs.reduce((a, b2) => a + b2, 0)
+    // 改造前实测值（探针 `_probe-d-baseline` 逐单位建档）：总血 / 单位数 / 逐单位血
+    const BEFORE: Record<string, { hp: number; n: number; unit: number[]; shot: number }> = {
+      'ano-ghost-signal': { hp: 555, n: 2, unit: [346.875, 208.125], shot: 64 + 38 },
+      'ano-gravekeeper': { hp: 5580, n: 3, unit: [1980, 1980, 1620], shot: 175 * 3 },
+      'ano-voidedge-warden': { hp: 7310, n: 5, unit: [1505, 1505, 1505, 1505, 1290], shot: 175 * 5 },
+      'ano-vault-sentinel': { hp: 9520, n: 5, unit: [1960, 1960, 1960, 1960, 1680], shot: 190 * 5 },
+    }
+    for (const id of ids) {
+      const def = card(id)
+      const want = BEFORE[id]!
+      const u = allWaves(def)
+      expect(u, id).toHaveLength(want.n)
+      expectHpClose(u.map(hpOf), want.unit) // **逐单位血逐字**（含末波较小的那一只）
+      expect(sum(u.map(hpOf)), id).toBeCloseTo(want.hp, 6) // **总血守恒**
+      expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0)), id).toBe(want.shot) // 单发 = 旧值 ×0.95（实收守恒）
+      for (const x of u) {
+        expect(x.weapons[0]!.kind, id).toBe('beam') // D 族**保留必中**（不走 C 族那套掷命中）
+        expect(x.weapons[0]!.hitRate, id).toBe(1)
+        expect(x.weapons[0]!.fixedType, id).toBe('plasma') // 主系能量
+        expect(x.foeTactic, id).not.toBe('brawl')
+      }
+      // 旧威胁推导字段一律退场（舰级给绝对值，卡上只留编成与修正）
+      expect(def.foeHpOverride, id).toBeUndefined()
+      expect(def.foeSpeedMps, id).toBeUndefined()
+      expect(def.foeHitRate, id).toBeUndefined()
+      expect(def.escorts, id).toBeUndefined()
+      // 僚机一律不写（船长「不保留僚机」）
+      expect(def.ships!.every((s) => s.escort !== true), id).toBe(true)
+      // ⚠ **波次与 `units` 之和不动** ⇒ 星系残骸注入量（`bountyEnemyCount`）不变
+      expect(def.waves?.reduce((s, w) => s + w.units, 0) ?? 1, id).toBe(
+        id === 'ano-gravekeeper' ? 3 : id === 'ano-ghost-signal' ? 1 : 5,
+      )
+    }
+    // 战法（船长「静滞卫舰改为远程、幽灵舰为中程」）
+    expect(card('ano-vault-sentinel').tactic).toBe('kite')
+    expect(card('ano-ghost-signal').tactic).toBe('orbit')
+    expect(card('ano-gravekeeper').tactic).toBe('orbit')
+    expect(card('ano-voidedge-warden').tactic).toBe('orbit')
+    // 血型不搞族级统一：各自沿用现行（坟场装甲 / 虚海·穹顶均衡 / 幽灵舰护盾）
+    const splitOf = (id: string): { s: number; a: number } => {
+      const h = allWaves(card(id))[0]!.hp
+      const tot = h.s + h.a + h.h
+      return { s: Number((h.s / tot).toFixed(2)), a: Number((h.a / tot).toFixed(2)) }
+    }
+    expect(splitOf('ano-gravekeeper')).toEqual({ s: 0.2, a: 0.55 })
+    expect(splitOf('ano-voidedge-warden')).toEqual({ s: 0.34, a: 0.33 })
+    expect(splitOf('ano-vault-sentinel')).toEqual({ s: 0.34, a: 0.33 })
+    expect(splitOf('ano-ghost-signal')).toEqual({ s: 0.5, a: 0.25 })
   })
 
   it('速度口径（裁定②③）：倍率带 1.30~2.10、同档快于 A 族最快、T4 走"巨兽"白名单且允许慢', () => {

@@ -20,6 +20,9 @@ import {
   FOE_ALIEN_RIFT,
   FOE_ALIEN_STARCORE,
   FOE_ALIEN_STARCORE_ADULT,
+  FOE_D_GHOST,
+  FOE_D_LONGSHIP,
+  FOE_D_STASIS,
   FOE_SCAV_ARMED,
   FOE_SCAV_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
@@ -91,6 +94,17 @@ const MAW_TOTAL_DMG = 501 // = 167 × 3（改造前实际总单发）
 /** 稀有头目的血/火力占比（船长：「**首领血量占比提高到 80%**」；火力同比例 ⇒ 每只小虫 2%） */
 const MAW_BOSS_SHARE = 0.8
 const MAW_MINION_SHARE = 0.02
+
+/**
+ * **D 族（守墓古舰）的多舰船补偿**（2026-09-11 船长「对悬赏进行敌人配置」批）：
+ * 与 A / C 族同款 —— 引擎按"本卡编成单位总数 N"施加 `2N/(N+1)`，卡上 `dmgMul` 把它除掉。
+ * | 卡 | 单位总数 N | 补偿 |
+ * |---|---|---|
+ * | 幽灵舰信号（幽灵舰 ×2） | 2 | `4/3` ≈ 1.3333 |
+ * | 坟场守墓者（守墓长舰 ×3） | 3 | `6/4` = 1.5 |
+ * | 虚海守望者 / 穹顶守卫（×5） | 5 | `10/6` ≈ 1.6667 |
+ */
+const D_COMP = (n: number): number => (2 * n) / (n + 1)
 
 export const ANOMALIES: readonly AnomalyDef[] = [
   {
@@ -249,21 +263,41 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '坟场守墓者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：暗星坟场（威胁 88、奖金 110 万）
     name: '坟场守墓者', // 2026-09-11 船长批「卡名可以更换」：坟场守墓人 → **坟场守墓者**（与窝点词 lairCore 统一；P-30 收口）
-    foeHpOverride: 3600, // 巡洋时代复调轮 r4（2026-09-09）：E 段——锤头鲨中位 53s✅；无技能参考 60%→≥70% 宽容线（原 r1 3900）
-    // 2026-09-10 船长（族系改判）：**brawl → orbit**（D 族＝残破古典长舰 + 12 km 必中点名炮，不该在 2.8 km 贴脸）。
-    // 血量未动：实测曲线（中位参考行）血 ≤120 → 80%/20s/残血 54%、血 310 → 100%/30s/残血 23%、血 ≥1200 → 0%——
-    // 要它"可打"得砍到 ~310（−91%）；保持 3600 则与虚海 88 / 穹顶 96 并列成为 D 族第三张 E 段墙。**船长待裁**。
-    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 345, // 敌速重标（2026-09-10 船长）：改判 orbit 后按 orbit 口径 **1.18×** 基准船（长尾鲨级 272 → 战斗机动 165）；改判前 433（brawl 1.48×）
+    // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（守墓长舰 = T3 巡洋·中程）。
+    // 船长三定：档位「1 驱逐 2 巡洋」· 战法「守墓长舰按中程」（沿用 orbit）· 速度「按正常算」= **258**。
+    // **火力对齐**（原任务 P-11）：主系 **动能 → 等离子（能量）** 8 : 动能 2（副系按族签名表
+    //   `FOE_SUB_DMG.D = 等离子→动能→爆炸` 顺位）+ **`beam` 光束必中**（「靠必中与射程立身」）。
+    // **守恒（实测基准，非卡面值）**：改造前逐单位血 **1,980 ×2 + 1,620**（旧多波路径下"波内每个单位拿满波血"
+    //   ⇒ 实际总血 **5,580**，不是 `foeHpOverride` 的 3,600）、单发 **184**、射程 562~7,391、血型装甲 —— 逐项保留。
+    // **单发 184 → 175**：×0.95 **吸收"必中"带来的命中增益**，使**实收/轮守恒**（旧链 `184×0.95 ≈ dps×4×0.62`）；
+    //   保留的难度变化只有"层位克制"本身（动能对盾 ×1.5 → 等离子对盾 ×1.25 / 对甲 ×0.5 → ×1.0）。
+    // N = 3 ⇒ 补偿 `6/4`，卡上 `dmgMul` 把它除掉。血量旧账（P-03）本批**不动**，等六组读数再定。
+    ships: [
+      {
+        ship: FOE_D_LONGSHIP,
+        count: 2,
+        wave: 0,
+        hpMul: 1980 / FOE_D_LONGSHIP.hp, // 每单位 1,980（改造前波 1 的逐单位血）
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每单位单发 175
+      },
+      {
+        ship: FOE_D_LONGSHIP,
+        count: 1,
+        wave: 1,
+        hpMul: 1620 / FOE_D_LONGSHIP.hp, // 每单位 1,620（改造前波 2 的逐单位血）
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)),
+      },
+    ],
     waves: [
       { units: 2, hpShare: 0.55 },
       { units: 1, hpShare: 0.45 },
-    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
+    ], // **原样保留**：波次结构与 `units` 之和（= 3）都不动 ⇒ **星系的残骸注入量不变**
+    //   （`bountyEnemyCount` 数的正是 `waves[].units` 之和——C 族那次踩过的连带项，本批避开了）
     galaxyId: 'galaxy-grave',
     threat: 88,
-    tactic: 'orbit', // 2026-09-10 船长（族系改判）：**brawl → orbit**（D 族＝残破古典长舰 + 12 km 必中点名炮）
+    tactic: 'orbit', // 中程（2026-09-10 船长族系改判 brawl → orbit；本次沿用）
     defProfile: 'armor',
-    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
     standingReq: 12,
     standingGain: 4,
     rewardIsk: 1100000,
@@ -278,14 +312,23 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：D 族最弱（红环航道，奖金 16.5 万）
     // 注：同星系的 A 族「赤潮劫掠舰队」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '幽灵舰信号',
-    foeHpOverride: 555, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~50s
-    foeSpeedMps: 234, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 173）
+    // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（幽灵舰 = T2 驱逐）。
+    // 船长三定：档位「1 驱逐 2 巡洋」· 战法「**幽灵舰为中程**」（**kite → orbit**）· 速度「**提速到 110%**」= **325**。
+    // **守恒（实测基准）**：改造前逐单位血 **346.875（主）+ 208.125（僚机）**（Σ 555）、单发 **67 + 40**、
+    //   命中 0.85、射程 1,752~13,432、血型护盾 —— 血/单位数逐字保留；**僚机改主体**（船长「不保留僚机」）。
+    // **改动**：主系 爆炸 → **等离子（能量）** 8 : 动能 2 + **`beam` 必中**；单发 ×0.95 = **64 / 38**（实收守恒）；
+    //   射程带收成 **中程 562~7,000**（原 13,432 是旧 kite 口径，随"幽灵舰为中程"的裁定收窄）。
+    // ⚠ **本卡不写 `waves`**：单波，而 `bountyEnemyCount` 数 `waves[].units` 之和——不写 = 仍是 **1**（与改造前一致）
+    //   ⇒ **不动红环航道的残骸密度**（C 族那次的连带项教训，本批两处都避开）。
+    ships: [
+      { ship: FOE_D_GHOST, hpMul: 346.875 / FOE_D_GHOST.hp, dmgMul: 64 / (FOE_D_GHOST.shotDmg * D_COMP(2)) },
+      { ship: FOE_D_GHOST, hpMul: 208.125 / FOE_D_GHOST.hp, dmgMul: 38 / (FOE_D_GHOST.shotDmg * D_COMP(2)) },
+    ],
     galaxyId: 'galaxy-redring',
     threat: 46,
-    tactic: 'kite',
+    tactic: 'orbit', // 中程（船长「幽灵舰为中程」；原 kite）
     defProfile: 'shield',
-    escorts: 1,
-    dmgMix: { explosive: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
     standingReq: 5,
     standingGain: 2,
     rewardIsk: 165000,
@@ -587,22 +630,50 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-vault-sentinel',
-    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '穹顶守卫', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 96、奖金 150 万）
     name: '穹顶守卫',
-    foeHpOverride: 5600, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 55s→目标 ~75s（原 4100）
-    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 351, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.20×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 356（09-09 段参考船口径 ×1.18）
+    // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（静滞卫舰 = T3 巡洋·**远程**）。
+    // 船长三定：档位「1 驱逐 2 巡洋」· 战法「**静滞卫舰改为远程**」（**orbit → kite**）· 速度「只有正常的 50%」= **129**
+    //   —— 全族最慢：它不追你，只是从 12 km 外一直点名（「守墓者从来不需要追人」的数字事实）。
+    // **守恒（实测基准）**：改造前逐单位血 **1,960 ×4 + 1,680**（实际总血 **9,520**，非 `foeHpOverride` 的 5,600）、
+    //   单发 **200**、射程 584~7,677、血型均衡 —— 逐项保留。
+    // **改动**：主系 动能 → **等离子（能量）** 8 : 动能 2 + **`beam` 必中**；单发 ×0.95 = **190**（实收守恒）；
+    //   射程带 → **562~12,000**（远程档族内最长 = 守墓者长炮的招牌射程）。
+    ships: [
+      {
+        ship: FOE_D_STASIS,
+        count: 2,
+        wave: 0,
+        hpMul: 1960 / FOE_D_STASIS.hp, // 每单位 1,960
+        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(5)), // 每单位单发 190
+      },
+      {
+        ship: FOE_D_STASIS,
+        count: 2,
+        wave: 1,
+        hpMul: 1960 / FOE_D_STASIS.hp,
+        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(5)),
+      },
+      {
+        ship: FOE_D_STASIS,
+        count: 1,
+        wave: 2,
+        hpMul: 1680 / FOE_D_STASIS.hp, // 每单位 1,680（末波）
+        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(5)),
+      },
+    ],
     waves: [
       { units: 2, hpShare: 0.35 },
       { units: 2, hpShare: 0.35 },
       { units: 1, hpShare: 0.3 },
-    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
+    ], // **原样保留**：波次与 `units` 之和（= 5）不动 ⇒ 残骸注入量不变
     galaxyId: 'galaxy-vault',
     threat: 96,
-    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
+    tactic: 'kite', // 远程（船长「静滞卫舰改为远程」；原 orbit）
+    defProfile: 'balanced', // 显式化（原缺省值生效）
+    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
     standingReq: 13,
     standingGain: 4,
     rewardIsk: 1500000,
@@ -612,22 +683,52 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-voidedge-warden',
-    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
-    lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 88、奖金 110 万）
-    name: '虚海守望者',
-    foeHpOverride: 4300, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~60s（原 2450）
-    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 345, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.18×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 329（09-09 段参考船口径 ×1.18）
+    // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（守墓长舰 = T3 巡洋·中程）。
+    // **守恒（实测基准）**：改造前逐单位血 **1,505 ×4 + 1,290**（实际总血 **7,310**，非 `foeHpOverride` 的 4,300）、
+    //   单发 **184**、射程 562~7,391、血型**均衡** —— 逐项保留；本卡与坟场守墓者**共用同一舰级**，
+    //   差别落在**卡面血型**（本卡均衡 / 坟场装甲，用条目 `split` 覆写）与**编成规模**（5 单位 vs 3 单位）上
+    //   —— 这正是"D 族四张卡平级、只按地点分"的写法。
+    // **改动**：主系 动能 → **等离子（能量）** 8 : 动能 2 + **`beam` 必中**；单发 ×0.95 = **175**（实收守恒）。
+    ships: [
+      {
+        ship: FOE_D_LONGSHIP,
+        count: 2,
+        wave: 0,
+        hpMul: 1505 / FOE_D_LONGSHIP.hp, // 每单位 1,505
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(5)), // 每单位单发 175
+        split: foeLayerSplit('balanced'), // 血型随卡走（舰级缺省是装甲型）
+      },
+      {
+        ship: FOE_D_LONGSHIP,
+        count: 2,
+        wave: 1,
+        hpMul: 1505 / FOE_D_LONGSHIP.hp,
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(5)),
+        split: foeLayerSplit('balanced'),
+      },
+      {
+        ship: FOE_D_LONGSHIP,
+        count: 1,
+        wave: 2,
+        hpMul: 1290 / FOE_D_LONGSHIP.hp, // 每单位 1,290（末波）
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(5)),
+        split: foeLayerSplit('balanced'),
+      },
+    ],
     waves: [
       { units: 2, hpShare: 0.35 },
       { units: 2, hpShare: 0.35 },
       { units: 1, hpShare: 0.3 },
-    ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
+    ], // **原样保留**：波次与 `units` 之和（= 5）不动 ⇒ 残骸注入量不变
+    foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
+    lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 88、奖金 110 万）
+    name: '虚海守望者',
     galaxyId: 'galaxy-voidedge',
     threat: 88,
-    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
+    tactic: 'orbit', // 中程（族规全远程；本卡沿用）
+    defProfile: 'balanced', // 显式化（原缺省值生效）
+    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
     standingReq: 12,
     standingGain: 4,
     rewardIsk: 1100000,

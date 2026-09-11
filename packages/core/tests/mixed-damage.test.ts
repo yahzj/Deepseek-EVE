@@ -41,13 +41,13 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
 
   it('窝点派生卡 = 同一主系 + 60% / 40%（副系按族签名）', () => {
     expect(LAIR_SUB_DMG_SHARE).toBe(0.4)
-    const card = ctx.anomalies.get('ano-vault-sentinel')! // D 族：主动能 → 副等离子
+    const card = ctx.anomalies.get('ano-vault-sentinel')! // D 族：**主能量 → 副动能**（2026-09-11 火力对齐后）
     const lair = lairAnomalyOf(card, 3)
     expect(foeMainDamageType(lair)).toBe(foeMainDamageType(card))
     const comp = foeDamageComposition(lair)
-    expect(comp[0]).toEqual({ type: 'kinetic', share: 0.6 })
-    expect(comp[1]).toEqual({ type: 'plasma', share: 0.4 })
-    expect(subDamageTypeOf(card)).toBe('plasma')
+    expect(comp[0]).toEqual({ type: 'plasma', share: 0.6 })
+    expect(comp[1]).toEqual({ type: 'kinetic', share: 0.4 })
+    expect(subDamageTypeOf(card)).toBe('kinetic')
   })
 
   it('副系永远与主系不同（19 张窝点候选全遍历）', () => {
