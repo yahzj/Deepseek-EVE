@@ -1966,6 +1966,10 @@ export function battleArcsFor(
   thrusterBoost: number
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean
+  /** **敌方机群**（2026-09-11 机群批 S5）——按敌单位 tag 汇总：机型 id / 机库存量 / **现存架数**。
+   *  表现层据此在**敌舰旁**画出警戒机群（与我方机群层共用 `droneArt` 的机体资产）。
+   *  **缺省 = 本场没有敌机**（既有战斗零行为变化）。 */
+  foeDrones?: Array<{ tag: string; artId: string; count: number; alive: number }>
 } | null {
   const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
   const battle = state.expedition.battle
@@ -2079,6 +2083,22 @@ export function battleArcsFor(
     const def = ctx.items.get(id)
     if (def?.name && id !== AMMO_IDS[t]) ammoNames[ammoKeyOf(t)] = def.name
   }
+  // 敌方机群（2026-09-11 机群批 S5）：按 tag 汇总"机型 / 机库存量 / 现存架数"给表现层——
+  // 敌机与母舰同建同灭（母舰阵亡 ⇒ 其池不再参战），故这里只汇总**当前波存活单位**的池。
+  const foeDroneWings: Array<{ tag: string; artId: string; count: number; alive: number }> = []
+  for (const f of foes) {
+    const pools = battle.foeDronePools?.[f.tag]
+    if (!pools || pools.length === 0) continue
+    const byArt = new Map<string, { count: number; alive: number }>()
+    for (const p of pools) {
+      const id = p.artId ?? 'drone'
+      const cur = byArt.get(id) ?? { count: 0, alive: 0 }
+      cur.count += 1
+      if (p.alive) cur.alive += 1
+      byArt.set(id, cur)
+    }
+    for (const [artId, v] of byArt) foeDroneWings.push({ tag: f.tag, artId, count: v.count, alive: v.alive })
+  }
   return {
     nearM: bal.minDistanceM,
     openM,
@@ -2094,6 +2114,7 @@ export function battleArcsFor(
     // 推进器爆发倍率与敌方突进资格（2026-09-10 船长定）——UI 与引擎同源
     thrusterBoost: me.thrusterBoost ?? 0,
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
+    ...(foeDroneWings.length > 0 ? { foeDrones: foeDroneWings } : {}),
   }
 }
 

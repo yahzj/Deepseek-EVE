@@ -967,6 +967,9 @@ const meSpeedRef = useRef(200)
      2026-09-10 性能修复（船长"击毁敌人后画面明显卡顿"）：存活与尸骸**共用同一套 DOM 结构**
      （此前两个分支结构不同 → 击毁瞬间整份舰体 SVG 被卸载重建，正是卡顿主因）——
      现只切换 class（is-corpse）与淡出透明度，舰体矢量始终不被重建。 */
+  /** 敌方机群（2026-09-11 机群批 S5）：按敌单位 tag 取该舰的警戒机群（机型 / 机库 / 现存架数） */
+  const foeWingOf = (tag: string): { artId: string; count: number; alive: number } | undefined =>
+    arcs.foeDrones?.find((d) => d.tag === tag)
   const foeUnitEls = foeRowTags.map((tag) => {
     const isMain = isFoeMainTag(tag)
     const ba = corpseAtRef.current.get(tag)
@@ -990,6 +993,40 @@ const meSpeedRef = useRef(200)
         <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
           {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
         </span>
+        {/* **敌方机群**（2026-09-11 机群批 S5）——巨构放出的「警戒机」贴敌舰上方排成**警戒幕**：
+            与我方机群共用 `droneArt` 的机体资产，只换族色与形体语言 ⇒ 一眼分敌我；
+            架数 = **现存架数**（被近防炮击落即减，母舰阵亡则整组消失）。 */}
+        {(() => {
+          const wing = foeWingOf(tag)
+          if (!wing || wing.alive <= 0) return null
+          const model = droneModelOf(wing.artId)
+          if (!model) return null
+          const show = Math.min(wing.alive, DRONE_SHOW_MAX)
+          return (
+            <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: -16, width: 0, height: 0 }}>
+              {Array.from({ length: show }, (_, i) => (
+                <span
+                  key={i}
+                  className="app-bts-drone"
+                  style={{ position: 'absolute', left: -68 + i * 17, top: -20 - (i % 2) * 7, color: model.tint }}
+                >
+                  <svg
+                    viewBox="-13 -8 26 16"
+                    width="20"
+                    height="13"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinejoin="round"
+                  >
+                    {model.art}
+                  </svg>
+                </span>
+              ))}
+              {wing.count > show ? <span className="app-bts-drone-more">×{wing.alive}</span> : null}
+            </span>
+          )
+        })()}
         {boomLive ? (
           <span className="app-bts-boom">
             <i className="b-core" />
