@@ -124,7 +124,7 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   const byStep: Record<number, string[]> = {
     2: ['出港', '任务中心', '交付矿石'],
     4: ['舰船', '港内维修', '维修', '修理'],
-    5: ['出港', '常驻悬赏', '演习场讨伐令', '出发'],
+    5: ['出港', '常驻悬赏', '演习场驱逐令', '出发'],
     6: ['技能', 'AI 核心操作学'],
     7: ['舰船', 'AI 指挥中心', '指派', '采矿'],
   }

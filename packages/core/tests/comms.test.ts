@@ -148,7 +148,7 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
       factionId: 'archive',
       deptId: 'dept-recall',
       kind: '教程',
-      subject: '训前简报：先看这封，再开工',
+      subject: '训前简报',
       body: ['先读简报再开工。'],
       trigger: { kind: 'tutorial', step: 0 },
       action: { label: '按单开工：采集富凡晶石', command: 'startTutorial' },
