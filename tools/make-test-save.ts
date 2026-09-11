@@ -738,6 +738,105 @@ function injectEtier(state: GameState): string[] {
   return notes
 }
 
+/** dfamily（2026-09-11 船长「给我准备一个存档，我测试下」）：**D 族「守墓古舰」验收档**。
+ *
+ * 2026-09-11 D 族落码批（火力对齐 + 舰船配置 + 三张卡削减编成 + 抬高最短射程）后的实机验收：
+ * 给四套**与 `battle:calibrate` 探索行逐项同源**的装配，让船长直接感受"三张墙到底能不能过"。
+ *
+ * 装配四套（舰船页切驾驶即换行；模块库另有备件可现场自组）：
+ *  - `D 族·A0 动能抗`（动能炮MK2 · 原参考行：那笔"动能抗"投资在 D 换能量主系后**归零**）
+ *  - `D 族·A0 能量抗`（同上但抗性逐件换等离子版 ⇒ 校准实测存活 8s→17s）
+ *  - `D 族·近距离1500 能量抗`（轻型炮MK1 + 能量抗 + MK2）
+ *  - `D 族·近距离1000 能量抗`（转管炮 + 能量抗 + **MK3**；校准实测三张墙仍 0%，但幽灵舰信号 100%）
+ *
+ * ⚠ 战前把**距离条**拨到对应目标距离（1,500 / 1,000）——校准行是用 `desireM` 直接设定的，
+ *   游戏里对应的就是那个距离控件；D 族的**最短射程**是 562 / **1,062** / **2,062**，
+ *   拨到下限以内理论上能免伤（但校准实测玩家活不到那个距离）。 */
+function injectDfamily(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 80_000_000
+  notes.push('钱包 +80,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（可接全部悬赏：坟场/虚海要 12、穹顶要 13）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——D 族四卡（红环航道 / 暗星坟场 / 虚海边缘 / 穹顶墓园）全部可达`)
+  const midSkillIds = [
+    'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control',
+    'reload-drills', 'drone-warfare', 'drone-servicing', 'ammunition-condensing',
+    'shield-operation', 'energy-management', 'hull-upgrades', 'shield-tuning', 'armor-tuning',
+    'armed-ops', 'armored-ops', 'vector-maneuvering', 'evasion-maneuvering',
+    'targeting-integration', 'ship-systems-engineering',
+  ]
+  for (const k of midSkillIds) state.skills.trained[k] = 3
+  notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 同口径）')
+  const PLA_MID_MK2 = ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2']
+  const PLA_MID_MK3 = ['mod-prop-3', 'mod-shield-pla-2', 'mod-track-2']
+  const KIN_MID_MK2 = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2']
+  const PLA_LOW = ['mod-stab-pla-2', 'mod-armor-pla-2']
+  const KIN_LOW = ['mod-stab-kin-2', 'mod-armor-kin-2']
+  const turret2 = ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2']
+  const turret1 = ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1']
+  const gatling = ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a']
+  const rows: Array<[string, string[], string[], string[]]> = [
+    ['D族·A0 动能抗（原参考行）', turret2, KIN_MID_MK2, KIN_LOW],
+    ['D族·A0 能量抗（只换抗性系）', turret2, PLA_MID_MK2, PLA_LOW],
+    ['D族·近距离1500 能量抗（MK2）', turret1, PLA_MID_MK2, PLA_LOW],
+    ['D族·近距离1000 能量抗（MK3）', gatling, PLA_MID_MK3, PLA_LOW],
+  ]
+  const uids: string[] = []
+  rows.forEach(([name, high, mid, low], i) => {
+    const uid = addShipToFleet(state, 'sh-mako')
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  notes.push(`新增四船（灰鲭鲨级，舰船页切驾驶即换行）：${uids.join(' / ')}`)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  notes.push('仓库弹药三型 ×5000')
+  for (const m of [
+    'mod-shield-pla-2', 'mod-armor-pla-2', 'mod-stab-pla-2',
+    'mod-shield-kin-2', 'mod-armor-kin-2', 'mod-stab-kin-2',
+    'mod-prop-2', 'mod-prop-3', 'mod-turret-kin-1', 'mod-turret-kin-2', 'mod-lair-turret-a',
+    'mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d',
+  ]) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
+  }
+  notes.push('装备库备件 ×3（含**D 族专属三件**：陵墓护盾阵列=三系减伤各 +30%、守墓者长炮、陵寝装甲层）——可现场自组"抗性 + 专属件"组合')
+  for (const s of Object.values(state.fleet)) {
+    if (s) {
+      s.durability = 1
+      s.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push(
+    '测试路径：星图·战斗悬赏 → ① 坟场守墓者 88（现 1 波 2 艘·中程 562~7391·**单发 175 必中**）' +
+      '② 虚海守望者 88（1 波 3 艘）③ 穹顶守卫 96（1 波 **2 静滞卫舰 + 1 守墓长舰**·远程 2062~12000·静滞单发 190）' +
+      '④ 幽灵舰信号 46（1 波 2 艘·中程 562~7000·单发 64/38）。' +
+      '⚠ **战前把距离条拨到目标距离**（1,500 / 1,000 两套才有意义）；D 族最短射程 = 562 / 1,062 / 2,062。',
+  )
+  notes.push(
+    '校准参考值（`--std` 5 播种均值，中位技能）：**A0 动能抗** = 坟场 0%｜8s · 虚海 0%｜8s · 穹顶 0%｜12s · 幽灵舰 100%｜18s｜残血 57%；' +
+      '**A0 换能量抗** = 0%｜17s · 0%｜12s · 0%｜17s · 100%｜18s｜残血 **71%**（存活近乎翻倍）；' +
+      '**近距离 + 能量抗** = 三张墙仍 0%（最好只贴到 1,621m，没摸到 1,062 的死区）· 幽灵舰 100%。' +
+      '重点体感：**"活得久"与"打得死"差多少** · 拨近距离条能不能真的躲开炮 · 换上陵墓护盾阵列（三系 +30%）的差别。',
+  )
+  return notes
+}
+
 /** lairgear（2026-09-10 船长「⑧需要」）：**五族专属装备 15 件 + 流亡蜂无人机 验收档**。
  * 在 rarebox 门槛（五族稀有残骸 + 高级箱 + AI 核心）之上，**把整族专属产出直接预置进装备库/仓库**，
  * 省掉"开箱靠 5/8/10% 掷骰"的等待——船长可直接装配实测 15 件专属与专属无人机的手感/数值。 */
@@ -1120,6 +1219,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   etier: injectEtier,
   abyssgate: injectAbyssgate,
   lairgear: injectLairGear,
+  dfamily: injectDfamily,
 }
 function main(): void {
   const feature = process.argv[2]
