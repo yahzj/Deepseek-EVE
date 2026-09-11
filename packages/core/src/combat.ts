@@ -2261,7 +2261,8 @@ export function advanceBattleFor(
         addLog(
           state,
           'warn',
-          `⚔ 第 ${waveIdx + 1}/${waves.length} 波已全灭（${waveName ? waveName + '·' : ''}${anomaly.name}），敌方增援正在从远处入场…`,
+          `⚔ 第 ${waveIdx + 1}/${waves.length} 波已全灭（${waveName ? waveName + '·' : ''}${anomaly.name}），` +
+            (bal.waveReopenEnabled === true ? '敌方增援正在从远处入场…' : '敌方增援正在入场…'),
         )
       }
       if (gapMs > 0 && battle.waveClearAt !== undefined && state.gameMs < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
@@ -2277,7 +2278,12 @@ export function advanceBattleFor(
       // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
       // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
       // 0 = 原地续战（旧行为），1 = 完整回到开战距离
-      const reopen = bal.waveReopenFrac ?? 0
+      // ⚠ **2026-09-11 船长：「将敌人增援波次距离会后退的惩罚暂时关闭」** ⇒ 本段由**总开关
+      //   `waveReopenEnabled`** gate（现值 false = 关闭）：关闭时**距离原地不动**，下一波在当前交战距离入场，
+      //   玩家可见日志同步改为中性表述（不再说"从远处入场 / 重新接近中"——否则文案与实际不符）。
+      //   机制整套保留：把开关改回 true 即恢复 2026-09-09 口径。
+      const reopenOn = bal.waveReopenEnabled === true
+      const reopen = reopenOn ? (bal.waveReopenFrac ?? 0) : 0
       if (reopen > 0 && Number.isFinite(openM)) {
         battle.distanceM = Math.round(openM * reopen + battle.distanceM * (1 - reopen))
       }
@@ -2285,7 +2291,8 @@ export function advanceBattleFor(
       addLog(
         state,
         'warn',
-        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + '·' : ''}${anomaly.name}）：敌方增援自远处入场，重新接近中。`,
+        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + '·' : ''}${anomaly.name}）：` +
+          (reopenOn ? '敌方增援自远处入场，重新接近中。' : '敌方增援入场。'),
       )
       continue
     }
