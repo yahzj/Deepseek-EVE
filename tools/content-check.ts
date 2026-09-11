@@ -36,6 +36,7 @@ import {
   buildSimContext,
   COMMS_MESSAGES,
   COMMS_FACTIONS,
+  TUTORIAL_TOTAL,
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
@@ -1553,8 +1554,10 @@ for (const m of MODULES) {
 {
   const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills'])
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
-  const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt'])
-  const KINDS = new Set(['剧情', '提示', '委托'])
+  /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
+  const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
+  const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial'])
+  const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立'])
   /**
    * 既有线稿图标名（`apps/desktop/src/renderer/src/ui/Glyphs.tsx` 的 `GLYPHS` 表；
@@ -1584,6 +1587,10 @@ for (const m of MODULES) {
   const loreHits = (text: string): string[] => {
     let masked = text
     for (const ex of LORE_EXEMPT) masked = masked.split(ex).join('□'.repeat(ex.length))
+    // 既有系统名的其余写法（「AI 指挥中心」「AI 副船」「AI 作战」等）：**连空格一起**吃掉
+    // （否则残留空格会让「AI空格中文」再次命中）；**纯「AI」或「AI + 非中文（AI）…」仍会命中**——
+    // 那才是把玩家当成 AI 说话的写法。
+    masked = masked.replace(/AI\s*(?=[\u4e00-\u9fa5])/g, '□□')
     return PLAYER_ESSENCE.filter((w) => masked.includes(w))
   }
   /** 玩家与船不可分离（玩家就是那条船）：直接查说法，不做豁免 */
@@ -1669,6 +1676,13 @@ for (const m of MODULES) {
       case 'siteBuilt':
         check(siteIds.has(m.trigger.siteId), `通讯 ${m.id} 指向的建站点不存在：${m.trigger.siteId}`)
         break
+      case 'tutorial':
+        // 教程通讯：步骤号必须是 1..TUTORIAL_TOTAL（与 core 的 ONB_* 常量同值）
+        check(
+          Number.isInteger(m.trigger.step) && m.trigger.step >= 1 && m.trigger.step <= TUTORIAL_TOTAL,
+          `通讯 ${m.id} tutorial.step 应在 1..${TUTORIAL_TOTAL}：${m.trigger.step}`,
+        )
+        break
       default:
         break
     }
@@ -1677,8 +1691,12 @@ for (const m of MODULES) {
       check(JUMP_PAGES.has(m.hint.page), `通讯 ${m.id} 跳转目标页非法：${m.hint.page}`)
       check(m.hint.text.trim().length > 0, `通讯 ${m.id} 跳转提示为空`)
       if (m.hint.tab !== undefined) {
-        check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持页面内标签，实际页：${m.hint.page}`)
+        check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持标签跳转，实际页：${m.hint.page}`)
         check(MAP_TABS.has(m.hint.tab), `通讯 ${m.id} 星图标签非法：${m.hint.tab}`)
+      }
+      if (m.hint.shipTab !== undefined) {
+        check(m.hint.page === 'ship', `通讯 ${m.id} 只有舰船页支持标签跳转，实际页：${m.hint.page}`)
+        check(SHIP_TABS.has(m.hint.shipTab), `通讯 ${m.id} 舰船标签非法：${m.hint.shipTab}`)
       }
     }
     for (const p of [m.subject, ...m.body, ...(m.hint ? [m.hint.text] : [])]) {

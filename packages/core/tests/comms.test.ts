@@ -25,7 +25,7 @@ import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { ONB_DONE } from '../src/onboarding'
+import { ONB_DONE, ONB_DELIVER, ONB_MINE } from '../src/onboarding'
 import { makeTestCtx } from './helpers'
 
 /** 迷你建站点（挂在 galaxy-far；介绍剧本 dlg-intro） */
@@ -126,6 +126,44 @@ function world(msgs: readonly CommsMessageDef[] = MSGS) {
 function tick(state: GameState, ctx: SimContext, ms = 1000): void {
   advanceGame(state, ms, ctx, { nowWallMs: 0 })
 }
+
+describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入通讯）', () => {
+  /** 教程通讯样本：步骤 2 与步骤 7（后者用来验证"跳过教程后补送"） */
+  const TUT_MSGS: readonly CommsMessageDef[] = [
+    { id: 'tut-2', factionId: 'dshi', deptId: 'dept-training', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 } },
+    { id: 'tut-7', factionId: 'dshi', deptId: 'dept-training', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },
+  ]
+
+  it('到达该步才送达：提前不送、到达即送、幂等只送一次', () => {
+    const { state, ctx } = world(TUT_MSGS)
+    // 步骤 1（还没到 2）：不送
+    state.onboarding.step = ONB_MINE
+    tick(state, ctx, 1000)
+    expect(state.commsDelivered?.['tut-2']).toBeUndefined()
+    expect(commsTriggerMet(state, ctx, { kind: 'tutorial', step: 2 })).toBe(false)
+    // 到达步骤 2：送达
+    state.onboarding.step = ONB_DELIVER
+    expect(commsTriggerMet(state, ctx, { kind: 'tutorial', step: 2 })).toBe(true)
+    tick(state, ctx, 1000)
+    expect(state.commsDelivered?.['tut-2']).toBeDefined()
+    const at = state.commsDelivered!['tut-2']!
+    tick(state, ctx, 5000)
+    expect(state.commsDelivered!['tut-2']).toBe(at) // 时间戳不被刷新
+    expect(state.logs.filter((l) => l.text.includes('教程 2/7'))).toHaveLength(1)
+    // 步骤 7 仍未到：不送
+    expect(state.commsDelivered?.['tut-7']).toBeUndefined()
+  })
+
+  it('跳过教程（step → 99）后，未送的教程通讯全部补齐，收件箱留完整记录', () => {
+    const { state, ctx } = world(TUT_MSGS)
+    state.onboarding.step = ONB_DONE
+    advanceComms(state, ctx)
+    const inbox = commsInbox(state, ctx)
+    expect(inbox.map((e) => e.id).sort()).toEqual(['tut-2', 'tut-7'])
+    expect(inbox.every((e) => e.kind === '教程')).toBe(true)
+    expect(inbox[0]!.from).toBe('深空工业协会 · 训练处') // 教程来信的发件方 = 协会训练处
+  })
+})
 
 describe('通讯 · 触发条件', () => {
   it('开局信：序章引导期间不送（导航那时被教程锁着），收尾演出起送达', () => {

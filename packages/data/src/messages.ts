@@ -12,9 +12,26 @@
  * - `replies` 为**预留**字段（回复选项接口），本期不启用（`core/comms.ts` 的 COMMS_REPLIES_ENABLED = false）。
  */
 import type { CommsMessageDef } from '@whale/core'
+import { TUTORIAL_STEPS } from './tutorialSteps'
+
+/**
+ * 序章教程七封通讯（2026-09-11 船长定：**教程融入通讯**——每步开始时送达该步指引，右下角引导卡取消）。
+ * 文案与跳转全部取自 `./tutorialSteps`（单一出处）；发件方 = 协会 · 训练处（带新手走完头几趟活的部门）。
+ */
+const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => ({
+  id: `tut-${s.step}`,
+  factionId: 'dshi',
+  deptId: 'dept-training',
+  kind: '教程',
+  subject: `教程 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
+  body: s.lines,
+  trigger: { kind: 'tutorial', step: s.step },
+  hint: { text: s.goal, page: s.page, ...(s.mapTab ? { tab: s.mapTab } : {}), ...(s.shipTab ? { shipTab: s.shipTab } : {}) },
+}))
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */
 export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
+  ...TUTORIAL_MESSAGES,
   {
     id: 'msg-welcome',
     factionId: 'dshi',

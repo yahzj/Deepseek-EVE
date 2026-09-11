@@ -136,6 +136,10 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       const site = ctx.stations.get(trigger.siteId)
       return site !== undefined && isSiteBuilt(state, site)
     }
+    case 'tutorial':
+      // 2026-09-11 船长定（教程融入通讯）：到达该步即送达；用 >= 让**跳过教程**（step → 99）之后
+      // 也把前几步的教程通讯补齐，收件箱里始终留着一份完整教程记录。
+      return state.onboarding.step >= trigger.step
     default:
       return false
   }

@@ -17,7 +17,7 @@
  * 2026-09-11 船长追加：屏幕**左上角**绘制**章鱼头 SVG**（`faction-octopus`）代表**官方章鱼人**——
  * 该头像之后都用于代表官方章鱼人（所有 NPC 势力物种皆为章鱼人，只靠色调区分，见 `data/commsFactions.ts`）。
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { COMMS_REPLIES_ENABLED, commsGameClock } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
@@ -48,9 +48,12 @@ export function CommsPage({
   engine,
   onToast,
   onGoto,
+  focus,
 }: PageProps & {
-  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带页面内标签） */
-  onGoto: (page: string, tab?: string) => void
+  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab` / 舰船标签 `shipTab`） */
+  onGoto: (page: string, tab?: string, shipTab?: string) => void
+  /** 定位请求（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 选中指定那封（seq 变化即重新选中） */
+  focus?: { id: string; seq: number } | null
 }): ReactNode {
   const state = engine.state
   const inbox = useMemo(() => engine.commsInboxView(), [state, state.gameMs, engine])
@@ -58,6 +61,15 @@ export function CommsPage({
 
   // 选中项：默认最新一封；列表变化（新消息到达）后若原先选中的还在就保持不变
   const [sel, setSel] = useState<string | null>(null)
+  // 外部定位请求（教程「看详情」）：seq 变化时覆盖当前选中项
+  const focusSeq = focus?.seq ?? -1
+  const lastFocusSeq = useRef(-1)
+  useEffect(() => {
+    if (focusSeq < 0 || focusSeq === lastFocusSeq.current) return
+    lastFocusSeq.current = focusSeq
+    if (focus?.id) setSel(focus.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSeq])
   const current: CommsEntryView | null = inbox.find((e) => e.id === sel) ?? inbox[0] ?? null
 
   // ⑤ 点开即已读（含默认展开的那一封）
@@ -200,7 +212,7 @@ export function CommsPage({
                     <button
                       className="app-btn is-primary app-comms-goto"
                       title={current.hint.text}
-                      onClick={() => onGoto(current.hint!.page, current.hint!.tab)}
+                      onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab)}
                     >
                       <span className="app-comms-goto-text">{current.hint.text}</span>
                       <span className="app-comms-goto-label">前往</span>

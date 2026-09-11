@@ -17,7 +17,7 @@ import { perfHub, perfAutoEnabled } from './game/perf'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
-import { TutorialGuide, TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
+import { TutorialEpilogue, TutorialSpot, type GuideGo } from './panels/TutorialGuide'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -327,8 +327,6 @@ export function App({ engine }: { engine: GameEngine }) {
   const rootRef = useRef<HTMLDivElement>(null)
   // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
   const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
-  // 教程卡防遮挡（手机横屏：目标按钮与右下角教程卡重叠时把卡上移）
-  const [guideLift, setGuideLift] = useState(false)
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
@@ -444,6 +442,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [fitShipId, setFitShipId] = useState<string | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
+  /** 通讯页定位（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 切到通讯页并选中该封教程通讯 */
+  const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
   useEffect(() => {
     if (page !== 'fit') setFitShipId(null)
     // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
@@ -583,6 +583,9 @@ export function App({ engine }: { engine: GameEngine }) {
     [ONB_DIVIDE]: { pages: ['ship'], ship: 'ai' },
   }
   const tutCanOpen = (p: PageKey): boolean => {
+    // 2026-09-11 船长定（教程融入通讯）：**通讯页在教程期始终可开**——教程每一步的全文都在那里，
+    // 顶部引导条的「看详情」与收件箱都靠它；其余页面仍按步骤白名单锁定。
+    if (p === 'comms') return true
     if (!tutLocked) return true
     const allow = TUT_LOCK[tutStep]
     return !!allow && allow.pages.includes(p)
@@ -599,7 +602,7 @@ export function App({ engine }: { engine: GameEngine }) {
   }
   const changePage = (p: PageKey): void => {
     if (!tutCanOpen(p)) {
-      showToast('按教程引导进行：先完成当前「教程目标」（右下角引导卡）。', true)
+      showToast('按教程引导进行：先完成顶部指引条上的当前目标（每一步的完整说明在「通讯」页）。', true)
       return
     }
     setPage(p)
@@ -795,9 +798,12 @@ export function App({ engine }: { engine: GameEngine }) {
             {page === 'comms' ? (
               <CommsPage
                 {...pageProps}
+                // 顶部引导条「看详情」的定位请求（seq 变化即重新选中对应那封）
+                focus={commsFocus}
                 // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签（如星图 → 残骸打捞）
-                onGoto={(p, tab) => {
+                onGoto={(p, tab, shipTab) => {
                   if (p === 'map' && tab) changeMapTab(tab as MapTab)
+                  if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
                   changePage(p as PageKey)
                 }}
               />
@@ -985,22 +991,27 @@ export function App({ engine }: { engine: GameEngine }) {
         />
       ) : null}
 
-      {/* 序章·苏醒：教程引导卡（步骤 1..7）与收尾演出（步骤 8） */}
+      {/* 序章·苏醒：教程引导（步骤 1..7；全文在通讯页，顶栏只留步骤进度与跳转）与收尾演出（步骤 8） */}
       {guideOn ? (
-        <>
-          <TutorialSpot
-            engine={engine}
-            step={tutStep}
-            onLift={setGuideLift}
-            onGo={(g: GuideGo) => {
-              changePage(g.page as PageKey)
-              if (g.mapTab) changeMapTab(g.mapTab as MapTab)
-              if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
-            }}
-          />
-          {/* 2026-09-08 船长定：卡内无跳转按钮，跳转走顶部引导条（见 TutorialSpot onGo） */}
-          <TutorialGuide engine={engine} step={tutStep} lifted={guideLift} />
-        </>
+        <TutorialSpot
+          engine={engine}
+          step={tutStep}
+          onGo={(g: GuideGo) => {
+            changePage(g.page as PageKey)
+            if (g.mapTab) changeMapTab(g.mapTab as MapTab)
+            if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
+          }}
+          // 「看详情」：切到通讯页并直接选中本步那封教程通讯（2026-09-11 船长定：教程融入通讯）
+          onDetail={(messageId) => {
+            setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
+            setPage('comms')
+          }}
+          // 「跳过教程」：入口从右下角卡移到顶部引导条（2026-09-11 船长定）
+          onSkip={() => {
+            const r = engine.prologueSkip()
+            if (!r.ok) showToast(r.error ?? '无法跳过教程', true)
+          }}
+        />
       ) : null}
       {epiOn ? (
         <TutorialEpilogue

@@ -49,8 +49,8 @@ const ACADEMY_DEPTS: CommsFactionDef['departments'] = [
   {
     id: 'dept-training',
     name: '训练处',
-    brief: '协会的技能训练部门：主管技能队列与训练科目登记。',
-    kinds: ['剧情', '提示'],
+    brief: '协会的技能训练部门：主管训练科目登记，也带新飞行员走完头几趟活。',
+    kinds: ['剧情', '提示', '教程'],
   },
   {
     id: 'dept-finance',
@@ -84,7 +84,7 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
     tone: '#9fd8ff',
     glyph: FACTION_OCTOPUS_GLYPH,
     brief: '章鱼人的官方行业组织，对外自称「协会」：管航道、建站点、定酬金，也训练新手飞行员。',
-    kinds: ['剧情', '提示', '委托'],
+    kinds: ['剧情', '提示', '委托', '教程'],
     departments: ACADEMY_DEPTS,
   },
   {

@@ -29,6 +29,8 @@ export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { COMMS_MESSAGES, buildCommsCatalog } from './messages'
 // 2026-09-11 通讯 v2：NPC 势力档案（协会 8 部门 + 打捞队工会；发件人与立场口径的唯一权威）
 export { COMMS_FACTIONS, FACTION_OCTOPUS_GLYPH, buildCommsFactionCatalog, buildCommsDeptCatalog } from './commsFactions'
+// 2026-09-11 教程融入通讯：序章七步的文案与跳转（唯一出处；教程通讯与顶部引导条共用）
+export { TUTORIAL_STEPS, TUTORIAL_TOTAL, type TutorialStepDef } from './tutorialSteps'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 

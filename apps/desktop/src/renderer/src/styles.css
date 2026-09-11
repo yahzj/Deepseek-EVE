@@ -211,8 +211,6 @@ body {
 
 .app-root.is-mobile-rot .app-fit-modal { width: min(560px, calc(100vh - 48px)); }
 
-.app-root.is-mobile-rot .app-tut-card { width: min(560px, calc(100vh - 48px)); }
-
 .app-root.is-mobile-rot .app-mkt-confirm { width: min(520px, calc(100vh - 48px)); }
 
 .app-root.is-mobile-rot .app-bts-report-card { width: min(640px, calc(100vh - 48px)); }
@@ -222,9 +220,6 @@ body {
 .app-root.is-mobile-rot .app-pro-epi-inner { width: min(660px, calc(100vh - 48px)); }
 
 .app-root.is-mobile-rot .app-stepbar { max-width: min(1100px, calc(100vh - 48px)); }
-
-/* 手机：教程卡防遮挡——目标按钮被右下角卡压住时上移（JS 计算重叠后置 is-top，2026-09-06） */
-.app-root.is-mobile-rot .app-tut-card.is-top { top: 110px; bottom: auto; }
 
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
@@ -8664,7 +8659,10 @@ body {
 
 .app-pro-hint { color: #46604f; font-size: 11px; margin-top: 12px; text-align: center; }
 
-.app-pro-diag { border: 1px solid #5a4a3a; background: rgba(60,26,10,.25); border-radius: 10px; padding: 18px 20px; }
+/* 自检结论面板（2026-09-11 船长：「红色自检结论建议缩窄宽度，调整下一步按钮让其居中」）：
+   面板本身收窄到 560px（原来铺满 700px 的内层），错落感去掉、红色框不再拉得过宽；
+   列宽随面板一起收紧，按钮 flex + margin auto 居中（四行结论与残片仍左对齐，只有按钮居中）。 */
+.app-pro-diag { border: 1px solid #5a4a3a; background: rgba(60,26,10,.25); border-radius: 10px; padding: 18px 20px; width: min(560px, 100%); box-sizing: border-box; display: flex; flex-direction: column; }
 
 .app-pro-diag-title { color: #ffb37a; font-weight: 800; font-size: 15px; margin-bottom: 12px; }
 
@@ -8675,6 +8673,9 @@ body {
 .app-pro-diag-v { color: #ffd9b0; }
 
 .app-pro-frag { color: #8a7a66; font-size: 12px; border-top: 1px dashed #5a4a3a; margin: 12px 0; padding-top: 10px; font-style: italic; }
+
+/* 「下一步：身份确认」居中（面板已是 flex 列，margin auto 即水平居中；不拉伸，保持按钮自然宽） */
+.app-pro-diag > .app-btn { align-self: center; margin-top: 2px; }
 
 .app-pro-name { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
 
@@ -8730,19 +8731,8 @@ body {
 @keyframes app-pro-iris { 0% { opacity: 0; transform: scale(.15); } 12% { opacity: 1; } 38% { opacity: 1; transform: scale(1.55); } 100% { opacity: 0; transform: scale(2.25); } }
 /* ── 序章·苏醒 教程引导（阶段 4，2026-09-05）── */
 .app-nav-item:disabled { opacity: .38; cursor: not-allowed; }
-.app-tut-card { position: fixed; right: 14px; bottom: 14px; z-index: 80; width: min(360px, 84vw); background: linear-gradient(180deg, rgba(14,24,34,.96), rgba(8,14,20,.98)); border: 1px solid #2e8a63; border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.6); animation: app-tut-fade .45s ease; }
-/* 2026-09-08：任务引导窗口淡入浮现（步骤切换时整卡重挂载触发） */
-@keyframes app-tut-fade {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.app-tut-tab { position: fixed; right: 14px; bottom: 14px; z-index: 80; font-size: 12px; color: #8fe8b6; background: rgba(10,20,15,.92); border: 1px solid #2e8a63; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-.app-tut-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.app-tut-title { color: #9feec0; font-weight: 800; font-size: 13px; }
-.app-tut-min { cursor: pointer; color: #5f8a72; font-size: 14px; padding: 0 6px; }
-.app-tut-lines { margin: 8px 0 10px; }
-.app-tut-line { font-size: 12px; color: #b9d8c6; line-height: 1.75; }
-.app-tut-actions { display: flex; gap: 8px; align-items: center; }
+/* 2026-09-11 船长定（教程融入通讯）：右下角引导卡（.app-tut-card / .app-tut-tab）与它的淡入动画
+   已删除——七步全文改为**协会训练处发来的教程通讯**，顶部引导条只留「步骤 N/7 + 目标 + 前往 + 看详情 + 跳过」。 */
 /* 收尾演出（步骤 7） */
 .app-pro-epi { position: fixed; inset: 0; z-index: 95; background: radial-gradient(ellipse at 50% 30%, rgba(12,22,18,.98), rgba(2,6,8,.99)); color: #cfe3d8; display: flex; align-items: center; justify-content: center; overflow: auto; }
 .app-pro-epi-inner { width: min(620px, 88vw); display: flex; flex-direction: column; gap: 14px; padding: 26px 22px; text-align: center; align-items: center; }
@@ -8800,12 +8790,17 @@ body {
 .app-nav-item.is-featured { color: #ffe08a; border: 1px solid rgba(255,208,120,.6); background: linear-gradient(180deg, rgba(140,105,35,.34), rgba(70,50,12,.24)); border-radius: 10px; }
 .app-nav-item.is-featured:hover { background: linear-gradient(180deg, rgba(170,130,45,.44), rgba(90,65,16,.3)); box-shadow: 0 0 14px rgba(255,200,110,.4); }
 .app-nav-item.is-featured.is-active { border-color: #ffd98a; box-shadow: 0 0 18px rgba(255,210,120,.5), inset 0 0 8px rgba(255,200,110,.2); }
-.app-stepbar { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 78; display: flex; align-items: center; gap: 10px; background: linear-gradient(180deg, rgba(16,30,24,.97), rgba(8,16,12,.98)); border: 1px solid #2e8a63; border-radius: 999px; padding: 6px 8px 6px 16px; box-shadow: 0 6px 22px rgba(0,0,0,.55); max-width: min(760px, 92vw); }
+.app-stepbar { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 78; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: linear-gradient(180deg, rgba(16,30,24,.97), rgba(8,16,12,.98)); border: 1px solid #2e8a63; border-radius: 24px; padding: 6px 10px 6px 16px; box-shadow: 0 6px 22px rgba(0,0,0,.55); max-width: min(980px, 94vw); }
+/* 步骤进度（2026-09-11 船长定：按教程内容顺序指引，玩家要知道走到第几步）：小圆片，与目标文案区分层级 */
+.app-stepbar-step { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #0d2018; background: #7dffb0; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
 /* 2026-09-08：教程目标文案改最多两行折行（原单行省略号截断——玩家反馈顶部指引显示不全）；
    ▸ 为独立标记不占文案宽度，文本换行独立对齐排头 */
 .app-stepbar-mark { flex: 0 0 auto; color: #7dffb0; font-weight: 700; align-self: flex-start; line-height: 1.3; }
-.app-stepbar-text { font-size: 13px; color: #d8ffe8; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; min-width: 0; }
+.app-stepbar-text { flex: 1 1 auto; font-size: 13px; color: #d8ffe8; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; min-width: 0; }
 .app-stepbar-go { animation: app-stepbar-pulse 1.6s ease-in-out infinite; }
+/* 「看详情」（开通讯页读该步全文）与「跳过教程」：次要按钮，弱化以免与主按钮抢视线 */
+.app-stepbar-detail, .app-stepbar-skip { flex: 0 0 auto; }
+.app-stepbar-skip { color: #9db8a8; border-color: rgba(120,160,140,.4); }
 @keyframes app-stepbar-pulse { 0%,100% { box-shadow: 0 0 4px rgba(120,240,170,.35); } 50% { box-shadow: 0 0 16px rgba(120,240,170,.85); transform: translateY(-1px); } }
 .app-spot-ring { position: fixed; z-index: 79; pointer-events: none; border: 3px solid #7dffb0; border-radius: 10px; box-shadow: 0 0 0 3px rgba(10,30,18,.75), 0 0 22px rgba(110,255,180,.95); animation: app-spot-pulse .9s ease-in-out infinite; }
 @keyframes app-spot-pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }

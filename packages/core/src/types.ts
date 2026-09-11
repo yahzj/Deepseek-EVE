@@ -1112,7 +1112,7 @@ export interface DialogueScriptDef {
 export type CommsFactionAlignment = '官方' | '民间' | '中立'
 
 /** 通讯内容类型（消息的「内容类型小片」；必须落在发件势力的 `kinds` 白名单里） */
-export type CommsKind = '剧情' | '提示' | '委托'
+export type CommsKind = '剧情' | '提示' | '委托' | '教程'
 
 /** 势力下的部门（协会 8 部门、打捞队工会 1 队；部门是发件人写法的后半截） */
 export interface CommsDeptDef {
@@ -1170,6 +1170,11 @@ export type CommsTrigger =
   | { kind: 'skill'; skillId: string; level: number }
   | { kind: 'isk'; amount: number }
   | { kind: 'siteBuilt'; siteId: string }
+  /**
+   * 序章教程步骤（2026-09-11 船长定：教程融入通讯——每步开始时把该步指引发成一封通讯）。
+   * 判定 `onboarding.step >= step`（推进一步即送，且**跳过教程后仍然补送**，收件箱留全记录）。
+   */
+  | { kind: 'tutorial'; step: number }
 
 /** 回复选项（**预留接口：2026-09-11 船长定"预留但不启用"**，见 core COMMS_REPLIES_ENABLED） */
 export interface CommsReplyDef {
@@ -1199,8 +1204,8 @@ export interface CommsMessageDef {
   body: readonly string[]
   /** 送达条件 */
   trigger: CommsTrigger
-  /** 顺带提示（一句提示 + 跳转目标页；裁决③） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string }
+  /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
 }
@@ -1235,8 +1240,8 @@ export interface CommsEntryView {
   deliveredAtGameMs: number
   /** 是否已读 */
   read: boolean
-  /** 顺带提示 + 跳转目标页（可选） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string }
+  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`shipTab` = 舰船页内标签） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
 }
