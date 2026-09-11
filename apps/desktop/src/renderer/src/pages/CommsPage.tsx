@@ -116,7 +116,7 @@ export function CommsPage({
                       {e.read ? null : <i className="app-comms-dot" />}
                       {e.glyph ? (
                         <span className="app-ico">
-                          <Glyph name={e.glyph} size={15} color={e.tone || undefined} />
+                          <Glyph name={e.glyph} size={18} color={e.tone || undefined} />
                         </span>
                       ) : null}
                       <span className="app-comms-from">{e.from}</span>
@@ -142,7 +142,7 @@ export function CommsPage({
                               style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
                               title={current.fromBrief ?? '来信方'}
                             >
-                              <Glyph name={current.glyph} size={26} />
+                              <Glyph name={current.glyph} size={50} />
                             </span>
                           ) : null}
                           <div className="app-comms-title-col">

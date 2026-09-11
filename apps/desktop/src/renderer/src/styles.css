@@ -9034,12 +9034,13 @@ body {
 }
 /* 屏幕第一层：左上角**发件方头像**（官方章鱼人 SVG 线稿）+ 标题/来源列 + 右侧内容类型小片。
    2026-09-11 船长：在标题与来源左侧绘制章鱼头代表官方；该头像之后都用于代表官方章鱼人。
-   头像盒与标题行**顶对齐**（不随标题换行而漂移），尺寸固定，内容变化不引起界面跳动。 */
-.app-comms-title-row { display: flex; align-items: flex-start; gap: 10px; flex: 0 0 auto; }
+   2026-09-11 船长复看后「有些过于小了」⇒ 头像盒 38 → 56px、图形 26 → 42px（图形占盒约 3/4，才像一枚势力徽记）。
+   头像盒与标题行**顶对齐**（不随标题换行而漂移），尺寸三档固定，内容变化不引起界面跳动。 */
+.app-comms-title-row { display: flex; align-items: flex-start; gap: 12px; flex: 0 0 auto; }
 .app-comms-avatar {
-  flex: 0 0 auto; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(159, 216, 255, .35); border-radius: 9px; background: rgba(159, 216, 255, .06);
-  margin-top: -2px; /* 与标题首行视觉对齐（标题行高略高于头像上沿） */
+  flex: 0 0 auto; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(159, 216, 255, .35); border-radius: 11px; background: rgba(159, 216, 255, .06);
+  margin-top: -3px; /* 与标题首行视觉对齐（标题行高略高于头像上沿） */
 }
 .app-comms-title-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .app-comms-title { color: #ffe08a; font-size: 15px; font-weight: 600; letter-spacing: .5px; }
@@ -9075,7 +9076,7 @@ body {
   .app-btn.app-comms-goto { left: 31px; right: 31px; padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); gap: 14px; }
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 13.5px); }
   .app-comms-screen { padding: 18px 24px 20px; gap: 10px; }
-  .app-comms-avatar { width: 44px; height: 44px; }
+  .app-comms-avatar { width: 66px; height: 66px; }
   .app-comms-title { font-size: calc(var(--ui-fs, 1) * 18px); }
   .app-comms-head-from { font-size: calc(var(--ui-fs, 1) * 13.5px); }
   .app-comms-head-time { font-size: calc(var(--ui-fs, 1) * 12.5px); }
@@ -9093,7 +9094,7 @@ body {
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 15px); }
   .app-comms-text { font-size: calc(var(--ui-fs, 1) * 16px); }
   .app-comms-title { font-size: calc(var(--ui-fs, 1) * 20px); }
-  .app-comms-avatar { width: 50px; height: 50px; }
+  .app-comms-avatar { width: 76px; height: 76px; }
   .app-comms-item { padding: 11px 14px; }
   .app-comms-subject { font-size: calc(var(--ui-fs, 1) * 14.5px); }
   .app-comms-from { font-size: calc(var(--ui-fs, 1) * 13.5px); }
