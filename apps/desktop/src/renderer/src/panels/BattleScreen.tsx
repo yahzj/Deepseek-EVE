@@ -1217,11 +1217,28 @@ const meSpeedRef = useRef(200)
                 ) : null}
               </span>
             ))}
-            <span className="app-bts-chip is-foe" title="敌方整编队武器（同型聚合）">
-              <i style={{ background: foeColor }} />
-              敌方 {arcs.foe.minM.toLocaleString('zh-CN')}~{arcs.foe.maxM.toLocaleString('zh-CN')}m
-              <span className={`app-a-chip app-a-${arcs.foe.type}`}>{DMG_LABEL[arcs.foe.type]}</span>
-            </span>
+            {/* 敌方射程（2026-09-11 船长：「敌方的舰船射程不一致，只会显示其中一个的射程」）：
+                按**射程带**逐条出 chip（与我方逐武器一条同款），多条带时补「×N 艘」与逐舰悬停说明；
+                只有一条带时文本与旧版完全一致（「敌方 X~Ym」）。 */}
+            {(arcs.foeBands.length > 0
+              ? arcs.foeBands
+              : [{ ...arcs.foe, count: 0, names: [] as string[] }]
+            ).map((b, bi) => (
+              <span
+                key={`foe${bi}`}
+                className="app-bts-chip is-foe"
+                title={
+                  b.names.length > 0
+                    ? `敌方射程带（${b.names.join('、')}）：${b.minM}~${b.maxM}m`
+                    : '敌方整编队武器（同型聚合）'
+                }
+              >
+                <i style={{ background: DMG_COLOR[b.type] }} />
+                敌方 {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
+                {b.count > 1 ? ` ×${b.count} 艘` : ''}
+                <span className={`app-a-chip app-a-${b.type}`}>{DMG_LABEL[b.type]}</span>
+              </span>
+            ))}
             {/* 敌方突进标记（2026-09-10 船长定：高威胁近战敌在够不着时突进机动 ×2）——
                 复用同级"运行态 chip"样式（红点 = 告警态），不自造新类 */}
             {battle?.foeChargeOn ? (

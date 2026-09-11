@@ -1894,7 +1894,14 @@ export function battleArcsFor(
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
+  /** 敌方各武器射程带（聚合）：`minM~maxM` 跨全部单位取极值，`type` = 遍历到的最后一件武器弹种 */
   foe: { minM: number; maxM: number; type: DamageType }
+  /**
+   * 敌方**逐射程带**分解（2026-09-11 船长反馈"敌方射程不一致时只显示其中一个"）：
+   * 按 (min, max, 弹种) 去重、外圈在前；`count` = 用该带的**敌舰艘数**，`names` = 舰名（悬停说明用）。
+   * 只有一条带时界面观感与旧版完全一致（同一条「敌方 X~Ym」）；多条带时界面逐带各出一条。
+   */
+  foeBands: Array<{ minM: number; maxM: number; type: DamageType; count: number; names: string[] }>
   /** 各单位三层满血量（UI 垂直血条按各自满值比例绘制） */
   maxHp: { me: { s: number; a: number; h: number }; foe: Record<string, { s: number; a: number; h: number }> }
   /** 机群战损（2026-09-10）：本场已击落架数（机型 id → 架数）；缺省 = 无损失 */
@@ -1990,14 +1997,39 @@ export function battleArcsFor(
   let foeMin = Number.POSITIVE_INFINITY
   let foeMax = 0
   let foeType: DamageType = 'kinetic'
+  /**
+   * 敌方**逐射程带**分解（2026-09-11 船长：「战斗场景内，假如敌方的舰船射程不一致，只会显示其中一个的射程」
+   * ——指屏幕下方那条「敌方 X~Ym」标签）。上面那条聚合带只够表达"最远的威胁"：编队里短射程的船
+   * （如快速艇 1~1883 对头目舰 1~2210）会被并集吃掉、看起来只剩一个射程。这里按
+   * (最小射程, 最大射程, 弹种) 分组去重下发，界面照**我方逐武器一条**的同款做法逐带出一条。
+   */
+  const foeBandMap = new Map<string, { minM: number; maxM: number; type: DamageType; units: number; names: Set<string> }>()
   for (const f of foes) {
+    // 同一单位的多件同带武器只算一艘；`count` = **用该带的敌舰艘数**（三艘同名快艇 = 3，不是 1）
+    const seenBandOfUnit = new Set<string>()
     for (const w of f.weapons) {
       foeMin = Math.min(foeMin, w.minRangeM)
       foeMax = Math.max(foeMax, w.maxRangeM)
-      foeType = w.fixedType ?? 'kinetic'
+      const type = w.fixedType ?? 'kinetic'
+      foeType = type
+      const key = `${w.minRangeM}|${w.maxRangeM}|${type}`
+      let band = foeBandMap.get(key)
+      if (!band) {
+        band = { minM: w.minRangeM, maxM: w.maxRangeM, type, units: 0, names: new Set<string>() }
+        foeBandMap.set(key, band)
+      }
+      band.names.add(f.name)
+      if (!seenBandOfUnit.has(key)) {
+        seenBandOfUnit.add(key)
+        band.units += 1
+      }
     }
   }
   if (!Number.isFinite(foeMin)) foeMin = 0
+  // 外圈在前（远 → 近），同远者近端更小者在前——与界面"从外往里读"一致
+  const foeBands = [...foeBandMap.values()]
+    .map((b) => ({ minM: b.minM, maxM: b.maxM, type: b.type, count: b.units, names: [...b.names] }))
+    .sort((a, b) => b.maxM - a.maxM || a.minM - b.minM)
   const openM = battleOpenM(me, foes, bal)
   // 各单位三层满血量（UI 垂直血条按各自满值比例绘制）：以战斗实况单位为准——
   // 2026-09-09 多波修复：foes 仅按"单波默认"重建，波次增援/多小队单位（w{n}-foe-* 等）不在其内，
@@ -2025,6 +2057,7 @@ export function battleArcsFor(
     me: meArcs,
     meReload,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
+    foeBands,
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
     // 机群战损（2026-09-10）：本场已击落架数（UI 战报/提示用；缺省 = 无损失）
     ...(battle.droneLost && Object.keys(battle.droneLost).length > 0 ? { droneLost: battle.droneLost } : {}),
