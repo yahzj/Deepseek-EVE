@@ -236,9 +236,9 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
  * `hpMul` 与 `dmgMul`**：血量与火力一起随档位抬，保住「威胁 = 战力标尺」的语义，
  * 也让窝点维持"深层比外围硬"的终局挑战意义（单发/射程/编成/战术一律不动）。
  * ⚠ **舰级路径派生卡不套 `LAIR_WAVES`**：那张波表按"每波几队"描述**旧路径**的编队，
- * 而舰级路径的编队由 `slot.wave` 决定（A 族六卡全在 `wave: 0`）⇒ 套用会让第 2/3 波
- * **刷出 0 个单位**（探针实测）。故舰级路径的窝点**维持单波**（每波 ≥ 1 单位），
- * 分段演出留待有需求时按 `slot.wave` 分配条目（届时同步改本注释与契约）。
+ * 而舰级路径的编队由 `slot.wave` 决定（**2026-09-11 起：边境/碎晶/信标 三张已按船长裁定显式分配
+ * `wave: 0/1` 两波**，其余舰级路径卡仍在 `wave: 0`）⇒ 直接套用会让第 2/3 波
+ * **刷出 0 个单位**（探针实测）。故舰级路径的窝点**不套旧波表**（每波 ≥ 1 单位、波次按 `slot.wave` 表达）。
  */
 export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const waves = LAIR_WAVES[tier]
