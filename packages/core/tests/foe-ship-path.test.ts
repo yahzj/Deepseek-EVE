@@ -255,7 +255,7 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // D 族（守墓古舰）：船长 2026-09-11 亲定「档位 **1 驱逐 2 巡洋**（更高级的船还没出）」+
       // 「**静滞卫舰改为远程、幽灵舰为中程**」+「幽灵舰 **110%** · 守墓长舰**按正常算** · 静滞卫舰 **50%**」
       { id: 'foe-d-ghost', tier: 2, speed: 325 }, // 2 驱逐 295 × 1.10
-      { id: 'foe-d-longship', tier: 3, speed: 258 }, // 3 巡洋 258 × 1.00
+      { id: 'foe-d-longship', tier: 3, speed: 232 }, // 3 巡洋 258 × 0.90（船长「下调至 0.9 倍率」）
       { id: 'foe-d-stasis', tier: 3, speed: 129 }, // 3 巡洋 258 × 0.50（**全族最慢**：守墓者从来不需要追人）
     ])
   })
@@ -783,7 +783,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       expect(s.rangeMinM, s.id).toBe(s.id === 'foe-d-ghost' ? 562 : s.id === 'foe-d-longship' ? 1062 : 2062) // 船长：古舰不贴脸（逐档抬升）
     }
     // 速度：越往里越慢；战法：静滞卫舰远程（kite）、另两条中程（orbit）
-    expect(graves.map((s) => Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio))).toEqual([325, 258, 129])
+    expect(graves.map((s) => Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio))).toEqual([325, 232, 129])
     expect(graves.map((s) => s.tactic)).toEqual(['orbit', 'orbit', 'kite'])
     // 远程档射程最长
     const stasis = graves.find((s) => s.id === 'foe-d-stasis')!
