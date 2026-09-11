@@ -1400,7 +1400,17 @@ export function BattleScreen({
       // **敌机也交给同一套驱动**（2026-09-11 S5 修正）：旧版敌机机体不在 `wings` 里 ⇒ 机群层盒子
       // 从未被平移到我方舰位（玩家不带无人机时 `d.wings` 为空）⇒ 敌机位置全错、还随布局漂移。
       ...foeWings.map((w) => {
-        const st = foeSortieRef.current.get(`${w.tag}:${w.artId}`);
+        const sk = `${w.tag}:${w.artId}`;
+        // **首轮也要飞出来**（船长 2026-09-11：「进入敌方射程后，敌方无人机似乎第一次不会飞出」）：
+        // 出击状态原先只在"该机**开火**"那一刻才盖章 ⇒ 敌机的**第一发**是在机体还没出现时打出来的
+        // （看着就是"第一次不飞出来"）。现在**机群一出现就起一轮**，开火事件只在轮次结束后重新盖章。
+        if (!foeSortieRef.current.get(sk)) {
+          foeSortieRef.current.set(sk, {
+            startAt: now,
+            offs: droneRandomOffsets(DRONE_SHOW_MAX),
+          });
+        }
+        const st = foeSortieRef.current.get(sk);
         const fcyc =
           DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS;
         const fel = st ? now - st.startAt : Number.POSITIVE_INFINITY;
