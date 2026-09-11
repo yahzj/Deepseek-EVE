@@ -267,7 +267,6 @@ for (const sbp of SHIP_BLUEPRINTS) {
  * 此处把**能从数据机械核对**的声明全部钉住；蓝图名与产物名的差异（「X 级舰船蓝图」vs「X 级护卫舰」）
  * 属命名习惯，只提示不拦。 */
 {
-  const bpCtx = buildSimContext()
   const modById = new Map(MODULES.map((m) => [m.id, m]))
   const shipById = new Map(SHIPS.map((s) => [s.id, s]))
   const goodsByBp = new Map(MARKET_GOODS.filter((g) => g.kind === 'blueprint').map((g) => [g.refId!, g]))
@@ -374,7 +373,6 @@ for (const sbp of SHIP_BLUEPRINTS) {
     // ⑩ 蓝图名 vs 产物名：命名习惯差异只提示
     const base = bp.name.replace(/图纸$|蓝图$/, '').trim()
     if (!pName.includes(base.replace(/[（(].*?[)）]/g, '').trim())) nameHints += 1
-    void bpCtx
   }
   console.log(`· 蓝图说明契约：核对 ${claims} 条数值声明（${BLUEPRINTS.length + SHIP_BLUEPRINTS.length} 张蓝图）；蓝图名与产物名不同写法 ${nameHints} 张（命名习惯，不拦）`)
 }
