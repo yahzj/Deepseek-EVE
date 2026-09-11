@@ -739,6 +739,14 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
   if (!ship) return { ok: false, error: `未知舰船：${shipId}。` }
   const good = marketGoodOf(ctx, 'ship', shipId)
   if (!good) return { ok: false, error: `${ship.name} 不通过市场流通（仅可制造）。` }
+  // 只收不卖（2026-09-09 船长定「蓝图船成品现货下架」：开拓/鲸王；2026-09-11 甲裁决补皇带鱼）：
+  // 市场页本就有通用「只收不卖」禁买；此处给出**准确原因**，避免落到"挂收购单失败（余额不足…）"的误导文案
+  if (good.playerBuyable === false) {
+    return {
+      ok: false,
+      error: `${ship.name} 仅可制造：市场不售成品现货（可在市场买它的蓝图书自行总装，或留意他人二手挂售）。`,
+    }
+  }
   const lock = goodLockedReason(state, good)
   if (lock) return { ok: false, error: `${ship.name} 暂不可购买：${lock}。` }
   const quote = marketQuote(state, ctx, good.key)

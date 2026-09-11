@@ -326,7 +326,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'exotic', basePrice: 13_000_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 1_250_000, demandMultiplier: 1.0, standingReq: 8 },
   { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 2_200_000, demandMultiplier: 1.0, standingReq: 9 },
-  { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 5_500_000, demandMultiplier: 1.0, standingReq: 11 },
+  // 2026-09-11 船长裁决（甲）：皇带鱼与开拓/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
+  // 此前它漏在 2026-09-09「蓝图船成品现货下架」那次清扫之外：图鉴写着「仅可制造」（ships.ts priceIsk=0），
+  // 市场却挂着 550 万现货——同一条口径两处打架，由 content-check「舰船价格口径（预警）」抓出。
+  { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 5_500_000, demandMultiplier: 1.0, standingReq: 11, playerBuyable: false },
   // 2026-09-09 全舰船蓝图化（第二批）：全部可造舰船开放蓝图书；蓝图价 = 船市场价 × 档位系数（≤30 万 ×2 / 30~100 万 ×2.5 / 100~400 万 ×3 / >400 万 ×4）；船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11
   { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 掘洞级（蓝图=船价×2）
   { key: 'sbp-whale', kind: 'blueprint', refId: 'sbp-whale', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65 }, // 鲸吞级（蓝图=船价×2.5）
