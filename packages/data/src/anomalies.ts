@@ -27,6 +27,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 3_600, // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 ISK/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
     foeHpOverride: 22, // P1 战斗引入（2026-09-06）：脱离威胁曲线单列——裸船零技能可过（约 37s）
+    foeSpeedMps: 322, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.10×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 223（= 段参考船 220 ×1.28 口径）
     loot: [],
     combatSeconds: 120,
     description: '深空工业协会的常设讨伐令：演习场中失控的靶机与训练残骸需要定期清剿。悬赏按次结算、可反复接取——新手的第一张长期单。',
@@ -38,6 +39,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
     foeHpOverride: 150, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
+    foeSpeedMps: 351, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.20×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 257
     galaxyId: 'galaxy-kor',
     threat: 12,
     tactic: 'brawl',
@@ -56,6 +58,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '占港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     name: '占港武装通缉',
     foeHpOverride: 292, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~36s
+    foeSpeedMps: 286, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.98×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 203
     foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：武装拾荒者乱射——打得重但准头差；缺省 0.85）
     galaxyId: 'galaxy-dust',
     threat: 16,
@@ -98,7 +101,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '坟场守墓人',
     foeHpOverride: 3600, // 巡洋时代复调轮 r4（2026-09-09）：E 段——锤头鲨中位 53s✅；无技能参考 60%→≥70% 宽容线（原 r1 3900）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 421, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 357；×1.30 实测打穿无技能宽容线）
+    foeSpeedMps: 433, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.48×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 421（09-09 段参考船口径 ×1.18）
     waves: [
       { units: 2, hpShare: 0.55 },
       { units: 1, hpShare: 0.45 },
@@ -168,7 +171,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
     name: '泰坦残骸勘探',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~60s
-    foeSpeedMps: 374, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 317）
+    foeSpeedMps: 410, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.40×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 374（09-09 段参考船口径 ×1.18）
     foeHitRate: 0.65, // 低安敌人命中率 +10（2026-09-09 船长定；原低命中特例 0.55——远古残骸老化自动炮台，单发重但失准）
     galaxyId: 'galaxy-abyss',
     threat: 60,
@@ -190,7 +193,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '奥罗武装残骸群',
     foeHpOverride: 1740, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~66s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 375, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 318）
+    foeSpeedMps: 412, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.41×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 375（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-auro',
     threat: 62,
     tactic: 'brawl',
@@ -211,7 +214,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
     name: '星髓虫群', // 2026-09-10 船长：与 C 族窝点档位词（虫巢/隐秘孵化地）冲突，改名（id 不变）
     foeHpOverride: 1530, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：D 段灰鲭鲨4MK2 中位 ~80s
-    foeSpeedMps: 409, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 347；×1.30 实测打穿无技能宽容线）
+    foeSpeedMps: 420, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.43×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 409（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-starcore',
     threat: 72,
     tactic: 'brawl',
@@ -237,7 +240,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '烬火围攻战',
     foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~48s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 282, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 239）
+    foeSpeedMps: 307, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.05×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 282（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-cinder',
     threat: 42,
     standingReq: 6,
@@ -255,7 +258,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：回音荒区
     name: '回音残舰',
     foeHpOverride: 2035, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~56s
-    foeSpeedMps: 288, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 244）
+    foeSpeedMps: 316, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.08×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 288（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-echo',
     threat: 52,
     standingReq: 6,
@@ -274,7 +277,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '天底静区封锁',
     foeHpOverride: 2040, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：D 段灰鲭鲨4MK2 中位 ~74s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 316, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 268）
+    foeSpeedMps: 327, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.12×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 316（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-nadir',
     threat: 66,
     standingReq: 9,
@@ -292,7 +295,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '噬口猎杀令',
     foeHpOverride: 4000, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~55s（原 2460）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 325, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 275）
+    foeSpeedMps: 338, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.15×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 325（09-09 段参考船口径 ×1.18）
     waves: [
       { units: 2, hpShare: 0.5 },
       { units: 1, hpShare: 0.5 },
@@ -316,7 +319,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '穹顶守卫',
     foeHpOverride: 5600, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 55s→目标 ~75s（原 4100）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 356, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 302）
+    foeSpeedMps: 351, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.20×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 356（09-09 段参考船口径 ×1.18）
     waves: [
       { units: 2, hpShare: 0.35 },
       { units: 2, hpShare: 0.35 },
@@ -340,7 +343,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '虚海守望者',
     foeHpOverride: 4300, // 巡洋时代复调轮 r1（2026-09-09）：E 段按锤头鲨炮巡重标——中位 33s→目标 ~60s（原 2450）
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 329, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）orbit ×1.18（旧 279）
+    foeSpeedMps: 345, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.18×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 329（09-09 段参考船口径 ×1.18）
     waves: [
       { units: 2, hpShare: 0.35 },
       { units: 2, hpShare: 0.35 },
@@ -370,6 +373,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 6_400, // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
     foeHpOverride: 75, // P1 战斗引入 pass-2（2026-09-06）：鲣鱼2×MK1零技≈30s；裸船可磨(60%/122s)不卡死；顺滑待实测
+    foeSpeedMps: 337, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.15×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 225
     loot: [],
     combatSeconds: 180,
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',
@@ -381,6 +385,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
     name: '碎晶带劫匪通缉',
     foeHpOverride: 285, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~38s
+    foeSpeedMps: 377, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.29×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 261
     galaxyId: 'galaxy-shard',
     threat: 20,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -400,6 +405,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灯塔长廊
     name: '信标猎手悬赏',
     foeHpOverride: 365, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~40s
+    foeSpeedMps: 291, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.99×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 205
     galaxyId: 'galaxy-lantern',
     threat: 22,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -463,7 +469,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '裂谷畸变体猎杀令',
     foeHpOverride: 1815, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~62s
     foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 372, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）brawl ×1.18（旧 315）
+    foeSpeedMps: 408, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.39×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 372（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-chasm',
     threat: 58,
     tactic: 'brawl',
@@ -485,6 +491,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '流窜海盗快艇',
     galaxyId: 'galaxy-hub',
     threat: 10,
+    foeSpeedMps: 281, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.96×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 176
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -500,6 +507,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '伏击劫掠队',
     galaxyId: 'galaxy-hub',
     threat: 22,
+    foeSpeedMps: 291, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.99×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 205
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -516,6 +524,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '狂徒巡逻编队',
     galaxyId: 'galaxy-hub',
     threat: 40,
+    foeSpeedMps: 394, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.35×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 305
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -532,6 +541,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '深空屠夫舰队',
     galaxyId: 'galaxy-hub',
     threat: 70,
+    foeSpeedMps: 418, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.43×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 346
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
