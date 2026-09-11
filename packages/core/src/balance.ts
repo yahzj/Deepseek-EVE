@@ -172,7 +172,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     foeHitRate: 0.85, // 敌方动能/爆炸武器基础命中（2026-09-08 船长定：普遍高命中；能量=光束必中不消费本值；逐卡 foeHitRate 可覆写做低命中特例）
     foeHitCompMul: 0.62, // 动能/爆炸等效补偿（方案 A 初值：按典型回避 0.22×中距衰减 0.7 折算回旧 0.55 模型，矩阵迭代校准）
     foeReloadMs: 4_000, // 敌方武器装填
-    foeFalloff: 0.3, // 敌方命中衰减（maxRange 端点）
+    foeFalloff: 0.5, // 敌方远端衰减（maxRange 端点）：动能/爆炸 = 命中倍率、能量 = 威力倍率（2026-09-11 船长定：0.3 → 0.5）
     // C4-#3 敌方"虚拟装配"（2026-09-05 船长拍板）：威胁越高全属性越高、侧重随战术风格。
     // 参考船速表 = 玩家船 maxSpeed 同池分段（threat ≤10 对应 T1 级、96+ 对应旗舰级）；
     // 敌速 = 参考段船速 × m_base(threat) × tactic 系数，m_base 0.80→0.95（threat 10→100）

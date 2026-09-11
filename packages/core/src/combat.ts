@@ -75,14 +75,17 @@ export interface WeaponSpec {
 }
 
 /**
- * 激光威力系数（2026-09-08 船长定：幅度 = 命中衰减的 0.8 倍）——
- * 系数 = 1 − 距离进度 × (1−falloff) × 0.8，保底 0（例 falloff 0.3 → 远端威力 ×0.44）。
+ * 激光威力系数（**2026-09-11 船长定：合并旧修正、不再与命中衰减挂钩**）——
+ * 旧口径 = `1 − 进度 ×(1−falloff) ×0.8`（"幅度 = 命中衰减的 0.8 倍"，falloff 0.3 时远端 ×0.44）；
+ * 新口径 = **近端 ×1 → 最远端 = 该武器 `falloff`（激光件现统一 0.1）**，线性内插、无任何换算系数：
+ *   系数 = 1 − 进度 × (1 − falloff)   （保底 0；falloff 0.1 → 最远端威力 ×0.10）
+ * ⇒ "远端衰减"对能量武器就是**最远端威力倍率本身**，与动能/爆炸的"远端命中倍率"语义对齐、一眼可读。
  */
 export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
   const { minRangeM: min, maxRangeM: max, falloff } = w
   if (max <= min) return 1
   const t = clamp(0, 1, (dist - min) / (max - min))
-  return Math.max(0, 1 - t * (1 - falloff) * 0.8)
+  return Math.max(0, 1 - t * (1 - falloff))
 }
 
 /** 静态单位卡（构建后不进存档） */
