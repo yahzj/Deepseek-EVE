@@ -274,12 +274,18 @@ const LOW6_SKILLS: Record<string, number> = {
   'shield-operation': 3,
 }
 
-type StandardRow = { id: string; label: string; ship: string; ld: Loadout; skills: Record<string, number> }
+type StandardRow = { id: string; label: string; ship: string; ld: Loadout; skills: Record<string, number>; desireM?: number }
 const MK2_SUPPORT_MID = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2']
 /** MK3 推进器版支援排（2026-09-11 船长追问「假如玩家装备 MK3 推进器呢」时加的探索行用）：
  *  与 MK2 版**只差推进器档位**——`mod-prop-3` = 点火期 +100% 战斗速度 / 命中 ×0.80（MK2 是 +60% / ×0.88）。
  *  ⚠ CPU 40（MK2 是 15）⇒ 用默认装配时须确认真的装上了（没装上会静默回落到"无推进"，读数会骗人）。 */
 const MK3_SUPPORT_MID = ['mod-prop-3', 'mod-shield-kin-2', 'mod-track-2']
+/** **能量（等离子）抗性版支援排**（2026-09-11 船长「如果还是过不了，开始撑能量抗性」）：
+ *  与 A0 的动能抗版**逐件对应**（`mod-shield-kin-2`→`mod-shield-pla-2`、`mod-stab-kin-2`→`mod-stab-pla-2`、
+ *  `mod-armor-kin-2`→`mod-armor-pla-2`），**只换抗性系、其余不动**。 */
+const PLA_RESIST_LOW = ['mod-stab-pla-2', 'mod-armor-pla-2']
+const PLA_RESIST_MID_MK2 = ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2']
+const PLA_RESIST_MID_MK3 = ['mod-prop-3', 'mod-shield-pla-2', 'mod-track-2']
 const SUPPORT_MID_NO_PROP = ['mod-shield-kin-2', 'mod-track-2']
 const SUPPORT_LOW = ['mod-stab-kin-2', 'mod-armor-kin-2']
 const STANDARD_ROWS: readonly StandardRow[] = [
@@ -358,6 +364,87 @@ const EXPLORE_ROWS: readonly StandardRow[] = [
     ld: { name: 'B3 4×动能MK2+推进MK3+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: MK3_SUPPORT_MID, low: SUPPORT_LOW },
     skills: MID_SKILLS,
   },
+  /* ── **近距离两套配置 ×（MK2 / MK3）**（2026-09-11 船长：「为玩家准备 2 套近距离准备，一套设定玩家的
+   *   目标距离是 1500 并更换符合的武器，另外一套目标距离 1000 并更换符合的武器，然后分别测试 MK2 和 MK3」）──
+   * 动机 = D 族（守墓古舰）把**最短射程**抬到了 1,062 / 2,062 ⇒ 理论上存在"贴到下限以内就免伤"的空档，
+   * 而正式四行的实际交距是 4.3~10 km、**根本没用上那条空档** ⇒ 这四条行就是去**用它**：
+   * 武器按目标距离挑（`desireM` 直接给出玩家的期望交距，引擎侧 `startBattleFor(..., desireM)`）。 */
+  {
+    id: 'C0' as StandardRow['id'],
+    label: '近距离 1500 · MK2（轻型炮MK1 250~3220 · 目标 1500）',
+    ship: 'sh-mako',
+    ld: { name: 'C0 4×轻型炮MK1+支援(MK2推进)', ship: 'sh-mako', high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'], mid: MK2_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+    desireM: 1500,
+  },
+  {
+    id: 'C1' as StandardRow['id'],
+    label: '近距离 1500 · MK3（轻型炮MK1 · 目标 1500）',
+    ship: 'sh-mako',
+    ld: { name: 'C1 4×轻型炮MK1+支援(MK3推进)', ship: 'sh-mako', high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'], mid: MK3_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+    desireM: 1500,
+  },
+  {
+    id: 'C2' as StandardRow['id'],
+    label: '近距离 1000 · MK2（转管炮 180~3600 装填1.2s · 目标 1000）',
+    ship: 'sh-mako',
+    ld: { name: 'C2 4×转管炮+支援(MK2推进)', ship: 'sh-mako', high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'], mid: MK2_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
+  {
+    id: 'C3' as StandardRow['id'],
+    label: '近距离 1000 · MK3（转管炮 · 目标 1000）',
+    ship: 'sh-mako',
+    ld: { name: 'C3 4×转管炮+支援(MK3推进)', ship: 'sh-mako', high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'], mid: MK3_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
+  /* ── **撑能量抗性**（2026-09-11 船长：「如果还是过不了，开始撑能量抗性」）──
+   * 动机：D 族火力对齐后主系是**等离子（能量）**，而 A0 参考装配投资的是**动能抗**
+   * （`mod-shield-kin-2` / `mod-stab-kin-2` / `mod-armor-kin-2` —— 原本正是用来克 D 的动能主系的）
+   * ⇒ 换系后那笔投资**归零**。这五条行把抗性**逐件换成等离子版**（只换抗性系，其余不动）：
+   * `D0~D3` = 上面两套近距离配置 × （MK2 / MK3）；`D4` = **A0 装配原地换能量抗**（中距 3,220，真实玩家最会做的动作）。 */
+  {
+    id: 'D0' as StandardRow['id'],
+    label: '近距离1500 · MK2 · **能量抗**',
+    ship: 'sh-mako',
+    ld: { name: 'D0 4×轻型炮MK1+能量抗(MK2)', ship: 'sh-mako', high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'], mid: PLA_RESIST_MID_MK2, low: PLA_RESIST_LOW },
+    skills: MID_SKILLS,
+    desireM: 1500,
+  },
+  {
+    id: 'D1' as StandardRow['id'],
+    label: '近距离1500 · MK3 · **能量抗**',
+    ship: 'sh-mako',
+    ld: { name: 'D1 4×轻型炮MK1+能量抗(MK3)', ship: 'sh-mako', high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'], mid: PLA_RESIST_MID_MK3, low: PLA_RESIST_LOW },
+    skills: MID_SKILLS,
+    desireM: 1500,
+  },
+  {
+    id: 'D2' as StandardRow['id'],
+    label: '近距离1000 · MK2 · **能量抗**',
+    ship: 'sh-mako',
+    ld: { name: 'D2 4×转管炮+能量抗(MK2)', ship: 'sh-mako', high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'], mid: PLA_RESIST_MID_MK2, low: PLA_RESIST_LOW },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
+  {
+    id: 'D3' as StandardRow['id'],
+    label: '近距离1000 · MK3 · **能量抗**',
+    ship: 'sh-mako',
+    ld: { name: 'D3 4×转管炮+能量抗(MK3)', ship: 'sh-mako', high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'], mid: PLA_RESIST_MID_MK3, low: PLA_RESIST_LOW },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
+  {
+    id: 'D4' as StandardRow['id'],
+    label: '**A0 装配原地换能量抗**（动能炮MK2 · 中距 3220 · MK2 推进）',
+    ship: 'sh-mako',
+    ld: { name: 'D4 4×动能MK2+能量抗(MK2)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: PLA_RESIST_MID_MK2, low: PLA_RESIST_LOW },
+    skills: MID_SKILLS,
+  },
 ]
 
 /** 标准格读数（终局/最近交距 + 开火次数按头目/杂鱼分列） */
@@ -381,8 +468,8 @@ type CellReading = {
  * （实测：灰霾 ⑤ 600s 真值 **584** 次被读成 **48** 次、漏 92%；蜃影 A0 **54.0 → 43.2**；蜃影 A1 **136 → 48**）。
  * 改法：被裁掉的永远是**旧事件**（`seq` ≤ 上次最大值），故"`seq` > 上次最大值"的事件**一定还在环里** ⇒ 无损。
  */
-function simulateCell(state: GameState, anomalyId: string, ld: Loadout): CellReading {
-  const b = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0)
+function simulateCell(state: GameState, anomalyId: string, ld: Loadout, desireM?: number): CellReading {
+  const b = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0, desireM)
   const spec = createPlayerSpec(state, ctx as SimContext, ld.ship)
   const initHp = spec ? spec.hp.s + spec.hp.a + spec.hp.h : 1
   if (!b) return { win: false, durMs: 0, meRemainPct: 0, endM: 0, minM: 0, meShots: 0, foeShotsBoss: 0, foeShotsMinion: 0 }
@@ -1004,7 +1091,7 @@ async function main(): Promise<void> {
           const cells: CellReading[] = []
           for (const seed of SEEDS) {
             const st = makeState(row.ship, row.ld, row.skills, seed)
-            cells.push(simulateCell(st, a.id, row.ld))
+            cells.push(simulateCell(st, a.id, row.ld, row.desireM))
           }
           const n = cells.length
           const avg = (pick: (c: CellReading) => number): string => (cells.reduce((s, c) => s + pick(c), 0) / n).toFixed(1)

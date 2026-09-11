@@ -656,9 +656,6 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         dmgMul: 161 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每艘单发 161（= 105 × 190/124）
         split: foeLayerSplit('balanced'), // 血型随卡走（守墓长舰舰级缺省是装甲型）
         tactic: 'kite', // 随卡走（本卡是远程档；守墓长舰舰级缺省为 orbit）
-        // 船长 2026-09-11「**穹顶守卫最短射程 +1,500**」按**卡级**理解 ⇒ 本卡含混编的长舰一并取 2,062
-        // （若您要"长舰按自己那一档 1,062"，删掉本行即可——详见设计稿 §7.4）
-        rangeMinM: 2062,
       },
     ],
     waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
