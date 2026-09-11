@@ -2796,7 +2796,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
             {!explored ? (
               <div className="app-dim">该星系尚未探索——先到星图上扫描点亮。</div>
             ) : built ? (
-              <div className="app-dim">已并入空间站网络 = 母港镜像：本星系采矿返航 / 市场买卖 / 精炼回收 / 组装机制造 / 维修 / 补给 / 换驾驶 / 卸货全可用（共享母港设施与仓库）。</div>
+              <div className="app-dim">已并入空间站网络 = 母港镜像：本星系采矿返航 / 市场买卖 / 精炼回收 / 组装机制造线 / 维修 / 补给 / 换驾驶 / 卸货全可用（共享母港设施与仓库）。</div>
             ) : tier ? (
               <>
                 <div className="app-station-progress">
