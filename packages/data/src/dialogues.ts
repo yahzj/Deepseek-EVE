@@ -1,6 +1,9 @@
 /**
  * T9 通讯剧本（对话系统 v1：线性文本流；一次性完整呈现，逐句镜像进事件日志）。
  * 触发：建站点首次抵达自动播放介绍（D3甲：已读后不再自动触发；任务卡可随时重看）。
+ *
+ * 2026-09-11 通讯 v2：剧本也**挂靠势力 + 部门**（`commsFactionId` / `commsDeptId` / `commsSigner`），
+ * 于是收件箱里的立场小片、发件说明与数据消息同一套口径；`title` 保留为原文兜底（未挂靠时显示它）。
  */
 import type { DialogueScriptDef } from '@whale/core'
 
@@ -9,6 +12,9 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-redring-intro',
     title: '深空工业协会 · 基建部',
+    commsFactionId: 'dshi',
+    commsDeptId: 'dept-infra',
+    commsSigner: '柯岚',
     // 2026-09-11 通讯系统：剧本与消息同处一个收件箱，故各给一条主题（通讯页列表主行用）
     subject: '红环前哨站 · 建站交底',
     lines: [
@@ -22,6 +28,9 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-redring-done',
     title: '深空工业协会 · 基建部',
+    commsFactionId: 'dshi',
+    commsDeptId: 'dept-infra',
+    commsSigner: '柯岚',
     subject: '红环前哨站 · 并网通报',
     lines: [
       { speaker: '基建部 · 柯岚', text: '信号稳定了——红环前哨站，全功率运行。' },
@@ -32,6 +41,9 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-cinder-intro',
     title: '深空工业协会 · 基建部',
+    commsFactionId: 'dshi',
+    commsDeptId: 'dept-infra',
+    commsSigner: '沈灼',
     subject: '烬火前哨站 · 建站交底',
     lines: [
       { speaker: '基建部 · 沈灼', text: '烬火……能见度这么差的地方，难得有船敢摸进来。' },
@@ -43,6 +55,9 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-cinder-done',
     title: '深空工业协会 · 基建部',
+    commsFactionId: 'dshi',
+    commsDeptId: 'dept-infra',
+    commsSigner: '沈灼',
     subject: '烬火前哨站 · 并网通报',
     lines: [
       { speaker: '基建部 · 沈灼', text: '灯亮了。烬火前哨站，正式并网。' },

@@ -1,11 +1,14 @@
 /**
  * 通讯消息表（2026-09-11 船长定：NPC 通过"给玩家发消息"补充剧情或发布任务提示）。
  *
- * 口径（详见 `docs/design/comms-20260911.md`）：
- * - 每条 = 一封**收件箱消息**（发件人 / 主题 / 正文 / 送达条件）；core 每帧廉价判定、条件满足一次即送达（幂等）。
+ * 口径（详见 `docs/design/comms-20260911.md` 与 `docs/design/npc-factions-20260911.md`）：
+ * - 每条 = 一封**收件箱消息**（发件势力/部门 / 内容类型 / 主题 / 正文 / 送达条件）；core 每帧廉价判定、条件满足一次即送达（幂等）。
+ * - **发件人不在这里写自由文本**（2026-09-11 v2）：只填 `factionId`（+ 可选 `deptId`、`signer`），
+ *   玩家看到的 `势力名 · 部门名` 由 `data/src/commsFactions.ts` 拼出。
  * - **只给提示 + 跳转**：消息可以带一句 `hint` 与目标页，但**不在通讯页里接取或完成任务**。
  * - 任务类内容一律写成"协会的委托/备忘"口吻，跳转只是把玩家带回对应页面，不替代任务板。
- * - 玩家可见文案纪律（约定第十三章）：不出现开发/商讨用词；不出现第一/第二人称公告话术之外的软件腔。
+ * - 玩家可见文案纪律（约定第十三章）：不出现开发/商讨用词；**不得出现指涉玩家本质的词**
+ *   （AI / 智能 / 旧时代 / 人类），也不得用「你的舰船」这类把玩家与船分开的说法——**玩家就是那条船**。
  * - `replies` 为**预留**字段（回复选项接口），本期不启用（`core/comms.ts` 的 COMMS_REPLIES_ENABLED = false）。
  */
 import type { CommsMessageDef } from '@whale/core'
@@ -14,10 +17,12 @@ import type { CommsMessageDef } from '@whale/core'
 export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   {
     id: 'msg-welcome',
-    from: '深空工业协会 · 航行管制',
+    factionId: 'dshi',
+    deptId: 'dept-nav-control',
+    kind: '剧情',
     subject: '终端接入确认：呼号已登记',
     body: [
-      '飞行员，协会的通讯终端已经为你的舰船开通。往后协会各部门、合作方与航线上的熟人，有事都会直接发到这里。',
+      '飞行员，协会的通讯终端已经接到你这条船上。往后协会各部门、合作方与航线上的熟人，有事都会直接发到这里。',
       '导航栏「通讯」上有未读时图标会闪，点开读完即止——重要的事我们只发一次，不会反复催。',
       '老规矩：能自己干的活，协会不替你做；要看当下有什么可接的活，去任务中心看板。',
     ],
@@ -26,7 +31,9 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   },
   {
     id: 'msg-survey-memo',
-    from: '深空工业协会 · 测绘处',
+    factionId: 'dshi',
+    deptId: 'dept-survey',
+    kind: '提示',
     subject: '测绘备忘：未知信号优先',
     body: [
       '你探明的星系已经够多了，这里有一份测绘处的备忘。',
@@ -38,7 +45,9 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   },
   {
     id: 'msg-cinder-warning',
-    from: '深空工业协会 · 航线安全',
+    factionId: 'dshi',
+    deptId: 'dept-route-safety',
+    kind: '剧情',
     subject: '航线警告：烬火星区',
     body: [
       '烬火星区能见度极差，灰霾里蹲着的舰影比雷达上看到的多。',
@@ -50,7 +59,9 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   },
   {
     id: 'msg-industry-shift',
-    from: '深空工业协会 · 工业部',
+    factionId: 'dshi',
+    deptId: 'dept-industry',
+    kind: '提示',
     subject: '产能提醒：别让工位空着',
     body: [
       '账上有余钱了？协会工业部提醒一句：站内工位空着就是白亏。',
@@ -62,7 +73,9 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   },
   {
     id: 'msg-refinery-note',
-    from: '深空工业协会 · 冶炼组',
+    factionId: 'dshi',
+    deptId: 'dept-smelt',
+    kind: '提示',
     subject: '冶炼交底：精炼学值不值',
     body: [
       '有人问精炼到底划不划算，冶炼组给个交底。',
@@ -74,7 +87,9 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   },
   {
     id: 'msg-salvage-crew',
-    from: '打捞队 · 老陈',
+    factionId: 'salvage-guild',
+    deptId: 'dept-salvage-crew',
+    kind: '提示',
     subject: '漂着的东西比你想象的多',
     body: [
       '我们几个老打捞的在各个星系转，残骸场里的东西从来不缺，缺的是愿意停船捡的人。',
@@ -86,7 +101,9 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   },
   {
     id: 'msg-site-thanks',
-    from: '深空工业协会 · 基建部',
+    factionId: 'dshi',
+    deptId: 'dept-infra',
+    kind: '剧情',
     subject: '并网致谢：前哨站已点亮',
     body: [
       '红环前哨站并网运行的第一个班次，基建部全体向你致意。',

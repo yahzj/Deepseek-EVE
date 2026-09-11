@@ -1,5 +1,5 @@
 /**
- * 通讯页（2026-09-11 船长定；设计稿 `docs/design/comms-20260911.md`）。
+ * 通讯页（2026-09-11 船长定；设计稿 `docs/design/comms-20260911.md` + `docs/design/npc-factions-20260911.md`）。
  *
  * 六条已定决策的落点：
  * - ① 消息来自数据表 + 触发条件（core `advanceComms` 送达，本页只读）；
@@ -9,19 +9,37 @@
  * - ⑤ 版式：**双列**——左列消息列表（**唯一滚动区**），右列通讯器造型正文；一级页整页不滚；
  * - ⑥ 回复选项**接口预留但未启用**（`COMMS_REPLIES_ENABLED = false` ⇒ 玩家侧不出现任何回复控件）。
  *
- * 视觉纪律：通讯器的不规则边框是 **SVG 线稿**（`preserveAspectRatio="none"` + `vector-effect` 保证
- * 任意尺寸下描边恒为细线），不用 CSS 拼形状（约定第六/九章）。
+ * v2 视觉（2026-09-11 船长：按参考图**只借边框线条**、配色保持现有风格、不要avatar/未解锁占位/装饰动效）：
+ * - 通讯器 = **机身式大圆角外框 + 内嵌屏幕圆角框**（双层线，SVG 线稿 + `vector-effect` 恒定细描边）；
+ * - 左侧列表 = 圆角行块；屏幕内三层信息 = 大标题（右侧内容类型小片）→ 细分隔条（发件人 + 立场小片）→ 正文；
+ * - 底部 = 通栏胶囊「前往」（仅带跳转提示的消息出现）；立场/内容类型小片复用全仓 `.app-chip` 家族。
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { COMMS_REPLIES_ENABLED, commsGameClock } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Panel } from '@whale/ui'
+import { Glyph } from '../ui/Glyphs'
 import type { PageProps } from './common'
 
-/** 通讯器外框线稿（viewBox 0..100 两轴各自拉伸；顶点刻意不完全对齐 ⇒ 不规则的"手作设备"轮廓） */
-const FRAME_PATH =
-  'M3.2 9.4 L9.6 3.1 L52 2.3 L73.5 3.5 L90.4 2.6 L96.9 10.2 L98.3 44 L97 88.6 L90.2 96.7 L56.5 97.5 L32.5 96.2 L10.6 97.1 L3.6 89.8 L2.1 41.5 Z'
+/**
+ * 通讯器机身外框：大圆角机身 + 内嵌屏幕圆角框（参考图借来的"线条/圆角"语言）。
+ * 外框与内屏都走 SVG 线稿 + `vectorEffect="non-scaling-stroke"`，任意尺寸下描边恒为细线；
+ * 配色沿用现有风格（机身线 = 面板边框色，屏幕线 = 通讯青白蓝），不照搬参考图的卡带配色。
+ */
+function CommsDeviceFrame(): ReactNode {
+  return (
+    <svg className="app-comms-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      {/* 机身 */}
+      <rect x="1.1" y="1.1" width="97.8" height="97.8" rx="5" vectorEffect="non-scaling-stroke" />
+      {/* 内嵌屏幕（与外框同语言的双层线） */}
+      <rect x="5.2" y="7.4" width="89.6" height="85.2" rx="3" vectorEffect="non-scaling-stroke" />
+      {/* 左侧两颗实体键（参考图侧键的抽象化，只留短线） */}
+      <path d="M2.4 34 L2.4 42" vectorEffect="non-scaling-stroke" />
+      <path d="M2.4 52 L2.4 58" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
 
 export function CommsPage({
   engine,
@@ -89,10 +107,15 @@ export function CommsPage({
                     role="listitem"
                     className={`app-comms-item${current && e.id === current.id ? ' is-sel' : ''}${e.read ? '' : ' is-unread'}`}
                     onClick={() => setSel(e.id)}
-                    title={e.read ? '已读' : '未读'}
+                    title={e.fromBrief ? `${e.fromBrief}（${e.read ? '已读' : '未读'}）` : e.read ? '已读' : '未读'}
                   >
                     <span className="app-comms-item-top">
                       {e.read ? null : <i className="app-comms-dot" />}
+                      {e.glyph ? (
+                        <span className="app-ico">
+                          <Glyph name={e.glyph} size={12} color={e.tone || undefined} />
+                        </span>
+                      ) : null}
                       <span className="app-comms-from">{e.from}</span>
                       <span className="app-comms-time">{commsGameClock(e.deliveredAtGameMs)}</span>
                     </span>
@@ -101,60 +124,73 @@ export function CommsPage({
                 ))}
               </div>
 
-              {/* 右列：通讯器造型正文 */}
+              {/* 右列：通讯器（机身 + 内嵌屏幕 + 屏幕下方通栏「前往」） */}
               <div className="app-comms-device">
-                <svg
-                  className="app-comms-frame"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path d={FRAME_PATH} vectorEffect="non-scaling-stroke" />
-                  {/* 顶栏装饰：左侧信号短线 + 右侧指示灯（同一线稿语言，不填色块） */}
-                  <g vectorEffect="non-scaling-stroke">
-                    <path d="M6.4 13.2 L16.6 13.2" />
-                    <path d="M6.4 16.6 L12.4 16.6" />
-                    <path d="M85.6 13.4 L92.6 13.4" />
-                  </g>
-                </svg>
-                <div className="app-comms-detail">
-                  {current ? (
-                    <>
-                      <div className="app-comms-head">
-                        <span className="app-comms-head-from">{current.from}</span>
-                        <span className="app-comms-head-time">{commsGameClock(current.deliveredAtGameMs)} 送达</span>
-                      </div>
-                      <div className="app-comms-title">{current.subject}</div>
-                      <div className="app-comms-lines">
-                        {current.paragraphs.map((p, i) => (
-                          <p key={i} className="app-comms-text">
-                            {p}
-                          </p>
-                        ))}
-                      </div>
-                      {current.hint ? (
-                        <div className="app-comms-hint">
-                          <span className="app-dim">{current.hint.text}</span>
-                          <button
-                            className="app-btn is-small is-primary"
-                            onClick={() => onGoto(current.hint!.page, current.hint!.tab)}
-                          >
-                            前往
-                          </button>
+                <CommsDeviceFrame />
+                <div className="app-comms-body-col">
+                  <div className="app-comms-screen">
+                    {current ? (
+                      <>
+                        {/* 屏幕第一层：大标题 + 右侧内容类型小片 */}
+                        <div className="app-comms-title-row">
+                          <span className="app-comms-title">{current.subject}</span>
+                          {current.kind ? (
+                            <span
+                              className="app-chip app-comms-kind"
+                              style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
+                              title="这封通讯的性质：提示只是指个方向，委托才是协会派下来的活"
+                            >
+                              {current.kind}
+                            </span>
+                          ) : null}
                         </div>
-                      ) : null}
-                      {/* ⑥ 回复选项：接口保留、本期不启用（COMMS_REPLIES_ENABLED = false → 不渲染任何控件） */}
-                      {COMMS_REPLIES_ENABLED && current.replies && current.replies.length > 0 ? (
-                        <div className="app-comms-replies">
-                          {current.replies.map((r) => (
-                            <button key={r.id} className="app-btn is-small" disabled>
-                              {r.label}
-                            </button>
+                        {/* 屏幕第二层：细分隔条（发件人 + 立场小片 + 送达时间） */}
+                        <div className="app-comms-head">
+                          <span className="app-comms-head-from" style={current.tone ? { color: current.tone } : undefined}>
+                            {current.from}
+                          </span>
+                          {current.alignment ? (
+                            <span
+                              className="app-chip app-comms-align"
+                              style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
+                              title={current.fromBrief}
+                            >
+                              {current.alignment}
+                            </span>
+                          ) : null}
+                          <span className="app-comms-head-time">{commsGameClock(current.deliveredAtGameMs)} 送达</span>
+                        </div>
+                        {/* 屏幕第三层：正文 */}
+                        <div className="app-comms-lines">
+                          {current.paragraphs.map((p, i) => (
+                            <p key={i} className="app-comms-text">
+                              {p}
+                            </p>
                           ))}
                         </div>
-                      ) : null}
-                    </>
+                        {/* ⑥ 回复选项：接口保留、本期不启用（COMMS_REPLIES_ENABLED = false → 不渲染任何控件） */}
+                        {COMMS_REPLIES_ENABLED && current.replies && current.replies.length > 0 ? (
+                          <div className="app-comms-replies">
+                            {current.replies.map((r) => (
+                              <button key={r.id} className="app-btn is-small" disabled>
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                  {/* 屏幕下方：通栏胶囊「前往」（没有跳转提示的消息不出现） */}
+                  {current?.hint ? (
+                    <button
+                      className="app-btn is-primary app-comms-goto"
+                      title={current.hint.text}
+                      onClick={() => onGoto(current.hint!.page, current.hint!.tab)}
+                    >
+                      <span className="app-comms-goto-text">{current.hint.text}</span>
+                      <span className="app-comms-goto-label">前往</span>
+                    </button>
                   ) : null}
                 </div>
               </div>

@@ -13,7 +13,14 @@ import { ONB_EPILOGUE } from './onboarding'
 import { isSiteBuilt } from './station'
 import { addLog } from './state'
 import type { GameState } from './state'
-import type { CommsEntryView, CommsMessageDef, CommsTrigger, SimContext } from './types'
+import type {
+  CommsEntryView,
+  CommsFactionAlignment,
+  CommsKind,
+  CommsMessageDef,
+  CommsTrigger,
+  SimContext,
+} from './types'
 
 /** 通讯里的"天"（游戏内时间；与赏金日板的 24 小时同口径） */
 export const COMMS_DAY_MS = 24 * 3_600_000
@@ -24,7 +31,68 @@ export const COMMS_DAY_MS = 24 * 3_600_000
  */
 export const COMMS_REPLIES_ENABLED = false
 
-/** 剧本镜像到收件箱的键（与数据消息 id 区分；`id` 里的 `dlg:` 前缀是稳定约定） */
+/**
+ * 解析发件方（2026-09-11 通讯 v2：消息/剧本都挂靠「势力 + 部门」）。
+ *
+ * 显示口径：**玩家看到的发件人写法不变**，仍是 `势力名 · 部门名`（缺部门 = 只显示势力名）；
+ * 解析不到势力/部门时**降级显示原文 id**（界面不崩——数据改漏了只会看到 id，不会白屏）。
+ */
+export interface CommsSenderView {
+  /** 发件人写法（`势力名 · 部门名`；降级时 = 原文 id） */
+  from: string
+  /** 势力名（未解析到 = 空串） */
+  factionName: string
+  /** 立场（未解析到 = 空串） */
+  alignment: CommsFactionAlignment | ''
+  /** 内容类型（未挂靠 = 空串） */
+  kind: CommsKind | ''
+  /** 具名联系人（悬停说明用） */
+  signer?: string
+  /** 发件方说明「这是谁」（势力 brief + 部门 brief；悬停用） */
+  fromBrief?: string
+  /** 势力主题色（未解析到 = 空串，界面回落默认色） */
+  tone: string
+  /** 势力图标名（未解析到 = 空串） */
+  glyph: string
+}
+
+/** 发件方解析（势力 + 部门 + 可选内容类型 + 可选具名联系人；缺数据一律降级不抛错） */
+export function resolveCommsSender(
+  ctx: SimContext,
+  factionId: string,
+  deptId?: string,
+  kind?: CommsKind,
+  signer?: string,
+): CommsSenderView {
+  const faction = ctx.commsFactions?.get(factionId)
+  if (!faction) {
+    return {
+      from: deptId ? `${factionId} · ${deptId}` : factionId,
+      factionName: '',
+      alignment: '',
+      kind: '',
+      signer,
+      tone: '',
+      glyph: '',
+    }
+  }
+  const dept = deptId ? faction.departments.find((d) => d.id === deptId) : undefined
+  const briefs = [faction.brief, dept?.brief].filter((b): b is string => Boolean(b))
+  return {
+    from: dept ? `${faction.name} · ${dept.name}` : faction.name,
+    factionName: faction.name,
+    alignment: faction.alignment,
+    kind: kind ?? '',
+    signer,
+    fromBrief: briefs.length > 0 ? briefs.join(' ') : undefined,
+    tone: faction.tone,
+    glyph: faction.glyph,
+  }
+}
+
+/**
+ * 剧本镜像到收件箱的键（与数据消息 id 区分；`id` 里的 `dlg:` 前缀是稳定约定）
+ */
 export function commsDialogueKey(scriptId: string): string {
   return `dlg:${scriptId}`
 }
@@ -74,8 +142,9 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
 }
 
 /** 送达文案（事件日志一行；玩家可见文案，禁开发腔） */
-function deliveryLogText(msg: CommsMessageDef): string {
-  return `[通讯] 收到 ${msg.from} 的一条消息：《${msg.subject}》——导航「通讯」可查看。`
+function deliveryLogText(ctx: SimContext, msg: CommsMessageDef): string {
+  const sender = resolveCommsSender(ctx, msg.factionId, msg.deptId, msg.kind, msg.signer)
+  return `[通讯] 收到 ${sender.from} 的一条消息：《${msg.subject}》——导航「通讯」可查看。`
 }
 
 /**
@@ -86,7 +155,7 @@ export function advanceComms(state: GameState, ctx: SimContext): void {
   if (ctx.commsMessages.size === 0) return
   for (const msg of ctx.commsMessages.values()) {
     if (!commsTriggerMet(state, ctx, msg.trigger)) continue
-    if (deliver(state, msg.id)) addLog(state, 'info', deliveryLogText(msg))
+    if (deliver(state, msg.id)) addLog(state, 'info', deliveryLogText(ctx, msg))
   }
 }
 
@@ -99,7 +168,11 @@ export function deliverDialogueToComms(state: GameState, ctx: SimContext, script
   if (!script) return
   const key = commsDialogueKey(scriptId)
   if (!deliver(state, key)) return
-  addLog(state, 'info', `[通讯] 收到 ${script.title} 的一条消息：《${script.subject ?? script.title}》——导航「通讯」可查看。`)
+  const sender = script.commsFactionId
+    ? resolveCommsSender(ctx, script.commsFactionId, script.commsDeptId, undefined, script.commsSigner)
+    : undefined
+  const from = sender?.from ?? script.title
+  addLog(state, 'info', `[通讯] 收到 ${from} 的一条消息：《${script.subject ?? script.title}》——导航「通讯」可查看。`)
 }
 
 /**
@@ -108,16 +181,29 @@ export function deliverDialogueToComms(state: GameState, ctx: SimContext, script
  */
 export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] {
   const out: CommsEntryView[] = []
+  /** 降级发件方（未挂靠势力 / 势力解析不到；界面不崩、也无立场小片） */
+  const FALLBACK_SENDER = { factionName: '', alignment: '', kind: '', tone: '', glyph: '' } as const
   const delivered: Record<string, number> = state.commsDelivered ?? {}
   for (const [id, at] of Object.entries(delivered)) {
     const atMs = Number.isFinite(at) ? Math.max(0, Math.floor(at)) : 0
     if (id.startsWith('dlg:')) {
       const script = ctx.dialogues.get(id.slice(4))
       if (!script) continue
+      // 剧本挂靠「数据 + 词典 + 契约」：有 commsFactionId 才解析立场/色调，否则回落剧本 title 原文
+      const sender = script.commsFactionId
+        ? resolveCommsSender(ctx, script.commsFactionId, script.commsDeptId, undefined, script.commsSigner)
+        : { from: script.title, ...FALLBACK_SENDER }
       out.push({
         id,
         source: 'dialogue',
-        from: script.title,
+        from: sender.from,
+        factionName: sender.factionName,
+        alignment: sender.alignment,
+        kind: sender.kind,
+        signer: sender.signer,
+        fromBrief: sender.fromBrief,
+        tone: sender.tone,
+        glyph: sender.glyph,
         subject: script.subject ?? script.title,
         paragraphs: script.lines.map((l) => `${l.speaker}：${l.text}`),
         deliveredAtGameMs: atMs,
@@ -127,10 +213,18 @@ export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] 
     }
     const msg = ctx.commsMessages.get(id)
     if (!msg) continue
+    const sender = resolveCommsSender(ctx, msg.factionId, msg.deptId, msg.kind, msg.signer)
     out.push({
       id,
       source: 'message',
-      from: msg.from,
+      from: sender.from,
+      factionName: sender.factionName,
+      alignment: sender.alignment,
+      kind: sender.kind,
+      signer: sender.signer,
+      fromBrief: sender.fromBrief,
+      tone: sender.tone,
+      glyph: sender.glyph,
       subject: msg.subject,
       paragraphs: msg.body,
       deliveredAtGameMs: atMs,

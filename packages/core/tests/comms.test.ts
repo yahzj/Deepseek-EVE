@@ -2,13 +2,14 @@
  * 通讯收件箱（2026-09-11 船长定：NPC 发消息补充剧情与任务提示；六条裁决全为「甲」）。
  *
  * 覆盖：触发条件逐个 correctness / 送达幂等 / 未读与已读口径 / 剧本镜像（合并进同一收件箱）/
- * 存档往返（含垃圾数据丢弃）/ 序章引导期间的送达时机。
- * 设计稿：`docs/design/comms-20260911.md`。
+ * 存档往返（含垃圾数据丢弃）/ 序章引导期间的送达时机 /
+ * **发件方解析（势力 + 部门 → 发件人写法、立场、色调、图标）与其降级不崩**。
+ * 设计稿：`docs/design/comms-20260911.md` · `docs/design/npc-factions-20260911.md`。
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import type { CommsMessageDef, SimContext, StationSiteDef } from '../src/types'
+import type { CommsFactionDef, CommsMessageDef, SimContext, StationSiteDef } from '../src/types'
 import {
   advanceComms,
   commsDialogueKey,
@@ -18,6 +19,7 @@ import {
   commsUnreadCount,
   markAllCommsRead,
   markCommsRead,
+  resolveCommsSender,
 } from '../src/comms'
 import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
@@ -40,22 +42,59 @@ function siteDef(): StationSiteDef {
   }
 }
 
+/** 测试用势力档案（与 data/src/commsFactions.ts 同构：消息只填 factionId/deptId，发件人由这里拼出） */
+const FACTIONS: readonly CommsFactionDef[] = [
+  {
+    id: 'dshi',
+    name: '深空工业协会',
+    species: '章鱼人',
+    alignment: '官方',
+    tone: '#9fd8ff',
+    glyph: 'nav-mail',
+    brief: '章鱼人的官方行业组织。',
+    kinds: ['剧情', '提示', '委托'],
+    departments: [
+      { id: 'dept-nav-control', name: '航行管制', brief: '航道管理。', kinds: ['剧情', '提示'] },
+      { id: 'dept-survey', name: '测绘处', brief: '星域测绘。', kinds: ['剧情', '提示'] },
+      { id: 'dept-training', name: '训练处', brief: '技能训练。', kinds: ['剧情', '提示'] },
+      { id: 'dept-finance', name: '财务处', brief: '结算与酬金。', kinds: ['提示', '委托'] },
+      { id: 'dept-infra', name: '基建部', brief: '建站与并网。', kinds: ['剧情', '提示', '委托'] },
+      { id: 'dept-unknown', name: '不存在部', brief: '留空用。', kinds: ['提示'] },
+    ],
+  },
+  {
+    id: 'salvage-guild',
+    name: '打捞队工会',
+    species: '章鱼人',
+    alignment: '民间',
+    tone: '#6fe3f0',
+    glyph: 'nav-salvage',
+    brief: '章鱼人的民间行会。',
+    kinds: ['剧情', '提示'],
+    departments: [{ id: 'dept-crew', name: '老陈', brief: '老打捞一队。', kinds: ['剧情', '提示'] }],
+  },
+]
+
 const MSGS: readonly CommsMessageDef[] = [
-  { id: 'msg-start', from: '协会 · 调度台', subject: '开局信', body: ['第一段。', '第二段。'], trigger: { kind: 'start' } },
-  { id: 'msg-day', from: '协会 · 测绘处', subject: '第二天备忘', body: ['过了两天。'], trigger: { kind: 'day', days: 2 } },
-  { id: 'msg-explored', from: '协会 · 巡逻队', subject: '三次探明', body: ['开了三个星系。'], trigger: { kind: 'explored', count: 3 } },
-  { id: 'msg-galaxy', from: '打捞队 · 老陈', subject: '坟场见闻', body: ['坟场那边有货。'], trigger: { kind: 'galaxy', galaxyId: 'galaxy-far' } },
-  { id: 'msg-skill', from: '协会 · 训练处', subject: '技能达标', body: ['技能到 2 级了。'], trigger: { kind: 'skill', skillId: 'mining', level: 2 } },
-  { id: 'msg-isk', from: '协会 · 财务', subject: '资金到账', body: ['账上有钱了。'], trigger: { kind: 'isk', amount: 50_000 } },
-  { id: 'msg-site', from: '协会 · 基建部', subject: '前哨站并网', body: ['站建好了。'], trigger: { kind: 'siteBuilt', siteId: 'site-test' } },
+  { id: 'msg-start', factionId: 'dshi', deptId: 'dept-nav-control', kind: '剧情', subject: '开局信', body: ['第一段。', '第二段。'], trigger: { kind: 'start' } },
+  { id: 'msg-day', factionId: 'dshi', deptId: 'dept-survey', kind: '提示', subject: '第二天备忘', body: ['过了两天。'], trigger: { kind: 'day', days: 2 } },
+  { id: 'msg-explored', factionId: 'dshi', deptId: 'dept-survey', kind: '提示', subject: '三次探明', body: ['开了三个星系。'], trigger: { kind: 'explored', count: 3 } },
+  { id: 'msg-galaxy', factionId: 'salvage-guild', deptId: 'dept-crew', kind: '剧情', subject: '坟场见闻', body: ['坟场那边有货。'], trigger: { kind: 'galaxy', galaxyId: 'galaxy-far' } },
+  { id: 'msg-skill', factionId: 'dshi', deptId: 'dept-training', kind: '提示', subject: '技能达标', body: ['技能到 2 级了。'], trigger: { kind: 'skill', skillId: 'mining', level: 2 } },
+  { id: 'msg-isk', factionId: 'dshi', deptId: 'dept-finance', kind: '提示', subject: '资金到账', body: ['账上有钱了。'], trigger: { kind: 'isk', amount: 50_000 } },
+  { id: 'msg-site', factionId: 'dshi', deptId: 'dept-infra', kind: '剧情', subject: '前哨站并网', body: ['站建好了。'], trigger: { kind: 'siteBuilt', siteId: 'site-test' } },
   {
     id: 'msg-hint',
-    from: '协会 · 任务处',
+    factionId: 'dshi',
+    deptId: 'dept-finance',
+    kind: '委托',
     subject: '带跳转的消息',
     body: ['正文。'],
     trigger: { kind: 'day', days: 1 },
     hint: { text: '去星图看看。', page: 'map', tab: 'salvage' },
   },
+  /** 数据写漏：势力 id 不存在（界面必须降级显示原文 id，不崩）。挂在第 9 天，与其它用例的触发点错开 */
+  { id: 'msg-orphan', factionId: 'no-such-faction', deptId: 'dept-x', kind: '提示', subject: '无主消息', body: ['正文。'], trigger: { kind: 'day', days: 9 } },
 ]
 
 function world(msgs: readonly CommsMessageDef[] = MSGS) {
@@ -63,10 +102,21 @@ function world(msgs: readonly CommsMessageDef[] = MSGS) {
     stations: [siteDef()],
     quietEvents: true,
     commsMessages: msgs,
-    dialogues: [{ id: 'dlg-intro', title: '深空工业协会 · 基建部', subject: '测试前哨站 · 建设交底', lines: [
-      { speaker: '基建部 · 柯岚', text: '能收到吗？' },
-      { speaker: '基建部 · 柯岚', text: '这里要建站。' },
-    ] }],
+    commsFactions: FACTIONS,
+    dialogues: [
+      {
+        id: 'dlg-intro',
+        title: '深空工业协会 · 基建部',
+        commsFactionId: 'dshi',
+        commsDeptId: 'dept-infra',
+        commsSigner: '柯岚',
+        subject: '测试前哨站 · 建设交底',
+        lines: [
+          { speaker: '基建部 · 柯岚', text: '能收到吗？' },
+          { speaker: '基建部 · 柯岚', text: '这里要建站。' },
+        ],
+      },
+    ],
   })
   const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
   return { state, ctx }
@@ -196,6 +246,91 @@ describe('通讯 · 剧本合并（T9 建站剧本进同一收件箱）', () => 
     const ctx2: SimContext = { ...ctx, commsMessages: new Map() }
     expect(commsInbox(state, ctx2).some((e) => e.id === 'msg-start')).toBe(false)
     expect(state.commsDelivered?.['msg-start']).toBeDefined()
+  })
+})
+
+describe('通讯 · 发件方解析（势力 + 部门；2026-09-11 通讯 v2）', () => {
+  it('发件人写法由势力 + 部门拼出：玩家看到的仍是「势力名 · 部门名」', () => {
+    const { state, ctx } = world()
+    state.onboarding.step = ONB_DONE
+    state.gameMs = COMMS_DAY_MS * 3
+    advanceComms(state, ctx)
+    const inbox = commsInbox(state, ctx)
+    const welcome = inbox.find((e) => e.id === 'msg-start')!
+    expect(welcome.from).toBe('深空工业协会 · 航行管制')
+    expect(welcome.factionName).toBe('深空工业协会')
+    expect(welcome.alignment).toBe('官方')
+    expect(welcome.kind).toBe('剧情')
+    expect(welcome.tone).toBe('#9fd8ff')
+    expect(welcome.glyph).toBe('nav-mail')
+    expect(welcome.fromBrief).toContain('航道管理') // 势力 brief + 部门 brief 合并成悬停说明
+    // 民间行会：立场与色调不同源，但同样是章鱼人（探明 galaxy-far 后才送达）
+    state.exploredGalaxies = ['galaxy-hub', 'galaxy-far']
+    advanceComms(state, ctx)
+    const guild = commsInbox(state, ctx).find((e) => e.id === 'msg-galaxy')!
+    expect(guild.from).toBe('打捞队工会 · 老陈')
+    expect(guild.alignment).toBe('民间')
+    expect(guild.tone).toBe('#6fe3f0')
+  })
+
+  it('缺部门时只显示势力名（不出现空的分隔点）', () => {
+    const { state, ctx } = world([
+      { id: 'msg-nod', factionId: 'dshi', kind: '提示', subject: '无部门', body: ['正文。'], trigger: { kind: 'day', days: 1 } },
+    ])
+    state.onboarding.step = ONB_DONE
+    state.gameMs = COMMS_DAY_MS
+    advanceComms(state, ctx)
+    expect(commsInbox(state, ctx)[0]!.from).toBe('深空工业协会')
+  })
+
+  it('势力解析不到时降级显示原文 id（不抛错、不丢消息）', () => {
+    const { state, ctx } = world()
+    state.onboarding.step = ONB_DONE
+    state.gameMs = COMMS_DAY_MS * 10
+    advanceComms(state, ctx)
+    const orphan = commsInbox(state, ctx).find((e) => e.id === 'msg-orphan')
+    expect(orphan).toBeDefined()
+    expect(orphan!.from).toBe('no-such-faction · dept-x') // 降级 = 原文 id，界面不崩
+    expect(orphan!.factionName).toBe('')
+    expect(orphan!.alignment).toBe('')
+    expect(orphan!.tone).toBe('')
+    // 日志同样用降级后的发件人，不抛错
+    expect(state.logs.some((l) => l.text.includes('无主消息'))).toBe(true)
+  })
+
+  it('resolveCommsSender 直调：部门 id 写错时回落势力名（不显示错部门）', () => {
+    const { ctx } = world()
+    expect(resolveCommsSender(ctx, 'dshi', 'dept-not-exist').from).toBe('深空工业协会')
+    expect(resolveCommsSender(ctx, 'dshi', 'dept-infra').from).toBe('深空工业协会 · 基建部')
+    expect(resolveCommsSender(ctx, 'nope').from).toBe('nope')
+  })
+
+  it('剧本镜像的挂靠：立场/色调按势力解析，发件人写法与剧本 title 一致', () => {
+    const { state, ctx } = world()
+    state.onboarding.step = ONB_DONE
+    onArriveAtGalaxy(state, ctx, 'galaxy-far')
+    const entry = commsInbox(state, ctx).find((e) => e.id === commsDialogueKey('dlg-intro'))!
+    expect(entry.from).toBe('深空工业协会 · 基建部')
+    expect(entry.alignment).toBe('官方')
+    expect(entry.signer).toBe('柯岚')
+    expect(entry.tone).toBe('#9fd8ff')
+  })
+
+  it('剧本未挂靠势力时回落 title 原文（老数据不崩）', () => {
+    const ctx: SimContext = makeTestCtx({
+      quietEvents: true,
+      dialogues: [
+        { id: 'dlg-loose', title: '某部门 · 某人', lines: [{ speaker: '某人', text: '在吗？' }] },
+      ],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.onboarding.step = ONB_DONE
+    // 直接记账后读视图（未挂靠 = 不算立场）
+    state.commsDelivered = { 'dlg:dlg-loose': 0 }
+    const entry = commsInbox(state, ctx)[0]!
+    expect(entry.from).toBe('某部门 · 某人')
+    expect(entry.factionName).toBe('')
+    expect(entry.tone).toBe('')
   })
 })
 

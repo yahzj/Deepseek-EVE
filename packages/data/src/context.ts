@@ -28,6 +28,7 @@ import { buildTravelEvents } from './travelEvents'
 import { buildMarketGoodsCatalog } from './marketCatalog'
 import { buildStationCatalog } from './stations'
 import { buildCommsCatalog } from './messages'
+import { buildCommsFactionCatalog } from './commsFactions'
 import { buildDialogueCatalog } from './dialogues'
 import { GALAXY_EDGES } from './universe'
 
@@ -74,6 +75,7 @@ export function buildSimContext(): SimContext {
     stations: buildStationCatalog(),
     marketGoods: buildMarketGoodsCatalog(),
     commsMessages: buildCommsCatalog(),
+    commsFactions: buildCommsFactionCatalog(),
     dialogues: buildDialogueCatalog(),
     balance: DEFAULT_BALANCE,
   }

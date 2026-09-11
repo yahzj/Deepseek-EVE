@@ -12,6 +12,7 @@ import type {
   BalanceConfig,
   BeltDef,
   BlueprintDef,
+  CommsFactionDef,
   CommsMessageDef,
   DamageType,
   DialogueScriptDef,
@@ -467,6 +468,8 @@ export function makeTestCtx(opts?: {
   marketGoods?: Iterable<MarketGoodDef>
   /** 通讯消息表（2026-09-11 通讯系统；缺省空表 = 不送任何消息） */
   commsMessages?: Iterable<CommsMessageDef>
+  /** NPC 势力档案（2026-09-11 通讯 v2；缺省空表 = 发件人降级显示原文 id） */
+  commsFactions?: Iterable<CommsFactionDef>
   /** 通讯剧本目录（通讯页与剧本共处一个收件箱；缺省空表） */
   dialogues?: Iterable<DialogueScriptDef>
   /** 关闭随机事件流（精确断言时间线/日志/rng 的测试用） */
@@ -540,6 +543,7 @@ export function makeTestCtx(opts?: {
     stations,
     marketGoods,
     commsMessages: new Map(Array.from(opts?.commsMessages ?? [], (m) => [m.id, m])),
+    commsFactions: new Map(Array.from(opts?.commsFactions ?? [], (f) => [f.id, f])),
     dialogues: new Map(Array.from(opts?.dialogues ?? [], (d) => [d.id, d])),
     balance,
   }

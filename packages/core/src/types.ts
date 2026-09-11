@@ -1043,6 +1043,8 @@ export interface SimContext {
   marketGoods: ReadonlyMap<string, MarketGoodDef>
   /** 通讯消息表（2026-09-11 通讯系统；data/src/messages.ts） */
   commsMessages: ReadonlyMap<string, CommsMessageDef>
+  /** NPC 势力档案（2026-09-11 通讯 v2；data/src/commsFactions.ts）——解析消息/剧本的发件人与立场 */
+  commsFactions: ReadonlyMap<string, CommsFactionDef>
   /** 通讯剧本目录（T9 建站介绍/庆贺等；通讯页与剧本共处一个收件箱，见 core/comms.ts） */
   dialogues: ReadonlyMap<string, DialogueScriptDef>
   balance: BalanceConfig
@@ -1088,11 +1090,66 @@ export interface DialogueLineDef {
 /** 通讯剧本（线性文本流；一次完整呈现，逐句镜像进事件日志） */
 export interface DialogueScriptDef {
   id: string
+  /** 发件势力 id（可选：未挂靠时收件箱回落 `title` 原文，立场小片不出现） */
+  commsFactionId?: string
+  /** 发件部门 id（可选；给了部门就必须给势力） */
+  commsDeptId?: string
+  /** 具名联系人（可选；悬停说明用） */
+  commsSigner?: string
   /** 标题（通讯器称呼栏，如 协会 · 基建部） */
   title: string
   /** 通讯页收件箱里的主题（2026-09-11 通讯系统合并：缺省回落 title；剧本与消息同处一个收件箱） */
   subject?: string
   lines: readonly DialogueLineDef[]
+}
+
+/* ═══════════════ NPC 势力档案（2026-09-11 通讯 v2 船长定：官方 = 章鱼人；其他 NPC 同为章鱼人、同族不同行会） ═══════════════ */
+
+/**
+ * 势力立场（界面「立场小片」按此着色分档：官方 / 民间 / 中立）
+ * 口径：协会是章鱼人的官方行业组织；打捞队工会等民间行会同族不同行。
+ */
+export type CommsFactionAlignment = '官方' | '民间' | '中立'
+
+/** 通讯内容类型（消息的「内容类型小片」；必须落在发件势力的 `kinds` 白名单里） */
+export type CommsKind = '剧情' | '提示' | '委托'
+
+/** 势力下的部门（协会 8 部门、打捞队工会 1 队；部门是发件人写法的后半截） */
+export interface CommsDeptDef {
+  /** 部门 id（势力内唯一；消息用 `deptId` 引用） */
+  id: string
+  /** 部门名（发件人写法：`势力名 · 部门名`） */
+  name: string
+  /** 部门一句话（悬停说明"这是谁"） */
+  brief: string
+  /** 本部门允许发的内容类型白名单（契约强制） */
+  kinds: readonly CommsKind[]
+}
+
+/**
+ * NPC 势力（data/src/commsFactions.ts 维护）。
+ * 铁律：**所有 NPC 势力都是章鱼人**（`species` 契约强制为「章鱼人」，防设定漂移）；
+ * 章鱼人不追问船里是谁，把玩家当普通承包舰船——文案不得出现指涉玩家本质的词。
+ */
+export interface CommsFactionDef {
+  /** 稳定 id（消息/剧本按它引用） */
+  id: string
+  /** 势力名（玩家可见；协会对外自称「协会」，全名用于发件人与档案） */
+  name: string
+  /** 物种（铁律：恒为「章鱼人」，契约强制） */
+  species: '章鱼人'
+  /** 立场：官方 / 民间 / 中立 */
+  alignment: CommsFactionAlignment
+  /** 主题色（与既有系统同源取色；界面小片与图标着色用） */
+  tone: string
+  /** 图标（复用既有 SVG 线稿图标名，如 `nav-mail` / `nav-salvage`） */
+  glyph: string
+  /** 势力一句话（界面 tooltip「这是谁」） */
+  brief: string
+  /** 该势力可发内容类型白名单（消息 `kind` 必须落在其中） */
+  kinds: readonly CommsKind[]
+  /** 部门表（通讯发件人的来源；至少一个） */
+  departments: readonly CommsDeptDef[]
 }
 
 /* ═══════════════ 通讯（2026-09-11 船长定：NPC 以"发消息"补充剧情与任务提示） ═══════════════ */
@@ -1124,8 +1181,18 @@ export interface CommsReplyDef {
 export interface CommsMessageDef {
   /** 稳定 id（已送达/已读都按它记账） */
   id: string
-  /** 发件人（协会部门或人名，通讯器"发件人"栏） */
-  from: string
+  /**
+   * 发件势力 id（data/src/commsFactions.ts）。
+   * **玩家看到的发件人写法由势力 + 部门拼出**（`势力名 · 部门名`），不再在消息里写自由文本；
+   * 解析不到势力时降级显示原文 id（界面不崩，见 core/comms.ts）。
+   */
+  factionId: string
+  /** 发件部门 id（势力内唯一；缺省 = 势力本部，发件人只显示势力名） */
+  deptId?: string
+  /** 具名联系人（可选；作为悬停说明，不写进发件人栏——保持既有发件人写法不变） */
+  signer?: string
+  /** 内容类型（必须落在发件势力/部门的 `kinds` 白名单里） */
+  kind: CommsKind
   /** 主题（列表主行） */
   subject: string
   /** 正文（逐段） */
@@ -1144,8 +1211,22 @@ export interface CommsEntryView {
   id: string
   /** 来源：数据消息 / T9 剧本镜像 */
   source: 'message' | 'dialogue'
-  /** 发件人 */
+  /** 发件人（玩家可见写法：`势力名 · 部门名`；未挂靠/解析失败时降级为原文，见 core/comms.ts） */
   from: string
+  /** 发件势力名（界面「立场小片」旁的主名；未挂靠时为空串） */
+  factionName: string
+  /** 立场（官方 / 民间 / 中立；未挂靠时为空串） */
+  alignment: CommsFactionAlignment | ''
+  /** 内容类型（剧情 / 提示 / 委托；未挂靠时为空串） */
+  kind: CommsKind | ''
+  /** 具名联系人（可选；悬停说明用） */
+  signer?: string
+  /** 发件方说明「这是谁」（势力 brief + 部门 brief；悬停用） */
+  fromBrief?: string
+  /** 发件势力主题色（未挂靠时为空串，界面回落到默认色） */
+  tone: string
+  /** 发件势力图标名（未挂靠时为空串） */
+  glyph: string
   /** 主题 */
   subject: string
   /** 正文逐段（剧本镜像 = 各发言句 `发言人：内容`） */

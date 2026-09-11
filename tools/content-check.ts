@@ -35,6 +35,7 @@ import {
   buildItemCatalog,
   buildSimContext,
   COMMS_MESSAGES,
+  COMMS_FACTIONS,
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
@@ -1545,24 +1546,103 @@ for (const m of MODULES) {
 /* ── 通讯消息契约（2026-09-11 通讯系统）────────────────────────────────────────────
    体检口径：id 唯一、字段齐备、触发器字段可解析（星系/技能/站点必须真实存在）、
    跳转目标页合法（及其页面内标签）、玩家可见文案不含开发用词；
-   剧本（DIALOGUES）侧只查主题与正文可用（它们也要进同一个收件箱）。 */
+   剧本（DIALOGUES）侧只查主题与正文可用（它们也要进同一个收件箱）。
+   2026-09-11 v2 扩展：发件方改为「势力 + 部门」引用，故新增
+   **势力契约**（species 恒为章鱼人、部门 id 势力内唯一、立场合法、色调/图标有口径）
+   与**发件方引用契约**（factionId/deptId 必须存在、kind 必须落在势力白名单、每个势力至少被引用一次）。 */
 {
   const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills'])
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
   const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt'])
+  const KINDS = new Set(['剧情', '提示', '委托'])
+  const ALIGNMENTS = new Set(['官方', '民间', '中立'])
+  /**
+   * 既有线稿图标名（`apps/desktop/src/renderer/src/ui/Glyphs.tsx` 的 `GLYPHS` 表；
+   * 势力 `glyph` 只能复用它们，不许自造图标名——界面查不到会渲染空白）。
+   */
+  const ICON_NAMES = new Set([
+    'drone-rack', 'drone-tac', 'drone-relay', 'target-lock',
+    'nav-map', 'nav-ship', 'nav-fit', 'nav-items', 'nav-market', 'nav-industry', 'nav-skills',
+    'nav-mail', 'nav-mine', 'nav-bounty', 'nav-salvage', 'nav-task', 'nav-ai', 'nav-shop', 'nav-haul',
+    'ico-home', 'ico-lock', 'ico-clock', 'ico-loop', 'ico-flag', 'ico-star', 'ico-scan',
+    'ico-swap', 'ico-cross', 'ico-crane', 'ico-antenna', 'ico-tact',
+  ])
   /** 玩家可见文案禁用的开发/出戏用词（与词典「玩家可见文案禁用彩头/主题件/掉池」同口径，宽清单） */
   const BANNED = ['彩头', '主题件', '掉池', '基础池', '区划', '口径', '断言', '白名单', '体检', '待定', '占位', 'EVE', 'npm']
+  /**
+   * 世界观铁律（2026-09-11 船长定，`docs/design/npc-factions-20260911.md`）：章鱼人不追问船里是谁——
+   * NPC 消息不得出现指涉玩家本质的词，也不得用「你的舰船」这类把玩家与船分开的说法（玩家就是那条船）。
+   *
+   * 判定方式：先按“玩家本质词”命中，再**豁免既有系统官方名**（`AI 核心` 及其档位名、
+   * `人工智能专家` = 2026-09-08 前的技能旧名）——这些是玩法术语（公告/教程/技能表全在用），
+   * 不是对玩家身份的指涉。豁免清单改动时必须重跑本契约，确认不是把真漂移放过去。
+   */
+  const PLAYER_ESSENCE = ['AI', '智能', '旧时代', '人类']
+  const LORE_EXEMPT = ['AI 核心', '人工智能']
+  const loreHits = (text: string): string[] => {
+    let masked = text
+    for (const ex of LORE_EXEMPT) masked = masked.split(ex).join('□'.repeat(ex.length))
+    return PLAYER_ESSENCE.filter((w) => masked.includes(w))
+  }
+  /** 玩家与船不可分离（玩家就是那条船）：直接查说法，不做豁免 */
+  const LORE_SPLIT = ['你的舰船']
   const galaxyIds = new Set(GALAXIES.map((g) => g.id))
   const skillIds = new Set(SKILLS.map((s) => s.id))
   const siteIds = new Set(STATION_SITES.map((s) => s.id))
+
+  /* ① 势力契约（NPC 势力档案本身） */
+  const factionIds = new Set<string>()
+  const deptKeys = new Set<string>()
+  for (const f of COMMS_FACTIONS) {
+    check(f.id.trim().length > 0 && !factionIds.has(f.id), `势力 id 重复或为空：${f.id}`)
+    factionIds.add(f.id)
+    check(f.name.trim().length > 0, `势力 ${f.id} 缺名称`)
+    // 铁律：所有 NPC 势力都是章鱼人（防设定漂移）
+    check(f.species === '章鱼人', `势力 ${f.id} 的物种必须是章鱼人（世界观铁律），实际：${f.species}`)
+    check(ALIGNMENTS.has(f.alignment), `势力 ${f.id} 立场非法：${f.alignment}`)
+    check(/^#[0-9a-fA-F]{6}$/.test(f.tone), `势力 ${f.id} 色调不是六位十六进制：${f.tone}`)
+    check(ICON_NAMES.has(f.glyph), `势力 ${f.id} 图标不在既有线稿图标表内：${f.glyph}`)
+    check(f.brief.trim().length > 0, `势力 ${f.id} 缺简介（界面「这是谁」说明）`)
+    check(f.kinds.length > 0, `势力 ${f.id} 没有可发内容类型白名单`)
+    for (const k of f.kinds) check(KINDS.has(k), `势力 ${f.id} 白名单里的内容类型非法：${k}`)
+    check(f.departments.length > 0, `势力 ${f.id} 没有部门（发件人写法的后半截）`)
+    const deptIds = new Set<string>()
+    for (const d of f.departments) {
+      check(d.id.trim().length > 0 && !deptIds.has(d.id), `势力 ${f.id} 的部门 id 重复或为空：${d.id}`)
+      deptIds.add(d.id)
+      deptKeys.add(`${f.id}/${d.id}`)
+      check(d.name.trim().length > 0, `势力 ${f.id} 部门 ${d.id} 缺名称`)
+      check(d.brief.trim().length > 0, `势力 ${f.id} 部门 ${d.id} 缺简介`)
+      check(d.kinds.length > 0, `势力 ${f.id} 部门 ${d.id} 没有可发内容类型白名单`)
+      for (const k of d.kinds) {
+        check(KINDS.has(k), `势力 ${f.id} 部门 ${d.id} 白名单里的内容类型非法：${k}`)
+        check(f.kinds.includes(k), `势力 ${f.id} 部门 ${d.id} 白名单「${k}」超出势力白名单`)
+      }
+    }
+  }
+
+  /* ② 发件方引用契约（消息 + 剧本都必须挂靠到真实势力/部门） */
+  const referenced = new Set<string>()
   const seen = new Set<string>()
   let hints = 0
   for (const m of COMMS_MESSAGES) {
     check(m.id.length > 0 && !seen.has(m.id), `通讯消息 id 重复或为空：${m.id}`)
     seen.add(m.id)
-    check(m.from.trim().length > 0, `通讯 ${m.id} 缺发件人`)
     check(m.subject.trim().length > 0, `通讯 ${m.id} 缺主题`)
     check(m.body.length > 0 && m.body.every((p) => p.trim().length > 0), `通讯 ${m.id} 正文为空段`)
+    // 发件方：势力必须存在；有部门则部门必须在**该势力**下存在；kind 必须落在两级白名单里
+    const faction = COMMS_FACTIONS.find((f) => f.id === m.factionId)
+    check(faction !== undefined, `通讯 ${m.id} 的发件势力不存在：${m.factionId}`)
+    check(KINDS.has(m.kind), `通讯 ${m.id} 内容类型非法：${m.kind}`)
+    if (faction) {
+      referenced.add(faction.id)
+      check(faction.kinds.includes(m.kind), `通讯 ${m.id} 的内容类型「${m.kind}」不在势力 ${faction.id} 白名单内`)
+      if (m.deptId !== undefined) {
+        const dept = faction.departments.find((d) => d.id === m.deptId)
+        check(dept !== undefined, `通讯 ${m.id} 的发件部门不在势力 ${faction.id} 下：${m.deptId}`)
+        if (dept) check(dept.kinds.includes(m.kind), `通讯 ${m.id} 的内容类型「${m.kind}」不在部门 ${m.deptId} 白名单内`)
+      }
+    }
     check(TRIGGER_KINDS.has(m.trigger.kind), `通讯 ${m.id} 触发器 kind 未知：${m.trigger.kind}`)
     switch (m.trigger.kind) {
       case 'day':
@@ -1600,15 +1680,51 @@ for (const m of MODULES) {
       for (const w of BANNED) {
         check(!p.includes(w), `通讯 ${m.id} 的玩家可见文案含开发用词「${w}」：${p.slice(0, 24)}…`)
       }
+      for (const w of loreHits(p)) {
+        check(false, `通讯 ${m.id} 的文案触碰世界观铁律「${w}」（章鱼人不追问船里是谁）：${p.slice(0, 24)}…`)
+      }
+      for (const w of LORE_SPLIT) {
+        check(!p.includes(w), `通讯 ${m.id} 的文案把玩家与船分开说「${w}」（玩家就是那条船）：${p.slice(0, 24)}…`)
+      }
     }
   }
   for (const d of DIALOGUES) {
     check(d.lines.length > 0, `通讯剧本 ${d.id} 没有台词`)
     check(d.title.trim().length > 0, `通讯剧本 ${d.id} 缺标题（收件箱发件人栏）`)
+    for (const w of LORE_SPLIT) {
+      check(!d.title.includes(w), `通讯剧本 ${d.id} 标题把玩家与船分开说「${w}」`)
+    }
+    // 剧本可挂靠势力（挂靠后收件箱里与数据消息同口径）；挂了就必须真实存在
+    if (d.commsFactionId !== undefined) {
+      const faction = COMMS_FACTIONS.find((f) => f.id === d.commsFactionId)
+      check(faction !== undefined, `通讯剧本 ${d.id} 的挂靠势力不存在：${d.commsFactionId}`)
+      if (faction) {
+        referenced.add(faction.id)
+        if (d.commsDeptId !== undefined) {
+          const dept = faction.departments.find((x) => x.id === d.commsDeptId)
+          check(dept !== undefined, `通讯剧本 ${d.id} 的挂靠部门不在势力 ${faction.id} 下：${d.commsDeptId}`)
+        }
+      }
+    } else {
+      check(d.commsDeptId === undefined, `通讯剧本 ${d.id} 有挂靠部门却没有挂靠势力`)
+    }
+    for (const line of d.lines) {
+      for (const w of loreHits(line.text)) {
+        check(false, `通讯剧本 ${d.id} 的台词触碰世界观铁律「${w}」：${line.text.slice(0, 24)}…`)
+      }
+      for (const w of LORE_SPLIT) {
+        check(!line.text.includes(w), `通讯剧本 ${d.id} 的台词把玩家与船分开说「${w}」：${line.text.slice(0, 24)}…`)
+      }
+    }
+  }
+  // 每个势力至少被引用一次（登记了却没人发消息 = 空档案，容易被遗忘）
+  for (const f of COMMS_FACTIONS) {
+    check(referenced.has(f.id), `势力 ${f.id}（${f.name}）已登记但没有任何消息或剧本引用它`)
   }
   console.log(
     `· 通讯消息契约：${COMMS_MESSAGES.length} 条消息（${hints} 条带跳转提示）+ ${DIALOGUES.length} 份剧本，` +
-      `触发器与跳转目标全部可解析`,
+      `触发器与跳转目标全部可解析；势力档案 ${COMMS_FACTIONS.length} 个（${COMMS_FACTIONS.map((f) => `${f.name}·${f.departments.length} 部门`).join(' / ')}），` +
+      `发件方引用与内容类型白名单全通过`,
   )
 }
 
