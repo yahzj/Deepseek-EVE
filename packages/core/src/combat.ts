@@ -305,7 +305,9 @@ export function thrusterPhase(
  * **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）与**老路**（威胁 ≥ `foeChargeThreatFloor`
  * 且战术 = brawl，受总开关 `foeChargeEnabled` 约束）；无总时长上限。
  *
- * ⚠ 突进是**编队级**状态（`b.foeChargeOn` 一个标志 + 接近速度取"存活敌最快单位"），不是单舰加速。
+ * ⚠ 突进是**编队级**状态（`b.foeChargeOn` 一个标志），但**加速只乘在冲锋者自己身上**
+ * （2026-09-11 船长：「冲锋还是按照**巨兽自己的速度**算…**哪怕是冲锋也是按照巨兽速度**」）——
+ * 见下函数返回值与 `stepBattle` 的用法：倍率**不外溢**到非冲锋单位。
  */
 function updateFoeCharge(
   b: import('./state').BattleState,
@@ -313,10 +315,14 @@ function updateFoeCharge(
   bal: BattleBalance,
   nowMs: number,
   desireM: number,
-): void {
+): UnitSpec | null {
   // 冲锋者 = **首个存活且挂了资格的单位**
   const charger = foes.find((f) => f.foeCanCharge === true && isAlive(b, f.tag))
-  if (!charger) return
+  if (!charger) {
+    // 冲锋者不在场（还没轮到它那一波 / 已阵亡）⇒ 清掉过期的突进状态（UI 标记与结算同源）
+    b.foeChargeOn = false
+    return null
+  }
   // 两条判据各管一头：
   // - **启动** = `inFoeRange`（口径未动）：距离在**该冲锋单位自己的武器**射程内。
   //   ⚠ 2026-09-11 修正取武器口径：原码取 `foes[0].weapons[0]`，只在"冲锋者恰好是编队首位"时等价；
@@ -333,10 +339,11 @@ function updateFoeCharge(
       b.foeChargeOn = false
       b.foeChargeCdUntilMs = nowMs + bal.foeChargeCooldownMs
     }
-    return // 未到目标距离：持续突进（冷却不启动）
+    return charger // 未到目标距离：持续突进（冷却不启动）——返回冲锋者供 `stepBattle` 施加加速
   }
   const cdUntil = b.foeChargeCdUntilMs ?? 0
   if (nowMs >= cdUntil && !inFoeRange) b.foeChargeOn = true
+  return b.foeChargeOn ? charger : null
 }
 
 /** 逐件缺口乘入（对 out 原位改：每系 res = 1−(1−res)(1−add)） */
@@ -2500,10 +2507,17 @@ function stepBattle(
   // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
   const foeDesireClamped = Math.min(openM, foeDesire)
   // 2026-09-10 船长（敌突进）：够不着时临时加速 ×倍率。
-  // **2026-09-11 船长改判**：结束条件 = **到达目标距离**（`foeDesireClamped`），冷却 20 秒
-  // ——故本调用移到 `foeDesireClamped` 之后（原来用的是"进射程维持 2 秒"）。
-  updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
-  if (b.foeChargeOn) foeV *= bal.foeChargeMul
+  // **2026-09-11 船长两条改判**：①结束条件 = **到达目标距离**（`foeDesireClamped`），冷却 20 秒
+  //    ——故本调用移到 `foeDesireClamped` 之后（原来用的是"进射程维持 2 秒"）；
+  // ②**加速只乘在冲锋者自己身上**（「冲锋还是按照巨兽自己的速度算…哪怕是冲锋也是按照巨兽速度」）
+  //    ——原实现 `if (b.foeChargeOn) foeV *= bal.foeChargeMul` 是把"存活敌**最快**单位"整体翻倍，
+  //    于是比巨兽更快的小虫也跟着 ×2 ⇒ C 族噬口第 3 波全编队 1,088 m/s 飙车。
+  //    现口径 = `max(编队最快, 冲锋者速度 × 倍率)`：倍率**不外溢**，而"最快单位决定接近速度"
+  //    这条物理直觉不变（巨兽独存时它的冲锋就是实打实的 ×2）。
+  const charger = updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
+  if (b.foeChargeOn && charger) {
+    foeV = Math.max(foeV, combatSpeed(charger.speedMps, charger.agility, bal) * bal.foeChargeMul)
+  }
   const rate = steerStep(b.distanceM, b.myDesireM, meV, dtSec) + steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
   b.distanceM = clamp(bal.minDistanceM, openM, b.distanceM + rate)
 
