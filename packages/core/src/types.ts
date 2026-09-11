@@ -1106,10 +1106,11 @@ export interface DialogueScriptDef {
 /* ═══════════════ NPC 势力档案（2026-09-11 通讯 v2 船长定：官方 = 章鱼人；其他 NPC 同为章鱼人、同族不同行会） ═══════════════ */
 
 /**
- * 势力立场（界面「立场小片」按此着色分档：官方 / 民间 / 中立）
- * 口径：协会是章鱼人的官方行业组织；打捞队工会等民间行会同族不同行。
+ * 势力立场（界面「立场小片」按此着色分档）。
+ * 口径：协会是章鱼人的官方行业组织；打捞队工会等民间行会同族不同行；
+ * **「系统」= 船自己的舰载系统**（2026-09-11 船长定：教程与简报从「信息库」发来），不是 NPC、无物种。
  */
-export type CommsFactionAlignment = '官方' | '民间' | '中立'
+export type CommsFactionAlignment = '官方' | '民间' | '中立' | '系统'
 
 /** 通讯内容类型（消息的「内容类型小片」；必须落在发件势力的 `kinds` 白名单里） */
 export type CommsKind = '剧情' | '提示' | '委托' | '教程'
@@ -1127,22 +1128,22 @@ export interface CommsDeptDef {
 }
 
 /**
- * NPC 势力（data/src/commsFactions.ts 维护）。
- * 铁律：**所有 NPC 势力都是章鱼人**（`species` 契约强制为「章鱼人」，防设定漂移）；
- * 章鱼人不追问船里是谁，把玩家当普通承包舰船——文案不得出现指涉玩家本质的词。
+ * NPC 势力 / 舰载系统（data/src/commsFactions.ts 维护）。
+ * 铁律：**所有 NPC 势力都是章鱼人**（契约强制，防设定漂移）；**船内系统（`alignment: '系统'`）不是 NPC**、无物种。
+ * 章鱼人不追问船里是谁，把玩家当普通承包舰船——NPC 文案不得出现指涉玩家本质的词。
  */
 export interface CommsFactionDef {
   /** 稳定 id（消息/剧本按它引用） */
   id: string
-  /** 势力名（玩家可见；协会对外自称「协会」，全名用于发件人与档案） */
+  /** 名称（玩家可见；协会对外自称「协会」，全名用于发件人与档案） */
   name: string
-  /** 物种（铁律：恒为「章鱼人」，契约强制） */
-  species: '章鱼人'
-  /** 立场：官方 / 民间 / 中立 */
+  /** 物种：NPC 恒为「章鱼人」（契约强制）；船内系统写「舰载系统」 */
+  species: string
+  /** 立场：官方 / 民间 / 中立 / 系统（系统 = 船自己的舰载系统，不是 NPC） */
   alignment: CommsFactionAlignment
   /** 主题色（与既有系统同源取色；界面小片与图标着色用） */
   tone: string
-  /** 图标（复用既有 SVG 线稿图标名，如 `nav-mail` / `nav-salvage`） */
+  /** 图标（复用既有 SVG 线稿图标名；NPC 用章鱼头 `faction-octopus`，船内系统用核心 `nav-ai`） */
   glyph: string
   /** 势力一句话（界面 tooltip「这是谁」） */
   brief: string
@@ -1154,8 +1155,8 @@ export interface CommsFactionDef {
 
 /* ═══════════════ 通讯（2026-09-11 船长定：NPC 以"发消息"补充剧情与任务提示） ═══════════════ */
 
-/** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务） */
-export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills'
+/** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务）。`comms` = 回本页（简报里用） */
+export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'comms'
 
 /**
  * 通讯消息触发条件（core 每帧廉价判定；**幂等**——条件满足一次即送达，之后重复推进不再送）。
@@ -1172,7 +1173,9 @@ export type CommsTrigger =
   | { kind: 'siteBuilt'; siteId: string }
   /**
    * 序章教程步骤（2026-09-11 船长定：教程融入通讯——每步开始时把该步指引发成一封通讯）。
-   * 判定 `onboarding.step >= step`（推进一步即送，且**跳过教程后仍然补送**，收件箱留全记录）。
+   * `step: 0` = 序章简报（`ONB_BRIEFING = 0.5` 时送达），`1..7` = 七步教程。
+   * 判定：简报要 `onboarding.step >= 0.5`（序章演出 `ONB_AWAKEN = 0` 时还不送），第 N 步要 `>= N`；
+   * **跳过教程**（step → 99）后会把前几步一并补送，收件箱里始终留一份完整教程记录。
    */
   | { kind: 'tutorial'; step: number }
 
@@ -1180,6 +1183,21 @@ export type CommsTrigger =
 export interface CommsReplyDef {
   id: string
   label: string
+}
+
+/**
+ * 通讯消息自带动作（2026-09-11 教程融入通讯）：点一下让引擎执行一条命令。
+ * 本期只有 `startTutorial`——序章简报那封的「开始教程：采集富凡晶石」，
+ * 点了才从「看简报」推进到采集步骤（船长：睁眼后不要立刻开始教程任务，先指引去看通讯）。
+ */
+export type CommsActionCommand = 'startTutorial'
+
+/** 消息动作按钮 */
+export interface CommsActionDef {
+  /** 按钮文字 */
+  label: string
+  /** 引擎命令（core 的 `runCommsAction` 分发；未知命令报错不崩） */
+  command: CommsActionCommand
 }
 
 /** 通讯消息（NPC → 玩家；data/src/messages.ts 维护，core 按 trigger 送达） */
@@ -1206,6 +1224,8 @@ export interface CommsMessageDef {
   trigger: CommsTrigger
   /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
   hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
+  action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
 }
@@ -1242,6 +1262,8 @@ export interface CommsEntryView {
   read: boolean
   /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`shipTab` = 舰船页内标签） */
   hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
+  action?: CommsActionDef
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
 }

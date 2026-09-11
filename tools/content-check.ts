@@ -36,6 +36,7 @@ import {
   buildSimContext,
   COMMS_MESSAGES,
   COMMS_FACTIONS,
+  FACTION_AVATARS,
   TUTORIAL_TOTAL,
   DIALOGUES,
   STATION_SITES,
@@ -1552,13 +1553,13 @@ for (const m of MODULES) {
    **势力契约**（species 恒为章鱼人、部门 id 势力内唯一、立场合法、色调/图标有口径）
    与**发件方引用契约**（factionId/deptId 必须存在、kind 必须落在势力白名单、每个势力至少被引用一次）。 */
 {
-  const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills'])
+  const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills', 'comms'])
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
   /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
   const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
   const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial'])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
-  const ALIGNMENTS = new Set(['官方', '民间', '中立'])
+  const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
   /**
    * 既有线稿图标名（`apps/desktop/src/renderer/src/ui/Glyphs.tsx` 的 `GLYPHS` 表；
    * 势力 `glyph` 只能复用它们，不许自造图标名——界面查不到会渲染空白）。
@@ -1606,14 +1607,22 @@ for (const m of MODULES) {
     check(f.id.trim().length > 0 && !factionIds.has(f.id), `势力 id 重复或为空：${f.id}`)
     factionIds.add(f.id)
     check(f.name.trim().length > 0, `势力 ${f.id} 缺名称`)
-    // 铁律：所有 NPC 势力都是章鱼人（防设定漂移）
-    check(f.species === '章鱼人', `势力 ${f.id} 的物种必须是章鱼人（世界观铁律），实际：${f.species}`)
+    // 铁律：所有 **NPC** 势力都是章鱼人（防设定漂移）；船内系统（alignment = 系统）不是 NPC，无物种要求
+    const isSystem = f.alignment === '系统'
+    check(
+      isSystem ? f.species.trim().length > 0 : f.species === '章鱼人',
+      isSystem ? `系统来源 ${f.id} 缺物种标注` : `势力 ${f.id} 的物种必须是章鱼人（世界观铁律），实际：${f.species}`,
+    )
     check(ALIGNMENTS.has(f.alignment), `势力 ${f.id} 立场非法：${f.alignment}`)
     check(/^#[0-9a-fA-F]{6}$/.test(f.tone), `势力 ${f.id} 色调不是六位十六进制：${f.tone}`)
     check(ICON_NAMES.has(f.glyph), `势力 ${f.id} 图标不在既有线稿图标表内：${f.glyph}`)
-    // 2026-09-11 船长定：章鱼头 = 官方章鱼人的代表符号——所有 NPC 势力都是章鱼人，故头像一律用它
-    // （只靠 tone 色调区分行会/立场）；写别的图标会打破"一个符号代表章鱼人"的口径。
-    check(f.glyph === 'faction-octopus', `势力 ${f.id} 的头像必须是章鱼头 faction-octopus（代表官方章鱼人），实际：${f.glyph}`)
+    // 头像口径（2026-09-11 船长：「头像换成类似核心的SVG」⇒ 按发件方分两种头像）：
+    // 船内系统 → 核心形图标；NPC 势力 → 官方章鱼头。写别的图标会打破"一个符号代表一类发件方"的口径。
+    const wantAvatar = FACTION_AVATARS[f.id] ?? 'faction-octopus'
+    check(
+      f.glyph === wantAvatar,
+      `势力 ${f.id} 的头像应为 ${wantAvatar}（${isSystem ? '船内系统用核心形图标' : 'NPC 用官方章鱼头'}），实际：${f.glyph}`,
+    )
     check(f.brief.trim().length > 0, `势力 ${f.id} 缺简介（界面「这是谁」说明）`)
     check(f.kinds.length > 0, `势力 ${f.id} 没有可发内容类型白名单`)
     for (const k of f.kinds) check(KINDS.has(k), `势力 ${f.id} 白名单里的内容类型非法：${k}`)
@@ -1677,10 +1686,10 @@ for (const m of MODULES) {
         check(siteIds.has(m.trigger.siteId), `通讯 ${m.id} 指向的建站点不存在：${m.trigger.siteId}`)
         break
       case 'tutorial':
-        // 教程通讯：步骤号必须是 1..TUTORIAL_TOTAL（与 core 的 ONB_* 常量同值）
+        // 教程通讯：0 = 序章简报（信息库检索重启），1..TUTORIAL_TOTAL = 七步教程（与 core 的 ONB_* 同值）
         check(
-          Number.isInteger(m.trigger.step) && m.trigger.step >= 1 && m.trigger.step <= TUTORIAL_TOTAL,
-          `通讯 ${m.id} tutorial.step 应在 1..${TUTORIAL_TOTAL}：${m.trigger.step}`,
+          Number.isInteger(m.trigger.step) && m.trigger.step >= 0 && m.trigger.step <= TUTORIAL_TOTAL,
+          `通讯 ${m.id} tutorial.step 应在 0..${TUTORIAL_TOTAL}：${m.trigger.step}`,
         )
         break
       default:

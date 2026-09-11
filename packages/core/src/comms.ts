@@ -9,11 +9,12 @@
  * - **只给提示 + 跳转**：消息可带 `hint`，但通讯页不接取/不完成任何任务。
  * - **回复接口预留但不启用**：见 `COMMS_REPLIES_ENABLED`（玩家侧不出现任何回复控件）。
  */
-import { ONB_EPILOGUE } from './onboarding'
+import { ONB_EPILOGUE, startTutorialFromBriefing } from './onboarding'
 import { isSiteBuilt } from './station'
 import { addLog } from './state'
 import type { GameState } from './state'
 import type {
+  CommsActionCommand,
   CommsEntryView,
   CommsFactionAlignment,
   CommsKind,
@@ -136,10 +137,14 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       const site = ctx.stations.get(trigger.siteId)
       return site !== undefined && isSiteBuilt(state, site)
     }
-    case 'tutorial':
-      // 2026-09-11 船长定（教程融入通讯）：到达该步即送达；用 >= 让**跳过教程**（step → 99）之后
-      // 也把前几步的教程通讯补齐，收件箱里始终留着一份完整教程记录。
-      return state.onboarding.step >= trigger.step
+    case 'tutorial': {
+      // 2026-09-11 船长定（教程融入通讯）：**到达该步**才送达。
+      // 步骤号与引擎状态的对应：简报 = 0（进行态 `ONB_BRIEFING = 0.5`）、第 N 步 = N（进行态 `ONB_* = N`）。
+      // 故：简报要 `step >= 0.5`（序章演出 `ONB_AWAKEN = 0` 时还没到，不送）；
+      // 第 N 步用 `step >= N`（状态一旦到 N 就送，不推迟）。**跳过教程**（step → 99）后前几步一并补送。
+      const need = trigger.step === 0 ? 0.5 : trigger.step
+      return state.onboarding.step >= need
+    }
     default:
       return false
   }
@@ -234,6 +239,7 @@ export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] 
       deliveredAtGameMs: atMs,
       read: state.commsRead?.[id] === true,
       hint: msg.hint,
+      action: msg.action,
       replies: msg.replies,
     })
   }
@@ -265,4 +271,19 @@ export function markAllCommsRead(state: GameState, ctx: SimContext): number {
     n += 1
   }
   return n
+}
+
+/**
+ * 消息自带动作的分发（2026-09-11 教程融入通讯）。
+ * 本期只有 `startTutorial`：序章简报那封的「开始教程：采集富凡晶石」——
+ * 点击才从简报态（`ONB_BRIEFING`）推进到采集步骤（`ONB_MINE`）。
+ * 未知命令一律报错返回，界面只弹提示、不崩。
+ */
+export function runCommsAction(state: GameState, command: CommsActionCommand): { ok: boolean; error?: string } {
+  switch (command) {
+    case 'startTutorial':
+      return startTutorialFromBriefing(state)
+    default:
+      return { ok: false, error: '这封通讯上的动作暂不可用。' }
+  }
 }

@@ -40,6 +40,8 @@ export type {
   CommsDeptDef,
   CommsFactionAlignment,
   CommsKind,
+  CommsActionDef,
+  CommsActionCommand,
   AiCoreType,
   BalanceConfig,
   MarketRarity,
@@ -481,6 +483,7 @@ export {
   deliverDialogueToComms,
   markAllCommsRead,
   markCommsRead,
+  runCommsAction,
 } from './comms'
 export type { StationSiteProgress } from './state'
 
@@ -601,6 +604,7 @@ export {
 export {
   ONB_OFF,
   ONB_AWAKEN,
+  ONB_BRIEFING,
   ONB_MINE,
   ONB_DELIVER,
   ONB_SELL,
@@ -629,6 +633,7 @@ export {
   isTutorialBattle,
   applyTutorialBuff,
   beginTutorialAfterAwaken,
+  startTutorialFromBriefing,
   deliverTutorialOre,
   claimTutorialTrialReward,
   grantTutorialSkill,

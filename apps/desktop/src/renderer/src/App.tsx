@@ -10,7 +10,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, shipDisplayName, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
+import { formatDurationMs, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -566,10 +566,11 @@ export function App({ engine }: { engine: GameEngine }) {
 
   const pageProps = { engine, onToast: showToast }
 
-  // ── 序章·苏醒：教程锁定与引导（步骤 1..6 页签/按钮级锁定；7 收尾演出；99 全解锁） ──
+  // ── 序章·苏醒：教程锁定与引导（简报态只开通讯；步骤 1..7 页签/按钮级锁定；8 收尾演出；99 全解锁） ──
   const tutStep = engine.state.onboarding.step
-  const tutLocked = tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE
-  const guideOn = tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE
+  // 简报态（0.5）也算"进行中"：此时除通讯页外全部锁定，顶栏提示去看简报（2026-09-11 船长定）
+  const tutLocked = tutStep >= ONB_BRIEFING && tutStep <= ONB_DIVIDE
+  const guideOn = tutStep === ONB_BRIEFING || (tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE)
   const epiOn = tutStep === ONB_EPILOGUE
   const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
     // 步骤 1 开放 物品页：玩家若取消采矿/返航,可手动把货仓矿石卸入仓库（防卡教程——船长复测反馈）

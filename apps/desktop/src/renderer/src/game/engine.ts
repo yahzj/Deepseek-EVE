@@ -92,6 +92,7 @@ import {
   commsUnreadCount,
   markCommsRead,
   markAllCommsRead,
+  runCommsAction,
   completeSideTask,
   sideTaskBoard,
   courierTaskUnlocked,
@@ -131,6 +132,7 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  CommsActionCommand,
   DamageType,
   GameState,
   LairTier,
@@ -1480,6 +1482,19 @@ export class GameEngine {
       this.notify()
     }
     return n
+  }
+
+  /**
+   * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「开始教程：采集富凡晶石」。
+   * 点了才从简报态推进到采集步骤；成功后落盘并通知刷新。
+   */
+  runCommsActionAt(command: CommsActionCommand): CommandResult {
+    const r = runCommsAction(this.state, command)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
   }
 
   /* ─────────────── v24 任务中心·时效任务（资源 / 快递，定时刷新限时有效） ─────────────── */

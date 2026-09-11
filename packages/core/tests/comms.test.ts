@@ -20,12 +20,13 @@ import {
   markAllCommsRead,
   markCommsRead,
   resolveCommsSender,
+  runCommsAction,
 } from '../src/comms'
 import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { ONB_DONE, ONB_DELIVER, ONB_MINE } from '../src/onboarding'
+import { ONB_BRIEFING, ONB_DONE, ONB_DELIVER, ONB_MINE, ONB_OFF } from '../src/onboarding'
 import { makeTestCtx } from './helpers'
 
 /** 迷你建站点（挂在 galaxy-far；介绍剧本 dlg-intro） */
@@ -44,6 +45,18 @@ function siteDef(): StationSiteDef {
 
 /** 测试用势力档案（与 data/src/commsFactions.ts 同构：消息只填 factionId/deptId，发件人由这里拼出） */
 const FACTIONS: readonly CommsFactionDef[] = [
+  {
+    // 船内系统（2026-09-11 船长：教程/简报来源 = 信息库检索重启；头像用核心形图标）
+    id: 'archive',
+    name: '信息库',
+    species: '舰载系统',
+    alignment: '系统',
+    tone: '#ff8ab5',
+    glyph: 'nav-ai',
+    brief: '这条船自己的舰载信息库。',
+    kinds: ['教程', '提示'],
+    departments: [{ id: 'dept-recall', name: '检索重启', brief: '按条目回放记录。', kinds: ['教程', '提示'] }],
+  },
   {
     id: 'dshi',
     name: '深空工业协会',
@@ -128,20 +141,35 @@ function tick(state: GameState, ctx: SimContext, ms = 1000): void {
 }
 
 describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入通讯）', () => {
-  /** 教程通讯样本：步骤 2 与步骤 7（后者用来验证"跳过教程后补送"） */
+  /** 教程通讯样本：简报（tut-0，带「开始教程」动作）与步骤 2、7 */
   const TUT_MSGS: readonly CommsMessageDef[] = [
-    { id: 'tut-2', factionId: 'dshi', deptId: 'dept-training', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 } },
-    { id: 'tut-7', factionId: 'dshi', deptId: 'dept-training', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },
+    {
+      id: 'tut-0',
+      factionId: 'archive',
+      deptId: 'dept-recall',
+      kind: '教程',
+      subject: '训前简报：先看这封，再开工',
+      body: ['先读简报再开工。'],
+      trigger: { kind: 'tutorial', step: 0 },
+      action: { label: '开始教程：采集富凡晶石', command: 'startTutorial' },
+    },
+    { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 } },
+    { id: 'tut-7', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },
   ]
 
   it('到达该步才送达：提前不送、到达即送、幂等只送一次', () => {
     const { state, ctx } = world(TUT_MSGS)
-    // 步骤 1（还没到 2）：不送
-    state.onboarding.step = ONB_MINE
+    // 睁眼之前（序章演出之前，老档口径 ONB_OFF）：简报也不送
+    state.onboarding.step = ONB_OFF
     tick(state, ctx, 1000)
+    expect(state.commsDelivered?.['tut-0']).toBeUndefined()
+    // 序章演出中（ONB_AWAKEN = 0）：简报与步骤 2 都不送
+    state.onboarding.step = 0
+    tick(state, ctx, 1000)
+    expect(state.commsDelivered?.['tut-0']).toBeUndefined()
     expect(state.commsDelivered?.['tut-2']).toBeUndefined()
     expect(commsTriggerMet(state, ctx, { kind: 'tutorial', step: 2 })).toBe(false)
-    // 到达步骤 2：送达
+    // 到达步骤 2（进行态 = ONB_DELIVER = 2）：送达
     state.onboarding.step = ONB_DELIVER
     expect(commsTriggerMet(state, ctx, { kind: 'tutorial', step: 2 })).toBe(true)
     tick(state, ctx, 1000)
@@ -154,14 +182,44 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
     expect(state.commsDelivered?.['tut-7']).toBeUndefined()
   })
 
+  it('简报态：tut-0 送达、发件方 = 舰载信息库 · 检索重启，点「开始教程」才进采集步骤', () => {
+    const { state, ctx } = world(TUT_MSGS)
+    state.onboarding.step = ONB_BRIEFING
+    advanceComms(state, ctx)
+    const briefing = commsInbox(state, ctx).find((e) => e.id === 'tut-0')
+    expect(briefing).toBeDefined()
+    expect(briefing!.from).toBe('信息库 · 检索重启') // 2026-09-11 船长：消息来源改为信息库检索重启
+    expect(briefing!.alignment).toBe('系统')
+    expect(briefing!.glyph).toBe('nav-ai') // 头像：船内系统用核心形图标
+    expect(briefing!.action?.command).toBe('startTutorial')
+    // 此时还没进采集步骤
+    expect(state.onboarding.step).toBe(ONB_BRIEFING)
+    // 点动作 → 进采集步骤
+    const r = runCommsAction(state, briefing!.action!.command)
+    expect(r.ok).toBe(true)
+    expect(state.onboarding.step).toBe(ONB_MINE)
+    // 未知命令：报错不崩
+    expect(runCommsAction(state, 'nope' as never).ok).toBe(false)
+  })
+
+  it('简报态（0.5）能随存档往返保留——不会被归一化压成 0（存档真 BUG 回归）', () => {
+    const { state, ctx } = world(TUT_MSGS)
+    state.onboarding.step = ONB_BRIEFING
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(loaded.onboarding.step).toBe(ONB_BRIEFING) // 修前是 0（退回序章演出）
+    // 简报通讯在重载后仍能送达
+    advanceComms(loaded, ctx)
+    expect(loaded.commsDelivered?.['tut-0']).toBeDefined()
+  })
+
   it('跳过教程（step → 99）后，未送的教程通讯全部补齐，收件箱留完整记录', () => {
     const { state, ctx } = world(TUT_MSGS)
     state.onboarding.step = ONB_DONE
     advanceComms(state, ctx)
     const inbox = commsInbox(state, ctx)
-    expect(inbox.map((e) => e.id).sort()).toEqual(['tut-2', 'tut-7'])
+    expect(inbox.map((e) => e.id).sort()).toEqual(['tut-0', 'tut-2', 'tut-7'])
     expect(inbox.every((e) => e.kind === '教程')).toBe(true)
-    expect(inbox[0]!.from).toBe('深空工业协会 · 训练处') // 教程来信的发件方 = 协会训练处
+    expect(inbox[0]!.from).toBe('信息库 · 检索重启') // 教程来信的发件方 = 舰载信息库 · 检索重启
   })
 })
 

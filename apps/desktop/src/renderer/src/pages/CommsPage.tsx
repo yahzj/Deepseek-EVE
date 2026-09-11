@@ -194,6 +194,21 @@ export function CommsPage({
                             </p>
                           ))}
                         </div>
+                        {/* 消息自带动作（2026-09-11：序章简报的「开始教程：采集富凡晶石」——
+                            点了才从简报态推进到采集步骤；未在简报态时引擎会拒绝并给出提示） */}
+                        {current.action ? (
+                          <div className="app-comms-action">
+                            <button
+                              className="app-btn is-primary app-comms-action-btn"
+                              onClick={() => {
+                                const r = engine.runCommsActionAt(current.action!.command)
+                                onToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
+                              }}
+                            >
+                              {current.action.label}
+                            </button>
+                          </div>
+                        ) : null}
                         {/* ⑥ 回复选项：接口保留、本期不启用（COMMS_REPLIES_ENABLED = false → 不渲染任何控件） */}
                         {COMMS_REPLIES_ENABLED && current.replies && current.replies.length > 0 ? (
                           <div className="app-comms-replies">

@@ -1934,8 +1934,12 @@ function normalizeState(raw: unknown): GameState {
 
   // --- 序章·苏醒（v23 兼容字段）：教程进度（-1 = 未开始）+ 重要任务状态 ---
   const onboardingRaw = asRaw(src.onboarding)
+  // 2026-09-11：**不能 floor 也不能 round**——简报态是 0.5（`ONB_BRIEFING`），
+  // floor 会压成 0（= 序章演出），round 会抬成 1（= 采集步骤），两者都会把玩家放错地方。
+  // 合法步骤是 -1..99 的整档或半档（0.5），故只做合理性钳制、**半档原样保留**。
+  const stepRaw = onboardingRaw.step
   const onboardingStep =
-    typeof onboardingRaw.step === 'number' && Number.isFinite(onboardingRaw.step) ? Math.floor(onboardingRaw.step) : -1
+    typeof stepRaw === 'number' && Number.isFinite(stepRaw) ? Math.min(99, Math.max(-1, stepRaw)) : -1
   // 出售教学钱包基线（可选；缺省 undefined = 老档/无此步骤时不影响）
   const sellIskBaselineRaw = onboardingRaw.sellIskBaseline
   const onboarding = {

@@ -6,7 +6,7 @@
 import { activityOverview, aiCoreIndustryUsed, aiCoreShipUsed } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationMs } from '@whale/core'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -169,9 +169,16 @@ export function ActivityBar({
   const aiSlotsNote = aiSlotTip(aiIndustrySlots(state, engine.ctx))
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
-  // 撤退需二次确认（轻损但有代价）
+  // 撤退需二次确认（轻损但有代价）。
+  // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
+  // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
+  // React 只允许"该组件自己触发的、立即收敛的"渲染期更新；撤退活动消失（如委派 AI 后）时这里每次渲染都会
+  // 调一次 setState，生产版在同一提交里累积到阈值就把整棵树卸载（白屏）。搬到 effect：**提交后清理**，语义相同、不参与渲染。
   const [retreatAsk, setRetreatAsk] = useState(false)
-  if (retreatAsk && !playerItems.some((i) => i.stop === 'retreat-battle')) setRetreatAsk(false)
+  const hasRetreatActivity = playerItems.some((i) => i.stop === 'retreat-battle')
+  useEffect(() => {
+    if (retreatAsk && !hasRetreatActivity) setRetreatAsk(false)
+  }, [retreatAsk, hasRetreatActivity])
 
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)

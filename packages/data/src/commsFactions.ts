@@ -49,8 +49,8 @@ const ACADEMY_DEPTS: CommsFactionDef['departments'] = [
   {
     id: 'dept-training',
     name: '训练处',
-    brief: '协会的技能训练部门：主管训练科目登记，也带新飞行员走完头几趟活。',
-    kinds: ['剧情', '提示', '教程'],
+    brief: '协会的技能训练部门：主管技能队列与训练科目登记。',
+    kinds: ['剧情', '提示'],
   },
   {
     id: 'dept-finance',
@@ -69,13 +69,43 @@ const ACADEMY_DEPTS: CommsFactionDef['departments'] = [
 /**
  * 官方章鱼人头像（2026-09-11 船长定：绘制章鱼头代表官方，之后都用于代表官方章鱼人）。
  *
- * **所有 NPC 势力的物种都是「章鱼人」**，故头像一律用这枚 glyph（`ui/Glyphs.tsx` 的 `faction-octopus`）；
- * 不同势力/行会**只靠 `tone` 色调区分**，不再另画新头像——新增势力时沿用本常量。
+ * **所有 NPC 势力的物种都是「章鱼人」**，故 NPC 头像一律用这枚 glyph（`ui/Glyphs.tsx` 的 `faction-octopus`）；
+ * 不同势力/行会**只靠 `tone` 色调区分**，不再另画新头像——新增 NPC 势力时沿用本常量。
  */
 export const FACTION_OCTOPUS_GLYPH = 'faction-octopus'
 
-/** 全量势力档案（id 稳定；本期 2 个势力，其余为登记待开） */
+/**
+ * 舰载信息库（船自己的系统）头像（2026-09-11 船长：「头像换成类似核心的SVG」）。
+ * 与 NPC 分开：教程/简报这类**船内系统来信**用「核心」形图标（`nav-ai`，粉色调），
+ * 协会 NPC 的来信仍用章鱼头。
+ */
+export const FACTION_CORE_GLYPH = 'nav-ai'
+
+/** 全量势力档案（id 稳定；NPC 与船内系统共用一张表，靠 `alignment` 区分） */
 export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
+  {
+    /**
+     * 舰载信息库（2026-09-11 船长定：「消息来源修改为信息库检索重启方案」）。
+     * **不是 NPC**：它是船自己的系统，醒来自检后按条目回放既有记录——
+     * 教程与简报就以「检索重启」的名义从这里发到收件箱（头像用核心形图标，与 NPC 的章鱼头分开）。
+     */
+    id: 'archive',
+    name: '信息库',
+    species: '舰载系统',
+    alignment: '系统',
+    tone: '#ff8ab5',
+    glyph: FACTION_CORE_GLYPH,
+    brief: '这条船自己的舰载信息库：自检后按条目回放既有记录，教程与行动建议都以它检索重启的方式送达。',
+    kinds: ['教程', '提示'],
+    departments: [
+      {
+        id: 'dept-recall',
+        name: '检索重启',
+        brief: '信息库按条目重新载入记录的过程：把该干的活按顺序念给你听。',
+        kinds: ['教程', '提示'],
+      },
+    ],
+  },
   {
     id: 'dshi',
     name: '深空工业协会',
@@ -84,7 +114,7 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
     tone: '#9fd8ff',
     glyph: FACTION_OCTOPUS_GLYPH,
     brief: '章鱼人的官方行业组织，对外自称「协会」：管航道、建站点、定酬金，也训练新手飞行员。',
-    kinds: ['剧情', '提示', '委托', '教程'],
+    kinds: ['剧情', '提示', '委托'],
     departments: ACADEMY_DEPTS,
   },
   {
@@ -110,6 +140,19 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
 /** 势力目录（core 解析发件人；按 id 稳定查表） */
 export function buildCommsFactionCatalog(): ReadonlyMap<string, CommsFactionDef> {
   return new Map(COMMS_FACTIONS.map((f) => [f.id, f]))
+}
+
+/**
+ * 势力 → 头像（2026-09-11 船长：「头像换成类似核心的SVG」⇒ 按发件方分两种头像）。
+ *
+ * **船内系统（信息库）用「核心」形图标**（`nav-ai`，粉色调）；**NPC 势力一律用官方章鱼头**
+ * （`faction-octopus`，只靠 `tone` 区分行会）。新增势力时：NPC 沿用章鱼头，船内系统沿用核心。
+ * 界面拿到不在表里的图标名时**降级用章鱼头**（见 `resolveCommsSender` 的注释）。
+ */
+export const FACTION_AVATARS: Record<string, string> = {
+  archive: FACTION_CORE_GLYPH,
+  dshi: FACTION_OCTOPUS_GLYPH,
+  'salvage-guild': FACTION_OCTOPUS_GLYPH,
 }
 
 /** 部门目录（键 = `势力 id/部门 id`，core 解析发件部门；省得逐层查找） */

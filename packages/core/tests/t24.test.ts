@@ -9,6 +9,7 @@ import {
   advanceGame,
   startMining,
   ONB_AWAKEN,
+  ONB_BRIEFING,
   ONB_MINE,
   ONB_DELIVER,
   ONB_SELL,
@@ -26,6 +27,7 @@ import {
   TUTORIAL_REWARD_AMMO,
   TUTORIAL_REWARD_AMMO_N,
   beginTutorialAfterAwaken,
+  startTutorialFromBriefing,
   deliverTutorialOre,
   claimTutorialTrialReward,
   onTutorialSkillPageOpened,
@@ -42,10 +44,16 @@ import {
 describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
   const ctx = buildSimContext()
 
-  it('唤醒演出完成 → 进入采集步骤', () => {
+  it('唤醒演出完成 → 先到简报态（不立刻开始教程），点「开始教程」才进采集步骤', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
     expect(s.onboarding.step).toBe(ONB_AWAKEN)
     expect(beginTutorialAfterAwaken(s).ok).toBe(true)
+    // 2026-09-11 船长定：睁眼动画结束后先指引去看通讯简报，不直接开始教程任务
+    expect(s.onboarding.step).toBe(ONB_BRIEFING)
+    expect(startTutorialFromBriefing(s).ok).toBe(true)
+    expect(s.onboarding.step).toBe(ONB_MINE)
+    // 幂等：不在简报态时再点「开始教程」直接报错（不会把步骤往回拨）
+    expect(startTutorialFromBriefing(s).ok).toBe(false)
     expect(s.onboarding.step).toBe(ONB_MINE)
   })
 

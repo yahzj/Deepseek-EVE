@@ -12,16 +12,33 @@
  * - `replies` 为**预留**字段（回复选项接口），本期不启用（`core/comms.ts` 的 COMMS_REPLIES_ENABLED = false）。
  */
 import type { CommsMessageDef } from '@whale/core'
-import { TUTORIAL_STEPS } from './tutorialSteps'
+import { BRIEFING_INTRO, TUTORIAL_STEPS } from './tutorialSteps'
+
+/**
+ * 序章简报（`tut-0`；2026-09-11 船长定）：睁眼动画结束后先送这封，玩家读完点「开始教程」才进第 1 步。
+ * 触发器 `{ kind: 'tutorial', step: 0 }` = 到达简报态（`ONB_BRIEFING`）即送达。
+ * 发件方 = **舰载信息库 · 检索重启**（船长 2026-09-11：「消息来源修改为信息库检索重启方案」）。
+ */
+const BRIEFING_MESSAGE: CommsMessageDef = {
+  id: 'tut-0',
+  factionId: 'archive',
+  deptId: 'dept-recall',
+  kind: '教程',
+  subject: BRIEFING_INTRO.subject,
+  body: BRIEFING_INTRO.lines,
+  trigger: { kind: 'tutorial', step: 0 },
+  hint: { text: BRIEFING_INTRO.hint, page: 'comms' },
+  action: { label: BRIEFING_INTRO.actionLabel, command: 'startTutorial' },
+}
 
 /**
  * 序章教程七封通讯（2026-09-11 船长定：**教程融入通讯**——每步开始时送达该步指引，右下角引导卡取消）。
- * 文案与跳转全部取自 `./tutorialSteps`（单一出处）；发件方 = 协会 · 训练处（带新手走完头几趟活的部门）。
+ * 文案与跳转全部取自 `./tutorialSteps`（单一出处）；发件方 = **舰载信息库 · 检索重启**（船自己的系统）。
  */
 const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => ({
   id: `tut-${s.step}`,
-  factionId: 'dshi',
-  deptId: 'dept-training',
+  factionId: 'archive',
+  deptId: 'dept-recall',
   kind: '教程',
   subject: `教程 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
   body: s.lines,
@@ -31,6 +48,7 @@ const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => 
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */
 export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
+  BRIEFING_MESSAGE,
   ...TUTORIAL_MESSAGES,
   {
     id: 'msg-welcome',

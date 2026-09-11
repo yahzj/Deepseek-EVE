@@ -1,15 +1,17 @@
 /**
  * 序章·苏醒 阶段 4（2026-09-05 船长确认；2026-09-11 船长改为**教程融入通讯**）——教程引导：
  *
- * - **七步全文已移进通讯**（每步开始时协会训练处发一封教程通讯，见 `data/src/tutorialSteps.ts` 与
- *   `data/src/messages.ts` 的 `tut-*`）；本文件**不再有右下角引导卡**（2026-09-11 船长定：取消详细弹窗）。
- * - 本文件保留两件事：①**顶部引导条**（步骤 N/7 + 当前动作一句话 + 「前往…」+「看详情」+「跳过」）；
- *   ②**光圈高亮 + 「点这里」气泡**（按步骤关键字在可见按钮里找当前应点的目标）。
+ * - **七步全文已移进通讯**（每步开始时由**舰载信息库 · 检索重启**发来一封教程通讯，
+ *   见 `data/src/tutorialSteps.ts` 与 `data/src/messages.ts` 的 `tut-*`）；本文件**不再有右下角引导卡**。
+ * - **睁眼动画结束后不立刻开始教程**（2026-09-11 船长定）：先落到简报态（`ONB_BRIEFING`）——
+ *   顶栏只显示「先看通讯」+「前往通讯」+「跳过教程」，玩家在简报那封里点「开始教程」才进第 1 步。
+ * - 本文件保留两件事：①**顶部引导条**；②**光圈高亮 + 「点这里」气泡**（按步骤关键字找当前应点的目标）。
  * - 步骤 8：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
  * 锁定策略（页签/按钮级）在 App.tsx 实施；本组件只管展示与跳转意图。
  */
 import { useLayoutEffect, useRef, useState } from 'react'
-import { TUTORIAL_STEPS, TUTORIAL_TOTAL } from '@whale/data'
+import { BRIEFING_INTRO, TUTORIAL_STEPS, TUTORIAL_TOTAL } from '@whale/data'
+import { ONB_BRIEFING } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 
 export type GuideGo = { page: string; mapTab?: string; shipTab?: string }
@@ -83,6 +85,15 @@ export function tutorialMessageId(step: number): string {
 function stepPlan(engine: GameEngine, step: number): StepPlan {
   const def = TUTORIAL_STEPS.find((s) => s.step === step)
   const state = engine.state
+  // 简报态（睁眼动画刚结束）：不指任何目标按钮，只把玩家推去通讯读简报
+  if (step === ONB_BRIEFING) {
+    return {
+      text: BRIEFING_INTRO.goal,
+      go: { page: 'comms' },
+      goLabel: '前往通讯',
+      targets: [],
+    }
+  }
   if (step === 1) {
     if (state.shipId !== 'sandcat') {
       return {
@@ -284,11 +295,13 @@ export function TutorialSpot({
   }, [step, plan.text])
 
   const inTutorial = TUTORIAL_STEPS.some((s) => s.step === step)
+  const inBriefing = step === ONB_BRIEFING
   return (
     <>
       {plan.text && plan.goLabel ? (
         <div className="app-stepbar">
-          {/* 步骤进度（2026-09-11 船长定：按教程内容顺序指引，让玩家知道走到第几步、还剩几步） */}
+          {/* 步骤进度（2026-09-11 船长定：按教程内容顺序指引，让玩家知道走到第几步、还剩几步）；
+              简报态不显示 N/7——那一步还没开始 */}
           {inTutorial ? (
             <span className="app-stepbar-step">
               步骤 {step}/{TUTORIAL_TOTAL}
@@ -302,7 +315,8 @@ export function TutorialSpot({
           <button className="app-btn is-small is-primary app-stepbar-go" onClick={() => onGo(plan.go)}>
             {plan.goLabel} ›
           </button>
-          {/* 教程全文在通讯里（2026-09-11 船长定）：这里给一个直达入口，不再放右下角详细卡 */}
+          {/* 教程全文在通讯里（2026-09-11 船长定）：这里给一个直达入口，不再放右下角详细卡；
+              简报态本身就指向通讯，不再重复放「看详情」 */}
           {onDetail && inTutorial ? (
             <button
               className="app-btn is-small app-stepbar-detail"

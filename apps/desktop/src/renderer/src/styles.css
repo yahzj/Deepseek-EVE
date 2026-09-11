@@ -9049,18 +9049,20 @@ body {
 .app-comms-head-time { margin-left: auto; flex: 0 0 auto; color: var(--wui-text-dim); font-size: 11px; font-family: var(--wui-mono); white-space: nowrap; }
 .app-comms-lines { display: flex; flex-direction: column; gap: 8px; }
 .app-comms-text { margin: 0; color: var(--wui-text); font-size: 12.5px; line-height: 1.7; }
-/* 屏幕下方：通栏胶囊「前往」（钉在机身下檐口，左右各比屏幕内收 8px；
-   提示文字在左、动作词在右；窄窗口下提示文字省略）。
-   选择器写成 `.app-btn.app-comms-goto`（0,2,0）= 与 `.app-btn.is-small` 同级，**靠后覆盖**其 11px/2px 内边距，
-   否则全屏下"按钮更大"这条会被 is-small 吃掉（实测坑：单类选择器盖不住）。 */
+/* 屏幕下方：通栏胶囊「前往」（钉在机身下檐口；屏幕窄时左右各内收到 10px）。
+   提示文字在左、动作词在右。**文字允许折行**（2026-09-11 船长：「跳转的文本过长时，有部分文本不显示」——
+   原先是 `white-space: nowrap` + 省略号单行截断，长提示会被吃掉），胶囊随行数长高、由下檐口anchor 固定。 */
 .app-btn.app-comms-goto {
   position: absolute; left: 27px; right: 27px; bottom: 15px;
-  display: flex; align-items: center; gap: 10px; border-radius: 999px; padding: 7px 18px;
-  font-size: 13px; flex-wrap: wrap; row-gap: 2px;
+  display: flex; align-items: center; gap: 10px; border-radius: 22px; padding: 7px 18px;
+  font-size: 13px;
 }
-.app-comms-goto-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 12px; }
+.app-comms-goto-text { flex: 1 1 auto; min-width: 0; text-align: left; font-size: 12px; line-height: 1.45; }
 .app-comms-goto-label { flex: 0 0 auto; font-weight: 600; }
 .app-comms-replies { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 消息自带动作（2026-09-11：序章简报的「开始教程：采集富凡晶石」）——正文下方一枚主按钮，居中 */
+.app-comms-action { display: flex; justify-content: center; margin-top: 4px; }
+.app-comms-action-btn { border-radius: 999px; padding: 8px 22px; font-size: 13px; }
 
 /* ═══════════ 通讯页 · 大窗口（全屏）放大（2026-09-11 船长：全屏下消息界面很空，"在丙的基础上让下方跳转更大"） ═══════════
    实测依据（2560×1440 全屏）：屏幕可视高 933px 而内容仅 167px（填充率 17.9%）、正文行长只占屏幕宽 31.4%
