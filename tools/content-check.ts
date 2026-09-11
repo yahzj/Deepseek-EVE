@@ -2145,6 +2145,64 @@ for (const m of MODULES) {
   )
 }
 
+/* ── 舰船价格口径**预警**（2026-09-11 船长：「3 改为预警」）──────────────────────────
+   背景（实证）：2026-09-09「巡洋价位定档 9/11/13/15M」的重放按**旧数值**匹配，把阶梯写到了
+   陆龟/玳瑁/飞鱼/旗鱼头上（330k/760k/210k/480k → 9M/11M/13M/15M），4 艘巡洋自己反而没改；
+   因当时没有护栏，漂移一路带进维修费档位（`repairTierWeight` 读 `priceIsk`）与平衡工具。
+   口径（三处同源）：
+   - `ships.ts priceIsk` = 该船**市场行 basePrice**（无市场行者必须为 0 = 仅定制）；
+   - `shipBlueprints priceIsk` = 市场行价 × 档位系数（≤30 万 ×2 / 30~100 万 ×2.5 /
+     100~400 万 ×3 / >400 万 ×4），允许 ±1 万整万取整余量；
+   - 市场行价本身就是玩家真正付的价（`buyShip` 走 marketCatalog），故它是锚。
+   **按船长裁决只发预警（`warn`），不阻断体检**——它是"口径漂移"的哨兵，不是硬契约。 */
+{
+  const tierCoefOf = (market: number): number => {
+    if (market > 4_000_000) return 4
+    if (market > 1_000_000) return 3
+    if (market > 300_000) return 2.5
+    return 2
+  }
+  const shipGoods = MARKET_GOODS.filter((g) => g.kind === 'ship' && typeof g.refId === 'string')
+  const marketOfShip = new Map(shipGoods.map((g) => [g.refId!, g]))
+  let driftPrice = 0
+  let driftBp = 0
+  for (const ship of SHIPS) {
+    const good = marketOfShip.get(ship.id)
+    // 定制船口径（2026-09-09「蓝图船成品现货下架」）：无市场行、或市场行 playerBuyable=false（只收不卖）
+    // ⇒ `priceIsk` 必须为 0（图鉴据此显示「定制 / 仅可制造」，维修费档位走"层容量"兜底）。
+    const custom = good === undefined || good.playerBuyable === false
+    if (custom) {
+      if (ship.priceIsk !== 0) {
+        warn.push(
+          `舰船价格口径：${ship.name}（${ship.id}）属定制船（${good ? '市场行只收不卖' : '无市场行'}），ships.ts priceIsk = ${ship.priceIsk.toLocaleString('zh-CN')}（应为 0）`,
+        )
+        driftPrice += 1
+      }
+    } else if (ship.priceIsk !== (good.basePrice ?? 0)) {
+      const market = good.basePrice ?? 0
+      warn.push(
+        `舰船价格口径：${ship.name}（${ship.id}）ships.ts priceIsk = ${ship.priceIsk.toLocaleString('zh-CN')}，市场行价 = ${market.toLocaleString('zh-CN')}（两处应一致；维修费档位读 priceIsk，玩家付款读市场行）`,
+      )
+      driftPrice += 1
+    }
+    const bp = SHIP_BLUEPRINTS.find((b) => b.shipId === ship.id)
+    if (!bp) continue
+    // 定制船的蓝图价 = 唯一定价（无"市场价 × 系数"可比），不参与系数比对
+    if (custom) continue
+    const market = good!.basePrice ?? 0
+    const expect = Math.round(market * tierCoefOf(market))
+    if (Math.abs(bp.priceIsk - expect) > 10_000) {
+      warn.push(
+        `舰船蓝图价格口径：${ship.name}（${ship.id}）蓝图价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「市场价 × 档位系数」应为 ${expect.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+      )
+      driftBp += 1
+    }
+  }
+  console.log(
+    `· 舰船价格口径（预警）：${SHIPS.length} 艘船中 priceIsk 与市场行价不符 ${driftPrice} 处、蓝图价与档位系数不符 ${driftBp} 处`,
+  )
+}
+
 /* ── 通讯消息契约（2026-09-11 通讯系统）────────────────────────────────────────────
    体检口径：id 唯一、字段齐备、触发器字段可解析（星系/技能/站点必须真实存在）、
    跳转目标页合法（及其页面内标签）、玩家可见文案不含开发用词；
