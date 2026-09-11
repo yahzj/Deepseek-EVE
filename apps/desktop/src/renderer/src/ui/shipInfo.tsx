@@ -13,7 +13,7 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
-import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ShipDef, DamageType } from '@whale/core'
+import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
 import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
@@ -216,8 +216,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
       body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
       break
   }
-  // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）与结构层抗性——短行不丢关键效果
-  const extras = [repairShortText(mod), hullResistShortText(mod)].filter(Boolean).join(' · ')
+  // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）、结构层抗性与**跨族加成**——短行不丢关键效果
+  // （跨族尾缀 = 2026-09-11 修复：赃物强化舱的"甲容 +15%"这类搭车加成因槽位分支而漏显示）
+  const extras = [repairShortText(mod), hullResistShortText(mod), crossFamilyShort(mod)].filter(Boolean).join(' · ')
   if (extras) body = body ? `${body} · ${extras}` : extras
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
   return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
@@ -362,6 +363,128 @@ export function shipIndirectLines(ship: ShipDef): InfoLine[] {
   const charge = warpChargePct(ship)
   if (charge !== null) lines.push({ k: '跃迁充能（随动力）', v: `${charge}%` })
   return lines
+}
+
+/**
+ * 跨族加成（2026-09-11 船长反馈修复：「赃物强化舱的属性并没有显示装甲容量的加成数值」）：
+ *
+ * 起因：模块信息行 / 短效文案原先都按 `mod.slot` 走分支渲染（装甲槽只画装甲、货舱槽只画货舱……），
+ * 于是**槽位族之外的加成会被整段吞掉**——赃物强化舱是**货舱槽**却带 `armorHpBonus 0.15`（货舱 +100%
+ * 的"搭车"装甲板），界面上就只剩货舱那一行。同类还有：生体甲壳板（装甲槽带自愈）在**信息卡**里看不到自愈、
+ * 生体损管腔（支援槽带结构抗性，此前后者靠尾段补上）。
+ *
+ * 修法：不改各槽位分支的既有渲染，而是在**尾部**补一段「跨族加成」——凡"字段归属槽位 ≠ 本件槽位"
+ * 的有效字段一律补齐（归属槽位自己的分支已经画过的不重复）。日后新增"槽位族之外的搭车加成"自动可见。
+ */
+function crossFamilyLines(mod: ModuleDef): InfoLine[] {
+  const out: InfoLine[] = []
+  const foreign = (owner: ModuleSlot): boolean => mod.slot !== owner
+  // 装甲族（容量 / 抗性 / 机动代价）
+  if (foreign('armor')) {
+    if (mod.armorHpBonus !== undefined) out.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
+    const row = resistAddLine('装甲抗性（乘入制）', mod.armorResistAdd)
+    if (row) out.push(row)
+    if ((mod.speedPenaltyPct ?? 0) > 0) {
+      const pen = mod.speedPenaltyPct ?? 0
+      out.push({
+        k: '机动代价',
+        v: (
+          <>
+            <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
+            <span className="app-dim">{`（−${pct(pen)}；只影响接敌与拉开距离的机动，不改命中；多件不叠加，取最重一件）`}</span>
+          </>
+        ),
+      })
+    }
+  }
+  // 护盾族（容量 / 抗性）
+  if (foreign('shield')) {
+    if (mod.shieldHpBonus !== undefined) out.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
+    const row = resistAddLine('护盾抗性（乘入制）', mod.shieldResistAdd)
+    if (row) out.push(row)
+  }
+  // 推进器族（加力推进 / 点火代价）
+  if (foreign('propulsion')) {
+    if (mod.speedBonusPct !== undefined) {
+      out.push({
+        k: '加力推进',
+        v: (
+          <>
+            点火期间战斗速度 +${pct(mod.speedBonusPct)}
+            <span className="app-dim">（点火 60 秒 → 冷却 60 秒，开场即点火；冷却期间无加速）</span>
+          </>
+        ),
+      })
+    }
+    if ((mod.hitPenalty ?? 0) > 0) {
+      out.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}（全部武器，进胜率预估；冷却期不失效稳）` })
+    }
+  }
+  // 维修/自愈（支援槽之外也带得动：生体甲壳板）
+  if (foreign('support') && ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0)) {
+    const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
+    const perPulse = [mod.repairArmorHp, mod.repairHullHp]
+      .filter((x): x is number => (x ?? 0) > 0)
+      .map((x) => fmt(x))
+      .join(' / ')
+    const isFree = mod.repairFree === true
+    out.push({
+      k: isFree ? '生体自愈' : '自动维修',
+      v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）`,
+    })
+    if (!isFree) out.push({ k: '运转消耗', v: `每 ${secs} 秒消耗 1 枚对应修理组件（组件耗尽即自动停机）` })
+  }
+  // 无人机三族（甲板扩展 / 战术导控 / 中继天线）
+  if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) {
+    out.push({ k: '无人机舱', v: `+${fmt(mod.droneBayBonusM3 ?? 0)} m³` })
+  }
+  if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) {
+    out.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus ?? 0)}` })
+  }
+  if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) {
+    out.push({ k: '无人机射程', v: `+${pct(mod.droneRangeBonusPct ?? 0)}` })
+  }
+  // 支援件四族（炮台伤害 / 射速 / 命中 / 回避）
+  if (foreign('support')) {
+    const dmg = mod.damageTypeBonusPct
+    if (dmg && Object.keys(dmg).length > 0) {
+      out.push({
+        k: '炮台伤害',
+        v: `${Object.entries(dmg)
+          .filter(([, v]) => (v ?? 0) > 0)
+          .map(([t, v]) => `${DMG_LABEL[t as DamageType]} +${pct(v ?? 0)}`)
+          .join(' · ')}（只加成对应系炮台单发，不影响无人机）`,
+      })
+    }
+    if (mod.reloadCutPct !== undefined) out.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}` })
+    if (mod.hitBonusPct !== undefined) out.push({ k: '命中支援', v: `炮台命中 +${pct(mod.hitBonusPct)}` })
+    if (mod.evasionGapPct !== undefined) out.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}（全船生效）` })
+  }
+  // 目标锁定阵列
+  if (foreign('target-lock') && mod.lockDmgBonus !== undefined) {
+    out.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
+  }
+  return out
+}
+
+/** 跨族加成的**短行**文本（装配台槽位行 / 装备库行 / 手册网格共用；与上面的信息卡同源口径） */
+function crossFamilyShort(mod: ModuleDef): string {
+  const parts: string[] = []
+  const foreign = (owner: ModuleSlot): boolean => mod.slot !== owner
+  if (foreign('armor')) {
+    if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
+    if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(`速度×${(1 - (mod.speedPenaltyPct ?? 0)).toFixed(2)}`)
+  }
+  if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
+  if (foreign('propulsion')) {
+    if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}`)
+    if ((mod.hitPenalty ?? 0) > 0) parts.push(`命中×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}`)
+  }
+  if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(`机舱 +${fmt(mod.droneBayBonusM3 ?? 0)} m³`)
+  if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(`无人机伤害 +${pct(mod.droneDmgBonus ?? 0)}`)
+  if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(`无人机射程 +${pct(mod.droneRangeBonusPct ?? 0)}`)
+  if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(`锁定受击 +${pct(mod.lockDmgBonus)}`)
+  return parts.join(' · ')
 }
 
 /**
@@ -592,6 +715,8 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   }
   const hullRow = resistAddLine('结构抗性', mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
+  // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
+  lines.push(...crossFamilyLines(mod))
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)

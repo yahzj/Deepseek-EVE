@@ -1475,6 +1475,69 @@ for (const m of MODULES) {
   )
 }
 
+/* ── 模块跨族字段契约（2026-09-11 加；船长反馈「赃物强化舱的属性并没有显示装甲容量的加成数值」）──
+ * 背景：模块的界面呈现**按槽位分支**（装甲槽画装甲、货舱槽画货舱……），所以"槽位族之外的搭车加成"
+ * 一旦出现，就很容易被界面整段吞掉（赃物强化舱 = 货舱槽 + 装甲容量 15% 就是典型；生体甲壳板 = 装甲槽 +
+ * 自愈在信息卡里也曾漏）。界面侧已加"跨族尾巴"补齐，这里再加一道**数据侧护栏**：
+ *   「字段归属槽位 ≠ 本件槽位」的组合必须逐一登记在白名单里 —— 新增一件跨族件时，
+ *   契约会报错提醒"先确认界面能显示、再登记"，避免又出现静默漏显示。
+ * 字段归属表与界面 `crossFamilyLines`（apps/desktop .../ui/shipInfo.tsx）保持同一口径。 */
+{
+  /** 字段 → 归属槽位（"本职"归属；写在其它槽位上即视为跨族） */
+  const OWNER: Record<string, string> = {
+    bonus: 'miner|cargo',
+    shieldHpBonus: 'shield',
+    shieldResistAdd: 'shield',
+    armorHpBonus: 'armor',
+    armorResistAdd: 'armor',
+    speedPenaltyPct: 'armor',
+    hullHpBonus: 'armor',
+    hullResistAdd: 'armor',
+    speedBonusPct: 'propulsion',
+    hitPenalty: 'propulsion',
+    droneBayBonusM3: 'drone-rack',
+    droneDmgBonus: 'drone-tac',
+    droneRangeBonusPct: 'drone-relay',
+    damageTypeBonusPct: 'support',
+    reloadCutPct: 'support',
+    hitBonusPct: 'support',
+    evasionGapPct: 'support',
+    repairArmorHp: 'support',
+    repairHullHp: 'support',
+    repairKit: 'support',
+    lockDmgBonus: 'target-lock',
+  }
+  /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
+  const REGISTERED: readonly string[] = [
+    'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」
+    'mod-lair-armor-c:repairArmorHp', // 生体甲壳板（装甲槽 + 自愈）→ 信息卡「生体自愈」
+    'mod-lair-dc-c:hullResistAdd', // 生体损管腔（支援槽 + 结构抗性）→ 结构抗性行
+  ]
+  let counted = 0
+  const found: string[] = []
+  for (const m of MODULES) {
+    for (const [field, owner] of Object.entries(OWNER)) {
+      if (owner.split('|').includes(m.slot)) continue
+      const v = (m as unknown as Record<string, unknown>)[field]
+      if (v === undefined || v === null) continue
+      if (typeof v === 'number' && v === 0) continue
+      if (typeof v === 'object' && Object.keys(v as object).length === 0) continue
+      counted++
+      const key = `${m.id}:${field}`
+      found.push(key)
+      check(
+        REGISTERED.includes(key),
+        `模块跨族字段契约：${m.name}（${m.id}，槽位 ${m.slot}）带了「${field}」（归属槽位 ${owner}）——` +
+          `请确认界面能显示该加成（shipInfo.tsx 的 crossFamilyLines / crossFamilyShort），再把「${key}」登记进本契约白名单`,
+      )
+    }
+  }
+  console.log(
+    `· 模块跨族字段契约：${MODULES.length} 件装备中 ${counted} 处"槽位族之外的搭车加成"，全部已登记且界面有呈现口径` +
+      `（${found.length > 0 ? found.join('、') : '无'}）`,
+  )
+}
+
 /* ── 输出 ── */
 console.log(`· 蓝图：装备 ${BLUEPRINTS.length} 张 + 舰船 ${SHIP_BLUEPRINTS.length} 张`)
 if (warn.length > 0) {

@@ -20,7 +20,7 @@ import {
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import { emptyFitted, uidDefId } from './labels'
-import { SCAN_WINDOW_MS } from './explore'
+import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
@@ -1713,6 +1713,10 @@ function normalizeState(raw: unknown): GameState {
     // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：只收正数；缺省 = 不限制（老档天然如此）
     const lockRaw = num(r.lockUnits, 0)
     if (lockRaw > 0) runOut.lockUnits = Math.floor(lockRaw)
+    // 私有料账（2026-09-11 增：稀有残骸"起炉即预占"，停炉退还未用完部分）——**必须保留**，
+    // 否则读档后这批预占的残骸既不在公共库存、也不在料账里 = 凭空消失。只收正数。
+    const claimRaw = num(r.claimedUnits, 0)
+    if (claimRaw > 0) runOut.claimedUnits = Math.floor(claimRaw)
     return runOut
   }
   const refineRuns: GameState['refineRuns'] = []
@@ -1803,6 +1807,14 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
+  // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---
+  const rareOpenedUnits: Record<string, number> = {}
+  for (const [itemId, n] of Object.entries(asRaw(src.rareOpenedUnits))) {
+    if (itemId.length === 0) continue
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+    rareOpenedUnits[itemId] = Math.floor(n)
+  }
+
   // --- B1 低安遭遇（v17.1 兼容字段）：未激活 = 标准空态（往返幂等）；激活才逐字段容错 ---
   const encRaw = asRaw(src.encounter)
   const encShipId = typeof encRaw.shipId === 'string' && encRaw.shipId.length > 0 ? encRaw.shipId : null
@@ -1869,13 +1881,19 @@ function normalizeState(raw: unknown): GameState {
   const pendingDialogue =
     typeof src.pendingDialogue === 'string' && src.pendingDialogue.length > 0 ? src.pendingDialogue : null
 
-  // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒（上限 SCAN_WINDOW_MS） ---
+  // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
+  // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 低安最深惩罚 ×2.2 = 22 分钟）——
+  // 2026-09-11 修复：原按基准 `SCAN_WINDOW_MS`（10 分钟）钳，而低安星系的有效窗口最长 22 分钟，
+  // 于是"在低安扫了 10 分钟以上 → 终止 → 重开存档"会把进度截回 10 分钟（白扫一段）。
+  // 本函数没有 ctx（拿不到目标星系安全等级），故只能按全游戏最大可能窗口兜底；
+  // 消费侧（`scanWindowMsFor` 起步/续扫）仍按**该星系实际窗口**再钳一次。
+  const scanLimit = maxScanWindowMs()
   const scanProgressRaw = asRaw(src.scanProgress)
   const scanProgress: Record<string, number> = {}
   for (const [key, value] of Object.entries(scanProgressRaw)) {
     if (key.length === 0) continue
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-      scanProgress[key] = Math.min(SCAN_WINDOW_MS, Math.floor(value))
+      scanProgress[key] = Math.min(scanLimit, Math.floor(value))
     }
   }
 
@@ -2096,6 +2114,7 @@ function normalizeState(raw: unknown): GameState {
     dialogueSeen,
     pendingDialogue,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
+    rareOpenedUnits,
     onboarding,
     importantTasks,
     sideTasks,
