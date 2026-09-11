@@ -57,6 +57,10 @@ export interface WeaponSpec {
   shotDmg?: number
   /** gun：弹型 → 单发伤害（构建期含 dmgMult×(1+炮术×5%)×(1+powerBonus)×伤害稳定器） */
   shotsByType?: Partial<Record<DamageType, number>>
+  /** V18 同型合并条目代表的**武器门数**（同 id 同参炮台/激光合并为「×N 齐射」一条，缺省 1）。
+   *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
+   *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
+  count?: number
   /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1；
    * beam 必中不携带——命中件对激光无效） */
   eqHitMul?: number
@@ -552,6 +556,7 @@ export function createPlayerSpec(
         kind: 'beam',
         src: 'laser',
         fixedType: 'plasma',
+        count,
         shotDmg: perShot * count,
         maxRangeM: turret.maxRangeM,
         minRangeM: turret.minRangeM ?? 0,
@@ -568,6 +573,7 @@ export function createPlayerSpec(
       kind: 'gun',
       src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,
+      count,
       eqHitMul: hitEq > 1 ? hitEq : undefined,
       maxRangeM: turret.maxRangeM,
       minRangeM: turret.minRangeM ?? 0,
@@ -983,24 +989,23 @@ export function ammoLoadTotals(
   bal: BattleBalance,
   state: import('./state').GameState,
 ): Partial<Record<DamageType, number>> {
-  const fastest = new Map<DamageType, number>()
-  const consider = (t: DamageType, reloadMs: number): void => {
-    fastest.set(t, Math.min(fastest.get(t) ?? Number.POSITIVE_INFINITY, reloadMs))
-  }
-  for (const w of me.weapons) {
-    if (w.kind === 'gun') {
-      const t = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
-      if (t) consider(t, w.reloadMs)
-    } else if (w.kind === 'beam') {
-      consider('plasma', w.reloadMs)
-    }
-  }
   // 弹药集约学（ammunition-condensing，批次四）：出发预载弹药 +8%/级（实际装载仍受库存上限约束）
   const condLv = Math.min(5, state.skills.trained['ammunition-condensing'] ?? 0)
   const condFactor = 1 + 0.08 * condLv
   const out: Partial<Record<DamageType, number>> = {}
-  for (const [t, reload] of fastest) {
-    out[t] = Math.max(1, Math.ceil(((bal.ammoTimeCapMs * condFactor) / reload) * bal.ammoMargin))
+  /** 一轮齐射的用弹量 = 条目门数（同型合并条目 ×N）；2026-09-11 修复：预载按门数放大 */
+  const roundsPerVolley = (w: WeaponSpec): number => Math.max(1, w.count ?? 1)
+  const addFor = (t: DamageType, reloadMs: number, volley: number): void => {
+    const volleys = Math.max(1, Math.ceil(((bal.ammoTimeCapMs * condFactor) / Math.max(100, reloadMs)) * bal.ammoMargin))
+    out[t] = (out[t] ?? 0) + volleys * volley
+  }
+  for (const w of me.weapons) {
+    if (w.kind === 'gun') {
+      const t = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
+      if (t) addFor(t, w.reloadMs, roundsPerVolley(w))
+    } else if (w.kind === 'beam') {
+      addFor('plasma', w.reloadMs, roundsPerVolley(w))
+    }
   }
   return out
 }
@@ -1573,7 +1578,7 @@ export function battleArcsFor(
     if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
-    else if (w.kind === 'beam') type = battle.ammo.pla > 0 ? 'plasma' : null // 激光吃能量弹药键
+    else if (w.kind === 'beam') type = battle.ammo.pla >= Math.max(1, w.count ?? 1) ? 'plasma' : null // 激光吃能量弹药键（按门数）
     else if (ammoLeft > 0) type = dominant // 炮台弹型动态（消耗中可能切换）
     const rem = Math.max(0, Math.floor(meRt[i] ?? 0))
     if (w.src === 'drone') {
@@ -2141,26 +2146,29 @@ function stepBattle(
       let type: DamageType
       let dmg: number
       let autoHit = false
+      /** 一轮齐射的用弹量（同型合并条目 ×N；2026-09-11 修复：此前多门武器只扣 1 发弹药） */
+      const roundsPerVolley = Math.max(1, w.count ?? 1)
       if (w.kind === 'gun') {
         // V18B-2 per-gun 弹型：每件武器打自己的键（动能/爆破导弹/能量弹药混装各自供弹），
-        // 该键弹尽 → 本武器停火（不拖累其它型）
+        // 该键弹尽 → 本武器停火（不拖累其它型）。**齐射按门数扣弹**：不足一轮齐射的余弹不发射
+        // （等返港补弹；预载已按门数放大，正常战斗不会因缺弹中断）
         const pick = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
-        if (!pick || b.ammo[ammoKeyOf(pick)] <= 0) {
+        if (!pick || b.ammo[ammoKeyOf(pick)] < roundsPerVolley) {
           meRt.weapons[wi] = w.reloadMs // 无弹：等一轮再查（避免每步空转）
           continue
         }
         type = pick
         dmg = w.shotsByType?.[pick] ?? 0
-        b.ammo[ammoKeyOf(pick)] -= 1
+        b.ammo[ammoKeyOf(pick)] -= roundsPerVolley
         meRt.weapons[wi] = w.reloadMs
       } else if (w.kind === 'beam') {
-        // V18B-2 激光：必中光束——逐发扣能量弹药；威力随距离衰减（beamPowerFactor）
-        if (b.ammo.pla <= 0) {
+        // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
+        if (b.ammo.pla < roundsPerVolley) {
           meRt.weapons[wi] = w.reloadMs
           continue
         }
         type = 'plasma'
-        b.ammo.pla -= 1
+        b.ammo.pla -= roundsPerVolley
         dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerFactor(b.distanceM, w)))
         meRt.weapons[wi] = w.reloadMs
         autoHit = true

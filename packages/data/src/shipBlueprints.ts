@@ -36,7 +36,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 180 * 60, // ×2 提速（原 360*60=21600s）
     buildCostIsk: 900_000,
     priceIsk: 19200000,
-    description: '鲸王级总装图纸：货舱 10000 m³，8 秒循环产 58 单位。造完它，你就是深空工业的传说。',
+    description: '鲸王级总装图纸：货舱 7,000 m³，8 秒循环产 58 单位。造完它，你就是深空工业的传说。',
   },
   {
     id: 'sbp-humpback',

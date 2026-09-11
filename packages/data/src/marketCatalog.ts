@@ -32,6 +32,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
   //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
   //   低阶几乎不动（富凡 ×1.0、灼烧 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
+  // 【2026-09-11 船长定：**消耗品池按同一把尺重标**（弹药/修理组件玩家可自造 → 基准 = **单工位无技能日产**；
+  //   无人机**无蓝图**（纯市场货源）→ 基准按 144 场/天战损折算）。
+  //   实测改前产能覆盖比：动能弹 0.21× / 动能弹 MK2 0.03× / 民用修理组件 0.40× / 军用修理组件 0.33×
+  //   ——"一个工位造出来的量，市场一天都吃不下"，故按 ≤20 → ×15、≤200 → ×6、>400 → ×2 重标：
+  //   弹药 MK1 150 → **10,800/窗**（池 4,000 → **1,296,000**）、弹药 MK2 20 → **4,320**（池 → **518,400**）、
+  //   民用修理组件 4 → **20**（池 300 → **2,400**）、军用修理组件 1.5 → **9**（池 120 → **1,080**）、
+  //   无人机池同步为 flow×120（4/2/1/1 → 池 480/240/120/120）。价格、产率、其它池一律未动。】
   { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 12, poolTarget: 598_920, supplyFlow: 4_991 },
   { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 18, poolTarget: 598_920, supplyFlow: 4_991 },
   { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 55, poolTarget: 239_640, supplyFlow: 1_997 },
@@ -62,21 +69,21 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 230, poolTarget: 114_000, supplyFlow: 950 },
   { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 114_000, supplyFlow: 950 },
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
-  { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 4_000, supplyFlow: 150 }, // 2026-09-08 工业收益体检：低周转行只升不砍（净率→≥20%）
-  { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 3_800, supplyFlow: 140 },
-  { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 3_500, supplyFlow: 120 },
+  { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 }, // 2026-09-11 消耗品池按产能标定（原 4,000/150）
+  { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
+  { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
   // ── 弹药 MK2（2026-09-09 船长拍板：攻坚/提速消耗品；补给池高价低耗节流，参数可调） ──
-  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'common', basePrice: 45, demandMultiplier: 0.6, poolTarget: 1_200, supplyFlow: 20 },
-  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'common', basePrice: 60, demandMultiplier: 0.6, poolTarget: 1_000, supplyFlow: 16 },
-  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'common', basePrice: 80, demandMultiplier: 0.6, poolTarget: 800, supplyFlow: 12 },
+  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'common', basePrice: 45, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 }, // 2026-09-11 消耗品池按产能标定（原 1,200/20）
+  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'common', basePrice: 60, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
+  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'common', basePrice: 80, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
-  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 300, supplyFlow: 4 },
-  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1.5 },
+  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 2_400, supplyFlow: 20 }, // 2026-09-11 消耗品池按产能标定（原 300/4）
+  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 }, // 2026-09-11（原 120/1.5；船长定：与其它消耗品同口径，激战单场可吃 23 枚 ⇒ 池约撑 45 场）
   // ── 无人机（V10 占位：NPC 补给池） ──
-  { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 200, supplyFlow: 4 },
-  { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 2 },
-  { key: 'drone-heavy', kind: 'item', refId: 'drone-heavy', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6, poolTarget: 60, supplyFlow: 1 },
-  { key: 'drone-sentry', kind: 'item', refId: 'drone-sentry', rarity: 'common', basePrice: 9_500, demandMultiplier: 0.6, poolTarget: 30, supplyFlow: 1 },
+  { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 480, supplyFlow: 4 }, // 2026-09-11 池 = flow×120（原 200）
+  { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 240, supplyFlow: 2 },
+  { key: 'drone-heavy', kind: 'item', refId: 'drone-heavy', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1 },
+  { key: 'drone-sentry', kind: 'item', refId: 'drone-sentry', rarity: 'common', basePrice: 9_500, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1 },
 
   // ── 单件平价品 ──
   // 民用/入门装备（市场供应价 = 制造价的合理回本价；玩家自己造更便宜）

@@ -42,6 +42,9 @@ import {
   ITEM_KIND_ORDER,
   MAX_SKILL_LEVEL,
   MODULE_SLOTS,
+  typeLayerMult,
+  REPAIR_PULSE_MS,
+  DRONE_SKILL,
   MINEABLE_KINDS,
   RACK_SLOTS,
   RARE_WRECK_VOLUME_M3,
@@ -256,6 +259,490 @@ for (const sbp of SHIP_BLUEPRINTS) {
   check(
     MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
     `舰船蓝图 ${sbp.id} 没有市场卡（无法购书学习）`,
+  )
+}
+
+/* ── 蓝图说明契约（2026-09-11 加，船长：「部分图纸的说明和实际产物属性对对不上，进行核查」）──
+ * 背景：蓝图说明是玩家**买书时唯一能看到的产物介绍**；历史上多次调数值（炮台射程 −30%、
+ * 舰船货舱调整…）之后说明没跟着改 → 玩家按说明买的图纸与实物不符（本次核出 2 处：
+ * 「重型炮台 MK2」说明仍写 8.2 km 实际 5.74 km；「鲸王级舰船蓝图」说明仍写 10,000 m³ 实际 7,000 m³）。
+ * 此处把**能从数据机械核对**的声明全部钉住；蓝图名与产物名的差异（「X 级舰船蓝图」vs「X 级护卫舰」）
+ * 属命名习惯，只提示不拦。 */
+{
+  const modById = new Map(MODULES.map((m) => [m.id, m]))
+  const shipById = new Map(SHIPS.map((s) => [s.id, s]))
+  const goodsByBp = new Map(MARKET_GOODS.filter((g) => g.kind === 'blueprint').map((g) => [g.refId!, g]))
+  const mineralNameOf = (id: string): string => items.get(id)?.name ?? id
+  let claims = 0
+  let nameHints = 0
+  const num = (s: string): number => Number(s.replace(/,/g, ''))
+  for (const bp of [...BLUEPRINTS, ...SHIP_BLUEPRINTS]) {
+    const d = bp.description
+    const out = bp.outputUnits ?? 1
+    const mod = bp.moduleId ? modById.get(bp.moduleId) : undefined
+    const item = bp.itemId ? items.get(bp.itemId) : undefined
+    const ship = (bp as { shipId?: string }).shipId ? shipById.get((bp as { shipId?: string }).shipId!) : undefined
+    const product = mod ?? item ?? ship
+    if (!product) continue // 产物缺失已由上面的用例拦下
+    const pName = product.name
+    // ① 引号内的产物名
+    for (const m of d.matchAll(/「([^」]+)」/g)) {
+      claims += 1
+      check(m[1] === pName, `蓝图说明契约：${bp.id} 说明写「${m[1]}」，实际产物名「${pName}」`)
+    }
+    // ② 每批产出（N 发/个/枚 … 批）
+    for (const m of d.matchAll(/(\d+)\s*[发个枚]/g)) {
+      if (!/批/.test(d.slice(m.index ?? 0, (m.index ?? 0) + 12))) continue
+      claims += 1
+      check(Number(m[1]) === out, `蓝图说明契约：${bp.id} 说明写每批 ${m[1]}，实际 outputUnits = ${out}`)
+    }
+    // ③ 射程（远程/射程 N km）
+    for (const m of d.matchAll(/(?:远程|射程)[^0-9]{0,6}([\d.]+)\s*km/gi)) {
+      if (mod?.maxRangeM === undefined) continue
+      claims += 1
+      check(
+        Math.abs(Number(m[1]) - mod.maxRangeM / 1000) < 0.05,
+        `蓝图说明契约：${bp.id} 说明写射程 ${m[1]} km，实际 maxRangeM = ${mod.maxRangeM} m`,
+      )
+    }
+    // ④ 修理组件基础回复
+    for (const m of d.matchAll(/基础\s*(\d+)\s*HP/gi)) {
+      if (item?.repairRestore === undefined) continue
+      claims += 1
+      check(Number(m[1]) === item.repairRestore, `蓝图说明契约：${bp.id} 说明写基础 ${m[1]} HP，实际 repairRestore = ${item.repairRestore}`)
+    }
+    // ⑤ 弹药克制声明
+    if (item?.damageType) {
+      for (const [layer, word] of [['shield', '护盾'], ['armor', '装甲']] as const) {
+        for (const m of d.matchAll(new RegExp(`对${word}\\s*×\\s*([\\d.]+)`, 'g'))) {
+          claims += 1
+          const real = typeLayerMult(item.damageType, layer)
+          check(
+            Math.abs(Number(m[1]) - real) < 0.01,
+            `蓝图说明契约：${bp.id} 说明写对${word} ×${m[1]}，实际 ${item.damageType} 对${word} ×${real}`,
+          )
+        }
+      }
+    }
+    // ⑥ 声望门槛
+    for (const m of d.matchAll(/声望\s*(\d+)/g)) {
+      const g = goodsByBp.get(bp.id)
+      claims += 1
+      check(
+        g?.standingReq !== undefined && Number(m[1]) === g.standingReq,
+        `蓝图说明契约：${bp.id} 说明写需声望 ${m[1]}，实际市场 standingReq = ${g?.standingReq ?? '（无市场卡）'}`,
+      )
+    }
+    // ⑦ 舰船：货舱 / 循环秒 / 每循环产量
+    if (ship) {
+      for (const m of d.matchAll(/货舱\s*([\d,]+)\s*m³/g)) {
+        claims += 1
+        check(num(m[1]!) === ship.cargoM3, `蓝图说明契约：${bp.id} 说明写货舱 ${m[1]} m³，实际 cargoM3 = ${ship.cargoM3}`)
+      }
+      for (const m of d.matchAll(/循环\s*([\d.]+)\s*秒|([\d.]+)\s*秒\s*循环/g)) {
+        claims += 1
+        check(
+          Math.abs(Number(m[1] ?? m[2]) - ship.cycleSeconds) < 0.01,
+          `蓝图说明契约：${bp.id} 说明写循环 ${m[1] ?? m[2]} 秒，实际 cycleSeconds = ${ship.cycleSeconds}`,
+        )
+      }
+      for (const m of d.matchAll(/产\s*([\d,]+)\s*单位/g)) {
+        claims += 1
+        check(
+          num(m[1]!) === ship.oreUnitsPerCycle,
+          `蓝图说明契约：${bp.id} 说明写产 ${m[1]} 单位，实际 oreUnitsPerCycle = ${ship.oreUnitsPerCycle}`,
+        )
+      }
+    }
+    // ⑧ 说明点名的矿物必须在材料里（矿石放宽：其精炼产物落在材料里即可，如「希莫非特矿带」→ 超噬矿）
+    const mats = new Set(bp.materials.map((x) => x.itemId))
+    const oreFeeds = (oreId: string): boolean => (items.get(oreId)?.refine ?? []).some((r) => mats.has(r.mineralId))
+    for (const def of items.values()) {
+      if (def.kind !== 'mineral' && def.kind !== 'ore') continue
+      if (!def.name || def.name.length < 2 || !d.includes(def.name)) continue
+      if (mats.has(def.id)) continue
+      if (def.kind === 'ore' && oreFeeds(def.id)) continue
+      claims += 1
+      check(false, `蓝图说明契约：${bp.id} 说明点名了「${def.name}」，实际材料只有 ${[...mats].map(mineralNameOf).join(' + ')}`)
+    }
+    // ⑨ CPU 声明
+    for (const m of d.matchAll(/CPU\s*(\d+)|(\d+)\s*点\s*CPU/g)) {
+      const real = mod?.cpuUse ?? ship?.cpu
+      if (real === undefined) continue
+      claims += 1
+      check(Number(m[1] ?? m[2]) === real, `蓝图说明契约：${bp.id} 说明写 CPU ${m[1] ?? m[2]}，实际 = ${real}`)
+    }
+    // ⑩ 蓝图名 vs 产物名：命名习惯差异只提示
+    const base = bp.name.replace(/图纸$|蓝图$/, '').trim()
+    if (!pName.includes(base.replace(/[（(].*?[)）]/g, '').trim())) nameHints += 1
+  }
+  console.log(`· 蓝图说明契约：核对 ${claims} 条数值声明（${BLUEPRINTS.length + SHIP_BLUEPRINTS.length} 张蓝图）；蓝图名与产物名不同写法 ${nameHints} 张（命名习惯，不拦）`)
+}
+
+/* ── 产物说明契约（2026-09-11 加，船长：「是，扩到全部产物说明」）──
+ * 上一契约钉住的是**蓝图说明**；本契约覆盖**装备与物品自身的说明**——市场卡悬浮面板
+ * （`MarketPage` 的 note 位）与物品/装备悬浮层读的就是这些 `description`，玩家据此判断要不要买。
+ * 做法：把说明里的每个数值声明抽出来，要求它**能被该产物的真实数值解释**：
+ *   ① 直接命中某字段（含 分数→百分数、毫秒→秒、米→千米 三种换算）；
+ *   ② 引擎口径换算命中——装填 −N% 的「约合射速 +M%」= 1/(1−N)−1；抗性示例「25% 基础船 → M%」
+ *      = N + 25%×(1−N)（`gapCombine` 缺口复合）；推进器「命中 ×M」= 1−失稳罚；姿态陀螺
+ *      「敌命中 60% → M%」= 60%×(1−缺口削减)；无人机射程示例 = 机型基础射程 ×(1+加成)；
+ *   ③ 语境常量（点火周期 60 秒、抗性上限 90%、必中 100%、弹种克制倍率、维修脉冲 5 秒…）；
+ *   ④ 与说明里点到名的另一件装备做差（「比 X 还高五个点」「省下 12 点 CPU」）。
+ * 另外单独钉住「无人机舱 +N m³ → 可多带几架」这类换算式：说明里的 N 架必须等于
+ * 地板(舱位 ÷ 该机型体积)——这条是 2026-09-11 抓到「+15 m³ 却写约多带 2-5 架中型」的地方。
+ * 解释不了的声明一律报错：既防"改了数值忘改说明"，也防"新写说明抄错数"。 */
+{
+  const numVal = (s: string): number => Number(s.replace(/,/g, ''))
+  type Claim = { raw: string; value: number; kind: string }
+  const claimsOf = (d: string): Claim[] => {
+    const out: Claim[] = []
+    for (const m of d.matchAll(/[+＋−-]?\s*([\d.]+)\s*%/g)) out.push({ raw: m[0].trim(), value: numVal(m[1]!), kind: 'pct' })
+    for (const m of d.matchAll(/×\s*([\d.]+)/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'mul' })
+    for (const m of d.matchAll(/([\d.]+)\s*km/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'km' })
+    for (const m of d.matchAll(/([\d.]+)\s*m³/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'm3' })
+    for (const m of d.matchAll(/([\d.]+)\s*m(?![³a-zA-Z])/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'm' })
+    for (const m of d.matchAll(/([\d.]+)\s*秒/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'sec' })
+    for (const m of d.matchAll(/([\d.]+)\s*点/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'pt' })
+    for (const m of d.matchAll(/(?:CPU|处理器)[^0-9]{0,6}([\d.]+)/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'cpu' })
+    for (const m of d.matchAll(/([\d.]+)\s*(?:点\s*)?CPU/g)) out.push({ raw: m[0], value: numVal(m[1]!), kind: 'cpu' })
+    return out
+  }
+  const flatNums = (o: unknown, prefix = '', out: Array<[string, number]> = []): Array<[string, number]> => {
+    if (o === null || o === undefined) return out
+    if (typeof o === 'number') {
+      out.push([prefix, o])
+      return out
+    }
+    if (typeof o === 'string' || typeof o === 'boolean') return out
+    if (Array.isArray(o)) {
+      o.forEach((v, i) => flatNums(v, `${prefix}[${i}]`, out))
+      return out
+    }
+    for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+      if (['description', 'name', 'id', 'flavor'].includes(k)) continue
+      flatNums(v, prefix ? `${prefix}.${k}` : k, out)
+    }
+    return out
+  }
+  const droneVolumes = drones.map((d) => d.unitM3).filter((v): v is number => typeof v === 'number')
+  const droneRanges = drones.map((d) => d.maxRangeM).filter((v): v is number => typeof v === 'number')
+  // 语境常量（引擎现行口径；改了这里就等于承认说明可以滞后，故集中在此处便于复核）
+  const ctxConst: Array<[string, number]> = [
+    ['点火周期 60 秒', 60],
+    ['抗性上限', 90],
+    ['必中', 100],
+    ['示例基础抗/基础船', 25],
+    ['维修脉冲', REPAIR_PULSE_MS / 1000],
+    ['动能对护盾', typeLayerMult('kinetic', 'shield')],
+    ['动能对装甲', typeLayerMult('kinetic', 'armor')],
+    ['爆破对装甲', typeLayerMult('explosive', 'armor')],
+    ['爆破对护盾', typeLayerMult('explosive', 'shield')],
+    ['能量对护盾', typeLayerMult('plasma', 'shield')],
+    ['能量对装甲', typeLayerMult('plasma', 'armor')],
+  ]
+  let total = 0
+  let unexplained = 0
+  let countHints = 0
+  const scan = (kindLabel: string, def: { id: string; name: string; description?: string }): void => {
+    const d = def.description ?? ''
+    if (!d) return
+    const claims = claimsOf(d)
+    if (claims.length === 0) return
+    const self = flatNums(def)
+    // ④ 说明里点到名的另一件装备：其数值与差值也算"可解释"
+    const refs = MODULES.filter((o) => o.id !== def.id && d.includes(o.name))
+    const cross = refs.flatMap((o) => flatNums(o).map(([, v]) => v))
+    const crossDiff = refs.flatMap((o) => flatNums(o).flatMap(([, v]) => self.map(([, sv]) => Math.abs(v - sv))))
+    for (const c of claims) {
+      total += 1
+      const cand = new Set<number>()
+      for (const [, v] of self) {
+        cand.add(v)
+        cand.add(v * 100)
+        cand.add(Math.round(v * 100))
+        cand.add(v / 1000) // 毫秒→秒 / 米→千米
+        cand.add(1 - v) // 命中 ×(1−罚)
+        cand.add(60 * (1 - v)) // 姿态陀螺：敌命中 60% → M%
+        cand.add(v + 0.25 * (1 - v)) // 抗性示例：25% 基础船 → M%（取整后比对）
+        cand.add((v + 0.25 * (1 - v)) * 100)
+        cand.add((1 / (1 - v) - 1) * 100) // 装填 −N% 的「约合射速 +M%」
+        for (const dv of droneRanges) cand.add(dv * (1 + v)) // 无人机射程示例
+      }
+      for (const v of cross) {
+        cand.add(v)
+        cand.add(v * 100)
+        cand.add(Math.round(v * 100))
+      }
+      for (const v of crossDiff) {
+        cand.add(v)
+        cand.add(v * 100)
+      }
+      for (const [, v] of ctxConst) {
+        cand.add(v)
+        cand.add(v * 100)
+      }
+      const hit = [...cand].some((x) => Math.abs(x - c.value) < 0.051 || Math.abs(Math.round(x) - c.value) < 0.51)
+      if (!hit) {
+        unexplained += 1
+        check(false, `产物说明契约：${kindLabel} ${def.id} 说明里的「${c.raw}」无法由真实数值解释——说明与实际属性对不上，或说明写了凭空的数`)
+      }
+    }
+    // 「无人机舱 +N m³ → 可多带 N 架」换算式：N 必须等于**某个机型**的地板(舱位 ÷ 该机型体积)
+    for (const m of d.matchAll(/([\d.]+)(?:\s*[-–~]\s*([\d.]+))?\s*架/g)) {
+      const lo = numVal(m[1]!)
+      const hi = m[2] ? numVal(m[2]) : lo
+      if (!/无人机舱|机库/.test(d)) continue
+      countHints += 1
+      const bay = self.find(([k]) => k.includes('droneBay'))?.[1] ?? 0
+      const caps = drones.map((x) => Math.floor(bay / (x.unitM3 ?? 1)))
+      const okCount = caps.includes(lo) && caps.includes(hi)
+      check(
+        okCount,
+        `产物说明契约：${kindLabel} ${def.id} 说明写「${m[0]}」，但按无人机舱位换算不成立（实际可多带 ${drones.map((x, i) => `${x.name} ${caps[i]} 架`).join(' / ')}）`,
+      )
+    }
+    // ⑤ 说明点名的弹种/组件必须与实际接线一致（文字与字段"对不上"的另一半：不是数字错、是名字错）
+    const mod = def as { repairKit?: string; damageTypeBonusPct?: Record<string, number> } & Record<string, unknown>
+    if (mod.repairKit) {
+      const kitName = items.get(mod.repairKit)?.name ?? mod.repairKit
+      check(d.includes(kitName), `产物说明契约：装备 ${def.id} 说明没点到实际消耗的修理组件「${kitName}」（接线 ${mod.repairKit}）`)
+    }
+    const typeWords: Array<[string, DamageType]> = [
+      ['动能', 'kinetic'],
+      ['高爆', 'explosive'],
+      ['爆炸', 'explosive'],
+      ['爆破', 'explosive'],
+      ['等离子', 'plasma'],
+      ['能量', 'plasma'],
+    ]
+    const mapFields = ['damageTypeBonusPct', 'shieldResistAdd', 'armorResistAdd', 'hullResistAdd'] as const
+    for (const f of mapFields) {
+      const keys = Object.keys((mod[f] as Record<string, number> | undefined) ?? {})
+      if (keys.length !== 1) continue
+      // 只看**首句**（抗性/伤害声明的正位）：后文常顺带提其它弹种（如「动能是协会最常用弹种」），
+      // 全句扫描会把正误两种写法都算成"提了两系"从而漏判。
+      const headline = d.split('。')[0] ?? d
+      const mentioned = new Set(typeWords.filter(([w]) => headline.includes(w)).map(([, t]) => t))
+      if (mentioned.size === 1) {
+        const wordOf: Record<string, string> = { kinetic: '动能', explosive: '高爆', plasma: '能量' }
+        check(
+          mentioned.has(keys[0] as DamageType),
+          `产物说明契约：装备 ${def.id} 说明写的是「${wordOf[[...mentioned][0]!] ?? [...mentioned][0]}」系，实际字段 ${f} 挂在「${wordOf[keys[0]!] ?? keys[0]}」上`,
+        )
+      }
+    }
+  }
+  for (const m of MODULES) scan('装备', m)
+  for (const i of ITEMS) scan('物品', i)
+  console.log(`· 产物说明契约：核对 ${total} 条数值声明（装备 ${MODULES.length} 件 + 物品 ${ITEMS.length} 种），其中舱位换算 ${countHints} 处；无法解释 ${unexplained} 条`)
+}
+
+/* ── 技能说明契约（2026-09-11 加，船长：「另开一批做技能说明 ↔ 引擎效果核查」）──
+ * 背景：技能说明里每个数值都用 ⟦⟧ 标出（内容工作台口径：改 ⟦⟧ 需与引擎接线一致），
+ * 但过去**没有任何自动检查**——改引擎数值忘改说明、或技能压根没接线，都只有玩家能发现。
+ * 本契约把三处来源钉在一起（**引擎为准**）：
+ *   ① **平衡表**：凡 `xxxSkillId/skillIds/familySkillIds` 与同层 `xxxPerLevel` 成对出现的地方，
+ *      技能说明必须写出该每级值（含满级 = 每级 × 5）——如 mining.yieldPerLevel 0.06 ↔「每级 +6%」；
+ *   ② **引擎导出的技能参数对象**：`DRONE_SKILL`（无人机六技能的每级值 + 回收基础/上限）；
+ *   ③ **引擎内联常量表**（下方 `INLINE`）：数值写在各模块函数里（`1 - 0.04 * lv` 之类），
+ *      逐条登记 `技能 id → 每级值 → 接线位置`；`wired: false` 表示**说明承诺了、但引擎里查无接线**
+ *      （只警告不拦，与蓝图命名差异同口径）——2026-09-11 核查时唯一命中 = `cartography` 星图测绘学。
+ * 另加**反向断言**：说明里带 ⟦⟧ 数值的技能必须能在上述三处之一登记，防新技能悄悄写一组没人负责的数。 */
+{
+  type Pair = { skill: string; per: number; from: string }
+  const pairs: Pair[] = []
+  const isSkillKey = (k: string): boolean => /skill/i.test(k)
+  /** 键名去掉尾部 SkillId(s)/PerLevel 后的「语义前缀」，用于把技能名与每级值配到一起 */
+  const prefixOf = (k: string): string => k.replace(/skill[a-z]*ids?$/i, '').replace(/perlevel$/i, '').toLowerCase()
+  const related = (a: string, b: string): boolean =>
+    a === b || a === '' || b === '' || a.startsWith(b) || b.startsWith(a)
+  const collect = (o: unknown, path: string): void => {
+    if (!o || typeof o !== 'object') return
+    if (Array.isArray(o)) {
+      o.forEach((v, i) => collect(v, `${path}[${i}]`))
+      return
+    }
+    const obj = o as Record<string, unknown>
+    const ids: Array<{ id: string; prefix: string }> = []
+    const pers: Array<{ per: number; prefix: string }> = []
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === 'string' && isSkillKey(k)) ids.push({ id: v, prefix: prefixOf(k) })
+      else if (typeof v === 'number' && /per\s*level/i.test(k)) pers.push({ per: v, prefix: prefixOf(k) })
+      else if (Array.isArray(v) && isSkillKey(k)) {
+        for (const x of v) if (typeof x === 'string') ids.push({ id: x, prefix: prefixOf(k) })
+      } else if (v && typeof v === 'object' && isSkillKey(k)) {
+        for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) {
+          // industrySkillSlots: { '技能 id': 每级工位数 }——记录本身就是"技能 → 每级值"的成对表
+          if (typeof v2 === 'number') pairs.push({ skill: k2, per: v2, from: `${path}.${k}` })
+          // familySkillIds: { 武器族: '技能 id' }——与同层 familySkillPerLevel 配对
+          else if (typeof v2 === 'string' && !isSkillKey(k2)) ids.push({ id: v2, prefix: prefixOf(k) })
+        }
+      }
+    }
+    for (const i of ids) for (const p of pers) if (related(i.prefix, p.prefix)) pairs.push({ skill: i.id, per: p.per, from: `${path}（${i.prefix || '技能'} ↔ ${p.prefix}）` })
+    for (const [k, v] of Object.entries(obj)) if (v && typeof v === 'object') collect(v, path ? `${path}.${k}` : k)
+  }
+  collect(DEFAULT_BALANCE, 'balance')
+  // ② 引擎导出的无人机技能参数
+  pairs.push(
+    { skill: 'drone-warfare', per: DRONE_SKILL.warfarePerLevel, from: 'combat.DRONE_SKILL.warfarePerLevel' },
+    { skill: 'drone-strike', per: DRONE_SKILL.strikePerLevel, from: 'combat.DRONE_SKILL.strikePerLevel' },
+    { skill: 'drone-durability', per: DRONE_SKILL.durabilityPerLevel, from: 'combat.DRONE_SKILL.durabilityPerLevel' },
+    { skill: 'drone-reinforce', per: DRONE_SKILL.reinforcePerLevel, from: 'combat.DRONE_SKILL.reinforcePerLevel' },
+    { skill: 'drone-evasion', per: DRONE_SKILL.evasionPerLevel, from: 'combat.DRONE_SKILL.evasionPerLevel' },
+    { skill: 'drone-recovery', per: DRONE_SKILL.recoveryPerLevel, from: 'combat.DRONE_SKILL.recoveryPerLevel' },
+  )
+  // ③ 引擎内联常量（2026-09-11 逐条按现场代码登记；wired:false = 说明承诺但引擎无接线）
+  const INLINE: Array<{ skill: string; per: number | null; call: string | null; note?: string }> = [
+    { skill: 'spaceship-command', per: 0.02, call: 'travel.ts travelTimeFactor' },
+    { skill: 'mining-frigate', per: 0.03, call: 'balance.mining.timePerLevel' },
+    { skill: 'industrial-ops', per: 0.04, call: 'mining.ts（industrial 族产量）' },
+    { skill: 'armed-ops', per: 0.03, call: 'combat.ts（armed 族单发）' },
+    { skill: 'armored-ops', per: 0.04, call: 'combat.ts（armored 族甲/结构容量）' },
+    { skill: 'astro-geology', per: 0.04, call: 'mining.ts（全矿产量）' },
+    { skill: 'deep-hole-blasting', per: 0.06, call: 'mining.ts（低品位矿 ≤55 ISK）' },
+    { skill: 'deep-space-harvesting', per: 0.05, call: 'mining.ts（气/冰）' },
+    { skill: 'rich-vein-prospecting', per: 0.2, call: 'mining.ts richVeinFactor' },
+    { skill: 'core-smelting', per: 0.04, call: 'industry.ts（主控手动炉周期）' },
+    { skill: 'furnace-expansion', per: 0.06, call: 'industry.ts（主控手动炉批容）' },
+    { skill: 'batch-production', per: 0.03, call: 'manufacturing.ts calcBuildDurationMs' },
+    { skill: 'materials', per: 0.015, call: 'manufacturing.ts materialFactor' },
+    { skill: 'industrial-automation', per: 0.05, call: 'industry.ts / manufacturing.ts（炉线与制造线周期）' },
+    { skill: 'ai-expert', per: 1, call: 'ai.ts aiCoreCap（每级 +1 枚核心上限）' },
+    { skill: 'navigation', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
+    { skill: 'warp-drive-operation', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
+    { skill: 'acceleration-control', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
+    { skill: 'component-standardization', per: 0.008, call: 'manufacturing.ts materialFactor' },
+    { skill: 'ai-servicing', per: 0.03, call: 'ai.ts（副船采矿循环）' },
+    { skill: 'offline-ops', per: 0.2, call: 'simulation.ts simulateOffline（基础 8 小时）' },
+    { skill: 'station-engineering', per: 0.08, call: 'station.ts engFactor' },
+    { skill: 'salvage-recycling', per: 0.04, call: 'industry.ts（回收炉周期）' },
+    { skill: 'salvage-rigging', per: 0.03, call: 'salvaging.ts（打捞器周期）' },
+    { skill: 'wreck-assaying', per: 0.2, call: 'salvaging.ts assayChanceOf（×1.2/级）' },
+    { skill: 'salvage-refining', per: 0.08, call: 'salvage.ts（保底矿物）' },
+    { skill: 'energy-management', per: 0.03, call: 'combat.ts（激光单发）' },
+    { skill: 'gunnery', per: 0.05, call: 'balance.battle.gunneryDmgPerLevel（跨节点配对）' },
+    { skill: 'fire-control', per: 0.03, call: 'combat.ts（炮台/导弹命中）' },
+    { skill: 'reload-drills', per: 0.04, call: 'combat.ts（装填）' },
+    { skill: 'ammunition-condensing', per: 0.08, call: 'combat.ts（出发预载弹药）' },
+    { skill: 'drone-servicing', per: 0.04, call: 'combat.ts（无人机装填）' },
+    { skill: 'shield-operation', per: 0.04, call: 'combat.ts（护盾容量）' },
+    { skill: 'hull-upgrades', per: 0.04, call: 'combat.ts（甲/结构容量）' },
+    { skill: 'shield-tuning', per: 0.02, call: 'combat.ts tune（护盾三系抗）' },
+    { skill: 'armor-tuning', per: 0.02, call: 'combat.ts tune（装甲三系抗）' },
+    { skill: 'repair-engineering', per: 0.1, call: 'shipyard.ts（停站维修费）' },
+    { skill: 'station-protocol', per: 0.05, call: 'shipyard.ts（停站维修费）' },
+    { skill: 'hull-quick-repair', per: 0.1, call: 'shipyard.ts（停站修理组件恢复量）' },
+    { skill: 'ai-core-dispatch', per: 0.02, call: 'balance.aiCore.dispatchPerLevel（百分点）' },
+    { skill: 'accelerated-learning', per: 0.04, call: 'training.ts trainingTimeFactor' },
+    { skill: 'marketing', per: 0.012, call: 'market.ts marketSellSkillMult' },
+    { skill: 'source-sweeping', per: 0.1, call: 'market.ts SWEEP_PER_LEVEL（×1.1/级）', srcNear: false },
+    { skill: 'secondhand-market', per: 0.02, call: 'market.ts SECONDHAND_PER_LEVEL', srcNear: false },
+    { skill: 'galactic-happenings', per: 0.08, call: 'events.ts eventCadenceFactor + expedition.ts（×1.15/级）' },
+    { skill: 'event-dividend', per: 0.15, call: 'events.ts（事件现金）' },
+    { skill: 'signal-analysis', per: 0.08, call: 'explore.ts scanSkillFactor' },
+    { skill: 'signal-filtering', per: 0.06, call: 'explore.ts scanSkillFactor' },
+    { skill: 'salvage-diving', per: 0.12, call: 'expedition.ts lootFactor + salvaging.ts' },
+    { skill: 'seizure-appraisal', per: 0.1, call: 'encounters.ts（缴获）' },
+    { skill: 'lowsec-survival', per: 0.12, call: 'encounters.ts（被抢上限）' },
+    { skill: 'deep-space-logistics', per: 0.04, call: 'inventory.ts（货仓容量）' },
+    { skill: 'hauler-ops', per: 0.05, call: 'inventory.ts（hauler 族货仓）' },
+    { skill: 'compression', per: 0.06, call: 'inventory.ts（矿/气/冰体积）' },
+    { skill: 'hold-management', per: 0.03, call: 'inventory.ts（货仓容量）' },
+    { skill: 'bounty-hunting', per: 0.08, call: 'expedition.ts bountyRewardFactor' },
+    { skill: 'cartography', per: 0.06, call: null, note: '说明写「前往扫描点的航行耗时 −6%/级」，但扫描任务的**去程已取消**（就地展开），引擎与界面里查无此技能引用——待船长裁决接活或清除' },
+  ]
+  const skillById = new Map(SKILLS.map((s) => [s.id, s]))
+  const claimsOfSkill = (d: string): number[] => [...d.matchAll(/⟦([\d.]+)/g)].map((m) => Number(m[1]))
+  let checked = 0
+  let srcChecked = 0
+  const unwired: string[] = []
+  const registered = new Set<string>()
+  /** 内联常量的**现场复核**：登记表里的每级值必须仍出现在该技能的读取点附近
+   * （说明↔表 只能防"改说明忘改数"，这一步才防"改引擎数忘改说明"）。
+   * `srcNear: false` 的条目 = 数值写在文件级常量里（读取点附近看不到），只做表 ↔ 说明 核对。 */
+  const root = process.cwd()
+  const srcCache = new Map<string, string>()
+  const sourceOf = (call: string): string | null => {
+    const m = call.match(/([a-z0-9-]+\.tsx?)/i)
+    return m ? `packages/core/src/${m[1]}` : null
+  }
+  const nearCheck = (item: { skill: string; per: number | null; call: string | null; srcNear?: boolean }): void => {
+    if (item.per === null || !item.call || item.srcNear === false) return
+    const rel = sourceOf(item.call)
+    if (!rel) return
+    let text = srcCache.get(rel)
+    if (text === undefined) {
+      try {
+        text = readFileSync(join(root, rel), 'utf8')
+      } catch {
+        return
+      }
+      srcCache.set(rel, text)
+    }
+    const needle = `'${item.skill}'`
+    if (!text.includes(needle)) return // 该技能不是在本文件用 id 字面量读取的（如经 balance 表间接引用）——跳过现场复核
+    srcChecked += 1
+    let seen = 0
+    let at = text.indexOf(needle)
+    while (at >= 0) {
+      seen += 1
+      const win = text.slice(Math.max(0, at - 400), at + 400)
+      // 线性 +N%/级 与乘算式 ×(1+N)/级 两种写法都认
+      if (win.includes(String(item.per)) || win.includes(String(Number((1 + item.per).toFixed(4))))) return
+      at = text.indexOf(needle, at + 1)
+    }
+    check(
+      seen === 0,
+      `技能说明契约：${item.skill} 的每级值 ${item.per} 在 ${rel} 的读取点附近已找不到——引擎改了数值（请同步技能说明，并按新值更新本契约登记表）`,
+    )
+  }
+  const verify = (p: Pair): void => {
+    const def = skillById.get(p.skill)
+    if (!def) {
+      check(false, `技能说明契约：${p.from} 指向的技能 ${p.skill} 不在技能目录中`)
+      return
+    }
+    registered.add(p.skill)
+    const claims = claimsOfSkill(def.description)
+    if (claims.length === 0) return
+    checked += 1
+    // 每级值本身，或它的 1~5 倍（满级/阶段值），或"乘算式"×1.1/×1.2 系的 1+每级值
+    const allowed = new Set<number>()
+    for (const lv of [1, 2, 3, 4, 5]) {
+      allowed.add(Number((p.per * 100 * lv).toFixed(4)))
+      allowed.add(Number((p.per * lv).toFixed(4)))
+      allowed.add(Number((1 + p.per * lv).toFixed(4)))
+    }
+    const hit = claims.some((c) => [...allowed].some((a) => Math.abs(a - c) < 0.051))
+    check(hit, `技能说明契约：技能「${def.name}」(${p.skill}) 说明写的是 ⟦${claims.join('% / ')}⟧，而 ${p.from} 是每级 ${p.per}——说明与引擎对不上`)
+  }
+  for (const p of pairs) verify(p)
+  for (const item of INLINE) {
+    registered.add(item.skill)
+    const def = skillById.get(item.skill)
+    if (!def) {
+      check(false, `技能说明契约：内联表里的 ${item.skill} 不在技能目录中`)
+      continue
+    }
+    if (!item.call) {
+      unwired.push(`${def.name}（${item.skill}）：${item.note ?? '说明承诺了效果，但引擎里查无接线'}`)
+      continue
+    }
+    if (item.per === null) continue
+    verify({ skill: item.skill, per: item.per, from: `内联表 · ${item.call}` })
+    nearCheck(item)
+  }
+  // 反向断言：说明里带 ⟦⟧ 的技能必须登记（防新技能悄悄写数）
+  for (const s of SKILLS) {
+    if (claimsOfSkill(s.description).length > 0 && !registered.has(s.id)) {
+      check(false, `技能说明契约：技能「${s.name}」(${s.id}) 说明里有 ⟦数值⟧ 却没在契约里登记来源（引擎为准：补登记或删掉说明里的数）`)
+    }
+  }
+  for (const u of unwired) warn.push(`技能说明契约：${u}`)
+  console.log(
+    `· 技能说明契约：${registered.size} 个技能登记来源（平衡表 ${pairs.length} 条 + 引擎参数对象 6 条 + 内联表 ${INLINE.length} 条），核对 ${checked} 个技能的每级值、其中 ${srcChecked} 条做了引擎现场复核；未接线 ${unwired.length} 个`,
   )
 }
 
