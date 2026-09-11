@@ -88,9 +88,19 @@ function dronePoseAt(
   return { x: station.x, y: station.y, heading: 1 }
 }
 
-/** 被击落的无人机**原地定住**时长（毫秒；船长 2026-09-11：「在返航到一半的途中**原地停止然后爆炸**」）
- *  ——先停住让玩家看清"是这一架被打下来了"，之后才播爆炸（见机群层的击落演出）。 */
-const DRONE_DOWN_FREEZE_MS = 320
+/** 被击落的无人机**滑向爆炸点**的时长（毫秒）。船长 2026-09-11：「**爆炸的时间点定在返航到 1/3
+ *  的途中**，这样才更能看清」——击落后机体**继续朝自己的母舰方向飘 1/3 段**再炸（不是原地炸），
+ *  这样爆炸点与"被打中的那一刻"分开，玩家更容易看清是哪一架没了。
+ *  取值 = 返航航段（`DRONE_SORTIE_BACK_MS`）的 1/3。 */
+const DRONE_DOWN_FREEZE_MS = Math.round(DRONE_SORTIE_BACK_MS / 3)
+
+/** 击落后的**爆炸点**：从被打中的位置朝自己的母舰方向**挪 1/3 段**（船长「返航到 1/3 的途中」）。 */
+function oneThirdToward(
+  from: { x: number; y: number },
+  home: { x: number; y: number },
+): { tx: number; ty: number } {
+  return { tx: from.x + (home.x - from.x) / 3, ty: from.y + (home.y - from.y) / 3 }
+}
 
 /**
  * **敌方机群姿态**（2026-09-11 机群批 S5）——我方 `dronePoseAt` 的**完整镜像**：
@@ -196,7 +206,9 @@ const meSpeedRef = useRef(200)
   /** 上次写入的 transform（值未变就不写，避免每帧无谓的样式失效与重排） */
   const droneWritesRef = useRef<Map<string, string>>(new Map())
   /** 机群被点防击落的坠落演出（2026-09-10）：登记"刚被打掉那架"的落点，CSS 演完即清（只动 transform/opacity） */
-  const droneDownRef = useRef<Array<{ key: number; artId: string; x: number; y: number; born: number; foe?: boolean }>>([])
+  const droneDownRef = useRef<
+    Array<{ key: number; artId: string; x: number; y: number; tx: number; ty: number; born: number; foe?: boolean }>
+  >([])
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -615,7 +627,17 @@ const meSpeedRef = useRef(200)
             const alive = arcs?.foeDrones?.find((w) => w.tag === fx.tag && w.artId === artId)?.alive ?? 0
             const lane = Math.max(0, Math.min(alive, DRONE_SHOW_MAX - 1))
             const pose = foePoseAt(model, lane, st, layDown, elapsed)
-            droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now, foe: true })
+            const tk = droneTakeoff(lane)
+            const home = { x: (layDown.foe[0]?.x ?? layDown.me.x) - tk.x, y: (layDown.foe[0]?.y ?? layDown.me.y) + tk.y }
+            droneDownRef.current.push({
+              key: keyRef.current++,
+              artId,
+              x: pose.x,
+              y: pose.y,
+              ...oneThirdToward(pose, home),
+              born: now,
+              foe: true,
+            })
           } else {
             const prevShow = downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
             const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
@@ -623,7 +645,16 @@ const meSpeedRef = useRef(200)
             const st = droneSortieRef.current.get(artId)
             const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
             const pose = dronePoseAt(model, lane, st, layDown, elapsed)
-            droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now })
+            const tk = droneTakeoff(lane)
+            const home = { x: layDown.me.x + tk.x, y: layDown.me.y + tk.y }
+            droneDownRef.current.push({
+              key: keyRef.current++,
+              artId,
+              x: pose.x,
+              y: pose.y,
+              ...oneThirdToward(pose, home),
+              born: now,
+            })
           }
         }
         continue
@@ -1295,14 +1326,19 @@ const meSpeedRef = useRef(200)
                 //    原地停止然后爆炸」）——先让机体**停在被打中的那一刻的位置**约 0.32 秒
                 //    （不消失、不动），玩家才看得清"是这一架被打下来了"，然后才炸。
                 if (age < DRONE_DOWN_FREEZE_MS) {
+                  // ① **继续往回飘 1/3 段**（船长：「爆炸的时间点定在返航到 1/3 的途中」）——
+                  //    机体在被打中后的 `DRONE_DOWN_FREEZE_MS` 内从被打中的位置滑向爆炸点，然后才炸。
+                  const u = Math.max(0, Math.min(1, age / DRONE_DOWN_FREEZE_MS))
+                  const gx = d.x + (d.tx - d.x) * u
+                  const gy = d.y + (d.ty - d.y) * u
                   return (
                     <span
                       key={d.key}
                       className="app-bts-drone"
                       style={{
                         position: 'absolute',
-                        left: d.x - lay.me.x,
-                        top: d.y - lay.me.y,
+                        left: gx - lay.me.x,
+                        top: gy - lay.me.y,
                         color: model.tint,
                         transform: 'translate(-50%, -50%)',
                         opacity: 0.9,
@@ -1326,7 +1362,7 @@ const meSpeedRef = useRef(200)
                   <span
                     key={d.key}
                     className={`app-bts-drone-wreck${d.foe ? ' is-foe' : ''}`}
-                    style={{ left: d.x - lay.me.x, top: d.y - lay.me.y, color: model.tint }}
+                    style={{ left: d.tx - lay.me.x, top: d.ty - lay.me.y, color: model.tint }}
                   >
                     {/* 敌机（警戒机）的击落演出放大 1.5×（2026-09-11 船长："完全无法察觉"）——
                         族色残铁棕 + 更大的冲击环，让"打下来了"这件事在满屏弹道里也看得见 */}
