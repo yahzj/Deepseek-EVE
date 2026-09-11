@@ -42,7 +42,9 @@ const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => 
   factionId: 'archive',
   deptId: 'dept-recall',
   kind: '教程',
-  subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
+  // 主题分隔条用「｜」而不是「：」——步骤标题自带冒号（如「采集：维持运转」），
+  // 原写法会出现「检索重启 1/7：采集：维持运转」两个冒号（2026-09-11 船长批准改分隔符）
+  subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}｜${s.title}`,
   body: s.lines,
   trigger: { kind: 'tutorial', step: s.step },
   hint: {
