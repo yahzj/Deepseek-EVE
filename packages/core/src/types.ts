@@ -486,9 +486,16 @@ export interface EncounterBalance {
   ambushChancePerSec: number
   /** 低安扫描中遇袭率乘数（船长 2026-09-05 定：×1.5，封顶 0.9；扫描即暴露、无入场缓冲） */
   scanAmbushMul: number
-  /** 受损档：耐久扣损区间（底 clamp 5% 绝不弃船） */
-  duraLossMin: number
-  duraLossMax: number
+  /**
+   * 受损档「被咬一口」的伤害系数（**秒**；船长 2026-09-11 定：伤害按**敌人火力**折算）。
+   * 一口伤害 HP = 敌群火力代理（`battle.foeDpsPerThreat` × 威胁 = 敌方总火力/秒）× 本系数，
+   * 施加时**先扣装甲、吸完再进结构**（与日志「被咬下一块装甲」同口径）。
+   * 取代旧 `duraLossMin/duraLossMax`（结构 −5%~15%，与敌群强度无关，2026-09-11 作废）。
+   */
+  hitFirepowerSec: number
+  /** 撤退线（船长 2026-09-11 定）：遭遇了结后**结构低于此比例**的被袭船立刻停手返港待命
+   *  （主控停作业 / 副船中止任务；**不自动维修**，回港等玩家决定）；同时作为低安遭遇战的自动脱离阈值 */
+  retreatHullFrac: number
   /** 被抢：至多损失船上货物比例（无货则抢钱包） */
   lootTakenMaxPct: number
   /** 被抢（无货时）：至多损失钱包 ISK 比例 */

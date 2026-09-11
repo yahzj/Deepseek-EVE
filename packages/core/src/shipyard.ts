@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 舰队（v7 船坞）：拥有/丢失舰船、切换驾驶、耐久与维修。
  * 每艘船的 货仓/装备/耐久 都存在 fleet[uid] 里，随船生死。
  * v17（T5-B）：fleet 键 = 实例 uid——同型可多艘（第 1 艘 = 船型 id，
@@ -310,6 +310,17 @@ function layerCaps(
   const def = fleetDefOf(state, ctx, shipId)
   if (!spec || !def) return null
   return { capA: spec.hp.a, capH: spec.hp.h, baseA: def.armorHp ?? 0, baseH: def.hullHp ?? 0 }
+}
+
+/** 装甲/结构层的满值（含模块与技能放大）——对外只读口。
+ *  与维修、修理组件同一把尺（`layerCaps`）；低安遇袭「先扣装甲再进结构」按它换算 HP
+ *  （2026-09-11 船长定：伤害改为按敌人火力折算，见 `encounters.ts`）。 */
+export function hullLayerCaps(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): { capA: number; capH: number; baseA: number; baseH: number } | null {
+  return layerCaps(state, ctx, shipId)
 }
 
 /** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 抢修工程学（+10%/级） */

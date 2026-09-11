@@ -11,8 +11,17 @@
  * - 形态：离线（含大步离线结算）直接文字三档结算；在线命中产生"伏击待决"邀约，
  *   玩家可「迎战」（进入 V12 实时战斗，自动打完）或「快速脱离」；60 秒（游戏时间）未响应
  *   自动按文字结算——超时判定用 gameMs，离线大步长天然瞬间超时，无需在线标志；
- * - 文字三档（Q2 甲）：击退（缴获 ISK）/ 受损（耐久 −5%~15%，底 clamp 5% 绝不弃船）/
+ * - 文字三档（Q2 甲）：击退（缴获 ISK）/ 受损（**按敌人火力**扣装甲与结构，见下）/
  *   被抢（至多 30% 船上货，无货抢至多 5% 钱包）；
+ * - **2026-09-11 船长定（低安遇袭重做，玩家反馈"副船遇袭耐久大幅下降后不会自动维修"）**：
+ *   ① 受损档不再是「结构 −5%~15%」的固定骰 —— 一口伤害 = **敌群火力 × `encounter.hitFirepowerSec`**
+ *      （敌群火力 = 威胁 × `battle.foeDpsPerThreat`，与敌方总火力同一常量），
+ *      施加时**先扣装甲、吸完再进结构**（旧实现直接扣结构、装甲不动，与日志"被咬下一块装甲"不符——真 BUG）；
+ *   ② **结构低于 `encounter.retreatHullFrac`（50%）即撤退**：主控停掉低安作业（采矿/打捞/扫描）并即时
+ *      返航最近已建成站，副船中止 AI 任务召回回港**待命**；**不自动维修、不自动再派**（回港等玩家决定）；
+ *   ③ 低安遭遇的「迎战」也挂同一条 50% 自动脱离保险（`fightEncounter` 写 `hullEscapeFrac`），
+ *      否则应战会一直打到弃船；自动脱离 = 轻损脱离（无缴获、无额外扣损），随后同样走撤退判定；
+ *   ④ 结构底线 5% 保留（**绝不弃船**）；
  * - **缴获（2026-09-09 船长定）：击退与应战全歼同额 = 伏击敌群悬赏赏金 × 50%**
  *   （缴获评估学 ×1.1/级照旧；只给 ISK，不计首胜/声望，防与悬赏体系双吃）；
  *   胜利（两路径皆）向事发星系注入残骸密度（威胁 ×0.4，与远征胜利同款）——被击毁的
@@ -34,6 +43,113 @@ import {
   wreckDensityOf,
 } from './salvage'
 import { shipDisplayName } from './instances'
+import { hullLayerCaps } from './shipyard'
+import { stopMining } from './mining'
+import { stopSalvageOp } from './salvaging'
+import { stopScan } from './explore'
+import { startTransitHome } from './location'
+import { cancelAiTask } from './ai'
+
+/** 结构底线：绝不弃船（沿用旧口径 5%） */
+const HULL_FLOOR_FRAC = 0.05
+
+/** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
+ *  敌群火力 = 威胁 × `battle.foeDpsPerThreat`（与敌方总 DPS 同一常量，0.8 = 每秒 0.8 HP/威胁）。 */
+function ambushHitHp(ctx: SimContext, threat: number): number {
+  const foeDps = Math.max(1, threat) * ctx.balance.battle.foeDpsPerThreat
+  return Math.max(1, foeDps * ctx.balance.encounter.hitFirepowerSec)
+}
+
+/** 受击结算结果（日志用：扣了多少、剩多少，都是比例 0~1） */
+interface HullHit {
+  /** 剩余装甲比例 */
+  armorTo: number
+  /** 剩余结构比例 */
+  hullTo: number
+  /** 本口被吃掉的装甲比例 */
+  armorLost: number
+  /** 本口被吃掉的结构比例 */
+  hullLost: number
+  /** 是否已触到 5% 结构底线（绝不弃船） */
+  floored: boolean
+}
+
+/**
+ * 施加一口伤害（船长 2026-09-11 定）：**先扣装甲、吸完再进结构**，结构不低于 5%（绝不弃船）。
+ * 换算用 `hullLayerCaps`（与维修、修理组件同一把尺：含模块与技能放大的层满值）。
+ */
+function applyArmorFirstDamage(state: GameState, ctx: SimContext, shipId: string, hp: number): HullHit | null {
+  const ship = state.fleet[shipId]
+  if (!ship) return null
+  const caps = hullLayerCaps(state, ctx, shipId)
+  const capA = caps && caps.capA > 0 ? caps.capA : 0
+  const capH = caps && caps.capH > 0 ? caps.capH : 1
+  const round = (v: number): number => Math.round(v * 1000) / 1000
+  const armorHp = Math.max(0, ship.armorPct ?? 1) * capA
+  const hullHp = Math.max(0, ship.durability) * capH
+  const eatA = Math.min(armorHp, hp)
+  const rest = Math.max(0, hp - eatA)
+  const armorAfter = armorHp - eatA
+  const floorHp = capH * HULL_FLOOR_FRAC
+  const hullAfter = Math.max(floorHp, hullHp - rest)
+  const hit: HullHit = {
+    armorTo: capA > 0 ? round(armorAfter / capA) : 0,
+    hullTo: round(hullAfter / capH),
+    armorLost: capA > 0 ? round((armorHp - armorAfter) / capA) : 0,
+    hullLost: round((hullHp - hullAfter) / capH),
+    floored: rest > 0 && hullAfter <= floorHp + 1e-9,
+  }
+  ship.armorPct = hit.armorTo
+  ship.durability = hit.hullTo
+  return hit
+}
+
+const pct = (v: number): number => Math.round(v * 100)
+
+/** 受损档日志（装甲先扣，故先报装甲、再报结构；与既有"被咬下一块装甲"文案同口径） */
+function hitLogText(shipName: string, galaxyName: string, foeName: string, suffix: string, hit: HullHit): string {
+  const hullPart = hit.hullLost > 0 ? `、结构 -${pct(hit.hullLost)}%` : ''
+  return `⚔ 遭遇（${galaxyName}·${foeName}）：${shipName} 寡不敌众被咬下一块装甲${suffix}——装甲 -${pct(hit.armorLost)}%${hullPart}（现 装甲 ${pct(hit.armorTo)}% / 结构 ${pct(hit.hullTo)}%）。`
+}
+
+/**
+ * 撤退判定（船长 2026-09-11 定）：袭击了结后，**结构低于 50%** 的被袭船立刻停手返港**待命**——
+ * 主控：停掉低安作业（采矿/打捞/扫描）并即时返航最近已建成站（既有"返航即时到站"口径，到港自动卸货）；
+ * 副船：中止 AI 任务召回回港（既有召回口径，核心归还核心库）。
+ * **不自动维修、不自动再派**：回港后由玩家决定怎么修（副船耐久 <50% 本就不能再派任务）。
+ * 返回是否确实撤退（用于日志与测试）。
+ */
+function retreatIfHullLow(state: GameState, ctx: SimContext, shipId: string): boolean {
+  const ship = state.fleet[shipId]
+  if (!ship) return false
+  const frac = ctx.balance.encounter.retreatHullFrac
+  if (ship.durability >= frac) return false
+  const name = shipDisplayName(state, ctx, shipId)
+  const line = `结构低于 ${pct(frac)}%`
+  if (shipId !== state.shipId) {
+    // 副船：中止任务召回回港待命（核心归还核心库）
+    if (!cancelAiTask(state, shipId, ctx)) return false
+    addLog(state, 'warn', `⚠ [AI·${name}] ${line}——已中止任务召回回港待命（请维修后再派；此状态下无法再派任务）。`)
+    return true
+  }
+  // 主控：先停手（作业状态各自清理），再走既有"返航最近已建成站"（即时到站 + 自动卸货）
+  if (state.mining.active) stopMining(state, ctx)
+  if (state.salvaging.active) stopSalvageOp(state, ctx)
+  if (state.scanning.active && state.scanning.returning !== true) stopScan(state, ctx)
+  let home = state.awayGalaxy === null
+  if (!home && !state.expedition.active) {
+    const r = startTransitHome(state, ctx)
+    home = r.ok || state.awayGalaxy === null
+  }
+  addLog(
+    state,
+    'warn',
+    home
+      ? `⚠ ${name} ${line}——已自动停手返港（回港后请及时维修）。`
+      : `⚠ ${name} ${line}——已自动停手，正在返航途中（到港后请及时维修）。`,
+  )
+  return true
+}
 
 /** 旧档遗留兜底档位（data ANOMALIES hidden 条目）：仅无 anomalyId 的旧遭遇应战/命名用；
  * 新伏击一律抽当地可见悬赏敌群，不再走此表 */
@@ -228,19 +344,12 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
       `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
     )
   } else if (r < wWin + wLose) {
-    const loss = Math.round((bal.duraLossMin + nextRandom(state.rng) * (bal.duraLossMax - bal.duraLossMin)) * 1000) / 1000
-    if (fleetShip) {
-      const after = Math.round((fleetShip.durability - loss) * 1000) / 1000
-      fleetShip.durability = after <= 0 ? 0.05 : Math.min(1, after)
-      if (after <= 0) {
-        addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
-      }
+    // 受损：一口 = 敌群火力 × hitFirepowerSec，**先扣装甲、吸完再进结构**（2026-09-11 船长定）
+    const hit = applyArmorFirstDamage(state, ctx, shipId, ambushHitHp(ctx, enc.threat))
+    if (hit && hit.floored) {
+      addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
     }
-    addLog(
-      state,
-      'warn',
-      `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 寡不敌众被咬下一块装甲${suffix}——耐久 -${Math.round(loss * 100)}%（现 ${Math.round((fleetShip?.durability ?? 1) * 100)}%）。`,
-    )
+    if (hit) addLog(state, 'warn', hitLogText(shipName, galaxyName, enc.name, suffix, hit))
   } else {
     // 被抢：至多 30% 船上货；无货则抢至多 5% 钱包
     let takenUnits = 0
@@ -269,6 +378,37 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     )
   }
   clearEncounter(state)
+  // 撤退判定（2026-09-11 船长定）：胜、败、被抢都判——结构低于 50% 就停手返港待命
+  retreatIfHullLow(state, ctx, shipId)
+}
+
+/**
+ * 遭遇战自动脱离结算（船长 2026-09-11 定：低安遭遇也挂"结构损失过半自动脱离"保险）：
+ * 轻损脱离——退还弹药/修理组件、落盘承伤、**无缴获、无额外扣损**（战斗内实际承伤照留），
+ * 随后同样走撤退判定（此时结构已 <50%，必然触发返港待命）。
+ */
+function settleEscape(state: GameState, ctx: SimContext): void {
+  const enc = state.encounter
+  const shipId = enc.shipId ?? state.shipId
+  const shipName = shipDisplayName(state, ctx, shipId)
+  const galaxyName = ctx.galaxies.get(enc.galaxyId ?? '')?.name ?? ''
+  const battle = enc.battle
+  if (battle) {
+    settleDroneLosses(state, ctx, shipId, battle)
+    refundAmmo(state, battle.ammo, battle.ammoIds)
+    refundRepairKits(state, battle.repair)
+    persistFleetHullDamage(state, ctx, shipId, battle)
+  }
+  const ship = state.fleet[shipId]
+  addLog(
+    state,
+    'warn',
+    `⚔ 遭遇战自动脱离（${galaxyName}·${enc.name}）：${shipName} 结构损失过半，及时退出交火（现 装甲 ${Math.round(
+      (ship?.armorPct ?? 1) * 100,
+    )}% / 结构 ${Math.round((ship?.durability ?? 1) * 100)}%）。`,
+  )
+  clearEncounter(state)
+  retreatIfHullLow(state, ctx, shipId)
 }
 
 /** 遭遇战（玩家应战后）推进与结算：胜 → 缴获；败 → 受损 + 大概率被抢 */
@@ -302,12 +442,9 @@ function settleFight(state: GameState, ctx: SimContext): void {
       `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
     )
   } else {
-    const loss = Math.round((bal.duraLossMin + nextRandom(state.rng) * (bal.duraLossMax - bal.duraLossMin)) * 1000) / 1000
-    if (fleetShip) {
-      const after = Math.round((fleetShip.durability - loss) * 1000) / 1000
-      fleetShip.durability = after <= 0 ? 0.05 : Math.min(1, after)
-      if (after <= 0) addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
-    }
+    // 失利附加扣损：与文字结算同一口径（一口 = 敌群火力 × hitFirepowerSec，装甲先吃）
+    const hit = applyArmorFirstDamage(state, ctx, shipId, ambushHitHp(ctx, enc.threat))
+    if (hit && hit.floored) addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
     let takenUnits = 0
     if (fleetShip && nextRandom(state.rng) < 0.5) {
       const total = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
@@ -328,12 +465,18 @@ function settleFight(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'warn',
-      `⚔ 遭遇战失利（${galaxyName}·${enc.name}）：${shipName} 不敌来敌——耐久 -${Math.round(loss * 100)}%${
+      `⚔ 遭遇战失利（${galaxyName}·${enc.name}）：${shipName} 不敌来敌——${
+        hit
+          ? `装甲 -${pct(hit.armorLost)}%${hit.hullLost > 0 ? `、结构 -${pct(hit.hullLost)}%` : ''}（现 装甲 ${pct(hit.armorTo)}% / 结构 ${pct(hit.hullTo)}%）`
+          : '船体带着损伤'
+      }${
         takenUnits > 0 ? `，货仓被劫走 ${takenUnits.toLocaleString('zh-CN')} 单位` : ''
       }，狼狈脱离。`,
     )
   }
   clearEncounter(state)
+  // 撤退判定（2026-09-11 船长定）：胜、败都判——结构低于 50% 就停手返港待命
+  retreatIfHullLow(state, ctx, shipId)
 }
 
 /**
@@ -367,6 +510,11 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
         return
       }
       advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, foeKeyOf(enc), null)
+      // 自动脱离（2026-09-11 船长定：遭遇战挂同一个 50% 保险）→ 轻损脱离结算，随后撤退返港待命
+      if (enc.battle.autoEscaped) {
+        settleEscape(state, ctx)
+        return
+      }
       if (enc.battle.ended) settleFight(state, ctx)
       return
     }
@@ -463,6 +611,9 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。' }
   const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs)
   if (!battle) return { ok: false, error: '遭遇异常，无法开战。' }
+  // 连续作战保险（船长 2026-09-11 定：低安遭遇同样适用）——结构剩余低于撤退线（50%）即自动脱离，
+  // 绝不拖到弃船（旧行为：应战一直打到分胜负，可能把副船打没）
+  battle.hullEscapeFrac = ctx.balance.encounter.retreatHullFrac
   enc.battle = battle
   addLog(state, 'info', '已应战：遭遇战打响（引擎自动推演，战报稍后）。')
   return { ok: true }

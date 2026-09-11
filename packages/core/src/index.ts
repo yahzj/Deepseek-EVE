@@ -221,6 +221,7 @@ export {
   repairWithKits,
   useOneRepairKit,
   renameShip,
+  hullLayerCaps,
 } from './shipyard'
 
 export { fleetDefOf, shipDisplayName } from './instances'
