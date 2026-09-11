@@ -228,7 +228,7 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
  * 与 `content:check`「敌速口径契约」互为独立写法（引擎实算 vs 内容表校验）。
  */
 describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）', () => {
-  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 544/544/398/277', () => {
+  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 544/544/398/297', () => {
     const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
     const got = FOE_SHIPS.map((ship) => ({
       id: ship.id,
@@ -251,7 +251,7 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-alien-starcore-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
       { id: 'foe-alien-rift-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
       { id: 'foe-alien-starcore-adult', tier: 2, speed: 398 }, // 2 驱逐 295 × 1.35（> A 同档 325）
-      { id: 'foe-alien-maw', tier: 4, speed: 277 }, // **T4 巨兽**：205 × 1.35（慢而硬，用冲锋补偿）
+      { id: 'foe-alien-maw', tier: 4, speed: 297 }, // **T4 巨兽**：205 × 297/205（慢而硬，用冲锋补偿；船长「单独上调 20 点」）
     ])
   })
 
@@ -702,7 +702,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(boss.weapons[0]!.shotDmg).toBe(401) // 501 × 80% = 400.8 → 401
     expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(Array.from({ length: 10 }, () => 10))
     expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(501) // 总单发取整后仍精确 = 501
-    expect(boss.speedMps).toBe(277) // 205 × 1.35（船长「巨兽提速降为 1.35」）
+    expect(boss.speedMps).toBe(297) // 205 × 297/205（船长「将首领速度**单独上调 20 点**」：277 → 297）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
     expect(boss.weapons[0]!.maxRangeM).toBe(2713) // 射程加成已**回收**（回原值，不再覆盖标准站位 3,220m）
     expect(minions.every((x) => x.weapons[0]!.maxRangeM === 2713)).toBe(true) // 小虫 = 卡带
