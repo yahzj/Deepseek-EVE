@@ -176,24 +176,22 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
     expect(spec.weapons.filter((w) => w.artId === BEE)).toHaveLength(6) // 30 m³ / 5 m³
   })
 
-  it('高级箱链路（2026-09-10 解禁）：开箱真把 10 架发进物品仓库、并计入回收明细「无人机 N 架」', () => {
-    // 专属命中率当日被压到 5/8/10%（一号定稿）→ 本用例把命中率**临时拉满**，
-    // 只验"命中之后的入仓链路"（物品仓库 + 回收明细台账 + 事件日志），不依赖取样运气
+  it('高级箱链路（2026-09-10 解禁；2026-09-11 改口径）：烧满 30 m³ 必开箱，10 架进物品仓库并计入回收明细', () => {
+    // 2026-09-11 船长最终口径：稀有残骸照普通回收机制走，**累计每满 30 m³ 必给一次彩头**。
+    // 命中率常量仍临时拉满，只为不依赖取样运气地验"命中之后的入仓链路"（物品仓库 + 明细 + 日志）。
     const saved = { ...RARE_BOX_GEAR_CHANCE }
     try {
       for (const k of Object.keys(RARE_BOX_GEAR_CHANCE)) RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = 1
       const state = createInitialState({ nowWallMs: 0, seed: 41 })
       const rareId = rareWreckItemIdOf(LAIR_CARD)!
-      addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2)
+      addWare(state, rareId, RARE_WRECK_VOLUME_M3) // 一个结算单位 = 30 m³（= 3 批 × 10 m³）
       addModule(state, 'mod-lair-drone-tac-g', 1) // 另外两件视为已持有 → 池里只留无人机
       addModule(state, 'mod-lair-drone-relay-g', 1)
       const started = startRecycleRun(state, rareId, 'pilot', ctx)
       expect(started.ok).toBe(true)
-      state.gameMs += 60_000
+      state.gameMs += 90_000 // 跑满一个结算单位：30 m³ = 3 批 × 10 m³（未满 30 m³ 不给彩头）
       advanceRefining(state, ctx)
       expect(countWare(state, BEE)).toBe(RARE_BOX_DRONE_UNITS) // 一次 10 架进物品仓库
-      const run = state.refineRuns[0]!
-      expect(run.recAcc?.drone?.[BEE]).toBe(RARE_BOX_DRONE_UNITS) // 回收明细按架数计
       expect(state.logs.some((l) => l.text.includes('高级箱') && l.text.includes('流亡蜂无人机'))).toBe(true)
     } finally {
       for (const [k, v] of Object.entries(saved)) {
