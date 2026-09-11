@@ -25,6 +25,7 @@ import {
   SHIP_BLUEPRINTS,
   SHIPS,
   ANOMALIES_FLAVORED,
+  FOE_SHIPS,
   RARITY_TIER,
   SKILLS,
   DRONE_ROLE_SPECS,
@@ -67,6 +68,7 @@ import {
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
+  foeLayerSplit,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -1207,11 +1209,29 @@ for (const m of MODULES) {
       kite: [0.6, 0.85],
     }
     let speedCounted = 0
+    let speedShipPath = 0
     for (const def of ANOMALIES_FLAVORED) {
+      // 舰级路径（2026-09-11）：速度由**舰级绝对值**决定，故不再要求逐卡 foeSpeedMps；
+      // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
+      const mains = (def.ships ?? []).filter((s) => s.escort !== true)
+      if (mains.length > 0) {
+        speedShipPath++
+        for (const slot of mains) {
+          const spd = Math.round(slot.ship.speedMps * (slot.speedMul ?? 1))
+          const tactic = slot.ship.tactic
+          const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
+          const ratio = (spd * foeAgi) / refCombat
+          check(
+            ratio >= band[0] && ratio <= band[1],
+            `敌速口径契约：${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越界（应 ${band[0]}~${band[1]}×；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+          )
+        }
+        continue
+      }
       const spd = def.foeSpeedMps
       check(
         spd !== undefined && spd > 0,
-        `敌速口径契约：${def.name} 未显式声明 foeSpeedMps（2026-09-10 起全卡逐卡标定，见设计稿 enemy-speed-retune-20260910.md）`,
+        `敌速口径契约：${def.name} 未显式声明 foeSpeedMps（2026-09-10 起全卡逐卡标定，见设计稿 enemy-speed-retune-20260910.md；舰级路径卡改为引用舰级速度）`,
       )
       if (spd === undefined) continue
       speedCounted++
@@ -1224,7 +1244,102 @@ for (const m of MODULES) {
       )
     }
     console.log(
-      `· 敌速口径契约：${speedCounted} 张敌军卡逐卡显式标定、比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+      `· 敌速口径契约：${speedCounted} 张逐卡显式标定 + ${speedShipPath} 张引用舰级速度，比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+    )
+  }
+
+  /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
+   * ① **引用有效**：卡上每个编成条目的舰级必须登记在 `FOE_SHIPS` 表内（禁止内联随手造舰级）；
+   * ② **族一致**：舰级 `family` 必须等于卡的 `foeFamily`；
+   * ③ **声明一致**：卡面 `tactic` / `defProfile` / `dmgMix` 必须与"实际会建出的主体单位"一致
+   *    （舰级路径下这三项是**卡面口径**，与舰级定义重复，故用契约锁死，防两边漂移）；
+   * ④ **编成合法**：至少一条非僚机条目（要有主体）。 */
+  {
+    const known = new Set(FOE_SHIPS.map((s) => s.id))
+    const normMix = (m?: Partial<Record<string, number>>): string =>
+      Object.entries(m ?? {})
+        .filter(([, w]) => (w ?? 0) > 0)
+        .sort(([x], [y]) => x.localeCompare(y))
+        .map(([k, w]) => `${k}:${w}`)
+        .join(',')
+    let shipCards = 0
+    let slotTotal = 0
+    let mixed = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      const ships = def.ships
+      if (!ships || ships.length === 0) continue
+      shipCards++
+      slotTotal += ships.length
+      if (new Set(ships.map((x) => x.ship.id)).size > 1) mixed++
+      for (const slot of ships) {
+        check(
+          known.has(slot.ship.id),
+          `舰级契约：${def.name} 引用了未登记的舰级 ${slot.ship.id}（须登记在 packages/data/src/foe-ships.ts）`,
+        )
+        if (def.foeFamily) {
+          check(
+            slot.ship.family === def.foeFamily,
+            `舰级契约：${def.name}（族 ${def.foeFamily}）引用了族 ${slot.ship.family} 的舰级「${slot.ship.name}」`,
+          )
+        }
+      }
+      const mains = ships.filter((x) => x.escort !== true)
+      check(mains.length >= 1, `舰级契约：${def.name} 没有任何非僚机编成条目（至少需要一艘主体）`)
+      const prime = mains[0]
+      if (prime && def.tactic) {
+        for (const m of mains) {
+          check(
+            m.ship.tactic === def.tactic,
+            `舰级契约：${def.name} 卡面战术 ${def.tactic} 与主体舰级「${m.ship.name}」的 ${m.ship.tactic} 不一致`,
+          )
+        }
+      }
+      if (prime && def.defProfile) {
+        const want = foeLayerSplit(def.defProfile)
+        const got = prime.ship.split
+        check(
+          Math.abs(want.s - got.s) < 1e-9 && Math.abs(want.a - got.a) < 1e-9 && Math.abs(want.h - got.h) < 1e-9,
+          `舰级契约：${def.name} 卡面血型 ${def.defProfile}（${want.s}/${want.a}/${want.h}）与主体舰级「${prime.ship.name}」（${got.s}/${got.a}/${got.h}）不一致`,
+        )
+      }
+      if (prime && def.dmgMix) {
+        const eff = prime.dmgMix ?? prime.ship.dmgMix
+        check(
+          normMix(def.dmgMix) === normMix(eff),
+          `舰级契约：${def.name} 卡面伤害构成（${normMix(def.dmgMix)}）与主体舰级有效构成（${normMix(eff)}）不一致`,
+        )
+      }
+    }
+    console.log(
+      `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致`,
+    )
+  }
+
+  /* ── 族→战术契约（2026-09-11 加）──
+   * 船长 2026-09-11 定 A 族性格「**鱼龙混杂，所以应该各个战术的敌人都有**」→ A 族三种战术全合法。
+   * 其余族正按字母顺序逐族商讨中，**只登记已裁定的族**，未登记 = 不校验（不预设、不猜）。 */
+  {
+    const FAMILY_TACTICS: Partial<Record<string, readonly string[]>> = {
+      A: ['brawl', 'orbit', 'kite'], // 鱼龙混杂（船长 2026-09-11）
+    }
+    let checked = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      const allow = def.foeFamily ? FAMILY_TACTICS[def.foeFamily] : undefined
+      if (!allow) continue
+      const tactics =
+        def.ships && def.ships.length > 0
+          ? def.ships.filter((x) => x.escort !== true).map((x) => x.ship.tactic)
+          : [def.tactic ?? 'orbit']
+      for (const t of tactics) {
+        checked++
+        check(
+          allow.includes(t),
+          `族→战术契约：${def.name}（族 ${def.foeFamily}）用了战术 ${t}，超出该族已裁定的允许范围 [${allow.join(' / ')}]`,
+        )
+      }
+    }
+    console.log(
+      `· 族→战术契约：${checked} 处族内战术声明均在已裁定范围内（当前仅 A 族已裁定：鱼龙混杂，三种战术全允许）`,
     )
   }
 }

@@ -14,10 +14,19 @@
 
 import type { AnomalyDef } from '@whale/core'
 import { withRecycleFlavor } from './salvageFlavors'
+import {
+  FOE_SHIP_PIRATE_CORVETTE,
+  FOE_SHIP_PIRATE_SKIFF,
+  FOE_SHIP_PIRATE_SNIPER,
+} from './foe-ships'
 
 export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-training',
+    // 2026-09-11 族系单一真相源（船长定案）：本卡原先**美术侧登记为 B、数据侧 `foeFamily` 为空**
+    // （`shipArt.tsx` 的硬编码 `FOE_FAMILY` 与数据字段各写各的）——现按数据侧补齐为 B，
+    // 并删掉美术侧那张硬编码表，敌族一律由 `AnomalyDef.foeFamily` 推导（口径统一）。
+    foeFamily: 'B',
     name: '演习场讨伐令',
     galaxyId: 'galaxy-hub',
     threat: 6,
@@ -38,8 +47,10 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '边境海盗', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
-    foeHpOverride: 150, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
-    foeSpeedMps: 351, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.20×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 257
+    // 2026-09-11 舰级表试点（船长定案「敌舰配置表 + 卡上修正 + 允许混编」）：本卡改走**舰级路径**，
+    // 原 `foeHpOverride 150` / `foeSpeedMps 351` **退场**——数值一律由一档舰级「海盗快艇」供给
+    // （绝对值见 `foe-ships.ts`），卡上只留编成与修正。
+    ships: [{ ship: FOE_SHIP_PIRATE_SKIFF }],
     galaxyId: 'galaxy-kor',
     threat: 12,
     tactic: 'brawl',
@@ -78,14 +89,24 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '赤潮劫掠团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族次强（红环航道）
     name: '赤潮劫掠舰队',
-    foeHpOverride: 340, // 巡洋时代复调轮 r1（2026-09-09）：B2 墙点——S1 虎鲨4MK2 中位胜率 60%→目标 ≥85%（压血缩磨损，原 410）
+    // 舰级路径（2026-09-11 试点）：三档「劫掠狙击舰」的**变体**——基准 268.75 血 / 41 单发 /
+    // 201 速 / 11316 射程上限，本条按精确倍率复现原值；原 `foeDmgMul 0.27`（逐卡伤害压制补丁）
+    // **随本改造退场**，伤害改由舰级单发 × 倍率直接表达；主系覆写为能量（缴获改装的能量炮）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        hpMul: 340 / 268.75,
+        dmgMul: 29 / 41,
+        speedMul: 204 / 201,
+        rangeMul: 12021 / 11316,
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+    ],
     galaxyId: 'galaxy-redring',
     threat: 34,
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    foeDmgMul: 0.27, // 巡洋时代复调轮 r3（2026-09-09）：kite 墙点顺滑——S1 中位 80%→≥85%（磨损再降档，r2=0.30 后 80%）
-    foeSpeedMps: 204, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 151）
     standingReq: 3,
     standingGain: 1,
     rewardIsk: 75000,
@@ -250,6 +271,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeSpeedMps: 307, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.05×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 282（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-cinder',
     threat: 42,
+    tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
     standingReq: 6,
     standingGain: 2,
     rewardIsk: 150_000,
@@ -268,6 +290,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeSpeedMps: 316, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.08×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 288（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-echo',
     threat: 52,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 6,
     standingGain: 2,
     rewardIsk: 170000,
@@ -287,6 +310,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeSpeedMps: 327, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.12×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 316（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-nadir',
     threat: 66,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 9,
     standingGain: 3,
     rewardIsk: 350000,
@@ -336,6 +360,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-vault',
     threat: 96,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 13,
     standingGain: 4,
     rewardIsk: 1500000,
@@ -360,6 +385,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-voidedge',
     threat: 88,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 12,
     standingGain: 4,
     rewardIsk: 1100000,
@@ -393,8 +419,18 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '碎晶劫匪', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
     name: '碎晶带劫匪通缉',
-    foeHpOverride: 285, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~38s
-    foeSpeedMps: 377, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.29×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 261
+    // 舰级路径（2026-09-11 试点）：一档「海盗快艇」的第二条——血量 ×1.9、单发 ×47/28、
+    // 速度 ×377/351、射程 ×2273/2215；主系覆写为动能（缴获改装的实弹弹头）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_SKIFF,
+        hpMul: 285 / 150,
+        dmgMul: 47 / 28,
+        speedMul: 377 / 351,
+        rangeMul: 2273 / 2215,
+        dmgMix: { kinetic: 8, explosive: 2 },
+      },
+    ],
     galaxyId: 'galaxy-shard',
     threat: 20,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -413,8 +449,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '信标猎手', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灯塔长廊
     name: '信标猎手悬赏',
-    foeHpOverride: 365, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~40s
-    foeSpeedMps: 291, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.99×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 205
+    // 舰级路径（2026-09-11 试点）：二档「劫掠护卫舰」的**基准卡**——本卡现状值即该档绝对值，
+    // 故只需引用、无需任何倍率（原 `foeHpOverride 365` / `foeSpeedMps 291` 退场）。
+    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE }],
     galaxyId: 'galaxy-lantern',
     threat: 22,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -433,13 +470,17 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '灰霾伏击团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灰霾带
     name: '灰霾伏击团清剿令',
-    foeHpOverride: 430, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：B2 段虎鲨4MK2 中位 ~43s
-    foeSpeedMps: 201, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 149）
+    // 舰级路径（2026-09-11 试点）：三档「劫掠狙击舰」**基准卡** + 僚机。
+    // 原 `escorts: 1` 改为**第二条编成**（同舰级 ×0.6 血与单发、`escort: true` → tag 仍为 `foe-1`，
+    // 显示名仍挂「轻装」）——这正是"允许混编"的最小示范（原 `foeHpOverride 430` / `foeSpeedMps 201` 退场）。
+    ships: [
+      { ship: FOE_SHIP_PIRATE_SNIPER },
+      { ship: FOE_SHIP_PIRATE_SNIPER, escort: true, hpMul: 0.6, dmgMul: 0.6 },
+    ],
     galaxyId: 'galaxy-haze',
     threat: 28,
     tactic: 'kite',
     defProfile: 'shield',
-    escorts: 1,
     dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 3,
     standingGain: 1,
@@ -454,15 +495,34 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '蜃影劫持团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 48、奖金 19 万）
     name: '蜃影导航劫持令',
-    foeHpOverride: 560, // 巡洋时代复调轮 r1（2026-09-09）：C 段墙点——S2 灰鲭鲨4MK2 中位胜率 60%→目标 ≥85%（kite 磨损缩压，原 650）
+    // 舰级路径（2026-09-11 试点）：三档「劫掠狙击舰」的最强变体（基准 268.75 血 / 41 单发 /
+    // 201 速 / 11316 射程上限）+ 僚机；主系覆写为能量（光束必中）。原 `foeDmgMul 0.30`
+    // （逐卡伤害压制补丁）**随本改造退场**——伤害改由舰级单发 × 倍率直接表达。
+    // 原 `escorts: 1` → 第二条编成（同舰级再 ×0.6；tag 仍 `foe-1`、显示名仍「轻装」）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        hpMul: 350 / 268.75,
+        dmgMul: 29 / 41,
+        speedMul: 235 / 201,
+        rangeMul: 13667 / 11316,
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        escort: true,
+        hpMul: (350 / 268.75) * 0.6,
+        dmgMul: (29 / 41) * 0.6,
+        speedMul: 235 / 201,
+        rangeMul: 13667 / 11316,
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+    ],
     galaxyId: 'galaxy-mirage',
     threat: 48,
     tactic: 'kite',
     defProfile: 'shield',
-    escorts: 1,
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    foeDmgMul: 0.30, // 巡洋时代复调轮 r2（2026-09-09）：kite 墙点顺滑——S2 中位 60%→≥85%（磨损降档，原 0.35）
-    foeSpeedMps: 235, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 174）
     standingReq: 5,
     standingGain: 2,
     rewardIsk: 190_000,

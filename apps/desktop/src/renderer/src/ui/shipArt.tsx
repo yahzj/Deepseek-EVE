@@ -127,34 +127,15 @@ export const FOE_ACCENT: Record<string, string> = {
   G: '#cd9fdd', // 烬火流亡：聚落紫
 }
 
-/** 悬赏卡 → 敌舰族群（22 张非 hidden 卡全表；缺省 F） */
-export const FOE_FAMILY: Record<string, string> = {
-  'ano-redring-raiders': 'A', // 赤潮
-  'ano-shard-bandits': 'A', // 碎晶
-  'ano-haze-ambush': 'A', // 灰霾
-  'ano-mirage-hijackers': 'A', // 蜃影
-  'ano-pirate-post': 'A', // 边境海盗
-  'ano-lantern-saboteurs': 'A', // 信标猎手
-  'ano-training': 'B', // 演习场靶机
-  'ano-harbor-escort': 'B', // 新港护航
-  'ano-abandoned-platform': 'B', // 占港拾荒
-  'ano-chasm-aberrations': 'C', // 裂谷畸变
-  'ano-starcore-boss': 'C', // 星髓
-  'ano-maw-hunt': 'C', // 噬口
-  'ano-abyss-guard': 'C', // 深渊之门
-  'ano-gravekeeper': 'D', // 坟场
-  'ano-voidedge-warden': 'D', // 虚海
-  'ano-vault-sentinel': 'D', // 穹顶
-  'ano-ghost-signal': 'D', // 幽灵舰
-  'ano-titan-wreck': 'E', // 泰坦残骸
-  'ano-auro-raiders': 'E', // 奥罗残骸
-  'ano-cinder-siege': 'G', // 烬火
-  'ano-echo-haunt': 'G', // 回音
-  'ano-nadir-static': 'G', // 天底静区
-}
-
-export function foeFamilyOf(anomalyId: string | null | undefined): string {
-  return (anomalyId ? FOE_FAMILY[anomalyId] : undefined) ?? 'F'
+/**
+ * 敌族形状/配色一律按**数据侧** `AnomalyDef.foeFamily` 推导（2026-09-11 船长定案）。
+ *
+ * 旧口径的隐患（本批修掉）：这里曾有一张 **22 行硬编码的 `FOE_FAMILY` 映射**（按 anomaly id 查），
+ * 与数据侧 `foeFamily` 字段**各写各的**且无一致性校验——结果 `演习场靶机` 在美术侧是 B、
+ * 在数据侧为空（落进 F 兜底形），两处真相源长期不一致。
+ */
+export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined): string {
+  return anomaly?.foeFamily ?? 'F'
 }
 
 /**

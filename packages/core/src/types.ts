@@ -915,6 +915,84 @@ export interface LootRow {
 /** 异常空间/悬赏目标（远征目的地） */
 /** 敌族字母（A 海盗舰系 / B 武装拾荒者 / C 异形生物 / D 守墓古舰 / E 泰坦巨构 / F 制式巡逻 / G 烬火流亡） */
 export type FoeFamily = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
+
+/**
+ * **敌舰配置（舰级表）**（2026-09-11 船长：「给敌人单独一套**敌舰的配置表**，敌舰属性按照配置表
+ * 再根据实际悬赏等进行修正，这样**不会出现动一艘船，其他跟着动**」；同日裁决「**舰级给绝对值**、
+ * 卡上用修正、允许混编、先试点」）。
+ *
+ * **绝对值口径**：血量 / 速度 / 单发 / 装填 / 命中 / 射程带 / 远端衰减 / 血层分布 / 伤害构成
+ * 全部由舰级写死，不再从"威胁"推导。悬赏卡只负责**编成**（用哪几艘、各几艘、第几波）与**修正**
+ * （倍率 / 覆写），见 `AnomalyDef.ships`。
+ *
+ * 目的：**改一艘船的影响面一眼可见，且只限引用它的卡**。旧口径下威胁一变、任一全局常量一变
+ * 就是全表联动（本仓已发生过三次：推进器提档废掉全表标定、战术默认值静默改 5 张卡、
+ * 敌速两种口径混用无人察觉）。
+ */
+export interface FoeShipDef {
+  /** 舰级 id */
+  id: string
+  /** 舰级名（玩家可见舰种名；舰级路径的卡不再走"战术 × 血型"推导名） */
+  name: string
+  /** 敌族 */
+  family: FoeFamily
+  /** 总血（绝对值） */
+  hp: number
+  /** 三层血量比例（结构 / 装甲 / 护盾），Σ = 1 */
+  split: { s: number; a: number; h: number }
+  /** 速度（绝对值，m/s） */
+  speedMps: number
+  /** 基础单发（绝对值） */
+  shotDmg: number
+  /** 命中率 0~1（能量 plasma 为光束必中，不消费本值） */
+  hitRate: number
+  /** 装填（毫秒） */
+  reloadMs: number
+  /** 射程带下限 m */
+  rangeMinM: number
+  /** 射程带上限 m */
+  rangeMaxM: number
+  /**
+   * 远端衰减（缺省 0.3）。两条生效路径：动能/爆炸（fixed）→ `distFactor` 命中衰减；
+   * 能量（plasma 光束）→ `beamPowerFactor` **威力**衰减（**本值越大衰减越轻**）。
+   */
+  falloff: number
+  /** 近盲带伤害比例（缺省 0.3） */
+  blindDmgMul?: number
+  /** 伤害构成（缺省纯动能）。主系决定武器形态 / 命中 / 近盲 / 配色，混伤只改伤害构成 */
+  dmgMix?: Partial<Record<DamageType, number>>
+  /** 战术性格 */
+  tactic: FoeTactic
+  /** 头目档：显示名加「精锐」前缀（2026-09-11 船长裁决实装；旧 `FOE_LIGHT_WORD` 的预留位） */
+  elite?: boolean
+}
+
+/**
+ * 悬赏卡上的**编成条目**：引用一个舰级 + 数量 + 波次 + 修正（2026-09-11 舰级表试点）。
+ * 允许**混编**——同一张卡可引用多个舰级（例：头目舰 ×1 + 海盗快艇 ×3）。
+ */
+export interface FoeShipSlot {
+  /** 引用的舰级（直接引用配置表里的对象，保证"改一艘船只有一处"） */
+  ship: FoeShipDef
+  /** 本条目数量（缺省 1） */
+  count?: number
+  /** 第几波（0 起；缺省 0 = 第一波） */
+  wave?: number
+  /** 是否作为僚机（tag 走 `*-e{i}`，与旧"主 + 僚"命名/血条口径一致） */
+  escort?: boolean
+  /** 血量倍率（缺省 1） */
+  hpMul?: number
+  /** 单发倍率（缺省 1） */
+  dmgMul?: number
+  /** 速度倍率（缺省 1） */
+  speedMul?: number
+  /** 射程带倍率（两端同乘后取整；缺省 1） */
+  rangeMul?: number
+  /** 主系/伤害构成覆写（缺省走舰级；用于"同一艘船缴获改装了不同弹药"） */
+  dmgMix?: Partial<Record<DamageType, number>>
+  /** 命中覆写（缺省走舰级） */
+  hitRate?: number
+}
 export interface AnomalyDef {
   id: string
   name: string
@@ -993,6 +1071,15 @@ export interface AnomalyDef {
    * 整场仍为一次悬赏（声望/奖金/残骸按原卡整场结算）；缺省 = 单波（现行为）。
    */
   waves?: ReadonlyArray<{ units: number; hpShare: number }>
+  /**
+   * **敌舰编成**（2026-09-11 舰级表试点）：写了就走**舰级路径**（绝对值，见 `FoeShipDef`），
+   * 未写则走旧的"威胁推导"路径（`foeHpOverride` / `foeSpeedMps` / `waves` / `escorts` 等）。
+   *
+   * 舰级路径下：每条的 `count` 个同类单位各自独立建档（**不吃威胁份额均分**），
+   * 血量 / 单发 / 速度 / 射程一律按"舰级绝对值 × 本条倍率"算；`wave` 决定第几波入场。
+   * **允许混编**（一张卡引用多个舰级）。
+   */
+  ships?: readonly FoeShipSlot[]
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean

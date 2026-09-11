@@ -15,7 +15,7 @@
  */
 import type { GameState } from './state'
 import { addLog } from './state'
-import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeTactic, ModuleDef, SimContext } from './types'
+import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeShipDef, FoeShipSlot, FoeTactic, ModuleDef, SimContext } from './types'
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
@@ -351,15 +351,25 @@ export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
  * - 写了两系及以上（常驻悬赏/低安遇袭 8:2、窝点派生 6:4）→ 逐系份额；
  * - 只写一系 / 未写（教学卡）→ 单条 `{ 主系, 1 }`（纯系）。
  */
-export function foeDamageComposition(anomaly: AnomalyDef): Array<{ type: DamageType; share: number }> {
+/**
+ * 火力构成（按 **mix 对象**计算）——2026-09-11 舰级表试点抽出：舰级/编成条目的 mix 可能与
+ * 卡面声明不同（如"同一艘船缴获改装了不同弹药"），故把口径与"读哪份 mix"解耦。
+ */
+export function compositionOfMix(
+  mix: Partial<Record<DamageType, number>> | undefined,
+): Array<{ type: DamageType; share: number }> {
   const rows = (['kinetic', 'explosive', 'plasma'] as const)
-    .map((t) => ({ type: t, w: anomaly.dmgMix?.[t] ?? 0 }))
+    .map((t) => ({ type: t, w: mix?.[t] ?? 0 }))
     .filter((r) => r.w > 0)
   if (rows.length <= 1) return [{ type: rows[0]?.type ?? 'kinetic', share: 1 }]
   const total = rows.reduce((s, r) => s + r.w, 0)
   return rows
     .map((r) => ({ type: r.type, share: r.w / total }))
     .sort((a, b) => b.share - a.share || a.type.localeCompare(b.type))
+}
+
+export function foeDamageComposition(anomaly: AnomalyDef): Array<{ type: DamageType; share: number }> {
+  return compositionOfMix(anomaly.dmgMix)
 }
 
 /**
@@ -777,6 +787,8 @@ const FOE_CLASS: Record<string, Record<string, string>> = {
  *  明显低血波，见 foeUnitNameOf）；"精锐"档预留——若将来出现相对规格 >1 的头目单位，
  *  在此增加精锐前缀分支即可（词缀判定与血量数值解耦，纯命名）。 */
 export const FOE_LIGHT_WORD = '轻装'
+/** 头目档词缀（2026-09-11 船长裁决实装；对应 `FoeShipDef.elite`）——与「轻装」同为纯命名、与数值解耦 */
+export const FOE_ELITE_WORD = '精锐'
 const FOE_LIGHT_FRAC = 0.6
 const FOE_CLASS_FALLBACK = '敌方舰艇'
 
@@ -802,12 +814,77 @@ function waveHpShareOf(tag: string, anomaly: AnomalyDef): number {
   return Math.max(0.001, waves[idx]!.hpShare ?? 1)
 }
 
+/* ═══════ 舰级路径（2026-09-11 船长定案：敌舰配置表 · A 族试点）═══════
+ * 写了 `anomaly.ships` 的卡走这条路：单位一律按**舰级绝对值 × 本条倍率**建档，
+ * 不吃威胁份额均分、不吃 hpShare；允许同波混编（一张卡引用多个舰级）。
+ * 未写的卡走下面的旧"威胁推导"路径，行为逐字不变。 */
+
+/** 波序号从 tag 前缀反查（首波 = ''；第 n 波 = 'w{n}-'），与旧多波 tag 口径一致 */
+function shipWaveIndexOf(prefix: string): number {
+  const m = /^w(\d+)-$/.exec(prefix)
+  return m ? parseInt(m[1]!, 10) : 0
+}
+
+/**
+ * 按 tag 命名规则枚举某波的舰级单位（**建档与反查共用同一顺序**，保证 tag 与舰级一一对应）。
+ * tag 规则与旧口径一致：首队 = `foe-0`（主体）/ `foe-{i}`（僚机）；其余小队 = `{prefix}foe-{k}` /
+ * `{prefix}foe-{k}-e{i}`（首波非首队用 `w0-` 前缀）。
+ */
+function enumerateShipUnits(
+  anomaly: AnomalyDef,
+  waveIdx: number,
+): Array<{ tag: string; slot: FoeShipSlot; escort: boolean }> {
+  const prefix = waveIdx === 0 ? '' : `w${waveIdx}-`
+  const out: Array<{ tag: string; slot: FoeShipSlot; escort: boolean }> = []
+  let mainIdx = 0
+  let lastMain = 0
+  for (const slot of anomaly.ships ?? []) {
+    if ((slot.wave ?? 0) !== waveIdx) continue
+    const count = Math.max(1, Math.floor(slot.count ?? 1))
+    const isEscort = slot.escort === true
+    for (let i = 0; i < count; i++) {
+      const k = isEscort ? lastMain : mainIdx + i
+      const legacySquad = prefix === '' && k === 0
+      const squadPrefix = legacySquad ? '' : prefix === '' ? 'w0-' : prefix
+      const tag = isEscort
+        ? legacySquad
+          ? `foe-${i + 1}`
+          : `${squadPrefix}foe-${k}-e${i + 1}`
+        : legacySquad
+          ? 'foe-0'
+          : `${squadPrefix}foe-${k}`
+      out.push({ tag, slot, escort: isEscort })
+    }
+    if (!isEscort) {
+      lastMain = mainIdx + count - 1
+      mainIdx += count
+    }
+  }
+  return out
+}
+
+/** 舰级路径的 tag → 舰级反查（界面 `foeUnitNameOf` 沿用同一入口，读档/实时推导都不迁移） */
+function foeShipAtTag(anomaly: AnomalyDef, tag: string): { ship: FoeShipDef; escort: boolean } | null {
+  if (!anomaly.ships || anomaly.ships.length === 0) return null
+  const m = /^w(\d+)-/.exec(tag)
+  const waveIdx = m ? parseInt(m[1]!, 10) : 0
+  for (const u of enumerateShipUnits(anomaly, waveIdx)) {
+    if (u.tag === tag) return { ship: u.slot.ship, escort: u.escort }
+  }
+  return null
+}
+
 /** 敌舰单位显示名（船长 2026-09-09 拍板：舰种名 + 规格词缀）：
- * - 满规格主体（主舰、血档不弱）= 舰种名（9 类原样）；
- * - 僚机（份额 ×0.6）或 明显低血波主舰（hpShare ≤ 同卡最强波 ×0.6）→ 轻装 + 舰种名；
- *   例：攻坚重甲舰 → 轻装攻坚重甲舰（替代旧「悬赏名·僚机」两套命名）；
- * - 单卡单波/波间差异小（如穹顶 .857 比值）不触发——避免无感知差异的伪区分。 */
+ * - **舰级路径**（有 `anomaly.ships`）：舰级自带玩家可见舰种名；头目档 → 「精锐」前缀，
+ *   僚机 → 「轻装」前缀（2026-09-11 船长裁决实装精锐档）。
+ * - **旧路径**：满规格主体 = 舰种名（9 类原样）；僚机（份额 ×0.6）或 明显低血波主舰
+ *   （hpShare ≤ 同卡最强波 ×0.6）→ 轻装 + 舰种名；单卡单波/波间差异小（如穹顶 .857 比值）不触发。 */
 export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
+  const hit = foeShipAtTag(anomaly, tag)
+  if (hit) {
+    if (hit.ship.elite) return `${FOE_ELITE_WORD}${hit.ship.name}`
+    return hit.escort ? `${FOE_LIGHT_WORD}${hit.ship.name}` : hit.ship.name
+  }
   const base = foeClassName(anomaly.tactic, anomaly.defProfile)
   if (!foeMainTagOf(tag)) return `${FOE_LIGHT_WORD}${base}`
   const waves = anomaly.waves
@@ -819,7 +896,77 @@ export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
   return base
 }
 
+/**
+ * **舰级路径建档**：单位属性 = 舰级绝对值 × 本条倍率。
+ * - 血：`ship.hp × hpMul`（**不吃威胁份额、不吃 hpShare**）
+ * - 单发：`round(ship.shotDmg × dmgMul)`；速度：`round(ship.speedMps × speedMul)`
+ * - 射程带：两端同乘 `rangeMul` 后取整（保持 min < max）
+ * - 主系/命中：可逐条覆写（缺省走舰级）；能量主系一律光束必中
+ */
+function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts): UnitSpec[] {
+  const prefix = opts.tagPrefix ?? ''
+  const waveIdx = shipWaveIndexOf(prefix)
+  return enumerateShipUnits(anomaly, waveIdx).map((u) => {
+    const ship = u.slot.ship
+    const mix = u.slot.dmgMix ?? ship.dmgMix
+    const type = pickTopType(mix)
+    const totalHp = ship.hp * (u.slot.hpMul ?? 1)
+    const hp: Hp3 = { s: totalHp * ship.split.s, a: totalHp * ship.split.a, h: totalHp * ship.split.h }
+    const shotDmg = Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1)))
+    const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
+    const multiShots: Partial<Record<DamageType, number>> | undefined =
+      shotSplit.length > 1
+        ? shotSplit.reduce<Partial<Record<DamageType, number>>>((acc, r) => {
+            acc[r.type] = (acc[r.type] ?? 0) + r.dmg
+            return acc
+          }, {})
+        : undefined
+    const rangeMul = u.slot.rangeMul ?? 1
+    const rangeMax = Math.max(2, Math.round(ship.rangeMaxM * rangeMul))
+    const rangeMin = Math.max(1, Math.min(rangeMax - 1, Math.round(ship.rangeMinM * rangeMul)))
+    const name = foeUnitNameOf(anomaly, u.tag)
+    return {
+      tag: u.tag,
+      name,
+      side: 'foe' as const,
+      hp,
+      resists: {},
+      evasion: 0.12,
+      hitBonus: 0,
+      signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
+      scanResMm: 450,
+      speedMps: Math.round(ship.speedMps * (u.slot.speedMul ?? 1)),
+      agility: 0.3,
+      // 高威胁近战敌突进：资格 = 威胁 ≥ 门槛 且 本舰战术 = brawl（总开关默认 false，见旧路径同款注释）
+      ...(bal.foeChargeEnabled === true &&
+      anomaly.threat >= bal.foeChargeThreatFloor &&
+      ship.tactic === 'brawl'
+        ? { foeCanCharge: true }
+        : {}),
+      weapons: [
+        {
+          label: `${name} 武器组`,
+          kind: type === 'plasma' ? ('beam' as const) : ('fixed' as const),
+          fixedType: type,
+          shotDmg,
+          ...(multiShots ? { shotsByType: multiShots } : {}),
+          maxRangeM: rangeMax,
+          minRangeM: rangeMin,
+          blindDmgMul: ship.blindDmgMul ?? 0.3,
+          hitRate: type === 'plasma' ? 1 : (u.slot.hitRate ?? ship.hitRate),
+          falloff: ship.falloff,
+          reloadMs: ship.reloadMs,
+        },
+      ],
+      foeTactic: ship.tactic,
+    }
+  })
+}
+
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
+  // 2026-09-11 舰级路径（船长定案「敌舰配置表」）：写了 ships 的卡按**舰级绝对值**建档；
+  // 未写的卡走下面的旧"威胁推导"路径，行为逐字不变（试点只转 A 族 6 张）。
+  if (anomaly.ships && anomaly.ships.length > 0) return createFoeSpecsFromShips(anomaly, bal, opts)
   const tactic = anomaly.tactic ?? 'orbit'
   const split = PROFILE_SPLIT[anomaly.defProfile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
   const escorts = Math.max(0, Math.min(2, anomaly.escorts ?? 0))

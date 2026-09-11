@@ -818,7 +818,7 @@ async function main(): Promise<void> {
   if (process.argv.includes('--csv')) {
     const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
     const head = [
-      'id', '卡名', '族', '威胁', '战术', '敌速', '比率', '战斗机动', '射程带min', '射程带max', '期望交距',
+      'id', '卡名', '族', '舰级编成', '威胁', '战术', '敌速', '比率', '战斗机动', '射程带min', '射程带max', '期望交距',
       '编队', '波次', '僚机', '总血', '总DPS', '单发(实际)', '命中', '伤害构成', '远端衰减', '近盲带',
       '个性口', '交火展示时长', '实测胜率', '实测时长', '实测残血',
     ]
@@ -830,6 +830,18 @@ async function main(): Promise<void> {
       const waves = a.waves && a.waves.length > 0 ? a.waves : [{ units: 1, hpShare: 1 }]
       const hpBase = a.foeHpOverride ?? foeHpOfThreat(a.threat, bal)
       const comp = Object.entries(a.dmgMix ?? {}).map(([t, v]) => `${t}${v}`).join(':') || '动能(缺省)'
+      // 2026-09-11 舰级路径修正：舰级卡没有 `foeHpOverride`（数值已搬进舰级表），
+      // 旧口径的 `hpBase` 会落回威胁曲线 → **总血/编队/僚机会显示错值**。故按编成实算。
+      const shipSlots = a.ships ?? []
+      const isShipPath = shipSlots.length > 0
+      const cnt = (s: (typeof shipSlots)[number]): number => Math.max(1, Math.floor(s.count ?? 1))
+      const shipText = isShipPath
+        ? shipSlots.map((s) => `${s.ship.name}×${cnt(s)}${s.escort === true ? '(僚)' : ''}`).join('+')
+        : ''
+      const shipUnits = shipSlots.reduce((n, s) => n + cnt(s), 0)
+      const shipHp = shipSlots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * cnt(s), 0)
+      const shipEscorts = shipSlots.filter((s) => s.escort === true).reduce((n, s) => n + cnt(s), 0)
+      const shipWaves = new Set(shipSlots.map((s) => s.wave ?? 0)).size
       const shot = w.shotsByType ? Object.entries(w.shotsByType).map(([t, d]) => `${t} ${d}`).join('+') : String(w.shotDmg)
       const quirks = [
         a.foeShotDmg !== undefined ? `单发直写${a.foeShotDmg}` : '',
@@ -855,12 +867,17 @@ async function main(): Promise<void> {
       }
       console.log(
         [
-          a.id, a.name, a.foeFamily ?? '', a.threat, a.tactic ?? 'orbit', f.speedMps,
+          a.id, a.name, a.foeFamily ?? '', shipText, a.threat, a.tactic ?? 'orbit', f.speedMps,
           ((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2), Math.round(f.speedMps * foeAgilityMul),
           w.minRangeM, w.maxRangeM, Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM)),
-          waves.length > 1 ? `${waves.reduce((s, x) => s + (x.units ?? 1), 0)}队${waves.length}波` : '1波',
-          waves.map((x) => (x.hpShare ?? 1).toFixed(2)).join('+'), a.escorts ?? 0,
-          Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)),
+          isShipPath
+            ? `${shipUnits}舰${shipWaves > 1 ? `${shipWaves}波` : ''}`
+            : waves.length > 1
+              ? `${waves.reduce((s, x) => s + (x.units ?? 1), 0)}队${waves.length}波`
+              : '1波',
+          isShipPath ? `${shipWaves}波` : waves.map((x) => (x.hpShare ?? 1).toFixed(2)).join('+'),
+          isShipPath ? shipEscorts : (a.escorts ?? 0),
+          isShipPath ? Math.round(shipHp) : Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)),
           (a.threat * bal.foeDpsPerThreat).toFixed(1), shot, `${(w.hitRate * 100).toFixed(0)}%`, comp,
           w.falloff, w.blindDmgMul, quirks, a.combatSeconds,
           `${Math.round((win / SEEDS.length) * 100)}%`, `${(dur / SEEDS.length / 1000).toFixed(0)}s`, `${(rem / SEEDS.length).toFixed(0)}%`,
