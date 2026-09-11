@@ -88,6 +88,10 @@ function dronePoseAt(
   return { x: station.x, y: station.y, heading: 1 }
 }
 
+/** 被击落的无人机**原地定住**时长（毫秒；船长 2026-09-11：「在返航到一半的途中**原地停止然后爆炸**」）
+ *  ——先停住让玩家看清"是这一架被打下来了"，之后才播爆炸（见机群层的击落演出）。 */
+const DRONE_DOWN_FREEZE_MS = 320
+
 /**
  * **敌方机群姿态**（2026-09-11 机群批 S5）——我方 `dronePoseAt` 的**完整镜像**：
  * 起点 = **敌舰机库口**（`droneTakeoff` 偏移相对敌舰**水平镜像**），阵位 = **我方舰旁**（`lay.me + off`）
@@ -754,7 +758,7 @@ const meSpeedRef = useRef(200)
   flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE + (f.delay ?? 0))
   // 击落坠落演出：CSS 演完即清（不留常驻 DOM，也不做逐帧 JS 动画）
   if (droneDownRef.current.length > 0) {
-    droneDownRef.current = droneDownRef.current.filter((d) => now - d.born < DRONE_DOWN_LIFE)
+    droneDownRef.current = droneDownRef.current.filter((d) => now - d.born < DRONE_DOWN_FREEZE_MS + DRONE_DOWN_LIFE)
   }
 
   /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）── */
@@ -1286,6 +1290,38 @@ const meSpeedRef = useRef(200)
               {droneDownRef.current.map((d) => {
                 const model = droneModelOf(d.artId)
                 if (!model) return null
+                const age = now - d.born
+                // ① **原地定住**（船长 2026-09-11：「所有无人机被判定击落时，在返航到一半的途中
+                //    原地停止然后爆炸」）——先让机体**停在被打中的那一刻的位置**约 0.32 秒
+                //    （不消失、不动），玩家才看得清"是这一架被打下来了"，然后才炸。
+                if (age < DRONE_DOWN_FREEZE_MS) {
+                  return (
+                    <span
+                      key={d.key}
+                      className="app-bts-drone"
+                      style={{
+                        position: 'absolute',
+                        left: d.x - lay.me.x,
+                        top: d.y - lay.me.y,
+                        color: model.tint,
+                        transform: 'translate(-50%, -50%)',
+                        opacity: 0.9,
+                      }}
+                    >
+                      <svg
+                        viewBox="-13 -8 26 16"
+                        width="22"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                        strokeLinejoin="round"
+                      >
+                        {model.art}
+                      </svg>
+                    </span>
+                  )
+                }
                 return (
                   <span
                     key={d.key}
@@ -1295,6 +1331,9 @@ const meSpeedRef = useRef(200)
                     {/* 敌机（警戒机）的击落演出放大 1.5×（2026-09-11 船长："完全无法察觉"）——
                         族色残铁棕 + 更大的冲击环，让"打下来了"这件事在满屏弹道里也看得见 */}
                     <svg viewBox="-14 -11 28 22" width={d.foe ? 46 : 30} height={d.foe ? 37 : 24} fill="none" stroke="currentColor" strokeWidth={d.foe ? 1.6 : 1.2} strokeLinecap="round" strokeLinejoin="round">
+                      {/* **效果 A：白色高亮扩散环**（船长 2026-09-11 选定）——比族色环更亮、线更粗，
+                          在满屏弹道里一眼能看见"这一架没了" */}
+                      <circle className="app-bts-wreck-ring" cx="0" cy="0" r="5" stroke="#ffffff" strokeWidth="2.4" />
                       {/* 冲击环（向外扩散淡出） */}
                       <circle className="app-bts-wreck-ring" cx="0" cy="0" r="5" />
                       {/* 爆散射线（八向短线） */}
