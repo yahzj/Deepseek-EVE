@@ -65,7 +65,7 @@ import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from
 import { join } from 'node:path'
 import { loadSaveFile, serializeSaveFile, addShipToFleet, rareWreckItemIdOf, RARE_WRECK_VOLUME_M3 } from '@whale/core'
 import type { GameState } from '@whale/core'
-import { GALAXIES } from '@whale/data'
+import { GALAXIES, MODULES } from '@whale/data'
 
 const SAVE_PATH = join(process.env.APPDATA ?? '', 'whale-idle', 'save.json')
 const OUT_DIR = join(process.cwd(), 'docs', 'test-saves')
@@ -818,15 +818,20 @@ function injectDfamily(state: GameState): string[] {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
   }
   notes.push('仓库弹药三型 ×5000')
+  // **全部 MK3 装备**（船长 2026-09-11：「希望你给我准备的存档**含所有 MK3 装备**」）——
+  // 按 id 后缀 `-3` **自动枚举**（不手抄清单，日后新增 MK3 件自动带上），每件 ×8 便于多船并行装配。
+  const mk3 = MODULES.filter((m) => m.id.endsWith('-3')).map((m) => m.id)
+  for (const m of mk3) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 8
+  notes.push(`装备库：**全部 MK3 装备 ${mk3.length} 件**（按 id 后缀自动枚举，每件 ×8）——${mk3.join(' / ')}`)
   for (const m of [
     'mod-shield-pla-2', 'mod-armor-pla-2', 'mod-stab-pla-2',
     'mod-shield-kin-2', 'mod-armor-kin-2', 'mod-stab-kin-2',
-    'mod-prop-2', 'mod-prop-3', 'mod-turret-kin-1', 'mod-turret-kin-2', 'mod-lair-turret-a',
-    'mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d',
+    'mod-prop-2', 'mod-turret-kin-1', 'mod-turret-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-armor-plate-2',
+    'mod-lair-turret-a', 'mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d',
   ]) {
     state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
   }
-  notes.push('装备库备件 ×3（含**D 族专属三件**：陵墓护盾阵列=三系减伤各 +30%、守墓者长炮、陵寝装甲层）——可现场自组"抗性 + 专属件"组合')
+  notes.push('装备库另备：四套配置用到的 MK2 支援件 ×3 + 转管炮 + **D 族专属三件**（陵墓护盾阵列=三系减伤各 +30% / 守墓者长炮 / 陵寝装甲层）')
   for (const s of Object.values(state.fleet)) {
     if (s) {
       s.durability = 1
