@@ -26,6 +26,8 @@ const BRIEFING_MESSAGE: CommsMessageDef = {
   kind: '教程',
   subject: BRIEFING_INTRO.subject,
   body: BRIEFING_INTRO.lines,
+  // 2026-09-11 船长：「将训前简报的任务链内的文字高亮」——任务链那七行在正文里加既有的强调样式
+  highlight: BRIEFING_INTRO.highlight,
   trigger: { kind: 'tutorial', step: 0 },
   hint: { text: BRIEFING_INTRO.hint, page: 'comms' },
   action: { label: BRIEFING_INTRO.actionLabel, command: 'startTutorial' },

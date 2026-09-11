@@ -187,10 +187,15 @@ export function CommsPage({
                             </span>
                           ) : null}
                         </div>
-                        {/* 屏幕第二层之后的正文 */}
+                        {/* 屏幕第二层之后的正文；`highlight` 里的段落加**既有强调样式**
+                            （`.app-report-highlight`：暗底 + 左侧强调竖条；2026-09-11 船长：
+                            「将训前简报的任务链内的文字高亮」——按约定第六章复用同级既有样式，不自造新样式） */}
                         <div className="app-comms-lines">
                           {current.paragraphs.map((p, i) => (
-                            <p key={i} className="app-comms-text">
+                            <p
+                              key={i}
+                              className={`app-comms-text${current.highlight?.includes(p) ? ' app-report-highlight' : ''}`}
+                            >
                               {p}
                             </p>
                           ))}

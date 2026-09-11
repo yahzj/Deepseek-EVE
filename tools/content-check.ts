@@ -2329,6 +2329,15 @@ for (const m of MODULES) {
         check(!p.includes(w), `通讯 ${m.id} 的文案把玩家与船分开说「${w}」（玩家就是那条船）：${p.slice(0, 24)}…`)
       }
     }
+    // 强调行契约（2026-09-11 船长：训前简报的任务链要高亮）：`highlight` 的每一条都必须是 `body` 里
+    // **逐字相等**的一段——否则界面上静默不高亮，改文案时很容易漏（同 `action` 透传那类"看不出来"的坑）。
+    if (m.highlight !== undefined) {
+      check(m.highlight.length > 0, `通讯 ${m.id} 的 highlight 是空数组（要么去掉字段，要么给出要强调的段落）`)
+      for (const h of m.highlight) {
+        check(h.trim().length > 0, `通讯 ${m.id} 的 highlight 含空段落`)
+        check(m.body.includes(h), `通讯 ${m.id} 的 highlight 段落不在正文里（界面不会高亮）：${h.slice(0, 24)}…`)
+      }
+    }
   }
   for (const d of DIALOGUES) {
     check(d.lines.length > 0, `通讯剧本 ${d.id} 没有台词`)

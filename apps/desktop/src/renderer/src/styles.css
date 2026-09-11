@@ -9059,6 +9059,10 @@ body {
 .app-comms-head-time { margin-left: auto; flex: 0 0 auto; color: var(--wui-text-dim); font-size: 11px; font-family: var(--wui-mono); white-space: nowrap; }
 .app-comms-lines { display: flex; flex-direction: column; gap: 8px; }
 .app-comms-text { margin: 0; color: var(--wui-text); font-size: 12.5px; line-height: 1.7; }
+/* 正文强调行（2026-09-11 船长：「将训前简报的任务链内的文字高亮」）：
+   **直接复用**离线报告那套既有的强调样式 `.app-report-highlight`（暗底 + 左侧强调竖条），
+   约定第六章"新增内容一律先复刻同级既有样式"——这里只把内边距按屏幕正文的行距收紧一点。 */
+.app-comms-text.app-report-highlight { padding: 2px 8px; }
 /* 屏幕下方：通栏胶囊「前往」（钉在机身下檐口；屏幕窄时左右各内收到 10px）。
    提示文字在左、动作词在右。**文字允许折行**（2026-09-11 船长：「跳转的文本过长时，有部分文本不显示」——
    原先是 `white-space: nowrap` + 省略号单行截断，长提示会被吃掉），胶囊随行数长高、由下檐口anchor 固定。 */

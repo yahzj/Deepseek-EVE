@@ -1443,6 +1443,12 @@ export interface CommsMessageDef {
   subject: string
   /** 正文（逐段） */
   body: readonly string[]
+  /**
+   * 需要**强调显示**的正文段落（可选；2026-09-11 船长：「将训前简报的任务链内的文字高亮」）。
+   * 取值必须与 `body` 里某一段**逐字相等**才生效（`content:check` 有契约盯着），
+   * 界面按它给该段加既有强调样式（离线报告那套 `.app-report-highlight`），其余段落照旧。
+   */
+  highlight?: readonly string[]
   /** 送达条件 */
   trigger: CommsTrigger
   /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
@@ -1479,6 +1485,8 @@ export interface CommsEntryView {
   subject: string
   /** 正文逐段（剧本镜像 = 各发言句 `发言人：内容`） */
   paragraphs: readonly string[]
+  /** 强调显示的段落（与 `paragraphs` 逐字相等的那些；界面加既有强调样式，见 `CommsMessageDef.highlight`） */
+  highlight?: readonly string[]
   /** 送达时的游戏内毫秒 */
   deliveredAtGameMs: number
   /** 是否已读 */
