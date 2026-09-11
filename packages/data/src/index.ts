@@ -32,6 +32,16 @@ export {
   droneRoleLadderIssues,
   type DroneRoleSpec,
 } from './droneRoles'
+// 2026-09-11 舰种表（质量分级·敌我共用）：5 档命名 + 基准速度 + 等效质量落档（本批零行为变化）
+export {
+  HULL_CLASS_NAME,
+  HULL_CLASS_BASE_SPEED,
+  HULL_CLASS_MASS_RANGE,
+  equivalentMassOf,
+  hullClassTierOfTier,
+  hullClassOf,
+  type HullClassTier,
+} from './hullClass'
 export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'

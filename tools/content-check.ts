@@ -33,6 +33,10 @@ import {
   droneRoleIssues,
   droneRoleLadderIssues,
   droneTotalHp,
+  HULL_CLASS_NAME,
+  HULL_CLASS_BASE_SPEED,
+  HULL_CLASS_MASS_RANGE,
+  equivalentMassOf,
   buildItemCatalog,
   buildSimContext,
 } from '@whale/data'
@@ -1651,6 +1655,69 @@ for (const m of MODULES) {
   console.log(
     `· 模块跨族字段契约：${MODULES.length} 件装备中 ${counted} 处"槽位族之外的搭车加成"，全部已登记且界面有呈现口径` +
       `（${found.length > 0 ? found.join('、') : '无'}）`,
+  )
+}
+
+/* ── 舰种契约（2026-09-11 加；船长定案：舰种 5 档、敌我共用、按等效质量落档）──
+ * 背景：舰种**收敛为 5 档**（原 7 档作废），「重型巡洋」归巡洋舰档、「战列巡洋」归战列舰档
+ * （皆为称号不是独立档）。本契约只做**归类校验**，不改任何船的 tier、不重切任何质量区间：
+ *   ① 每艘船的 `tier` 必须与其**等效质量落档**一致——不一致即报错并点名
+ *      （船名/质量/等效质量/实际 tier/应为 tier）⇒ 专抓"质量改了却忘改档"或"档标错"；
+ *   ② 每个舰种档**恰好**一档命名 + 一个基准速度，且基准速度落在合理值域 100~500；
+ *   ③ 打印一行归类统计（各档船数 + 五个基准速度）。
+ * ⚠ 若 ① 真抓到不一致：**不要顺手改船的 tier**——把不一致的船交船长裁决。 */
+{
+  /** 等效质量落在哪一档（自高向低取第一个"下界 ≤ 等效质量"的档；低于最低下界 = 0 表示落不进任何档） */
+  const tierOfMass = (eq: number): number => {
+    for (const t of [5, 4, 3, 2, 1] as const) {
+      if (eq >= HULL_CLASS_MASS_RANGE[t][0]) return t
+    }
+    return 0
+  }
+  const classCount: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  let matched = 0
+  for (const ship of SHIPS) {
+    const eq = equivalentMassOf(ship)
+    const expect = tierOfMass(eq)
+    check(
+      expect !== 0,
+      `舰种契约：${ship.name}（${ship.id}）等效质量 ${eq} 低于最低档下界 ${HULL_CLASS_MASS_RANGE[1][0]}（落不进任何舰种档）`,
+    )
+    check(
+      ship.tier === expect,
+      `舰种契约：${ship.name}（${ship.id}）质量 ${ship.massKg} → 等效质量 ${eq}，实际 tier ${ship.tier}，应为 tier ${expect}（落档区间与 tier 不一致；请船长裁决，勿自行改档）`,
+    )
+    if (ship.tier === expect && expect !== 0) matched += 1
+    if (expect !== 0) classCount[expect] += 1
+  }
+  for (const t of [1, 2, 3, 4, 5] as const) {
+    const [lo, hi] = HULL_CLASS_MASS_RANGE[t]
+    check(
+      Number.isFinite(lo) && hi > lo,
+      `舰种契约：${HULL_CLASS_NAME[t]}（T${t}）等效质量区间非法 [${lo}, ${hi})`,
+    )
+    if (t < 5) {
+      check(
+        HULL_CLASS_MASS_RANGE[t][1] === HULL_CLASS_MASS_RANGE[(t + 1) as 2 | 3 | 4 | 5][0],
+        `舰种契约：${HULL_CLASS_NAME[t]}（T${t}）与 ${HULL_CLASS_NAME[(t + 1) as 2 | 3 | 4 | 5]}（T${t + 1}）的质量区间不接续（有缝或重叠）`,
+      )
+    }
+    check(
+      typeof HULL_CLASS_NAME[t] === 'string' && HULL_CLASS_NAME[t].length > 0,
+      `舰种契约：T${t} 档缺少舰种命名`,
+    )
+    const spd = HULL_CLASS_BASE_SPEED[t]
+    check(
+      typeof spd === 'number' && Number.isFinite(spd) && spd >= 100 && spd <= 500,
+      `舰种契约：${HULL_CLASS_NAME[t]}（T${t}）基准速度 ${spd} 越界（合理值域 100~500 m/s）`,
+    )
+  }
+  const shown = ([1, 2, 3, 4, 5] as const)
+    .map((t) => `${HULL_CLASS_NAME[t]} ${classCount[t]}`)
+    .join(' / ')
+  console.log(
+    `· 舰种契约：${matched}/${SHIPS.length} 艘船归类与等效质量一致（${shown}）；` +
+      `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join('/')}`,
   )
 }
 
