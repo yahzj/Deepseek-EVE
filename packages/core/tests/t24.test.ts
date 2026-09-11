@@ -145,6 +145,23 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     expect(s.onboarding.step).toBe(ONB_DONE)
   })
 
+  it('skipTutorial：序章演出(0)、简报态(0.5)、七步(1..7)、收尾(8)都能跳；老档(-1)与完成(99)拒绝（回归：最开始跳过曾被拒）', () => {
+    for (const step of [ONB_AWAKEN, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE]) {
+      const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
+      s.onboarding.step = step
+      const r = skipTutorial(s, ctx)
+      expect(r.ok, `step ${step} 应可跳过`).toBe(true)
+      expect(s.onboarding.step).toBe(ONB_DONE)
+    }
+    // 老档（未开始）与已完成：如实拒绝
+    const off = createInitialState({ nowWallMs: 0, seed: 1 })
+    off.onboarding.step = -1
+    expect(skipTutorial(off, ctx).ok).toBe(false)
+    const done = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
+    done.onboarding.step = ONB_DONE
+    expect(skipTutorial(done, ctx).ok).toBe(false)
+  })
+
   it('教学首单采矿：采足 50 单位即返港停止(不等满舱),卸货后自动推进到交付步骤（2026-09-08：多采留给出售教学）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 3, prologue: true })
     s.onboarding.step = ONB_MINE

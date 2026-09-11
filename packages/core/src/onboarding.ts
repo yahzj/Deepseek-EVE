@@ -280,9 +280,18 @@ export function advanceFindHumans(state: GameState, ctx: SimContext): void {
   )
 }
 
-/** 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
+/**
+ * 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；战斗进行中拒绝。
+ *
+ * 2026-09-11 修（船长反馈：「如果在最开始就跳过教程，会提示教程还未开始」）：
+ * 「进行中」原先写成 `s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)`，
+ * **简报态 0.5（`ONB_BRIEFING`）两边都不落**，于是刚睁眼点「跳过教程」会被拒。
+ * 改为区间判定 `ONB_AWAKEN <= s < ONB_DONE`——涵盖序章演出(0)/简报(0.5)/七步(1..7)/收尾(8)，
+ * 将来再插中间态也不会漏；老档 `ONB_OFF = -1` 仍走"尚未开始"。
+ */
+export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const s = state.onboarding.step
-  const inProgress = s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)
+  const inProgress = s >= ONB_AWAKEN && s < ONB_DONE
   if (!inProgress) return { ok: false, error: '教程尚未开始或已完成。' }
   if (state.expedition.battle) return { ok: false, error: '交火中不能跳过教程——战斗结束回港后再试。' }
   // 演出阶段跳过：呼号落定为默认 PRTS（未及起名）
