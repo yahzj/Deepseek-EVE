@@ -77,6 +77,7 @@
  */
 
 import type { FoeShipDef } from '@whale/core'
+import { FOE_DRONE_E_ALERT } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；
@@ -513,6 +514,39 @@ export const FOE_D_STASIS: FoeShipDef = {
   tactic: 'kite', // 远程（船长定）
 }
 
+/** E 族 · 一档「巨构残段」——**泰坦级巨构**的残段（服务：泰坦残骸勘探 60；**全族第一条舰级**）。
+ *
+ * **按档重排**：T4 档基线 1,600 / 240 × 角色 1.00 / 0.95 = **1,600 / 228**。
+ * 速度 = 4 战列舰基准 205 × **`0.95`** = **195**——落在 **E 族族格速带 `0.65~0.95`** 的顶格：
+ * 「**巨构不讲机动，只讲撑到最后**」。⚠ 旧路径那张卡是 **410**（brawl 提速口径）⇒ 本批收进慢速带，
+ * **这是一处真难度改动**（玩家更容易拉开距离），故必须配六组实测。
+ * 射程带 **1~2,567** 与命中 **0.65** **逐字沿用现状**（后者是族格"**远古残骸老化自动炮台，
+ * 单发重但失准**"的落点）；血型装甲、伤害构成 `动能 8 : 等离子 2`、战术 `brawl` 均沿用现状
+ * （族规"中距为主"与"副系改爆炸"两项对齐属 E 族数据批 P-12 / P-13，本批**故意不动**，
+ * 好让"迁路径 + 挂机群"这两项的难度增量**可单独归因**）。
+ *
+ * **机群**：`警戒机 ×2`（`foe-drones.ts`）——船长「**巨构需要制作敌方无人机系统**」的落点，
+ * 也是据点词「**警戒机群**」承诺的第二套火力。 */
+export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
+  id: 'foe-titan-hulk',
+  name: '巨构残段',
+  family: 'E',
+  hullClassTier: 4, // 战列舰（"泰坦级巨构"的档位）
+  speedRatio: 0.95, // = 195 / 205（E 族速带 0.65~0.95 顶格；旧路径 410）
+  hp: 1600, // T4 档基线 1600 × 角色 1.00
+  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（= 泰坦残骸勘探卡面）
+  shotDmg: 228, // T4 档基线 240 × 角色 0.95
+  hitRate: 0.65, // **老化自动炮台**（族格；沿用现状卡面值 ⇒ 实收不变）
+  reloadMs: 4000,
+  rangeMinM: 1, // 沿用现状
+  rangeMaxM: 2567, // 沿用现状上限（零变化）
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, plasma: 2 }, // 沿用现状（副系 → 爆炸属 P-13）
+  tactic: 'brawl', // 沿用现状（族规"中距为主"属 P-12）
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }], // 警戒机群（A3：机群挂舰级）
+}
+
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
@@ -528,4 +562,5 @@ export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
   FOE_D_STASIS,
+  FOE_SHIP_TITAN_HULK,
 ]

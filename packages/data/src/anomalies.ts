@@ -23,6 +23,7 @@ import {
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
   FOE_D_STASIS,
+  FOE_SHIP_TITAN_HULK,
   FOE_SCAV_ARMED,
   FOE_SCAV_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
@@ -105,6 +106,11 @@ const MAW_MINION_SHARE = 0.02
  * | 虚海守望者 / 穹顶守卫（×5） | 5 | `10/6` ≈ 1.6667 |
  */
 const D_COMP = (n: number): number => (2 * n) / (n + 1)
+
+/** E 族（泰坦巨构）多舰船补偿：与 `D_COMP` 同式（`2N/(N+1)`，N = **舰级编成单位数**）。
+ * ⚠ **机群不计入 N**（船长 2026-09-11 裁定「不吃」）——机群单发按卡的 `dmgMul` 缩放，**不乘补偿**
+ * （机群本来就是"多而小"的设计意图，再乘补偿等于双重放大）。 */
+const E_COMP = (n: number): number => (2 * n) / (n + 1)
 
 export const ANOMALIES: readonly AnomalyDef[] = [
   {
@@ -385,19 +391,36 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-titan-wreck',
-    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: 8, plasma: 2 }, // 混伤 8:2（契约要求卡面显式登记；与舰级「巨构残段」同值）
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '泰坦残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
     name: '泰坦残骸勘探',
-    foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~60s
-    foeSpeedMps: 410, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.40×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 374（09-09 段参考船口径 ×1.18）
-    foeHitRate: 0.65, // 低安敌人命中率 +10（2026-09-09 船长定；原低命中特例 0.55——远古残骸老化自动炮台，单发重但失准）
+    // **2026-09-11 机群批 S3**（船长「我记得巨构需要制作敌方无人机系统」⇒ 甲案）：
+    // 本卡由**旧威胁推导路径**迁入**舰级路径**，并挂上「**警戒机群**」（＝据点词承诺的第二套火力）。
+    // - **总血逐字守恒**：990.625 + 594.375 = **1,585**（＝原 `foeHpOverride` 逐字）
+    // - **单发实收守恒**：母舰 96 + 58（原 114 + 69）＋ **机群**每舰 2 架 ×（8 + 5）
+    //   ⇒ 单发合计 180（原 183，**−1.6%**）
+    // - **旧路径的 `escorts 1`（僚机）由警戒机群承接**——"巨构自带机群＝第二套火力"落在这里
+    // - ⚠ **速度 410 → 195**（E 族族格速带 0.65~0.95）：这是本段唯一的大幅难度改动，已配六组实测
+    ships: [
+      {
+        ship: FOE_SHIP_TITAN_HULK, // 主体：原「攻坚重甲舰」
+        count: 1,
+        hpMul: 990.625 / FOE_SHIP_TITAN_HULK.hp,
+        dmgMul: 96 / (FOE_SHIP_TITAN_HULK.shotDmg * E_COMP(2)),
+      },
+      {
+        ship: FOE_SHIP_TITAN_HULK, // 僚机位：原「轻装攻坚重甲舰」
+        count: 1,
+        hpMul: 594.375 / FOE_SHIP_TITAN_HULK.hp,
+        dmgMul: 58 / (FOE_SHIP_TITAN_HULK.shotDmg * E_COMP(2)),
+      },
+    ],
     galaxyId: 'galaxy-abyss',
     threat: 60,
-    tactic: 'brawl',
+    tactic: 'brawl', // 沿用现状（族规"中距为主"属 E 族数据批 P-12）
     defProfile: 'armor',
-    escorts: 1,
     standingReq: 8,
     standingGain: 3,
     rewardIsk: 300_000,

@@ -1277,6 +1277,14 @@ for (const m of MODULES) {
      *  带取 **0.40~1.15×**——下限要吃下"半速的静滞卫舰"（0.44），上限略高于"提速的幽灵舰"（1.11）。
      *  ⚠ **必须用族级带、不能用战术带**：kite 常规带 0.60~0.85 会把 0.44× **误拦**（与 B 族 0.81× 同款教训）。 */
     const GRAVE_SPEED_BAND: readonly [number, number] = [0.4, 1.15]
+    /**
+     * **E 族（泰坦巨构）族格速带**（2026-09-11 机群批 · 船长裁定「族速带 0.65~0.95 × 本档基准」）。
+     * 族格 = **巨构不讲机动，只讲撑到最后**（"还在跑的老机器"）——全族**实速不高于本档舰种基准**。
+     * 带取 **0.40~0.90×**（比率 = 实速 × 敌敏捷 ÷ 基准船战斗机动，与 A/B/C/D 同一口径）：
+     * 下限给"以后可能出现更慢的重型残段"留位，上限吃下当前顶格（T4 × 0.95 = 195 ⇒ 0.67×）。
+     * ⚠ **必须用族级带、不能用战术带**：brawl 常规带 1.05~1.55 会把慢的巨构**误拦**（与 B/D 同款教训）。
+     */
+    const TITAN_SPEED_BAND: readonly [number, number] = [0.4, 0.9]
     /** A 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
     const pirateFastestByTier = new Map<number, number>()
     for (const ship of FOE_SHIPS) {
@@ -1292,6 +1300,8 @@ for (const m of MODULES) {
     const alienSample: string[] = []
     let graveReadings = 0
     const graveSample: string[] = []
+    let titanReadings = 0
+    const titanSample: string[] = []
     let scavReadings = 0
     const scavSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
@@ -1398,6 +1408,27 @@ for (const m of MODULES) {
             )
             continue
           }
+          if (def.foeFamily === 'E') {
+            // **E 族（泰坦巨构）口径**（船长 2026-09-11 机群批：「巨构不讲机动，只讲撑到最后」）：
+            // 族格 = **慢而重**（"还在跑的老机器"）⇒ 实速落 **E 族族格速带 0.65~0.95 × 本档舰种基准**。
+            // ⚠ 与 D 族同款教训：**族级口径必须用族级带表达**——战术带（brawl 1.05~1.55×）会把
+            // 巨构残段的 0.67× **误拦**（它本来就是慢的，慢是设定不是失衡）。
+            if (titanSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级只校验一次
+            titanReadings++
+            titanSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              slot.ship.speedRatio <= 1,
+              `敌速口径契约：E 族 ${def.name} 的舰级「${slot.ship.name}」速度倍率 ${slot.ship.speedRatio} **高于本档舰种基准**——` +
+                `船长族格「巨构不讲机动」（E 族族带 0.65~0.95 × 本档基准）`,
+            )
+            check(
+              ratio >= TITAN_SPEED_BAND[0] && ratio <= TITAN_SPEED_BAND[1],
+              `敌速口径契约：E 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**族格速带** ` +
+                `${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×（船长「巨构不讲机动，只讲撑到最后」；基准船 ${refShip.name} ` +
+                `战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           check(
             ratio >= band[0] && ratio <= band[1],
@@ -1427,12 +1458,14 @@ for (const m of MODULES) {
         `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）、` +
         `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
         `同档实速须高于 A 族；T4 巨兽例外允许慢）、` +
-        `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）`,
+        `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）、` +
+        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（巨构残段 0.95 × 本档基准，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0) console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join('　')}`)
     if (scavSample.length > 0) console.log(`  ↳ B 族实测读数（实速/比率）：${scavSample.join('　')}`)
     if (alienSample.length > 0) console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join('　')}`)
     if (graveSample.length > 0) console.log(`  ↳ D 族实测读数（实速/比率）：${graveSample.join('　')}`)
+    if (titanSample.length > 0) console.log(`  ↳ E 族实测读数（实速/比率）：${titanSample.join('　')}`)
   }
 
   /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
