@@ -26,6 +26,7 @@ import {
   SHIPS,
   ANOMALIES_FLAVORED,
   FOE_SHIPS,
+  FOE_DRONES,
   RARITY_TIER,
   SKILLS,
   DRONE_ROLE_SPECS,
@@ -1466,6 +1467,53 @@ for (const m of MODULES) {
     if (alienSample.length > 0) console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join('　')}`)
     if (graveSample.length > 0) console.log(`  ↳ D 族实测读数（实速/比率）：${graveSample.join('　')}`)
     if (titanSample.length > 0) console.log(`  ↳ E 族实测读数（实速/比率）：${titanSample.join('　')}`)
+  }
+
+  /* ── 机群与防空契约（2026-09-11 机群批 S4 加 · 船长「我记得巨构需要制作敌方无人机系统」+
+   *    A1「玩家武器通常不可打，需要带有防空属性的武器（为近防炮做铺垫）」+ C1/C2 分族先做 E 族）──
+   * ① **防空武器必须短射程**：带 `canHitDrones` 的装备射程上限须 ≤ `PD_MAX_RANGE_M`——
+   *    防空是"贴身护卫"；射程一放开，它就会变成"对舰能打、对空也能打"的通用最优解，
+   *    而它的定位恰恰是**用一门主炮的槽位换"带机群的仗"的答案**。
+   * ② **敌机只能挂在舰级上**：`drones` 只允许出现在 `FOE_SHIPS` 的舰级行（卡面不写机群）
+   *    —— 与"舰级给绝对值、卡上用修正"同一纪律：改一艘船的影响面一眼可见。
+   * ③ **机型必须在本族机型表内且族一致**（E 族用警戒机、G 族用蜂群机，不许串族）。
+   * ④ **架数为 ≥1 的整数**（"机库存量、打光为止"的语义）。
+   */
+  {
+    const PD_MAX_RANGE_M = 2_000
+    const aaMods = MODULES.filter((m) => m.canHitDrones === true)
+    check(
+      aaMods.length > 0,
+      '机群与防空契约：没有任何装备带防空属性（`canHitDrones`）——玩家将没有反制敌方机群的手段',
+    )
+    for (const m of aaMods) {
+      const r = m.maxRangeM ?? 0
+      check(
+        r > 0 && r <= PD_MAX_RANGE_M,
+        `机群与防空契约：防空武器「${m.name}」射程 ${r}m 超过 ${PD_MAX_RANGE_M}m——防空是贴身护卫，不是万能武器`,
+      )
+    }
+    let droneSlots = 0
+    for (const ship of FOE_SHIPS) {
+      for (const ds of ship.drones ?? []) {
+        droneSlots++
+        check(
+          FOE_DRONES.some((d) => d.id === ds.drone.id),
+          `机群与防空契约：舰级「${ship.name}」引用的机型 ${ds.drone.id} 不在机型表（FOE_DRONES）内`,
+        )
+        check(
+          ds.drone.family === ship.family,
+          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族）挂了 ${ds.drone.family} 族的机型「${ds.drone.name}」——不许串族`,
+        )
+        check(
+          Number.isInteger(ds.count) && ds.count >= 1,
+          `机群与防空契约：舰级「${ship.name}」的机群架数 ${ds.count} 必须是 ≥1 的整数`,
+        )
+      }
+    }
+    console.log(
+      `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）`,
+    )
   }
 
   /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──

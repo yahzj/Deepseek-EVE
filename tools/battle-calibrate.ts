@@ -562,6 +562,39 @@ const EXPLORE_ROWS: readonly StandardRow[] = [
     skills: FULL_SKILLS,
     desireM: 1000,
   },
+  /* ── **防空行**（2026-09-11 机群批 S4 加）——量"用近防炮打敌方机群到底值不值" ──
+   * 动机：E 族「警戒机群」的警戒幕铺在 **4.5 km**，而近防炮射程只有 **1.4 km** ⇒
+   * **标准站位（≈3,209m）下近防炮够不着机群**，只有玩家主动贴近才打得到——这两行就是去贴近。
+   * 两行都按 **E 段巡洋（锤头鲨 5 高槽）**：`G0` = 纯防空（5 门近防炮，完全不还手打舰）；
+   * `G1` = 混装（2 门近防炮 + 3 门动能MK2，既打机群也打舰）——对照"该带几门"。 */
+  {
+    id: 'G0' as StandardRow['id'],
+    label: '**防空行**·E段巡洋·纯防空（锤头鲨 5×巨构近防炮 · 目标 1000）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'G0 锤头鲨 5×巨构近防炮+能量抗',
+      ship: 'sh-hammerhead',
+      high: ['mod-pd-e', 'mod-pd-e', 'mod-pd-e', 'mod-pd-e', 'mod-pd-e'],
+      mid: ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
+  {
+    id: 'G1' as StandardRow['id'],
+    label: '**防空行**·E段巡洋·混装（2×巨构近防炮 + 3×动能MK2 · 目标 1000）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'G1 锤头鲨 2×巨构近防炮+3×动能MK2+能量抗',
+      ship: 'sh-hammerhead',
+      high: ['mod-pd-e', 'mod-pd-e', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+      mid: ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
 ]
 
 /** 标准格读数（终局/最近交距 + 开火次数按头目/杂鱼分列） */
