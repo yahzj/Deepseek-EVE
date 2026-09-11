@@ -178,6 +178,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // 敌速 = 参考段船速 × m_base(threat) × tactic 系数，m_base 0.80→0.95（threat 10→100）
     // ——无推进玩家多数持平/略快；brawl 再 ×1.28 贴脸（2026-09-05 船长确认：普通船不开
     // 加力甩不掉、贴脸怪须快速近身；1.12→1.28，命中失稳由玩家加力自行取舍）
+    // ⚠ **2026-09-10 船长「固定锚定 + 速度中位线船只基准」重标后，本段公式降级为
+    //   "未逐卡标定的新卡"的兜底默认**——现有 26 张卡（brawl 11 / orbit 10 / kite 5）
+    //   **全部逐卡显式给 `foeSpeedMps`**（口径见各卡注释，汇总见
+    //   `docs/design/enemy-speed-retune-20260910.md`）：基准船 = 速度中位线船只
+    //   长尾鲨级（船速 272 / 敏捷 0.54 → 战斗机动 165.2 m/s），比率 = 敌战斗机动 ÷ 165.2，
+    //   brawl 低段缓坡 1.10/1.15/1.20 → 1.29~1.48、orbit 0.96~1.20、kite 维持 0.69~0.80。
     foeRefSpeedTable: [
       { upToThreat: 10, maxSpeedMps: 220 },
       { upToThreat: 34, maxSpeedMps: 250 },
@@ -190,7 +196,9 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // 战术风格速度系数：brawl 贴脸再高（近身使命）；**kite ×0.72（2026-09-05 船长拍板：远程怪
     // 大降速与速度成长——慢速风筝怪可被玩家追上钻近盲，远程压制窗口受玩家速度制约）**
     foeSpeedTacticMul: { brawl: 1.28, orbit: 1.0, kite: 0.72 },
-    foeSpeedCapMul: 1.2,
+    // 封顶（只作用于上面那条公式路径）：2026-09-10 敌速重标后 brawl 顶档达 1.48× 基准船，
+    // 旧上限 1.2 会把新口径整体截断 → 提到 1.55（逐卡显式值不受本上限约束）
+    foeSpeedCapMul: 1.55,
     // 射程成长侧重：近战几乎不变形（靠速度近身）、环绕居中、风筝多增；封顶 = 玩家天花板 13 km + 2 km
     foeRangeGrowMul: { brawl: 0.3, orbit: 0.7, kite: 1.15 },
     foeRangeCapM: 15_000,

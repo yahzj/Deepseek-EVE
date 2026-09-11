@@ -29,13 +29,17 @@ const PROPOSAL = process.argv.includes('--proposal')
 /**
  * 敌速重标提案（2026-09-10 船长裁决：**固定锚定** + **参考"速度中位线的船只"**；近战卡逐张审核）。
  *
+ * ⚠ **本表已于 2026-09-10 落码到 `packages/data/src/anomalies.ts`**（26 张卡全部逐卡显式给值），
+ * 故 `--proposal` 现在的输出应与不带开关的基线**逐格一致**——它同时充当"落码一致性自检"；
+ * 开关保留给下一轮重标做 A/B 预演（改本表即可，不动 data）。
+ *
  * **基准船** = 船池按 `maxSpeedMps` 排序取中位（工具运行时自己算，池子变了基准跟着变）——
  * 当前 = **长尾鲨级导弹巡洋舰**（船速 272 / 敏捷 0.54）→ **基准战斗机动 = 272 ×0.6×(1+(0.54−0.5)×2×0.15)
  * ≈ 165.2 m/s**（无技能、不装推进器）。
  * 比率定义 = **敌战斗机动 ÷ 基准战斗机动**；换算 `存储速度 = 比率 × 基准战斗机动 ÷ 0.564`
  * （敌方敏捷固定 0.3 → 战斗机动 = 存储值 ×0.6×0.94）。
- * s = clamp((威胁−6)/90, 0, 1)：brawl 比率 = 1.25+0.15s，orbit 比率 = 0.95+0.10s。
- * kite 维持现状（比率为基准的 0.69~0.80×，本就落在船长给的口径带 0.65~0.80 内）。
+ * s = clamp((威胁−6)/90, 0, 1)：brawl 低段缓坡 1.10/1.15/1.20（T6/T10/T12）→ 1.25+0.25·s（→1.50×）；
+ * orbit 0.95+0.25·s（→1.20×）。kite 维持现状（0.69~0.80×）。
  */
 const REF_SHIP = [...SHIPS].sort((a, b) => (a.maxSpeedMps ?? 0) - (b.maxSpeedMps ?? 0))[
   Math.floor(SHIPS.length / 2)
@@ -43,31 +47,42 @@ const REF_SHIP = [...SHIPS].sort((a, b) => (a.maxSpeedMps ?? 0) - (b.maxSpeedMps
 const REF_COMBAT = (REF_SHIP.maxSpeedMps ?? 0) * 0.6 * (1 + ((REF_SHIP.agility ?? 0.5) - 0.5) * 2 * 0.15)
 /** 敌速存储值换算：战斗机动 → 存储值（敌敏捷 0.3） */
 const spin = (r: number): number => Math.round((REF_COMBAT * r) / (0.6 * 0.94))
+/** 威胁 → 归一化位置 s = clamp((T−6)/90, 0, 1) */
+const sOf = (t: number): number => Math.min(1, Math.max(0, (t - 6) / 90))
+/** brawl 目标比率（2026-09-10 船长：①低段缓坡 T6 1.10 / T10 1.15 / T12 1.20；②高段不压反提 → 斜率 0.15→0.25，T96 = 1.50） */
+const brawlR = (t: number): number => {
+  if (t <= 6) return 1.1
+  if (t <= 10) return 1.15
+  if (t <= 12) return 1.2
+  return 1.25 + 0.25 * sOf(t)
+}
+/** orbit 目标比率（2026-09-10 船长③：高段不降 → 上限随 brawl 一起上翘到 1.20，E 段基本维持现状） */
+const orbitR = (t: number): number => 0.95 + 0.25 * sOf(t)
 
 const PROPOSED_FOE_SPEED: Record<string, number> = {
-  // brawl（11 张）：1.25→1.40×
-  'ano-training': spin(1.25), // 366
-  'ano-harbor-escort': spin(1.25 + 0.15 * (4 / 90)), // 368
-  'ano-pirate-post': spin(1.26), // 369
-  'ano-shard-bandits': spin(1.25 + 0.15 * (14 / 90)), // 373
-  'enc-pirate-3': spin(1.25 + 0.15 * (34 / 90)), // 383
-  'ano-chasm-aberrations': spin(1.25 + 0.15 * (52 / 90)), // 391
-  'ano-titan-wreck': spin(1.34), // 392
-  'ano-auro-raiders': spin(1.25 + 0.15 * (56 / 90)), // 393
-  'enc-pirate-4': spin(1.25 + 0.15 * (64 / 90)), // 397
-  'ano-starcore-boss': spin(1.36), // 398
-  'ano-gravekeeper': spin(1.25 + 0.15 * (82 / 90)), // 406
-  // orbit（10 张）：0.95→1.05×
-  'enc-pirate-1': spin(0.95 + 0.1 * (4 / 90)), // 279
-  'ano-abandoned-platform': spin(0.95 + 0.1 * (10 / 90)), // 281
-  'ano-lantern-saboteurs': spin(0.95 + 0.1 * (16 / 90)), // 283
-  'enc-pirate-2': spin(0.95 + 0.1 * (16 / 90)), // 283
-  'ano-cinder-siege': spin(0.99), // 290
-  'ano-echo-haunt': spin(0.95 + 0.1 * (46 / 90)), // 293
-  'ano-nadir-static': spin(0.95 + 0.1 * (60 / 90)), // 298
-  'ano-maw-hunt': spin(0.95 + 0.1 * (74 / 90)), // 302
-  'ano-voidedge-warden': spin(0.95 + 0.1 * (82 / 90)), // 305
-  'ano-vault-sentinel': spin(1.05), // 307
+  // brawl（11 张）：低段缓坡 1.10/1.15/1.20 → 1.25→1.50×
+  'ano-training': spin(brawlR(6)),
+  'ano-harbor-escort': spin(brawlR(10)),
+  'ano-pirate-post': spin(brawlR(12)),
+  'ano-shard-bandits': spin(brawlR(20)),
+  'enc-pirate-3': spin(brawlR(40)),
+  'ano-chasm-aberrations': spin(brawlR(58)),
+  'ano-titan-wreck': spin(brawlR(60)),
+  'ano-auro-raiders': spin(brawlR(62)),
+  'enc-pirate-4': spin(brawlR(70)),
+  'ano-starcore-boss': spin(brawlR(72)),
+  'ano-gravekeeper': spin(brawlR(88)),
+  // orbit（10 张）：0.95→1.20×
+  'enc-pirate-1': spin(orbitR(10)),
+  'ano-abandoned-platform': spin(orbitR(16)),
+  'ano-lantern-saboteurs': spin(orbitR(22)),
+  'enc-pirate-2': spin(orbitR(22)),
+  'ano-cinder-siege': spin(orbitR(42)),
+  'ano-echo-haunt': spin(orbitR(52)),
+  'ano-nadir-static': spin(orbitR(66)),
+  'ano-maw-hunt': spin(orbitR(80)),
+  'ano-voidedge-warden': spin(orbitR(88)),
+  'ano-vault-sentinel': spin(orbitR(96)),
   // kite（5 张）：维持现状
   'ano-haze-ambush': 201,
   'ano-redring-raiders': 204,

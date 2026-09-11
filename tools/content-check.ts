@@ -804,6 +804,47 @@ for (const m of MODULES) {
     mixed += 1
   }
   console.log(`· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系`)
+
+  /* ── 敌速口径契约（2026-09-10 加）──
+   * 船长 2026-09-10 裁决「采取固定锚定，参考按照速度中位线的船只进行参考」：
+   *   基准船 = 船池按 maxSpeedMps 排序取中位（长尾鲨级 272 / 敏捷 0.54）
+   *   基准战斗机动 = 船速 × speedFactor ×(1+(敏捷−0.5)×2×agilitySpeedBonus) ≈ 165.2 m/s
+   *   比率 = 敌战斗机动 ÷ 基准战斗机动，其中敌战斗机动 = foeSpeedMps × speedFactor × 0.94（敌敏捷固定 0.3）
+   * 契约：① 每张敌军卡必须**逐卡显式**写 foeSpeedMps（防止新增卡悄悄回落到段参考船旧公式口径）；
+   *       ② 比率必须落在该战术口径带内（brawl 1.05~1.55 / orbit 0.90~1.25 / kite 0.60~0.85）。 */
+  {
+    const bal = DEFAULT_BALANCE.battle
+    const agiMul = (ag: number): number => bal.speedFactor * (1 + (ag - 0.5) * 2 * bal.agilitySpeedBonus)
+    const sortedShips = [...SHIPS].sort((a, b) => (a.maxSpeedMps ?? 0) - (b.maxSpeedMps ?? 0))
+    const refShip = sortedShips[Math.floor(sortedShips.length / 2)]!
+    const refCombat = (refShip.maxSpeedMps ?? 0) * agiMul(refShip.agility ?? 0.5)
+    const foeAgi = agiMul(0.3)
+    const SPEED_BAND: Record<string, readonly [number, number]> = {
+      brawl: [1.05, 1.55],
+      orbit: [0.9, 1.25],
+      kite: [0.6, 0.85],
+    }
+    let speedCounted = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      const spd = def.foeSpeedMps
+      check(
+        spd !== undefined && spd > 0,
+        `敌速口径契约：${def.name} 未显式声明 foeSpeedMps（2026-09-10 起全卡逐卡标定，见设计稿 enemy-speed-retune-20260910.md）`,
+      )
+      if (spd === undefined) continue
+      speedCounted++
+      const tactic = def.tactic ?? 'orbit'
+      const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
+      const ratio = (spd * foeAgi) / refCombat
+      check(
+        ratio >= band[0] && ratio <= band[1],
+        `敌速口径契约：${def.name}（${tactic}）比率 ${ratio.toFixed(2)}× 越界（应 ${band[0]}~${band[1]}×；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+      )
+    }
+    console.log(
+      `· 敌速口径契约：${speedCounted} 张敌军卡逐卡显式标定、比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+    )
+  }
 }
 
 /* ── 图标覆盖契约（2026-09-10 加）：每个物品种类 / 装备槽位 / 舰船族都必须有 Glyphs 图形与色调 ──

@@ -1,7 +1,8 @@
 # 架构文档
 
-> **协作铁律见 [`docs/development-conventions.md`](./development-conventions.md)——每轮开工先读它。**
-> 本文件只记录技术架构与决策；功能设计文档见 `docs/design/`。
+> **开工先读 [`AGENTS.md`](../AGENTS.md)**（按其中的「目录索引」只读本次任务需要的几份；协作铁律的权威正文见
+> [`docs/development-conventions.md`](./development-conventions.md)）。本文件只记录技术架构与决策；功能设计文档见 `docs/design/`，
+> 逐批变更见 `docs/roadmap.md`。
 
 ## 一句话核心设计
 
@@ -22,7 +23,7 @@
    ▼
 @whale/core  ← 纯 TS 引擎：advanceGame / 技能队列 / 存档迁移 / 种子随机
    ▲
-@whale/data  ← 内容数据：技能表（core 不直接认识任何具体技能）
+@whale/data  ← 内容数据表（技能/物品/装备/舰船/敌人/矿带/市场…；形状由 core 的 types 定义，data 只填表）
    ▲
 @whale/ui    ← 界面组件（Panel / ProgressBar / LogList）
 ```
@@ -34,7 +35,8 @@
 - 收益：可单测、可仿真、可整体搬服务端。
 
 ### 决策 2：确定性 = 时间注入 + 种子随机
-- 引擎只按"流逝毫秒数"推进（`advanceGame(state, deltaMs, catalog)`），不知道墙钟；
+- 引擎只按"流逝毫秒数"推进（`advanceGame(state, deltaMs, ctx: SimContext, opts?)`），不知道墙钟
+  （`opts` 现含 `freezeBattle` / `settleStats` / `nowWallMs`——**只有赏金日板**这类需要"本地 0 点"的机制才读墙钟）；
   在线每秒 1 次小 delta，离线读档 1 次大 delta，同一套逻辑。
 - 随机用种子 RNG（种子 + 使用次数存进存档），结果可复现。**禁止裸 Math.random()**。
 - 收益：离线结算与在线推进结果一致；以后探索/战斗/反作弊可复现可校验。
@@ -61,7 +63,7 @@
 文件（JSON） = { format: "whale-idle-save", version: N, savedAtWallMs, state }
 ```
 
-当前结构版本 v18：
+当前结构版本 **v24**（`packages/core/src/state.ts` 的 `CURRENT_STATE_VERSION`）：
 - **v10**（v9 之上）：六槽位模型——fitted 扩为 miner/cargo/turret/shield/armor/propulsion，
   盾/甲/推进原为占位家族（效果随战斗系统启用，见 v10b 文档）；
 - **v11**：随机事件流（events.nextAtGameMs，间隔 10~30 分钟，见 `docs/design/v11-random-events.md`）；
@@ -81,11 +83,20 @@
   （甲板扩展 +15/35/70 m³、战术导控 +12/25/40%）；命中公式只取武器命中×距离 − 回避
   （信号半径/扫描分辨率等间接属性不参战，仅展示）；载入修复链按船布局对齐位长、溢出件退库
   （见 docs/design/v18-slots.md；迁移链 v17→v18 在案，旧六槽原位映射 high=[炮,矿] mid=[盾,推] low=[甲,货]）。
-v0→…→v18 迁移链在案，老档自动无损升级；真实档迁移经隔离冒烟验证。
+- **v19 ~ v24**（均为 2026-09-05 起的结构性增补；逐条前因见 `docs/roadmap.md` 同日条目）：
+  - **v19** 精炼炉多工位——`refineRun` 单例 → `refineRuns` 工位表（主控亲自运转至多 1 台，其余各由一枚闲置 AI 核心驱动）；
+  - **v20** 同资源多单位并行、**原料不锁定**（改为实时扣取，停机退还未用部分）；
+  - **v21** 制造多线——`manufacturing` 单例 → 作业线表（组装机可并行多线）；
+  - **v22** 承伤持久化——舰队船补 `armorPct`（缺省 1 = 装甲完好，损伤跨场保留）；
+  - **v23** 序章·苏醒——补 `onboarding`（-1 = 老档不触发教程）与 `importantTasks`；
+  - **v24** 任务中心·时效任务板——补 `sideTasks` 空板默认（老档在首个市场窗口边界后才开刷）；
+    此后新增字段多为 **v24 兼容字段、不再升版本**（如玩家标记、派系活跃、赏金日界）。
+v0→…→v24 迁移链在案，老档自动无损升级；真实档迁移经隔离冒烟验证。
 - `version` 是**结构版本号**，每次改结构 +1 并补迁移函数（见 core/src/save.ts）；
   读档 = 逐版本迁移 → 逐字段容错补默认值 → 可用状态。
 - 保存 = 先写 `.tmp` 再改名覆盖（防断电损坏）。
-- 日志环形上限默认 300 条，防存档无限膨胀。
+- 日志：**存档不含事件日志**（2026-09-08 船长定——写盘前剥离 `state.logs`，旧档里的 logs 载入后清空）；
+  `DEFAULT_LOG_CAP = 300` 是本局**内存**滚动上限，只影响界面能回看多少条。
 
 ## 星图与航行（V12.1）
 
@@ -154,6 +165,8 @@ Phase 3         在线：core 搬进服务器权威跑，客户端发指令收�
 | T8 ✅ | 星系停留·连击·重复冷却（船长反馈批·大系统） | 位置模型（awayGalaxy/transit/origin 感知计程/station seam）；悬赏胜利与扫描完成停留、失利自动返航；连续出击半自动环（10s 冷却、货仓/耐久硬边界、修理组件 seam、开关落档）；`bountyCooldowns` 等 v16.1 兼容字段（见 docs/design/t8-galaxy-stay.md） |
 | T10 ✅ | 统一任务系统与任务中心（船长反馈批；先于 T9） | 星图页"悬赏情报"→任务中心：任务族框架（当前悬赏族；建站/引导族预留）；排序五选（距离/星系/奖励/声望/默认=可接取冒泡+名称）；视图层目录+读现有状态（见 docs/design/t10-task-center.md） |
 | T9 ✅ | 副空间站 + 通讯对话系统（船长反馈批·大系统） | 建站族任务（红环/烬火两站、三档边交边生效、最近空间站解析并入 stationGalaxyIds/dockedSite 停靠模型）；通讯器对话框架（通用剧本、全文一次呈现+镜像日志、已读/重看/待播自动弹出）；v16.1 兼容字段 stationSites/dockedSite/dialogueSeen/pendingDialogue（见 docs/design/t9-substations.md） |
+| V16.2 / V17 系列 / V18 系列 / T11（2026-09-04~06） | 安全等级色阶与悬赏长期化（V16.2）、模块族与武器改造（V17/V17.2，含炮型绑定弹种）、导弹与激光族（V18B）、高/中/低槽制与支援件（V18/V18.1）、调试器保留真实战斗（T11） | 逐条见 `docs/roadmap.md` 与对应 `docs/design/*.md`（**本表自 2026-09-07 起不再逐条追平**） |
+| 2026-09-07 至今 | B3 打捞与残骸回收、任务中心与赏金/窝点/派系活跃、舰船尺寸分级、无人机线与损毁回收、敌方混伤、市场稀有度分层与物品池标定、工业 AI 工位、星图探索与显示模式… | 全部见 [`docs/roadmap.md`](./roadmap.md)（追加式批次日志，最新在最上） |
 | 在线化（预备案） | core 整体搬服务端 | 架构已预留，未启动 |
 
 ## 开发约定

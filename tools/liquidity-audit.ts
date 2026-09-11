@@ -21,6 +21,7 @@
  */
 import { addShipToFleet, createInitialState, getMiningParams } from '@whale/core'
 import { buildSimContext } from '@whale/data'
+import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const ctx = buildSimContext()
 const SHIP = 'burrower' // 掘洞级采矿艇（船长指定基准：MK1 采集器 ×2，高槽 2 / CPU 90）
@@ -171,3 +172,152 @@ for (const [mineralId, info] of [...mineralRate.entries()].sort((a, b) => a[1].p
     `| ${item?.name ?? mineralId} | ${price} | ${info.fromOre} | ${fmt(info.perHour)} | ${fmt(perDay)} | ${fmt(curFlow)} | ${cover.toFixed(2)}× | **${fmt(needFlow)}** | **${fmt(needFlow * 120)}** | ${(needFlow / Math.max(1, curFlow)).toFixed(1)}× |`,
   )
 }
+
+/* ───────── 消耗品侧（2026-09-11 补；船长：「消耗品的市场规模依旧很低」）─────────
+ * 与矿物侧同一把尺，但两处口径不同要讲清：
+ * - **产能口径**（同矿物侧）：弹药/修理组件**玩家可自造**（有蓝图）→ 基准 = **单工位无技能产能**
+ *   （outputUnits ÷ buildSeconds × 86400），覆盖比 = 池日吸收 ÷ 该产能；无人机**无蓝图** → 只走市场。
+ * - **消耗口径**（本侧新增）：用**真实引擎**跑参考战斗，量出"一场打掉多少"，
+ *   再看池子"够打几场"——这是玩家侧的体感规模（买得到多少）。
+ * 参考行（真实引擎，4 张卡 × 5 种子取中位）：
+ *   S2 灰鲭鲨 4×动能MK2 + 维修装置MK2（中位技能）／S4 大白鲨 5×动能MK3（满技能）／D3 王鲭机群（满技能）。 */
+console.log('')
+console.log('══ 消耗品侧：单场消耗（真实引擎）与池规模 ══')
+const CONSUMER_SKILL_IDS = [
+  'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control', 'reload-drills',
+  'drone-warfare', 'drone-servicing', 'ammunition-condensing', 'shield-operation', 'energy-management',
+  'hull-upgrades', 'shield-tuning', 'armor-tuning', 'armed-ops', 'armored-ops', 'vector-maneuvering',
+  'evasion-maneuvering', 'targeting-integration', 'ship-systems-engineering',
+]
+const fullSkills = Object.fromEntries(CONSUMER_SKILL_IDS.map((k) => [k, 5]))
+const midSkills = Object.fromEntries(CONSUMER_SKILL_IDS.map((k) => [k, 3]))
+interface ConsumerRow {
+  name: string
+  ship: string
+  high: string[]
+  mid: string[]
+  low: string[]
+  drones?: Record<string, number>
+  ammoTier?: string
+  repair: boolean
+  skills: Record<string, number>
+}
+const CONSUMER_ROWS: ConsumerRow[] = [
+  {
+    name: 'S2 灰鲭鲨 4×动能MK2 + 维修装置MK2（中位技能）',
+    ship: 'sh-mako',
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-hullrep-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+    ammoTier: 'ammo-kinetic-l',
+    repair: true,
+    skills: midSkills,
+  },
+  {
+    name: 'S4 大白鲨 5×动能MK3 + 维修装置MK2（满技能）',
+    ship: 'sh-whiteshark',
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'],
+    mid: ['mod-shield-kin-2', 'mod-hullrep-2', 'mod-gyro-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+    ammoTier: 'ammo-kinetic-2',
+    repair: true,
+    skills: fullSkills,
+  },
+  {
+    name: 'D3 王鲭机群 4 攻坚 + 6 哨戒（满技能）',
+    ship: 'sh-sentinel',
+    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
+    mid: ['mod-shield-kin-2', 'mod-gyro-2'],
+    low: ['mod-armor-kin-2', 'mod-armor-plate-2'],
+    drones: { 'drone-heavy': 4, 'drone-sentry': 6 },
+    repair: false,
+    skills: fullSkills,
+  },
+]
+const CONSUMER_CARDS = ['ano-maw-hunt', 'ano-gravekeeper', 'ano-voidedge-warden', 'ano-vault-sentinel']
+const SEEDS = [1, 7, 13, 29, 51]
+const median = (xs: number[]): number => {
+  const a = [...xs].sort((x, y) => x - y)
+  return a.length === 0 ? 0 : a[Math.floor(a.length / 2)]!
+}
+const mean = (xs: number[]): number => (xs.length === 0 ? 0 : xs.reduce((s, x) => s + x, 0) / xs.length)
+const consumed = new Map<string, number[]>() // 消耗品 id → 逐场消耗
+const push = (id: string, n: number): void => {
+  const arr = consumed.get(id)
+  if (arr) arr.push(n)
+  else consumed.set(id, [n])
+}
+for (const r of CONSUMER_ROWS) {
+  for (const card of CONSUMER_CARDS) {
+    for (const seed of SEEDS) {
+      const st = createInitialState({ nowWallMs: 0, seed })
+      const uid = addShipToFleet(st, r.ship)
+      st.shipId = uid
+      for (const [k, v] of Object.entries(r.skills)) st.skills.trained[k] = v
+      for (const k of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l', 'ammo-kinetic-2', 'ammo-explosive-2', 'ammo-plasma-2']) {
+        st.warehouse.items[k] = 20_000
+      }
+      st.warehouse.items['repairkit-mil'] = 5_000
+      st.warehouse.items['repairkit-civ'] = 5_000
+      const entry = st.fleet[uid]!
+      entry.fitted = { high: [...r.high], mid: [...r.mid], low: [...r.low] }
+      if (r.drones) {
+        entry.droneLoad = { ...r.drones }
+        for (const [id, n] of Object.entries(r.drones)) st.warehouse.items[id] = n
+      }
+      if (r.ammoTier) entry.ammoPref = { kinetic: r.ammoTier }
+      const battle = startBattleFor(st, ctx, uid, card, 0)
+      if (!battle) continue
+      const loaded = Object.values(battle.ammo).reduce((s, v) => s + (v ?? 0), 0)
+      const kitsLoaded = Object.values(battle.repair?.kits ?? {}).reduce((s, v) => s + (v ?? 0), 0)
+      st.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(card), ctx.balance.battle)
+      advanceBattleFor(st, ctx, battle, uid, card)
+      const left = Object.values(battle.ammo).reduce((s, v) => s + (v ?? 0), 0)
+      const kitsLeft = Object.values(battle.repair?.kits ?? {}).reduce((s, v) => s + (v ?? 0), 0)
+      const spent = loaded - left
+      if (r.ammoTier && spent > 0) push(r.ammoTier, spent)
+      if (r.repair && kitsLoaded > 0) push('repairkit-mil', kitsLoaded - kitsLeft)
+      if (r.drones) for (const [id, n] of Object.entries(battle.droneLost ?? {})) push(id, n)
+      if (r.repair) push('repairkit-civ', 0)
+    }
+  }
+}
+const BLUEPRINT_OUT = new Map<string, number>() // 消耗品 id → 单工位日产（无技能）
+for (const bp of ctx.blueprints.values()) {
+  if (!bp.itemId || !bp.outputUnits || !bp.buildSeconds) continue
+  const perDay = (86_400 / bp.buildSeconds) * bp.outputUnits
+  const prev = BLUEPRINT_OUT.get(bp.itemId) ?? 0
+  if (perDay > prev) BLUEPRINT_OUT.set(bp.itemId, perDay)
+}
+const CONSUMABLE_IDS = [
+  'ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l',
+  'ammo-kinetic-2', 'ammo-explosive-2', 'ammo-plasma-2',
+  'repairkit-civ', 'repairkit-mil',
+  'drone-scout', 'drone-assault', 'drone-heavy', 'drone-sentry',
+]
+console.log('| 消耗品 | 单价 | 池存量 | flow/窗 | 日供给 | 单工位日产 | **产能覆盖比** | 单场消耗 | **够打** | **建议 flow** | **建议 poolTarget** |')
+console.log('|---|---|---|---|---|---|---|---|---|---|---|')
+for (const id of CONSUMABLE_IDS) {
+  const good = ctx.marketGoods.get(id)
+  if (!good) continue
+  const item = ctx.items.get(id)
+  const price = good.basePrice
+  const flow = good.supplyFlow ?? 0
+  const perDay = flow * 1440
+  const prod = BLUEPRINT_OUT.get(id) ?? 0
+  const cover = prod > 0 ? perDay / prod : Number.NaN
+  // 弹药取中位（每场都在打）；修理组件取均值（打不到伤的场次为 0，中位会被 0 压低）
+  const per = id.startsWith('repairkit') ? Math.round(mean(consumed.get(id) ?? [])) : median(consumed.get(id) ?? [])
+  const battles = per > 0 ? Math.round(perDay / per) : Number.POSITIVE_INFINITY
+  const tgt = coverageOf(price)
+  const base = prod > 0 ? prod : per > 0 ? per * 144 : 0 // 无蓝图（无人机）→ 按战损口径：144 场/天
+  const needFlow = base > 0 ? Math.ceil((base * tgt) / 1440) : flow
+  console.log(
+    `| ${item?.name ?? id} | ${price} | ${fmt(good.poolTarget ?? 0)} | ${fmt(flow)} | ${fmt(perDay)} | ${prod > 0 ? fmt(prod) : '—（无蓝图）'} | ` +
+      `${Number.isFinite(cover) ? cover.toFixed(2) + '×' : '—'} | ${per > 0 ? fmt(per) : '—'} | ${Number.isFinite(battles) ? fmt(battles) + ' 场/天' : '—'} | ` +
+      `**${fmt(needFlow)}** | **${fmt(needFlow * 120)}** |`,
+  )
+}
+console.log('· 读法：**产能覆盖比** = 池日吸收 ÷ 单工位日产（<1 = 一个工位造出来的量，市场一天都吃不下）；')
+console.log('  **单场消耗 → 够打** = 池日供给够撑几场（真实引擎实测的单场消耗，含 2026-09-11 修复的"齐射按门数扣弹"）；')
+console.log('  **建议** = 与矿物侧同一把尺（分层覆盖比 ×15/×6/×2）；无人机无蓝图 → 基准按 144 场/天战损折算。')
