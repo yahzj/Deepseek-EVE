@@ -505,6 +505,63 @@ const EXPLORE_ROWS: readonly StandardRow[] = [
     skills: MID_SKILLS,
     desireM: 1000,
   },
+  /* ── **满技能版 E 段巡洋行**（2026-09-11 船长实测回传：「**调整装配后中位技能可以打**。
+   *   **建议你按满技能再测试一遍**」）—— 与 `E0~E3` **只差技能档**（`MID_SKILLS` 20 项 Lv3 → `FULL_SKILLS` 满级），
+   *   用于回答"同一套装配在满技能下能不能过"，以及"满技能还能不能靠中位那套打法过"。 */
+  {
+    id: 'F0' as StandardRow['id'],
+    label: '**满技能**·E段巡洋·动能抗（锤头鲨 5×动能MK2）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'F0 锤头鲨 5×动能MK2+动能抗(满技能)',
+      ship: 'sh-hammerhead',
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2'],
+    },
+    skills: FULL_SKILLS,
+  },
+  {
+    id: 'F1' as StandardRow['id'],
+    label: '**满技能**·E段巡洋·能量抗（锤头鲨 5×动能MK2）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'F1 锤头鲨 5×动能MK2+能量抗(满技能)',
+      ship: 'sh-hammerhead',
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+      mid: ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: FULL_SKILLS,
+  },
+  {
+    id: 'F2' as StandardRow['id'],
+    label: '**满技能**·E段巡洋·近距离1500+能量抗（5×轻型炮MK1）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'F2 锤头鲨 5×轻型炮MK1+能量抗(满技能)',
+      ship: 'sh-hammerhead',
+      high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'],
+      mid: ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: FULL_SKILLS,
+    desireM: 1500,
+  },
+  {
+    id: 'F3' as StandardRow['id'],
+    label: '**满技能**·E段巡洋·近距离1000+能量抗+MK3（5×转管炮）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'F3 锤头鲨 5×转管炮+能量抗(满技能·MK3)',
+      ship: 'sh-hammerhead',
+      high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'],
+      mid: ['mod-prop-3', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: FULL_SKILLS,
+    desireM: 1000,
+  },
 ]
 
 /** 标准格读数（终局/最近交距 + 开火次数按头目/杂鱼分列） */
