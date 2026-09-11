@@ -1074,22 +1074,25 @@ function injectAbyssgate(state: GameState): string[] {
   notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 验收行同口径）')
   const uid = addShipToFleet(state, 'sh-mako')
   const s = state.fleet[uid]!
-  s.customName = '灰鲭鲨·能量卡验收（只堆主系）'
+  s.customName = '灰鲭鲨·能量卡验收（只堆主系+MK2推进器）'
   s.fitted = {
     high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
-    mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
     low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
   s.durability = 1
   s.armorPct = 1
   state.shipId = uid
-  notes.push(`新增驾驶船 ${uid}：灰鲭鲨 4×动能MK2 + 支援（**起手 = 只堆主系抗**，即"没堆能量抗"那一端）`)
+  notes.push(`新增驾驶船 ${uid}：灰鲭鲨 4×动能MK2 + 支援 + **矢量推进器 MK2**（起手 = 只堆主系抗，即"没堆能量抗"那一端）`)
   const spares = [
     'mod-turret-kin-2', 'mod-shield-kin-2', 'mod-shield-pla-2', 'mod-armor-kin-2', 'mod-armor-pla-2',
     'mod-track-2', 'mod-gyro-2', 'mod-stab-kin-2', 'mod-rof-2',
+    // 推进器三档：实测「带/不带推进器」对同一张卡差别极大（深渊之门 0%→40%、星髓残血 81%→100%、
+    // 噬口反而更慢），故三档都备件供换装对比
+    'mod-prop-1', 'mod-prop-2', 'mod-prop-3',
   ]
   for (const m of spares) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
-  notes.push('装备库四系抗性件各 ×3（**盾动能 / 盾能量 / 甲动能 / 甲能量**）——**换件即换抗**，用于验证"堆对应抗性"的回报')
+  notes.push('装备库四系抗性件各 ×3（盾动能 / 盾能量 / 甲动能 / 甲能量）**＋ 推进器 MK1/MK2/MK3 各 ×3**——换件即换抗/换推进器')
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
   }

@@ -707,6 +707,42 @@ async function main(): Promise<void> {
     }
   }
 
+  /* 推进器对照（船长 2026-09-10：「你在装配时完全不考虑推进器吗」）——
+   * 同一艘船、同一套武器/抗性件，**只差中槽一件矢量推进器 MK2**，看四张验收卡的差别。
+   * 用来判断"推进器在哪些战术上才是决定性旋钮"。 */
+  if (process.argv.includes('--prop-sweep')) {
+    const FITS: Array<{ label: string; mid: string[] }> = [
+      { label: '**不带推进器**', mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'] },
+      { label: '带推进器 MK2（点火 60s ×1.6 → 冷却 60s ×1.0）', mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'] },
+    ]
+    console.log('\n════ 推进器对照（灰鲭鲨 4×动能MK2 × 中位技能；只差中槽一件 MK2）════')
+    for (const id of ['ano-abyss-guard', 'ano-starcore-boss', 'ano-maw-hunt', 'ano-gravekeeper']) {
+      const a0 = ctx.anomalies.get(id)!
+      const out: string[] = []
+      for (const fit of FITS) {
+        const ld: Loadout = { name: fit.label, ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: fit.mid, low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
+        let rem = 0
+        let dur = 0
+        let win = 0
+        for (const seed of SEEDS) {
+          const s = makeState(ld.ship, ld, MID_SKILLS, seed)
+          const spec = createPlayerSpec(s, ctx as SimContext, ld.ship)
+          const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+          const b = startBattleFor(s, ctx as SimContext, s.shipId, id, 0)
+          if (!b) continue
+          s.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(id), ctx.balance.battle)
+          advanceBattleFor(s, ctx as SimContext, b, s.shipId, id)
+          const u = b.units['player']
+          if (b.ended === 'me') win++
+          rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+          dur += Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+        }
+        out.push(`${fit.label} ${String(Math.round((win / SEEDS.length) * 100)).padStart(3)}%/${(dur / SEEDS.length / 1000).toFixed(0).padStart(3)}s/残 ${(rem / SEEDS.length).toFixed(0).padStart(3)}%`)
+      }
+      console.log(`  ${String(a0.threat).padStart(3)} ${a0.name.padEnd(10)} ${String(a0.tactic ?? 'orbit').padEnd(6)} → ${out.join('　｜　')}`)
+    }
+  }
+
   void bal
 }
 
