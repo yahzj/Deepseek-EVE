@@ -27,12 +27,43 @@ const LAY = { PAD: 36, GAP: 84, TOP: 54, MAIN: 170, ESC: 90, ROW_GAP: 4 }
  * 依据：**玩家** = `ShipDef.tier`；**敌方** = 编成条目所引舰级的 `FoeShipDef.hullClassTier`
  * （界面经 `core/foeShipTierOf(anomaly, tag)` 取值，与 `foeUnitNameOf` 同源）。
  * ⚠ **旧威胁推导路径的卡没有舰种档**（D/E/G 三族 9 张 + 4 张遭遇模板）⇒ **回落** `LAY.MAIN/ESC`；
- *   船长 2026-09-11 裁定：这批卡的体积口径**延后**（等各族舰级在二号处补完再生效）。 */
+ *   船长 2026-09-11 裁定：这批卡的体积口径**延后**（等各族舰级在二号处补完再生效）。
+ *
+ * ⚠⚠ **2026-09-11 船长：「因为放大，导致各种距离不准了。能否先将各个级别舰船图形大小还原，
+ *   系统保留进行测试」** ⇒ 本批**默认关**（见下方 `sizeByTierEnabled()` / `SIZE_BY_TIER_DEFAULT`）：
+ *   **显示口径还原为改造前的统一体积（主舰 170 / 其余 90）**，而阶梯表、`foeShipTierOf` 反查、
+ *   逐单位布局**系统全部保留就位**。
+ *   为什么"距离不准"：距离尺本身是米 → 百分比（与舰体无关），但**同一米数对应的视觉缺口**
+ *   是按统一 170/90 舰体标定的；舰体一大一小之后，读数（米）与观感（缺口）不再对应。 */
 const TIER_SIZE: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 110, 2: 140, 3: 170, 4: 205, 5: 240 }
 /** 僚机 / 轻装单位的体积系数（＝改造前 90/170 的既有比例，保留"轻装更小"的语义） */
 const ESCORT_MUL = 0.53
-/** **单位体积解析（敌我共用）**：有舰种档 → 阶梯 × 轻装系数；无档 → 回落尺寸（旧路径卡） */
+/** 代码里的正式默认值（发布口径）：**关** = 还原统一体积；改 `true` 即正式启用阶梯（须复核视觉距离标定） */
+const SIZE_BY_TIER_DEFAULT = false
+/** 缓存的开关值（首次调用时读一次；测试/探针可在首次调用前注入 `localStorage` 桩） */
+let sizeTierFlag: boolean | null = null
+/**
+ * 是否启用「舰种体积」——默认**否**（还原口径）；测试期由
+ * `localStorage['whale-idle:ship-size-tier'] === '1'` 免重建启用（刷新生效）。
+ */
+function sizeByTierEnabled(): boolean {
+  if (sizeTierFlag === null) sizeTierFlag = readFlag('whale-idle:ship-size-tier') ?? SIZE_BY_TIER_DEFAULT
+  return sizeTierFlag
+}
+
+/** 读隐藏开关（与 V15 调试模式 `whale-idle:debug` 同款用法）：非浏览器环境 / 存储被禁 → `null`（用默认值） */
+function readFlag(key: string): boolean | null {
+  try {
+    const v = localStorage.getItem(key)
+    return v === null ? null : v === '1'
+  } catch {
+    return null
+  }
+}
+
+/** **单位体积解析（敌我共用）**：见上方两段口径——默认走"还原"分支（统一 170/90） */
 function sizeOfUnit(tier: number | null | undefined, escort: boolean): number {
+  if (!sizeByTierEnabled()) return escort ? LAY.ESC : LAY.MAIN // 还原口径：主舰 170 / 其余 90（＝改造前逐像素）
   if (tier === 1 || tier === 2 || tier === 3 || tier === 4 || tier === 5) {
     return Math.round(TIER_SIZE[tier] * (escort ? ESCORT_MUL : 1))
   }
@@ -119,22 +150,34 @@ function layout(d: Dims, foeSizes: readonly number[], visM: number, openM: numbe
   foeLeft: number
   me: Anchor
   foe: Anchor[]
-  /** **实际落画**体积（px；已含溢出收缩）——渲染尺寸/舰艏偏移必须用它，不能用入参原值 */
+  /** **实际落画**体积（px；启用时已含溢出收缩）——渲染尺寸/舰艏偏移必须用它，不能用入参原值 */
   sizes: number[]
   /** 米制可用跨度（px）：贴脸(near)时舰缘间距 = LAY.GAP，拉满(open)时 = LAY.GAP+usable —— 与距离线性对应 */
   usable: number
 } {
-  // 溢出保险（2026-09-11）：舰种体积放大后，敌编队整行可能宽过**本窗口能给敌列的空间** → 等比收缩，
-  // 保证一行仍在列内、不压到我列（体积上限 T5=240 × 4~6 舰这类编成才有机会触发）。
-  // 预算按**窗口**算（W − 左右留白 − 我列宽 − 最小间距），**不吃 `d.foeW` 实测值**：
-  // 敌列宽由本行内容撑出（实测值会跟着收缩后的行一起变小），拿它当预算会"越缩越小"地自我反馈。
+  const byTier = sizeByTierEnabled()
   const nFoe = foeSizes.length
   const gapW = Math.max(0, nFoe - 1) * LAY.ROW_GAP
-  const maxRowW = Math.max(80, d.W - LAY.PAD * 2 - d.meW - LAY.GAP)
-  const rawW = foeSizes.reduce((s, v) => s + v, 0)
-  const fit = rawW + gapW > maxRowW ? Math.max(0.4, (maxRowW - gapW) / rawW) : 1
-  const widths = foeSizes.map((v) => Math.max(24, Math.round(v * fit)))
-  const rowW = widths.reduce((s, v) => s + v, 0) + gapW
+  /**
+   * **锚点槽位宽**（决定行宽/锚点/行高）：
+   * - 启用阶梯 → 用**逐舰实际体积**（渲染、弹道、血条、无人机阵位同一份坐标，天然自洽）；
+   * - 还原口径（默认）→ 用**改造前的槽位规则**（首舰 `MAIN`、其余 `ESC`，与本舰实际画多大无关）
+   *   ——改造前就是这套算法（多舰卡的锚点并不跟实际舰宽），要**逐像素还原**必须照旧。
+   */
+  let slots: number[]
+  if (!byTier) {
+    slots = foeSizes.map((_, i) => (i === 0 ? LAY.MAIN : LAY.ESC))
+  } else {
+    // 溢出保险（2026-09-11）：舰种体积放大后，敌编队整行可能宽过**本窗口能给敌列的空间** → 等比收缩，
+    // 保证一行仍在列内、不压到我列（体积上限 T5=240 × 4~6 舰这类编成才有机会触发）。
+    // 预算按**窗口**算（W − 左右留白 − 我列宽 − 最小间距），**不吃 `d.foeW` 实测值**：
+    // 敌列宽由本行内容撑出（实测值会跟着收缩后的行一起变小），拿它当预算会"越缩越小"地自我反馈。
+    const maxRowW = Math.max(80, d.W - LAY.PAD * 2 - d.meW - LAY.GAP)
+    const rawW = foeSizes.reduce((s, v) => s + v, 0)
+    const fit = rawW + gapW > maxRowW ? Math.max(0.4, (maxRowW - gapW) / rawW) : 1
+    slots = foeSizes.map((v) => Math.max(24, Math.round(v * fit)))
+  }
+  const rowW = slots.reduce((s, v) => s + v, 0) + gapW
   const usable = Math.max(0, d.W - LAY.PAD * 2 - d.meW - d.foeW - LAY.GAP)
   const g = approachOf(visM, openM, nearM) // 接近度：远 = 0，贴脸 = 1
   const t = (usable * g) / 2 // 越接近越向中线收拢
@@ -143,18 +186,19 @@ function layout(d: Dims, foeSizes: readonly number[], visM: number, openM: numbe
   const minSpan = Math.min(LAY.GAP, Math.max(40, d.W - LAY.PAD * 2 - 60))
   if (foeLeft - (meLeft + d.meW) < minSpan) foeLeft = meLeft + d.meW + minSpan // 极小窗防御：不重叠
   const meH = meSize * 0.46
-  const foeH = widths.map((w) => w * 0.46)
+  const foeH = slots.map((w) => w * 0.46)
   const rowH = Math.max(1, ...foeH) // 行底 = TOP + rowH（最高单位定高，其余沉底）
   const rowLeft = foeLeft + (d.foeW - rowW) / 2
   const me: Anchor = { x: meLeft + d.meW / 2, y: LAY.TOP + meH / 2 }
   const foe: Anchor[] = []
   let acc = rowLeft
   for (let i = 0; i < nFoe; i++) {
-    const w = widths[i]!
+    const w = slots[i]!
     foe.push({ x: acc + w / 2, y: LAY.TOP + rowH - foeH[i]! / 2 })
     acc += w + LAY.ROW_GAP
   }
-  return { meLeft, foeLeft, me, foe, sizes: widths, usable }
+  // 落画尺寸：启用 = 收缩后的实际体积；还原 = 传入的逐舰体积（＝改造前的「主 170 / 其余 90」DOM 口径）
+  return { meLeft, foeLeft, me, foe, sizes: byTier ? slots : [...foeSizes], usable }
 }
 
 /** 扇形路径（原点为圆心、朝 +x 张角 ±38°；折线逼近弧线） */
@@ -305,6 +349,7 @@ export {
   LAY,
   TIER_SIZE,
   ESCORT_MUL,
+  sizeByTierEnabled,
   sizeOfUnit,
   noseOf,
   NOSE_MAIN,
