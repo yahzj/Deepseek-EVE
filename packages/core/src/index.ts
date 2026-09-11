@@ -40,6 +40,9 @@ export type {
   BattleBalance,
   FoeTactic,
   DefProfile,
+  FoeShipDef,
+  FoeShipSlot,
+  FoeReinforceTrigger,
   SimContext,
 } from './types'
 
@@ -499,6 +502,7 @@ export {
   foeMainTagOf,
   foeUnitNameOf,
   FOE_LIGHT_WORD,
+  FOE_ELITE_WORD,
   createPlayerSpec,
   playerAmmoType,
   typeLayerMult,

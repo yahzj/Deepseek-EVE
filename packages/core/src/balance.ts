@@ -184,6 +184,15 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     //   `docs/design/enemy-speed-retune-20260910.md`）：基准船 = 速度中位线船只
     //   长尾鲨级（船速 272 / 敏捷 0.54 → 战斗机动 165.2 m/s），比率 = 敌战斗机动 ÷ 165.2，
     //   brawl 低段缓坡 1.10/1.15/1.20 → 1.29~1.48、orbit 0.96~1.20、kite 维持 0.69~0.80。
+    /* ═══ 舰种基准速度（2026-09-11 船长给定；**敌我共用**）═══
+     * 1 护卫舰 340 / 2 驱逐舰 295 / 3 巡洋舰 258 / 4 战列舰 205 / 5 旗舰 155。
+     * **敌舰级实速 = 本表[舰种档] × `FoeShipDef.speedRatio`（编成还有 speedMul 时再乘）后取整**；
+     * 上面那条旧路径（威胁推导，`foeRefSpeedTable` 那段公式）**不读本表**。
+     * ⚠ 数值字面量**只在这一处**：core 不能 import data 包，故 data 包的
+     * `packages/data/src/hullClass.ts` 的 `HULL_CLASS_BASE_SPEED` 直接读本字段（同源、不会漂移）。
+     * 2026-09-11 追加裁决（船长「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）后，
+     * A 族四舰级登记为 1/1/2/3 档——**海盗不配战列级**（维护成本大，不符合海盗背景设定）。 */
+    hullClassBaseSpeedMps: { 1: 340, 2: 295, 3: 258, 4: 205, 5: 155 },
     foeRefSpeedTable: [
       { upToThreat: 10, maxSpeedMps: 220 },
       { upToThreat: 34, maxSpeedMps: 250 },
@@ -223,6 +232,15 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     foeChargeMaxHoldMs: 2_000, // 进入自己武器射程后再维持这么久，随后突进结束
     foeChargeCooldownMs: 20_000, // 冷却：这么久内不能再次突进
     foeChargeThreatFloor: 60, // 威胁门槛（与 pdThreatFloor 同口径）
+    /* ═══ 单波次内增援（2026-09-11 船长裁决：「先完成相应的系统机制，不使用。用作后续机制。」）═══
+     * **机制**：编成条目的 `enterAt` 给"第几秒 / 击毁几个 / 残血到多少"三种入场触发，
+     * 未触发的单位**开战不进战场**，由 `advanceBattleFor` 每拍检查、条件命中才补入（`enterReload` 哑火窗口）。
+     * ⚠ **只实现、不启用** → `foeReinforceEnabled` 默认 false，机制/参数/契约/用例全部就位但**任何战斗都不触发**；
+     *   要启用只改这一个开关（并同步解除 content:check「增援机制未启用契约」）。
+     * ⚠ 与**多舰补偿系数 `2N/(N+1)`**（A 族数值批）是**结构解法 vs 数值补偿**两条路、**不可叠加**：
+     *   启用增援后"逐个被击毁的阶梯衰减"由机制本身解决，补偿系数须下调或退场。 */
+    foeReinforceEnabled: false, // 总开关（船长 2026-09-11：机制已实现，不启用，留作后续机制）
+    foeReinforceReopenFrac: 0, // 增援入场的距离重开比例（语义同 waveReopenFrac；0 = 原地入场不重开＝缺省口径）
     // P0 承伤持久化：护盾战中被动回充（每秒回满盾的 2%；P2 随流派平衡再校准）
     shieldRegenPerSec: 0.02,
     waveReopenFrac: 0.5, // 多波次转场（2026-09-09 船长建议）：下一波把距离向开战距离回拉 50%（0=原地/1=回满，可随时调）

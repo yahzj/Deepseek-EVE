@@ -33,7 +33,7 @@ const PROPOSAL = process.argv.includes('--proposal')
 const TACTIC_ON = process.argv.includes('--tactic')
 /** 血量求解：在"中位技能 × S2 灰鲭鲨"参考行上，对每张卡二分求"打完剩 TARGET% 残血"所需的 foeHpOverride */
 const SOLVE_HP = process.argv.includes('--solve-hp')
-/** 火力扫描：对手挂 foeDmgMul 的两张能量卡，扫一遍倍率看承伤 */
+/** 火力扫描：两张能量卡按"基础单发 × 系数"扫一遍看承伤（系数经 `foeShotDmg` 直写落码） */
 const DMG_SWEEP = process.argv.includes('--dmg-sweep')
 const HP_TARGET_PCT = 45
 /** 求解目标：`rem` = 打完剩 TARGET% 残血（orbit/kite 口径）；`dur` = 时长命中该段 D(T)（brawl 口径） */
@@ -436,7 +436,7 @@ async function main(): Promise<void> {
       )
       console.log(
         `  伤害构成     ${Object.entries(cur.dmgMix ?? {}).map(([t, v]) => `${t} ${v}`).join(' : ') || '（缺省动能）'}` +
-          `　foeDmgMul ${cur.foeDmgMul ?? 1}　落点衰减 ${w.falloff}`,
+          `　落点衰减 ${w.falloff}`,
       )
       console.log(
         `  速度         现状 ${f0.speedMps}（战斗机动 ${Math.round(c0)}）→ 提案 **${f1.speedMps}**（战斗机动 ${Math.round(c1)}）`,
@@ -534,7 +534,9 @@ async function main(): Promise<void> {
     }
   }
 
-  /* 火力扫描：两张挂 foeDmgMul 的能量卡（船长 2026-09-10「感觉可以上调」）
+  /* 火力扫描：两张能量卡的基础单发（船长 2026-09-10「感觉可以上调」）
+   * 扫描方式是**按系数直写 `foeShotDmg`**（原始推导单发 × 系数）——原"逐卡等效回退倍率口"
+   * 已于 2026-09-11 退休（船长「先移除所有逐卡伤害倍率，按照实际算」），本段不受影响。
    * 2026-09-10 补：同时跑「只堆主系」与「全堆能量抗」两种配装——**配装回报**必须看得出来 */
   if (DMG_SWEEP) {
     const FITS: Array<{ label: string; mid: string[]; low: string[] }> = [
@@ -549,7 +551,7 @@ async function main(): Promise<void> {
       const baseShot = uThreat * bal.foeDpsPerThreat * (bal.foeReloadMs / 1000)
       console.log(
         `\n── ${a0.threat} ${a0.name}（${id} · ${a0.tactic ?? 'orbit'} · 僚机 ${escorts}）──\n` +
-          `   份额 ${uThreat.toFixed(2)} × 0.8 × 4.0s = **基础单发 ${baseShot.toFixed(1)}**（未乘任何回退）`,
+          `   份额 ${uThreat.toFixed(2)} × 0.8 × 4.0s = **基础单发 ${baseShot.toFixed(1)}**（按威胁链实际推导，无任何逐卡倍率）`,
       )
       for (const mul of [0.3, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0]) {
         const patched: SimContext = {
@@ -772,7 +774,6 @@ async function main(): Promise<void> {
         : String(w.shotDmg)
       const quirks = [
         a.foeShotDmg !== undefined ? `单发直写 ${a.foeShotDmg}` : '',
-        a.foeDmgMul !== undefined ? `伤害×${a.foeDmgMul}` : '',
         a.foeFalloff !== undefined ? `远端衰减 ${a.foeFalloff}` : '',
         a.foeHitRate !== undefined ? `命中覆写 ${a.foeHitRate}` : '',
         (a.escorts ?? 0) > 0 ? `僚机 ${a.escorts}` : '',
@@ -818,22 +819,58 @@ async function main(): Promise<void> {
   if (process.argv.includes('--csv')) {
     const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
     const head = [
-      'id', '卡名', '族', '威胁', '战术', '敌速', '比率', '战斗机动', '射程带min', '射程带max', '期望交距',
+      'id', '卡名', '族', '舰级编成', '威胁', '战术', '敌速', '比率', '战斗机动', '射程带min', '射程带max', '期望交距',
       '编队', '波次', '僚机', '总血', '总DPS', '单发(实际)', '命中', '伤害构成', '远端衰减', '近盲带',
       '个性口', '交火展示时长', '实测胜率', '实测时长', '实测残血',
     ]
     console.log(head.join(','))
     for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
-      const f = createFoeSpecs(a, bal)[0]!
+      const specs = createFoeSpecs(a, bal)
+      const f = specs[0]!
       const w = f.weapons[0]!
       const pos = bal.tacticDesireFactor[a.tactic ?? 'orbit'] ?? 0.5
       const waves = a.waves && a.waves.length > 0 ? a.waves : [{ units: 1, hpShare: 1 }]
       const hpBase = a.foeHpOverride ?? foeHpOfThreat(a.threat, bal)
       const comp = Object.entries(a.dmgMix ?? {}).map(([t, v]) => `${t}${v}`).join(':') || '动能(缺省)'
-      const shot = w.shotsByType ? Object.entries(w.shotsByType).map(([t, d]) => `${t} ${d}`).join('+') : String(w.shotDmg)
+      // 2026-09-11 舰级路径修正：舰级卡没有 `foeHpOverride`（数值已搬进舰级表），
+      // 旧口径的 `hpBase` 会落回威胁曲线 → **总血/编队/僚机会显示错值**。故按编成实算。
+      const shipSlots = a.ships ?? []
+      const isShipPath = shipSlots.length > 0
+      const cnt = (s: (typeof shipSlots)[number]): number => Math.max(1, Math.floor(s.count ?? 1))
+      const shipText = isShipPath
+        ? shipSlots.map((s) => `${s.ship.name}×${cnt(s)}${s.escort === true ? '(僚)' : ''}`).join('+')
+        : ''
+      const shipUnits = shipSlots.reduce((n, s) => n + cnt(s), 0)
+      const shipHp = shipSlots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * cnt(s), 0)
+      const shipEscorts = shipSlots.filter((s) => s.escort === true).reduce((n, s) => n + cnt(s), 0)
+      const shipWaves = new Set(shipSlots.map((s) => s.wave ?? 0)).size
+      // 2026-09-11 A 族数值落地批：舰级路径改**混编**（头目 ×1 + 杂鱼 ×3）——单一 `specs[0]` 读数
+      // 会**静默只报头目**（速度/射程/单发/命中全是头目的），故这些列改为**逐舰级读数**
+      // （去重后按建队顺序 `|` 分隔；分隔符不含逗号，不破 CSV）。旧路径单单位 → 读数与原来逐字相同。
+      const perUnit = (pick: (u: (typeof specs)[number]) => string): string => [...new Set(specs.map(pick))].join(' | ')
+      const shotOf = (u: (typeof specs)[number]): string => {
+        const uw = u.weapons[0]!
+        return uw.shotsByType
+          ? Object.entries(uw.shotsByType).map(([t, d]) => `${t} ${d}`).join('+')
+          : String(uw.shotDmg)
+      }
+      const shot = isShipPath ? perUnit(shotOf) : shotOf(f)
+      const speedCol = isShipPath ? perUnit((u) => String(u.speedMps)) : String(f.speedMps)
+      const ratioCol = isShipPath ? perUnit((u) => ((u.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2)) : ((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2)
+      const combatCol = isShipPath ? perUnit((u) => String(Math.round(u.speedMps * foeAgilityMul))) : String(Math.round(f.speedMps * foeAgilityMul))
+      const rMinCol = isShipPath ? perUnit((u) => String(u.weapons[0]!.minRangeM)) : String(w.minRangeM)
+      const rMaxCol = isShipPath ? perUnit((u) => String(u.weapons[0]!.maxRangeM)) : String(w.maxRangeM)
+      const desireCol = isShipPath
+        ? perUnit((u) => String(Math.round(u.weapons[0]!.minRangeM + pos * (u.weapons[0]!.maxRangeM - u.weapons[0]!.minRangeM))))
+        : String(Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM)))
+      const hitCol = isShipPath ? perUnit((u) => `${(u.weapons[0]!.hitRate * 100).toFixed(0)}%`) : `${(w.hitRate * 100).toFixed(0)}%`
+      // 名义总 DPS（2026-09-11）：舰级路径 = 威胁 × foeDpsPerThreat × **多舰船补偿 2N/(N+1)**
+      // （船长确认口径；引擎在建档时按 N 缩放单发，见 core `createFoeSpecsFromShips`）；
+      // 旧路径不启用补偿（N=1），仍报 `威胁 × foeDpsPerThreat`。
+      const shipComp = shipUnits <= 1 ? 1 : (2 * shipUnits) / (shipUnits + 1)
+      const dpsCol = (isShipPath ? a.threat * bal.foeDpsPerThreat * shipComp : a.threat * bal.foeDpsPerThreat).toFixed(1)
       const quirks = [
         a.foeShotDmg !== undefined ? `单发直写${a.foeShotDmg}` : '',
-        a.foeDmgMul !== undefined ? `伤害x${a.foeDmgMul}` : '',
         a.foeFalloff !== undefined ? `衰减${a.foeFalloff}` : '',
         a.foeHitRate !== undefined ? `命中${a.foeHitRate}` : '',
       ].filter(Boolean).join('；')
@@ -855,13 +892,18 @@ async function main(): Promise<void> {
       }
       console.log(
         [
-          a.id, a.name, a.foeFamily ?? '', a.threat, a.tactic ?? 'orbit', f.speedMps,
-          ((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2), Math.round(f.speedMps * foeAgilityMul),
-          w.minRangeM, w.maxRangeM, Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM)),
-          waves.length > 1 ? `${waves.reduce((s, x) => s + (x.units ?? 1), 0)}队${waves.length}波` : '1波',
-          waves.map((x) => (x.hpShare ?? 1).toFixed(2)).join('+'), a.escorts ?? 0,
-          Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)),
-          (a.threat * bal.foeDpsPerThreat).toFixed(1), shot, `${(w.hitRate * 100).toFixed(0)}%`, comp,
+          a.id, a.name, a.foeFamily ?? '', shipText, a.threat, a.tactic ?? 'orbit', speedCol,
+          ratioCol, combatCol,
+          rMinCol, rMaxCol, desireCol,
+          isShipPath
+            ? `${shipUnits}舰${shipWaves > 1 ? `${shipWaves}波` : ''}`
+            : waves.length > 1
+              ? `${waves.reduce((s, x) => s + (x.units ?? 1), 0)}队${waves.length}波`
+              : '1波',
+          isShipPath ? `${shipWaves}波` : waves.map((x) => (x.hpShare ?? 1).toFixed(2)).join('+'),
+          isShipPath ? shipEscorts : (a.escorts ?? 0),
+          isShipPath ? Math.round(shipHp) : Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)),
+          dpsCol, shot, hitCol, comp,
           w.falloff, w.blindDmgMul, quirks, a.combatSeconds,
           `${Math.round((win / SEEDS.length) * 100)}%`, `${(dur / SEEDS.length / 1000).toFixed(0)}s`, `${(rem / SEEDS.length).toFixed(0)}%`,
         ].join(','),

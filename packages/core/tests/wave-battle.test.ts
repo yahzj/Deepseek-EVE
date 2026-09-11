@@ -11,12 +11,13 @@ import { anomaly, makeTestCtx } from './helpers'
 
 function world(waves: { units: number; hpShare: number }[] | undefined) {
   // 2026-09-11 敌方远端衰减 0.3 → 0.5（敌人远距离更准）后，裸初始船（沙猫，无武器）扛不住威胁 10 的
-  // brawl 卡；本文件测的是**波次机制**不是平衡，故把该卡的伤害压到 0.2（血/波表/战术全部照旧）。
+  // brawl 卡；本文件测的是**波次机制**不是平衡，故把该卡**单发直写为 1**
+  //（`foeShotDmg`；旧的 `foeDmgMul` 已按船长裁决整体退休、字段已删——血 / 波表 / 战术全部照旧）。
   const ctx: SimContext = makeTestCtx({
     anomalies: [
       {
         ...anomaly('ano-wave', 'galaxy-hub', { threat: 10, tactic: 'brawl' }),
-        foeDmgMul: 0.2,
+        foeShotDmg: 1,
         ...(waves ? { waves } : {}),
       },
     ],

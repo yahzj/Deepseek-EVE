@@ -23,12 +23,12 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-redring-raiders': { modules: ['mod-armor-plate-2'] }, // 赤潮舰队：装甲增厚
   'ano-ghost-signal': { modules: ['mod-shield-pla-2'] }, // 幽灵舰：能量护盾残影
   'ano-echo-haunt': { modules: ['mod-shield-ext-2'] }, // 回音残舰：护盾扩展
-  'ano-mirage-hijackers': { modules: ['mod-gyro-2'] }, // 蜃影劫持：姿态陀螺（机动）
+  'ano-mirage-hijackers': { mk2: ['mod-gyro-2', 'mod-armor-pla-2'] }, // 蜃影劫持：姿态陀螺（机动）+ 能量甲（2026-09-11 换区：中安→低安，故由 modules 改为 mk2）
   // ── 低安（sec < 0）：低安门槛 MK2 池追加增幅件（默认 7 件保留）──
   'ano-auro-raiders': { mk2: ['mod-armor-exp-2', 'mod-stab-exp-2'] }, // 奥罗盗匪：高爆甲+高爆稳定
   'ano-abyss-guard': { mk2: ['mod-shield-exp-2', 'mod-armor-plate-2'] }, // 深渊卫队：高爆盾+增厚
   'ano-titan-wreck': { mk2: ['mod-shield-ext-2', 'mod-armor-plate-2'] }, // 泰坦：巨构扩展+增厚（武器清出）
-  'ano-cinder-siege': { mk2: ['mod-armor-pla-2', 'mod-stab-pla-2'] }, // 烬火围攻：能量甲+等离子稳定
+  'ano-cinder-siege': { modules: ['mod-armor-pla-2'] }, // 烬火围攻：能量甲增厚（2026-09-11 换区：低安→中安，故由 mk2 改为 modules）
   'ano-chasm-aberrations': { mk2: ['mod-stab-kin-2', 'mod-armor-exp-2'] }, // 裂谷畸变：动能稳定+高爆甲
   'ano-nadir-static': { mk2: ['mod-rof-2', 'mod-track-2'] }, // 天底封锁：射速+索敌
   'ano-starcore-boss': { mk2: ['mod-drone-tac-2', 'mod-drone-rack-2'] }, // 星髓虫群：战术导控+甲板扩展（武器清出）
@@ -80,7 +80,9 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recycleNote: '回音残舰残骸：同位聚晶富集',
   },
   'ano-mirage-hijackers': {
-    recyclePool: [['min-isotope', 37], ['min-mexallon', 63]],
+    // 2026-09-11 重校（同上：蜃影星系 0.0 → -0.7，本卡由中安升为**低安**，危险度档位 → 险：
+    // 均价须回到 m×险档基数 27.6 = 43.249）——**这是海盗进低安的收益面**：残骸更值钱。
+    recyclePool: [['min-isotope', 33], ['min-mexallon', 17]], // (55×33+20×17)/50 = 43.10
     recycleNote: '蜃影劫持者残骸：同位聚晶富集',
   },
   'ano-auro-raiders': {
@@ -96,9 +98,10 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recycleNote: '泰坦残骸：星髓晶浓度极高',
   },
   'ano-cinder-siege': {
-    // 2026-09-10 重校（本卡档位 危→常：均价须回到 m×常档基数 9.8 = 15.05）
-    recyclePool: [['min-pyerite', 13], ['min-mexallon', 8]], // (12×13+20×8)/21 = 15.048
-    recycleNote: '烬火围攻残骸：焦壳下的类银与类晶体胶体',
+    // 2026-09-11 重校（船长「低安至少要有一个海盗族」→ 烬火星区与蜃影星系**互换安全等级**：
+    // 本卡所在星系 -0.7 → 0.0，危险度档位随之 危 → **常**：均价须回到 m×常档基数 9.8 = 11.446）
+    recyclePool: [['min-tritanium', 7], ['min-pyerite', 43]], // (8×7+12×43)/50 = 11.44
+    recycleNote: '烬火围攻残骸：焦壳下的三钛结构料与类银',
   },
   'ano-chasm-aberrations': {
     // 2026-09-10 重校（本卡档位 危→险：均价须回到 m×险档基数 27.6 = 43.18）
