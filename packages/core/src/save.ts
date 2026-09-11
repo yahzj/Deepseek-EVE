@@ -1713,6 +1713,10 @@ function normalizeState(raw: unknown): GameState {
     // 本轮锁量（2026-09-10 增：稀有残骸每炉锁死 1 件）：只收正数；缺省 = 不限制（老档天然如此）
     const lockRaw = num(r.lockUnits, 0)
     if (lockRaw > 0) runOut.lockUnits = Math.floor(lockRaw)
+    // 私有料账（2026-09-11 增：稀有残骸"起炉即预占"，停炉退还未用完部分）——**必须保留**，
+    // 否则读档后这批预占的残骸既不在公共库存、也不在料账里 = 凭空消失。只收正数。
+    const claimRaw = num(r.claimedUnits, 0)
+    if (claimRaw > 0) runOut.claimedUnits = Math.floor(claimRaw)
     return runOut
   }
   const refineRuns: GameState['refineRuns'] = []
@@ -1801,6 +1805,14 @@ function normalizeState(raw: unknown): GameState {
       rare: typeof rare === 'number' && Number.isFinite(rare) ? Math.max(0, Math.floor(rare)) : 0,
       ...(Object.keys(rareBy).length > 0 ? { rareBy } : {}),
     }
+  }
+
+  // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---
+  const rareOpenedUnits: Record<string, number> = {}
+  for (const [itemId, n] of Object.entries(asRaw(src.rareOpenedUnits))) {
+    if (itemId.length === 0) continue
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+    rareOpenedUnits[itemId] = Math.floor(n)
   }
 
   // --- B1 低安遭遇（v17.1 兼容字段）：未激活 = 标准空态（往返幂等）；激活才逐字段容错 ---
@@ -2102,6 +2114,7 @@ function normalizeState(raw: unknown): GameState {
     dialogueSeen,
     pendingDialogue,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
+    rareOpenedUnits,
     onboarding,
     importantTasks,
     sideTasks,
