@@ -20,11 +20,33 @@ const ROLE_ACCENT: Record<string, string> = {
    2026-09-10 船长：整体下移（TOP 26→54）——无人机上凸出击弧会在顶部被裁掉，给上方留出弧线空间。
    注意：CSS `.app-bts-col` 的 top 必须与本值保持一致（舰列视觉位置与锚点同源）。 */
 const LAY = { PAD: 36, GAP: 84, TOP: 54, MAIN: 170, ESC: 90, ROW_GAP: 4 }
-/** 舰艏（枪口）距舰体中心（px）：新 240×110 独立形舰艏尖典型位于本地坐标 x≈232
- *（距画布中心 120 = 112 单位）→ 主力舰 112×170/240 ≈ 79px；僚机小舰 112×90/240 ≈ 42px。
- * 旧 role 剪影（140 画布、尖端距中心 54）对应 66/35，此值已随新形换算更新。 */
-const NOSE_MAIN = 79
-const NOSE_ESC = 42
+
+/* ═══════ 舰种体积（2026-09-11 船长：战斗动画的舰身体积与舰种挂钩）═══════
+ * `TIER_SIZE[档]` = 舰身显示宽（px）。**T3 锚在改造前的统一主尺寸 170** ⇒ 巡洋舰与今天一样大、
+ * 护卫舰略小、战列/旗舰更大——相对关系正好把「舰种 = 质量分级」（`hullClass.ts` 五档）兑现。
+ * 依据：**玩家** = `ShipDef.tier`；**敌方** = 编成条目所引舰级的 `FoeShipDef.hullClassTier`
+ * （界面经 `core/foeShipTierOf(anomaly, tag)` 取值，与 `foeUnitNameOf` 同源）。
+ * ⚠ **旧威胁推导路径的卡没有舰种档**（D/E/G 三族 9 张 + 4 张遭遇模板）⇒ **回落** `LAY.MAIN/ESC`；
+ *   船长 2026-09-11 裁定：这批卡的体积口径**延后**（等各族舰级在二号处补完再生效）。 */
+const TIER_SIZE: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 110, 2: 140, 3: 170, 4: 205, 5: 240 }
+/** 僚机 / 轻装单位的体积系数（＝改造前 90/170 的既有比例，保留"轻装更小"的语义） */
+const ESCORT_MUL = 0.53
+/** **单位体积解析（敌我共用）**：有舰种档 → 阶梯 × 轻装系数；无档 → 回落尺寸（旧路径卡） */
+function sizeOfUnit(tier: number | null | undefined, escort: boolean): number {
+  if (tier === 1 || tier === 2 || tier === 3 || tier === 4 || tier === 5) {
+    return Math.round(TIER_SIZE[tier] * (escort ? ESCORT_MUL : 1))
+  }
+  return escort ? LAY.ESC : LAY.MAIN
+}
+/** 舰艏（枪口）距舰体中心（px）：与舰身宽**线性**（新 240×110 形的舰艏尖距画布中心 ≈112 单位）
+ *  ⇒ 170 → 79px、90 → 42px（与改造前的两个常量逐值一致，故回落口径零变化）。 */
+function noseOf(size: number): number {
+  return Math.round((112 * size) / 240)
+}
+/** 回落主尺寸的舰艏偏移（79）：**无舰种档**（旧路径卡）情形的口径常量——实际计算一律走 `noseOf(该舰体积)` */
+const NOSE_MAIN = noseOf(LAY.MAIN)
+/** 回落轻装尺寸的舰艏偏移（42）：同上 */
+const NOSE_ESC = noseOf(LAY.ESC)
 
 /** 弹道飞行时长 ms（撞点特效靠 CSS 动画延迟到此刻出现） */
 const FLY_MS = 420
@@ -88,16 +110,31 @@ interface Anchor {
  * 由当前真实距离算出两舰列位置与舰身锚点（渲染与弹道共用，保证画面自洽）。
  * 语义：距离 = open（射程外稍远）时两舰在两端拉开；向贴脸机动时向中线收拢，
  * 贴脸（nearM）时两舰间距 = LAY.GAP。
+ * `foeSizes` = **逐舰体积**（px，见 `sizeOfUnit`）：改造成"逐单位尺寸"后，整行宽/锚点按
+ *   前缀和推进，**底边对齐**（＝改造前"僚机底边与主体底边齐平"的一般化：各单位按各自高度沉底）。
+ * `meSize` = 玩家舰体积；缺省 `LAY.MAIN`（与改造前逐值一致，旧调用点不受影响）。
  */
-function layout(d: Dims, foeN: number, visM: number, openM: number, nearM: number): {
+function layout(d: Dims, foeSizes: readonly number[], visM: number, openM: number, nearM: number, meSize: number = LAY.MAIN): {
   meLeft: number
   foeLeft: number
   me: Anchor
   foe: Anchor[]
+  /** **实际落画**体积（px；已含溢出收缩）——渲染尺寸/舰艏偏移必须用它，不能用入参原值 */
+  sizes: number[]
   /** 米制可用跨度（px）：贴脸(near)时舰缘间距 = LAY.GAP，拉满(open)时 = LAY.GAP+usable —— 与距离线性对应 */
   usable: number
 } {
-  const rowW = LAY.MAIN + Math.max(0, foeN - 1) * (LAY.ESC + LAY.ROW_GAP)
+  // 溢出保险（2026-09-11）：舰种体积放大后，敌编队整行可能宽过**本窗口能给敌列的空间** → 等比收缩，
+  // 保证一行仍在列内、不压到我列（体积上限 T5=240 × 4~6 舰这类编成才有机会触发）。
+  // 预算按**窗口**算（W − 左右留白 − 我列宽 − 最小间距），**不吃 `d.foeW` 实测值**：
+  // 敌列宽由本行内容撑出（实测值会跟着收缩后的行一起变小），拿它当预算会"越缩越小"地自我反馈。
+  const nFoe = foeSizes.length
+  const gapW = Math.max(0, nFoe - 1) * LAY.ROW_GAP
+  const maxRowW = Math.max(80, d.W - LAY.PAD * 2 - d.meW - LAY.GAP)
+  const rawW = foeSizes.reduce((s, v) => s + v, 0)
+  const fit = rawW + gapW > maxRowW ? Math.max(0.4, (maxRowW - gapW) / rawW) : 1
+  const widths = foeSizes.map((v) => Math.max(24, Math.round(v * fit)))
+  const rowW = widths.reduce((s, v) => s + v, 0) + gapW
   const usable = Math.max(0, d.W - LAY.PAD * 2 - d.meW - d.foeW - LAY.GAP)
   const g = approachOf(visM, openM, nearM) // 接近度：远 = 0，贴脸 = 1
   const t = (usable * g) / 2 // 越接近越向中线收拢
@@ -105,23 +142,19 @@ function layout(d: Dims, foeN: number, visM: number, openM: number, nearM: numbe
   let foeLeft = d.W - LAY.PAD - d.foeW - t
   const minSpan = Math.min(LAY.GAP, Math.max(40, d.W - LAY.PAD * 2 - 60))
   if (foeLeft - (meLeft + d.meW) < minSpan) foeLeft = meLeft + d.meW + minSpan // 极小窗防御：不重叠
-  const mainH = LAY.MAIN * 0.46
-  const escH = LAY.ESC * 0.46
+  const meH = meSize * 0.46
+  const foeH = widths.map((w) => w * 0.46)
+  const rowH = Math.max(1, ...foeH) // 行底 = TOP + rowH（最高单位定高，其余沉底）
   const rowLeft = foeLeft + (d.foeW - rowW) / 2
-  const me: Anchor = { x: meLeft + d.meW / 2, y: LAY.TOP + mainH / 2 }
+  const me: Anchor = { x: meLeft + d.meW / 2, y: LAY.TOP + meH / 2 }
   const foe: Anchor[] = []
-  for (let i = 0; i < foeN; i++) {
-    if (i === 0) {
-      foe.push({ x: rowLeft + LAY.MAIN / 2, y: LAY.TOP + mainH / 2 })
-    } else {
-      const e = i - 1
-      foe.push({
-        x: rowLeft + LAY.MAIN + LAY.ROW_GAP + e * (LAY.ESC + LAY.ROW_GAP) + LAY.ESC / 2,
-        y: LAY.TOP + mainH - escH / 2,
-      })
-    }
+  let acc = rowLeft
+  for (let i = 0; i < nFoe; i++) {
+    const w = widths[i]!
+    foe.push({ x: acc + w / 2, y: LAY.TOP + rowH - foeH[i]! / 2 })
+    acc += w + LAY.ROW_GAP
   }
-  return { meLeft, foeLeft, me, foe, usable }
+  return { meLeft, foeLeft, me, foe, sizes: widths, usable }
 }
 
 /** 扇形路径（原点为圆心、朝 +x 张角 ±38°；折线逼近弧线） */
@@ -212,7 +245,7 @@ export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }>
 }
 
 /** 开火事件 → 弹道几何：起点 = 源舰炮口（2026-09-10 起优先真实炮口 muzzle；muzzle 为空时
- *  回退舰艏前缘，nose 按舰种取 NOSE_MAIN/NOSE_ESC），终点 = 目标舰枪口侧命中点。
+ *  回退舰艏前缘，nose 由调用侧按**该舰体积**算出，见 `noseOf(size)`），终点 = 目标舰枪口侧命中点。
  *  换算：挂点为 240×110 画布本地坐标 → 画面 px = 锚点 + 画布偏移 × (artW/240)；
  *  敌侧 dir = −1（敌舰以镜像姿态朝我开火时炮口恰在 −x 侧，与既有舰艏锚同语义）。 */
 function boltGeom(
@@ -270,6 +303,10 @@ export {
   DMG_ORDER,
   ROLE_ACCENT,
   LAY,
+  TIER_SIZE,
+  ESCORT_MUL,
+  sizeOfUnit,
+  noseOf,
   NOSE_MAIN,
   NOSE_ESC,
   FLY_MS,

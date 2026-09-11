@@ -913,6 +913,22 @@ export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
 }
 
 /**
+ * **敌舰单位的舰种档**（2026-09-11 船长：战斗动画的舰身体积与舰种挂钩）——界面的**只读查询**，
+ * 与 `foeUnitNameOf` 同源（同一份 tag → 舰级反查）。
+ *
+ * - **舰级路径**（写了 `anomaly.ships` 的卡）：返回该编成条目所引舰级的 `hullClassTier`（1~5）；
+ * - **旧威胁推导路径**（未写 `ships` 的卡）：返回 **`null`**——这些卡**没有舰种档**
+ *   （旧路径的"舰种名"由战术×血型推导，不是质量分级）⇒ 界面按**回落尺寸**绘制。
+ *   ⚠ 2026-09-11 船长裁定：旧路径卡的体积口径**延后**（等各族舰级在二号处补完再生效）。
+ *
+ * 用途：战斗画面按舰种给舰身尺寸（`TIER_SIZE`，见 `ui/battleViewCore`）——引擎**不消费**本值。
+ */
+export function foeShipTierOf(anomaly: AnomalyDef, tag: string): 1 | 2 | 3 | 4 | 5 | null {
+  const hit = foeShipAtTag(anomaly, tag)
+  return hit ? hit.ship.hullClassTier : null
+}
+
+/**
  * **多舰船补偿系数** `2N/(N+1)`（2026-09-11 船长确认「先按照你的提议实现」；N = 本卡编成单位总数）。
  *
  * 动机（数学）：N 个单位**逐个被击毁**时，敌人整场的累计输出 = 单舰基准 × `(N+1)/(2N)`

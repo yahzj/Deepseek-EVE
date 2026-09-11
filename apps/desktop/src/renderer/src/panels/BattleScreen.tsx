@@ -11,8 +11,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
-import type { BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
+import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -35,7 +35,7 @@ import {
 import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
-  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
+  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -165,11 +165,14 @@ const meSpeedRef = useRef(200)
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
   const droneDriveRef = useRef<{
-    foeN: number
+    /** 逐舰体积（px；2026-09-11 舰种体积，见上 `foeSizesFor`） */
+    foeSizes: number[]
+    /** 玩家舰体积（px；无人机阵位/弹道起点按它定标） */
+    meSize: number
     openM: number
     nearM: number
     wings: Array<{ artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean }>
-  }>({ foeN: 1, openM: 1, nearM: 200, wings: [] })
+  }>({ foeSizes: [LAY.MAIN], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [] })
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -342,7 +345,7 @@ const meSpeedRef = useRef(200)
       if (!alive) return
       const d = droneDriveRef.current
       if (d.wings.length > 0) {
-        const layLoop = layout(dimsRef.current, Math.max(1, d.foeN), visDistRef.current, d.openM, d.nearM)
+        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.openM, d.nearM, d.meSize)
         const box = droneBoxRef.current
         const w0 = droneWritesRef.current
         if (box) {
@@ -498,6 +501,14 @@ const meSpeedRef = useRef(200)
   // （旧判定把第 2 艘主舰当僚机：小尺寸 + 僚机字样）；判定与引擎同源（core foeMainTagOf）
   const isFoeMainTag = foeMainTagOf
   const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  /** 逐舰体积（px）：玩家舰 = `ShipDef.tier`；敌舰 = 编成条目所引舰级的 `hullClassTier`。
+   *  舰级路径卡以外的旧卡无舰种档 → 回落改造前的 170/90（船长 2026-09-11：这批延后）。 */
+  const meSize = sizeOfUnit(meShip?.tier, false)
+  const foeSizeOf = (tag: string): number =>
+    sizeOfUnit(foeAnomaly ? foeShipTierOf(foeAnomaly, tag) : null, !isFoeMainTag(tag))
+  /** 视觉行逐舰体积；全灭瞬间仍保留 1 槽（与改造前 `Math.max(1, n)` 同语义：布局不退化） */
+  const foeSizesFor = (tags: readonly string[]): number[] =>
+    tags.length ? tags.map(foeSizeOf) : [LAY.MAIN]
   /** 敌舰族形键（2026-09-11 起 = 数据侧 `AnomalyDef.foeFamily`；未列卡/异常 → F 制式巡逻兜底） */
   const foeKey = foeFamilyOf(foeAnomaly)
   /** 敌舰显示名（2026-09-09 命名统一：引擎同源推导——舰种名 + 规格词缀，弱规格 = 轻装 X；
@@ -536,7 +547,10 @@ const meSpeedRef = useRef(200)
   const dropNow = scanDroppable()
   const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
   // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
-  const layFx = layout(dims, Math.max(1, rowFxTags.length), visM, openM, nearM)
+  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize)
+  /** 无人机攻击阵位外推量（2026-09-11 舰种体积配套）：阵位基线按改造前的敌舰（T3 = 170px 宽）定，
+   *  目标舰更大时阵位同步外推，避免机群压在放大的舰体上；敌舰未变大时不内收（下限 0）。 */
+  const droneOutward = Math.max(0, Math.round(((layFx.sizes[0] ?? LAY.MAIN) - LAY.MAIN) / 2))
 
   /* ── 舰首朝向 = 机动意图（各自"想接近还是想拉开"），而非实际位移：
        拔河中即使被拖退也保持"想接近"的冲顶姿态；到达期望距离（差 <2m）保持现状，对峙不抖动 ── */
@@ -572,7 +586,7 @@ const meSpeedRef = useRef(200)
           downCursor.set(artId, lane)
           const st = droneSortieRef.current.get(artId)
           const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
-          const layDown = layout(dims, Math.max(1, rowFxTags.length), visDistRef.current, openM, nearM)
+          const layDown = layout(dims, foeSizesFor(rowFxTags), visDistRef.current, openM, nearM, meSize)
           const pose = dronePoseAt(model, lane, st, layDown, elapsed)
           droneDownRef.current.push({ key: keyRef.current++, artId, x: pose.x, y: pose.y, born: now })
         }
@@ -594,17 +608,18 @@ const meSpeedRef = useRef(200)
       }
       if (!src || !dst) continue
       if (isMeShot && fx.hit) lastHitTypeRef.current.set(aimTag, fx.type) // 记录最近命中形态（击杀延迟用）
-      // 舰艏偏移按主/僚判定（多波主舰 w{n}-foe-* 非队列首位同样是大舰艏；2026-09-09 修复）
-      const aimMain = isFoeMainTag(aimTag)
-      const shooterMain = isFoeMainTag(fx.tag)
-      const foeNose = aimMain ? NOSE_MAIN : NOSE_ESC
-      const srcNose = isMeShot ? NOSE_MAIN : shooterMain ? NOSE_MAIN : NOSE_ESC
-      const dstNose = isMeShot ? foeNose : NOSE_MAIN
+      // 舰艏偏移按**该舰实际落画体积**取（2026-09-11 舰种体积：舰艏距中心与舰宽线性，见 noseOf）——
+      // 优先取本帧布局的实际值（含溢出收缩），索引缺失才回落到按 tag 推导的体积
+      const aimSize = (aimRowIdx >= 0 ? layFx.sizes[aimRowIdx] : undefined) ?? foeSizeOf(aimTag)
+      const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
+      const shooterSize = (shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag)
+      const srcNose = noseOf(isMeShot ? meSize : shooterSize)
+      const dstNose = noseOf(isMeShot ? aimSize : meSize)
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
       // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
       const dm = fx.src === 'drone' ? droneModelOf(fx.artId) : undefined
-      const artW = isMeShot ? LAY.MAIN : shooterMain ? LAY.MAIN : LAY.ESC
+      const artW = isMeShot ? meSize : shooterSize
       let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
       let from: Anchor | null = null
@@ -626,7 +641,7 @@ const meSpeedRef = useRef(200)
           const lane = n % count
           const prev = droneSortieRef.current.get(fx.artId!)
           const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
-          const st = !prev || now - prev.startAt >= cycleMs + 40 ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) } : prev
+          const st = !prev || now - prev.startAt >= cycleMs + 40 ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX, droneOutward) } : prev
           droneSortieRef.current.set(fx.artId!, st)
           const off = st.offs[lane % st.offs.length]!
           const elapsed = now - st.startAt
@@ -718,11 +733,11 @@ const meSpeedRef = useRef(200)
   const dropFinal = scanDroppable()
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
-  const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
+  const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
-  const lay = layout(dims, foeN, visM, openM, nearM)
+  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize)
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
   const waveNext = wavePending && foeAnomaly?.waves && foeAnomaly.waves.length > 1 ? (battle.waveIdx ?? 0) + 2 : 0
@@ -733,8 +748,8 @@ const meSpeedRef = useRef(200)
        gunBasePx = (foeGunX − meGunX) − (visM − nearM)×sPxPerM   （几何常数，随窗口/列宽自动成立）
      于是 弧半径(射程) = gunBasePx + (射程 − nearM)×sPxPerM，当 射程 == 当前距离 时弧端恰好触到敌方枪口；
      弧端到敌枪口的像素缺口正比于"射程 − 当前距离"。 */
-  const meGunX = lay.me.x + NOSE_MAIN
-  const foeGunX = (lay.foe[0]?.x ?? lay.me.x) - NOSE_MAIN
+  const meGunX = lay.me.x + noseOf(meSize)
+  const foeGunX = (lay.foe[0]?.x ?? lay.me.x) - noseOf(lay.sizes[0] ?? LAY.MAIN)
   const sPxPerM = lay.usable / Math.max(1, openM - nearM) // 与舰列位移同尺（px/m）
   const gunBasePx = Math.max(40, foeGunX - meGunX - (visM - nearM) * sPxPerM)
   const arcCap = lay.usable + gunBasePx + 80 // 兜底上限：不超"开局枪口位 + 余量"
@@ -954,7 +969,8 @@ const meSpeedRef = useRef(200)
   /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
   visDistRef.current = visM
   droneDriveRef.current = {
-    foeN: Math.max(1, foeRowTags.length),
+    foeSizes,
+    meSize,
     openM,
     nearM,
     wings: droneWings.map((w) => ({ artId: w.artId, model: w.model, show: w.show, st: w.st, deck: w.phase === 'deck' })),
@@ -967,8 +983,10 @@ const meSpeedRef = useRef(200)
      2026-09-10 性能修复（船长"击毁敌人后画面明显卡顿"）：存活与尸骸**共用同一套 DOM 结构**
      （此前两个分支结构不同 → 击毁瞬间整份舰体 SVG 被卸载重建，正是卡顿主因）——
      现只切换 class（is-corpse）与淡出透明度，舰体矢量始终不被重建。 */
-  const foeUnitEls = foeRowTags.map((tag) => {
+  const foeUnitEls = foeRowTags.map((tag, rowIdx) => {
     const isMain = isFoeMainTag(tag)
+    /** 该舰体积（px；2026-09-11 舰种体积 = 舰级档阶梯，旧路径卡回落 170/90） */
+    const size = lay.sizes[rowIdx] ?? LAY.MAIN
     const ba = corpseAtRef.current.get(tag)
     const sinceBoom = ba === undefined ? -1 : now - ba
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
@@ -984,7 +1002,7 @@ const meSpeedRef = useRef(200)
             foeKey={foeKey}
             flip={foeFlip}
             accent={corpseOn ? '#6b7280' : FOE_ACCENT[foeKey] ?? '#ff8373'}
-            size={isMain ? LAY.MAIN : LAY.ESC}
+            size={size}
           />
         </span>
         <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
@@ -1098,7 +1116,7 @@ const meSpeedRef = useRef(200)
           {/* 我方舰列 */}
           <div className={`app-bts-col is-me${defeat ? ' is-crippled' : ''}`} ref={meColRef} style={{ left: lay.meLeft }}>
             <span className="app-bts-name">{meShip?.name}</span>
-            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={LAY.MAIN} flip={meFlip} />
+            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
             <div className="app-bts-hpWrap">
               <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
             </div>
