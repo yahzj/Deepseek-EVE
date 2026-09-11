@@ -23,17 +23,17 @@ import { Glyph } from '../ui/Glyphs'
 import type { PageProps } from './common'
 
 /**
- * 通讯器机身外框：大圆角机身 + 内嵌屏幕圆角框（参考图借来的"线条/圆角"语言）。
- * 外框与内屏都走 SVG 线稿 + `vectorEffect="non-scaling-stroke"`，任意尺寸下描边恒为细线；
- * 配色沿用现有风格（机身线 = 面板边框色，屏幕线 = 通讯青白蓝），不照搬参考图的卡带配色。
+ * 通讯器机身：**大圆角机身外框**（参考图借来的"线条/圆角"语言）+ 左侧两颗实体键。
+ *
+ * 只画机身：**内嵌屏幕的框由屏幕容器自己画**（`.app-comms-screen` 的圆角框 + CSS `outline` 描边）——
+ * 这样"文字容器"与"圆角框"是同一圈，窗口不管多高多窄都不会错位（图里按百分比拉伸的内框会错位：
+ * 机身 900px 高时内框在 39px 处、而屏幕容器内边距固定 20px，屏幕框整圈落在内框外面 ⇒ 文字看着在框外）。
  */
 function CommsDeviceFrame(): ReactNode {
   return (
     <svg className="app-comms-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
       {/* 机身 */}
       <rect x="1.1" y="1.1" width="97.8" height="97.8" rx="5" vectorEffect="non-scaling-stroke" />
-      {/* 内嵌屏幕（与外框同语言的双层线） */}
-      <rect x="5.2" y="7.4" width="89.6" height="85.2" rx="3" vectorEffect="non-scaling-stroke" />
       {/* 左侧两颗实体键（参考图侧键的抽象化，只留短线） */}
       <path d="M2.4 34 L2.4 42" vectorEffect="non-scaling-stroke" />
       <path d="M2.4 52 L2.4 58" vectorEffect="non-scaling-stroke" />
