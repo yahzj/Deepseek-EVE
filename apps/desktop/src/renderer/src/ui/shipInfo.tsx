@@ -67,28 +67,23 @@ export function resistGapText(add: DamageResists | undefined): string {
   return parts.join(' · ')
 }
 
-/** 乘入合成速查：把该缺口值装到"25% 基础"船上的面板（示例句尾用；无键返回空串） */
-function gapTo25Example(add: DamageResists | undefined): string {
-  if (!add) return ''
-  const key = (['kinetic', 'explosive', 'plasma'] as const).find((t) => (add[t] ?? 0) > 0)
-  if (!key) return ''
-  const a = add[key]!
-  const panel = 1 - (1 - 0.25) * (1 - a)
-  return `${DMG_LABEL[key]}：25% 基础船 → ${pct(panel)}`
-}
-
 /**
  * 缺口抗性"分系"行（盾/甲/结构三层共用同一写法）：
  * 逐系列出 chip + 缺口值（**三系件必须三系都看得见**——2026-09-10 修：此前只渲染第一系，
  * 陵墓护盾阵列/生体甲壳板这类"三系各 +X%"的件会被玩家误读成只抗一种）；
  * 尾注统一"乘入制 + 90% 上限"（示例取首个非零系）。
  */
+/** 缺口抗性"分系"行（盾/甲/结构三层共用同一写法）：
+ * 逐系列出 chip + 缺口值（**三系件必须三系都看得见**——2026-09-10 修：此前只渲染第一系，
+ * 陵墓护盾阵列/生体甲壳板这类"三系各 +X%"的件会被玩家误读成只抗一种）；
+ * 尾注只留"上限 90%"（2026-09-11 船长定精简：乘入制的算式与 25% 基础船示例属机制解释，
+ * 面板不再展开——机制详见手册「装配」条目）。
+ */
 function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | null {
   const entries = (['kinetic', 'explosive', 'plasma'] as const)
     .map((t) => ({ t, v: add?.[t] ?? 0 }))
     .filter((x) => x.v > 0)
   if (entries.length === 0) return null
-  const ex = gapTo25Example(add)
   return {
     k,
     v: (
@@ -100,7 +95,7 @@ function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | nu
             <span className="app-dim">{` +${pct(x.v)}`}</span>
           </span>
         ))}
-        <span className="app-dim">{`（乘入制${ex ? `：${ex}` : ''}；上限 90%）`}</span>
+        <span className="app-dim">（上限 90%）</span>
       </>
     ),
   }
@@ -383,11 +378,11 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: '货舱容量', v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'shield') {
     if (mod.shieldHpBonus !== undefined) lines.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const row = resistAddLine('护盾抗性（乘入制）', mod.shieldResistAdd)
+    const row = resistAddLine('护盾抗性', mod.shieldResistAdd)
     if (row) lines.push(row)
   } else if (mod.slot === 'armor') {
     if (mod.armorHpBonus !== undefined) lines.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const row = resistAddLine('装甲抗性（乘入制）', mod.armorResistAdd)
+    const row = resistAddLine('装甲抗性', mod.armorResistAdd)
     if (row) lines.push(row)
     // 重甲件的机动代价（2026-09-10 船长：陵寝装甲层 −25%）——多件不叠加、取最重一件
     if ((mod.speedPenaltyPct ?? 0) > 0) {
@@ -397,7 +392,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         v: (
           <>
             <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
-            <span className="app-dim">{`（−${pct(pen)}；只影响接敌与拉开距离的机动，不改命中；多件不叠加，取最重一件）`}</span>
+            <span className="app-dim">（多件取最重一件）</span>
           </>
         ),
       })
@@ -405,20 +400,20 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   } else if (mod.slot === 'propulsion') {
     if (mod.speedBonusPct !== undefined) {
       // 2026-09-10 船长定：推进器改周期点火（点火 60 秒 → 冷却 60 秒，开场即点火）
+      // 2026-09-11 船长定精简：去掉"冷却期间无加速"（同义重复）与"说明"行
       lines.push({
         k: '加力推进',
         v: (
           <>
-            点火期间战斗速度 +${pct(mod.speedBonusPct)}
-            <span className="app-dim">（点火 60 秒 → 冷却 60 秒，开场即点火；冷却期间无加速）</span>
+            {`点火期间战斗速度 +${pct(mod.speedBonusPct)}`}
+            <span className="app-dim">（60 秒点火 / 60 秒冷却，开场即点火）</span>
           </>
         ),
       })
     }
     if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) {
-      lines.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - mod.hitPenalty).toFixed(2)}（全部武器，进胜率预估；冷却期不失效稳）` })
+      lines.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - mod.hitPenalty).toFixed(2)}` })
     }
-    lines.push({ k: '说明', v: '弃船逃生 / 跃迁充能仍随船体动力，不受模块影响' })
   } else if (mod.slot === 'turret') {
     if (mod.damageType !== undefined) {
       lines.push({
@@ -427,7 +422,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
           <>
             <span className="app-dim">配弹：</span>
             <DmgChip t={mod.damageType} label={`${DMG_LABEL[mod.damageType]}弹`} />
-            <span className="app-dim">（固定弹种，出发只装此型）</span>
+            <span className="app-dim">（固定）</span>
           </>
         ),
       })
@@ -441,7 +436,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       lines.push({ k: '命中', v: [hit, ff].filter(Boolean).join('　') })
     }
     if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
-    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
+    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹伤害 ×${mod.dmgMult}` })
   } else if (mod.slot === 'missile') {
     // V18B-1 导弹架：武器卡（与炮台同参数字段，性格差异 = 无视近盲 + 追踪命中）
     lines.push({
@@ -450,15 +445,15 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         <>
           <span className="app-dim">配弹：</span>
           <DmgChip t={mod.damageType ?? 'explosive'} label="爆破导弹" />
-          <span className="app-dim">（导弹架专用，出发只装此型）</span>
+          <span className="app-dim">（固定）</span>
         </>
       ),
     })
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
-    lines.push({ k: '弹道特性', v: '近盲安全射距（太近会炸到自己）· 追踪命中：不随距离衰减' })
-    if (mod.hitRate !== undefined) lines.push({ k: '追踪命中', v: `${pct(mod.hitRate)}（不再乘距离衰减；仍受攻防命中修正与回避影响）` })
-    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发（单发高伤节奏）` })
-    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹头伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
+    lines.push({ k: '弹道特性', v: '近盲（太近会炸到自己）· 命中不随距离衰减' })
+    if (mod.hitRate !== undefined) lines.push({ k: '追踪命中', v: `${pct(mod.hitRate)}` })
+    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
+    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹头伤害 ×${mod.dmgMult}` })
   } else if (mod.slot === 'laser') {
     // V18B-2 激光炮：能量系武器形态（必中光束 + 威力随距离衰减）
     lines.push({
@@ -467,41 +462,45 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         <>
           <span className="app-dim">消耗：</span>
           <DmgChip t={mod.damageType ?? 'plasma'} label="能量弹药" />
-          <span className="app-dim">（激光炮专用，出发预载此型）</span>
+          <span className="app-dim">（专用）</span>
         </>
       ),
     })
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
-    lines.push({ k: '光束特性', v: '必中（射程带内锁定即命中，无视距离衰减与回避）· 无近盲' })
+    lines.push({ k: '光束特性', v: '必中 · 无近盲' })
     if (mod.falloff !== undefined) {
       const far = (1 + (mod.falloff ?? 0)) / 2
       lines.push({
         k: '威力衰减',
-        v: `距离只削威力不削命中（幅度为命中衰减的一半）——远端威力 ×${far.toFixed(2)}`,
+        v: `远端威力 ×${far.toFixed(2)}`,
       })
     }
     if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
-    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `能量弹药伤害 ×${mod.dmgMult}（再 × 炮术 / 船火力）` })
+    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `能量弹药伤害 ×${mod.dmgMult}` })
   } else if (mod.slot === 'drone-rack') {
     if (mod.droneBayBonusM3 !== undefined) {
-      lines.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3)} m³（携带/放飞上限，与无人机装置可复数叠加）` })
+      lines.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3)} m³` })
     }
   } else if (mod.slot === 'drone-tac') {
     if (mod.droneDmgBonus !== undefined) {
-      lines.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus)}（乘入放飞无人机单发；线性可叠）` })
+      lines.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus)}` })
     }
   } else if (mod.slot === 'drone-relay') {
     if (mod.droneRangeBonusPct !== undefined) {
       lines.push({
         k: '无人机射程',
-        v: `+${pct(mod.droneRangeBonusPct)}（乘入放飞无人机机型射程：蜂鸟 2500 / 赤鸢 3000 / 猎鹰 3500 / 雷鸥 5000 m；线性可叠）`,
+        v: `+${pct(mod.droneRangeBonusPct)}（乘入机型射程）`,
       })
+    }
+  } else if (mod.slot === 'salvager') {
+    // 2026-09-11 船长定精简时补：打捞器此前只显示"叠加方式 + CPU"，看不到真正的效果
+    if (mod.salvageCycleMs !== undefined) {
+      lines.push({ k: '打捞周期', v: `每 ${(mod.salvageCycleMs / 1000).toFixed(0)} 秒 1 具残骸` })
     }
   } else if (mod.slot === 'support') {
     // V18.1 支援件：按效果字段渲染（低槽 = 稳定器/射速计算机；中槽 = 索敌/陀螺）
     const dmg = mod.damageTypeBonusPct
     if (dmg && Object.keys(dmg).length > 0) {
-      const tail = '只加成对应系炮台单发，不影响无人机'
       lines.push({
         k: '炮台伤害',
         v: (
@@ -511,7 +510,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
               .map(([t, v]) => (
                 <span key={t} className="app-stack-inline">
                   <DmgChip t={t as DamageType} />
-                  <span className="app-dim">{` +${pct(v ?? 0)}（${tail}）`}</span>
+                  <span className="app-dim">{` +${pct(v ?? 0)}`}</span>
                 </span>
               ))}
           </>
@@ -519,25 +518,32 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       })
     }
     if (mod.reloadCutPct !== undefined) {
-      lines.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}（装填 ÷ ${(1 / (1 - (mod.reloadCutPct ?? 0))).toFixed(2)}，只作用于炮台）` })
+      lines.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}` })
     }
     if (mod.hitBonusPct !== undefined) {
-      lines.push({ k: '命中支援', v: `炮台命中 ×${(1 + (mod.hitBonusPct ?? 0)).toFixed(2)}（同类多装按 EVE 曲线递减）` })
+      lines.push({ k: '命中支援', v: `炮台命中 ×${(1 + (mod.hitBonusPct ?? 0)).toFixed(2)}` })
     }
     if (mod.evasionGapPct !== undefined) {
-      lines.push({ k: '回避支援', v: `被命中缺口削减 ${pct(mod.evasionGapPct)}——敌命中 60% 时 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}；全船生效` })
+      lines.push({ k: '回避支援', v: `敌命中 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}（全船生效）` })
     }
     // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
-      const perPulse = [mod.repairArmorHp, mod.repairHullHp]
-        .filter((x): x is number => (x ?? 0) > 0)
-        .map((x) => fmt(x!))
-        .join(' / ')
+      const arm = mod.repairArmorHp ?? 0
+      const hul = mod.repairHullHp ?? 0
+      // 表述按实际修哪层分开（生体损管腔只修结构、生体甲壳板只修装甲；维修装置两层同修）
+      const amount =
+        arm > 0 && hul > 0
+          ? arm === hul
+            ? `装甲与结构各 ${fmt(arm)} 点`
+            : `装甲 ${fmt(arm)} / 结构 ${fmt(hul)} 点`
+          : arm > 0
+            ? `装甲 ${fmt(arm)} 点`
+            : `结构 ${fmt(hul)} 点`
       const isFree = mod.repairFree === true
       lines.push({
         k: isFree ? '生体自愈' : '自动维修',
-        v: `战斗中每 ${secs} 秒修复装甲/结构 ${perPulse} 点（某层已满，额度自动转修另一层；修到满血为止）`,
+        v: `每 ${secs} 秒修复${amount}`,
       })
       if (isFree) {
         // 无消耗自愈（异形生体件）：不吃组件、永不停机；同型多件按 EVE 曲线递减
@@ -546,7 +552,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
           v: (
             <>
               <em className="app-chip is-ok">无消耗</em>
-              <span className="app-dim">（不吃修理组件、永不停机——生体组织自己长回来；同型多件修复量按 EVE 曲线递减）</span>
+              <span className="app-dim">（不吃组件，永不停机）</span>
             </>
           ),
         })
@@ -558,7 +564,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
           v: (
             <>
               <em className="app-chip is-cost">{kitName} ×1 / 跳</em>
-              <span className="app-dim">（每 {secs} 秒一枚；组件耗尽即自动停机——请确认货舱/仓库备足再出击）</span>
+              <span className="app-dim">（耗尽即停机）</span>
             </>
           ),
         })
@@ -566,9 +572,9 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     }
   } else if (mod.slot === 'target-lock') {
     // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深
-    lines.push({ k: '集火模式', v: '装上即生效：全部武器不再随机分散，改打存活编队首位（主舰优先，击毁自动接力）' })
+    lines.push({ k: '集火模式', v: '全部武器集火存活编队首位' })
     if (mod.lockDmgBonus !== undefined) {
-      lines.push({ k: '锁定加深', v: `被锁定目标受本舰伤害 +${pct(mod.lockDmgBonus)}（本舰全部武器：炮台/导弹/激光/无人机）` })
+      lines.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
     }
   }
   // 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开，
@@ -579,21 +585,20 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       v: (
         <>
           <span>{`+${pct(mod.hullHpBonus ?? 0)}`}</span>
-          <span className="app-dim">（护盾/装甲被打穿后的最后一段血量；多件加算，技能再乘于其上）</span>
+          <span className="app-dim">（最后一段血量）</span>
         </>
       ),
     })
   }
-  const hullRow = resistAddLine('结构抗性（乘入制）', mod.hullResistAdd)
+  const hullRow = resistAddLine('结构抗性', mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
+  // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)
   if (st.group === 'flat') {
-    lines.push({ k: '叠加方式', v: '可多装 · 全额叠加（效果线性求和；上限看 CPU）' })
-  } else if (st.group === 'curve') {
-    lines.push({ k: '叠加方式', v: '同类多装收益递减（EVE 叠加曲线：第 2 件 ≈87%、第 3 件 ≈57%）' })
+    lines.push({ k: '叠加方式', v: '全额叠加' })
   } else {
-    lines.push({ k: '叠加方式', v: '同类多装收益递减（缺口复合：1 − (1−a)(1−b)；第 2 件再削剩余缺口）' })
+    lines.push({ k: '叠加方式', v: '多装递减' })
   }
   if (mod.cpuUse !== undefined) lines.push({ k: 'CPU 占用', v: fmt(mod.cpuUse) })
   return lines
