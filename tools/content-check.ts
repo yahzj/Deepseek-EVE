@@ -1135,13 +1135,16 @@ for (const m of MODULES) {
 }
 
 /* ── 敌方混伤契约（2026-09-10 船长定）──
- * ①**除教学卡外**每张敌军卡必须写**两系** `dmgMix`（主 8 : 副 2 = 80%/20%）——
+ * ①**除教学卡与纯能量卡外**每张敌军卡必须写**两系** `dmgMix`（主 8 : 副 2 = 80%/20%）——
  *   教学卡（演习场讨伐令）保持纯系：不给新手第一场上混伤；
+ *   纯能量卡（2026-09-10 船长：**深渊之门卫队改为纯能量伤害**）允许只写一系 `plasma`，
+ *   但**必须同时显式给 `foeFalloff`**（能量走 `beamPowerFactor` 威力衰减，纯能量卡的火力只能靠它收住）；
  * ②副系必须 = 该敌族签名副系序里第一个"不与主系相同"的系（`lairs.subDamageTypeOf`）；
  * ③窝点派生卡（`lairAnomalyOf`）= 同一主系 + **6:4**（60%/40%）；主系**不许变**。 */
 {
   const TEACHING_CARD = 'ano-training'
   let mixed = 0
+  let pureBeam = 0
   const positive = (mix: Partial<Record<string, number>> | undefined): Array<[string, number]> =>
     Object.entries(mix ?? {}).filter(([, v]) => typeof v === 'number' && v > 0) as Array<[string, number]>
   for (const def of ANOMALIES_FLAVORED) {
@@ -1150,6 +1153,15 @@ for (const m of MODULES) {
       continue
     }
     const rows = positive(def.dmgMix)
+    // 纯能量特例（2026-09-10 船长）：单系 plasma 合法，但必须显式给远端威力衰减
+    if (rows.length === 1 && rows[0]![0] === 'plasma') {
+      check(
+        def.foeFalloff !== undefined,
+        `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
+      )
+      pureBeam += 1
+      continue
+    }
     check(rows.length === 2, `混伤契约：${def.name} 应写两系 dmgMix（主 8 : 副 2），实际 ${rows.length} 系`)
     if (rows.length !== 2) continue
     const sorted = [...rows].sort((a, b) => b[1] - a[1])
@@ -1170,7 +1182,10 @@ for (const m of MODULES) {
     )
     mixed += 1
   }
-  console.log(`· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系`)
+  console.log(
+    `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
+      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 显式 foeFalloff）` : ''}`,
+  )
 
   /* ── 敌速口径契约（2026-09-10 加）──
    * 船长 2026-09-10 裁决「采取固定锚定，参考按照速度中位线的船只进行参考」：
