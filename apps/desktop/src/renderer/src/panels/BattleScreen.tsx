@@ -616,12 +616,13 @@ const meSpeedRef = useRef(200)
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
         const foeA = layFx.foe[0] ?? layFx.me
-        // **两侧同口径**（2026-09-11 机群批 S5 修正）：阵位一律取「**敌舰锚点 − 偏移**」——
-        // 我方无人机悬在**目标舰（敌）的靠我一侧**，敌方警戒机同样悬在**敌舰的靠我一侧**
-        // ⇒ 两边都落在两舰之间（＝"警戒幕铺在母舰与玩家之间"），弹道不再看着像从舰体发出。
-        // ⚠ 旧口径 `dir = isMeShot ? 1 : -1` 会把敌机阵位算到**敌舰背后**（`foe.x + 42~68`），
-        //   表现上就是"弹道从船身发射"（船长 2026-09-11 实测反馈）。
-        const dir = 1
+        // **阵位锚点 = "要打的那一方"**（2026-09-11 机群批 S5 二次修正）：
+        //   · 我方机群 → 锚在**敌舰**（悬在目标舰旁，打的就是它）；
+        //   · 敌方机群 → 锚在**我方舰**（完全镜像：扑到您脸上来打）。
+        // ⇒ 两侧出击**都是整段舰间距**的航路（旧口径把敌机也锚在敌舰上 ⇒ 只飞 42~68px，
+        //   船长实测反馈"只移动一小段、位置还贴在敌舰左上角"）。
+        const anchor = isMeShot ? foeA : layFx.me
+        const dir = isMeShot ? 1 : -1
         // **第二层：敌机也走"出击制"**——把本轮出海起点记在**敌机自己的键**（`tag:artId`）上，
         // 供机群层按同一套时序（放出 0.56s → 到位开火 → 返航 0.62s）驱动敌机机体。
         if (!isMeShot) {
@@ -649,14 +650,20 @@ const meSpeedRef = useRef(200)
           const elapsed = now - st.startAt
           if (elapsed < DRONE_SORTIE_OUT_MS) {
             // 仍在出击途中：弹道自阵位出，延到"无人机抵达"那一刻显示
-            from = droneStationFrom(foeA, dir, off)
+            from = droneStationFrom(anchor, dir, off)
             droneDelay = Math.round(DRONE_SORTIE_OUT_MS - elapsed)
           } else if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) {
             // 已到位：阵位出弹，立即显示
-            from = droneStationFrom(foeA, dir, off)
-          } else {
-            // 返航中：弹道就从无人机当前位置出（与机体一致）
+            from = droneStationFrom(anchor, dir, off)
+          } else if (isMeShot) {
+            // 返航中（我方）：弹道就从无人机当前位置出（与机体一致）
             from = dronePoseAt(dm, lane, st, layFx, elapsed)
+          } else {
+            // 返航中（敌方）：镜像几何——阵位（我方舰旁）→ 敌舰机库口
+            const t2 = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS))
+            const tk = droneTakeoff(lane)
+            const deckAbs = { x: foeA.x - tk.x, y: foeA.y + tk.y } // 相对敌舰**水平镜像**（敌舰朝向我方）
+            from = dronePathPos(t2, droneStationFrom(anchor, dir, off), deckAbs, droneArcHeight(lane), true)
           }
         } else {
           from = droneHomeStation(dm, n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX)), layFx)
@@ -1179,12 +1186,20 @@ const meSpeedRef = useRef(200)
                 const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
                 const fdx = (lay.foe[0]?.x ?? lay.me.x) - lay.me.x
                 const fdy = (lay.foe[0]?.y ?? lay.me.y) - lay.me.y
-                const deck = { x: fdx + 12, y: fdy } // 敌舰机库口（舰体中部上方一点，镜像我方）
+                // 敌舰机库口：与我方 `droneTakeoff` 同一组偏移，但**相对敌舰水平镜像**（敌舰朝向我方）
+                // ⇒ 起点落在敌舰舰体上（旧口径 `fdx + 12` 会落到舰体左上角，船长实测反馈过）
+                const deckAt = (lane: number): { x: number; y: number } => {
+                  const tk = droneTakeoff(lane)
+                  return { x: fdx - tk.x, y: fdy + tk.y }
+                }
                 return (
                   <div key={`foe-${w.tag}-${w.artId}`} className="app-bts-wing is-sortie">
                     {Array.from({ length: show }, (_, i) => {
                       const off = st?.offs[i % Math.max(1, st.offs.length)] ?? { x: 52, y: 0 }
-                      const station = { x: fdx - off.x, y: fdy + off.y } // 与弹道层 `droneStationFrom` 逐字同口径
+                      // 阵位 = **我方舰旁**（绝对 = `lay.me + off`；本层原点就是我方舰位 ⇒ 局部 = `off`）
+                      // ——与弹道层同源（那边锚点 `layFx.me` + `dir = -1`）⇒ 弹道必然从机体出。
+                      const station = { x: off.x, y: off.y }
+                      const deck = deckAt(i)
                       let pos = deck
                       let facing = -1 // 出海：朝我（镜像）
                       if (st) {
