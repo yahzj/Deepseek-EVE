@@ -226,6 +226,17 @@ export {
 
 export { fleetDefOf, shipDisplayName } from './instances'
 
+/** 承伤口径单点（按敌火扣装甲/结构；低安遇袭与战斗撤退共用——见 hullDamage.ts） */
+export {
+  HULL_FLOOR_FRAC,
+  foeFirepowerDps,
+  firepowerHitHp,
+  applyArmorFirstDamage,
+  hitDamageText,
+  pctOf as hullPctOf,
+} from './hullDamage'
+export type { HullHit } from './hullDamage'
+
 export { markedIds, isMarked, markTargetExists, toggleMark, clearMarks, pruneMarks, MARK_KIND_TEXT } from './marks'
 export type { MarkKind } from './marks'
 
