@@ -119,19 +119,13 @@ export interface UnitSpec {
    *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
    *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
   foeReinforceAt?: FoeReinforceTrigger
+  /** **本单位自己的有效射程带**（m）——**只有舰级路径会写**（`createFoeSpecsFromShips`；
+   *  含条目 `rangeMul`/`rangeMinM`/`rangeMaxM` 覆写后的绝对值）。
+   *  用途：`foeDesiredRange` 在**舰级路径**上以"自己的带"取代旧路径的全局战术表，
+   *  让期望交距落在自己打得到的距离（2026-09-11 船长裁决②）。
+   *  **旧威胁推导路径一律不写本字段** ⇒ 旧口径行为一字不动。 */
+  foeRangeBand?: { min: number; max: number }
   foeTactic: FoeTactic | null
-  /**
-   * **期望交战距离覆写（米）**（2026-09-11 船长裁决：「**单独给 B 族添加期望射程修正**」）。
-   *
-   * 背景：`foeDesiredRange()` 原本一律按**旧全局战术射程表**（`TACTIC_RANGE[战术] × desireFactor`）
-   * 算敌人"想站在哪"——**不看舰级自己的射程带**。对射程很短的族（拾荒武装艇 1~2200 m）会算出
-   * 2.7~3.5 km 的期望距离：**双方都够不着、0 次开火打满 600 秒**（B 族教学卡实测 0%/600s）。
-   *
-   * 口径：**本字段只在写了它的单位上生效**（卡上覆写 > 舰级默认），其余单位逐字不变
-   * ⇒ **对未登记的族（如 A 族）零行为变化**；取值应落在该舰级自己的射程带内
-   * （由 `content:check`「期望射程契约」守卫）。
-   */
-  foeDesireRangeM?: number
 }
 
 function clamp(min: number, max: number, v: number): number {
@@ -738,7 +732,10 @@ const PROFILE_SPLIT: Record<string, Hp3> = {
  * brawl 贴脸肉搏 = 无最小射程的近身喷子；orbit 环绕 = 中距小炮；kite 放风筝 = 高最小射程的远距炮。
  * C4-#3（2026-09-05）：射程/速度由"虚拟装配模板"推导——射程 = 基础带 ×
  * (1 + 侧重系数×(threat−10)/90) 后封顶；速度 = 参考船速段 × m_base × tactic 系数
- * （平衡常量 battle 段 foe* 模板）。射程语义保持 tactic 身份（brawl 近战靠速度贴脸）。 */
+ * （平衡常量 battle 段 foe* 模板）。射程语义保持 tactic 身份（brawl 近战靠速度贴脸）。
+ *
+ * ⚠ **2026-09-11 起本表只服务旧威胁推导路径**：舰级路径（写了 `ships` 的卡）的期望交距
+ * 改用**单位自己的射程带**（`UnitSpec.foeRangeBand`，见 `foeDesiredRange`）。旧路径行为一字不变。 */
 const TACTIC_RANGE: Record<FoeTactic, { max: number; min: number }> = {
   brawl: { max: 2200, min: 0 },
   orbit: { max: 4600, min: 350 },
@@ -933,7 +930,8 @@ function foeMultiShipCompMul(anomaly: AnomalyDef): number {
 
 /**
  * **舰级路径建档**：单位属性 = 舰级绝对值 × 本条倍率。
- * - 血：`ship.hp × hpMul`（**不吃威胁份额、不吃 hpShare**）
+ * - 血：`ship.hp × hpMul`（**不吃威胁份额、不吃 hpShare**）；三层比例 = **有效 split = 条目覆写 ?? 舰级**
+ *   （2026-09-11 船长裁决①「头目血型随卡片走」）
  * - 单发：`round(ship.shotDmg × dmgMul × 多舰船补偿)`；
  *   **多舰船补偿 `2N/(N+1)`**（2026-09-11 船长确认）在建档时按"本卡编成单位总数 N"缩放单发，
  *   见 `foeMultiShipCompMul`；卡上 `dmgMul` 写的是**设计单发 ÷（舰级单发 × 补偿）**，
@@ -953,8 +951,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const mix = u.slot.dmgMix ?? ship.dmgMix
     const type = pickTopType(mix)
     const totalHp = ship.hp * (u.slot.hpMul ?? 1)
-    // 血层分布：条目覆写优先（2026-09-11：同一舰级可被不同卡配成不同血型——B 族两卡共用拾荒武装艇，
-    // 演习场是均衡型、新港护航是装甲型）
+    // 血型（三层比例）：**有效 split = 条目覆写 ?? 舰级**（2026-09-11 船长裁决①「头目血型随卡片走」）——
+    // 同一条舰级在不同卡上可按卡面 `defProfile` 建档（A 族鱼龙混杂 ⇒ 什么血型都有，无族级约束）。
     const split = u.slot.split ?? ship.split
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     const shotDmg = Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp))
@@ -1015,11 +1013,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         },
       ],
       foeTactic: tactic,
-      // 期望交战距离覆写（2026-09-11 船长：「单独给 B 族添加期望射程修正」）：条目覆写 > 舰级默认；
-      // 两者都没写 ⇒ 不挂本字段 ⇒ 走旧全局表（A 族与所有未登记卡零行为变化）
-      ...((u.slot.desireRangeM ?? ship.desireRangeM) !== undefined
-        ? { foeDesireRangeM: u.slot.desireRangeM ?? ship.desireRangeM }
-        : {}),
+      // **自己的有效射程带**（含覆写）——供 `foeDesiredRange` 在舰级路径上替代全局战术表
+      // （2026-09-11 船长裁决②「期望交距改取该单位自己的射程带」）。旧路径不写本字段。
+      foeRangeBand: { min: rangeMin, max: rangeMax },
     }
   })
 }
@@ -1297,19 +1293,35 @@ export function desiredRangeFor(me: UnitSpec, tactic: 'assault' | 'mid' | 'kite'
 }
 
 /**
- * 敌方编队期望交战距离：站在**自己武器射程带内**的战术位置（旧口径 = 双方最大射程 × 系数，
- * 会让期望落在自己射程带之外 → 敌人在期望处打不到人）。
- * tacticDesireFactor 现表示"带内站位系数"：贴脸型靠带内近端、环绕居中、风筝型贴带内远端。
+ * 敌方编队期望交战距离。
+ *
+ * **2026-09-11 船长裁决②（本函数的口径修正）**：**战术只决定"带内的偏好位置"，带由单位自己决定**。
+ * - **舰级路径**（写了 `AnomalyDef.ships` 的卡）：带 = **该单位自己的有效射程带**
+ *   （`foeRangeBand`，含条目 `rangeMul`/`rangeMinM`/`rangeMaxM` 覆写后的绝对值）。
+ * - **旧威胁推导路径**：带 = 全局战术表 `TACTIC_RANGE[战术]`——**一字不动**
+ *   （旧路径的"射程带与期望交距同源"本来是自洽的，故不修）。
+ *
+ * **动机（实测）**：旧口径把带写死成旧表的绝对区间，于是"敌人想站的位置"与"敌人打得到的距离"脱钩：
+ * 快艇（1~1883m）被要求站 440m 还凑合，但狙击舰（1255~9619m）按 kite 站 8000m、按 orbit 站 2688m
+ * 都可能**站在自己射程之外**；反过来慢速玩家追不上 → 双方都够不着 → 打满 600s 判负
+ * （演习场/新港裸船实测；见 `docs/design/p0-foe-desired-range-20260911.md`）。
+ *
+ * **与旧口径的可比映射**（同一张 `tacticDesireFactor`，只把带换成"自己的带"）：
+ * 期望交距 = `自己带.min + factor[战术] × (自己带.max − 自己带.min)`，
+ * 其中 factor 沿用旧口径的**相对位置**语义（brawl 0.20 靠带内近端 / orbit 0.55 居中 / kite 0.85 贴远端）。
+ * 取值依据 = **保持"带内相对位置"这一层语义不变**，只让"带"随舰级伸缩（船长口径：
+ * 「射程和战术仅仅的弱相关，并不实时强绑定」）。A 族实测差异举例：
+ * 快艇 440 → **377m**、护卫舰 2688 → **2498m**、狙击舰 8000 → **8364/8885/10102m**、
+ * B 小艇 2688 → **1210m**（后者正是"教学卡敌人一炮未放/双方锁死"的解）。
+ *
+ * **混编卡取哪一个单位**：取 `foes[0]`（卡上**首个主体单位**，与既有"战术取自 foes[0]"一致）。
+ * 需要让头目站得与杂鱼一致（或不同）时，用条目 `rangeMinM`/`rangeMaxM` 覆写（"同卡同带"，
+ * A 族四张 kite 卡已用此旋钮把 60% 的头目火力救回来）——**不引入加权平均**（避免"谁都不到位的中间值"）。
  */
 export function foeDesiredRange(_me: UnitSpec, foes: UnitSpec[], bal: BattleBalance): number {
   const tactic = foes[0]?.foeTactic ?? 'orbit'
-  // 期望交战距离覆写（2026-09-11 船长：「单独给 B 族添加期望射程修正」）——只在写了该字段的单位上生效，
-  // 其余（含 A 族全部）逐字走旧全局表 ⇒ 零行为变化。见 UnitSpec.foeDesireRangeM 的口径说明。
-  const override = foes[0]?.foeDesireRangeM
-  if (override !== undefined && override > 0) {
-    return Math.max(bal.minDistanceM, Math.round(override))
-  }
-  const band = TACTIC_RANGE[tactic]!
+  // 舰级路径：带 = 自己的有效射程带；旧路径：带 = 全局战术表（原样）
+  const band = foes[0]?.foeRangeBand ?? TACTIC_RANGE[tactic]!
   const pos = clamp(0.05, 0.95, bal.tacticDesireFactor[tactic] ?? 0.5)
   return Math.max(bal.minDistanceM, Math.round(band.min + pos * (band.max - band.min)))
 }

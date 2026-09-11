@@ -18,6 +18,7 @@ import type { SimContext } from '@whale/core'
 import { buildSkillCatalog } from './skills'
 import { buildItemCatalog } from './items'
 import { buildBeltCatalog } from './belts'
+import { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
 import { buildShipCatalog } from './ships'
 import { buildModuleCatalog } from './modules'
 import { buildBlueprintCatalog } from './blueprints'
@@ -41,10 +42,13 @@ export function buildSimContext(): SimContext {
   }
   // 赏金任务·窝点：具备窝点派生能力（有核心词、非隐藏）的敌群各配一件「稀有残骸」物品——
   // 只有击败窝点才会落在该星系残骸场、打捞时**必得**，回站精炼炉当「高级箱」开（额外掉落）。
-  // 用 hasLairCore（不是 isLairCandidate）：已停用的 B 族也注册，好让旧档里可能已存在的
-  // B 族稀有残骸仍能被识别、能正常开箱（只是不再新增产出）。
+  // 注册条件 = `hasLairCore(a) || RETIRED_LAIR_CARD_IDS.has(a.id)`（2026-09-11 船长裁决「按方案 2 执行」）：
+  // B 族两卡的 `lairCore` 字段已退役删除（B 族无窝点），但**必须显式白名单保住注册**——
+  // 否则旧档里已获得的 `wreck-rare-ano-harbor-escort` / `wreck-rare-ano-abandoned-platform`
+  // 会解析不到物品定义、在读档后显示成"未知物品"。白名单 ≠ 恢复窝点候选（候选仍由
+  // `isLairCandidate()` 的族规则排除），只是"旧档兼容登记"。详见 `./retiredLairCards.ts`。
   for (const a of anomalies.values()) {
-    if (!hasLairCore(a)) continue
+    if (!hasLairCore(a) && !RETIRED_LAIR_CARD_IDS.has(a.id)) continue
     const id = rareWreckItemIdOf(a.id)
     if (items.has(id)) continue
     items.set(id, rareWreckItemDefOf(a.id, a.name))

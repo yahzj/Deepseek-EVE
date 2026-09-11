@@ -13,6 +13,7 @@
  */
 
 import type { AnomalyDef } from '@whale/core'
+import { foeLayerSplit } from '@whale/core'
 import { withRecycleFlavor } from './salvageFlavors'
 import {
   FOE_SCAV_ARMED,
@@ -24,6 +25,14 @@ import {
 } from './foe-ships'
 
 /**
+ * **赤潮 / 蜃影 的「狙击舰变体」射程倍率**（试点期就有的逐卡变体倍率）。
+ * 2026-09-11 起**两处共用**：杂鱼条目的 `rangeMul` + **头目条目的「同卡同带」绝对射程覆写**
+ * （船长裁决③：头目可配多战术 ⇒ 射程多重方案；用同一常量推导线，避免两处手抄数字漂移）。
+ */
+const REDRING_RANGE_MUL = 12021 / 11316
+const MIRAGE_RANGE_MUL = 13667 / 11316
+
+/**
  * **A 族数值落地批的共用口径（2026-09-11 船长确认「先按照你的提议实现」）**
  *
  * 六张 A 族卡统一编成 = **头目舰 ×1 + 本卡原有舰级 ×3**（N = 4 个单位），于是：
@@ -33,6 +42,13 @@ import {
  *   ⚠ **例外两张**（2026-09-11 船长裁决 = 方案 B）：**赤潮 / 蜃影** 旧带逐卡伤害压制倍率
  *   （旧 `foeDmgMul` 0.27 / 0.30，已退休），按威胁曲线重锚会**无声取消压制** ⇒ 实际火力 ×5.3~6.0；
  *   故这两张按 **「改造前的实际火力 × 1.6」重锚**（卡上 `dmgMul`，**不恢复 `foeDmgMul`**）——见各卡注释。
+ * - **血型**（2026-09-11 船长裁决①「**头目血型随卡片走**」）：条目可写 `split` 覆写，
+ *   **有效 split = 覆写 ?? 舰级**；头目舰是装甲型，故**卡面非装甲的四张**（信标 均衡 / 灰霾·赤潮·蜃影 护盾）
+ *   在其头目条目上用 `foeLayerSplit(卡面 defProfile)` 覆写（**不手抄数字**）。
+ *   A 族**无族级血型约束**（船长：鱼龙混杂 ⇒ 什么血型都有），逐卡自定。
+ * - **射程**（同日裁决③「头目可以多种战术选择，因此**射程方案也是多重**」）：头目可配多战术，
+ *   射程随之**按卡**给——**近战卡（边境/碎晶）不写覆写**；**头目打不到的卡**在其头目条目写
+ *   `rangeMinM`/`rangeMaxM` = **本卡杂鱼（主体）的射程带**（同卡同带，让 60% 火力真正落地）。
  * - `A_MULTI_SHIP_COMP` 只在**本条算式**里用（把补偿从设计单发里除掉），**引擎会自己按 N 施加它**
  *   （`core/createFoeSpecsFromShips`）——所以卡上写的是"设计单发 ÷ 舰级单发 ÷ 补偿"。
  * - ⚠ 逐卡推算与实测对照见 `docs/design/foe-faction-a-numbers-20260911.md`。
@@ -46,23 +62,22 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // （`shipArt.tsx` 的硬编码 `FOE_FAMILY` 与数据字段各写各的）——现按数据侧补齐为 B，
     // 并删掉美术侧那张硬编码表，敌族一律由 `AnomalyDef.foeFamily` 推导（口径统一）。
     foeFamily: 'B',
-    // B 族落码批（2026-09-11 船长九裁决）：**演习场讨伐令 → 演习场驱逐令**（驱逐到演习场拾荒的拾荒者）·
-    // **战术统一 orbit**（原 brawl）· 迁入**舰级路径**（拾荒武装艇 ×1，N=1 ⇒ 多舰补偿 = 1，单发 = 舰级值）。
-    // 基线：本卡改造前的逐单位建档值（血 22 / 单发 14 / 命中 0.85 / 射程 1~2200 / 衰减 0.5 / 近盲 0.3）
-    // **就是拾荒武装艇这一档的基准值**，故卡上不写任何倍率；**唯一有意改动 = 速度**（322 → 272，船长「按 0.8 走」）。
     name: '演习场驱逐令',
+    // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒武装艇 ×1）。
+    // 原 `foeHpOverride 22` / `foeSpeedMps 322` 退场——数值由舰级（`foe-scav-skiff`，基准即本卡现状值）供给，
+    // **除速度外逐字不变**：血 22 / 单发 14（纯动能）/ 命中 0.85 / 射程 1~2200 / 衰减 0.3 / 近盲 0.3。
+    // 速度：旧绝对 322 → **306**（舰级 `speedRatio 0.90`，船长「速度偏慢」——**有意改慢**）。
+    ships: [{ ship: FOE_SCAV_SKIFF }],
     galaxyId: 'galaxy-hub',
     threat: 6,
-    tactic: 'orbit',
+    tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'balanced',
     standingReq: 0,
     standingGain: 1,
     rewardIsk: 3_600, // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 ISK/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
-    // 舰级路径：旧的 `foeHpOverride` / `foeSpeedMps` 不再是读数来源（血/速度/命中/射程一律走舰级表）
-    ships: [{ ship: FOE_SCAV_SKIFF }],
     loot: [],
     combatSeconds: 20,
-    description: '深空工业协会的常设驱逐令：演习场一带常有武装拾荒者翻检训练残骸、堵塞航道，协会例行清场。悬赏按次结算、可反复接取——新手的第一张长期单。',
+    description: '深空工业协会的例行清场令：拾荒船常年在演习场边缘翻捡演习残骸，协会按次悬赏驱逐。悬赏常设、可反复接取——新手的第一张长期单。',
   },
   {
     id: 'ano-pirate-post',
@@ -105,18 +120,19 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-abandoned-platform',
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
-    // 窝点退出（2026-09-11 船长裁决 8「没有窝点，排除出赏金范围」）：原 `lairCore: '占港拾荒团'` 已删 ⇒
-    // 本卡不再是窝点候选、不参与赏金任务派发（B 族专属件本就是空表，无需移除）。
+    // ⚠ **`lairCore` 已退役（2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」）**：
+    // 本卡曾带 `lairCore: '占港拾荒团'`，按"方案 2"删除字段（数据层干净）——
+    // **旧档兼容去向 = `RETIRED_LAIR_CARD_IDS` 白名单**（`docs/design/foe-faction-b-scavenger-20260911.md` §六；
+    // 让旧档里已获得的 `wreck-rare-ano-abandoned-platform` 仍能被识别与开箱）。**不是漏标，勿加回来**（契约会拦）。
     name: '占港武装通缉',
-    // B 族落码批：迁入**舰级路径**（拾荒火力舰 ×1，N=1 ⇒ 多舰补偿 = 1）。
-    // 基线 = 本卡改造前的逐单位建档值（血 292 均衡型 / 单发 58 = 动能 46 + 爆炸 12 / 射程 366~4815 /
-    // 衰减 0.5 / 近盲 0.3）**就是拾荒火力舰这一档的基准值**，故卡上只覆写**乱射命中 0.55**
-    //（船长「乱射不动」——单卡特征、不升格族级，故写在条目上而非舰级）。
-    // **唯一有意改动 = 速度**（286 → 236，船长「按 0.8 走」）。
+    // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒火力舰 ×1）——舰级基准即本卡现状值，
+    // 故血 292 / 单发 58 / 射程 366~4815 / 构成 8:2 / 血型均衡**逐字不变**，无需任何倍率。
+    // 速度：旧绝对 286 → **271**（舰级 `speedRatio 0.92`，船长「速度偏慢」——**有意改慢**）。
+    // ⚠ **乱射（命中 0.55）不动**，但它是**单卡特征**（不是族级签名），故写在**本卡条目**上、不写进舰级。
     ships: [{ ship: FOE_SCAV_ARMED, hitRate: 0.55 }],
     galaxyId: 'galaxy-dust',
     threat: 16,
-    tactic: 'orbit',
+    tactic: 'orbit', // 船长：B 族战术统一 orbit（本卡原即 orbit）
     defProfile: 'balanced',
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 2,
@@ -136,19 +152,26 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 头目舰缺省 brawl、本卡 kite → `tactic: 'kite'` 覆写；主系覆写为**能量**（缴获改装的能量炮）⇒
     //   头目与杂鱼都走**光束必中**（不消费命中补偿），故单发 = 火力 × 装填 4s。
     // 血：340 → 头目 204（204÷360）、每杂鱼 340×40%÷3 = 45.3333（45.3333÷268.75，Σ 精确 = 340）。
-    // ⚠ **火力重锚（2026-09-11 船长裁决 = 方案 B）**：本卡**不走威胁曲线**——原口径按
+    // ⚠ **火力重锚（2026-09-11 船长裁决 = 方案 B + 纸面锚 ×1.2）**：本卡**不走威胁曲线**——原口径按
     //   `威胁 × 0.8 × 1.6 = 43.52` 重锚单发时，把本卡旧有的**逐卡伤害压制倍率（旧 `foeDmgMul` 0.27）**
-    //   无声取消了，实际火力 7.25 → 43.25（×5.97），实测难度失控（残血 88% → 30%）。
-    //   **船长裁决：锚回"改造前的实际火力 × 1.6"**（= 「按照实际算」；**不恢复已退休的 `foeDmgMul`**，
-    //   改用卡上 `dmgMul` 重锚）→ 目标实际火力 = 7.25 × 1.6 = **11.60**；缩放因子 = 11.60 ÷ 43.52 ≈ 0.2665。
-    //   重锚单发（光束，÷装填 4s）：头目 0.6×11.60×4 = 27.84 → **28**、每杂鱼 (0.4/3)×11.60×4 = 6.1867 → **6**；
-    //   Σ = 46、Σ名义 = 46.4 → **取整偏差 0**；重锚后实际火力 = 46 ÷ 4 = **11.50**（= 旧实伤 ×1.586，目标 11.60，−0.86%）。
-    //   依据与修正记录见 `docs/design/foe-faction-a-numbers-20260911.md` §三。
+    //   无声取消了，实际火力 7.25 → 43.25（×5.97），实测难度失控。
+    //   **船长裁决：锚回"改造前的实际火力"**（**不恢复已退休的 `foeDmgMul`**，改用卡上 `dmgMul` 重锚）；
+    //   纸面锚点由 ×1.6 下调为 **×1.2**（理由：难度守恒按「**实收**」判定——4 单位逐个被击毁 ⇒
+    //   实收积分 ≈ 纸面 ×`(N+1)/(2N)` = ×0.625，而本卡改动前只有 2 单位（衰减 ×0.75），
+    //   纸面 ×1.6 会实收成改动前的 ×1.33；要"实收 ≈ 改动前"须用纸面 ×`0.75/0.625` = **×1.2**）。
+    //   → 目标实际火力 = 7.25 × 1.2 = **8.70**；重锚单发（光束，÷装填 4s、按 60%/40%÷3 分配后取整）：
+    //   头目 0.6×8.70×4 = 20.88 → **21**、每杂鱼 (0.4/3)×8.70×4 = 4.64 → **5**；
+    //   Σ = 36 → **纸面 9.00**（目标 8.70，取整 +3.4%）；实收 = 9.00 × 0.625 = **5.63** ≈ 改动前 7.25 的 ×0.78。
     ships: [
       {
         ship: FOE_SHIP_PIRATE_WARLORD,
         hpMul: (340 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 204/360
-        dmgMul: 28 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // 重锚 = 28/(56×1.6)
+        dmgMul: 21 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 21/(56×1.6)
+        split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
+        // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3312m 交战距离下 0 次开火（探针实测）
+        // ⇒ 同卡同带（与杂鱼同式的变体倍率推导，**不手抄数字**）
+        rangeMinM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMinM * REDRING_RANGE_MUL),
+        rangeMaxM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMaxM * REDRING_RANGE_MUL),
         tactic: 'kite',
         dmgMix: { plasma: 8, kinetic: 2 },
       },
@@ -156,9 +179,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         ship: FOE_SHIP_PIRATE_SNIPER,
         count: 3,
         hpMul: (340 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 45.3333/268.75
-        dmgMul: 6 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // 重锚 = 6/(41×1.6)
+        dmgMul: 5 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 5/(41×1.6)
         speedMul: 204 / 201,
-        rangeMul: 12021 / 11316,
+        rangeMul: REDRING_RANGE_MUL,
         dmgMix: { plasma: 8, kinetic: 2 },
       },
     ],
@@ -459,24 +482,27 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-harbor-escort',
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
-    // 窝点退出（2026-09-11 船长裁决 8「没有窝点，排除出赏金范围」）：原 `lairCore: '新港拾荒团'` 已删。
+    // ⚠ **`lairCore` 已退役（2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」）**：
+    // 本卡曾带 `lairCore: '新港拾荒团'`，按"方案 2"删除字段（数据层干净）——
+    // **旧档兼容去向 = `RETIRED_LAIR_CARD_IDS` 白名单**（`docs/design/foe-faction-b-scavenger-20260911.md` §六；
+    // 让旧档里已获得的 `wreck-rare-ano-harbor-escort` 仍能被识别与开箱）。**不是漏标，勿加回来**（契约会拦）。
     name: '新港商路护航令',
-    // B 族落码批：迁入**舰级路径**（拾荒武装艇 ×1，N=1 ⇒ 多舰补偿 = 1）。基准卡 = 演习场驱逐令（T6 舰级基准），
-    // 本卡按**精确倍率**复现原建档值：血 75（75/22）· 单发 23（23/14）· 射程 1~2200 与舰级相同（无需覆写）；
-    // **唯一有意改动 = 速度**（337 → 272，船长「按 0.8 走」）。
-    // 卡面**装甲型**与舰级基准（均衡型）不同 ⇒ 条目覆写 `split`（2026-09-11 新增的条目级血型位）。
+    // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒武装艇 ×1）。
+    // 基准卡 = 演习场驱逐令（T6），本卡按**精确倍率**复现原建档值：血 75（75/22）、单发 23（23/14）、
+    // 射程 1~2200 与舰级相同（无需覆写）；卡面**装甲型**、构成 **8:2** 均与舰级基准不同 → 条目上覆写。
+    // 速度：旧绝对 337 → **306**（同舰级 0.90；船长「速度偏慢」——**有意改慢**，本卡不再比教学卡更快）。
     ships: [
       {
         ship: FOE_SCAV_SKIFF,
         hpMul: 75 / 22, // = 原 foeHpOverride 75
-        dmgMul: 23 / 14, // = 原推导单发 23（动能 18 + 爆炸 5）
-        split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（与卡面 defProfile: 'armor' 一致）
-        dmgMix: { kinetic: 8, explosive: 2 }, // 本卡 8:2（舰级基准是纯动能 ⇒ 必须写在条目上，见 core 建档口径）
+        dmgMul: 23 / 14, // = 原推导单发 23（kinetic 18 + explosive 5）
+        split: foeLayerSplit('armor'), // 卡面装甲型（舰级基准是均衡型）
+        dmgMix: { kinetic: 8, explosive: 2 }, // 本卡 8:2（舰级基准是纯动能）
       },
     ],
     galaxyId: 'galaxy-harbor',
     threat: 10,
-    tactic: 'orbit',
+    tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'armor',
     standingReq: 1,
     standingGain: 1,
@@ -543,6 +569,12 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         ship: FOE_SHIP_PIRATE_WARLORD,
         hpMul: (365 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 219/360
         dmgMul: 47 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 47/(56×1.6)
+        // 血型随卡走（船长裁决①）：卡面 均衡 → 头目条目覆写为均衡型（头目舰本体是装甲型）
+        split: foeLayerSplit('balanced'),
+        // 射程多重方案（船长裁决③）：头目原射程带 1~2210m，在本卡 3199m 的实际交战距离下
+        // **一次都没开火**（探针实测 foe-0 = 0 次）⇒ 按「同卡同带」覆写为杂鱼（劫掠护卫舰）的射程带
+        rangeMinM: FOE_SHIP_PIRATE_CORVETTE.rangeMinM,
+        rangeMaxM: FOE_SHIP_PIRATE_CORVETTE.rangeMaxM,
         tactic: 'orbit',
         // 头目缺省构成 = 动能 8:2，与卡面一致，故**不另写** `dmgMix`
       },
@@ -584,6 +616,11 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         ship: FOE_SHIP_PIRATE_WARLORD,
         hpMul: (430 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 258/360
         dmgMul: 59 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 59/(56×1.6)
+        split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
+        // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3238m 交战距离下 0 次开火（探针实测）
+        // ⇒ 同卡同带：覆写为杂鱼（劫掠狙击舰）射程带
+        rangeMinM: FOE_SHIP_PIRATE_SNIPER.rangeMinM,
+        rangeMaxM: FOE_SHIP_PIRATE_SNIPER.rangeMaxM,
         tactic: 'kite',
         dmgMix: { explosive: 8, kinetic: 2 },
       },
@@ -616,19 +653,25 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 保留 `speedMul 235/201` 与 `rangeMul 13667/11316`；原 `escorts: 1` 僚机条目**取消**）。
     // 头目缺省 brawl、本卡 kite → `tactic: 'kite'` 覆写；主系覆写为能量 ⇒ 光束必中（单发不除命中）。
     // 血：560 → 头目 336（336÷360）、每杂鱼 560×40%÷3 = 74.6667（74.6667÷268.75，Σ 精确 = 560）。
-    // ⚠ **火力重锚（2026-09-11 船长裁决 = 方案 B）**：本卡同样**不走威胁曲线**——原口径按
+    // ⚠ **火力重锚（2026-09-11 船长裁决 = 方案 B + 纸面锚 ×1.2）**：本卡同样**不走威胁曲线**——原口径按
     //   `威胁 × 0.8 × 1.6 = 61.44` 重锚时，把旧有的**逐卡伤害压制倍率（旧 `foeDmgMul` 0.30）**无声取消，
-    //   实际火力 11.50 → 61.50（×5.35），实测**从"可打"变成"打不过"**（100%/49s/残血 50% → 20%/35s/残血 1%）。
-    //   **船长裁决：锚回"改造前的实际火力 × 1.6"**（**不恢复已退休的 `foeDmgMul`**，用卡上 `dmgMul` 重锚）
-    //   → 目标实际火力 = 11.50 × 1.6 = **18.40**；缩放因子 = 18.40 ÷ 61.44 ≈ 0.2995。
-    //   重锚单发（光束，÷装填 4s）：头目 0.6×18.40×4 = 44.16 → **44**、每杂鱼 (0.4/3)×18.40×4 = 9.8133 → **10**；
-    //   Σ = 74、Σ名义 = 73.6 → **取整偏差 0**；重锚后实际火力 = 74 ÷ 4 = **18.50**（= 旧实伤 ×1.609，目标 18.40，+0.54%）。
-    //   依据与修正记录见 `docs/design/foe-faction-a-numbers-20260911.md` §三。
+    //   实际火力 11.50 → 61.50（×5.35），实测**从"可打"变成"打不过"**。
+    //   **船长裁决：锚回"改造前的实际火力"**（**不恢复 `foeDmgMul`**，用卡上 `dmgMul` 重锚）；
+    //   纸面锚点由 ×1.6 下调为 **×1.2**（**难度守恒按「实收」判定**：4 单位 ⇒ 实收 ≈ 纸面 ×0.625，
+    //   而本卡改动前只有 2 单位（衰减 ×0.75），故"实收 ≈ 改动前"须纸面 ×`0.75/0.625` = ×1.2）。
+    //   → 目标实际火力 = 11.50 × 1.2 = **13.80**；重锚单发（光束，÷4s、60%/40%÷3 后取整）：
+    //   头目 0.6×13.80×4 = 33.12 → **33**、每杂鱼 (0.4/3)×13.80×4 = 7.36 → **7**；
+    //   Σ = 54 → **纸面 13.50**（目标 13.80，取整 −2.2%）；实收 = 13.50 × 0.625 = **8.44** ≈ 改动前 11.50 的 ×0.73。
     ships: [
       {
         ship: FOE_SHIP_PIRATE_WARLORD,
         hpMul: (560 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 336/360
-        dmgMul: 44 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // 重锚 = 44/(56×1.6)
+        dmgMul: 33 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 33/(56×1.6)
+        split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
+        // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3809m 交战距离下 0 次开火（探针实测）
+        // ⇒ 同卡同带（与杂鱼同式的变体倍率推导，**不手抄数字**）
+        rangeMinM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMinM * MIRAGE_RANGE_MUL),
+        rangeMaxM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMaxM * MIRAGE_RANGE_MUL),
         tactic: 'kite',
         dmgMix: { plasma: 8, kinetic: 2 },
       },
@@ -636,9 +679,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         ship: FOE_SHIP_PIRATE_SNIPER,
         count: 3,
         hpMul: (560 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 74.6667/268.75
-        dmgMul: 10 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // 重锚 = 10/(41×1.6)
+        dmgMul: 7 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 7/(41×1.6)
         speedMul: 235 / 201,
-        rangeMul: 13667 / 11316,
+        rangeMul: MIRAGE_RANGE_MUL,
         dmgMix: { plasma: 8, kinetic: 2 },
       },
     ],
