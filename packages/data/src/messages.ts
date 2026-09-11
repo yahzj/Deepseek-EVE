@@ -45,7 +45,14 @@ const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => 
   subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
   body: s.lines,
   trigger: { kind: 'tutorial', step: s.step },
-  hint: { text: s.goal, page: s.page, ...(s.mapTab ? { tab: s.mapTab } : {}), ...(s.shipTab ? { shipTab: s.shipTab } : {}) },
+  hint: {
+    text: s.goal,
+    page: s.page,
+    ...(s.mapTab ? { tab: s.mapTab } : {}),
+    // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）
+    ...(s.taskTab ? { taskTab: s.taskTab } : {}),
+    ...(s.shipTab ? { shipTab: s.shipTab } : {}),
+  },
 }))
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */

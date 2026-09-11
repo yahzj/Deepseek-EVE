@@ -924,6 +924,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         <div className="app-ai-assign">
           <select
             className="app-select"
+            /* 教程步骤 7 的光圈要指这个下拉框（船长 2026-09-11）——给一个稳定的识别钩子，不涉及样式 */
+            data-ai-ship
             value={isIndustryTask ? '' : shipId}
             onChange={(e) => setShipId(e.target.value)}
             disabled={isIndustryTask || idleShips.length === 0}

@@ -1458,8 +1458,12 @@ export interface CommsMessageDef {
   highlight?: readonly string[]
   /** 送达条件 */
   trigger: CommsTrigger
-  /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /**
+   * 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签，
+   * `taskTab` 用于星图「任务中心」的**内层**标签（2026-09-11 船长：步骤 2 跳转必须切到「重要任务」——
+   * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
+   */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
   action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
@@ -1498,8 +1502,8 @@ export interface CommsEntryView {
   deliveredAtGameMs: number
   /** 是否已读 */
   read: boolean
-  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`shipTab` = 舰船页内标签） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
   action?: CommsActionDef
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */

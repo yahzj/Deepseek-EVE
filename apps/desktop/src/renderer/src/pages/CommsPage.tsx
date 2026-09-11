@@ -51,8 +51,8 @@ export function CommsPage({
   onGoto,
   focus,
 }: PageProps & {
-  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab` / 舰船标签 `shipTab`） */
-  onGoto: (page: string, tab?: string, shipTab?: string) => void
+  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
+  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
   /** 定位请求（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 选中指定那封（seq 变化即重新选中） */
   focus?: { id: string; seq: number } | null
 }): ReactNode {
@@ -233,7 +233,7 @@ export function CommsPage({
                     <button
                       className="app-btn is-primary app-comms-goto"
                       title={current.hint.text}
-                      onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab)}
+                      onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab, current.hint!.taskTab)}
                     >
                       <span className="app-comms-goto-text">{current.hint.text}</span>
                       <span className="app-comms-goto-label">前往</span>

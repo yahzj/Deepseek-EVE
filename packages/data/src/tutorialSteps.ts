@@ -24,6 +24,12 @@ export interface TutorialStepDef {
   page: CommsJumpPage
   /** 星图页内标签（仅 page = 'map' 时） */
   mapTab?: string
+  /**
+   * 任务中心页内标签（仅 page = 'map' + mapTab = 'task' 时；键 = `important`/`resource`/`courier`/`bounty`）。
+   * 2026-09-11 船长报告「步骤 2/7 跳转任务中心时不切到指定标签页」：任务中心的内层标签会记住玩家上次的选择，
+   * 光切到星图「任务中心」标签不够——交付要在「重要任务」里办，故跳转必须把它一并带上。
+   */
+  taskTab?: string
   /** 舰船页内标签（仅 page = 'ship' 时） */
   shipTab?: string
   /** 跳转按钮文字 */
@@ -119,6 +125,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
     ],
     page: 'map',
     mapTab: 'task',
+    taskTab: 'important', // 交付在「重要任务」里办（内层标签会记住玩家上次选择，跳转必须带上它）
     goLabel: '前往任务中心',
   },
   {
@@ -191,14 +198,15 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     step: 7,
     title: '分身：指派沙猫采矿',
-    goal: '到舰船页「AI 指挥中心」给沙猫装核心并指派采矿',
+    goal: '到舰船页「AI 指挥中心」：先在指派表单里选中副船，再装核心、指派采矿',
     lines: [
       '【当前执行项｜第 7 步】',
       '给沙猫指派第一个分身。',
       '【执行步骤】',
       '01 舰船页 →「AI 指挥中心」。',
-      '02 为沙猫装载基础 AI 核心。',
-      '03 指派采矿作业。',
+      '02 在指派表单的第一个下拉框里选中副船（沙猫级采矿艇）。',
+      '03 装载基础 AI 核心。',
+      '04 任务类型选「副船 · 采矿任务」，点「指派」。',
       '【备注】',
       '那是本舰的第一枚分身。',
     ],

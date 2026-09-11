@@ -2157,6 +2157,8 @@ for (const m of MODULES) {
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
   /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
   const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
+  /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
+  const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial'])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -2311,6 +2313,14 @@ for (const m of MODULES) {
       if (m.hint.tab !== undefined) {
         check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持标签跳转，实际页：${m.hint.page}`)
         check(MAP_TABS.has(m.hint.tab), `通讯 ${m.id} 星图标签非法：${m.hint.tab}`)
+      }
+      // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）——只有"星图 · 任务中心"才有内层标签
+      if (m.hint.taskTab !== undefined) {
+        check(
+          m.hint.page === 'map' && m.hint.tab === 'task',
+          `通讯 ${m.id} 只有星图「任务中心」支持内层标签跳转（实际 page=${m.hint.page} tab=${m.hint.tab ?? '无'}）`,
+        )
+        check(TASK_TABS.has(m.hint.taskTab), `通讯 ${m.id} 任务中心内层标签非法：${m.hint.taskTab}`)
       }
       if (m.hint.shipTab !== undefined) {
         check(m.hint.page === 'ship', `通讯 ${m.id} 只有舰船页支持标签跳转，实际页：${m.hint.page}`)
