@@ -782,17 +782,26 @@ function injectDfamily(state: GameState): string[] {
   const PLA_LOW = ['mod-stab-pla-2', 'mod-armor-pla-2']
   const KIN_LOW = ['mod-stab-kin-2', 'mod-armor-kin-2']
   const turret2 = ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2']
-  const turret1 = ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1']
-  const gatling = ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a']
-  const rows: Array<[string, string[], string[], string[]]> = [
-    ['D族·A0 动能抗（原参考行）', turret2, KIN_MID_MK2, KIN_LOW],
-    ['D族·A0 能量抗（只换抗性系）', turret2, PLA_MID_MK2, PLA_LOW],
-    ['D族·近距离1500 能量抗（MK2）', turret1, PLA_MID_MK2, PLA_LOW],
-    ['D族·近距离1000 能量抗（MK3）', gatling, PLA_MID_MK3, PLA_LOW],
+  // ⚠ **参考船更正**（船长 2026-09-11：「你为什么是用灰鲭鲨级测试，这已经属于 E 档敌人，
+  //   **理论上我们应该上巡洋舰级的船**」）：E 段（88/96）用 **T3 巡洋**——
+  //   `sh-hammerhead` 锤头鲨级炮击巡洋舰 = **E 段既有主验收行**（与 2026-09-10 `etier` 档同源），
+  //   槽位 5 高 / 4 中 / 3 低、血 474（vs 灰鲭鲨 366）。**灰鲭鲨留一艘作"上一档对照行"**（同 `etier` 档做法）。
+  const cruiserHigh = (m: string): string[] => [m, m, m, m, m]
+  const cruiserMidKin = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2']
+  const cruiserMidPla = ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2']
+  const cruiserMidPlaMK3 = ['mod-prop-3', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2']
+  const cruiserLowKin = ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']
+  const cruiserLowPla = ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2']
+  const rows: Array<[string, string, string[], string[], string[]]> = [
+    ['E段·锤头鲨 动能抗（原参考行）', 'sh-hammerhead', cruiserHigh('mod-turret-kin-2'), cruiserMidKin, cruiserLowKin],
+    ['E段·锤头鲨 能量抗（只换抗性系）', 'sh-hammerhead', cruiserHigh('mod-turret-kin-2'), cruiserMidPla, cruiserLowPla],
+    ['E段·锤头鲨 近距离1500 能量抗', 'sh-hammerhead', cruiserHigh('mod-turret-kin-1'), cruiserMidPla, cruiserLowPla],
+    ['E段·锤头鲨 近距离1000 能量抗 MK3', 'sh-hammerhead', cruiserHigh('mod-lair-turret-a'), cruiserMidPlaMK3, cruiserLowPla],
+    ['上一档对照·灰鲭鲨 A0 动能抗', 'sh-mako', turret2, KIN_MID_MK2, KIN_LOW],
   ]
   const uids: string[] = []
-  rows.forEach(([name, high, mid, low], i) => {
-    const uid = addShipToFleet(state, 'sh-mako')
+  rows.forEach(([name, shipId, high, mid, low], i) => {
+    const uid = addShipToFleet(state, shipId)
     const s = state.fleet[uid]!
     s.customName = name
     s.fitted = { high: [...high], mid: [...mid], low: [...low] }
@@ -801,7 +810,10 @@ function injectDfamily(state: GameState): string[] {
     if (i === 0) state.shipId = uid
     uids.push(uid)
   })
-  notes.push(`新增四船（灰鲭鲨级，舰船页切驾驶即换行）：${uids.join(' / ')}`)
+  notes.push(
+    `新增五船（**E 段用 T3 巡洋**：锤头鲨级炮击巡洋舰 ×4 + 灰鲭鲨级作上一档对照）：${uids.join(' / ')}` +
+      '——舰船页切驾驶即换行',
+  )
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
   }
@@ -829,9 +841,10 @@ function injectDfamily(state: GameState): string[] {
       '⚠ **战前把距离条拨到目标距离**（1,500 / 1,000 两套才有意义）；D 族最短射程 = 562 / 1,062 / 2,062。',
   )
   notes.push(
-    '校准参考值（`--std` 5 播种均值，中位技能）：**A0 动能抗** = 坟场 0%｜8s · 虚海 0%｜8s · 穹顶 0%｜12s · 幽灵舰 100%｜18s｜残血 57%；' +
-      '**A0 换能量抗** = 0%｜17s · 0%｜12s · 0%｜17s · 100%｜18s｜残血 **71%**（存活近乎翻倍）；' +
-      '**近距离 + 能量抗** = 三张墙仍 0%（最好只贴到 1,621m，没摸到 1,062 的死区）· 幽灵舰 100%。' +
+    '校准参考值（`--std` 5 播种均值，中位技能）：**灰鲭鲨（T2，旧口径）** = 坟场 0%｜8s · 虚海 0%｜8s · 穹顶 0%｜12s；' +
+      '**锤头鲨（T3 巡洋，E 段正确参考船）·动能抗** = 坟场 0%｜12s · 虚海 0%｜8s · 穹顶 0%｜12s · 幽灵舰 100%｜12s｜残血 82%；' +
+      '**巡洋 · 能量抗** = 坟场 0%｜**21s** · 虚海 0%｜**17s** · 穹顶 0%｜**25s** · 幽灵舰 100%｜88%；' +
+      '**巡洋 · 近距离 + 能量抗** = 三张墙仍 0%（最好贴到 1,472m，仍未进入 1,062 的死区）。' +
       '重点体感：**"活得久"与"打得死"差多少** · 拨近距离条能不能真的躲开炮 · 换上陵墓护盾阵列（三系 +30%）的差别。',
   )
   return notes

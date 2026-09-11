@@ -445,6 +445,66 @@ const EXPLORE_ROWS: readonly StandardRow[] = [
     ld: { name: 'D4 4×动能MK2+能量抗(MK2)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: PLA_RESIST_MID_MK2, low: PLA_RESIST_LOW },
     skills: MID_SKILLS,
   },
+  /* ── **E 段巡洋参考行**（2026-09-11 船长纠正：「你为什么是用灰鲭鲨级测试，这已经属于 E 档敌人，
+   *   **理论上我们应该上巡洋舰级的船**」）──
+   * ⚠ **口径更正**：`A0~A3` 那四行用的是 **`sh-mako` 灰鲭鲨级（T2 驱逐）**，它是**通用**参考船；
+   * 而 **E 段（威胁 88/96）的既有参考船是 `sh-hammerhead` 锤头鲨级炮击巡洋舰（T3 巡洋）**
+   * —— 2026-09-10 的 `etier` 验收档就是「大白鲨 S4 + **锤头鲨炮巡** + 灰鲭鲨」三行（后者标注"上一档可磨行"）。
+   * ⇒ 本组把 D 族那四套配置**搬到巡洋舰上重测**（5 高 / 4 中 / 3 低 · 血 474 vs 灰鲭鲨 366 · CPU 360）： */
+  {
+    id: 'E0' as StandardRow['id'],
+    label: '**E段巡洋·动能抗**（锤头鲨 5×动能MK2 · 中距）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'E0 锤头鲨 5×动能MK2+动能抗',
+      ship: 'sh-hammerhead',
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2'],
+    },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'E1' as StandardRow['id'],
+    label: '**E段巡洋·能量抗**（锤头鲨 5×动能MK2 · 中距）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'E1 锤头鲨 5×动能MK2+能量抗',
+      ship: 'sh-hammerhead',
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+      mid: ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'E2' as StandardRow['id'],
+    label: '**E段巡洋·近距离1500+能量抗**（锤头鲨 5×轻型炮MK1）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'E2 锤头鲨 5×轻型炮MK1+能量抗',
+      ship: 'sh-hammerhead',
+      high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'],
+      mid: ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: MID_SKILLS,
+    desireM: 1500,
+  },
+  {
+    id: 'E3' as StandardRow['id'],
+    label: '**E段巡洋·近距离1000+能量抗+MK3**（锤头鲨 5×转管炮）',
+    ship: 'sh-hammerhead',
+    ld: {
+      name: 'E3 锤头鲨 5×转管炮+能量抗(MK3)',
+      ship: 'sh-hammerhead',
+      high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'],
+      mid: ['mod-prop-3', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'],
+      low: ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2'],
+    },
+    skills: MID_SKILLS,
+    desireM: 1000,
+  },
 ]
 
 /** 标准格读数（终局/最近交距 + 开火次数按头目/杂鱼分列） */
