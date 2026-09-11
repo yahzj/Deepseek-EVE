@@ -66,6 +66,14 @@ const ACADEMY_DEPTS: CommsFactionDef['departments'] = [
   },
 ]
 
+/**
+ * 官方章鱼人头像（2026-09-11 船长定：绘制章鱼头代表官方，之后都用于代表官方章鱼人）。
+ *
+ * **所有 NPC 势力的物种都是「章鱼人」**，故头像一律用这枚 glyph（`ui/Glyphs.tsx` 的 `faction-octopus`）；
+ * 不同势力/行会**只靠 `tone` 色调区分**，不再另画新头像——新增势力时沿用本常量。
+ */
+export const FACTION_OCTOPUS_GLYPH = 'faction-octopus'
+
 /** 全量势力档案（id 稳定；本期 2 个势力，其余为登记待开） */
 export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
   {
@@ -74,7 +82,7 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
     species: '章鱼人',
     alignment: '官方',
     tone: '#9fd8ff',
-    glyph: 'nav-mail',
+    glyph: FACTION_OCTOPUS_GLYPH,
     brief: '章鱼人的官方行业组织，对外自称「协会」：管航道、建站点、定酬金，也训练新手飞行员。',
     kinds: ['剧情', '提示', '委托'],
     departments: ACADEMY_DEPTS,
@@ -85,7 +93,7 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
     species: '章鱼人',
     alignment: '民间',
     tone: '#6fe3f0',
-    glyph: 'nav-salvage',
+    glyph: FACTION_OCTOPUS_GLYPH,
     brief: '章鱼人的民间行会，与协会同族不同行：一帮在各星系转悠的老打捞，专捡没人要的残骸。',
     kinds: ['剧情', '提示'],
     departments: [

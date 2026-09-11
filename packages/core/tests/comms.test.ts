@@ -50,7 +50,7 @@ const FACTIONS: readonly CommsFactionDef[] = [
     species: '章鱼人',
     alignment: '官方',
     tone: '#9fd8ff',
-    glyph: 'nav-mail',
+    glyph: 'faction-octopus',
     brief: '章鱼人的官方行业组织。',
     kinds: ['剧情', '提示', '委托'],
     departments: [
@@ -68,7 +68,7 @@ const FACTIONS: readonly CommsFactionDef[] = [
     species: '章鱼人',
     alignment: '民间',
     tone: '#6fe3f0',
-    glyph: 'nav-salvage',
+    glyph: 'faction-octopus',
     brief: '章鱼人的民间行会。',
     kinds: ['剧情', '提示'],
     departments: [{ id: 'dept-crew', name: '老陈', brief: '老打捞一队。', kinds: ['剧情', '提示'] }],
@@ -262,7 +262,7 @@ describe('通讯 · 发件方解析（势力 + 部门；2026-09-11 通讯 v2）'
     expect(welcome.alignment).toBe('官方')
     expect(welcome.kind).toBe('剧情')
     expect(welcome.tone).toBe('#9fd8ff')
-    expect(welcome.glyph).toBe('nav-mail')
+    expect(welcome.glyph).toBe('faction-octopus') // 章鱼头 = 官方章鱼人的代表符号（2026-09-11 船长定）
     expect(welcome.fromBrief).toContain('航道管理') // 势力 brief + 部门 brief 合并成悬停说明
     // 民间行会：立场与色调不同源，但同样是章鱼人（探明 galaxy-far 后才送达）
     state.exploredGalaxies = ['galaxy-hub', 'galaxy-far']

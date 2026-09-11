@@ -309,6 +309,24 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M4.6 7.8l7.4 5.2 7.4-5.2" />
     </g>
   ),
+  /* 官方章鱼人（2026-09-11 船长定：绘制章鱼头代表官方，之后都用于代表官方章鱼人）
+     造型：圆钝外套膜头部（顶部小凸起）+ 两只实心眼 + 六条外扩腕足；与舰船资产同一套线稿语言。
+     ★ 复用规则：所有 NPC 势力的物种都是「章鱼人」(data/src/commsFactions.ts)，头像一律用本图标，
+       不同行会/立场只靠**色调**区分（协会 #9fd8ff / 打捞队工会 #6fe3f0），不要另画新头像。 */
+  'faction-octopus': (
+    <g>
+      <path d="M12 5.8c-2.45 0-4.4 1.95-4.4 4.35v3.15c0 .9.72 1.6 1.6 1.6h5.6c.88 0 1.6-.7 1.6-1.6V10.15c0-2.4-1.95-4.35-4.4-4.35Z" />
+      <path d="M12 3.85V5.8" />
+      <path d="M9.2 11.4c1.9 1 3.7 1 5.6 0" />
+      <circle cx="9.9" cy="9.15" r="1.35" fill="currentColor" stroke="none" />
+      <circle cx="14.1" cy="9.15" r="1.35" fill="currentColor" stroke="none" />
+      <path d="M9.85 14.9c-.5 1.3-1.45 2.25-2.75 3.05" />
+      <path d="M11 14.9c-.1 1.25-.6 2.35-1.5 3.5" />
+      <path d="M12 14.9v3.6" />
+      <path d="M13 14.9c.1 1.25.6 2.35 1.5 3.5" />
+      <path d="M14.15 14.9c.5 1.3 1.45 2.25 2.75 3.05" />
+    </g>
+  ),
   /* 矿带开采/采矿（2026-09-05 船长：原工具形似扳手，改矿镐——竖柄+镐头双弯臂） */
   'nav-mine': (
     <g>
@@ -510,6 +528,8 @@ export const NAV_TONES: Record<string, string> = {
   'nav-industry': '#42d9b0',
   'nav-skills': '#c792ea',
   'nav-mail': '#9fd8ff',
+  /* 官方章鱼人代表头像（2026-09-11 船长定）：与协会同色调，便于"官方 = 青白蓝章鱼"一眼认出 */
+  'faction-octopus': '#9fd8ff',
   'nav-mine': '#b5e35f',
   'nav-bounty': '#ff8373',
   'nav-salvage': '#6fe3f0',

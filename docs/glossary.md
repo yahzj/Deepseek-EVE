@@ -198,6 +198,7 @@
 | 通讯存档字段 | `state.commsDelivered`（id → 送达时的游戏内毫秒；负数/非数值丢弃 = 视作未送达，下次按条件补送）与 `state.commsRead`（id → true，只记 true）；两字段**可选、零迁移**，老档读入 = 空收件箱。**势力档案不入档**（静态数据，界面按当前数据表解析） | save.ts normalizeState；state.ts GameState |
 | NPC 势力档案 | 2026-09-11 通讯 v2 船长定：`packages/data/src/commsFactions.ts` 一张 `COMMS_FACTIONS`（`id / name / species / alignment(官方·民间·中立) / tone / glyph / brief / kinds[] / departments[]`）。本期 2 个势力：**深空工业协会**（8 部门：航行管制 / 基建部 / 测绘处 / 工业部 / 冶炼组 / 训练处 / 财务处 / 航线安全）+ **打捞队工会**（1 队）。铁律：**所有 NPC 势力都是章鱼人**（`species` 契约强制）；色调与既有系统同源（协会 `#9fd8ff` 同 `nav-mail`、打捞队工会 `#6fe3f0` 同 `nav-salvage`） | data/commsFactions.ts；core/types.ts CommsFactionDef |
 | 通讯发件方解析 | **玩家看到的发件人写法由「势力 + 部门」拼出**（`势力名 · 部门名`，缺部门 = 只显示势力名），消息表不再写自由文本发件人；剧本挂靠同一套（`commsFactionId`/`commsDeptId`/`commsSigner`）。收件箱视图 `CommsEntryView` 带 `from`（发件人写法）/ `factionName` / `alignment` / `kind` / `tone` / `glyph` / `fromBrief`（悬停"这是谁"）；**解析失败降级显示原文 id 且不崩**；内容类型走两级白名单（势力 + 部门） | core/comms.ts resolveCommsSender / commsInbox；content-check「通讯消息契约」 |
+| 官方章鱼人头像 | 2026-09-11 船长定：**绘制章鱼头代表官方，该头像之后都用于代表官方章鱼人**。图形 = `ui/Glyphs.tsx` 的 **`faction-octopus`**（圆钝外套膜头 + 顶端小凸起 + 两只实心眼 + 外套膜线 + 6 条腕足；24×24 / 1.7 描边 / currentColor，与 `nav-*` 同语言），色调与协会同为 `#9fd8ff`。**复用规则**：所有 NPC 势力物种都是章鱼人 ⇒ 头像一律用这一枚（数据常量 `FACTION_OCTOPUS_GLYPH`），**只靠 `tone` 色调区分行会/立场**，不再另画新头像；契约强制势力 `glyph` 必须等于 `faction-octopus`。出场：通讯页消息界面**左上角**（标题与来源左侧，38/44/50px）+ 列表行内 15px | data/commsFactions.ts；ui/Glyphs.tsx；pages/CommsPage.tsx |
 
 ## 八、舰船尺寸大分类（2026-09-09 船长定：全船统一 5 档，按等效质量落档；armored ×0.65 修正）
 

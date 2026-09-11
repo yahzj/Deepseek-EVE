@@ -9,10 +9,13 @@
  * - ⑤ 版式：**双列**——左列消息列表（**唯一滚动区**），右列通讯器造型正文；一级页整页不滚；
  * - ⑥ 回复选项**接口预留但未启用**（`COMMS_REPLIES_ENABLED = false` ⇒ 玩家侧不出现任何回复控件）。
  *
- * v2 视觉（2026-09-11 船长：按参考图**只借边框线条**、配色保持现有风格、不要avatar/未解锁占位/装饰动效）：
+ * v2 视觉（2026-09-11 船长：按参考图**只借边框线条**、配色保持现有风格、不要头像/未解锁占位/装饰动效）：
  * - 通讯器 = **机身式大圆角外框 + 内嵌屏幕圆角框**（双层线，SVG 线稿 + `vector-effect` 恒定细描边）；
  * - 左侧列表 = 圆角行块；屏幕内三层信息 = 大标题（右侧内容类型小片）→ 细分隔条（发件人 + 立场小片）→ 正文；
  * - 底部 = 通栏胶囊「前往」（仅带跳转提示的消息出现）；立场/内容类型小片复用全仓 `.app-chip` 家族。
+ *
+ * 2026-09-11 船长追加：屏幕**左上角**绘制**章鱼头 SVG**（`faction-octopus`）代表**官方章鱼人**——
+ * 该头像之后都用于代表官方章鱼人（所有 NPC 势力物种皆为章鱼人，只靠色调区分，见 `data/commsFactions.ts`）。
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -113,7 +116,7 @@ export function CommsPage({
                       {e.read ? null : <i className="app-comms-dot" />}
                       {e.glyph ? (
                         <span className="app-ico">
-                          <Glyph name={e.glyph} size={12} color={e.tone || undefined} />
+                          <Glyph name={e.glyph} size={15} color={e.tone || undefined} />
                         </span>
                       ) : null}
                       <span className="app-comms-from">{e.from}</span>
@@ -131,9 +134,36 @@ export function CommsPage({
                   <div className="app-comms-screen">
                     {current ? (
                       <>
-                        {/* 屏幕第一层：大标题 + 右侧内容类型小片 */}
+                        {/* 屏幕第一层：左上角**发件方头像**（官方章鱼人）+ 标题（右侧内容类型小片） */}
                         <div className="app-comms-title-row">
-                          <span className="app-comms-title">{current.subject}</span>
+                          {current.glyph ? (
+                            <span
+                              className="app-comms-avatar"
+                              style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
+                              title={current.fromBrief ?? '来信方'}
+                            >
+                              <Glyph name={current.glyph} size={26} />
+                            </span>
+                          ) : null}
+                          <div className="app-comms-title-col">
+                            <span className="app-comms-title">{current.subject}</span>
+                            {/* 细分隔条：发件人 + 立场小片 + 送达时间（压在标题正下方） */}
+                            <div className="app-comms-head">
+                              <span className="app-comms-head-from" style={current.tone ? { color: current.tone } : undefined}>
+                                {current.from}
+                              </span>
+                              {current.alignment ? (
+                                <span
+                                  className="app-chip app-comms-align"
+                                  style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
+                                  title={current.fromBrief}
+                                >
+                                  {current.alignment}
+                                </span>
+                              ) : null}
+                              <span className="app-comms-head-time">{commsGameClock(current.deliveredAtGameMs)} 送达</span>
+                            </div>
+                          </div>
                           {current.kind ? (
                             <span
                               className="app-chip app-comms-kind"
@@ -144,23 +174,7 @@ export function CommsPage({
                             </span>
                           ) : null}
                         </div>
-                        {/* 屏幕第二层：细分隔条（发件人 + 立场小片 + 送达时间） */}
-                        <div className="app-comms-head">
-                          <span className="app-comms-head-from" style={current.tone ? { color: current.tone } : undefined}>
-                            {current.from}
-                          </span>
-                          {current.alignment ? (
-                            <span
-                              className="app-chip app-comms-align"
-                              style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
-                              title={current.fromBrief}
-                            >
-                              {current.alignment}
-                            </span>
-                          ) : null}
-                          <span className="app-comms-head-time">{commsGameClock(current.deliveredAtGameMs)} 送达</span>
-                        </div>
-                        {/* 屏幕第三层：正文 */}
+                        {/* 屏幕第二层之后的正文 */}
                         <div className="app-comms-lines">
                           {current.paragraphs.map((p, i) => (
                             <p key={i} className="app-comms-text">

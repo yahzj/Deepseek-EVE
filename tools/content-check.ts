@@ -1564,6 +1564,8 @@ for (const m of MODULES) {
     'drone-rack', 'drone-tac', 'drone-relay', 'target-lock',
     'nav-map', 'nav-ship', 'nav-fit', 'nav-items', 'nav-market', 'nav-industry', 'nav-skills',
     'nav-mail', 'nav-mine', 'nav-bounty', 'nav-salvage', 'nav-task', 'nav-ai', 'nav-shop', 'nav-haul',
+    // 官方章鱼人头像（2026-09-11 船长定：代表官方章鱼人；所有 NPC 势力共用，只靠色调区分）
+    'faction-octopus',
     'ico-home', 'ico-lock', 'ico-clock', 'ico-loop', 'ico-flag', 'ico-star', 'ico-scan',
     'ico-swap', 'ico-cross', 'ico-crane', 'ico-antenna', 'ico-tact',
   ])
@@ -1602,6 +1604,9 @@ for (const m of MODULES) {
     check(ALIGNMENTS.has(f.alignment), `势力 ${f.id} 立场非法：${f.alignment}`)
     check(/^#[0-9a-fA-F]{6}$/.test(f.tone), `势力 ${f.id} 色调不是六位十六进制：${f.tone}`)
     check(ICON_NAMES.has(f.glyph), `势力 ${f.id} 图标不在既有线稿图标表内：${f.glyph}`)
+    // 2026-09-11 船长定：章鱼头 = 官方章鱼人的代表符号——所有 NPC 势力都是章鱼人，故头像一律用它
+    // （只靠 tone 色调区分行会/立场）；写别的图标会打破"一个符号代表章鱼人"的口径。
+    check(f.glyph === 'faction-octopus', `势力 ${f.id} 的头像必须是章鱼头 faction-octopus（代表官方章鱼人），实际：${f.glyph}`)
     check(f.brief.trim().length > 0, `势力 ${f.id} 缺简介（界面「这是谁」说明）`)
     check(f.kinds.length > 0, `势力 ${f.id} 没有可发内容类型白名单`)
     for (const k of f.kinds) check(KINDS.has(k), `势力 ${f.id} 白名单里的内容类型非法：${k}`)

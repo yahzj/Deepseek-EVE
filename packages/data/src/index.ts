@@ -28,7 +28,7 @@ export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { COMMS_MESSAGES, buildCommsCatalog } from './messages'
 // 2026-09-11 通讯 v2：NPC 势力档案（协会 8 部门 + 打捞队工会；发件人与立场口径的唯一权威）
-export { COMMS_FACTIONS, buildCommsFactionCatalog, buildCommsDeptCatalog } from './commsFactions'
+export { COMMS_FACTIONS, FACTION_OCTOPUS_GLYPH, buildCommsFactionCatalog, buildCommsDeptCatalog } from './commsFactions'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 
