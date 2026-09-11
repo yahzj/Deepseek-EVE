@@ -27,7 +27,7 @@
  * ⑨ **头目射程多重方案**（同日裁决③）：打不到的头目按「同卡同带」写射程覆写，让 60% 火力真落地。
  */
 import { describe, expect, it } from 'vitest'
-import { ANOMALIES, FOE_SHIPS } from '@whale/data'
+import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS } from '@whale/data'
 import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeUnitNameOf } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
@@ -227,8 +227,8 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
  * 391 / 374 / 325 / 374（这是船长确认的**真难度改动**，不是漂移）。
  * 与 `content:check`「敌速口径契约」互为独立写法（引擎实算 vs 内容表校验）。
  */
-describe('舰种档与速度倍率（A 族提速 / B 族偏慢）', () => {
-  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 306/271', () => {
+describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）', () => {
+  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 418/426/328/398', () => {
     const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
     const got = FOE_SHIPS.map((ship) => ({
       id: ship.id,
@@ -244,6 +244,12 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢）', () => {
       // （本批曾一度取 0.90 / 0.92 = 306 / 271，船长裁决「B 族速落实 0.8」后作废）
       { id: 'foe-scav-skiff', tier: 1, speed: 272 },
       { id: 'foe-scav-armed', tier: 2, speed: 236 },
+      // C 族（异形生物）：船长 2026-09-11 裁定②「**C 族速度比 A 海盗还快**」（同档须高于 A 族）
+      // + 裁定③「允许 T4 战列舰（生物巨兽），**T4 例外允许慢**」⇒ 噬口 328 < A 头目 374 是有意例外
+      { id: 'foe-alien-rift', tier: 3, speed: 418 }, // 3 巡洋 258 × 418/258（> A 同档 374）
+      { id: 'foe-alien-starcore', tier: 3, speed: 426 }, // > A 同档 374
+      { id: 'foe-alien-maw', tier: 4, speed: 328 }, // **T4 巨兽例外**：205 × 328/205（慢而硬）
+      { id: 'foe-alien-abyss', tier: 2, speed: 398 }, // 2 驱逐 295 × 398/295（> A 同档 325）
     ])
   })
 
@@ -534,7 +540,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
     expect(foeDesiredRange(specs[0]!, specs, bal)).not.toBe(8000)
   })
 
-  it('全 9 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
+  it('全 13 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
     let checked = 0
     for (const def of ANOMALIES) {
       if (!def.ships || def.ships.length === 0) continue
@@ -545,6 +551,143 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(9) // A 族 6 + B 族 3
+    expect(checked).toBe(13) // A 族 6 + B 族 3 + C 族 4
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * C 族（异形生物）第一步落码 · 2026-09-11 船长五条裁定
+ *   ① 深渊之门卫队改 brawl + 整套重标  ② 速度比 A 海盗还快（同档须高于 A）
+ *   ③ 允许 T4 战列舰（生物巨兽），T4 例外允许慢  ④ 分两步（本批 = 迁移 + 口径 + 契约）
+ *   ⑤ 立「能量·掷命中」档 + 主系统一为等离子
+ * 本组锁死三件事：**零变化迁移**（裂谷/星髓/噬口除有意改动外逐字一致）、
+ * **能量形态覆写**（缺省必中 / `spit` 掷命中，且只作用于能量主系）、**速度口径**。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe('C 族（异形生物）：零变化迁移 + 能量·掷命中档 + 速度口径', () => {
+  const card = (id: string): AnomalyDef => ANOMALIES.find((a) => a.id === id)!
+  const C_IDS = ['ano-abyss-guard', 'ano-chasm-aberrations', 'ano-starcore-boss', 'ano-maw-hunt']
+  /** 血量比对用近似（`1815/1.6` 一类分数式在二进制浮点下末位有差，如 680.6250000000001） */
+  const expectHpClose = (got: readonly number[], want: readonly number[]): void => {
+    expect(got).toHaveLength(want.length)
+    got.forEach((v, i) => expect(v).toBeCloseTo(want[i]!, 6))
+  }
+
+  it('四张卡全部迁入舰级路径，编成一律「主体」（`escort` 字段不再使用）', () => {
+    for (const id of C_IDS) {
+      const def = card(id)
+      expect(def.foeFamily, id).toBe('C')
+      expect(def.ships && def.ships.length > 0, id).toBe(true)
+      expect(def.ships!.every((s) => s.escort !== true), id).toBe(true)
+      // 旧威胁推导字段一律退场（舰级给绝对值，卡上只留编成与修正）
+      expect(def.foeHpOverride, id).toBeUndefined()
+      expect(def.foeSpeedMps, id).toBeUndefined()
+      expect(def.escorts, id).toBeUndefined()
+    }
+  })
+
+  it('裂谷畸变体猎杀令（T58）：血/单发/逐系/命中/射程/衰减逐字保持，主系改等离子 + 掷命中', () => {
+    const u = createFoeSpecs(card('ano-chasm-aberrations'), bal)
+    expect(u).toHaveLength(2)
+    expectHpClose(u.map(hpOf), [1134.375, 680.625]) // 迁移前 1815/1.6 与 ×0.6
+    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual([76, 45])
+    expect(u[0]!.weapons[0]!.shotsByType).toEqual({ plasma: 61, explosive: 15 }) // 原 kinetic 61（只换系）
+    expect(u[0]!.weapons[0]!.kind).toBe('fixed') // 能量·掷命中（裁定⑤）
+    expect(u[0]!.weapons[0]!.fixedType).toBe('plasma')
+    expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
+    expect(u[0]!.weapons[0]!.maxRangeM).toBe(2552)
+    expect(u[0]!.weapons[0]!.falloff).toBe(0.5)
+    expect(u.map((x) => x.speedMps)).toEqual([418, 418]) // 408 → 418（有意改快）
+    expect(u[0]!.foeTactic).toBe('brawl')
+  })
+
+  it('星髓虫群（T72）：血/单发逐字保持；**唯一改动 = 光束必中 → 掷命中 0.95**', () => {
+    const u = createFoeSpecs(card('ano-starcore-boss'), bal)
+    expect(u).toHaveLength(3) // 主体 ×1 + 同型 ×2
+    expectHpClose(u.map(hpOf), [695.4545454545455, 417.27272727272725, 417.27272727272725])
+    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual([105, 63, 63])
+    expect(u[0]!.weapons[0]!.kind).toBe('fixed') // 原 beam（必中）→ fixed（掷命中）
+    expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
+    expect(u.map((x) => x.speedMps)).toEqual([426, 426, 426]) // 420 → 426
+  })
+
+  it('噬口猎杀令（T80）：两波结构与逐波单位血逐字保持；速度 426 → 328（T4 巨兽例外）', () => {
+    const def = card('ano-maw-hunt')
+    const w0 = createFoeSpecs(def, bal, { units: 2, hpShare: 0.5 })
+    const w1 = createFoeSpecs(def, bal, { units: 1, hpShare: 0.5, tagPrefix: 'w1-' })
+    expect(w0).toHaveLength(2)
+    expect(w1).toHaveLength(1)
+    expectHpClose([...w0, ...w1].map(hpOf), [922, 922, 922]) // = 1844 × 0.5（原逐波单位血）
+    expect([...w0, ...w1].map((x) => x.weapons[0]!.shotDmg)).toEqual([167, 167, 167])
+    expect(w0[0]!.weapons[0]!.shotsByType).toEqual({ plasma: 134, explosive: 33 })
+    expect(w0[0]!.speedMps).toBe(328)
+    expect(w0[0]!.weapons[0]!.kind).toBe('fixed')
+    expect(w1[0]!.tag).toBe('w1-foe-0') // 波次 tag 口径与旧多波一致
+  })
+
+  it('深渊之门卫队（T45）：裁定① 整套重标（kite 光束点名 → brawl 贴脸真墙）', () => {
+    const u = createFoeSpecs(card('ano-abyss-guard'), bal)
+    expect(u).toHaveLength(2)
+    expectHpClose(u.map(hpOf), [625, 375]) // 卡总血 540 → 1000（主体 625 + 6:4 同型 375；设计初值 700 经六组复核偏软后微调）
+    expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual([56, 56]) // 45 → 56
+    const w = u[0]!.weapons[0]!
+    expect(w.kind).toBe('fixed') // 原 beam 必中 → 掷命中
+    expect(w.hitRate).toBe(0.9)
+    expect(w.minRangeM).toBe(1)
+    expect(w.maxRangeM).toBe(2600) // 原 1737~13314
+    expect(w.falloff).toBe(0.5) // 原 0.1（威力衰减口径）→ 命中衰减口径
+    expect(w.fixedType).toBe('plasma')
+    expect(u[0]!.foeTactic).toBe('brawl') // 原 kite
+    expect(u[0]!.speedMps).toBe(398) // 原 234
+    expect(card('ano-abyss-guard').dmgMix).toEqual({ plasma: 10 }) // 纯能量卡保持纯系
+  })
+
+  it('能量形态覆写（裁定⑤）：缺省 = 光束必中（不消费命中）；`spit` = 掷命中（消费命中、吃回避）', () => {
+    const shell = { ...anomaly('ano-t-c-form', 'galaxy-hub', { threat: 20 }), dmgMix: { plasma: 10 } }
+    const beamShip: FoeShipDef = { ...SKIFF, id: 't-foe-plasma-beam', dmgMix: { plasma: 10 } }
+    const spitShip: FoeShipDef = { ...beamShip, id: 't-foe-plasma-spit', energyForm: 'spit' }
+    const beam = createFoeSpecs({ ...shell, ships: [{ ship: beamShip }] }, bal)[0]!.weapons[0]!
+    expect(beam.kind).toBe('beam')
+    expect(beam.hitRate).toBe(1) // 必中：不消费舰级 hitRate 0.85
+    const spit = createFoeSpecs({ ...shell, ships: [{ ship: spitShip }] }, bal)[0]!.weapons[0]!
+    expect(spit.kind).toBe('fixed') // 掷命中
+    expect(spit.hitRate).toBe(0.85) // 消费舰级命中
+    expect(spit.fixedType).toBe('plasma') // 层位克制仍按等离子行
+    // 条目覆写优先（同一条船可在不同卡上换形态）
+    const overridden = createFoeSpecs({ ...shell, ships: [{ ship: spitShip, energyForm: 'beam' }] }, bal)[0]!.weapons[0]!
+    expect(overridden.kind).toBe('beam')
+    expect(overridden.hitRate).toBe(1)
+  })
+
+  it('`energyForm` 只作用于能量主系：动能/爆炸主系两种形态下都恒为掷命中', () => {
+    const shell = anomaly('ano-t-c-form2', 'galaxy-hub', { threat: 20 })
+    for (const energyForm of ['beam', 'spit'] as const) {
+      const ship: FoeShipDef = { ...SKIFF, id: `t-foe-kinetic-${energyForm}`, energyForm }
+      const w = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.weapons[0]!
+      expect(w.kind).toBe('fixed')
+      expect(w.fixedType).toBe('kinetic')
+      expect(w.hitRate).toBe(0.85)
+    }
+  })
+
+  it('速度口径（裁定②③）：倍率带 1.30~2.10、同档快于 A 族最快、T4 走"巨兽"白名单且允许慢', () => {
+    const fastestA = new Map<number, number>()
+    for (const s of FOE_SHIPS.filter((x) => x.family === 'A')) {
+      const spd = Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio)
+      fastestA.set(s.hullClassTier, Math.max(fastestA.get(s.hullClassTier) ?? 0, spd))
+    }
+    const aliens = FOE_SHIPS.filter((x) => x.family === 'C')
+    expect(aliens).toHaveLength(4)
+    for (const s of aliens) {
+      expect(s.speedRatio, s.id).toBeGreaterThanOrEqual(1.3)
+      expect(s.speedRatio, s.id).toBeLessThanOrEqual(2.1)
+      expect(s.hullClassTier, s.id).toBeLessThanOrEqual(4) // 不配 5 旗舰
+      const spd = Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio)
+      if (s.hullClassTier === 4) {
+        expect(ALIEN_BEAST_SHIP_IDS, `${s.id} 用 T4 必须登记为"巨兽"用途`).toContain(s.id)
+      } else {
+        const a = fastestA.get(s.hullClassTier)!
+        expect(spd, `${s.id} 实速 ${spd} 未高于 A 族同档最快 ${a}`).toBeGreaterThan(a)
+      }
+    }
   })
 })

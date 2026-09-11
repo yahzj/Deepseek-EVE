@@ -274,7 +274,7 @@ const LOW6_SKILLS: Record<string, number> = {
   'shield-operation': 3,
 }
 
-type StandardRow = { id: 'A0' | 'A1' | 'A2' | 'A3'; label: string; ship: string; ld: Loadout; skills: Record<string, number> }
+type StandardRow = { id: string; label: string; ship: string; ld: Loadout; skills: Record<string, number> }
 const MK2_SUPPORT_MID = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2']
 const SUPPORT_MID_NO_PROP = ['mod-shield-kin-2', 'mod-track-2']
 const SUPPORT_LOW = ['mod-stab-kin-2', 'mod-armor-kin-2']
@@ -311,6 +311,40 @@ const STANDARD_ROWS: readonly StandardRow[] = [
 
 /** 单位 tag 是否算"头目"（= 该波第一个单位）：'foe-0' / 'w1-foe-0' … */
 const isBossTag = (tag: string): boolean => /^(w\d+-)?foe-0$/.test(tag)
+
+/**
+ * **探索行（`--std6`，2026-09-11 C 族落码批加）**——补 `docs/design/foe-baseline-audit-20260911.md` §二
+ * 六组里**正式四行（A0~A3）未覆盖**的三条，用于"某张卡在某个打法下到底会不会还手"这类**定向复核**：
+ * - `B0 参考行去推进器`（同 A0 射程、机动差）——③探索行；
+ * - `B1 转管炮贴脸`（4×劫掠者转管炮 `180~3600`，装填 1200ms，无推进器）——⑤探索行；
+ * - `B2 裸船零技能`（鲣鱼级裸船，只带自带舰炮、无技能）——新手刚出教学场的真实起点。
+ *
+ * ⚠ **不属于船长采纳的四行口径**（那个口径仍是 A0~A3，`--std` 输出不变）；
+ * 探索行只在**明确需要**时跑（如某张卡被怀疑"贴脸沙包"或"打不动新手"），并须在报告里标明行名。
+ */
+const EXPLORE_ROWS: readonly StandardRow[] = [
+  {
+    id: 'B0' as StandardRow['id'],
+    label: '参考行去推进器（探索③）',
+    ship: 'sh-mako',
+    ld: { name: 'B0 4×动能MK2+支援(无推进)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: SUPPORT_MID_NO_PROP, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'B1' as StandardRow['id'],
+    label: '转管炮贴脸无推进（探索⑤）',
+    ship: 'sh-mako',
+    ld: { name: 'B1 4×转管炮+支援(无推进)', ship: 'sh-mako', high: ['mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a', 'mod-lair-turret-a'], mid: SUPPORT_MID_NO_PROP, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'B2' as StandardRow['id'],
+    label: '裸船零技能（新手起点）',
+    ship: 'sh-falconet',
+    ld: { name: 'B2 裸船(基础舰炮)无技能', ship: 'sh-falconet', high: [] },
+    skills: {},
+  },
+]
 
 /** 标准格读数（终局/最近交距 + 开火次数按头目/杂鱼分列） */
 type CellReading = {
@@ -939,52 +973,54 @@ async function main(): Promise<void> {
    * 输出为 TSV（制表符分隔，便于直接比对/入库）；数值列均为 SEEDS 播种均值。 */
   if (process.argv.includes('--std')) {
     const all = [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)
-    console.log('# 标准复核配置集 A0~A3（船长 2026-09-11 采纳）· 卡 × 行 · 数值列 = ' + SEEDS.length + ' 播种均值（seed ' + SEEDS.join('/') + '）')
-    console.log('# A0 标准中距（4×动能MK2+推进+支援 · 全技能L3） | A1 贴脸近战（4×轻型炮MK1 无推进 · 全技能L3） | A2 远程风筝（4×重型导弹架MK2+推进 · 全技能L3） | A3 弱技能行（A0 装配 + 6 项战斗技能 L3）')
-    console.log(
-      [
-        '行',
-        '卡id',
-        '卡名',
-        '族',
-        '威胁',
-        '胜率',
-        '时长',
-        '残血',
-        '终局交距',
-        '最近交距',
-        '我开火',
-        '敌开火(头目)',
-        '敌开火(杂鱼合计)',
-      ].join('\t'),
-    )
-    for (const row of STANDARD_ROWS) {
-      for (const a of all) {
-        const cells: CellReading[] = []
-        for (const seed of SEEDS) {
-          const st = makeState(row.ship, row.ld, row.skills, seed)
-          cells.push(simulateCell(st, a.id, row.ld))
+    /** 打印一组行 × 全卡的复核表（`--std` 与 `--std6` 共用；列口径完全一致） */
+    const printRows = (rows: readonly StandardRow[], title: string, legend: string): void => {
+      console.log(`# ${title} · 卡 × 行 · 数值列 = ${SEEDS.length} 播种均值（seed ${SEEDS.join('/')}）`)
+      console.log(`# ${legend}`)
+      console.log(
+        ['行', '卡id', '卡名', '族', '威胁', '胜率', '时长', '残血', '终局交距', '最近交距', '我开火', '敌开火(头目)', '敌开火(杂鱼合计)'].join('\t'),
+      )
+      for (const row of rows) {
+        for (const a of all) {
+          const cells: CellReading[] = []
+          for (const seed of SEEDS) {
+            const st = makeState(row.ship, row.ld, row.skills, seed)
+            cells.push(simulateCell(st, a.id, row.ld))
+          }
+          const n = cells.length
+          const avg = (pick: (c: CellReading) => number): string => (cells.reduce((s, c) => s + pick(c), 0) / n).toFixed(1)
+          console.log(
+            [
+              row.id,
+              a.id,
+              a.name,
+              a.foeFamily ?? '',
+              a.threat,
+              `${Math.round((cells.filter((c) => c.win).length / n) * 100)}%`,
+              `${(cells.reduce((s, c) => s + c.durMs, 0) / n / 1000).toFixed(0)}s`,
+              `${avg((c) => c.meRemainPct).replace(/\.0$/, '')}%`,
+              avg((c) => c.endM),
+              avg((c) => c.minM),
+              avg((c) => c.meShots),
+              avg((c) => c.foeShotsBoss),
+              avg((c) => c.foeShotsMinion),
+            ].join('\t'),
+          )
         }
-        const n = cells.length
-        const avg = (pick: (c: CellReading) => number): string => (cells.reduce((s, c) => s + pick(c), 0) / n).toFixed(1)
-        console.log(
-          [
-            row.id,
-            a.id,
-            a.name,
-            a.foeFamily ?? '',
-            a.threat,
-            `${Math.round((cells.filter((c) => c.win).length / n) * 100)}%`,
-            `${(cells.reduce((s, c) => s + c.durMs, 0) / n / 1000).toFixed(0)}s`,
-            `${avg((c) => c.meRemainPct).replace(/\.0$/, '')}%`,
-            avg((c) => c.endM),
-            avg((c) => c.minM),
-            avg((c) => c.meShots),
-            avg((c) => c.foeShotsBoss),
-            avg((c) => c.foeShotsMinion),
-          ].join('\t'),
-        )
       }
+    }
+    printRows(
+      STANDARD_ROWS,
+      '标准复核配置集 A0~A3（船长 2026-09-11 采纳）',
+      'A0 标准中距（4×动能MK2+推进+支援 · 全技能L3） | A1 贴脸近战（4×轻型炮MK1 无推进 · 全技能L3） | A2 远程风筝（4×重型导弹架MK2+推进 · 全技能L3） | A3 弱技能行（A0 装配 + 6 项战斗技能 L3）',
+    )
+    // 探索行（`--std6`）：补齐 audit 六组里正式四行未覆盖的 ③⑤ + 裸船行；**不改正式口径**
+    if (process.argv.includes('--std6')) {
+      printRows(
+        EXPLORE_ROWS,
+        '**探索行**（2026-09-11 C 族落码批加）——补 audit 六组未覆盖项，**不属于船长采纳的四行口径**',
+        'B0 参考行去推进器（探索③） | B1 转管炮贴脸无推进（探索⑤） | B2 裸船零技能（新手起点）',
+      )
     }
   }
 

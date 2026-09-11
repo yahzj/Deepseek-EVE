@@ -40,6 +40,7 @@ import {
   buildItemCatalog,
   buildSimContext,
   RETIRED_LAIR_CARD_IDS,
+  ALIEN_BEAST_SHIP_IDS,
 } from '@whale/data'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -1160,12 +1161,42 @@ for (const m of MODULES) {
       continue
     }
     const rows = positive(def.dmgMix)
-    // 纯能量特例（2026-09-10 船长）：单系 plasma 合法，但必须显式给远端威力衰减
+    // 纯能量特例（2026-09-10 船长：深渊之门卫队改纯能量；2026-09-11 裁定⑤放宽）：
+    // 单系 plasma 合法，但**必须有"收束旋钮"**——远端不许既必中又不衰减：
+    // - **旧威胁推导路径**：必须**显式给 `foeFalloff`**（能量走 `beamPowerFactor` 威力衰减，写缺省 0.30 太轻）；
+    // - **舰级路径**（2026-09-11 裁定⑤「能量·掷命中」档后）：放宽为「**衰减或命中任给其一**」——
+    //   掷命中形态下"命中随距离衰减 + 消费 hitRate"本身就是收束旋钮。契约据此**要求显式声明形态**：
+    //   `energyForm: 'spit'`（掷命中）⇒ 必须 `hitRate < 1`（掷命中的意义就是有掷的成分）；
+    //   缺省 / `'beam'`（必中光束）⇒ 必须显式收紧 `falloff`（≤ 缺省 0.5，不许宽于全局默认）。
     if (rows.length === 1 && rows[0]![0] === 'plasma') {
-      check(
-        def.foeFalloff !== undefined,
-        `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
-      )
+      const pureShips = [...new Map((def.ships ?? []).map((s) => [s.ship.id, s.ship])).values()]
+      if (pureShips.length > 0) {
+        for (const ship of pureShips) {
+          check(
+            ship.energyForm !== undefined,
+            `混伤契约：纯能量卡 ${def.name} 引用的舰级「${ship.name}」未显式声明 energyForm——` +
+              `纯能量必须有收束旋钮：'spit'（能量掷命中：掷命中 + 命中随距离衰减）或 'beam'（必中光束，须收紧 falloff）`,
+          )
+          if (ship.energyForm === 'spit') {
+            check(
+              ship.hitRate < 1,
+              `混伤契约：纯能量卡 ${def.name} 的舰级「${ship.name}」声明了 'spit'（能量掷命中）却给 hitRate ${ship.hitRate}——` +
+                `掷命中形态须给小于 1 的命中率（否则与"必中"无异、收束旋钮形同虚设）`,
+            )
+          } else {
+            check(
+              ship.falloff <= 0.5,
+              `混伤契约：纯能量卡 ${def.name} 的舰级「${ship.name}」走必中光束却给了 falloff ${ship.falloff}——` +
+                `必中光束的远端收束只能靠 falloff，须不宽于全局缺省 0.5`,
+            )
+          }
+        }
+      } else {
+        check(
+          def.foeFalloff !== undefined,
+          `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
+        )
+      }
       pureBeam += 1
       continue
     }
@@ -1191,7 +1222,7 @@ for (const m of MODULES) {
   }
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
-      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 显式 foeFalloff）` : ''}`,
+      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ''}`,
   )
 
   /* ── 敌速口径契约（2026-09-10 加）──
@@ -1227,10 +1258,26 @@ for (const m of MODULES) {
      *  取值与三号 `handover-faction-b-20260911.md` §三 登记的 B 族偏慢带 **0.75~1.00×** 对齐。
      *  **必须用族级带、不能用战术带**：orbit 常规带 0.90~1.25 与"全族慢速"冲突（0.80 口径下拾荒火力舰 0.81× 会被误拦）。 */
     const SCAV_SPEED_BAND: readonly [number, number] = [0.75, 1.0]
+    /** C 族（异形生物）**全族提速带**（船长 2026-09-11 裁定②：「**C 族速度比 A 海盗还快**」）：
+     *  - **倍率口径**（设计稿表格的"倍率"列，即 `speedRatio`）：**1.30~2.10**——四档实测 1.35 / 1.60 / 1.62 / 1.65；
+     *  - **基准船比率口径**（与 A / B 族同度量，见下）：**1.30~2.10**，**T4 巨兽豁免**
+     *    （船长裁定③：「允许 T4 战列舰（生物巨兽）；**T4 例外允许慢**」——噬口巨兽 328 m/s 比率 ≈1.12）；
+     *  - **横向断言**：**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 ⇒ T4 只做白名单登记校验）。 */
+    const ALIEN_SPEED_RATIO_BAND: readonly [number, number] = [1.3, 2.1]
+    const ALIEN_SPEED_BAND: readonly [number, number] = [1.3, 2.1]
+    /** A 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
+    const pirateFastestByTier = new Map<number, number>()
+    for (const ship of FOE_SHIPS) {
+      if (ship.family !== 'A') continue
+      const spd = Math.round(HULL_CLASS_BASE_SPEED[ship.hullClassTier] * ship.speedRatio)
+      pirateFastestByTier.set(ship.hullClassTier, Math.max(pirateFastestByTier.get(ship.hullClassTier) ?? 0, spd))
+    }
     let speedCounted = 0
     let speedShipPath = 0
     let pirateReadings = 0
     const pirateSample: string[] = []
+    let alienReadings = 0
+    const alienSample: string[] = []
     let scavReadings = 0
     const scavSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
@@ -1283,6 +1330,42 @@ for (const m of MODULES) {
             )
             continue
           }
+          if (def.foeFamily === 'C') {
+            // **C 族（异形生物）口径**（船长 2026-09-11 裁定②「C 族速度比 A 海盗还快」+ 裁定③「T4 例外允许慢」）：
+            // ①倍率口径（speedRatio）落全族提速带 1.30~2.10；②基准船比率口径同带，**T4 巨兽豁免**；
+            // ③**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 档 ⇒ 只做巨兽白名单登记校验）。
+            const tier = slot.ship.hullClassTier
+            if (alienSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级被多条编成引用时只校验一次
+            alienReadings++
+            alienSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              slot.ship.speedRatio >= ALIEN_SPEED_RATIO_BAND[0] && slot.ship.speedRatio <= ALIEN_SPEED_RATIO_BAND[1],
+              `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」倍率 ${slot.ship.speedRatio.toFixed(2)}× 越出**全族提速带** ` +
+                `${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×（船长裁定②「C 族速度比 A 海盗还快」）`,
+            )
+            if (tier === 4 || tier === 5) {
+              check(
+                ALIEN_BEAST_SHIP_IDS.includes(slot.ship.id),
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」登记了 T${tier} 档却不在**巨兽白名单**` +
+                  `（ALIEN_BEAST_SHIP_IDS）——船长裁定③只允许「生物巨兽」用 T4，且**允许慢**（本档免比率校验）`,
+              )
+            } else {
+              check(
+                ratio >= ALIEN_SPEED_BAND[0] && ratio <= ALIEN_SPEED_BAND[1],
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
+                  `${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+              )
+            }
+            const aFastest = pirateFastestByTier.get(tier)
+            if (aFastest !== undefined) {
+              check(
+                spd > aFastest,
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于 A 族同档最快** ${aFastest} m/s——` +
+                  `船长裁定②「**C 族速度比 A 海盗还快**」（同档必须更快；T4 巨兽例外不在此列）`,
+              )
+            }
+            continue
+          }
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           check(
             ratio >= band[0] && ratio <= band[1],
@@ -1309,10 +1392,13 @@ for (const m of MODULES) {
     console.log(
       `· 敌速口径契约：${speedCounted} 张逐卡显式标定 + ${speedShipPath} 张引用舰级速度，比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）；` +
         `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）、` +
-        `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）`,
+        `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）、` +
+        `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
+        `同档实速须高于 A 族；T4 巨兽例外允许慢）`,
     )
     if (pirateSample.length > 0) console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join('　')}`)
     if (scavSample.length > 0) console.log(`  ↳ B 族实测读数（实速/比率）：${scavSample.join('　')}`)
+    if (alienSample.length > 0) console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join('　')}`)
   }
 
   /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
@@ -1365,6 +1451,25 @@ for (const m of MODULES) {
             `**武装拾荒者不配 T3 及以上**：船长 2026-09-11 定「**确认为新手过渡种族**」，` +
             `拾荒者开的是拼装小艇 ⇒ 只登记 **1 护卫舰 / 2 驱逐舰两档**`,
         )
+      }
+      if (ship.family === 'C') {
+        // **C 族（异形生物）舰种档**（船长 2026-09-11 裁定③：「**允许 T4 战列舰**（"生物巨兽"）」）：
+        // ①允许 1~4 档（**不配 5 旗舰**——生物再大也是"巨兽"而非"旗舰"编队）；
+        // ②**T4 必须登记为"巨兽"用途**（`ALIEN_BEAST_SHIP_IDS` 白名单）——目的是**防日后随手给杂鱼挂 T4**
+        //   （把战列档当普通量产物用，等于把"巨兽"的意义抹平）。白名单是"显式登记"的代码化表达。
+        check(
+          t <= 4,
+          `舰级契约：异形族舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? '未知档'}（T${t}）档——` +
+            `异形族只允许 1 护卫舰 ~ 4 战列舰（船长裁定③「**允许 T4 战列舰**（生物巨兽）」），**不配 5 旗舰**`,
+        )
+        if (t === 4) {
+          check(
+            ALIEN_BEAST_SHIP_IDS.includes(ship.id),
+            `舰级契约：异形族舰级「${ship.name}」（${ship.id}）登记了 4 战列舰档却**未登记为"巨兽"用途**——` +
+              `T4 是"**生物巨兽**"专档（船长 2026-09-11 裁定③），须显式登记在 \`ALIEN_BEAST_SHIP_IDS\`（packages/data/src/foe-ships.ts）；` +
+              `目的是防日后随手给杂鱼挂 T4`,
+          )
+        }
       }
       tiered++
     }
@@ -1479,7 +1584,8 @@ for (const m of MODULES) {
     }
     console.log(
       `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
-        `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）；` +
+        `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）、` +
+        `异形族（C）允许 T4（须登记为"巨兽"用途：${ALIEN_BEAST_SHIP_IDS.join(' / ')}）且不配 T5；` +
         `A 族编成契约 ${aCompositionCards} 张：头目 ×1 + 同族杂鱼 ×3（共 4 单位）、头目血量 60% ±1%`,
     )
   }

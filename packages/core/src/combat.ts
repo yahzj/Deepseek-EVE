@@ -940,7 +940,9 @@ function foeMultiShipCompMul(anomaly: AnomalyDef): number {
  *   `round(HULL_CLASS_BASE_SPEED[舰种档] × speedRatio × speedMul)` ——
  *   **舰种基准 × 倍率**（基准 = `bal.hullClassBaseSpeedMps`，倍率 = `ship.speedRatio` 与条目 `speedMul`）。
  * - 射程带：两端同乘 `rangeMul` 后取整（保持 min < max）
- * - 主系/命中：可逐条覆写（缺省走舰级）；能量主系一律光束必中
+ * - 主系/命中：可逐条覆写（缺省走舰级）；**能量主系形态**由 `energyForm` 决定——
+ *   缺省/`'beam'` = 光束必中（不消费命中）；`'spit'` = **掷命中**（消费 `hitRate`、命中随距离衰减）。
+ *   2026-09-11 船长裁决⑤「立「能量·掷命中」档」。
  */
 function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts): UnitSpec[] {
   const prefix = opts.tagPrefix ?? ''
@@ -969,6 +971,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const rangeMin = Math.max(1, Math.min(rangeMax - 1, u.slot.rangeMinM ?? Math.round(ship.rangeMinM * rangeMul)))
     // 战术：卡上覆写优先（2026-09-11 船长「头目建议允许多个战术」）——同一条头目舰可配多种打法
     const tactic = u.slot.tactic ?? ship.tactic
+    // 能量武器形态（2026-09-11 船长裁决⑤「立「能量·掷命中」档」）：条目覆写 > 舰级，缺省 = 光束必中。
+    // **只对能量主系生效**：动能/爆炸主系本来就是 fixed 掷命中，本字段不参与。
+    const energyForm = (u.slot.energyForm ?? ship.energyForm) === 'spit' ? ('spit' as const) : ('beam' as const)
+    const isBeam = type === 'plasma' && energyForm === 'beam' // 光束必中（缺省口径，零行为变化）
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**条目写了 `enterAt` 且总开关打开**时
     // 才给单位挂 `foeReinforceAt`——开关关闭时本字段一律不写（与 `foeCanCharge` 同款总开关形态，
     // 这保证"关了就是零行为变化"）。触发条件全无效 = 视为未写 = 开战即在（见 `FoeReinforceTrigger` 注释）。
@@ -1000,14 +1006,17 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       weapons: [
         {
           label: `${name} 武器组`,
-          kind: type === 'plasma' ? ('beam' as const) : ('fixed' as const),
+          // 形态（2026-09-11 船长裁决⑤）：能量主系 = 光束必中（缺省）/ 掷命中（`energyForm: 'spit'`）；
+          // 动能/爆炸主系一律 fixed 掷命中，不受本字段影响。
+          kind: isBeam ? ('beam' as const) : ('fixed' as const),
           fixedType: type,
           shotDmg,
           ...(multiShots ? { shotsByType: multiShots } : {}),
           maxRangeM: rangeMax,
           minRangeM: rangeMin,
           blindDmgMul: ship.blindDmgMul ?? 0.3,
-          hitRate: type === 'plasma' ? 1 : (u.slot.hitRate ?? ship.hitRate),
+          // 必中光束不消费命中（恒 1）；掷命中（动能/爆炸 + 能量 spit）走命中率
+          hitRate: isBeam ? 1 : (u.slot.hitRate ?? ship.hitRate),
           falloff: ship.falloff,
           reloadMs: ship.reloadMs,
         },

@@ -516,6 +516,15 @@ export type FoeTactic = 'brawl' | 'orbit' | 'kite'
 /** 敌方血型（V11）：盾型 / 甲型 / 均衡（决定敌方三层血量比例） */
 export type DefProfile = 'shield' | 'armor' | 'balanced'
 
+/**
+ * **能量武器形态**（2026-09-11 船长裁决⑤：「**立「能量·掷命中」档**」；只对能量主系生效）：
+ * - `'beam'`（缺省）= 激光式**光束必中**（不掷命中、不消费 `hitRate`、守方回避不生效），远端做**威力**衰减；
+ * - `'spit'` = **能量掷命中**（喷吐 / 投射）——掷命中 + 命中随距离衰减、消费 `hitRate` 并吃守方回避，
+ *   层位克制仍走等离子行。
+ * 详见 `FoeShipDef.energyForm`。
+ */
+export type EnergyForm = 'beam' | 'spit'
+
 /** V11 战斗平衡常量（唯一调参处；初值在校准脚本阶段核对） */
 export interface BattleBalance {
   /** 命中率输出钳制：开放边界 0% / 100%（贴脸高加成场合可必中、极端劣势可完全脱靶） */
@@ -983,7 +992,7 @@ export interface FoeShipDef {
   split: { s: number; a: number; h: number }
   /** 基础单发（绝对值） */
   shotDmg: number
-  /** 命中率 0~1（能量 plasma 为光束必中，不消费本值） */
+  /** 命中率 0~1（**能量主系**是否消费本值取决于 `energyForm`：缺省光束必中 → 不消费；`'spit'` 掷命中 → 消费） */
   hitRate: number
   /** 装填（毫秒） */
   reloadMs: number
@@ -992,14 +1001,27 @@ export interface FoeShipDef {
   /** 射程带上限 m */
   rangeMaxM: number
   /**
-   * 远端衰减（缺省 0.3）。两条生效路径：动能/爆炸（fixed）→ `distFactor` 命中衰减；
-   * 能量（plasma 光束）→ `beamPowerFactor` **威力**衰减（**本值越大衰减越轻**）。
+   * 远端衰减（缺省 0.3）。两条生效路径：动能/爆炸（fixed）以及**能量掷命中（`energyForm: 'spit'`）**
+   * → `distFactor` **命中**衰减；能量光束（缺省必中）→ `beamPowerFactor` **威力**衰减
+   * （**此时本值越大衰减越轻**）。
    */
   falloff: number
   /** 近盲带伤害比例（缺省 0.3） */
   blindDmgMul?: number
   /** 伤害构成（缺省纯动能）。主系决定武器形态 / 命中 / 近盲 / 配色，混伤只改伤害构成 */
   dmgMix?: Partial<Record<DamageType, number>>
+  /**
+   * **能量武器形态**（2026-09-11 船长裁决⑤：「**立「能量·掷命中」档**」）——**只对能量主系
+   * （`dmgMix` 主系 = `plasma`）生效**，动能/爆炸主系本来就是掷命中（`fixed`）、不受本字段影响：
+   * - 缺省 / `'beam'` = **激光式光束**：`kind: 'beam'`，**开火必中**（不掷命中、不消费 `hitRate`、
+   *   守方回避也不生效），远端用 `beamPowerFactor` 做**威力**衰减（`falloff` 越小越衰减）；
+   * - `'spit'` = **能量掷命中（喷吐/投射）**：`kind: 'fixed'` —— **掷命中 + 命中随距离衰减**
+   *   （`distFactor`：近端 1 → 最远端 = `falloff`）、**消费 `hitRate` 且吃守方回避**，
+   *   层位克制**仍按等离子行**（对盾 ×1.25 / 对甲 ×1 / 结构 ×1）——与光束同系不同形态。
+   * 用途：把"酸液喷吐 / 等离子投射"这类**能量投射物**与"激光/光束"明确分开（C 族族签名）。
+   * ⚠ **缺省 = 现状**（能量必中光束），故不写本字段的既有舰级**零行为变化**。
+   */
+  energyForm?: EnergyForm
   /** 战术性格 */
   tactic: FoeTactic
   /** 头目档：显示名加「精锐」前缀（2026-09-11 船长裁决实装；旧 `FOE_LIGHT_WORD` 的预留位） */
@@ -1064,6 +1086,11 @@ export interface FoeShipSlot {
   dmgMix?: Partial<Record<DamageType, number>>
   /** 命中覆写（缺省走舰级） */
   hitRate?: number
+  /**
+   * **能量武器形态覆写**（缺省走舰级；见 `FoeShipDef.energyForm`）——用于"同一条船换装不同弹药/喷口"：
+   * 例同一舰级在 A 卡走光束、在 B 卡走掷命中。**只对能量主系生效**。
+   */
+  energyForm?: EnergyForm
   /**
    * **单波次内增援·入场时机**（2026-09-11 船长裁决：「**先完成相应的系统机制，不使用。用作后续机制。**」）。
    *

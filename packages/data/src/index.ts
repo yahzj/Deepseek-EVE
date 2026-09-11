@@ -21,6 +21,7 @@ export {
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
+  ALIEN_BEAST_SHIP_IDS,
 } from './foe-ships'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
