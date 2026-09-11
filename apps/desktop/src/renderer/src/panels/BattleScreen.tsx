@@ -150,6 +150,8 @@ const meSpeedRef = useRef(200)
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
   const droneSortieRef = useRef<Map<string, DroneSortie>>(new Map())
+  /** **敌方机群**出海状态（2026-09-11 机群批 S5 第二层）：键 = `tag:artId`，与我方同款单轮时序 */
+  const foeSortieRef = useRef<Map<string, DroneSortie>>(new Map())
   /** 出弹位轮换计数（key = 'fly:机型' / 'res:机型'；同一型多架轮流出弹） */
   const droneSlotRef = useRef<Map<string, number>>(new Map())
   /* ── 无人机位置驱动（2026-09-10 船长"无人机移动不连贯"修复）：
@@ -614,7 +616,22 @@ const meSpeedRef = useRef(200)
         const n = droneSlotRef.current.get(key) ?? 0
         droneSlotRef.current.set(key, n + 1)
         const foeA = layFx.foe[0] ?? layFx.me
-        const dir = isMeShot ? 1 : -1
+        // **两侧同口径**（2026-09-11 机群批 S5 修正）：阵位一律取「**敌舰锚点 − 偏移**」——
+        // 我方无人机悬在**目标舰（敌）的靠我一侧**，敌方警戒机同样悬在**敌舰的靠我一侧**
+        // ⇒ 两边都落在两舰之间（＝"警戒幕铺在母舰与玩家之间"），弹道不再看着像从舰体发出。
+        // ⚠ 旧口径 `dir = isMeShot ? 1 : -1` 会把敌机阵位算到**敌舰背后**（`foe.x + 42~68`），
+        //   表现上就是"弹道从船身发射"（船长 2026-09-11 实测反馈）。
+        const dir = 1
+        // **第二层：敌机也走"出击制"**——把本轮出海起点记在**敌机自己的键**（`tag:artId`）上，
+        // 供机群层按同一套时序（放出 0.56s → 到位开火 → 返航 0.62s）驱动敌机机体。
+        if (!isMeShot) {
+          const fkey = `${fx.tag}:${fx.artId}`
+          const fprev = foeSortieRef.current.get(fkey)
+          const fcycle = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
+          if (!fprev || now - fprev.startAt >= fcycle + 40) {
+            foeSortieRef.current.set(fkey, { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) })
+          }
+        }
         if (DRONE_STYLE === 'sortie' && !dm.resident) {
           /**
            * 2026-09-10 船长"弹道发射位置和无人机对不上（小概率）"修复——两处确定性缺陷：
@@ -970,6 +987,8 @@ const meSpeedRef = useRef(200)
   /** 敌方机群（2026-09-11 机群批 S5）：按敌单位 tag 取该舰的警戒机群（机型 / 机库 / 现存架数） */
   const foeWingOf = (tag: string): { artId: string; count: number; alive: number } | undefined =>
     arcs.foeDrones?.find((d) => d.tag === tag)
+  /** **敌方机群（第二层）**：与 `droneWings` 同构——起点换成**敌舰机库口**、阵位在**两舰之间**（镜像） */
+  const foeWings = (arcs.foeDrones ?? []).filter((w) => w.alive > 0)
   const foeUnitEls = foeRowTags.map((tag) => {
     const isMain = isFoeMainTag(tag)
     const ba = corpseAtRef.current.get(tag)
@@ -993,40 +1012,7 @@ const meSpeedRef = useRef(200)
         <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
           {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
         </span>
-        {/* **敌方机群**（2026-09-11 机群批 S5）——巨构放出的「警戒机」贴敌舰上方排成**警戒幕**：
-            与我方机群共用 `droneArt` 的机体资产，只换族色与形体语言 ⇒ 一眼分敌我；
-            架数 = **现存架数**（被近防炮击落即减，母舰阵亡则整组消失）。 */}
-        {(() => {
-          const wing = foeWingOf(tag)
-          if (!wing || wing.alive <= 0) return null
-          const model = droneModelOf(wing.artId)
-          if (!model) return null
-          const show = Math.min(wing.alive, DRONE_SHOW_MAX)
-          return (
-            <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: -16, width: 0, height: 0 }}>
-              {Array.from({ length: show }, (_, i) => (
-                <span
-                  key={i}
-                  className="app-bts-drone"
-                  style={{ position: 'absolute', left: -68 + i * 17, top: -20 - (i % 2) * 7, color: model.tint }}
-                >
-                  <svg
-                    viewBox="-13 -8 26 16"
-                    width="20"
-                    height="13"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinejoin="round"
-                  >
-                    {model.art}
-                  </svg>
-                </span>
-              ))}
-              {wing.count > show ? <span className="app-bts-drone-more">×{wing.alive}</span> : null}
-            </span>
-          )
-        })()}
+        {/* 敌方机群由**机群层**统一出海（第二层，见 `.app-bts-drones` 内的 foeWings 渲染） */}
         {boomLive ? (
           <span className="app-bts-boom">
             <i className="b-core" />
@@ -1142,8 +1128,10 @@ const meSpeedRef = useRef(200)
           </div>
 
           {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 起飞即出击-到位开火-立刻返航；雷鸥哨戒常驻伴飞）；
-              位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐 */}
-          {droneWings.length > 0 ? (
+              位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐。
+              **2026-09-11 机群批 S5 第二层**：**敌方机群**（警戒机）也进这一层——同一套出击制，
+              只是起点换成**敌舰机库口**、阵位落在**两舰之间**、机体**镜像朝向**（敌机朝我）。 */}
+          {droneWings.length > 0 || foeWings.length > 0 ? (
             <div className="app-bts-drones" ref={droneBoxRef} aria-hidden="true">
               {droneWings.map((w) => (
                   <div
@@ -1177,6 +1165,64 @@ const meSpeedRef = useRef(200)
                     {w.total > w.show ? <span className="app-bts-drone-more">×{w.total}</span> : null}
                   </div>
               ))}
+              {/* ── **敌方机群（第二层）**：从**敌舰机库口**放出 → 飞抵**两舰之间** → 到位开火 → 掉头返航 ──
+                  与我方**同一套出击制**（放出 0.56s / 停留 0.22s / 返航 0.62s · 每架一条弧线），
+                  只是**起点换成敌舰**、阵位落在两舰之间（弹道层同口径：`敌舰锚点 − 42~68px`）、
+                  **机体镜像朝向**（出海朝我、返航掉头）。本轮起点由弹道层在首次开火时盖章（`foeSortieRef`）。
+                  坐标以本层原点（＝我方舰位）为基准——与击落演出 `d.x - lay.me.x` 同源。 */}
+              {foeWings.map((w) => {
+                const model = droneModelOf(w.artId)
+                if (!model) return null
+                const show = Math.min(w.alive, DRONE_SHOW_MAX)
+                const st = foeSortieRef.current.get(`${w.tag}:${w.artId}`)
+                const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
+                const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
+                const fdx = (lay.foe[0]?.x ?? lay.me.x) - lay.me.x
+                const fdy = (lay.foe[0]?.y ?? lay.me.y) - lay.me.y
+                const deck = { x: fdx + 12, y: fdy } // 敌舰机库口（舰体中部上方一点，镜像我方）
+                return (
+                  <div key={`foe-${w.tag}-${w.artId}`} className="app-bts-wing is-sortie">
+                    {Array.from({ length: show }, (_, i) => {
+                      const off = st?.offs[i % Math.max(1, st.offs.length)] ?? { x: 52, y: 0 }
+                      const station = { x: fdx - off.x, y: fdy + off.y } // 与弹道层 `droneStationFrom` 逐字同口径
+                      let pos = deck
+                      let facing = -1 // 出海：朝我（镜像）
+                      if (st) {
+                        if (elapsed < DRONE_SORTIE_OUT_MS) {
+                          pos = dronePathPos(elapsed / DRONE_SORTIE_OUT_MS, deck, station, droneArcHeight(i), false)
+                        } else if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) {
+                          pos = station
+                        } else if (elapsed < cycleMs) {
+                          const t = (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS
+                          pos = dronePathPos(t, station, deck, droneArcHeight(i), true)
+                          facing = 1 // 返航：掉头朝敌舰
+                        }
+                      }
+                      return (
+                        <span
+                          key={i}
+                          className="app-bts-drone"
+                          style={{ position: 'absolute', left: pos.x, top: pos.y, color: model.tint }}
+                        >
+                          <svg
+                            viewBox="-13 -8 26 16"
+                            width="22"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinejoin="round"
+                            style={{ transform: `scaleX(${facing})` }}
+                          >
+                            {model.art}
+                          </svg>
+                        </span>
+                      )
+                    })}
+                    {w.count > show ? <span className="app-bts-drone-more">×{w.alive}</span> : null}
+                  </div>
+                )
+              })}
               {/* 被点防击落的机体：原位小爆炸 + 碎片下坠（截图位与机体同一坐标系，见 .app-bts-drone-wreck） */}
               {droneDownRef.current.map((d) => {
                 const model = droneModelOf(d.artId)
