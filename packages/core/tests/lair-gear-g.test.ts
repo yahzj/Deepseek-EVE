@@ -77,7 +77,7 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
     expect(d.maxRangeM).toBe(2500)
     expect(d.hitRate).toBe(0.75)
     expect(d.falloff).toBe(1)
-    expect(d.defense).toEqual({ shieldHp: 6, armorHp: 3, hullHp: 6, evasion: 0.55 })
+    expect(d.defense).toEqual({ shieldHp: 12, armorHp: 6, hullHp: 12, evasion: 0.55 }) // 2026-09-11 血条 ×2
     // 与制式锚点对比：火力 = 战斗机档（赤鸢 6），闪避更高、CPU 更省、血更薄
     const scout = ctx.items.get(DRONE_ROLE_ANCHORS.scout)!
     const combat = ctx.items.get(DRONE_ROLE_ANCHORS.combat)!

@@ -385,7 +385,7 @@ export const DRONES: readonly ItemDef[] = [
     droneClass: 'scout', // 2026-09-10 分类入本体：「种类」显示 无人机 · 侦察机
     hitRate: 0.75, // 2026-09-10 船长：轻型机群命中 0.6→0.75
     falloff: 1, // 2026-09-10 船长：侦察/战斗/攻坚三型**命中不随距离衰减**（射程带内恒定）
-    defense: { shieldHp: 6, armorHp: 3, hullHp: 10, evasion: 0.45 },
+    defense: { shieldHp: 12, armorHp: 6, hullHp: 20, evasion: 0.45 },
   },
   {
     id: 'drone-assault',
@@ -402,7 +402,7 @@ export const DRONES: readonly ItemDef[] = [
     hitRate: 0.75, // 2026-09-10 船长
     falloff: 1, // 命中不随距离衰减
     // 2026-09-10 定位调整：属性平均档（闪避 25%、血居中）
-    defense: { shieldHp: 12, armorHp: 8, hullHp: 20, shieldResist: { kinetic: 0.1 }, evasion: 0.25 },
+    defense: { shieldHp: 24, armorHp: 16, hullHp: 40, shieldResist: { kinetic: 0.1 }, evasion: 0.25 },
   },
   {
     id: 'drone-heavy',
@@ -419,7 +419,7 @@ export const DRONES: readonly ItemDef[] = [
     hitRate: 0.75, // 2026-09-10 船长
     falloff: 1, // 命中不随距离衰减
     // 2026-09-10 定位调整：血量最厚（97）+ 闪避最低（10%）+ 装甲向抗性（抗拆甲）
-    defense: { shieldHp: 30, armorHp: 22, hullHp: 45, armorResist: { explosive: 0.15 }, hullResist: { kinetic: 0.05 }, evasion: 0.1 },
+    defense: { shieldHp: 60, armorHp: 44, hullHp: 90, armorResist: { explosive: 0.15 }, hullResist: { kinetic: 0.05 }, evasion: 0.1 },
   },
   {
     id: 'drone-sentry',
@@ -432,11 +432,12 @@ export const DRONES: readonly ItemDef[] = [
     dmg: 20,
     cpuUse: 16,
     maxRangeM: 5000, // 射程分类 4/4：远程哨戒（2026-09-10 船长——哨戒独享远程，兑现"航程极远"）
+    reloadMs: 8800, // 2026-09-11 船长「哨卫将攻击周期翻倍」：4400 → **8800**（哨戒机不再会被攻击 ⇒ 削 DPS）
     droneClass: 'sentry', // 2026-09-10：无人机 · 哨戒机
     hitRate: 1.1, // 2026-09-10 船长：哨戒基础命中 110%（近距被 100% 上限截断，用于抵消回避）
     falloff: 0.35, // 2026-09-10 船长：哨戒**保留正常命中衰减**（射程端点 ×0.35）——独有代价
     // 2026-09-10 定位调整：血量与侦察机相仿（23）+ 闪避次低（18%）——狙击平台靠距离活命
-    defense: { shieldHp: 8, armorHp: 5, hullHp: 10, shieldResist: { kinetic: 0.1 }, evasion: 0.18 },
+    defense: { shieldHp: 16, armorHp: 10, hullHp: 20, shieldResist: { kinetic: 0.1 }, evasion: 0.18 },
   },
   // ══════════ 专属机型（2026-09-10 船长：G 族「流亡蜂群巢」改为专属侦查无人机） ══════════
   // 只在敌族窝点 → 稀有残骸 → 高级箱这条链路上产出（exclusive：无蓝图、不上市场、不入常规掉落池）；
@@ -456,7 +457,7 @@ export const DRONES: readonly ItemDef[] = [
     droneClass: 'scout', // 侦察机（「种类」显示：无人机 · 侦察机）
     hitRate: 0.75,
     falloff: 1, // 侦察机档：命中不随距离衰减
-    defense: { shieldHp: 6, armorHp: 3, hullHp: 6, evasion: 0.55 }, // 三层血 15（最薄）+ 闪避最高
+    defense: { shieldHp: 12, armorHp: 6, hullHp: 12, evasion: 0.55 }, // 三层血 15（最薄）+ 闪避最高
     exclusive: true,
   },
 ]

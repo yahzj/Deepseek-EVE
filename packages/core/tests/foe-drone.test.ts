@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, FOE_DRONE_E_ALERT } from '@whale/data'
-import { addShipToFleet, createInitialState } from '../src/index'
+import { addShipToFleet, addWare, createInitialState } from '../src/index'
 import { advanceBattleFor, createFoeSpecs, pickFoeDroneTarget, startBattleFor } from '../src/combat'
 import type { BattleState, GameState } from '../src/state'
 import type { AnomalyDef, FoeShipDef, FoeDroneSlot, SimContext } from '../src/types'
@@ -70,6 +70,9 @@ function makeState(seed = 5, high: string[] = ['mod-turret-kin-2']): GameState {
     mid: ['mod-shield-kin-2', 'mod-track-2'],
     low: ['mod-stab-kin-2'],
   }
+  // 弹药备货（2026-09-11 补）：炮台是 'gun' ⇒ **要弹才打得出去**；合成档此前没备弹，
+  // 端到端用例因此出现"装了 4 门近防炮却一发未放"的假失败（真档由 startBattleFor 预载）。
+  addWare(state, 'ammo-kinetic-l', 500)
   return state
 }
 
@@ -170,16 +173,6 @@ describe('防空选靶（船长 A1：只有带防空属性的武器能打敌机�
     const state = makeState()
     const before = structuredClone(state.rng)
     expect(pickFoeDroneTarget(state, battle, [{ tag: 'foe-0' } as never], 3000, RANGED)).toBeNull()
-    expect(state.rng).toEqual(before)
-  })
-
-  it('武器射程之外 ⇒ null（炮台射程 ≠ 机群射程），且同样不消费 rng', () => {
-    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
-    const battle = runBattle(card)
-    const foes = createFoeSpecs(card, bal)
-    const state = makeState()
-    const before = structuredClone(state.rng)
-    expect(pickFoeDroneTarget(state, battle, foes, 50, { minRangeM: 1, maxRangeM: 10 })).toBeNull()
     expect(state.rng).toEqual(before)
   })
 

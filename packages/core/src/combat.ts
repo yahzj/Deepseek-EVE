@@ -663,7 +663,10 @@ export function createPlayerSpec(
   //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
   // 2026-09-10 船长（配合出击-返航动画节奏）：装填基准 2200→**4400ms**、单发同步 ×2
   // ——每轮更重、节奏更舒缓，**净 DPS 不变**（故既有校准矩阵口径不变，无需复跑）。
-  const droneReload = Math.round(4400 * (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
+  // 机型级装填（2026-09-11 船长「哨卫将攻击周期翻倍」）：`def.reloadMs` 优先，缺省 = 基准 4400ms；
+  // 整备学折减口径不变（每级 −4%）。
+  const droneReloadOf = (def: { reloadMs?: number }): number =>
+    Math.round((def.reloadMs ?? 4400) * (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)))
   if (bayLimit > 0 && cpuLeft > 0) {
     for (const [droneId, want] of Object.entries(droneLoad)) {
       if (!want || want <= 0) continue
@@ -707,7 +710,7 @@ export function createPlayerSpec(
           // 侦察/战斗/攻坚三型 0.75 且**命中不随距离衰减**（falloff 1）；哨戒 1.10 保留正常衰减 0.35
           hitRate: def.hitRate ?? 0.6,
           falloff: def.falloff ?? 0.35,
-          reloadMs: droneReload,
+          reloadMs: droneReloadOf(def),
         })
       }
     }
@@ -2508,8 +2511,18 @@ function aliveDroneIndices(
     if (p.artId && sentryIds.has(p.artId)) sentries.push(Number(k))
     else others.push(Number(k))
   }
+  // **船长 2026-09-11：关闭"哨戒机可被攻击"的机制**（代码保留、不删）——常驻伴飞的哨戒机停在
+  // 母舰旁、**从不飞到敌方** ⇒ **永不被攻击**；**只有出击型（会飞到敌舰旁的那些）才会挨打**。
+  // 置 `PD_TARGET_SENTRIES = true` 即恢复旧口径（非哨戒机全灭后转而打哨戒机）。
+  if (!PD_TARGET_SENTRIES) return others
   return others.length > 0 ? others : sentries
 }
+
+/**
+ * **哨戒机是否可被攻击**（船长 2026-09-11：「将之前新增的哨戒无人机会被攻击的机制**关闭（不是删除）**。
+ * **只有靠近敌方的无人机会被攻击**」）。`false` = 关闭（现值）；改 `true` 即恢复旧行为。
+ */
+const PD_TARGET_SENTRIES = false
 
 /** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
 const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry'])
@@ -2524,8 +2537,8 @@ export function droneLostCount(b: import('./state').BattleState): number {
 /**
  * 近防炮结算（每拍调用；2026-09-10 船长口径）：
  * - 每艘点防舰**独立**按 `pdJudgementMs`（0.5s）判定一次；
- * - 随机挑一架**正在攻击的放飞无人机**（存活；**默认不打哨戒机，但非哨戒机全灭后转而打它**）
- *   → 按 `pdAcc − 机型闪避` 掷命中；
+ * - 随机挑一架**正在攻击的放飞无人机**（存活；**哨戒机不可被攻击**——船长 2026-09-11 关闭该机制，
+ *   见 `PD_TARGET_SENTRIES`）→ 按 `pdAcc − 机型闪避` 掷命中；
  * - 命中按 `pdDmg` 走该机型三层抗性；血量打空 = 该架本场击落（停火 + 计入 droneLost）；
  * - **不看距离**（放飞出去就在威胁之下）；**战斗内可 100% 损坏**（2026-09-10 船长：
  *   取消原 50% 单场上限）——战后按回收率找回一部分（见 settleDroneLosses）；
@@ -2606,7 +2619,9 @@ export function pickFoeDroneTarget(
 ): { foeTag: string; pool: import('./state').DronePoolEntry } | null {
   const pools = b.foeDronePools
   if (!pools) return null
-  if (dist < w.minRangeM || dist > w.maxRangeM) return null
+  // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
+  // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
+  // 旧口径用 `b.distanceM` 判 ⇒ 画面里贴着您的敌机被当成在 4.5km 外 ⇒ 近防炮"不工作"（船长实测）。
   const cands: Array<{ foeTag: string; pool: import('./state').DronePoolEntry }> = []
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue
@@ -2686,16 +2701,16 @@ function stepBattle(
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
         continue
       }
-      if (!inRange(b.distanceM, w)) continue
-      // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
-      // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人——
-      // 修复旧"每步缓存单一集火目标、齐射轮内打已死目标浪费火力"的问题。
-      // 2026-09-09 锁定装置：装上即切换"集火模式"——不再随机，全部武器打存活编队首位
-      // （主舰优先，击毁自动接力下一艘；rng 零消耗，可复现性保持）
       // ── 防空属性（船长 A1）：**只有带 `canHitDrones` 的武器能筛到敌机** ──
       // 机群不在主目标池里 ⇒ 其余武器（含我方无人机，船长 B1）按构造看不到它们。
-      // 带标记的武器**优先打机群**（防空是它的本职）；无机群/全打光/不在射程 ⇒ 照旧打舰。
+      // 带标记的武器**优先打机群**（防空是它的本职）。
+      // **射程口径（船长 2026-09-11 甲案）**：打机群**不看两舰间距**（敌机扑到您舰旁才开火，
+      // 机制服从画面）⇒ 有敌机可打时不受 `inRange` 拦截；只有"打舰"才按本武器射程判。
       const droneHit = w.canHitDrones ? pickFoeDroneTarget(state, b, foes, b.distanceM, w) : null
+      if (!droneHit && !inRange(b.distanceM, w)) continue
+      // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
+      // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人。
+      // 2026-09-09 锁定装置：装上即切换"集火模式"——全部武器打存活编队首位（主舰优先、击毁接力）。
       const foeTarget = droneHit
         ? null
         : me.lockedDmgBonus

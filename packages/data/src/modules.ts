@@ -227,7 +227,7 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 40,
     description: '巨构残骸上拆下来的点防炮：射程极短、射速极快，是唯一能打敌方机群的武器。对舰也能开火，威力却远不如主炮——占一个高槽，换的是带机群的仗里的答案。',
     cpuUse: 12,
-    maxRangeM: 1400, // 点防射程：贴身护卫（敌方机群在 4.5 km 外布警戒幕 ⇒ 想打它就得走进去）
+    maxRangeM: 2500, // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」（原 1400）；打机群**不看两舰间距**（甲案）
     minRangeM: 1, // 无近盲带：贴到脸上也开火
     hitRate: 0.9, // 点防本职：高命中
     falloff: 0.5,
@@ -247,7 +247,7 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 48,
     description: '巨构近防炮的强化型：射速更快、单发更重，射程依旧很短。带机群的仗里，它让机群更快掉下来。',
     cpuUse: 26,
-    maxRangeM: 1500,
+    maxRangeM: 2500, // 三档同射程（船长「按照 2500m 算」）——MK2/MK3 的差异只在单发与射速
     minRangeM: 1,
     hitRate: 0.9,
     falloff: 0.5,
@@ -265,7 +265,7 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 56,
     description: '巨构近防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段。对舰威力仍明显低于同档主炮。',
     cpuUse: 44,
-    maxRangeM: 1600,
+    maxRangeM: 2500,
     minRangeM: 1,
     hitRate: 0.92,
     falloff: 0.5,

@@ -35,9 +35,9 @@ export const FOE_DRONE_E_ALERT: FoeDroneDef = {
   family: 'E',
   role: 'combat', // 战斗机档：中近缠斗（与我方同档的 3,000m 对齐）
   defense: {
-    shieldHp: 14,
-    armorHp: 10,
-    hullHp: 22, // 三层共 46（我方制式战斗机 40）——"巨构的东西更厚"
+    shieldHp: 28,
+    armorHp: 20,
+    hullHp: 44, // 三层共 92（我方制式战斗机 80）——"巨构的东西更厚"；2026-09-11 随全军无人机血条 ×2
     armorResist: { kinetic: 0.15 }, // 厚重装甲层（族格：残骸的老装甲）
     evasion: 0.18, // 不灵活（远低于我方战斗机 0.25）
   },

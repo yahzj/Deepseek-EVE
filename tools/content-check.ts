@@ -1480,7 +1480,8 @@ for (const m of MODULES) {
    * ④ **架数为 ≥1 的整数**（"机库存量、打光为止"的语义）。
    */
   {
-    const PD_MAX_RANGE_M = 2_000
+    // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」⇒ 阈值随之上抬（点防仍远短于主炮 7 km）
+    const PD_MAX_RANGE_M = 2_500
     const aaMods = MODULES.filter((m) => m.canHitDrones === true)
     check(
       aaMods.length > 0,

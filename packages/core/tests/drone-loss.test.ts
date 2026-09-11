@@ -204,13 +204,13 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     if (nonSentryAlive) expect(lostIds).not.toContain('drone-sentry')
   })
 
-  it('非哨戒机全灭后近防炮转火哨戒机（2026-09-10 船长追加）', () => {
-    // 只带哨戒机的编队：没有非哨戒机可打 ⇒ 近防炮必须直接打哨戒机
+  it('**哨戒机永不被攻击**（2026-09-11 船长关闭旧机制「非哨戒机全灭后转火哨戒机」）', () => {
+    // 只带哨戒机的编队：旧口径下近防炮会转火打它；新口径 = **一架都不会掉**
+    // （哨戒机常驻伴飞、从不飞到敌方 ⇒ 兑现「只有靠近敌方的无人机会被攻击」）。
     const onlySentry = makeState(13, { 'drone-sentry': 6 })
     const battle = runBattle(onlySentry, HIGH)!
     const lost = battle.droneLost ?? {}
-    expect(Object.keys(lost)).toEqual(['drone-sentry'])
-    expect(lost['drone-sentry']).toBeGreaterThan(0)
+    expect(lost['drone-sentry'] ?? 0).toBe(0)
   })
 
   it('确定性：同种子两次运行损失架数与机型完全一致', () => {

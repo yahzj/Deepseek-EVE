@@ -31,11 +31,11 @@ describe('无人机四型定位（2026-09-10 船长拍板）', () => {
     expect(droneOf('drone-heavy').defense!.evasion).toBe(0.1)
   })
 
-  it('血量阶梯：攻坚 97 ＞ 战斗 40 ＞ 哨戒 23 ≈ 侦察 19（哨戒与侦察机相仿）', () => {
-    expect(droneTotalHp(droneOf('drone-heavy'))).toBe(97)
-    expect(droneTotalHp(droneOf('drone-assault'))).toBe(40)
-    expect(droneTotalHp(droneOf('drone-sentry'))).toBe(23)
-    expect(droneTotalHp(droneOf('drone-scout'))).toBe(19)
+  it('血量阶梯：攻坚 194 ＞ 战斗 80 ＞ 哨戒 46 ≈ 侦察 38（哨戒与侦察机相仿；2026-09-11 全军 ×2）', () => {
+    expect(droneTotalHp(droneOf('drone-heavy'))).toBe(194)
+    expect(droneTotalHp(droneOf('drone-assault'))).toBe(80)
+    expect(droneTotalHp(droneOf('drone-sentry'))).toBe(46)
+    expect(droneTotalHp(droneOf('drone-scout'))).toBe(38)
   })
 
   it('火力阶梯：单发 3 / 6 / 12 / 20（侦察 1× → 战斗 2× → 攻坚 4× → 哨戒 6.67×）', () => {
@@ -83,7 +83,7 @@ describe('无人机四型定位（2026-09-10 船长拍板）', () => {
   it('契约区间与现行四型一致（新机型照此开卡）', () => {
     expect(DRONE_ROLE_SPECS.scout.evasion).toEqual([0.42, 0.55])
     expect(DRONE_ROLE_SPECS.combat.evasion).toEqual([0.2, 0.3])
-    expect(DRONE_ROLE_SPECS.assault.totalHp).toEqual([90, 120])
+    expect(DRONE_ROLE_SPECS.assault.totalHp).toEqual([180, 240]) // 2026-09-11 定位档同步 ×2
     expect(DRONE_ROLE_SPECS.sentry.noFalloff).toBe(false)
     expect(DRONE_ROLE_SPECS.sentry.dmgShare).toEqual([6, 7.5])
   })

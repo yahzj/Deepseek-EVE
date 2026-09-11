@@ -32,7 +32,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
   scout: {
     label: '侦察机',
     evasion: [0.42, 0.55],
-    totalHp: [15, 25],
+    totalHp: [30, 50], // 2026-09-11 船长：血条 ×2 ⇒ 定位档同步 ×2
     dmgShare: [1, 1.4],
     rangeM: [2000, 2800],
     hitRate: [0.7, 0.8],
@@ -41,7 +41,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
   combat: {
     label: '战斗机',
     evasion: [0.2, 0.3],
-    totalHp: [35, 50],
+    totalHp: [70, 100],
     dmgShare: [1.8, 2.4],
     rangeM: [2800, 3200],
     hitRate: [0.7, 0.8],
@@ -50,7 +50,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
   assault: {
     label: '攻坚机',
     evasion: [0.08, 0.14],
-    totalHp: [90, 120],
+    totalHp: [180, 240],
     dmgShare: [3.4, 4.6],
     rangeM: [3300, 3800],
     hitRate: [0.7, 0.8],
@@ -59,7 +59,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
   sentry: {
     label: '哨戒机',
     evasion: [0.15, 0.22],
-    totalHp: [18, 30],
+    totalHp: [36, 60],
     dmgShare: [6, 7.5],
     rangeM: [4500, 6000],
     hitRate: [1, 1.2],

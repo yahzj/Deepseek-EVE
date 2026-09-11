@@ -58,15 +58,15 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     const base = makeState()
     const b0 = startBattleFor(base, ctx, base.shipId, HIGH, 0)!
     const heavyPool0 = Object.values(b0.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(heavyPool0.h).toBe(45) // 猎鹰结构 45（四型定位档）
+    expect(heavyPool0.h).toBe(90) // 猎鹰结构 90（2026-09-11 血条 ×2；原 45）
 
     const trained = makeState()
     trained.skills.trained['drone-durability'] = 5
     const b1 = startBattleFor(trained, ctx, trained.shipId, HIGH, 0)!
     const heavyPool1 = Object.values(b1.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(heavyPool1.h).toBe(Math.round(45 * 1.2))
-    expect(heavyPool1.s).toBe(Math.round(30 * 1.2))
-    expect(heavyPool1.a).toBe(Math.round(22 * 1.2)) // 全血条三层一起放大
+    expect(heavyPool1.h).toBe(Math.round(90 * 1.2)) // 基础血 ×2（原 45）
+    expect(heavyPool1.s).toBe(Math.round(60 * 1.2))
+    expect(heavyPool1.a).toBe(Math.round(44 * 1.2)) // 全血条三层一起放大
   })
 
   it('强化学（rank4）：再 +6%/级、满级再 +30%，与耐久学乘算（双满 = ×1.56）', () => {
@@ -75,11 +75,11 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     both.skills.trained['drone-reinforce'] = 5
     const b = startBattleFor(both, ctx, both.shipId, HIGH, 0)!
     const pool = Object.values(b.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(pool.h).toBe(Math.round(45 * 1.2 * 1.3)) // 乘算口径：1.2 × 1.3 = 1.56
+    expect(pool.h).toBe(Math.round(90 * 1.2 * 1.3)) // 乘算口径：1.2 × 1.3 = 1.56（基础血 ×2）
     const onlyReinforce = makeState()
     onlyReinforce.skills.trained['drone-reinforce'] = 5
     const b2 = startBattleFor(onlyReinforce, ctx, onlyReinforce.shipId, HIGH, 0)!
-    expect(Object.values(b2.dronePools!).find((p) => p.artId === 'drone-heavy')!.h).toBe(Math.round(45 * 1.3))
+    expect(Object.values(b2.dronePools!).find((p) => p.artId === 'drone-heavy')!.h).toBe(Math.round(90 * 1.3))
   })
 
   it('规避学：闪避 +2%/级，满级 +10%（相对乘算，封顶 0.9）', () => {
