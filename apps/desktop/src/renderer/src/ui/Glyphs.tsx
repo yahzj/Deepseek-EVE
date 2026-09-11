@@ -302,6 +302,13 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.6v8.8M7.6 12h8.8" />
     </g>
   ),
+  /* 通讯/收件箱（2026-09-11 船长定：导航新增「通讯」页，图标采用邮件的样式） */
+  'nav-mail': (
+    <g>
+      <rect x="3.4" y="6.4" width="17.2" height="11.4" rx="1.8" />
+      <path d="M4.6 7.8l7.4 5.2 7.4-5.2" />
+    </g>
+  ),
   /* 矿带开采/采矿（2026-09-05 船长：原工具形似扳手，改矿镐——竖柄+镐头双弯臂） */
   'nav-mine': (
     <g>
@@ -502,6 +509,7 @@ export const NAV_TONES: Record<string, string> = {
   'nav-market': '#ffa45c',
   'nav-industry': '#42d9b0',
   'nav-skills': '#c792ea',
+  'nav-mail': '#9fd8ff',
   'nav-mine': '#b5e35f',
   'nav-bounty': '#ff8373',
   'nav-salvage': '#6fe3f0',

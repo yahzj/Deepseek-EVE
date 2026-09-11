@@ -31,6 +31,11 @@ export type {
   StationTierDef,
   DialogueScriptDef,
   DialogueLineDef,
+  CommsMessageDef,
+  CommsTrigger,
+  CommsReplyDef,
+  CommsJumpPage,
+  CommsEntryView,
   AiCoreType,
   BalanceConfig,
   MarketRarity,
@@ -459,6 +464,20 @@ export {
   playerAtSite,
 } from './station'
 export type { StationBillRow } from './station'
+/* 通讯收件箱（2026-09-11 船长定：NPC 发消息补充剧情与任务提示） */
+export {
+  COMMS_DAY_MS,
+  COMMS_REPLIES_ENABLED,
+  advanceComms,
+  commsDialogueKey,
+  commsGameClock,
+  commsInbox,
+  commsTriggerMet,
+  commsUnreadCount,
+  deliverDialogueToComms,
+  markAllCommsRead,
+  markCommsRead,
+} from './comms'
 export type { StationSiteProgress } from './state'
 
 export {

@@ -26,6 +26,7 @@ export {
 } from './droneRoles'
 export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
+export { COMMS_MESSAGES, buildCommsCatalog } from './messages'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 
@@ -54,4 +55,8 @@ export type {
   StationSiteDef,
   DialogueScriptDef,
   DialogueLineDef,
+  CommsMessageDef,
+  CommsTrigger,
+  CommsReplyDef,
+  CommsJumpPage,
 } from '@whale/core'

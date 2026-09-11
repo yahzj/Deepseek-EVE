@@ -88,6 +88,10 @@ import {
   stopRefineRun,
   deliverStationResources,
   playDialogue,
+  commsInbox,
+  commsUnreadCount,
+  markCommsRead,
+  markAllCommsRead,
   completeSideTask,
   sideTaskBoard,
   courierTaskUnlocked,
@@ -1444,6 +1448,38 @@ export class GameEngine {
     void this.persist()
     this.notify()
     return { ok: true }
+  }
+
+  /* ─────────────── 2026-09-11 通讯（收件箱：NPC 消息 + 剧本镜像） ─────────────── */
+
+  /** 收件箱视图（全部已送达消息，按送达时间倒序；含未读标记与跳转提示） */
+  commsInboxView(): ReturnType<typeof commsInbox> {
+    return commsInbox(this.state, this.ctx)
+  }
+
+  /** 未读条数（导航图标闪烁与数字徽标） */
+  commsUnread(): number {
+    return commsUnreadCount(this.state, this.ctx)
+  }
+
+  /** 点开一封通讯 → 标记已读（幂等；没有该消息时返回失败） */
+  markCommsReadAt(id: string): CommandResult {
+    const r = markCommsRead(this.state, id)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 全部标记已读（收件箱头部按钮；返回本次标记条数，0 = 本来就没有未读） */
+  markAllCommsReadNow(): number {
+    const n = markAllCommsRead(this.state, this.ctx)
+    if (n > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return n
   }
 
   /* ─────────────── v24 任务中心·时效任务（资源 / 快递，定时刷新限时有效） ─────────────── */

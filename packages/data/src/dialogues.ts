@@ -9,6 +9,8 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-redring-intro',
     title: '深空工业协会 · 基建部',
+    // 2026-09-11 通讯系统：剧本与消息同处一个收件箱，故各给一条主题（通讯页列表主行用）
+    subject: '红环前哨站 · 建站交底',
     lines: [
       { speaker: '基建部 · 柯岚', text: '飞行员，能收到吗？红环这地方终于有人闯进来了。' },
       { speaker: '基建部 · 柯岚', text: '长话短说：协会想在红环航道立一座前哨站——就是你现在看到的这片星域。' },
@@ -20,6 +22,7 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-redring-done',
     title: '深空工业协会 · 基建部',
+    subject: '红环前哨站 · 并网通报',
     lines: [
       { speaker: '基建部 · 柯岚', text: '信号稳定了——红环前哨站，全功率运行。' },
       { speaker: '基建部 · 柯岚', text: '从今天起，这片航线的矿船、维修、补给都绕不开你的名字了。' },
@@ -29,6 +32,7 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-cinder-intro',
     title: '深空工业协会 · 基建部',
+    subject: '烬火前哨站 · 建站交底',
     lines: [
       { speaker: '基建部 · 沈灼', text: '烬火……能见度这么差的地方，难得有船敢摸进来。' },
       { speaker: '基建部 · 沈灼', text: '协会在这片高危采集区批了一座前哨站，建材用蓝霜冰——冰层致密，就地开采最划算。' },
@@ -39,6 +43,7 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
   {
     id: 'dlg-cinder-done',
     title: '深空工业协会 · 基建部',
+    subject: '烬火前哨站 · 并网通报',
     lines: [
       { speaker: '基建部 · 沈灼', text: '灯亮了。烬火前哨站，正式并网。' },
       { speaker: '基建部 · 沈灼', text: '这片星域最挑剔的采集点，从此有了自己的补给线。' },

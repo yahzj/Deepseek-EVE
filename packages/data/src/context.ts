@@ -27,6 +27,8 @@ import { buildAnomalyCatalog } from './anomalies'
 import { buildTravelEvents } from './travelEvents'
 import { buildMarketGoodsCatalog } from './marketCatalog'
 import { buildStationCatalog } from './stations'
+import { buildCommsCatalog } from './messages'
+import { buildDialogueCatalog } from './dialogues'
 import { GALAXY_EDGES } from './universe'
 
 export function buildSimContext(): SimContext {
@@ -71,6 +73,8 @@ export function buildSimContext(): SimContext {
     travelEvents: buildTravelEvents(),
     stations: buildStationCatalog(),
     marketGoods: buildMarketGoodsCatalog(),
+    commsMessages: buildCommsCatalog(),
+    dialogues: buildDialogueCatalog(),
     balance: DEFAULT_BALANCE,
   }
 }

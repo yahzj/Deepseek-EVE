@@ -26,6 +26,7 @@ import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MapPage } from './pages/MapPage'
+import { CommsPage } from './pages/CommsPage'
 import type { MapGotoTarget, MapTab } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -47,12 +48,14 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'market', label: '市场', icon: 'nav-market' },
   { key: 'industry', label: '工业', icon: 'nav-industry' },
   { key: 'skills', label: '技能', icon: 'nav-skills' },
+  // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
+  { key: 'comms', label: '通讯', icon: 'nav-mail' },
 ]
 
-type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map'
+type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -429,6 +432,8 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [pd, pendingOpen])
 
   const state = engine.state
+  // 通讯未读（2026-09-11 船长定）：导航图标闪烁 + 数字徽标；逐条已读，点开即读
+  const commsUnread = engine.commsUnread()
   const [page, setPage] = useState<PageKey>('map')
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
@@ -702,20 +707,30 @@ export function App({ engine }: { engine: GameEngine }) {
       <div className="app-workspace">
         <nav className="app-nav-side">
           <ShipStatusWin engine={engine} />
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}`}
-              disabled={tutLocked && !tutCanOpen(item.key)}
-              title={tutLocked && !tutCanOpen(item.key) ? '按教程引导进行：先完成当前「教程目标」' : undefined}
-              onClick={() => changePage(item.key)}
-            >
-              <span className="app-nav-icon">
-                <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
-              </span>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const unreadN = item.key === 'comms' ? commsUnread : 0
+            return (
+              <button
+                key={item.key}
+                className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}`}
+                disabled={tutLocked && !tutCanOpen(item.key)}
+                title={
+                  tutLocked && !tutCanOpen(item.key)
+                    ? '按教程引导进行：先完成当前「教程目标」'
+                    : unreadN > 0
+                      ? `有 ${unreadN} 条未读通讯`
+                      : undefined
+                }
+                onClick={() => changePage(item.key)}
+              >
+                <span className="app-nav-icon">
+                  <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
+                  {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
         </nav>
         <main className="app-page-main">
           <ActivityBar
@@ -777,6 +792,16 @@ export function App({ engine }: { engine: GameEngine }) {
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} mapGoto={mapGoto} /> : null}
+            {page === 'comms' ? (
+              <CommsPage
+                {...pageProps}
+                // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签（如星图 → 残骸打捞）
+                onGoto={(p, tab) => {
+                  if (p === 'map' && tab) changeMapTab(tab as MapTab)
+                  changePage(p as PageKey)
+                }}
+              />
+            ) : null}
           </div>
         </main>
         <div className="app-log-dock">

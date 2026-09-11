@@ -34,6 +34,10 @@ import {
   droneTotalHp,
   buildItemCatalog,
   buildSimContext,
+  COMMS_MESSAGES,
+  DIALOGUES,
+  STATION_SITES,
+  GALAXIES,
 } from '@whale/data'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -1535,6 +1539,76 @@ for (const m of MODULES) {
   console.log(
     `· 模块跨族字段契约：${MODULES.length} 件装备中 ${counted} 处"槽位族之外的搭车加成"，全部已登记且界面有呈现口径` +
       `（${found.length > 0 ? found.join('、') : '无'}）`,
+  )
+}
+
+/* ── 通讯消息契约（2026-09-11 通讯系统）────────────────────────────────────────────
+   体检口径：id 唯一、字段齐备、触发器字段可解析（星系/技能/站点必须真实存在）、
+   跳转目标页合法（及其页面内标签）、玩家可见文案不含开发用词；
+   剧本（DIALOGUES）侧只查主题与正文可用（它们也要进同一个收件箱）。 */
+{
+  const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills'])
+  const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
+  const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt'])
+  /** 玩家可见文案禁用的开发/出戏用词（与词典「玩家可见文案禁用彩头/主题件/掉池」同口径，宽清单） */
+  const BANNED = ['彩头', '主题件', '掉池', '基础池', '区划', '口径', '断言', '白名单', '体检', '待定', '占位', 'EVE', 'npm']
+  const galaxyIds = new Set(GALAXIES.map((g) => g.id))
+  const skillIds = new Set(SKILLS.map((s) => s.id))
+  const siteIds = new Set(STATION_SITES.map((s) => s.id))
+  const seen = new Set<string>()
+  let hints = 0
+  for (const m of COMMS_MESSAGES) {
+    check(m.id.length > 0 && !seen.has(m.id), `通讯消息 id 重复或为空：${m.id}`)
+    seen.add(m.id)
+    check(m.from.trim().length > 0, `通讯 ${m.id} 缺发件人`)
+    check(m.subject.trim().length > 0, `通讯 ${m.id} 缺主题`)
+    check(m.body.length > 0 && m.body.every((p) => p.trim().length > 0), `通讯 ${m.id} 正文为空段`)
+    check(TRIGGER_KINDS.has(m.trigger.kind), `通讯 ${m.id} 触发器 kind 未知：${m.trigger.kind}`)
+    switch (m.trigger.kind) {
+      case 'day':
+        check(Number.isInteger(m.trigger.days) && m.trigger.days >= 1, `通讯 ${m.id} day.days 应为 ≥1 整数`)
+        break
+      case 'explored':
+        check(Number.isInteger(m.trigger.count) && m.trigger.count >= 1, `通讯 ${m.id} explored.count 应为 ≥1 整数`)
+        break
+      case 'galaxy':
+        check(galaxyIds.has(m.trigger.galaxyId), `通讯 ${m.id} 指向的星系不存在：${m.trigger.galaxyId}`)
+        break
+      case 'skill':
+        check(skillIds.has(m.trigger.skillId), `通讯 ${m.id} 指向的技能不存在：${m.trigger.skillId}`)
+        check(Number.isInteger(m.trigger.level) && m.trigger.level >= 1, `通讯 ${m.id} skill.level 应为 ≥1 整数`)
+        break
+      case 'isk':
+        check(m.trigger.amount > 0, `通讯 ${m.id} isk.amount 应为正数`)
+        break
+      case 'siteBuilt':
+        check(siteIds.has(m.trigger.siteId), `通讯 ${m.id} 指向的建站点不存在：${m.trigger.siteId}`)
+        break
+      default:
+        break
+    }
+    if (m.hint) {
+      hints++
+      check(JUMP_PAGES.has(m.hint.page), `通讯 ${m.id} 跳转目标页非法：${m.hint.page}`)
+      check(m.hint.text.trim().length > 0, `通讯 ${m.id} 跳转提示为空`)
+      if (m.hint.tab !== undefined) {
+        check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持页面内标签，实际页：${m.hint.page}`)
+        check(MAP_TABS.has(m.hint.tab), `通讯 ${m.id} 星图标签非法：${m.hint.tab}`)
+      }
+    }
+    for (const p of [m.subject, ...m.body, ...(m.hint ? [m.hint.text] : [])]) {
+      for (const w of BANNED) {
+        check(!p.includes(w), `通讯 ${m.id} 的玩家可见文案含开发用词「${w}」：${p.slice(0, 24)}…`)
+      }
+    }
+  }
+  for (const d of DIALOGUES) {
+    check(d.lines.length > 0, `通讯剧本 ${d.id} 没有台词`)
+    check(d.title.trim().length > 0, `通讯剧本 ${d.id} 缺标题（收件箱发件人栏）`)
+  }
+  console.log(
+    `· 通讯消息契约：${COMMS_MESSAGES.length} 条消息（${hints} 条带跳转提示）+ ${DIALOGUES.length} 份剧本，` +
+      `触发器与跳转目标全部可解析`,
   )
 }
 

@@ -1890,6 +1890,19 @@ function normalizeState(raw: unknown): GameState {
   }
   const pendingDialogue =
     typeof src.pendingDialogue === 'string' && src.pendingDialogue.length > 0 ? src.pendingDialogue : null
+  // --- 通讯收件箱（2026-09-11）：送达记账 + 已读（两字段都可选；老档读入 = 空收件箱，零迁移） ---
+  // 送达时间钳到 ≥0 的整数（负数/非数值一律丢弃 ⇒ 视作"未送达"，下次推进按触发条件补送）。
+  const commsDelivered: Record<string, number> = {}
+  for (const [key, value] of Object.entries(asRaw(src.commsDelivered))) {
+    if (key.length === 0) continue
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) continue
+    commsDelivered[key] = Math.floor(value)
+  }
+  const commsRead: Record<string, boolean> = {}
+  for (const [key, value] of Object.entries(asRaw(src.commsRead))) {
+    if (key.length === 0) continue
+    if (value === true) commsRead[key] = true
+  }
 
   // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
   // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 低安最深惩罚 ×2.2 = 22 分钟）——
@@ -2123,6 +2136,8 @@ function normalizeState(raw: unknown): GameState {
     dockedSite,
     dialogueSeen,
     pendingDialogue,
+    commsDelivered,
+    commsRead,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
     onboarding,

@@ -8970,3 +8970,64 @@ body {
 .app-kit-stock.is-bad { color: var(--wui-red); font-weight: 600; }
 .app-kit-stock.is-warn { color: var(--wui-amber); font-weight: 600; }
 .app-kit-stock.is-ok { color: var(--wui-text-dim); }
+
+/* ═══════════ 通讯页（2026-09-11 船长定：NPC 消息补充剧情与任务提示；邮件形导航图标 + 通讯器造型） ═══════════
+   一级页不滚（约定第六章）：整页不滚，列表内部滚动（.app-comms-list）。
+   视觉纪律（第六章/第九章）：通讯器不规则边框 = SVG 线稿，禁 CSS 拼形状。 */
+.app-nav-item .app-nav-icon { position: relative; }
+/* 未读闪烁：只动 transform/opacity（第十四章）；脉动缩放 + 明暗呼吸，与星图派系标记同族手感 */
+.app-nav-item.is-unread .app-nav-icon { animation: app-nav-blink 1.6s ease-in-out infinite; }
+@keyframes app-nav-blink {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.9); opacity: .5; }
+}
+/* 无动画偏好：退化为静态红点（不闪，但仍明确提示有未读） */
+@media (prefers-reduced-motion: reduce) {
+  .app-nav-item.is-unread .app-nav-icon { animation: none; opacity: .8; }
+}
+.app-nav-badge {
+  position: absolute; top: -5px; right: -7px; min-width: 13px; height: 13px; padding: 0 3px;
+  border-radius: 7px; background: #ff6b52; color: #1c0c08; font-size: 10px; font-weight: 700;
+  line-height: 13px; text-align: center; box-shadow: 0 0 6px rgba(255, 90, 60, .85);
+}
+/* 双列：左列消息列表（唯一滚动区）+ 右列通讯器正文。
+   注意：win-fixed-body 的 .app-win-body 自带 overflow-y:auto（选择器特异性更高），这里用同级选择器
+   把它改成"不滚的弹性列"，让滚动只发生在列表内部（一级页不滚）。 */
+.wui-panel.win-fixed-body .app-win-body.app-comms-body { overflow: hidden; display: flex; flex-direction: column; }
+.app-comms-grid { display: grid; grid-template-columns: minmax(210px, 290px) minmax(0, 1fr); gap: 12px; flex: 1 1 auto; min-height: 0; }
+.app-comms-list {
+  display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto;
+  padding-right: 8px; border-right: 1px solid var(--wui-border);
+}
+.app-comms-item {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  padding: 7px 9px; border: 1px solid var(--wui-border); border-radius: 6px;
+  background: rgba(20, 30, 44, .5); color: var(--wui-text); font: inherit; font-size: 12px;
+}
+.app-comms-item:hover { border-color: var(--wui-accent); }
+.app-comms-item.is-sel { border-color: var(--wui-accent); background: rgba(40, 66, 96, .6); }
+.app-comms-item-top { display: flex; align-items: center; gap: 5px; }
+.app-comms-dot { width: 6px; height: 6px; border-radius: 50%; background: #ff6b52; box-shadow: 0 0 5px rgba(255, 90, 60, .9); flex: 0 0 auto; }
+.app-comms-from { color: var(--wui-text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-comms-time { margin-left: auto; color: var(--wui-text-dim); font-size: 10px; font-family: var(--wui-mono); white-space: nowrap; }
+.app-comms-subject { color: var(--wui-text); font-size: 12px; line-height: 1.35; }
+.app-comms-item.is-unread .app-comms-subject { color: #ffe08a; font-weight: 600; }
+/* 通讯器造型：外框 SVG 铺满整个右列（任意尺寸拉伸，描边靠 non-scaling-stroke 恒定） */
+.app-comms-device { position: relative; min-height: 0; display: flex; }
+.app-comms-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; fill: none; stroke: rgba(159, 216, 255, .5); stroke-width: 1.4; }
+.app-comms-frame g { stroke: rgba(159, 216, 255, .38); stroke-width: 1.2; }
+.app-comms-detail {
+  position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  padding: 20px 26px 22px; display: flex; flex-direction: column; gap: 10px;
+}
+.app-comms-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 1px dotted var(--wui-border); padding-bottom: 5px; }
+.app-comms-head-from { color: #9fd8ff; font-size: 12px; }
+.app-comms-head-time { margin-left: auto; color: var(--wui-text-dim); font-size: 11px; font-family: var(--wui-mono); }
+.app-comms-title { color: #ffe08a; font-size: 15px; font-weight: 600; letter-spacing: .5px; }
+.app-comms-lines { display: flex; flex-direction: column; gap: 8px; }
+.app-comms-text { margin: 0; color: var(--wui-text); font-size: 12.5px; line-height: 1.7; }
+.app-comms-hint {
+  margin-top: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  border-top: 1px dotted var(--wui-border); padding-top: 8px;
+}
+.app-comms-replies { display: flex; gap: 6px; flex-wrap: wrap; }

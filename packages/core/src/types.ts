@@ -1041,6 +1041,10 @@ export interface SimContext {
   stations: ReadonlyMap<string, StationSiteDef>
   /** 市场商品目录（v9） */
   marketGoods: ReadonlyMap<string, MarketGoodDef>
+  /** 通讯消息表（2026-09-11 通讯系统；data/src/messages.ts） */
+  commsMessages: ReadonlyMap<string, CommsMessageDef>
+  /** 通讯剧本目录（T9 建站介绍/庆贺等；通讯页与剧本共处一个收件箱，见 core/comms.ts） */
+  dialogues: ReadonlyMap<string, DialogueScriptDef>
   balance: BalanceConfig
 }
 
@@ -1086,5 +1090,72 @@ export interface DialogueScriptDef {
   id: string
   /** 标题（通讯器称呼栏，如 协会 · 基建部） */
   title: string
+  /** 通讯页收件箱里的主题（2026-09-11 通讯系统合并：缺省回落 title；剧本与消息同处一个收件箱） */
+  subject?: string
   lines: readonly DialogueLineDef[]
+}
+
+/* ═══════════════ 通讯（2026-09-11 船长定：NPC 以"发消息"补充剧情与任务提示） ═══════════════ */
+
+/** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务） */
+export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills'
+
+/**
+ * 通讯消息触发条件（core 每帧廉价判定；**幂等**——条件满足一次即送达，之后重复推进不再送）。
+ * 新增触发器时：`packages/core/src/comms.ts` 的 `triggerMet` 与 `tools/content-check.ts` 的
+ * 「通讯消息契约」两处必须同步（漏一处体检会报错）。
+ */
+export type CommsTrigger =
+  | { kind: 'start' }
+  | { kind: 'day'; days: number }
+  | { kind: 'explored'; count: number }
+  | { kind: 'galaxy'; galaxyId: string }
+  | { kind: 'skill'; skillId: string; level: number }
+  | { kind: 'isk'; amount: number }
+  | { kind: 'siteBuilt'; siteId: string }
+
+/** 回复选项（**预留接口：2026-09-11 船长定"预留但不启用"**，见 core COMMS_REPLIES_ENABLED） */
+export interface CommsReplyDef {
+  id: string
+  label: string
+}
+
+/** 通讯消息（NPC → 玩家；data/src/messages.ts 维护，core 按 trigger 送达） */
+export interface CommsMessageDef {
+  /** 稳定 id（已送达/已读都按它记账） */
+  id: string
+  /** 发件人（协会部门或人名，通讯器"发件人"栏） */
+  from: string
+  /** 主题（列表主行） */
+  subject: string
+  /** 正文（逐段） */
+  body: readonly string[]
+  /** 送达条件 */
+  trigger: CommsTrigger
+  /** 顺带提示（一句提示 + 跳转目标页；裁决③） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string }
+  /** 预留回复选项（本期不启用） */
+  replies?: readonly CommsReplyDef[]
+}
+
+/** 收件箱条目视图（界面用；消息与剧本镜像共用一种结构，见 core/comms.ts） */
+export interface CommsEntryView {
+  /** 稳定键：数据消息 = 消息 id；剧本镜像 = `dlg:<剧本 id>` */
+  id: string
+  /** 来源：数据消息 / T9 剧本镜像 */
+  source: 'message' | 'dialogue'
+  /** 发件人 */
+  from: string
+  /** 主题 */
+  subject: string
+  /** 正文逐段（剧本镜像 = 各发言句 `发言人：内容`） */
+  paragraphs: readonly string[]
+  /** 送达时的游戏内毫秒 */
+  deliveredAtGameMs: number
+  /** 是否已读 */
+  read: boolean
+  /** 顺带提示 + 跳转目标页（可选） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string }
+  /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
+  replies?: readonly CommsReplyDef[]
 }

@@ -183,6 +183,20 @@
 | 成交静默 | 2026-09-08 船长定：站内让利吸收与巡游抢单的成交日志及市场 UI 提示全部与普通簿面成交同模板（「挂单成交/挂单买入成交」），**不向玩家披露让利/巡游通道**（机制与价线纪律保留，仅玩家可见层静默） | market.ts settleStationTake/settleSnatch*；MarketPage 价格指引 |
 | 长途运输 | 2026-09-09 船长定稿（原称「运输任务」，同日独立改名定稿）：星图页独立标签（残骸打捞之后），**至少建成一座副空间站解锁**（母港之外的端点）；任意两座已建成站点间真实航程往返循环（虚拟货物占满货仓、不产生真实物品、到站自动结算续段）；可随时停止（即时返港出发站，无惩罚）；换驾驶 = 立即终止 | hauling.ts；HaulingPanel（星图「长途运输」标签）；HAUL_RATE_PER_M3_MIN |
 
+## 七之二、通讯（收件箱）（2026-09-11 船长定：NPC 发消息补充剧情与任务提示）
+
+| 术语 | 定义 | 出处/规则 |
+|---|---|---|
+| 通讯（收件箱） | 2026-09-11 船长定（设计稿 `docs/design/comms-20260911.md`，六条裁决全为「甲」）：左侧导航新增一级页**「通讯」**（末位，**邮件形** SVG 线稿图标 `nav-mail`）。NPC（协会各部门、合作方、航线上的熟人）以**发消息**的形式补充剧情或发布任务提示；玩家在此查看**历史通讯记录** | pages/CommsPage.tsx；ui/Glyphs.tsx `nav-mail`；App.tsx NAV_ITEMS |
+| 通讯消息来源与触发 | **数据表 + 触发条件**：`packages/data/src/messages.ts` 一张 `COMMS_MESSAGES`（发件人/主题/正文/`trigger`）；core `advanceComms` 每次时间推进廉价判定、**条件满足一次即送达（幂等）**，送达即记账 `state.commsDelivered[id] = 游戏内毫秒`。触发器七类：开局（序章引导走完才送——引导期导航被教程锁着）/ 天数 / 已探明星系数 / 指定星系 / 技能等级 / 现金 / 副站建成 | core/comms.ts commsTriggerMet / advanceComms；data/messages.ts |
+| 通讯与剧本**合并** | T9 建站剧本（介绍/庆贺通话）**照旧**在抵达时弹通讯器浮层（既有体验不变），同时**镜像进通讯页**成为一条历史消息（键 `dlg:<剧本 id>`）⇒ 通讯页 = 玩家侧**唯一**的 NPC 通信记录。剧本 `DialogueScriptDef` 增可选 `subject`（缺省回落 title） | station.ts deliverDialogueToComms（挂起待播与播放两处都调，幂等）；data/dialogues.ts |
+| 通讯里的任务口径 | **只给提示 + 跳转**（裁决③）：消息可带 `hint = { text, page, tab? }`，通讯页给一枚「前往」按钮切到对应一级页（星图可带页面内标签）；**不在通讯页里接取、推进或交付任何任务** | CommsPage onGoto → App.changePage/changeMapTab |
+| 未读与已读 | **逐条已读**（裁决④）：未读 = 已送达且未读；**点开即已读**（含默认展开的那一封），另有「全部标记已读」；未读时导航图标**闪烁**（`app-nav-blink`，只动 transform/opacity；`prefers-reduced-motion` 退化为静态）+ 右上角**未读数字徽标** `.app-nav-badge`（>9 显示 `9+`） | core/comms.ts commsUnreadCount / markCommsRead / markAllCommsRead；styles.css |
+| 回复选项（预留未启用） | 裁决⑥：类型（`CommsReplyDef`）、数据字段（`replies`）与界面分支都留好，开关常量 **`COMMS_REPLIES_ENABLED = false`** ⇒ 玩家侧**不出现**任何回复控件（不做空按钮） | core/comms.ts COMMS_REPLIES_ENABLED；CommsPage |
+| 通讯器造型（不规则边框） | 右列正文外框 = **SVG 线稿**（14 顶点不规则轮廓 + 顶栏信号短线，`preserveAspectRatio="none"` 拉伸 + `vector-effect="non-scaling-stroke"` 保证描边恒定），**禁 CSS 拼形状**；几何自检 = 顶点全在视口内、无自交边 | CommsPage FRAME_PATH；styles.css `.app-comms-frame` |
+| 通讯页版式 | 裁决⑤：**双列**（左列消息列表 = 本页唯一滚动区，右列通讯器正文），一级页**整页不滚**（`PAGE_NO_SCROLL` 含 `comms`）；宽度自适应 | styles.css `.app-comms-*`；App.tsx PAGE_NO_SCROLL |
+| 通讯存档字段 | `state.commsDelivered`（id → 送达时的游戏内毫秒；负数/非数值丢弃 = 视作未送达，下次按条件补送）与 `state.commsRead`（id → true，只记 true）；两字段**可选、零迁移**，老档读入 = 空收件箱 | save.ts normalizeState；state.ts GameState |
+
 ## 八、舰船尺寸大分类（2026-09-09 船长定：全船统一 5 档，按等效质量落档；armored ×0.65 修正）
 
 | 术语 | 定义 | 出处/规则 |

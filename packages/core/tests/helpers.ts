@@ -12,7 +12,9 @@ import type {
   BalanceConfig,
   BeltDef,
   BlueprintDef,
+  CommsMessageDef,
   DamageType,
+  DialogueScriptDef,
   FittedModules,
   GalaxyDef,
   GalaxyEdgeDef,
@@ -463,6 +465,10 @@ export function makeTestCtx(opts?: {
   travelEvents?: Iterable<TravelEventDef>
   stations?: Iterable<StationSiteDef>
   marketGoods?: Iterable<MarketGoodDef>
+  /** 通讯消息表（2026-09-11 通讯系统；缺省空表 = 不送任何消息） */
+  commsMessages?: Iterable<CommsMessageDef>
+  /** 通讯剧本目录（通讯页与剧本共处一个收件箱；缺省空表） */
+  dialogues?: Iterable<DialogueScriptDef>
   /** 关闭随机事件流（精确断言时间线/日志/rng 的测试用） */
   quietEvents?: boolean
   balance?: BalanceConfig
@@ -533,6 +539,8 @@ export function makeTestCtx(opts?: {
     travelEvents,
     stations,
     marketGoods,
+    commsMessages: new Map(Array.from(opts?.commsMessages ?? [], (m) => [m.id, m])),
+    dialogues: new Map(Array.from(opts?.dialogues ?? [], (d) => [d.id, d])),
     balance,
   }
 }

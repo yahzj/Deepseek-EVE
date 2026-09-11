@@ -918,6 +918,14 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   /** T9 待自动播放的通讯剧本 id（首次抵达等触发；null = 无） */
   pendingDialogue: string | null
   /**
+   * 2026-09-11 通讯（收件箱）：消息 id -> 送达时的游戏内毫秒。
+   * 键包含两类来源：`COMMS_MESSAGES` 的数据消息（`msg-*`）与镜像进来的剧本（`dlg:<剧本 id>`）。
+   * 送达即记账 ⇒ 触发器重复判定不会重复送（幂等）；可选字段、零迁移。
+   */
+  commsDelivered?: Record<string, number>
+  /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
+  commsRead?: Record<string, boolean>
+  /**
    * 2026-09-08 交付循环系统提示（一次性：渲染层读到即清并弹窗；可选字段、零迁移，
    * 不落档——重启后由新触发的终点重新写入）
    */
@@ -1410,6 +1418,8 @@ export function createInitialState(opts?: {
     hauling: { ...EMPTY_HAULING },
     dialogueSeen: {},
     pendingDialogue: null,
+    commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
+    commsRead: {},
     debugQuick: false,
     completedBounties: [],
     encounter: {
