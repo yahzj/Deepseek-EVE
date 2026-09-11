@@ -126,6 +126,9 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
   const droneCountOf = new Map<string, number>()
   for (const w of arcs?.me ?? []) if (w.src === 'drone' && w.artId) droneCountOf.set(w.artId, w.count ?? 1)
+  /** 敌方机群：敌单位 tag + 机型 → **该舰现存架数**（弹道道次取模要用它；敌我各用各的表，见弹道层） */
+  const foeDroneAliveOf = (tag: string, artId: string): number =>
+    arcs?.foeDrones?.find((d) => d.tag === tag && d.artId === artId)?.alive ?? 1
 
   const [stage, setStage] = useState<Stage>('live')
   const [retreatAsk, setRetreatAsk] = useState(false)
@@ -651,16 +654,14 @@ const meSpeedRef = useRef(200)
         //   船长实测反馈"只移动一小段、位置还贴在敌舰左上角"）。
         const anchor = isMeShot ? foeA : layFx.me
         const dir = isMeShot ? 1 : -1
-        // **第二层：敌机也走"出击制"**——把本轮出海起点记在**敌机自己的键**（`tag:artId`）上，
-        // 供机群层按同一套时序（放出 0.56s → 到位开火 → 返航 0.62s）驱动敌机机体。
-        if (!isMeShot) {
-          const fkey = `${fx.tag}:${fx.artId}`
-          const fprev = foeSortieRef.current.get(fkey)
-          const fcycle = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
-          if (!fprev || now - fprev.startAt >= fcycle + 40) {
-            foeSortieRef.current.set(fkey, { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) })
-          }
-        }
+        // **第二层：敌机也走"出击制"**——敌我**共用同一套状态表口径**（2026-09-11 修正）：
+        //   · 我方：键 = `artId`，表 = `droneSortieRef`，架数 = 我方该机型架数；
+        //   · 敌方：键 = `tag:artId`，表 = `foeSortieRef`，架数 = **该舰现存架数**。
+        // ⚠ 旧版敌机弹道读的是**我方那张表**、又用我方架数 ⇒ 与机体层（读 `foeSortieRef`）的
+        //   **时间起点 / 随机阵位 / 道次全对不上** ⇒ 船长实测反馈"弹道和敌机位置不对"。
+        const foeDrone = !isMeShot
+        const skey = foeDrone ? `${fx.tag}:${fx.artId}` : fx.artId!
+        const smap = foeDrone ? foeSortieRef.current : droneSortieRef.current
         if (DRONE_STYLE === 'sortie' && !dm.resident) {
           /**
            * 2026-09-10 船长"弹道发射位置和无人机对不上（小概率）"修复——两处确定性缺陷：
@@ -668,12 +669,14 @@ const meSpeedRef = useRef(200)
            * ② 无人机已在返航途中开火时，弹道仍从敌侧阵位发出（机体已不在那里）。
            * 现改为：道次按**实际机体数**取模；返航阶段开火则弹道**从无人机当前位置**发出（边退边打）。
            */
-          const count = Math.max(1, Math.min(droneCountOf.get(fx.artId!) ?? 1, DRONE_SHOW_MAX))
+          const count = foeDrone
+            ? Math.max(1, Math.min(foeDroneAliveOf(fx.tag!, fx.artId!), DRONE_SHOW_MAX))
+            : Math.max(1, Math.min(droneCountOf.get(fx.artId!) ?? 1, DRONE_SHOW_MAX))
           const lane = n % count
-          const prev = droneSortieRef.current.get(fx.artId!)
+          const prev = smap.get(skey)
           const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
           const st = !prev || now - prev.startAt >= cycleMs + 40 ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) } : prev
-          droneSortieRef.current.set(fx.artId!, st)
+          smap.set(skey, st)
           const off = st.offs[lane % st.offs.length]!
           const elapsed = now - st.startAt
           if (elapsed < DRONE_SORTIE_OUT_MS) {
