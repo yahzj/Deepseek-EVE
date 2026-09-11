@@ -325,9 +325,13 @@ type CellReading = {
 }
 
 /**
- * 跑一格（1 播种）：**逐秒推进**并累计 fx 开火事件——fx 是 48 条环形缓冲，
- * 一次性大步长推进会把长战的开火事件裁掉（开火次数会漏计），故必须分段推进采样。
- * 引擎内部固定步长 100ms（`BATTLE_STEP_MS`），分段不改变任何确定性结果（已与大步长逐值比对通过）。
+ * 跑一格（1 播种）：**逐秒推进**并累计开火事件——**我方取 `stats.meShots`（引擎累计，权威）**，
+ * 敌方按 `BattleFx.seq` 逐单位累计（头目 = 该波首个单位）。
+ *
+ * **2026-09-11 修：敌开火列由"环长度游标"改为"seq 游标"**——`fx` 是 **48 条环**（`pushBattleFx` 超长丢最旧），
+ * 旧写法 `b.fx.slice(seen)` + `seen = b.fx.length` 在**环满之后 `slice` 恒为空** ⇒ 该场后续开火全部漏计
+ * （实测：灰霾 ⑤ 600s 真值 **584** 次被读成 **48** 次、漏 92%；蜃影 A0 **54.0 → 43.2**；蜃影 A1 **136 → 48**）。
+ * 改法：被裁掉的永远是**旧事件**（`seq` ≤ 上次最大值），故"`seq` > 上次最大值"的事件**一定还在环里** ⇒ 无损。
  */
 function simulateCell(state: GameState, anomalyId: string, ld: Loadout): CellReading {
   const b = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0)
@@ -336,7 +340,7 @@ function simulateCell(state: GameState, anomalyId: string, ld: Loadout): CellRea
   if (!b) return { win: false, durMs: 0, meRemainPct: 0, endM: 0, minM: 0, meShots: 0, foeShotsBoss: 0, foeShotsMinion: 0 }
   const startAt = b.startedAtGameMs
   const budgetMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(anomalyId), ctx.balance.battle)
-  let seen = 0
+  let lastSeq = 0
   let foeShotsBoss = 0
   let foeShotsMinion = 0
   let minM = Number.POSITIVE_INFINITY
@@ -344,12 +348,13 @@ function simulateCell(state: GameState, anomalyId: string, ld: Loadout): CellRea
     state.gameMs = startAt + t
     advanceBattleFor(state, ctx as SimContext, b, state.shipId, anomalyId)
     minM = Math.min(minM, b.distanceM)
-    for (const e of b.fx.slice(seen)) {
+    for (const e of b.fx) {
+      if (e.seq <= lastSeq) continue
+      lastSeq = e.seq
       if (e.side !== 'foe') continue
       if (isBossTag(e.tag)) foeShotsBoss++
       else foeShotsMinion++
     }
-    seen = b.fx.length
     if (b.ended) break
   }
   const u = b.units['player']
