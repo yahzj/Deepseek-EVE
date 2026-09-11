@@ -11,6 +11,9 @@ export { BLUEPRINTS, buildBlueprintCatalog } from './blueprints'
 export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
+// 2026-09-11 退役窝点卡白名单（船长「按方案 2 执行」）：B 族两卡字段退役后，靠显式白名单
+// 保住"旧档里已获得的稀有残骸仍可识别"——详见 `./retiredLairCards.ts` 与 content:check 契约。
+export { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
 // 2026-09-11 敌舰配置表（舰级表）：A 族试点——绝对值口径，悬赏卡只写编成与修正
 export {
   FOE_SHIPS,

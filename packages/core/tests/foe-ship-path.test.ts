@@ -22,11 +22,13 @@
  * ⑥ **舰种档 + 速度倍率**：实速 = `舰种基准 × speedRatio`，A 族提速后 = 391 / 374 / 325 / 374
  *    （每档都高于本档舰种基准 340/295/258）；
  * ⑦ **多舰船补偿**（2026-09-11 船长确认）：舰级路径按本卡编成单位数 N 施加 `2N/(N+1)`，
- *    旧威胁推导路径**不启用**（N=1 天然为 1）；单发 = `round(舰级单发 × dmgMul × 补偿)`。
+ *    旧威胁推导路径**不启用**（N=1 天然为 1）；单发 = `round(舰级单发 × dmgMul × 补偿)`；
+ * ⑧ **血型随卡走**（2026-09-11 船长裁决①）：有效 split = 条目 `split` 覆写 ?? 舰级 split；
+ * ⑨ **头目射程多重方案**（同日裁决③）：打不到的头目按「同卡同带」写射程覆写，让 60% 火力真落地。
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, FOE_SHIPS } from '@whale/data'
-import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeUnitNameOf } from '../src/combat'
+import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeUnitNameOf } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
@@ -225,8 +227,8 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
  * 391 / 374 / 325 / 374（这是船长确认的**真难度改动**，不是漂移）。
  * 与 `content:check`「敌速口径契约」互为独立写法（引擎实算 vs 内容表校验）。
  */
-describe('舰种档与速度倍率（A 族提速口径）', () => {
-  it('实速 = 舰种基准 × 倍率：A 族提速后 = 391 / 374 / 325 / 374', () => {
+describe('舰种档与速度倍率（A 族提速 / B 族偏慢）', () => {
+  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 306/271', () => {
     const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
     const got = FOE_SHIPS.map((ship) => ({
       id: ship.id,
@@ -238,16 +240,34 @@ describe('舰种档与速度倍率（A 族提速口径）', () => {
       { id: 'foe-pirate-corvette', tier: 1, speed: 374 },
       { id: 'foe-pirate-sniper', tier: 2, speed: 325 },
       { id: 'foe-pirate-warlord', tier: 3, speed: 374 },
+      // B 族（武装拾荒者）：船长 2026-09-11「**速度偏慢**」⇒ `speedRatio = 0.90 / 0.92`
+      // （⚠ 追加的「**按 0.8 走**」口径按上级裁示**未执行**，最终值由三号定）
+      { id: 'foe-scav-skiff', tier: 1, speed: 306 },
+      { id: 'foe-scav-armed', tier: 2, speed: 271 },
     ])
   })
 
   it('A 族每档实速都**高于本档舰种基准**（护卫 340 / 驱逐 295 / 巡洋 258）——船长「速度都快」', () => {
     const shell = anomaly('ano-t-hull-overshoot', 'galaxy-hub', { threat: 20 })
-    for (const ship of FOE_SHIPS) {
-      expect(ship.family).toBe('A')
+    const pirates = FOE_SHIPS.filter((s) => s.family === 'A')
+    expect(pirates).toHaveLength(4)
+    for (const ship of pirates) {
       expect(ship.speedRatio).toBeGreaterThan(1) // 倍率 > 1 ⇔ 快于本档基准
       const spd = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps
       expect(spd).toBeGreaterThan(bal.hullClassBaseSpeedMps[ship.hullClassTier])
+    }
+  })
+
+  it('B 族（武装拾荒者）每档实速都**低于**本档舰种基准——船长「速度偏慢」＋新手过渡族', () => {
+    const shell = anomaly('ano-t-hull-undershoot', 'galaxy-hub', { threat: 20 })
+    const scavs = FOE_SHIPS.filter((s) => s.family === 'B')
+    expect(scavs).toHaveLength(2) // 拾荒武装艇 T1 / 拾荒火力舰 T2
+    for (const ship of scavs) {
+      expect(ship.speedRatio).toBeLessThan(1) // 倍率 < 1 ⇔ 慢于本档基准
+      expect(ship.hullClassTier).toBeLessThan(3) // 新手过渡族不配 T3 及以上
+      const spd = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps
+      expect(spd).toBeLessThan(bal.hullClassBaseSpeedMps[ship.hullClassTier])
+      expect(spd).toBeGreaterThan(0)
     }
   })
 
@@ -324,17 +344,17 @@ describe('多舰船补偿：舰级路径按 N 缩放单发，旧路径不动', (
  * **无声取消了压制** ⇒ 实际火力 7.25 → 43.25（×5.97）、11.50 → 61.50（×5.35），难度失控
  * （蜃影实测从 100%/49s/残血 50% 变成 20%/35s/残血 1%）。
  *
- * 裁决修法 = **锚回「改造前的实际火力 × 1.6」，改用卡上 `dmgMul` 重锚**（**禁止恢复 `foeDmgMul`**）：
- * - 赤潮：目标 7.25 × 1.6 = **11.60** → 重锚单发 头目 **28** / 每杂鱼 **6**（Σ 46 → 纸面 11.50，−0.86%）
- * - 蜃影：目标 11.50 × 1.6 = **18.40** → 重锚单发 头目 **44** / 每杂鱼 **10**（Σ 74 → 纸面 18.50，+0.54%）
+ * 裁决修法 = **锚回「改造前的实际火力」，改用卡上 `dmgMul` 重锚**（**禁止恢复 `foeDmgMul`**）；
+ * 纸面锚点经二次裁决**由 ×1.6 下调为 ×1.2**（**难度守恒按「实收」判定**：4 单位 ⇒ 实收 ≈ 纸面 ×0.625，
+ * 而这两张卡改动前只有 2 单位（衰减 ×0.75）⇒ 要"实收 ≈ 改动前"须纸面 ×`0.75/0.625` = ×1.2）：
+ * - 赤潮：目标 7.25 × 1.2 = **8.70** → 重锚单发 头目 **21** / 每杂鱼 **5**（Σ 36 → 纸面 **9.00**，取整 +3.4%）
+ * - 蜃影：目标 11.50 × 1.2 = **13.80** → 重锚单发 头目 **33** / 每杂鱼 **7**（Σ 54 → 纸面 **13.50**，取整 −2.2%）
  *
- * 本守卫锁死"重锚后的卡上设计单发 + 纸面期望火力 ≈ 旧实伤 ×1.6"（±2%）。
- * ⚠ 已知偏差（**待船长裁决，不在本批解决**）：三张 kite 卡的**头目射程带是近战档（≤2.21 km）**，
- * 而实战交战距离 3.2~3.8 km ⇒ 头目**一次都不开火**（探针实测 foe-0 = 0 发），
- * 故"纸面的 60% 火力"并未落地、这两张卡实战比锚点更松（残血 100% / 89%）——
- * 与「kite 卡头目射程覆写」同一条待裁口径（见设计稿 §六 第 3/5 条）。
+ * 本守卫锁死"重锚后的卡上设计单发 + 纸面火力 ≈ 旧实伤 ×1.2"（±5%，含整数取整）。
+ * ⚠ 已知偏差（**待船长裁决，不在本批解决**）：kite 卡的头目射程带是近战档（≤2.21 km），
+ * 而已按船长裁决③给四张卡写了"同卡同带"覆写（见下个 describe）。
  */
-describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算，不恢复 foeDmgMul）', () => {
+describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算 + 纸面锚 ×1.2）', () => {
   /** 真卡建档（用与生产同源的 DEFAULT_BALANCE，非测试假平衡） */
   const realCard = (id: string): AnomalyDef => ANOMALIES.find((a) => a.id === id)!
   /** 纸面期望火力 = Σ单位「单发 × 有效命中 ÷ 装填秒」（光束 hitRate = 1，与引擎建档同源） */
@@ -345,21 +365,21 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
     }, 0)
   const shots = (id: string): number[] => createFoeSpecs(realCard(id), bal).map((u) => u.weapons[0]!.shotDmg ?? 0)
 
-  it('赤潮劫掠舰队（T34）：重锚单发 头目 28 / 杂鱼 6，纸面火力 ≈ 旧实伤 7.25 × 1.6', () => {
-    expect(shots('ano-redring-raiders')).toEqual([28, 6, 6, 6])
+  it('赤潮劫掠舰队（T34）：重锚单发 头目 21 / 杂鱼 5，纸面火力 ≈ 旧实伤 7.25 × 1.2', () => {
+    expect(shots('ano-redring-raiders')).toEqual([21, 5, 5, 5])
     const dps = paperDps('ano-redring-raiders')
-    expect(dps).toBeCloseTo(11.5, 6) // Σ46 ÷ 4s
-    expect(dps / 7.25).toBeGreaterThan(1.5) // ≈ ×1.586（目标 ×1.6，取整后 ±1%）
-    expect(dps / 7.25).toBeLessThan(1.7)
+    expect(dps).toBeCloseTo(9, 6) // Σ36 ÷ 4s
+    expect(dps / 7.25).toBeGreaterThan(1.1) // ≈ ×1.24（目标 ×1.2，取整 +3.4%）
+    expect(dps / 7.25).toBeLessThan(1.3)
     expect(realCard('ano-redring-raiders').threat).toBe(34)
   })
 
-  it('蜃影导航劫持令（T48）：重锚单发 头目 44 / 杂鱼 10，纸面火力 ≈ 旧实伤 11.50 × 1.6', () => {
-    expect(shots('ano-mirage-hijackers')).toEqual([44, 10, 10, 10])
+  it('蜃影导航劫持令（T48）：重锚单发 头目 33 / 杂鱼 7，纸面火力 ≈ 旧实伤 11.50 × 1.2', () => {
+    expect(shots('ano-mirage-hijackers')).toEqual([33, 7, 7, 7])
     const dps = paperDps('ano-mirage-hijackers')
-    expect(dps).toBeCloseTo(18.5, 6) // Σ74 ÷ 4s
-    expect(dps / 11.5).toBeGreaterThan(1.5) // ≈ ×1.609
-    expect(dps / 11.5).toBeLessThan(1.7)
+    expect(dps).toBeCloseTo(13.5, 6) // Σ54 ÷ 4s
+    expect(dps / 11.5).toBeGreaterThan(1.1) // ≈ ×1.17（目标 ×1.2，取整 −2.2%）
+    expect(dps / 11.5).toBeLessThan(1.3)
   })
 
   it('重锚只动 dmgMul：血/编成/头目占比不受影响（`foeDmgMul` 字段保持退休）', () => {
@@ -375,5 +395,156 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
       expect(Object.keys(card)).not.toContain('foeDmgMul')
       expect(Object.keys(card.ships![0]!)).not.toContain('foeDmgMul')
     }
+  })
+})
+
+/**
+ * **血型随卡走 + 头目射程多重方案**（船长 2026-09-11 裁决①③）。
+ *
+ * ① 「**头目血型随卡片走**」：条目 `split` 覆写生效（有效 split = 覆写 ?? 舰级）——
+ *   头目舰本体是装甲型，故**卡面非装甲的四张**（信标 均衡 / 灰霾·赤潮·蜃影 护盾）在头目条目上覆写，
+ *   使**每一条主体的有效血型都等于卡面 `defProfile`**。**A 族不做族级血型约束**（鱼龙混杂 ⇒ 什么血型都有）。
+ * ③ 「头目可以多种战术选择，因此**射程方案也是多重**」：探针实测六张卡的**头目原先一次都不开火**
+ *   （射程带 1~2210m vs 实战交战距离 3.2~3.8km）⇒ **打不到的头目按「同卡同带」写射程覆写**
+ *   （= 本卡杂鱼条目的有效射程带），让那 60% 的火力真正落地。
+ */
+describe('血型随卡走 + 头目射程多重方案（船长 2026-09-11 裁决①③）', () => {
+  const CARD_IDS = [
+    'ano-pirate-post',
+    'ano-shard-bandits',
+    'ano-lantern-saboteurs',
+    'ano-haze-ambush',
+    'ano-redring-raiders',
+    'ano-mirage-hijackers',
+  ] as const
+  const realCard = (id: string): AnomalyDef => ANOMALIES.find((a) => a.id === id)!
+
+  it('条目 `split` 覆写生效；缺省仍走舰级 split', () => {
+    const def: AnomalyDef = {
+      ...anomaly('ano-t-split', 'galaxy-hub', { threat: 20 }),
+      ships: [{ ship: SKIFF, split: { s: 0.5, a: 0.25, h: 0.25 } }, { ship: SKIFF }],
+    }
+    const specs = createFoeSpecs(def, bal)
+    const frac = (u: (typeof specs)[number]) => {
+      const t = u.hp.s + u.hp.a + u.hp.h
+      return { s: u.hp.s / t, a: u.hp.a / t, h: u.hp.h / t }
+    }
+    expect(frac(specs[0]!).s).toBeCloseTo(0.5, 9) // 条目覆写
+    expect(frac(specs[1]!).s).toBeCloseTo(SKIFF.split.s, 9) // 缺省 = 舰级
+  })
+
+  it('六张真卡：**每一条**主体的有效血型都等于卡面 `defProfile`（头目也随卡走）', () => {
+    let checked = 0
+    for (const id of CARD_IDS) {
+      const card = realCard(id)
+      const want = foeLayerSplit(card.defProfile!)
+      for (const [i, u] of createFoeSpecs(card, bal).entries()) {
+        const t = u.hp.s + u.hp.a + u.hp.h
+        expect({ tag: u.tag, s: Number((u.hp.s / t).toFixed(9)) }).toEqual({
+          tag: u.tag,
+          s: Number(want.s.toFixed(9)),
+        })
+        expect(t).toBeGreaterThan(0)
+        i // 逐单位
+        checked++
+      }
+    }
+    expect(checked).toBe(24) // 六张卡 × 4 单位
+  })
+
+  it('头目血型确实被覆写：卡面非装甲的四张写了 `split`，装甲两张沿用舰级', () => {
+    const armorFace = ['ano-pirate-post', 'ano-shard-bandits']
+    for (const id of CARD_IDS) {
+      const boss = realCard(id).ships![0]!
+      if (armorFace.includes(id)) expect(boss.split).toBeUndefined() // 头目舰本体就是装甲型 → 无需覆写
+      else expect(boss.split).toEqual(foeLayerSplit(realCard(id).defProfile!))
+    }
+  })
+
+  it('打不到的头目：四张（信标/灰霾/赤潮/蜃影）射程覆写 = 本卡杂鱼的有效射程带', () => {
+    // 逐卡核对：覆写的两端必须与该卡**杂鱼条目建出的射程带**逐字相同（同卡同带）
+    for (const id of ['ano-lantern-saboteurs', 'ano-haze-ambush', 'ano-redring-raiders', 'ano-mirage-hijackers']) {
+      const card = realCard(id)
+      const specs = createFoeSpecs(card, bal)
+      const bossW = specs[0]!.weapons[0]!
+      const minionW = specs[1]!.weapons[0]!
+      expect({ min: bossW.minRangeM, max: bossW.maxRangeM }).toEqual({ min: minionW.minRangeM, max: minionW.maxRangeM })
+      expect(bossW.maxRangeM).toBeGreaterThan(2210) // 已离开头目舰本体的近战带（1~2210m）
+    }
+    // 近战两张（边境/碎晶）：不写覆写（写了只会**缩小**头目射程，而它们打不到的原因是整个编队没进入接触窗口）
+    for (const id of ['ano-pirate-post', 'ano-shard-bandits']) {
+      const boss = realCard(id).ships![0]!
+      expect(boss.rangeMinM).toBeUndefined()
+      expect(boss.rangeMaxM).toBeUndefined()
+      expect(createFoeSpecs(realCard(id), bal)[0]!.weapons[0]!.maxRangeM).toBe(FOE_SHIPS[3]!.rangeMaxM) // 仍走舰级
+    }
+  })
+})
+
+/**
+ * 期望交距口径（**2026-09-11 船长裁决②**：「舰级路径的期望交距改取该单位自己的射程带，
+ * 战术只决定带内的偏好位置」）。
+ *
+ * 三条守卫：
+ * ① **旧路径一字不动**——无 `ships` 的卡仍用全局战术表（brawl 440 / orbit 2688 / kite 8000）；
+ * ② **舰级路径用自己的带**——同一条舰级换个射程覆写，期望交距随之改变（覆写=纠偏旋钮）；
+ * ③ **期望交距必落在自身射程带内**——全 9 张舰级路径卡逐卡实算（含 4 张 kite 卡的"同卡同带"覆写）。
+ */
+describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁决②）', () => {
+  const bandOf = (u: { weapons: { minRangeM: number; maxRangeM: number }[] }): { min: number; max: number } => ({
+    min: u.weapons[0]!.minRangeM,
+    max: u.weapons[0]!.maxRangeM,
+  })
+
+  it('旧路径一字不动：brawl 440m / orbit 2688m / kite 8000m（全局战术表口径）', () => {
+    const want: Array<[string, number]> = [
+      ['brawl', 440],
+      ['orbit', 2688],
+      ['kite', 8000],
+    ]
+    for (const [tactic, desire] of want) {
+      const shell = anomaly(`ano-t-desire-${tactic}`, 'galaxy-hub', { threat: 20 })
+      const specs = createFoeSpecs({ ...shell, tactic: tactic as 'brawl' | 'orbit' | 'kite' }, bal)
+      expect(specs[0]!.foeRangeBand, '旧路径不得携带 foeRangeBand').toBeUndefined()
+      expect(foeDesiredRange(specs[0]!, specs, bal)).toBe(desire)
+    }
+  })
+
+  it('舰级路径：期望交距 = 自身射程带的带内偏好位置（不再取全局表）', () => {
+    // SKIFF = 1~2200m、战术 brawl（factor 0.20）⇒ 1 + 0.20×(2200−1) = 441
+    const shell = anomaly('ano-t-desire-ship', 'galaxy-hub', { threat: 20, tactic: 'brawl' })
+    const specs = createFoeSpecs({ ...shell, ships: [{ ship: SKIFF }] }, bal)
+    expect(specs[0]!.foeRangeBand).toEqual({ min: 1, max: 2200 })
+    expect(foeDesiredRange(specs[0]!, specs, bal)).toBe(441)
+    // 同一条舰级换 orbit 覆写（factor 0.55）⇒ 仍按**自己的带** = 1 + 0.55×2199 = 1210（旧口径会算 2688）
+    const orb = createFoeSpecs({ ...shell, tactic: 'orbit', ships: [{ ship: SKIFF, tactic: 'orbit' }] }, bal)
+    expect(foeDesiredRange(orb[0]!, orb, bal)).toBe(1210)
+    expect(foeDesiredRange(orb[0]!, orb, bal)).not.toBe(2688)
+  })
+
+  it('射程覆写 = 纠偏旋钮：条目 rangeMinM/rangeMaxM 改写带 ⇒ 期望交距随之（"同卡同带"）', () => {
+    const shell = anomaly('ano-t-desire-ovr', 'galaxy-hub', { threat: 20, tactic: 'kite' })
+    const specs = createFoeSpecs(
+      // 条目同时覆写**射程带**与**战术**（舰级路径的战术取自"条目 ?? 舰级"，不是卡面）
+      { ...shell, ships: [{ ship: SKIFF, tactic: 'kite', rangeMinM: 1000, rangeMaxM: 4000 }] },
+      bal,
+    )
+    // 1000 + 0.85×(4000−1000) = 3550（旧口径 = 全局 kite 表 8000；且注意"带"来自覆写而非舰级 1~2200）
+    expect(foeDesiredRange(specs[0]!, specs, bal)).toBe(3550)
+    expect(foeDesiredRange(specs[0]!, specs, bal)).not.toBe(8000)
+  })
+
+  it('全 9 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
+    let checked = 0
+    for (const def of ANOMALIES) {
+      if (!def.ships || def.ships.length === 0) continue
+      checked++
+      const specs = createFoeSpecs(def, bal)
+      const band = bandOf(specs[0]!)
+      const desire = foeDesiredRange(specs[0]!, specs, bal)
+      expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
+      expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
+    }
+    expect(checked).toBe(9) // A 族 6 + B 族 3
   })
 })

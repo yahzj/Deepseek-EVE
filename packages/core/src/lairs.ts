@@ -229,6 +229,16 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
  * 其余字段（战术性格、血型、命中、抗性缺口、回收池…）全部继承主题悬赏 —— 窝点与该星系特色敌人同源。
  * **奖金不在这里改**：卡上的 `rewardIsk` 仍是主题悬赏原值，窝点奖金一律经 `lairBaseRewardIsk`
  * （×赏金倍率 2/4/8）取，避免同一字段两种口径。
+ *
+ * **舰级路径（`anomaly.ships` 有值）的派生缩放（2026-09-11 船长裁决④「按甲处理」）**：
+ * 旧路径靠"威胁 → 血/火力曲线"自动变强；**舰级路径是绝对值，不会自己涨** ⇒ 派生时
+ * **按「原威胁 → 派生威胁」的比例**（= `LAIR_THREAT_MUL[tier]` 的取整实现）**同乘该卡每个条目的
+ * `hpMul` 与 `dmgMul`**：血量与火力一起随档位抬，保住「威胁 = 战力标尺」的语义，
+ * 也让窝点维持"深层比外围硬"的终局挑战意义（单发/射程/编成/战术一律不动）。
+ * ⚠ **舰级路径派生卡不套 `LAIR_WAVES`**：那张波表按"每波几队"描述**旧路径**的编队，
+ * 而舰级路径的编队由 `slot.wave` 决定（A 族六卡全在 `wave: 0`）⇒ 套用会让第 2/3 波
+ * **刷出 0 个单位**（探针实测）。故舰级路径的窝点**维持单波**（每波 ≥ 1 单位），
+ * 分段演出留待有需求时按 `slot.wave` 分配条目（届时同步改本注释与契约）。
  */
 export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const waves = LAIR_WAVES[tier]
@@ -236,12 +246,27 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const sub = subDamageTypeOf(anomaly, main)
   const mainWeight = Math.round((1 - LAIR_SUB_DMG_SHARE) * 10)
   const subWeight = Math.round(LAIR_SUB_DMG_SHARE * 10)
+  const shipSlots = anomaly.ships
+  const isShipPath = !!shipSlots && shipSlots.length > 0
+  /** 派生缩放比例 = 派生威胁 ÷ 原威胁（与 `threat` 字段同源，故口径天然一致） */
+  const tierMul = Math.max(1, anomaly.threat)
+  const scale = Math.round(anomaly.threat * LAIR_THREAT_MUL[tier]) / tierMul
   return {
     ...anomaly,
     name: lairNameOf(anomaly, tier),
     threat: Math.round(anomaly.threat * LAIR_THREAT_MUL[tier]),
-    escorts: Math.min(2, (anomaly.escorts ?? 0) + LAIR_ESCORT_BONUS[tier]),
-    ...(waves ? { waves } : {}),
+    // 僚机加成本就是**旧路径**的编队口径（舰级路径的编成由 `ships` 全权决定）⇒ 舰级路径不叠加
+    escorts: isShipPath ? (anomaly.escorts ?? 0) : Math.min(2, (anomaly.escorts ?? 0) + LAIR_ESCORT_BONUS[tier]),
+    ...(isShipPath
+      ? {
+          ships: shipSlots!.map((s) => ({
+            ...s,
+            hpMul: (s.hpMul ?? 1) * scale,
+            dmgMul: (s.dmgMul ?? 1) * scale,
+          })),
+        }
+      : {}),
+    ...(waves && !isShipPath ? { waves } : {}),
     // 混伤：窝点用 **6:4**（比常驻悬赏的 8:2 更"混"——窝点本就是更硬的特色敌人）；
     // 显式两系权重即开启混伤（引擎按"正权重键 ≥ 2 系"判定，见 combat.foeDamageComposition）；
     // 主系与主题卡一致（派生态不许改敌人主伤害类型）

@@ -119,7 +119,7 @@ export const FOE_ART: Record<string, ReactNode> = {
  *  靠体量(LAY.MAIN/ESC)与名称后缀区分） */
 export const FOE_ACCENT: Record<string, string> = {
   A: '#ff6b52', // 海盗舰系：锈红（README §二 已定）
-  B: '#e0c864', // 靶机/拾荒：警告黄
+  B: '#e0c864', // 武装拾荒者：废料黄（拼装壳体的警示漆）
   C: '#9fe6a4', // 异形生物：磷光绿（同 volt-g）
   D: '#9fd0f2', // 守墓古舰：磷光冰蓝（同 volt-i）
   E: '#d9b98c', // 泰坦巨构：残铁棕
@@ -131,7 +131,7 @@ export const FOE_ACCENT: Record<string, string> = {
  * 敌族形状/配色一律按**数据侧** `AnomalyDef.foeFamily` 推导（2026-09-11 船长定案）。
  *
  * 旧口径的隐患（本批修掉）：这里曾有一张 **22 行硬编码的 `FOE_FAMILY` 映射**（按 anomaly id 查），
- * 与数据侧 `foeFamily` 字段**各写各的**且无一致性校验——结果 `演习场靶机` 在美术侧是 B、
+ * 与数据侧 `foeFamily` 字段**各写各的**且无一致性校验——结果**演习场那张卡**在美术侧是 B、
  * 在数据侧为空（落进 F 兜底形），两处真相源长期不一致。
  */
 export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined): string {

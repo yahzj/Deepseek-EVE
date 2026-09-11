@@ -15,10 +15,15 @@
  *   替换全 26 卡敌速（`PROPOSED_FOE_SPEED`），并可叠加 `--dps=<值>`（foeDpsPerThreat）与
  *   `--hpmul=<倍率>`（逐卡总血同乘）做灵敏度扫描。**同样只改本工具上下文**：引擎默认值与
  *   `data/anomalies.ts` 一律不动 —— 纯预演，供船长审核后再落码。
+ *
+ * - **标准复核配置集 `--std`（2026-09-11 船长采纳 = 正式口径）**：跑 **A0~A3 四行** × 全 26 卡 × SEEDS，
+ *   每格报 **胜率/时长/残血/终局交距/最近交距/我开火/敌开火(头目)/敌开火(杂鱼合计)**。
+ *   **纪律：判定"敌人强弱"必须至少跑满 A0~A3 四行**——单跑 A0（中距对射）得出的残血/胜率
+ *   会被距离口径污染（详见 `docs/design/foe-baseline-audit-20260911.md` §四）。
  */
 import { addShipToFleet, createInitialState, repairDeprecatedModules, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, SHIPS, buildSimContext } from '@whale/data'
-import { advanceBattleFor, createFoeSpecs, createPlayerSpec, foeHpOfThreat, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
+import { advanceBattleFor, createFoeSpecs, createPlayerSpec, foeDesiredRange, foeHpOfThreat, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const BASE_CTX = buildSimContext()
 /** 敌突进对照开关（只影响本工具；引擎默认仍是"未实装"） */
@@ -244,6 +249,121 @@ const FULL_SKILLS: Record<string, number> = {
 /** 中位技能档（船长 2026-09-06：技能=独立于装备的局外成长，敌人设计对其宽容——
  * 在 0/满 之间加中位参照：同一批技能统一 Lv3） */
 const MID_SKILLS: Record<string, number> = Object.fromEntries(Object.keys(FULL_SKILLS).map((k) => [k, 3]))
+
+/* ══════════ 标准复核配置集 A0~A3（2026-09-11 船长采纳 = **正式口径**）══════════
+ * 依据：`docs/design/foe-baseline-audit-20260911.md` §四（多装配复核暴露"参考行不具代表性"）。
+ * **纪律**：判定敌人强弱 / 数值批验收**必须至少跑满这四行**；单跑 A0 的残血与胜率
+ * **不足以**判定敌人软硬（A0 的 mid=3220m 恰好在低威胁敌人射程外，会系统性偏袒玩家）。
+ *
+ * | 行 | 装配 | 代表打法 | 暴露什么 |
+ * |---|---|---|---|
+ * | A0 | 4×动能MK2（`700~5740`）＋MK2推进器＋支援，**全技能 L3** | 标准中距对射（基线） | 通用强度基线 |
+ * | A1 | 4×轻型炮MK1（`250~3220`）**无推进器**＋支援，全技能 L3 | 贴上去打 | 敌人够不够得着 / 玩家挨打承受力 |
+ * | A2 | 4×重型导弹架MK2（`900~11760`）＋MK2推进器＋支援，全技能 L3 | 远程风筝磨血 | 玩家是否在敌射程外白嫖 |
+ * | A3 | **A0 装配** ＋ **6 项战斗技能 L3** | 技能未满的过渡期玩家 | 时长失控 / 600s 硬上限触顶 |
+ *
+ * 主武器射程带的"期望距离（mid）"：A0/A3 → 3220m、A1 → 1735m、A2 → 6330m（引擎 `desiredRangeFor` 口径）。
+ */
+const LOW6_SKILLS: Record<string, number> = {
+  // 6 项 = "弱技能行"的固定口径（与 A 族设计稿 §八 的多技能行实测同源，逐字沿用）：
+  gunnery: 3,
+  'kinetic-gunnery': 3,
+  'reload-drills': 3,
+  'fire-control': 3,
+  'targeting-integration': 3,
+  'shield-operation': 3,
+}
+
+type StandardRow = { id: 'A0' | 'A1' | 'A2' | 'A3'; label: string; ship: string; ld: Loadout; skills: Record<string, number> }
+const MK2_SUPPORT_MID = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2']
+const SUPPORT_MID_NO_PROP = ['mod-shield-kin-2', 'mod-track-2']
+const SUPPORT_LOW = ['mod-stab-kin-2', 'mod-armor-kin-2']
+const STANDARD_ROWS: readonly StandardRow[] = [
+  {
+    id: 'A0',
+    label: '标准中距对射（基线）',
+    ship: 'sh-mako',
+    ld: { name: 'A0 4×动能MK2+推进+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: MK2_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'A1',
+    label: '贴脸近战（MK1 250~3220 · 无推进）',
+    ship: 'sh-mako',
+    ld: { name: 'A1 4×轻型炮MK1+支援(无推进)', ship: 'sh-mako', high: ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'], mid: SUPPORT_MID_NO_PROP, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'A2',
+    label: '远程风筝（导弹MK2 900~11760）',
+    ship: 'sh-mako',
+    ld: { name: 'A2 4×重型导弹架MK2+推进+支援', ship: 'sh-mako', high: ['mod-missile-2', 'mod-missile-2', 'mod-missile-2', 'mod-missile-2'], mid: MK2_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
+  },
+  {
+    id: 'A3',
+    label: '弱技能行（A0 装配 + 6 项 L3）',
+    ship: 'sh-mako',
+    ld: { name: 'A3 4×动能MK2+推进+支援(弱技能)', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: MK2_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: LOW6_SKILLS,
+  },
+]
+
+/** 单位 tag 是否算"头目"（= 该波第一个单位）：'foe-0' / 'w1-foe-0' … */
+const isBossTag = (tag: string): boolean => /^(w\d+-)?foe-0$/.test(tag)
+
+/** 标准格读数（终局/最近交距 + 开火次数按头目/杂鱼分列） */
+type CellReading = {
+  win: boolean
+  durMs: number
+  meRemainPct: number
+  endM: number
+  minM: number
+  meShots: number
+  foeShotsBoss: number
+  foeShotsMinion: number
+}
+
+/**
+ * 跑一格（1 播种）：**逐秒推进**并累计 fx 开火事件——fx 是 48 条环形缓冲，
+ * 一次性大步长推进会把长战的开火事件裁掉（开火次数会漏计），故必须分段推进采样。
+ * 引擎内部固定步长 100ms（`BATTLE_STEP_MS`），分段不改变任何确定性结果（已与大步长逐值比对通过）。
+ */
+function simulateCell(state: GameState, anomalyId: string, ld: Loadout): CellReading {
+  const b = startBattleFor(state, ctx as SimContext, state.shipId, anomalyId, 0)
+  const spec = createPlayerSpec(state, ctx as SimContext, ld.ship)
+  const initHp = spec ? spec.hp.s + spec.hp.a + spec.hp.h : 1
+  if (!b) return { win: false, durMs: 0, meRemainPct: 0, endM: 0, minM: 0, meShots: 0, foeShotsBoss: 0, foeShotsMinion: 0 }
+  const startAt = b.startedAtGameMs
+  const budgetMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(anomalyId), ctx.balance.battle)
+  let seen = 0
+  let foeShotsBoss = 0
+  let foeShotsMinion = 0
+  let minM = Number.POSITIVE_INFINITY
+  for (let t = 1000; t <= budgetMs; t += 1000) {
+    state.gameMs = startAt + t
+    advanceBattleFor(state, ctx as SimContext, b, state.shipId, anomalyId)
+    minM = Math.min(minM, b.distanceM)
+    for (const e of b.fx.slice(seen)) {
+      if (e.side !== 'foe') continue
+      if (isBossTag(e.tag)) foeShotsBoss++
+      else foeShotsMinion++
+    }
+    seen = b.fx.length
+    if (b.ended) break
+  }
+  const u = b.units['player']
+  return {
+    win: b.ended === 'me',
+    durMs: Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs)),
+    meRemainPct: (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100,
+    endM: Math.round(b.distanceM),
+    minM: Number.isFinite(minM) ? Math.round(minM) : 0,
+    meShots: b.stats.meShots,
+    foeShotsBoss,
+    foeShotsMinion,
+  }
+}
 
 function makeState(shipId: string, ld: Loadout, skills: Record<string, number>, seed: number): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
@@ -813,6 +933,61 @@ async function main(): Promise<void> {
     }
   }
 
+  /* ══════════ 标准复核配置集（2026-09-11 船长采纳 = **正式口径**）：A0~A3 四行 × 全 26 卡 ══════════
+   * 每格报：胜率 / 时长 / 残血 / **终局交距 / 最近交距 / 我开火 / 敌开火(头目) / 敌开火(杂鱼合计)**。
+   * 用途：①数值批验收（至少四行）②"敌人到底打不打得到人"的判据（开火列分列头目/杂鱼）。
+   * 输出为 TSV（制表符分隔，便于直接比对/入库）；数值列均为 SEEDS 播种均值。 */
+  if (process.argv.includes('--std')) {
+    const all = [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)
+    console.log('# 标准复核配置集 A0~A3（船长 2026-09-11 采纳）· 卡 × 行 · 数值列 = ' + SEEDS.length + ' 播种均值（seed ' + SEEDS.join('/') + '）')
+    console.log('# A0 标准中距（4×动能MK2+推进+支援 · 全技能L3） | A1 贴脸近战（4×轻型炮MK1 无推进 · 全技能L3） | A2 远程风筝（4×重型导弹架MK2+推进 · 全技能L3） | A3 弱技能行（A0 装配 + 6 项战斗技能 L3）')
+    console.log(
+      [
+        '行',
+        '卡id',
+        '卡名',
+        '族',
+        '威胁',
+        '胜率',
+        '时长',
+        '残血',
+        '终局交距',
+        '最近交距',
+        '我开火',
+        '敌开火(头目)',
+        '敌开火(杂鱼合计)',
+      ].join('\t'),
+    )
+    for (const row of STANDARD_ROWS) {
+      for (const a of all) {
+        const cells: CellReading[] = []
+        for (const seed of SEEDS) {
+          const st = makeState(row.ship, row.ld, row.skills, seed)
+          cells.push(simulateCell(st, a.id, row.ld))
+        }
+        const n = cells.length
+        const avg = (pick: (c: CellReading) => number): string => (cells.reduce((s, c) => s + pick(c), 0) / n).toFixed(1)
+        console.log(
+          [
+            row.id,
+            a.id,
+            a.name,
+            a.foeFamily ?? '',
+            a.threat,
+            `${Math.round((cells.filter((c) => c.win).length / n) * 100)}%`,
+            `${(cells.reduce((s, c) => s + c.durMs, 0) / n / 1000).toFixed(0)}s`,
+            `${avg((c) => c.meRemainPct).replace(/\.0$/, '')}%`,
+            avg((c) => c.endM),
+            avg((c) => c.minM),
+            avg((c) => c.meShots),
+            avg((c) => c.foeShotsBoss),
+            avg((c) => c.foeShotsMinion),
+          ].join('\t'),
+        )
+      }
+    }
+  }
+
   /* 敌人专用数据表 CSV（船长 2026-09-10：「敌人战斗数据不在该表格，重新输出一个敌人单独的数据表格」）——
    * 一张表给全：**可编辑字段**（威胁/战术/族/敌速/总血/命中/倍率/单发/衰减/僚机/伤害权重/交火展示时长）
    * ＋ **引擎派生**（射程带/期望交距/战斗机动/比率/总DPS/实际单发/编队）＋ **实测**（中位参考行 胜率·时长·残血）。 */
@@ -822,6 +997,9 @@ async function main(): Promise<void> {
       'id', '卡名', '族', '舰级编成', '威胁', '战术', '敌速', '比率', '战斗机动', '射程带min', '射程带max', '期望交距',
       '编队', '波次', '僚机', '总血', '总DPS', '单发(实际)', '命中', '伤害构成', '远端衰减', '近盲带',
       '个性口', '交火展示时长', '实测胜率', '实测时长', '实测残血',
+      // ── 2026-09-11 船长采纳（标准复核配置集配套）：**开火列 + 距离列** ──
+      // 强制纪律：判定敌人强弱必须看"敌开火（头目/杂鱼分列）"——残血 100% 可能是"敌人一炮未放"。
+      '引擎期望交距', '终局交距', '最近交距', '我开火', '敌开火(头目)', '敌开火(杂鱼合计)',
     ]
     console.log(head.join(','))
     for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
@@ -877,19 +1055,22 @@ async function main(): Promise<void> {
       let win = 0
       let dur = 0
       let rem = 0
+      const cells: CellReading[] = []
       for (const seed of SEEDS) {
+        // 2026-09-11：改用**分段推进**采样（`simulateCell`）——才能拿到终局/最近交距与
+        // **逐单位开火次数**（fx 是 48 条环形缓冲，一次性大步长会把长战的开火事件裁掉）。
+        // 分段不改变确定性结果（引擎内部固定 100ms 步长），既有列（胜率/时长/残血）逐值不变。
         const s = makeState(refLd.ship, refLd, MID_SKILLS, seed)
+        const cell = simulateCell(s, a.id, refLd)
+        cells.push(cell)
         const spec = createPlayerSpec(s, ctx as SimContext, refLd.ship)
-        const initHp = spec.hp.s + spec.hp.a + spec.hp.h
-        const b = startBattleFor(s, ctx as SimContext, s.shipId, a.id, 0)
-        if (!b) continue
-        s.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(a.id), ctx.balance.battle)
-        advanceBattleFor(s, ctx as SimContext, b, s.shipId, a.id)
-        const u = b.units['player']
-        if (b.ended === 'me') win++
-        rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
-        dur += Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+        void spec
+        if (cell.win) win++
+        rem += cell.meRemainPct
+        dur += cell.durMs
       }
+      const nCells = cells.length
+      const avgCell = (pick: (c: CellReading) => number): string => (cells.reduce((s, c) => s + pick(c), 0) / nCells).toFixed(1)
       console.log(
         [
           a.id, a.name, a.foeFamily ?? '', shipText, a.threat, a.tactic ?? 'orbit', speedCol,
@@ -906,6 +1087,10 @@ async function main(): Promise<void> {
           dpsCol, shot, hitCol, comp,
           w.falloff, w.blindDmgMul, quirks, a.combatSeconds,
           `${Math.round((win / SEEDS.length) * 100)}%`, `${(dur / SEEDS.length / 1000).toFixed(0)}s`, `${(rem / SEEDS.length).toFixed(0)}%`,
+          // 新增列：引擎实际期望交距（舰级路径 = 该单位自身射程带的带内位置；旧路径 = 全局战术表）
+          String(foeDesiredRange(f, specs, bal)),
+          avgCell((c) => c.endM), avgCell((c) => c.minM),
+          avgCell((c) => c.meShots), avgCell((c) => c.foeShotsBoss), avgCell((c) => c.foeShotsMinion),
         ].join(','),
       )
     }
