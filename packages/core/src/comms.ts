@@ -275,7 +275,7 @@ export function markAllCommsRead(state: GameState, ctx: SimContext): number {
 
 /**
  * 消息自带动作的分发（2026-09-11 教程融入通讯）。
- * 本期只有 `startTutorial`：序章简报那封的「开始教程：采集富凡晶石」——
+ * 本期只有 `startTutorial`：序章简报那封的「按单开工：采集富凡晶石」——
  * 点击才从简报态（`ONB_BRIEFING`）推进到采集步骤（`ONB_MINE`）。
  * 未知命令一律报错返回，界面只弹提示、不崩。
  */

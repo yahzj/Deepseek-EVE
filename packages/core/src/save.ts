@@ -1824,6 +1824,21 @@ function normalizeState(raw: unknown): GameState {
     if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
     rareOpenedUnits[itemId] = Math.floor(n)
   }
+  // --- 稀有残骸的全局开箱账本（2026-09-11 船长定「每次少 30 立方，自动烧」；兼容字段无版本号）：
+  //     允许箱数 = ⌊累计已烧体积 ÷ 30⌋ —— 两个账本都要落盘，否则读档会重置累计、
+  //     让"停炉→存档→重开"绕过"一个回收单元 = 一箱"。只收正数，缺字段 = 空账（老档天然如此）。 ---
+  const rareBoxesOpened: Record<string, number> = {}
+  for (const [itemId, n] of Object.entries(asRaw(src.rareBoxesOpened))) {
+    if (itemId.length === 0) continue
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+    rareBoxesOpened[itemId] = Math.floor(n)
+  }
+  const rareBurnUnits: Record<string, number> = {}
+  for (const [itemId, n] of Object.entries(asRaw(src.rareBurnUnits))) {
+    if (itemId.length === 0) continue
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+    rareBurnUnits[itemId] = Math.floor(n)
+  }
 
   // --- B1 低安遭遇（v17.1 兼容字段）：未激活 = 标准空态（往返幂等）；激活才逐字段容错 ---
   const encRaw = asRaw(src.encounter)
@@ -2144,6 +2159,8 @@ function normalizeState(raw: unknown): GameState {
     commsRead,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
+    rareBoxesOpened,
+    rareBurnUnits,
     onboarding,
     importantTasks,
     sideTasks,

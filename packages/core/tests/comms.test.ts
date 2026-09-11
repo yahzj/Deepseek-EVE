@@ -151,7 +151,7 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
       subject: '训前简报：先看这封，再开工',
       body: ['先读简报再开工。'],
       trigger: { kind: 'tutorial', step: 0 },
-      action: { label: '开始教程：采集富凡晶石', command: 'startTutorial' },
+      action: { label: '按单开工：采集富凡晶石', command: 'startTutorial' },
     },
     { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 } },
     { id: 'tut-7', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },

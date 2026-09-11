@@ -1485,7 +1485,7 @@ export class GameEngine {
   }
 
   /**
-   * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「开始教程：采集富凡晶石」。
+   * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「按单开工：采集富凡晶石」。
    * 点了才从简报态推进到采集步骤；成功后落盘并通知刷新。
    */
   runCommsActionAt(command: CommsActionCommand): CommandResult {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 序章·苏醒（2026-09-05 船长拍板）——教程步骤机 + 重要任务结算（core 侧，可测）。
  *
  * 步骤常量：-1 未开始（老档/经典开局）／0 序章演出（UI）／1 采集 → 2 交付 → 3 出售 →
@@ -26,7 +26,7 @@ export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；
 /**
  * 0.5 = **简报**（2026-09-11 船长定：「教程睁眼动画结束后，不要立刻开始教程任务，
  * 此时应该指引玩家去通讯查看教程」）——睁眼动画播完先落到这里：全页锁定、只开通讯页，
- * 玩家读完**舰载信息库**的简报并点「开始教程：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
+ * 玩家读完**舰载信息库**的简报并点「按单开工：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
  */
 export const ONB_BRIEFING = 0.5
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
@@ -116,7 +116,7 @@ export function beginTutorialAfterAwaken(state: GameState): CommandResult {
   return { ok: true }
 }
 
-/** 通讯简报的「开始教程：采集富凡晶石」→ 进入采集步骤（教程 S1）；幂等：不在简报态则报错 */
+/** 通讯简报的「按单开工：采集富凡晶石」→ 进入采集步骤（教程 S1）；幂等：不在简报态则报错 */
 export function startTutorialFromBriefing(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_BRIEFING) return { ok: false, error: '当前不在序章简报阶段。' }
   state.onboarding.step = ONB_MINE

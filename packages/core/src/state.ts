@@ -296,6 +296,21 @@ export interface RefineRunState {
    * 缺省 = 无资格（老档/普通残骸天然如此 → 零迁移）。
    */
   rareBoxEligible?: boolean
+  /**
+   * 本炉**尚未开箱的回收单元数**（2026-09-11 船长定：「按照每次少 30 立方，自动烧」）。
+   * 一个**回收单元** = `RARE_WRECK_VOLUME_M3` = 30 m³；每烧完一个单元（= 3 批 × 10 m³）开一箱。
+   * 起炉时把库存里**所有完整单元**预占进本炉（`claimedUnits` = 单元数 × 30），一炉可持多个单元、
+   * 一口气烧完（3 个单元 = 90 m³ = 9 批 = 3 箱），不再要求玩家每 30 m³ 重开一次炉。
+   * 缺省（老档）= 按旧语义回退"整炉只开一箱"（见 `industry.ts` 的 `unitsLeftOf`）。
+   */
+  rareUnits?: number
+  /** 起炉时固定的"本炉共可开几箱"快照（`rareUnits` 每开一箱递减，故本炉总量必须另存） */
+  rareUnitsAtStart?: number
+  /** 本炉**自起炉以来已烧掉的体积**（m³）：每满一个回收单元（30 m³）开一箱的判定用 */
+  rareBurnedSinceStart?: number
+  /** 起炉时的全局快照：该型残骸**累计已烧体积**（m³）与**已开箱数**（见 `GameState.rareBurnUnits`） */
+  rareBurnBefore?: number
+  rareBoxBefore?: number
   /** 炉内所得累计（2026-09-06 兼容字段：停炉/料尽/自然结束时写明细日志用；
    *  refine 炉只用 min（产物矿物）；recycle 炉 = 保底矿物(min) + 彩头装备(mod) +
    *  **专属无人机(drone，2026-09-10 增：按架数)** + 蓝图碎片(frag)；
@@ -1080,6 +1095,15 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * 缺省 = 无记录（老档天然如此 → 零迁移、兼容字段无版本号）。
    */
   rareOpenedUnits: Record<string, number>
+  /**
+   * 该型稀有残骸**累计已开箱数**（2026-09-11 船长定「按照每次少 30 立方，自动烧」）：
+   * 与 `rareBurnUnits` 配对使用——**允许的箱数 = ⌊累计已烧体积 ÷ 一个回收单元(30 m³)⌋**，
+   * 于是同一批料无论怎么"停炉再起"都刷不出额外的箱（全局单调，不受单炉起停影响）。
+   * 缺省 = 无记录（老档天然如此 → 零迁移）。
+   */
+  rareBoxesOpened: Record<string, number>
+  /** 该型稀有残骸**累计已烧体积**（m³；同上，与 `rareBoxesOpened` 配对） */
+  rareBurnUnits: Record<string, number>
 }
 
 /** 对外统一称呼：当前版本状态（v24 = v23 + 任务中心·时效任务板 sideTasks） */
@@ -1445,6 +1469,8 @@ export function createInitialState(opts?: {
     salvaging: { ...EMPTY_SALVAGE_OP },
     galaxyWrecks: {},
     rareOpenedUnits: {}, // 已开过高级箱的稀有残骸存量（m³；2026-09-11「一件 = 一箱」第二道锁）
+    rareBoxesOpened: {}, // 该型残骸累计已开箱数（与 rareBurnUnits 配对：允许箱数 = ⌊累计已烧/30⌋）
+    rareBurnUnits: {}, // 该型残骸累计已烧体积（m³）
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
