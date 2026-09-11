@@ -22,7 +22,13 @@ import { addWare, unloadCargoToWarehouse } from './inventory'
 
 /** -1 = 未开始（老档/经典）；以下为教程进行态 */
 export const ONB_OFF = -1
-export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；由渲染层推进到 1）
+export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；由渲染层推进到 0.5）
+/**
+ * 0.5 = **简报**（2026-09-11 船长定：「教程睁眼动画结束后，不要立刻开始教程任务，
+ * 此时应该指引玩家去通讯查看教程」）——睁眼动画播完先落到这里：全页锁定、只开通讯页，
+ * 玩家读完训练处的简报并点「开始教程：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
+ */
+export const ONB_BRIEFING = 0.5
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
 export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批矿物」
 export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
@@ -99,11 +105,22 @@ export function applyTutorialBuff(spec: { hitBonus: number; evasion: number }): 
   spec.evasion += TUTORIAL_BATTLE_EVASION_BONUS
 }
 
-/** 渲染层：序章演出完成（起名落定）→ 进入采集步骤 */
+/**
+ * 渲染层：序章演出完成（起名落定）→ 进入**简报步骤**（不是直接开始采集）。
+ * 2026-09-11 船长定：睁眼动画结束后先指引玩家去通讯读教程，读完点「开始教程」才进采集。
+ */
 export function beginTutorialAfterAwaken(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_AWAKEN) return { ok: false, error: '当前不在序章演出阶段。' }
+  state.onboarding.step = ONB_BRIEFING
+  addLog(state, 'info', '自检完成——训练处留了一份简报，去导航「通讯」看完再开工。')
+  return { ok: true }
+}
+
+/** 通讯简报的「开始教程：采集富凡晶石」→ 进入采集步骤（教程 S1）；幂等：不在简报态则报错 */
+export function startTutorialFromBriefing(state: GameState): CommandResult {
+  if (state.onboarding.step !== ONB_BRIEFING) return { ok: false, error: '当前不在序章简报阶段。' }
   state.onboarding.step = ONB_MINE
-  addLog(state, 'info', '自检完成——行动建议：采集矿石维持运转。导航：母港星域·丰饶之环。')
+  addLog(state, 'info', '行动建议：采集矿石维持运转。导航：母港星域·丰饶之环。')
   return { ok: true }
 }
 
@@ -263,9 +280,18 @@ export function advanceFindHumans(state: GameState, ctx: SimContext): void {
   )
 }
 
-/** 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；可在序章演出(step 0)即跳；战斗进行中拒绝 */export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
+/**
+ * 跳过教程：全额结算（发齐未领奖励 + 鲣鱼修至完好），幂等；战斗进行中拒绝。
+ *
+ * 2026-09-11 修（船长反馈：「如果在最开始就跳过教程，会提示教程还未开始」）：
+ * 「进行中」原先写成 `s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)`，
+ * **简报态 0.5（`ONB_BRIEFING`）两边都不落**，于是刚睁眼点「跳过教程」会被拒。
+ * 改为区间判定 `ONB_AWAKEN <= s < ONB_DONE`——涵盖序章演出(0)/简报(0.5)/七步(1..7)/收尾(8)，
+ * 将来再插中间态也不会漏；老档 `ONB_OFF = -1` 仍走"尚未开始"。
+ */
+export function skipTutorial(state: GameState, ctx: SimContext): CommandResult {
   const s = state.onboarding.step
-  const inProgress = s === ONB_AWAKEN || (s >= ONB_MINE && s < ONB_DONE)
+  const inProgress = s >= ONB_AWAKEN && s < ONB_DONE
   if (!inProgress) return { ok: false, error: '教程尚未开始或已完成。' }
   if (state.expedition.battle) return { ok: false, error: '交火中不能跳过教程——战斗结束回港后再试。' }
   // 演出阶段跳过：呼号落定为默认 PRTS（未及起名）

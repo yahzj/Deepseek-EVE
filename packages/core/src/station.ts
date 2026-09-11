@@ -9,6 +9,7 @@ import type { GameState, StationSiteProgress } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext, StationSiteDef, StationTierDef } from './types'
 import { cargoOfShip } from './inventory'
+import { deliverDialogueToComms } from './comms'
 
 /** 读取站点进度（容错默认档 0） */
 export function siteProgress(state: GameState, siteId: string): StationSiteProgress {
@@ -155,6 +156,7 @@ function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteD
       )
       if (site.doneDialogueId && !state.dialogueSeen[site.doneDialogueId]) {
         state.pendingDialogue = site.doneDialogueId
+        deliverDialogueToComms(state, ctx, site.doneDialogueId)
       }
     } else {
       const next = site.tiers[prog.stage]!
@@ -264,6 +266,7 @@ export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: st
   // 通讯：未建成 + 介绍剧本未读 → 自动挂起一次
   if (site && !isSiteBuilt(state, site) && site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
+    deliverDialogueToComms(state, ctx, site.introDialogueId)
   }
 }
 
@@ -274,6 +277,8 @@ export function playDialogue(state: GameState, scriptId: string, ctx: SimContext
   }
   state.dialogueSeen[scriptId] = true
   if (state.pendingDialogue === scriptId) state.pendingDialogue = null
+  // 2026-09-11 通讯系统：剧本同时进收件箱（幂等）——通讯页 = 玩家侧全部 NPC 通信记录
+  deliverDialogueToComms(state, ctx, scriptId)
 }
 
 /**
@@ -288,6 +293,7 @@ export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: s
   if (prog.stage >= site.tiers.length) return // 已建成：停靠走「返航空间站」，无需介绍
   if (site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
+    deliverDialogueToComms(state, ctx, site.introDialogueId)
     const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
     addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。`)
   }

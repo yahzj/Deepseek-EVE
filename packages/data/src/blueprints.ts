@@ -88,7 +88,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 1000, // ×6 提速（原 100*60=6000s）
     buildCostIsk: 150_000,
     priceIsk: 962500,
-    description: '重型动能炮：远程 5.7 km，全船通用、远程压制首选。深渊之门卫队也会忌惮你的船。',
+    description: '重型动能炮：远程 5.7 km，全船通用、远程压制首选。深渊之门卫队也会忌惮你。',
   },
 
   // ══════════ V10 民用档（常驻平价） ══════════

@@ -1,91 +1,22 @@
 /**
- * 序章·苏醒 阶段 4（2026-09-05 船长确认）——教程引导：
- * - 步骤 1..7：右下角「当前目标」任务卡（可最小化/展开；步骤说明 + 跳过入口 + ×6 教学加速提示；
- *   2026-09-08 船长定：卡内跳转按钮移除，跳转统一走顶部引导条按钮——两者功能重叠）；
+ * 序章·苏醒 阶段 4（2026-09-05 船长确认；2026-09-11 船长改为**教程融入通讯**）——教程引导：
+ *
+ * - **七步全文已移进通讯**（每步开始时由**舰载信息库 · 检索重启**发来一封教程通讯，
+ *   见 `data/src/tutorialSteps.ts` 与 `data/src/messages.ts` 的 `tut-*`）；本文件**不再有右下角引导卡**。
+ * - **睁眼动画结束后不立刻开始教程**（2026-09-11 船长定）：先落到简报态（`ONB_BRIEFING`）——
+ *   顶栏只显示「先看通讯」+「前往通讯」+「跳过教程」，玩家在简报那封里点「开始教程」才进第 1 步。
+ * - 本文件保留两件事：①**顶部引导条**；②**光圈高亮 + 「点这里」气泡**（按步骤关键字找当前应点的目标）。
  * - 步骤 8：收尾演出覆盖层（全屏文本 → 「开始新的航程」→ finishTutorial → step 99 全解锁）。
  * 锁定策略（页签/按钮级）在 App.tsx 实施；本组件只管展示与跳转意图。
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { BRIEFING_INTRO, TUTORIAL_STEPS, TUTORIAL_TOTAL } from '@whale/data'
+import { ONB_BRIEFING } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 
 export type GuideGo = { page: string; mapTab?: string; shipTab?: string }
 
-interface GuideDef {
-  title: string
-  lines: string[]
-  go: GuideGo
-  goLabel: string
-}
-
-/** 步骤 → 引导文案与默认跳转（与 App 锁定白名单同源） */
-export const GUIDE_BY_STEP: Record<number, GuideDef> = {
-  1: {
-    title: '采集：维持运转',
-    lines: [
-      '① 前往舰船页，把驾驶船切换为机库里的「沙猫级采矿艇」；',
-      '② 出港 →「矿带开采」标签，对丰饶之环(母港)出击采集富凡晶石；',
-      '③ 采足 50 单位（约 5 个循环）即自动返港卸货——教学节奏，不用等到满舱，多采的矿石留给你卖。',
-      '提示：教学期间航行/采矿加速 ×6。',
-    ],
-    go: { page: 'ship', shipTab: 'fleet' },
-    goLabel: '前往舰船页·切换驾驶',
-  },
-  2: {
-    title: '交付：补给协议·首批矿物',
-    lines: [
-      '矿石已入库。前往出港「任务中心」→ 重要任务，交付富凡晶石 ×20（仓库扣取）。',
-      '完成后获得 4,000 ISK 与一枚基础 AI 核心。',
-    ],
-    go: { page: 'map', mapTab: 'task' },
-    goLabel: '前往任务中心',
-  },
-  3: {
-    title: '出售：把矿石换成 ISK',
-    lines: [
-      '前往「物品」页 → 仓库标签，找到富凡晶石行点「市价卖出」（确认窗口里可只卖一部分）——把矿石换成 ISK 即完成本步；',
-      '交付只扣除了 20 单位——刚才挖的富凡晶石大部分还留在仓库里，空间站不会自动收购，所以要亲手卖出；',
-      '卖出任意数量即完成本步——也可以留一些矿石，以后精炼或制造用。',
-    ],
-    go: { page: 'items' },
-    goLabel: '前往物品页',
-  },
-  4: {
-    title: '修复：鲣鱼级护卫舰',
-    lines: [
-      '用任务赏金在舰船页对鲣鱼执行「港内维修」（装甲/结构恢复至 100%）。',
-      '完成后进入试炼步骤。',
-    ],
-    go: { page: 'ship', shipTab: 'fleet' },
-    goLabel: '前往舰船页·维修',
-  },
-  5: {
-    title: '试炼：演习场驱逐令',
-    lines: [
-      '前往「常驻悬赏」接取演习场驱逐令（母港，教学战内你的命中/回避获得加成）。',
-      '取胜后协会发放：轻型炮台 MK1 ×1、动能弹 ×120。',
-    ],
-    go: { page: 'map', mapTab: 'bounty' },
-    goLabel: '前往常驻悬赏',
-  },
-  6: {
-    title: '记忆归档：AI 核心操作学',
-    lines: [
-      '打开技能页——记忆档案将恢复「AI 核心操作学」至 Lv1（免书免训练费，仅此一次）。',
-    ],
-    go: { page: 'skills' },
-    goLabel: '前往技能页',
-  },
-  7: {
-    title: '分身：指派沙猫采矿',
-    lines: [
-      '舰船页 →「AI 指挥中心」：为沙猫装载基础 AI 核心并指派采矿作业——那是你的第一个分身。',
-    ],
-    go: { page: 'ship', shipTab: 'ai' },
-    goLabel: '前往 AI 指挥中心',
-  },
-}
-
-/** 收尾演出文本（步骤 7） */
+/** 收尾演出文本（步骤 8） */
 const EPILOGUE_LINES = [
   '你睁开眼睛的时候，泊位里只有排风扇的低鸣。',
   '章鱼人统治着这座母港——他们买货、修站、发布悬赏，对角落里这艘旧船一无所知。',
@@ -93,92 +24,6 @@ const EPILOGUE_LINES = [
   '但你记得怎么采矿、怎么修理、怎么开火，甚至还记得「AI 核心操作学」这门手艺。',
   '一艘不该存在的旧时代舰船 AI——是时候去打听人类的下落了。',
 ]
-
-export function TutorialGuide({
-  engine,
-  step,
-  lifted = false,
-}: {
-  engine: GameEngine
-  step: number
-  /** 手机横屏：目标按钮与右下角卡片重叠时上移（2026-09-06 防遮挡） */
-  lifted?: boolean
-}) {
-  const [minimized, setMinimized] = useState(false)
-  const def = GUIDE_BY_STEP[step]
-  // 打字机效果（2026-09-08 船长定：引导窗口文字逐字显示）：步骤切换时从 0 逐字播放，播完显示全文；
-  // 最小化/展开不打断——再次展开时若已播完即全文，无需重播
-  const totalChars = def ? def.lines.reduce((a, l) => a + l.length, 0) : 0
-  const [shown, setShown] = useState(0)
-  useEffect(() => {
-    setShown(0)
-    if (totalChars <= 0) return
-    const iv = window.setInterval(() => {
-      setShown((v) => {
-        if (v >= totalChars) {
-          window.clearInterval(iv)
-          return v
-        }
-        return v + 1
-      })
-    }, 22) // 22ms/字 ≈ 逐字打字节奏
-    return () => window.clearInterval(iv)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, totalChars])
-  // 行 i 的起始字符偏移（用于逐行切片显示）
-  const lineOffsets: number[] = []
-  {
-    let acc = 0
-    for (const l of def?.lines ?? []) {
-      lineOffsets.push(acc)
-      acc += l.length
-    }
-  }
-
-  if (!def) return null
-  if (minimized) {
-    return (
-      <button className="app-tut-tab" onClick={() => setMinimized(false)} title="展开教程引导">
-        ◆ 教程：{def.title}（展开）
-      </button>
-    )
-  }
-  return (
-    // key = step：步骤切换时整卡重挂载 → 淡入浮现 + 打字机从头播放（2026-09-08 船长定）
-    <div key={step} className={`app-tut-card${lifted ? ' is-top' : ''}`}>
-      <div className="app-tut-head">
-        <span className="app-tut-title">◆ 教程目标 · {def.title}</span>
-        <span className="app-tut-min" onClick={() => setMinimized(true)} title="最小化">
-          —
-        </span>
-      </div>
-      <div className="app-tut-lines">
-        {def.lines.map((l, i) => {
-          const start = lineOffsets[i] ?? 0
-          const end = Math.min(l.length, Math.max(0, shown - start))
-          return (
-            <div key={i} className="app-tut-line">
-              {l.slice(0, end)}
-            </div>
-          )
-        })}
-      </div>
-      {/* 2026-09-08 船长定：卡内不再放「前往…」跳转按钮——与顶部引导条按钮功能重叠，
-          跳转统一走顶部引导条（高亮/光圈正常）；本卡只负责步骤说明与跳过入口 */}
-      <div className="app-tut-actions">
-        <button
-          className="app-btn is-small"
-          onClick={() => {
-            engine.prologueSkip()
-          }}
-          title="跳过教程：立即全额结算奖励并修好鲣鱼"
-        >
-          跳过教程 ›
-        </button>
-      </div>
-    </div>
-  )
-}
 
 /** 收尾演出覆盖层（步骤 8；点击文本区逐步显示 → 按钮完成） */
 export function TutorialEpilogue({ engine, onDone }: { engine: GameEngine; onDone: () => void }) {
@@ -220,20 +65,35 @@ export function TutorialEpilogue({ engine, onDone }: { engine: GameEngine; onDon
 
 /**
  * 教程步骤聚焦条 + 光圈高亮（2026-09-05 船长反馈：玩家找不到"下一步"按钮）：
- * - 顶栏下方居中的「下一步」操作条：当前目标一句话 + 大字脉冲按钮（跳转入口,永不丢失）;
- * - 画面级光圈:按步骤关键字在可见按钮里找当前应点的目标,画高亮框 + "点这里"气泡;
- * - 步骤内分阶段(如 S1:先切沙猫 → 再出击),按引擎状态自动换焦点。
+ * - 顶栏下方居中的操作条：**步骤 N/7** + 当前目标一句话 + 「前往…」跳转 + 「看详情」（开通讯页读全文）+ 「跳过」；
+ * - 画面级光圈：按步骤关键字在可见按钮里找当前应点的目标，画高亮框 + "点这里"气泡；
+ * - 步骤内分阶段（如 S1：先切沙猫 → 再出击），按引擎状态自动换焦点。
  */
 interface StepPlan {
+  /** 当前动作一句话（顶栏显示；比通讯正文明快） */
   text: string
   go: GuideGo
   goLabel: string
   targets: string[]
 }
 
+/** 步骤 N 的教程通讯 id（与 `data/src/messages.ts` 的 `tut-<step>` 同源） */
+export function tutorialMessageId(step: number): string {
+  return `tut-${step}`
+}
+
 function stepPlan(engine: GameEngine, step: number): StepPlan {
-  const def = GUIDE_BY_STEP[step]
+  const def = TUTORIAL_STEPS.find((s) => s.step === step)
   const state = engine.state
+  // 简报态（睁眼动画刚结束）：不指任何目标按钮，只把玩家推去通讯读简报
+  if (step === ONB_BRIEFING) {
+    return {
+      text: BRIEFING_INTRO.goal,
+      go: { page: 'comms' },
+      goLabel: '前往通讯',
+      targets: [],
+    }
+  }
   if (step === 1) {
     if (state.shipId !== 'sandcat') {
       return {
@@ -252,24 +112,28 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   }
   if (!def) return { text: '', go: { page: 'map' }, goLabel: '', targets: [] }
   // 步骤 3（卖矿石）：指引条给明确动作句（2026-09-09 船长反馈——原取 lines[0] 为背景解释，
-  // 玩家不知道下一步干嘛）；引导卡全文见 GUIDE_BY_STEP[3]
+  // 玩家不知道下一步干嘛）；通讯正文里是完整说明
   if (step === 3) {
     return {
       text: '把矿石换成 ISK：前往「物品」页 → 仓库标签，富凡晶石点「市价卖出」',
-      go: def.go,
+      go: { page: 'items' },
       goLabel: def.goLabel,
       targets: ['物品', '仓库', '市价卖出', '卖出'],
     }
   }
   const byStep: Record<number, string[]> = {
     2: ['出港', '任务中心', '交付矿石'],
-    3: ['物品', '仓库', '市价卖出', '卖出'],
     4: ['舰船', '港内维修', '维修', '修理'],
-    5: ['出港', '常驻悬赏', '演习场驱逐令', '出发'],
+    5: ['出港', '常驻悬赏', '演习场讨伐令', '出发'],
     6: ['技能', 'AI 核心操作学'],
     7: ['舰船', 'AI 指挥中心', '指派', '采矿'],
   }
-  return { text: def.lines[0] ?? def.title, go: def.go, goLabel: def.goLabel, targets: byStep[step] ?? [] }
+  return {
+    text: def.goal,
+    go: { page: def.page, mapTab: def.mapTab, shipTab: def.shipTab },
+    goLabel: def.goLabel,
+    targets: byStep[step] ?? [],
+  }
 }
 
 /**
@@ -277,7 +141,7 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
  * 根因 1：按关键字"首个命中"，常落在左侧常驻导航(出港/舰船)而非页面内的真实按钮；
  * 根因 2：只在步骤切换后定位一次，页面转场/滚动后框不跟随）。
  * 修法：优先排除左侧导航，在页面内容里取**最深的可见命中**（真正的操作按钮）；
- * 找不到才回退到导航按钮；随后由 TutorialSpot 的轮询持续跟随位置。
+ * 找不到才回退到导航按钮；随后由轮询持续跟随位置。
  */
 function lastVisibleMatch(keywords: string[], excludeNav: boolean): { el: Element; text: string } | null {
   let best: { el: Element; text: string } | null = null
@@ -338,21 +202,6 @@ function ringRectFor(el: Element): { x: number; y: number; w: number; h: number 
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
 }
 
-/** 视口框（如教程卡的测量框）→ 局部框（同上四角换算，用于相交测试） */
-function localBoxOfRect(rot: { s: number; L: number; T: number }, r: DOMRect): { x: number; y: number; w: number; h: number } {
-  const pts = [
-    { X: r.left, Y: r.top },
-    { X: r.right, Y: r.top },
-    { X: r.left, Y: r.bottom },
-    { X: r.right, Y: r.bottom },
-  ].map((p) => ({ lx: (rot.T - p.Y) / rot.s, ly: (p.X - rot.L) / rot.s }))
-  const minX = Math.min(...pts.map((p) => p.lx))
-  const maxX = Math.max(...pts.map((p) => p.lx))
-  const minY = Math.min(...pts.map((p) => p.ly))
-  const maxY = Math.max(...pts.map((p) => p.ly))
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
-}
-
 /** 元素是否被某个滚动/裁剪祖先裁掉（页面内滚动容器里滚出视口的按钮 rect 仍在屏内 → 直接画框会"指空"） */
 function isClippedByScroll(el: Element): boolean {
   let n = el.parentElement
@@ -374,13 +223,16 @@ export function TutorialSpot({
   engine,
   step,
   onGo,
-  onLift,
+  onDetail,
+  onSkip,
 }: {
   engine: GameEngine
   step: number
   onGo: (g: GuideGo) => void
-  /** 手机横屏：高亮目标与右下角教程卡重叠时回调 true（上层把卡上移防遮挡） */
-  onLift?: (lift: boolean) => void
+  /** 「看详情」：切到通讯页并选中本步教程通讯（2026-09-11 船长定：教程全文在通讯里） */
+  onDetail?: (messageId: string) => void
+  /** 「跳过教程」：入口从右下角卡移到顶部引导条（2026-09-11 船长定） */
+  onSkip?: () => void
 }) {
   const [ring, setRing] = useState<{ x: number; y: number; w: number; h: number; label: string } | null>(null)
   const plan = stepPlan(engine, step)
@@ -414,7 +266,6 @@ export function TutorialSpot({
       const hit = findVisibleTarget(plan.targets)
       if (!hit) {
         setRing(null)
-        onLift?.(false)
         return
       }
       const rot = rootRotTransform() !== null
@@ -430,34 +281,6 @@ export function TutorialSpot({
           ? prev
           : { x: box.x, y: box.y, w: box.w, h: box.h, label: hit.text },
       )
-      // 手机横屏：检测右下角教程卡（展开态）是否压住目标 → 请求上移
-      if (rot && onLift) {
-        const card = document.querySelector<HTMLElement>('.app-tut-card')
-        const root = document.querySelector<HTMLElement>('.app-root.is-mobile-rot')
-        const m = rootRotTransform()
-        const bh = root?.offsetHeight ?? 0
-        let overlap = false
-        if (card && m && bh > 0) {
-          const cr = card.getBoundingClientRect()
-          if (cr.height > 0) {
-            // 卡当前可能已在上移位（is-top）；统一折算成"默认右下角位"再判断，避免来回抖动
-            const yTop = card.classList.contains('is-top') ? bh - cr.height - 14 : cr.top
-            const yBot = card.classList.contains('is-top') ? cr.top : bh - cr.height - 14
-            const hyp = new DOMRect(cr.left, yTop, cr.width, cr.height)
-            void yBot
-            const cardLocal = localBoxOfRect(m, hyp)
-            const margin = 16
-            overlap =
-              box.x < cardLocal.x + cardLocal.w + margin &&
-              box.x + box.w + margin > cardLocal.x &&
-              box.y < cardLocal.y + cardLocal.h + margin &&
-              box.y + box.h + margin > cardLocal.y
-          }
-        }
-        onLift(overlap)
-      } else if (!rot) {
-        onLift?.(false)
-      }
     }
     relocate()
     const iv = window.setInterval(relocate, 150)
@@ -471,10 +294,19 @@ export function TutorialSpot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, plan.text])
 
+  const inTutorial = TUTORIAL_STEPS.some((s) => s.step === step)
+  const inBriefing = step === ONB_BRIEFING
   return (
     <>
       {plan.text && plan.goLabel ? (
         <div className="app-stepbar">
+          {/* 步骤进度（2026-09-11 船长定：按教程内容顺序指引，让玩家知道走到第几步、还剩几步）；
+              简报态不显示 N/7——那一步还没开始 */}
+          {inTutorial ? (
+            <span className="app-stepbar-step">
+              步骤 {step}/{TUTORIAL_TOTAL}
+            </span>
+          ) : null}
           {/* ▸ 独立于文案（2026-09-08 船长定：不计入文案、换行后文本独立对齐排头） */}
           <span className="app-stepbar-mark" aria-hidden="true">
             ▸
@@ -483,6 +315,27 @@ export function TutorialSpot({
           <button className="app-btn is-small is-primary app-stepbar-go" onClick={() => onGo(plan.go)}>
             {plan.goLabel} ›
           </button>
+          {/* 教程全文在通讯里（2026-09-11 船长定）：这里给一个直达入口，不再放右下角详细卡；
+              简报态本身就指向通讯，不再重复放「看详情」 */}
+          {onDetail && inTutorial ? (
+            <button
+              className="app-btn is-small app-stepbar-detail"
+              title="打开通讯页，读这一步的完整说明（历史上每一步都留档）"
+              onClick={() => onDetail(tutorialMessageId(step))}
+            >
+              看详情
+            </button>
+          ) : null}
+          {/* 跳过教程：入口从右下角卡移到这里（2026-09-11 船长定） */}
+          {onSkip ? (
+            <button
+              className="app-btn is-small app-stepbar-skip"
+              title="跳过教程：立即全额结算奖励并修好鲣鱼"
+              onClick={onSkip}
+            >
+              跳过教程 ›
+            </button>
+          ) : null}
         </div>
       ) : null}
       {ring ? (

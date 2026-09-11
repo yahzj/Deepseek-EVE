@@ -81,11 +81,20 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   // 该资源当前全部运转单位（同资源可多台）
   const runs = engine.refineRunViews().filter((v) => v.itemId === def.id)
   const running = runs.length > 0
+  // 本卡各炉的**炉内私有料账**合计（2026-09-11 玩家反馈「稀有残骸空了精炼炉还在运转」）：
+  // 稀有残骸起炉即把整件预占进本炉料账（货仓/仓库立刻不再显示这批料），界面上必须把它算进来并写明，
+  // 否则玩家只看到"残骸 0 m³ + 炉子还在转"。普通残骸/精炼炉的料账恒为 0（照旧走公共库存）。
+  const claimHeld = runs.reduce((s, v) => s + (v.claimedUnits ?? 0), 0)
   // 每卡独立的 AI 核心选择（一枚核心驱动一台；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
   const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   // 手动再开一台被拒的原因：主控已亲自开着一台炉 / 开着一条制造线 / 其它主控作业占用（三者共享手动工作位）
+  // 无公共料时的提示（2026-09-11）：本卡若有炉子正抱着**炉内料账**，就不能写成"仓库里没有原料"（料在炉里）
+  const noStockNote =
+    claimHeld > 0
+      ? '本卡的炉子已把料预占进炉内料账（货仓/仓库不再显示这批料）：等它拆完，或停炉把余料退回后再开新炉'
+      : '仓库/货仓里还没有原料：先采集（或从船货仓卸下），到市场购买也行'
   const manualNote = state.refineRuns.some((r) => r.worker === 'pilot')
     ? '你已亲自运转着一台炉：先停它才能再亲自开一台（AI 核心不受此限）。'
     : state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
@@ -101,13 +110,17 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)}核心驱动`
     onToast(
       isWreck
-        ? `残骸回收开工：${def.name}（可拆 ${Math.round(total * 10) / 10} m³，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`
+        ? isRareBox
+          ? `残骸回收开工：${def.name}。本炉预占 ${Math.min(RARE_WRECK_VOLUME_M3, Math.round(total * 10) / 10)} m³（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入炉内料账——货仓/仓库不再显示这批料，停炉时未用完部分退回物品仓库。${who}；每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停。`
+          : `残骸回收开工：${def.name}（可拆 ${Math.round(total * 10) / 10} m³，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`
         : `精炼炉开工：${def.name}（可炼 ×${total.toLocaleString('zh-CN')}，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`,
     )
   }
-  function stopRun(runId: number): void {
+  function stopRun(runId: number, hasClaim: boolean): void {
     const r = engine.stopRefineRunAt(runId)
     if (!r.ok) onToast(r.error ?? '停炉失败。', true)
+    else if (hasClaim)
+      onToast('已停该台炉：已完成批保留；本炉未用完的预占料已退回物品仓库（可继续加开其它单位）。')
     else onToast('已停该台炉：原料未锁定无需退回，余料仍留在货仓/仓库原位（可继续加开其它单位）。')
   }
 
@@ -115,7 +128,10 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   let dataLine: ReactNode
   if (running) {
     dataLine = isWreck
-      ? `运转 ${runs.length} 台 · 合计余 ${Math.round(total * 10) / 10} m³`
+      ? `运转 ${runs.length} 台 · 合计余 ${Math.round((total + claimHeld) * 10) / 10} m³` +
+        (claimHeld > 0
+          ? `（其中炉内料账 ${Math.round(claimHeld * 10) / 10} m³、货仓/仓库 ${Math.round(total * 10) / 10} m³）`
+          : '')
       : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
   } else if (isWreck) {
     // 稀有残骸：每炉锁死 1 件（30 m³）——数据行写清"一次起炉 = 开一箱"，免得玩家以为能把多件丢进一炉
@@ -274,17 +290,28 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
               <span key={v.id} className="app-belt-worker">
                 <span className="app-belt-worker-name">
                   {v.worker === 'pilot' ? '⛏ 主控' : `⚙ ${v.workerLabel}核心`} · {isWreck ? '已拆解' : '已炼'} {v.batchesDone} 批
+                  {v.claimedUnits !== undefined
+                    ? ` · 本炉料余 ${Math.round(v.claimedUnits * 10) / 10} m³`
+                    : ''}
                 </span>
                 <span
                   className="app-progress-mini"
-                  title={`当前批进度 ${v.percent}%（每批 ${v.batchUnits} 单位 / ${Math.round(v.cycleMs / 100) / 10} 秒；每批到点实时扣料）`}
+                  title={`当前批进度 ${v.percent}%（每批 ${v.batchUnits} 单位 / ${Math.round(v.cycleMs / 100) / 10} 秒；${
+                    v.claimedUnits !== undefined
+                      ? `每批从本炉预占的料账扣 ${v.batchUnits} m³（货仓/仓库不再显示这批料）`
+                      : '每批到点实时扣料'
+                  }）`}
                 >
                   <i style={{ width: `${v.percent}%` }} />
                 </span>
                 <button
                   className="app-btn is-small is-warn"
-                  onClick={() => stopRun(v.id)}
-                  title="停这台炉：已完成批保留；原料未锁定无需退回（AI 核心自动归还）"
+                  onClick={() => stopRun(v.id, v.claimedUnits !== undefined)}
+                  title={
+                    v.claimedUnits !== undefined
+                      ? '停这台炉：已完成批保留；本炉未用完的预占料退回物品仓库（AI 核心自动归还）'
+                      : '停这台炉：已完成批保留；原料未锁定无需退回（AI 核心自动归还）'
+                  }
                 >
                   停
                 </button>
@@ -298,11 +325,13 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           title={
             manualNote ??
             (total <= 0
-              ? '仓库/货仓里还没有原料：先采集（或从船货仓卸下），到市场购买也行'
+              ? noStockNote
               : running
                 ? '由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，每批到点实时扣料'
                 : isWreck
-                  ? '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
+                  ? isRareBox
+                    ? `由你亲自运转一台：起炉即预占 1 件（${RARE_WRECK_VOLUME_M3} m³）进本炉料账，每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停（期间不可离港作业）`
+                    : '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
                   : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
           }
           onClick={() => runWith('pilot')}
@@ -338,7 +367,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             title={
               core
                 ? total <= 0
-                  ? '仓库/货仓里还没有原料：先采集（或从船货仓卸下），到市场购买也行'
+                  ? noStockNote
                   : running
                     ? '接入一枚闲置 AI 核心加开一台'
                     : '接入 AI 核心自动运转（不占副船与主控）'
@@ -495,7 +524,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
           }
         >
           <div className="app-dim app-note">
-            你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。
+            你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。稀有残骸例外：起炉即把整件（1 件 = {RARE_WRECK_VOLUME_M3} m³）转入本炉料账——货仓/仓库不再显示这批料，卡面按"炉内料账 + 货仓/仓库"合计数给出，停炉时未用完部分退回物品仓库。
           </div>
           <div className="app-win-body">
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (

@@ -31,6 +31,17 @@ export type {
   StationTierDef,
   DialogueScriptDef,
   DialogueLineDef,
+  CommsMessageDef,
+  CommsTrigger,
+  CommsReplyDef,
+  CommsJumpPage,
+  CommsEntryView,
+  CommsFactionDef,
+  CommsDeptDef,
+  CommsFactionAlignment,
+  CommsKind,
+  CommsActionDef,
+  CommsActionCommand,
   AiCoreType,
   BalanceConfig,
   MarketRarity,
@@ -462,6 +473,21 @@ export {
   playerAtSite,
 } from './station'
 export type { StationBillRow } from './station'
+/* 通讯收件箱（2026-09-11 船长定：NPC 发消息补充剧情与任务提示） */
+export {
+  COMMS_DAY_MS,
+  COMMS_REPLIES_ENABLED,
+  advanceComms,
+  commsDialogueKey,
+  commsGameClock,
+  commsInbox,
+  commsTriggerMet,
+  commsUnreadCount,
+  deliverDialogueToComms,
+  markAllCommsRead,
+  markCommsRead,
+  runCommsAction,
+} from './comms'
 export type { StationSiteProgress } from './state'
 
 export {
@@ -582,6 +608,7 @@ export {
 export {
   ONB_OFF,
   ONB_AWAKEN,
+  ONB_BRIEFING,
   ONB_MINE,
   ONB_DELIVER,
   ONB_SELL,
@@ -610,6 +637,7 @@ export {
   isTutorialBattle,
   applyTutorialBuff,
   beginTutorialAfterAwaken,
+  startTutorialFromBriefing,
   deliverTutorialOre,
   claimTutorialTrialReward,
   grantTutorialSkill,
