@@ -976,7 +976,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 3600,
     minRangeM: 180,
     hitRate: 0.84,
-    falloff: 0.6, // 2026-09-11 船长定：窝点专属动能件远端命中衰减提高到 0.6（原 0.35；普通 MK3 为 0.5）
+    falloff: 0.35, // 2026-09-11 船长定：本件**保持 0.35**（只把 D 族守墓者长炮单独上调到 0.6；普通 MK3 为 0.5）
     reloadMs: 1200,
     dmgMult: 1.8,
     cpuUse: 34,
@@ -1074,7 +1074,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 12000,
     minRangeM: 1300,
     hitRate: 1,
-    falloff: 0.6, // 2026-09-11 船长定：窝点专属动能件远端命中衰减提高到 0.6（原 0.45；普通 MK3 为 0.5）
+    falloff: 0.6, // 2026-09-11 船长定：只把本件（D 族守墓者长炮）单独上调到 0.6（原 0.45；普通 MK3 为 0.5）
     reloadMs: 7350,
     dmgMult: 10.35,
     cpuUse: 62,
