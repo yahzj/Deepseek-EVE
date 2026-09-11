@@ -1222,8 +1222,11 @@ for (const m of MODULES) {
     }
     /** A 族（海盗）全族提速带：下限 = 快于基准船，上限防失控（船长 2026-09-11 裁定） */
     const PIRATE_SPEED_BAND: readonly [number, number] = [1.0, 1.6]
-    /** B 族（武装拾荒者）**慢速硬口径**：实速必须**低于本档舰种基准**（船长 2026-09-11「速度偏慢」）——
-     *  比率另按本战术带校验；⚠ 「按 0.8 走」增补未执行（上级裁示），带值不随之收紧。 */
+    /** B 族（武装拾荒者）**全族慢速带**（船长 2026-09-11「速度偏慢」→ 裁决「B 族速落实 0.8」）：
+     *  上限 1.00 = **慢于基准船**（"偏慢"的可验证表达）；下限 **0.75** 防失控（防被调到极慢变成"玩家白嫖"）。
+     *  取值与三号 `handover-faction-b-20260911.md` §三 登记的 B 族偏慢带 **0.75~1.00×** 对齐。
+     *  **必须用族级带、不能用战术带**：orbit 常规带 0.90~1.25 与"全族慢速"冲突（0.80 口径下拾荒火力舰 0.81× 会被误拦）。 */
+    const SCAV_SPEED_BAND: readonly [number, number] = [0.75, 1.0]
     let speedCounted = 0
     let speedShipPath = 0
     let pirateReadings = 0
@@ -1259,12 +1262,13 @@ for (const m of MODULES) {
             continue
           }
           if (def.foeFamily === 'B') {
-            // **B 族（武装拾荒者）口径**（船长 2026-09-11 七裁决：「**速度偏慢**」）：
+            // **B 族（武装拾荒者）口径**（船长 2026-09-11：「**速度偏慢**」→ 裁决「**B 族速落实 0.8**」）：
             // ①族级硬口径 = **实速必须低于本档舰种基准**（`speedRatio < 1`）——与倍率口径无关，恒成立；
-            // ②比率仍按**本战术的带**校验（B 族全 orbit ⇒ 0.90~1.25）。
-            // ⚠ 追加的「按 0.8 走」增补**未执行**（上级 2026-09-11 裁示）⇒ `speedRatio` 维持 **0.90 / 0.92**
-            //   （实速 306 / 271），**最终值由三号定**；该增补版专用的「全族慢速带 0.60~1.00×」
-            //   （在 306 m/s 下比率 1.04 会被误拦）随之一并撤下。
+            // ②比率按 **B 族专用慢速带 `SCAV_SPEED_BAND = 0.75~1.00×`**（= **慢于基准船**）校验。
+            //   实测读数：拾荒武装艇 272（**0.93×**）、拾荒火力舰 236（**0.81×**）。
+            // ⚠ **为什么不用战术带**：战术带（orbit 0.90~1.25×）描述的是"普通 orbit 单位的机动区间"，
+            //   与"**全族慢速**"这一族级口径**直接冲突**——0.80 口径下拾荒火力舰 236 m/s ⇒ 比率 **0.81×**
+            //   会被 orbit 带**误拦**（本批实测踩到）。族级口径必须用族级带表达。
             scavReadings++
             scavSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
             check(
@@ -1272,11 +1276,10 @@ for (const m of MODULES) {
               `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未低于本档舰种基准 ${base} m/s**——` +
                 `船长 2026-09-11 裁定「**速度偏慢**」（倍率须 < 1）`,
             )
-            const scavBand = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
             check(
-              ratio >= scavBand[0] && ratio <= scavBand[1],
-              `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越界` +
-                `（应 ${scavBand[0]}~${scavBand[1]}×；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+              ratio >= SCAV_SPEED_BAND[0] && ratio <= SCAV_SPEED_BAND[1],
+              `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族慢速带** ` +
+                `${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×（船长「速度偏慢」；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
             )
             continue
           }
@@ -1306,7 +1309,7 @@ for (const m of MODULES) {
     console.log(
       `· 敌速口径契约：${speedCounted} 张逐卡显式标定 + ${speedShipPath} 张引用舰级速度，比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）；` +
         `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）、` +
-        `B 族 ${scavReadings} 条按**慢速硬口径**（实速低于本档舰种基准；比率按本战术带，船长「速度偏慢」）`,
+        `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）`,
     )
     if (pirateSample.length > 0) console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join('　')}`)
     if (scavSample.length > 0) console.log(`  ↳ B 族实测读数（实速/比率）：${scavSample.join('　')}`)

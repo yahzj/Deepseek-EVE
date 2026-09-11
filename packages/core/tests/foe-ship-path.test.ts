@@ -240,10 +240,10 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢）', () => {
       { id: 'foe-pirate-corvette', tier: 1, speed: 374 },
       { id: 'foe-pirate-sniper', tier: 2, speed: 325 },
       { id: 'foe-pirate-warlord', tier: 3, speed: 374 },
-      // B 族（武装拾荒者）：船长 2026-09-11「**速度偏慢**」⇒ `speedRatio = 0.90 / 0.92`
-      // （⚠ 追加的「**按 0.8 走**」口径按上级裁示**未执行**，最终值由三号定）
-      { id: 'foe-scav-skiff', tier: 1, speed: 306 },
-      { id: 'foe-scav-armed', tier: 2, speed: 271 },
+      // B 族（武装拾荒者）：船长 2026-09-11「**速度偏慢**」⇒ 终值 `speedRatio = 0.80 / 0.80`
+      // （本批曾一度取 0.90 / 0.92 = 306 / 271，船长裁决「B 族速落实 0.8」后作废）
+      { id: 'foe-scav-skiff', tier: 1, speed: 272 },
+      { id: 'foe-scav-armed', tier: 2, speed: 236 },
     ])
   })
 
