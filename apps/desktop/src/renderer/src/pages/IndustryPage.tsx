@@ -232,7 +232,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           {isRareBox ? (
             <em
               className="app-chip is-rare"
-              title="高级箱：常规保底之外必定额外掉落——该敌群专属装备（未出则给主题件）+ 一批高阶矿物，每件只结算一次"
+              title="高级箱：保底矿物之外必定额外掉落——该敌群专属装备（未出则给特色装备）+ 一批高阶矿物，每件只结算一次"
             >
               稀有
             </em>
@@ -259,8 +259,8 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       <div className="app-belt-desc">
         {isWreck
           ? isRareBox
-            ? '每批拆解 = 保底矿物 + 概率彩头；另触发「高级箱」额外掉落（专属装备/主题件 + 高阶矿物，每件只结算一次）'
-            : '每批拆解 = 保底矿物 + 概率彩头'
+            ? '每批拆解 = 保底矿物 + 概率特色掉落；另触发「高级箱」额外掉落（专属装备/特色装备 + 高阶矿物，每件只结算一次）'
+            : '每批拆解 = 保底矿物 + 概率特色掉落'
           : def.description}
       </div>
       {isWreck ? <WreckFlavorRow def={def} engine={engine} /> : null}
@@ -486,7 +486,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
             <>
               <span
                 className="app-dim"
-                title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底口径另算"
+                title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底矿物另算"
               >
                 产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台
               </span>
@@ -517,7 +517,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
 
           {wreckDefs.length > 0 ? (
             <>
-              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底矿物 + 概率彩头</div>
+              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底矿物 + 概率特色掉落</div>
               <div className="app-belt-grid">
                 {wreckShown.map((def) => (
                   <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />

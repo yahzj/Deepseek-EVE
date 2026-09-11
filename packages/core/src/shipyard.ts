@@ -50,7 +50,7 @@ function emptyShipState(defId: string): FleetShipState {
   return { defId, customName: null, durability: 1, armorPct: 1, cargo: {}, fitted }
 }
 
-/** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/数据缺失返回 undefined） */
+/** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/记录缺失返回 undefined） */
 export { fleetDefOf } from './instances'
 
 /** 一艘舰船的显示名（全链统一入口，见 instances.ts） */
@@ -224,7 +224,7 @@ export function loseShip(state: GameState, shipId: string, ctx: SimContext, reas
   // 当前驾驶船被弃 → 自动补驾驶（2026-09-09 船长定：只选空闲船；全被 AI 占用或一艘不剩 → 保底沙猫，绝不占用 AI 执勤中的船）
   if (wasCurrent) reconcilePilotShip(state, ctx)
 
-  // 数据异常守卫：作业引用的船已经没了就强制停下
+  // 异常守卫：作业引用的船已经没了就强制停下
   if (state.mining.active && !state.fleet[state.shipId]) {
     state.mining.active = false
     state.mining.phase = 'mining'
@@ -243,9 +243,9 @@ export function loseShip(state: GameState, shipId: string, ctx: SimContext, reas
   }
 }
 
-/** 2026-09-09（船长定）：驾驶船不可用原因——数据缺失 或 正被 AI 执勤占用（弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠） */
+/** 2026-09-09（船长定）：驾驶船不可用原因——记录缺失 或 正被 AI 执勤占用（弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠） */
 export function pilotUnavailableReason(state: GameState): string | null {
-  if (!state.fleet[state.shipId]) return '当前驾驶的舰船数据缺失——请到舰船页检查舰队。'
+  if (!state.fleet[state.shipId]) return '舰队里找不到当前驾驶的舰船——请到舰船页检查舰队。'
   if (state.aiAssignments[state.shipId] !== undefined) {
     return '当前驾驶的舰船正被 AI 执勤占用（采矿/打捞/掩护巡逻）——请先取消该船 AI 任务，或切换其它舰船。'
   }
@@ -269,7 +269,7 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
       'info',
       wasBusy
         ? '驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。'
-        : '驾驶中的舰船数据缺失——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。',
+        : '舰队里找不到正在驾驶的舰船——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。',
     )
     return
   }
@@ -433,7 +433,7 @@ export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5):
  */
 export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResult {
   const fleetShip = state.fleet[state.shipId]
-  if (!fleetShip) return { ok: false, error: '当前舰船数据缺失。' }
+  if (!fleetShip) return { ok: false, error: '舰队里找不到当前舰船。' }
   if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
     return { ok: false, error: '结构/装甲状态完好，无需修理组件。' }
   }
@@ -447,7 +447,7 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
   }
   if (kitId === null) return { ok: false, error: '货仓里没有修理组件——市场购入或蓝图自制后装入货仓。' }
   const def = ctx.items.get(kitId)
-  if (!def || typeof def.repairRestore !== 'number') return { ok: false, error: '修理组件数据异常。' }
+  if (!def || typeof def.repairRestore !== 'number') return { ok: false, error: '修理组件异常。' }
   const caps = layerCaps(state, ctx, state.shipId)
   const heal = kitHealFor(state, ctx, state.shipId, def.repairRestore, caps)
   const left = fleetShip.cargo[kitId]!

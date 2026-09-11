@@ -881,7 +881,7 @@ function WreckCard({
         {rareCount > 0 ? (
           <>
             {' · '}
-            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：常规保底之外必定额外掉落一件（该敌群专属装备，未出则给主题件）+ 一批高阶矿物`}>
+            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：保底矿物之外必定额外掉落一件（该敌群专属装备，未出则给特色装备）+ 一批高阶矿物`}>
               稀有残骸 ×{rareCount}
             </em>
           </>

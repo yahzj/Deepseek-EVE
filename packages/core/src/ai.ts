@@ -195,7 +195,7 @@ export function idleAiShipIds(state: GameState): string[] {
 /** 玩家指令：购买基础 AI 核心（V9：市场供应簿按市价买入；无现货自动挂收购单） */
 export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult {
   const good = marketGoodOf(ctx, 'aicore', 'basic')
-  if (!good) return { ok: false, error: '基础 AI 核心未在市场流通（数据缺失）。' }
+  if (!good) return { ok: false, error: '基础 AI 核心暂未在市场流通。' }
   const quote = marketQuote(state, ctx, good.key)
   const ask = quote.sell ?? Math.round(levelOf(state, ctx, good.key) * 1.06)
   if (state.wallet.isk < ask) {
@@ -210,7 +210,7 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
   }
   // 供应簿瞬时吃穿：挂收购单（到货自动入核心库）
   const order = placeBuyOrder(state, ctx, good.key, ask, 1)
-  if (!order) return { ok: false, error: '挂收购单失败（钱包或参数异常）。' }
+  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
   addLog(state, 'trade', `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} ISK，到货自动入核心库（可随时撤销）。`)
   return { ok: true }
 }
@@ -258,7 +258,7 @@ export function assignAiMining(
   const block = actionBlockReason(state, belt.galaxyId)
   if (block) return { ok: false, error: block }
   if (!getMiningParams(state, ctx, { shipId, beltId })) {
-    return { ok: false, error: '该舰船数据缺失，无法执行采矿任务。' }
+    return { ok: false, error: '舰队里找不到该舰船，无法执行采矿任务。' }
   }
 
   spendAiCore(state, coreType)
@@ -680,7 +680,7 @@ function advanceAiMining(
     if (!params) {
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)
-      addLog(state, 'warn', `[AI·${shipName}] 矿带数据缺失，任务终止（${aiCoreName(assignment.coreType)} 已归还）。`)
+      addLog(state, 'warn', `[AI·${shipName}] 矿带已不存在，任务终止（${aiCoreName(assignment.coreType)} 已归还）。`)
       return
     }
     const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
@@ -724,7 +724,7 @@ function advanceAiMining(
       addLog(state, 'info', `[AI·${shipName}] 富矿脉！连续 2 个循环产量 ×3。`)
     }
     if (!oreNow) {
-      // 数据缺失：按主产物入舱兜底（正常情况下 roll 不会返回 null）
+      // 记录缺失：按主产物入舱兜底（正常情况下 roll 不会返回 null）
       const cargoFallback = state.fleet[shipId]!.cargo
       cargoFallback[params.ore.id] = (cargoFallback[params.ore.id] ?? 0) + units
       task.tripUnits += units
@@ -818,7 +818,7 @@ function advanceAiSalvage(
     // ── 打捞：逐台打捞器按各自真实周期结算（周期 = 基础周期 ÷ 效率） ──
     const rawCycles = salvagerCyclesOf(state, ctx, shipId)
     if (rawCycles.length === 0) {
-      abort('打捞器数据缺失，打捞任务终止')
+      abort('打捞器记录缺失，打捞任务终止')
       return
     }
     const reals = rawCycles.map((c) => Math.max(1, Math.ceil(c / eff)))
@@ -838,7 +838,7 @@ function advanceAiSalvage(
         task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) - real
         const pulled = pullOneWreck(state, ctx, task.galaxyId, real)
         if (!pulled) {
-          abort('该星系敌群数据缺失，打捞任务终止')
+          abort('该星系敌群记录缺失，打捞任务终止')
           return
         }
         if (pulled.volumeM3 > freeCargoFor(state, shipId, ctx)) {
@@ -906,7 +906,7 @@ export function advanceAiExpedition(
       if (!battle) {
         delete state.aiAssignments[shipId]
         gainAiCore(state, current.coreType)
-        addLog(state, 'warn', `[AI·${shipName}] 远征目标数据缺失，任务取消（${aiCoreName(current.coreType)} 已归还）。`)
+        addLog(state, 'warn', `[AI·${shipName}] 远征目标已不存在，任务取消（${aiCoreName(current.coreType)} 已归还）。`)
         return
       }
       task.battle = battle
@@ -921,7 +921,7 @@ export function advanceAiExpedition(
       if (!task.battle) {
         delete state.aiAssignments[shipId]
         gainAiCore(state, current.coreType)
-        addLog(state, 'warn', `[AI·${shipName}] 战斗数据缺失，任务取消（${aiCoreName(current.coreType)} 已归还）。`)
+        addLog(state, 'warn', `[AI·${shipName}] 战斗记录缺失，任务取消（${aiCoreName(current.coreType)} 已归还）。`)
         return
       }
       const anom = ctx.anomalies.get(task.anomalyId)
@@ -949,7 +949,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   if (!anomaly) {
     delete state.aiAssignments[shipId]
     gainAiCore(state, assignment.coreType)
-    addLog(state, 'warn', `[AI·${shipName}] 远征目标数据缺失，任务取消。`)
+    addLog(state, 'warn', `[AI·${shipName}] 远征目标已不存在，任务取消。`)
     return
   }
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)

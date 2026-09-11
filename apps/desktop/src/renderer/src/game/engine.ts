@@ -529,8 +529,16 @@ export class GameEngine {
     } catch (err) {
       console.error('读档失败，将开启新档：', err)
       this.state = createInitialState({ prologue: true })
-      const reason = err instanceof SaveError ? err.message : String(err)
-      addLog(this.state, 'warn', `存档读取失败（${reason}），已为你开启新档案。`)
+      // 2026-09-11：玩家可见文案不带技术细节（JSON / 版本号 / 异常字符串）——技术原因只进控制台
+      const why =
+        err instanceof SaveError
+          ? err.code === 'PARSE'
+            ? '存档文件已损坏'
+            : err.code === 'FORMAT'
+              ? '存档文件无法识别（不是本游戏的档案）'
+              : '存档版本不兼容'
+          : '存档文件无法读取'
+      addLog(this.state, 'warn', `${why}——已为你开启新档案。`)
     }
 
     const now = Date.now()
@@ -970,7 +978,7 @@ export class GameEngine {
       void this.persist()
       this.notify()
       if (learn.ok) return { ok: true }
-      return { ok: false, error: learn.error ?? '购买成功但学习失败（数据异常）。' }
+      return { ok: false, error: learn.error ?? '购买成功但学习失败（异常）。' }
     }
     // 簿上无书：按均衡价挂收购单（到货后手动学习）
     const quote = marketQuote(this.state, this.ctx, goodKey)

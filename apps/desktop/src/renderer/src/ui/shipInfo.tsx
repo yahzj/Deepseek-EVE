@@ -466,7 +466,7 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
     out.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus ?? 0)}` })
   }
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) {
-    out.push({ k: '无人机射程', v: `+${pct(mod.droneRangeBonusPct ?? 0)}（乘入机型射程）` })
+    out.push({ k: '无人机射程', v: `+${pct(mod.droneRangeBonusPct ?? 0)}（按机型射程加成）` })
   }
   // 支援件四族（炮台伤害 / 射速 / 命中 / 回避）
   if (foreign('support')) {
@@ -643,7 +643,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.droneRangeBonusPct !== undefined) {
       lines.push({
         k: '无人机射程',
-        v: `+${pct(mod.droneRangeBonusPct)}（乘入机型射程）`,
+        v: `+${pct(mod.droneRangeBonusPct)}（按机型射程加成）`,
       })
     }
   } else if (mod.slot === 'salvager') {
@@ -756,7 +756,7 @@ export function itemCombatLines(item: ItemDef): InfoLine[] {
     lines.push({ k: '放飞 CPU', v: fmt(item.cpuUse) })
     lines.push({ k: '占用舱容', v: `${item.unitM3} m³/架` })
     if (item.maxRangeM !== undefined) {
-      lines.push({ k: '射程上限', v: `${fmt(item.maxRangeM)} m（中继天线百分比乘入）` })
+      lines.push({ k: '射程上限', v: `${fmt(item.maxRangeM)} m（中继天线按百分比加成）` })
     }
     // 2026-09-10 船长：命中/衰减下放到机型本体——侦察/战斗/攻坚三型命中不随距离衰减，
     // 哨戒保留正常衰减（射程端点倍率）。与导弹架"追踪命中"同款表述口径。
@@ -811,7 +811,7 @@ export function ShipHover({
   block = false,
   as = 'span',
   className,
-  note = '已生效战斗数值：抗性为整数主抗制；增强器以缺口乘入合成（上限 90%）',
+  note = '已生效战斗数值：抗性按递减方式合成（上限 90%）',
 }: {
   ship: ShipDef
   children: ReactNode

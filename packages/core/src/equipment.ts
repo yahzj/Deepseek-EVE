@@ -245,7 +245,7 @@ export function fitModule(
   }
   const shipId = opts?.shipId ?? state.shipId
   const fitted = state.fleet[shipId]?.fitted
-  if (!fitted) return { ok: false, error: '该舰船数据缺失，无法装配。' }
+  if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。' }
   const rack = opts?.rack ?? rackOf(def)
   const bays = rackBays(fitted, rack)
   // V18 韧性：位数组长度按船布局期望补齐（repair 链负责持久对齐；此处兜底运行态）
@@ -384,7 +384,7 @@ export function adjustDroneLoad(
   const def = ctx.items.get(droneId)
   if (!def || def.kind !== 'drone') return { ok: false, error: '只能装载无人机物品。' }
   const fleet = state.fleet[shipId]
-  if (!fleet) return { ok: false, error: '该舰船数据缺失，无法装载无人机。' }
+  if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法装载无人机。' }
   if (!Number.isInteger(delta) || delta === 0) return { ok: false, error: '数量必须是整数且不能为 0。' }
   const load: Record<string, number> = { ...(fleet.droneLoad ?? {}) }
   const cur = load[droneId] ?? 0
@@ -433,7 +433,7 @@ export function setAmmoTier(
   shipId: string = state.shipId,
 ): CommandResult {
   const fleet = state.fleet[shipId]
-  if (!fleet) return { ok: false, error: '该舰船数据缺失，无法设置弹药档位。' }
+  if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法设置弹药档位。' }
   if (!AMMO_TYPES.includes(type)) return { ok: false, error: '未知弹药类型。' }
   if (itemId !== null) {
     const def = ctx.items.get(itemId)

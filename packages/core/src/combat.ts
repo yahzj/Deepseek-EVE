@@ -393,7 +393,7 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
   return PROFILE_SPLIT[profile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
 }
 
-/** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船数据缺失） */
+/** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船记录缺失） */
 /** 我方规格快照（手动/AI/MC/预估同源）。
  * ammoIds（弹药 MK2，2026-09-09）：战斗内实装弹 id 覆盖（缺货回退等）——
  * 推进/视图重建传 battle.ammoIds 使伤害与实装弹种一致；缺省 = 船装配 ammoPref，再缺省 = 基础弹。 */
@@ -1335,7 +1335,7 @@ export function pushBattleFx(
   if (b.fx.length > 48) b.fx.splice(0, b.fx.length - 48)
 }
 
-/** 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（数据缺失）。
+/** 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（记录缺失）。
  * atGameMs = 开战时刻（应传"到港时刻"，让离线大推进能把后续时间全部推完）。
  * desireM = 玩家期望距离偏好（缺省 = 主武器有效射程中点）。 */
 /** 本场战斗的目标卡（2026-09-10）：赏金任务·窝点按 tier 现场派生强化卡（威胁/波次/僚机/名称）；
@@ -1508,7 +1508,7 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
 
 /** 战斗可视化武器卡（战场射程弧/弹药颜色用）：返回双方射程带、当前弹药与开火弹型。
  * 我方逐武器展开：炮台颜色 = 与引擎同口径的"剩余最多弹型"（无弹 null，画虚线灰弧）；
- * 敌方整编队聚合一道（同型同射程）。无战斗/数据缺失返回 null。 */
+ * 敌方整编队聚合一道（同型同射程）。无战斗/记录缺失返回 null。 */
 export function battleArcsFor(
   state: GameState,
   ctx: SimContext,

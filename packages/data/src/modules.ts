@@ -384,7 +384,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneDmgBonus: 0.12,
     cpuUse: 8,
-    description: '放飞无人机单发伤害 +12%（乘入无人机自身基数）。无人机流派的火力核心。',
+    description: '放飞无人机单发伤害 +12%。无人机流派的火力核心。',
   },
   {
     id: 'mod-drone-tac-2',

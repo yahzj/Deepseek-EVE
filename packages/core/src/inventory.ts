@@ -26,7 +26,7 @@ export function isModuleCargoId(id: string): boolean {
 
 /* ───────── 基础访问（容错） ───────── */
 
-/** 当前驾驶船的舰队条目（数据异常时返回 null，调用方按空处理） */
+/** 当前驾驶船的舰队条目（异常时返回 null，调用方按空处理） */
 export function currentShipState(state: GameState): FleetShipState | null {
   return state.fleet[state.shipId] ?? null
 }

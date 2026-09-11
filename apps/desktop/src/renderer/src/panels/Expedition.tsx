@@ -1273,7 +1273,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               <div className="app-map-detail-name">
                 {selected.name}
                 {selected.security !== undefined ? (
-                  <span className={`app-sec-chip app-sec-chip-${secTone(selected.security)}`} title="安全等级（EVE 式：越高越安全，负数 = 高危深渊区）">
+                  <span className={`app-sec-chip app-sec-chip-${secTone(selected.security)}`} title="安全等级（越高越安全，负数 = 高危深渊区）">
                     {secText(selected.security)}
                   </span>
                 ) : null}
@@ -1938,7 +1938,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
             2026-09-10 船长（混伤）：改为「敌火力 主 80% · 副 20%」——构成与战斗结算同源 */}
         <span
           className="app-dim"
-          title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透。常驻悬赏主系 80% + 副系 20%，窝点（赏金任务）为 60% / 40%"
+          title="敌方火力构成：两系各自吃对应抗性（按层位抗性分别减免）；只堆主系抗会被副系穿透。常驻悬赏主系 80% + 副系 20%，窝点（赏金任务）为 60% / 40%"
         >
           {' '}· 敌火力 <FoeDamageMix anomaly={anomaly} />
         </span>
@@ -2410,7 +2410,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     </b>
                     <span
                       className="app-dim"
-                      title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透（常驻悬赏 80% / 20%）"
+                      title="敌方火力构成：两系各自吃对应抗性（按层位抗性分别减免）；只堆主系抗会被副系穿透（常驻悬赏 80% / 20%）"
                     >
                       {' '}· 敌火力 <FoeDamageMix anomaly={boostCard} />
                     </span>
@@ -2510,7 +2510,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const reqStanding = base?.standingReq ?? 0
           const standingMet = standing >= reqStanding
           const lockedTxt = !base || notCandidate
-            ? '该窝点情报已失效（目标数据缺失），等下一批刷新'
+            ? '该窝点情报已失效（目标已不存在），等下一批刷新'
             : !standingMet
               ? `协会声望不足（需 ${reqStanding}，当前 ${standing}）——多完成低级目标攒声望后再接这条赏金任务`
               : unexplored
@@ -2582,7 +2582,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                   title={
                     card
                       ? `按本档位强化后的窝点实测推演：预计损耗装甲 ≈${Math.round((fc?.armorLoss ?? 0) * 100)}%、结构 ≈${Math.round((fc?.hullLoss ?? 0) * 100)}%（单局结果仍有随机波动）`
-                      : '目标数据缺失，无法评估'
+                      : '目标已失效，无法评估'
                   }
                 >
                   {Math.round(chance)}%
@@ -2590,7 +2590,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 {card ? (
                   <span
                     className="app-dim"
-                    title="敌方火力构成：两系各自吃对应抗性（缺口乘入）；只堆主系抗会被副系穿透。赏金任务（窝点）敌人的混伤更重：主 60% / 副 40%"
+                    title="敌方火力构成：两系各自吃对应抗性（按层位抗性分别减免）；只堆主系抗会被副系穿透。赏金任务（窝点）敌人的混伤更重：主 60% / 副 40%"
                   >
                     {' '}· 敌火力 <FoeDamageMix anomaly={card} />
                   </span>

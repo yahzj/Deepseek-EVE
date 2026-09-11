@@ -59,7 +59,7 @@ export function wreckItemDefOf(anomalyId: string, anomalyName: string, threat: n
     kind: 'wreck',
     unitM3: 1, // 计数 = 体积（m³）
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：可在空间站市场按废料价出售应急，或经精炼炉「残骸回收」拆解——保底矿物 + 概率彩头（拆解更值）。`,
+    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：可在空间站市场按废料价出售应急，或经精炼炉「残骸回收」拆解——保底矿物 + 概率特色掉落（拆解更值）。`,
   }
 }
 
@@ -96,7 +96,7 @@ export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): Item
     kind: 'wreck',
     unitM3: 1,
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——常规保底之外必定额外掉落一件（该敌群专属装备，未出则给主题件），并附一批高阶矿物。`,
+    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——保底矿物之外必定额外掉落一件（该敌群专属装备，未出则给特色装备），并附一批高阶矿物。`,
   }
 }
 

@@ -501,7 +501,7 @@ const meSpeedRef = useRef(200)
   /** 敌舰族形键（悬赏卡 → 族 A~G；远征/未列卡/异常 → F 制式巡逻兜底，与资产 FOE_ART 键同源） */
   const foeKey = foeFamilyOf(state.expedition.anomalyId)
   /** 敌舰显示名（2026-09-09 命名统一：引擎同源推导——舰种名 + 规格词缀，弱规格 = 轻装 X；
-   *  异常数据缺失时回退档内单位名/tag——旧档存档字符串不直接参与显示） */
+   *  异常记录缺失时回退档内单位名/tag——旧档存档字符串不直接参与显示） */
   const foeNameOf = (tag: string): string =>
     foeAnomaly ? foeUnitNameOf(foeAnomaly, tag) : (combat.foeHp[tag]?.name ?? tag)
   const ended = battle.ended !== null

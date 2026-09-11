@@ -259,7 +259,7 @@ export function startRecycleRun(
   }
   const profile = recycleProfileOf(ctx, wreckItemId)
   if (!profile) {
-    return { ok: false, error: `「${def.name}」来源数据缺失，无法回收。` }
+    return { ok: false, error: `「${def.name}」来源记录缺失，无法回收。` }
   }
   const available = oreAvailable(state, wreckItemId)
   if (available <= 0) {
@@ -373,7 +373,8 @@ function yieldNoteFor(
     const dr = rec.drone ?? {}
     if (Object.keys(dr).length > 0) loot.push(`无人机 ${fmt(dr)} 架`)
     if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
-    if (loot.length > 0) parts.push(`彩头：${loot.join('；')}`)
+    // 2026-09-11：日志文案禁用开发用词「彩头」（玩家反馈"不符合游戏设定的名词"）——统一写「额外掉落」
+    if (loot.length > 0) parts.push(`额外掉落：${loot.join('；')}`)
   }
   return parts.length > 0 ? parts.join('；') : ''
 }
@@ -438,22 +439,22 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
     }
     const def = ctx.items.get(r.itemId)
     if (!def) {
-      // 数据异常：停炉（私有料账先退回仓库，避免预占的残骸凭空消失；核心归还）
+      // 异常：停炉（私有料账先退回仓库，避免预占的残骸凭空消失；核心归还）
       refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '精炼炉运转异常：资源数据缺失，该台已停（AI 核心已归还）。')
+      addLog(state, 'warn', '精炼炉运转异常：资源记录缺失，该台已停（AI 核心已归还）。')
       continue
     }
     let guard = 0
     const isRecycle = r.recipe === 'recycle'
     const profile = isRecycle ? recycleProfileOf(ctx, r.itemId) : null
     if (isRecycle && !profile) {
-      // 残骸来源数据异常：停炉（同上，先退私有料账）
+      // 残骸来源异常：停炉（同上，先退私有料账）
       refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '残骸回收运转异常：残骸来源数据缺失，该台已停（AI 核心已归还）。')
+      addLog(state, 'warn', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。')
       continue
     }
     while (r.active && state.gameMs >= r.finishAtGameMs) {
@@ -742,7 +743,7 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
     return { ok: false, error: `ISK 不足：${ship.name} 收购挂单约 ${est.toLocaleString('zh-CN')} ISK。` }
   }
   const order = placeBuyOrder(state, ctx, good.key, est, 1)
-  if (!order) return { ok: false, error: '挂收购单失败（钱包或参数异常）。' }
+  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
   addLog(state, 'trade', `${ship.name} 市场暂无现货——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} ISK，到货自动停入机库（可随时撤销）。`)
   return { ok: true }
 }

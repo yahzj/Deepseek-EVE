@@ -729,7 +729,7 @@ export function completeSideTask(
  */
 function settleCourierDelivery(state: GameState, ctx: SimContext, d: CourierDeliveryState): void {
   const board = state.sideTasks
-  // 到站：停靠目标副站（该站若已不再是建成站点/星系未知——数据异常兜底回母港）
+  // 到站：停靠目标副站（该站若已不再是建成站点/星系未知——异常兜底回母港）
   state.awayGalaxy = null
   const site = ctx.stations.get(d.stationId)
   if (site && isSiteBuilt(state, site) && ctx.galaxies.has(d.galaxyId)) {

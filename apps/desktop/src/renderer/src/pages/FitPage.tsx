@@ -488,7 +488,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                               {freeRepairRows
                                 .map((r) => `${r.name}：每 ${r.secs} 秒修甲 ${r.armor} / 结构 ${r.hull}`)
                                 .join('；')}
-                              （战斗中自动生效，不会因缺料停机；同型多件按 EVE 曲线递减）
+                              （战斗中自动生效，不会因缺料停机；同型多件收益递减）
                             </span>
                           </>
                         ),
@@ -512,7 +512,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     ]
                   : []),
               ]}
-              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按 EVE 式乘入合成（上限 90%）；多装与「动力」细则见手册速览「装配」。`}
+              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按递减方式合成（上限 90%）；多装与「动力」细则见手册速览「装配」。`}
             />
           </div>
           </>
