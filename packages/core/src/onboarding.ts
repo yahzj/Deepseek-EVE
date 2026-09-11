@@ -26,7 +26,7 @@ export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；
 /**
  * 0.5 = **简报**（2026-09-11 船长定：「教程睁眼动画结束后，不要立刻开始教程任务，
  * 此时应该指引玩家去通讯查看教程」）——睁眼动画播完先落到这里：全页锁定、只开通讯页，
- * 玩家读完训练处的简报并点「开始教程：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
+ * 玩家读完**舰载信息库**的简报并点「开始教程：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
  */
 export const ONB_BRIEFING = 0.5
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
@@ -112,7 +112,7 @@ export function applyTutorialBuff(spec: { hitBonus: number; evasion: number }): 
 export function beginTutorialAfterAwaken(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_AWAKEN) return { ok: false, error: '当前不在序章演出阶段。' }
   state.onboarding.step = ONB_BRIEFING
-  addLog(state, 'info', '自检完成——训练处留了一份简报，去导航「通讯」看完再开工。')
+  addLog(state, 'info', '自检完成——信息库重启，第一份简报已落在导航「通讯」里，看完再开工。')
   return { ok: true }
 }
 
