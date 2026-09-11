@@ -66,7 +66,7 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
         <div className="app-imp-card">
           <div className="app-imp-card-title">◆ 试炼·演习场驱逐令</div>
           <div className="app-imp-card-body">
-            前往「常驻悬赏」接取母港的演习场驱逐令并取胜（教学战内你的命中/回避有加成）。完成后发放：轻型炮台 MK1 ×1、动能弹 ×120。
+            星图 →「常驻悬赏」，接取母港的演习场驱逐令并取胜（这场是照会战，本舰的命中与回避按规程上调）。完成后发放：轻型炮台 MK1 ×1、动能弹 ×120。
           </div>
         </div>
       ) : null}

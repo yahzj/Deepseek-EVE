@@ -190,7 +190,7 @@ export function onTutorialSkillPageOpened(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_SKILL) return { ok: false, error: '当前不在技能归档步骤。' }
   grantTutorialSkill(state)
   state.onboarding.step = ONB_DIVIDE
-  addLog(state, 'info', '把基础 AI 核心装入沙猫，指派采矿作业——那是你的第一个分身。')
+  addLog(state, 'info', '把基础 AI 核心装入沙猫，指派采矿作业——本舰的第一枚分身。')
   return { ok: true }
 }
 
