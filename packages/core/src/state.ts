@@ -530,6 +530,11 @@ export interface BattleState {
   /** 逐架生存池：键 = 我方武器条目下标（仅 src='drone' 的条目）；开战由 startBattleFor 写入。
    * 缺省 = 本次改动前已在进行的战斗（照旧打完，不折损） */
   dronePools?: Record<number, DronePoolEntry>
+  /** **敌机机群生存池**（2026-09-11 机群批）——键 = **敌单位 tag**，值 = 与该单位 `src:'drone'`
+   *  武器条目**同序**的逐架池（每架一条）；三层血/抗性/回避取自机型表（`FoeDroneDef.defense`）。
+   *  开战与每次换波由 `combat.initFoeDronePools` 重建。
+   *  **缺省 = 本场没有敌机**（无 `FoeShipDef.drones` 的敌舰一律不建池）⇒ 既有战斗零行为变化。 */
+  foeDronePools?: Record<string, DronePoolEntry[]>
   /** 本场已击落架数（机型 id → 架数）；结算时按此**永久扣除**无人机舱清单 */
   droneLost?: Record<string, number>
   /** 近防炮调度（当前波）：每舰判定冷却剩余毫秒（与敌编队同序）；缺省 = 无近防炮 */

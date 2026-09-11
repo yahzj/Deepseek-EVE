@@ -15,7 +15,7 @@
  */
 import type { GameState } from './state'
 import { addLog } from './state'
-import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeReinforceTrigger, FoeShipDef, FoeShipSlot, FoeTactic, ModuleDef, SimContext } from './types'
+import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeDroneSlot, FoeReinforceTrigger, FoeShipDef, FoeShipSlot, FoeTactic, ModuleDef, SimContext } from './types'
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
@@ -140,6 +140,11 @@ export interface UnitSpec {
    *  让期望交距落在自己打得到的距离（2026-09-11 船长裁决②）。
    *  **旧威胁推导路径一律不写本字段** ⇒ 旧口径行为一字不动。 */
   foeRangeBand?: { min: number; max: number }
+  /** **本单位的舰载机群**（2026-09-11 机群批）——只有舰级路径写入（`FoeShipDef.drones` 原样带到单位上）。
+   *  用途：①建档时把机群展开成 `src:'drone'` 的武器条目（每架一条）；②开战与每次换波按机型
+   *  `defense` 建生存池（`BattleState.foeDronePools`，按 tag 索引、与本单位 drone 条目**同序**）。
+   *  **不写 = 无机群** ⇒ 既有单位一字不动。 */
+  foeDrones?: readonly FoeDroneSlot[]
   foeTactic: FoeTactic | null
 }
 
@@ -1010,6 +1015,25 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     // 这保证"关了就是零行为变化"）。触发条件全无效 = 视为未写 = 开战即在（见 `FoeReinforceTrigger` 注释）。
     const reinforceAt = bal.foeReinforceEnabled === true ? normReinforceTrigger(u.slot.enterAt) : null
     const name = foeUnitNameOf(anomaly, u.tag)
+    // **舰载机群**（2026-09-11 机群批 · 设计稿 `foe-drone-system-20260911.md` §三/§五）：
+    // 每架展开成**一条** `src:'drone'` 武器条目（与我方"每架一条"同构 ⇒ 演出层按机型合并、按架击落）。
+    // **A5 火力守恒**：机群吃**同一条 `dmgMul`**（⇒ 卡上挂机群时把 `dmgMul` 调低，**母舰单发自动让位**）；
+    // **不吃多舰补偿**（船长 2026-09-11 裁定「不吃」——`foeMultiShipCompMul` 只数舰级编成单位，本就不含机群）。
+    const droneWeapons: WeaponSpec[] = (ship.drones ?? []).flatMap((ds) =>
+      Array.from({ length: Math.max(0, Math.round(ds.count)) }, () => ({
+        label: `${ds.drone.name} ×1`,
+        kind: 'fixed' as const,
+        src: 'drone' as const,
+        artId: ds.drone.id,
+        fixedType: ds.drone.damageType,
+        shotDmg: Math.max(1, Math.round(ds.drone.dmg * (u.slot.dmgMul ?? 1))),
+        maxRangeM: Math.max(2, ds.drone.maxRangeM),
+        minRangeM: 1, // 机群无近盲带（贴脸也打）
+        hitRate: ds.drone.hitRate,
+        falloff: ds.drone.falloff,
+        reloadMs: ds.drone.reloadMs,
+      })),
+    )
     return {
       tag: u.tag,
       name,
@@ -1052,7 +1076,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           falloff: ship.falloff,
           reloadMs: ship.reloadMs,
         },
+        ...droneWeapons, // 机群：每架一条（同序 ⇒ 与 `foeDronePools[tag]` 逐架对齐）
       ],
+      ...(droneWeapons.length > 0 ? { foeDrones: ship.drones } : {}),
       foeTactic: tactic,
       // **自己的有效射程带**（含覆写）——供 `foeDesiredRange` 在舰级路径上替代全局战术表
       // （2026-09-11 船长裁决②「期望交距改取该单位自己的射程带」）。旧路径不写本字段。
@@ -1834,6 +1860,8 @@ export function startBattleFor(
     // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）
     battle.droneLoadAtStart = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
   }
+  // 敌机机群生存池（2026-09-11 机群批）：与敌方编队同建；无 `foeDrones` 的敌舰不建池 ⇒ 零行为变化
+  initFoeDronePools(battle, foes)
   // 近防炮调度（威胁 ≥ pdThreatFloor 的敌舰各装一台；与敌编队同序、独立冷却）
   if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
@@ -2306,6 +2334,8 @@ export function advanceBattleFor(
       if (battle.pdCd && battle.dronePools) {
         battle.pdCd = curFoes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
       }
+      // 敌机机群随波重建（2026-09-11 机群批）：每波单位是新对象、tag 也不同 ⇒ 旧池自然作废
+      initFoeDronePools(battle, curFoes)
       // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
       // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
       // 0 = 原地续战（旧行为），1 = 完整回到开战距离
@@ -2396,6 +2426,45 @@ export function droneRecoveryRate(state: GameState): number {
 export function pdEnabledFor(threat: number, bal: BattleBalance): boolean {
   return threat >= bal.pdThreatFloor
 }
+/**
+ * **建敌机生存池**（2026-09-11 机群批）——按**敌单位 tag** 索引；池数组与本单位 `src:'drone'`
+ * 武器条目**同序**（`slot` 顺序、每条展开 `count` 架，与 `createFoeSpecsFromShips` 的展开顺序一致）。
+ *
+ * - 三层血 / 抗性 / 回避取自**机型表**（`FoeDroneDef.defense`，绝对值）；我方无人机线技能
+ *   （耐久学/强化学/规避学）**只作用于我方机群**，敌机不吃——族格由机型表定死，与玩家技能无关；
+ * - **开战与每次换波都调用**（每波单位是新对象、tag 也不同 ⇒ 旧波的池自然作废）；
+ * - **无 `foeDrones` 的单位不建池**；全场都没有 ⇒ 本字段不写（既有战斗零行为变化）。
+ */
+function initFoeDronePools(b: import('./state').BattleState, foes: readonly UnitSpec[]): void {
+  const pools: Record<string, import('./state').DronePoolEntry[]> = {}
+  for (const f of foes) {
+    const slots = f.foeDrones
+    if (!slots || slots.length === 0) continue
+    const list: import('./state').DronePoolEntry[] = []
+    for (const ds of slots) {
+      const d = ds.drone.defense
+      const resists = {
+        ...(d.shieldResist ? { shield: d.shieldResist } : {}),
+        ...(d.armorResist ? { armor: d.armorResist } : {}),
+        ...(d.hullResist ? { hull: d.hullResist } : {}),
+      }
+      for (let k = 0; k < Math.max(0, Math.round(ds.count)); k++) {
+        list.push({
+          s: Math.max(1, Math.round(d.shieldHp)),
+          a: Math.max(1, Math.round(d.armorHp)),
+          h: Math.max(1, Math.round(d.hullHp)),
+          alive: true,
+          artId: ds.drone.id,
+          evasion: clamp(0, 0.9, d.evasion ?? 0),
+          ...(Object.keys(resists).length > 0 ? { resists } : {}),
+        })
+      }
+    }
+    if (list.length > 0) pools[f.tag] = list
+  }
+  if (Object.keys(pools).length > 0) b.foeDronePools = pools
+}
+
 /**
  * 近防炮可选靶（存活放飞条目下标）：
  * - 默认**排除哨戒机**（2026-09-10 船长：近防炮不打哨戒无人机）；
@@ -2632,6 +2701,49 @@ function stepBattle(
   for (const f of foes) {
     const rt = b.units[f.tag]
     if (!rt || !isAlive(b, f.tag)) continue
+    // ── 敌方机群开火（2026-09-11 机群批）──
+    // 逐架独立装填、独立掷命中（与我方无人机条目同款口径：`src:'drone'` + `artId` 供演出层识别）。
+    // ⚠ 本段**放在主武器之前**：主武器有 `continue`（无弹分支之外还有 beam 分支的 continue），
+    //   放在循环尾部会被那些 `continue` 跳过。
+    // 池与 drone 条目**同序**（`initFoeDronePools` 按 slot 顺序展开），故用独立计数 `di` 对位。
+    const fPools = b.foeDronePools?.[f.tag]
+    if (fPools && fPools.length > 0 && meRt && isAlive(b, 'player')) {
+      let di = 0
+      for (let k = 0; k < f.weapons.length; k++) {
+        const dw = f.weapons[k]!
+        if (dw.src !== 'drone') continue
+        const pool = fPools[di]
+        di += 1
+        if (!pool || !pool.alive) continue // 已被防空武器击落的架次：停火（条目保留占位）
+        const dcd = rt.weapons[k] ?? 0
+        if (dcd > 0) {
+          rt.weapons[k] = Math.max(0, dcd - dtMs)
+          continue
+        }
+        rt.weapons[k] = dw.reloadMs
+        if (b.distanceM > dw.maxRangeM) continue // 机群够不着（我方在它射程外）
+        b.stats.foeShots += 1
+        const dType = dw.fixedType ?? 'kinetic'
+        // 机群为掷命中（`fixed`）：吃自己的 `hitRate`、吃我方回避与距离衰减——与我方无人机同源
+        const droneHit = hitChance(dw, f, me, b.distanceM, bal)
+        const droneHitEff = favor ? clamp(0, 0.97, droneHit * favor.foeMul) : droneHit
+        const dHit = nextRandom(state.rng) < droneHitEff
+        if (dHit) {
+          b.stats.foeHits += 1
+          meRt.hp = applyFoeShot(meRt.hp, me.resists, dw, dw.shotDmg ?? 0, dType)
+        }
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs + dtMs,
+          side: 'foe',
+          tag: f.tag,
+          to: 'player',
+          type: dType,
+          src: 'drone',
+          artId: dw.artId,
+          hit: dHit,
+        })
+      }
+    }
     const w = f.weapons[0]!
     const cd = rt.weapons[0] ?? 0
     if (cd > 0) {
