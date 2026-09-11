@@ -309,24 +309,27 @@ describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-
     expect(kinLow.hitRate).toBe(0.55) // 低命中特例（占港/泰坦）
   })
 
-  it('等效回退：foeDmgMul 缩放 shotDmg（光束以 effHit=1 反推单发，期望 DPS 恒定）', () => {
+  it('单发推导：无逐卡伤害倍率口，单发 = 名义DPS × 装填 × 命中补偿（2026-09-11 等效回退口退休后锁定）', () => {
     const ctx = makeTestCtx({ quietEvents: true })
     const bal = ctx.balance.battle
-    const mk = (mul?: number) => ({
-      ...anomaly('ano-pmul', 'galaxy-hub', { threat: 34, reward: 1_000 }),
+    const dps = 34 * bal.foeDpsPerThreat // 名义 DPS = 威胁份额 × foeDpsPerThreat（无僚机 → 份额 = 威胁）
+    // 能量（光束必中）：effHit = 1 → 不消费命中补偿 → 单发 = DPS × 装填
+    const plasma = {
+      ...anomaly('ano-shot-p', 'galaxy-hub', { threat: 34, reward: 1_000 }),
       tactic: 'kite' as const,
       dmgMix: { plasma: 2 } as const,
-      ...(mul !== undefined ? { foeDmgMul: mul } : {}),
-    })
-    const w1 = createFoeSpecs(mk(), bal)[0]!.weapons[0]!
-    const w2 = createFoeSpecs(mk(0.35), bal)[0]!.weapons[0]!
-    expect(w1.kind).toBe('beam')
-    expect(w1.shotDmg ?? 0).toBeGreaterThan(0)
-    // 单发 = DPS×装填÷1 × mul → 0.35 档应为满档 ~35%（舍入 ±1 内）
-    const full = w1.shotDmg ?? 0
-    const scaled = w2.shotDmg ?? 0
-    expect(scaled).toBeGreaterThanOrEqual(Math.round(full * 0.35) - 1)
-    expect(scaled).toBeLessThanOrEqual(Math.round(full * 0.35) + 1)
+    }
+    const wp = createFoeSpecs(plasma, bal)[0]!.weapons[0]!
+    expect(wp.kind).toBe('beam')
+    expect(wp.shotDmg).toBe(Math.round(dps * (bal.foeReloadMs / 1000)))
+    // 动能（fixed）：单发 = DPS × 装填 ÷ 有效命中 × foeHitCompMul（有效命中 = 缺省 foeHitRate）
+    const kinetic = {
+      ...anomaly('ano-shot-k', 'galaxy-hub', { threat: 34, reward: 1_000 }),
+      dmgMix: { kinetic: 2 } as const,
+    }
+    const wk = createFoeSpecs(kinetic, bal)[0]!.weapons[0]!
+    expect(wk.hitRate).toBe(bal.foeHitRate)
+    expect(wk.shotDmg).toBe(Math.round(dps * (bal.foeReloadMs / 1000) * (bal.foeHitCompMul / bal.foeHitRate)))
   })
 })
 

@@ -793,12 +793,13 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   // 弹窗里的完整倒计时（h:mm:ss，逐秒刷新；节点上不再显示倒计时，见下方节点注释）
   const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
   /**
-   * 敌对派系归属（2026-09-11 船长：「显示敌对派系」）——由该星系的悬赏卡推导（`ui/shipArt` 的 FOE_FAMILY 全表）：
+   * 敌对派系归属（2026-09-11 船长：「显示敌对派系」）——由该星系的悬赏卡推导
+   * （**2026-09-11 起改为读数据侧 `AnomalyDef.foeFamily`**，不再走 `ui/shipArt` 的硬编码族表）
    * 排序 = 卡数降序 → 最高威胁降序 → 族字母（稳定）；首位 = **主族**（决定该星系"势力范围"光晕的颜色）。
    */
   const familyByGalaxy = new Map<string, Array<{ fam: string; count: number; maxThreat: number }>>()
   for (const a of engine.anomalies) {
-    const fam = foeFamilyOf(a.id)
+    const fam = foeFamilyOf(a)
     const arr = familyByGalaxy.get(a.galaxyId) ?? []
     const hit = arr.find((x) => x.fam === fam)
     if (hit) {

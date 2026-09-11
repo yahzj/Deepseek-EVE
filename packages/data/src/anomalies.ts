@@ -13,24 +13,87 @@
  */
 
 import type { AnomalyDef } from '@whale/core'
+import { foeLayerSplit } from '@whale/core'
 import { withRecycleFlavor } from './salvageFlavors'
+import {
+  FOE_ALIEN_ABYSS,
+  FOE_ALIEN_MAW,
+  FOE_ALIEN_RIFT,
+  FOE_ALIEN_STARCORE,
+  FOE_SCAV_ARMED,
+  FOE_SCAV_SKIFF,
+  FOE_SHIP_PIRATE_CORVETTE,
+  FOE_SHIP_PIRATE_SKIFF,
+  FOE_SHIP_PIRATE_SNIPER,
+  FOE_SHIP_PIRATE_WARLORD,
+} from './foe-ships'
+
+/**
+ * **赤潮 / 蜃影 的「狙击舰变体」射程倍率**（试点期就有的逐卡变体倍率）。
+ * 2026-09-11 起**两处共用**：杂鱼条目的 `rangeMul` + **头目条目的「同卡同带」绝对射程覆写**
+ * （船长裁决③：头目可配多战术 ⇒ 射程多重方案；用同一常量推导线，避免两处手抄数字漂移）。
+ */
+const REDRING_RANGE_MUL = 12021 / 11316
+const MIRAGE_RANGE_MUL = 13667 / 11316
+
+/**
+ * **A 族数值落地批的共用口径（2026-09-11 船长确认「先按照你的提议实现」）**
+ *
+ * 六张 A 族卡统一编成 = **头目舰 ×1 + 本卡原有舰级 ×3**（N = 4 个单位），于是：
+ * - **血**：总血守恒（卡的原值）——头目 **60%**、每杂鱼 **40% ÷ 3**；卡上写 `hpMul`（舰级绝对值 × 倍率）。
+ * - **火力**：名义总 DPS 守恒 = `威胁 × foeDpsPerThreat(0.8) × 多舰补偿 1.6`，头目 60% / 每杂鱼 40%÷3；
+ *   单发按既有推导（固定系 `× 装填4s × 命中补偿0.62 ÷ 有效命中`；光束不消费命中补偿）。
+ *   ⚠ **例外两张**（2026-09-11 船长裁决 = 方案 B）：**赤潮 / 蜃影** 旧带逐卡伤害压制倍率
+ *   （旧 `foeDmgMul` 0.27 / 0.30，已退休），按威胁曲线重锚会**无声取消压制** ⇒ 实际火力 ×5.3~6.0；
+ *   故这两张按 **「改造前的实际火力 × 1.6」重锚**（卡上 `dmgMul`，**不恢复 `foeDmgMul`**）——见各卡注释。
+ * - **血型**（2026-09-11 船长裁决①「**头目血型随卡片走**」）：条目可写 `split` 覆写，
+ *   **有效 split = 覆写 ?? 舰级**；头目舰是装甲型，故**卡面非装甲的四张**（信标 均衡 / 灰霾·赤潮·蜃影 护盾）
+ *   在其头目条目上用 `foeLayerSplit(卡面 defProfile)` 覆写（**不手抄数字**）。
+ *   A 族**无族级血型约束**（船长：鱼龙混杂 ⇒ 什么血型都有），逐卡自定。
+ * - **射程**（同日裁决③「头目可以多种战术选择，因此**射程方案也是多重**」）：头目可配多战术，
+ *   射程随之**按卡**给——**近战卡（边境/碎晶）不写覆写**；**头目打不到的卡**在其头目条目写
+ *   `rangeMinM`/`rangeMaxM` = **本卡杂鱼（主体）的射程带**（同卡同带，让 60% 火力真正落地）。
+ * - `A_MULTI_SHIP_COMP` 只在**本条算式**里用（把补偿从设计单发里除掉），**引擎会自己按 N 施加它**
+ *   （`core/createFoeSpecsFromShips`）——所以卡上写的是"设计单发 ÷ 舰级单发 ÷ 补偿"。
+ * - ⚠ 逐卡推算与实测对照见 `docs/design/foe-faction-a-numbers-20260911.md`。
+ */
+const A_MULTI_SHIP_COMP = 1.6 // = 2N/(N+1)，N = 4
+
+/**
+ * **C 族（异形生物）第一步迁移的编成补偿**（2026-09-11 船长裁定④「本批 = 舰级路径迁移 + 族格口径 + 契约」）。
+ *
+ * 与 A 族同款算式口径：**引擎在建档时自动施加 `2N/(N+1)`**（`core/createFoeSpecsFromShips`），
+ * 卡上 `dmgMul` 写的是"**设计单发 ÷（舰级单发 × 补偿）**"，故实建档值 = 设计单发（本批 = 迁移前现状值，
+ * **零变化**）。本批**不使用**补偿做强度调整（那是"虫群编成 + 头目档"第二批的事）。
+ * - `ALIEN_COMP_2`：N = 2（主体 ×1 + 同型 ×1）→ 4/3；
+ * - `ALIEN_COMP_3`：N = 3（主体 ×1 + 同型 ×2；噬口为两波 2 + 1）→ 1.5。
+ */
+const ALIEN_COMP_2 = 4 / 3
+const ALIEN_COMP_3 = 1.5
 
 export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-training',
-    name: '演习场讨伐令',
+    // 2026-09-11 族系单一真相源（船长定案）：本卡原先**美术侧登记为 B、数据侧 `foeFamily` 为空**
+    // （`shipArt.tsx` 的硬编码 `FOE_FAMILY` 与数据字段各写各的）——现按数据侧补齐为 B，
+    // 并删掉美术侧那张硬编码表，敌族一律由 `AnomalyDef.foeFamily` 推导（口径统一）。
+    foeFamily: 'B',
+    name: '演习场驱逐令',
+    // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒武装艇 ×1）。
+    // 原 `foeHpOverride 22` / `foeSpeedMps 322` 退场——数值由舰级（`foe-scav-skiff`，基准即本卡现状值）供给，
+    // **除速度外逐字不变**：血 22 / 单发 14（纯动能）/ 命中 0.85 / 射程 1~2200 / 衰减 0.3 / 近盲 0.3。
+    // 速度：旧绝对 322 → **306**（舰级 `speedRatio 0.90`，船长「速度偏慢」——**有意改慢**）。
+    ships: [{ ship: FOE_SCAV_SKIFF }],
     galaxyId: 'galaxy-hub',
     threat: 6,
-    tactic: 'brawl',
+    tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'balanced',
     standingReq: 0,
     standingGain: 1,
     rewardIsk: 3_600, // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 ISK/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
-    foeHpOverride: 22, // P1 战斗引入（2026-09-06）：脱离威胁曲线单列——裸船零技能可过（约 37s）
-    foeSpeedMps: 322, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.10×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 223（= 段参考船 220 ×1.28 口径）
     loot: [],
     combatSeconds: 20,
-    description: '深空工业协会的常设讨伐令：演习场中失控的靶机与训练残骸需要定期清剿。悬赏按次结算、可反复接取——新手的第一张长期单。',
+    description: '深空工业协会的例行清场令：拾荒船常年在演习场边缘翻捡演习残骸，协会按次悬赏驱逐。悬赏常设、可反复接取——新手的第一张长期单。',
   },
   {
     id: 'ano-pirate-post',
@@ -38,8 +101,26 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '边境海盗', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
-    foeHpOverride: 150, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~25s/零 37s（衔接 2→3 门）
-    foeSpeedMps: 351, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.20×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 257
+    // A 族数值落地批（2026-09-11 船长确认）：编成 = **头目舰 ×1 + 海盗快艇 ×3**（共 4 单位）。
+    // 血：总额 150 → 头目 150×60% = 90（hpMul = 150×3/5 ÷ 360 = 0.25）、每杂鱼 150×40%÷3 = 20（20 ÷ 150）。
+    // 火力：名义总 DPS = 12 × 0.8 × 1.6 = **15.36** → 头目 9.216 / 每杂鱼 2.048；
+    //   单发 = 名义DPS × 4s × 0.62 ÷ 有效命中 → 头目 9.216×4×0.62/0.9 = 25.3952 → **25**，
+    //   杂鱼 2.048×4×0.62/0.85 = 5.9753 → **6**；Σ = 43，名义 Σ = 43.3212 → **取整偏差 0**。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (150 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 90/360
+        dmgMul: 25 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 25/(56×1.6)
+        // 头目按**卡面构成**打（头目舰缺省是动能主系；本卡是爆炸主系）——玩家看到的就是实际吃的
+        dmgMix: { explosive: 8, kinetic: 2 },
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SKIFF,
+        count: 3,
+        hpMul: (150 * 2) / 15 / FOE_SHIP_PIRATE_SKIFF.hp, // = 20/150
+        dmgMul: 6 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 6/(28×1.6)
+      },
+    ],
     galaxyId: 'galaxy-kor',
     threat: 12,
     tactic: 'brawl',
@@ -55,14 +136,19 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   {
     id: 'ano-abandoned-platform',
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
-    lairCore: '占港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    // ⚠ **`lairCore` 已退役（2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」）**：
+    // 本卡曾带 `lairCore: '占港拾荒团'`，按"方案 2"删除字段（数据层干净）——
+    // **旧档兼容去向 = `RETIRED_LAIR_CARD_IDS` 白名单**（`docs/design/foe-faction-b-scavenger-20260911.md` §六；
+    // 让旧档里已获得的 `wreck-rare-ano-abandoned-platform` 仍能被识别与开箱）。**不是漏标，勿加回来**（契约会拦）。
     name: '占港武装通缉',
-    foeHpOverride: 292, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：A 段鲣鱼3×MK1 中位 ~36s
-    foeSpeedMps: 286, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.98×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 203
-    foeHitRate: 0.55, // 低命中特例（2026-09-08 船长定：武装拾荒者乱射——打得重但准头差；缺省 0.85）
+    // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒火力舰 ×1）——舰级基准即本卡现状值，
+    // 故血 292 / 单发 58 / 射程 366~4815 / 构成 8:2 / 血型均衡**逐字不变**，无需任何倍率。
+    // 速度：旧绝对 286 → **271**（舰级 `speedRatio 0.92`，船长「速度偏慢」——**有意改慢**）。
+    // ⚠ **乱射（命中 0.55）不动**，但它是**单卡特征**（不是族级签名），故写在**本卡条目**上、不写进舰级。
+    ships: [{ ship: FOE_SCAV_ARMED, hitRate: 0.55 }],
     galaxyId: 'galaxy-dust',
     threat: 16,
-    tactic: 'orbit',
+    tactic: 'orbit', // 船长：B 族战术统一 orbit（本卡原即 orbit）
     defProfile: 'balanced',
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 2,
@@ -78,14 +164,48 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '赤潮劫掠团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族次强（红环航道）
     name: '赤潮劫掠舰队',
-    foeHpOverride: 340, // 巡洋时代复调轮 r1（2026-09-09）：B2 墙点——S1 虎鲨4MK2 中位胜率 60%→目标 ≥85%（压血缩磨损，原 410）
+    // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**。
+    // 头目舰缺省 brawl、本卡 kite → `tactic: 'kite'` 覆写；主系覆写为**能量**（缴获改装的能量炮）⇒
+    //   头目与杂鱼都走**光束必中**（不消费命中补偿），故单发 = 火力 × 装填 4s。
+    // 血：340 → 头目 204（204÷360）、每杂鱼 340×40%÷3 = 45.3333（45.3333÷268.75，Σ 精确 = 340）。
+    // ⚠ **火力重锚（2026-09-11 船长裁决 = 方案 B + 纸面锚 ×1.2）**：本卡**不走威胁曲线**——原口径按
+    //   `威胁 × 0.8 × 1.6 = 43.52` 重锚单发时，把本卡旧有的**逐卡伤害压制倍率（旧 `foeDmgMul` 0.27）**
+    //   无声取消了，实际火力 7.25 → 43.25（×5.97），实测难度失控。
+    //   **船长裁决：锚回"改造前的实际火力"**（**不恢复已退休的 `foeDmgMul`**，改用卡上 `dmgMul` 重锚）；
+    //   纸面锚点由 ×1.6 下调为 **×1.2**（理由：难度守恒按「**实收**」判定——4 单位逐个被击毁 ⇒
+    //   实收积分 ≈ 纸面 ×`(N+1)/(2N)` = ×0.625，而本卡改动前只有 2 单位（衰减 ×0.75），
+    //   纸面 ×1.6 会实收成改动前的 ×1.33；要"实收 ≈ 改动前"须用纸面 ×`0.75/0.625` = **×1.2**）。
+    //   → 目标实际火力 = 7.25 × 1.2 = **8.70**；重锚单发（光束，÷装填 4s、按 60%/40%÷3 分配后取整）：
+    //   头目 0.6×8.70×4 = 20.88 → **21**、每杂鱼 (0.4/3)×8.70×4 = 4.64 → **5**；
+    //   Σ = 36 → **纸面 9.00**（目标 8.70，取整 +3.4%）；实收 = 9.00 × 0.625 = **5.63** ≈ 改动前 7.25 的 ×0.78。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (340 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 204/360
+        dmgMul: 21 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 21/(56×1.6)
+        split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
+        // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3312m 交战距离下 0 次开火（探针实测）
+        // ⇒ 同卡同带（与杂鱼同式的变体倍率推导，**不手抄数字**）
+        rangeMinM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMinM * REDRING_RANGE_MUL),
+        rangeMaxM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMaxM * REDRING_RANGE_MUL),
+        tactic: 'kite',
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        count: 3,
+        hpMul: (340 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 45.3333/268.75
+        dmgMul: 5 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 5/(41×1.6)
+        speedMul: 204 / 201,
+        rangeMul: REDRING_RANGE_MUL,
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+    ],
     galaxyId: 'galaxy-redring',
     threat: 34,
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    foeDmgMul: 0.27, // 巡洋时代复调轮 r3（2026-09-09）：kite 墙点顺滑——S1 中位 80%→≥85%（磨损再降档，r2=0.30 后 80%）
-    foeSpeedMps: 204, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 151）
     standingReq: 3,
     standingGain: 1,
     rewardIsk: 75000,
@@ -150,19 +270,21 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：C 族最弱（深渊之门，奖金 16 万）
     // 注：同星系的 E 族「泰坦残骸勘探」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '深渊之门卫队',
-    foeHpOverride: 540, // P1 微调轮（2026-09-06）：C 段墙点（kite+僚）中位 ~50s
-    foeSpeedMps: 234, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 173）
+    // C 族第一步落码（2026-09-11 船长裁定①「**深渊之门卫队改 brawl + 整套重标**」）：
+    // 原为 C 族唯一远程（kite + 1,737~13,314 m 光束点名 + 纯能量必中），与族设定"贴脸撕咬/酸液喷吐"硬冲突。
+    // 现整套重标为"威胁 45 的**贴脸真墙**"：战术 kite → **brawl**、射程 → 1~2600、血 540 → **700**、
+    // 单发 45 → **56**、命中 **0.90**（掷命中）、远端衰减 0.5（**命中**衰减口径）、速度 234 → **398**。
+    // 编成 = **主体 ×1 + 同型 ×1**（沿用原"主 + 僚"的 6:4 血量分配；`escort` 字段按船长「不保留僚机」
+    // 一律不写，两个单位都是主体——与 A 族六卡同口径）。N = 2 ⇒ 补偿 4/3，卡上 `dmgMul` 把它除掉。
+    ships: [
+      { ship: FOE_ALIEN_ABYSS, dmgMul: 56 / (56 * ALIEN_COMP_2) }, // 主：血 437.5 / 单发 56
+      { ship: FOE_ALIEN_ABYSS, hpMul: 0.6, dmgMul: 56 / (56 * ALIEN_COMP_2) }, // 同型：血 262.5 / 单发 56
+    ],
     galaxyId: 'galaxy-abyss',
     threat: 45,
-    tactic: 'kite',
+    tactic: 'brawl', // 船长裁定①：**kite → brawl**（射程同时收进近战带）
     defProfile: 'shield',
-    escorts: 1,
-    dmgMix: { plasma: 10 }, // **纯能量**（2026-09-10 船长：能量卡不再走混伤——光束必中、威力由远端衰减单独控）
-    foeFalloff: 0.1, // 远端**威力**衰减单独调（2026-09-10 船长，原稿 0.35 → 改 0.1）：能量走 beamPowerFactor，远端威力 = 1−(1−0.1)×0.8 = **×0.28**（缺省 0.30 时 ×0.44）
-    foeShotDmg: 45, // **直接写基础伤害**（2026-09-10 船长：「直接调整基础伤害不行吗」）——本卡"威胁份额 ×0.8×4.0s"推得的基础单发 = **90**，本值直接定成 45（= 等效系数 0.50）。
-    // 为什么是 45：两端配装对照实测（灰鲭鲨 4×动能MK2 中位）——**只堆主系(动能) 0% / 全堆能量抗 100%·残血 43%**，
-    // 即"不堆对应抗性打不过、换了能量抗件稳过"，是本批唯一真正奖励**抗性取向**的卡；90（不回退）时两端都 0%。
-    // 2026-09-10 船长：**原 `foeDmgMul 0.35`（等效回退口）已移除**，改由本值直写。
+    dmgMix: { plasma: 10 }, // **纯能量**（C 族唯一纯能量卡；收束旋钮 = 命中 0.90 + 远端命中衰减 0.5）
     standingReq: 6,
     standingGain: 2,
     rewardIsk: 160_000,
@@ -220,15 +342,20 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '星髓虫群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
     name: '星髓虫群', // 2026-09-10 船长：与 C 族窝点档位词（虫巢/隐秘孵化地）冲突，改名（id 不变）
-    foeHpOverride: 1530, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：D 段灰鲭鲨4MK2 中位 ~80s
-    foeSpeedMps: 420, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.43×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 409（09-09 段参考船口径 ×1.18）
+    // C 族第一步落码（2026-09-11 船长裁定④/⑤）：迁入**舰级路径**（星髓虫群 ×3）。
+    // **零变化迁移**：血 695.4545 + 417.2727×2、单发 105 + 63×2、射程 1~2655、衰减 0.5、装填 4000 逐字不变；
+    // **有意改动** = ①形态改**能量·掷命中**（原**光束必中** ⇒ 现掷命中 0.95 + 命中随距离衰减 + 吃回避——
+    // 本卡唯一的难度改动，见设计稿 §九 六组实测）②速度 420 → **426**（舰级 `426/258`）。
+    // 主系等离子 8:2 **不变**（本卡原本就是等离子主）。编成 = **主体 ×1 + 同型 ×2**（原 2 僚机，6:4 血量分配不变）。
+    ships: [
+      { ship: FOE_ALIEN_STARCORE, dmgMul: 105 / (105 * ALIEN_COMP_3) }, // 主：血 695.4545 / 单发 105
+      { ship: FOE_ALIEN_STARCORE, count: 2, hpMul: 0.6, dmgMul: 63 / (105 * ALIEN_COMP_3) }, // 同型 ×2：血 417.2727 / 单发 63
+    ],
     galaxyId: 'galaxy-starcore',
     threat: 72,
     tactic: 'brawl',
     defProfile: 'armor',
-    escorts: 2,
     dmgMix: { plasma: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    // 2026-09-10 船长：「两处伤害 foeDmgMul 都移除」——本卡原挂 0.35（能量光束必中后的等效回退），现撤除
     standingReq: 10,
     standingGain: 3,
     rewardIsk: 490000,
@@ -250,6 +377,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeSpeedMps: 307, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.05×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 282（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-cinder',
     threat: 42,
+    tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
     standingReq: 6,
     standingGain: 2,
     rewardIsk: 150_000,
@@ -268,6 +396,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeSpeedMps: 316, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.08×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 288（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-echo',
     threat: 52,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 6,
     standingGain: 2,
     rewardIsk: 170000,
@@ -287,6 +416,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeSpeedMps: 327, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.12×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 316（09-09 段参考船口径 ×1.18）
     galaxyId: 'galaxy-nadir',
     threat: 66,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 9,
     standingGain: 3,
     rewardIsk: 350000,
@@ -300,18 +430,26 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '噬口猎食群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 80、奖金 85 万）
     name: '噬口猎杀令',
-    foeHpOverride: 1844, // 2026-09-10 船长（族系改判）：改 brawl 后按**时长口径**重标——中位参考行打完 = 该段 D(T)=67s（实测 78s）；改判前 4000（orbit 口径，改判后要 131s 偏长）
-    // 2026-09-10 船长（族系改判）：**orbit → brawl**（C 族＝有机曲线 + 螯颚 + 酸液喷吐器，「噬口」应贴脸吞噬）
-    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 426, // 敌速重标（2026-09-10 船长）：改判 brawl 后按 brawl 口径 **1.46×** 基准船（长尾鲨级 272 → 战斗机动 165）；改判前 338（orbit 1.15×）
+    // C 族第一步落码（2026-09-11 船长裁定③/④/⑤）：迁入**舰级路径**（噬口巨兽 = **T4 战列档"生物巨兽"**）。
+    // **零变化迁移**（除速度）：逐波单位血 922（原 = 1844 × 波档 0.5）、单发 167、命中 0.95、
+    // 射程 1~2713、衰减 0.5、装填 4000 逐字不变；**两波**结构保留（`slot.wave` 0 = 2 单位 / 1 = 1 单位）。
+    // **有意改动** = ①主系**动能 → 等离子**（C 族酸液签名）②形态 = **能量·掷命中**
+    // ③速度 426 → **328**（**T4 例外允许慢**：4 战列舰基准 205 × `328/205`——是族内唯一破例项，
+    //   ⚠ 本批两处重点复核之一：降速是否让该卡**变简单**）。
+    ships: [
+      { ship: FOE_ALIEN_MAW, count: 2, wave: 0, dmgMul: 167 / (167 * ALIEN_COMP_3) }, // 第一波：2 单位 × 922 血 / 167 单发
+      { ship: FOE_ALIEN_MAW, wave: 1, dmgMul: 167 / (167 * ALIEN_COMP_3) }, // 第二波：1 单位 × 922 血 / 167 单发
+    ],
     waves: [
       { units: 2, hpShare: 0.5 },
       { units: 1, hpShare: 0.5 },
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
+    // ⚠ 舰级路径下**血量不由 `hpShare` 决定**（走 `slot.hpMul` 的绝对值），本表在本卡只负责**排波次**；
+    //   `units` 与编成条目一一对应（2 + 1）仅作可读性，改它不会改血量。
     galaxyId: 'galaxy-maw',
     threat: 80,
     tactic: 'brawl', // 2026-09-10 船长（族系改判）：**orbit（原缺省）→ brawl**（C 族＝螯颚/酸液喷吐的贴脸生物）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主）
     standingReq: 11,
     standingGain: 4,
     rewardIsk: 850000,
@@ -336,6 +474,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-vault',
     threat: 96,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 13,
     standingGain: 4,
     rewardIsk: 1500000,
@@ -360,6 +499,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     galaxyId: 'galaxy-voidedge',
     threat: 88,
+    tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 12,
     standingGain: 4,
     rewardIsk: 1100000,
@@ -372,17 +512,31 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-harbor-escort',
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
-    lairCore: '新港拾荒团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
+    // ⚠ **`lairCore` 已退役（2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」）**：
+    // 本卡曾带 `lairCore: '新港拾荒团'`，按"方案 2"删除字段（数据层干净）——
+    // **旧档兼容去向 = `RETIRED_LAIR_CARD_IDS` 白名单**（`docs/design/foe-faction-b-scavenger-20260911.md` §六；
+    // 让旧档里已获得的 `wreck-rare-ano-harbor-escort` 仍能被识别与开箱）。**不是漏标，勿加回来**（契约会拦）。
     name: '新港商路护航令',
+    // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒武装艇 ×1）。
+    // 基准卡 = 演习场驱逐令（T6），本卡按**精确倍率**复现原建档值：血 75（75/22）、单发 23（23/14）、
+    // 射程 1~2200 与舰级相同（无需覆写）；卡面**装甲型**、构成 **8:2** 均与舰级基准不同 → 条目上覆写。
+    // 速度：旧绝对 337 → **306**（同舰级 0.90；船长「速度偏慢」——**有意改慢**，本卡不再比教学卡更快）。
+    ships: [
+      {
+        ship: FOE_SCAV_SKIFF,
+        hpMul: 75 / 22, // = 原 foeHpOverride 75
+        dmgMul: 23 / 14, // = 原推导单发 23（kinetic 18 + explosive 5）
+        split: foeLayerSplit('armor'), // 卡面装甲型（舰级基准是均衡型）
+        dmgMix: { kinetic: 8, explosive: 2 }, // 本卡 8:2（舰级基准是纯动能）
+      },
+    ],
     galaxyId: 'galaxy-harbor',
     threat: 10,
-    tactic: 'brawl',
+    tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'armor',
     standingReq: 1,
     standingGain: 1,
     rewardIsk: 6_400, // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
-    foeHpOverride: 75, // P1 战斗引入 pass-2（2026-09-06）：鲣鱼2×MK1零技≈30s；裸船可磨(60%/122s)不卡死；顺滑待实测
-    foeSpeedMps: 337, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.15×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 225
     loot: [],
     combatSeconds: 20,
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',
@@ -393,8 +547,29 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '碎晶劫匪', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
     name: '碎晶带劫匪通缉',
-    foeHpOverride: 285, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~38s
-    foeSpeedMps: 377, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.29×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 261
+    // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 海盗快艇 ×3**（本卡的快艇是"提速变体"，
+    // 保留试点期的 `speedMul 377/351` 与 `rangeMul 2273/2215`：它们乘在新的 −15% 基准与 1.15 基准之上）。
+    // 血：285 → 头目 171（171÷360）、每杂鱼 285×40%÷3 = 38（38÷150）。
+    // 火力：名义总 DPS = 20 × 0.8 × 1.6 = **25.6** → 头目 15.36 / 每杂鱼 3.4133；
+    //   单发（动能主系）→ 头目 15.36×4×0.62/0.9 = 42.3253 → **42**，杂鱼 3.4133×4×0.62/0.85 = 9.9589 → **10**；
+    //   Σ = 72，名义 Σ = 72.2020 → **取整偏差 0**。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (285 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 171/360
+        dmgMul: 42 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 42/(56×1.6)
+        // 头目缺省构成 = 动能 8:2，与卡面一致（缴获改装的实弹），故**不另写** `dmgMix`
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SKIFF,
+        count: 3,
+        hpMul: (285 * 2) / 15 / FOE_SHIP_PIRATE_SKIFF.hp, // = 38/150
+        dmgMul: 10 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 10/(28×1.6)
+        speedMul: 377 / 351,
+        rangeMul: 2273 / 2215,
+        dmgMix: { kinetic: 8, explosive: 2 },
+      },
+    ],
     galaxyId: 'galaxy-shard',
     threat: 20,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -413,8 +588,33 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '信标猎手', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灯塔长廊
     name: '信标猎手悬赏',
-    foeHpOverride: 365, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：B 段虎鲨4MK2 中位 ~40s
-    foeSpeedMps: 291, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.99×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 205
+    // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠护卫舰 ×3**。
+    // 头目舰缺省是 brawl 贴脸，本卡是 orbit 环绕 → 用条目 `tactic` **覆写**（船长「头目可配多战术」）。
+    // 血：365 → 头目 219（219÷360）、每杂鱼 365×40%÷3 = 48.6667（48.6667÷365，Σ 精确 = 365）。
+    // 火力：名义总 DPS = 22 × 0.8 × 1.6 = **28.16** → 头目 16.896 / 每杂鱼 3.7547；
+    //   单发（动能主系）→ 头目 16.896×4×0.62/0.9 = 46.5579 → **47**，杂鱼 3.7547×4×0.62/0.85 = 10.9548 → **11**；
+    //   Σ = 80，名义 Σ = 79.4222 → **取整偏差 +1**（余数 1 落在 3 艘杂鱼上无法整分，如实记偏差）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (365 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 219/360
+        dmgMul: 47 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 47/(56×1.6)
+        // 血型随卡走（船长裁决①）：卡面 均衡 → 头目条目覆写为均衡型（头目舰本体是装甲型）
+        split: foeLayerSplit('balanced'),
+        // 射程多重方案（船长裁决③）：头目原射程带 1~2210m，在本卡 3199m 的实际交战距离下
+        // **一次都没开火**（探针实测 foe-0 = 0 次）⇒ 按「同卡同带」覆写为杂鱼（劫掠护卫舰）的射程带
+        rangeMinM: FOE_SHIP_PIRATE_CORVETTE.rangeMinM,
+        rangeMaxM: FOE_SHIP_PIRATE_CORVETTE.rangeMaxM,
+        tactic: 'orbit',
+        // 头目缺省构成 = 动能 8:2，与卡面一致，故**不另写** `dmgMix`
+      },
+      {
+        ship: FOE_SHIP_PIRATE_CORVETTE,
+        count: 3,
+        hpMul: (365 * 2) / 15 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 48.6667/365
+        dmgMul: 11 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP), // = 11/(51×1.6)
+      },
+    ],
     galaxyId: 'galaxy-lantern',
     threat: 22,
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -433,13 +633,38 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '灰霾伏击团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灰霾带
     name: '灰霾伏击团清剿令',
-    foeHpOverride: 430, // P1 重标 pass-2（2026-09-06 定值，船长 2026-09-10 终审）：B2 段虎鲨4MK2 中位 ~43s
-    foeSpeedMps: 201, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 149）
+    // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**。
+    // 原 `escorts: 1` 的**僚机条目取消**（船长 ①：灰霾/蜃影的 escort 条目改为上述编成）——
+    // 三艘狙击舰现在都是**主体**（tag `w0-foe-1..3`），不再挂「轻装」前缀。
+    // 头目舰缺省 brawl、本卡 kite → 条目 `tactic: 'kite'` 覆写；头目构成覆写为爆炸 8:2（与卡面一致）。
+    // 血：430 → 头目 258（258÷360）、每杂鱼 430×40%÷3 = 57.3333（57.3333÷268.75，Σ 精确 = 430）。
+    // 火力：名义总 DPS = 28 × 0.8 × 1.6 = **35.84** → 头目 21.504 / 每杂鱼 4.7787；
+    //   单发（爆炸主系）→ 头目 21.504×4×0.62/0.9 = 59.2555 → **59**，杂鱼 4.7787×4×0.62/0.85 = 13.9425 → **14**；
+    //   Σ = 101，名义 Σ = 101.0829 → **取整偏差 0**。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (430 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 258/360
+        dmgMul: 59 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 59/(56×1.6)
+        split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
+        // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3238m 交战距离下 0 次开火（探针实测）
+        // ⇒ 同卡同带：覆写为杂鱼（劫掠狙击舰）射程带
+        rangeMinM: FOE_SHIP_PIRATE_SNIPER.rangeMinM,
+        rangeMaxM: FOE_SHIP_PIRATE_SNIPER.rangeMaxM,
+        tactic: 'kite',
+        dmgMix: { explosive: 8, kinetic: 2 },
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        count: 3,
+        hpMul: (430 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 57.3333/268.75
+        dmgMul: 14 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // = 14/(41×1.6)
+      },
+    ],
     galaxyId: 'galaxy-haze',
     threat: 28,
     tactic: 'kite',
     defProfile: 'shield',
-    escorts: 1,
     dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     standingReq: 3,
     standingGain: 1,
@@ -454,15 +679,47 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '蜃影劫持团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 48、奖金 19 万）
     name: '蜃影导航劫持令',
-    foeHpOverride: 560, // 巡洋时代复调轮 r1（2026-09-09）：C 段墙点——S2 灰鲭鲨4MK2 中位胜率 60%→目标 ≥85%（kite 磨损缩压，原 650）
+    // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**（本卡是三档的"最强变体"，
+    // 保留 `speedMul 235/201` 与 `rangeMul 13667/11316`；原 `escorts: 1` 僚机条目**取消**）。
+    // 头目缺省 brawl、本卡 kite → `tactic: 'kite'` 覆写；主系覆写为能量 ⇒ 光束必中（单发不除命中）。
+    // 血：560 → 头目 336（336÷360）、每杂鱼 560×40%÷3 = 74.6667（74.6667÷268.75，Σ 精确 = 560）。
+    // ⚠ **火力重锚（2026-09-11 船长裁决 = 方案 B + 纸面锚 ×1.2）**：本卡同样**不走威胁曲线**——原口径按
+    //   `威胁 × 0.8 × 1.6 = 61.44` 重锚时，把旧有的**逐卡伤害压制倍率（旧 `foeDmgMul` 0.30）**无声取消，
+    //   实际火力 11.50 → 61.50（×5.35），实测**从"可打"变成"打不过"**。
+    //   **船长裁决：锚回"改造前的实际火力"**（**不恢复 `foeDmgMul`**，用卡上 `dmgMul` 重锚）；
+    //   纸面锚点由 ×1.6 下调为 **×1.2**（**难度守恒按「实收」判定**：4 单位 ⇒ 实收 ≈ 纸面 ×0.625，
+    //   而本卡改动前只有 2 单位（衰减 ×0.75），故"实收 ≈ 改动前"须纸面 ×`0.75/0.625` = ×1.2）。
+    //   → 目标实际火力 = 11.50 × 1.2 = **13.80**；重锚单发（光束，÷4s、60%/40%÷3 后取整）：
+    //   头目 0.6×13.80×4 = 33.12 → **33**、每杂鱼 (0.4/3)×13.80×4 = 7.36 → **7**；
+    //   Σ = 54 → **纸面 13.50**（目标 13.80，取整 −2.2%）；实收 = 13.50 × 0.625 = **8.44** ≈ 改动前 11.50 的 ×0.73。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (560 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 336/360
+        dmgMul: 33 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 33/(56×1.6)
+        split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
+        // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3809m 交战距离下 0 次开火（探针实测）
+        // ⇒ 同卡同带（与杂鱼同式的变体倍率推导，**不手抄数字**）
+        rangeMinM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMinM * MIRAGE_RANGE_MUL),
+        rangeMaxM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMaxM * MIRAGE_RANGE_MUL),
+        tactic: 'kite',
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        count: 3,
+        hpMul: (560 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 74.6667/268.75
+        dmgMul: 7 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 7/(41×1.6)
+        speedMul: 235 / 201,
+        rangeMul: MIRAGE_RANGE_MUL,
+        dmgMix: { plasma: 8, kinetic: 2 },
+      },
+    ],
     galaxyId: 'galaxy-mirage',
     threat: 48,
     tactic: 'kite',
     defProfile: 'shield',
-    escorts: 1,
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    foeDmgMul: 0.30, // 巡洋时代复调轮 r2（2026-09-09）：kite 墙点顺滑——S2 中位 60%→≥85%（磨损降档，原 0.35）
-    foeSpeedMps: 235, // 敌速上调（2026-09-09 船长：推进器翻倍后按战术分工锚定中高段）kite ×1.35（旧 174）
     standingReq: 5,
     standingGain: 2,
     rewardIsk: 190_000,
@@ -476,15 +733,20 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '裂谷畸变群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：裂谷深带
     name: '裂谷畸变体猎杀令',
-    foeHpOverride: 1815, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~62s
-    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 408, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.39×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 372（09-09 段参考船口径 ×1.18）
+    // C 族第一步落码（2026-09-11 船长裁定④/⑤）：迁入**舰级路径**（裂谷畸变体 ×2）。
+    // **零变化迁移**：血 1134.375 + 680.625、单发 76 + 45、命中 0.95、射程 1~2552、衰减 0.5、装填 4000
+    // 逐字不变；**有意改动** = ①主系**动能 → 等离子**（C 族酸液签名，副系爆炸不变）②速度 408 → **418**
+    // （舰级 `418/258`，"同档须高于 A 族 374"）③形态 = **能量·掷命中**（原动能掷命中，命中模型不变）。
+    // 编成 = **主体 ×1 + 同型 ×1**（沿用原"主 + 僚"的 6:4 血量分配；`escort` 不写，两个都是主体）。
+    ships: [
+      { ship: FOE_ALIEN_RIFT, dmgMul: 76 / (76 * ALIEN_COMP_2) }, // 主：血 1134.375 / 单发 76
+      { ship: FOE_ALIEN_RIFT, hpMul: 0.6, dmgMul: 45 / (76 * ALIEN_COMP_2) }, // 同型：血 680.625 / 单发 45
+    ],
     galaxyId: 'galaxy-chasm',
     threat: 58,
     tactic: 'brawl',
     defProfile: 'balanced',
-    escorts: 1,
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主；副系 = C 族签名 爆炸）
     standingReq: 7,
     standingGain: 3,
     rewardIsk: 250_000,

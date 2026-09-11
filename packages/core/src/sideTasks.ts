@@ -497,7 +497,10 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
 
 /**
  * 派系活跃候选池（每星系一席 = 代表卡）：
- * - 条件 = 有核心词（窝点卡）+ 奖金 > 0 + **已探索** + **非高安**；
+ * - 条件 = **窝点候选**（`isLairCandidate`：有核心词 + 非隐藏 + 奖金 > 0 + **非 B 族**）+ **已探索** + **非高安**；
+ * - **2026-09-11 船长追加裁决「B 族（武装拾荒者）没有窝点，排除出赏金范围」** ⇒ 本池由 `hasLairCore`
+ *   改判 `isLairCandidate`：**B 族不再参与派系活跃抽卡**（此前 B 卡带 `lairCore`，只因所在星系都是高安
+ *   才没被抽中——属"侥幸不中"，现在改成**规则上不参与**）。
  * - **2026-09-10 船长定：已建成副站的星系排除出抽取范围**（玩家的家不再被派系活跃锁定）。
  *   口径 = **已建成**（`isGalaxyStationBuilt`）才排除，在建/未开工的工地仍可当选；
  *   抽取只在日板刷新时发生 ⇒ **次日起生效**（当日已抽中的不动）；
@@ -506,7 +509,7 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
 export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
   const pool: AnomalyDef[] = []
   for (const a of ctx.anomalies.values()) {
-    if (!hasLairCore(a)) continue
+    if (!isLairCandidate(a)) continue
     if (!(a.rewardIsk > 0)) continue
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
     if (securityZoneOf(ctx, a.galaxyId) === '高安') continue

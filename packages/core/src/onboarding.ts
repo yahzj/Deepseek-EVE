@@ -33,7 +33,7 @@ export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸
 export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批矿物」
 export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
 export const ONB_REPAIR = 4 // 修复：港内维修鲣鱼至完好
-export const ONB_TRIAL = 5 // 试炼：演习场讨伐令（教学战加成）
+export const ONB_TRIAL = 5 // 试炼：演习场驱逐令（教学战加成）
 export const ONB_SKILL = 6 // 技能归档：AI 核心操作学 Lv1 特典
 export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
 export const ONB_EPILOGUE = 8 // 收尾演出（渲染层播放后调用 finishTutorial）
@@ -89,7 +89,7 @@ export function tutorialAccelWait(state: GameState): boolean {
   return state.onboarding.step === ONB_MINE && state.mining.active
 }
 
-/** 教学战判定：教程步骤 4、目标是演习场讨伐令、主控驾驶、任务未领 */
+/** 教学战判定：教程步骤 4、目标是演习场驱逐令、主控驾驶、任务未领 */
 export function isTutorialBattle(state: GameState, anomalyId: string | null, shipId: string): boolean {
   return (
     state.onboarding.step === ONB_TRIAL &&
@@ -159,7 +159,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
   return { ok: true }
 }
 
-/** 任务 ②：演习场讨伐令取胜奖励（结算钩子调用；幂等）——轻型炮台 MK1 + 动能弹 120 */
+/** 任务 ②：演习场驱逐令取胜奖励（结算钩子调用；幂等）——轻型炮台 MK1 + 动能弹 120 */
 export function claimTutorialTrialReward(state: GameState, anomalyId: string | null): void {
   if (anomalyId !== 'ano-training' || isTaskDone(state, TASK_TRIAL_WIN)) return
   const s = state.onboarding.step
@@ -170,7 +170,7 @@ export function claimTutorialTrialReward(state: GameState, anomalyId: string | n
   addLog(
     state,
     'trade',
-    `◆ 重要任务完成「试炼·演习场讨伐令」：协会发放 轻型炮台 MK1 ×1、动能弹 ×${TUTORIAL_REWARD_AMMO_N}。`,
+    `◆ 重要任务完成「试炼·演习场驱逐令」：协会发放 轻型炮台 MK1 ×1、动能弹 ×${TUTORIAL_REWARD_AMMO_N}。`,
   )
   if (s === ONB_TRIAL) state.onboarding.step = ONB_SKILL
 }
@@ -236,7 +236,7 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
         addLog(state, 'info', '驾驶已切回鲣鱼级护卫舰——试炼由它出战。')
       }
       state.onboarding.step = ONB_TRIAL
-      addLog(state, 'info', '鲣鱼已修复完好。前往「常驻悬赏」接受演习场讨伐令（试炼）。')
+      addLog(state, 'info', '鲣鱼已修复完好。前往「常驻悬赏」接受演习场驱逐令（试炼）。')
     }
     return
   }

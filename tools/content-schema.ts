@@ -204,7 +204,6 @@ export const TABLES: readonly TableSpec[] = [
       col('敌族foeFamily(A~G，空=按美术层缺省)', 'foeFamily', 'enum', { vals: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] }),
       col('总血foeHpOverride(空=按威胁曲线)', 'foeHpOverride', 'num', { min: 1 }),
       col('命中覆写foeHitRate(只对动能/爆炸；空=0.85)', 'foeHitRate', 'num', { min: 0, max: 1 }),
-      col('伤害倍率foeDmgMul(空=1，直接乘单发)', 'foeDmgMul', 'num', { min: 0 }),
       col('基础单发直写foeShotDmg(空=按推导；写了短路威胁链)', 'foeShotDmg', 'num', { min: 1 }),
       col('远端衰减foeFalloff(空=0.3；能量=威力衰减、值越大越轻)', 'foeFalloff', 'num', { min: 0, max: 1 }),
       col('近盲带伤害blindDmgMul(空=0.3)', 'blindDmgMul', 'num', { min: 0, max: 1 }),

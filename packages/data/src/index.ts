@@ -11,6 +11,18 @@ export { BLUEPRINTS, buildBlueprintCatalog } from './blueprints'
 export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
+// 2026-09-11 退役窝点卡白名单（船长「按方案 2 执行」）：B 族两卡字段退役后，靠显式白名单
+// 保住"旧档里已获得的稀有残骸仍可识别"——详见 `./retiredLairCards.ts` 与 content:check 契约。
+export { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
+// 2026-09-11 敌舰配置表（舰级表）：A 族试点——绝对值口径，悬赏卡只写编成与修正
+export {
+  FOE_SHIPS,
+  FOE_SHIP_PIRATE_SKIFF,
+  FOE_SHIP_PIRATE_CORVETTE,
+  FOE_SHIP_PIRATE_SNIPER,
+  FOE_SHIP_PIRATE_WARLORD,
+  ALIEN_BEAST_SHIP_IDS,
+} from './foe-ships'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
 // 2026-09-09 数字稀有度表（物品本体属性；市场/图鉴/未来掉落统一查）
@@ -24,6 +36,16 @@ export {
   droneRoleLadderIssues,
   type DroneRoleSpec,
 } from './droneRoles'
+// 2026-09-11 舰种表（质量分级·敌我共用）：5 档命名 + 基准速度 + 等效质量落档（本批零行为变化）
+export {
+  HULL_CLASS_NAME,
+  HULL_CLASS_BASE_SPEED,
+  HULL_CLASS_MASS_RANGE,
+  equivalentMassOf,
+  hullClassTierOfTier,
+  hullClassOf,
+  type HullClassTier,
+} from './hullClass'
 export { STATION_SITES, buildStationCatalog } from './stations'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { COMMS_MESSAGES, buildCommsCatalog } from './messages'

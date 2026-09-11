@@ -92,7 +92,6 @@ const L_S2: Loadout = { name: 'S2 灰鲭鲨4×MK2+支援', ship: 'sh-mako', high
 const L_S4: Loadout = { name: 'S4 大白鲨5×MK3+支援', ship: 'sh-whiteshark', high: S4_HIGH, mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 const L_T3H: Loadout = { name: 'T3 锤头鲨炮巡5×kin3+支援', ship: 'sh-hammerhead', high: S4_HIGH, mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 const L_D3: Loadout = { name: 'D3 王鲭无人机重装', ship: 'sh-sentinel', high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'], drones: { 'drone-heavy': 4, 'drone-sentry': 6 } }
-const L_T3M: Loadout = { name: 'T3 长尾鲨导弹巡5×msl3+支援', ship: 'sh-thresher', high: ['mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3'], mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], low: ['mod-stab-kin-2', 'mod-armor-kin-2'] }
 
 const L_NONE: Loadout = { name: 'S2 无抗件(对照)', ship: 'sh-mako', high: S2_HIGH, mid: ['mod-prop-2', 'mod-track-2'], low: ['mod-stab-kin-2'] }
 const L_HARD_MAIN: Loadout = { name: 'S2 硬化主系', ship: 'sh-mako', high: S2_HIGH, mid: ['mod-prop-2', 'mod-shield-@@-2', 'mod-track-2'], low: ['mod-stab-kin-2', 'mod-armor-@@-2'] }
@@ -463,68 +462,13 @@ function sectionD(): void {
   }
 }
 
-/* ═══════════ E. 敌伤旋钮对照（foeDmgMul 抬高：这两张卡"够不够威胁"） ═══════════
- * 深渊之门卫队(45) / 星髓虫群(72) 是**仅剩两处**仍挂 `foeDmgMul 0.35` 的能量主系卡
- * （能量=光束必中，玩家闪避对它们完全无效 → 当年用 0.35 做等效回退，标注"待实测复核"）。
- * 本段把旋钮逐档抬高，看"到底要多少才够威胁"，并与同段邻居（未挂本旋钮 = 1.0）对照。 */
-
-/** 覆盖某张卡的 foeDmgMul（其余内容不变） */
-function ctxWithFoeDmg(anomalyId: string, mul: number): SimContext {
-  const m = new Map(ctx.anomalies)
-  const a = m.get(anomalyId)
-  if (!a) return ctx
-  m.set(anomalyId, { ...a, foeDmgMul: mul })
-  return { ...ctx, anomalies: m }
-}
-
-const FOE_DMG_STEPS = [0.35, 0.5, 0.7, 1.0]
-
-function sectionE(): void {
-  console.log('\n════════ E. 敌伤旋钮对照（foeDmgMul 抬高；9 种子）════════')
-  console.log('对象：仅剩两处仍挂 0.35 的能量主系卡（光束必中 → 闪避对它们无效）。')
-  console.log('参照行：同段邻居（未挂本旋钮，等效 1.0）——用来看"够不够"应该跟谁比。')
-  const targets: Array<{ id: string; label: string; target: string }> = [
-    { id: 'ano-abyss-guard', label: '深渊之门卫队 45（C 族·能量 8:爆炸 2·kite）', target: '自注标定：S2 灰鲭鲨MK2 中位 ~50s' },
-    { id: 'ano-starcore-boss', label: '星髓虫群 72（C 族·能量 8:爆炸 2·brawl 厚甲+2 僚机）', target: '自注标定：S2 灰鲭鲨MK2 中位 ~80s' },
-  ]
-  const refs: Array<{ id: string; label: string }> = [
-    { id: 'ano-ghost-signal', label: '幽灵舰信号 46（D 族·爆炸 8:能量 2）' },
-    { id: 'ano-cinder-siege', label: '烬火围攻战 42（G 族·动能 8:爆炸 2）' },
-    { id: 'ano-starcore-boss-ref', label: '' },
-  ]
-  const rows: Array<{ label: string; ld: Loadout }> = [
-    { label: 'S2 灰鲭鲨4×MK2+支援 · 中位', ld: L_S2 },
-    { label: 'T3 锤头鲨炮巡5×kin3+支援 · 中位', ld: L_T3H },
-  ]
-  console.log(`\n—— 被调对象（${FOE_DMG_STEPS.map((v) => (v === 0.35 ? '0.35当前' : String(v))).join(' / ')}）——`)
-  for (const t of targets) {
-    const card = ctx.anomalies.get(t.id)
-    if (!card) {
-      console.log(`  ${t.label}：卡缺失`)
-      continue
-    }
-    console.log(`\n${t.label}　【${t.target}】`)
-    for (const r of rows) {
-      const cells: string[] = []
-      for (const v of FOE_DMG_STEPS) {
-        const c = runCell(r.ld, card, MID_SKILLS, ctxWithFoeDmg(t.id, v))
-        cells.push(`${v === 0.35 ? '★' : ''}${c.winPct}%|${c.durS}s|${c.remPct}%`.padStart(17))
-      }
-      console.log(`  ${r.label.padEnd(34)}${cells.join(' ')}`)
-    }
-  }
-  console.log('\n—— 同段邻居参照（未挂本旋钮 = 1.0；用来看"合格线"长什么样）——')
-  for (const rf of refs) {
-    const card = ctx.anomalies.get(rf.id)
-    if (!card || !rf.label) continue
-    for (const r of rows) {
-      const c = runCell(r.ld, card, MID_SKILLS, ctx)
-      console.log(`  ${rf.label.padEnd(34)}${r.label.slice(-3)} ${String(c.winPct).padStart(4)}%|${String(c.durS).padStart(3)}s|${String(c.remPct).padStart(4)}%`)
-    }
-  }
-  console.log('\n读法：目标卡的时长若**远短于邻居**、残血若**远高于邻居**，才算"威胁不够"；')
-  console.log('      若抬高旋钮后胜率仍在 90% 以上，说明缺的不是火力而是别的（血量/波次/机制）。')
-}
+/* ═══════════ E / G 两段已退休（2026-09-11 船长裁决） ═══════════
+ * 原 **E. 敌伤旋钮对照**（深渊之门卫队 45 / 星髓虫群 72）与 **G. E 段单卡降伤对照**（E 段四卡）
+ * 两段的旋钮都是同一个**逐卡伤害倍率 / 等效回退口**：覆盖某张卡的倍率后逐档跑战斗，看"够不够威胁"。
+ * 船长裁决「先移除所有逐卡伤害倍率，按照实际算」⇒ 该字段**整体退休**（单发一律按威胁链**实际推导值**
+ * 算，不再有等效回退旋钮），类型上已删除；两段连同其覆盖辅助函数、档位表与段开关一并删除
+ * （它们的机制无法用其它口径等价表达：单卡级覆写会连带改掉僚机的单发，口径不再一致）。
+ * 若日后要重做"单卡降伤"对照，现存的逐卡口是 `foeShotDmg`（基础单发直写）与 `foeHpOverride`（总血）。 */
 
 /* ═══════════ F. 推进器档位对照（2026-09-10 船长「推进器周期爆发」落地后的效果核对） ═══════════
  * 推进器不再常驻：点火 60 秒 / 冷却 60 秒。本段用**同一艘船换中槽推进器档位**打同一批卡，
@@ -563,40 +507,7 @@ function sectionF(): void {
   console.log('      推进器周期化后，若战斗跨过 60 秒点火期，冷却段玩家变慢 → 敌开火次数应显著上升。')
 }
 
-/* ═══════════ G. E 段单卡降伤对照（若选"动数"这一路：给 E 段四卡压敌伤会怎样） ═══════════
- * E 段四卡当前都**没有** `foeDmgMul`（= 1）——本段把 1.0（现值）/0.9/0.85/0.8/0.7 逐档跑一遍，
- * 给船长"要动多少才够"的实测依据（配合 §9/§10：换装救不回来，只能走单卡数值或机制）。 */
-
-function sectionG(): void {
-  console.log('\n════════ G. E 段单卡降伤对照（9 种子 · 中位技能；1.0 = 现值）════════')
-  const targets: Array<{ id: string; label: string }> = [
-    { id: 'ano-maw-hunt', label: '噬口猎杀令 80（2 波·orbit 7.1km）' },
-    { id: 'ano-gravekeeper', label: '坟场守墓人 88（2 波·brawl 2.8km）' },
-    { id: 'ano-voidedge-warden', label: '虚海守望者 88（3 波·orbit 7.4km）' },
-    { id: 'ano-vault-sentinel', label: '穹顶守卫 96（3 波·orbit 7.7km）' },
-  ]
-  const steps = [1, 0.9, 0.85, 0.8, 0.7]
-  const rows: Array<{ label: string; ld: Loadout }> = [
-    { label: 'S4 大白鲨5×MK3+支援', ld: L_S4 },
-    { label: 'T3锤头鲨炮巡5×kin3+支援', ld: L_T3H },
-    { label: 'T3长尾鲨导弹巡5×msl3+支援', ld: L_T3M },
-  ]
-  for (const t of targets) {
-    const card = ctx.anomalies.get(t.id)
-    if (!card) continue
-    console.log(`\n${t.label}　（敌伤倍率 ${steps.map((v) => (v === 1 ? '1.0现值' : v)).join(' / ')}）`)
-    for (const r of rows) {
-      const cells: string[] = []
-      for (const v of steps) {
-        const c = runCell(r.ld, card, MID_SKILLS, ctxWithFoeDmg(t.id, v))
-        cells.push(`${v === 1 ? '★' : ' '}${c.winPct}%|${c.durS}s|${c.remPct}%`.padStart(17))
-      }
-      console.log(`  ${r.label.padEnd(30)}${cells.join(' ')}`)
-    }
-  }
-  console.log('\n读法：只动"被卡住的那几格"（如 S4 虚海 11% / 穹顶 0%）——降到多少能让中位档过关、')
-  console.log('      同时**不把满技能档变得太轻松**（满技能已能过，若降太多会失去 E 段作为终局墙的意义）。')
-}
+/* （原 G. E 段单卡降伤对照：旋钮即上文已退休的逐卡伤害倍率口，整段已删除） */
 
 /* 证据落盘：stdout 同步镜像一份到 battle-data（复核材料与既有校准矩阵同目录） */
 const MIRROR: string[] = []
@@ -608,15 +519,13 @@ console.log = (...args: unknown[]): void => {
 
 /** 复用一次 S4/满技能的逐卡结果（避免重复跑） */
 function main(): void {
-  const only = (process.argv[2] ?? '').toUpperCase() // 可选：只跑指定段（如 `E` / `AD`），缺省全跑
+  const only = (process.argv[2] ?? '').toUpperCase() // 可选：只跑指定段（如 `A` / `AD`），缺省全跑
   const want = (s: string): boolean => only === '' || only.includes(s)
   origLog(`（探针运行中，输出会同时镜像到 docs/design/battle-data/mixed-damage-review-20260910.txt${only ? `；仅跑 ${only} 段` : ''}）`)
   if (want('A')) sectionA()
   if (want('B')) sectionB()
   if (want('D')) sectionD()
-  if (want('E')) sectionE()
   if (want('F')) sectionF()
-  if (want('G')) sectionG()
   console.log('\n（探针结束）')
   const out = path.join('docs', 'design', 'battle-data', 'mixed-damage-review-20260910.txt')
   if (only === '') {

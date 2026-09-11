@@ -25,6 +25,7 @@ import {
   SHIP_BLUEPRINTS,
   SHIPS,
   ANOMALIES_FLAVORED,
+  FOE_SHIPS,
   RARITY_TIER,
   SKILLS,
   DRONE_ROLE_SPECS,
@@ -32,8 +33,14 @@ import {
   droneRoleIssues,
   droneRoleLadderIssues,
   droneTotalHp,
+  HULL_CLASS_NAME,
+  HULL_CLASS_BASE_SPEED,
+  HULL_CLASS_MASS_RANGE,
+  equivalentMassOf,
   buildItemCatalog,
   buildSimContext,
+  RETIRED_LAIR_CARD_IDS,
+  ALIEN_BEAST_SHIP_IDS,
   COMMS_MESSAGES,
   COMMS_FACTIONS,
   FACTION_AVATARS,
@@ -74,6 +81,7 @@ import {
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
+  foeLayerSplit,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -1160,12 +1168,42 @@ for (const m of MODULES) {
       continue
     }
     const rows = positive(def.dmgMix)
-    // 纯能量特例（2026-09-10 船长）：单系 plasma 合法，但必须显式给远端威力衰减
+    // 纯能量特例（2026-09-10 船长：深渊之门卫队改纯能量；2026-09-11 裁定⑤放宽）：
+    // 单系 plasma 合法，但**必须有"收束旋钮"**——远端不许既必中又不衰减：
+    // - **旧威胁推导路径**：必须**显式给 `foeFalloff`**（能量走 `beamPowerFactor` 威力衰减，写缺省 0.30 太轻）；
+    // - **舰级路径**（2026-09-11 裁定⑤「能量·掷命中」档后）：放宽为「**衰减或命中任给其一**」——
+    //   掷命中形态下"命中随距离衰减 + 消费 hitRate"本身就是收束旋钮。契约据此**要求显式声明形态**：
+    //   `energyForm: 'spit'`（掷命中）⇒ 必须 `hitRate < 1`（掷命中的意义就是有掷的成分）；
+    //   缺省 / `'beam'`（必中光束）⇒ 必须显式收紧 `falloff`（≤ 缺省 0.5，不许宽于全局默认）。
     if (rows.length === 1 && rows[0]![0] === 'plasma') {
-      check(
-        def.foeFalloff !== undefined,
-        `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
-      )
+      const pureShips = [...new Map((def.ships ?? []).map((s) => [s.ship.id, s.ship])).values()]
+      if (pureShips.length > 0) {
+        for (const ship of pureShips) {
+          check(
+            ship.energyForm !== undefined,
+            `混伤契约：纯能量卡 ${def.name} 引用的舰级「${ship.name}」未显式声明 energyForm——` +
+              `纯能量必须有收束旋钮：'spit'（能量掷命中：掷命中 + 命中随距离衰减）或 'beam'（必中光束，须收紧 falloff）`,
+          )
+          if (ship.energyForm === 'spit') {
+            check(
+              ship.hitRate < 1,
+              `混伤契约：纯能量卡 ${def.name} 的舰级「${ship.name}」声明了 'spit'（能量掷命中）却给 hitRate ${ship.hitRate}——` +
+                `掷命中形态须给小于 1 的命中率（否则与"必中"无异、收束旋钮形同虚设）`,
+            )
+          } else {
+            check(
+              ship.falloff <= 0.5,
+              `混伤契约：纯能量卡 ${def.name} 的舰级「${ship.name}」走必中光束却给了 falloff ${ship.falloff}——` +
+                `必中光束的远端收束只能靠 falloff，须不宽于全局缺省 0.5`,
+            )
+          }
+        }
+      } else {
+        check(
+          def.foeFalloff !== undefined,
+          `混伤契约：纯能量卡 ${def.name} 必须显式给 foeFalloff（远端威力衰减，缺省 0.30 太轻）`,
+        )
+      }
       pureBeam += 1
       continue
     }
@@ -1191,7 +1229,7 @@ for (const m of MODULES) {
   }
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
-      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 显式 foeFalloff）` : ''}`,
+      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ''}`,
   )
 
   /* ── 敌速口径契约（2026-09-10 加）──
@@ -1200,7 +1238,14 @@ for (const m of MODULES) {
    *   基准战斗机动 = 船速 × speedFactor ×(1+(敏捷−0.5)×2×agilitySpeedBonus) ≈ 165.2 m/s
    *   比率 = 敌战斗机动 ÷ 基准战斗机动，其中敌战斗机动 = foeSpeedMps × speedFactor × 0.94（敌敏捷固定 0.3）
    * 契约：① 每张敌军卡必须**逐卡显式**写 foeSpeedMps（防止新增卡悄悄回落到段参考船旧公式口径）；
-   *       ② 比率必须落在该战术口径带内（brawl 1.05~1.55 / orbit 0.90~1.25 / kite 0.60~0.85）。 */
+   *       ② 比率必须落在该战术口径带内（brawl 1.05~1.55 / orbit 0.90~1.25 / kite 0.60~0.85）。
+   *
+   * ⚠ **A 族例外（2026-09-11 数值落地批，船长确认「A 族速度都快（方便突袭）」）**——
+   * 海盗族舰级路径卡**不受旧"战术比率带"约束**：旧带锚定"中位玩家船"，其中 kite 带 0.60~0.85
+   * 与船长「劫掠团也跑得快、方便突袭」的设定**直接冲突**（狙击舰新实速 325 比率 ≈1.11）。
+   * 该族改按**族口径**校验：**实速必须高于本档舰种基准**（护卫 340 / 驱逐 295 / 巡洋 258）
+   * 且比率落在**全族提速带 1.00~1.60**（下限 = "比基准船快"，上限防失控）。
+   * 其余族（非 A）舰级路径卡仍按上面的战术带；旧路径卡（未写 ships）一律不变。 */
   {
     const bal = DEFAULT_BALANCE.battle
     const agiMul = (ag: number): number => bal.speedFactor * (1 + (ag - 0.5) * 2 * bal.agilitySpeedBonus)
@@ -1213,12 +1258,133 @@ for (const m of MODULES) {
       orbit: [0.9, 1.25],
       kite: [0.6, 0.85],
     }
+    /** A 族（海盗）全族提速带：下限 = 快于基准船，上限防失控（船长 2026-09-11 裁定） */
+    const PIRATE_SPEED_BAND: readonly [number, number] = [1.0, 1.6]
+    /** B 族（武装拾荒者）**全族慢速带**（船长 2026-09-11「速度偏慢」→ 裁决「B 族速落实 0.8」）：
+     *  上限 1.00 = **慢于基准船**（"偏慢"的可验证表达）；下限 **0.75** 防失控（防被调到极慢变成"玩家白嫖"）。
+     *  取值与三号 `handover-faction-b-20260911.md` §三 登记的 B 族偏慢带 **0.75~1.00×** 对齐。
+     *  **必须用族级带、不能用战术带**：orbit 常规带 0.90~1.25 与"全族慢速"冲突（0.80 口径下拾荒火力舰 0.81× 会被误拦）。 */
+    const SCAV_SPEED_BAND: readonly [number, number] = [0.75, 1.0]
+    /** C 族（异形生物）**全族提速带**（船长 2026-09-11 裁定②：「**C 族速度比 A 海盗还快**」）：
+     *  - **倍率口径**（设计稿表格的"倍率"列，即 `speedRatio`）：**1.30~2.10**——四档实测 1.35 / 1.60 / 1.62 / 1.65；
+     *  - **基准船比率口径**（与 A / B 族同度量，见下）：**1.30~2.10**，**T4 巨兽豁免**
+     *    （船长裁定③：「允许 T4 战列舰（生物巨兽）；**T4 例外允许慢**」——噬口巨兽 328 m/s 比率 ≈1.12）；
+     *  - **横向断言**：**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 ⇒ T4 只做白名单登记校验）。 */
+    const ALIEN_SPEED_RATIO_BAND: readonly [number, number] = [1.3, 2.1]
+    const ALIEN_SPEED_BAND: readonly [number, number] = [1.3, 2.1]
+    /** A 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
+    const pirateFastestByTier = new Map<number, number>()
+    for (const ship of FOE_SHIPS) {
+      if (ship.family !== 'A') continue
+      const spd = Math.round(HULL_CLASS_BASE_SPEED[ship.hullClassTier] * ship.speedRatio)
+      pirateFastestByTier.set(ship.hullClassTier, Math.max(pirateFastestByTier.get(ship.hullClassTier) ?? 0, spd))
+    }
     let speedCounted = 0
+    let speedShipPath = 0
+    let pirateReadings = 0
+    const pirateSample: string[] = []
+    let alienReadings = 0
+    const alienSample: string[] = []
+    let scavReadings = 0
+    const scavSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
+      // 舰级路径（2026-09-11）：速度由**舰级登记值**决定，故不再要求逐卡 foeSpeedMps；
+      // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
+      const mains = (def.ships ?? []).filter((s) => s.escort !== true)
+      if (mains.length > 0) {
+        speedShipPath++
+        for (const slot of mains) {
+          // 2026-09-11 追加裁决：舰级速度改登记「舰种档 + 倍率」→ 实速 = 舰种基准 × 倍率 × 条目 speedMul
+          const base = HULL_CLASS_BASE_SPEED[slot.ship.hullClassTier]
+          const spd = Math.round(base * slot.ship.speedRatio * (slot.speedMul ?? 1))
+          const tactic = slot.tactic ?? slot.ship.tactic
+          const ratio = (spd * foeAgi) / refCombat
+          if (def.foeFamily === 'A') {
+            // A 族口径（见上方⚠）：高于本档舰种基准 + 落在全族提速带
+            pirateReadings++
+            pirateSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              spd > base,
+              `敌速口径契约：A 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于本档舰种基准 ${base} m/s**——` +
+                `船长 2026-09-11 裁定 A 族「速度都快（方便突袭）」，每档都必须高于基准（护卫 340 / 驱逐 295 / 巡洋 258）`,
+            )
+            check(
+              ratio >= PIRATE_SPEED_BAND[0] && ratio <= PIRATE_SPEED_BAND[1],
+              `敌速口径契约：A 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出全族提速带 ` +
+                `${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
+          if (def.foeFamily === 'B') {
+            // **B 族（武装拾荒者）口径**（船长 2026-09-11：「**速度偏慢**」→ 裁决「**B 族速落实 0.8**」）：
+            // ①族级硬口径 = **实速必须低于本档舰种基准**（`speedRatio < 1`）——与倍率口径无关，恒成立；
+            // ②比率按 **B 族专用慢速带 `SCAV_SPEED_BAND = 0.75~1.00×`**（= **慢于基准船**）校验。
+            //   实测读数：拾荒武装艇 272（**0.93×**）、拾荒火力舰 236（**0.81×**）。
+            // ⚠ **为什么不用战术带**：战术带（orbit 0.90~1.25×）描述的是"普通 orbit 单位的机动区间"，
+            //   与"**全族慢速**"这一族级口径**直接冲突**——0.80 口径下拾荒火力舰 236 m/s ⇒ 比率 **0.81×**
+            //   会被 orbit 带**误拦**（本批实测踩到）。族级口径必须用族级带表达。
+            scavReadings++
+            scavSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              spd < base,
+              `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未低于本档舰种基准 ${base} m/s**——` +
+                `船长 2026-09-11 裁定「**速度偏慢**」（倍率须 < 1）`,
+            )
+            check(
+              ratio >= SCAV_SPEED_BAND[0] && ratio <= SCAV_SPEED_BAND[1],
+              `敌速口径契约：B 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族慢速带** ` +
+                `${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×（船长「速度偏慢」；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
+          if (def.foeFamily === 'C') {
+            // **C 族（异形生物）口径**（船长 2026-09-11 裁定②「C 族速度比 A 海盗还快」+ 裁定③「T4 例外允许慢」）：
+            // ①倍率口径（speedRatio）落全族提速带 1.30~2.10；②基准船比率口径同带，**T4 巨兽豁免**；
+            // ③**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 档 ⇒ 只做巨兽白名单登记校验）。
+            const tier = slot.ship.hullClassTier
+            if (alienSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级被多条编成引用时只校验一次
+            alienReadings++
+            alienSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              slot.ship.speedRatio >= ALIEN_SPEED_RATIO_BAND[0] && slot.ship.speedRatio <= ALIEN_SPEED_RATIO_BAND[1],
+              `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」倍率 ${slot.ship.speedRatio.toFixed(2)}× 越出**全族提速带** ` +
+                `${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×（船长裁定②「C 族速度比 A 海盗还快」）`,
+            )
+            if (tier === 4 || tier === 5) {
+              check(
+                ALIEN_BEAST_SHIP_IDS.includes(slot.ship.id),
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」登记了 T${tier} 档却不在**巨兽白名单**` +
+                  `（ALIEN_BEAST_SHIP_IDS）——船长裁定③只允许「生物巨兽」用 T4，且**允许慢**（本档免比率校验）`,
+              )
+            } else {
+              check(
+                ratio >= ALIEN_SPEED_BAND[0] && ratio <= ALIEN_SPEED_BAND[1],
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
+                  `${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+              )
+            }
+            const aFastest = pirateFastestByTier.get(tier)
+            if (aFastest !== undefined) {
+              check(
+                spd > aFastest,
+                `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于 A 族同档最快** ${aFastest} m/s——` +
+                  `船长裁定②「**C 族速度比 A 海盗还快**」（同档必须更快；T4 巨兽例外不在此列）`,
+              )
+            }
+            continue
+          }
+          const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
+          check(
+            ratio >= band[0] && ratio <= band[1],
+            `敌速口径契约：${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越界（应 ${band[0]}~${band[1]}×；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+          )
+        }
+        continue
+      }
       const spd = def.foeSpeedMps
       check(
         spd !== undefined && spd > 0,
-        `敌速口径契约：${def.name} 未显式声明 foeSpeedMps（2026-09-10 起全卡逐卡标定，见设计稿 enemy-speed-retune-20260910.md）`,
+        `敌速口径契约：${def.name} 未显式声明 foeSpeedMps（2026-09-10 起全卡逐卡标定，见设计稿 enemy-speed-retune-20260910.md；舰级路径卡改为引用舰级速度）`,
       )
       if (spd === undefined) continue
       speedCounted++
@@ -1231,7 +1397,265 @@ for (const m of MODULES) {
       )
     }
     console.log(
-      `· 敌速口径契约：${speedCounted} 张敌军卡逐卡显式标定、比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+      `· 敌速口径契约：${speedCounted} 张逐卡显式标定 + ${speedShipPath} 张引用舰级速度，比率均在战术带内（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）；` +
+        `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）、` +
+        `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）、` +
+        `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
+        `同档实速须高于 A 族；T4 巨兽例外允许慢）`,
+    )
+    if (pirateSample.length > 0) console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join('　')}`)
+    if (scavSample.length > 0) console.log(`  ↳ B 族实测读数（实速/比率）：${scavSample.join('　')}`)
+    if (alienSample.length > 0) console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join('　')}`)
+  }
+
+  /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
+   * ① **引用有效**：卡上每个编成条目的舰级必须登记在 `FOE_SHIPS` 表内（禁止内联随手造舰级）；
+   * ② **族一致**：舰级 `family` 必须等于卡的 `foeFamily`；
+   * ③ **声明一致**：卡面 `tactic` / `defProfile` / `dmgMix` 必须与"**主体单位**"一致
+   *    （舰级路径下这三项是**卡面口径**，与舰级定义重复，故用契约锁死，防两边漂移）；
+   *    **主体（prime）定义（2026-09-11 数值落地批改定）**：混编卡（如「头目舰 ×1 + 杂鱼 ×3」）
+   *    的卡面**只能写一族**的血型与伤害构成，故 prime 取**单位数最多的非僚机条目** ——
+   *    即编成的**数量主体**（例：头目 ×1 + 劫掠狙击舰 ×3 → prime = 劫掠狙击舰，
+   *    卡面 `defProfile: 'shield'` / `dmgMix plasma8:kinetic2` 讲的就是它）。
+   *    ⚠ 头目那份血量不随卡面血型走（`FoeShipSlot` 无 `split` 覆写位）——已知口径，见设计稿。
+   * ④ **编成合法**：至少一条非僚机条目（要有主体）；
+   * ⑤ **舰种档合法**（2026-09-11 追加裁决「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）：
+   *    每个敌舰级的 `hullClassTier` 必须落在 `1~5`；且**海盗族（family 'A'）不得登记 4 战列舰 / 5 旗舰档**；
+   * ⑥ **A 族编成契约（2026-09-11 数值落地批加，船长确认）**：
+   *    a) **编成必须是「头目舰 ×1 + 同族杂鱼 ×3」**（共 4 个单位，杂鱼同族同型）；
+   *    b) **头目血量占比 = 60% ±1%**（按编成实算：`Σ(舰级血 × hpMul × 数量)`）。
+   *    依据 = 船长 A 族设定「**鱼龙混杂 / 装备较差数值偏低 / 靠数量弥补 / 一个头目强大带一堆杂鱼 /
+   *    速度都快**」——数量弥补所以要 3 艘杂鱼，头目强大所以头目独占 60% 血与 60% 名义火力。 */
+  {
+    const known = new Set(FOE_SHIPS.map((s) => s.id))
+    /** 编成条目的**单位数**（`count` 缺省 1）——"数量主体"与 A 族编成契约共用同一口径 */
+    const unitCount = (slot: { count?: number }): number => Math.max(1, Math.floor(slot.count ?? 1))
+    /** 编成实算总血（舰级血 × hpMul × 数量） */
+    const slotsHp = (slots: readonly { ship: { hp: number }; hpMul?: number; count?: number }[]): number =>
+      slots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * unitCount(s), 0)
+    // ⑤ 舰种档：先校验登记表全表（档位越界 / 各族**不配的档**）
+    const PIRATE_BANNED_TIERS: readonly number[] = [4, 5] // 4 战列舰 / 5 旗舰
+    /** **B 族（武装拾荒者）不得 ≥ 3 巡洋舰**（2026-09-11 船长七裁决：「**确认为新手过渡种族**」+
+     *  拾荒者拿的是拼装小艇）⇒ 只登记 **T1 护卫舰 / T2 驱逐舰**两档 */
+    const SCAV_BANNED_FROM_TIER = 3
+    let tiered = 0
+    for (const ship of FOE_SHIPS) {
+      const t = ship.hullClassTier
+      check(
+        Number.isInteger(t) && t >= 1 && t <= 5,
+        `舰级契约：舰级「${ship.name}」（${ship.id}）的舰种档 ${t} 越界（须落在 1~5：1 护卫舰 / 2 驱逐舰 / 3 巡洋舰 / 4 战列舰 / 5 旗舰）`,
+      )
+      if (ship.family === 'A') {
+        check(
+          !PIRATE_BANNED_TIERS.includes(t),
+          `舰级契约：海盗族舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? '未知档'}（T${t}）档——**海盗不配战列级（维护成本大，不符合海盗背景设定）**；海盗舰队只用 1 护卫舰 / 2 驱逐舰 / 3 巡洋舰三档（船长 2026-09-11：「海盗应该是护卫驱逐巡洋构成」）`,
+        )
+      }
+      if (ship.family === 'B') {
+        check(
+          t < SCAV_BANNED_FROM_TIER,
+          `舰级契约：拾荒族舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? '未知档'}（T${t}）档——` +
+            `**武装拾荒者不配 T3 及以上**：船长 2026-09-11 定「**确认为新手过渡种族**」，` +
+            `拾荒者开的是拼装小艇 ⇒ 只登记 **1 护卫舰 / 2 驱逐舰两档**`,
+        )
+      }
+      if (ship.family === 'C') {
+        // **C 族（异形生物）舰种档**（船长 2026-09-11 裁定③：「**允许 T4 战列舰**（"生物巨兽"）」）：
+        // ①允许 1~4 档（**不配 5 旗舰**——生物再大也是"巨兽"而非"旗舰"编队）；
+        // ②**T4 必须登记为"巨兽"用途**（`ALIEN_BEAST_SHIP_IDS` 白名单）——目的是**防日后随手给杂鱼挂 T4**
+        //   （把战列档当普通量产物用，等于把"巨兽"的意义抹平）。白名单是"显式登记"的代码化表达。
+        check(
+          t <= 4,
+          `舰级契约：异形族舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? '未知档'}（T${t}）档——` +
+            `异形族只允许 1 护卫舰 ~ 4 战列舰（船长裁定③「**允许 T4 战列舰**（生物巨兽）」），**不配 5 旗舰**`,
+        )
+        if (t === 4) {
+          check(
+            ALIEN_BEAST_SHIP_IDS.includes(ship.id),
+            `舰级契约：异形族舰级「${ship.name}」（${ship.id}）登记了 4 战列舰档却**未登记为"巨兽"用途**——` +
+              `T4 是"**生物巨兽**"专档（船长 2026-09-11 裁定③），须显式登记在 \`ALIEN_BEAST_SHIP_IDS\`（packages/data/src/foe-ships.ts）；` +
+              `目的是防日后随手给杂鱼挂 T4`,
+          )
+        }
+      }
+      tiered++
+    }
+    const normMix = (m?: Partial<Record<string, number>>): string =>
+      Object.entries(m ?? {})
+        .filter(([, w]) => (w ?? 0) > 0)
+        .sort(([x], [y]) => x.localeCompare(y))
+        .map(([k, w]) => `${k}:${w}`)
+        .join(',')
+    let shipCards = 0
+    let slotTotal = 0
+    let mixed = 0
+    let aCompositionCards = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      const ships = def.ships
+      if (!ships || ships.length === 0) continue
+      shipCards++
+      slotTotal += ships.length
+      if (new Set(ships.map((x) => x.ship.id)).size > 1) mixed++
+      for (const slot of ships) {
+        check(
+          known.has(slot.ship.id),
+          `舰级契约：${def.name} 引用了未登记的舰级 ${slot.ship.id}（须登记在 packages/data/src/foe-ships.ts）`,
+        )
+        if (def.foeFamily) {
+          check(
+            slot.ship.family === def.foeFamily,
+            `舰级契约：${def.name}（族 ${def.foeFamily}）引用了族 ${slot.ship.family} 的舰级「${slot.ship.name}」`,
+          )
+        }
+      }
+      const mains = ships.filter((x) => x.escort !== true)
+      check(mains.length >= 1, `舰级契约：${def.name} 没有任何非僚机编成条目（至少需要一艘主体）`)
+      // 主体 = 单位数最多的非僚机条目（数量相同时取先写的；见上方 ③ 的 prime 定义）
+      const prime = mains.reduce<(typeof mains)[number] | undefined>(
+        (best, x) => (best && unitCount(best) >= unitCount(x) ? best : x),
+        undefined,
+      )
+      if (prime && def.tactic) {
+        // 卡面战术是"这一场怎么打"的摘要；混编允许各主体用不同战术（如狙击头目 + 贴脸杂鱼），
+        // 故契约只要求**卡面战术落在主体们的有效战术集合内**（有效 = 卡上覆写优先，2026-09-11 头目多战术）。
+        const effTactics = new Set(mains.map((m) => m.tactic ?? m.ship.tactic))
+        check(
+          effTactics.has(def.tactic),
+          `舰级契约：${def.name} 卡面战术 ${def.tactic} 不在主体编成的有效战术集合内 [${[...effTactics].join(' / ')}]`,
+        )
+      }
+      // **血型 / 构成：逐条主体按「有效值」判定**（2026-09-11 船长裁决①「头目血型随卡片走」）——
+      // 有效 split = 条目 `split` 覆写 ?? 舰级 `split`；卡面 `defProfile` / `dmgMix` 是**卡**的口径，
+      // 必须对**每一条非僚机编成**都成立（否则"头目一份血在卡面描述之外"）。
+      // ⚠ **A 族不做族级血型约束**（船长同日：海盗鱼龙混杂 ⇒ 什么血型都有），血型逐卡自定。
+      // 想配异质编成时的正解 = 在条目里写覆写使其与卡面对齐，而不是让卡面失真。
+      for (const slot of mains) {
+        if (def.defProfile) {
+          const want = foeLayerSplit(def.defProfile)
+          const got = slot.split ?? slot.ship.split
+          const via = slot.split ? '条目 `split` 覆写' : '沿用舰级 split'
+          check(
+            Math.abs(want.s - got.s) < 1e-9 && Math.abs(want.a - got.a) < 1e-9 && Math.abs(want.h - got.h) < 1e-9,
+            `舰级契约：${def.name} 卡面血型 ${def.defProfile}（${want.s}/${want.a}/${want.h}）与编成条目「${slot.ship.name}」（${via}：${got.s}/${got.a}/${got.h}）不一致——` +
+              `船长 2026-09-11：「**头目血型随卡片走**」；若该条目要配别的血型，请写 \`split\` 覆写使其与卡面对齐`,
+          )
+          check(
+            Math.abs(got.s + got.a + got.h - 1) < 1e-9,
+            `舰级契约：${def.name} 的编成条目「${slot.ship.name}」有效血型 Σ ≠ 1（${got.s}+${got.a}+${got.h}）——血型比例须归一`,
+          )
+        }
+        if (def.dmgMix) {
+          const eff = slot.dmgMix ?? slot.ship.dmgMix
+          check(
+            normMix(def.dmgMix) === normMix(eff),
+            `舰级契约：${def.name} 卡面伤害构成（${normMix(def.dmgMix)}）与编成条目「${slot.ship.name}」有效构成（${normMix(eff)}）不一致`,
+          )
+        }
+      }
+      /* ⑥ **A 族编成契约**（2026-09-11 数值落地批，船长确认）——依据 A 族设定：
+       * 「靠数量弥补」（= 杂鱼 ×3）+「一个头目强大带一堆杂鱼」（= 头目 ×1 独占 60% 血）。
+       * a) 编成 = 头目 ×1 + 同族同型杂鱼 ×3（共 4 单位）；b) 头目血量占比 = 60% ±1%（按编成实算）。 */
+      if (def.foeFamily === 'A') {
+        const totalUnits = ships.reduce((n, s) => n + unitCount(s), 0)
+        const bosses = ships.filter((s) => s.ship.elite === true)
+        const minions = ships.filter((s) => s.ship.elite !== true)
+        const bossUnits = bosses.reduce((n, s) => n + unitCount(s), 0)
+        const minionUnits = minions.reduce((n, s) => n + unitCount(s), 0)
+        const minionTypes = new Set(minions.map((s) => s.ship.id))
+        check(
+          bosses.length === 1 && bossUnits === 1,
+          `舰级契约：A 族卡 ${def.name} 的编成应为「**头目舰 ×1** + 杂鱼 ×3」——船长 2026-09-11 设定「**一个头目强大带一堆杂鱼**」；` +
+            `实际头目条目 ${bosses.length} 条 / 头目单位 ${bossUnits} 个（头目 = 登记为 elite 的 A 族舰级）`,
+        )
+        check(
+          minions.length === 1 && minionUnits === 3 && minionTypes.size === 1,
+          `舰级契约：A 族卡 ${def.name} 的编成应为「头目舰 ×1 + **同族同型杂鱼 ×3**」——船长 2026-09-11 设定「**靠数量弥补**」；` +
+            `实际杂鱼条目 ${minions.length} 条（${[...minionTypes].join(' / ')}）/ 杂鱼单位 ${minionUnits} 个（须为 3、且同一条目同型）`,
+        )
+        check(
+          totalUnits === 4,
+          `舰级契约：A 族卡 ${def.name} 编成单位总数应为 **4**（头目 ×1 + 杂鱼 ×3，多舰船补偿系数按 N=4 = 1.6 标定），实际 ${totalUnits}`,
+        )
+        const totalHp = slotsHp(ships)
+        check(totalHp > 0, `舰级契约：A 族卡 ${def.name} 编成总血为 0（无法校验头目血占比）`)
+        const bossHp = slotsHp(bosses)
+        const share = totalHp > 0 ? bossHp / totalHp : 0
+        check(
+          Math.abs(share - 0.6) <= 0.01,
+          `舰级契约：A 族卡 ${def.name} 的**头目血量占比应为 60% ±1%**（按编成实算：Σ舰级血 × hpMul × 数量），实际 ` +
+            `${(share * 100).toFixed(2)}%（头目 ${bossHp.toFixed(2)} / 总血 ${totalHp.toFixed(2)}）——` +
+            `依据船长 2026-09-11 A 族设定：头目强大（独占 60% 血）、杂鱼靠数量弥补（各 40%÷3）`,
+        )
+        aCompositionCards++
+      }
+    }
+    console.log(
+      `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
+        `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）、` +
+        `异形族（C）允许 T4（须登记为"巨兽"用途：${ALIEN_BEAST_SHIP_IDS.join(' / ')}）且不配 T5；` +
+        `A 族编成契约 ${aCompositionCards} 张：头目 ×1 + 同族杂鱼 ×3（共 4 单位）、头目血量 60% ±1%`,
+    )
+  }
+
+  /* ── 增援机制未启用契约（2026-09-11 加）──
+   * 船长裁决原文：「**先完成相应的系统机制，不使用。用作后续机制。**」
+   * 口径：`BattleBalance.foeReinforceEnabled` **关闭期间，任何卡不得携带 `enterAt`**——
+   * 让"未使用"这个状态**由代码守住**（而不是靠人记）：一旦有人在关着开关时给卡写 `enterAt`
+   * （比如以为写了就生效），**内容体检立刻失败并说清依据**。
+   * 启用流程 = 先开开关（`balance.foeReinforceEnabled = true`）再编成条目写 `enterAt`，
+   * 同时按注释解除本契约并补实测（见 `docs/design/foe-reinforce-20260911.md`）。 */
+  {
+    const enabled = DEFAULT_BALANCE.battle.foeReinforceEnabled === true
+    let carriers = 0
+    const named: string[] = []
+    for (const def of ANOMALIES_FLAVORED) {
+      for (const slot of def.ships ?? []) {
+        if (!slot.enterAt) continue
+        carriers++
+        named.push(def.name)
+        check(
+          enabled,
+          `增援机制未启用契约：${def.name} 的编成条目携带了 \`enterAt\`，但总开关 \`foeReinforceEnabled\` 为 false——` +
+            `**单波次内增援机制已实现、但按船长裁决不启用**` +
+            `（船长 2026-09-11：「先完成相应的系统机制，不使用。用作后续机制。」）；` +
+            `要启用请先打开总开关（core \`balance.ts\`），再同步解除本契约（tools/content-check.ts）并补实测`,
+        )
+      }
+    }
+    console.log(
+      `· 增援机制未启用契约：总开关 **${enabled ? '开' : '关'}**，${carriers} 张卡携带 \`enterAt\`` +
+        `${carriers > 0 ? `（${[...new Set(named)].join('、')}）` : ''}——` +
+        `机制（三种触发 / 存档零迁移 / 距离重开）已实现并有用例覆盖，**按船长裁决不启用，留作后续机制**`,
+    )
+  }
+
+  /* ── 族→战术契约（2026-09-11 加）──
+   * 船长 2026-09-11 定 A 族性格「**鱼龙混杂，所以应该各个战术的敌人都有**」→ A 族三种战术全合法。
+   * **B 族（武装拾荒者）**：船长 2026-09-11 七裁决「**战术性格统一为 orbit**」→ **只允许 orbit**。
+   * 其余族正按字母顺序逐族商讨中，**只登记已裁定的族**，未登记 = 不校验（不预设、不猜）。 */
+  {
+    const FAMILY_TACTICS: Partial<Record<string, readonly string[]>> = {
+      A: ['brawl', 'orbit', 'kite'], // 鱼龙混杂（船长 2026-09-11）
+      B: ['orbit'], // 武装拾荒者·全族 orbit（船长 2026-09-11「战术性格统一为 orbit」）
+    }
+    let checked = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      const allow = def.foeFamily ? FAMILY_TACTICS[def.foeFamily] : undefined
+      if (!allow) continue
+      const tactics =
+        def.ships && def.ships.length > 0
+          ? def.ships.filter((x) => x.escort !== true).map((x) => x.tactic ?? x.ship.tactic)
+          : [def.tactic ?? 'orbit']
+      for (const t of tactics) {
+        checked++
+        check(
+          allow.includes(t),
+          `族→战术契约：${def.name}（族 ${def.foeFamily}）用了战术 ${t}，超出该族已裁定的允许范围 [${allow.join(' / ')}]`,
+        )
+      }
+    }
+    console.log(
+      `· 族→战术契约：${checked} 处族内战术声明均在已裁定范围内（**A 族 = 鱼龙混杂三战术全允许 / B 族 = 统一 orbit**；其余族未裁定、不校验）`,
     )
   }
 }
@@ -1310,6 +1734,43 @@ for (const m of MODULES) {
       `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
     )
   }
+  /* ── 退役窝点卡契约（2026-09-11 船长「按方案 2 执行」）──
+   * 背景：B 族两卡（新港商路护航令 / 占港武装通缉）的 `lairCore` **已退役删除**（B 族无窝点），
+   * 但 `data/context.ts` 的稀有残骸注册改用显式白名单 `RETIRED_LAIR_CARD_IDS` 保住旧档兼容。
+   * 本契约四条（防止白名单腐烂 / 防止字段被加回来 / 防止退役卡复活成窝点候选）：
+   * ①白名单里的 id **必须真实存在于 ANOMALIES**（写错 id = 白名单形同虚设，旧档照样"未知物品"）；
+   * ②这些卡 **`lairCore` 必须确实为空**（否则"退役"没落地，或后人把字段加回来）；
+   * ③这些卡**必须仍被 `isLairCandidate()` 排除**（否则退役卡重新变成窝点候选、又派发起来）；
+   * ④对应的**稀有残骸物品仍能被注册**（在 ctx.items 里）——这正是白名单存在的唯一目的。 */
+  {
+    let retiredChecked = 0
+    for (const id of RETIRED_LAIR_CARD_IDS) {
+      const def = ANOMALIES_FLAVORED.find((d) => d.id === id)
+      check(!!def, `退役窝点卡契约：白名单 id「${id}」在 ANOMALIES 里不存在（写错 id ⇒ 旧档稀有残骸照样认不出）`)
+      if (!def) continue
+      retiredChecked += 1
+      check(
+        !hasLairCore(def),
+        `退役窝点卡契约：${def.name}（${def.id}）的 lairCore 应为空——2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」，` +
+          `字段退役后**不得加回来**（旧档兼容已由 RETIRED_LAIR_CARD_IDS 白名单承接）`,
+      )
+      check(
+        !isLairCandidate(def),
+        `退役窝点卡契约：${def.name}（${def.id}）仍是窝点候选（isLairCandidate 为真）——退役卡不得重新派发窝点`,
+      )
+      const rareId = rareWreckItemIdOf(def.id)
+      check(
+        lairCtx.items.has(rareId),
+        `退役窝点卡契约：旧档稀有残骸 ${rareId} 未注册（data/context.ts 的注册条件须含 RETIRED_LAIR_CARD_IDS.has(a.id)）` +
+          `——否则旧档里已有的这件的会显示成"未知物品"`,
+      )
+    }
+    console.log(
+      `· 退役窝点卡契约：${retiredChecked} 张退役卡字段已清、白名单有效、稀有残骸仍可识别` +
+        `（${[...RETIRED_LAIR_CARD_IDS].map((id) => rareWreckItemIdOf(id)).join(' / ')}）`,
+    )
+  }
+
   /* ── 窝点地图级别契约（2026-09-10 船长定：档位由地图级别硬封顶） ──
    * ①每张窝点候选卡必须**显式标级**（`lairLevel` 缺省 3 只是"漏标不误伤"，不是可省；
    *   忘了标级的地图会永远出全档，与"越低级的图越出不了高档位"直接冲突）；
@@ -1354,6 +1815,82 @@ for (const m of MODULES) {
     console.log(
       `· 窝点级别契约：${total} 张候选卡全数显式标级（L1×${levelCount[1]} / L2×${levelCount[2]} / L3×${levelCount[3]}），` +
         `${levelByFam.size} 个敌族各至少一张 3 级`,
+    )
+  }
+
+  /* ── 窝点派生契约（2026-09-11 加，船长裁决④「按甲处理」）──
+   * 派生卡（`lairAnomalyOf`，tier 1/2/3）必须满足两条：
+   * ① **每波单位数 ≥ 1**：旧路径的波表（`LAIR_WAVES`）按"每波几队"描述**旧路径**编队，
+   *    而**舰级路径**的编队由 `slot.wave` 决定（A 族六卡全在 `wave: 0`）⇒ 套用波表会让第 2/3 波
+   *    **刷出 0 个单位**（探针实测）；舰级路径派生卡因此**维持单波**，本例即守这件事——
+   *    将来谁把波表接回舰级路径，这里立刻失败。
+   * ② **派生后总血 / 总火力随 tier 单调不降、且不低于主题卡**：旧路径靠"威胁 → 血/火力曲线"自动变强；
+   *    **舰级路径是绝对值、不会自己涨** ⇒ 派生时必须按「原威胁 → 派生威胁」的比例同乘 `hpMul`/`dmgMul`。
+   *    （火力用"舰级单发 × dmgMul × 数量"作**单调性代理值**——不含命中/补偿，只比档位间强弱。）
+   * 适用范围：② 只对**舰级路径**候选卡生效（旧路径由威胁曲线负责，天生随 tier 变强）。 */
+  {
+    /** 每波单位数：舰级路径数 `slot.wave`，旧路径读波表；无波表 = 单波 1 条 */
+    const unitsInWave = (card: AnomalyDef, waveIdx: number): number => {
+      const slots = card.ships
+      if (slots && slots.length > 0) {
+        return slots
+          .filter((s) => (s.wave ?? 0) === waveIdx)
+          .reduce((n, s) => n + Math.max(1, Math.floor(s.count ?? 1)), 0)
+      }
+      const w = card.waves?.[waveIdx]
+      return w ? Math.max(0, Math.floor(w.units ?? 1)) : waveIdx === 0 ? 1 : 0
+    }
+    /** 舰级路径派生卡的**总血 / 火力代理值**（绝对值口径，不含命中与多舰补偿——只比档位单调） */
+    const hpOf = (card: AnomalyDef): number =>
+      (card.ships ?? []).reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)), 0)
+    const powerOf = (card: AnomalyDef): number =>
+      (card.ships ?? []).reduce(
+        (n, s) => n + s.ship.shotDmg * (s.dmgMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)),
+        0,
+      )
+    let waveChecked = 0
+    let scaledCards = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      if (!isLairCandidate(def)) continue
+      const isShipPath = !!def.ships && def.ships.length > 0
+      let prevHp = isShipPath ? hpOf(def) : 0
+      let prevPower = isShipPath ? powerOf(def) : 0
+      for (const tier of [1, 2, 3] as const) {
+        const lair = lairAnomalyOf(def, tier)
+        // ① 每波 ≥ 1 单位（波表没写 = 单波）
+        const waveCount = Math.max(1, lair.waves?.length ?? 1)
+        for (let w = 0; w < waveCount; w++) {
+          const units = unitsInWave(lair, w)
+          waveChecked++
+          check(
+            units >= 1,
+            `窝点派生契约：${def.name} 的 ${tier} 档派生卡**第 ${w + 1} 波刷出 0 个单位**——` +
+              `舰级路径的编队由 \`slot.wave\` 决定，套用旧路径波表（LAIR_WAVES）会刷空（探针实测）；` +
+              `舰级路径的窝点应维持单波（或按 \`slot.wave\` 显式分配条目后再接波次）`,
+          )
+        }
+        if (!isShipPath) continue
+        // ② 总血 / 火力随 tier **严格递增**，且第一档就高于主题卡
+        // （"单调不降"若按 ≥ 判定，把缩放整个摘掉也能过——负向验证要求"摘掉即报错"，故用严格递增）
+        const hpNow = hpOf(lair)
+        const powerNow = powerOf(lair)
+        check(
+          hpNow > prevHp + 1e-6,
+          `窝点派生契约：${def.name} 的 ${tier} 档派生卡总血 ${hpNow.toFixed(1)} **未高于**上一档/主题卡 ${prevHp.toFixed(1)}——` +
+            `舰级路径是绝对值、不会随威胁自动变强，派生时必须按「原威胁 → 派生威胁」的比例缩放 \`hpMul\`（船长 2026-09-11 裁决④「按甲处理」）`,
+        )
+        check(
+          powerNow > prevPower + 1e-6,
+          `窝点派生契约：${def.name} 的 ${tier} 档派生卡火力代理值 ${powerNow.toFixed(1)} **未高于**上一档/主题卡 ${prevPower.toFixed(1)}——同上（须同乘 \`dmgMul\`）`,
+        )
+        prevHp = hpNow
+        prevPower = powerNow
+      }
+      if (isShipPath) scaledCards++
+    }
+    console.log(
+      `· 窝点派生契约：${scaledCards} 张舰级路径候选卡的 tier1/2/3 派生卡**总血与火力代理值随档严格递增**（且首档高于主题卡）；` +
+        `${waveChecked} 个波次全部 ≥ 1 单位（舰级路径派生卡维持单波——旧波表不适用于 \`slot.wave\` 编队）`,
     )
   }
   /* 专属装备的"来源唯一"契约（2026-09-10 加；2026-09-10 扩到专属**物品**）：
@@ -1542,6 +2079,69 @@ for (const m of MODULES) {
   console.log(
     `· 模块跨族字段契约：${MODULES.length} 件装备中 ${counted} 处"槽位族之外的搭车加成"，全部已登记且界面有呈现口径` +
       `（${found.length > 0 ? found.join('、') : '无'}）`,
+  )
+}
+
+/* ── 舰种契约（2026-09-11 加；船长定案：舰种 5 档、敌我共用、按等效质量落档）──
+ * 背景：舰种**收敛为 5 档**（原 7 档作废），「重型巡洋」归巡洋舰档、「战列巡洋」归战列舰档
+ * （皆为称号不是独立档）。本契约只做**归类校验**，不改任何船的 tier、不重切任何质量区间：
+ *   ① 每艘船的 `tier` 必须与其**等效质量落档**一致——不一致即报错并点名
+ *      （船名/质量/等效质量/实际 tier/应为 tier）⇒ 专抓"质量改了却忘改档"或"档标错"；
+ *   ② 每个舰种档**恰好**一档命名 + 一个基准速度，且基准速度落在合理值域 100~500；
+ *   ③ 打印一行归类统计（各档船数 + 五个基准速度）。
+ * ⚠ 若 ① 真抓到不一致：**不要顺手改船的 tier**——把不一致的船交船长裁决。 */
+{
+  /** 等效质量落在哪一档（自高向低取第一个"下界 ≤ 等效质量"的档；低于最低下界 = 0 表示落不进任何档） */
+  const tierOfMass = (eq: number): number => {
+    for (const t of [5, 4, 3, 2, 1] as const) {
+      if (eq >= HULL_CLASS_MASS_RANGE[t][0]) return t
+    }
+    return 0
+  }
+  const classCount: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  let matched = 0
+  for (const ship of SHIPS) {
+    const eq = equivalentMassOf(ship)
+    const expect = tierOfMass(eq)
+    check(
+      expect !== 0,
+      `舰种契约：${ship.name}（${ship.id}）等效质量 ${eq} 低于最低档下界 ${HULL_CLASS_MASS_RANGE[1][0]}（落不进任何舰种档）`,
+    )
+    check(
+      ship.tier === expect,
+      `舰种契约：${ship.name}（${ship.id}）质量 ${ship.massKg} → 等效质量 ${eq}，实际 tier ${ship.tier}，应为 tier ${expect}（落档区间与 tier 不一致；请船长裁决，勿自行改档）`,
+    )
+    if (ship.tier === expect && expect !== 0) matched += 1
+    if (expect !== 0) classCount[expect] += 1
+  }
+  for (const t of [1, 2, 3, 4, 5] as const) {
+    const [lo, hi] = HULL_CLASS_MASS_RANGE[t]
+    check(
+      Number.isFinite(lo) && hi > lo,
+      `舰种契约：${HULL_CLASS_NAME[t]}（T${t}）等效质量区间非法 [${lo}, ${hi})`,
+    )
+    if (t < 5) {
+      check(
+        HULL_CLASS_MASS_RANGE[t][1] === HULL_CLASS_MASS_RANGE[(t + 1) as 2 | 3 | 4 | 5][0],
+        `舰种契约：${HULL_CLASS_NAME[t]}（T${t}）与 ${HULL_CLASS_NAME[(t + 1) as 2 | 3 | 4 | 5]}（T${t + 1}）的质量区间不接续（有缝或重叠）`,
+      )
+    }
+    check(
+      typeof HULL_CLASS_NAME[t] === 'string' && HULL_CLASS_NAME[t].length > 0,
+      `舰种契约：T${t} 档缺少舰种命名`,
+    )
+    const spd = HULL_CLASS_BASE_SPEED[t]
+    check(
+      typeof spd === 'number' && Number.isFinite(spd) && spd >= 100 && spd <= 500,
+      `舰种契约：${HULL_CLASS_NAME[t]}（T${t}）基准速度 ${spd} 越界（合理值域 100~500 m/s）`,
+    )
+  }
+  const shown = ([1, 2, 3, 4, 5] as const)
+    .map((t) => `${HULL_CLASS_NAME[t]} ${classCount[t]}`)
+    .join(' / ')
+  console.log(
+    `· 舰种契约：${matched}/${SHIPS.length} 艘船归类与等效质量一致（${shown}）；` +
+      `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join('/')}`,
   )
 }
 
