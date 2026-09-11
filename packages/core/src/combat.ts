@@ -1000,7 +1000,10 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     const dps = uThreat * bal.foeDpsPerThreat
     // 2026-09-08（船长定：能量=光束必中；动能/爆炸普遍高命中 0.85 + 逐卡低命中特例）：
     // 非能量单发 = DPS×装填 ÷ 有效命中 × foeHitCompMul（回避>0 期望上升的等效补偿，方案 A）；
-    // 能量 effHit=1 不消费补偿；foeDmgMul 为逐卡等效回退/个性口
+    // 能量 effHit=1 不消费补偿。
+    // ⚠ 2026-09-11 船长裁决「先移除所有逐卡伤害倍率，按照实际算」：原"逐卡等效回退倍率口"
+    // （2026-09-08 为能量光束必中化引入）**已退休、字段已从类型上删除**——单发一律按本链
+    // **实际推导值**算，不再有等效回退旋钮；要逐卡点名伤害走下面的 `foeShotDmg` 直写。
     const effHit = type === 'plasma' ? 1 : anomaly.foeHitRate ?? bal.foeHitRate
     // 2026-09-10 船长：**基础单发可直接写死**（`foeShotDmg`）——短路"威胁份额 × foeDpsPerThreat × 装填 × 补偿"
     // 这条推导链，用于需要逐卡点名基础伤害的卡（首例 = 深渊之门卫队：推得 90 → 直接定 45）。
@@ -1008,7 +1011,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
       anomaly.foeShotDmg ??
       Math.max(
         1,
-        Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1) * (anomaly.foeDmgMul ?? 1)),
+        Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1)),
       )
     // 2026-09-10 船长（窝点混伤）：按火力构成拆成逐系单发（Σ = 总单发，敌总伤不变）。
     // 纯系卡只有一条 → 与旧行为完全一致；混伤卡 = 主 60% / 副 40% 两键。

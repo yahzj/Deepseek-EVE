@@ -33,7 +33,7 @@ const PROPOSAL = process.argv.includes('--proposal')
 const TACTIC_ON = process.argv.includes('--tactic')
 /** 血量求解：在"中位技能 × S2 灰鲭鲨"参考行上，对每张卡二分求"打完剩 TARGET% 残血"所需的 foeHpOverride */
 const SOLVE_HP = process.argv.includes('--solve-hp')
-/** 火力扫描：对手挂 foeDmgMul 的两张能量卡，扫一遍倍率看承伤 */
+/** 火力扫描：两张能量卡按"基础单发 × 系数"扫一遍看承伤（系数经 `foeShotDmg` 直写落码） */
 const DMG_SWEEP = process.argv.includes('--dmg-sweep')
 const HP_TARGET_PCT = 45
 /** 求解目标：`rem` = 打完剩 TARGET% 残血（orbit/kite 口径）；`dur` = 时长命中该段 D(T)（brawl 口径） */
@@ -436,7 +436,7 @@ async function main(): Promise<void> {
       )
       console.log(
         `  伤害构成     ${Object.entries(cur.dmgMix ?? {}).map(([t, v]) => `${t} ${v}`).join(' : ') || '（缺省动能）'}` +
-          `　foeDmgMul ${cur.foeDmgMul ?? 1}　落点衰减 ${w.falloff}`,
+          `　落点衰减 ${w.falloff}`,
       )
       console.log(
         `  速度         现状 ${f0.speedMps}（战斗机动 ${Math.round(c0)}）→ 提案 **${f1.speedMps}**（战斗机动 ${Math.round(c1)}）`,
@@ -534,7 +534,9 @@ async function main(): Promise<void> {
     }
   }
 
-  /* 火力扫描：两张挂 foeDmgMul 的能量卡（船长 2026-09-10「感觉可以上调」）
+  /* 火力扫描：两张能量卡的基础单发（船长 2026-09-10「感觉可以上调」）
+   * 扫描方式是**按系数直写 `foeShotDmg`**（原始推导单发 × 系数）——原"逐卡等效回退倍率口"
+   * 已于 2026-09-11 退休（船长「先移除所有逐卡伤害倍率，按照实际算」），本段不受影响。
    * 2026-09-10 补：同时跑「只堆主系」与「全堆能量抗」两种配装——**配装回报**必须看得出来 */
   if (DMG_SWEEP) {
     const FITS: Array<{ label: string; mid: string[]; low: string[] }> = [
@@ -549,7 +551,7 @@ async function main(): Promise<void> {
       const baseShot = uThreat * bal.foeDpsPerThreat * (bal.foeReloadMs / 1000)
       console.log(
         `\n── ${a0.threat} ${a0.name}（${id} · ${a0.tactic ?? 'orbit'} · 僚机 ${escorts}）──\n` +
-          `   份额 ${uThreat.toFixed(2)} × 0.8 × 4.0s = **基础单发 ${baseShot.toFixed(1)}**（未乘任何回退）`,
+          `   份额 ${uThreat.toFixed(2)} × 0.8 × 4.0s = **基础单发 ${baseShot.toFixed(1)}**（按威胁链实际推导，无任何逐卡倍率）`,
       )
       for (const mul of [0.3, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0]) {
         const patched: SimContext = {
@@ -772,7 +774,6 @@ async function main(): Promise<void> {
         : String(w.shotDmg)
       const quirks = [
         a.foeShotDmg !== undefined ? `单发直写 ${a.foeShotDmg}` : '',
-        a.foeDmgMul !== undefined ? `伤害×${a.foeDmgMul}` : '',
         a.foeFalloff !== undefined ? `远端衰减 ${a.foeFalloff}` : '',
         a.foeHitRate !== undefined ? `命中覆写 ${a.foeHitRate}` : '',
         (a.escorts ?? 0) > 0 ? `僚机 ${a.escorts}` : '',
@@ -845,7 +846,6 @@ async function main(): Promise<void> {
       const shot = w.shotsByType ? Object.entries(w.shotsByType).map(([t, d]) => `${t} ${d}`).join('+') : String(w.shotDmg)
       const quirks = [
         a.foeShotDmg !== undefined ? `单发直写${a.foeShotDmg}` : '',
-        a.foeDmgMul !== undefined ? `伤害x${a.foeDmgMul}` : '',
         a.foeFalloff !== undefined ? `衰减${a.foeFalloff}` : '',
         a.foeHitRate !== undefined ? `命中${a.foeHitRate}` : '',
       ].filter(Boolean).join('；')
