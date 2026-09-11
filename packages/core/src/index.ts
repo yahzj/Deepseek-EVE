@@ -512,6 +512,8 @@ export {
   effectiveHitMul,
   // 维修脉冲周期（2026-09-11：内容体检「产物说明契约」按它核对说明里的「每 N 秒」）
   REPAIR_PULSE_MS,
+  // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
+  DRONE_SKILL,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
 

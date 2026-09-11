@@ -44,6 +44,7 @@ import {
   MODULE_SLOTS,
   typeLayerMult,
   REPAIR_PULSE_MS,
+  DRONE_SKILL,
   MINEABLE_KINDS,
   RACK_SLOTS,
   RARE_WRECK_VOLUME_M3,
@@ -535,6 +536,214 @@ for (const sbp of SHIP_BLUEPRINTS) {
   for (const m of MODULES) scan('装备', m)
   for (const i of ITEMS) scan('物品', i)
   console.log(`· 产物说明契约：核对 ${total} 条数值声明（装备 ${MODULES.length} 件 + 物品 ${ITEMS.length} 种），其中舱位换算 ${countHints} 处；无法解释 ${unexplained} 条`)
+}
+
+/* ── 技能说明契约（2026-09-11 加，船长：「另开一批做技能说明 ↔ 引擎效果核查」）──
+ * 背景：技能说明里每个数值都用 ⟦⟧ 标出（内容工作台口径：改 ⟦⟧ 需与引擎接线一致），
+ * 但过去**没有任何自动检查**——改引擎数值忘改说明、或技能压根没接线，都只有玩家能发现。
+ * 本契约把三处来源钉在一起（**引擎为准**）：
+ *   ① **平衡表**：凡 `xxxSkillId/skillIds/familySkillIds` 与同层 `xxxPerLevel` 成对出现的地方，
+ *      技能说明必须写出该每级值（含满级 = 每级 × 5）——如 mining.yieldPerLevel 0.06 ↔「每级 +6%」；
+ *   ② **引擎导出的技能参数对象**：`DRONE_SKILL`（无人机六技能的每级值 + 回收基础/上限）；
+ *   ③ **引擎内联常量表**（下方 `INLINE`）：数值写在各模块函数里（`1 - 0.04 * lv` 之类），
+ *      逐条登记 `技能 id → 每级值 → 接线位置`；`wired: false` 表示**说明承诺了、但引擎里查无接线**
+ *      （只警告不拦，与蓝图命名差异同口径）——2026-09-11 核查时唯一命中 = `cartography` 星图测绘学。
+ * 另加**反向断言**：说明里带 ⟦⟧ 数值的技能必须能在上述三处之一登记，防新技能悄悄写一组没人负责的数。 */
+{
+  type Pair = { skill: string; per: number; from: string }
+  const pairs: Pair[] = []
+  const isSkillKey = (k: string): boolean => /skill/i.test(k)
+  /** 键名去掉尾部 SkillId(s)/PerLevel 后的「语义前缀」，用于把技能名与每级值配到一起 */
+  const prefixOf = (k: string): string => k.replace(/skill[a-z]*ids?$/i, '').replace(/perlevel$/i, '').toLowerCase()
+  const related = (a: string, b: string): boolean =>
+    a === b || a === '' || b === '' || a.startsWith(b) || b.startsWith(a)
+  const collect = (o: unknown, path: string): void => {
+    if (!o || typeof o !== 'object') return
+    if (Array.isArray(o)) {
+      o.forEach((v, i) => collect(v, `${path}[${i}]`))
+      return
+    }
+    const obj = o as Record<string, unknown>
+    const ids: Array<{ id: string; prefix: string }> = []
+    const pers: Array<{ per: number; prefix: string }> = []
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === 'string' && isSkillKey(k)) ids.push({ id: v, prefix: prefixOf(k) })
+      else if (typeof v === 'number' && /per\s*level/i.test(k)) pers.push({ per: v, prefix: prefixOf(k) })
+      else if (Array.isArray(v) && isSkillKey(k)) {
+        for (const x of v) if (typeof x === 'string') ids.push({ id: x, prefix: prefixOf(k) })
+      } else if (v && typeof v === 'object' && isSkillKey(k)) {
+        for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) {
+          // industrySkillSlots: { '技能 id': 每级工位数 }——记录本身就是"技能 → 每级值"的成对表
+          if (typeof v2 === 'number') pairs.push({ skill: k2, per: v2, from: `${path}.${k}` })
+          // familySkillIds: { 武器族: '技能 id' }——与同层 familySkillPerLevel 配对
+          else if (typeof v2 === 'string' && !isSkillKey(k2)) ids.push({ id: v2, prefix: prefixOf(k) })
+        }
+      }
+    }
+    for (const i of ids) for (const p of pers) if (related(i.prefix, p.prefix)) pairs.push({ skill: i.id, per: p.per, from: `${path}（${i.prefix || '技能'} ↔ ${p.prefix}）` })
+    for (const [k, v] of Object.entries(obj)) if (v && typeof v === 'object') collect(v, path ? `${path}.${k}` : k)
+  }
+  collect(DEFAULT_BALANCE, 'balance')
+  // ② 引擎导出的无人机技能参数
+  pairs.push(
+    { skill: 'drone-warfare', per: DRONE_SKILL.warfarePerLevel, from: 'combat.DRONE_SKILL.warfarePerLevel' },
+    { skill: 'drone-strike', per: DRONE_SKILL.strikePerLevel, from: 'combat.DRONE_SKILL.strikePerLevel' },
+    { skill: 'drone-durability', per: DRONE_SKILL.durabilityPerLevel, from: 'combat.DRONE_SKILL.durabilityPerLevel' },
+    { skill: 'drone-reinforce', per: DRONE_SKILL.reinforcePerLevel, from: 'combat.DRONE_SKILL.reinforcePerLevel' },
+    { skill: 'drone-evasion', per: DRONE_SKILL.evasionPerLevel, from: 'combat.DRONE_SKILL.evasionPerLevel' },
+    { skill: 'drone-recovery', per: DRONE_SKILL.recoveryPerLevel, from: 'combat.DRONE_SKILL.recoveryPerLevel' },
+  )
+  // ③ 引擎内联常量（2026-09-11 逐条按现场代码登记；wired:false = 说明承诺但引擎无接线）
+  const INLINE: Array<{ skill: string; per: number | null; call: string | null; note?: string }> = [
+    { skill: 'spaceship-command', per: 0.02, call: 'travel.ts travelTimeFactor' },
+    { skill: 'mining-frigate', per: 0.03, call: 'balance.mining.timePerLevel' },
+    { skill: 'industrial-ops', per: 0.04, call: 'mining.ts（industrial 族产量）' },
+    { skill: 'armed-ops', per: 0.03, call: 'combat.ts（armed 族单发）' },
+    { skill: 'armored-ops', per: 0.04, call: 'combat.ts（armored 族甲/结构容量）' },
+    { skill: 'astro-geology', per: 0.04, call: 'mining.ts（全矿产量）' },
+    { skill: 'deep-hole-blasting', per: 0.06, call: 'mining.ts（低品位矿 ≤55 ISK）' },
+    { skill: 'deep-space-harvesting', per: 0.05, call: 'mining.ts（气/冰）' },
+    { skill: 'rich-vein-prospecting', per: 0.2, call: 'mining.ts richVeinFactor' },
+    { skill: 'core-smelting', per: 0.04, call: 'industry.ts（主控手动炉周期）' },
+    { skill: 'furnace-expansion', per: 0.06, call: 'industry.ts（主控手动炉批容）' },
+    { skill: 'batch-production', per: 0.03, call: 'manufacturing.ts calcBuildDurationMs' },
+    { skill: 'materials', per: 0.015, call: 'manufacturing.ts materialFactor' },
+    { skill: 'industrial-automation', per: 0.05, call: 'industry.ts / manufacturing.ts（炉线与制造线周期）' },
+    { skill: 'ai-expert', per: 1, call: 'ai.ts aiCoreCap（每级 +1 枚核心上限）' },
+    { skill: 'navigation', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
+    { skill: 'warp-drive-operation', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
+    { skill: 'acceleration-control', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
+    { skill: 'component-standardization', per: 0.008, call: 'manufacturing.ts materialFactor' },
+    { skill: 'ai-servicing', per: 0.03, call: 'ai.ts（副船采矿循环）' },
+    { skill: 'offline-ops', per: 0.2, call: 'simulation.ts simulateOffline（基础 8 小时）' },
+    { skill: 'station-engineering', per: 0.08, call: 'station.ts engFactor' },
+    { skill: 'salvage-recycling', per: 0.04, call: 'industry.ts（回收炉周期）' },
+    { skill: 'salvage-rigging', per: 0.03, call: 'salvaging.ts（打捞器周期）' },
+    { skill: 'wreck-assaying', per: 0.2, call: 'salvaging.ts assayChanceOf（×1.2/级）' },
+    { skill: 'salvage-refining', per: 0.08, call: 'salvage.ts（保底矿物）' },
+    { skill: 'energy-management', per: 0.03, call: 'combat.ts（激光单发）' },
+    { skill: 'gunnery', per: 0.05, call: 'balance.battle.gunneryDmgPerLevel（跨节点配对）' },
+    { skill: 'fire-control', per: 0.03, call: 'combat.ts（炮台/导弹命中）' },
+    { skill: 'reload-drills', per: 0.04, call: 'combat.ts（装填）' },
+    { skill: 'ammunition-condensing', per: 0.08, call: 'combat.ts（出发预载弹药）' },
+    { skill: 'drone-servicing', per: 0.04, call: 'combat.ts（无人机装填）' },
+    { skill: 'shield-operation', per: 0.04, call: 'combat.ts（护盾容量）' },
+    { skill: 'hull-upgrades', per: 0.04, call: 'combat.ts（甲/结构容量）' },
+    { skill: 'shield-tuning', per: 0.02, call: 'combat.ts tune（护盾三系抗）' },
+    { skill: 'armor-tuning', per: 0.02, call: 'combat.ts tune（装甲三系抗）' },
+    { skill: 'repair-engineering', per: 0.1, call: 'shipyard.ts（停站维修费）' },
+    { skill: 'station-protocol', per: 0.05, call: 'shipyard.ts（停站维修费）' },
+    { skill: 'hull-quick-repair', per: 0.1, call: 'shipyard.ts（停站修理组件恢复量）' },
+    { skill: 'ai-core-dispatch', per: 0.02, call: 'balance.aiCore.dispatchPerLevel（百分点）' },
+    { skill: 'accelerated-learning', per: 0.04, call: 'training.ts trainingTimeFactor' },
+    { skill: 'marketing', per: 0.012, call: 'market.ts marketSellSkillMult' },
+    { skill: 'source-sweeping', per: 0.1, call: 'market.ts SWEEP_PER_LEVEL（×1.1/级）', srcNear: false },
+    { skill: 'secondhand-market', per: 0.02, call: 'market.ts SECONDHAND_PER_LEVEL', srcNear: false },
+    { skill: 'galactic-happenings', per: 0.08, call: 'events.ts eventCadenceFactor + expedition.ts（×1.15/级）' },
+    { skill: 'event-dividend', per: 0.15, call: 'events.ts（事件现金）' },
+    { skill: 'signal-analysis', per: 0.08, call: 'explore.ts scanSkillFactor' },
+    { skill: 'signal-filtering', per: 0.06, call: 'explore.ts scanSkillFactor' },
+    { skill: 'salvage-diving', per: 0.12, call: 'expedition.ts lootFactor + salvaging.ts' },
+    { skill: 'seizure-appraisal', per: 0.1, call: 'encounters.ts（缴获）' },
+    { skill: 'lowsec-survival', per: 0.12, call: 'encounters.ts（被抢上限）' },
+    { skill: 'deep-space-logistics', per: 0.04, call: 'inventory.ts（货仓容量）' },
+    { skill: 'hauler-ops', per: 0.05, call: 'inventory.ts（hauler 族货仓）' },
+    { skill: 'compression', per: 0.06, call: 'inventory.ts（矿/气/冰体积）' },
+    { skill: 'hold-management', per: 0.03, call: 'inventory.ts（货仓容量）' },
+    { skill: 'bounty-hunting', per: 0.08, call: 'expedition.ts bountyRewardFactor' },
+    { skill: 'cartography', per: 0.06, call: null, note: '说明写「前往扫描点的航行耗时 −6%/级」，但扫描任务的**去程已取消**（就地展开），引擎与界面里查无此技能引用——待船长裁决接活或清除' },
+  ]
+  const skillById = new Map(SKILLS.map((s) => [s.id, s]))
+  const claimsOfSkill = (d: string): number[] => [...d.matchAll(/⟦([\d.]+)/g)].map((m) => Number(m[1]))
+  let checked = 0
+  let srcChecked = 0
+  const unwired: string[] = []
+  const registered = new Set<string>()
+  /** 内联常量的**现场复核**：登记表里的每级值必须仍出现在该技能的读取点附近
+   * （说明↔表 只能防"改说明忘改数"，这一步才防"改引擎数忘改说明"）。
+   * `srcNear: false` 的条目 = 数值写在文件级常量里（读取点附近看不到），只做表 ↔ 说明 核对。 */
+  const root = process.cwd()
+  const srcCache = new Map<string, string>()
+  const sourceOf = (call: string): string | null => {
+    const m = call.match(/([a-z0-9-]+\.tsx?)/i)
+    return m ? `packages/core/src/${m[1]}` : null
+  }
+  const nearCheck = (item: { skill: string; per: number | null; call: string | null; srcNear?: boolean }): void => {
+    if (item.per === null || !item.call || item.srcNear === false) return
+    const rel = sourceOf(item.call)
+    if (!rel) return
+    let text = srcCache.get(rel)
+    if (text === undefined) {
+      try {
+        text = readFileSync(join(root, rel), 'utf8')
+      } catch {
+        return
+      }
+      srcCache.set(rel, text)
+    }
+    const needle = `'${item.skill}'`
+    if (!text.includes(needle)) return // 该技能不是在本文件用 id 字面量读取的（如经 balance 表间接引用）——跳过现场复核
+    srcChecked += 1
+    let seen = 0
+    let at = text.indexOf(needle)
+    while (at >= 0) {
+      seen += 1
+      const win = text.slice(Math.max(0, at - 400), at + 400)
+      // 线性 +N%/级 与乘算式 ×(1+N)/级 两种写法都认
+      if (win.includes(String(item.per)) || win.includes(String(Number((1 + item.per).toFixed(4))))) return
+      at = text.indexOf(needle, at + 1)
+    }
+    check(
+      seen === 0,
+      `技能说明契约：${item.skill} 的每级值 ${item.per} 在 ${rel} 的读取点附近已找不到——引擎改了数值（请同步技能说明，并按新值更新本契约登记表）`,
+    )
+  }
+  const verify = (p: Pair): void => {
+    const def = skillById.get(p.skill)
+    if (!def) {
+      check(false, `技能说明契约：${p.from} 指向的技能 ${p.skill} 不在技能目录中`)
+      return
+    }
+    registered.add(p.skill)
+    const claims = claimsOfSkill(def.description)
+    if (claims.length === 0) return
+    checked += 1
+    // 每级值本身，或它的 1~5 倍（满级/阶段值），或"乘算式"×1.1/×1.2 系的 1+每级值
+    const allowed = new Set<number>()
+    for (const lv of [1, 2, 3, 4, 5]) {
+      allowed.add(Number((p.per * 100 * lv).toFixed(4)))
+      allowed.add(Number((p.per * lv).toFixed(4)))
+      allowed.add(Number((1 + p.per * lv).toFixed(4)))
+    }
+    const hit = claims.some((c) => [...allowed].some((a) => Math.abs(a - c) < 0.051))
+    check(hit, `技能说明契约：技能「${def.name}」(${p.skill}) 说明写的是 ⟦${claims.join('% / ')}⟧，而 ${p.from} 是每级 ${p.per}——说明与引擎对不上`)
+  }
+  for (const p of pairs) verify(p)
+  for (const item of INLINE) {
+    registered.add(item.skill)
+    const def = skillById.get(item.skill)
+    if (!def) {
+      check(false, `技能说明契约：内联表里的 ${item.skill} 不在技能目录中`)
+      continue
+    }
+    if (!item.call) {
+      unwired.push(`${def.name}（${item.skill}）：${item.note ?? '说明承诺了效果，但引擎里查无接线'}`)
+      continue
+    }
+    if (item.per === null) continue
+    verify({ skill: item.skill, per: item.per, from: `内联表 · ${item.call}` })
+    nearCheck(item)
+  }
+  // 反向断言：说明里带 ⟦⟧ 的技能必须登记（防新技能悄悄写数）
+  for (const s of SKILLS) {
+    if (claimsOfSkill(s.description).length > 0 && !registered.has(s.id)) {
+      check(false, `技能说明契约：技能「${s.name}」(${s.id}) 说明里有 ⟦数值⟧ 却没在契约里登记来源（引擎为准：补登记或删掉说明里的数）`)
+    }
+  }
+  for (const u of unwired) warn.push(`技能说明契约：${u}`)
+  console.log(
+    `· 技能说明契约：${registered.size} 个技能登记来源（平衡表 ${pairs.length} 条 + 引擎参数对象 6 条 + 内联表 ${INLINE.length} 条），核对 ${checked} 个技能的每级值、其中 ${srcChecked} 条做了引擎现场复核；未接线 ${unwired.length} 个`,
+  )
 }
 
 // 舰船
