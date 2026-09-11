@@ -1588,11 +1588,12 @@ for (const m of MODULES) {
   const PLAYER_ESSENCE = ['AI', '智能', '旧时代', '人类']
   const LORE_EXEMPT = ['AI 核心', '人工智能']
   /**
-   * `keepSelfKnowledge = true`（**仅船内系统来源**，如信息库）时额外豁免「舰载 AI / 船载 AI / 舰船 AI」——
-   * 那是玩家自己的系统在说自己的事，正是船长定的"内部系统中我们知道自己是舰载 AI"。
+   * `keepSelfKnowledge = true`（**仅船内系统来源**，如信息库）时额外豁免「舰载 AI / 船载 AI / 舰船 AI / 旧时代」——
+   * 那是玩家自己的系统在说自己的事，正是船长定的"内部系统中我们知道自己是舰载 AI"
+   * （`旧时代` 也在内：序章收尾台词「一艘不该存在的旧时代舰船 AI」本来就是船的自我认知）。
    * NPC 来源**不给**这条豁免：章鱼人不该知道船里是谁，写了就该被拦（先写反过一次，负向验证抓出来的）。
    */
-  const SELF_KNOWLEDGE = /舰载\s*AI|船载\s*AI|舰船\s*AI/g
+  const SELF_KNOWLEDGE = /舰载\s*AI|船载\s*AI|舰船\s*AI|旧时代/g
   const loreHits = (text: string, opts?: { keepSelfKnowledge?: boolean }): string[] => {
     let masked = text
     for (const ex of LORE_EXEMPT) masked = masked.split(ex).join('□'.repeat(ex.length))
