@@ -9045,11 +9045,13 @@ body {
 .app-comms-title-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .app-comms-title { color: #ffe08a; font-size: 15px; font-weight: 600; letter-spacing: .5px; }
 .app-comms-kind { flex: 0 0 auto; }
-/* 屏幕第二层：细分隔条（发件人 + 立场小片 + 送达时间）——压在标题正下方，跟随标题列宽度 */
-.app-comms-head { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px dotted var(--wui-border); padding-bottom: 5px; flex: 0 0 auto; }
-.app-comms-head-from { color: #9fd8ff; font-size: 12px; }
+/* 屏幕第二层：细分隔条（发件人 + 立场小片 + 送达时间）——压在标题正下方，跟随标题列宽度。
+   2026-09-11 船长：「屏幕缩小时『深空工业协会 · 航线安全』的容器过窄」⇒ 本条**允许换行**：
+   一行放不下时，官方小片与送达时间整体**另起一行**（时间靠右），而不是把发件人挤成省略号。 */
+.app-comms-head { display: flex; align-items: baseline; gap: 6px 8px; flex-wrap: wrap; border-bottom: 1px dotted var(--wui-border); padding-bottom: 5px; flex: 0 0 auto; }
+.app-comms-head-from { flex: 0 1 auto; min-width: 0; color: #9fd8ff; font-size: 12px; }
 .app-comms-align { flex: 0 0 auto; }
-.app-comms-head-time { margin-left: auto; color: var(--wui-text-dim); font-size: 11px; font-family: var(--wui-mono); white-space: nowrap; }
+.app-comms-head-time { margin-left: auto; flex: 0 0 auto; color: var(--wui-text-dim); font-size: 11px; font-family: var(--wui-mono); white-space: nowrap; }
 .app-comms-lines { display: flex; flex-direction: column; gap: 8px; }
 .app-comms-text { margin: 0; color: var(--wui-text); font-size: 12.5px; line-height: 1.7; }
 /* 屏幕下方：通栏胶囊「前往」（钉在机身下檐口，左右各比屏幕内收 8px；
@@ -9098,4 +9100,21 @@ body {
   .app-comms-item { padding: 11px 14px; }
   .app-comms-subject { font-size: calc(var(--ui-fs, 1) * 14.5px); }
   .app-comms-from { font-size: calc(var(--ui-fs, 1) * 13.5px); }
+}
+
+/* 窄窗口（≤1180px，与仓内既有收窄断点同阈值）：左列让出空间给通讯器。
+   实测：默认左列 210~290px 时，1024 宽窗口的屏幕只剩 259px——「发件人 + 官方 + 时间」要挤成三行。 */
+@media (max-width: 1180px) {
+  .app-comms-grid { grid-template-columns: minmax(140px, 190px) minmax(0, 1fr); }
+}
+
+/* 真窄窗口（≤1023px）：双列已放不下（左列再收也会把屏幕压到 200px 以下、文字溢出框外，实测 900 宽时屏幕只剩 63px）
+   ⇒ 改**单列**：列表收成顶部一条（固定高、内部滚动，条目横排），通讯器拿满宽。 */
+@media (max-width: 1023px) {
+  .app-comms-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .app-comms-list {
+    flex-direction: row; overflow-x: auto; overflow-y: hidden; padding-right: 0;
+    padding-bottom: 6px; border-right: none; border-bottom: 1px solid var(--wui-border);
+  }
+  .app-comms-item { flex: 0 0 auto; max-width: 240px; }
 }
