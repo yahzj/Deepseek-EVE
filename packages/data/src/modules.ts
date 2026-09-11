@@ -976,7 +976,7 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 3600,
     minRangeM: 180,
     hitRate: 0.84,
-    falloff: 0.35,
+    falloff: 0.6, // 2026-09-11 船长定：窝点专属动能件远端命中衰减提高到 0.6（原 0.35；普通 MK3 为 0.5）
     reloadMs: 1200,
     dmgMult: 1.8,
     cpuUse: 34,
@@ -1074,12 +1074,12 @@ export const MODULES: readonly ModuleDef[] = [
     maxRangeM: 12000,
     minRangeM: 1300,
     hitRate: 1,
-    falloff: 0.45,
+    falloff: 0.6, // 2026-09-11 船长定：窝点专属动能件远端命中衰减提高到 0.6（原 0.45；普通 MK3 为 0.5）
     reloadMs: 7350,
     dmgMult: 10.35,
     cpuUse: 62,
     description:
-      '守墓古舰（D 族）窝点专属：陵寝守备炮——**基础命中 100%**（必中量级）、12 km 超远程点名，射速只有攻坚炮台的四成、单发威力是它的两倍（总输出 ≈ 攻坚炮台的八成）；远端命中衰减也更轻。装填极慢，打空一发就是七秒。',
+      '守墓古舰（D 族）窝点专属：陵寝守备炮——**基础命中 100%**（必中量级）、12 km 超远程点名，射速只有攻坚炮台的四成、单发威力是它的两倍（总输出 ≈ 攻坚炮台的八成）；远端命中衰减也更轻（射程尽头仍有六成命中）。装填极慢，打空一发就是七秒。',
   },
   {
     id: 'mod-lair-armor-d',
