@@ -276,6 +276,10 @@ const LOW6_SKILLS: Record<string, number> = {
 
 type StandardRow = { id: string; label: string; ship: string; ld: Loadout; skills: Record<string, number> }
 const MK2_SUPPORT_MID = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2']
+/** MK3 推进器版支援排（2026-09-11 船长追问「假如玩家装备 MK3 推进器呢」时加的探索行用）：
+ *  与 MK2 版**只差推进器档位**——`mod-prop-3` = 点火期 +100% 战斗速度 / 命中 ×0.80（MK2 是 +60% / ×0.88）。
+ *  ⚠ CPU 40（MK2 是 15）⇒ 用默认装配时须确认真的装上了（没装上会静默回落到"无推进"，读数会骗人）。 */
+const MK3_SUPPORT_MID = ['mod-prop-3', 'mod-shield-kin-2', 'mod-track-2']
 const SUPPORT_MID_NO_PROP = ['mod-shield-kin-2', 'mod-track-2']
 const SUPPORT_LOW = ['mod-stab-kin-2', 'mod-armor-kin-2']
 const STANDARD_ROWS: readonly StandardRow[] = [
@@ -343,6 +347,16 @@ const EXPLORE_ROWS: readonly StandardRow[] = [
     ship: 'sh-falconet',
     ld: { name: 'B2 裸船(基础舰炮)无技能', ship: 'sh-falconet', high: [] },
     skills: {},
+  },
+  {
+    // 2026-09-11 船长追问「假如玩家装备 MK3 推进器呢」⇒ 定向复核行：**只换推进器档位**
+    // （MK2 → MK3：点火期 +60% → **+100%** 战斗速度，代价 = 命中 ×0.88 → **×0.80**）。
+    // 用途：判"高机动能不能把贴脸/追击型敌卡的接近期压回去"——C 族噬口（巨兽射程 4,000 + 冲锋）是首个用例。
+    id: 'B3' as StandardRow['id'],
+    label: '参考行换 MK3 推进器（定向复核：机动换命中）',
+    ship: 'sh-mako',
+    ld: { name: 'B3 4×动能MK2+推进MK3+支援', ship: 'sh-mako', high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], mid: MK3_SUPPORT_MID, low: SUPPORT_LOW },
+    skills: MID_SKILLS,
   },
 ]
 
