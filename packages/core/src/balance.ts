@@ -232,6 +232,15 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     foeChargeMaxHoldMs: 2_000, // 进入自己武器射程后再维持这么久，随后突进结束
     foeChargeCooldownMs: 20_000, // 冷却：这么久内不能再次突进
     foeChargeThreatFloor: 60, // 威胁门槛（与 pdThreatFloor 同口径）
+    /* ═══ 单波次内增援（2026-09-11 船长裁决：「先完成相应的系统机制，不使用。用作后续机制。」）═══
+     * **机制**：编成条目的 `enterAt` 给"第几秒 / 击毁几个 / 残血到多少"三种入场触发，
+     * 未触发的单位**开战不进战场**，由 `advanceBattleFor` 每拍检查、条件命中才补入（`enterReload` 哑火窗口）。
+     * ⚠ **只实现、不启用** → `foeReinforceEnabled` 默认 false，机制/参数/契约/用例全部就位但**任何战斗都不触发**；
+     *   要启用只改这一个开关（并同步解除 content:check「增援机制未启用契约」）。
+     * ⚠ 与**多舰补偿系数 `2N/(N+1)`**（A 族数值批）是**结构解法 vs 数值补偿**两条路、**不可叠加**：
+     *   启用增援后"逐个被击毁的阶梯衰减"由机制本身解决，补偿系数须下调或退场。 */
+    foeReinforceEnabled: false, // 总开关（船长 2026-09-11：机制已实现，不启用，留作后续机制）
+    foeReinforceReopenFrac: 0, // 增援入场的距离重开比例（语义同 waveReopenFrac；0 = 原地入场不重开＝缺省口径）
     // P0 承伤持久化：护盾战中被动回充（每秒回满盾的 2%；P2 随流派平衡再校准）
     shieldRegenPerSec: 0.02,
     waveReopenFrac: 0.5, // 多波次转场（2026-09-09 船长建议）：下一波把距离向开战距离回拉 50%（0=原地/1=回满，可随时调）

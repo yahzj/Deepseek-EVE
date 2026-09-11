@@ -15,7 +15,7 @@
  */
 import type { GameState } from './state'
 import { addLog } from './state'
-import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeShipDef, FoeShipSlot, FoeTactic, ModuleDef, SimContext } from './types'
+import type { AnomalyDef, BattleBalance, DamageResists, DamageType, DefProfile, FoeReinforceTrigger, FoeShipDef, FoeShipSlot, FoeTactic, ModuleDef, SimContext } from './types'
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
@@ -112,6 +112,10 @@ export interface UnitSpec {
   lockedDmgBonus?: number
   /** 高威胁近战敌突进（2026-09-10 船长定）：仅"威胁 ≥ 门槛 且 战术 = brawl"的敌卡为 true */
   foeCanCharge?: boolean
+  /** **单波次内增援**（2026-09-11 船长裁决：机制实现、不启用）——本单位的入场触发条件；
+   *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
+   *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
+  foeReinforceAt?: FoeReinforceTrigger
   foeTactic: FoeTactic | null
 }
 
@@ -897,26 +901,45 @@ export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
 }
 
 /**
+ * **多舰船补偿系数** `2N/(N+1)`（2026-09-11 船长确认「先按照你的提议实现」；N = 本卡编成单位总数）。
+ *
+ * 动机（数学）：N 个单位**逐个被击毁**时，敌人整场的累计输出 = 单舰基准 × `(N+1)/(2N)`
+ * （单位 1 全场输出、单位 2 输出 (N−1)/N 场 …单位 N 输出 1/N 场，均值 = (N+1)/(2N)），
+ * **N=4 时只有 62.5%**；本系数正好抵消这层阶梯衰减（N=4 → ×1.6）。
+ *
+ * 适用范围（本批口径）：**只在舰级路径**（写了 `anomaly.ships` 的卡）施加；
+ * **旧威胁推导路径一律不动**——那里 `N=1`，系数天然为 1、无影响。
+ * ⚠ 已知口径不一致：旧路径（未写 `ships` 的卡）**暂未启用**该补偿，待旧卡迁入舰级路径时统一。
+ */
+function foeMultiShipCompMul(anomaly: AnomalyDef): number {
+  const n = (anomaly.ships ?? []).reduce((s, x) => s + Math.max(1, Math.floor(x.count ?? 1)), 0)
+  return n <= 1 ? 1 : (2 * n) / (n + 1)
+}
+
+/**
  * **舰级路径建档**：单位属性 = 舰级绝对值 × 本条倍率。
  * - 血：`ship.hp × hpMul`（**不吃威胁份额、不吃 hpShare**）
- * - 单发：`round(ship.shotDmg × dmgMul)`；
+ * - 单发：`round(ship.shotDmg × dmgMul × 多舰船补偿)`；
+ *   **多舰船补偿 `2N/(N+1)`**（2026-09-11 船长确认）在建档时按"本卡编成单位总数 N"缩放单发，
+ *   见 `foeMultiShipCompMul`；卡上 `dmgMul` 写的是**设计单发 ÷（舰级单发 × 补偿）**，
+ *   故引擎实建档值即船长确认的设计单发。
  *   速度（2026-09-11 追加裁决「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」）：
  *   `round(HULL_CLASS_BASE_SPEED[舰种档] × speedRatio × speedMul)` ——
- *   **舰种基准 × 倍率**（基准 = `bal.hullClassBaseSpeedMps`，倍率 = `ship.speedRatio` 与条目 `speedMul`）；
- *   这是**表达方式**的改造，四个 A 族舰级的实速与原绝对值（351/291/201/377）**逐字一致**。
+ *   **舰种基准 × 倍率**（基准 = `bal.hullClassBaseSpeedMps`，倍率 = `ship.speedRatio` 与条目 `speedMul`）。
  * - 射程带：两端同乘 `rangeMul` 后取整（保持 min < max）
  * - 主系/命中：可逐条覆写（缺省走舰级）；能量主系一律光束必中
  */
 function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts): UnitSpec[] {
   const prefix = opts.tagPrefix ?? ''
   const waveIdx = shipWaveIndexOf(prefix)
+  const comp = foeMultiShipCompMul(anomaly)
   return enumerateShipUnits(anomaly, waveIdx).map((u) => {
     const ship = u.slot.ship
     const mix = u.slot.dmgMix ?? ship.dmgMix
     const type = pickTopType(mix)
     const totalHp = ship.hp * (u.slot.hpMul ?? 1)
     const hp: Hp3 = { s: totalHp * ship.split.s, a: totalHp * ship.split.a, h: totalHp * ship.split.h }
-    const shotDmg = Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1)))
+    const shotDmg = Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp))
     const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
     const multiShots: Partial<Record<DamageType, number>> | undefined =
       shotSplit.length > 1
@@ -930,6 +953,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const rangeMin = Math.max(1, Math.min(rangeMax - 1, u.slot.rangeMinM ?? Math.round(ship.rangeMinM * rangeMul)))
     // 战术：卡上覆写优先（2026-09-11 船长「头目建议允许多个战术」）——同一条头目舰可配多种打法
     const tactic = u.slot.tactic ?? ship.tactic
+    // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**条目写了 `enterAt` 且总开关打开**时
+    // 才给单位挂 `foeReinforceAt`——开关关闭时本字段一律不写（与 `foeCanCharge` 同款总开关形态，
+    // 这保证"关了就是零行为变化"）。触发条件全无效 = 视为未写 = 开战即在（见 `FoeReinforceTrigger` 注释）。
+    const reinforceAt = bal.foeReinforceEnabled === true ? normReinforceTrigger(u.slot.enterAt) : null
     const name = foeUnitNameOf(anomaly, u.tag)
     return {
       tag: u.tag,
@@ -952,6 +979,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       tactic === 'brawl'
         ? { foeCanCharge: true }
         : {}),
+      // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
+      ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       weapons: [
         {
           label: `${name} 武器组`,
@@ -970,6 +999,125 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       foeTactic: tactic,
     }
   })
+}
+
+/* ═══════ 单波次内增援（2026-09-11 船长裁决：「先完成相应的系统机制，不使用。用作后续机制。」）═══════
+ * **机制**：编成条目的 `enterAt` 给三种入场触发（第几秒 / 击毁几个 / 残血到多少）；
+ * 带触发的单位**开战不进战场**，由 `advanceBattleFor` **每拍**检查、条件命中才 `seedUnit` 补入。
+ *
+ * **与「敌突进」同款形态**（船长 2026-09-10「暂时先取消实装，仅实现功能」的先例）：
+ * 机制 / 参数 / 总开关 / 契约 / 用例全部就位，但**任何战斗都不触发**——总开关
+ * `BattleBalance.foeReinforceEnabled` 默认 `false`，且契约在关闭期间**禁止任何卡写 `enterAt`**。
+ *
+ * **存档零迁移**：不新增任何存档字段——"某个单位是否已入场"**由 `battle.units` 里有没有它的 tag 反推**
+ * （`seedUnit` 对已存在的 tag 不覆盖，尸体也留着，故"在场过"永远是"存在"）。
+ * 读档续战时 `advanceBattleFor` 用同一份 `curFoes` 重新推导，未入场者继续等条件命中。
+ *
+ * **仅舰级路径**：`enterAt` 长在 `FoeShipSlot` 上，旧威胁推导路径（未写 `ships` 的卡）天然不涉及。
+ *
+ * ⚠ **与多舰补偿系数 `2N/(N+1)` 不可叠加**（两条路：结构解法 vs 数值补偿）——见设计稿
+ * `docs/design/foe-reinforce-20260911.md`。
+ */
+
+/** 规范化增援触发条件：只保留**有效**条件（`sec > 0` / `afterKills > 0` / `0 ≤ hpBelow ≤ 1`）；
+ *  **一个有效条件都没有 → 返回 null = 按"未写"处理 = 开战即在**（刻意不产生"永不入场"的沉默副作用）。 */
+function normReinforceTrigger(at?: FoeReinforceTrigger): FoeReinforceTrigger | null {
+  if (!at) return null
+  const out: FoeReinforceTrigger = {}
+  if (typeof at.sec === 'number' && Number.isFinite(at.sec) && at.sec > 0) out.sec = at.sec
+  if (typeof at.afterKills === 'number' && Number.isFinite(at.afterKills) && at.afterKills > 0) {
+    out.afterKills = Math.floor(at.afterKills)
+  }
+  if (typeof at.hpBelow === 'number' && at.hpBelow >= 0 && at.hpBelow <= 1) out.hpBelow = at.hpBelow
+  return Object.keys(out).length > 0 ? out : null
+}
+
+/** 本波编成（`curFoes` 全部条目）的**存活剩余总血比例**：分子 = 在场且未全灭的单位的剩余三层血之和，
+ *  分母 = 本波编成的**满血总量**（含尚未入场的增援——"残部呼救"要按编制总量看，不是按在场量看）。 */
+function foeResidualHpFrac(b: import('./state').BattleState, curFoes: readonly UnitSpec[]): number {
+  let max = 0
+  let cur = 0
+  for (const f of curFoes) {
+    max += f.hp.s + f.hp.a + f.hp.h
+    const u = b.units[f.tag]
+    if (u) cur += u.hp.s + u.hp.a + u.hp.h
+  }
+  return max > 0 ? Math.max(0, cur) / max : 0
+}
+
+/** 本场**已击毁的敌方单位数**（三层血全归零即计；尸体留在 `battle.units` 里，故可直接数）。 */
+function foeKillCount(b: import('./state').BattleState): number {
+  let n = 0
+  for (const tag of Object.keys(b.units)) {
+    const u = b.units[tag]!
+    if (u.side !== 'foe') continue
+    if (u.hp.s <= 0 && u.hp.a <= 0 && u.hp.h <= 0) n += 1
+  }
+  return n
+}
+
+/** 入场触发判定：**任一条件满足即入场**（未写/无效的条件不参与）。
+ *  `sec` 走**战斗时钟**（`lastTickGameMs − startedAtGameMs`，与推进器相位同口径、波次演出窗口不计时）。 */
+function reinforceTriggered(
+  at: FoeReinforceTrigger,
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+): boolean {
+  if (at.sec !== undefined && b.lastTickGameMs - b.startedAtGameMs >= at.sec * 1000) return true
+  if (at.afterKills !== undefined && foeKillCount(b) >= at.afterKills) return true
+  if (at.hpBelow !== undefined && foeResidualHpFrac(b, curFoes) <= at.hpBelow) return true
+  return false
+}
+
+/**
+ * **每拍结算增援入场**（`advanceBattleFor` 主循环内、`stepBattle` **之前**调用——保证"上一拍刚打死的
+ * 单位"本拍就能触发援军，且判胜检查看到的是补入后的编队）。
+ * - 总开关关闭 → 直接返回（**零行为变化**：此时建档期也根本没写过 `foeReinforceAt`）；
+ * - 已入场判定 = `battle.units` 里已有该 tag（含尸体）→ 不重复补入、不需要任何存档字段；
+ * - 入场单位走 `enterReload` —— 与波次转场同款"一段自然哑火窗口"（≈一次装填时长）；
+ * - 距离重开：`bal.foeReinforceReopenFrac`（语义同 `waveReopenFrac`；缺省 0 = 原地入场）。
+ */
+function resolveReinforcements(
+  state: GameState,
+  ctx: SimContext,
+  b: import('./state').BattleState,
+  anomaly: AnomalyDef,
+  curFoes: readonly UnitSpec[],
+  bal: BattleBalance,
+  openM: number,
+): void {
+  if (bal.foeReinforceEnabled !== true) return
+  const arrived: UnitSpec[] = []
+  for (const spec of curFoes) {
+    if (b.units[spec.tag]) continue // 已入场（含已阵亡的尸体）
+    const at = spec.foeReinforceAt
+    if (!at) continue // 开战即在的常规单位（未写 enterAt）
+    if (!reinforceTriggered(at, b, curFoes)) continue
+    seedUnit(b, spec, { enterReload: true })
+    arrived.push(spec)
+  }
+  if (arrived.length === 0) return
+  // 距离重开（2026-09-11 船长口径：沿用 waveReopenFrac 语义，缺省 0 = 不重开）
+  const reopen = bal.foeReinforceReopenFrac ?? 0
+  if (reopen > 0 && Number.isFinite(openM)) {
+    b.distanceM = Math.round(openM * reopen + b.distanceM * (1 - reopen))
+  }
+  // 近防炮调度补位（与波次转场同款：pdCd 与敌编队同序——增援本身就占着 curFoes 里的位置，
+  // 故只需要把它的倒计时置成"下一拍判定"，不必重排整个数组）
+  if (b.pdCd && b.dronePools) {
+    for (const spec of arrived) {
+      const i = curFoes.indexOf(spec)
+      if (i >= 0 && i < b.pdCd.length) b.pdCd[i] = Math.max(100, Math.round(bal.pdJudgementMs))
+    }
+  }
+  const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
+  const names = [...new Set(arrived.map((s) => s.name))].join('、')
+  addLog(
+    state,
+    'warn',
+    `⚔ 敌方增援自远处入场（${waveName ? waveName + '·' : ''}${anomaly.name}）：${names} ×${arrived.length} 加入战斗` +
+      `${reopen > 0 ? '，重新接近中。' : '。'}`,
+  )
 }
 
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
@@ -1442,6 +1590,9 @@ export function createBattleState(
 ): import('./state').BattleState {
   const units: Record<string, import('./state').BattleState['units'][string]> = {}
   for (const spec of [me, ...foes]) {
+    // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发的单位不进开战编队**，
+    // 由 `advanceBattleFor` 每拍按条件补入。开关关闭时建档期根本不写 `foeReinforceAt` → 本行永不命中。
+    if (spec.foeReinforceAt) continue
     units[spec.tag] = {
       tag: spec.tag,
       side: spec.side,
@@ -2036,7 +2187,13 @@ export function advanceBattleFor(
   let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
   let curFoes = specsOf(waveIdx)
   // 开战首波由 startBattleFor 生成（无装填延迟）；此处只兜读档中断补缺（视为增援入场）
-  for (const f of curFoes) seedUnit(battle, f, { enterReload: true })
+  for (const f of curFoes) {
+    // ⚠ 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发、条件未命中的单位
+    // 不许在这里补缺**——否则每次推进都会把"还没该到的援军"直接塞进战场（本批用例抓到过这个洞）。
+    // 它们只由下面的 `resolveReinforcements` 按条件补入；开关关闭时本字段一律不存在 → 本行不生效。
+    if (f.foeReinforceAt) continue
+    seedUnit(battle, f, { enterReload: true })
+  }
   let guard = 0
   while (state.gameMs > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
@@ -2082,6 +2239,10 @@ export function advanceBattleFor(
       )
       continue
     }
+    // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——每拍结算"尚未入场"的编成条目；
+    // 放在 `stepBattle` **之前**：上一拍刚打死的单位本拍即可触发援军，且判胜检查看到的是补入后的编队。
+    // 总开关关闭时本函数第一步就返回（且建档期也没写过 `foeReinforceAt`）= 零行为变化。
+    resolveReinforcements(state, ctx, battle, anomaly, curFoes, bal, openM)
     const dt = Math.min(BATTLE_STEP_MS, state.gameMs - battle.lastTickGameMs)
     stepBattle(state, battle, me, curFoes, foeDesire, openM, bal, dt, favor, waves ? waveIdx < lastIdx : false)
     battle.lastTickGameMs += dt

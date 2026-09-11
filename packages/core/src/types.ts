@@ -623,6 +623,17 @@ export interface BattleBalance {
   foeChargeCooldownMs: number
   /** 突进威胁门槛：只有威胁 ≥ 此值、且战术为近战（brawl）的敌卡会突进（与 pdThreatFloor 同口径） */
   foeChargeThreatFloor: number
+  /* ═══ 单波次内增援（2026-09-11 船长裁决：「先完成相应的系统机制，不使用。用作后续机制。」）═══
+   * ⚠ **机制已实现、但按船长裁决不启用** → `foeReinforceEnabled` 默认 false：
+   *   编成条目的 `enterAt`、引擎的每拍补入、契约与用例全部就位，**任何战斗都不会触发**；
+   *   要启用只改这一个开关（并同步解除 content:check「增援机制未启用契约」）。
+   * ⚠ **与多舰补偿系数 `2N/(N+1)` 是结构解法 vs 数值补偿两条路，不可叠加**——
+   *   若将来启用增援，补偿系数必须下调或退场（见 `docs/design/foe-reinforce-20260911.md`）。 */
+  /** 单波次内增援总开关（默认 false = 未启用） */
+  foeReinforceEnabled: boolean
+  /** 增援入场时的**距离重开比例**（语义同 `waveReopenFrac`：向开战距离回拉这个比例；
+   * 0 = 原地入场不重开 = 缺省口径） */
+  foeReinforceReopenFrac: number
   /** 预估胜率扩散（logit 拉伸倍数，0.5 为不动点）：越高胜率加成越高、越低胜率惩罚越重——
    * 作用于悬赏展示与 AI 接单门槛（实际战斗结算不变） */
   winSpread: number
@@ -1034,6 +1045,37 @@ export interface FoeShipSlot {
   dmgMix?: Partial<Record<DamageType, number>>
   /** 命中覆写（缺省走舰级） */
   hitRate?: number
+  /**
+   * **单波次内增援·入场时机**（2026-09-11 船长裁决：「**先完成相应的系统机制，不使用。用作后续机制。**」）。
+   *
+   * 语义：**任一条件满足即入场**（三者之间是"或"）。
+   * **未写本字段 = 开战即在（= 现状，逐字不变）**；**三个条件一个都没写（空对象/全是无效值）
+   * 同样按"未写"处理 = 开战即在**——刻意不产生"永不入场"的沉默副作用（少报一个单位比多报更难查）。
+   * - `sec`：**开战满 N 秒**（战斗时钟口径，与推进器相位同源）即入场——"援军赶到"；
+   * - `afterKills`：**本场已击毁的敌方单位数 ≥ N**（三层血全归零即计）即入场——"打崩前锋，援军顶上"；
+   * - `hpBelow`：**己方（本波敌方编成）存活剩余总血比例 ≤ N** 即入场——"残部呼救"。
+   *   ⚠ `hpBelow` 指的是**敌方自己**的残血比（分母 = 本波编成满血总量）；若要"玩家残血才来援"，
+   *   **请另加字段**（如 `playerHpBelow`），不要改本字段语义。
+   *
+   * ⚠ **本机制已实现但按船长裁决不启用**：总开关 `BattleBalance.foeReinforceEnabled` 默认 `false`，
+   * 且 `content:check`「增援机制未启用契约」在开关关闭期间**禁止任何卡写本字段**（关了报错）。
+   * 存档零迁移：是否已入场**由 `battle.units` 里有没有该 tag 反推**，不占任何新存档字段。
+   */
+  enterAt?: FoeReinforceTrigger
+}
+
+/**
+ * **单波次内增援的入场触发条件**（2026-09-11 船长裁决：机制实现、不启用；见 `FoeShipSlot.enterAt`）。
+ * 任一条件满足即入场；**全部未写（或都是无效值）= 按"未写"处理 = 开战即在**。
+ * 条件应为正数（`sec > 0` / `afterKills > 0` / `0 ≤ hpBelow ≤ 1`），非法值按未写处理。
+ */
+export interface FoeReinforceTrigger {
+  /** 开战满 N 秒后入场（战斗时钟，单位：秒；须 > 0） */
+  sec?: number
+  /** 本场已击毁敌方单位数达到 N 时入场（须 > 0） */
+  afterKills?: number
+  /** 己方（本波敌方编成）存活剩余总血比例 ≤ N 时入场（0~1） */
+  hpBelow?: number
 }
 export interface AnomalyDef {
   id: string

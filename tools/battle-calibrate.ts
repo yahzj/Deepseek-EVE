@@ -825,7 +825,8 @@ async function main(): Promise<void> {
     ]
     console.log(head.join(','))
     for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
-      const f = createFoeSpecs(a, bal)[0]!
+      const specs = createFoeSpecs(a, bal)
+      const f = specs[0]!
       const w = f.weapons[0]!
       const pos = bal.tacticDesireFactor[a.tactic ?? 'orbit'] ?? 0.5
       const waves = a.waves && a.waves.length > 0 ? a.waves : [{ units: 1, hpShare: 1 }]
@@ -843,7 +844,31 @@ async function main(): Promise<void> {
       const shipHp = shipSlots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * cnt(s), 0)
       const shipEscorts = shipSlots.filter((s) => s.escort === true).reduce((n, s) => n + cnt(s), 0)
       const shipWaves = new Set(shipSlots.map((s) => s.wave ?? 0)).size
-      const shot = w.shotsByType ? Object.entries(w.shotsByType).map(([t, d]) => `${t} ${d}`).join('+') : String(w.shotDmg)
+      // 2026-09-11 A 族数值落地批：舰级路径改**混编**（头目 ×1 + 杂鱼 ×3）——单一 `specs[0]` 读数
+      // 会**静默只报头目**（速度/射程/单发/命中全是头目的），故这些列改为**逐舰级读数**
+      // （去重后按建队顺序 `|` 分隔；分隔符不含逗号，不破 CSV）。旧路径单单位 → 读数与原来逐字相同。
+      const perUnit = (pick: (u: (typeof specs)[number]) => string): string => [...new Set(specs.map(pick))].join(' | ')
+      const shotOf = (u: (typeof specs)[number]): string => {
+        const uw = u.weapons[0]!
+        return uw.shotsByType
+          ? Object.entries(uw.shotsByType).map(([t, d]) => `${t} ${d}`).join('+')
+          : String(uw.shotDmg)
+      }
+      const shot = isShipPath ? perUnit(shotOf) : shotOf(f)
+      const speedCol = isShipPath ? perUnit((u) => String(u.speedMps)) : String(f.speedMps)
+      const ratioCol = isShipPath ? perUnit((u) => ((u.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2)) : ((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2)
+      const combatCol = isShipPath ? perUnit((u) => String(Math.round(u.speedMps * foeAgilityMul))) : String(Math.round(f.speedMps * foeAgilityMul))
+      const rMinCol = isShipPath ? perUnit((u) => String(u.weapons[0]!.minRangeM)) : String(w.minRangeM)
+      const rMaxCol = isShipPath ? perUnit((u) => String(u.weapons[0]!.maxRangeM)) : String(w.maxRangeM)
+      const desireCol = isShipPath
+        ? perUnit((u) => String(Math.round(u.weapons[0]!.minRangeM + pos * (u.weapons[0]!.maxRangeM - u.weapons[0]!.minRangeM))))
+        : String(Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM)))
+      const hitCol = isShipPath ? perUnit((u) => `${(u.weapons[0]!.hitRate * 100).toFixed(0)}%`) : `${(w.hitRate * 100).toFixed(0)}%`
+      // 名义总 DPS（2026-09-11）：舰级路径 = 威胁 × foeDpsPerThreat × **多舰船补偿 2N/(N+1)**
+      // （船长确认口径；引擎在建档时按 N 缩放单发，见 core `createFoeSpecsFromShips`）；
+      // 旧路径不启用补偿（N=1），仍报 `威胁 × foeDpsPerThreat`。
+      const shipComp = shipUnits <= 1 ? 1 : (2 * shipUnits) / (shipUnits + 1)
+      const dpsCol = (isShipPath ? a.threat * bal.foeDpsPerThreat * shipComp : a.threat * bal.foeDpsPerThreat).toFixed(1)
       const quirks = [
         a.foeShotDmg !== undefined ? `单发直写${a.foeShotDmg}` : '',
         a.foeFalloff !== undefined ? `衰减${a.foeFalloff}` : '',
@@ -867,9 +892,9 @@ async function main(): Promise<void> {
       }
       console.log(
         [
-          a.id, a.name, a.foeFamily ?? '', shipText, a.threat, a.tactic ?? 'orbit', f.speedMps,
-          ((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2), Math.round(f.speedMps * foeAgilityMul),
-          w.minRangeM, w.maxRangeM, Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM)),
+          a.id, a.name, a.foeFamily ?? '', shipText, a.threat, a.tactic ?? 'orbit', speedCol,
+          ratioCol, combatCol,
+          rMinCol, rMaxCol, desireCol,
           isShipPath
             ? `${shipUnits}舰${shipWaves > 1 ? `${shipWaves}波` : ''}`
             : waves.length > 1
@@ -878,7 +903,7 @@ async function main(): Promise<void> {
           isShipPath ? `${shipWaves}波` : waves.map((x) => (x.hpShare ?? 1).toFixed(2)).join('+'),
           isShipPath ? shipEscorts : (a.escorts ?? 0),
           isShipPath ? Math.round(shipHp) : Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)),
-          (a.threat * bal.foeDpsPerThreat).toFixed(1), shot, `${(w.hitRate * 100).toFixed(0)}%`, comp,
+          dpsCol, shot, hitCol, comp,
           w.falloff, w.blindDmgMul, quirks, a.combatSeconds,
           `${Math.round((win / SEEDS.length) * 100)}%`, `${(dur / SEEDS.length / 1000).toFixed(0)}s`, `${(rem / SEEDS.length).toFixed(0)}%`,
         ].join(','),

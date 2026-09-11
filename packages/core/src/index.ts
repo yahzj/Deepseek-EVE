@@ -42,6 +42,7 @@ export type {
   DefProfile,
   FoeShipDef,
   FoeShipSlot,
+  FoeReinforceTrigger,
   SimContext,
 } from './types'
 
