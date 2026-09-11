@@ -855,6 +855,109 @@ function injectDfamily(state: GameState): string[] {
   return notes
 }
 
+/** pd（2026-09-11 机群批 S5）：**敌方机群 + 巨构近防炮**验收档。
+ *
+ * 门槛：钱包 +8,000 万 · 协会声望 13 · 全星系点亮 · 中位技能（20 项 Lv3，与 `battle:calibrate` 同口径）。
+ * **三艘 T3 巡洋（锤头鲨）对照**（E 段既有参考船）：
+ *  ① **混装**：2× 巨构近防炮 MK2 + 3× 动能炮台 MK2 · 能量抗 —— **推荐打法**
+ *     （防空行 G1 实测：30 秒 / 残血 99%；比全主炮多花 4 秒、多留 6% 血）
+ *  ② **纯防空**：5× 巨构近防炮 MK3 · 能量抗 —— 看"**打得下来机群、却打不死母舰**"（G0 实测 125 秒）
+ *  ③ **全主炮对照**：5× 动能炮台 MK2 · 能量抗 —— **不带防空 ⇒ 机群一架都掉不了**（负向对照）
+ * 另备：近防炮三档与蓝图、能量/动能抗件、三型弹药各 5,000、全部 MK3 装备。
+ *
+ * 测试路径：星图·战斗悬赏 → **泰坦残骸勘探 60**（深渊之门）——该卡现挂 **警戒机群 ×2/舰**。
+ * ⚠ **战前把距离条拨到 1,000~1,500**：机群在 **4.5 km** 外布警戒幕，而近防炮只有 1.4~1.6 km
+ * ⇒ **必须贴进去才打得到机群**；母舰射程只有 1.0~2.6 km，所以"贴脸"同时也在吃它的炮。 */
+function injectPd(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 80_000_000
+  notes.push('钱包 +80,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（可接全部悬赏）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——泰坦残骸勘探（深渊之门）可达`)
+  const midSkillIds = [
+    'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control',
+    'reload-drills', 'drone-warfare', 'drone-servicing', 'ammunition-condensing',
+    'shield-operation', 'energy-management', 'hull-upgrades', 'shield-tuning', 'armor-tuning',
+    'armed-ops', 'armored-ops', 'vector-maneuvering', 'evasion-maneuvering',
+    'targeting-integration', 'ship-systems-engineering',
+  ]
+  for (const k of midSkillIds) state.skills.trained[k] = 3
+  notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 同口径）')
+  const MID_PLA = ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2'] // 能量抗（D/E 段主系是能量）
+  const LOW_PLA = ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2']
+  const rows: Array<[string, string[]]> = [
+    [
+      '⚠机群·混装（2×巨构近防炮MK2 + 3×动能炮台MK2）·能量抗——**推荐打法**',
+      ['mod-pd-e-2', 'mod-pd-e-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    ],
+    [
+      '机群·纯防空（5×巨构近防炮MK3）·能量抗——打得下机群、打不死母舰',
+      ['mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3'],
+    ],
+    [
+      '对照·全主炮（5×动能炮台MK2）·能量抗——不带防空，机群一架都掉不了',
+      ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    ],
+  ]
+  const uids: string[] = []
+  rows.forEach(([name, high], i) => {
+    const uid = addShipToFleet(state, 'sh-hammerhead') // T3 巡洋：E 段既有参考船（5 高 / 4 中 / 3 低）
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...MID_PLA], low: [...LOW_PLA] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid // 默认驾驶 = 推荐打法那艘
+    uids.push(uid)
+  })
+  notes.push(`新增三船（均 T3 锤头鲨级炮击巡洋舰）：${uids.join(' / ')}——舰船页切驾驶即换行`)
+  for (const m of [
+    'mod-pd-e', 'mod-pd-e-2', 'mod-pd-e-3',
+    'mod-turret-kin-1', 'mod-turret-kin-2', 'mod-turret-kin-3', 'mod-lair-turret-a',
+    'mod-shield-pla-2', 'mod-armor-pla-2', 'mod-stab-pla-2', 'mod-armor-plate-2',
+    'mod-shield-kin-2', 'mod-armor-kin-2', 'mod-stab-kin-2',
+    'mod-prop-2', 'mod-prop-3', 'mod-track-2', 'mod-gyro-2',
+  ]) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 6
+  }
+  notes.push('装备库：**近防炮三档（+蓝图书市可购）×6** + 主炮/抗性/支援件各 ×6（够三船反复换装对照）')
+  const mk3 = MODULES.filter((m) => m.id.endsWith('-3')).map((m) => m.id)
+  for (const m of mk3) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 8
+  notes.push(`装备库另备：全部 MK3 装备 ${mk3.length} 件 ×8（按 id 后缀自动枚举）`)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  notes.push('仓库弹药三型 ×5000')
+  for (const s of Object.values(state.fleet)) {
+    if (s) {
+      s.durability = 1
+      s.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push(
+    '测试路径：星图·战斗悬赏 → **泰坦残骸勘探 60**（深渊之门）：现挂 **警戒机群 ×2/舰**（机群射程 4.5km · ' +
+      '母舰 1.0~2.6km · 总血 1,585 · 命中 0.65"老化失准"）。⚠ **战前把距离条拨到 1,000~1,500**——' +
+      '机群在 4.5km 外布警戒幕、近防炮只有 1.4~1.6km ⇒ **必须贴进去才打得到机群**。',
+  )
+  notes.push(
+    '校准参考值（`--std6` 5 播种均值 · 中位技能 · 目标距离 1000）：**全主炮** = 100%｜26s｜残血 93.1%；' +
+      '**纯防空 5×近防炮** = 100%｜**125s**｜残血 91.1%（机群被清掉、但打不死母舰）；' +
+      '**混装 2×近防炮 + 3×主炮** = 100%｜30s｜残血 **99%**。' +
+      '重点体感：**贴进去之后机群掉得快不快** · 混装换纯防空的差别 · 不带防空时被机群磨多久。',
+  )
+  return notes
+}
+
 /** lairgear（2026-09-10 船长「⑧需要」）：**五族专属装备 15 件 + 流亡蜂无人机 验收档**。
  * 在 rarebox 门槛（五族稀有残骸 + 高级箱 + AI 核心）之上，**把整族专属产出直接预置进装备库/仓库**，
  * 省掉"开箱靠 5/8/10% 掷骰"的等待——船长可直接装配实测 15 件专属与专属无人机的手感/数值。 */
@@ -1218,6 +1321,8 @@ function injectAbyssgate(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  // pd（2026-09-11 机群批 S5）：敌方机群 + 巨构近防炮验收档（三船对照 + 近防炮三档）
+  pd: injectPd,
   rarebox: injectRareBox,
   b1: injectB1,
   standby: injectStandby,
