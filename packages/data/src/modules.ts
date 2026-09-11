@@ -219,7 +219,7 @@ export const MODULES: readonly ModuleDef[] = [
    * **族别（船长「分族」）**：本批只出 **E 族（泰坦巨构）**一件，其余族按需再补。 */
   {
     id: 'mod-pd-e',
-    name: '巨构近防炮',
+    name: '巨构近防炮 MK1',
     slot: 'turret',
     rack: 'high',
 
@@ -234,6 +234,44 @@ export const MODULES: readonly ModuleDef[] = [
     reloadMs: 1500, // 快射速是它的性格
     dmgMult: 0.5, // ≈ 同档主炮（轻型炮台 MK1 = 1.25）的 40% ⇒ 对舰明显偏弱
     canHitDrones: true, // **防空属性**：唯一能筛到敌方无人机的武器类型
+  },
+  // 2026-09-11 补档（防空行实测口径：**射程不拉长**——1.4 km 已在"贴近"打法里够用，
+  // "想打机群就得走进警戒幕"这条张力应当保留；MK2/MK3 只提单发与射速）
+  {
+    id: 'mod-pd-e-2',
+    name: '巨构近防炮 MK2',
+    slot: 'turret',
+    rack: 'high',
+
+    damageType: 'kinetic',
+    ammoPerEngagement: 48,
+    description: '巨构近防炮的强化型：射速更快、单发更重，射程依旧很短。带机群的仗里，它让机群更快掉下来。',
+    cpuUse: 26,
+    maxRangeM: 1500,
+    minRangeM: 1,
+    hitRate: 0.9,
+    falloff: 0.5,
+    reloadMs: 1400,
+    dmgMult: 0.8,
+    canHitDrones: true,
+  },
+  {
+    id: 'mod-pd-e-3',
+    name: '巨构近防炮 MK3',
+    slot: 'turret',
+    rack: 'high',
+
+    damageType: 'kinetic',
+    ammoPerEngagement: 56,
+    description: '巨构近防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段。对舰威力仍明显低于同档主炮。',
+    cpuUse: 44,
+    maxRangeM: 1600,
+    minRangeM: 1,
+    hitRate: 0.92,
+    falloff: 0.5,
+    reloadMs: 1300,
+    dmgMult: 1.05,
+    canHitDrones: true,
   },
   // ══════════ 激光炮（V18B-2 能量系武器形态：消耗能量弹药，必中光束） ══════════
   // 与原能量炮/异星原型（已退役迁移）同伤害系（plasma）/同消耗键，但性格独立：

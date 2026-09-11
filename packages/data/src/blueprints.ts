@@ -65,7 +65,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
   {
     id: 'bp-pd-e',
-    name: '巨构近防炮蓝图',
+    name: '巨构近防炮 MK1 蓝图',
     moduleId: 'mod-pd-e',
     materials: [
       { itemId: 'min-tritanium', count: 1_600 },
@@ -75,6 +75,34 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 24_000,
     priceIsk: 120_000,
     description: '按巨构残骸上那门警戒炮仿制的点防武器：射程很短、射速很快，是唯一能打敌方机群的炮。带机群的仗，先造它。',
+  },
+  {
+    id: 'bp-pd-e-2',
+    name: '巨构近防炮 MK2 蓝图',
+    moduleId: 'mod-pd-e-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 3_200 },
+      { itemId: 'min-mexallon', count: 900 },
+      { itemId: 'min-nocxium', count: 120 },
+    ],
+    buildSeconds: 300,
+    buildCostIsk: 52_000,
+    priceIsk: 315_000,
+    description: '巨构近防炮的强化型图纸：射速更快、单发更重，射程依旧很短。',
+  },
+  {
+    id: 'bp-pd-e-3',
+    name: '巨构近防炮 MK3 蓝图',
+    moduleId: 'mod-pd-e-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 5_600 },
+      { itemId: 'min-mexallon', count: 1_600 },
+      { itemId: 'min-nocxium', count: 360 },
+    ],
+    buildSeconds: 460,
+    buildCostIsk: 96_000,
+    priceIsk: 690_000,
+    description: '巨构近防炮的顶档图纸：射速与单发都拉到极限，射程仍是贴身的那一小段。',
   },
   {
     id: 'bp-turret-1',

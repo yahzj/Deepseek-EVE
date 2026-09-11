@@ -217,6 +217,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-turret-civ': 1,
   'mod-pd-e': 2, // 巨构近防炮（2026-09-11 机群批 S4）：防空武器，定位与 MK2 同档
   'bp-pd-e': 2, // 其蓝图（市场卡与稀有度表必须成对）
+  'mod-pd-e-2': 2,
+  'bp-pd-e-2': 2,
+  'mod-pd-e-3': 3, // MK3 顶档（与 exotic 渠道对应 3/4）
+  'bp-pd-e-3': 3,
   'mod-turret-kin-1': 1,
   'mod-turret-kin-2': 2,
   'mod-turret-kin-3': 3,
