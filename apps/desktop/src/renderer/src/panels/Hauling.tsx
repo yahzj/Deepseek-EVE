@@ -10,8 +10,8 @@ import {
   cargoCapacityM3Of,
   dockedHaulEndpoint,
   haulEndpoints,
-  haulLegReward,
   haulLegMinutesOf,
+  haulRewardRange,
   shortestTravelMinutes,
   travelMinutesEff,
   shipDisplayName,
@@ -114,11 +114,13 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         <div className="app-haul-list">
           {routes.map((rt) => {
             const isActive = rt.key === activeKey
-            // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）——面板与引擎不能两算
+            // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）；报酬按「改前基准 × 每趟行情 5~10 倍」
             const legMin = haulLegMinutesOf(rt.minutes)
             const effMin = Math.max(1, travelMinutesEff(state, ctx, legMin))
-            const perLeg = haulLegReward(cap, legMin)
-            const perRound = perLeg * 2
+            // 面板**只显示区间**（船长 2026-09-11：不预告本趟实际掷值）；基准用**标称**航程分钟（改前口径）
+            const range = haulRewardRange(cap, rt.minutes)
+            const hourlyMin = Math.round((range.min / effMin) * 60)
+            const hourlyMax = Math.round((range.max / effMin) * 60)
             const canStart = dockedOk && !busy && !haulingActive
             return (
               <div
@@ -134,8 +136,9 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                   <span className="app-dim">单程约 {effMin} 分钟（按当前航行技能）</span>
                 </div>
                 <div className="app-haul-line app-dim">
-                  {shipName}（货仓 {cap.toLocaleString('zh-CN')} m³）· 单段约 {isk(perLeg)} ISK · 往返一趟约 {isk(perRound)} ISK ·
-                  时薪约 {isk(Math.round((perLeg / effMin) * 60))} ISK（按当前航行技能）
+                  {shipName}（货仓 {cap.toLocaleString('zh-CN')} m³）· 单段约 {isk(range.min)} ~ {isk(range.max)} ISK
+                  （行情每趟一价 ×5~10）· 往返一趟约 {isk(range.min * 2)} ~ {isk(range.max * 2)} ISK ·
+                  时薪约 {isk(hourlyMin)} ~ {isk(hourlyMax)} ISK（按当前航行技能）
                 </div>
                 {isActive ? (
                   <div className="app-haul-line">

@@ -1670,6 +1670,10 @@ function normalizeState(raw: unknown): GameState {
     legMinutes: Math.max(0, Math.floor(num(haulRaw.legMinutes))),
     legMs: Math.max(0, Math.floor(num(haulRaw.legMs))),
     phaseAccMs: Math.max(0, Math.floor(num(haulRaw.phaseAccMs))),
+    // 本趟行情倍率（2026-09-11：每趟掷一次 5~10 倍、两段同价）——必须随档保留，
+    // 否则重载会丢本趟价（旧档缺字段 → 0 / 0，结算按区间下限兜底、下一段起重新掷）
+    tripMul: Math.max(0, num(haulRaw.tripMul)),
+    tripLegsLeft: Math.max(0, Math.floor(num(haulRaw.tripLegsLeft))),
   }
   // --- 精炼炉运转工位表（v20 多工位并行、原料不锁定；兼容 v19 起 refineRuns 与更早 refineRun 兜底） ---
   const sanitizeRefineRun = (rawRun: unknown): GameState['refineRuns'][number] | null => {

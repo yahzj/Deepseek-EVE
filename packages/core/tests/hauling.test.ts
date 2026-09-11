@@ -9,7 +9,18 @@ import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
-import { startHauling, stopHauling, haulLegReward, haulLegMinutesOf, HAUL_LEG_TIME_MUL, HAUL_RATE_PER_M3_MIN } from '../src/hauling'
+import {
+  HAUL_LEG_TIME_MUL,
+  HAUL_RATE_PER_M3_MIN,
+  HAUL_TRIP_MUL_MAX,
+  HAUL_TRIP_MUL_MIN,
+  haulBaseReward,
+  haulLegMinutesOf,
+  haulLegReward,
+  haulRewardRange,
+  startHauling,
+  stopHauling,
+} from '../src/hauling'
 import { cargoCapacityM3Of } from '../src/inventory'
 import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
@@ -42,9 +53,14 @@ function world() {
   return { state, ctx }
 }
 
-/** 本测试世界的单段报酬（hub⇄far 标称 2 分钟 → 航段 2×15 = 30 分钟） */
+/** 本测试世界的单段基准报酬（hub⇄far 标称 2 分钟 = 改前口径，不含行情倍率） */
+function baseReward(state: GameState, ctx: SimContext): number {
+  return haulBaseReward(cargoCapacityM3Of(state, ctx, state.shipId), 2)
+}
+
+/** 本趟实际单段报酬（基准 × 本趟行情倍率） */
 function legReward(state: GameState, ctx: SimContext): number {
-  return haulLegReward(cargoCapacityM3Of(state, ctx, state.shipId), haulLegMinutesOf(2))
+  return haulLegReward(cargoCapacityM3Of(state, ctx, state.shipId), 2, state.hauling.tripMul)
 }
 
 /** 航线 = 母港 ⇄ site-test（测试世界仅有的两座建成端点） */
@@ -133,26 +149,40 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.logs.filter((l) => l.text.includes('长途运输 · 已运抵')).length).toBe(2)
   })
 
-  // 2026-09-11 船长：「在跑长途运输时候，所需时间提高，收益也提高」——
-  // 航段分钟 ×15（HAUL_LEG_TIME_MUL）、费率 0.6 → 0.4 ⇒ 单段收益 = 改前 ×10、时薪 = 改前 ×(10/15) = 2/3。
-  it('时间 ×15 / 收益 ×10（船长 2026-09-11）：航段 = 标称×15；单段收益 = 旧口径×10；时薪 = 旧口径的 2/3', () => {
+  // 2026-09-11 船长两次定案：①「所需时间提高」⇒ 航段分钟 ×15（保留）；
+  // ②「价格回调，重新定位 5~10 倍的价格波动，并要求在长途运输任务内显示」⇒ 撤销固定 ×10，
+  //   改为**每趟掷一次 5~10 倍、两段同价**（基准 = 改前口径：货仓 × 0.6 × 标称分钟）。
+  it('时间 ×15 保留 / 报酬 = 改前基准 × 每趟行情 5~10 倍（两段同价、新趟换价）', () => {
     const cap = cargoCapacityM3Of(state, ctx, state.shipId)
     expect(HAUL_LEG_TIME_MUL).toBe(15)
-    expect(HAUL_RATE_PER_M3_MIN).toBe(0.4)
+    expect(HAUL_RATE_PER_M3_MIN).toBe(0.6) // 价格回调：基准费率回原值
+    expect([HAUL_TRIP_MUL_MIN, HAUL_TRIP_MUL_MAX]).toEqual([5, 10])
     expect(haulLegMinutesOf(2)).toBe(30)
-    const oldPay = Math.floor(cap * 0.6 * 2) // 改前口径：费率 0.6 × 标称 2 分钟
-    const newPay = haulLegReward(cap, haulLegMinutesOf(2))
-    expect(Math.abs(newPay - oldPay * 10)).toBeLessThanOrEqual(10) // 取整误差内正好 ×10
-    // 引擎真按新航段结算
+    const base = baseReward(state, ctx)
+    expect(base).toBe(Math.floor(cap * 0.6 * 2))
+    const range = haulRewardRange(cap, 2)
+    expect(range).toEqual({ min: base * 5, max: base * 10 })
+    // 开跑：本趟掷出 5~10 之间的倍率，且本趟记 2 段
     startRoute(state, ctx)
-    expect(state.hauling.legMinutes).toBe(30)
+    expect(state.hauling.legMinutes).toBe(30) // 时间仍 ×15
+    expect(state.hauling.tripMul).toBeGreaterThanOrEqual(HAUL_TRIP_MUL_MIN)
+    expect(state.hauling.tripMul).toBeLessThanOrEqual(HAUL_TRIP_MUL_MAX)
+    expect(state.hauling.tripLegsLeft).toBe(2)
+    const mul1 = state.hauling.tripMul
+    const pay1 = haulLegReward(cap, 2, mul1)
     const w0 = state.wallet.isk
-    advanceGame(state, state.hauling.legMs, ctx)
-    expect(state.wallet.isk - w0).toBe(newPay)
-    // 时薪口径（标称）：容量 × 0.4 × 60 = 旧 容量 × 0.6 × 60 的 2/3
-    const newHourly = Math.round(cap * HAUL_RATE_PER_M3_MIN * 60)
-    const oldHourly = Math.round(cap * 0.6 * 60)
-    expect(newHourly).toBe(Math.round(oldHourly * (10 / 15)))
+    advanceGame(state, state.hauling.legMs, ctx) // 第一段
+    expect(state.wallet.isk - w0).toBe(pay1)
+    expect(state.hauling.tripMul).toBe(mul1) // 同趟第二段沿用同一价
+    expect(state.hauling.tripLegsLeft).toBe(1)
+    advanceGame(state, state.hauling.legMs, ctx) // 第二段（同趟同价）
+    expect(state.wallet.isk - w0).toBe(pay1 * 2)
+    // 本趟跑完（2 段）→ 下一段起换新行情（可能相同，只校验仍在区间内且已重掷过记账）
+    expect(state.hauling.tripLegsLeft).toBe(2)
+    expect(state.hauling.tripMul).toBeGreaterThanOrEqual(HAUL_TRIP_MUL_MIN)
+    expect(state.hauling.tripMul).toBeLessThanOrEqual(HAUL_TRIP_MUL_MAX)
+    // 结算日志写明本趟行情倍率（面板只显示区间，实际值到站才见）
+    expect(state.logs.some((l) => l.text.includes(`本趟行情 ×${mul1.toFixed(1)}`))).toBe(true)
   })
 
   it('停止 = 立即响应且即时返港：中止任务、无需返程时间，船直接停靠回出发站；无后续报酬', () => {
@@ -184,7 +214,7 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.shipId).toBe(other)
   })
 
-  it('存档往返保留任务；旧档缺 hauling 字段 → 默认空态（零迁移）', () => {
+  it('存档往返保留任务（含本趟行情）；旧档缺 hauling 字段 → 默认空态（零迁移）；缺 tripMul → 0 兜底', () => {
     startRoute(state, ctx)
     advanceGame(state, 30_000, ctx)
     const text = serializeSaveFile(state, 1000)
@@ -197,5 +227,17 @@ describe('长途运输（2026-09-09）', () => {
     expect(legacy.state.hauling.active).toBe(false)
     expect(legacy.state.hauling.legMs).toBe(0)
     expect(legacy.state.hauling.routeA).toBeNull()
+    // 中途版本（有 hauling 但无本趟行情字段）→ 0 兜底；结算按区间下限，下一段起重新掷
+    const raw2 = JSON.parse(text) as { state: Record<string, unknown> }
+    const h2 = raw2.state.hauling as Record<string, unknown>
+    delete h2.tripMul
+    delete h2.tripLegsLeft
+    const mid = loadSaveFile(JSON.stringify(raw2)).state
+    expect(mid.hauling.tripMul).toBe(0)
+    expect(mid.hauling.tripLegsLeft).toBe(0)
+    const cap = cargoCapacityM3Of(mid, ctx, mid.shipId)
+    const w0 = mid.wallet.isk
+    advanceGame(mid, mid.hauling.legMs, ctx)
+    expect(mid.wallet.isk - w0).toBe(haulLegReward(cap, 2, HAUL_TRIP_MUL_MIN))
   })
 })

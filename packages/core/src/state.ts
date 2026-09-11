@@ -1001,12 +1001,16 @@ export interface HaulingState {
   fromSiteId: string | null
   /** 当前航段的目的站点 id */
   toSiteId: string | null
-  /** 本段标称航程分钟（出发时锁定；报酬结算按它 = 货仓容量×费率×分钟） */
+  /** 本段标称航程分钟（出发时锁定）；航段真实分钟 = 本值 × HAUL_LEG_TIME_MUL（15） */
   legMinutes: number
   /** 本段真实航程毫秒（出发时锁定；吃航行技能与调试 1 秒快进） */
   legMs: number
   /** 本段已航行毫秒 */
   phaseAccMs: number
+  /** 本趟行情倍率（2026-09-11 船长：每趟掷一次 5~10 倍、两段同价；0 = 旧档未掷，结算按区间下限兜底） */
+  tripMul: number
+  /** 本趟还剩几段（一趟往返 = 2；就位段自成一趟 = 1；≤0 时下一段起换新行情） */
+  tripLegsLeft: number
 }
 
 /** 空态默认值 */
@@ -1019,6 +1023,8 @@ export const EMPTY_HAULING: HaulingState = {
   legMinutes: 0,
   legMs: 0,
   phaseAccMs: 0,
+  tripMul: 0,
+  tripLegsLeft: 0,
 }
 
 /** T9 一个建站点的建造进度 */

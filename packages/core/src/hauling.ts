@@ -7,14 +7,14 @@
  *   不做"去程并入返程"式折算（船长定）。
  * - 货物为**虚拟满载**：开始任务时把驾驶船货仓自动卸空入仓库，任务期间货仓容量被"运输货物"
  *   全部占用（不产生任何真实物品，杜绝货物入库类 bug）；到站结算报酬后自动续下一段。
- * - 报酬 = 货仓容量 × 费率 × 本段航程分钟（R=HAUL_RATE_PER_M3_MIN，费率常量可调）：
- *   与航程线性挂钩 → 任意航线每小时收益 ≈ 容量×费率×60，不存在"挑最短线刷钱"。
- * - **2026-09-11 船长改口径（「在跑长途运输时候，所需时间提高，收益也提高」）**：
- *   ① 航段分钟 **×15**（`HAUL_LEG_TIME_MUL`，含"就位段"）——真实飞行时长随之 ×15，玩家看到的面板时间/日志一并变；
- *   ② 费率 0.6 → **0.4**，使**单段收益 = 改前的 ×10**（`容量×0.4×新分钟 = 10 × 容量×0.6×旧分钟`）。
- *   推论：**时薪由 36×容量 降为 24×容量（= 改前的 2/3）**；"与航程线性挂钩、不存在挑短线刷钱"仍成立，
- *   但旧口径"费率 0.6 = 与同船采矿大致同量级"**已作废**——按新费率实测（母港丰饶之环·富凡晶石 13 ISK/单位）：
- *   沙猫级 采矿 ≈ 3.9 万 ISK/时 vs 运输 ≈ 1.92 万（≈0.5×）；蝠鲼级重载货舰 采矿 ≈ 14.3 万 vs 运输 ≈ 62.4 万（≈4.4×）。
+ * - 报酬 = **改前基准 × 每趟行情倍率**（2026-09-11 船长二次定案）：
+ *   基准 = 货仓容量 × `HAUL_RATE_PER_M3_MIN`（0.6，改前原值）× **标称航程分钟**；
+ *   每趟（一趟往返）掷一次行情倍率 r ∈ [5,10]（`HAUL_TRIP_MUL_MIN/MAX`），**同一趟的两段同价**；
+ *   面板只显示**区间**（不预告本趟掷出的实际值），到站结算时才入账并写日志。
+ * - 时薪口径：≈ 容量 × 0.6 × 60 × r ÷ 15（航段分钟 ×15）——仍与航线长短无关，不存在"挑最短线刷钱"。
+ * - **2026-09-11 船长改口径沿革**：① 先定「时间 ×15、收益 ×10」（固定倍率）；② 随后「价格回调，
+ *   重新定位 5~10 倍的价格波动，并要求在长途运输任务内显示」⇒ 撤销固定 ×10，改为**每趟掷 5~10 倍**
+ *   （均值 7.5 倍，即改前单段报酬的 7.5 倍；时薪均值 = 改前的 7.5/15 = 0.5 倍）。
  *   航行技能照旧缩短实际时长（`travelMinutesEff`；现下限系数 0.35 ⇒ 105 分钟的实际下限约 37 分钟）。
  * - 互斥：任务中驾驶船忙碌（等同远征），各出港/站内手动作业入口拒绝；换驾驶 = 立即终止
  *   （虚拟货无残留、无惩罚）；AI 副船本版不支持。
@@ -27,23 +27,53 @@ import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
 import { cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { siteProgress } from './station'
 import { shipDisplayName } from './instances'
+import { nextRandom } from './rng'
 
 /**
- * 运输报酬费率：ISK / (m³ × 航程分钟)。
- * 2026-09-11 船长改口径：航段时间 ×15（见 `HAUL_LEG_TIME_MUL`）、单段收益 ×10 ⇒ 费率 0.6 → **0.4**
- * （0.6 × 10/15 = 0.4，正好把"收益 ×10"落在新航时上）。旧注"0.6 = 与同船采矿大致同量级"已作废。
+ * 运输基准费率：ISK / (m³ × **标称**航程分钟)。= 改口径前的原值 0.6
+ * （2026-09-11 船长二次定案「价格回调，重新定位 5~10 倍的价格波动」）。
+ * 实际单段报酬 = 本基准 × **每趟行情倍率**（5~10 倍，见 `HAUL_TRIP_MUL_MIN/MAX`）。
  */
-export const HAUL_RATE_PER_M3_MIN = 0.4
+export const HAUL_RATE_PER_M3_MIN = 0.6
 
-/**
- * 航段时间倍率（2026-09-11 船长：「所需时间提高」）——标称航程分钟 ×本值 = 实际航段分钟。
- * 与费率（0.6→0.4）配套：单段收益 = 改前 ×10，时薪 = 改前 ×(10/15) = 2/3。
- */
+/** 航段时间倍率（2026-09-11 船长：「所需时间提高」）——标称航程分钟 ×本值 = 实际航段分钟；**保留不变** */
 export const HAUL_LEG_TIME_MUL = 15
+
+/** 每趟行情倍率区间（2026-09-11 船长：「重新定位 5~10 倍的价格波动」）——一趟往返掷一次，两段同价 */
+export const HAUL_TRIP_MUL_MIN = 5
+export const HAUL_TRIP_MUL_MAX = 10
 
 /** 标称航程分钟 → 运输航段分钟（×`HAUL_LEG_TIME_MUL`，至少 1 分钟；面板/引擎同用这一处口径） */
 export function haulLegMinutesOf(nominalMinutes: number): number {
   return Math.max(1, Math.round(nominalMinutes * HAUL_LEG_TIME_MUL))
+}
+
+/** 单段**基准**报酬（改前口径）：货仓 × 0.6 × 标称航程分钟（不含行情倍率；floor 取整） */
+export function haulBaseReward(capacityM3: number, nominalMinutes: number): number {
+  return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * nominalMinutes)
+}
+
+/** 单段实付报酬 = 基准 × 本趟行情倍率（每趟一个倍率、两段同价；floor 取整） */
+export function haulLegReward(capacityM3: number, nominalMinutes: number, tripMul: number): number {
+  return Math.floor(haulBaseReward(capacityM3, nominalMinutes) * tripMul)
+}
+
+/** 单段报酬**区间**（面板只显示这个，不预告本趟实际掷值——船长 2026-09-11：「只显示区间」） */
+export function haulRewardRange(capacityM3: number, nominalMinutes: number): { min: number; max: number } {
+  const base = haulBaseReward(capacityM3, nominalMinutes)
+  return { min: Math.floor(base * HAUL_TRIP_MUL_MIN), max: Math.floor(base * HAUL_TRIP_MUL_MAX) }
+}
+
+/** 掷一次行情倍率（均匀 [5,10]，保留 1 位小数便于日志阅读）；消耗一次 rng（存档可复现） */
+function rollTripMul(state: GameState): number {
+  const span = HAUL_TRIP_MUL_MAX - HAUL_TRIP_MUL_MIN
+  return Math.round((HAUL_TRIP_MUL_MIN + nextRandom(state.rng) * span) * 10) / 10
+}
+
+/** 开新一趟：掷行情倍率 + 记「本趟还剩几段」（一趟往返 = 2 段；就位段自成 1 段） */
+function beginTrip(state: GameState, legs: number): void {
+  state.hauling.tripMul = rollTripMul(state)
+  state.hauling.tripLegsLeft = Math.max(1, legs)
 }
 
 /** 站点端点（id = null 表示母港） */
@@ -85,11 +115,6 @@ export function dockedHaulEndpoint(state: GameState): string | null {
   return state.dockedSite // null = 母港；否则副站 id
 }
 
-/** 单段报酬估算（容量 × 费率 × 标称分钟；floor 取整） */
-export function haulLegReward(capacityM3: number, legMinutes: number): number {
-  return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * legMinutes)
-}
-
 /** 展示/日志用的实际航程分钟（吃航行技能与调试快进；四舍五入 ≥1） */
 function effMinutesOf(state: GameState, ctx: SimContext, nominalMinutes: number): number {
   return Math.max(1, Math.round(travelMinutesEff(state, ctx, nominalMinutes)))
@@ -97,7 +122,18 @@ function effMinutesOf(state: GameState, ctx: SimContext, nominalMinutes: number)
 
 /** 空态 */
 function emptyHauling(): HaulingState {
-  return { active: false, routeA: null, routeB: null, fromSiteId: null, toSiteId: null, legMinutes: 0, legMs: 0, phaseAccMs: 0 }
+  return {
+    active: false,
+    routeA: null,
+    routeB: null,
+    fromSiteId: null,
+    toSiteId: null,
+    legMinutes: 0,
+    legMs: 0,
+    phaseAccMs: 0,
+    tripMul: 0,
+    tripLegsLeft: 0,
+  }
 }
 
 /** 端点所在星系（null = 母港） */
@@ -180,14 +216,16 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     h.active = false
     return { ok: false, error: '无法从当前位置就位到该航线——航路不可达。' }
   }
-  const perLeg = haulLegReward(cap, h.legMinutes)
+  // 本趟行情倍率（船长 2026-09-11：每趟掷一次、两段同价；就位段自成一趟，只跑 1 段）
   const isPos = dockHere !== a.siteId && dockHere !== b.siteId
+  beginTrip(state, isPos ? 1 : 2)
+  const { min, max } = haulRewardRange(cap, minutesBetween(ctx, a.siteId, b.siteId))
   addLog(
     state,
     'info',
     `长途运输开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
       (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
-      `，到站结算报酬约 ${perLeg.toLocaleString('zh-CN')} ISK${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
+      `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} ISK（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
   )
   return { ok: true }
 }
@@ -226,24 +264,30 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
     if (h.phaseAccMs >= h.legMs) {
       const arrived = haulEndpointName(ctx, h.toSiteId)
       const cap = cargoCapacityM3Of(state, ctx, state.shipId)
-      const reward = haulLegReward(cap, h.legMinutes)
+      // 本段报酬 = 基准（货仓 × 0.6 × 本段标称分钟）× 本趟行情倍率（一趟两段同价）
+      const nominal = minutesBetween(ctx, h.fromSiteId, h.toSiteId)
+      const mul = h.tripMul > 0 ? h.tripMul : HAUL_TRIP_MUL_MIN
+      const reward = haulLegReward(cap, nominal, mul)
       state.wallet.isk += reward
       addLog(
         state,
         'trade',
-        `长途运输 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
+        `长途运输 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（本趟行情 ×${mul.toFixed(1)}；货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
       )
       // 到站（母港 = dockedSite null；随后立即续下一段）
       state.awayGalaxy = null
       state.dockedSite = h.toSiteId === null ? null : h.toSiteId
       const at = h.toSiteId
       const nextTo = at === h.routeA ? h.routeB : h.routeA
+      // 本趟段数记账：跑完本趟（一趟往返 2 段）→ 下一段起换新行情
+      h.tripLegsLeft -= 1
       if (!setLeg(state, ctx, at, nextTo)) {
         // 航线异常（端点不可达等防御）：就地结束并提示
         h.active = false
         addLog(state, 'warn', `长途运输异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`)
         break
       }
+      if (h.tripLegsLeft <= 0) beginTrip(state, 2)
       const departTo = haulEndpointName(ctx, h.toSiteId)
       addLog(state, 'info', `长途运输继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`)
     }
