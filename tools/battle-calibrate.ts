@@ -812,6 +812,63 @@ async function main(): Promise<void> {
     }
   }
 
+  /* 敌人专用数据表 CSV（船长 2026-09-10：「敌人战斗数据不在该表格，重新输出一个敌人单独的数据表格」）——
+   * 一张表给全：**可编辑字段**（威胁/战术/族/敌速/总血/命中/倍率/单发/衰减/僚机/伤害权重/交火展示时长）
+   * ＋ **引擎派生**（射程带/期望交距/战斗机动/比率/总DPS/实际单发/编队）＋ **实测**（中位参考行 胜率·时长·残血）。 */
+  if (process.argv.includes('--csv')) {
+    const refLd = LOADOUTS.find((l) => l.name.startsWith('S2 灰鲭鲨'))!
+    const head = [
+      'id', '卡名', '族', '威胁', '战术', '敌速', '比率', '战斗机动', '射程带min', '射程带max', '期望交距',
+      '编队', '波次', '僚机', '总血', '总DPS', '单发(实际)', '命中', '伤害构成', '远端衰减', '近盲带',
+      '个性口', '交火展示时长', '实测胜率', '实测时长', '实测残血',
+    ]
+    console.log(head.join(','))
+    for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
+      const f = createFoeSpecs(a, bal)[0]!
+      const w = f.weapons[0]!
+      const pos = bal.tacticDesireFactor[a.tactic ?? 'orbit'] ?? 0.5
+      const waves = a.waves && a.waves.length > 0 ? a.waves : [{ units: 1, hpShare: 1 }]
+      const hpBase = a.foeHpOverride ?? foeHpOfThreat(a.threat, bal)
+      const comp = Object.entries(a.dmgMix ?? {}).map(([t, v]) => `${t}${v}`).join(':') || '动能(缺省)'
+      const shot = w.shotsByType ? Object.entries(w.shotsByType).map(([t, d]) => `${t} ${d}`).join('+') : String(w.shotDmg)
+      const quirks = [
+        a.foeShotDmg !== undefined ? `单发直写${a.foeShotDmg}` : '',
+        a.foeDmgMul !== undefined ? `伤害x${a.foeDmgMul}` : '',
+        a.foeFalloff !== undefined ? `衰减${a.foeFalloff}` : '',
+        a.foeHitRate !== undefined ? `命中${a.foeHitRate}` : '',
+      ].filter(Boolean).join('；')
+      let win = 0
+      let dur = 0
+      let rem = 0
+      for (const seed of SEEDS) {
+        const s = makeState(refLd.ship, refLd, MID_SKILLS, seed)
+        const spec = createPlayerSpec(s, ctx as SimContext, refLd.ship)
+        const initHp = spec.hp.s + spec.hp.a + spec.hp.h
+        const b = startBattleFor(s, ctx as SimContext, s.shipId, a.id, 0)
+        if (!b) continue
+        s.gameMs = ctx.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(ctx.anomalies.get(a.id), ctx.balance.battle)
+        advanceBattleFor(s, ctx as SimContext, b, s.shipId, a.id)
+        const u = b.units['player']
+        if (b.ended === 'me') win++
+        rem += (u ? (u.hp.s + u.hp.a + u.hp.h) / Math.max(1, initHp) : 0) * 100
+        dur += Math.min(ctx.balance.battle.maxBattleMs, Math.max(0, b.lastTickGameMs - b.startedAtGameMs))
+      }
+      console.log(
+        [
+          a.id, a.name, a.foeFamily ?? '', a.threat, a.tactic ?? 'orbit', f.speedMps,
+          ((f.speedMps * foeAgilityMul) / REF_COMBAT).toFixed(2), Math.round(f.speedMps * foeAgilityMul),
+          w.minRangeM, w.maxRangeM, Math.round(w.minRangeM + pos * (w.maxRangeM - w.minRangeM)),
+          waves.length > 1 ? `${waves.reduce((s, x) => s + (x.units ?? 1), 0)}队${waves.length}波` : '1波',
+          waves.map((x) => (x.hpShare ?? 1).toFixed(2)).join('+'), a.escorts ?? 0,
+          Math.round(hpBase * waves.reduce((s, x) => s + (x.hpShare ?? 1), 0)),
+          (a.threat * bal.foeDpsPerThreat).toFixed(1), shot, `${(w.hitRate * 100).toFixed(0)}%`, comp,
+          w.falloff, w.blindDmgMul, quirks, a.combatSeconds,
+          `${Math.round((win / SEEDS.length) * 100)}%`, `${(dur / SEEDS.length / 1000).toFixed(0)}s`, `${(rem / SEEDS.length).toFixed(0)}%`,
+        ].join(','),
+      )
+    }
+  }
+
   void bal
 }
 

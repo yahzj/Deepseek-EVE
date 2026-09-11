@@ -29,7 +29,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeHpOverride: 22, // P1 战斗引入（2026-09-06）：脱离威胁曲线单列——裸船零技能可过（约 37s）
     foeSpeedMps: 322, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.10×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 223（= 段参考船 220 ×1.28 口径）
     loot: [],
-    combatSeconds: 120,
+    combatSeconds: 20,
     description: '深空工业协会的常设讨伐令：演习场中失控的靶机与训练残骸需要定期清剿。悬赏按次结算、可反复接取——新手的第一张长期单。',
   },
   {
@@ -49,7 +49,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 12_000,
     loot: [],
-    combatSeconds: 240,
+    combatSeconds: 20,
     description: '通缉册上的老面孔：柯尔边境的前哨海盗团长期袭扰新手商路。悬赏常设，击溃即结算，可反复接取。',
   },
   {
@@ -69,7 +69,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 20_000,
     loot: [],
-    combatSeconds: 300,
+    combatSeconds: 20,
     description: '长期通缉：武装拾荒者盘踞废弃采掘平台多年，协会悬赏清除其火力点。',
   },
   {
@@ -90,7 +90,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 75000,
     loot: [],
-    combatSeconds: 420,
+    combatSeconds: 70,
     description: '红环航道的老牌劫掠舰队，通缉令在协会悬赏板上挂了五年——击退其主力即可结算，可反复接取。',
   },
   {
@@ -118,7 +118,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 4,
     rewardIsk: 1100000,
     loot: [],
-    combatSeconds: 420,
+    combatSeconds: 60,
     description: '暗星坟场的守墓舰队从不轮换，协会对它的通缉令也从未撤销：击退一次，结算一次。',
   },
   {
@@ -140,7 +140,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 2,
     rewardIsk: 165000,
     loot: [],
-    combatSeconds: 480,
+    combatSeconds: 90,
     description: '一桩悬了许久的疑案：幽灵舰定期在红环深处现身又消失。协会对每一次成功接触都发放调查赏金——它到底是什么，至今没人说清。',
   },
   {
@@ -167,7 +167,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 2,
     rewardIsk: 160_000,
     loot: [],
-    combatSeconds: 540,
+    combatSeconds: 75,
     description: '深渊之门常年有人值守，也常年需要民间火力分担防务。协会常驻悬赏：按次结算，声望仅首胜授予。',
   },
   {
@@ -189,7 +189,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 3,
     rewardIsk: 300_000,
     loot: [],
-    combatSeconds: 600,
+    combatSeconds: 90,
     description: '一具远古泰坦残骸静卧深渊航道，协会长期征集武装护航下的勘探与清剿——击退守墓编队，赏金照发。',
   },
   {
@@ -211,7 +211,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 3,
     rewardIsk: 310000,
     loot: [],
-    combatSeconds: 660,
+    combatSeconds: 100,
     description: '奥罗荒环的武装残骸会被风暴反复激活，协会的猎杀令因此常年有效：按次结算，可反复接取。',
   },
   {
@@ -233,7 +233,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 3,
     rewardIsk: 490000,
     loot: [],
-    combatSeconds: 720,
+    combatSeconds: 100,
     description: '星髓迷宫深处有东西在筑巢。协会将它列入最高级长期悬赏：进去的人要自己数着命回来。',
   },
 
@@ -254,7 +254,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 2,
     rewardIsk: 150_000,
     loot: [],
-    combatSeconds: 480,
+    combatSeconds: 85,
     description: '烬火星区的防线战事常年不断，协会长期悬赏民间火力增援——击退一次围攻编队，结算一次赏金。',
   },
   {
@@ -272,7 +272,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 2,
     rewardIsk: 170000,
     loot: [],
-    combatSeconds: 540,
+    combatSeconds: 110,
     description: '回音荒区的残舰群会不断“复活”，协会认为是残余自动化程序作祟。长期清剿令按次结算。',
   },
   {
@@ -291,7 +291,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 3,
     rewardIsk: 350000,
     loot: [],
-    combatSeconds: 540,
+    combatSeconds: 100,
     description: '天底是条死胡同，也是流亡舰队最后的据点。协会长年封锁此区，悬赏每一次突破防线的清剿。',
   },
   {
@@ -316,7 +316,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 4,
     rewardIsk: 850000,
     loot: [],
-    combatSeconds: 600,
+    combatSeconds: 160,
     description: '星噬之口吞噬过太多舰队。协会悬赏一切能削弱其守军的行动——常设令，可反复接取。',
   },
   {
@@ -340,7 +340,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 4,
     rewardIsk: 1500000,
     loot: [],
-    combatSeconds: 660,
+    combatSeconds: 55,
     description: '穹顶墓园的守墓舰队是现存最古老的武装力量，协会将其列为全星域最高悬赏——无人知晓它们为何仍在巡弋。',
   },
   {
@@ -364,7 +364,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 4,
     rewardIsk: 1100000,
     loot: [],
-    combatSeconds: 720,
+    combatSeconds: 60,
     description: '虚海边缘的守望者只对强敌回应。协会常年保留这份最高级通缉，等待能活着带回战报的人。',
   },
   // ══════════ V16.1 内容补充：为空缺星系添加的长期悬赏 ══════════
@@ -384,7 +384,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     foeHpOverride: 75, // P1 战斗引入 pass-2（2026-09-06）：鲣鱼2×MK1零技≈30s；裸船可磨(60%/122s)不卡死；顺滑待实测
     foeSpeedMps: 337, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.15×**（低段缓坡档）基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 225
     loot: [],
-    combatSeconds: 180,
+    combatSeconds: 20,
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',
   },
   {
@@ -404,7 +404,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 25_000,
     loot: [],
-    combatSeconds: 300,
+    combatSeconds: 25,
     description: '碎晶带的晶尘里藏着一伙专劫曦棱晶货船的惯匪。通缉长期有效，可反复接取。',
   },
   {
@@ -424,7 +424,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 30_000,
     loot: [],
-    combatSeconds: 300,
+    combatSeconds: 20,
     description: '灯塔长廊的信标阵列屡遭破坏，修复费用高昂。协会悬赏猎杀破坏信标的惯犯——本单长期有效。',
   },
   {
@@ -445,7 +445,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 1,
     rewardIsk: 60_000,
     loot: [],
-    combatSeconds: 360,
+    combatSeconds: 70,
     description: '灰霾带的电离云是天然的伏击场——一伙劫掠团常年盘踞环心航路。协会发布长期清剿令，按次结算。',
   },
   {
@@ -467,7 +467,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 2,
     rewardIsk: 190_000,
     loot: [],
-    combatSeconds: 480,
+    combatSeconds: 100,
     description: '蜃影的引力透镜是天然的埋伏场，海盗借此劫持迷航商船。协会长期悬赏清除这些导航劫持者。',
   },
   {
@@ -489,7 +489,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 3,
     rewardIsk: 250_000,
     loot: [],
-    combatSeconds: 540,
+    combatSeconds: 100,
     description: '裂谷深带的引力畸变催生出集群异形，威胁深层矿道。协会将其列为长期高危猎杀令。',
   },
 
@@ -505,7 +505,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
-    combatSeconds: 45,
+    combatSeconds: 20,
     tactic: 'orbit',
     hidden: true,
     description: '低安遭遇模板：小股流窜海盗（隐藏，不出现在悬赏目录）。',
@@ -521,7 +521,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
-    combatSeconds: 45,
+    combatSeconds: 30,
     tactic: 'orbit',
     escorts: 1,
     hidden: true,
@@ -538,7 +538,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: 40,
     tactic: 'brawl',
     escorts: 2,
     hidden: true,
