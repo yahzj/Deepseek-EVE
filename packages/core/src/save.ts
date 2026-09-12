@@ -1456,6 +1456,13 @@ function normalizeState(raw: unknown): GameState {
       if (typeof bp === 'string' && bp.length > 0 && !learnedRecipes.includes(bp)) learnedRecipes.push(bp)
     }
   }
+  // --- 一次性图纸"名额已用尽"（2026-09-12 兼容字段；老档缺省 = 空，零迁移） ---
+  const spentOneTimeRecipes: string[] = []
+  if (Array.isArray(src.spentOneTimeRecipes)) {
+    for (const bp of src.spentOneTimeRecipes) {
+      if (typeof bp === 'string' && bp.length > 0 && !spentOneTimeRecipes.includes(bp)) spentOneTimeRecipes.push(bp)
+    }
+  }
 
   // --- 市场（v9）：整表容错；缺失/损坏的簿与池留空，首次推进由引擎按目录补齐 ---
   const marketRaw = asRaw(src.market)
@@ -2346,6 +2353,7 @@ function normalizeState(raw: unknown): GameState {
     mining,
     moduleBay,
     learnedRecipes,
+    spentOneTimeRecipes,
     blueprintStock,
     market,
     orders,

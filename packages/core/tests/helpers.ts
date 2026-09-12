@@ -227,7 +227,7 @@ export function blueprint(
   id: string,
   moduleId: string,
   materials: BlueprintDef['materials'],
-  opts?: { buildSeconds?: number; buildCost?: number; price?: number },
+  opts?: { buildSeconds?: number; buildCost?: number; price?: number; singleUse?: boolean },
 ): BlueprintDef {
   return {
     id,
@@ -238,6 +238,7 @@ export function blueprint(
     buildCostIsk: opts?.buildCost ?? 500,
     priceIsk: opts?.price ?? 1000,
     description: '测试用蓝图',
+    ...(opts?.singleUse === true ? { singleUse: true } : {}),
   }
 }
 

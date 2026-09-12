@@ -1531,10 +1531,15 @@ export function placeShipSellOrder(
   return order
 }
 
-/** 学习蓝图（消耗 1 本 → 永久学会；重复蓝图只能放市场交易） */
+/** 学习蓝图（消耗 1 本 → 永久学会；重复蓝图只能放市场交易）
+ *  ⚠ **一次性图纸不可学习**（2026-09-12 船长：「既玩家无法学会，只能制造一次」）——
+ *  它只能拿到组装机去造一次（开工时消耗，见 `manufacturing.startManufacturing`）。 */
 export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: string): { ok: boolean; error?: string } {
   const known = ctx.blueprints.get(blueprintId) ?? ctx.shipBlueprints.get(blueprintId)
   if (!known) return { ok: false, error: `未知蓝图：${blueprintId}。` }
+  if (known.singleUse === true) {
+    return { ok: false, error: `「${known.name}」是一次性图纸：不能学习，请到组装机直接用掉（只能制造一次）。` }
+  }
   const count = state.blueprintStock[blueprintId] ?? 0
   if (count <= 0) return { ok: false, error: '没有可学习的蓝图书。' }
   if (state.learnedRecipes.includes(blueprintId)) {
