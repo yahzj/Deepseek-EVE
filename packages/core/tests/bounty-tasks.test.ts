@@ -273,6 +273,14 @@ describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () 
 })
 
 describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => {
+  it('安全等级分区边界（2026-09-12 船长「0也算低安」）：0 归低安，中安是开区间 (0, 0.5)', () => {
+    const { ctx } = makeWorld()
+    expect(securityZoneOf(ctx, 'galaxy-nf')).toBe('低安') // 安全等级 0
+    expect(securityZoneOf(ctx, 'galaxy-bn')).toBe('中安') // 0.1
+    expect(securityZoneOf(ctx, 'galaxy-high')).toBe('高安') // 0.6
+    expect(securityZoneOf(ctx, 'galaxy-far')).toBe('低安') // −0.5
+  })
+
   it('席位表：高安不派发 → 中安 2 席 + 低安 3 席 = 5 个地点/天', () => {
     expect(BOUNTY_ZONE_PLAN.map((p) => [p.zone, p.count])).toEqual([
       ['中安', 2],

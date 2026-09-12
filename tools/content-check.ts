@@ -3022,11 +3022,11 @@ for (const m of MODULES) {
         )
         break
       case 'lowSec':
-        // 死触发器守卫（2026-09-12 星系机制通讯）：数据里必须真的存在安全等级低于 +0.5 的星系，
-        // 否则这封信永远不会送达（阈值与 encounters/explore 的低安判定同源，缺省安全等级按高安）
+        // 死触发器守卫（2026-09-12 星系机制通讯）：数据里必须真的存在低安星系，否则这封信永远不会送达。
+        // 低安口径与引擎**同一出处**（`balance.encounter.lowSecMax`，缺省 0 = 含 0，见船长「0也算低安」）
         check(
-          GALAXIES.some((g) => (g.security ?? 1) < 0.5),
-          `通讯 ${m.id} 用 lowSec 触发器，但数据里没有安全等级低于 +0.5 的星系`,
+          GALAXIES.some((g) => (g.security ?? 1) <= DEFAULT_BALANCE.encounter.lowSecMax),
+          `通讯 ${m.id} 用 lowSec 触发器，但数据里没有低安星系（安全等级 ≤ ${DEFAULT_BALANCE.encounter.lowSecMax}）`,
         )
         break
       case 'foeFamily':

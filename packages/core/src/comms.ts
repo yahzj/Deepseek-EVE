@@ -147,10 +147,12 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     }
     case 'lowSec':
       // 2026-09-12 船长定（星系机制通讯）：**首次探明任一低安星系**即送达一封低安须知。
-      // 阈值 = `sec < 0.5`，**与低安的既有判定同源**（`encounters.ts` 暴露面掷骰「高安 sec ≥ 0.5 不掷」、
-      // `explore.ts` 的扫描窗口惩罚）；安全等级缺省按高安（`?? 1`，与 `encounters.secOf` 同口径）。
-      // ⇒ 安全等级被改判时本判定自动跟随，数据里不必维护"哪几个星系算低安"的清单。
-      return state.exploredGalaxies.some((galaxyId) => (ctx.galaxies.get(galaxyId)?.security ?? 1) < 0.5)
+      // 低安口径 = **安全等级 ≤ 0（含 0）**——船长同日两条裁定「将伏击掷骰阈值降低为0」＋「0也算低安」，
+      // 与 `balance.encounter.lowSecMax` / `encounters.collectExposures` 同源（伏击只看低安）。
+      // 安全等级缺省按高安（`?? 1`，与 `encounters.secOf` 同口径）⇒ 数据里不必维护"哪几个星系算低安"的清单。
+      return state.exploredGalaxies.some(
+        (galaxyId) => (ctx.galaxies.get(galaxyId)?.security ?? 1) <= ctx.balance.encounter.lowSecMax,
+      )
     case 'foeFamily': {
       // 2026-09-12 船长定：**首次探明"有该族敌人"的星系**即送达（如 G 族蜂群的敌情通报）。
       // 读敌卡数据而不是写死星系 id ⇒ 卡片搬家时自动跟随（窝点派生卡同族同域，一并覆盖）。

@@ -60,6 +60,71 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(state.lowSecNotified).toBe(false)
   })
 
+  /* ── 阈值改动（2026-09-12 船长：「将伏击掷骰阈值降低为0」＋「0也算低安」）──────────────
+   * 口径：**只有低安（sec ≤ 0，含 0）掷伏击**，中安（0 < sec < 0.5）与高安一律不掷；
+   * 概率公式的零点也从 0.5 归位到 0（sec=0 → 5%、sec=−1 → 20%）。 */
+
+  /** 指定安全等级的世界（其余同 lowWorld：低安矿带 belt-f 挂在 galaxy-far，池里有海盗模板） */
+  function secWorld(security: number, encounter?: Partial<SimContext['balance']['encounter']>) {
+    const bal = makeTestCtx().balance
+    const ctx: SimContext = makeTestCtx({
+      quietEvents: true,
+      galaxies: [{ ...galaxy('galaxy-far', '远方'), security }],
+      belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-f', 'ore-a', '低安带', { galaxyId: 'galaxy-far' })],
+      anomalies: encTiers(),
+      ...(encounter ? { balance: { ...bal, encounter: { ...bal.encounter, ...encounter } } } : {}),
+    })
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.exploredGalaxies.push('galaxy-far')
+    return { state, ctx }
+  }
+
+  /** 把船摆到低安带并越过入场缓冲（⚠ 只推进到刚过缓冲：再久会因满舱返航 ⇒ 不再是"就地作业"） */
+  function atBeltPastBuffer(security: number, encounter?: Partial<SimContext['balance']['encounter']>) {
+    const w = secWorld(security, encounter)
+    expect(startMining(w.state, 'belt-f', w.ctx).ok).toBe(true)
+    forceAtBelt(w.state)
+    advanceGame(w.state, 1000, w.ctx) // 建立在场起始
+    advanceGame(w.state, w.ctx.balance.encounter.entryBufferMs + 1000, w.ctx) // 跨过 5 分钟缓冲
+    return w
+  }
+
+  it('中安（sec 0.2）采掘：不掷伏击、不记在场记录、不发首次低安提示', () => {
+    const { state, ctx } = atBeltPastBuffer(0.2)
+    for (let i = 0; i < 120; i += 1) expect(rollLowSecAmbush(state, ctx)).toBe(false)
+    expect(state.encounter.active).toBe(false)
+    expect(Object.keys(state.lowSecPresence).length).toBe(0) // 中安不是低安 ⇒ 不记在场
+    expect(state.lowSecNotified).toBe(false)
+  })
+
+  it('低安边界含 0：sec = 0 照掷（到点率拉满则必中），sec = 0.1 绝不掷', () => {
+    // 到点率拉满（基线 1、斜率 0；注意概率上限是 0.9）⇒ 只要闸门放行，几十次内必中
+    const maxed = { ambushChanceAtZero: 1, ambushChancePerSec: 0 }
+    const zero = atBeltPastBuffer(0, maxed)
+    let hitZero = false
+    for (let i = 0; i < 60 && !hitZero; i += 1) hitZero = rollLowSecAmbush(zero.state, zero.ctx)
+    expect(hitZero).toBe(true)
+
+    const mid = atBeltPastBuffer(0.1, maxed)
+    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(mid.state, mid.ctx)).toBe(false)
+  })
+
+  it('概率曲线以低安上限为零点：sec = −0.5 的到点遇袭率 ≈ 12.5%（0.05 + 0.15 × 0.5）', () => {
+    const { state, ctx } = atBeltPastBuffer(-0.5)
+    let hits = 0
+    const n = 2000
+    for (let i = 0; i < n; i += 1) {
+      if (!rollLowSecAmbush(state, ctx)) continue
+      hits += 1
+      state.encounter.active = false // 让下一轮能继续掷（否则"已有未了结遭遇：不叠"）
+      state.encounterZoneCooldown = {} // 清区域冷却（否则该星系后续全被跳过）
+    }
+    const rate = hits / n
+    // 旧口径（参考点误取 0.5）这里应是 20%；归位到 0 之后是 12.5%
+    expect(rate).toBeGreaterThan(0.09)
+    expect(rate).toBeLessThan(0.16)
+  })
+
   it('到达缓冲：进低安不足 5 分钟判定必不中；过缓冲后命中 → 邀约 60s 未响应 → 自动文字结算（耐久永不为 0）', () => {
     const { state, ctx } = lowWorld()
     expect(startMining(state, 'belt-f', ctx).ok).toBe(true)

@@ -1,7 +1,8 @@
 /**
  * B1 低安遭遇 / 伏击（v17.1 兼容字段，船长 2026-09-04 定稿；2026-09-06 暴露面收敛）：
  * - 暴露只属于"停留与就地作业"：主控（低安矿带采掘中 / 打捞作业中 / 扫描窗口 / 野外驻留）与
- *   AI 副船（采矿采掘中 / 打捞作业中 / 掩护巡逻驻留）；高安（sec ≥ 0.5）不掷；
+ *   AI 副船（采矿采掘中 / 打捞作业中 / 掩护巡逻驻留）；**只有低安掷**——2026-09-12 船长两条裁定
+ *   （「将伏击掷骰阈值降低为0」＋「0也算低安」）⇒ **低安 = sec ≤ 0（含 0）**，中安与高安一律不掷；
  * - 2026-09-06（船长纠正：移动状态不暴露）——航行/返航/转场途中一律不计暴露；
  *   远征只剩交火与自动返航（均非就地作业）→ 不再进入暴露面；交火中也不暴露；
  * - 承担规则：同星系内我方在场船中"停留船"优先承担（区域一次；事件后该星系 5 分钟冷却）；
@@ -201,7 +202,7 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
   const bal = ctx.balance.encounter
   const out = new Map<string, Exposure>()
   const push = (e: Exposure): void => {
-    if (secOf(ctx, e.galaxyId) >= bal.highSecSafe) return // 高安不掷
+    if (secOf(ctx, e.galaxyId) > bal.lowSecMax) return // 中安/高安不掷（低安 = sec ≤ 0，含 0）
     const prev = out.get(e.galaxyId)
     const rank = (x: Exposure): number => (x.kind === '停留' ? 3 : x.shipId === state.shipId ? 2 : 1)
     if (!prev || rank(e) > rank(prev)) out.set(e.galaxyId, e)
@@ -530,7 +531,9 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale
     const cd = state.encounterZoneCooldown[exp.galaxyId] ?? 0
     if (state.gameMs < cd) continue
     const sec = secOf(ctx, exp.galaxyId)
-    let p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.highSecSafe - sec)))
+    // 概率曲线零点 = **低安上限**（`lowSecMax`，2026-09-12 船长定值 0）：
+    // sec=0 → 5%（基线）、sec=−1 → 20%（0.05 + 0.15×1），与 balance 段注释的定义一致。
+    let p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.lowSecMax - sec)))
     if (isScan) p = Math.min(0.9, p * (bal.scanAmbushMul ?? 1)) // 扫描低安：遇袭概率 ×scanAmbushMul
     // 2026-09-08（星际奇遇学缩短事件间隔）：事件到点更密 → 单次遇袭率 ×cadenceScale，
     // 使"每小时遇袭期望"保持与无技能基线一致（船长定：按期望值不变进行修改）

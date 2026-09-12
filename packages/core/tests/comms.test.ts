@@ -494,7 +494,7 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
     { id: 'msg-swarm', factionId: 'dshi', deptId: 'dept-survey', kind: '剧情', subject: '蜂群通报', body: ['正文。'], trigger: { kind: 'foeFamily', family: 'G' } },
   ]
 
-  /** 星系：中安 0.2 · 真低安 −0.7 · 高安边界 0.5（母港等默认星系不写 security = 高安）；G 族敌卡挂在一个指定星系 */
+  /** 星系：中安 0.2 · 低安零点 0 · 真低安 −0.7 · 高安边界 0.5（母港等默认星系不写 security = 高安）；G 族敌卡挂在一个指定星系 */
   function mechWorld(gCardGalaxy = 'galaxy-low') {
     const ctx: SimContext = makeTestCtx({
       quietEvents: true,
@@ -502,6 +502,7 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
       commsFactions: FACTIONS,
       galaxies: [
         galaxy('galaxy-mid', '中安带', { security: 0.2 }),
+        galaxy('galaxy-zero', '零点', { security: 0 }),
         galaxy('galaxy-low', '深低安', { security: -0.7 }),
         galaxy('galaxy-edge', '高安边界', { security: 0.5 }),
       ],
@@ -511,15 +512,18 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
     return { state, ctx }
   }
 
-  it('lowSec：安全等级 < +0.5 才算低安（0.5 与缺省高安都不算）', () => {
+  it('lowSec：低安 = 安全等级 ≤ 0（含 0）；中安与高安都不算（2026-09-12 船长「0也算低安」）', () => {
     const { state, ctx } = mechWorld()
     const ids = (): string[] => commsInbox(state, ctx).map((e) => e.id)
     tick(state, ctx)
     expect(ids()).not.toContain('msg-low') // 只有母港（高安）
-    state.exploredGalaxies.push('galaxy-edge') // 0.5 = 高安边界，不吃低安判定
+    state.exploredGalaxies.push('galaxy-edge') // 0.5 = 高安
     tick(state, ctx)
     expect(ids()).not.toContain('msg-low')
-    state.exploredGalaxies.push('galaxy-mid') // 0.2 —— 还没到 0，但已在低安判定线内
+    state.exploredGalaxies.push('galaxy-mid') // 0.2 = 中安，不是低安
+    tick(state, ctx)
+    expect(ids()).not.toContain('msg-low')
+    state.exploredGalaxies.push('galaxy-zero') // 0 = 低安（含 0，船长裁定）
     tick(state, ctx)
     expect(ids()).toContain('msg-low')
   })
