@@ -421,7 +421,8 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
 
     // 满舱检查：放不下整个循环 → 自动返航或停采
     const oreM3PerCycle = params.unitsPerCycle * cargoUnitM3(state, oreNow)
-    if (oreM3PerCycle > freeCargoM3(state, ctx)) {
+    const freeM3 = freeCargoM3(state, ctx)
+    if (oreM3PerCycle > freeM3) {
       if (m.autoCycle) {
         m.phase = 'returning'
         m.phaseAccMs = 0
@@ -437,7 +438,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         addLog(
           state,
           'info',
-          `货舱已满（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返航空间站卸货（返航约 ${Math.max(1, Math.round(mergedMs / 1000))} 秒，去程已并入返航）。`,
+          `货舱装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：自动返航空间站卸货（本趟 ${m.tripUnits} 单位${oreNow.name}，返航约 ${Math.max(1, Math.round(mergedMs / 1000))} 秒，去程已并入返航）。`,
         )
         continue // 剩余时间转入返航阶段
       }
@@ -449,7 +450,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       addLog(
         state,
         'warn',
-        `货舱已满（本趟 ${m.tripUnits} 单位${oreNow.name}），开采自动停止（未开启自动循环）。`,
+        `货舱装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：开采自动停止（本趟 ${m.tripUnits} 单位${oreNow.name}，未开启自动循环）。`,
       )
       return
     }

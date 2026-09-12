@@ -21,9 +21,8 @@ import type { AiAssignment, GameState } from './state'
 import type { AiCoreType, SimContext } from './types'
 import type { CommandResult } from './engine'
 import { nextRandom } from './rng'
-import { addWare, cargoUnitM3 } from './inventory'
+import { addWare, cargoUnitM3, freeCargoM3Of } from './inventory'
 import { pullOneWreck, salvagerCyclesOf } from './salvaging'
-import { familyModules } from './equipment'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
@@ -700,15 +699,17 @@ function advanceAiMining(
     const beltDef = ctx.belts.get(task.beltId)
     const oreNow = rollBeltOutput(state, ctx, beltDef)
 
-    // 满舱检查（货仓放不下整个循环 → 自动返航）
+    // 满舱检查（货仓放不下整个循环 → 自动返航）：剩余空间走 inventory.freeCargoM3Of 单点
+    // （2026-09-12 P0：此处原为手写副本 freeCargoFor，漏算货舱类技能 ⇒ AI 船未满即返航）
     const oreM3PerCycle = params.unitsPerCycle * cargoUnitM3(state, oreNow ?? params.ore)
-    if (oreM3PerCycle > freeCargoFor(state, shipId, ctx)) {
+    const freeM3 = freeCargoM3Of(state, ctx, shipId)
+    if (oreM3PerCycle > freeM3) {
       task.phase = 'returning'
       task.phaseAccMs = 0
       addLog(
         state,
         'info',
-        `[AI·${shipName}] 货仓已满（本趟 ${task.tripUnits} 单位${oreNow?.name ?? params.ore.name}）：自动返航卸货。`,
+        `[AI·${shipName}] 货仓装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：自动返航卸货（本趟 ${task.tripUnits} 单位${oreNow?.name ?? params.ore.name}）。`,
       )
       continue
     }
@@ -842,13 +843,14 @@ function advanceAiSalvage(
           abort('该星系敌群记录缺失，打捞任务终止')
           return
         }
-        if (pulled.volumeM3 > freeCargoFor(state, shipId, ctx)) {
+        const freeM3 = freeCargoM3Of(state, ctx, shipId)
+        if (pulled.volumeM3 > freeM3) {
           task.phase = 'returning'
           task.phaseAccMs = 0
           addLog(
             state,
             'info',
-            `[AI·${shipName}] 货仓已满（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）：自动返航卸货。`,
+            `[AI·${shipName}] 货仓装不下下一轮打捞（余 ${Math.round(freeM3)} m³ ／ 每轮 ${Math.round(pulled.volumeM3)} m³）：自动返航卸货（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。`,
           )
           break
         }
@@ -859,22 +861,6 @@ function advanceAiSalvage(
       if (task.phase === 'returning') break
     }
   }
-}
-
-/** 副船货仓剩余空间（V18：低槽货舱扩展复数 Σ 加成——与 inventory.cargoCapacityM3Of 同源语义） */
-function freeCargoFor(state: GameState, shipId: string, ctx: SimContext): number {
-  const ship = fleetDefOf(state, ctx, shipId)
-  if (!ship) return 0
-  const cargoDefs = familyModules(state, ctx, shipId, 'cargo')
-  let bonus = 0
-  for (const def of cargoDefs) bonus += def.bonus ?? 0
-  const cap = Math.round(ship.cargoM3 * (1 + bonus))
-  let used = 0
-  const cargo = state.fleet[shipId]?.cargo ?? {}
-  for (const [itemId, units] of Object.entries(cargo)) {
-    used += units * cargoUnitM3(state, ctx.items.get(itemId))
-  }
-  return Math.max(0, cap - used)
 }
 
 /**

@@ -148,9 +148,20 @@ export function cargoCapacityM3(state: GameState, ctx: SimContext): number {
   return cargoCapacityM3Of(state, ctx, state.shipId)
 }
 
+/**
+ * 指定船货仓剩余空间（m³），不小于 0 —— **满舱判定的唯一口径**。
+ * 2026-09-12（P0 玩家反馈「采矿船货仓没满就返航」）：`ai.ts` 原先自带一份手写副本
+ * `freeCargoFor`，只算 `船体 cargoM3 ×(1+货舱件加成)`，**漏掉三条货舱类技能乘链**
+ * （深空物流学 / 货舱管理学 / 货舰操作）⇒ 玩家技能越练、AI 副船越早"喊满"返航
+ * （实测皇带鱼级货舰三技能满级时只装到真容量的 57.96%）。现统一走本函数。
+ */
+export function freeCargoM3Of(state: GameState, ctx: SimContext, shipId: string): number {
+  return Math.max(0, cargoCapacityM3Of(state, ctx, shipId) - cargoUsedM3Of(state, ctx, shipId))
+}
+
 /** 当前船货仓剩余空间（m³），不小于 0 */
 export function freeCargoM3(state: GameState, ctx: SimContext): number {
-  return Math.max(0, cargoCapacityM3(state, ctx) - cargoUsedM3(state, ctx))
+  return freeCargoM3Of(state, ctx, state.shipId)
 }
 
 /* ───────── 跨仓搬运（装卸） ───────── */

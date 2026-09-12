@@ -357,7 +357,8 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')
           return
         }
-        if (pulled.volumeM3 > freeCargoM3(state, ctx)) {
+        const freeM3 = freeCargoM3(state, ctx)
+        if (pulled.volumeM3 > freeM3) {
           // 满仓（下一轮放不下）：自动返航（去程并入返航，总行程时间不变）
           s.phase = 'returning'
           s.phaseAccMs = 0
@@ -365,7 +366,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           addLog(
             state,
             'info',
-            `货仓已满（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³）：自动返航卸货（约 ${mergedSec} 秒，去程已并入返航）。`,
+            `货仓装不下下一轮打捞（余 ${Math.round(freeM3)} m³ ／ 每轮 ${Math.round(pulled.volumeM3)} m³）：自动返航卸货（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³，约 ${mergedSec} 秒，去程已并入返航）。`,
           )
           break
         }

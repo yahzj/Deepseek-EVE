@@ -207,6 +207,22 @@ describe('AI 采矿任务', () => {
     expect(state.fleet['sandcat2']!.cargo['ore-a']).toBe(5)
   })
 
+  it('P0 回归（2026-09-12）：AI 副船满舱判定含货舱类技能 —— 货舱管理学 5 ⇒ 装到 115 而非 100', () => {
+    // 修复前 ai.ts 的 freeCargoFor 是 cargoCapacityM3Of 的手写副本，只算船体货舱×货舱件，
+    // 漏掉货舱管理学(+3%/级)/深空物流学(+4%/级)/货舰操作(+5%/级) ⇒ 技能越练越早返航、
+    // 日志却写「货仓已满」（玩家反馈"货仓没满就返航"）。
+    state.skills.trained['hold-management'] = 5 // 100 × (1+0.03×5) = 115
+    assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx)
+    // 每循环 5 单位、实际循环 15s ⇒ 23 循环装满 115；第 24 循环节拍触发返航
+    advanceGame(state, 360_000, ctx)
+    const task = state.aiAssignments['sandcat2']!.task as { phase: string }
+    expect(task.phase).toBe('returning')
+    expect(state.fleet['sandcat2']!.cargo['ore-a']).toBe(115)
+    // 且日志不再谎称「货仓已满」——改为与判定一致的表述
+    expect(state.logs.some((l) => l.text.includes('货仓装不下下一循环'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('货仓已满'))).toBe(false)
+  })
+
   it('满舱自动返航卸货入物品仓库后继续出航（效率计入行程）', () => {
     assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx)
     // sandcat2 货仓 100 m³：每循环 5 单位 → 20 循环采满

@@ -90,7 +90,9 @@ describe('采矿作业', () => {
     expect(countItem(state2, 'ore-a')).toBe(30)
     expect(state2.mining.active).toBe(false)
     expect(state2.mining.beltId).toBeNull()
-    expect(state2.logs.some((l) => l.kind === 'warn' && l.text.includes('货舱已满'))).toBe(true)
+    expect(state2.logs.some((l) => l.kind === 'warn' && l.text.includes('货舱装不下下一循环'))).toBe(true)
+    // 2026-09-12 P0：判定实为「装不下下一个完整循环」，故不再写「货舱已满」
+    expect(state2.logs.some((l) => l.text.includes('货舱已满'))).toBe(false)
   })
 
   it('自动循环全流程：立即采掘 → 采满 → 满载返航（去程并入）卸入仓库 → 自动回带再采掘', () => {

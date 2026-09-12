@@ -175,6 +175,7 @@ export {
   cargoUsedM3,
   cargoCapacityM3,
   freeCargoM3,
+  freeCargoM3Of,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
   loadWarehouseToCargo,
