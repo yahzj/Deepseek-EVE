@@ -3172,8 +3172,18 @@ export function pickFoeDroneTarget(
   }> = [];
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue;
+    // 该舰各机型的**角色**（哨戒机按"进射程才可打"处理——船长 2026-09-11 重新定义近防炮）
+    const roleOf = new Map<string, string>();
+    for (const slot of f.foeDrones ?? [])
+      roleOf.set(slot.drone.id, slot.drone.role);
     for (const p of pools[f.tag] ?? []) {
-      if (p.alive) cands.push({ foeTag: f.tag, pool: p });
+      if (!p.alive) continue;
+      // **对称规则**（P-40）：敌方**哨戒机**要在**本武器射程内**才可被打；
+      // **出击型**不受射程限制（它们扑到我方来，反击由"被攻击"的令牌驱动）。
+      const role = p.artId ? roleOf.get(p.artId) : undefined;
+      if (role === "sentry" && (dist < w.minRangeM || dist > w.maxRangeM))
+        continue;
+      cands.push({ foeTag: f.tag, pool: p });
     }
   }
   if (cands.length === 0) return null;
