@@ -1693,7 +1693,13 @@ export function BattleScreen({
               位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐。
               **2026-09-11 机群批 S5 第二层**：**敌方机群**（警戒机）也进这一层——同一套出击制，
               只是起点换成**敌舰机库口**、阵位落在**两舰之间**、机体**镜像朝向**（敌机朝我）。 */}
-          {droneWings.length > 0 || foeWings.length > 0 ? (
+          {/* ⚠ **挂载条件必须把"待播的击落演出"也算上**（2026-09-11 船长：「当最后一架敌机判断击毁时，
+              该次攻击动画将会消失（没有飞出攻击返航的动画，也没有返航时爆炸的动画）」）——
+              旧口径只看"还有活着的机群"：**最后一架被打掉 ⇒ 该机群归零 ⇒ 整层被卸载**
+              ⇒ 连它那一轮正在播的**击落定格/滑行/爆炸**一起消失。 */}
+          {droneWings.length > 0 ||
+          foeWings.length > 0 ||
+          droneDownRef.current.length > 0 ? (
             <div
               className="app-bts-drones"
               ref={droneBoxRef}
