@@ -1680,6 +1680,12 @@ for (const m of MODULES) {
     let onHitShips = 0
     /** 写了**炮台受击增程**的舰级数（D 族静滞卫舰，落到汇总行） */
     let gunOnHitShips = 0
+    /** 被任何舰级引用的机型 id —— 用来算「**已备未挂**」（P-20a 的教训：漏挂要一眼可辨） */
+    const mountedDroneIds = new Set<string>()
+    /** G 族机群里是否真的挂了**等离子系**（P-20a 交付物守卫的判据） */
+    let swarmHasPlasma = false
+    /** G 族机群实际挂载的机型 id（落到汇总行） */
+    const mountedSwarmIds: string[] = []
     for (const ship of FOE_SHIPS) {
       const hasDrones = (ship.drones ?? []).length > 0
       // ⑤a **E 族射程带**（只约束带机群的 E 族舰级——即本批落码的那三条）
@@ -1731,6 +1737,11 @@ for (const m of MODULES) {
       }
       for (const ds of ship.drones ?? []) {
         droneSlots++
+        mountedDroneIds.add(ds.drone.id)
+        if (ship.family === 'G') {
+          mountedSwarmIds.push(ds.drone.id)
+          if (ds.drone.damageType === 'plasma') swarmHasPlasma = true
+        }
         check(
           FOE_DRONES.some((d) => d.id === ds.drone.id),
           `机群与防空契约：舰级「${ship.name}」引用的机型 ${ds.drone.id} 不在机型表（FOE_DRONES）内`,
@@ -1753,11 +1764,37 @@ for (const m of MODULES) {
         }
       }
     }
+    // ⑤d **G 族蜂群机挂载：等离子系必须在场**（P-20a 收口 · 2026-09-12 船长选「丙」＝换系）——
+    //    三种机型只有**两个机位** ⇒ 任何"换系"路线都必然空出一个（本轮把等离子换上、爆炸转为未挂）。
+    //    故本条钉的是**交付物**（"等离子真的上了战场"），而不是具体组合 ⇒ 日后换别的组合不会误伤。
+    //    ⚠ 编号取 ⑤d（不取 ⑥）：**⑥ 已被下方「机群火力占比」占用且被设计稿引用**，不许改号。
+    const gSwarmShips = FOE_SHIPS.filter((s) => s.family === 'G' && (s.drones ?? []).length > 0)
+    if (gSwarmShips.length > 0) {
+      check(
+        swarmHasPlasma,
+        `机群与防空契约：G 族有 ${gSwarmShips.length} 条舰级挂了机群，但**没有一架是等离子系**——` +
+          `P-20a（2026-09-12 船长选「丙」）要求等离子机型 \`foe-drone-g-bee-pla\` 必须在场` +
+          `（"已备未挂"正是本条要防的复发形态）`,
+      )
+    }
+    // ⑤e **已备未挂机型**（机型表里有、却没有任何舰级引用）：**预警**、不阻断——
+    //    把"漏挂"从**静默消失**变成体检输出里的一行字（2026-09-12 P-20a 的教训）。
+    const unmountedDrones = FOE_DRONES.filter((d) => !mountedDroneIds.has(d.id))
+    if (unmountedDrones.length > 0) {
+      warn.push(
+        `机群与防空契约：机型表 ${FOE_DRONES.length} 条中 ${unmountedDrones.length} 条**未被任何舰级引用（已备未挂）**：` +
+          `${unmountedDrones.map((d) => `${d.name}（${d.id}）`).join('、')}——` +
+          `确认是有意留档还是待挂（三种机型两个机位时，换系必然空出一个）`,
+      )
+    }
     console.log(
       `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）` +
         `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +
         `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}` +
         `${swarmRanges.length > 0 ? ` · **G 族蜂群机射程** ${swarmRanges.join('　')}（船长 2026-09-12「提高到 7000」；无受击增程）` : ''}` +
+        // ⚠ 汇总行**按结果分支**（血泪清单：有错时不许仍打印"含等离子 ✓"）
+        `${gSwarmShips.length > 0 ? ` · **G 族蜂群机挂载** ${mountedSwarmIds.join(' + ')}${swarmHasPlasma ? '（含等离子 ✓）' : '（⚠ **无机型含等离子** —— 见上方错误）'}` : ''}` +
+        `${unmountedDrones.length > 0 ? ` · **已备未挂机型** ${unmountedDrones.map((d) => d.id).join('、')}` : ' · 机型表全部在役'}` +
         `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级 ×1.5（D 族静滞卫舰：被打中 ⇒ 该型舰 12,000 → 18,000m，本场永久、仅该型舰）` : ''}`,
     )
 

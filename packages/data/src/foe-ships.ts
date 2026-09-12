@@ -77,7 +77,7 @@
  */
 
 import type { FoeShipDef } from '@whale/core'
-import { FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN } from './foe-drones'
+import { FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；
@@ -652,7 +652,11 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
  * 编成内血量权重 = **档基线比**（例：天底 900 : 480 : 480）。逐卡算式写在 `anomalies.ts` 三张卡注释里。
  *
  * **蜂群**（船长「挂在巡洋舰上。2 架。无后备」）：只挂**天底封锁舰**（T3），机型 =
- * `foe-drone-g-bee-kin` ×1 ＋ `foe-drone-g-bee-exp` ×1（族格「三系齐备」的先落两系，等离子留后续）；
+ * `foe-drone-g-bee-kin` ×1 ＋ `foe-drone-g-bee-pla` ×1（**P-20a 收口 · 2026-09-12 船长选「丙」＝换系**：
+ * 两架机位挂不满三系 ⇒ 机群取「**动能 + 等离子**」；**爆炸系仍由母舰炮台承担**——
+ * 本卡 `dmgMix { kinetic 8, explosive 2 }` 一字未动 ⇒ 卡整体仍是三系齐备）。
+ * ⚠ 代价如实登记：爆炸机型 `foe-drone-g-bee-exp` 转为**「已备未挂」**（三种机型只有两个机位，
+ * 任何"换系"路线都会空出一个），体检汇总行会把它列出来，不再静默；
  * **不写 `droneReserve`** ⇒ 本族**无备用机库**（A3「打光为止不补充」对 G 族继续成立）。
  * 火力构成走**守恒拆分**（卡侧 `droneFireShare` 0.2 ＋ `firepowerAnchor` 138）：
  * 机群拿 **28**（2 架各 14）、炮台拿 **110**，**本条目总量仍是 138**（「架数变多、总火力不动」同口径）。
@@ -720,11 +724,14 @@ export const FOE_G_NADIR_LOCK: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 8, explosive: 2 },
   tactic: 'orbit',
-  // **蜂群机 2 架**（船长「挂在巡洋舰上。2 架。无后备」）——三系齐备里先落**动能 + 爆炸**两系
-  // （与卡面 8:2 同源；等离子机型 `foe-drone-g-bee-pla` 已就位，留待后续挂载）。
+  // **蜂群机 2 架**（船长「挂在巡洋舰上。2 架。无后备」）——**P-20a 收口（2026-09-12 船长选「丙」：换系）**：
+  // 两个机位 = **动能 + 等离子**（等离子机型 `foe-drone-g-bee-pla` 由"已备未挂"转为**实挂**，
+  // 并由体检「机群与防空契约」硬守卫钉住——防日后又被换回去）；
+  // **爆炸系改由母舰炮台承担**（本卡 `dmgMix { kinetic 8, explosive 2 }` 未动 ⇒ 卡整体三系齐备）；
+  // 爆炸机型 `-exp` 转为已备未挂（体检汇总行列出）。
   drones: [
     { drone: FOE_DRONE_G_BEE_KIN, count: 1 },
-    { drone: FOE_DRONE_G_BEE_EXP, count: 1 },
+    { drone: FOE_DRONE_G_BEE_PLA, count: 1 },
   ],
   // ⚠ **不写 `droneReserve`** ⇒ 无后备机库（船长「无后备」）。
 }

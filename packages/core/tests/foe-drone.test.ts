@@ -687,3 +687,50 @@ describe("机群火力占比（条目级 · 守恒拆分）", () => {
     expect(per.reduce((n, x) => n + x.gun + x.drones, 0)).toBe(834);
   })
 });
+
+describe("G 族蜂群机挂载（P-20a 收口：等离子系上舰）", () => {
+  /** 真卡「天底静区封锁 66」：1 巡洋（**唯一挂蜂群机的那条**）+ 2 驱逐僚位 */
+  const DEF = base.anomalies.get("ano-nadir-static")!;
+  const units = () => createFoeSpecs(DEF, bal);
+
+  it("2 架 = 动能 ×1 + 等离子 ×1（船长 2026-09-12 选「丙」＝换系；等离子**真的在场**）", () => {
+    const withDrones = units().filter((u) =>
+      u.weapons.some((w) => w.src === "drone"),
+    );
+    // 只有巡洋那一条目挂机群（两台僚位不挂）
+    expect(withDrones).toHaveLength(1);
+    const drones = withDrones[0]!.weapons.filter((w) => w.src === "drone");
+    expect(drones).toHaveLength(2);
+    // 机型与伤害系：换系后 = 动能 + 等离子（**P-20a 的交付物就是"等离子必须在场"**）
+    expect(drones.map((w) => w.artId)).toEqual([
+      "foe-drone-g-bee-kin",
+      "foe-drone-g-bee-pla",
+    ]);
+    expect(drones.map((w) => w.fixedType)).toEqual(["kinetic", "plasma"]);
+    // 本批**只换系**：机型的射程 / 装填 / 命中 / 逐架单发一律照旧
+    expect(drones.map((w) => w.shotDmg)).toEqual([12, 12]);
+    expect(drones.every((w) => w.maxRangeM === 7_000)).toBe(true);
+    expect(drones.every((w) => w.reloadMs === 2_200)).toBe(true);
+    expect(drones.every((w) => w.hitRate === 0.75)).toBe(true);
+    // 船长「无后备」：整卡不得有备用机库
+    expect(units().every((u) => u.foeDroneReserve === undefined)).toBe(true);
+  });
+
+  it("总火力与总血守恒：炮台 114 + 机群 24 = 138 · 总血 2,040（换系只改构成）", () => {
+    let gun = 0;
+    let drone = 0;
+    let hp = 0;
+    for (const u of units()) {
+      hp += u.hp.s + u.hp.a + u.hp.h;
+      for (const w of u.weapons) {
+        if (w.reserve === true) continue; // 备用机是库存深度，不入总量
+        if (w.src === "drone") drone += w.shotDmg ?? 0;
+        else gun += w.shotDmg ?? 0;
+      }
+    }
+    expect(gun).toBe(114);
+    expect(drone).toBe(24); // 2 架各 12（占比 0.30 的守恒拆分）
+    expect(gun + drone).toBe(138); // = 迁移前实测总单发，换系一字不动
+    expect(Math.round(hp)).toBe(2_040);
+  });
+});
