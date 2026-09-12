@@ -37,7 +37,7 @@ import {
 import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
-  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag,
+  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag, foeHangarTotal,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -1397,23 +1397,32 @@ const meSpeedRef = useRef(200)
   }
 
   /**
-   * **机库备用机**（2026-09-12 船长：「关于战斗画面的后备机库，将其显示在名字边上，采用图标乘以数字的形式」）。
+   * **机库备用机**（2026-09-12 船长：「关于战斗画面的后备机库，将其显示在名字边上，采用图标乘以数字的形式」
+   * → 追加选定「**乙**：显示**全队合计**」）。
    *
    * 引擎按舰报 `hangar`（在库待命、战损后按 `respawnMs` 满血放出的架数）。
    * ⚠ **按舰取一次、不能累加**：同一艘舰的多个机型条目上带的是**同一个按舰数值**
    *   （`battleView` 里 `hangarN` 是每舰一个，却盖在 `byArt` 的**每一条**上）⇒ 逐条累加会翻倍。
-   * 显示口径 = 该舰名字右边的「图标 ×N」（图标用既有 `drone-rack`；悬浮说明沿用原 chip 文案）。
+   * 显示口径 = **全队合计**（各舰之和，如奥罗 = 5+5+5 = 15）挂在**主体**名字右边的「图标 ×N」上
+   *   （主体不带库时退首个带库的舰；无备用机不占位）；图标用既有 `drone-rack`。
    */
   const hangarByTag = foeHangarByTag(arcs.foeDrones ?? [])
+  const hangarTotal = foeHangarTotal(arcs.foeDrones ?? [])
+  const hangarCarrierTag =
+    foeRowTags.find((t) => isFoeMainTag(t) && (hangarByTag.get(t) ?? 0) > 0) ??
+    foeRowTags.find((t) => (hangarByTag.get(t) ?? 0) > 0) ??
+    null
   const hangarBadgeOf = (tag: string): ReactNode => {
-    const n = hangarByTag.get(tag) ?? 0
-    if (n <= 0) return null
+    if (tag !== hangarCarrierTag || hangarTotal <= 0) return null
     return (
-      <span className="app-bts-hangar" title="机库备用机：前线战损后自动满血补位（打光母舰才是解法）">
+      <span
+        className="app-bts-hangar"
+        title="敌方全队机库备用机：前线战损后自动满血补位（打光母舰才是解法）"
+      >
         <span className="app-ico">
           <Glyph name="drone-rack" size={11} color={ICO_TONES['drone-rack']} />
         </span>
-        ×{n}
+        ×{hangarTotal}
       </span>
     )
   }

@@ -351,6 +351,8 @@ function layout(
  * ⚠ **按舰取一次、不能累加**：引擎里 `hangar` 是**每舰一个**数值，却盖在该舰 `byArt` 的**每一条**上
  * （同一艘舰挂了两种机型时会重复报同一个数）⇒ 逐条累加会翻倍，故取 `max`。
  * 返回 `tag → 在库待命架数`（无备用机的舰不在表里）。
+ *
+ * ⚠ 入参只含**当前波存活单位**的池（母舰阵亡 ⇒ 其池不再参战）⇒ 表随战况自然收缩。
  */
 function foeHangarByTag(wings: readonly { tag: string; hangar?: number }[]): Map<string, number> {
   const out = new Map<string, number>()
@@ -359,6 +361,17 @@ function foeHangarByTag(wings: readonly { tag: string; hangar?: number }[]): Map
     if (n > 0) out.set(w.tag, Math.max(out.get(w.tag) ?? 0, n))
   }
   return out
+}
+
+/**
+ * **全队机库备用机合计**（2026-09-12 船长选定「**乙**：显示全队合计」）——各舰备用机数之和；
+ * 徽标只挂**一艘**（主体，见 `BattleScreen.hangarCarrierTag`），数字是**整支编队**的在库架数
+ * （奥罗武装残骸群 = 主体 5 + 僚机 5×2 = **15**；泰坦残骸勘探 = **7**；巨构核心勘探令 = **10**）。
+ */
+function foeHangarTotal(wings: readonly { tag: string; hangar?: number }[]): number {
+  let sum = 0
+  for (const n of foeHangarByTag(wings).values()) sum += n
+  return sum
 }
 
 /** 扇形路径（原点为圆心、朝 +x 张角 ±38°；折线逼近弧线） */
@@ -514,6 +527,7 @@ export {
   foeColLeft,
   foeBarGeom,
   foeHangarByTag,
+  foeHangarTotal,
   sizeByTierEnabled,
   sizeOfUnit,
   noseOf,
