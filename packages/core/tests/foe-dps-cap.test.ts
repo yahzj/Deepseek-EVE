@@ -19,15 +19,19 @@
  * ⇒ `balance.battle.foeDpsCap` 现值 **0 = 关闭**。故本文件里凡"越线被钳"的用例一律
  * **显式传入上限 150**（验的是**机制仍在**），另外单独一条锁**当前配置 = 关闭**。
  *
- * ⚠ **已知待办（不在本批修，等船长排期）**：本文件的 `hullDps()` 夹具**只统计第一条条目**，
- * 多条目卡（穹顶守卫 = 静滞卫舰 ×2 + 守墓长舰 ×1 等）会被**漏算**。它曾让"27 张卡全部未越线"
- * 变成**假绿**——实际上该钳制**开着时是真在压卡的**（实测：`巨构核心勘探令 3 档` 单波舰体
- * 159.4 DPS 被压到 150；单条目更重的卡也被压）。修夹具会改变 7 张多波卡的**实际难度**
- * （属平衡改动），故**先不修、先报**。
+ * ⚠ **口径澄清（2026-09-12 深夜复核，此前一处注释写错了）**：
+ * 本文件的 `hullDps()` 夹具**没有漏算**——它遍历**全部单位**、逐条求和；27 张卡的夹具值与
+ * "逐波独立建档（不钳制）"的实收**逐字相同**（见下方 `夹具口径` 一条守卫）。
+ * 之前那句"27 张卡全部未越线 ⇒ **零行为变化**"的**错处只在后半句**：
+ * - **基础卡**确实全部未越线（舰体口径最高 = 虚海 131.25 / 穹顶 126.6 / 巨构核心 67.3）；
+ * - 但**窝点派生档**（1/2/3 档 = 威胁 ×1.3/1.6/2.0）会越线 ⇒ 钳制开着时**真在压**：
+ *   穹顶 164.9 / 203.1 / 253.2、虚海 170.0 / 210.3 被压到 150（−9%~−41%）。
+ * ⇒「零行为变化」只在基础卡成立；派生档不是零变化。**现钳制值 = 0（关闭）**，派生档按原值输出。
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES } from '@whale/data'
 import { createFoeSpecs, foeHpOfThreat } from '../src/combat'
+import { LAIR_THREAT_MUL, lairAnomalyOf, lairLevelOf } from '../src/lairs'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
@@ -146,6 +150,50 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
 })
 
 describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算」）', () => {
+  it('夹具口径：hullDps()（`units = waves[0].units` 建档）== 逐波独立建档的第 0 波实收（不钳制）', () => {
+    // ⚠ 这条守卫是为"口径别再造谣"设的：`hullDps()` 遍历全部单位、逐条求和 ⇒ 与真实建造**逐字相同**；
+    //   若哪天有人改成"只取第一条"、或引擎的建档口径变了，本用例会立刻红。
+    const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
+    expect(cards.length).toBe(27)
+    for (const a of cards) {
+      const viaFixture = hullDps(a, { ...bal, foeDpsCap: undefined })
+      const specs = createFoeSpecs(a, { ...bal, foeDpsCap: undefined }, { tagPrefix: '' }) as unknown as Array<{
+        weapons?: ReadonlyArray<{ shotDmg?: number; reloadMs?: number; src?: string }>
+      }>
+      let viaReal = 0
+      for (const sp of specs) for (const w of sp.weapons ?? []) {
+        if (w.src === 'drone' || !w.shotDmg) continue
+        viaReal += (w.shotDmg * 1000) / Math.max(1, w.reloadMs ?? 4000)
+      }
+      expect(viaFixture, `${a.name}（${a.id}）夹具与真实建档不一致`).toBeCloseTo(viaReal, 9)
+    }
+  })
+
+  it('派生档口径：钳制开着时穹顶/虚海被压到 150；关闭后按原值输出', () => {
+    // 实测（2026-09-12 深夜）：**基础卡**全表未越线（最高 = 虚海 131.25），
+    // 但**窝点派生档**（威胁 ×1.3/1.6/2.0）会越线 ⇒ 这是"零行为变化"这句话的边界。
+    // ⚠ 钳后读数**允许微超上限**：缩放系数作用在"单发（整数）"上、再逐条取整折算 DPS
+    //   ⇒ 实测 ≈150.02（3 次取整累积）。故断言用 ≤ 上限 ×1.01，不写死相等。
+    const on = { ...bal, foeDpsCap: CAP_ON }
+    const capped = (a: AnomalyDef): number => hullDps(a, on)
+    const vault = ANOMALIES.find((a) => a.id === 'ano-vault-sentinel')!
+    const voidedge = ANOMALIES.find((a) => a.id === 'ano-voidedge-warden')!
+    const uncappedVault1 = hullDps(lairAnomalyOf(vault, 1), { ...bal, foeDpsCap: undefined })
+    expect(uncappedVault1).toBeGreaterThan(CAP_ON) // 派生 1 档 ≈ 164.9 ⇒ 确实越线
+    expect(capped(lairAnomalyOf(vault, 1))).toBeLessThanOrEqual(CAP_ON * 1.01)
+    expect(capped(lairAnomalyOf(vault, 1))).toBeGreaterThan(CAP_ON * 0.99)
+    expect(capped(lairAnomalyOf(vault, 2))).toBeLessThanOrEqual(CAP_ON * 1.01)
+    // 虚海 lairLevel = 2 ⇒ 只有 1~2 档；2 档派生 ≈ 210.3 同样被钳
+    expect(lairLevelOf(voidedge)).toBe(2)
+    expect(capped(lairAnomalyOf(voidedge, 2))).toBeLessThanOrEqual(CAP_ON * 1.01)
+    // 未越线的档不受影响：坟场守墓者 1 档 ≈ 113.4
+    const grave = ANOMALIES.find((a) => a.id === 'ano-gravekeeper')!
+    const grave1 = hullDps(lairAnomalyOf(grave, 1), { ...bal, foeDpsCap: undefined })
+    expect(grave1).toBeLessThan(CAP_ON)
+    expect(capped(lairAnomalyOf(grave, 1))).toBeCloseTo(grave1, 6)
+    void LAIR_THREAT_MUL // 派生比例由 lairAnomalyOf 内部按表取，这里只需保证表被引用到
+  })
+
   it('当前配置 = 关闭（2026-09-12 船长「火力钳制也暂时关闭」⇒ 写 0）', () => {
     expect(CAP).toBe(0)
     // 关着的时候：整卡舰体 DPS 无论如何都不缩（与"未写"同款零行为）
