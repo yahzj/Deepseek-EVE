@@ -2778,6 +2778,21 @@ body {
 .app-ship-card.is-fleet .app-ship-art { flex: 0 0 auto; line-height: 0; }
 .app-ship-card.is-fleet .app-ship-main { flex: 1 1 auto; min-width: 0; }
 
+/* 悬赏卡敌族舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，像我的舰队里的我方舰船那样，
+   放入悬赏的最左侧」；同批扩到任务中心「赏金任务」窝点卡与「敌对派系活跃」置顶卡）：
+   与上面舰队卡同一套口径——列宽固定（= Expedition FOE_ART_W 132，gap 同 FOE_ART_GAP 10）、置卡片最左侧、
+   显隐由容器实测宽驱动（过窄整列不渲染、不留空位）。只改带 .is-foe-art 的三处敌族卡；
+   资源/快递/建站等同族 .app-station-card（不带 .is-foe-art）保持原纵向排布。 */
+.app-ano-card.is-foe-art,
+.app-station-card.is-foe-art { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.app-ano-card.is-foe-art > .app-ship-art,
+.app-station-card.is-foe-art > .app-ship-art { flex: 0 0 auto; line-height: 0; }
+.app-ano-card.is-foe-art > .app-foe-main,
+.app-station-card.is-foe-art > .app-foe-main { flex: 1 1 auto; min-width: 0; }
+/* 站内卡家族原本靠 .app-station-card 的 column + gap 6px 排版 ⇒ 内容包进信息列后由本行接续同一节奏
+   （常驻悬赏卡是块流 + 各行自带 margin，不需要 gap） */
+.app-station-card.is-foe-art > .app-foe-main { display: flex; flex-direction: column; gap: 6px; }
+
 .app-win-fill {
 
   flex: 1 1 auto;
