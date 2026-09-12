@@ -88,11 +88,20 @@ describe('窝点派生：波次口径', () => {
   })
 
   it('旧路径派生卡**逐字不变**：tier2 = 双波、tier3 = 三波，僚机加成照旧', () => {
-    // 挑一张**旧路径**（无 `ships`）且**自身无波表**的窝点候选卡：tier1 = 沿用主题卡波次（此处 = 无波）
-    const legacy = ANOMALIES.find(
-      (a) => a.lairCore && (!a.ships || a.ships.length === 0) && !(a.waves && a.waves.length > 0),
-    )!
-    expect(legacy).toBeTruthy()
+    // ⚠ **2026-09-12 改夹具（P-43 舰级补完）**：全表 27 张敌军卡都已在舰级路径
+    //   （G 族三卡迁入 +「废弃 F 族」的四张隐藏遭遇模板迁入 A 族舰级）⇒ **旧威胁推导路径再无真实卡**，
+    //   原来的"挑一张旧路径卡"必然取到 undefined。本用例改为**拿真卡复制一份、摘掉 `ships`**
+    //   来守那条路径的行为——旧分支在引擎与 `lairAnomalyOf` 里都**保留**（防旧内容表 / 旧导出 /
+    //   第三方数据走该路径时行为漂移），不该因为没有真卡就失去守卫。
+    const legacy: AnomalyDef = {
+      ...card('ano-redring-raiders'),
+      id: 'test-legacy-foe',
+      name: '测试旧路径敌群',
+      ships: undefined,
+      waves: undefined,
+      escorts: 1,
+      lairCore: '测试窝点',
+    }
     expect(legacy.ships ?? []).toHaveLength(0) // 确认走的是旧威胁推导路径
     expect(lairAnomalyOf(legacy, 1).waves).toBeUndefined() // tier1 = 沿用主题卡（本卡无波）⇒ 仍单波
     expect(lairAnomalyOf(legacy, 2).waves!.map((w) => w.units)).toEqual([1, 1])

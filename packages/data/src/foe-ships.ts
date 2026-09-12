@@ -77,7 +77,7 @@
  */
 
 import type { FoeShipDef } from '@whale/core'
-import { FOE_DRONE_E_ALERT } from './foe-drones'
+import { FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；
@@ -622,6 +622,133 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   droneReserve: { count: 10, respawnMs: 12000 }, // 备用机库 = 出击数的 **100%**（+10，总 20），12s 满血补位
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+ * G 族「鱿烬亡军」——**按 5 档体系登记，本次铺 1~4 档**（2026-09-12 船长六裁决）
+ *
+ * 船长原话：「**G组分5档。从护卫舰到战列舰。战列舰暂时空置。蜂群目前挂在巡洋舰上。2架。无后备。
+ * 速度口径按照1.05算。隐藏模板迁。名字按照你推荐的修改。**」＋ 编成追加裁决「**战列舰先建壳体**」
+ * 「**烬火围攻战按 2 护卫舰**」「**残响残舰按 1 驱逐 2 护卫**」「**天底封锁舰按 1 巡洋 2 驱逐**」。
+ *
+ * | 舰级 | 舰种档 | 实速（基准 × `1.05`） | 血 / 单发（档基线 × 角色） | 射程带 | 服务卡（编成） |
+ * |---|---|---|---|---|---|
+ * | 围攻残兵舰 | **1 护卫舰** | 340 × 1.05 = **357** | 260 × 0.60 = **156** / 39.5 × 0.71 = **28** | 437~5,745 | 烬火围攻战 42（×2）· 回音残舰（×2）· 天底静区封锁（×2） |
+ * | 残响残舰 | **2 驱逐舰** | 295 × 1.05 = **310** | 480 × 0.90 = **432** / 68 × 0.70 = **48** | 464~6,103 | 回音残舰 52（×1）· 天底静区封锁（×2） |
+ * | 天底封锁舰 | **3 巡洋舰** | 258 × 1.05 = **271** | 900 × 1.20 = **1,080** / 124 × 0.85 = **105** | 502~6,604 | 天底静区封锁 66（×1，**挂蜂群机 2 架**） |
+ * | 亡军战列舰 | **4 战列舰** | 205 × 1.05 = **215** | 1,600 × 1.10 = **1,760** / 240 × 0.90 = **216** | 600~7,200 | **空置**（船长「战列舰先建壳体」：先建不接卡，为后续 G 卡留位）· 不配 5 旗舰 |
+ *
+ * **速度口径**（船长「速度口径按照 1.05 算」）：全族 `speedRatio` = **`1.05` 定值**，四档同倍率；
+ * 由 `content:check`「敌速口径契约」的 **G 族定值断言**守卫（不逐舰写不同倍率）。
+ * ⚠ 这是**有意差异**：三张卡迁移前实速 307 / 316 / 327（`foeSpeedMps` 旧绝对值口径），
+ * 迁移后按档变为 **357 / 310（僚位 357）/ 271（僚位 310）**——「残军按舰种走」。
+ *
+ * **血量 / 火力守恒**（改名不改难度的红线）：三张卡**总血 1,585 / 2,035 / 2,040** 与
+ * **炮台总单发 98 / 121 / 138** 逐字守恒，全部由卡侧 `hpMul` / `dmgMul`（分数式）反算吸收；
+ * 编成内血量权重 = **档基线比**（例：天底 900 : 480 : 480）。逐卡算式写在 `anomalies.ts` 三张卡注释里。
+ *
+ * **蜂群**（船长「挂在巡洋舰上。2 架。无后备」）：只挂**天底封锁舰**（T3），机型 =
+ * `foe-drone-g-bee-kin` ×1 ＋ `foe-drone-g-bee-exp` ×1（族格「三系齐备」的先落两系，等离子留后续）；
+ * **不写 `droneReserve`** ⇒ 本族**无备用机库**（A3「打光为止不补充」对 G 族继续成立）。
+ * 火力构成走**守恒拆分**（卡侧 `droneFireShare` 0.2 ＋ `firepowerAnchor` 138）：
+ * 机群拿 **28**（2 架各 14）、炮台拿 **110**，**本条目总量仍是 138**（「架数变多、总火力不动」同口径）。
+ *
+ * **衰减速（`falloff`）= 0.5**（= 全局缺省 = 三张卡迁移前实建值，**守恒**）；
+ * ⚠ 与 E 族的 0.3（船长「衰减降低为 0.3」）是**两族各自的口径**，不互相看齐。
+ * **血型** = 均衡 `0.34 / 0.33 / 0.33`（= 迁移前实建比例）。
+ * ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** G 族 · 一档「围攻残兵舰」——orbit 环绕（层次词「外围围攻军」；数量型小艇）。 */
+export const FOE_G_SWARM_SKIFF: FoeShipDef = {
+  id: 'foe-g-swarm-skiff',
+  name: '围攻残兵舰',
+  family: 'G',
+  hullClassTier: 1, // 护卫舰
+  speedRatio: 1.05, // 船长定值（全族一致）= 357 / 340
+  hp: 156, // 按档重排：T1 档基线 260 × 角色 0.60（数量型小艇）
+  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（= 迁移前实建比例）
+  shotDmg: 28, // T1 档基线 39.5 × 角色 0.71 = 28.05 → 28
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 437, // = 烬火围攻战迁移前射程带（守恒）
+  rangeMaxM: 5745,
+  falloff: 0.5, // 守恒（迁移前实建 0.5）
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+}
+
+/** G 族 · 二档「残响残舰」——orbit 环绕（层次词「残响残舰」）。 */
+export const FOE_G_ECHO_REMNANT: FoeShipDef = {
+  id: 'foe-g-echo-remnant',
+  name: '残响残舰',
+  family: 'G',
+  hullClassTier: 2, // 驱逐舰
+  speedRatio: 1.05, // = 310 / 295
+  hp: 432, // T2 档基线 480 × 角色 0.90（中坚残舰）
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 48, // T2 档基线 68 × 角色 0.70 = 47.6 → 48
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 464, // = 回音残舰迁移前射程带（守恒）
+  rangeMaxM: 6103,
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+}
+
+/** G 族 · 三档「天底封锁舰」——orbit 环绕（层次词「最后据点」）；**族内唯一挂蜂群机的舰级**。 */
+export const FOE_G_NADIR_LOCK: FoeShipDef = {
+  id: 'foe-g-nadir-lock',
+  name: '天底封锁舰',
+  family: 'G',
+  hullClassTier: 3, // 巡洋舰
+  speedRatio: 1.05, // = 271 / 258
+  hp: 1080, // T3 档基线 900 × 角色 1.20（据点主力）
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 105, // T3 档基线 124 × 角色 0.85 = 105.4 → 105
+  hitRate: 0.95, // 低安命中 +0.1（= 迁移前本卡实建命中，守恒）
+  reloadMs: 4000,
+  rangeMinM: 502, // = 天底静区封锁迁移前射程带（守恒）
+  rangeMaxM: 6604,
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+  // **蜂群机 2 架**（船长「挂在巡洋舰上。2 架。无后备」）——三系齐备里先落**动能 + 爆炸**两系
+  // （与卡面 8:2 同源；等离子机型 `foe-drone-g-bee-pla` 已就位，留待后续挂载）。
+  drones: [
+    { drone: FOE_DRONE_G_BEE_KIN, count: 1 },
+    { drone: FOE_DRONE_G_BEE_EXP, count: 1 },
+  ],
+  // ⚠ **不写 `droneReserve`** ⇒ 无后备机库（船长「无后备」）。
+}
+
+/** G 族 · 四档「亡军战列舰」——**空置壳体**（船长「战列舰先建壳体」）。
+ *
+ * 本档**当前没有任何卡引用**：四档是"为后续 G 族卡预留的壳"，
+ * 数值按档基线 × 角色的常规做法先定（T4 1,600 × 1.10 / 240 × 0.90），射程带为同族 orbit 的常规外推；
+ * 落卡时**只改卡侧倍率**，不必再动本行。登记它是为了：① 族阶完整（5 档体系里的第 4 档）；
+ * ② 后续 G 战列舰有现成引用目标（不必临时造舰级）。
+ * ⚠ `content:check`「舰级契约」对它**不要求**有卡引用（把"空置"登记为**有意状态**）。 */
+export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
+  id: 'foe-g-exile-battleship',
+  name: '亡军战列舰',
+  family: 'G',
+  hullClassTier: 4, // 战列舰（空置预留）
+  speedRatio: 1.05, // = 215 / 205
+  hp: 1760, // T4 档基线 1,600 × 角色 1.10
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 216, // T4 档基线 240 × 角色 0.90
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 600,
+  rangeMaxM: 7200,
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+}
+
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
@@ -640,4 +767,8 @@ export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_TITAN_HULK,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_CORE_SECTION,
+  FOE_G_SWARM_SKIFF,
+  FOE_G_ECHO_REMNANT,
+  FOE_G_NADIR_LOCK,
+  FOE_G_EXILE_BATTLESHIP, // 四档战列舰：**空置壳体**（无卡引用，见上方注释）
 ]

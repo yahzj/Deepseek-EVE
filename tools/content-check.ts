@@ -1385,7 +1385,10 @@ for (const m of MODULES) {
           const spd = Math.round(base * slot.ship.speedRatio * (slot.speedMul ?? 1))
           const tactic = slot.tactic ?? slot.ship.tactic
           const ratio = (spd * foeAgi) / refCombat
-          if (def.foeFamily === 'A') {
+          // ⚠ **旧 hidden 遭遇模板豁免族级提速带**（2026-09-12 加）：`enc-pirate-1..4` 归属 A 族
+          //   （F 族废弃并入）但属**旧档兜底模板**，其速度是"迁移守恒"来的（`speedMul` 反算回迁移前实速
+          //   281 / 291 / 394 / 418）⇒ 不套 A 族"每档都高于基准"的设计口径。
+          if (def.foeFamily === 'A' && def.hidden !== true) {
             // A 族口径（见上方⚠）：高于本档舰种基准 + 落在全族提速带
             pirateReadings++
             pirateSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
@@ -1822,6 +1825,10 @@ for (const m of MODULES) {
       slots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * unitCount(s), 0)
     // ⑤ 舰种档：先校验登记表全表（档位越界 / 各族**不配的档**）
     const PIRATE_BANNED_TIERS: readonly number[] = [4, 5] // 4 战列舰 / 5 旗舰
+    /** **G 族（鱿烬亡军）速度定值**（船长 2026-09-12「**速度口径按照 1.05 算**」）——四档同倍率 */
+    const G_SPEED_RATIO = 1.05
+    /** **G 族四档「亡军战列舰」= 预留空置壳体**（船长「**战列舰先建壳体**」；当前无卡引用，属有意状态） */
+    const G_RESERVED_BATTLESHIP_ID = 'foe-g-exile-battleship'
     /** **B 族（武装拾荒者）不得 ≥ 3 巡洋舰**（2026-09-11 船长七裁决：「**确认为新手过渡种族**」+
      *  拾荒者拿的是拼装小艇）⇒ 只登记 **T1 护卫舰 / T2 驱逐舰**两档 */
     const SCAV_BANNED_FROM_TIER = 3
@@ -1864,6 +1871,31 @@ for (const m of MODULES) {
               `目的是防日后随手给杂鱼挂 T4`,
           )
         }
+      }
+      if (ship.family === 'G') {
+        // **G 族（鱿烬亡军）舰种档 + 速度定值**（船长 2026-09-12 六裁决）：
+        // ①「**G组分5档。从护卫舰到战列舰。战列舰暂时空置。**」⇒ 允许 **1~4 档**（1 护卫舰 ~ 4 战列舰）、
+        //   **不配 5 旗舰**（旗舰留给 E 族巨构的"核心舱段"）；
+        // ②「**战列舰先建壳体**」⇒ **T4 登记但"空置"**（当前无卡引用）——本契约**不要求** T4 有卡引用，
+        //   但要求 T4 就是那条**预留壳体**（`G_RESERVED_BATTLESHIP_ID`），防日后把 T4 顺手塞给杂鱼；
+        // ③「**速度口径按照 1.05 算**」⇒ 全族 `speedRatio` **定值 1.05**（四档同倍率，不逐舰写不同值）。
+        check(
+          t <= 4,
+          `舰级契约：鱿烬亡军舰级「${ship.name}」（${ship.id}）登记了 ${HULL_CLASS_NAME[t as 1] ?? "未知档"}（T${t}）档——` +
+            `G 族按 5 档体系登记、本次铺 **1 护卫舰 ~ 4 战列舰**（船长「G组分5档。从护卫舰到战列舰」），**不配 5 旗舰**`,
+        )
+        if (t === 4) {
+          check(
+            ship.id === G_RESERVED_BATTLESHIP_ID,
+            `舰级契约：鱿烬亡军的 4 战列舰档当前是**预留空置壳体**（船长「战列舰先建壳体」= ${G_RESERVED_BATTLESHIP_ID}）——` +
+              `不得再登记第二条 T4；若日后真要给 G 族上战列舰，请走设定流程并先改本行口径`,
+          )
+        }
+        check(
+          Math.abs(ship.speedRatio - G_SPEED_RATIO) < 1e-9,
+          `舰级契约：鱿烬亡军舰级「${ship.name}」（${ship.id}）的速度倍率是 ${ship.speedRatio}——` +
+            `船长 2026-09-12 定「**速度口径按照 1.05 算**」⇒ 全族定值 **${G_SPEED_RATIO}**`,
+        )
       }
       tiered++
     }
@@ -1945,8 +1977,14 @@ for (const m of MODULES) {
        * **分支二 · 无首领**（边境/碎晶/信标，船长 2026-09-11「**边境海盗前哨 / 碎晶带劫匪通缉 /
        *   信标猎手悬赏 都设定无首领**」）——**全队同族同型、无 elite 头目**，且按船长给定的**波次结构**：
        *   边境「**1+2**」（首波 1 艘 + 次波 2 艘 = 3 单位）、碎晶与信标「**2+2**」（每波 2 艘 = 4 单位），
-       *   并要求登记 `anomaly.waves` 两波（引擎靠它切波；舰级路径的波次由 `slot.wave` 决定）。 */
-      if (def.foeFamily === 'A') {
+       *   并要求登记 `anomaly.waves` 两波（引擎靠它切波；舰级路径的波次由 `slot.wave` 决定）。
+       *
+       * ⚠ **旧 hidden 遭遇模板豁免**（2026-09-12 加）：`enc-pirate-1..4` 因 2026-09-11 船长
+       *   「**废弃F族，将F族融合进A族**」而**归属** A 族，但它们是**旧档遗留遭遇的战斗兜底模板**
+       *   （`hidden: true`，不进悬赏目录、不参与派发）——编成是 2026-09-12 从旧路径"主 + 僚"
+       *   **守恒迁移**来的（血量 / 单发 / 射程 / 命中 / 衰减逐项对齐迁移前实测值），
+       *   **不是** A 族设定「头目 + 杂鱼」的产物；把族设计契约套上去只会逼旧档兜底卡改难度。 */
+      if (def.foeFamily === 'A' && def.hidden !== true) {
         /** A 族**无首领**三张卡（船长 2026-09-11 追加裁定）与其波次结构：边境「1+2」、碎晶/信标「2+2」 */
         const NO_BOSS_A_CARDS: Record<
           string,
@@ -2031,6 +2069,8 @@ for (const m of MODULES) {
       `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
         `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）、` +
         `异形族（C）允许 T4（须登记为"巨兽"用途：${ALIEN_BEAST_SHIP_IDS.join(" / ")}）且不配 T5；` +
+        `鱿烬亡军（G）登记 1~4 档（**T4 战列舰 = 预留空置壳体**（无卡引用，船长「战列舰先建壳体」）、不配 T5；` +
+        `全族速度定值 **${G_SPEED_RATIO}×**）；` +
         `A 族编成契约 ${aCompositionCards} 张：灰霾/赤潮/蜃影 = 头目 ×1 + 同族杂鱼 ×3（共 4 单位）· 头目血量 60% ±1%；` +
         `边境/碎晶/信标 = **无首领**（同族同型 + 船长给定波次 1+2 / 2+2 / 2+2）`,
     )

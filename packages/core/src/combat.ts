@@ -1260,7 +1260,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           blindDmgMul: ship.blindDmgMul ?? 0.3,
           // 必中光束不消费命中（恒 1）；掷命中（动能/爆炸 + 能量 spit）走命中率
           hitRate: isBeam ? 1 : (u.slot.hitRate ?? ship.hitRate),
-          falloff: ship.falloff,
+          // 远端威力衰减：条目覆写 ?? 舰级（2026-09-12 加，与 `hitRate` 同款；**缺省 = 舰级值 ⇒ 零行为变化**）
+          falloff: u.slot.falloff ?? ship.falloff,
           reloadMs: ship.reloadMs,
         },
         ...droneWeapons, // 机群：每架一条（同序 ⇒ 与 `foeDronePools[tag]` 逐架对齐）

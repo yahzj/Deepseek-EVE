@@ -32,6 +32,9 @@ import {
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
+  FOE_G_SWARM_SKIFF,
+  FOE_G_ECHO_REMNANT,
+  FOE_G_NADIR_LOCK,
 } from './foe-ships'
 
 /**
@@ -628,12 +631,21 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '烬火围攻军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 42、奖金 15 万）
     name: '烬火围攻战',
-    foeHpOverride: 1585, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~48s
-    // 2026-09-11 修正（换星系连带项复核发现）：本卡主系**动能** ⇒ 非光束 ⇒ `foeHitRate` **真的生效**；
-    // 而烬火星区已与蜃影星系**互换安全等级**（−0.7 → 0.0，见 `universe.ts` 同日注释）⇒ 本卡已是**中安**，
-    // 低安的 +0.1 应予撤销，命中回到 **0.85**（口径 = 2026-09-09 船长定「全部低安非光束敌 +0.1」）。
-    foeHitRate: 0.85, // 中安：无低安 +0.1（原 0.95；主系动能故本字段生效）
-    foeSpeedMps: 307, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.05×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 282（09-09 段参考船口径 ×1.18）
+    // ═══ 2026-09-12 迁入**舰级路径**（船长「G 组分 5 档…」＋「**烬火围攻战按 2 护卫舰**」）═══
+    // 旧路径三字段随迁移撤下（原值留档）：`foeHpOverride: 1585` · `foeHitRate: 0.85` · `foeSpeedMps: 307`。
+    //   · 血 1,585 ⇒ 卡侧 `hpMul`（**总血逐字守恒**）；命中 0.85 ⇒ 舰级 `hitRate`（同值）；
+    //   · 射程带 437~5,745 ⇒ 舰级带（**守恒**）；
+    //   · 速度 ⇒ **族口径 `speedRatio 1.05`** ⇒ T1 340 × 1.05 = **357**（原 307，**有意差异**，船长裁定）。
+    // 炮台总单发守恒 = **98**（迁移前实建值）：N = 2 ⇒ 多舰补偿 `2N/(N+1)` = **4/3** ⇒ 分母写 4/3；
+    // 每艘 49 ⇒ 合计 98。
+    ships: [
+      {
+        ship: FOE_G_SWARM_SKIFF,
+        count: 2,
+        hpMul: 1585 / (2 * FOE_G_SWARM_SKIFF.hp), // = 792.5 / 156 ⇒ 合计 1,585
+        dmgMul: 49 / (FOE_G_SWARM_SKIFF.shotDmg * (4 / 3)), // = 每艘 49 ⇒ 合计 98
+      },
+    ],
     galaxyId: 'galaxy-cinder',
     threat: 42,
     tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
@@ -651,8 +663,27 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '回音残舰', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 2, // 窝点地图级别（2 = 到核心档）：回音荒区
     name: '回音残舰',
-    foeHpOverride: 2035, // P1 微调轮（2026-09-06）：C 段灰鲭鲨4MK2 中位 ~56s
-    foeSpeedMps: 316, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.08×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 288（09-09 段参考船口径 ×1.18）
+    // ═══ 2026-09-12 迁入舰级路径（船长「**残响残舰按 1 驱逐 2 护卫**」）═══
+    // 旧路径两字段随迁移撤下（原值留档）：`foeHpOverride: 2035` · `foeSpeedMps: 316`（命中迁移前即缺省 0.85）。
+    // 血量权重 = **档基线比**（T2 480 : T1 260 : T1 260）⇒ 976.8 / 529.1 / 529.1（合计 **2,035** 守恒）；
+    // 炮台总单发守恒 = **121**（主 59 ＋ 僚 31×2）；N = 3 ⇒ 补偿 `2N/(N+1)` = **1.5**。
+    // 速度：驱逐 295 × 1.05 = **310** / 护卫 340 × 1.05 = **357**（原 316，**有意差异**，船长裁定）。
+    // 僚位（2 艘围攻残兵舰）射程带覆写为 464~6,103 = 本卡迁移前射程带（**守恒**；舰级本体带 437~5,745）。
+    ships: [
+      {
+        ship: FOE_G_ECHO_REMNANT,
+        hpMul: (2035 * 480) / (1000 * FOE_G_ECHO_REMNANT.hp), // = 976.8 / 432（T2 权重 480/1000）
+        dmgMul: 59 / (FOE_G_ECHO_REMNANT.shotDmg * 1.5), // = 主舰单发 59
+      },
+      {
+        ship: FOE_G_SWARM_SKIFF,
+        count: 2,
+        hpMul: (2035 * 260) / (1000 * FOE_G_SWARM_SKIFF.hp), // = 529.1 / 156（每艘；T1 权重 260/1000）
+        dmgMul: 31 / (FOE_G_SWARM_SKIFF.shotDmg * 1.5), // = 每艘 31 ⇒ 两艘 62
+        rangeMinM: 464, // 僚位射程带覆写（守恒）
+        rangeMaxM: 6103,
+      },
+    ],
     galaxyId: 'galaxy-echo',
     threat: 52,
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
@@ -670,9 +701,38 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     lairCore: '天底封锁军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 66、奖金 35 万）
     name: '天底静区封锁',
-    foeHpOverride: 2040, // P1 重标（2026-09-06 定值，船长 2026-09-10 终审）：D 段灰鲭鲨4MK2 中位 ~74s
-    foeHitRate: 0.95, // 低安敌人命中率 +10（2026-09-09 船长定：全部低安非光束敌 +0.1，原 0.85）
-    foeSpeedMps: 327, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **1.12×** 基准船（长尾鲨级 272 → 战斗机动 165）；原 316（09-09 段参考船口径 ×1.18）
+    // ═══ 2026-09-12 迁入舰级路径（船长「**天底封锁舰按 1 巡洋 2 驱逐**」＋「**蜂群挂在巡洋舰上。2 架。无后备**」）═══
+    // 旧路径三字段随迁移撤下（原值留档）：`foeHpOverride: 2040` · `foeHitRate: 0.95` · `foeSpeedMps: 327`。
+    //   · 命中 0.95 迁移前**全卡一致** ⇒ 迁到舰级（天底封锁舰）＋ 僚位覆写（残响残舰 ×2），**守恒**；
+    //   · 射程带 502~6,604 = 舰级带（守恒）；僚位覆写为该带（舰级本体带 464~6,103）。
+    // 血量权重 = 档基线比（T3 900 : T2 480 : T2 480）⇒ 987.1 / 526.45 / 526.45（合计 **2,040** 守恒）；
+    // 速度：巡洋 258 × 1.05 = **271** / 驱逐 295 × 1.05 = **310**（原 327，**有意差异**，船长裁定）。
+    // **蜂群火力守恒拆分**（「架数变多、总火力不动」同口径）：本卡炮台总单发 **110** =
+    //   巡洋条目 52 ＋ 两艘驱逐条目 29×2；巡洋条目再拆出机群 **28**（2 架各 14）⇒
+    //   **本卡实收总单发仍是迁移前的 138**（炮 110 ＋ 机 28）。锚点写在**巡洋那一条目**上
+    //   （`firepowerAnchor` / `droneFireShare` 是**条目级**字段，不是卡级）。
+    //   两台僚位**不挂机群**（蜂群只在巡洋舰那条），故只有巡洋条目写占比/锚点。
+    ships: [
+      {
+        ship: FOE_G_NADIR_LOCK,
+        hpMul: (2040 * 900) / (1860 * FOE_G_NADIR_LOCK.hp), // = 987.1 / 1080（T3 权重 900/1860）
+        // 旧口径（**未写占比时**）本条目 = 炮 76 ＋ 机 4 = **80** ⇒ 锚点取 80 与之相等
+        // （口径：占比只改"机群 / 炮台"的**构成**，**总量不动**）；写成 12/25 = 0.48 使
+        // `round(105 × 0.48 × 1.5)` = 76、`2 × round(4 × 0.48)` = 2×2 = 4。
+        dmgMul: 12 / 25,
+        droneFireShare: 0.35, // 机群拿 35%：`round(80 × 0.35)` = **28**（2 架各 14）
+        firepowerAnchor: 80, // 本**条目**实收总单发钉住 = 52（炮）＋ 28（机）
+      },
+      {
+        ship: FOE_G_ECHO_REMNANT,
+        count: 2,
+        hpMul: (2040 * 480) / (1860 * FOE_G_ECHO_REMNANT.hp), // = 526.45 / 432（每艘；T2 权重 480/1860）
+        dmgMul: 29 / (FOE_G_ECHO_REMNANT.shotDmg * 1.5), // = 每艘 29 ⇒ 两艘 58
+        hitRate: 0.95, // 命中随卡走（迁移前全卡 0.95）
+        rangeMinM: 502,
+        rangeMaxM: 6604,
+      },
+    ],
     galaxyId: 'galaxy-nadir',
     threat: 66,
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
@@ -1141,7 +1201,27 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '流窜海盗快艇',
     galaxyId: 'galaxy-hub',
     threat: 10,
-    foeSpeedMps: 281, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.96×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 176
+    // ═══ 2026-09-12 迁入舰级路径（船长「**隐藏模板迁**」）═══
+    // 迁移守恒（逐项对照迁移前实建值）：总血 **12** · 炮台单发 **23** · 射程带 **350~4,600** ·
+    // 实速 **281**（`speedMul` 反算）· 命中 0.85。舰级 = **海盗快艇（T1）**（原为"未录族 → 兜底 F 形"）。
+    // 覆写理由：① 该舰级本体是 **brawl ＋ 爆炸 8:2**，本卡是 **orbit ＋ 动能 8:2** ⇒ 逐条目覆写；
+    // ② 射程/速度覆写纯粹是"旧档兜底卡不许漂移"的守恒手段，不是新设计。
+    // 旧字段撤下（原值留档）：`foeSpeedMps: 281`。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_SKIFF,
+        hpMul: 12 / FOE_SHIP_PIRATE_SKIFF.hp, // = 12 / 156
+        dmgMul: 23 / FOE_SHIP_PIRATE_SKIFF.shotDmg, // = 23 / 28（N = 1 ⇒ 补偿 = 1）
+        split: { s: 0.34, a: 0.33, h: 0.33 }, // 三层比例随卡走（迁移前 = 均衡，守恒）
+        tactic: 'orbit',
+        dmgMix: { kinetic: 8, explosive: 2 },
+        hitRate: 0.85, // 迁移前缺省命中，守恒
+        falloff: 0.5, // 迁移前 `foeFalloff` 缺省 0.5（舰级本体 0.3）⇒ 逐条目覆写，守恒
+        rangeMinM: 350,
+        rangeMaxM: 4600,
+        speedMul: 281 / (340 * 1.15), // 舰级 T1 实速 391 ⇒ 覆写回 281
+      },
+    ],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -1158,14 +1238,42 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '伏击劫掠队',
     galaxyId: 'galaxy-hub',
     threat: 22,
-    foeSpeedMps: 291, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：orbit **0.99×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 205
+    // ═══ 2026-09-12 迁入舰级路径（船长「隐藏模板迁」）═══
+    // 守恒：总血 **100**（主 62.5 ＋ 僚 37.5）· 炮台单发 **51**（32 ＋ 19）· 射程带 **383~5,029** ·
+    // 实速 **291**（`speedMul` 反算）· 命中 0.85。舰级 = **劫掠护卫舰（T1）**——本体即 orbit ＋ 动能 8:2
+    // ⇒ 只需位移覆写（射程/速度）。N = 2 ⇒ 多舰补偿 `2N/(N+1)` = **4/3**（分母写 4/3）。
+    // 旧字段撤下（原值留档）：`foeSpeedMps: 291` · `escorts: 1`（僚机由下方第二条目表达）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_CORVETTE,
+        hpMul: 62.5 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 62.5 / 364（主）
+        dmgMul: 32 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * (4 / 3)), // = 32
+        split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体同值 ⇒ 显式写出以防漂移）
+        hitRate: 0.85,
+        falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
+        rangeMinM: 383,
+        rangeMaxM: 5029,
+        speedMul: 291 / (340 * 1.1), // 舰级 T1 实速 374 ⇒ 覆写回 291
+      },
+      {
+        ship: FOE_SHIP_PIRATE_CORVETTE, // 僚位 ×1
+        hpMul: 37.5 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 37.5 / 364
+        dmgMul: 19 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * (4 / 3)), // = 19
+        split: { s: 0.34, a: 0.33, h: 0.33 },
+        hitRate: 0.85,
+        falloff: 0.5,
+        rangeMinM: 383,
+        rangeMaxM: 5029,
+        speedMul: 291 / (340 * 1.1),
+      },
+    ],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
     combatSeconds: 30,
     tactic: 'orbit',
-    escorts: 1,
+    // 原 `escorts: 1`（旧路径僚机数）已由上方 `ships` 编成表达——**舰级路径不读该字段**。
     hidden: true,
     description: '低安遭遇模板：中等伏击队（隐藏）。',
   },
@@ -1176,14 +1284,47 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '狂徒巡逻编队',
     galaxyId: 'galaxy-hub',
     threat: 40,
-    foeSpeedMps: 394, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.35×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 305
+    // ═══ 2026-09-12 迁入舰级路径（船长「隐藏模板迁」）═══
+    // 守恒：总血 **222**（主 5/11 ＋ 僚 3/11 ×2）· 炮台单发 **92**（42 ＋ 25×2）· 射程带 **1~2,420** ·
+    // 实速 **394**（`speedMul` 反算）· 命中 0.85。舰级 = **劫掠狙击舰（T2）**——本体是 kite ＋ 爆炸 8:2
+    // ⇒ 逐条目覆写回本卡的 **brawl ＋ 动能 8:2**，再叠加位移覆写。N = 3 ⇒ 补偿 **1.5**。
+    // 旧字段撤下（原值留档）：`foeSpeedMps: 394` · `escorts: 2`（僚机由第二条目 ×2 表达）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER,
+        hpMul: (222 * 5) / 11 / FOE_SHIP_PIRATE_SNIPER.hp, // 主：总血 222 的 5/11 = 100.909…
+        dmgMul: 42 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * 1.5), // = 42
+        split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体是护盾型）⇒ 覆写守恒
+        tactic: 'brawl',
+        dmgMix: { kinetic: 8, explosive: 2 },
+        hitRate: 0.85,
+        falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
+        rangeMinM: 1,
+        rangeMaxM: 2420,
+        speedMul: 394 / (295 * 1.1), // 舰级 T2 实速 324.5 ⇒ 覆写回 394
+      },
+      {
+        ship: FOE_SHIP_PIRATE_SNIPER, // 僚位 ×2
+        count: 2,
+        hpMul: (222 * 3) / 11 / FOE_SHIP_PIRATE_SNIPER.hp, // 僚：总血 222 的 3/11 = 60.545…（每艘）
+        dmgMul: 25 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * 1.5), // = 每艘 25 ⇒ 两艘 50
+        split: { s: 0.34, a: 0.33, h: 0.33 },
+        tactic: 'brawl',
+        dmgMix: { kinetic: 8, explosive: 2 },
+        hitRate: 0.85,
+        falloff: 0.5,
+        rangeMinM: 1,
+        rangeMaxM: 2420,
+        speedMul: 394 / (295 * 1.1),
+      },
+    ],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
     combatSeconds: 40,
     tactic: 'brawl',
-    escorts: 2,
+    // 原 `escorts: 2`（旧路径僚机数）已由上方 `ships` 编成表达——**舰级路径不读该字段**。
     hidden: true,
     description: '低安遭遇模板：重装狂徒编队（隐藏）。',
   },
@@ -1194,14 +1335,43 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     name: '深空屠夫舰队',
     galaxyId: 'galaxy-hub',
     threat: 70,
-    foeSpeedMps: 418, // 敌速重标（2026-09-10 船长：固定锚定 + 中位船基准）：brawl **1.43×** 基准船（长尾鲨级 272 → 战斗机动 165）；原按公式算得 346
+    // ═══ 2026-09-12 迁入舰级路径（船长「隐藏模板迁」）═══
+    // 守恒：总血 **695**（主 5/11 ＋ 僚 3/11 ×2）· 炮台单发 **164**（74 ＋ 45×2）· 射程带 **1~2,640** ·
+    // 实速 **418**（`speedMul` 反算）· 命中 0.85。舰级 = **海盗头目舰（T3）**——本体即 brawl ＋ 动能 8:2
+    // ⇒ 只需位移覆写。N = 3 ⇒ 补偿 **1.5**。
+    // 旧字段撤下（原值留档）：`foeSpeedMps: 418` · `escorts: 2`（僚机由第二条目 ×2 表达）。
+    ships: [
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD,
+        hpMul: (695 * 5) / 11 / FOE_SHIP_PIRATE_WARLORD.hp, // 主：总血 695 的 5/11 = 315.909…
+        dmgMul: 74 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * 1.5), // = 74
+        split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体是装甲型）⇒ 覆写守恒
+        hitRate: 0.85, // 迁移前缺省 0.85（舰级本体 0.9）⇒ 覆写守恒
+        falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
+        rangeMinM: 1,
+        rangeMaxM: 2640,
+        speedMul: 418 / (258 * 1.45), // 舰级 T3 实速 374.1 ⇒ 覆写回 418
+      },
+      {
+        ship: FOE_SHIP_PIRATE_WARLORD, // 僚位 ×2
+        count: 2,
+        hpMul: (695 * 3) / 11 / FOE_SHIP_PIRATE_WARLORD.hp, // 僚：总血 695 的 3/11 = 189.545…（每艘）
+        dmgMul: 45 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * 1.5), // = 每艘 45 ⇒ 两艘 90
+        split: { s: 0.34, a: 0.33, h: 0.33 },
+        hitRate: 0.85,
+        falloff: 0.5,
+        rangeMinM: 1,
+        rangeMaxM: 2640,
+        speedMul: 418 / (258 * 1.45),
+      },
+    ],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
     combatSeconds: 60,
     tactic: 'brawl',
-    escorts: 2,
+    // 原 `escorts: 2`（旧路径僚机数）已由上方 `ships` 编成表达——**舰级路径不读该字段**。
     hidden: true,
     description: '低安遭遇模板：高危屠夫舰队（隐藏）。',
   },

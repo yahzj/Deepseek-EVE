@@ -303,7 +303,7 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
  * 与 `content:check`「敌速口径契约」互为独立写法（引擎实算 vs 内容表校验）。
  */
 describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）', () => {
-  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 544/544/398/297', () => {
+  it('实速 = 舰种基准 × 倍率：A 族 391/374/325/374、B 族 272/236、C 族 544/544/398/297、G 族 357/310/271/215', () => {
     const shell = anomaly('ano-t-hull-speed', 'galaxy-hub', { threat: 20 })
     const got = FOE_SHIPS.map((ship) => ({
       id: ship.id,
@@ -338,6 +338,12 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-titan-hulk', tier: 4, speed: 0 }, // 2026-09-11 船长：族速度倍率设为 0（静物残骸 · 靠机群打炮台射程外的敌人）
       { id: 'foe-auro-hulk', tier: 3, speed: 0 },
       { id: 'foe-core-section', tier: 5, speed: 0 }, // 2026-09-12 船长「核心舱段，调为旗舰级」（敌舰唯一 T5）
+      // G 族（鱿烬亡军）· 2026-09-12 船长「**速度口径按照 1.05 算**」⇒ 全族定值 `speedRatio = 1.05`
+      // （340/295/258/205 × 1.05 = 357/310/271/215）。第四档「亡军战列舰」是**空置壳体**（无卡引用）。
+      { id: 'foe-g-swarm-skiff', tier: 1, speed: 357 },
+      { id: 'foe-g-echo-remnant', tier: 2, speed: 310 },
+      { id: 'foe-g-nadir-lock', tier: 3, speed: 271 },
+      { id: 'foe-g-exile-battleship', tier: 4, speed: 215 },
     ])
   })
 
@@ -677,7 +683,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
     }
   })
 
-  it('全 20 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
+  it('全 27 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
     let checked = 0
     for (const def of ANOMALIES) {
       if (!def.ships || def.ships.length === 0) continue
@@ -688,7 +694,9 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(20); // A 族 6 + B 族 3 + C 族 4 + D 族 4 + **E 族 3**（2026-09-12：奥罗武装残骸群迁入 + 代表卡「巨构核心勘探令」）
+    expect(checked).toBe(27); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3**
+    // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
+    //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
   })
 })
 
