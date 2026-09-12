@@ -896,11 +896,11 @@ function injectPd(state: GameState): string[] {
   const LOW_PLA = ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2']
   const rows: Array<[string, string[]]> = [
     [
-      '⚠机群·混装（2×巨构近防炮MK2 + 3×动能炮台MK2）·能量抗——**推荐打法**',
+      '⚠机群·混装（2×近防炮MK2 + 3×动能炮台MK2）·能量抗——**推荐打法**',
       ['mod-pd-e-2', 'mod-pd-e-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
     ],
     [
-      '机群·纯防空（5×巨构近防炮MK3）·能量抗——打得下机群、打不死母舰',
+      '机群·纯防空（5×近防炮MK3）·能量抗——打得下机群、打不死母舰',
       ['mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3'],
     ],
     [
@@ -929,7 +929,7 @@ function injectPd(state: GameState): string[] {
   ]) {
     state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 6
   }
-  notes.push('装备库：**近防炮三档（+蓝图书市可购）×6** + 主炮/抗性/支援件各 ×6（够三船反复换装对照）')
+  notes.push('装备库：**近防炮三档（动能 · +蓝图书市可购）×6** + 主炮/抗性/支援件各 ×6（够三船反复换装对照）')
   const mk3 = MODULES.filter((m) => m.id.endsWith('-3')).map((m) => m.id)
   for (const m of mk3) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 8
   notes.push(`装备库另备：全部 MK3 装备 ${mk3.length} 件 ×8（按 id 后缀自动枚举）`)

@@ -219,13 +219,13 @@ export const MODULES: readonly ModuleDef[] = [
    * **族别（船长「分族」）**：本批只出 **E 族（泰坦巨构）**一件，其余族按需再补。 */
   {
     id: 'mod-pd-e',
-    name: '巨构近防炮 MK1',
+    name: '近防炮 MK1',
     slot: 'turret',
     rack: 'high',
 
     damageType: 'kinetic',
     ammoPerEngagement: 40,
-    description: '巨构残骸上拆下来的点防炮：射程极短、射速极快，是唯一能打敌方机群的武器。对舰也能开火，威力却远不如主炮——占一个高槽，换的是带机群的仗里的答案。',
+    description: '动能点防炮：射程短、射速快，是唯一能打敌方机群的武器。对舰也能开火，威力却远不如主炮——占一个高槽，换的是带机群的仗里的答案。',
     cpuUse: 12,
     maxRangeM: 2500, // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」（原 1400）；打机群**不看两舰间距**（甲案）
     minRangeM: 1, // 无近盲带：贴到脸上也开火
@@ -239,13 +239,13 @@ export const MODULES: readonly ModuleDef[] = [
   // "想打机群就得走进警戒幕"这条张力应当保留；MK2/MK3 只提单发与射速）
   {
     id: 'mod-pd-e-2',
-    name: '巨构近防炮 MK2',
+    name: '近防炮 MK2',
     slot: 'turret',
     rack: 'high',
 
     damageType: 'kinetic',
     ammoPerEngagement: 48,
-    description: '巨构近防炮的强化型：射速更快、单发更重，射程依旧很短。带机群的仗里，它让机群更快掉下来。',
+    description: '动能点防炮的强化型：射速更快、单发更重，射程依旧偏短。带机群的仗里，它让机群更快掉下来。',
     cpuUse: 26,
     maxRangeM: 2500, // 三档同射程（船长「按照 2500m 算」）——MK2/MK3 的差异只在单发与射速
     minRangeM: 1,
@@ -257,13 +257,13 @@ export const MODULES: readonly ModuleDef[] = [
   },
   {
     id: 'mod-pd-e-3',
-    name: '巨构近防炮 MK3',
+    name: '近防炮 MK3',
     slot: 'turret',
     rack: 'high',
 
     damageType: 'kinetic',
     ammoPerEngagement: 56,
-    description: '巨构近防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段。对舰威力仍明显低于同档主炮。',
+    description: '动能点防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段。对舰威力仍明显低于同档主炮。',
     cpuUse: 44,
     maxRangeM: 2500,
     minRangeM: 1,
