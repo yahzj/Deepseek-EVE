@@ -215,9 +215,10 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     if (nonSentryAlive) expect(lostIds).not.toContain('drone-sentry')
   })
 
-  it('**哨戒机永不被攻击**（2026-09-11 船长关闭旧机制「非哨戒机全灭后转火哨戒机」）', () => {
-    // 只带哨戒机的编队：旧口径下近防炮会转火打它；新口径 = **一架都不会掉**
-    // （哨戒机常驻伴飞、从不飞到敌方 ⇒ 兑现「只有靠近敌方的无人机会被攻击」）。
+  it('**哨戒机只在近防炮射程内才会被打**（2026-09-12 船长：「优先攻击哨戒机的前提是哨戒在射程内」）', () => {
+    // 只带哨戒机的编队 + 远距对射（本场距离 > PD_SENTRY_RANGE_M 2,500m）⇒ 哨戒机**进不了候选池**，
+    // 且"没有非哨戒机可打" ⇒ 近防炮无靶可打 ⇒ **一架都不会掉**。
+    // （对照：两舰贴近到 2,500m 以内时，哨戒机就是**优先级最高**的靶——见 `tools/pd-tune.ts` 的噬口读数）
     const onlySentry = makeState(13, { 'drone-sentry': 6 })
     const battle = runBattle(onlySentry, HIGH)!
     const lost = battle.droneLost ?? {}

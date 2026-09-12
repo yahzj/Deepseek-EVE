@@ -142,7 +142,7 @@ console.log(
   `\n机制换算：威胁门槛 ${base.balance.battle.pdThreatFloor}（低于此值无敌近防炮）｜判定周期 ${base.balance.battle.pdJudgementMs}ms/舰（= 还手速率上限）｜` +
     `命中 = clamp(${base.balance.battle.pdHitFloor}, 1, acc ${base.balance.battle.pdAcc} − 机型闪避)｜` +
     `伤害 = ${base.balance.battle.pdDmg} × 舰种档系数 [${base.balance.battle.pdTierMul.join(' / ')}]（T1…T5）｜` +
-    `**集火**（锁定到击落才换靶）· **优先哨戒机 → 攻坚机 → 其余等权**（船长 2026-09-12）｜` +
+    `**集火**（锁定到击落才换靶）· **优先哨戒机 → 攻坚机 → 其余等权**（⚠ **哨戒机须在 2,500m 射程内才入选/才有优先级**；船长 2026-09-12）｜` +
     `**战斗内可 100% 损坏**（无单场上限）｜战后按回收率找回（基础 20%，回收学满级 50%）\n` +
     `代表卡是否有点防：噬口(80)=${pdEnabledFor(80, base.balance.battle)}、坟场(88)=${pdEnabledFor(88, base.balance.battle)}、穹顶(96)=${pdEnabledFor(96, base.balance.battle)}`,
 )
