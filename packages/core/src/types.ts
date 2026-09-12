@@ -637,8 +637,10 @@ export interface BattleBalance {
    * ÷ 装填秒 ≤ 本值，超出则**全卡舰体单发等比例缩放**。
    * - **不含机群**（`src:'drone'`）：机群另有机制（受击增程 · 备用机库 · A5 火力守恒），且您已裁定不吃多舰补偿；
    * - **不含被 `droneFireShare` / `firepowerAnchor` 拆分的条目**（那条链自带总火力锚定，钳制会让锚点失准）；
-   * - 现值 150 ⇒ 现有 27 张卡**全部未越线**（最高 = 虚海守望者 131.25 DPS）⇒ **零行为变化**；
-   * - 未写/非正 ⇒ 不钳制（零行为变化）。
+   * - **未写 / 非正（含 0）⇒ 不钳制**；
+   * - ⚠ **2026-09-12 现值 = 0 = 暂时关闭**（船长就"赏金分波分流"议题收口：「回退到赏金维持现有
+   *   配置，仅按照威胁加强敌方。并且火力钳制也暂时关闭」）⇒ 敌人火力回到"威胁线性"口径。
+   *   要恢复把本值写回 150 即可（机制与用例都保留）。
    */
   foeDpsCap?: number
   foeHitRate: number
@@ -961,6 +963,8 @@ export interface ShipBlueprintDef {
   name: string
   /** 制造出的舰船 id（须在舰船表存在） */
   shipId: string
+  /** **一次性图纸**：口径同 `BlueprintDef.singleUse`（舰船蓝图同样适用；缺省不写 = 普通蓝图） */
+  singleUse?: boolean
   /** 材料需求（矿物），开工时一次性扣除 */
   materials: readonly MaterialNeed[]
   /** 基础制造耗时（秒），受工业理论缩短 */
@@ -999,6 +1003,20 @@ export interface MaterialNeed {
 export interface BlueprintDef {
   id: string
   name: string
+  /**
+   * **一次性图纸**（2026-09-12 船长：「能否实现一次性图纸？既玩家无法学会，只能制造一次的图纸」）。
+   *
+   * 口径（船长逐条裁定）：
+   * - **仍是"书"**：进蓝图书架，但**不能"学习"**（学习会被拒，见 `market.learnBlueprint`）；
+   * - **只能造一次**：开工时**扣掉这本一次性书**（与材料同源、同一时刻），并把该配方记为
+   *   "一次性名额已用尽"（`GameState.spentOneTimeRecipes`）⇒ 之后再开工必须**再有一本**；
+   * - **已永久学会同名配方时，这本书不能当"学习"用也不用**（会被拒，书留在书架）；
+   * - **产出与普通蓝图完全一样**（同属性、可自用可卖），差别只在"这门配方只能用一次"；
+   * - **不上市场、不进逆向研究**（`FRAGMENT_RECIPES` 不得收它）。
+   *
+   * 缺省不写 = 普通蓝图（**现有 94 张装备/物品图零变化**）。
+   */
+  singleUse?: boolean
   /** 制造出的装备 id（须在装备表里存在）；弹药等物品类蓝图不填（改用 itemId+outputUnits） */
   moduleId?: string
   /** 制造出的物品 id（2026-09-05 弹药蓝图：产物 = 弹药等物品，每次产 outputUnits 单位入仓库） */
