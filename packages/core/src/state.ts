@@ -657,6 +657,10 @@ export interface PlayerOrder {
   absorbCredit?: number
   /** 本窗口内簿面成交件数（仅卖单；撮合前置 0，窗口结算后弃值——不序列化） */
   windowFilled?: number
+  /** **买单预扣**（2026-09-11 船长裁决「甲：改成 EVE 式预扣冻结」）：挂单时从钱包扣下的
+   *  `挂价 × 剩余数量`，成交时按**实际成交价**结算并把价差退回钱包，撤单全额退回。
+   * 仅买单使用；卖单冻结的是货（`escrowItems`/`escrowShips`）。旧档缺省 = 0（历史未预扣的遗留单按旧口径成交） */
+  escrowIsk?: number
 }
 
 /** 第九版存档结构（历史版本；v10 在其字段基础上只扩展了 fitted 槽位形状） */

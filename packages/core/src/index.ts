@@ -339,6 +339,8 @@ export {
   askLineOf,
   placeSellOrder,
   placeBuyOrder,
+  // 2026-09-11 挂买单预扣：能不能挂（原因给界面用）
+  buyOrderBlockedReason,
   cancelOrder,
   sellAtMarket,
   buyAtMarket,

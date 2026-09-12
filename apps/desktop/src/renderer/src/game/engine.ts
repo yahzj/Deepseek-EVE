@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
  * 职责（中文说明）：
@@ -52,6 +52,7 @@ import {
   newSettleStats,
   offlineSplit,
   placeBuyOrder,
+  buyOrderBlockedReason,
   recallExpedition,
   refineRunViews,
   moveQueueItem,
@@ -1048,18 +1049,32 @@ export class GameEngine {
   }
 
   /** 挂限价买单（等 NPC 补给/降价自动成交）；返回新订单 id（失败返回 null）
-   *  2026-09-10 起挂单瞬间会先与现有卖单簿面对冲成交，回执带回成交量（filled / resting） */
+   *  2026-09-10 起挂单瞬间会先与现有卖单簿面对冲成交，回执带回成交量（filled / resting）。
+   *  2026-09-11 船长裁决「甲」：**预扣冻结**——挂单即扣 `挂价 × 实际挂量`，余额不足按余额缩量，
+   *  回执带 `escrow`（本次预扣额）与 `placed`（实际挂了多少件，可能因缩量 < want）。 */
   placeBuyOrderAt(
     goodKey: string,
     price: number,
     qty: number,
-  ): { orderId: number; want: number; filled: number; resting: number } | null {
+  ): { orderId: number; want: number; placed: number; filled: number; resting: number; escrow: number } | null {
     const order = placeBuyOrder(this.state, this.ctx, goodKey, price, qty)
     if (!order) return null
     void this.persist()
     this.notify()
     // 全部即时成交的单已移出挂单表，但返回的订单对象仍带成交量（filled / 剩余 qty）
-    return { orderId: order.id, want: qty, filled: order.filled, resting: order.qty }
+    return {
+      orderId: order.id,
+      want: qty,
+      placed: order.filled + order.qty,
+      filled: order.filled,
+      resting: order.qty,
+      escrow: order.escrowIsk ?? 0,
+    }
+  }
+
+  /** 挂买单能不能挂（不能则给玩家可读原因）——界面门控与回执共用 core 单点口径 */
+  buyOrderBlocked(goodKey: string, price: number, qty: number): string | null {
+    return buyOrderBlockedReason(this.state, this.ctx, goodKey, price, qty)
   }
 
   /** 挂限价卖单（货从自然库存锁定：物品→仓库、装备→装备库、蓝图→蓝图书架）

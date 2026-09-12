@@ -1360,6 +1360,8 @@ function normalizeState(raw: unknown): GameState {
         placedAtGameMs: Math.max(0, Math.floor(num(o.placedAtGameMs))),
         // 站内让利吸收结余（2026-09-08 起可选字段；旧档缺省 0 = 重新累计）
         absorbCredit: Math.max(0, num(o.absorbCredit)),
+        // 买单预扣（2026-09-11 起可选字段；缺省 0 = 改动前挂的遗留单，按"成交时扣钱"旧口径）
+        escrowIsk: Math.max(0, Math.floor(num(o.escrowIsk))),
       })
     }
   }
