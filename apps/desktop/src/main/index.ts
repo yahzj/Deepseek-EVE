@@ -200,7 +200,8 @@ function createWindow(): void {
     show: false, // 等页面就绪再显示，避免白屏闪烁
     autoHideMenuBar: true,
     backgroundColor: '#05080d',
-    title: '大鲸鱼 · 深空工业',
+    // 窗口标题 = 游戏名（2026-09-11 船长：「将游戏的名称改为大鲸鱼-深空放置」）
+    title: '大鲸鱼-深空放置',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

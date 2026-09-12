@@ -674,7 +674,9 @@ export function App({ engine }: { engine: GameEngine }) {
       {/* ───── 顶栏 ───── */}
       <header className="app-header">
         <div className="app-header-left">
-          <span className="app-logo">大鲸鱼 · 深空工业</span>
+          {/* 游戏名（2026-09-11 船长：「将游戏的名称改为大鲸鱼-深空放置」；
+              注意「深空工业协会」是**游戏内势力**、不随游戏名改） */}
+          <span className="app-logo">大鲸鱼-深空放置</span>
           <span className="app-pilot">{state.character.name}</span>
         </div>
         <div className="app-header-right">

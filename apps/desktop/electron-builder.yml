@@ -5,8 +5,11 @@
 # 主/预加载只依赖 electron 与 node 内置，因此安装包只需 out/**，无需 node_modules。
 
 appId: com.whale.deepspace
-productName: 大鲸鱼深空工业
-copyright: Copyright © 2025 大鲸鱼 · 深空工业
+# 游戏名（2026-09-11 船长：「将游戏的名称改为大鲸鱼-深空放置」）——
+# productName 决定安装目录名、快捷方式与产物文件名（${productName}）；**存档位置不受影响**
+# （主进程启动即 `app.setName('whale-idle')`，userData 仍是 %APPDATA%\whale-idle）
+productName: 大鲸鱼-深空放置
+copyright: Copyright © 2025 大鲸鱼-深空放置
 
 directories:
   output: release
@@ -38,5 +41,5 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: 大鲸鱼深空工业
+  shortcutName: 大鲸鱼-深空放置
   artifactName: ${productName}-安装程序-${version}.${ext}
