@@ -119,7 +119,7 @@ describe('市场动态：冲击 / 池压力 / 内部消化', () => {
     ctx = makeTestCtx({ items: [MIN_A], marketGoods: [{ key: 'min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 8, poolTarget: 3_000, supplyFlow: 500 }] })
   })
 
-  it('窗口净成交量超阈值（>2×参考量）→ 冲击动量 +5% 且可叠加、随后衰减', () => {
+  it('窗口净成交量超阈值（>2×参考量）→ 冲击动量 ±10% 且可叠加、随后衰减', () => {
     marketQuote(state, ctx, 'min-a') // 开盘
     state.wallet.isk = 10_000_000
     // 等 3 个窗口积累供应簿（每窗口簿薄就补单，约 2~4 档 × 500）
@@ -132,8 +132,8 @@ describe('市场动态：冲击 / 池压力 / 内部消化', () => {
     expect(state.market.pools['min-a']!.shock).toBeGreaterThan(0) // 净买量远超阈值 → +冲击
     // 池库存大幅下降（压力上涨 → 后续补单涨价）
     expect(state.market.pools['min-a']!.q).toBeLessThan(before * 0.8)
-    // 随时间推移冲击衰减（半程 6 分钟 → 18 窗口后 <1%）
-    advanceGame(state, 18 * 60_000, ctx)
+    // 随时间推移冲击衰减（半程 6 分钟）：+10% 起算，24 窗口 = 4 个半程 ⇒ 剩 1/16 ≈ 0.6% < 1%
+    advanceGame(state, 24 * 60_000, ctx)
     expect(state.market.pools['min-a']!.shock).toBeLessThan(0.01)
   })
 

@@ -209,6 +209,18 @@ export function dumpBuyVolumeMul(pool: { shock?: number } | undefined, bal: Mark
   return 1 + bal.dumpBuyVolumePerLayer * layers
 }
 
+/**
+ * **砸盘时 NPC 挂卖单量的同步削减**（2026-09-11 船长：「砸盘时，挂卖单的量进行同步削减」）：
+ * 与买单放大对称——每层未衰减惩罚把**供应单（挂卖）挂单量 −8%**，下限 10%（不把供应簿削光）。
+ * 方向同样是**只在砸盘方向生效**；池商品供应阶梯共用本单点（单件/稀有/奇货的供应单恒为 1 张，不适用）。
+ */
+export function dumpSellVolumeMul(pool: { shock?: number } | undefined, bal: MarketBalance): number {
+  const shock = pool?.shock ?? 0
+  if (!(shock < 0)) return 1
+  const layers = Math.abs(shock) / Math.max(1e-9, bal.shockPerTrigger)
+  return Math.max(0.1, 1 - bal.dumpSellVolumePerLayer * layers)
+}
+
 function priceLevel(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ: number): number {
   const bal = ctx.balance.market
   const pool = state.market.pools[def.key]!
@@ -702,6 +714,8 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
   // **砸得越狠 → 来收货的买家越多**（船长 2026-09-11：每层未衰减惩罚把 **NPC 收购单量 +8%**，
   // 全部商品适用、只在砸盘方向生效）：本窗该商品的所有收购单一律乘这个倍率。
   const buyVolMul = dumpBuyVolumeMul(mk.pools[def.key], bal)
+  // 砸盘时挂卖单量同步削减（与买单放大对称；只用于池商品供应阶梯）
+  const sellVolMul = dumpSellVolumeMul(mk.pools[def.key], bal)
   // bmStanding 仅配置于 rare 商品：闸内 = ×4 价暗市单语义（含收购侧同规则）
   const locked = def.rarity === 'rare' && bmGateLocked(state, def)
   const priceMul = locked ? 4 : 1
@@ -717,17 +731,21 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       const sellBase = Math.round(sellPrice(def, L)) // 最低供应价 ≈ L×1.06
       const buyStep = Math.max(1, Math.round(buyBase * 0.04))
       const sellStep = Math.max(1, Math.round(sellBase * 0.04))
-      // 收购阶梯：最佳档在 L，越深越便宜、量越大（墙）；每窗始终铺满 3 档（盘口稳定成阶梯，避免挤单一价）
+      // 收购阶梯：最佳档在 L，越深越便宜、量越大（墙）；每窗始终铺满 3 档（盘口稳定成阶梯，避免挤单一价）。
+      // **量不再乘库存压力**（2026-09-11 船长：移除压力项；压力只留在价格侧）——量 = 流量 × 阶梯 × 补偿倍率，
+      // 于是"砸得越狠 → 收购单量越大"全程成立，不再被池量淤积反向压制。
       for (let i = 0; i < 3; i += 1) {
         const price = Math.max(1, buyBase - i * buyStep)
-        const qty = Math.max(1, Math.round(flow * pClamped * (0.5 + 0.35 * i) * buyVolMul))
+        const qty = Math.max(1, Math.round(flow * (0.5 + 0.35 * i) * buyVolMul))
         npcPushBuy(state, ctx, def, now, lifeMs, price, qty)
       }
-      // 供应阶梯：最低档在 L×1.06，越深越贵、量越大（playerBuyable=false 的只收商品不出售）
+      // 供应阶梯：最低档在 L×1.06，越深越贵、量越大（playerBuyable=false 的只收商品不出售）。
+      // **砸盘时挂卖单量同步削减**（2026-09-11 船长：每层未衰减惩罚 −8%）——价格崩了卖方缩手，
+      // 与"买家变多"对称：砸得越狠，簿面上接货的越多、出货的越少。
       if (def.playerBuyable !== false) {
         for (let i = 0; i < 3; i += 1) {
           const price = Math.max(1, sellBase + i * sellStep)
-          const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i)))
+          const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i) * sellVolMul))
           npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty)
         }
       }
