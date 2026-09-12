@@ -121,17 +121,20 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 1187500,
     description: '折叠货舱技术，核心是超噬矿合金框架——希莫非特矿带的宝藏。',
   },
+  // 巨构近防炮三档（2026-09-11 机群批 S4 加入）——**2026-09-12 船长裁定「乙」按全表口径对齐**：
+  // 书价 = 产物现货价 × 档位系数（MK1 ×2 / MK2 ×2.5 / 奇货 ×4），材料抬到同族锚 45%（料/价原 15.8~17.6%）。
+  // 起因 = `content:check` 的「蓝图价格口径」常驻 6 条预警（书价 3 处 + 料/价 3 处），全表仅此三张不合规。
   {
     id: 'bp-pd-e',
     name: '近防炮 MK1 蓝图',
     moduleId: 'mod-pd-e',
     materials: [
-      { itemId: 'min-tritanium', count: 1_600 },
-      { itemId: 'min-mexallon', count: 400 },
+      { itemId: 'min-tritanium', count: 4_100 },
+      { itemId: 'min-mexallon', count: 1_000 },
     ],
     buildSeconds: 180, // 比轻型炮台略快（点防炮结构简单）
     buildCostIsk: 24_000,
-    priceIsk: 120_000,
+    priceIsk: 236_000, // = 产物现货价 118,000 ×2（2026-09-12 对齐；原 120,000）
     description: '动能点防炮的图纸：射程短、射速快，是唯一能打敌方机群的炮。带机群的仗，先造它。',
   },
   {
@@ -139,13 +142,13 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '近防炮 MK2 蓝图',
     moduleId: 'mod-pd-e-2',
     materials: [
-      { itemId: 'min-tritanium', count: 3_200 },
-      { itemId: 'min-mexallon', count: 900 },
-      { itemId: 'min-nocxium', count: 120 },
+      { itemId: 'min-tritanium', count: 8_300 },
+      { itemId: 'min-mexallon', count: 2_400 },
+      { itemId: 'min-nocxium', count: 300 },
     ],
     buildSeconds: 300,
     buildCostIsk: 52_000,
-    priceIsk: 315_000,
+    priceIsk: 787_500, // = 产物现货价 315,000 ×2.5（2026-09-12 对齐；原 315,000）
     description: '动能点防炮的强化型图纸：射速更快、单发更重，射程依旧偏短。',
   },
   {
@@ -153,13 +156,13 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '近防炮 MK3 蓝图',
     moduleId: 'mod-pd-e-3',
     materials: [
-      { itemId: 'min-tritanium', count: 5_600 },
-      { itemId: 'min-mexallon', count: 1_600 },
-      { itemId: 'min-nocxium', count: 360 },
+      { itemId: 'min-tritanium', count: 16_000 },
+      { itemId: 'min-mexallon', count: 4_500 },
+      { itemId: 'min-nocxium', count: 1_000 },
     ],
     buildSeconds: 460,
     buildCostIsk: 96_000,
-    priceIsk: 690_000,
+    priceIsk: 2_760_000, // = 产物现货价 690,000 ×4（奇货档；2026-09-12 对齐；原 690,000）
     description: '动能点防炮的顶档图纸：射速与单发都拉到极限，射程仍是贴身的那一小段。',
   },
   {
