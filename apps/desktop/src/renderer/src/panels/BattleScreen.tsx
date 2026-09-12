@@ -1091,7 +1091,13 @@ const meSpeedRef = useRef(200)
    * ① 波次增援（由 `waveClearAt` 推导，整段增援窗口常显）；② 引擎推来的战斗提示（`battle.notices`，
    * 如「受击增程」），按战斗时钟**限时显示后自动消失**（提示位是"正在发生"，留档归战报）。
    */
-  const NOTICE_LIFE_MS = 4_000
+  /**
+   * 引擎推来的战斗提示**显示时长**（毫秒）——2026-09-12 船长：「顶部的『静滞阵列解除限幅：静滞卫舰
+   * 炮台射程 +50%』这类文字显示持续时间**变为 300%**」⇒ 4,000 → **12,000ms**（原值 ×3）。
+   * ⚠ 只作用于 ② 引擎提示（`battle.notices`：受击增程 · 敌方增援提示等）；①「敌方增援正在接近…」
+   * 是按**增援窗口**（`waveClearAt`）常显的，与固定时长不同源、本次未动。
+   */
+  const NOTICE_LIFE_MS = 12_000
   const noticeItems: Array<{ key: string; text: string }> = []
   if (wavePending)
     noticeItems.push({
