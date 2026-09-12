@@ -473,7 +473,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 148,
     hullHp: 175,
     cpu: 345,
-    droneBayM3: 0,
+    droneBayM3: 50,
     maxSpeedMps: 272,
     warpSpeedAus: 3.3,
     massKg: 7_000_000,
@@ -502,7 +502,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 154,
     hullHp: 181,
     cpu: 355,
-    droneBayM3: 0,
+    droneBayM3: 50,
     maxSpeedMps: 265,
     warpSpeedAus: 3.2,
     massKg: 7_500_000,
@@ -531,7 +531,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 160,
     hullHp: 186,
     cpu: 360,
-    droneBayM3: 0,
+    droneBayM3: 50,
     maxSpeedMps: 268,
     warpSpeedAus: 3.2,
     massKg: 8_000_000,
@@ -560,7 +560,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorHp: 163,
     hullHp: 192,
     cpu: 390,
-    droneBayM3: 0,
+    droneBayM3: 50,
     maxSpeedMps: 258,
     warpSpeedAus: 3.1,
     massKg: 9_000_000,
@@ -630,7 +630,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-xuanwu',
     name: '玄武级重装旗舰',
     role: 'armored',
-    slots: { high: 3, mid: 4, low: 5 }, // 12 槽（2026-09-12 船长「修正下玄武」：原 2/3/4=9 竟少于 T3 巡洋的 11~12；**守契约上限 12**）
+    slots: { high: 4, mid: 4, low: 6 }, // **14 槽**（船长「修正下玄武」＋同日废除 3~12 契约、T4 战列舰按**平均值 14**）
     tier: 4,
     cargoM3: 19000,
     cycleSeconds: 14,
@@ -658,7 +658,8 @@ export const SHIPS: readonly ShipDef[] = [
   // ⚠ **状态 = 壳体/模子**：只登记**舰体**（档位/槽位/CPU/血量按档位口径外推），
   //   **暂不上市场、不接蓝图、不接任何卡** ⇒ `priceIsk` 必须为 **0**（定制船口径，
   //   `content:check`「舰船价格口径」据此判定）。数值**待船长定案**后再决定上架与定价。
-  //   外推口径：槽位 T1 7 / T2 9 / T3 11 ⇒ **+2/档（T4 = 13 / T5 = 15）**；CPU T3 = 350 ⇒ **×1.4/档**；
+  //   外推口径（2026-09-12 船长修订）：**槽位 T4 战列舰 = 14（平均值）· T5 旗舰 = 18**
+//   （旧的「总槽位 3~12」契约同日废除——它当初是为驱逐舰设的）；CPU T3 = 350 ⇒ **×1.4/档**；
   //   血量 = 档位阶梯（锚 T2 = 372、**×1.85/档** ⇒ **T4 = 1,273 / T5 = 2,355**）；
   //   质量取所在档区间内、与既有邻舰同量级（T4 22M，介于玄武 20M 与皇带鱼 30M 之间；T5 35M）。
   //   背景：玩家侧此前**根本没有 T4/T5 主战船**（T4 只有玄武、T5 只有货舰），而敌人有 T4 泰坦 /
@@ -667,7 +668,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-megalodon',
     name: '巨齿鲨级战列舰',
     role: 'armed',
-    slots: { high: 5, mid: 4, low: 3 }, // 12 槽（**守「总槽位 3~12」契约上限**；T4 不能在槽位上再压 T3）
+    slots: { high: 6, mid: 5, low: 3 }, // **14 槽**（T4 战列舰平均值；旧「总槽位 3~12」契约已按船长 2026-09-12 废除）
     tier: 4,
     cargoM3: 4000,
     cycleSeconds: 12,
@@ -694,7 +695,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-dunkleosteus',
     name: '邓氏鱼级旗舰',
     role: 'armed',
-    slots: { high: 6, mid: 3, low: 3 }, // 12 槽（同上；T5 的差异落在**高槽更多**＋CPU/血量，不在总槽数）
+    slots: { high: 6, mid: 5, low: 6 }, // **17 槽**（船长要"旗舰 18"，但现行「单类槽上限 高6/中5/低6」合计最多 17 ⇒ 先取上限值，**冲突已上报待裁**）
     tier: 5,
     cargoM3: 4500,
     cycleSeconds: 12,

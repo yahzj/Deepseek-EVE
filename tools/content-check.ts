@@ -832,7 +832,10 @@ for (const s of SHIPS) {
         Number.isInteger(slots.low) && slots.low >= 1 && slots.low <= 6,
       `舰船 ${s.id} slots 越界：${JSON.stringify(slots)}（需 高1-6/中1-5/低1-6）`,
     )
-    check(total >= 3 && total <= 12, `舰船 ${s.id} 总槽位 ${total} 超限（3~12）`)
+    // ⚠ **2026-09-12 船长：「总体槽位契约当初是为驱逐舰设定了，现在废除」**——
+    //   原为 `total >= 3 && total <= 12`（上限当年以驱逐舰为标尺）。现**废除上限**：
+    //   战列舰（T4）按**平均值 14**、旗舰（T5）**18**。下限保留 3（防手滑写成 1~2 槽的空壳）。
+    check(total >= 3, `舰船 ${s.id} 总槽位 ${total} 过少（下限 3）`)
     // V18 族定位弱断言：武装舰高槽多、装甲舰低槽多（布局草案精神）
     if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
     if (s.role === 'armored') check(slots.low >= slots.high + 1, `装甲舰 ${s.id} 低槽应显著多于高槽（${slots.low} vs ${slots.high}）`)
