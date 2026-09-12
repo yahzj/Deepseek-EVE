@@ -295,6 +295,27 @@ export function firstFreeBay(fitted: FittedModules, rack: RackSlot): number {
 }
 
 /**
+ * V18 韧性：把某槽类位数组补齐到**船型布局**期望长度（`want`；不足补空位、超长不动——
+ * 超长由载入修复链 `repairDeprecatedModules` 裁）。返回的数组 = `fitted[rack]` 引用本身。
+ *
+ * 为什么每个"按位号"的命令都要先补齐（2026-09-12 玩家实测「该低槽位不可用（第 2 位）」）：
+ * 新造/新买的船走 `emptyShipState → emptyFitted()` = **1/1/1**，而修复链只在**读到存档**时跑；
+ * 装配页却按**船型布局**渲染槽位格（`Math.max(布局, 数组长度)`）⇒ 界面画出第 2/3/4 格、
+ * 引擎按数组长度判成越界。补齐与 `repairDeprecatedModules` 的"位对齐"同口径，幂等。
+ */
+function ensureRackBays(fitted: FittedModules, rack: RackSlot, want: number): Array<string | null> {
+  const bays = rackBays(fitted, rack)
+  while (bays.length < want) bays.push(null)
+  return bays
+}
+
+/** 某船某槽类的"船型布局期望位数"（船型缺失 = 0，不做补齐） */
+function wantedBaysOf(state: GameState, ctx: SimContext, shipId: string, rack: RackSlot): number {
+  const shipDef = fleetDefOf(state, ctx, shipId)
+  return shipDef ? shipSlotsOf(shipDef)[rack] : 0
+}
+
+/**
  * 玩家指令：把装备库里的装备装到某船对应槽类（rack）的某空位。
  * shipId 缺省 = 当前驾驶船（2026-09-05 船长：装配页支持直接装配非驾驶中的舰船）。
  * index 缺省 = 第一个空位；该槽类无空位/CPU 超限 → 拒绝并提示。
@@ -315,13 +336,9 @@ export function fitModule(
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。' }
   const rack = opts?.rack ?? rackOf(def)
-  const bays = rackBays(fitted, rack)
   // V18 韧性：位数组长度按船布局期望补齐（repair 链负责持久对齐；此处兜底运行态）
+  const bays = ensureRackBays(fitted, rack, wantedBaysOf(state, ctx, shipId, rack))
   const shipDef = fleetDefOf(state, ctx, shipId)
-  if (shipDef) {
-    const want = shipSlotsOf(shipDef)[rack]
-    while (bays.length < want) bays.push(null)
-  }
   // 目标位
   let index = -1
   if (opts?.index !== undefined) {
@@ -419,7 +436,7 @@ export function swapModuleAt(
   const fleet = state.fleet[shipId]
   const fitted = fleet?.fitted
   if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法换装。' }
-  const bays = rackBays(fitted, opts.rack)
+  const bays = ensureRackBays(fitted, opts.rack, wantedBaysOf(state, ctx, shipId, opts.rack))
   if (opts.index < 0 || opts.index >= bays.length) {
     return { ok: false, error: `该${rackLabel(opts.rack)}位不可用（第 ${opts.index + 1} 位）。` }
   }
