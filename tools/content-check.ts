@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 内容完整性体检（V10 数据大扩容后加入）：
  * 校验 data 包全部内容表的交叉引用，防止"加数据改漏引用"造成的死物品/坏目录。
  *
@@ -71,6 +71,8 @@ import {
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
   FACTION_RARE_DROP_CHANCE,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropEffectiveRate,
   FACTION_RARE_DROP_COUNT,
   FRAGMENT_RECIPES,
   hasLairCore,
@@ -2000,7 +2002,8 @@ for (const m of MODULES) {
     '派系活跃：中安/低安至少要有一个可作目标的星系（常驻悬赏），否则这条置顶任务永远刷不出来',
   )
   console.log(
-    `· 派系活跃：候选 ${factionPool.size} 个中安/低安星系（掉落概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% ×${FACTION_RARE_DROP_COUNT} 件，船长 2026-09-10 核定）`,
+    `· 派系活跃：候选 ${factionPool.size} 个中安/低安星系（掉落概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% ×${FACTION_RARE_DROP_COUNT} 件，船长 2026-09-10 核定；` +
+      `**含保底**——连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉，实际 ≈${(factionRareDropEffectiveRate() * 100).toFixed(1)}%/趟，船长 2026-09-11）`,
   )
   console.log(`· 窝点契约：${lairCards} 张窝点卡（稀有残骸 + 三档称呼 + 专属装备齐备，覆盖 ${famWithGear.size} 个敌族）`)
 }

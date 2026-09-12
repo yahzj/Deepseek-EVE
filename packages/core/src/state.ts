@@ -977,6 +977,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 兼容字段、零迁移、不升版本号：老档缺省 = 四类全空，由 normalizeState 补默认并剪枝。
    */
   marks: MarksState
+  /**
+   * 2026-09-11 稀有残骸保底（船长：「每 20 次必定掉的保底」→ 口径甲：只保底派系活跃掷骰链）：
+   * **连续掷骰未出**的次数（0 = 上次出货或尚未开始）。派系活跃胜利时 +1，命中/保底/窝点掉落清零。
+   * 可选字段、零迁移：老档缺省 = 0（从零开始攒）。
+   */
+  rareWreckDryStreak?: number
 }
 
 /** 玩家标记（收藏）四类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
@@ -1400,6 +1406,7 @@ export function createInitialState(opts?: {
     shipReturns: {},
     shipLocks: {},
     marks: emptyMarks(),
+    rareWreckDryStreak: 0, // 稀有残骸保底计数（2026-09-11 船长；见 FACTION_RARE_DROP_PITY_ROLLS）
     market: {
       pools: {},
       npcBuy: {},

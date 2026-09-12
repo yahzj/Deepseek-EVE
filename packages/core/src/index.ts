@@ -722,6 +722,8 @@ export {
   FACTION_BOUNTY_THREAT_MUL,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropEffectiveRate,
   factionAnomalyOf,
   factionBaseRewardIsk,
   hasLairCore,

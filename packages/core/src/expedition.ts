@@ -44,6 +44,7 @@ import { claimTutorialTrialReward } from './onboarding'
 import {
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FACTION_RARE_DROP_PITY_ROLLS,
   factionAnomalyOf,
   factionBaseRewardIsk,
   isLairCandidate,
@@ -525,13 +526,24 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     // 敌对派系活跃（2026-09-10 船长定）：胜利后**按概率**掉稀有残骸（该星系残骸场、打捞必得）。
     // 这条**不因打赢而下板**（当天可反复刷），故只在命中时写一条日志说明掉了几件。
-    if (factionActive && nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE) {
-      injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT)
-      addLog(
-        state,
-        'trade',
-        `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
-      )
+    // **保底（2026-09-11 船长：「每 20 次必定掉的保底」→ 口径甲）**：连续 19 次掷骰未出 ⇒ 第 20 次必掉。
+    // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
+    if (factionActive) {
+      const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
+      const hit = nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE
+      const pity = streak >= FACTION_RARE_DROP_PITY_ROLLS
+      if (hit || pity) {
+        injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT) // 内部清零空手计数
+        addLog(
+          state,
+          'trade',
+          `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}` +
+            `${pity && !hit ? `（连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出，本次保底）` : ''}` +
+            `——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
+        )
+      } else {
+        state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）
+      }
     }
     // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)

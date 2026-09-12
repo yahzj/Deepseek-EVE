@@ -2160,6 +2160,8 @@ function normalizeState(raw: unknown): GameState {
     salvaging,
     bountyCooldowns,
     autoLoopAnomalyId,
+    // 2026-09-11 稀有残骸保底计数（船长「每 20 次必定掉」）：非负整数，缺省 0（老档从零攒）
+    rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,
     lowSecNotified,
     encounterZoneCooldown,
