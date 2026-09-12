@@ -171,11 +171,13 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
   const now = openAtMs
   const L = priceLevel(state, ctx, def, def.poolTarget ?? 0)
   const sellable = def.playerSellable !== false
+  // 开局/目录扩增铺簿同样吃"砸得越狠、买家越多"的倍率（常态 shock=0 ⇒ ×1，不改变开盘簿面）
+  const buyVolMul = dumpBuyVolumeMul(state.market.pools[def.key], ctx.balance.market)
   if (def.poolTarget && def.poolTarget > 0) {
     const flow = def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget / 120))
     if (sellable) {
-      mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: Math.max(1, Math.round(flow)), expiresAtGameMs: now + life })
-      mk.npcBuy[def.key]!.push({ price: buyPrice(def, L, -0.01), qty: Math.max(1, Math.round(flow * 1.25)), expiresAtGameMs: now + life })
+      mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: Math.max(1, Math.round(flow * buyVolMul)), expiresAtGameMs: now + life })
+      mk.npcBuy[def.key]!.push({ price: buyPrice(def, L, -0.01), qty: Math.max(1, Math.round(flow * 1.25 * buyVolMul)), expiresAtGameMs: now + life })
     }
     mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: Math.max(1, Math.round(flow * 0.8)), expiresAtGameMs: now + life })
     mk.pools[def.key]!.q = def.poolTarget
@@ -192,6 +194,21 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
 /* ═══════════ 价格 ═══════════ */
 
 /** 均衡价 L：池商品 = base×库存压力×(1+冲击)·(1+慢速噪声)；单件 = base×(1+冲击)·(1+噪声)。输出按比例钳制防失控 */
+/**
+ * **倾销惩罚层数 → NPC 买单挂单量放大**（2026-09-11 船长：「提高倾销惩罚，同时每层惩罚还会提高
+ * 系数一半的订单量」→ 追问后定「**修改为每层提高 8% 买单数量**」「**所有商品都适用**」）。
+ *
+ * 层数 = **当前未衰减的净惩罚层数** = `|shock| ÷ shockPerTrigger`（**不取整**——衰减中的半层也按比例算，
+ * 量随行情平滑回落，不会卡在整层上）；只在**砸盘方向**（`shock < 0`）放大：玩家买入把价格顶上去时
+ * 不动买单量（那不是"惩罚"）。所有商品共用本单点：池商品收购阶梯、单件平价品、稀有、奇货、开局铺簿。
+ */
+export function dumpBuyVolumeMul(pool: { shock?: number } | undefined, bal: MarketBalance): number {
+  const shock = pool?.shock ?? 0
+  if (!(shock < 0)) return 1
+  const layers = Math.abs(shock) / Math.max(1e-9, bal.shockPerTrigger)
+  return 1 + bal.dumpBuyVolumePerLayer * layers
+}
+
 function priceLevel(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ: number): number {
   const bal = ctx.balance.market
   const pool = state.market.pools[def.key]!
@@ -682,6 +699,9 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
   const sellable = def.playerSellable !== false
   const lifeMs = orderLifeMsOf(def, bal)
   const L = priceLevel(state, ctx, def, poolQ)
+  // **砸得越狠 → 来收货的买家越多**（船长 2026-09-11：每层未衰减惩罚把 **NPC 收购单量 +8%**，
+  // 全部商品适用、只在砸盘方向生效）：本窗该商品的所有收购单一律乘这个倍率。
+  const buyVolMul = dumpBuyVolumeMul(mk.pools[def.key], bal)
   // bmStanding 仅配置于 rare 商品：闸内 = ×4 价暗市单语义（含收购侧同规则）
   const locked = def.rarity === 'rare' && bmGateLocked(state, def)
   const priceMul = locked ? 4 : 1
@@ -700,7 +720,7 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       // 收购阶梯：最佳档在 L，越深越便宜、量越大（墙）；每窗始终铺满 3 档（盘口稳定成阶梯，避免挤单一价）
       for (let i = 0; i < 3; i += 1) {
         const price = Math.max(1, buyBase - i * buyStep)
-        const qty = Math.max(1, Math.round(flow * pClamped * (0.5 + 0.35 * i)))
+        const qty = Math.max(1, Math.round(flow * pClamped * (0.5 + 0.35 * i) * buyVolMul))
         npcPushBuy(state, ctx, def, now, lifeMs, price, qty)
       }
       // 供应阶梯：最低档在 L×1.06，越深越贵、量越大（playerBuyable=false 的只收商品不出售）
@@ -714,7 +734,7 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
     } else {
       // 单件平价品：维持供应线与低价收购线（收购单 qty 3/张 ×建站扩容 boost，2026-09-08 件数放大 + 2026-09-09 扩容）
       const boost = builtSellBoost(state, ctx)
-      if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), Math.max(1, Math.round(3 * boost)))
+      if (nextRandom(state.rng) < 0.85) npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceJitter(state)), Math.max(1, Math.round(3 * boost * buyVolMul)))
       // 常驻供给：蓝图书出现概率 −50%（2026-09-09 船长定——蓝图不走"簿薄必补"保底，纯 0.425 掷骰；
       // 收购侧不变：玩家回卖蓝图不受影响）
       const sellChance = def.kind === 'blueprint' ? 0.425 : 0.85
@@ -731,13 +751,13 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
     // 2026-09-09 数字稀有度：稀有订单层内分层——3 档收购概率 ×rareTierWeight（同卖单权重表）
     const boost = builtSellBoost(state, ctx)
     if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.03 * boost * rareTierWeight(def, ctx))) {
-      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), Math.max(1, Math.round(2 * boost)), locked)
+      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), Math.max(1, Math.round(2 * boost * buyVolMul)), locked)
     }
   } else if (def.rarity === 'exotic') {
     // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 1% ×建站扩容；寿命同供给侧 6h；qty ×扩容）
     const boost = builtSellBoost(state, ctx)
     if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.01 * boost)) {
-      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L)), Math.max(1, Math.round(boost)))
+      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L)), Math.max(1, Math.round(boost * buyVolMul)))
     }
   }
 }

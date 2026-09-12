@@ -311,8 +311,16 @@ export interface MarketBalance {
   blueprintLifeMs: number
   /** 窗口净成交量超过该比例（相对参考量）时触发冲击 */
   shockTriggerRatio: number
-  /** 每次冲击的价格偏移（比例，可正可负；叠加无上限） */
+  /** 每次冲击的价格偏移（比例，可正可负；**叠加无上限**，靠衰减半程兜底） */
   shockPerTrigger: number
+  /**
+   * **倾销惩罚层数 → 买单量放大**（2026-09-11 船长：「提高倾销惩罚，同时每层惩罚还会提高系数一半的订单量」
+   * → 追问后定「**修改为每层提高 8% 买单数量**」「**所有商品都适用**」）：
+   * 每累计一层未衰减的惩罚，**NPC 收购单（买单）的挂单量**提高本比例。
+   * 层数 = `|shock| ÷ shockPerTrigger`（未衰减的净层数，随时间自然回落）；
+   * **只在砸盘方向生效**（`shock < 0`）——玩家买入推高价格时不放大买单量。
+   */
+  dumpBuyVolumePerLayer: number
   /** 冲击衰减半程（毫秒） */
   shockDecayHalfMs: number
   /** 慢速均值回归噪声：均值回归半程（毫秒）——让常驻行情即使无人交易也温和起伏 */
