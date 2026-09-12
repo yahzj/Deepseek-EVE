@@ -1122,7 +1122,9 @@ const meSpeedRef = useRef(200)
   const arcCap = lay.usable + gunBasePx + 80 // 兜底上限：不超"开局枪口位 + 余量"
   const arcR = (rangeM: number, minPx: number): number =>
     Math.max(minPx, Math.min(arcCap, gunBasePx + Math.max(0, rangeM - nearM) * sPxPerM))
-  const mainMeArc = arcs.me.find((w) => w.kind === 'gun') ?? arcs.me[0]
+  // 主武器弧 = 战术距离口径认定的那件（core `mainWeaponOf` 下发 `isMain`；2026-09-12 船长裁定「甲」，
+  // 界面不再自己 find(kind==='gun')——旧写法会把激光船/装近防炮的船的米数刻度画成 2,500m）
+  const mainMeArc = arcs.me.find((w) => w.isMain) ?? arcs.me[0]
   const meArcEls = arcs.me.map((w, wi) => {
     const color = w.type ? DMG_COLOR[w.type] : '#93a4b8'
     const hollow = w.kind === 'gun' && !w.type
