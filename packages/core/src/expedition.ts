@@ -35,6 +35,7 @@ import {
   refundAmmo,
   refundRepairKits,
   repairUsageText,
+  setDesirePrefOf,
   settleDroneLosses,
   startBattleFor,
 } from './combat'
@@ -150,7 +151,13 @@ export function battleTacticDesire(
   return desiredRangeFor(me, tactic, ctx.balance.battle)
 }
 
-/** 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）；同时记忆偏好供下次出发沿用 */
+/**
+ * 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）。
+ * **按星系记忆**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存」）——
+ * 写入的是**本场战斗所在星系**（= 远征目标卡的星系）的目标距离；下次在该星系开战、
+ * 以及该星系的胜率预估都会沿用它。战斗界面只服务远征交火（遭遇战是无界面自动推演），
+ * 故这里只处理远征；遭遇战在开战时另行读取同一份设定。
+ */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
   const battle = state.expedition.battle
   if (!battle) return { ok: false, error: '当前不在交火中。' }
@@ -162,7 +169,7 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  state.expedition.desirePrefM = clamped // 记忆偏好（跨会话/下次出发沿用）
+  setDesirePrefOf(state, anomaly.galaxyId, clamped) // 记忆 = 该星系的目标距离（跨会话沿用）
   return { ok: true }
 }
 
@@ -314,9 +321,10 @@ export function startExpedition(
   exp.returnReason = undefined
   exp.lairTier = opts?.lairTier // 赏金任务·窝点档位（普通悬赏 = undefined）
   exp.factionActive = factionHit // 派系活跃目标（当日选中星系的常驻悬赏 = true）
-  // 期望距离偏好：本次显式传入优先；否则沿用上次记忆（默认在开战时取有效射程中点）
+  // 目标距离：本次显式传入 → 写进**目标星系**的设定；否则开战时读该星系的已有设定，
+  // 该星系没设过则回落"主武器有效射程中点"（船长 2026-09-11：「如果没有，采用射程中段距离」）
   if (opts?.desireM !== undefined) {
-    exp.desirePrefM = Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM))
+    setDesirePrefOf(state, anomaly.galaxyId, Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM)))
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
@@ -389,9 +397,10 @@ export function startExpeditionFromMining(
   return startExpedition(state, anomalyId, ctx, opts)
 }
 
-/** 到港开战（主控）：开战时刻 = 到港时刻；期望距离取已记忆偏好（无则有效射程中点） */
+/** 到港开战（主控）：开战时刻 = 到港时刻；目标距离 = **该星系**的设定，没设过则射程中段
+ *  （2026-09-11 船长：按星系独立保存；`startBattleFor` 内单点解析，此处不再传全局偏好） */
 export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number): boolean {
-  const battle = startBattleFor(state, ctx, shipId, anomalyId, arrivalGameMs, state.expedition.desirePrefM)
+  const battle = startBattleFor(state, ctx, shipId, anomalyId, arrivalGameMs)
   if (!battle) return false
   const exp = state.expedition
   exp.phase = 'battle'

@@ -543,6 +543,9 @@ export {
   battleArcsFor,
   spreadWinChance,
   desiredRangeFor,
+  // 2026-09-11 船长：目标距离按星系独立保存——单点读写（实战开战 / 胜率预估 / 界面共用）
+  desirePrefOf,
+  setDesirePrefOf,
   foeDesiredRange,
   mergeResist,
   foeMainDamageType,

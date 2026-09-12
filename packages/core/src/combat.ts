@@ -1792,8 +1792,13 @@ export function startBattleFor(
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
     : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
-  // 期望距离记忆可能来自更远射程的战斗：钳到本次开战距离内
-  const rawDesire = desireM !== undefined && desireM > 0 ? Math.round(desireM) : desiredRangeFor(me, 'mid', bal)
+  // 期望距离：显式传入（出发时的偏好/战术）优先；否则用**该星系的目标距离**；
+  // 该星系没设过 → 主武器有效射程中点（船长 2026-09-11：「如果没有，采用射程中段距离」）。
+  // 记忆可能来自更远射程的战斗：一律钳到本次开战距离内。
+  const rawDesire =
+    desireM !== undefined && desireM > 0
+      ? Math.round(desireM)
+      : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
@@ -2765,6 +2770,25 @@ function randomAliveFoe(state: import('./state').GameState, b: import('./state')
   return alive[i]!
 }
 
+/**
+ * **某星系的玩家目标距离设定**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存，
+ * 预估胜率的战斗按照那个距离决定。如果没有，采用射程中段距离」）。
+ * 返回 null = 该星系没设过（调用方回落到 `desiredRangeFor(me,'mid')` 射程中段）。
+ * 单点：实战开战（远征/遭遇/AI）、胜率预估（MC 与稳态解析）全走这一处，避免多处各读各的。
+ */
+export function desirePrefOf(state: GameState, galaxyId: string | null | undefined): number | null {
+  if (!galaxyId) return null
+  const v = state.expedition.desirePrefByGalaxy?.[galaxyId]
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : null
+}
+
+/** 写入某星系的目标距离（战斗内拖条/战术切换、出发时显式指定共用）；返回写入后的值 */
+export function setDesirePrefOf(state: GameState, galaxyId: string, desireM: number): number {
+  const v = Math.max(1, Math.round(desireM))
+  state.expedition.desirePrefByGalaxy = { ...(state.expedition.desirePrefByGalaxy ?? {}), [galaxyId]: v }
+  return v
+}
+
 /* ═══════════ 预估胜率（确定性期望推演；UI/AI 门槛同源，不消耗 rng） ═══════════ */
 
 /** 稳态距离近似：双方期望距离的中点（钳制在开战距离内） */
@@ -2808,7 +2832,13 @@ function steadyPreview(
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
   const peakUnits = waves ? Math.max(...waves.map((w) => w.units)) : 1
   const foes = peakUnits > 1 ? createFoeSpecs(anomaly, bal, { units: peakUnits }) : createFoeSpecs(anomaly, bal)
-  const steady = steadyDistance(me, foes, bal)
+  // 距离口径（船长 2026-09-11：「预估胜率的战斗按照那个距离决定，如果没有，采用射程中段距离」）：
+  // 该星系设过目标距离 → 用它（钳到本次开战距离内）；没设过 → 双方期望距离中点（旧口径）。
+  const steadyPref = desirePrefOf(state, anomaly.galaxyId)
+  const steady =
+    steadyPref !== null
+      ? clamp(bal.minDistanceM, battleOpenM(me, foes, bal), steadyPref)
+      : steadyDistance(me, foes, bal)
 
   const meHpTotal = me.hp.s + me.hp.a + me.hp.h
 
