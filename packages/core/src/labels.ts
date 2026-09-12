@@ -110,10 +110,12 @@ export function rackOf(def: {
 /** 物品分类展示顺序 */
 export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'fragment', 'kit']
 
-/** 物品分类中文名（仓库/货仓分组标题与空态文案用） */
+/** 物品分类中文名（仓库/货仓分组标题与空态文案用）
+ *  ⚠ **术语（船长 2026-09-12 定）**：`ore` = 「**原矿**」（未精炼的石头，1 m³/单位）；
+ *  `mineral` = 「**原材料**」（精炼产物，0.01 m³/单位）。旧称「矿石 / 矿物」作废，勿再混用。 */
 export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
-  ore: '矿石',
-  mineral: '矿物',
+  ore: '原矿',
+  mineral: '原材料',
   gas: '气体',
   ice: '冰矿',
   ammo: '弹药',

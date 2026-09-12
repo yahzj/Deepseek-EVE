@@ -30,8 +30,8 @@ export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；
  */
 export const ONB_BRIEFING = 0.5
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
-export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批矿物」
-export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余矿石（交付只扣 20，矿不自动卖）
+export const ONB_DELIVER = 2 // 交付：任务中心交「补给协议·首批原材料」
+export const ONB_SELL = 3 // 出售（2026-09-08 新增）：物品页卖出剩余原矿（交付只扣 20，矿不自动卖）
 export const ONB_REPAIR = 4 // 修复：港内维修鲣鱼至完好
 export const ONB_TRIAL = 5 // 试炼：演习场驱逐令（教学战加成）
 export const ONB_SKILL = 6 // 技能归档：AI 核心操作学 Lv1 特典
@@ -120,16 +120,16 @@ export function beginTutorialAfterAwaken(state: GameState): CommandResult {
 export function startTutorialFromBriefing(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_BRIEFING) return { ok: false, error: '当前不在序章简报阶段。' }
   state.onboarding.step = ONB_MINE
-  addLog(state, 'info', '行动建议：采集矿石维持运转。导航：母港星域·丰饶之环。')
+  addLog(state, 'info', '行动建议：采集原矿维持运转。导航：母港星域·丰饶之环。')
   return { ok: true }
 }
 
 /** 任务 ①：交付富凡晶石（从仓库扣除），发放 4,000 ISK + 基础 AI 核心 ×1 */
 export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandResult {
   if (state.onboarding.step < ONB_DELIVER || state.onboarding.step >= ONB_DONE) {
-    return { ok: false, error: '「补给协议·首批矿物」还未到交付阶段。' }
+    return { ok: false, error: '「补给协议·首批原材料」还未到交付阶段。' }
   }
-  if (isTaskDone(state, TASK_ORE_DELIVER)) return { ok: false, error: '「补给协议·首批矿物」已完成交付。' }
+  if (isTaskDone(state, TASK_ORE_DELIVER)) return { ok: false, error: '「补给协议·首批原材料」已完成交付。' }
   const have = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
   if (have < TUTORIAL_DELIVER_N) {
     return { ok: false, error: `仓库富凡晶石不足（${have}/${TUTORIAL_DELIVER_N}）——先回港卸货。` }
@@ -142,7 +142,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
   addLog(
     state,
     'trade',
-    `◆ 重要任务完成「补给协议·首批矿物」：交付 ${oreName}×${TUTORIAL_DELIVER_N}，+${TUTORIAL_REWARD_ISK.toLocaleString('zh-CN')} ISK、基础 AI 核心 ×1。`,
+    `◆ 重要任务完成「补给协议·首批原材料」：交付 ${oreName}×${TUTORIAL_DELIVER_N}，+${TUTORIAL_REWARD_ISK.toLocaleString('zh-CN')} ISK、基础 AI 核心 ×1。`,
   )
   if (state.onboarding.step === ONB_DELIVER) {
     // 2026-09-08：交付完成 → 进入「出售」教学步骤（先教卖矿再修复）
@@ -205,14 +205,14 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
       if (cargoOre > 0) {
         const moved = unloadCargoToWarehouse(state)
         if (moved > 0) {
-          addLog(state, 'info', `货仓中的 ${cargoOre} 单位矿石已自动卸入物品仓库（${moved} 单位）。`)
+          addLog(state, 'info', `货仓中的 ${cargoOre} 单位原矿已自动卸入物品仓库（${moved} 单位）。`)
         }
       }
     }
     // 采集完成：仓库已有 ≥20 富凡晶石（已返港卸货）→ 提示交付
     if ((state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) >= TUTORIAL_DELIVER_N) {
       state.onboarding.step = ONB_DELIVER
-      addLog(state, 'info', '采集达标：前往出港页「任务中心」·重要任务交付「补给协议·首批矿物」。')
+      addLog(state, 'info', '采集达标：前往出港页「任务中心」·重要任务交付「补给协议·首批原材料」。')
     }
     return
   }
@@ -223,7 +223,7 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
     if (base !== undefined && state.wallet.isk > base) {
       state.onboarding.step = ONB_REPAIR
       state.onboarding.sellIskBaseline = undefined
-      addLog(state, 'info', '矿石已售出。前往舰船页维修鲣鱼至完好（装甲/结构 100%）。')
+      addLog(state, 'info', '原矿已售出。前往舰船页维修鲣鱼至完好（装甲/结构 100%）。')
     }
     return
   }
