@@ -321,6 +321,13 @@ export interface MarketBalance {
    * **只在砸盘方向生效**（`shock < 0`）——玩家买入推高价格时不放大买单量。
    */
   dumpBuyVolumePerLayer: number
+  /**
+   * **砸盘时 NPC 挂卖单量的同步削减**（2026-09-11 船长：「**砸盘时，挂卖单的量进行同步削减**」）：
+   * 每累计一层未衰减惩罚，**供应单（挂卖）挂单量**减少本比例；**下限 10%**（不把供应簿削光）；
+   * 只在砸盘方向生效。与 `dumpBuyVolumePerLayer` 对称 ⇒ 砸得越狠：接货的越多、出货的越少。
+   * 只作用于**池商品供应阶梯**（单件/稀有/奇货的供应单恒 1 张，不适用）。
+   */
+  dumpSellVolumePerLayer: number
   /** 冲击衰减半程（毫秒） */
   shockDecayHalfMs: number
   /** 慢速均值回归噪声：均值回归半程（毫秒）——让常驻行情即使无人交易也温和起伏 */
