@@ -110,7 +110,9 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   },
   travel: {
     warpRefAus: 3.0, // 基准跃迁速度：沙猫级 3.5 → 航程 ×0.857（快 14%）；2.8 慢船 → ×1.07
-    minFactor: 0.35, // 时间因子下限（再快也至少保留 35% 时间）
+    // ⚠ **时间因子下限 `minFactor: 0.35` 已于 2026-09-12 按船长裁定「删除下限」移除**——
+    // 原下限只卡快船：航行族 3 级起飞鱼级(7.4) 与剑鱼级(6.2) 单程时间完全相同；满技能时
+    // 剑鱼 ÷ 皇带鱼 的时长差从 2.21× 削到 1.41×。现**无下限**（船速差永远按比例体现）。
     skillIds: ['navigation', 'warp-drive-operation', 'acceleration-control'], // 航行加速技能族
     cutPerLevel: 0.04, // 每个技能每级 -4%（三技能满级乘算 → ×0.512）
   },

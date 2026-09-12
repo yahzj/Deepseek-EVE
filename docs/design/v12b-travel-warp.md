@@ -12,12 +12,22 @@
 实际航程耗时 = 标称分钟 × 60_000 × 航行因子
 航行因子     = (warpRefAus / warpEff)
              × ∏ (1 − cutPerLevel × 技能等级)     // 三技能各一乘区
-warpEff      = 当前/指定船 warpSpeedAus（数据 2.8~3.9；缺失 = warpRefAus 不缩放；clamp [0.5, 12]）
-航行因子下限  = minFactor（0.35）：组合再强航程也至少保留 35% 时间
+warpEff      = 当前/指定船 warpSpeedAus（数据 2.8~7.4；缺失 = warpRefAus 不缩放；clamp [0.5, 12]）
+~~航行因子下限  = minFactor（0.35）：组合再强航程也至少保留 35% 时间~~
+             ⇒ ⚠ **2026-09-12 船长裁定「删除下限」：本行作废，现无下限**
 ```
 
+**⚠ 下限删除（2026-09-12 船长「删除下限」）**：起因 = 玩家（船长）发现"剑鱼级跃迁速度是皇带鱼级的一倍以上，
+但长途运输里时间相差不大"。实测（真引擎）：下限**只卡快船** ⇒ 航行族练到 **3 级**起，飞鱼级(7.4) 与剑鱼级(6.2)
+的**单程时间完全相同**（都被抬到 0.35）；满技能时 剑鱼 ÷ 皇带鱼 的时长差从 **2.21× 被削到 1.41×**，
+而"快运线"在长途运输里反倒比慢而大的货舰更不赚（时薪比随技能从 0.86× 掉到 0.55×）。
+**删后读数**（最长标称航线 34′，运输航段 ×15 = 510′）：剑鱼 ÷ 皇带鱼 = **每个技能档都是 2.21×**；
+满技能（航行族 5 + 操控学 5）单程：飞鱼 **95 分钟** / 剑鱼 **114** / 皇带鱼 **252**（最快因子 0.187）。
+"压没航程"的顾虑不成立：最快组合仍保留 18.7% 时间，且长途运输另有 ×15 航段倍率。
+字段与常量 `balance.travel.minFactor` / `TravelBalance.minFactor` **一并移除**（`travelTimeFactor` 直接返回乘积）。
+
 默认值（`core/src/balance.ts` → `balance.travel`）：
-`warpRefAus: 3.0`、`minFactor: 0.35`、`cutPerLevel: 0.04`、
+`warpRefAus: 3.0`、`cutPerLevel: 0.04`、
 `skillIds: ['navigation','warp-drive-operation','acceleration-control']`。
 
 **统一换算入口**（`core/src/travel.ts`，经 `@whale/core` 唯一出口导出）：
@@ -69,7 +79,8 @@ EVE 检索结论（来源：[EVE 中文 wiki·技能/导航学](https://eve.huij
 
 ## 六、验证
 
-- core 新增 `tests/travel.test.ts`（11 例）：缺省船不缩放 / warp 反比 / 技能族乘算 /
-  minFactor 下限 / shipId 参数化 / oneLegMs 基础段不缩放 / 远征出发锁定（技能升级与换船两条路径）；
+- core 新增 `tests/travel.test.ts`：缺省船不缩放 / warp 反比 / 技能族乘算 /
+  **无下限（2026-09-12 船长「删除下限」：组合再快也按比例缩短、船速差永不被抹平）** /
+  shipId 参数化 / oneLegMs 基础段不缩放 / 远征出发锁定（技能升级与换船两条路径）；
 - 既有 150 测试不受影响（测试默认船无 warp → 因子 1.0）；全套 16 文件 161 测试绿；
 - `npm run balance` 前后对比（初始船航程 −14% 的经济影响）；content 校验全绿；冒烟零错误。

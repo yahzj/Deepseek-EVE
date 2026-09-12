@@ -550,8 +550,9 @@ export interface EncounterBalance {
 export interface TravelBalance {
   /** 基准跃迁速度（AU/s）：warp = 该值时航程 = 标称分钟；高于它则更快、低于则更慢（反比） */
   warpRefAus: number
-  /** 时间因子下限（防极端组合把航程压没） */
-  minFactor: number
+  // ⚠ 原 `minFactor`（时间因子下限 0.35）**已于 2026-09-12 按船长裁定「删除下限」移除**：
+  //   下限只卡快船（航行族 3 级起飞鱼级与剑鱼级单程时间完全相同；满技能时 剑鱼 ÷ 皇带鱼
+  //   的时长差从 2.21× 削到 1.41×）⇒ 现**无下限**，`travelTimeFactor` 直接返回乘积。
   /** 航行加速技能族（效果趋同统一）：每级各按 cutPerLevel 缩短星图航行时间（乘算） */
   skillIds: readonly string[]
   /** 每个技能每级的时间缩减比例（如 0.04 = 4%） */

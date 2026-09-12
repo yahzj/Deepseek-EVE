@@ -28,6 +28,7 @@
     "battle:pd-tune": "tsx tools/pd-tune.ts",
     "battle:pd-vs-drone": "tsx tools/pd-vs-foe-drone.ts",
     "battle:mixed-review": "tsx tools/mixed-damage-review.ts",
+    "travel:matrix": "tsx tools/travel-matrix.ts",
     "bounty:econ": "tsx tools/bounty-econ.ts",
     "price:audit": "tsx tools/price-audit.ts",
     "liquidity:audit": "tsx tools/liquidity-audit.ts",
