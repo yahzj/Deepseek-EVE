@@ -533,9 +533,6 @@ export class GameEngine {
       if (raw !== null) {
         const parsed = loadSaveFile(raw)
         this.state = parsed.state
-        // V17 装备改版修复：旧"通用全系"增强器迁移为分系专精款（须在离线结算前完成，
-        // 让离线战斗直接按新参数结算）；见 core/equipment.repairDeprecatedModules
-        repairDeprecatedModules(this.state, this.ctx)
         // V18 口径取消：旧重型弹 1:1 并入通用弹（含挂单撤销）；见 core/equipment.migrateDeprecatedAmmo
         migrateDeprecatedAmmo(this.state)
         lastSavedWall = parsed.savedAtWallMs
@@ -554,6 +551,13 @@ export class GameEngine {
           : '存档文件无法读取'
       addLog(this.state, 'warn', `${why}——已为你开启新档案。`)
     }
+
+    // V17/V18 装备修复：下架型号迁移 + 每船位数组与船型布局对齐（须在离线结算前完成，
+    // 让离线战斗直接按新参数结算）；见 core/equipment.repairDeprecatedModules。
+    // 2026-09-12：**新档也跑**（原先只在"读到存档"分支里跑）——新造/新买的船走
+    // `emptyShipState → emptyFitted()` = 1/1/1 位数组，不补齐就会出现
+    // "界面按船型布局画出第 2/3/4 格、引擎只认第 1 位"（玩家实测「该低槽位不可用（第 2 位）」）。
+    repairDeprecatedModules(this.state, this.ctx)
 
     const now = Date.now()
     if (lastSavedWall !== null) {
