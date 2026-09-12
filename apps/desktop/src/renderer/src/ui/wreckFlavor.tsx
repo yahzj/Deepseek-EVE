@@ -73,7 +73,9 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
       const suffix = item?.kind === 'drone' && maps.droneUnits ? ` ×${maps.droneUnits} 架` : ''
       return `${moduleName(id)}${suffix}`
     })
-    named.push(`${names.join('、')}（该敌群专属装备，每炉必给一件）`)
+    // 2026-09-11 船长：「掉落说明中『必定掉落 / 不重复』会误导玩家，建议删除，只显示掉落列表」
+    // ⇒ 具名行只列件名（不再附「该敌群专属装备，每炉必给一件」这类保底口径）。
+    named.push(names.join('、'))
     return { label: '特色掉落', named, generic: [], tone: 'strong' }
   }
   // 主题追加件（中安 modules 组、低安 mk2 组）——按敌群特色具名

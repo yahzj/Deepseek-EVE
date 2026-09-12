@@ -88,6 +88,8 @@ export function isRareWreck(itemId: string): boolean {
  * 打捞到 1 件 = 入库 `RARE_WRECK_VOLUME_M3`（30）单位 = 30 m³ 货舱/回收批数。
  * **2026-09-10 船长定：已解禁**（二号五族专属装备齐备后开放）——与普通残骸同一条回收链路，
  * 区别只在"首批触发一次高级箱"（`profile.rare === true`；**一炉一箱**，按炉结算不按件累积）。
+ * **2026-09-11 船长（说明文案）**：「掉落说明中『必定掉落 / 不重复』会误导玩家，建议删除，只显示掉落列表」
+ * ⇒ 物品描述与卡面一律**只列掉落**（专属装备或特色装备 + 高阶矿物），不再写"必定额外掉落"。
  */
 export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): ItemDef {
   return {
@@ -96,7 +98,7 @@ export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): Item
     kind: 'wreck',
     unitM3: 1,
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——保底矿物之外必定额外掉落一件（该敌群专属装备，未出则给特色装备），并附一批高阶矿物。`,
+    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——开出该敌群专属装备或特色装备，另附一批高阶矿物。`,
   }
 }
 
@@ -450,7 +452,7 @@ export function rollRareBoxExtra(
     if (theme.length > 0) {
       const pick = theme[nextInt(state.rng, theme.length)]!
       modules.push(pick)
-      notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? pick}」`)
+      notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? ctx.items.get(pick)?.name ?? pick}」`)
     }
   }
   // ③ 高阶矿物一批（从该敌群特色池或档位池加权抽 1 种）

@@ -380,7 +380,10 @@ function yieldNoteFor(
   },
   kind: 'refine' | 'recycle',
 ): string {
-  const nameOf = (id: string): string => ctx.items.get(id)?.name ?? id
+  // 2026-09-11 修复（船长实测反馈「回收残骸出货时的事件日志内显示的额外掉落为装备ID」）：
+  // 名表必须**先查装备、再查物品**——旧实现只看 `ctx.items`，而「额外掉落」段里的装备是**模块 id**
+  // （如 mod-lair-turret-a），查不到就回落到裸 id，玩家看到的是 `装备 mod-lair-turret-a×1`。
+  const nameOf = (id: string): string => ctx.modules.get(id)?.name ?? ctx.items.get(id)?.name ?? id
   const fmt = (m: Record<string, number>, cap = 6): string => {
     const es = Object.entries(m).sort((a, b) => b[1]! - a[1]!)
     const head = es
