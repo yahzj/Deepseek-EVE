@@ -1583,6 +1583,10 @@ for (const m of MODULES) {
     const TITAN_DRONE_RANGE_M = 5_000
     /** 受击增程倍率上限（船长同日：「提高 400%」＝×4） */
     const DRONE_RANGE_ON_HIT_CAP = 4
+    /** **G 族蜂群机射程定值**（船长 2026-09-12：「**敌方蜂群攻击范围提高到 7000**」）——
+     *  落点即族格「全 orbit：**蜂群远距压制**」：旧值 2,800m（侦察机档"近身护航"）会让蜂群
+     *  **够不着本族卡自己的期望交距**（天底静区封锁 ≈ 3,858m）⇒ 挂上去等于白挂。 */
+    const SWARM_DRONE_RANGE_M = 7_000
     const aaMods = MODULES.filter((m) => m.canHitDrones === true)
     check(
       aaMods.length > 0,
@@ -1596,6 +1600,17 @@ for (const m of MODULES) {
       )
     }
     let droneSlots = 0
+    /** G 族蜂群机型射程读数（落到汇总行） */
+    const swarmRanges: string[] = []
+    for (const d of FOE_DRONES.filter((x) => x.family === 'G')) {
+      check(
+        d.maxRangeM === SWARM_DRONE_RANGE_M,
+        `机群与防空契约：G 族机型「${d.name}」（${d.id}）射程 ${d.maxRangeM}m ≠ ${SWARM_DRONE_RANGE_M}m——` +
+          `船长 2026-09-12「**敌方蜂群攻击范围提高到 7000**」；该值须与族格「全 orbit：蜂群远距压制」一致` +
+          `（低于本族卡期望交距时蜂群等于白挂）`,
+      )
+      swarmRanges.push(`${d.id} ${d.maxRangeM}`)
+    }
     /** E 族射程读数（逐舰级一条，落到汇总行） */
     const titanRanges: string[] = []
     let onHitShips = 0
@@ -1655,7 +1670,8 @@ for (const m of MODULES) {
     console.log(
       `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）` +
         `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +
-        `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}`,
+        `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}` +
+        `${swarmRanges.length > 0 ? ` · **G 族蜂群机射程** ${swarmRanges.join('　')}（船长 2026-09-12「提高到 7000」；无受击增程）` : ''}`,
     )
 
     /* ⑥ **机群火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个
