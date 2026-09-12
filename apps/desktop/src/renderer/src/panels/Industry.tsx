@@ -30,6 +30,14 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
 import { MONEY_GLYPH } from '../pages/common'
+import {
+  CONSUME_SUBS,
+  MODULE_SUBS,
+  SHIP_TIER_SUBS,
+  SUB_ALL,
+  moduleSubKeyOf,
+  type SubOption,
+} from '../ui/itemSubs'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -70,8 +78,9 @@ function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number):
   return fallback
 }
 
-/** 组装机分组序（2026-09-08 船长定：按类型 + 蓝图价格排序）：装备 → 舰船 → 弹药 */
-const MANU_KIND_ORDER: Record<string, number> = { 装备: 0, 舰船: 1, 弹药: 2 }
+/** 组装机分组序（2026-09-08 船长定：按类型 + 蓝图价格排序）：装备 → 舰船 → 消耗品
+ *  （2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——该档含弹药 + 修理组件，故档名随之改） */
+const MANU_KIND_ORDER: Record<string, number> = { 装备: 0, 舰船: 1, 消耗品: 2 }
 
 /* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
@@ -148,14 +157,28 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
 
 /* ═══════════════ 组装机（2026-09-08 与精炼炉同款劳动者制：主控亲自 / AI 核心驱动；多蓝图 + 同蓝图多线） ═══════════════ */
 
-/** 组装机类型筛选：全部 / 装备 / 舰船 / 弹药（2026-09-05 基础弹药可自制） */
-type ManuTab = 'all' | 'equip' | 'ship' | 'ammo'
+/** 组装机类型筛选：全部 / 装备 / 舰船 / 消耗品（2026-09-05 基础弹药可自制；
+ *  2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——该档实际含弹药 + 修理组件，与市场一级类型「消耗品」对齐） */
+type ManuTab = 'all' | 'equip' | 'ship' | 'supply'
 const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'equip', label: '装备蓝图' },
   { key: 'ship', label: '舰船蓝图' },
-  { key: 'ammo', label: '弹药蓝图' },
+  { key: 'supply', label: '消耗品蓝图' },
 ]
+
+/**
+ * 组装机**二级子筛选**（2026-09-11 船长：「对组装机的蓝图添加子筛选，根据产物的类型进行二次分类。
+ * 舰船部分按舰船级别划分。」）——按当前一级标签给候选子类，**全部取自 `ui/itemSubs.ts` 单点表**：
+ * 装备 = 产物功能九组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）；
+ * 「全部」标签不带子筛选（与市场「全部类型」同款）。
+ */
+function manuSubsOf(tab: ManuTab): SubOption[] {
+  if (tab === 'equip') return MODULE_SUBS
+  if (tab === 'ship') return SHIP_TIER_SUBS
+  if (tab === 'supply') return CONSUME_SUBS
+  return []
+}
 
 /** 主控此刻不能"亲自再开一条制造线"的原因（null = 主控空闲可开；AI 核心驱动不受此限；
  * 与精炼炉卡的手动判定同口径：手动工作位全局限 1 条（精炼炉/回收炉/制造线共用）） */
@@ -537,11 +560,16 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTab>('all')
+  // 二级子筛选（2026-09-11 船长）；切一级标签即回「全部子类」（与市场页 changeKind 同款口径）
+  const [sub, setSub] = useState<string>(SUB_ALL)
+  const subOptions = manuSubsOf(tab)
 
   /** 目录数据（舰船 + 装备统一成条目；制造中冒泡在前，再按名称） */
   const items: Array<{
     id: string
     kindLabel: string
+    /** 二级子筛选键（装备 = 产物功能分组 / 舰船 = t<级别> / 消耗品 = 产物大类；与 itemSubs 单点同键） */
+    subKey: string
     productGlyph: string
     name: string
     description: string
@@ -570,6 +598,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       items.push({
         id: sbp.id,
         kindLabel: '舰船',
+        // 舰船蓝图按**舰船级别**分档（2026-09-11 船长；键与 itemSubs.SHIP_TIER_SUBS 同源）
+        subKey: shipDef ? `t${shipDef.tier}` : '',
         productGlyph: shipDef?.role ?? 'blueprint',
         name: sbp.name,
         description: sbp.description,
@@ -603,6 +633,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       items.push({
         id: bp.id,
         kindLabel: '装备',
+        // 装备蓝图按**产物功能**分组（2026-09-11 船长：「根据产物的类型进行二次分类」；键与 MODULE_SUBS 同源）
+        subKey: moduleDef ? moduleSubKeyOf(moduleDef.slot) : '',
         productGlyph: moduleDef?.slot ?? 'blueprint',
         name: bp.name,
         description: bp.description,
@@ -619,8 +651,9 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       })
     }
   }
-  /** 弹药蓝图（2026-09-05：基础弹自制；产物为物品按 outputUnits 入仓） */
-  const pushAmmo = (): void => {
+  /** 消耗品蓝图（2026-09-05：基础弹自制；产物为物品按 outputUnits 入仓）
+   *  2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——本档实际含弹药 + 修理组件，按**产物大类**再筛 */
+  const pushSupply = (): void => {
     for (const bp of engine.blueprints) {
       if (bp.itemId === undefined) continue
       const itemDef = engine.ctx.items.get(bp.itemId)
@@ -629,7 +662,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: bp.id,
-        kindLabel: '弹药',
+        kindLabel: '消耗品',
+        subKey: itemDef?.kind ?? '',
         productGlyph: itemDef?.kind ?? 'blueprint',
         name: bp.name,
         description: bp.description,
@@ -654,7 +688,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
   }
   pushShip()
   pushEquip()
-  pushAmmo()
+  pushSupply()
 
   /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足（制造费已取消；劳动者判定由卡片按钮各自表达） */
   function canStartNow(blueprintId: string, materials: readonly MaterialNeed[], buildSeconds: number): boolean {
@@ -662,10 +696,15 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
   }
 
-  const visible = items.filter(
-    (it) => tab === 'all' || (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '弹药'),
-  )
-  // 2026-09-08 船长定：按「类型（装备→舰船→弹药）→ 蓝图价格（升序）」排序；无市场价沉底
+  const visible = items
+    .filter(
+      (it) =>
+        tab === 'all' ||
+        (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '消耗品'),
+    )
+    // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
+    .filter((it) => sub === SUB_ALL || it.subKey === sub)
+  // 2026-09-08 船长定：按「类型（装备→舰船→消耗品）→ 蓝图价格（升序）」排序；无市场价沉底
   const bpP = (v: number): number => (v > 0 ? v : Number.MAX_SAFE_INTEGER)
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
@@ -692,12 +731,14 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         <>
           <span className="app-dim">
             制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}
+            {/* 子筛选生效时补一个"当前 N 张"，避免玩家对着收窄后的网格数不清 */}
+            {sub !== SUB_ALL ? ` · 当前 ${sorted.length} 张` : ''}
           </span>
           <AiSlotText state={state} ctx={engine.ctx} />
         </>
       }
     >
-      {/* 筛选与说明固定（固定头+下滚）：类型标签行/说明常显，卡网格独立内滚 */}
+      {/* 筛选与说明固定（固定头+下滚）：类型标签行 / 子筛选行 / 说明常显，卡网格独立内滚 */}
       <div className="app-task-tabs" role="tablist">
         {MANU_TABS.map((t) => (
           <button
@@ -705,12 +746,41 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
             role="tab"
             aria-selected={tab === t.key}
             className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              setTab(t.key)
+              setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
+            }}
           >
             {t.label}
           </button>
         ))}
       </div>
+      {/* 二级子筛选（2026-09-11 船长：按产物的类型二次分类 / 舰船按舰船级别）——
+          复刻舰船页「舰队筛选」那套次级标签样式（app-task-tabs + app-fleet-tabs 去下边框 + app-tasktab 胶囊）；
+          「全部」标签不带子筛选（与市场「全部类型」同款） */}
+      {subOptions.length > 0 ? (
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={sub === SUB_ALL}
+            className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
+            onClick={() => setSub(SUB_ALL)}
+          >
+            全部子类
+          </button>
+          {subOptions.map((s) => (
+            <button
+              key={s.key}
+              role="tab"
+              aria-selected={sub === s.key}
+              className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+              onClick={() => setSub(s.key)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="app-dim app-exp-idle">
         已学会的配方才能开工，制造免费只耗材料与时间；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
       </div>
@@ -738,6 +808,9 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
             />
           ))}
         </div>
+        {sorted.length === 0 ? (
+          <div className="app-dim app-exp-idle">该子分类下暂无蓝图——换个分类或点「全部子类」看看。</div>
+        ) : null}
       </div>
     </Panel>
   )

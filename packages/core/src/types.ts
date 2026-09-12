@@ -391,9 +391,15 @@ export interface BalanceConfig {
     maxWinChance: number
     /** 失败修理费 = 期望奖励 × 该比例（ISK） */
     defeatCostRatio: number
-    /** 每次远征失利扣耐久区间（0~1） */
+    /** 每次远征**失利**扣耐久区间（0~1）——战败口径，未改 */
     durabilityLossMin: number
     durabilityLossMax: number
+    /**
+     * **撤退那一口的暴露秒数**（2026-09-11 船长定 K = 1 秒、手动/自动/超时三档同一 K；钱包维修费不变）。
+     * 一口 = 敌群火力（威胁 × `foeDpsPerThreat`）× 本值，**先扣装甲、吸完再进结构**，结构底线 5%
+     * （算法单点 `hullDamage.ts`，与低安遇袭受损档同一套；取代旧「结构 −7.5%~15% 固定骰、装甲不动」）。
+     */
+    retreatHitFirepowerSec: number
     /** 弃船率下限/上限 */
     minAbandonChance: number
     maxAbandonChance: number

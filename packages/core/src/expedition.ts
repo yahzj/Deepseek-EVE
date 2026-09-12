@@ -17,6 +17,7 @@ import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
 import { nextRandom } from './rng'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
+import { applyArmorFirstDamage, firepowerHitHp, hitDamageText, type HullHit } from './hullDamage'
 import { loseShip, pilotUnavailableReason, repairWithKits } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
@@ -646,46 +647,55 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   settleDroneLosses(state, ctx, state.shipId, battle)
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
   refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
-  // P0 承伤持久化：撤退也保留本场已损装甲/结构（半损惩罚在其后叠加）
+  // P0 承伤持久化：撤退也保留本场已损装甲/结构（脱身那一口在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
-  // 轻损：正常战败扣损骰 ×0.5；不做弃船骰
+  // 脱身那一口（2026-09-11 船长：「希望能将其应用到战斗中撤退」）：
+  // 一口 = 敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec（K = 1 秒，三档同一 K），
+  // **先扣装甲、吸完再进结构**，结构 5% 底线（算法单点 hullDamage.ts，与低安遇袭受损档同一套）。
+  // 取代旧口径「轻损 = 失利扣损骰 ×0.5 = 结构 −7.5%~15%（与敌人强弱无关、装甲不动）」；
+  // 旧档/异常无 anomalyId 时无从取敌群火力 ⇒ 退回旧半损骰兜底（有日志说明）。
   const bal = ctx.balance.combat
-  const baseLoss = bal.durabilityLossMin + (bal.durabilityLossMax - bal.durabilityLossMin) * nextRandom(state.rng)
-  const loss = Math.max(0.01, Math.round(baseLoss * 500) / 1000) // 半损，最低 1%
+  const threat = anomaly ? Math.max(1, anomaly.threat) : 0
+  let hit: HullHit | null = null
+  let legacyLossPct = 0
+  if (threat > 0) {
+    hit = applyArmorFirstDamage(state, ctx, state.shipId, firepowerHitHp(ctx, threat, bal.retreatHitFirepowerSec))
+    if (hit?.floored) {
+      addLog(
+        state,
+        'warn',
+        mode === 'timeout'
+          ? '⚠ 超时撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
+          : mode === 'auto'
+            ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
+            : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
+      )
+    }
+  } else {
+    const fleetShipLegacy = state.fleet[state.shipId]
+    const baseLoss = bal.durabilityLossMin + (bal.durabilityLossMax - bal.durabilityLossMin) * nextRandom(state.rng)
+    const loss = Math.max(0.01, Math.round(baseLoss * 500) / 1000)
+    legacyLossPct = Math.round(loss * 100)
+    if (fleetShipLegacy) fleetShipLegacy.durability = Math.min(1, Math.max(0.05, fleetShipLegacy.durability - loss))
+  }
   const fleetShip = state.fleet[state.shipId]
-  let durabilityAfter = fleetShip ? Math.round((fleetShip.durability - loss) * 1000) / 1000 : 1
-  if (durabilityAfter <= 0) {
-    // 下限保护：绝不因撤退弃船，压到 5% 并显著告警
-    durabilityAfter = 0.05
-    addLog(
-      state,
-      'warn',
-      mode === 'timeout'
-        ? '⚠ 超时撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
-        : mode === 'auto'
-          ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
-          : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
-    )
-  }
-  if (fleetShip) {
-    fleetShip.durability = Math.min(1, durabilityAfter)
-  }
-  // 维修费（战败口径 ×0.5，按钱包余量；窝点按档位强化后奖金计）
+  // 维修费（战败口径 ×0.5，按钱包余量；窝点按档位强化后奖金计）——本次不动
   const retreatBaseIsk = anomaly ? (exp.lairTier ? lairBaseRewardIsk(anomaly, exp.lairTier) : anomaly.rewardIsk) : 0
   const repair = Math.min(state.wallet.isk, Math.floor(retreatBaseIsk * bal.defeatCostRatio * 0.5))
   state.wallet.isk -= repair
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : exp.anomalyId ?? '目标'
+  const dmgTxt = hit ? hitDamageText(hit) : `结构 -${legacyLossPct}%（旧档兜底）`
   addLog(
     state,
     'warn',
     mode === 'timeout'
-      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
+      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
       : mode === 'auto'
-        ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
-        : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
+        ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
+        : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
   )
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {

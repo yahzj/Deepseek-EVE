@@ -2714,9 +2714,9 @@ body {
 
   display: flex;
 
-  flex-wrap: wrap;
+  flex-direction: column;
 
-  align-items: center;
+  align-items: stretch;
 
   gap: 8px;
 
@@ -2727,6 +2727,21 @@ body {
   margin-bottom: 10px;
 
   flex-shrink: 0;
+
+}
+
+/* 舰队工具条的**一行**（2026-09-11 船长：「级别筛选单列一行，当选择级别后，出现舰船类别筛选」——
+   工具条由单行 flex 改多行：每行一个 .app-fleet-row（自身仍可换行），级别独占一行、类别行在选中级别后才出现） */
+
+.app-fleet-row {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 8px;
 
 }
 

@@ -35,8 +35,16 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     minWinChance: 0.05, // 胜率最低 5%（再低就别去送了）
     maxWinChance: 0.95,
     defeatCostRatio: 0.5, // 失利：维修费 = 期望奖励 × 50%
-    durabilityLossMin: 0.15, // 每次失利扣耐久 15%~30%
+    durabilityLossMin: 0.15, // 每次**失利**扣耐久 15%~30%（战败口径，未改）
     durabilityLossMax: 0.3,
+    /**
+     * **撤退那一口的暴露秒数**（2026-09-11 船长：「关于战斗中撤退…希望能将其应用到战斗中撤退」
+     * → 集中提问后定 **K = 1 秒**、手动/自动/超时**三档同一 K**、钱包维修费不变）。
+     * 一口伤害 HP = 敌群火力（威胁 × `foeDpsPerThreat`）× 本值，**先扣装甲、吸完再进结构**，
+     * 结构底线 5%（算法单点 = `hullDamage.ts`，与低安遇袭受损档同一套）。
+     * 取代旧口径「轻损 = 失利扣损骰 ×0.5 = 结构 −7.5%~15%（与敌人强弱无关、且只扣结构、装甲不动）」。
+     */
+    retreatHitFirepowerSec: 1,
     minAbandonChance: 0.03, // 弃船率下限 3%
     maxAbandonChance: 0.5, // 弃船率上限 50%
     agilityEscapeFactor: 0.4, // 动力减免：× (1 - 0.4×agility)

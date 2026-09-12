@@ -43,68 +43,18 @@ import {
   wreckDensityOf,
 } from './salvage'
 import { shipDisplayName } from './instances'
-import { hullLayerCaps } from './shipyard'
 import { stopMining } from './mining'
 import { stopSalvageOp } from './salvaging'
 import { stopScan } from './explore'
 import { startTransitHome } from './location'
 import { cancelAiTask } from './ai'
-
-/** 结构底线：绝不弃船（沿用旧口径 5%） */
-const HULL_FLOOR_FRAC = 0.05
+import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
 
 /** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
- *  敌群火力 = 威胁 × `battle.foeDpsPerThreat`（与敌方总 DPS 同一常量，0.8 = 每秒 0.8 HP/威胁）。 */
+ *  算法本体见 `hullDamage.ts`（与**战斗撤退**共用同一套：先扣装甲、吸完再进结构、结构 5% 底线）。 */
 function ambushHitHp(ctx: SimContext, threat: number): number {
-  const foeDps = Math.max(1, threat) * ctx.balance.battle.foeDpsPerThreat
-  return Math.max(1, foeDps * ctx.balance.encounter.hitFirepowerSec)
+  return firepowerHitHp(ctx, threat, ctx.balance.encounter.hitFirepowerSec)
 }
-
-/** 受击结算结果（日志用：扣了多少、剩多少，都是比例 0~1） */
-interface HullHit {
-  /** 剩余装甲比例 */
-  armorTo: number
-  /** 剩余结构比例 */
-  hullTo: number
-  /** 本口被吃掉的装甲比例 */
-  armorLost: number
-  /** 本口被吃掉的结构比例 */
-  hullLost: number
-  /** 是否已触到 5% 结构底线（绝不弃船） */
-  floored: boolean
-}
-
-/**
- * 施加一口伤害（船长 2026-09-11 定）：**先扣装甲、吸完再进结构**，结构不低于 5%（绝不弃船）。
- * 换算用 `hullLayerCaps`（与维修、修理组件同一把尺：含模块与技能放大的层满值）。
- */
-function applyArmorFirstDamage(state: GameState, ctx: SimContext, shipId: string, hp: number): HullHit | null {
-  const ship = state.fleet[shipId]
-  if (!ship) return null
-  const caps = hullLayerCaps(state, ctx, shipId)
-  const capA = caps && caps.capA > 0 ? caps.capA : 0
-  const capH = caps && caps.capH > 0 ? caps.capH : 1
-  const round = (v: number): number => Math.round(v * 1000) / 1000
-  const armorHp = Math.max(0, ship.armorPct ?? 1) * capA
-  const hullHp = Math.max(0, ship.durability) * capH
-  const eatA = Math.min(armorHp, hp)
-  const rest = Math.max(0, hp - eatA)
-  const armorAfter = armorHp - eatA
-  const floorHp = capH * HULL_FLOOR_FRAC
-  const hullAfter = Math.max(floorHp, hullHp - rest)
-  const hit: HullHit = {
-    armorTo: capA > 0 ? round(armorAfter / capA) : 0,
-    hullTo: round(hullAfter / capH),
-    armorLost: capA > 0 ? round((armorHp - armorAfter) / capA) : 0,
-    hullLost: round((hullHp - hullAfter) / capH),
-    floored: rest > 0 && hullAfter <= floorHp + 1e-9,
-  }
-  ship.armorPct = hit.armorTo
-  ship.durability = hit.hullTo
-  return hit
-}
-
-const pct = (v: number): number => Math.round(v * 100)
 
 /** 受损档日志（装甲先扣，故先报装甲、再报结构；与既有"被咬下一块装甲"文案同口径） */
 function hitLogText(shipName: string, galaxyName: string, foeName: string, suffix: string, hit: HullHit): string {

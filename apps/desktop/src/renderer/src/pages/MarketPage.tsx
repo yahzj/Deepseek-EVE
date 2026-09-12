@@ -27,11 +27,14 @@ import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
   item: '物品',
+  // 2026-09-11 船长：「应该将消耗品独立出来」——消耗品（弹药/修理组件/无人机）独立成一级类型，
+  // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
+  consume: '消耗品',
   // 2026-09-10 船长：类型筛选移除「装备」，改为高 / 中 / 低槽三个类型（子分类仍是装备的功能分组）
   'module-high': '高槽装备',
   'module-mid': '中槽装备',
@@ -41,7 +44,7 @@ const KIND_TEXT: Record<string, string> = {
   aicore: '核心',
   wreck: '残骸',
 }
-const KIND_OPTIONS = ['all', 'item', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
+const KIND_OPTIONS = ['all', 'item', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
 
@@ -77,8 +80,19 @@ function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: 
     const mod = ctx.modules.get(good.refId)
     return mod !== undefined && rackOf(mod) === kind.slice('module-'.length)
   }
+  if (kind === 'consume') {
+    // 消耗品 = 弹药 / 修理组件 / 无人机（2026-09-11 船长：独立成类，且从「物品」剔除）
+    const it = itemDefOf(ctx, good)
+    return it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)
+  }
   if (good.kind !== kind) return false
-  return !(kind === 'item' && itemDefOf(ctx, good)?.kind === 'wreck')
+  const it = itemDefOf(ctx, good)
+  if (kind === 'item') {
+    // 「物品」= 除残骸与消耗品以外的物品（残骸 2026-09-08 独立、消耗品 2026-09-11 独立）
+    if (it?.kind === 'wreck') return false
+    if (it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)) return false
+  }
+  return true
 }
 
 /** mm:ss（向上取整到秒） */

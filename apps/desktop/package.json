@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "main": "./out/main/index.js",
-  "author": "大鲸鱼 · 深空工业",
+  "author": "大鲸鱼-深空放置",
   "description": "桌面外壳（Electron）：窗口、存档读写，界面与游戏逻辑都来自各 packages。",
   "devDependencies": {
     "@types/node": "^20.14.15",

@@ -35,6 +35,8 @@ import {
   SLOT_LABELS,
   stackingOf,
   stackWeight,
+  thrusterCycleFullText,
+  typeLayerMult,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
 // 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
@@ -115,8 +117,17 @@ function meanHitMul(spec: UnitSpec): number | null {
   return (spec.hitMul ?? 1) * (s / ws.length)
 }
 
-/** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化 */
-function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number, cpuTotal: number): FitSeg[] {
+/** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化。
+ *  `weapon` = 该槽位新旧武器的**弹伤倍率**（可选）：换了炮台/导弹架/激光炮时，
+ *  除"火力 ±%"外再明示倍率本身的变化（2026-09-11 船长：只看火力看不到弹药伤害倍率）。 */
+function diffSegs(
+  cur: UnitSpec,
+  next: UnitSpec,
+  cpuCur: number,
+  cpuNext: number,
+  cpuTotal: number,
+  weapon?: { curMult: number | null; nextMult: number | null; curType: DamageType | null; nextType: DamageType | null },
+): FitSeg[] {
   const segs: FitSeg[] = []
   const add = (t: string, c: FitSeg['c']): void => {
     segs.push({ t, c })
@@ -153,6 +164,17 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
   if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
   if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
+  // 推进器点火期速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
+  // 周期化（2026-09-10）后 `speedMps` **不含**推进器加成（走 `thrusterBoost`、只在点火窗口生效）
+  // ⇒ 换上/换下推进器时上面那段「速度」恒为 0，卡片看起来"速度没变"。这里补报**点火期**速度
+  // （= 基础 ×(1+爆发倍率)），换推进器时玩家才看得到真实机动差。
+  const boostCur = cur.thrusterBoost ?? 0
+  const boostNext = next.thrusterBoost ?? 0
+  if (boostCur !== boostNext) {
+    const ignCur = Math.round(cur.speedMps * (1 + boostCur))
+    const ignNext = Math.round(next.speedMps * (1 + boostNext))
+    add(`点火期速度 ${ignCur}→${ignNext}`, dir(ignNext - ignCur))
+  }
   // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
@@ -166,6 +188,13 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
       const show = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1)
       add(`火力 ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
     }
+  }
+  // 弹伤倍率本身的变化（换炮台时最关心的一个数；弹种变了也点明）
+  if (weapon && weapon.curMult !== null && weapon.nextMult !== null && weapon.curMult !== weapon.nextMult) {
+    add(`弹伤 ${mulText(weapon.curMult)}→${mulText(weapon.nextMult)}`, dir(weapon.nextMult - weapon.curMult))
+  }
+  if (weapon && weapon.curType !== null && weapon.nextType !== null && weapon.curType !== weapon.nextType) {
+    add(`弹种 ${DMG_LABEL[weapon.curType]}→${DMG_LABEL[weapon.nextType]}`, 'info')
   }
   // 命中近似（整机相对变化；口径见 meanHitMul）
   const ch = meanHitMul(cur)
@@ -184,6 +213,29 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
 
 /** 武器判定：炮台/导弹架/激光炮（弹种 chip 显示攻击类型，色 = 伤害类型 ↔ 血量层色） */
 const WEAPON_SLOTS = new Set<ModuleSlot>(['turret', 'missile', 'laser'])
+
+/** 武器的**弹种**（与 ammoChipOf 同一口径：炮台取自身伤害类型、导弹固定高爆、激光固定能量） */
+function weaponDamageTypeOf(m: ModuleDef): DamageType {
+  if (m.slot === 'turret') return m.damageType ?? 'kinetic'
+  if (m.slot === 'missile') return 'explosive'
+  return 'plasma'
+}
+
+/** 层位克制短串（如「盾×1.5·甲×0.5」；×1 的层省略）——数值与 `combat.typeLayerMult` 同源，挂在弹种 chip 上 */
+function layerShortOf(t: DamageType): string {
+  const name = { shield: '盾', armor: '甲', hull: '结构' } as const
+  const parts: string[] = []
+  for (const l of ['shield', 'armor', 'hull'] as const) {
+    const v = typeLayerMult(t, l)
+    if (v !== 1) parts.push(`${name[l]}×${v}`)
+  }
+  return parts.join('·')
+}
+
+/** 倍率显示（1.5 → ×1.5；3 → ×3；去尾零） */
+function mulText(v: number): string {
+  return `×${Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)}`
+}
 
 /** 武器弹药 chip（船长 2026-09-05：换装卡须明示弹药攻击类型） */
 function ammoChipOf(m: ModuleDef): ReactNode | null {
@@ -366,7 +418,21 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         continue // 同件重装无对比意义
       }
       const r = tryFitSpec(m, rack, index)
-      segs.set(m.id, r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal) : [])
+      // 新旧武器的弹伤倍率/弹种（非武器槽 = null；空位 = 无旧件）
+      const oldDef = oldId !== null ? engine.ctx.modules.get(oldId) ?? null : null
+      const isWeaponSlot = WEAPON_SLOTS.has(m.slot) // 三类武器件（高槽）
+      const weapon = isWeaponSlot
+        ? {
+            curMult: oldDef?.dmgMult ?? null,
+            nextMult: m.dmgMult ?? null,
+            curType: oldDef ? weaponDamageTypeOf(oldDef) : null,
+            nextType: weaponDamageTypeOf(m),
+          }
+        : undefined
+      segs.set(
+        m.id,
+        r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal, weapon) : [],
+      )
     }
     setPickDiffs(segs)
   }
@@ -552,7 +618,23 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           gunEq !== undefined ? ` · 索敌 ×${gunEq.toFixed(2)}` : ''
                         }`,
                       },
-                      { k: '机动速度（含加力）', v: `${fmt(Math.round(spec.speedMps))} m/s` },
+                      // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
+                      // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
+                      // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
+                      // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
+                      {
+                        k: '机动速度',
+                        v: (
+                          <>
+                            {`${fmt(Math.round(spec.speedMps))} m/s`}
+                            {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
+                              <span className="app-dim">
+                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText()}）`}
+                              </span>
+                            ) : null}
+                          </>
+                        ),
+                      },
                     ]
                   : []),
               ]}
@@ -703,13 +785,18 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       </span>
                       <span className="app-fit-pick-name">{m.name}</span>
                     </span>
-                    {/* 说明行：武器 = 弹药类型 chip（攻击类型醒目）+ 射程；其余 = 效果短述 */}
+                    {/* 说明行：武器 = 弹药类型 chip（攻击类型醒目）+ **弹伤害倍率** + 层位克制 + 射程；
+                        2026-09-11 船长：「装配界面更换炮台时，只简略的显示了火力变化，无法看到武器的
+                        弹药伤害倍率」⇒ 弹种 chip 旁补一枚克制 chip（复用 DmgChip，悬停给三层全串），
+                        文本里给出 `弹伤 ×N`（= 模块 dmgMult，单发 = 弹 dmg × 本倍率）。 */}
                     <span className="app-fit-pick-sub">
                       {WEAPON_SLOTS.has(m.slot) ? (
                         <>
                           {ammoChipOf(m)}
+                          <DmgChip t={weaponDamageTypeOf(m)} label={layerShortOf(weaponDamageTypeOf(m))} />
                           <span className="app-fit-pick-subtext">
-                            ×{countModule(state, m.id)} · 射程 {rangeShort(m)}
+                            ×{countModule(state, m.id)}
+                            {m.dmgMult !== undefined ? ` · 弹伤 ${mulText(m.dmgMult)}` : ''} · 射程 {rangeShort(m)}
                           </span>
                         </>
                       ) : (

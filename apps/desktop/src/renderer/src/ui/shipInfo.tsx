@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor } from '@whale/core'
+import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleText, thrusterCycleFullText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -101,8 +101,10 @@ function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | nu
   }
 }
 
-/** 推进器周期点火后缀（2026-09-11 精简：只留周期与"开场即点火"，"冷却期间无加速"删） */
-const PROP_TAIL = '（60 秒点火 / 60 秒冷却，开场即点火）'
+/** 推进器周期点火后缀（2026-09-11 精简：只留周期与"开场即点火"，"冷却期间无加速"删；
+ *  2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」——
+ *  秒数不再写死，改由 core `thrusterCycleFullText()` 从 `balance.battle` 取（与引擎同源）） */
+const PROP_TAIL = `（${thrusterCycleFullText()}）`
 /** 维修件的每跳修复量文本（跨族行与主分支共用，防两处口径漂移） */
 function repairAmountText(mod: ModuleDef): string {
   const arm = mod.repairArmorHp ?? 0
@@ -193,8 +195,11 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'propulsion': {
+      // 2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」——
+      // 短行（换装卡 / 装备库行 / 手册网格）此前只有「速度 +X% · 命中×Y」，看不出是**周期**爆发，
+      // 补周期缀（秒数同源于 balance.battle，见 core thrusterCycleText）
       const parts: string[] = []
-      if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}`)
+      if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}（${thrusterCycleText()}）`)
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(`命中×${(1 - mod.hitPenalty).toFixed(2)}`)
       body = parts.join(' · ')
       break
@@ -501,7 +506,7 @@ function crossFamilyShort(mod: ModuleDef): string {
   }
   if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
   if (foreign('propulsion')) {
-    if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}`)
+    if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}（${thrusterCycleText()}）`)
     if ((mod.hitPenalty ?? 0) > 0) parts.push(`命中×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}`)
   }
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(`机舱 +${fmt(mod.droneBayBonusM3 ?? 0)} m³`)
