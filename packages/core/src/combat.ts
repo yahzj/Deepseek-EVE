@@ -250,6 +250,27 @@ export function hitChance(
   return clamp(bal.hitMin, bal.hitMax, raw * (weapon.eqHitMul ?? 1) * (attacker.hitMul ?? 1))
 }
 
+/**
+ * **打机群的命中**（船长 2026-09-12 裁定「**按丁修复**」）：与 `hitChance` 同一套公式
+ * （基础命中 × 火控 → 减机型闪避 → 乘索敌件 → clamp），**唯一差别 = 距离衰减固定为 1**。
+ *
+ * 依据：选靶早已按船长 2026-09-11 甲案「**打机群不看两舰间距**」办（`pickFoeDroneTarget`：
+ * 出击型不受射程限制、哨戒机才要进射程），而命中却仍按**两舰间距**算 `distFactor`——
+ * 近防炮射程 2,500m 短于典型交距（3,211~5,545m）⇒ 该因子恒落在下限 ×0.5
+ * ⇒ 装备表写的命中 0.9 实战只剩 0.27~0.35，与"不看两舰间距"的裁定自相矛盾。
+ * ⚠ **只对机群生效**：打舰仍走 `hitChance` 的原 `distFactor`（"近防炮射程短所以对舰吃亏"不动）。
+ * 抽成函数一是为可测（`tests/pd-damage-ladder.test.ts` 直接锁这条口径），二是让调用点一眼看出
+ * "这两条命中不是同一条公式"。
+ */
+export function droneHitChance(
+  weapon: Parameters<typeof hitChance>[0],
+  attacker: Parameters<typeof hitChance>[1],
+  evasion: number,
+  bal: BattleBalance,
+): number {
+  return hitChance(weapon, attacker, { evasion }, 0, bal, 1)
+}
+
 /** 把一发伤害按层序消费（盾→甲→结构），返回更新后三层与实际扣血 */
 export function applyDamage(
   hp: Hp3,
@@ -3423,17 +3444,14 @@ function stepBattle(
         b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
-      // 命中：打机群时守方 = 该架的闪避（`DronePoolEntry.evasion`，机型表绝对值）；
-      // `hitChance` 的守方参数只要 `{ evasion }` ⇒ 不需要为机群造一个假单位。
+      // **两条命中分开算**（船长 2026-09-12 裁定「按丁修复」，口径说明见 `droneHitChance`）：
+      // 打**机群**不吃两舰距离衰减（守方只用该架的闪避 `DronePoolEntry.evasion`，机型表绝对值）；
+      // 打**舰**一字未动（仍按两舰间距算 `distFactor`）。
       const meHit = autoHit
         ? 1
-        : hitChance(
-            w,
-            meAtk,
-            droneHit ? { evasion: droneHit.pool.evasion } : foeTarget!,
-            b.distanceM,
-            bal,
-          )
+        : droneHit
+          ? droneHitChance(w, meAtk, droneHit.pool.evasion, bal)
+          : hitChance(w, meAtk, foeTarget!, b.distanceM, bal)
       const meHitEff = autoHit
         ? 1
         : favor

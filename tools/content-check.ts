@@ -1643,6 +1643,8 @@ for (const m of MODULES) {
     const TITAN_RANGE_MAX_BAND: readonly [number, number] = [7_000, 10_000]
     /** 警戒机射程（船长同日：「无人机射程设为 5000」） */
     const TITAN_DRONE_RANGE_M = 5_000
+    /** 警戒机三层血（船长 2026-09-12：「**将警戒机的血量削弱40%**」⇒ 92 × 0.6 = 55） */
+    const E_ALERT_DRONE_HP = 55
     /** 受击增程倍率上限（船长同日：「提高 400%」＝×4） */
     const DRONE_RANGE_ON_HIT_CAP = 4
   /** **炮台受击增程倍率上限**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」⇒ 现值 1.5、上限 2） */
@@ -1749,6 +1751,13 @@ for (const m of MODULES) {
             ds.drone.maxRangeM === TITAN_DRONE_RANGE_M,
             `机群与防空契约：E 族机型「${ds.drone.name}」射程 ${ds.drone.maxRangeM}m ≠ ${TITAN_DRONE_RANGE_M}m——` +
               `船长 2026-09-11「**无人机射程设为 5000**」`,
+          )
+          // ⑤d **警戒机三层血 = 55**（船长 2026-09-12：「**将警戒机的血量削弱40%**」⇒ 28/20/44 = 92 → 17/12/26 = 55）
+          const dhp = ds.drone.defense.shieldHp + ds.drone.defense.armorHp + ds.drone.defense.hullHp
+          check(
+            dhp === E_ALERT_DRONE_HP,
+            `机群与防空契约：E 族机型「${ds.drone.name}」三层血 ${dhp} ≠ ${E_ALERT_DRONE_HP}——` +
+              `船长 2026-09-12「**将警戒机的血量削弱40%**」（原 92 的 60% = 55）`,
           )
         }
       }

@@ -116,6 +116,43 @@ function runBattleWithState(
   return { state, battle };
 }
 
+/**
+ * **逐秒推进 + 游标收集**（2026-09-12 修测试方法）：`fx` 是 **48 条环、丢最旧**——
+ * 一次推完 90 秒后，**早期的 pd 事件可能已被裁掉**（机群被打光后，剩下的全是"近防炮/炮台对舰"
+ * 的开火事件，环里只留最近 48 条）⇒ 原来"看最终环里有没有 `pd` 事件"的断言会**假失败**。
+ * 收集口径与 `tools/battle-calibrate.ts` 同款：只认 `seq > 上次最大值` 的事件（被裁掉的永远是
+ * 更旧的事件）⇒ 无损。返回计数，断言不看环的最终快照。
+ */
+function runBattleDrain(
+  card: AnomalyDef,
+  advMs = 90_000,
+  high?: string[],
+): { battle: BattleState; pd: number; droneDown: number } {
+  const c = ctxWith(card);
+  const state = high ? makeState(5, high) : makeState();
+  const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+  state.expedition.active = true;
+  state.expedition.phase = "battle";
+  state.expedition.anomalyId = card.id;
+  state.expedition.battle = battle;
+  const startAt = battle.startedAtGameMs;
+  let lastSeq = 0;
+  let pd = 0;
+  let droneDown = 0;
+  for (let t = 1_000; t <= advMs; t += 1_000) {
+    state.gameMs = startAt + t;
+    advanceBattleFor(state, c, battle, state.shipId, card.id);
+    for (const e of battle.fx) {
+      if (e.seq <= lastSeq) continue;
+      lastSeq = e.seq;
+      if (e.pd === true) pd += 1;
+      if (e.droneDown === true && e.side === "foe") droneDown += 1;
+    }
+    if (battle.ended) break;
+  }
+  return { battle, pd, droneDown };
+}
+
 describe("敌方机群：建档与 A5 火力守恒", () => {
   it("展开成每架一条 src=drone 条目；机群吃 dmgMul、不吃多舰补偿", () => {
     const card = testCard(
@@ -301,17 +338,16 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
   });
 
   it("带近防炮 ⇒ 真打出「击落敌机」事件；换普通炮台 ⇒ 一架都掉不了（负向对照）", () => {
-    const withAA = runBattle(testCardWithDrones(), 90_000, [AA, AA, AA, AA]);
-    const downed = withAA.fx.filter(
-      (e) => e.droneDown === true && e.side === "foe",
-    );
+    // ⚠ **不看最终 fx 环**（48 条、丢最旧 ⇒ 会被后期的对舰开火挤出）⇒ 逐秒游标收集（无损）
+    const drained = runBattleDrain(testCardWithDrones(), 90_000, [AA, AA, AA, AA]);
+    const withAA = drained.battle;
     const pools = Object.values(withAA.foeDronePools ?? {}).flat();
     expect(pools.length).toBe(6); // 2 舰 × 3 架
     // **近防炮确实在打机群**：出现带 `pd` 标记的开火事件（渲染层据此只出炮口闪光、不画弹道）。
-    // ⚠ 不再断言"必定击落"：反应式窗口（船长 2026-09-11「每轮被攻击后才开火」）+ 敌机血 ×2 后，
-    //   90 秒内是否打光取决于装配与窗口节奏，属**平衡读数**（由标定轮回答，不由单元用例钉死）。
-    expect(withAA.fx.some((e) => e.pd === true)).toBe(true);
-    expect(downed.length).toBeGreaterThanOrEqual(0); // 击落演出事件（可能为 0，见上）
+    expect(drained.pd).toBeGreaterThan(0);
+    // 血量口径（船长 2026-09-12「将警戒机的血量削弱40%」= 92 → 55）后，MK3×4 一轮齐射即可击落 ⇒ 击落事件必现；
+    // 池里确有阵亡条目（引擎权威状态，不依赖演出事件）。
+    expect(drained.droneDown).toBeGreaterThan(0); // 击落演出事件（side='foe' 的小爆炸/坠落）
     expect(pools.some((p) => !p.alive)).toBe(true);
 
     const withGun = runBattle(testCardWithDrones(), 60_000, [
