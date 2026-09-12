@@ -709,6 +709,8 @@ export {
   lairAnomalyOf,
   // 2026-09-10 船长（混伤）：窝点副系与配比常量（内容体检 / 界面 / 测试同源）
   LAIR_SUB_DMG_SHARE,
+  // 2026-09-11 船长「E 族单独调整，包括 E 族赏金任务的伤害比例」：逐族副系份额覆写（E = 5:5）
+  LAIR_SUB_DMG_SHARE_BY_FAMILY,
   FOE_SUB_DMG,
   foeMainDamageTypeOf,
   subDamageTypeOf,

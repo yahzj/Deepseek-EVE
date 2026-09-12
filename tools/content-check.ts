@@ -1181,11 +1181,16 @@ for (const m of MODULES) {
  *   纯能量卡（2026-09-10 船长：**深渊之门卫队改为纯能量伤害**）允许只写一系 `plasma`，
  *   但**必须同时显式给 `foeFalloff`**（能量走 `beamPowerFactor` 威力衰减，纯能量卡的火力只能靠它收住）；
  * ②副系必须 = 该敌族签名副系序里第一个"不与主系相同"的系（`lairs.subDamageTypeOf`）；
- * ③窝点派生卡（`lairAnomalyOf`）= 同一主系 + **6:4**（60%/40%）；主系**不许变**。 */
+ * ③窝点派生卡（`lairAnomalyOf`）= 同一主系 + **6:4**（60%/40%）；主系**不许变**；
+ * ④**E 族特例**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
+ *   泰坦巨构全族 = **50% 动能 + 50% 爆炸**（族格「动能 + 爆炸为主」的对称落点）⇒
+ *   **常驻卡与窝点派生卡一律 5:5**（窝点**不套 6:4**——族级特例优先于"窝点比悬赏更混"的一般口径）。 */
 {
   const TEACHING_CARD = 'ano-training'
   let mixed = 0
   let pureBeam = 0
+  /** E 族特例（5:5）计数——见下方 ④ */
+  let symmetric = 0
   const positive = (mix: Partial<Record<string, number>> | undefined): Array<[string, number]> =>
     Object.entries(mix ?? {}).filter(([, v]) => typeof v === 'number' && v > 0) as Array<[string, number]>
   for (const def of ANOMALIES_FLAVORED) {
@@ -1233,6 +1238,25 @@ for (const m of MODULES) {
       pureBeam += 1
       continue
     }
+    // **④ E 族特例**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
+    // 泰坦巨构全族 = **50% 动能 + 50% 爆炸**（族格「动能 + 爆炸为主」的对称落点）——
+    // **常驻卡与窝点派生卡一律 5:5**（窝点不套 6:4：族级特例优先于"窝点比悬赏更混"的一般口径）。
+    if (def.foeFamily === 'E') {
+      const w = new Map(rows)
+      check(
+        rows.length === 2 && w.get('kinetic') === 5 && w.get('explosive') === 5,
+        `混伤契约：E 族（泰坦巨构）${def.name} 应写 **50% 动能 + 50% 爆炸**（\`{ kinetic: 5, explosive: 5 }\`）——` +
+          `船长 2026-09-11「**E 族单独调整，包括 E 族赏金任务的伤害比例**」；实际 ${JSON.stringify(def.dmgMix)}`,
+      )
+      const eLair = lairAnomalyOf(def, 3)
+      const eRows = positive(eLair.dmgMix)
+      check(
+        eRows.length === 2 && eRows.every(([, v]) => v === 5),
+        `混伤契约：E 族 ${def.name} 的**窝点派生卡**应同为 5:5（不套全局 6:4），实际 ${JSON.stringify(eLair.dmgMix)}`,
+      )
+      symmetric += 1
+      continue
+    }
     check(rows.length === 2, `混伤契约：${def.name} 应写两系 dmgMix（主 8 : 副 2），实际 ${rows.length} 系`)
     if (rows.length !== 2) continue
     const sorted = [...rows].sort((a, b) => b[1] - a[1])
@@ -1255,6 +1279,7 @@ for (const m of MODULES) {
   }
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
+      `${symmetric > 0 ? `；**E 族特例 ${symmetric} 张 50% 动能 + 50% 爆炸**（窝点派生同值，不套 6:4）` : ""}` +
       `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ""}`,
   )
 
@@ -1304,13 +1329,15 @@ for (const m of MODULES) {
      *  ⚠ **必须用族级带、不能用战术带**：kite 常规带 0.60~0.85 会把 0.44× **误拦**（与 B 族 0.81× 同款教训）。 */
     const GRAVE_SPEED_BAND: readonly [number, number] = [0.4, 1.15];
     /**
-     * **E 族（泰坦巨构）族格速带**（2026-09-11 机群批 · 船长裁定「族速带 0.65~0.95 × 本档基准」）。
-     * 族格 = **巨构不讲机动，只讲撑到最后**（'还在跑的老机器'）——全族**实速不高于本档舰种基准**。
-     * 带取 **0.40~0.90×**（比率 = 实速 × 敌敏捷 ÷ 基准船战斗机动，与 A/B/C/D 同一口径）：
-     * 下限给'以后可能出现更慢的重型残段'留位，上限吃下当前顶格（T4 × 0.95 = 195 ⇒ 0.67×）。
+     * **E 族（泰坦巨构）族格速带**（2026-09-11 机群批 · 船长裁定「族速带 0.65~0.95 × 本档基准」；
+     * **同日终裁**「**族速度倍率设为 0**。依靠无人机攻击炮台范围外敌人」⇒ 下限放开到 **0**）。
+     * 族格 = **巨构不讲机动，只讲撑到最后**（'还在跑的老机器'；速度 0 = **静物残骸**，火力由机群投送）
+     * ——全族**实速不高于本档舰种基准**（`speedRatio ≤ 1`）。带取 **0~0.90×**（比率 = 实速 × 敌敏捷 ÷
+     * 基准船战斗机动，与 A/B/C/D 同一口径）：下限 0 是"静物"这一族级口径的落点，上限吃下族内任何
+     * 非零速度（历史顶格 = T4 × 0.95 = 195 ⇒ 0.67×）。
      * ⚠ **必须用族级带、不能用战术带**：brawl 常规带 1.05~1.55 会把慢的巨构**误拦**（与 B/D 同款教训）。
      */
-    const TITAN_SPEED_BAND: readonly [number, number] = [0, 0.9]; // 2026-09-11 船长：族速度倍率设为 0（静物残骸 · 靠机群作战）⇒ 下限放开到 0
+    const TITAN_SPEED_BAND: readonly [number, number] = [0, 0.9]
     /** A 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
     const pirateFastestByTier = new Map<number, number>()
     for (const ship of FOE_SHIPS) {
@@ -1443,10 +1470,11 @@ for (const m of MODULES) {
             continue
           }
           if (def.foeFamily === 'E') {
-            // **E 族（泰坦巨构）口径**（船长 2026-09-11 机群批：「巨构不讲机动，只讲撑到最后」）：
-            // 族格 = **慢而重**（"还在跑的老机器"）⇒ 实速落 **E 族族格速带 0.65~0.95 × 本档舰种基准**。
+            // **E 族（泰坦巨构）口径**（船长 2026-09-11 机群批：「巨构不讲机动，只讲撑到最后」；
+            // 同日晚些终裁：「**族速度倍率设为 0**。依靠无人机攻击炮台范围外敌人」）：
+            // 族格 = **静物残骸**（'还在跑的老机器'）⇒ 实速落 **E 族族格速带 0~0.90 × 本档舰种基准**。
             // ⚠ 与 D 族同款教训：**族级口径必须用族级带表达**——战术带（brawl 1.05~1.55×）会把
-            // 巨构残段的 0.67× **误拦**（它本来就是慢的，慢是设定不是失衡）。
+            // 慢的巨构**误拦**（它本来就是慢的，慢是设定不是失衡；速度 0 更是族规本身）。
             if (titanSample.some((s) => s.startsWith(`${slot.ship.id} `)))
               continue; // 同一舰级只校验一次
             titanReadings++
@@ -1456,7 +1484,7 @@ for (const m of MODULES) {
             check(
               slot.ship.speedRatio <= 1,
               `敌速口径契约：E 族 ${def.name} 的舰级「${slot.ship.name}」速度倍率 ${slot.ship.speedRatio} **高于本档舰种基准**——` +
-                `船长族格「巨构不讲机动」（E 族族带 0.65~0.95 × 本档基准）`,
+                `船长族格「巨构不讲机动」（E 族族带 0~0.90 × 本档基准）`,
             )
             check(
               ratio >= TITAN_SPEED_BAND[0] && ratio <= TITAN_SPEED_BAND[1],
@@ -1496,7 +1524,7 @@ for (const m of MODULES) {
         `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
         `同档实速须高于 A 族；T4 巨兽例外允许慢）、` +
         `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）、` +
-        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（巨构残段 0.95 × 本档基准，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）`,
+        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0)
       console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join("　")}`)

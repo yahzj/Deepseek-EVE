@@ -212,6 +212,15 @@ export function lairTaskRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
  */
 export const LAIR_SUB_DMG_SHARE = 0.4
 
+/**
+ * **逐族窝点副系份额覆写**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
+ * E 族（泰坦巨构）全族构成 = **50% 动能 + 50% 爆炸** ⇒ 其**窝点派生卡照此办理**（不套全局 6:4）。
+ * 未登记的族一律走 `LAIR_SUB_DMG_SHARE`（全局主 60 / 副 40）。
+ */
+export const LAIR_SUB_DMG_SHARE_BY_FAMILY: Partial<Record<FoeFamily, number>> = {
+  E: 0.5,
+}
+
 /** 敌族签名副伤害类型（优先序：撞主系则顺延到下一个） */
 export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   A: ['kinetic', 'explosive', 'plasma'], // 海盗：缴获改装的实弹/破片弹头
@@ -225,7 +234,8 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
 
 /**
  * 派生窝点卡（开战/结算/展示统一走这里，数据文件不改）：改威胁、加僚机与波次、换显示名，
- * 并把敌人火力改成**混伤**（主 60% / 副 40%，§LAIR_SUB_DMG_SHARE）。
+ * 并把敌人火力改成**混伤**（主 60% / 副 40%，§LAIR_SUB_DMG_SHARE；**E 族例外 = 5:5**，
+ * §`LAIR_SUB_DMG_SHARE_BY_FAMILY`——船长 2026-09-11「E 族单独调整，包括 E 族赏金任务的伤害比例」）。
  * 其余字段（战术性格、血型、命中、抗性缺口、回收池…）全部继承主题悬赏 —— 窝点与该星系特色敌人同源。
  * **奖金不在这里改**：卡上的 `rewardIsk` 仍是主题悬赏原值，窝点奖金一律经 `lairBaseRewardIsk`
  * （×赏金倍率 2/4/8）取，避免同一字段两种口径。
@@ -244,8 +254,12 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const waves = LAIR_WAVES[tier]
   const main = foeMainDamageTypeOf(anomaly)
   const sub = subDamageTypeOf(anomaly, main)
-  const mainWeight = Math.round((1 - LAIR_SUB_DMG_SHARE) * 10)
-  const subWeight = Math.round(LAIR_SUB_DMG_SHARE * 10)
+  // 副系份额：**逐族覆写**（E 族 = 5:5，见 `LAIR_SUB_DMG_SHARE_BY_FAMILY`）?? 全局 6:4
+  const subShare =
+    (anomaly.foeFamily ? LAIR_SUB_DMG_SHARE_BY_FAMILY[anomaly.foeFamily] : undefined) ??
+    LAIR_SUB_DMG_SHARE
+  const mainWeight = Math.round((1 - subShare) * 10)
+  const subWeight = Math.round(subShare * 10)
   const shipSlots = anomaly.ships
   const isShipPath = !!shipSlots && shipSlots.length > 0
   /** 派生缩放比例 = 派生威胁 ÷ 原威胁（与 `threat` 字段同源，故口径天然一致） */
@@ -268,6 +282,7 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
       : {}),
     ...(waves && !isShipPath ? { waves } : {}),
     // 混伤：窝点用 **6:4**（比常驻悬赏的 8:2 更"混"——窝点本就是更硬的特色敌人）；
+    // **E 族例外**：族级份额 0.5 ⇒ **5:5**（见 `LAIR_SUB_DMG_SHARE_BY_FAMILY`）；
     // 显式两系权重即开启混伤（引擎按"正权重键 ≥ 2 系"判定，见 combat.foeDamageComposition）；
     // 主系与主题卡一致（派生态不许改敌人主伤害类型）
     dmgMix: { [main]: mainWeight, [sub]: subWeight },

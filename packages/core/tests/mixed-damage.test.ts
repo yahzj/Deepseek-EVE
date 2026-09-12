@@ -14,6 +14,7 @@ import {
   foeDamageComposition,
   foeMainDamageType,
   LAIR_SUB_DMG_SHARE,
+  LAIR_SUB_DMG_SHARE_BY_FAMILY,
   lairAnomalyOf,
   splitShotByComposition,
   subDamageTypeOf,
@@ -48,6 +49,23 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
     expect(comp[0]).toEqual({ type: 'plasma', share: 0.6 })
     expect(comp[1]).toEqual({ type: 'kinetic', share: 0.4 })
     expect(subDamageTypeOf(card)).toBe('kinetic')
+  })
+
+  it('E 族特例（2026-09-11 船长「E 族单独调整，包括 E 族赏金任务的伤害比例」）= 常驻卡与窝点卡一律 50% 动能 + 50% 爆炸', () => {
+    expect(LAIR_SUB_DMG_SHARE_BY_FAMILY.E).toBe(0.5) // 逐族覆写（其余族不写 ⇒ 走全局 6:4）
+    for (const id of ['ano-titan-wreck', 'ano-auro-raiders']) {
+      const card = ctx.anomalies.get(id)!
+      expect(subDamageTypeOf(card)).toBe('explosive') // 主系动能（并列取动能）⇒ 副系 = 族签名首位'爆炸'
+      for (const target of [card, lairAnomalyOf(card, 3)]) {
+        const comp = foeDamageComposition(target)
+        expect(comp).toHaveLength(2)
+        expect(new Set(comp.map((r) => r.type))).toEqual(new Set(['kinetic', 'explosive']))
+        for (const row of comp) expect(row.share).toBeCloseTo(0.5, 6)
+      }
+    }
+    // 其余族不受影响：D 族窝点仍是 6:4（同一函数、同一常量链）
+    const dLair = lairAnomalyOf(ctx.anomalies.get('ano-vault-sentinel')!, 3)
+    expect(foeDamageComposition(dLair).map((r) => r.share)).toEqual([0.6, 0.4])
   })
 
   it('副系永远与主系不同（19 张窝点候选全遍历）', () => {

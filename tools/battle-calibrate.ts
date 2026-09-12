@@ -97,6 +97,10 @@ const PROPOSED_FOE_SPEED: Record<string, number> = {
   'ano-shard-bandits': spin(brawlR(20)),
   'enc-pirate-3': spin(brawlR(40)),
   'ano-chasm-aberrations': spin(brawlR(58)),
+  // ⚠ **E 族两张已迁入舰级路径**（泰坦残骸勘探 2026-09-11 · 奥罗武装残骸群 2026-09-12）：
+  //   舰级路径的速度 / 血量由 `FoeShipDef`（`speedRatio` / `hp`）供给，本表的 `foeSpeedMps` 与
+  //   `foeHpOverride` 对它们**不再生效**（`--proposal` 目前只对旧路径卡有意义）——两行留档不动，
+  //   待旧卡全部迁完再统一清理本表。
   'ano-titan-wreck': spin(brawlR(60)),
   'ano-auro-raiders': spin(brawlR(62)),
   'enc-pirate-4': spin(brawlR(70)),
