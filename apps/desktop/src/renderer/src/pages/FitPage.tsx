@@ -35,6 +35,7 @@ import {
   SLOT_LABELS,
   stackingOf,
   stackWeight,
+  thrusterCycleFullText,
   typeLayerMult,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -163,6 +164,17 @@ function diffSegs(
   if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
   if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
+  // 推进器点火期速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
+  // 周期化（2026-09-10）后 `speedMps` **不含**推进器加成（走 `thrusterBoost`、只在点火窗口生效）
+  // ⇒ 换上/换下推进器时上面那段「速度」恒为 0，卡片看起来"速度没变"。这里补报**点火期**速度
+  // （= 基础 ×(1+爆发倍率)），换推进器时玩家才看得到真实机动差。
+  const boostCur = cur.thrusterBoost ?? 0
+  const boostNext = next.thrusterBoost ?? 0
+  if (boostCur !== boostNext) {
+    const ignCur = Math.round(cur.speedMps * (1 + boostCur))
+    const ignNext = Math.round(next.speedMps * (1 + boostNext))
+    add(`点火期速度 ${ignCur}→${ignNext}`, dir(ignNext - ignCur))
+  }
   // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
@@ -606,7 +618,23 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           gunEq !== undefined ? ` · 索敌 ×${gunEq.toFixed(2)}` : ''
                         }`,
                       },
-                      { k: '机动速度（含加力）', v: `${fmt(Math.round(spec.speedMps))} m/s` },
+                      // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
+                      // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
+                      // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
+                      // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
+                      {
+                        k: '机动速度',
+                        v: (
+                          <>
+                            {`${fmt(Math.round(spec.speedMps))} m/s`}
+                            {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
+                              <span className="app-dim">
+                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText()}）`}
+                              </span>
+                            ) : null}
+                          </>
+                        ),
+                      },
                     ]
                   : []),
               ]}

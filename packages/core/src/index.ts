@@ -128,6 +128,10 @@ export {
   shipSlotsOf,
   rackOf,
   allFittedIds,
+  // 推进器周期口径文案（与 balance.battle 同源）
+  thrusterCycleSeconds,
+  thrusterCycleText,
+  thrusterCycleFullText,
 } from './labels'
 export type { RackSlot, ShipSlots } from './types'
 

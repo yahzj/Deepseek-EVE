@@ -6,7 +6,8 @@
  * 物品大类（kind）只影响展示分组与"是否能被采集/精炼"的判断，不落盘。
  */
 
-import type { DroneClass, FittedModules, ItemDef, ItemKind, ModuleSlot, RackSlot, ShipRole, ShipSlots } from './types'
+import { DEFAULT_BALANCE } from './balance'
+import type { BattleBalance, DroneClass, FittedModules, ItemDef, ItemKind, ModuleSlot, RackSlot, ShipRole, ShipSlots } from './types'
 
 /** 槽位展示顺序（装配页从上到下的渲染顺序；V18.1 支援件排尾、V18B 武器形态随武器） */
 export const MODULE_SLOTS: readonly ModuleSlot[] = [
@@ -198,6 +199,29 @@ export function allFittedIds(fitted: FittedModules): string[] {
     for (const id of fitted[rack]) if (id) out.push(id)
   }
   return out
+}
+
+/* ───── 推进器周期口径文案（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」） ───── */
+
+/** 推进器周期秒数（点火 / 冷却）：**数值唯一出处 = `balance.battle`**（与引擎 `combat.thrusterPhase` 同源）。
+ *  界面文案一律经下面两个函数取值，不许再写死 60——改周期只需改 `balance.ts` 一处。 */
+export function thrusterCycleSeconds(bal: BattleBalance = DEFAULT_BALANCE.battle): { boost: number; cooldown: number } {
+  return {
+    boost: Math.round(bal.thrusterBoostMs / 1_000),
+    cooldown: Math.round(bal.thrusterCooldownMs / 1_000),
+  }
+}
+
+/** 推进器周期·短缀：`点火 60 秒 / 冷却 60 秒`（换装卡 / 装备库行 / 手册网格的短效文案用） */
+export function thrusterCycleText(bal: BattleBalance = DEFAULT_BALANCE.battle): string {
+  const { boost, cooldown } = thrusterCycleSeconds(bal)
+  return `点火 ${boost} 秒 / 冷却 ${cooldown} 秒`
+}
+
+/** 推进器周期·全缀：`60 秒点火 / 60 秒冷却，开场即点火`（模块信息卡 / 装配页机动速度行用） */
+export function thrusterCycleFullText(bal: BattleBalance = DEFAULT_BALANCE.battle): string {
+  const { boost, cooldown } = thrusterCycleSeconds(bal)
+  return `${boost} 秒点火 / ${cooldown} 秒冷却，开场即点火`
 }
 
 /* ───── T5-B（v17）舰船实例 uid 工具（内容约定：ShipDef.id 不得含 '#'，实例号分隔符） ───── */
