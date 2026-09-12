@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import type { SimContext } from '../src/types'
-import { haulBaseReward, haulEffectiveMinutes, haulSecurityMulOf } from '../src/hauling'
+import { haulBaseReward, haulEffectiveMinutes, haulExposureAt, haulSecurityMulOf } from '../src/hauling'
 import { securityZoneOf } from '../src/sideTasks'
 import { shortestTravelPath, shortestTravelMinutes } from '../src/travel'
 
@@ -85,5 +85,17 @@ describe('长途运输 · 安全档收益率 + 距离指数（2026-09-12 船长�
     // 对照：线性口径（p=1）时拆开几乎不亏（97%）——那正是船长要改掉的"1+1≈2"
     const linear = haulEffectiveMinutes(ctx, HOME, REDRING) + haulEffectiveMinutes(ctx, REDRING, CINDER)
     expect(linear / haulEffectiveMinutes(ctx, HOME, CINDER)).toBeCloseTo(0.968, 2)
+  })
+
+  it('遇袭标注单点（2026-09-13 船长「会遇袭的运输任务需要特意标注」）：低安 = sec ≤ 0', () => {
+    // 三条站点航线对应"是否会被标注"：烬火（0.0 低安）参与的都会标；母港⇄红环（红环 0.1 中安）不标
+    expect(haulExposureAt(ctx, CINDER)).toBe(true) // 烬火星区 sec 0.0（含 0）
+    expect(haulExposureAt(ctx, REDRING)).toBe(false) // 红环航道 +0.1 中安
+    expect(haulExposureAt(ctx, HOME)).toBe(false) // 大鲸鱼Ⅳ +1.0 高安
+    // 面板口径：任一端点在低安 ⇒ 标注（母港⇄烬火 与 红环⇄烬火 两条会被标）
+    const marked = (a: string, b: string): boolean => haulExposureAt(ctx, a) || haulExposureAt(ctx, b)
+    expect(marked(HOME, CINDER)).toBe(true)
+    expect(marked(REDRING, CINDER)).toBe(true)
+    expect(marked(HOME, REDRING)).toBe(false)
   })
 })

@@ -535,6 +535,7 @@ export {
   haulBaseReward,
   haulRewardRange,
   haulSecurityMulOf,
+  haulExposureAt,
   haulEffectiveMinutes,
   HAUL_TRIP_MUL_MIN,
   HAUL_TRIP_MUL_MAX,
