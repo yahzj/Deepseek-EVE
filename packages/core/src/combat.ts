@@ -1010,11 +1010,88 @@ function foeMultiShipCompMul(anomaly: AnomalyDef): number {
  *   缺省/`'beam'` = 光束必中（不消费命中）；`'spit'` = **掷命中**（消费 `hitRate`、命中随距离衰减）。
  *   2026-09-11 船长裁决⑤「立「能量·掷命中」档」。
  */
+/**
+ * **机群/炮台火力占比的守恒拆分**（2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。
+ * 这个要根据每个悬赏卡制定**」；七项细节由船长逐条点选）。
+ *
+ * 口径 = **守恒拆分**（与 A5「机群火力计入卡的总火力、母船单发让位」同源）：
+ * 1. **基准 T** = 该**条目**按旧口径的**实收总单发**（该条目所有单位的炮台 ＋ 该条目所有架次机群；
+ *    含 `dmgMul`、含多舰补偿 `2N/(N+1)`、含逐条取整）——即"今天玩家会吃到的量"；
+ * 2. **机群先取** `D = round(T × s)`、**炮台余额** `G = T − D`；**两侧各保底**：机群 `D ≥ 架数`、
+ *    炮台 `G ≥ 单位数`（⇒ **不会出现 0 伤害条目**）；
+ * 3. **机群摊分**：D 均摊到逐架（顺序 = 条目内单位顺序 × 该舰 `drones` 展开顺序，与
+ *    `foeDronePools` **同序**），**余数补给前面的架次**，保证 Σ = D；
+ * 4. **炮台摊分**：G 按各单位「旧口径炮台单发」权重摊（同一条目内各单位的 `dmgMul` 相同 ⇒ 权重相等，
+ *    故等价于均分；**余数补给前面的单位**），保证 Σ = G。
+ *
+ * 生效范围 = **只拆「机群 vs 母舰武器组」两类**（敌侧近防炮照 B3 裁定不动）；
+ * 命中 / 射程 / 装填 / 血型 / 期望交距**一律不受影响**（本旋钮只改火力构成）。
+ * **未写 `droneFireShare`（条目 ?? 舰级）的条目返回 `null`** ⇒ 建档走旧算法、**零行为变化**。
+ */
+function droneFireSplitOf(
+  units: ReadonlyArray<{ slot: FoeShipSlot }>,
+  comp: number,
+): Array<{ gun: number; drones: number[] } | null> {
+  const out: Array<{ gun: number; drones: number[] } | null> = units.map(() => null)
+  /** 同一 `slot` 对象（`count > 1` 时被枚举多次）归成一组——比例与摊分都按**条目**算 */
+  const groups = new Map<FoeShipSlot, number[]>()
+  for (let i = 0; i < units.length; i++) {
+    const slot = units[i]!.slot
+    const list = groups.get(slot)
+    if (list) list.push(i)
+    else groups.set(slot, [i])
+  }
+  for (const [slot, idxs] of groups) {
+    const share = slot.droneFireShare ?? slot.ship.droneFireShare
+    if (share === undefined) continue
+    const droneSlots = slot.ship.drones ?? []
+    const perUnitDrones = droneSlots.reduce((n, ds) => n + Math.max(0, Math.round(ds.count)), 0)
+    if (perUnitDrones === 0) continue // 无机群 ⇒ 比例无意义（契约另拦）；这里按未写处理
+    const unitCount = idxs.length
+    const nDrones = unitCount * perUnitDrones
+    const mul = slot.dmgMul ?? 1
+    const gunOld = Math.max(1, Math.round(slot.ship.shotDmg * mul * comp))
+    const droneOld = droneSlots.flatMap((ds) =>
+      Array.from({ length: Math.max(0, Math.round(ds.count)) }, () =>
+        Math.max(1, Math.round(ds.drone.dmg * mul)),
+      ),
+    )
+    const droneOldSum = droneOld.reduce((a, b) => a + b, 0)
+    // ① 基准 T（该条目实收总单发）② 机群 D（带保底、且不挤掉炮台保底）③ 炮台 G = T − D
+    const T = unitCount * (gunOld + droneOldSum)
+    const D = Math.max(nDrones, Math.min(Math.round(T * clamp(0, 1, share)), Math.max(nDrones, T - unitCount)))
+    const G = T - D
+    // ④ 机群摊分：逐架均分、余数补给前面的架次
+    const dBase = Math.floor(D / nDrones)
+    let dRem = D - dBase * nDrones
+    // ⑤ 炮台摊分：按旧口径单发权重（同条目内每单位相同 ⇒ 权重相等），余数补给前几个单位
+    const gBase = Math.floor(G / unitCount)
+    let gRem = G - gBase * unitCount
+    for (const i of idxs) {
+      const drones: number[] = []
+      for (let k = 0; k < perUnitDrones; k++) {
+        drones.push(dBase + (dRem > 0 ? 1 : 0))
+        if (dRem > 0) dRem -= 1
+      }
+      out[i] = { gun: gBase + (gRem > 0 ? 1 : 0), drones }
+      if (gRem > 0) gRem -= 1
+    }
+  }
+  return out
+}
+
 function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts): UnitSpec[] {
   const prefix = opts.tagPrefix ?? ''
   const waveIdx = shipWaveIndexOf(prefix)
   const comp = foeMultiShipCompMul(anomaly)
-  return enumerateShipUnits(anomaly, waveIdx).map((u) => {
+  const units = enumerateShipUnits(anomaly, waveIdx)
+  // **机群/炮台火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个
+  // 悬赏卡制定」）——**条目级**旋钮，守恒拆分：先按旧口径算出该条目的实收总单发 T（含多舰补偿、
+  // 逐条取整），再拆成「机群 D = round(T×s)」与「炮台 G = T−D」（两侧各保底 1/架、1/单位）。
+  // 未写 s 的条目一律 `null` ⇒ 下面走旧算法（**零行为变化**）。
+  const fireSplit = droneFireSplitOf(units, comp)
+  return units.map((u, ui) => {
+    const sp = fireSplit[ui]
     const ship = u.slot.ship
     const mix = u.slot.dmgMix ?? ship.dmgMix
     const type = pickTopType(mix)
@@ -1023,7 +1100,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     // 同一条舰级在不同卡上可按卡面 `defProfile` 建档（A 族鱼龙混杂 ⇒ 什么血型都有，无族级约束）。
     const split = u.slot.split ?? ship.split
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
-    const shotDmg = Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp))
+    // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法
+    const shotDmg = sp ? sp.gun : Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp))
     const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
     const multiShots: Partial<Record<DamageType, number>> | undefined =
       shotSplit.length > 1
@@ -1049,6 +1127,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         ? normReinforceTrigger(u.slot.enterAt)
         : null
     const name = foeUnitNameOf(anomaly, u.tag);
+    /** 本条目内**逐架机群单发**的游标（与 `ship.drones` 展开顺序一致，仅写了比例时消费） */
+    let dIdx = 0
     // **舰载机群**（2026-09-11 机群批 · 设计稿 `foe-drone-system-20260911.md` §三/§五）：
     // 每架展开成**一条** `src:'drone'` 武器条目（与我方"每架一条"同构 ⇒ 演出层按机型合并、按架击落）。
     // **A5 火力守恒**：机群吃**同一条 `dmgMul`**（⇒ 卡上挂机群时把 `dmgMul` 调低，**母舰单发自动让位**）；
@@ -1060,7 +1140,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         src: 'drone' as const,
         artId: ds.drone.id,
         fixedType: ds.drone.damageType,
-        shotDmg: Math.max(1, Math.round(ds.drone.dmg * (u.slot.dmgMul ?? 1))),
+        // 机群单发：写了比例 ⇒ 取拆分后的 D 摊分结果（逐架、余数补前面的架次），否则沿用旧算法
+        shotDmg: sp
+          ? sp.drones[dIdx++]!
+          : Math.max(1, Math.round(ds.drone.dmg * (u.slot.dmgMul ?? 1))),
         maxRangeM: Math.max(2, ds.drone.maxRangeM),
         minRangeM: 1, // 机群无近盲带（贴脸也打）
         hitRate: ds.drone.hitRate,

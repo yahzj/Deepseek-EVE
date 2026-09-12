@@ -1102,6 +1102,15 @@ export interface FoeShipDef {
    * ⚠ **缺省不写 = 无此机制、零行为变化**；`content:check` 只允许**带机群的 E 族舰级**写它。
    */
   droneRangeMulOnHit?: number
+  /**
+   * **机群火力占比（舰级缺省）**（0~1；2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。
+   * 这个要根据每个悬赏卡制定**」）——**条目级写的那份优先**（`FoeShipSlot.droneFireShare`），
+   * 本字段只是"这条船平常用多少"的缺省；卡上逐条覆写即"**根据每个悬赏卡制定**"。
+   *
+   * 语义 = **守恒拆分**（详见 `FoeShipSlot.droneFireShare`）：条目实收总单发不变，机群与炮台此消彼长。
+   * ⚠ **不写 = 旧算法**（机群与炮台同吃 `dmgMul`，比例由机型 `dmg`÷舰级 `shotDmg` 隐式决定）。
+   */
+  droneFireShare?: number
 }
 
 /**
@@ -1157,6 +1166,15 @@ export interface FoeShipSlot {
   ship: FoeShipDef;
   /** **期望作战距离覆写**（米；条目级优先于舰级，见 `FoeShipDef.desireRangeM`） */
   desireRangeM?: number;
+  /**
+   * **机群火力占比 s**（0~1；2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。这个要根据每个
+   * 悬赏卡制定**」）——**条目级**旋钮：**条目 > 舰级**（见 `FoeShipDef.droneFireShare`）。
+   *
+   * 语义 = **守恒拆分**：本条目按旧口径的**实收总单发 T**不变，机群拿 `round(T×s)`、炮台拿余额
+   * （两侧各保底 1/架、1/单位）；**不写 = 完全走旧算法**（不反推隐含比例）⇒ 零行为变化。
+   * 只有"本条目会展开出机群"（舰级 `drones` 非空）时才有意义，`content:check` 会拦。
+   */
+  droneFireShare?: number;
   /** 本条目数量（缺省 1） */
   count?: number
   /** 第几波（0 起；缺省 0 = 第一波） */

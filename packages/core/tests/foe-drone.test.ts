@@ -437,3 +437,134 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
     ).toBe(1);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **机群火力占比**（2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。这个要根据每个悬赏卡
+ * 制定**」）——七项裁定：守恒拆分 · **条目级**（缺省回落舰级）· 以「现口径实收总单发 T」为基准、
+ * 机群先取余额给炮台 · **0~1 且两侧各保底 1** · 不显示给玩家 · 只含「机群 vs 母舰武器组」·
+ * 本批**只做机制**（数值等船长逐卡给）。
+ * 本组钉住：缺省零变化 / 总量守恒 / 先取与摊分 Σ 精确 / 边界保底 / 条目级覆盖舰级缺省。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe("机群火力占比（条目级 · 守恒拆分）", () => {
+  /** 挂 3 架警戒机的试验巨构（母舰单发 100 ⇒ 便于取整对照） */
+  const gunShip = (shipShare?: number): FoeShipDef => ({
+    ...testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 100),
+    ...(shipShare !== undefined ? { droneFireShare: shipShare } : {}),
+  })
+  /** 单条目卡（`dmgMul 2` ⇒ 炮台 100×2×4/3 = 267、机群每架 25×2 = 50 ⇒ 每单位 417、T = 834） */
+  const cardWith = (
+    slotShare?: number,
+    shipShare?: number,
+    count = 2,
+  ): AnomalyDef => {
+    const ship = gunShip(shipShare)
+    const base = testCard(ship, 2)
+    return {
+      ...base,
+      ships: [
+        {
+          ship,
+          count,
+          dmgMul: 2, // ⚠ 覆写 `ships` 时必须带上（否则退回缺省 1，机群/炮台一起减半）
+          ...(slotShare !== undefined ? { droneFireShare: slotShare } : {}),
+        },
+      ],
+    }
+  }
+  const totals = (def: AnomalyDef) => {
+    const units = createFoeSpecs(def, bal)
+    const guns = units.reduce(
+      (n, u) =>
+        n +
+        u.weapons
+          .filter((w) => w.src !== "drone")
+          .reduce((m, w) => m + (w.shotDmg ?? 0), 0),
+      0,
+    )
+    const drones = units.reduce(
+      (n, u) =>
+        n +
+        u.weapons
+          .filter((w) => w.src === "drone")
+          .reduce((m, w) => m + (w.shotDmg ?? 0), 0),
+      0,
+    )
+    return { guns, drones, total: guns + drones }
+  }
+  const droneShots = (def: AnomalyDef) =>
+    createFoeSpecs(def, bal).flatMap((u) =>
+      u.weapons.filter((w) => w.src === "drone").map((w) => w.shotDmg ?? 0),
+    )
+  const gunShots = (def: AnomalyDef) =>
+    createFoeSpecs(def, bal).map(
+      (u) => u.weapons.find((w) => w.src !== "drone")!.shotDmg ?? 0,
+    )
+
+  it("缺省不写 ⇒ 旧算法逐字一致（零行为变化）", () => {
+    expect(droneShots(cardWith())).toEqual([50, 50, 50, 50, 50, 50]);
+    expect(gunShots(cardWith())).toEqual([267, 267]);
+    // 舰级写了缺省、但条目没写 ⇒ **按舰级缺省生效**（条目 > 舰级）
+    expect(droneShots(cardWith(undefined, 0.5))).not.toEqual(droneShots(cardWith()));
+  })
+
+  it("守恒：s ∈ {0, 0.3, 0.5, 1} 下**总单发恒等于旧口径**，两侧各保底", () => {
+    const T0 = totals(cardWith()).total;
+    expect(T0).toBe(834); // 2 × (267 + 3×50)
+    for (const s of [0, 0.3, 0.5, 1]) {
+      const t = totals(cardWith(s));
+      expect(t.total, `s=${s}`).toBe(T0);
+      expect(t.guns, `s=${s} 炮台保底 1/单位`).toBeGreaterThanOrEqual(2);
+      expect(t.drones, `s=${s} 机群保底 1/架`).toBeGreaterThanOrEqual(6);
+    }
+  })
+
+  it("机群先取、余额给炮台：s=0.5 ⇒ 机群与炮台各 417（逐架/逐单位 Σ 精确、均摊）", () => {
+    const t = totals(cardWith(0.5));
+    expect(t.drones).toBe(417);
+    expect(t.guns).toBe(417);
+    const ds = droneShots(cardWith(0.5));
+    expect(ds.reduce((a, b) => a + b, 0)).toBe(417); // 余数补前面的架次：139×3 + 138×3?
+    expect(Math.max(...ds) - Math.min(...ds)).toBeLessThanOrEqual(1); // 均摊（差 ≤1）
+    const gs = gunShots(cardWith(0.5));
+    expect(gs.reduce((a, b) => a + b, 0)).toBe(417);
+    expect(Math.max(...gs) - Math.min(...gs)).toBeLessThanOrEqual(1);
+  })
+
+  it("边界保底：s=1 ⇒ 炮台压到 1/单位；s=0 ⇒ 机群压到 1/架（**没有 0 伤害条目**）", () => {
+    expect(gunShots(cardWith(1))).toEqual([1, 1]);
+    expect(droneShots(cardWith(0))).toEqual([1, 1, 1, 1, 1, 1]);
+    for (const s of [0, 1]) {
+      const all = createFoeSpecs(cardWith(s), bal).flatMap((u) => u.weapons);
+      expect(all.every((w) => (w.shotDmg ?? 0) >= 1)).toBe(true);
+    }
+  })
+
+  it("**条目级**：同一张卡两条目可各写各的（互不影响）", () => {
+    const shipA = gunShip();
+    const shipB = gunShip();
+    const base = testCard(shipA, 2);
+    const card: AnomalyDef = {
+      ...base,
+      ships: [
+        { ship: shipA, count: 1, dmgMul: 2, droneFireShare: 0.8 }, // 甲：机群为主
+        { ship: shipB, count: 1, dmgMul: 2 }, // 乙：缺省（旧口径）
+      ],
+    };
+    const units = createFoeSpecs(card, bal);
+    const per = units.map((u) => ({
+      gun: u.weapons.find((w) => w.src !== "drone")!.shotDmg ?? 0,
+      drones: u.weapons
+        .filter((w) => w.src === "drone")
+        .reduce((n, w) => n + (w.shotDmg ?? 0), 0),
+    }));
+    // 甲条目 T = 267 + 150 = 417 ⇒ 机群 round(417×0.8) = 334、炮台 83
+    expect(per[0]!.drones).toBe(334);
+    expect(per[0]!.gun).toBe(83);
+    expect(per[0]!.drones + per[0]!.gun).toBe(417);
+    // 乙条目（未写 ⇒ 旧口径）：炮台 267（本例 comp 随卡为 4/3 ⇒ 267）、机群 3×50 = 150
+    expect(per[1]!.gun).toBe(267);
+    expect(per[1]!.drones).toBe(150);
+    // 卡总单发仍守恒（甲=417、乙=417）
+    expect(per.reduce((n, x) => n + x.gun + x.drones, 0)).toBe(834);
+  })
+});

@@ -65,6 +65,7 @@ import {
   RARE_WRECK_VOLUME_M3,
   RECYCLE_POOL_AVG_ISK,
   SHIP_ROLE_LABELS,
+  createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
   FACTION_RARE_DROP_CHANCE,
@@ -1549,6 +1550,10 @@ for (const m of MODULES) {
    *    b) **警戒机射程 = `TITAN_DRONE_RANGE_M`（5,000）**（机型表绝对值就是族级口径，改它要过船长）；
    *    c) **受击增程倍率**只允许**带机群的 E 族舰级**写，且 ≤ `DRONE_RANGE_ON_HIT_CAP`（4 = 船长裁定的
    *       「提高 400%」= ×4 ⇒ 5,000 → 20,000m 本场永久、不封顶）。
+   * ⑥ **机群火力占比**（2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。这个要根据每个悬赏卡
+   *    制定**」）：a) 取值域 **0~1**；b) **只有"该条目会展开出机群"（舰级 `drones` 非空）才允许写**；
+   *    c) **守恒**——写了比例的卡，其**实收总单发**必须与"同卡去掉比例"逐字相等（机群与炮台此消彼长，
+   *    总量不动）。
    */
   {
     // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」⇒ 阈值随之上抬（点防仍远短于主炮 7 km）
@@ -1634,6 +1639,70 @@ for (const m of MODULES) {
         `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +
         `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}`,
     )
+
+    /* ⑥ **机群火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个
+     *    悬赏卡制定」）——守恒拆分：条目实收总单发不变，机群与炮台此消彼长。
+     *    a) 取值域 0~1；b) 只有"会展开出机群"的条目/舰级可写；c) **守恒实测**：写了比例的卡，
+     *    其单位武器 Σ 必须与"同卡去掉比例"逐字相等（多舰补偿/取整都在同一链上，故可比）。 */
+    {
+      const shareCtx = buildSimContext()
+      let shareShips = 0
+      let shareSlots = 0
+      for (const ship of FOE_SHIPS) {
+        if (ship.droneFireShare === undefined) continue
+        shareShips++
+        check(
+          ship.droneFireShare >= 0 && ship.droneFireShare <= 1,
+          `机群与防空契约：舰级「${ship.name}」机群火力占比 ${ship.droneFireShare} 越界（须 0~1）`,
+        )
+        check(
+          (ship.drones ?? []).length > 0,
+          `机群与防空契约：舰级「${ship.name}」写了机群火力占比却**没有机群**——本旋钮只拆"机群 vs 母舰武器组"`,
+        )
+      }
+      const sumShots = (def: (typeof ANOMALIES_FLAVORED)[number]): number =>
+        createFoeSpecs(def, shareCtx.balance.battle).reduce(
+          (n, u) => n + u.weapons.reduce((m, w) => m + w.shotDmg, 0),
+          0,
+        )
+      /** 去掉卡上所有 `droneFireShare`（舰级缺省也要压掉）的克隆——用于守恒对照 */
+      const stripShare = (def: (typeof ANOMALIES_FLAVORED)[number]) => ({
+        ...def,
+        ships: def.ships?.map((s) => ({
+          ...s,
+          droneFireShare: undefined,
+          ship: { ...s.ship, droneFireShare: undefined },
+        })),
+      })
+      for (const def of ANOMALIES_FLAVORED) {
+        const slots = def.ships ?? []
+        if (!slots.some((s) => (s.droneFireShare ?? s.ship.droneFireShare) !== undefined)) continue
+        for (const s of slots) {
+          const share = s.droneFireShare ?? s.ship.droneFireShare
+          if (share === undefined) continue
+          shareSlots++
+          check(
+            share >= 0 && share <= 1,
+            `机群与防空契约：${def.name} 的编成条目「${s.ship.name}」机群火力占比 ${share} 越界（须 0~1）`,
+          )
+          check(
+            (s.ship.drones ?? []).length > 0,
+            `机群与防空契约：${def.name} 的编成条目「${s.ship.name}」写了机群火力占比却**没有机群**`,
+          )
+        }
+        const withShare = sumShots(def)
+        const without = sumShots(stripShare(def) as typeof def)
+        check(
+          withShare === without,
+          `机群与防空契约：${def.name} 写了机群火力占比后**总单发不守恒**（${withShare} vs 去掉比例 ${without}）——` +
+            `比例只改"机群 / 炮台"的构成，**总量不动**`,
+        )
+      }
+      if (shareShips + shareSlots > 0)
+        console.log(
+          `· 机群火力占比契约：舰级缺省 ${shareShips} 条 · 卡上条目 ${shareSlots} 处（0~1 · 须有机群 · **总单发守恒**）`,
+        )
+    }
   }
 
   /* ── 舰级契约（2026-09-11 加，船长定案「敌舰配置表 + 卡上修正 + 允许混编」）──
