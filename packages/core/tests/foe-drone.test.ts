@@ -23,8 +23,10 @@ import {
 import type { BattleState, GameState } from "../src/state";
 import type {
   AnomalyDef,
+  FoeDroneDef,
   FoeShipDef,
   FoeDroneSlot,
+  ModuleDef,
   SimContext,
 } from "../src/types";
 
@@ -114,6 +116,43 @@ function runBattleWithState(
   state.gameMs = advMs;
   advanceBattleFor(state, c, battle, state.shipId, card.id);
   return { state, battle };
+}
+
+/**
+ * **逐秒推进 + 游标收集**（2026-09-12 修测试方法）：`fx` 是 **48 条环、丢最旧**——
+ * 一次推完 90 秒后，**早期的 pd 事件可能已被裁掉**（机群被打光后，剩下的全是"近防炮/炮台对舰"
+ * 的开火事件，环里只留最近 48 条）⇒ 原来"看最终环里有没有 `pd` 事件"的断言会**假失败**。
+ * 收集口径与 `tools/battle-calibrate.ts` 同款：只认 `seq > 上次最大值` 的事件（被裁掉的永远是
+ * 更旧的事件）⇒ 无损。返回计数，断言不看环的最终快照。
+ */
+function runBattleDrain(
+  card: AnomalyDef,
+  advMs = 90_000,
+  high?: string[],
+): { battle: BattleState; pd: number; droneDown: number } {
+  const c = ctxWith(card);
+  const state = high ? makeState(5, high) : makeState();
+  const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+  state.expedition.active = true;
+  state.expedition.phase = "battle";
+  state.expedition.anomalyId = card.id;
+  state.expedition.battle = battle;
+  const startAt = battle.startedAtGameMs;
+  let lastSeq = 0;
+  let pd = 0;
+  let droneDown = 0;
+  for (let t = 1_000; t <= advMs; t += 1_000) {
+    state.gameMs = startAt + t;
+    advanceBattleFor(state, c, battle, state.shipId, card.id);
+    for (const e of battle.fx) {
+      if (e.seq <= lastSeq) continue;
+      lastSeq = e.seq;
+      if (e.pd === true) pd += 1;
+      if (e.droneDown === true && e.side === "foe") droneDown += 1;
+    }
+    if (battle.ended) break;
+  }
+  return { battle, pd, droneDown };
 }
 
 describe("敌方机群：建档与 A5 火力守恒", () => {
@@ -301,17 +340,16 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
   });
 
   it("带近防炮 ⇒ 真打出「击落敌机」事件；换普通炮台 ⇒ 一架都掉不了（负向对照）", () => {
-    const withAA = runBattle(testCardWithDrones(), 90_000, [AA, AA, AA, AA]);
-    const downed = withAA.fx.filter(
-      (e) => e.droneDown === true && e.side === "foe",
-    );
+    // ⚠ **不看最终 fx 环**（48 条、丢最旧 ⇒ 会被后期的对舰开火挤出）⇒ 逐秒游标收集（无损）
+    const drained = runBattleDrain(testCardWithDrones(), 90_000, [AA, AA, AA, AA]);
+    const withAA = drained.battle;
     const pools = Object.values(withAA.foeDronePools ?? {}).flat();
     expect(pools.length).toBe(6); // 2 舰 × 3 架
     // **近防炮确实在打机群**：出现带 `pd` 标记的开火事件（渲染层据此只出炮口闪光、不画弹道）。
-    // ⚠ 不再断言"必定击落"：反应式窗口（船长 2026-09-11「每轮被攻击后才开火」）+ 敌机血 ×2 后，
-    //   90 秒内是否打光取决于装配与窗口节奏，属**平衡读数**（由标定轮回答，不由单元用例钉死）。
-    expect(withAA.fx.some((e) => e.pd === true)).toBe(true);
-    expect(downed.length).toBeGreaterThanOrEqual(0); // 击落演出事件（可能为 0，见上）
+    expect(drained.pd).toBeGreaterThan(0);
+    // 血量口径（船长 2026-09-12「将警戒机的血量削弱40%」= 92 → 55）后，MK3×4 一轮齐射即可击落 ⇒ 击落事件必现；
+    // 池里确有阵亡条目（引擎权威状态，不依赖演出事件）。
+    expect(drained.droneDown).toBeGreaterThan(0); // 击落演出事件（side='foe' 的小爆炸/坠落）
     expect(pools.some((p) => !p.alive)).toBe(true);
 
     const withGun = runBattle(testCardWithDrones(), 60_000, [
@@ -326,6 +364,78 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
       withGun.fx.some((e) => e.droneDown === true && e.side === "foe"),
     ).toBe(false);
     expect(poolsGun.every((p) => p.alive)).toBe(true); // 普通炮台**按构造看不到机群**
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **对无人机伤害加成**（船长 2026-09-12：「**近防炮给予一个对无人机伤害加成**」→「**那伤害倍率按2倍算**」）
+ *
+ * `pd-damage-ladder.test.ts` 只锁"装备表写了 ×2、且带进了武器条目"；本组锁**引擎真的乘上去了**：
+ * 用**合成对照件**（复制真近防炮、只把 `antiDroneDmgMul` 摘掉）跑同种子同卡——
+ * ① 机群掉血**恰好 ×2**；② **敌舰掉血逐字相同**（加成不许漏进对舰那一支）。
+ * 机群血量故意设成巨值（10 万）⇒ 整场零击落、无补位 ⇒ 两次跑的事件序列完全一致，对照是干净的。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe("对无人机伤害加成 ×2（船长 2026-09-12）", () => {
+  const FAT = 100_000;
+  /** 巨血合成警戒机：同名同角色，只把三层血拉高（保证整场零击落） */
+  const fatDrone = (): FoeDroneDef => ({
+    ...FOE_DRONE_E_ALERT,
+    id: "test-fat-drone",
+    name: "合成厚血警戒机",
+    defense: {
+      ...FOE_DRONE_E_ALERT.defense,
+      shieldHp: FAT,
+      armorHp: FAT,
+      hullHp: FAT,
+    },
+  });
+  /** 复制真近防炮 MK3、只摘掉对无人机倍率（对照组「无加成」） */
+  const noBonusPd = (): ModuleDef => {
+    const src = base.modules.get("mod-pd-e-3")!;
+    return { ...src, id: "test-pd-nobonus", name: "试验近防炮·无加成", antiDroneDmgMul: undefined };
+  };
+  /** 跑一场：同卡同种子，只换装配里那件近防炮 */
+  function runWith(
+    moduleId: string,
+  ): { droneHurt: number; shipHurt: number } {
+    const drone = fatDrone();
+    const card = testCard(testShip([{ drone, count: 3 }], 1));
+    const c: SimContext = {
+      ...base,
+      anomalies: new Map([...base.anomalies, [card.id, card]]),
+      modules: new Map([...base.modules, ["test-pd-nobonus", noBonusPd()]]),
+    };
+    const state = makeState(5, [moduleId, moduleId, moduleId, moduleId]);
+    const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+    const droneHpStart = Object.values(battle.foeDronePools ?? {})
+      .flat()
+      .reduce((s, p) => s + p.s + p.a + p.h, 0);
+    const shipHpStart = Object.values(battle.units)
+      .filter((u) => u.tag !== "player")
+      .reduce((s, u) => s + u.hp.s + u.hp.a + u.hp.h, 0);
+    state.expedition.active = true;
+    state.expedition.phase = "battle";
+    state.expedition.anomalyId = card.id;
+    state.expedition.battle = battle;
+    state.gameMs = 60_000;
+    advanceBattleFor(state, c, battle, state.shipId, card.id);
+    const droneHpEnd = Object.values(battle.foeDronePools ?? {})
+      .flat()
+      .reduce((s, p) => s + p.s + p.a + p.h, 0);
+    const shipHpEnd = Object.values(battle.units)
+      .filter((u) => u.tag !== "player")
+      .reduce((s, u) => s + u.hp.s + u.hp.a + u.hp.h, 0);
+    // 零击落的前提核对（有击落说明血量没设够，对照就不干净了）
+    expect(Object.values(battle.foeDronePools ?? {}).flat().every((p) => p.alive)).toBe(true);
+    return { droneHurt: droneHpStart - droneHpEnd, shipHurt: shipHpStart - shipHpEnd };
+  }
+
+  it("带加成 ⇒ 机群掉血恰好翻倍；对舰掉血逐字相同（加成不许漏进对舰那一支）", () => {
+    const withBonus = runWith("mod-pd-e-3");
+    const without = runWith("test-pd-nobonus");
+    expect(without.droneHurt).toBeGreaterThan(0); // 对照组确实打到了机群
+    expect(withBonus.droneHurt).toBe(without.droneHurt * 2);
+    expect(withBonus.shipHurt).toBe(without.shipHurt); // 对舰不但"没加成"，而是**完全一致**
   });
 });
 

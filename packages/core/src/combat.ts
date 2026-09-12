@@ -97,6 +97,13 @@ export interface WeaponSpec {
    * ⚠ 缺省 = 打不到敌机 ⇒ **既有武器零行为变化**。
    */
   canHitDrones?: boolean
+  /**
+   * **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
+   * **打机群**那一支的单发伤害 ×本值（`ModuleDef.antiDroneDmgMul` 建档时带过来）。
+   * ⚠ **只对机群生效**——对舰伤害一字不动（`tests/pd-damage-ladder.test.ts` 锁住对舰单发定值）。
+   * 缺省不写 = ×1（零行为变化）；只有带 `canHitDrones` 的武器会带上它。
+   */
+  antiDroneMul?: number
   maxRangeM: number
   minRangeM: number
   hitRate: number
@@ -248,6 +255,34 @@ export function hitChance(
   const raw = (weapon.hitRate + attacker.hitBonus) * df - defender.evasion
   // V18.1：索敌（命中件）乘子在 clamp 内与失稳分开——eqHitMul 只随炮台条目
   return clamp(bal.hitMin, bal.hitMax, raw * (weapon.eqHitMul ?? 1) * (attacker.hitMul ?? 1))
+}
+
+/**
+ * **打机群的命中**（船长 2026-09-12 终裁：**闪避生效版**）：与 `hitChance` 同一套公式
+ * （基础命中 × 火控 → **减机型闪避** → 乘索敌件 → clamp），**唯一差别 = 距离衰减固定为 1**。
+ *
+ * 依据：选靶早已按船长 2026-09-11 甲案「**打机群不看两舰间距**」办（`pickFoeDroneTarget`：
+ * 出击型不受射程限制、哨戒机才要进射程），而命中却仍按**两舰间距**算 `distFactor`——
+ * 近防炮射程 2,500m 短于典型交距（3,211~5,545m）⇒ 该因子恒落在下限 ×0.5
+ * ⇒ 装备表写的命中 0.9 实战只剩 0.27~0.35，与"不看两舰间距"的裁定自相矛盾。
+ * ⚠ **只对机群生效**：打舰仍走 `hitChance` 的原 `distFactor`（"近防炮射程短所以对舰吃亏"不动）。
+ * 抽成函数一是为可测（`tests/pd-damage-ladder.test.ts` 直接锁这条口径），二是让调用点一眼看出
+ * "这两条命中不是同一条公式"。
+ *
+ * ⚠ **口径沿革（三条，别照旧文重开）**：
+ * 1. 最初：吃距离衰减（×0.5 下限）⇒ 实收 0.27~0.35；
+ * 2. 2026-09-12「按丁修复」：**去掉距离**、仍减闪避 ⇒ 实收 **0.72（E 警戒机）/ 0.45（G 蜂群机）**；
+ * 3. 同日一度改判「无视距离的 90」（连闪避也不减）⇒ 船长随即裁定「**哦 滚回到上一个闪避生效的版本**」
+ *    ⇒ **以本实现（第 2 条）为准**：装备表的 0.9/0.92 是**基础命中**，机型闪避照常参与；
+ *    报读数时须区分**基础值**与**实收值**（例如 0.9 基础 ⇒ 对 E 警戒机实收 0.72）。
+ */
+export function droneHitChance(
+  weapon: Parameters<typeof hitChance>[0],
+  attacker: Parameters<typeof hitChance>[1],
+  evasion: number,
+  bal: BattleBalance,
+): number {
+  return hitChance(weapon, attacker, { evasion }, 0, bal, 1)
 }
 
 /** 把一发伤害按层序消费（盾→甲→结构），返回更新后三层与实际扣血 */
@@ -688,6 +723,11 @@ export function createPlayerSpec(
       // 防空属性（2026-09-11 机群批 S4）：装备带 `canHitDrones` ⇒ 该武器能筛到敌方无人机。
       // 缺省不写 ⇒ 看到不机群（既有装备零行为变化）。
       ...(turret.canHitDrones ? { canHitDrones: true } : {}),
+      // 对无人机伤害加成（2026-09-12 船长：「近防炮给予一个对无人机伤害加成」→「那伤害倍率按2倍算」）：
+      // 跟着防空属性一起带过来（只对带该属性的武器有意义）；缺省/写 1 ⇒ 不写字段。
+      ...(turret.canHitDrones && (turret.antiDroneDmgMul ?? 1) !== 1
+        ? { antiDroneMul: turret.antiDroneDmgMul }
+        : {}),
     })
   }
 
@@ -3417,23 +3457,26 @@ function stepBattle(
         dmg = w.shotDmg ?? 0
         meRt.weapons[wi] = w.reloadMs
       }
+      // **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
+      // 只作用于**打机群**这一支（`droneHit` 非空 ⇔ 本发打的是敌机，见上方 `pickFoeDroneTarget`）；
+      // **对舰伤害一字不动**——`tests/pd-damage-ladder.test.ts` 的对舰单发定值就是这条的守卫。
+      // 倍率来自装备表（`ModuleDef.antiDroneDmgMul` → `WeaponSpec.antiDroneMul`），缺省 = 1 ⇒ 不乘。
+      if (droneHit && (w.antiDroneMul ?? 1) !== 1)
+        dmg = Math.round(dmg * (w.antiDroneMul ?? 1))
       b.stats.meShots += 1;
       // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
       if (w.src === 'drone')
         b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
-      // 命中：打机群时守方 = 该架的闪避（`DronePoolEntry.evasion`，机型表绝对值）；
-      // `hitChance` 的守方参数只要 `{ evasion }` ⇒ 不需要为机群造一个假单位。
+      // **两条命中分开算**（船长 2026-09-12 裁定「按丁修复」，口径说明见 `droneHitChance`）：
+      // 打**机群**不吃两舰距离衰减（守方只用该架的闪避 `DronePoolEntry.evasion`，机型表绝对值）；
+      // 打**舰**一字未动（仍按两舰间距算 `distFactor`）。
       const meHit = autoHit
         ? 1
-        : hitChance(
-            w,
-            meAtk,
-            droneHit ? { evasion: droneHit.pool.evasion } : foeTarget!,
-            b.distanceM,
-            bal,
-          )
+        : droneHit
+          ? droneHitChance(w, meAtk, droneHit.pool.evasion, bal)
+          : hitChance(w, meAtk, foeTarget!, b.distanceM, bal)
       const meHitEff = autoHit
         ? 1
         : favor

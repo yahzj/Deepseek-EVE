@@ -550,8 +550,9 @@ export interface EncounterBalance {
 export interface TravelBalance {
   /** 基准跃迁速度（AU/s）：warp = 该值时航程 = 标称分钟；高于它则更快、低于则更慢（反比） */
   warpRefAus: number
-  /** 时间因子下限（防极端组合把航程压没） */
-  minFactor: number
+  // ⚠ 原 `minFactor`（时间因子下限 0.35）**已于 2026-09-12 按船长裁定「删除下限」移除**：
+  //   下限只卡快船（航行族 3 级起飞鱼级与剑鱼级单程时间完全相同；满技能时 剑鱼 ÷ 皇带鱼
+  //   的时长差从 2.21× 削到 1.41×）⇒ 现**无下限**，`travelTimeFactor` 直接返回乘积。
   /** 航行加速技能族（效果趋同统一）：每级各按 cutPerLevel 缩短星图航行时间（乘算） */
   skillIds: readonly string[]
   /** 每个技能每级的时间缩减比例（如 0.04 = 4%） */
@@ -877,6 +878,16 @@ export interface ModuleDef {
    * ⚠ 缺省 = 打不到敌机 ⇒ **既有装备零行为变化**。
    */
   canHitDrones?: boolean;
+  /**
+   * **对无人机伤害加成**（船长 2026-09-12：「**近防炮给予一个对无人机伤害加成**」→「**那伤害倍率按2倍算**」）。
+   *
+   * 语义：本武器**打机群**那一支的单发伤害 ×本值（`WeaponSpec.antiDroneMul`）；
+   * ⚠ **只作用于机群**——对舰伤害一字不动（"近防炮射程短所以对舰吃亏"的性格保留，
+   * 由 `tests/pd-damage-ladder.test.ts` 的对舰单发定值锁住）。
+   * 只对带 `canHitDrones` 的装备有意义（不带的按构造看不到机群，该字段是死字段）。
+   * 缺省不写 = ×1（零行为变化）。
+   */
+  antiDroneDmgMul?: number;
   /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展、
      有 droneDmgBonus = 战术导控、有 droneRangeBonusPct = 中继天线；归槽 rack = high，见 labels.rackOf） ═══ */
   /** 无人机甲板扩展：+droneBayM3（携带/放飞上限扩容；线性可叠件） */

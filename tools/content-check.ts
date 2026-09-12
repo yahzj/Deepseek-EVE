@@ -1659,6 +1659,10 @@ for (const m of MODULES) {
     const TITAN_RANGE_MAX_BAND: readonly [number, number] = [7_000, 10_000]
     /** 警戒机射程（船长同日：「无人机射程设为 5000」） */
     const TITAN_DRONE_RANGE_M = 5_000
+    /** 警戒机三层血（船长 2026-09-12：「**将警戒机的血量削弱40%**」⇒ 92 × 0.6 = 55） */
+    const E_ALERT_DRONE_HP = 55
+    /** 防空武器对无人机伤害倍率（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」） */
+    const PD_ANTI_DRONE_DMG_MUL = 2
     /** 受击增程倍率上限（船长同日：「提高 400%」＝×4） */
     const DRONE_RANGE_ON_HIT_CAP = 4
   /** **炮台受击增程倍率上限**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」⇒ 现值 1.5、上限 2） */
@@ -1677,6 +1681,19 @@ for (const m of MODULES) {
       check(
         r > 0 && r <= PD_MAX_RANGE_M,
         `机群与防空契约：防空武器「${m.name}」射程 ${r}m 超过 ${PD_MAX_RANGE_M}m——防空是贴身护卫，不是万能武器`,
+      )
+      // ⑤e **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
+      // 带防空属性的武器必须显式登记本字段（否则"对机群加成"是隐性 0）、取值须为正、且现值 = 2。
+      const mul = m.antiDroneDmgMul
+      check(
+        mul !== undefined && mul > 0,
+        `机群与防空契约：防空武器「${m.name}」没写对无人机伤害加成（字段 antiDroneDmgMul）或取值非法` +
+          `（现值 ${mul ?? '缺省'}）——船长 2026-09-12「近防炮给予一个对无人机伤害加成」`,
+      )
+      check(
+        mul === PD_ANTI_DRONE_DMG_MUL,
+        `机群与防空契约：防空武器「${m.name}」对无人机伤害倍率 ${mul ?? '缺省'} ≠ ${PD_ANTI_DRONE_DMG_MUL}——` +
+          `船长 2026-09-12「**那伤害倍率按2倍算**」`,
       )
     }
     let droneSlots = 0
@@ -1777,6 +1794,13 @@ for (const m of MODULES) {
             `机群与防空契约：E 族机型「${ds.drone.name}」射程 ${ds.drone.maxRangeM}m ≠ ${TITAN_DRONE_RANGE_M}m——` +
               `船长 2026-09-11「**无人机射程设为 5000**」`,
           )
+          // ⑤d **警戒机三层血 = 55**（船长 2026-09-12：「**将警戒机的血量削弱40%**」⇒ 28/20/44 = 92 → 17/12/26 = 55）
+          const dhp = ds.drone.defense.shieldHp + ds.drone.defense.armorHp + ds.drone.defense.hullHp
+          check(
+            dhp === E_ALERT_DRONE_HP,
+            `机群与防空契约：E 族机型「${ds.drone.name}」三层血 ${dhp} ≠ ${E_ALERT_DRONE_HP}——` +
+              `船长 2026-09-12「**将警戒机的血量削弱40%**」（原 92 的 60% = 55）`,
+          )
         }
       }
     }
@@ -1811,7 +1835,8 @@ for (const m of MODULES) {
         // ⚠ 汇总行**按结果分支**（血泪清单：有错时不许仍打印"含等离子 ✓"）
         `${gSwarmShips.length > 0 ? ` · **G 族蜂群机挂载** ${mountedSwarmIds.join(' + ')}${swarmHasPlasma ? '（含等离子 ✓）' : '（⚠ **无机型含等离子** —— 见上方错误）'}` : ''}` +
         `${unmountedDrones.length > 0 ? ` · **已备未挂机型** ${unmountedDrones.map((d) => d.id).join('、')}` : ' · 机型表全部在役'}` +
-        `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级 ×1.5（D 族静滞卫舰：被打中 ⇒ 该型舰 12,000 → 18,000m，本场永久、仅该型舰）` : ''}`,
+        `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级 ×1.5（D 族静滞卫舰：被打中 ⇒ 该型舰 12,000 → 18,000m，本场永久、仅该型舰）` : ''}` +
+        ` · **对无人机伤害** ${aaMods.map((m) => `${m.name} ×${m.antiDroneDmgMul ?? 1}`).join('　')}（对舰伤害不受影响）`,
     )
 
     /* ⑥ **机群火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个

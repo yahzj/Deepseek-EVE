@@ -1,7 +1,7 @@
 /**
  * 星图航行（V12.1）测试：跃迁速度 × 航行加速技能族 → 实际航程耗时。
- * 覆盖：缺省船不缩放 / warp 反比 / 技能乘算 / minFactor 下限 / 慢船惩罚 /
- * oneLegMs 基础段不缩放 / 远征出发锁定。
+ * 覆盖：缺省船不缩放 / warp 反比 / 技能乘算 / **无下限（2026-09-12 船长「删除下限」）** /
+ * 慢船惩罚 / oneLegMs 基础段不缩放 / 远征出发锁定。
  */
 import { describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
@@ -66,7 +66,9 @@ describe('travel.ts 换算（缺省船不缩放）', () => {
     expect(travelLegMs(state, ctx, 6)).toBe(Math.round(360_000 * base * 0.8 * 0.88 * 0.92))
   })
 
-  it('minFactor 下限：warp 过高/组合过强时不会把航程压没', () => {
+  it('**无下限**（2026-09-12 船长「删除下限」）：组合再快也按比例继续缩短，船速差永不被抹平', () => {
+    // 旧口径 `minFactor 0.35` 只卡快船 ⇒ 航行族 3 级起飞鱼级(7.4) 与剑鱼级(6.2) 单程时间完全相同、
+    // 满技能时 剑鱼 ÷ 皇带鱼 的时长差从 2.21× 被削到 1.41× ⇒ 船长裁定删除下限。
     const ctx = makeTestCtx({
       ships: [ship('warpgod', { warpSpeedAus: 12 })],
     })
@@ -76,8 +78,22 @@ describe('travel.ts 换算（缺省船不缩放）', () => {
       state.skills.trained[sk] = 5
     }
     expect(warpSpeedAus(state, ctx)).toBe(12)
-    expect(travelTimeFactor(state, ctx)).toBe(0.35)
-    expect(travelLegMs(state, ctx, 60)).toBe(Math.round(60 * 60_000 * 0.35))
+    // 3/12 × 0.8³ = 0.128（旧口径会被抬到 0.35）
+    expect(travelTimeFactor(state, ctx)).toBeCloseTo((3 / 12) * 0.8 * 0.8 * 0.8, 6)
+    expect(travelTimeFactor(state, ctx)).toBeLessThan(0.35)
+    expect(travelLegMs(state, ctx, 60)).toBe(Math.round(60 * 60_000 * (3 / 12) * 0.512))
+  })
+
+  it('删下限后：同技能下**船速差完整保留**（快船按速度比线性更快）', () => {
+    const ctx = warpCtx()
+    const state = freshState()
+    for (const sk of ['navigation', 'warp-drive-operation', 'acceleration-control']) {
+      state.skills.trained[sk] = 5
+    }
+    const slow = travelLegMs(state, ctx, 60, 'slowpoke') // 2.8
+    const fast = travelLegMs(state, ctx, 60, 'fasty') // 3.9
+    // 时长比 = 船速比的倒数（旧口径下两者都会被下限拉平）
+    expect(slow / fast).toBeCloseTo(3.9 / 2.8, 3)
   })
 
   it('shipId 参数化：同技能下不同船速各自换算', () => {

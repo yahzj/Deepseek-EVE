@@ -225,7 +225,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 40,
-    description: '动能点防炮：射程短、射速快。贴到近处威力很足，对舰不吃亏；也是唯一能打敌方机群的武器。',
+    description: '动能点防炮：射程短、射速快。贴到近处威力很足，对舰不吃亏；对无人机伤害 ×2，也是唯一能打敌方机群的武器。',
     cpuUse: 12,
     maxRangeM: 2500, // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」（原 1400）；打机群**不看两舰间距**（甲案）
     minRangeM: 1, // 无近盲带：贴到脸上也开火
@@ -237,6 +237,9 @@ export const MODULES: readonly ModuleDef[] = [
     // 射程只有 2,500m 对 3,220m，近身威力补回来）。**作废**旧口径「单发 = 同档主炮的 ~40% ⇒ 对舰明显偏弱」。
     dmgMult: 1.65,
     canHitDrones: true, // **防空属性**：唯一能筛到敌方无人机的武器类型
+    // **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
+    // 打机群那一支的单发 ×2（对舰伤害不动）；三档同倍率（档位差仍由单发/射速承担）。
+    antiDroneDmgMul: 2,
   },
   // 2026-09-11 补档（防空行实测口径：**射程不拉长**——1.4 km 已在"贴近"打法里够用，
   // "想打机群就得走进警戒幕"这条张力应当保留；MK2/MK3 只提单发与射速）
@@ -248,7 +251,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 48,
-    description: '动能点防炮的强化型：射速更快、单发更重，射程依旧偏短——近身对舰与打机群都更利落。',
+    description: '动能点防炮的强化型：射速更快、单发更重，射程依旧偏短——近身对舰与打机群都更利落。对无人机伤害 ×2。',
     cpuUse: 26,
     maxRangeM: 2500, // 三档同射程（船长「按照 2500m 算」）——MK2/MK3 的差异只在单发与射速
     minRangeM: 1,
@@ -257,6 +260,7 @@ export const MODULES: readonly ModuleDef[] = [
     reloadMs: 1400,
     dmgMult: 2.65, // 2026-09-12 裁定「丙」：单发 5 → **16**、名义 DPS **11.43**（= 重型炮台 MK2 的 1.24 倍）
     canHitDrones: true,
+    antiDroneDmgMul: 2, // 对无人机伤害 ×2（船长 2026-09-12「按2倍算」）
   },
   {
     id: 'mod-pd-e-3',
@@ -266,7 +270,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 56,
-    description: '动能点防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段——贴上去打，它是全场最凶的一门。',
+    description: '动能点防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段——贴上去打，它是全场最凶的一门。对无人机伤害 ×2。',
     cpuUse: 44,
     maxRangeM: 2500,
     minRangeM: 1,
@@ -275,6 +279,7 @@ export const MODULES: readonly ModuleDef[] = [
     reloadMs: 1300,
     dmgMult: 2.85, // 2026-09-12 裁定「丙」：单发 6 → **17**、名义 DPS **13.08**（= 攻坚炮台 MK3 的 1.24 倍）
     canHitDrones: true,
+    antiDroneDmgMul: 2, // 对无人机伤害 ×2（船长 2026-09-12「按2倍算」）
   },
   // ══════════ 激光炮（V18B-2 能量系武器形态：消耗能量弹药，必中光束） ══════════
   // 与原能量炮/异星原型（已退役迁移）同伤害系（plasma）/同消耗键，但性格独立：

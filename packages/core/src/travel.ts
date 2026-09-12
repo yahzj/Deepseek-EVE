@@ -1,10 +1,11 @@
 /**
  * 星图航行（V12.1）：飞船跃迁速度 × 航行加速技能族 → 星系间实际耗时。
- * 设计依据（EVE 语义趋同）：data 船表已带 warpSpeedAus（AU/s，2.8~3.9，V10.5b 数据补强时填入）；
+ * 设计依据（EVE 语义趋同）：data 船表已带 warpSpeedAus（AU/s，2.8~7.4，V10.5b 数据补强时填入）；
  * 实际耗时 = 标称分钟 × 60s × (warpRefAus / 船跃迁) × ∏(1 − cutPerLevel × 技能等级)。
  * - 无跃迁数据的船（测试替身/未知 id）→ 按 warpRefAus 计（因子 1.0，行为与旧版一致，测试不破坏）；
  * - 只缩放"星系际航行"耗时：采矿带内周转基础、交火等固定时长不缩放；
- * - 星图最短路径规划仍用静态边权 travelMinutes（本模块只决定"走完要多久"）。
+ * - 星图最短路径规划仍用静态边权 travelMinutes（本模块只决定"走完要多久"）；
+ * - ⚠ **无下限**（2026-09-12 船长「删除下限」；原 `minFactor 0.35` 已删并作废，详见 `travelTimeFactor`）。
  */
 import type { GameState } from './state'
 import type { SimContext } from './types'
@@ -58,7 +59,7 @@ export function warpSpeedAus(state: GameState, ctx: SimContext, shipId?: string 
   return Math.min(12, Math.max(0.5, raw))
 }
 
-/** 航行时间因子（<1 = 更快；>1 = 更慢；下限 minFactor 防极端组合压没航程） */
+/** 航行时间因子（<1 = 更快；>1 = 更慢；**无下限**——见下方 `travelTimeFactor` 注释） */
 export function travelTimeFactor(state: GameState, ctx: SimContext, shipId?: string | null): number {
   const bal = ctx.balance.travel
   // 防御：极旧的自定义 balance 无 travel 段 → 不缩放（因子 1.0）
@@ -71,7 +72,13 @@ export function travelTimeFactor(state: GameState, ctx: SimContext, shipId?: str
   // 舰船操控学（spaceship-command，2026-09-04 补全接活）：全船基础操控，每级航行时间再 −2%（与航行技能族乘算）
   const cmdLv = Math.min(5, state.skills.trained['spaceship-command'] ?? 0)
   if (cmdLv > 0) f *= 1 - 0.02 * cmdLv
-  return Math.max(bal.minFactor, f)
+  // ⚠ **2026-09-12 船长裁定「删除下限」**：原 `Math.max(bal.minFactor, f)`（下限 0.35）**已删除**。
+  // 起因（真引擎实测）：下限**只卡快船** ⇒ 航行族练到 3 级起，飞鱼级(7.4) 与剑鱼级(6.2) 的单程时间
+  // **完全相同**（都被压到 0.35）；满技能时 剑鱼 ÷ 皇带鱼 的时长差从 2.21× 被削到 1.41×，
+  // 而"快运线"（飞鱼 7.4 / 旗鱼 6.3 / 剑鱼 6.2）在长途运输里反倒**比慢而大的货舰更不赚**
+  // （时薪比 0.86× → 0.55×，技能越高越亏）。删掉后：**船速差永远按比例体现**，
+  // 满技能时最快组合 = 因子约 0.187（约 18.7% 时间），配合长途运输的 ×15 航段倍率仍远大于标称航程 ⇒ 无"压没航程"风险。
+  return f
 }
 
 /** 标称分钟 → 实际航行毫秒（星系际航行唯一换算入口；调用点负责"出发时锁定"语义） */
