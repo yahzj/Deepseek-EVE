@@ -889,11 +889,23 @@ function foeSpeedBase(threat: number, bal: BattleBalance): number {
   return Math.min(1.15, Math.max(0.7, lo + (hi - lo) * t))
 }
 
-/** 敌编队总血（C4 时长预期曲线反推，2026-09-05）：参考段火力 × D(T) */
+/**
+ * 敌编队总血（C4 时长预期曲线反推，2026-09-05）：参考段火力 × D(T)。
+ *
+ * ⚠ **2026-09-12 船长裁定「解除血量钳制，改为火力限制」**：
+ * 旧式是 `t = min(1, (T − floor) / span)` ⇒ **威胁 ≥ 96 血量一律冻结在 1152**（威胁 100/150/300 全同），
+ * 而敌火力 `威胁 × foeDpsPerThreat` 却线性不封顶 ⇒ 抬威胁只会得到"更脆更毒"的敌人。
+ * 故此处**去掉 `min(1, …)`**：血量随威胁继续增长；火力改由 `BattleBalance.foeDpsCap`（**150 DPS**，
+ * 见 `foeDpsCapScaleOf`）封顶；**速度与射程成长的钳制保留**（`foeRefSpeedMps` / `growT`，避免敌人"又快又远又硬"）。
+ *
+ * **对现有内容的影响（实测）**：全表 27 张卡威胁 ≤ 96 ⇒ `t ≤ 1` ⇒ **逐字零变化**；
+ * 受影响的是**窝点派生档**（`LAIR_THREAT_MUL` 1.3/1.6/2.0 会把高威胁卡的派生威胁推到 96 以上）
+ * ——那正是本裁定要修的：派生档"威胁涨了、血量被钳住"的失配。
+ */
 export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
   const floor = bal.foeHpCurveFloorThreat ?? 6
   const span = bal.foeHpCurveSpanThreat ?? 90
-  const t = Math.min(1, Math.max(0, (threat - floor) / span))
+  const t = Math.max(0, (threat - floor) / span) // ← 2026-09-12：去掉 min(1, …) 的封顶
   const d = (bal.foeHpCurveDMin ?? 5) + (bal.foeHpCurveDSpan ?? 85) * Math.pow(t, bal.foeHpCurveExp ?? 1.6)
   const table = bal.foeRefFire
   let f = table[0]?.dps ?? 5

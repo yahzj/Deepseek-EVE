@@ -1,20 +1,22 @@
 /**
- * **敌舰体火力上限**（2026-09-12 船长：「**按照 DPS 上限 150 算**」）。
+ * **敌血量钳制解除 + 敌舰体火力上限**（均出自 2026-09-12 船长裁定）。
  *
  * 起因（完整证据链）：讨论「威胁」与「赏金」时发现——
- * 1. `foeHpOfThreat` 的 `t = min(1, …)` 把**敌血钳在威胁 96**（威胁 >96 血量不再增长）；
- * 2. 而**敌火力 `威胁 × foeDpsPerThreat` 线性不封顶** ⇒ 抬威胁会得到"更脆更毒"的敌人；
- * 3. 船长裁定：**解除血量钳制**（另批）/ **火力改为 DPS 上限**，先定 **150**。
+ * 1. `foeHpOfThreat` 的 `t = min(1, …)` 把**敌血钳在威胁 96**（威胁 100/150/300 血量一律 1152）；
+ * 2. 而**敌火力 `威胁 × foeDpsPerThreat` 线性不封顶** ⇒ 抬威胁只会得到"更脆更毒"的敌人；
+ * 3. 船长两条裁定：**解除血量钳制**（改为血量随威胁继续增长）＋**火力改为 DPS 上限**（先定 **150**）。
  *
- * 本文件锁住四件事：
- * ① **零行为变化**：现 27 张卡无一越线（实测最高 = 虚海守望者 131.25）⇒ 建档逐字不变；
- * ② **整卡封顶**：越线时全卡**舰体总 DPS** 钳到上限，且各条目**等比例**缩放；
- * ③ **机群不吃钳制**（机群另有受击增程 / 备用机库 / A5 守恒，且船长已裁定不吃多舰补偿）；
- * ④ **`foeDpsCap` 缺省/0 ⇒ 完全不钳制**（零行为变化开关）。
+ * 本文件锁住六件事：
+ * ① **零行为变化**：现 27 张卡威胁 ≤ 96 ⇒ 血量与建档**逐字不变**，且无一越火力上限；
+ * ② **解除钳制生效**：威胁 > 96 时血量继续增长（不再冻结在 1152）；
+ * ③ **整卡火力封顶**：越线时全卡**舰体总 DPS** 钳到上限，且各条目**等比例**缩放；
+ * ④ **机群不吃火力钳制**（机群另有受击增程 / 备用机库 / A5 守恒，且船长已裁定不吃多舰补偿）；
+ * ⑤ **`foeDpsCap` 缺省/0 ⇒ 完全不钳制**（零行为变化开关）；
+ * ⑥ **速度与射程成长的钳制保留**（避免敌人"又快又远又硬"）。
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES } from '@whale/data'
-import { createFoeSpecs } from '../src/combat'
+import { createFoeSpecs, foeHpOfThreat } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
@@ -80,6 +82,54 @@ function hullDps(a: AnomalyDef, balance = bal): number {
   }
   return d
 }
+
+describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改为火力限制」）', () => {
+  it('威胁 ≤ 96 逐字不变（现 27 张卡零行为变化）', () => {
+    // t ≤ 1 时 min(1,…) 本就不生效 ⇒ 去钳制前后同值。
+    // ⚠ 口径：`foeHpOfThreat = 参考火力 f(威胁) × D(T)`，其中 **f 随威胁分段**
+    //   （`foeRefFire`：≤16 → 2.1 · ≤40 → 9.7 · 其余 → 12.8），D(T) = 5 + 85×t^1.6。
+    //   故威胁 6 = 2.1×5 = 10.5 → **11**（与校准矩阵"6:11"一致）；威胁 96 = 12.8×90 = 1152。
+    expect(foeHpOfThreat(6, bal)).toBe(11)
+    expect(foeHpOfThreat(20, bal)).toBe(90)
+    expect(foeHpOfThreat(45, bal)).toBe(349)
+    expect(foeHpOfThreat(66, bal)).toBe(633)
+    expect(foeHpOfThreat(88, bal)).toBe(1001)
+    expect(foeHpOfThreat(96, bal)).toBe(1152)
+  })
+
+  it('威胁 > 96 血量继续增长（旧口径一律冻结在 1152）', () => {
+    const at96 = foeHpOfThreat(96, bal)
+    const at120 = foeHpOfThreat(120, bal)
+    const at192 = foeHpOfThreat(192, bal)
+    expect(at96).toBe(1152)
+    expect(at120).toBeGreaterThan(at96)
+    expect(at192).toBeGreaterThan(at120)
+    // 真值（威胁 > 40 ⇒ f = 12.8；t = (T−6)/90；D = 5 + 85×t^1.6；敌血 = round(f×D)）：
+    //   T=120 → t=1.2667 → D=129.07 → **1652**（旧口径冻结在 1152）
+    //   T=192 → t=2.0667 → D=276.55 → **3540**
+    expect(at120).toBe(1652)
+    expect(at192).toBe(3540)
+  })
+
+  it('受益面 = 威胁 > 96 的卡（将来的战列舰/旗舰级），不是窝点派生档', () => {
+    // ⚠ 口径澄清（实测）：**窝点派生卡不走这条曲线**——它们用"基础卡血量 × 派生比例"
+    //   （`lairs.ts` 的 hpMul/dmgMul 同乘 scale），所以派生档的血量来自**基础卡**的曲线值。
+    //   本裁定的实际受益面 = 今后写 threat > 96 的**新卡**：它们不再被冻结在 1152。
+    //   （旧路径 `createFoeSpecs` 也会受益，但现表 27 张卡已全部迁入舰级路径。）
+    const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
+    expect(Math.max(...cards.map((a) => a.threat))).toBe(96)
+    // 派生档仍以基础卡（≤96）的曲线值为基准 ⇒ 基础卡零变化就保证了派生档零变化
+    expect(foeHpOfThreat(96, bal)).toBe(1152)
+  })
+
+  it('速度与射程成长的钳制保留（只有血量去钳）', () => {
+    // 速度的 `min(1, …)` 仍在 `foeRefSpeedMps` 里 ⇒ 威胁 200 与 96 的参考速度相同
+    const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
+    expect(cards.length).toBe(27)
+    // 现表无卡 > 96 ⇒ 速度口径不受本次改动影响（守卫：全表威胁上界）
+    expect(Math.max(...cards.map((a) => a.threat))).toBe(96)
+  })
+})
 
 describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算」）', () => {
   it('现值为 150，且现有全表卡无一越线（零行为变化）', () => {
