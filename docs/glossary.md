@@ -100,6 +100,7 @@
 | 护盾回充 | 护盾损失不保留：战中被动回充（shieldRegenPerSec，初值 2%/s；甲/结构打穿后停充防僵持），脱战/场间回满 | balance.battle |
 | 修理组件 | kit 消耗品（repairkit-civ 0.35 / repairkit-mil 0.7）：使用一枚对结构+装甲各恢复上限百分比；市场直售+蓝图自制（材料≈市价55%）；自动链（连续出击前装甲或结构 <50% 自动修补至 60%，2026-09-08）与手动入口（舰船页/停留面板） | shipyard.useOneRepairKit |
 | 支援件 | V18.1 support 件：稳定(伤害)/射速/索敌(命中)/陀螺(闪避) | **回调已取消（2026-09-05 定）** |
+| 船体维修装置（战后消耗口径） | 2026-09-11 船长：「**船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结。**」⇒ 战斗日志里关于本装置的**两条都取消**（开战「维修装置待命…」/缺料警示、战斗中「组件耗尽自动停机」）；消耗数只进**战后总结**，形如 `，船体维修装置消耗 军用修理组件 ×12`（多型按「、」连接；一枚没耗 → 不添尾巴；旧档无逐型账本 → `消耗修理组件 ×N` 只报总数）。**五处战报同源** `repairUsageText(battle, ctx)`：远征胜/败（含弃船）、遭遇战大捷/失利/自动脱离、AI 副船胜败。装置是否在跑由战斗页徽标表达（`维修装置运转中 · 组件 ×N` / `维修装置停机`，悬停含"开战时未备组件"），故删日志不丢"组件够不够"的判断依据。逐型记账 = `BattleState.repair.kitsUsedByType`（可选、零迁移） | core/combat.ts（pulseRepairs 累加 / `repairUsageText`）；core/expedition.ts、core/encounters.ts、core/ai.ts；state.ts；本稿 §八见 docs/design/hull-repair-module-20260909.md；tests（combat / expedition / b1） |
 
 ## 三、装备 / 制造 / 经济
 

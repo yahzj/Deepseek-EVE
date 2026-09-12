@@ -32,6 +32,7 @@ import {
   spreadWinChance,
   preloadRepairFor,
   refundRepairKits,
+  repairUsageText,
   REPAIR_PULSE_MS,
 } from '../src/combat'
 import { addShipToFleet } from '../src/shipyard'
@@ -838,7 +839,7 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     const ctx = makeTestCtx({
       ships: [ship('sandcat', { shieldHp: 5_000, armorHp: 5_000, hullHp: 5_000 })],
       modules: [moduleDef('mod-rep', 'support', 0, { rack: 'mid', cpuUse: 6, repairArmorHp: 5, repairHullHp: 5, repairKit: 'kit-civ' })],
-      items: [kit('kit-civ', '民用修理组件')],
+      items: [kit('kit-civ', '民用修理组件'), kit('kit-mil', '军用修理组件')],
       anomalies: [anomaly('ano-rep', 'galaxy-hub', { threat: 40, reward: 1_000 })],
     })
     if ((opts?.cargoKits ?? 0) > 0) addItem(state, 'kit-civ', opts?.cargoKits ?? 0)
@@ -914,7 +915,7 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     expect(withRep.a).toBeGreaterThan(without.a)
   })
 
-  it('组件耗尽自动停机：余额 0 后停调度、写停机日志', () => {
+  it('组件耗尽自动停机：余额 0 后停调度，且**不写日志**（消耗数只进战报）', () => {
     const { state, ctx } = repWorld({ cargoKits: 300 })
     addModule(state, 'mod-rep', 1)
     expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
@@ -925,12 +926,28 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     const logs0 = state.logs.length
     state.gameMs = 62_000
     advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-rep')
-    // 5s/10s 两跳各扣 1 枚；15s 到期跳发现余额 0 → 停机并日志；20s 到期跳已全停 → 停调度
+    // 5s/10s 两跳各扣 1 枚；15s 到期跳发现余额 0 → 停机；20s 到期跳已全停 → 停调度
     expect(battle.repair!.pulses).toBe(4)
     expect(battle.repair!.kitsUsed).toBe(2)
     expect(battle.repair!.units[0]!.stopped).toBe(true)
     expect(battle.repair!.nextPulseAtMs).toBeUndefined() // 全部停机 → 停调度
-    expect(state.logs.slice(logs0).some((l) => l.text.includes('耗尽'))).toBe(true)
+    // 2026-09-11 船长：「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
+    expect(state.logs.slice(logs0).some((l) => l.text.includes('维修装置'))).toBe(false)
+    expect(repairUsageText(battle, ctx)).toBe('消耗 民用修理组件 ×2')
+  })
+
+  it('战后总结文案：逐型报数、旧档退化报总数、未消耗不添尾巴', () => {
+    const { state, ctx } = repWorld({ cargoKits: 10 })
+    addModule(state, 'mod-rep', 1)
+    expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
+    const battle = startBattleFor(state, ctx, 'sandcat', 'ano-rep', 0)!
+    const r = battle.repair!
+    expect(repairUsageText(battle, ctx)).toBe('') // 一枚没耗 → 战报不添尾巴
+    r.kitsUsed = 3
+    r.kitsUsedByType = { 'kit-civ': 2, 'kit-mil': 1 }
+    expect(repairUsageText(battle, ctx)).toBe('消耗 民用修理组件 ×2、军用修理组件 ×1')
+    delete r.kitsUsedByType // 旧档（2026-09-11 前存的账本）无逐型明细 → 只报总数
+    expect(repairUsageText(battle, ctx)).toBe('消耗修理组件 ×3')
   })
 
   it('痊愈空转不烧组件：满血推进不消耗、只计脉冲', () => {

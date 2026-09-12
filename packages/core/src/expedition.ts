@@ -35,6 +35,7 @@ import {
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKits,
+  repairUsageText,
   settleDroneLosses,
   startBattleFor,
 } from './combat'
@@ -505,10 +506,15 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const lootPart = lootText.length > 0 ? `，缴获 ${lootText.join('、')}` : ''
     const standPart = firstBlood ? `协会声望 +${anomaly.standingGain}` : '该悬赏已首胜过：本次无额外声望'
     const dronePart = droneLostText ? `，机群战损 ${droneLostText}` : ''
+    // 船体维修装置：消耗数只进战报（2026-09-11 船长：不单独显示日志）
+    const repairPart = (() => {
+      const t = repairUsageText(battle, ctx)
+      return t.length > 0 ? `，船体维修装置${t}` : ''
+    })()
     addLog(
       state,
       'trade',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}，${standPart}` +
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}${repairPart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`,
     )
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
@@ -578,7 +584,12 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     if (abandoned) {
       // 弃船：无维修费，船+货仓+装备全损
-      addLog(state, 'warn', `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}）……`)
+      const abandonRepair = repairUsageText(battle, ctx)
+      addLog(
+        state,
+        'warn',
+        `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}）……`,
+      )
       loseShip(state, state.shipId, ctx, `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`)
       exp.active = false
       exp.battle = null
@@ -595,10 +606,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     state.wallet.isk -= repair
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''
+    const loseRepair = repairUsageText(battle, ctx)
     addLog(
       state,
       'warn',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${dronePartLose}练练炮术学，记得给船做保养。`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`,
     )
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）

@@ -1837,6 +1837,25 @@ export function refundRepairKits(
 }
 
 /**
+ * **战后总结里的"修理组件消耗"文案**（2026-09-11 船长：「船体修理装置不单独显示日志。
+ * 只将消耗组件数量显示到战后总结」）：本场一枚没耗 = `''`（战报不添尾巴），否则形如
+ * `消耗 军用修理组件 ×12`（多型按「、」连接）。战报四处（远征胜/败、遭遇战、AI 副船）共用本函数。
+ */
+export function repairUsageText(
+  battle: { repair?: import('./state').BattleState['repair'] } | null | undefined,
+  ctx: SimContext,
+): string {
+  const r = battle?.repair
+  if (!r || (r.kitsUsed ?? 0) <= 0) return ''
+  const byType = r.kitsUsedByType ?? {}
+  const parts = Object.entries(byType)
+    .filter(([, n]) => n > 0)
+    .map(([id, n]) => `${ctx.items.get(id)?.name ?? id} ×${n.toLocaleString('zh-CN')}`)
+  if (parts.length === 0) return `消耗修理组件 ×${r.kitsUsed.toLocaleString('zh-CN')}`
+  return `消耗 ${parts.join('、')}`
+}
+
+/**
  * 单次维修脉冲（advanceBattleFor 在到期脉冲处调用）：
  * 逐台未停机装置修复——每层通道修复量 = 该层额度，某层已满（或补满）后，该层剩余额度
  * 转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
@@ -1874,11 +1893,10 @@ function pulseRepairs(
     }
     const kitNow = r.kits[u.kitId] ?? 0
     if (kitNow <= 0) {
-      // 组件耗尽（预载余额用光）：本台停机，日志一次
+      // 组件耗尽（预载余额用光）：本台停机。
+      // 2026-09-11 船长「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
+      // ⇒ **不再写日志**（战斗界面底部已有"运转中/已停机"状态与悬停说明，玩家仍看得见）
       u.stopped = true
-      const modName = ctx.modules.get(u.moduleId)?.name ?? u.moduleId
-      const kitName = ctx.items.get(u.kitId)?.name ?? u.kitId
-      addLog(state, 'warn', `🔧 ${modName}的${kitName}耗尽，自动停机——战斗中装甲/结构修复暂停。`)
       continue
     }
     // 额度分配：各层先按自身额度补缺口，层满后剩余额度转投另一层（总上限 = 甲 + 结构额度）
@@ -1893,6 +1911,9 @@ function pulseRepairs(
     hp.h += hg
     r.kits[u.kitId] = kitNow - 1
     r.kitsUsed += 1
+    // 逐型记账（战报文案用：2026-09-11 船长「只将消耗组件数量显示到战后总结」）
+    r.kitsUsedByType = { ...(r.kitsUsedByType ?? {}) }
+    r.kitsUsedByType[u.kitId] = (r.kitsUsedByType[u.kitId] ?? 0) + 1
   }
   r.pulses += 1
   if (active === 0) r.nextPulseAtMs = undefined // 全部停机：停调度
@@ -2077,33 +2098,14 @@ export function startBattleFor(
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
   }
   // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
-  // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）
+  // 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1，战斗结束退还未用（与弹药同哲学）。
+  // 2026-09-11 船长：「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
+  // ⇒ 开战的「待命 / 缺组件」两条日志**取消**（装备效果与"是否吃组件"在装配页与手册里已写明，
+  //   战斗中是否运转由战斗界面底部状态灯表达），消耗数只在战报里以「消耗 …×N」出现。
   const repair = preloadRepairFor(state, ctx, shipId, bal.maxBattleMs)
   if (repair) {
     const ready = repair.units.filter((u) => !u.stopped)
-    if (ready.length > 0) {
-      repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
-      const parts: string[] = []
-      for (const u of repair.units) {
-        const modName = ctx.modules.get(u.moduleId)?.name ?? u.moduleId
-        // 无消耗自愈件（生体件）：不吃组件，单列说明
-        if (u.free) {
-          parts.push(`${modName}（自愈：每跳修甲 ${u.armorPerPulse} / 结构 ${u.hullPerPulse}，无需组件）`)
-          continue
-        }
-        const n = repair.kits[u.kitId] ?? 0
-        parts.push(`${modName}${u.stopped ? `（缺${ctx.items.get(u.kitId)?.name ?? u.kitId}停机）` : ` ×${n}枚组件`}`)
-      }
-      addLog(
-        state,
-        'info',
-        `🔧 船体维修装置待命：${parts.join("、")}——战斗中每 5 秒自动修复装甲/结构。`,
-      )
-    } else {
-      const first = repair.units[0]!
-      const kitName = ctx.items.get(first.kitId)?.name ?? first.kitId
-      addLog(state, 'warn', `🔧 已装维修装置但货舱/仓库没有${kitName}——本场不会自动修复，请先补给。`)
-    }
+    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
     battle.repair = repair
   }
   return battle

@@ -38,6 +38,7 @@ import {
   aiWinPreview,
   refundAmmo,
   refundRepairKits,
+  repairUsageText,
   settleDroneLosses,
   startBattleFor,
 } from './combat'
@@ -976,10 +977,13 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     const dropText = rollAiCoreDrop(state, anomaly.threat, ctx)
+    // 船体维修装置消耗数（2026-09-11 船长：不单独显示日志，只进战报）
+    const repairUse = repairUsageText(battle, ctx)
     addLog(
       state,
       'trade',
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 大捷（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）！` +
+        `${repairUse.length > 0 ? `船体维修装置${repairUse}。` : ''}` +
         `奖金 ${reward.toLocaleString('zh-CN')} ISK${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
         `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
     )
@@ -1001,10 +1005,12 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     const repair = Math.min(state.wallet.isk, Math.floor(anomaly.rewardIsk * bal.defeatCostRatio))
     state.wallet.isk -= repair
     const dur = Math.round((state.fleet[shipId]?.durability ?? 0) * 100)
+    const aiRepairUse = repairUsageText(battle, ctx)
     addLog(
       state,
       'warn',
-      `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} ISK（耐久 ${dur}%）。`,
+      `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} ISK（耐久 ${dur}%）。` +
+        `${aiRepairUse.length > 0 ? `船体维修装置${aiRepairUse}。` : ''}`,
     )
   }
   // 任务结束：核心归还核心库
