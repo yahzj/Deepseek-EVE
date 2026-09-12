@@ -38,10 +38,23 @@ export const BLUEPRINT_PRICE_STEP = 500
 
 /**
  * **单独调整过的蓝图价**（船长 2026-09-11：「所有蓝图按系数都是默认值。**如果有单独调整过的
- * 则允许覆盖默认值**」）：键 = 蓝图 id，值 = 覆盖书价 + 理由；**空表 = 全部走系数默认值**。
+ * 则允许覆盖默认值**」）：键 = 蓝图 id，值 = 覆盖书价 + 理由。
  * 只放"有意偏离系数"的个例；`content-check` 会校验键必须是真实蓝图、且两处价必须等于覆盖价。
+ *
+ * **现存 6 条 = 弹药蓝图**（船长同日复核：「**弹药蓝图回滚到 1.5 倍，其他保持不变**」）：
+ * 弹药线维持 2026-09-09「补给线 ×1.5」那批的落账原值（6 张全数入表，故弹药书价不随系数漂移）。
+ * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
  */
-export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {}
+export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
+  // 基础弹（民用档）：2026-09-09 原值
+  'bp-ammo-kinetic': { price: 1_350, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-explosive': { price: 1_650, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-plasma': { price: 1_950, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  // 弹药 MK2（奇货书）：2026-09-09 原值（＝当时「现价 ×1.5」的落账值 9k/12.75k/18k）
+  'bp-ammo-kinetic-2': { price: 9_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-explosive-2': { price: 12_750, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-plasma-2': { price: 18_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+}
 
 /**
  * 按系数算出的**应有书价**：① 有单独覆盖 → 用覆盖价；② 否则 = 产物现货价 × 档位系数（取整 500 ISK）。
@@ -233,7 +246,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 ISK ≈ 720×0.53
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
-    priceIsk: 1500,
+    priceIsk: 1350, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '动能弹生产线图纸：把三钛合金轧成高速实心弹（120 发/批，对护盾 ×1.5）。',
   },
   {
@@ -244,7 +257,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 ISK ≈ 840×0.57
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 15,
-    priceIsk: 2000,
+    priceIsk: 1650, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '爆破导弹生产线图纸：类银超金属冲压弹壳装填高爆装药（120 发/批，对装甲 ×1.5）。',
   },
   {
@@ -255,7 +268,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-mexallon', count: 26 }], // 520 ISK ≈ 960×0.54
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 18,
-    priceIsk: 2000,
+    priceIsk: 1950, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '能量弹药生产线图纸：类晶体胶体充能电池组（120 发/批，对护盾 ×1.25）。',
   },
   /* ═══ 弹药 MK2 蓝图（2026-09-09 船长拍板：三族高级弹稀有书可造；材料≈市价 55% 锚沿用） ═══ */
@@ -267,7 +280,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 ISK ≈ 5,400×0.55
     buildSeconds: 10,
     buildCostIsk: 90,
-    priceIsk: 21500, // 书价 = 产物 5,400 × 4（奇货档，2026-09-11 船长：奇货默认 ×4）
+    priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '动能弹 MK2 生产线图纸：超噬合金弹芯轧制（120 发/批，对护盾 ×1.5）。',
   },
   {
@@ -278,7 +291,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 ISK ≈ 7,200×0.55
     buildSeconds: 10,
     buildCostIsk: 120,
-    priceIsk: 29000, // 书价 = 产物 7,200 × 4（奇货档，2026-09-11 船长：奇货默认 ×4）
+    priceIsk: 12_750, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '爆破导弹 MK2 生产线图纸：同位聚晶双级装药弹头（120 发/批，对装甲 ×1.5）。',
   },
   {
@@ -289,7 +302,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 ISK ≈ 9,600×0.56
     buildSeconds: 10,
     buildCostIsk: 160,
-    priceIsk: 38500, // 书价 = 产物 9,600 × 4（奇货档，2026-09-11 船长：奇货默认 ×4）
+    priceIsk: 18_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '能量弹药 MK2 生产线图纸：星髓晶高密充能电池组（120 发/批，对护盾 ×1.25）。',
   },
   /* ═══ 修理组件蓝图（2026-09-05 P2 定稿：材料≈市价 55% 锚，参数可调） ═══ */
