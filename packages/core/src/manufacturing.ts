@@ -71,9 +71,76 @@ export function findBuildable(
   return null
 }
 
+/** 商店/界面用：蓝图的单次可用性（普通蓝图恒 `ok`；一次性蓝图按"名下名额 + 书架那本书"判定） */
+export interface RecipeCapability {
+  /** ok = 可以开工；learned = 已永久学会（无需书）；consumeBook = 本次开工要吃掉一本一次性书 */
+  kind: 'ok' | 'learned' | 'need-book' | 'exhausted' | 'no-book'
+  /** 本次开工是否要吃一本一次性书 */
+  consumeBook: boolean
+}
+
+/** 是否临时占驻某个正开着的制造线（取消/完成即释放）——写进蓝图书架文案 */
+export function oneTimeBookInUse(state: GameState, blueprintId: string): boolean {
+  return state.manufacturingRuns.some((r) => r.active && r.blueprintId === blueprintId)
+}
+
+/**
+ * **一次性图纸的可用性**（2026-09-12 船长裁定；普通蓝图恒 `ok`：
+ * 只由 `startManufacturing` 的"是否已学会"把关，本函数不改旧行为）。
+ *
+ * 口径（逐条对应船长裁定）：
+ * - **已永久学会** ⇒ `learned`：一次性书**不消耗也不用**（2乙：不作"学习"用，也不当材料吞）；
+ * - **名额未用尽 且 书架有这本书** ⇒ `ok` + `consumeBook`（1甲：学了才能造一次，书当场吃掉）；
+ * - **名额已用尽** ⇒ `exhausted`（要再造就**再有一本**）；
+ * - **书架没有** ⇒ `no-book`。
+ */
+export function recipeCapability(state: GameState, blueprintId: string, singleUse: boolean): RecipeCapability {
+  if (!singleUse) return { kind: 'ok', consumeBook: false }
+  if (state.learnedRecipes.includes(blueprintId)) return { kind: 'learned', consumeBook: false }
+  // ⚠ **书在架上就是可用**（名额用完只表示"上一张已吃掉"；再获得一张 = 又能造一次）——
+  // 所以"有书"必须优先于"名单已用尽"判定，否则重复获得的图纸会被误拒（本批用例抓到过）。
+  const stock = state.blueprintStock[blueprintId] ?? 0
+  if (stock > 0) return { kind: 'ok', consumeBook: true }
+  if ((state.spentOneTimeRecipes ?? []).includes(blueprintId)) return { kind: 'exhausted', consumeBook: false }
+  return { kind: 'no-book', consumeBook: false }
+}
+
 /** 玩家是否已学会某配方（学习蓝图书后永久可造；两类通用） */
 export function ownsBlueprint(state: GameState, blueprintId: string): boolean {
   return state.learnedRecipes.includes(blueprintId)
+}
+
+/** 蓝图**定义**（两类通用；找不到返回 undefined） */
+export function blueprintDefOf(
+  ctx: SimContext,
+  blueprintId: string,
+): BlueprintDef | ShipBlueprintDef | undefined {
+  return ctx.blueprints.get(blueprintId) ?? ctx.shipBlueprints.get(blueprintId)
+}
+
+/** 该蓝图是否一次性图纸（2026-09-12 船长定；缺省 false = 普通蓝图） */
+export function isSingleUseBlueprint(ctx: SimContext, blueprintId: string): boolean {
+  return blueprintDefOf(ctx, blueprintId)?.singleUse === true
+}
+
+/** 该蓝图当前能否开工（界面按钮可用性用；与 `startManufacturing` 同源判定） */
+export function canStartBlueprint(state: GameState, ctx: SimContext, blueprintId: string): boolean {
+  if (ownsBlueprint(state, blueprintId)) return true
+  return recipeCapability(state, blueprintId, isSingleUseBlueprint(ctx, blueprintId)).kind === 'ok'
+}
+
+/**
+ * **吃掉一本一次性书**并把名额记为已用尽（开工那一刻调用，与材料扣除同源）。
+ * 返回 false = 书架已无书（调用方应视为开工失败）。
+ */
+function spendOneTimeBook(state: GameState, blueprintId: string): boolean {
+  const c = state.blueprintStock[blueprintId] ?? 0
+  if (c <= 0) return false
+  if (c - 1 <= 0) delete state.blueprintStock[blueprintId]
+  else state.blueprintStock[blueprintId] = c - 1
+  const spent = (state.spentOneTimeRecipes ??= [])
+  if (!spent.includes(blueprintId)) spent.push(blueprintId)
+  return true
 }
 
 /** 蓝图显示名 */
@@ -151,8 +218,23 @@ export function startManufacturing(
   }
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }
+  // 配方可用性（2026-09-12 船长定）：普通蓝图 = 必须已学会；一次性图纸 = 有书 + 名额未用尽
+  // （⚠ **已永久学会时，一次性书不消耗也不使用** —— 船长裁定「2乙」）
+  const singleUse = isSingleUseBlueprint(ctx, blueprintId)
+  const cap = recipeCapability(state, blueprintId, singleUse)
   if (!ownsBlueprint(state, blueprintId)) {
-    return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
+    if (singleUse) {
+      // ⚠ **先看"书架有没有书"**：有书就能用掉（可能是重复获得的那张）；
+      // 只有"书架没书"时才区分两种拒绝——名额已用尽（要再获得一张）／从未获得过。
+      if (cap.kind !== 'ok') {
+        if ((state.spentOneTimeRecipes ?? []).includes(blueprintId)) {
+          return { ok: false, error: '这张一次性图纸的制造名额已用尽：需要再获得一张同名一次性图纸。' }
+        }
+        return { ok: false, error: '一次性图纸不在蓝图书架：请先获得这张图纸。' }
+      }
+    } else {
+      return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
+    }
   }
   if (worker === 'pilot') {
     // 主控亲自制造 = 全局限 1 条 + 与手动精炼/回收共用一个手动工作位 + 占主控工作位
@@ -198,6 +280,11 @@ export function startManufacturing(
   for (const need of buildable.spec.materials) {
     removeWare(state, need.itemId, matNeedCount(state, need.count))
   }
+  // 一次性图纸：**开工那一刻吃掉这本书**（船长裁定「3甲」，与材料同源）；
+  // 取消/失败**不退还**（书代表"一次制造资格"，材料才是可退的投入）
+  if (cap.consumeBook && !spendOneTimeBook(state, blueprintId)) {
+    return { ok: false, error: '一次性图纸不在蓝图书架：请先获得这张图纸。' }
+  }
 
   state.manufacturingRuns.push({
     active: true,
@@ -211,7 +298,7 @@ export function startManufacturing(
   addLog(
     state,
     'trade',
-    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」），${worker === 'pilot' ? '主控亲自开线' : `${aiCoreName(worker)}驱动`}，预计 ${formatDurationMs(durationMs)} 完成。`,
+    `制造开始：${productName}（蓝图「${blueprintName(ctx, blueprintId)}」）${cap.consumeBook ? '［一次性图纸：已消耗，本配方只能制造一次］' : ''}，${worker === 'pilot' ? '主控亲自开线' : `${aiCoreName(worker)}驱动`}，预计 ${formatDurationMs(durationMs)} 完成。`,
   )
   return { ok: true }
 }
@@ -236,7 +323,8 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
     addLog(
       state,
       'info',
-      `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）。`,
+      `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）` +
+        (mf.blueprintId && isSingleUseBlueprint(ctx, mf.blueprintId) ? '；⚠ 该一次性图纸开工时已消耗，取消不退。' : '。'),
     )
   } else {
     addLog(state, 'warn', '制造作业已取消（引用的蓝图记录缺失，无材料可退）。')

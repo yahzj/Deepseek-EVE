@@ -18,6 +18,7 @@ import {
   matNeedCount,
   missingMaterials,
   ownsBlueprint,
+  recipeCapability,
 } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -108,20 +109,23 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
 
   if (entries.length === 0) {
     return (
-      <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造</span>}>
+      <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}>
         <div className="app-dim app-note">
           书架上还没有蓝图书：到下方组装机点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。
+          一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。
         </div>
       </Panel>
     )
   }
 
   return (
-    <Panel className="is-fill" title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；重复书只能出售</span>}>
+    <Panel className="is-fill" title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；一次性图纸只能制造一次</span>}>
       <div className="app-shelf-grid">
         {entries.map(([id, n]) => {
           const bp = engine.blueprints.find((b) => b.id === id) ?? engine.shipBlueprints.find((b) => b.id === id)
           const learned = ownsBlueprint(state, id)
+          const su = bp?.singleUse === true
+          const willConsume = su && !learned && (state.spentOneTimeRecipes ?? []).includes(id)
           const kindShip = (bp && 'shipId' in bp) || (!bp && engine.shipBlueprints.some((b) => b.id === id))
           return (
             <div key={id} className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}`}>
@@ -135,17 +139,27 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
                 </span>
               </div>
               <div className="app-belt-desc">
-                {learned ? '配方已学会（重复书可出售）' : '尚未学习——学习后永久可造'}
+                {su
+                  ? learned
+                    ? '一次性图纸：已永久学会该配方，这张用不上（不消耗）'
+                    : willConsume
+                      ? '一次性图纸：制造名额已用尽，这张开工时会直接消耗并制造一次'
+                      : '一次性图纸：不能学习——到组装机开工时消耗，只能制造一次'
+                  : learned
+                    ? '配方已学会（重复书可出售）'
+                    : '尚未学习——学习后永久可造'}
               </div>
               <div className="app-belt-actions">
-                {!learned ? (
+                {!learned && !su ? (
                   <button className="app-btn is-small is-primary" onClick={() => handleLearn(id)}>
                     学习
                   </button>
                 ) : null}
-                <button className="app-btn is-small" onClick={() => handleSell(id)} title="按市场收购价卖出这本蓝图书（重复书只能出售）">
-                  市价出售
-                </button>
+                {!su ? (
+                  <button className="app-btn is-small" onClick={() => handleSell(id)} title="按市场收购价卖出这本蓝图书（重复书只能出售）">
+                    市价出售
+                  </button>
+                ) : null}
               </div>
             </div>
           )
@@ -251,6 +265,22 @@ function BlueprintCard({
   const spec = { materials, buildSeconds, buildCostIsk: 0 }
   const buildMs = calcBuildDurationMs(state, engine.ctx, spec)
   const bookCount = state.blueprintStock[blueprintId] ?? 0
+  // **一次性图纸**（2026-09-12 船长：「玩家无法学会，只能制造一次」）：
+  // 不学习、每次开工消耗一本同名图纸；已永久学会时这本不消耗也不用（裁定「2乙」）
+  const bpDef = engine.ctx.blueprints.get(blueprintId) ?? engine.ctx.shipBlueprints.get(blueprintId)
+  const singleUse = bpDef?.singleUse === true
+  const cap = recipeCapability(state, blueprintId, singleUse)
+  const canBuild = ownsBlueprint(state, blueprintId) || cap.kind === 'ok'
+  /** 一次性图纸的缺口提示（`null` = 无需提示） */
+  const oneTimeNote = !singleUse
+    ? null
+    : owned
+      ? '已永久学会该配方：这张一次性图纸用不上（不消耗，可留作纪念或转手）'
+      : cap.kind === 'exhausted'
+        ? '这张一次性图纸的制造名额已用尽：要再造需要再获得一张同名图纸'
+        : cap.kind !== 'ok'
+          ? '一次性图纸不在蓝图书架：需要先获得这张图纸'
+          : null
   const short = missingMaterials(state, engine.ctx, spec)
   const goodKey = bpGoodKey(engine, blueprintId)
   const lock = !owned && goodKey ? marketLockedReason(state, engine.ctx, goodKey) : null
@@ -338,6 +368,10 @@ function BlueprintCard({
           <MarkStar engine={engine} kind="blueprints" id={blueprintId} />
           {owned ? (
             <span className="app-chip">已学会</span>
+          ) : singleUse && bookCount > 0 ? (
+            <span className="app-chip is-stock" title="一次性图纸：不能学习，只能到组装机直接制造一次（开工时消耗这张图纸）">
+              一次性图纸 ×{bookCount}
+            </span>
           ) : bookCount > 0 ? (
             <span className="app-chip">蓝图书 ×{bookCount}</span>
           ) : lock ? (
@@ -424,7 +458,8 @@ function BlueprintCard({
       <div className="app-belt-actions">
         {/* 循环制造（2026-09-10 船长定：开关与目标件数**单独领出来挂在生产卡上**，不再逐线各一份）——
             作用于本卡全部制造线（含主控亲自那条），新开的线自动继承；目标件数 = 全卡合计口径 */}
-        {owned || running ? (
+        {/* 一次性图纸不循环**（2026-09-12 船长：「只能制造一次」）⇒ 该开关对它不适用，整块不渲染 */}
+        {(owned || running) && !singleUse ? (
           <div className="app-belt-loop">
             <label
               className="app-toggle"
@@ -499,12 +534,12 @@ function BlueprintCard({
           </div>
         ) : null}
 
-        {owned ? (
+        {canBuild ? (
           <>
             <button
               className="app-btn is-small is-primary"
               disabled={manualNote !== null || short.length > 0}
-              title={manualTitle}
+              title={oneTimeNote ?? manualTitle}
               onClick={() => runWith('pilot')}
             >
               手动制造
@@ -535,7 +570,7 @@ function BlueprintCard({
               <button
                 className="app-btn is-small"
                 disabled={!core || short.length > 0}
-                title={core ? aiTitle : '无可用 AI 核心：先去市场购入「基础 AI 核心」，或等占用中的核心归还'}
+                title={oneTimeNote ?? (core ? aiTitle : '无可用 AI 核心：先去市场购入「基础 AI 核心」，或等占用中的核心归还')}
                 onClick={() => core && runWith(core)}
               >
                 AI 制造
@@ -545,6 +580,10 @@ function BlueprintCard({
         ) : lock ? (
           <button className="app-btn is-small" disabled title={lock}>
             ✕ 声望未达标
+          </button>
+        ) : singleUse ? (
+          <button className="app-btn is-small" disabled title={oneTimeNote ?? '一次性图纸：需要一张同名图纸才能制造'}>
+            {cap.kind === 'exhausted' ? '✕ 制造名额已用尽' : '✕ 需要一次性图纸'}
           </button>
         ) : (
           <button className="app-btn is-small" onClick={handleAcquire}>
@@ -690,9 +729,12 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
   pushEquip()
   pushSupply()
 
-  /** 可开工判定（与卡片按钮同口径）：已学会 + 材料足（制造费已取消；劳动者判定由卡片按钮各自表达） */
+  /** 可开工判定（与卡片按钮同口径）：已学会（或一次性图纸有货且名额未用尽）+ 材料足
+   *  （制造费已取消；劳动者判定由卡片按钮各自表达） */
   function canStartNow(blueprintId: string, materials: readonly MaterialNeed[], buildSeconds: number): boolean {
-    if (!ownsBlueprint(state, blueprintId)) return false
+    const su = engine.ctx.blueprints.get(blueprintId)?.singleUse === true
+      || engine.ctx.shipBlueprints.get(blueprintId)?.singleUse === true
+    if (!ownsBlueprint(state, blueprintId) && recipeCapability(state, blueprintId, su).kind !== 'ok') return false
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
   }
 

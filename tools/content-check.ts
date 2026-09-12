@@ -250,6 +250,8 @@ console.log(`· 装备：${MODULES.length} 件`)
 
 // 蓝图
 const bpIds = new Set<string>()
+/** 逆向研究产出的蓝图 id 集合（一次性图纸不得出现在这里，见下方契约） */
+const FRAGMENT_RECIPES_IDS = new Set(Object.values(FRAGMENT_RECIPES).map((r) => r.blueprintId))
 const moduleIdSet = new Set(MODULES.map((m) => m.id))
 for (const bp of BLUEPRINTS) {
   if (bpIds.has(bp.id)) errors.push(`蓝图 id 重复：${bp.id}`)
@@ -269,9 +271,16 @@ for (const bp of BLUEPRINTS) {
     check(!!mat && mat.kind === 'mineral', `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物`)
     check(need.count > 0 && Number.isInteger(need.count), `蓝图 ${bp.id} 材料数量非法`)
   }
+  // **一次性图纸豁免**（2026-09-12 船长：「玩家无法学会，只能制造一次的图纸」）：
+  // 它**不上市场**（不能买入/不能学），来源由后续裁定指定（掉落/奖励），故不要求市场卡。
   check(
-    MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === bp.id),
+    bp.singleUse === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === bp.id),
     `装备蓝图 ${bp.id} 没有市场卡（无法购书学习）`,
+  )
+  // 一次性图纸**不得进逆向研究**（否则碎片能刷出永久配方；船长同日裁定「6 不进」）
+  check(
+    bp.singleUse !== true || !FRAGMENT_RECIPES_IDS.has(bp.id),
+    `一次性图纸 ${bp.id} 不得出现在碎片逆向配方表（会被逆向成永久配方）`,
   )
 }
 const shipIdSet = new Set(SHIPS.map((s) => s.id))
@@ -284,7 +293,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     check(!!mat && mat.kind === 'mineral', `舰船蓝图 ${sbp.id} 材料 ${need.itemId} 不存在或不是矿物`)
   }
   check(
-    MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
+    sbp.singleUse === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
     `舰船蓝图 ${sbp.id} 没有市场卡（无法购书学习）`,
   )
 }

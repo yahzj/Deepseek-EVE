@@ -320,8 +320,14 @@ export {
   manufacturingRunViews,
   manufacturingManualActive,
   findBuildable,
+  // 一次性图纸（2026-09-12 船长）：可用性判定 / 是否一次性 / 蓝图定义 / 开工可行性
+  recipeCapability,
+  isSingleUseBlueprint,
+  blueprintDefOf,
+  canStartBlueprint,
+  oneTimeBookInUse,
 } from './manufacturing'
-export type { BuildSpec, ManufacturingView, ManufacturingLoopView } from './manufacturing'
+export type { BuildSpec, ManufacturingView, ManufacturingLoopView, RecipeCapability } from './manufacturing'
 
 export {
   ensureMarket,

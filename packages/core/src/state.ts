@@ -767,6 +767,13 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   escrowShips: Record<number, { shipId: string; defId: string; durability: number; customName: string | null }>
   /** 已学会配方（蓝图消耗品：学会后可无限制造） */
   learnedRecipes: string[]
+  /**
+   * **一次性图纸"名额已用尽"**（2026-09-12 船长定）：开工时消耗一本一次性书 ⇒ 该配方进本表，
+   * 之后**必须再有一本一次性书**才能再开工（不写 = 还有名额）。
+   * 与 `learnedRecipes` 分开存：一次性配方**永不可学习**，只是"这一门只能用一次"。
+   * 兼容字段：老档缺省 = 空（零迁移）。
+   */
+  spentOneTimeRecipes?: string[]
   /** 持有的蓝图书：蓝图 id -> 数量（可学习或挂卖） */
   blueprintStock: Record<string, number>
 }
@@ -1507,6 +1514,7 @@ export function createInitialState(opts?: {
     escrowItems: {},
     escrowShips: {},
     learnedRecipes: [],
+    spentOneTimeRecipes: [],
     blueprintStock: {},
     events: { nextAtGameMs: 0 },
     mining: {
