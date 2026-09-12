@@ -98,9 +98,10 @@ const PROPOSED_FOE_SPEED: Record<string, number> = {
   'enc-pirate-3': spin(brawlR(40)),
   'ano-chasm-aberrations': spin(brawlR(58)),
   // ⚠ **E 族两张已迁入舰级路径**（泰坦残骸勘探 2026-09-11 · 奥罗武装残骸群 2026-09-12）：
-  //   舰级路径的速度 / 血量由 `FoeShipDef`（`speedRatio` / `hp`）供给，本表的 `foeSpeedMps` 与
-  //   `foeHpOverride` 对它们**不再生效**（`--proposal` 目前只对旧路径卡有意义）——两行留档不动，
-  //   待旧卡全部迁完再统一清理本表。
+  //   舰级路径的速度 / 血量由 `FoeShipDef`（`speedRatio` / `hp`）× **卡侧 `speedMul`/`hpMul`** 供给。
+  //   **2026-09-12 批 2 已把提案/求解通道现代化**：本表的 `foeSpeedMps` 数值**只对旧路径卡**还有意义
+  //   （旧路径现已归零）——`--proposal` / `--tactic` / 血量求解一律改为落**卡侧倍率**，
+  //   故本表这些行**留档不动**、且**不再影响任何真卡**（改动前它们是静默空转，会把"提案无效"当成结论）。
   'ano-titan-wreck': spin(brawlR(60)),
   'ano-auro-raiders': spin(brawlR(62)),
   'enc-pirate-4': spin(brawlR(70)),
@@ -136,6 +137,58 @@ const PROPOSAL_HP_MUL = argNum('hpmul')
 /** 只对 brawl（近战）卡生效的总血乘数——用于"速度上调后近战卡血量该压多少"的灵敏度扫描 */
 const PROPOSAL_BRAWL_HP_MUL = argNum('brawlmul')
 
+/* ═══════════ 提案通道现代化（2026-09-12 · 批 2「工具更新」）═══════════════════════════════
+ * 背景：**全表 27/27 张敌军卡已迁入舰级路径**（`AnomalyDef.ships`）⇒ 旧路径的两个提案字段
+ * `foeHpOverride` / `foeSpeedMps` **对它们一律不生效**（血量/速度改由「舰级 `hp`/`speedRatio`
+ * × **卡侧倍率**」供给）⇒ 旧写法会让 `--proposal` **静默空转**（读数一格不变，极易被误读成
+ * "提案无效"或"敌人不吃调整"，是**假结论**的来源）。
+ * 现按每张卡的**实际路径**落字段：
+ *   · **舰级路径卡** ⇒ 卡侧 **`hpMul` / `speedMul`**（按比例反算 ⇒ 等价于"把整卡总血/实速调到目标值"）
+ *   · **旧路径卡**   ⇒ 照旧 `foeHpOverride` / `foeSpeedMps`（保留回退；旧卡归零后自然不触发）
+ * ⚠ 舰级路径下**同一舰级常被多张卡共用**（如 G 族四档舰级）⇒ 一律改**卡侧倍率**，
+ *   **绝不改舰级本体**（那会连带影响引用同一舰级的其它卡）。 */
+type _Anomaly = Parameters<typeof createFoeSpecs>[0]
+type _Bal = Parameters<typeof createFoeSpecs>[1]
+
+function cardIsShipPath(a: _Anomaly): boolean {
+  return Array.isArray(a.ships) && a.ships.length > 0
+}
+/** 该卡**当前生效**的总血（舰级路径 = 按现编成实建合计；旧路径 = `foeHpOverride` / 威胁曲线） */
+function currentHpOf(a: _Anomaly, b: _Bal): number {
+  if (!cardIsShipPath(a)) return a.foeHpOverride ?? foeHpOfThreat(a.threat, b)
+  return createFoeSpecs(a, b).reduce((n, u) => n + u.hp.s + u.hp.a + u.hp.h, 0)
+}
+/** 把"目标总血"落到该卡**实际生效**的字段上 */
+function withHp(a: _Anomaly, hp: number, b: _Bal): _Anomaly {
+  if (!cardIsShipPath(a)) return { ...a, foeHpOverride: Math.round(hp) }
+  const k = hp / Math.max(1, currentHpOf(a, b))
+  return { ...a, ships: a.ships!.map((sl) => ({ ...sl, hpMul: (sl.hpMul ?? 1) * k })) }
+}
+/** 该卡**当前生效**的实速（取首个单位的建档实速） */
+function currentSpeedOf(a: _Anomaly, b: _Bal): number {
+  if (!cardIsShipPath(a)) return a.foeSpeedMps ?? 0
+  return createFoeSpecs(a, b)[0]?.speedMps ?? 0
+}
+/** 把"目标实速 m/s"落到该卡**实际生效**的字段上 */
+function withSpeed(a: _Anomaly, mps: number, b: _Bal): _Anomaly {
+  if (!cardIsShipPath(a)) return { ...a, foeSpeedMps: Math.round(mps) }
+  const k = Math.max(1, mps) / Math.max(1, currentSpeedOf(a, b))
+  return { ...a, ships: a.ships!.map((sl) => ({ ...sl, speedMul: (sl.speedMul ?? 1) * k })) }
+}
+/** 提案通道口径自报（**只在开了相关开关时打印一次**，避免有人拿旧字段跑出假结论） */
+let censusPrinted = false
+function printProposalCensus(c: SimContext): void {
+  if (censusPrinted || !(PROPOSAL || TACTIC_ON || SOLVE_HP)) return
+  censusPrinted = true
+  const all = [...c.anomalies.values()]
+  const shipPath = all.filter(cardIsShipPath).length
+  console.log(
+    `· 提案通道口径（2026-09-12 批 2）：全表 ${all.length} 张卡中 **${shipPath} 张在舰级路径** ⇒ ` +
+      `提案与求解一律落**卡侧 \`hpMul\` / \`speedMul\`**；` +
+      `旧字段 \`foeHpOverride\` / \`foeSpeedMps\` **仅对旧路径卡生效**（对舰级路径卡是静默空转，勿再据此下结论）`,
+  )
+}
+
 /** 组装本工具上下文：只有被开关点名的部分会被覆盖，其余与出厂一致 */
 function buildCtx(): SimContext {
   let c = BASE_CTX
@@ -147,13 +200,11 @@ function buildCtx(): SimContext {
     if (PROPOSAL_DPS !== undefined) battle.foeDpsPerThreat = PROPOSAL_DPS
     const anomalies = new Map(c.anomalies)
     for (const [id, a] of c.anomalies) {
-      const next = { ...a }
+      let next: _Anomaly = a
       const spd = PROPOSED_FOE_SPEED[id]
-      if (spd !== undefined) next.foeSpeedMps = spd
+      if (spd !== undefined) next = withSpeed(next, spd, battle)
       const mul = (a.tactic ?? 'orbit') === 'brawl' ? PROPOSAL_BRAWL_HP_MUL : PROPOSAL_HP_MUL
-      if (mul !== undefined) {
-        next.foeHpOverride = Math.round((a.foeHpOverride ?? foeHpOfThreat(a.threat, battle)) * mul)
-      }
+      if (mul !== undefined) next = withHp(next, currentHpOf(next, battle) * mul, battle)
       anomalies.set(id, next)
     }
     c = { ...c, anomalies, balance: { ...c.balance, battle } }
@@ -163,13 +214,14 @@ function buildCtx(): SimContext {
     for (const [id, tac] of Object.entries(PROPOSED_TACTIC)) {
       const a = anomalies.get(id)
       if (!a) continue
-      const next = { ...a, tactic: tac }
+      let next: _Anomaly = { ...a, tactic: tac }
       const spd = PROPOSED_TACTIC_SPEED[id]
-      if (spd !== undefined) next.foeSpeedMps = spd
+      if (spd !== undefined) next = withSpeed(next, spd, c.balance.battle)
       anomalies.set(id, next)
     }
     c = { ...c, anomalies }
   }
+  printProposalCensus(c)
   return c
 }
 
@@ -897,7 +949,9 @@ async function main(): Promise<void> {
       const base = ctx.anomalies.get(id)!
       const patched: SimContext = {
         ...(ctx as SimContext),
-        anomalies: new Map(ctx.anomalies).set(id, { ...base, foeHpOverride: hp }),
+        // ⚠ 2026-09-12 批 2：**按卡的实际路径落字段**（舰级路径卡写卡侧 `hpMul`）——
+        // 旧写法直写 `foeHpOverride` 对 27/27 张卡全是空转，二分出来的"解"是假的。
+        anomalies: new Map(ctx.anomalies).set(id, withHp(base, hp, bal)),
       }
       let rem = 0
       let dur = 0
@@ -916,7 +970,7 @@ async function main(): Promise<void> {
       return { rem: rem / SEEDS.length, dur: dur / SEEDS.length / 1000 }
     }
     for (const a of [...ctx.anomalies.values()].sort((x, y) => x.threat - y.threat)) {
-      const cur = a.foeHpOverride ?? foeHpOfThreat(a.threat, bal)
+      const cur = currentHpOf(a, bal)
       const now = probe(a.id, cur)
       // 目标：brawl 走时长口径（该段 D(T)），orbit/kite 走残血口径
       const dTarget =
@@ -943,7 +997,7 @@ async function main(): Promise<void> {
       console.log(
         `${String(a.threat).padStart(3)} ${a.name.padEnd(12)} ${String(a.tactic ?? 'orbit').padEnd(6)} ` +
           `D(T)=${dTarget.toFixed(0)}s  现血 ${String(cur).padStart(5)}（${now.dur.toFixed(0)}s / 残血 ${now.rem.toFixed(0)}%）→ ` +
-          `**解出 ${String(solved).padStart(5)}**（${got.dur.toFixed(0)}s / 残血 ${got.rem.toFixed(0)}%）${flag}`,
+          `**解出 ${String(solved).padStart(5)}**（落 ${cardIsShipPath(a) ? '卡侧 hpMul' : 'foeHpOverride'}；${got.dur.toFixed(0)}s / 残血 ${got.rem.toFixed(0)}%）${flag}`,
       )
     }
   }

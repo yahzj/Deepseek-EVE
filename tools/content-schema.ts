@@ -21,7 +21,13 @@
  *
  * 表头字符纪律：表头只用 ASCII 与 GBK 可表示的字符（m3 不用 m³、不用 ⟦⟧ 等生僻符号）——
  * Excel 以 ANSI(GBK) 保存 CSV 会把不可表示字符写成 '?'，导致表头失配/内容损坏（2026-09-05 实证）。
+ *
+ * **枚举值域纪律（2026-09-12 加，修卡关 ②）**：凡是**引擎已有的联合类型**（槽位 / 槽类 / 伤害系…），
+ * 这里**不许再手写一份**——一律从引擎单点（`MODULE_SLOTS` / `RACK_SLOTS` / `SLOT_LABELS` 等）派生；
+ * 体检 `content-check` 另有「内容工作台契约」守**schema 枚举 ⊆ 引擎值域**，防再漂。
  */
+import { MODULE_SLOTS, RACK_SLOTS, SLOT_LABELS } from '@whale/core'
+
 export interface ColSpec {
   head: string
   p: string
@@ -100,10 +106,19 @@ export const TABLES: readonly TableSpec[] = [
     cols: [
       col('id', 'id', 'id'),
       col('名称', 'name', 'str'),
-      col('家族slot(miner采矿/cargo货舱/turret动能炮/missile导弹架/laser激光炮/shield护盾/armor装甲/propulsion推进/drone-rack甲板扩展/drone-tac战术导控/support支援/salvager打捞器)', 'slot', 'enum', {
-        vals: ['miner', 'cargo', 'turret', 'missile', 'laser', 'shield', 'armor', 'propulsion', 'drone-rack', 'drone-tac', 'support', 'salvager'],
-      }),
-      col('物理槽rack(high/mid/low)', 'rack', 'enum', { vals: ['high', 'mid', 'low'] }),
+      // ⚠ **表头文字 = 两端契约**（`content:import` 按表头匹配列，见 content-import.ts 的 known 集合），
+      //   故表头与 `vals` **一起由引擎单点派生**：2026-09-12 修卡关 ②——此处曾**手写 12 个槽位**，
+      //   而引擎 `ModuleSlot` 有 **15** 个（缺 `cpu` / `drone-relay` / `target-lock`）⇒
+      //   `content:import modules` 对那 10 行报「非法枚举」并**整表拒绝写入**（一个字都回不去）。
+      //   ⚠ 表头文字本次有变（改为引擎官方中文名）⇒ 旧 CSV/xlsx 的该列表头会失配（导入会提示
+      //   「忽略未知表头列」）——**改完请先 `npm run content:export` 重新生成文件再导入**。
+      col(
+        `家族slot(${MODULE_SLOTS.map((s) => `${s}${SLOT_LABELS[s]}`).join('/')})`,
+        'slot',
+        'enum',
+        { vals: MODULE_SLOTS },
+      ),
+      col('物理槽rack(high/mid/low)', 'rack', 'enum', { vals: RACK_SLOTS }),
       col('bonus原值(采矿产量/货舱容量加成；0.2=+20%)', 'bonus', 'num', { min: -1, max: 5 }),
       col('护盾容量加成shieldHpBonus(0.15=+15%)', 'shieldHpBonus', 'num', { min: 0, max: 5 }),
       col('护盾抗性动能shieldResistAdd.kinetic', 'shieldResistAdd.kinetic', 'obj', { min: 0, max: 0.9 }),

@@ -57,6 +57,7 @@ import {
 } from '@whale/data'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { tableOf } from './content-schema'
 import {
   DEFAULT_BALANCE,
   ITEM_KIND_ORDER,
@@ -826,12 +827,17 @@ for (const s of SHIPS) {
   if (slots) {
     const total = slots.high + slots.mid + slots.low
     check(
-      Number.isInteger(slots.high) && slots.high >= 1 && slots.high <= 6 &&
-        Number.isInteger(slots.mid) && slots.mid >= 1 && slots.mid <= 5 &&
-        Number.isInteger(slots.low) && slots.low >= 1 && slots.low <= 6,
-      `舰船 ${s.id} slots 越界：${JSON.stringify(slots)}（需 高1-6/中1-5/低1-6）`,
+      // ⚠ **2026-09-12 船长：「每种槽位上限提高到 7」**——原 高6/中5/低6 与"总槽位 3~12"同批，
+      //   当日一并放宽；放宽后 **旗舰 7/7/4 = 18 槽**成立（且满足"武装舰高槽多于低槽"）。
+      Number.isInteger(slots.high) && slots.high >= 1 && slots.high <= 7 &&
+        Number.isInteger(slots.mid) && slots.mid >= 1 && slots.mid <= 7 &&
+        Number.isInteger(slots.low) && slots.low >= 1 && slots.low <= 7,
+      `舰船 ${s.id} slots 越界：${JSON.stringify(slots)}（需 高1-7/中1-7/低1-7）`,
     )
-    check(total >= 3 && total <= 12, `舰船 ${s.id} 总槽位 ${total} 超限（3~12）`)
+    // ⚠ **2026-09-12 船长：「总体槽位契约当初是为驱逐舰设定了，现在废除」**——
+    //   原为 `total >= 3 && total <= 12`（上限当年以驱逐舰为标尺）。现**废除上限**：
+    //   战列舰（T4）按**平均值 14**、旗舰（T5）**18**。下限保留 3（防手滑写成 1~2 槽的空壳）。
+    check(total >= 3, `舰船 ${s.id} 总槽位 ${total} 过少（下限 3）`)
     // V18 族定位弱断言：武装舰高槽多、装甲舰低槽多（布局草案精神）
     if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
     if (s.role === 'armored') check(slots.low >= slots.high + 1, `装甲舰 ${s.id} 低槽应显著多于高槽（${slots.low} vs ${slots.high}）`)
@@ -860,7 +866,9 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
   const othAvg = b.others.reduce((a, x) => a + x, 0) / b.others.length
   check(indAvg < othAvg, `tier ${tier} 工业系平均总血量（${Math.round(indAvg)}）应低于非工业系（${Math.round(othAvg)}）`)
 }
-check(SHIPS.length === 25, `舰船应为 25 艘，实际 ${SHIPS.length}`)
+// 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增巨齿鲨级战列舰 sh-megalodon、
+// 邓氏鱼级旗舰 sh-dunkleosteus 两具**壳体**：定制船口径 priceIsk 0、不上市场/不接蓝图/不接卡）。
+check(SHIPS.length === 27, `舰船应为 27 艘，实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,
 )
@@ -1379,7 +1387,15 @@ for (const m of MODULES) {
     const bal = DEFAULT_BALANCE.battle
     const agiMul = (ag: number): number => bal.speedFactor * (1 + (ag - 0.5) * 2 * bal.agilitySpeedBonus)
     const sortedShips = [...SHIPS].sort((a, b) => (a.maxSpeedMps ?? 0) - (b.maxSpeedMps ?? 0))
-    const refShip = sortedShips[Math.floor(sortedShips.length / 2)]!
+    // ⚠ **2026-09-12（工具更新批）：基准船由"船池中位"改为"固定锚定"**——
+    //   船长 2026-09-10 的原话就是「采取**固定锚定**，参考按照速度中位线的船只进行参考」，
+    //   但实现取的是"每次按当前船池重算的中位"⇒ **船池一变、尺子就跟着动**：
+    //   本轮新增两具 T4/T5 壳体后，中位从**长尾鲨级**滑到**锤头鲨级**，
+    //   基准战斗机动 **165.2 → 160.8 m/s（−2.7%）**，把「围攻残兵舰」从 ≤1.25 顶到边界外
+    //   ⇒ 与敌人数值无关的**契约假报警**（实测：改动前全绿、改动后 2 红）。
+    //   现按"固定锚定"钉死到裁决当时的中位船（长尾鲨级），并把回退写清。
+    const refShip =
+      SHIPS.find((s) => s.name.startsWith('长尾鲨')) ?? sortedShips[Math.floor(sortedShips.length / 2)]!
     const refCombat = (refShip.maxSpeedMps ?? 0) * agiMul(refShip.agility ?? 0.5)
     const foeAgi = agiMul(0.3)
     const SPEED_BAND: Record<string, readonly [number, number]> = {
@@ -1669,9 +1685,11 @@ for (const m of MODULES) {
         r > 0 && r <= PD_MAX_RANGE_M,
         `机群与防空契约：防空武器「${m.name}」射程 ${r}m 超过 ${PD_MAX_RANGE_M}m——防空是贴身护卫，不是万能武器`,
       )
-      // ⑤e **「防空」属性的取值**（船长 2026-09-12：「**给近防炮系列添加一个属性"防空"，将近防炮的
+      // ⑤f **「防空」属性的取值**（船长 2026-09-12：「**给近防炮系列添加一个属性"防空"，将近防炮的
       // 对无人机伤害 ×2 写到防空属性里**」）：带该属性的装备，其值 = 对无人机伤害倍率，
       // 须为正整数/正数且现值 = 2（"能打机群"由"有该属性"本身表达，不再另设布尔字段）。
+      // ⚠ 编号 ⑤f/⑤g = 2026-09-12 合并解冲突时的**改号**（我方两条原取 ⑤d/⑤e，与二号同日新增的
+      // 「⑤d G 族等离子在场」「⑤e 已备未挂机型」撞号）——按"后来者改号、先到者不动"处理。
       const mul = m.antiDrone
       check(
         mul !== undefined && mul > 0,
@@ -1701,6 +1719,12 @@ for (const m of MODULES) {
     let onHitShips = 0
     /** 写了**炮台受击增程**的舰级数（D 族静滞卫舰，落到汇总行） */
     let gunOnHitShips = 0
+    /** 被任何舰级引用的机型 id —— 用来算「**已备未挂**」（P-20a 的教训：漏挂要一眼可辨） */
+    const mountedDroneIds = new Set<string>()
+    /** G 族机群里是否真的挂了**等离子系**（P-20a 交付物守卫的判据） */
+    let swarmHasPlasma = false
+    /** G 族机群实际挂载的机型 id（落到汇总行） */
+    const mountedSwarmIds: string[] = []
     for (const ship of FOE_SHIPS) {
       const hasDrones = (ship.drones ?? []).length > 0
       // ⑤a **E 族射程带**（只约束带机群的 E 族舰级——即本批落码的那三条）
@@ -1752,6 +1776,11 @@ for (const m of MODULES) {
       }
       for (const ds of ship.drones ?? []) {
         droneSlots++
+        mountedDroneIds.add(ds.drone.id)
+        if (ship.family === 'G') {
+          mountedSwarmIds.push(ds.drone.id)
+          if (ds.drone.damageType === 'plasma') swarmHasPlasma = true
+        }
         check(
           FOE_DRONES.some((d) => d.id === ds.drone.id),
           `机群与防空契约：舰级「${ship.name}」引用的机型 ${ds.drone.id} 不在机型表（FOE_DRONES）内`,
@@ -1771,7 +1800,7 @@ for (const m of MODULES) {
             `机群与防空契约：E 族机型「${ds.drone.name}」射程 ${ds.drone.maxRangeM}m ≠ ${TITAN_DRONE_RANGE_M}m——` +
               `船长 2026-09-11「**无人机射程设为 5000**」`,
           )
-          // ⑤d **警戒机三层血 = 55**（船长 2026-09-12：「**将警戒机的血量削弱40%**」⇒ 28/20/44 = 92 → 17/12/26 = 55）
+          // ⑤g **警戒机三层血 = 55**（船长 2026-09-12：「**将警戒机的血量削弱40%**」⇒ 28/20/44 = 92 → 17/12/26 = 55）
           const dhp = ds.drone.defense.shieldHp + ds.drone.defense.armorHp + ds.drone.defense.hullHp
           check(
             dhp === E_ALERT_DRONE_HP,
@@ -1781,11 +1810,37 @@ for (const m of MODULES) {
         }
       }
     }
+    // ⑤d **G 族蜂群机挂载：等离子系必须在场**（P-20a 收口 · 2026-09-12 船长选「丙」＝换系）——
+    //    三种机型只有**两个机位** ⇒ 任何"换系"路线都必然空出一个（本轮把等离子换上、爆炸转为未挂）。
+    //    故本条钉的是**交付物**（"等离子真的上了战场"），而不是具体组合 ⇒ 日后换别的组合不会误伤。
+    //    ⚠ 编号取 ⑤d（不取 ⑥）：**⑥ 已被下方「机群火力占比」占用且被设计稿引用**，不许改号。
+    const gSwarmShips = FOE_SHIPS.filter((s) => s.family === 'G' && (s.drones ?? []).length > 0)
+    if (gSwarmShips.length > 0) {
+      check(
+        swarmHasPlasma,
+        `机群与防空契约：G 族有 ${gSwarmShips.length} 条舰级挂了机群，但**没有一架是等离子系**——` +
+          `P-20a（2026-09-12 船长选「丙」）要求等离子机型 \`foe-drone-g-bee-pla\` 必须在场` +
+          `（"已备未挂"正是本条要防的复发形态）`,
+      )
+    }
+    // ⑤e **已备未挂机型**（机型表里有、却没有任何舰级引用）：**预警**、不阻断——
+    //    把"漏挂"从**静默消失**变成体检输出里的一行字（2026-09-12 P-20a 的教训）。
+    const unmountedDrones = FOE_DRONES.filter((d) => !mountedDroneIds.has(d.id))
+    if (unmountedDrones.length > 0) {
+      warn.push(
+        `机群与防空契约：机型表 ${FOE_DRONES.length} 条中 ${unmountedDrones.length} 条**未被任何舰级引用（已备未挂）**：` +
+          `${unmountedDrones.map((d) => `${d.name}（${d.id}）`).join('、')}——` +
+          `确认是有意留档还是待挂（三种机型两个机位时，换系必然空出一个）`,
+      )
+    }
     console.log(
       `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）` +
         `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +
         `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}` +
         `${swarmRanges.length > 0 ? ` · **G 族蜂群机射程** ${swarmRanges.join('　')}（船长 2026-09-12「提高到 7000」；无受击增程）` : ''}` +
+        // ⚠ 汇总行**按结果分支**（血泪清单：有错时不许仍打印"含等离子 ✓"）
+        `${gSwarmShips.length > 0 ? ` · **G 族蜂群机挂载** ${mountedSwarmIds.join(' + ')}${swarmHasPlasma ? '（含等离子 ✓）' : '（⚠ **无机型含等离子** —— 见上方错误）'}` : ''}` +
+        `${unmountedDrones.length > 0 ? ` · **已备未挂机型** ${unmountedDrones.map((d) => d.id).join('、')}` : ' · 机型表全部在役'}` +
         `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级 ×1.5（D 族静滞卫舰：被打中 ⇒ 该型舰 12,000 → 18,000m，本场永久、仅该型舰）` : ''}` +
         ` · **防空属性** ${aaMods.map((m) => `${m.name} ×${m.antiDrone ?? 1}`).join('　')}（能打敌方机群 + 对无人机伤害 ×该值；对舰伤害不受影响）`,
     )
@@ -3264,6 +3319,53 @@ for (const m of MODULES) {
       `触发器与跳转目标全部可解析；势力档案 ${COMMS_FACTIONS.length} 个（${COMMS_FACTIONS.map((f) => `${f.name}·${f.departments.length} 部门`).join(" / ")}），` +
       `发件方引用与内容类型白名单全通过`,
   )
+}
+
+/* ── 内容工作台 schema 契约（2026-09-12 加 · 背景 = 卡关 ②）────────────────────────────
+   背景（实证）：`tools/content-schema.ts` 的 modules「家族slot」枚举曾**手写 12 个值**，而引擎
+   `ModuleSlot` 有 **15** 个（缺 `cpu` / `drone-relay` / `target-lock`）⇒ `content:import modules`
+   对那 10 行报「非法枚举」并**整表拒绝写入**——而且只在"有人真要导 modules 表"时才暴露。
+   现 schema 的成员类枚举已改为**由引擎单点派生**（`MODULE_SLOTS` / `RACK_SLOTS`），本契约再加一道网：
+   **工作台枚举必须 ⊆ 引擎值域**（且非空、无重复），防日后又手写一份漂移。 */
+{
+  const moduleSpec = tableOf('modules')
+  if (!moduleSpec) {
+    check(false, '内容工作台契约：找不到 modules 表定义（content-schema.ts 被改名或删除）')
+  } else {
+    const engineSlots = new Set<string>(MODULE_SLOTS)
+    const engineRacks = new Set<string>(RACK_SLOTS)
+    const engineTypes = new Set<string>(['kinetic', 'explosive', 'plasma'])
+    const pairs: Array<[string, string, ReadonlySet<string>]> = [
+      ['家族slot', 'slot', engineSlots],
+      ['物理槽rack', 'rack', engineRacks],
+      ['弹种damageType', 'damageType', engineTypes],
+    ]
+    let valCount = 0
+    for (const [label, p, legal] of pairs) {
+      const c = moduleSpec.cols.find((x) => x.p === p)
+      if (!c) {
+        check(false, `内容工作台契约：modules 表缺「${label}」列（p=${p}）`)
+        continue
+      }
+      const vals = c.vals ?? []
+      check(vals.length > 0, `内容工作台契约：modules「${label}」列没有登记任何合法值`)
+      check(
+        new Set(vals).size === vals.length,
+        `内容工作台契约：modules「${label}」列的合法值有重复`,
+      )
+      const illegal = vals.filter((v) => !legal.has(v))
+      check(
+        illegal.length === 0,
+        `内容工作台契约：modules「${label}」列的合法值越出引擎值域：${illegal.join('、')}——` +
+          `引擎侧合法值 ${[...legal].join('/')}（工作台枚举必须由引擎单点派生；越界会让 content:import 整表被拒）`,
+      )
+      valCount += vals.length
+    }
+    console.log(
+      `· 内容工作台契约：modules 表 3 个成员类枚举共 ${valCount} 个值全部落在引擎值域内` +
+        `（槽位 ${engineSlots.size} 个 · 槽类 ${engineRacks.size} 个 · 弹种 ${engineTypes.size} 个）`,
+    )
+  }
 }
 
 /* ── 输出 ── */

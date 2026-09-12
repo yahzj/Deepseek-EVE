@@ -394,7 +394,10 @@ function doAi(): void {
   }
   // 副船名额判定与引擎 aiCoreCapBlock 同口径（工业占用先抵工业扩容，超出部分才占共用名额）
   if (aiCoreShipUsed(state) + Math.max(0, aiCoreIndustryUsed(state) - industryAiBonus(state, ctx)) >= max) return
-  const idle = idleAiShipIds(state)
+  // ⚠ 2026-09-12 批 4：**主力战船不派给 AI 副船任务**（采矿/打捞）——它要留给驾驶位；
+  // 否则会出现"唯一能打的船去挖矿、驾驶位只能蹲采矿艇"的死结（实测见 `ensureFlagship` 注释）。
+  const flagshipUid = bestCombatShipUid()
+  const idle = idleAiShipIds(state).filter((uid) => uid !== flagshipUid)
   if (idle.length === 0) {
     // 买一艘便宜工业船给 AI 用
     const cheap = [...ctx.ships.values()].filter((s) => s.priceIsk > 0 && s.priceIsk < 400_000).sort((a, b) => a.priceIsk - b.priceIsk)[0]
@@ -450,6 +453,12 @@ function doAi(): void {
 function useFreeFalconet(): void {
   if (meBusy() || !isHome() || (pilotLineBusy())) return
   if (state.mining.active || state.expedition.active || state.scanning.active || state.salvaging.active) return
+  // ⚠ 2026-09-12 批 4：**先把手里的船还给主力**——旧逻辑只认"空闲且没在 AI 出勤"的船，
+  // 于是"主力战船在挖矿"时驾驶位就被留在采矿艇上（实测：跑满 10 天开着沙猫级采矿艇）。
+  // `ensureFlagship` 会把出勤中的主力**召回**再换驾；它换成了就直接返回，不必再挑。
+  const before = state.shipId
+  ensureFlagship()
+  if (state.shipId !== before) return
   const cur = fleetDefOf(state, ctx, state.shipId)
   let best: { uid: string; power: number } | null = null
   for (const [uid, f] of Object.entries(state.fleet)) {
@@ -468,13 +477,109 @@ function useFreeFalconet(): void {
   }
 }
 
-/** 按品质降序找某个装备家族的成员（用于自动配装） */
+/**
+ * **舰队主力战船**（2026-09-12 批 4「工具更新」）：舰队里 `powerBonus` 最高的武装/装甲船 uid。
+ * ⚠ 与 `useFreeFalconet` 的候选口径**同源**（只认 `armed`/`armored`），但**不看 AI 出勤**——
+ * 出勤中的主力要能被**召回**（见 `ensureFlagship`），而不是被当成"舰队里没有这艘船"。
+ */
+function bestCombatShipUid(): string | null {
+  let best: { uid: string; power: number } | null = null
+  for (const [uid, f] of Object.entries(state.fleet)) {
+    if (!f) continue
+    const def = fleetDefOf(state, ctx, uid)
+    if (!def || (def.role !== 'armed' && def.role !== 'armored')) continue
+    const power = def.powerBonus ?? 0
+    if (best === null || power > best.power) best = { uid, power }
+  }
+  return best?.uid ?? null
+}
+
+/**
+ * **出征前把驾驶位还给主力战船**（2026-09-12 批 4 · 修"AI 蹲在采矿艇上打不动终局"）。
+ *
+ * 背景（实测 2026-09-12 全流程跑通）：模拟器跑满 10 天**始终驾驶沙猫级采矿艇**（火力 20），
+ * 而 1.06d 曾换驾的**牛鲨级突击巡洋舰**被派去 AI 采矿/打捞 ⇒ `useFreeFalconet` 的候选
+ * **跳过出勤中的船**（`if (state.aiAssignments[uid]) continue`）⇒ 驾驶位**再也回不到战船** ⇒
+ * 对穹顶守卫永久 0%，工具自判「策略黑洞（终局受阻）」。
+ * 现口径：**主力战船优先给驾驶位**——它在 AI 出勤就**召回**，然后换驾；在途不可取消则下次再说。
+ */
+function ensureFlagship(): void {
+  if (meBusy() || !isHome()) return
+  const best = bestCombatShipUid()
+  if (!best || best === state.shipId) return
+  const cur = fleetDefOf(state, ctx, state.shipId)
+  const bdef = fleetDefOf(state, ctx, best)
+  if ((bdef?.powerBonus ?? 0) <= (cur?.powerBonus ?? 0) + 0.01) return
+  if (state.aiAssignments[best]) {
+    if (!cancelAiTask(state, best, ctx)) return
+    mark(`召回主力战船 ${bdef?.name ?? best}（腾出驾驶位）`)
+  }
+  const r = changeShip(state, best, ctx)
+  if (r.ok) {
+    mark(`换驾 ${bdef?.name ?? best}（主力归驾驶位，power ${(bdef?.powerBonus ?? 0).toFixed(2)}）`)
+  }
+}
+
+/** 伤害系 → 抗性件后缀（`mod-shield-kin-2` / `mod-armor-exp-2` …） */
+const RESIST_KEY: Record<string, string> = { kinetic: 'kin', explosive: 'exp', plasma: 'pla' }
+
+/**
+ * **针对性配装**（2026-09-12 批 4）：按目标卡的混伤构成，把**抗性件**换成对口的。
+ *
+ * 口径沿用混伤批的「**盾抗主系、甲抗副系**」：动能对甲层本就 ×0.5，在甲层再堆动能抗是低效；
+ * 而副系会**绕开主抗**，故甲层用来覆盖副系。
+ * 只动**抗性件**（`mod-{shield,armor}-{kin,exp,pla}-*`），推进/陀螺/装甲板一律不碰；
+ * 需要的新件若没库存则**照市场价买一件**（买不起就跳过，不硬塞）。
+ */
+function counterFitFor(cardId: string): void {
+  const a = ctx.anomalies.get(cardId)
+  const fitted = state.fleet[state.shipId]?.fitted
+  if (!a || !fitted) return
+  const mix = (a as { dmgMix?: Record<string, number> }).dmgMix ?? { kinetic: 8, explosive: 2 }
+  const ranked = Object.entries(mix)
+    .filter(([, v]) => (v ?? 0) > 0)
+    .sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))
+  const mainKey = RESIST_KEY[ranked[0]?.[0] ?? 'kinetic'] ?? 'kin'
+  const subKey = RESIST_KEY[ranked[1]?.[0] ?? ranked[0]?.[0] ?? 'kinetic'] ?? mainKey
+  const ensureOwned = (id: string): boolean => {
+    if ((state.moduleBay[id] ?? 0) > 0) return true
+    const g = goodOf('module', id)
+    if (!g) return false
+    if (state.wallet.isk < g.basePrice * 1.5 + 20_000) return false
+    buyAtMarket(state, ctx, g.key, 1)
+    return (state.moduleBay[id] ?? 0) > 0
+  }
+  const swapResist = (rack: 'mid' | 'low', family: string, key: string): void => {
+    const id = `mod-${family}-${key}-2`
+    if (!ctx.modules.has(id) || !ensureOwned(id)) return
+    const arr = fitted[rack]
+    const isResist = new RegExp(`^mod-${family}-(kin|exp|pla)-`)
+    const at = arr.findIndex((m) => m !== null && isResist.test(m))
+    if (at >= 0) {
+      if (arr[at] !== id) arr[at] = id
+      return
+    }
+    const free = arr.indexOf(null)
+    if (free >= 0) arr[free] = id
+  }
+  swapResist('mid', 'shield', mainKey)
+  swapResist('low', 'armor', subKey)
+}
+
+/** 按品质降序找某个装备家族的成员（用于自动配装）。
+ *
+ * ⚠ **只考虑市场买得到的**（2026-09-12 修卡关 ①）：窝点专属装备（`mod-lair-*`）按「来源唯一契约」
+ * **本就没有市场卡**（唯一来源 ＝ 高级箱），而它们的数值往往高于制式件（例：`mod-lair-armor-d`
+ * 陵寝装甲层 `armorHpBonus 1.1` ＝ 全表最高，压过 `mod-armor-plate-3` 的 0.8）⇒ 旧写法会把它选中，
+ * 随后在 `tryOne` 里取不到市场行而崩。本工具别处一律用 `goodOf('module', …)` 过滤
+ * （见 `collectStatus` / 补件处），这里此前是唯一漏网的两处之一。 */
 function familyBest(
   slot: string,
   quality: (m: { shieldHpBonus?: number; armorHpBonus?: number }) => number,
 ): { id: string; name: string } | undefined {
   const pool = [...ctx.modules.values()]
     .filter((m) => m.slot === slot && m.rack !== 'high')
+    .filter((m) => goodOf('module', m.id) !== undefined)
     .sort((a, b) => quality(b) - quality(a))
   const top = pool[0]
   return top ? { id: top.id, name: top.name } : undefined
@@ -528,20 +633,27 @@ function autoFitGear(): void {
     }
   }
   // 单件补强：只装一件，已有同 id 或槽满即跳过（防重复购买抽血）
+  // ⚠ **买不到就跳过、不许崩**（2026-09-12 修卡关 ①）：`goodOf` 查不到市场行（＝窝点专属件这类
+  // "唯一来源 ＝ 高级箱"的装备）时直接 return——旧写法用 `!` 断言取 `.key`，取不到即抛
+  // `TypeError: Cannot read properties of undefined (reading 'key')`（调用方却已用 `?.` 兜底价格，
+  // 口径本就不一致）。这里是第二道保险：`sup1`/`sup2` 是直接扫 `ctx.modules` 得来的，不受
+  // `familyBest` 的过滤保护。
   const tryOne = (rack: 'high' | 'mid' | 'low', defId: string, priceRef: number): void => {
     if (allFitted.includes(defId) || !roomIn(rack)) return
     if (state.wallet.isk < priceRef * 1.5 + 20_000) return
-    buyAtMarket(state, ctx, [...ctx.marketGoods.values()].find((x) => x.kind === 'module' && x.refId === defId)!.key, 1)
+    const good = goodOf('module', defId)
+    if (!good) return
+    buyAtMarket(state, ctx, good.key, 1)
     if (fitModuleTo(state, defId)) mark(`装配 ${defId}`)
   }
   const sh = familyBest('shield', (m) => m.shieldHpBonus ?? 0)
-  if (sh) tryOne('mid', sh.id, [...ctx.marketGoods.values()].find((x) => x.refId === sh.id)?.basePrice ?? 50_000)
+  if (sh) tryOne('mid', sh.id, goodOf('module', sh.id)?.basePrice ?? 50_000)
   const ar = familyBest('armor', (m) => m.armorHpBonus ?? 0)
-  if (ar) tryOne('low', ar.id, [...ctx.marketGoods.values()].find((x) => x.refId === ar.id)?.basePrice ?? 50_000)
+  if (ar) tryOne('low', ar.id, goodOf('module', ar.id)?.basePrice ?? 50_000)
   const sup1 = [...ctx.modules.values()].find((m) => m.slot === 'support' && (m.damageTypeBonusPct?.kinetic ?? 0) > 0)
   const sup2 = [...ctx.modules.values()].find((m) => m.slot === 'support' && (m.hitBonusPct ?? 0) > 0)
-  if (sup1) tryOne('mid', sup1.id, [...ctx.marketGoods.values()].find((x) => x.refId === sup1.id)?.basePrice ?? 30_000)
-  if (sup2) tryOne('mid', sup2.id, [...ctx.marketGoods.values()].find((x) => x.refId === sup2.id)?.basePrice ?? 30_000)
+  if (sup1) tryOne('mid', sup1.id, goodOf('module', sup1.id)?.basePrice ?? 30_000)
+  if (sup2) tryOne('mid', sup2.id, goodOf('module', sup2.id)?.basePrice ?? 30_000)
 }
 
 const craftedOnce = new Set<string>()
@@ -676,6 +788,8 @@ function doBounty(): void {
     }
   }
   if (!best) return
+  ensureFlagship() // 批 4：出征前把驾驶位还给主力战船（它在 AI 出勤就召回）
+  counterFitFor(best.id) // 批 4：按目标卡混伤构成换抗性件（盾抗主系 · 甲抗副系）
   const r = startExpedition(state, best.id, ctx)
   if (r.ok) mark(`远征 ${best.name}`)
   else issue(`远征 ${best.id} 失败：${r.error}`)
@@ -701,6 +815,8 @@ function doFarm(): void {
     .sort((x, y) => y.a.rewardIsk * y.w - x.a.rewardIsk * x.w)
   const pick = candidates[0]
   if (!pick) return
+  ensureFlagship() // 批 4：刷钱前同样把驾驶位还给主力战船
+  counterFitFor(pick.a.id) // 批 4：按目标卡混伤构成换抗性件
   const r = startExpedition(state, pick.a.id, ctx)
   if (r.ok) {
     if (state.gameMs - lastFarmMark > 43_200_000) {
@@ -1067,6 +1183,7 @@ let lastRescueDay = -99
 let lastFp = ''
 let holeEarlyExit = false
 let topGearDay = -1 // 顶配达成日（终局受阻计时起点）
+let topGearPower = 0 // 登记顶配时的舰船 powerBonus（换到更强的船就重新计时）
 
 function progressFingerprint(): string {
   // 主线推进指纹：新首胜/新点亮/换驾驶/现金粗桶（500 万级）——纯赚钱波动不算推进
@@ -1082,9 +1199,22 @@ function holeWatch(): boolean {
   const bossW = boss ? winOf(state, ctx, boss) : 0
   // 训练毕业（全部 62 技能满 5 级）才算顶配——real-training 下未毕业不算
   const trainingDone = [...ctx.skills.keys()].every((id) => (state.skills.trained[id] ?? 0) >= 5)
-  // 顶配达成登记：训练毕业 + 武装船 + ≥3 武器 + 声望解锁 + 星系全亮
-  if (topGearDay < 0 && trainingDone && cur?.role === 'armed' && weaponCount >= 3 && boss && standing() >= boss.standingReq && exploredCount() >= GALAXY_IDS.length) {
+  // 顶配达成登记（**2026-09-12 批 4 收紧**）：训练毕业 + **驾驶的是舰队最强战斗船**
+  //   （`bestCombatShipUid() === shipId`，即"战船真的在驾驶位"，不是采矿艇）+ ≥3 门武器
+  //   + 声望解锁 + 星系全亮。
+  //   ⚠ 旧口径只要求"驾驶船 role = armed + ≥3 门武器"，而 debugQuick 下技能秒级毕业 ⇒
+  //   会在 **0.1d 就登记"顶配"**，随后 10 天倒计时对着一个"AI 根本打不过的 boss"空转
+  //   ⇒ **恒定提前终止**（实测 2026-09-12：报告写"顶配武装（沙猫级采矿艇×1 门，自 0.1d 达成）"，
+  //   而 AI 当时明明已经买了牛鲨级突击巡洋舰并配了 MK3 ——指标与事实相反）。
+  //   现口径还**每次换到更强的船就重新计时**（给新船一个 10 天窗口，别把"刚升级完"误判成结论）。
+  const isFlagshipPilot = bestCombatShipUid() === state.shipId
+  const powerNow = cur?.powerBonus ?? 0
+  if (topGearDay < 0 && trainingDone && isFlagshipPilot && weaponCount >= 3 && boss && standing() >= boss.standingReq && exploredCount() >= GALAXY_IDS.length) {
     topGearDay = d
+    topGearPower = powerNow
+  } else if (topGearDay >= 0 && powerNow > topGearPower + 0.05) {
+    topGearDay = d
+    topGearPower = powerNow
   }
   // 终局受阻判定：顶配达成后 10 天仍打不过 boss（farm 循环黑洞）→ 提前终止（疑似 C4 平衡项）；
   // 仅当通关目标仍挂起时适用（万亿/全收集目标不需要打赢 boss，可继续跑）

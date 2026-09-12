@@ -3,7 +3,7 @@
  * 舰种收敛 **5 档**、**敌我共用**，档位 = 既有 `ShipDef.tier`，按**等效质量**落档
  * （等效质量 = massKg×(armored?0.65:1)；区间 0.4~2.4M / 2.4~5.8M / 5.8~13M / 13~29M / ≥29M）。
  * 本测试钉住三件事：①5 档命名与基准速度逐一正确（340/295/258/205/155）；
- * ②等效质量换算与越界兜底行为；③**全部 25 艘船的 tier 与等效质量落档一致**（数据侧错标即在测试里现形）。
+ * ②等效质量换算与越界兜底行为；③**全部 27 艘船的 tier 与等效质量落档一致**（数据侧错标即在测试里现形）。
  * 本批**零行为变化**：表只建在数据层，尚未接线到任何引擎读取点。
  */
 import { describe, expect, it } from 'vitest'
@@ -74,8 +74,9 @@ describe('舰种表（2026-09-11 船长定案：5 档·敌我共用）', () => {
     expect(hullClassOf({ tier: 99 })).toBe('旗舰')
   })
 
-  it('25 艘船的 tier 与其等效质量落档区间一一一致', () => {
-    expect(SHIPS.length).toBe(25)
+  // 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增两具壳体：巨齿鲨级战列舰 / 邓氏鱼级旗舰）
+  it('27 艘船的 tier 与其等效质量落档区间一一一致', () => {
+    expect(SHIPS.length).toBe(27)
     const bad = SHIPS.filter((s) => s.tier !== tierOfEquivalentMass(equivalentMassOf(s))).map(
       (s) =>
         `${s.name}（质量 ${s.massKg} → 等效 ${equivalentMassOf(s)}，实际 tier ${s.tier}）`,
@@ -83,12 +84,12 @@ describe('舰种表（2026-09-11 船长定案：5 档·敌我共用）', () => {
     expect(bad).toEqual([])
   })
 
-  it('每艘船的舰种名 = 其 tier 对应命名（归类统计 护卫 5 / 驱逐 7 / 巡洋 9 / 战列 3 / 旗舰 1）', () => {
+  it('每艘船的舰种名 = 其 tier 对应命名（归类统计 护卫 5 / 驱逐 7 / 巡洋 9 / 战列 4 / 旗舰 2）', () => {
     const count: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     for (const s of SHIPS) {
       count[s.tier] += 1
       expect(hullClassOf(s)).toBe(HULL_CLASS_NAME[s.tier as 1])
     }
-    expect(count).toEqual({ 1: 5, 2: 7, 3: 9, 4: 3, 5: 1 })
+    expect(count).toEqual({ 1: 5, 2: 7, 3: 9, 4: 4, 5: 2 })
   })
 })
