@@ -20,7 +20,7 @@
  *
  * 运行：npm run bounty:econ （等价 npx tsx tools/bounty-econ.ts）
  */
-import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, isLairCandidate, LAIR_RARE_WRECK_GAIN, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
+import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, factionRareDropEffectiveRate, isLairCandidate, LAIR_RARE_WRECK_GAIN, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
@@ -206,7 +206,8 @@ function main(): void {
  *      基准价、矿物按物品基准价）——命中的专属装备不可出售，故不计入。
  *      日供给 = 全清日板的档位件数（外围 1 / 核心 2 / 深层 3，LAIR_RARE_WRECK_GAIN）
  *      ＋ 敌对派系活跃期望（= `faction:audit` 的审数基线"4 小时专注刷 ≈14 趟" ×
- *      FACTION_RARE_DROP_CHANCE；2026-09-10 船长定为 5%，故 ≈0.7 件/天——不写死，避免与常数漂移）。
+ *      **含保底的实际率** `factionRareDropEffectiveRate()`；2026-09-10 船长定标称 5%，
+ *      2026-09-11 加保底（连刷 20 趟必掉）后实际 ≈7.8%/趟 → ≈1.1 件/天——不写死，避免与常数漂移）。
  *      **期望日产出**走真实引擎赞助 120 天日板（advanceGame + 日界墙钟，全图已探索），
  *      逐席按 LAIR_RARE_WRECK_GAIN 展开件数后乘该卡每箱可兑现。
  * 用途：改 RARE_BOX_GEAR_CHANCE / RARE_BOX_MINERAL_UNITS / LAIR_RARE_WRECK_GAIN /
@@ -220,10 +221,12 @@ function rareBoxBench(): void {
   console.log('══ 稀有残骸·高级箱对照（真实引擎；命中率 5/8/10%、每炉锁 1 件 = 30 m³）══')
   /** 日供给：按各档席位 × 该档件数（与日板档位分布小节同口径） */
   const FACTION_RUNS_PER_DAY = 14 // faction:audit 基线：均值 3.5 趟/时 × 4 小时专注刷
-  const factionPerDay = FACTION_RUNS_PER_DAY * FACTION_RARE_DROP_CHANCE
+  // 2026-09-11 起含**保底**（连刷 20 趟必掉）：用 core 的解析实际率（≈7.79%/趟），不用标称 5%
+  const factionPerDay = FACTION_RUNS_PER_DAY * factionRareDropEffectiveRate()
   const supplyPerDay = 2.36 * 1 + 1.93 * 2 + 0.72 * 3 + factionPerDay
   console.log(
-    `· 日供给 ≈${supplyPerDay.toFixed(1)} 件/天（全清日板 8.4 + 派系活跃 ${factionPerDay.toFixed(1)}，概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%）`,
+    `· 日供给 ≈${supplyPerDay.toFixed(1)} 件/天（全清日板 8.4 + 派系活跃 ${factionPerDay.toFixed(1)}，` +
+      `标称 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% 含保底实际 ${(factionRareDropEffectiveRate() * 100).toFixed(1)}%）`,
   )
   const candidates = [...ctx.anomalies.values()].filter((a) => isLairCandidate(a))
   const trials = 8_000

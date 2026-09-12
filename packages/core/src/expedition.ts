@@ -34,6 +34,7 @@ import {
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKits,
+  repairUsageText,
   settleDroneLosses,
   startBattleFor,
 } from './combat'
@@ -43,6 +44,7 @@ import { claimTutorialTrialReward } from './onboarding'
 import {
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FACTION_RARE_DROP_PITY_ROLLS,
   factionAnomalyOf,
   factionBaseRewardIsk,
   isLairCandidate,
@@ -504,10 +506,15 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const lootPart = lootText.length > 0 ? `，缴获 ${lootText.join('、')}` : ''
     const standPart = firstBlood ? `协会声望 +${anomaly.standingGain}` : '该悬赏已首胜过：本次无额外声望'
     const dronePart = droneLostText ? `，机群战损 ${droneLostText}` : ''
+    // 船体维修装置：消耗数只进战报（2026-09-11 船长：不单独显示日志）
+    const repairPart = (() => {
+      const t = repairUsageText(battle, ctx)
+      return t.length > 0 ? `，船体维修装置${t}` : ''
+    })()
     addLog(
       state,
       'trade',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}，${standPart}` +
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}${repairPart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`,
     )
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
@@ -519,13 +526,24 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     // 敌对派系活跃（2026-09-10 船长定）：胜利后**按概率**掉稀有残骸（该星系残骸场、打捞必得）。
     // 这条**不因打赢而下板**（当天可反复刷），故只在命中时写一条日志说明掉了几件。
-    if (factionActive && nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE) {
-      injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT)
-      addLog(
-        state,
-        'trade',
-        `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
-      )
+    // **保底（2026-09-11 船长：「每 20 次必定掉的保底」→ 口径甲）**：连续 19 次掷骰未出 ⇒ 第 20 次必掉。
+    // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
+    if (factionActive) {
+      const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
+      const hit = nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE
+      const pity = streak >= FACTION_RARE_DROP_PITY_ROLLS
+      if (hit || pity) {
+        injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT) // 内部清零空手计数
+        addLog(
+          state,
+          'trade',
+          `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}` +
+            `${pity && !hit ? `（连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出，本次保底）` : ''}` +
+            `——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
+        )
+      } else {
+        state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）
+      }
     }
     // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)
@@ -577,7 +595,12 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     if (abandoned) {
       // 弃船：无维修费，船+货仓+装备全损
-      addLog(state, 'warn', `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}）……`)
+      const abandonRepair = repairUsageText(battle, ctx)
+      addLog(
+        state,
+        'warn',
+        `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}）……`,
+      )
       loseShip(state, state.shipId, ctx, `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`)
       exp.active = false
       exp.battle = null
@@ -594,10 +617,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     state.wallet.isk -= repair
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''
+    const loseRepair = repairUsageText(battle, ctx)
     addLog(
       state,
       'warn',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${dronePartLose}练练炮术学，记得给船做保养。`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`,
     )
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）

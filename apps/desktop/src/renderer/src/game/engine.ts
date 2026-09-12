@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
  * 职责（中文说明）：
@@ -37,6 +37,8 @@ import {
   setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   goStandbyAt,
   goodLockedReason,
+  // 2026-09-11 市价买入失败原因分诊（暗市闸口径与界面同源，对玩家按声望锁措辞）
+  bmGateReason,
   learnBlueprint,
   levelOf,
   listSellHolding,
@@ -44,11 +46,13 @@ import {
   loadWarehouseToCargoFit,
   lockShip,
   marketQuote,
+  goodName,
   marketSellHolding,
   marketSellPreview,
   newSettleStats,
   offlineSplit,
   placeBuyOrder,
+  buyOrderBlockedReason,
   recallExpedition,
   refineRunViews,
   moveQueueItem,
@@ -104,6 +108,10 @@ import {
   setAutoLoopBounty,
   unfitSlot,
   unfitAt,
+  // 2026-09-11 协处理器：CPU 预算总额（含扩容）/ 超载预演 / 原子换装
+  cpuBudgetOf,
+  cpuOverloadText,
+  swapModuleAt,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
   beginTutorialAfterAwaken,
@@ -996,7 +1004,10 @@ export class GameEngine {
     return { ok: true, pending: true }
   }
 
-  /** 市价买入商品（默认 1 件；矿石/矿物传数量）；无现货时报错并提示改挂单 */
+  /** 市价买入商品（默认 1 件；矿石/矿物传数量）。
+   *  2026-09-11 船长实测反馈修复：买不到时**按真实原因分别报错**（此前一律报「供应簿只剩 0 件」，
+   *  实测钱包不足时 141 个有货商品里 104 个会这样说、声望不足时 3 个 MK3 会这样说——全是误导）；
+   *  部分成交时改报"已买多少、还剩多少"，不再说"无法购买"。 */
   buyGoodAt(goodKey: string, qty = 1): CommandResult {
     const res = buyAtMarket(this.state, this.ctx, goodKey, qty)
     if (res.bought > 0) {
@@ -1004,25 +1015,66 @@ export class GameEngine {
       this.notify()
     }
     if (res.bought >= qty) return { ok: true }
-    return {
-      ok: false,
-      error: `市场供应簿只剩 ${res.bought.toLocaleString('zh-CN')} 件可即时成交——可用「挂单买入」等 NPC 补给后自动成交。`,
+    const def = this.ctx.marketGoods.get(goodKey)
+    const name = def ? goodName(this.ctx, goodKey) : goodKey
+    if (res.bought > 0) {
+      // 部分成交：货已入库，只提示"只够这些"
+      return {
+        ok: false,
+        error: `供应簿只够 ${res.bought.toLocaleString('zh-CN')} 件（已买入 ${name}×${res.bought.toLocaleString('zh-CN')}）——其余可挂「挂买单」等 NPC 补给后自动成交。`,
+      }
+    }
+    switch (res.blocked) {
+      case 'insufficient-isk': {
+        const quote = marketQuote(this.state, this.ctx, goodKey)
+        const unit = quote.sell ?? 0
+        return {
+          ok: false,
+          error: `ISK 不足：最低一张 ${unit.toLocaleString('zh-CN')} ISK，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} ISK——减少数量，或用「挂买单」低价排队等成交。`,
+        }
+      }
+      case 'standing':
+        return {
+          ok: false,
+          error: `暂不能买入：${def ? (bmGateReason(this.state, def) ?? goodLockedReason(this.state, def) ?? '声望未达') : '声望未达'}。`,
+        }
+      case 'not-buyable':
+        return { ok: false, error: `${name}只收不卖：市场不出售现货（可等玩家二手挂单，或自己制造）。` }
+      default:
+        return {
+          ok: false,
+          error: `${name}当前没有现货：市场供应簿为空——用「挂买单」等 NPC 补给后自动成交，或过一会儿再来（常驻 20 分钟一轮补给）。`,
+        }
     }
   }
 
   /** 挂限价买单（等 NPC 补给/降价自动成交）；返回新订单 id（失败返回 null）
-   *  2026-09-10 起挂单瞬间会先与现有卖单簿面对冲成交，回执带回成交量（filled / resting） */
+   *  2026-09-10 起挂单瞬间会先与现有卖单簿面对冲成交，回执带回成交量（filled / resting）。
+   *  2026-09-11 船长裁决「甲」：**预扣冻结**——挂单即扣 `挂价 × 实际挂量`，余额不足按余额缩量，
+   *  回执带 `escrow`（本次预扣额）与 `placed`（实际挂了多少件，可能因缩量 < want）。 */
   placeBuyOrderAt(
     goodKey: string,
     price: number,
     qty: number,
-  ): { orderId: number; want: number; filled: number; resting: number } | null {
+  ): { orderId: number; want: number; placed: number; filled: number; resting: number; escrow: number } | null {
     const order = placeBuyOrder(this.state, this.ctx, goodKey, price, qty)
     if (!order) return null
     void this.persist()
     this.notify()
     // 全部即时成交的单已移出挂单表，但返回的订单对象仍带成交量（filled / 剩余 qty）
-    return { orderId: order.id, want: qty, filled: order.filled, resting: order.qty }
+    return {
+      orderId: order.id,
+      want: qty,
+      placed: order.filled + order.qty,
+      filled: order.filled,
+      resting: order.qty,
+      escrow: order.escrowIsk ?? 0,
+    }
+  }
+
+  /** 挂买单能不能挂（不能则给玩家可读原因）——界面门控与回执共用 core 单点口径 */
+  buyOrderBlocked(goodKey: string, price: number, qty: number): string | null {
+    return buyOrderBlockedReason(this.state, this.ctx, goodKey, price, qty)
   }
 
   /** 挂限价卖单（货从自然库存锁定：物品→仓库、装备→装备库、蓝图→蓝图书架）
@@ -1118,14 +1170,32 @@ export class GameEngine {
   }
 
   /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船）。
-   *  2026-09-10 船长：传 ctx——卸下甲板扩展后机舱变小，超出容量的无人机随之自动卸下退回仓库 */
-  unfitAtAt(rack: RackSlot, index: number, shipId?: string): boolean {
+   *  2026-09-10 船长：传 ctx——卸下甲板扩展后机舱变小，超出容量的无人机随之自动卸下退回仓库。
+   *  2026-09-11 协处理器：**CPU 双向校验**——卸下会收回该件的扩容，超载时拒绝并回报原因
+   *  （返回值由 boolean 改 CommandResult，让装配页能把「为什么卸不掉」直接弹给玩家）。 */
+  unfitAtAt(rack: RackSlot, index: number, shipId?: string): CommandResult {
+    const uid = shipId ?? this.state.shipId
+    const why = cpuOverloadText(this.state, this.ctx, uid, { remove: { rack, index } })
+    if (why !== null) return { ok: false, error: why }
     const ok = unfitAt(this.state, rack, index, shipId, this.ctx)
     if (ok) {
       void this.persist()
       this.notify()
+      return { ok: true }
     }
-    return ok
+    return { ok: false, error: '该位没有可卸下的装备。' }
+  }
+
+  /** V18：**换装**（某位旧件 → 装备库里的新件）——一次成型、按最终状态校验 CPU。
+   *  2026-09-11：装配页原先"先卸后装"，在 CPU 双向校验下会把「换协处理器」这类
+   *  最终态合法、中间态非法的换装卡住；改走本命令（core swapModuleAt）。 */
+  swapModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
+    const result = swapModuleAt(this.state, moduleId, this.ctx, { rack, index, shipId })
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 
   /** 2026-09-08 无人机舱：清单调整（delta>0 装入/δ<0 卸下；shipId 缺省 = 当前驾驶船） */

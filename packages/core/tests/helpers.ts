@@ -178,6 +178,8 @@ export function moduleDef(
     droneRangeBonusPct?: number
     // 结构层抗性（2026-09-11：生体损管腔引出——引擎按缺口复合，收敛分组 = gap）
     hullResistAdd?: Partial<Record<DamageType, number>>
+    // 协处理器（2026-09-11：低槽 CPU 预算扩容——cpuUse 0 + cpuBonus）
+    cpuBonus?: number
   },
 ): ModuleDef {
   return {
@@ -216,6 +218,7 @@ export function moduleDef(
     ...(opts?.repairKit !== undefined ? { repairKit: opts.repairKit } : {}),
     ...(opts?.lockDmgBonus !== undefined ? { lockDmgBonus: opts.lockDmgBonus } : {}),
     ...(opts?.droneRangeBonusPct !== undefined ? { droneRangeBonusPct: opts.droneRangeBonusPct } : {}),
+    ...(opts?.cpuBonus !== undefined ? { cpuBonus: opts.cpuBonus } : {}),
   }
 }
 

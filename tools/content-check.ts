@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 内容完整性体检（V10 数据大扩容后加入）：
  * 校验 data 包全部内容表的交叉引用，防止"加数据改漏引用"造成的死物品/坏目录。
  *
@@ -17,6 +17,10 @@
 
 import {
   BLUEPRINTS,
+  BLUEPRINT_PRICE_STEP,
+  BLUEPRINT_PRICE_OVERRIDES,
+  blueprintBookPriceOf,
+  blueprintTierCoefOf,
   ITEMS,
   BELTS,
   MARKET_GOODS,
@@ -67,6 +71,8 @@ import {
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
   FACTION_RARE_DROP_CHANCE,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropEffectiveRate,
   FACTION_RARE_DROP_COUNT,
   FRAGMENT_RECIPES,
   hasLairCore,
@@ -380,9 +386,10 @@ for (const sbp of SHIP_BLUEPRINTS) {
       claims += 1
       check(false, `蓝图说明契约：${bp.id} 说明点名了「${def.name}」，实际材料只有 ${[...mats].map(mineralNameOf).join(' + ')}`)
     }
-    // ⑨ CPU 声明
+    // ⑨ CPU 声明（2026-09-11 起：装备 cpuUse 允许为 0 —— 此时声明指的是**扩容量** cpuBonus，
+    //    如协处理器说明「装配 CPU 上限 +10」；扩容件的蓝图说明同样按 cpuBonus 核对）
     for (const m of d.matchAll(/CPU\s*(\d+)|(\d+)\s*点\s*CPU/g)) {
-      const real = mod?.cpuUse ?? ship?.cpu
+      const real = mod ? (mod.cpuUse && mod.cpuUse > 0 ? mod.cpuUse : mod.cpuBonus) : ship?.cpu
       if (real === undefined) continue
       claims += 1
       check(Number(m[1] ?? m[2]) === real, `蓝图说明契约：${bp.id} 说明写 CPU ${m[1] ?? m[2]}，实际 = ${real}`)
@@ -910,7 +917,21 @@ for (const d of drones) {
   }
 }
 for (const m of MODULES) {
-  check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
+  // 2026-09-11 船长裁决「甲」（新增协处理器时）：**cpuUse 必填整数 ≥ 0**——零占用只允许"本件就是
+  // 加预算"的件（带 cpuBonus），别的件漏写占用照旧报错（保住 V10.5b「每件都占 CPU」的原意）。
+  const cpuUse = m.cpuUse
+  check(
+    cpuUse !== undefined && Number.isInteger(cpuUse) && cpuUse >= 0,
+    `装备 ${m.id} cpuUse 缺失或非法（V10.5b：必填整数 ≥ 0）`,
+  )
+  check(
+    (cpuUse ?? 0) > 0 || (m.cpuBonus ?? 0) > 0,
+    `装备 ${m.id} cpuUse = 0 却没有 cpuBonus——零占用只允许"加预算"件（协处理器族）`,
+  )
+  check(
+    (m.cpuBonus ?? 0) >= 0 && Number.isInteger(m.cpuBonus ?? 0),
+    `装备 ${m.id} cpuBonus 非法（需非负整数）`,
+  )
   // V18：家族合法（六家族 + 无人机装置两家族）
   check([...MODULE_SLOTS].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
   // V18：槽类归属 rack 必填且与 rackOf 推导一致（Q3 映射集中落数据；防标注漂移）
@@ -1981,7 +2002,8 @@ for (const m of MODULES) {
     '派系活跃：中安/低安至少要有一个可作目标的星系（常驻悬赏），否则这条置顶任务永远刷不出来',
   )
   console.log(
-    `· 派系活跃：候选 ${factionPool.size} 个中安/低安星系（掉落概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% ×${FACTION_RARE_DROP_COUNT} 件，船长 2026-09-10 核定）`,
+    `· 派系活跃：候选 ${factionPool.size} 个中安/低安星系（掉落概率 ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}% ×${FACTION_RARE_DROP_COUNT} 件，船长 2026-09-10 核定；` +
+      `**含保底**——连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉，实际 ≈${(factionRareDropEffectiveRate() * 100).toFixed(1)}%/趟，船长 2026-09-11）`,
   )
   console.log(`· 窝点契约：${lairCards} 张窝点卡（稀有残骸 + 三档称呼 + 专属装备齐备，覆盖 ${famWithGear.size} 个敌族）`)
 }
@@ -2050,6 +2072,8 @@ for (const m of MODULES) {
     repairHullHp: 'support',
     repairKit: 'support',
     lockDmgBonus: 'target-lock',
+    // 2026-09-11 协处理器：CPU 预算扩容（本职在 cpu 族；写在别的槽位上才算跨族，需登记）
+    cpuBonus: 'cpu',
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
@@ -2200,6 +2224,103 @@ for (const m of MODULES) {
   }
   console.log(
     `· 舰船价格口径（预警）：${SHIPS.length} 艘船中 priceIsk 与市场行价不符 ${driftPrice} 处、蓝图价与档位系数不符 ${driftBp} 处`,
+  )
+}
+
+/* ── 蓝图价格口径契约（2026-09-11 船长：「调整所有蓝图到合适价格」→ 裁决「甲」）────────────
+   规则（单点 = `packages/data/src/blueprints.ts` 的 `blueprintTierCoefOf` / `blueprintBookPriceOf`）：
+   **装备/物品蓝图书价 = 产物现货价 × 档位系数**——`奇货 ×4 · 民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`
+   （奇货档 2026-09-11 船长复核补正：「蓝图价格排除奇货档。奇货档默认 4 倍」），
+   取整到 `BLUEPRINT_PRICE_STEP`（500 ISK）。产物现货价 = 市场行 basePrice（item 类 × 单次产出数量）。
+   背景（实证）：2026-09-10「MK2/MK3 装备价对齐同级武器价」只改成品价、书价没跟，
+   91 张里 56 张的「书价 ÷ 产物价」漂到 0.18~1.88（武器线与新件合规），本批按系数全量对齐。
+   **系数即默认值，个例可覆盖**（船长：「如果有单独调整过的则允许覆盖默认值」）——
+   `BLUEPRINT_PRICE_OVERRIDES` 里登记的 id：跳过系数比对，但覆盖价必须与两处落账同值、且键必须是真实蓝图。
+   两层校验：
+   - **硬契约**：`blueprints.ts priceIsk` == 市场蓝图行 `basePrice`（两处必须同值——玩家付款读市场行，
+     图鉴/工业页读书价，任一处漏改都会让玩家看到两个价）；覆盖表键非法 ⇒ 也算硬错；
+   - **预警**：书价与规则值差 > 500 ISK（口径漂移哨兵，与舰船价格口径同为 warn）；
+   - **预警**：料/价（材料成本 ÷ 产物现货价）落在 30%~60% 之外（同族锚 45%，口径见 manufacture:econ）。 */
+{
+  const bpGoods = MARKET_GOODS.filter((g) => g.kind === 'blueprint' && typeof g.refId === 'string')
+  const marketOfBp = new Map(bpGoods.map((g) => [g.refId!, g]))
+  const marketOfModule = new Map(MARKET_GOODS.filter((g) => g.kind === 'module' && typeof g.refId === 'string').map((g) => [g.refId!, g]))
+  const marketOfItem = new Map(MARKET_GOODS.filter((g) => g.kind === 'item' && typeof g.refId === 'string').map((g) => [g.refId!, g]))
+  const modName = new Map(MODULES.map((m) => [m.id, m.name]))
+  const itemName = new Map(ITEMS.map((i) => [i.id, i.name]))
+  const itemSell = new Map(ITEMS.map((i) => [i.id, i.baseSellPriceIsk ?? 0]))
+  let mismatchPrice = 0
+  let driftCoef = 0
+  let driftMatRatio = 0
+  let okCoef = 0
+  let overridden = 0
+  const tiers: Record<string, number> = {}
+  for (const bpId of Object.keys(BLUEPRINT_PRICE_OVERRIDES)) {
+    if (!BLUEPRINTS.some((b) => b.id === bpId)) {
+      errors.push(`蓝图价格口径：覆盖表里的 ${bpId} 不是真实蓝图 id——删掉它或修正拼写`)
+      mismatchPrice += 1
+    }
+  }
+  for (const bp of BLUEPRINTS) {
+    const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'
+    const good = marketOfBp.get(bp.id)
+    if (!good) {
+      errors.push(`蓝图价格口径：${bp.id}（${label}）在市场目录里没有蓝图行——玩家买不到，也无法比对书价`)
+      mismatchPrice += 1
+      continue
+    }
+    if ((good.basePrice ?? 0) !== bp.priceIsk) {
+      errors.push(
+        `蓝图价格口径：${bp.id}（${label}）blueprints.ts 书价 = ${bp.priceIsk.toLocaleString('zh-CN')}，市场行 basePrice = ${(good.basePrice ?? 0).toLocaleString('zh-CN')}（两处必须同值）`,
+      )
+      mismatchPrice += 1
+    }
+    // 产物现货价（item 类按单次产出数量折算）
+    const product =
+      bp.moduleId !== undefined
+        ? (marketOfModule.get(bp.moduleId)?.basePrice ?? 0)
+        : (marketOfItem.get(bp.itemId ?? '')?.basePrice ?? 0) * (bp.outputUnits ?? 1)
+    const { coef, label: tierLabel } = blueprintTierCoefOf(bp.id, good.rarity)
+    tiers[tierLabel] = (tiers[tierLabel] ?? 0) + 1
+    if (product <= 0) {
+      warn.push(`蓝图价格口径：${bp.id}（${label}）找不到产物现货价——无法按档位系数核算书价`)
+      continue
+    }
+    const expect = blueprintBookPriceOf(bp.id, product, good.rarity)
+    const ov = BLUEPRINT_PRICE_OVERRIDES[bp.id]
+    if (ov) {
+      overridden += 1
+      if (bp.priceIsk !== ov.price || (good.basePrice ?? 0) !== ov.price) {
+        errors.push(
+          `蓝图价格口径：${bp.id}（${label}）已登记单独覆盖价 ${ov.price.toLocaleString('zh-CN')}（理由：${ov.reason}），但 blueprints.ts = ${bp.priceIsk.toLocaleString('zh-CN')}、市场行 = ${(good.basePrice ?? 0).toLocaleString('zh-CN')}——三处必须同值`,
+        )
+        mismatchPrice += 1
+      } else {
+        okCoef += 1
+      }
+    } else if (bp.priceIsk !== expect) {
+      warn.push(
+        `蓝图价格口径：${bp.id}（${label}）书价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「${tierLabel} 产物价 ${product.toLocaleString('zh-CN')} ×${coef}」应为 ${expect.toLocaleString('zh-CN')}（±${BLUEPRINT_PRICE_STEP} ISK 取整余量内视为达标；若是有意偏离，请在 BLUEPRINT_PRICE_OVERRIDES 登记）`,
+      )
+      driftCoef += 1
+    } else {
+      okCoef += 1
+    }
+    // 料/价（材料成本 ÷ 产物现货价；材料按物品站内收价计）
+    let mat = 0
+    for (const m of bp.materials) mat += Math.max(1, Math.floor(m.count)) * (itemSell.get(m.itemId) ?? 0)
+    const ratio = product > 0 ? mat / product : 0
+    if (ratio < 0.3 || ratio > 0.6) {
+      warn.push(
+        `蓝图价格口径：${bp.id}（${label}）料/价 = ${(ratio * 100).toFixed(1)}%（材料 ${mat.toLocaleString('zh-CN')} ÷ 产物 ${product.toLocaleString('zh-CN')}）落在 30%~60% 之外（同族锚 45%）`,
+      )
+      driftMatRatio += 1
+    }
+  }
+  console.log(
+    `· 蓝图价格口径：${BLUEPRINTS.length} 张装备/物品蓝图中，书价与规则值一致 ${okCoef} 张（${Object.entries(tiers)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(' / ')}；单独覆盖 ${overridden} 张）；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
   )
 }
 

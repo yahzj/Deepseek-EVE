@@ -33,7 +33,15 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AnomalyDef, SimContext } from './types'
 import { nextRandom } from './rng'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, settleDroneLosses, startBattleFor } from './combat'
+import {
+  advanceBattleFor,
+  persistFleetHullDamage,
+  refundAmmo,
+  refundRepairKits,
+  repairUsageText,
+  settleDroneLosses,
+  startBattleFor,
+} from './combat'
 import { calcPower } from './expedition'
 import {
   injectWreckDensity,
@@ -333,6 +341,15 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
 }
 
 /**
+ * 战报尾巴：船体维修装置本场消耗（2026-09-11 船长「不单独显示日志，只把消耗组件数量
+ * 显示到战后总结」）。未消耗 = 不添尾巴；文案与远征/AI 副船共用 `repairUsageText`。
+ */
+function repairTail(battle: Parameters<typeof repairUsageText>[0], ctx: SimContext): string {
+  const t = repairUsageText(battle, ctx)
+  return t.length > 0 ? `，船体维修装置${t}` : ''
+}
+
+/**
  * 遭遇战自动脱离结算（船长 2026-09-11 定：低安遭遇也挂"结构损失过半自动脱离"保险）：
  * 轻损脱离——退还弹药/修理组件、落盘承伤、**无缴获、无额外扣损**（战斗内实际承伤照留），
  * 随后同样走撤退判定（此时结构已 <50%，必然触发返港待命）。
@@ -355,7 +372,7 @@ function settleEscape(state: GameState, ctx: SimContext): void {
     'warn',
     `⚔ 遭遇战自动脱离（${galaxyName}·${enc.name}）：${shipName} 结构损失过半，及时退出交火（现 装甲 ${Math.round(
       (ship?.armorPct ?? 1) * 100,
-    )}% / 结构 ${Math.round((ship?.durability ?? 1) * 100)}%）。`,
+    )}% / 结构 ${Math.round((ship?.durability ?? 1) * 100)}%）${repairTail(battle, ctx)}。`,
   )
   clearEncounter(state)
   retreatIfHullLow(state, ctx, shipId)
@@ -389,7 +406,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'info',
-      `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
+      `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}${repairTail(battle, ctx)}。`,
     )
   } else {
     // 失利附加扣损：与文字结算同一口径（一口 = 敌群火力 × hitFirepowerSec，装甲先吃）
@@ -421,7 +438,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
           : '船体带着损伤'
       }${
         takenUnits > 0 ? `，货仓被劫走 ${takenUnits.toLocaleString('zh-CN')} 单位` : ''
-      }，狼狈脱离。`,
+      }，狼狈脱离${repairTail(battle, ctx)}。`,
     )
   }
   clearEncounter(state)

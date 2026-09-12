@@ -522,6 +522,9 @@ export interface BattleState {
     pulses: number
     /** 累计消耗组件枚数 */
     kitsUsed: number
+    /** **逐型**累计消耗（item id → 枚数；2026-09-11 船长「只将消耗组件数量显示到战后总结」）——
+     * 战报按此写「消耗 军用修理组件 ×12」；旧档缺省 = 空账本（战报退化为只报总数） */
+    kitsUsedByType?: Record<string, number>
   }
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = 我方武器条目下标（仅 src='drone' 的条目）；开战由 startBattleFor 写入。
@@ -657,6 +660,10 @@ export interface PlayerOrder {
   absorbCredit?: number
   /** 本窗口内簿面成交件数（仅卖单；撮合前置 0，窗口结算后弃值——不序列化） */
   windowFilled?: number
+  /** **买单预扣**（2026-09-11 船长裁决「甲：改成 EVE 式预扣冻结」）：挂单时从钱包扣下的
+   *  `挂价 × 剩余数量`，成交时按**实际成交价**结算并把价差退回钱包，撤单全额退回。
+   * 仅买单使用；卖单冻结的是货（`escrowItems`/`escrowShips`）。旧档缺省 = 0（历史未预扣的遗留单按旧口径成交） */
+  escrowIsk?: number
 }
 
 /** 第九版存档结构（历史版本；v10 在其字段基础上只扩展了 fitted 槽位形状） */
@@ -970,6 +977,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 兼容字段、零迁移、不升版本号：老档缺省 = 四类全空，由 normalizeState 补默认并剪枝。
    */
   marks: MarksState
+  /**
+   * 2026-09-11 稀有残骸保底（船长：「每 20 次必定掉的保底」→ 口径甲：只保底派系活跃掷骰链）：
+   * **连续掷骰未出**的次数（0 = 上次出货或尚未开始）。派系活跃胜利时 +1，命中/保底/窝点掉落清零。
+   * 可选字段、零迁移：老档缺省 = 0（从零开始攒）。
+   */
+  rareWreckDryStreak?: number
 }
 
 /** 玩家标记（收藏）四类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
@@ -1393,6 +1406,7 @@ export function createInitialState(opts?: {
     shipReturns: {},
     shipLocks: {},
     marks: emptyMarks(),
+    rareWreckDryStreak: 0, // 稀有残骸保底计数（2026-09-11 船长；见 FACTION_RARE_DROP_PITY_ROLLS）
     market: {
       pools: {},
       npcBuy: {},

@@ -235,6 +235,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
       // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深
       body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
       break
+    case 'cpu':
+      // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）
+      body = `装配 CPU 上限 +${fmt(mod.cpuBonus)}（本件不占 CPU）`
+      break
   }
   // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）、结构层抗性与**跨族加成**——短行不丢关键效果
   // （跨族尾缀 = 2026-09-11 修复：赃物强化舱的"甲容 +15%"这类搭车加成因槽位分支而漏显示）
@@ -493,6 +497,10 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) {
     out.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
   }
+  // 协处理器（2026-09-11）：CPU 预算扩容——本职在 cpu 族；写在别的槽位上才算跨族（当前无此件，护栏登记着）
+  if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) {
+    out.push({ k: 'CPU 扩容', v: `装配预算 +${fmt(mod.cpuBonus ?? 0)}（本件不占 CPU）` })
+  }
   return out
 }
 
@@ -513,6 +521,7 @@ function crossFamilyShort(mod: ModuleDef): string {
   if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(`无人机伤害 +${pct(mod.droneDmgBonus ?? 0)}`)
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(`无人机射程 +${pct(mod.droneRangeBonusPct ?? 0)}`)
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(`锁定受击 +${pct(mod.lockDmgBonus)}`)
+  if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(`CPU 上限 +${fmt(mod.cpuBonus ?? 0)}`)
   return parts.join(' · ')
 }
 
@@ -722,6 +731,29 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.lockDmgBonus !== undefined) {
       lines.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
     }
+  } else if (mod.slot === 'cpu') {
+    // 2026-09-11 协处理器（低槽）：装配 CPU 预算扩容；**本件自身不占 CPU**（船长定）——
+    // 两行都写清：扩容多少 + 自己不占（否则玩家看到"CPU 占用 0"会以为是坏的）
+    if (mod.cpuBonus !== undefined) {
+      lines.push({
+        k: 'CPU 扩容',
+        v: (
+          <>
+            {`装配预算 +${fmt(mod.cpuBonus)}`}
+            <span className="app-dim">（装配与无人机放飞共用这份预算）</span>
+          </>
+        ),
+      })
+    }
+    lines.push({
+      k: '自身占用',
+      v: (
+        <>
+          <em className="app-chip is-ok">不占 CPU</em>
+          <span className="app-dim">（纯扩容；卸下即收回扩容）</span>
+        </>
+      ),
+    })
   }
   // 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开，
   // 语义各自成行——容量 = 最后那段血更厚、抗性 = 那段血更耐打

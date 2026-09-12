@@ -7,7 +7,16 @@ export { ORES, MINERALS, ITEMS, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'
 export { MODULES, buildModuleCatalog } from './modules'
-export { BLUEPRINTS, buildBlueprintCatalog } from './blueprints'
+// 2026-09-11 蓝图价格口径（船长裁决甲 + 同日复核补正：奇货档 ×4，系数即默认值、个例可覆盖）：
+// 系数与算法单点在被导出，供 content:check 契约与重定价工具复用（避免第二份公式）
+export {
+  BLUEPRINTS,
+  BLUEPRINT_PRICE_STEP,
+  BLUEPRINT_PRICE_OVERRIDES,
+  blueprintBookPriceOf,
+  blueprintTierCoefOf,
+  buildBlueprintCatalog,
+} from './blueprints'
 export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'

@@ -957,11 +957,14 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     expect(ask).toBeGreaterThanOrEqual(95)
     placeBuyOrder(state, ctx, 'mod-a', 95, 500)
     advanceGame(state, 200 * 60_000, ctx)
-    const bought = 500 - (state.orders[0]?.qty ?? 0)
+    const left = state.orders.find((o) => o.good === 'mod-a')?.qty ?? 0
+    const bought = 500 - left
     expect(bought).toBeGreaterThan(5) // 期望 ≈20；容差下限
     expect(bought).toBeLessThan(60) // 上限
     expect(state.logs.some((l) => l.text.startsWith('挂单买入成交：'))).toBe(true) // 静默后与普通买单成交一致
-    expect(state.wallet.isk).toBeGreaterThan(10_000_000 - bought * 95 - 100)
+    // 2026-09-11 预扣冻结：挂单时一次性扣 95×500；每笔抢单成交从预扣里核销 95（成交价 = 挂价，无价差）
+    expect(state.wallet.isk).toBe(10_000_000 - 95 * 500)
+    expect(state.orders.find((o) => o.good === 'mod-a')?.escrowIsk).toBe(95 * left)
   })
 
   it('奇货买侧专项（2026-09-08 船长定·试跑）：越线基准改为 20L → 低挂 1000 窗零供货；common 对照照常供货', () => {

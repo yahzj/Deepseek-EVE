@@ -183,6 +183,10 @@ export {
   MODULE_SLOTS,
   slotLabel,
   effectiveCpu,
+  // 2026-09-11 协处理器：CPU 预算总额（船体 + 协处理器）与超载预演、换装
+  cpuBudgetOf,
+  cpuOverloadText,
+  swapModuleAt,
   countModule,
   addModule,
   removeModule,
@@ -335,6 +339,8 @@ export {
   askLineOf,
   placeSellOrder,
   placeBuyOrder,
+  // 2026-09-11 挂买单预扣：能不能挂（原因给界面用）
+  buyOrderBlockedReason,
   cancelOrder,
   sellAtMarket,
   buyAtMarket,
@@ -716,6 +722,8 @@ export {
   FACTION_BOUNTY_THREAT_MUL,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropEffectiveRate,
   factionAnomalyOf,
   factionBaseRewardIsk,
   hasLairCore,

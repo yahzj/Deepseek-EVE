@@ -19,10 +19,11 @@ import {
   allFittedIds,
   countModule,
   countWare,
+  cpuBudgetOf,
   createPlayerSpec,
   droneCpuUsed,
   droneLoadM3,
-  effectiveCpu,
+  effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
   fittedCpuUsed,
   fleetDefOf,
   RACK_LABELS,
@@ -60,11 +61,12 @@ const COMBAT_BASE_KEYS = new Set([
   '回避率',
 ])
 
-/** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽） */
+/** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
+ *  2026-09-11 协处理器 = 低槽 CPU 预算扩容件） */
 const RACK_FAMILIES: Record<RackSlot, string> = {
   high: '炮台 / 导弹架 / 激光炮 / 采集器 / 无人机装置',
   mid: '护盾增强・扩展 / 矢量推进器 / 索敌・陀螺（命中・闪避支援）',
-  low: '装甲镀层・增厚板 / 货舱扩展 / 稳定器・射速计算机（伤害・射速支援）',
+  low: '装甲镀层・增厚板 / 货舱扩展 / 稳定器・射速计算机（伤害・射速支援）/ 协处理器',
 }
 
 /** 数字千分位 */
@@ -127,15 +129,17 @@ function diffSegs(
   cpuNext: number,
   cpuTotal: number,
   weapon?: { curMult: number | null; nextMult: number | null; curType: DamageType | null; nextType: DamageType | null },
+  cpuTotalNext?: number,
 ): FitSeg[] {
   const segs: FitSeg[] = []
   const add = (t: string, c: FitSeg['c']): void => {
     segs.push({ t, c })
   }
   const dir = (d: number): 'up' | 'down' => (d > 0 ? 'up' : 'down')
-  // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）
+  // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）。
+  // 2026-09-11 协处理器：**预算随件走** —— 装/卸协处理器时前后预算不同，两栏各用自己的预算。
   const remCur = Math.max(0, cpuTotal - cpuCur)
-  const remNext = Math.max(0, cpuTotal - cpuNext)
+  const remNext = Math.max(0, (cpuTotalNext ?? cpuTotal) - cpuNext)
   if (remNext !== remCur) add(`CPU 剩 ${remCur}→${remNext}`, 'info')
   // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
@@ -329,8 +333,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return () => ro.disconnect()
   }, [])
 
+  /** 卸下（2026-09-11：`unfitAtAt` 改回报 CommandResult——CPU 双向校验下"卸不掉"会带原因） */
   function handleUnfit(rack: RackSlot, index: number): void {
-    if (engine.unfitAtAt(rack, index, effectiveTarget)) onToast('装备已卸下并放回装备库。')
+    const r = engine.unfitAtAt(rack, index, effectiveTarget)
+    if (r.ok) onToast('装备已卸下并放回装备库。')
+    else onToast(r.error ?? '卸下失败。', true)
   }
 
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
@@ -383,7 +390,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     m: ModuleDef,
     rack: RackSlot,
     index: number,
-  ): { cur: UnitSpec; next: UnitSpec | null; cpuNext: number } | null {
+  ): { cur: UnitSpec; next: UnitSpec | null; cpuNext: number; cpuTotalNext: number } | null {
     const curSpec = spec
     if (!curSpec) return null
     const base: FittedModules = fitted ?? { high: [], mid: [], low: [] }
@@ -402,6 +409,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       next: createPlayerSpec(simState, engine.ctx, effectiveTarget),
       // 2026-09-08：换装对比 CPU 口径同含无人机舱清单占用（清单不变，只反映装配变化）
       cpuNext: fittedCpuUsed(simFitted, engine.ctx) + droneCpuUsed(fleet.droneLoad, engine.ctx),
+      // 2026-09-11 协处理器：**装后预算**（装的是协处理器时会变大）——"CPU 剩"两栏各用自己的预算
+      cpuTotalNext: cpuBudgetOf(state, engine.ctx, effectiveTarget, simFitted),
     }
   }
   function openPick(rack: RackSlot, index: number): void {
@@ -409,7 +418,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     setPickKw('')
     setPickSlot('all')
     setPickBay({ rack, index })
-    const cpuTotal = shipDef ? effectiveCpu(state, engine.ctx, shipDef) : 0
+    // 2026-09-11 协处理器：预算随件走 —— 对比段的两栏各用自己的预算（装/卸协处理器才显示得对）
+    const cpuTotal = cpuBudgetOf(state, engine.ctx, effectiveTarget)
     const segs = new Map<string, FitSeg[]>()
     for (const m of candidatesOf(rack)) {
       const oldId = fitted?.[rack]?.[index] ?? null
@@ -431,19 +441,20 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         : undefined
       segs.set(
         m.id,
-        r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal, weapon) : [],
+        r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal, weapon, r.cpuTotalNext) : [],
       )
     }
     setPickDiffs(segs)
   }
+  /** 装配/换装（2026-09-11 起走**原子换装**：一次成型、按最终状态校验 CPU ——
+   *  原先的"先卸后装"在 CPU 双向校验下会把「换协处理器」这类最终态合法的换装卡住） */
   function pickModule(m: ModuleDef): void {
     if (!pickBay) return
     const { rack, index } = pickBay
-    // 该位已装 → 先卸下旧件（放回装备库），再装入所选件
-    if ((fitted?.[rack]?.[index] ?? null) !== null) engine.unfitAtAt(rack, index, effectiveTarget)
-    const r = engine.fitModuleTo(m.id, rack, index, effectiveTarget)
+    const had = (fitted?.[rack]?.[index] ?? null) !== null
+    const r = engine.swapModuleTo(m.id, rack, index, effectiveTarget)
     if (!r.ok) onToast(r.error ?? '装配失败', true)
-    else onToast(`${m.name} 已装入${rackLabel(rack)}第 ${index + 1} 位。`)
+    else onToast(`${m.name} 已${had ? '换装到' : '装入'}${rackLabel(rack)}第 ${index + 1} 位。`)
     setPickBay(null)
   }
 
@@ -645,9 +656,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         ) : null}
           </div>
           <div className="app-fit-col-right">
-        {/* CPU 剩余条（船长 2026-09-05：由左栏移置槽位最上方、减法显示剩余；与放飞共用池） */}
+        {/* CPU 剩余条（船长 2026-09-05：由左栏移置槽位最上方、减法显示剩余；与放飞共用池）。
+            2026-09-11 协处理器：预算 = 船体 CPU + 已装协处理器扩容 → 走 core `cpuBudgetOf` 单点 */}
         {shipDef ? (
-          <CpuStrip used={cpuUsed} total={effectiveCpu(state, engine.ctx, shipDef)} />
+          <CpuStrip used={cpuUsed} total={cpuBudgetOf(state, engine.ctx, effectiveTarget)} />
         ) : null}
         {/* V18：高/中/低三组槽位——按槽位图标排布（取消列表形式，船长 2026-09-05） */}
         <div className="app-fit-racks">
@@ -948,7 +960,8 @@ function DroneBaySection({
   const [selId, setSelId] = useState<string | null>(null)
   const [selN, setSelN] = useState(1)
   const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx) : 0
-  const cpuTotal = shipDef ? effectiveCpu(state, ctx, shipDef) : 0
+  // 2026-09-11 协处理器：预算含扩容（与 core `adjustDroneLoad` 同源，界面不会"能装/装不上"打架）
+  const cpuTotal = cpuBudgetOf(state, ctx, target)
   const cpuLeft = Math.max(0, cpuTotal - fittedCpu - droneCpu)
 
   function adj(id: string, delta: number): void {

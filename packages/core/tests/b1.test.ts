@@ -14,8 +14,9 @@ import { startMining } from '../src/mining'
 import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
 import { hullLayerCaps } from '../src/shipyard'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
-import { makeTestCtx, belt, galaxy, anomaly } from './helpers'
+import { makeTestCtx, belt, galaxy, anomaly, ship, moduleDef } from './helpers'
 import { wreckDensityOf } from '../src/salvage'
+import { addModule, fitModule } from '../src/equipment'
 
 /** 遭遇战模板（与 data 同形，测试 ctx 独立注册） */
 function encTiers(): AnomalyDef[] {
@@ -514,6 +515,38 @@ describe('B1 遇袭受损与撤退（船长 2026-09-11 定）', () => {
     expect(state.logs.some((l) => l.text.includes('结构损失过半，及时退出交火'))).toBe(true)
     expect(state.wallet.isk).toBe(walletBefore) // 轻损脱离：不给缴获、也不扣维修费
     expect(state.awayGalaxy).toBeNull() // 随后走撤退判定 → 停手返港
+  })
+
+  it('应战：遭遇战战后总结带修理组件消耗（2026-09-11 船长：装置不单独显示日志）', () => {
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      // 同名覆盖默认沙猫：血厚，保证 5 秒内打不完（至少一跳修复脉冲落地）
+      ships: [ship('sandcat', { shieldHp: 3_000, armorHp: 5_000, hullHp: 5_000 })],
+      modules: [moduleDef('mod-hullrep-t', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'repairkit-civ' })],
+      items: [{ id: 'repairkit-civ', name: '民用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 3_000, description: '测试民用修理组件' }],
+      galaxies: [{ ...galaxy('galaxy-far', '远方'), security: -0.8 }],
+      belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-f', 'ore-a', '低安带', { galaxyId: 'galaxy-far' })],
+      anomalies: encTiers(),
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.exploredGalaxies.push('galaxy-far')
+    miningInField(state, ctx)
+    addModule(state, 'mod-hullrep-t', 1)
+    expect(fitModule(state, 'mod-hullrep-t', ctx).ok).toBe(true)
+    state.warehouse.items['repairkit-civ'] = 200 // 预载（货舱优先、仓库兜底）
+    inject(state, 22)
+    expect(fightEncounter(state, ctx).ok).toBe(true)
+    // 制造缺口（盾打空、甲受损、结构仍在 50% 以上：避开自动脱离保险，先让修复脉冲跑起来）
+    state.encounter.battle!.units['player']!.hp = { s: 0, a: 3_000, h: 4_500 }
+    advanceGame(state, 5 * 60_000, ctx)
+    expect(state.encounter.active).toBe(false)
+    const encLogs = state.logs
+      .filter((l) => l.text.includes('遭遇战'))
+      .map((l) => l.text)
+      .join('|')
+    expect(encLogs).toMatch(/船体维修装置消耗 民用修理组件 ×\d+/)
+    // 战斗中不再单独写维修装置日志（消耗数只进战后总结）
+    expect(state.logs.some((l) => l.text.includes('耗尽') && l.text.includes('维修装置'))).toBe(false)
   })
 
   it('存档往返：撤退保险字段随档保留（战中重载不再凭空失效）', () => {

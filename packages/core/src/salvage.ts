@@ -100,7 +100,11 @@ export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): Item
   }
 }
 
-/** 击败窝点 → 该星系稀有残骸入库（按敌群记账；高级箱开箱时按敌群取特色池） */
+/**
+ * 击败窝点 → 该星系稀有残骸入库（按敌群记账；高级箱开箱时按敌群取特色池）。
+ * **同时清零"稀有残骸连刷空手"计数**（2026-09-11 船长保底口径）：任何来源的稀有残骸入库都算"出了货"——
+ * 窝点必掉的 1~3 件、派系活跃掷中的 1 件、保底触发的那 1 件，走的是同一个单点。
+ */
 export function injectRareWreck(state: GameState, galaxyId: string, anomalyId: string, count: number): void {
   if (count <= 0 || galaxyId.length === 0 || anomalyId.length === 0) return
   const rec = state.galaxyWrecks[galaxyId] ?? { density: 0, rare: 0 }
@@ -109,6 +113,7 @@ export function injectRareWreck(state: GameState, galaxyId: string, anomalyId: s
   by[anomalyId] = Math.max(0, Math.floor((by[anomalyId] ?? 0) + count))
   rec.rareBy = by
   state.galaxyWrecks[galaxyId] = rec
+  state.rareWreckDryStreak = 0 // 出货即清零（保底计数只统计"连续空手"）
 }
 
 /** 该星系某敌群的稀有残骸存量（界面展示用） */

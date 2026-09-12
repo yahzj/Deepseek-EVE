@@ -16,7 +16,7 @@ import {
   startExpedition,
 } from '../src/expedition'
 import { battleWinPreview, battleArcsFor, bountyDamageForecast, bountyWinPercentGuarded, createFoeSpecs } from '../src/combat'
-import { anomaly, DEFAULT_TEST_ITEMS, makeTestCtx, moduleDef } from './helpers'
+import { anomaly, DEFAULT_TEST_ITEMS, makeTestCtx, moduleDef, ship } from './helpers'
 
 describe('远征 V12：两阶段', () => {
   let state: GameState
@@ -105,6 +105,29 @@ describe('远征 V12：两阶段', () => {
     // 剩余弹药退回仓库（消耗后应少于 500）
     const left = state.warehouse.items['ammo-kinetic-l'] ?? 0
     expect(left).toBeLessThan(500)
+  })
+
+  it('战后总结带修理组件消耗：战报尾巴「船体维修装置消耗 民用修理组件 ×N」', () => {
+    // 2026-09-11 船长：「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
+    const rep = moduleDef('mod-hullrep-t', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'repairkit-civ' })
+    const ctxR = makeTestCtx({
+      ships: [ship('sandcat', { shieldHp: 3_000, armorHp: 5_000, hullHp: 5_000 })], // 同名覆盖默认沙猫：血厚到 5 秒内打不完
+      modules: [rep],
+      items: [{ id: 'repairkit-civ', name: '民用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 3_000, description: '测试民用修理组件' }],
+      anomalies: [anomaly('ano-repair-t', 'galaxy-hub', { threat: 40, reward: 20_000 })],
+      quietEvents: true,
+    })
+    addModule(state, 'mod-hullrep-t', 1)
+    expect(fitModule(state, 'mod-hullrep-t', ctxR).ok).toBe(true)
+    state.warehouse.items['repairkit-civ'] = 200 // 预载（货舱优先、仓库兜底）
+    expect(startExpedition(state, 'ano-repair-t', ctxR).ok).toBe(true)
+    // 人为制造缺口（盾打空、甲/结构重残）：保证每跳都实际修复、都扣组件（同 combat.test 口径）
+    state.expedition.battle!.units['player']!.hp = { s: 0, a: 3_000, h: 2_000 }
+    // 打完（战斗上限 10 分钟）+ 返港段走完（本地悬赏 120s），按需多推几拍
+    for (let i = 0; i < 20 && state.expedition.active; i++) advanceGame(state, 60_000, ctxR)
+    expect(state.expedition.active).toBe(false)
+    const report = [...state.logs].reverse().find((l) => l.text.includes('战报'))
+    expect(report?.text ?? '').toMatch(/船体维修装置消耗 民用修理组件 ×\d+/)
   })
 
   it('battleTacticDesire / setBattleDesire：战斗中可调期望距离并钳制；偏好被记忆且出发时沿用', () => {

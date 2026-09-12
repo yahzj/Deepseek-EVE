@@ -4,9 +4,67 @@
  *
  * V10 新增：民用档 ×3（平价常驻、新手入门）与 MK3 攻坚档 ×3（市场稀有、材料含同位聚晶/星髓晶；
  * MK3 蓝图学习需协会声望 4）。材料全部来自精炼产物（挖矿 → 精炼 → 制造闭环）。
+ *
+ * **2026-09-11 船长：「调整所有蓝图到合适价格」→ 裁决「甲」**：装备/物品蓝图书价一律按
+ * **档位系数**定——`奇货 ×4 · 民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`（乘**产物现货价**，取整到 500 ISK）；
+ * 系数即**默认值**，个例可用 `BLUEPRINT_PRICE_OVERRIDES` 单独覆盖（船长同日：「如果有单独调整过的则允许覆盖默认值」）。
+ * 单点实现 = `blueprintTierCoefOf()`（下方），`tools/content-check.ts` 的「蓝图价格口径契约」据此校验。
+ * 背景：2026-09-10「MK2/MK3 装备价对齐同级武器价」那次只改了成品价、**书价没跟**，
+ * 导致 91 张里 56 张的「书价 ÷ 产物价」漂移到 0.18~1.88（武器线与新件是合规的 2/2.5/3）。
  */
 
-import type { BlueprintDef } from '@whale/core'
+import type { BlueprintDef, MarketRarity } from '@whale/core'
+
+/**
+ * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」+ 同日复核补正）：
+ * - **奇货档（市场稀有度 `exotic`）默认 ×4**（船长：「蓝图价格排除奇货档。奇货档默认 4 倍」）——
+ *   奇货**不参与** MK 档阶梯，单列一档；
+ * - 其余按蓝图 id 后缀判档：`-3` = MK3（×3）· `-2` = MK2（×2.5）· 其余（民用/基础/MK1）= ×2。
+ * **书价 = 产物现货价 × 本系数**（取整到 500 ISK）；改系数只改这一处。
+ * `rarity` **必填**（奇货档只能从市场行取，漏传会算错档 ⇒ 由类型强制）。
+ */
+export function blueprintTierCoefOf(
+  bpId: string,
+  rarity: MarketRarity,
+): { tier: 1 | 2 | 3 | 4; coef: number; label: string } {
+  if (rarity === 'exotic') return { tier: 4, coef: 4, label: '奇货' }
+  if (/-3$/.test(bpId)) return { tier: 3, coef: 3, label: 'MK3' }
+  if (/-2$/.test(bpId)) return { tier: 2, coef: 2.5, label: 'MK2' }
+  return { tier: 1, coef: 2, label: '民用/基础/MK1' }
+}
+
+/** 书价取整粒度（船长口径：合适价格取整到 500 ISK） */
+export const BLUEPRINT_PRICE_STEP = 500
+
+/**
+ * **单独调整过的蓝图价**（船长 2026-09-11：「所有蓝图按系数都是默认值。**如果有单独调整过的
+ * 则允许覆盖默认值**」）：键 = 蓝图 id，值 = 覆盖书价 + 理由。
+ * 只放"有意偏离系数"的个例；`content-check` 会校验键必须是真实蓝图、且两处价必须等于覆盖价。
+ *
+ * **现存 6 条 = 弹药蓝图**（船长同日复核：「**弹药蓝图回滚到 1.5 倍，其他保持不变**」）：
+ * 弹药线维持 2026-09-09「补给线 ×1.5」那批的落账原值（6 张全数入表，故弹药书价不随系数漂移）。
+ * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
+ */
+export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
+  // 基础弹（民用档）：2026-09-09 原值
+  'bp-ammo-kinetic': { price: 1_350, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-explosive': { price: 1_650, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-plasma': { price: 1_950, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  // 弹药 MK2（奇货书）：2026-09-09 原值（＝当时「现价 ×1.5」的落账值 9k/12.75k/18k）
+  'bp-ammo-kinetic-2': { price: 9_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-explosive-2': { price: 12_750, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  'bp-ammo-plasma-2': { price: 18_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+}
+
+/**
+ * 按系数算出的**应有书价**：① 有单独覆盖 → 用覆盖价；② 否则 = 产物现货价 × 档位系数（取整 500 ISK）。
+ * `rarity` 传该蓝图的市场行稀有度（奇货档 ×4 由它决定）。
+ */
+export function blueprintBookPriceOf(bpId: string, productPrice: number, rarity: MarketRarity): number {
+  const override = BLUEPRINT_PRICE_OVERRIDES[bpId]
+  if (override) return override.price
+  return Math.round((productPrice * blueprintTierCoefOf(bpId, rarity).coef) / BLUEPRINT_PRICE_STEP) * BLUEPRINT_PRICE_STEP
+}
 
 export const BLUEPRINTS: readonly BlueprintDef[] = [
   {
@@ -19,7 +77,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 80, // ×6 提速（2026-09-09 船长定：制造速度 ×6；原 8*60=480s）
     buildCostIsk: 8_000,
-    priceIsk: 62400,
+    priceIsk: 62500,
     description: '入门蓝图：教你用三钛与类银组装第一部采集器。',
   },
   {
@@ -32,7 +90,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 100, // ×6 提速（原 10*60=600s）
     buildCostIsk: 10_000,
-    priceIsk: 58400,
+    priceIsk: 58500,
     description: '货舱改造图纸，需要类晶体胶体做密封衬层。',
   },
   {
@@ -46,7 +104,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 500, // ×6 提速（原 50*60=3000s）
     buildCostIsk: 60_000,
-    priceIsk: 452500,
+    priceIsk: 1165000,
     description: '谐振钻头图纸：类晶体胶体谐振环 + 类银散热栅，中期工业的里程碑。',
   },
   {
@@ -60,7 +118,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 700, // ×6 提速（原 70*60=4200s）
     buildCostIsk: 80_000,
-    priceIsk: 497500,
+    priceIsk: 1187500,
     description: '折叠货舱技术，核心是超噬矿合金框架——希莫非特矿带的宝藏。',
   },
   {
@@ -146,7 +204,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3000, // ×6 提速（原 300*60=18000s）
     buildCostIsk: 260_000,
-    priceIsk: 2973000,
+    priceIsk: 6990000,
     description: '精密采集器 MK3 图纸：同位聚晶谐振腔 + 星髓晶轴承（学习需声望 4）。',
   },
   {
@@ -161,7 +219,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600, // ×6 提速（原 360*60=21600s）
     buildCostIsk: 240_000,
-    priceIsk: 3366000,
+    priceIsk: 7200000,
     description: '折叠货舱 MK3 图纸：空间衬层需要星髓晶压铸（学习需声望 4）。',
   },
   {
@@ -188,7 +246,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 ISK ≈ 720×0.53
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
-    priceIsk: 1350,
+    priceIsk: 1350, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '动能弹生产线图纸：把三钛合金轧成高速实心弹（120 发/批，对护盾 ×1.5）。',
   },
   {
@@ -199,7 +257,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 ISK ≈ 840×0.57
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 15,
-    priceIsk: 1650,
+    priceIsk: 1650, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '爆破导弹生产线图纸：类银超金属冲压弹壳装填高爆装药（120 发/批，对装甲 ×1.5）。',
   },
   {
@@ -210,7 +268,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-mexallon', count: 26 }], // 520 ISK ≈ 960×0.54
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 18,
-    priceIsk: 1950,
+    priceIsk: 1950, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '能量弹药生产线图纸：类晶体胶体充能电池组（120 发/批，对护盾 ×1.25）。',
   },
   /* ═══ 弹药 MK2 蓝图（2026-09-09 船长拍板：三族高级弹稀有书可造；材料≈市价 55% 锚沿用） ═══ */
@@ -222,7 +280,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 ISK ≈ 5,400×0.55
     buildSeconds: 10,
     buildCostIsk: 90,
-    priceIsk: 9_000, // 书价 ×1.5 与 2026-09-09 全蓝图化补给线同批
+    priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '动能弹 MK2 生产线图纸：超噬合金弹芯轧制（120 发/批，对护盾 ×1.5）。',
   },
   {
@@ -233,7 +291,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 ISK ≈ 7,200×0.55
     buildSeconds: 10,
     buildCostIsk: 120,
-    priceIsk: 12_750, // 书价 ×1.5 与 2026-09-09 全蓝图化补给线同批
+    priceIsk: 12_750, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '爆破导弹 MK2 生产线图纸：同位聚晶双级装药弹头（120 发/批，对装甲 ×1.5）。',
   },
   {
@@ -244,7 +302,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 ISK ≈ 9,600×0.56
     buildSeconds: 10,
     buildCostIsk: 160,
-    priceIsk: 18_000, // 书价 ×1.5 与 2026-09-09 全蓝图化补给线同批
+    priceIsk: 18_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '能量弹药 MK2 生产线图纸：星髓晶高密充能电池组（120 发/批，对护盾 ×1.25）。',
   },
   /* ═══ 修理组件蓝图（2026-09-05 P2 定稿：材料≈市价 55% 锚，参数可调） ═══ */
@@ -259,7 +317,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ], // 8,240 ≈ 15,000(3,000×5)×0.55
     buildSeconds: 30, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（90s→30s）
     buildCostIsk: 600,
-    priceIsk: 5400,
+    priceIsk: 33000,
     description: '民用修理组件蓝图：纳米修复材料压装（5 个/批；基础 30 HP×容量增幅）。',
   },
   {
@@ -273,7 +331,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ], // 34,600 ≈ 63,000(21,000×3)×0.55
     buildSeconds: 40, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（120s→40s）
     buildCostIsk: 1_200,
-    priceIsk: 13500,
+    priceIsk: 138500,
     description: '军用修理组件蓝图：高密度纳米修复剂封装（3 个/批；基础 70 HP×容量增幅）。',
   },
   {
@@ -391,7 +449,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 无人机甲板扩展 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 225000,
+    priceIsk: 1045000,
     description: '「无人机甲板扩展 MK2」的完整制造工艺。无人机甲板扩展舱段的焊接工艺图——挂架、回收网与供电母线一应俱全。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -406,7 +464,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2000, // 无人机甲板扩展 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 780000,
+    priceIsk: 5880000,
     description: '「无人机甲板扩展 MK3」的完整制造工艺。无人机甲板扩展舱段的焊接工艺图——挂架、回收网与供电母线一应俱全。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -435,7 +493,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 战术导控阵列 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 400000,
+    priceIsk: 1137500,
     description: '「战术导控阵列 MK2」的完整制造工艺。战术导控阵列的相控计算单元图纸——火控数据链路压铸成型。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -450,7 +508,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2200, // 战术导控阵列 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 1260000,
+    priceIsk: 6120000,
     description: '「战术导控阵列 MK3」的完整制造工艺。战术导控阵列的相控计算单元图纸——火控数据链路压铸成型。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -479,7 +537,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ], // 62,980 ≈ 150,000×0.42
     buildSeconds: 900, // 无人机中继天线 MK2（2026-09-10；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 375000,
+    priceIsk: 1122500,
     description: '「无人机中继天线 MK2」的完整制造工艺。制导中继天线的信号转发单元图纸——双频段中继与抗干扰滤波。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -494,7 +552,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ], // 166,300 ≈ 400,000×0.42
     buildSeconds: 2000, // 无人机中继天线 MK3（2026-09-10；材料≈产物价×0.42、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 1200000,
+    priceIsk: 6090000,
     description: '「无人机中继天线 MK3」的完整制造工艺。制导中继天线的信号转发单元图纸——远程相位阵与星间链路。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -547,7 +605,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 护盾增强器 MK2·动能型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 70000,
+    priceIsk: 962500,
     description: '「护盾增强器 MK2·动能型」的完整制造工艺。护盾发生器线圈图（动能频段调谐）——磁场包覆层按弹道冲击标定。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -561,7 +619,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 护盾增强器 MK2·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 70000,
+    priceIsk: 962500,
     description: '「护盾增强器 MK2·高爆型」的完整制造工艺。护盾发生器线圈图（高爆频段调谐）——冲击波前被偏转场的相位差撕裂。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -575,7 +633,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 护盾增强器 MK2·能量型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 70000,
+    priceIsk: 962500,
     description: '「护盾增强器 MK2·能量型」的完整制造工艺。护盾发生器线圈图（能量频段调谐）——高能光束在极性层上被折射散焦。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -590,7 +648,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 护盾增强器 MK3·动能型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 510000,
+    priceIsk: 5760000,
     description: '「护盾增强器 MK3·动能型」的完整制造工艺。护盾发生器线圈图（动能频段调谐）——磁场包覆层按弹道冲击标定。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -605,7 +663,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 护盾增强器 MK3·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 510000,
+    priceIsk: 5760000,
     description: '「护盾增强器 MK3·高爆型」的完整制造工艺。护盾发生器线圈图（高爆频段调谐）——冲击波前被偏转场的相位差撕裂。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -620,7 +678,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 护盾增强器 MK3·能量型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 510000,
+    priceIsk: 5760000,
     description: '「护盾增强器 MK3·能量型」的完整制造工艺。护盾发生器线圈图（能量频段调谐）——高能光束在极性层上被折射散焦。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -647,7 +705,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 护盾扩展器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 70000,
+    priceIsk: 962500,
     description: '「护盾扩展器 MK2」的完整制造工艺。护盾电容扩展舱图纸——额外储能单元并联进发生器组。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -662,7 +720,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 护盾扩展器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 510000,
+    priceIsk: 5760000,
     description: '「护盾扩展器 MK3」的完整制造工艺。护盾电容扩展舱图纸——额外储能单元并联进发生器组。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -715,7 +773,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 装甲镀层 MK2·动能型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 85000,
+    priceIsk: 970000,
     description: '「装甲镀层 MK2·动能型」的完整制造工艺。装甲镀层配方与热压工艺图（抗动能）——叠层陶瓷夹板化解穿甲弹头。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -729,7 +787,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 装甲镀层 MK2·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 85000,
+    priceIsk: 970000,
     description: '「装甲镀层 MK2·高爆型」的完整制造工艺。装甲镀层配方与热压工艺图（抗高爆）——蜂窝背板把爆压导向船体外侧。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -743,7 +801,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 装甲镀层 MK2·能量型（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 85000,
+    priceIsk: 970000,
     description: '「装甲镀层 MK2·能量型」的完整制造工艺。装甲镀层配方与热压工艺图（抗能量）——烧蚀涂层用自身汽化带走光束热量。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -758,7 +816,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 装甲镀层 MK3·动能型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 663000,
+    priceIsk: 5820000,
     description: '「装甲镀层 MK3·动能型」的完整制造工艺。装甲镀层配方与热压工艺图（抗动能）——叠层陶瓷夹板化解穿甲弹头。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -773,7 +831,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 装甲镀层 MK3·高爆型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 663000,
+    priceIsk: 5820000,
     description: '「装甲镀层 MK3·高爆型」的完整制造工艺。装甲镀层配方与热压工艺图（抗高爆）——蜂窝背板把爆压导向船体外侧。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -788,7 +846,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 装甲镀层 MK3·能量型（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 663000,
+    priceIsk: 5820000,
     description: '「装甲镀层 MK3·能量型」的完整制造工艺。装甲镀层配方与热压工艺图（抗能量）——烧蚀涂层用自身汽化带走光束热量。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -815,7 +873,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 装甲增厚板 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 85000,
+    priceIsk: 970000,
     description: '「装甲增厚板 MK2」的完整制造工艺。复合装甲厚板的锻造图——龙骨级板材，牺牲舱容换生存。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -830,7 +888,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1900, // 装甲增厚板 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 663000,
+    priceIsk: 5820000,
     description: '「装甲增厚板 MK3」的完整制造工艺。复合装甲厚板的锻造图——龙骨级板材，牺牲舱容换生存。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -857,7 +915,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 矢量推进器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 97500,
+    priceIsk: 977500,
     description: '「矢量推进器 MK2」的完整制造工艺。矢量喷口与姿态调节机构的图纸——机动转向不再只靠船体姿态轮。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -872,7 +930,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2000, // 矢量推进器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 816000,
+    priceIsk: 5910000,
     description: '「矢量推进器 MK3」的完整制造工艺。矢量喷口与姿态调节机构的图纸——机动转向不再只靠船体姿态轮。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -901,7 +959,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 动能稳定器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 525000,
+    priceIsk: 1202500,
     description: '「动能稳定器 MK2」的完整制造工艺。炮台制退与后坐补偿机构图（动能系）——连续射击的散布被压到最小。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -917,7 +975,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2900, // 动能稳定器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 3150000,
+    priceIsk: 7080000,
     description: '「动能稳定器 MK3」的完整制造工艺。炮台制退与后坐补偿机构图（动能系）——连续射击的散布被压到最小。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -946,7 +1004,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 高爆稳定器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 525000,
+    priceIsk: 1202500,
     description: '「高爆稳定器 MK2」的完整制造工艺。炮台制退与后坐补偿机构图（高爆系）——弹巢齐射的扭矩被平衡配重吸收。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -962,7 +1020,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2900, // 高爆稳定器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 3150000,
+    priceIsk: 7080000,
     description: '「高爆稳定器 MK3」的完整制造工艺。炮台制退与后坐补偿机构图（高爆系）——弹巢齐射的扭矩被平衡配重吸收。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -991,7 +1049,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 等离子稳定器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 525000,
+    priceIsk: 1202500,
     description: '「等离子稳定器 MK2」的完整制造工艺。炮台制退与后坐补偿机构图（能量系）——电容脉冲放电的回路震荡被阻尼。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -1007,7 +1065,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2900, // 等离子稳定器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 3150000,
+    priceIsk: 7080000,
     description: '「等离子稳定器 MK3」的完整制造工艺。炮台制退与后坐补偿机构图（能量系）——电容脉冲放电的回路震荡被阻尼。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -1036,7 +1094,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 射速计算机 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 462500,
+    priceIsk: 1170000,
     description: '「射速计算机 MK2」的完整制造工艺。装填机械臂凸轮时序图纸——循环上弹的节拍比人手快得多。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -1052,7 +1110,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2800, // 射速计算机 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 2760000,
+    priceIsk: 6870000,
     description: '「射速计算机 MK3」的完整制造工艺。装填机械臂凸轮时序图纸——循环上弹的节拍比人手快得多。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -1081,7 +1139,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 索敌阵列 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 400000,
+    priceIsk: 1137500,
     description: '「索敌阵列 MK2」的完整制造工艺。传感器阵列与信号处理板图纸——锁定的目标在火控屏上不再甩脱。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -1097,7 +1155,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2600, // 索敌阵列 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 2400000,
+    priceIsk: 6690000,
     description: '「索敌阵列 MK3」的完整制造工艺。传感器阵列与信号处理板图纸——锁定的目标在火控屏上不再甩脱。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -1126,7 +1184,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 姿态陀螺 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 375000,
+    priceIsk: 1122500,
     description: '「姿态陀螺 MK2」的完整制造工艺。惯性平台与万向环结构图——姿态基准漂移被陀螺稳定在毫弧级。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -1142,8 +1200,40 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2600, // 姿态陀螺 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 2250000,
+    priceIsk: 6630000,
     description: '「姿态陀螺 MK3」的完整制造工艺。惯性平台与万向环结构图——姿态基准漂移被陀螺稳定在毫弧级。顶配工艺版式——高级材料与精密加工在此交汇。',
+  },
+  // ══════════ 协处理器（2026-09-11 船长新增：低槽 CPU 预算扩容件） ══════════
+  // 口径：材料 ≈ 产物价 × 0.45（与全仓配方锚一致）、蓝图书价按档位系数（MK1 产物价 × 2、MK2 × 2.5）；
+  // **MK3 无蓝图**（船长定：MK3 稀有度 4 走奇货现货，只能买不能造）。
+  {
+    id: 'bp-cpu-1',
+    name: '协处理器 MK1 蓝图',
+    moduleId: 'mod-cpu-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 13_000 }, // 104,000 ISK
+      { itemId: 'min-pyerite', count: 4_000 }, // 48,000 ISK
+      { itemId: 'min-mexallon', count: 1_100 }, // 22,000 ISK
+    ],
+    buildSeconds: 900, // 协处理器 MK1（材料≈产物价×0.45、蓝图=产物×2）
+    buildCostIsk: 0,
+    priceIsk: 776000,
+    description: '低槽算力扩展卡的完整制造工艺：布线图与时序表——把闲置的机柜空间变成可用算力。学会即可在组装机量产。',
+  },
+  {
+    id: 'bp-cpu-2',
+    name: '协处理器 MK2 蓝图',
+    moduleId: 'mod-cpu-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 47_500 }, // 380,000 ISK
+      { itemId: 'min-pyerite', count: 13_500 }, // 162,000 ISK
+      { itemId: 'min-mexallon', count: 8_200 }, // 164,000 ISK
+      { itemId: 'min-nocxium', count: 1_850 }, // 166,500 ISK
+    ],
+    buildSeconds: 1900, // 协处理器 MK2（材料≈产物价×0.45、蓝图=产物×2.5）
+    buildCostIsk: 0,
+    priceIsk: 4850000,
+    description: '双路算力扩展卡的完整制造工艺：堆叠工艺与散热规范——算力翻倍而机柜不增。学会即可在组装机量产。',
   },
   {
     id: 'bp-salvager-1',
@@ -1171,7 +1261,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 打捞器 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 325000,
+    priceIsk: 1097500,
     description: '「打捞器 MK2」的完整制造工艺。残骸抓取钳与解构刀具的图纸——把废铁拆成可回收原料。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -1187,7 +1277,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2600, // 打捞器 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 2340000,
+    priceIsk: 6660000,
     description: '「打捞器 MK3」的完整制造工艺。残骸抓取钳与解构刀具的图纸——把废铁拆成可回收原料。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -1216,7 +1306,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 180, // 船体维修装置 MK1（2026-09-09 全蓝图化；材料≈产物价×0.45、蓝图=产物×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 370000,
+    priceIsk: 936000,
     description: '「船体维修装置 MK1」的完整制造工艺。纳米维修臂与组件注入管路图纸——战斗中让装甲与结构自行愈合。制式量产版式——各船厂通用接口，学会即可在组装机量产。',
   },
   {
@@ -1230,9 +1320,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-nocxium', count: 1_600 },
       { itemId: 'min-isotope', count: 2_800 },
     ],
-    buildSeconds: 2800, // 船体维修装置 MK2（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
+    buildSeconds: 2800, // 船体维修装置 MK2（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 2760000,
+    priceIsk: 5725000,
     description: '「船体维修装置 MK2」的完整制造工艺。纳米维修臂与组件注入管路图纸——战斗中让装甲与结构自行愈合。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
   {
@@ -1261,7 +1351,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900, // 目标锁定阵列 MK2（2026-09-09 全蓝图化；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 450000,
+    priceIsk: 1162500,
     description: '「目标锁定阵列 MK2」的完整制造工艺。加固量产版式——关键应力点做双层冗余。',
   },
   {
@@ -1277,7 +1367,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 2700, // 目标锁定阵列 MK3（2026-09-09 全蓝图化；材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 2640000,
+    priceIsk: 6810000,
     description: '「目标锁定阵列 MK3」的完整制造工艺。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
 ]
