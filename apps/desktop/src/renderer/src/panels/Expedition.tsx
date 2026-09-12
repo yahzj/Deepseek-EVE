@@ -1339,7 +1339,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               {rare.count > 0 ? (
                 <div
                   className="app-map-taskline is-rare"
-                  title={`赏金任务战果：${rare.text}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：保底矿物之外必定额外掉落一件（该敌群专属装备，未出则给特色装备）+ 一批高阶矿物`}
+                  title={`赏金任务战果：${rare.text}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：保底原材料之外必定额外掉落一件（该敌群专属装备，未出则给特色装备）+ 一批高阶原材料`}
                 >
                   <span className="app-ico">◆</span>
                   <em className="app-chip is-rare">稀有残骸 ×{rare.count}</em>
@@ -2812,7 +2812,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                 t.bill.map((b) => `${engine.ctx.items.get(b.itemId)?.name ?? b.itemId}×${b.count.toLocaleString('zh-CN')}`).join(' + ')
               return (
                 <div className="app-station-mats">
-                  建材（精炼矿物，逐档材料单）：
+                  建材（精炼原材料，逐档材料单）：
                   {site.tiers.map((t, i) => (
                     <div key={t.name} className="app-dim">
                       {i + 1}·{t.name}：{billTxt(t)}

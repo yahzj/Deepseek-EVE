@@ -1072,7 +1072,7 @@ export function MarketPage({
   return (
     <div className="page-stack page-fill">
       <div className="app-dim app-note">
-        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），矿石/矿物另受库存池调节。
+        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），原矿/原材料另受库存池调节。
         每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。
       </div>
       <div className="app-dim app-note">

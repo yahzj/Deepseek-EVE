@@ -1092,7 +1092,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               className="app-select"
               value={effRefineId}
               onChange={(e) => setRefineItemId(e.target.value)}
-              title="♨ 精炼炉炼矿石/气体/冰矿；♻ 回收炉拆残骸（仓库或货仓要有料）"
+              title="♨ 精炼炉炼原矿/气体/冰矿；♻ 回收炉拆残骸（仓库或货仓要有料）"
             >
               {refineAll.length === 0 ? <option value="">没有可精炼的资源或残骸</option> : null}
               {refineOres.length > 0 ? (
