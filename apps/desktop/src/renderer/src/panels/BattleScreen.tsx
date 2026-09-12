@@ -10,7 +10,7 @@
  * 已抽到 ./battleViewCore.tsx——动画/表现类改动请先落在那里的常量与纯函数。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
 import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -18,6 +18,7 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
+import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import {
   DRONE_DWELL_MS,
   DRONE_SHOW_MAX,
@@ -36,7 +37,7 @@ import {
 import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
-  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom,
+  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag, foeHangarTotal,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -1395,6 +1396,37 @@ const meSpeedRef = useRef(200)
     ],
   }
 
+  /**
+   * **机库备用机**（2026-09-12 船长：「关于战斗画面的后备机库，将其显示在名字边上，采用图标乘以数字的形式」
+   * → 追加选定「**乙**：显示**全队合计**」）。
+   *
+   * 引擎按舰报 `hangar`（在库待命、战损后按 `respawnMs` 满血放出的架数）。
+   * ⚠ **按舰取一次、不能累加**：同一艘舰的多个机型条目上带的是**同一个按舰数值**
+   *   （`battleView` 里 `hangarN` 是每舰一个，却盖在 `byArt` 的**每一条**上）⇒ 逐条累加会翻倍。
+   * 显示口径 = **全队合计**（各舰之和，如奥罗 = 5+5+5 = 15）挂在**主体**名字右边的「图标 ×N」上
+   *   （主体不带库时退首个带库的舰；无备用机不占位）；图标用既有 `drone-rack`。
+   */
+  const hangarByTag = foeHangarByTag(arcs.foeDrones ?? [])
+  const hangarTotal = foeHangarTotal(arcs.foeDrones ?? [])
+  const hangarCarrierTag =
+    foeRowTags.find((t) => isFoeMainTag(t) && (hangarByTag.get(t) ?? 0) > 0) ??
+    foeRowTags.find((t) => (hangarByTag.get(t) ?? 0) > 0) ??
+    null
+  const hangarBadgeOf = (tag: string): ReactNode => {
+    if (tag !== hangarCarrierTag || hangarTotal <= 0) return null
+    return (
+      <span
+        className="app-bts-hangar"
+        title="敌方全队机库备用机：前线战损后自动满血补位（打光母舰才是解法）"
+      >
+        <span className="app-ico">
+          <Glyph name="drone-rack" size={11} color={ICO_TONES['drone-rack']} />
+        </span>
+        ×{hangarTotal}
+      </span>
+    )
+  }
+
   /* 敌方单位行（2026-09-09 二轮：存活单位 + 演出期尸骸同队列渲染）——
      尸骸占原槽整段演出：boomAt（致死弹道着弹）前原样停留 → 灰化 + 爆炸环 → 原位淡出；
      撤出只发生在整批尸骸全部演完的瞬间（一次收拢，见 scanDroppable），存活舰补位收拢
@@ -1438,10 +1470,12 @@ const meSpeedRef = useRef(200)
             size={size}
           />
         </span>
-        {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载 */}
+        {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
+            机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (
           <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
             {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
+            {hangarBadgeOf(tag)}
           </span>
         ) : null}
         {/* 血条（2026-09-11 船长③）：贴在本舰正下方（绝对定位，不参与行内布局）；
@@ -1454,7 +1488,15 @@ const meSpeedRef = useRef(200)
             <HpTri
               hp={combat.foeHp[tag]!}
               max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }}
-              label={isRank2 ? `${locked ? '◈ ' : ''}${foeNameOf(tag)}` : undefined}
+              label={
+                isRank2 ? (
+                  <>
+                    {locked ? '◈ ' : ''}
+                    {foeNameOf(tag)}
+                    {hangarBadgeOf(tag)}
+                  </>
+                ) : undefined
+              }
             />
           </span>
         ) : null}
@@ -1795,26 +1837,8 @@ const meSpeedRef = useRef(200)
                 </div>
               ) : null}
             </div>
-            {/* **机库余量**（2026-09-12 船长：「给敌机添加备用机库」）：敌机带备用机时，在敌舰列下
-                显示"机库里还剩几架"——玩家能看到"打掉还会再冒"这件事（引擎给 `foeDrones[].hangar`）。
-                样式沿用同级 `.app-bts-chip`（与底部武器 chip 同族），不新造样式。
-                ⚠ 单位血条已随 2026-09-11「血条跟舰」移进各单位内部，故本行只放机库 chip。 */}
-            {foeWings.some((w) => (w.hangar ?? 0) > 0) ? (
-              <div className="app-bts-hangar">
-                {foeWings
-                  .filter((w) => (w.hangar ?? 0) > 0)
-                  .map((w) => (
-                    <span
-                      key={`hg-${w.tag}-${w.artId}`}
-                      className="app-bts-chip is-foe"
-                      title="机库备用机：前线战损后自动满血补位（打光母舰才是解法）"
-                    >
-                      <i />
-                      机库 +{w.hangar}
-                    </span>
-                  ))}
-              </div>
-            ) : null}
+            {/* **机库余量**（2026-09-12 船长：由"敌舰列下方一行 chip"改为**跟着各舰名字**显示
+                「图标 ×N」——见 `hangarBadgeOf`）：此处不再单独出一行。 */}
           </div>
 
           {/* **战斗窗口正上方提示位**（2026-09-11 船长：与"敌方增援"统一下系统、位置由"敌舰上方"

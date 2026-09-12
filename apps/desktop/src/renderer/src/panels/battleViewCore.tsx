@@ -3,6 +3,7 @@
  * 只含纯函数/常量/小展示件（颜色与演出计时、舰列几何、射程弧路径、三层血条、弹道几何、战报查找）；
  * 组件编排/状态机/渲染留在 BattleScreen。给未来 rAF/表现类改动一块独立地基。
  */
+import type { ReactNode } from 'react'
 import type { DamageType } from '@whale/core'
 /** 伤害类型 → 颜色（动能金 / 高爆橙 / 能量青；弹道、命中与射程弧共用） */
 const DMG_COLOR: Record<DamageType, string> = { kinetic: '#ffd54f', explosive: '#ffa04d', plasma: '#5fd0ff' }
@@ -343,6 +344,36 @@ function layout(
   return { meLeft, foeLeft, me, foe, sizes: slots, foeBottom, formation: fm, usable }
 }
 
+/**
+ * **逐舰「机库备用机」总数**（2026-09-12 船长：「关于战斗画面的后备机库，将其显示在名字边上，
+ * 采用图标乘以数字的形式」）——入参 = 战斗视图的敌机机群条目（`arcs.foeDrones`）。
+ *
+ * ⚠ **按舰取一次、不能累加**：引擎里 `hangar` 是**每舰一个**数值，却盖在该舰 `byArt` 的**每一条**上
+ * （同一艘舰挂了两种机型时会重复报同一个数）⇒ 逐条累加会翻倍，故取 `max`。
+ * 返回 `tag → 在库待命架数`（无备用机的舰不在表里）。
+ *
+ * ⚠ 入参只含**当前波存活单位**的池（母舰阵亡 ⇒ 其池不再参战）⇒ 表随战况自然收缩。
+ */
+function foeHangarByTag(wings: readonly { tag: string; hangar?: number }[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const w of wings) {
+    const n = w.hangar ?? 0
+    if (n > 0) out.set(w.tag, Math.max(out.get(w.tag) ?? 0, n))
+  }
+  return out
+}
+
+/**
+ * **全队机库备用机合计**（2026-09-12 船长选定「**乙**：显示全队合计」）——各舰备用机数之和；
+ * 徽标只挂**一艘**（主体，见 `BattleScreen.hangarCarrierTag`），数字是**整支编队**的在库架数
+ * （奥罗武装残骸群 = 主体 5 + 僚机 5×2 = **15**；泰坦残骸勘探 = **7**；巨构核心勘探令 = **10**）。
+ */
+function foeHangarTotal(wings: readonly { tag: string; hangar?: number }[]): number {
+  let sum = 0
+  for (const n of foeHangarByTag(wings).values()) sum += n
+  return sum
+}
+
 /** 扇形路径（原点为圆心、朝 +x 张角 ±38°；折线逼近弧线） */
 function fanSegs(r: number): string[] {
   const A = (38 * Math.PI) / 180
@@ -365,7 +396,7 @@ function ringPath(r: number): string {
 /** 三层垂直血量条：自上而下 护盾(蓝) / 装甲(红) / 结构(黄)，各层按自身满值比例独立显示。
  *  布局与配色全部内联（不依赖样式表加载顺序），确保任何环境下条均可见。 */
 const HP_LAYER_COLOR = { s: '#3f9fd8', a: '#d34a4a', h: '#e0b83f' } as const
-function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; max: { s: number; a: number; h: number }; label?: string }) {
+function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; max: { s: number; a: number; h: number }; label?: ReactNode }) {
   const layers = [
     { k: 's' as const, zh: '护盾' },
     { k: 'a' as const, zh: '装甲' },
@@ -495,6 +526,8 @@ export {
   foeFormationOf,
   foeColLeft,
   foeBarGeom,
+  foeHangarByTag,
+  foeHangarTotal,
   sizeByTierEnabled,
   sizeOfUnit,
   noseOf,
