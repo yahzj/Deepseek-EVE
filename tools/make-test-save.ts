@@ -528,7 +528,11 @@ function injectDrone(state: GameState): string[] {
   const sA = state.fleet[uidA]!
   sA.customName = '梭鱼·无人机中装(驾驶)'
   sA.fitted = {
-    high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'], // 2026-09-10 船长：梭鱼高槽 5→3（D2 三槽口径）
+    // 2026-09-10 船长：梭鱼高槽 5→3（D2 三槽口径）。
+    // **2026-09-12 船长口径：无人机船至少要带一件「加射程的高槽装备」**（`drone-relay` 家族）⇒
+    // 把 `tac-2` 换成 **`relay-2`（无人机射程 +45%）**；⚠ **两件甲板扩展保留**——
+    // 机巢 160 ＋ 2×35 ＝ **230 m³** 正是 D2 清单（assault10+heavy4+sentry1 = 230 m³）的硬门，动不得。
+    high: ['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-relay-2'],
     mid: [],
     low: [],
   }
@@ -539,7 +543,9 @@ function injectDrone(state: GameState): string[] {
   const sB = state.fleet[uidB]!
   sB.customName = '王鲭·无人机重装'
   sB.fitted = {
-    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
+    // **2026-09-12 口径**：无人机船带一件中继 ⇒ 第二件 `tac-3` 换成 **`relay-3`（无人机射程 +80%）**；
+    // 两件甲板扩展保留（机巢 320 ＋ 2×70 ＝ 460 ≥ D3 清单 320 m³，余量充足）。
+    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3'],
     mid: [],
     low: [],
   }
@@ -571,10 +577,14 @@ function injectDrone(state: GameState): string[] {
   }
   notes.push('仓库弹药三型 ×2000（可换炮流自行对照）')
   // 增幅件备件（自定义配装用）
-  for (const m of ['mod-drone-rack-1', 'mod-drone-rack-2', 'mod-drone-rack-3', 'mod-drone-tac-1', 'mod-drone-tac-2', 'mod-drone-tac-3']) {
+  for (const m of ['mod-drone-rack-1', 'mod-drone-rack-2', 'mod-drone-rack-3', 'mod-drone-tac-1', 'mod-drone-tac-2', 'mod-drone-tac-3', 'mod-drone-relay-1', 'mod-drone-relay-2', 'mod-drone-relay-3']) {
     state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 2
   }
-  notes.push('装备库备 甲板扩展/战术导控 MK1-3 ×2 全套（可自组配装）')
+  notes.push(
+    '装备库备 甲板扩展/战术导控/**中继天线** MK1-3 ×2 全套（可自组配装）——' +
+      '⚠ **2026-09-12 口径：无人机船至少要带一件「加射程的高槽装备」**（中继天线 MK1/2/3 = +20/45/80%），' +
+      '本档两艘无人机船已按此换上中继（各把一件战术导控换掉，**甲板扩展保留**以守住机巢容量）。',
+  )
   // 全舰耐久回满
   for (const s of Object.values(state.fleet)) {
     if (s) {
@@ -1005,7 +1015,9 @@ function injectLairGear(state: GameState): string[] {
   const s = state.fleet[uid]!
   s.customName = '王鲭·无人机重装（专属机实测）'
   s.fitted = {
-    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3'],
+    // **2026-09-12 口径**：无人机船至少要带一件「加射程的高槽装备」⇒ 一件 `tac-3` 换 **`relay-3`（+80%）**；
+    // 两件甲板扩展保留（机巢 320 ＋ 2×70 ＝ 460）。
+    high: ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-relay-3'],
     mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
     low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
@@ -1013,7 +1025,13 @@ function injectLairGear(state: GameState): string[] {
   s.armorPct = 1
   state.moduleBay['mod-drone-rack-3'] = (state.moduleBay['mod-drone-rack-3'] ?? 0) + 2
   state.moduleBay['mod-drone-tac-3'] = (state.moduleBay['mod-drone-tac-3'] ?? 0) + 2
-  notes.push(`新增王鲭级无人机重装 ${uid}（机舱 460 m³，rack3×2 + tac3×2）——把「流亡蜂无人机」装入清单后开战实测；近防炮会击落机群（战后按回收率 20% 找回）`)
+  state.moduleBay['mod-drone-relay-3'] = (state.moduleBay['mod-drone-relay-3'] ?? 0) + 2
+  notes.push(
+    `新增王鲭级无人机重装 ${uid}（机巢 460 m³，rack3×2 + tac3 + **relay3**）——` +
+      '⚠ **2026-09-12 口径：无人机船至少要带一件「加射程的高槽装备」**，本档已按此把一件战术导控换成' +
+      '**中继天线 MK3（无人机射程 +80%）**；甲板扩展保留。把「流亡蜂无人机」装入清单后开战实测；' +
+      '近防炮会击落机群（战后按回收率 20% 找回）',
+  )
   for (const s2 of Object.values(state.fleet)) {
     if (s2) {
       s2.durability = 1
