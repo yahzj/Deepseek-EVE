@@ -176,7 +176,10 @@ export function ShipPage({
 
   /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：再按**舰船级别** → 选中级别后按**类别**；
    *  顺序恒为机库序 + 收藏置顶） */
+  const fleetTotal = Object.keys(state.fleet).length
   const fq = fleetQ.trim().toLowerCase()
+  /** 任一维筛选或搜索词生效（标题行的计数据此在「N 艘 / 匹配 N / 共 M 艘」之间切换） */
+  const fleetFiltered = fq.length > 0 || fleetFilter !== 'all' || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL
   const fleetShown = (() => {
     const list = fleetEntries.filter(({ uid, ship }) => {
       if (fq.length > 0) {
@@ -312,10 +315,23 @@ export function ShipPage({
         className="is-fill app-fleet-panel"
         title="我的舰队"
         right={
-          <span className="app-dim">
-            {Object.keys(state.fleet).length} 艘 · 当前驾驶：
-            <span className={`app-pilot-name${switchFxUid !== null ? ' is-pulse' : ''}`}>
-              {shipDisplayName(state, ctx, state.shipId)}
+          // 搜索栏进标题行（2026-09-11 船长：「将搜索栏移到标题内，目前不够美观」）——
+          // 复刻仓库页 / 技能目录同一套写法（`.app-head-search-wrap` + `.app-head-search` + 灰字计数），
+          // 计数随筛选切换为「匹配 N / 共 M 艘」，搜索词清空且无筛选时只显示总数
+          <span className="app-head-search-wrap">
+            <input
+              className="app-head-search"
+              type="text"
+              placeholder="搜索舰船…"
+              value={fleetQ}
+              onChange={(e) => setFleetQ(e.target.value)}
+              spellCheck={false}
+            />
+            <span className="app-dim">
+              {fleetFiltered ? `匹配 ${fleetShown.length} / 共 ${fleetTotal} 艘` : `${fleetTotal} 艘`} · 当前驾驶：
+              <span className={`app-pilot-name${switchFxUid !== null ? ' is-pulse' : ''}`}>
+                {shipDisplayName(state, ctx, state.shipId)}
+              </span>
             </span>
           </span>
         }
@@ -324,21 +340,12 @@ export function ShipPage({
             2026-09-11 船长：「移除排序选项，改为按照舰船级别划分的子筛选」⇒ 排序下拉退场，
             改挂**舰船级别**子筛选（复用组装机那套 `SHIP_TIER_SUBS` 单点表与次级标签样式）；
             同日追加「**级别筛选单列一行，当选择级别后，出现舰船类别（工业战斗那些）筛选**」
-            ⇒ 工具条改多行（每行一个 `.app-fleet-row`）：第 1 行 搜索 + 状态，第 2 行 级别独占一行，
-            第 3 行 **舰船类别**（角色，取市场/手册同源的 `SHIP_SUBS`）**仅在选中具体级别后出现**；
+            ⇒ 工具条改多行（每行一个 `.app-fleet-row`）：**第 1 行 状态**，**第 2 行 级别独占一行**，
+            **第 3 行 舰船类别**（角色，取市场/手册同源的 `SHIP_SUBS`）**仅在选中具体级别后出现**；
+            同日再追加「将搜索栏移到标题内」⇒ 搜索与计数整体上移到面板标题行，工具条只留各维筛选；
             每行各带灰字前缀，避免多个「全部」混淆（前缀写法同星图页「矿带排序：」） */}
         <div className="app-fleet-toolbar">
           <div className="app-fleet-row">
-            <span className="app-head-search-wrap">
-              <input
-                className="app-head-search"
-                type="text"
-                placeholder="搜索舰船…"
-                value={fleetQ}
-                onChange={(e) => setFleetQ(e.target.value)}
-                spellCheck={false}
-              />
-            </span>
             <span className="app-dim">状态：</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               {FLEET_FILTER_TABS.map((t) => (
@@ -353,10 +360,7 @@ export function ShipPage({
                 </button>
               ))}
             </div>
-            <span className="app-dim">
-              {fleetShown.length} 艘
-              {fq.length > 0 || fleetFilter !== 'all' || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL ? '（已筛选）' : ''}
-            </span>
+            {/* 计数已上移到面板标题行（与仓库页 / 技能目录同口径），工具条只留各维筛选 */}
           </div>
           <div className="app-fleet-row">
             <span className="app-dim">级别：</span>
