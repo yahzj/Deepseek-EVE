@@ -269,6 +269,17 @@ export interface MarketGoodDef {
   playerSellable?: boolean
   /** 玩家可否买入（默认 true） */
   playerBuyable?: boolean
+  /**
+   * **未上线商品**（2026-09-12 船长定：「所有虫洞相关的内容需要等虫洞落地后才统一对玩家可见」）。
+   *
+   * 语义 = **数据齐备、玩家可见面为零**：`buildSimContext` 把它挡在 `ctx.marketGoods` **之外**，
+   * 于是市场页/图鉴/挂单/订单/任务/事件/工具**一律看不到也交易不到**；但它在**目录表**里，
+   * `content:check` 的"每种物品必须有市场卡""价格口径"等契约**照样核得到**。
+   *
+   * 用法：新内容先按正式数值写卡并标 `unreleased: true`，**上线时删掉这一个字段**即可开卖
+   * （不要把整张卡注释掉——那会让契约漏检）。
+   */
+  unreleased?: boolean
   /** 需要的协会声望（V10：部分高端商品声望解锁；买入时校验，卖出不限） */
   standingReq?: number
   /** 暗市双通道声望闸（P2 2026-09-06 船长定：rare 抽取节拍 + 暗市单可绕过）：

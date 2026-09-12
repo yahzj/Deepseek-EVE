@@ -114,6 +114,36 @@ export const ORES: readonly ItemDef[] = [
     refineBatchUnits: 100,
     refineCycleMs: 50_000,
   },
+  {
+    /**
+     * **虚空母矿**（2026-09-12 船长定 · 虫洞线的唯一原矿）。
+     *
+     * 船长原话：「虚空晶添加一个原矿石用于精炼出虚空晶。原矿石采取正常矿石体积（**1 m³/单位**），
+     * 虚空晶保持不变」＋「虫洞内只能获得原矿」。
+     *
+     * 口径：
+     * - **虚空晶本身一字未动**（`unitM3 0.01` · `baseSellPriceIsk 1,800`）——变的只是**来源**：
+     *   今后它从这本原矿精炼出来，而不是从市场稀缺口 / 残骸彩头直接给；
+     * - 精炼产出 = 虚空晶 0.5 + 副产物（同位聚晶 1.0 · 星髓晶 0.25）⇒ 每单位产出价值
+     *   `0.5×1800 + 1.0×55 + 0.25×245 = **1,016.25 ISK**`，按既有原矿的"基价 ÷ 产出价值 ≈ 0.88~0.96"
+     *   规律取 **0.90** ⇒ 基础卖价 **915**（玩家卖出按站内收购档约 6 折 ⇒ 实收 ≈550，仍低于 1,016 产出值）；
+     * - **虫洞落地前对玩家不可见**：市场卡标 `unreleased`（见 `marketCatalog.ts`），
+     *   `buildSimContext` 会把它挡在玩家可见目录之外；虫洞上线时把那个字段去掉即可开卖。
+     */
+    id: 'ore-voidmother',
+    name: '虚空母矿',
+    kind: 'ore',
+    unitM3: 1,
+    baseSellPriceIsk: 915,
+    description: '深空裂隙里结出的黑色母岩——虫洞深处唯一能带回来的东西，炼得出虚空晶。',
+    refine: [
+      { mineralId: 'min-voidcrystal', perOre: 0.5 },
+      { mineralId: 'min-isotope', perOre: 1.0 },
+      { mineralId: 'min-starcore', perOre: 0.25 },
+    ],
+    refineBatchUnits: 100,
+    refineCycleMs: 60_000,
+  },
 ]
 
 /** 矿物（精炼产物，可出售；制造原料） */
