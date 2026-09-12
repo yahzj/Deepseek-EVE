@@ -728,7 +728,7 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
       ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
       : mode === 'auto'
         ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
-        : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
+        : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，即刻回港。`,
   )
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
@@ -755,6 +755,14 @@ function settleBattleRetreat(state: GameState, ctx: SimContext, mode: 'manual' |
   // 应计入返航,而不是从结算时（=离线末）才起步）
   const endAtR = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
   exp.returnAtGameMs = endAtR
+  // **手动撤退 = 立刻回港**（2026-09-11 船长：「玩家战斗手动撤退后应该是立刻回港，现在战斗撤退有返港时间」）：
+  // 玩家主动收手不再走返航航程（到港时刻 = 停表时刻，下一拍即入港卸货）；
+  // 自动撤退（结构损失过半）与超时判负仍按原口径返航（"被迫撤离，正在返航"）。
+  if (mode === 'manual') {
+    exp.finishAtGameMs = endAtR
+    addLog(state, 'info', '舰队脱离战场，即刻返回最近的空间站。')
+    return
+  }
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')

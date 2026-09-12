@@ -1768,7 +1768,11 @@ export function startBattleFor(
   shipId: string,
   anomalyId: string | null,
   atGameMs: number = state.gameMs,
-  desireM?: number,
+  /**
+   * 目标距离：`number > 0` = 显式指定；**`null` = 强制"射程中段"、不吃该星系的玩家设定**
+   * （2026-09-11 船长「只有主控吃」⇒ AI 副船走这一档）；`undefined` = 用该星系设定、没设过则射程中段。
+   */
+  desireM?: number | null,
 ): import('./state').BattleState | null {
   if (!anomalyId) return null
   const anomaly = battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier, state.expedition.factionActive)
@@ -1792,13 +1796,15 @@ export function startBattleFor(
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
     : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
-  // 期望距离：显式传入（出发时的偏好/战术）优先；否则用**该星系的目标距离**；
-  // 该星系没设过 → 主武器有效射程中点（船长 2026-09-11：「如果没有，采用射程中段距离」）。
+  // 期望距离：显式传入（出发时的偏好/战术）优先；`null` = 强制射程中段（AI 副船）；否则用
+  // **该星系的目标距离**；该星系没设过 → 主武器有效射程中点（船长 2026-09-11：「如果没有，采用射程中段距离」）。
   // 记忆可能来自更远射程的战斗：一律钳到本次开战距离内。
   const rawDesire =
-    desireM !== undefined && desireM > 0
-      ? Math.round(desireM)
-      : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
+    desireM === null
+      ? desiredRangeFor(me, 'mid', bal)
+      : desireM !== undefined && desireM > 0
+        ? Math.round(desireM)
+        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：

@@ -91,6 +91,16 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     expect(state.expedition.battle?.myDesireM).toBe(1_500)
   })
 
+  it('AI 副船不吃该星系设定（船长 2026-09-11：「只有主控吃」）', () => {
+    const state = fresh()
+    setDesirePrefOf(state, A.galaxyId, 1_200)
+    const snap = buildEvalState(state, state.shipId)!
+    const me = createPlayerSpec(snap.ev, ctx, snap.uid)!
+    const mid = desiredRangeFor(me, 'mid', ctx.balance.battle)
+    expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0)!.myDesireM).toBe(1_200) // 主控吃设定
+    expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0, null)!.myDesireM).toBe(mid) // 副船传 null ⇒ 射程中段
+  })
+
   it('存档往返：按星系的设定随档保留；老档只带全局 desirePrefM 时一律回落中段', () => {
     const state = fresh()
     setDesirePrefOf(state, A.galaxyId, 1_500)

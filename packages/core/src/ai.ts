@@ -902,8 +902,10 @@ export function advanceAiExpedition(
     const task = current.task as AiExpeditionTaskState
     if (task.phase === 'out') {
       if (state.gameMs < task.finishAtGameMs) return
-      // 到港开战（开战时刻 = 到达时刻，离线大推进同帧打完）
-      const battle = startBattleFor(state, ctx, shipId, task.anomalyId, task.finishAtGameMs)
+      // 到港开战（开战时刻 = 到达时刻，离线大推进同帧打完）。
+      // 目标距离（2026-09-11 船长「只有主控吃」）：**AI 副船不吃**玩家按星系设的目标距离，
+      // 一律走射程中段（传 null；仅主控远征/遭遇与胜率预估读该星系的设定）
+      const battle = startBattleFor(state, ctx, shipId, task.anomalyId, task.finishAtGameMs, null)
       if (!battle) {
         delete state.aiAssignments[shipId]
         gainAiCore(state, current.coreType)

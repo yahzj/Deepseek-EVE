@@ -152,3 +152,56 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     expect(firepowerHitHp(ctx, 8, K * 3)).toBeCloseTo(19.2, 6) // 秒数线性
   })
 })
+
+/* ═══════════ 手动撤退 = 立刻回港（2026-09-11 船长） ═══════════
+ * 船长：「玩家战斗手动撤退后应该是立刻回港，现在战斗撤退有返港时间。」
+ * ⇒ 手动撤退不再付返航航程（到港时刻 = 战斗停表时刻，下一拍即入港卸货）；
+ *    自动撤退（结构损失过半）与超时判负**仍按原口径返航**（"被迫撤离，正在返航"）。 */
+describe('手动撤退 = 立刻回港（自动/超时仍返航）', () => {
+  it('手动撤退：返航段为 0（finishAtGameMs = returnAtGameMs），推进一拍即到港卸货', () => {
+    const { state, ctx } = world()
+    enterBattle(state, ctx)
+    expect(retreatBattle(state, ctx).ok).toBe(true)
+    const exp = state.expedition
+    expect(exp.phase).toBe('back')
+    expect(exp.returnReason).toBe('retreat')
+    expect(exp.returnAtGameMs).toBeDefined()
+    expect(exp.finishAtGameMs).toBe(exp.returnAtGameMs) // 零航程 = 立刻回港
+    expect(state.logs.some((l) => l.text.includes('即刻回港'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('即刻返回最近的空间站'))).toBe(true)
+    // 下一拍：入港 → 远征结束、船停在站上（active=false）
+    advanceGame(state, 1_000, ctx)
+    expect(state.expedition.active).toBe(false)
+    expect(state.expedition.phase).toBe('out')
+    expect(state.logs.some((l) => l.text.includes('舰队已停靠'))).toBe(true)
+  })
+
+  it('自动撤退（结构损失过半）仍要返航航程（未被手动口径带偏）', () => {
+    const { state, ctx } = world()
+    state.autoLoopAnomalyId = 'ano-a'
+    enterBattle(state, ctx)
+    // 把结构打到 50% 以下 → 步进自动中止（连续作战保险）
+    const u = state.expedition.battle!.units['player']!
+    u.hp = { s: 0, a: 0, h: 1 }
+    advanceGame(state, 5_000, ctx)
+    const exp = state.expedition
+    expect(exp.phase).toBe('back')
+    expect(exp.returnReason).toBe('retreat')
+    expect(exp.finishAtGameMs).toBeGreaterThan(exp.returnAtGameMs!) // 仍付航程
+    expect(state.logs.some((l) => l.text.includes('自动撤退'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('自动返航（去程时间并入返航）'))).toBe(true)
+  })
+
+  it('超时判负仍要返航航程（"被迫撤退，正在返航"口径不变）', () => {
+    const { state, ctx } = world()
+    enterBattle(state, ctx)
+    const b = state.expedition.battle!
+    for (const u of Object.values(b.units) as Array<{ hp: { s: number; a: number; h: number } }>) {
+      u.hp = { s: 1e9, a: 1e9, h: 1e9 }
+    }
+    advanceGame(state, ctx.balance.battle.maxBattleMs + 5_000, ctx)
+    const exp = state.expedition
+    expect(exp.returnReason).toBe('retreat')
+    expect(exp.finishAtGameMs).toBeGreaterThan(exp.returnAtGameMs!) // 仍付航程
+  })
+})
