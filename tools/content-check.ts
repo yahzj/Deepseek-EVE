@@ -827,10 +827,12 @@ for (const s of SHIPS) {
   if (slots) {
     const total = slots.high + slots.mid + slots.low
     check(
-      Number.isInteger(slots.high) && slots.high >= 1 && slots.high <= 6 &&
-        Number.isInteger(slots.mid) && slots.mid >= 1 && slots.mid <= 5 &&
-        Number.isInteger(slots.low) && slots.low >= 1 && slots.low <= 6,
-      `舰船 ${s.id} slots 越界：${JSON.stringify(slots)}（需 高1-6/中1-5/低1-6）`,
+      // ⚠ **2026-09-12 船长：「每种槽位上限提高到 7」**——原 高6/中5/低6 与"总槽位 3~12"同批，
+      //   当日一并放宽；放宽后 **旗舰 7/7/4 = 18 槽**成立（且满足"武装舰高槽多于低槽"）。
+      Number.isInteger(slots.high) && slots.high >= 1 && slots.high <= 7 &&
+        Number.isInteger(slots.mid) && slots.mid >= 1 && slots.mid <= 7 &&
+        Number.isInteger(slots.low) && slots.low >= 1 && slots.low <= 7,
+      `舰船 ${s.id} slots 越界：${JSON.stringify(slots)}（需 高1-7/中1-7/低1-7）`,
     )
     // ⚠ **2026-09-12 船长：「总体槽位契约当初是为驱逐舰设定了，现在废除」**——
     //   原为 `total >= 3 && total <= 12`（上限当年以驱逐舰为标尺）。现**废除上限**：

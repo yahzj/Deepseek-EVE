@@ -695,7 +695,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-dunkleosteus',
     name: '邓氏鱼级旗舰',
     role: 'armed',
-    slots: { high: 6, mid: 5, low: 4 }, // **15 槽**（船长要"旗舰 18"，但现行契约（单类槽上限 高6/中5/低6 ＋ 武装舰高槽须显著多于低槽）把上限压到这里 ⇒ 先取最大合法值，**冲突已上报待裁**）
+    slots: { high: 7, mid: 7, low: 4 }, // **18 槽**（船长 2026-09-12：旗舰 18 ⇒ 单类上限放宽到 7 后的 7/7/4，且高槽多于低槽）
     tier: 5,
     cargoM3: 4500,
     cycleSeconds: 12,
