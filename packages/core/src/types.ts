@@ -631,6 +631,16 @@ export interface BattleBalance {
   /** 参考火力段表（无技能解析对射 DPS：威胁上界 → dps）——血量反推基准，可微调 */
   foeRefFire: ReadonlyArray<{ upToThreat: number; dps: number }>
   foeDpsPerThreat: number
+  /**
+   * **敌舰体火力上限（DPS，2026-09-12 船长定「按照 DPS 上限 150 算」）**：
+   * 舰级路径（`anomaly.ships`）按**整卡舰体总 DPS** 封顶——Σ（舰级单发 × `dmgMul` × 多舰补偿 2N/(N+1)）
+   * ÷ 装填秒 ≤ 本值，超出则**全卡舰体单发等比例缩放**。
+   * - **不含机群**（`src:'drone'`）：机群另有机制（受击增程 · 备用机库 · A5 火力守恒），且您已裁定不吃多舰补偿；
+   * - **不含被 `droneFireShare` / `firepowerAnchor` 拆分的条目**（那条链自带总火力锚定，钳制会让锚点失准）；
+   * - 现值 150 ⇒ 现有 27 张卡**全部未越线**（最高 = 虚海守望者 131.25 DPS）⇒ **零行为变化**；
+   * - 未写/非正 ⇒ 不钳制（零行为变化）。
+   */
+  foeDpsCap?: number
   foeHitRate: number
   /**
    * 动能/爆炸高命中等效补偿（2026-09-08 船长方案 A）：命中提高 + 单发按 1/命中 等比降后，
