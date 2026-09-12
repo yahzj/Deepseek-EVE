@@ -201,7 +201,7 @@ export const TABLES: readonly TableSpec[] = [
       col('伤害权重·能量', 'dmgMix.plasma', 'obj', { min: 0, max: 100 }),
       col('敌速m/sfoeSpeedMps(空=按体积缺省)', 'foeSpeedMps', 'num', { min: 1 }),
       // ══ 战斗调参列（2026-09-10 船长「将所有敌人输出成表格，我进行审核和调整吧」）══
-      col('敌族foeFamily(A~G，空=按美术层缺省)', 'foeFamily', 'enum', { vals: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] }),
+      col('敌族foeFamily(A~G；F 已废弃=空置字母位（2026-09-11 并入 A 族）；每张敌军卡必须显式登记)', 'foeFamily', 'enum', { vals: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] }),
       col('总血foeHpOverride(空=按威胁曲线)', 'foeHpOverride', 'num', { min: 1 }),
       col('命中覆写foeHitRate(只对动能/爆炸；空=0.85)', 'foeHitRate', 'num', { min: 0, max: 1 }),
       col('基础单发直写foeShotDmg(空=按推导；写了短路威胁链)', 'foeShotDmg', 'num', { min: 1 }),

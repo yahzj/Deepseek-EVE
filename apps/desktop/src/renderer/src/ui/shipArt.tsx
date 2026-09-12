@@ -77,7 +77,8 @@ export const SHIP_ART: Record<string, ReactNode> = {
   ),
 }
 
-/** 敌舰族群形（键 = FOE_FAMILY 中的族字母；未录族 → 'F' 制式巡逻形兜底） */
+/** 敌舰族群形（键 = FOE_FAMILY 中的族字母；未录族 → **A 形**兜底——2026-09-11 船长：F 族废弃并入 A 族，
+ *  兜底点同步改指 A、仅作防崩；正常路径由「敌族显式登记契约」保证每张敌军卡都显式登记族） */
 export const FOE_ART: Record<string, ReactNode> = {
   ...FOE_ART_EXTRA,
   /* A 海盗突击舰（粗短破旧 + 角旗 + 斜排劫掠炮） */
@@ -97,7 +98,8 @@ export const FOE_ART: Record<string, ReactNode> = {
       <circle className="shipart-accf" cx="176" cy="60" r="1.6" />
     </g>
   ),
-  /* F 遭遇巡逻舰（制式规整 + 舷灯条；未列族兜底） */
+  /* F 遭遇巡逻舰（制式规整 + 舷灯条）【已废弃·留档：2026-09-11 船长「废弃F族，将F族融合进A族」——
+     'F' 字母位保留为空位，此形已无卡引用；保留仅为旧内容表/旧导出带 'F' 时仍可渲染，不再作为未录族兜底】 */
   F: (
     <g>
       <path d="M206 55 L180 40 L112 40 C92 40 76 45 66 51 L56 56 L62 64 C72 71 92 75 116 75 L168 73 Z" />
@@ -123,7 +125,7 @@ export const FOE_ACCENT: Record<string, string> = {
   C: '#9fe6a4', // 异形生物：磷光绿（同 volt-g）
   D: '#9fd0f2', // 守墓古舰：磷光冰蓝（同 volt-i）
   E: '#d9b98c', // 泰坦巨构：残铁棕
-  F: '#ffab5e', // 制式巡逻：琥珀灯条
+  F: '#ffab5e', // 制式巡逻【已废弃·留档：2026-09-11 并入 A 族，字母位空置】：琥珀灯条
   G: '#cd9fdd', // 鱿烬亡军：聚落紫
 }
 
@@ -132,10 +134,14 @@ export const FOE_ACCENT: Record<string, string> = {
  *
  * 旧口径的隐患（本批修掉）：这里曾有一张 **22 行硬编码的 `FOE_FAMILY` 映射**（按 anomaly id 查），
  * 与数据侧 `foeFamily` 字段**各写各的**且无一致性校验——结果**演习场那张卡**在美术侧是 B、
- * 在数据侧为空（落进 F 兜底形），两处真相源长期不一致。
+ * 在数据侧为空（落进兜底形），两处真相源长期不一致。
+ *
+ * **兜底点（2026-09-11 船长改判）**：缺族兜底由 `'F'`（制式巡逻形）**改指 `'A'`（海盗形）**——
+ * F 族废弃并入 A 族；本函数是**全仓唯一缺省点**，正常路径下由「敌族显式登记契约」（`content:check`）
+ * 保证每张敌军卡都显式登记族，故此兜底**仅作防崩保护**。
  */
 export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined): string {
-  return anomaly?.foeFamily ?? 'F'
+  return anomaly?.foeFamily ?? 'A'
 }
 
 /**
@@ -149,6 +155,6 @@ export const FOE_FAMILY_LABEL: Record<string, string> = {
   C: '异形',
   D: '守墓',
   E: '巨构',
-  F: '巡逻',
+  F: '巡逻', // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
   G: '鱿烬',
 }

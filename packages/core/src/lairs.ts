@@ -98,7 +98,7 @@ export const FOE_LAIR_TIERS: Record<FoeFamily, readonly [string, string, string]
   C: ['虫群头目', '虫巢', '隐秘孵化地'], // 异形生物
   D: ['守卫舰长', '残舰泊地', '隐秘陵寝'], // 守墓古舰
   E: ['警戒机群', '核心舱段', '深层机库'], // 泰坦巨构
-  F: ['巡逻队长', '据点', '隐蔽据点'], // 制式巡逻（当前无窝点成员，留词表备用）
+  F: ['巡逻队长', '据点', '隐蔽据点'], // 制式巡逻【已废弃·留档：2026-09-11 船长「废弃F族，将F族融合进A族」，字母位保留为空位；本行不删，防旧内容表/旧导出带 'F' 时解析出错】
   G: ['残兵头目', '聚落营地', '藏匿地'], // 鱿烬亡军
 }
 /** 未登记敌族时的兜底档位词 */
@@ -113,7 +113,9 @@ const LAIR_TIER_FALLBACK: readonly [string, string, string] = ['头目', '据点
  * **池内元素可以是模块 id 或物品 id**（2026-09-10 船长：G 族第一件改为专属无人机"物品"）——
  * 取件时按 `ctx.modules` / `ctx.items` 判别：模块进装备库、无人机物品进物品仓库（`rollRareBoxExtra`）。
  * - **B 族（武装拾荒者）留空**：2026-09-10 船长定取消 B 族窝点/赏金任务，专属件（拾荒者拆解臂）一并撤下；
- * - **F 族（制式巡逻）留空**：当前只有隐藏遭遇模板、没有窝点成员，故无专属件。
+ * - **F 族（制式巡逻）【已废弃·留档】**：2026-09-11 船长裁定「废弃F族，将F族融合进A族」——
+ *   该族从未有窝点成员（只有四张隐藏遭遇模板，且已显式登记 A 族），故专属件池**恒为空**；
+ *   字母位保留为空位，本行留档不删（防旧内容表/旧导出带 `'F'` 时解析出错）。
  */
 export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   // A 族（海盗）：2026-09-10 船长逐件过审（三件齐）——泼弹近战炮 / 贴脸导弹巢 / 搬赃舱
@@ -228,7 +230,7 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   C: ['explosive', 'plasma', 'kinetic'], // 异形：酸液与生物爆破
   D: ['plasma', 'kinetic', 'explosive'], // 守墓古舰：古舰的能量副炮
   E: ['explosive', 'plasma', 'kinetic'], // 2026-09-11 船长：E 族副系＝爆炸（「50% 爆炸 50% 动能」） // 泰坦巨构：巨构能量核心
-  F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【无窝点成员，留表兜底】
+  F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【已废弃·留档：2026-09-11 并入 A 族；与 A 表同序，故当年"缺族回落到 A"零差异】
   G: ['explosive', 'kinetic', 'plasma'], // 鱿烬亡军：拼装火药与土制弹头
 }
 

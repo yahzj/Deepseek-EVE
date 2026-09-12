@@ -1136,6 +1136,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   /* ═══ B1 低安遭遇战模板（hidden：不进悬赏目录；threat 档位供遭遇强度就近匹配） ═══ */
   {
     id: 'enc-pirate-1',
+    foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：本卡由"未登族 → 兜底 F 形"改为**显式登记 A 族**；签名表本就是 A 口径）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '流窜海盗快艇',
     galaxyId: 'galaxy-hub',
@@ -1152,6 +1153,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'enc-pirate-2',
+    foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：显式登记 A 族）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '伏击劫掠队',
     galaxyId: 'galaxy-hub',
@@ -1169,6 +1171,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'enc-pirate-3',
+    foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：显式登记 A 族）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '狂徒巡逻编队',
     galaxyId: 'galaxy-hub',
@@ -1186,6 +1189,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'enc-pirate-4',
+    foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：显式登记 A 族）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '深空屠夫舰队',
     galaxyId: 'galaxy-hub',

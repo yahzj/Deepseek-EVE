@@ -2175,7 +2175,7 @@ for (const m of MODULES) {
       `窝点契约：${def.name} 三档称呼重复（${names.join(" / ")}）`,
     )
     const gear = lairGearOf(def)
-    if (def.foeFamily && def.foeFamily !== 'F') famWithGear.add(def.foeFamily)
+    if (def.foeFamily) famWithGear.add(def.foeFamily)
     for (const id of gear) {
       // 池内元素可以是模块或专属物品（2026-09-10 船长：G 族第一件 = 专属无人机"物品"）
       check(
@@ -2188,6 +2188,40 @@ for (const m of MODULES) {
     check(
       FOE_LAIR_GEAR[fam].length > 0,
       `窝点契约：敌族 ${fam} 有窝点成员但没配专属装备（FOE_LAIR_GEAR，每族至少一件）`,
+    )
+  }
+  /* ── 敌族显式登记契约（2026-09-12 加；F 族废弃批 P-15 的落码项）──
+   * 背景：船长 2026-09-11「**废弃F族，将F族融合进A族**」⇒「未录族」不再有默认族
+   * （旧兜底 = 制式巡逻形）。政策改为**强制显式登记**，三条：
+   * ① **每张敌军卡必须有 `foeFamily`**——缺族会让造型 / 窝点三档称呼 / 专属装备 / 副系签名四处
+   *   各按缺省静默分叉（F 族当年正是"事实上的缺省容器"）；显式登记后，新增卡漏写立刻暴露；
+   * ② **`'F'` 是已废弃的空位**（字母位保留、防旧内容表/旧导出解析出错），任何卡再写 `'F'` 即报错；
+   * ③ 登记的族必须是合法族字母（A~E / G；`'F'` 除外）。
+   * 落码顺序：**先**给四张旧遭遇模板（`enc-pirate-1..4`）显式登记 A 族、**后**加本契约。 */
+  {
+    const LEGAL_FAMILIES: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'G']
+    let famRegistered = 0
+    for (const def of ANOMALIES_FLAVORED) {
+      check(
+        !!def.foeFamily,
+        `敌族登记契约：${def.name}（${def.id}）没有登记 foeFamily——每张敌军卡必须**显式登记族**` +
+          `（F 族已废弃、"未录族"不再有默认兜底）`,
+      )
+      if (def.foeFamily) {
+        check(
+          def.foeFamily !== 'F',
+          `敌族登记契约：${def.name}（${def.id}）登记了 'F'——制式巡逻族已于 2026-09-11 废弃并入 A 族，` +
+            `'F' 仅作空置字母位，不许再登记`,
+        )
+        check(
+          LEGAL_FAMILIES.includes(def.foeFamily),
+          `敌族登记契约：${def.name} 的族「${def.foeFamily}」不是合法族字母（合法：${LEGAL_FAMILIES.join(" / ")}）`,
+        )
+        famRegistered++
+      }
+    }
+    console.log(
+      `· 敌族登记契约：${famRegistered} 张敌军卡**全部显式登记族**（无缺省兜底；'F' 空位无卡占用）`,
     )
   }
   /* ── 退役窝点卡契约（2026-09-11 船长「按方案 2 执行」）──
