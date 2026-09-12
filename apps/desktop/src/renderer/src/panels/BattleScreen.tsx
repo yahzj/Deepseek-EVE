@@ -805,6 +805,11 @@ export function BattleScreen({
           // `dronePoseAt` ⇒ 敌机的爆炸被画到**我方机体那一侧**（船长实测："完全无法察觉"）。
           // lane 取该舰**现存架数**（引擎已减 1，故它就是"刚消失那一架"的位次）。
           if (fx.side === "foe") {
+            // **死亡点不再随相位漂移**（船长 2026-09-11：「敌机**死亡位置**飘忽不定，爆炸动画跟着敌机位置」）：
+            // 旧口径连**死亡点**都取"渲染层自己以为的那一轮相位" ⇒ 那一击若落在**收舱段**，
+            // 姿态就等于停在敌舰机库口（表现为"刚出机库就炸"）。
+            // 现：**起点**仍取它**当时真实所在**（不跳），**终点固定**在「从攻击阵位（您舰旁）
+            // 往敌舰机库口返航 1/3 处」⇒ 机体从真实位置滑到那个固定点再炸，位置每次都一致。
             const st = foeSortieRef.current.get(`${fx.tag}:${artId}`);
             const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY;
             const alive =
@@ -813,6 +818,14 @@ export function BattleScreen({
               )?.alive ?? 0;
             const lane = Math.max(0, Math.min(alive, DRONE_SHOW_MAX - 1));
             const pose = foePoseAt(model, lane, st, layDown, elapsed);
+            const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
+              x: 52,
+              y: 0,
+            };
+            const station = {
+              x: layDown.me.x + off.x,
+              y: layDown.me.y + off.y,
+            };
             const tk = droneTakeoff(lane);
             const home = {
               x: (layDown.foe[0]?.x ?? layDown.me.x) - tk.x,
@@ -823,7 +836,7 @@ export function BattleScreen({
               artId,
               x: pose.x,
               y: pose.y,
-              ...oneThirdToward(pose, home),
+              ...oneThirdToward(station, home),
               born: now,
               foe: true,
             });
@@ -833,16 +846,22 @@ export function BattleScreen({
             const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1);
             downCursor.set(artId, lane);
             const st = droneSortieRef.current.get(artId);
-            const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY;
-            const pose = dronePoseAt(model, lane, st, layDown, elapsed);
+            // **爆炸点与相位无关**（同上，我方一侧对称）：固定取「从攻击阵位（敌舰旁）
+            // 往我舰机库口返航 1/3 处」，不随"当前轮次相位"漂移。
+            const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
+              x: 46,
+              y: 0,
+            };
+            const foeA = layDown.foe[0] ?? layDown.me;
+            const station = { x: foeA.x - off.x, y: foeA.y + off.y };
             const tk = droneTakeoff(lane);
             const home = { x: layDown.me.x + tk.x, y: layDown.me.y + tk.y };
             droneDownRef.current.push({
               key: keyRef.current++,
               artId,
-              x: pose.x,
-              y: pose.y,
-              ...oneThirdToward(pose, home),
+              x: station.x,
+              y: station.y,
+              ...oneThirdToward(station, home),
               born: now,
             });
           }
