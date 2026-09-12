@@ -711,6 +711,8 @@ export type ModuleSlot =
   | 'drone-tac'
   | 'drone-relay'
   | 'support'
+  /** 2026-09-11 船长：协处理器（低槽，装配 CPU 预算扩容；见 ModuleDef.cpuBonus） */
+  | 'cpu'
   | 'target-lock'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
@@ -867,6 +869,16 @@ export interface ModuleDef {
   /** 锁定加深（0.08 = 被锁定目标受本舰伤害 ×1.08；多件 EVE 曲线收敛见 stackingOf/curveMult；
    *  装上任意一件即触发集火：本舰全部武器不再随机分散，改打存活编队首位（主舰优先、击毁自动接力） */
   lockDmgBonus?: number
+  /* ═══ 2026-09-11 协处理器（cpu 家族·低槽；装配 CPU 预算扩容——船长定：本件自身不占 CPU） ═══ */
+  /**
+   * **CPU 预算扩容**（10 = 该船 CPU 上限 +10）：装配与无人机放飞**共用**这一份预算，
+   * 见 `equipment.cpuBudgetOf`（船体 CPU 含「舰船系统工程」×1+5%/级，再加本字段之和）。
+   * **本件 `cpuUse` 恒为 0**（船长 2026-09-11 定：自身不占用、单纯加预算）；
+   * 多件全额叠加（与容量类同口径），天然上限 = 该船低槽位数。
+   * ⚠ **防套利**：预算随件走 ⇒ 卸下本件必须重算（`unfitAt` 双向校验，超载则拒绝卸下），
+   * 否则可"装本件涨预算 → 装满其它件 → 卸下本件"白拿预算（见 equipment.ts 说明与设计稿）。
+   */
+  cpuBonus?: number
 }
 
 /** 舰船蓝图（M5：用矿物制造舰船，产物进入船坞） */

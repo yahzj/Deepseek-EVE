@@ -72,6 +72,7 @@ export const MODULE_SUBS: SubOption[] = [
   { key: 'prop', label: '推进器' },
   { key: 'drone', label: '无人机装置' },
   { key: 'support', label: '支援件（辅助与维修）' },
+  { key: 'cpu', label: '协处理器（CPU 扩容）' },
   { key: 'salvager', label: '打捞器' },
   { key: 'lock', label: '目标锁定' },
 ]
@@ -84,6 +85,7 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   prop: ['propulsion'],
   drone: ['drone-rack', 'drone-tac', 'drone-relay'], // 2026-09-10 + 无人机中继天线
   support: ['support'],
+  cpu: ['cpu'], // 2026-09-11 协处理器（低槽 CPU 预算扩容）
   salvager: ['salvager'],
   lock: ['target-lock'],
 }

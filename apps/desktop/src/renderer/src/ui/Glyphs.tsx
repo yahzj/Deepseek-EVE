@@ -169,6 +169,14 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 15.2V9.4M9.8 11.4L12 9l2.2 2.4" />
     </g>
   ),
+  /* 2026-09-11 协处理器（方框徽：算力芯片——内芯 + 四向引脚） */
+  cpu: (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <rect x="9.9" y="9.9" width="4.2" height="4.2" rx="0.8" />
+      <path d="M12 7.4v2.5M12 14.1v2.5M7.4 12h2.5M14.1 12h2.5" />
+    </g>
+  ),
   /* 打捞器 / 锁定装置（2026-09-10 补齐：此前这两个槽位无图形，列表里落兜底圆环徽） */
   salvager: (
     <g>
@@ -502,6 +510,7 @@ export const TONES: Record<string, string> = {
   'drone-tac': '#ffb454',
   'drone-relay': '#7fc7ff', // 2026-09-10 中继天线：通讯青（与导控黄/甲板橙区分）
   support: '#ff8ab5',
+  cpu: '#7de3a8', // 2026-09-11 协处理器：算力青绿（与装配页导航同色系，且不与既有槽位色撞）
   salvager: '#6fe3f0', // 打捞器：与「打捞」同色
   'target-lock': '#ffca58', // 锁定装置：准星亮黄
   industrial: '#5ee6c8',

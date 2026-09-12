@@ -183,6 +183,10 @@ export {
   MODULE_SLOTS,
   slotLabel,
   effectiveCpu,
+  // 2026-09-11 协处理器：CPU 预算总额（船体 + 协处理器）与超载预演、换装
+  cpuBudgetOf,
+  cpuOverloadText,
+  swapModuleAt,
   countModule,
   addModule,
   removeModule,

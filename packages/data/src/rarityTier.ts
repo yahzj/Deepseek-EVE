@@ -46,6 +46,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-cargo-2': 2,
   'bp-cargo-3': 3,
   'bp-cargo-civ': 1,
+  // 2026-09-11 协处理器（船长定：MK1 稀有 2 档、MK2 稀有 3 档；**MK3 无蓝图**故无 bp-cpu-3）
+  'bp-cpu-1': 2,
+  'bp-cpu-2': 3,
   'bp-drone-rack-1': 1,
   'bp-drone-rack-2': 2,
   'bp-drone-rack-3': 3,
@@ -151,6 +154,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-cargo-3': 3,
   'mod-cargo-civ': 1,
   'mod-cargo-proto': 4,
+  // 2026-09-11 协处理器（船长定：MK1 = 2、MK2 = 3、**MK3 = 4 走奇货、无蓝图**）
+  'mod-cpu-1': 2,
+  'mod-cpu-2': 3,
+  'mod-cpu-3': 4,
   'mod-drone-rack-1': 1,
   'mod-drone-rack-2': 2,
   'mod-drone-rack-3': 3,

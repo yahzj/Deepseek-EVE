@@ -21,7 +21,7 @@ import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
-import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
@@ -619,7 +619,8 @@ export function createPlayerSpec(
     droneRangeMult += g.droneRangeBonusPct ?? 0
   }
   let bayUsed = 0
-  let cpuLeft = effectiveCpu(state, ctx, ship) - fittedCpuUsed(fitted, ctx)
+  // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
+  let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx)
   const droneLoad = fleet.droneLoad ?? {}
   // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——每级 −4%
   //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）

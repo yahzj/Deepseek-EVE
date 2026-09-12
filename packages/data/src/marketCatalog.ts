@@ -224,6 +224,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-rof-3', kind: 'module', refId: 'mod-rof-3', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 },
   { key: 'mod-track-3', kind: 'module', refId: 'mod-track-3', rarity: 'rare', basePrice: 2_230_000, demandMultiplier: 0.65 },
   { key: 'mod-gyro-3', kind: 'module', refId: 'mod-gyro-3', rarity: 'rare', basePrice: 2_210_000, demandMultiplier: 0.65 },
+  // 2026-09-11 协处理器（船长定：低槽 CPU 预算扩容件；MK1 稀有 2 档 / MK2 稀有 3 档 /
+  // **MK3 稀有 4 档走奇货、无蓝图**）——价格落在本档既有带内（第 2 档 38.5~48.1 万、第 3 档 192~240 万）
+  { key: 'mod-cpu-1', kind: 'module', refId: 'mod-cpu-1', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
+  { key: 'mod-cpu-2', kind: 'module', refId: 'mod-cpu-2', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
   // 船体维修装置 MK1/MK2（消耗型修复件：2026-09-09 船长定档位价对位——MK1 对标支援件 MK2 档、MK2 对标支援件 MK3 档；
   // 2026-09-10 起改按「同级武器价对齐」→ MK1 落第 2 档带 46.8 万、MK2 落第 3 档带 229 万）
   { key: 'mod-hullrep-1', kind: 'module', refId: 'mod-hullrep-1', rarity: 'rare', basePrice: 468_000, demandMultiplier: 0.65 },
@@ -285,6 +289,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-track-3', kind: 'blueprint', refId: 'bp-track-3', rarity: 'rare', basePrice: 2400000, demandMultiplier: 0.65, standingReq: 4 }, // 索敌阵列 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-gyro-2', kind: 'blueprint', refId: 'bp-gyro-2', rarity: 'rare', basePrice: 375000, demandMultiplier: 0.65 }, // 姿态陀螺 MK2（蓝图=产物×2.5）
   { key: 'bp-gyro-3', kind: 'blueprint', refId: 'bp-gyro-3', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65, standingReq: 4 }, // 姿态陀螺 MK3（蓝图=产物×3）（入闸）
+  // 协处理器蓝图书（2026-09-11 新增；**无 MK3 蓝图**——船长定 MK3 走奇货现货）
+  // 价按文档口径「蓝图 = 产物 × 2（MK1）/ × 2.5（MK2）」，与 blueprints.priceIsk 同源
+  { key: 'bp-cpu-1', kind: 'blueprint', refId: 'bp-cpu-1', rarity: 'rare', basePrice: 776000, demandMultiplier: 0.65 }, // 协处理器 MK1（蓝图=产物×2）
+  { key: 'bp-cpu-2', kind: 'blueprint', refId: 'bp-cpu-2', rarity: 'rare', basePrice: 4850000, demandMultiplier: 0.65 }, // 协处理器 MK2（蓝图=产物×2.5）
   { key: 'bp-salvager-2', kind: 'blueprint', refId: 'bp-salvager-2', rarity: 'rare', basePrice: 325000, demandMultiplier: 0.65 }, // 打捞器 MK2（蓝图=产物×2.5）
   { key: 'bp-salvager-3', kind: 'blueprint', refId: 'bp-salvager-3', rarity: 'rare', basePrice: 2340000, demandMultiplier: 0.65, standingReq: 4 }, // 打捞器 MK3（蓝图=产物×3）
   { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 2760000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
@@ -358,6 +366,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, standingReq: 10 },
   { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 1.0, standingReq: 10 },
+  // 协处理器 MK3（2026-09-11 船长定：稀有度 4 走奇货、**无蓝图**——只能等奇货现货；无声望门槛）
+  { key: 'mod-cpu-3', kind: 'module', refId: 'mod-cpu-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0 },
   // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径；可回卖：收购档 exotic 1.0×L）
   { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 90_000, demandMultiplier: 1.0 },
   { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 1.0 },

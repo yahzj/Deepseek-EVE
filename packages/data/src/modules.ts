@@ -861,6 +861,42 @@ export const MODULES: readonly ModuleDef[] = [
     description: '机动支援（中槽）：被命中缺口削减 20%（市场稀有）。',
   },
 
+  // ══════════ 协处理器（cpu：低槽，**装配 CPU 预算扩容**） ══════════
+  // 2026-09-11 船长定（原话）：「新增低槽配件，效果是增加舰船CPU」＋四条细裁：
+  //   ① **自身不占用**（`cpuUse: 0`）——只加预算，`cpuBonus` = +10 / +15 / +20（三档）；
+  //   ② 新开一族「协处理器」（低槽，与装甲/货舱/支援件抢同一槽位）；
+  //   ③ 渠道：MK1 稀有度 2、MK2 稀有度 3（稀有订单层）、**MK3 稀有度 4 走奇货、无蓝图**；
+  //   ④ 防套利 = **双向校验**（预算随件走，卸下时必须预演最终状态，超载拒绝卸下，见 equipment.cpuOverloadText）。
+  // 叠加：多件全额叠加（与容量类同口径），天然上限 = 该船低槽位数（1~3）。
+  // ⚠ 契约配套：`content-check` 的「装备 cpuUse ≥ 1」放宽为「≥ 0，且只有带 cpuBonus 的件可为 0」。
+  {
+    id: 'mod-cpu-1',
+    name: '协处理器 MK1',
+    slot: 'cpu',
+    rack: 'low',
+    cpuUse: 0, // 船长定：自身不占用（零占用只允许"加预算"件，见 content-check 契约）
+    cpuBonus: 10,
+    description: '算力扩展卡（低槽）：装配 CPU 上限 +10。本件自身不占 CPU。',
+  },
+  {
+    id: 'mod-cpu-2',
+    name: '协处理器 MK2',
+    slot: 'cpu',
+    rack: 'low',
+    cpuUse: 0,
+    cpuBonus: 15,
+    description: '双路算力扩展卡（低槽）：装配 CPU 上限 +15。本件自身不占 CPU，中后期的通用解锁件。',
+  },
+  {
+    id: 'mod-cpu-3',
+    name: '协处理器 MK3',
+    slot: 'cpu',
+    rack: 'low',
+    cpuUse: 0,
+    cpuBonus: 20,
+    description: '军用算力堆叠模块（低槽）：装配 CPU 上限 +20（奇货现货，无蓝图）。本件自身不占 CPU。',
+  },
+
   // ══════════ B3 打捞器（salvager：高槽无伤害件，2026-09-05 船长定稿） ══════════
   // 每轮每台捞 1 具残骸；升级只缩短周期不增产（10s/8s/6s）；多台叠加；CPU 2/6/15（压缩表）。
   // 周期字段 salvageCycleMs 供打捞作业引擎消费；产出/密度关系见 salvage.ts 与 docs/design/b3-salvage.md。

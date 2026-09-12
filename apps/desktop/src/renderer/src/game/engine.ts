@@ -104,6 +104,10 @@ import {
   setAutoLoopBounty,
   unfitSlot,
   unfitAt,
+  // 2026-09-11 协处理器：CPU 预算总额（含扩容）/ 超载预演 / 原子换装
+  cpuBudgetOf,
+  cpuOverloadText,
+  swapModuleAt,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
   beginTutorialAfterAwaken,
@@ -1118,14 +1122,32 @@ export class GameEngine {
   }
 
   /** V18：卸下 指定槽类+位序 的装备（放回装备库；shipId 缺省 = 当前驾驶船）。
-   *  2026-09-10 船长：传 ctx——卸下甲板扩展后机舱变小，超出容量的无人机随之自动卸下退回仓库 */
-  unfitAtAt(rack: RackSlot, index: number, shipId?: string): boolean {
+   *  2026-09-10 船长：传 ctx——卸下甲板扩展后机舱变小，超出容量的无人机随之自动卸下退回仓库。
+   *  2026-09-11 协处理器：**CPU 双向校验**——卸下会收回该件的扩容，超载时拒绝并回报原因
+   *  （返回值由 boolean 改 CommandResult，让装配页能把「为什么卸不掉」直接弹给玩家）。 */
+  unfitAtAt(rack: RackSlot, index: number, shipId?: string): CommandResult {
+    const uid = shipId ?? this.state.shipId
+    const why = cpuOverloadText(this.state, this.ctx, uid, { remove: { rack, index } })
+    if (why !== null) return { ok: false, error: why }
     const ok = unfitAt(this.state, rack, index, shipId, this.ctx)
     if (ok) {
       void this.persist()
       this.notify()
+      return { ok: true }
     }
-    return ok
+    return { ok: false, error: '该位没有可卸下的装备。' }
+  }
+
+  /** V18：**换装**（某位旧件 → 装备库里的新件）——一次成型、按最终状态校验 CPU。
+   *  2026-09-11：装配页原先"先卸后装"，在 CPU 双向校验下会把「换协处理器」这类
+   *  最终态合法、中间态非法的换装卡住；改走本命令（core swapModuleAt）。 */
+  swapModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
+    const result = swapModuleAt(this.state, moduleId, this.ctx, { rack, index, shipId })
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 
   /** 2026-09-08 无人机舱：清单调整（delta>0 装入/δ<0 卸下；shipId 缺省 = 当前驾驶船） */

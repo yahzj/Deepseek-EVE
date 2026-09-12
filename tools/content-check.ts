@@ -380,9 +380,10 @@ for (const sbp of SHIP_BLUEPRINTS) {
       claims += 1
       check(false, `蓝图说明契约：${bp.id} 说明点名了「${def.name}」，实际材料只有 ${[...mats].map(mineralNameOf).join(' + ')}`)
     }
-    // ⑨ CPU 声明
+    // ⑨ CPU 声明（2026-09-11 起：装备 cpuUse 允许为 0 —— 此时声明指的是**扩容量** cpuBonus，
+    //    如协处理器说明「装配 CPU 上限 +10」；扩容件的蓝图说明同样按 cpuBonus 核对）
     for (const m of d.matchAll(/CPU\s*(\d+)|(\d+)\s*点\s*CPU/g)) {
-      const real = mod?.cpuUse ?? ship?.cpu
+      const real = mod ? (mod.cpuUse && mod.cpuUse > 0 ? mod.cpuUse : mod.cpuBonus) : ship?.cpu
       if (real === undefined) continue
       claims += 1
       check(Number(m[1] ?? m[2]) === real, `蓝图说明契约：${bp.id} 说明写 CPU ${m[1] ?? m[2]}，实际 = ${real}`)
@@ -910,7 +911,21 @@ for (const d of drones) {
   }
 }
 for (const m of MODULES) {
-  check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
+  // 2026-09-11 船长裁决「甲」（新增协处理器时）：**cpuUse 必填整数 ≥ 0**——零占用只允许"本件就是
+  // 加预算"的件（带 cpuBonus），别的件漏写占用照旧报错（保住 V10.5b「每件都占 CPU」的原意）。
+  const cpuUse = m.cpuUse
+  check(
+    cpuUse !== undefined && Number.isInteger(cpuUse) && cpuUse >= 0,
+    `装备 ${m.id} cpuUse 缺失或非法（V10.5b：必填整数 ≥ 0）`,
+  )
+  check(
+    (cpuUse ?? 0) > 0 || (m.cpuBonus ?? 0) > 0,
+    `装备 ${m.id} cpuUse = 0 却没有 cpuBonus——零占用只允许"加预算"件（协处理器族）`,
+  )
+  check(
+    (m.cpuBonus ?? 0) >= 0 && Number.isInteger(m.cpuBonus ?? 0),
+    `装备 ${m.id} cpuBonus 非法（需非负整数）`,
+  )
   // V18：家族合法（六家族 + 无人机装置两家族）
   check([...MODULE_SLOTS].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
   // V18：槽类归属 rack 必填且与 rackOf 推导一致（Q3 映射集中落数据；防标注漂移）
@@ -2050,6 +2065,8 @@ for (const m of MODULES) {
     repairHullHp: 'support',
     repairKit: 'support',
     lockDmgBonus: 'target-lock',
+    // 2026-09-11 协处理器：CPU 预算扩容（本职在 cpu 族；写在别的槽位上才算跨族，需登记）
+    cpuBonus: 'cpu',
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
