@@ -427,23 +427,21 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // - **旧路径的 `escorts 1`（僚机）由警戒机群承接**——'巨构自带机群＝第二套火力'落在这里
     // - ⚠ **速度 410 → 0**（船长 2026-09-11：「**族速度倍率设为 0**。依靠无人机攻击炮台范围外敌人」）：
     //   巨构是**静物残骸**，此前的 195（E 族族格速带 0.65~0.95）已作废；这是本段唯一的大幅难度改动
+    // **2026-09-12 修订（船长三条裁定）**：①「**敌人数量缩减为 1**」⇒ 由「巨构残段 ×2」改为**单舰**，
+    //   总血 **1,585 逐字守恒**（集中在唯一那具残骸上）；②「**三个悬赏整体火力上调 20%**」⇒ 总单发
+    //   180 → **216**；③「衰减降低为 0.3」（落在舰级 `falloff` 上，见 `foe-ships.ts`）。
+    // - **单舰后机群架数随舰级走**（`FoeShipSegment.drones` = 警戒机 ×2）⇒ **4 架 → 2 架**，每架单发
+    //   由 34/33 提到 **65/65**（总机群火力仍守恒：130）；炮台 86（原 72）。
+    // - 旧口径的"主体 + 僚机位"两条目合并为一条（tag 由 `foe-0` + `w0-foe-1` 变为只有 `foe-0`）。
     ships: [
       {
-        ship: FOE_SHIP_TITAN_HULK, // 主体：原「攻坚重甲舰」
+        ship: FOE_SHIP_TITAN_HULK,
         count: 1,
-        hpMul: 990.625 / FOE_SHIP_TITAN_HULK.hp,
-        dmgMul: 96 / (FOE_SHIP_TITAN_HULK.shotDmg * E_COMP(2)),
-        // **机群为主 60%**（2026-09-11 船长「允许调整敌舰的无人机/炮台火力比例，根据每个悬赏卡制定」·
-        // 首版取值，待船长细调）：族格是「**依靠无人机攻击炮台射程外的敌人**」+ 炮台老化失准
-        // （命中 0.65、10 秒一发）⇒ 主力必须在机群；总单发守恒，炮台单发相应让位。
+        hpMul: 1585 / FOE_SHIP_TITAN_HULK.hp, // = 1585/1600（原两条 990.625 + 594.375 合并）
+        // 旧口径 T = round(228×0.779) + 2×round(25×0.779) = 178 + 38 = **216**（+20%）
+        // ⇒ 按 0.6 拆成 炮台 86 / 机群 2 架 ×65
+        dmgMul: 0.779,
         droneFireShare: 0.6,
-      },
-      {
-        ship: FOE_SHIP_TITAN_HULK, // 僚机位：原「轻装攻坚重甲舰」
-        count: 1,
-        hpMul: 594.375 / FOE_SHIP_TITAN_HULK.hp,
-        dmgMul: 58 / (FOE_SHIP_TITAN_HULK.shotDmg * E_COMP(2)),
-        droneFireShare: 0.6, // 与主体同口径（同一条舰级 = 同一截巨构）
       },
     ],
     galaxyId: 'galaxy-abyss',
@@ -482,9 +480,11 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         ship: FOE_SHIP_AURO_HULK, // 主体：原「武装残骸」主体
         count: 1,
         hpMul: (1740 * (5 / 11)) / FOE_SHIP_AURO_HULK.hp, // = 790.909/990
-        dmgMul: 46 / (FOE_SHIP_AURO_HULK.shotDmg * E_COMP(3)), // 设计单发 46（原 59 —— 让位给机群）
-        // **机群 50%**（首版取值，待船长细调）：奥罗命中 0.95（老化比泰坦级轻）⇒ 炮台仍可用，
-        // 故主体按"机炮各半"起手；总单发守恒。
+        // **火力 +20%（2026-09-12 船长「三个悬赏整体火力上调 20%」）**：本条目旧口径 T = 72
+        // ⇒ 按 0.5 拆成 炮台 36 / 机群 2 架 ×18（卡合计 128 → **154**）
+        dmgMul: 0.3,
+        // **机群 50%**（首版取值）：奥罗命中 0.95（老化比泰坦级轻）⇒ 炮台仍可用，故主体"机炮各半"；
+        // 总单发守恒（比例只改构成）。
         droneFireShare: 0.5,
       },
       {
@@ -492,7 +492,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         count: 2,
         escort: true,
         hpMul: (1740 * (3 / 11)) / FOE_SHIP_AURO_HULK.hp, // = 474.545/990
-        dmgMul: 27 / (FOE_SHIP_AURO_HULK.shotDmg * E_COMP(3)), // 设计单发 27（原 35）
+        // 火力 +20%：本条目旧口径 T = 82（每单位 41）⇒ 按 0.7 拆成 炮台 12 / 机群 2 架 ×15·14
+        dmgMul: 0.175,
         // **轻装机群 70%**（首版取值）：同一截残骸的**轻装规格**（血量只有主体的六成）⇒ 更"残"、
         // 炮更不可用 ⇒ 更依赖机群；同时演示**条目级旋钮**（同卡两条目可各写各的）。
         droneFireShare: 0.7,
@@ -527,11 +528,12 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // - **长战**（`combatSeconds: 150`）：族格"撑到最后"的极致落点。
     ships: [
       {
-        ship: FOE_SHIP_CORE_SECTION, // 单舰：一具接近完好的巨构（精锐位）
+        ship: FOE_SHIP_CORE_SECTION, // 单舰：一具接近完好的巨构（**旗舰档**精锐位）
         count: 1,
-        hpMul: 3400 / FOE_SHIP_CORE_SECTION.hp, // = 3400/2240（T84 段血量，落在 噬口 2,766 ~ 坟场 3,960 之间）
-        // 旧口径 T = 452 + 3×36 = 560 ⇒ 再按 0.6 拆成 炮台 224 / 机群 3×112（见 droneFireShare）
-        dmgMul: 1.45,
+        hpMul: 3400 / FOE_SHIP_CORE_SECTION.hp, // = 3400/3920（T5 舰级基线 3,920 ⇒ 卡面实收仍是 3,400）
+        // **火力 +20%（2026-09-12 船长）**：旧口径 T = round(546×1.082) + 3×round(25×1.082) = 591 + 81
+        // = **672**（原 560）⇒ 按 0.6 拆成 炮台 269 / 机群 3 架 ×135·134·134
+        dmgMul: 1.082,
         droneFireShare: 0.6,
       },
     ],

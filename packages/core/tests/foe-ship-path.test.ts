@@ -262,7 +262,7 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // （静物残骸；火力由警戒机群投送）——本批之前的 195/0.95 口径已作废。
       { id: 'foe-titan-hulk', tier: 4, speed: 0 }, // 2026-09-11 船长：族速度倍率设为 0（静物残骸 · 靠机群打炮台射程外的敌人）
       { id: 'foe-auro-hulk', tier: 3, speed: 0 },
-      { id: 'foe-core-section', tier: 4, speed: 0 },
+      { id: 'foe-core-section', tier: 5, speed: 0 }, // 2026-09-12 船长「核心舱段，调为旗舰级」（敌舰唯一 T5）
     ])
   })
 
