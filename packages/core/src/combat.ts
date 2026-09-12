@@ -2314,14 +2314,20 @@ export function battleArcsFor(
     // 同一单位的多件同带武器只算一艘；`count` = **用该带的敌舰艘数**（三艘同名快艇 = 3，不是 1）
     const seenBandOfUnit = new Set<string>()
     for (const w of f.weapons) {
-      foeMin = Math.min(foeMin, w.minRangeM)
-      foeMax = Math.max(foeMax, w.maxRangeM)
+      // **敌机射程要读"实战射程"**（2026-09-12 船长实测反馈：「无人机射程变更后，下方的射程标签内数值
+      // 也要变动」）：敌机武器条目的 `maxRangeM` 是**机型射程**（原始值），而实战射程 = 机型射程 ×
+      // **受击增程倍率**（`foeDroneRangeOf`，母舰被命中后 ×4）⇒ 标签若读原始值，就会出现
+      // "打得着 20km、标签还写 5km"。**与开火射程门同源**（见 `resolvePointDefense` 上游那处）✓
+      const wMin = w.minRangeM
+      const wMax = w.src === 'drone' ? foeDroneRangeOf(battle, w) : w.maxRangeM
+      foeMin = Math.min(foeMin, wMin)
+      foeMax = Math.max(foeMax, wMax)
       const type = w.fixedType ?? 'kinetic'
       foeType = type
-      const key = `${w.minRangeM}|${w.maxRangeM}|${type}`
+      const key = `${wMin}|${wMax}|${type}`
       let band = foeBandMap.get(key)
       if (!band) {
-        band = { minM: w.minRangeM, maxM: w.maxRangeM, type, units: 0, names: new Set<string>() }
+        band = { minM: wMin, maxM: wMax, type, units: 0, names: new Set<string>() }
         foeBandMap.set(key, band)
       }
       band.names.add(f.name)

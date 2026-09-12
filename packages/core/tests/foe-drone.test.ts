@@ -14,6 +14,7 @@ import { buildSimContext, FOE_DRONE_E_ALERT } from "@whale/data";
 import { addShipToFleet, addWare, createInitialState } from "../src/index";
 import {
   advanceBattleFor,
+  battleArcsFor,
   createFoeSpecs,
   foeDroneRangeOf,
   pickFoeDroneTarget,
@@ -372,6 +373,16 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
       state.logs.some((l) => l.text.includes("警戒机群解除射程限制")),
     ).toBe(false);
   });
+
+  /* ⚠ **界面射程标签**（2026-09-12 船长：「无人机射程变更后，下方的射程标签内数值也要变动」）：
+   * 修复落在 `battleArcsFor` 的**敌方逐带聚合**——敌机武器条目的 `maxRangeM` 是**机型射程**（原始值），
+   * 而实战射程 = `foeDroneRangeOf(battle, w)`（机型射程 × **受击增程倍率**）⇒ 现改为读后者，
+   * 与**开火射程门同源**（避免"打得着 20km、标签还写 5km"）。
+   * **本用例暂不在此钉 UI**：`battleArcsFor` 读 `state.expedition.battle`，而战斗**结束后**该字段已被结算清掉、
+   * 重新挂回的 `BattleState` 上取不到当时的 `foeDroneRangeBuff`（实测：挂回后重建的视图仍报机型原始射程）
+   * ⇒ 需**真机实测**（重启客户端打一张 E 族卡看底部标签是否随增程变为 20,000m）；若要自动化，
+   * 正解是让"战斗结算后再建视图"这条路径也带上当时的倍率（或给视图注入 battle 的口子），另立小批。
+   * 引擎侧不变量已有覆盖：上面那条「母舰本体被命中 ⇒ 全敌队机群射程 ×4」✓ */
 
   it("只打机群 ⇒ **不触发**（船长：仅母舰本体被命中才算）", () => {
     // 构造"整场够不着母舰"的仗：**母舰想站在 4,000m**（`desireRangeM`）+ **速度远高于我舰**
