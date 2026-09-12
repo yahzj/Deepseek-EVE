@@ -27,6 +27,7 @@ import {
   DRONE_STYLE,
   droneArcHeight,
   droneModelOf,
+  droneModelOrFallback,
   dronePathPos,
   droneRandomOffsets,
   droneStationFrom,
@@ -1315,7 +1316,9 @@ const meSpeedRef = useRef(200)
   const droneWings = arcs.me
     .filter((w) => w.src === 'drone' && !!w.artId)
     .map((w) => {
-      const model = droneModelOf(w.artId!)!
+      // **兜底取机型**（2026-09-12）：漏登记机型时画"未知机型"灰机体 + 名字回退成 id，
+      // 不再静默消失（G 族蜂群机曾因漏登记而在战斗里看不见）。
+      const model = droneModelOrFallback(w.artId)
       const st = droneSortieRef.current.get(w.artId!)
       const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
       const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
@@ -1382,7 +1385,7 @@ const meSpeedRef = useRef(200)
         const fel = st ? now - st.startAt : Number.POSITIVE_INFINITY
         return {
           artId: w.artId,
-          model: droneModelOf(w.artId)!,
+          model: droneModelOrFallback(w.artId),
           // **分批出击**（2026-09-12 船长「限制敌机单次出击数量」）：机体数按**本批在空架数**画
           // （引擎在 `foeDrones[].alive` 里已排除在库备用机）——缺省与旧口径一致（= 存活架数）。
           show: Math.min(w.alive, DRONE_SHOW_MAX),

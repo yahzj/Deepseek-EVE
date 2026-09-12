@@ -40,6 +40,20 @@ const SLOTS_HIGH = (y: number): DroneSlot[] => [
   { x: 14, y: y - 15 },
 ]
 
+/** G 族「蜂群机」机体（三系共用；说明见 `DRONE_MODELS` 里的 G 族条目）——
+ *  **蜂窝六边舱段 + 拼装焊接痕**（族外形口径）。⚠ 必须声明在 `DRONE_MODELS` **之前**（对象字面量按序求值）。 */
+const SWARM_BEE_ART: ReactNode = (
+  <g>
+    {/* 蜂窝六边舱体（族外形「蜂窝舱段」） */}
+    <path d="M9.5 0 L4.7 -4.4 L-4.7 -4.4 L-9.5 0 L-4.7 4.4 L4.7 4.4 Z" />
+    {/* 拼装补丁（后半截焊上去的歪板）+ 横向焊缝 */}
+    <path d="M-4.7 -4.4 L-3.2 -7 L3 -6.4 L4.7 -4.4" className="app-bts-drone-line" />
+    <path d="M-1 -4.4 v8.8" className="app-bts-drone-line" />
+    {/* 焊点小灯 */}
+    <circle cx="5.6" cy="0" r="1" className="app-bts-drone-dot" />
+  </g>
+)
+
 export const DRONE_MODELS: Record<string, DroneModel> = {
   'drone-scout': {
     name: '蜂鸟',
@@ -115,6 +129,59 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
       </g>
     ),
   },
+  /* ── G 族「蜂群机」（鱿烬亡军的招牌 = **蜂群式无人机**；2026-09-12 挂上「天底封锁舰」T3）──
+   * 族色**聚落紫** `#cd9fdd`（与 G 族舰体/族色同源）；形体语言 = **蜂窝六边舱段 + 拼装焊接痕**
+   * （族外形口径「蜂窝舱段 + 补丁帆 + 拼装焊接痕」＝"拼出来的舰队"）。
+   * 三型（kin / exp / pla）**共用同一机体**——口径「**颜色按弹型、机型不夺颜色语言**」⇒
+   * 三系差别落在**弹点颜色**（动能金 / 高爆橙 / 能量青）与弹种上，机体一致（与 E 族同款做法）。
+   * ⚠ **2026-09-12 教训**：机群机制先落码、**机型资产漏登记** ⇒ 战斗里**看不见蜂群**
+   *   （船长实测发现）⇒ 本批同时加下方 `droneModelOrFallback()` 兜底，同类漏登记不再"静默消失"。 */
+  'foe-drone-g-bee-kin': {
+    name: '蜂群机',
+    tint: '#cd9fdd',
+    slots: SLOTS_HIGH(-26), // 编队位只在我方出击制里用；敌侧位置由表现层贴敌舰锚点决定
+    bolt: { style: 'dot', len: 8, width: 1.8, tail: false }, // 小弹点、密度高（"一群致命"）
+    art: SWARM_BEE_ART,
+  },
+  'foe-drone-g-bee-exp': {
+    name: '蜂群机',
+    tint: '#cd9fdd',
+    slots: SLOTS_HIGH(-26),
+    bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+    art: SWARM_BEE_ART,
+  },
+  'foe-drone-g-bee-pla': {
+    name: '蜂群机',
+    tint: '#cd9fdd',
+    slots: SLOTS_HIGH(-26),
+    bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+    art: SWARM_BEE_ART,
+  },
+}
+
+/** **未登记机型的兜底机体**（2026-09-12 加）。
+ *
+ * 由来：G 族蜂群机落码时**机型资产漏登记** ⇒ 敌侧 `droneModelOf()` 返回 `undefined` ⇒
+ * 机体不画、玩家在战斗里**只看到弹道看不到飞机**（船长实测发现）。兜底把"漏登记"从
+ * **静默消失**改成**看得见但一眼可辨**（中性灰机体 + 名字回退成机型 id），便于当场发现。 */
+export const DRONE_MODEL_FALLBACK: DroneModel = {
+  name: '未知机型',
+  tint: '#8fa3b8',
+  slots: SLOTS_HIGH(-26),
+  bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+  art: (
+    <g>
+      <rect x="-8" y="-4" width="16" height="8" rx="2" />
+      <path d="M8 0 h4" className="app-bts-drone-line" />
+    </g>
+  ),
+}
+
+/** 取机型（**未收录 ⇒ 兜底机体**；名字回退成机型 id，便于一眼认出是漏登记） */
+export function droneModelOrFallback(artId: string | null | undefined): DroneModel {
+  const found = droneModelOf(artId)
+  if (found) return found
+  return { ...DRONE_MODEL_FALLBACK, name: artId ?? DRONE_MODEL_FALLBACK.name }
 }
 
 /** 取机型（未收录返回 undefined → 表现层回退"普通弹道"口径） */
