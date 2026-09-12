@@ -23,8 +23,10 @@ import {
 import type { BattleState, GameState } from "../src/state";
 import type {
   AnomalyDef,
+  FoeDroneDef,
   FoeShipDef,
   FoeDroneSlot,
+  ModuleDef,
   SimContext,
 } from "../src/types";
 
@@ -362,6 +364,78 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
       withGun.fx.some((e) => e.droneDown === true && e.side === "foe"),
     ).toBe(false);
     expect(poolsGun.every((p) => p.alive)).toBe(true); // 普通炮台**按构造看不到机群**
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **对无人机伤害加成**（船长 2026-09-12：「**近防炮给予一个对无人机伤害加成**」→「**那伤害倍率按2倍算**」）
+ *
+ * `pd-damage-ladder.test.ts` 只锁"装备表写了 ×2、且带进了武器条目"；本组锁**引擎真的乘上去了**：
+ * 用**合成对照件**（复制真近防炮、只把 `antiDroneDmgMul` 摘掉）跑同种子同卡——
+ * ① 机群掉血**恰好 ×2**；② **敌舰掉血逐字相同**（加成不许漏进对舰那一支）。
+ * 机群血量故意设成巨值（10 万）⇒ 整场零击落、无补位 ⇒ 两次跑的事件序列完全一致，对照是干净的。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe("对无人机伤害加成 ×2（船长 2026-09-12）", () => {
+  const FAT = 100_000;
+  /** 巨血合成警戒机：同名同角色，只把三层血拉高（保证整场零击落） */
+  const fatDrone = (): FoeDroneDef => ({
+    ...FOE_DRONE_E_ALERT,
+    id: "test-fat-drone",
+    name: "合成厚血警戒机",
+    defense: {
+      ...FOE_DRONE_E_ALERT.defense,
+      shieldHp: FAT,
+      armorHp: FAT,
+      hullHp: FAT,
+    },
+  });
+  /** 复制真近防炮 MK3、只摘掉对无人机倍率（对照组「无加成」） */
+  const noBonusPd = (): ModuleDef => {
+    const src = base.modules.get("mod-pd-e-3")!;
+    return { ...src, id: "test-pd-nobonus", name: "试验近防炮·无加成", antiDroneDmgMul: undefined };
+  };
+  /** 跑一场：同卡同种子，只换装配里那件近防炮 */
+  function runWith(
+    moduleId: string,
+  ): { droneHurt: number; shipHurt: number } {
+    const drone = fatDrone();
+    const card = testCard(testShip([{ drone, count: 3 }], 1));
+    const c: SimContext = {
+      ...base,
+      anomalies: new Map([...base.anomalies, [card.id, card]]),
+      modules: new Map([...base.modules, ["test-pd-nobonus", noBonusPd()]]),
+    };
+    const state = makeState(5, [moduleId, moduleId, moduleId, moduleId]);
+    const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+    const droneHpStart = Object.values(battle.foeDronePools ?? {})
+      .flat()
+      .reduce((s, p) => s + p.s + p.a + p.h, 0);
+    const shipHpStart = Object.values(battle.units)
+      .filter((u) => u.tag !== "player")
+      .reduce((s, u) => s + u.hp.s + u.hp.a + u.hp.h, 0);
+    state.expedition.active = true;
+    state.expedition.phase = "battle";
+    state.expedition.anomalyId = card.id;
+    state.expedition.battle = battle;
+    state.gameMs = 60_000;
+    advanceBattleFor(state, c, battle, state.shipId, card.id);
+    const droneHpEnd = Object.values(battle.foeDronePools ?? {})
+      .flat()
+      .reduce((s, p) => s + p.s + p.a + p.h, 0);
+    const shipHpEnd = Object.values(battle.units)
+      .filter((u) => u.tag !== "player")
+      .reduce((s, u) => s + u.hp.s + u.hp.a + u.hp.h, 0);
+    // 零击落的前提核对（有击落说明血量没设够，对照就不干净了）
+    expect(Object.values(battle.foeDronePools ?? {}).flat().every((p) => p.alive)).toBe(true);
+    return { droneHurt: droneHpStart - droneHpEnd, shipHurt: shipHpStart - shipHpEnd };
+  }
+
+  it("带加成 ⇒ 机群掉血恰好翻倍；对舰掉血逐字相同（加成不许漏进对舰那一支）", () => {
+    const withBonus = runWith("mod-pd-e-3");
+    const without = runWith("test-pd-nobonus");
+    expect(without.droneHurt).toBeGreaterThan(0); // 对照组确实打到了机群
+    expect(withBonus.droneHurt).toBe(without.droneHurt * 2);
+    expect(withBonus.shipHurt).toBe(without.shipHurt); // 对舰不但"没加成"，而是**完全一致**
   });
 });
 

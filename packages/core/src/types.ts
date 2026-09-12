@@ -877,6 +877,16 @@ export interface ModuleDef {
    * ⚠ 缺省 = 打不到敌机 ⇒ **既有装备零行为变化**。
    */
   canHitDrones?: boolean;
+  /**
+   * **对无人机伤害加成**（船长 2026-09-12：「**近防炮给予一个对无人机伤害加成**」→「**那伤害倍率按2倍算**」）。
+   *
+   * 语义：本武器**打机群**那一支的单发伤害 ×本值（`WeaponSpec.antiDroneMul`）；
+   * ⚠ **只作用于机群**——对舰伤害一字不动（"近防炮射程短所以对舰吃亏"的性格保留，
+   * 由 `tests/pd-damage-ladder.test.ts` 的对舰单发定值锁住）。
+   * 只对带 `canHitDrones` 的装备有意义（不带的按构造看不到机群，该字段是死字段）。
+   * 缺省不写 = ×1（零行为变化）。
+   */
+  antiDroneDmgMul?: number;
   /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展、
      有 droneDmgBonus = 战术导控、有 droneRangeBonusPct = 中继天线；归槽 rack = high，见 labels.rackOf） ═══ */
   /** 无人机甲板扩展：+droneBayM3（携带/放飞上限扩容；线性可叠件） */

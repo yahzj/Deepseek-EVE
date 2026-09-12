@@ -97,6 +97,13 @@ export interface WeaponSpec {
    * ⚠ 缺省 = 打不到敌机 ⇒ **既有武器零行为变化**。
    */
   canHitDrones?: boolean
+  /**
+   * **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
+   * **打机群**那一支的单发伤害 ×本值（`ModuleDef.antiDroneDmgMul` 建档时带过来）。
+   * ⚠ **只对机群生效**——对舰伤害一字不动（`tests/pd-damage-ladder.test.ts` 锁住对舰单发定值）。
+   * 缺省不写 = ×1（零行为变化）；只有带 `canHitDrones` 的武器会带上它。
+   */
+  antiDroneMul?: number
   maxRangeM: number
   minRangeM: number
   hitRate: number
@@ -709,6 +716,11 @@ export function createPlayerSpec(
       // 防空属性（2026-09-11 机群批 S4）：装备带 `canHitDrones` ⇒ 该武器能筛到敌方无人机。
       // 缺省不写 ⇒ 看到不机群（既有装备零行为变化）。
       ...(turret.canHitDrones ? { canHitDrones: true } : {}),
+      // 对无人机伤害加成（2026-09-12 船长：「近防炮给予一个对无人机伤害加成」→「那伤害倍率按2倍算」）：
+      // 跟着防空属性一起带过来（只对带该属性的武器有意义）；缺省/写 1 ⇒ 不写字段。
+      ...(turret.canHitDrones && (turret.antiDroneDmgMul ?? 1) !== 1
+        ? { antiDroneMul: turret.antiDroneDmgMul }
+        : {}),
     })
   }
 
@@ -3438,6 +3450,12 @@ function stepBattle(
         dmg = w.shotDmg ?? 0
         meRt.weapons[wi] = w.reloadMs
       }
+      // **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
+      // 只作用于**打机群**这一支（`droneHit` 非空 ⇔ 本发打的是敌机，见上方 `pickFoeDroneTarget`）；
+      // **对舰伤害一字不动**——`tests/pd-damage-ladder.test.ts` 的对舰单发定值就是这条的守卫。
+      // 倍率来自装备表（`ModuleDef.antiDroneDmgMul` → `WeaponSpec.antiDroneMul`），缺省 = 1 ⇒ 不乘。
+      if (droneHit && (w.antiDroneMul ?? 1) !== 1)
+        dmg = Math.round(dmg * (w.antiDroneMul ?? 1))
       b.stats.meShots += 1;
       // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
       if (w.src === 'drone')

@@ -19,7 +19,13 @@ import { droneHitChance, hitChance } from '../src/combat'
 const real = buildSimContext()
 
 /** 引擎真值：单装一件 → 取该件武器条目（单发 × 门数 ÷ 装填秒） */
-function weaponOf(moduleId: string): { per: number; dps: number; maxRangeM: number; antiDrone: boolean } {
+function weaponOf(moduleId: string): {
+  per: number
+  dps: number
+  maxRangeM: number
+  antiDrone: boolean
+  antiDroneMul: number | undefined
+} {
   const def = real.modules.get(moduleId)!
   const state = createInitialState({ nowWallMs: 0, seed: 7 })
   const uid = addShipToFleet(state, 'whale') // 鲸吞级：高槽 2 / CPU 130，足够逐件单测
@@ -30,7 +36,13 @@ function weaponOf(moduleId: string): { per: number; dps: number; maxRangeM: numb
   const me = createPlayerSpec(state, real, uid)!
   const w = me.weapons.find((x) => x.label.startsWith(def.name))!
   const per = w.kind === 'gun' ? (Object.values(w.shotsByType ?? {})[0] ?? 0) : (w.shotDmg ?? 0)
-  return { per, dps: per / (w.reloadMs / 1000), maxRangeM: w.maxRangeM, antiDrone: w.canHitDrones === true }
+  return {
+    per,
+    dps: per / (w.reloadMs / 1000),
+    maxRangeM: w.maxRangeM,
+    antiDrone: w.canHitDrones === true,
+    antiDroneMul: w.antiDroneMul,
+  }
 }
 
 const PD = ['mod-pd-e', 'mod-pd-e-2', 'mod-pd-e-3'] as const
@@ -120,5 +132,32 @@ describe('打机群不吃距离衰减（船长 2026-09-12「按丁修复」）',
     expect(near).toBeCloseTo(0.9 * (1 - (999 / 2_499) * 0.5) - 0.18, 5)
     expect(far).toBeCloseTo(0.9 * 0.5 - 0.18, 5) // 5,000m：越出射程 ⇒ 衰减锁在下限 ×0.5
     expect(near).toBeGreaterThan(far)
+  })
+})
+
+/**
+ * **对无人机伤害加成**（船长 2026-09-12：「**近防炮给予一个对无人机伤害加成**」→「**那伤害倍率按2倍算**」）。
+ *
+ * 锁三件事：①装备表三档都登记 `antiDroneDmgMul = 2`；②建档时带进武器条目（`WeaponSpec.antiDroneMul`）；
+ * ③**对舰伤害不受影响**——上一条 describe 里的对舰单发定值（10 / 16 / 17）就是那条守卫（若加成漏进对舰，
+ * 那三条断言会立刻炸）。倍率的**作用点**在 `stepBattle` 的"打机群"分支（`droneHit` 非空时才乘）。
+ */
+describe('近防炮 · 对无人机伤害加成（船长 2026-09-12「按2倍算」）', () => {
+  it('三档装备都登记 ×2，且建档后带进武器条目', () => {
+    for (const id of PD) {
+      const def = real.modules.get(id)!
+      expect(def.antiDroneDmgMul, `${id} 装备表倍率`).toBe(2)
+      const w = weaponOf(id)
+      expect(w.antiDrone, `${id} 应带防空属性`).toBe(true)
+      expect(w.antiDroneMul, `${id} 武器条目倍率`).toBe(2)
+    }
+  })
+
+  it('不带防空属性的武器不携带该倍率（死字段：看不到机群就用不到）', () => {
+    for (const id of GUN) {
+      const w = weaponOf(id)
+      expect(w.antiDrone, `${id} 不应带防空属性`).toBe(false)
+      expect(w.antiDroneMul, `${id} 不应带对无人机倍率`).toBeUndefined()
+    }
   })
 })
