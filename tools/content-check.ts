@@ -861,7 +861,9 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
   const othAvg = b.others.reduce((a, x) => a + x, 0) / b.others.length
   check(indAvg < othAvg, `tier ${tier} 工业系平均总血量（${Math.round(indAvg)}）应低于非工业系（${Math.round(othAvg)}）`)
 }
-check(SHIPS.length === 25, `舰船应为 25 艘，实际 ${SHIPS.length}`)
+// 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增巨齿鲨级战列舰 sh-megalodon、
+// 邓氏鱼级旗舰 sh-dunkleosteus 两具**壳体**：定制船口径 priceIsk 0、不上市场/不接蓝图/不接卡）。
+check(SHIPS.length === 27, `舰船应为 27 艘，实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,
 )
@@ -1380,7 +1382,15 @@ for (const m of MODULES) {
     const bal = DEFAULT_BALANCE.battle
     const agiMul = (ag: number): number => bal.speedFactor * (1 + (ag - 0.5) * 2 * bal.agilitySpeedBonus)
     const sortedShips = [...SHIPS].sort((a, b) => (a.maxSpeedMps ?? 0) - (b.maxSpeedMps ?? 0))
-    const refShip = sortedShips[Math.floor(sortedShips.length / 2)]!
+    // ⚠ **2026-09-12（工具更新批）：基准船由"船池中位"改为"固定锚定"**——
+    //   船长 2026-09-10 的原话就是「采取**固定锚定**，参考按照速度中位线的船只进行参考」，
+    //   但实现取的是"每次按当前船池重算的中位"⇒ **船池一变、尺子就跟着动**：
+    //   本轮新增两具 T4/T5 壳体后，中位从**长尾鲨级**滑到**锤头鲨级**，
+    //   基准战斗机动 **165.2 → 160.8 m/s（−2.7%）**，把「围攻残兵舰」从 ≤1.25 顶到边界外
+    //   ⇒ 与敌人数值无关的**契约假报警**（实测：改动前全绿、改动后 2 红）。
+    //   现按"固定锚定"钉死到裁决当时的中位船（长尾鲨级），并把回退写清。
+    const refShip =
+      SHIPS.find((s) => s.name.startsWith('长尾鲨')) ?? sortedShips[Math.floor(sortedShips.length / 2)]!
     const refCombat = (refShip.maxSpeedMps ?? 0) * agiMul(refShip.agility ?? 0.5)
     const foeAgi = agiMul(0.3)
     const SPEED_BAND: Record<string, readonly [number, number]> = {

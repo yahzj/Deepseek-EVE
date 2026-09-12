@@ -438,10 +438,10 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.16,
     powerBonus: 0.3, // 2026-09-10 船长：无人机母舰火力加成削弱（0.6→0.3）——原来与长尾鲨同级，但只喂炮台
     droneDmgBonus: 0.12, // 2026-09-10 船长：改为无人机专属加成 +12%（与其它巡洋舰的族加成同档）
-    shieldHp: 210,
+    shieldHp: 310,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
-    armorHp: 105,
-    hullHp: 126,
+    armorHp: 155,
+    hullHp: 187,
     cpu: 320,
     droneBayM3: 320,
     maxSpeedMps: 275,
@@ -468,10 +468,10 @@ export const SHIPS: readonly ShipDef[] = [
     evasion: 0.12,
     hitBonus: 0.17,
     powerBonus: 0.6,
-    shieldHp: 220,
+    shieldHp: 325,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
-    armorHp: 100,
-    hullHp: 118,
+    armorHp: 148,
+    hullHp: 175,
     cpu: 345,
     droneBayM3: 0,
     maxSpeedMps: 272,
@@ -497,10 +497,10 @@ export const SHIPS: readonly ShipDef[] = [
     evasion: 0.1,
     hitBonus: 0.16,
     powerBonus: 0.62,
-    shieldHp: 230,
+    shieldHp: 340,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
-    armorHp: 104,
-    hullHp: 122,
+    armorHp: 154,
+    hullHp: 181,
     cpu: 355,
     droneBayM3: 0,
     maxSpeedMps: 265,
@@ -526,10 +526,10 @@ export const SHIPS: readonly ShipDef[] = [
     evasion: 0.1,
     hitBonus: 0.18,
     powerBonus: 0.65,
-    shieldHp: 240,
+    shieldHp: 355,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
-    armorHp: 108,
-    hullHp: 126,
+    armorHp: 160,
+    hullHp: 186,
     cpu: 360,
     droneBayM3: 0,
     maxSpeedMps: 268,
@@ -555,10 +555,10 @@ export const SHIPS: readonly ShipDef[] = [
     evasion: 0.08,
     hitBonus: 0.19,
     powerBonus: 0.7,
-    shieldHp: 270,
+    shieldHp: 400,
     shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
-    armorHp: 110,
-    hullHp: 130,
+    armorHp: 163,
+    hullHp: 192,
     cpu: 390,
     droneBayM3: 0,
     maxSpeedMps: 258,
@@ -612,10 +612,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.46,
     evasion: 0.05,
     hitBonus: 0.05,
-    shieldHp: 69,
-    armorHp: 210,
+    shieldHp: 102,
+    armorHp: 311,
     armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
-    hullHp: 261,
+    hullHp: 386,
     cpu: 185,
     droneBayM3: 50,
     maxSpeedMps: 185,
@@ -630,7 +630,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-xuanwu',
     name: '玄武级重装旗舰',
     role: 'armored',
-    slots: { high: 2, mid: 3, low: 4 }, // V18 槽位布局（草案表 v18-slots.md）
+    slots: { high: 3, mid: 4, low: 5 }, // 12 槽（2026-09-12 船长「修正下玄武」：原 2/3/4=9 竟少于 T3 巡洋的 11~12；**守契约上限 12**）
     tier: 4,
     cargoM3: 19000,
     cycleSeconds: 14,
@@ -639,11 +639,11 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,
-    shieldHp: 102,
-    armorHp: 303,
+    shieldHp: 166,
+    armorHp: 493,
     armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
-    hullHp: 378,
-    cpu: 245,
+    hullHp: 614,
+    cpu: 490,
     droneBayM3: 60,
     maxSpeedMps: 170,
     warpSpeedAus: 2.8,
@@ -652,6 +652,70 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 250,
     scanResMm: 330,
     description: '重装线的顶点：传闻用整颗小行星的岩壳锻造（限定奇货，需高声望）。',
+  },
+
+  // ══════════ T4/T5 主战船「模子」（2026-09-12 船长「T4,T5 可以先立个模子」）══════════════
+  // ⚠ **状态 = 壳体/模子**：只登记**舰体**（档位/槽位/CPU/血量按档位口径外推），
+  //   **暂不上市场、不接蓝图、不接任何卡** ⇒ `priceIsk` 必须为 **0**（定制船口径，
+  //   `content:check`「舰船价格口径」据此判定）。数值**待船长定案**后再决定上架与定价。
+  //   外推口径：槽位 T1 7 / T2 9 / T3 11 ⇒ **+2/档（T4 = 13 / T5 = 15）**；CPU T3 = 350 ⇒ **×1.4/档**；
+  //   血量 = 档位阶梯（锚 T2 = 372、**×1.85/档** ⇒ **T4 = 1,273 / T5 = 2,355**）；
+  //   质量取所在档区间内、与既有邻舰同量级（T4 22M，介于玄武 20M 与皇带鱼 30M 之间；T5 35M）。
+  //   背景：玩家侧此前**根本没有 T4/T5 主战船**（T4 只有玄武、T5 只有货舰），而敌人有 T4 泰坦 /
+  //   T5 核心舱段 ⇒ 这是"E 段换大船不解决生存"的结构原因之一（2026-09-12 实测）。
+  {
+    id: 'sh-megalodon',
+    name: '巨齿鲨级战列舰',
+    role: 'armed',
+    slots: { high: 5, mid: 4, low: 3 }, // 12 槽（**守「总槽位 3~12」契约上限**；T4 不能在槽位上再压 T3）
+    tier: 4,
+    cargoM3: 4000,
+    cycleSeconds: 12,
+    oreUnitsPerCycle: 20,
+    priceIsk: 0, // 模子：未上架（定制船口径）
+    agility: 0.35,
+    evasion: 0.06,
+    hitBonus: 0.06,
+    powerBonus: 0.85, // 模子待定（武装舰必填；阶梯 牛鲨 0.7 → T4 0.85）
+    shieldHp: 675,
+    armorHp: 280,
+    hullHp: 318, // 三层共 1,273（T4 档位目标）；武装族定位 = 盾 > 结构 > 甲
+    cpu: 490, // T3 350 × 1.4
+    droneBayM3: 60,
+    maxSpeedMps: 175,
+    warpSpeedAus: 2.7,
+    massKg: 22_000_000,
+    lockRangeM: 26_000,
+    signatureM: 300,
+    scanResMm: 300,
+    description: '战列舰壳体（模子）：正面承伤与火力平台，数值待定案。',
+  },
+  {
+    id: 'sh-dunkleosteus',
+    name: '邓氏鱼级旗舰',
+    role: 'armed',
+    slots: { high: 6, mid: 3, low: 3 }, // 12 槽（同上；T5 的差异落在**高槽更多**＋CPU/血量，不在总槽数）
+    tier: 5,
+    cargoM3: 4500,
+    cycleSeconds: 12,
+    oreUnitsPerCycle: 20,
+    priceIsk: 0, // 模子：未上架（定制船口径）
+    agility: 0.3,
+    evasion: 0.05,
+    hitBonus: 0.07,
+    powerBonus: 1.0, // 模子待定（阶梯续 0.85 → T5 1.0；契约上限 2）
+    shieldHp: 1248,
+    armorHp: 518,
+    hullHp: 589, // 三层共 2,355（T5 档位目标）
+    cpu: 690, // T4 490 × 1.4
+    droneBayM3: 80,
+    maxSpeedMps: 155,
+    warpSpeedAus: 2.6,
+    massKg: 35_000_000,
+    lockRangeM: 28_000,
+    signatureM: 350,
+    scanResMm: 280,
+    description: '旗舰壳体（模子）：舰队的顶点，数值待定案。',
   },
 
   // ══════════ 蜃楼航运线（壳大皮薄：结构量高、盾甲低） ══════════
