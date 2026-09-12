@@ -750,7 +750,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
       `技能说明契约：技能「${def.name}」(${p.skill}) 说明写的是 ⟦${claims.join("% / ")}⟧，而 ${p.from} 是每级 ${p.per}——说明与引擎对不上`,
     )
   }
-  for (const p of pairs) verify(p);
+  for (const p of pairs) verify(p)
   for (const item of INLINE) {
     registered.add(item.skill)
     const def = skillById.get(item.skill)
@@ -1184,7 +1184,7 @@ for (const m of MODULES) {
  * ③窝点派生卡（`lairAnomalyOf`）= 同一主系 + **6:4**（60%/40%）；主系**不许变**；
  * ④**E 族特例**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
  *   泰坦巨构全族 = **50% 动能 + 50% 爆炸**（族格「动能 + 爆炸为主」的对称落点）⇒
- *   **常驻卡与窝点派生卡一律 5:5**（窝点**不套 6:4**——族级特例优先于"窝点比悬赏更混"的一般口径）。 */
+ *   **常驻卡与窝点派生卡一律 5:5**（窝点**不套 6:4**——族级特例优先于'窝点比悬赏更混'的一般口径）。 */
 {
   const TEACHING_CARD = 'ano-training'
   let mixed = 0
@@ -1333,7 +1333,7 @@ for (const m of MODULES) {
      * **同日终裁**「**族速度倍率设为 0**。依靠无人机攻击炮台范围外敌人」⇒ 下限放开到 **0**）。
      * 族格 = **巨构不讲机动，只讲撑到最后**（'还在跑的老机器'；速度 0 = **静物残骸**，火力由机群投送）
      * ——全族**实速不高于本档舰种基准**（`speedRatio ≤ 1`）。带取 **0~0.90×**（比率 = 实速 × 敌敏捷 ÷
-     * 基准船战斗机动，与 A/B/C/D 同一口径）：下限 0 是"静物"这一族级口径的落点，上限吃下族内任何
+     * 基准船战斗机动，与 A/B/C/D 同一口径）：下限 0 是'静物'这一族级口径的落点，上限吃下族内任何
      * 非零速度（历史顶格 = T4 × 0.95 = 195 ⇒ 0.67×）。
      * ⚠ **必须用族级带、不能用战术带**：brawl 常规带 1.05~1.55 会把慢的巨构**误拦**（与 B/D 同款教训）。
      */
@@ -1342,13 +1342,8 @@ for (const m of MODULES) {
     const pirateFastestByTier = new Map<number, number>()
     for (const ship of FOE_SHIPS) {
       if (ship.family !== 'A') continue
-      const spd = Math.round(
-        HULL_CLASS_BASE_SPEED[ship.hullClassTier] * ship.speedRatio,
-      )
-      pirateFastestByTier.set(
-        ship.hullClassTier,
-        Math.max(pirateFastestByTier.get(ship.hullClassTier) ?? 0, spd),
-      )
+      const spd = Math.round(HULL_CLASS_BASE_SPEED[ship.hullClassTier] * ship.speedRatio)
+      pirateFastestByTier.set(ship.hullClassTier, Math.max(pirateFastestByTier.get(ship.hullClassTier) ?? 0, spd))
     }
     let speedCounted = 0
     let speedShipPath = 0
@@ -1943,10 +1938,7 @@ for (const m of MODULES) {
     lairCards += 1
     const rareId = rareWreckItemIdOf(def.id)
     const rareDef = lairCtx.items.get(rareId)
-    check(
-      !!rareDef,
-      `窝点契约：${def.name} 缺稀有残骸物品 ${rareId}（data/context.ts 需按 hasLairCore 注册）`,
-    )
+    check(!!rareDef, `窝点契约：${def.name} 缺稀有残骸物品 ${rareId}（data/context.ts 需按 hasLairCore 注册）`)
     if (rareDef) {
       check(rareDef.kind === 'wreck', `窝点契约：稀有残骸 ${rareId} 种类应为 wreck，实际 ${rareDef.kind}`)
       check(
@@ -2246,14 +2238,8 @@ for (const m of MODULES) {
   for (const id of ids) {
     const per = table[id] ?? 0
     const def = catalog.get(id)
-    check(
-      Boolean(def),
-      `AI 扩容技能契约：${id} 不在技能目录中（写错 id 会静默不生效）`,
-    )
-    check(
-      Number.isInteger(per) && per > 0,
-      `AI 扩容技能契约：${id} 的每级工位数应为正整数，实际 ${per}`,
-    )
+    check(Boolean(def), `AI 扩容技能契约：${id} 不在技能目录中（写错 id 会静默不生效）`)
+    check(Number.isInteger(per) && per > 0, `AI 扩容技能契约：${id} 的每级工位数应为正整数，实际 ${per}`)
     total += per * MAX_SKILL_LEVEL
     shown.push(`${def?.name ?? id}(rank${def?.rank ?? "?"}) +${per}/级`)
   }
@@ -2490,12 +2476,8 @@ for (const m of MODULES) {
       `势力 ${f.id} 缺简介（界面「这是谁」说明）`,
     )
     check(f.kinds.length > 0, `势力 ${f.id} 没有可发内容类型白名单`)
-    for (const k of f.kinds)
-      check(KINDS.has(k), `势力 ${f.id} 白名单里的内容类型非法：${k}`)
-    check(
-      f.departments.length > 0,
-      `势力 ${f.id} 没有部门（发件人写法的后半截）`,
-    )
+    for (const k of f.kinds) check(KINDS.has(k), `势力 ${f.id} 白名单里的内容类型非法：${k}`)
+    check(f.departments.length > 0, `势力 ${f.id} 没有部门（发件人写法的后半截）`)
     const deptIds = new Set<string>()
     for (const d of f.departments) {
       check(d.id.trim().length > 0 && !deptIds.has(d.id), `势力 ${f.id} 的部门 id 重复或为空：${d.id}`)

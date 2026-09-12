@@ -110,15 +110,7 @@ describe('无人机战斗动画·武器来源字段（2026-09-10 船长批）', 
       // 一碰就碎的机型：点防一击即击落，测试无需长跑
       items: [{ ...droneDef, defense: { shieldHp: 1, armorHp: 1, hullHp: 1, evasion: 0 } }],
       // 皮厚的测试船：先活着挨到点防射程（4000m）内——点防只在射程内开火
-      ships: [
-        ship('sandcat', {
-          droneBayM3: 40,
-          cpu: 200,
-          shieldHp: 6000,
-          armorHp: 6000,
-          hullHp: 6000,
-        }),
-      ],
+      ships: [ship('sandcat', { droneBayM3: 40, cpu: 200, shieldHp: 6000, armorHp: 6000, hullHp: 6000 })],
       anomalies: [anomaly('ano-pd', 'galaxy-hub', { threat: 200 })], // 高威胁 → 点防拉满
     })
     state.fleet[state.shipId].cargo = {}

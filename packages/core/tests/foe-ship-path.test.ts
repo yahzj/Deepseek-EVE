@@ -505,11 +505,8 @@ describe('血型随卡走 + 头目射程多重方案（船长 2026-09-11 裁决�
       const specs = createFoeSpecs(card, bal)
       const bossW = specs[0]!.weapons[0]!
       const minionW = specs[1]!.weapons[0]!
-      expect({ min: bossW.minRangeM, max: bossW.maxRangeM }).toEqual({
-        min: minionW.minRangeM,
-        max: minionW.maxRangeM,
-      })
-      expect(bossW.maxRangeM).toBeGreaterThan(2210); // 已离开头目舰本体的近战带（1~2210m）
+      expect({ min: bossW.minRangeM, max: bossW.maxRangeM }).toEqual({ min: minionW.minRangeM, max: minionW.maxRangeM })
+      expect(bossW.maxRangeM).toBeGreaterThan(2210) // 已离开头目舰本体的近战带（1~2210m）
     }
     // 无首领三张（边境/碎晶/信标）：**全队同型**，逐单位射程带一致（不再有"头目打不到"的问题）
     for (const id of [
@@ -823,33 +820,16 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
   })
 
   it('能量形态覆写（裁定⑤）：缺省 = 光束必中（不消费命中）；`spit` = 掷命中（消费命中、吃回避）', () => {
-    const shell = {
-      ...anomaly('ano-t-c-form', 'galaxy-hub', { threat: 20 }),
-      dmgMix: { plasma: 10 },
-    }
-    const beamShip: FoeShipDef = {
-      ...SKIFF,
-      id: 't-foe-plasma-beam',
-      dmgMix: { plasma: 10 },
-    }
-    const spitShip: FoeShipDef = {
-      ...beamShip,
-      id: 't-foe-plasma-spit',
-      energyForm: 'spit',
-    }
-    const beam = createFoeSpecs(
-      { ...shell, ships: [{ ship: beamShip }] },
-      bal,
-    )[0]!.weapons[0]!
+    const shell = { ...anomaly('ano-t-c-form', 'galaxy-hub', { threat: 20 }), dmgMix: { plasma: 10 } }
+    const beamShip: FoeShipDef = { ...SKIFF, id: 't-foe-plasma-beam', dmgMix: { plasma: 10 } }
+    const spitShip: FoeShipDef = { ...beamShip, id: 't-foe-plasma-spit', energyForm: 'spit' }
+    const beam = createFoeSpecs({ ...shell, ships: [{ ship: beamShip }] }, bal)[0]!.weapons[0]!
     expect(beam.kind).toBe('beam')
-    expect(beam.hitRate).toBe(1); // 必中：不消费舰级 hitRate 0.85
-    const spit = createFoeSpecs(
-      { ...shell, ships: [{ ship: spitShip }] },
-      bal,
-    )[0]!.weapons[0]!
-    expect(spit.kind).toBe('fixed'); // 掷命中
-    expect(spit.hitRate).toBe(0.85); // 消费舰级命中
-    expect(spit.fixedType).toBe('plasma'); // 层位克制仍按等离子行
+    expect(beam.hitRate).toBe(1) // 必中：不消费舰级 hitRate 0.85
+    const spit = createFoeSpecs({ ...shell, ships: [{ ship: spitShip }] }, bal)[0]!.weapons[0]!
+    expect(spit.kind).toBe('fixed') // 掷命中
+    expect(spit.hitRate).toBe(0.85) // 消费舰级命中
+    expect(spit.fixedType).toBe('plasma') // 层位克制仍按等离子行
     // 条目覆写优先（同一条船可在不同卡上换形态）
     const overridden = createFoeSpecs({ ...shell, ships: [{ ship: spitShip, energyForm: 'beam' }] }, bal)[0]!.weapons[0]!
     expect(overridden.kind).toBe('beam')

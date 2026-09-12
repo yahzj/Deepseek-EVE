@@ -81,17 +81,10 @@ function dronePoseAt(
       const p = dronePathPos(t, baseAbs, station, arc, false)
       return { x: p.x, y: p.y, heading: 1 }
     }
-    if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS)
-      return { x: station.x, y: station.y, heading: 1 }; // 到位驻留
-    const t = Math.min(
-      1,
-      Math.max(
-        0,
-        (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS,
-      ),
-    )
+    if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) return { x: station.x, y: station.y, heading: 1 } // 到位驻留
+    const t = Math.min(1, Math.max(0, (elapsed - DRONE_SORTIE_OUT_MS - DRONE_DWELL_MS) / DRONE_SORTIE_BACK_MS))
     const p = dronePathPos(t, station, baseAbs, arc, true)
-    return { x: p.x, y: p.y, heading: -1 }; // 返航：掉头
+    return { x: p.x, y: p.y, heading: -1 } // 返航：掉头
   }
   return { x: station.x, y: station.y, heading: 1 }
 }

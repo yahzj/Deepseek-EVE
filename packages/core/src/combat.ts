@@ -32,23 +32,9 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
-import {
-  cargoItemsOf,
-  countWare,
-  removeItem,
-  removeWare,
-  addWare,
-} from './inventory'
+import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
-import {
-  allFittedModules,
-  curveMult,
-  effectiveCpu,
-  familyModules,
-  fittedCpuUsed,
-  gapCombine,
-  stackWeight,
-} from './equipment'
+import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
@@ -121,10 +107,7 @@ export interface WeaponSpec {
  *   系数 = 1 − 进度 × (1 − falloff)   （保底 0；falloff 0.1 → 最远端威力 ×0.10）
  * ⇒ "远端衰减"对能量武器就是**最远端威力倍率本身**，与动能/爆炸的"远端命中倍率"语义对齐、一眼可读。
  */
-export function beamPowerFactor(
-  dist: number,
-  w: { minRangeM: number; maxRangeM: number; falloff: number },
-): number {
+export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
   const { minRangeM: min, maxRangeM: max, falloff } = w
   if (max <= min) return 1
   const t = clamp(0, 1, (dist - min) / (max - min))
@@ -1366,9 +1349,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     const legacySquad = prefix === '' && k === 0
     const squadPrefix = legacySquad ? '' : `${prefix === "" ? "w0-" : prefix}`
     const mainTag = legacySquad ? 'foe-0' : `${squadPrefix}foe-${k}`
-    specs.push(
-      make(mainTag, foeUnitNameOf(anomaly, mainTag), mainThreat, mainType),
-    )
+    specs.push(make(mainTag, foeUnitNameOf(anomaly, mainTag), mainThreat, mainType))
     for (let i = 1; i <= escorts; i++) {
       const escortTag = legacySquad ? `foe-${i}` : `${squadPrefix}foe-${k}-e${i}`
       specs.push(make(escortTag, foeUnitNameOf(anomaly, escortTag), mainThreat * 0.6, mainType))
@@ -2308,9 +2289,7 @@ export function settleDroneLosses(
 
   // 展示口径：具名清单按价值降序（高价值在前，与"优先回收"的观感一致）
   const lostParts = byValue.map((r) => `${r.name}×${r.lost}`)
-  const backParts = byValue
-    .filter((r) => r.back > 0)
-    .map((r) => `${r.name}×${r.back}`)
+  const backParts = byValue.filter((r) => r.back > 0).map((r) => `${r.name}×${r.back}`)
   const ratePct = Math.round(rate * 100)
   const text = lostParts.join('、')
   const backTxt =
@@ -2684,23 +2663,12 @@ function resolvePointDefense(
         b.distanceM <= PD_SENTRY_RANGE_M,
       )
       if (cands.length === 0) break
-      const idx =
-        cands[
-          Math.min(
-            cands.length - 1,
-            Math.floor(nextRandom(state.rng) * cands.length),
-          )
-        ]!
+      const idx = cands[Math.min(cands.length - 1, Math.floor(nextRandom(state.rng) * cands.length))]!
       const pool = pools[idx]!
       const w = me.weapons[idx]!
       const pHit = clamp(0, 1, bal.pdAcc - pool.evasion)
-      if (nextRandom(state.rng) >= pHit) continue; // 未命中（闪避生效）
-      const res = applyDamage(
-        { s: pool.s, a: pool.a, h: pool.h },
-        pool.resists ?? {},
-        bal.pdDmg,
-        'kinetic',
-      )
+      if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
+      const res = applyDamage({ s: pool.s, a: pool.a, h: pool.h }, pool.resists ?? {}, bal.pdDmg, 'kinetic')
       pool.s = res.hp.s
       pool.a = res.hp.a
       pool.h = res.hp.h
@@ -2889,7 +2857,7 @@ function stepBattle(
       if (!foeTarget && !droneHit) continue
       let type: DamageType
       let dmg: number
-      let autoHit = false;
+      let autoHit = false
       /** 一轮齐射的用弹量（同型合并条目 ×N；2026-09-11 修复：此前多门武器只扣 1 发弹药） */
       const roundsPerVolley = Math.max(1, w.count ?? 1)
       if (w.kind === 'gun') {
