@@ -258,30 +258,24 @@ export function hitChance(
 }
 
 /**
- * **打机群的命中**（船长 2026-09-12 两条裁定：先「**按丁修复**」→ 再追问「**我方近防炮对机群命中没修复吗？
- * 按照设计应该是无视距离的 90 命中**」）：**命中 = 装备自身命中 × 火控阵列学 × 索敌件**——
- * ① **无视两舰距离**（不吃 `distFactor`）；② **不减机型闪避**（E 警戒机 0.18 / G 蜂群机 0.45 一律不参与）。
+ * **打机群的命中**（船长 2026-09-12 裁定「**按丁修复**」）：与 `hitChance` 同一套公式
+ * （基础命中 × 火控 → 减机型闪避 → 乘索敌件 → clamp），**唯一差别 = 距离衰减固定为 1**。
  *
- * 依据：设计稿 `foe-drone-system-20260911.md` §六 表「命中 | **对机群 0.9** | 点防的本职」是**实收值**，
- * 不是"再减一层闪避"的基数；选靶侧也早已按船长「打机群不看两舰间距」办（出击型不受射程限制）。
- * 旧实现（丁案第一版）只去掉了距离、仍减闪避 ⇒ 实战只剩 0.72 / 0.45，与设计口径不符（船长实测指出）。
- *
- * ⚠ **两条后果（已如实登记在设计稿与词典）**：
- * 1. 敌方机型的 `defense.evasion` 对近防炮**不再参与任何计算**（该字段目前只被此处消费 ⇒ 实为闲置；
- *    值仍保留在机型表里，将来若要把"飘/不灵活"找回机制，须由船长新裁定）；
- * 2. G 族「蜂群机」的"难打中"性格**对近防炮失效**（0.45 闪避不再生效）——E/G 两族机群对近防炮同等好打。
- *
- * ⚠ **只对机群生效**：打舰仍走 `hitChance` 的原公式（距离衰减 + 守方回避都在，"近防炮射程短、
- * 所以对舰吃亏"的性格不动）。抽成函数一是为可测（`tests/pd-damage-ladder.test.ts`），
- * 二是让调用点一眼看出"这两条命中不是同一条公式"。
+ * 依据：选靶早已按船长 2026-09-11 甲案「**打机群不看两舰间距**」办（`pickFoeDroneTarget`：
+ * 出击型不受射程限制、哨戒机才要进射程），而命中却仍按**两舰间距**算 `distFactor`——
+ * 近防炮射程 2,500m 短于典型交距（3,211~5,545m）⇒ 该因子恒落在下限 ×0.5
+ * ⇒ 装备表写的命中 0.9 实战只剩 0.27~0.35，与"不看两舰间距"的裁定自相矛盾。
+ * ⚠ **只对机群生效**：打舰仍走 `hitChance` 的原 `distFactor`（"近防炮射程短所以对舰吃亏"不动）。
+ * 抽成函数一是为可测（`tests/pd-damage-ladder.test.ts` 直接锁这条口径），二是让调用点一眼看出
+ * "这两条命中不是同一条公式"。
  */
 export function droneHitChance(
   weapon: Parameters<typeof hitChance>[0],
   attacker: Parameters<typeof hitChance>[1],
+  evasion: number,
   bal: BattleBalance,
 ): number {
-  // 守方闪避传 0（**不是**漏传）：本公式按船长裁定**不吃**机型闪避；距离衰减覆写为 1（不吃距离）。
-  return hitChance(weapon, attacker, { evasion: 0 }, 0, bal, 1)
+  return hitChance(weapon, attacker, { evasion }, 0, bal, 1)
 }
 
 /** 把一发伤害按层序消费（盾→甲→结构），返回更新后三层与实际扣血 */
@@ -3468,13 +3462,13 @@ function stepBattle(
         b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
-      // **两条命中分开算**（船长 2026-09-12：「按丁修复」→「按照设计应该是无视距离的 90 命中」，
-      // 口径说明见 `droneHitChance`）：打**机群** = 装备命中 × 火控 × 索敌，**无视距离、不减机型闪避**；
-      // 打**舰**一字未动（仍按两舰间距算 `distFactor`、仍减守方回避）。
+      // **两条命中分开算**（船长 2026-09-12 裁定「按丁修复」，口径说明见 `droneHitChance`）：
+      // 打**机群**不吃两舰距离衰减（守方只用该架的闪避 `DronePoolEntry.evasion`，机型表绝对值）；
+      // 打**舰**一字未动（仍按两舰间距算 `distFactor`）。
       const meHit = autoHit
         ? 1
         : droneHit
-          ? droneHitChance(w, meAtk, bal)
+          ? droneHitChance(w, meAtk, droneHit.pool.evasion, bal)
           : hitChance(w, meAtk, foeTarget!, b.distanceM, bal)
       const meHitEff = autoHit
         ? 1
