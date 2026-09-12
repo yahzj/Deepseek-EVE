@@ -1589,6 +1589,8 @@ for (const m of MODULES) {
     const TITAN_DRONE_RANGE_M = 5_000
     /** 受击增程倍率上限（船长同日：「提高 400%」＝×4） */
     const DRONE_RANGE_ON_HIT_CAP = 4
+  /** **炮台受击增程倍率上限**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」⇒ 现值 1.5、上限 2） */
+  const GUN_RANGE_ON_HIT_CAP = 2
     /** **G 族蜂群机射程定值**（船长 2026-09-12：「**敌方蜂群攻击范围提高到 7000**」）——
      *  落点即族格「全 orbit：**蜂群远距压制**」：旧值 2,800m（侦察机档"近身护航"）会让蜂群
      *  **够不着本族卡自己的期望交距**（天底静区封锁 ≈ 3,858m）⇒ 挂上去等于白挂。 */
@@ -1620,6 +1622,8 @@ for (const m of MODULES) {
     /** E 族射程读数（逐舰级一条，落到汇总行） */
     const titanRanges: string[] = []
     let onHitShips = 0
+    /** 写了**炮台受击增程**的舰级数（D 族静滞卫舰，落到汇总行） */
+    let gunOnHitShips = 0
     for (const ship of FOE_SHIPS) {
       const hasDrones = (ship.drones ?? []).length > 0
       // ⑤a **E 族射程带**（只约束带机群的 E 族舰级——即本批落码的那三条）
@@ -1649,6 +1653,26 @@ for (const m of MODULES) {
         )
         onHitShips++
       }
+      // ⑤c-2 **炮台受击增程**（2026-09-12 船长：「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
+      //   不过仅影响所有静滞卫舰。挨打后射程增加 50%」）：只允许 D 族「静滞卫舰」、倍率 ≤ 2；
+      //   且该舰级**必须真出现在某张卡的编成里**（否则是死字段，玩家永远遇不到）
+      if (ship.gunRangeMulOnHit !== undefined) {
+        check(
+          ship.family === 'D' && ship.name === '静滞卫舰',
+          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族）写了炮台受击增程倍率——` +
+            `本机制目前只允许 **D 族「静滞卫舰」**（船长 2026-09-12 指名）`,
+        )
+        check(
+          ship.gunRangeMulOnHit > 1 && ship.gunRangeMulOnHit <= GUN_RANGE_ON_HIT_CAP,
+          `机群与防空契约：舰级「${ship.name}」炮台受击增程倍率 ${ship.gunRangeMulOnHit} 越界` +
+            `（须 >1 且 ≤ ${GUN_RANGE_ON_HIT_CAP}）`,
+        )
+        check(
+          ANOMALIES_FLAVORED.some((a) => (a.ships ?? []).some((s) => s.ship.id === ship.id)),
+          `机群与防空契约：舰级「${ship.name}」写了炮台受击增程，但**没有任何卡使用该舰级**——玩家永远遇不到这个机制`,
+        )
+        gunOnHitShips++
+      }
       for (const ds of ship.drones ?? []) {
         droneSlots++
         check(
@@ -1677,7 +1701,8 @@ for (const m of MODULES) {
       `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）` +
         `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +
         `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}` +
-        `${swarmRanges.length > 0 ? ` · **G 族蜂群机射程** ${swarmRanges.join('　')}（船长 2026-09-12「提高到 7000」；无受击增程）` : ''}`,
+        `${swarmRanges.length > 0 ? ` · **G 族蜂群机射程** ${swarmRanges.join('　')}（船长 2026-09-12「提高到 7000」；无受击增程）` : ''}` +
+        `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级 ×1.5（D 族静滞卫舰：被打中 ⇒ 该型舰 12,000 → 18,000m，本场永久、仅该型舰）` : ''}`,
     )
 
     /* ⑥ **机群火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个

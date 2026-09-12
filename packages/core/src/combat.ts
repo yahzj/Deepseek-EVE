@@ -172,6 +172,10 @@ export interface UnitSpec {
    *  `BattleState.foeDroneRangeBuff`（**标量**）上给**整支敌队**盖章，此后**所有敌舰**的机群射程
    *  ×本倍率（本场永久）；提示只推一条（船长二次裁定：「只触发一次，**对所有敌舰生效**」）。 */
   foeDroneRangeMulOnHit?: number
+  /** **受击增程（炮台）倍率**（见 `FoeShipDef.gunRangeMulOnHit`；2026-09-12 船长：D 族静滞卫舰
+   *  「挨打后射程增加 50%」，**只影响所有静滞卫舰**）——与机群那条**同款触发、不同作用面**：
+   *  任一此类敌舰被命中 ⇒ `BattleState.foeGunRangeBuff` 盖章；读射程时**只对本字段存在的单位**生效。 */
+  foeGunRangeMulOnHit?: number
   /** **单次出击上限**（见 `FoeShipDef.droneLaunch`；2026-09-12 船长「限制敌机单次出击数量」） */
   foeDroneLaunch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean }
   /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
@@ -229,8 +233,12 @@ export function hitChance(
   defender: { evasion: number; signatureM?: number },
   dist: number,
   bal: BattleBalance,
+  /** **距离衰减覆写**（2026-09-12 加；缺省 = 原 `distFactor`，零行为变化）——
+   *  供**敌方炮台受击增程**（`foeGunPowerFactorOf`）传入"延长段同斜率外推"的折减，
+   *  否则射程延长到 18km 后，命中率会在 12km 处**卡在 falloff 平台上**（不是船长要的"同斜率继续衰减"）。 */
+  dfOverride?: number,
 ): number {
-  const df = distFactor(dist, weapon)
+  const df = dfOverride ?? distFactor(dist, weapon)
   const raw = (weapon.hitRate + attacker.hitBonus) * df - defender.evasion
   // V18.1：索敌（命中件）乘子在 clamp 内与失稳分开——eqHitMul 只随炮台条目
   return clamp(bal.hitMin, bal.hitMax, raw * (weapon.eqHitMul ?? 1) * (attacker.hitMul ?? 1))
@@ -1281,6 +1289,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(ship.droneRangeMulOnHit !== undefined && droneWeapons.length > 0
         ? { foeDroneRangeMulOnHit: ship.droneRangeMulOnHit }
         : {}),
+      // **受击增程（炮台）**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，仅该型舰）：
+      // 与机群那条无关（不需要机群），缺省不写 ⇒ 零行为变化
+      ...(ship.gunRangeMulOnHit !== undefined ? { foeGunRangeMulOnHit: ship.gunRangeMulOnHit } : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
       hullClassTier: ship.hullClassTier,
       foeTactic: tactic,
@@ -2319,7 +2330,10 @@ export function battleArcsFor(
       // **受击增程倍率**（`foeDroneRangeOf`，母舰被命中后 ×4）⇒ 标签若读原始值，就会出现
       // "打得着 20km、标签还写 5km"。**与开火射程门同源**（见 `resolvePointDefense` 上游那处）✓
       const wMin = w.minRangeM
-      const wMax = w.src === 'drone' ? foeDroneRangeOf(battle, w) : w.maxRangeM
+      const wMax =
+        w.src === 'drone'
+          ? foeDroneRangeOf(battle, w)
+          : foeGunMaxRangeOf(battle, f, w)
       foeMin = Math.min(foeMin, wMin)
       foeMax = Math.max(foeMax, wMax)
       const type = w.fixedType ?? 'kinetic'
@@ -2877,6 +2891,64 @@ function markFoeDroneRangeBuff(
   return true
 }
 
+/* ═══════════ 敌方炮台受击增程（2026-09-12 船长：给 D 族静滞卫舰"挨打后射程增加 50%"）═══════════
+ * 与上面机群那条**同款触发、不同作用面**：
+ * - **触发**：任一"带 `foeGunRangeMulOnHit` 的敌舰"**被命中一次** ⇒ 在 `BattleState.foeGunRangeBuff`
+ *   上盖章一次（打机群不算、未命中不算；**本场永久**、**只推一条**画面提示）；
+ * - **生效面**：**只有带该字段的敌舰**（= 所有静滞卫舰）；同场的其它舰级（守墓长舰等）**不受影响**
+ *   —— 船长原话「**仅影响所有静滞卫舰**」。⚠ 与 E 族那条（"**整支敌队的机群** ×4"）是**两套独立状态**，
+ *   互不覆盖；
+ * - **口径（船长选「乙」）**：只延长**最远射程**、近界不动；**原射程内的命中/伤害折减一字不变**，
+ *   延长段按**同斜率**继续线性衰减（12 km 处仍 ×0.5，18 km 处 ≈ ×0.20，而非趴在 falloff 平台上）。
+ * ⚠ **射程与折减都只有这一处算法**：开火射程门、命中/伤害衰减、战斗界面底部射程标签三处共用
+ *   （教训来自 2026-09-12「无人机射程变更后标签没跟着变」那次实测反馈）。 */
+
+/** 该敌舰当前的**炮台增程倍率**（未带字段 / 未触发 = 1） */
+export function foeGunRangeMulOf(
+  b: import('./state').BattleState,
+  unit: { foeGunRangeMulOnHit?: number },
+): number {
+  const mul = unit.foeGunRangeMulOnHit
+  if (mul === undefined || mul <= 1) return 1
+  const buff = b.foeGunRangeBuff
+  return buff !== undefined && buff > 1 ? buff : 1
+}
+
+/** 该敌舰武器的**有效最远射程**（开火门与界面标签共用；未触发 = 原值） */
+export function foeGunMaxRangeOf(
+  b: import('./state').BattleState,
+  unit: { foeGunRangeMulOnHit?: number },
+  w: { maxRangeM: number },
+): number {
+  const mul = foeGunRangeMulOf(b, unit)
+  return mul > 1 ? Math.round(w.maxRangeM * mul) : w.maxRangeM
+}
+
+/** 该敌舰武器的**距离折减**（船长选乙：原区间内 = 原公式，逐字一致；延长段同斜率外推、下限 0） */
+export function foeGunPowerFactorOf(
+  b: import('./state').BattleState,
+  unit: { foeGunRangeMulOnHit?: number },
+  w: { minRangeM: number; maxRangeM: number; falloff: number },
+  dist: number,
+): number {
+  const base = distFactor(dist, w) // 原区间内 = 原读数（一字不变）
+  if (foeGunRangeMulOf(b, unit) <= 1 || dist <= w.maxRangeM) return base
+  const span = Math.max(1, w.maxRangeM - w.minRangeM)
+  const slope = (1 - w.falloff) / span
+  return Math.max(0, base - slope * (dist - w.maxRangeM))
+}
+
+/** **炮台受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。
+ *  @returns 是否本次**首次**触发（首次才推画面提示） */
+function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): boolean {
+  const mul = rt.foeGunRangeMulOnHit
+  if (mul === undefined || mul <= 1) return false
+  const cur = b.foeGunRangeBuff
+  if (cur !== undefined && cur >= mul) return false // 该型舰共享 ⇒ 不重复盖章、不重复提示
+  b.foeGunRangeBuff = mul
+  return true
+}
+
 /** **战斗内提示条**（画面顶部提示位，与「敌方增援」同一处显示）——2026-09-11 船长二次裁定：
  *  「**日志内不用显示提示，将该提示放入战斗画面内显示**（和敌方增援统一下系统，**显示位置改为战斗
  *  窗口正上方**）」⇒ 机制提示**不写 `addLog`**，改推这里；UI 按 `atMs` 限时显示后自动消失。
@@ -3345,6 +3417,12 @@ function stepBattle(
             // **只触发一次**，**对所有敌舰生效**」）⇒ 文案不点单舰名（生效范围是全敌队）。
             pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
           }
+          // **炮台受击增程触发点（唯一）**——2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，
+          // **仅影响所有静滞卫舰**（同场其它舰级不受影响）。命中其本体 ⇒ 本场该型舰炮台射程 ×1.5。
+          // ⚠ 打机群／未命中都进不到这里；状态该型舰共享 ⇒ 只推一条提示（文案不点单舰名）。
+          if (markFoeGunRangeBuff(foeTarget!, b)) {
+            pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+          }
         }
       }
       pushBattleFx(b, {
@@ -3460,13 +3538,15 @@ function stepBattle(
     // V18B（2026-09-05 船长拍板）：敌人近盲带（dist < minRange）内**不停火**——放行到
     // maxRange 内即可开火；伤害按 blindDmgMul 打折（玩家贴脸钻近盲不再零风险）。
     // 玩家武器无此待遇（近盲带内仍不开火）——双方在近盲带上行为区分。
-    if (b.distanceM > w.maxRangeM || !meRt) continue
+    // 射程门：**炮台受击增程**生效时读 `foeGunMaxRangeOf`（原射程 × 倍率；仅带该字段的舰）
+    if (b.distanceM > foeGunMaxRangeOf(b, f, w) || !meRt) continue
     b.stats.foeShots += 1
     const fType = w.fixedType ?? 'kinetic'
     // 2026-09-08（船长定）：能量（beam）= 必中——不掷命中骰；威力：近盲带内 ×blindDmgMul
     // （近盲带保留），带内至远端按 beamPowerFactor 距离衰减（与玩家激光同源语义）
     if (w.kind === 'beam') {
-      const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(b.distanceM, w)
+      // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
+      const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, w, b.distanceM)
       const dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * pow))
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
@@ -3477,7 +3557,8 @@ function stepBattle(
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
     const shotDmg = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
     // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
-    const foeHit = hitChance(w, f, me, b.distanceM, bal)
+    // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
+    const foeHit = hitChance(w, f, me, b.distanceM, bal, foeGunPowerFactorOf(b, f, w, b.distanceM))
     const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
     const fHit = nextRandom(state.rng) < foeHitEff
     if (fHit) {

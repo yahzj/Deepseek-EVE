@@ -551,6 +551,9 @@ export {
   foeDesiredRange,
   // 敌机有效射程（2026-09-11 船长「受击后大幅提高无人机射程（提高 400%）」）——开火判定与界面同源
   foeDroneRangeOf,
+  // 敌舰炮台有效射程（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，仅该型舰）——同上，开火判定与界面同源
+  foeGunMaxRangeOf,
+  foeGunRangeMulOf,
   mergeResist,
   foeMainDamageType,
   // 2026-09-10 船长（窝点混伤）：敌方火力构成单点（战斗 / 胜率预估 / 任务卡文案同源）
