@@ -105,17 +105,20 @@ export interface WeaponSpec {
 }
 
 /**
- * 激光威力系数（**2026-09-11 船长定：合并旧修正、不再与命中衰减挂钩**）——
+ * **激光威力系数**（**2026-09-11 船长定：合并旧修正、不再与命中衰减挂钩**）——
  * 旧口径 = `1 − 进度 ×(1−falloff) ×0.8`（"幅度 = 命中衰减的 0.8 倍"，falloff 0.3 时远端 ×0.44）；
  * 新口径 = **近端 ×1 → 最远端 = 该武器 `falloff`（激光件现统一 0.1）**，线性内插、无任何换算系数：
- *   系数 = 1 − 进度 × (1 − falloff)   （保底 0；falloff 0.1 → 最远端威力 ×0.10）
+ *   系数 = 1 − 进度 × (1 − falloff)   （falloff 0.1 → 最远端威力 ×0.10）
  * ⇒ "远端衰减"对能量武器就是**最远端威力倍率本身**，与动能/爆炸的"远端命中倍率"语义对齐、一眼可读。
+ *
+ * ⚠ **2026-09-12 审计 B1：本函数与 `distFactor` 已合并为同一实现**——两者原本是两份**逐字相同**的代码，
+ * 本函数唯一多出的是 `Math.max(0, …)`，而那一层在 **`falloff ∈ [0,1]`** 时**恒不生效**
+ * （`t` 已 clamp 到 `[0,1]` ⇒ `1 − t(1−falloff) ≥ 1 − (1−falloff) = falloff ≥ 0`）。
+ * 该前提由 `content:check`「**远端衰减取值域契约**」守住（越界即报错）。
+ * **保留本名字与语义标签**（**威力**衰减，与动能/爆炸的**命中**衰减并列），实现一律走 `distFactor`。
  */
 export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
-  const { minRangeM: min, maxRangeM: max, falloff } = w
-  if (max <= min) return 1
-  const t = clamp(0, 1, (dist - min) / (max - min))
-  return Math.max(0, 1 - t * (1 - falloff)); // 2026-09-11 船长定（自 main 同步）：合并旧修正、去掉 ×0.8 —— 近端 ×1 → 最远端 = falloff
+  return distFactor(dist, w)
 }
 
 /** 静态单位卡（构建后不进存档） */
@@ -208,7 +211,10 @@ export function layerMultText(type: DamageType): string {
   return `盾 ${fmt("shield")} · 甲 ${fmt("armor")} · 结构 ${fmt("hull")}`
 }
 
-/** 距离衰减：minRange 端 1.0 → maxRange 端 falloff（线性） */
+/** 距离衰减：minRange 端 1.0 → maxRange 端 falloff（线性）。
+ *  ⚠ **这是全仓唯一一处"远端衰减"实现**（2026-09-12 审计 B1 合并）：`beamPowerFactor`（能量**威力**衰减）、
+ *  `hitChance`（动能/爆炸**命中**衰减）、`foeGunPowerFactorOf`（敌方炮台受击增程感知版）**全部走本函数**。
+ *  合并前提 = **`falloff ∈ [0,1]`**（守卫见 `content:check`「远端衰减取值域契约」）。 */
 export function distFactor(dist: number, w: { minRangeM: number; maxRangeM: number; falloff: number }): number {
   const { minRangeM: min, maxRangeM: max, falloff } = w
   if (max <= min) return 1

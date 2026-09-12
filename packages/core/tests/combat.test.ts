@@ -34,6 +34,7 @@ import {
   refundRepairKits,
   repairUsageText,
   REPAIR_PULSE_MS,
+  beamPowerFactor,
 } from '../src/combat'
 import { addShipToFleet } from '../src/shipyard'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
@@ -58,6 +59,28 @@ describe('命中与伤害公式', () => {
     expect(distFactor(0, w)).toBe(1)
     expect(distFactor(1000, w)).toBeCloseTo(0.3, 10)
     expect(distFactor(500, w)).toBeCloseTo(0.65, 5)
+  })
+
+  it('激光威力系数 ≡ 距离衰减（2026-09-12 审计 B1 合并）：falloff ∈ [0,1] 时逐点相等，含退化射程带', () => {
+    // 合并前提 = `falloff ∈ [0,1]`（守卫见 `content:check`「远端衰减取值域契约」）：原 `beamPowerFactor`
+    // 多一层 `Math.max(0, …)`，而 `t` 已 clamp 到 [0,1] ⇒ `1 − t(1−falloff) ≥ falloff ≥ 0` ⇒ 该层恒不生效。
+    const bands = [
+      { minRangeM: 0, maxRangeM: 1000, falloff: 0.3 },
+      { minRangeM: 0, maxRangeM: 4600, falloff: 0.1 },
+      { minRangeM: 2062, maxRangeM: 12_000, falloff: 0.5 },
+      { minRangeM: 0, maxRangeM: 3000, falloff: 1 },
+      { minRangeM: 0, maxRangeM: 3000, falloff: 0 },
+      { minRangeM: 500, maxRangeM: 500, falloff: 0.4 }, // 退化带（max ≤ min ⇒ 恒 1）
+    ]
+    for (const w of bands) {
+      for (const dist of [-100, 0, 1, 500, 2062, 3000, 4600, 12_000, 20_000, 99_999]) {
+        expect(beamPowerFactor(dist, w)).toBe(distFactor(dist, w))
+      }
+    }
+    // 边界读数（原口径已定，合并后逐字不变）
+    expect(beamPowerFactor(0, bands[0]!)).toBe(1)
+    expect(beamPowerFactor(1000, bands[0]!)).toBeCloseTo(0.3, 10)
+    expect(beamPowerFactor(4600, bands[1]!)).toBeCloseTo(0.1, 10)
   })
 
   it('命中公式：命中率随距离衰减而升（近高远低）；回避减算、命中加成加算', () => {

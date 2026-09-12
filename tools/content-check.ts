@@ -26,6 +26,7 @@ import {
   MARKET_GOODS,
   WRECK_BUY_GOODS,
   MODULES,
+  DRONES,
   SHIP_BLUEPRINTS,
   SHIPS,
   ANOMALIES_FLAVORED,
@@ -1217,6 +1218,39 @@ for (const m of MODULES) {
     }
   }
   console.log(`· B3.1 主题追加件：${lootCards} 张卡（sec<0.5 增幅件；武器白名单仅穹顶守卫 × MK3 三武）`)
+}
+
+/* ── 远端衰减取值域契约（2026-09-12 审计 B1 加）──
+ * **为什么需要**：`beamPowerFactor`（能量**威力**衰减）与 `distFactor`（动能/爆炸**命中**衰减）原本是
+ * 两份**逐字相同**的实现，前者只多一层 `Math.max(0, …)`；而该层在 **`falloff ∈ [0,1]`** 时**恒不生效**
+ * （`t` 已 clamp 到 `[0,1]` ⇒ `1 − t(1−falloff) ≥ falloff ≥ 0`）。两条已合并为一条（`beamPowerFactor`
+ * 改为委托 `distFactor`），**本契约就是那个前提的守卫**：任何一处 `falloff` 越出 [0,1]，合并即不再等价
+ * （会静默产生负命中/负威力）⇒ 直接报错。 */
+{
+  let ffChecked = 0
+  const badFf: string[] = []
+  const chkFf = (where: string, v: number | undefined): void => {
+    if (v === undefined) return
+    ffChecked += 1
+    if (!(v >= 0 && v <= 1)) badFf.push(`${where} = ${v}`)
+  }
+  for (const m of MODULES) chkFf(`装备 ${m.id}`, m.falloff)
+  for (const s of FOE_SHIPS) chkFf(`敌舰级 ${s.id}`, s.falloff)
+  for (const d of FOE_DRONES) chkFf(`敌机 ${d.id}`, d.falloff)
+  for (const d of DRONES) chkFf(`我方无人机 ${d.id}`, d.falloff)
+  for (const def of ANOMALIES_FLAVORED) {
+    for (const slot of def.ships ?? []) chkFf(`卡 ${def.id} 的条目「${slot.ship.name}」`, slot.falloff)
+  }
+  chkFf('balance.battle.foeFalloff', DEFAULT_BALANCE.battle.foeFalloff)
+  for (const b of badFf) {
+    check(false, `远端衰减取值域：${b}——须落在 [0,1]（越界会作废「beamPowerFactor ≡ distFactor」的合并前提）`)
+  }
+  console.log(
+    `· 远端衰减取值域：${ffChecked} 处 falloff ` +
+      (badFf.length === 0
+        ? '全部落在 [0,1]（beamPowerFactor ≡ distFactor 的合并前提）'
+        : `有 ${badFf.length} 处越界（见上方错误）`),
+  )
 }
 
 /* ── 敌方混伤契约（2026-09-10 船长定）──

@@ -3,7 +3,7 @@
  */
 
 export { SKILLS, SKILL_GROUPS, buildSkillCatalog } from './skills'
-export { ORES, MINERALS, ITEMS, buildItemCatalog } from './items'
+export { ORES, MINERALS, ITEMS, DRONES, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'
 export { MODULES, buildModuleCatalog } from './modules'
