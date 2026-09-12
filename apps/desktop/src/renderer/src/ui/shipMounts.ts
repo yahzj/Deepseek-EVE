@@ -173,7 +173,7 @@ export const FOE_MOUNTS: Record<string, ShipMounts> = {
     engines: [{ x: 62, y: 50.5 }, { x: 62, y: 67.5 }],
     muzzles: [{ x: 222, y: 54 }],
   },
-  // G 烬火流亡舰队（蜂窝舱+补丁帆）：单喷口 M62 46 h10 v14；舰艏炮楔(204..220)
+  // G 鱿烬亡军舰队（蜂窝舱+补丁帆）：单喷口 M62 46 h10 v14；舰艏炮楔(204..220)
   G: { engines: [{ x: 62, y: 53 }], muzzles: [{ x: 220, y: 55 }] },
 }
 

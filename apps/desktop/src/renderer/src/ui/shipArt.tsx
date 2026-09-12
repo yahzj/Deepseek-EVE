@@ -124,7 +124,7 @@ export const FOE_ACCENT: Record<string, string> = {
   D: '#9fd0f2', // 守墓古舰：磷光冰蓝（同 volt-i）
   E: '#d9b98c', // 泰坦巨构：残铁棕
   F: '#ffab5e', // 制式巡逻：琥珀灯条
-  G: '#cd9fdd', // 烬火流亡：聚落紫
+  G: '#cd9fdd', // 鱿烬亡军：聚落紫
 }
 
 /**
@@ -141,7 +141,7 @@ export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined):
 /**
  * 敌族**短名**（2026-09-11 船长：「星图显示敌对派系时文字颜色按敌族划分、标签化展示」）——
  * 用于星图节点下方的族标签（位置窄，取 2 字短写；词典里的全称是
- * 「海盗舰系 / 异形生物 / 守墓古舰 / 泰坦巨构 / 烬火流亡」）。
+ * 「海盗舰系 / 异形生物 / 守墓古舰 / 泰坦巨构 / 鱿烬亡军」）。
  */
 export const FOE_FAMILY_LABEL: Record<string, string> = {
   A: '海盗',
@@ -150,5 +150,5 @@ export const FOE_FAMILY_LABEL: Record<string, string> = {
   D: '守墓',
   E: '巨构',
   F: '巡逻',
-  G: '流亡',
+  G: '鱿烬',
 }

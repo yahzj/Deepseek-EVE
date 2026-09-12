@@ -99,7 +99,7 @@ export const FOE_LAIR_TIERS: Record<FoeFamily, readonly [string, string, string]
   D: ['守卫舰长', '残舰泊地', '隐秘陵寝'], // 守墓古舰
   E: ['警戒机群', '核心舱段', '深层机库'], // 泰坦巨构
   F: ['巡逻队长', '据点', '隐蔽据点'], // 制式巡逻（当前无窝点成员，留词表备用）
-  G: ['残兵头目', '聚落营地', '藏匿地'], // 烬火流亡
+  G: ['残兵头目', '聚落营地', '藏匿地'], // 鱿烬亡军
 }
 /** 未登记敌族时的兜底档位词 */
 const LAIR_TIER_FALLBACK: readonly [string, string, string] = ['头目', '据点', '秘密据点']
@@ -123,7 +123,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   D: ['mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d'], // 陵墓护盾阵列 / 守墓者长炮 / 陵寝装甲层（最强敌族；2026-09-10 船长定削：强度略高于 MK3，靠必中远程炮与三系全能盾立身——原「对标异星档」口径作废）
   E: ['mod-lair-turret-e', 'mod-lair-hangar-e', 'mod-lair-frame-e'], // 巨构残骸炮 / 深层机库 / 巨构骨架（2026-09-10 船长逐件过审：档位「略高于 MK3」、仍低于 D）
   F: [],
-  // G 族（烬火流亡）：2026-09-10 船长——第一件由机库模块「流亡蜂群巢」改为**专属侦查无人机「流亡蜂无人机」**
+  // G 族（鱿烬亡军）：2026-09-10 船长——第一件由机库模块「流亡蜂群巢」改为**专属侦查无人机「流亡蜂无人机」**
   // （一次掉 ×10 架；无人机是消耗品，打光后再刷可补），另两件为无人机导控 / 中继天线
   G: ['drone-exile-bee', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'],
 }
@@ -229,7 +229,7 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   D: ['plasma', 'kinetic', 'explosive'], // 守墓古舰：古舰的能量副炮
   E: ['explosive', 'plasma', 'kinetic'], // 2026-09-11 船长：E 族副系＝爆炸（「50% 爆炸 50% 动能」） // 泰坦巨构：巨构能量核心
   F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【无窝点成员，留表兜底】
-  G: ['explosive', 'kinetic', 'plasma'], // 烬火流亡：拼装火药与土制弹头
+  G: ['explosive', 'kinetic', 'plasma'], // 鱿烬亡军：拼装火药与土制弹头
 }
 
 /**
