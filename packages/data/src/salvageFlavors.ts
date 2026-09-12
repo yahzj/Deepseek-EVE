@@ -28,6 +28,8 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-auro-raiders': { mk2: ['mod-armor-exp-2', 'mod-stab-exp-2'] }, // 奥罗盗匪：高爆甲+高爆稳定
   'ano-abyss-guard': { mk2: ['mod-shield-exp-2', 'mod-armor-plate-2'] }, // 深渊卫队：高爆盾+增厚
   'ano-titan-wreck': { mk2: ['mod-shield-ext-2', 'mod-armor-plate-2'] }, // 泰坦：巨构扩展+增厚（武器清出）
+  // 巨构核心（E 族代表卡）：机群导控 + 增厚——"接近完好"＝炮台仍可用，但主力仍是警戒机群
+  'ano-core-section': { mk2: ['mod-drone-tac-2', 'mod-armor-plate-2'] },
   'ano-cinder-siege': { modules: ['mod-armor-pla-2'] }, // 烬火围攻：能量甲增厚（2026-09-11 换区：低安→中安，故由 mk2 改为 modules）
   'ano-chasm-aberrations': { mk2: ['mod-stab-kin-2', 'mod-armor-exp-2'] }, // 裂谷畸变：动能稳定+高爆甲
   'ano-nadir-static': { mk2: ['mod-rof-2', 'mod-track-2'] }, // 天底封锁：射速+索敌
@@ -96,6 +98,13 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'ano-titan-wreck': {
     recyclePool: [['min-starcore', 50], ['min-isotope', 50]],
     recycleNote: '泰坦残骸：星髓晶浓度极高',
+  },
+  'ano-core-section': {
+    // 2026-09-12 新增（E 族「核心舱段级」代表卡）：深渊之门密度 1,368 ⇒ **危档**（基数 92.4）、
+    // m = sec(−0.7)→1.315 × 威胁84→1.336 = **1.7095** ⇒ 均价须回到 **m×92.4 = 157.96**。
+    // 矿物按设计稿主题规则「深渊/裂谷 → **星髓 + 同位**」；本卡是"接近完好的巨构"，星髓晶占比最高。
+    recyclePool: [['min-isotope', 45], ['min-starcore', 56]], // (55×45+245×56)/101 = 160.35（+1.5%）
+    recycleNote: '巨构核心残骸：星髓晶整块未裂，同位聚晶成脉',
   },
   'ano-cinder-siege': {
     // 2026-09-11 重校（船长「低安至少要有一个海盗族」→ 烬火星区与蜃影星系**互换安全等级**：

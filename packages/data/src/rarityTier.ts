@@ -283,6 +283,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-ano-abandoned-platform': 1,
   'wreck-ano-abyss-guard': 1,
   'wreck-ano-auro-raiders': 1,
+  'wreck-ano-core-section': 1, // E 族「核心舱段级」代表卡（2026-09-12：遗骸按 common 渠道注册）
   'wreck-ano-chasm-aberrations': 1,
   'wreck-ano-cinder-siege': 1,
   'wreck-ano-echo-haunt': 1,

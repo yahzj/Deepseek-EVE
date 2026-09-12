@@ -24,6 +24,7 @@ import {
   FOE_D_LONGSHIP,
   FOE_D_STASIS,
   FOE_SHIP_AURO_HULK,
+  FOE_SHIP_CORE_SECTION,
   FOE_SHIP_TITAN_HULK,
   FOE_SCAV_ARMED,
   FOE_SCAV_SKIFF,
@@ -509,6 +510,43 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     loot: [],
     combatSeconds: 100,
     description: '奥罗荒环的武装残骸会被风暴反复激活，协会的猎杀令因此常年有效：按次结算，可反复接取。',
+  },
+  {
+    id: 'ano-core-section',
+    foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
+    lairCore: '巨构核心', // 赏金任务·窝点名的核心词（⇒「巨构核心·外围/核心/深层」；避开据点档位词本身）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：**E 族代表位**（族内最高级目标）
+    name: '巨构核心勘探令',
+    // **E 族「核心舱段级」代表卡**（2026-09-11 船长：设定裁定 8「**立『核心舱段级』代表位**（一具接近
+    // 完好的巨构为目标）」；2026-09-12 船长「**你先完成所有代表卡**」）——填上 E 段（80~96）的唯一空缺：
+    // 全表 15 条舰级里**只有「核心舱段」没有任何卡引用**，本卡即它的代表卡。
+    // - **单舰**：一具"接近完好"的巨构（不配僚机——体量感靠它自己）；
+    // - **数值对齐 E 段**（实测参照：噬口猎杀令 80 = 血 2,766／单发 501／85 万；坟场守墓者 88 =
+    //   血 3,960／单发 350／110 万）：本卡 **血 3,400／总单发 560／奖金 100 万**，落在两者之间；
+    // - **机群占比 0.6**（与泰坦残骸勘探同口径首版值）：总单发 560 拆成 **炮台 224 + 机群 3 架 ×112**；
+    // - **长战**（`combatSeconds: 150`）：族格"撑到最后"的极致落点。
+    ships: [
+      {
+        ship: FOE_SHIP_CORE_SECTION, // 单舰：一具接近完好的巨构（精锐位）
+        count: 1,
+        hpMul: 3400 / FOE_SHIP_CORE_SECTION.hp, // = 3400/2240（T84 段血量，落在 噬口 2,766 ~ 坟场 3,960 之间）
+        // 旧口径 T = 452 + 3×36 = 560 ⇒ 再按 0.6 拆成 炮台 224 / 机群 3×112（见 droneFireShare）
+        dmgMul: 1.45,
+        droneFireShare: 0.6,
+      },
+    ],
+    galaxyId: 'galaxy-abyss', // 深渊之门（E 族两卡的 lore 系统：泰坦残骸静卧的深渊航道）
+    threat: 84,
+    tactic: 'orbit', // 族规「中距为主」（舰级已解除期望距离钉住 ⇒ 交距 = 带内插值 0.55 × 10,000 ≈ 5,545m）
+    defProfile: 'armor',
+    dmgMix: { kinetic: 5, explosive: 5 }, // 50% 动能 + 50% 爆炸（E 族族格）
+    standingReq: 11, // 与 噬口猎杀令（80）同档；低于 坟场守墓者 / 虚海守望者（88，12）
+    standingGain: 4,
+    rewardIsk: 1_000_000, // T84 段：介于 噬口 850,000（80）与 坟场 1,100,000（88）之间
+    loot: [],
+    combatSeconds: 150,
+    description:
+      '深渊航道最深处立着一具几乎完好的巨构——残存的自动程序仍在运转，警戒机群仍在巡逻。协会为能拆开它的人开出了长期悬赏。',
   },
   {
     id: 'ano-starcore-boss',

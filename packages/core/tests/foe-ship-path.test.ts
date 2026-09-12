@@ -602,7 +602,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
     }
   })
 
-  it('全 19 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
+  it('全 20 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {
     let checked = 0
     for (const def of ANOMALIES) {
       if (!def.ships || def.ships.length === 0) continue
@@ -613,7 +613,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(19); // A 族 6 + B 族 3 + C 族 4 + D 族 4 + **E 族 2**（2026-09-12 E 族数据批：奥罗武装残骸群迁入舰级路径）
+    expect(checked).toBe(20); // A 族 6 + B 族 3 + C 族 4 + D 族 4 + **E 族 3**（2026-09-12：奥罗武装残骸群迁入 + 代表卡「巨构核心勘探令」）
   })
 })
 
