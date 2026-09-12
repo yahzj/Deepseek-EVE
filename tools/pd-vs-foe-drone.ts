@@ -1,10 +1,23 @@
-/** 临时探针（三号 · 任务收尾即删）：量「近防炮打敌方机群」的真实读数。
+/**
+ * **近防炮 vs 敌方机群 · 标定工具**（正式入库；2026-09-12 机群批「丁案 + 对无人机伤害加成 ×2 + 警戒机削血 40%」配套）。
  *
- * 读数来源全部取自真实引擎：`BattleFx` 里我方近防炮打机群的那条（`pd:true`）＝开火数，
- * `pd && hit` ＝命中数；敌机开火条（`side:'foe' && src:'drone'`）＝反应式令牌来源；
- * 敌机池 `foeDronePools` 的 `alive` 翻转 ＝ 击落数、`inHangar` 翻转 ＝ 备用机补位。
+ * 背景（船长 2026-09-12 实测追问「**我方近防炮不是 90 命中率吗**」「**近防炮对敌方无人机伤害依旧太低了**」）：
+ * 近防炮打机群的真实瓶颈**不是单发**，而是**开火次数**——反应式 + 消费制下"一次敌机齐射只换一炮"，
+ * 而 E 族机群**同步齐射**（同一步 7 发并成一个令牌）⇒ 实测一场只开 5~16 炮（自身装填 1.3 秒 ⇒ 本可 40+ 炮）。
+ * 本工具把「配装 × 卡」的整场读数一次打出来，供**改数值前后对照**与日后标定（取代临时探针）。
  *
- * 用法：npx tsx tools/_pd-probe.ts
+ * 读数来源**全部取自真实引擎**（不另算公式）：
+ * - `BattleFx` 里我方近防炮打机群的那条（`pd:true`）＝**开火数**，`pd && hit` ＝**命中数**
+ *   （见 `combat.stepBattle`：打机群只出炮口闪光、不画弹道，故带该标记）；
+ * - 敌机开火条（`side:'foe' && src:'drone'`）＝**反应式令牌的来源**；
+ * - 敌机池 `foeDronePools` 的 `alive` 翻转 ＝**击落数**，`inHangar` 翻转 ＝**备用机补位次数**。
+ *
+ * 用法：
+ *   npx tsx tools/pd-vs-foe-drone.ts                  # 全部 9 行配装 × 4 张卡 × 5 播种
+ *   npx tsx tools/pd-vs-foe-drone.ts P6,P3            # 只看指定行（PD_ROWS 同义，便于小范围复跑）
+ *
+ * 列义：胜率 / 中位秒 / 近防炮开火·命中·命中率 / 敌机开火 / 击落 · 补位 / 期末在空 · 备用剩 /
+ *      机群血量（**起 = 在空 + 在库**，终 = 只在空 ⇒ 两列不可直接相减比） / 我方面板（发数·伤害）。
  */
 import { buildSimContext, FOE_DRONE_E_ALERT } from '@whale/data'
 import { FOE_DRONE_G_BEE_KIN } from '../packages/data/src/foe-drones'
@@ -12,6 +25,7 @@ import { addShipToFleet, createInitialState } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import {
   advanceBattleFor,
+  droneHitChance,
   hitChance,
   startBattleFor,
   waveGapTotalMs,
@@ -217,25 +231,35 @@ for (const r of ROWS) {
   }
 }
 
-/* ── 解析面读数：命中率公式在真实交距上的取值 ── */
-console.log('\n【公式面】近防炮打机群的单发命中率（hitChance = (hitRate×火控) × 距离衰减 − 机型闪避）')
-const specs = [
-  { name: '近防炮MK1', hitRate: 0.9, min: 1, max: 2500, falloff: 0.5 },
-  { name: '近防炮MK3', hitRate: 0.92, min: 1, max: 2500, falloff: 0.5 },
-]
-for (const s of specs) {
-  for (const sk of [0, 3, 5]) {
-    const w = { hitRate: s.hitRate * (1 + 0.03 * sk), minRangeM: s.min, maxRangeM: s.max, falloff: s.falloff }
-    const line = [1000, 2000, 2500, 3000, 3220, 3850, 4675, 5545].map((d) => {
-      const p = hitChance(w, { hitBonus: 0 }, { evasion: 0.18 }, d, ctx.balance.battle)
-      return `${d}m:${(p * 100).toFixed(0)}%`
-    })
-    console.log(`${s.name} 火控${sk} → ${line.join('  ')}`)
-  }
+/* ── 公式面读数：两条命中公式的对照（打机群不吃衰减 / 打舰仍吃衰减） ── */
+console.log('\n【公式面】同一门近防炮的命中率 —— 打机群（丁案：不吃距离衰减）vs 打舰（仍吃）')
+const WF = {
+  近防炮MK1: { hitRate: 0.9, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 },
+  近防炮MK3: { hitRate: 0.92, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 },
+}
+for (const [name, W] of Object.entries(WF)) {
+  const vsDrone = droneHitChance(W, { hitBonus: 0 }, 0.18, ctx.balance.battle)
+  const vsShip = [1000, 2500, 3220, 5545]
+    .map((d) => `${d}m:${(hitChance(W, { hitBonus: 0 }, { evasion: 0.18 }, d, ctx.balance.battle) * 100).toFixed(0)}%`)
+    .join('  ')
+  console.log(
+    `  ${name}：打机群（E 警戒机 闪避 0.18）= ${(vsDrone * 100).toFixed(0)}%（**与两舰距离无关**）｜打舰 = ${vsShip}`,
+  )
+}
+
+/* ── 装备面读数（打机群口径一眼可查） ── */
+console.log('\n【装备面】近防炮三档')
+for (const id of ['mod-pd-e', 'mod-pd-e-2', 'mod-pd-e-3']) {
+  const m = ctx.modules.get(id)!
+  console.log(
+    `  ${m.name}：dmgMult=${m.dmgMult} · 命中 ${m.hitRate} · **对无人机伤害 ×${m.antiDroneDmgMul ?? 1}** · ` +
+      `射程 ${m.maxRangeM}m · 装填 ${m.reloadMs}ms · CPU ${m.cpuUse}`,
+  )
 }
 const pdTiers = ctx.balance.battle
 console.log(
-  `\n平衡表：pdDmg=${pdTiers.pdDmg} pdAcc=${pdTiers.pdAcc} pdHitFloor=${pdTiers.pdHitFloor} pdTierMul=[${pdTiers.pdTierMul.join(',')}] pdThreatFloor=${pdTiers.pdThreatFloor} pdJudgementMs=${pdTiers.pdJudgementMs}`,
+  `\n【对照】敌方近防炮（打**我方**无人机，抽象自动系统）：pdDmg=${pdTiers.pdDmg} × 舰种档 [${pdTiers.pdTierMul.join(' / ')}] · ` +
+    `判定 ${pdTiers.pdJudgementMs}ms/舰 · 命中 clamp(${pdTiers.pdHitFloor}, 1, ${pdTiers.pdAcc} − 机型闪避) · 威胁门槛 ${pdTiers.pdThreatFloor}`,
 )
-console.log('E 警戒机三层血：', JSON.stringify(FOE_DRONE_E_ALERT.defense))
-console.log('G 蜂群机三层血：', JSON.stringify(FOE_DRONE_G_BEE_KIN.defense))
+console.log('【机型面】E 警戒机三层血：', JSON.stringify(FOE_DRONE_E_ALERT.defense))
+console.log('【机型面】G 蜂群机三层血：', JSON.stringify(FOE_DRONE_G_BEE_KIN.defense))
