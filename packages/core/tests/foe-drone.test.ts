@@ -15,6 +15,7 @@ import { addShipToFleet, addWare, createInitialState } from "../src/index";
 import {
   advanceBattleFor,
   createFoeSpecs,
+  foeDroneRangeOf,
   pickFoeDroneTarget,
   startBattleFor,
 } from "../src/combat";
@@ -93,6 +94,15 @@ function runBattle(
   advMs = 60_000,
   high?: string[],
 ): BattleState {
+  return runBattleWithState(card, advMs, high).battle
+}
+
+/** 与 `runBattle` 同源，但把 `state` 一并返回（受击增程要看**战斗日志**） */
+function runBattleWithState(
+  card: AnomalyDef,
+  advMs = 60_000,
+  high?: string[],
+): { state: GameState; battle: BattleState } {
   const c = ctxWith(card);
   const state = high ? makeState(5, high) : makeState();
   const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
@@ -102,7 +112,7 @@ function runBattle(
   state.expedition.battle = battle;
   state.gameMs = advMs;
   advanceBattleFor(state, c, battle, state.shipId, card.id);
-  return battle;
+  return { state, battle };
 }
 
 describe("敌方机群：建档与 A5 火力守恒", () => {
@@ -315,5 +325,115 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
       withGun.fx.some((e) => e.droneDown === true && e.side === "foe"),
     ).toBe(false);
     expect(poolsGun.every((p) => p.alive)).toBe(true); // 普通炮台**按构造看不到机群**
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **受击增程**（2026-09-11 船长：「添加新机制，**受到攻击后，大幅提高无人机射程（提高 400%）**」）
+ * 船长七项裁定：**×4**（5,000 → **20,000m**）· **只认母舰本体被命中**（打机群不触发）·
+ * 该舰**全部**机群共享 · **本场永久** · **不封顶** · 交距解除钉住 · 要有一条玩家可见日志。
+ * 本组钉住：触发条件 / 生效射程 / 覆盖范围 / 永久性 / 负向对照（无机群、无该字段 ⇒ 零行为变化）。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）", () => {
+  /** 带受击增程的试验巨构（其余同 `testShip`：母舰射程 1~10m ⇒ 只有机群打得到人） */
+  const buffShip = (
+    drones: readonly FoeDroneSlot[],
+    shotDmg = 1,
+  ): FoeShipDef => ({
+    ...testShip(drones, shotDmg),
+    droneRangeMulOnHit: 4,
+  });
+  const AA = "mod-pd-e-2"; // 近防炮（唯一带防空属性的家族）
+  const droneWeaponOf = (card: AnomalyDef, tag: string) =>
+    createFoeSpecs(card, bal)
+      .find((u) => u.tag === tag)!
+      .weapons.find((w) => w.src === "drone")!;
+
+  it("母舰本体被命中 ⇒ 该舰机群射程 ×4（= 机型 5,000 → 20,000m）且写一条日志", () => {
+    const card = testCard(buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]));
+    const { state, battle } = runBattleWithState(card);
+    const buffs = battle.foeDroneRangeBuff ?? {};
+    const tags = Object.keys(buffs);
+    // 主炮（动能 MK2 5,740m）在 60 秒里必中过母舰；固定种子 ⇒ 该断言是确定性的
+    expect(tags.length).toBeGreaterThan(0);
+    for (const tag of tags) {
+      expect(buffs[tag]).toBe(4);
+      // 生效射程 = 机型绝对射程 × 倍率（开火判定与界面同源读这一个函数）
+      expect(foeDroneRangeOf(battle, tag, droneWeaponOf(card, tag))).toBe(
+        FOE_DRONE_E_ALERT.maxRangeM * 4,
+      ); // 5,000 × 4 = 20,000
+    }
+    // 未触发的单位读到的仍是机型射程（逐舰独立、不共享）
+    const untouched = createFoeSpecs(card, bal).find(
+      (u) => buffs[u.tag] === undefined,
+    );
+    if (untouched) {
+      expect(
+        foeDroneRangeOf(
+          battle,
+          untouched.tag,
+          untouched.weapons.find((w) => w.src === "drone")!,
+        ),
+      ).toBe(FOE_DRONE_E_ALERT.maxRangeM);
+    }
+    // 玩家可见提示（船长：「要：战斗日志一条」）
+    expect(
+      state.logs.some((l) => l.text.includes("警戒机群解除射程限制")),
+    ).toBe(true);
+  });
+
+  it("只打机群 ⇒ **不触发**（船长：仅母舰本体被命中才算）", () => {
+    // 构造"整场够不着母舰"的仗：**母舰想站在 4,000m**（`desireRangeM`）+ **速度远高于我舰**
+    // （speedRatio 2.0）⇒ 距离稳定在近防炮射程 2,500m 之外、却仍在机群射程 5,000m 之内
+    // ⇒ 机群打得到我（反击令牌成立、近防炮确实在打机群），而**母舰本体一发未挨**。
+    const farShip: FoeShipDef = {
+      ...buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]),
+      speedRatio: 2,
+      desireRangeM: 4000,
+    }
+    const card = testCard(farShip);
+    const { battle } = runBattleWithState(card, 20_000, [AA, AA, AA, AA]);
+    expect(battle.distanceM).toBeGreaterThan(2500); // 母舰整场在我舰射程外
+    expect(battle.fx.some((e) => e.pd === true)).toBe(true); // 近防炮确在打机群
+    expect(battle.foeDroneRangeBuff).toBeUndefined(); // 打机群**不算**"母舰受到攻击"
+  });
+
+  it("不写 `droneRangeMulOnHit` 的舰级：永不触发（既有战斗零行为变化）", () => {
+    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]));
+    const { battle } = runBattleWithState(card);
+    expect(battle.foeDroneRangeBuff).toBeUndefined();
+  });
+
+  it("无舰级的机群 ⇒ 字段不下发到单位（挂了也不生效，契约另拦）", () => {
+    const card = testCard(
+      testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]),
+    );
+    for (const u of createFoeSpecs(card, bal)) {
+      expect(u.foeDroneRangeMulOnHit).toBeUndefined();
+    }
+    const withField = testCard(
+      buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]),
+    );
+    for (const u of createFoeSpecs(withField, bal)) {
+      expect(u.foeDroneRangeMulOnHit).toBe(4);
+    }
+  });
+
+  it("**本场永久**：触发后再推进一整段，倍率不回落", () => {
+    const card = testCard(buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]));
+    const c = ctxWith(card);
+    const state = makeState();
+    const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+    state.expedition.active = true;
+    state.expedition.phase = "battle";
+    state.expedition.anomalyId = card.id;
+    state.expedition.battle = battle;
+    state.gameMs = 60_000;
+    advanceBattleFor(state, c, battle, state.shipId, card.id);
+    const tag = Object.keys(battle.foeDroneRangeBuff ?? {})[0];
+    expect(tag).toBeTruthy();
+    state.gameMs = 120_000;
+    advanceBattleFor(state, c, battle, state.shipId, card.id);
+    expect(battle.foeDroneRangeBuff?.[tag!]).toBe(4);
   });
 });

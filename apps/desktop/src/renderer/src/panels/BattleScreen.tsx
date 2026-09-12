@@ -106,11 +106,33 @@ function oneThirdToward(
   }
 }
 
+/** **敌机阵位**（受击增程的视觉落点）：平时 = **我舰旁**（`lay.me + off`，镜像几何）；
+ *  增程触发后**沿"我舰 → 敌舰"方向外推**——外推量 = 该方向的 55%、**上限 260px**
+ *  （敌舰锚点本身在画面内 ⇒ 外推后仍在可视区内，不会把机体推出战场）。
+ *  ⚠ 击杀落点与实时阵位**共用本函数**（否则死亡动画会跳回未增程的位置）。 */
+function foeDroneStation(
+  me: Anchor,
+  foeA: Anchor,
+  off: { x: number; y: number },
+  rangeBuff: boolean,
+): { x: number; y: number } {
+  const base = { x: me.x + off.x, y: me.y + off.y }
+  if (!rangeBuff) return base
+  const dx = foeA.x - me.x
+  const dy = foeA.y - me.y
+  const len = Math.hypot(dx, dy) || 1
+  const step = Math.min(260, len * 0.55)
+  return { x: base.x + (dx / len) * step, y: base.y + (dy / len) * step }
+}
+
 /**
  * **敌方机群姿态**（2026-09-11 机群批 S5）——我方 `dronePoseAt` 的**完整镜像**：
  * 起点 = **敌舰机库口**（`droneTakeoff` 偏移相对敌舰**水平镜像**），阵位 = **我方舰旁**（`lay.me + off`）
  * ——因为敌方机群打的是**我方舰**，锚点就是'要打的那一方'（与我方机群锚敌舰同一条口径）。
  * 朝向：出海/驻留 `heading = -1`（朝我）· 返航 `heading = +1`（掉头）。
+ *
+ * **受击增程**（2026-09-11 船长：「受到攻击后，大幅提高无人机射程（提高 400%）」）：
+ * 触发后阵位由 `foeDroneStation` 外推 ⇒ **机体明显后撤、出击/攻击线拉长**（机群视觉上"改打远距"）。
  */
 function foePoseAt(
   model: DroneModel,
@@ -118,12 +140,13 @@ function foePoseAt(
   st: DroneSortie | undefined,
   lay: { me: Anchor; foe: Anchor[] },
   elapsed: number,
+  rangeBuff = false,
 ): { x: number; y: number; heading: number } {
   const foeA = lay.foe[0] ?? lay.me
   const tk = droneTakeoff(lane)
   const deck = { x: foeA.x - tk.x, y: foeA.y + tk.y }
   const off = st?.offs[lane % (st.offs.length || 1)] ?? { x: 52, y: 0 }
-  const station = { x: lay.me.x + off.x, y: lay.me.y + off.y }
+  const station = foeDroneStation(lay.me, foeA, off, rangeBuff)
   const arc = droneArcHeight(lane)
   if (elapsed < DRONE_SORTIE_OUT_MS) {
     const t = Math.min(1, Math.max(0, elapsed / DRONE_SORTIE_OUT_MS))
@@ -246,6 +269,8 @@ const meSpeedRef = useRef(200)
       st?: DroneSortie
       deck: boolean
       foe?: string
+      /** **受击增程已触发**（2026-09-11 船长）：机体后撤到远距阵位（见 `foeDroneStation`） */
+      rangeBuff?: boolean
     }>
   }>({ foeN: 1, openM: 1, nearM: 200, wings: [] });
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
@@ -441,7 +466,7 @@ const meSpeedRef = useRef(200)
             const el = droneElsRef.current.get(key)
             if (!el) continue
             const pose = w.foe
-              ? foePoseAt(w.model, i, w.st, layLoop, elapsed)
+              ? foePoseAt(w.model, i, w.st, layLoop, elapsed, w.rangeBuff === true)
               : dronePoseAt(w.model, i, w.st, layLoop, elapsed)
             const t = `translate3d(${(pose.x - layLoop.me.x).toFixed(1)}px, ${(pose.y - layLoop.me.y).toFixed(1)}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
             if (w0.get(key) !== t) {
@@ -679,16 +704,23 @@ const meSpeedRef = useRef(200)
               arcs?.foeDrones?.find(
                 (w) => w.tag === fx.tag && w.artId === artId,
               )?.alive ?? 0
+            const rangeBuff =
+              arcs?.foeDrones?.find(
+                (w) => w.tag === fx.tag && w.artId === artId,
+              )?.rangeBuff === true
             const lane = Math.max(0, Math.min(alive, DRONE_SHOW_MAX - 1))
-            const pose = foePoseAt(model, lane, st, layDown, elapsed)
+            const pose = foePoseAt(model, lane, st, layDown, elapsed, rangeBuff)
             const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
               x: 52,
               y: 0,
             }
-            const station = {
-              x: layDown.me.x + off.x,
-              y: layDown.me.y + off.y,
-            }
+            // ⚠ 与实时阵位**同源**（增程态下不能跳回"我舰旁"）
+            const station = foeDroneStation(
+              layDown.me,
+              layDown.foe[0] ?? layDown.me,
+              off,
+              rangeBuff,
+            )
             const tk = droneTakeoff(lane)
             const home = {
               x: (layDown.foe[0]?.x ?? layDown.me.x) - tk.x,
@@ -1220,6 +1252,8 @@ const meSpeedRef = useRef(200)
           model: droneModelOf(w.artId)!,
           show: Math.min(w.alive, DRONE_SHOW_MAX),
           st,
+          // **受击增程**（2026-09-11 船长）：本体挨打后该舰机群阵位后撤（`foeDroneStation`）
+          rangeBuff: w.rangeBuff === true,
           // **收舱待命 = 不显示**（与我方同款：`is-deck` 走 CSS `display:none`）。
           // ⚠ 旧版常显 ⇒ 敌机在每轮之间**停在敌舰甲板上朝右不动**（船长实测："初始位于敌舰尾部、
           //   朝向朝右"）——敌机的可见时段应当与我方一致：只有出海那 1.4 秒。

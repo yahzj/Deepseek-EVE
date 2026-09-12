@@ -160,6 +160,10 @@ export interface UnitSpec {
    *  `defense` 建生存池（`BattleState.foeDronePools`，按 tag 索引、与本单位 drone 条目**同序**）。
    *  **不写 = 无机群** ⇒ 既有单位一字不动。 */
   foeDrones?: readonly FoeDroneSlot[]
+  /** **受击增程倍率**（见 `FoeShipDef.droneRangeMulOnHit`；2026-09-11 船长：「受到攻击后，大幅提高
+   *  无人机射程（提高 400%）」）——舰级路径把该字段带到单位上；**本舰本体被命中一次**即在
+   *  `BattleState.foeDroneRangeBuff` 上给本 tag 盖章，此后本单位全部机群射程 ×本倍率（本场永久）。 */
+  foeDroneRangeMulOnHit?: number
   foeTactic: FoeTactic | null
 }
 
@@ -1110,6 +1114,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         ...droneWeapons, // 机群：每架一条（同序 ⇒ 与 `foeDronePools[tag]` 逐架对齐）
       ],
       ...(droneWeapons.length > 0 ? { foeDrones: ship.drones } : {}),
+      // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化
+      ...(ship.droneRangeMulOnHit !== undefined && droneWeapons.length > 0
+        ? { foeDroneRangeMulOnHit: ship.droneRangeMulOnHit }
+        : {}),
       foeTactic: tactic,
       // **自己的有效射程带**（含覆写）——供 `foeDesiredRange` 在舰级路径上替代全局战术表
       // （2026-09-11 船长裁决②「期望交距改取该单位自己的射程带」）。旧路径不写本字段。
@@ -2018,6 +2026,8 @@ export function battleArcsFor(
     artId: string
     count: number
     alive: number
+    /** **受击增程已触发**（见 `FoeShipDef.droneRangeMulOnHit`）——表现层把机群阵位后撤、出击线拉长 */
+    rangeBuff: boolean
   }>
 } | null {
   const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
@@ -2139,6 +2149,8 @@ export function battleArcsFor(
     artId: string
     count: number
     alive: number
+    /** **受击增程已触发**（2026-09-11 船长）——表现层据此把机群阵位后撤、出击/攻击线拉长 */
+    rangeBuff: boolean
   }> = []
   for (const f of foes) {
     const pools = battle.foeDronePools?.[f.tag]
@@ -2152,7 +2164,13 @@ export function battleArcsFor(
       byArt.set(id, cur)
     }
     for (const [artId, v] of byArt)
-      foeDroneWings.push({ tag: f.tag, artId, count: v.count, alive: v.alive })
+      foeDroneWings.push({
+        tag: f.tag,
+        artId,
+        count: v.count,
+        alive: v.alive,
+        rangeBuff: (battle.foeDroneRangeBuff?.[f.tag] ?? 1) > 1,
+      })
   }
   return {
     nearM: bal.minDistanceM,
@@ -2546,6 +2564,37 @@ function initFoeDronePools(
     if (list.length > 0) pools[f.tag] = list
   }
   if (Object.keys(pools).length > 0) b.foeDronePools = pools
+}
+
+/** **敌机有效射程**（单一真相源）＝机型绝对射程 × 该舰的**受击增程倍率**（未触发 = ×1）。
+ *
+ *  2026-09-11 船长：「添加新机制，**受到攻击后，大幅提高无人机射程（提高 400%）**」——
+ *  E 族三条舰级写 `droneRangeMulOnHit: 4` ⇒ 警戒机 5,000 → **20,000m**（本场永久、不封顶）。
+ *  ⚠ **开火判定与界面（机群阵位/出击线）都读本函数**：射程只有一处算法，不出现"打得着但画得近"。
+ */
+export function foeDroneRangeOf(
+  b: import('./state').BattleState,
+  tag: string,
+  w: WeaponSpec,
+): number {
+  const mul = b.foeDroneRangeBuff?.[tag]
+  return mul && mul > 1 ? Math.round(w.maxRangeM * mul) : w.maxRangeM
+}
+
+/** **受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）：
+ *  盖章后本舰**全部**机群在 `foeDroneRangeOf` 里吃到倍率；**一次触发即本场永久**（值即倍率，不存时间戳）。
+ *  @returns 是否本次**首次**触发（供表现层只播一次日志/演出） */
+function markFoeDroneRangeBuff(
+  rt: UnitSpec,
+  b: import('./state').BattleState,
+): boolean {
+  const mul = rt.foeDroneRangeMulOnHit
+  if (mul === undefined || mul <= 1) return false
+  if (!rt.foeDrones || rt.foeDrones.length === 0) return false
+  const cur = b.foeDroneRangeBuff?.[rt.tag]
+  if (cur !== undefined && cur >= mul) return false
+  b.foeDroneRangeBuff = { ...(b.foeDroneRangeBuff ?? {}), [rt.tag]: mul }
+  return true
 }
 
 /**
@@ -2951,6 +3000,16 @@ function stepBattle(
           const r = applyDamage(rt.hp, {}, dmgLocked, type)
           rt.hp = r.hp
           b.stats.meDmg += r.dealt
+          // **受击增程触发点（唯一）**——2026-09-11 船长：「受到攻击后，大幅提高无人机射程
+          // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
+          // ⚠ 打机群（上面的 `droneHit` 分支）**不触发**、未命中（`hit === false`）也进不到这里。
+          if (markFoeDroneRangeBuff(foeTarget!, b)) {
+            addLog(
+              state,
+              'warn',
+              `⚔ ${foeTarget!.name}残存的自动程序过载——警戒机群解除射程限制，转为远程拦截。`,
+            )
+          }
         }
       }
       pushBattleFx(b, {
@@ -2992,7 +3051,8 @@ function stepBattle(
           continue
         }
         rt.weapons[k] = dw.reloadMs
-        if (b.distanceM > dw.maxRangeM) continue; // 机群够不着（我方在它射程外）
+        // 射程门：**受击增程**生效时读 `foeDroneRangeOf`（机型射程 × 倍率），否则就是机型射程
+        if (b.distanceM > foeDroneRangeOf(b, f.tag, dw)) continue // 机群够不着（我方在它射程外）
         b.stats.foeShots += 1;
         // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击
         b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }

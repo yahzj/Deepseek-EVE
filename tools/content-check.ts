@@ -1542,10 +1542,24 @@ for (const m of MODULES) {
    *    —— 与'舰级给绝对值、卡上用修正'同一纪律：改一艘船的影响面一眼可见。
    * ③ **机型必须在本族机型表内且族一致**（E 族用警戒机、G 族用蜂群机，不许串族）。
    * ④ **架数为 ≥1 的整数**（'机库存量、打光为止'的语义）。
+   * ⑤ **E 族射程带与受击增程**（2026-09-11 船长：「E 族射程按照**最低 100**，**最高根据 7000~10000** 设定，
+   *    **无人机射程设为 5000**，添加新机制，**受到攻击后，大幅提高无人机射程（提高 400%）**」）：
+   *    a) **带机群的 E 族舰级**射程下限 = `TITAN_RANGE_MIN_M`（100）、上限须落在
+   *       `TITAN_RANGE_MAX_BAND`（7,000~10,000）内 —— 族级射程口径由契约锁住，防逐卡漂移；
+   *    b) **警戒机射程 = `TITAN_DRONE_RANGE_M`（5,000）**（机型表绝对值就是族级口径，改它要过船长）；
+   *    c) **受击增程倍率**只允许**带机群的 E 族舰级**写，且 ≤ `DRONE_RANGE_ON_HIT_CAP`（4 = 船长裁定的
+   *       「提高 400%」= ×4 ⇒ 5,000 → 20,000m 本场永久、不封顶）。
    */
   {
     // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」⇒ 阈值随之上抬（点防仍远短于主炮 7 km）
     const PD_MAX_RANGE_M = 2_500
+    /** E 族射程带（船长 2026-09-11：「最低 100，最高根据 7000~10000 设定」） */
+    const TITAN_RANGE_MIN_M = 100
+    const TITAN_RANGE_MAX_BAND: readonly [number, number] = [7_000, 10_000]
+    /** 警戒机射程（船长同日：「无人机射程设为 5000」） */
+    const TITAN_DRONE_RANGE_M = 5_000
+    /** 受击增程倍率上限（船长同日：「提高 400%」＝×4） */
+    const DRONE_RANGE_ON_HIT_CAP = 4
     const aaMods = MODULES.filter((m) => m.canHitDrones === true)
     check(
       aaMods.length > 0,
@@ -1559,7 +1573,38 @@ for (const m of MODULES) {
       )
     }
     let droneSlots = 0
+    /** E 族射程读数（逐舰级一条，落到汇总行） */
+    const titanRanges: string[] = []
+    let onHitShips = 0
     for (const ship of FOE_SHIPS) {
+      const hasDrones = (ship.drones ?? []).length > 0
+      // ⑤a **E 族射程带**（只约束带机群的 E 族舰级——即本批落码的那三条）
+      if (ship.family === 'E' && hasDrones) {
+        check(
+          ship.rangeMinM === TITAN_RANGE_MIN_M,
+          `机群与防空契约：E 族舰级「${ship.name}」射程下限 ${ship.rangeMinM}m ≠ ${TITAN_RANGE_MIN_M}m——` +
+            `船长 2026-09-11「E 族射程按照**最低 100**」`,
+        )
+        check(
+          ship.rangeMaxM >= TITAN_RANGE_MAX_BAND[0] && ship.rangeMaxM <= TITAN_RANGE_MAX_BAND[1],
+          `机群与防空契约：E 族舰级「${ship.name}」射程上限 ${ship.rangeMaxM}m 越出 ${TITAN_RANGE_MAX_BAND[0]}~${TITAN_RANGE_MAX_BAND[1]}m——` +
+            `船长 2026-09-11「最高根据 **7000~10000** 设定」`,
+        )
+        titanRanges.push(`${ship.name} ${ship.rangeMinM}~${ship.rangeMaxM}`)
+      }
+      // ⑤c **受击增程**：只给带机群的 E 族舰级，且倍率 ≤ 4（= +400%）
+      if (ship.droneRangeMulOnHit !== undefined) {
+        check(
+          ship.family === 'E' && hasDrones,
+          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族${hasDrones ? '' : '、无机群'}）写了受击增程倍率——` +
+            `本机制目前只允许**带机群的 E 族舰级**（船长 2026-09-11 E 族专属裁定）`,
+        )
+        check(
+          ship.droneRangeMulOnHit > 1 && ship.droneRangeMulOnHit <= DRONE_RANGE_ON_HIT_CAP,
+          `机群与防空契约：舰级「${ship.name}」受击增程倍率 ${ship.droneRangeMulOnHit} 越界（须 >1 且 ≤ ${DRONE_RANGE_ON_HIT_CAP}）`,
+        )
+        onHitShips++
+      }
       for (const ds of ship.drones ?? []) {
         droneSlots++
         check(
@@ -1574,10 +1619,20 @@ for (const m of MODULES) {
           Number.isInteger(ds.count) && ds.count >= 1,
           `机群与防空契约：舰级「${ship.name}」的机群架数 ${ds.count} 必须是 ≥1 的整数`,
         )
+        // ⑤b **警戒机射程 = 5,000**（E 族族级口径）
+        if (ship.family === 'E') {
+          check(
+            ds.drone.maxRangeM === TITAN_DRONE_RANGE_M,
+            `机群与防空契约：E 族机型「${ds.drone.name}」射程 ${ds.drone.maxRangeM}m ≠ ${TITAN_DRONE_RANGE_M}m——` +
+              `船长 2026-09-11「**无人机射程设为 5000**」`,
+          )
+        }
       }
     }
     console.log(
-      `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）`,
+      `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）` +
+        `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +
+        `${onHitShips > 0 ? ` · **受击增程** ${onHitShips} 条舰级 ×${DRONE_RANGE_ON_HIT_CAP}（母舰被命中 ⇒ 全机群射程 ×4 = ${TITAN_DRONE_RANGE_M * DRONE_RANGE_ON_HIT_CAP}m，本场永久、不封顶）` : ''}`,
     )
   }
 

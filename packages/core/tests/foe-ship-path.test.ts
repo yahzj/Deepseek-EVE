@@ -257,9 +257,9 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-d-ghost', tier: 2, speed: 325 }, // 2 驱逐 295 × 1.10
       { id: 'foe-d-longship', tier: 3, speed: 232 }, // 3 巡洋 258 × 0.90（船长「下调至 0.9 倍率」）
       { id: 'foe-d-stasis', tier: 3, speed: 129 }, // 3 巡洋 258 × 0.50（**全族最慢**：守墓者从来不需要追人）
-      // E 族（泰坦巨构）· 2026-09-11 机群批 S3：**全族第一条舰级** = T4「巨构残段」。
-      // 族格「**巨构不讲机动，只讲撑到最后**」⇒ 实速落 **E 族族格速带 0.65~0.95 × 本档基准**的顶格：
-      // 4 战列 205 × 0.95 = **195**（旧路径那张卡是 410 = brawl 提速口径，本批收进慢速带）
+      // E 族（泰坦巨构）· 2026-09-11 机群批 S3 落第一条舰级，2026-09-12 数据批补足三条。
+      // 族格「**巨构不讲机动，只讲撑到最后**」的**终裁**＝船长「族速度倍率设为 0」⇒ 三条实速全 **0**
+      // （静物残骸；火力由警戒机群投送）——本批之前的 195/0.95 口径已作废。
       { id: 'foe-titan-hulk', tier: 4, speed: 0 }, // 2026-09-11 船长：族速度倍率设为 0（静物残骸 · 靠机群打炮台射程外的敌人）
       { id: 'foe-auro-hulk', tier: 3, speed: 0 },
       { id: 'foe-core-section', tier: 4, speed: 0 },
@@ -574,6 +574,32 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
     // 1000 + 0.85×(4000−1000) = 3550（旧口径 = 全局 kite 表 8000；且注意"带"来自覆写而非舰级 1~2200）
     expect(foeDesiredRange(specs[0]!, specs, bal)).toBe(3550)
     expect(foeDesiredRange(specs[0]!, specs, bal)).not.toBe(8000)
+  })
+
+  it('E 族（泰坦巨构）射程与交距：带 = 100~7,000/8,500/10,000；交距解除钉住后 = orbit 0.55 × 上限', () => {
+    // 2026-09-11 船长：「E 族射程按照**最低 100**，**最高根据 7000~10000** 设定」+
+    // 「战术进行调整，但是期望距离不改，**因为射程未定**」——射程既定 ⇒ 本批**解除** `desireRangeM` 钉住，
+    // 交距回归族规 orbit（0.55 × 上限）。⚠ 这是**真难度改动**（交距由 ~513m → 3,850~5,500m），
+    // 平衡读数由标定轮回答，本用例只钉"口径落地"。
+    const shell = anomaly('ano-t-e-range', 'galaxy-abyss', { threat: 60 })
+    const want = [
+      { id: 'foe-auro-hulk', max: 7000, desire: 3895 },
+      { id: 'foe-titan-hulk', max: 8500, desire: 4720 },
+      { id: 'foe-core-section', max: 10000, desire: 5545 },
+    ]
+    for (const row of want) {
+      const ship = FOE_SHIPS.find((s) => s.id === row.id)!
+      expect(ship.rangeMinM, row.id).toBe(100) // 族级最低 100
+      expect(ship.rangeMaxM, row.id).toBe(row.max)
+      expect(ship.desireRangeM, row.id).toBeUndefined() // 钉住值已撤（否则交距不会跟着射程走）
+      expect(ship.droneRangeMulOnHit, row.id).toBe(4) // 受击增程（船长「提高 400%」= ×4）
+      const specs = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)
+      const w = specs[0]!.weapons[0]!
+      expect(w.minRangeM, row.id).toBe(100)
+      expect(w.maxRangeM, row.id).toBe(row.max)
+      // 期望交距 = **带内插值**：min + 0.55 × (max − min)（orbit；下限 100 也参与插值）——落在带内
+      expect(foeDesiredRange(specs[0]!, specs, bal), row.id).toBe(row.desire)
+    }
   })
 
   it('全 19 张舰级路径卡：期望交距必须落在**自身射程带内**（否则敌人站在自己打不到的位置）', () => {

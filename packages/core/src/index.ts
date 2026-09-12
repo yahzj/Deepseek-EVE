@@ -518,6 +518,8 @@ export {
   spreadWinChance,
   desiredRangeFor,
   foeDesiredRange,
+  // 敌机有效射程（2026-09-11 船长「受击后大幅提高无人机射程（提高 400%）」）——开火判定与界面同源
+  foeDroneRangeOf,
   mergeResist,
   foeMainDamageType,
   // 2026-09-10 船长（窝点混伤）：敌方火力构成单点（战斗 / 胜率预估 / 任务卡文案同源）

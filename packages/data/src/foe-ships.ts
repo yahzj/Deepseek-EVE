@@ -538,18 +538,20 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   shotDmg: 228, // T4 档基线 240 × 角色 0.95
   hitRate: 0.65, // **老化自动炮台**（族格；沿用现状卡面值 ⇒ 实收不变）
   reloadMs: 4000,
-  rangeMinM: 1, // 沿用现状
-  rangeMaxM: 2567, // 沿用现状上限（零变化）
+  rangeMinM: 100, // **族级最低 100**（船长 2026-09-11：「E 族射程按照最低 100」；原 1）
+  rangeMaxM: 8500, // **族级最高 8,500**（船长：最高按 7,000~10,000 设定；族内中档）
   falloff: 0.5,
   blindDmgMul: 0.3,
   // **50% 爆炸 + 50% 动能**（船长 2026-09-11：「该系敌人伤害比例为 50% 爆炸 50% 动能」）
   dmgMix: { kinetic: 5, explosive: 5 },
-  // **中距为主**（族规；P-12 对齐）——⚠ 但**期望距离不改**（船长：「战术进行调整，但期望距离不改，
-  // 因为射程未定」）⇒ 下面用 `desireRangeM` 把作战距离**钉在现状值**（1~2567 带 × brawl 0.20 ≈ 513m）。
+  // **中距为主**（族规）——2026-09-11 射程既定 ⇒ **解除期望距离钉住**，交距回归 orbit 口径
+  // （8,500 × 0.55 = **4,675m**；此前"射程未定"时曾用 `desireRangeM 513` 钉住旧值，已撤）
   tactic: 'orbit',
-  desireRangeM: 513,
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }], // 警戒机群（A3：机群挂舰级）——
   // **主力输出手段**（船长：速度 0 ⇒ 靠机群打炮台射程外的敌人）
+  // **受击增程**（船长 2026-09-11：「受到攻击后，大幅提高无人机射程（提高 400%）」）：本体挨打 ⇒
+  // 全舰警戒机 5,000 → **20,000m**（本场永久、不封顶）——"巨构挨打才把长臂伸出来"
+  droneRangeMulOnHit: 4,
 }
 
 /** E 族 · 二档「**奥罗残骸段**」——**被风暴反复激活的武装残骸**（服务：奥罗武装残骸群 62）。
@@ -570,14 +572,15 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   shotDmg: 124, // T3 档基线 124 × 角色 1.00
   hitRate: 0.95, // 沿用本卡现状（老化度比泰坦级轻）
   reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2581, // 沿用现状上限
+  rangeMinM: 100, // 族级最低 100
+  rangeMaxM: 7000, // **族级最低档 7,000**（族内最"旧"的一截，射程也最短）
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 5, explosive: 5 }, // 50% 爆炸 + 50% 动能（全族口径）
   tactic: 'orbit',
-  desireRangeM: 516, // 钉住现状（1~2581 × brawl 0.20 ≈ 516）
+  // 交距 = 7,000 × 0.55 = **3,850m**（射程既定后解除钉住；旧钉值 516 已撤）
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }],
+  droneRangeMulOnHit: 4, // 受击增程（全族口径）
 }
 
 /** E 族 · 三档「**核心舱段**」——**一具接近完好的巨构**（族内最高级目标，船长裁定 8「核心舱段级代表位」）。
@@ -597,15 +600,17 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   shotDmg: 312, // T4 档基线 240 × 角色 1.30
   hitRate: 0.65, // 老化自动炮台（族格，与巨构残段同口径）
   reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2567, // 与巨构残段同带（射程未定 ⇒ 全族沿用现有一档）
+  rangeMinM: 100, // 族级最低 100
+  rangeMaxM: 10000, // **族级最高档 10,000**（"接近完好的巨构"＝族内最远的一门；与玩家侧 E 族专属件
+  // 「巨构残骸炮 9,600m」同档 —— 主题自洽；代价：纯动能玩家（上限 7,350）须换激光/导弹/该专属件才能对射）
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 5, explosive: 5 },
   tactic: 'orbit',
-  desireRangeM: 513,
+  // 交距 = 10,000 × 0.55 = **5,500m**（射程既定后解除钉住；旧钉值 513 已撤）
   elite: true, // 「精锐核心舱段」
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 3 }],
+  droneRangeMulOnHit: 4, // 受击增程（全族口径）
 }
 
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
