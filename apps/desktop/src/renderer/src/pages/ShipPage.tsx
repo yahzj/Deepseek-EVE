@@ -139,7 +139,7 @@ export function ShipPage({
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   // 2026-09-10 舰队检索：搜索词 / 状态筛选；2026-09-11 船长：排序键退场，改「舰船级别」子筛选 +
-  // 选中级别后再出「舰船类别」（角色）子筛选
+  // 「舰船类别」（角色）子筛选；2026-09-12 船长：「将级别和类别筛选对调，玩家先选择类别，再选级别」
   const [fleetQ, setFleetQ] = useState('')
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('all')
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
@@ -174,7 +174,8 @@ export function ShipPage({
         a.uid.localeCompare(b.uid),
     )
 
-  /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：再按**舰船级别** → 选中级别后按**类别**；
+  /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：叠加**舰船级别**与**类别**；
+   *  2026-09-12 船长：**类别与级别对调顺序**（先类别、后级别），**两维各自独立判定、不再级联**；
    *  顺序恒为机库序 + 收藏置顶） */
   const fleetTotal = Object.keys(state.fleet).length
   const fq = fleetQ.trim().toLowerCase()
@@ -202,12 +203,18 @@ export function ShipPage({
                 : dur < 1 || armor < 1 // damaged：耐久或装甲未满 = 待维修
         if (!ok) return false
       }
-      // 舰船级别子筛选（2026-09-11 船长）：键 `t<级别>`，与组装机「舰船蓝图」子筛选同一张单点表
+      // 舰船类别（角色）子筛选（2026-09-12 船长：与级别对调顺序 —— 类别为上位、先选）
+      // 键 = 角色 id，与市场/手册的 SHIP_SUBS 同源；「全部」= 该维不参与判定
+      if (fleetRole !== SUB_ALL) {
+        const def = ctx.ships.get(ship.defId ?? uid)
+        if ((def?.role ?? 'industrial') !== fleetRole) return false
+      }
+      // 舰船级别子筛选（2026-09-12 船长：为下位、后选）：键 `t<级别>`，与组装机「舰船蓝图」子筛选同一张单点表
+      // ⚠ 各维“与”关系、互不重置；两维都选具体值时可能出现**空组合**（T4/T5 无采矿舰与武装舰等），
+      // 属船长已确认的取舍（船长选「始终出全五档 + 各类别」，不隐藏空档）
       if (fleetTier !== SUB_ALL) {
         const def = ctx.ships.get(ship.defId ?? uid)
         if (`t${def?.tier}` !== fleetTier) return false
-        // 舰船类别（角色）子筛选：只在选中具体级别后生效（键 = 角色 id，与市场/手册的 SHIP_SUBS 同源）
-        if (fleetRole !== SUB_ALL && (def?.role ?? 'industrial') !== fleetRole) return false
       }
       return true
     })
@@ -339,10 +346,13 @@ export function ShipPage({
         {/* 舰队工具条（2026-09-10 船长：搜索/状态筛选；样式与仓库、技能目录同款）——固定在列表上方不随滚动
             2026-09-11 船长：「移除排序选项，改为按照舰船级别划分的子筛选」⇒ 排序下拉退场，
             改挂**舰船级别**子筛选（复用组装机那套 `SHIP_TIER_SUBS` 单点表与次级标签样式）；
-            同日追加「**级别筛选单列一行，当选择级别后，出现舰船类别（工业战斗那些）筛选**」
-            ⇒ 工具条改多行（每行一个 `.app-fleet-row`）：**第 1 行 状态**，**第 2 行 级别独占一行**，
-            **第 3 行 舰船类别**（角色，取市场/手册同源的 `SHIP_SUBS`）**仅在选中具体级别后出现**；
-            同日再追加「将搜索栏移到标题内」⇒ 搜索与计数整体上移到面板标题行，工具条只留各维筛选；
+            同日追加「**级别筛选单列一行，当选择级别后，出现舰船类别（工业战斗那些）筛选**」；
+            同日再追加「将搜索栏移到标题内」⇒ 搜索与计数整体上移到面板标题行，工具条只留各维筛选。
+            ⚠ **2026-09-12 船长（本批）：「将我的舰队中，级别和类别筛选对调，玩家先选择类别，再选级别」**
+            ⇒ **上述「选中级别后才出类别」的旧口径作废**：工具条改为 **第 1 行 状态**、
+            **第 2 行 类别**（`SHIP_SUBS`：全部 / 采矿舰 / 货运舰 / 武装舰 / 重装舰）、
+            **第 3 行 级别**（`SHIP_TIER_SUBS`：全部 / T1~T5），**两行都常显**（不再隐藏、不再级联重置），
+            两维各自独立与其它条件取「与」；
             每行各带灰字前缀，避免多个「全部」混淆（前缀写法同星图页「矿带排序：」） */}
         <div className="app-fleet-toolbar">
           <div className="app-fleet-row">
@@ -363,16 +373,37 @@ export function ShipPage({
             {/* 计数已上移到面板标题行（与仓库页 / 技能目录同口径），工具条只留各维筛选 */}
           </div>
           <div className="app-fleet-row">
+            <span className="app-dim">类别：</span>
+            <div className="app-task-tabs app-fleet-tabs" role="tablist">
+              <button
+                role="tab"
+                aria-selected={fleetRole === SUB_ALL}
+                className={`app-tasktab${fleetRole === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => setFleetRole(SUB_ALL)}
+              >
+                全部
+              </button>
+              {SHIP_SUBS.map((s) => (
+                <button
+                  key={s.key}
+                  role="tab"
+                  aria-selected={fleetRole === s.key}
+                  className={`app-tasktab${fleetRole === s.key ? ' is-active' : ''}`}
+                  onClick={() => setFleetRole(s.key)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="app-fleet-row">
             <span className="app-dim">级别：</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
                 aria-selected={fleetTier === SUB_ALL}
                 className={`app-tasktab${fleetTier === SUB_ALL ? ' is-active' : ''}`}
-                onClick={() => {
-                  setFleetTier(SUB_ALL)
-                  setFleetRole(SUB_ALL) // 级别回「全部」= 类别行收走，类别选择一并复位（级联口径）
-                }}
+                onClick={() => setFleetTier(SUB_ALL)}
               >
                 全部
               </button>
@@ -382,43 +413,13 @@ export function ShipPage({
                   role="tab"
                   aria-selected={fleetTier === s.key}
                   className={`app-tasktab${fleetTier === s.key ? ' is-active' : ''}`}
-                  onClick={() => {
-                    setFleetTier(s.key)
-                    setFleetRole(SUB_ALL) // 换级别即复位类别（级联检索的常规口径）
-                  }}
+                  onClick={() => setFleetTier(s.key)}
                 >
                   {s.label}
                 </button>
               ))}
             </div>
           </div>
-          {/* 舰船类别（角色）子筛选：选中具体级别后才出现（2026-09-11 船长） */}
-          {fleetTier !== SUB_ALL ? (
-            <div className="app-fleet-row">
-              <span className="app-dim">类别：</span>
-              <div className="app-task-tabs app-fleet-tabs" role="tablist">
-                <button
-                  role="tab"
-                  aria-selected={fleetRole === SUB_ALL}
-                  className={`app-tasktab${fleetRole === SUB_ALL ? ' is-active' : ''}`}
-                  onClick={() => setFleetRole(SUB_ALL)}
-                >
-                  全部
-                </button>
-                {SHIP_SUBS.map((s) => (
-                  <button
-                    key={s.key}
-                    role="tab"
-                    aria-selected={fleetRole === s.key}
-                    className={`app-tasktab${fleetRole === s.key ? ' is-active' : ''}`}
-                    onClick={() => setFleetRole(s.key)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
         <div className="app-fleet-scroll" ref={fleetScrollRef}>
         {scanSwitchId ? (
