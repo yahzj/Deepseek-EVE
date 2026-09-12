@@ -1566,10 +1566,47 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
   return Math.round(top * bal.openRangeFactor + pad)
 }
 
+/** **玩家主武器（战术距离口径；船长 2026-09-12 裁定「甲」）** = **射程最远的武器**；
+ *  并列射程时取**名义火力大的**（再并列保持武器表顺序）。**三按钮（贴脸/中距/风筝）、出发前战术、
+ *  战斗界面「我方射程带」共用这一处**。
+ *
+ *  为什么改（玩家报障「战斗界面下方的快速选择贴脸/中距/风筝，现在的距离不正确」）：
+ *  旧口径 `weapons.find(w => w.kind === 'gun') ?? weapons[0]` 有两处系统性取错——
+ *  **激光是 `beam`、基础舰炮是 `fixed`，都不算 `gun`** ⇒ 纯激光/无人机船回落到恒在的「基础舰炮」(2,500m)；
+ *  **近防炮是 `gun`（2,500m）** ⇒ 装了它的船一律被 PD 抢位。实测（真数据真引擎）：
+ *  激光船（主武器 4,600m）三按钮 **200/1250/2375 → 200/2300/4370**、
+ *  近防炮 + 导弹架 MK2（11,760m）**200/1251/2375 → 540/6330/11172**；
+ *  炮台船与纯导弹船一字不变（旧口径恰好取对）；战斗界面「我方射程带」随之从
+ *  「基础舰炮 0~2500」/「近防炮 1~2500」修正为真实主武器射程带。 */
+export function mainWeaponOf(me: UnitSpec): WeaponSpec | undefined {
+  let best: WeaponSpec | undefined
+  let bestDps = -1
+  for (const w of me.weapons) {
+    if (best === undefined || w.maxRangeM > best.maxRangeM) {
+      best = w
+      bestDps = nominalWeaponDps(w)
+    } else if (w.maxRangeM === best.maxRangeM) {
+      const d = nominalWeaponDps(w)
+      if (d > bestDps) {
+        best = w
+        bestDps = d
+      }
+    }
+  }
+  return best
+}
+
+/** 名义单发/秒（并列射程时的取舍依据；与装配页 `rawDpsOf` 同口径）：
+ *  炮台取首弹种单发、其余取 `shotDmg`，乘门数除以装填秒。 */
+function nominalWeaponDps(w: WeaponSpec): number {
+  const per = w.kind === 'gun' ? (Object.values(w.shotsByType ?? {})[0] ?? 0) : (w.shotDmg ?? 0)
+  return (per * (w.count ?? 1)) / Math.max(0.1, w.reloadMs / 1000)
+}
+
 /** 玩家战术期望距离（贴脸/中距/风筝）。
- * "主武器" = 炮台（若有）否则基础舰炮；中距 = 主武器有效射程 [min,max] 的中点（默认距离条位置）。 */
+ * "主武器" = **射程最远的武器**（见 `mainWeaponOf`）；中距 = 主武器有效射程 [min,max] 的中点（默认距离条位置）。 */
 export function desiredRangeFor(me: UnitSpec, tactic: 'assault' | 'mid' | 'kite', bal: BattleBalance): number {
-  const main = me.weapons.find((w) => w.kind === 'gun') ?? me.weapons[0]
+  const main = mainWeaponOf(me) ?? me.weapons[0]
   const mainMin = main ? main.minRangeM : 0
   const mainMax = main ? main.maxRangeM : 0
   if (tactic === 'assault') return Math.max(bal.minDistanceM, Math.round(mainMin * 0.6))
@@ -2151,7 +2188,7 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
   const me = createPlayerSpec(state, ctx, state.shipId)
   if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
-  const main = me.weapons.find((w) => w.kind === 'gun') ?? me.weapons[0]!
+  const main = mainWeaponOf(me) ?? me.weapons[0]!
   let foeMin = 0
   let foeMax = 0
   for (const f of foes) {
@@ -2195,6 +2232,9 @@ export function battleArcsFor(
     artId?: string
     /** 该条目合并的架数（无人机同机型多架合并为「机型 ×N」一条；非无人机为 1） */
     count?: number
+    /** **主武器**（战术距离口径，同 `mainWeaponOf`：射程最远、并列取名义火力大的）——
+     *  UI 据此在射程弧端画米数刻度（2026-09-12 船长裁定「甲」后单点下发，界面不再自己 find(kind==='gun')） */
+    isMain?: boolean
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
@@ -2253,10 +2293,13 @@ export function battleArcsFor(
     src?: WeaponSrc
     artId?: string
     count?: number
+    isMain?: boolean
   }> = []
   const meReload: number[] = []
   const droneAt = new Map<string, number>()
   const droneN: number[] = []
+  // 主武器（战术距离口径）：与三按钮/射程带/预估同源——弧上米数刻度照它出
+  const mainW = mainWeaponOf(me)
   me.weapons.forEach((w, i) => {
     // 2026-09-10 船长「无人机可被击落」：被点防打掉的架次不出现在射程弧/机群计数里
     if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
@@ -2271,6 +2314,7 @@ export function battleArcsFor(
       if (at !== undefined) {
         droneN[at] = (droneN[at] ?? 1) + 1
         meReload[at] = Math.min(meReload[at] ?? rem, rem)
+        if (w === mainW) meArcs[at]!.isMain = true // 同机型合并条目：主武器落在组内也标上
         return
       }
       droneAt.set(key, meArcs.length)
@@ -2285,6 +2329,7 @@ export function battleArcsFor(
         src: w.src,
         artId: w.artId,
         count: 1,
+        ...(w === mainW ? { isMain: true } : {}),
       })
       meReload.push(rem)
       return
@@ -2298,6 +2343,7 @@ export function battleArcsFor(
       reloadMs: w.reloadMs,
       src: w.src,
       count: 1,
+      ...(w === mainW ? { isMain: true } : {}),
     })
     meReload.push(rem)
   })

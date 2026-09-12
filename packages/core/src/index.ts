@@ -545,6 +545,8 @@ export {
   battleArcsFor,
   spreadWinChance,
   desiredRangeFor,
+  // 主武器（战术距离口径；船长 2026-09-12 裁定「甲」= 射程最远的武器）——三按钮/发射前战术/界面射程带共用
+  mainWeaponOf,
   // 2026-09-11 船长：目标距离按星系独立保存——单点读写（实战开战 / 胜率预估 / 界面共用）
   desirePrefOf,
   setDesirePrefOf,
