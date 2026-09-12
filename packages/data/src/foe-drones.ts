@@ -17,7 +17,7 @@
  * **我方的无人机不带该属性** ⇒ 想打机群就得装防空武器。
  */
 
-import type { FoeDroneDef } from '@whale/core'
+import type { FoeDroneDef } from "@whale/core";
 
 /** E 族「**警戒机**」——巨构自带的警戒机群（＝**巨构的第二套火力**，据点词「警戒机群」的落点）。
  *
@@ -30,10 +30,10 @@ import type { FoeDroneDef } from '@whale/core'
  * 单发与三层血 = **结构先行的初值**，最终值在样本卡（`ano-titan-wreck`）落码时按
  * **A5 火力守恒**（机群火力计入卡的总火力、母舰单发相应让位）+ 六组实测标定。 */
 export const FOE_DRONE_E_ALERT: FoeDroneDef = {
-  id: 'foe-drone-e-alert',
-  name: '警戒机',
-  family: 'E',
-  role: 'combat', // 战斗机档：中近缠斗（与我方同档的 3,000m 对齐）
+  id: "foe-drone-e-alert",
+  name: "警戒机",
+  family: "E",
+  role: "combat", // 战斗机档：中近缠斗（与我方同档的 3,000m 对齐）
   defense: {
     shieldHp: 28,
     armorHp: 20,
@@ -45,7 +45,7 @@ export const FOE_DRONE_E_ALERT: FoeDroneDef = {
   // 取值口径：卡上 `dmgMul` 同时缩放母舰与机群（A5）⇒ 样本卡（泰坦残骸勘探）的 `dmgMul` 约 0.32/0.19
   // （由"总血/单发守恒"反算）⇒ 实收每架 = round(25 × dmgMul) = **8 / 5**，与母舰 96 / 58 配比一致。
   dmg: 25,
-  damageType: 'kinetic', // 族格「动能 + 爆炸为主」的主系（爆炸留给日后第二种机型）
+  damageType: "kinetic", // 族格「动能 + 爆炸为主」的主系（爆炸留给日后第二种机型）
   hitRate: 0.65, // **老化失准**（＝族格既有落点的逐字沿用）
   falloff: 1, // 射程带内命中恒定（我方侦察/战斗/攻坚三型口径）
   // ⚠ **射程必须长于典型交距，否则机群整场够不着**（S2 实测踩到）：标准装配玩家与威胁 60 卡的
@@ -55,7 +55,57 @@ export const FOE_DRONE_E_ALERT: FoeDroneDef = {
   // 读法 = **警戒幕铺在母舰与玩家之间**，玩家想打机群就得走进警戒幕。
   maxRangeM: 4500,
   reloadMs: 4400, // 照我方节奏（船长 C3）
-}
+};
+/** G 族「**蜂群机**」——鱿烬亡军的招牌：**一架便宜、一群致命**（服务：G 族三张卡的蜂群承诺）。
+ *
+ * **族格落点**（`foe-faction-g-exiles-20260911.md`）：G 族 = **乌贼人残兵**，装备哲学 =
+ * 「**一架便宜、一群致命**」；火力 = **三系无人机**（以无人机为载体，**动能／爆炸／等离子三系齐备**）
+ * ⇒ 本机型**三系各一型**（`-kin` / `-exp` / `-pla`），除伤害系外数值完全一致。
+ *
+ * **手感**：比我方制式侦察机更**脆**（三层共 26 vs 38）、单发更轻（4 vs 3/6）、
+ * 但**装填快一倍**（2,200ms vs 4,400ms）⇒ 靠**数量与频率**堆输出（"一群致命"）。
+ * ⚠ **接卡待 G 族舰级**：三张 G 族卡目前仍在**旧威胁推导路径**，机群只能挂在**舰级**上
+ * （船长 A3）⇒ 本表先登记机型，等 G 族舰级落码时挂上（与 E 族"先机型、后样本卡"同款顺序）。 */
+const FOE_DRONE_G_BEE = (
+  id: string,
+  damageType: "kinetic" | "explosive" | "plasma",
+): FoeDroneDef => ({
+  id,
+  name: "蜂群机",
+  family: "G",
+  role: "scout", // 侦察机档：轻、快、贴脸（阵位与演出沿用我方四型骨架）
+  defense: {
+    shieldHp: 8,
+    armorHp: 5,
+    hullHp: 13, // 三层共 26——"一架便宜"（挨几下就没了）
+    evasion: 0.45, // 机体飘（侦察机档的最高闪避）
+  },
+  dmg: 4, // 轻单发：靠"一群"堆输出，不靠单发
+  damageType,
+  hitRate: 0.75,
+  falloff: 1, // 射程带内命中恒定
+  maxRangeM: 2800, // 侦察机档：近身护航（蜂群贴上来）
+  reloadMs: 2200, // **快一倍**（"一群致命"的节奏）
+});
+
+/** 三系齐备：动能 / 爆炸 / 等离子（同一机体的三种弹种） */
+export const FOE_DRONE_G_BEE_KIN: FoeDroneDef = FOE_DRONE_G_BEE(
+  "foe-drone-g-bee-kin",
+  "kinetic",
+);
+export const FOE_DRONE_G_BEE_EXP: FoeDroneDef = FOE_DRONE_G_BEE(
+  "foe-drone-g-bee-exp",
+  "explosive",
+);
+export const FOE_DRONE_G_BEE_PLA: FoeDroneDef = FOE_DRONE_G_BEE(
+  "foe-drone-g-bee-pla",
+  "plasma",
+);
 
 /** 敌机机型表（按 id 索引；`content:check` 校验舰级引用的机型必须在此） */
-export const FOE_DRONES: readonly FoeDroneDef[] = [FOE_DRONE_E_ALERT]
+export const FOE_DRONES: readonly FoeDroneDef[] = [
+  FOE_DRONE_E_ALERT,
+  FOE_DRONE_G_BEE_KIN,
+  FOE_DRONE_G_BEE_EXP,
+  FOE_DRONE_G_BEE_PLA,
+];
