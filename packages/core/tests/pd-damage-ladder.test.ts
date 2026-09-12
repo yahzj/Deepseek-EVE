@@ -12,7 +12,7 @@
  * 本文件锁住：三档单发/名义 DPS 的绝对值、与同档主炮的强弱关系、射程与防空属性不退让。
  */
 import { describe, expect, it } from 'vitest'
-import { buildSimContext } from '@whale/data'
+import { buildSimContext, FOE_DRONE_E_ALERT, FOE_DRONES } from '@whale/data'
 import { addModule, addShipToFleet, createInitialState, createPlayerSpec, fitModule } from '@whale/core'
 import { droneHitChance, hitChance } from '../src/combat'
 
@@ -93,45 +93,62 @@ describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 
 })
 
 /**
- * **打机群不吃距离衰减**（船长 2026-09-12 裁定「**按丁修复**」）。
+ * **打机群命中 = 无视距离的 90**（船长 2026-09-12：「**按丁修复**」→ 追问「**我方近防炮对机群命中没修复吗？
+ * 按照设计应该是无视距离的 90 命中**」）。
  *
- * 起因：选靶早已按船长 2026-09-11 甲案「打机群不看两舰间距」办，但**命中**仍按两舰间距算
- * `distFactor`——近防炮射程 2,500m 短于典型交距（3,211~5,545m）⇒ 该因子恒落在下限 ×0.5
- * ⇒ 装备表写的命中 0.9 实战只剩 0.27~0.35（玩家实测问「我方近防炮不是 90 命中率吗」）。
+ * 设计要求（`docs/design/foe-drone-system-20260911.md` §六 表）：**命中 | 对机群 0.9** 是**实收值**。
+ * 旧两版实现的偏差：① 第一版还按两舰间距算 `distFactor`（射程 2,500m 短于典型交距 ⇒ 恒吃 ×0.5 ⇒ 0.27~0.35）；
+ * ② 「丁案」第一版去掉了距离、**但仍减机型闪避** ⇒ 实战只剩 0.72（E 警戒机）/ 0.45（G 蜂群机）。
+ * 现口径：**命中 = 装备自身命中 × 火控阵列学 × 索敌件**——**无视两舰距离、不减机型闪避**。
  *
- * 本组锁三件事：①打机群**与距离无关**（同一件武器在任何距离同值）；②打机群的命中 = 基础命中 − 机型闪避；
- * ③**打舰仍吃距离衰减**（"射程短所以对舰吃亏"的性格不许被这次修复顺手抹掉）。
+ * 本组锁四件事：① 打机群 = 装备命中（MK1/MK2 0.9、MK3 0.92）；② **与机型闪避无关**（0.18 与 0.45 同值）；
+ * ③ **与两舰距离无关**；④ **打舰仍吃距离衰减与守方回避**（"射程短所以对舰吃亏"不许被顺手抹掉）。
  */
-describe('打机群不吃距离衰减（船长 2026-09-12「按丁修复」）', () => {
-  /** 近防炮 MK1 的武器条目形状（真值取自引擎；命中取基础值、火控技能 0） */
-  const W = { hitRate: 0.9, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 }
+describe('打机群命中 = 无视距离的 90（船长 2026-09-12）', () => {
+  /** 近防炮三档的武器条目形状（真值取自装备表：命中 0.9 / 0.9 / 0.92） */
+  const W1 = { hitRate: 0.9, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 }
+  const W3 = { hitRate: 0.92, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 }
+  const atk = { hitBonus: 0 }
 
-  it('打机群：命中 = 基础命中 − 机型闪避（与两舰间距无关）', () => {
-    const atk = { hitBonus: 0 }
-    // E 警戒机：闪避 0.18 ⇒ 0.9 − 0.18 = 0.72（旧口径在 3,211m 上只有 0.27）
-    expect(droneHitChance(W, atk, 0.18, real.balance.battle)).toBeCloseTo(0.72, 5)
-    // G 蜂群机：闪避 0.45 ⇒ 0.45
-    expect(droneHitChance(W, atk, 0.45, real.balance.battle)).toBeCloseTo(0.45, 5)
-    // **距离不是参数** ⇒ 5,000m 与 1m 必然同值（旧口径在 5,000m 会被 clamp 到 falloff 下限 0.5 ⇒ 0.27）
-    expect(droneHitChance(W, atk, 0.18, real.balance.battle)).toBe(
-      droneHitChance(W, atk, 0.18, real.balance.battle),
-    )
-    // 索敌件是**乘子**（clamp 内），照旧生效
-    expect(droneHitChance({ ...W, eqHitMul: 1.12 }, atk, 0.18, real.balance.battle)).toBeCloseTo(
-      0.72 * 1.12,
-      5,
+  it('打机群 = 装备自身命中（MK1/MK2 90% · MK3 92%），不减机型闪避', () => {
+    expect(droneHitChance(W1, atk, real.balance.battle)).toBeCloseTo(0.9, 5)
+    expect(droneHitChance(W3, atk, real.balance.battle)).toBeCloseTo(0.92, 5)
+    // ⚠ 守方闪避**不再是参数** ⇒ E 警戒机（0.18）与 G 蜂群机（0.45）对近防炮同等好打
+    // （旧口径 0.72 / 0.45 —— 与设计稿「对机群 0.9」不符，船长实测指出后改判）
+    const eAlert = FOE_DRONE_E_ALERT.defense.evasion
+    const gBee = FOE_DRONES.find((d) => d.family === 'G')!.defense.evasion
+    expect(eAlert).toBeGreaterThan(0)
+    expect(gBee).toBeGreaterThan(0)
+    expect(droneHitChance(W1, atk, real.balance.battle)).toBe(
+      droneHitChance(W1, atk, real.balance.battle),
     )
   })
 
-  it('打舰仍吃距离衰减：同一门近防炮在 1,000m 与 5,000m 的命中明显不同', () => {
-    const atk = { hitBonus: 0 }
+  it('火控阵列学与索敌件照旧生效（90% 是"无技能无配件"的基准值）', () => {
+    const w = weaponOf('mod-pd-e')
+    // 火控在 `hitRate` 里（建档时乘入），索敌是 clamp 内的乘子 ⇒ 两者都把 90% 往上推
+    expect(w.per).toBeGreaterThan(0)
+    const withSkill = { ...W1, hitRate: 0.9 * 1.15 } // 火控阵列学 5 级 = +15%
+    expect(droneHitChance(withSkill, atk, real.balance.battle)).toBeCloseTo(1, 5) // 1.035 ⇒ clamp 到 100%
+    const withTrack = { ...W1, eqHitMul: 1.05 } // 索敌件是 clamp 内的乘子
+    expect(droneHitChance(withTrack, atk, real.balance.battle)).toBeCloseTo(0.9 * 1.05, 5)
+    // 乘到超过 100% 就被 `bal.hitMax = 1` 收住（索敌 MK2 的 1.12 ⇒ 0.9 × 1.12 = 1.008 → 100%）
+    expect(droneHitChance({ ...W1, eqHitMul: 1.12 }, atk, real.balance.battle)).toBe(1)
+  })
+
+  it('打舰仍吃距离衰减与守方回避：同一门近防炮在 1,000m 与 5,000m 的命中明显不同', () => {
     const def = { evasion: 0.18 }
-    const near = hitChance(W, atk, def, 1_000, real.balance.battle)
-    const far = hitChance(W, atk, def, 5_000, real.balance.battle)
+    const near = hitChance(W1, atk, def, 1_000, real.balance.battle)
+    const far = hitChance(W1, atk, def, 5_000, real.balance.battle)
     // 1,000m：衰减 = 1 − (999/2499)×0.5（minRange 1 → maxRange 2,500 线性到 falloff 0.5）
     expect(near).toBeCloseTo(0.9 * (1 - (999 / 2_499) * 0.5) - 0.18, 5)
     expect(far).toBeCloseTo(0.9 * 0.5 - 0.18, 5) // 5,000m：越出射程 ⇒ 衰减锁在下限 ×0.5
     expect(near).toBeGreaterThan(far)
+    // 打舰**仍减回避**：同一距离下回避 0 与 0.18 的差就是 0.18
+    expect(hitChance(W1, atk, { evasion: 0 }, 5_000, real.balance.battle)).toBeCloseTo(
+      hitChance(W1, atk, { evasion: 0.18 }, 5_000, real.balance.battle) + 0.18,
+      5,
+    )
   })
 })
 

@@ -231,19 +231,20 @@ for (const r of ROWS) {
   }
 }
 
-/* ── 公式面读数：两条命中公式的对照（打机群不吃衰减 / 打舰仍吃衰减） ── */
-console.log('\n【公式面】同一门近防炮的命中率 —— 打机群（丁案：不吃距离衰减）vs 打舰（仍吃）')
+/* ── 公式面读数：两条命中公式的对照（打机群无视距离与闪避 / 打舰两样都吃） ── */
+console.log('\n【公式面】同一门近防炮的命中率 —— 打机群（船长：**无视距离的 90 命中**）vs 打舰（两样都吃）')
 const WF = {
   近防炮MK1: { hitRate: 0.9, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 },
   近防炮MK3: { hitRate: 0.92, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 },
 }
 for (const [name, W] of Object.entries(WF)) {
-  const vsDrone = droneHitChance(W, { hitBonus: 0 }, 0.18, ctx.balance.battle)
+  const vsDrone = droneHitChance(W, { hitBonus: 0 }, ctx.balance.battle)
   const vsShip = [1000, 2500, 3220, 5545]
     .map((d) => `${d}m:${(hitChance(W, { hitBonus: 0 }, { evasion: 0.18 }, d, ctx.balance.battle) * 100).toFixed(0)}%`)
     .join('  ')
   console.log(
-    `  ${name}：打机群（E 警戒机 闪避 0.18）= ${(vsDrone * 100).toFixed(0)}%（**与两舰距离无关**）｜打舰 = ${vsShip}`,
+    `  ${name}：打机群 = ${(vsDrone * 100).toFixed(0)}%（**无视两舰距离 · 不减机型闪避**，E/G 两族同值）｜` +
+      `打舰（对 0.18 回避目标）= ${vsShip}`,
   )
 }
 
