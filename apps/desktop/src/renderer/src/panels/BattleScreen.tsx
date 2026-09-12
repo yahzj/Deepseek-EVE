@@ -1401,12 +1401,18 @@ export function BattleScreen({
       // 从未被平移到我方舰位（玩家不带无人机时 `d.wings` 为空）⇒ 敌机位置全错、还随布局漂移。
       ...foeWings.map((w) => {
         const sk = `${w.tag}:${w.artId}`;
+        const fcyc0 =
+          DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS;
         // **首轮也要飞出来**（船长 2026-09-11：「进入敌方射程后，敌方无人机似乎第一次不会飞出」）：
-        // 出击状态原先只在"该机**开火**"那一刻才盖章 ⇒ 敌机的**第一发**是在机体还没出现时打出来的
-        // （看着就是"第一次不飞出来"）。现在**机群一出现就起一轮**，开火事件只在轮次结束后重新盖章。
+        // 出击状态原先只在"该机**开火**"那一刻才盖章 ⇒ 敌机的**第一发**是在机体还没出现时打出来的。
+        // ⚠ **但不能"机群一出现就起一轮"**（船长 2026-09-11 追加：「每次进入战斗界面时，敌机会
+        //   固定飞出一次」）：本 ref 是**组件内的**，重进战斗界面会重挂 ⇒ 又初始化一次 ⇒ 多飞一趟。
+        // ⇒ 初始值取"**本轮已收舱**"（`startAt = now − 一轮时长`）：机体先停在甲板，
+        //   **由它自己的第一发开火**盖章起一轮（机体随之飞出，弹道也按到位延迟显示）——
+        //   既不空打、也不会每次重进界面白飞一趟。
         if (!foeSortieRef.current.get(sk)) {
           foeSortieRef.current.set(sk, {
-            startAt: now,
+            startAt: now - fcyc0,
             offs: droneRandomOffsets(DRONE_SHOW_MAX),
           });
         }
