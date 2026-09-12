@@ -630,7 +630,7 @@ const meSpeedRef = useRef(200)
   /** 视觉行逐舰体积；全灭瞬间仍保留 1 槽（与改造前 `Math.max(1, n)` 同语义：布局不退化） */
   const foeSizesFor = (tags: readonly string[]): number[] =>
     tags.length ? tags.map(foeSizeOf) : [LAY.MAIN]
-  /** 视觉行逐舰**抬升量**（错列雁阵：前排 0、后排 +72px；2026-09-11 船长定）——
+  /** 视觉行逐舰**抬升量**（错列雁阵：前排 0（原位不动）、后排 +`RANK_STAGGER`＝54px；2026-09-11 船长定）——
    *  前排判据 = 本波首舰（`(w{n}-)?foe-0`）或该舰级为头目档（`elite`）；只看 tag 与数据，不看谁还活着 */
   const foeRaisesFor = (tags: readonly string[]): number[] =>
     tags.length
@@ -1071,7 +1071,7 @@ const meSpeedRef = useRef(200)
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
-  const foeRaises = foeRaisesFor(foeRowTags) // 逐舰抬升量（px；错列雁阵：主舰基线、其余 +72）
+  const foeRaises = foeRaisesFor(foeRowTags) // 逐舰抬升量（px；错列雁阵：前排原位、其余 +54）
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
