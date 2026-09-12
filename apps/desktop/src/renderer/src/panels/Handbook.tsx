@@ -482,7 +482,9 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
       name: bp.name,
       sub:
         bp.itemId !== undefined
-          ? `弹药 · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
+          ? // 产物门类取**产物自己的**大类（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——
+            // 此前一律写死「弹药」，2 张修理组件蓝图被错标成弹药）
+            `${kindName(engine.ctx.items.get(bp.itemId)?.kind ?? 'ammo')} · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
           : `装备 · ${engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.moduleId ?? ''}`,
       raw: bp as unknown as RawData,
     })),
@@ -514,7 +516,11 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     if (c.tab === 'ships') return String(c.raw.role ?? 'industrial')
     if (c.tab === 'blueprints') {
       // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
-      if (c.raw.shipId !== undefined) return 'ship'
+      // 2026-09-11 船长：「舰船部分按舰船级别划分」——舰船蓝图由 1 组拆成 T1~T5 五组（键 t<级别>，同表）
+      if (c.raw.shipId !== undefined) {
+        const ship = engine.ctx.ships.get(String(c.raw.shipId))
+        return ship ? `t${ship.tier}` : ''
+      }
       if (c.raw.itemId !== undefined) return 'supply'
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
       return mod ? rackOf(mod) : ''
