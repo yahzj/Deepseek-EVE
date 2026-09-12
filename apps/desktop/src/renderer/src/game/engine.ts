@@ -37,6 +37,8 @@ import {
   setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   goStandbyAt,
   goodLockedReason,
+  // 2026-09-11 市价买入失败原因分诊（暗市闸口径与界面同源，对玩家按声望锁措辞）
+  bmGateReason,
   learnBlueprint,
   levelOf,
   listSellHolding,
@@ -44,6 +46,7 @@ import {
   loadWarehouseToCargoFit,
   lockShip,
   marketQuote,
+  goodName,
   marketSellHolding,
   marketSellPreview,
   newSettleStats,
@@ -1000,7 +1003,10 @@ export class GameEngine {
     return { ok: true, pending: true }
   }
 
-  /** 市价买入商品（默认 1 件；矿石/矿物传数量）；无现货时报错并提示改挂单 */
+  /** 市价买入商品（默认 1 件；矿石/矿物传数量）。
+   *  2026-09-11 船长实测反馈修复：买不到时**按真实原因分别报错**（此前一律报「供应簿只剩 0 件」，
+   *  实测钱包不足时 141 个有货商品里 104 个会这样说、声望不足时 3 个 MK3 会这样说——全是误导）；
+   *  部分成交时改报"已买多少、还剩多少"，不再说"无法购买"。 */
   buyGoodAt(goodKey: string, qty = 1): CommandResult {
     const res = buyAtMarket(this.state, this.ctx, goodKey, qty)
     if (res.bought > 0) {
@@ -1008,9 +1014,36 @@ export class GameEngine {
       this.notify()
     }
     if (res.bought >= qty) return { ok: true }
-    return {
-      ok: false,
-      error: `市场供应簿只剩 ${res.bought.toLocaleString('zh-CN')} 件可即时成交——可用「挂单买入」等 NPC 补给后自动成交。`,
+    const def = this.ctx.marketGoods.get(goodKey)
+    const name = def ? goodName(this.ctx, goodKey) : goodKey
+    if (res.bought > 0) {
+      // 部分成交：货已入库，只提示"只够这些"
+      return {
+        ok: false,
+        error: `供应簿只够 ${res.bought.toLocaleString('zh-CN')} 件（已买入 ${name}×${res.bought.toLocaleString('zh-CN')}）——其余可挂「挂买单」等 NPC 补给后自动成交。`,
+      }
+    }
+    switch (res.blocked) {
+      case 'insufficient-isk': {
+        const quote = marketQuote(this.state, this.ctx, goodKey)
+        const unit = quote.sell ?? 0
+        return {
+          ok: false,
+          error: `ISK 不足：最低一张 ${unit.toLocaleString('zh-CN')} ISK，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} ISK——减少数量，或用「挂买单」低价排队等成交。`,
+        }
+      }
+      case 'standing':
+        return {
+          ok: false,
+          error: `暂不能买入：${def ? (bmGateReason(this.state, def) ?? goodLockedReason(this.state, def) ?? '声望未达') : '声望未达'}。`,
+        }
+      case 'not-buyable':
+        return { ok: false, error: `${name}只收不卖：市场不出售现货（可等玩家二手挂单，或自己制造）。` }
+      default:
+        return {
+          ok: false,
+          error: `${name}当前没有现货：市场供应簿为空——用「挂买单」等 NPC 补给后自动成交，或过一会儿再来（常驻 20 分钟一轮补给）。`,
+        }
     }
   }
 

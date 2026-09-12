@@ -1249,32 +1249,60 @@ export function sellAtMarket(
 }
 
 /** 市价买入：立即吃 npcSell 簿；簿吃穿后提示改挂限价单。受声望门槛商品直接拒绝（空手返回）。
- * shipUid：本次成交（kind=ship 商品）最后入队的一艘舰船实例 uid（购买流程"买完即登舰"用；非船商品为 null） */
+ * shipUid：本次成交（kind=ship 商品）最后入队的一艘舰船实例 uid（购买流程"买完即登舰"用；非船商品为 null）
+ *
+ * **2026-09-11 船长实测反馈修复**：「市场订单有货时点市价买入，报『供应簿只剩 0 件』、无法购买」——
+ * 根因是本函数里三条**静默** `break/continue`（钱包不够 / 暗市闸跳单 / 只收不卖）最终都表现为 `bought = 0`，
+ * 而界面把 `bought < qty` 一律解释成"没现货"。现补 `blocked` 原因字段：
+ *   `'no-stock'`（供应簿确实没有可吃单；含**部分成交**后的吃穿）· `'insufficient-isk'`（钱包连最低一张都不够）
+ *   · `'standing'`（声望锁：含 `standingReq` 硬锁与 `bmStanding` 暗市闸——**对玩家一律按声望锁口径措辞**）
+ *   · `'not-buyable'`（只收不卖）。
+ * `bought > 0` 时调用方应报"成交了多少"，不要再报"无法购买"。 */
 export function buyAtMarket(
   state: GameState,
   ctx: SimContext,
   goodKey: string,
   qty: number,
-): { bought: number; total: number; avg: number; remaining: number; shipUid: string | null } {
+): {
+  bought: number
+  total: number
+  avg: number
+  remaining: number
+  shipUid: string | null
+  /** bought < qty 时的原因（bought = qty 时不返回） */
+  blocked?: 'no-stock' | 'insufficient-isk' | 'standing' | 'not-buyable'
+} {
   ensureMarket(state, ctx)
   const mk = state.market
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null }
-  if (goodLockedReason(state, def) !== null) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null }
-  if (def.playerBuyable === false) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null } // 只收不卖（残骸等）
+  if (!def || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'no-stock' }
+  if (goodLockedReason(state, def) !== null) {
+    return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'standing' }
+  }
+  if (def.playerBuyable === false) {
+    return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'not-buyable' } // 只收不卖（残骸等）
+  }
   // P2 暗市闸：声望未达时只能吃暗市单（bm 标记），常驻单跳过
   const bmLock = bmGateLocked(state, def)
   let remaining = qty
   let total = 0
   let shipUid: string | null = null
+  let blocked: 'no-stock' | 'insufficient-isk' | 'standing' | undefined =
+    (mk.npcSell[goodKey] ?? []).length === 0 ? 'no-stock' : undefined
   const sellList = mk.npcSell[goodKey] ?? []
   const sorted = [...sellList].sort((a, b) => a.price - b.price)
   for (const npc of sorted) {
     if (remaining <= 0) break
-    if (bmLock && !npc.bm) continue
+    if (bmLock && !npc.bm) {
+      blocked = 'standing' // 单子在、但被声望闸跳过——不能报"没货"
+      continue
+    }
     const take = Math.min(remaining, npc.qty)
     const value = take * npc.price
-    if (state.wallet.isk < value) break
+    if (state.wallet.isk < value) {
+      blocked = 'insufficient-isk' // 钱不够——同样不能报"没货"
+      break
+    }
     const idx = sellList.indexOf(npc)
     if (idx < 0) continue
     state.wallet.isk -= value
@@ -1301,7 +1329,9 @@ export function buyAtMarket(
       addLog(state, 'info', `市价买入成交 ${bought.toLocaleString('zh-CN')} 后供应簿吃穿，剩余 ${remaining.toLocaleString('zh-CN')}——可稍等补给或挂限价买单。`)
     }
   }
-  return { bought, total, avg: bought > 0 ? Math.round(total / bought) : 0, remaining, shipUid }
+  // 部分成交（bought > 0 但没买满）⇒ 原因归"吃穿"；一件没买到 ⇒ 报精准原因
+  const reason = bought >= qty ? undefined : bought > 0 ? 'no-stock' : (blocked ?? 'no-stock')
+  return { bought, total, avg: bought > 0 ? Math.round(total / bought) : 0, remaining, shipUid, ...(reason ? { blocked: reason } : {}) }
 }
 
 /** 舰船是否可出售：在机库、非驾驶中、无 AI 任务、未锁定、不在换船善后返航中、货仓空、无装配 */

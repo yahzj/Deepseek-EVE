@@ -806,7 +806,22 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               <button className="app-btn is-small" onClick={doPlace}>
                 {tab === 'buy' ? '挂买单' : '挂卖单'}
               </button>
-              <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
+              {/* 市价买入（2026-09-11 船长实测反馈修复）：**没有可吃单 / 钱包连最低一张都不够时按钮禁用**，
+                  并把原因写在 title 里——此前按钮一直可点，点下去只会报一句"供应簿只剩 0 件"（原因其实是钱不够/声望闸/无货） */}
+              <button
+                className="app-btn is-primary is-small"
+                disabled={tab === 'buy' && (quote.sell === undefined || state.wallet.isk < quote.sell)}
+                title={
+                  tab !== 'buy'
+                    ? undefined
+                    : quote.sell === undefined
+                      ? '供应簿暂无现货：改用「挂买单」等 NPC 补给后自动成交'
+                      : state.wallet.isk < quote.sell
+                        ? `ISK 不足：最低一张 ${isk(quote.sell)} ISK，钱包 ${isk(Math.floor(state.wallet.isk))} ISK`
+                        : undefined
+                }
+                onClick={tab === 'buy' ? doBuy : () => doSell()}
+              >
                 {tab === 'buy' ? '市价买入' : '市价卖出'}
               </button>
               {tab === 'sell' ? (
