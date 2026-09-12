@@ -1065,8 +1065,13 @@ function droneFireSplitOf(
       ),
     )
     const droneOldSum = droneOld.reduce((a, b) => a + b, 0)
-    // ① 基准 T（该条目实收总单发）② 机群 D（带保底、且不挤掉炮台保底）③ 炮台 G = T − D
-    const T = unitCount * (gunOld + droneOldSum)
+    // ① 基准 T（该条目实收总单发）：
+    //    **写了 `firepowerAnchor` ⇒ 以锚点为准**（船长 2026-09-12「架数变多、总火力不动」）——
+    //    否则沿用旧公式（`单位数 ×（炮台旧单发 + Σ机群旧单发）`，零行为变化）。
+    const T =
+      slot.firepowerAnchor !== undefined && slot.firepowerAnchor > 0
+        ? Math.max(nDrones + unitCount, Math.round(slot.firepowerAnchor))
+        : unitCount * (gunOld + droneOldSum)
     const D = Math.max(nDrones, Math.min(Math.round(T * clamp(0, 1, share)), Math.max(nDrones, T - unitCount)))
     const G = T - D
     // ④ 机群摊分：逐架均分、余数补给前面的架次

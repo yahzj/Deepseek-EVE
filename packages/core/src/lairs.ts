@@ -277,6 +277,12 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
             ...s,
             hpMul: (s.hpMul ?? 1) * scale,
             dmgMul: (s.dmgMul ?? 1) * scale,
+            // **总火力锚点也要随档位放大**（2026-09-12）：锚点是"该条目的实收总单发"，
+            // 与 `dmgMul` 同属"卡面绝对值"这一层 ⇒ 派生时同乘 `scale`。漏了它会让
+            // 写了锚点的卡在窝点里**火力不随档位涨**（血涨火力不涨）。
+            ...(s.firepowerAnchor !== undefined
+              ? { firepowerAnchor: Math.max(1, Math.round(s.firepowerAnchor * scale)) }
+              : {}),
           })),
         }
       : {}),

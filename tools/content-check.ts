@@ -1648,6 +1648,8 @@ for (const m of MODULES) {
       const shareCtx = buildSimContext()
       let shareShips = 0
       let shareSlots = 0
+      /** 写了**总火力锚点**的卡数（锚点口径：架数变动不影响总量） */
+      let anchorCards = 0
       for (const ship of FOE_SHIPS) {
         if (ship.droneFireShare === undefined) continue
         shareShips++
@@ -1702,16 +1704,38 @@ for (const m of MODULES) {
           )
         }
         const withShare = sumShots(def)
-        const without = sumShots(stripShare(def) as typeof def)
-        check(
-          withShare === without,
-          `机群与防空契约：${def.name} 写了机群火力占比后**总单发不守恒**（${withShare} vs 去掉比例 ${without}）——` +
-            `比例只改"机群 / 炮台"的构成，**总量不动**`,
-        )
+        const anchorSum = slots.reduce((n, s) => n + (s.firepowerAnchor ?? 0), 0)
+        const anchoredSlots = slots.filter((s) => s.firepowerAnchor !== undefined)
+        for (const s of anchoredSlots) {
+          check(
+            Number.isInteger(s.firepowerAnchor) && (s.firepowerAnchor ?? 0) >= 1,
+            `机群与防空契约：${def.name} 的编成条目「${s.ship.name}」总火力锚点 ${s.firepowerAnchor} 须为 ≥1 的整数`,
+          )
+          check(
+            (s.droneFireShare ?? s.ship.droneFireShare) !== undefined,
+            `机群与防空契约：${def.name} 的编成条目「${s.ship.name}」写了**总火力锚点**却没写**机群占比**——` +
+              `锚点定"总量"、占比定"构成"，两者须成对（2026-09-12 船长「架数变多、总火力不动」）`,
+          )
+        }
+        if (anchoredSlots.length === slots.length && slots.length > 0) {
+          anchorCards++
+          // **锚点口径**：卡的总量由锚点说了算 ⇒ 直接核"实收总单发 = 锚点合计"
+          check(
+            withShare === anchorSum,
+            `机群与防空契约：${def.name} 写了总火力锚点 ⇒ 实收总单发须等于锚点合计（实际 ${withShare} vs 锚点 ${anchorSum}）`,
+          )
+        } else {
+          const without = sumShots(stripShare(def) as typeof def)
+          check(
+            withShare === without,
+            `机群与防空契约：${def.name} 写了机群火力占比后**总单发不守恒**（${withShare} vs 去掉比例 ${without}）——` +
+              `比例只改"机群 / 炮台"的构成，**总量不动**`,
+          )
+        }
       }
       if (shareShips + shareSlots > 0)
         console.log(
-          `· 机群火力占比契约：舰级缺省 ${shareShips} 条 · 卡上条目 ${shareSlots} 处（0~1 · 须有机群 · **总单发守恒**）`,
+          `· 机群火力占比契约：舰级缺省 ${shareShips} 条 · 卡上条目 ${shareSlots} 处（0~1 · 须有机群 · **总单发守恒**${anchorCards > 0 ? `；其中 **${anchorCards} 张卡写了总火力锚点**（架数变动不影响总量）` : ''}）`,
         )
     }
 
