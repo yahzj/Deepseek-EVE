@@ -522,6 +522,9 @@ export interface BattleState {
     pulses: number
     /** 累计消耗组件枚数 */
     kitsUsed: number
+    /** **逐型**累计消耗（item id → 枚数；2026-09-11 船长「只将消耗组件数量显示到战后总结」）——
+     * 战报按此写「消耗 军用修理组件 ×12」；旧档缺省 = 空账本（战报退化为只报总数） */
+    kitsUsedByType?: Record<string, number>
   }
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = 我方武器条目下标（仅 src='drone' 的条目）；开战由 startBattleFor 写入。
