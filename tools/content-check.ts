@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 内容完整性体检（V10 数据大扩容后加入）：
  * 校验 data 包全部内容表的交叉引用，防止"加数据改漏引用"造成的死物品/坏目录。
  *
@@ -2870,7 +2870,11 @@ for (const m of MODULES) {
   const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
-  const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial'])
+  const TRIGGER_KINDS = new Set([
+    'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
+    // 2026-09-12 星系机制通讯：低安空域（阈值 sec < 0.5，与伏击/扫描判定同源）· 某族敌人所在的星系
+    'lowSec', 'foeFamily',
+  ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
   /**
@@ -3017,6 +3021,21 @@ for (const m of MODULES) {
           `通讯 ${m.id} tutorial.step 应在 0..${TUTORIAL_TOTAL}：${m.trigger.step}`,
         )
         break
+      case 'lowSec':
+        // 死触发器守卫（2026-09-12 星系机制通讯）：数据里必须真的存在安全等级低于 +0.5 的星系，
+        // 否则这封信永远不会送达（阈值与 encounters/explore 的低安判定同源，缺省安全等级按高安）
+        check(
+          GALAXIES.some((g) => (g.security ?? 1) < 0.5),
+          `通讯 ${m.id} 用 lowSec 触发器，但数据里没有安全等级低于 +0.5 的星系`,
+        )
+        break
+      case 'foeFamily':
+        // 死触发器守卫：该族必须真的有敌卡（读敌卡数据判定，故这里也按数据核）
+        check(
+          ANOMALIES_FLAVORED.some((a) => a.foeFamily === m.trigger.family),
+          `通讯 ${m.id} 指向的敌族没有任何敌卡（死触发器）：${m.trigger.family}`,
+        )
+        break
       default:
         break
     }
@@ -3061,6 +3080,40 @@ for (const m of MODULES) {
         check(h.trim().length > 0, `通讯 ${m.id} 的 highlight 含空段落`)
         check(m.body.includes(h), `通讯 ${m.id} 的 highlight 段落不在正文里（界面不会高亮）：${h.slice(0, 24)}…`)
       }
+    }
+  }
+  /* ③ 星系机制通讯登记契约（2026-09-12 船长定：探索到带特殊机制的星系后，发一封通讯讲解对应机制）
+     口径：①四封机制信**必须都在**（缺一封 = 那处机制对玩家失声）；②四者必须落在**互不相同**的触发面上
+     （同一星系 / 同一敌族 / 同一阈值登记两封 ⇒ 玩家会收到两封讲同一件事的信，属"静默重复"，本契约拦下）。 */
+  {
+    const MECH_MAILS: ReadonlyArray<{ id: string; face: string }> = [
+      { id: 'msg-auro-megastructure', face: '星系 galaxy-auro（巨构残骸带）' },
+      { id: 'msg-exile-swarm', face: '敌族 G（鱿烬亡军的蜂群）' },
+      { id: 'msg-lowsec-rules', face: '低安空域（安全等级 < +0.5）' },
+      { id: 'msg-redring-outpost', face: '星系 galaxy-redring（前哨站选址）' },
+    ]
+    /** 触发面键：同一键 = 同一触发面（星系信按星系 id · 族信按族字母 · 低安按阈值） */
+    const faceOf = (t: (typeof COMMS_MESSAGES)[number]['trigger']): string => {
+      switch (t.kind) {
+        case 'galaxy':
+          return `galaxy:${t.galaxyId}`
+        case 'foeFamily':
+          return `foe:${t.family}`
+        case 'lowSec':
+          return 'lowSec'
+        default:
+          return t.kind
+      }
+    }
+    const byFace = new Map<string, string>()
+    for (const mm of MECH_MAILS) {
+      const msg = COMMS_MESSAGES.find((m) => m.id === mm.id)
+      check(msg !== undefined, `星系机制通讯缺登记：${mm.id}（${mm.face}）`)
+      if (!msg) continue
+      const key = faceOf(msg.trigger)
+      const prev = byFace.get(key)
+      check(prev === undefined, `星系机制通讯重复登记同一触发面：${prev} 与 ${mm.id}（触发面 = ${key}）`)
+      byFace.set(key, mm.id)
     }
   }
   for (const d of DIALOGUES) {

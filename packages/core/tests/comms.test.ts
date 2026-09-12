@@ -27,7 +27,7 @@ import { onArriveAtGalaxy, playDialogue } from '../src/station'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { ONB_BRIEFING, ONB_DONE, ONB_DELIVER, ONB_MINE, ONB_OFF } from '../src/onboarding'
-import { makeTestCtx } from './helpers'
+import { anomaly, galaxy, makeTestCtx } from './helpers'
 
 /** 迷你建站点（挂在 galaxy-far；介绍剧本 dlg-intro） */
 function siteDef(): StationSiteDef {
@@ -476,5 +476,84 @@ describe('通讯 · 存档往返', () => {
     expect(commsUnreadCount(loaded, ctx)).toBe(0)
     advanceComms(loaded, ctx)
     expect(commsInbox(loaded, ctx).length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * 星系机制通讯（2026-09-12 船长定：「罗列目前的特殊机制，并在玩家探索到该具备特殊机制的星系后
+ * 发一封通讯给玩家，讲解对应机制」）。
+ *
+ * 本批新增两条触发器，**都不写死"哪几个星系"的清单**：
+ * - `lowSec`：阈值 = **安全等级 < +0.5**，与低安的既有判定同源（`encounters.ts` 暴露面掷骰
+ *   「高安 sec ≥ 0.5 不掷」、`explore.ts` 扫描窗口惩罚）⇒ 安全等级被改判时自动跟随；
+ * - `foeFamily`：读**敌卡数据**（`AnomalyDef.foeFamily` + `galaxyId`）⇒ 敌卡搬家时自动跟随。
+ */
+describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发一封讲解）', () => {
+  const MECH_MSGS: readonly CommsMessageDef[] = [
+    { id: 'msg-low', factionId: 'dshi', deptId: 'dept-survey', kind: '提示', subject: '低安须知', body: ['正文。'], trigger: { kind: 'lowSec' } },
+    { id: 'msg-swarm', factionId: 'dshi', deptId: 'dept-survey', kind: '剧情', subject: '蜂群通报', body: ['正文。'], trigger: { kind: 'foeFamily', family: 'G' } },
+  ]
+
+  /** 星系：中安 0.2 · 真低安 −0.7 · 高安边界 0.5（母港等默认星系不写 security = 高安）；G 族敌卡挂在一个指定星系 */
+  function mechWorld(gCardGalaxy = 'galaxy-low') {
+    const ctx: SimContext = makeTestCtx({
+      quietEvents: true,
+      commsMessages: MECH_MSGS,
+      commsFactions: FACTIONS,
+      galaxies: [
+        galaxy('galaxy-mid', '中安带', { security: 0.2 }),
+        galaxy('galaxy-low', '深低安', { security: -0.7 }),
+        galaxy('galaxy-edge', '高安边界', { security: 0.5 }),
+      ],
+      anomalies: [anomaly('ano-swarm', gCardGalaxy, { threat: 42, foeFamily: 'G' })],
+    })
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
+    return { state, ctx }
+  }
+
+  it('lowSec：安全等级 < +0.5 才算低安（0.5 与缺省高安都不算）', () => {
+    const { state, ctx } = mechWorld()
+    const ids = (): string[] => commsInbox(state, ctx).map((e) => e.id)
+    tick(state, ctx)
+    expect(ids()).not.toContain('msg-low') // 只有母港（高安）
+    state.exploredGalaxies.push('galaxy-edge') // 0.5 = 高安边界，不吃低安判定
+    tick(state, ctx)
+    expect(ids()).not.toContain('msg-low')
+    state.exploredGalaxies.push('galaxy-mid') // 0.2 —— 还没到 0，但已在低安判定线内
+    tick(state, ctx)
+    expect(ids()).toContain('msg-low')
+  })
+
+  it('lowSec：送达幂等（重复推进只留一封）', () => {
+    const { state, ctx } = mechWorld()
+    state.exploredGalaxies.push('galaxy-low')
+    tick(state, ctx)
+    tick(state, ctx, 5000)
+    expect(commsInbox(state, ctx).filter((e) => e.id === 'msg-low')).toHaveLength(1)
+  })
+
+  it('foeFamily：点亮"有该族敌卡"的星系才送，敌卡在哪个星系由数据决定（搬家自动跟随）', () => {
+    const { state, ctx } = mechWorld() // G 卡挂在 galaxy-low
+    state.exploredGalaxies.push('galaxy-mid') // 有星系、但该星系没有 G 卡 ⇒ 不送
+    tick(state, ctx)
+    expect(commsInbox(state, ctx).map((e) => e.id)).not.toContain('msg-swarm')
+    state.exploredGalaxies.push('galaxy-low')
+    tick(state, ctx)
+    expect(commsInbox(state, ctx).map((e) => e.id)).toContain('msg-swarm')
+
+    // 把 G 卡挪到另一个星系：判定跟着卡走（证明读的是数据，不是写死的星系 id）
+    const moved = mechWorld('galaxy-mid')
+    moved.state.exploredGalaxies.push('galaxy-mid')
+    tick(moved.state, moved.ctx)
+    expect(commsInbox(moved.state, moved.ctx).map((e) => e.id)).toContain('msg-swarm')
+  })
+
+  it('老档补送：已探明该星系的存档推进一帧即补送（幂等，不重复）', () => {
+    const { state, ctx } = mechWorld()
+    state.exploredGalaxies.push('galaxy-low') // 模拟"更新前就探明过"的老档：该星系 sec −0.7 且挂着 G 族敌卡
+    advanceComms(state, ctx)
+    advanceComms(state, ctx)
+    // 两个触发面各自补送一封、且都只补一次（按送达时刻 + id 稳定排序）
+    expect(commsInbox(state, ctx).map((e) => e.id)).toEqual(['msg-low', 'msg-swarm'])
   })
 })
