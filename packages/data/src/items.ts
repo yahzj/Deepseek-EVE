@@ -419,7 +419,17 @@ export const DRONES: readonly ItemDef[] = [
     hitRate: 0.75, // 2026-09-10 船长
     falloff: 1, // 命中不随距离衰减
     // 2026-09-10 定位调整：血量最厚（97）+ 闪避最低（10%）+ 装甲向抗性（抗拆甲）
-    defense: { shieldHp: 60, armorHp: 44, hullHp: 90, armorResist: { explosive: 0.15 }, hullResist: { kinetic: 0.05 }, evasion: 0.1 },
+    // 2026-09-12 船长裁决：「**给攻坚无人机添加 25% 全抗性**」⇒ 三层 × 三系**全抗 25%**
+    //（取代原来的"甲抗爆炸 0.15 / 结构抗动能 0.05"两处零散抗性——攻坚机 = 硬、慢、挨打抗）。
+    defense: {
+      shieldHp: 60,
+      armorHp: 44,
+      hullHp: 90,
+      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+      armorResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+      hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+      evasion: 0.1,
+    },
   },
   {
     id: 'drone-sentry',

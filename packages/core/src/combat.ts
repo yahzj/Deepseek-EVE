@@ -122,6 +122,9 @@ export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM:
 export interface UnitSpec {
   tag: string
   name: string
+  /** **舰种档**（1 护卫舰 … 5 旗舰；2026-09-12 加）：敌方单位 = 编成条目所引舰级的档位；
+   *  旧威胁推导路径不写（缺省按 1 处理）。用途 = **敌舰近防炮的档系数**（`balance.pdTierMul`）。 */
+  hullClassTier?: number
   side: 'me' | 'foe'
   hp: Hp3
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
@@ -1278,6 +1281,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(ship.droneRangeMulOnHit !== undefined && droneWeapons.length > 0
         ? { foeDroneRangeMulOnHit: ship.droneRangeMulOnHit }
         : {}),
+      // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
+      hullClassTier: ship.hullClassTier,
       foeTactic: tactic,
       // **自己的有效射程带**（含覆写）——供 `foeDesiredRange` 在舰级路径上替代全局战术表
       // （2026-09-11 船长裁决②「期望交距改取该单位自己的射程带」）。旧路径不写本字段。
@@ -2926,14 +2931,30 @@ export function droneLostCount(b: import('./state').BattleState): number {
   return Object.values(b.droneLost ?? {}).reduce((s, n) => s + n, 0)
 }
 
+/** 近防炮选靶优先级（2026-09-12 船长：「**优先攻击哨戒和攻坚无人机**」「侦查和普通战机相同权重抽取」）：
+ *  `0` = 最高（哨戒机）· `1`（攻坚机）· `2` = 其余（侦察机 / 战斗机 / 专属机等，**彼此等权**）。
+ *  ⚠ 哨戒机另受"进 `PD_SENTRY_RANGE_M` 才暴露"的约束（船长 2026-09-11 重新定义）。 */
+const PD_PRIORITY_BY_ART: Record<string, number> = {
+  'drone-sentry': 0,
+  'drone-heavy': 1,
+}
+function pdPriorityOf(artId: string | undefined | null): number {
+  return artId ? (PD_PRIORITY_BY_ART[artId] ?? 2) : 2
+}
+
 /**
- * 近防炮结算（每拍调用；2026-09-10 船长口径）：
- * - 每艘点防舰**独立**按 `pdJudgementMs`（0.5s）判定一次；
- * - 随机挑一架**正在攻击的放飞无人机**（存活；**哨戒机不可被攻击**——船长 2026-09-11 关闭该机制，
- *   见 `PD_TARGET_SENTRIES`）→ 按 `pdAcc − 机型闪避` 掷命中；
- * - 命中按 `pdDmg` 走该机型三层抗性；血量打空 = 该架本场击落（停火 + 计入 droneLost）；
- * - **不看距离**（放飞出去就在威胁之下）；**战斗内可 100% 损坏**（2026-09-10 船长：
- *   取消原 50% 单场上限）——战后按回收率找回一部分（见 settleDroneLosses）；
+ * 近防炮结算（每拍调用；2026-09-10 船长口径 · **2026-09-12 八条裁决改版**）：
+ * - 每艘点防舰**独立**按 `pdJudgementMs`（0.5s）判定一次 ⇒ **判定频率 = 火力密度**（反击制只决定"能不能开火"）；
+ * - **集火**（船长 2026-09-12）：锁定一架直到它被击落才换靶（旧口径 = 每拍随机换靶 ⇒ 伤害摊薄到整群、几乎打不掉）；
+ * - **选靶优先级**：**哨戒机 → 攻坚机 → 其余等权抽取**（侦察机与战斗机同权）；
+ * - 命中 = `clamp(pdHitFloor, 1, pdAcc − 机型闪避)`（**下限 10%**，修掉"闪避 ≥ pdAcc ⇒ 永久免疫"）；
+ * - 伤害 = `pdDmg × 舰种档系数(pdTierMul)`（**越大的船防空越强**：T1 1.0 / T3 2.0 / T5 4.0），
+ *   再走该机型三层抗性；血量打空 = 该架本场击落（停火 + 计入 droneLost + 击落演出）；
+ * - **两条独立开火许可**（2026-09-12 **修 bug**）：旧代码要求"哨戒机在射程内"**并且**有令牌，
+ *   等于把"出击型打一次换一次反击"整条路掐死（出击型机群永远不会被反击、实测战损恒为 0）：
+ *   a) **反击令牌**：我方无人机打过敌舰 ⇒ 窗口内还手（**无视距离**，船长 2026-09-11 口径）；
+ *   b) **哨戒机在射程内**：常驻暴露 ⇒ 不需令牌即可还手（船长 2026-09-11 重新定义）；
+ * - **不看距离**（放飞出去就在威胁之下）；**战斗内可 100% 损坏**（战后按回收率找回一部分）；
  * - 近防炮不参与敌舰对玩家的常规攻击（独立系统）；全程消费 state.rng，确定性可复现。
  */
 function resolvePointDefense(
@@ -2947,22 +2968,20 @@ function resolvePointDefense(
   const pools = b.dronePools
   // 无近防炮调度 = 本场敌舰未达威胁门槛（或本改动前的旧战斗）：不结算
   if (!pools || b.pdCd === undefined) return;
-  // **反应式**（同上，对称）：敌方近防炮只在**我方无人机刚打过它**时才还手。
-  const foeHitAt = b.droneHitAt?.foe
-  if (
-    foeHitAt === undefined ||
-    b.lastTickGameMs - foeHitAt > PD_REACTIVE_WINDOW_MS
-  )
-    return;
-  // **消费制**（同上，对称；船长 2026-09-11）：我方无人机打它一下 ⇒ 它才还一次手。
-  b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined };
-  // ⚠ **哨戒机走另一条规则**（船长重新定义）：它**进近防炮射程内**就会被反击，不需要"先被攻击"
-  // ⇒ 令牌之外还要放行这一路（选靶里再按 sentriesInRange 过滤；无哨戒机时不会凭空开火）。
-  const sentryInRange =
-    b.distanceM <= PD_SENTRY_RANGE_M &&
-    aliveDroneIndices(b, SENTRY_DRONE_IDS, true, true).length > 0
-  if (!sentryInRange) return
   const period = Math.max(100, Math.round(bal.pdJudgementMs))
+  // ⚠ **哨戒机只在射程内可选/可被反击**（船长 2026-09-11 重新定义）
+  const sentryOk = b.distanceM <= PD_SENTRY_RANGE_M
+  // 许可 a：**反击令牌**（我方无人机打过敌舰 ⇒ 窗口内还手，**无视距离**）
+  const foeHitAt = b.droneHitAt?.foe
+  const tokenOpen =
+    foeHitAt !== undefined && b.lastTickGameMs - foeHitAt <= PD_REACTIVE_WINDOW_MS
+  // 许可 b：**哨戒机在射程内**（不需令牌）
+  const sentryOpen =
+    sentryOk && aliveDroneIndices(b, SENTRY_DRONE_IDS, true, true).length > 0
+  if (!tokenOpen && !sentryOpen) return
+  // **消费制**（船长 2026-09-11）：一次攻击换一次还手（对每艘点防舰各一次）
+  if (tokenOpen) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
+  const focus: Array<number | undefined> = b.pdFocus ? [...b.pdFocus] : []
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue
     let cd = (b.pdCd[fi] ?? period) - dtMs
@@ -2970,25 +2989,38 @@ function resolvePointDefense(
     while (cd <= 0 && guard < 64) {
       guard++
       cd += period;
-      // **哨戒机只在射程内可选**（船长 2026-09-11 重新定义）：两舰贴到 `PD_SENTRY_RANGE_M`
-      // 以内，常驻伴飞的哨戒机才暴露在近防炮之下；否则候选只有出击型。
-      const cands = aliveDroneIndices(
-        b,
-        SENTRY_DRONE_IDS,
-        b.distanceM <= PD_SENTRY_RANGE_M,
-      )
+      // 候选 = 存活放飞条目（哨戒机**只在射程内**可选）
+      const cands = aliveDroneIndices(b, SENTRY_DRONE_IDS, sentryOk)
       if (cands.length === 0) break
-      const idx = cands[Math.min(cands.length - 1, Math.floor(nextRandom(state.rng) * cands.length))]!
+      // **集火**（船长 2026-09-12）：沿用本舰上一次锁定的目标，只要它还活着且仍可选；
+      // 否则按**优先级**重选（哨戒 → 攻坚 → 其余等权）
+      let idx = focus[fi] !== undefined && cands.includes(focus[fi]!) ? focus[fi]! : -1
+      if (idx < 0) {
+        const best = Math.min(...cands.map((i) => pdPriorityOf(pools[i]!.artId)))
+        const tier1 = cands.filter((i) => pdPriorityOf(pools[i]!.artId) === best)
+        idx = tier1[Math.min(tier1.length - 1, Math.floor(nextRandom(state.rng) * tier1.length))]!
+      }
+      focus[fi] = idx
       const pool = pools[idx]!
       const w = me.weapons[idx]!
-      const pHit = clamp(0, 1, bal.pdAcc - pool.evasion)
+      // 命中 = clamp(**下限 10%**, 1, pdAcc − 闪避)（船长 2026-09-12）
+      const pHit = clamp(bal.pdHitFloor ?? 0, 1, bal.pdAcc - pool.evasion)
       if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
-      const res = applyDamage({ s: pool.s, a: pool.a, h: pool.h }, pool.resists ?? {}, bal.pdDmg, 'kinetic')
+      // 伤害 = pdDmg × **舰种档系数**（越大的船防空越强；船长 2026-09-12）
+      const tierMul =
+        bal.pdTierMul?.[Math.min(4, Math.max(0, (foes[fi]!.hullClassTier ?? 1) - 1))] ?? 1
+      const res = applyDamage(
+        { s: pool.s, a: pool.a, h: pool.h },
+        pool.resists ?? {},
+        bal.pdDmg * tierMul,
+        'kinetic',
+      )
       pool.s = res.hp.s
       pool.a = res.hp.a
       pool.h = res.hp.h
       if (pool.s + pool.a + pool.h <= 0) {
         pool.alive = false
+        focus[fi] = undefined // 目标已灭 ⇒ 本舰下一拍重选
         const artId = w.artId ?? 'drone'
         b.droneLost = { ...(b.droneLost ?? {}) }
         b.droneLost[artId] = (b.droneLost[artId] ?? 0) + 1
@@ -3007,6 +3039,7 @@ function resolvePointDefense(
     }
     b.pdCd[fi] = cd
   }
+  b.pdFocus = focus
 }
 
 /**

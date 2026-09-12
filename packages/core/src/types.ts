@@ -706,6 +706,12 @@ export interface BattleBalance {
   pdJudgementMs: number
   /** 判定命中率（直接与机型闪避相减；不叠敌方通用命中加成） */
   pdAcc: number
+  /** **命中率下限**（2026-09-12 船长「允许命中下限 10%」）：`命中 = clamp(pdHitFloor, 1, pdAcc − 机型闪避)`
+   *  ——防"机型闪避 ≥ pdAcc ⇒ 近防炮永远打不到"（首例 = 专属无人机闪避 0.55）。 */
+  pdHitFloor: number
+  /** **近防炮舰种档系数**（2026-09-12 船长「敌人防空火力受舰船级别影响。越大的舰船防空火力越强」）：
+   *  索引 0 = T1 护卫舰 … 4 = T5 旗舰；每次命中伤害 = `pdDmg × 本系数`。 */
+  pdTierMul: readonly number[]
   /** 命中单发伤害（走该机型三层抗性） */
   pdDmg: number
 }

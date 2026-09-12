@@ -577,6 +577,10 @@ export interface BattleState {
   droneLost?: Record<string, number>
   /** 近防炮调度（当前波）：每舰判定冷却剩余毫秒（与敌编队同序）；缺省 = 无近防炮 */
   pdCd?: number[]
+  /** **近防炮集火锁定**（2026-09-12 船长「改为集火制度」）：每艘点防舰当前锁定的机群条目下标
+   *  （与敌编队同序；`undefined` = 未锁定/目标已灭 ⇒ 下一拍按优先级重选）。
+   *  **可选字段**：旧档/旧战斗没有它 ⇒ 行为 = 每拍按优先级重选（**零迁移**）。 */
+  pdFocus?: Array<number | undefined>
   /** 开战时的机群清单快照（机型 id → 架数；用于战后判定"机群战损过半"→ 停重复清剿） */
   droneLoadAtStart?: Record<string, number>
 }
