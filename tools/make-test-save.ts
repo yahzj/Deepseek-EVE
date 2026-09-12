@@ -56,6 +56,16 @@
  *  - lairgear 五族专属装备 15 件 + 流亡蜂无人机 验收（2026-09-10 船长「⑧需要」）：在 rarebox
  *         门槛之上把 14 件专属模块 ×2 直接预置进装备库、专属无人机 ×30 架进仓库、另给王鲭级
  *         无人机重装 ×1（否则专属机无处放飞）——省掉 5/8/10% 掷骰等待，可立刻装配实测。
+ *  - pd    敌方机群 + 巨构近防炮验收（2026-09-11 机群批 S5）：三船对照（2×近防炮MK2 + 3×炮台MK2
+ *         「推荐打法」/ 纯防空 5×近防炮MK3 / 全主炮对照）+ 能量抗 + 近防炮三档与主炮备件。
+ *  - dfamily D 族「守墓古舰」四卡实战复核（2026-09-11 船长追问"是不是该上巡洋舰"）：五船 =
+ *         **E 段用 T3 巡洋（锤头鲨）×4 + 灰鲭鲨上一档对照** + 全部 MK3 装备——结论是
+ *         "**换抗性系才是主旋钮**"（同型只换 mid/low 抗性件）。
+ *  - gswarm G 族「鱿烬亡军」**等离子蜂群**验收（2026-09-12 · P-20a 收口）：四艘**同型对照船**
+ *         （T3 锤头鲨，**只差抗性系与武器**：动能抗 / 等离子抗 / 双抗折中 / 4×近防炮向）——
+ *         星图 → 天底静区 →「**天底静区封锁 66**」开战：看两架蜂群机的**弹点颜色与弹种**
+ *         （等离子已按船长裁决"丙＝换系"上舰、取代爆炸），并实测"**针对性堆等离子抗能不能救回来**"。
+ *         （本档存在的理由：机群挂在**单张卡**上，只有同型船对照才能把"抗性选择"从船型/火力差里分出来。）
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -133,7 +143,7 @@ function injectRareBox(state: GameState): string[] {
     ['ano-maw-hunt', 'C 异形·噬口猎食群', 2],
     ['ano-vault-sentinel', 'D 守墓古舰·穹顶守卫', 2],
     ['ano-titan-wreck', 'E 泰坦巨构·泰坦残骸勘探', 2],
-    ['ano-nadir-static', 'G 烬火流亡·天底封锁军', 2],
+    ['ano-nadir-static', 'G 鱿烬亡军·天底封锁军', 2],
   ]
   const per = RARE_WRECK_VOLUME_M3
   for (const [anomalyId, label, count] of rareSet) {
@@ -977,8 +987,8 @@ function injectLairGear(state: GameState): string[] {
     ['mod-lair-turret-e', 'E 巨构'],
     ['mod-lair-hangar-e', 'E 巨构'],
     ['mod-lair-frame-e', 'E 巨构'],
-    ['mod-lair-drone-tac-g', 'G 流亡'],
-    ['mod-lair-drone-relay-g', 'G 流亡'],
+    ['mod-lair-drone-tac-g', 'G 鱿烬'],
+    ['mod-lair-drone-relay-g', 'G 鱿烬'],
   ]
   for (const [id] of gear) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 2
   notes.push(`装备库预置五族专属装备 14 件 ×2（A/C/D/E 各 3 + G 2）——装配页可直接装上实测（无蓝图、不上市场，正常只能靠高级箱掷骰）`)
@@ -1015,6 +1025,92 @@ function injectLairGear(state: GameState): string[] {
     '测试路径：① 装配页 → 逐件试装 15 件专属装备（对比同级制式件：专属四型定位契约豁免区间校验，数值应明显更强）；' +
       '② 装配页「无人机舱」→ 把「流亡蜂无人机」装入王鲭（切驾驶）→ 星图开战看机群放飞与专属机表现；' +
       '③ 工业页起炉稀有残骸，确认高级箱仍按 5/8/10% 掷骰（本档已把成品直接给到手，开箱链路另见 rarebox 档）。',
+  )
+  return notes
+}
+
+/** gswarm（2026-09-12 二号 · P-20a 收口）：**G 族「鱿烬亡军」等离子蜂群验收档**。
+ *
+ * 为什么需要：P-20a 把「天底封锁舰」的蜂群机由「动能 + 爆炸」换成 **「动能 + 等离子」**
+ * （射程 7,000m · 2 架 · 无后备；机型/美术/数值一字未改，**只换系**）。机群挂在
+ * **天底静区封锁 66** 这张卡上，要肉眼确认"**等离子的弹点与弹种真的在打**"、以及
+ * "**针对性堆等离子抗能不能救回来**"，需要一个能立刻开打、且**同型船只换抗性系**的对照档
+ * ——否则读数差会被船型/火力差污染（std 表 A0 与 A1 差 40pp 就是距离口径污染的教训）。
+ * 基准船沿用既有参考口径（**T3 巡洋 · 锤头鲨级炮击巡洋舰** 5 高 / 4 中 / 3 低，与 `pd`/`dfamily` 档同源），
+ * 四行**只差抗性系与武器**。 */
+function injectGSwarm(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 80_000_000
+  notes.push('钱包 +80,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（天底静区封锁要 9；顺带覆盖全部悬赏）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——G 族三卡（烬火围攻战 42 / 回音残舰 52 / **天底静区封锁 66**）全部可达`)
+  const midSkillIds = [
+    'gunnery', 'kinetic-gunnery', 'missile-launching', 'laser-cannon', 'fire-control',
+    'reload-drills', 'drone-warfare', 'drone-servicing', 'ammunition-condensing',
+    'shield-operation', 'energy-management', 'hull-upgrades', 'shield-tuning', 'armor-tuning',
+    'armed-ops', 'armored-ops', 'vector-maneuvering', 'evasion-maneuvering',
+    'targeting-integration', 'ship-systems-engineering',
+  ]
+  for (const k of midSkillIds) state.skills.trained[k] = 3
+  notes.push('战斗系技能 20 项 = Lv3（中位档，与 battle:calibrate 同口径）')
+  const MID_KIN = ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2']
+  const MID_PLA = ['mod-prop-2', 'mod-shield-pla-2', 'mod-track-2', 'mod-gyro-2']
+  const LOW_KIN = ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']
+  const LOW_PLA = ['mod-stab-pla-2', 'mod-armor-pla-2', 'mod-armor-plate-2']
+  const gun2 = ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2']
+  const rows: Array<[string, string[], string[]]> = [
+    ['天底·动能抗（旧口径：只堆主系）', [...gun2, 'mod-turret-kin-2', 'mod-turret-kin-2'], MID_KIN, LOW_KIN],
+    ['天底·等离子抗（针对蜂群：盾甲全堆副系）', [...gun2, 'mod-turret-kin-2', 'mod-turret-kin-2'], MID_PLA, LOW_PLA],
+    ['天底·双抗折中（盾抗等离子 · 甲抗动能）', [...gun2, 'mod-turret-kin-2', 'mod-turret-kin-2'], MID_PLA, LOW_KIN],
+    ['天底·近防炮向（打蜂群本身：4×近防炮MK3）', ['mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3', 'mod-pd-e-3', 'mod-turret-kin-2'], MID_PLA, LOW_PLA],
+  ]
+  const uids: string[] = []
+  rows.forEach(([name, high, mid, low], i) => {
+    const uid = addShipToFleet(state, 'sh-hammerhead')
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  notes.push(
+    `新增**四艘同型对照船**（T3 锤头鲨级炮击巡洋舰，只差抗性系与武器）：${uids.join(' / ')}——舰船页切驾驶即换行`,
+  )
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  notes.push('仓库弹药三型 ×5000')
+  const mk3 = MODULES.filter((m) => m.id.endsWith('-3')).map((m) => m.id)
+  for (const m of mk3) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 8
+  for (const m of [...MID_KIN, ...MID_PLA, ...LOW_KIN, ...LOW_PLA, 'mod-turret-kin-2']) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 6
+  }
+  notes.push(`装备库预置**全部 MK3 装备**各 ×8（按 id 后缀 -3 自动枚举，共 ${mk3.length} 件）+ 四行用到的抗性/支援/主炮件各 ×6`)
+  for (const s2 of Object.values(state.fleet)) {
+    if (s2) {
+      s2.durability = 1
+      s2.armorPct = 1
+    }
+  }
+  notes.push('全舰耐久回满')
+  notes.push(
+    '测试路径：① 星图 → 天底静区 →「**天底静区封锁 66**」开战：看敌方**两架蜂群机的弹点颜色/弹种**' +
+      '（机型资产三型共用同一机体、**颜色按弹型**，等离子与动能的弹点不同色）；' +
+      '② 依次切四艘对照船各打一场，对比**残血与时长**——重点看"等离子抗"两行是否明显更耐打；' +
+      '③ 第 4 行带 4 门近防炮，可顺带看**我方近防炮打蜂群**（集火：锁定一架到击落才换靶）；' +
+      '④ 蜂群 **2 架、无后备**（A3 打光为止不补充）⇒ 先清机群再打母舰是解；' +
+      '⑤ 想对照"换系前"手感，可另开 `lairgear`/`dfamily` 档，或让我加一版"爆炸系蜂群"对照档。',
   )
   return notes
 }
@@ -1343,6 +1439,8 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   abyssgate: injectAbyssgate,
   lairgear: injectLairGear,
   dfamily: injectDfamily,
+  // gswarm（2026-09-12 P-20a 收口）：G 族等离子蜂群验收档（四艘同型对照船，只差抗性系）
+  gswarm: injectGSwarm,
 }
 function main(): void {
   const feature = process.argv[2]
