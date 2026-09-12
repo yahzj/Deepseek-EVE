@@ -42,9 +42,31 @@ function battleWithAllFields(): { state: GameState; ctx: SimContext; battle: Bat
   battle.ended = null
   battle.hullEscapeFrac = 0.5
   battle.autoEscaped = true
-  battle.escapeReason = 'hull'
+  // `'cannot-engage'`（2026-09-12 起也随档；原先只认 'hull' | 'timeout'）
+  battle.escapeReason = 'cannot-engage'
   battle.waveIdx = 1
   battle.waveClearAt = 1414
+  // ── 2026-09-12 船长裁定七项（由 runtime 改随档）──
+  battle.repair = {
+    units: [
+      { moduleId: 'mod-hull-repair-1', kitId: 'repairkit-mil', armorPerPulse: 3, hullPerPulse: 4, stopped: false },
+    ],
+    kits: { 'repairkit-mil': 7 },
+    nextPulseAtMs: 1515,
+    pulses: 2,
+    kitsUsed: 5,
+    kitsUsedByType: { 'repairkit-mil': 5 },
+  }
+  battle.dronePools = { 0: { s: 1, a: 2, h: 3, alive: true, artId: 'drone-x', evasion: 0.25 } }
+  battle.foeDronePools = {
+    'foe-0': [
+      { s: 4, a: 5, h: 6, alive: false, evasion: 0.1, inHangar: true, readyAtMs: 1616, maxS: 4, maxA: 5, maxH: 6 },
+    ],
+  }
+  battle.droneLost = { 'drone-x': 2 }
+  battle.droneLoadAtStart = { 'drone-x': 4 }
+  battle.foeDroneRangeBuff = 4
+  battle.foeGunRangeBuff = 1.5
   state.expedition.active = true
   state.expedition.phase = 'battle'
   state.expedition.anomalyId = 'ano-hard'
@@ -69,25 +91,36 @@ describe('战斗字段随档往返（审计 A3 登记表）', () => {
     // 抽样核对几个"最容易漏"的（值写死，防用例自己被改坏）
     expect(back!.hullEscapeFrac).toBe(0.5)
     expect(back!.autoEscaped).toBe(true)
-    expect(back!.escapeReason).toBe('hull')
+    expect(back!.escapeReason).toBe('cannot-engage')
     expect(back!.waveIdx).toBe(1)
     expect(back!.waveClearAt).toBe(1414)
     expect(back!.ammoIds).toEqual({ kinetic: 'ammo-kinetic-2', plasma: 'ammo-plasma-2' })
+    // 2026-09-12 船长裁定七项：逐项写死抽样（结构体要整块一致，防"只带了一半"）
+    expect(back!.repair).toEqual(battle.repair)
+    expect(back!.repair!.kits).toEqual({ 'repairkit-mil': 7 })
+    expect(back!.dronePools).toEqual(battle.dronePools)
+    expect(back!.foeDronePools).toEqual(battle.foeDronePools)
+    expect(back!.droneLost).toEqual({ 'drone-x': 2 })
+    expect(back!.droneLoadAtStart).toEqual({ 'drone-x': 4 })
+    expect(back!.foeDroneRangeBuff).toBe(4)
+    expect(back!.foeGunRangeBuff).toBe(1.5)
   })
 
   it('登记为 runtime 的字段**有意不入档**（重载后按缺省口径续算）', () => {
     const { state, battle } = battleWithAllFields()
     // 故意给几个 runtime 字段塞值（真引擎里它们只在战斗中出现）
-    battle.foeGunRangeBuff = 1.5
-    battle.foeDroneRangeBuff = 4
     battle.pdFocus = [0]
+    battle.pdCd = [123]
     battle.notices = [{ atMs: 1, text: '测试提示' }]
+    battle.foeChargeOn = true
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
     const back = loaded.expedition.battle!
     const persist = new Set<string>(BATTLE_PERSIST_KEYS.map((k) => String(k)))
-    expect(persist.has('foeGunRangeBuff')).toBe(false)
-    expect(back.foeGunRangeBuff).toBeUndefined()
-    expect(back.foeDroneRangeBuff).toBeUndefined()
+    for (const key of ['pdFocus', 'pdCd', 'notices', 'foeChargeOn']) {
+      expect(persist.has(key), `${key} 不该被登记为 persist`).toBe(false)
+    }
+    expect(back.foeChargeOn).toBeUndefined()
+    expect(back.pdCd).toBeUndefined()
     expect(back.pdFocus).toBeUndefined()
     expect(back.notices).toBeUndefined()
   })

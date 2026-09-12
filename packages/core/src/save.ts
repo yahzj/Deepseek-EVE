@@ -722,21 +722,23 @@ const BATTLE_FIELDS = {
   waveClearAt: { kind: 'persist' },
   autoEscaped: { kind: 'persist' },
   escapeReason: { kind: 'persist' },
+  /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
+   * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
+  repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
+  dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
+  foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
+  droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
+  droneLoadAtStart: { kind: 'persist' }, // 开战机群快照（丢了 ⇒ 战后"战损过半"判定失效）
+  foeDroneRangeBuff: { kind: 'persist' }, // E 族受击增程：一次触发、本场永久（丢了 ⇒ 机制静默重置）
+  foeGunRangeBuff: { kind: 'persist' }, // D 族炮台受击增程：同上
   /* ── 运行态（有意不入档，逐条写明理由） ── */
   foeChargeOn: { kind: 'runtime', why: '敌突进循环：落在"重载即重置循环"口径内（2026-09-10 起即如此，登记备查）' },
   foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
   foeChargeCdUntilMs: { kind: 'runtime', why: '同突进循环：重载即重置冷却' },
-  repair: { kind: 'runtime', why: '维修装置运行态：开战按装配写入，重载后按"本场无维修装置介入"续算' },
-  dronePools: { kind: 'runtime', why: '我方机群生存池：开战建池，重载后按缺省口径续算' },
-  foeDronePools: { kind: 'runtime', why: '敌机生存池：开战/换波重建，重载后按"本场没有敌机"缺省口径续算' },
   droneHitAt: { kind: 'runtime', why: '反应式防空的最近受击时刻：短窗缓存，超窗即脱锁' },
-  foeDroneRangeBuff: { kind: 'runtime', why: '敌机受击增程：一次触发本场永久；重载后回到未触发（可被再次命中重新触发）' },
-  foeGunRangeBuff: { kind: 'runtime', why: '炮台受击增程（D 族静滞卫舰）：同上，重载后回到未触发' },
   notices: { kind: 'runtime', why: '战斗画面提示条：纯表现层，限时自动消失、不留档' },
-  droneLost: { kind: 'runtime', why: '本场已击落架数：结算时按此永久扣除机群清单' },
   pdCd: { kind: 'runtime', why: '近防炮调度冷却（当前波）：重载即重置为可开火' },
   pdFocus: { kind: 'runtime', why: '近防炮集火锁定：缺省 = 下一拍按优先级重选（2026-09-12 设计即零迁移）' },
-  droneLoadAtStart: { kind: 'runtime', why: '开战机群快照：仅用于战后"战损过半"判定' },
 } satisfies Record<keyof BattleState, BattleFieldSpec>
 
 /** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */
@@ -806,6 +808,14 @@ function cleanBattle(raw: unknown): BattleState | null {
   const endedRaw = b.ended
   const fx = cleanFx(b.fx, numf)
   // 清洗后的候选值——**只有登记为 `persist` 的字段会被带出**（见 `BATTLE_FIELDS`）
+  // 2026-09-12 船长裁定「六项全修」：下面七项**改为随档**，故先清洗成候选值
+  const repair = cleanRepair(b.repair)
+  const dronePools = cleanDronePools(b.dronePools)
+  const foeDronePools = cleanFoeDronePools(b.foeDronePools)
+  const droneLost = cleanCountMap(b.droneLost)
+  const droneLoadAtStart = cleanCountMap(b.droneLoadAtStart)
+  const foeDroneRangeBuff = cleanPosNum(b.foeDroneRangeBuff)
+  const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     lastTickGameMs: Math.max(0, Math.floor(numf(b.lastTickGameMs, 0))),
@@ -834,7 +844,11 @@ function cleanBattle(raw: unknown): BattleState | null {
       ? { hullEscapeFrac: b.hullEscapeFrac }
       : {}),
     ...(b.autoEscaped === true ? { autoEscaped: true } : {}),
-    ...(b.escapeReason === 'hull' || b.escapeReason === 'timeout' ? { escapeReason: b.escapeReason } : {}),
+    // 2026-09-12：`'cannot-engage'` 也随档（原先只认 'hull' | 'timeout' ⇒ 无法交战脱战的场次重载后
+    // 会退化成"结构撤退"口径，战报与结算措辞都不对）
+    ...(b.escapeReason === 'hull' || b.escapeReason === 'timeout' || b.escapeReason === 'cannot-engage'
+      ? { escapeReason: b.escapeReason }
+      : {}),
     waveIdx:
       typeof b.waveIdx === 'number' && Number.isFinite(b.waveIdx) && b.waveIdx > 0
         ? Math.floor(b.waveIdx)
@@ -845,6 +859,14 @@ function cleanBattle(raw: unknown): BattleState | null {
         : undefined,
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),
+    // ── 2026-09-12 船长裁定七项（随档）──
+    ...(repair !== undefined ? { repair } : {}),
+    ...(dronePools !== undefined ? { dronePools } : {}),
+    ...(foeDronePools !== undefined ? { foeDronePools } : {}),
+    ...(droneLost !== undefined ? { droneLost } : {}),
+    ...(droneLoadAtStart !== undefined ? { droneLoadAtStart } : {}),
+    ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
+    ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
   }
   // 组装：**只带走登记为 persist 的字段**（漏登记的字段在 typecheck 就会被拦下，见 BATTLE_FIELDS）
   const out: Partial<BattleState> = {}
@@ -853,6 +875,124 @@ function cleanBattle(raw: unknown): BattleState | null {
     if (v !== undefined) (out as Record<string, unknown>)[key as string] = v
   }
   return out as BattleState
+}
+
+/* ── 战斗字段清洗小工具（2026-09-12 船长裁定七项改随档时补；均为"坏值丢弃、不崩、零迁移"口径）── */
+
+/** 非负有限数（坏值 = undefined，调用方决定丢弃或兜底） */
+function cleanPosNum(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined
+}
+
+/** 「字符串 → 架数/枚数」计数表（键非空、值为 ≥0 整数；坏项丢键；空表 = undefined） */
+function cleanCountMap(raw: unknown): Record<string, number> | undefined {
+  const r = asRaw(raw)
+  let out: Record<string, number> | undefined
+  for (const [k, v] of Object.entries(r)) {
+    if (!k) continue
+    const n = cleanPosNum(v)
+    if (n === undefined) continue
+    if (!out) out = {}
+    out[k] = Math.floor(n)
+  }
+  return out
+}
+
+/** 单架机群生存池条目（三层血齐备才收；机型/闪避/抗性/备用机字段按形状带过） */
+function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools']>[number] | undefined {
+  const e = asRaw(raw)
+  const s = cleanPosNum(e.s)
+  const a = cleanPosNum(e.a)
+  const h = cleanPosNum(e.h)
+  if (s === undefined || a === undefined || h === undefined) return undefined
+  const artId = typeof e.artId === 'string' && e.artId.length > 0 ? e.artId : undefined
+  const readyAtMs = cleanPosNum(e.readyAtMs)
+  const maxS = cleanPosNum(e.maxS)
+  const maxA = cleanPosNum(e.maxA)
+  const maxH = cleanPosNum(e.maxH)
+  return {
+    s,
+    a,
+    h,
+    alive: e.alive === true,
+    ...(artId !== undefined ? { artId } : {}),
+    evasion: cleanPosNum(e.evasion) ?? 0,
+    // 抗性表按形状带过（本工程自己的数据；形状坏了就丢弃 ⇒ 退化为"无抗性"，不会崩）
+    ...(e.resists !== null && typeof e.resists === 'object'
+      ? { resists: e.resists as NonNullable<BattleState['dronePools']>[number]['resists'] }
+      : {}),
+    ...(e.inHangar === true ? { inHangar: true } : {}),
+    ...(readyAtMs !== undefined ? { readyAtMs } : {}),
+    ...(maxS !== undefined ? { maxS } : {}),
+    ...(maxA !== undefined ? { maxA } : {}),
+    ...(maxH !== undefined ? { maxH } : {}),
+  }
+}
+
+/** 我方机群生存池（键 = 武器条目下标；JSON 里是字符串键 ⇒ 还原为数字键） */
+function cleanDronePools(raw: unknown): BattleState['dronePools'] | undefined {
+  const r = asRaw(raw)
+  let out: NonNullable<BattleState['dronePools']> | undefined
+  for (const [k, v] of Object.entries(r)) {
+    const idx = Number.parseInt(k, 10)
+    if (!Number.isFinite(idx) || idx < 0) continue
+    const entry = cleanDronePoolEntry(v)
+    if (!entry) continue
+    if (!out) out = {}
+    out[idx] = entry
+  }
+  return out
+}
+
+/** 敌机机群生存池（键 = 敌单位 tag；值为"与该单位 drone 条目同序"的逐架池） */
+function cleanFoeDronePools(raw: unknown): BattleState['foeDronePools'] | undefined {
+  const r = asRaw(raw)
+  let out: NonNullable<BattleState['foeDronePools']> | undefined
+  for (const [tag, arrRaw] of Object.entries(r)) {
+    if (!tag || !Array.isArray(arrRaw)) continue
+    const arr: NonNullable<BattleState['foeDronePools']>[string] = []
+    for (const one of arrRaw) {
+      const entry = cleanDronePoolEntry(one)
+      if (entry) arr.push(entry)
+    }
+    if (arr.length === 0) continue
+    if (!out) out = {}
+    out[tag] = arr
+  }
+  return out
+}
+
+/** 维修装置运行态（开战写入；**含预载组件账本**——丢了组件会凭空消失、战后无从退回） */
+function cleanRepair(raw: unknown): BattleState['repair'] | undefined {
+  const r = asRaw(raw)
+  if (Object.keys(r).length === 0) return undefined
+  const units: NonNullable<BattleState['repair']>['units'] = []
+  if (Array.isArray(r.units)) {
+    for (const u of r.units) {
+      const it = asRaw(u)
+      const moduleId = typeof it.moduleId === 'string' ? it.moduleId : ''
+      const kitId = typeof it.kitId === 'string' ? it.kitId : ''
+      if (!moduleId || !kitId) continue
+      units.push({
+        moduleId,
+        kitId,
+        ...(it.free === true ? { free: true } : {}),
+        armorPerPulse: cleanPosNum(it.armorPerPulse) ?? 0,
+        hullPerPulse: cleanPosNum(it.hullPerPulse) ?? 0,
+        stopped: it.stopped === true,
+      })
+    }
+  }
+  const nextPulseAtMs = cleanPosNum(r.nextPulseAtMs)
+  const kitsUsedByType = cleanCountMap(r.kitsUsedByType)
+  return {
+    units,
+    kits: cleanCountMap(r.kits) ?? {},
+    pulses: Math.floor(cleanPosNum(r.pulses) ?? 0),
+    kitsUsed: Math.floor(cleanPosNum(r.kitsUsed) ?? 0),
+    ...(nextPulseAtMs !== undefined ? { nextPulseAtMs } : {}),
+    ...(kitsUsedByType !== undefined ? { kitsUsedByType } : {}),
+  }
 }
 
 /** 弹药 id 映射清洗（弹药 MK2：kinetic/explosive/plasma 键下的非空字符串 id；坏值丢键） */
