@@ -547,16 +547,13 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   // **中距为主**（族规）——2026-09-11 射程既定 ⇒ **解除期望距离钉住**，交距回归 orbit 口径
   // （8,500 × 0.55 = **4,675m**；此前"射程未定"时曾用 `desireRangeM 513` 钉住旧值，已撤）
   tactic: 'orbit',
-  drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }], // 警戒机群（A3：机群挂舰级）——
-  // **主力输出手段**（船长：速度 0 ⇒ 靠机群打炮台射程外的敌人）
-  // **受击增程**（船长 2026-09-11：「受到攻击后，大幅提高无人机射程（提高 400%）」）：本体挨打 ⇒
-  // 全舰警戒机 5,000 → **20,000m**（本场永久、不封顶）——"巨构挨打才把长臂伸出来"
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: 7 }], // **常态出击 7 架**（船长 2026-09-12：按舰种档——
+  // 巡洋 5 / **战列 7** / 旗舰 10）
   droneRangeMulOnHit: 4,
-  // **备用机库**（船长 2026-09-12：「损坏后补充敌机」⇒ **本轮只采用乙**）：+2 架备用（总库存 4），
-  // 战损后 **10s** 满血补位（母舰阵亡则整群停）。
-  // ⚠ 与 2026-09-11 的 A3 裁定「打光为止不补充」**相反 = 改判**；母舰阵亡则整群停（含备用机）。
+  // **备用机库**（船长 2026-09-12：「损坏后补充敌机」+「**备用机库为出击数量的 100%**」）：+7 架备用
+  // （总库存 14），战损后 **10s** 满血补位（母舰阵亡则整群停，含备用机）。
   // ⚠ **甲（单次出击上限 `droneLaunch`）本轮不采用** —— 机制已实现，**留作后续其他机制**（缺省不写）。
-  droneReserve: { count: 2, respawnMs: 10000 },
+  droneReserve: { count: 7, respawnMs: 10000 },
 }
 
 /** E 族 · 二档「**奥罗残骸段**」——**被风暴反复激活的武装残骸**（服务：奥罗武装残骸群 62）。
@@ -584,9 +581,9 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   dmgMix: { kinetic: 5, explosive: 5 }, // 50% 爆炸 + 50% 动能（全族口径）
   tactic: 'orbit',
   // 交距 = 7,000 × 0.55 = **3,850m**（射程既定后解除钉住；旧钉值 516 已撤）
-  drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }],
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: 5 }], // **常态出击 5 架**（船长：巡洋 **5** / 战列 7 / 旗舰 10）
   droneRangeMulOnHit: 4, // 受击增程（全族口径）
-  droneReserve: { count: 2, respawnMs: 10000 }, // 备用机库 +2（总 4），10s 满血补位（甲本轮不采用）
+  droneReserve: { count: 5, respawnMs: 10000 }, // 备用机库 = 出击数的 **100%**（+5，总 10），10s 满血补位
 }
 
 /** E 族 · 三档「**核心舱段**」——**一具接近完好的巨构**（族内最高级目标，船长裁定 8「核心舱段级代表位」）。
@@ -620,9 +617,9 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   tactic: 'orbit',
   // 交距 = 10,000 × 0.55 = **5,545m**（射程既定后解除钉住；旧钉值 513 已撤）
   elite: true, // 「精锐核心舱段」
-  drones: [{ drone: FOE_DRONE_E_ALERT, count: 3 }],
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: 10 }], // **常态出击 10 架**（船长：旗舰 **10**；族内最多）
   droneRangeMulOnHit: 4, // 受击增程（全族口径）
-  droneReserve: { count: 3, respawnMs: 12000 }, // 备用机库 +3（总 6），12s 满血补位（旗舰机库更大；甲本轮不采用）
+  droneReserve: { count: 10, respawnMs: 12000 }, // 备用机库 = 出击数的 **100%**（+10，总 20），12s 满血补位
 }
 
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
