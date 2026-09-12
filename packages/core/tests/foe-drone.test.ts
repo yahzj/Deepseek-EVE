@@ -320,10 +320,12 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
   const testCardWithDrones = (): AnomalyDef =>
     testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1));
 
-  it("装备定义带防空属性，且装配后武器条目带上 `canHitDrones`（普通炮台不带）", () => {
+  it("装备带「防空」属性（值 = 对无人机伤害倍率），装配后武器条目同时带出「能打机群」与倍率（普通炮台都没有）", () => {
     const mod = base.modules.get(AA)!;
-    expect(mod.canHitDrones).toBe(true);
-    expect(base.modules.get("mod-turret-kin-1")!.canHitDrones).toBeUndefined();
+    // 2026-09-12 船长：「给近防炮系列添加一个属性"防空"，将近防炮的对无人机伤害 ×2 写到防空属性里」
+    // ⇒ 一条属性两个含义（原 canHitDrones 布尔字段已并入本字段）
+    expect(mod.antiDrone).toBe(2);
+    expect(base.modules.get("mod-turret-kin-1")!.antiDrone).toBeUndefined();
     // 装配 4 门近防炮：射程 1,400、装填 1,500、命中 0.9、无近盲带
     const state = makeState(5, [AA, AA, AA, AA]);
     const battle = startBattleFor(
@@ -389,10 +391,12 @@ describe("对无人机伤害加成 ×2（船长 2026-09-12）", () => {
       hullHp: FAT,
     },
   });
-  /** 复制真近防炮 MK3、只摘掉对无人机倍率（对照组「无加成」） */
+  /** 复制真近防炮 MK3、把「防空」属性值降为 1（对照组：**仍能打机群**，但不吃对无人机加成） */
   const noBonusPd = (): ModuleDef => {
     const src = base.modules.get("mod-pd-e-3")!;
-    return { ...src, id: "test-pd-nobonus", name: "试验近防炮·无加成", antiDroneDmgMul: undefined };
+    // ⚠ 不能把 `antiDrone` 整个摘掉——那样连"能筛到机群"都没了，两次跑的开火次数就不同了；
+    // 值设 1 = 保留防空能力、伤害倍率 ×1（引擎对 `antiDroneMul === 1` 不乘）。
+    return { ...src, id: "test-pd-nobonus", name: "试验近防炮·无加成", antiDrone: 1 };
   };
   /** 跑一场：同卡同种子，只换装配里那件近防炮 */
   function runWith(

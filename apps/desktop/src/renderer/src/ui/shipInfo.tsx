@@ -8,8 +8,9 @@
  * - V16.1：删除废弃展示（锁定目标数/起跳时间），"跃迁充能（随动力）"由 agility 派生展示；
  * - V17：装备行不再显示笼统百分比——各家族渲染"真实进公式的参数"（模块短效果/武器卡/
  *   缺口抗性/加力推进），抗性合成为 EVE 式缺口乘入（见 moduleInfoLines 说明行）；
- * - 间接属性（速度/跃迁/质量/锁定/信号，V10.5b 保留项）显示优先级低：
- *   只出现在装配界面（shipIndirectLines），不进悬停浮层与图鉴；
+ * - 间接属性（速度/跃迁/质量/锁定/信号，V10.5b 保留项）：装配界面用 `shipIndirectLines` 成组显示；
+ *   **2026-09-12 船长「手册图鉴里的舰船信息可以查看舰船的间接属性」** ⇒ 图鉴（手册·舰船/舰船蓝图详情）
+ *   同样追加这组行；悬停浮层仍不显示（浮层空间有限，保持原有克制）。
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
@@ -591,6 +592,19 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       lines.push({ k: '弹药', v: `每场耗弹基数 ×${mod.ammoPerEngagement}` })
     }
     if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
+    // **防空（属性）**（船长 2026-09-12：「**给近防炮系列添加一个属性"防空"，将近防炮的对无人机伤害 ×2
+    // 写到防空属性里**」）：一条属性 = ①能筛到敌方机群 ②对无人机伤害 ×该值 ⇒ 渲染为一行「防空」。
+    if (mod.antiDrone !== undefined) {
+      lines.push({
+        k: '防空',
+        v: (
+          <>
+            {'能打敌方机群'}
+            <span className="app-dim">{`　对无人机伤害 ×${mod.antiDrone}`}</span>
+          </>
+        ),
+      })
+    }
     if (mod.hitRate !== undefined || mod.falloff !== undefined) {
       const hit = mod.hitRate !== undefined ? `基础命中 ${pct(mod.hitRate)}` : ''
       const ff = mod.falloff !== undefined ? `远端衰减 ×${mod.falloff}` : ''

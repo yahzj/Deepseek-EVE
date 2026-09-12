@@ -85,8 +85,8 @@ export interface WeaponSpec {
    * 伤害 × 本值；玩家武器不受影响（近盲带内不开火） */
   blindDmgMul?: number;
   /**
-   * **防空属性**（2026-09-11 船长 A1：「玩家武器通常**不可打**，**需要带有防空属性的武器**
-   * （**为近防炮做铺垫**）」）——**只有带本标记的武器能筛到敌方无人机**；不带 = 按构造看不到机群
+   * **防空**（属性 · 引擎侧标记）——**装备带「防空」属性**（`ModuleDef.antiDrone`）时写入本字段。
+   * 只有带本标记的武器能筛到敌方无人机；不带 = 按构造看不到机群
    * （与我方'无人机是子单位、不进主目标池'的既有契约同源）。
    *
    * 口径（设计稿 `docs/design/foe-drone-system-20260911.md` §四/S4）：
@@ -98,10 +98,9 @@ export interface WeaponSpec {
    */
   canHitDrones?: boolean
   /**
-   * **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
-   * **打机群**那一支的单发伤害 ×本值（`ModuleDef.antiDroneDmgMul` 建档时带过来）。
-   * ⚠ **只对机群生效**——对舰伤害一字不动（`tests/pd-damage-ladder.test.ts` 锁住对舰单发定值）。
-   * 缺省不写 = ×1（零行为变化）；只有带 `canHitDrones` 的武器会带上它。
+   * **防空属性**的第二半：**对无人机伤害倍率**（与 `canHitDrones` 同源，来自 `ModuleDef.antiDrone`）——
+   * 船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」。
+   * ⚠ **只对机群生效**——对舰伤害一字不动（`tests/pd-damage-ladder.test.ts` 锁住对舰单发定值 10/16/17）。
    */
   antiDroneMul?: number
   maxRangeM: number
@@ -720,13 +719,11 @@ export function createPlayerSpec(
       hitRate: (turret.hitRate ?? 0.5) * fireMult,
       falloff: turret.falloff ?? 0.3,
       reloadMs: reload,
-      // 防空属性（2026-09-11 机群批 S4）：装备带 `canHitDrones` ⇒ 该武器能筛到敌方无人机。
-      // 缺省不写 ⇒ 看到不机群（既有装备零行为变化）。
-      ...(turret.canHitDrones ? { canHitDrones: true } : {}),
-      // 对无人机伤害加成（2026-09-12 船长：「近防炮给予一个对无人机伤害加成」→「那伤害倍率按2倍算」）：
-      // 跟着防空属性一起带过来（只对带该属性的武器有意义）；缺省/写 1 ⇒ 不写字段。
-      ...(turret.canHitDrones && (turret.antiDroneDmgMul ?? 1) !== 1
-        ? { antiDroneMul: turret.antiDroneDmgMul }
+      // **防空（属性）**（2026-09-11 机群批 S4 + 2026-09-12 船长「给近防炮系列添加一个属性'防空'」）：
+      // 装备带 `antiDrone` ⇒ 一条属性带两件事——①能筛到敌方机群（`canHitDrones`）
+      // ②打机群伤害 ×该值（`antiDroneMul`）。缺省不写 ⇒ 看不到机群（既有装备零行为变化）。
+      ...(turret.antiDrone !== undefined
+        ? { canHitDrones: true, antiDroneMul: turret.antiDrone }
         : {}),
     })
   }

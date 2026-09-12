@@ -19,7 +19,7 @@ import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { BLUEPRINT_SUBS, MODULE_SUBS, SHIP_SUBS, moduleSubKeyOf } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
-import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 
 /** 宽类型标签索引（详情窗数据来自 raw，键是 string） */
@@ -286,6 +286,10 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     if (shipDef) {
       // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
       for (const line of shipInfoLines(shipDef)) rows.push([line.k, line.v])
+      // 2026-09-12 船长：「手册图鉴里的舰船信息可以查看舰船的间接属性」⇒ 追加间接属性行
+      // （最大速度/跃迁速度/质量/锁定范围/信号半径/扫描分辨率/跃迁充能；与装配页同一数据源）。
+      // ⚠ 行以 `k` 作 React key ⇒ `shipIndirectLines` 的键不得与 `shipInfoLines` 重名（当前无重名）。
+      for (const line of shipIndirectLines(shipDef)) rows.push([line.k, line.v])
       rows.push(['说明', '已生效战斗数值：抗性按递减方式合成（上限 90%）'])
       rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场无成品现货：舰船蓝图船厂定制；已拥有的可二手出售）' : '市场流通'])
     } else {
@@ -326,6 +330,8 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       if (shipDef) {
         // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
         for (const l of shipInfoLines(shipDef)) prodRows.push([l.k, l.v])
+        // 2026-09-12 船长：舰船蓝图详情同样可见间接属性（与图鉴·舰船分支同口径）
+        for (const l of shipIndirectLines(shipDef)) prodRows.push([l.k, l.v])
         if (shipDef.description) prodRows.push(['产物介绍', shipDef.description])
       }
     }
