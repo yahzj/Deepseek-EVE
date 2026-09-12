@@ -7,11 +7,12 @@ export { ORES, MINERALS, ITEMS, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'
 export { MODULES, buildModuleCatalog } from './modules'
-// 2026-09-11 蓝图价格口径（船长裁决甲：书价 = 产物现货价 × 档位系数，取整 500 ISK）：
+// 2026-09-11 蓝图价格口径（船长裁决甲 + 同日复核补正：奇货档 ×4，系数即默认值、个例可覆盖）：
 // 系数与算法单点在被导出，供 content:check 契约与重定价工具复用（避免第二份公式）
 export {
   BLUEPRINTS,
   BLUEPRINT_PRICE_STEP,
+  BLUEPRINT_PRICE_OVERRIDES,
   blueprintBookPriceOf,
   blueprintTierCoefOf,
   buildBlueprintCatalog,

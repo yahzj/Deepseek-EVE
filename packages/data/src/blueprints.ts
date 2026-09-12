@@ -6,20 +6,28 @@
  * MK3 蓝图学习需协会声望 4）。材料全部来自精炼产物（挖矿 → 精炼 → 制造闭环）。
  *
  * **2026-09-11 船长：「调整所有蓝图到合适价格」→ 裁决「甲」**：装备/物品蓝图书价一律按
- * **档位系数**定——`民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`（乘**产物现货价**，取整到 500 ISK）；
+ * **档位系数**定——`奇货 ×4 · 民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`（乘**产物现货价**，取整到 500 ISK）；
+ * 系数即**默认值**，个例可用 `BLUEPRINT_PRICE_OVERRIDES` 单独覆盖（船长同日：「如果有单独调整过的则允许覆盖默认值」）。
  * 单点实现 = `blueprintTierCoefOf()`（下方），`tools/content-check.ts` 的「蓝图价格口径契约」据此校验。
  * 背景：2026-09-10「MK2/MK3 装备价对齐同级武器价」那次只改了成品价、**书价没跟**，
  * 导致 91 张里 56 张的「书价 ÷ 产物价」漂移到 0.18~1.88（武器线与新件是合规的 2/2.5/3）。
  */
 
-import type { BlueprintDef } from '@whale/core'
+import type { BlueprintDef, MarketRarity } from '@whale/core'
 
 /**
- * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」）：按蓝图 id 后缀判档——
- * `-3` = MK3（×3）· `-2` = MK2（×2.5）· 其余（民用/基础/MK1）= ×2。
+ * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」+ 同日复核补正）：
+ * - **奇货档（市场稀有度 `exotic`）默认 ×4**（船长：「蓝图价格排除奇货档。奇货档默认 4 倍」）——
+ *   奇货**不参与** MK 档阶梯，单列一档；
+ * - 其余按蓝图 id 后缀判档：`-3` = MK3（×3）· `-2` = MK2（×2.5）· 其余（民用/基础/MK1）= ×2。
  * **书价 = 产物现货价 × 本系数**（取整到 500 ISK）；改系数只改这一处。
+ * `rarity` **必填**（奇货档只能从市场行取，漏传会算错档 ⇒ 由类型强制）。
  */
-export function blueprintTierCoefOf(bpId: string): { tier: 1 | 2 | 3; coef: number; label: string } {
+export function blueprintTierCoefOf(
+  bpId: string,
+  rarity: MarketRarity,
+): { tier: 1 | 2 | 3 | 4; coef: number; label: string } {
+  if (rarity === 'exotic') return { tier: 4, coef: 4, label: '奇货' }
   if (/-3$/.test(bpId)) return { tier: 3, coef: 3, label: 'MK3' }
   if (/-2$/.test(bpId)) return { tier: 2, coef: 2.5, label: 'MK2' }
   return { tier: 1, coef: 2, label: '民用/基础/MK1' }
@@ -28,9 +36,21 @@ export function blueprintTierCoefOf(bpId: string): { tier: 1 | 2 | 3; coef: numb
 /** 书价取整粒度（船长口径：合适价格取整到 500 ISK） */
 export const BLUEPRINT_PRICE_STEP = 500
 
-/** 按系数算出的**应有书价**（产物价 × 档位系数，取整到 500 ISK） */
-export function blueprintBookPriceOf(bpId: string, productPrice: number): number {
-  return Math.round((productPrice * blueprintTierCoefOf(bpId).coef) / BLUEPRINT_PRICE_STEP) * BLUEPRINT_PRICE_STEP
+/**
+ * **单独调整过的蓝图价**（船长 2026-09-11：「所有蓝图按系数都是默认值。**如果有单独调整过的
+ * 则允许覆盖默认值**」）：键 = 蓝图 id，值 = 覆盖书价 + 理由；**空表 = 全部走系数默认值**。
+ * 只放"有意偏离系数"的个例；`content-check` 会校验键必须是真实蓝图、且两处价必须等于覆盖价。
+ */
+export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {}
+
+/**
+ * 按系数算出的**应有书价**：① 有单独覆盖 → 用覆盖价；② 否则 = 产物现货价 × 档位系数（取整 500 ISK）。
+ * `rarity` 传该蓝图的市场行稀有度（奇货档 ×4 由它决定）。
+ */
+export function blueprintBookPriceOf(bpId: string, productPrice: number, rarity: MarketRarity): number {
+  const override = BLUEPRINT_PRICE_OVERRIDES[bpId]
+  if (override) return override.price
+  return Math.round((productPrice * blueprintTierCoefOf(bpId, rarity).coef) / BLUEPRINT_PRICE_STEP) * BLUEPRINT_PRICE_STEP
 }
 
 export const BLUEPRINTS: readonly BlueprintDef[] = [
@@ -247,7 +267,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 ISK ≈ 5,400×0.55
     buildSeconds: 10,
     buildCostIsk: 90,
-    priceIsk: 13500, // 书价 = 产物 5,400 × 2.5（2026-09-11 甲：统一档位系数，原「×1.5 补给线上浮」作废）
+    priceIsk: 21500, // 书价 = 产物 5,400 × 4（奇货档，2026-09-11 船长：奇货默认 ×4）
     description: '动能弹 MK2 生产线图纸：超噬合金弹芯轧制（120 发/批，对护盾 ×1.5）。',
   },
   {
@@ -258,7 +278,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 ISK ≈ 7,200×0.55
     buildSeconds: 10,
     buildCostIsk: 120,
-    priceIsk: 18000, // 书价 = 产物 7,200 × 2.5（2026-09-11 甲：统一档位系数，原「×1.5 补给线上浮」作废）
+    priceIsk: 29000, // 书价 = 产物 7,200 × 4（奇货档，2026-09-11 船长：奇货默认 ×4）
     description: '爆破导弹 MK2 生产线图纸：同位聚晶双级装药弹头（120 发/批，对装甲 ×1.5）。',
   },
   {
@@ -269,7 +289,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 ISK ≈ 9,600×0.56
     buildSeconds: 10,
     buildCostIsk: 160,
-    priceIsk: 24000, // 书价 = 产物 9,600 × 2.5（2026-09-11 甲：统一档位系数，原「×1.5 补给线上浮」作废）
+    priceIsk: 38500, // 书价 = 产物 9,600 × 4（奇货档，2026-09-11 船长：奇货默认 ×4）
     description: '能量弹药 MK2 生产线图纸：星髓晶高密充能电池组（120 发/批，对护盾 ×1.25）。',
   },
   /* ═══ 修理组件蓝图（2026-09-05 P2 定稿：材料≈市价 55% 锚，参数可调） ═══ */
