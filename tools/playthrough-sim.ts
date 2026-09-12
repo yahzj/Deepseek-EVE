@@ -468,13 +468,20 @@ function useFreeFalconet(): void {
   }
 }
 
-/** 按品质降序找某个装备家族的成员（用于自动配装） */
+/** 按品质降序找某个装备家族的成员（用于自动配装）。
+ *
+ * ⚠ **只考虑市场买得到的**（2026-09-12 修卡关 ①）：窝点专属装备（`mod-lair-*`）按「来源唯一契约」
+ * **本就没有市场卡**（唯一来源 ＝ 高级箱），而它们的数值往往高于制式件（例：`mod-lair-armor-d`
+ * 陵寝装甲层 `armorHpBonus 1.1` ＝ 全表最高，压过 `mod-armor-plate-3` 的 0.8）⇒ 旧写法会把它选中，
+ * 随后在 `tryOne` 里取不到市场行而崩。本工具别处一律用 `goodOf('module', …)` 过滤
+ * （见 `collectStatus` / 补件处），这里此前是唯一漏网的两处之一。 */
 function familyBest(
   slot: string,
   quality: (m: { shieldHpBonus?: number; armorHpBonus?: number }) => number,
 ): { id: string; name: string } | undefined {
   const pool = [...ctx.modules.values()]
     .filter((m) => m.slot === slot && m.rack !== 'high')
+    .filter((m) => goodOf('module', m.id) !== undefined)
     .sort((a, b) => quality(b) - quality(a))
   const top = pool[0]
   return top ? { id: top.id, name: top.name } : undefined
@@ -528,20 +535,27 @@ function autoFitGear(): void {
     }
   }
   // 单件补强：只装一件，已有同 id 或槽满即跳过（防重复购买抽血）
+  // ⚠ **买不到就跳过、不许崩**（2026-09-12 修卡关 ①）：`goodOf` 查不到市场行（＝窝点专属件这类
+  // "唯一来源 ＝ 高级箱"的装备）时直接 return——旧写法用 `!` 断言取 `.key`，取不到即抛
+  // `TypeError: Cannot read properties of undefined (reading 'key')`（调用方却已用 `?.` 兜底价格，
+  // 口径本就不一致）。这里是第二道保险：`sup1`/`sup2` 是直接扫 `ctx.modules` 得来的，不受
+  // `familyBest` 的过滤保护。
   const tryOne = (rack: 'high' | 'mid' | 'low', defId: string, priceRef: number): void => {
     if (allFitted.includes(defId) || !roomIn(rack)) return
     if (state.wallet.isk < priceRef * 1.5 + 20_000) return
-    buyAtMarket(state, ctx, [...ctx.marketGoods.values()].find((x) => x.kind === 'module' && x.refId === defId)!.key, 1)
+    const good = goodOf('module', defId)
+    if (!good) return
+    buyAtMarket(state, ctx, good.key, 1)
     if (fitModuleTo(state, defId)) mark(`装配 ${defId}`)
   }
   const sh = familyBest('shield', (m) => m.shieldHpBonus ?? 0)
-  if (sh) tryOne('mid', sh.id, [...ctx.marketGoods.values()].find((x) => x.refId === sh.id)?.basePrice ?? 50_000)
+  if (sh) tryOne('mid', sh.id, goodOf('module', sh.id)?.basePrice ?? 50_000)
   const ar = familyBest('armor', (m) => m.armorHpBonus ?? 0)
-  if (ar) tryOne('low', ar.id, [...ctx.marketGoods.values()].find((x) => x.refId === ar.id)?.basePrice ?? 50_000)
+  if (ar) tryOne('low', ar.id, goodOf('module', ar.id)?.basePrice ?? 50_000)
   const sup1 = [...ctx.modules.values()].find((m) => m.slot === 'support' && (m.damageTypeBonusPct?.kinetic ?? 0) > 0)
   const sup2 = [...ctx.modules.values()].find((m) => m.slot === 'support' && (m.hitBonusPct ?? 0) > 0)
-  if (sup1) tryOne('mid', sup1.id, [...ctx.marketGoods.values()].find((x) => x.refId === sup1.id)?.basePrice ?? 30_000)
-  if (sup2) tryOne('mid', sup2.id, [...ctx.marketGoods.values()].find((x) => x.refId === sup2.id)?.basePrice ?? 30_000)
+  if (sup1) tryOne('mid', sup1.id, goodOf('module', sup1.id)?.basePrice ?? 30_000)
+  if (sup2) tryOne('mid', sup2.id, goodOf('module', sup2.id)?.basePrice ?? 30_000)
 }
 
 const craftedOnce = new Set<string>()

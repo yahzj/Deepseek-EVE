@@ -57,6 +57,7 @@ import {
 } from '@whale/data'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { tableOf } from './content-schema'
 import {
   DEFAULT_BALANCE,
   ITEM_KIND_ORDER,
@@ -3272,6 +3273,53 @@ for (const m of MODULES) {
       `触发器与跳转目标全部可解析；势力档案 ${COMMS_FACTIONS.length} 个（${COMMS_FACTIONS.map((f) => `${f.name}·${f.departments.length} 部门`).join(" / ")}），` +
       `发件方引用与内容类型白名单全通过`,
   )
+}
+
+/* ── 内容工作台 schema 契约（2026-09-12 加 · 背景 = 卡关 ②）────────────────────────────
+   背景（实证）：`tools/content-schema.ts` 的 modules「家族slot」枚举曾**手写 12 个值**，而引擎
+   `ModuleSlot` 有 **15** 个（缺 `cpu` / `drone-relay` / `target-lock`）⇒ `content:import modules`
+   对那 10 行报「非法枚举」并**整表拒绝写入**——而且只在"有人真要导 modules 表"时才暴露。
+   现 schema 的成员类枚举已改为**由引擎单点派生**（`MODULE_SLOTS` / `RACK_SLOTS`），本契约再加一道网：
+   **工作台枚举必须 ⊆ 引擎值域**（且非空、无重复），防日后又手写一份漂移。 */
+{
+  const moduleSpec = tableOf('modules')
+  if (!moduleSpec) {
+    check(false, '内容工作台契约：找不到 modules 表定义（content-schema.ts 被改名或删除）')
+  } else {
+    const engineSlots = new Set<string>(MODULE_SLOTS)
+    const engineRacks = new Set<string>(RACK_SLOTS)
+    const engineTypes = new Set<string>(['kinetic', 'explosive', 'plasma'])
+    const pairs: Array<[string, string, ReadonlySet<string>]> = [
+      ['家族slot', 'slot', engineSlots],
+      ['物理槽rack', 'rack', engineRacks],
+      ['弹种damageType', 'damageType', engineTypes],
+    ]
+    let valCount = 0
+    for (const [label, p, legal] of pairs) {
+      const c = moduleSpec.cols.find((x) => x.p === p)
+      if (!c) {
+        check(false, `内容工作台契约：modules 表缺「${label}」列（p=${p}）`)
+        continue
+      }
+      const vals = c.vals ?? []
+      check(vals.length > 0, `内容工作台契约：modules「${label}」列没有登记任何合法值`)
+      check(
+        new Set(vals).size === vals.length,
+        `内容工作台契约：modules「${label}」列的合法值有重复`,
+      )
+      const illegal = vals.filter((v) => !legal.has(v))
+      check(
+        illegal.length === 0,
+        `内容工作台契约：modules「${label}」列的合法值越出引擎值域：${illegal.join('、')}——` +
+          `引擎侧合法值 ${[...legal].join('/')}（工作台枚举必须由引擎单点派生；越界会让 content:import 整表被拒）`,
+      )
+      valCount += vals.length
+    }
+    console.log(
+      `· 内容工作台契约：modules 表 3 个成员类枚举共 ${valCount} 个值全部落在引擎值域内` +
+        `（槽位 ${engineSlots.size} 个 · 槽类 ${engineRacks.size} 个 · 弹种 ${engineTypes.size} 个）`,
+    )
+  }
 }
 
 /* ── 输出 ── */
