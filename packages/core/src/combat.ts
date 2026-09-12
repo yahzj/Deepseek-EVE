@@ -161,8 +161,9 @@ export interface UnitSpec {
    *  **不写 = 无机群** ⇒ 既有单位一字不动。 */
   foeDrones?: readonly FoeDroneSlot[]
   /** **受击增程倍率**（见 `FoeShipDef.droneRangeMulOnHit`；2026-09-11 船长：「受到攻击后，大幅提高
-   *  无人机射程（提高 400%）」）——舰级路径把该字段带到单位上；**本舰本体被命中一次**即在
-   *  `BattleState.foeDroneRangeBuff` 上给本 tag 盖章，此后本单位全部机群射程 ×本倍率（本场永久）。 */
+   *  无人机射程（提高 400%）」）——舰级路径把该字段带到单位上；**任一此类敌舰被命中一次**即在
+   *  `BattleState.foeDroneRangeBuff`（**标量**）上给**整支敌队**盖章，此后**所有敌舰**的机群射程
+   *  ×本倍率（本场永久）；提示只推一条（船长二次裁定：「只触发一次，**对所有敌舰生效**」）。 */
   foeDroneRangeMulOnHit?: number
   foeTactic: FoeTactic | null
 }
@@ -2169,7 +2170,7 @@ export function battleArcsFor(
         artId,
         count: v.count,
         alive: v.alive,
-        rangeBuff: (battle.foeDroneRangeBuff?.[f.tag] ?? 1) > 1,
+        rangeBuff: (battle.foeDroneRangeBuff ?? 1) > 1,
       })
   }
   return {
@@ -2566,24 +2567,28 @@ function initFoeDronePools(
   if (Object.keys(pools).length > 0) b.foeDronePools = pools
 }
 
-/** **敌机有效射程**（单一真相源）＝机型绝对射程 × 该舰的**受击增程倍率**（未触发 = ×1）。
+/** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）。
  *
  *  2026-09-11 船长：「添加新机制，**受到攻击后，大幅提高无人机射程（提高 400%）**」——
- *  E 族三条舰级写 `droneRangeMulOnHit: 4` ⇒ 警戒机 5,000 → **20,000m**（本场永久、不封顶）。
- *  ⚠ **开火判定与界面（机群阵位/出击线）都读本函数**：射程只有一处算法，不出现"打得着但画得近"。
+ *  E 族三条舰级写 `droneRangeMulOnHit: 4` ⇒ 警戒机 5,000 → **20,000m**（本场永久、不封顶）；
+ *  **全敌队一次生效**（船长二次裁定：「只触发一次，**对所有敌舰生效**」）。
+ *  ⚠ **开火判定与界面（机群阵位/弹道/击落点）都读本函数**：射程只有一处算法，不出现"打得着但画得近"。
  */
 export function foeDroneRangeOf(
   b: import('./state').BattleState,
-  tag: string,
   w: WeaponSpec,
 ): number {
-  const mul = b.foeDroneRangeBuff?.[tag]
+  const mul = b.foeDroneRangeBuff
   return mul && mul > 1 ? Math.round(w.maxRangeM * mul) : w.maxRangeM
 }
 
-/** **受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）：
- *  盖章后本舰**全部**机群在 `foeDroneRangeOf` 里吃到倍率；**一次触发即本场永久**（值即倍率，不存时间戳）。
- *  @returns 是否本次**首次**触发（供表现层只播一次日志/演出） */
+/** **受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。
+ *
+ *  ⚠ **全敌队一次生效**（船长二次裁定：「每个敌人都会单独触发一次射程增加的文字提示，理论上应该
+ *  **只触发一次**，**对所有敌舰生效**」）：命中**任一**带该机制的敌舰 ⇒ 给**整支敌队**盖章
+ *  （状态是标量 `battle.foeDroneRangeBuff`），此后所有敌舰的机群都吃倍率；提示**只推一条**。
+ *  **一次触发即本场永久**（值即倍率，不存时间戳）。
+ *  @returns 是否本次**首次**触发（首次才推画面提示） */
 function markFoeDroneRangeBuff(
   rt: UnitSpec,
   b: import('./state').BattleState,
@@ -2591,9 +2596,9 @@ function markFoeDroneRangeBuff(
   const mul = rt.foeDroneRangeMulOnHit
   if (mul === undefined || mul <= 1) return false
   if (!rt.foeDrones || rt.foeDrones.length === 0) return false
-  const cur = b.foeDroneRangeBuff?.[rt.tag]
-  if (cur !== undefined && cur >= mul) return false
-  b.foeDroneRangeBuff = { ...(b.foeDroneRangeBuff ?? {}), [rt.tag]: mul }
+  const cur = b.foeDroneRangeBuff
+  if (cur !== undefined && cur >= mul) return false // 已触发过（整队共享）⇒ 不重复盖章、不重复提示
+  b.foeDroneRangeBuff = mul
   return true
 }
 
@@ -3013,11 +3018,10 @@ function stepBattle(
           // ⚠ 打机群（上面的 `droneHit` 分支）**不触发**、未命中（`hit === false`）也进不到这里。
           if (markFoeDroneRangeBuff(foeTarget!, b)) {
             // **画面提示**（船长 2026-09-11 二次裁定：日志不写，改走画面顶部提示位 ⇒ `battle.notices`，
-            // 与「敌方增援」同一处显示、限时自动消失）
-            pushBattleNotice(
-              b,
-              `${foeTarget!.name}·残存的自动程序过载：警戒机群解除射程限制`,
-            )
+            // 与「敌方增援」同一处显示、限时自动消失）。
+            // ⚠ **整队只推一条**（三次裁定：「每个敌人都会单独触发一次射程增加的文字提示，理论上应该
+            // **只触发一次**，**对所有敌舰生效**」）⇒ 文案不点单舰名（生效范围是全敌队）。
+            pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
           }
         }
       }
@@ -3061,7 +3065,7 @@ function stepBattle(
         }
         rt.weapons[k] = dw.reloadMs
         // 射程门：**受击增程**生效时读 `foeDroneRangeOf`（机型射程 × 倍率），否则就是机型射程
-        if (b.distanceM > foeDroneRangeOf(b, f.tag, dw)) continue // 机群够不着（我方在它射程外）
+        if (b.distanceM > foeDroneRangeOf(b, dw)) continue // 机群够不着（我方在它射程外）
         b.stats.foeShots += 1;
         // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击
         b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }

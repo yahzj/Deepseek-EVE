@@ -349,38 +349,25 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
       .find((u) => u.tag === tag)!
       .weapons.find((w) => w.src === "drone")!;
 
-  it("母舰本体被命中 ⇒ 该舰机群射程 ×4（= 机型 5,000 → 20,000m）且写一条日志", () => {
+  it("母舰本体被命中 ⇒ **全敌队**机群射程 ×4（5,000 → 20,000m），且**只推一条**画面提示", () => {
     const card = testCard(buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]));
     const { state, battle } = runBattleWithState(card);
-    const buffs = battle.foeDroneRangeBuff ?? {};
-    const tags = Object.keys(buffs);
     // 主炮（动能 MK2 5,740m）在 60 秒里必中过母舰；固定种子 ⇒ 该断言是确定性的
-    expect(tags.length).toBeGreaterThan(0);
-    for (const tag of tags) {
-      expect(buffs[tag]).toBe(4);
-      // 生效射程 = 机型绝对射程 × 倍率（开火判定与界面同源读这一个函数）
-      expect(foeDroneRangeOf(battle, tag, droneWeaponOf(card, tag))).toBe(
-        FOE_DRONE_E_ALERT.maxRangeM * 4,
-      ); // 5,000 × 4 = 20,000
-    }
-    // 未触发的单位读到的仍是机型射程（逐舰独立、不共享）
-    const untouched = createFoeSpecs(card, bal).find(
-      (u) => buffs[u.tag] === undefined,
-    );
-    if (untouched) {
+    expect(battle.foeDroneRangeBuff).toBe(4); // 标量状态（整队共享，不是逐舰一份）
+    // **对所有敌舰生效**（船长三次裁定）——两艘母舰的机群都吃到倍率，哪怕只打中了其中一艘
+    for (const u of createFoeSpecs(card, bal)) {
       expect(
         foeDroneRangeOf(
           battle,
-          untouched.tag,
-          untouched.weapons.find((w) => w.src === "drone")!,
+          u.weapons.find((w) => w.src === "drone")!,
         ),
-      ).toBe(FOE_DRONE_E_ALERT.maxRangeM);
+      ).toBe(FOE_DRONE_E_ALERT.maxRangeM * 4); // 5,000 × 4 = 20,000
     }
-    // **画面提示**（船长 2026-09-11 二次裁定：「日志内不用显示提示，将该提示放入战斗画面内显示
-    //（和敌方增援统一下系统，显示位置改为战斗窗口正上方）」）⇒ 走 `battle.notices`，**不写日志**
+    // **画面提示只一条**（船长：「每个敌人都会单独触发一次…理论上应该只触发一次」）
     expect(
-      battle.notices?.some((n) => n.text.includes("警戒机群解除射程限制")),
-    ).toBe(true);
+      battle.notices?.filter((n) => n.text.includes("警戒机群解除射程限制")),
+    ).toHaveLength(1);
+    // **不写日志**（船长二次裁定：「日志内不用显示提示，将该提示放入战斗画面内显示」）
     expect(
       state.logs.some((l) => l.text.includes("警戒机群解除射程限制")),
     ).toBe(false);
@@ -423,7 +410,7 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
     }
   });
 
-  it("**本场永久**：触发后再推进一整段，倍率不回落", () => {
+  it("**本场永久 + 只触发一次**：触发后再推进一整段，倍率不回落、提示也不再增条", () => {
     const card = testCard(buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]));
     const c = ctxWith(card);
     const state = makeState();
@@ -434,10 +421,19 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
     state.expedition.battle = battle;
     state.gameMs = 60_000;
     advanceBattleFor(state, c, battle, state.shipId, card.id);
-    const tag = Object.keys(battle.foeDroneRangeBuff ?? {})[0];
-    expect(tag).toBeTruthy();
+    expect(battle.foeDroneRangeBuff).toBe(4);
+    const notices0 = (battle.notices ?? []).filter((n) =>
+      n.text.includes("警戒机群解除射程限制"),
+    ).length;
+    expect(notices0).toBe(1);
+    // 再打一整段（还会继续命中敌舰）⇒ 倍率不变、提示不重复
     state.gameMs = 120_000;
     advanceBattleFor(state, c, battle, state.shipId, card.id);
-    expect(battle.foeDroneRangeBuff?.[tag!]).toBe(4);
+    expect(battle.foeDroneRangeBuff).toBe(4);
+    expect(
+      (battle.notices ?? []).filter((n) =>
+        n.text.includes("警戒机群解除射程限制"),
+      ).length,
+    ).toBe(1);
   });
 });
