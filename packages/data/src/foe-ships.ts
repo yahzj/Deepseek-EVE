@@ -58,7 +58,7 @@
  * ## ★ 按档重排（2026-09-11 船长「**甲案**」）——**基础属性必须符合舰种定位**
  * 船长原话：「为啥**舰种档有差距，基础属性却差不多**，虽然会有修正，但是**基础属性要符合舰种定位**。
  * **巡洋舰和护卫舰一样强不对吧**」。
- * **病根**：结构试点期舰级基准取自"各卡迁移前的现状建档值"（是**卡锚**，不是**级锚**）⇒ 头目舰 T3 360/56
+ * **病根**：结构试点期舰级基准取自'各卡迁移前的现状建档值'（是**卡锚**，不是**级锚**）⇒ 头目舰 T3 360/56
  * 与护卫舰 T1 365/51 **几乎同强**，档位阶梯在基础值上根本不存在。
  * **改法（甲案）**：**档基线 × 角色修正 = 舰级基础值**，卡片侧用 `hpMul`/`dmgMul` 反算吸收差异 ⇒
  * 「基础属性符合舰种定位」与「卡片读数一字不动」同时成立（落地时逐字段验证过）。
@@ -73,19 +73,19 @@
  *
  * 跨档 ≈ **1.85× / 1.88×**（血 / 单发）⇒ 巡洋舰血 2.5×、单发 2.6× 于护卫舰；同档两台由**角色**区分。
  * **卡片侧**：条目倍率一律写成 `设计值 ÷（舰级值 × 多舰补偿）`（A 族原本就是这个形态）⇒ 换舰级值自动反算；
- * B 族三卡本轮补上同形态的倍率（原先靠"舰级值即卡值"）。
+ * B 族三卡本轮补上同形态的倍率（原先靠'舰级值即卡值'）。
  */
 
-import type { FoeShipDef } from "@whale/core";
-import { FOE_DRONE_E_ALERT } from "./foe-drones";
+import type { FoeShipDef } from '@whale/core'
+import { FOE_DRONE_E_ALERT } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；
  * 射程 −15%：`1 ×0.85 → 1` / `2215 ×0.85 = 1882.75 → 1883`。 */
 export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
-  id: "foe-pirate-skiff",
-  name: "海盗快艇",
-  family: "A",
+  id: 'foe-pirate-skiff',
+  name: '海盗快艇',
+  family: 'A',
   hullClassTier: 1, // 护卫舰
   speedRatio: 1.15, // = 391 / 340
   hp: 156, // 按档重排（甲案）：T1 档基线 260 × 角色 0.60（数量型小艇）= **156**；原 150（卡锚）
@@ -98,16 +98,16 @@ export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { explosive: 8, kinetic: 2 },
-  tactic: "brawl",
-};
+  tactic: 'brawl',
+}
 
 /** A 族 · 二档「劫掠护卫舰」——orbit 环绕。
  * 速度 = 1 护卫舰基准 340 × `1.10` = **374** m/s（高于本档基准 340）；
  * 射程 −15%：`383 ×0.85 = 325.55 → 326` / `5029 ×0.85 = 4274.65 → 4275`。 */
 export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
-  id: "foe-pirate-corvette",
-  name: "劫掠护卫舰",
-  family: "A",
+  id: 'foe-pirate-corvette',
+  name: '劫掠护卫舰',
+  family: 'A',
   hullClassTier: 1, // 护卫舰（2026-09-11 追加裁决：本舰级**下落一档**到护卫舰，名与档一致）
   speedRatio: 1.1, // = 374 / 340
   hp: 364, // 按档重排（甲案）：T1 260 × 角色 1.40（标准护卫）= **364**；原 365（卡锚）
@@ -120,16 +120,16 @@ export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 8, explosive: 2 },
-  tactic: "orbit",
-};
+  tactic: 'orbit',
+}
 
 /** A 族 · 三档「劫掠狙击舰」——kite 拉距。
  * 速度 = 2 驱逐舰基准 295 × `1.10` = **325** m/s（高于本档基准 295——海盗"拉距也跑得快"）；
  * 射程 −15%：`1476 ×0.85 = 1254.6 → 1255` / `11316 ×0.85 = 9618.6 → 9619`。 */
 export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
-  id: "foe-pirate-sniper",
-  name: "劫掠狙击舰",
-  family: "A",
+  id: 'foe-pirate-sniper',
+  name: '劫掠狙击舰',
+  family: 'A',
   hullClassTier: 2, // 驱逐舰（2026-09-11 追加裁决：本舰级**下落一档**到驱逐舰）
   speedRatio: 1.1, // = 325 / 295
   hp: 480, // 按档重排（甲案）：T2 档基线 480 × 角色 1.00（远程狙击）= **480**；原 268.75（卡锚）
@@ -142,8 +142,8 @@ export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { explosive: 8, kinetic: 2 },
-  tactic: "kite",
-};
+  tactic: 'kite',
+}
 
 /**
  * A 族 · 四档「海盗头目舰」——**头目档**（`elite: true` → 显示名挂「精锐」前缀）。
@@ -155,9 +155,9 @@ export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
  * 头目这 60% 血量不随卡面血型走（`FoeShipSlot` 无 `split` 覆写位）——已在设计稿里记明。
  */
 export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
-  id: "foe-pirate-warlord",
-  name: "海盗头目舰",
-  family: "A",
+  id: 'foe-pirate-warlord',
+  name: '海盗头目舰',
+  family: 'A',
   hullClassTier: 3, // 巡洋舰（海盗族顶格）
   speedRatio: 1.45, // = 374 / 258
   hp: 900, // 按档重排（甲案）：T3 档基线 900 × 角色 1.00（精锐主力）= **900**；原 360（卡锚 ⇒ 与护卫舰同强）
@@ -170,9 +170,9 @@ export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 8, explosive: 2 },
-  tactic: "brawl",
+  tactic: 'brawl',
   elite: true,
-};
+}
 
 /* ═══════════ B 族 · 武装拾荒者（2026-09-11 船长七裁决落码）═══════════
  * 船长原话：「关于B组，**统一为武装拾荒者，移除靶机**。**确认为新手过渡种族**。
@@ -194,9 +194,9 @@ export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
  * 命中 0.85 / 射程带 1~2200 / 衰减 0.3 / 近盲 0.3 / 装填 4000 / 血型均衡（= 教学卡 `defProfile`）。
  * 速度 = 1 护卫舰基准 340 × **`0.80`** = **272**（船长「速度偏慢」→ 2026-09-11 裁决「B 族速落实 0.8」）。 */
 export const FOE_SCAV_SKIFF: FoeShipDef = {
-  id: "foe-scav-skiff",
-  name: "拾荒武装艇",
-  family: "B",
+  id: 'foe-scav-skiff',
+  name: '拾荒武装艇',
+  family: 'B',
   hullClassTier: 1, // 护卫舰（新手过渡族只用 1/2 两档）
   speedRatio: 0.8, // = 272 / 340（< 1 = 比本档基准慢；船长 2026-09-11「B 族速落实 0.8」）
   hp: 156, // 按档重排（甲案）：T1 260 × 角色 0.60（数量型小艇）= **156**；原 22（卡锚，改由卡片倍率表达）
@@ -209,8 +209,8 @@ export const FOE_SCAV_SKIFF: FoeShipDef = {
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 10 }, // **纯动能**（教学卡为纯系；新港护航卡在条目上覆写 8:2 混伤）
-  tactic: "orbit",
-};
+  tactic: 'orbit',
+}
 
 /** B 族 · 二档「拾荒火力舰」——把拆来的舰炮焊上拾荒船的重火力型。
  * 基准 = **占港武装通缉（T16）**迁移前的现状建档值：血 292 / 单发 58 / 命中 0.85（族缺省）
@@ -218,9 +218,9 @@ export const FOE_SCAV_SKIFF: FoeShipDef = {
  * 速度 = 2 驱逐舰基准 295 × **`0.80`** = **236**（船长「速度偏慢」→ 2026-09-11 裁决「B 族速落实 0.8」）。
  * ⚠ **乱射（命中 0.55）不写在这里**——那是占港那张卡的**单卡特征**，写在卡的条目 `hitRate` 上。 */
 export const FOE_SCAV_ARMED: FoeShipDef = {
-  id: "foe-scav-armed",
-  name: "拾荒火力舰",
-  family: "B",
+  id: 'foe-scav-armed',
+  name: '拾荒火力舰',
+  family: 'B',
   hullClassTier: 2, // 驱逐舰（B 族顶格）
   speedRatio: 0.8, // = 236 / 295（船长 2026-09-11「B 族速落实 0.8」）
   hp: 480, // 按档重排（甲案）：T2 480 × 角色 1.00（中距火力舰）= **480**；原 292（卡锚，改由卡片倍率表达）
@@ -233,12 +233,12 @@ export const FOE_SCAV_ARMED: FoeShipDef = {
   falloff: 0.3,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 8, explosive: 2 },
-  tactic: "orbit",
-};
+  tactic: 'orbit',
+}
 
 /* ═══════════ C 族 · 异形生物（2026-09-11 船长裁定 · 第二批「虫群编成 + 稀有头目」）═══════════
  * 船长原话（第一步裁定摘要）：「**深渊之门卫队改 brawl + 整套重标**」「**C 族速度比 A 海盗还快**
- * （族带 `1.30~2.10×` + **同档实速须高于 A 族**）」「**允许 T4 战列舰**（"生物巨兽"）」。
+ * （族带 `1.30~2.10×` + **同档实速须高于 A 族**）」「**允许 T4 战列舰**（'生物巨兽'）」。
  * 第二批：「**虫群编成 + 稀有头目**」（**只有噬口有头目**、**首领血量占比 80%**、虫群规模 6~12 只、
  * 分波更多、每个悬赏单独设定）；随后给出**族级结构修正**：「我回顾了下，**发现配了 2 个巡洋级。
  * 这不符合我对 C 族的设计。护卫舰级应该有 2 种，星髓幼虫和畸变幼虫。驱逐级一种，星髓成虫**」。
@@ -270,10 +270,10 @@ export const FOE_SCAV_ARMED: FoeShipDef = {
  *
  * 只有登记在此的舰级可以使用 **T4 战列舰 / T5 旗舰**档；`content:check`「舰级契约」据此校验——
  * 目的是**防日后随手给杂鱼挂 T4**（把"巨兽"当普通量产物用，等于把战列档的意义抹平）。
- * 当前唯一成员 = **噬口巨兽**（T80 卡的"巨兽慢而硬"例外：T4 允许低于本档基准；
- * 且**全族唯一**——船长「**出现稀少**…**因此也更加强大**」由"只此一处 + 80% 血量/火力"表达）。
+ * 当前唯一成员 = **噬口巨兽**（T80 卡的'巨兽慢而硬'例外：T4 允许低于本档基准；
+ * 且**全族唯一**——船长「**出现稀少**…**因此也更加强大**」由'只此一处 + 80% 血量/火力'表达）。
  */
-export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ["foe-alien-maw"];
+export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw']
 
 /** C 族 · 一档「畸变幼虫」——裂谷畸变体的**幼体**，brawl 贴脸撕咬（服务：裂谷畸变体猎杀令 58、
  * 噬口猎杀令 80）。舰种档由 T3 巡洋**下落为 T1 护卫舰**（船长族级结构修正：C 族只留
@@ -286,9 +286,9 @@ export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ["foe-alien-maw"];
  * 血型均衡（= 裂谷卡 `defProfile balanced`）；主系**等离子** 8:2（C 族酸液签名）。
  * 形态 = `'spit'`（**能量掷命中**）。**逐卡目标值由卡的 `hpMul`/`dmgMul` 反算**（舰级值只是档案锚）。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
-  id: "foe-alien-rift-larva",
-  name: "畸变幼虫",
-  family: "C",
+  id: 'foe-alien-rift-larva',
+  name: '畸变幼虫',
+  family: 'C',
   hullClassTier: 1, // 护卫舰（**由 T3 巡洋下落一档**）
   speedRatio: 1.6, // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
   hp: 260, // 按档重排：T1 档基线 260 × 角色 1.00（标准近战虫）= **260**
@@ -301,9 +301,9 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（C 族酸液签名）
-  energyForm: "spit", // 能量·掷命中（裁定⑤）
-  tactic: "brawl",
-};
+  energyForm: 'spit', // 能量·掷命中（裁定⑤）
+  tactic: 'brawl',
+}
 
 /** C 族 · 一档「星髓幼虫」——星髓虫群的**幼体**、厚甲筑巢（服务：深渊之门卫队 45、星髓虫群 72）。
  * 舰种档由 T3 巡洋**下落为 T1 护卫舰**（船长族级结构修正）。
@@ -316,9 +316,9 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
  * 主系**等离子** 8:2。形态 = `'spit'`（**能量掷命中**）。
  * ⚠ 深渊之门卫队卡的条目覆写：血型**护盾**（卡面 shield）· 命中 **0.90** · **纯等离子** · 射程 1~2600。 */
 export const FOE_ALIEN_STARCORE: FoeShipDef = {
-  id: "foe-alien-starcore-larva",
-  name: "星髓幼虫",
-  family: "C",
+  id: 'foe-alien-starcore-larva',
+  name: '星髓幼虫',
+  family: 'C',
   hullClassTier: 1, // 护卫舰（**由 T3 巡洋下落一档**）
   speedRatio: 1.6, // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
   hp: 208, // 按档重排：T1 档基线 260 × 角色 0.80（群袭脆虫）= **208**
@@ -331,12 +331,12 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 }, // 等离子主
-  energyForm: "spit",
-  tactic: "brawl",
-};
+  energyForm: 'spit',
+  tactic: 'brawl',
+}
 
 /**
- * C 族 · 四档「噬口巨兽」——**T4 战列舰档的"生物巨兽"**，也是**全族唯一的稀有头目**
+ * C 族 · 四档「噬口巨兽」——**T4 战列舰档的'生物巨兽'**，也是**全族唯一的稀有头目**
  * （服务：噬口猎杀令 80 的第 3 波 ×1）。
  *
  * **稀有头目**（船长 2026-09-11）：「**只有噬口有头目出现**」「在设定上，**出现稀少**，和海盗头目
@@ -357,9 +357,9 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
  * 其余字段 = 迁移前的现状建档值：命中 0.95 · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
  * 血型均衡（噬口卡 `defProfile` 未写 = 缺省）；主系**等离子** 8:2。形态 = `'spit'`。 */
 export const FOE_ALIEN_MAW: FoeShipDef = {
-  id: "foe-alien-maw",
-  name: "噬口巨兽",
-  family: "C",
+  id: 'foe-alien-maw',
+  name: '噬口巨兽',
+  family: 'C',
   hullClassTier: 4, // 战列舰（**巨兽档**：须登记在 ALIEN_BEAST_SHIP_IDS，契约守卫）
   speedRatio: 297 / 205, // = **297**（船长 2026-09-11「将首领速度**单独上调 20 点**」：277 → 297；T4 仍是族内唯一破例的慢档）
   hp: 1600, // 按档重排：T4 档基线 1600 × 角色 1.00（稀有巨兽）= **1600**
@@ -372,11 +372,11 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 },
-  energyForm: "spit",
-  tactic: "brawl",
+  energyForm: 'spit',
+  tactic: 'brawl',
   elite: true, // 全族唯一的稀有头目（显示名「精锐噬口巨兽」）
   foeCanCharge: true, // 船长「给巨兽开启之前做过的冲锋能力」（舰级级 opt-in；总开关仍关）
-};
+}
 
 /**
  * C 族 · 二档「星髓成虫」——星髓虫群的**成体**、虫群的中坚（服务：星髓虫群 72 的**末波** ×3）。
@@ -391,9 +391,9 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
  * 其余字段 = 迁移前的现状建档值：命中 0.95 · 射程带 1~2655 · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
  * 血型**装甲**（= 星髓卡 `defProfile armor`）；主系**等离子** 8:2。形态 = `'spit'`。 */
 export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
-  id: "foe-alien-starcore-adult",
-  name: "星髓成虫",
-  family: "C",
+  id: 'foe-alien-starcore-adult',
+  name: '星髓成虫',
+  family: 'C',
   hullClassTier: 2, // 驱逐舰（C 族唯一的驱逐档）
   speedRatio: 1.35, // = 398 / 295（船长「提速倍率 1.35」；高于 A 族同档 325）
   hp: 624, // 按档重排：T2 档基线 480 × 角色 1.30（中坚成虫）= **624**
@@ -406,20 +406,20 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 },
-  energyForm: "spit",
-  tactic: "brawl",
-};
+  energyForm: 'spit',
+  tactic: 'brawl',
+}
 
 /* ═══════════ D 族 · 守墓古舰（2026-09-11 船长「对悬赏进行敌人配置」批）═══════════
  * **身份（全部引自已定案文档，本处不新造）**：**最强敌族**（强度略高于 MK3）· **靠「必中 + 射程」立身**
  * （守墓者长炮 = 12 km 必中点名炮）· **三系全能盾**（专属件陵墓护盾阵列三系减伤各 +30%）·
  * **全远程**（只允许 kite/orbit，不许 brawl）· **守而不猎**（不追出陵区，越界即清除）·
- * **长战 · 厚血 · 多波** · **以能量武器为主**（舰上残留实弹是"旧炮"）。
+ * **长战 · 厚血 · 多波** · **以能量武器为主**（舰上残留实弹是'旧炮'）。
  * 出处：`docs/design/bounty-tasks-20260910.md`、`docs/design/foe-faction-d-gravekeeper-20260911.md` §三。
  *
  * ## 船长 2026-09-11 亲定三件（舰船设定批）
  * 1. **档位 = 1 驱逐 + 2 巡洋**（「目前船级别暂定调整为 1 驱逐 2 巡洋。**更高级的船还没出**」）
- *    ⇒ D 族**只登记 T2 / T3**，不配 T4/T5（"最强"由炮/盾/厚血/长战承担，高档位留待日后）。
+ *    ⇒ D 族**只登记 T2 / T3**，不配 T4/T5（'最强'由炮/盾/厚血/长战承担，高档位留待日后）。
  * 2. **战法**：**静滞卫舰 = 远程**（`kite`）· **幽灵舰 = 中程**（`orbit`）· 守墓长舰按中程（`orbit`）。
  * 3. **速度**：幽灵舰 **1.10**（325）· 守墓长舰 **0.90**（**232**，船长 2026-09-11「下调至 0.9 倍率」）· 静滞卫舰 **0.50**（**129**）
  *    —— 族格读法 = **越往里越慢**：外围巡哨还要机动、陵区主力按基准、**最内层的守誓者只有半速**
@@ -433,7 +433,7 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
  * | 静滞卫舰 | 3 巡洋舰 | 静滞陵寝的守誓者（最内层） | **129** | 562~**12,000** | 远程 kite | 均衡型 |
  *
  * ⚠ **血型不搞族级统一**：本族「三系全能盾」讲的是**专属件**（玩家侧的陵墓护盾阵列），
- * 不是敌人自己的层位分布 ⇒ 三条舰级各自沿用所服务卡片的现行血型（与 A 族"鱼龙混杂"同款处理）。
+ * 不是敌人自己的层位分布 ⇒ 三条舰级各自沿用所服务卡片的现行血型（与 A 族'鱼龙混杂'同款处理）。
  * 舰级表 / 逐卡映射 / 守恒口径 / 难度影响：`docs/design/foe-faction-d-ships-20260911.md`。 */
 
 /** D 族 · 一档「幽灵舰」——外围巡哨的残影（服务：幽灵舰信号 46）。
@@ -442,9 +442,9 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
  * 射程带 562~7,000 = **中程**（船长「幽灵舰为中程」；原 1,752~13,432 是旧 kite 口径，随战法收窄）。
  * 形态 = **`beam` 光束必中**（「靠必中与射程立身」；本族**保留必中**，不走 C 族那套掷命中）。 */
 export const FOE_D_GHOST: FoeShipDef = {
-  id: "foe-d-ghost",
-  name: "幽灵舰",
-  family: "D",
+  id: 'foe-d-ghost',
+  name: '幽灵舰',
+  family: 'D',
   hullClassTier: 2, // 驱逐舰（船长「1 驱逐 2 巡洋」里的那个"1"）
   speedRatio: 1.1, // = 325 / 295（船长「幽灵舰提速到 110%」）
   hp: 432, // T2 档基线 480 × 角色 0.90（巡哨残影）= 432
@@ -457,9 +457,9 @@ export const FOE_D_GHOST: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 }, // 主系**等离子（能量）**：设定「以能量武器为主」
-  energyForm: "beam",
-  tactic: "orbit", // 中程（船长定）
-};
+  energyForm: 'beam',
+  tactic: 'orbit', // 中程（船长定）
+}
 
 /** D 族 · 二档「守墓长舰」——陵区守卫主力（服务：坟场守墓者 88、虚海守望者 88 两处陵区）。
  * **按档重排**：T3 档基线 900 / 124 × 角色 1.20 / 0.85 = **1,080 / 105**。
@@ -468,9 +468,9 @@ export const FOE_D_GHOST: FoeShipDef = {
  * 射程带 **562~7,391**（**沿用现状上限，零变化**）。
  * 血型默认**装甲型**（= 坟场守墓者卡面）；虚海守望者卡的条目覆写为**均衡**（其卡面本是均衡）。 */
 export const FOE_D_LONGSHIP: FoeShipDef = {
-  id: "foe-d-longship",
-  name: "守墓长舰",
-  family: "D",
+  id: 'foe-d-longship',
+  name: '守墓长舰',
+  family: 'D',
   hullClassTier: 3, // 巡洋舰
   speedRatio: 0.9, // = **232** / 258（船长 2026-09-11「将守墓长舰速度下调至 **0.9** 倍率」；原 1.00 = 258）
   hp: 1080, // T3 档基线 900 × 角色 1.20（陵区守卫主力）= 1080
@@ -483,21 +483,21 @@ export const FOE_D_LONGSHIP: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
-  energyForm: "beam",
-  tactic: "orbit", // 中程（沿用现状）
-};
+  energyForm: 'beam',
+  tactic: 'orbit', // 中程（沿用现状）
+}
 
 /** D 族 · 二档「静滞卫舰」——**静滞陵寝的守誓者**，全族最慢也最重（服务：穹顶守卫 96）。
  * **按档重排**：T3 档基线 900 / 124 × 角色 1.30 / 1.00 = **1,170 / 124**（血/单发都是族内最高）。
  * 速度 = 3 巡洋舰基准 258 × **`0.50`** = **129**（船长「静滞卫舰速度只有正常的 50%」）——
- * 全族最慢：**"守墓者从来不需要追人"**，它只从 12 km 外一直点名。
+ * 全族最慢：**'守墓者从来不需要追人'**，它只从 12 km 外一直点名。
  * 射程带 562~**12,000** = **远程档全族最长**（船长「静滞卫舰改为远程」；守墓者长炮的招牌射程）。
- * ⚠ 下限仍取 562（**不抬**）：族规「不许 brawl」约束的是"它不主动贴上来"，
- * 不是"你贴上来它不打你"——「越界即清除」在射程上就该是"任何距离都打得到"。 */
+ * ⚠ 下限仍取 562（**不抬**）：族规「不许 brawl」约束的是'它不主动贴上来'，
+ * 不是'你贴上来它不打你'——「越界即清除」在射程上就该是'任何距离都打得到'。 */
 export const FOE_D_STASIS: FoeShipDef = {
-  id: "foe-d-stasis",
-  name: "静滞卫舰",
-  family: "D",
+  id: 'foe-d-stasis',
+  name: '静滞卫舰',
+  family: 'D',
   hullClassTier: 3, // 巡洋舰
   speedRatio: 0.5, // = 129 / 258（船长「静滞卫舰速度只有正常的 50%」）
   hp: 1170, // T3 档基线 900 × 角色 1.30（静滞陵寝的守誓者）= 1170
@@ -510,9 +510,9 @@ export const FOE_D_STASIS: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
-  energyForm: "beam",
-  tactic: "kite", // 远程（船长定）
-};
+  energyForm: 'beam',
+  tactic: 'kite', // 远程（船长定）
+}
 
 /** E 族 · 一档「巨构残段」——**泰坦级巨构**的残段（服务：泰坦残骸勘探 60；**全族第一条舰级**）。
  *
@@ -520,17 +520,17 @@ export const FOE_D_STASIS: FoeShipDef = {
  * 速度 = 4 战列舰基准 205 × **`0.95`** = **195**——落在 **E 族族格速带 `0.65~0.95`** 的顶格：
  * 「**巨构不讲机动，只讲撑到最后**」。⚠ 旧路径那张卡是 **410**（brawl 提速口径）⇒ 本批收进慢速带，
  * **这是一处真难度改动**（玩家更容易拉开距离），故必须配六组实测。
- * 射程带 **1~2,567** 与命中 **0.65** **逐字沿用现状**（后者是族格"**远古残骸老化自动炮台，
- * 单发重但失准**"的落点）；血型装甲、伤害构成 `动能 8 : 等离子 2`、战术 `brawl` 均沿用现状
- * （族规"中距为主"与"副系改爆炸"两项对齐属 E 族数据批 P-12 / P-13，本批**故意不动**，
- * 好让"迁路径 + 挂机群"这两项的难度增量**可单独归因**）。
+ * 射程带 **1~2,567** 与命中 **0.65** **逐字沿用现状**（后者是族格'**远古残骸老化自动炮台，'
+ * 单发重但失准**'的落点）；血型装甲、伤害构成 `动能 8 : 等离子 2`、战术 `brawl` 均沿用现状'
+ * （族规'中距为主'与'副系改爆炸'两项对齐属 E 族数据批 P-12 / P-13，本批**故意不动**，
+ * 好让'迁路径 + 挂机群'这两项的难度增量**可单独归因**）。
  *
  * **机群**：`警戒机 ×2`（`foe-drones.ts`）——船长「**巨构需要制作敌方无人机系统**」的落点，
  * 也是据点词「**警戒机群**」承诺的第二套火力。 */
 export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
-  id: "foe-titan-hulk",
-  name: "巨构残段",
-  family: "E",
+  id: 'foe-titan-hulk',
+  name: '巨构残段',
+  family: 'E',
   hullClassTier: 4, // 战列舰（"泰坦级巨构"的档位）
   speedRatio: 0, // **0**（船长 2026-09-11：「族速度倍率设为 0。**依靠无人机攻击炮台范围外敌人**」）——
   // 巨构是**静物残骸**：它不机动、不追人，只靠**警戒机群**打它炮台够不着的目标（"巨构不讲机动"的极致落点）
@@ -547,11 +547,11 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   dmgMix: { kinetic: 5, explosive: 5 },
   // **中距为主**（族规；P-12 对齐）——⚠ 但**期望距离不改**（船长：「战术进行调整，但期望距离不改，
   // 因为射程未定」）⇒ 下面用 `desireRangeM` 把作战距离**钉在现状值**（1~2567 带 × brawl 0.20 ≈ 513m）。
-  tactic: "orbit",
+  tactic: 'orbit',
   desireRangeM: 513,
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }], // 警戒机群（A3：机群挂舰级）——
   // **主力输出手段**（船长：速度 0 ⇒ 靠机群打炮台射程外的敌人）
-};
+}
 
 /** E 族 · 二档「**奥罗残骸段**」——**被风暴反复激活的武装残骸**（服务：奥罗武装残骸群 62）。
  *
@@ -559,11 +559,11 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
  * **按档重排**：T3 档基线 900 / 124 × 角色 1.10 / 1.00 = **990 / 124**。
  * 全族同口径：**速度倍率 0**（静物残骸）· 构成 **50% 爆炸 + 50% 动能** · 战法 **orbit** 且
  * `desireRangeM` 钉住现状作战距离（射程未定）· 命中 0.95（沿用本卡现状）· 带 1~2,581（沿用）。
- * **机群**：警戒机 ×2——与巨构残段同款"第二套火力"。 */
+ * **机群**：警戒机 ×2——与巨构残段同款'第二套火力'。 */
 export const FOE_SHIP_AURO_HULK: FoeShipDef = {
-  id: "foe-auro-hulk",
-  name: "奥罗残骸段",
-  family: "E",
+  id: 'foe-auro-hulk',
+  name: '奥罗残骸段',
+  family: 'E',
   hullClassTier: 3, // 巡洋舰
   speedRatio: 0, // 全族 0（船长：族速度倍率设为 0）
   hp: 990, // T3 档基线 900 × 角色 1.10
@@ -576,10 +576,10 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 5, explosive: 5 }, // 50% 爆炸 + 50% 动能（全族口径）
-  tactic: "orbit",
+  tactic: 'orbit',
   desireRangeM: 516, // 钉住现状（1~2581 × brawl 0.20 ≈ 516）
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }],
-};
+}
 
 /** E 族 · 三档「**核心舱段**」——**一具接近完好的巨构**（族内最高级目标，船长裁定 8「核心舱段级代表位」）。
  *
@@ -588,9 +588,9 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
  * **`elite`**（显示名加「精锐」前缀）——「接近完好」＝族内唯一精锐档。
  * **机群**：警戒机 **×3**（比另两档多一架：越完好的巨构带的机群越多）。 */
 export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
-  id: "foe-core-section",
-  name: "核心舱段",
-  family: "E",
+  id: 'foe-core-section',
+  name: '核心舱段',
+  family: 'E',
   hullClassTier: 4, // 战列舰
   speedRatio: 0,
   hp: 2240, // T4 档基线 1600 × 角色 1.40
@@ -603,11 +603,11 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 5, explosive: 5 },
-  tactic: "orbit",
+  tactic: 'orbit',
   desireRangeM: 513,
   elite: true, // 「精锐核心舱段」
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 3 }],
-};
+}
 
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
@@ -627,4 +627,4 @@ export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_TITAN_HULK,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_CORE_SECTION,
-];
+]
