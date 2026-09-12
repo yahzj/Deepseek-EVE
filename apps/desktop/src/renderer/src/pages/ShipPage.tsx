@@ -36,7 +36,7 @@ import { AiWorkFx } from '../ui/aiWorkFx'
 import type { AiWorkKind } from '../ui/aiWorkFx'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -138,10 +138,12 @@ export function ShipPage({
   // T5-B：正在改名（输入框展开）的船实例 + 草稿
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
-  // 2026-09-10 舰队检索：搜索词 / 状态筛选；2026-09-11 船长：排序键退场，改「舰船级别」子筛选
+  // 2026-09-10 舰队检索：搜索词 / 状态筛选；2026-09-11 船长：排序键退场，改「舰船级别」子筛选 +
+  // 选中级别后再出「舰船类别」（角色）子筛选
   const [fleetQ, setFleetQ] = useState('')
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('all')
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
+  const [fleetRole, setFleetRole] = useState<string>(SUB_ALL)
 
   // ── 舰影列自适应（2026-09-10 船长：每艘船的舰船形象置卡片最左侧；屏幕宽度不足时隐藏图形）──
   // 判定取舰队列表容器的**实测宽**（clientWidth 已扣竖向滚动条），不用窗口宽猜：
@@ -172,7 +174,8 @@ export function ShipPage({
         a.uid.localeCompare(b.uid),
     )
 
-  /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：再按**舰船级别**子筛选；顺序恒为机库序 + 收藏置顶） */
+  /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：再按**舰船级别** → 选中级别后按**类别**；
+   *  顺序恒为机库序 + 收藏置顶） */
   const fq = fleetQ.trim().toLowerCase()
   const fleetShown = (() => {
     const list = fleetEntries.filter(({ uid, ship }) => {
@@ -198,8 +201,10 @@ export function ShipPage({
       }
       // 舰船级别子筛选（2026-09-11 船长）：键 `t<级别>`，与组装机「舰船蓝图」子筛选同一张单点表
       if (fleetTier !== SUB_ALL) {
-        const tier = ctx.ships.get(ship.defId ?? uid)?.tier
-        if (`t${tier}` !== fleetTier) return false
+        const def = ctx.ships.get(ship.defId ?? uid)
+        if (`t${def?.tier}` !== fleetTier) return false
+        // 舰船类别（角色）子筛选：只在选中具体级别后生效（键 = 角色 id，与市场/手册的 SHIP_SUBS 同源）
+        if (fleetRole !== SUB_ALL && (def?.role ?? 'industrial') !== fleetRole) return false
       }
       return true
     })
@@ -317,58 +322,99 @@ export function ShipPage({
       >
         {/* 舰队工具条（2026-09-10 船长：搜索/状态筛选；样式与仓库、技能目录同款）——固定在列表上方不随滚动
             2026-09-11 船长：「移除排序选项，改为按照舰船级别划分的子筛选」⇒ 排序下拉退场，
-            改挂一行**舰船级别**子筛选（复用组装机那套 `SHIP_TIER_SUBS` 单点表与次级标签样式）；
-            两组筛选各带一个灰字前缀，避免两个「全部」混淆（前缀写法同星图页「矿带排序：」） */}
+            改挂**舰船级别**子筛选（复用组装机那套 `SHIP_TIER_SUBS` 单点表与次级标签样式）；
+            同日追加「**级别筛选单列一行，当选择级别后，出现舰船类别（工业战斗那些）筛选**」
+            ⇒ 工具条改多行（每行一个 `.app-fleet-row`）：第 1 行 搜索 + 状态，第 2 行 级别独占一行，
+            第 3 行 **舰船类别**（角色，取市场/手册同源的 `SHIP_SUBS`）**仅在选中具体级别后出现**；
+            每行各带灰字前缀，避免多个「全部」混淆（前缀写法同星图页「矿带排序：」） */}
         <div className="app-fleet-toolbar">
-          <span className="app-head-search-wrap">
-            <input
-              className="app-head-search"
-              type="text"
-              placeholder="搜索舰船…"
-              value={fleetQ}
-              onChange={(e) => setFleetQ(e.target.value)}
-              spellCheck={false}
-            />
-          </span>
-          <span className="app-dim">状态：</span>
-          <div className="app-task-tabs app-fleet-tabs" role="tablist">
-            {FLEET_FILTER_TABS.map((t) => (
-              <button
-                key={t.key}
-                role="tab"
-                aria-selected={fleetFilter === t.key}
-                className={`app-tasktab${fleetFilter === t.key ? ' is-active' : ''}`}
-                onClick={() => setFleetFilter(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="app-fleet-row">
+            <span className="app-head-search-wrap">
+              <input
+                className="app-head-search"
+                type="text"
+                placeholder="搜索舰船…"
+                value={fleetQ}
+                onChange={(e) => setFleetQ(e.target.value)}
+                spellCheck={false}
+              />
+            </span>
+            <span className="app-dim">状态：</span>
+            <div className="app-task-tabs app-fleet-tabs" role="tablist">
+              {FLEET_FILTER_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  role="tab"
+                  aria-selected={fleetFilter === t.key}
+                  className={`app-tasktab${fleetFilter === t.key ? ' is-active' : ''}`}
+                  onClick={() => setFleetFilter(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <span className="app-dim">
+              {fleetShown.length} 艘
+              {fq.length > 0 || fleetFilter !== 'all' || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL ? '（已筛选）' : ''}
+            </span>
           </div>
-          <span className="app-dim">级别：</span>
-          <div className="app-task-tabs app-fleet-tabs" role="tablist">
-            <button
-              role="tab"
-              aria-selected={fleetTier === SUB_ALL}
-              className={`app-tasktab${fleetTier === SUB_ALL ? ' is-active' : ''}`}
-              onClick={() => setFleetTier(SUB_ALL)}
-            >
-              全部
-            </button>
-            {SHIP_TIER_SUBS.map((s) => (
+          <div className="app-fleet-row">
+            <span className="app-dim">级别：</span>
+            <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
-                key={s.key}
                 role="tab"
-                aria-selected={fleetTier === s.key}
-                className={`app-tasktab${fleetTier === s.key ? ' is-active' : ''}`}
-                onClick={() => setFleetTier(s.key)}
+                aria-selected={fleetTier === SUB_ALL}
+                className={`app-tasktab${fleetTier === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => {
+                  setFleetTier(SUB_ALL)
+                  setFleetRole(SUB_ALL) // 级别回「全部」= 类别行收走，类别选择一并复位（级联口径）
+                }}
               >
-                {s.label}
+                全部
               </button>
-            ))}
+              {SHIP_TIER_SUBS.map((s) => (
+                <button
+                  key={s.key}
+                  role="tab"
+                  aria-selected={fleetTier === s.key}
+                  className={`app-tasktab${fleetTier === s.key ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setFleetTier(s.key)
+                    setFleetRole(SUB_ALL) // 换级别即复位类别（级联检索的常规口径）
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <span className="app-dim">
-            {fleetShown.length} 艘{fq.length > 0 || fleetFilter !== 'all' || fleetTier !== SUB_ALL ? '（已筛选）' : ''}
-          </span>
+          {/* 舰船类别（角色）子筛选：选中具体级别后才出现（2026-09-11 船长） */}
+          {fleetTier !== SUB_ALL ? (
+            <div className="app-fleet-row">
+              <span className="app-dim">类别：</span>
+              <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={fleetRole === SUB_ALL}
+                  className={`app-tasktab${fleetRole === SUB_ALL ? ' is-active' : ''}`}
+                  onClick={() => setFleetRole(SUB_ALL)}
+                >
+                  全部
+                </button>
+                {SHIP_SUBS.map((s) => (
+                  <button
+                    key={s.key}
+                    role="tab"
+                    aria-selected={fleetRole === s.key}
+                    className={`app-tasktab${fleetRole === s.key ? ' is-active' : ''}`}
+                    onClick={() => setFleetRole(s.key)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="app-fleet-scroll" ref={fleetScrollRef}>
         {scanSwitchId ? (
