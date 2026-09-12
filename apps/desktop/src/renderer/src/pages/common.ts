@@ -56,3 +56,20 @@ export function itemBuyQuote(engine: GameEngine, itemId: string): number | undef
   }
   return undefined
 }
+
+/**
+ * **星系稀有残骸战果**（窝点战果；2026-09-11 船长：「稀有残骸能否在星图的星系详细里看到？」）。
+ * 与 `state.galaxyWrecks[星系].rareBy`（按敌群记账）**同源**，供两处共用一份口径：
+ * 星图「星系行动」弹窗（Expedition）与「残骸打捞」星系卡（MapPage）——
+ * 抽成一处避免两边漂移。`text` = `窝点名 ×n、…`（无战果 = 空串）。
+ */
+export function rareWreckRefsOf(
+  engine: GameEngine,
+  galaxyId: string,
+): { count: number; text: string; refs: Array<[string, number]> } {
+  const by = engine.state.galaxyWrecks[galaxyId]?.rareBy ?? {}
+  const refs = Object.entries(by).filter(([, n]) => n > 0)
+  const count = refs.reduce((s, [, n]) => s + n, 0)
+  const text = refs.map(([aid, n]) => `${engine.ctx.anomalies.get(aid)?.name ?? aid} ×${n}`).join('、')
+  return { count, text, refs }
+}

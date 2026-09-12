@@ -1741,6 +1741,14 @@ body {
 
 }
 
+/* 星系行动弹窗里的稀有残骸战果行（2026-09-11 船长：「稀有残骸能否在星图的星系详细里看到？」
+ * ——与赏金任务行同款，配色沿用"稀有"色阶 #f4c95d，与残骸打捞卡的 `app-chip.is-rare` 同源） */
+.app-map-taskline.is-rare {
+
+  color: #f4c95d;
+
+}
+
 .app-map-detail-name.app-map-frontier-name {
 
   color: rgba(140, 168, 196, 0.9);
