@@ -2982,6 +2982,8 @@ function initFoeDronePools(
 function aliveDroneIndices(
   b: import("./state").BattleState,
   sentryIds: ReadonlySet<string> = SENTRY_DRONE_IDS,
+  sentriesInRange = false,
+  sentryOnly = false,
 ): number[] {
   const pools = b.dronePools;
   if (!pools) return [];
@@ -2995,8 +2997,11 @@ function aliveDroneIndices(
   // **船长 2026-09-11：关闭"哨戒机可被攻击"的机制**（代码保留、不删）——常驻伴飞的哨戒机停在
   // 母舰旁、**从不飞到敌方** ⇒ **永不被攻击**；**只有出击型（会飞到敌舰旁的那些）才会挨打**。
   // 置 `PD_TARGET_SENTRIES = true` 即恢复旧口径（非哨戒机全灭后转而打哨戒机）。
-  if (!PD_TARGET_SENTRIES) return others;
-  return others.length > 0 ? others : sentries;
+  // **哨戒机：只在近防炮射程内才可被反击**（船长 2026-09-11 重新定义）——
+  // 出击型不受此限，它们的反击由"被攻击"驱动（令牌见 resolvePointDefense）。
+  if (sentryOnly) return sentries;
+  if (!sentriesInRange) return others;
+  return [...others, ...sentries];
 }
 
 /**
@@ -3011,6 +3016,15 @@ const PD_TARGET_SENTRIES = false;
  * 取 5,000ms：略长于敌机装填（4,400ms）⇒ **每一轮敌机攻击都换来一次反击窗口**。
  */
 const PD_REACTIVE_WINDOW_MS = 5_000;
+
+/**
+ * **哨戒机可被反击的射程（米）**（船长 2026-09-11 重新定义近防炮）——
+ * · **非哨戒机（出击型）**：**攻击一次 ⇒ 换一次无视射程的反击**（它们扑到敌方去，永远够得着）；
+ * · **哨戒机**：不适用"被攻击换反击"，而是**进入近防炮射程内**就会被反击
+ *   （它常驻自己母舰旁 ⇒ 平时安全；两舰贴到 2,500m 以内它就暴露）。
+ * 取 2,500m ＝ 我方近防炮射程 ⇒ **两侧同口径**。
+ */
+const PD_SENTRY_RANGE_M = 2_500;
 
 /** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
 const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(["drone-sentry"]);
@@ -3052,6 +3066,12 @@ function resolvePointDefense(
     return;
   // **消费制**（同上，对称；船长 2026-09-11）：我方无人机打它一下 ⇒ 它才还一次手。
   b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined };
+  // ⚠ **哨戒机走另一条规则**（船长重新定义）：它**进近防炮射程内**就会被反击，不需要"先被攻击"
+  // ⇒ 令牌之外还要放行这一路（选靶里再按 sentriesInRange 过滤；无哨戒机时不会凭空开火）。
+  const sentryInRange =
+    b.distanceM <= PD_SENTRY_RANGE_M &&
+    aliveDroneIndices(b, SENTRY_DRONE_IDS, true, true).length > 0;
+  if (!sentryInRange) return;
   const period = Math.max(100, Math.round(bal.pdJudgementMs));
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue;
@@ -3060,7 +3080,13 @@ function resolvePointDefense(
     while (cd <= 0 && guard < 64) {
       guard++;
       cd += period;
-      const cands = aliveDroneIndices(b);
+      // **哨戒机只在射程内可选**（船长 2026-09-11 重新定义）：两舰贴到 `PD_SENTRY_RANGE_M`
+      // 以内，常驻伴飞的哨戒机才暴露在近防炮之下；否则候选只有出击型。
+      const cands = aliveDroneIndices(
+        b,
+        SENTRY_DRONE_IDS,
+        b.distanceM <= PD_SENTRY_RANGE_M,
+      );
       if (cands.length === 0) break;
       const idx =
         cands[
