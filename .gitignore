@@ -25,3 +25,6 @@ apps/desktop/release/
 
 # 内容工作台中间产物（导出 CSV；源数据以 git 为准）
 content-csv/
+
+# 工具区可重建产物（无头核对用的注入档 / 截图 / 读数 JSON；见 tools/README.md §三）
+tools/_ui-artifacts/

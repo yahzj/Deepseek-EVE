@@ -32,7 +32,10 @@
     "bounty:econ": "tsx tools/bounty-econ.ts",
     "price:audit": "tsx tools/price-audit.ts",
     "liquidity:audit": "tsx tools/liquidity-audit.ts",
-    "manufacture:econ": "tsx tools/manufacture-econ.ts"
+    "manufacture:econ": "tsx tools/manufacture-econ.ts",
+    "ui:probe": "tsx tools/ui-probe.ts",
+    "ui:geom": "tsx tools/ui-geom.ts",
+    "tools:audit": "tsx tools/tools-audit.ts"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",
