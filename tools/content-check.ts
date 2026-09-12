@@ -385,9 +385,10 @@ for (const sbp of SHIP_BLUEPRINTS) {
         `蓝图说明契约：${bp.id} 说明点名了「${def.name}」，实际材料只有 ${[...mats].map(mineralNameOf).join(" + ")}`,
       )
     }
-    // ⑨ CPU 声明
+    // ⑨ CPU 声明（2026-09-11 起：装备 cpuUse 允许为 0 —— 此时声明指的是**扩容量** cpuBonus，
+    //    如协处理器说明「装配 CPU 上限 +10」；扩容件的蓝图说明同样按 cpuBonus 核对）
     for (const m of d.matchAll(/CPU\s*(\d+)|(\d+)\s*点\s*CPU/g)) {
-      const real = mod?.cpuUse ?? ship?.cpu
+      const real = mod ? (mod.cpuUse && mod.cpuUse > 0 ? mod.cpuUse : mod.cpuBonus) : ship?.cpu
       if (real === undefined) continue
       claims += 1
       check(Number(m[1] ?? m[2]) === real, `蓝图说明契约：${bp.id} 说明写 CPU ${m[1] ?? m[2]}，实际 = ${real}`)
@@ -937,7 +938,21 @@ for (const d of drones) {
   }
 }
 for (const m of MODULES) {
-  check((m.cpuUse ?? 0) > 0 && Number.isInteger(m.cpuUse), `装备 ${m.id} cpuUse 缺失或非法（V10.5b）`)
+  // 2026-09-11 船长裁决「甲」（新增协处理器时）：**cpuUse 必填整数 ≥ 0**——零占用只允许"本件就是
+  // 加预算"的件（带 cpuBonus），别的件漏写占用照旧报错（保住 V10.5b「每件都占 CPU」的原意）。
+  const cpuUse = m.cpuUse
+  check(
+    cpuUse !== undefined && Number.isInteger(cpuUse) && cpuUse >= 0,
+    `装备 ${m.id} cpuUse 缺失或非法（V10.5b：必填整数 ≥ 0）`,
+  )
+  check(
+    (cpuUse ?? 0) > 0 || (m.cpuBonus ?? 0) > 0,
+    `装备 ${m.id} cpuUse = 0 却没有 cpuBonus——零占用只允许"加预算"件（协处理器族）`,
+  )
+  check(
+    (m.cpuBonus ?? 0) >= 0 && Number.isInteger(m.cpuBonus ?? 0),
+    `装备 ${m.id} cpuBonus 非法（需非负整数）`,
+  )
   // V18：家族合法（六家族 + 无人机装置两家族）
   check([...MODULE_SLOTS].includes(m.slot), `装备 ${m.id} 家族非法：${m.slot}`)
   // V18：槽类归属 rack 必填且与 rackOf 推导一致（Q3 映射集中落数据；防标注漂移）
@@ -2492,6 +2507,8 @@ for (const m of MODULES) {
     repairHullHp: 'support',
     repairKit: 'support',
     lockDmgBonus: 'target-lock',
+    // 2026-09-11 协处理器：CPU 预算扩容（本职在 cpu 族；写在别的槽位上才算跨族，需登记）
+    cpuBonus: 'cpu',
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
@@ -2587,6 +2604,64 @@ for (const m of MODULES) {
   )
 }
 
+/* ── 舰船价格口径**预警**（2026-09-11 船长：「3 改为预警」）──────────────────────────
+   背景（实证）：2026-09-09「巡洋价位定档 9/11/13/15M」的重放按**旧数值**匹配，把阶梯写到了
+   陆龟/玳瑁/飞鱼/旗鱼头上（330k/760k/210k/480k → 9M/11M/13M/15M），4 艘巡洋自己反而没改；
+   因当时没有护栏，漂移一路带进维修费档位（`repairTierWeight` 读 `priceIsk`）与平衡工具。
+   口径（三处同源）：
+   - `ships.ts priceIsk` = 该船**市场行 basePrice**（无市场行者必须为 0 = 仅定制）；
+   - `shipBlueprints priceIsk` = 市场行价 × 档位系数（≤30 万 ×2 / 30~100 万 ×2.5 /
+     100~400 万 ×3 / >400 万 ×4），允许 ±1 万整万取整余量；
+   - 市场行价本身就是玩家真正付的价（`buyShip` 走 marketCatalog），故它是锚。
+   **按船长裁决只发预警（`warn`），不阻断体检**——它是"口径漂移"的哨兵，不是硬契约。 */
+{
+  const tierCoefOf = (market: number): number => {
+    if (market > 4_000_000) return 4
+    if (market > 1_000_000) return 3
+    if (market > 300_000) return 2.5
+    return 2
+  }
+  const shipGoods = MARKET_GOODS.filter((g) => g.kind === 'ship' && typeof g.refId === 'string')
+  const marketOfShip = new Map(shipGoods.map((g) => [g.refId!, g]))
+  let driftPrice = 0
+  let driftBp = 0
+  for (const ship of SHIPS) {
+    const good = marketOfShip.get(ship.id)
+    // 定制船口径（2026-09-09「蓝图船成品现货下架」）：无市场行、或市场行 playerBuyable=false（只收不卖）
+    // ⇒ `priceIsk` 必须为 0（图鉴据此显示「定制 / 仅可制造」，维修费档位走"层容量"兜底）。
+    const custom = good === undefined || good.playerBuyable === false
+    if (custom) {
+      if (ship.priceIsk !== 0) {
+        warn.push(
+          `舰船价格口径：${ship.name}（${ship.id}）属定制船（${good ? '市场行只收不卖' : '无市场行'}），ships.ts priceIsk = ${ship.priceIsk.toLocaleString('zh-CN')}（应为 0）`,
+        )
+        driftPrice += 1
+      }
+    } else if (ship.priceIsk !== (good.basePrice ?? 0)) {
+      const market = good.basePrice ?? 0
+      warn.push(
+        `舰船价格口径：${ship.name}（${ship.id}）ships.ts priceIsk = ${ship.priceIsk.toLocaleString('zh-CN')}，市场行价 = ${market.toLocaleString('zh-CN')}（两处应一致；维修费档位读 priceIsk，玩家付款读市场行）`,
+      )
+      driftPrice += 1
+    }
+    const bp = SHIP_BLUEPRINTS.find((b) => b.shipId === ship.id)
+    if (!bp) continue
+    // 定制船的蓝图价 = 唯一定价（无"市场价 × 系数"可比），不参与系数比对
+    if (custom) continue
+    const market = good!.basePrice ?? 0
+    const expect = Math.round(market * tierCoefOf(market))
+    if (Math.abs(bp.priceIsk - expect) > 10_000) {
+      warn.push(
+        `舰船蓝图价格口径：${ship.name}（${ship.id}）蓝图价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「市场价 × 档位系数」应为 ${expect.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+      )
+      driftBp += 1
+    }
+  }
+  console.log(
+    `· 舰船价格口径（预警）：${SHIPS.length} 艘船中 priceIsk 与市场行价不符 ${driftPrice} 处、蓝图价与档位系数不符 ${driftBp} 处`,
+  )
+}
+
 /* ── 通讯消息契约（2026-09-11 通讯系统）────────────────────────────────────────────
    体检口径：id 唯一、字段齐备、触发器字段可解析（星系/技能/站点必须真实存在）、
    跳转目标页合法（及其页面内标签）、玩家可见文案不含开发用词；
@@ -2599,6 +2674,8 @@ for (const m of MODULES) {
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
   /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
   const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
+  /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
+  const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set(['start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial'])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -2757,6 +2834,14 @@ for (const m of MODULES) {
         check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持标签跳转，实际页：${m.hint.page}`)
         check(MAP_TABS.has(m.hint.tab), `通讯 ${m.id} 星图标签非法：${m.hint.tab}`)
       }
+      // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）——只有"星图 · 任务中心"才有内层标签
+      if (m.hint.taskTab !== undefined) {
+        check(
+          m.hint.page === 'map' && m.hint.tab === 'task',
+          `通讯 ${m.id} 只有星图「任务中心」支持内层标签跳转（实际 page=${m.hint.page} tab=${m.hint.tab ?? '无'}）`,
+        )
+        check(TASK_TABS.has(m.hint.taskTab), `通讯 ${m.id} 任务中心内层标签非法：${m.hint.taskTab}`)
+      }
       if (m.hint.shipTab !== undefined) {
         check(m.hint.page === 'ship', `通讯 ${m.id} 只有舰船页支持标签跳转，实际页：${m.hint.page}`)
         check(SHIP_TABS.has(m.hint.shipTab), `通讯 ${m.id} 舰船标签非法：${m.hint.shipTab}`)
@@ -2772,6 +2857,15 @@ for (const m of MODULES) {
       }
       for (const w of LORE_SPLIT) {
         check(!p.includes(w), `通讯 ${m.id} 的文案把玩家与船分开说「${w}」（玩家就是那条船）：${p.slice(0, 24)}…`)
+      }
+    }
+    // 强调行契约（2026-09-11 船长：训前简报的任务链要高亮）：`highlight` 的每一条都必须是 `body` 里
+    // **逐字相等**的一段——否则界面上静默不高亮，改文案时很容易漏（同 `action` 透传那类"看不出来"的坑）。
+    if (m.highlight !== undefined) {
+      check(m.highlight.length > 0, `通讯 ${m.id} 的 highlight 是空数组（要么去掉字段，要么给出要强调的段落）`)
+      for (const h of m.highlight) {
+        check(h.trim().length > 0, `通讯 ${m.id} 的 highlight 含空段落`)
+        check(m.body.includes(h), `通讯 ${m.id} 的 highlight 段落不在正文里（界面不会高亮）：${h.slice(0, 24)}…`)
       }
     }
   }

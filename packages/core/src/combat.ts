@@ -34,7 +34,7 @@ import type { LairTier } from './lairs'
 import { nextRandom } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
-import { allFittedModules, curveMult, effectiveCpu, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
@@ -687,7 +687,8 @@ export function createPlayerSpec(
     droneRangeMult += g.droneRangeBonusPct ?? 0
   }
   let bayUsed = 0
-  let cpuLeft = effectiveCpu(state, ctx, ship) - fittedCpuUsed(fitted, ctx)
+  // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
+  let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx)
   const droneLoad = fleet.droneLoad ?? {}
   // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——每级 −4%
   //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
@@ -984,6 +985,37 @@ export function foeUnitNameOf(anomaly: AnomalyDef, tag: string): string {
     if (waveHpShareOf(tag, anomaly) / maxShare <= FOE_LIGHT_FRAC) return `${FOE_LIGHT_WORD}${base}`
   }
   return base
+}
+
+/**
+ * **敌舰单位的舰种档**（2026-09-11 船长：战斗动画的舰身体积与舰种挂钩）——界面的**只读查询**，
+ * 与 `foeUnitNameOf` 同源（同一份 tag → 舰级反查）。
+ *
+ * - **舰级路径**（写了 `anomaly.ships` 的卡）：返回该编成条目所引舰级的 `hullClassTier`（1~5）；
+ * - **旧威胁推导路径**（未写 `ships` 的卡）：返回 **`null`**——这些卡**没有舰种档**
+ *   （旧路径的"舰种名"由战术×血型推导，不是质量分级）⇒ 界面按**回落尺寸**绘制。
+ *   ⚠ 2026-09-11 船长裁定：旧路径卡的体积口径**延后**（等各族舰级在二号处补完再生效）。
+ *
+ * 用途：战斗画面按舰种给舰身尺寸（`TIER_SIZE`，见 `ui/battleViewCore`）——引擎**不消费**本值。
+ */
+export function foeShipTierOf(anomaly: AnomalyDef, tag: string): 1 | 2 | 3 | 4 | 5 | null {
+  const hit = foeShipAtTag(anomaly, tag)
+  return hit ? hit.ship.hullClassTier : null
+}
+
+/**
+ * **敌舰单位是否「头目档」（`FoeShipDef.elite`）**（2026-09-11 船长：敌列错列雁阵"主舰在前、僚机与杂鱼在后"）——
+ * 界面的**只读查询**，与 `foeUnitNameOf`/`foeShipTierOf` 同源（同一份 tag → 舰级反查）。
+ *
+ * ⚠ 界面**不能用 `foeMainTagOf` 当"主舰"**：那条规则把多波/多小队的 `w{n}-foe-{k}`（k≥1）也当主舰
+ * （2026-09-09 为"第 2 艘主舰不再当僚机"而放宽）⇒ A 族卡的 3 艘杂鱼会被判成主舰。阵形用
+ * 「**tag 是本波首舰（`(w{n}-)?foe-0`）或该舰级为头目档**」作"前排"，故需要本查询。
+ *
+ * 旧威胁推导路径（无舰级）→ `false`（这些卡靠 tag 首舰判前排）。
+ */
+export function foeShipEliteOf(anomaly: AnomalyDef, tag: string): boolean {
+  const hit = foeShipAtTag(anomaly, tag)
+  return hit ? hit.ship.elite === true : false
 }
 
 /**
@@ -2136,7 +2168,14 @@ export function battleArcsFor(
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
+  /** 敌方各武器射程带（聚合）：`minM~maxM` 跨全部单位取极值，`type` = 遍历到的最后一件武器弹种 */
   foe: { minM: number; maxM: number; type: DamageType }
+  /**
+   * 敌方**逐射程带**分解（2026-09-11 船长反馈"敌方射程不一致时只显示其中一个"）：
+   * 按 (min, max, 弹种) 去重、外圈在前；`count` = 用该带的**敌舰艘数**，`names` = 舰名（悬停说明用）。
+   * 只有一条带时界面观感与旧版完全一致（同一条「敌方 X~Ym」）；多条带时界面逐带各出一条。
+   */
+  foeBands: Array<{ minM: number; maxM: number; type: DamageType; count: number; names: string[] }>
   /** 各单位三层满血量（UI 垂直血条按各自满值比例绘制） */
   maxHp: { me: { s: number; a: number; h: number }; foe: Record<string, { s: number; a: number; h: number }> }
   /** 机群战损（2026-09-10）：本场已击落架数（机型 id → 架数）；缺省 = 无损失 */
@@ -2245,14 +2284,39 @@ export function battleArcsFor(
   let foeMin = Number.POSITIVE_INFINITY
   let foeMax = 0
   let foeType: DamageType = 'kinetic'
+  /**
+   * 敌方**逐射程带**分解（2026-09-11 船长：「战斗场景内，假如敌方的舰船射程不一致，只会显示其中一个的射程」
+   * ——指屏幕下方那条「敌方 X~Ym」标签）。上面那条聚合带只够表达"最远的威胁"：编队里短射程的船
+   * （如快速艇 1~1883 对头目舰 1~2210）会被并集吃掉、看起来只剩一个射程。这里按
+   * (最小射程, 最大射程, 弹种) 分组去重下发，界面照**我方逐武器一条**的同款做法逐带出一条。
+   */
+  const foeBandMap = new Map<string, { minM: number; maxM: number; type: DamageType; units: number; names: Set<string> }>()
   for (const f of foes) {
+    // 同一单位的多件同带武器只算一艘；`count` = **用该带的敌舰艘数**（三艘同名快艇 = 3，不是 1）
+    const seenBandOfUnit = new Set<string>()
     for (const w of f.weapons) {
       foeMin = Math.min(foeMin, w.minRangeM)
       foeMax = Math.max(foeMax, w.maxRangeM)
-      foeType = w.fixedType ?? 'kinetic'
+      const type = w.fixedType ?? 'kinetic'
+      foeType = type
+      const key = `${w.minRangeM}|${w.maxRangeM}|${type}`
+      let band = foeBandMap.get(key)
+      if (!band) {
+        band = { minM: w.minRangeM, maxM: w.maxRangeM, type, units: 0, names: new Set<string>() }
+        foeBandMap.set(key, band)
+      }
+      band.names.add(f.name)
+      if (!seenBandOfUnit.has(key)) {
+        seenBandOfUnit.add(key)
+        band.units += 1
+      }
     }
   }
   if (!Number.isFinite(foeMin)) foeMin = 0
+  // 外圈在前（远 → 近），同远者近端更小者在前——与界面"从外往里读"一致
+  const foeBands = [...foeBandMap.values()]
+    .map((b) => ({ minM: b.minM, maxM: b.maxM, type: b.type, count: b.units, names: [...b.names] }))
+    .sort((a, b) => b.maxM - a.maxM || a.minM - b.minM)
   const openM = battleOpenM(me, foes, bal)
   // 各单位三层满血量（UI 垂直血条按各自满值比例绘制）：以战斗实况单位为准——
   // 2026-09-09 多波修复：foes 仅按"单波默认"重建，波次增援/多小队单位（w{n}-foe-* 等）不在其内，
@@ -2315,6 +2379,7 @@ export function battleArcsFor(
     me: meArcs,
     meReload,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
+    foeBands,
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
     // 机群战损（2026-09-10）：本场已击落架数（UI 战报/提示用；缺省 = 无损失）
     ...(battle.droneLost && Object.keys(battle.droneLost).length > 0 ? { droneLost: battle.droneLost } : {}),
@@ -2553,7 +2618,8 @@ export function advanceBattleFor(
         addLog(
           state,
           'warn',
-          `⚔ 第 ${waveIdx + 1}/${waves.length} 波已全灭（${waveName ? waveName + "·" : ""}${anomaly.name}），敌方增援正在从远处入场…`,
+          `⚔ 第 ${waveIdx + 1}/${waves.length} 波已全灭（${waveName ? waveName + '·' : ''}${anomaly.name}），` +
+            (bal.waveReopenEnabled === true ? '敌方增援正在从远处入场…' : '敌方增援正在入场…'),
         )
       }
       if (gapMs > 0 && battle.waveClearAt !== undefined && state.gameMs < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
@@ -2571,7 +2637,12 @@ export function advanceBattleFor(
       // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
       // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
       // 0 = 原地续战（旧行为），1 = 完整回到开战距离
-      const reopen = bal.waveReopenFrac ?? 0
+      // ⚠ **2026-09-11 船长：「将敌人增援波次距离会后退的惩罚暂时关闭」** ⇒ 本段由**总开关
+      //   `waveReopenEnabled`** gate（现值 false = 关闭）：关闭时**距离原地不动**，下一波在当前交战距离入场，
+      //   玩家可见日志同步改为中性表述（不再说"从远处入场 / 重新接近中"——否则文案与实际不符）。
+      //   机制整套保留：把开关改回 true 即恢复 2026-09-09 口径。
+      const reopenOn = bal.waveReopenEnabled === true
+      const reopen = reopenOn ? (bal.waveReopenFrac ?? 0) : 0
       if (reopen > 0 && Number.isFinite(openM)) {
         battle.distanceM = Math.round(openM * reopen + battle.distanceM * (1 - reopen))
       }
@@ -2579,7 +2650,8 @@ export function advanceBattleFor(
       addLog(
         state,
         'warn',
-        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + "·" : ""}${anomaly.name}）：敌方增援自远处入场，重新接近中。`,
+        `⚔ 第 ${waveIdx + 1}/${waves.length} 波来袭（${waveName ? waveName + '·' : ''}${anomaly.name}）：` +
+          (reopenOn ? '敌方增援自远处入场，重新接近中。' : '敌方增援入场。'),
       )
       continue
     }

@@ -2,7 +2,7 @@
  * 远征（V12 两阶段）单元测试：出发校验/去程/途中事件/到港开战/实时战斗/弹药/结算惩罚。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SimContext, ItemDef } from '../src/types'
+import type { SimContext, ItemDef, FoeShipDef, AnomalyDef } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
@@ -260,6 +260,64 @@ describe('战斗界面敌方射程聚合（2026-09-08 玩家反馈：敌方最�
     expect(arcs!.foe.minM).toBeGreaterThan(0) // kite 模板 min 1200×(1+成长)>0——回归：旧代码恒为 0
     expect(arcs!.foe.minM).toBeLessThan(arcs!.foe.maxM)
     expect(arcs!.foe.type).toBe('plasma')
+  })
+
+  // 2026-09-11 船长：「战斗场景内，假如敌方的舰船射程不一致，只会显示其中一个的射程」
+  // ——指屏幕下方那条「敌方 X~Ym」legend；现已按射程带逐条下发（外圈在前）。
+  it('敌方多套射程：foeBands 逐带列出（外圈在前、带舰数），聚合带 = 并集（单一带时只有一条）', () => {
+    const LONG: FoeShipDef = {
+      id: 't-band-long',
+      name: '测试头目舰',
+      family: 'A',
+      hullClassTier: 3,
+      speedRatio: 1,
+      hp: 400,
+      split: { s: 0.2, a: 0.55, h: 0.25 },
+      shotDmg: 40,
+      hitRate: 0.9,
+      reloadMs: 4000,
+      rangeMinM: 1,
+      rangeMaxM: 2210,
+      falloff: 0.3,
+      dmgMix: { kinetic: 8, explosive: 2 },
+      tactic: 'brawl',
+    }
+    const SHORT: FoeShipDef = { ...LONG, id: 't-band-short', name: '测试快艇', hullClassTier: 1, rangeMaxM: 1883 }
+    const st = createInitialState({ nowWallMs: 0, seed: 5 })
+    st.wallet.isk = 500_000
+    const card: AnomalyDef = {
+      ...anomaly('ano-bands', 'galaxy-hub', { threat: 20, reward: 1_000 }),
+      ships: [{ ship: LONG }, { ship: SHORT, count: 3 }],
+    }
+    const c = makeTestCtx({ anomalies: [card] })
+    expect(startExpedition(st, 'ano-bands', c).ok).toBe(true)
+    advanceGame(st, 5_000, c)
+    const arcs = battleArcsFor(st, c)
+    expect(arcs).not.toBeNull()
+    // 聚合带仍是并集（旧口径保持：距离尺色带与战场弧继续用它）
+    expect(arcs!.foe.minM).toBe(1)
+    expect(arcs!.foe.maxM).toBe(2210)
+    // 逐带分解：远带在前，各带带出"用它的敌舰艘数"
+    expect(arcs!.foeBands.map((b) => [b.minM, b.maxM, b.count])).toEqual([
+      [1, 2210, 1],
+      [1, 1883, 3],
+    ])
+    expect(arcs!.foeBands[0]!.names).toEqual(['测试头目舰'])
+    expect(arcs!.foeBands[1]!.names).toEqual(['测试快艇'])
+    expect(arcs!.foeBands.every((b) => b.type === 'kinetic')).toBe(true)
+    // 单一射程带的卡仍只出一条（界面观感与旧版一致）
+    const solo = createInitialState({ nowWallMs: 0, seed: 5 })
+    solo.wallet.isk = 500_000
+    const soloCard: AnomalyDef = {
+      ...anomaly('ano-solo-band', 'galaxy-hub', { threat: 20, reward: 1_000 }),
+      ships: [{ ship: LONG }, { ship: LONG, count: 2 }],
+    }
+    const c2 = makeTestCtx({ anomalies: [soloCard] })
+    expect(startExpedition(solo, 'ano-solo-band', c2).ok).toBe(true)
+    advanceGame(solo, 5_000, c2)
+    const arcs2 = battleArcsFor(solo, c2)
+    expect(arcs2!.foeBands).toHaveLength(1)
+    expect([arcs2!.foeBands[0]!.minM, arcs2!.foeBands[0]!.maxM, arcs2!.foeBands[0]!.count]).toEqual([1, 2210, 3])
   })
 })
 

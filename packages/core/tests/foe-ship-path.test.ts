@@ -28,7 +28,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS } from '@whale/data'
-import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeUnitNameOf } from '../src/combat'
+import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
@@ -166,6 +166,81 @@ describe('舰级路径：词缀与显示名', () => {
     expect(w.fixedType).toBe('plasma')
     expect(w.hitRate).toBe(1) // 光束必中
     expect(w.shotsByType).toEqual({ plasma: 8, kinetic: 2 })
+  })
+})
+
+/**
+ * **舰种档反查**（界面用，2026-09-11 船长「战斗动画的体积与舰种挂钩」）：
+ * 界面与引擎同源——`foeShipTierOf(卡, tag)` 按 tag 反查该单位所引舰级的 `hullClassTier`，
+ * 战斗画面据此取舰身体积与舰艏偏移（实现见 `apps/desktop/.../battleViewCore.tsx` 的 `sizeOfUnit`）。
+ * 旧威胁推导路径的卡**没有舰级** → `null`：界面**回落**改造前的统一体积 170/90
+ * （船长同日裁定「这批卡延后，等各族舰级在二号处补完」）。
+ */
+describe('舰种档反查：foeShipTierOf（战斗画面体积与舰种挂钩）', () => {
+  it('舰级路径：按 tag 反查回同一舰级的舰种档（僚机跟主体，不靠"队列首位"判定）', () => {
+    const def = mixedCard(40)
+    expect(foeShipTierOf(def, 'foe-0')).toBe(3) // 头目 = 舰种 3 巡洋舰
+    expect(foeShipTierOf(def, 'w0-foe-2')).toBe(1) // 快艇 = 舰种 1 护卫舰
+    expect(foeShipTierOf(def, 'w0-foe-3-e1')).toBe(1) // 僚机跟最近主体
+  })
+
+  it('未编入的 tag → null；旧威胁推导路径 → null（界面回落统一体积）', () => {
+    expect(foeShipTierOf(mixedCard(40), 'foe-9')).toBeNull()
+    const legacy = anomaly('ano-t-tier-legacy', 'galaxy-hub', { threat: 30 })
+    expect(legacy.ships).toBeUndefined()
+    expect(foeShipTierOf(legacy, 'foe-0')).toBeNull()
+  })
+
+  it('全内容契约：舰级路径的每张卡、每个单位都能反查到 1~5 档（界面不存在"查不到档"的敌军）', () => {
+    const cards = ANOMALIES.filter((d) => (d.ships?.length ?? 0) > 0)
+    // 2026-09-11 读数 13 张（A 族 6 + B 族 3 + C 族 4）——只作下限，新增族补舰级后随之上升
+    expect(cards.length).toBeGreaterThanOrEqual(13)
+    let units = 0
+    for (const def of cards) {
+      const specs = createFoeSpecs(def, bal)
+      expect(specs.length, def.id).toBeGreaterThan(0)
+      for (const s of specs) {
+        units++
+        const tier = foeShipTierOf(def, s.tag)
+        expect(tier, `${def.id} / ${s.tag}`).not.toBeNull()
+        expect(tier!).toBeGreaterThanOrEqual(1)
+        expect(tier!).toBeLessThanOrEqual(5)
+      }
+    }
+    expect(units).toBeGreaterThan(cards.length)
+  })
+})
+
+/**
+ * **头目档反查**（界面用，2026-09-11 船长：敌列错列雁阵「主舰在前、僚机与杂鱼在后」）：
+ * 阵形的**前排判据** = 本波首舰（`(w{n}-)?foe-0`）**或该舰级为头目档** ⇒ 界面需要本查询，
+ * 因为 `foeMainTagOf` 把多波/多小队的 `w{n}-foe-{k}`（k≥1）也算主舰（2026-09-09 放宽口径），
+ * A 族卡的 3 艘杂鱼会被误判成主舰（首次探针即抓到此坑）。
+ */
+describe('头目档反查：foeShipEliteOf（阵形前排判据）', () => {
+  it('只认 `elite` 舰级：头目 true、杂鱼/僚机 false；未编入与旧路径 → false', () => {
+    const def = mixedCard(40)
+    expect(foeShipEliteOf(def, 'foe-0')).toBe(true) // 测试头目舰 = elite
+    expect(foeShipEliteOf(def, 'w0-foe-2')).toBe(false)
+    expect(foeShipEliteOf(def, 'w0-foe-3-e1')).toBe(false)
+    expect(foeShipEliteOf(def, 'foe-9')).toBe(false)
+    expect(foeShipEliteOf(anomaly('ano-t-elite-legacy', 'galaxy-hub', { threat: 30 }), 'foe-0')).toBe(false)
+  })
+
+  it('内容契约：A 族卡的头目位（`foe-0`）确实是头目档，其杂鱼不是', () => {
+    // ⚠ 2026-09-12 合并校正：样本由「边境海盗前哨」改为「灰霾伏击团清剿令」——
+    // 前者已按船长 2026-09-11 追加裁定「**边境 / 碎晶 / 信标 都设定无首领**」改成
+    // 快艇 ×1 + ×2（**无 elite 头目**），故它的 `foe-0` 是杂鱼（tier 1、非头目档），
+    // 拿它做"头目档反查"的样本会与最新编成口径冲突。
+    const post = ANOMALIES.find((a) => a.id === 'ano-haze-ambush')!
+    expect(foeShipEliteOf(post, 'foe-0')).toBe(true)
+    expect(foeShipEliteOf(post, 'w0-foe-1')).toBe(false)
+    // 与体积档反查相互独立：头目位既能取到档，也能取到头目标记
+    expect(foeShipTierOf(post, 'foe-0')).toBe(3)
+    // 负向对照：**无首领**卡（边境海盗前哨）的首位是杂鱼 ⇒ 既非头目档、档位也不是 3
+    const noBoss = ANOMALIES.find((a) => a.id === 'ano-pirate-post')!
+    expect(foeShipEliteOf(noBoss, 'foe-0')).toBe(false)
+    expect(foeShipTierOf(noBoss, 'foe-0')).toBe(1)
   })
 })
 

@@ -124,7 +124,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 180, // 鲣鱼级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 80000,
+    priceIsk: 84_000, // 同步：42,000 × 2
     description: '「鲣鱼级护卫舰」总装图纸：货舱 650 m³、循环 16 秒产 6 单位——武装舰族量产线，学会即可在船坞总装。',
   },
   {
@@ -285,7 +285,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 1260, // 陆龟级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 830000,
+    priceIsk: 825_000, // 同步：330,000 × 2.5
     description: '「陆龟级重装艇」总装图纸：货舱 7,000 m³、循环 13 秒产 24 单位——重装舰族量产线，学会即可在船坞总装。',
   },
   {

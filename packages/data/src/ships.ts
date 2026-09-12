@@ -178,7 +178,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 19_000,
     cycleSeconds: 30,
     oreUnitsPerCycle: 140,
-    priceIsk: 2_350_000,
+    priceIsk: 1_350_000,
     agility: 0.3,
     evasion: 0,
     hitBonus: 0.1,
@@ -463,7 +463,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 2600,
     cycleSeconds: 14,
     oreUnitsPerCycle: 10,
-    priceIsk: 3_400_000, // 2026-09-09 巡洋入奇货；价格随 A4 渠道声望重锚复核
+    priceIsk: 9_000_000, // 巡洋价位定档（2026-09-09 船长拍板，战力序 9/11/13/15M）；2026-09-11 对齐市场行（此前只落到市场行）
     agility: 0.54,
     evasion: 0.12,
     hitBonus: 0.17,
@@ -492,7 +492,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 2500,
     cycleSeconds: 14,
     oreUnitsPerCycle: 10,
-    priceIsk: 3_600_000, // 2026-09-09 巡洋入奇货；价格随 A4 渠道声望重锚复核
+    priceIsk: 15_000_000, // 巡洋价位定档（2026-09-09 船长拍板，战力序 9/11/13/15M）；2026-09-11 对齐市场行（此前只落到市场行）
     agility: 0.5,
     evasion: 0.1,
     hitBonus: 0.16,
@@ -521,7 +521,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 2800,
     cycleSeconds: 13,
     oreUnitsPerCycle: 12,
-    priceIsk: 3_800_000, // 2026-09-09 巡洋入奇货；价格随 A4 渠道声望重锚复核
+    priceIsk: 11_000_000, // 巡洋价位定档（2026-09-09 船长拍板，战力序 9/11/13/15M）；2026-09-11 对齐市场行（此前只落到市场行）
     agility: 0.5,
     evasion: 0.1,
     hitBonus: 0.18,
@@ -550,7 +550,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 3000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 12,
-    priceIsk: 4_400_000, // 2026-09-09 巡洋入奇货；价格随 A4 渠道声望重锚复核
+    priceIsk: 13_000_000, // 巡洋价位定档（2026-09-09 船长拍板，战力序 9/11/13/15M）；2026-09-11 对齐市场行（此前只落到市场行）
     agility: 0.46,
     evasion: 0.08,
     hitBonus: 0.19,
@@ -581,7 +581,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 7000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 24,
-    priceIsk: 9_000_000,
+    priceIsk: 330_000,
     agility: 0.5,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -608,7 +608,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 12000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 22,
-    priceIsk: 11_000_000,
+    priceIsk: 760_000,
     agility: 0.46,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -664,7 +664,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 5000,
     cycleSeconds: 11,
     oreUnitsPerCycle: 20,
-    priceIsk: 13_000_000,
+    priceIsk: 210_000,
     agility: 0.62,
     evasion: 0.3,
     hitBonus: 0.08,
@@ -691,7 +691,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 8500,
     cycleSeconds: 11,
     oreUnitsPerCycle: 18,
-    priceIsk: 15_000_000,
+    priceIsk: 480_000,
     agility: 0.56,
     evasion: 0.3,
     hitBonus: 0.08,

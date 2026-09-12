@@ -888,12 +888,24 @@ function settleSell(
   }
 }
 
-/** 买单成交：钱扣除，货入对应库存，池售出，记录净买量 */
+/** 买单成交：**从预扣里结算**（挂价 × 成交量），挂价高于实际成交价时把价差退回钱包，货入对应库存，池售出。
+ *  2026-09-11（船长裁决「甲」预扣冻结）：钱在挂单时已扣，故此处不再看钱包；
+ *  **遗留单**（改动前挂的、`escrowIsk` 缺省 0）仍按旧口径——钱包够才成交，不够继续挂着等。 */
 function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: NpcMarketOrder, idx: number): void {
   const take = Math.min(order.qty, npc.qty)
-  const value = take * npc.price
-  if (state.wallet.isk < value) return // 钱包不足：暂缓（等钱够了再撮合）
-  state.wallet.isk -= value
+  const actual = take * npc.price // 实付给 NPC
+  const reserved = take * order.price // 本笔应从预扣里核销的额度
+  const escrow = order.escrowIsk ?? 0
+  if (escrow >= reserved) {
+    order.escrowIsk = escrow - reserved
+    state.wallet.isk += reserved - actual // 挂价高于成交价 → 价差退回（挂价 ≤ 成交价时不会进到这里）
+  } else {
+    // 遗留单（未预扣）或预扣不足：沿用旧口径（钱包够才成交，不够暂缓）；有残留预扣先退回再按钱包实付
+    if (state.wallet.isk + escrow < actual) return
+    state.wallet.isk += escrow
+    state.wallet.isk -= actual
+    order.escrowIsk = 0
+  }
   const def = ctx.marketGoods.get(order.good)
   depositGood(state, ctx, order.good, take)
   order.filled += take
@@ -905,7 +917,12 @@ function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: N
     if (def?.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - take)
   }
   if (npc.qty <= 0) state.market.npcSell[order.good]!.splice(idx, 1)
-  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${value.toLocaleString('zh-CN')} ISK）。`)
+  // 成交完毕：预扣余量（四舍五入/遗留单残留）一并退回钱包，避免挂单移出后钱失踪
+  if (order.qty <= 0 && (order.escrowIsk ?? 0) > 0) {
+    state.wallet.isk += order.escrowIsk ?? 0
+    order.escrowIsk = 0
+  }
+  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${actual.toLocaleString('zh-CN')} ISK）。`)
 }
 
 /** 越线卖单抢单成交（2026-09-08 船长定：巡游采购按贴线度多件成交 @ 挂单价；税/escrow/池与簿成交同口径） */
@@ -940,14 +957,25 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
   }
 }
 
-/** 越线买单抢单成交（2026-09-08 船长定：巡游供货 1 件 @ 挂单价；钱包不足当窗跳过） */
+/** 越线买单抢单成交（2026-09-08 船长定：巡游供货 1 件 @ 挂单价）。
+ *  2026-09-11（预扣冻结）：钱在挂单时已扣 ⇒ 从预扣里核销 1 件；遗留单（无预扣）仍看钱包。 */
 function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder): void {
-  if (state.wallet.isk < order.price) return
-  state.wallet.isk -= order.price
+  const escrow = order.escrowIsk ?? 0
+  if (escrow >= order.price) {
+    order.escrowIsk = escrow - order.price
+  } else {
+    if (state.wallet.isk < order.price) return // 遗留单：钱包不足当窗跳过
+    state.wallet.isk -= order.price
+  }
   const def = ctx.marketGoods.get(order.good)
   depositGood(state, ctx, order.good, 1)
   order.filled += 1
   order.qty -= 1
+  // 成交完毕：预扣余量退回钱包（防"单子移出挂单表后钱失踪"）
+  if (order.qty <= 0 && (order.escrowIsk ?? 0) > 0) {
+    state.wallet.isk += order.escrowIsk ?? 0
+    order.escrowIsk = 0
+  }
   const pool = state.market.pools[order.good]
   if (pool) {
     pool.netVol += 1
@@ -1110,29 +1138,69 @@ function pushSellOrder(state: GameState, goodKey: string, price: number, qty: nu
   return order
 }
 
-/** 挂限价买单（成交时扣钱；货直接入库存）；受声望门槛商品在此拒绝。
- *  2026-09-10 船长定：挂单瞬间先核对现有卖单簿面——与「供应价 ≤ 挂价」的卖单（含同价）立即成交，
- *  剩余数量才作为挂单等待后续窗口（此前挂单不核对簿面，同价买单会一直挂着不成交）。 */
+/**
+ * 挂限价买单（**EVE 式预扣**：挂单即从钱包扣下 `挂价 × 挂量`，撤单/成交价差退回；货直接入库存）。
+ * 受声望门槛商品在此拒绝。
+ *
+ * 2026-09-11 船长裁决「甲」：此前买单**不冻结资金**（只在成交时扣钱、钱不够就挂着等），
+ * 于是可以**零资金挂满全市场**（挂单还不过期）＝对未来供给的免费期权。现改为预扣：
+ * - `escrowIsk` 记在本单上（存档随订单保留；旧档缺省 0 = 遗留单，仍按"成交时扣钱"的旧口径）；
+ * - **余额不足按余额缩量**（挂得起的部分；连 1 件都挂不起则拒绝，界面用 `buyOrderBlockedReason` 给原因）；
+ * - 成交（`settleBuy`）从预扣里结算：挂价高于成交价时**价差退回钱包**；成交完毕/撤单退回余额。
+ *
+ * 2026-09-10 船长定（保留）：挂单瞬间先核对现有卖单簿面——与「供应价 ≤ 挂价」的卖单（含同价）立即成交，
+ * 剩余数量才作为挂单等待后续窗口。
+ */
 export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   const def = ctx.marketGoods.get(goodKey)
   if (!def || qty <= 0 || price <= 0) return null
   if (goodLockedReason(state, def) !== null) return null
   if (bmGateLocked(state, def)) return null // P2：声望闸内不开放常驻买单（暗市单现买即可）
   if (def.playerBuyable === false) return null // 只收不卖商品（如残骸）：不开放挂买单
+  const unit = Math.round(price)
+  // 预扣口径：按余额缩量（向下取整到件；轮不到 1 件就拒绝）
+  const affordable = Math.floor(state.wallet.isk / unit)
+  const want = Math.min(Math.floor(qty), affordable)
+  if (want <= 0) return null
+  const escrow = unit * want
+  state.wallet.isk -= escrow
   state.market.orderSeq += 1
   const order: PlayerOrder = {
     id: state.market.orderSeq,
     side: 'buy',
     good: goodKey,
-    price: Math.round(price),
-    qty,
+    price: unit,
+    qty: want,
     filled: 0,
     placedAtGameMs: state.gameMs,
+    escrowIsk: escrow,
   }
   state.orders.push(order)
   const r = crossOnPlacement(state, ctx, order)
-  addLog(state, 'trade', placeOrderLogText(ctx, 'buy', goodKey, order.price, qty, r))
+  addLog(state, 'trade', placeOrderLogText(ctx, 'buy', goodKey, order.price, want, r) + `（预扣 ${escrow.toLocaleString('zh-CN')} ISK，撤单退回）`)
   return order
+}
+
+/** 挂买单能不能挂（不能则给出玩家可读原因；能则 null）——界面门控与 engine 回执共用。
+ *  2026-09-11 起：**余额不足**是明确的一种原因（预扣 `挂价 × 挂量`；可按余额缩量后能挂 ≥1 件则放行）。 */
+export function buyOrderBlockedReason(
+  state: GameState,
+  ctx: SimContext,
+  goodKey: string,
+  price: number,
+  qty: number,
+): string | null {
+  const def = ctx.marketGoods.get(goodKey)
+  if (!def || qty <= 0 || price <= 0) return '价格或数量无效。'
+  const lock = goodLockedReason(state, def)
+  if (lock !== null) return lock
+  if (bmGateLocked(state, def)) return bmGateReason(state, def) ?? '声望未达'
+  if (def.playerBuyable === false) return '该商品只收不卖，市场不出售现货。'
+  const unit = Math.round(price)
+  if (state.wallet.isk < unit) {
+    return `ISK 不足：挂 1 件需预扣 ${unit.toLocaleString('zh-CN')} ISK，钱包 ${Math.floor(state.wallet.isk).toLocaleString('zh-CN')} ISK（预扣部分撤单即退回）。`
+  }
+  return null
 }
 
 /** 撤单：退回 escrow（按商品类别）；舰船从 escrow 恢复进舰队（耐久保留） */
@@ -1161,7 +1229,15 @@ export function cancelOrder(state: GameState, ctx: SimContext, orderId: number):
       addLog(state, 'trade', `卖单已撤销：${goodName(ctx, order.good)}×${order.qty.toLocaleString('zh-CN')} 已退回。`)
     }
   } else if (order.side === 'buy') {
-    addLog(state, 'trade', '买单已撤销。')
+    // 2026-09-11（预扣冻结）：把该单未用完的预扣退回钱包（旧档遗留单预扣为 0，自然无退款）
+    const back = order.escrowIsk ?? 0
+    if (back > 0) {
+      state.wallet.isk += back
+      order.escrowIsk = 0
+      addLog(state, 'trade', `买单已撤销：预扣 ${back.toLocaleString('zh-CN')} ISK 已退回钱包。`)
+    } else {
+      addLog(state, 'trade', '买单已撤销。')
+    }
   }
   return true
 }
@@ -1249,32 +1325,60 @@ export function sellAtMarket(
 }
 
 /** 市价买入：立即吃 npcSell 簿；簿吃穿后提示改挂限价单。受声望门槛商品直接拒绝（空手返回）。
- * shipUid：本次成交（kind=ship 商品）最后入队的一艘舰船实例 uid（购买流程"买完即登舰"用；非船商品为 null） */
+ * shipUid：本次成交（kind=ship 商品）最后入队的一艘舰船实例 uid（购买流程"买完即登舰"用；非船商品为 null）
+ *
+ * **2026-09-11 船长实测反馈修复**：「市场订单有货时点市价买入，报『供应簿只剩 0 件』、无法购买」——
+ * 根因是本函数里三条**静默** `break/continue`（钱包不够 / 暗市闸跳单 / 只收不卖）最终都表现为 `bought = 0`，
+ * 而界面把 `bought < qty` 一律解释成"没现货"。现补 `blocked` 原因字段：
+ *   `'no-stock'`（供应簿确实没有可吃单；含**部分成交**后的吃穿）· `'insufficient-isk'`（钱包连最低一张都不够）
+ *   · `'standing'`（声望锁：含 `standingReq` 硬锁与 `bmStanding` 暗市闸——**对玩家一律按声望锁口径措辞**）
+ *   · `'not-buyable'`（只收不卖）。
+ * `bought > 0` 时调用方应报"成交了多少"，不要再报"无法购买"。 */
 export function buyAtMarket(
   state: GameState,
   ctx: SimContext,
   goodKey: string,
   qty: number,
-): { bought: number; total: number; avg: number; remaining: number; shipUid: string | null } {
+): {
+  bought: number
+  total: number
+  avg: number
+  remaining: number
+  shipUid: string | null
+  /** bought < qty 时的原因（bought = qty 时不返回） */
+  blocked?: 'no-stock' | 'insufficient-isk' | 'standing' | 'not-buyable'
+} {
   ensureMarket(state, ctx)
   const mk = state.market
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null }
-  if (goodLockedReason(state, def) !== null) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null }
-  if (def.playerBuyable === false) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null } // 只收不卖（残骸等）
+  if (!def || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'no-stock' }
+  if (goodLockedReason(state, def) !== null) {
+    return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'standing' }
+  }
+  if (def.playerBuyable === false) {
+    return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'not-buyable' } // 只收不卖（残骸等）
+  }
   // P2 暗市闸：声望未达时只能吃暗市单（bm 标记），常驻单跳过
   const bmLock = bmGateLocked(state, def)
   let remaining = qty
   let total = 0
   let shipUid: string | null = null
+  let blocked: 'no-stock' | 'insufficient-isk' | 'standing' | undefined =
+    (mk.npcSell[goodKey] ?? []).length === 0 ? 'no-stock' : undefined
   const sellList = mk.npcSell[goodKey] ?? []
   const sorted = [...sellList].sort((a, b) => a.price - b.price)
   for (const npc of sorted) {
     if (remaining <= 0) break
-    if (bmLock && !npc.bm) continue
+    if (bmLock && !npc.bm) {
+      blocked = 'standing' // 单子在、但被声望闸跳过——不能报"没货"
+      continue
+    }
     const take = Math.min(remaining, npc.qty)
     const value = take * npc.price
-    if (state.wallet.isk < value) break
+    if (state.wallet.isk < value) {
+      blocked = 'insufficient-isk' // 钱不够——同样不能报"没货"
+      break
+    }
     const idx = sellList.indexOf(npc)
     if (idx < 0) continue
     state.wallet.isk -= value
@@ -1301,7 +1405,9 @@ export function buyAtMarket(
       addLog(state, 'info', `市价买入成交 ${bought.toLocaleString('zh-CN')} 后供应簿吃穿，剩余 ${remaining.toLocaleString('zh-CN')}——可稍等补给或挂限价买单。`)
     }
   }
-  return { bought, total, avg: bought > 0 ? Math.round(total / bought) : 0, remaining, shipUid }
+  // 部分成交（bought > 0 但没买满）⇒ 原因归"吃穿"；一件没买到 ⇒ 报精准原因
+  const reason = bought >= qty ? undefined : bought > 0 ? 'no-stock' : (blocked ?? 'no-stock')
+  return { bought, total, avg: bought > 0 ? Math.round(total / bought) : 0, remaining, shipUid, ...(reason ? { blocked: reason } : {}) }
 }
 
 /** 舰船是否可出售：在机库、非驾驶中、无 AI 任务、未锁定、不在换船善后返航中、货仓空、无装配 */

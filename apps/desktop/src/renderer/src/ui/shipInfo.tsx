@@ -14,7 +14,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor } from '@whale/core'
+import { foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleText, thrusterCycleFullText } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -101,8 +101,10 @@ function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | nu
   }
 }
 
-/** 推进器周期点火后缀（2026-09-11 精简：只留周期与"开场即点火"，"冷却期间无加速"删） */
-const PROP_TAIL = '（60 秒点火 / 60 秒冷却，开场即点火）'
+/** 推进器周期点火后缀（2026-09-11 精简：只留周期与"开场即点火"，"冷却期间无加速"删；
+ *  2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」——
+ *  秒数不再写死，改由 core `thrusterCycleFullText()` 从 `balance.battle` 取（与引擎同源）） */
+const PROP_TAIL = `（${thrusterCycleFullText()}）`
 /** 维修件的每跳修复量文本（跨族行与主分支共用，防两处口径漂移） */
 function repairAmountText(mod: ModuleDef): string {
   const arm = mod.repairArmorHp ?? 0
@@ -193,8 +195,11 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'propulsion': {
+      // 2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」——
+      // 短行（换装卡 / 装备库行 / 手册网格）此前只有「速度 +X% · 命中×Y」，看不出是**周期**爆发，
+      // 补周期缀（秒数同源于 balance.battle，见 core thrusterCycleText）
       const parts: string[] = []
-      if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}`)
+      if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}（${thrusterCycleText()}）`)
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(`命中×${(1 - mod.hitPenalty).toFixed(2)}`)
       body = parts.join(' · ')
       break
@@ -229,6 +234,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'target-lock':
       // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深
       body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
+      break
+    case 'cpu':
+      // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）
+      body = `装配 CPU 上限 +${fmt(mod.cpuBonus)}（本件不占 CPU）`
       break
   }
   // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）、结构层抗性与**跨族加成**——短行不丢关键效果
@@ -488,6 +497,10 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) {
     out.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
   }
+  // 协处理器（2026-09-11）：CPU 预算扩容——本职在 cpu 族；写在别的槽位上才算跨族（当前无此件，护栏登记着）
+  if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) {
+    out.push({ k: 'CPU 扩容', v: `装配预算 +${fmt(mod.cpuBonus ?? 0)}（本件不占 CPU）` })
+  }
   return out
 }
 
@@ -501,13 +514,14 @@ function crossFamilyShort(mod: ModuleDef): string {
   }
   if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
   if (foreign('propulsion')) {
-    if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}`)
+    if (mod.speedBonusPct !== undefined) parts.push(`速度 +${pct(mod.speedBonusPct)}（${thrusterCycleText()}）`)
     if ((mod.hitPenalty ?? 0) > 0) parts.push(`命中×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}`)
   }
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(`机舱 +${fmt(mod.droneBayBonusM3 ?? 0)} m³`)
   if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(`无人机伤害 +${pct(mod.droneDmgBonus ?? 0)}`)
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(`无人机射程 +${pct(mod.droneRangeBonusPct ?? 0)}`)
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(`锁定受击 +${pct(mod.lockDmgBonus)}`)
+  if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(`CPU 上限 +${fmt(mod.cpuBonus ?? 0)}`)
   return parts.join(' · ')
 }
 
@@ -717,6 +731,29 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.lockDmgBonus !== undefined) {
       lines.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
     }
+  } else if (mod.slot === 'cpu') {
+    // 2026-09-11 协处理器（低槽）：装配 CPU 预算扩容；**本件自身不占 CPU**（船长定）——
+    // 两行都写清：扩容多少 + 自己不占（否则玩家看到"CPU 占用 0"会以为是坏的）
+    if (mod.cpuBonus !== undefined) {
+      lines.push({
+        k: 'CPU 扩容',
+        v: (
+          <>
+            {`装配预算 +${fmt(mod.cpuBonus)}`}
+            <span className="app-dim">（装配与无人机放飞共用这份预算）</span>
+          </>
+        ),
+      })
+    }
+    lines.push({
+      k: '自身占用',
+      v: (
+        <>
+          <em className="app-chip is-ok">不占 CPU</em>
+          <span className="app-dim">（纯扩容；卸下即收回扩容）</span>
+        </>
+      ),
+    })
   }
   // 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开，
   // 语义各自成行——容量 = 最后那段血更厚、抗性 = 那段血更耐打

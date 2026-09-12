@@ -2714,9 +2714,9 @@ body {
 
   display: flex;
 
-  flex-wrap: wrap;
+  flex-direction: column;
 
-  align-items: center;
+  align-items: stretch;
 
   gap: 8px;
 
@@ -2727,6 +2727,21 @@ body {
   margin-bottom: 10px;
 
   flex-shrink: 0;
+
+}
+
+/* 舰队工具条的**一行**（2026-09-11 船长：「级别筛选单列一行，当选择级别后，出现舰船类别筛选」——
+   工具条由单行 flex 改多行：每行一个 .app-fleet-row（自身仍可换行），级别独占一行、类别行在选中级别后才出现） */
+
+.app-fleet-row {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 8px;
 
 }
 
@@ -5174,6 +5189,13 @@ body {
 
 }
 
+/* 2026-09-11 船长定（装备选择浮层加筛选与搜索，参考市场页）：筛选栏沿用市场页那套表单类名
+   （`.app-mkt-search` / `.app-mkt-search-input` / `.app-mkt-kind`，只做浮层内的排布与间距微调），
+   不自造外观；空态行交给 grid 通栏（与 `app-exp-idle` 家族一致）。 */
+.app-fit-pick-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.app-fit-pick-filter .app-mkt-search-input { flex: 1 1 200px; min-width: 160px; }
+.app-fit-pick-filter .app-exp-idle { grid-column: 1 / -1; }
+
 .app-fit-pick-item {
 
   display: flex;
@@ -7077,6 +7099,10 @@ body {
 /* V12.4 killcam: boom / cripple / defeat vignette / battle report (ASCII-safe) */
 
 .app-bts-unit { position: relative; display: inline-flex; }
+
+/* 敌舰血条随各舰（2026-09-11 船长③「血条跟着各舰走」）：绝对定位于**本舰正下方**，不参与行内布局，
+ * 故不影响入场/尸骸动画与行底对齐；宽度与级内偏移由 `battleViewCore.foeBarGeom` 逐舰给出（inline style）。 */
+.app-bts-unit > .app-bts-hpWrap.is-unitBar { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); z-index: 3; }
 
 /* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升；
  * 引擎在演出窗口（waveEnterGapMs）结束后才补刷下一波，入场动画即"增援抵达"画面过渡 */
@@ -9008,9 +9034,9 @@ body {
   border-radius: 7px; background: #ff6b52; color: #1c0c08; font-size: 10px; font-weight: 700;
   line-height: 13px; text-align: center; box-shadow: 0 0 6px rgba(255, 90, 60, .85);
 }
-/* 双列：左列消息列表（唯一滚动区）+ 右列通讯器正文。
+/* 双列：左列消息列表 + 右列通讯器正文；两列各自内部滚动（列表 .app-comms-list、屏幕 .app-comms-screen）。
    注意：win-fixed-body 的 .app-win-body 自带 overflow-y:auto（选择器特异性更高），这里用同级选择器
-   把它改成"不滚的弹性列"，让滚动只发生在列表内部（一级页不滚）。 */
+   把它改成"不滚的弹性列"，让滚动只发生在两列内部（一级页不滚）。 */
 .wui-panel.win-fixed-body .app-win-body.app-comms-body { overflow: hidden; display: flex; flex-direction: column; }
 .app-comms-grid { display: grid; grid-template-columns: minmax(210px, 290px) minmax(0, 1fr); gap: 12px; flex: 1 1 auto; min-height: 0; }
 .app-comms-list {
@@ -9038,10 +9064,10 @@ body {
 .app-comms-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .app-comms-frame rect { fill: none; stroke: var(--wui-border); stroke-width: 1.6; }
 .app-comms-frame path { fill: none; stroke: rgba(224, 234, 244, .28); stroke-width: 1.2; }
-/* 机身内工作区：上 15 / 侧 19 / 下 54（机身檐口 15 + 通栏胶囊按钮 31 + 与屏幕间距 8）——
-   下内边距这样定，屏幕在机身里才是**上下居中**的；屏幕框位置因此与窗口高度无关，不会错位。
-   窄窗口下按钮字数多会被挤成两行，故给屏幕留 18px 余量（屏幕矮 18px 不影响观感，错位才是不可接受的）。 */
-.app-comms-body-col { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 15px 19px 72px; }
+/* 机身内工作区：上 15 / 侧 19 / 下 15。下檐口（动作按钮 + 通栏「前往」两行）改为**在流内**排布
+   （2026-09-11 船长定「乙」），由两行的自然高度撑起、屏幕 flex:1 自动让位——不再用
+   "绝对定位 + 预留下内边距"的老办法（那样两行会互相压，且长提示折行时会错位）。 */
+.app-comms-body-col { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 15px 19px 15px; }
 /* 内嵌屏幕：屏幕自身滚（二级窗口内滚动），机身不动；outline 画屏幕框（线段，不占布局） */
 .app-comms-screen {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; border-radius: 10px;
@@ -9071,18 +9097,28 @@ body {
 .app-comms-head-time { margin-left: auto; flex: 0 0 auto; color: var(--wui-text-dim); font-size: 11px; font-family: var(--wui-mono); white-space: nowrap; }
 .app-comms-lines { display: flex; flex-direction: column; gap: 8px; }
 .app-comms-text { margin: 0; color: var(--wui-text); font-size: 12.5px; line-height: 1.7; }
-/* 屏幕下方：通栏胶囊「前往」（钉在机身下檐口；屏幕窄时左右各内收到 10px）。
-   提示文字在左、动作词在右。**文字允许折行**（2026-09-11 船长：「跳转的文本过长时，有部分文本不显示」——
-   原先是 `white-space: nowrap` + 省略号单行截断，长提示会被吃掉），胶囊随行数长高、由下檐口anchor 固定。 */
+/* 正文强调行（2026-09-11 船长：「将训前简报的任务链内的文字高亮」）：
+   **直接复用**离线报告那套既有的强调样式 `.app-report-highlight`（暗底 + 左侧强调竖条），
+   约定第六章"新增内容一律先复刻同级既有样式"——这里只把内边距按屏幕正文的行距收紧一点。 */
+.app-comms-text.app-report-highlight { padding: 2px 8px; }
+/* 机身下檐口（2026-09-11 船长定「乙」）：**上面一行 = 消息自带动作**、**下面一行 = 通栏「前往」**，
+   两行都常驻在滚动区外（原先动作按钮在屏幕滚动内容末尾，简报长文不往下翻就看不见）。
+   纯在流内的弹性列：高度随内容自然长高（长提示折行不会互相压），屏幕（flex:1）自动让位。 */
+.app-comms-eave { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; }
+/* 动作按钮 = 与「前往」同宽的胶囊（同一枚主按钮家族，只是位置在下檐口上一行） */
+.app-btn.app-comms-action-btn { width: 100%; display: flex; align-items: center; justify-content: center; border-radius: 22px; padding: 8px 18px; font-size: 13px; }
+/* 下檐口下一行：通栏胶囊「前往」。提示文字在左、动作词在右；**文字允许折行**
+   （2026-09-11 船长：「跳转的文本过长时，有部分文本不显示」——原先是 `white-space: nowrap` +
+   省略号单行截断，长提示会被吃掉），胶囊随行数长高。 */
 .app-btn.app-comms-goto {
-  position: absolute; left: 27px; right: 27px; bottom: 15px;
+  width: 100%;
   display: flex; align-items: center; gap: 10px; border-radius: 22px; padding: 7px 18px;
   font-size: 13px;
 }
 .app-comms-goto-text { flex: 1 1 auto; min-width: 0; text-align: left; font-size: 12px; line-height: 1.45; }
 .app-comms-goto-label { flex: 0 0 auto; font-weight: 600; }
 .app-comms-replies { display: flex; gap: 6px; flex-wrap: wrap; }
-/* 消息自带动作（2026-09-11：序章简报的「开始教程：采集富凡晶石」）——正文下方一枚主按钮，居中 */
+/* 旧类保留为空壳（动作按钮已移到下檐口 `.app-comms-eave`；这两条若被别处引用也不改变外观） */
 .app-comms-action { display: flex; justify-content: center; margin-top: 4px; }
 .app-comms-action-btn { border-radius: 999px; padding: 8px 22px; font-size: 13px; }
 
@@ -9091,10 +9127,11 @@ body {
    ⇒ 观感"空"来自"框大内容小"。处方 = **丙：大窗口下把屏内文字与下方跳转胶囊一起放大**（布局结构不动、不限宽）。
    断点用 min-width（本页首次；既有 @media 都是 max-width 收窄布局，放大是另一类需求）；
    字号统一走 `calc(var(--ui-fs, 1) * Npx)`，与"设置→字体大小"叠加而不互相覆盖。
-   注意：机身下檐口高度必须同步抬高，否则按钮变高会顶进屏幕框（屏幕内缩是固定值，见 .app-comms-body-col）。 */
+   2026-09-11 船长定「乙」后：下檐口两行（动作 + 前往）走**在流内**排布，高度随内容自然长高，
+   故此处不再需要"抬高下内边距"的旧补偿，只放大字号/内边距。 */
 @media (min-width: 1500px) {
-  .app-comms-body-col { padding-bottom: 80px; }
-  .app-btn.app-comms-goto { left: 31px; right: 31px; padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); gap: 14px; }
+  .app-btn.app-comms-action-btn { padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); }
+  .app-btn.app-comms-goto { padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); gap: 14px; }
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 13.5px); }
   .app-comms-screen { padding: 18px 24px 20px; gap: 10px; }
   .app-comms-avatar { width: 66px; height: 66px; }
@@ -9110,7 +9147,7 @@ body {
   .app-comms-note { font-size: calc(var(--ui-fs, 1) * 13.5px); }
 }
 @media (min-width: 1900px) {
-  .app-comms-body-col { padding-bottom: 90px; }
+  .app-btn.app-comms-action-btn { padding: 14px 32px; font-size: calc(var(--ui-fs, 1) * 16px); }
   .app-btn.app-comms-goto { padding: 14px 32px; font-size: calc(var(--ui-fs, 1) * 16px); }
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 15px); }
   .app-comms-text { font-size: calc(var(--ui-fs, 1) * 16px); }

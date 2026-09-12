@@ -20,11 +20,64 @@ const ROLE_ACCENT: Record<string, string> = {
    2026-09-10 船长：整体下移（TOP 26→54）——无人机上凸出击弧会在顶部被裁掉，给上方留出弧线空间。
    注意：CSS `.app-bts-col` 的 top 必须与本值保持一致（舰列视觉位置与锚点同源）。 */
 const LAY = { PAD: 36, GAP: 84, TOP: 54, MAIN: 170, ESC: 90, ROW_GAP: 4 }
-/** 舰艏（枪口）距舰体中心（px）：新 240×110 独立形舰艏尖典型位于本地坐标 x≈232
- *（距画布中心 120 = 112 单位）→ 主力舰 112×170/240 ≈ 79px；僚机小舰 112×90/240 ≈ 42px。
- * 旧 role 剪影（140 画布、尖端距中心 54）对应 66/35，此值已随新形换算更新。 */
-const NOSE_MAIN = 79
-const NOSE_ESC = 42
+
+/* ═══════ 舰种体积（2026-09-11 船长：战斗动画的舰身体积与舰种挂钩）═══════
+ * `TIER_SIZE[档]` = 舰身显示宽（px）。**T3 锚在改造前的统一主尺寸 170** ⇒ 巡洋舰与今天一样大、
+ * 护卫舰略小、战列/旗舰更大——相对关系正好把「舰种 = 质量分级」（`hullClass.ts` 五档）兑现。
+ * 依据：**玩家** = `ShipDef.tier`；**敌方** = 编成条目所引舰级的 `FoeShipDef.hullClassTier`
+ * （界面经 `core/foeShipTierOf(anomaly, tag)` 取值，与 `foeUnitNameOf` 同源）。
+ * ⚠ **旧威胁推导路径的卡没有舰种档**（D/E/G 三族 9 张 + 4 张遭遇模板）⇒ **回落** `LAY.MAIN/ESC`；
+ *   船长 2026-09-11 裁定：这批卡的体积口径**延后**（等各族舰级在二号处补完再生效）。
+ *
+ * ⚠⚠ **2026-09-11 船长：「因为放大，导致各种距离不准了。能否先将各个级别舰船图形大小还原，
+ *   系统保留进行测试」** ⇒ 本批**默认关**（见下方 `sizeByTierEnabled()` / `SIZE_BY_TIER_DEFAULT`）：
+ *   **显示口径还原为改造前的统一体积（主舰 170 / 其余 90）**，而阶梯表、`foeShipTierOf` 反查、
+ *   逐单位布局**系统全部保留就位**。
+ *   为什么"距离不准"：距离尺本身是米 → 百分比（与舰体无关），但**同一米数对应的视觉缺口**
+ *   是按统一 170/90 舰体标定的；舰体一大一小之后，读数（米）与观感（缺口）不再对应。 */
+const TIER_SIZE: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 110, 2: 140, 3: 170, 4: 205, 5: 240 }
+/** 僚机 / 轻装单位的体积系数（＝改造前 90/170 的既有比例，保留"轻装更小"的语义） */
+const ESCORT_MUL = 0.53
+/** 代码里的正式默认值（发布口径）：**关** = 还原统一体积；改 `true` 即正式启用阶梯（须复核视觉距离标定） */
+const SIZE_BY_TIER_DEFAULT = false
+/** 缓存的开关值（首次调用时读一次；测试/探针可在首次调用前注入 `localStorage` 桩） */
+let sizeTierFlag: boolean | null = null
+/**
+ * 是否启用「舰种体积」——默认**否**（还原口径）；测试期由
+ * `localStorage['whale-idle:ship-size-tier'] === '1'` 免重建启用（刷新生效）。
+ */
+function sizeByTierEnabled(): boolean {
+  if (sizeTierFlag === null) sizeTierFlag = readFlag('whale-idle:ship-size-tier') ?? SIZE_BY_TIER_DEFAULT
+  return sizeTierFlag
+}
+
+/** 读隐藏开关（与 V15 调试模式 `whale-idle:debug` 同款用法）：非浏览器环境 / 存储被禁 → `null`（用默认值） */
+function readFlag(key: string): boolean | null {
+  try {
+    const v = localStorage.getItem(key)
+    return v === null ? null : v === '1'
+  } catch {
+    return null
+  }
+}
+
+/** **单位体积解析（敌我共用）**：见上方两段口径——默认走"还原"分支（统一 170/90） */
+function sizeOfUnit(tier: number | null | undefined, escort: boolean): number {
+  if (!sizeByTierEnabled()) return escort ? LAY.ESC : LAY.MAIN // 还原口径：主舰 170 / 其余 90（＝改造前逐像素）
+  if (tier === 1 || tier === 2 || tier === 3 || tier === 4 || tier === 5) {
+    return Math.round(TIER_SIZE[tier] * (escort ? ESCORT_MUL : 1))
+  }
+  return escort ? LAY.ESC : LAY.MAIN
+}
+/** 舰艏（枪口）距舰体中心（px）：与舰身宽**线性**（新 240×110 形的舰艏尖距画布中心 ≈112 单位）
+ *  ⇒ 170 → 79px、90 → 42px（与改造前的两个常量逐值一致，故回落口径零变化）。 */
+function noseOf(size: number): number {
+  return Math.round((112 * size) / 240)
+}
+/** 回落主尺寸的舰艏偏移（79）：**无舰种档**（旧路径卡）情形的口径常量——实际计算一律走 `noseOf(该舰体积)` */
+const NOSE_MAIN = noseOf(LAY.MAIN)
+/** 回落轻装尺寸的舰艏偏移（42）：同上 */
+const NOSE_ESC = noseOf(LAY.ESC)
 
 /** 弹道飞行时长 ms（撞点特效靠 CSS 动画延迟到此刻出现） */
 const FLY_MS = 420
@@ -74,6 +127,101 @@ function approachOf(m: number, openM: number, nearM: number): number {
   return clamp01((openM - m) / Math.max(1, openM - nearM))
 }
 
+/* ═══════ 敌列「错列雁阵」（2026-09-11 船长定：不要排成一行）═══════
+ * 船长四条：① 甲 错列雁阵 ② 按角色——**主舰在前、僚机与杂鱼在后** ③ 血条跟着各舰走 ④ 尽量小动（只加偏移）。
+ * 语义：在 2D 侧视里"后" = 屏幕更高（与无人机"母舰上侧"、残骸上飘同一套语言），故**主舰在基线（最前）**、
+ * 其余整体抬高 `RANK_STAGGER`。单舰编成 `raise = 0` ⇒ 与改动前**逐像素一致**。
+ * `RANK_BY_WAVE` = **多波次是否再分一层**（第 n 波再抬 `n × RANK_STAGGER`）——船长 2026-09-11「分别看下差异」，
+ * 两种口径的逐卡读数见 `docs/design/ship-battle-art/battle-formation-20260911.md`。
+ *
+ * ⚠ **两处口径是船长实测反馈后修正的（2026-09-11）**：
+ * 1. **抬升量 68 → 54**：船长要「≥68」是为了"上下梯队血条不压叠"，而血条实际高 **48px** ⇒ **54 已足够**
+ *    （间隔 6px）；而 `LAY.TOP = 54` 是编队**上方留白**（2026-09-10 给无人机上凸弧留的）——
+ *    抬升一旦 >54，要么后排舰顶溢出泳道被裁、要么得把**整队往下沉**。故取 54 = 留白上限。
+ * 2. **基线 = `TOP + max(舰高)`（＝改动前的行底，前排原位不动）**，后排**往上**抬。
+ *    初版把"后排队顶"钉在 `LAY.TOP` ⇒ 编队只能整体向下长 ⇒ 画面上**只有前排那条明显下沉、后排停在原位**
+ *    （船长：「阵形我发现敌方只有第一条船下偏移」）——现改为只让后排动。
+ *    `sink = max(0, 最大抬升 − TOP)` 仅作**保险**（抬升若调大到 >54，多出的部分才整体下沉；现值 0）。
+ * 代价：最高的那排舰顶到达泳道顶（y≈0），上方放不下浮空舰名 ⇒ **后排舰名与「◈ 锁定」标记移入该舰血条标签**。 */
+const RANK_STAGGER = 54
+/** 多波增援是否再抬一层（`false` = 增援与残兵同梯队；`true` = 第 n 波再抬 n×72） */
+const RANK_BY_WAVE = false
+/** tag 的波序号（`w{n}-` 前缀；无前缀 = 第 0 波）——与引擎同口径 */
+function foeWaveIndexOf(tag: string): number {
+  const m = /^w(\d+)-/.exec(tag)
+  return m ? parseInt(m[1]!, 10) : 0
+}
+/**
+ * 是否**前排**（队长位）：`(w{n}-)?foe-0` = 本波首舰，或该单位舰级为**头目档**（`elite`，由
+ * `core/foeShipEliteOf` 传进来）。⚠ **不能**用 `foeMainTagOf`：它把 `w{n}-foe-{k}`（k≥1）也算主舰
+ * （2026-09-09 放宽口径）⇒ A 族卡 3 艘杂鱼会被当主舰、阵形根本不生效（首次探针即抓到此坑）。
+ * 本判据**只看 tag 与数据**（不看谁还活着）⇒ 击毁单位不会让阵形重排跳动。
+ */
+function isFoeFrontRank(tag: string, elite: boolean): boolean {
+  return /^(w\d+-)?foe-0$/.test(tag) || elite
+}
+/** 单位抬升量（px）：前排 0（基线，最前最低），后排 +`RANK_STAGGER`；按波分层时再 +`波序 × RANK_STAGGER` */
+function foeRaiseOf(tag: string, elite: boolean): number {
+  return (isFoeFrontRank(tag, elite) ? 0 : RANK_STAGGER) + (RANK_BY_WAVE ? foeWaveIndexOf(tag) * RANK_STAGGER : 0)
+}
+/** 血条步距（px）：`HpTri` 实测 = 3×10 行 + 2×2 间距 + 名字行 12 + 2 ≈ 48，取 50 留一条缝（拥挤梯队竖排用） */
+const HP_BAR_H = 50
+/** 血条宽上限 / 下限（px；`.app-bts-hpWrap` 现值 185，下限保证"护/甲/结"三段数字仍读得出） */
+const HP_BAR_W_MAX = 185
+const HP_BAR_W_MIN = 140
+/** 血条几何（相对**本舰**的偏移量；`dx` 正 = 右移，`dy` 正 = 下移） */
+interface BarGeom {
+  width: number
+  dx: number
+  dy: number
+}
+/**
+ * **逐舰血条几何**（船长 ③「血条跟着各舰走」+ 拥挤口径）：
+ * 先按抬升量分梯队；梯队内相邻舰间距
+ * - ≥ `MAX+6`：各条贴各自舰正下方，宽 185；
+ * - ≥ `MIN+6`：各条贴各自舰正下方，宽 = `间距 − 6`（下限 140）——吃掉并排压叠；
+ * - 更窄（如旧路径双僚机 94px）：**该梯队整组竖排堆叠**（宽 185，居中于该梯队，顺序 = 左右顺序），
+ *   且**排到编队最下方**（`baseBottom` 之下依次向下）——排在原舰队行内会与前排的条相撞（探针实测）。
+ * `baseBottom` = 编队基线（最前排舰底）；跨梯队的条天然相隔 `RANK_STAGGER(72) > 条高(48)` ⇒ 不会互压。
+ */
+function foeBarGeom(xs: readonly number[], raises: readonly number[], baseBottom: number): BarGeom[] {
+  const n = xs.length
+  const out: BarGeom[] = xs.map(() => ({ width: HP_BAR_W_MAX, dx: 0, dy: 0 }))
+  const tiers = new Map<number, number[]>() // raise → 单位下标（保持左右顺序）
+  for (let i = 0; i < n; i++) {
+    const r = raises[i] ?? 0
+    const list = tiers.get(r)
+    if (list) list.push(i)
+    else tiers.set(r, [i])
+  }
+  const stackDy = (i: number, k: number): number => {
+    // 本舰舰底 → 编队基线（baseBottom）之下：跨过最前排的条（2 + 条高 + 2）
+    const shipBottom = baseBottom - (raises[i] ?? 0)
+    return baseBottom + 2 + HP_BAR_H + 2 + k * HP_BAR_H - shipBottom
+  }
+  let stacked = 0 // 已入堆叠区的条数（多个拥挤梯队时依次向下接排）
+  for (const idxs of tiers.values()) {
+    if (idxs.length <= 1) continue
+    let minPitch = Number.POSITIVE_INFINITY
+    for (let k = 1; k < idxs.length; k++) minPitch = Math.min(minPitch, Math.abs(xs[idxs[k]!]! - xs[idxs[k - 1]!]!))
+    if (minPitch >= HP_BAR_W_MAX + 6) continue // 各自贴舰（185）
+    if (minPitch >= HP_BAR_W_MIN + 6) {
+      const w = Math.max(HP_BAR_W_MIN, Math.round(minPitch - 6))
+      for (const i of idxs) out[i] = { width: w, dx: 0, dy: 0 }
+      continue
+    }
+    // 整组竖排堆叠：居中于该梯队的 x 跨度，依次向下排（顺序 = 左右顺序）
+    const first = idxs[0]!
+    const last = idxs[idxs.length - 1]!
+    const center = (xs[first]! + xs[last]!) / 2
+    idxs.forEach((i, k) => {
+      out[i] = { width: HP_BAR_W_MAX, dx: center - xs[i]!, dy: stackDy(i, stacked + k) }
+    })
+    stacked += idxs.length
+  }
+  return out
+}
+
 interface Dims {
   W: number
   H: number
@@ -88,16 +236,50 @@ interface Anchor {
  * 由当前真实距离算出两舰列位置与舰身锚点（渲染与弹道共用，保证画面自洽）。
  * 语义：距离 = open（射程外稍远）时两舰在两端拉开；向贴脸机动时向中线收拢，
  * 贴脸（nearM）时两舰间距 = LAY.GAP。
+ * `foeSizes` = **逐舰体积**（px，见 `sizeOfUnit`）：整行宽/锚点按前缀和推进（**锚点永远跟实际舰宽**，
+ *   2026-09-11 船长「乙」裁决——顺手修掉"多舰卡锚点按 90 槽位排、与实际舰体错位"的既有问题）。
+ * `foeRaises` = **逐舰抬升量**（px，见 `foeRaiseOf`）：错列雁阵的纵向错开；行底 = `TOP + max(raise + 高)`。
+ * `meSize` = 玩家舰体积；缺省 `LAY.MAIN`。
  */
-function layout(d: Dims, foeN: number, visM: number, openM: number, nearM: number): {
+function layout(
+  d: Dims,
+  foeSizes: readonly number[],
+  visM: number,
+  openM: number,
+  nearM: number,
+  meSize: number = LAY.MAIN,
+  foeRaises: readonly number[] = [],
+): {
   meLeft: number
   foeLeft: number
   me: Anchor
   foe: Anchor[]
+  /** **实际落画**体积（px；启用阶梯时已含溢出收缩）——渲染尺寸/舰艏偏移必须用它，不能用入参原值 */
+  sizes: number[]
+  /** 编队基线 y（**前排舰底** = `TOP + max(舰高) + sink`，＝改动前的行底）——血条堆叠/自检用 */
+  foeBottom: number
+  /** 整体下沉补偿（px；抬升超出上方留白 `LAY.TOP` 的超出部分，现值为 0）——DOM 上作为整行 `margin-top` */
+  foeSink: number
   /** 米制可用跨度（px）：贴脸(near)时舰缘间距 = LAY.GAP，拉满(open)时 = LAY.GAP+usable —— 与距离线性对应 */
   usable: number
 } {
-  const rowW = LAY.MAIN + Math.max(0, foeN - 1) * (LAY.ESC + LAY.ROW_GAP)
+  const nFoe = foeSizes.length
+  const gapW = Math.max(0, nFoe - 1) * LAY.ROW_GAP
+  /**
+   * 锚点槽位宽 = **逐舰实际体积**（渲染、弹道、血条、无人机阵位同一份坐标，天然自洽）。
+   * 溢出保险（仅**启用舰种阶梯**时）：体积放大后整行可能宽过本窗口能给敌列的空间 → 等比收缩；
+   * 还原口径下不收缩（＝改造前行为：行宽超出时由泳道裁剪）。
+   * 预算按**窗口**算（W − 左右留白 − 我列宽 − 最小间距），**不吃 `d.foeW` 实测值**：
+   * 敌列宽由本行内容撑出，拿它当预算会"越缩越小"地自我反馈。
+   */
+  let slots: number[] = [...foeSizes]
+  if (sizeByTierEnabled()) {
+    const maxRowW = Math.max(80, d.W - LAY.PAD * 2 - d.meW - LAY.GAP)
+    const rawW = foeSizes.reduce((s, v) => s + v, 0)
+    const fit = rawW + gapW > maxRowW ? Math.max(0.4, (maxRowW - gapW) / rawW) : 1
+    slots = foeSizes.map((v) => Math.max(24, Math.round(v * fit)))
+  }
+  const rowW = slots.reduce((s, v) => s + v, 0) + gapW
   const usable = Math.max(0, d.W - LAY.PAD * 2 - d.meW - d.foeW - LAY.GAP)
   const g = approachOf(visM, openM, nearM) // 接近度：远 = 0，贴脸 = 1
   const t = (usable * g) / 2 // 越接近越向中线收拢
@@ -105,23 +287,23 @@ function layout(d: Dims, foeN: number, visM: number, openM: number, nearM: numbe
   let foeLeft = d.W - LAY.PAD - d.foeW - t
   const minSpan = Math.min(LAY.GAP, Math.max(40, d.W - LAY.PAD * 2 - 60))
   if (foeLeft - (meLeft + d.meW) < minSpan) foeLeft = meLeft + d.meW + minSpan // 极小窗防御：不重叠
-  const mainH = LAY.MAIN * 0.46
-  const escH = LAY.ESC * 0.46
+  const meH = meSize * 0.46
+  const foeH = slots.map((w) => w * 0.46)
+  // 前排基线 = TOP + max(舰高)（＝改动前的行底）；抬升超出上方留白（TOP）的部分才做整体下沉补偿
+  const maxRaise = Math.max(0, ...slots.map((_, i) => foeRaises[i] ?? 0))
+  const sink = Math.max(0, maxRaise - LAY.TOP)
+  const base = LAY.TOP + Math.max(1, ...foeH) + sink
   const rowLeft = foeLeft + (d.foeW - rowW) / 2
-  const me: Anchor = { x: meLeft + d.meW / 2, y: LAY.TOP + mainH / 2 }
+  const me: Anchor = { x: meLeft + d.meW / 2, y: LAY.TOP + meH / 2 }
   const foe: Anchor[] = []
-  for (let i = 0; i < foeN; i++) {
-    if (i === 0) {
-      foe.push({ x: rowLeft + LAY.MAIN / 2, y: LAY.TOP + mainH / 2 })
-    } else {
-      const e = i - 1
-      foe.push({
-        x: rowLeft + LAY.MAIN + LAY.ROW_GAP + e * (LAY.ESC + LAY.ROW_GAP) + LAY.ESC / 2,
-        y: LAY.TOP + mainH - escH / 2,
-      })
-    }
+  let acc = rowLeft
+  for (let i = 0; i < nFoe; i++) {
+    const w = slots[i]!
+    const raise = foeRaises[i] ?? 0
+    foe.push({ x: acc + w / 2, y: base - raise - foeH[i]! / 2 })
+    acc += w + LAY.ROW_GAP
   }
-  return { meLeft, foeLeft, me, foe, usable }
+  return { meLeft, foeLeft, me, foe, sizes: slots, foeBottom: base, foeSink: sink, usable }
 }
 
 /** 扇形路径（原点为圆心、朝 +x 张角 ±38°；折线逼近弧线） */
@@ -212,7 +394,7 @@ export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }>
 }
 
 /** 开火事件 → 弹道几何：起点 = 源舰炮口（2026-09-10 起优先真实炮口 muzzle；muzzle 为空时
- *  回退舰艏前缘，nose 按舰种取 NOSE_MAIN/NOSE_ESC），终点 = 目标舰枪口侧命中点。
+ *  回退舰艏前缘，nose 由调用侧按**该舰体积**算出，见 `noseOf(size)`），终点 = 目标舰枪口侧命中点。
  *  换算：挂点为 240×110 画布本地坐标 → 画面 px = 锚点 + 画布偏移 × (artW/240)；
  *  敌侧 dir = −1（敌舰以镜像姿态朝我开火时炮口恰在 −x 侧，与既有舰艏锚同语义）。 */
 function boltGeom(
@@ -270,6 +452,15 @@ export {
   DMG_ORDER,
   ROLE_ACCENT,
   LAY,
+  TIER_SIZE,
+  ESCORT_MUL,
+  RANK_STAGGER,
+  HP_BAR_W_MAX,
+  foeRaiseOf,
+  foeBarGeom,
+  sizeByTierEnabled,
+  sizeOfUnit,
+  noseOf,
   NOSE_MAIN,
   NOSE_ESC,
   FLY_MS,
@@ -290,4 +481,4 @@ export {
   boltGeom,
   lastBattleReport,
 }
-export type { StarPt, Dims, Anchor, BoltV, FlashV, Stage, OutroSnap }
+export type { StarPt, Dims, Anchor, BoltV, FlashV, Stage, OutroSnap, BarGeom }

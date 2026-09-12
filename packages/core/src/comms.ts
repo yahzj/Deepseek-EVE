@@ -236,6 +236,7 @@ export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] 
       glyph: sender.glyph,
       subject: msg.subject,
       paragraphs: msg.body,
+      highlight: msg.highlight,
       deliveredAtGameMs: atMs,
       read: state.commsRead?.[id] === true,
       hint: msg.hint,

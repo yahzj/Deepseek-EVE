@@ -27,11 +27,14 @@ import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
   item: '物品',
+  // 2026-09-11 船长：「应该将消耗品独立出来」——消耗品（弹药/修理组件/无人机）独立成一级类型，
+  // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
+  consume: '消耗品',
   // 2026-09-10 船长：类型筛选移除「装备」，改为高 / 中 / 低槽三个类型（子分类仍是装备的功能分组）
   'module-high': '高槽装备',
   'module-mid': '中槽装备',
@@ -41,7 +44,7 @@ const KIND_TEXT: Record<string, string> = {
   aicore: '核心',
   wreck: '残骸',
 }
-const KIND_OPTIONS = ['all', 'item', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
+const KIND_OPTIONS = ['all', 'item', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
 
@@ -77,8 +80,19 @@ function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: 
     const mod = ctx.modules.get(good.refId)
     return mod !== undefined && rackOf(mod) === kind.slice('module-'.length)
   }
+  if (kind === 'consume') {
+    // 消耗品 = 弹药 / 修理组件 / 无人机（2026-09-11 船长：独立成类，且从「物品」剔除）
+    const it = itemDefOf(ctx, good)
+    return it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)
+  }
   if (good.kind !== kind) return false
-  return !(kind === 'item' && itemDefOf(ctx, good)?.kind === 'wreck')
+  const it = itemDefOf(ctx, good)
+  if (kind === 'item') {
+    // 「物品」= 除残骸与消耗品以外的物品（残骸 2026-09-08 独立、消耗品 2026-09-11 独立）
+    if (it?.kind === 'wreck') return false
+    if (it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)) return false
+  }
+  return true
 }
 
 /** mm:ss（向上取整到秒） */
@@ -643,10 +657,11 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     const n = Math.max(1, Math.floor(qty || 1))
     const p = Math.max(1, Math.floor(price || 1))
     if (tab === 'buy') {
-      // 2026-09-08（船长反馈）：声望不足等门槛原因要明示，不再笼统报"价格或数量无效"
-      const gate = lock ?? bmGateReason(state, good)
+      // 2026-09-08（船长反馈）：声望不足等门槛原因要明示，不再笼统报"价格或数量无效"。
+      // 2026-09-11（预扣冻结）：余额不足同样明示（core 单点口径：挂 1 件需预扣多少、钱包多少）
+      const gate = engine.buyOrderBlocked(good.key, p, n)
       if (gate) {
-        onToast(`挂买单失败：${gate}。`, true)
+        onToast(`挂买单失败：${gate}`, true)
         return
       }
       const res = engine.placeBuyOrderAt(good.key, p, n)
@@ -657,7 +672,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
             ? `。注意：挂价低于奇货参考价（约 ${isk(askLineOf(state, engine.ctx, good.key))} ISK），可能长期无法成交——建议挂到参考价附近`
             : ''
-        onToast(`${placeOrderToast('买', name, n, p, res.filled, res.resting)}${exoNote}。`)
+        // 2026-09-11：预扣口径写进回执（实际挂量可能因余额缩量；预扣撤单即退回）
+        const shrinkNote = res.placed < n ? `（余额只够 ${n.toLocaleString('zh-CN')} 件中的 ${res.placed.toLocaleString('zh-CN')} 件，已按余额缩量）` : ''
+        const escrowNote = res.escrow > 0 ? `（已预扣 ${isk(res.escrow)} ISK，撤单退回）` : ''
+        onToast(`${placeOrderToast('买', name, res.placed, p, res.filled, res.resting)}${shrinkNote}${escrowNote}${exoNote}。`)
       }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
@@ -792,7 +810,22 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               <button className="app-btn is-small" onClick={doPlace}>
                 {tab === 'buy' ? '挂买单' : '挂卖单'}
               </button>
-              <button className="app-btn is-primary is-small" onClick={tab === 'buy' ? doBuy : () => doSell()}>
+              {/* 市价买入（2026-09-11 船长实测反馈修复）：**没有可吃单 / 钱包连最低一张都不够时按钮禁用**，
+                  并把原因写在 title 里——此前按钮一直可点，点下去只会报一句"供应簿只剩 0 件"（原因其实是钱不够/声望闸/无货） */}
+              <button
+                className="app-btn is-primary is-small"
+                disabled={tab === 'buy' && (quote.sell === undefined || state.wallet.isk < quote.sell)}
+                title={
+                  tab !== 'buy'
+                    ? undefined
+                    : quote.sell === undefined
+                      ? '供应簿暂无现货：改用「挂买单」等 NPC 补给后自动成交'
+                      : state.wallet.isk < quote.sell
+                        ? `ISK 不足：最低一张 ${isk(quote.sell)} ISK，钱包 ${isk(Math.floor(state.wallet.isk))} ISK`
+                        : undefined
+                }
+                onClick={tab === 'buy' ? doBuy : () => doSell()}
+              >
                 {tab === 'buy' ? '市价买入' : '市价卖出'}
               </button>
               {tab === 'sell' ? (
@@ -929,6 +962,10 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
             <span className="app-inv-count">
               {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} ISK · 剩余 {order.qty.toLocaleString('zh-CN')}
               {order.filled > 0 ? `（已成交 ${order.filled.toLocaleString('zh-CN')}）` : ''}
+              {/* 2026-09-11（船长裁决「甲」预扣冻结）：买单显示"已预扣多少"，让玩家看得见这笔钱在哪 */}
+              {order.side === 'buy' && (order.escrowIsk ?? 0) > 0
+                ? ` · 已预扣 ${(order.escrowIsk ?? 0).toLocaleString('zh-CN')} ISK`
+                : ''}
             </span>
           </div>
           <div className="app-inv-btns">
@@ -942,8 +979,16 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
             <button
               className="app-btn is-small is-warn"
               onClick={() => {
+                // 先取预扣额（撤单会把订单上的 escrowIsk 清零）
+                const back = order.side === 'buy' ? (order.escrowIsk ?? 0) : 0
                 engine.cancelOrderAt(order.id)
-                onToast(order.side === 'sell' ? '卖单已撤销：货物退回库存。' : '买单已撤销。')
+                onToast(
+                  order.side === 'sell'
+                    ? '卖单已撤销：货物退回库存。'
+                    : back > 0
+                      ? `买单已撤销：预扣 ${isk(back)} ISK 已退回钱包。`
+                      : '买单已撤销。',
+                )
               }}
             >
               撤单

@@ -71,7 +71,7 @@ describe('挂单瞬间吃簿（2026-09-10 船长定）', () => {
     expect(countWare(state, 'min-a')).toBe(4)
   })
 
-  it('买多吃少：即时吃掉簿面、剩余数量继续挂单等待', () => {
+  it('买多吃少：即时吃掉簿面、剩余数量继续挂单等待（预扣：挂价 × 挂量）', () => {
     const { state, ctx, seed } = world()
     seed({ asks: [[120, 3]] })
     const wallet0 = state.wallet.isk
@@ -80,29 +80,35 @@ describe('挂单瞬间吃簿（2026-09-10 船长定）', () => {
     expect(order.qty).toBe(7) // 剩余挂在簿上
     expect(state.orders).toHaveLength(1)
     expect(state.orders[0]!.qty).toBe(7)
-    expect(state.wallet.isk).toBe(wallet0 - 120 * 3)
+    // 2026-09-11 预扣冻结：挂单即扣 120×10，成交 3 件核销 360，剩余 840 仍冻在这张单上
+    expect(state.wallet.isk).toBe(wallet0 - 120 * 10)
+    expect(order.escrowIsk).toBe(120 * 7)
     expect(state.logs.some((l) => l.text.includes('余 7 件挂单'))).toBe(true)
   })
 
-  it('多档卖单：按价格从低到高吃（等价于吃穿便宜的档位）', () => {
+  it('多档卖单：按价格从低到高吃（等价于吃穿便宜的档位）；挂价高于成交价时价差退回', () => {
     const { state, ctx, seed } = world()
     seed({ asks: [[130, 2], [120, 2], [140, 2]] })
     const wallet0 = state.wallet.isk
     placeBuyOrder(state, ctx, GOOD.key, 135, 5)
     // 吃 120×2 + 130×2（140 档超过限价不吃），余 1 件挂单
-    expect(state.wallet.isk).toBe(wallet0 - (120 * 2 + 130 * 2))
+    // 预扣 135×5 = 675；成交 4 件核销 135×4 = 540、实付 500 ⇒ 价差 40 退回 ⇒ 净扣 635
+    expect(state.wallet.isk).toBe(wallet0 - (135 * 5) + (135 * 4 - (120 * 2 + 130 * 2)))
+    expect(state.orders[0]!.escrowIsk).toBe(135) // 剩余 1 件的预扣还冻着
     expect(countWare(state, 'min-a')).toBe(4)
     expect(state.orders[0]!.qty).toBe(1)
   })
 
-  it('买价低于卖单（不冲撞）→ 不吃簿、不成交，按原样挂在簿上', () => {
+  it('买价低于卖单（不冲撞）→ 不吃簿、不成交，按原样挂在簿上（钱已预扣）', () => {
     const { state, ctx, seed } = world()
     seed({ asks: [[120, 10]] })
     const wallet0 = state.wallet.isk
     const order = placeBuyOrder(state, ctx, GOOD.key, 100, 3)!
     expect(order.filled).toBe(0)
     expect(state.orders).toHaveLength(1)
-    expect(state.wallet.isk).toBe(wallet0)
+    // 预扣：挂单即扣 100×3；钱不是没花掉，而是**冻在这张单上**
+    expect(state.wallet.isk).toBe(wallet0 - 100 * 3)
+    expect(order.escrowIsk).toBe(300)
     expect(countWare(state, 'min-a')).toBe(0)
     expect(state.logs.some((l) => l.text.includes('已挂买单'))).toBe(true)
   })

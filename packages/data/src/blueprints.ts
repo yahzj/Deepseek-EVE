@@ -1186,6 +1186,38 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 2250000,
     description: '「姿态陀螺 MK3」的完整制造工艺。惯性平台与万向环结构图——姿态基准漂移被陀螺稳定在毫弧级。顶配工艺版式——高级材料与精密加工在此交汇。',
   },
+  // ══════════ 协处理器（2026-09-11 船长新增：低槽 CPU 预算扩容件） ══════════
+  // 口径：材料 ≈ 产物价 × 0.45（与全仓配方锚一致）、蓝图书价 = 产物价 × 2；
+  // **MK3 无蓝图**（船长定：MK3 稀有度 4 走奇货现货，只能买不能造）。
+  {
+    id: 'bp-cpu-1',
+    name: '协处理器 MK1蓝图',
+    moduleId: 'mod-cpu-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 13_000 }, // 104,000 ISK
+      { itemId: 'min-pyerite', count: 4_000 }, // 48,000 ISK
+      { itemId: 'min-mexallon', count: 1_100 }, // 22,000 ISK
+    ],
+    buildSeconds: 900, // 协处理器 MK1（材料≈产物价×0.45、蓝图=产物×2）
+    buildCostIsk: 0,
+    priceIsk: 776000,
+    description: '低槽算力扩展卡的完整制造工艺：布线图与时序表——把闲置的机柜空间变成可用算力。学会即可在组装机量产。',
+  },
+  {
+    id: 'bp-cpu-2',
+    name: '协处理器 MK2蓝图',
+    moduleId: 'mod-cpu-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 47_500 }, // 380,000 ISK
+      { itemId: 'min-pyerite', count: 13_500 }, // 162,000 ISK
+      { itemId: 'min-mexallon', count: 8_200 }, // 164,000 ISK
+      { itemId: 'min-nocxium', count: 1_850 }, // 166,500 ISK
+    ],
+    buildSeconds: 1900, // 协处理器 MK2（材料≈产物价×0.45、蓝图=产物×2.5）
+    buildCostIsk: 0,
+    priceIsk: 4850000,
+    description: '双路算力扩展卡的完整制造工艺：堆叠工艺与散热规范——算力翻倍而机柜不增。学会即可在组装机量产。',
+  },
   {
     id: 'bp-salvager-1',
     name: '打捞器 MK1蓝图',

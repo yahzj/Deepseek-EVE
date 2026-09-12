@@ -161,12 +161,17 @@ export interface DroneSortie {
   offs: { x: number; y: number }[]
 }
 
-/** 生成一轮的随机阵位偏移（Y 轴随机分布；X 亦轻微抖动，避免同高度成排） */
-export function droneRandomOffsets(count: number): { x: number; y: number }[] {
+/**
+ * 生成一轮的随机阵位偏移（Y 轴随机分布；X 亦轻微抖动，避免同高度成排）——距敌舰中心、朝我方一侧的绝对距离。
+ * `outward`（2026-09-11 舰种体积配套）= 目标舰**放大后**的外推量：阵位基线 42~68px 是按改造前的
+ * 敌舰（舰种 T3 = 170px 宽、半宽 85）定的，敌舰更大时由调用侧传入 `(舰宽 − 170) / 2`，
+ * 否则机群会压在放大的舰体上（无人机与舰体重叠）。
+ */
+export function droneRandomOffsets(count: number, outward = 0): { x: number; y: number }[] {
   const out: { x: number; y: number }[] = []
   for (let i = 0; i < count; i++) {
     out.push({
-      x: 42 + Math.round(Math.random() * 26), // 距敌舰（我方一侧）42~68px
+      x: 42 + Math.round(Math.random() * 26) + outward, // 距敌舰（我方一侧）42~68px（+ 舰体外推量）
       y: Math.round((Math.random() - 0.5) * 96), // Y 轴 ±48px 随机
     })
   }

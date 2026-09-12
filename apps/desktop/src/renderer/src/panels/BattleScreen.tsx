@@ -11,8 +11,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
-import type { BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipEliteOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
+import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -35,7 +35,7 @@ import {
 import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
-  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, NOSE_MAIN, NOSE_ESC,
+  DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeRaiseOf, foeBarGeom,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -262,10 +262,16 @@ const meSpeedRef = useRef(200)
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
   const droneDriveRef = useRef<{
-    foeN: number
+    /** 逐舰体积（px；2026-09-11 舰种体积，见上 `foeSizesFor`） */
+    foeSizes: number[]
+    /** 逐舰抬升量（px；错列雁阵，见 `foeRaisesFor`） */
+    foeRaises: number[]
+    /** 玩家舰体积（px；无人机阵位/弹道起点按它定标） */
+    meSize: number
     openM: number
-    nearM: number;
-    /** `foe` 有值 = 该机群属于**敌方单位 tag**（走 `foePoseAt` 镜像几何；元素键加 `foe:` 前缀） */
+    nearM: number
+    /** `foe` 有值 = 该机群属于**敌方单位 tag**（走 `foePoseAt` 镜像几何；元素键加 `foe:` 前缀）。
+     *  `rangeBuff` = **受击增程已触发**（2026-09-11 船长）：机体后撤到远距阵位（见 `foeDroneStation`）。 */
     wings: Array<{
       artId: string
       model: DroneModel
@@ -273,10 +279,9 @@ const meSpeedRef = useRef(200)
       st?: DroneSortie
       deck: boolean
       foe?: string
-      /** **受击增程已触发**（2026-09-11 船长）：机体后撤到远距阵位（见 `foeDroneStation`） */
       rangeBuff?: boolean
     }>
-  }>({ foeN: 1, openM: 1, nearM: 200, wings: [] });
+  }>({ foeSizes: [LAY.MAIN], foeRaises: [0], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [] })
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -449,7 +454,7 @@ const meSpeedRef = useRef(200)
       if (!alive) return
       const d = droneDriveRef.current
       if (d.wings.length > 0) {
-        const layLoop = layout(dimsRef.current, Math.max(1, d.foeN), visDistRef.current, d.openM, d.nearM)
+        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.openM, d.nearM, d.meSize, d.foeRaises)
         const box = droneBoxRef.current
         const w0 = droneWritesRef.current
         if (box) {
@@ -616,6 +621,20 @@ const meSpeedRef = useRef(200)
   // （旧判定把第 2 艘主舰当僚机：小尺寸 + 僚机字样）；判定与引擎同源（core foeMainTagOf）
   const isFoeMainTag = foeMainTagOf
   const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  /** 逐舰体积（px）：玩家舰 = `ShipDef.tier`；敌舰 = 编成条目所引舰级的 `hullClassTier`。
+   *  舰级路径卡以外的旧卡无舰种档 → 回落改造前的 170/90（船长 2026-09-11：这批延后）。 */
+  const meSize = sizeOfUnit(meShip?.tier, false)
+  const foeSizeOf = (tag: string): number =>
+    sizeOfUnit(foeAnomaly ? foeShipTierOf(foeAnomaly, tag) : null, !isFoeMainTag(tag))
+  /** 视觉行逐舰体积；全灭瞬间仍保留 1 槽（与改造前 `Math.max(1, n)` 同语义：布局不退化） */
+  const foeSizesFor = (tags: readonly string[]): number[] =>
+    tags.length ? tags.map(foeSizeOf) : [LAY.MAIN]
+  /** 视觉行逐舰**抬升量**（错列雁阵：前排 0、后排 +72px；2026-09-11 船长定）——
+   *  前排判据 = 本波首舰（`(w{n}-)?foe-0`）或该舰级为头目档（`elite`）；只看 tag 与数据，不看谁还活着 */
+  const foeRaisesFor = (tags: readonly string[]): number[] =>
+    tags.length
+      ? tags.map((t) => foeRaiseOf(t, foeAnomaly ? foeShipEliteOf(foeAnomaly, t) : false))
+      : [0]
   /** 敌舰族形键（2026-09-11 起 = 数据侧 `AnomalyDef.foeFamily`；未列卡/异常 → F 制式巡逻兜底） */
   const foeKey = foeFamilyOf(foeAnomaly)
   /** 敌舰显示名（2026-09-09 命名统一：引擎同源推导——舰种名 + 规格词缀，弱规格 = 轻装 X；
@@ -654,7 +673,10 @@ const meSpeedRef = useRef(200)
   const dropNow = scanDroppable()
   const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
   // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
-  const layFx = layout(dims, Math.max(1, rowFxTags.length), visM, openM, nearM)
+  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize, foeRaisesFor(rowFxTags))
+  /** 无人机攻击阵位外推量（2026-09-11 舰种体积配套）：阵位基线按改造前的敌舰（T3 = 170px 宽）定，
+   *  目标舰更大时阵位同步外推，避免机群压在放大的舰体上；敌舰未变大时不内收（下限 0）。 */
+  const droneOutward = Math.max(0, Math.round(((layFx.sizes[0] ?? LAY.MAIN) - LAY.MAIN) / 2))
 
   /* ── 舰首朝向 = 机动意图（各自"想接近还是想拉开"），而非实际位移：
        拔河中即使被拖退也保持"想接近"的冲顶姿态；到达期望距离（差 <2m）保持现状，对峙不抖动 ── */
@@ -685,13 +707,89 @@ const meSpeedRef = useRef(200)
         const model = droneModelOf(fx.artId)
         if (model) {
           const artId = fx.artId!
+          // ⚠ 布局调用统一为**主树新签名**（2026-09-11 舰种体积 + 错列雁阵：逐舰体积 `foeSizes` /
+          //   逐舰抬升 `foeRaises` / 玩家舰体积 `meSize`）——合并时以主树签名为准。
           const layDown = layout(
             dims,
-            Math.max(1, rowFxTags.length),
+            foeSizesFor(rowFxTags),
             visDistRef.current,
             openM,
             nearM,
-          );
+            meSize,
+            foeRaisesFor(rowFxTags),
+          )
+          // **敌机被击落**（2026-09-11 修）：引擎打空一架时也推 droneDown（`side='foe'`）——
+          // 但落点必须用**敌机自己**的状态表与姿态函数；旧口径一律走我方 `droneSortieRef` +
+          // `dronePoseAt` ⇒ 敌机的爆炸被画到**我方机体那一侧**（船长实测："完全无法察觉"）。
+          // lane 取该舰**现存架数**（引擎已减 1，故它就是"刚消失那一架"的位次）。
+          if (fx.side === 'foe') {
+            // **死亡点不再随相位漂移**（船长 2026-09-11：「敌机**死亡位置**飘忽不定，爆炸动画跟着敌机位置」）：
+            // 旧口径连**死亡点**都取"渲染层自己以为的那一轮相位" ⇒ 那一击若落在**收舱段**，
+            // 姿态就等于停在敌舰机库口（表现为"刚出机库就炸"）。
+            // 现：**起点**仍取它**当时真实所在**（不跳），**终点固定**在「从攻击阵位（您舰旁）
+            // 往敌舰机库口返航 1/3 处」⇒ 机体从真实位置滑到那个固定点再炸，位置每次都一致。
+            const st = foeSortieRef.current.get(`${fx.tag}:${artId}`)
+            const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
+            const alive =
+              arcs?.foeDrones?.find(
+                (w) => w.tag === fx.tag && w.artId === artId,
+              )?.alive ?? 0
+            const rangeBuff =
+              arcs?.foeDrones?.find(
+                (w) => w.tag === fx.tag && w.artId === artId,
+              )?.rangeBuff === true
+            const lane = Math.max(0, Math.min(alive, DRONE_SHOW_MAX - 1))
+            const pose = foePoseAt(model, lane, st, layDown, elapsed, rangeBuff)
+            const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
+              x: 52,
+              y: 0,
+            }
+            // ⚠ 与实时阵位**同源**（增程态下不能跳回"我舰旁"）
+            const station = foeDroneStation(
+              layDown.me,
+              layDown.foe[0] ?? layDown.me,
+              off,
+              rangeBuff,
+            )
+            const tk = droneTakeoff(lane)
+            const home = {
+              x: (layDown.foe[0]?.x ?? layDown.me.x) - tk.x,
+              y: (layDown.foe[0]?.y ?? layDown.me.y) + tk.y,
+            }
+            droneDownRef.current.push({
+              key: keyRef.current++,
+              artId,
+              x: pose.x,
+              y: pose.y,
+              ...oneThirdToward(station, home),
+              born: now,
+              foe: true,
+            })
+          } else {
+            const prevShow =
+              downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
+            const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
+            downCursor.set(artId, lane)
+            const st = droneSortieRef.current.get(artId);
+            // **爆炸点与相位无关**（同上，我方一侧对称）：固定取「从攻击阵位（敌舰旁）
+            // 往我舰机库口返航 1/3 处」，不随"当前轮次相位"漂移。
+            const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
+              x: 46,
+              y: 0,
+            }
+            const foeA = layDown.foe[0] ?? layDown.me
+            const station = { x: foeA.x - off.x, y: foeA.y + off.y }
+            const tk = droneTakeoff(lane)
+            const home = { x: layDown.me.x + tk.x, y: layDown.me.y + tk.y }
+            droneDownRef.current.push({
+              key: keyRef.current++,
+              artId,
+              x: station.x,
+              y: station.y,
+              ...oneThirdToward(station, home),
+              born: now,
+            })
+          }
           // **敌机被击落**（2026-09-11 修）：引擎打空一架时也推 droneDown（`side='foe'`）——
           // 但落点必须用**敌机自己**的状态表与姿态函数；旧口径一律走我方 `droneSortieRef` +
           // `dronePoseAt` ⇒ 敌机的爆炸被画到**我方机体那一侧**（船长实测："完全无法察觉"）。
@@ -783,17 +881,18 @@ const meSpeedRef = useRef(200)
       }
       if (!src || !dst) continue
       if (isMeShot && fx.hit) lastHitTypeRef.current.set(aimTag, fx.type) // 记录最近命中形态（击杀延迟用）
-      // 舰艏偏移按主/僚判定（多波主舰 w{n}-foe-* 非队列首位同样是大舰艏；2026-09-09 修复）
-      const aimMain = isFoeMainTag(aimTag)
-      const shooterMain = isFoeMainTag(fx.tag)
-      const foeNose = aimMain ? NOSE_MAIN : NOSE_ESC
-      const srcNose = isMeShot ? NOSE_MAIN : shooterMain ? NOSE_MAIN : NOSE_ESC
-      const dstNose = isMeShot ? foeNose : NOSE_MAIN
+      // 舰艏偏移按**该舰实际落画体积**取（2026-09-11 舰种体积：舰艏距中心与舰宽线性，见 noseOf）——
+      // 优先取本帧布局的实际值（含溢出收缩），索引缺失才回落到按 tag 推导的体积
+      const aimSize = (aimRowIdx >= 0 ? layFx.sizes[aimRowIdx] : undefined) ?? foeSizeOf(aimTag)
+      const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
+      const shooterSize = (shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag)
+      const srcNose = noseOf(isMeShot ? meSize : shooterSize)
+      const dstNose = noseOf(isMeShot ? aimSize : meSize)
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
       // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
       const dm = fx.src === 'drone' ? droneModelOf(fx.artId) : undefined
-      const artW = isMeShot ? LAY.MAIN : shooterMain ? LAY.MAIN : LAY.ESC
+      const artW = isMeShot ? meSize : shooterSize
       let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
       let from: Anchor | null = null
@@ -840,7 +939,7 @@ const meSpeedRef = useRef(200)
             DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
           const st =
             !prev || now - prev.startAt >= cycleMs + 40
-              ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX) }
+              ? { startAt: now, offs: droneRandomOffsets(DRONE_SHOW_MAX, droneOutward) }
               : prev
           smap.set(skey, st)
           const off = st.offs[lane % st.offs.length]!
@@ -970,11 +1069,18 @@ const meSpeedRef = useRef(200)
   const dropFinal = scanDroppable()
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
-  const foeN = Math.max(1, foeRowTags.length) // 队列至少保留 1 槽（全灭瞬间布局不退化）
+  const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
+  const foeRaises = foeRaisesFor(foeRowTags) // 逐舰抬升量（px；错列雁阵：主舰基线、其余 +72）
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
-  const lay = layout(dims, foeN, visM, openM, nearM)
+  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize, foeRaises)
+  /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该梯队整组竖排到编队下方） */
+  const foeBarGeoms = foeBarGeom(
+    lay.foe.map((a) => a.x),
+    foeRaises,
+    lay.foeBottom,
+  )
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
   const waveNext = wavePending && foeAnomaly?.waves && foeAnomaly.waves.length > 1 ? (battle.waveIdx ?? 0) + 2 : 0
@@ -1002,8 +1108,8 @@ const meSpeedRef = useRef(200)
        gunBasePx = (foeGunX − meGunX) − (visM − nearM)×sPxPerM   （几何常数，随窗口/列宽自动成立）
      于是 弧半径(射程) = gunBasePx + (射程 − nearM)×sPxPerM，当 射程 == 当前距离 时弧端恰好触到敌方枪口；
      弧端到敌枪口的像素缺口正比于"射程 − 当前距离"。 */
-  const meGunX = lay.me.x + NOSE_MAIN
-  const foeGunX = (lay.foe[0]?.x ?? lay.me.x) - NOSE_MAIN
+  const meGunX = lay.me.x + noseOf(meSize)
+  const foeGunX = (lay.foe[0]?.x ?? lay.me.x) - noseOf(lay.sizes[0] ?? LAY.MAIN)
   const sPxPerM = lay.usable / Math.max(1, openM - nearM) // 与舰列位移同尺（px/m）
   const gunBasePx = Math.max(40, foeGunX - meGunX - (visM - nearM) * sPxPerM)
   const arcCap = lay.usable + gunBasePx + 80 // 兜底上限：不超"开局枪口位 + 余量"
@@ -1238,7 +1344,9 @@ const meSpeedRef = useRef(200)
   /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
   visDistRef.current = visM
   droneDriveRef.current = {
-    foeN: Math.max(1, foeRowTags.length),
+    foeSizes,
+    foeRaises,
+    meSize,
     openM,
     nearM,
     wings: [
@@ -1298,9 +1406,17 @@ const meSpeedRef = useRef(200)
      2026-09-10 性能修复（船长"击毁敌人后画面明显卡顿"）：存活与尸骸**共用同一套 DOM 结构**
      （此前两个分支结构不同 → 击毁瞬间整份舰体 SVG 被卸载重建，正是卡顿主因）——
      现只切换 class（is-corpse）与淡出透明度，舰体矢量始终不被重建。 */
-  /** 敌方机群（2026-09-11 机群批 S5）：按敌单位 tag 取该舰的警戒机群（机型 / 机库 / 现存架数） */
-  const foeUnitEls = foeRowTags.map((tag) => {
+  /** 敌方机群（2026-09-11 机群批 S5）：按敌单位 tag 取该舰的警戒机群（机型 / 机库 / 现存架数）＋
+   *  **逐舰体积/抬升/血条几何**（主树 2026-09-11：舰种体积 + 错列雁阵 + 血条跟舰） */
+  const foeUnitEls = foeRowTags.map((tag, rowIdx) => {
     const isMain = isFoeMainTag(tag)
+    /** 该舰体积（px；2026-09-11 舰种体积 = 舰级档阶梯，旧路径卡回落 170/90） */
+    const size = lay.sizes[rowIdx] ?? LAY.MAIN
+    /** 该舰抬升量（px；错列雁阵——用 `position:relative + top` 只移动视觉位置：
+     *  不改行高、不碰 `transform`（入场动画在用），也不影响血条/名字的定位基准） */
+    const raise = foeRaises[rowIdx] ?? 0
+    /** 该舰血条几何（2026-09-11 船长③：血条跟着各舰走——贴各自舰下，拥挤时该梯队内竖排） */
+    const bar = foeBarGeoms[rowIdx] ?? { width: 185, dx: 0, dy: 0 }
     const ba = corpseAtRef.current.get(tag)
     const sinceBoom = ba === undefined ? -1 : now - ba
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
@@ -1311,7 +1427,8 @@ const meSpeedRef = useRef(200)
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? " is-corpse" : ""}${locked ? " is-locked" : ""}`}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}
+        style={raise > 0 ? { top: -raise } : undefined}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
@@ -1320,12 +1437,30 @@ const meSpeedRef = useRef(200)
             foeKey={foeKey}
             flip={foeFlip}
             accent={corpseOn ? '#6b7280' : FOE_ACCENT[foeKey] ?? '#ff8373'}
-            size={isMain ? LAY.MAIN : LAY.ESC}
+            size={size}
           />
         </span>
-        <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
-          {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
-        </span>
+        {/* 舰名：前排照旧浮在舰体上方；**后排**（抬升后舰顶已到泳道顶）改由该舰血条标签承载
+            （2026-09-11：后排抬升 68 ⇒ 舰顶贴近 y≈0，上方没有 20px 放浮空舰名；锁定标记一并移过去） */}
+        {raise === 0 ? (
+          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+            {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
+          </span>
+        ) : null}
+        {/* 血条（2026-09-11 船长③）：贴在本舰正下方（绝对定位，不参与行内布局）；
+            尸骸不显示血条（与改造前"只给存活单位画条"一致） */}
+        {!corpseOn ? (
+          <span
+            className="app-bts-hpWrap is-unitBar"
+            style={{ width: bar.width, marginLeft: bar.dx, marginTop: bar.dy + 2 }}
+          >
+            <HpTri
+              hp={combat.foeHp[tag]!}
+              max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }}
+              label={raise > 0 ? `${locked ? '◈ ' : ''}${foeNameOf(tag)}` : undefined}
+            />
+          </span>
+        ) : null}
         {/* 敌方机群由**机群层**统一出海（第二层，见 `.app-bts-drones` 内的 foeWings 渲染） */}
         {boomLive ? (
           <span className="app-bts-boom">
@@ -1442,7 +1577,7 @@ const meSpeedRef = useRef(200)
             style={{ left: lay.meLeft }}
           >
             <span className="app-bts-name">{meShip?.name}</span>
-            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={LAY.MAIN} flip={meFlip} />
+            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
             <div className="app-bts-hpWrap">
               <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
             </div>
@@ -1643,25 +1778,17 @@ const meSpeedRef = useRef(200)
             </div>
           ) : null}
 
-          {/* 敌方舰列（血条只跟存活单位；尸骸原位占槽演出见 foeUnitEls） */}
+          {/* 敌方舰列（2026-09-11 船长③：血条跟着各舰走——已随各舰渲染，列底不再竖排血条；
+              尸骸原位占槽演出见 foeUnitEls） */}
           <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>
-            <div className="app-bts-shipRow">{foeUnitEls}</div>
-            {foeAliveTags[0] ? (
-              <div className="app-bts-hpWrap">
-                <HpTri
-                  hp={combat.foeHp[foeAliveTags[0]]!}
-                  max={arcs.maxHp.foe[foeAliveTags[0]] ?? { s: 0, a: 0, h: 0 }}
-                />
-              </div>
-            ) : null}
-            {foeAliveTags.slice(1).map((tag) => (
-              <div key={tag} className="app-bts-hpWrap">
-                <HpTri hp={combat.foeHp[tag]!} max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }} label={foeNameOf(tag)} />
-              </div>
-            ))}
+            {/* 整行 `margin-top` = 下沉补偿（抬升超出上方留白时才非 0，现值 0）——与 layout 的基线同源 */}
+            <div className="app-bts-shipRow" style={lay.foeSink > 0 ? { marginTop: lay.foeSink } : undefined}>
+              {foeUnitEls}
+            </div>
             {/* **机库余量**（2026-09-12 船长：「给敌机添加备用机库」）：敌机带备用机时，在敌舰列下
                 显示"机库里还剩几架"——玩家能看到"打掉还会再冒"这件事（引擎给 `foeDrones[].hangar`）。
-                样式沿用同级 `.app-bts-chip`（与底部武器 chip 同族），不新造样式。 */}
+                样式沿用同级 `.app-bts-chip`（与底部武器 chip 同族），不新造样式。
+                ⚠ 单位血条已随 2026-09-11「血条跟舰」移进各单位内部，故本行只放机库 chip。 */}
             {foeWings.some((w) => (w.hangar ?? 0) > 0) ? (
               <div className="app-bts-hangar">
                 {foeWings
@@ -1715,11 +1842,28 @@ const meSpeedRef = useRef(200)
                 ) : null}
               </span>
             ))}
-            <span className="app-bts-chip is-foe" title="敌方整编队武器（同型聚合）">
-              <i style={{ background: foeColor }} />
-              敌方 {arcs.foe.minM.toLocaleString('zh-CN')}~{arcs.foe.maxM.toLocaleString('zh-CN')}m
-              <span className={`app-a-chip app-a-${arcs.foe.type}`}>{DMG_LABEL[arcs.foe.type]}</span>
-            </span>
+            {/* 敌方射程（2026-09-11 船长：「敌方的舰船射程不一致，只会显示其中一个的射程」）：
+                按**射程带**逐条出 chip（与我方逐武器一条同款），多条带时补「×N 艘」与逐舰悬停说明；
+                只有一条带时文本与旧版完全一致（「敌方 X~Ym」）。 */}
+            {(arcs.foeBands.length > 0
+              ? arcs.foeBands
+              : [{ ...arcs.foe, count: 0, names: [] as string[] }]
+            ).map((b, bi) => (
+              <span
+                key={`foe${bi}`}
+                className="app-bts-chip is-foe"
+                title={
+                  b.names.length > 0
+                    ? `敌方射程带（${b.names.join('、')}）：${b.minM}~${b.maxM}m`
+                    : '敌方整编队武器（同型聚合）'
+                }
+              >
+                <i style={{ background: DMG_COLOR[b.type] }} />
+                敌方 {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
+                {b.count > 1 ? ` ×${b.count} 艘` : ''}
+                <span className={`app-a-chip app-a-${b.type}`}>{DMG_LABEL[b.type]}</span>
+              </span>
+            ))}
             {/* 敌方突进标记（2026-09-10 船长定：高威胁近战敌在够不着时突进机动 ×2）——
                 复用同级"运行态 chip"样式（红点 = 告警态），不自造新类 */}
             {battle?.foeChargeOn ? (

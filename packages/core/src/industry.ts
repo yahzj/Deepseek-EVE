@@ -335,26 +335,19 @@ export function startRecycleRun(
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
   }
-  // v20：原料不预锁定——仓库/货仓余量即炉料，每批到点实时扣取；
-  // **稀有残骸例外（2026-09-11 船长定，同日修订为"按回收单元连续烧"）**：
-  // 起炉时把库存里的料**全部收进本炉**（`claimedUnits`，货仓优先、仓库兜底），随后**一口气烧完**；
-  // 每烧完一个**回收单元**（`RARE_UNIT_M3` = 30 m³ = 3 批）开一箱 —— 3 个单元 = 90 m³ = 9 批 = 3 箱，
-  // 玩家不必每 30 m³ 重开一次炉（船长 2026-09-11：「按照每次少 30 立方，自动烧」）。
-  // 铁律照旧：**一个回收单元 = 一箱**。已结算过箱的料量记在 `state.rareOpenedUnits`（**单调累计**），
-  // 只有**新料**（库存 − 已结算量）能凑出新单元 ⇒ 并行多炉 / "跑一批就停再起" / 退还余料再炼，都刷不出第二箱；
-  // 而"已开箱的余料"仍可正常精炼出矿物，只是不产箱（本炉预占时一并收进来）。
-  const opened = Math.max(0, state.rareOpenedUnits[wreckItemId] ?? 0)
-  /** 尚未结算过箱的**新料** */
-  const newUnits = isRareWreck(wreckItemId) ? Math.max(0, available - opened) : 0
-  const rareLock = isRareWreck(wreckItemId) ? available : undefined
-  /** 本炉可开的箱数 = **新料**能凑出的完整回收单元数（已开箱的余料永不重复产箱） */
-  const rareUnits = Math.floor(newUnits / RARE_UNIT_M3)
-  if (rareLock !== undefined && rareLock > 0) {
-    // 预占：货仓优先、仓库兜底（与批结算同一扣料顺序）
-    const fromCargo = Math.min(countItem(state, wreckItemId), rareLock)
-    if (fromCargo > 0) removeItem(state, wreckItemId, fromCargo)
-    const fromWare = rareLock - fromCargo
-    if (fromWare > 0) removeWare(state, wreckItemId, fromWare)
+  // 2026-09-11 船长定（第二次修订，最终口径）：
+  // **稀有残骸照普通残骸回收的机制走**（不预占、不分"件/单元"、不解锁额外状态），只改两件事：
+  //   ① 高级箱不再按概率抽 —— **每烧掉 `RARE_UNIT_M3`（= 30 m³）就必给**一次彩头；
+  //   ② 抽奖池里加入该敌族的**专属装备**（`rollRareBoxExtra` 内已含 poolOnly 的专属件）。
+  // 于是"3 批"这类中间概念彻底消失：批大小仍与普通残骸一致（`RECYCLE_BATCH_M3`），
+  // 彩头按**累计已烧体积**每满 30 m³ 结算一次（同一批料无论怎么起停都只结算一次）。
+  // 老档兼容：历史档里 `claimedUnits`（起炉预占的炉内料账）**一律退回仓库**——新语义下料不再进炉内账。
+  const legacyClaim = Math.max(0, state.refineRuns.reduce((s, x) => s + (x.claimedUnits ?? 0), 0))
+  if (legacyClaim > 0) {
+    for (const x of state.refineRuns) {
+      if ((x.claimedUnits ?? 0) > 0 && x.itemId) addWare(state, x.itemId, x.claimedUnits!)
+      x.claimedUnits = 0
+    }
   }
   state.refineRuns.push({
     active: true,
@@ -366,16 +359,8 @@ export function startRecycleRun(
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     batchesDone: 0,
-    ...(rareLock !== undefined
-      ? {
-          lockUnits: rareLock,
-          claimedUnits: rareLock,
-          rareUnits,
-          rareUnitsAtStart: rareUnits,
-          rareBurnBefore: state.rareBurnUnits[wreckItemId] ?? 0,
-          rareBoxBefore: state.rareBoxesOpened[wreckItemId] ?? 0,
-        }
-      : {}),
+    // 2026-09-11 最终口径：稀有残骸与普通残骸**同一条路径**（实时扣料、不预占、不写炉内账）。
+    // 彩头结算按 `state.rareBurnUnits`（全局累计已烧体积）每满 30 m³ 一次——见批结算处的门闸。
     recAcc: { min: {}, mod: {}, frag: {}, drone: {} }, // 回收所得累计（停炉/料尽/自然结束时写明细日志）
   })
   // 2026-09-06：不再写开工日志（同精炼炉口径；结束/停炉日志统一带回收所得明细）
@@ -571,46 +556,17 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
+        const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
         const volumeM3 = qty * def.unitM3
         const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
         for (const row of out) addWare(state, row.mineralId, row.units)
         batchIncome += out.reduce((s, row) => s + row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0), 0)
-        const loot = rollRecycleLoot(state, ctx, profile, qty)
-        for (const modId of loot.modules) state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1
-        const modCount = new Map<string, number>()
-        for (const m of loot.modules) modCount.set(m, (modCount.get(m) ?? 0) + 1)
-        for (const [modId, n] of modCount) {
-          for (const g of ctx.marketGoods.values()) {
-            if (g.kind === 'module' && g.refId === modId) {
-              batchIncome += n * (g.basePrice ?? 0)
-              break
-            }
-          }
-        }
-        const fragUnits = new Map<string, number>()
-        for (const m of loot.fragments) fragUnits.set(m, (fragUnits.get(m) ?? 0) + 1)
-        for (const [m, n] of fragUnits) addWare(state, fragmentItemIdOf(m), n)
-        const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
-        for (const row of out) acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
-        for (const modId of loot.modules) acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
-        for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
-        r.recAcc = acc
-        // 高级箱（2026-09-10 船长定，同日解禁；2026-09-11 修订为"按回收单元连续烧"）：
-        // 稀有残骸每烧完**一个回收单元**（30 m³ = 3 批）开**一箱**——一炉可持多个单元（起炉时整批预占），
-        // 于是 3 个单元 = 9 批 = 3 箱，一口气烧完，不必手动重开炉。开箱即把该单元记入 `rareOpenedUnits`
-        // （单调累计），于是同一批料无论怎么停炉/重起都刷不出第二箱。
-        // 老档兼容：缺 `rareUnits` 时按 `rareBoxEligible` 回退成"整炉只开一箱"（见 `unitsLeftOf`）。
-        // 开箱门闸（2026-09-11 船长定「按照每次少 30 立方，自动烧」）：**全局单调**口径 ——
-        //   允许箱数 = ⌊（该型残骸累计已烧体积 + 本批）÷ 一个回收单元(30 m³)⌋；
-        //   与实际已开箱数比较，落后就补开一箱。
-        // 同一批料无论怎么"停炉再起"都刷不出额外的箱（累计量不随起停重置，且已落盘）；
-        // 一炉持多个单元时自然连续烧、每单元一箱；本炉开箱数另有上限（= 起炉时按新料算出的完整单元数）。
-        const unitsAtStart = r.rareUnitsAtStart ?? r.rareUnits ?? unitsLeftOf(r, 1)
-        const cumulativeBurn = (state.rareBurnUnits[r.itemId] ?? 0) + qty
-        const allowedBoxes = Math.floor(cumulativeBurn / RARE_UNIT_M3)
-        const boxesSoFar = state.rareBoxesOpened[r.itemId] ?? 0
-        const boxesOpenedInRun = boxesSoFar - (r.rareBoxBefore ?? 0)
-        if (profile.rare === true && boxesOpenedInRun < unitsAtStart && allowedBoxes > boxesSoFar) {
+        // 稀有残骸专属：累计已烧体积跨过 `RARE_UNIT_M3`（30 m³）的每一个整数倍，都**必给**一次彩头
+        // （2026-09-11 船长定：「每次回收 30 立方米，每次必给彩头」——照普通回收机制走，只把彩头概率提到 100%）。
+        const burnedBefore = isRareWreck(r.itemId) ? (state.rareBurnUnits[r.itemId] ?? 0) : 0
+        const burnedAfter = burnedBefore + qty
+        const rarePayout = profile.rare === true && Math.floor(burnedAfter / RARE_UNIT_M3) > Math.floor(burnedBefore / RARE_UNIT_M3)
+        if (rarePayout) {
           const extra = rollRareBoxExtra(state, ctx, profile)
           if (extra) {
             for (const modId of extra.modules) {
@@ -637,11 +593,26 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
             }
             addLog(state, 'trade', `✦ 高级箱：稀有残骸开箱额外掉落——${extra.note}。`)
           }
-          // 记账：累计已开箱数 +1；并把**一个回收单元**的体积记进 `rareOpenedUnits`
-          //（后者用于算"新料"：库存 − 已结算量，同一批料不再重复产箱）。
-          state.rareBoxesOpened[r.itemId] = (state.rareBoxesOpened[r.itemId] ?? 0) + 1
-          state.rareOpenedUnits[r.itemId] = (state.rareOpenedUnits[r.itemId] ?? 0) + RARE_UNIT_M3
         }
+        const loot = rollRecycleLoot(state, ctx, profile, qty)
+        for (const modId of loot.modules) state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1
+        const modCount = new Map<string, number>()
+        for (const m of loot.modules) modCount.set(m, (modCount.get(m) ?? 0) + 1)
+        for (const [modId, n] of modCount) {
+          for (const g of ctx.marketGoods.values()) {
+            if (g.kind === 'module' && g.refId === modId) {
+              batchIncome += n * (g.basePrice ?? 0)
+              break
+            }
+          }
+        }
+        const fragUnits = new Map<string, number>()
+        for (const m of loot.fragments) fragUnits.set(m, (fragUnits.get(m) ?? 0) + 1)
+        for (const [m, n] of fragUnits) addWare(state, fragmentItemIdOf(m), n)
+        for (const row of out) acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
+        for (const modId of loot.modules) acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
+        for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
+        r.recAcc = acc
       } else {
         // 精炼批：产物矿物入库，并累计进 r.recAcc.min（停炉/结束日志出明细）
         const rate = refineRate(state, ctx)
@@ -666,20 +637,9 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         if (batchIncome > 0) addAiIncome(stats, r.worker, batchIncome)
       }
       r.batchesDone += 1
-      if (r.rareUnits !== undefined) {
-        // 全局累计已烧体积（开箱门闸与"一个回收单元 = 一箱"的账本；随存档落盘，起停不重置）
-        r.rareBurnedSinceStart = (r.rareBurnedSinceStart ?? 0) + qty
-        state.rareBurnUnits[r.itemId!] = (state.rareBurnUnits[r.itemId!] ?? 0) + qty
-        // 自检：已开箱数永远不应超过 ⌊累计已烧 ÷ 一个单元⌋（越界即账本逻辑出问题，日志留痕便于排查）
-        const maxBoxes = Math.floor((state.rareBurnUnits[r.itemId!] ?? 0) / RARE_UNIT_M3)
-        if ((state.rareBoxesOpened[r.itemId!] ?? 0) > maxBoxes) {
-          addLog(
-            state,
-            'warn',
-            `稀有残骸开箱账本异常：已开 ${state.rareBoxesOpened[r.itemId!]} 箱 > 累计可开 ${maxBoxes} 箱（已自动校正）。`,
-          )
-          state.rareBoxesOpened[r.itemId!] = maxBoxes
-        }
+      if (isRecycle && r.itemId) {
+        // 累计已烧体积（稀有残骸每满 30 m³ 必给一次彩头的账本；随存档落盘，起停不重置）
+        state.rareBurnUnits[r.itemId] = (state.rareBurnUnits[r.itemId] ?? 0) + qty
       }
       r.finishAtGameMs += r.cycleMs // 下一批到点；届时若余料耗尽/不足一批由上方分支自动停炉
       // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：私有料账**本批已吃完** → 当场收工，
@@ -779,6 +739,14 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
   if (!ship) return { ok: false, error: `未知舰船：${shipId}。` }
   const good = marketGoodOf(ctx, 'ship', shipId)
   if (!good) return { ok: false, error: `${ship.name} 不通过市场流通（仅可制造）。` }
+  // 只收不卖（2026-09-09 船长定「蓝图船成品现货下架」：开拓/鲸王；2026-09-11 甲裁决补皇带鱼）：
+  // 市场页本就有通用「只收不卖」禁买；此处给出**准确原因**，避免落到"挂收购单失败（余额不足…）"的误导文案
+  if (good.playerBuyable === false) {
+    return {
+      ok: false,
+      error: `${ship.name} 仅可制造：市场不售成品现货（可在市场买它的蓝图书自行总装，或留意他人二手挂售）。`,
+    }
+  }
   const lock = goodLockedReason(state, good)
   if (lock) return { ok: false, error: `${ship.name} 暂不可购买：${lock}。` }
   const quote = marketQuote(state, ctx, good.key)

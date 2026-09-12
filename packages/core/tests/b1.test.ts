@@ -1,7 +1,8 @@
 /**
  * B1 低安遭遇/伏击（船长 2026-09-04 定稿 v2）：**占用随机事件时机**（事件线到点判定）、
- * 到达低安 5 分钟缓冲、承担者优先停留船、在线邀约超时自动文字结算、文字三档（耐久 clamp 5% 不弃船）、
+ * 到达低安 5 分钟缓冲、承担者优先停留船、在线邀约超时自动文字结算、文字三档（结构 clamp 5% 不弃船）、
  * 应战走真实战斗、首次低安提示。
+ * 2026-09-11 追加：受损档改「按敌人火力 + 装甲先吃」、结构 <50% 撤退（见文件末 describe）。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -11,6 +12,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { startMining } from '../src/mining'
 import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
+import { hullLayerCaps } from '../src/shipyard'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, belt, galaxy, anomaly } from './helpers'
 import { wreckDensityOf } from '../src/salvage'
@@ -388,5 +390,142 @@ describe('B1 暴露面收敛（2026-09-06 船长：移动状态不暴露——�
     w2.state.scanning.returning = true
     for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(w2.state, w2.ctx)).toBe(false)
     expect(w2.state.encounter.active).toBe(false)
+  })
+})
+
+/**
+ * 2026-09-11 船长定（玩家反馈"副船在低安遇袭耐久大幅下降后不会自动维修"）：
+ * ① 受损档伤害改**按敌人火力**（敌群火力 × `hitFirepowerSec`），施加时**先扣装甲、吸完再进结构**
+ *   （旧实现直接扣结构、装甲不动，与日志"被咬下一块装甲"不符）；
+ * ② 结构低于 50% → **撤退**：主控停手返港、副船中止任务召回回港待命；**不自动维修**（回港等玩家决定）；
+ * ③ 低安遭遇的「应战」也挂同一条 50% 自动脱离保险。
+ */
+describe('B1 遇袭受损与撤退（船长 2026-09-11 定）', () => {
+  /** 注入一次遭遇（旧档遗留形态：无伏击敌群 id，威胁即注入值） */
+  function inject(state: GameState, threat: number, shipId = state.shipId): void {
+    state.encounter = {
+      active: true,
+      shipId,
+      galaxyId: 'galaxy-far',
+      name: '伏击劫掠队',
+      threat,
+      anomalyId: null,
+      origin: '测试',
+      invitedAtGameMs: state.gameMs,
+      deadlineGameMs: state.gameMs + 60_000,
+      battle: null,
+    }
+  }
+
+  /** 在低安矿带就地采掘（暴露成立；且"返航"有出发点） */
+  function miningInField(state: GameState, ctx: SimContext): void {
+    expect(startMining(state, 'belt-f', ctx).ok).toBe(true)
+    state.mining.phase = 'mining'
+    state.mining.originGalaxy = null
+    state.awayGalaxy = 'galaxy-far'
+  }
+
+  it('受损档：一口伤害 = 敌群火力 × 0.3 秒，先扣装甲、吸完再进结构（结构不破 5% 底线）', () => {
+    const { state, ctx } = lowWorld()
+    state.awayGalaxy = 'galaxy-far'
+    const caps = hullLayerCaps(state, ctx, state.shipId)!
+    const { foeDpsPerThreat } = ctx.balance.battle
+    const { hitFirepowerSec } = ctx.balance.encounter
+    let hits = 0
+    for (const threat of [6, 22, 60]) {
+      const hitHp = threat * foeDpsPerThreat * hitFirepowerSec
+      for (let i = 0; i < 80 && hits < 15; i += 1) {
+        const ship = state.fleet[state.shipId]!
+        const armorBefore = ship.armorPct ?? 1
+        const hullBefore = ship.durability
+        inject(state, threat)
+        const from = state.logs.length
+        fleeEncounter(state, ctx)
+        if (!state.logs.slice(from).some((l) => l.text.includes('被咬下一块装甲'))) continue
+        hits += 1
+        const armorHpBefore = armorBefore * caps.capA
+        const eat = Math.min(armorHpBefore, hitHp)
+        const rest = Math.max(0, hitHp - eat)
+        const expArmor = Math.round(((armorHpBefore - eat) / caps.capA) * 1000) / 1000
+        const expHull = Math.round((Math.max(caps.capH * 0.05, hullBefore * caps.capH - rest) / caps.capH) * 1000) / 1000
+        expect(ship.armorPct ?? 1).toBeCloseTo(expArmor, 3)
+        expect(ship.durability).toBeCloseTo(expHull, 3)
+        // 装甲没被打穿 → 结构分文不动（这就是"先扣装甲"的判据；旧口径是直接扣结构）
+        if (armorHpBefore > hitHp) expect(ship.durability).toBe(hullBefore)
+        expect(ship.durability).toBeGreaterThanOrEqual(0.05)
+      }
+    }
+    expect(hits).toBeGreaterThan(0)
+  })
+
+  it('副船遇袭后结构低于 50%：中止 AI 任务召回回港待命（不自动修、不花钱）', () => {
+    const { state, ctx } = lowWorld()
+    // 副船 = 鲣鱼（驾驶船是沙猫 = state.shipId，两条路径分开判）
+    const droneId = 'sh-falconet'
+    state.aiAssignments[droneId] = {
+      coreType: 'basic',
+      startedAtGameMs: state.gameMs,
+      task: { kind: 'mining', beltId: 'belt-f', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+    }
+    const drone = state.fleet[droneId]!
+    drone.durability = 0.45
+    const walletBefore = state.wallet.isk
+    inject(state, 22, droneId)
+    fleeEncounter(state, ctx)
+    expect(state.aiAssignments[droneId]).toBeUndefined() // 任务已中止（召回回港）
+    expect(drone.durability).toBeLessThanOrEqual(0.45) // 只掉不涨：没有自动维修
+    expect(state.wallet.isk).toBe(walletBefore) // 也不自动花钱修
+    expect(state.logs.some((l) => l.text.includes('已中止任务召回回港待命'))).toBe(true)
+  })
+
+  it('主控低安作业遇袭后结构低于 50%：停手并即时返港（不自动修）', () => {
+    const { state, ctx } = lowWorld()
+    miningInField(state, ctx)
+    state.fleet[state.shipId]!.durability = 0.45
+    const walletBefore = state.wallet.isk
+    inject(state, 22)
+    fleeEncounter(state, ctx)
+    expect(state.mining.active).toBe(false) // 停手
+    expect(state.awayGalaxy).toBeNull() // 回港（就近已建成站/母港）
+    expect(state.wallet.isk).toBe(walletBefore)
+    expect(state.logs.some((l) => l.text.includes('已自动停手返港'))).toBe(true)
+  })
+
+  it('结构未低于 50%：不撤退（低安作业照做）', () => {
+    const { state, ctx } = lowWorld()
+    miningInField(state, ctx)
+    state.fleet[state.shipId]!.durability = 0.9
+    inject(state, 6) // 一口至多 1.44 HP（沙猫 36 结构 ≈ 4%），远不到撤退线
+    fleeEncounter(state, ctx)
+    expect(state.mining.active).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far')
+  })
+
+  it('应战：遭遇战挂 50% 自动脱离保险（结构过半即轻损脱离，无缴获、不扣维修费）', () => {
+    const { state, ctx } = lowWorld()
+    state.awayGalaxy = 'galaxy-far'
+    state.fleet[state.shipId]!.durability = 0.4 // 开战即已低于撤退线（相对满值结构）
+    inject(state, 22)
+    expect(fightEncounter(state, ctx).ok).toBe(true)
+    expect(state.encounter.battle!.hullEscapeFrac).toBe(ctx.balance.encounter.retreatHullFrac)
+    const walletBefore = state.wallet.isk
+    advanceGame(state, 5 * 60_000, ctx)
+    expect(state.encounter.active).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('结构损失过半，及时退出交火'))).toBe(true)
+    expect(state.wallet.isk).toBe(walletBefore) // 轻损脱离：不给缴获、也不扣维修费
+    expect(state.awayGalaxy).toBeNull() // 随后走撤退判定 → 停手返港
+  })
+
+  it('存档往返：撤退保险字段随档保留（战中重载不再凭空失效）', () => {
+    const { state, ctx } = lowWorld()
+    state.awayGalaxy = 'galaxy-far'
+    inject(state, 22)
+    expect(fightEncounter(state, ctx).ok).toBe(true)
+    state.encounter.battle!.autoEscaped = true
+    state.encounter.battle!.escapeReason = 'hull'
+    const loaded = loadSaveFile(serializeSaveFile(state, state.savedAtWallMs)).state
+    expect(loaded.encounter.battle?.hullEscapeFrac).toBe(0.5)
+    expect(loaded.encounter.battle?.autoEscaped).toBe(true)
+    expect(loaded.encounter.battle?.escapeReason).toBe('hull')
   })
 })

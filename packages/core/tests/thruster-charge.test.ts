@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
-import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, repairDeprecatedModules, thrusterPhase } from '../src/index'
+import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleSeconds, thrusterCycleText, thrusterPhase } from '../src/index'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
 import { anomaly, galaxy, makeTestCtx, moduleDef } from './helpers'
@@ -88,6 +88,23 @@ describe('推进器周期爆发（2026-09-10 船长定：点火 60 秒 / 冷却 
     expect(effectiveHitMul(spec, true)).toBeCloseTo(0.88, 10)
     expect(effectiveHitMul(spec, false)).toBe(1) // 冷却期：没点火就不失稳
     expect(effectiveHitMul({}, true)).toBe(1) // 无推进器恒为 1
+  })
+
+  it('周期口径文案与平衡同源（2026-09-11 船长：持续/冷却时间要在推进器说明里讲清）', () => {
+    const bal = makeTestCtx().balance.battle
+    expect(thrusterCycleSeconds(bal)).toEqual({ boost: 60, cooldown: 60 })
+    expect(thrusterCycleText(bal)).toBe('点火 60 秒 / 冷却 60 秒')
+    expect(thrusterCycleFullText(bal)).toBe('60 秒点火 / 60 秒冷却，开场即点火')
+    // 改平衡 → 文案跟着变（界面不许写死 60）：45 秒点火 / 30 秒冷却
+    const custom = { ...bal, thrusterBoostMs: 45_000, thrusterCooldownMs: 30_000 }
+    expect(thrusterCycleText(custom)).toBe('点火 45 秒 / 冷却 30 秒')
+    expect(thrusterCycleFullText(custom)).toBe('45 秒点火 / 30 秒冷却，开场即点火')
+    // 同源校验：文案里的两个秒数正好是相位切换点（点火结束 / 第二轮点火）
+    const at = (ms: number) => thrusterPhase({ startedAtGameMs: 0, lastTickGameMs: ms }, custom)
+    expect(at(44_999).boosting).toBe(true)
+    expect(at(45_000).boosting).toBe(false) // 45 秒 = 文案的"点火 45 秒"
+    expect(at(74_999).boosting).toBe(false)
+    expect(at(75_000).boosting).toBe(true) // 45 + 30 = 文案的"冷却 30 秒"
   })
 })
 

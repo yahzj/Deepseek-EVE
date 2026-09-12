@@ -14,7 +14,7 @@ import { BRIEFING_INTRO, TUTORIAL_STEPS, TUTORIAL_TOTAL } from '@whale/data'
 import { ONB_BRIEFING } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 
-export type GuideGo = { page: string; mapTab?: string; shipTab?: string }
+export type GuideGo = { page: string; mapTab?: string; shipTab?: string; taskTab?: string }
 
 /** 收尾演出文本（步骤 8）——2026-09-11 随教程文案优化统一口径：主体不分离、不替玩家下判断 */
 const EPILOGUE_LINES = [
@@ -75,11 +75,23 @@ interface StepPlan {
   go: GuideGo
   goLabel: string
   targets: string[]
+  /**
+   * 步骤内的**元素级焦点**（可选；2026-09-11 船长：「步骤 7/7 建议先指引玩家选择副船
+   * （高亮对应下拉框）」）——光圈原先只扫 `button`，下拉框（`select`）扫不到；
+   * 这里给一个专属口：返回非空即优先指它，返回 null 时回落到 `targets` 关键字。
+   */
+  selectFirst?: () => Element | null
 }
 
 /** 步骤 N 的教程通讯 id（与 `data/src/messages.ts` 的 `tut-<step>` 同源） */
 export function tutorialMessageId(step: number): string {
   return `tut-${step}`
+}
+
+/** 该步骤自带的页内标签（App 在步骤切换时用它把页面归位；步骤 2 → 任务中心「重要任务」）。
+ *  教程数据的读法收在本模块里，App 不必直接依赖 `@whale/data`。 */
+export function tutorialTaskTabOf(step: number): string | undefined {
+  return TUTORIAL_STEPS.find((s) => s.step === step)?.taskTab
 }
 
 function stepPlan(engine: GameEngine, step: number): StepPlan {
@@ -124,15 +136,17 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   const byStep: Record<number, string[]> = {
     2: ['出港', '任务中心', '交付矿石'],
     4: ['舰船', '港内维修', '维修', '修理'],
-    5: ['出港', '常驻悬赏', '演习场讨伐令', '出发'],
+    5: ['出港', '常驻悬赏', '演习场驱逐令', '出发'],
     6: ['技能', 'AI 核心操作学'],
     7: ['舰船', 'AI 指挥中心', '指派', '采矿'],
   }
   return {
     text: def.goal,
-    go: { page: def.page, mapTab: def.mapTab, shipTab: def.shipTab },
+    go: { page: def.page, mapTab: def.mapTab, shipTab: def.shipTab, taskTab: def.taskTab },
     goLabel: def.goLabel,
     targets: byStep[step] ?? [],
+    // 步骤 7 第一阶段：先让玩家在指派表单里选中副船（下拉框），选好后光圈自动落到「指派」按钮
+    ...(step === 7 ? { selectFirst: aiAssignShipSelect } : {}),
   }
 }
 
@@ -162,6 +176,33 @@ function findVisibleTarget(keywords: string[]): { el: Element; text: string } | 
   if (keywords.length === 0) return null
   // 优先页面内容里的真实按钮；页面不在该处时才高亮左侧导航入口
   return lastVisibleMatch(keywords, true) ?? lastVisibleMatch(keywords, false)
+}
+
+/** 元素是否真的在屏内（可点）——`select` 焦点判定用它 */
+function isOnScreen(el: Element): boolean {
+  const r = el.getBoundingClientRect()
+  if (!(r.width > 0 && r.height > 0)) return false
+  return !(r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth)
+}
+
+/**
+ * 步骤 7 第一阶段（船长 2026-09-11：「建议先指引玩家选择副船（高亮对应下拉框）」）：
+ * 「AI 指挥中心」指派表单里的**舰船下拉框**还没选船时，光圈先指它；选好副船后返回 null，
+ * 光圈自然回落到本步关键字（「指派」按钮）。下拉框不是按钮，故走 `selectFirst` 这个专属口。
+ */
+function aiAssignShipSelect(): Element | null {
+  const sel = document.querySelector('select[data-ai-ship]')
+  if (!sel || (sel as HTMLSelectElement).disabled) return null
+  if ((sel as HTMLSelectElement).value !== '') return null
+  return isOnScreen(sel) ? sel : null
+}
+
+/** 下拉框的「点这里」标签：取 title（ShipPage 写的就是「选择空闲舰船」），没有则取首项文字 */
+function selectLabel(el: Element): string {
+  const t = (el.getAttribute('title') ?? '').replace(/\s+/g, '')
+  if (t) return t.slice(0, 18)
+  const first = el.querySelector('option')
+  return (first?.textContent ?? '下拉框').trim().slice(0, 18)
 }
 
 /**
@@ -263,7 +304,9 @@ export function TutorialSpot({
   // 定位光圈：立即定位 + 轮询跟随（页面转场/滚动/布局变动后框始终贴在目标上，2026-09-06 修复"框位置错误"）
   useLayoutEffect(() => {
     const relocate = (): void => {
-      const hit = findVisibleTarget(plan.targets)
+      // 元素级焦点优先（步骤 7：先指副船下拉框）——它自己会在"已选好"后交还控制权
+      const special = plan.selectFirst?.() ?? null
+      const hit = special ? { el: special, text: selectLabel(special) } : findVisibleTarget(plan.targets)
       if (!hit) {
         setRing(null)
         return

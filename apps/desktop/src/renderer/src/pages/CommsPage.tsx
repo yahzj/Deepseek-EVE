@@ -6,7 +6,8 @@
  * - ② **合并**：T9 建站剧本也进这一页（收件箱条目 `source: 'dialogue'`），本页是玩家侧唯一的 NPC 通信记录；
  * - ③ 消息里的任务**只给提示 + 跳转**（`hint` → 「前往」按钮切到对应页面，不在本页接取/完成）；
  * - ④ 未读：点开即已读（`markCommsReadAt`），导航图标由 App 侧按未读条数闪烁 + 挂数字徽标；
- * - ⑤ 版式：**双列**——左列消息列表（**唯一滚动区**），右列通讯器造型正文；一级页整页不滚；
+ * - ⑤ 版式：**双列**——左列消息列表（内部滚动）、右列通讯器造型正文（屏幕自身滚动，长简报靠它读完）；
+ *   一级页整页不滚；
  * - ⑥ 回复选项**接口预留但未启用**（`COMMS_REPLIES_ENABLED = false` ⇒ 玩家侧不出现任何回复控件）。
  *
  * v2 视觉（2026-09-11 船长：按参考图**只借边框线条**、配色保持现有风格、不要头像/未解锁占位/装饰动效）：
@@ -50,8 +51,8 @@ export function CommsPage({
   onGoto,
   focus,
 }: PageProps & {
-  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab` / 舰船标签 `shipTab`） */
-  onGoto: (page: string, tab?: string, shipTab?: string) => void
+  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
+  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
   /** 定位请求（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 选中指定那封（seq 变化即重新选中） */
   focus?: { id: string; seq: number } | null
 }): ReactNode {
@@ -114,7 +115,7 @@ export function CommsPage({
             <div className="app-dim app-exp-idle">收件箱是空的——有新的消息会先让导航栏的「通讯」图标闪起来。</div>
           ) : (
             <div className="app-comms-grid">
-              {/* 左列：消息列表（本页唯一滚动区） */}
+              {/* 左列：消息列表（内部滚动；右侧屏幕也各自滚） */}
               <div className="app-comms-list" role="list">
                 {inbox.map((e) => (
                   <button
@@ -186,29 +187,19 @@ export function CommsPage({
                             </span>
                           ) : null}
                         </div>
-                        {/* 屏幕第二层之后的正文 */}
+                        {/* 屏幕第二层之后的正文；`highlight` 里的段落加**既有强调样式**
+                            （`.app-report-highlight`：暗底 + 左侧强调竖条；2026-09-11 船长：
+                            「将训前简报的任务链内的文字高亮」——按约定第六章复用同级既有样式，不自造新样式） */}
                         <div className="app-comms-lines">
                           {current.paragraphs.map((p, i) => (
-                            <p key={i} className="app-comms-text">
+                            <p
+                              key={i}
+                              className={`app-comms-text${current.highlight?.includes(p) ? ' app-report-highlight' : ''}`}
+                            >
                               {p}
                             </p>
                           ))}
                         </div>
-                        {/* 消息自带动作（2026-09-11：序章简报的「开始教程：采集富凡晶石」——
-                            点了才从简报态推进到采集步骤；未在简报态时引擎会拒绝并给出提示） */}
-                        {current.action ? (
-                          <div className="app-comms-action">
-                            <button
-                              className="app-btn is-primary app-comms-action-btn"
-                              onClick={() => {
-                                const r = engine.runCommsActionAt(current.action!.command)
-                                onToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
-                              }}
-                            >
-                              {current.action.label}
-                            </button>
-                          </div>
-                        ) : null}
                         {/* ⑥ 回复选项：接口保留、本期不启用（COMMS_REPLIES_ENABLED = false → 不渲染任何控件） */}
                         {COMMS_REPLIES_ENABLED && current.replies && current.replies.length > 0 ? (
                           <div className="app-comms-replies">
@@ -222,16 +213,34 @@ export function CommsPage({
                       </>
                     ) : null}
                   </div>
-                  {/* 屏幕下方：通栏胶囊「前往」（没有跳转提示的消息不出现） */}
-                  {current?.hint ? (
-                    <button
-                      className="app-btn is-primary app-comms-goto"
-                      title={current.hint.text}
-                      onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab)}
-                    >
-                      <span className="app-comms-goto-text">{current.hint.text}</span>
-                      <span className="app-comms-goto-label">前往</span>
-                    </button>
+                  {/* 机身下檐口（2026-09-11 船长定「乙」）：**上面一行 = 消息自带动作**（如序章简报的
+                      「按单开工：采集富凡晶石」），**下面一行 = 通栏「前往」**。两行都常驻、都在滚动区外——
+                      原先动作按钮在屏幕滚动内容末尾，简报长文不往下翻就看不见（船长实测反馈）。
+                      下檐口由这两行的自然高度撑起，屏幕（flex:1）自动让位，不再用绝对定位 + 预留内边距。 */}
+                  {current?.action || current?.hint ? (
+                    <div className="app-comms-eave">
+                      {current?.action ? (
+                        <button
+                          className="app-btn is-primary app-comms-action-btn"
+                          onClick={() => {
+                            const r = engine.runCommsActionAt(current.action!.command)
+                            onToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
+                          }}
+                        >
+                          {current.action.label}
+                        </button>
+                      ) : null}
+                      {current?.hint ? (
+                        <button
+                          className="app-btn is-primary app-comms-goto"
+                          title={current.hint.text}
+                          onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab, current.hint!.taskTab)}
+                        >
+                          <span className="app-comms-goto-text">{current.hint.text}</span>
+                          <span className="app-comms-goto-label">前往</span>
+                        </button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               </div>

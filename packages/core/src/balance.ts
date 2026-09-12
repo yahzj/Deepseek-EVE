@@ -35,8 +35,16 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     minWinChance: 0.05, // 胜率最低 5%（再低就别去送了）
     maxWinChance: 0.95,
     defeatCostRatio: 0.5, // 失利：维修费 = 期望奖励 × 50%
-    durabilityLossMin: 0.15, // 每次失利扣耐久 15%~30%
+    durabilityLossMin: 0.15, // 每次**失利**扣耐久 15%~30%（战败口径，未改）
     durabilityLossMax: 0.3,
+    /**
+     * **撤退那一口的暴露秒数**（2026-09-11 船长：「关于战斗中撤退…希望能将其应用到战斗中撤退」
+     * → 集中提问后定 **K = 1 秒**、手动/自动/超时**三档同一 K**、钱包维修费不变）。
+     * 一口伤害 HP = 敌群火力（威胁 × `foeDpsPerThreat`）× 本值，**先扣装甲、吸完再进结构**，
+     * 结构底线 5%（算法单点 = `hullDamage.ts`，与低安遇袭受损档同一套）。
+     * 取代旧口径「轻损 = 失利扣损骰 ×0.5 = 结构 −7.5%~15%（与敌人强弱无关、且只扣结构、装甲不动）」。
+     */
+    retreatHitFirepowerSec: 1,
     minAbandonChance: 0.03, // 弃船率下限 3%
     maxAbandonChance: 0.5, // 弃船率上限 50%
     agilityEscapeFactor: 0.4, // 动力减免：× (1 - 0.4×agility)
@@ -85,8 +93,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     ambushChanceAtZero: 0.05, // 事件到点遇袭率基线（sec = 0）
     ambushChancePerSec: 0.15, // sec 每降 1.0 → +15%（线性，封顶 ~27%）
     scanAmbushMul: 1.5, // 低安扫描中：遇袭概率 ×1.5（封顶 0.9；船长 2026-09-05 定，扫描即暴露、无入场缓冲）
-    duraLossMin: 0.05,
-    duraLossMax: 0.15, // 受损档：耐久 −5%~15%（底 clamp 5%）
+    // 2026-09-11 船长定（低安遇袭重做）：受损档不再用「结构 −5%~15%」的固定骰，改成**按敌人火力**——
+    // 一口伤害 = 敌群火力（威胁 × battle.foeDpsPerThreat）× 本系数（秒），施加时**先扣装甲、吸完再进结构**。
+    // 0.3 秒 = 船长当场圈定档位（标定：威胁 20 一口 4.8 HP、威胁 48 一口 11.5 HP、威胁 88 一口 21.1 HP；
+    // 沙猫级 15 甲/36 结构 → 常见威胁只掉装甲，远超自己档位的敌群才咬到结构）。
+    hitFirepowerSec: 0.3,
+    retreatHullFrac: 0.5, // 撤退线（船长 2026-09-11 定）：结构低于 50% → 被袭船停手返港待命，绝不自动花钱修
     lootTakenMaxPct: 0.3, // 被抢：至多 30% 船上货
     iskTakenMaxPct: 0.05, // 无货被抢：至多 5% 钱包
     lootFracOfBounty: 0.5, // 2026-09-09 船长定：击退/胜利缴获 = 当地悬赏敌群赏金 ×50%（旧档兜底 = 威胁 ×1）
@@ -254,6 +266,10 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // P0 承伤持久化：护盾战中被动回充（每秒回满盾的 2%；P2 随流派平衡再校准）
     shieldRegenPerSec: 0.02,
     waveReopenFrac: 0.5, // 多波次转场（2026-09-09 船长建议）：下一波把距离向开战距离回拉 50%（0=原地/1=回满，可随时调）
+    // ⚠ **距离后退惩罚 = 暂时关闭**（2026-09-11 船长：「将敌人增援波次距离会后退的惩罚暂时关闭」）——
+    // 开关关闭期间 `waveReopenFrac` 上面的值**不生效**：下一波在**当前交战距离原地入场**，不再"从远处入场、重新接近"；
+    // 玩家可见日志同步改为中性表述（见 combat.ts 波次转场块）。要恢复旧口径只改这一个布尔。
+    waveReopenEnabled: false, // 总开关（船长 2026-09-11：暂时关闭距离后退惩罚）
     // 多波次演出间隔（2026-09-09 船长反馈二轮）：波全灭后等上一波爆炸+残骸演出完整播完再刷下一波。
     // 口径 = 引擎清波刻 → 下一波入场：UI 残骸演出全长 ≈ 致死弹道(≤760ms) + 爆炸(1.7s) + 淡出(0.52s)
     // ≈ 3.0s，再加一拍的检测延迟 → 3300（0=立即；战斗时钟冻结不计入 maxBattleMs 超时）

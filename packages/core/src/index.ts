@@ -130,6 +130,10 @@ export {
   shipSlotsOf,
   rackOf,
   allFittedIds,
+  // 推进器周期口径文案（与 balance.battle 同源）
+  thrusterCycleSeconds,
+  thrusterCycleText,
+  thrusterCycleFullText,
 } from './labels'
 export type { RackSlot, ShipSlots } from './types'
 
@@ -181,6 +185,10 @@ export {
   MODULE_SLOTS,
   slotLabel,
   effectiveCpu,
+  // 2026-09-11 协处理器：CPU 预算总额（船体 + 协处理器）与超载预演、换装
+  cpuBudgetOf,
+  cpuOverloadText,
+  swapModuleAt,
   countModule,
   addModule,
   removeModule,
@@ -223,9 +231,21 @@ export {
   repairWithKits,
   useOneRepairKit,
   renameShip,
+  hullLayerCaps,
 } from './shipyard'
 
 export { fleetDefOf, shipDisplayName } from './instances'
+
+/** 承伤口径单点（按敌火扣装甲/结构；低安遇袭与战斗撤退共用——见 hullDamage.ts） */
+export {
+  HULL_FLOOR_FRAC,
+  foeFirepowerDps,
+  firepowerHitHp,
+  applyArmorFirstDamage,
+  hitDamageText,
+  pctOf as hullPctOf,
+} from './hullDamage'
+export type { HullHit } from './hullDamage'
 
 export { markedIds, isMarked, markTargetExists, toggleMark, clearMarks, pruneMarks, MARK_KIND_TEXT } from './marks'
 export type { MarkKind } from './marks'
@@ -321,6 +341,8 @@ export {
   askLineOf,
   placeSellOrder,
   placeBuyOrder,
+  // 2026-09-11 挂买单预扣：能不能挂（原因给界面用）
+  buyOrderBlockedReason,
   cancelOrder,
   sellAtMarket,
   buyAtMarket,
@@ -501,8 +523,14 @@ export {
   dockedHaulEndpoint,
   haulEndpointName,
   haulLegReward,
+  haulLegMinutesOf,
+  haulBaseReward,
+  haulRewardRange,
+  HAUL_TRIP_MUL_MIN,
+  HAUL_TRIP_MUL_MAX,
   haulingOccupiedM3,
   HAUL_RATE_PER_M3_MIN,
+  HAUL_LEG_TIME_MUL,
 } from './hauling'
 export type { HaulEndpoint } from './hauling'
 
@@ -531,6 +559,8 @@ export {
   foeClassName,
   foeMainTagOf,
   foeUnitNameOf,
+  foeShipTierOf,
+  foeShipEliteOf,
   FOE_LIGHT_WORD,
   FOE_ELITE_WORD,
   createPlayerSpec,

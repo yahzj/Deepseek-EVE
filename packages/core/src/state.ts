@@ -489,8 +489,9 @@ export interface BattleState {
    * （2026-09-10 船长定：超时不再按剩余血量比判胜——旧口径"平局算我方胜"已作废）；
    * null = 进行中 */
   ended: 'me' | 'foe' | null
-  /** 连续作战保险（2026-09-08 船长定，仅巡回场次）：本场结构剩余低于该比例（相对满值结构，
-   * 如 0.5 = 损失过半）→ 步进中自动中止并请求撤退（autoEscaped 置位）；非巡回战斗缺省不设 */
+  /** 连续作战保险（2026-09-08 船长定；2026-09-11 起**低安遭遇战同样挂它**）：
+   * 本场结构剩余低于该比例（相对满值结构，如 0.5 = 损失过半）→ 步进中自动中止并请求撤退（autoEscaped 置位）；
+   * 悬赏巡回场次在开战时写入，低安遭遇战按 `encounter.retreatHullFrac` 写入 */
   hullEscapeFrac?: number
   /** 多波次（2026-09-09）：当前波索引（0 基；AnomalyDef.waves 缺省/单波不写，读档零迁移） */
   waveIdx?: number
@@ -505,10 +506,10 @@ export interface BattleState {
    *  'hull' = 结构损失过半自动撤退；'timeout' = 打满战斗上限（判负，按被迫撤退处理）；
    *  'cannot-engage' = **无法交战**（开战满 `bal.cannotEngageMs` 仍'我方一炮未发 + 距离在我方射程外 + 敌已开火'） */
   escapeReason?: 'hull' | 'timeout' | 'cannot-engage';
-  /* ═══ 敌突进/冲锋（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）═══
+  /* ═══ 敌突进 / 冲锋（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）═══
    * 够不着时机动 ×2；**结束判据已改为「到达目标距离」**（敌方期望交距），冷却 20 秒。
-   * 字段都是**可选、零迁移**；`cleanBattle` 白名单未收录（与 hullEscapeFrac 同待遇：
-   * 战中重载会重置突进循环）。 */
+   * 字段都是**可选、零迁移**；`cleanBattle` 白名单未收录（撤退保险三项自 2026-09-11 起已收录；
+   * 突进三项仍不收录：战中重载会重置突进循环）。 */
   /** 当前是否处于突进中 */
   foeChargeOn?: boolean;
   /** ⚠ **已停用**（2026-09-11 改判：结束条件改'到达目标距离'，不再需要'进射程时刻 + 维持时长'）。
@@ -711,6 +712,10 @@ export interface PlayerOrder {
   absorbCredit?: number
   /** 本窗口内簿面成交件数（仅卖单；撮合前置 0，窗口结算后弃值——不序列化） */
   windowFilled?: number
+  /** **买单预扣**（2026-09-11 船长裁决「甲：改成 EVE 式预扣冻结」）：挂单时从钱包扣下的
+   *  `挂价 × 剩余数量`，成交时按**实际成交价**结算并把价差退回钱包，撤单全额退回。
+   * 仅买单使用；卖单冻结的是货（`escrowItems`/`escrowShips`）。旧档缺省 = 0（历史未预扣的遗留单按旧口径成交） */
+  escrowIsk?: number
 }
 
 /** 第九版存档结构（历史版本；v10 在其字段基础上只扩展了 fitted 槽位形状） */
@@ -1055,12 +1060,16 @@ export interface HaulingState {
   fromSiteId: string | null
   /** 当前航段的目的站点 id */
   toSiteId: string | null
-  /** 本段标称航程分钟（出发时锁定；报酬结算按它 = 货仓容量×费率×分钟） */
+  /** 本段标称航程分钟（出发时锁定）；航段真实分钟 = 本值 × HAUL_LEG_TIME_MUL（15） */
   legMinutes: number
   /** 本段真实航程毫秒（出发时锁定；吃航行技能与调试 1 秒快进） */
   legMs: number
   /** 本段已航行毫秒 */
   phaseAccMs: number
+  /** 本趟行情倍率（2026-09-11 船长：每趟掷一次 5~10 倍、两段同价；0 = 旧档未掷，结算按区间下限兜底） */
+  tripMul: number
+  /** 本趟还剩几段（一趟往返 = 2；就位段自成一趟 = 1；≤0 时下一段起换新行情） */
+  tripLegsLeft: number
 }
 
 /** 空态默认值 */
@@ -1073,6 +1082,8 @@ export const EMPTY_HAULING: HaulingState = {
   legMinutes: 0,
   legMs: 0,
   phaseAccMs: 0,
+  tripMul: 0,
+  tripLegsLeft: 0,
 }
 
 /** T9 一个建站点的建造进度 */
@@ -1534,7 +1545,9 @@ export function createInitialState(opts?: {
     addLog(state, 'warn', '自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。')
     addLog(state, 'info', '初始资金 0 ISK：一切从采集第一舱矿石开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。')
   } else {
-    addLog(state, 'system', '欢迎加入「大鲸鱼深空工业」。')
+    // 开局欢迎行（2026-09-11 船长裁定「甲」）：原来写的是旧游戏名「大鲸鱼深空工业」，
+    // 改名后统一指向**游戏内势力**「深空工业协会」（＝教程简报的发件方），设定与文案一致
+    addLog(state, 'system', '欢迎加入「深空工业协会」。')
     addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} ISK 已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
   }
   addLog(state, 'info', '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。')

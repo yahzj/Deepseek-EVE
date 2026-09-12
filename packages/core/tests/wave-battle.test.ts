@@ -7,6 +7,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { startBattleFor, advanceBattleFor, createFoeSpecs } from '../src/combat'
+import { DEFAULT_BALANCE } from '../src/balance'
 import { anomaly, makeTestCtx } from './helpers'
 
 function world(waves: { units: number; hpShare: number }[] | undefined) {
@@ -122,5 +123,75 @@ describe('多波次战斗（2026-09-09）', () => {
     expect(battle.waveClearAt).toBeUndefined()
     expect(battle.units['w1-foe-0']).toBeDefined()
     expect(state.logs.some((l) => l.text.includes('第 2/2 波来袭'))).toBe(true)
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 波次转场距离回拉 · **总开关**（2026-09-11 船长：「将敌人增援波次距离会后退的惩罚**暂时关闭**」）
+ *
+ * `BattleBalance.waveReopenEnabled`：
+ *   - `false`（**现值**）= **关闭**：下一波在**当前交战距离原地入场**，不再"从远处入场、重新接近"
+ *     （玩家不再因波次转场被拉回远距离、重演接近期）；玩家可见日志同步改中性表述；
+ *   - `true` = 开启：按 `waveReopenFrac` 向开战距离回拉（2026-09-09 的原始口径，比例 0.5 保留未动）。
+ *
+ * 测试口径：白盒把首波打成尸体 + 把 `waveEnterGapMs` 设 0（跳过演出窗口）+ 只推 1 拍
+ * ⇒ 转场瞬间的距离可直接断言（后续步进对距离的漂移 ≤ 1 拍）。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe('波次转场距离回拉 · 总开关（2026-09-11 船长：暂时关闭）', () => {
+  const CARD = 'ano-wave-reopen'
+
+  function reopenWorld(enabled: boolean, frac = 0.5): { state: GameState; ctx: SimContext; battle: NonNullable<ReturnType<typeof startBattleFor>> } {
+    const ctx: SimContext = makeTestCtx({
+      quietEvents: true,
+      balance: {
+        ...DEFAULT_BALANCE,
+        battle: { ...DEFAULT_BALANCE.battle, waveReopenEnabled: enabled, waveReopenFrac: frac, waveEnterGapMs: 0 },
+      },
+      anomalies: [
+        {
+          ...anomaly(CARD, 'galaxy-hub', { threat: 10, tactic: 'brawl' }),
+          foeShotDmg: 1,
+          waves: [
+            { units: 1, hpShare: 0.5 },
+            { units: 1, hpShare: 0.5 },
+          ],
+        },
+      ],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const battle = startBattleFor(state, ctx, state.shipId, CARD, 0)!
+    battle.distanceM = 800 // 白盒：先"贴着打"（玩家已把距离压到近处）
+    battle.units['foe-0']!.hp = { s: 0, a: 0, h: 0 } // 首波清空 → 下一拍即转场
+    return { state, ctx, battle }
+  }
+
+  /** 推 1 拍：转场在同一拍内发生；返回转场后的距离与日志全文 */
+  function stepOnce(enabled: boolean): { dist: number; texts: string; waveIdx: number } {
+    const { state, ctx, battle } = reopenWorld(enabled)
+    state.gameMs = 100
+    advanceBattleFor(state, ctx, battle, state.shipId, CARD)
+    return { dist: battle.distanceM, texts: state.logs.map((l) => l.text).join('\n'), waveIdx: battle.waveIdx ?? 0 }
+  }
+
+  it('默认口径锁定：`waveReopenEnabled = false`（惩罚关闭）、`waveReopenFrac = 0.5`（比例保留，开关一开即恢复）', () => {
+    expect(DEFAULT_BALANCE.battle.waveReopenEnabled).toBe(false)
+    expect(DEFAULT_BALANCE.battle.waveReopenFrac).toBe(0.5)
+  })
+
+  it('开关关闭：转场**距离原地不动**（不再后退），日志为中性表述', () => {
+    const r = stepOnce(false)
+    expect(r.waveIdx).toBe(1)
+    expect(Math.abs(r.dist - 800)).toBeLessThanOrEqual(120) // 原地续战（只受 1 拍步进漂移影响）
+    expect(r.texts).toContain('第 2/2 波来袭')
+    expect(r.texts).toContain('敌方增援入场。')
+    expect(r.texts).not.toContain('重新接近中') // 关闭时不再宣称"重新接近"
+  })
+
+  it('开关打开 + `waveReopenFrac 0.5`：距离向开战距离**回拉 50%**（旧口径可一键恢复）', () => {
+    const off = stepOnce(false)
+    const on = stepOnce(true)
+    expect(on.waveIdx).toBe(1)
+    expect(on.dist).toBeGreaterThan(off.dist + 500) // 明显被拉回远距离
+    expect(on.texts).toContain('敌方增援自远处入场，重新接近中。')
   })
 })

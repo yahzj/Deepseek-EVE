@@ -1,6 +1,8 @@
 /**
- * 战斗中"撤退"（Q1乙 轻损 / Q3甲 同时停清剿）：仅损失少量耐久（≈战败扣损的半量）、无弃船骰、
- * 耐久下限保护（绝不 ≤0 弃船）、转自动返航。
+ * 战斗中"撤退"（2026-09-11 船长改口径：与低安遇袭同一套承伤算法）：
+ * 脱身那一口 = **敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec（K = 1 秒）**，
+ * **先扣装甲、吸完再进结构**，结构 5% 底线（绝不弃船）、无弃船骰、转自动返航。
+ * 取代旧口径「轻损 = 失利扣损骰 ×0.5 = 结构 −7.5%~15%（与敌人强弱无关、装甲不动）」。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -8,7 +10,8 @@ import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { retreatBattle, startExpedition } from '../src/expedition'
-import { durabilityOf } from '../src/shipyard'
+import { durabilityOf, hullLayerCaps } from '../src/shipyard'
+import { firepowerHitHp } from '../src/hullDamage'
 import { makeTestCtx } from './helpers'
 
 function world() {
@@ -25,28 +28,44 @@ function enterBattle(state: GameState, ctx: SimContext): void {
   expect(state.expedition.battle).not.toBeNull()
 }
 
-describe('战斗中撤退（轻损）', () => {
-  it('非交火状态拒绝；撤退成功后转返航、耐久只扣约一半且不低于下限、无弃船', () => {
+/** 本场脱身那一口的期望值（测试卡 ano-a 威胁 8；K 取 balance 现值） */
+function expectedBite(ctx: SimContext): number {
+  const threat = ctx.anomalies.get('ano-a')!.threat
+  return firepowerHitHp(ctx, threat, ctx.balance.combat.retreatHitFirepowerSec)
+}
+
+describe('战斗中撤退（按敌方火力扣装甲/结构）', () => {
+  it('非交火状态拒绝；撤退 = 按敌火先扣装甲（装甲吃满才进结构）、转返航、无弃船', () => {
     const { state, ctx } = world()
     expect(retreatBattle(state, ctx).ok).toBe(false) // 无战斗
     enterBattle(state, ctx)
-    const before = durabilityOf(state, state.shipId)
+    const caps = hullLayerCaps(state, ctx, state.shipId)!
+    const ship = state.fleet[state.shipId]!
+    const armorBefore = ship.armorPct ?? 1
+    const structBefore = ship.durability
+    const bite = expectedBite(ctx)
+    expect(bite).toBeCloseTo(8 * ctx.balance.battle.foeDpsPerThreat * 1, 6) // 威胁 8 × 0.8/秒 × 1 秒 = 6.4 HP
     expect(retreatBattle(state, ctx).ok).toBe(true)
-    const after = durabilityOf(state, state.shipId)
     expect(state.expedition.phase).toBe('back') // 自动返航
-    expect(after).toBeLessThan(before)
-    expect(after).toBeGreaterThan(0)
-    // 扣损约为战败骰（15%~30%）的一半：约 7.5%~15%
-    const lost = before - after
-    expect(lost).toBeLessThan(0.16)
+    // 期望：这一口先由装甲池吸收（测试船甲 10 > 6.4 ⇒ 结构分文不动）
+    const armorHp = armorBefore * caps.capA
+    const eat = Math.min(armorHp, bite)
+    const rest = Math.max(0, bite - eat)
+    expect(ship.armorPct ?? 1).toBeCloseTo((armorHp - eat) / caps.capA, 3)
+    expect(ship.durability).toBeCloseTo(Math.max(0.05, structBefore - rest / caps.capH), 3)
+    expect(rest).toBe(0) // 装甲没被打穿
+    expect(ship.durability).toBe(structBefore)
     expect(state.fleet[state.shipId]).toBeDefined() // 绝不弃船
     expect(state.logs.some((l) => l.kind === 'warn' && l.text.includes('撤退'))).toBe(true)
+    // 日志给的是"装甲 -X%（现 装甲 x% / 结构 y%）"这一套（与遇袭同款说法）
+    expect(state.logs.some((l) => l.text.includes('装甲 -'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('现 装甲'))).toBe(true)
   })
 
-  it('耐久扣到 ≤0 时压到 5% 下限（保护性钳制，不弃船）并显著告警', () => {
+  it('装甲打穿后余量进结构；结构触底压 5% 下限（保护性钳制，不弃船）并显著告警', () => {
     const { state, ctx } = world()
     enterBattle(state, ctx)
-    // P0 承伤持久化：耐久=结构层——把本场玩家单位结构打到 0（甲 0、仅剩盾）模拟结构崩坏
+    // P0 承伤持久化：耐久=结构层——把本场玩家单位甲/结构都打到 0（仅剩盾）模拟结构崩坏
     const u = state.expedition.battle!.units['player']!
     u.hp = { s: 500, a: 0, h: 0 }
     expect(retreatBattle(state, ctx).ok).toBe(true)
@@ -98,6 +117,7 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     for (const u of units) u.hp = { s: 1e9, a: 1e9, h: 1e9 }
     const iskBefore = state.wallet.isk
     const durBefore = durabilityOf(state, state.shipId)
+    const armorBefore = state.fleet[state.shipId]!.armorPct ?? 1
     // 一步推到上限之外：战斗时钟走满 → 超时判定 → 撤退结算
     advanceGame(state, ctx.balance.battle.maxBattleMs + 5_000, ctx)
 
@@ -109,8 +129,26 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     expect(state.autoLoopAnomalyId).toBeNull() // 超时 = 收手，停重复清剿
     expect(state.logs.some((l) => l.text.includes('重复清剿已停止（战斗超时）'))).toBe(true)
     const durAfter = durabilityOf(state, state.shipId)
+    const armorAfter = state.fleet[state.shipId]!.armorPct ?? 1
     expect(durAfter).toBeGreaterThanOrEqual(0.05) // 下限保护：绝不因超时弃船
-    expect(durAfter).toBeLessThan(durBefore) // 轻损（战败扣损骰的一半）
+    expect(durAfter).toBeLessThanOrEqual(durBefore + 1e-9)
+    // 与手动撤退**同一 K**：超时这一口也恰好 = 威胁 8 × 0.8/秒 × 1 秒 = 6.4 HP，且先吃装甲
+    const caps = hullLayerCaps(state, ctx, state.shipId)!
+    const bite = expectedBite(ctx)
+    const armorHp = armorBefore * caps.capA
+    const eat = Math.min(armorHp, bite)
+    expect(armorAfter).toBeCloseTo((armorHp - eat) / caps.capA, 3)
+    expect(state.logs.some((l) => l.text.includes('装甲 -'))).toBe(true)
     expect(state.fleet[state.shipId]).toBeDefined() // 船还在
+  })
+
+  // 承伤口径本体（与低安遇袭共用 `hullDamage.ts` 单点）
+  it('一口伤害 = 敌群火力 × K 秒（线性随威胁），K 走 balance 可调常量', () => {
+    const { ctx } = world()
+    const K = ctx.balance.combat.retreatHitFirepowerSec
+    expect(K).toBe(1) // 船长 2026-09-11 定：撤退 K = 1 秒（三档同一 K）
+    expect(firepowerHitHp(ctx, 8, K)).toBeCloseTo(6.4, 6)
+    expect(firepowerHitHp(ctx, 40, K)).toBeCloseTo(32, 6) // 威胁 ×5 ⇒ 伤害 ×5
+    expect(firepowerHitHp(ctx, 8, K * 3)).toBeCloseTo(19.2, 6) // 秒数线性
   })
 })

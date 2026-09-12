@@ -31,12 +31,80 @@ export { MODULE_SLOTS } from './labels'
 
 /**
  * 舰船系统工程（2026-09-05 一号按盘点补）：船体 CPU +5%/级——只提高预算、不改单件成本。
- * 装配校验 / 无人机放飞 / 装配页显示 三处同源调用本函数。
+ * **本函数 = 船体预算（不含协处理器加成）**；装配/无人机/界面要看"总额"请用 `cpuBudgetOf`。
  */
 export function effectiveCpu(state: GameState, ctx: SimContext, def: { cpu?: number } | undefined): number {
   const bal = ctx.balance.battle
   const lv = Math.min(5, state.skills.trained[bal.cpuSkillId] ?? 0)
   return Math.round((def?.cpu ?? 0) * (1 + bal.cpuPerLevel * lv))
+}
+
+/**
+ * 该船 **CPU 预算总额** = 船体预算（含「舰船系统工程」）+ 已装**协处理器**加成之和
+ * （`ModuleDef.cpuBonus`；2026-09-11 船长新增件）。
+ *
+ * `fittedOverride`：装配/卸下的**预演**用替身位数组（不传 = 读当前实际装配）。
+ * ⚠ 预算随件走 ⇒ 任何"减少预算"的操作都必须先预演（见 `cpuOverloadText` / `unfitAt` / `swapModuleAt`），
+ * 否则可"装协处理器涨预算 → 装满其它件 → 卸下协处理器"白拿预算。
+ */
+export function cpuBudgetOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  fittedOverride?: FittedModules | null,
+): number {
+  const shipDef = ctx.ships.get(state.fleet[shipId]?.defId ?? shipId)
+  const base = effectiveCpu(state, ctx, shipDef)
+  const fitted = fittedOverride === undefined ? state.fleet[shipId]?.fitted : fittedOverride
+  if (!fitted) return base
+  let bonus = 0
+  for (const m of allFittedModules(fitted, ctx)) bonus += m.cpuBonus ?? 0
+  return base + bonus
+}
+
+/**
+ * **CPU 超载预演**（单点口径：装配 / 卸载 / 换装 / 无人机装载四处共用）：
+ * 按"假想的最终装配"算 占用 vs 预算，超了返回给玩家看的错误文案，否则 null。
+ *
+ * - `remove`：从该位拿掉一件（卸下 / 换装的旧件）；
+ * - `addModuleId`：再装上这一件（装配 / 换装的新件，须已在装备库，从库中扣件由调用方负责）。
+ * 两件事可同时给（换装 = 一减一增，按**最终状态**判定，避免合法换装被中间态卡住）。
+ */
+export function cpuOverloadText(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  plan?: { remove?: { rack: RackSlot; index: number }; addModuleId?: string },
+): string | null {
+  const fleet = state.fleet[shipId]
+  const shipDef = ctx.ships.get(fleet?.defId ?? shipId)
+  if (!fleet || !shipDef || (shipDef.cpu ?? 0) <= 0) return null
+  // 预演装配：克隆三类位数组（浅拷贝即可 —— 只改一个下标）
+  const after: FittedModules = {
+    high: [...fleet.fitted.high],
+    mid: [...fleet.fitted.mid],
+    low: [...fleet.fitted.low],
+  }
+  const add = plan?.addModuleId !== undefined ? ctx.modules.get(plan.addModuleId) : undefined
+  if (plan?.remove) {
+    const bays = rackBays(after, plan.remove.rack)
+    if (plan.remove.index < 0 || plan.remove.index >= bays.length) return null
+    bays[plan.remove.index] = null
+  }
+  if (plan?.addModuleId !== undefined) {
+    if (!add) return null
+    const rack = rackOf(add)
+    const bays = rackBays(after, rack)
+    const free = bays.findIndex((x) => x === null)
+    if (free < 0) return null // 槽位满：由各自命令自己的文案处理
+    bays[free] = add.id
+  }
+  const budget = cpuBudgetOf(state, ctx, shipId, after)
+  const used = fittedCpuUsed(after, ctx) + droneCpuUsed(fleet.droneLoad, ctx)
+  if (used > budget) {
+    return `CPU 超载：合计需 ${used}，预算 ${budget}（协处理器只扩容、卸下即收回——先卸下其它装备或无人机）。`
+  }
+  return null
 }
 
 /** 槽位中文名（家族徽标/日志） */
@@ -267,13 +335,18 @@ export function fitModule(
       return { ok: false, error: `${rackLabel(rack)}已满（${bays.length}/${bays.length}）：先卸下再装。` }
     }
   }
-  // CPU 装配校验：全位合计（含新件 + 该船无人机舱预占清单）≤ 船体 cpu（舰船系统工程 +5%/级 扩容）
+  // CPU 装配校验（2026-09-11 起走单点预演）：全位合计（含新件 + 该船无人机舱预占清单）
+  // ≤ **预算总额**（船体 cpu ×「舰船系统工程」+ 已装协处理器加成）
   const cpuBase = shipDef?.cpu
   if (cpuBase !== undefined && cpuBase > 0) {
-    const cpuTotal = effectiveCpu(state, ctx, shipDef)
-    const used = fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0) + droneCpuUsed(state.fleet[shipId]?.droneLoad, ctx)
-    if (used > cpuTotal) {
-      return { ok: false, error: `装配超载：合计需 CPU ${used}，船体上限 ${cpuTotal}（无人机舱占用亦计入预算——卸下装备或清一部分无人机）。` }
+    const overload = cpuOverloadText(state, ctx, shipId, { addModuleId: moduleId })
+    if (overload !== null) {
+      const used =
+        fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0) + droneCpuUsed(state.fleet[shipId]?.droneLoad, ctx)
+      return {
+        ok: false,
+        error: `装配超载：合计需 CPU ${used}，预算 ${cpuBudgetOf(state, ctx, shipId)}（无人机舱占用亦计入预算——卸下装备、清一部分无人机，或装一件「协处理器」扩容）。`,
+      }
     }
   }
   removeModule(state, moduleId)
@@ -283,8 +356,11 @@ export function fitModule(
 }
 
 /** 玩家指令：按 槽类+位序 卸下某船某位的装备（放回装备库；shipId 缺省 = 当前驾驶船）。
- * ctx 传入时（UI/工具一律传）：卸下「无人机甲板扩展」等导致机舱变小的件后，
- * **超出容量的无人机自动卸下并退回仓库**（2026-09-10 船长；见 trimDroneLoadToBay）。 */
+ * ctx 传入时（UI/工具一律传）做两件事：
+ * ① **CPU 双向校验**（2026-09-11 船长：「玩家是否会通过装卸这个配件'偷' CPU 容量」）——
+ *    卸下会同时收回该件的协处理器加成，故先**预演最终状态**，超载则**拒绝卸下**并提示先卸别的
+ *    （EVE 同款；UI 侧 `engine.unfitAtAt` 会用 `cpuOverloadText` 给出具体原因）；
+ * ② 卸下「无人机甲板扩展」等导致机舱变小的件后，**超出容量的无人机自动卸下并退回仓库**。 */
 export function unfitAt(
   state: GameState,
   rack: RackSlot,
@@ -298,6 +374,7 @@ export function unfitAt(
   if (index < 0 || index >= bays.length) return false
   const moduleId = bays[index]
   if (moduleId === null) return false
+  if (ctx && cpuOverloadText(state, ctx, shipId, { remove: { rack, index } }) !== null) return false
   bays[index] = null
   addModule(state, moduleId)
   addLog(state, 'info', `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`)
@@ -317,6 +394,56 @@ function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): numbe
     }
   }
   return cap
+}
+
+/**
+ * 玩家指令：**换装**（把某位旧件卸下、装上装备库里的新件）——一次成型、按**最终状态**校验。
+ *
+ * 为什么必须有这个命令（2026-09-11 船长指出装卸可"偷" CPU 之后）：
+ * 界面原先的换装是「先 `unfitAt` 再 `fitModule`」两步，而 `unfitAt` 现在会为防套利拒绝
+ * "卸下后超载"的操作 —— 于是「换一件协处理器」这类**最终状态合法、中间态非法**的换装会被卡住。
+ * 本命令把两步并成一次预演（`cpuOverloadText` 同时给 remove + add），校验通过才落库。
+ *
+ * 校验顺序：装备库有货 → 目标位可用（旧件可为空 = 等价于装配）→ CPU 最终态不超载 →
+ * 旧件放回装备库、新件从库中取出、写日志。
+ */
+export function swapModuleAt(
+  state: GameState,
+  moduleId: string,
+  ctx: SimContext,
+  opts: { rack: RackSlot; index: number; shipId?: string },
+): CommandResult {
+  const def = ctx.modules.get(moduleId)
+  if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
+  const shipId = opts.shipId ?? state.shipId
+  const fleet = state.fleet[shipId]
+  const fitted = fleet?.fitted
+  if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法换装。' }
+  const bays = rackBays(fitted, opts.rack)
+  if (opts.index < 0 || opts.index >= bays.length) {
+    return { ok: false, error: `该${rackLabel(opts.rack)}位不可用（第 ${opts.index + 1} 位）。` }
+  }
+  const oldId = bays[opts.index]
+  if (oldId === moduleId) return { ok: false, error: `${def.name} 已装在此位。` }
+  if (countModule(state, moduleId) < 1) {
+    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。` }
+  }
+  const overload = cpuOverloadText(state, ctx, shipId, {
+    ...(oldId !== null ? { remove: { rack: opts.rack, index: opts.index } } : {}),
+    addModuleId: moduleId,
+  })
+  if (overload !== null) return { ok: false, error: overload }
+  if (oldId !== null) addModule(state, oldId)
+  removeModule(state, moduleId)
+  bays[opts.index] = moduleId
+  addLog(
+    state,
+    'info',
+    oldId !== null
+      ? `已换装 ${ctx.modules.get(oldId)?.name ?? oldId} → ${def.name}（${rackLabel(opts.rack)}第 ${opts.index + 1} 位）。`
+      : `已装配 ${def.name}（${rackLabel(opts.rack)}第 ${opts.index + 1} 位）。`,
+  )
+  return { ok: true }
 }
 
 /**
@@ -396,8 +523,8 @@ export function adjustDroneLoad(
       return { ok: false, error: `仓库里没有足够的 ${def.name}（差 ${delta - have} 架）。` }
     }
     const cap = droneBayCapOf(state, ctx, shipId)
-    const shipDef = fleetDefOf(state, ctx, shipId)
-    const cpuTotal = shipDef ? effectiveCpu(state, ctx, shipDef) : 0
+    // 预算 = 船体 CPU + 已装协处理器加成（2026-09-11 起：装配与放飞共用同一份扩容预算）
+    const cpuTotal = cpuBudgetOf(state, ctx, shipId)
     const usedCpu = fittedCpuUsed(fleet.fitted, ctx) + droneCpuUsed(load, ctx) + (def.cpuUse ?? 0) * delta
     const usedM3 = droneLoadM3(load, ctx) + (def.unitM3 ?? 0) * delta
     if (usedM3 > cap) {

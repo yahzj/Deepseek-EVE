@@ -19,10 +19,11 @@ import {
   allFittedIds,
   countModule,
   countWare,
+  cpuBudgetOf,
   createPlayerSpec,
   droneCpuUsed,
   droneLoadM3,
-  effectiveCpu,
+  effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
   fittedCpuUsed,
   fleetDefOf,
   RACK_LABELS,
@@ -32,10 +33,15 @@ import {
 
   shipDisplayName,
   shipSlotsOf,
+  SLOT_LABELS,
   stackingOf,
   stackWeight,
+  thrusterCycleFullText,
+  typeLayerMult,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
+// 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
+import { rarityTierOf } from '@whale/data'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -55,11 +61,12 @@ const COMBAT_BASE_KEYS = new Set([
   '回避率',
 ])
 
-/** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽） */
+/** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
+ *  2026-09-11 协处理器 = 低槽 CPU 预算扩容件） */
 const RACK_FAMILIES: Record<RackSlot, string> = {
   high: '炮台 / 导弹架 / 激光炮 / 采集器 / 无人机装置',
   mid: '护盾增强・扩展 / 矢量推进器 / 索敌・陀螺（命中・闪避支援）',
-  low: '装甲镀层・增厚板 / 货舱扩展 / 稳定器・射速计算机（伤害・射速支援）',
+  low: '装甲镀层・增厚板 / 货舱扩展 / 稳定器・射速计算机（伤害・射速支援）/ 协处理器',
 }
 
 /** 数字千分位 */
@@ -112,16 +119,27 @@ function meanHitMul(spec: UnitSpec): number | null {
   return (spec.hitMul ?? 1) * (s / ws.length)
 }
 
-/** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化 */
-function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number, cpuTotal: number): FitSeg[] {
+/** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化。
+ *  `weapon` = 该槽位新旧武器的**弹伤倍率**（可选）：换了炮台/导弹架/激光炮时，
+ *  除"火力 ±%"外再明示倍率本身的变化（2026-09-11 船长：只看火力看不到弹药伤害倍率）。 */
+function diffSegs(
+  cur: UnitSpec,
+  next: UnitSpec,
+  cpuCur: number,
+  cpuNext: number,
+  cpuTotal: number,
+  weapon?: { curMult: number | null; nextMult: number | null; curType: DamageType | null; nextType: DamageType | null },
+  cpuTotalNext?: number,
+): FitSeg[] {
   const segs: FitSeg[] = []
   const add = (t: string, c: FitSeg['c']): void => {
     segs.push({ t, c })
   }
   const dir = (d: number): 'up' | 'down' => (d > 0 ? 'up' : 'down')
-  // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）
+  // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）。
+  // 2026-09-11 协处理器：**预算随件走** —— 装/卸协处理器时前后预算不同，两栏各用自己的预算。
   const remCur = Math.max(0, cpuTotal - cpuCur)
-  const remNext = Math.max(0, cpuTotal - cpuNext)
+  const remNext = Math.max(0, (cpuTotalNext ?? cpuTotal) - cpuNext)
   if (remNext !== remCur) add(`CPU 剩 ${remCur}→${remNext}`, 'info')
   // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
@@ -150,6 +168,17 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
   if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
   if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
+  // 推进器点火期速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
+  // 周期化（2026-09-10）后 `speedMps` **不含**推进器加成（走 `thrusterBoost`、只在点火窗口生效）
+  // ⇒ 换上/换下推进器时上面那段「速度」恒为 0，卡片看起来"速度没变"。这里补报**点火期**速度
+  // （= 基础 ×(1+爆发倍率)），换推进器时玩家才看得到真实机动差。
+  const boostCur = cur.thrusterBoost ?? 0
+  const boostNext = next.thrusterBoost ?? 0
+  if (boostCur !== boostNext) {
+    const ignCur = Math.round(cur.speedMps * (1 + boostCur))
+    const ignNext = Math.round(next.speedMps * (1 + boostNext))
+    add(`点火期速度 ${ignCur}→${ignNext}`, dir(ignNext - ignCur))
+  }
   // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
@@ -163,6 +192,13 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
       const show = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1)
       add(`火力 ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
     }
+  }
+  // 弹伤倍率本身的变化（换炮台时最关心的一个数；弹种变了也点明）
+  if (weapon && weapon.curMult !== null && weapon.nextMult !== null && weapon.curMult !== weapon.nextMult) {
+    add(`弹伤 ${mulText(weapon.curMult)}→${mulText(weapon.nextMult)}`, dir(weapon.nextMult - weapon.curMult))
+  }
+  if (weapon && weapon.curType !== null && weapon.nextType !== null && weapon.curType !== weapon.nextType) {
+    add(`弹种 ${DMG_LABEL[weapon.curType]}→${DMG_LABEL[weapon.nextType]}`, 'info')
   }
   // 命中近似（整机相对变化；口径见 meanHitMul）
   const ch = meanHitMul(cur)
@@ -181,6 +217,29 @@ function diffSegs(cur: UnitSpec, next: UnitSpec, cpuCur: number, cpuNext: number
 
 /** 武器判定：炮台/导弹架/激光炮（弹种 chip 显示攻击类型，色 = 伤害类型 ↔ 血量层色） */
 const WEAPON_SLOTS = new Set<ModuleSlot>(['turret', 'missile', 'laser'])
+
+/** 武器的**弹种**（与 ammoChipOf 同一口径：炮台取自身伤害类型、导弹固定高爆、激光固定能量） */
+function weaponDamageTypeOf(m: ModuleDef): DamageType {
+  if (m.slot === 'turret') return m.damageType ?? 'kinetic'
+  if (m.slot === 'missile') return 'explosive'
+  return 'plasma'
+}
+
+/** 层位克制短串（如「盾×1.5·甲×0.5」；×1 的层省略）——数值与 `combat.typeLayerMult` 同源，挂在弹种 chip 上 */
+function layerShortOf(t: DamageType): string {
+  const name = { shield: '盾', armor: '甲', hull: '结构' } as const
+  const parts: string[] = []
+  for (const l of ['shield', 'armor', 'hull'] as const) {
+    const v = typeLayerMult(t, l)
+    if (v !== 1) parts.push(`${name[l]}×${v}`)
+  }
+  return parts.join('·')
+}
+
+/** 倍率显示（1.5 → ×1.5；3 → ×3；去尾零） */
+function mulText(v: number): string {
+  return `×${Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)}`
+}
 
 /** 武器弹药 chip（船长 2026-09-05：换装卡须明示弹药攻击类型） */
 function ammoChipOf(m: ModuleDef): ReactNode | null {
@@ -274,23 +333,64 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return () => ro.disconnect()
   }, [])
 
+  /** 卸下（2026-09-11：`unfitAtAt` 改回报 CommandResult——CPU 双向校验下"卸不掉"会带原因） */
   function handleUnfit(rack: RackSlot, index: number): void {
-    if (engine.unfitAtAt(rack, index, effectiveTarget)) onToast('装备已卸下并放回装备库。')
+    const r = engine.unfitAtAt(rack, index, effectiveTarget)
+    if (r.ok) onToast('装备已卸下并放回装备库。')
+    else onToast(r.error ?? '卸下失败。', true)
   }
 
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
   const [pickBay, setPickBay] = useState<{ rack: RackSlot; index: number } | null>(null)
   // 换装对比段缓存（每候选一段；打开浮层时按当前装配/库存试算一次）
   const [pickDiffs, setPickDiffs] = useState<Map<string, FitSeg[]> | null>(null)
+  // 浮层内的筛选与搜索（2026-09-11 船长定：「添加装备筛选和搜索功能，参考市场页面的」→
+  // 复刻市场页那套「搜索框 + 分类下拉 + 命中计数」的形态；船长补定：**不要子分类**，只按装备分类，
+  // 且**默认稀有度高的排前面**）。筛选只在浮层内生效，不改候选集本身的算法。
+  const [pickKw, setPickKw] = useState('')
+  const [pickSlot, setPickSlot] = useState<string>('all')
+  /** 打开/关闭浮层时重置筛选（与市场页切换类型时子分类归零同哲学） */
+  const pickQuery = pickKw.trim().toLowerCase()
   function candidatesOf(rack: RackSlot): ModuleDef[] {
-    return bayModules.filter((m) => rackOf(m) === rack)
+    const base = bayModules.filter((m) => rackOf(m) === rack)
+    const hit = (m: ModuleDef): boolean => {
+      if (pickSlot !== 'all' && m.slot !== pickSlot) return false
+      if (pickQuery.length === 0) return true
+      // 检索口径与物品页 `hitMod` 同源：名称 / 槽位中文名 / 说明文；另加装备 id（便于按唯一键查，约定 §5）
+      return (
+        m.name.toLowerCase().includes(pickQuery) ||
+        m.id.toLowerCase().includes(pickQuery) ||
+        (SLOT_LABELS[m.slot] ?? '').toLowerCase().includes(pickQuery) ||
+        (m.description ?? '').toLowerCase().includes(pickQuery)
+      )
+    }
+    // 默认排序：**稀有度高的排前面**（档位取物品稀有度表 `RARITY_TIER`，键 = 市场商品键 mod-<id>）；
+    // 同档保持原有稳定顺序（`bayModules` 的目录序），避免每次筛选都跳动。
+    return base
+      .filter(hit)
+      .map((m, i) => ({ m, i, tier: rarityTierOf(`mod-${m.id}`) }))
+      .sort((a, b) => b.tier - a.tier || a.i - b.i)
+      .map((x) => x.m)
+  }
+  /** 浮层当前展示的候选（筛选 + 搜索 + 按稀有度排序；浮层关闭时为空数组） */
+  const pickShown: ModuleDef[] = pickBay ? candidatesOf(pickBay.rack) : []
+  /** 该槽位可选的全部装备里出现过的装备分类（下拉选项；只列实际存在的槽位） */
+  function pickSlotOptions(rack: RackSlot): Array<{ slot: string; label: string; count: number }> {
+    const cnt = new Map<string, number>()
+    for (const m of bayModules) {
+      if (rackOf(m) !== rack) continue
+      cnt.set(m.slot, (cnt.get(m.slot) ?? 0) + 1)
+    }
+    return [...cnt.entries()]
+      .map(([slot, count]) => ({ slot, label: (SLOT_LABELS as Record<string, string>)[slot] ?? slot, count }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'))
   }
   /** 试算"该位卸旧件→装候选"后的同源合成快照（只读模拟：浅拷贝 fitted 链，不触碰真实状态） */
   function tryFitSpec(
     m: ModuleDef,
     rack: RackSlot,
     index: number,
-  ): { cur: UnitSpec; next: UnitSpec | null; cpuNext: number } | null {
+  ): { cur: UnitSpec; next: UnitSpec | null; cpuNext: number; cpuTotalNext: number } | null {
     const curSpec = spec
     if (!curSpec) return null
     const base: FittedModules = fitted ?? { high: [], mid: [], low: [] }
@@ -309,11 +409,17 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       next: createPlayerSpec(simState, engine.ctx, effectiveTarget),
       // 2026-09-08：换装对比 CPU 口径同含无人机舱清单占用（清单不变，只反映装配变化）
       cpuNext: fittedCpuUsed(simFitted, engine.ctx) + droneCpuUsed(fleet.droneLoad, engine.ctx),
+      // 2026-09-11 协处理器：**装后预算**（装的是协处理器时会变大）——"CPU 剩"两栏各用自己的预算
+      cpuTotalNext: cpuBudgetOf(state, engine.ctx, effectiveTarget, simFitted),
     }
   }
   function openPick(rack: RackSlot, index: number): void {
+    // 每次打开都从「全部」看起（与市场页切换类型时子分类归零同哲学）
+    setPickKw('')
+    setPickSlot('all')
     setPickBay({ rack, index })
-    const cpuTotal = shipDef ? effectiveCpu(state, engine.ctx, shipDef) : 0
+    // 2026-09-11 协处理器：预算随件走 —— 对比段的两栏各用自己的预算（装/卸协处理器才显示得对）
+    const cpuTotal = cpuBudgetOf(state, engine.ctx, effectiveTarget)
     const segs = new Map<string, FitSeg[]>()
     for (const m of candidatesOf(rack)) {
       const oldId = fitted?.[rack]?.[index] ?? null
@@ -322,18 +428,33 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         continue // 同件重装无对比意义
       }
       const r = tryFitSpec(m, rack, index)
-      segs.set(m.id, r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal) : [])
+      // 新旧武器的弹伤倍率/弹种（非武器槽 = null；空位 = 无旧件）
+      const oldDef = oldId !== null ? engine.ctx.modules.get(oldId) ?? null : null
+      const isWeaponSlot = WEAPON_SLOTS.has(m.slot) // 三类武器件（高槽）
+      const weapon = isWeaponSlot
+        ? {
+            curMult: oldDef?.dmgMult ?? null,
+            nextMult: m.dmgMult ?? null,
+            curType: oldDef ? weaponDamageTypeOf(oldDef) : null,
+            nextType: weaponDamageTypeOf(m),
+          }
+        : undefined
+      segs.set(
+        m.id,
+        r && r.next ? diffSegs(r.cur, r.next, cpuUsed, r.cpuNext, cpuTotal, weapon, r.cpuTotalNext) : [],
+      )
     }
     setPickDiffs(segs)
   }
+  /** 装配/换装（2026-09-11 起走**原子换装**：一次成型、按最终状态校验 CPU ——
+   *  原先的"先卸后装"在 CPU 双向校验下会把「换协处理器」这类最终态合法的换装卡住） */
   function pickModule(m: ModuleDef): void {
     if (!pickBay) return
     const { rack, index } = pickBay
-    // 该位已装 → 先卸下旧件（放回装备库），再装入所选件
-    if ((fitted?.[rack]?.[index] ?? null) !== null) engine.unfitAtAt(rack, index, effectiveTarget)
-    const r = engine.fitModuleTo(m.id, rack, index, effectiveTarget)
+    const had = (fitted?.[rack]?.[index] ?? null) !== null
+    const r = engine.swapModuleTo(m.id, rack, index, effectiveTarget)
     if (!r.ok) onToast(r.error ?? '装配失败', true)
-    else onToast(`${m.name} 已装入${rackLabel(rack)}第 ${index + 1} 位。`)
+    else onToast(`${m.name} 已${had ? '换装到' : '装入'}${rackLabel(rack)}第 ${index + 1} 位。`)
     setPickBay(null)
   }
 
@@ -508,7 +629,23 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           gunEq !== undefined ? ` · 索敌 ×${gunEq.toFixed(2)}` : ''
                         }`,
                       },
-                      { k: '机动速度（含加力）', v: `${fmt(Math.round(spec.speedMps))} m/s` },
+                      // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
+                      // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
+                      // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
+                      // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
+                      {
+                        k: '机动速度',
+                        v: (
+                          <>
+                            {`${fmt(Math.round(spec.speedMps))} m/s`}
+                            {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
+                              <span className="app-dim">
+                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText()}）`}
+                              </span>
+                            ) : null}
+                          </>
+                        ),
+                      },
                     ]
                   : []),
               ]}
@@ -519,9 +656,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         ) : null}
           </div>
           <div className="app-fit-col-right">
-        {/* CPU 剩余条（船长 2026-09-05：由左栏移置槽位最上方、减法显示剩余；与放飞共用池） */}
+        {/* CPU 剩余条（船长 2026-09-05：由左栏移置槽位最上方、减法显示剩余；与放飞共用池）。
+            2026-09-11 协处理器：预算 = 船体 CPU + 已装协处理器扩容 → 走 core `cpuBudgetOf` 单点 */}
         {shipDef ? (
-          <CpuStrip used={cpuUsed} total={effectiveCpu(state, engine.ctx, shipDef)} />
+          <CpuStrip used={cpuUsed} total={cpuBudgetOf(state, engine.ctx, effectiveTarget)} />
         ) : null}
         {/* V18：高/中/低三组槽位——按槽位图标排布（取消列表形式，船长 2026-09-05） */}
         <div className="app-fit-racks">
@@ -606,10 +744,42 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             </div>
             <div className="app-dim app-note">
               以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前
-              对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。
+              对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。默认按稀有度从高到低排列。
+            </div>
+            {/* 筛选与搜索（2026-09-11 船长定：参考市场页；复刻 app-mkt-search 那套"搜索框 + 分类下拉 + 命中计数"） */}
+            <div className="app-mkt-search app-fit-pick-filter">
+              <input
+                className="app-mkt-search-input"
+                type="search"
+                placeholder="搜索装备：名称 / 槽位 / 说明"
+                value={pickKw}
+                onChange={(e) => setPickKw(e.target.value)}
+                spellCheck={false}
+              />
+              <select
+                className="app-mkt-kind"
+                value={pickSlot}
+                onChange={(e) => setPickSlot(e.target.value)}
+                title="按装备分类（槽位）筛选"
+              >
+                <option value="all">全部装备分类</option>
+                {pickSlotOptions(pickBay.rack).map((o) => (
+                  <option key={o.slot} value={o.slot}>
+                    {o.label}（{o.count}）
+                  </option>
+                ))}
+              </select>
+              <span className="app-dim">
+                {pickQuery.length > 0 || pickSlot !== 'all'
+                  ? `匹配 ${pickShown.length} 件`
+                  : `${pickShown.length} 件 · 按稀有度排序`}
+              </span>
             </div>
             <div className="app-fit-pickgrid">
-              {candidatesOf(pickBay.rack).map((m) => {
+              {pickShown.length === 0 ? (
+                <div className="app-dim app-exp-idle">没有符合条件的装备——换个关键词或把分类切回「全部装备分类」。</div>
+              ) : null}
+              {pickShown.map((m) => {
                 const segs = pickDiffs?.get(m.id)
                 const sameAsOld = (fitted?.[pickBay.rack]?.[pickBay.index] ?? null) === m.id
                 return (
@@ -627,13 +797,18 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       </span>
                       <span className="app-fit-pick-name">{m.name}</span>
                     </span>
-                    {/* 说明行：武器 = 弹药类型 chip（攻击类型醒目）+ 射程；其余 = 效果短述 */}
+                    {/* 说明行：武器 = 弹药类型 chip（攻击类型醒目）+ **弹伤害倍率** + 层位克制 + 射程；
+                        2026-09-11 船长：「装配界面更换炮台时，只简略的显示了火力变化，无法看到武器的
+                        弹药伤害倍率」⇒ 弹种 chip 旁补一枚克制 chip（复用 DmgChip，悬停给三层全串），
+                        文本里给出 `弹伤 ×N`（= 模块 dmgMult，单发 = 弹 dmg × 本倍率）。 */}
                     <span className="app-fit-pick-sub">
                       {WEAPON_SLOTS.has(m.slot) ? (
                         <>
                           {ammoChipOf(m)}
+                          <DmgChip t={weaponDamageTypeOf(m)} label={layerShortOf(weaponDamageTypeOf(m))} />
                           <span className="app-fit-pick-subtext">
-                            ×{countModule(state, m.id)} · 射程 {rangeShort(m)}
+                            ×{countModule(state, m.id)}
+                            {m.dmgMult !== undefined ? ` · 弹伤 ${mulText(m.dmgMult)}` : ''} · 射程 {rangeShort(m)}
                           </span>
                         </>
                       ) : (
@@ -785,7 +960,8 @@ function DroneBaySection({
   const [selId, setSelId] = useState<string | null>(null)
   const [selN, setSelN] = useState(1)
   const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx) : 0
-  const cpuTotal = shipDef ? effectiveCpu(state, ctx, shipDef) : 0
+  // 2026-09-11 协处理器：预算含扩容（与 core `adjustDroneLoad` 同源，界面不会"能装/装不上"打架）
+  const cpuTotal = cpuBudgetOf(state, ctx, target)
   const cpuLeft = Math.max(0, cpuTotal - fittedCpu - droneCpu)
 
   function adj(id: string, delta: number): void {

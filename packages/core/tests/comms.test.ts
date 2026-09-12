@@ -148,12 +148,14 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
       factionId: 'archive',
       deptId: 'dept-recall',
       kind: '教程',
-      subject: '训前简报：先看这封，再开工',
-      body: ['先读简报再开工。'],
+      subject: '训前简报',
+      body: ['先读简报再开工。', '04 修复护卫舰。'],
+      // 2026-09-11 船长：训前简报的任务链要高亮（`highlight` 必须与正文某段逐字相等才生效）
+      highlight: ['04 修复护卫舰。'],
       trigger: { kind: 'tutorial', step: 0 },
       action: { label: '按单开工：采集富凡晶石', command: 'startTutorial' },
     },
-    { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 } },
+    { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 }, hint: { text: '前往任务中心', page: 'map', tab: 'task', taskTab: 'important' } },
     { id: 'tut-7', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },
   ]
 
@@ -192,6 +194,9 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
     expect(briefing!.alignment).toBe('系统')
     expect(briefing!.glyph).toBe('nav-ai') // 头像：船内系统用核心形图标
     expect(briefing!.action?.command).toBe('startTutorial')
+    // 强调行要透传到界面（2026-09-11 船长：任务链高亮；漏传就像"没写"，界面静默不高亮）
+    expect(briefing!.highlight).toEqual(['04 修复护卫舰。'])
+    expect(briefing!.paragraphs).toContain(briefing!.highlight![0])
     // 此时还没进采集步骤
     expect(state.onboarding.step).toBe(ONB_BRIEFING)
     // 点动作 → 进采集步骤
@@ -200,6 +205,15 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
     expect(state.onboarding.step).toBe(ONB_MINE)
     // 未知命令：报错不崩
     expect(runCommsAction(state, 'nope' as never).ok).toBe(false)
+    // 没写 highlight 的消息不透传（界面按 undefined 处理，不会误高亮第一段）
+    const other = world(TUT_MSGS)
+    other.state.onboarding.step = ONB_DELIVER
+    advanceComms(other.state, other.ctx)
+    expect(commsInbox(other.state, other.ctx).find((e) => e.id === 'tut-2')!.highlight).toBeUndefined()
+    // 跳转提示要带任务中心**内层**标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）
+    const tut2 = commsInbox(other.state, other.ctx).find((e) => e.id === 'tut-2')!
+    expect(tut2.hint?.tab).toBe('task')
+    expect(tut2.hint?.taskTab).toBe('important')
   })
 
   it('简报态（0.5）能随存档往返保留——不会被归一化压成 0（存档真 BUG 回归）', () => {

@@ -406,9 +406,15 @@ export interface BalanceConfig {
     maxWinChance: number
     /** 失败修理费 = 期望奖励 × 该比例（ISK） */
     defeatCostRatio: number
-    /** 每次远征失利扣耐久区间（0~1） */
+    /** 每次远征**失利**扣耐久区间（0~1）——战败口径，未改 */
     durabilityLossMin: number
     durabilityLossMax: number
+    /**
+     * **撤退那一口的暴露秒数**（2026-09-11 船长定 K = 1 秒、手动/自动/超时三档同一 K；钱包维修费不变）。
+     * 一口 = 敌群火力（威胁 × `foeDpsPerThreat`）× 本值，**先扣装甲、吸完再进结构**，结构底线 5%
+     * （算法单点 `hullDamage.ts`，与低安遇袭受损档同一套；取代旧「结构 −7.5%~15% 固定骰、装甲不动」）。
+     */
+    retreatHitFirepowerSec: number
     /** 弃船率下限/上限 */
     minAbandonChance: number
     maxAbandonChance: number
@@ -501,9 +507,16 @@ export interface EncounterBalance {
   ambushChancePerSec: number
   /** 低安扫描中遇袭率乘数（船长 2026-09-05 定：×1.5，封顶 0.9；扫描即暴露、无入场缓冲） */
   scanAmbushMul: number
-  /** 受损档：耐久扣损区间（底 clamp 5% 绝不弃船） */
-  duraLossMin: number
-  duraLossMax: number
+  /**
+   * 受损档「被咬一口」的伤害系数（**秒**；船长 2026-09-11 定：伤害按**敌人火力**折算）。
+   * 一口伤害 HP = 敌群火力代理（`battle.foeDpsPerThreat` × 威胁 = 敌方总火力/秒）× 本系数，
+   * 施加时**先扣装甲、吸完再进结构**（与日志「被咬下一块装甲」同口径）。
+   * 取代旧 `duraLossMin/duraLossMax`（结构 −5%~15%，与敌群强度无关，2026-09-11 作废）。
+   */
+  hitFirepowerSec: number
+  /** 撤退线（船长 2026-09-11 定）：遭遇了结后**结构低于此比例**的被袭船立刻停手返港待命
+   *  （主控停作业 / 副船中止任务；**不自动维修**，回港等玩家决定）；同时作为低安遭遇战的自动脱离阈值 */
+  retreatHullFrac: number
   /** 被抢：至多损失船上货物比例（无货则抢钱包） */
   lootTakenMaxPct: number
   /** 被抢（无货时）：至多损失钱包 ISK 比例 */
@@ -548,8 +561,15 @@ export interface BattleBalance {
   /** P0 承伤持久化：护盾战中被动回充（每秒回充 = 满盾 × 此比例；0 = 关，初值见 balance） */
   shieldRegenPerSec: number
   /** 多波次转场（2026-09-09 船长建议）：下一波出现时把战斗距离向开战距离回拉的比例
-   * （0 = 原地续战；1 = 完整回到开战距离重新接近；默认初值见 balance） */
+   * （0 = 原地续战；1 = 完整回到开战距离重新接近；默认初值见 balance）
+   * ⚠ **本条只在 `waveReopenEnabled === true` 时生效**（2026-09-11 船长：暂时关闭距离后退惩罚）。 */
   waveReopenFrac: number
+  /** **多波次转场距离回拉总开关**（2026-09-11 船长：「将敌人增援波次距离会后退的惩罚**暂时关闭**」）。
+   * - `false`（**现值**）= **关闭**：下一波在同一交战距离**原地入场**，不再"从远处入场、重新接近"
+   *   （玩家不再因波次转场被拉回远距离、重演接近期）；玩家可见日志同步改为中性表述；
+   * - `true` = 开启：按 `waveReopenFrac` 向开战距离回拉（2026-09-09 的原始口径）。
+   * 与「敌突进」「单波次内增援」同款**总开关**形式：机制整套保留，改这一个布尔即恢复。 */
+  waveReopenEnabled: boolean
   /** 多波次演出间隔（2026-09-09 船长反馈）：一波全灭后空转等待该时长（爆炸/残骸演出播完）
    * 再刷下一波；0 = 立即续刷（旧行为） */
   waveEnterGapMs: number
@@ -713,6 +733,8 @@ export type ModuleSlot =
   | 'drone-tac'
   | 'drone-relay'
   | 'support'
+  /** 2026-09-11 船长：协处理器（低槽，装配 CPU 预算扩容；见 ModuleDef.cpuBonus） */
+  | 'cpu'
   | 'target-lock'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
@@ -879,6 +901,16 @@ export interface ModuleDef {
   /** 锁定加深（0.08 = 被锁定目标受本舰伤害 ×1.08；多件 EVE 曲线收敛见 stackingOf/curveMult；
    *  装上任意一件即触发集火：本舰全部武器不再随机分散，改打存活编队首位（主舰优先、击毁自动接力） */
   lockDmgBonus?: number
+  /* ═══ 2026-09-11 协处理器（cpu 家族·低槽；装配 CPU 预算扩容——船长定：本件自身不占 CPU） ═══ */
+  /**
+   * **CPU 预算扩容**（10 = 该船 CPU 上限 +10）：装配与无人机放飞**共用**这一份预算，
+   * 见 `equipment.cpuBudgetOf`（船体 CPU 含「舰船系统工程」×1+5%/级，再加本字段之和）。
+   * **本件 `cpuUse` 恒为 0**（船长 2026-09-11 定：自身不占用、单纯加预算）；
+   * 多件全额叠加（与容量类同口径），天然上限 = 该船低槽位数。
+   * ⚠ **防套利**：预算随件走 ⇒ 卸下本件必须重算（`unfitAt` 双向校验，超载则拒绝卸下），
+   * 否则可"装本件涨预算 → 装满其它件 → 卸下本件"白拿预算（见 equipment.ts 说明与设计稿）。
+   */
+  cpuBonus?: number
 }
 
 /** 舰船蓝图（M5：用矿物制造舰船，产物进入船坞） */
@@ -1607,10 +1639,20 @@ export interface CommsMessageDef {
   subject: string
   /** 正文（逐段） */
   body: readonly string[]
+  /**
+   * 需要**强调显示**的正文段落（可选；2026-09-11 船长：「将训前简报的任务链内的文字高亮」）。
+   * 取值必须与 `body` 里某一段**逐字相等**才生效（`content:check` 有契约盯着），
+   * 界面按它给该段加既有强调样式（离线报告那套 `.app-report-highlight`），其余段落照旧。
+   */
+  highlight?: readonly string[]
   /** 送达条件 */
   trigger: CommsTrigger
-  /** 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签 */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /**
+   * 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签，
+   * `taskTab` 用于星图「任务中心」的**内层**标签（2026-09-11 船长：步骤 2 跳转必须切到「重要任务」——
+   * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
+   */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
   action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
@@ -1643,12 +1685,14 @@ export interface CommsEntryView {
   subject: string
   /** 正文逐段（剧本镜像 = 各发言句 `发言人：内容`） */
   paragraphs: readonly string[]
+  /** 强调显示的段落（与 `paragraphs` 逐字相等的那些；界面加既有强调样式，见 `CommsMessageDef.highlight`） */
+  highlight?: readonly string[]
   /** 送达时的游戏内毫秒 */
   deliveredAtGameMs: number
   /** 是否已读 */
   read: boolean
-  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`shipTab` = 舰船页内标签） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; shipTab?: string }
+  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
   action?: CommsActionDef
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */

@@ -26,6 +26,8 @@ const BRIEFING_MESSAGE: CommsMessageDef = {
   kind: '教程',
   subject: BRIEFING_INTRO.subject,
   body: BRIEFING_INTRO.lines,
+  // 2026-09-11 船长：「将训前简报的任务链内的文字高亮」——任务链那七行在正文里加既有的强调样式
+  highlight: BRIEFING_INTRO.highlight,
   trigger: { kind: 'tutorial', step: 0 },
   hint: { text: BRIEFING_INTRO.hint, page: 'comms' },
   action: { label: BRIEFING_INTRO.actionLabel, command: 'startTutorial' },
@@ -40,10 +42,19 @@ const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => 
   factionId: 'archive',
   deptId: 'dept-recall',
   kind: '教程',
-  subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}：${s.title}`,
+  // 主题分隔条用「｜」而不是「：」——步骤标题自带冒号（如「采集：维持运转」），
+  // 原写法会出现「检索重启 1/7：采集：维持运转」两个冒号（2026-09-11 船长批准改分隔符）
+  subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}｜${s.title}`,
   body: s.lines,
   trigger: { kind: 'tutorial', step: s.step },
-  hint: { text: s.goal, page: s.page, ...(s.mapTab ? { tab: s.mapTab } : {}), ...(s.shipTab ? { shipTab: s.shipTab } : {}) },
+  hint: {
+    text: s.goal,
+    page: s.page,
+    ...(s.mapTab ? { tab: s.mapTab } : {}),
+    // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）
+    ...(s.taskTab ? { taskTab: s.taskTab } : {}),
+    ...(s.shipTab ? { shipTab: s.shipTab } : {}),
+  },
 }))
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */
