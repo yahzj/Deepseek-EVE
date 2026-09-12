@@ -926,7 +926,8 @@ export const MODULES: readonly ModuleDef[] = [
 
   // ══════════ 协处理器（cpu：低槽，**装配 CPU 预算扩容**） ══════════
   // 2026-09-11 船长定（原话）：「新增低槽配件，效果是增加舰船CPU」＋四条细裁：
-  //   ① **自身不占用**（`cpuUse: 0`）——只加预算，`cpuBonus` = +10 / +15 / +20（三档）；
+  //   ① **自身不占用**（`cpuUse: 0`）——只加预算，`cpuBonus` = **+25 / +35 / +45（三档）**；
+  //      （船长同日追加：「之前的CPU装备，增加的CPU数值上调至25/35/45」——原定 +10/+15/+20 上调，价与稀有度未动）
   //   ② 新开一族「协处理器」（低槽，与装甲/货舱/支援件抢同一槽位）；
   //   ③ 渠道：MK1 稀有度 2、MK2 稀有度 3（稀有订单层）、**MK3 稀有度 4 走奇货、无蓝图**；
   //   ④ 防套利 = **双向校验**（预算随件走，卸下时必须预演最终状态，超载拒绝卸下，见 equipment.cpuOverloadText）。
@@ -938,8 +939,8 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cpu',
     rack: 'low',
     cpuUse: 0, // 船长定：自身不占用（零占用只允许"加预算"件，见 content-check 契约）
-    cpuBonus: 10,
-    description: '算力扩展卡（低槽）：装配 CPU 上限 +10。本件自身不占 CPU。',
+    cpuBonus: 25,
+    description: '算力扩展卡（低槽）：装配 CPU 上限 +25。本件自身不占 CPU。',
   },
   {
     id: 'mod-cpu-2',
@@ -947,8 +948,8 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cpu',
     rack: 'low',
     cpuUse: 0,
-    cpuBonus: 15,
-    description: '双路算力扩展卡（低槽）：装配 CPU 上限 +15。本件自身不占 CPU，中后期的通用解锁件。',
+    cpuBonus: 35,
+    description: '双路算力扩展卡（低槽）：装配 CPU 上限 +35。本件自身不占 CPU，中后期的通用解锁件。',
   },
   {
     id: 'mod-cpu-3',
@@ -956,8 +957,8 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cpu',
     rack: 'low',
     cpuUse: 0,
-    cpuBonus: 20,
-    description: '军用算力堆叠模块（低槽）：装配 CPU 上限 +20（奇货现货，无蓝图）。本件自身不占 CPU。',
+    cpuBonus: 45,
+    description: '军用算力堆叠模块（低槽）：装配 CPU 上限 +45（奇货现货，无蓝图）。本件自身不占 CPU。',
   },
 
   // ══════════ B3 打捞器（salvager：高槽无伤害件，2026-09-05 船长定稿） ══════════

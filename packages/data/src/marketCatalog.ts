@@ -117,25 +117,29 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-drone-tac-1', kind: 'module', refId: 'mod-drone-tac-1', rarity: 'common', basePrice: 18_000, demandMultiplier: 0.6 },
   { key: 'mod-drone-relay-1', kind: 'module', refId: 'mod-drone-relay-1', rarity: 'common', basePrice: 15_000, demandMultiplier: 0.6 }, // 无人机中继天线 MK1（2026-09-10 现货）
   // 低级蓝图（价格 = 蓝图商店价；买来学习后永久可造，重复蓝图回卖按 common 档 0.6L 收购）
-  { key: 'bp-miner-1', kind: 'blueprint', refId: 'bp-miner-1', rarity: 'common', basePrice: 62400, demandMultiplier: 0.6 },
-  { key: 'bp-cargo-1', kind: 'blueprint', refId: 'bp-cargo-1', rarity: 'common', basePrice: 58400, demandMultiplier: 0.6 },
+  { key: 'bp-miner-1', kind: 'blueprint', refId: 'bp-miner-1', rarity: 'common', basePrice: 62500, demandMultiplier: 0.6 },
+  { key: 'bp-cargo-1', kind: 'blueprint', refId: 'bp-cargo-1', rarity: 'common', basePrice: 58500, demandMultiplier: 0.6 },
   { key: 'bp-turret-1', kind: 'blueprint', refId: 'bp-turret-1', rarity: 'common', basePrice: 106000, demandMultiplier: 0.6 },
   { key: 'bp-miner-civ', kind: 'blueprint', refId: 'bp-miner-civ', rarity: 'common', basePrice: 18000, demandMultiplier: 0.6 },
   { key: 'bp-cargo-civ', kind: 'blueprint', refId: 'bp-cargo-civ', rarity: 'common', basePrice: 16000, demandMultiplier: 0.6 },
   { key: 'bp-turret-civ', kind: 'blueprint', refId: 'bp-turret-civ', rarity: 'common', basePrice: 24000, demandMultiplier: 0.6 },
   // 弹药生产线蓝图（2026-09-05：基础弹自制；书籍价随弹型市场价；2026-09-09 全蓝图化补给线现价 ×1.5）
+  // 弹药生产线蓝图（**弹药线书价不随系数漂移**：船长 2026-09-11 复核「弹药蓝图回滚到 1.5 倍，其他保持不变」
+  // ⇒ 维持 2026-09-09「补给线 ×1.5」批的落账原值，逐条登记在 blueprints.ts 的 BLUEPRINT_PRICE_OVERRIDES）
   { key: 'bp-ammo-kinetic', kind: 'blueprint', refId: 'bp-ammo-kinetic', rarity: 'common', basePrice: 1350, demandMultiplier: 0.6 },
   { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1650, demandMultiplier: 0.6 },
   { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1950, demandMultiplier: 0.6 },
-  // 弹药 MK2 生产线蓝图（2026-09-09：奇货书——船长追加拍板 rare→exotic；书价 ×1.5 与全蓝图化补给线同批；
-  // 收购档随奇货惯例 1.0L 全价回收，与全部 exotic 蓝图书行一致）
+  // 弹药 MK2 生产线蓝图（2026-09-09：奇货书——船长追加拍板 rare→exotic；收购档随奇货惯例 1.0L 全价回收，
+  // 与全部 exotic 蓝图书行一致。**书价同样维持原值** 9,000/12,750/18,000，不走奇货 ×4 系数）
   { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'exotic', basePrice: 9_000, demandMultiplier: 1.0 },
   { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'exotic', basePrice: 12_750, demandMultiplier: 1.0 },
   { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'exotic', basePrice: 18_000, demandMultiplier: 1.0 },
   // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
-  { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 5400, demandMultiplier: 0.6 },
-  { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 13500, demandMultiplier: 0.6 },
-  // 2026-09-09 全蓝图化：全部装备可学蓝图自造（双渠道，现货保留）；蓝图价 = 产物市场价 × 档位系数（民用级/MK1 ×2、MK2 ×2.5、MK3/顶档 ×3）；蓝图书出现概率 −50%
+  { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 33000, demandMultiplier: 0.6 },
+  { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 138500, demandMultiplier: 0.6 },
+  // 2026-09-09 全蓝图化：全部装备可学蓝图自造（双渠道，现货保留）；蓝图书出现概率 −50%。
+  // **蓝图价口径 2026-09-11 归一（船长裁决甲）**：书价 = 产物现货价 × 档位系数（民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3，
+  // 取整 500 ISK）——单点 = `blueprints.ts` 的 `blueprintTierCoefOf`，本表每行只做「与 blueprints.ts 同值」的落账。
   { key: 'bp-laser-1', kind: 'blueprint', refId: 'bp-laser-1', rarity: 'common', basePrice: 132000, demandMultiplier: 0.6 }, // 轻型激光炮 MK1（蓝图=产物×2）
   { key: 'bp-missile-1', kind: 'blueprint', refId: 'bp-missile-1', rarity: 'common', basePrice: 124000, demandMultiplier: 0.6 }, // 轻型导弹架 MK1（蓝图=产物×2）
   { key: 'bp-drone-rack-1', kind: 'blueprint', refId: 'bp-drone-rack-1', rarity: 'common', basePrice: 24000, demandMultiplier: 0.6 }, // 无人机甲板扩展 MK1（蓝图=产物×2）
@@ -157,7 +161,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-gyro-1', kind: 'blueprint', refId: 'bp-gyro-1', rarity: 'common', basePrice: 48000, demandMultiplier: 0.6 }, // 姿态陀螺 MK1（蓝图=产物×2）
   { key: 'bp-salvager-1', kind: 'blueprint', refId: 'bp-salvager-1', rarity: 'common', basePrice: 40000, demandMultiplier: 0.6 }, // 打捞器 MK1（蓝图=产物×2）
   { key: 'bp-hullrep-civ', kind: 'blueprint', refId: 'bp-hullrep-civ', rarity: 'common', basePrice: 60000, demandMultiplier: 0.6 }, // 民用船体维修装置（蓝图=产物×2）
-  { key: 'bp-hullrep-1', kind: 'blueprint', refId: 'bp-hullrep-1', rarity: 'common', basePrice: 370000, demandMultiplier: 0.6 }, // 船体维修装置 MK1（蓝图=产物×2）
+  { key: 'bp-hullrep-1', kind: 'blueprint', refId: 'bp-hullrep-1', rarity: 'common', basePrice: 936000, demandMultiplier: 0.6 }, // 船体维修装置 MK1（蓝图=产物×2）
   { key: 'bp-lock-1', kind: 'blueprint', refId: 'bp-lock-1', rarity: 'common', basePrice: 60000, demandMultiplier: 0.6 }, // 目标锁定阵列 MK1（蓝图=产物×2）
   // 低级船（AI 副船军团的主力船）
   { key: 'ship-burrower', kind: 'ship', refId: 'burrower', rarity: 'common', basePrice: 120_000, demandMultiplier: 0.6 },
@@ -248,63 +252,63 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 439_000, demandMultiplier: 0.65 },
   { key: 'mod-salvager-3', kind: 'module', refId: 'mod-salvager-3', rarity: 'rare', basePrice: 2_220_000, demandMultiplier: 0.65 },
   // 高级蓝图 MK2（旧）+ MK3（V10：学习需声望 4）
-  { key: 'bp-miner-2', kind: 'blueprint', refId: 'bp-miner-2', rarity: 'rare', basePrice: 452500, demandMultiplier: 0.65 },
-  { key: 'bp-cargo-2', kind: 'blueprint', refId: 'bp-cargo-2', rarity: 'rare', basePrice: 497500, demandMultiplier: 0.65 },
+  { key: 'bp-miner-2', kind: 'blueprint', refId: 'bp-miner-2', rarity: 'rare', basePrice: 1165000, demandMultiplier: 0.65 },
+  { key: 'bp-cargo-2', kind: 'blueprint', refId: 'bp-cargo-2', rarity: 'rare', basePrice: 1187500, demandMultiplier: 0.65 },
   { key: 'bp-turret-2', kind: 'blueprint', refId: 'bp-turret-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 },
-  { key: 'bp-miner-3', kind: 'blueprint', refId: 'bp-miner-3', rarity: 'rare', basePrice: 2973000, demandMultiplier: 0.65, standingReq: 4 },
-  { key: 'bp-cargo-3', kind: 'blueprint', refId: 'bp-cargo-3', rarity: 'rare', basePrice: 3366000, demandMultiplier: 0.65, standingReq: 4 },
+  { key: 'bp-miner-3', kind: 'blueprint', refId: 'bp-miner-3', rarity: 'rare', basePrice: 6990000, demandMultiplier: 0.65, standingReq: 4 },
+  { key: 'bp-cargo-3', kind: 'blueprint', refId: 'bp-cargo-3', rarity: 'rare', basePrice: 7200000, demandMultiplier: 0.65, standingReq: 4 },
   { key: 'bp-turret-3', kind: 'blueprint', refId: 'bp-turret-3', rarity: 'rare', basePrice: 5748000, demandMultiplier: 0.65, standingReq: 4 },
   // 2026-09-09 全蓝图化（MK2 蓝图稀有；MK3 蓝图稀有+声望 4，战斗系 MK3 与维修装置 MK2 进声望 11 暗市闸）
   { key: 'bp-laser-2', kind: 'blueprint', refId: 'bp-laser-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 重型激光炮 MK2（蓝图=产物×2.5）
   { key: 'bp-laser-3', kind: 'blueprint', refId: 'bp-laser-3', rarity: 'rare', basePrice: 7185000, demandMultiplier: 0.65, standingReq: 4 }, // 攻坚激光炮 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-missile-2', kind: 'blueprint', refId: 'bp-missile-2', rarity: 'rare', basePrice: 1127500, demandMultiplier: 0.65 }, // 重型导弹架 MK2（蓝图=产物×2.5）
   { key: 'bp-missile-3', kind: 'blueprint', refId: 'bp-missile-3', rarity: 'rare', basePrice: 6726000, demandMultiplier: 0.65, standingReq: 4 }, // 巡航导弹架 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-drone-rack-2', kind: 'blueprint', refId: 'bp-drone-rack-2', rarity: 'rare', basePrice: 225000, demandMultiplier: 0.65 }, // 无人机甲板扩展 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-rack-3', kind: 'blueprint', refId: 'bp-drone-rack-3', rarity: 'rare', basePrice: 780000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机甲板扩展 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-drone-tac-2', kind: 'blueprint', refId: 'bp-drone-tac-2', rarity: 'rare', basePrice: 400000, demandMultiplier: 0.65 }, // 战术导控阵列 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-tac-3', kind: 'blueprint', refId: 'bp-drone-tac-3', rarity: 'rare', basePrice: 1260000, demandMultiplier: 0.65, standingReq: 4 }, // 战术导控阵列 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-drone-rack-2', kind: 'blueprint', refId: 'bp-drone-rack-2', rarity: 'rare', basePrice: 1045000, demandMultiplier: 0.65 }, // 无人机甲板扩展 MK2（蓝图=产物×2.5）
+  { key: 'bp-drone-rack-3', kind: 'blueprint', refId: 'bp-drone-rack-3', rarity: 'rare', basePrice: 5880000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机甲板扩展 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-drone-tac-2', kind: 'blueprint', refId: 'bp-drone-tac-2', rarity: 'rare', basePrice: 1137500, demandMultiplier: 0.65 }, // 战术导控阵列 MK2（蓝图=产物×2.5）
+  { key: 'bp-drone-tac-3', kind: 'blueprint', refId: 'bp-drone-tac-3', rarity: 'rare', basePrice: 6120000, demandMultiplier: 0.65, standingReq: 4 }, // 战术导控阵列 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-drone-relay-1', kind: 'blueprint', refId: 'bp-drone-relay-1', rarity: 'common', basePrice: 30000, demandMultiplier: 0.6 }, // 无人机中继天线 MK1（蓝图=产物×2）
-  { key: 'bp-drone-relay-2', kind: 'blueprint', refId: 'bp-drone-relay-2', rarity: 'rare', basePrice: 375000, demandMultiplier: 0.65 }, // 无人机中继天线 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-relay-3', kind: 'blueprint', refId: 'bp-drone-relay-3', rarity: 'rare', basePrice: 1200000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机中继天线 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-kin-2', kind: 'blueprint', refId: 'bp-shield-kin-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾增强器 MK2·动能型（蓝图=产物×2.5）
-  { key: 'bp-shield-exp-2', kind: 'blueprint', refId: 'bp-shield-exp-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾增强器 MK2·高爆型（蓝图=产物×2.5）
-  { key: 'bp-shield-pla-2', kind: 'blueprint', refId: 'bp-shield-pla-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾增强器 MK2·能量型（蓝图=产物×2.5）
-  { key: 'bp-shield-kin-3', kind: 'blueprint', refId: 'bp-shield-kin-3', rarity: 'rare', basePrice: 510000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·动能型（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-exp-3', kind: 'blueprint', refId: 'bp-shield-exp-3', rarity: 'rare', basePrice: 510000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·高爆型（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-pla-3', kind: 'blueprint', refId: 'bp-shield-pla-3', rarity: 'rare', basePrice: 510000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·能量型（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-ext-2', kind: 'blueprint', refId: 'bp-shield-ext-2', rarity: 'rare', basePrice: 70000, demandMultiplier: 0.65 }, // 护盾扩展器 MK2（蓝图=产物×2.5）
-  { key: 'bp-shield-ext-3', kind: 'blueprint', refId: 'bp-shield-ext-3', rarity: 'rare', basePrice: 510000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾扩展器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-armor-kin-2', kind: 'blueprint', refId: 'bp-armor-kin-2', rarity: 'rare', basePrice: 85000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·动能型（蓝图=产物×2.5）
-  { key: 'bp-armor-exp-2', kind: 'blueprint', refId: 'bp-armor-exp-2', rarity: 'rare', basePrice: 85000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·高爆型（蓝图=产物×2.5）
-  { key: 'bp-armor-pla-2', kind: 'blueprint', refId: 'bp-armor-pla-2', rarity: 'rare', basePrice: 85000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·能量型（蓝图=产物×2.5）
-  { key: 'bp-armor-kin-3', kind: 'blueprint', refId: 'bp-armor-kin-3', rarity: 'rare', basePrice: 663000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·动能型（蓝图=产物×3）（入闸）
-  { key: 'bp-armor-exp-3', kind: 'blueprint', refId: 'bp-armor-exp-3', rarity: 'rare', basePrice: 663000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·高爆型（蓝图=产物×3）（入闸）
-  { key: 'bp-armor-pla-3', kind: 'blueprint', refId: 'bp-armor-pla-3', rarity: 'rare', basePrice: 663000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·能量型（蓝图=产物×3）（入闸）
-  { key: 'bp-armor-plate-2', kind: 'blueprint', refId: 'bp-armor-plate-2', rarity: 'rare', basePrice: 85000, demandMultiplier: 0.65 }, // 装甲增厚板 MK2（蓝图=产物×2.5）
-  { key: 'bp-armor-plate-3', kind: 'blueprint', refId: 'bp-armor-plate-3', rarity: 'rare', basePrice: 663000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲增厚板 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-prop-2', kind: 'blueprint', refId: 'bp-prop-2', rarity: 'rare', basePrice: 97500, demandMultiplier: 0.65 }, // 矢量推进器 MK2（蓝图=产物×2.5）
-  { key: 'bp-prop-3', kind: 'blueprint', refId: 'bp-prop-3', rarity: 'rare', basePrice: 816000, demandMultiplier: 0.65, standingReq: 4 }, // 矢量推进器 MK3（蓝图=产物×3）
-  { key: 'bp-stab-kin-2', kind: 'blueprint', refId: 'bp-stab-kin-2', rarity: 'rare', basePrice: 525000, demandMultiplier: 0.65 }, // 动能稳定器 MK2（蓝图=产物×2.5）
-  { key: 'bp-stab-kin-3', kind: 'blueprint', refId: 'bp-stab-kin-3', rarity: 'rare', basePrice: 3150000, demandMultiplier: 0.65, standingReq: 4 }, // 动能稳定器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-stab-exp-2', kind: 'blueprint', refId: 'bp-stab-exp-2', rarity: 'rare', basePrice: 525000, demandMultiplier: 0.65 }, // 高爆稳定器 MK2（蓝图=产物×2.5）
-  { key: 'bp-stab-exp-3', kind: 'blueprint', refId: 'bp-stab-exp-3', rarity: 'rare', basePrice: 3150000, demandMultiplier: 0.65, standingReq: 4 }, // 高爆稳定器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-stab-pla-2', kind: 'blueprint', refId: 'bp-stab-pla-2', rarity: 'rare', basePrice: 525000, demandMultiplier: 0.65 }, // 等离子稳定器 MK2（蓝图=产物×2.5）
-  { key: 'bp-stab-pla-3', kind: 'blueprint', refId: 'bp-stab-pla-3', rarity: 'rare', basePrice: 3150000, demandMultiplier: 0.65, standingReq: 4 }, // 等离子稳定器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-rof-2', kind: 'blueprint', refId: 'bp-rof-2', rarity: 'rare', basePrice: 462500, demandMultiplier: 0.65 }, // 射速计算机 MK2（蓝图=产物×2.5）
-  { key: 'bp-rof-3', kind: 'blueprint', refId: 'bp-rof-3', rarity: 'rare', basePrice: 2760000, demandMultiplier: 0.65, standingReq: 4 }, // 射速计算机 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-track-2', kind: 'blueprint', refId: 'bp-track-2', rarity: 'rare', basePrice: 400000, demandMultiplier: 0.65 }, // 索敌阵列 MK2（蓝图=产物×2.5）
-  { key: 'bp-track-3', kind: 'blueprint', refId: 'bp-track-3', rarity: 'rare', basePrice: 2400000, demandMultiplier: 0.65, standingReq: 4 }, // 索敌阵列 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-gyro-2', kind: 'blueprint', refId: 'bp-gyro-2', rarity: 'rare', basePrice: 375000, demandMultiplier: 0.65 }, // 姿态陀螺 MK2（蓝图=产物×2.5）
-  { key: 'bp-gyro-3', kind: 'blueprint', refId: 'bp-gyro-3', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65, standingReq: 4 }, // 姿态陀螺 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-drone-relay-2', kind: 'blueprint', refId: 'bp-drone-relay-2', rarity: 'rare', basePrice: 1122500, demandMultiplier: 0.65 }, // 无人机中继天线 MK2（蓝图=产物×2.5）
+  { key: 'bp-drone-relay-3', kind: 'blueprint', refId: 'bp-drone-relay-3', rarity: 'rare', basePrice: 6090000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机中继天线 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-shield-kin-2', kind: 'blueprint', refId: 'bp-shield-kin-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾增强器 MK2·动能型（蓝图=产物×2.5）
+  { key: 'bp-shield-exp-2', kind: 'blueprint', refId: 'bp-shield-exp-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾增强器 MK2·高爆型（蓝图=产物×2.5）
+  { key: 'bp-shield-pla-2', kind: 'blueprint', refId: 'bp-shield-pla-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾增强器 MK2·能量型（蓝图=产物×2.5）
+  { key: 'bp-shield-kin-3', kind: 'blueprint', refId: 'bp-shield-kin-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·动能型（蓝图=产物×3）（入闸）
+  { key: 'bp-shield-exp-3', kind: 'blueprint', refId: 'bp-shield-exp-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·高爆型（蓝图=产物×3）（入闸）
+  { key: 'bp-shield-pla-3', kind: 'blueprint', refId: 'bp-shield-pla-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·能量型（蓝图=产物×3）（入闸）
+  { key: 'bp-shield-ext-2', kind: 'blueprint', refId: 'bp-shield-ext-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾扩展器 MK2（蓝图=产物×2.5）
+  { key: 'bp-shield-ext-3', kind: 'blueprint', refId: 'bp-shield-ext-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾扩展器 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-armor-kin-2', kind: 'blueprint', refId: 'bp-armor-kin-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·动能型（蓝图=产物×2.5）
+  { key: 'bp-armor-exp-2', kind: 'blueprint', refId: 'bp-armor-exp-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·高爆型（蓝图=产物×2.5）
+  { key: 'bp-armor-pla-2', kind: 'blueprint', refId: 'bp-armor-pla-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·能量型（蓝图=产物×2.5）
+  { key: 'bp-armor-kin-3', kind: 'blueprint', refId: 'bp-armor-kin-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·动能型（蓝图=产物×3）（入闸）
+  { key: 'bp-armor-exp-3', kind: 'blueprint', refId: 'bp-armor-exp-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·高爆型（蓝图=产物×3）（入闸）
+  { key: 'bp-armor-pla-3', kind: 'blueprint', refId: 'bp-armor-pla-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·能量型（蓝图=产物×3）（入闸）
+  { key: 'bp-armor-plate-2', kind: 'blueprint', refId: 'bp-armor-plate-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲增厚板 MK2（蓝图=产物×2.5）
+  { key: 'bp-armor-plate-3', kind: 'blueprint', refId: 'bp-armor-plate-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲增厚板 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-prop-2', kind: 'blueprint', refId: 'bp-prop-2', rarity: 'rare', basePrice: 977500, demandMultiplier: 0.65 }, // 矢量推进器 MK2（蓝图=产物×2.5）
+  { key: 'bp-prop-3', kind: 'blueprint', refId: 'bp-prop-3', rarity: 'rare', basePrice: 5910000, demandMultiplier: 0.65, standingReq: 4 }, // 矢量推进器 MK3（蓝图=产物×3）
+  { key: 'bp-stab-kin-2', kind: 'blueprint', refId: 'bp-stab-kin-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 动能稳定器 MK2（蓝图=产物×2.5）
+  { key: 'bp-stab-kin-3', kind: 'blueprint', refId: 'bp-stab-kin-3', rarity: 'rare', basePrice: 7080000, demandMultiplier: 0.65, standingReq: 4 }, // 动能稳定器 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-stab-exp-2', kind: 'blueprint', refId: 'bp-stab-exp-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 高爆稳定器 MK2（蓝图=产物×2.5）
+  { key: 'bp-stab-exp-3', kind: 'blueprint', refId: 'bp-stab-exp-3', rarity: 'rare', basePrice: 7080000, demandMultiplier: 0.65, standingReq: 4 }, // 高爆稳定器 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-stab-pla-2', kind: 'blueprint', refId: 'bp-stab-pla-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 等离子稳定器 MK2（蓝图=产物×2.5）
+  { key: 'bp-stab-pla-3', kind: 'blueprint', refId: 'bp-stab-pla-3', rarity: 'rare', basePrice: 7080000, demandMultiplier: 0.65, standingReq: 4 }, // 等离子稳定器 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-rof-2', kind: 'blueprint', refId: 'bp-rof-2', rarity: 'rare', basePrice: 1170000, demandMultiplier: 0.65 }, // 射速计算机 MK2（蓝图=产物×2.5）
+  { key: 'bp-rof-3', kind: 'blueprint', refId: 'bp-rof-3', rarity: 'rare', basePrice: 6870000, demandMultiplier: 0.65, standingReq: 4 }, // 射速计算机 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-track-2', kind: 'blueprint', refId: 'bp-track-2', rarity: 'rare', basePrice: 1137500, demandMultiplier: 0.65 }, // 索敌阵列 MK2（蓝图=产物×2.5）
+  { key: 'bp-track-3', kind: 'blueprint', refId: 'bp-track-3', rarity: 'rare', basePrice: 6690000, demandMultiplier: 0.65, standingReq: 4 }, // 索敌阵列 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-gyro-2', kind: 'blueprint', refId: 'bp-gyro-2', rarity: 'rare', basePrice: 1122500, demandMultiplier: 0.65 }, // 姿态陀螺 MK2（蓝图=产物×2.5）
+  { key: 'bp-gyro-3', kind: 'blueprint', refId: 'bp-gyro-3', rarity: 'rare', basePrice: 6630000, demandMultiplier: 0.65, standingReq: 4 }, // 姿态陀螺 MK3（蓝图=产物×3）（入闸）
   // 协处理器蓝图书（2026-09-11 新增；**无 MK3 蓝图**——船长定 MK3 走奇货现货）
   // 价按文档口径「蓝图 = 产物 × 2（MK1）/ × 2.5（MK2）」，与 blueprints.priceIsk 同源
   { key: 'bp-cpu-1', kind: 'blueprint', refId: 'bp-cpu-1', rarity: 'rare', basePrice: 776000, demandMultiplier: 0.65 }, // 协处理器 MK1（蓝图=产物×2）
   { key: 'bp-cpu-2', kind: 'blueprint', refId: 'bp-cpu-2', rarity: 'rare', basePrice: 4850000, demandMultiplier: 0.65 }, // 协处理器 MK2（蓝图=产物×2.5）
-  { key: 'bp-salvager-2', kind: 'blueprint', refId: 'bp-salvager-2', rarity: 'rare', basePrice: 325000, demandMultiplier: 0.65 }, // 打捞器 MK2（蓝图=产物×2.5）
-  { key: 'bp-salvager-3', kind: 'blueprint', refId: 'bp-salvager-3', rarity: 'rare', basePrice: 2340000, demandMultiplier: 0.65, standingReq: 4 }, // 打捞器 MK3（蓝图=产物×3）
-  { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 2760000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
-  { key: 'bp-lock-2', kind: 'blueprint', refId: 'bp-lock-2', rarity: 'rare', basePrice: 450000, demandMultiplier: 0.65 }, // 目标锁定阵列 MK2（蓝图=产物×2.5）
-  { key: 'bp-lock-3', kind: 'blueprint', refId: 'bp-lock-3', rarity: 'rare', basePrice: 2640000, demandMultiplier: 0.65, standingReq: 4 }, // 目标锁定阵列 MK3（蓝图=产物×3）
+  { key: 'bp-salvager-2', kind: 'blueprint', refId: 'bp-salvager-2', rarity: 'rare', basePrice: 1097500, demandMultiplier: 0.65 }, // 打捞器 MK2（蓝图=产物×2.5）
+  { key: 'bp-salvager-3', kind: 'blueprint', refId: 'bp-salvager-3', rarity: 'rare', basePrice: 6660000, demandMultiplier: 0.65, standingReq: 4 }, // 打捞器 MK3（蓝图=产物×3）
+  { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 5725000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
+  { key: 'bp-lock-2', kind: 'blueprint', refId: 'bp-lock-2', rarity: 'rare', basePrice: 1162500, demandMultiplier: 0.65 }, // 目标锁定阵列 MK2（蓝图=产物×2.5）
+  { key: 'bp-lock-3', kind: 'blueprint', refId: 'bp-lock-3', rarity: 'rare', basePrice: 6810000, demandMultiplier: 0.65, standingReq: 4 }, // 目标锁定阵列 MK3（蓝图=产物×3）
   // 舰船蓝图（造船；稀有）
   { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）
   { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 4_050_000, demandMultiplier: 1.0, standingReq: 11 }, // 座头鲸级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）

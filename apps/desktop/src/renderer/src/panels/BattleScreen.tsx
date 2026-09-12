@@ -1485,8 +1485,8 @@ const meSpeedRef = useRef(200)
               ← 退出战场
             </button>
             <button
-              className={`app-btn is-small is-warn${retreatAsk ? " is-danger" : ""}`}
-              title="撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
+              className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
+              title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
               onClick={() => {
                 if (!retreatAsk) {
                   setRetreatAsk(true)

@@ -36,6 +36,7 @@ import {
   refundAmmo,
   refundRepairKits,
   repairUsageText,
+  setDesirePrefOf,
   settleDroneLosses,
   startBattleFor,
 } from './combat'
@@ -45,6 +46,7 @@ import { claimTutorialTrialReward } from './onboarding'
 import {
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FACTION_RARE_DROP_PITY_ROLLS,
   factionAnomalyOf,
   factionBaseRewardIsk,
   isLairCandidate,
@@ -150,7 +152,13 @@ export function battleTacticDesire(
   return desiredRangeFor(me, tactic, ctx.balance.battle)
 }
 
-/** 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）；同时记忆偏好供下次出发沿用 */
+/**
+ * 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）。
+ * **按星系记忆**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存」）——
+ * 写入的是**本场战斗所在星系**（= 远征目标卡的星系）的目标距离；下次在该星系开战、
+ * 以及该星系的胜率预估都会沿用它。战斗界面只服务远征交火（遭遇战是无界面自动推演），
+ * 故这里只处理远征；遭遇战在开战时另行读取同一份设定。
+ */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
   const battle = state.expedition.battle
   if (!battle) return { ok: false, error: '当前不在交火中。' }
@@ -162,7 +170,7 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  state.expedition.desirePrefM = clamped // 记忆偏好（跨会话/下次出发沿用）
+  setDesirePrefOf(state, anomaly.galaxyId, clamped) // 记忆 = 该星系的目标距离（跨会话沿用）
   return { ok: true }
 }
 
@@ -314,9 +322,10 @@ export function startExpedition(
   exp.returnReason = undefined
   exp.lairTier = opts?.lairTier // 赏金任务·窝点档位（普通悬赏 = undefined）
   exp.factionActive = factionHit // 派系活跃目标（当日选中星系的常驻悬赏 = true）
-  // 期望距离偏好：本次显式传入优先；否则沿用上次记忆（默认在开战时取有效射程中点）
+  // 目标距离：本次显式传入 → 写进**目标星系**的设定；否则开战时读该星系的已有设定，
+  // 该星系没设过则回落"主武器有效射程中点"（船长 2026-09-11：「如果没有，采用射程中段距离」）
   if (opts?.desireM !== undefined) {
-    exp.desirePrefM = Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM))
+    setDesirePrefOf(state, anomaly.galaxyId, Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM)))
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
@@ -389,9 +398,10 @@ export function startExpeditionFromMining(
   return startExpedition(state, anomalyId, ctx, opts)
 }
 
-/** 到港开战（主控）：开战时刻 = 到港时刻；期望距离取已记忆偏好（无则有效射程中点） */
+/** 到港开战（主控）：开战时刻 = 到港时刻；目标距离 = **该星系**的设定，没设过则射程中段
+ *  （2026-09-11 船长：按星系独立保存；`startBattleFor` 内单点解析，此处不再传全局偏好） */
 export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number): boolean {
-  const battle = startBattleFor(state, ctx, shipId, anomalyId, arrivalGameMs, state.expedition.desirePrefM)
+  const battle = startBattleFor(state, ctx, shipId, anomalyId, arrivalGameMs)
   if (!battle) return false
   const exp = state.expedition
   exp.phase = 'battle'
@@ -526,13 +536,24 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     // 敌对派系活跃（2026-09-10 船长定）：胜利后**按概率**掉稀有残骸（该星系残骸场、打捞必得）。
     // 这条**不因打赢而下板**（当天可反复刷），故只在命中时写一条日志说明掉了几件。
-    if (factionActive && nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE) {
-      injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT)
-      addLog(
-        state,
-        'trade',
-        `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
-      )
+    // **保底（2026-09-11 船长：「每 20 次必定掉的保底」→ 口径甲）**：连续 19 次掷骰未出 ⇒ 第 20 次必掉。
+    // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
+    if (factionActive) {
+      const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
+      const hit = nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE
+      const pity = streak >= FACTION_RARE_DROP_PITY_ROLLS
+      if (hit || pity) {
+        injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT) // 内部清零空手计数
+        addLog(
+          state,
+          'trade',
+          `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}` +
+            `${pity && !hit ? `（连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出，本次保底）` : ''}` +
+            `——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
+        )
+      } else {
+        state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）
+      }
     }
     // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
     claimTutorialTrialReward(state, anomaly.id)
@@ -722,7 +743,8 @@ function settleBattleRetreat(
           `${shipName} 已脱离交火并返航。${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
         : mode === 'auto'
           ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
-          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`,
+          // 2026-09-12 合并：主树「手动撤退 = **立刻回港**」的新文案（本块两侧各改一处 ⇒ 并集）
+          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，即刻回港。`,
   )
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
@@ -751,6 +773,14 @@ function settleBattleRetreat(
   // 应计入返航,而不是从结算时（=离线末）才起步）
   const endAtR = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
   exp.returnAtGameMs = endAtR
+  // **手动撤退 = 立刻回港**（2026-09-11 船长：「玩家战斗手动撤退后应该是立刻回港，现在战斗撤退有返港时间」）：
+  // 玩家主动收手不再走返航航程（到港时刻 = 停表时刻，下一拍即入港卸货）；
+  // 自动撤退（结构损失过半）与超时判负仍按原口径返航（"被迫撤离，正在返航"）。
+  if (mode === 'manual') {
+    exp.finishAtGameMs = endAtR
+    addLog(state, 'info', '舰队脱离战场，即刻返回最近的空间站。')
+    return
+  }
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')

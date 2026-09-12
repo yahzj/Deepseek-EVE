@@ -61,6 +61,11 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   for (const id of ['repairkit-civ', 'repairkit-mil']) f.cargo[id] = 1_000_000
   ev.skills.trained = { ...state.skills.trained }
   ev.skills.queue = []
+  // 每星系目标距离（2026-09-11 船长）：预估的每局战斗必须按**该星系**的设定打，故原样带进快照；
+  // 没设过的星系自然回落"射程中段"（`startBattleFor` 内单点解析）。
+  if (state.expedition.desirePrefByGalaxy !== undefined) {
+    ev.expedition.desirePrefByGalaxy = { ...state.expedition.desirePrefByGalaxy }
+  }
   // 教学战加成判定（onboarding.step === ONB_TRIAL && ano-training && 任务未领）——复制进度使评估与实战一致
   ev.onboarding.step = state.onboarding.step
   ev.shipId = uid

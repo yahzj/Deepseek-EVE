@@ -1517,10 +1517,18 @@ function normalizeState(raw: unknown): GameState {
     eventFired: expRaw.eventFired === true,
     phase: expPhase === 'battle' && expBattle === null ? 'out' : expPhase,
     battle: expBattle,
-    desirePrefM:
-      typeof expRaw.desirePrefM === 'number' && Number.isFinite(expRaw.desirePrefM) && expRaw.desirePrefM > 0
-        ? Math.round(expRaw.desirePrefM)
-        : undefined,
+    // 2026-09-11 船长：目标距离**按星系独立保存**（老档的全局 desirePrefM 不再沿用，一律回落射程中段）。
+    // 容错：键非空字符串、值为正有限数才收；全空则整字段省略（零迁移）。
+    ...(() => {
+      const raw = asRaw(expRaw.desirePrefByGalaxy)
+      const byGalaxy: Record<string, number> = {}
+      for (const [gid, v] of Object.entries(raw)) {
+        if (typeof gid !== 'string' || gid.length === 0) continue
+        if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) continue
+        byGalaxy[gid] = Math.round(v)
+      }
+      return Object.keys(byGalaxy).length > 0 ? { desirePrefByGalaxy: byGalaxy } : {}
+    })(),
     // 2026-09-06 兼容字段：胜利自动返航（不可召回）/失利/撤退；仅 back 相位有效，其余清空
     returnReason: expReturnReason,
   }
@@ -2160,6 +2168,8 @@ function normalizeState(raw: unknown): GameState {
     salvaging,
     bountyCooldowns,
     autoLoopAnomalyId,
+    // 2026-09-11 稀有残骸保底计数（船长「每 20 次必定掉」）：非负整数，缺省 0（老档从零攒）
+    rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,
     lowSecNotified,
     encounterZoneCooldown,

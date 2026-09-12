@@ -403,7 +403,16 @@ export interface ExpeditionState {
   returnAtGameMs?: number
   /** 实时战斗状态（phase='battle' 时非空；只存动态量，静态由 ship/anomaly 定义重建） */
   battle: BattleState | null
-  /** 玩家期望距离偏好（米；战斗内拖动/战术选择写入，下次出发自动沿用；未设则用有效射程中点） */
+  /**
+   * **每个星系各自的玩家目标距离**（米；2026-09-11 船长：「玩家每个星系设定的目标距离独立保存，
+   * 预估胜率的战斗按照那个距离决定。如果没有，采用射程中段距离」）。
+   * 键 = 星系 id，值 = 该星系的目标距离；战斗内拖距离条/点战术按钮写入**当时所在星系**。
+   * 未设该星系 → 回落"主武器有效射程中点"（`desiredRangeFor(me,'mid')`）。
+   * 取代旧的单一全局值 `desirePrefM`（旧档该值不再沿用，一律按新口径回落中点）。
+   */
+  desirePrefByGalaxy?: Record<string, number>
+  /** ⚠ 遗留字段（2026-09-11 起不再使用，仅存档兼容占位）：原"全局期望距离偏好"。
+   *  现行口径见 `desirePrefByGalaxy`；读档时不回填、不回读。 */
   desirePrefM?: number
   /** 赏金任务·窝点档位（2026-09-10 兼容字段）：非空 = 本次远征打的是派生窝点
    *  （威胁/波次/僚机按档位强化，奖金与稀有残骸按窝点口径结算）；旧档与普通悬赏 = 未设 */
@@ -1036,6 +1045,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 兼容字段、零迁移、不升版本号：老档缺省 = 四类全空，由 normalizeState 补默认并剪枝。
    */
   marks: MarksState
+  /**
+   * 2026-09-11 稀有残骸保底（船长：「每 20 次必定掉的保底」→ 口径甲：只保底派系活跃掷骰链）：
+   * **连续掷骰未出**的次数（0 = 上次出货或尚未开始）。派系活跃胜利时 +1，命中/保底/窝点掉落清零。
+   * 可选字段、零迁移：老档缺省 = 0（从零开始攒）。
+   */
+  rareWreckDryStreak?: number
 }
 
 /** 玩家标记（收藏）四类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
@@ -1459,6 +1474,7 @@ export function createInitialState(opts?: {
     shipReturns: {},
     shipLocks: {},
     marks: emptyMarks(),
+    rareWreckDryStreak: 0, // 稀有残骸保底计数（2026-09-11 船长；见 FACTION_RARE_DROP_PITY_ROLLS）
     market: {
       pools: {},
       npcBuy: {},

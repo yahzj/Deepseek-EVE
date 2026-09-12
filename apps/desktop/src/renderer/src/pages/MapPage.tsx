@@ -38,7 +38,7 @@ import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
 import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
-import { isk, MONEY_GLYPH } from './common'
+import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'task'
@@ -847,12 +847,8 @@ function WreckCard({
   const cap = (list: string[]): string[] => list.slice(0, 4).concat(list.length > 4 ? [`… 等${list.length}组`] : [])
   const flavorLabel = namedList.length > 0 ? '特色掉落' : '其他掉落'
   // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回站回收炉开高级箱）
-  const rareBy = state.galaxyWrecks[g.id]?.rareBy ?? {}
-  const rareRefs = Object.entries(rareBy).filter(([, n]) => n > 0)
-  const rareCount = rareRefs.reduce((s, [, n]) => s + n, 0)
-  const rareText = rareRefs
-    .map(([aid, n]) => `${engine.ctx.anomalies.get(aid)?.name ?? aid} ×${n}`)
-    .join('、')
+  // 2026-09-11：口径抽到 `pages/common.rareWreckRefsOf`，与星图「星系行动」弹窗共用一份
+  const { count: rareCount, text: rareText } = rareWreckRefsOf(engine, g.id)
 
   return (
     <div
@@ -892,7 +888,7 @@ function WreckCard({
         {rareCount > 0 ? (
           <>
             {' · '}
-            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：保底矿物之外必定额外掉落一件（该敌群专属装备，未出则给特色装备）+ 一批高阶矿物`}>
+            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：开出该敌群专属装备或特色装备 + 一批高阶矿物`}>
               稀有残骸 ×{rareCount}
             </em>
           </>

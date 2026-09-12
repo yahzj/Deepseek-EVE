@@ -1462,7 +1462,7 @@ export class GameEngine {
     }
     return result
   }
-  /** 战斗中撤退：轻损脱离并自动返航（同时停止重复清剿） */
+  /** 战斗中撤退：轻损脱离并即刻回港（同时停止重复清剿） */
   retreatNow(): CommandResult {
     const result = retreatBattle(this.state, this.ctx)
     if (result.ok) {

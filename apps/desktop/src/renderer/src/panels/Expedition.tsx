@@ -53,10 +53,11 @@ import {
   billNeedOf,
   stationBillView,
   transitStatus,
+  RARE_WRECK_VOLUME_M3,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
-import { MONEY_GLYPH } from '../pages/common'
+import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { ImportantTasks } from './ImportantTasks'
@@ -787,6 +788,8 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
   const dragRef = useRef<{ id: string } | null>(null)
   const hubName = engine.ctx.galaxies.get('galaxy-hub')?.name ?? ''
   const selected: GalaxyDef | null = engine.ctx.galaxies.get(selectedId ?? '') ?? null
+  /** 该星系已到手的稀有残骸（窝点战果）：与「残骸打捞」卡**同一份口径**（`pages/common.rareWreckRefsOf`） */
+  const rare = selected ? rareWreckRefsOf(engine, selected.id) : { count: 0, text: '', refs: [] }
   const view = expeditionStatus(state, engine.ctx)
   const scan = scanStatus(state)
 
@@ -1328,6 +1331,19 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   敌对派系活跃：该星系全部常驻悬赏奖金 +10%、敌人威胁 +10%，胜利有概率掉稀有残骸
                   {factionName.length > 0 ? ` · 头号目标「${factionName}」` : ''}
                   {taskEtaText.length > 0 ? ` · 剩余 ${taskEtaText}（每天 0 点重选）` : ''}
+                </div>
+              ) : null}
+              {/* 稀有残骸战果（2026-09-11 船长：「稀有残骸能否在星图的星系详细里看到？」）：
+                  与该星系"残骸打捞"卡同源同口径（state.galaxyWrecks[星系].rareBy 按敌群记账），
+                  故这里只列**数量 + 来源窝点**；未探索星系不显示、无战果不占位（避免界面跳动）。 */}
+              {rare.count > 0 ? (
+                <div
+                  className="app-map-taskline is-rare"
+                  title={`赏金任务战果：${rare.text}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：保底矿物之外必定额外掉落一件（该敌群专属装备，未出则给特色装备）+ 一批高阶矿物`}
+                >
+                  <span className="app-ico">◆</span>
+                  <em className="app-chip is-rare">稀有残骸 ×{rare.count}</em>
+                  <span className="app-dim">（{rare.text}）</span>
                 </div>
               ) : null}
               <div className="app-dim">

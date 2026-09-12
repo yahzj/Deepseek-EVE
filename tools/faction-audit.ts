@@ -18,6 +18,8 @@ import { ANOMALIES_FLAVORED, GALAXIES, buildSimContext } from '@whale/data'
 import {
   DEFAULT_BALANCE,
   FACTION_RARE_DROP_CHANCE,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropEffectiveRate,
   HOME_GALAXY_ID,
   bountyCooldownMsFor,
   createInitialState,
@@ -95,6 +97,11 @@ console.log(
 )
 console.log(`\n对照：当日 5 席常规赏金若全清 = 档位件数（外围 1 / 核心 2 / 深层 3 各按抽到的档位）→ 约 8~11 件/天`)
 console.log(`当前值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（船长 2026-09-10 核定）`)
+console.log(
+  `保底（船长 2026-09-11「每 20 次必定掉」→ 口径甲）：连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉 ⇒ ` +
+    `**实际 ≈${(factionRareDropEffectiveRate() * 100).toFixed(1)}%/趟**（空手尾巴封在 ${FACTION_RARE_DROP_PITY_ROLLS - 1} 趟）；` +
+    `4h 刷 ≈${(avg4h * factionRareDropEffectiveRate()).toFixed(1)} 件 · 8h 刷 ≈${(((avg4h / 4) * 8) * factionRareDropEffectiveRate()).toFixed(1)} 件`,
+)
 for (const p of [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]) {
   const mark = Math.abs(p - FACTION_RARE_DROP_CHANCE) < 1e-9 ? ' ← 当前' : ''
   console.log(

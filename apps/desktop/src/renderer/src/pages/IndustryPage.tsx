@@ -248,7 +248,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           {isRareBox ? (
             <em
               className="app-chip is-rare"
-              title="高级箱：保底矿物之外必定额外掉落——该敌群专属装备（未出则给特色装备）+ 一批高阶矿物，每件只结算一次"
+              title="高级箱：开出该敌群专属装备或特色装备，另附一批高阶矿物"
             >
               稀有
             </em>
@@ -275,7 +275,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       <div className="app-belt-desc">
         {isWreck
           ? isRareBox
-            ? '每批拆解 = 保底矿物 + 概率特色掉落；另触发「高级箱」额外掉落（专属装备/特色装备 + 高阶矿物，每件只结算一次）'
+            ? '每批拆解 = 保底矿物 + 概率特色掉落；另有「高级箱」掉落：专属装备或特色装备 + 高阶矿物'
             : '每批拆解 = 保底矿物 + 概率特色掉落'
           : def.description}
       </div>

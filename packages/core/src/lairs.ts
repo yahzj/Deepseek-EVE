@@ -78,6 +78,34 @@ export const FACTION_BOUNTY_THREAT_MUL = 1.1
 export const FACTION_RARE_DROP_CHANCE = 0.05
 /** 派系活跃 · 命中一次掉几件稀有残骸 */
 export const FACTION_RARE_DROP_COUNT = 1
+/**
+ * 派系活跃 · **稀有残骸保底**（船长 2026-09-11：「有玩家反馈，刷了一天没有看到稀有残骸掉落……加一个
+ * 每 20 次必定掉的保底」→ 口径裁决「**甲：只保底派系活跃那条掷骰链**」）。
+ *
+ * 口径：**连续 19 次掷骰未出 → 第 20 次必掉**（标准保底口径，船长确认）。计数只走**派系活跃掷骰链**
+ * （＝当日选中星系的悬赏胜利，`exp.factionActive === true`）——别的星系本来就不掷骰、不计数；
+ * **任何稀有残骸入库都会清零**（含窝点必掉的 1~3 件，见 `salvage.injectRareWreck` 单点）。
+ * 计数器随档保留（`GameState.rareWreckDryStreak`，可选字段、零迁移）。
+ *
+ * 背景读数（2026-09-11 探针实测）：5% 标称下 300 趟实测 5.00%，但**最长连续空手 64 趟**——
+ * 按 3.5 趟/时 ≈ 18 小时，玩家"刷一整天零掉落"是真会发生的尾巴（8 小时 ≈28 趟仍有 24% 概率全空）。
+ */
+export const FACTION_RARE_DROP_PITY_ROLLS = 20
+
+/**
+ * **保底生效后的实际单趟期望掉落率**（解析式，供工具/体检打印，避免各处自己算漂移）：
+ * 一个循环 = 首次命中或第 20 次强制命中，故
+ * `E[循环趟数] = Σ_{k=1..19} k·p·(1−p)^(k−1) + 20·(1−p)^19`，实际率 = `1 / E[循环趟数]`。
+ * 现值：p = 5% → E ≈ 12.83 趟 → **≈7.79%/趟**（保底把 5% 抬到约 7.8%，且把空手尾巴封在 19 趟）。
+ */
+export function factionRareDropEffectiveRate(): number {
+  const p = FACTION_RARE_DROP_CHANCE
+  const n = FACTION_RARE_DROP_PITY_ROLLS
+  let expected = 0
+  for (let k = 1; k < n; k += 1) expected += k * p * Math.pow(1 - p, k - 1)
+  expected += n * Math.pow(1 - p, n - 1) // 第 n 趟必掉（含本就自然命中的那部分）
+  return expected > 0 ? 1 / expected : 1
+}
 
 /** 派系活跃派生卡：只改威胁（×1.1），其余继承——名字沿用原悬赏名，界面另挂「派系活跃」徽标 */
 export function factionAnomalyOf(anomaly: AnomalyDef): AnomalyDef {

@@ -36,6 +36,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { nextRandom } from './rng'
 import {
   advanceBattleFor,
+  desirePrefOf,
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKits,
@@ -579,7 +580,9 @@ function foeKeyOf(enc: GameState['encounter']): string {
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。' }
-  const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs)
+  // 目标距离（2026-09-11 船长：按星系独立保存）：遭遇所在星系设过就用它，没设过由 startBattleFor
+  // 回落射程中段（遭遇模板自带的 galaxyId 是模板产地，不是玩家所在星系，故这里显式传入）
+  const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs, desirePrefOf(state, enc.galaxyId) ?? undefined)
   if (!battle) return { ok: false, error: '遭遇异常，无法开战。' }
   // 连续作战保险（船长 2026-09-11 定：低安遭遇同样适用）——结构剩余低于撤退线（50%）即自动脱离，
   // 绝不拖到弃船（旧行为：应战一直打到分胜负，可能把副船打没）

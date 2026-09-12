@@ -545,6 +545,9 @@ export {
   battleArcsFor,
   spreadWinChance,
   desiredRangeFor,
+  // 2026-09-11 船长：目标距离按星系独立保存——单点读写（实战开战 / 胜率预估 / 界面共用）
+  desirePrefOf,
+  setDesirePrefOf,
   foeDesiredRange,
   // 敌机有效射程（2026-09-11 船长「受击后大幅提高无人机射程（提高 400%）」）——开火判定与界面同源
   foeDroneRangeOf,
@@ -726,6 +729,8 @@ export {
   FACTION_BOUNTY_THREAT_MUL,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropEffectiveRate,
   factionAnomalyOf,
   factionBaseRewardIsk,
   hasLairCore,

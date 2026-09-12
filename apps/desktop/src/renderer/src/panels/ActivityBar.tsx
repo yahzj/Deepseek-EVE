@@ -93,7 +93,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.recallStandbyNow(), '掩护巡逻已召回：舰船返回母港。')
       break
     case 'retreat-battle':
-      run(engine.retreatNow(), '已撤退：舰队脱离交火并自动返航。')
+      run(engine.retreatNow(), '已撤退：舰队脱离交火并即刻回港。')
       break
     case 'cancel-ai':
       if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), 'AI 任务已取消（核心已归还）。')
@@ -239,7 +239,7 @@ export function ActivityBar({
                       : v.stop === 'remove-training'
                         ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
                         : v.stop === 'retreat-battle'
-                          ? '撤退：轻损脱离战斗并自动返航（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）'
+                          ? '撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）'
                           : undefined
           }
           onClick={(e) => {
