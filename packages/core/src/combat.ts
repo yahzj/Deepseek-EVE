@@ -31,7 +31,7 @@ import type {
 } from './types'
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
-import { nextRandom } from './rng'
+import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
@@ -3091,7 +3091,7 @@ function resolvePointDefense(
       if (idx < 0) {
         const best = Math.min(...cands.map((i) => pdPriorityOf(pools[i]!.artId)))
         const tier1 = cands.filter((i) => pdPriorityOf(pools[i]!.artId) === best)
-        idx = tier1[Math.min(tier1.length - 1, Math.floor(nextRandom(state.rng) * tier1.length))]!
+        idx = pickOne(state.rng, tier1)!
       }
       focus[fi] = idx
       const pool = pools[idx]!
@@ -3194,7 +3194,7 @@ export function pickFoeDroneTarget(
   }
   if (cands.length === 0) return null
   return cands[
-    Math.min(cands.length - 1, Math.floor(nextRandom(state.rng) * cands.length))
+    nextInt(state.rng, cands.length)
   ]!
 }
 
@@ -3659,7 +3659,7 @@ function firstAliveFoe(foes: UnitSpec[], b: import('./state').BattleState): Unit
 function randomAliveFoe(state: import('./state').GameState, b: import('./state').BattleState, foes: UnitSpec[]): UnitSpec | null {
   const alive = foes.filter((f) => isAlive(b, f.tag))
   if (alive.length === 0) return null
-  const i = Math.min(alive.length - 1, Math.floor(nextRandom(state.rng) * alive.length))
+  const i = nextInt(state.rng, alive.length)
   return alive[i]!
 }
 

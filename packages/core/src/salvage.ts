@@ -19,7 +19,7 @@
  */
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
-import { nextInt, nextRandom } from './rng'
+import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare, countWare } from './inventory'
 import { lairGearOf } from './lairs'
@@ -452,7 +452,7 @@ export function rollRareBoxExtra(
     // ② 主题追加件（未出专属时保底一件主题件；池可空）
     const theme = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
     if (theme.length > 0) {
-      const pick = theme[nextInt(state.rng, theme.length)]!
+      const pick = pickOne(state.rng, theme)!
       modules.push(pick)
       notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? ctx.items.get(pick)?.name ?? pick}」`)
     }
@@ -461,16 +461,9 @@ export function rollRareBoxExtra(
   const pool = profile.pool ?? RECYCLE_POOLS[profile.tier]
   const units = RARE_BOX_MINERAL_UNITS[profile.tier] ?? 0
   if (pool.length > 0 && units > 0) {
-    const total = pool.reduce((s, row) => s + row[1], 0)
-    let roll = nextRandom(state.rng) * total
-    let chosen = pool[0]![0]
-    for (const [id, w] of pool) {
-      roll -= w
-      if (roll <= 0) {
-        chosen = id
-        break
-      }
-    }
+    // 2026-09-12 审计 B3：改走单点 `pickWeighted`（矿种按池权重抽；原扣减循环 `roll -= w; roll <= 0`
+    // 即 `lte` 口径）；无中选兜底 = 池首矿种（与改前 `chosen` 初值一致）
+    const chosen = pickWeighted(state.rng, pool, (row) => row[1], { bound: 'lte' })?.[0] ?? pool[0]![0]
     minerals.push({ mineralId: chosen, units })
     notes.push(`${ctx.items.get(chosen)?.name ?? chosen} ×${units}`)
   }
@@ -650,16 +643,16 @@ export function rollRecycleLoot(
   const t3Pool = fragmentPoolOf(state, ctx, 3)
   for (let i = 0; i < batchUnits; i++) {
     if (basePool.length > 0 && nextRandom(state.rng) < baseChance) {
-      modules.push(basePool[Math.floor(nextRandom(state.rng) * basePool.length)]!)
+      modules.push(pickOne(state.rng, basePool)!)
     }
     if (profile.lowSec && mk2Pool.length > 0 && nextRandom(state.rng) < mk2Chance) {
-      modules.push(mk2Pool[Math.floor(nextRandom(state.rng) * mk2Pool.length)]!)
+      modules.push(pickOne(state.rng, mk2Pool)!)
     }
     if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT2) {
-      fragments.push(t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!)
+      fragments.push(pickOne(state.rng, t2Pool)!)
     }
     if (profile.threat >= 41 && t3Pool.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT3) {
-      fragments.push(t3Pool[Math.floor(nextRandom(state.rng) * t3Pool.length)]!)
+      fragments.push(pickOne(state.rng, t3Pool)!)
     }
   }
   return { modules, fragments }
@@ -693,8 +686,8 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
   if (defBase.length === 0 && appendBase.length === 0) return null
   const basePick =
     appendBase.length > 0
-      ? appendBase[Math.floor(nextRandom(state.rng) * appendBase.length)]!
-      : defBase[Math.floor(nextRandom(state.rng) * defBase.length)]!
+      ? pickOne(state.rng, appendBase)!
+      : pickOne(state.rng, defBase)!
   addModule(state, basePick)
   gains.push(`「${ctx.modules.get(basePick)?.name ?? basePick}」`)
   // ② 低安 MK2 层
@@ -703,7 +696,7 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
     const appendMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
     const mk2Pool = [...defMk2, ...appendMk2]
     if (mk2Pool.length > 0 && nextRandom(state.rng) < ctx.balance.intactMk2Chance) {
-      const mk2Pick = mk2Pool[Math.floor(nextRandom(state.rng) * mk2Pool.length)]!
+      const mk2Pick = pickOne(state.rng, mk2Pool)!
       addModule(state, mk2Pick)
       gains.push(`「${ctx.modules.get(mk2Pick)?.name ?? mk2Pick}」`)
     }
@@ -712,12 +705,12 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
   const t2Pool = fragmentPoolOf(state, ctx, 2)
   const t3Pool = fragmentPoolOf(state, ctx, 3)
   if (profile.threat >= 17 && t2Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T2_CHANCE) {
-    const m = t2Pool[Math.floor(nextRandom(state.rng) * t2Pool.length)]!
+    const m = pickOne(state.rng, t2Pool)!
     addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T2_COUNT)
     gains.push(`${INTACT_FRAG_T2_COUNT} 片「${ctx.items.get(fragmentItemIdOf(m))?.name ?? ''}」`)
   }
   if (profile.threat >= 41 && t3Pool.length > 0 && nextRandom(state.rng) < INTACT_FRAG_T3_CHANCE) {
-    const m = t3Pool[Math.floor(nextRandom(state.rng) * t3Pool.length)]!
+    const m = pickOne(state.rng, t3Pool)!
     addWare(state, fragmentItemIdOf(m), INTACT_FRAG_T3_COUNT)
     gains.push(`${INTACT_FRAG_T3_COUNT} 片「${ctx.items.get(fragmentItemIdOf(m))?.name ?? ''}」`)
   }

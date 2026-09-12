@@ -30,7 +30,7 @@
 import { addLog } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
 import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
-import { nextRandom } from './rng'
+import { nextInt, nextRandom, pickWeighted } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
 import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName } from './shipyard'
@@ -568,7 +568,7 @@ function spawnRareSupply(state: GameState, ctx: SimContext, def: MarketGoodDef, 
   const poolQ = state.market.pools[def.key]?.q ?? 0
   const L = priceLevel(state, ctx, def, poolQ)
   const lifeMs = orderLifeMsOf(def, ctx.balance.market)
-  const qty = def.kind === 'ship' ? 1 : 1 + Math.floor(nextRandom(state.rng) * 3)
+  const qty = def.kind === 'ship' ? 1 : 1 + nextInt(state.rng, 3)
   const price = Math.round(sellPrice(def, L) * priceJitter(state) * secondhandMul(state) * (locked ? 4 : 1))
   npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty, locked)
 }
@@ -602,16 +602,10 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
       totalW += wOf(def)
     }
     for (let i = 0; i < n; i++) {
-      const hit = nextRandom(state.rng) * totalW
-      let acc = 0
-      for (const def of defs) {
-        const locked = bmGateLocked(state, def)
-        acc += blueprintWeight(def, ctx) * (locked ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
-        if (hit < acc) {
-          spawnRareSupply(state, ctx, def, now, locked)
-          break
-        }
-      }
+      // 2026-09-12 审计 B3：改走单点 `pickWeighted`（原累加循环 `acc += w; hit < acc` 就是它的 `lt` 口径，
+      // 权重函数与上面的 `wOf` 同一份）；中选后才算一次锁定位（与改前 break 前那次一致）。
+      const picked = pickWeighted(state.rng, defs, wOf)
+      if (picked) spawnRareSupply(state, ctx, picked, now, bmGateLocked(state, picked))
     }
   }
   // ── 奇货：每件独立掷骰（0.8% × 现货抢购学；蓝图书再 ×blueprintWeight，同 5% 口径）；
@@ -624,7 +618,7 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
     if (nextRandom(state.rng) < chance) winners.push(def)
   }
   while (winners.length > EXOTIC_CAP_PER_DRAW) {
-    winners.splice(Math.floor(nextRandom(state.rng) * winners.length), 1) // 随机抽选（每次删一张，结果均匀）
+    winners.splice(nextInt(state.rng, winners.length), 1) // 随机抽选（每次删一张，结果均匀）
   }
   for (const def of winners) spawnExoticSupply(state, ctx, def, now)
 }

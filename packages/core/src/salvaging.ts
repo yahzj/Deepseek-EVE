@@ -25,7 +25,7 @@ import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
-import { nextRandom } from './rng'
+import { nextRandom, pickWeighted } from './rng'
 import { pullRareWreck, RARE_WRECK_VOLUME_M3, salvageRoundPull, rollIntactHullLoot, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
 import { scaledReturnMs } from './trips'
 
@@ -235,17 +235,9 @@ export function pullOneWreck(
   }
   const pool = wreckPoolOf(ctx, galaxyId) // 同源池：hidden 遭遇模板不入池
   if (pool.length === 0) return null
-  let acc = 0
-  const total = pool.reduce((n, p) => n + p.threat, 0)
-  const roll = nextRandom(state.rng) * total
-  let chosen = pool[0]!
-  for (const p of pool) {
-    acc += p.threat
-    if (roll <= acc) {
-      chosen = p
-      break
-    }
-  }
+  // 2026-09-12 审计 B3：改走单点 `pickWeighted`（按威胁加权；原累加循环 `roll <= acc` 即 `lte` 口径）；
+  // 无中选兜底 = 池首（与改前 `chosen = pool[0]` 初值一致）
+  const chosen = pickWeighted(state.rng, pool, (p) => p.threat, { bound: 'lte' }) ?? pool[0]!
   const mul = salvageRoundPull(state, ctx, galaxyId)
   const wreckId = wreckItemIdOf(chosen.anomalyId)
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），

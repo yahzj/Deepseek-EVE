@@ -15,7 +15,7 @@ import { addLog, HOME_GALAXY_ID } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
-import { nextRandom } from './rng'
+import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { applyArmorFirstDamage, firepowerHitHp, hitDamageText, type HullHit } from './hullDamage'
 import { loseShip, pilotUnavailableReason, repairWithKits } from './shipyard'
@@ -182,13 +182,10 @@ function rollTravelEvent(state: GameState, ctx: SimContext): string | null {
   const chance = ctx.balance.travelEventChance * (1 + 0.15 * luckLv)
   if (nextRandom(state.rng) >= chance) return null
   const total = ctx.travelEvents.reduce((sum, e) => sum + e.weight, 0)
-  if (total <= 0) return ctx.travelEvents[0]!.id
-  let roll = nextRandom(state.rng) * total
-  for (const event of ctx.travelEvents) {
-    roll -= event.weight
-    if (roll < 0) return event.id
-  }
-  return ctx.travelEvents[0]!.id
+  if (total <= 0) return ctx.travelEvents[0]!.id // ⚠ 与改前一致：total ≤ 0 时**在抽随机数之前**早退
+  // 2026-09-12 审计 B3：改走单点 `pickWeighted`（与原先手写扣减循环 `roll -= w; roll < 0` 逐位一致）；
+  // 无中选兜底 = 首个事件（与改前末尾 return 相同）
+  return pickWeighted(state.rng, ctx.travelEvents, (e) => e.weight)?.id ?? ctx.travelEvents[0]!.id
 }
 
 function maybeFireTravelEvent(state: GameState, ctx: SimContext): void {
@@ -210,7 +207,7 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
   }
   if (effect.kind === 'isk') {
     const span = Math.max(0, effect.max - effect.min)
-    const amount = effect.min + Math.floor(nextRandom(state.rng) * (span + 1))
+    const amount = effect.min + nextInt(state.rng, span + 1)
     state.wallet.isk += amount
     addLog(state, 'trade', `${eventDef.text}（+${amount.toLocaleString('zh-CN')} ISK）`)
     return
@@ -490,7 +487,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         '编队顺手清理了一块导航浮标，空间站维修部发来感谢金',
         '舰载传感器捕获一段加密信号，协会情报处兑换了报酬',
       ] as const
-      const text = texts[Math.floor(nextRandom(state.rng) * texts.length)]!
+      const text = pickOne(state.rng, texts)!
       const bonus = Math.round(reward * 0.1)
       reward += bonus
       addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} ISK）`)

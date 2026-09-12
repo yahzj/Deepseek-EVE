@@ -137,7 +137,7 @@ export {
 } from './labels'
 export type { RackSlot, ShipSlots } from './types'
 
-export { hashSeed, nextRandom, nextInt } from './rng'
+export { hashSeed, nextRandom, nextInt, pickOne, pickWeighted } from './rng'
 
 export {
   DEFAULT_TRAIN_BASE_MS,

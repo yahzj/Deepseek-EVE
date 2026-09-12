@@ -34,7 +34,7 @@ import { addLog } from './state'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AnomalyDef, SimContext } from './types'
-import { nextRandom } from './rng'
+import { nextRandom, pickOne } from './rng'
 import {
   advanceBattleFor,
   desirePrefOf,
@@ -551,7 +551,7 @@ function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure): boole
   const bal = ctx.balance.encounter
   const pool = localBountyPoolOf(ctx, exp.galaxyId)
   if (pool.length === 0) return false
-  const foe = pool[Math.floor(nextRandom(state.rng) * pool.length)]!
+  const foe = pickOne(state.rng, pool)!
   state.encounterZoneCooldown[exp.galaxyId] = state.gameMs + bal.zoneCooldownMs
   const shipName = shipDisplayName(state, ctx, exp.shipId)
   state.encounter = {

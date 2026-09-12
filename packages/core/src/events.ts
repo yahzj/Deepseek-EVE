@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 随机事件系统（V11，设计已确认）：
  *
  * 规则（中文说明）：
@@ -18,7 +18,7 @@
 import { addLog } from './state'
 import type { GameState } from './state'
 import type { MarketGoodDef, SimContext } from './types'
-import { nextInt, nextRandom } from './rng'
+import { nextInt, nextRandom, pickWeighted } from './rng'
 import { rollLowSecAmbush } from './encounters'
 import { ensureMarket, goodName, levelOf } from './market'
 
@@ -285,13 +285,15 @@ export function fireOneEvent(state: GameState, ctx: SimContext): void {
     fireFlavor(state, ctx, EXPLORE_EVENTS)
     return
   }
-  const total = b.miscWeight + b.voyageWeight + b.marketShockWeight + b.marketOrderWeight
-  let r = nextRandom(state.rng) * total
-  if ((r -= b.miscWeight) < 0) {
+  // 2026-09-12 审计 B3：改走单点 `pickWeighted`（原手写 `r -= w; r < 0` 链**逐位一致**：同样只抽一次、
+  // 用默认的严格小于边界）。⚠ 四类权重全为 0 时改前会落到最后一个 else（订单事件）⇒ 这里 `undefined` 同样按 3 兜底。
+  const weights = [b.miscWeight, b.voyageWeight, b.marketShockWeight, b.marketOrderWeight]
+  const kind = pickWeighted(state.rng, [0, 1, 2, 3], (i) => weights[i] ?? 0) ?? 3
+  if (kind === 0) {
     fireFlavor(state, ctx, MISC_EVENTS)
-  } else if ((r -= b.voyageWeight) < 0) {
+  } else if (kind === 1) {
     fireFlavor(state, ctx, VOYAGE_EVENTS)
-  } else if ((r -= b.marketShockWeight) < 0) {
+  } else if (kind === 2) {
     fireMarketShockEvent(state, ctx)
   } else {
     fireMarketOrderEvent(state, ctx)

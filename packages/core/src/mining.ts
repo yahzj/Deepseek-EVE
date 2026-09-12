@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 采矿作业（M1 基础 + v7 自动循环状态机 + T4 显式行程/换驾驶善后）。
  *
  * 模型（中文说明）：
@@ -21,7 +21,7 @@ import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState, MiningState } from './state'
 import type { BeltDef, ItemDef, ShipDef, SimContext } from './types'
-import { nextRandom } from './rng'
+import { nextRandom, pickWeighted } from './rng'
 import { isMineableItem } from './labels'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse, unloadCargoToWarehouse } from './inventory'
 import { DSI_FACTION_ID, HOME_GALAXY_ID, recallExpedition, shortestTravelMinutes, standingOf } from './expedition'
@@ -120,13 +120,11 @@ export function rollBeltOutput(state: GameState, ctx: SimContext, belt: BeltDef 
   if (!belt || !belt.outputs || belt.outputs.length < 2) return fallback
   let total = 0
   for (const o of belt.outputs) total += Math.max(0, o.weight)
-  if (total <= 0) return fallback
-  let r = nextRandom(state.rng) * total
-  for (const o of belt.outputs) {
-    r -= Math.max(0, o.weight)
-    if (r < 0) return ctx.items.get(o.itemId) ?? fallback
-  }
-  return fallback
+  if (total <= 0) return fallback // ⚠ 与改前一致：total ≤ 0 时**在抽随机数之前**早退
+  // 2026-09-12 审计 B3：改走单点 `pickWeighted`（与原先手写扣减循环逐位一致：权重按 max(0,w) 夹紧、严格小于边界）；
+  // 无中选（理论上不会发生）兜底 = 主产物
+  const hit = pickWeighted(state.rng, belt.outputs, (o) => o.weight)
+  return hit ? ctx.items.get(hit.itemId) ?? fallback : fallback
 }
 
 /** 采集点到空间站/出发点的单程额外航行分钟（无星系归属/母港星系 = 0；T8：起点可传当前位置） */

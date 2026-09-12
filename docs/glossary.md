@@ -12,6 +12,7 @@
 |---|---|---|
 | 船长（旧记"老大"） | 用户本人；游戏设计与数值最终拍板人 | 全程只用"船长"这一个称呼（"老大"为早期写法，作废） |
 | 大鲸鱼一号 / 二号 / 三号 | 并行工作 agent 代号（**一号** = 主树 `main`：UI/renderer/引擎壳与技能文案域为主；**二号** = `…-d2` 工作树：战斗/数值/系统设计域为主；**三号** = `…-verify` 工作树：核验与收尾） | 分工与边界见 `AGENTS.md` §4、`docs/development-conventions.md` §三 |
+| **抽取单点（`pickOne` / `pickWeighted`）** | **2026-09-12 审计 B2/B3 单点化**（`packages/core/src/rng.ts`，从 `index.ts` 导出）：把原先散在 6 个文件的 **18 处**"均匀取一个"（`arr[Math.floor(nextRandom(rng) * arr.length)]`）与 **6 套**"按权重取一个"（各自手写 `r -= w` / `acc += w` 循环）收成两个函数。**关键契约 = "抽几次随机数"也一致**：`nextRandom` 的消耗次数与手写式逐一相同（**含空表与总权重 ≤ 0 的路径也先抽再判**——`count` 进存档，序列一挪位离线结算结果就全变）；权重按 `max(0, w)` 夹紧；`bound: 'lt' \| 'lte'` 只用于逐字复刻各处原算术形式（两者只在"精确命中累计边界"时不同，概率 ≈ 2⁻³²，不可观测）。守卫 = `tests/rng-pick.test.ts` 6 例（与手写参照实现逐位对照、含 `rng.count`）+ 既有种子确定性用例全量 | `rng.ts` · 替换点：`salvage` / `combat` / `encounters` / `expedition` / `market` / `mining` / `salvaging` / `events` |
 | 四步闸门 | 设计/数值改动流程：集中提问 → 中文设计总结 → 等显式确认 → 实现 | 最高优先级约定 |
 | 主仓库 / 工作树 | 主仓库 = 本 git 仓库，主工作树 `H:\大鲸鱼\Deepseek-EVE`（分支 `main`）；另有**同仓 `git worktree`**：二号 `H:\大鲸鱼\Deepseek-EVE-d2`（分支 `d2/*`）、三号 `H:\大鲸鱼\Deepseek-EVE-verify`（分支 `verify`） | 早期「副本 = 一号为流程验证复制出的独立工程」**已废弃**（2026-09-05 起改 worktree 模型） |
 | 真档 / 门槛档 | 真档 = `%APPDATA%\whale-idle\save.json` 船长真实进度；门槛档 = tools/make-test-save.ts 注入的验收存档（docs/test-saves/） | |
