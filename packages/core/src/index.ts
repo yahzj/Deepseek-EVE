@@ -769,3 +769,28 @@ export {
   subDamageTypeOf,
 } from './lairs'
 export type { LairTier } from './lairs'
+
+/* ═══ 终局玩法「虫洞」（2026-09-13 开工；施工期对玩家不可见 —— 见 wormhole.ts 头注释） ═══ */
+export {
+  WORMHOLE_ADMISSION_TEXT,
+  WORMHOLE_MAX_SHIPS,
+  WORMHOLE_MAX_TIER,
+  WORMHOLE_MASS_BY_TIER,
+  WORMHOLE_SLOT_M3,
+  WORMHOLE_TOTAL_MASS_CAP,
+  WORMHOLE_TURN_BASE,
+  WORMHOLE_TURN_MASS_COEF,
+  WORMHOLE_TURN_PER_EXTRA_WAVE,
+  WORMHOLE_TURN_PER_NODE,
+  WORMHOLE_TURN_PER_PICKUP,
+  wormholeAdmission,
+  wormholeBagSlots,
+  wormholeBagUsage,
+  wormholeShipAllowed,
+  wormholeShipMass,
+  wormholeSlotsUsed,
+  wormholeStepCost,
+  wormholeTurnBudget,
+  wormholeUnitsPerSlot,
+} from './wormhole'
+export type { WormholeAdmission, WormholeAdmissionCode, WormholeBagSlot } from './wormhole'
