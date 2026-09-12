@@ -668,7 +668,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-megalodon',
     name: '巨齿鲨级战列舰',
     role: 'armed',
-    slots: { high: 6, mid: 5, low: 3 }, // **14 槽**（T4 战列舰平均值；旧「总槽位 3~12」契约已按船长 2026-09-12 废除）
+    slots: { high: 6, mid: 5, low: 4 }, // **14 槽**（T4 战列舰平均值；旧「总槽位 3~12」契约已按船长 2026-09-12 废除）
     tier: 4,
     cargoM3: 4000,
     cycleSeconds: 12,
@@ -695,7 +695,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-dunkleosteus',
     name: '邓氏鱼级旗舰',
     role: 'armed',
-    slots: { high: 6, mid: 5, low: 6 }, // **17 槽**（船长要"旗舰 18"，但现行「单类槽上限 高6/中5/低6」合计最多 17 ⇒ 先取上限值，**冲突已上报待裁**）
+    slots: { high: 6, mid: 5, low: 6 }, // **16 槽**（船长要旗舰）
     tier: 5,
     cargoM3: 4500,
     cycleSeconds: 12,
