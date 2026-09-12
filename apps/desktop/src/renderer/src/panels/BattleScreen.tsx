@@ -1659,6 +1659,25 @@ const meSpeedRef = useRef(200)
                 <HpTri hp={combat.foeHp[tag]!} max={arcs.maxHp.foe[tag] ?? { s: 0, a: 0, h: 0 }} label={foeNameOf(tag)} />
               </div>
             ))}
+            {/* **机库余量**（2026-09-12 船长：「给敌机添加备用机库」）：敌机带备用机时，在敌舰列下
+                显示"机库里还剩几架"——玩家能看到"打掉还会再冒"这件事（引擎给 `foeDrones[].hangar`）。
+                样式沿用同级 `.app-bts-chip`（与底部武器 chip 同族），不新造样式。 */}
+            {foeWings.some((w) => (w.hangar ?? 0) > 0) ? (
+              <div className="app-bts-hangar">
+                {foeWings
+                  .filter((w) => (w.hangar ?? 0) > 0)
+                  .map((w) => (
+                    <span
+                      key={`hg-${w.tag}-${w.artId}`}
+                      className="app-bts-chip is-foe"
+                      title="机库备用机：前线战损后自动满血补位（打光母舰才是解法）"
+                    >
+                      <i />
+                      机库 +{w.hangar}
+                    </span>
+                  ))}
+              </div>
+            ) : null}
           </div>
 
           {/* **战斗窗口正上方提示位**（2026-09-11 船长：与"敌方增援"统一下系统、位置由"敌舰上方"

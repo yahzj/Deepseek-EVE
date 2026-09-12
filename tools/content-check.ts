@@ -2061,6 +2061,10 @@ for (const m of MODULES) {
     const FAMILY_TACTICS: Partial<Record<string, readonly string[]>> = {
       A: ['brawl', 'orbit', 'kite'], // 鱼龙混杂（船长 2026-09-11）
       B: ['orbit'], // 武装拾荒者·全族 orbit（船长 2026-09-11「战术性格统一为 orbit」）
+      C: ['brawl'], // 异形生物·贴脸生物（C 族第二批「虫群编成」后全族 brawl）
+      D: ['orbit', 'kite'], // 守墓古舰·**全远程**（船长 2026-09-11「D 族以远程为主」⇒ 不许 brawl）
+      E: ['orbit', 'kite'], // 泰坦巨构·**中距为主**（设定裁定③：主体 orbit / kite 单卡变体 / brawl 退役）
+      G: ['orbit'], // 鱿烬亡军·全 orbit（蜂群远距压制）
     }
     let checked = 0
     for (const def of ANOMALIES_FLAVORED) {
@@ -2079,7 +2083,7 @@ for (const m of MODULES) {
       }
     }
     console.log(
-      `· 族→战术契约：${checked} 处族内战术声明均在已裁定范围内（**A 族 = 鱼龙混杂三战术全允许 / B 族 = 统一 orbit**；其余族未裁定、不校验）`,
+      `· 族→战术契约：${checked} 处族内战术声明均在已裁定范围内（**A 族 = 三战术全允许 / B·G 族 = 统一 orbit / C 族 = 贴脸 brawl / D·E 族 = 远程·中距（brawl 退役）**；F 已废弃不校验）`,
     )
   }
 }

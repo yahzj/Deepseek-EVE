@@ -457,7 +457,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     rewardIsk: 300_000,
     loot: [],
     combatSeconds: 90,
-    description: '一具远古泰坦残骸静卧深渊航道，协会长期征集武装护航下的勘探与清剿——击退守墓编队，赏金照发。',
+    description: '一具远古泰坦残骸静卧深渊航道，协会长期征集武装护航下的勘探与清剿——击退残骸守备，赏金照发。',
   },
   {
     id: 'ano-auro-raiders',

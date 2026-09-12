@@ -6947,6 +6947,12 @@ body {
 
 .app-bts-chip.is-foe i { border-radius: 2px; }
 
+/* 敌机机库余量（2026-09-12：备用机库落码后，玩家要看得见"打掉还会再冒"）——
+   容器沿用敌舰列宽度，chip 复用 .app-bts-chip（与底部武器 chip 同族样式，只改红色系方形点） */
+.app-bts-hangar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 6px; font-size: 11px; }
+.app-bts-hangar .app-bts-chip.is-foe { border-color: rgba(217,185,140,.28); color: #d9b98c; }
+.app-bts-hangar .app-bts-chip.is-foe i { background: #d9b98c; box-shadow: 0 0 6px rgba(217,185,140,.6); }
+
 .app-bts-ammo { margin-left: auto; display: inline-flex; gap: 8px; font-family: var(--wui-mono); font-size: 11px; }
 
 /* 船体维修装置状态徽标（2026-09-09：运转 = 绿点呼吸；组件耗尽停机 = 暗红停跳） */
