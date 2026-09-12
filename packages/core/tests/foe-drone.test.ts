@@ -376,10 +376,14 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
         ),
       ).toBe(FOE_DRONE_E_ALERT.maxRangeM);
     }
-    // 玩家可见提示（船长：「要：战斗日志一条」）
+    // **画面提示**（船长 2026-09-11 二次裁定：「日志内不用显示提示，将该提示放入战斗画面内显示
+    //（和敌方增援统一下系统，显示位置改为战斗窗口正上方）」）⇒ 走 `battle.notices`，**不写日志**
+    expect(
+      battle.notices?.some((n) => n.text.includes("警戒机群解除射程限制")),
+    ).toBe(true);
     expect(
       state.logs.some((l) => l.text.includes("警戒机群解除射程限制")),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("只打机群 ⇒ **不触发**（船长：仅母舰本体被命中才算）", () => {

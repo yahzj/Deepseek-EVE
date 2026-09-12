@@ -2597,6 +2597,14 @@ function markFoeDroneRangeBuff(
   return true
 }
 
+/** **战斗内提示条**（画面顶部提示位，与「敌方增援」同一处显示）——2026-09-11 船长二次裁定：
+ *  「**日志内不用显示提示，将该提示放入战斗画面内显示**（和敌方增援统一下系统，**显示位置改为战斗
+ *  窗口正上方**）」⇒ 机制提示**不写 `addLog`**，改推这里；UI 按 `atMs` 限时显示后自动消失。
+ *  只保留最近 4 条（提示位是"当前正在发生的事"，不是留档——留档归战报）。 */
+function pushBattleNotice(b: import('./state').BattleState, text: string): void {
+  b.notices = [...(b.notices ?? []), { atMs: b.lastTickGameMs, text }].slice(-4)
+}
+
 /**
  * 近防炮可选靶（存活放飞条目下标）：
  * - 默认**排除哨戒机**（2026-09-10 船长：近防炮不打哨戒无人机）；
@@ -3004,10 +3012,11 @@ function stepBattle(
           // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
           // ⚠ 打机群（上面的 `droneHit` 分支）**不触发**、未命中（`hit === false`）也进不到这里。
           if (markFoeDroneRangeBuff(foeTarget!, b)) {
-            addLog(
-              state,
-              'warn',
-              `⚔ ${foeTarget!.name}残存的自动程序过载——警戒机群解除射程限制，转为远程拦截。`,
+            // **画面提示**（船长 2026-09-11 二次裁定：日志不写，改走画面顶部提示位 ⇒ `battle.notices`，
+            // 与「敌方增援」同一处显示、限时自动消失）
+            pushBattleNotice(
+              b,
+              `${foeTarget!.name}·残存的自动程序过载：警戒机群解除射程限制`,
             )
           }
         }

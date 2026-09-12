@@ -7104,11 +7104,24 @@ body {
   50% { filter: drop-shadow(0 0 10px rgba(255, 224, 120, 1)); }
 }
 
-/* 波次演出窗口提示（引擎 waveClearAt 冻结窗口内：上一波全灭、增援接近中） */
-.app-bts-wave-hint {
+/* 波次增援提示 + 战斗内提示（引擎 `waveClearAt` 冻结窗口 / `battle.notices`：受击增程等）。
+   2026-09-11 船长：「日志内不用显示提示，将该提示放入战斗画面内显示（和敌方增援统一下系统，
+   **显示位置改为战斗窗口正上方**）」⇒ 提示位统一为**战场窗口顶部居中**，多条纵向排列。 */
+.app-bts-notices {
   position: absolute;
-  z-index: 3;
+  top: 6px;
+  left: 50%;
   transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.app-bts-wave-hint {
+  position: relative;
   white-space: nowrap;
   font-size: 12px;
   letter-spacing: 2px;

@@ -179,6 +179,10 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const foeDroneAliveOf = (tag: string, artId: string): number =>
     arcs?.foeDrones?.find((d) => d.tag === tag && d.artId === artId)?.alive ??
     1
+  /** **敌机是否处于受击增程态**（2026-09-11 船长）：机体阵位与弹道**必须同源**——
+   *  否则机体已后撤到远距、弹道却仍从我舰旁发出 ⇒ 船长实测「射程增加后，敌无人机的落点位置出现错位」。 */
+  const foeDroneBuffedOf = (tag: string): boolean =>
+    arcs?.foeDrones?.some((d) => d.tag === tag && d.rangeBuff === true) === true
 
   const [stage, setStage] = useState<Stage>('live')
   const [retreatAsk, setRetreatAsk] = useState(false)
@@ -841,13 +845,17 @@ const meSpeedRef = useRef(200)
           smap.set(skey, st)
           const off = st.offs[lane % st.offs.length]!
           const elapsed = now - st.startAt
+          // **弹道起飞点＝机体同一个阵位**（受击增程后一起后撤；非增程时与原口径逐字相同）
+          const station = foeDrone
+            ? foeDroneStation(layFx.me, foeA, off, foeDroneBuffedOf(fx.tag!))
+            : droneStationFrom(anchor, dir, off)
           if (elapsed < DRONE_SORTIE_OUT_MS) {
             // 仍在出击途中：弹道自阵位出，延到"无人机抵达"那一刻显示
-            from = droneStationFrom(anchor, dir, off)
+            from = station
             droneDelay = Math.round(DRONE_SORTIE_OUT_MS - elapsed)
           } else if (elapsed < DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS) {
             // 已到位：阵位出弹，立即显示
-            from = droneStationFrom(anchor, dir, off)
+            from = station
           } else if (isMeShot) {
             // 返航中（我方）：弹道就从无人机当前位置出（与机体一致）
             from = dronePoseAt(dm, lane, st, layFx, elapsed)
@@ -865,7 +873,7 @@ const meSpeedRef = useRef(200)
             const deckAbs = { x: foeA.x - tk.x, y: foeA.y + tk.y }; // 相对敌舰**水平镜像**（敌舰朝向我方）
             from = dronePathPos(
               t2,
-              droneStationFrom(anchor, dir, off),
+              station,
               deckAbs,
               droneArcHeight(lane),
               true,
@@ -970,6 +978,23 @@ const meSpeedRef = useRef(200)
   /** 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */
   const wavePending = battle.waveClearAt !== undefined && !ended
   const waveNext = wavePending && foeAnomaly?.waves && foeAnomaly.waves.length > 1 ? (battle.waveIdx ?? 0) + 2 : 0
+  /**
+   * **战斗窗口正上方的提示位**（2026-09-11 船长：「**日志内不用显示提示，将该提示放入战斗画面内显示**
+   * （和**敌方增援**统一下系统，**显示位置改为战斗窗口正上方**）」）——同一处提示位渲染两路来源：
+   * ① 波次增援（由 `waveClearAt` 推导，整段增援窗口常显）；② 引擎推来的战斗提示（`battle.notices`，
+   * 如「受击增程」），按战斗时钟**限时显示后自动消失**（提示位是"正在发生"，留档归战报）。
+   */
+  const NOTICE_LIFE_MS = 4_000
+  const noticeItems: Array<{ key: string; text: string }> = []
+  if (wavePending)
+    noticeItems.push({
+      key: 'wave',
+      text: waveNext > 0 ? `第 ${waveNext}/${foeAnomaly?.waves?.length} 波增援正在接近…` : '敌方增援正在接近…',
+    })
+  for (const [i, n] of (battle.notices ?? []).entries()) {
+    if (battle.lastTickGameMs - n.atMs > NOTICE_LIFE_MS) continue
+    noticeItems.push({ key: `notice-${i}-${n.atMs}`, text: n.text })
+  }
 
   /* 射程弧：锚定双方舰艏枪口（与弹道同源、随舰身移动）。
      显示尺与舰列间距共用同一米制比例：sPxPerM = usable/(openM−nearM) px/m。
@@ -1634,14 +1659,16 @@ const meSpeedRef = useRef(200)
             ))}
           </div>
 
-          {/* 波次演出窗口提示（引擎 waveEnterGapMs 内：上一波全灭、下一波尚未抵达） */}
-          {wavePending ? (
-            <span
-              className="app-bts-wave-hint"
-              style={{ left: lay.foe[0]?.x ?? lay.me.x, top: (lay.foe[0]?.y ?? lay.me.y) + 42 }}
-            >
-              {waveNext > 0 ? `第 ${waveNext}/${foeAnomaly?.waves?.length} 波增援正在接近…` : '敌方增援正在接近…'}
-            </span>
+          {/* **战斗窗口正上方提示位**（2026-09-11 船长：与"敌方增援"统一下系统、位置由"敌舰上方"
+              改到**战斗窗口正上方**）：波次增援 + 引擎推来的战斗提示（如受击增程）共用这一处。 */}
+          {noticeItems.length > 0 ? (
+            <div className="app-bts-notices">
+              {noticeItems.map((n) => (
+                <span key={n.key} className="app-bts-wave-hint">
+                  {n.text}
+                </span>
+              ))}
+            </div>
           ) : null}
 
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
