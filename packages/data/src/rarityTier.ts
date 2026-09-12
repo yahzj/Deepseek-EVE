@@ -237,6 +237,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'ore-scorched': 1,
   'ore-sunshard': 1,
   'ore-veldspar': 1,
+  'ore-voidmother': 1, // 虚空母矿（2026-09-12 虫洞线新增原矿；数字档 = 1 常驻层，与其它原矿同档）
   'ore-voidshard': 1,
   'pioneer': 3,
   'repairkit-civ': 1,

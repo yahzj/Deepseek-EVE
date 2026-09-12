@@ -195,7 +195,7 @@ export function startRefineRun(
     return { ok: false, error: `未知物品：${itemId}。` }
   }
   if (!def.refine || def.refine.length === 0) {
-    return { ok: false, error: `「${def.name}」没有精炼配方（只支持矿石/气体/冰矿）。` }
+    return { ok: false, error: `「${def.name}」没有精炼配方（只支持原矿/气体/冰矿）。` }
   }
   const available = oreAvailable(state, itemId)
   if (available <= 0) {
@@ -394,7 +394,7 @@ function yieldNoteFor(
   }
   const parts: string[] = []
   if (Object.keys(rec.min).length > 0) {
-    parts.push(kind === 'recycle' ? `保底矿物 ${fmt(rec.min)}` : fmt(rec.min))
+    parts.push(kind === 'recycle' ? `保底原材料 ${fmt(rec.min)}` : fmt(rec.min))
   }
   if (kind === 'recycle') {
     const loot: string[] = []
@@ -555,7 +555,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         const fromWare = qty - fromCargo
         if (fromWare > 0) removeWare(state, r.itemId, fromWare)
       }
-      let batchIncome = 0 // 2026-09-08：离线结算预估收入（矿物按站内收价；彩头装备按市场基准价粗估；碎片不计）
+      let batchIncome = 0 // 2026-09-08：离线结算预估收入（原材料按站内收价；彩头装备按市场基准价粗估；碎片不计）
       if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）

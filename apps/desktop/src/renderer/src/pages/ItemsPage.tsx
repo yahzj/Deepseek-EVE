@@ -60,8 +60,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
 
   const KIND_EMPTY: Record<string, string> = {
-    ore: '仓库里没有矿石（自动卸货的矿会先到这里）。',
-    mineral: '还没有矿物——去「工业」页精炼资源。',
+    ore: '仓库里没有原矿（自动卸货的矿会先到这里）。',
+    mineral: '还没有原材料——去「工业」页精炼资源。',
     gas: '仓库里没有气体。',
     ice: '仓库里没有冰矿。',
     ammo: '仓库里没有弹药。',

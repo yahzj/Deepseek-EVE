@@ -46,6 +46,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 115, poolTarget: 184_680, supplyFlow: 1_539 },
   { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 340, poolTarget: 92_400, supplyFlow: 770 },
   { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 490, poolTarget: 61_560, supplyFlow: 513 },
+  // 【虚空母矿 —— 虫洞线的唯一原矿（2026-09-12 船长定）。**虫洞落地前不对玩家可见**：
+  //   `unreleased: true` ⇒ 不进 `ctx.marketGoods`（市场页/图鉴/挂单/任务全看不到），
+  //   但契约照核（"每种物品必须有市场卡"）。**上线时删掉这一个字段即可开卖。**
+  //   数值：虚空晶 0.5 + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **1,016.25**；
+  //   basePrice 1,300（≈1.28×产出，供应侧不亏）· demandMultiplier 0.6 ⇒ 收购 ≈780 < 1,016（买入精炼不赚）。】
+  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
   //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722
@@ -458,7 +464,12 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
 ]
 
 /** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：
- * 稀有度入物品本体，市场调用；与渠道 rarity 分离，只驱动稀有订单渠道刷新权重） */
+ * 稀有度入物品本体，市场调用；与渠道 rarity 分离，只驱动稀有订单渠道刷新权重）
+ *
+ * ⚠ **未上线商品在这里被挡掉**（2026-09-12 船长：「所有虫洞相关的内容需要等虫洞落地后才统一对玩家可见」）：
+ * `unreleased: true` 的卡**不进本目录** ⇒ `ctx.marketGoods` 里没有它 ⇒ 市场页/挂单/订单/任务/事件
+ * 一律看不到也交易不到；而它在 `MARKET_GOODS`（目录表）里，**契约照核**（`content:check` 用该表）。
+ * 上线时把卡上的 `unreleased` 删掉即可。 */
 export function buildMarketGoodsCatalog(): ReadonlyMap<string, MarketGoodDef> {
-  return new Map(MARKET_GOODS.map((g) => [g.key, { ...g, rarityTier: rarityTierOf(g.refId) }]))
+  return new Map(MARKET_GOODS.filter((g) => g.unreleased !== true).map((g) => [g.key, { ...g, rarityTier: rarityTierOf(g.refId) }]))
 }

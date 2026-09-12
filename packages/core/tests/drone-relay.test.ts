@@ -78,7 +78,8 @@ describe('无人机射程分类 + 中继天线（2026-09-10）', () => {
     expect(itemKindText({ kind: 'drone', droneClass: 'sentry' })).toBe('无人机 · 哨戒机')
     expect(DRONE_CLASS_LABELS.scout).toBe('侦察机')
     expect(itemKindText({ kind: 'drone' })).toBe('无人机') // 旧档/缺字段兜底
-    expect(itemKindText({ kind: 'ore' })).toBe('矿石')
+    // 2026-09-12 术语修正（船长定）：`ore` 的展示名由「矿石」改为「原矿」
+    expect(itemKindText({ kind: 'ore' })).toBe('原矿')
     expect(itemKindText({ kind: 'ammo' })).toBe('弹药')
   })
 })

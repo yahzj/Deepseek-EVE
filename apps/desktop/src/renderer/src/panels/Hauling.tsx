@@ -11,6 +11,7 @@ import {
   dockedHaulEndpoint,
   haulEffectiveMinutes,
   haulEndpoints,
+  haulExposureAt,
   haulLegMinutesOf,
   haulRewardRange,
   shortestTravelMinutes,
@@ -128,6 +129,15 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
             const range = haulRewardRange(ctx, cap, haulEffectiveMinutes(ctx, rt.aGalaxyId, rt.bGalaxyId))
             const hourlyMin = Math.round((range.min / effMin) * 60)
             const hourlyMax = Math.round((range.max / effMin) * 60)
+            // 会遇袭标注（2026-09-13 船长「会遇袭的运输任务需要特意标注出该情况」）：
+            // 任一端点在低安 ⇒ 那一段从低安出发、会被计为"当地停留"暴露；另外停靠站不在端点时，
+            // 「就位段」从当前停靠星系出发 ⇒ 停靠站在低安也算。
+            const dockGalaxyId = endpoints.find((e) => e.siteId === docked)?.galaxyId
+            const positional = docked !== rt.aId && docked !== rt.bId
+            const exposed =
+              haulExposureAt(ctx, rt.aGalaxyId) ||
+              haulExposureAt(ctx, rt.bGalaxyId) ||
+              (positional && dockGalaxyId !== undefined && haulExposureAt(ctx, dockGalaxyId))
             const canStart = dockedOk && !busy && !haulingActive
             return (
               <div
@@ -138,6 +148,14 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                 <div className="app-haul-line">
                   <span className="app-haul-route">
                     {rt.aName} ⇄ {rt.bName}
+                    {exposed ? (
+                      <span
+                        className="app-chip is-warn"
+                        title="该航线含低安航段：运输途中会像「停在当地」一样被巡逻与海盗盯上，可能遭伏击（进入低安约 5 分钟后开始判定）。途中被袭由舰船自行处置——会先用修理组件补装甲与结构。"
+                      >
+                        低安航路 · 途中可能遇袭
+                      </span>
+                    ) : null}
                     {isActive ? <span className="app-chip app-haul-running">运输中</span> : null}
                   </span>
                   <span className="app-dim">单程约 {effMin} 分钟（按当前航行技能）</span>

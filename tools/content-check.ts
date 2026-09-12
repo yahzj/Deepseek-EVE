@@ -4,9 +4,10 @@
  *
  * 覆盖（中文说明）：
  * - 目录键唯一；市场卡 refId 必须能按 kind 解析到真实条目；
- * - 每种物品（矿石/矿物/气体/冰/弹药/无人机）都必须有市场卡（防死物品：买不了也卖不了）；
+ * - 每种物品（「原矿」「原材料」/气体/冰/弹药/无人机）都必须有市场卡（防死物品：买不了也卖不了）；
+ *   （术语：2026-09-12 船长定 —— `ore` = 原矿、`mineral` = 原材料；旧名「矿石、矿物」作废）
  * - 采集点：id 唯一、产出物存在且可采集（ore/gas/ice）、声望门槛非负整数；
- * - 精炼配方：只有可精炼资源（ore/gas/ice）带配方、配方行矿物存在且 kind=mineral；
+ * - 精炼配方：只有可精炼资源（ore/gas/ice）带配方、配方行原材料存在且 kind=mineral；
  * - 装备：id 唯一、slot 在六槽内、参数按家族齐备；**窝点专属装备例外**（无市场卡、无蓝图，只从高级箱出，见下方契约）；
  * - 蓝图：id 唯一、模块/船存在、材料都是矿物；蓝图卡存在时其 refId 必须解析到真实蓝图（否则无法购书学习）；
  * - 舰船：id 唯一、role 合法；蓝图的产物船存在；舰船蓝图引用船存在；
@@ -24,6 +25,7 @@ import {
   ITEMS,
   BELTS,
   MARKET_GOODS,
+  buildMarketGoodsCatalog,
   WRECK_BUY_GOODS,
   MODULES,
   DRONES,
@@ -121,10 +123,11 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
 // 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3；
 // 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34；
-// 2026-09-10 G 族专属无人机「流亡蜂无人机」→ 无人机 4→5 种、物品总数 34→35）
-check(itemDefs.length === 35, `物品总数应为 35，实际 ${itemDefs.length}`)
-check(ores.length === 7, `矿石应为 7 种，实际 ${ores.length}`)
-check(minerals.length === 8, `矿物应为 8 种，实际 ${minerals.length}`)
+// 2026-09-10 G 族专属无人机「流亡蜂无人机」→ 无人机 4→5 种、物品总数 34→35；
+// 2026-09-12 虫洞线：新增**虚空母矿**（原矿 8 种、物品总数 35→36）——术语同步为「原矿 / 原材料」）
+check(itemDefs.length === 36, `物品总数应为 36，实际 ${itemDefs.length}`)
+check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
+check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
@@ -2966,6 +2969,24 @@ for (const m of MODULES) {
       errors.push(`蓝图价格口径：覆盖表里的 ${bpId} 不是真实蓝图 id——删掉它或修正拼写`)
       mismatchPrice += 1
     }
+  }
+  /* ── 【未上线商品闸门】契约（2026-09-12 加 · 船长：「所有虫洞相关的内容需要等虫洞落地后才统一对玩家可见」）──
+   * 口径：`unreleased: true` 的卡**留在目录表**（契约照核），但**必须不在玩家可见目录里**——
+   * 否则市场页/挂单/任务就会提前暴雷。反向也钉住：没标 `unreleased` 的商品**必须真的在可见目录里**
+   * （防"标了没生效"或"忘了删字段却以为没上线"两种错法）。 */
+  {
+    const visible = buildMarketGoodsCatalog()
+    for (const g of MARKET_GOODS) {
+      const inVisible = visible.has(g.key)
+      if (g.unreleased === true && inVisible) {
+        errors.push(`未上线闸门：${g.key} 标了 unreleased 却仍在玩家可见目录里（会提前泄露）`)
+      }
+      if (g.unreleased !== true && !inVisible) {
+        errors.push(`未上线闸门：${g.key} 没标 unreleased 却不在玩家可见目录里（玩家买不到）`)
+      }
+    }
+    const hiddenCount = MARKET_GOODS.filter((g) => g.unreleased === true).length
+    console.log(`· 未上线闸门：目录 ${MARKET_GOODS.length} 张卡中 **${hiddenCount}** 张标了「未上线」并对玩家不可见`)
   }
   for (const bp of BLUEPRINTS) {
     const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'

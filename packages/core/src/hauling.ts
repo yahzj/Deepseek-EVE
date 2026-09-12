@@ -64,6 +64,18 @@ export function haulSecurityMulOf(ctx: SimContext, galaxyId: string): number {
 }
 
 /**
+ * 该星系的**运输航段是否会暴露**（＝途中可能遇袭）：低安（sec ≤ 0，含 0）。
+ *
+ * 引擎口径（2026-09-13 取证）：`hauling.setLeg` 每段把 `awayGalaxy` 记为**出发星系**，而
+ * `encounters.collectExposures` 的排除清单只排了采矿/远征/打捞/扫描 ⇒ **从低安站点出发的那一段**
+ * 会被计为"当地停留"暴露并掷伏击（对照实测：停在港里不跑运输 = 零暴露）。
+ * 面板据此标注"会遇袭的航线"——船长 2026-09-13「会遇袭的运输任务需要特意标注出该情况」。
+ */
+export function haulExposureAt(ctx: SimContext, galaxyId: string): boolean {
+  return securityZoneOf(ctx, galaxyId) === '低安'
+}
+
+/**
  * 单段**有效距离**（分钟）：沿引擎选定的最短路**逐跳**累加「该跳分钟 × 该跳收益率系数」，
  * **每跳系数 = 该跳两端里「安全等级较低（更危险）」那一端的系数**（＝系数较大者；船长 2026-09-12 选定 C 案）。
  * 与"标称分钟"的差 = 档位稀释：高安/中安密集的走廊会被折算得更短（母港⇄红环 7 → 4.5）。

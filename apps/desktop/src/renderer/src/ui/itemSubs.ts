@@ -55,10 +55,11 @@ export const CONSUME_SUBS: SubOption[] = [
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
 export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
 
-/** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类） */
+/** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类）
+ *  ⚠ 术语（船长 2026-09-12）：`ore` = **原矿**、`mineral` = **原材料**（旧称矿石/矿物作废） */
 export const ITEM_SUBS: SubOption[] = [
-  { key: 'ore', label: '矿石' },
-  { key: 'mineral', label: '矿物' },
+  { key: 'ore', label: '原矿' },
+  { key: 'mineral', label: '原材料' },
   { key: 'gas', label: '气体' },
   { key: 'ice', label: '冰矿' },
 ]

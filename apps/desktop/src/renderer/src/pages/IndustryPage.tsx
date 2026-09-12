@@ -167,14 +167,14 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         (id) => engine.ctx.items.get(id)?.name ?? id,
       )
       const mineralTip =
-        `按当前技能档与敌群矿物比重折算的每批期望产出（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）；` +
+        `按当前技能档与敌群原材料比重折算的每批期望产出（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）；` +
         `实际每批只按权重出其中一种、产量有 ±10% 抖动，以回收拆解结算为准。` +
         (profile.note ? `敌群特色：${profile.note}` : '')
       econ = (
         <div className="app-belt-econ">
           {mineralRows.length > 0 ? (
             <>
-              <div title={mineralTip}>♨ 保底矿物：</div>
+              <div title={mineralTip}>♨ 保底原材料：</div>
               {mineralRows.map((r) => (
                 <div key={r.id} className="app-belt-out" title={mineralTip}>
                   {r.name} ×约 {r.units}
@@ -185,7 +185,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           ) : null}
           <div
             className="app-belt-econ-val"
-            title="按残骸来源危险度池的保底矿物估算（手动炉基准；AI 核心驱动时周期更长）——参考值，实际所得以回收拆解结算为准"
+            title="按残骸来源危险度池的保底原材料估算（手动炉基准；AI 核心驱动时周期更长）——参考值，实际所得以回收拆解结算为准"
           >
             {MONEY_GLYPH} 保底 ≈{evH.toLocaleString('zh-CN')} ISK/h
           </div>
@@ -229,7 +229,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         {batchValue > 0 ? (
           <div
             className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
-            title={`净收益估算：每批产物（矿物站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} ISK/h；${
+            title={`净收益估算：每批产物（原材料站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} ISK/h；${
               netH < 0 ? '当前产出倍率下精炼不如直接卖原料。' : '数值已扣除耗料成本。'
             }`}
           >
@@ -248,7 +248,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           {isRareBox ? (
             <em
               className="app-chip is-rare"
-              title="高级箱：开出该敌群专属装备或特色装备，另附一批高阶矿物"
+              title="高级箱：开出该敌群专属装备或特色装备，另附一批高阶原材料"
             >
               稀有
             </em>
@@ -275,8 +275,8 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       <div className="app-belt-desc">
         {isWreck
           ? isRareBox
-            ? '每批拆解 = 保底矿物 + 概率特色掉落；另有「高级箱」掉落：专属装备或特色装备 + 高阶矿物'
-            : '每批拆解 = 保底矿物 + 概率特色掉落'
+            ? '每批拆解 = 保底原材料 + 概率特色掉落；另有「高级箱」掉落：专属装备或特色装备 + 高阶原材料'
+            : '每批拆解 = 保底原材料 + 概率特色掉落'
           : def.description}
       </div>
       {isWreck ? <WreckFlavorRow def={def} engine={engine} /> : null}
@@ -515,7 +515,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
             <>
               <span
                 className="app-dim"
-                title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底矿物另算"
+                title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底原材料另算"
               >
                 产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台
               </span>
@@ -529,7 +529,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
           <div className="app-win-body">
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (
             <div className="app-dim app-inv-empty">
-              没有可精炼/可回收的资源——采集矿石/气体/冰矿，或打捞带回残骸后再来。
+              没有可精炼/可回收的资源——采集原矿/气体/冰矿，或打捞带回残骸后再来。
             </div>
           ) : null}
 
@@ -546,7 +546,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
 
           {wreckDefs.length > 0 ? (
             <>
-              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底矿物 + 概率特色掉落</div>
+              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底原材料 + 概率特色掉落</div>
               <div className="app-belt-grid">
                 {wreckShown.map((def) => (
                   <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />

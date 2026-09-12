@@ -74,7 +74,7 @@ const BELT_SORT_KEY = 'whale-idle:mine-sort'
 const BELT_SORT_LABEL: Record<BeltSortKey, string> = {
   danger: '危险（安全优先）',
   galaxy: '星系名称',
-  value: '矿石价值最高',
+  value: '原矿价值最高',
   name: '矿带名称',
 }
 type WreckSortKey = 'danger' | 'galaxy' | 'density' | 'name'
@@ -888,7 +888,7 @@ function WreckCard({
         {rareCount > 0 ? (
           <>
             {' · '}
-            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：开出该敌群专属装备或特色装备 + 一批高阶矿物`}>
+            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：开出该敌群专属装备或特色装备 + 一批高阶原材料`}>
               稀有残骸 ×{rareCount}
             </em>
           </>

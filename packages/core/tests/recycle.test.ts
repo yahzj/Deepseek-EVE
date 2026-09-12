@@ -153,10 +153,11 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(state.refineRuns).toHaveLength(0)
     expect(countMinerals(state, ctx)).toBeGreaterThan(0)
     expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
-    // 2026-09-06（玩家上报）：结束日志必须带回收所得明细（保底矿物）
+    // 2026-09-06（玩家上报）：结束日志必须带回收所得明细（保底产出）
+    // 2026-09-12 术语修正（船长定）：`mineral` 的展示名由「矿物」改为「原材料」
     const fin = state.logs.filter((l) => l.text.includes('原料耗尽'))
     expect(fin.length).toBeGreaterThan(0)
-    expect(fin[0]!.text).toContain('回收所得：保底矿物')
+    expect(fin[0]!.text).toContain('回收所得：保底原材料')
   })
 
   it('运行中余量不足一批：到批点即停工、余料保留（不再吃小批，2026-09-06 船长拍板）', () => {

@@ -102,14 +102,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '采矿技术',
     group: '工业',
     rank: 3,
-    description: '矿藏采集的核心技术：矿石、气体与冰矿的采集循环产量每级 +⟦6%⟧（与星质地质学、深空采集学乘算叠加）。',
+    description: '矿藏采集的核心技术：原矿、气体与冰矿的采集循环产量每级 +⟦6%⟧（与星质地质学、深空采集学乘算叠加）。',
   },
   {
     id: 'deep-space-harvesting',
     name: '深空采集学',
     group: '工业',
     rank: 4,
-    description: '稀有资源采集：气体与冰矿的采集循环产量每级 +⟦5%⟧（普通矿石不受影响）。',
+    description: '稀有资源采集：气体与冰矿的采集循环产量每级 +⟦5%⟧（普通原矿不受影响）。',
   },
   {
     id: 'refining',
@@ -177,7 +177,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '深井爆破学',
     group: '工业',
     rank: 3,
-    description: '浅层矿带的爆破开采优化：低品位矿石（富凡晶石/灼烧岩/希莫非特）产量每级 +⟦6%⟧。',
+    description: '浅层矿带的爆破开采优化：低品位原矿（富凡晶石/灼烧岩/希莫非特）产量每级 +⟦6%⟧。',
   },
   {
     id: 'rich-vein-prospecting',
@@ -263,7 +263,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '残骸提纯学',
     group: '工业',
     rank: 2,
-    description: '回收提纯工艺：残骸回收的保底矿物产出每级 +⟦8%⟧（满级共 +40%）。',
+    description: '回收提纯工艺：残骸回收的保底原材料产出每级 +⟦8%⟧（满级共 +40%）。',
   },
 
   // ───────── 战斗（2026-09-05 武器族技能批次：三形态专精乘区，乘算于炮术学之上） ─────────
@@ -578,7 +578,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '压缩技术',
     group: '物流',
     rank: 3,
-    description: '矿物压缩封装：矿石/气体/冰矿的货仓占用体积每级 −⟦6%⟧（满级 −⟦30%⟧）。',
+    description: '原材料压缩封装：原矿/气体/冰矿的货仓占用体积每级 −⟦6%⟧（满级 −⟦30%⟧）。',
   },
   {
     id: 'hold-management',

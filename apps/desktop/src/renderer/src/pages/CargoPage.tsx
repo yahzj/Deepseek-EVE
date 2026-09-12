@@ -32,8 +32,8 @@ import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 
 const KIND_EMPTY: Record<string, string> = {
-  ore: '船上没有矿石——到「出港」页开采。',
-  mineral: '船上没有矿物（精炼产物直接入仓库）。',
+  ore: '船上没有原矿——到「出港」页开采。',
+  mineral: '船上没有原材料（精炼产物直接入仓库）。',
   gas: '船上没有气体。',
   ice: '船上没有冰矿。',
   ammo: '船上没有弹药。',
@@ -215,7 +215,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         if (kindRows.length === 0 && kind !== 'ore') return null
         const emptyText =
           kind === 'ore' && !isPiloted
-            ? `「${targetName}」的货仓里没有矿石。`
+            ? `「${targetName}」的货仓里没有原矿。`
             : KIND_EMPTY[kind] ?? '货仓里没有该分类的货物。'
         return (
           <Panel
