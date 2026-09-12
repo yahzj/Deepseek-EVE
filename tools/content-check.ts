@@ -17,6 +17,9 @@
 
 import {
   BLUEPRINTS,
+  BLUEPRINT_PRICE_STEP,
+  blueprintBookPriceOf,
+  blueprintTierCoefOf,
   ITEMS,
   BELTS,
   MARKET_GOODS,
@@ -2217,6 +2220,82 @@ for (const m of MODULES) {
   }
   console.log(
     `· 舰船价格口径（预警）：${SHIPS.length} 艘船中 priceIsk 与市场行价不符 ${driftPrice} 处、蓝图价与档位系数不符 ${driftBp} 处`,
+  )
+}
+
+/* ── 蓝图价格口径契约（2026-09-11 船长：「调整所有蓝图到合适价格」→ 裁决「甲」）────────────
+   规则（单点 = `packages/data/src/blueprints.ts` 的 `blueprintTierCoefOf` / `blueprintBookPriceOf`）：
+   **装备/物品蓝图书价 = 产物现货价 × 档位系数**——`民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`，
+   取整到 `BLUEPRINT_PRICE_STEP`（500 ISK）。产物现货价 = 市场行 basePrice（item 类 × 单次产出数量）。
+   背景（实证）：2026-09-10「MK2/MK3 装备价对齐同级武器价」只改成品价、书价没跟，
+   91 张里 56 张的「书价 ÷ 产物价」漂到 0.18~1.88（武器线与新件合规），本批按系数全量对齐。
+   两层校验：
+   - **硬契约**：`blueprints.ts priceIsk` == 市场蓝图行 `basePrice`（两处必须同值——玩家付款读市场行，
+     图鉴/工业页读书价，任一处漏改都会让玩家看到两个价）；
+   - **预警**：书价与规则值差 > 500 ISK（口径漂移哨兵，与舰船价格口径同为 warn）；
+   - **预警**：料/价（材料成本 ÷ 产物现货价）落在 30%~60% 之外（同族锚 45%，口径见 manufacture:econ）。 */
+{
+  const bpGoods = MARKET_GOODS.filter((g) => g.kind === 'blueprint' && typeof g.refId === 'string')
+  const marketOfBp = new Map(bpGoods.map((g) => [g.refId!, g]))
+  const marketOfModule = new Map(MARKET_GOODS.filter((g) => g.kind === 'module' && typeof g.refId === 'string').map((g) => [g.refId!, g]))
+  const marketOfItem = new Map(MARKET_GOODS.filter((g) => g.kind === 'item' && typeof g.refId === 'string').map((g) => [g.refId!, g]))
+  const modName = new Map(MODULES.map((m) => [m.id, m.name]))
+  const itemName = new Map(ITEMS.map((i) => [i.id, i.name]))
+  const itemSell = new Map(ITEMS.map((i) => [i.id, i.baseSellPriceIsk ?? 0]))
+  let mismatchPrice = 0
+  let driftCoef = 0
+  let driftMatRatio = 0
+  let okCoef = 0
+  const tiers: Record<string, number> = {}
+  for (const bp of BLUEPRINTS) {
+    const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'
+    const good = marketOfBp.get(bp.id)
+    if (!good) {
+      errors.push(`蓝图价格口径：${bp.id}（${label}）在市场目录里没有蓝图行——玩家买不到，也无法比对书价`)
+      mismatchPrice += 1
+      continue
+    }
+    if ((good.basePrice ?? 0) !== bp.priceIsk) {
+      errors.push(
+        `蓝图价格口径：${bp.id}（${label}）blueprints.ts 书价 = ${bp.priceIsk.toLocaleString('zh-CN')}，市场行 basePrice = ${(good.basePrice ?? 0).toLocaleString('zh-CN')}（两处必须同值）`,
+      )
+      mismatchPrice += 1
+    }
+    // 产物现货价（item 类按单次产出数量折算）
+    const product =
+      bp.moduleId !== undefined
+        ? (marketOfModule.get(bp.moduleId)?.basePrice ?? 0)
+        : (marketOfItem.get(bp.itemId ?? '')?.basePrice ?? 0) * (bp.outputUnits ?? 1)
+    const { coef, label: tierLabel } = blueprintTierCoefOf(bp.id)
+    tiers[tierLabel] = (tiers[tierLabel] ?? 0) + 1
+    if (product <= 0) {
+      warn.push(`蓝图价格口径：${bp.id}（${label}）找不到产物现货价——无法按档位系数核算书价`)
+      continue
+    }
+    const expect = blueprintBookPriceOf(bp.id, product)
+    if (bp.priceIsk !== expect) {
+      warn.push(
+        `蓝图价格口径：${bp.id}（${label}）书价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「${tierLabel} 产物价 ${product.toLocaleString('zh-CN')} ×${coef}」应为 ${expect.toLocaleString('zh-CN')}（±${BLUEPRINT_PRICE_STEP} ISK 取整余量内视为达标）`,
+      )
+      driftCoef += 1
+    } else {
+      okCoef += 1
+    }
+    // 料/价（材料成本 ÷ 产物现货价；材料按物品站内收价计）
+    let mat = 0
+    for (const m of bp.materials) mat += Math.max(1, Math.floor(m.count)) * (itemSell.get(m.itemId) ?? 0)
+    const ratio = product > 0 ? mat / product : 0
+    if (ratio < 0.3 || ratio > 0.6) {
+      warn.push(
+        `蓝图价格口径：${bp.id}（${label}）料/价 = ${(ratio * 100).toFixed(1)}%（材料 ${mat.toLocaleString('zh-CN')} ÷ 产物 ${product.toLocaleString('zh-CN')}）落在 30%~60% 之外（同族锚 45%）`,
+      )
+      driftMatRatio += 1
+    }
+  }
+  console.log(
+    `· 蓝图价格口径：${BLUEPRINTS.length} 张装备/物品蓝图中，书价与规则值一致 ${okCoef} 张（${Object.entries(tiers)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(' / ')}）；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
   )
 }
 

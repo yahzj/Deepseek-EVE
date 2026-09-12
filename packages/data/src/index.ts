@@ -7,7 +7,15 @@ export { ORES, MINERALS, ITEMS, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'
 export { MODULES, buildModuleCatalog } from './modules'
-export { BLUEPRINTS, buildBlueprintCatalog } from './blueprints'
+// 2026-09-11 蓝图价格口径（船长裁决甲：书价 = 产物现货价 × 档位系数，取整 500 ISK）：
+// 系数与算法单点在被导出，供 content:check 契约与重定价工具复用（避免第二份公式）
+export {
+  BLUEPRINTS,
+  BLUEPRINT_PRICE_STEP,
+  blueprintBookPriceOf,
+  blueprintTierCoefOf,
+  buildBlueprintCatalog,
+} from './blueprints'
 export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
