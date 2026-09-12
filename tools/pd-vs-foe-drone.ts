@@ -252,7 +252,7 @@ console.log('\n【装备面】近防炮三档')
 for (const id of ['mod-pd-e', 'mod-pd-e-2', 'mod-pd-e-3']) {
   const m = ctx.modules.get(id)!
   console.log(
-    `  ${m.name}：dmgMult=${m.dmgMult} · 命中 ${m.hitRate} · **对无人机伤害 ×${m.antiDroneDmgMul ?? 1}** · ` +
+    `  ${m.name}：dmgMult=${m.dmgMult} · 命中 ${m.hitRate} · **防空 ×${m.antiDrone ?? 1}**（能打敌机群 + 对无人机伤害 ×该值） · ` +
       `射程 ${m.maxRangeM}m · 装填 ${m.reloadMs}ms · CPU ${m.cpuUse}`,
   )
 }

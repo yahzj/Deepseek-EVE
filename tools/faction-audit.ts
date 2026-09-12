@@ -37,9 +37,13 @@ const gName = new Map(GALAXIES.map((g) => [g.id, g.name]))
 const gSec = new Map(GALAXIES.map((g) => [g.id, g.security ?? 0.5]))
 const bal = DEFAULT_BALANCE.battle
 
-/** 击杀秒数刻度 D(T)：与 combat.foeHpOfThreat 同源（威胁 → 参考火力下的击杀秒数） */
+/**
+ * 击杀秒数刻度 D(T)：与 combat.foeHpOfThreat 同源（威胁 → 参考火力下的击杀秒数）。
+ * ⚠ 2026-09-12 船长「解除血量钳制」后，`foeHpOfThreat` 的 `t` 不再有 `min(1, …)` 封顶
+ * ⇒ 本处同步去掉（否则威胁 > 96 的派生档读数会与引擎不符）。
+ */
 function killSeconds(threat: number): number {
-  const t = Math.min(1, Math.max(0, (threat - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat))
+  const t = Math.max(0, (threat - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat)
   return bal.foeHpCurveDMin + bal.foeHpCurveDSpan * Math.pow(t, bal.foeHpCurveExp)
 }
 

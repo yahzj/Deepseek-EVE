@@ -72,11 +72,11 @@ describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 
     }
   })
 
-  it('防空本职不退让：三档都带防空属性、射程仍 ≤ 2,500m（防空契约）', () => {
+  it('防空本职不退让：三档都带「防空」属性（能打机群 + 对无人机 ×2）、射程仍 ≤ 2,500m（防空契约）', () => {
     for (const id of PD) {
       const def = real.modules.get(id)!
       const w = weaponOf(id)
-      expect(def.canHitDrones, `${id} 应带防空属性`).toBe(true)
+      expect(def.antiDrone, `${id} 的防空属性值`).toBe(2)
       expect(w.antiDrone).toBe(true)
       expect(def.maxRangeM, `${id} 射程`).toBe(2500)
       expect(def.maxRangeM!).toBeLessThanOrEqual(2500)
@@ -136,28 +136,31 @@ describe('打机群不吃距离衰减（船长 2026-09-12「按丁修复」）',
 })
 
 /**
- * **对无人机伤害加成**（船长 2026-09-12：「**近防炮给予一个对无人机伤害加成**」→「**那伤害倍率按2倍算**」）。
+ * **「防空」属性**（船长 2026-09-12：「**给近防炮系列添加一个属性"防空"，将近防炮的对无人机伤害 ×2
+ * 写到防空属性里**」）——一条属性两个含义：①**能筛到敌方机群** ②**对无人机伤害 ×该值**。
  *
- * 锁三件事：①装备表三档都登记 `antiDroneDmgMul = 2`；②建档时带进武器条目（`WeaponSpec.antiDroneMul`）；
+ * 锁三件事：①装备表三档都登记 `antiDrone = 2`；②建档时带进武器条目
+ * （`WeaponSpec.canHitDrones` + `WeaponSpec.antiDroneMul`，两者同源）；
  * ③**对舰伤害不受影响**——上一条 describe 里的对舰单发定值（10 / 16 / 17）就是那条守卫（若加成漏进对舰，
  * 那三条断言会立刻炸）。倍率的**作用点**在 `stepBattle` 的"打机群"分支（`droneHit` 非空时才乘）。
  */
-describe('近防炮 · 对无人机伤害加成（船长 2026-09-12「按2倍算」）', () => {
-  it('三档装备都登记 ×2，且建档后带进武器条目', () => {
+describe('近防炮 · 「防空」属性（船长 2026-09-12「将近防炮的对无人机伤害 ×2 写到防空属性里」）', () => {
+  it('三档装备的防空属性都 = ×2，且建档后同时带出"能打机群"与"对无人机 ×2"', () => {
     for (const id of PD) {
       const def = real.modules.get(id)!
-      expect(def.antiDroneDmgMul, `${id} 装备表倍率`).toBe(2)
+      expect(def.antiDrone, `${id} 防空属性值`).toBe(2)
       const w = weaponOf(id)
-      expect(w.antiDrone, `${id} 应带防空属性`).toBe(true)
+      expect(w.antiDrone, `${id} 应带防空属性（能打机群）`).toBe(true)
       expect(w.antiDroneMul, `${id} 武器条目倍率`).toBe(2)
     }
   })
 
-  it('不带防空属性的武器不携带该倍率（死字段：看不到机群就用不到）', () => {
+  it('不带防空属性的武器：既看不到机群、也不携带倍率（普通炮台对照）', () => {
     for (const id of GUN) {
       const w = weaponOf(id)
       expect(w.antiDrone, `${id} 不应带防空属性`).toBe(false)
       expect(w.antiDroneMul, `${id} 不应带对无人机倍率`).toBeUndefined()
+      expect(real.modules.get(id)!.antiDrone, `${id} 装备表不应有防空属性`).toBeUndefined()
     }
   })
 })

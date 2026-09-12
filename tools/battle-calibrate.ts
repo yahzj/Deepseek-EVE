@@ -772,8 +772,9 @@ async function main(): Promise<void> {
     if (PROPOSAL_BRAWL_HP_MUL !== undefined) console.log(`  ・近战(brawl)卡总血 ×${PROPOSAL_BRAWL_HP_MUL}`)
   }
   // 时长预期行（C4 血量曲线 D(T)，纯对射口径；模拟时长含接近期故应 ≥ D）
+  // ⚠ 2026-09-12 船长「解除血量钳制」后 `foeHpOfThreat` 的 `t` 不再封顶 ⇒ 本处同步去掉 `min(1, …)`
   const dExpect = (t: number): number =>
-    Math.round((bal.foeHpCurveDMin + bal.foeHpCurveDSpan * Math.pow(Math.min(1, Math.max(0, (t - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat)), bal.foeHpCurveExp)) * 10) / 10
+    Math.round((bal.foeHpCurveDMin + bal.foeHpCurveDSpan * Math.pow(Math.max(0, (t - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat), bal.foeHpCurveExp)) * 10) / 10
   console.log(
     '预期击杀D(T)：' +
       threats.map((a) => `${a.threat}:${dExpect(a.threat)}s`).join(' '),
@@ -973,11 +974,12 @@ async function main(): Promise<void> {
       const cur = currentHpOf(a, bal)
       const now = probe(a.id, cur)
       // 目标：brawl 走时长口径（该段 D(T)），orbit/kite 走残血口径
+      // ⚠ 2026-09-12「解除血量钳制」同步：与 `foeHpOfThreat` 一致，`t` 不封顶
       const dTarget =
         bal.foeHpCurveDMin +
         bal.foeHpCurveDSpan *
           Math.pow(
-            Math.min(1, Math.max(0, (a.threat - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat)),
+            Math.max(0, (a.threat - bal.foeHpCurveFloorThreat) / bal.foeHpCurveSpanThreat),
             bal.foeHpCurveExp,
           )
       const useDur = HP_SOLVE_MODE === 'dur'

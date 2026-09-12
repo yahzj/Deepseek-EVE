@@ -85,8 +85,8 @@ export interface WeaponSpec {
    * 伤害 × 本值；玩家武器不受影响（近盲带内不开火） */
   blindDmgMul?: number;
   /**
-   * **防空属性**（2026-09-11 船长 A1：「玩家武器通常**不可打**，**需要带有防空属性的武器**
-   * （**为近防炮做铺垫**）」）——**只有带本标记的武器能筛到敌方无人机**；不带 = 按构造看不到机群
+   * **防空**（属性 · 引擎侧标记）——**装备带「防空」属性**（`ModuleDef.antiDrone`）时写入本字段。
+   * 只有带本标记的武器能筛到敌方无人机；不带 = 按构造看不到机群
    * （与我方'无人机是子单位、不进主目标池'的既有契约同源）。
    *
    * 口径（设计稿 `docs/design/foe-drone-system-20260911.md` §四/S4）：
@@ -98,10 +98,9 @@ export interface WeaponSpec {
    */
   canHitDrones?: boolean
   /**
-   * **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
-   * **打机群**那一支的单发伤害 ×本值（`ModuleDef.antiDroneDmgMul` 建档时带过来）。
-   * ⚠ **只对机群生效**——对舰伤害一字不动（`tests/pd-damage-ladder.test.ts` 锁住对舰单发定值）。
-   * 缺省不写 = ×1（零行为变化）；只有带 `canHitDrones` 的武器会带上它。
+   * **防空属性**的第二半：**对无人机伤害倍率**（与 `canHitDrones` 同源，来自 `ModuleDef.antiDrone`）——
+   * 船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」。
+   * ⚠ **只对机群生效**——对舰伤害一字不动（`tests/pd-damage-ladder.test.ts` 锁住对舰单发定值 10/16/17）。
    */
   antiDroneMul?: number
   maxRangeM: number
@@ -720,13 +719,11 @@ export function createPlayerSpec(
       hitRate: (turret.hitRate ?? 0.5) * fireMult,
       falloff: turret.falloff ?? 0.3,
       reloadMs: reload,
-      // 防空属性（2026-09-11 机群批 S4）：装备带 `canHitDrones` ⇒ 该武器能筛到敌方无人机。
-      // 缺省不写 ⇒ 看到不机群（既有装备零行为变化）。
-      ...(turret.canHitDrones ? { canHitDrones: true } : {}),
-      // 对无人机伤害加成（2026-09-12 船长：「近防炮给予一个对无人机伤害加成」→「那伤害倍率按2倍算」）：
-      // 跟着防空属性一起带过来（只对带该属性的武器有意义）；缺省/写 1 ⇒ 不写字段。
-      ...(turret.canHitDrones && (turret.antiDroneDmgMul ?? 1) !== 1
-        ? { antiDroneMul: turret.antiDroneDmgMul }
+      // **防空（属性）**（2026-09-11 机群批 S4 + 2026-09-12 船长「给近防炮系列添加一个属性'防空'」）：
+      // 装备带 `antiDrone` ⇒ 一条属性带两件事——①能筛到敌方机群（`canHitDrones`）
+      // ②打机群伤害 ×该值（`antiDroneMul`）。缺省不写 ⇒ 看不到机群（既有装备零行为变化）。
+      ...(turret.antiDrone !== undefined
+        ? { canHitDrones: true, antiDroneMul: turret.antiDrone }
         : {}),
     })
   }
@@ -892,11 +889,23 @@ function foeSpeedBase(threat: number, bal: BattleBalance): number {
   return Math.min(1.15, Math.max(0.7, lo + (hi - lo) * t))
 }
 
-/** 敌编队总血（C4 时长预期曲线反推，2026-09-05）：参考段火力 × D(T) */
+/**
+ * 敌编队总血（C4 时长预期曲线反推，2026-09-05）：参考段火力 × D(T)。
+ *
+ * ⚠ **2026-09-12 船长裁定「解除血量钳制，改为火力限制」**：
+ * 旧式是 `t = min(1, (T − floor) / span)` ⇒ **威胁 ≥ 96 血量一律冻结在 1152**（威胁 100/150/300 全同），
+ * 而敌火力 `威胁 × foeDpsPerThreat` 却线性不封顶 ⇒ 抬威胁只会得到"更脆更毒"的敌人。
+ * 故此处**去掉 `min(1, …)`**：血量随威胁继续增长；火力改由 `BattleBalance.foeDpsCap`（**150 DPS**，
+ * 见 `foeDpsCapScaleOf`）封顶；**速度与射程成长的钳制保留**（`foeRefSpeedMps` / `growT`，避免敌人"又快又远又硬"）。
+ *
+ * **对现有内容的影响（实测）**：全表 27 张卡威胁 ≤ 96 ⇒ `t ≤ 1` ⇒ **逐字零变化**；
+ * 受影响的是**窝点派生档**（`LAIR_THREAT_MUL` 1.3/1.6/2.0 会把高威胁卡的派生威胁推到 96 以上）
+ * ——那正是本裁定要修的：派生档"威胁涨了、血量被钳住"的失配。
+ */
 export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
   const floor = bal.foeHpCurveFloorThreat ?? 6
   const span = bal.foeHpCurveSpanThreat ?? 90
-  const t = Math.min(1, Math.max(0, (threat - floor) / span))
+  const t = Math.max(0, (threat - floor) / span) // ← 2026-09-12：去掉 min(1, …) 的封顶
   const d = (bal.foeHpCurveDMin ?? 5) + (bal.foeHpCurveDSpan ?? 85) * Math.pow(t, bal.foeHpCurveExp ?? 1.6)
   const table = bal.foeRefFire
   let f = table[0]?.dps ?? 5
@@ -1182,6 +1191,58 @@ function droneFireSplitOf(
   return out
 }
 
+/**
+ * **敌舰体火力上限**（2026-09-12 船长：「按照 DPS 上限 150 算」）——舰级路径按**整卡舰体总 DPS** 封顶。
+ *
+ * 口径（全部经实测确认）：
+ * - **只算舰体武器组**（每条目 `ship.shotDmg × dmgMul × 多舰补偿` ÷ `ship.reloadMs` 秒）；
+ *   **不含机群**（机群另有受击增程 / 备用机库 / A5 守恒三套机制，且船长已裁定不吃多舰补偿）；
+ * - **不含被 `droneFireShare` / `firepowerAnchor` 拆分的条目**——那条链自带总火力锚定，
+ *   再钳制会让锚点失准（`droneFireSplitOf` 内部已含补偿，钳制与外层缩放会打架）；
+ * - 单发是整数 ⇒ 逐条取整后再求和，越线时**全卡舰体单发等比例缩放**（保持各条目相对权重）。
+ *
+ * 现值 150 与现有卡的关系（实测）：27 张卡**全部未越线**（最高 = 虚海守望者 131.25 DPS）
+ * ⇒ **零行为变化**。每单位威胁触顶值 = `150 ÷ 0.8 ÷ 补偿` ⇒ N=1 **187.5** · N=3 **125** ·
+ * N=4 **117.2** · N=11 **102.3** ——将来的多单位高威胁卡会先撞上它。
+ *
+ * `foeDpsCap` 未写或非正 ⇒ 返回 1（不钳制，零行为变化）。
+ */
+function foeHullDpsOf(ship: FoeShipDef, dmgMul: number, comp: number, bal: BattleBalance): number {
+  const per = Math.max(1, Math.round(ship.shotDmg * dmgMul * comp))
+  return (per * 1000) / Math.max(1, ship.reloadMs)
+}
+
+/** 逐 `slot` 缓存缩放系数（同一条目的多个单位共用，避免重复计算） */
+function foeDpsCapScaleOf(
+  units: ReadonlyArray<{ slot: FoeShipSlot }>,
+  comp: number,
+  bal: BattleBalance,
+  splitIdx: ReadonlyArray<{ gun: number; drones: number[] } | null>,
+): Map<FoeShipSlot, number> {
+  const out = new Map<FoeShipSlot, number>()
+  const cap = bal.foeDpsCap
+  if (cap === undefined || !(cap > 0)) return out
+  const seen = new Set<FoeShipSlot>()
+  const bySlot = new Map<FoeShipSlot, number[]>()
+  for (let i = 0; i < units.length; i++) {
+    const slot = units[i]!.slot
+    const list = bySlot.get(slot)
+    if (list) list.push(i)
+    else bySlot.set(slot, [i])
+  }
+  let total = 0
+  for (const [slot, idxs] of bySlot) {
+    // 被占比/锚点拆分的条目跳过（自带总火力锚定；钳制会让锚点失准）
+    if (idxs.some((i) => splitIdx[i] !== null)) continue
+    seen.add(slot)
+    total += idxs.length * foeHullDpsOf(slot.ship, slot.dmgMul ?? 1, comp, bal)
+  }
+  if (total <= cap) return out
+  const scale = cap / total
+  for (const slot of seen) out.set(slot, scale)
+  return out
+}
+
 function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts): UnitSpec[] {
   const prefix = opts.tagPrefix ?? ''
   const waveIdx = shipWaveIndexOf(prefix)
@@ -1192,6 +1253,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
   // 逐条取整），再拆成「机群 D = round(T×s)」与「炮台 G = T−D」（两侧各保底 1/架、1/单位）。
   // 未写 s 的条目一律 `null` ⇒ 下面走旧算法（**零行为变化**）。
   const fireSplit = droneFireSplitOf(units, comp)
+  // **敌舰体火力上限**（2026-09-12 船长「按照 DPS 上限 150 算」）：整卡舰体总 DPS 越线时，
+  // 全卡舰体单发等比例缩放（机群与"被占比拆分的条目"不参与，见 `foeDpsCapScaleOf`）。
+  const dpsCapScale = foeDpsCapScaleOf(units, comp, bal, fireSplit)
   return units.map((u, ui) => {
     const sp = fireSplit[ui]
     const ship = u.slot.ship
@@ -1202,8 +1266,11 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     // 同一条舰级在不同卡上可按卡面 `defProfile` 建档（A 族鱼龙混杂 ⇒ 什么血型都有，无族级约束）。
     const split = u.slot.split ?? ship.split
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
-    // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法
-    const shotDmg = sp ? sp.gun : Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp))
+    // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法；
+    // 之后再乘**舰体火力上限缩放**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
+    const shotDmg = sp
+      ? sp.gun
+      : Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp * (dpsCapScale.get(u.slot) ?? 1)))
     const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
     const multiShots: Partial<Record<DamageType, number>> | undefined =
       shotSplit.length > 1
