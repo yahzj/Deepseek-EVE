@@ -1275,6 +1275,8 @@ const meSpeedRef = useRef(200)
         return {
           artId: w.artId,
           model: droneModelOf(w.artId)!,
+          // **分批出击**（2026-09-12 船长「限制敌机单次出击数量」）：机体数按**本批在空架数**画
+          // （引擎在 `foeDrones[].alive` 里已排除在库备用机）——缺省与旧口径一致（= 存活架数）。
           show: Math.min(w.alive, DRONE_SHOW_MAX),
           st,
           // **受击增程**（2026-09-11 船长）：本体挨打后该舰机群阵位后撤（`foeDroneStation`）

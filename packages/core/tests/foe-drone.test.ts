@@ -439,8 +439,109 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
- * **机群火力占比**（2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。这个要根据每个悬赏卡
- * 制定**」）——七项裁定：守恒拆分 · **条目级**（缺省回落舰级）· 以「现口径实收总单发 T」为基准、
+ * **单次出击上限 + 备用机库**（2026-09-12 船长：「能否**限制敌机单次出击数量**或者给敌机添加
+ * **备用机库**（损坏后补充敌机）」）——两条都是**舰级可选字段**，缺省不写 = 现状零变化。
+ * 本组钉住：①分批出击（同拍只有 k 架在空、窗口轮换）②`keepDps` 下**平均 DPS 守恒**（装填 ÷ (N/k)）
+ * ③备用机在库时**不可被选中/不出战** ④战损后按 `respawnMs` **满血补位**。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe("敌机：单次出击上限 + 备用机库", () => {
+  const AA = "mod-pd-e-2";
+  const launchShip = (
+    launch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean },
+    reserve?: { count: number; respawnMs: number },
+  ): FoeShipDef => ({
+    ...testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
+    ...(launch ? { droneLaunch: launch } : {}),
+    ...(reserve ? { droneReserve: reserve } : {}),
+  })
+
+  it("建档：备用机展开成**额外条目**，池里标 `inHangar`（不算出战架数）", () => {
+    const card = testCard(launchShip(undefined, { count: 2, respawnMs: 10000 }))
+    const units = createFoeSpecs(card, bal)
+    for (const u of units) {
+      // 3 架常备 + 2 架备用 = 5 条武器条目
+      expect(u.weapons.filter((w) => w.src === "drone")).toHaveLength(5)
+      expect(u.foeDroneReserve).toEqual({ count: 2, respawnMs: 10000 })
+    }
+    const { battle } = runBattleWithState(card, 1_000)
+    for (const list of Object.values(battle.foeDronePools ?? {})) {
+      expect(list).toHaveLength(5)
+      expect(list.filter((p) => p.inHangar === true)).toHaveLength(2)
+      // 备用机**开局不在场**：近防炮选靶看不到它
+      expect(list.filter((p) => p.inHangar !== true)).toHaveLength(3)
+    }
+  })
+
+  it("分批出击：**每舰每拍**最多 k 架在空（其余在库待命 ⇒ 本拍不开火）", () => {
+    const card = testCard(launchShip({ maxAloft: 1, keepDps: true }))
+    const { battle } = runBattleWithState(card, 30_000)
+    // ⚠ 上限是**按舰**的（两艘母舰各自最多 1 架在空）⇒ 计数键 = tag + 时刻
+    const byTick = new Map<string, number>()
+    for (const e of battle.fx) {
+      if (e.src !== "drone" || e.side !== "foe") continue
+      const key = `${e.tag}|${e.atMs}`
+      byTick.set(key, (byTick.get(key) ?? 0) + 1)
+    }
+    // 任一舰在任一拍最多 1 架开火（`maxAloft: 1`）——本机制的核心断言
+    expect(Math.max(...byTick.values())).toBeLessThanOrEqual(1)
+    expect(byTick.size).toBeGreaterThan(0) // 确实开过火（不是"全哑火"的假通过）
+  })
+
+  it("备用机库：前线战损 ⇒ 按 `respawnMs` **满血补位**（总库存不变）", () => {
+    const card = testCard(
+      launchShip(undefined, { count: 3, respawnMs: 1_000 }),
+    );
+    const c = ctxWith(card)
+    const state = makeState(5, [AA, AA, AA, AA]) // 四门近防炮：真能击落敌机
+    const battle = startBattleFor(state, c, state.shipId, card.id, 0)!
+    state.expedition.active = true
+    state.expedition.phase = "battle"
+    state.expedition.anomalyId = card.id
+    state.expedition.battle = battle
+    state.gameMs = 150_000 // 打到近防炮确实击落若干架
+    advanceBattleFor(state, c, battle, state.shipId, card.id)
+    // ⚠ 补位是**排期制**（击落时刻 + respawnMs）⇒ 末尾那一击的补位可能还没到点；
+    //   再推 15 秒把待补位全部冲出来（respawnMs 只有 1,000ms）
+    state.gameMs = 165_000
+    advanceBattleFor(state, c, battle, state.shipId, card.id)
+    const list = Object.values(battle.foeDronePools ?? {})[0]!
+    expect(list).toHaveLength(6) // 3 常备 + 3 备用（**总库存**：备用机永不凭空增多）
+    const downed = list.filter((p) => !p.alive).length
+    const inHangar = list.filter((p) => p.inHangar === true).length
+    expect(inHangar + downed + list.filter((p) => p.alive && p.inHangar !== true).length).toBe(6)
+    if (downed > 0) {
+      // **补位成立**：库里的减去已放出的 = 战损数（掉几架补几架，直到库存耗尽）
+      expect(inHangar).toBe(Math.max(0, 3 - downed))
+      const promoted = list.filter((p) => p.alive && p.inHangar !== true && p.maxS !== undefined)
+      expect(promoted.length).toBeGreaterThan(0)
+      // **满血放出**（不是残血补位）
+      expect(
+        promoted.some((p) => p.s === p.maxS && p.a === p.maxA && p.h === p.maxH),
+      ).toBe(true)
+    } else {
+      expect(inHangar).toBe(3) // 一架没掉 ⇒ 备用机仍全在库
+    }
+  })
+
+  it("缺省不写两条字段 ⇒ 全群照旧同时开火、无备用（零行为变化）", () => {
+    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
+    const { battle } = runBattleWithState(card, 30_000)
+    const byTick = new Map<number, number>()
+    for (const e of battle.fx) {
+      if (e.src !== "drone" || e.side !== "foe") continue
+      byTick.set(e.atMs, (byTick.get(e.atMs) ?? 0) + 1)
+    }
+    // 3 架同一拍齐射（旧口径）
+    expect(Math.max(...byTick.values())).toBeGreaterThan(1)
+    const list = Object.values(battle.foeDronePools ?? {})[0]!
+    expect(list).toHaveLength(3)
+    expect(list.every((p) => p.inHangar !== true)).toBe(true)
+  })
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **机群火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个悬赏卡制定」）
+ * 七项裁定：守恒拆分 · **条目级**（缺省回落舰级）· 以「现口径实收总单发 T」为基准、
  * 机群先取余额给炮台 · **0~1 且两侧各保底 1** · 不显示给玩家 · 只含「机群 vs 母舰武器组」·
  * 本批**只做机制**（数值等船长逐卡给）。
  * 本组钉住：缺省零变化 / 总量守恒 / 先取与摊分 Σ 精确 / 边界保底 / 条目级覆盖舰级缺省。

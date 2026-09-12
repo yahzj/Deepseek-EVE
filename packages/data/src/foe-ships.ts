@@ -552,6 +552,11 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   // **受击增程**（船长 2026-09-11：「受到攻击后，大幅提高无人机射程（提高 400%）」）：本体挨打 ⇒
   // 全舰警戒机 5,000 → **20,000m**（本场永久、不封顶）——"巨构挨打才把长臂伸出来"
   droneRangeMulOnHit: 4,
+  // **备用机库**（船长 2026-09-12：「损坏后补充敌机」⇒ **本轮只采用乙**）：+2 架备用（总库存 4），
+  // 战损后 **10s** 满血补位（母舰阵亡则整群停）。
+  // ⚠ 与 2026-09-11 的 A3 裁定「打光为止不补充」**相反 = 改判**；母舰阵亡则整群停（含备用机）。
+  // ⚠ **甲（单次出击上限 `droneLaunch`）本轮不采用** —— 机制已实现，**留作后续其他机制**（缺省不写）。
+  droneReserve: { count: 2, respawnMs: 10000 },
 }
 
 /** E 族 · 二档「**奥罗残骸段**」——**被风暴反复激活的武装残骸**（服务：奥罗武装残骸群 62）。
@@ -581,6 +586,7 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   // 交距 = 7,000 × 0.55 = **3,850m**（射程既定后解除钉住；旧钉值 516 已撤）
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 2 }],
   droneRangeMulOnHit: 4, // 受击增程（全族口径）
+  droneReserve: { count: 2, respawnMs: 10000 }, // 备用机库 +2（总 4），10s 满血补位（甲本轮不采用）
 }
 
 /** E 族 · 三档「**核心舱段**」——**一具接近完好的巨构**（族内最高级目标，船长裁定 8「核心舱段级代表位」）。
@@ -616,6 +622,7 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   elite: true, // 「精锐核心舱段」
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 3 }],
   droneRangeMulOnHit: 4, // 受击增程（全族口径）
+  droneReserve: { count: 3, respawnMs: 12000 }, // 备用机库 +3（总 6），12s 满血补位（旗舰机库更大；甲本轮不采用）
 }
 
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */

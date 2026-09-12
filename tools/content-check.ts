@@ -1662,16 +1662,27 @@ for (const m of MODULES) {
       }
       const sumShots = (def: (typeof ANOMALIES_FLAVORED)[number]): number =>
         createFoeSpecs(def, shareCtx.balance.battle).reduce(
-          (n, u) => n + u.weapons.reduce((m, w) => m + w.shotDmg, 0),
+          // ⚠ **排除备用机条目**（`w.reserve`）——备用机库是"库存深度"（战损后才放出），
+          // 不属于常驻齐射；本契约判的是"比例有没有动总量"，故两边都不计备用机。
+          (n, u) =>
+            n +
+            u.weapons.reduce((m, w) => m + (w.reserve === true ? 0 : (w.shotDmg ?? 0)), 0),
           0,
         )
-      /** 去掉卡上所有 `droneFireShare`（舰级缺省也要压掉）的克隆——用于守恒对照 */
+      /** 去掉卡上所有 `droneFireShare`（舰级缺省也要压掉）的克隆——用于守恒对照。
+       *  ⚠ **同时压掉 `droneReserve`**（2026-09-12 乙）——备用机库是**另一个维度**（库存深度）：
+       *  它按"拆分后的逐架单发"额外贡献火力，若只压比例不压备用，对照两边会差出备用机的份额，
+       *  误判成"不守恒"。本契约只判**比例**本身（同一编成下 T 不变）。 */
       const stripShare = (def: (typeof ANOMALIES_FLAVORED)[number]) => ({
         ...def,
         ships: def.ships?.map((s) => ({
           ...s,
           droneFireShare: undefined,
-          ship: { ...s.ship, droneFireShare: undefined },
+          ship: {
+            ...s.ship,
+            droneFireShare: undefined,
+            droneReserve: undefined,
+          },
         })),
       })
       for (const def of ANOMALIES_FLAVORED) {
@@ -1702,6 +1713,46 @@ for (const m of MODULES) {
         console.log(
           `· 机群火力占比契约：舰级缺省 ${shareShips} 条 · 卡上条目 ${shareSlots} 处（0~1 · 须有机群 · **总单发守恒**）`,
         )
+    }
+
+    /* ⑦ **备用机库**（2026-09-12 船长「或给敌机添加**备用机库**（损坏后补充敌机）」⇒ **本轮只采用乙**）
+     *    与 ⑧ **单次出击上限**（同日「限制敌机单次出击数量」⇒ 船长裁定「**甲留作后续其他机制**」）：
+     *    a) 乙：`droneReserve` 只允许**带机群的舰级**写；`count` = ≥1 整数、`respawnMs` = 500~60000ms
+     *       （⚠ 与 A3 裁定「打光为止不补充」相反 = 船长 2026-09-12 **改判**）；
+     *    b) 甲：机制已实现但**本轮不采用** ⇒ 契约**禁止任何舰级写 `droneLaunch`**
+     *       （与「敌突进 / 单波增援」同款"机制实现、不启用"纪律：开关就是"契约不许写"）。
+     */
+    {
+      let reserveShips = 0
+      let launchShips = 0
+      for (const ship of FOE_SHIPS) {
+        if (ship.droneReserve !== undefined) {
+          reserveShips++
+          check(
+            (ship.drones ?? []).length > 0,
+            `机群与防空契约：舰级「${ship.name}」写了备用机库却**没有机群**`,
+          )
+          check(
+            Number.isInteger(ship.droneReserve.count) && ship.droneReserve.count >= 1,
+            `机群与防空契约：舰级「${ship.name}」备用机库架数 ${ship.droneReserve.count} 须为 ≥1 的整数`,
+          )
+          check(
+            ship.droneReserve.respawnMs >= 500 && ship.droneReserve.respawnMs <= 60000,
+            `机群与防空契约：舰级「${ship.name}」备用机补位间隔 ${ship.droneReserve.respawnMs}ms 越界（须 500~60000ms）`,
+          )
+        }
+        if (ship.droneLaunch !== undefined) {
+          launchShips++
+          check(
+            false,
+            `机群与防空契约：舰级「${ship.name}」写了单次出击上限（\`droneLaunch\`）——` +
+              `船长 2026-09-12 裁定「**甲留作后续其他机制**」⇒ 本轮**不许任何舰级启用**（机制已实现、待启用）`,
+          )
+        }
+      }
+      console.log(
+        `· 机群出击契约：**备用机库** ${reserveShips} 条舰级启用（战损后满血补位；A3「不补充」已按船长改判）· **单次出击上限** ${launchShips} 条启用（机制就位、本轮不采用）`,
+      )
     }
   }
 

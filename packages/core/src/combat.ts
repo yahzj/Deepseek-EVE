@@ -64,6 +64,10 @@ export interface WeaponSpec {
   src?: WeaponSrc
   /** 无人机机型 id（src='drone' 时携带：drone-scout/assault/heavy/sentry —— UI 按机型出机体与弹点） */
   artId?: string
+  /** **备用机条目**（2026-09-12 乙 · 备用机库）：`true` = 本条目属于**备用机**（开局在库、战损后补位）。
+   *  只作**账目标记**：总火力/守恒类核对一律排除它（备用机是"库存深度"，不是常驻齐射的一份）。
+   *  缺省 = 常备机（零行为变化）。 */
+  reserve?: boolean
   /** fixed/beam 的固定伤害类型（beam = plasma 能量弹药键） */
   fixedType?: DamageType
   /** fixed/beam 单发伤害 */
@@ -165,6 +169,10 @@ export interface UnitSpec {
    *  `BattleState.foeDroneRangeBuff`（**标量**）上给**整支敌队**盖章，此后**所有敌舰**的机群射程
    *  ×本倍率（本场永久）；提示只推一条（船长二次裁定：「只触发一次，**对所有敌舰生效**」）。 */
   foeDroneRangeMulOnHit?: number
+  /** **单次出击上限**（见 `FoeShipDef.droneLaunch`；2026-09-12 船长「限制敌机单次出击数量」） */
+  foeDroneLaunch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean }
+  /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
+  foeDroneReserve?: { count: number; respawnMs: number }
   foeTactic: FoeTactic | null
 }
 
@@ -1151,6 +1159,29 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         reloadMs: ds.drone.reloadMs,
       })),
     )
+    // **备用机库**（2026-09-12 船长「损坏后补充敌机」）：备用机与 `drones` **同机型**，
+    // 建档时展开成**额外的待命条目**（`initFoeDronePools` 把它们标成 `inHangar`：不出战、不开火、
+    // 不计存活架数；前线战损后按 `respawnMs` 满血放出）。⚠ 不写 = 无备用（零行为变化）。
+    const reserve = ship.droneReserve
+    const reserveModel = (ship.drones ?? [])[0]?.drone
+    if (reserve && reserveModel && reserve.count > 0) {
+      for (let k = 0; k < Math.round(reserve.count); k++) {
+        droneWeapons.push({
+          label: `${reserveModel.name} ×1`,
+          kind: 'fixed' as const,
+          src: 'drone' as const,
+          artId: reserveModel.id,
+          reserve: true, // **账目标记**：备用机（库存深度）——总火力/守恒核对排除它
+          fixedType: reserveModel.damageType,
+          shotDmg: sp ? sp.drones[sp.drones.length - 1]! : Math.max(1, Math.round(reserveModel.dmg * (u.slot.dmgMul ?? 1))),
+          maxRangeM: Math.max(2, reserveModel.maxRangeM),
+          minRangeM: 1,
+          hitRate: reserveModel.hitRate,
+          falloff: reserveModel.falloff,
+          reloadMs: reserveModel.reloadMs,
+        })
+      }
+    }
     return {
       tag: u.tag,
       name,
@@ -1198,6 +1229,13 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         ...droneWeapons, // 机群：每架一条（同序 ⇒ 与 `foeDronePools[tag]` 逐架对齐）
       ],
       ...(droneWeapons.length > 0 ? { foeDrones: ship.drones } : {}),
+      // **单次出击上限 / 备用机库**（2026-09-12 船长两条裁定）：只在挂了机群时下发；缺省不写 ⇒ 零变化
+      ...(ship.droneLaunch && droneWeapons.length > 0
+        ? { foeDroneLaunch: ship.droneLaunch }
+        : {}),
+      ...(ship.droneReserve && droneWeapons.length > 0
+        ? { foeDroneReserve: ship.droneReserve }
+        : {}),
       // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化
       ...(ship.droneRangeMulOnHit !== undefined && droneWeapons.length > 0
         ? { foeDroneRangeMulOnHit: ship.droneRangeMulOnHit }
@@ -2112,6 +2150,8 @@ export function battleArcsFor(
     alive: number
     /** **受击增程已触发**（见 `FoeShipDef.droneRangeMulOnHit`）——表现层把机群阵位后撤、出击线拉长 */
     rangeBuff: boolean
+    /** **机库余量**（备用机库：在库待命的架数；2026-09-12 船长「损坏后补充敌机」）——缺省 = 无备用 */
+    hangar?: number
   }>
 } | null {
   const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
@@ -2239,8 +2279,12 @@ export function battleArcsFor(
   for (const f of foes) {
     const pools = battle.foeDronePools?.[f.tag]
     if (!pools || pools.length === 0) continue
+    // **备用机库**（2026-09-12）：在库待命的架次**不算出战架数**（画面不画、血条不计），
+    // 单独以 `hangar` 报给界面（可显示"机库余量"）。
+    const active = pools.filter((p) => p.inHangar !== true)
+    const hangarN = pools.length - active.length
     const byArt = new Map<string, { count: number; alive: number }>()
-    for (const p of pools) {
+    for (const p of active) {
       const id = p.artId ?? 'drone'
       const cur = byArt.get(id) ?? { count: 0, alive: 0 }
       cur.count += 1
@@ -2254,6 +2298,7 @@ export function battleArcsFor(
         count: v.count,
         alive: v.alive,
         rangeBuff: (battle.foeDroneRangeBuff ?? 1) > 1,
+        ...(hangarN > 0 ? { hangar: hangarN } : {}),
       })
   }
   return {
@@ -2626,28 +2671,73 @@ function initFoeDronePools(
     const slots = f.foeDrones
     if (!slots || slots.length === 0) continue
     const list: import('./state').DronePoolEntry[] = []
-    for (const ds of slots) {
-      const d = ds.drone.defense
+    const mk = (
+      d: (typeof slots)[number]['drone']['defense'],
+      artId: string,
+      inHangar: boolean,
+    ): import('./state').DronePoolEntry => {
       const resists = {
         ...(d.shieldResist ? { shield: d.shieldResist } : {}),
         ...(d.armorResist ? { armor: d.armorResist } : {}),
         ...(d.hullResist ? { hull: d.hullResist } : {}),
       }
-      for (let k = 0; k < Math.max(0, Math.round(ds.count)); k++) {
-        list.push({
-          s: Math.max(1, Math.round(d.shieldHp)),
-          a: Math.max(1, Math.round(d.armorHp)),
-          h: Math.max(1, Math.round(d.hullHp)),
-          alive: true,
-          artId: ds.drone.id,
-          evasion: clamp(0, 0.9, d.evasion ?? 0),
-          ...(Object.keys(resists).length > 0 ? { resists } : {}),
-        })
+      const s = Math.max(1, Math.round(d.shieldHp))
+      const a = Math.max(1, Math.round(d.armorHp))
+      const h = Math.max(1, Math.round(d.hullHp))
+      return {
+        s,
+        a,
+        h,
+        alive: true,
+        artId,
+        evasion: clamp(0, 0.9, d.evasion ?? 0),
+        ...(Object.keys(resists).length > 0 ? { resists } : {}),
+        // 满血三层值（备用机补位按此放出）；缺省字段仅供新档，旧档缺省即视为"当前血 = 满血"
+        maxS: s,
+        maxA: a,
+        maxH: h,
+        ...(inHangar ? { inHangar: true } : {}),
       }
     }
+    for (const ds of slots)
+      for (let k = 0; k < Math.max(0, Math.round(ds.count)); k++)
+        list.push(mk(ds.drone.defense, ds.drone.id, false))
+    // **备用机库**（2026-09-12）：同机型的额外条目，开局全部在库（不出战、不开火、不计存活架数）
+    const reserve = f.foeDroneReserve
+    const reserveModel = slots[0]?.drone
+    if (reserve && reserveModel)
+      for (let k = 0; k < Math.max(0, Math.round(reserve.count)); k++)
+        list.push(mk(reserveModel.defense, reserveModel.id, true))
     if (list.length > 0) pools[f.tag] = list
   }
   if (Object.keys(pools).length > 0) b.foeDronePools = pools
+}
+
+/** **单次出击（分批放飞）的"在空窗口"**（2026-09-12 船长「限制敌机单次出击数量」）——
+ *  按**在场架次列表**轮换：每 `cycleMs` 换一批，每批最多 `maxAloft` 架在空（其余在机库待命）。
+ *  `cycleMs` 缺省 = 机型装填时长（一批打完换下一批）。
+ *  ⚠ 纯**由战斗时钟推导**（`startedAtGameMs` 起算）⇒ **不新增存档字段**；
+ *  触发增程/备用补位都会自然改变"在场列表"，窗口随之重排。 */
+function aloftDroneSet(
+  pools: readonly import('./state').DronePoolEntry[],
+  launch: { maxAloft: number; cycleMs?: number },
+  reloadMs: number,
+  b: import('./state').BattleState,
+): ReadonlySet<number> {
+  const active: number[] = []
+  for (let i = 0; i < pools.length; i++) {
+    const p = pools[i]!
+    if (p.alive && p.inHangar !== true) active.push(i)
+  }
+  const out = new Set<number>()
+  if (active.length === 0) return out
+  const k = Math.max(1, Math.min(Math.round(launch.maxAloft), active.length))
+  const cycle = Math.max(200, launch.cycleMs ?? reloadMs)
+  const elapsed = Math.max(0, b.lastTickGameMs - b.startedAtGameMs)
+  const batch = Math.floor(elapsed / cycle)
+  const start = (batch * k) % active.length
+  for (let j = 0; j < k; j++) out.add(active[(start + j) % active.length]!)
+  return out
 }
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）。
@@ -2887,6 +2977,7 @@ export function pickFoeDroneTarget(
       roleOf.set(slot.drone.id, slot.drone.role)
     for (const p of pools[f.tag] ?? []) {
       if (!p.alive) continue;
+      if (p.inHangar === true) continue; // **备用机在库**：还没放飞 ⇒ 打不到它（2026-09-12）
       // **对称规则**（P-40）：敌方**哨戒机**要在**本武器射程内**才可被打；
       // **出击型**不受射程限制（它们扑到我方来，反击由"被攻击"的令牌驱动）。
       const role = p.artId ? roleOf.get(p.artId) : undefined
@@ -3075,6 +3166,20 @@ function stepBattle(
           b.stats.meDmg += r.dealt
           if (pool.s + pool.a + pool.h <= 0) {
             pool.alive = false
+            // **备用机库补位排期**（2026-09-12 船长「损坏后补充敌机」）：前线战损 ⇒ 从机库放出一架，
+            // `respawnMs` 后到位。⚠ 同一时刻只排**一架**（在前的那架到位后才轮到下一架）。
+            const reserveOf = foes.find((x) => x.tag === droneHit.foeTag)?.foeDroneReserve
+            const hangar = b.foeDronePools?.[droneHit.foeTag] ?? []
+            if (
+              reserveOf &&
+              reserveOf.count > 0 &&
+              !hangar.some((p) => p.inHangar === true && p.readyAtMs !== undefined)
+            ) {
+              const next = hangar.find(
+                (p) => p.inHangar === true && p.readyAtMs === undefined,
+              )
+              if (next) next.readyAtMs = b.lastTickGameMs + reserveOf.respawnMs
+            }
             pushBattleFx(b, {
               atMs: b.lastTickGameMs + dtMs,
               side: 'foe',
@@ -3134,19 +3239,49 @@ function stepBattle(
     // 池与 drone 条目**同序**（`initFoeDronePools` 按 slot 顺序展开），故用独立计数 `di` 对位。
     const fPools = b.foeDronePools?.[f.tag]
     if (fPools && fPools.length > 0 && meRt && isAlive(b, 'player')) {
+      // **备用机库补位到位**（2026-09-12 船长「损坏后补充敌机」）：到点的备用机翻成**在空**并**满血**放出
+      for (const p of fPools) {
+        if (p.inHangar !== true || p.readyAtMs === undefined) continue
+        if (b.lastTickGameMs < p.readyAtMs) continue
+        p.inHangar = false
+        p.readyAtMs = undefined
+        p.alive = true
+        p.s = p.maxS ?? p.s
+        p.a = p.maxA ?? p.a
+        p.h = p.maxH ?? p.h
+      }
+      // **单次出击上限**（2026-09-12 船长「限制敌机单次出击数量」）：本拍只有"在空窗口"里的架次能开火，
+      // 其余在机库待命（装填也冻着 ⇒ 轮到它时即打）。缺省不写该字段 ⇒ `aloft = null` ⇒ 全群照旧同时开火。
+      const launch = f.foeDroneLaunch
+      const reloadBase = f.weapons.find((w) => w.src === 'drone')?.reloadMs ?? 4400
+      const aloft = launch
+        ? aloftDroneSet(fPools, launch, reloadBase, b)
+        : null
+      const activeCount = fPools.filter((p) => p.alive && p.inHangar !== true).length
+      const kAloft = launch
+        ? Math.max(1, Math.min(Math.round(launch.maxAloft), Math.max(1, activeCount)))
+        : 0
+      // `keepDps`（推荐）：在空架次的有效装填 ×(k ÷ 在场架数) ⇒ **平均 DPS 守恒**（限制的是同时在空数）
+      const aloftReload = (base: number): number =>
+        launch && launch.keepDps === true && kAloft > 0 && activeCount > 0
+          ? Math.max(200, Math.round((base * kAloft) / activeCount))
+          : base
       let di = 0
       for (let k = 0; k < f.weapons.length; k++) {
         const dw = f.weapons[k]!
         if (dw.src !== 'drone') continue
         const pool = fPools[di]
+        const idx = di
         di += 1
         if (!pool || !pool.alive) continue; // 已被防空武器击落的架次：停火（条目保留占位）
+        if (pool.inHangar === true) continue; // **备用机**：在库待命（不开火、不算在场架数）
+        if (aloft && !aloft.has(idx)) continue; // **不在本批出击窗口**：在库待命（装填冻结）
         const dcd = rt.weapons[k] ?? 0
         if (dcd > 0) {
           rt.weapons[k] = Math.max(0, dcd - dtMs)
           continue
         }
-        rt.weapons[k] = dw.reloadMs
+        rt.weapons[k] = aloftReload(dw.reloadMs)
         // 射程门：**受击增程**生效时读 `foeDroneRangeOf`（机型射程 × 倍率），否则就是机型射程
         if (b.distanceM > foeDroneRangeOf(b, dw)) continue // 机群够不着（我方在它射程外）
         b.stats.foeShots += 1;

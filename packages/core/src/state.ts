@@ -608,6 +608,18 @@ export interface DronePoolEntry {
   evasion: number
   /** 机型三层抗性（近防炮伤害逐层消费用） */
   resists?: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
+  /**
+   * **在库待补**（2026-09-12 船长「给敌机添加备用机库（损坏后补充敌机）」）：
+   * `true` = 本架是**备用机**，尚未放飞（不开火、不出战、不算存活架数）；
+   * 前线战损后由 `readyAtMs` 到期翻成 `false` 并**满血补位**（`s/a/h` 在翻牌时重置）。
+   */
+  inHangar?: boolean
+  /** 备用机的**补位时刻**（战斗时钟 ms；仅在 `inHangar` 期间有意义） */
+  readyAtMs?: number
+  /** 本架**满血三层值**（建池时写入；备用机补位时按此**满血**放出——2026-09-12） */
+  maxS?: number
+  maxA?: number
+  maxH?: number
 }
 
 /** 船体维修装置单台运行快照（2026-09-09：开战写入，离线续算不依赖当前装配） */
