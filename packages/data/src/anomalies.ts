@@ -432,12 +432,17 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         count: 1,
         hpMul: 990.625 / FOE_SHIP_TITAN_HULK.hp,
         dmgMul: 96 / (FOE_SHIP_TITAN_HULK.shotDmg * E_COMP(2)),
+        // **机群为主 60%**（2026-09-11 船长「允许调整敌舰的无人机/炮台火力比例，根据每个悬赏卡制定」·
+        // 首版取值，待船长细调）：族格是「**依靠无人机攻击炮台射程外的敌人**」+ 炮台老化失准
+        // （命中 0.65、10 秒一发）⇒ 主力必须在机群；总单发守恒，炮台单发相应让位。
+        droneFireShare: 0.6,
       },
       {
         ship: FOE_SHIP_TITAN_HULK, // 僚机位：原「轻装攻坚重甲舰」
         count: 1,
         hpMul: 594.375 / FOE_SHIP_TITAN_HULK.hp,
         dmgMul: 58 / (FOE_SHIP_TITAN_HULK.shotDmg * E_COMP(2)),
+        droneFireShare: 0.6, // 与主体同口径（同一条舰级 = 同一截巨构）
       },
     ],
     galaxyId: 'galaxy-abyss',
@@ -477,6 +482,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         count: 1,
         hpMul: (1740 * (5 / 11)) / FOE_SHIP_AURO_HULK.hp, // = 790.909/990
         dmgMul: 46 / (FOE_SHIP_AURO_HULK.shotDmg * E_COMP(3)), // 设计单发 46（原 59 —— 让位给机群）
+        // **机群 50%**（首版取值，待船长细调）：奥罗命中 0.95（老化比泰坦级轻）⇒ 炮台仍可用，
+        // 故主体按"机炮各半"起手；总单发守恒。
+        droneFireShare: 0.5,
       },
       {
         ship: FOE_SHIP_AURO_HULK, // 僚机位 ×2：原「轻装武装残骸」
@@ -484,6 +492,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         escort: true,
         hpMul: (1740 * (3 / 11)) / FOE_SHIP_AURO_HULK.hp, // = 474.545/990
         dmgMul: 27 / (FOE_SHIP_AURO_HULK.shotDmg * E_COMP(3)), // 设计单发 27（原 35）
+        // **轻装机群 70%**（首版取值）：同一截残骸的**轻装规格**（血量只有主体的六成）⇒ 更"残"、
+        // 炮更不可用 ⇒ 更依赖机群；同时演示**条目级旋钮**（同卡两条目可各写各的）。
+        droneFireShare: 0.7,
       },
     ],
     galaxyId: 'galaxy-auro',
