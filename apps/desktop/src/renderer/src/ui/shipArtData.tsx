@@ -1,4 +1,4 @@
-﻿// 由 tools/_gen-shipart.cjs 生成(一次性,已删):舰形资产转录(三号 2026-09-09)
+// 由 tools/_gen-shipart.cjs 生成(一次性,已删):舰形资产转录(三号 2026-09-09)
 import type { ReactNode } from 'react'
 export const SHIP_ART_EXTRA: Record<string, ReactNode> = {
   "sh-shrike": (
@@ -535,32 +535,66 @@ export const FOE_ART_EXTRA: Record<string, ReactNode> = {
           <path d="M120 76 c-4 8 2 12 -6 18 M150 78 c2 8 -4 14 2 20" opacity=".8"/>
     </g>
   ),
+  /* D 族「守墓古舰」· **2026-09-12 重绘**（船长 P-06：「允许对 D 组和 E 组外形进行修改」）——
+   * 语言 = 设定卡「**远古机械化的陵墓文明**」：**穹顶**（封存结构本体）＋ **骨架式艉楼**（暴露肋骨与脊梁）
+   * ＋ **静滞舱列**（一排休眠舱，冷光＝舱内还在"睡"）＋ **能量长炮**；保留"残破古典长舰"的体量，
+   * 并在中前段留一处**断口**（它不是完好军舰，是"还在守约的墓"）。
+   * 族色磷光冰蓝 `#9fd0f2`（`.shipart-volt-i` / `.shipart-fill-i`）＝静滞/沉睡的冷光。
+   * 挂点：艉推进块 M58..、舰艏炮口 M231 49（见 `shipMounts.ts`）。 */
   "D": (
     <g>
-      <path d="M210 58 C206 44 178 36 138 36 C100 36 76 44 64 54 L56 60 L68 66 C84 72 108 75 136 74 L184 72 Z"/>
-          
-          <path d="M84 40 h20 v20 h-20 z M88 44 h12"/>
-          
-          <path d="M120 36 V18 M142 36 V14 M166 36 V20"/>
-          <path className="shipart-volt-i" d="M120 24 l6 4 l-6 4 M142 20 l6 4 l-6 4" opacity=".8"/>
-          
-          <circle className="shipart-fill-i" cx="150" cy="30" r="1.3"/>
-          <circle className="shipart-fill-i" cx="176" cy="36" r="1.2"/>
-          <path className="shipart-volt-i" d="M200 50 c4 2 4 6 0 8" opacity=".7"/>
-          
-          <path d="M210 54 L230 52 L230 56 L210 60 Z"/>
-          
-          <path className="shipart-panel" d="M96 68 h8 v3 M110 69 h8 v3 M124 70 h8 v3 M138 70 h8 v3" opacity=".6"/>
-          
-          <path className="shipart-panel" d="M130 42 l12 26 M150 40 l8 26" strokeDasharray="4 3"/>
-          
-          <path d="M58 44 h8 v12 h-8 z M58 60 h8 v12 h-8 z" opacity=".8"/>
-          <path className="shipart-volt-i" d="M48 46 h8 v8 h-8 z M48 62 h8 v8 h-8 z" fill="none"/>
+      {/* 主舰体（长低船身 + 斜艏；顶边中前段一处**断口**＝锯齿缺口） */}
+      <path d="M226 56 L206 44 L172 42 L150 42 L142 34 L134 40 L126 33 L118 42 L64 46 L52 54 L60 68 L104 76 L180 74 L214 66 Z" />
+      {/* **穹顶**（封存结构本体）：半圆穹壳 + 分段舱壁（陵寝的核心在穹顶之下） */}
+      <path d="M118 44 a24 18 0 0 1 48 0" />
+      <path className="shipart-panel" d="M130 44 v-9 M144 44 v-14 M158 44 v-14 M170 44 v-9" />
+      {/* **骨架式艉楼**：暴露的肋骨（竖骨）与脊梁（横骨）——"静滞的守卫框架" */}
+      <path d="M66 46 v28 M74 45 v30 M82 44 v32 M90 44 v33" />
+      <path className="shipart-panel" d="M62 58 h34" />
+      {/* **静滞舱列**：三具休眠舱（冷光描边） */}
+      <path className="shipart-volt-i" d="M120 60 h11 v9 h-11 z M136 61 h11 v9 h-11 z M152 62 h11 v9 h-11 z" fill="none" />
+      <circle className="shipart-fill-i" cx="125.5" cy="64.5" r="1.1" />
+      <circle className="shipart-fill-i" cx="141.5" cy="65.5" r="1.1" />
+      <circle className="shipart-fill-i" cx="157.5" cy="66.5" r="1.1" />
+      {/* **能量长炮**（舰艏）：细长炮管 + 炮口冷光（D 族"以能量武器为主"） */}
+      <path d="M204 48 L232 46 L232 52 L204 54 Z" />
+      <path className="shipart-volt-i" d="M226 43 c5 2 5 9 0 12" opacity=".7" />
+      {/* 舱壁接缝 + 两枚发光印记（"誓约驱动的意志"：仍在运行的守约冷光） */}
+      <path className="shipart-panel" d="M96 66 h8 v3 M112 68 h8 v3 M170 66 h8 v3" opacity=".6" />
+      <path className="shipart-panel" d="M188 44 l6 26 M196 42 l4 28" strokeDasharray="4 3" />
+      <circle className="shipart-volt-i" cx="150" cy="30" r="1.4" />
+      <circle className="shipart-volt-i" cx="176" cy="38" r="1.2" />
+      {/* 艉部推进块（挂点 M58 50 / M58 66） */}
+      <path d="M58 44 h8 v12 h-8 z M58 60 h8 v12 h-8 z" opacity=".8" />
     </g>
   ),
+  /* E 族「泰坦巨构」· **2026-09-12 重绘**（船长 P-06：「允许对 D 组和 E 组外形进行修改
+   * （**E 族现在都是残骸**）」）——语言 = 设定卡「**无人的巨构残骸 + 残存自动程序**」：
+   * **分节巨构舱段**（大块体 + 贯通接缝）＋ **暴露桁架与断口**（后段被撕开一片、露出骨架）
+   * ＋ **少量仍在运行的冷光**（"机器还在跑"）；不是流线军舰，是"还在跑的机器残骸"。
+   * 族色残铁棕 `#d9b98c`（`.shipart-accf`）；挂点：艉推进块 M58..、舰艏炮口 M220 50。
+   * ⚠ **核心舱段（T5）的"接近完好"变体**属后续（需按舰种档分支外形），本形是 T3/T4 的**残骸基准形**。 */
   "E": (
     <g>
-      <path d="M206 52 C202 38 176 30 140 30 C100 30 74 38 62 50 L54 56 L64 66 C82 78 112 84 148 84 L196 76 Z"/><path className="shipart-panel" d="M96 32 L120 80 M126 30 L148 80 M158 30 L178 78 M184 34 L202 72" opacity=".55"/><path d="M206 52 L216 50 L218 64 L206 68 Z" opacity=".85"/><path className="shipart-panel" d="M206 52 h8 M206 60 h8 M212 52 v12 M212 60 v4" opacity=".7"/><path d="M132 30 h12 v10 h-12 z M158 30 h10 v9 h-10 z"/><path d="M96 52 h10 v7 h-10 z M116 54 h10 v7 h-10 z M136 55 h10 v7 h-10 z"/><path d="M106 52 v-5 M126 54 v-5 M146 55 v-5"/><path d="M60 46 h11 v12 h-11 z M60 62 h11 v12 h-11 z" opacity=".85"/><circle className="shipart-accf" cx="120" cy="84" r="1.6"/>
+      {/* 舰体 = **三段巨构舱段**（前楔 / 中段 / 后段），接缝即舱段分界 */}
+      <path d="M232 54 L206 40 L176 38 L176 78 L210 72 Z" />
+      <path d="M176 38 L118 36 L118 80 L176 78 Z" />
+      {/* 后段：上缘被**撕开**（锯齿断口）——"残骸"的由来 */}
+      <path d="M118 36 L108 27 L99 34 L90 29 L80 38 L64 43 L54 54 L62 70 L96 78 L118 80 Z" />
+      {/* 贯通接缝（舱段分界）+ 内部框架线 */}
+      <path d="M176 38 v40 M118 36 v44" />
+      <path className="shipart-panel" d="M186 42 v30 M164 42 v32 M130 40 v38 M150 40 v36" opacity=".55" />
+      {/* **暴露桁架**（断口处露出的骨架）：交叉支撑 */}
+      <path className="shipart-panel" d="M78 40 L94 56 M74 48 L90 64 M70 56 L86 70" opacity=".85" />
+      {/* 舰艏炮座 + 炮口（挂点 M220 50） */}
+      <path d="M206 44 h14 v12 h-14 z" />
+      <path className="shipart-panel" d="M206 48 h14 M206 52 h14 M213 44 v12" opacity=".7" />
+      {/* **仍在运行的冷光**（残存自动程序：不追你、不恨你，只把靠近的东西当靶子） */}
+      <circle className="shipart-accf" cx="150" cy="58" r="1.6" />
+      <circle className="shipart-accf" cx="196" cy="56" r="1.3" />
+      <path className="shipart-accf" d="M124 46 h12 v8 h-12 z" fill="none" opacity=".8" />
+      {/* 艉部推进块（挂点 M58 50 / M58 66） */}
+      <path d="M56 48 h9 v13 h-9 z M56 63 h9 v13 h-9 z" opacity=".85" />
     </g>
   ),
   "G": (
