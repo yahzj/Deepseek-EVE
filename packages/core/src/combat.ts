@@ -3011,7 +3011,8 @@ function pushBattleNotice(b: import('./state').BattleState, text: string): void 
 
 /**
  * 近防炮可选靶（存活放飞条目下标）：
- * - 默认**排除哨戒机**（2026-09-10 船长：近防炮不打哨戒无人机）；
+ * - 哨戒机**优先**（`pdPriorityOf` = 0），但**要进射程**才算候选（2026-09-12 船长改判：
+ *   原 2026-09-10「近防炮不打哨戒无人机」**已作废**；见 `PD_PRIORITY_BY_ART` 与 `PD_SENTRY_RANGE_M`）；
  * - **非哨戒机全被摧毁后，近防炮转而攻击哨戒机**（2026-09-10 船长追加）——
  *   即"机群里还有别的机型就先打别的，只剩哨戒机时才打它"。
  */
@@ -3062,7 +3063,7 @@ const PD_REACTIVE_WINDOW_MS = 5_000
  */
 const PD_SENTRY_RANGE_M = 2_500
 
-/** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
+/** 哨戒机机型 id（**2026-09-12 起为"优先打击"而非"排除"**；机型表变化时此处同步） */
 const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry'])
 
 /** 存活放飞条目下标（近防炮选靶 / 开火跳过共用）；`droneTotalCount` 已随"取消单场上限"移除用途 */
@@ -3074,13 +3075,21 @@ export function droneLostCount(b: import('./state').BattleState): number {
 
 /** 近防炮选靶优先级（2026-09-12 船长：「**优先攻击哨戒和攻坚无人机**」「侦查和普通战机相同权重抽取」）：
  *  `0` = 最高（哨戒机）· `1`（攻坚机）· `2` = 其余（侦察机 / 战斗机 / 专属机等，**彼此等权**）。
- *  ⚠ 哨戒机另受"进 `PD_SENTRY_RANGE_M` 才暴露"的约束（船长 2026-09-11 重新定义）。 */
+ *
+ *  ⚠ **两侧共用本函数、查表轴不同**（P-40 收口时发现）：**敌方侧**打的是**我方机型**（id 稳定、
+ *  表里有登记）⇒ 按**机型 id** 命中；**我方侧**打的是**敌方机型**（不受本表约束，且日后才可能加
+ *  哨戒/攻坚机型）⇒ 查不到时**退回按 `role` 判档**（`sentry` → 0 / `assault` → 1），加机型即生效。
+ *  ⚠ 哨戒机另受"进 `PD_SENTRY_RANGE_M`（我方侧 = 本武器射程）才暴露"的约束（船长 2026-09-11 重新定义）。 */
 const PD_PRIORITY_BY_ART: Record<string, number> = {
   'drone-sentry': 0,
   'drone-heavy': 1,
 }
-function pdPriorityOf(artId: string | undefined | null): number {
-  return artId ? (PD_PRIORITY_BY_ART[artId] ?? 2) : 2
+function pdPriorityOf(artId: string | undefined | null, role?: string): number {
+  const byArt = artId ? PD_PRIORITY_BY_ART[artId] : undefined
+  if (byArt !== undefined) return byArt
+  if (role === 'sentry') return 0
+  if (role === 'assault') return 1
+  return 2
 }
 
 /**
@@ -3207,6 +3216,8 @@ export function pickFoeDroneTarget(
   foes: readonly UnitSpec[],
   dist: number,
   w: { minRangeM: number; maxRangeM: number },
+  /** 我方**武器槽下标**（集火锁定的索引轴；见 `BattleState.mePdFocus`） */
+  wi = 0,
 ): { foeTag: string; pool: import('./state').DronePoolEntry } | null {
   const pools = b.foeDronePools
   if (!pools) return null;
@@ -3225,7 +3236,10 @@ export function pickFoeDroneTarget(
   // 旧口径用 `b.distanceM` 判 ⇒ 画面里贴着您的敌机被当成在 4.5km 外 ⇒ 近防炮"不工作"（船长实测）。
   const cands: Array<{
     foeTag: string
+    idx: number
     pool: import('./state').DronePoolEntry
+    /** 该机型的角色（选靶优先级按 role 兜底判档——敌方机型不受我方 id 表约束） */
+    role: string | undefined
   }> = []
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue;
@@ -3233,7 +3247,9 @@ export function pickFoeDroneTarget(
     const roleOf = new Map<string, string>()
     for (const slot of f.foeDrones ?? [])
       roleOf.set(slot.drone.id, slot.drone.role)
-    for (const p of pools[f.tag] ?? []) {
+    const arr = pools[f.tag] ?? [];
+    for (let i = 0; i < arr.length; i++) {
+      const p = arr[i]!;
       if (!p.alive) continue;
       if (p.inHangar === true) continue; // **备用机在库**：还没放飞 ⇒ 打不到它（2026-09-12）
       // **对称规则**（P-40）：敌方**哨戒机**要在**本武器射程内**才可被打；
@@ -3241,13 +3257,31 @@ export function pickFoeDroneTarget(
       const role = p.artId ? roleOf.get(p.artId) : undefined
       if (role === 'sentry' && (dist < w.minRangeM || dist > w.maxRangeM))
         continue
-      cands.push({ foeTag: f.tag, pool: p })
+      cands.push({ foeTag: f.tag, idx: i, pool: p, role })
     }
   }
   if (cands.length === 0) return null
-  return cands[
-    nextInt(state.rng, cands.length)
-  ]!
+  // ── **集火**（2026-09-12 船长「改为集火制度」；P-40 乙案：与我方侧口径对齐）──
+  // 本武器已锁定的那架**还活着且仍可打** ⇒ 继续打它（换靶只发生在"被击落 / 被备用机替换 / 出射程"时）。
+  // ⚠ 与敌方侧 `pdFocus` 同口径（那侧按**点防舰**同序存；我方按**武器槽**存，见 `BattleState.mePdFocus`）。
+  const focus: Array<{ tag: string; idx: number } | undefined> = b.mePdFocus ? [...b.mePdFocus] : []
+  const locked = focus[wi]
+  if (locked) {
+    const keep = cands.find((c) => c.foeTag === locked.tag && c.idx === locked.idx)
+    if (keep) return { foeTag: keep.foeTag, pool: keep.pool }
+  }
+  // ── **选靶优先级**（船长 2026-09-12：「**优先攻击哨戒和攻坚无人机**」「侦查和普通战机相同权重抽取」）──
+  // 与敌方侧 `pdPriorityOf` **同一张表**：哨戒 0 → 攻坚 1 → 其余 2；取**当前存在的最低档**，同档**等权随机**。
+  let best = 2
+  for (const c of cands) {
+    const p = pdPriorityOf(c.pool.artId, c.role)
+    if (p < best) best = p
+  }
+  const tier = cands.filter((c) => pdPriorityOf(c.pool.artId, c.role) === best)
+  const pick = tier[nextInt(state.rng, tier.length)]!
+  focus[wi] = { tag: pick.foeTag, idx: pick.idx }
+  b.mePdFocus = focus
+  return { foeTag: pick.foeTag, pool: pick.pool }
 }
 
 function stepBattle(
@@ -3337,7 +3371,7 @@ function stepBattle(
       // **射程口径（船长 2026-09-11 甲案）**：打机群**不看两舰间距**（敌机扑到您舰旁才开火，
       // 机制服从画面）⇒ 有敌机可打时不受 `inRange` 拦截；只有"打舰"才按本武器射程判。
       const droneHit = w.canHitDrones
-        ? pickFoeDroneTarget(state, b, foes, b.distanceM, w)
+        ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi)
         : null
       if (!droneHit && !inRange(b.distanceM, w)) continue;
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取

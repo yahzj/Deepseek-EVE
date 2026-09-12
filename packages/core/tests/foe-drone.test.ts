@@ -523,12 +523,19 @@ describe("敌机：单次出击上限 + 备用机库", () => {
     if (downed > 0) {
       // **补位成立**：库里的减去已放出的 = 战损数（掉几架补几架，直到库存耗尽）
       expect(inHangar).toBe(Math.max(0, 3 - downed))
+      // ⚠ 2026-09-12 近防炮伤害上调（船长裁定「丙」：短射程补偿 ⇒ 单发 5 → 16）后，
+      //   四门近防炮在 150 秒里足以把整群（含补位机）打光 ⇒ **不再要求"必须有存活的补位机"**
+      //   （那是旧平衡下的偶然现象，会让用例与数值绑定）。改为核对**补位确实发生**：
+      //   备用机只有"被放出"这一条路径能离开机库 ⇒ `inHangar` 减少即补位成立（上面那条已钉住数量关系）。
+      expect(inHangar).toBeLessThan(3)
+      // **满血放出**（不是残血补位）：被放出的备用机若仍存活，三层血必为满值
+      // （全被打光时该断言无从取样 —— 用 `alive` 过滤，不把"打光"误判成失败）
       const promoted = list.filter((p) => p.alive && p.inHangar !== true && p.maxS !== undefined)
-      expect(promoted.length).toBeGreaterThan(0)
-      // **满血放出**（不是残血补位）
-      expect(
-        promoted.some((p) => p.s === p.maxS && p.a === p.maxA && p.h === p.maxH),
-      ).toBe(true)
+      if (promoted.length > 0) {
+        expect(
+          promoted.some((p) => p.s === p.maxS && p.a === p.maxA && p.h === p.maxH),
+        ).toBe(true)
+      }
     } else {
       expect(inHangar).toBe(3) // 一架没掉 ⇒ 备用机仍全在库
     }
