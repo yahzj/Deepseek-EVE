@@ -225,14 +225,17 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 40,
-    description: '动能点防炮：射程短、射速快，是唯一能打敌方机群的武器。对舰也能开火，威力却远不如主炮——占一个高槽，换的是带机群的仗里的答案。',
+    description: '动能点防炮：射程短、射速快。贴到近处威力很足，对舰不吃亏；也是唯一能打敌方机群的武器。',
     cpuUse: 12,
     maxRangeM: 2500, // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」（原 1400）；打机群**不看两舰间距**（甲案）
     minRangeM: 1, // 无近盲带：贴到脸上也开火
     hitRate: 0.9, // 点防本职：高命中
     falloff: 0.5,
     reloadMs: 1500, // 快射速是它的性格
-    dmgMult: 0.5, // ≈ 同档主炮（轻型炮台 MK1 = 1.25）的 40% ⇒ 对舰明显偏弱
+    // **2026-09-12 船长裁定「丙」**：「**提高近防炮伤害，且因为其射程更短，威力应该提高**」⇒
+    // 单发 3 → **10**（dmgMult 0.5 → 1.65）、名义 DPS 2.00 → **6.67**（= 轻型炮台 MK1 的 1.28 倍——
+    // 射程只有 2,500m 对 3,220m，近身威力补回来）。**作废**旧口径「单发 = 同档主炮的 ~40% ⇒ 对舰明显偏弱」。
+    dmgMult: 1.65,
     canHitDrones: true, // **防空属性**：唯一能筛到敌方无人机的武器类型
   },
   // 2026-09-11 补档（防空行实测口径：**射程不拉长**——1.4 km 已在"贴近"打法里够用，
@@ -245,14 +248,14 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 48,
-    description: '动能点防炮的强化型：射速更快、单发更重，射程依旧偏短。带机群的仗里，它让机群更快掉下来。',
+    description: '动能点防炮的强化型：射速更快、单发更重，射程依旧偏短——近身对舰与打机群都更利落。',
     cpuUse: 26,
     maxRangeM: 2500, // 三档同射程（船长「按照 2500m 算」）——MK2/MK3 的差异只在单发与射速
     minRangeM: 1,
     hitRate: 0.9,
     falloff: 0.5,
     reloadMs: 1400,
-    dmgMult: 0.8,
+    dmgMult: 2.65, // 2026-09-12 裁定「丙」：单发 5 → **16**、名义 DPS **11.43**（= 重型炮台 MK2 的 1.24 倍）
     canHitDrones: true,
   },
   {
@@ -263,14 +266,14 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 56,
-    description: '动能点防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段。对舰威力仍明显低于同档主炮。',
+    description: '动能点防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段——贴上去打，它是全场最凶的一门。',
     cpuUse: 44,
     maxRangeM: 2500,
     minRangeM: 1,
     hitRate: 0.92,
     falloff: 0.5,
     reloadMs: 1300,
-    dmgMult: 1.05,
+    dmgMult: 2.85, // 2026-09-12 裁定「丙」：单发 6 → **17**、名义 DPS **13.08**（= 攻坚炮台 MK3 的 1.24 倍）
     canHitDrones: true,
   },
   // ══════════ 激光炮（V18B-2 能量系武器形态：消耗能量弹药，必中光束） ══════════
