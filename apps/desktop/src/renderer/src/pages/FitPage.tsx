@@ -97,6 +97,11 @@ interface FitSeg {
 const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: '盾', a: '甲', h: '结构' }
 const TYPE_SN: Record<string, string> = { kinetic: '动', explosive: '爆', plasma: '热' }
 
+/** 负数按本仓文案惯例用真减号 U+2212 显示（CPU 剩 −12 而非 -12） */
+function minus(n: number): string {
+  return n < 0 ? `−${-n}` : `${n}`
+}
+
 /** 名义火力（全命中、无距离衰减、弹药不断供）：Σ 各武器 单发/装填秒。
  * 仅供"同条件下换装相对比较"——战斗实际 DPS 还乘命中/距离衰减（基础舰炮恒在，剔除避免稀释）。 */
 function rawDpsOf(spec: UnitSpec): number {
@@ -138,9 +143,15 @@ function diffSegs(
   const dir = (d: number): 'up' | 'down' => (d > 0 ? 'up' : 'down')
   // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）。
   // 2026-09-11 协处理器：**预算随件走** —— 装/卸协处理器时前后预算不同，两栏各用自己的预算。
-  const remCur = Math.max(0, cpuTotal - cpuCur)
-  const remNext = Math.max(0, (cpuTotalNext ?? cpuTotal) - cpuNext)
-  if (remNext !== remCur) add(`CPU 剩 ${remCur}→${remNext}`, 'info')
+  // 2026-09-12 船长（玩家反馈「超了只显示到 0，看不到差多少、也不变红」）：「按甲来」——
+  // 装后**超载**（剩余 < 0）给**负数 + 「差 N」并标红**；**刚好装满**（= 0，合法、装得进）单列中性文案；
+  // 其余仍只报变化。⚠ 判据是"装后是否超预算"，不是"变化没变化"——已超载的船换同耗件也要照红。
+  const remCur = cpuTotal - cpuCur
+  const remNext = (cpuTotalNext ?? cpuTotal) - cpuNext
+  if (remNext < 0) add(`CPU 剩 ${minus(remCur)}→${minus(remNext)}（差 ${-remNext}）`, 'down')
+  else if (remNext !== remCur) {
+    add(remNext === 0 ? `CPU 剩 ${minus(remCur)}→0（刚好装满）` : `CPU 剩 ${minus(remCur)}→${remNext}`, 'info')
+  }
   // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
   for (const k of ['s', 'a', 'h'] as const) {
@@ -263,22 +274,28 @@ function rangeShort(m: ModuleDef): string {
   return `${loS} ~ ${hi}`
 }
 
-/** CPU 剩余条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配；减法显示剩余——船长 2026-09-05） */
+/** CPU 剩余条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配；减法显示剩余——船长 2026-09-05）
+ *  2026-09-12 船长（玩家反馈「超了只显示到 0，看不到差多少、也不变红」）：「按甲来」——
+ *  剩余**允许为负**：负数 = 超载 ⇒ 数字给负数 + 右侧「超 N」+ 危险红（`is-full`）；
+ *  **刚好装满**（= 0，合法、装得进）从红里分出来 ⇒ 琥珀 + 「刚好装满」；有余量照旧按百分比分级。 */
 function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
-  const rem = Math.max(0, total - used)
-  const remPct = total > 0 ? Math.min(100, (rem / total) * 100) : 0
-  // 醒目分级：剩余充足青绿 → ≤15% 琥珀告警 → 0 危险红
-  const cls = rem <= 0 ? 'is-full' : remPct <= 15 ? 'is-warn' : 'is-ok'
+  const rem = total - used
+  const over = rem < 0
+  const remPct = total > 0 ? Math.max(0, Math.min(100, (rem / total) * 100)) : 0
+  // 醒目分级：剩余充足青绿 → ≤15% 琥珀告警（含"刚好装满"）→ 超载危险红
+  const cls = over ? 'is-full' : remPct <= 15 ? 'is-warn' : 'is-ok'
   return (
     <div
       className={`app-fit-cpustrip ${cls}`}
-      title="档位基础：低级 5 / 中级 15 / 高级 40 CPU（炮台更高）；剩余 = 船体上限 − 已装占用，与无人机放飞共用"
+      title="档位基础：低级 5 / 中级 15 / 高级 40 CPU（炮台更高）；剩余 = 船体上限 + 协处理器扩容 − 已装占用（含无人机舱清单）。剩余 0 = 刚好装满（装得进，但加不了新件）；负数 = 超载（装不上，先卸件或装协处理器扩容）"
     >
       <span className="app-fit-cpustrip-label">CPU 剩余</span>
       <span className="app-fit-cpustrip-num">
-        {rem} / {total}
+        {minus(rem)} / {total}
       </span>
-      <span className="app-fit-cpustrip-pct">{Math.round(remPct)}%</span>
+      <span className="app-fit-cpustrip-pct">
+        {over ? `超 ${-rem}` : rem === 0 ? '刚好装满' : `${Math.round(remPct)}%`}
+      </span>
       <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(remPct)} aria-valuemin={0} aria-valuemax={100}>
         <i style={{ width: `${remPct}%` }} />
       </span>
@@ -745,6 +762,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             <div className="app-dim app-note">
               以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前
               对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。默认按稀有度从高到低排列。
+              红色的「CPU 剩 …（差 N）」= 装后超预算，这件装不上（先卸件，或低槽装一件「协处理器」扩容）；
+              红色的属性段只是数值下降，照样装得上。
             </div>
             {/* 筛选与搜索（2026-09-11 船长定：参考市场页；复刻 app-mkt-search 那套"搜索框 + 分类下拉 + 命中计数"） */}
             <div className="app-mkt-search app-fit-pick-filter">
@@ -962,7 +981,8 @@ function DroneBaySection({
   const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx) : 0
   // 2026-09-11 协处理器：预算含扩容（与 core `adjustDroneLoad` 同源，界面不会"能装/装不上"打架）
   const cpuTotal = cpuBudgetOf(state, ctx, target)
-  const cpuLeft = Math.max(0, cpuTotal - fittedCpu - droneCpu)
+  const cpuLeftRaw = cpuTotal - fittedCpu - droneCpu // 显示用：允许为负（超载时让玩家看见差多少）
+  const cpuLeft = Math.max(0, cpuLeftRaw) // 钳制用：决定"还能装几架"
 
   function adj(id: string, delta: number): void {
     const r = engine.adjustDroneLoadAt(id, delta, target)
@@ -1054,7 +1074,7 @@ function DroneBaySection({
         <div className="app-fit-overlay" onClick={() => setOpen(false)}>
           <div className="app-fit-modal app-fit-drone-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-fit-modal-head">
-              <span>装入无人机（无人机舱 {Math.round(usedM3 * 10) / 10}/{cap} m³ · 余 CPU {cpuLeft}）</span>
+              <span>装入无人机（无人机舱 {Math.round(usedM3 * 10) / 10}/{cap} m³ · 余 CPU {minus(cpuLeftRaw)}）</span>
               <button className="app-btn is-small" onClick={() => setOpen(false)}>
                 关闭
               </button>
