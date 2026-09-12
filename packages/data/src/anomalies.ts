@@ -450,7 +450,10 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         firepowerAnchor: 216,
       },
     ],
-    galaxyId: 'galaxy-abyss',
+    // 2026-09-12 船长「**将所有巨构移动到奥罗荒环**」：E 族三卡**全部集中**到奥罗荒环
+    //（原在深渊之门；深渊之门恢复为纯 C 族异形星系——其 lore「古老跃迁门…守卫森严」不涉巨构，故无需改文案）。
+    // ⚠ 连带：同星系日板"取级别最高（并列取奖金最高）"⇒ 见卡表 §11.6 的派发口径备注。
+    galaxyId: 'galaxy-auro',
     threat: 60,
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
@@ -550,7 +553,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         firepowerAnchor: 672,
       },
     ],
-    galaxyId: 'galaxy-abyss', // 深渊之门（E 族两卡的 lore 系统：泰坦残骸静卧的深渊航道）
+    galaxyId: 'galaxy-auro', // 奥罗荒环（2026-09-12 船长「将所有巨构移动到奥罗荒环」⇒ E 族三卡同域）
     threat: 84,
     tactic: 'orbit', // 族规「中距为主」（舰级已解除期望距离钉住 ⇒ 交距 = 带内插值 0.55 × 10,000 ≈ 5,545m）
     defProfile: 'armor',
