@@ -739,6 +739,7 @@ const BATTLE_FIELDS = {
   notices: { kind: 'runtime', why: '战斗画面提示条：纯表现层，限时自动消失、不留档' },
   pdCd: { kind: 'runtime', why: '近防炮调度冷却（当前波）：重载即重置为可开火' },
   pdFocus: { kind: 'runtime', why: '近防炮集火锁定：缺省 = 下一拍按优先级重选（2026-09-12 设计即零迁移）' },
+  mePdFocus: { kind: 'runtime', why: '我方近防炮集火锁定（P-40）：同上，缺省 = 每拍按优先级重选（零迁移）' },
 } satisfies Record<keyof BattleState, BattleFieldSpec>
 
 /** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */
