@@ -554,6 +554,14 @@ export interface BattleState {
    *  开战与每次换波由 `combat.initFoeDronePools` 重建。
    *  **缺省 = 本场没有敌机**（无 `FoeShipDef.drones` 的敌舰一律不建池）⇒ 既有战斗零行为变化。 */
   foeDronePools?: Record<string, DronePoolEntry[]>;
+  /**
+   * **反应式防空**（船长 2026-09-11：「**每轮都是被攻击后才开火**（敌方无人机只有靠近你
+   * 你才能反击）」）——记录**最近一次无人机攻击**的战斗时钟（毫秒）：
+   * · `me`  = **敌方无人机**打过我方舰的时刻 ⇒ **我方近防炮**据此进入反击窗口；
+   * · `foe` = **我方无人机**打过敌舰的时刻 ⇒ **敌方近防炮**据此进入反击窗口。
+   * 窗口 = `PD_REACTIVE_WINDOW_MS`（见 `combat.ts`）；**超窗即脱锁**，要等下一轮被打才再开火。
+   */
+  droneHitAt?: { me?: number; foe?: number };
   /** 本场已击落架数（机型 id → 架数）；结算时按此**永久扣除**无人机舱清单 */
   droneLost?: Record<string, number>;
   /** 近防炮调度（当前波）：每舰判定冷却剩余毫秒（与敌编队同序）；缺省 = 无近防炮 */

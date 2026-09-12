@@ -3005,6 +3005,13 @@ function aliveDroneIndices(
  */
 const PD_TARGET_SENTRIES = false;
 
+/**
+ * **反应式防空的窗口（毫秒）**（船长 2026-09-11：「**每轮都是被攻击后才开火**」）——
+ * 近防炮只在"**刚被机群打过**"的这段时间内还手；超窗脱锁，等下一轮被打再开火。
+ * 取 5,000ms：略长于敌机装填（4,400ms）⇒ **每一轮敌机攻击都换来一次反击窗口**。
+ */
+const PD_REACTIVE_WINDOW_MS = 5_000;
+
 /** 哨戒机机型 id（近防炮不打哨戒无人机；机型表变化时此处同步） */
 const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(["drone-sentry"]);
 
@@ -3036,6 +3043,13 @@ function resolvePointDefense(
   const pools = b.dronePools;
   // 无近防炮调度 = 本场敌舰未达威胁门槛（或本改动前的旧战斗）：不结算
   if (!pools || b.pdCd === undefined) return;
+  // **反应式**（同上，对称）：敌方近防炮只在**我方无人机刚打过它**时才还手。
+  const foeHitAt = b.droneHitAt?.foe;
+  if (
+    foeHitAt === undefined ||
+    b.lastTickGameMs - foeHitAt > PD_REACTIVE_WINDOW_MS
+  )
+    return;
   const period = Math.max(100, Math.round(bal.pdJudgementMs));
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue;
@@ -3111,6 +3125,11 @@ export function pickFoeDroneTarget(
 ): { foeTag: string; pool: import("./state").DronePoolEntry } | null {
   const pools = b.foeDronePools;
   if (!pools) return null;
+  // **反应式**（船长 2026-09-11「每轮都是被攻击后才开火」）：只有**刚被机群打过**才反击——
+  // 敌机没打过来（或已超出窗口）⇒ 近防炮不开火（"敌方无人机只有靠近你你才能反击"）。
+  const hitAt = b.droneHitAt?.me;
+  if (hitAt === undefined || b.lastTickGameMs - hitAt > PD_REACTIVE_WINDOW_MS)
+    return null;
   // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
   // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
   // 旧口径用 `b.distanceM` 判 ⇒ 画面里贴着您的敌机被当成在 4.5km 外 ⇒ 近防炮"不工作"（船长实测）。
@@ -3269,6 +3288,9 @@ function stepBattle(
         meRt.weapons[wi] = w.reloadMs;
       }
       b.stats.meShots += 1;
+      // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
+      if (w.src === "drone")
+        b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
       // beam 已必中（autoHit），不掷骰、favor 不放大
       // 命中：打机群时守方 = 该架的闪避（`DronePoolEntry.evasion`，机型表绝对值）；
@@ -3370,6 +3392,8 @@ function stepBattle(
         rt.weapons[k] = dw.reloadMs;
         if (b.distanceM > dw.maxRangeM) continue; // 机群够不着（我方在它射程外）
         b.stats.foeShots += 1;
+        // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击
+        b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs };
         const dType = dw.fixedType ?? "kinetic";
         // 机群为掷命中（`fixed`）：吃自己的 `hitRate`、吃我方回避与距离衰减——与我方无人机同源
         const droneHit = hitChance(dw, f, me, b.distanceM, bal);

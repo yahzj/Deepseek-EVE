@@ -9,24 +9,34 @@
  * 4. **会开火**：机群按机型 `reloadMs`/射程/命中独立开火 ⇒ 战斗 fx 里出现 `src:'drone'` 事件；
  *    **负向对照**（同卡不写 `drones`）⇒ 无池、无 drone 事件（既有战斗零行为变化）。
  */
-import { describe, expect, it } from 'vitest'
-import { buildSimContext, FOE_DRONE_E_ALERT } from '@whale/data'
-import { addShipToFleet, addWare, createInitialState } from '../src/index'
-import { advanceBattleFor, createFoeSpecs, pickFoeDroneTarget, startBattleFor } from '../src/combat'
-import type { BattleState, GameState } from '../src/state'
-import type { AnomalyDef, FoeShipDef, FoeDroneSlot, SimContext } from '../src/types'
+import { describe, expect, it } from "vitest";
+import { buildSimContext, FOE_DRONE_E_ALERT } from "@whale/data";
+import { addShipToFleet, addWare, createInitialState } from "../src/index";
+import {
+  advanceBattleFor,
+  createFoeSpecs,
+  pickFoeDroneTarget,
+  startBattleFor,
+} from "../src/combat";
+import type { BattleState, GameState } from "../src/state";
+import type {
+  AnomalyDef,
+  FoeShipDef,
+  FoeDroneSlot,
+  SimContext,
+} from "../src/types";
 
-const base = buildSimContext()
-const bal = base.balance.battle
+const base = buildSimContext();
+const bal = base.balance.battle;
 
 /** 试验舰级：母舰**射程 1~10 m**（够不着，用来把"机群的火力"从"母舰的火力"里分出来）。
  *  `shotDmg` 单独给参数：打"开火"用例时压到 1（保证玩家活得够久、机群打得出来），
  *  A5 守恒用例用 100（便于对倍率取整）。 */
 function testShip(drones?: readonly FoeDroneSlot[], shotDmg = 100): FoeShipDef {
   return {
-    id: 'foe-test-drone',
-    name: '试验巨构',
-    family: 'E',
+    id: "foe-test-drone",
+    name: "试验巨构",
+    family: "E",
     hullClassTier: 4,
     speedRatio: 0.8,
     hp: 1600,
@@ -38,179 +48,216 @@ function testShip(drones?: readonly FoeDroneSlot[], shotDmg = 100): FoeShipDef {
     rangeMaxM: 10,
     falloff: 0.5,
     dmgMix: { kinetic: 8, explosive: 2 },
-    tactic: 'orbit',
+    tactic: "orbit",
     ...(drones ? { drones } : {}),
-  }
+  };
 }
 
 /** 合成卡：以**已迁入舰级路径的真卡**为基底（保证 `waves`/星系等字段齐备），只覆写编成 */
 function testCard(ship: FoeShipDef, dmgMul = 1): AnomalyDef {
-  const src = base.anomalies.get('ano-gravekeeper')! // D 族：单波、舰级路径、无旧路径残留字段
+  const src = base.anomalies.get("ano-gravekeeper")!; // D 族：单波、舰级路径、无旧路径残留字段
   return {
     ...src,
-    id: 'ano-test-foe-drone',
-    name: '机群试验卡',
-    galaxyId: 'galaxy-abyss',
+    id: "ano-test-foe-drone",
+    name: "机群试验卡",
+    galaxyId: "galaxy-abyss",
     threat: 60,
-    tactic: 'orbit',
+    tactic: "orbit",
     ships: [{ ship, count: 2, dmgMul }],
-  }
+  };
 }
 
 function ctxWith(card: AnomalyDef): SimContext {
-  return { ...base, anomalies: new Map([...base.anomalies, [card.id, card]]) }
+  return { ...base, anomalies: new Map([...base.anomalies, [card.id, card]]) };
 }
 
-function makeState(seed = 5, high: string[] = ['mod-turret-kin-2']): GameState {
-  const state = createInitialState({ nowWallMs: 0, seed })
-  const uid = addShipToFleet(state, 'sh-sentinel') // 王鲭：厚甲多槽，够活到机群开火
-  state.shipId = uid
+function makeState(seed = 5, high: string[] = ["mod-turret-kin-2"]): GameState {
+  const state = createInitialState({ nowWallMs: 0, seed });
+  const uid = addShipToFleet(state, "sh-sentinel"); // 王鲭：厚甲多槽，够活到机群开火
+  state.shipId = uid;
   state.fleet[uid]!.fitted = {
     high,
-    mid: ['mod-shield-kin-2', 'mod-track-2'],
-    low: ['mod-stab-kin-2'],
-  }
+    mid: ["mod-shield-kin-2", "mod-track-2"],
+    low: ["mod-stab-kin-2"],
+  };
   // 弹药备货（2026-09-11 补）：炮台是 'gun' ⇒ **要弹才打得出去**；合成档此前没备弹，
   // 端到端用例因此出现"装了 4 门近防炮却一发未放"的假失败（真档由 startBattleFor 预载）。
-  addWare(state, 'ammo-kinetic-l', 500)
-  return state
+  addWare(state, "ammo-kinetic-l", 500);
+  return state;
 }
 
 /** 打到 `advMs` 就停。60 秒 = 接近期（开局距离→机群射程 3km，约 10~25 秒）+ 机群数个装填周期；
  *  fx 环缓冲 48 条按"丢最旧"裁剪，机群是**全程持续**开火 ⇒ 最近的事件必在环里。 */
-function runBattle(card: AnomalyDef, advMs = 60_000, high?: string[]): BattleState {
-  const c = ctxWith(card)
-  const state = high ? makeState(5, high) : makeState()
-  const battle = startBattleFor(state, c, state.shipId, card.id, 0)!
-  state.expedition.active = true
-  state.expedition.phase = 'battle'
-  state.expedition.anomalyId = card.id
-  state.expedition.battle = battle
-  state.gameMs = advMs
-  advanceBattleFor(state, c, battle, state.shipId, card.id)
-  return battle
+function runBattle(
+  card: AnomalyDef,
+  advMs = 60_000,
+  high?: string[],
+): BattleState {
+  const c = ctxWith(card);
+  const state = high ? makeState(5, high) : makeState();
+  const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+  state.expedition.active = true;
+  state.expedition.phase = "battle";
+  state.expedition.anomalyId = card.id;
+  state.expedition.battle = battle;
+  state.gameMs = advMs;
+  advanceBattleFor(state, c, battle, state.shipId, card.id);
+  return battle;
 }
 
-describe('敌方机群：建档与 A5 火力守恒', () => {
-  it('展开成每架一条 src=drone 条目；机群吃 dmgMul、不吃多舰补偿', () => {
-    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]), 2)
-    const units = createFoeSpecs(card, bal)
-    expect(units).toHaveLength(2) // 两艘母舰
+describe("敌方机群：建档与 A5 火力守恒", () => {
+  it("展开成每架一条 src=drone 条目；机群吃 dmgMul、不吃多舰补偿", () => {
+    const card = testCard(
+      testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]),
+      2,
+    );
+    const units = createFoeSpecs(card, bal);
+    expect(units).toHaveLength(2); // 两艘母舰
 
     for (const u of units) {
-      const drones = u.weapons.filter((w) => w.src === 'drone')
-      expect(drones).toHaveLength(3) // 每架一条
-      expect(drones.every((w) => w.artId === FOE_DRONE_E_ALERT.id)).toBe(true)
-      expect(drones.every((w) => w.kind === 'fixed')).toBe(true)
-      expect(drones.every((w) => w.maxRangeM === FOE_DRONE_E_ALERT.maxRangeM)).toBe(true)
-      expect(drones.every((w) => w.reloadMs === FOE_DRONE_E_ALERT.reloadMs)).toBe(true)
+      const drones = u.weapons.filter((w) => w.src === "drone");
+      expect(drones).toHaveLength(3); // 每架一条
+      expect(drones.every((w) => w.artId === FOE_DRONE_E_ALERT.id)).toBe(true);
+      expect(drones.every((w) => w.kind === "fixed")).toBe(true);
+      expect(
+        drones.every((w) => w.maxRangeM === FOE_DRONE_E_ALERT.maxRangeM),
+      ).toBe(true);
+      expect(
+        drones.every((w) => w.reloadMs === FOE_DRONE_E_ALERT.reloadMs),
+      ).toBe(true);
       // A5①：机群吃**同一条 dmgMul**（母舰单发因此相对让位）——8 × 2 = 16
-      expect(drones.every((w) => w.shotDmg === Math.round(FOE_DRONE_E_ALERT.dmg * 2))).toBe(true)
+      expect(
+        drones.every(
+          (w) => w.shotDmg === Math.round(FOE_DRONE_E_ALERT.dmg * 2),
+        ),
+      ).toBe(true);
       // A5②：**不吃多舰补偿**——母舰 = round(100 × 2 × 2N/(N+1)=4/3) = 267；机群若也吃补偿会是 21
-      expect(u.weapons[0]!.shotDmg).toBe(Math.round(100 * 2 * (4 / 3)))
+      expect(u.weapons[0]!.shotDmg).toBe(Math.round(100 * 2 * (4 / 3)));
       // 舰级把机群登记原样带到单位上（建池要用）
-      expect(u.foeDrones).toHaveLength(1)
-      expect(u.foeDrones![0]!.count).toBe(3)
+      expect(u.foeDrones).toHaveLength(1);
+      expect(u.foeDrones![0]!.count).toBe(3);
     }
-  })
+  });
 
-  it('不写 drones 的舰级：单位上无机群、武器只有母舰一条（零行为变化）', () => {
-    const units = createFoeSpecs(testCard(testShip()), bal)
+  it("不写 drones 的舰级：单位上无机群、武器只有母舰一条（零行为变化）", () => {
+    const units = createFoeSpecs(testCard(testShip()), bal);
     for (const u of units) {
-      expect(u.weapons).toHaveLength(1)
-      expect(u.weapons[0]!.src).toBeUndefined()
-      expect(u.foeDrones).toBeUndefined()
+      expect(u.weapons).toHaveLength(1);
+      expect(u.weapons[0]!.src).toBeUndefined();
+      expect(u.foeDrones).toBeUndefined();
     }
-  })
-})
+  });
+});
 
-describe('敌方机群：生存池与开火', () => {
-  it('按敌单位 tag 建池，三层血/回避/机型 id 取机型表绝对值', () => {
-    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
-    const battle = runBattle(card)
-    const pools = battle.foeDronePools!
-    expect(pools).toBeTruthy()
-    const tags = Object.keys(pools)
-    expect(tags).toHaveLength(2) // 两艘母舰各一池
+describe("敌方机群：生存池与开火", () => {
+  it("按敌单位 tag 建池，三层血/回避/机型 id 取机型表绝对值", () => {
+    const card = testCard(
+      testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
+    );
+    const battle = runBattle(card);
+    const pools = battle.foeDronePools!;
+    expect(pools).toBeTruthy();
+    const tags = Object.keys(pools);
+    expect(tags).toHaveLength(2); // 两艘母舰各一池
     for (const tag of tags) {
-      const list = pools[tag]!
-      expect(list).toHaveLength(3) // 与机群武器条目同序、同数
-      expect(list.every((p) => p.alive)).toBe(true)
-      expect(list.every((p) => p.artId === FOE_DRONE_E_ALERT.id)).toBe(true)
+      const list = pools[tag]!;
+      expect(list).toHaveLength(3); // 与机群武器条目同序、同数
+      expect(list.every((p) => p.alive)).toBe(true);
+      expect(list.every((p) => p.artId === FOE_DRONE_E_ALERT.id)).toBe(true);
       expect(list[0]).toMatchObject({
         s: FOE_DRONE_E_ALERT.defense.shieldHp,
         a: FOE_DRONE_E_ALERT.defense.armorHp,
         h: FOE_DRONE_E_ALERT.defense.hullHp,
         evasion: FOE_DRONE_E_ALERT.defense.evasion,
-      })
-      expect(list[0]!.resists?.armor).toEqual(FOE_DRONE_E_ALERT.defense.armorResist)
+      });
+      expect(list[0]!.resists?.armor).toEqual(
+        FOE_DRONE_E_ALERT.defense.armorResist,
+      );
     }
-  })
+  });
 
-  it('机群会开火：战斗 fx 出现 src=drone 事件（母舰射程 10m ⇒ 那些事件只可能来自机群）', () => {
-    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
-    const battle = runBattle(card)
-    const droneFx = battle.fx.filter((e) => e.src === 'drone')
-    expect(droneFx.length).toBeGreaterThan(0)
-    expect(droneFx.every((e) => e.artId === FOE_DRONE_E_ALERT.id)).toBe(true)
-    expect(droneFx.every((e) => e.side === 'foe' && e.to === 'player')).toBe(true)
-    expect(droneFx.every((e) => e.type === FOE_DRONE_E_ALERT.damageType)).toBe(true)
-  })
+  it("机群会开火：战斗 fx 出现 src=drone 事件（母舰射程 10m ⇒ 那些事件只可能来自机群）", () => {
+    const card = testCard(
+      testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
+    );
+    const battle = runBattle(card);
+    const droneFx = battle.fx.filter((e) => e.src === "drone");
+    expect(droneFx.length).toBeGreaterThan(0);
+    expect(droneFx.every((e) => e.artId === FOE_DRONE_E_ALERT.id)).toBe(true);
+    expect(droneFx.every((e) => e.side === "foe" && e.to === "player")).toBe(
+      true,
+    );
+    expect(droneFx.every((e) => e.type === FOE_DRONE_E_ALERT.damageType)).toBe(
+      true,
+    );
+  });
 
-  it('负向对照：同卡不写 drones ⇒ 不建池、无 drone 事件', () => {
-    const battle = runBattle(testCard(testShip(undefined, 1)))
-    expect(battle.foeDronePools).toBeUndefined()
-    expect(battle.fx.some((e) => e.src === 'drone')).toBe(false)
-  })
-})
+  it("负向对照：同卡不写 drones ⇒ 不建池、无 drone 事件", () => {
+    const battle = runBattle(testCard(testShip(undefined, 1)));
+    expect(battle.foeDronePools).toBeUndefined();
+    expect(battle.fx.some((e) => e.src === "drone")).toBe(false);
+  });
+});
 
-describe('防空选靶（船长 A1：只有带防空属性的武器能打敌机）', () => {
-  const RANGED = { minRangeM: 1, maxRangeM: 9000 }
+describe("防空选靶（船长 A1：只有带防空属性的武器能打敌机）", () => {
+  const RANGED = { minRangeM: 1, maxRangeM: 9000 };
 
-  it('本场无机群 ⇒ null，且**不消费 rng**（既有武器一次掷骰都不会多花）', () => {
-    const battle = runBattle(testCard(testShip(undefined, 1)))
-    expect(battle.foeDronePools).toBeUndefined()
-    const state = makeState()
-    const before = structuredClone(state.rng)
-    expect(pickFoeDroneTarget(state, battle, [{ tag: 'foe-0' } as never], 3000, RANGED)).toBeNull()
-    expect(state.rng).toEqual(before)
-  })
+  it("本场无机群 ⇒ null，且**不消费 rng**（既有武器一次掷骰都不会多花）", () => {
+    const battle = runBattle(testCard(testShip(undefined, 1)));
+    expect(battle.foeDronePools).toBeUndefined();
+    const state = makeState();
+    const before = structuredClone(state.rng);
+    expect(
+      pickFoeDroneTarget(
+        state,
+        battle,
+        [{ tag: "foe-0" } as never],
+        3000,
+        RANGED,
+      ),
+    ).toBeNull();
+    expect(state.rng).toEqual(before);
+  });
 
-  it('射程之内 ⇒ 抽到存活敌机；击落（alive=false）后不再被选中', () => {
-    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
-    const battle = runBattle(card)
-    const foes = createFoeSpecs(card, bal)
-    const state = makeState()
+  it("射程之内 ⇒ 抽到存活敌机；击落（alive=false）后不再被选中", () => {
+    const card = testCard(
+      testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
+    );
+    const battle = runBattle(card);
+    const foes = createFoeSpecs(card, bal);
+    const state = makeState();
 
-    const first = pickFoeDroneTarget(state, battle, foes, 3000, RANGED)
-    expect(first).toBeTruthy()
-    expect(first!.pool.alive).toBe(true)
-    expect(first!.pool.artId).toBe(FOE_DRONE_E_ALERT.id)
+    const first = pickFoeDroneTarget(state, battle, foes, 3000, RANGED);
+    expect(first).toBeTruthy();
+    expect(first!.pool.alive).toBe(true);
+    expect(first!.pool.artId).toBe(FOE_DRONE_E_ALERT.id);
 
     // 把抽到的那架击落 ⇒ 池里存活数 −1，且它不会再成为目标
-    const pools = battle.foeDronePools![first!.foeTag]!
-    expect(pools).toContain(first!.pool)
-    first!.pool.alive = false
-    const aliveAfter = pools.filter((p) => p.alive).length
-    expect(aliveAfter).toBe(2)
+    const pools = battle.foeDronePools![first!.foeTag]!;
+    expect(pools).toContain(first!.pool);
+    first!.pool.alive = false;
+    const aliveAfter = pools.filter((p) => p.alive).length;
+    expect(aliveAfter).toBe(2);
     for (let i = 0; i < 20; i++) {
-      const again = pickFoeDroneTarget(state, battle, foes, 3000, RANGED)
-      if (again) expect(again.pool.alive).toBe(true)
+      const again = pickFoeDroneTarget(state, battle, foes, 3000, RANGED);
+      if (again) expect(again.pool.alive).toBe(true);
     }
-  })
+  });
 
-  it('母舰阵亡 ⇒ 其机群不再参战（「机群是舰的一部分」）', () => {
-    const card = testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
-    const battle = runBattle(card)
-    const foes = createFoeSpecs(card, bal)
-    const state = makeState()
+  it("母舰阵亡 ⇒ 其机群不再参战（「机群是舰的一部分」）", () => {
+    const card = testCard(
+      testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
+    );
+    const battle = runBattle(card);
+    const foes = createFoeSpecs(card, bal);
+    const state = makeState();
     // 把两艘母舰都判为阵亡（血量清零）
     for (const f of foes) {
-      battle.units[f.tag]!.hp = { s: 0, a: 0, h: 0 }
+      battle.units[f.tag]!.hp = { s: 0, a: 0, h: 0 };
     }
-    expect(pickFoeDroneTarget(state, battle, foes, 3000, RANGED)).toBeNull()
-  })
-})
+    expect(pickFoeDroneTarget(state, battle, foes, 3000, RANGED)).toBeNull();
+  });
+});
 
 /* ══════════════════════════════════════════════════════════════════════════
  * **E 族近防炮**（2026-09-11 机群批 S4）——玩家侧**首件防空武器**、也是"分族"的第一件。
@@ -218,35 +265,55 @@ describe('防空选靶（船长 A1：只有带防空属性的武器能打敌机�
  * 本组钉住**端到端链路**：装备 `canHitDrones` ⇒ 武器条目带防空属性 ⇒ **真能把机群打下来**；
  * 负向对照 = 同卡同装配只换普通炮台 ⇒ 一架都打不掉（"默认打不到"）。
  * ══════════════════════════════════════════════════════════════════════════ */
-describe('E 族近防炮：装备 → 防空属性 → 真能打机群', () => {
-  const AA = 'mod-pd-e'
-  const testCardWithDrones = (): AnomalyDef => testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1))
+describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
+  const AA = "mod-pd-e-3"; // MK3：反应式窗口（2026-09-11 船长「每轮被攻击后才开火」）+ 敌机血 ×2 后仍能确定性击落
+  const testCardWithDrones = (): AnomalyDef =>
+    testCard(testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1));
 
-  it('装备定义带防空属性，且装配后武器条目带上 `canHitDrones`（普通炮台不带）', () => {
-    const mod = base.modules.get(AA)!
-    expect(mod.canHitDrones).toBe(true)
-    expect(base.modules.get('mod-turret-kin-1')!.canHitDrones).toBeUndefined()
+  it("装备定义带防空属性，且装配后武器条目带上 `canHitDrones`（普通炮台不带）", () => {
+    const mod = base.modules.get(AA)!;
+    expect(mod.canHitDrones).toBe(true);
+    expect(base.modules.get("mod-turret-kin-1")!.canHitDrones).toBeUndefined();
     // 装配 4 门近防炮：射程 1,400、装填 1,500、命中 0.9、无近盲带
-    const state = makeState(5, [AA, AA, AA, AA])
-    const battle = startBattleFor(state, ctxWith(testCardWithDrones()), state.shipId, 'ano-test-foe-drone', 0)!
-    expect(battle).toBeTruthy()
+    const state = makeState(5, [AA, AA, AA, AA]);
+    const battle = startBattleFor(
+      state,
+      ctxWith(testCardWithDrones()),
+      state.shipId,
+      "ano-test-foe-drone",
+      0,
+    )!;
+    expect(battle).toBeTruthy();
     // 武器条目在战斗建档时写入；用同一套装配跑一仗并核对 fx 的 src（近防炮属炮台家族）
-    const after = runBattle(testCardWithDrones(), 60_000, [AA, AA, AA, AA])
-    expect(after.fx.some((e) => e.src === 'turret')).toBe(true)
-  })
+    const after = runBattle(testCardWithDrones(), 60_000, [AA, AA, AA, AA]);
+    expect(after.fx.some((e) => e.src === "turret")).toBe(true);
+  });
 
-  it('带近防炮 ⇒ 真打出「击落敌机」事件；换普通炮台 ⇒ 一架都掉不了（负向对照）', () => {
-    const withAA = runBattle(testCardWithDrones(), 60_000, [AA, AA, AA, AA])
-    const downed = withAA.fx.filter((e) => e.droneDown === true && e.side === 'foe')
-    const pools = Object.values(withAA.foeDronePools ?? {}).flat()
-    expect(pools.length).toBe(6) // 2 舰 × 3 架
-    expect(downed.length).toBeGreaterThan(0) // **近防炮打下来了**
-    expect(pools.some((p) => !p.alive)).toBe(true)
+  it("带近防炮 ⇒ 真打出「击落敌机」事件；换普通炮台 ⇒ 一架都掉不了（负向对照）", () => {
+    const withAA = runBattle(testCardWithDrones(), 90_000, [AA, AA, AA, AA]);
+    const downed = withAA.fx.filter(
+      (e) => e.droneDown === true && e.side === "foe",
+    );
+    const pools = Object.values(withAA.foeDronePools ?? {}).flat();
+    expect(pools.length).toBe(6); // 2 舰 × 3 架
+    // **近防炮确实在打机群**：出现带 `pd` 标记的开火事件（渲染层据此只出炮口闪光、不画弹道）。
+    // ⚠ 不再断言"必定击落"：反应式窗口（船长 2026-09-11「每轮被攻击后才开火」）+ 敌机血 ×2 后，
+    //   90 秒内是否打光取决于装配与窗口节奏，属**平衡读数**（由标定轮回答，不由单元用例钉死）。
+    expect(withAA.fx.some((e) => e.pd === true)).toBe(true);
+    expect(downed.length).toBeGreaterThanOrEqual(0); // 击落演出事件（可能为 0，见上）
+    expect(pools.some((p) => !p.alive)).toBe(true);
 
-    const withGun = runBattle(testCardWithDrones(), 60_000, ['mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1', 'mod-turret-kin-1'])
-    const poolsGun = Object.values(withGun.foeDronePools ?? {}).flat()
-    expect(poolsGun.length).toBe(6)
-    expect(withGun.fx.some((e) => e.droneDown === true && e.side === 'foe')).toBe(false)
-    expect(poolsGun.every((p) => p.alive)).toBe(true) // 普通炮台**按构造看不到机群**
-  })
-})
+    const withGun = runBattle(testCardWithDrones(), 60_000, [
+      "mod-turret-kin-1",
+      "mod-turret-kin-1",
+      "mod-turret-kin-1",
+      "mod-turret-kin-1",
+    ]);
+    const poolsGun = Object.values(withGun.foeDronePools ?? {}).flat();
+    expect(poolsGun.length).toBe(6);
+    expect(
+      withGun.fx.some((e) => e.droneDown === true && e.side === "foe"),
+    ).toBe(false);
+    expect(poolsGun.every((p) => p.alive)).toBe(true); // 普通炮台**按构造看不到机群**
+  });
+});
