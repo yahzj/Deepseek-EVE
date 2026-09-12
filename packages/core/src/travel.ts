@@ -13,7 +13,24 @@ import { fleetDefOf } from './instances'
 
 /** 星系间最短航程（分钟；图论静态边权，V12.1 起仅路径规划用，实际耗时见 travelLegMs） */
 export function shortestTravelMinutes(ctx: SimContext, fromGalaxyId: string, toGalaxyId: string): number {
-  if (fromGalaxyId === toGalaxyId) return 0
+  return shortestTravelPath(ctx, fromGalaxyId, toGalaxyId).minutes
+}
+
+/**
+ * 星系间最短航路的**完整跳序列**（供"逐跳加权"类口径使用——长途运输的安全档收益率要按每一跳
+ * 的两个端点定档，见 `hauling.haulEffectiveMinutes`）。
+ *
+ * ⚠ 与 `shortestTravelMinutes` **同源**：同一次 Dijkstra、同一 `dist` 插入顺序、同一「严格小于才替换」
+ * 并列取法 ⇒ 返回的 `minutes` 与旧函数逐字一致（并列路径取哪条也不变）；`hopMinutes[i]` 是
+ * `galaxies[i] → galaxies[i+1]` 那条边的权（直接取自松弛时用的边权，不必回查）。
+ */
+export function shortestTravelPath(
+  ctx: SimContext,
+  fromGalaxyId: string,
+  toGalaxyId: string,
+): { minutes: number; galaxies: string[]; hopMinutes: number[] } {
+  const empty = { minutes: Infinity, galaxies: [] as string[], hopMinutes: [] as number[] }
+  if (fromGalaxyId === toGalaxyId) return { minutes: 0, galaxies: [fromGalaxyId], hopMinutes: [] }
   const adjacency = new Map<string, Array<{ to: string; minutes: number }>>()
   const ensure = (id: string): void => {
     if (!adjacency.has(id)) adjacency.set(id, [])
@@ -24,10 +41,13 @@ export function shortestTravelMinutes(ctx: SimContext, fromGalaxyId: string, toG
     adjacency.get(edge.from)!.push({ to: edge.to, minutes: edge.travelMinutes })
     adjacency.get(edge.to)!.push({ to: edge.from, minutes: edge.travelMinutes })
   }
-  if (!adjacency.has(fromGalaxyId) || !adjacency.has(toGalaxyId)) return Infinity
+  if (!adjacency.has(fromGalaxyId) || !adjacency.has(toGalaxyId)) return empty
   const dist = new Map<string, number>()
+  const prev = new Map<string, string>()
+  const prevEdgeMinutes = new Map<string, number>()
   const visited = new Set<string>()
   dist.set(fromGalaxyId, 0)
+  let reached = false
   for (;;) {
     let current: string | null = null
     let best = Infinity
@@ -38,15 +58,32 @@ export function shortestTravelMinutes(ctx: SimContext, fromGalaxyId: string, toG
       }
     }
     if (current === null) break
-    if (current === toGalaxyId) return best
+    if (current === toGalaxyId) {
+      reached = true
+      break
+    }
     visited.add(current)
     for (const next of adjacency.get(current)!) {
       if (visited.has(next.to)) continue
       const alt = best + next.minutes
-      if (alt < (dist.get(next.to) ?? Infinity)) dist.set(next.to, alt)
+      if (alt < (dist.get(next.to) ?? Infinity)) {
+        dist.set(next.to, alt)
+        prev.set(next.to, current)
+        prevEdgeMinutes.set(next.to, next.minutes)
+      }
     }
   }
-  return Infinity
+  if (!reached) return empty
+  const galaxies: string[] = []
+  const hopMinutes: number[] = []
+  let cur: string | undefined = toGalaxyId
+  while (cur !== undefined) {
+    galaxies.unshift(cur)
+    const step = prevEdgeMinutes.get(cur)
+    if (step !== undefined) hopMinutes.unshift(step)
+    cur = prev.get(cur)
+  }
+  return { minutes: dist.get(toGalaxyId) ?? Infinity, galaxies, hopMinutes }
 }
 
 /** 当前有效跃迁速度（AU/s）：取船表 warpSpeedAus，缺省回落到基准（不加速也不减速） */

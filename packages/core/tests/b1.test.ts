@@ -14,7 +14,7 @@ import { startMining } from '../src/mining'
 import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
 import { hullLayerCaps } from '../src/shipyard'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
-import { makeTestCtx, belt, galaxy, anomaly, ship, moduleDef } from './helpers'
+import { makeTestCtx, belt, galaxy, anomaly, ship, moduleDef, fittedOf } from './helpers'
 import { wreckDensityOf } from '../src/salvage'
 import { addModule, fitModule } from '../src/equipment'
 
@@ -463,10 +463,12 @@ describe('B1 暴露面收敛（2026-09-06 船长：移动状态不暴露——�
  * 2026-09-11 船长定（玩家反馈"副船在低安遇袭耐久大幅下降后不会自动维修"）：
  * ① 受损档伤害改**按敌人火力**（敌群火力 × `hitFirepowerSec`），施加时**先扣装甲、吸完再进结构**
  *   （旧实现直接扣结构、装甲不动，与日志"被咬下一块装甲"不符）；
- * ② 结构低于 50% → **撤退**：主控停手返港、副船中止任务召回回港待命；**不自动维修**（回港等玩家决定）；
+ * ② 收场口径（**2026-09-12 船长改判「先维修，组件不足或者修完后结构 <50% 返港」**）：
+ *   先就地用修理组件补到装甲/结构 ≥60%（货舱优先→仓库兜底），**断料**或**修完结构仍 <50%** 才撤退；
+ *   ⚠ 当晚的「不自动维修」旧口径**已作废**——只要组件够，被伏击的船修好继续干活、不再自动撤退；
  * ③ 低安遭遇的「应战」也挂同一条 50% 自动脱离保险。
  */
-describe('B1 遇袭受损与撤退（船长 2026-09-11 定）', () => {
+describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 改判）', () => {
   /** 注入一次遭遇（旧档遗留形态：无伏击敌群 id，威胁即注入值） */
   function inject(state: GameState, threat: number, shipId = state.shipId): void {
     state.encounter = {
@@ -524,7 +526,7 @@ describe('B1 遇袭受损与撤退（船长 2026-09-11 定）', () => {
     expect(hits).toBeGreaterThan(0)
   })
 
-  it('副船遇袭后结构低于 50%：中止 AI 任务召回回港待命（不自动修、不花钱）', () => {
+  it('副船遇袭后结构低于 50% 且**无组件**：中止 AI 任务召回回港待命（断料档）', () => {
     const { state, ctx } = lowWorld()
     // 副船 = 鲣鱼（驾驶船是沙猫 = state.shipId，两条路径分开判）
     const droneId = 'sh-falconet'
@@ -539,12 +541,12 @@ describe('B1 遇袭受损与撤退（船长 2026-09-11 定）', () => {
     inject(state, 22, droneId)
     fleeEncounter(state, ctx)
     expect(state.aiAssignments[droneId]).toBeUndefined() // 任务已中止（召回回港）
-    expect(drone.durability).toBeLessThanOrEqual(0.45) // 只掉不涨：没有自动维修
+    expect(drone.durability).toBeLessThanOrEqual(0.45) // 无组件可修 ⇒ 只掉不涨
     expect(state.wallet.isk).toBe(walletBefore) // 也不自动花钱修
     expect(state.logs.some((l) => l.text.includes('已中止任务召回回港待命'))).toBe(true)
   })
 
-  it('主控低安作业遇袭后结构低于 50%：停手并即时返港（不自动修）', () => {
+  it('主控低安作业遇袭后结构低于 50% 且**无组件**：停手并即时返港（断料档）', () => {
     const { state, ctx } = lowWorld()
     miningInField(state, ctx)
     state.fleet[state.shipId]!.durability = 0.45
@@ -555,6 +557,95 @@ describe('B1 遇袭受损与撤退（船长 2026-09-11 定）', () => {
     expect(state.awayGalaxy).toBeNull() // 回港（就近已建成站/母港）
     expect(state.wallet.isk).toBe(walletBefore)
     expect(state.logs.some((l) => l.text.includes('已自动停手返港'))).toBe(true)
+  })
+
+  /* ── 2026-09-12 船长改判：**先维修，组件不足或者修完后结构 <50% 返港** ─────────────────────
+   * 旧「不自动维修」作废 ⇒ 只要组件够，被伏击的船修好继续干活、不再自动撤退；
+   * 组件来源含**仓库兜底**（船长「用组件，包括仓库组件」）；主控与 AI 副船同一口径。 */
+
+  /** 低安世界 + 修理组件（指定回复量与存放处：货舱 / 仓库） */
+  function repairWorld(opts: { restore: number; units: number; where: 'cargo' | 'warehouse' }) {
+    const kit = {
+      id: 'repairkit-civ',
+      name: '民用修理组件',
+      kind: 'kit' as const,
+      unitM3: 1,
+      baseSellPriceIsk: 3_000,
+      repairRestore: opts.restore,
+      description: '测试民用修理组件',
+    }
+    const ctx: SimContext = makeTestCtx({
+      quietEvents: true,
+      galaxies: [{ ...galaxy('galaxy-far', '远方'), security: -0.8 }],
+      belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-f', 'ore-a', '低安带', { galaxyId: 'galaxy-far' })],
+      anomalies: encTiers(),
+      items: [kit],
+    })
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.exploredGalaxies.push('galaxy-far')
+    if (opts.where === 'cargo') state.fleet[state.shipId]!.cargo['repairkit-civ'] = opts.units
+    else state.warehouse.items['repairkit-civ'] = opts.units
+    return { state, ctx }
+  }
+
+  it('组件充足：遇袭后自动修到 ≥60%，**不返港**（修好继续干活）', () => {
+    const { state, ctx } = repairWorld({ restore: 30, units: 10, where: 'cargo' })
+    miningInField(state, ctx)
+    state.fleet[state.shipId]!.durability = 0.45
+    inject(state, 6) // 一口很小，只可能掉装甲
+    fleeEncounter(state, ctx)
+    const ship = state.fleet[state.shipId]!
+    expect(ship.durability).toBeGreaterThanOrEqual(0.6)
+    expect(ship.armorPct ?? 1).toBeGreaterThanOrEqual(0.6)
+    expect(state.logs.some((l) => l.text.includes('自动使用修理组件'))).toBe(true)
+    // 关键行为变化：修得动就不撤退（旧口径是无条件停手返港）
+    expect(state.mining.active).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    expect(state.logs.some((l) => l.text.includes('已自动停手返港'))).toBe(false)
+  })
+
+  it('仓库兜底：货舱里没有组件、仓库里有 ⇒ 照样自动修（船长「用组件，包括仓库组件」）', () => {
+    const { state, ctx } = repairWorld({ restore: 30, units: 10, where: 'warehouse' })
+    miningInField(state, ctx)
+    state.fleet[state.shipId]!.durability = 0.45
+    inject(state, 6)
+    fleeEncounter(state, ctx)
+    expect(state.fleet[state.shipId]!.durability).toBeGreaterThanOrEqual(0.6)
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBeLessThan(10) // 从仓库扣件
+    expect(state.mining.active).toBe(true) // 修好了 ⇒ 留原地
+  })
+
+  it('组件不足（断料）：修不到目标 ⇒ 收手返港，日志点名「修理组件耗尽」', () => {
+    const { state, ctx } = repairWorld({ restore: 2, units: 1, where: 'cargo' })
+    miningInField(state, ctx)
+    state.fleet[state.shipId]!.durability = 0.2
+    inject(state, 6)
+    fleeEncounter(state, ctx)
+    expect(state.mining.active).toBe(false) // 停手
+    expect(state.awayGalaxy).toBeNull() // 返港
+    expect(state.logs.some((l) => l.text.includes('修理组件耗尽'))).toBe(true)
+  })
+
+  it('副船同口径：有组件就地修到 ≥60%，**任务不中止**（不召回）', () => {
+    const { state, ctx } = repairWorld({ restore: 30, units: 10, where: 'cargo' })
+    // 副船用测试世界里**已注册**的 sandcat2（货舱 100）：舰队条目按 ai.test.ts 同款手工补
+    const droneId = 'sandcat2'
+    state.fleet[droneId] = {
+      durability: 1,
+      cargo: { 'repairkit-civ': 10 },
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
+    }
+    state.aiAssignments[droneId] = {
+      coreType: 'basic',
+      startedAtGameMs: state.gameMs,
+      task: { kind: 'mining', beltId: 'belt-f', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+    }
+    state.fleet[droneId]!.durability = 0.45
+    inject(state, 6, droneId)
+    fleeEncounter(state, ctx)
+    expect(state.aiAssignments[droneId]).toBeDefined() // 不召回
+    expect(state.fleet[droneId]!.durability).toBeGreaterThanOrEqual(0.6)
+    expect(state.logs.some((l) => l.text.includes('已中止任务召回回港待命'))).toBe(false)
   })
 
   it('结构未低于 50%：不撤退（低安作业照做）', () => {

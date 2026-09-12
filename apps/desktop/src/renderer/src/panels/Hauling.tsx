@@ -9,6 +9,7 @@
 import {
   cargoCapacityM3Of,
   dockedHaulEndpoint,
+  haulEffectiveMinutes,
   haulEndpoints,
   haulLegMinutesOf,
   haulRewardRange,
@@ -27,6 +28,9 @@ interface RouteCard {
   bName: string
   aId: string | null
   bId: string | null
+  /** 端点所在星系（报酬按**有效距离**算：逐跳安全档加权，2026-09-12 船长定） */
+  aGalaxyId: string
+  bGalaxyId: string
   minutes: number
 }
 
@@ -73,6 +77,8 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         bName: b.name,
         aId: a.siteId,
         bId: b.siteId,
+        aGalaxyId: a.galaxyId,
+        bGalaxyId: b.galaxyId,
         minutes: Math.round(minutes),
       })
     }
@@ -114,11 +120,12 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         <div className="app-haul-list">
           {routes.map((rt) => {
             const isActive = rt.key === activeKey
-            // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）；报酬按「改前基准 × 每趟行情 5~10 倍」
+            // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）；报酬按「有效距离 × 距离指数 1.5 × 每趟行情 5~10 倍」
             const legMin = haulLegMinutesOf(rt.minutes)
             const effMin = Math.max(1, travelMinutesEff(state, ctx, legMin))
-            // 面板**只显示区间**（船长 2026-09-11：不预告本趟实际掷值）；基准用**标称**航程分钟（改前口径）
-            const range = haulRewardRange(cap, rt.minutes)
+            // 面板**只显示区间**（船长 2026-09-11：不预告本趟实际掷值）；基准用**有效距离**
+            // （逐跳安全档加权，2026-09-12 船长定；面板不显示档位与系数，只让金额变）
+            const range = haulRewardRange(ctx, cap, haulEffectiveMinutes(ctx, rt.aGalaxyId, rt.bGalaxyId))
             const hourlyMin = Math.round((range.min / effMin) * 60)
             const hourlyMax = Math.round((range.max / effMin) * 60)
             const canStart = dockedOk && !busy && !haulingActive

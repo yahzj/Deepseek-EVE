@@ -15,6 +15,7 @@ import {
   HAUL_TRIP_MUL_MAX,
   HAUL_TRIP_MUL_MIN,
   haulBaseReward,
+  haulEffectiveMinutes,
   haulLegMinutesOf,
   haulLegReward,
   haulRewardRange,
@@ -53,14 +54,19 @@ function world() {
   return { state, ctx }
 }
 
-/** 本测试世界的单段基准报酬（hub⇄far 标称 2 分钟 = 改前口径，不含行情倍率） */
+/** 本测试世界的单段**有效距离**（hub ⇄ far：2 分钟 × 安全档系数；测试星系无 security ⇒ 按高安 ×0.5 = 1.0） */
+function effMinutes(ctx: SimContext): number {
+  return haulEffectiveMinutes(ctx, 'galaxy-hub', 'galaxy-far')
+}
+
+/** 本测试世界的单段基准报酬（2026-09-12 口径：有效距离 + 距离指数 1.5，锚定母港⇄烬火；不含行情倍率） */
 function baseReward(state: GameState, ctx: SimContext): number {
-  return haulBaseReward(cargoCapacityM3Of(state, ctx, state.shipId), 2)
+  return haulBaseReward(ctx, cargoCapacityM3Of(state, ctx, state.shipId), effMinutes(ctx))
 }
 
 /** 本趟实际单段报酬（基准 × 本趟行情倍率） */
 function legReward(state: GameState, ctx: SimContext): number {
-  return haulLegReward(cargoCapacityM3Of(state, ctx, state.shipId), 2, state.hauling.tripMul)
+  return haulLegReward(ctx, cargoCapacityM3Of(state, ctx, state.shipId), effMinutes(ctx), state.hauling.tripMul)
 }
 
 /** 航线 = 母港 ⇄ site-test（测试世界仅有的两座建成端点） */
@@ -159,8 +165,12 @@ describe('长途运输（2026-09-09）', () => {
     expect([HAUL_TRIP_MUL_MIN, HAUL_TRIP_MUL_MAX]).toEqual([5, 10])
     expect(haulLegMinutesOf(2)).toBe(30)
     const base = baseReward(state, ctx)
-    expect(base).toBe(Math.floor(cap * 0.6 * 2))
-    const range = haulRewardRange(cap, 2)
+    // 2026-09-12 新口径：基准 = 货仓 × 0.6 × 锚定标称(10) × (有效距离 ÷ 锚定有效距离(7.75))^1.5
+    const bal = ctx.balance.haul
+    expect(base).toBe(
+      Math.floor(cap * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * Math.pow(effMinutes(ctx) / bal.anchorEffectiveMinutes, bal.distExp)),
+    )
+    const range = haulRewardRange(ctx, cap, effMinutes(ctx))
     expect(range).toEqual({ min: base * 5, max: base * 10 })
     // 开跑：本趟掷出 5~10 之间的倍率，且本趟记 2 段
     startRoute(state, ctx)
@@ -169,7 +179,7 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.hauling.tripMul).toBeLessThanOrEqual(HAUL_TRIP_MUL_MAX)
     expect(state.hauling.tripLegsLeft).toBe(2)
     const mul1 = state.hauling.tripMul
-    const pay1 = haulLegReward(cap, 2, mul1)
+    const pay1 = haulLegReward(ctx, cap, effMinutes(ctx), mul1)
     const w0 = state.wallet.isk
     advanceGame(state, state.hauling.legMs, ctx) // 第一段
     expect(state.wallet.isk - w0).toBe(pay1)
@@ -238,6 +248,6 @@ describe('长途运输（2026-09-09）', () => {
     const cap = cargoCapacityM3Of(mid, ctx, mid.shipId)
     const w0 = mid.wallet.isk
     advanceGame(mid, mid.hauling.legMs, ctx)
-    expect(mid.wallet.isk - w0).toBe(haulLegReward(cap, 2, HAUL_TRIP_MUL_MIN))
+    expect(mid.wallet.isk - w0).toBe(haulLegReward(ctx, cap, effMinutes(ctx), HAUL_TRIP_MUL_MIN))
   })
 })

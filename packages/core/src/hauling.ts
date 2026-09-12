@@ -7,14 +7,20 @@
  *   不做"去程并入返程"式折算（船长定）。
  * - 货物为**虚拟满载**：开始任务时把驾驶船货仓自动卸空入仓库，任务期间货仓容量被"运输货物"
  *   全部占用（不产生任何真实物品，杜绝货物入库类 bug）；到站结算报酬后自动续下一段。
- * - 报酬 = **改前基准 × 每趟行情倍率**（2026-09-11 船长二次定案）：
- *   基准 = 货仓容量 × `HAUL_RATE_PER_M3_MIN`（0.6，改前原值）× **标称航程分钟**；
- *   每趟（一趟往返）掷一次行情倍率 r ∈ [5,10]（`HAUL_TRIP_MUL_MIN/MAX`），**同一趟的两段同价**；
+ * - 报酬（**2026-09-12 船长定：安全档收益率 + 距离指数**，取代"与航线长短无关"旧口径）：
+ *   单段报酬 = 货仓容量 × `HAUL_RATE_PER_M3_MIN`（0.6）× 锚定航线标称分钟 × (**有效距离** ÷ 锚定有效距离)^**1.5**
+ *   × 每趟行情倍率 r ∈ [5,10]（`HAUL_TRIP_MUL_MIN/MAX`，一趟往返掷一次、**两段同价**）。
+ *   **有效距离** = 沿最短路**逐跳**累加「该跳分钟 × 该跳收益率系数」，每跳系数 = 该跳两端里**安全等级较低
+ *   （更危险）**那一端的系数，星系系数 = 高安 **0.5** / 中安 **0.75** / 低安 **1**（`balance.haul`；
+ *   档位走 `securityZoneOf` 单点）。
+ *   ⇒ ① **单段总报酬只取决有效距离**（航程时间不进报酬）；② 距离指数 1.5 > 1 ⇒ **"1+1<2"**：
+ *   跑完整一段长途比拆成两段跑更赚（拆开只值整段的 68%）；③ 安全走廊被折算得更短 ⇒ 高安线时薪更低。
  *   面板只显示**区间**（不预告本趟掷出的实际值），到站结算时才入账并写日志。
- * - 时薪口径：≈ 容量 × 0.6 × 60 × r ÷ 15（航段分钟 ×15）——仍与航线长短无关，不存在"挑最短线刷钱"。
+ * - 标定（船长 2026-09-12）：**锚定航线 = 母港 ⇄ 烬火前哨站**（标称 10 分钟、有效距离 7.75）
+ *   ⇒ 该线时薪 **648,000 ISK/h 逐字不变**，其余航线按比例削弱（母港⇄红环 7′ → 409,000/h ≈ −37%）。
+ *   两条锚定常数在 `balance.haul`，由 `content:check`「长途运输锚定契约」守住不漂。
  * - **2026-09-11 船长改口径沿革**：① 先定「时间 ×15、收益 ×10」（固定倍率）；② 随后「价格回调，
- *   重新定位 5~10 倍的价格波动，并要求在长途运输任务内显示」⇒ 撤销固定 ×10，改为**每趟掷 5~10 倍**
- *   （均值 7.5 倍，即改前单段报酬的 7.5 倍；时薪均值 = 改前的 7.5/15 = 0.5 倍）。
+ *   重新定位 5~10 倍的价格波动，并要求在长途运输任务内显示」⇒ 撤销固定 ×10，改为**每趟掷 5~10 倍**。
  *   航行技能照旧缩短实际时长（`travelMinutesEff`）。⚠ **2026-09-12 船长「删除下限」**：原 `minFactor 0.35`
  *   的下限已移除（旧口径下 105 分钟的实际下限约 37 分钟，且**只卡快船** ⇒ 航行族 3 级起飞鱼级与剑鱼级
  *   单程时间完全相同）；现**船速差与技能收益都按比例完整体现**，见 `travel.ts`.
@@ -25,16 +31,16 @@ import { addLog, HOME_GALAXY_ID } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
-import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
+import { shortestTravelPath, shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
+import { securityZoneOf } from './sideTasks'
 import { cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { siteProgress } from './station'
 import { shipDisplayName } from './instances'
 import { nextRandom } from './rng'
 
 /**
- * 运输基准费率：ISK / (m³ × **标称**航程分钟)。= 改口径前的原值 0.6
- * （2026-09-11 船长二次定案「价格回调，重新定位 5~10 倍的价格波动」）。
- * 实际单段报酬 = 本基准 × **每趟行情倍率**（5~10 倍，见 `HAUL_TRIP_MUL_MIN/MAX`）。
+ * 运输基准费率：ISK / (m³ × **锚定航线标称分钟**)。= 改口径前的原值 0.6（2026-09-11 二次定案）。
+ * ⚠ 2026-09-12 起它不再直接乘"本段标称分钟"——见 `haulBaseReward`（安全档 + 距离指数 1.5）。
  */
 export const HAUL_RATE_PER_M3_MIN = 0.6
 
@@ -50,19 +56,59 @@ export function haulLegMinutesOf(nominalMinutes: number): number {
   return Math.max(1, Math.round(nominalMinutes * HAUL_LEG_TIME_MUL))
 }
 
-/** 单段**基准**报酬（改前口径）：货仓 × 0.6 × 标称航程分钟（不含行情倍率；floor 取整） */
-export function haulBaseReward(capacityM3: number, nominalMinutes: number): number {
-  return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * nominalMinutes)
+/* ═══════════ 2026-09-12 船长定：安全档收益率 + 距离指数（取代"与航线长短无关"旧口径） ═══════════ */
+
+/** 某星系的运输收益率系数（高安 0.5 / 中安 0.75 / 低安 1；档位判定走 `securityZoneOf` 单点） */
+export function haulSecurityMulOf(ctx: SimContext, galaxyId: string): number {
+  return ctx.balance.haul.securityMul[securityZoneOf(ctx, galaxyId)]
+}
+
+/**
+ * 单段**有效距离**（分钟）：沿引擎选定的最短路**逐跳**累加「该跳分钟 × 该跳收益率系数」，
+ * **每跳系数 = 该跳两端里「安全等级较低（更危险）」那一端的系数**（＝系数较大者；船长 2026-09-12 选定 C 案）。
+ * 与"标称分钟"的差 = 档位稀释：高安/中安密集的走廊会被折算得更短（母港⇄红环 7 → 4.5）。
+ */
+export function haulEffectiveMinutes(ctx: SimContext, fromGalaxyId: string, toGalaxyId: string): number {
+  const path = shortestTravelPath(ctx, fromGalaxyId, toGalaxyId)
+  if (path.galaxies.length < 2) return 0
+  let sum = 0
+  for (let i = 0; i + 1 < path.galaxies.length; i++) {
+    const a = path.galaxies[i]!
+    const b = path.galaxies[i + 1]!
+    sum += path.hopMinutes[i]! * Math.max(haulSecurityMulOf(ctx, a), haulSecurityMulOf(ctx, b))
+  }
+  return sum
+}
+
+/** 两站之间的有效距离（端点站点 → 所在星系；null = 母港） */
+function effectiveMinutesBetween(ctx: SimContext, aId: string | null, bId: string | null): number {
+  return haulEffectiveMinutes(ctx, endpointGalaxy(ctx, aId), endpointGalaxy(ctx, bId))
+}
+
+/**
+ * 单段**基准**报酬 = 货仓 × `HAUL_RATE_PER_M3_MIN` × 锚定航线标称分钟 × (有效距离 ÷ 锚定有效距离)^距离指数
+ * （不含行情倍率；floor 取整）。
+ *
+ * 等价于旧式「货仓 × 0.6 × 本段标称分钟 × 形状因子 G」（G = (D/D锚)^p × (标称锚/标称)）——
+ * **标称分钟被锚定常数吸收** ⇒ **单段总报酬只取决有效距离**（时间不进报酬）。这正是"1+1<2"的来源：
+ * 拆两段跑时「两段有效距离的 p 次幂之和」< 「整段有效距离的 p 次幂」。
+ * 标定：锚定航线（母港 ⇄ 烬火前哨站，D = 7.75）时薪 **648,000 ISK/h 逐字不变**，其余航线按比例削弱。
+ */
+export function haulBaseReward(ctx: SimContext, capacityM3: number, effectiveMinutes: number): number {
+  const bal = ctx.balance.haul
+  if (!(effectiveMinutes > 0) || !(bal.anchorEffectiveMinutes > 0)) return 0
+  const shape = Math.pow(effectiveMinutes / bal.anchorEffectiveMinutes, bal.distExp)
+  return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * shape)
 }
 
 /** 单段实付报酬 = 基准 × 本趟行情倍率（每趟一个倍率、两段同价；floor 取整） */
-export function haulLegReward(capacityM3: number, nominalMinutes: number, tripMul: number): number {
-  return Math.floor(haulBaseReward(capacityM3, nominalMinutes) * tripMul)
+export function haulLegReward(ctx: SimContext, capacityM3: number, effectiveMinutes: number, tripMul: number): number {
+  return Math.floor(haulBaseReward(ctx, capacityM3, effectiveMinutes) * tripMul)
 }
 
 /** 单段报酬**区间**（面板只显示这个，不预告本趟实际掷值——船长 2026-09-11：「只显示区间」） */
-export function haulRewardRange(capacityM3: number, nominalMinutes: number): { min: number; max: number } {
-  const base = haulBaseReward(capacityM3, nominalMinutes)
+export function haulRewardRange(ctx: SimContext, capacityM3: number, effectiveMinutes: number): { min: number; max: number } {
+  const base = haulBaseReward(ctx, capacityM3, effectiveMinutes)
   return { min: Math.floor(base * HAUL_TRIP_MUL_MIN), max: Math.floor(base * HAUL_TRIP_MUL_MAX) }
 }
 
@@ -221,7 +267,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   // 本趟行情倍率（船长 2026-09-11：每趟掷一次、两段同价；就位段自成一趟，只跑 1 段）
   const isPos = dockHere !== a.siteId && dockHere !== b.siteId
   beginTrip(state, isPos ? 1 : 2)
-  const { min, max } = haulRewardRange(cap, minutesBetween(ctx, a.siteId, b.siteId))
+  const { min, max } = haulRewardRange(ctx, cap, effectiveMinutesBetween(ctx, a.siteId, b.siteId))
   addLog(
     state,
     'info',
@@ -266,10 +312,10 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
     if (h.phaseAccMs >= h.legMs) {
       const arrived = haulEndpointName(ctx, h.toSiteId)
       const cap = cargoCapacityM3Of(state, ctx, state.shipId)
-      // 本段报酬 = 基准（货仓 × 0.6 × 本段标称分钟）× 本趟行情倍率（一趟两段同价）
-      const nominal = minutesBetween(ctx, h.fromSiteId, h.toSiteId)
+      // 本段报酬 = 基准（按**有效距离**：逐跳安全档加权 + 距离指数 1.5）× 本趟行情倍率（一趟两段同价）
+      const effMinutes = effectiveMinutesBetween(ctx, h.fromSiteId, h.toSiteId)
       const mul = h.tripMul > 0 ? h.tripMul : HAUL_TRIP_MUL_MIN
-      const reward = haulLegReward(cap, nominal, mul)
+      const reward = haulLegReward(ctx, cap, effMinutes, mul)
       state.wallet.isk += reward
       addLog(
         state,

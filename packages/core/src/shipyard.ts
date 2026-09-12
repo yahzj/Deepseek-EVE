@@ -16,6 +16,7 @@ import { retireSalvageShip } from './salvaging'
 import { cancelHaulingOnSwitch } from './hauling'
 import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
+import { countWare, removeWare } from './inventory'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
@@ -393,35 +394,44 @@ export function isShipLocked(state: GameState, shipId: string): boolean {
   return state.shipLocks[shipId] === true
 }
 
+/** 一次自动修理的结果（供"组件是否够"的判定用） */
+export interface RepairWithKitsResult {
+  /** 消耗的组件枚数 */
+  used: number
+  /** 是否修到目标（装甲与结构**都** ≥ target） */
+  reachedTarget: boolean
+  /** 是否因**组件耗尽**而中断（未达标且已无件可用）——低安遇袭「断料即返港」判据 */
+  outOfKits: boolean
+}
+
 /**
- * T8 修理组件（P2 定稿）：优先用货仓中的修理组件（itemDef.repairRestore = 基础回复 HP）
- * 修复驾驶船结构/装甲至 target（重复清剿阈值默认 0.5），或组件耗尽；返回消耗件数。
- * 每次回复 = 基础 HP × 层容量增幅 × 抢修工程学（与手动同口径）。
+ * 自动用修理组件的**唯一单点**（T8 P2 定稿；2026-09-12 扩口为逐船 + 可选仓库来源）。
+ * - **修哪艘**：`shipId`（2026-09-12 前只修驾驶船；现主控与 AI 副船共用）。
+ * - **来源**：`'cargo'`（默认）只读货舱 = **重复清剿的既有口径，行为不变**；
+ *   `'cargo+warehouse'` 货舱优先、仓库兜底 = **低安遇袭自动修理**（船长 2026-09-12「用组件，包括仓库组件」，
+ *   与战斗预载 `preloadRepairFor` 同序）。
+ * - **取件序**：民用 → 军用 → 其它带回复值的组件（与手动 `useOneRepairKit` 同口径）。
+ * - 每次回复 = 基础 HP × 层容量增幅 × 舰体快修学（与手动同口径）。
  */
-export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5): number {
-  const fleetShip = state.fleet[state.shipId]
-  if (!fleetShip) return 0
-  const caps = layerCaps(state, ctx, state.shipId)
+export function repairWithKitsFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  target = 0.5,
+  source: 'cargo' | 'cargo+warehouse' = 'cargo',
+): RepairWithKitsResult {
+  const fleetShip = state.fleet[shipId]
+  if (!fleetShip) return { used: 0, reachedTarget: true, outOfKits: false }
+  const caps = layerCaps(state, ctx, shipId)
+  const damaged = (): boolean => fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target
   let used = 0
   let guard = 0
-  while ((fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target) && guard < 200) {
+  while (damaged() && guard < 200) {
     guard += 1
-    const cargo = fleetShip.cargo
-    let kitId: string | null = null
-    for (const [itemId, units] of Object.entries(cargo)) {
-      if (units <= 0) continue
-      const def = ctx.items.get(itemId)
-      if (def && typeof def.repairRestore === 'number' && def.repairRestore > 0) {
-        kitId = itemId
-        break
-      }
-    }
+    const kitId = takeRepairKit(state, ctx, shipId, source)
     if (kitId === null) break
     const def = ctx.items.get(kitId)!
-    const heal = kitHealFor(state, ctx, state.shipId, def.repairRestore!, caps)
-    const units = cargo[kitId]!
-    if (units <= 1) delete cargo[kitId]
-    else cargo[kitId] = units - 1
+    const heal = kitHealFor(state, ctx, shipId, def.repairRestore!, caps)
     if (caps) {
       fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + heal.h / caps.capH) * 1000) / 1000)
       fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
@@ -432,10 +442,53 @@ export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5):
     addLog(
       state,
       'info',
-      `自动使用修理组件 ×${used}：${shipDisplayName(state, ctx, state.shipId)} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
+      `自动使用修理组件 ×${used}：${shipDisplayName(state, ctx, shipId)} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
     )
   }
-  return used
+  const reached = !damaged()
+  return { used, reachedTarget: reached, outOfKits: !reached }
+}
+
+/** 取一枚修理组件并扣账（民用优先；cargo+warehouse 时货舱优先、仓库兜底）；无件返回 null */
+function takeRepairKit(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  source: 'cargo' | 'cargo+warehouse',
+): string | null {
+  const fleetShip = state.fleet[shipId]
+  if (!fleetShip) return null
+  const isKit = (id: string): boolean => {
+    const def = ctx.items.get(id)
+    return !!def && typeof def.repairRestore === 'number' && def.repairRestore > 0
+  }
+  const order: string[] = []
+  for (const id of ['repairkit-civ', 'repairkit-mil']) if (isKit(id)) order.push(id)
+  for (const id of Object.keys(fleetShip.cargo)) if (!order.includes(id) && isKit(id)) order.push(id)
+  if (source === 'cargo+warehouse') {
+    for (const id of ctx.items.keys()) if (!order.includes(id) && isKit(id)) order.push(id)
+  }
+  for (const id of order) {
+    const inCargo = fleetShip.cargo[id] ?? 0
+    if (inCargo > 0) {
+      if (inCargo <= 1) delete fleetShip.cargo[id]
+      else fleetShip.cargo[id] = inCargo - 1
+      return id
+    }
+    if (source === 'cargo+warehouse' && countWare(state, id) > 0) {
+      removeWare(state, id, 1)
+      return id
+    }
+  }
+  return null
+}
+
+/**
+ * 自动用修理组件修**驾驶船**至 target（重复清剿阈值默认 0.5），或组件耗尽；返回消耗件数。
+ * ⚠ 口径固定为**只读货舱**（2026-09-12 前的唯一口径，重复清剿仍走它，行为一字不变）。
+ */
+export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5): number {
+  return repairWithKitsFor(state, ctx, state.shipId, target, 'cargo').used
 }
 
 /**

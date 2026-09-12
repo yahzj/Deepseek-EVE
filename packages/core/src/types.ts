@@ -504,6 +504,8 @@ export interface BalanceConfig {
   rewardJitter: number
   /** 星图航行（V12.1）：飞船跃迁速度 + 航行加速技能族共同决定星系间实际耗时 */
   travel: TravelBalance
+  /** 长途运输报酬（2026-09-12 船长定：安全档收益率 + 距离指数） */
+  haul: HaulBalance
 }
 
 /** B1 低安遭遇 / 伏击：占用随机事件时机；到达缓冲 + 到点遇袭概率（2026-09-04 定稿） */
@@ -534,9 +536,14 @@ export interface EncounterBalance {
    * 取代旧 `duraLossMin/duraLossMax`（结构 −5%~15%，与敌群强度无关，2026-09-11 作废）。
    */
   hitFirepowerSec: number
-  /** 撤退线（船长 2026-09-11 定）：遭遇了结后**结构低于此比例**的被袭船立刻停手返港待命
-   *  （主控停作业 / 副船中止任务；**不自动维修**，回港等玩家决定）；同时作为低安遭遇战的自动脱离阈值 */
+  /** 撤退线（船长 2026-09-12 改判「**先维修**，组件不足或者修完后结构 <50% 返港」）：遭遇了结后
+   *  **先自动用修理组件补耐久**，若**组件耗尽**或**修完后结构仍低于此比例** ⇒ 被袭船停手返港待命
+   *  （主控停作业 / 副船中止任务；**不自动再派**，回港等玩家决定）；
+   *  同时作为低安遭遇战的自动脱离阈值。⚠ 2026-09-11 的「不自动维修」旧口径已作废。 */
   retreatHullFrac: number
+  /** 遇袭自动修理的**目标值**（2026-09-12 船长定；触发线 = 装甲或结构 < `retreatHullFrac`，
+   *  修到两者都 ≥ 本值或组件耗尽——与重复清剿的 0.6 同口径） */
+  repairTargetFrac: number
   /** 被抢：至多损失船上货物比例（无货则抢钱包） */
   lootTakenMaxPct: number
   /** 被抢（无货时）：至多损失钱包 ISK 比例 */
@@ -557,6 +564,21 @@ export interface TravelBalance {
   skillIds: readonly string[]
   /** 每个技能每级的时间缩减比例（如 0.04 = 4%） */
   cutPerLevel: number
+}
+
+/**
+ * 长途运输报酬（**2026-09-12 船长定：安全档收益率 + 距离指数**）。
+ * 取代旧口径「单段报酬 = 货仓 × 0.6 × 标称分钟 × 行情倍率（与航线长短无关、各线时薪相等）」。
+ */
+export interface HaulBalance {
+  /** 安全档收益率（按**逐跳取两端较低档**累加成"有效距离"）：高安 0.5 / 中安 0.75 / 低安 1 */
+  securityMul: { 高安: number; 中安: number; 低安: number }
+  /** 距离指数 p（>1 ⇒ 超可加：**单段总报酬 ∝ 有效距离^p**，跑完整一段比拆成两段跑更赚） */
+  distExp: number
+  /** 锚定航线的标称分钟（母港 ⇄ 烬火前哨站 = 10）——报酬标定以该线时薪不变为准 */
+  anchorNominalMinutes: number
+  /** 锚定航线的**有效距离**（母港 ⇄ 烬火前哨站 = 7.75：3×0.5 + 3×0.75 + 4×1.0） */
+  anchorEffectiveMinutes: number
 }
 
 /** 敌方战术性格（V11）：brawl 贴脸近战 / orbit 中距绕圈 / kite 拉远吊打 */

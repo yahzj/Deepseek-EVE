@@ -19,11 +19,18 @@
  *   ① 受损档不再是「结构 −5%~15%」的固定骰 —— 一口伤害 = **敌群火力 × `encounter.hitFirepowerSec`**
  *      （敌群火力 = 威胁 × `battle.foeDpsPerThreat`，与敌方总火力同一常量），
  *      施加时**先扣装甲、吸完再进结构**（旧实现直接扣结构、装甲不动，与日志"被咬下一块装甲"不符——真 BUG）；
- *   ② **结构低于 `encounter.retreatHullFrac`（50%）即撤退**：主控停掉低安作业（采矿/打捞/扫描）并即时
- *      返航最近已建成站，副船中止 AI 任务召回回港**待命**；**不自动维修、不自动再派**（回港等玩家决定）；
+ *   ② **收场 = 先修后判**（**2026-09-12 船长改判**：「先维修，组件不足或者修完后结构 <50% 返港」）：
+ *      遭遇了结后先就地用修理组件补耐久（触发线 = 装甲或结构 <50%，目标 `encounter.repairTargetFrac`
+ *      = 60%，来源货舱优先→仓库兜底；**旧「不自动维修」口径作废**）；**组件耗尽**或**修完后结构仍 <50%**
+ *      才收手返港待命（主控停低安作业并即时返航最近已建成站，副船中止 AI 任务召回；**不自动再派**）。
+ *      ⇒ 只要组件够，被伏击的船不再自动撤退，会留下继续干活；
  *   ③ 低安遭遇的「迎战」也挂同一条 50% 自动脱离保险（`fightEncounter` 写 `hullEscapeFrac`），
- *      否则应战会一直打到弃船；自动脱离 = 轻损脱离（无缴获、无额外扣损），随后同样走撤退判定；
+ *      否则应战会一直打到弃船；自动脱离 = 轻损脱离（无缴获、无额外扣损），随后同样走收场尾巴；
  *   ④ 结构底线 5% 保留（**绝不弃船**）；
+ * - **长途运输途中同样会暴露**（2026-09-12 船长「打算让长途运输会遇袭」）：`hauling.setLeg` 每段把
+ *   `awayGalaxy` 记为**出发星系**，而本文件的排除清单只排了采矿/远征/打捞/扫描 ⇒ 出发港在低安
+ *   （烬火星区 sec = 0）的运输航段会被计为「出发星系的驻留暴露」并掷伏击。**该行为按船长裁定保留**，
+ *   手册与首次入低安提示的「航行途中不会」文案已同步改写（**移动段不暴露**仍是通则）；
  * - **缴获（2026-09-09 船长定）：击退与应战全歼同额 = 伏击敌群悬赏赏金 × 50%**
  *   （缴获评估学 ×1.1/级照旧；只给 ISK，不计首胜/声望，防与悬赏体系双吃）；
  *   胜利（两路径皆）向事发星系注入残骸密度（威胁 ×0.4，与远征胜利同款）——被击毁的
@@ -60,6 +67,7 @@ import { stopScan } from './explore'
 import { startTransitHome } from './location'
 import { cancelAiTask } from './ai'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
+import { repairWithKitsFor } from './shipyard'
 
 /** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
  *  算法本体见 `hullDamage.ts`（与**战斗撤退**共用同一套：先扣装甲、吸完再进结构、结构 5% 底线）。 */
@@ -74,19 +82,53 @@ function hitLogText(shipName: string, galaxyName: string, foeName: string, suffi
 }
 
 /**
- * 撤退判定（船长 2026-09-11 定）：袭击了结后，**结构低于 50%** 的被袭船立刻停手返港**待命**——
+ * 遭遇**收场尾巴**（**2026-09-12 船长定：先修后判**）：
+ * ① **先自动修理**：装甲或结构 <50% ⇒ 就地用**修理组件**补到两者 ≥60% 或**组件耗尽**
+ *    （来源 = 货舱优先、仓库兜底；见 `shipyard.repairWithKitsFor`）；
+ * ② **再判返港**：**组件不足（断料）** 或 **修完后结构仍 <50%** ⇒ 被袭船收手返港**待命**。
+ *
+ * ⚠ **旧口径作废**（2026-09-11 的「不自动维修」＋「结构 <50% 一律撤退」两条由船长 2026-09-12 改判）：
+ * 现在**只要组件够，被伏击的船就不会自动撤退**（修好继续干活），返港降级为"修不动 / 修不好"时的保命档。
+ * 为什么改：长途运输也会遇袭（同日裁定）⇒ 低安受损变得高频，逐件手点不现实。
+ */
+function settleEncounterTail(state: GameState, ctx: SimContext, shipId: string): void {
+  const ship = state.fleet[shipId]
+  if (!ship) return
+  const frac = ctx.balance.encounter.retreatHullFrac
+  let outOfKits = false
+  // 触发线 = 装甲**或**结构 <50%（与重复清剿同口径）；目标 60% 给"战斗内结构<50% 自动脱离"留缓冲
+  if (ship.durability < frac || (ship.armorPct ?? 1) < frac) {
+    outOfKits = repairWithKitsFor(state, ctx, shipId, ctx.balance.encounter.repairTargetFrac, 'cargo+warehouse').outOfKits
+  }
+  const after = state.fleet[shipId]
+  const hullLow = !after || after.durability < ctx.balance.encounter.retreatHullFrac
+  if (outOfKits) retreatEncounterShip(state, ctx, shipId, hullLow ? 'hull+kits' : 'kits')
+  else if (hullLow) retreatEncounterShip(state, ctx, shipId, 'hull')
+}
+
+/**
+ * 收手返港待命（原因只影响日志文案；执行口径一处）：
  * 主控：停掉低安作业（采矿/打捞/扫描）并即时返航最近已建成站（既有"返航即时到站"口径，到港自动卸货）；
  * 副船：中止 AI 任务召回回港（既有召回口径，核心归还核心库）。
- * **不自动维修、不自动再派**：回港后由玩家决定怎么修（副船耐久 <50% 本就不能再派任务）。
- * 返回是否确实撤退（用于日志与测试）。
+ * **不自动再派**：回港后由玩家决定下一步（副船耐久 <50% 本就不能再派任务）。
+ * 返回是否确实撤退（用于测试）。
  */
-function retreatIfHullLow(state: GameState, ctx: SimContext, shipId: string): boolean {
+function retreatEncounterShip(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  cause: 'hull' | 'kits' | 'hull+kits',
+): boolean {
   const ship = state.fleet[shipId]
   if (!ship) return false
   const frac = ctx.balance.encounter.retreatHullFrac
-  if (ship.durability >= frac) return false
   const name = shipDisplayName(state, ctx, shipId)
-  const line = `结构低于 ${pct(frac)}%`
+  const line =
+    cause === 'hull'
+      ? `结构低于 ${pct(frac)}%`
+      : cause === 'kits'
+        ? '修理组件耗尽（未修到目标）'
+        : `修理组件耗尽且结构仍低于 ${pct(frac)}%`
   if (shipId !== state.shipId) {
     // 副船：中止任务召回回港待命（核心归还核心库）
     if (!cancelAiTask(state, shipId, ctx)) return false
@@ -269,7 +311,7 @@ function noteLowSec(state: GameState, ctx: SimContext, galaxyId: string): void {
   addLog(
     state,
     'warn',
-    `⚠ 首次进入低安星系（${name}，安全 ${secOf(ctx, galaxyId).toFixed(1)}）：低安活动可能遭遇巡逻拦截或海盗伏击（采掘/打捞/扫描作业与驻留时可能，航行途中不会）；可「迎战」或快速脱离，详见手册「航行须知」。`,
+    `⚠ 首次进入低安星系（${name}，安全 ${secOf(ctx, galaxyId).toFixed(1)}）：低安活动可能遭遇巡逻拦截或海盗伏击——采掘/打捞/扫描作业与驻留时可能，**长途运输途中同样会**；遇袭后舰船会自己用修理组件补装甲与结构，补不动或结构过低才收手返港；可「迎战」或快速脱离，详见手册「航行须知」。`,
   )
 }
 
@@ -341,8 +383,8 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     )
   }
   clearEncounter(state)
-  // 撤退判定（2026-09-11 船长定）：胜、败、被抢都判——结构低于 50% 就停手返港待命
-  retreatIfHullLow(state, ctx, shipId)
+  // 收场尾巴（2026-09-12 船长定：先修后判）——胜、败、被抢三路共用
+  settleEncounterTail(state, ctx, shipId)
 }
 
 /**
@@ -380,7 +422,8 @@ function settleEscape(state: GameState, ctx: SimContext): void {
     )}% / 结构 ${Math.round((ship?.durability ?? 1) * 100)}%）${repairTail(battle, ctx)}。`,
   )
   clearEncounter(state)
-  retreatIfHullLow(state, ctx, shipId)
+  // 收场尾巴（2026-09-12 船长定：先修后判；自动脱离时结构已 <50%，修不动才返港）
+  settleEncounterTail(state, ctx, shipId)
 }
 
 /** 遭遇战（玩家应战后）推进与结算：胜 → 缴获；败 → 受损 + 大概率被抢 */
@@ -447,8 +490,8 @@ function settleFight(state: GameState, ctx: SimContext): void {
     )
   }
   clearEncounter(state)
-  // 撤退判定（2026-09-11 船长定）：胜、败都判——结构低于 50% 就停手返港待命
-  retreatIfHullLow(state, ctx, shipId)
+  // 收场尾巴（2026-09-12 船长定：先修后判）——应战胜、败两路共用
+  settleEncounterTail(state, ctx, shipId)
 }
 
 /**

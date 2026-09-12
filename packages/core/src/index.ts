@@ -230,6 +230,7 @@ export {
   isShipLocked,
   lockShip,
   repairWithKits,
+  repairWithKitsFor,
   useOneRepairKit,
   renameShip,
   hullLayerCaps,
@@ -267,7 +268,7 @@ export {
 } from './mining'
 export type { MiningParams, MiningView } from './mining'
 
-export { warpSpeedAus, travelTimeFactor, travelLegMs, travelMinutesEff, shortestTravelMinutes } from './travel'
+export { warpSpeedAus, travelTimeFactor, travelLegMs, travelMinutesEff, shortestTravelMinutes, shortestTravelPath } from './travel'
 
 export {
   isExplored,
@@ -527,6 +528,8 @@ export {
   haulLegMinutesOf,
   haulBaseReward,
   haulRewardRange,
+  haulSecurityMulOf,
+  haulEffectiveMinutes,
   HAUL_TRIP_MUL_MIN,
   HAUL_TRIP_MUL_MAX,
   haulingOccupiedM3,
