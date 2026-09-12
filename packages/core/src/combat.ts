@@ -3050,6 +3050,8 @@ function resolvePointDefense(
     b.lastTickGameMs - foeHitAt > PD_REACTIVE_WINDOW_MS
   )
     return;
+  // **消费制**（同上，对称；船长 2026-09-11）：我方无人机打它一下 ⇒ 它才还一次手。
+  b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined };
   const period = Math.max(100, Math.round(bal.pdJudgementMs));
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue;
@@ -3130,6 +3132,11 @@ export function pickFoeDroneTarget(
   const hitAt = b.droneHitAt?.me;
   if (hitAt === undefined || b.lastTickGameMs - hitAt > PD_REACTIVE_WINDOW_MS)
     return null;
+  // **消费制**（船长 2026-09-11：「我没有看到反应式防空，被攻击后近防炮就一直开火」）——
+  // 窗口原设 5,000ms 而敌机装填 4,400ms ⇒ **窗口首尾相接、看着就是一直在打**。
+  // 现改为：**一次敌机攻击只换一次反击**（把这个时刻消费掉，下一次要等它再打过来）——
+  // 节奏变成"挨一下 → 还一炮 → 静默等下一轮"，反应式才看得出来。
+  b.droneHitAt = { ...(b.droneHitAt ?? {}), me: undefined };
   // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
   // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
   // 旧口径用 `b.distanceM` 判 ⇒ 画面里贴着您的敌机被当成在 4.5km 外 ⇒ 近防炮"不工作"（船长实测）。
