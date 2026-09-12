@@ -16,21 +16,21 @@ export type RecycleFlavor = {
 
 /** 主题追加件（18 张 sec<0.5 悬赏；高安与母港系走默认池，无追加） */
 export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = {
-  // ── 中安（0 ≤ sec < 0.5）：直出基础池追加 1 件非火力增幅件 ──
+  // ── 中安（**0 < sec < 0.5**；2026-09-12 船长「0也算低安」后，0.0 的两个星系已移入下段低安档）：直出基础池追加 1 件非火力增幅件 ──
   'ano-lantern-saboteurs': { modules: ['mod-cargo-2'] }, // 信标猎手：长途货舱
   'ano-haze-ambush': { modules: ['mod-shield-kin-2'] }, // 灰霾伏击：动能护盾增强
   'ano-shard-bandits': { modules: ['mod-miner-2'] }, // 碎晶劫匪：掠夺采集器
   'ano-redring-raiders': { modules: ['mod-armor-plate-2'] }, // 赤潮舰队：装甲增厚
   'ano-ghost-signal': { modules: ['mod-shield-pla-2'] }, // 幽灵舰：能量护盾残影
-  'ano-echo-haunt': { modules: ['mod-shield-ext-2'] }, // 回音残舰：护盾扩展
   'ano-mirage-hijackers': { mk2: ['mod-gyro-2', 'mod-armor-pla-2'] }, // 蜃影劫持：姿态陀螺（机动）+ 能量甲（2026-09-11 换区：中安→低安，故由 modules 改为 mk2）
-  // ── 低安（sec < 0）：低安门槛 MK2 池追加增幅件（默认 7 件保留）──
+  // ── 低安（**sec ≤ 0，含 0**）：低安门槛 MK2 池追加增幅件（默认 7 件保留）──
+  'ano-echo-haunt': { mk2: ['mod-shield-ext-2'] }, // 回音残舰：护盾扩展（2026-09-12 船长「0也算低安」⇒ 0.0 的回音荒区归低安档，由 modules 改为 mk2）
   'ano-auro-raiders': { mk2: ['mod-armor-exp-2', 'mod-stab-exp-2'] }, // 奥罗盗匪：高爆甲+高爆稳定
   'ano-abyss-guard': { mk2: ['mod-shield-exp-2', 'mod-armor-plate-2'] }, // 深渊卫队：高爆盾+增厚
   'ano-titan-wreck': { mk2: ['mod-shield-ext-2', 'mod-armor-plate-2'] }, // 泰坦：巨构扩展+增厚（武器清出）
   // 巨构核心（E 族代表卡）：机群导控 + 增厚——"接近完好"＝炮台仍可用，但主力仍是警戒机群
   'ano-core-section': { mk2: ['mod-drone-tac-2', 'mod-armor-plate-2'] },
-  'ano-cinder-siege': { modules: ['mod-armor-pla-2'] }, // 烬火围攻：能量甲增厚（2026-09-11 换区：低安→中安，故由 mk2 改为 modules）
+  'ano-cinder-siege': { mk2: ['mod-armor-pla-2'] }, // 烬火围攻：能量甲增厚（2026-09-12 船长「0也算低安」⇒ 0.0 的烬火星区归低安档，由 modules 改回 mk2）
   'ano-chasm-aberrations': { mk2: ['mod-stab-kin-2', 'mod-armor-exp-2'] }, // 裂谷畸变：动能稳定+高爆甲
   'ano-nadir-static': { mk2: ['mod-rof-2', 'mod-track-2'] }, // 天底封锁：射速+索敌
   'ano-starcore-boss': { mk2: ['mod-drone-tac-2', 'mod-drone-rack-2'] }, // 星髓虫群：战术导控+甲板扩展（武器清出）

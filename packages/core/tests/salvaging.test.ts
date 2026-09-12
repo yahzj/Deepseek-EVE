@@ -357,6 +357,38 @@ describe('完好舰体当场直发（卷B3⑨：命中 = 敌群回收彩头，�
     expect(s2.moduleBay['mod-turret-kin-2'] ?? 0).toBe(0) // 高安不掷 MK2
   })
 
+  it('低安含 0：sec = 0.0 掷 MK2 层、sec = 0.1（中安）不掷（2026-09-12 船长「0也算低安」）', () => {
+    const world = (security: number, id: string) => {
+      const ctx = makeTestCtx({
+        ships: [ship('sandcat', { cargo: 800 })],
+        galaxies: [
+          { ...galaxy('galaxy-hub', '母港'), security: 1.0 },
+          { ...galaxy('galaxy-zero', '零点'), security },
+        ],
+        edges: [{ from: 'galaxy-hub', to: 'galaxy-zero', travelMinutes: 2 }],
+        anomalies: [anomaly(id, 'galaxy-zero', { threat: 40, tactic: 'brawl' })],
+        balance: { ...DEFAULT_BALANCE, richVeinChance: 0, intactHullRatePerMin: 60, intactMk2Chance: 1 },
+        modules: [
+          moduleDef('mod-miner-civ', 'miner', 0),
+          moduleDef('mod-turret-kin-2', 'turret', 0),
+          moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 }),
+        ],
+      })
+      const state = fittedState(5)
+      state.exploredGalaxies.push('galaxy-zero')
+      state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+      expect(startSalvageOp(state, 'galaxy-zero', ctx).ok).toBe(true)
+      advanceSalvageOp(state, 4_000, ctx)
+      return { base: state.moduleBay['mod-miner-civ'] ?? 0, mk2: state.moduleBay['mod-turret-kin-2'] ?? 0 }
+    }
+    const zero = world(0, 'ano-zero')
+    expect(zero.base).toBeGreaterThanOrEqual(3)
+    expect(zero.mk2).toBe(zero.base) // sec = 0 归低安 ⇒ MK2 完好舰体层照掷
+    const mid = world(0.1, 'ano-mid')
+    expect(mid.base).toBeGreaterThanOrEqual(3)
+    expect(mid.mk2).toBe(0) // 中安（0 < sec < 0.5）不掷
+  })
+
   it('禁用例（rate=0）：不命中、不入装备库（测试用它保 rng 时序）', () => {
     const state = fittedState(11)
     const ctx = makeTestCtx({

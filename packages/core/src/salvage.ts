@@ -372,7 +372,9 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
     threat: anomaly.threat,
     baseDensity: base,
     tier: recycleTierOf(base),
-    lowSec: typeof galaxy?.security === 'number' && galaxy.security < 0,
+    // **低安判定（含 0）**：2026-09-12 船长裁定「**0 也算低安**」⇒ 由 `sec < 0` 改 **`sec ≤ 0`**
+    // （安全等级恰好 0.0 的烬火星区与回音荒区并入低安档：MK2 完好舰体层与 `recycleLoot.mk2` 主题件）
+    lowSec: typeof galaxy?.security === 'number' && galaxy.security <= 0,
     // B3.1：敌群特色（2026-09-06）——缺省走三档基础池/三层彩头
     pool: anomaly.recyclePool,
     note: anomaly.recycleNote,

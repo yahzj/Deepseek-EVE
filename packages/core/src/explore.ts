@@ -187,9 +187,17 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   s.finishAtGameMs = state.gameMs + totalMs
   s.originGalaxy = from === HOME_GALAXY_ID ? null : from
   s.returning = false
+  // 2026-09-12 船长裁定（「0 也算低安」）后，这条提示**必须分成两件事**说（此前一句话把两者混在一起，
+  // 还把"安全等级不足 0.5"的中安也**叫成低安**——名词错，已修）：
+  // ① **扫描偏慢**的线仍是 `sec < 0.5`（船长同日裁定「保留 0.5、只修文案」⇒ 中安也慢）；
+  // ② **遇袭**只发生在**低安**（`sec ≤ balance.encounter.lowSecMax`）⇒ 中安扫描不会被打。
+  const secOfTarget = galaxy?.security ?? 1
+  const lowSecTarget = secOfTarget <= ctx.balance.encounter.lowSecMax
   const riskNote =
-    (galaxy?.security ?? 1) < 0.5
-      ? '该星系为低安：信号嘈杂、扫描偏慢，且扫描中更容易被巡逻盯上（遇袭概率提高，作业不会中断）。'
+    secOfTarget < 0.5
+      ? lowSecTarget
+        ? '该星系为低安：信号嘈杂、扫描偏慢，且扫描中更容易被巡逻盯上（遇袭概率提高，作业不会中断）。'
+        : '该星系安全等级不足 +0.5（中安）：信号嘈杂、扫描偏慢；**遇袭只发生在低安**，这里不会被巡逻拦截。'
       : '扫描期间更容易碰到有趣的东西。'
   addLog(
     state,

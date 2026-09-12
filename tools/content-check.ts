@@ -72,6 +72,8 @@ import {
   createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
+// 2026-09-12：安全分区**单一出处**（`sideTasks.securityZoneOf`）——体检不再自己内联重算边界
+securityZoneOf,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_PITY_ROLLS,
   factionRareDropEffectiveRate,
@@ -1185,6 +1187,26 @@ for (const m of MODULES) {
     const galaxy = ctx.galaxies.get(def.galaxyId)
     const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
     check(sec < 0.5, `B3.1 主题彩头仅限 sec<0.5 星系：${def.name}（${def.galaxyId}）sec=${sec}`)
+    // 2026-09-12 船长裁定（「档位**仍逐卡手写**，但**加断言拦住**」）：档位必须与所在星系的**安全分区**一致——
+    // 中安（0 < sec < 0.5）只允许 `modules`（直出基础池追加件）、低安（sec ≤ 0）只允许 `mk2`
+    // （低安门槛 MK2 池追加件）。**为什么需要**：2026-09-11 船长互换安全等级时，两张卡的档位是
+    // **靠人手改的**（`ano-mirage-hijackers` 中安→低安、`ano-cinder-siege` 低安→中安）⇒ 改漏了没人拦。
+    // ⚠ 分区读 `securityZoneOf`（**单一出处**），不在这里重算边界。
+    const lootZone = securityZoneOf(ctx, def.galaxyId)
+    if ((loot.modules?.length ?? 0) > 0) {
+      check(
+        lootZone === '中安',
+        `B3.1 主题件档位与星系分区不符：${def.name}（${def.galaxyId}，${lootZone}）挂了**中安档** modules——` +
+          `中安档只用于 0 < sec < 0.5 的星系；低安（sec ≤ 0）须改用 mk2`,
+      )
+    }
+    if ((loot.mk2?.length ?? 0) > 0) {
+      check(
+        lootZone === '低安',
+        `B3.1 主题件档位与星系分区不符：${def.name}（${def.galaxyId}，${lootZone}）挂了**低安档** mk2——` +
+          `低安档只用于 sec ≤ 0 的星系；中安（0 < sec < 0.5）须改用 modules`,
+      )
+    }
     for (const group of ['modules', 'mk2'] as const) {
       for (const id of loot[group] ?? []) {
         const isMk3 = id.endsWith('-3')
@@ -2531,11 +2553,11 @@ for (const m of MODULES) {
   const zoneCount = { 中安: 0, 低安: 0 }
   for (const def of ANOMALIES_FLAVORED) {
     if (!isLairCandidate(def)) continue
-    const sec = lairCtx.galaxies.get(def.galaxyId)?.security
-    const v = typeof sec === 'number' && Number.isFinite(sec) ? sec : 0.5
-    if (v >= 0.5) continue
-    if (v >= 0) zoneCount.中安 += 1
-    else zoneCount.低安 += 1
+    // 2026-09-12：改读 `securityZoneOf`（**单一出处**）——此前这里**内联重算**了分区边界，
+    // 船长裁定「0 也算低安」后它仍是旧边界 `v >= 0`，与 `securityZoneOf`（`v > 0`）成了两套口径（已修）
+    const zone = securityZoneOf(lairCtx, def.galaxyId)
+    if (zone === '中安') zoneCount.中安 += 1
+    else if (zone === '低安') zoneCount.低安 += 1
   }
   for (const plan of BOUNTY_ZONE_PLAN) {
     const have = plan.zone === '高安' ? 0 : zoneCount[plan.zone as '中安' | '低安']
@@ -2897,7 +2919,7 @@ for (const m of MODULES) {
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
     'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
-    // 2026-09-12 星系机制通讯：低安空域（阈值 sec < 0.5，与伏击/扫描判定同源）· 某族敌人所在的星系
+    // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
@@ -3114,7 +3136,7 @@ for (const m of MODULES) {
     const MECH_MAILS: ReadonlyArray<{ id: string; face: string }> = [
       { id: 'msg-auro-megastructure', face: '星系 galaxy-auro（巨构残骸带）' },
       { id: 'msg-exile-swarm', face: '敌族 G（鱿烬亡军的蜂群）' },
-      { id: 'msg-lowsec-rules', face: '低安空域（安全等级 < +0.5）' },
+      { id: 'msg-lowsec-rules', face: '低安空域（安全等级 ≤ 0，含 0）' },
       { id: 'msg-redring-outpost', face: '星系 galaxy-redring（前哨站选址）' },
     ]
     /** 触发面键：同一键 = 同一触发面（星系信按星系 id · 族信按族字母 · 低安按阈值） */
