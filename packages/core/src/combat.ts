@@ -174,6 +174,8 @@ export interface UnitSpec {
    *  让期望交距落在自己打得到的距离（2026-09-11 船长裁决②）。
    *  **旧威胁推导路径一律不写本字段** ⇒ 旧口径行为一字不动。 */
   foeRangeBand?: { min: number; max: number };
+  /** **期望作战距离覆写**（米；见 `FoeShipDef.desireRangeM`）——写了的单位直接用这个值 */
+  foeDesireRangeM?: number;
   /** **本单位的舰载机群**（2026-09-11 机群批）——只有舰级路径写入（`FoeShipDef.drones` 原样带到单位上）。
    *  用途：①建档时把机群展开成 `src:'drone'` 的武器条目（每架一条）；②开战与每次换波按机型
    *  `defense` 建生存池（`BattleState.foeDronePools`，按 tag 索引、与本单位 drone 条目**同序**）。
@@ -1301,6 +1303,10 @@ function createFoeSpecsFromShips(
       // **自己的有效射程带**（含覆写）——供 `foeDesiredRange` 在舰级路径上替代全局战术表
       // （2026-09-11 船长裁决②「期望交距改取该单位自己的射程带」）。旧路径不写本字段。
       foeRangeBand: { min: rangeMin, max: rangeMax },
+      // **期望距离覆写**（条目 > 舰级）：写了的卡/舰级直接钉住作战距离
+      ...((u.slot.desireRangeM ?? ship.desireRangeM) !== undefined
+        ? { foeDesireRangeM: u.slot.desireRangeM ?? ship.desireRangeM }
+        : {}),
     };
   });
 }
@@ -1688,6 +1694,10 @@ export function foeDesiredRange(
   foes: UnitSpec[],
   bal: BattleBalance,
 ): number {
+  // **期望距离覆写优先**（船长 2026-09-11 E 族：「战术调整、期望距离不改」）
+  const pinned = foes[0]?.foeDesireRangeM;
+  if (pinned !== undefined && Number.isFinite(pinned))
+    return Math.max(bal.minDistanceM, Math.round(pinned));
   const tactic = foes[0]?.foeTactic ?? "orbit";
   // 舰级路径：带 = 自己的有效射程带；旧路径：带 = 全局战术表（原样）
   const band = foes[0]?.foeRangeBand ?? TACTIC_RANGE[tactic]!;

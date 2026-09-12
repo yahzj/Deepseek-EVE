@@ -218,7 +218,7 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   B: ['kinetic', 'explosive', 'plasma'], // 武装拾荒者【已停用，留表兜底】
   C: ['explosive', 'plasma', 'kinetic'], // 异形：酸液与生物爆破
   D: ['plasma', 'kinetic', 'explosive'], // 守墓古舰：古舰的能量副炮
-  E: ['plasma', 'explosive', 'kinetic'], // 泰坦巨构：巨构能量核心
+  E: ['explosive', 'plasma', 'kinetic'], // 2026-09-11 船长：E 族副系＝爆炸（「50% 爆炸 50% 动能」） // 泰坦巨构：巨构能量核心
   F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【无窝点成员，留表兜底】
   G: ['explosive', 'kinetic', 'plasma'], // 烬火流亡：拼装火药与土制弹头
 }
