@@ -516,7 +516,7 @@ describe('赏金任务 · 地图级别封顶档位（2026-09-10 船长定：族�
     expect(noDeepDays).toBe(30) // 世界内根本没有 3 级图 → 一天深层都不会有
   })
 
-  it('同星系两张卡：代表卡取**级别最高**的那张（级别低的永不入板）', () => {
+  it('同星系两张卡：代表位**随机抽取**（2026-09-12 船长「派发代表位改为随机抽取」）——两张都可能入板', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 23 })
     const gals = [galaxy('galaxy-hub', '母港', { security: 0.1 }), galaxy('galaxy-far', '远方', { security: -0.5 })]
     const cards = [
@@ -532,16 +532,20 @@ describe('赏金任务 · 地图级别封顶档位（2026-09-10 船长定：族�
       anomalies: cards,
     })
     for (const g of gals) markExplored(state, g.id)
+    const seen = new Set<string>()
     let sameGalaxySeen = 0
     for (let day = 0; day < 30; day += 1) {
       openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
       for (const t of state.sideTasks.bounty) {
         if (t.galaxyId !== 'galaxy-hub') continue
         sameGalaxySeen += 1
-        expect(t.anomalyId).toBe('ano-same-high') // 级别更高的那张上位
+        seen.add(t.anomalyId!)
       }
     }
     expect(sameGalaxySeen).toBeGreaterThan(0)
+    // **随机抽取** ⇒ 30 天里两张都该出现过（等概率下"只出同一张"的概率 ≈ 2 × 0.5³⁰ ≈ 2e-9）
+    expect(seen.has('ano-same-low')).toBe(true) // 旧口径下这张**永不入板**（级别低）
+    expect(seen.has('ano-same-high')).toBe(true)
   })
 })
 

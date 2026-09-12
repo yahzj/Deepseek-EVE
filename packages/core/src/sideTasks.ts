@@ -373,15 +373,24 @@ function spawnBountyTasks(state: GameState, ctx: SimContext): void {
   const board = state.sideTasks
   // 每区候选：可作窝点 + 星系已探索 + 同区不重复星系（每个星系留级别最高的那张代表卡）
   const poolByZone = new Map<SecurityZone, AnomalyDef[]>()
+  /** 同星系**已见过的卡数**（蓄水池抽样的分母；2026-09-12 代表位改随机后需要） */
+  const repSeen = new Map<string, number>()
   for (const a of ctx.anomalies.values()) {
     if (!isLairCandidate(a)) continue
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
     const zone = securityZoneOf(ctx, a.galaxyId)
     const list = poolByZone.get(zone) ?? []
     const idx = list.findIndex((x) => x.galaxyId === a.galaxyId)
-    if (idx < 0) list.push(a)
-    else if (lairLevelOf(a) > lairLevelOf(list[idx]!) || (lairLevelOf(a) === lairLevelOf(list[idx]!) && a.rewardIsk > list[idx]!.rewardIsk)) {
-      list[idx] = a // 同星系再遇：级别更高者上位（并列取奖金更高）
+    if (idx < 0) {
+      list.push(a)
+      repSeen.set(a.galaxyId, 1)
+    } else {
+      // **代表位 = 随机抽取**（船长 2026-09-12：「**派发代表位改为随机抽取**」）——
+      // 旧口径 = 级别最高、并列取奖金最高（⇒ 同星系低级别卡**永不入板**、由数据顺序外的规则定死）。
+      // 现口径 = 同星系每张卡**等概率**上位：标准**蓄水池抽样**（第 n 张以 1/n 概率替换当前代表）。
+      const n = (repSeen.get(a.galaxyId) ?? 1) + 1
+      repSeen.set(a.galaxyId, n)
+      if (nextInt(state.rng, n) === 0) list[idx] = a
     }
     poolByZone.set(zone, list)
   }
@@ -507,14 +516,22 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
  *   候选为空（例如候选星系全已建站）= 当日不发派系活跃（`spawnFactionActivity` 里 return）。
  */
 export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
-  const pool: AnomalyDef[] = []
+  const byGalaxy = new Map<string, AnomalyDef[]>()
   for (const a of ctx.anomalies.values()) {
     if (!isLairCandidate(a)) continue
     if (!(a.rewardIsk > 0)) continue
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
     if (securityZoneOf(ctx, a.galaxyId) === '高安') continue
     if (isGalaxyStationBuilt(state, ctx, a.galaxyId)) continue
-    if (!pool.some((x) => x.galaxyId === a.galaxyId)) pool.push(a)
+    const arr = byGalaxy.get(a.galaxyId) ?? []
+    arr.push(a)
+    byGalaxy.set(a.galaxyId, arr)
+  }
+  // **每星系一席 = 代表卡**，且**代表位改随机抽取**（船长 2026-09-12「派发代表位改为随机抽取」）——
+  // 旧口径 = 该星系**第一张**（数据顺序，等于由 anomalies.ts 的书写顺序决定）；现 = 同星系**等概率**抽一张。
+  const pool: AnomalyDef[] = []
+  for (const arr of byGalaxy.values()) {
+    pool.push(arr.length === 1 ? arr[0]! : arr[nextInt(state.rng, arr.length)]!)
   }
   return pool
 }
