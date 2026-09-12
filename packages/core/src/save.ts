@@ -690,6 +690,60 @@ function asRaw(value: unknown): RawState {
 }
 
 /** V12：清洗战斗状态（只存动态量；字段损坏即整体弃置返回 null，引擎会在交火阶段重建） */
+/**
+ * **战斗字段持久化分类表**（2026-09-12 审计 A3）——`BattleState` 的**每一个字段**都必须在这里登记
+ * 自己是"随档持久化"还是"运行态（有意不入档）"，**漏登记编译期就报错**（`satisfies` 要求键集
+ * 与 `keyof BattleState` 完全一致）——代替此前那种"手抄一份白名单、加了字段忘了收录"的漂移方式
+ * （2026-09-11 就漏过 `hullEscapeFrac`：保险字段没随档保留 ⇒ 战中重载凭空失效）。
+ *
+ * ⚠ **分类的判据**：**战中重载后引擎还要不要拿它续算**。要 ⇒ `persist`（清洗后原样带回）；
+ * 只是表现层/短窗缓存、或本来就"重载即重置"的循环 ⇒ `runtime`，但**必须写明理由**。
+ * ⚠ 载入侧只认登记表（`BATTLE_PERSIST_KEYS`）⇒ 新增字段若忘记分类，**typecheck 直接失败**。
+ */
+type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
+
+const BATTLE_FIELDS = {
+  /* ── 随档持久化：战中重载必须原样续算 ── */
+  startedAtGameMs: { kind: 'persist' },
+  lastTickGameMs: { kind: 'persist' },
+  distanceM: { kind: 'persist' },
+  myDesireM: { kind: 'persist' },
+  units: { kind: 'persist' },
+  ammo: { kind: 'persist' },
+  ammoIds: { kind: 'persist' },
+  stats: { kind: 'persist' },
+  fx: { kind: 'persist' },
+  // ⚠ **派生字段**：载入侧不读存档里的旧值，而是按清洗后的 fx 环尾部重算（`尾序号 + 1`），
+  // 这样旧档（无 seq）也能续播；故"往返相等"对它不适用，用例单独断言派生式。
+  fxSeq: { kind: 'persist' },
+  ended: { kind: 'persist' },
+  hullEscapeFrac: { kind: 'persist' },
+  waveIdx: { kind: 'persist' },
+  waveClearAt: { kind: 'persist' },
+  autoEscaped: { kind: 'persist' },
+  escapeReason: { kind: 'persist' },
+  /* ── 运行态（有意不入档，逐条写明理由） ── */
+  foeChargeOn: { kind: 'runtime', why: '敌突进循环：落在"重载即重置循环"口径内（2026-09-10 起即如此，登记备查）' },
+  foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
+  foeChargeCdUntilMs: { kind: 'runtime', why: '同突进循环：重载即重置冷却' },
+  repair: { kind: 'runtime', why: '维修装置运行态：开战按装配写入，重载后按"本场无维修装置介入"续算' },
+  dronePools: { kind: 'runtime', why: '我方机群生存池：开战建池，重载后按缺省口径续算' },
+  foeDronePools: { kind: 'runtime', why: '敌机生存池：开战/换波重建，重载后按"本场没有敌机"缺省口径续算' },
+  droneHitAt: { kind: 'runtime', why: '反应式防空的最近受击时刻：短窗缓存，超窗即脱锁' },
+  foeDroneRangeBuff: { kind: 'runtime', why: '敌机受击增程：一次触发本场永久；重载后回到未触发（可被再次命中重新触发）' },
+  foeGunRangeBuff: { kind: 'runtime', why: '炮台受击增程（D 族静滞卫舰）：同上，重载后回到未触发' },
+  notices: { kind: 'runtime', why: '战斗画面提示条：纯表现层，限时自动消失、不留档' },
+  droneLost: { kind: 'runtime', why: '本场已击落架数：结算时按此永久扣除机群清单' },
+  pdCd: { kind: 'runtime', why: '近防炮调度冷却（当前波）：重载即重置为可开火' },
+  pdFocus: { kind: 'runtime', why: '近防炮集火锁定：缺省 = 下一拍按优先级重选（2026-09-12 设计即零迁移）' },
+  droneLoadAtStart: { kind: 'runtime', why: '开战机群快照：仅用于战后"战损过半"判定' },
+} satisfies Record<keyof BattleState, BattleFieldSpec>
+
+/** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */
+export const BATTLE_PERSIST_KEYS: ReadonlyArray<keyof BattleState> = Object.entries(BATTLE_FIELDS)
+  .filter(([, spec]) => spec.kind === 'persist')
+  .map(([key]) => key as keyof BattleState)
+
 function cleanBattle(raw: unknown): BattleState | null {
   const b = asRaw(raw)
   const numf = (v: unknown, fallback: number): number =>
@@ -751,7 +805,8 @@ function cleanBattle(raw: unknown): BattleState | null {
   const statsRaw = asRaw(b.stats)
   const endedRaw = b.ended
   const fx = cleanFx(b.fx, numf)
-  return {
+  // 清洗后的候选值——**只有登记为 `persist` 的字段会被带出**（见 `BATTLE_FIELDS`）
+  const cleaned: Partial<Record<keyof BattleState, unknown>> = {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     lastTickGameMs: Math.max(0, Math.floor(numf(b.lastTickGameMs, 0))),
     distanceM: Math.max(0, distance),
@@ -791,6 +846,13 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),
   }
+  // 组装：**只带走登记为 persist 的字段**（漏登记的字段在 typecheck 就会被拦下，见 BATTLE_FIELDS）
+  const out: Partial<BattleState> = {}
+  for (const key of BATTLE_PERSIST_KEYS) {
+    const v = cleaned[key]
+    if (v !== undefined) (out as Record<string, unknown>)[key as string] = v
+  }
+  return out as BattleState
 }
 
 /** 弹药 id 映射清洗（弹药 MK2：kinetic/explosive/plasma 键下的非空字符串 id；坏值丢键） */
