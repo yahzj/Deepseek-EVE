@@ -4046,12 +4046,13 @@ function stepBattle(
           rt.hp = r.hp
           b.stats.meDmg += r.dealt
           // **附加伤害段**（2026-09-13 船长：掠袭破片炮「额外造成 50% 的动能伤害是附加伤害，
-          // 和弹种无关」）：主段（吃爆炸弹药的那一段）结算完之后，按**主段实收** ×比例，
-          // 再打一段**固定弹种**（缺省动能）的伤害——两段各吃各自的层克制与层抗。
+          // 和弹种无关」）——口径（船长 2026-09-13 二次裁定）：「**伤害各自吃各自的制（克制）效果**」：
+          // 副段取**武器原伤害**（含锁定加深，不含主段已吃的克制）×比例，然后**两段各吃各自的层克制**。
+          // ⚠ 不能用主段实收做基数——那会把主系的克制乘进副段（实测该目标会从 +50% 放大到 +75%）。
           const secPct = w.secondaryDamagePct ?? 0
           if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
             const secType = w.secondaryDamageType ?? 'kinetic'
-            const secDmg = Math.max(1, Math.round(r.dealt * secPct))
+            const secDmg = Math.max(1, Math.round(dmgLocked * secPct))
             const r2 = applyDamage(rt.hp, {}, secDmg, secType)
             rt.hp = r2.hp
             b.stats.meDmg += r2.dealt
