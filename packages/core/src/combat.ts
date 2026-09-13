@@ -34,7 +34,8 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
-import { wormholeAnomalyOf } from './wormholeFoes'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, wormholeAnomalyOf } from './wormholeFoes'
+import { wormholeFoeThreat } from './wormholeFoes'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
@@ -2353,6 +2354,26 @@ export function startBattleFor(
 }
 
 /**
+ * **洞内敌卡的派生单点**（F 批 · 2026-09-13）：开战与逐拍重建**必须走同一处**，
+ * 否则会出现"建档给了一套数值、逐拍又换一套"的静默错位——
+ * 首版就是这么错的：`advanceBattleFor` 漏了总血预算 ⇒ 敌人**血是强化后的、炮还是自然值**
+ * （探针实测：敌总血 11,168、单发 1,336，实战里每发只掉 6~7 点，整场残血 100%）。
+ */
+function wormholeDerivedAnomaly(
+  ctx: SimContext,
+  baseCard: AnomalyDef,
+  spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },
+): AnomalyDef {
+  return wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
+    // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
+    hpBudget:
+      foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
+      WORMHOLE_FOE_BASE_STRENGTH_MUL,
+    ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
+  })
+}
+
+/**
  * **多舰编队开战**（虫洞 D 批 · 船长 2026-09-13：「4 艘同时参战」）——与 `startBattleFor` 并列的
  * 第二条建档入口，**既有单船路径一字不动**。
  *
@@ -2376,16 +2397,21 @@ export function startFleetBattleFor(
    * **虫洞战斗标记**（F 批 · 2026-09-13）：给了就按层派生敌卡（`wormholeAnomalyOf`），
    * 并把 `{cardId, depth, kind, waves}` 写进 `battle.wormhole` ⇒ 逐拍重建同源。
    * **不给 = 普通多舰战斗**（既有行为）。
+   * `strengthMul` = **校准用覆写**（只有 `tools/wormhole-econ.ts` 会传；引擎/实战一律走常量）。
    */
-  wormhole?: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number },
+  wormhole?: {
+    depth: number
+    kind: 'node' | 'boss' | 'extract'
+    waves: number
+    strengthMul?: number
+  },
 ): import('./state').BattleState | null {
   if (!anomalyId || shipIds.length === 0) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
   const baseCard = battleAnomalyOf(ctx, anomalyId)
   if (!baseCard) return null
-  const anomaly = wormhole
-    ? wormholeAnomalyOf(baseCard, wormhole.depth, wormhole.kind, wormhole.waves)
-    : baseCard
+  // 洞内敌卡：按层派生（**与逐拍重建同源**，见 `wormholeDerivedAnomaly` 的注释）
+  const anomaly = wormhole ? wormholeDerivedAnomaly(ctx, baseCard, wormhole) : baseCard
   const bal = ctx.balance.battle
   // 编队顺序：**主控置首**（`state.shipId` 在编队里就提到第一位），其余保持传入顺序
   const ordered = [...shipIds]
@@ -2435,7 +2461,22 @@ export function startFleetBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
-  battle.distanceM = openM
+  // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
+  // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
+  // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
+  //
+  // ⚠ **虫洞内战斗的特殊规则（船长 2026-09-13）**：洞内**不吃**上面那条常规开战距离 ——
+  //   ① **非近战敌人**：初始距离 = **其目标距离**（敌人一开场就站在自己想打的位置）；
+  //   ② **近战敌人**：初始距离 = **玩家的中距离位置**（贴脸怪一开场就在你脸上）。
+  //   动机：常规口径下长射程编队能把近程敌人**永远钉在射程外**（F1 校准实测「敌开火 0」），
+  //   洞内要的是"进去就得挨打"的搜打撤张力。混合编成按"**卡内任一近战单位 ⇒ 走近战口径**"。
+  if (wormhole) {
+    const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
+    const want = anyBrawl ? desiredRangeFor(me, 'mid', bal) : foeDesiredRange(me, foes, bal)
+    battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
+  } else {
+    battle.distanceM = openM
+  }
   battle.myFleet = fleet
   // 弹药：**逐船装载、汇入同一个池**（成本按各船各付；档口按主控优先）
   const ammoIds: Partial<Record<DamageType, string>> = {}
@@ -3030,14 +3071,9 @@ export function advanceBattleFor(
   if (!battle || battle.ended) return
   const baseAnomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
   if (!baseAnomaly) return
-  // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（与开战同源 ⇒ 波次/血量/火力口径一致）
+  // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（**与开战同源**——同一处 `wormholeDerivedAnomaly`）
   const anomaly = battle.wormhole
-    ? wormholeAnomalyOf(
-        baseAnomaly,
-        battle.wormhole.depth,
-        battle.wormhole.kind,
-        battle.wormhole.waves,
-      )
+    ? wormholeDerivedAnomaly(ctx, baseAnomaly, battle.wormhole)
     : baseAnomaly
   const bal = ctx.balance.battle
   const myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId)

@@ -83,9 +83,12 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // 混伤 8:2（主等离子 = D 族「以能量武器为主」/ 副动能）
     dmgMix: { plasma: 8, kinetic: 2 },
     // 编成 = 守墓长舰 ×1（T3 中程光束）+ 幽灵舰 ×1（T2 快船）
+    // ⚠ **伤害系数 0.5**（F 批逐卡配平 · 2026-09-13）：本卡主炮是**光束（必中）**，同一血预算下
+    // 实收远高于掷命中的卡（校准读数：第 2 层节点残血 93%→41%、层末守卫直接 0% 胜）
+    // ⇒ 用 `dmgMul` 把"血/火力比"压回来；总血仍由 core 的按层预算（按卡归一）说了算。
     ships: [
-      { ship: FOE_D_LONGSHIP, count: 1 },
-      { ship: FOE_D_GHOST, count: 1 },
+      { ship: FOE_D_LONGSHIP, count: 1, dmgMul: 0.5 },
+      { ship: FOE_D_GHOST, count: 1, dmgMul: 0.5 },
     ],
     standingReq: 0,
     standingGain: 0,

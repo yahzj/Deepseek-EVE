@@ -292,6 +292,7 @@ export {
   wormholeFoeThreat,
   wormholeCardIdFor,
   wormholeAnomalyOf,
+  wormholeNaturalHp,
 } from './wormholeFoes'
 export type { WormholeFoeKind } from './wormholeFoes'
 

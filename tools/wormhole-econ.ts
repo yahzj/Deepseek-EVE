@@ -36,6 +36,7 @@ import {
   startFleetBattleFor,
 } from '../packages/core/src/combat'
 import {
+  WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
   wormholeCardIdFor,
   wormholeFoeThreat,
@@ -51,8 +52,8 @@ const ctx: SimContext = buildSimContext()
 /** 参考编队：4× T3 长尾鲨（导弹巡满配 + 支援件）——设计稿 §4.4 的「4×T3」编队 */
 const REF_SHIP = 'sh-thresher'
 const REF_FIT = {
-  high: ['mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3', 'mod-missile-3'],
-  mid: ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'],
+  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+  mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
 /** 技能档 = 战斗系 Lv3（中位行，与 `battle-calibrate` 的 A1 行同口径） */
@@ -68,6 +69,9 @@ const SKILLS: Record<string, number> = {
 const LAYERS = Number((process.argv.find((a) => a.startsWith('--layers=')) ?? '--layers=8').split('=')[1])
 const WAVES = Math.max(1, Number((process.argv.find((a) => a.startsWith('--waves=')) ?? '--waves=1').split('=')[1]))
 const SEED_N = Math.max(1, Number((process.argv.find((a) => a.startsWith('--seeds=')) ?? '--seeds=5').split('=')[1]))
+/** 洞内敌卡强度系数覆写（**校准用**：只改本工具上下文，引擎仍走 WORMHOLE_FOE_BASE_STRENGTH_MUL） */
+const STR = process.argv.find((a) => a.startsWith('--str='))
+const STRENGTH = STR ? Number(STR.split('=')[1]) : undefined
 const SEEDS = Array.from({ length: SEED_N }, (_, i) => 1 + i * 6)
 
 function makeFleet(seed: number): { state: GameState; uids: string[] } {
@@ -95,10 +99,16 @@ interface Cell {
 }
 
 /** 跑一场真实洞内战斗（推到分出胜负或打满上限） */
-function runOneBattle(seed: number, depth: number, kind: 'node' | 'boss' | 'extract', nodeIndex: number): Cell {
+function runOneBattle(
+  seed: number,
+  depth: number,
+  kind: 'node' | 'boss' | 'extract',
+  nodeIndex: number,
+  cardIndex?: number,
+): Cell {
   const { state, uids } = makeFleet(seed)
-  const cardId = wormholeCardIdFor(depth, nodeIndex)
-  const battle = startFleetBattleFor(state, ctx, uids, cardId, 0, null, { depth, kind, waves: WAVES })
+  const cardId = cardIndex === undefined ? wormholeCardIdFor(depth, nodeIndex) : WORMHOLE_FOE_CARD_IDS[cardIndex]!
+  const battle = startFleetBattleFor(state, ctx, uids, cardId, 0, null, { depth, kind, waves: WAVES, strengthMul: STRENGTH })
   if (!battle) return { won: 0, n: 1, sec: 0, hpFrac: 0 }
   const meTags = (battle.myFleet ?? []).map((e) => e.tag)
   const fullHp = () => {
@@ -152,6 +162,23 @@ function layerLoot(seed: number, depth: number): { piles: number; units: number;
 }
 
 function main(): void {
+  // **逐卡模式**（`--card=1 --depth=2`）：单看某层的某张卡，用来做**逐卡配平**（四张卡的战术/射程
+  // 差异很大 ⇒ 同一预算下强度并不相等，必须逐卡看读数再微调该卡的 `dmgMul`）。
+  const cardArg = process.argv.find((a) => a.startsWith('--card='))
+  if (cardArg) {
+    const ci = Number(cardArg.split('=')[1])
+    const dep = Number((process.argv.find((a) => a.startsWith('--depth=')) ?? '--depth=1').split('=')[1])
+    const cardId = WORMHOLE_FOE_CARD_IDS[ci]!
+    console.log(`逐卡读数：第 ${dep} 层 · ${cardId}（${ctx.anomalies.get(cardId)?.name ?? '?'}）· 每节点 ${WAVES} 波 · ${SEEDS.length} 播种`)
+    console.log(['模式', '胜率', '时长', '残血', '敌开火', '我开火'].join('\t'))
+    for (const kind of ['node', 'boss', 'extract'] as const) {
+      const c = avg(SEEDS.map((s) => runOneBattle(s, dep, kind, 0, ci)))
+      console.log(
+        [kind, `${Math.round(c.won * 100)}%`, `${c.sec.toFixed(0)}s`, `${Math.round(c.hpFrac * 100)}%`, c.foeShots.toFixed(0), ''].join('\t'),
+      )
+    }
+    return
+  }
   const ore = ctx.items.get(WORMHOLE_ORE_ITEM_ID)
   const orePrice = ore?.baseSellPriceIsk ?? 0
   console.log(

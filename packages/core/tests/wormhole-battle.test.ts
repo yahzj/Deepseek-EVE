@@ -19,7 +19,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { countWare } from '../src/inventory'
-import { createFoeSpecs } from '../src/combat'
+import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_FOE_CARD_IDS,
@@ -31,6 +31,7 @@ import {
   wormholeExtract,
   wormholeFoeThreat,
   wormholeLayerThreat,
+  wormholeNaturalHp,
 } from '../src/wormhole'
 import { advanceWormhole, wormholeBattleViewOf, wormholeStartBattle } from '../src/wormholeBattle'
 
@@ -100,21 +101,26 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     }
   })
 
-  it('派生：威胁换成目标值、舰级绝对值按比例缩放；**波数摊薄但总战力守恒**', () => {
+  it('派生：威胁换成目标值、**总血压到该层预算**（按卡归一）；**波数摊薄但总战力守恒**', () => {
     const base = ctx.anomalies.get('wh-pirate-scout')!
-    const one = wormholeAnomalyOf(base, 1, 'node', 1)
+    const naturalHp = wormholeNaturalHp(base)
+    const one = wormholeAnomalyOf(base, 1, 'node', 1, { hpBudget: naturalHp * 2 })
     expect(one.threat).toBe(45)
-    const two = wormholeAnomalyOf(base, 1, 'node', 2)
-    // 威胁口径不变（同一层同用途）⇒ 只是把同一编成摊成两波：每波单位数是 1 波的两倍条数、每条半血
-    const sumHpMul = (a: typeof one): number =>
-      (a.ships ?? []).reduce((n, s) => n + (s.hpMul ?? 1) * Math.max(1, s.count ?? 1), 0)
-    expect(sumHpMul(two)).toBeCloseTo(sumHpMul(one), 6)
+    // 目标总血 = 预算（**按卡归一**：卡间的坦克/脆皮差异不再影响"威胁 = 战力标尺"）
+    expect(wormholeNaturalHp(one)).toBeCloseTo(naturalHp * 2, 3)
+    // 波数摊薄：同一预算摊成两波 ⇒ 条数翻倍、每条半血、**总血不变**
+    const two = wormholeAnomalyOf(base, 1, 'node', 2, { hpBudget: naturalHp * 2 })
+    expect(wormholeNaturalHp(two)).toBeCloseTo(naturalHp * 2, 3)
     expect((two.ships ?? []).length).toBe((one.ships ?? []).length * 2)
     expect(two.waves?.length).toBe(2)
-    // 深层等比抬升：第 4 层的条 hpmul 明显大于第 1 层
-    const deep = wormholeAnomalyOf(base, 4, 'node', 1)
+    // 深层：预算由引擎按层算（`foeHpOfThreat(威胁) × 系数`）⇒ 这里给更大预算即代表更深一层
+    const deep = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: naturalHp * 3 })
     expect(deep.threat).toBe(wormholeLayerThreat(4))
-    expect((deep.ships ?? [])[0]!.hpMul!).toBeGreaterThan((one.ships ?? [])[0]!.hpMul!)
+    expect(wormholeNaturalHp(deep)).toBeCloseTo(naturalHp * 3, 3)
+    // 不给预算（纯展示/校准口径）：只换威胁字段，条目保持自然值
+    const bare = wormholeAnomalyOf(base, 4, 'node', 1)
+    expect(bare.threat).toBe(wormholeLayerThreat(4))
+    expect(wormholeNaturalHp(bare)).toBeCloseTo(naturalHp, 3)
   })
 
   it('选靶模式随用途分流：普通节点用卡上模式、**BOSS 一律打最大的**', () => {
@@ -269,6 +275,60 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(wormholeExtract(run).ok).toBe(true)
     advanceWormhole(state, ctx)
     expect(state.wormhole.run).toBeNull()
+  })
+})
+
+describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口径）', () => {
+  it('**开战距离特殊规则**：非近战敌人开局就站在**自己的目标距离**（不是"最远射程 + 缓冲"）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    const card = ctx.anomalies.get(battle.wormhole!.cardId)!
+    const me = createPlayerSpec(state, ctx, run.fleet[0]!)!
+    const foes = createFoeSpecs(
+      wormholeAnomalyOf(card, 1, 'node', 1, {
+        hpBudget: foeHpOfThreat(wormholeLayerThreat(1), ctx.balance.battle) * 10,
+      }),
+      ctx.balance.battle,
+    )
+    const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
+    const expected = anyBrawl
+      ? desiredRangeFor(me, 'mid', ctx.balance.battle)
+      : foeDesiredRange(me, foes, ctx.balance.battle)
+    const openM = battleOpenM(me, foes, ctx.balance.battle)
+    // 常规口径是"最远射程 + 缓冲"（= openM）；洞内口径落在**目标距离**上（被 openM 钳制的场合取钳制值）
+    expect(battle.distanceM).toBe(
+      Math.max(ctx.balance.battle.minDistanceM, Math.min(openM, Math.round(expected))),
+    )
+    expect(battle.distanceM).toBeLessThanOrEqual(openM)
+  })
+
+  it('**逐拍重建与开战同源**：敌人真能打疼你（首版就错在这里——血强化了、炮还是自然值）', () => {
+    const state = enterRun(7)
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    const meTags = (battle.myFleet ?? []).map((e) => e.tag)
+    const hpSum = (): number =>
+      meTags.reduce((n, t) => {
+        const u = battle.units[t]
+        return n + (u ? u.hp.s + u.hp.a + u.hp.h : 0)
+      }, 0)
+    const before = hpSum()
+    let guard = 0
+    while (!battle.ended && guard < 180) {
+      state.gameMs += 1_000
+      advanceBattleFor(state, ctx, battle, run.fleet[0]!, battle.wormhole!.cardId)
+      guard++
+    }
+    const lost = before - hpSum()
+    expect(battle.stats.foeShots, '敌人整场没开火（开战距离或派生口径又错了）').toBeGreaterThan(0)
+    expect(lost, '敌人开火了却打不掉血（开战 / 逐拍两处派生不同源）').toBeGreaterThan(0)
+    // 强度系数 10 的口径下，这一场应当打出**成规模**的战损（不是挠痒痒）
+    expect(lost / before).toBeGreaterThan(0.05)
   })
 })
 

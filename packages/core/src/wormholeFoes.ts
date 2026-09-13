@@ -53,12 +53,22 @@ export const WORMHOLE_EXTRACT_THREAT_MUL = 0.8
 /**
  * **洞内敌卡的基准强度系数**（F 批校准旋钮 · 2026-09-13）。
  *
- * 为什么需要它：四张洞内敌卡的编成取"舰级自然值"，而**自然值相对设计稿 §4.4 的 4×T3 满配编队太软**
- * ——校准工具（`tools/wormhole-econ.ts`）首跑实测：第 1~12 层**全部 100% 胜率、残血 100%**，
- * 与"搜打撤"要的风险张力不符。故用一个**全局系数**把四张卡的血量与火力一起抬起来
- * （单卡个性另调）；数值由该工具的逐层读数反推，改动后必须重跑该工具并把读数写进设计稿。
+ * 含义 = 洞内敌卡的**总血预算**相对"单船威胁曲线"（`foeHpOfThreat(威胁)`）的放大倍数。
+ * 为什么需要它：那条曲线是**单船**口径（一张悬赏卡对一艘玩家船），而洞内是 **4 舰对 4 舰**
+ * ⇒ 直接用曲线值会让敌人被四倍火力瞬间抹掉（F1 校准实测：第 1~12 层 100% 胜、残血 100%）。
+ * 数值由 `tools/wormhole-econ.ts` 按船长 2026-09-13 给的难度基准反推：
+ * **参考编队 4×巡洋 MK2 —— 第 1 层轻松打过（允许战损）· 第 2 层战损加重 · 再深有概率损失船**；
+ * 改动后必须重跑该工具并把读数写进设计稿。
  */
-export const WORMHOLE_FOE_BASE_STRENGTH_MUL = 5
+export const WORMHOLE_FOE_BASE_STRENGTH_MUL = 10
+
+/** 某张敌卡的**自然总血**（按编成条目的舰级绝对值 × 条数，不含派生缩放） */
+export function wormholeNaturalHp(base: AnomalyDef): number {
+  return (base.ships ?? []).reduce(
+    (n, s) => n + s.ship.hp * (s.hpMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)),
+    0,
+  )
+}
 
 /** 本层本次交战的**威胁**（普通节点 = 层威胁；BOSS ×1.2；撤离战 ×0.8） */
 export function wormholeFoeThreat(depth: number, kind: WormholeFoeKind): number {
@@ -103,9 +113,19 @@ export function wormholeAnomalyOf(
   depth: number,
   kind: WormholeFoeKind,
   waves: number,
+  /**
+   * - `hpBudget`：**本场敌卡的期望总血**（由引擎按威胁曲线 × `WORMHOLE_FOE_BASE_STRENGTH_MUL` 算好传进来；
+   *   不给 = 用本卡的"自然总血" ⇒ 只做威胁字段的换算，不缩放条目）。
+   * - `strengthMul`：**校准用覆写**（只有 `tools/wormhole-econ.ts` 会传；引擎/实战一律走常量）。
+   */
+  opts?: { hpBudget?: number; strengthMul?: number },
 ): AnomalyDef {
   const target = wormholeFoeThreat(depth, kind)
-  const scale = (target / Math.max(1, base.threat)) * WORMHOLE_FOE_BASE_STRENGTH_MUL
+  const natural = Math.max(1, wormholeNaturalHp(base))
+  const budget = (opts?.hpBudget ?? natural) * (opts?.strengthMul ?? 1)
+  // **按卡归一**：把每张卡的总血**压到同一个预算**上（各卡的"坦克/脆皮"性格由原编成的血比保留），
+  // 同时**同比例**缩放火力 ⇒ 卡间强度不再悬殊（"威胁 = 战力标尺"由构造保证）。
+  const scale = budget / natural
   const nWaves = Math.max(1, Math.floor(waves))
   const per = 1 / nWaves
   const slots = base.ships ?? []
