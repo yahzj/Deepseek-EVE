@@ -26,6 +26,7 @@ import {
   wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
+  durabilityOf,
   wormholeOutOfTurns,
   wormholeShipAllowed,
   wormholeShipMass,
@@ -89,6 +90,9 @@ export function WormholePanel({
       ok,
       busy,
       on: picked.includes(uid),
+      // **损伤**（与舰队页「待维修」同一把尺）：装甲/结构未满 = 带伤；护盾每场满值重建、不持久、不计
+      armor: state.fleet[uid]!.armorPct ?? 1,
+      dur: durabilityOf(state, uid),
     }
   })
   const whFiltered = whQ.trim().length > 0 || whRole !== SUB_ALL || whTier !== SUB_ALL
@@ -256,7 +260,8 @@ export function WormholePanel({
                 </div>
               </div>
               <ul className="app-wh-cards">
-                {whShown.map(({ uid, name, tier, ok, on, busy }) => {
+                {whShown.map(({ uid, name, tier, ok, on, busy, armor, dur }) => {
+                  const damaged = armor < 1 || dur < 1
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
                   const canPick = ok && !busy
                   const title = !ok
@@ -287,8 +292,24 @@ export function WormholePanel({
                         <span className="app-wh-card-sub">
                           折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
-                        <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
-                          {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                        <span className="app-wh-card-tags">
+                          <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
+                            {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                          </span>
+                          {/* **损伤提示标签**（船长 2026-09-13：「如果舰船有损伤，那么在编入的标签旁新增一个标签
+                              提示玩家，防止不小心损坏的船带入虫洞」）：判据与舰队页「待维修」同一把尺
+                              （`armorPct < 1 || durability < 1`；护盾不持久、不计损伤）。 */}
+                          {damaged ? (
+                            <span
+                              className="app-wh-card-tag is-warn"
+                              title={`该舰带伤（承伤在虫洞内**跨节点保留**）：${armor < 1 ? `装甲 ${Math.round(armor * 100)}%` : ''}${
+                                armor < 1 && dur < 1 ? ' · ' : ''
+                              }${dur < 1 ? `结构 ${Math.round(dur * 100)}%` : ''}——建议先回站维修或换一艘。`}
+                            >
+                              带伤{armor < 1 ? ` 甲${Math.round(armor * 100)}%` : ''}
+                              {dur < 1 ? ` 构${Math.round(dur * 100)}%` : ''}
+                            </span>
+                          ) : null}
                         </span>
                       </button>
                     </li>

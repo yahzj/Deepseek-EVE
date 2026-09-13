@@ -9240,7 +9240,7 @@ body {
   align-items: stretch;
   gap: 3px;
   width: 100%;
-  height: 176px;
+  height: 184px; /* 2026-09-13：标签行可能换行（编入 + 带伤），定高留一线余量防裁切 */
   padding: 6px 8px 8px;
   text-align: left;
   font-family: inherit;
@@ -9262,6 +9262,7 @@ body {
 .app-wh-card-art { display: flex; align-items: center; justify-content: center; height: 72px; overflow: hidden; color: var(--wui-accent); }
 .app-wh-card-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-wh-card-sub { font-size: 11px; color: var(--wui-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-wh-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
 .app-wh-card-tag {
   margin-top: auto;
   align-self: flex-start;
@@ -9272,6 +9273,8 @@ body {
   color: var(--wui-dim);
 }
 .app-wh-card-tag.is-on { border-color: rgba(79, 216, 196, 0.6); color: var(--wui-accent); }
+/* 带伤提示（琥珀）：与「过重/占用中」同族的警示色，不与「已编入」的 accent 抢眼 */
+.app-wh-card-tag.is-warn { border-color: rgba(244, 201, 93, 0.55); color: #f4c95d; }
 .app-inv-row.is-picked { border-color: rgba(79, 216, 196, 0.55); background: rgba(79, 216, 196, 0.06); }
 .app-wh-head { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .app-wh-map { width: 100%; height: 96px; color: var(--wui-accent); display: block; }
