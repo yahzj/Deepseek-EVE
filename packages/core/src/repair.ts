@@ -13,9 +13,12 @@
 import type { GameState } from './state'
 import type { SimContext } from './types'
 
-/** 舰体快修学系数：1 + 每级加成 × 等级（等级封顶 5 ⇒ 满级 +50%） */
+/** 修理组件恢复量系数：1 + Σ(该技能每级加成 × 等级)（各技能等级封顶 5）
+ *  —— 2026-09-13 船长：**舰体快修学 + 维修工程学同效果、按级线性相加**（两条都满级 = +50%） */
 export function quickRepairFactor(state: GameState, ctx: SimContext): number {
-  const bal = ctx.balance.repair
-  const lv = Math.min(5, state.skills.trained[bal.quickRepairSkillId] ?? 0)
-  return 1 + bal.quickRepairPerLevel * lv
+  let sum = 0
+  for (const s of ctx.balance.repair.quickRepairSkills) {
+    sum += s.perLevel * Math.min(5, state.skills.trained[s.id] ?? 0)
+  }
+  return 1 + sum
 }

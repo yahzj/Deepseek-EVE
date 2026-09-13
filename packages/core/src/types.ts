@@ -475,10 +475,9 @@ export interface BalanceConfig {
   repair: {
     /** P2 定稿：港内维修单价 = ISK / 1 HP（甲+结构缺失按各自满值池折算）× 舰船科技档权重 */
     perHpCost: number
-    /** 舰体快修学技能 id（2026-09-13 起**两条用件路径共用**：直接使用与船体维修装置每跳） */
-    quickRepairSkillId: string
-    /** 该技能每级的修理组件回复量加成（0.1 = +10%/级，满 5 级 +50%） */
-    quickRepairPerLevel: number
+    /** 「修理组件恢复量」加成技能表（2026-09-13 船长：舰体快修学 + 维修工程学**同效果、按级线性相加**；
+     *  **两条用件路径共用**：直接使用与船体维修装置每跳。每级 0.05 ⇒ 两条都满级 = +50%） */
+    quickRepairSkills: { id: string; perLevel: number }[]
   }
   market: MarketBalance
   /** V11 战斗引擎常量（命中/距离动力学/敌方换算/战术/弹药预载） */

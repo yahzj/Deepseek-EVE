@@ -7,7 +7,7 @@
  * 本文件用**真内容**（`buildSimContext`）守住：数值不漂（5/10）· 装置吃技能 · 直接使用基数同为 5/10。
  */
 import { describe, expect, it } from 'vitest'
-import { buildSimContext, MODULES } from '@whale/data'
+import { buildSimContext, MODULES, SKILLS } from '@whale/data'
 import type { SimContext } from '../src/types'
 import { addShipToFleet, createInitialState } from '@whale/core'
 import { addModule, fitModule } from '../src/equipment'
@@ -54,6 +54,15 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
     const r5 = preloadRepairFor(lv5.state, ctx, lv5.uid, 10 * REPAIR_PULSE_MS)
     expect(r5?.units[0]?.armorPerPulse).toBe(23) // 18 × 1.25 = 22.5 → round 23
     expect(r5?.units[0]?.hullPerPulse).toBe(23)
+  })
+
+  it('维修工程学（rank 3）同效果叠加：两技能各 +5%/级，装置每跳同样计入', () => {
+    expect(SKILLS.find((s) => s.id === 'repair-engineering')?.rank).toBe(3) // 2026-09-13 船长：rank 2 → 3
+    const { state, uid } = world(5, 'mod-hullrep-2')
+    state.skills.trained['repair-engineering'] = 5
+    expect(quickRepairFactor(state, ctx)).toBe(1.5) // 1 + 0.05×5（快修学） + 0.05×5（维修工程学）
+    const r = preloadRepairFor(state, ctx, uid, 10 * REPAIR_PULSE_MS)
+    expect(r?.units[0]?.armorPerPulse).toBe(27) // 18 × 1.5
   })
 
   it('直接使用同基数、同吃技能：一枚民用件回 round(5 × 层容量增幅 × 系数) 点', () => {
