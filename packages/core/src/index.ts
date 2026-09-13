@@ -74,6 +74,8 @@ export {
   DEFAULT_START_SHIP_ID,
   addLog,
   createInitialState,
+  // 虫洞锁定判据（洞外开战要避开锁在洞里的锚点船；放 state.ts 避免依赖环）
+  shipLockedInWormhole,
 } from './state'
 export type {
   LogKind,
@@ -828,6 +830,8 @@ export {
   wormholeExtract,
   // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
+  // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
+  wormholeEntryBlockReason,
   // 沉船扣格：背包超格时按每格价值从低到高丢货（船长 2026-09-13 裁定）
   wormholeTrimBag,
   // F 批：敌卡按层派生

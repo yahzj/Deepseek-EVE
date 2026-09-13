@@ -445,6 +445,10 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
  * 制造与技能训练不绑船，不算忙。UI 的货仓页船徽标与以后复用都走这里。
  */
 export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): string | null {
+  // **虫洞锁定**（船长 2026-09-13：「已经进洞的船将被锁定（包括货仓）」）——
+  // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛
+  // 这些读同一把尺的地方**自动**把它挡在外面（不需要逐处加判断）。
+  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
   if (shipId === state.shipId) {
     const mv = miningStatus(state, ctx)
     if (mv.active) {

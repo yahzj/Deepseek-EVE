@@ -17,6 +17,7 @@ import {
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
   cargoCapacityM3Of,
+  shipBusyLabel,
   shipDisplayName,
   shipSizeLabel,
   wormholeAdmission,
@@ -64,6 +65,8 @@ export function WormholePanel({
   const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
   /** 回合走不动了（耗尽 / 付不起当前节点）⇒ 只能撤离（逃生门；与 core `wormholeOutOfTurns` 同一把尺） */
   const outOfTurns = run ? wormholeOutOfTurns(run) : false
+  /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
+  const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
 
   function togglePick(uid: string): void {
     setPicked((prev) => {
@@ -129,12 +132,16 @@ export function WormholePanel({
                   const tier = def?.tier ?? 0
                   const ok = def ? wormholeShipAllowed(def) : false
                   const on = picked.includes(uid)
+                  // 忙态的船编不进来（船长 2026-09-13：进洞要求主控闲置 + 进洞的船要锁定 ⇒ 编队各船也得空闲）
+                  const busy = shipBusyLabel(state, ctx, uid)
+                  const canPick = ok && !busy
                   return (
                     <li key={uid} className={`app-inv-row${on ? ' is-picked' : ''}`}>
                       <div className="app-inv-main">
                         <span className="app-inv-name">
                           {shipDisplayName(state, ctx, uid)}
                           <span className="app-dim"> · {shipSizeLabel(tier)} T{tier}</span>
+                          {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
                         </span>
                         <span className="app-inv-count">
                           折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
@@ -143,11 +150,17 @@ export function WormholePanel({
                       <div className="app-inv-btns">
                         <button
                           className={`app-btn is-small${on ? ' is-primary' : ''}`}
-                          disabled={!ok}
+                          disabled={!canPick}
                           onClick={() => togglePick(uid)}
-                          title={ok ? undefined : '该舰过重，会压塌虫洞入口（最多带到 T4）'}
+                          title={
+                            !ok
+                              ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
+                              : busy
+                                ? `${busy}：先收工/取消派工，才能编入虫洞`
+                                : undefined
+                          }
                         >
-                          {on ? '已选' : ok ? '编入' : '过重'}
+                          {on ? '已选' : !ok ? '过重' : busy ? '占用中' : '编入'}
                         </button>
                       </div>
                     </li>
@@ -170,12 +183,19 @@ export function WormholePanel({
               {!admission.ok ? (
                 <div className="app-warn app-wh-gate">{WORMHOLE_ADMISSION_TEXT[admission.code]}</div>
               ) : null}
+              {pilotBusy ? (
+                <div className="app-warn app-wh-gate">
+                  主控正在{pilotBusy}：先把手上的活收工，才能指挥虫洞探索。
+                </div>
+              ) : null}
               <div className="app-wh-actions">
                 <button
                   className="app-btn is-primary is-small"
-                  disabled={!admission.ok || !!run}
+                  disabled={!admission.ok || !!run || !!pilotBusy}
                   onClick={handleEnter}
-                  title={run ? '已经在虫洞里了' : undefined}
+                  title={
+                    run ? '已经在虫洞里了' : pilotBusy ? `主控正在${pilotBusy}：先收工` : undefined
+                  }
                 >
                   进入虫洞
                 </button>
