@@ -51,8 +51,9 @@ import {
   wormholeStepCost,
   wormholeTakePile,
 } from '../packages/core/src/wormhole'
-import { advanceWormhole, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
+import { advanceWormhole, wormholeActivateAt, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
+import { gridCellAt } from '../packages/core/src/wormholeGrid'
 
 const ctx: SimContext = buildSimContext()
 
@@ -151,7 +152,14 @@ function avg(cells: Cell[]): Cell {
   }
 }
 
-/** 该层**按 seed 真实生成**的节点表：拾取堆总数与总单位数（与实战同源） */
+/**
+ * ⚠ **旧线性口径的层收益读数**（`wormholeMakeNode` / `wormholeNodesPerLayer`）。
+ *
+ * F3a-2（2026-09-13）起，层内内容由**网格**承载（`run.grid`），线性节点只在老档里存在；
+ * 地点收益（墓场/遗迹打捞、矿脉挖掘）要到 **F3b** 才落地 ⇒ 本函数暂时只能给"数量级参考"，
+ * **不可作为最终定稿依据**。F3c 配平批会把层内政策（扫描/前往/激活怎么走最省回合）与收益一起重写，
+ * 再把 `layerLoot` 换成按网格盘面的期望值。
+ */
 function layerLoot(seed: number, depth: number): { piles: number; units: number; cost: number } {
   const n = wormholeNodesPerLayer(depth)
   let piles = 0
@@ -226,6 +234,8 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
   let guard = 0
   /** 最近一场战斗结束时的**三层血口径**残血（政策用它；护盾不落档，见 `battleHpFrac`） */
   let lastFrac = 1
+  /** 已经打过"地点战"的层号（网格层的政策：一层一场，避免同一层反复开战刷读数） */
+  let foughtLayer = 0
   while (state.wormhole.run && guard++ < 400) {
     state.gameMs += 1_000 // 与引擎心跳同款：推时间，战斗才走得动
     const r = state.wormhole.run
@@ -236,6 +246,36 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
     }
     if (r.phase === 'extracting') {
       advanceWormhole(state, ctx)
+      continue
+    }
+    // ── 网格层（F3a-2 起）：每层"先打一场地点战、再打层末守卫"，然后按政策深入或撤离 ──
+    // 政策刻意保持最简（本工具的用途是**战斗强度与收益量级**的对比读数，不是寻路 AI）：
+    // 层内怎么选点、要不要把整盘扫完，属 F3c 配平批的事。
+    if (r.grid) {
+      const g = r.grid
+      if (foughtLayer !== r.depth) {
+        // 把当前格当作"舰船信号"激活 ⇒ 一场地点战（与实战同为 `wormholeActivateAt` 路径）
+        const cur = gridCellAt(g, g.pos)
+        if (!cur) break
+        cur.place = 'ship'
+        g.activated = g.activated.filter((k) => k !== cur.key)
+        if (!wormholeActivateAt(state, ctx, state.gameMs).ok) break
+        foughtLayer = r.depth
+        continue
+      }
+      if ((r.bossCleared ?? 0) < r.depth) {
+        // 站上"下一层入口"并激活 ⇒ 层末守卫战
+        g.pos = { q: g.exit.q, r: g.exit.r }
+        const exitKey = `${g.exit.q},${g.exit.r}`
+        if (!g.visited.includes(exitKey)) g.visited.push(exitKey)
+        if (!g.scanned.includes(exitKey)) g.scanned.push(exitKey)
+        g.activated = g.activated.filter((k) => k !== exitKey)
+        if (!wormholeActivateAt(state, ctx, state.gameMs).ok) break
+        continue
+      }
+      const fracGrid = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
+      if (r.depth >= maxDepth || fracGrid < extractHp || r.turnsLeft <= 0) wormholeExtract(r)
+      else wormholeDescend(r, state.rng.seed)
       continue
     }
     if (r.pendingNode) {

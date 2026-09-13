@@ -85,6 +85,13 @@ export interface WeaponSpec {
    *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
    *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
   count?: number
+  /** **附加伤害段**（2026-09-13 虫洞专属·掠袭破片炮）：主段结算之后，按**主段实收** ×该比例
+   *  再打一段**固定弹种**的伤害——与主段弹种/所耗弹药无关（船长：「是附加伤害，和弹种无关」） */
+  secondaryDamagePct?: number
+  /** 附加段弹种（缺省 kinetic） */
+  secondaryDamageType?: DamageType
+  /** 每次攻击消耗的弹药发数（缺省 1；陵卫连装炮 = 2）——预载与实战扣弹都按「门数 × 本值」 */
+  ammoPerShot?: number
   /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1；
    * beam 必中不携带——命中件对激光无效） */
   eqHitMul?: number
@@ -218,11 +225,14 @@ function clamp(min: number, max: number, v: number): number {
  * 层位克制系数（远行星号体系削弱版）。
  * 2026-09-05 船长改：能量（plasma）对护盾 0.75 → 1.25（能量弹/激光对盾更有效，
  * 三系成为"各有克制侧重"：动能拆盾 1.5、爆炸破甲 1.5、能量拆盾 1.25 且不劣于任何层）。
+ * **2026-09-13 船长改（本次）**：「爆炸对护盾改为 ×0.75，动能对装甲改为 ×0.75」——
+ * 两处**逆克制劣化**由 0.5 抬到 0.75（克制/劣化比 3:1 → 2:1），三系对"非擅长层"不再腰斩。
+ * UI 速查文案 `layerMultText`、产物资检契约（`tools/content-check.ts` 克制表对账）与本函数同源，自动跟随。
  * ⚠ C4 复核项：此改动提升激光炮/能量弹系（含部分无人机能量弹）胜率与 PvE 时长结构，请二号复核平衡。
  */
 export function typeLayerMult(t: DamageType, layer: 'shield' | 'armor' | 'hull'): number {
-  if (t === 'kinetic') return layer === 'shield' ? 1.5 : layer === 'armor' ? 0.5 : 1
-  if (t === 'explosive') return layer === 'shield' ? 0.5 : layer === 'armor' ? 1.5 : 1
+  if (t === 'kinetic') return layer === 'shield' ? 1.5 : layer === 'armor' ? 0.75 : 1
+  if (t === 'explosive') return layer === 'shield' ? 0.75 : layer === 'armor' ? 1.5 : 1
   return layer === 'shield' ? 1.25 : 1 // plasma（能量）：拆盾 1.25，对甲/结构无劣化
 }
 
@@ -641,9 +651,41 @@ export function createPlayerSpec(
   if (evLv > 0) evadeGaps.push(bal.evasionPerLevel * evLv)
   const evasion = gapCombine(evadeGaps, ship.evasion ?? 0.12)
   const reloadDiv = 1 + Math.min(0.9, rofCut)
+  /* ═══ 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；设计稿 §3.6/§3.8）═══
+   * 全部走"全件扫描"口径；四项缺省 0 ⇒ 既有装备零行为变化。 */
+  const allDefs = allFittedModules(fitted, ctx)
+  /** 装填惩罚（巨构协处理器 +12%）：多件只取最重一件 */
+  const reloadPen = Math.max(0, ...allDefs.map((m) => m.reloadPenaltyPct ?? 0))
+  /** 全层抗性削减（掠袭折射涂层 −15）：多件只取最重一件，下限 0 */
+  const resistPen = Math.max(0, ...allDefs.map((m) => m.allResistPenaltyPct ?? 0))
+  /** 全武器射程削减（掠袭者护盾笼 −25% / 赃物扫描阵 −15%）：多件只取最重一件 */
+  const rangeCut = Math.max(0, ...allDefs.map((m) => m.rangeCutPct ?? 0))
+  /** 按系射程加成（幽灵弹道校正器「动能武器射程 +22%」）：按系加算 */
+  const rangeBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
+  for (const m of allDefs) {
+    for (const [rt, v] of Object.entries(m.rangeTypeBonusPct ?? {})) rangeBonus[rt as DamageType] += v ?? 0
+  }
+  /** 武器实际射程 = 基础 × (1−削减) × (1+该系加成)；下限 500 m（不许被压成 0） */
+  const rangeOf = (base: number, type: DamageType): number =>
+    Math.max(500, Math.round(base * (1 - Math.min(0.9, rangeCut)) * (1 + rangeBonus[type])))
+  /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束 */
+  const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0)
+  // 全层抗性削减：三层同时扣、下限 0——放在抗性合成与调谐之后 ⇒ 作用于最终值
+  if (resistPen > 0) {
+    for (const layer of ['shield', 'armor', 'hull'] as const) {
+      for (const rt of ['kinetic', 'explosive', 'plasma'] as const) {
+        resists[layer][rt] = Math.max(0, (resists[layer][rt] ?? 0) - resistPen)
+      }
+    }
+  }
 
   // 推进器（V18.1 多件）：速度加成 EVE 曲线收敛；开火失稳只取最重一件
-  const propSpeeds = propDefs.map((p) => p.speedBonusPct ?? 0)
+  // 2026-09-13 虫洞专属（生体脉搏加速器）：速度加成**不再只认推进器槽**——任意槽位携带
+  // `speedBonusPct` 都计入（与 speedPenaltyPct / hitPenalty 的"全件扫描"同口径）；
+  // 既有装备只有推进器带本字段 ⇒ 行为零变化。
+  const propSpeeds = allFittedModules(fitted, ctx)
+    .map((m) => m.speedBonusPct ?? 0)
+    .filter((v) => v > 0)
   const speedEq = curveMult(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
   // 装甲件常驻速度代价（2026-09-10 船长：陵寝装甲层 −25%）——多件取最重一件（与上面的失稳同口径）
@@ -700,11 +742,21 @@ export function createPlayerSpec(
     // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——按本武器固定弹型乘入，
     // 装别族武器 = 无加成（仍可用）；无人机与基础舰炮不在此链上，天然豁免
     const shipFam = ship.weaponFamilyBonus?.[type] ?? 0
-    const perShot = Math.round((ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]) * (1 + shipFam))
+    const perShot = Math.round(
+      (ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]) * (1 + shipFam) * (1 + dmgFlat),
+    )
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
     const fireLv = Math.min(5, state.skills.trained['fire-control'] ?? 0)
     const fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1
-    const reload = Math.max(100, Math.round((turret.reloadMs / reloadDiv) * (1 - 0.04 * Math.min(5, state.skills.trained['reload-drills'] ?? 0))))
+    // 2026-09-13 虫洞专属：装填惩罚 ×(1+reloadPen)（与射速计算机的"÷(1+x)"是两件事）
+    const reload = Math.max(
+      100,
+      Math.round(
+        (turret.reloadMs / reloadDiv) *
+          (1 - 0.04 * Math.min(5, state.skills.trained['reload-drills'] ?? 0)) *
+          (1 + reloadPen),
+      ),
+    )
     if (turret.slot === 'laser') {
       // V18B-2 激光炮：beam 条目——必中（开火不掷命中）、逐发扣能量弹药、
       // 距离衰减作用于威力（幅度 = 命中衰减的 50%，开火时按当前距离计算）
@@ -715,7 +767,7 @@ export function createPlayerSpec(
         fixedType: 'plasma',
         count,
         shotDmg: perShot * count,
-        maxRangeM: turret.maxRangeM,
+        maxRangeM: rangeOf(turret.maxRangeM, 'plasma'),
         minRangeM: turret.minRangeM ?? 0,
         hitRate: 1,
         falloff: turret.falloff ?? 0.3,
@@ -732,9 +784,17 @@ export function createPlayerSpec(
       shotsByType,
       count,
       eqHitMul: hitEq > 1 ? hitEq : undefined,
-      maxRangeM: turret.maxRangeM,
+      maxRangeM: rangeOf(turret.maxRangeM, type),
       minRangeM: turret.minRangeM ?? 0,
       hitRate: (turret.hitRate ?? 0.5) * fireMult,
+      // 2026-09-13 虫洞专属（掠袭破片炮）：附加伤害段 + 每次耗弹数——缺省不写 ⇒ 既有武器零变化
+      ...(turret.secondaryDamagePct !== undefined && turret.secondaryDamagePct > 0
+        ? {
+            secondaryDamagePct: turret.secondaryDamagePct,
+            secondaryDamageType: turret.secondaryDamageType ?? 'kinetic',
+          }
+        : {}),
+      ...(turret.ammoPerShot !== undefined && turret.ammoPerShot > 1 ? { ammoPerShot: turret.ammoPerShot } : {}),
       falloff: turret.falloff ?? 0.3,
       reloadMs: reload,
       // **防空（属性）**（2026-09-11 机群批 S4 + 2026-09-12 船长「给近防炮系列添加一个属性'防空'」）：
@@ -768,10 +828,17 @@ export function createPlayerSpec(
   // ——每轮更重、节奏更舒缓，**净 DPS 不变**（故既有校准矩阵口径不变，无需复跑）。
   // 机型级装填（2026-09-11 船长「哨卫将攻击周期翻倍」）：`def.reloadMs` 优先，缺省 = 基准 4400ms；
   // 整备学折减口径不变（每级 −4%）。
+  // 2026-09-13 虫洞专属（掠袭机库「无人机攻击间隔 −8%」）：船长澄清 = **无人机出击周期**——
+  // 与整备学（每级 −4%）同口径乘算；多件加算，合计上限 0.9（避免周期被压到 0）。
+  const droneCycleCut = Math.min(
+    0.9,
+    droneGear.reduce((s, g) => s + (g.droneCycleCutPct ?? 0), 0),
+  )
   const droneReloadOf = (def: { reloadMs?: number }): number =>
     Math.round(
       (def.reloadMs ?? 4400) *
-        (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)),
+        (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)) *
+        (1 - droneCycleCut),
     )
   if (bayLimit > 0 && cpuLeft > 0) {
     for (const [droneId, want] of Object.entries(droneLoad)) {
@@ -1807,8 +1874,9 @@ export function ammoLoadTotals(
   const condLv = Math.min(5, state.skills.trained['ammunition-condensing'] ?? 0)
   const condFactor = 1 + 0.08 * condLv
   const out: Partial<Record<DamageType, number>> = {}
-  /** 一轮齐射的用弹量 = 条目门数（同型合并条目 ×N）；2026-09-11 修复：预载按门数放大 */
-  const roundsPerVolley = (w: WeaponSpec): number => Math.max(1, w.count ?? 1)
+  /** 一轮齐射的用弹量 = 条目门数（同型合并条目 ×N）× 每次耗弹数（缺省 1）；2026-09-11 修复：预载按门数放大 */
+  const roundsPerVolley = (w: WeaponSpec): number =>
+    Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
   const addFor = (t: DamageType, reloadMs: number, volley: number): void => {
     const volleys = Math.max(1, Math.ceil(((bal.ammoTimeCapMs * condFactor) / Math.max(100, reloadMs)) * bal.ammoMargin))
     out[t] = (out[t] ?? 0) + volleys * volley
@@ -2375,7 +2443,7 @@ let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
 export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
-  spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },
+  spec: { depth: number; kind: 'node' | 'boss' | 'extract' | 'ruins'; waves: number; strengthMul?: number },
 ): AnomalyDef {
   /**
    * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
@@ -2424,7 +2492,7 @@ export function startFleetBattleFor(
    */
   wormhole?: {
     depth: number
-    kind: 'node' | 'boss' | 'extract'
+    kind: 'node' | 'boss' | 'extract' | 'ruins'
     waves: number
     strengthMul?: number
   },
@@ -3870,8 +3938,8 @@ function stepBattle(
       let type: DamageType
       let dmg: number
       let autoHit = false
-      /** 一轮齐射的用弹量（同型合并条目 ×N；2026-09-11 修复：此前多门武器只扣 1 发弹药） */
-      const roundsPerVolley = Math.max(1, w.count ?? 1)
+      /** 一轮齐射的用弹量（同型合并条目 ×N × 每次耗弹数；2026-09-11 修复：此前多门武器只扣 1 发弹药） */
+      const roundsPerVolley = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
       if (w.kind === 'gun') {
         // V18B-2 per-gun 弹型：每件武器打自己的键（动能/爆破导弹/能量弹药混装各自供弹），
         // 该键弹尽 → 本武器停火（不拖累其它型）。**齐射按门数扣弹**：不足一轮齐射的余弹不发射
@@ -3980,6 +4048,18 @@ function stepBattle(
           const r = applyDamage(rt.hp, {}, dmgLocked, type)
           rt.hp = r.hp
           b.stats.meDmg += r.dealt
+          // **附加伤害段**（2026-09-13 船长：掠袭破片炮「额外造成 50% 的动能伤害是附加伤害，
+          // 和弹种无关」）——口径（船长 2026-09-13 二次裁定）：「**伤害各自吃各自的制（克制）效果**」：
+          // 副段取**武器原伤害**（含锁定加深，不含主段已吃的克制）×比例，然后**两段各吃各自的层克制**。
+          // ⚠ 不能用主段实收做基数——那会把主系的克制乘进副段（实测该目标会从 +50% 放大到 +75%）。
+          const secPct = w.secondaryDamagePct ?? 0
+          if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
+            const secType = w.secondaryDamageType ?? 'kinetic'
+            const secDmg = Math.max(1, Math.round(dmgLocked * secPct))
+            const r2 = applyDamage(rt.hp, {}, secDmg, secType)
+            rt.hp = r2.hp
+            b.stats.meDmg += r2.dealt
+          }
           // **受击增程触发点（唯一）**——2026-09-11 船长：「受到攻击后，大幅提高无人机射程
           // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
           // ⚠ 打机群（上面的 `droneHit` 分支）**不触发**、未命中（`hit === false`）也进不到这里。
@@ -4433,6 +4513,12 @@ function steadyPreview(
     if (hit <= 0) continue
     const mult = effectiveDmgMultAgainst(foes, ammoType ?? w.fixedType ?? 'kinetic')
     meDps += (shot * power * mult * hit * 1000) / w.reloadMs
+    // 附加伤害段同步（掠袭破片炮）：预估不许"卡面混伤、按纯系算"——副段走它自己那系的克制倍率
+    const secPctEst = w.secondaryDamagePct ?? 0
+    if (secPctEst > 0) {
+      const secMul = effectiveDmgMultAgainst(foes, w.secondaryDamageType ?? 'kinetic')
+      meDps += (shot * power * secMul * hit * secPctEst * 1000) / w.reloadMs
+    }
   }
   // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——
   // 2026-09-08：能量 beam 必中（hit=1）且威力走 beamPowerFactor/盲带，与实时引擎同源）

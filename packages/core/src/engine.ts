@@ -41,6 +41,17 @@ import { advanceSideTasks } from './sideTasks'
 export interface CommandResult {
   ok: boolean
   error?: string
+  /**
+   * 拒绝码（可选，机器可读）：目前只有虫洞层内动作在用——
+   * `unknown-target` = "目标格还没扫描过"，界面据此弹「即将前往未知地点」的确认，而不是当错误报给玩家。
+   */
+  code?: 'unknown-target'
+  /** 虫洞"前往"专用：到达的格是舰船信号 ⇒ **就地开打**（船长 2026-09-13）；界面不用再点激活 */
+  autoBattle?: boolean
+  /** 虫洞"前往"专用：到达的格是漂浮信标 ⇒ **下一层入口已标出**（界面提示一句） */
+  beacon?: boolean
+  /** 虫洞"激活/打捞"专用：**本次回收了几堆**（墓场/遗迹打捞；界面提示"回收 N 堆"） */
+  taken?: number
 }
 
 /** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；

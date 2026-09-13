@@ -120,6 +120,8 @@ export const ORES: readonly ItemDef[] = [
      *
      * 船长原话：「虚空晶添加一个原矿石用于精炼出虚空晶。原矿石采取正常矿石体积（**1 m³/单位**），
      * 虚空晶保持不变」＋「虫洞内只能获得原矿」。
+     * ⚠ 后半句（「只能获得原矿」）**已于 2026-09-13 由船长删除**（「**「虫洞内只掉原矿」删除。残骸能进背包。**」）
+     * ⇒ 洞内现在也掉**残骸类**（墓场/遗迹打捞产物，见设计稿 §11.5）；本矿仍是洞内唯一的**原矿**。
      *
      * 口径：
      * - **虚空晶本身一字未动**（`unitM3 0.01` · `baseSellPriceIsk 1,800`）——变的只是**来源**：
@@ -332,7 +334,7 @@ export const ICES: readonly ItemDef[] = [
 ]
 
 /** 弹药（V10.5 战斗数值契约就位：克制体系见 docs/design/v10b-combat-data.md；
- * 动能弹对护盾 ×1.5 对装甲 ×0.5、爆破导弹（爆炸）反之、能量弹药（能量系）对护盾 ×0.75 其余 ×1.0；
+ * 动能弹对护盾 ×1.5 对装甲 ×0.75、爆破导弹（爆炸）反之、能量弹药（能量系）对护盾 ×1.25 其余 ×1.0；
  * V18 口径取消：每型只留单档通用弹；V18B-1/2：高爆弹更名"爆破导弹"（导弹架专用）、
  * 等离子弹更名"能量弹药"（激光炮专用）——武器形态与弹药一一对应） */
 export const AMMO: readonly ItemDef[] = [
@@ -342,7 +344,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 6,
-    description: '动能弹：实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.5）。',
+    description: '动能弹：实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.75）。',
     damageType: 'kinetic',
     dmg: 6,
   },
@@ -352,7 +354,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 7,
-    description: '爆破导弹：导弹架专用弹药，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
+    description: '爆破导弹：导弹架专用弹药，拆甲专精（对装甲 ×1.5、对护盾 ×0.75）。导弹无视近盲、命中不随距离衰减。',
     damageType: 'explosive',
     dmg: 7,
   },
@@ -374,7 +376,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 45,
-    description: '动能弹 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.5）。攻坚用高级弹药。',
+    description: '动能弹 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.75）。攻坚用高级弹药。',
     damageType: 'kinetic',
     dmg: 8,
   },
@@ -384,7 +386,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 60,
-    description: '爆破导弹 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
+    description: '爆破导弹 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.75）。导弹无视近盲、命中不随距离衰减。',
     damageType: 'explosive',
     dmg: 9,
   },
@@ -504,6 +506,64 @@ export const DRONES: readonly ItemDef[] = [
     falloff: 1, // 侦察机档：命中不随距离衰减
     defense: { shieldHp: 12, armorHp: 6, hullHp: 12, evasion: 0.55 }, // 三层血 15（最薄）+ 闪避最高
     exclusive: true,
+  },
+  // ══════════ 虫洞族专属机型（2026-09-13 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ **换成族专属无人机**，
+  // 不用制式机。两型都走"专属强化型"口径（`exclusive`：无蓝图、不上市场、不入常规掉落）＋施工期 `unreleased`） ══════════
+  {
+    id: 'drone-wh-c-heavy',
+    name: '巢卫攻坚无人机',
+    kind: 'drone',
+    unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
+    baseSellPriceIsk: 12_000,
+    description:
+      '巢群的活体攻坚机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚且偏甲壳，装甲与结构的抗性也更硬——代价是更笨重。',
+    damageType: 'explosive', // 族弹型权威：C 族 = 等离子 8 / 爆炸 2 ⇒ 爆炸在族内（且呼应本族「孢子导弹巢」）
+    dmg: 15, // 制式攻坚机 12 ⇒ +25%（专属强化型，豁免区间校验、只受硬边界约束）
+    cpuUse: 12,
+    maxRangeM: 3600, // **专属射程豁免**（船长 2026-09-13「专属无人机开豁免」）：档位标准 3500 ⇒ 3,600（+100m）
+    droneClass: 'assault', // 攻坚机
+    hitRate: 0.78,
+    falloff: 1, // 攻坚机档：命中不随距离衰减
+    // 2026-09-13 船长：「C 组无人机护甲和结构抗性提高 10%」⇒ 护甲/结构抗性 0.25 → **0.35**，护盾维持 0.25
+    defense: {
+      shieldHp: 50,
+      armorHp: 70,
+      hullHp: 120, // 三层血 240（制式 194 ⇒ +24%），偏甲/壳
+      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+      armorResist: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
+      hullResist: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
+      evasion: 0.08, // 厚而慢（制式 0.10）
+    },
+    exclusive: true,
+    unreleased: true,
+  },
+  {
+    id: 'drone-wh-e-sentry',
+    name: '构件哨戒无人机',
+    kind: 'drone',
+    unitM3: 40, // 体积档 4/4：重型哨戒（与制式哨戒机同档）
+    baseSellPriceIsk: 22_000,
+    description:
+      '巨构自组装的长针哨戒机：动能长针拆盾，航程比制式哨戒机更远，命中更高、远端衰减更缓，机体也略厚——它是机群里射得最远的一型。',
+    damageType: 'kinetic', // 族弹型权威：E 族 = 动能 5 / 爆炸 5 ⇒ 动能在族内（呼应本族「巨构导控塔/近防阵列」）
+    dmg: 24, // 制式哨戒机 20 ⇒ +20%（专属强化型）
+    cpuUse: 18,
+    maxRangeM: 6000, // **专属射程豁免**（船长 2026-09-13「专属无人机开豁免」）：档位标准 5000 ⇒ 6,000（哨戒区间上限）
+    reloadMs: 8800, // 沿用"哨戒机攻击周期翻倍"口径（与制式同）
+    droneClass: 'sentry', // 哨戒机
+    hitRate: 1.15,
+    falloff: 0.4, // 哨戒机保留命中衰减（独有代价），比制式 0.35 略缓
+    defense: {
+      shieldHp: 28,
+      armorHp: 14,
+      hullHp: 18, // 三层血 60（制式 46 ⇒ +30%），偏盾
+      shieldResist: { kinetic: 0.2 },
+      armorResist: { kinetic: 0.1 },
+      hullResist: { kinetic: 0.1 },
+      evasion: 0.2,
+    },
+    exclusive: true,
+    unreleased: true,
   },
 ]
 

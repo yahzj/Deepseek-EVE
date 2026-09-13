@@ -42,13 +42,15 @@ export function wormholeNodesPerLayer(depth: number): number {
 
 /* ═══════════ 二、洞内敌卡派生（按层换算威胁） ═══════════ */
 
-/** 洞内敌卡的用途：普通节点 / 层末 BOSS / 撤离战（威胁倍率与选靶模式按此分流） */
-export type WormholeFoeKind = 'node' | 'boss' | 'extract'
+/** 洞内敌卡的用途：普通节点 / 层末 BOSS / 撤离战 / **遗迹收尾战**（威胁倍率与选靶模式按此分流） */
+export type WormholeFoeKind = 'node' | 'boss' | 'extract' | 'ruins'
 
 /** 层末 **BOSS** 的威胁倍率（设计稿 §3 表：本层 ×1.2） */
 export const WORMHOLE_BOSS_THREAT_MUL = 1.2
 /** **撤离战**的威胁倍率（设计稿 §3 表：当层威胁 ×0.8） */
 export const WORMHOLE_EXTRACT_THREAT_MUL = 0.8
+/** **遗迹收尾战**的威胁倍率（船长：「打捞结束时，大概率会触发一场**高难度**战斗」⇒ 比普通地点战高一档） */
+export const WORMHOLE_RUINS_THREAT_MUL = 1.3
 
 /**
  * **洞内敌卡的基准强度系数**（F 批校准旋钮 · 2026-09-13）。
@@ -75,18 +77,23 @@ export function wormholeFoeThreat(depth: number, kind: WormholeFoeKind): number 
   const base = wormholeLayerThreat(depth)
   if (kind === 'boss') return Math.round(base * WORMHOLE_BOSS_THREAT_MUL)
   if (kind === 'extract') return Math.round(base * WORMHOLE_EXTRACT_THREAT_MUL)
+  if (kind === 'ruins') return Math.round(base * WORMHOLE_RUINS_THREAT_MUL)
   return base
 }
 
 /**
  * 洞内敌卡的**轮换顺序**（与 `packages/data/src/wormholeFoes.ts` 的卡表同序）。
  * ⚠ 两处必须一致：`content:check` 有契约钉住（少一张/改名就报错）。
+ *
+ * 2026-09-13 补第五张 **E 族「巨构残响」**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库。
+ * 你顺便补上空缺的种族。」）⇒ 五族各有一张洞内卡，按族掉落池才"每族都有来源"。
  */
 export const WORMHOLE_FOE_CARD_IDS: readonly string[] = [
   'wh-pirate-scout',
   'wh-alien-swarm',
   'wh-grave-watch',
   'wh-exile-blockade',
+  'wh-titan-echo',
 ]
 
 /** 本节点用哪张敌卡（**确定性**：同 `(depth, nodeIndex)` ⇒ 同卡，四族轮换） */

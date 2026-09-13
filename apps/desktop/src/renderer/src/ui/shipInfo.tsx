@@ -784,6 +784,46 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   }
   const hullRow = resistAddLine('结构抗性', mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
+  /* ── 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；**任何槽位都可能带**，故独立成段）──
+   * 口径与引擎一致：附加伤害段/耗弹倍数/射程削减与按系加成/通用单发/装填惩罚/全层抗性削减/出击周期。
+   * 缺省不写 ⇒ 既有装备一行都不多。 */
+  if ((mod.secondaryDamagePct ?? 0) > 0) {
+    lines.push({
+      k: '附加伤害',
+      v: `主段结算后再打一段「主段实收 ×${pct(mod.secondaryDamagePct ?? 0)}」的${
+        DMG_LABEL[(mod.secondaryDamageType ?? 'kinetic') as DamageType]
+      }伤害（与所耗弹药无关）`,
+    })
+  }
+  if ((mod.ammoPerShot ?? 1) > 1) {
+    lines.push({ k: '耗弹', v: `每次攻击消耗 ${mod.ammoPerShot} 发弹药（一轮按门数 × 本值扣）` })
+  }
+  if ((mod.rangeCutPct ?? 0) > 0) {
+    lines.push({ k: '射程代价', v: `全舰武器射程 −${pct(mod.rangeCutPct ?? 0)}（多件只取最重一件）` })
+  }
+  if (mod.rangeTypeBonusPct) {
+    for (const [t, v] of Object.entries(mod.rangeTypeBonusPct)) {
+      if ((v ?? 0) > 0) lines.push({ k: `${DMG_LABEL[t as DamageType]}射程`, v: `+${pct(v ?? 0)}` })
+    }
+  }
+  if ((mod.damageBonusPct ?? 0) > 0) {
+    lines.push({ k: '单发加成', v: `全部武器单发 +${pct(mod.damageBonusPct ?? 0)}（只进炮台与光束）` })
+  }
+  if ((mod.reloadPenaltyPct ?? 0) > 0) {
+    lines.push({ k: '装填代价', v: `全舰装填 +${pct(mod.reloadPenaltyPct ?? 0)}（多件只取最重一件）` })
+  }
+  if ((mod.allResistPenaltyPct ?? 0) > 0) {
+    lines.push({
+      k: '抗性代价',
+      v: `护盾 / 装甲 / 结构抗性**各** −${pct(mod.allResistPenaltyPct ?? 0)}（下限 0）`,
+    })
+  }
+  if ((mod.droneCycleCutPct ?? 0) > 0) {
+    lines.push({ k: '出击周期', v: `放飞无人机的出击周期 −${pct(mod.droneCycleCutPct ?? 0)}` })
+  }
+  if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion') {
+    lines.push({ k: '航速', v: `战斗机动 +${pct(mod.speedBonusPct ?? 0)}（点火期间）` })
+  }
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
   lines.push(...crossFamilyLines(mod))
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）

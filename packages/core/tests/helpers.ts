@@ -180,6 +180,27 @@ export function moduleDef(
     hullResistAdd?: Partial<Record<DamageType, number>>
     // 协处理器（2026-09-11：低槽 CPU 预算扩容——cpuUse 0 + cpuBonus）
     cpuBonus?: number
+    /* 2026-09-13 虫洞专属装备引出的新旋钮（船长「你来实现新机制」；设计与口径见
+     * docs/design/wormhole-exclusive-20260913.md §3.6/§3.8） */
+    /** 结构层容量加成（E 族巨构骨架起就有；此处补齐测试床） */
+    hullHpBonus?: number
+    /** 附加伤害段（掠袭破片炮）：主段实收 ×本值，副弹种缺省 kinetic */
+    secondaryDamagePct?: number
+    secondaryDamageType?: DamageType
+    /** 每次攻击消耗的弹药发数（陵卫连装炮 = 2） */
+    ammoPerShot?: number
+    /** 全武器射程削减（多件取最重一件） */
+    rangeCutPct?: number
+    /** 按系武器射程加成（按系加算） */
+    rangeTypeBonusPct?: Partial<Record<DamageType, number>>
+    /** 通用单发加成（只进炮台/光束） */
+    damageBonusPct?: number
+    /** 装填惩罚（× (1+本值)；多件取最重一件） */
+    reloadPenaltyPct?: number
+    /** 全层抗性削减（三层同减、下限 0；多件取最重一件） */
+    allResistPenaltyPct?: number
+    /** 无人机出击周期折减（掠袭机库 −8%） */
+    droneCycleCutPct?: number
   },
 ): ModuleDef {
   return {
@@ -219,6 +240,17 @@ export function moduleDef(
     ...(opts?.lockDmgBonus !== undefined ? { lockDmgBonus: opts.lockDmgBonus } : {}),
     ...(opts?.droneRangeBonusPct !== undefined ? { droneRangeBonusPct: opts.droneRangeBonusPct } : {}),
     ...(opts?.cpuBonus !== undefined ? { cpuBonus: opts.cpuBonus } : {}),
+    // 2026-09-13 虫洞专属新机制（缺省不写 ⇒ 测试床的既有用例零变化）
+    ...(opts?.hullHpBonus !== undefined ? { hullHpBonus: opts.hullHpBonus } : {}),
+    ...(opts?.secondaryDamagePct !== undefined ? { secondaryDamagePct: opts.secondaryDamagePct } : {}),
+    ...(opts?.secondaryDamageType !== undefined ? { secondaryDamageType: opts.secondaryDamageType } : {}),
+    ...(opts?.ammoPerShot !== undefined ? { ammoPerShot: opts.ammoPerShot } : {}),
+    ...(opts?.rangeCutPct !== undefined ? { rangeCutPct: opts.rangeCutPct } : {}),
+    ...(opts?.rangeTypeBonusPct !== undefined ? { rangeTypeBonusPct: opts.rangeTypeBonusPct } : {}),
+    ...(opts?.damageBonusPct !== undefined ? { damageBonusPct: opts.damageBonusPct } : {}),
+    ...(opts?.reloadPenaltyPct !== undefined ? { reloadPenaltyPct: opts.reloadPenaltyPct } : {}),
+    ...(opts?.allResistPenaltyPct !== undefined ? { allResistPenaltyPct: opts.allResistPenaltyPct } : {}),
+    ...(opts?.droneCycleCutPct !== undefined ? { droneCycleCutPct: opts.droneCycleCutPct } : {}),
   }
 }
 

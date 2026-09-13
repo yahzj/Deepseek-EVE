@@ -139,11 +139,14 @@ import {
   // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；施工期入口在调试开关后面）
   wormholeEnter,
   wormholeTakePile,
-  wormholeAdvanceNode,
+  wormholeGridActivate,
+  wormholeGridScan,
+  wormholeTravelTo,
   wormholeDescend,
   wormholeExtract,
   wormholeLeave,
   wormholeResume,
+  wormholeActivateAt,
   wormholeStartBattle,
   wormholeDebugReset,
 } from '@whale/core'
@@ -1384,16 +1387,49 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：结算当前节点并推进（回合不足则拒绝——只能撤离） */
-  wormholeAdvance(): CommandResult {
-    const run = this.state.wormhole.run
-    if (!run) return { ok: false, error: '不在虫洞内。' }
-    const r = wormholeAdvanceNode(this.ctx, run, this.state.rng.seed)
+  /** 虫洞：**扫描**（1 回合，揭开当前格周围一圈） */
+  wormholeScan(): CommandResult {
+    const r = wormholeGridScan(this.state)
     if (r.ok) {
       void this.persist()
       this.notify()
     }
-    return { ok: r.ok, error: r.error }
+    return { ok: r.ok, error: r.error, code: r.code }
+  }
+
+  /**
+   * 虫洞：**前往**某一格（1 回合；未扫描的格必须先带 `confirmUnknown`，这就是"警告"的落点）。
+   * ⚠ 走 `wormholeTravelTo`（不是 core 的 `wormholeGridTravel`）：**到达"舰船信号"那一格就地开打**
+   * （船长 2026-09-13「战斗节点到达即开打」）——开战失败整趟移动回滚，玩家留在原格。
+   */
+  wormholeTravel(q: number, r: number, confirmUnknown = false): CommandResult {
+    const res = wormholeTravelTo(this.state, this.ctx, { q, r }, { confirmUnknown })
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return {
+      ok: res.ok,
+      error: res.error,
+      code: res.code,
+      ...(res.autoBattle ? { autoBattle: true } : {}),
+      ...(res.beacon ? { beacon: true } : {}),
+    }
+  }
+
+  /**
+   * 虫洞：**激活当前地点**（1 回合；舰船信号/入口会就地开战）。
+   * ⚠ 墓场/遗迹的"激活"在 core 侧**分流到打捞**（`wormholeActivateAt` → `wormholeSalvageAt`）——
+   * 要打捞器台数与背包容量，还要掷遗迹收尾战 ⇒ 界面**只留这一个入口**（不再单开"打捞"方法，
+   * 免得两条路各写一遍回合/回滚规则）。返回值里的 `taken` = 本次回收了几堆。
+   */
+  wormholeActivate(): CommandResult {
+    const r = wormholeActivateAt(this.state, this.ctx)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error, ...(r.taken !== undefined ? { taken: r.taken } : {}) }
   }
 
   /** 虫洞：深入下一层（只在层末可用） */

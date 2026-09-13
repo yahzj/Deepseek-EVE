@@ -20,18 +20,23 @@ import {
   wormholeBagSlots,
   wormholeCardIdFor,
   wormholeFleetCargoM3,
+  wormholeGridActivate,
+  wormholeGridTravel,
   wormholeTrimBag,
+  type WormholeActivateEffect,
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
+import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+import { wormholeDeliverRelics, wormholeGrantShipSpoils, wormholeSalvageAt } from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
 
 /**
  * **开一场洞内战斗**（船长 2026-09-13：4 艘同时参战）。
- * - `kind='node'`：打当前待处理节点（必须先有 `pendingNode.kind === 'combat'`）；
- * - `kind='boss'`：层末守卫（层内节点走完、且本层 BOSS 未清时才能开）；
+ * - `kind='node'`：打**当前所在地点**（网格层：必须站在"舰船信号"地点上；老档线性层：`pendingNode.kind === 'combat'`）；
+ * - `kind='boss'`：层末守卫（网格层：必须站在"下一层入口"上；老档线性层：层内节点走完）；
  * - `kind='extract'`：撤离战（相位已在 `extracting`）。
  * 战斗宿主 = `run.battle`（**不占** `expedition.battle`，故不走远征结算）。
  */
@@ -50,17 +55,35 @@ export function wormholeStartBattle(
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。' }
   if (run.battle) return { ok: false, error: '战斗还没结束。' }
+  const grid = run.grid
+  const here = grid ? gridCellAt(grid, grid.pos) : undefined
   if (kind === 'node') {
-    if (!run.pendingNode) return { ok: false, error: '本层已清空：该打层末守卫了。' }
-    if (run.pendingNode.kind !== 'combat') return { ok: false, error: '这个节点不是战斗节点。' }
+    if (grid) {
+      // 网格层：战斗由**地点**触发（舰船信号 / 遗迹收尾，后者 F3b 接）
+      if (here?.place !== 'ship') return { ok: false, error: '这里没有可交火的信号。' }
+    } else {
+      if (!run.pendingNode) return { ok: false, error: '本层已清空：该打层末守卫了。' }
+      if (run.pendingNode.kind !== 'combat') return { ok: false, error: '这个节点不是战斗节点。' }
+    }
   } else if (kind === 'boss') {
-    if (run.pendingNode) return { ok: false, error: '本层还没走完：先处理完层内节点。' }
+    // 网格层：层末守卫守在"下一层入口"那一格上——站上去激活它才开打
+    if (grid) {
+      if (!here || !isExitCell(grid, grid.pos)) return { ok: false, error: '层末守卫守在下一层入口：先找到并抵达入口。' }
+    } else if (run.pendingNode) {
+      return { ok: false, error: '本层还没走完：先处理完层内节点。' }
+    }
     if ((run.bossCleared ?? 0) >= run.depth) return { ok: false, error: '本层守卫已经清掉了。' }
+  } else if (kind === 'ruins') {
+    // **遗迹收尾战**（F3b）：打捞结束时触发；网格层必须站在遗迹格上、且那格已经捞空
+    if (!grid) return { ok: false, error: '遗迹收尾战只在网格层成立。' }
+    if (here?.place !== 'ruins') return { ok: false, error: '这里不是遗迹。' }
+    if ((here.piles ?? []).length > 0) return { ok: false, error: '遗迹还没打捞完：先捞空再打。' }
   } else if (run.phase !== 'extracting') {
     return { ok: false, error: '还没进入撤离相位。' }
   }
-  const waves = kind === 'node' ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
-  const cardId = wormholeCardIdFor(run.depth, run.nodeIndex)
+  const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
+  // 敌卡轮换序号：网格层按**格坐标**取（同格恒同序、不同格有变化），老档线性层按节点序号
+  const cardId = wormholeCardIdFor(run.depth, grid ? gridContentIndex(grid) : run.nodeIndex)
   // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
   const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,
@@ -71,6 +94,105 @@ export function wormholeStartBattle(
   if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。' }
   run.battle = battle
   return { ok: true }
+}
+
+/**
+ * **激活当前地点**（网格层唯一的"互动"入口 = `wormholeGridActivate` + 需要时立刻开战）。
+ *
+ * 为什么两件事合成一次调用：激活"舰船信号"/"下一层入口"的**下一步永远是开战**，
+ * 界面若分两次调用，中间任何一次失败都会留下"地点已记 `activated`、回合已扣、但战斗没开"
+ * 的死格（这格再也打不了、还白扣一回合）——合成一次，界面只处理一个结果；
+ * 万一开战失败（敌卡/编队缺失这类），这里**把回合与激活标记一起回滚**，不留半截状态。
+ */
+export function wormholeActivateAt(
+  state: GameState,
+  ctx: SimContext,
+  atGameMs?: number,
+): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind; taken?: number } {
+  const run = state.wormhole.run
+  const turnsBefore = run?.turnsLeft ?? 0
+  // **打捞格走打捞入口**（F3b）：墓场/遗迹的"激活"其实是**打捞作业**——要打捞器、
+  // 一次回收台数 的堆、遗迹捞空还要掷收尾战；那套逻辑需要 ctx（打捞器台数/背包容量）与目录，
+  // 故放在 `wormholeSalvage` 里，这里只做分流（`wormhole.ts` 不许 import 那个模块）。
+  const here = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+  if (here && (here.place === 'graveyard' || here.place === 'ruins')) {
+    const s = wormholeSalvageAt(state, ctx)
+    if (!s.ok) return { ok: false, error: s.error }
+    const effect = s.effect
+    if (!effect || effect.kind !== 'ruinsBattle') return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0 }
+    const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
+    if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
+    return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }
+  }
+  const r = wormholeGridActivate(state)
+  if (!r.ok) return { ok: false, error: r.error }
+  const effect = r.effect
+  if (!effect) return { ok: true, spent: r.spent }
+  const kind: WormholeFoeKind | null = effect.kind === 'exit' ? 'boss' : effect.kind === 'battle' ? 'node' : null
+  if (!kind) return { ok: true, spent: r.spent, effect }
+  const s = wormholeStartBattle(state, ctx, kind, atGameMs)
+  if (!s.ok) {
+    // 回滚：回合退回、激活标记摘掉（该格回到"可再次激活"）
+    if (run) {
+      run.turnsLeft = turnsBefore
+      if (run.grid) run.grid.activated = run.grid.activated.filter((k) => k !== effect.key)
+    }
+    return { ok: false, error: `无法开战：${s.error ?? ''}` }
+  }
+  return { ok: true, spent: r.spent, effect, started: kind }
+}
+
+/**
+ * **前往某一格**（网格层的"移动"入口 = `wormholeGridTravel` + 到达即开打时的立刻开战）。
+ *
+ * 船长 2026-09-13 追加：「**战斗节点到达即开打**」⇒ 走到"舰船信号"那一格就地交火（不再需要点激活）。
+ * 为什么合成一次调用（与 `wormholeActivateAt` 同款理由）：界面若分两步，中间失败会留下
+ * "人已经站到那里、回合已扣、但战斗没开"的半截状态——这里**开战失败会把整趟移动回滚**
+ * （回合 / 位置 / 已到达 / 已扫描 / 已激活 / 信标标出的入口全部还原），玩家留在原格、回合不丢。
+ */
+export function wormholeTravelTo(
+  state: GameState,
+  ctx: SimContext,
+  target: { q: number; r: number },
+  opts?: { confirmUnknown?: boolean },
+  atGameMs?: number,
+): { ok: boolean; error?: string; code?: 'unknown-target'; spent?: number; autoBattle?: boolean; beacon?: boolean } {
+  const run = state.wormhole.run
+  const g = run?.grid
+  const snap =
+    run && g
+      ? {
+          turnsLeft: run.turnsLeft,
+          pos: { ...g.pos },
+          visited: [...g.visited],
+          scanned: [...g.scanned],
+          activated: [...g.activated],
+          exitKnown: g.exitKnown === true,
+        }
+      : null
+  const r = wormholeGridTravel(state, target, opts)
+  if (!r.ok) return { ok: false, error: r.error, ...(r.code ? { code: r.code } : {}) }
+  const arrived = r.arrived
+  if (!arrived?.autoBattle) {
+    return {
+      ok: true,
+      spent: r.spent,
+      ...(arrived?.beacon ? { beacon: true } : {}),
+    }
+  }
+  const s = wormholeStartBattle(state, ctx, 'node', atGameMs)
+  if (!s.ok) {
+    if (run && g && snap) {
+      run.turnsLeft = snap.turnsLeft
+      g.pos = snap.pos
+      g.visited = snap.visited
+      g.scanned = snap.scanned
+      g.activated = snap.activated
+      g.exitKnown = snap.exitKnown
+    }
+    return { ok: false, error: `无法开战：${s.error ?? ''}` }
+  }
+  return { ok: true, spent: r.spent, autoBattle: true }
 }
 
 /** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */
@@ -99,7 +221,15 @@ function wormholeBattleReport(
   const sec = Math.max(0, Math.round((battle.lastTickGameMs - battle.startedAtGameMs) / 1000))
   const s = battle.stats
   const frac = Math.round(fleetHpFrac(run, battle) * 100)
-  const what = kind === 'boss' ? `第 ${run.depth} 层守卫` : kind === 'extract' ? '撤离拦截' : `第 ${run.depth} 层节点`
+  const what = kind === 'boss'
+    ? `第 ${run.depth} 层守卫`
+    : kind === 'extract'
+      ? '撤离拦截'
+      : kind === 'ruins'
+        ? `第 ${run.depth} 层遗迹守军`
+        : run.grid
+          ? `第 ${run.depth} 层地点`
+          : `第 ${run.depth} 层节点`
   // 尾巴（与远征/遭遇同款口径）：船体维修装置消耗——洞内同样吃这套后勤，不写就等于白用
   const repair = repairUsageText(battle, ctx)
   const tail = repair.length > 0 ? ` · 船体维修装置${repair}` : ''
@@ -204,6 +334,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
         (isk > 0 ? `（按基础价约 ${isk.toLocaleString('zh-CN')} ISK）` : '') +
         `，第 ${run.depth} 层撤离。`,
     )
+    // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
+    if ((run.relics ?? []).length > 0) wormholeDeliverRelics(state, ctx, run.relics ?? [])
     state.wormhole.run = null
     return
   }
@@ -212,7 +344,15 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     addLog(state, 'info', `🕳 第 ${run.depth} 层守卫已清：可以「继续深入」或「撤离」。`)
     return
   }
-  // 节点战：结算该节点（扣回合、推进；回合不够 ⇒ 转撤离相位＝只能撤离）
+  // 网格层的地点战：回合已在"激活地点"那一步扣掉、地点也已记进 `activated` ⇒ 这里只报账
+  // （地点收益——墓场/遗迹的打捞、矿脉的母矿、谜质的增强——在 F3b/F3c 接）
+  if (run.grid) {
+    // 舰船信号的战果：打赢**固定**给残骸 2 堆 + 稀有残骸 1 堆（船长口径；放不下的留在格上）
+    if (kind === 'node') wormholeGrantShipSpoils(state, ctx)
+    if (run.turnsLeft <= 0) addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`)
+    return
+  }
+  // 老档线性节点：结算该节点（扣回合、推进；回合不够 ⇒ 转撤离相位＝只能撤离）
   const r = wormholeAdvanceNode(ctx, run, state.rng.seed)
   if (!r.ok) {
     run.phase = 'extracting'
@@ -266,7 +406,14 @@ export function wormholeBattleViewOf(
     if (u.side !== 'foe' || u.hp.s + u.hp.a + u.hp.h <= 0) continue
     foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
   }
-  const kindLabel = spec.kind === 'boss' ? '层末守卫' : spec.kind === 'extract' ? '撤离拦截' : `第 ${spec.depth} 层`
+  const kindLabel =
+    spec.kind === 'boss'
+      ? '层末守卫'
+      : spec.kind === 'extract'
+        ? '撤离拦截'
+        : spec.kind === 'ruins'
+          ? `第 ${spec.depth} 层遗迹守军`
+          : `第 ${spec.depth} 层`
   return {
     battle,
     anomaly,

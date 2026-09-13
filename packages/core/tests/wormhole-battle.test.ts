@@ -38,7 +38,10 @@ import {
   wormholeLayerThreat,
   wormholeNaturalHp,
 } from '../src/wormhole'
-import { advanceWormhole, wormholeBattleViewOf, wormholeStartBattle } from '../src/wormholeBattle'
+import { advanceWormhole, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
+import type { WormholeRunState } from '../src/wormhole'
+import type { WormholePlace } from '../src/wormholeGrid'
+import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -68,6 +71,29 @@ function winBattle(state: GameState): void {
 }
 
 /**
+ * **把玩家挪到指定地点的格上**（F3a-2 起：地点效果由**激活**触发，不再是线性节点）。
+ * 等价于旧用例里的 `run.pendingNode = { kind: … }`：直接改当前格的真相，省掉"扫/走"的铺垫。
+ */
+function standOnPlace(run: WormholeRunState, place: WormholePlace): string {
+  const g = run.grid!
+  const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
+  cell.place = place
+  g.activated = g.activated.filter((k) => k !== cell.key)
+  return cell.key
+}
+
+/** 把玩家挪到"下一层入口"那一格（层末守卫守在入口上：站上去激活才开打） */
+function standAtExit(run: WormholeRunState): string {
+  const g = run.grid!
+  g.pos = { q: g.exit.q, r: g.exit.r }
+  const key = `${g.exit.q},${g.exit.r}`
+  if (!g.visited.includes(key)) g.visited.push(key)
+  if (!g.scanned.includes(key)) g.scanned.push(key)
+  g.activated = g.activated.filter((k) => k !== key)
+  return key
+}
+
+/**
  * **收口一场已分胜负的战斗**：跳过「击杀慢镜」窗口（与远征 `bal.killcamMs` 同源）再推进。
  * 引擎在 `ended` 之后**延迟结算**——为的是让战斗界面把最后一击/爆炸演出播完
  * （首版实测：不延迟的话战斗界面会在结束那一瞬间直接卸载，战报窗口没机会播）。
@@ -88,22 +114,27 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     expect(wormholeFoeThreat(3, 'boss')).toBe(Math.round(wormholeLayerThreat(3) * 1.2))
   })
 
-  it('四张洞内敌卡按 (层, 节点) 确定性轮换，且四族都真实存在于目录里', () => {
+  it('五张洞内敌卡按 (层, 节点) 确定性轮换，且五族（A/C/D/E/G）都真实存在于目录里', () => {
     const ids = new Set<string>()
-    for (let d = 1; d <= 3; d++) {
+    for (let d = 1; d <= 5; d++) {
       for (let i = 0; i < 3; i++) {
         const id = wormholeCardIdFor(d, i)
         ids.add(id)
         expect(wormholeCardIdFor(d, i)).toBe(id) // 确定性
       }
     }
-    expect(ids.size).toBe(WORMHOLE_FOE_CARD_IDS.length) // 轮换覆盖全部四张
+    expect(ids.size).toBe(WORMHOLE_FOE_CARD_IDS.length) // 轮换覆盖全部五张
+    expect(WORMHOLE_FOE_CARD_IDS.length).toBe(5) // A/C/D/E/G 各一张（2026-09-13 补 E 族）
+    const families = new Set<string>()
     for (const id of WORMHOLE_FOE_CARD_IDS) {
       const card = ctx.anomalies.get(id)
       expect(card, `目录里没有洞内敌卡 ${id}`).toBeTruthy()
       expect(card!.hidden).toBe(true) // 施工期必须隐藏（不进悬赏目录）
       expect((card!.ships ?? []).length).toBeGreaterThan(0) // 舰级路径
+      families.add(String(card!.foeFamily))
     }
+    // 五族齐 ⇒ 按族掉落池"每族都有来源"（船长 2026-09-13：专属掉落与蓝图都按种族库走）
+    expect([...families].sort()).toEqual(['A', 'C', 'D', 'E', 'G'])
   })
 
   it('派生：威胁换成目标值、**总血压到该层预算**（按卡归一）；**波数摊薄但总战力守恒**', () => {
@@ -154,17 +185,23 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
 })
 
 describe('虫洞 · 开战（F 批）', () => {
-  it('战斗节点可开战：宿主在 run.battle、带 wormhole 标记、我方 4 单位路径生效', () => {
+  it('地点战可开战：宿主在 run.battle、带 wormhole 标记、我方 4 单位路径生效', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 2, pickups: 0, cost: 2 }
+    standOnPlace(run, 'ship')
     const r = wormholeStartBattle(state, ctx, 'node', 0)
     expect(r.ok).toBe(true)
     const battle = run.battle!
-    expect(battle.wormhole).toEqual({ cardId: wormholeCardIdFor(1, 0), depth: 1, kind: 'node', waves: 2 })
+    // 敌卡按**格坐标**散列的序号轮换（同格恒同序；一层里连打几场不会全用同一张卡）
+    expect(battle.wormhole).toEqual({
+      cardId: wormholeCardIdFor(1, gridContentIndex(run.grid!)),
+      depth: 1,
+      kind: 'node',
+      waves: 1,
+    })
     expect(battle.myFleet?.length).toBe(2) // 两艘都在（主控置首）
     expect(battle.hullEscapeFrac).toBeUndefined() // 副本内无"结构过半自动脱离"
-    // 敌卡已按层派生：威胁 45 的卡 + 2 波
+    // 敌卡已按层派生：威胁 45 的卡（网格层的地点战不分波）
     expect(battle.waveIdx ?? 0).toBe(0)
     const foes = Object.values(battle.units).filter((u) => u.side === 'foe')
     expect(foes.length).toBeGreaterThan(0)
@@ -172,23 +209,30 @@ describe('虫洞 · 开战（F 批）', () => {
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(false)
   })
 
+  it('非交火地点开不了战（网格层：战斗只由「舰船信号」地点触发）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    standOnPlace(run, 'vein') // 矿脉：不是交火地点
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(false)
+    expect(run.battle ?? null).toBeNull()
+  })
+
   it('战斗中：推进 / 深入 / 撤离一律被拒（船长第 8 条）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship')
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     expect(wormholeExtract(run).ok).toBe(false)
     expect(wormholeDescend(run, 21).ok).toBe(false)
     expect(run.phase).toBe('inside')
   })
 
-  it('层末守卫：层内走完才可开，打完才放行深入/撤离', () => {
+  it('层末守卫守在**下一层入口**上：没站上入口开不了，打完才放行深入/撤离', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
-    expect(wormholeStartBattle(state, ctx, 'boss', 0).ok).toBe(false) // 层内还没走完
-    run.pendingNode = null
+    expect(wormholeStartBattle(state, ctx, 'boss', 0).ok).toBe(false) // 没站在入口格上
     expect(wormholeDescend(run, 21).ok).toBe(false) // 守卫没清
+    standAtExit(run)
     expect(wormholeStartBattle(state, ctx, 'boss', 0).ok).toBe(true)
     winBattle(state)
     settleBattle(state)
@@ -200,23 +244,80 @@ describe('虫洞 · 开战（F 批）', () => {
 })
 
 describe('虫洞 · 战斗收口（F 批）', () => {
-  it('**胜 · 节点战**：自动结算本节点（扣回合、推进），战斗清空', () => {
+  it('**胜 · 地点战**：回合在"激活地点"那一步已扣；收口不再重复扣、地点留在已处理', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    const key = standOnPlace(run, 'ship')
     const turnsBefore = run.turnsLeft
-    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const act = wormholeActivateAt(state, ctx)
+    expect(act.ok).toBe(true)
+    expect(act.started).toBe('node') // 激活"舰船信号" ⇒ 立刻开战（不用界面再点一次）
+    expect(run.turnsLeft).toBe(turnsBefore - 1) // 激活那一步就扣了回合
+    expect(run.battle).not.toBeNull()
     winBattle(state)
     settleBattle(state)
     expect(run.battle).toBeNull()
-    expect(run.turnsLeft).toBe(turnsBefore - 1) // 节点开销已扣
-    expect(run.nodeIndex).toBe(1) // 已推进
+    expect(run.turnsLeft).toBe(turnsBefore - 1) // 收口不重复扣费
+    expect(run.grid!.activated).toContain(key)
+  })
+
+  it('**到达即开打**（船长 2026-09-13）：走到舰船信号那一格就地交火，只花「前往」那 1 回合', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const g = run.grid!
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'ship'
+    g.scanned.push(target.key)
+    const turnsBefore = run.turnsLeft
+    const r = wormholeTravelTo(state, ctx, { q: target.q, r: target.r })
+    expect(r.ok).toBe(true)
+    expect(r.autoBattle).toBe(true)
+    expect(run.battle).not.toBeNull()
+    expect(run.battle!.wormhole?.kind).toBe('node')
+    expect(run.turnsLeft).toBe(turnsBefore - 1) // 到达即开打 ⇒ 没有第二次「激活」扣费
+    winBattle(state)
+    settleBattle(state)
+    expect(run.battle).toBeNull()
+    expect(run.turnsLeft).toBe(turnsBefore - 1) // 收口也不重复扣
+  })
+
+  it('开战起不来（编队被掏空）⇒ **整趟移动回滚**：人留在原格、回合不丢、地点没被记成已处理', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const g = run.grid!
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'ship'
+    g.scanned.push(target.key)
+    const posBefore = { ...g.pos }
+    const turnsBefore = run.turnsLeft
+    run.fleet = [] // `startFleetBattleFor` 建不出战斗
+    const r = wormholeTravelTo(state, ctx, { q: target.q, r: target.r })
+    expect(r.ok).toBe(false)
+    expect(g.pos).toEqual(posBefore)
+    expect(run.turnsLeft).toBe(turnsBefore)
+    expect(g.visited).not.toContain(target.key)
+    expect(g.activated).not.toContain(target.key)
+    expect(run.battle ?? null).toBeNull()
+  })
+
+  it('**激活入口格 ⇒ 层末守卫战**（网格层的"打完才放行"落点）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    standAtExit(run)
+    const act = wormholeActivateAt(state, ctx)
+    expect(act.ok).toBe(true)
+    expect(act.effect?.kind).toBe('exit')
+    expect(act.started).toBe('boss')
+    expect(run.battle!.wormhole?.kind).toBe('boss')
+    winBattle(state)
+    settleBattle(state)
+    expect(run.bossCleared).toBe(1)
+    expect(wormholeDescend(run, 21).ok).toBe(true)
   })
 
   it('**胜 · 撤离战**：背包并入仓库、本趟结束', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = null
     run.bossCleared = run.depth
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 500 }]
     const before = countWare(state, WORMHOLE_ORE_ITEM_ID)
@@ -237,7 +338,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const run = state.wormhole.run!
     const fleetBefore = Object.keys(state.fleet).length
     const runFleet = [...run.fleet]
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 300 }]
     const oreBefore = countWare(state, WORMHOLE_ORE_ITEM_ID)
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
@@ -262,7 +363,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(wormholeEnter(state, ctx, [only], 21).ok).toBe(true)
     const run = state.wormhole.run!
     expect(run.fleet).toEqual([only])
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     for (const u of Object.values(run.battle!.units)) {
       if (u.side === 'me') u.hp = { s: 0, a: 0, h: 0 }
@@ -293,7 +394,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     ]
     expect(wormholeBagUsage(ctx, run.bag, capBefore).used).toBe(capBefore)
     // 打沉两艘僚舰后仍胜 ⇒ 编队剩 2 艘 ⇒ 上限缩水 ⇒ 装不下的当场丢
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     run.battle!.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
     run.battle!.units['ally-2']!.hp = { s: 0, a: 0, h: 0 }
@@ -315,7 +416,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
   it('某个僚舰被打沉（战斗仍胜）：该船从编队与舰队里一起消失，其余船继续', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     const fleetBefore = Object.keys(state.fleet).length
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
@@ -331,7 +432,6 @@ describe('虫洞 · 战斗收口（F 批）', () => {
   it('撤离战开不起来（编队没了之类的硬故障）⇒ 按全损收场，不卡在撤离相位', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = null
     run.bossCleared = run.depth
     run.bag = []
     // 掏空编队记录 ⇒ `startFleetBattleFor` 建不出战斗
@@ -346,7 +446,7 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
   it('**开战距离特殊规则**：非近战敌人开局就站在**自己的目标距离**（不是"最远射程 + 缓冲"）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
     const card = ctx.anomalies.get(battle.wormhole!.cardId)!
@@ -372,7 +472,7 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
   it('**逐拍重建与开战同源**：敌人真能打疼你（首版就错在这里——血强化了、炮还是自然值）', () => {
     const state = enterRun(7)
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
     const meTags = (battle.myFleet ?? []).map((e) => e.tag)
@@ -397,17 +497,16 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
   it('**战报**：每场洞内战斗结束都留一条同源战报（交火时长 / 双方开火命中 / 编队残血）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     winBattle(state)
     settleBattle(state)
     const line = state.logs.map((l) => l.text).filter((t) => t.includes('交火结束')).pop()
-    expect(line, '节点战胜利没有战报').toBeTruthy()
-    expect(line!).toContain('第 1 层节点')
+    expect(line, '地点战胜利没有战报').toBeTruthy()
+    expect(line!).toContain('第 1 层地点')
     expect(line!).toContain('编队残血')
     // 撤离战同样有战报（且与"撤离成功"分开两条）
     const run2 = state.wormhole.run!
-    run2.pendingNode = null
     run2.bossCleared = run2.depth
     run2.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 500 }]
     expect(wormholeExtract(run2).ok).toBe(true)
@@ -424,7 +523,7 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     // 首舰装机库甲板 + 带上侦察无人机（真走 `buildMyUnitSpecs` ⇒ 机群生存池）
     state.fleet[leader]!.fitted = { high: ['mod-drone-rack-3'], mid: [], low: [] }
     state.fleet[leader]!.droneLoad = { 'drone-scout': 4 }
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
     // D 批边界：僚舰无人机不参战，**主控机群参战**（池按主控武器槽建）
@@ -446,7 +545,7 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
   it('**战报带后勤尾巴**：船体维修装置消耗写进洞内战报（与远征同口径）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
     const repair = battle.repair ?? { units: [], kits: {}, pulses: 0, kitsUsed: 0 }
@@ -467,7 +566,7 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
       state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
     }
     addWare(state, 'ammo-kinetic-l', 5_000)
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     const before = countWare(state, 'ammo-kinetic-l')
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
@@ -490,7 +589,8 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     expect(countWare(state, 'ammo-kinetic-l')).toBe(before - fired)
     // 第二场照样有弹
     const run2 = state.wormhole.run
-    if (run2?.pendingNode?.kind === 'combat') {
+    if (run2) {
+      standOnPlace(run2, 'ship') // 第二场：把所在地点改成舰船信号再开打
       expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
       expect(state.wormhole.run!.battle!.ammo.kin).toBeGreaterThan(0)
     }
@@ -502,7 +602,7 @@ describe('虫洞 · 战场视图（F2 · 2026-09-13）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
     expect(wormholeBattleViewOf(state, ctx)).toBeNull() // 没开战时没有视图
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const v = wormholeBattleViewOf(state, ctx)!
     expect(v.name).toBe('虫洞 · 第 1 层')
@@ -523,7 +623,7 @@ describe('虫洞 · 战场视图（F2 · 2026-09-13）', () => {
   it('击杀慢镜：分出胜负后要等 `killcamMs` 才结算（否则战斗界面一结束就卸载）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     winBattle(state)
     // 未满窗口：不结算、战斗还在
@@ -541,7 +641,7 @@ describe('虫洞 · 随档（F 批）', () => {
   it('战斗宿主与升级标记随档往返：`run.battle` + `battle.wormhole` + `bossCleared` 都不丢', () => {
     const state = enterRun()
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 2, pickups: 0, cost: 2 }
+    standOnPlace(run, 'ship')
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     run.bossCleared = 1
     // 战斗中掉一点血，便于断言"动态量也带过去了"
@@ -567,7 +667,7 @@ describe('虫洞 · 随档（F 批）', () => {
     const run = state.wormhole.run!
     const leader = run.fleet[0]!
     const ally = run.fleet[1]!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     // 战斗中：僚舰沉 + 机群被打下来 3 架（都还没收口）——此刻存档
     run.battle!.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }

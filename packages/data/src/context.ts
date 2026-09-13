@@ -19,6 +19,7 @@ import { buildSkillCatalog } from './skills'
 import { buildItemCatalog } from './items'
 import { buildBeltCatalog } from './belts'
 import { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
+import { WORMHOLE_RARE_WRECK_CARD_IDS } from './wormholeFoes'
 import { buildShipCatalog } from './ships'
 import { buildModuleCatalog } from './modules'
 import { buildBlueprintCatalog } from './blueprints'
@@ -50,11 +51,15 @@ export function buildSimContext(): SimContext {
   // 否则旧档里已获得的 `wreck-rare-ano-harbor-escort` / `wreck-rare-ano-abandoned-platform`
   // 会解析不到物品定义、在读档后显示成"未知物品"。白名单 ≠ 恢复窝点候选（候选仍由
   // `isLairCandidate()` 的族规则排除），只是"旧档兼容登记"。详见 `./retiredLairCards.ts`。
+  // ⚠ 第三张白名单 = **洞内敌卡**（F3b · 船长 2026-09-13「打捞…每 3 堆普通，进行一次稀有残骸出现判断」）：
+  // 四张 `wh-*` 卡没有窝点核心 ⇒ 不给白名单就**不存在 `wreck-rare-wh-*`**，打捞出的稀有残骸会解析不到定义。
+  // 它们是施工期新内容 ⇒ 注册时一律标 `unreleased`（随虫洞一起上线）。
   for (const a of anomalies.values()) {
-    if (!hasLairCore(a) && !RETIRED_LAIR_CARD_IDS.has(a.id)) continue
+    const isWhCard = WORMHOLE_RARE_WRECK_CARD_IDS.includes(a.id)
+    if (!hasLairCore(a) && !RETIRED_LAIR_CARD_IDS.has(a.id) && !isWhCard) continue
     const id = rareWreckItemIdOf(a.id)
     if (items.has(id)) continue
-    items.set(id, rareWreckItemDefOf(a.id, a.name))
+    items.set(id, isWhCard ? { ...rareWreckItemDefOf(a.id, a.name), unreleased: true } : rareWreckItemDefOf(a.id, a.name))
   }
   const modules = buildModuleCatalog()
   // B3：碎片物品按"有逆向配方的装备"生成

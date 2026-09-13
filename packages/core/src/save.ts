@@ -19,6 +19,7 @@ import {
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
+import type { WormholeGridState } from './wormholeGrid'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
@@ -946,7 +947,7 @@ function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined 
   const w = asRaw(raw)
   const cardId = typeof w.cardId === 'string' && w.cardId.length > 0 ? w.cardId : null
   const kind =
-    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' ? w.kind : null
+    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' || w.kind === 'ruins' ? w.kind : null
   const depth = cleanPosNum(w.depth)
   const waves = cleanPosNum(w.waves)
   if (!cardId || !kind || depth === undefined || waves === undefined) return undefined
@@ -2407,6 +2408,68 @@ function normalizeState(raw: unknown): GameState {
   }
 
   // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
+  /** 网格探索状态（F3a）：**老档没有 ⇒ 不写**（零迁移）；坏结构整块丢弃（该层退回旧口径） */
+  const cleanWormholeGrid = (raw: unknown): WormholeGridState | undefined => {
+    const g = asRaw(raw)
+    const radius = Math.floor(num(g.radius))
+    if (!(radius >= 1 && radius <= 8)) return undefined
+    const cellsRaw = Array.isArray(g.cells) ? g.cells : []
+    const cells: WormholeGridState['cells'] = []
+    for (const it of cellsRaw) {
+      const row = asRaw(it)
+      const key = typeof row.key === 'string' ? row.key : ''
+      const place = typeof row.place === 'string' ? row.place : ''
+      if (key.length === 0 || place.length === 0) continue
+      const placeOk =
+        place === 'empty' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'vein' || place === 'matter' || place === 'beacon'
+        ? (place as WormholeGridState['cells'][number]['place'])
+        : undefined
+      if (!placeOk) continue
+      // 格上的战利品堆（F3b 打捞/挖矿往里放；形状与 `cleanPiles` 同一口径）
+      const cellPiles = ((): { itemId: string; units: number }[] | undefined => {
+        const pileRaw = Array.isArray(row.piles) ? row.piles : []
+        const out: { itemId: string; units: number }[] = []
+        for (const p of pileRaw) {
+          const o = asRaw(p)
+          const itemId = typeof o.itemId === 'string' ? o.itemId : ''
+          const units = Math.floor(num(o.units))
+          if (itemId.length > 0 && units > 0) out.push({ itemId, units })
+        }
+        return out.length > 0 ? out : undefined
+      })()
+      cells.push({
+        key,
+        q: Math.floor(num(row.q)),
+        r: Math.floor(num(row.r)),
+        place: placeOk,
+        ...(cellPiles ? { piles: cellPiles } : {}),
+      })
+    }
+    if (cells.length === 0) return undefined
+    const cell = (v: unknown): { q: number; r: number } | undefined => {
+      const o = asRaw(v)
+      return typeof o.q === 'number' || typeof o.r === 'number' ? { q: Math.floor(num(o.q)), r: Math.floor(num(o.r)) } : undefined
+    }
+    const start = cell(g.start)
+    const exit = cell(g.exit)
+    const pos = cell(g.pos)
+    if (!start || !exit || !pos) return undefined
+    const keys = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    return {
+      radius,
+      start,
+      exit,
+      pos,
+      scanRadius: Math.max(0, Math.floor(num(g.scanRadius)) || 1),
+      scanned: keys(g.scanned),
+      visited: keys(g.visited),
+      activated: keys(g.activated),
+      // 「下一层入口已被漂浮信标标出」（F3a-3）：只在为真时写（老档/未标出 ⇒ 不写 = 零迁移）
+      ...(g.exitKnown === true ? { exitKnown: true } : {}),
+      cells,
+    }
+  }
   const cleanWormhole = (): GameState['wormhole'] => {
     const wRaw = asRaw(src.wormhole)
     const rRaw = asRaw(wRaw.run)
@@ -2455,10 +2518,21 @@ function normalizeState(raw: unknown): GameState {
             nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
             // **人在洞里**（2026-09-13 · 议案 A）：活动位开关。旧档/坏值 ⇒ false（安全侧：不占主控）
             attending: rRaw.attending === true,
+            // 网格探索（F3a）：老档/坏值 ⇒ 不写（该层走旧口径，零迁移）
+            ...(cleanWormholeGrid(rRaw.grid) !== undefined ? { grid: cleanWormholeGrid(rRaw.grid) } : {}),
             // 临时离开时刻（回来时按它前移战斗时钟）：坏值/缺省 = 不写（= 没离开过）
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
             ...(num(rRaw.desireM) > 0 ? { desireM: Math.round(num(rRaw.desireM)) } : {}),
+            // 本趟确定性种子（F3b：层内产出的生成按它散列；坏值/缺省 ⇒ 不写，退回全局种子）
+            ...(Math.floor(num(rRaw.seed)) !== 0 ? { seed: Math.floor(num(rRaw.seed)) } : {}),
+            // 随行战利品（遗迹专属掉落：图纸/装备；撤离成功才入库）：只留非空字符串
+            ...(Array.isArray(rRaw.relics)
+              ? (() => {
+                  const list = rRaw.relics.filter((x): x is string => typeof x === 'string' && x.length > 0)
+                  return list.length > 0 ? { relics: list } : {}
+                })()
+              : {}),
             // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
             ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0

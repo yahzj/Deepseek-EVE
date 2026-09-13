@@ -31,6 +31,11 @@ function encTiers(): AnomalyDef[] {
 function lowWorld() {
   const ctx: SimContext = makeTestCtx({
     quietEvents: true,
+    // ⚠ 2026-09-13 层位克制改判（动能对甲 / 爆炸对盾 0.5 → 0.75）后，**开局沙猫级**（护盾仅 18 点，
+    // 同属"一炮≈一层血"的极端颗粒度）在威胁 6 的遭遇里会被打沉 ⇒ 结算 durability = 0（实测）。
+    // 夹具把船抬硬，保本用例被测的行为（应战 → 打完 → 遭遇关闭 → **船还在**）不变；
+    // **只动夹具、不动内容数值**（船长 2026-09-13 裁定「① 最小调整夹具」）。
+    ships: [ship('sandcat', { shieldHp: 400, armorHp: 700, hullHp: 700 })],
     galaxies: [{ ...galaxy('galaxy-far', '远方'), security: -0.8 }],
     belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-f', 'ore-a', '低安带', { galaxyId: 'galaxy-far' })],
     anomalies: encTiers(),

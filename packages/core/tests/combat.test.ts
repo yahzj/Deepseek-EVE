@@ -44,12 +44,12 @@ import { addItem } from '../src/inventory'
 const BAL = () => makeTestCtx().balance.battle
 
 describe('命中与伤害公式', () => {
-  it('克制系数：动能 盾×1.5/甲×0.5；高爆反之；能量盾×1.25（船长 2026-09-05：0.75→1.25，C4 复核）', () => {
+  it('克制系数：动能 盾×1.5/甲×0.75；爆炸反之；能量盾×1.25（船长 2026-09-13：逆克制 0.5→0.75）', () => {
     expect(typeLayerMult('kinetic', 'shield')).toBe(1.5)
-    expect(typeLayerMult('kinetic', 'armor')).toBe(0.5)
+    expect(typeLayerMult('kinetic', 'armor')).toBe(0.75)
     expect(typeLayerMult('kinetic', 'hull')).toBe(1)
     expect(typeLayerMult('explosive', 'armor')).toBe(1.5)
-    expect(typeLayerMult('explosive', 'shield')).toBe(0.5)
+    expect(typeLayerMult('explosive', 'shield')).toBe(0.75)
     expect(typeLayerMult('plasma', 'shield')).toBe(1.25)
     expect(typeLayerMult('plasma', 'armor')).toBe(1)
   })
@@ -126,10 +126,10 @@ describe('命中与伤害公式', () => {
     expect(r1.hp.s).toBeCloseTo(2.5, 5)
     expect(r1.hp.a).toBe(10)
     expect(r1.dealt).toBeCloseTo(7.5, 5)
-    // 击穿盾 → 溢出甲（动能对甲 ×0.5：溢出 5 ×0.5 = 2.5 扣在甲上）
+    // 击穿盾 → 溢出甲（动能对甲 ×0.75，船长 2026-09-13 由 0.5 抬到 0.75：溢出 5 ×0.75 = 3.75 扣在甲上）
     const r2 = applyDamage({ s: 10, a: 10, h: 10 }, {}, 10, 'kinetic')
     expect(r2.hp.s).toBe(0)
-    expect(r2.hp.a).toBeCloseTo(7.5, 5)
+    expect(r2.hp.a).toBeCloseTo(6.25, 5)
     expect(r2.hp.h).toBe(10)
     // 抗性：盾动能抗 0.5 → 伤害减半
     const r3 = applyDamage({ s: 10, a: 10, h: 10 }, { shield: { kinetic: 0.5 } }, 10, 'kinetic')

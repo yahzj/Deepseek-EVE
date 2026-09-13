@@ -142,9 +142,9 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
 
   it('速度与射程成长的钳制保留（只有血量去钳）', () => {
     // 速度的 `min(1, …)` 仍在 `foeRefSpeedMps` 里 ⇒ 威胁 200 与 96 的参考速度相同
-    // 2026-09-13 虫洞 F 批：+4 张洞内敌卡（wh-*，hidden；威胁锚点 45，不抬高本表上限 96）
+    // 2026-09-13 虫洞 F 批：+5 张洞内敌卡（wh-*，hidden；威胁锚点 45；含 E 族巨构残响），不抬高本表上限 96）
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(cards.length).toBe(31)
+    expect(cards.length).toBe(32)
     // 现表无卡 > 96 ⇒ 速度口径不受本次改动影响（守卫：全表威胁上界）
     expect(Math.max(...cards.map((a) => a.threat))).toBe(96)
   })
@@ -154,9 +154,9 @@ describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算�
   it('夹具口径：hullDps()（`units = waves[0].units` 建档）== 逐波独立建档的第 0 波实收（不钳制）', () => {
     // ⚠ 这条守卫是为"口径别再造谣"设的：`hullDps()` 遍历全部单位、逐条求和 ⇒ 与真实建造**逐字相同**；
     //   若哪天有人改成"只取第一条"、或引擎的建档口径变了，本用例会立刻红。
-    // 2026-09-13 虫洞 F 批：+4 张洞内敌卡（wh-*，hidden；威胁锚点 45，不抬高本表上限 96）
+    // 2026-09-13 虫洞 F 批：+5 张洞内敌卡（wh-*，hidden；威胁锚点 45；含 E 族巨构残响），不抬高本表上限 96）
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(cards.length).toBe(31)
+    expect(cards.length).toBe(32)
     for (const a of cards) {
       const viaFixture = hullDps(a, { ...bal, foeDpsCap: undefined })
       const specs = createFoeSpecs(a, { ...bal, foeDpsCap: undefined }, { tagPrefix: '' }) as unknown as Array<{
