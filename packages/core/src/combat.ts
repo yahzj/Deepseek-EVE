@@ -2366,7 +2366,7 @@ export function startBattleFor(
  * 首版就是这么错的：`advanceBattleFor` 漏了总血预算 ⇒ 敌人**血是强化后的、炮还是自然值**
  * （探针实测：敌总血 11,168、单发 1,336，实战里每发只掉 6~7 点，整场残血 100%）。
  */
-function wormholeDerivedAnomaly(
+export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
   spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },

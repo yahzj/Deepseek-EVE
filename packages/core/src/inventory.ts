@@ -13,6 +13,7 @@
 import type { FleetShipState, GameState } from './state'
 import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
+import { shipLockedReason } from './state'
 import { familyModules } from './equipment'
 
 /** 模块装船的占位体积（m³/件，2026-09-09 船长定：装备无体积字段，携带占用 1 m³；不影响装配/战斗） */
@@ -194,6 +195,9 @@ export function freeCargoM3(state: GameState, ctx: SimContext): number {
  * 返回搬入的单位数。（T4 换船善后：旧船自动返航到港后整仓卸入；写操作只经它，防"换船洗仓"。）
  */
 export function unloadCargoOfShipToWarehouse(state: GameState, shipId: string): number {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, shipId, '从它货仓卸货')
+  if (lock) return 0
   const cargo = cargoOfShip(state, shipId)
   let moved = 0
   for (const [id, units] of Object.entries(cargo)) {
@@ -224,6 +228,9 @@ export function unloadCargoToWarehouse(state: GameState, itemId?: string): numbe
 
 /** 仓库 → 货仓（装船，可指定数量上限防超舱由调用方校验）；返回实际装船单位数 */
 export function loadWarehouseToCargo(state: GameState, itemId: string, units: number): number {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
+  if (lock) return 0
   const available = countWare(state, itemId)
   const amount = Math.min(available, Math.floor(units))
   if (amount <= 0) return 0
@@ -240,6 +247,9 @@ export function loadWarehouseToCargo(state: GameState, itemId: string, units: nu
  * 从 moduleBay（装备库）扣取。2026-09-09 船长口径 A：仓库可携带物（除舰船）都可装船。
  */
 export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: SimContext): number {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
+  if (lock) return 0
   const def = ctx.items.get(itemId)
   const mod = def ? undefined : ctx.modules.get(itemId)
   if (!def && !mod) return 0

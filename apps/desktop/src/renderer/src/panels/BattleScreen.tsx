@@ -677,8 +677,32 @@ const meSpeedRef = useRef(200)
   }
   const dropNow = scanDroppable()
   const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
+  /* ── 我方逐舰几何（**必须先于弹道几何算**：2026-09-13 起弹道按发射舰取锚点，见下方 `meAnchorByTag`） ──
+     · `multiMe`：单船路径 = false（观感与旧版逐像素一致）；多舰路径 = true（洞内 4 舰）。
+     · `mySizes`：逐舰落画体积（阵位序 = core 给的顺序，**主控在前**）。 */
+  const multiMe = arcs.myUnits.length > 1
+  const mySizes = multiMe
+    ? arcs.myUnits.map((u) => sizeOfUnit(fleetDefOf(state, engine.ctx, u.shipId)?.tier, false))
+    : [meSize]
   // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
-  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize)
+  // **多舰路径也要喂我方逐舰体积**（2026-09-13 修"弹道统一从第一艘出"）：否则 `layFx.my` 只有主控一条，
+  // 我方每一发都从主控炮口飞出去（船长实测："多船战斗时弹道变成统一由第一艘船射出"）。
+  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize, multiMe ? mySizes : undefined)
+  /**
+   * **我方逐舰锚点/体积按 tag 索引**（多舰路径）——开火事件 `fx.tag` 就是发射舰（`player` / `ally-N`），
+   * 弹道起点取"那一艘"的锚点与舰体尺寸；单船路径为空表 ⇒ 全部回落到 `layFx.me`（观感与旧版逐像素一致）。
+   * 无人机（`src='drone'`）例外：机群池按**编队首舰**建（见 D 批边界），其弹道仍从主控一侧起飞。
+   */
+  const meAnchorByTag = new Map<string, typeof layFx.me>()
+  const meSizeByTag = new Map<string, number>()
+  if (multiMe) {
+    arcs.myUnits.forEach((u, slot) => {
+      const a = layFx.my[slot]
+      if (a) meAnchorByTag.set(u.tag, a)
+      const sz = mySizes[slot]
+      if (sz !== undefined) meSizeByTag.set(u.tag, sz)
+    })
+  }
   /** 无人机攻击阵位外推量（2026-09-11 舰种体积配套）：阵位基线按改造前的敌舰（T3 = 170px 宽）定，
    *  目标舰更大时阵位同步外推，避免机群压在放大的舰体上；敌舰未变大时不内收（下限 0）。 */
   const droneOutward = Math.max(0, Math.round(((layFx.sizes[0] ?? LAY.MAIN) - LAY.MAIN) / 2))
@@ -867,10 +891,12 @@ const meSpeedRef = useRef(200)
       const isMeShot = fx.side === 'me'
       const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
       const aimRowIdx = rowFxTags.indexOf(aimTag)
+      /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点；单船/无人机回落到主控锚）——见上方 meAnchorByTag */
+      const mySrc = isMeShot && fx.src !== 'drone' ? meAnchorByTag.get(fx.tag) : undefined
       let src: Anchor | undefined
       let dst: Anchor | undefined
       if (isMeShot) {
-        src = layFx.me
+        src = mySrc ?? layFx.me
         dst = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 目标已撤（旧尸骸）→ 首位兜底
       } else {
         src = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 发射者（存活敌人）
@@ -882,14 +908,17 @@ const meSpeedRef = useRef(200)
       // 优先取本帧布局的实际值（含溢出收缩），索引缺失才回落到按 tag 推导的体积
       const aimSize = (aimRowIdx >= 0 ? layFx.sizes[aimRowIdx] : undefined) ?? foeSizeOf(aimTag)
       const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
-      const shooterSize = (shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag)
-      const srcNose = noseOf(isMeShot ? meSize : shooterSize)
+      /** 我方多舰路径：发射舰的实际落画体积（与 `src` 同一把尺） */
+      const myShooterSize = isMeShot ? meSizeByTag.get(fx.tag) : undefined
+      const shooterSize =
+        myShooterSize ?? ((shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag))
+      const srcNose = noseOf(isMeShot ? (myShooterSize ?? meSize) : shooterSize)
       const dstNose = noseOf(isMeShot ? aimSize : meSize)
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
       // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
       const dm = fx.src === 'drone' ? droneModelOf(fx.artId) : undefined
-      const artW = isMeShot ? meSize : shooterSize
+      const artW = isMeShot ? (myShooterSize ?? meSize) : shooterSize
       let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
       let from: Anchor | null = null
@@ -1072,14 +1101,8 @@ const meSpeedRef = useRef(200)
      · 单船路径（`myUnits.length === 1`）走原分支（`lay.me` / `lay.meLeft`），DOM 与原实现逐字一致；
      · 多舰路径喂 `layout()` 我方逐舰体积 ⇒ 它按**敌人斜向菱形的镜像**给我方逐舰锚点 `lay.my[i]`
        （列序向左展开、第二排左移半个列距 + 下移一行高；主控＝第 0 列最靠敌）。
-     · 直径尺/弹道锚点仍按主控那条舰（逐舰锚点是另一批的活）。 */
-  const multiMe = arcs.myUnits.length > 1
-  /** 阵位序 = core 给的顺序（**主控在前** ⇒ 阵位 0 = 主控，锚点强制落在 `me` 上）；
-   *  渲染次序另算（主控画最上层），逐舰用它的**阵位下标**去取 `lay.my[slot]`。 */
+     · 直径尺锚点仍按主控那条舰；**弹道已改为按发射舰出**（见上 `meAnchorByTag`，2026-09-13 修）。 */
   const mySlots = multiMe ? arcs.myUnits.map((u, slot) => ({ u, slot })) : []
-  const mySizes = multiMe
-    ? arcs.myUnits.map((u) => sizeOfUnit(fleetDefOf(state, engine.ctx, u.shipId)?.tier, false))
-    : [meSize]
   /** 渲染次序：非主控在前（远的先画）、主控最后（画在最上层） */
   const myDrawOrder = multiMe ? [...mySlots].sort((a, b) => Number(a.u.leader) - Number(b.u.leader)) : []
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`

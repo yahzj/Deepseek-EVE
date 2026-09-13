@@ -61,7 +61,8 @@ export function wormholeStartBattle(
   }
   const waves = kind === 'node' ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   const cardId = wormholeCardIdFor(run.depth, run.nodeIndex)
-  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, null, {
+  // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
+  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,
     kind,
     waves,

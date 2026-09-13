@@ -2457,6 +2457,8 @@ function normalizeState(raw: unknown): GameState {
             attending: rRaw.attending === true,
             // 临时离开时刻（回来时按它前移战斗时钟）：坏值/缺省 = 不写（= 没离开过）
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
+            // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
+            ...(num(rRaw.desireM) > 0 ? { desireM: Math.round(num(rRaw.desireM)) } : {}),
             // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
             ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0

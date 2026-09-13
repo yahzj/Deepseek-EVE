@@ -39,6 +39,8 @@ import {
   setDesirePrefOf,
   settleDroneLosses,
   startBattleFor,
+  // 洞内战：距离上限与开战同源（2026-09-13 修洞内距离被锁死）
+  wormholeDerivedAnomaly,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
@@ -156,21 +158,37 @@ export function battleTacticDesire(
  * 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）。
  * **按星系记忆**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存」）——
  * 写入的是**本场战斗所在星系**（= 远征目标卡的星系）的目标距离；下次在该星系开战、
- * 以及该星系的胜率预估都会沿用它。战斗界面只服务远征交火（遭遇战是无界面自动推演），
- * 故这里只处理远征；遭遇战在开战时另行读取同一份设定。
+ * 以及该星系的胜率预估都会沿用它。
+ *
+ * ⚠ **洞内战（2026-09-13 修）**：洞内战斗宿主在 `run.battle`（不占 `expedition.battle`），
+ * 首版这里只认远征 ⇒ 洞内拖距离条会被拒（「当前不在交火中」）＝**看着像"距离被锁死"**。
+ * 现在两条路都认：洞内用**编队首舰**当主视角、敌卡走引擎同源的 `wormholeDerivedAnomaly`
+ * （开战距离上限与开战那一刻同一把尺），偏好**记在本趟 `run.desireM`**（后续节点沿用）——
+ * **不写星系偏好**：虫洞不属于任何星系，写进去会污染那个星系的设定。
  */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
-  const battle = state.expedition.battle
+  const whRun = state.wormhole.run
+  const whBattle = whRun?.battle ?? null
+  const battle = state.expedition.battle ?? whBattle
   if (!battle) return { ok: false, error: '当前不在交火中。' }
-  const me = createPlayerSpec(state, ctx, state.shipId)
-  const anomaly = state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
-  if (!me || !anomaly) return { ok: false, error: '战斗记录缺失。' }
+  const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
+  const me = createPlayerSpec(state, ctx, anchorShipId)
+  const cardId = whBattle ? whBattle.wormhole?.cardId : state.expedition.anomalyId
+  const baseCard = cardId ? ctx.anomalies.get(cardId) : undefined
+  if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。' }
+  const anomaly =
+    whBattle && whBattle.wormhole ? wormholeDerivedAnomaly(ctx, baseCard, whBattle.wormhole) : baseCard
   const foes = createFoeSpecs(anomaly, ctx.balance.battle)
   const maxD = battleOpenM(me, foes, ctx.balance.battle)
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  setDesirePrefOf(state, anomaly.galaxyId, clamped) // 记忆 = 该星系的目标距离（跨会话沿用）
+  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**（见函数头注释）
+  if (whBattle) {
+    if (whRun) whRun.desireM = clamped
+  } else {
+    setDesirePrefOf(state, anomaly.galaxyId, clamped)
+  }
   return { ok: true }
 }
 
