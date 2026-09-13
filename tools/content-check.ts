@@ -1032,7 +1032,8 @@ for (const m of MODULES) {
     const hasCap = cap !== undefined
     const hasAdd = add !== undefined && Object.keys(add).length > 0
     check(hasCap || hasAdd, `护盾 ${m.id} 未声明容量或抗性（V17.1 拆族）`)
-    check(!(hasCap && hasAdd), `护盾 ${m.id} 同时携带容量与抗性——抗性/容量件已拆族（V17.1）`)
+    // 2026-09-13 船长（巨构护盾矩阵：「动能和能量抗性 +32%、护盾上限 +42%」）⇒ **取消"容量与抗性互斥"**：
+    // 允许同一件并给容量与抗性；V17.1 拆族只保留"至少给其中一项"。
     if (hasCap) check(cap !== undefined && cap > 0 && cap <= 2, `护盾 ${m.id} shieldHpBonus 非法`)
     if (hasAdd) {
       for (const [t, val] of Object.entries(add ?? {})) {
@@ -1047,8 +1048,18 @@ for (const m of MODULES) {
     const add = m.armorResistAdd
     const hasCap = cap !== undefined
     const hasAdd = add !== undefined && Object.keys(add).length > 0
-    check(hasCap || hasAdd, `装甲 ${m.id} 未声明容量或抗性（V17.1 拆族）`)
-    check(!(hasCap && hasAdd), `装甲 ${m.id} 同时携带容量与抗性——抗性/容量件已拆族（V17.1）`)
+    /* 2026-09-13 虫洞专属（船长逐条给定）：装甲槽放开为**"防护类任一项"**——
+     * 几丁质骨架层（结构容量 + 机动）、巨构损管阵列（结构抗 + 结构容量）、掠袭折射涂层（全层抗性削减 + 闪避）
+     * 三件都不再给"甲容量/甲抗"，但仍属防护向。**同件同时给甲容量与甲抗**依旧禁止（拆族口径保留）。 */
+    const hasHull =
+      m.hullHpBonus !== undefined ||
+      (m.hullResistAdd !== undefined && Object.keys(m.hullResistAdd).length > 0)
+    const hasDefOther = m.allResistPenaltyPct !== undefined || m.speedBonusPct !== undefined
+    check(
+      hasCap || hasAdd || hasHull || hasDefOther,
+      `装甲 ${m.id} 未声明任何防护类效果（甲容量 / 甲抗 / 结构容量 / 结构抗 / 全层抗性削减 / 机动加成）`,
+    )
+    check(!(hasCap && hasAdd), `装甲 ${m.id} 同时携带甲容量与甲抗——抗性/容量件已拆族（V17.1）`)
     if (hasCap) check(cap !== undefined && cap > 0 && cap <= 2, `装甲 ${m.id} armorHpBonus 非法`)
     if (hasAdd) {
       for (const [t, val] of Object.entries(add ?? {})) {
@@ -2789,12 +2800,30 @@ for (const m of MODULES) {
     lockDmgBonus: 'target-lock',
     // 2026-09-11 协处理器：CPU 预算扩容（本职在 cpu 族；写在别的槽位上才算跨族，需登记）
     cpuBonus: 'cpu',
+    /* ═══ 2026-09-13 虫洞专属装备引出的新字段（本职归属；写在别的槽位上即跨族，需登记）═══ */
+    secondaryDamagePct: 'turret|missile|laser', // 附加伤害段（武器专职）
+    secondaryDamageType: 'turret|missile|laser',
+    ammoPerShot: 'turret|missile|laser',
+    rangeCutPct: 'turret|missile|laser', // 全武器射程削减（武器件专职）
+    rangeTypeBonusPct: 'turret|missile|laser', // 按系射程加成
+    damageBonusPct: 'support', // 通用单发加成（支援件族）
+    reloadPenaltyPct: 'support', // 装填惩罚（支援件族）
+    allResistPenaltyPct: 'armor', // 全层抗性削减（装甲族）
+    droneCycleCutPct: 'drone-rack', // 无人机出击周期（甲板扩展族）
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
     'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」
     'mod-lair-armor-c:repairArmorHp', // 生体甲壳板（装甲槽 + 自愈）→ 信息卡「生体自愈」
     'mod-lair-dc-c:hullResistAdd', // 生体损管腔（支援槽 + 结构抗性）→ 结构抗性行
+    // 2026-09-13 虫洞专属（船长逐条给定）：
+    'mod-wh-c-pulse:speedBonusPct', // 生体脉搏加速器（支援槽 + 舰船速度 +10%）→ 界面「航速」
+    'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」
+    'mod-wh-a-scan:rangeCutPct', // 赃物扫描阵（支援槽 + 武器射程 −15%）→ 界面「射程代价」
+    'mod-wh-a-shield:rangeCutPct', // 掠袭者护盾笼（护盾槽 + 武器射程 −25%）→ 界面「射程代价」
+    'mod-wh-c-frame:speedBonusPct', // 几丁质骨架层（装甲槽 + 舰船速度 +5%）→ 界面「航速」
+    'mod-wh-e-cpu:reloadPenaltyPct', // 巨构协处理器（协处理器槽 + 装填 +12%）→ 界面「装填代价」
+    'mod-wh-g-ballistic:rangeTypeBonusPct', // 幽灵弹道校正器（支援槽 + 动能射程 +22%）→ 界面「动能射程」
   ]
   let counted = 0
   const found: string[] = []

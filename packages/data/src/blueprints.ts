@@ -1474,7 +1474,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
   {
     id: 'bp-wh-a-coat',
-    name: '赃物折射涂层图纸（一次性）',
+    name: '掠袭折射涂层图纸（一次性）',
     moduleId: 'mod-wh-a-coat',
     singleUse: true,
     unreleased: true,
@@ -1487,7 +1487,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3600,
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「赃物折射涂层」的制造工艺，写在整块母岩切片上——**只能用一次**。配比写得潦草，像是在赶时间。',
+    description: '「掠袭折射涂层」的制造工艺，写在整块母岩切片上——**只能用一次**。配比写得潦草，像是在赶时间。',
   },
   {
     id: 'bp-wh-a-scan',
