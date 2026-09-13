@@ -25,6 +25,7 @@ import {
   wormholeGridTravel,
   wormholeTrimBag,
   type WormholeActivateEffect,
+  WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
@@ -328,13 +329,36 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   run.battle = null
   // ── 负（全灭）：全损收场 ──
   if (!won || run.fleet.length === 0) {
-    const lost = run.fleet.length > 0 ? run.fleet : []
+    /**
+     * ⚠ **损失名单 = 本场被击沉的（`sunk`）+ 还留在编队里的**：
+     * 沉船在上面就已经从 `run.fleet` 里摘掉了（`run.fleet.filter(...)`）⇒ 只看 `run.fleet`
+     * 会把"这一场沉掉的船"整批漏掉（全灭时更是一条名字都没有 —— 探针实测踩到）。
+     */
+    const lost = [...sunk, ...run.fleet]
+    const lostNames: string[] = []
     for (const uid of lost) {
       const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
-      loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
+      lostNames.push(name)
+      // 本场沉掉的已经在上面 `loseShip` 过了：这里只补"还活着但整趟判负"的那几艘
+      if (!sunk.includes(uid)) loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
     }
-    state.wormhole.lastFleetLost += lost.length
-    addLog(state, 'warn', `🕳 虫洞探险失败：编队失联、背包内容全部丢失（损失 ${sunk.length + lost.length} 艘）。`)
+    state.wormhole.lastFleetLost += run.fleet.length
+    addLog(state, 'warn', `🕳 虫洞探险失败：编队失联、背包内容全部丢失（损失 ${lost.length} 艘）。`)
+    /**
+     * **结算单（全损）**：把"本来能带走多少"如实算出来 —— 玩家要看到自己赌掉了什么
+     * （船长 2026-09-13：「结算界面表示玩家的收益和损失」）。
+     */
+    state.wormhole.lastSettle = {
+      kind: 'lost',
+      depth: run.depth,
+      oreUnits: 0,
+      oreIsk: 0,
+      wreckIsk: 0,
+      boxes: [],
+      relics: [],
+      shipsLost: lostNames,
+      lostIsk: bagValueIsk(ctx, run),
+    }
     state.wormhole.run = null
     return
   }
@@ -342,37 +366,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   if (report) addLog(state, 'info', report)
   // ── 胜：按战斗用途分流 ──
   if (kind === 'extract') {
-    let isk = 0
-    let recycle = 0
-    for (const slot of run.bag) {
-      const units = Math.floor(slot.units)
-      const isWreck = slot.itemId.startsWith('wreck-')
-      const price = ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0
-      // **残骸的报账走拆解口径**（基础价只有 1 ISK/单位，写出来等于没写）
-      isk += isWreck ? 0 : units * price
-      if (isWreck) recycle += wormholeLootValueIsk(ctx, slot.itemId, units)
-      else if (units > 0) addWare(state, slot.itemId, units)
-      if (isWreck && units > 0) addWare(state, slot.itemId, units)
-    }
-    addLog(
-      state,
-      'info',
-      `🕳 撤离成功：背包 ${run.bag.length} 类物资入港` +
-        (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} ISK）` : '') +
-        (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} ISK）` : '') +
-        `，第 ${run.depth} 层撤离。`,
-    )
-    // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
-    if ((run.relics ?? []).length > 0) wormholeDeliverRelics(state, ctx, run.relics ?? [])
-    /**
-     * **货柜（形状件）随趟带回**（船长 §12.2-3：「撤离成功 ⇒ 货柜进仓库；失败 ⇒ 随趟一起丢」）。
-     *
-     * ⚠ 2026-09-13 修：形状件**不在 `run.bag`**（它们走 `run.hold.placements`），上面那段"背包入港"
-     * 的循环因此看不到它们 ⇒ F4 起打捞到的「遗迹安全货柜」会在撤离成功那一刻**静默消失**，
-     * "带回后在精炼炉拆解"这条链永远走不到。⇒ 在这里按 `kind === 'box'` 收一遍，走同一条入库函数。
-     */
-    const boxes = (run.hold?.placements ?? []).filter((p) => p.kind === 'box').map((p) => p.itemId)
-    if (boxes.length > 0) wormholeDeliverRelics(state, ctx, boxes)
+    deliverExtraction(state, ctx, run)
     state.wormhole.run = null
     return
   }
@@ -476,6 +470,80 @@ export function wormholeBattleViewOf(
  * 放在 `advanceGame` 管线里（`engine.ts`），与远征/AI/遭遇同款"每拍一次"节奏。
  * `freezeBattle`（调试快进）时**不推进战斗**，与既有口径一致。
  */
+/** **背包估值**（母矿按基础卖价 + 残骸按回收炉拆解口径；货柜不计 ISK —— 内容物待拆解） */
+function bagValueIsk(ctx: SimContext, run: WormholeRunState): number {
+  let v = 0
+  for (const slot of run.bag) {
+    const units = Math.max(0, Math.floor(slot.units))
+    if (units <= 0) continue
+    if (slot.itemId.startsWith('wreck-')) v += wormholeLootValueIsk(ctx, slot.itemId, units)
+    else v += units * (ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0)
+  }
+  return v
+}
+
+/**
+ * **撤离成功的收口**（船长 2026-09-13 的收口点之一，两处调用）：
+ * ① 撤离战打赢（`settleWormholeBattle`）；② **第 1 层免战**（`advanceWormhole` 里直接放行，见
+ * `WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH`）。⇒ 抽成一个函数，免得两条路各写一遍（历史上这种
+ * "收口少抄一步"在本文件踩过三次：弹药退款 / 机群战损 / 货柜入库）。
+ *
+ * 做四件事：散货入港 → 随行战利品入库 → **货柜（形状件）入港** → 写**结算单** + 写日志。
+ */
+function deliverExtraction(
+  state: GameState,
+  ctx: SimContext,
+  run: WormholeRunState,
+  opts?: { skippedBattle?: boolean },
+): void {
+  let isk = 0
+  let recycle = 0
+  let oreUnits = 0
+  for (const slot of run.bag) {
+    const units = Math.floor(slot.units)
+    const isWreck = slot.itemId.startsWith('wreck-')
+    const price = ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0
+    // **残骸的报账走拆解口径**（基础价只有 1 ISK/单位，写出来等于没写）
+    isk += isWreck ? 0 : units * price
+    if (!isWreck) oreUnits += units
+    if (isWreck) recycle += wormholeLootValueIsk(ctx, slot.itemId, units)
+    if (units > 0) addWare(state, slot.itemId, units)
+  }
+  addLog(
+    state,
+    'info',
+    `🕳 撤离成功${opts?.skippedBattle === true ? '（第 1 层没有拦截舰队：直接脱离）' : ''}：` +
+      `背包 ${run.bag.length} 类物资入港` +
+      (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} ISK）` : '') +
+      (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} ISK）` : '') +
+      `，第 ${run.depth} 层撤离。`,
+  )
+  // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
+  const relics = [...(run.relics ?? [])]
+  if (relics.length > 0) wormholeDeliverRelics(state, ctx, relics)
+  /**
+   * **货柜（形状件）随趟带回**（船长 §12.2-3：「撤离成功 ⇒ 货柜进仓库；失败 ⇒ 随趟一起丢」）。
+   *
+   * ⚠ 2026-09-13 修：形状件**不在 `run.bag`**（它们走 `run.hold.placements`），"背包入港"
+   * 的循环因此看不到它们 ⇒ F4 起打捞到的「遗迹安全货柜」会在撤离成功那一刻**静默消失**。
+   */
+  const boxes = (run.hold?.placements ?? []).filter((p) => p.kind === 'box').map((p) => p.itemId)
+  if (boxes.length > 0) wormholeDeliverRelics(state, ctx, boxes)
+  // **结算单**（界面弹层用；玩家确认后清掉）
+  state.wormhole.lastSettle = {
+    kind: 'extract',
+    depth: run.depth,
+    oreUnits,
+    oreIsk: isk,
+    wreckIsk: recycle,
+    boxes,
+    relics,
+    shipsLost: [],
+    lostIsk: 0,
+    ...(opts?.skippedBattle === true ? { skippedExtractBattle: true } : {}),
+  }
+}
+
 export function advanceWormhole(
   state: GameState,
   ctx: SimContext,
@@ -500,15 +568,43 @@ export function advanceWormhole(
   }
   // 撤离相位：自动开撤离战（打完才算撤离成功；打不完 = 全损）
   if (run.phase === 'extracting' && !freezeBattle) {
+    /**
+     * **第 1 层免撤离战**（船长 2026-09-13：「**撤离战只从第二层开始生效**」）：
+     * 第 1 层是"进得来就出得去"的教学层，采完直接脱离；从第 2 层起才有拦截舰队，
+     * 且威胁随**已到达的层数**上升（`wormholeFoeThreat(depth,'extract')` = 该层威胁 × 0.8，
+     * 层 2 = 42、层 3 = 49、层 4 = 56…按层威胁曲线递增）。
+     *
+     * ⚠ 免战的前提是**编队还在**（`fleet.length > 0`）：编队空了（全灭）就不该还能"顺利脱离"，
+     * 让它走下面的开战路径 ⇒ 开不出来 ⇒ 按全损处理（既有的硬故障兜底）。
+     */
+    if (run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH && run.fleet.length > 0) {
+      deliverExtraction(state, ctx, run, { skippedBattle: true })
+      state.wormhole.run = null
+      return
+    }
     const r = wormholeStartBattle(state, ctx, 'extract')
     if (!r.ok) {
       // 编队/敌卡缺失这类硬故障：直接全损收场，避免卡在撤离相位里出不来
       addLog(state, 'warn', `🕳 撤离战无法开始（${r.error ?? '未知原因'}）：本趟按全损处理。`)
+      const lostNames: string[] = []
       for (const uid of run.fleet) {
         const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
+        lostNames.push(name)
         loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
       }
       state.wormhole.lastFleetLost += run.fleet.length
+      // **结算单照写**：任何一趟结束都要有结算单（界面弹层不能时有时无）
+      state.wormhole.lastSettle = {
+        kind: 'lost',
+        depth: run.depth,
+        oreUnits: 0,
+        oreIsk: 0,
+        wreckIsk: 0,
+        boxes: [],
+        relics: [],
+        shipsLost: lostNames,
+        lostIsk: bagValueIsk(ctx, run),
+      }
       state.wormhole.run = null
     }
   }

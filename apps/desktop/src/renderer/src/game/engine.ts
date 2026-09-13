@@ -1387,6 +1387,14 @@ export class GameEngine {
     }
     return { ok: r.ok, error: r.error }
   }
+  /** 虫洞：**确认结算单**（清掉 `lastSettle` ⇒ 结算层不再弹；由结算界面的「确认」按钮调用） */
+  wormholeAckSettle(): void {
+    if (this.state.wormhole.lastSettle === undefined) return
+    delete this.state.wormhole.lastSettle
+    void this.persist()
+    this.notify()
+  }
+
   /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
   /**
    * 虫洞：**逐堆拾取**（**只服务老档线性层**）。

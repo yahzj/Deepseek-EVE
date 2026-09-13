@@ -9305,17 +9305,37 @@ body {
 .app-wh-hex.is-unknown polygon { stroke: #7b8fa3; stroke-dasharray: 3 3; opacity: 0.55; }
 .app-wh-hex.is-scanned polygon { opacity: 0.72; }
 .app-wh-hex.is-known polygon { fill: rgba(79, 216, 196, 0.06); opacity: 1; }
-/* ── 「去过」标记（船长 2026-09-13：「玩家去过的地点需要变暗或者其他标识」）──
-   去过 = **右上角小实心点 + 整体压暗**；但**这一格还有产出没拿走**时只打点、不压暗
-   （`.is-visited` 不给 dim）——那是"还得回来"的地方，压暗会把它藏起来。
+/* ── 「去过 / 清空 / 残留」三态（船长 2026-09-13 两条口径）──
+   ① 去过 = **右上角小实心点 + 整体压暗**；
+   ② **清空或已激活 ⇒ 删掉地点图标**（`.is-cleared`：符号不画，只留压暗的空 hex + 小点）；
+   ③ **还有残留东西 ⇒ 变暗但保留图标**（`.is-leftover`：提示"来过、没拿完"）。
    当前所在这格（`.is-here`）与下一层入口（`.is-exit`）永远保持醒目。 */
 .app-wh-hex.is-visited.is-visited-dim polygon { fill: rgba(255, 255, 255, 0.02); opacity: 0.5; }
 .app-wh-hex.is-visited.is-visited-dim .app-wh-hex-glyph { opacity: 0.5; }
+.app-wh-hex.is-cleared polygon { fill: rgba(255, 255, 255, 0.01); opacity: 0.38; }
+.app-wh-hex.is-leftover polygon { fill: rgba(244, 201, 93, 0.05); opacity: 0.72; }
+.app-wh-hex.is-leftover .app-wh-hex-glyph { opacity: 0.7; }
 .app-wh-hex.is-visited.is-here polygon,
 .app-wh-hex.is-visited.is-exit polygon { opacity: 1; }
 .app-wh-hex.is-visited.is-here .app-wh-hex-glyph,
 .app-wh-hex.is-visited.is-exit .app-wh-hex-glyph { opacity: 1; }
 .app-wh-hex-done { fill: currentColor; opacity: 0.9; }
+/* ── 玩家舰影（船长 2026-09-13：当前格 = 编队第一艘船的 SVG；进入淡入、移动平移）──
+   `transform` 由 JSX 内联写（translate 到所在格）⇒ 这里的 `transition` 负责**移动动画**；
+   换层时 key 变 ⇒ 重新挂载 ⇒ 重播 `app-wh-ship-in` 的**淡入**（进入动画）。 */
+.app-wh-ship-here {
+  color: #eaf6ff; stroke: currentColor;
+  transform-box: fill-box; transform-origin: center;
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation: app-wh-ship-in 420ms ease-out both;
+  pointer-events: none; /* 舰影不吃点击：格子照旧可点 */
+}
+.app-wh-ship-shape { fill: none; stroke-linejoin: round; }
+.app-wh-ship-fallback { fill: currentColor; stroke: none; }
+@keyframes app-wh-ship-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .app-wh-hex:hover polygon { stroke-width: 2; }
 .app-wh-hex.is-here polygon { stroke-width: 2.5; fill: rgba(79, 216, 196, 0.14); }
 .app-wh-hex-here { fill: none; stroke: var(--wui-accent); stroke-width: 1.4; stroke-dasharray: 4 3; opacity: 0.9; }
@@ -9333,6 +9353,46 @@ body {
 .app-wh-legend-glyph.is-visited polygon { stroke-dasharray: none; opacity: 0.5; }
 .app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(244, 201, 93, 0.12); }
 .app-wh-hex.is-exit { color: #f4c95d; }
+/* ── 探索页版式（船长 2026-09-13）：**扫描按钮放大 + 与地点信息窗平级**（左扫描 / 右信息卡）── */
+.app-wh-workspace { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; }
+.app-wh-workspace .app-wh-node { flex: 1 1 auto; margin-top: 0; min-height: 150px; }
+/* 扫描大按钮：与"进入虫洞"同档（主按钮 + 加高），副标题小字说明花费 */
+.app-wh-scan-big {
+  flex: 0 0 auto; align-self: flex-start;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-width: 128px; padding: 14px 16px; font-size: 15px; font-weight: 600;
+}
+.app-wh-scan-sub { font-size: 10.5px; font-weight: 400; opacity: 0.78; }
+/* ── 准备页版式：检索区（搜索 + 两行筛选）与放大的「进入虫洞」平级，按钮在最右 ── */
+.app-wh-prephead { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.app-wh-prephead-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.app-wh-prephead-go {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  padding-top: 2px;
+}
+/* 「进入虫洞」放大（参考导航栏「出击」的主按钮观感：更大字号 + 更厚内边距） */
+.app-wh-enter { font-size: 15px; font-weight: 600; padding: 12px 26px; }
+/* ── 本趟结算界面（船长 2026-09-13：撤离后弹结算 + 关闭虫洞界面）── */
+.app-wh-settle { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
+.app-wh-settle-head { display: flex; align-items: baseline; gap: 10px; }
+.app-wh-settle-kind { font-size: 16px; font-weight: 700; }
+.app-wh-settle-kind.is-good { color: var(--wui-accent); }
+.app-wh-settle-kind.is-bad { color: #ff8373; }
+.app-wh-settle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.app-wh-settle-cell {
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
+  border: 1px solid var(--wui-border); border-radius: 6px; background: rgba(255, 255, 255, 0.02);
+}
+.app-wh-settle-cell b { font-size: 15px; }
+.app-wh-settle-total {
+  padding: 8px 10px; border: 1px solid rgba(79, 216, 196, 0.4); border-radius: 6px;
+  background: rgba(79, 216, 196, 0.06); font-size: 13px;
+}
+.app-wh-settle-total b { font-size: 16px; color: var(--wui-accent); }
+.app-wh-settle-loss {
+  padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45); border-radius: 6px;
+  background: rgba(255, 131, 115, 0.07); color: #ff8373; font-size: 12px; line-height: 1.5;
+}
 .app-wh-legend {
   display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px;
   font-size: 11px; color: var(--wui-dim);

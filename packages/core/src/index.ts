@@ -835,6 +835,8 @@ export {
   wormholeGridTravel,
   wormholeGridActivate,
   WORMHOLE_PLACE_TEXT,
+  // 撤离战从第几层起生效（船长 2026-09-13：「撤离战只从第二层开始生效」）
+  WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）

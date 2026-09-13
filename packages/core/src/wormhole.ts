@@ -394,12 +394,45 @@ export interface WormholeRunState {
   hold?: import('./wormholeHold').WormholeHoldState
 }
 
+/**
+ * **一趟的结算单**（2026-09-13 船长：「玩家撤离后弹出一个结算界面，表示玩家的收益和损失」）。
+ *
+ * 由 `wormholeBattle` 在收口那一刻写进 `state.wormhole.lastSettle`；界面读它弹结算层，
+ * 玩家点「确认」后由 `wormholeAckSettle`（引擎侧）清掉 ⇒ **不会重复弹**。
+ * ⚠ 可选字段 ⇒ **零迁移**（老档没有 = 没弹过结算）。
+ */
+export interface WormholeSettleRecord {
+  /** 结束方式：撤离成功 / 全损 */
+  kind: 'extract' | 'lost'
+  /** 撤离（或全损）时所在的层 */
+  depth: number
+  /** 到手：母矿单位数 / 母矿基础价 ISK / 残骸拆解估值 ISK */
+  oreUnits: number
+  oreIsk: number
+  wreckIsk: number
+  /** 到手的货柜（内容物待拆解；只报件数与名称） */
+  boxes: string[]
+  /** 到手的随行战利品（装备 / 一次性图纸 / 无人机，显示名） */
+  relics: string[]
+  /** 损失：本趟沉掉的船（显示名） */
+  shipsLost: string[]
+  /** **没带回来的收集额**（按基础价 + 拆解估值算；撤离成功 = 0） */
+  lostIsk: number
+  /** 第 1 层免撤离战（船长：撤离战只从第 2 层起生效）时为 true —— 界面据此少写一句"打了一场" */
+  skippedExtractBattle?: boolean
+}
+
 export interface WormholeState {
   /** 进行中的一趟（null = 不在洞里） */
   run: WormholeRunState | null
   /** 本趟累计：损失船数（结算读数用） */
   lastFleetLost: number
+  /** **最近一趟的结算单**（界面弹层用；玩家确认后清掉） */
+  lastSettle?: WormholeSettleRecord
 }
+
+/** **撤离战从第几层起生效**（船长 2026-09-13：「撤离战只从第二层开始生效」） */
+export const WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2
 
 export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
 
