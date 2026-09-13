@@ -153,7 +153,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   D: ['mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d'], // 陵墓护盾阵列 / 守墓者长炮 / 陵寝装甲层（最强敌族；2026-09-10 船长定削：强度略高于 MK3，靠必中远程炮与三系全能盾立身——原「对标异星档」口径作废）
   E: ['mod-lair-turret-e', 'mod-lair-hangar-e', 'mod-lair-frame-e'], // 巨构残骸炮 / 深层机库 / 巨构骨架（2026-09-10 船长逐件过审：档位「略高于 MK3」、仍低于 D）
   F: [],
-  // G 族（鱿烬亡军）：2026-09-10 船长——第一件由机库模块「流亡蜂群巢」改为**专属侦查无人机「流亡蜂无人机」**
+  // G 族（鱿烬亡军）：2026-09-10 船长——第一件由机库模块「鱿蜂群巢」改为**专属侦查无人机「鱿蜂无人机」**
   // （一次掉 ×10 架；无人机是消耗品，打光后再刷可补），另两件为无人机导控 / 中继天线
   G: ['drone-exile-bee', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'],
 }

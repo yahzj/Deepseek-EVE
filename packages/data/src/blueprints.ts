@@ -1862,7 +1862,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
   {
     id: 'bp-wh-g-hull',
-    name: '残兵结构层图纸（一次性）',
+    name: '鱿蜂结构层图纸（一次性）',
     moduleId: 'mod-wh-g-hull',
     singleUse: true,
     unreleased: true,
@@ -1876,7 +1876,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 4800,
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「残兵结构层」的制造工艺，写在整块母岩切片上——**只能用一次**。回炉料的配比写在最前面，像是提醒。',
+    description: '「鱿蜂结构层」的制造工艺，写在整块母岩切片上——**只能用一次**。回炉料的配比写在最前面，像是提醒。',
   },
   {
     id: 'bp-wh-g-turret',

@@ -279,13 +279,13 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '陆龟级舰船蓝图',
     shipId: 'sh-tortoise',
     materials: [
-      { itemId: 'min-tritanium', count: 10_200 },
-      { itemId: 'min-pyerite', count: 3_100 },
-      { itemId: 'min-mexallon', count: 1_500 },
+      { itemId: 'min-tritanium', count: 13_900 },
+      { itemId: 'min-pyerite', count: 4_200 },
+      { itemId: 'min-mexallon', count: 2_050 },
     ],
     buildSeconds: 1260, // 陆龟级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 825_000, // 同步：330,000 × 2.5
+    priceIsk: 1_125_000, // 同步：450,000 × 2.5（2026-09-13 船价跟涨）
     description: '「陆龟级重装艇」总装图纸：货舱 7,000 m³、循环 13 秒产 24 单位——重装舰族量产线，学会即可在船坞总装。',
   },
   {
@@ -293,13 +293,13 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玳瑁级舰船蓝图',
     shipId: 'sh-hawksbill',
     materials: [
-      { itemId: 'min-tritanium', count: 23_550 },
-      { itemId: 'min-pyerite', count: 7_100 },
-      { itemId: 'min-mexallon', count: 3_400 },
+      { itemId: 'min-tritanium', count: 34_100 },
+      { itemId: 'min-pyerite', count: 10_300 },
+      { itemId: 'min-mexallon', count: 4_900 },
     ],
     buildSeconds: 2880, // 玳瑁级（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 1900000,
+    priceIsk: 3_300_000, // 同步：1,100,000 × 3（T3 档位系数；2026-09-13 船价跟涨）
     description: '「玳瑁级重装巡舰」总装图纸：货舱 12,000 m³、循环 13 秒产 22 单位——重装舰族量产线，学会即可在船坞总装。',
   },
   {

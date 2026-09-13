@@ -340,8 +340,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ship-tigershark', kind: 'ship', refId: 'sh-tigershark', rarity: 'rare', basePrice: 240_000, demandMultiplier: 0.65 },
   { key: 'ship-mako', kind: 'ship', refId: 'sh-mako', rarity: 'rare', basePrice: 480_000, demandMultiplier: 0.65 },
   { key: 'ship-swarm', kind: 'ship', refId: 'sh-swarm', rarity: 'rare', basePrice: 620_000, demandMultiplier: 0.65 },
-  { key: 'ship-tortoise', kind: 'ship', refId: 'sh-tortoise', rarity: 'rare', basePrice: 330_000, demandMultiplier: 0.65 },
-  { key: 'ship-hawksbill', kind: 'ship', refId: 'sh-hawksbill', rarity: 'rare', basePrice: 760_000, demandMultiplier: 0.65 },
+  { key: 'ship-tortoise', kind: 'ship', refId: 'sh-tortoise', rarity: 'rare', basePrice: 450_000, demandMultiplier: 0.65 },
+  { key: 'ship-hawksbill', kind: 'ship', refId: 'sh-hawksbill', rarity: 'rare', basePrice: 1_100_000, demandMultiplier: 0.65 },
   { key: 'ship-flyingfish', kind: 'ship', refId: 'sh-flyingfish', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
   { key: 'ship-sailfish', kind: 'ship', refId: 'sh-sailfish', rarity: 'rare', basePrice: 480_000, demandMultiplier: 0.65 },
 

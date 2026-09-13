@@ -89,7 +89,7 @@ git -C H:\大鲸鱼\Deepseek-EVE merge --ff-only d2/workspace
 - `combat.foeDamageComposition` / `splitShotByComposition` / `applyFoeShot`（混伤三件套：战斗/预估/界面同源）
 - `data/droneRoles.DRONE_ROLE_ANCHORS`（四型锚点机型：阶梯与单发基准只比锚点）
 
-**内容现状**：五族专属装备共 15 件已全部落地（A/C/D/E/G 各 3 件，其中 G 族第一件是专属无人机「流亡蜂无人机」）；
+**内容现状**：五族专属装备共 15 件已全部落地（A/C/D/E/G 各 3 件，其中 G 族第一件是专属无人机「鱿蜂无人机」）；
 **稀有残骸高级箱已于当日解禁**（一号定稿：专属命中率 **5/8/10%**、**每炉锁死 1 件 = 一炉一箱**）；
 敌方混伤已上线（常驻 8:2、窝点 6:4、教学卡纯系）。
 
@@ -107,7 +107,7 @@ git -C H:\大鲸鱼\Deepseek-EVE merge --ff-only d2/workspace
 |---|---|---|---|
 | 1 | **公告批复** | 等船长 | 待审稿：`docs/design/announcement-draft-20260910-d2-batches.md`（五族专属装备 / 敌方混伤 2 张卡）；另有 `announcement-draft-20260910-drone-losses.md`（无人机损失）；三号/一号的 11 张在 `announcement-draft-20260910-pending.md`。**批一条写一条**进 `packages/data/src/announcements.ts` 顶部（未批不动） |
 | 2 | **混伤副作用复核** | 船长实测 | 「堆单系抗」变弱；若承伤涨太多，最省旋钮 = 副系份额（8:2→9:1、6:4→7:3） |
-| 3 | **验收存档** | 可主动提 | 是否需要"五族装备 + 流亡蜂无人机 + 各档敌军"实测档（`tools/make-test-save.ts` → `docs/test-saves/`） |
+| 3 | **验收存档** | 可主动提 | 是否需要"五族装备 + 鱿蜂无人机 + 各档敌军"实测档（`tools/make-test-save.ts` → `docs/test-saves/`） |
 | 4 | 更早遗留旋钮 | 等船长 | 无人机战后基础回收率 10%→20%、点防参数、`FACTION_RARE_DROP_CHANCE`（体检仍打印"待船长核定"） |
 | 5 | 新活 | 等船长派 | 一号/三号侧的工业页、星图、赏金经济仍在推进 |
 

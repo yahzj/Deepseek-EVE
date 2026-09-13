@@ -53,7 +53,7 @@
  *         那三行（大白鲨 S4 驾驶 / 锤头鲨炮巡 / 灰鲭鲨 MK2）+ 中位战斗技能 Lv3 + 声望 13 +
  *         全星系点亮——亲测"中位档在 E 段顶格（虚海 88 / 穹顶 96）到底打不过还是能磨"，
  *         对照值见 docs/design/power-ladder-rework.md §七。
- *  - lairgear 五族专属装备 15 件 + 流亡蜂无人机 验收（2026-09-10 船长「⑧需要」）：在 rarebox
+ *  - lairgear 五族专属装备 15 件 + 鱿蜂无人机 验收（2026-09-10 船长「⑧需要」）：在 rarebox
  *         门槛之上把 14 件专属模块 ×2 直接预置进装备库、专属无人机 ×30 架进仓库、另给王鲭级
  *         无人机重装 ×1（否则专属机无处放飞）——省掉 5/8/10% 掷骰等待，可立刻装配实测。
  *  - pd    敌方机群 + 巨构近防炮验收（2026-09-11 机群批 S5）：三船对照（2×近防炮MK2 + 3×炮台MK2
@@ -978,7 +978,7 @@ function injectPd(state: GameState): string[] {
   return notes
 }
 
-/** lairgear（2026-09-10 船长「⑧需要」）：**五族专属装备 15 件 + 流亡蜂无人机 验收档**。
+/** lairgear（2026-09-10 船长「⑧需要」）：**五族专属装备 15 件 + 鱿蜂无人机 验收档**。
  * 在 rarebox 门槛（五族稀有残骸 + 高级箱 + AI 核心）之上，**把整族专属产出直接预置进装备库/仓库**，
  * 省掉"开箱靠 5/8/10% 掷骰"的等待——船长可直接装配实测 15 件专属与专属无人机的手感/数值。 */
 function injectLairGear(state: GameState): string[] {
@@ -1004,7 +1004,7 @@ function injectLairGear(state: GameState): string[] {
   notes.push(`装备库预置五族专属装备 14 件 ×2（A/C/D/E 各 3 + G 2）——装配页可直接装上实测（无蓝图、不上市场，正常只能靠高级箱掷骰）`)
   // 专属无人机（G 族第 3 件）：物品仓库一次给 30 架（正常一箱 10 架）
   state.warehouse.items['drone-exile-bee'] = (state.warehouse.items['drone-exile-bee'] ?? 0) + 30
-  notes.push('物品仓库预置专属无人机「流亡蜂无人机」×30 架（正常一箱 10 架；装配页「无人机舱」装入清单后即可放飞）')
+  notes.push('物品仓库预置专属无人机「鱿蜂无人机」×30 架（正常一箱 10 架；装配页「无人机舱」装入清单后即可放飞）')
   // 四型制式无人机足量（对照专属机与制式机的差别）
   for (const d of ['drone-scout', 'drone-assault', 'drone-heavy', 'drone-sentry']) {
     state.warehouse.items[d] = (state.warehouse.items[d] ?? 0) + 40
@@ -1029,7 +1029,7 @@ function injectLairGear(state: GameState): string[] {
   notes.push(
     `新增王鲭级无人机重装 ${uid}（机巢 460 m³，rack3×2 + tac3 + **relay3**）——` +
       '⚠ **2026-09-12 口径：无人机船至少要带一件「加射程的高槽装备」**，本档已按此把一件战术导控换成' +
-      '**中继天线 MK3（无人机射程 +80%）**；甲板扩展保留。把「流亡蜂无人机」装入清单后开战实测；' +
+      '**中继天线 MK3（无人机射程 +80%）**；甲板扩展保留。把「鱿蜂无人机」装入清单后开战实测；' +
       '近防炮会击落机群（战后按回收率 20% 找回）',
   )
   for (const s2 of Object.values(state.fleet)) {
@@ -1041,7 +1041,7 @@ function injectLairGear(state: GameState): string[] {
   notes.push('全舰耐久回满')
   notes.push(
     '测试路径：① 装配页 → 逐件试装 15 件专属装备（对比同级制式件：专属四型定位契约豁免区间校验，数值应明显更强）；' +
-      '② 装配页「无人机舱」→ 把「流亡蜂无人机」装入王鲭（切驾驶）→ 星图开战看机群放飞与专属机表现；' +
+      '② 装配页「无人机舱」→ 把「鱿蜂无人机」装入王鲭（切驾驶）→ 星图开战看机群放飞与专属机表现；' +
       '③ 工业页起炉稀有残骸，确认高级箱仍按 5/8/10% 掷骰（本档已把成品直接给到手，开箱链路另见 rarebox 档）。',
   )
   return notes

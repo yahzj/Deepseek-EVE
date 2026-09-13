@@ -1241,7 +1241,7 @@ export const MODULES: readonly ModuleDef[] = [
   },
   {
     id: 'mod-lair-drone-tac-g',
-    name: '流亡蜂群导控',
+    name: '鱿蜂群导控',
     slot: 'drone-tac',
     rack: 'high',
     droneDmgBonus: 0.45,
@@ -1411,13 +1411,15 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 30,
     maxRangeM: 13_500,
     minRangeM: 400,
-    hitRate: 0.5, // 船长审核：0.8 → 0.5（代价：散布极大）
+    hitRate: 0.6, // 船长 2026-09-13：0.5 → 0.6
+    // 2026-09-13 船长：「对所有敌方同时攻击」——**本轮已落码**（引擎 allFoes + 演出逐目标弹道）
+    hitsAllFoes: true,
     falloff: 1, // 导弹家族口径：追踪命中，命中不随距离衰减
     reloadMs: 7_600, // 代价：装填长
     dmgMult: 9.68, // 船长审核：12.1 ×0.8（降低 20%）；≈ 导弹架 MK3 的 1.6 倍
     cpuUse: 58,
     description:
-      '会自己散开的孢子囊：13.5 km 爆破覆盖、单发是导弹架 MK3 的 1.6 倍，**一次罩住全部敌舰**（机制待落，见设计稿 §3.8）。散布极大（命中 0.5）、装填 7.6 秒——它负责把整片战场铺满。',
+      '会自己散开的孢子囊：13.5 km 爆破覆盖、单发是导弹架 MK3 的 1.6 倍，**一次罩住全部敌舰**（已落码：逐目标独立结算）。散布较大（命中 0.6）、装填 7.6 秒——它负责把整片战场铺满。',
   },
   {
     id: 'mod-wh-c-frame',
@@ -1534,10 +1536,11 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'drone-tac',
     rack: 'high',
     unreleased: true,
-    droneDmgBonus: 0.5, // 流亡蜂群导控 = 0.45
+    droneDmgBonus: 0.5, // 鱿蜂群导控 = 0.45
+    droneHullHpBonusPct: 0.8, // 2026-09-13 船长：「提高无人机 80% 的结构」
     cpuUse: 44,
     description:
-      '塔状的机群指挥中枢：放飞无人机单发 **+50%**（流亡蜂群导控是 +45%）。机库族缺的从来不是数量，是让它们打得疼。',
+      '塔状的机群指挥中枢：放飞无人机单发 **+50%**（鱿蜂群导控是 +45%）。机库族缺的从来不是数量，是让它们打得疼。',
   },
   {
     id: 'mod-wh-e-cpu',
@@ -1583,7 +1586,7 @@ export const MODULES: readonly ModuleDef[] = [
       '矩阵式护盾发生层：**动能与能量护盾抗性各 +32%**，同时把**护盾上限抬高 42%**（陵墓护盾阵列只给抗性）。占用 70 点 CPU——巨构族的第一块盾，也是本套最贵的一件。',
   },
   /* ── G 族（亡军 · 幽灵：低信号 / 快 / 远锁定 / 无人机）──
-   * 窝点套已占：流亡蜂无人机（专属无人机）・流亡蜂群导控（无人机伤害）・流亡中继桅（无人机射程） */
+   * 窝点套已占：鱿蜂无人机（专属无人机）・鱿蜂群导控（无人机伤害）・流亡中继桅（无人机射程） */
   {
     id: 'mod-wh-g-hangar',
     name: '亡军蜂巢坞',
@@ -1621,15 +1624,16 @@ export const MODULES: readonly ModuleDef[] = [
   },
   {
     id: 'mod-wh-g-hull',
-    name: '残兵结构层',
+    name: '鱿蜂结构层', // 2026-09-13 船长：改名（G 族已更名「鱿烬亡军」；**id 不动**）
     slot: 'armor',
     rack: 'low',
     unreleased: true,
     armorHpBonus: 0.18, // 结构抗性件带一点甲容量（装甲槽契约要求有甲族字段）
     hullResistAdd: { kinetic: 0.28, explosive: 0.28, plasma: 0.28 },
+    droneHullHpBonusPct: 0.8, // 2026-09-13 船长：「提高无人机 80% 的结构」
     cpuUse: 44,
     description:
-      '一层用同族残骸回炉重铸的结构层：**三系结构抗性各削二成八缺口**，另带装甲容量 **+18%**。亡军没有完整的船，只有拆下来的骨。',
+      '一层用同族残骸回炉重铸的结构层：**三系结构抗性各削二成八缺口**、装甲容量 **+18%**，并让**本舰机群的结构层 +80%**——亡军没有完整的船，只有拆下来的骨，捡来的无人机也一样。',
   },
   {
     id: 'mod-wh-g-turret',

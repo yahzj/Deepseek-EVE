@@ -72,7 +72,7 @@
 | 装备 | id | 槽/架 | CPU | 效果字段 | 说明 |
 |---|---|---|---|---|---|
 | **巨构损管阵列** | `mod-wh-e-dc` | armor/low | 38 | hullResistAdd={"kinetic":0.3,"explosive":0.3} · hullHpBonus=0.35 · cpuUse=38 | 巨构造物的自带损管网：**结构对动能与爆炸的抗性各 +30%**、**结构值 +35%**，占用只有 38 点 CPU。巨构本来是挨打不还手的料，这一层让它挨得住第二轮。 |
-| **巨构导控塔** | `mod-wh-e-tac` | drone-tac/high | 44 | droneDmgBonus=0.5 · cpuUse=44 | 塔状的机群指挥中枢：放飞无人机单发 **+50%**（流亡蜂群导控是 +45%）。机库族缺的从来不是数量，是让它们打得疼。 |
+| **巨构导控塔** | `mod-wh-e-tac` | drone-tac/high | 44 | droneDmgBonus=0.5 · cpuUse=44 | 塔状的机群指挥中枢：放飞无人机单发 **+50%**（鱿蜂群导控是 +45%）。机库族缺的从来不是数量，是让它们打得疼。 |
 | **巨构协处理器** | `mod-wh-e-cpu` | cpu/low | 0 | cpuBonus=90 · reloadPenaltyPct=0.12 · cpuUse=0 | 巨构造物的并行计算核心：装配 CPU 上限 **+90**，自身不占 CPU，代价是**全舰装填 +12%**——算力是借来的，得用射速还。 |
 | **巨构近防阵列** | `mod-wh-e-pd` | turret/high | 56 | damageType=kinetic · ammoPerEngagement=64 · maxRangeM=2500 · minRangeM=1 · hitRate=0.92 · falloff=0.5 · reloadMs=1200 · dmgMult=3.7 · antiDrone=2 · cpuUse=56 | 一整套阵列化点防：射程 2.5 km（防空武器统一射程），单发是近防炮 MK3 的 1.3 倍、射速也更快——贴在脸上，它是本套最快的一门。防空属性与制式近防炮同为 ×2，赢在单发与节奏。 |
 | **巨构护盾矩阵** | `mod-wh-e-shield` | shield/mid | 70 | shieldResistAdd={"kinetic":0.32,"plasma":0.32} · shieldHpBonus=0.42 · cpuUse=70 | 矩阵式护盾发生层：**动能与能量护盾抗性各 +32%**，同时把**护盾上限抬高 42%**（陵墓护盾阵列只给抗性）。占用 70 点 CPU——巨构族的第一块盾，也是本套最贵的一件。 |

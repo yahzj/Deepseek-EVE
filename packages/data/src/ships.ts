@@ -581,7 +581,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 7000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 24,
-    priceIsk: 330_000,
+    priceIsk: 450_000, // 2026-09-13 船长：旧重装舰对齐同级后价格跟涨（330k → 450k）
     agility: 0.5,
     evasion: 0.08,
     hitBonus: 0.12,
@@ -608,7 +608,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 12000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 22,
-    priceIsk: 760_000,
+    priceIsk: 1_100_000, // 2026-09-13 船长：旧重装舰对齐同级后价格跟涨（760k → 1.1M）
     agility: 0.46,
     evasion: 0.08,
     hitBonus: 0.12,

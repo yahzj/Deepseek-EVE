@@ -132,7 +132,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
 // 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3；
 // 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34；
-// 2026-09-10 G 族专属无人机「流亡蜂无人机」→ 无人机 4→5 种、物品总数 34→35；
+// 2026-09-10 G 族专属无人机「鱿蜂无人机」→ 无人机 4→5 种、物品总数 34→35；
 // 2026-09-12 虫洞线：新增**虚空母矿**（原矿 8 种、物品总数 35→36）——术语同步为「原矿 / 原材料」）
 // 2026-09-13 虫洞族专属机型 2 型（`drone-wh-c-heavy` 巢卫攻坚 / `drone-wh-e-sentry` 构件哨戒，
 // 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ 换成族专属无人机）→ 物品总数 36→**38**、无人机 5→**7**
@@ -143,7 +143,7 @@ check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
-check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 流亡蜂 + 2 型虫洞族专属），实际 ${drones.length}`)
+check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 鱿蜂 + 2 型虫洞族专属），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()

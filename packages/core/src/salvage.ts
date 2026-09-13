@@ -397,7 +397,7 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
 export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.05, risky: 0.08, dire: 0.1 }
 
 /**
- * 专属**无人机**一次掉落架数（2026-09-10 船长：G 族「流亡蜂无人机」）。
+ * 专属**无人机**一次掉落架数（2026-09-10 船长：G 族「鱿蜂无人机」）。
  * 无人机是消耗品（会被点防击落、永久损失），而专属型号无蓝图不可造 → 一次给一批，
  * 打光之后同族池会重新把它放回抽取（见 `ownedItemCount` 口径）。
  */

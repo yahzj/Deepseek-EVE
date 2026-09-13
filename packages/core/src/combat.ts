@@ -85,6 +85,12 @@ export interface WeaponSpec {
    *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
    *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
   count?: number
+  /**
+   * **全体攻击**（2026-09-13 船长：C 族「孢子导弹巢」＝「对所有敌方同时攻击」）：
+   * `true` = 本武器每轮齐射**逐个结算到全部存活敌舰**（逐目标独立掷命中、各吃各自的层克制与抗性），
+   * 演出层按目标数推多条弹道 ⇒「一次罩住全场」。缺省 = 单目标（既有武器零变化）。
+   */
+  allFoes?: boolean
   /** **附加伤害段**（2026-09-13 虫洞专属·掠袭破片炮）：主段结算之后，按**主段实收** ×该比例
    *  再打一段**固定弹种**的伤害——与主段弹种/所耗弹药无关（船长：「是附加伤害，和弹种无关」） */
   secondaryDamagePct?: number
@@ -162,6 +168,12 @@ export interface UnitSpec {
   side: 'me' | 'foe'
   hp: Hp3
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
+  /**
+   * **本舰无人机结构层加成**（2026-09-13 船长：G 族「鱿蜂结构层」＝残兵结构层改名 ——
+   * 「提高无人机 80% 的结构」）＝ 该舰所装模块 `droneHullHpBonusPct` 之和。
+   * 只放大**机群生存池的结构层**（`DronePoolEntry.h`），与三层血 buff 同链、在建池时一次算清。
+   */
+  droneHullBonusPct?: number
   evasion: number
   hitBonus: number
   /** V17.1 开火失稳乘子（**点火期值**）：推进器点火期间命中整体 ×hitMul；V18.1 多件推进器只取
@@ -797,6 +809,8 @@ export function createPlayerSpec(
           }
         : {}),
       ...(turret.ammoPerShot !== undefined && turret.ammoPerShot > 1 ? { ammoPerShot: turret.ammoPerShot } : {}),
+      // 2026-09-13 虫洞专属（C 孢子导弹巢）：「对所有敌方同时攻击」——缺省不写 ⇒ 既有武器零变化
+      ...(turret.hitsAllFoes === true ? { allFoes: true } : {}),
       falloff: turret.falloff ?? 0.3,
       reloadMs: reload,
       // **防空（属性）**（2026-09-11 机群批 S4 + 2026-09-12 船长「给近防炮系列添加一个属性'防空'」）：
@@ -901,6 +915,8 @@ export function createPlayerSpec(
     shipRole: ship.role,
     hp,
     resists,
+    // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
+    droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),
     // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
     evasion,
     hitBonus: (ship.hitBonus ?? 0) * (1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)),
@@ -2389,7 +2405,7 @@ export function startBattleFor(
     pools[i] = {
       s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
       a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
-      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul)),
+      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (me.droneHullBonusPct ?? 0)))),
       alive: true,
       artId: w.artId,
       evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
@@ -2625,7 +2641,7 @@ export function startFleetBattleFor(
     pools[i] = {
       s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
       a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
-      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul)),
+      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (me.droneHullBonusPct ?? 0)))),
       alive: true,
       artId: w.artId,
       evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
@@ -4100,6 +4116,49 @@ function stepBattle(
             pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
           }
         }
+        // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
+        // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
+        // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
+        // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
+        if (w.allFoes === true && hit && !droneHit) {
+          for (const other of foes) {
+            if (other.tag === foeTarget!.tag) continue
+            const ort = b.units[other.tag]
+            if (!ort || !isAlive(b, other.tag)) continue
+            const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
+            const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
+            if (oHit) {
+              b.stats.meHits += 1
+              const rAll = applyDamage(ort.hp, {}, dmg, type)
+              ort.hp = rAll.hp
+              b.stats.meDmg += rAll.dealt
+              const secPctAll = w.secondaryDamagePct ?? 0
+              if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
+                const secTypeAll = w.secondaryDamageType ?? 'kinetic'
+                const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
+                const rAll2 = applyDamage(ort.hp, {}, secDmgAll, secTypeAll)
+                ort.hp = rAll2.hp
+                b.stats.meDmg += rAll2.dealt
+              }
+              if (markFoeDroneRangeBuff(other, b)) {
+                pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
+              }
+              if (markFoeGunRangeBuff(other, b)) {
+                pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+              }
+            }
+            pushBattleFx(b, {
+              atMs: b.lastTickGameMs + dtMs,
+              side: 'me',
+              tag: unit.tag,
+              to: other.tag,
+              type,
+              src: w.src,
+              artId: w.artId,
+              hit: oHit,
+            })
+          }
+        }
       }
       pushBattleFx(b, {
         atMs: b.lastTickGameMs + dtMs,
@@ -4535,12 +4594,15 @@ function steadyPreview(
     }
     if (hit <= 0) continue
     const mult = effectiveDmgMultAgainst(foes, ammoType ?? w.fixedType ?? 'kinetic')
-    meDps += (shot * power * mult * hit * 1000) / w.reloadMs
+    // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
+    // 预估必须同步：一轮齐射的实收 = 单目标 × **当前在场敌舰数**（多波卡按峰值波小队数，与 `foes` 同源）。
+    const allFoesMul = w.allFoes === true ? Math.max(1, foes.length) : 1
+    meDps += (shot * power * mult * hit * allFoesMul * 1000) / w.reloadMs
     // 附加伤害段同步（掠袭破片炮）：预估不许"卡面混伤、按纯系算"——副段走它自己那系的克制倍率
     const secPctEst = w.secondaryDamagePct ?? 0
     if (secPctEst > 0) {
       const secMul = effectiveDmgMultAgainst(foes, w.secondaryDamageType ?? 'kinetic')
-      meDps += (shot * power * secMul * hit * secPctEst * 1000) / w.reloadMs
+      meDps += (shot * power * secMul * hit * allFoesMul * secPctEst * 1000) / w.reloadMs
     }
   }
   // 敌方 DPS（打我，含类型克制与层抗；近盲带内伤害按 blindDmgMul 折算——
