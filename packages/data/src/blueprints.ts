@@ -1524,9 +1524,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '「掠夺者护盾笼」的制造工艺，写在整块母岩切片上——**只能用一次**。三台发生器怎么串，图上只有一种接法。',
   },
   {
-    id: 'bp-wh-c-turret',
-    name: '几丁质穿刺炮图纸（一次性）',
-    moduleId: 'mod-wh-c-turret',
+    id: 'bp-wh-c-laser',
+    name: '生体棱镜束图纸（一次性）',
+    moduleId: 'mod-wh-c-laser',
     singleUse: true,
     unreleased: true,
     materials: [
@@ -1538,7 +1538,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 5400,
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「几丁质穿刺炮」的制造工艺，写在整块母岩切片上——**只能用一次**。液压回路画得像血管。',
+    description: '「生体棱镜束」的制造工艺，写在整块母岩切片上——**只能用一次**。棱镜的析晶方向画得像血管。',
   },
   {
     id: 'bp-wh-c-armor',
@@ -1626,9 +1626,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '「几丁质骨架层」的制造工艺，写在整块母岩切片上——**只能用一次**。整副骨架的接序，一步都不能颠倒。',
   },
   {
-    id: 'bp-wh-d-missile',
-    name: '陵寝齐射巢图纸（一次性）',
-    moduleId: 'mod-wh-d-missile',
+    id: 'bp-wh-d-turret',
+    name: '陵卫连装炮图纸（一次性）',
+    moduleId: 'mod-wh-d-turret',
     singleUse: true,
     unreleased: true,
     materials: [
@@ -1641,7 +1641,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 5600,
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「陵寝齐射巢」的制造工艺，写在整块母岩切片上——**只能用一次**。发射序列像一段悼词，一板一眼。',
+    description: '「陵卫连装炮」的制造工艺，写在整块母岩切片上——**只能用一次**。连装机构的时序表，一板一眼。',
   },
   {
     id: 'bp-wh-d-shield',

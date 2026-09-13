@@ -1294,10 +1294,10 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'drone-rack',
     rack: 'high',
     unreleased: true,
-    droneBayBonusM3: 95, // 比无人机甲板扩展 MK3（+70）大三分之一
-    cpuUse: 48,
+    droneBayBonusM3: 85, // 审核修正：原 +95 与窝点 E 族「深层机库」**同值**；A 不是机库族 ⇒ 降到 +85（G 族 +110 才是机库族的顶）
+    cpuUse: 46,
     description:
-      '把抢来的货舱隔板焊成的机库夹层：无人机舱 **+95 m³**（比无人机甲板扩展 MK3 还大三分之一）。装得下才抢得动，代价是 48 点 CPU。',
+      '把抢来的货舱隔板焊成的机库夹层：无人机舱 **+85 m³**（比无人机甲板扩展 MK3 大两成）。装得下才抢得动，代价是 46 点 CPU。',
   },
   {
     id: 'mod-wh-a-prop',
@@ -1347,22 +1347,22 @@ export const MODULES: readonly ModuleDef[] = [
   /* ── C 族（异形 · 生体：结构/装甲高、护盾薄、近程高伤）──
    * 窝点套已占：生体甲壳板（甲自修）・生体损管腔（结构抗+结构自修）・酸液喷吐器（近程必中） */
   {
-    id: 'mod-wh-c-turret',
-    name: '几丁质穿刺炮',
-    slot: 'turret',
+    id: 'mod-wh-c-laser',
+    name: '生体棱镜束',
+    slot: 'laser',
     rack: 'high',
     unreleased: true,
-    damageType: 'kinetic',
-    ammoPerEngagement: 24,
-    maxRangeM: 7_200,
-    minRangeM: 1_400, // 代价：近程盲区比一般炮台大一倍
-    hitRate: 0.82,
-    falloff: 0.45,
-    reloadMs: 3_200,
-    dmgMult: 9.9, // 单发 ≈ 攻坚炮台 MK3（5.13）的 1.9 倍
-    cpuUse: 56,
+    damageType: 'plasma', // ⚠ 审核修正：C 族卡池 = 等离子 8 / 爆破 2（无动能）⇒ 原"动能穿刺炮"越出本族弹型，改为等离子
+    ammoPerEngagement: 22,
+    maxRangeM: 8_600, // 与本族窝点件（酸液喷吐器 2.8 km 近程必中）拉开射程带：近战贴脸是它的，这件管拉开之后
+    minRangeM: 0, // 激光家族口径：光束无近盲
+    hitRate: 1,
+    falloff: 0.1, // 激光件统一口径：最远端威力 ×0.10
+    reloadMs: 5_600, // 代价：装填比激光炮 MK3 慢四成
+    dmgMult: 7.6, // 单发 ≈ 激光炮 MK3（4.2）的 1.8 倍
+    cpuUse: 60,
     description:
-      '整根拔下来的甲壳刺，靠生体液压往复击发：中程动能穿刺、单发接近攻坚炮台 MK3 的两倍。代价是近程盲区大——1.4 km 以内它打不着。',
+      '生体棱镜阵列射出的酸蚀光束：**8.6 km 必中**、单发是激光炮 MK3 的 1.8 倍。比同族的酸液喷吐器远出三倍——贴脸有喷吐器，这件管的是"它想拉开距离"的时候。代价是装填 5.6 秒。',
   },
   {
     id: 'mod-wh-c-armor',
@@ -1430,22 +1430,22 @@ export const MODULES: readonly ModuleDef[] = [
   /* ── D 族（守墓 · 重装：三系抗 / 必中远程 / 最慢）──
    * 窝点套已占：陵墓护盾阵列（三系盾抗）・守墓者长炮（动能必中 12 km）・陵寝装甲层（甲容量） */
   {
-    id: 'mod-wh-d-missile',
-    name: '陵寝齐射巢',
-    slot: 'missile',
+    id: 'mod-wh-d-turret',
+    name: '陵卫连装炮',
+    slot: 'turret',
     rack: 'high',
     unreleased: true,
-    damageType: 'explosive',
-    ammoPerEngagement: 24,
-    maxRangeM: 15_000, // 本套最远的一门
-    minRangeM: 800,
-    hitRate: 0.9,
-    falloff: 1, // 导弹家族口径：追踪命中，命中不随距离衰减
-    reloadMs: 8_200,
-    dmgMult: 13.2, // 单发 ≈ 导弹架 MK3（6.04）的 2.2 倍
-    cpuUse: 66,
+    damageType: 'kinetic', // ⚠ 审核修正：D 族卡池 = 等离子 8 / 动能 2（**无爆破**）⇒ 原"陵寝齐射巢（导弹＝爆破）"越出本族弹型，改为动能
+    ammoPerEngagement: 40,
+    maxRangeM: 5_400, // 与本族窝点件（守墓者长炮 12 km 必中慢炮）拉开射程带与节奏：一门点名、一门清近
+    minRangeM: 300,
+    hitRate: 0.86,
+    falloff: 0.4,
+    reloadMs: 1_600, // 速射：1.6 秒一轮，节奏是长炮的 4.6 倍
+    dmgMult: 4.6, // 单发 ≈ 攻坚炮台 MK3（5.13）的九成
+    cpuUse: 46,
     description:
-      '陵寝封门用的齐射巢：**15 km 外一次齐射**，单发是导弹架 MK3 的两倍多。导弹追踪命中、不随距离掉准头——装填 8.2 秒，守墓者从来不急。',
+      '陵卫的连装速射炮：5.4 km 内 1.6 秒一轮。长炮负责点名硬目标，它负责把贴上来的一群清掉——守墓者慢，但不能被围。',
   },
   {
     id: 'mod-wh-d-shield',
