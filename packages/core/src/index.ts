@@ -894,7 +894,7 @@ export type {
 } from './wormholeGrid'
 
 // F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
-export { wormholeStartBattle, wormholeActivateAt, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
+export { wormholeStartBattle, wormholeActivateAt, wormholeTravelTo, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
 export type {
   WormholeActivateEffect,
   WormholeAdmission,

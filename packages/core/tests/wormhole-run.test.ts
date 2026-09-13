@@ -589,6 +589,67 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
     }
   })
 
+  it('**到达即触发**（船长 2026-09-13）：走到舰船信号 ⇒ 回报 autoBattle 且该格记已处理（不再需要激活）', () => {
+    const { state, run } = enterForActions()
+    const g = run.grid!
+    // 把某个已扫描的邻格改成舰船信号，再走过去（等价"扫描看到了舰船信号、决定过去"）
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'ship'
+    g.scanned.push(target.key)
+    const turnsBefore = run.turnsLeft
+    const r = wormholeGridTravel(state, { q: target.q, r: target.r })
+    expect(r.ok).toBe(true)
+    expect(r.arrived?.autoBattle).toBe(true)
+    expect(r.spent).toBe(1) // 只花"前往"那 1 回合：到达即开打，不再有第二次激活扣费
+    expect(run.turnsLeft).toBe(turnsBefore - 1)
+    expect(g.activated).toContain(target.key)
+    // 已经处理过 ⇒ 再走一遍（来回）不会重复触发开战
+    g.scanned.push(`${g.start.q},${g.start.r}`)
+    expect(wormholeGridTravel(state, { q: g.start.q, r: g.start.r }).ok).toBe(true)
+    const back = wormholeGridTravel(state, { q: target.q, r: target.r })
+    expect(back.ok).toBe(true)
+    expect(back.arrived?.autoBattle).toBeUndefined()
+    // 该格也不再能被"激活"（已处理）
+    expect(wormholeGridActivate(state).ok).toBe(false)
+  })
+
+  it('**漂浮信标**（船长 2026-09-13）：走到信标格 ⇒ 回报 beacon + 标出下一层入口（此后地图一直标着）', () => {
+    const { state, run } = enterForActions()
+    const g = run.grid!
+    expect(g.exitKnown).toBe(false) // 默认为假：入口不标在地图上
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'beacon'
+    g.scanned.push(target.key)
+    const r = wormholeGridTravel(state, { q: target.q, r: target.r })
+    expect(r.ok).toBe(true)
+    expect(r.arrived?.beacon).toBe(true)
+    expect(g.exitKnown).toBe(true)
+    expect(g.activated).toContain(target.key)
+    // 信标读过了：不能重复激活
+    const again = wormholeGridActivate(state)
+    expect(again.ok).toBe(false)
+    expect(again.error ?? '').toContain('信标')
+  })
+
+  it('信标与入口是两件东西：入口格本身**不因为被标出**而变成"已到达"', () => {
+    const { state, run } = enterForActions()
+    const g = run.grid!
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'beacon'
+    g.scanned.push(target.key)
+    expect(wormholeGridTravel(state, { q: target.q, r: target.r }).ok).toBe(true)
+    expect(g.exitKnown).toBe(true)
+    expect(g.visited).not.toContain(`${g.exit.q},${g.exit.r}`) // 只是"知道在哪"，没到过
+    // 到了入口格才算到达，且到了仍要**激活**才打守卫（守卫战不是"到达即开打"）
+    g.scanned.push(`${g.exit.q},${g.exit.r}`)
+    const arrive = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r })
+    expect(arrive.ok).toBe(true)
+    expect(arrive.arrived?.atExit).toBe(true)
+    expect(arrive.arrived?.autoBattle).toBeUndefined()
+    expect(run.battle ?? null).toBeNull()
+    expect(wormholeGridActivate(state).effect).toEqual({ kind: 'exit', key: `${g.exit.q},${g.exit.r}` })
+  })
+
   it('战斗中：三个层内动作全部拒绝（与"战斗没结束不能撤"同一把尺）', () => {
     const { state, run } = enterForActions()
     run.battle = {} as never

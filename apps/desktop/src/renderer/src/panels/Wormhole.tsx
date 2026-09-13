@@ -178,6 +178,8 @@ export function WormholePanel({
       return
     }
     setPendingCell(null)
+    // 到达即触发的两件事（船长 2026-09-13）：信标指路 / 舰船信号就地开打（战斗界面接手，不提示）
+    if (res.beacon) onToast('漂浮信标：下一层入口已标在地图上。')
   }
 
   function doScan(): void {
@@ -687,7 +689,8 @@ function WhGridMap({ grid, onPickCell }: { grid: WormholeGridState; onPickCell: 
         const visited = grid.visited.includes(c.key)
         const scanned = grid.scanned.includes(c.key)
         const signal = signalOfPlace(c.place)
-        const isExit = visited && c.key === exitKey
+        // 入口：**到达过**或**被漂浮信标标出来**（船长 2026-09-13 新增信标）⇒ 地图上一直标着
+        const isExit = c.key === exitKey && (visited || grid.exitKnown === true)
         const cls = [
           'app-wh-hex',
           visited ? 'is-known' : scanned ? 'is-scanned' : 'is-unknown',
@@ -725,7 +728,8 @@ function WhGridMap({ grid, onPickCell }: { grid: WormholeGridState; onPickCell: 
 
 /**
  * 格内符号（**一律 SVG 线稿**，以格心为原点、半径约 7~8）。
- * `exit` = 下一层入口（箭头）；`signal === null` = 空信息地点（一个小空心点）。
+ * `exit` = 下一层入口（箭头）；`signal === null` = 空信息地点（一个小空心点）；
+ * `beacon` = 漂浮信标（灯塔塔身 + 两道扫描光）。
  */
 function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boolean }) {
   if (exit) return <path d="M-7,0 L6,0 M1,-5 L7,0 L1,5" />
@@ -740,6 +744,14 @@ function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boole
         <circle cx={0} cy={4} r={1.4} />
       </>
     )
+  if (signal === 'beacon')
+    return (
+      <>
+        <path d="M-3.6,7 L-1.8,-2 L1.8,-2 L3.6,7 Z" />
+        <path d="M-7,-5 L-2.6,-3.4 M7,-5 L2.6,-3.4" />
+        <path d="M-1.8,-2 L1.8,-2" />
+      </>
+    )
   return <circle cx={0} cy={0} r={2.2} />
 }
 
@@ -749,6 +761,7 @@ const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
   ship: '舰船信号',
   resource: '资源信号',
   radar: '雷达信号',
+  beacon: '信标信号',
 }
 
 /** 地图图例（与格内符号共用同一个 `WhGlyph` ⇒ 图例与看板永远一致） */
@@ -758,6 +771,7 @@ const GRID_LEGEND: ReadonlyArray<{ key: string; text: string; signal: WormholeSi
   { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },
   { key: 'resource', text: SIGNAL_TEXT.resource, signal: 'resource' },
   { key: 'radar', text: SIGNAL_TEXT.radar, signal: 'radar' },
+  { key: 'beacon', text: SIGNAL_TEXT.beacon, signal: 'beacon' },
   { key: 'blank', text: '空信息', signal: null },
 ]
 
@@ -766,9 +780,10 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   empty: '空信息地点：什么都没有，没有可执行的作业。',
   graveyard: '舰船墓场：大量残骸、少量稀有残骸——激活后开始打捞。',
   ruins: '遗迹：稀有残骸为主，有小概率拿到一次性图纸或虫洞专属装备；打捞结束大概率触发一场恶战。',
-  ship: '舰船信号：激活即交火；打赢固定获得残骸与稀有残骸。',
+  ship: '舰船信号：到达即交火；打赢固定获得残骸与稀有残骸。',
   vein: '矿脉：激活后挖掘，可得虚空母矿。',
   matter: '虫洞谜质：取回后，本趟探索中我方所有舰船获得指定增强。',
+  beacon: '漂浮信标：到达即读出它标出的下一层入口位置（地图上会一直标着）。',
 }
 /**
  * 背包网格：每格只装一种物品（`WormholeBagSlot` 一条 = 一格的内容，同物品并格）。

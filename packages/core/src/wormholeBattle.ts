@@ -21,6 +21,7 @@ import {
   wormholeCardIdFor,
   wormholeFleetCargoM3,
   wormholeGridActivate,
+  wormholeGridTravel,
   wormholeTrimBag,
   type WormholeActivateEffect,
   type WormholeRunState,
@@ -120,6 +121,59 @@ export function wormholeActivateAt(
     return { ok: false, error: `无法开战：${s.error ?? ''}` }
   }
   return { ok: true, spent: r.spent, effect, started: kind }
+}
+
+/**
+ * **前往某一格**（网格层的"移动"入口 = `wormholeGridTravel` + 到达即开打时的立刻开战）。
+ *
+ * 船长 2026-09-13 追加：「**战斗节点到达即开打**」⇒ 走到"舰船信号"那一格就地交火（不再需要点激活）。
+ * 为什么合成一次调用（与 `wormholeActivateAt` 同款理由）：界面若分两步，中间失败会留下
+ * "人已经站到那里、回合已扣、但战斗没开"的半截状态——这里**开战失败会把整趟移动回滚**
+ * （回合 / 位置 / 已到达 / 已扫描 / 已激活 / 信标标出的入口全部还原），玩家留在原格、回合不丢。
+ */
+export function wormholeTravelTo(
+  state: GameState,
+  ctx: SimContext,
+  target: { q: number; r: number },
+  opts?: { confirmUnknown?: boolean },
+  atGameMs?: number,
+): { ok: boolean; error?: string; code?: 'unknown-target'; spent?: number; autoBattle?: boolean; beacon?: boolean } {
+  const run = state.wormhole.run
+  const g = run?.grid
+  const snap =
+    run && g
+      ? {
+          turnsLeft: run.turnsLeft,
+          pos: { ...g.pos },
+          visited: [...g.visited],
+          scanned: [...g.scanned],
+          activated: [...g.activated],
+          exitKnown: g.exitKnown === true,
+        }
+      : null
+  const r = wormholeGridTravel(state, target, opts)
+  if (!r.ok) return { ok: false, error: r.error, ...(r.code ? { code: r.code } : {}) }
+  const arrived = r.arrived
+  if (!arrived?.autoBattle) {
+    return {
+      ok: true,
+      spent: r.spent,
+      ...(arrived?.beacon ? { beacon: true } : {}),
+    }
+  }
+  const s = wormholeStartBattle(state, ctx, 'node', atGameMs)
+  if (!s.ok) {
+    if (run && g && snap) {
+      run.turnsLeft = snap.turnsLeft
+      g.pos = snap.pos
+      g.visited = snap.visited
+      g.scanned = snap.scanned
+      g.activated = snap.activated
+      g.exitKnown = snap.exitKnown
+    }
+    return { ok: false, error: `无法开战：${s.error ?? ''}` }
+  }
+  return { ok: true, spent: r.spent, autoBattle: true }
 }
 
 /** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */

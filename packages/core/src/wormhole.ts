@@ -589,7 +589,16 @@ export interface WormholeGridActionResult {
   /** 本次新揭开的格（扫描；`signal === null` = 空信息地点） */
   revealed?: { key: string; signal: WormholeSignal | null }[]
   /** 到达后该格的真相（前往） */
-  arrived?: { key: string; place: WormholePlace; signal: WormholeSignal | null; atExit: boolean }
+  arrived?: {
+    key: string
+    place: WormholePlace
+    signal: WormholeSignal | null
+    atExit: boolean
+    /** 到达即开打（舰船信号）——调用方（`wormholeTravelTo`）据此立刻开战 */
+    autoBattle?: boolean
+    /** 到达即标出下一层入口（漂浮信标） */
+    beacon?: boolean
+  }
   /** 激活产生的效果（激活；有它就该接着开战/结算，见 `wormholeActivateAt`） */
   effect?: WormholeActivateEffect
   /** 回合耗尽 ⇒ 只能撤离（与 `wormholeAdvanceNode` 的 `mustExtract` 同口径） */
@@ -646,6 +655,13 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
  * **前往**（1 回合，不限距离 —— 船长裁定"可以到达任意位置"）。
  * 未扫描的格：**默认拒绝**并回 `code='unknown-target'`，界面拿它弹「即将前往未知地点」的确认，
  * 玩家确认后带 `confirmUnknown: true` 再来一次（这才是"警告"该有的样子：不会点一下就冲进去）。
+ *
+ * **到达时立刻发生的事**（船长 2026-09-13 追加两条裁定，都**不需要再点"激活"**）：
+ * - **舰船信号 ⇒ 到达即开打**（「战斗节点到达即开打」）⇒ 该格记 `activated`，效果由
+ *   `wormholeBattle.wormholeTravelTo` 接着开战（本函数只回报 `arrived.autoBattle`，不能自己开战：
+ *   `wormhole.ts` 不许 import `wormholeBattle`（会成环），依赖方向固定为 wormholeBattle → wormhole）；
+ * - **漂浮信标 ⇒ 到达即标出下一层入口**（「到达后有一个漂浮信标，会告诉玩家终点位置」）⇒
+ *   `grid.exitKnown = true`（地图此后一直标着入口），该格同样记 `activated`。
  */
 export function wormholeGridTravel(
   state: GameState,
@@ -674,25 +690,43 @@ export function wormholeGridTravel(
   if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
   const signal = signalOfPlace(cell.place)
   const atExit = isExitCell(grid, cell)
+  // ── 到达即触发：舰船信号（开打）/ 漂浮信标（标出入口） ──
+  const first = !grid.activated.includes(cell.key)
+  const autoBattle = first && cell.place === 'ship'
+  const beacon = first && cell.place === 'beacon'
+  if (autoBattle || beacon) grid.activated.push(cell.key)
+  if (beacon) grid.exitKnown = true
   addLog(
     state,
     'info',
-    atExit
-      ? `🕳 抵达下一层入口（${cell.q},${cell.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
-      : `🕳 抵达新地点（${cell.q},${cell.r}）：${WORMHOLE_PLACE_TEXT[cell.place]} · 剩 ${run.turnsLeft} 回合。`,
+    autoBattle
+      ? `🕳 抵达舰船信号（${cell.q},${cell.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
+      : beacon
+        ? `🕳 抵达漂浮信标（${cell.q},${cell.r}）：信标把下一层入口标在了地图上（Q${grid.exit.q} · R${grid.exit.r}）· 剩 ${run.turnsLeft} 回合。`
+        : atExit
+          ? `🕳 抵达下一层入口（${cell.q},${cell.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
+          : `🕳 抵达新地点（${cell.q},${cell.r}）：${WORMHOLE_PLACE_TEXT[cell.place]} · 剩 ${run.turnsLeft} 回合。`,
   )
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_MOVE,
-    arrived: { key: cell.key, place: cell.place, signal, atExit },
+    arrived: {
+      key: cell.key,
+      place: cell.place,
+      signal,
+      atExit,
+      ...(autoBattle ? { autoBattle: true } : {}),
+      ...(beacon ? { beacon: true } : {}),
+    },
     mustExtract: run.turnsLeft <= 0,
   }
 }
 
 /**
  * **激活当前地点**（1 回合，每个地点只算一次）。
- * - 空信息地点 ⇒ **拒绝且不扣回合**（"什么都没有"，没有可执行的作业）；
+ * - 空信息地点 / 已读过的漂浮信标 ⇒ **拒绝且不扣回合**（"什么都没有"，没有可执行的作业）；
  * - 站在下一层入口 ⇒ 层末守卫战（优先于地点自身类型：入口的意义就是"下一层"）；
+ * - 舰船信号：新口径下**到达即已开打**（船长 2026-09-13），故这里只在"老档/异常态"下兜底开战；
  * - 其余按地点类型给效果，开战/结算由 `wormholeActivateAt` 接着做。
  */
 export function wormholeGridActivate(state: GameState): WormholeGridActionResult {
@@ -703,9 +737,13 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (blocked) return { ok: false, error: blocked }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。' }
-  if (grid.activated.includes(cell.key)) return { ok: false, error: '这个地点已经处理过了。' }
+  if (grid.activated.includes(cell.key)) {
+    return { ok: false, error: cell.place === 'beacon' ? '信标已经读过了。' : '这个地点已经处理过了。' }
+  }
   const atExit = isExitCell(grid, cell)
-  if (!atExit && cell.place === 'empty') return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
+  if (!atExit && (cell.place === 'empty' || cell.place === 'beacon')) {
+    return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
+  }
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
     return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
   }
@@ -739,6 +777,7 @@ export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
   ship: '舰船信号',
   vein: '矿脉',
   matter: '虫洞谜质',
+  beacon: '漂浮信标',
 }
 /* ═══════════ 六、E 批：入洞 / 拾取 / 背包（界面接线所需的引擎动作） ═══════════ */
 
