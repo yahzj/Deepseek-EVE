@@ -2988,6 +2988,41 @@ for (const m of MODULES) {
     const hiddenCount = MARKET_GOODS.filter((g) => g.unreleased === true).length
     console.log(`· 未上线闸门：目录 ${MARKET_GOODS.length} 张卡中 **${hiddenCount}** 张标了「未上线」并对玩家不可见`)
   }
+  /**
+   * **虫洞施工期不可见闸门**（船长 2026-09-13 铁律：「虫洞完成前对玩家不可见」）。
+   *
+   * 口径：虫洞这条线的三样东西**在船长拍板前一律不得进玩家可见面** ——
+   * ①**洞内敌卡**四张（`wh-*`）必须 `hidden: true`（否则会出现在悬赏目录/日板派发里，
+   *   玩家在星图上就能看到"虫洞"敌人）；②**虚空母矿**必须仍标 `unreleased`（市场/图鉴看不见）；
+   * ③**四张洞内敌卡不带赏金/战利品**（`rewardIsk = 0` 且 `loot` 空）——它们只由虫洞生成，
+   *   若挂了奖金/掉落，任何一条别的路径引用到它都会白送收益。
+   * ⚠ 审计的是"标注"这一层；**入口走调试开关**这层没法在这里自动核（见 `panels/Wormhole.tsx` 头注释）。
+   */
+  {
+    const whIds = ['wh-pirate-scout', 'wh-alien-swarm', 'wh-grave-watch', 'wh-exile-blockade']
+    let leaked = 0
+    for (const id of whIds) {
+      const card = ANOMALIES_FLAVORED.find((a) => a.id === id)
+      if (!card) {
+        errors.push(`虫洞不可见闸门：目录里找不到洞内敌卡 ${id}（被删或被改名？契约与 core 的轮换表会不一致）`)
+        continue
+      }
+      if (card.hidden !== true) {
+        errors.push(`虫洞不可见闸门：${id}（${card.name}）没有 hidden —— 会出现在悬赏目录/派发里，施工期提前泄露`)
+        leaked += 1
+      }
+      if (card.rewardIsk !== 0 || (card.loot?.length ?? 0) > 0) {
+        errors.push(`虫洞不可见闸门：${id}（${card.name}）带了奖金/掉落 —— 洞内敌卡不应有赏金收益（收益走背包拾取）`)
+      }
+    }
+    const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
+    if (!ore) {
+      errors.push('虫洞不可见闸门：市场目录里找不到 ore-voidmother（虚空母矿）——上线时"删字段"那一步就无从谈起')
+    } else if (ore.unreleased !== true) {
+      errors.push('虫洞不可见闸门：虚空母矿没有标 unreleased —— 市场/图鉴会提前出现虫洞专属原矿')
+    }
+    console.log(`· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿仍「未上线」${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`)
+  }
   for (const bp of BLUEPRINTS) {
     const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'
     const good = marketOfBp.get(bp.id)

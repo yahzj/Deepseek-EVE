@@ -52,6 +52,7 @@ import {
   wormholeTakePile,
 } from '../packages/core/src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
 
 const ctx: SimContext = buildSimContext()
 
@@ -203,7 +204,7 @@ function battleHpFrac(battle: GameState['expedition']['battle']): number {
 
 interface RunOutcome {
   /** 结束方式：撤离成功 / 全损 */
-  result: 'extract' | 'lost'
+  result: 'extract' | 'lost' | 'unfinished'
   depth: number
   shipsLeft: number
   oreUnits: number
@@ -239,7 +240,7 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
     }
     if (r.pendingNode) {
       if (r.pendingNode.kind === 'combat') {
-        if (!wormholeStartBattle(state, ctx, 'node').ok) break
+        if (!wormholeStartBattle(state, ctx, 'node', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) break
       } else {
         // 拾取点：能捡就捡光；事件节点直接结算
         while ((r.pendingNode.piles ?? []).length > 0) {
@@ -250,7 +251,7 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
       continue
     }
     if ((r.bossCleared ?? 0) < r.depth) {
-      if (!wormholeStartBattle(state, ctx, 'boss').ok) break
+      if (!wormholeStartBattle(state, ctx, 'boss', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) break
       continue
     }
     const frac = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
@@ -259,10 +260,12 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
   }
   const after = state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0
   const ore = after - before
+  const shipsLeft = uids.filter((u) => state.fleet[u]).length
   return {
-    result: ore > 0 ? 'extract' : 'lost',
+    // 结束方式按**状态机**判（不是按"有没有捞到矿"——那会把"这趟没碰到拾取点"误判成全损）
+    result: state.wormhole.run !== null ? 'unfinished' : shipsLeft > 0 ? 'extract' : 'lost',
     depth: state.wormhole.run?.depth ?? maxDepth,
-    shipsLeft: uids.filter((u) => state.fleet[u]).length,
+    shipsLeft,
     oreUnits: ore,
     isk: ore * orePrice,
     hpFrac: roughHpFrac(state, uids.length > 0 ? uids : []),
@@ -279,7 +282,7 @@ function runRunsMode(): void {
     Number((process.argv.find((a) => a.startsWith('--max-depth=')) ?? '--max-depth=3').split('=')[1]),
   )
   console.log(
-    `整趟模拟 · ${n} 趟（参考编队 4×巡洋 MK2 · 政策：粗残血 < ${extractHp} 或到第 ${maxDepth} 层就撤 · 拾取点捡光）`,
+    `整趟模拟 · ${n} 趟（**强度系数 ${WORMHOLE_FOE_BASE_STRENGTH_MUL * (STRENGTH ?? 1)}**（覆写 ${STRENGTH ?? '无'}）· 参考编队 4×巡洋 MK2 · 政策：粗残血 < ${extractHp} 或到第 ${maxDepth} 层就撤 · 拾取点捡光）`,
   )
   console.log(['#', '结果', '到达层', '存活船', '原矿', '收益ISK', '收尾残血'].join('\t'))
   const out: RunOutcome[] = []
@@ -289,7 +292,7 @@ function runRunsMode(): void {
     console.log(
       [
         i + 1,
-        o.result === 'extract' ? '撤离成功' : '全损',
+        o.result === 'extract' ? '撤离成功' : o.result === 'lost' ? '全损' : '未结束',
         o.depth,
         `${o.shipsLeft}/4`,
         o.oreUnits,

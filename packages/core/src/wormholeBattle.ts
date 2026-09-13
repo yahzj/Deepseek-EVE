@@ -14,7 +14,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, startFleetBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, startFleetBattleFor } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeCardIdFor,
@@ -37,6 +37,12 @@ export function wormholeStartBattle(
   ctx: SimContext,
   kind: WormholeFoeKind,
   atGameMs: number = state.gameMs,
+  /**
+   * **校准用覆写**（可选）：只给 `tools/wormhole-econ.ts` 的**整趟模拟**做强度扫描用
+   * （与 `startFleetBattleFor` 的 `strengthMul` 同一口径；引擎/实战一律走常量）。
+   * ⚠ 首版工具只在"单场阶梯"里传了它、整趟模拟没传 ⇒ 扫描结果全是同一个系数（读数为假的对比）。
+   */
+  opts?: { strengthMul?: number },
 ): { ok: boolean; error?: string } {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。' }
@@ -56,6 +62,7 @@ export function wormholeStartBattle(
     depth: run.depth,
     kind,
     waves,
+    ...(opts?.strengthMul !== undefined ? { strengthMul: opts.strengthMul } : {}),
   })
   if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。' }
   run.battle = battle
@@ -123,6 +130,12 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   // P0 承伤持久化（船长「副本内承伤持久」）：逐船把装甲/结构残余写回
   for (const uid of run.fleet) persistFleetHullDamage(state, ctx, uid, battle)
+  // **弹药与修理组件退款**（与远征 `resolveBattleOutcome` 同款 · 2026-09-13 修）：
+  // 开战时按"每艘船各自装载"抽过的弹药/组件，**余额必须退回仓库** —— 首版漏了这一步，
+  // 后果是**连打第二场起全队哑火**（仓库被上一场抽干）：整趟模拟里表现为"节点战轻松赢、
+  // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
+  refundAmmo(state, battle.ammo, battle.ammoIds)
+  refundRepairKits(state, battle.repair)
   const won = battle.ended === 'me'
   const report = won ? wormholeBattleReport(run, battle, kind) : null
   run.battle = null

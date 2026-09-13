@@ -18,7 +18,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { countWare } from '../src/inventory'
+import { addWare, countWare } from '../src/inventory'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
@@ -352,6 +352,42 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     settleBattle(state)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离拦截交火结束'))).toBe(true)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离成功'))).toBe(true)
+  })
+  it('**战后弹药退款**（与远征同款）：仓库只损失**真打出去**的那些 ⇒ 连打第二场不会哑火', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    // 让编队真带上炮与弹（默认档里两艘 T3 没装配）
+    for (const uid of run.fleet) {
+      state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
+    }
+    addWare(state, 'ammo-kinetic-l', 5_000)
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    const before = countWare(state, 'ammo-kinetic-l')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    const loaded = battle.ammo.kin
+    expect(loaded).toBeGreaterThan(0) // 开战装载了两艘船各自的弹
+    // 真打一会儿（会消耗弹药）
+    let guard = 0
+    while (!battle.ended && guard++ < 90) {
+      state.gameMs += 1_000
+      advanceBattleFor(state, ctx, battle, run.fleet[0]!, battle.wormhole!.cardId)
+    }
+    const left = battle.ammo.kin
+    const fired = loaded - left
+    if (!battle.ended) {
+      for (const u of Object.values(battle.units)) if (u.side === 'foe') u.hp = { s: 0, a: 0, h: 0 }
+      battle.ended = 'me'
+    }
+    settleBattle(state)
+    // **退款 = 未打出去的那部分**（首版漏退款 ⇒ 每场把整批预载吞掉，第二场起全队哑火）
+    expect(countWare(state, 'ammo-kinetic-l')).toBe(before - fired)
+    // 第二场照样有弹
+    const run2 = state.wormhole.run
+    if (run2?.pendingNode?.kind === 'combat') {
+      expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+      expect(state.wormhole.run!.battle!.ammo.kin).toBeGreaterThan(0)
+    }
   })
 })
 
