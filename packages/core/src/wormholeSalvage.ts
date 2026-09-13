@@ -562,6 +562,21 @@ export function wormholeDiscardToFit(state: GameState, ctx: SimContext): { ok: b
  * 得走货仓格（`wormholeHoldStow`：占 4 格、放不下整件拒收）；③ `wormhole.ts` 不许 import 本文件
  * （`state.ts` → `wormhole.ts`，而本文件 import `state.ts` ⇒ 会成环）。故入口住在这一侧。
  */
+/**
+ * **把一堆搬上船**（玩家入口 = 超载闸 + 形状件分流 + 装舱判据）。
+ *
+ * ⚠ **网格层的残骸/母矿没有"逐堆拾取"**（船长 2026-09-13 裁定 A）：那两类走「**打捞**」/「**采集**」，
+ * 都要对应装备（打捞器 / 采集器）、回合口径都是 ⌈堆数 ÷ 台数⌉ —— 判据只有一份。
+ *
+ * ⚠⚠ **但「遗迹安全货柜」必须走这条路**（2026-09-13 修的真 BUG）：它是**形状件**（2×2 = 4 格、
+ * 放不下**整件拒收**），F4 裁定要求它靠玩家拾取装舱；若把"网格层一律拒绝"放在形状件分支之前，
+ * 货柜就**再也捡不起来**（唯一入口被自己堵死），而「打捞」那条路会把它当普通散货塞进背包
+ * —— 2000 m³ 的单位体积使 `wormholeUnitsPerSlot` = 0，回退成 **1 单位/格** ⇒ 货柜只占 **1 格**
+ * 且失去方块形状（探针实测：`hold=[box-relic-a 1x1 cargo]`）。故**形状件分支提到网格判定之前**。
+ *
+ * 为什么不把它放进 `wormhole.ts`：① 超载闸要 `ctx`；② 形状件要走货仓格（`wormholeHoldStow`）；
+ * ③ `wormhole.ts` 不许 import 本文件（`state.ts` → `wormhole.ts`，而本文件 import `state.ts` ⇒ 会成环）。
+ */
 export function wormholeTakePileAt(
   state: GameState,
   ctx: SimContext,
@@ -569,21 +584,25 @@ export function wormholeTakePileAt(
 ): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。' }
-  if (run.grid) {
-    return { ok: false, error: '网格层不能逐堆拾取：残骸用「打捞」、母矿用「采集」（都要对应装备）。' }
-  }
   const blocked = wormholeOverloadBlockReason(state, ctx)
   if (blocked) return { ok: false, error: blocked }
-  const holder: { piles?: WormholePile[] } | undefined = run.pendingNode ?? undefined
+  const grid = run.grid
+  const holder: { piles?: WormholePile[] } | undefined = grid
+    ? gridCellAt(grid, grid.pos)
+    : (run.pendingNode ?? undefined)
   const pile = holder?.piles?.[pileIndex]
   if (!pile) return { ok: false, error: '这里没有可拾取的东西。' }
   if (wormholeIsShapedItem(pile.itemId)) {
-    // **形状件**：整件装舱（放不下就不装、堆留在原地）
+    // **形状件**（遗迹安全货柜）：整件装舱 —— 占 2×2 = 4 格，放不下就拒收、堆留在原地（网格层同样适用）
     const stowed = wormholeHoldStow(state, ctx, pile.itemId)
     if (!stowed.ok) return { ok: false, error: stowed.error }
     holder!.piles!.splice(pileIndex, 1)
     const u = wormholeHoldUsage(state, ctx)
     return { ok: true, taken: pile, used: u.used, capacity: u.capacity }
+  }
+  // 网格层：普通堆（残骸 / 母矿）不许逐堆拾取 —— 走打捞 / 采集
+  if (grid) {
+    return { ok: false, error: '网格层不能逐堆拾取：残骸用「打捞」、母矿用「采集」（都要对应装备）。' }
   }
   /**
    * **老档线性层：装舱判据与打捞/采集同一份**（`tryMergeIntoBag`）——
@@ -769,8 +788,20 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   run.turnsLeft -= WORMHOLE_TURN_PER_ACTIVATE
   const taken: WormholeCellPile[] = []
   let full = false
+  let boxLeft = 0
   for (let i = 0; i < rigs && piles.length > 0; i++) {
     const pile = piles[0]!
+    /**
+     * ⚠ **形状件（遗迹安全货柜）不参与"打捞回收"**（2026-09-13 修的真 BUG）：
+     * 它必须由玩家**拾取装舱**（占 2×2 = 4 格、放不下整件拒收 —— 船长 F4 裁定）；
+     * 若让它走 `tryMergeIntoBag`，它会被当普通散货塞进背包，而 2000 m³ 的单位体积使
+     * `wormholeUnitsPerSlot` = 0（回退 1 单位/格）⇒ 货柜只占 **1 格**、方块形状也丢了。
+     * 这里就地停下（**不吞、不挡后面的普通堆**：货柜是"捞空之后才散落"的，永远排在最后）。
+     */
+    if (wormholeIsShapedItem(pile.itemId)) {
+      boxLeft = piles.filter((p) => wormholeIsShapedItem(p.itemId)).length
+      break
+    }
     if (!tryMergeIntoBag(state, ctx, run, pile)) {
       full = true
       break
@@ -788,6 +819,15 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       ` · 剩 ${piles.length} 堆 · 剩 ${run.turnsLeft} 回合。`,
   )
   if (full) addLog(state, 'warn', `🕳 背包放不下：这一批只回收了 ${taken.length} 堆，剩下的仍留在原处。`)
+  // 形状件留在原地时点明"要自己拾取"（不然玩家会以为漏拿了）
+  if (boxLeft > 0) {
+    addLog(
+      state,
+      'warn',
+      `🕳 这一格还有 ${boxLeft} 件「遗迹安全货柜」：**它不是散货、打捞器搬不动**——` +
+        `点堆位自己拾取装舱（占 2×2 = 4 格；货仓放不下会整件拒收）。`,
+    )
+  }
   const finished = piles.length === 0
   if (!finished) {
     return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, taken, left: piles.length, finished: false, mustExtract: run.turnsLeft <= 0 }
