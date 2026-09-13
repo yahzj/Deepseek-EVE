@@ -11,6 +11,7 @@
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
 import type { ShipDef, SimContext } from './types'
+import { uidDefId } from './labels'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -109,6 +110,10 @@ export const WORMHOLE_ADMISSION_TEXT: Record<WormholeAdmissionCode, string> = {
  * **入场校验**（纯函数）：给定船型 id 列表 ⇒ 能否入场 + 总质量 + 回合预算。
  * 口径顺序：艘数 → 船型可识别 → **档位（T5 禁入）** → 总质量上限。
  * 注意：**T5 的折算质量按 0 计**，但它在"档位"这一步就被拦下（不会因为"质量为 0"而漏过）。
+ *
+ * ⚠ **id 口径（2026-09-13 D 批修正）**：入参是**舰队实例 uid**（`state.fleet` 的键）——
+ * 首艘同型实例的 uid 就等于船型 id，但第 2 艘起是 `船型id#2` ⇒ 直接 `ctx.ships.get(id)`
+ * 会在"带两艘同型船"时误判 `unknown-ship`。故按 `uidDefId` 剥掉 `#N` 再查表。
  */
 export function wormholeAdmission(ctx: SimContext, shipIds: readonly string[]): WormholeAdmission {
   const none = (code: WormholeAdmissionCode, totalMass = 0): WormholeAdmission => ({
@@ -122,7 +127,7 @@ export function wormholeAdmission(ctx: SimContext, shipIds: readonly string[]): 
   if (shipIds.length > WORMHOLE_MAX_SHIPS) return none('too-many-ships')
   const ships: ShipDef[] = []
   for (const id of shipIds) {
-    const ship = ctx.ships.get(id)
+    const ship = ctx.ships.get(uidDefId(id))
     if (!ship) return none('unknown-ship')
     ships.push(ship)
   }

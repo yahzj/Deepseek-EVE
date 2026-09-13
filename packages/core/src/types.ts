@@ -599,6 +599,32 @@ export type FoeTactic = 'brawl' | 'orbit' | 'kite'
 export type DefProfile = 'shield' | 'armor' | 'balanced'
 
 /**
+ * **虫洞内敌方选靶模式**（船长 2026-09-13 定 · 虫洞专属机制）。
+ *
+ * 多单位战斗（我方 4 艘同时参战）下，敌人按本模式从**存活我方单位**里挑目标；
+ * 并列（同输出 / 同档 / 多艘非战斗船）一律**等权随机**。
+ *
+ * - `random` 缺省：等权随机（与"每发独立抽敌人"对称）
+ * - `top-output`：打**武器名义 DPS 之和**最高的那艘
+ * - `smallest` / `largest`：按**舰种档**（T1 护卫舰 … T4 战列舰）取最小 / 最大
+ * - `noncombat`：打**非战斗船**（舰种定位 `industrial` 工业/采矿 · `hauler` 货舰；
+ *   `armed` 武装 / `armored` 装甲不算）；**编队里没有非战斗船时退回 `random`**
+ *
+ * ⚠ **只有虫洞内的敌卡会写**（`AnomalyDef.foeTargeting`）——现有 27 张悬赏卡、低安遭遇、
+ * 窝点派生卡一律不写 ⇒ 单船路径连选靶函数都不调用，行为与随机数消费顺序**逐字节不变**。
+ */
+export type FoeTargetingMode = 'random' | 'top-output' | 'smallest' | 'largest' | 'noncombat'
+
+/** 选靶模式的中文名（界面/战报/工具读数用；施工期仅调试面板可见） */
+export const FOE_TARGETING_LABELS: Record<FoeTargetingMode, string> = {
+  random: '随机抽取',
+  'top-output': '打输出最高的',
+  smallest: '打最小的',
+  largest: '打最大的',
+  noncombat: '打非战斗船',
+}
+
+/**
  * **能量武器形态**（2026-09-11 船长裁决⑤：「**立「能量·掷命中」档**」；只对能量主系生效）：
  * - `'beam'`（缺省）= 激光式**光束必中**（不掷命中、不消费 `hitRate`、守方回避不生效），远端做**威力**衰减；
  * - `'spit'` = **能量掷命中**（喷吐 / 投射）——掷命中 + 命中随距离衰减、消费 `hitRate` 并吃守方回避，
@@ -1463,6 +1489,12 @@ export interface AnomalyDef {
   /* ═══ V11 敌方编队字段（缺省有默认：orbit / balanced / 无僚机 / 伤害均分） ═══ */
   /** 敌方战术性格 */
   tactic?: FoeTactic
+  /**
+   * **虫洞内敌方选靶模式**（船长 2026-09-13 定；见 `FoeTargetingMode`）——
+   * **只有虫洞内的敌卡会写**，缺省 = `random`（等权随机）。
+   * 现有 27 张悬赏卡 / 低安遭遇 / 窝点派生卡一律不写 ⇒ 单船路径零变化。
+   */
+  foeTargeting?: FoeTargetingMode
   /** 敌方血型（三层血量比例） */
   defProfile?: DefProfile
   /** 僚机数量 0~2（每架 = threat × foeEscortThreatFrac 的独立单位） */

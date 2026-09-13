@@ -731,6 +731,9 @@ const BATTLE_FIELDS = {
   waveClearAt: { kind: 'persist' },
   autoEscaped: { kind: 'persist' },
   escapeReason: { kind: 'persist' },
+  // **我方编队**（虫洞 D 批 · 2026-09-13）：**必须随档** —— 丢了会让战中重载的多舰战斗
+  // 退化成单船（僚舰凭空消失、结算按 1 艘算），与 `hullEscapeFrac` 当年漏登记同类后果。
+  myFleet: { kind: 'persist' },
   /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
@@ -869,6 +872,8 @@ function cleanBattle(raw: unknown): BattleState | null {
         : undefined,
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),
+    // 我方编队（虫洞 D 批）：坏项丢弃、空表 = 不写（= 单船路径，零迁移）
+    myFleet: cleanMyFleet(b.myFleet),
     // ── 2026-09-12 船长裁定七项（随档）──
     ...(repair !== undefined ? { repair } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
@@ -906,6 +911,26 @@ function cleanCountMap(raw: unknown): Record<string, number> | undefined {
     out[k] = Math.floor(n)
   }
   return out
+}
+
+/**
+ * 我方编队（虫洞 D 批）：`Array<{ tag, shipId }>`——坏项丢弃、同 tag 去重、空表 = undefined
+ * （= 不写字段 = 单船路径，旧档零迁移）。首条恒为主控（`tag = 'player'`），但**不强制**：
+ * 引擎按 tag 认单位，写死了反而会在数据坏掉时整场弃置（宁可少带一艘僚舰也别丢掉整场战斗）。
+ */
+function cleanMyFleet(raw: unknown): BattleState['myFleet'] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const seen = new Set<string>()
+  const out: NonNullable<BattleState['myFleet']> = []
+  for (const item of raw) {
+    const e = asRaw(item)
+    const tag = typeof e.tag === 'string' && e.tag.length > 0 ? e.tag : null
+    const shipId = typeof e.shipId === 'string' && e.shipId.length > 0 ? e.shipId : null
+    if (!tag || !shipId || seen.has(tag)) continue
+    seen.add(tag)
+    out.push({ tag, shipId })
+  }
+  return out.length > 0 ? out : undefined
 }
 
 /** 单架机群生存池条目（三层血齐备才收；机型/闪避/抗性/备用机字段按形状带过） */

@@ -51,6 +51,8 @@ export type {
   BattleBalance,
   FoeTactic,
   DefProfile,
+  // 虫洞内敌方选靶模式（船长 2026-09-13 定；`FoeTargetingMode` + 中文名表见 types.ts）
+  FoeTargetingMode,
   FoeShipDef,
   FoeShipSlot,
   FoeDroneDef, // 2026-09-11 敌机机型表（舰载机群；设计稿 foe-drone-system-20260911.md）
@@ -58,6 +60,9 @@ export type {
   FoeReinforceTrigger,
   SimContext,
 } from './types'
+
+// 虫洞内敌方选靶模式的中文名（界面/战报/工具读数用；施工期仅调试面板可见）
+export { FOE_TARGETING_LABELS } from './types'
 
 export {
   CURRENT_STATE_VERSION,
@@ -584,6 +589,13 @@ export {
   FOE_ELITE_WORD,
   createPlayerSpec,
   playerAmmoType,
+  // 多舰编队开战（虫洞 D 批 · 船长 2026-09-13「4 艘同时参战」）——既有单船路径并列的第二条入口
+  startFleetBattleFor,
+  // 敌方选靶模式（虫洞内专属；单船路径一次随机数都不消费）
+  pickMyUnitTarget,
+  aliveMyUnits,
+  myUnitOutputScore,
+  isNonCombatShipRole,
   typeLayerMult,
   layerMultText,
   BATTLE_STEP_MS,
