@@ -1042,7 +1042,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '陵卫指挥舰',
     role: 'armored',
     subClass: '指挥舰',
-    // 子分类「指挥舰」（船长 2026-09-13）：**D 族特色 = 高护盾比（护盾 60%）** · **全舰单发伤害 +15%（取最高、不叠加）** · 机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05 ｜ 速度 −30% · 货舱 −25%
+    // 子分类「指挥舰」（船长 2026-09-13）：**D 族特色 = 高护盾比（护盾 60%）** · **全舰单发伤害 +15%（取最高、不叠加）** · 机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05 ｜ **速度/机动不再削**（2026-09-13 船长：D 组已非重装族，种族级削弱移除）· 货舱 −25%（子分类级）· 代价 = 甲/壳薄
     slots: { high: 2, mid: 4, low: 4 },
     tier: 2,
     unreleased: true,
@@ -1050,7 +1050,7 @@ export const SHIPS: readonly ShipDef[] = [
     cycleSeconds: 13,
     oreUnitsPerCycle: 16,
     priceIsk: 0,
-    agility: 0.383,
+    agility: 0.45,
     evasion: 0.045,
     hitBonus: 0.11,
     shieldHp: 230,
@@ -1058,7 +1058,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 80,
     cpu: 220,
     droneBayM3: 45,
-    maxSpeedMps: 154,
+    maxSpeedMps: 220,
     warpSpeedAus: 3.0,
     massKg: 5_600_000,
     lockRangeM: 46500,
@@ -1069,7 +1069,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     droneDmgBonus: 0.08,
     fleetDamageBonusPct: 0.15,
-    description: '陵墓的指挥舰：护盾占比高、并给**全编队**的单发伤害加一成半——多艘指挥舰只取最高、不叠加。',
+    description: '陵墓的指挥舰：护盾占比高、并给**全编队**的单发伤害加一成半——多艘指挥舰只取最高、不叠加。代价是甲/壳薄：盾一破就很脆。',
   },
   {
     id: 'sh-wh-d-cruiser',
