@@ -73,9 +73,25 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadSaveFile, serializeSaveFile, addShipToFleet, rareWreckItemIdOf, RARE_WRECK_VOLUME_M3 } from '@whale/core'
+import {
+  loadSaveFile,
+  serializeSaveFile,
+  addShipToFleet,
+  rareWreckItemIdOf,
+  RARE_WRECK_VOLUME_M3,
+} from '@whale/core'
 import type { GameState } from '@whale/core'
-import { GALAXIES, MODULES } from '@whale/data'
+import { GALAXIES, ITEMS, MODULES, buildSimContext } from '@whale/data'
+// 虫洞·货仓装不下 / 超载档要用到的核心单点（走深路径，与 `wormhole-econ` 同一套做法）
+import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
+import { wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
+import {
+  wormholeHoldCapacityOf,
+  wormholeEnsureSalvagePiles,
+  wormholeEnsureVeinPiles,
+  wormholeHoldSyncCargo,
+  wormholeHoldUsage,
+} from '../packages/core/src/wormholeSalvage'
 
 const SAVE_PATH = join(process.env.APPDATA ?? '', 'whale-idle', 'save.json')
 const OUT_DIR = join(process.cwd(), 'docs', 'test-saves')
@@ -1516,7 +1532,132 @@ function injectWormhole(state: GameState): string[] {
   return notes
 }
 
+/**
+ * **虫洞·货仓装不下 / 超载**验收档（船长 2026-09-13：「当玩家打捞/采矿超出了背包容量时会怎么样？
+ * 请给我一个这种情况的虫洞存档，我实机测试下」）。
+ *
+ * `wh-bag`（**装不下**）：货仓 19/20 格已占 ⇒ 只剩 1 格。打捞/采集**不会**变成超载，而是
+ * 「**这一批只回收放得下的那几堆，剩下的留在原地**」（打捞器已经开工 ⇒ 那一回合照扣）。
+ *
+ * `wh-overload`（**超载**）：编队只剩 3 艘（沉船缩容）⇒ 可用格 20→15，货仓仍装 19 格 ⇒ 超载：
+ * 扫描/前往/打捞/采集/拾取全封，界面出红条 + 「一键抛到容量内」；**抛货永远可用**（不软锁）。
+ *
+ * 共同场面：4× 长尾鲨（T3）· 满配搜打撤（低槽 打捞器 MK3 + 采集器 MK3）· **第 2 层** ·
+ * 站在**舰船墓场**（已铺 3~10 堆残骸）· 同层一格**矿脉**（已扫描、1 回合可达）·
+ * 出口已知（信标读过）· 守卫没清（撤离随时可走、深入要先打守卫）。
+ */
+function injectWormholeBag(state: GameState, overload: boolean): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  for (const k of ['gunnery', 'fire-control', 'reload-drills', 'shield-operation', 'armor-tuning', 'vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
+  }
+  notes.push('钱包 +30,000,000 ISK · 战斗系技能 Lv3 · 弹药三型 ×5000 · 修理组件各 ×20')
+  // 满配搜打撤编队（2026-09-13「给作业开」：作业装备走低槽）
+  const fit = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+    low: ['mod-salvager-3', 'mod-miner-3'],
+  }
+  const uids: string[] = []
+  for (let i = 0; i < 4; i++) {
+    const uid = addShipToFleet(state, 'sh-thresher')
+    const s = state.fleet[uid]!
+    s.customName = `长尾鲨${['①', '②', '③', '④'][i]}·搜打撤满配（打捞器+采集器在低槽）`
+    s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  notes.push('4× 长尾鲨级巡洋（T3）· 满配：5×动能 MK2 + 推进/双盾/索敌 + **低槽 打捞器 MK3 + 采集器 MK3**')
+  // 进洞（第 2 层）并把场面摆成"站在墓场上、货仓快满"
+  const ctx = buildSimContext()
+  const seed = 20260913
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.depth = 2
+  run.grid = wormholeMakeGrid(seed, 2, 0)
+  const grid = run.grid
+  const cells = grid.cells
+  const pick = (i: number): (typeof cells)[number] => cells[i % cells.length]!
+  // 当前格 = 舰船墓场（铺 3~10 堆普通残骸 + 每 3 堆判一次的稀有残骸）
+  const here = pick(3)
+  here.place = 'graveyard'
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  grid.start = { q: here.q, r: here.r }
+  if (!grid.visited.includes(here.key)) grid.visited.push(here.key)
+  if (!grid.scanned.includes(here.key)) grid.scanned.push(here.key)
+  wormholeEnsureSalvagePiles(state, here)
+  notes.push(`第 2 层 · 站在舰船墓场（Q${here.q} R${here.r}）：已铺 ${(here.piles ?? []).length} 堆残骸（稀有在前）`)
+  // 一格矿脉（扫出来，走过去 1 回合就能测"采集装不下"）
+  const vein = pick(9)
+  if (vein.key !== here.key) {
+    vein.place = 'vein'
+    vein.piles = []
+    wormholeEnsureVeinPiles(state, vein)
+    if (!grid.scanned.includes(vein.key)) grid.scanned.push(vein.key)
+    notes.push(`同层矿脉（Q${vein.q} R${vein.r}）：${(vein.piles ?? []).length} 堆虚空母矿 · 已扫描（点地图前往，1 回合）`)
+  }
+  // 出口已知（信标读过）⇒ 撤离/深入都能试；守卫故意**没清**
+  grid.exitKnown = true
+  const exitKey = `${grid.exit.q},${grid.exit.r}`
+  if (!grid.scanned.includes(exitKey)) grid.scanned.push(exitKey)
+  run.bossCleared = 0
+  run.turnsLeft = Math.max(run.turnsLeft, 18)
+  /**
+   * **把货仓填到只剩 2 格**（按真实容量算）：网格 8 列 ⇒ 一条货条最多横着占满一整行（8 格），
+   * 所以用**多种货**各切一条 8 格（背包不变式：一种物品一条；单条 26 格横竖都放不下 ⇒ 会直接判超载）。
+   * 留 2 格 < 一批打捞量（8 台打捞器）⇒ 一点打捞就会撞上"装不下"。
+   */
+  run.hold = undefined as never
+  const capCells = wormholeHoldCapacityOf(state, ctx)
+  const fillTarget = Math.max(1, capCells - 2)
+  const fillIds = ITEMS.filter((i) => i.kind === 'ore' || i.kind === 'mineral').map((i) => i.id)
+  run.bag = []
+  let left = fillTarget
+  for (const id of fillIds) {
+    if (left <= 0) break
+    const take = Math.min(8, left) // 8 格 = 一整行（unitM3 = 1 ⇒ 500 单位/格）
+    run.bag.push({ itemId: id, units: take * 500 })
+    left -= take
+  }
+  if (left > 0) throw new Error(`货仓填充不足：还差 ${left} 格（可用的原矿/矿物条目不够切条）`)
+  wormholeHoldSyncCargo(state, ctx)
+  const cap = wormholeHoldUsage(state, ctx)
+  notes.push(
+    `货仓：按真实容量填到**只剩 ${cap.capacity - cap.used} 格**（已用 ${cap.used}/${cap.capacity} 格 · ` +
+      `每条 8 格铺满整行、共 ${run.bag.length} 种货）· 一批打捞量 = ${4 * 2} 台打捞器`,
+  )
+  if (overload) {
+    run.fleet = run.fleet.slice(0, 3)
+    state.wormhole.lastFleetLost = 1
+    const after = wormholeHoldUsage(state, ctx)
+    notes.push(
+      `**已造成超载**：编队只剩 3 艘（模拟沉船）⇒ 可用格 ${after.capacity} 格、货仓仍装 ${after.used} 格 ⇒ 超载 = ${after.overload}`,
+    )
+    notes.push('试法：点个地点会提示「货仓超载…先抛货」；到「背包」页点「一键抛到容量内」或逐条抛弃 ⇒ 立刻恢复可动')
+  } else {
+    notes.push('试法：点「打捞」⇒ 只回收放得下的那几堆，并提示「货仓放不下：这一批只回收了 N 堆，剩下的仍留在原处」')
+  }
+  notes.push('⚠ 入口只在调试模式下出现：DevTools 执行 localStorage.setItem(\'whale-idle:debug\',\'1\') 后刷新')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
+  'wh-bag': (s) => injectWormholeBag(s, false),
+  'wh-overload': (s) => injectWormholeBag(s, true),
   // wormhole（2026-09-13）：虫洞验收档（4×巡洋 MK2 基准编队 + T4/T5 对照 + 补给）
   wormhole: injectWormhole,
   // pd（2026-09-11 机群批 S5）：敌方机群 + 巨构近防炮验收档（三船对照 + 近防炮三档）

@@ -178,7 +178,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 19_000,
     cycleSeconds: 30,
     oreUnitsPerCycle: 140,
-    priceIsk: 1_350_000,
+    priceIsk: 9_000_000, // 2026-09-13 价位重排：T3 工业（鲸吞 0.9M ×10；原 1.35M）
     agility: 0.3,
     evasion: 0,
     hitBonus: 0.1,
@@ -205,7 +205,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 26_000,
     cycleSeconds: 36,
     oreUnitsPerCycle: 110,
-    priceIsk: 1_900_000,
+    priceIsk: 67_500_000, // 2026-09-13 价位重排：T4 货舰（剑鱼 24M ×2.81，保持同档比；原锚矿舰的算法作废；原 13.5M）
     agility: 0.28,
     evasion: 0,
     hitBonus: 0.1,
@@ -571,6 +571,43 @@ export const SHIPS: readonly ShipDef[] = [
     description: '掠食者武装部门最凶悍的咬合者：厚盾重炮的突击巡洋舰，专为贴脸近战而生——舰体动能炮组特调，动能武器威力额外加成（限定奇货）。',
   },
 
+  // ══════════ 协会测绘处 · 测量线（2026-09-13 船长：「添加一艘新的巡洋舰，子分类为侦查舰。所属为
+  //   深空工业协会 · 测绘处。最主要的效果就是虫洞扫码范围+1.槽位合计为10个。无人机舱稍大。」
+  //   ＋追加：「货仓可以乘*3」「采矿提高到39单位」「船和蓝图放入奇货」「跟虫洞挂 unreleased」）══════════
+  {
+    id: 'sh-nautilus',
+    name: '鹦鹉螺级测绘巡洋舰',
+    role: 'armed',
+    subClass: '侦察舰', // 2026-09-13 船长：**协会功能舰也写子分类**（`content:check` 同步放宽为"白名单 + 非虫洞登记表"）
+    slots: { high: 4, mid: 3, low: 3 }, // **10 槽**（船长给定；武装舰契约「高槽 ≥ 低槽+1」⇒ 4 ≥ 4 ✔）
+    tier: 3,
+    cargoM3: 6600, // 船长：「货仓可以乘*3」（原案 2,200 ×3 ⇒ 虫洞背包 ⌊6,600÷500⌋ = 13 格）
+    cycleSeconds: 14,
+    oreUnitsPerCycle: 39, // 船长：「采矿提高到39单位」
+    priceIsk: 9_000_000, // 船长定：贴长尾鲨级（同档同价）
+    unreleased: true, // 船长定：跟随虫洞挂闸门（施工期对玩家不可见；上线时删本字段）
+    agility: 0.56,
+    evasion: 0.16,
+    hitBonus: 0.14,
+    powerBonus: 0.55, // T3 武装带 0.6~0.7 之下、王鲭级 0.3 之上（功能舰定位）
+    droneDmgBonus: 0.10, // 机舱 80（同级 50）⇒ 机群是它的次要输出（介于梭鱼 0.08 与王鲭 0.12）
+    /** **主效果**：虫洞扫码范围 +1 圈——对编队**求和**（多艘可叠加），入洞与深入下层都生效 */
+    wormholeScanRadiusBonus: 1,
+    shieldHp: 300,
+    shieldResist: { kinetic: 0.25 }, // 协会通用口径（不占掠食者线签名——它靠机动与视野吃饭）
+    armorHp: 145,
+    hullHp: 165, // 三层共 610（T3 目标 648~755 的偏下沿：少 1~2 槽、机舱与货舱都大）
+    cpu: 340,
+    droneBayM3: 80, // 船长：「无人机舱稍大」（同级巡洋 50；母舰 320 那一档不动）
+    maxSpeedMps: 280, // 同级最快（同级 258~275；侦察定位）
+    warpSpeedAus: 3.4,
+    massKg: 6_800_000, // 非装甲 ⇒ 等效质量落 T3 带（5.8~13M）
+    lockRangeM: 42_000,
+    signatureM: 92,
+    scanResMm: 560, // 同级最高分辨率（测绘）
+    description: '协会测绘处的测量巡洋舰：机巢与分辨率同级最高、货舱宽裕；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）——它负责先把路看清。',
+  },
+
   // ══════════ 甲壳重装线（装甲/结构最厚 + 装甲层高抗） ══════════
   {
     id: 'sh-tortoise',
@@ -608,7 +645,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 12000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 22,
-    priceIsk: 1_100_000, // 2026-09-13 船长：旧重装舰对齐同级后价格跟涨（760k → 1.1M）
+    priceIsk: 6_000_000, // 2026-09-13 价位重排：T3 装甲（陆龟 0.45M ×13.3；原 1.1M）
     agility: 0.46,
     evasion: 0.08,
     hitBonus: 0.12,
@@ -635,7 +672,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 19000,
     cycleSeconds: 14,
     oreUnitsPerCycle: 26,
-    priceIsk: 2_200_000,
+    priceIsk: 90_000_000, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15；原 16.5M）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -654,10 +691,13 @@ export const SHIPS: readonly ShipDef[] = [
     description: '重装线的顶点：传闻用整颗小行星的岩壳锻造（限定奇货，需高声望）。',
   },
 
-  // ══════════ T4/T5 主战船「模子」（2026-09-12 船长「T4,T5 可以先立个模子」）══════════════
-  // ⚠ **状态 = 壳体/模子**：只登记**舰体**（档位/槽位/CPU/血量按档位口径外推），
-  //   **暂不上市场、不接蓝图、不接任何卡** ⇒ `priceIsk` 必须为 **0**（定制船口径，
-  //   `content:check`「舰船价格口径」据此判定）。数值**待船长定案**后再决定上架与定价。
+  // ══════════ T4/T5 主战船（2026-09-12 船长「T4,T5 可以先立个模子」）══════════════
+  // ⚠ **状态（2026-09-13 船长四条裁定后分写）**：
+  //   · **巨齿鲨级战列舰（T4）= 已定案**：数值照用 2026-09-12 外推值（档位/槽位/CPU/血量/火力加成
+  //     均落在阶梯上）+ 补掠食者线抗性签名；走**仅图纸制造**（市场行 `playerBuyable: false` 只收不卖
+  //     ⇒ 本字段 `priceIsk` 仍必须为 **0**，`content:check`「舰船价格口径」据此判定）；
+  //     蓝图 `sbp-megalodon` 上市场奇货（900M · 声望 11）。
+  //   · **邓氏鱼级旗舰（T5）= 仍是壳体/模子**：**不上市场、不接蓝图、不接任何卡**，数值待定案。
   //   外推口径（2026-09-12 船长修订）：**槽位 T4 战列舰 = 14（平均值）· T5 旗舰 = 18**
 //   （旧的「总槽位 3~12」契约同日废除——它当初是为驱逐舰设的）；CPU T3 = 350 ⇒ **×1.4/档**；
   //   血量 = 档位阶梯（锚 T2 = 372、**×1.85/档** ⇒ **T4 = 1,273 / T5 = 2,355**）；
@@ -677,8 +717,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.35,
     evasion: 0.06,
     hitBonus: 0.06,
-    powerBonus: 0.85, // 模子待定（武装舰必填；阶梯 牛鲨 0.7 → T4 0.85）
+    powerBonus: 0.85, // 2026-09-13 定案（武装舰必填；阶梯 牛鲨 0.7 → T4 0.85）
     shieldHp: 675,
+    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制；2026-09-13 补上缺失的线签名）
     armorHp: 280,
     hullHp: 318, // 三层共 1,273（T4 档位目标）；武装族定位 = 盾 > 结构 > 甲
     cpu: 490, // T3 350 × 1.4
@@ -689,7 +730,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26_000,
     signatureM: 300,
     scanResMm: 300,
-    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢。',
+    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢（仅可制造）。',
   },
   {
     id: 'sh-dunkleosteus',
@@ -756,7 +797,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 8500,
     cycleSeconds: 11,
     oreUnitsPerCycle: 18,
-    priceIsk: 480_000,
+    priceIsk: 2_400_000, // 2026-09-13 价位重排：T3 货舰（飞鱼 0.21M ×11.4；原 480k）
     agility: 0.56,
     evasion: 0.3,
     hitBonus: 0.08,
@@ -783,7 +824,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 14000,
     cycleSeconds: 12,
     oreUnitsPerCycle: 16,
-    priceIsk: 1_250_000,
+    priceIsk: 24_000_000, // 2026-09-13 价位重排：T4 货舰（旗鱼 2.4M ×10；原 4.8M）
     agility: 0.5,
     evasion: 0.28,
     hitBonus: 0.08,

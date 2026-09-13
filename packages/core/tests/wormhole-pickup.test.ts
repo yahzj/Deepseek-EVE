@@ -173,7 +173,11 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     const run = state.wormhole.run!
     const cap = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
     expect(cap).toBe(5)
-    // 造一个刚好装满的货仓（每格 500 单位）
+    /**
+     * 造一个刚好装满 5 格的货仓（每格 500 单位 ⇒ 5 格，正好一条 `5×1` 细条）；再并 1 单位 ⇒ **6 格**。
+     * ⚠ **格数规范**（船长 2026-09-13：「必须是矩形」）：6 格的最小矩形块是 `3×2`（这条仓只有 1 行）
+     * ⇒ 落形全都放不下 ⇒ 整条回滚拒收（旧口径同样拒收，这里锁的是**形状**变了、判据没松）。
+     */
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 }]
     enterLegacy(state, 9, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 1 }])
     const bad = wormholeTakePileAt(state, ctx, 0)
@@ -181,7 +185,7 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     expect(bad.error).toContain('放不下')
     expect(nodePiles(state).length).toBe(1) // 堆还在：没被吞掉
     expect(run.bag).toEqual([{ itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 }]) // 货也没被改动
-    // 空出一格 ⇒ 同一堆就能拿
+    // 少装一格（4 格 + 1 单位仍算 5 格，`5×1` 细条装得下）⇒ 同一堆就能拿
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: (cap - 1) * 500 }]
     const ok = wormholeTakePileAt(state, ctx, 0)
     expect(ok.ok).toBe(true)

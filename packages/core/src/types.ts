@@ -379,6 +379,10 @@ export interface MarketBalance {
   rareTier3Weight: number
   /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**，稀有抽取与奇货掷骰**两个渠道都乘此值**） */
   blueprintWeight: number
+  /** **一次性舰船蓝图**的权重乘子（2026-09-13 船长：「还是有惩罚吧，按50%算」）——
+   *  判定 = 市场行的 `refId` 在 `ctx.shipBlueprints` 里是 `singleUse` ⇒ 用本值替代 `blueprintWeight`
+   *  （普通蓝图仍 ×`blueprintWeight`）；两个渠道（rare 抽取 / 奇货掷骰）同口径。 */
+  singleUseBlueprintWeight: number
   /** 蓝图书在稀有渠道的订单寿命（毫秒；2026-09-10 船长定 6 小时）——
    *  权重降到 5% 后书出现得稀，若仍只挂 36 分钟玩家基本只会错过；
    *  奇货渠道的蓝图原本就走 exotic 档 6 小时，与此一致。 */

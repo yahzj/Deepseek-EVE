@@ -44,6 +44,7 @@ import {
   wormholeEnter,
   wormholeExtract,
   wormholeFoeThreat,
+  wormholeGridScan,
   wormholeLayerRewardMul,
   wormholeLayerThreat,
   wormholeMakeNode,
@@ -51,17 +52,46 @@ import {
   wormholeScanBonusOf,
   wormholeStepCost,
 } from '../packages/core/src/wormhole'
-import { advanceWormhole, wormholeActivateAt, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
-import { wormholeTakePileAt } from '../packages/core/src/wormholeSalvage'
+import { advanceWormhole, wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../packages/core/src/wormholeBattle'
+import {
+  wormholeCollectOreAt,
+  wormholeDiscardToFit,
+  wormholeOverloadBlockReason,
+  wormholeLootValueIsk,
+  wormholeMinersOf,
+  wormholeSalvageAt,
+  wormholeSalvagersOf,
+  wormholeTakePileAt,
+} from '../packages/core/src/wormholeSalvage'
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
-import { gridCellAt } from '../packages/core/src/wormholeGrid'
+import { gridCellAt, gridScanTargets, hexDistance, hexNeighbors, isExitCell } from '../packages/core/src/wormholeGrid'
+import type { WormholeGridState, WormholePlace } from '../packages/core/src/wormholeGrid'
 
 const ctx: SimContext = buildSimContext()
 
-/** 参考编队：4× T3 长尾鲨（导弹巡满配 + 支援件）——设计稿 §4.4 的「4×T3」编队 */
+/**
+ * 参考编队（三套 fit · F3c 第二段）：
+ * - **`full`（默认 · 满配 · 2026-09-13 船长定「给作业开，并添加你自己决定的满配配置」）**：
+ *   **11 个槽位全插满** —— 高槽 5×导弹 MK2（火力**一点不让**）、中槽 推进 + 双盾 + 索敌、
+ *   低槽 **打捞器 MK3 + 采集器 MK3**（作业装备改归低槽后不再跟武器抢位）。
+ *   CPU 255 / 345 ✓（实测脚本核对过槽数与 CPU，见提交说明）。
+ * - `combat`：**老难度基准**（5×导弹 + 3 中槽 + 稳像/装甲低槽）——不带作业装备，纯战斗读数用。
+ * - `old`：**旧口径对照**（作业装备还占高槽 ⇒ 3×导弹 + 打捞器 + 采集器）——用来给船长看"改槽前"的差距。
+ */
 const REF_SHIP = 'sh-thresher'
-const REF_FIT = {
+export type RefFit = 'full' | 'combat' | 'old'
+const REF_FIT_FULL = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+  mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+  low: ['mod-salvager-3', 'mod-miner-3'],
+}
+const REF_FIT_COMBAT = {
+  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+  mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
+  low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+}
+const REF_FIT_OLD = {
+  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-1', 'mod-miner-1'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
@@ -75,6 +105,13 @@ const SKILLS: Record<string, number> = {
   'targeting': 3,
 }
 
+/**
+ * **用哪套装配**（`--fit=full|combat|old`，默认 `full` 满配）：
+ * 解析表 / 逐卡模式看战斗读数，整趟模式还要看"能不能捞"（不带作业装备 ⇒ 一分钱也捞不上来）。
+ */
+const FIT_ARG = (process.argv.find((a) => a.startsWith('--fit=')) ?? '--fit=full').split('=')[1]
+const ANALYTIC_FIT: RefFit = FIT_ARG === 'combat' ? 'combat' : FIT_ARG === 'old' ? 'old' : 'full'
+
 const LAYERS = Number((process.argv.find((a) => a.startsWith('--layers=')) ?? '--layers=8').split('=')[1])
 const WAVES = Math.max(1, Number((process.argv.find((a) => a.startsWith('--waves=')) ?? '--waves=1').split('=')[1]))
 const SEED_N = Math.max(1, Number((process.argv.find((a) => a.startsWith('--seeds=')) ?? '--seeds=5').split('=')[1]))
@@ -83,15 +120,16 @@ const STR = process.argv.find((a) => a.startsWith('--str='))
 const STRENGTH = STR ? Number(STR.split('=')[1]) : undefined
 const SEEDS = Array.from({ length: SEED_N }, (_, i) => 1 + i * 6)
 
-function makeFleet(seed: number): { state: GameState; uids: string[] } {
+function makeFleet(seed: number, fit: RefFit = 'full'): { state: GameState; uids: string[] } {
   const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 20_000_000
   for (const [id, lv] of Object.entries(SKILLS)) state.skills.trained[id] = lv
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[key] = 5_000
+  const refFit = fit === 'old' ? REF_FIT_OLD : fit === 'combat' ? REF_FIT_COMBAT : REF_FIT_FULL
   const uids: string[] = []
   for (let i = 0; i < 4; i++) {
     const uid = addShipToFleet(state, REF_SHIP)
-    state.fleet[uid]!.fitted = { high: [...REF_FIT.high], mid: [...REF_FIT.mid], low: [...REF_FIT.low] }
+    state.fleet[uid]!.fitted = { high: [...refFit.high], mid: [...refFit.mid], low: [...refFit.low] }
     uids.push(uid)
   }
   state.shipId = uids[0]!
@@ -114,8 +152,9 @@ function runOneBattle(
   kind: 'node' | 'boss' | 'extract',
   nodeIndex: number,
   cardIndex?: number,
+  fit: RefFit = 'full',
 ): Cell {
-  const { state, uids } = makeFleet(seed)
+  const { state, uids } = makeFleet(seed, fit)
   const cardId = cardIndex === undefined ? wormholeCardIdFor(depth, nodeIndex) : WORMHOLE_FOE_CARD_IDS[cardIndex]!
   const battle = startFleetBattleFor(state, ctx, uids, cardId, 0, null, { depth, kind, waves: WAVES, strengthMul: STRENGTH })
   if (!battle) return { won: 0, n: 1, sec: 0, hpFrac: 0 }
@@ -211,35 +250,278 @@ function battleHpFrac(battle: GameState['expedition']['battle']): number {
   return max > 0 ? cur / max : 1
 }
 
+/**
+ * **入港读数**（F3c 第二段 · 2026-09-13）。
+ *
+ * ⚠ 为什么按**仓库/装备库/书架**读、而不是按 `run.bag` 算：虫洞的口径是「**撤离成功才入港**，
+ * 半路全损一起丢」⇒ 只有真正落到仓库里的东西才算收益。逐层读数就是这套绝对量的**差分**。
+ */
+interface Income {
+  /** 虚空母矿（单位数 / 基础卖价 ISK） */
+  oreUnits: number
+  oreIsk: number
+  /** 残骸按**回收炉拆解**估值（`baseSellPriceIsk = 1`，只看基础价会算成 0） */
+  wreckIsk: number
+  /** 遗迹安全货柜件数（内容物待拆解，不计 ISK——专设一列免得被误读成"没收益"） */
+  boxes: number
+  /** 族专属无人机（件数 + 基础价 ISK） */
+  drones: number
+  droneIsk: number
+  /** 装备库件数 / 蓝图书架张数（老口径的随行战利品） */
+  modules: number
+  blueprints: number
+}
+
+function incomeOf(state: GameState): Income {
+  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, boxes: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
+  for (const [id, units] of Object.entries(state.warehouse.items)) {
+    const n = Math.max(0, Math.floor(units))
+    if (n <= 0) continue
+    if (id === WORMHOLE_ORE_ITEM_ID) {
+      acc.oreUnits += n
+      acc.oreIsk += n * (ctx.items.get(id)?.baseSellPriceIsk ?? 0)
+    } else if (id.startsWith('wreck-')) {
+      acc.wreckIsk += wormholeLootValueIsk(ctx, id, n)
+    } else if (id.startsWith('box-relic-')) {
+      acc.boxes += n
+    } else if (id.startsWith('drone-wh-')) {
+      acc.drones += n
+      acc.droneIsk += n * (ctx.items.get(id)?.baseSellPriceIsk ?? 0)
+    }
+  }
+  for (const n of Object.values(state.moduleBay ?? {})) acc.modules += Math.max(0, Math.floor(n))
+  for (const n of Object.values(state.blueprintStock ?? {})) acc.blueprints += Math.max(0, Math.floor(n))
+  return acc
+}
+
+const INCOME_KEYS = [
+  'oreUnits',
+  'oreIsk',
+  'wreckIsk',
+  'boxes',
+  'drones',
+  'droneIsk',
+  'modules',
+  'blueprints',
+] as const satisfies ReadonlyArray<keyof Income>
+
+/**
+ * **趟内已收集账**（还没入港）：读 `run.bag`（散货）+ `run.hold`（形状件：遗迹安全货柜）。
+ *
+ * ⚠ 为什么要和 `incomeOf` 分开：虫洞的收益**只有撤离成功才入港**（半路全损一起丢）⇒
+ * 仓库差分只能给出"整趟到手多少"，给不出"**哪一层收集了多少**"。逐层配平必须看后者
+ * （否则中途收集的东西会被记到"撤离那一层"的账上，层收益曲线全歪）。
+ */
+interface Ledger {
+  oreUnits: number
+  oreIsk: number
+  wreckIsk: number
+  boxes: number
+}
+
+function runLedger(state: GameState): Ledger {
+  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, boxes: 0 }
+  for (const slot of state.wormhole.run?.bag ?? []) {
+    const n = Math.max(0, Math.floor(slot.units))
+    if (n <= 0) continue
+    if (slot.itemId === WORMHOLE_ORE_ITEM_ID) {
+      acc.oreUnits += n
+      acc.oreIsk += n * (ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0)
+    } else if (slot.itemId.startsWith('wreck-')) {
+      acc.wreckIsk += wormholeLootValueIsk(ctx, slot.itemId, n)
+    }
+  }
+  for (const p of state.wormhole.run?.hold?.placements ?? []) {
+    if (p.kind === 'box') acc.boxes += 1
+  }
+  return acc
+}
+
+function subLedger(a: Ledger, b: Ledger): Ledger {
+  return {
+    oreUnits: a.oreUnits - b.oreUnits,
+    oreIsk: a.oreIsk - b.oreIsk,
+    wreckIsk: a.wreckIsk - b.wreckIsk,
+    boxes: a.boxes - b.boxes,
+  }
+}
+
+/** 收集额（散货估值 + 货柜按件；货柜内容物待拆解 ⇒ 不计 ISK） */
+function ledgerIsk(l: Ledger): number {
+  return l.oreIsk + l.wreckIsk
+}
+
+function subIncome(a: Income, b: Income): Income {
+  const out = { ...a }
+  for (const k of INCOME_KEYS) out[k] = a[k] - b[k]
+  return out
+}
+
+/** 一趟到手的 **ISK**（货柜不计：内容物要等拆解批；件数单独报） */
+function incomeIsk(i: Income): number {
+  return i.oreIsk + i.wreckIsk + i.droneIsk
+}
+
+/** 层内动作计数（政策读数：一趟里扫了几次 / 走了几步 / 打捞·采集几次 / 打了几场） */
+interface LayerActs {
+  scans: number
+  moves: number
+  salvages: number
+  collects: number
+  fights: number
+  /** 一键抛货次数（超载后玩家必须手动抛；政策用游戏自带的那个按钮） */
+  discards: number
+  /** **"磨回合"次数**：旧闸门（撤离要求守卫已清）逼出来的歪招（原地转圈等回合耗尽）。
+   *  船长 2026-09-13 改裁定「玩家可以无条件开始撤离」后**恒为 0**——留着它当回归证据。 */
+  waits: number
+}
+
 interface RunOutcome {
   /** 结束方式：撤离成功 / 全损 */
   result: 'extract' | 'lost' | 'unfinished'
   depth: number
   shipsLeft: number
-  oreUnits: number
-  isk: number
   /** 结束时的编队粗残血 */
   hpFrac: number
+  /** 合计到手（撤离成功才有货；全损 = 全 0） */
+  income: Income
+  /** **逐层"收集"ISK**（下标 = 层号 - 1；收集 ≠ 到手——半路全损就全丢） */
+  layerCollected: number[]
+  /** 逐层收集到的货柜件数（内容物待拆解，不计 ISK） */
+  layerBoxes: number[]
+  /** 逐层动作数（回合账） */
+  layerActs: LayerActs[]
+  acts: LayerActs
+  turnsLeft: number
+  turnsTotal: number
+  /** **为什么停**（只对"未结束"有意义：某个动作被拒 / 盘面走遍仍没信标 / 步数上限） */
+  stopReason: string
+  /** `--logs` 时的引擎日志尾（诊断"这趟到底怎么死的"） */
+  logs?: string[]
+}
+
+/** 整趟政策参数（`--runs` 模式） */
+interface Policy {
+  /** 粗残血低于它就撤（默认 0.5） */
+  extractHp: number
+  /** 到这一层就撤（默认 3） */
+  maxDepth: number
+  /** 回合保留：剩这么少就不再收租，直奔守卫/出口（默认 2） */
+  reserve: number
+  /** 血量低于它就不再主动去"舰船信号"（到了就地开打，没法挑） */
+  shipHpMin: number
+  /**
+   * 血量低于它就**不再硬打层末守卫**，直接开始撤离（`0` = 永远硬打）。
+   *
+   * 船长 2026-09-13 改裁定后：撤离**无条件可以开始**（只是照打撤离拦截战）⇒ 这条是"保守打法"的开关：
+   * 残血时保住已收集的货，把守卫（与更深层）让给下一次。负数/0 = 激进打法（永远硬打守卫拿深度）。
+   */
+  bossHpMin: number
 }
 
 /**
- * **跑一整趟**（真状态机 + 真战斗）：进洞 → 逐节点打 → 层末先打守卫 → 按政策决定深入或撤离。
- * 政策（模拟"一个正常玩家"）：`--extract-hp=`（粗残血低于它就撤，默认 0.5）与 `--max-depth=`（默认 3）。
+ * **层内政策**（"一个正常玩家"· F3c 第二段）：**只走玩家能走的路**——出口位置在
+ * `grid.exitKnown === false` 时**不许偷看** `grid.exit`（信标到达才置 true），没读到就继续探索。
+ *
+ * 优先级（回合紧张时换序）：遗迹 → 墓场 → 矿脉 → 信标 → 舰船信号；都要"已扫描、没到过"，
+ * 并按装备与血量过滤（没打捞器不去墓场/遗迹、没采集器不去矿脉、血太少不主动撞舰船信号）。
  */
-function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutcome {
-  const { state, uids } = makeFleet(seed)
-  const orePrice = ctx.items.get(WORMHOLE_ORE_ITEM_ID)?.baseSellPriceIsk ?? 0
-  const before = state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0
+function pickTarget(
+  g: WormholeGridState,
+  rigs: number,
+  miners: number,
+  hp: number,
+  urgent: boolean,
+): { q: number; r: number } | null {
+  const prio: WormholePlace[] = urgent
+    ? ['beacon', 'vein', 'graveyard', 'ruins', 'ship']
+    : ['ruins', 'graveyard', 'vein', 'beacon', 'ship']
+  for (const place of prio) {
+    if ((place === 'graveyard' || place === 'ruins') && rigs <= 0) continue
+    if (place === 'vein' && miners <= 0) continue
+    if (place === 'ship' && hp < 0.6) continue
+    if (place === 'beacon' && g.exitKnown === true) continue
+    const cands = g.cells.filter(
+      (c) => c.place === place && g.scanned.includes(c.key) && !g.visited.includes(c.key),
+    )
+    if (cands.length === 0) continue
+    // 就近走（回合与距离无关，这只是"像人一样不瞎绕"）
+    cands.sort((a, b) => hexDistance(a, g.pos) - hexDistance(b, g.pos) || a.key.localeCompare(b.key))
+    return { q: cands[0]!.q, r: cands[0]!.r }
+  }
+  return null
+}
+
+/**
+ * **跑一整趟**（真状态机 + 真战斗 + 真打捞/采集）：进洞 → 逐层按政策扫/走/打捞/采集/开战 →
+ * 找信标 → 打层末守卫 → 按政策决定深入或撤离 ⇒ 读**真正入港**的收益与逐层分布。
+ */
+function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
+  const { state, uids } = makeFleet(seed, fit)
+  const before = incomeOf(state)
   const enter = wormholeEnter(state, ctx, uids, seed)
   if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
   let guard = 0
   /** 最近一场战斗结束时的**三层血口径**残血（政策用它；护盾不落档，见 `battleHpFrac`） */
   let lastFrac = 1
-  /** 已经打过"地点战"的层号（网格层的政策：一层一场，避免同一层反复开战刷读数） */
-  let foughtLayer = 0
-  while (state.wormhole.run && guard++ < 400) {
+  /**
+   * **逐层动作数**（回合 = 硬约束 ⇒ 每层花在扫/走/打捞/采集/交战上几回合，是配平的关键读数）。
+   * `bump()` 记一次动作；整趟的合计在返回时按层求和。
+   */
+  const layerActs: LayerActs[] = []
+  const actsAt = (d: number): LayerActs => {
+    while (layerActs.length < d) {
+      layerActs.push({ scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0 })
+    }
+    return layerActs[d - 1]!
+  }
+  const bump = (k: keyof LayerActs): void => {
+    actsAt(state.wormhole.run?.depth ?? 1)[k] += 1
+  }
+  const layerCollected: number[] = []
+  const layerBoxes: number[] = []
+  let lastSnap = runLedger(state)
+  const turnsTotal = enter.run?.turnsTotal ?? 0
+  /** **停止原因**（只对"未结束"有意义：把"卡在哪一步"如实带出来，而不是让人对着 0 收益猜） */
+  let stopReason = ''
+  const stop = (why: string): void => {
+    stopReason = why
+  }
+  /** `--trace`：逐步打印政策动作（核对政策用；默认关） */
+  const trace = process.argv.includes('--trace')
+  let step = 0
+  /** 最后一次看到的剩余回合（run 一结束就读不到了，但读数要它） */
+  let lastTurns = turnsTotal
+
+  /**
+   * **逐层记账**（每一拍调用一次）：把 `runLedger` 的**正增量**归到当前层。
+   *
+   * 为什么不是"深入时结账"：`run.bag` 会在**撤离结算**那一刻被清空（货进仓库）⇒ 如果按时刻做差，
+   * 最后一层会算出负额。故改成"只累加增量、负增量只重置基线"：
+   * - 打捞/采集/舰船战果让 `run.bag` 变大 ⇒ 记进当前层 ✓
+   * - 撤离入港 / 抛货让 `run.bag` 变小 ⇒ 不冲销（那是"能不能带回港"的问题，由整趟的 `income` 回答）
+   */
+  const accrue = (): void => {
+    const now = runLedger(state)
+    const d = subLedger(now, lastSnap)
+    const gain = ledgerIsk(d)
+    const depth = state.wormhole.run?.depth ?? 1
+    if (gain > 0 || d.boxes > 0) {
+      while (layerCollected.length < depth) {
+        layerCollected.push(0)
+        layerBoxes.push(0)
+      }
+      layerCollected[depth - 1] = (layerCollected[depth - 1] ?? 0) + Math.max(0, gain)
+      layerBoxes[depth - 1] = (layerBoxes[depth - 1] ?? 0) + Math.max(0, d.boxes)
+    }
+    lastSnap = now
+  }
+
+  while (state.wormhole.run && guard++ < 4000) {
     state.gameMs += 1_000 // 与引擎心跳同款：推时间，战斗才走得动
     const r = state.wormhole.run
+    lastTurns = r.turnsLeft
+    accrue()
     if (r.battle) {
       if (r.battle.ended) lastFrac = battleHpFrac(r.battle)
       advanceWormhole(state, ctx)
@@ -249,41 +531,223 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
       advanceWormhole(state, ctx)
       continue
     }
-    // ── 网格层（F3a-2 起）：每层"先打一场地点战、再打层末守卫"，然后按政策深入或撤离 ──
-    // 政策刻意保持最简（本工具的用途是**战斗强度与收益量级**的对比读数，不是寻路 AI）：
-    // 层内怎么选点、要不要把整盘扫完，属 F3c 配平批的事。
     if (r.grid) {
       const g = r.grid
-      if (foughtLayer !== r.depth) {
-        // 把当前格当作"舰船信号"激活 ⇒ 一场地点战（与实战同为 `wormholeActivateAt` 路径）
-        const cur = gridCellAt(g, g.pos)
-        if (!cur) break
-        cur.place = 'ship'
-        g.activated = g.activated.filter((k) => k !== cur.key)
-        if (!wormholeActivateAt(state, ctx, state.gameMs).ok) break
-        foughtLayer = r.depth
+      if (trace) {
+        step += 1
+        if (step <= 120) {
+          console.log(
+            `    · #${step} 层${r.depth} (${g.pos.q},${g.pos.r}) 回合${r.turnsLeft} ` +
+              `已扫${g.scanned.length}/${g.cells.length} 守卫${(r.bossCleared ?? 0) >= r.depth ? '清' : '在'} ` +
+              `信标${g.exitKnown === true ? '已读' : '未读'}`,
+          )
+        }
+      }
+      const here = gridCellAt(g, g.pos)
+      if (!here) {
+        stop('当前位置不在网格里')
+        break
+      }
+      const rigs = wormholeSalvagersOf(state, ctx)
+      const miners = wormholeMinersOf(state, ctx)
+      const hp = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
+      const bossDone = (r.bossCleared ?? 0) >= r.depth
+      // ⓪ 回合走不动（逃生门）：只能撤离——撤离拦截照打（设计稿 §六）
+      if (r.turnsLeft <= 0) {
+        const ex = wormholeExtract(r)
+        if (!ex.ok) {
+          stop(`回合耗尽且撤离被拒：${ex.error ?? ''}`)
+          break
+        }
         continue
       }
-      if ((r.bossCleared ?? 0) < r.depth) {
-        // 站上"下一层入口"并激活 ⇒ 层末守卫战
-        g.pos = { q: g.exit.q, r: g.exit.r }
-        const exitKey = `${g.exit.q},${g.exit.r}`
-        if (!g.visited.includes(exitKey)) g.visited.push(exitKey)
-        if (!g.scanned.includes(exitKey)) g.scanned.push(exitKey)
-        g.activated = g.activated.filter((k) => k !== exitKey)
-        if (!wormholeActivateAt(state, ctx, state.gameMs).ok) break
+      /**
+       * ⓪b **超载**（沉船缩容后货仓装不下）：船长裁定 8 要求**玩家手动抛弃** ⇒
+       * 政策照玩家的做法点游戏里那个「一键抛到容量内」按钮（按每格价值从低到高），然后继续。
+       */
+      const ov = wormholeOverloadBlockReason(state, ctx)
+      if (ov) {
+        const tie = wormholeDiscardToFit(state, ctx)
+        if (!tie.ok) {
+          stop(`超载且没有可抛的货：${ov}`)
+          break
+        }
+        bump('discards')
         continue
       }
-      const fracGrid = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
-      if (r.depth >= maxDepth || fracGrid < extractHp || r.turnsLeft <= 0) wormholeExtract(r)
-      else wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
+      // ① 本格还有活 ⇒ 做完（打捞/采集一次 = 1 回合、回收 = 台数 堆）
+      if ((here.place === 'graveyard' || here.place === 'ruins') && (here.piles ?? []).length > 0 && rigs > 0) {
+        const sv = wormholeSalvageAt(state, ctx)
+        if (!sv.ok) {
+          stop(`打捞被拒：${sv.error ?? ''}`)
+          break
+        }
+        bump('salvages')
+        continue
+      }
+      if (here.place === 'vein' && (here.piles ?? []).length > 0 && miners > 0) {
+        const co = wormholeCollectOreAt(state, ctx)
+        if (!co.ok) {
+          stop(`采集被拒：${co.error ?? ''}`)
+          break
+        }
+        bump('collects')
+        continue
+      }
+      // ② 还有得赚就继续收租（回合紧张时只认信标 ⇒ 直奔出口）
+      const urgent = r.turnsLeft <= pol.reserve + 3
+      /**
+       * ②b **打不过守卫就直接撤**（`--boss-hp=` 门槛）。
+       *
+       * 船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」⇒
+       * 残血时不必硬打守卫（实测：搜打撤编队在层 1 守卫战全灭），随时能走；代价是照打撤离拦截战
+       * （威胁 ×0.8，比守卫软）。守卫**只堵"深入"**。
+       *
+       * ⚠ 本工具早前那一版政策在这里"原地转圈磨回合、等回合耗尽走逃生门"——那正是旧闸门逼出来的歪招，
+       * 已随新裁定删除（政策里留 `waits` 这一格是为了证明它现在恒为 0）。
+       */
+      const tooHurtForBoss = !bossDone && pol.bossHpMin > 0 && hp < pol.bossHpMin
+      const target = bossDone && r.depth >= pol.maxDepth
+        ? null
+        : pickTarget(g, rigs, miners, tooHurtForBoss ? 0 : hp, urgent)
+      if (target) {
+        const res = wormholeTravelTo(state, ctx, target, {})
+        if (!res.ok) {
+          stop(`前往目标被拒：${res.error ?? ''}`)
+          break
+        }
+        bump('moves')
+        continue
+      }
+      if (tooHurtForBoss) {
+        const ex = wormholeExtract(r)
+        if (!ex.ok) {
+          stop(`撤离被拒：${ex.error ?? ''}`)
+          break
+        }
+        continue
+      }
+      // ③ 收租完毕（或不值得再收）⇒ 打层末守卫：站上入口格并激活
+      if (!bossDone) {
+        if (g.exitKnown !== true) {
+          /**
+           * ③a **已知信标但还没读到终点** ⇒ 去"走"它一趟。
+           *
+           * ⚠ 这里含一个**边角洞**（2026-09-13 本工具跑出来的）：信标可能生成在**入口格**上，
+           * 而"到达即读出终点"只在 `wormholeGridTravel` 里触发（入口格开局就 `visited`、
+           * 不经过移动到达）⇒ 玩家**站在信标上却读不到出口**，只能"先走开一回合、再走回来"破解。
+           * 本政策照玩家的做法走：脚下是信标 ⇒ 先挪到邻格，下一轮再回来。
+           */
+          const beacon = g.cells.find((c) => c.place === 'beacon' && g.scanned.includes(c.key))
+          if (beacon) {
+            const hereKey = `${g.pos.q},${g.pos.r}`
+            if (beacon.key === hereKey) {
+              const step = hexNeighbors(g.pos)
+                .map((n) => gridCellAt(g, n))
+                .find((c) => !!c && c.key !== beacon.key && !isExitCell(g, c))
+              if (step) {
+                const res = wormholeTravelTo(
+                  state,
+                  ctx,
+                  { q: step.q, r: step.r },
+                  { confirmUnknown: !g.scanned.includes(step.key) },
+                )
+                if (!res.ok) {
+                  stop(`信标压在入口格：挪开被拒：${res.error ?? ''}`)
+                  break
+                }
+                bump('moves')
+                continue
+              }
+            } else {
+              const res = wormholeTravelTo(
+                state,
+                ctx,
+                { q: beacon.q, r: beacon.r },
+                { confirmUnknown: !g.scanned.includes(beacon.key) },
+              )
+              if (!res.ok) {
+                stop(`前往信标被拒：${res.error ?? ''}`)
+                break
+              }
+              bump('moves')
+              continue
+            }
+          }
+          // 还没扫到信标 ⇒ 继续探索（不许偷看 grid.exit）
+          if (gridScanTargets(g).length > 0) {
+            const sc = wormholeGridScan(state)
+            if (!sc.ok) {
+              stop(`扫描被拒：${sc.error ?? ''}`)
+              break
+            }
+            bump('scans')
+            continue
+          }
+          const unknown = g.cells.find((c) => !g.scanned.includes(c.key))
+          if (unknown) {
+            const res = wormholeTravelTo(state, ctx, { q: unknown.q, r: unknown.r }, { confirmUnknown: true })
+            if (!res.ok) {
+              stop(`前往未知格被拒：${res.error ?? ''}`)
+              break
+            }
+            bump('moves')
+            continue
+          }
+          // 盘面走遍仍没读到信标（理论上不会：每层至少 1 个）⇒ 只能撤离
+          const ex = wormholeExtract(r)
+          stop(`盘面走遍仍没读到信标；撤离${ex.ok ? '成功' : `被拒：${ex.error ?? ''}`}`)
+          break
+        }
+        if (isExitCell(g, g.pos)) {
+          const ac = wormholeActivateAt(state, ctx, state.gameMs)
+          if (!ac.ok) {
+            stop(`入口激活被拒：${ac.error ?? ''}`)
+            break
+          }
+          bump('fights')
+          continue
+        }
+        /**
+         * ⚠ 第二个边角（同一个洞的亲戚）：**出口格自己可能从没被扫过**（它不参与信号分配 ⇒ 没被扫就没有
+         * "已扫描"标记）⇒ 直接前往会被"这个地点还没扫描过"拦下。玩家的做法就是点「确认前往」，
+         * 故这里带上 `confirmUnknown`（信标已经告诉我们终点在哪，这一步只是走过去）。
+         */
+        const exitCell = gridCellAt(g, { q: g.exit.q, r: g.exit.r })
+        const res = wormholeTravelTo(
+          state,
+          ctx,
+          { q: g.exit.q, r: g.exit.r },
+          { confirmUnknown: !exitCell || !g.scanned.includes(exitCell.key) },
+        )
+        if (!res.ok) {
+          stop(`前往入口被拒：${res.error ?? ''}`)
+          break
+        }
+        bump('moves')
+        continue
+      }
+      // ④ 守卫已清 ⇒ 按政策深入或撤离（血量 / 深度 / 回合）
+      if (r.depth >= pol.maxDepth || hp < pol.extractHp || r.turnsLeft <= 0) {
+        const ex = wormholeExtract(r)
+        if (!ex.ok) {
+          stop(`撤离被拒：${ex.error ?? ''}`)
+          break
+        }
+      } else {
+        const dn = wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
+        if (!dn.ok) {
+          stop(`深入被拒：${dn.error ?? ''}`)
+          break
+        }
+      }
       continue
     }
+    // ── 老档线性层（兼容路径）：拾取点捡光 → 推进 → 守卫 → 深入/撤离 ──
     if (r.pendingNode) {
       if (r.pendingNode.kind === 'combat') {
-        if (!wormholeStartBattle(state, ctx, 'node', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) break
+        if (!wormholeStartBattle(state, ctx, 'node', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) { stop('线性层：节点开战失败'); break }
       } else {
-        // 拾取点：能捡就捡光；事件节点直接结算（老档线性层入口 = `wormholeTakePileAt`，网格层不许逐堆拾取）
         while ((r.pendingNode.piles ?? []).length > 0) {
           if (!wormholeTakePileAt(state, ctx, 0).ok) break
         }
@@ -292,55 +756,112 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
       continue
     }
     if ((r.bossCleared ?? 0) < r.depth) {
-      if (!wormholeStartBattle(state, ctx, 'boss', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) break
+      if (!wormholeStartBattle(state, ctx, 'boss', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) { stop('线性层：守卫开战失败'); break }
       continue
     }
     const frac = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
-    if (r.depth >= maxDepth || frac < extractHp || r.turnsLeft <= 0) wormholeExtract(r)
+    if (r.depth >= pol.maxDepth || frac < pol.extractHp || r.turnsLeft <= 0) wormholeExtract(r)
     else wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
   }
-  const after = state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0
-  const ore = after - before
+
+  if (state.wormhole.run) stopReason = stopReason || '步数上限（4000 步没走完）'
+  const after = incomeOf(state)
+  accrue() // 收尾再记一次（把最后一段增量归到当前层）
   const shipsLeft = uids.filter((u) => state.fleet[u]).length
   return {
-    // 结束方式按**状态机**判（不是按"有没有捞到矿"——那会把"这趟没碰到拾取点"误判成全损）
+    // 结束方式按**状态机**判（不是按"有没有捞到矿"——那会把"这趟没碰到矿脉"误判成全损）
     result: state.wormhole.run !== null ? 'unfinished' : shipsLeft > 0 ? 'extract' : 'lost',
-    depth: state.wormhole.run?.depth ?? maxDepth,
+    depth: state.wormhole.run?.depth ?? Math.max(1, layerCollected.length),
     shipsLeft,
-    oreUnits: ore,
-    isk: ore * orePrice,
-    hpFrac: roughHpFrac(state, uids.length > 0 ? uids : []),
+    hpFrac: roughHpFrac(state, uids),
+    income: subIncome(after, before),
+    layerCollected,
+    layerBoxes,
+    layerActs,
+    acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0 }),
+    turnsLeft: state.wormhole.run?.turnsLeft ?? lastTurns,
+    turnsTotal,
+    stopReason,
+    ...(process.argv.includes('--logs') ? { logs: state.logs.map((l) => l.text) } : {}),
   }
+}
+
+/**
+ * 逐层聚合（**配平的主读数**）：把每趟的"逐层收集 ISK"与"逐层动作数"按层号聚合，与层威胁并排 ⇒
+ * 直接看两件事：①「**层收集 ÷ 层威胁**是否逐层上升」（船长口径：深层收益要比难度曲线更高）；
+ * ②「**每动作收集额**」（回合是硬约束：一层里能做的动作数决定了你到底能带走多少）。
+ */
+interface LayerRow {
+  samples: number
+  isk: number
+  oreUnits: number
+  wrecks: number
+  boxes: number
+  /** 该层的动作数合计（扫/走/打捞/采集/交战/抛货/磨回合） */
+  acts: number
 }
 
 function runRunsMode(): void {
   const n = Math.max(1, Number((process.argv.find((a) => a.startsWith('--runs=')) ?? '--runs=20').split('=')[1]))
-  const extractHp = Number(
-    (process.argv.find((a) => a.startsWith('--extract-hp=')) ?? '--extract-hp=0.5').split('=')[1],
-  )
-  const maxDepth = Math.max(
-    1,
-    Number((process.argv.find((a) => a.startsWith('--max-depth=')) ?? '--max-depth=3').split('=')[1]),
+  const pol: Policy = {
+    extractHp: Number((process.argv.find((a) => a.startsWith('--extract-hp=')) ?? '--extract-hp=0.5').split('=')[1]),
+    maxDepth: Math.max(1, Number((process.argv.find((a) => a.startsWith('--max-depth=')) ?? '--max-depth=3').split('=')[1])),
+    reserve: Math.max(0, Number((process.argv.find((a) => a.startsWith('--reserve=')) ?? '--reserve=2').split('=')[1])),
+    shipHpMin: 0.6,
+    bossHpMin: Number((process.argv.find((a) => a.startsWith('--boss-hp=')) ?? '--boss-hp=0.55').split('=')[1]),
+  }
+  const fit: RefFit = ANALYTIC_FIT
+  const fitText: Record<RefFit, string> = {
+    full: '**满配**：5×导弹 MK2 + 推进 + 双盾 + 索敌 + **打捞器 MK3 + 采集器 MK3**（11 槽插满 · CPU 255/345）',
+    combat: '纯战斗：5×导弹 MK2 + 3 中槽 + 稳像/装甲（不带作业装备 ⇒ 捞不到东西）',
+    old: '旧口径：3×导弹 + 打捞器/采集器**占高槽**（改槽前的对照）',
+  }
+  console.log(
+    `整趟模拟 · ${n} 趟（**强度系数 ${WORMHOLE_FOE_BASE_STRENGTH_MUL * (STRENGTH ?? 1)}**（覆写 ${STRENGTH ?? '无'}）· ` +
+      `参考编队 4×巡洋「${fitText[fit]}」）`,
   )
   console.log(
-    `整趟模拟 · ${n} 趟（**强度系数 ${WORMHOLE_FOE_BASE_STRENGTH_MUL * (STRENGTH ?? 1)}**（覆写 ${STRENGTH ?? '无'}）· 参考编队 4×巡洋 MK2 · 政策：粗残血 < ${extractHp} 或到第 ${maxDepth} 层就撤 · 拾取点捡光）`,
+    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，但照打撤离拦截战）· ` +
+      `回合保留 ${pol.reserve} · 守卫血量门槛 ${pol.bossHpMin}（低于它就直接撤；守卫只堵深入）· ` +
+      `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )
-  console.log(['#', '结果', '到达层', '存活船', '原矿', '收益ISK', '收尾残血'].join('\t'))
+  console.log(
+    ['#', '结果', '到达层', '存活', '母矿', '母矿ISK', '残骸ISK', '无人机', '货柜', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
+  )
   const out: RunOutcome[] = []
   for (let i = 0; i < n; i++) {
-    const o = simulateRun(1000 + i * 37, extractHp, maxDepth)
+    const o = simulateRun(1000 + i * 37, pol, fit)
     out.push(o)
+    const f = (x: number): string => Math.round(x).toLocaleString('zh-CN')
     console.log(
       [
         i + 1,
         o.result === 'extract' ? '撤离成功' : o.result === 'lost' ? '全损' : '未结束',
         o.depth,
         `${o.shipsLeft}/4`,
-        o.oreUnits,
-        Math.round(o.isk).toLocaleString('zh-CN'),
-        `${Math.round(o.hpFrac * 100)}%`,
+        o.income.oreUnits,
+        f(o.income.oreIsk),
+        f(o.income.wreckIsk),
+        o.income.drones,
+        o.income.boxes,
+        f(incomeIsk(o.income)),
+        o.acts.scans,
+        o.acts.moves,
+        o.acts.salvages,
+        o.acts.collects,
+        o.acts.fights,
+        o.acts.discards,
+        o.acts.waits,
+        o.turnsLeft,
+        o.result === 'extract' ? '' : o.stopReason,
       ].join('\t'),
     )
+  }
+  if (process.argv.includes('--logs')) {
+    for (const [i, o] of out.entries()) {
+      console.log(`\n--- 第 ${i + 1} 趟（${o.result} · 层 ${o.depth} · ${o.stopReason.length > 0 ? o.stopReason : '正常结束'}）日志尾 30 条 ---`)
+      for (const line of (o.logs ?? []).slice(-30)) console.log(`    ${line}`)
+    }
   }
   const ok = out.filter((o) => o.result === 'extract')
   const avg = (f: (o: RunOutcome) => number): number => out.reduce((s, o) => s + f(o), 0) / out.length
@@ -348,10 +869,65 @@ function runRunsMode(): void {
   console.log(
     `\n汇总：撤离成功 ${ok.length}/${out.length} · 平均到达第 ${avg((o) => o.depth).toFixed(1)} 层 · ` +
       `平均存活 ${avg((o) => o.shipsLeft).toFixed(2)}/4 艘（合计损失 ${lostShips} 艘）· ` +
-      `平均原矿 ${Math.round(avg((o) => o.oreUnits))} 单位 ⇒ 平均收益 ${Math.round(avg((o) => o.isk)).toLocaleString('zh-CN')} ISK`,
+      `平均到手 ${Math.round(avg((o) => incomeIsk(o.income))).toLocaleString('zh-CN')} ISK` +
+      `（母矿 ${Math.round(avg((o) => o.income.oreUnits))} 单位 / ${Math.round(avg((o) => o.income.oreIsk)).toLocaleString('zh-CN')} ISK` +
+      ` + 残骸拆解 ${Math.round(avg((o) => o.income.wreckIsk)).toLocaleString('zh-CN')} ISK）` +
+      ` · 货柜 ${avg((o) => o.income.boxes).toFixed(2)} 件/趟`,
+  )
+  const collectedAvg = avg((o) => o.layerCollected.reduce((s, v) => s + v, 0))
+  console.log(
+    `        收集 ${Math.round(collectedAvg).toLocaleString('zh-CN')} ISK/趟 ⇒ **到手率 ` +
+      `${collectedAvg > 0 ? ((avg((o) => incomeIsk(o.income)) / collectedAvg) * 100).toFixed(0) : '—'}%**` +
+      `（收集 ≠ 到手：没撤离成功的那部分随趟一起丢）`,
+  )
+  // 逐层聚合（与层威胁并排 ⇒ 看"单位威胁收益"是否逐层上升）
+  const rows = new Map<number, LayerRow>()
+  for (const o of out) {
+    o.layerCollected.forEach((isk, idx) => {
+      const d = idx + 1
+      const row = rows.get(d) ?? { samples: 0, isk: 0, oreUnits: 0, wrecks: 0, boxes: 0, acts: 0 }
+      const a = o.layerActs[idx]
+      row.samples += 1
+      row.isk += isk
+      row.boxes += o.layerBoxes[idx] ?? 0
+      row.acts += a ? a.scans + a.moves + a.salvages + a.collects + a.fights + a.discards + a.waits : 0
+      rows.set(d, row)
+    })
+  }
+  console.log('\n逐层读数（**按层累加"收集"额 + 该层动作数**；样本 = 走到过这一层的趟数）：')
+  console.log(['层', '样本', '平均收集ISK', '平均动作数', '每动作ISK', '货柜/层', '层威胁', 'ISK/威胁', '较上层'].join('\t'))
+  let prevRatio = 0
+  for (let d = 1; d <= Math.max(...out.map((o) => o.depth), 1); d++) {
+    const row = rows.get(d)
+    if (!row || row.samples === 0) continue
+    const isk = row.isk / row.samples
+    const acts = row.acts / row.samples
+    const threat = wormholeLayerThreat(d)
+    const ratio = isk / threat
+    console.log(
+      [
+        d,
+        row.samples,
+        Math.round(isk).toLocaleString('zh-CN'),
+        acts.toFixed(1),
+        acts > 0 ? Math.round(isk / acts).toLocaleString('zh-CN') : '—',
+        row.boxes.toFixed(2),
+        threat,
+        ratio.toFixed(0),
+        prevRatio > 0 ? `${ratio >= prevRatio ? '↑' : '↓'} ${(((ratio - prevRatio) / prevRatio) * 100).toFixed(1)}%` : '—',
+      ].join('\t'),
+    )
+    prevRatio = ratio
+  }
+  console.log(
+    '\n读法：① 逐层表记的是**收集额**（按层累加；母矿按基础卖价、残骸按回收炉拆解估值）——样本少的高层会被"能活着走到那儿的人"筛选过，看趋势时先看样本列；' +
+      '② 整趟表记的是**到手额**（只有撤离成功才入港 ⇒ 全损 = 0）——两个数的差就是"没带回来"的部分；' +
+      '③ 货柜不计 ISK（内容物待拆解批），单列件数；④ 「ISK/威胁」应逐层上升（船长口径：深层收益比难度曲线更高）；' +
+      '⑤ 政策不偷看 `grid.exit`，出口只由**信标**给出 ⇒ 读数里包含"找信标"的回合成本；' +
+      '⑥ 撤离开放（船长 2026-09-13：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）⇒ ' +
+      '「磨回合」列恒 0：旧闸门逼出来的"打不过就转圈耗回合"歪招已消失；守卫只堵**深入**。',
   )
 }
-
 function main(): void {
   if (process.argv.includes('--runs') || process.argv.some((a) => a.startsWith('--runs='))) {
     runRunsMode()
@@ -367,7 +943,7 @@ function main(): void {
     console.log(`逐卡读数：第 ${dep} 层 · ${cardId}（${ctx.anomalies.get(cardId)?.name ?? '?'}）· 每节点 ${WAVES} 波 · ${SEEDS.length} 播种`)
     console.log(['模式', '胜率', '时长', '残血', '敌开火', '我开火'].join('\t'))
     for (const kind of ['node', 'boss', 'extract'] as const) {
-      const c = avg(SEEDS.map((s) => runOneBattle(s, dep, kind, 0, ci)))
+      const c = avg(SEEDS.map((s) => runOneBattle(s, dep, kind, 0, ci, ANALYTIC_FIT)))
       console.log(
         [kind, `${Math.round(c.won * 100)}%`, `${c.sec.toFixed(0)}s`, `${Math.round(c.hpFrac * 100)}%`, c.foeShots.toFixed(0), ''].join('\t'),
       )
@@ -403,9 +979,9 @@ function main(): void {
   const analytic: number[] = []
   const perTurn: number[] = []
   for (let d = 1; d <= LAYERS; d++) {
-    const node = avg(SEEDS.map((s) => runOneBattle(s, d, 'node', 0)))
-    const boss = avg(SEEDS.map((s) => runOneBattle(s, d, 'boss', 0)))
-    const extr = avg(SEEDS.map((s) => runOneBattle(s, d, 'extract', 0)))
+    const node = avg(SEEDS.map((s) => runOneBattle(s, d, 'node', 0, undefined, ANALYTIC_FIT)))
+    const boss = avg(SEEDS.map((s) => runOneBattle(s, d, 'boss', 0, undefined, ANALYTIC_FIT)))
+    const extr = avg(SEEDS.map((s) => runOneBattle(s, d, 'extract', 0, undefined, ANALYTIC_FIT)))
     const loot = SEEDS.map((s) => layerLoot(s, d)).reduce(
       (acc, l) => ({
         piles: acc.piles + l.piles / SEEDS.length,

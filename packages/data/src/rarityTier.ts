@@ -256,9 +256,28 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-falconet': 2,
   'sbp-flyingfish': 2,
   'sbp-hammerhead': 4,
-  'sbp-hawksbill': 3,
+  'sbp-hawksbill': 4, // 2026-09-13：渠道升奇货（船长「玳瑁现货和蓝图上调至奇货」）
   'sbp-humpback': 4,
   'sbp-mako': 3,
+  'sbp-megalodon': 4, // 2026-09-13 新增（巨齿鲨级舰船图纸 · 奇货渠道）
+  'sbp-nautilus': 4, // 2026-09-13 新增（鹦鹉螺级舰船图纸 · 奇货渠道；与成品同行留 4，船长裁定）
+  // 2026-09-13 新增：T3/T4/T5 的**一次性蓝图**（船长「给T3船也添加一次性蓝图」）——
+  // 稀有订单层（数字 3）= T3 十张 + 剑鱼/蝠鲼；奇货（数字 4）= 玄武/巨齿鲨/皇带鱼
+  'sbp-once-bowhead': 3,
+  'sbp-once-bullshark': 3,
+  'sbp-once-colossal': 4,
+  'sbp-once-electricray': 3,
+  'sbp-once-hammerhead': 3,
+  'sbp-once-hawksbill': 3,
+  'sbp-once-humpback': 3,
+  'sbp-once-megalodon': 4,
+  'sbp-once-nautilus': 3,
+  'sbp-once-sailfish': 3,
+  'sbp-once-sentinel': 3,
+  'sbp-once-swordfish': 3,
+  'sbp-once-thresher': 3,
+  'sbp-once-whale-king': 3,
+  'sbp-once-xuanwu': 4,
   'sbp-pioneer': 4,
   'sbp-sailfish': 3,
   'sbp-sentinel': 4,
@@ -272,16 +291,18 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-whale-king': 4,
   'sbp-whiteshark': 4,
   'sbp-xuanwu': 4,
-  'sh-bowhead': 3,
+  'sh-bowhead': 4, // 2026-09-13：渠道升奇货（船长「蝠鲼现货…上调至奇货」）
   'sh-bullshark': 4,
   'sh-colossal': 4,
   'sh-electricray': 4,
   'sh-falconet': 2,
   'sh-flyingfish': 2,
   'sh-hammerhead': 4,
-  'sh-hawksbill': 3,
+  'sh-hawksbill': 4, // 2026-09-13：渠道升奇货（船长「玳瑁现货…上调至奇货」）
   'sh-humpback': 3,
   'sh-mako': 2,
+  'sh-megalodon': 4, // 2026-09-13 新增（巨齿鲨级战列舰 · 奇货渠道，只收不卖）
+  'sh-nautilus': 4, // 2026-09-13 新增（鹦鹉螺级测绘巡洋舰 · 奇货渠道；施工期挂 unreleased）
   'sh-sailfish': 2,
   'sh-sentinel': 4,
   'sh-shrike': 2,

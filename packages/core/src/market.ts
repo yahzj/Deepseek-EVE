@@ -89,9 +89,21 @@ function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
 }
 
 /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**）——稀有卖单抽取与奇货掷骰**两个渠道共用**；
- * 非蓝图行 = 1。降到 5% 后蓝图让出的份额全部回到同渠道的现货装备/商品上（稀有渠道每窗张数不变）。 */
-function blueprintWeight(def: MarketGoodDef, ctx: SimContext): number {
-  return def.kind === 'blueprint' ? (ctx.balance.market.blueprintWeight ?? 0.05) : 1
+ * 非蓝图行 = 1。降到 5% 后蓝图让出的份额全部回到同渠道的现货装备/商品上（稀有渠道每窗张数不变）。
+ *
+ * **2026-09-13 船长（一次性舰船蓝图）**：「还是有惩罚吧，**按50%算**」⇒
+ * 一次性舰船蓝图（`ctx.shipBlueprints` 里 `singleUse === true` 的那批）走
+ * `balance.market.singleUseBlueprintWeight`（0.5），**不吃普通蓝图那档 ×0.05**——
+ * 理由是它是消耗品（造一艘吃一张），不是"学会即量产"的配方。
+ *
+ * ⚠ **导出仅供白盒回归测试调用**（与 `slowSupplyDraw` 同款处置）：口径 = 两个渠道共用。 */
+export function blueprintWeight(def: MarketGoodDef, ctx: SimContext): number {
+  if (def.kind !== 'blueprint') return 1
+  const refId = def.refId
+  if (refId && ctx.shipBlueprints?.get(refId)?.singleUse === true) {
+    return ctx.balance.market.singleUseBlueprintWeight ?? 0.5
+  }
+  return ctx.balance.market.blueprintWeight ?? 0.05
 }
 
 /** 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续） */

@@ -30,6 +30,7 @@ import {
   wormholeStream,
   gridCellAt,
   gridScanTargets,
+  hexKey,
   isExitCell,
   signalOfPlace,
   wormholeMakeGrid,
@@ -391,6 +392,58 @@ export interface WormholeRunState {
    * 可选字段（老档没有 ⇒ 该趟只有散货，零迁移）。
    */
   hold?: import('./wormholeHold').WormholeHoldState
+  /**
+   * **临时空间（待整理区）**（船长 2026-09-13：「**打捞出了大件货时应该放进一个临时空间或者临时背包，
+   * 让玩家进行协调**」）。
+   *
+   * 由来：大件（遗迹安全货柜 2×2 = 4 格）在货仓腾不出连块时，原先按 F4 裁定是**整件拒收**、
+   * 留在原地；船长改判 ⇒ **先进临时空间**，由玩家在货仓页决定"放进货仓 / 抛弃"。
+   *
+   * 口径（本批实现）：
+   * - **容量 = `WORMHOLE_TEMP_CELLS = 8` 格**（按格算，装得下 2 件货柜）——**有限**才叫"临时"，
+   *   也避免它变成第二个无限仓库；
+   * - **不计入超载**（`wormholeHoldUsage.used` 只算货仓格）：它是缓冲不是仓位；
+   * - **撤离成功一并带回**（它就在船上；失败随趟丢，与背包同一条风险线）。
+   * 可选字段（零迁移）。
+   */
+  temp?: WormholeTempSlot[]
+}
+
+/** 临时空间里的一条（一种物品一条，与背包同一套账本口径） */
+export interface WormholeTempSlot {
+  itemId: string
+  units: number
+}
+
+/** **临时空间的格数上限**（船长口径"临时"⇒ 有限；8 格 = 正好 2 件遗迹安全货柜） */
+export const WORMHOLE_TEMP_CELLS = 8
+
+/**
+ * **一趟的结算单**（2026-09-13 船长：「玩家撤离后弹出一个结算界面，表示玩家的收益和损失」）。
+ *
+ * 由 `wormholeBattle` 在收口那一刻写进 `state.wormhole.lastSettle`；界面读它弹结算层，
+ * 玩家点「确认」后由 `wormholeAckSettle`（引擎侧）清掉 ⇒ **不会重复弹**。
+ * ⚠ 可选字段 ⇒ **零迁移**（老档没有 = 没弹过结算）。
+ */
+export interface WormholeSettleRecord {
+  /** 结束方式：撤离成功 / 全损 */
+  kind: 'extract' | 'lost'
+  /** 撤离（或全损）时所在的层 */
+  depth: number
+  /** 到手：母矿单位数 / 母矿基础价 ISK / 残骸拆解估值 ISK */
+  oreUnits: number
+  oreIsk: number
+  wreckIsk: number
+  /** 到手的货柜（内容物待拆解；只报件数与名称） */
+  boxes: string[]
+  /** 到手的随行战利品（装备 / 一次性图纸 / 无人机，显示名） */
+  relics: string[]
+  /** 损失：本趟沉掉的船（显示名） */
+  shipsLost: string[]
+  /** **没带回来的收集额**（按基础价 + 拆解估值算；撤离成功 = 0） */
+  lostIsk: number
+  /** 第 1 层免撤离战（船长：撤离战只从第 2 层起生效）时为 true —— 界面据此少写一句"打了一场" */
+  skippedExtractBattle?: boolean
 }
 
 export interface WormholeState {
@@ -398,7 +451,12 @@ export interface WormholeState {
   run: WormholeRunState | null
   /** 本趟累计：损失船数（结算读数用） */
   lastFleetLost: number
+  /** **最近一趟的结算单**（界面弹层用；玩家确认后清掉） */
+  lastSettle?: WormholeSettleRecord
 }
+
+/** **撤离战从第几层起生效**（船长 2026-09-13：「撤离战只从第二层开始生效」） */
+export const WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2
 
 export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
 
@@ -412,11 +470,14 @@ export {
   WORMHOLE_THREAT_PER_LAYER,
   WORMHOLE_BOSS_THREAT_MUL,
   WORMHOLE_EXTRACT_THREAT_MUL,
+  WORMHOLE_EXTRACT_THREAT_BASE,
+  WORMHOLE_EXTRACT_THREAT_PER_LAYER,
   WORMHOLE_FOE_CARD_IDS,
   wormholeLayerThreat,
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
   wormholeFoeThreat,
+  wormholeExtractThreat,
   wormholeCardIdFor,
   wormholeAnomalyOf,
   wormholeNaturalHp,
@@ -567,21 +628,20 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
 }
 
 /**
- * 撤离（**层末守卫清掉之后**才放行）——**唯一例外是"回合走不动了"的逃生门**：
- * 回合耗尽时，哪怕本层守卫没清，也放行撤离（见 `wormholeOutOfTurns`）。
- * 战斗中（`run.battle` 非空）一律不许撤——船长裁定「战斗没结束不能撤」优先于逃生门。
+ * 撤离 —— **无条件可以开始**（船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」）。
  *
- * ⚠ F3a-2 口径变更：网格世界里"层内还有事没做完"不再是一道门——每个地点都是**自愿**去处理的，
- * 故旧口径的 `pendingNode !== null ⇒ 不许撤` 只对老档（线性节点）生效；网格层的门只剩**层末守卫**
- * 与**进行中的战斗**两条（都与设计稿 §3 一致）。
+ * 口径：
+ * - **不再有"层末守卫没清 / 层内还有节点没走完 / 回合没耗尽"这几道门**：想走随时能走（老口径把
+ *   守卫当成"出门许可"，实测会逼出"打不过就原地转圈耗回合"的歪招）；
+ * - 但**撤离不是白走**：进入 `extracting` 相位后由 `advanceWormhole` 开一场**撤离拦截战**（威胁 ×0.8），
+ *   打赢才把背包与货柜带回港，打输照样全损（见 `settleWormholeBattle`）；
+ * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」）。
+ *
+ * ⚠ 被本裁定取代的旧条款（设计稿 §六「回合耗尽 ⇒ 只能撤离」+ §3「守卫是门」里"撤离也要先清守卫"那半句）
+ * 已在文档里标注作废；`wormholeDescend`（**深入**）那一侧的守卫门**照旧有效**。
  */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
-  const outOfTurns = wormholeOutOfTurns(run)
-  if (run.pendingNode && !outOfTurns) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
-  if ((run.bossCleared ?? 0) < run.depth && !outOfTurns) {
-    return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
-  }
   run.phase = 'extracting'
   return { ok: true }
 }
@@ -735,7 +795,19 @@ export function wormholeGridTravel(
   const autoBattle = first && cell.place === 'ship'
   const beacon = first && cell.place === 'beacon'
   if (autoBattle || beacon) grid.activated.push(cell.key)
-  if (beacon) grid.exitKnown = true
+  if (beacon) {
+    grid.exitKnown = true
+    /**
+     * **信标标出终点 ⇒ 终点格一并记为"已知"**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
+     *
+     * 为什么：出口格不参与信号分配 ⇒ 它永远不在 `scanned` 里；原先玩家从信标得知终点位置后，
+     * 点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」的确认框 —— 那句话在此时是**误导**
+     * （它不是未知地点，它是终点）。这里把出口格并入 `scanned`，前往它就走正常路径。
+     * ⚠ 只在**读到信标之后**才并：在那之前玩家不该"凭空知道"出口格是安全可去的。
+     */
+    const exitKey = hexKey(grid.exit.q, grid.exit.r)
+    if (!grid.scanned.includes(exitKey)) grid.scanned.push(exitKey)
+  }
   addLog(
     state,
     'info',

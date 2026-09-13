@@ -802,6 +802,8 @@ export {
   WORMHOLE_TURN_PER_EXTRA_WAVE,
   WORMHOLE_TURN_PER_NODE,
   WORMHOLE_TURN_PER_PICKUP,
+  // 临时空间的格数上限（大件货缓冲）
+  WORMHOLE_TEMP_CELLS,
   wormholeAdmission,
   wormholeBagSlots,
   wormholeBagUsage,
@@ -835,6 +837,8 @@ export {
   wormholeGridTravel,
   wormholeGridActivate,
   WORMHOLE_PLACE_TEXT,
+  // 撤离战从第几层起生效（船长 2026-09-13：「撤离战只从第二层开始生效」）
+  WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
@@ -939,6 +943,14 @@ export {
   wormholeDiscardToFit,
   wormholeOverloadBlockReason,
   wormholeTakePileAt,
+  // 临时空间（船长 2026-09-13：大件货先进临时空间，让玩家协调）
+  wormholeTempUsage,
+  wormholeTempStow,
+  wormholeTempDiscard,
+  wormholeStowOrTemp,
+  // 散货占格（船长 2026-09-13：「必须是矩形」⇒ 全仓唯一一把尺）
+  wormholeCargoCellsOf,
+  wormholeCargoSlotsOf,
 
   wormholeRelicWeightsOf,
   wormholeRollRelicBox,
@@ -949,10 +961,14 @@ export {
 // F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,
+  WORMHOLE_CARGO_BAR_MAX,
   WORMHOLE_SHAPE_CONTAINER,
   WORMHOLE_SHAPE_STACK,
   WORMHOLE_HOLD_SHAPES,
   canPlace,
+  cargoBlockArea,
+  cargoShapeFits,
+  cargoShapesFor,
   findFreeSpot,
   holdAdd,
   holdCellsUsed,
@@ -974,6 +990,7 @@ export type {
   WormholeAdmission,
   WormholeAdmissionCode,
   WormholeBagSlot,
+  WormholeTempSlot,
   WormholeGridActionResult,
   WormholePile,
   WormholeFoeKind,
@@ -982,6 +999,7 @@ export type {
   WormholeNode,
   WormholeNodeKind,
   WormholePhase,
+  WormholeSettleRecord,
   WormholeStartResult,
   WormholeAdvanceResult,
 } from './wormhole'

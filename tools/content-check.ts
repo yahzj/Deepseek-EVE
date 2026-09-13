@@ -838,6 +838,18 @@ const SHIP_SUBCLASSES = [
   '侦察舰',
   '后勤舰',
 ] as const
+/**
+ * **非虫洞舰写子分类的登记表**（2026-09-13 船长：「**协会功能舰也可写子分类**」）。
+ *
+ * 背景：子分类原口径是「**只给 `sh-wh-*`**（虫洞族专属舰船）」——出处 = 2026-09-13 船长
+ * 「虫洞族专属舰船按子分类重排并进界面」+ `packages/core/src/types.ts` 的 `ShipSubClass` 注释。
+ * 同日新增鹦鹉螺级（协会 · 测绘处的侦察巡洋舰）时船长裁定放宽 ⇒ **取值仍限白名单**，
+ * 但非虫洞舰要写子分类**必须在下面这张表里登记**（照 `ALIEN_BEAST_SHIP_IDS` 的既有写法，
+ * 防"随手给现役舰贴标签"）。登记新舰时请连同出处一起写清。
+ */
+const SUBCLASS_NON_WH_SHIP_IDS = new Set([
+  'sh-nautilus', // 鹦鹉螺级测绘巡洋舰（协会测绘处 · 侦察舰；2026-09-13 船长）
+])
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -888,7 +900,7 @@ for (const s of SHIPS) {
     //   §四布局草案表（陆龟 2/2/3、玳瑁 2/3/3、玄武 2/3/4 的低槽偏多形态 + 注"甲厚（低槽多）"）。
     //   删除理由：① 它是**草案精神**而非独立裁定；② 草案数值早被后续平衡批突破（玄武已从 2/3/4 变 4/4/6）；
     //   ③ 虫洞族重装巡洋按新口径给到"高槽 4"（4/4/4、4/3/5）⇒ 与 `low >= high + 1` 冲突。
-    //   保留"武装舰"半条（现行 42 艘全部通过，且与 armed 族的身份一致）。
+    //   保留"武装舰"半条（现行 43 艘全部通过，且与 armed 族的身份一致）。
     if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
   }
   // V12：回避 0~0.9、命中加成 0~0.5
@@ -910,14 +922,17 @@ for (const s of SHIPS) {
       (Number.isInteger(s.wormholeScanRadiusBonus) && s.wormholeScanRadiusBonus > 0 && s.wormholeScanRadiusBonus <= 3),
     `舰船 ${s.id} wormholeScanRadiusBonus 越界（应 1~3 的整数）：${String(s.wormholeScanRadiusBonus)}`,
   )
-  // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面）——
-  // 只给 `sh-wh-*` 写；取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）
+  // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面；同日放宽：协会功能舰也可写）
+  // 取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）；非虫洞舰须在登记表里
   if (s.subClass !== undefined) {
     check(
       SHIP_SUBCLASSES.includes(s.subClass as (typeof SHIP_SUBCLASSES)[number]),
       `舰船 ${s.id} 子分类非法：${String(s.subClass)}`,
     )
-    check(s.id.startsWith('sh-wh-'), `舰船 ${s.id} 写了子分类（${String(s.subClass)}）但不是虫洞族专属舰船（子分类只给 sh-wh-*）`)
+    check(
+      s.id.startsWith('sh-wh-') || SUBCLASS_NON_WH_SHIP_IDS.has(s.id),
+      `舰船 ${s.id} 写了子分类（${String(s.subClass)}）但既不是虫洞族专属舰、也不在非虫洞登记表里（协会功能舰须登记）`,
+    )
   }
   for (const f of ['maxSpeedMps', 'warpSpeedAus', 'massKg', 'lockRangeM', 'signatureM', 'scanResMm'] as const) {
     const v = s[f]
@@ -945,7 +960,16 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 // 2026-09-13：27 → **42**（船长「护卫，驱逐，巡洋都可以有，你干脆都安排设计吧」⇒ 新增
 // **虫洞专属舰船 15 艘**：A/C/D/E/G 五族各 护卫 T1 / 驱逐 T2 / 巡洋 T3，全部标 `unreleased`、
 // 只由一次性舰船图纸制造；计数是"防手滑"的守卫，改数据时同步改这里与 `hull-class.test.ts`）。
-check(SHIPS.length === 42, `舰船应为 42 艘（既有 27 + 虫洞专属 15），实际 ${SHIPS.length}`)
+// 2026-09-13（同日第二批 · 船长「完善战列舰」）：**巨齿鲨级 sh-megalodon 已定案接图纸线**
+// （补掠食者线 `shieldResist` 动能 0.5；市场行 225M `playerBuyable: false` 只收不卖 ⇒ `priceIsk` 仍为 0；
+// 蓝图 sbp-megalodon 900M）；**邓氏鱼级 sh-dunkleosteus 仍是壳体**（不上市场/不接蓝图/不接卡）。
+// 同批：**T4 档价位全面上调**（玄武 16.5M / 蝠鲼 13.5M / 剑鱼 4.8M）+ **全舰工期阶梯重排**（见
+// `docs/design/t4-battleship-20260913.md`）。
+// 2026-09-13（同日第三批 · 船长「添加一艘新的巡洋舰，子分类为侦查舰…」）：42 → **43** ⇒ 新增
+// **鹦鹉螺级测绘巡洋舰 sh-nautilus**（协会测绘处 · T3 侦察舰 · 10 槽 · 机舱 80 · 虫洞扫码 +1；
+// 奇货 + 数字 4、`unreleased` 跟随虫洞；子分类契约同日放宽为"白名单 + 非虫洞登记表"；见
+// `docs/design/scout-cruiser-20260913.md`）。
+check(SHIPS.length === 43, `舰船应为 43 艘（既有 27 + 虫洞专属 15 + 鹦鹉螺级 1），实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,
 )
@@ -1064,6 +1088,18 @@ for (const m of MODULES) {
   check(m.rack !== undefined && RACK_SLOTS.includes(m.rack), `装备 ${m.id} 缺少 V18 rack 归属`)
   if (m.rack !== undefined) {
     check(m.rack === rackOf(m), `装备 ${m.id} rack 标注（${m.rack}）与 Q3 推导（${rackOf(m)}）不一致`)
+  }
+  /**
+   * **作业装备归低槽**（船长 2026-09-13：「**给作业开**」——采集器 / 打捞器不再跟武器抢高槽）。
+   *
+   * ⚠ 为什么必须单列一条：上面那条 `m.rack === rackOf(m)` 对**显式标了 rack 的件是同义反复**
+   * （`rackOf` 优先返回显式值）⇒ 把采集器写回 `high` 也照样通过。这条才是真钉子。
+   */
+  if (m.slot === 'miner' || m.slot === 'salvager') {
+    check(
+      m.rack === 'low',
+      `作业装备 ${m.id}（${m.slot}）必须归**低槽**：船长 2026-09-13「给作业开」——作业装备不跟武器抢高槽`,
+    )
   }
   if (m.slot === 'drone-rack' || m.slot === 'drone-tac') {
     // V18 无人机装置：字段自洽（甲板扩展 = +droneBayM3；战术导控 = +droneDmgBonus；互斥）
@@ -3023,17 +3059,40 @@ for (const m of MODULES) {
       )
       driftPrice += 1
     }
-    const bp = SHIP_BLUEPRINTS.find((b) => b.shipId === ship.id)
-    if (!bp) continue
-    // 定制船的蓝图价 = 唯一定价（无"市场价 × 系数"可比），不参与系数比对
-    if (custom) continue
-    const market = good!.basePrice ?? 0
-    const expect = Math.round(market * tierCoefOf(market))
-    if (Math.abs(bp.priceIsk - expect) > 10_000) {
-      warn.push(
-        `舰船蓝图价格口径：${ship.name}（${ship.id}）蓝图价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「市场价 × 档位系数」应为 ${expect.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+    // 2026-09-13 船长：T3/T4/T5 各有一张**一次性蓝图**（价格 = 行价 ×100%，不是 ×系数）⇒
+    // 本契约改按 `singleUse` 分流：一次性那张比 ×1、普通那张比 ×档位系数。
+    const bps = SHIP_BLUEPRINTS.filter((b) => b.shipId === ship.id)
+    if (bps.length === 0) continue
+    // 定制船只有一次性图纸时：它的价也是"行价 ×1"（行价 = 只收不卖的市场基准价）⇒ 仍可按 ×1 核
+    const market = (good?.basePrice ?? 0) || ship.priceIsk
+    for (const bp of bps) {
+      if (bp.singleUse === true) {
+        if (market > 0 && Math.abs(bp.priceIsk - market) > 10_000) {
+          warn.push(
+            `一次性舰船蓝图价格口径：${ship.name}（${ship.id}）${bp.id} 价 = ${bp.priceIsk.toLocaleString('zh-CN')}，` +
+              `按船长口径「**舰船价格的 100%**」应为 ${market.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+          )
+          driftBp += 1
+        }
+        continue
+      }
+      // 永久（可学）蓝图：定制船的蓝图价 = 唯一定价（无"市场价 × 系数"可比），不参与系数比对
+      if (custom) continue
+      const expect = Math.round(market * tierCoefOf(market))
+      if (Math.abs(bp.priceIsk - expect) > 10_000) {
+        warn.push(
+          `舰船蓝图价格口径：${ship.name}（${ship.id}）蓝图价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「市场价 × 档位系数」应为 ${expect.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+        )
+        driftBp += 1
+      }
+    }
+    // **一次性蓝图必须存在**（船长 2026-09-13：「给T3船也添加一次性蓝图」＋「T4T5舰船都出一张」）：
+    // 判据 = 有市场行价（即非壳体）的 T3/T4/T5 舰，必须有一张 `singleUse` 舰船蓝图。
+    if (ship.tier >= 3 && market > 0 && !bps.some((b) => b.singleUse === true)) {
+      errors.push(
+        `一次性舰船蓝图缺失：${ship.name}（${ship.id}，T${ship.tier}）没有一次性蓝图——` +
+          `船长 2026-09-13 裁定「T3/T4/T5 各出一张，价格按舰船价格的 100%」`,
       )
-      driftBp += 1
     }
   }
   console.log(
@@ -3215,6 +3274,13 @@ for (const m of MODULES) {
     }
     const visibleWhText = whTyped
       .filter((d) => !isWhContent(d.id))
+      /* **2026-09-13 补**：本闸门口径是「**已上线**的内容，其玩家可见文案不得出现「虫洞」」
+         （见上方 ⑤/⑥ 注释），物品那条走 `itemReleased`、敌卡那条走 `hidden !== true`；
+         三类（装备/舰船/图纸）此前只按 id 前缀排除 ⇒ **任何"非 wh 前缀但未上线"的新内容都会假报**
+         （鹦鹉螺级 sh-nautilus 正是第一例：协会测绘处舰、挂 `unreleased`、描述写虫洞扫码）。
+         ⇒ 与物品闸门同口径：`unreleased === true` 的内容不算玩家可见文案（图鉴由同一字段挡着；
+         上线动作 = 删 `unreleased`，那一刻本闸门立刻恢复管它）。 */
+      .filter((d) => d.unreleased !== true)
       .filter((d) => `${d.name}${d.description ?? ''}`.includes('虫洞'))
       .map((d) => `${d.kind} ${d.id}（${d.name}）`)
     const textLeaks = [...visibleAnomalyText, ...visibleItemText, ...visibleWhText]

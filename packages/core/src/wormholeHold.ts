@@ -17,6 +17,8 @@
 
 /** 货仓网格的固定列数（船长口径"按推荐"：8 列；行数 = ⌈可用格数 ÷ 8⌉） */
 export const WORMHOLE_HOLD_COLS = 8
+/** **细条上限**：≤ 4 格的散货沿用"一条细条"的观感；> 4 格改**矩形方块**（船长 2026-09-13 定） */
+export const WORMHOLE_CARGO_BAR_MAX = 4
 
 /** 形状（宽 × 高，单位 = 格） */
 export interface WormholeHoldShape {
@@ -87,13 +89,71 @@ export function makeHoldState(): WormholeHoldState {
   return { cols: WORMHOLE_HOLD_COLS, placements: [] }
 }
 
-/** 散货条的目标形状：先横条（1×N）、放不下再竖条（N×1）——两条都试过才算"放不下" */
+/**
+ * **散货的目标形状**（船长 2026-09-13 定：「**单件超 4 格的就是矩形方块**」＋「**必须是矩形**」）。
+ *
+ * 口径（与 `cargoBlockArea` 同一把尺，全仓只此一份）：
+ * - **1~4 格** = 细条（`1×n` 横条 / `n×1` 竖条，沿用原观感）；
+ * - **>4 格** = **矩形方块**：先在「宽 ≤ 8 列」的所有矩形里挑**规范面积** `cargoBlockArea(n)`
+ *   （= 最小的 `w×⌈n÷w⌉`，`w ∈ [2,8]`、高 ≥ 2）那一档，横竖都试；
+ *   ① 都放不下时退到**面积更大的矩形**（同宽同高的兜底档）；
+ *   ② 仍然放不下（小货仓末行不满的场合，例如 10 格仓要放 7 格货）才退回**细条**——
+ *      细条本身也是矩形（`1×A`），只是薄；这样老能力一格不退。
+ * - ⚠ 矩形规则下**单件上限 ≈ 整行 × 整行数**（20 格仓 = 最多 16 格一件、27 格仓 = 24 格），
+ *   不是"任意大"：可用格是"整行 + 不满的末行"，矩形跨不满的末行就放不下（如 20 格仓里的 19/20 格单件）。
+ *   比改判前的硬上限 **8 格**高一档，但仍会拒收少数"凑不出落形"的格数。
+ */
 export function cargoShapesFor(cells: number): WormholeHoldShape[] {
   const n = Math.max(1, Math.floor(cells))
-  return n === 1 ? [{ w: 1, h: 1 }] : [
-    { w: n, h: 1 },
-    { w: 1, h: n },
-  ]
+  if (n === 1) return [{ w: 1, h: 1 }]
+  if (n <= WORMHOLE_CARGO_BAR_MAX) {
+    return [
+      { w: n, h: 1 },
+      { w: 1, h: n },
+    ]
+  }
+  const set = new Map<string, WormholeHoldShape>()
+  const push = (w: number, h: number): void => {
+    if (w < 1 || h < 1 || w > WORMHOLE_HOLD_COLS || h > 64) return
+    set.set(`${w}x${h}`, { w, h })
+  }
+  // ① 矩形方块（宽高都 ≥ 2）：宽 2~8、高 = ⌈n ÷ w⌉，含转置
+  for (let w = 2; w <= WORMHOLE_HOLD_COLS; w++) {
+    const h = Math.max(2, Math.ceil(n / w))
+    push(w, h)
+    push(h, w)
+  }
+  // ② 细条兜底（本身就是矩形，只是薄）：小货仓末行不满时靠它——老能力一格都不退
+  push(n, 1)
+  push(1, n)
+  return [...set.values()].sort((a, b) => {
+    // **方块优先**（船长口径：「超 4 格就是矩形方块」）；同族再比面积、行数、列数
+    const blocky = (s: WormholeHoldShape): number => (s.w >= 2 && s.h >= 2 ? 0 : 1)
+    return blocky(a) - blocky(b) || a.w * a.h - b.w * b.h || a.h - b.h || b.w - a.w
+  })
+}
+
+/**
+ * 散货**规范后的占格数** = 所有合法落形里**最小的那个矩形的面积**（船长 2026-09-13「必须是矩形」）。
+ * ≤4 格 = 格数本身；>4 格 = 取"能省则省"的那一档：横细条 `n×1`（宽 ≤ 8 列，5~8 格就是它）
+ * 否则最小矩形块（如 11 格 → 12 格、13 格 → 14 格）。
+ * 用途：临时空间的容量判据、`unplacedCells`（还没摆下的货）与界面读数——**实际占格以摆放件为准**。
+ */
+export function cargoBlockArea(cells: number): number {
+  const n = Math.max(1, Math.floor(cells))
+  if (n <= WORMHOLE_CARGO_BAR_MAX) return n
+  // 横细条（1 行、宽 ≤ 8 列）够省就用它；否则取最小的矩形块（宽 2~8、高 ≥ 2）
+  let best = n <= WORMHOLE_HOLD_COLS ? n : Number.POSITIVE_INFINITY
+  for (let w = 2; w <= WORMHOLE_HOLD_COLS; w++) {
+    const h = Math.max(2, Math.ceil(n / w))
+    if (w * h < best) best = w * h
+  }
+  return Number.isFinite(best) ? best : n
+}
+
+/** 这个形状是不是 `cells` 格散货的合法落形（读档/整理时判断"用不用重放"） */
+export function cargoShapeFits(cells: number, shape: WormholeHoldShape): boolean {
+  return cargoShapesFor(cells).some((s) => s.w === shape.w && s.h === shape.h)
 }
 
 /* ═══════════ 二、占用与合法性（纯几何） ═══════════ */
@@ -232,7 +292,8 @@ export function holdAdd(
 
 /**
  * **自动放入一条散货**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）。
- * 形状 = 1×N 横条，放不下自动改 N×1 竖条；两条都放不下 ⇒ `ok:false`（调用方据此拒绝这次拾取/打捞）。
+ * 形状由 `cargoShapesFor` 现算（≤4 格 = 细条；>4 格 = **矩形方块**）：逐个候选试落点，
+ * 全都放不下 ⇒ `ok:false`（调用方据此拒绝这次拾取/打捞）。
  */
 export function holdAddCargo(
   hold: WormholeHoldState,
@@ -260,7 +321,7 @@ export function holdAddCargo(
       return { ok: true, placement: p }
     }
   }
-  return { ok: false, error: `货仓放不下：这条散货要占 ${n} 格（横竖都试过了）。` }
+  return { ok: false, error: `货仓放不下：这条散货要占 ${cargoBlockArea(n)} 格（矩形块的各档长宽都试过了）。` }
 }
 
 /** 移动一件（拖拽落点非法 ⇒ 拒绝，不改状态） */
@@ -318,8 +379,16 @@ export function holdCompact(
 /* ═══════════ 四、读档容错（save.ts 与用例共用） ═══════════ */
 
 /**
- * 清洗一个 placement（坏值 ⇒ null）：坐标/形状必须是 0~8 的整数、尺寸 1~4；
+ * 清洗一个 placement（坏值 ⇒ null）：坐标/形状必须是整数、尺寸在**网格允许的范围内**；
  * **越界不丢**（超载态本来就允许"摆在可用格之外"，由超载判据去提示玩家抛货），但**重叠要丢**。
+ *
+ * ⚠ **2026-09-13 修一个真 BUG**：这里原先卡 `w,h ≤ 4`，而**散货条天生可以很宽/很高** ——
+ * `cargoShapesFor(n)` 给的是 `1×n` 横条或 `n×1` 竖条（n 可以到 8 格宽、甚至十几格高）
+ * ⇒ 一条 6 格的母矿条在**读档时被当坏值丢掉**：货还在 `run.bag` 里，网格里却没有它，
+ * 于是 `wormholeHoldUsage.unplacedCells` 冒出一堆"放不下"的格数 ⇒ **凭空超载**
+ * （探针实测：6 格母矿条读档后 `placements` 空了、`unplacedCells = 6`），
+ * 玩家会被"先抛货"挡住，甚至把其实还在船上的货抛掉。
+ * ⇒ 现在按**货仓的真实几何**校验：宽 ≤ 列数（8）、高 ≤ 64（够放下任何一趟的竖条）。
  */
 export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
   if (typeof raw !== 'object' || raw === null) return null
@@ -332,7 +401,7 @@ export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
   const id = typeof o.id === 'string' && o.id.length > 0 ? o.id : null
   const itemId = typeof o.itemId === 'string' && o.itemId.length > 0 ? o.itemId : null
   if (!id || !itemId) return null
-  if (!(x >= 0 && y >= 0 && w >= 1 && w <= 4 && h >= 1 && h <= 4)) return null
+  if (!(x >= 0 && y >= 0 && w >= 1 && w <= WORMHOLE_HOLD_COLS && h >= 1 && h <= 64)) return null
   const kind = o.kind === 'cargo' ? 'cargo' : 'box'
   const units = num(o.units)
   return {
