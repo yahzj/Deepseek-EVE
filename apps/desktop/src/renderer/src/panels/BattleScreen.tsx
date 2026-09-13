@@ -1066,10 +1066,25 @@ const meSpeedRef = useRef(200)
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
+  /* ═══ 我方舰列：单船 / 4 舰同屏（虫洞 F2b，2026-09-13 船长「我方4条舰船需要同时显示」＋
+     「按照敌人阵型那样**镜像排列**」）═══
+     · 单船路径（`myUnits.length === 1`）走原分支（`lay.me` / `lay.meLeft`），DOM 与原实现逐字一致；
+     · 多舰路径喂 `layout()` 我方逐舰体积 ⇒ 它按**敌人斜向菱形的镜像**给我方逐舰锚点 `lay.my[i]`
+       （列序向左展开、第二排左移半个列距 + 下移一行高；主控＝第 0 列最靠敌）。
+     · 直径尺/弹道锚点仍按主控那条舰（逐舰锚点是另一批的活）。 */
+  const multiMe = arcs.myUnits.length > 1
+  /** 阵位序 = core 给的顺序（**主控在前** ⇒ 阵位 0 = 主控，锚点强制落在 `me` 上）；
+   *  渲染次序另算（主控画最上层），逐舰用它的**阵位下标**去取 `lay.my[slot]`。 */
+  const mySlots = multiMe ? arcs.myUnits.map((u, slot) => ({ u, slot })) : []
+  const mySizes = multiMe
+    ? arcs.myUnits.map((u) => sizeOfUnit(fleetDefOf(state, engine.ctx, u.shipId)?.tier, false))
+    : [meSize]
+  /** 渲染次序：非主控在前（远的先画）、主控最后（画在最上层） */
+  const myDrawOrder = multiMe ? [...mySlots].sort((a, b) => Number(a.u.leader) - Number(b.u.leader)) : []
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
-  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize)
+  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize, mySizes)
   /**
    * **跃迁入场**（船长 2026-09-13：「既然开始做战斗效果了，那么能否在开始时做一个入场效果？
    *  为了最小程度防止BUG，**入场效果仅为动画**。玩家和敌舰的位置依旧不改变。入场效果为我方或者敌方
@@ -1107,11 +1122,8 @@ const meSpeedRef = useRef(200)
   }
   /* ═══ 我方舰列：单船 / 4 舰同屏（虫洞 F2b，2026-09-13 船长「我方4条舰船需要同时显示」）═══
      · 单船路径（`myUnits.length === 1`）走原分支，DOM 与原实现逐字一致 ⇒ 观感零变化；
-     · 多舰路径逐舰一条舰影，**主控恒在最前**（DOM 顺序把主控放最后 = 画在最上层），
-       其余沿纵队向左错位（`MY_LANE_STAGGER`×序号）——距离尺/弹道锚点仍按主控那条舰。 */
-  const MY_LANE_STAGGER = 26
-  const multiMe = arcs.myUnits.length > 1
-  const myLaneCols = multiMe ? [...arcs.myUnits].sort((a, b) => Number(a.leader) - Number(b.leader)) : arcs.myUnits
+     · 多舰路径逐舰一条舰影，锚点取 `lay.my[i]`（**敌人斜向菱形的镜像**，见上）；DOM 顺序把主控放最后
+       ＝画在最上层；距离尺/弹道锚点仍按主控那条舰。 */
   /** 阵形（斜向菱形）：列宽/右移/下移/排高 + 逐舰机位（DOM 的两排排布与逐舰微调共用这一份） */
   const foeFormation = lay.formation
   /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该排整组竖排到编队下方）——
@@ -1699,12 +1711,14 @@ const meSpeedRef = useRef(200)
               · 入场动画照旧：整列 `is-arriving` 自左缘外飞入，**逐舰 `--arrive-delay` 错峰**，
                 只走 transform/opacity、落点坐标不动（验收第 6 条）。 */}
           {multiMe
-            ? myLaneCols.map((u, i) => {
+            ? myDrawOrder.map(({ u, slot }, drawIdx) => {
                 const def = fleetDefOf(state, engine.ctx, u.shipId)
                 const role: ShipRole = def?.role ?? 'industrial'
-                // 纵队错位：主控（leader）恒 0；其余按"从近到远"依次退 MY_LANE_STAGGER
-                const back = u.leader ? 0 : i + 1
-                const left = lay.meLeft - MY_LANE_STAGGER * back
+                const spriteSize = sizeOfUnit(def?.tier, false)
+                // **镜像斜向菱形**：锚点 = `lay.my[slot]`（主控那条恒等于 `me`，故距离尺/弹道不偏）
+                const anchor = lay.my[slot] ?? lay.me
+                const left = Math.round(anchor.x - spriteSize / 2)
+                const top = Math.round(anchor.y - (spriteSize * 0.46) / 2)
                 return (
                   <div
                     key={u.tag}
@@ -1713,18 +1727,19 @@ const meSpeedRef = useRef(200)
                       arrivalSide === 'me'
                         ? ({
                             left,
+                            top,
                             '--arrive-dx': `${arriveDxMe}px`,
                             '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
-                            '--arrive-delay': `${(u.leader ? 0 : i + 1) * ARRIVAL_STAGGER_MS}ms`,
+                            '--arrive-delay': `${(u.leader ? 0 : drawIdx + 1) * ARRIVAL_STAGGER_MS}ms`,
                           } as CSSProperties)
-                        : { left }
+                        : { left, top }
                     }
                   >
                     <span className="app-bts-name">
                       {u.name}
                       {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
                     </span>
-                    <ShipSprite shipId={u.shipId} role={role} accent={ROLE_ACCENT[role]} size={sizeOfUnit(def?.tier, false)} flip={meFlip} />
+                    <ShipSprite shipId={u.shipId} role={role} accent={ROLE_ACCENT[role]} size={spriteSize} flip={meFlip} />
                     {u.alive ? (
                       <div className="app-bts-hpWrap">
                         <HpTri hp={u.hp} max={u.hpMax} />

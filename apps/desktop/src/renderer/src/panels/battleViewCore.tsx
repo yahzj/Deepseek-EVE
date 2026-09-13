@@ -287,10 +287,14 @@ function layout(
   openM: number,
   nearM: number,
   meSize: number = LAY.MAIN,
+  /** **我方逐舰体积**（px）——多舰同屏（虫洞）时用来算"镜像斜向菱形"；缺省 = 单舰 `[meSize]` */
+  mySizes: readonly number[] = [meSize],
 ): {
   meLeft: number
   foeLeft: number
   me: Anchor
+  /** **我方逐舰锚点**（2026-09-13 船长「按照敌人阵型那样镜像排列」）：单舰时 = `[me]`（逐像素同旧） */
+  my: Anchor[]
   foe: Anchor[]
   /** **实际落画**体积（px；启用阶梯时已含溢出收缩）——渲染尺寸/舰艏偏移必须用它，不能用入参原值 */
   sizes: number[]
@@ -341,7 +345,33 @@ function layout(
     foe.push({ x, y })
   }
   const foeBottom = LAY.TOP + (fm.rows === 2 ? fm.rowH * 2 : fm.rowH)
-  return { meLeft, foeLeft, me, foe, sizes: slots, foeBottom, formation: fm, usable }
+  /* ── 我方逐舰锚点：**敌人斜向菱形的镜像**（2026-09-13 船长「都挤成了一排，应该按照敌人阵型那样镜像排列」）
+     同一份 `foeFormationOf`（列宽/右移/下移/排高）算结构，方向镜像：敌方在右、列序自左向右且第二排**右**移
+     ⇒ 我方在左，列序改成**向左**展开（主控＝第 0 列，最靠敌），第二排**左**移 `shift`、同样**下**移一行高。
+     ⚠ 单舰（`mySizes.length === 1`）时**必须**返回 `[me]` 本身（`me` 是距离尺/弹道/血条的既有锚点）⇒ 逐像素不变。 */
+  const my: Anchor[] = mySizes.length <= 1 ? [me] : (() => {
+    const mySlots = [...mySizes]
+    const myFm = foeFormationOf(mySlots)
+    const myH = mySlots.map((w) => w * 0.46)
+    const myRowH = Math.max(1, ...myH)
+    const colBase = foeColLeft(myFm, 0) + (myFm.colW[0] ?? mySlots[0]!) / 2
+    const out: Anchor[] = []
+    for (let i = 0; i < mySlots.length; i++) {
+      // 第 0 条 = 主控：**强制落在原 `me`**（距离尺/射程弧/弹道的既有锚点全在 `me` 上；
+      // 若让它跟阵形行高走，主控与尺子会差半个舰高）
+      if (i === 0) {
+        out.push({ x: me.x, y: me.y })
+        continue
+      }
+      const s = myFm.slots[i]!
+      const colOffset = foeColLeft(myFm, s.col) + (myFm.colW[s.col] ?? mySlots[i]!) / 2 - colBase
+      const x = me.x - colOffset - (s.row === 1 ? myFm.shift : 0)
+      const y = LAY.TOP + (s.row === 1 ? myRowH * 2 : myRowH) - myH[i]! / 2
+      out.push({ x, y })
+    }
+    return out
+  })()
+  return { meLeft, foeLeft, me, my, foe, sizes: slots, foeBottom, formation: fm, usable }
 }
 
 /**
