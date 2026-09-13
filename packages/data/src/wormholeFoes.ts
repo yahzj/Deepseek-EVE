@@ -4,14 +4,18 @@
  * 口径来源：`docs/design/wormhole-extraction-endgame-20260912.md`
  * §3（节点与层末 BOSS）· §8「层末 BOSS = 复用舰级表」· §10 F 批。
  *
- * 四张卡 = **四个族的洞内常驻编成**（A 海盗 / C 异形 / D 守墓 / G 鱿烬），一卡一图层轮换
+ * **五张卡 = 五个族的洞内常驻编成**（A 海盗 / C 异形 / D 守墓 / E 巨构 / G 鱿烬），一卡一图层轮换
  * （`wormholeCardIdFor(depth, nodeIndex)`，确定性）。
+ *
+ * ⚠ **2026-09-13 补第五张（E 族）**：船长裁定「**虫洞专属掉落按种族库走，蓝图也是按种族库。
+ * 你顺便补上空缺的种族。**」——五族掉落池要"每族都有来源"，而洞内原本只有四张卡（缺 E）⇒ 见下方
+ * `wh-titan-echo`。E 族此前在 `wormhole-exclusive-20260913.md` §2 就标着"掉落池暂时无来源"。
  *
  * **威胁不是写死的本卡强度**：卡上 `threat` 只是**缩放锚点**（= 第 1 层基准威胁 45），
  * 实际用哪一层由 core 的 `wormholeAnomalyOf(base, depth, kind, waves)` **按层换算**：
  * 层末 BOSS ×1.2、撤离战 ×0.8、普通节点 ×1.0（见 `WORMHOLE_BOSS_THREAT_MUL` 等常量）。
  *
- * ⚠ **施工期对玩家不可见**：四张卡一律 `hidden: true`（不进悬赏目录、不被派发、不参与族级设计契约），
+ * ⚠ **施工期对玩家不可见**：五张卡一律 `hidden: true`（不进悬赏目录、不被派发、不参与族级设计契约），
  * 且洞内入口本身在调试开关后面 ⇒ 拍板前玩家遇不到它们。
  *
  * ⚠ **待 F 批收益校准**：编成取"舰级自然值"（不写 `hpMul`/`dmgMul`，即 1×），
@@ -23,6 +27,7 @@ import {
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
   FOE_G_SWARM_SKIFF,
+  FOE_SHIP_AURO_HULK,
   FOE_SHIP_PIRATE_CORVETTE,
 } from './foe-ships'
 
@@ -117,6 +122,34 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     combatSeconds: 40,
     hidden: true,
     description: '虫洞内遭遇：鱿烬亡军的封锁小队（隐藏卡，只由虫洞生成）。',
+  },
+  {
+    id: 'wh-titan-echo',
+    foeFamily: 'E',
+    name: '巨构残响',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    // E 族签名 = **平台（机库 + 无人机承载）**：不打人、靠机群投送火力 ⇒ 选靶模式 **随机**（族格）
+    foeTargeting: 'random',
+    // 混伤 **50% 动能 + 50% 爆炸**（船长 2026-09-11「该系敌人伤害比例为 50% 爆炸 50% 动能」；E 族族格）
+    dmgMix: { kinetic: 5, explosive: 5 },
+    // 编成 = 奥罗残骸段 ×1（T3 静物残骸 + **警戒机群 5 架**；族内最"旧"最轻的一截）
+    // ⚠ **`dmgMul = 0.9` 是逐卡读数配出来的，别照抄其它卡的 0.5**——本卡是洞内**唯一带机群**的卡：
+    // 机群**发数多、单发轻**，同一条 `dmgMul` 下实收远低于其它卡。实测
+    // （`npm run wormhole:econ -- --card=4 --depth=N`，5 播种）：
+    // `0.25` ⇒ 层 3 节点残血 97% / 层 7 节点 100% 胜（**安全刷层卡**，明显偏软）；
+    // `1.4`  ⇒ 层 1 节点 71%（比四张老卡都硬）/ 层 5 节点 0%（比 G 族还狠）⇒ 过强；
+    // `0.9`  ⇒ 层 1 节点 82% · 层 3 节点 71% · 层 5 节点 39% · 层 5 守卫 0%。
+    // 同深度对照（老卡：层 3 节点 A 86 / C 100 / D 72 / G 65；层 5 节点 A 70 / C 60 / D 15 / G 0）
+    // ⇒ **0.9 落在四张老卡的正中间**，采用。E 族洞内只此一张 ⇒ 它同时是 E 族掉落池的唯一来源。
+    ships: [{ ship: FOE_SHIP_AURO_HULK, count: 1, dmgMul: 0.9 }],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：一截仍在放电的巨构残骸及其警戒机群（隐藏卡，只由虫洞生成）。',
   },
 ]
 

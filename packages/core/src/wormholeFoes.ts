@@ -81,12 +81,16 @@ export function wormholeFoeThreat(depth: number, kind: WormholeFoeKind): number 
 /**
  * 洞内敌卡的**轮换顺序**（与 `packages/data/src/wormholeFoes.ts` 的卡表同序）。
  * ⚠ 两处必须一致：`content:check` 有契约钉住（少一张/改名就报错）。
+ *
+ * 2026-09-13 补第五张 **E 族「巨构残响」**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库。
+ * 你顺便补上空缺的种族。」）⇒ 五族各有一张洞内卡，按族掉落池才"每族都有来源"。
  */
 export const WORMHOLE_FOE_CARD_IDS: readonly string[] = [
   'wh-pirate-scout',
   'wh-alien-swarm',
   'wh-grave-watch',
   'wh-exile-blockade',
+  'wh-titan-echo',
 ]
 
 /** 本节点用哪张敌卡（**确定性**：同 `(depth, nodeIndex)` ⇒ 同卡，四族轮换） */

@@ -23,6 +23,9 @@ export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
 // 2026-09-11 退役窝点卡白名单（船长「按方案 2 执行」）：B 族两卡字段退役后，靠显式白名单
 // 保住"旧档里已获得的稀有残骸仍可识别"——详见 `./retiredLairCards.ts` 与 content:check 契约。
 export { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
+// 2026-09-13 洞内敌卡表（五族各一张 = 按族掉落池的来源）：卡表与轮换顺序对外出口，
+// 供 `content:check` 的三处同序契约与 core 侧的轮换表对齐（少一张/换序会让掉落物取错族）。
+export { WORMHOLE_FOE_CARDS, WORMHOLE_FOE_CARD_IDS, WORMHOLE_RARE_WRECK_CARD_IDS } from './wormholeFoes'
 // 2026-09-11 敌舰配置表（舰级表）：A 族试点——绝对值口径，悬赏卡只写编成与修正
 export {
   FOE_SHIPS,

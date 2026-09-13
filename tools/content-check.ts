@@ -56,6 +56,7 @@ import {
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
+  WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -98,6 +99,8 @@ securityZoneOf,
   foeLayerSplit,
   // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
   itemReleased,
+  // 2026-09-13：洞内敌卡轮换表（与 data 清单、内容侧契约三处同序；见「虫洞不可见闸门」）
+  WORMHOLE_FOE_CARD_IDS as coreWhIds,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -3029,9 +3032,9 @@ for (const m of MODULES) {
    * **虫洞施工期不可见闸门**（船长 2026-09-13 铁律：「虫洞完成前对玩家不可见」）。
    *
    * 口径：虫洞这条线的三样东西**在船长拍板前一律不得进玩家可见面** ——
-   * ①**洞内敌卡**四张（`wh-*`）必须 `hidden: true`（否则会出现在悬赏目录/日板派发里，
-   *   玩家在星图上就能看到"虫洞"敌人）；②**虚空母矿**必须仍标 `unreleased`（市场/图鉴看不见）；
-   * ③**四张洞内敌卡不带赏金/战利品**（`rewardIsk = 0` 且 `loot` 空）——它们只由虫洞生成，
+   * ①**洞内敌卡**（`wh-*`，2026-09-13 起**五张**：A/C/D/E/G 各一）必须 `hidden: true`（否则会出现在
+   *   悬赏目录/日板派发里，玩家在星图上就能看到"虫洞"敌人）；②**虚空母矿**必须仍标 `unreleased`；
+   * ③**洞内敌卡不带赏金/战利品**（`rewardIsk = 0` 且 `loot` 空）——它们只由虫洞生成，
    *   若挂了奖金/掉落，任何一条别的路径引用到它都会白送收益。
    * ④**（2026-09-13 补）物品卡也要标 `unreleased`**：市场闸门只管 `ctx.marketGoods`，
    *   而工业页「可精炼资源」/舰船页 AI 精炼炉下拉/组装机材料提示/手册物品图鉴都是
@@ -3041,7 +3044,21 @@ for (const m of MODULES) {
    * ⚠ 审计的是"标注"这一层；**入口走调试开关**这层没法在这里自动核（见 `panels/Wormhole.tsx` 头注释）。
    */
   {
-    const whIds = ['wh-pirate-scout', 'wh-alien-swarm', 'wh-grave-watch', 'wh-exile-blockade']
+    const whIds = ['wh-pirate-scout', 'wh-alien-swarm', 'wh-grave-watch', 'wh-exile-blockade', 'wh-titan-echo']
+    // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
+    // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"
+    // 取错卡（掉落物跟着族走，错一张就是整族拿不到东西）。
+    const dataIds = WORMHOLE_FOE_CARD_IDS
+    if (dataIds.join('|') !== whIds.join('|')) {
+      errors.push(
+        `虫洞不可见闸门：洞内敌卡三处清单不一致 —— 内容侧契约 [${whIds.join(', ')}] vs data 表 [${dataIds.join(', ')}]`,
+      )
+    }
+    if (coreWhIds.join('|') !== whIds.join('|')) {
+      errors.push(
+        `虫洞不可见闸门：洞内敌卡三处清单不一致 —— 内容侧契约 [${whIds.join(', ')}] vs core 轮换表 [${coreWhIds.join(', ')}]`,
+      )
+    }
     let leaked = 0
     for (const id of whIds) {
       const card = ANOMALIES_FLAVORED.find((a) => a.id === id)

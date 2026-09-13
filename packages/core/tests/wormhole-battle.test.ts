@@ -114,22 +114,27 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     expect(wormholeFoeThreat(3, 'boss')).toBe(Math.round(wormholeLayerThreat(3) * 1.2))
   })
 
-  it('四张洞内敌卡按 (层, 节点) 确定性轮换，且四族都真实存在于目录里', () => {
+  it('五张洞内敌卡按 (层, 节点) 确定性轮换，且五族（A/C/D/E/G）都真实存在于目录里', () => {
     const ids = new Set<string>()
-    for (let d = 1; d <= 3; d++) {
+    for (let d = 1; d <= 5; d++) {
       for (let i = 0; i < 3; i++) {
         const id = wormholeCardIdFor(d, i)
         ids.add(id)
         expect(wormholeCardIdFor(d, i)).toBe(id) // 确定性
       }
     }
-    expect(ids.size).toBe(WORMHOLE_FOE_CARD_IDS.length) // 轮换覆盖全部四张
+    expect(ids.size).toBe(WORMHOLE_FOE_CARD_IDS.length) // 轮换覆盖全部五张
+    expect(WORMHOLE_FOE_CARD_IDS.length).toBe(5) // A/C/D/E/G 各一张（2026-09-13 补 E 族）
+    const families = new Set<string>()
     for (const id of WORMHOLE_FOE_CARD_IDS) {
       const card = ctx.anomalies.get(id)
       expect(card, `目录里没有洞内敌卡 ${id}`).toBeTruthy()
       expect(card!.hidden).toBe(true) // 施工期必须隐藏（不进悬赏目录）
       expect((card!.ships ?? []).length).toBeGreaterThan(0) // 舰级路径
+      families.add(String(card!.foeFamily))
     }
+    // 五族齐 ⇒ 按族掉落池"每族都有来源"（船长 2026-09-13：专属掉落与蓝图都按种族库走）
+    expect([...families].sort()).toEqual(['A', 'C', 'D', 'E', 'G'])
   })
 
   it('派生：威胁换成目标值、**总血压到该层预算**（按卡归一）；**波数摊薄但总战力守恒**', () => {
