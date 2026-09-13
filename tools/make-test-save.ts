@@ -1434,7 +1434,91 @@ function injectAbyssgate(state: GameState): string[] {
   return notes
 }
 
+/**
+ * **虫洞验收档**（2026-09-13 · 一号；船长拍板前的实机验收入口）。
+ *
+ * 为什么需要它：虫洞**施工期对玩家不可见**（入口只在调试模式下渲染、虚空母矿被 `unreleased` 闸门挡着）
+ * ⇒ 船长要实机试玩，必须先有个"编队配好、补给够、能直接进洞"的档，而不是手工配 4 艘船。
+ *
+ * 注入门槛（**按船长 2026-09-13 给的难度基准编队**）：
+ * - **4× 长尾鲨级导弹巡（T3 · 5×动能 MK2 + 推进/盾/索敌/稳像/装甲 MK2）** = `wormhole:econ` 的参考编队，
+ *   也就是船长原话里的「**4×巡洋 MK2**」；
+ * - 另加 **玄武级（T4 战列舰）** 与 **皇带鱼级（T5 旗舰）** 各一艘 ⇒ 准备页可直接看「**过重**」置灰
+ *   与「T4 能带、T5 进不去」；
+ * - 钱包 +3000 万 ISK（洞内修船/换装）+ 协会声望 13 + 星图全点亮；
+ * - 仓库弹药三型 ×5000、修理组件民用/军用各 ×20（承伤持久 ⇒ 出洞修船要用）；
+ * - 装备库把用到的 MK2 件各备 4 件（换装对比）。
+ *
+ * ⚠ **入口可见性**：虫洞入口只在**调试模式**下出现 ⇒ 进游戏前先在 DevTools 执行
+ * `localStorage.setItem('whale-idle:debug','1')` 并刷新（与调试面板同一开关）。
+ */
+function injectWormhole(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  notes.push('钱包 +30,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）`)
+  for (const k of ['gunnery', 'fire-control', 'reload-drills', 'shield-operation', 'armor-tuning', 'vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  notes.push('战斗系 8 项技能 ≥ Lv3（与 wormhole:econ 的参考行同口径）')
+  // 4× 巡洋 MK2（= 船长给的难度基准编队）
+  const fit = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  const names = ['①', '②', '③', '④']
+  for (let i = 0; i < 4; i++) {
+    const uid = addShipToFleet(state, 'sh-thresher')
+    const s = state.fleet[uid]!
+    s.customName = `长尾鲨${names[i]}·虫洞编队（5×动能MK2）`
+    s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid // 主控 = 第一艘
+  }
+  notes.push('4× 长尾鲨级导弹巡（T3）· 5×动能 MK2 + 支援三件 = **4×巡洋 MK2 基准编队**（主控 = ①）')
+  // T4 战列舰（可带）+ T5 旗舰（必须在准备页置灰）
+  const t4 = addShipToFleet(state, 'sh-xuanwu')
+  state.fleet[t4]!.customName = '玄武级·T4 战列舰（可带）'
+  state.fleet[t4]!.fitted = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-shield-kin-2', 'mod-shield-kin-2', 'mod-track-2'],
+    low: ['mod-armor-kin-2', 'mod-armor-kin-2', 'mod-stab-kin-2'],
+  }
+  const t5 = addShipToFleet(state, 'sh-colossal')
+  state.fleet[t5]!.customName = '皇带鱼级·T5 旗舰（进不去）'
+  notes.push('另加 玄武级（T4 · 可带）与 皇带鱼级（T5 · 准备页应显示「过重」并置灰）')
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
+  }
+  notes.push('仓库：弹药三型 ×5000 · 修理组件民用/军用各 ×20（承伤持久，出洞要修船）')
+  for (const m of [
+    'mod-turret-kin-2', 'mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-stab-kin-2', 'mod-armor-kin-2',
+  ]) {
+    state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 4
+  }
+  notes.push('装备库：编队用到的 MK2 件各 +4（换装对比）')
+  notes.push('⚠ 入口只在调试模式下出现：DevTools 执行 localStorage.setItem(\'whale-idle:debug\',\'1\') 后刷新')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  // wormhole（2026-09-13）：虫洞验收档（4×巡洋 MK2 基准编队 + T4/T5 对照 + 补给）
+  wormhole: injectWormhole,
   // pd（2026-09-11 机群批 S5）：敌方机群 + 巨构近防炮验收档（三船对照 + 近防炮三档）
   pd: injectPd,
   rarebox: injectRareBox,

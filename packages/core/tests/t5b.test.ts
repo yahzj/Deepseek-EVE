@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
-import { createInitialState } from '../src/state'
+import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import { addShipToFleet, allocateShipUid, changeShip, renameShip } from '../src/shipyard'
 import { fleetDefOf, shipDisplayName } from '../src/instances'
 import { cancelOrder, placeShipSellOrder } from '../src/market'
@@ -145,7 +145,7 @@ describe('T5-B 舰船实例化（v17）', () => {
     renameShip(state, uid2, '二号')
     const text = serializeSaveFile(state, state.savedAtWallMs)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(24)
+    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state).toEqual(state)
 
     // v16 老档（fleet/escrow 条目无 v17 字段）：迁移链补字段
@@ -168,7 +168,7 @@ describe('T5-B 舰船实例化（v17）', () => {
       },
     }
     const upgraded = loadSaveFile(JSON.stringify(v16))
-    expect(upgraded.state.version).toBe(24)
+    expect(upgraded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(upgraded.state.fleet.sandcat!.defId).toBe('sandcat')
     expect(upgraded.state.fleet.sandcat!.customName).toBeNull()
     expect(upgraded.state.fleet.sandcat!.cargo['ore-a']).toBe(3)

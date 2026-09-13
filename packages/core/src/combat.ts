@@ -26,14 +26,20 @@ import type {
   FoeShipDef,
   FoeShipSlot,
   FoeTactic,
+  FoeTargetingMode,
   ModuleDef,
+  ShipRole,
   SimContext,
 } from './types'
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
+// 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, wormholeAnomalyOf } from './wormholeFoes'
+import { wormholeFoeThreat } from './wormholeFoes'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
-import { fleetDefOf } from './instances'
+import { fleetDefOf, shipDisplayName } from './instances'
+import { uidDefId } from './labels'
 import { quickRepairFactor } from './repair'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
@@ -135,6 +141,17 @@ export interface UnitSpec {
   /** **舰种档**（1 护卫舰 … 5 旗舰；2026-09-12 加）：敌方单位 = 编成条目所引舰级的档位；
    *  旧威胁推导路径不写（缺省按 1 处理）。用途 = **敌舰近防炮的档系数**（`balance.pdTierMul`）。 */
   hullClassTier?: number
+  /**
+   * **我方单位的舰种档**（虫洞 D 批 · 2026-09-13）：`createPlayerSpec` 恒按 `ShipDef.tier` 写入。
+   * 用途 = 敌方选靶模式「**打最小的 / 打最大的**」（见 `pickMyUnitTarget`）。
+   * ⚠ 与 `hullClassTier` 同义但**分开**：后者是敌方字段（旧路径缺省按 1），混用会让
+   * "旧路径敌舰缺省档 1"污染我方选靶判据。
+   */
+  shipTier?: number
+  /** **我方单位的舰种定位**（虫洞 D 批）：`createPlayerSpec` 恒按 `ShipDef.role` 写入。
+   *  用途 = 敌方选靶模式「**打非战斗船**」——`industrial`（工业/采矿）与 `hauler`（货舰）算非战斗，
+   *  `armed`（武装）/ `armored`（装甲）算战斗。 */
+  shipRole?: ShipRole
   side: 'me' | 'foe'
   hp: Hp3
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
@@ -809,6 +826,10 @@ export function createPlayerSpec(
     tag: 'player',
     name: ship.name,
     side: 'me',
+    // 虫洞 D 批（2026-09-13）：我方单位的**档位/定位**——供敌方选靶模式「打最小/最大/打非战斗船」判定。
+    // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
+    shipTier: ship.tier,
+    shipRole: ship.role,
     hp,
     resists,
     // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
@@ -2100,9 +2121,15 @@ export function createBattleState(
   foes: UnitSpec[],
   nowMs: number,
   myDesireM: number,
+  /**
+   * **僚舰**（虫洞 D 批 · 船长 2026-09-13：一场战斗最多 4 艘我方同时参战）。
+   * 缺省 `[]` = **单船路径**（既有 27 张悬赏卡 / 低安遭遇 / AI 副船全走这一档）⇒ 建档内容与
+   * 改动前逐字一致（`units` 多出的键只可能是这里传进来的僚舰）。
+   */
+  myAllies: readonly UnitSpec[] = [],
 ): import('./state').BattleState {
   const units: Record<string, import('./state').BattleState['units'][string]> = {}
-  for (const spec of [me, ...foes]) {
+  for (const spec of [me, ...myAllies, ...foes]) {
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发的单位不进开战编队**，
     // 由 `advanceBattleFor` 每拍按条件补入。开关关闭时建档期根本不写 `foeReinforceAt` → 本行永不命中。
     if (spec.foeReinforceAt) continue
@@ -2155,7 +2182,44 @@ export function pushBattleFx(
   if (b.fx.length > 48) b.fx.splice(0, b.fx.length - 48)
 }
 
-/** 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（记录缺失）。
+/**
+ * **本场我方的单位规格**（虫洞 D 批 · 每拍重建）：
+ * - **单船路径**（`battle.myFleet` 未写）：等价于改动前的单点 `createPlayerSpec(shipId)` + 教学战加成；
+ * - **多单位路径**（写了）：按 `myFleet` 逐条重建（各自装配/技能/血条/装填），并把 `tag` 覆盖成
+ *   编队标识（`player` / `ally-N`）。**弹药按同一份 `battle.ammoIds` 口径**（共用池的"主控优先档口"，
+ *   见 `startFleetBattleFor` 注释）。
+ * 返回**空数组** = 主力船记录缺失（调用方按判负收场，与改动前 `!me` 同路径）。
+ */
+function buildMyUnitSpecs(
+  state: GameState,
+  ctx: SimContext,
+  battle: import('./state').BattleState,
+  shipId: string,
+  anomalyId: string | null,
+): UnitSpec[] {
+  const fleet = battle.myFleet
+  if (!fleet || fleet.length === 0) {
+    const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
+    if (!me) return []
+    // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
+    if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
+    return [me]
+  }
+  const out: UnitSpec[] = []
+  for (const entry of fleet) {
+    const spec = createPlayerSpec(state, ctx, entry.shipId, battle.ammoIds)
+    if (!spec) continue
+    spec.tag = entry.tag
+    if (entry.tag === 'player' && isTutorialBattle(state, anomalyId, entry.shipId)) {
+      applyTutorialBuff(spec)
+    }
+    out.push(spec)
+  }
+  return out
+}
+
+/**
+ * 到港开战通用组装（主控与 AI 共用）：建状态 + 预载弹药；返回 battle 或 null（记录缺失）。
  * atGameMs = 开战时刻（应传"到港时刻"，让离线大推进能把后续时间全部推完）。
  * desireM = 玩家期望距离偏好（缺省 = 主武器有效射程中点）。 */
 /** 本场战斗的目标卡（2026-09-10）：赏金任务·窝点按 tier 现场派生强化卡（威胁/波次/僚机/名称）；
@@ -2296,6 +2360,201 @@ export function startBattleFor(
   return battle
 }
 
+/**
+ * **洞内敌卡的派生单点**（F 批 · 2026-09-13）：开战与逐拍重建**必须走同一处**，
+ * 否则会出现"建档给了一套数值、逐拍又换一套"的静默错位——
+ * 首版就是这么错的：`advanceBattleFor` 漏了总血预算 ⇒ 敌人**血是强化后的、炮还是自然值**
+ * （探针实测：敌总血 11,168、单发 1,336，实战里每发只掉 6~7 点，整场残血 100%）。
+ */
+function wormholeDerivedAnomaly(
+  ctx: SimContext,
+  baseCard: AnomalyDef,
+  spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },
+): AnomalyDef {
+  return wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
+    // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
+    hpBudget:
+      foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
+      WORMHOLE_FOE_BASE_STRENGTH_MUL,
+    ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
+  })
+}
+
+/**
+ * **多舰编队开战**（虫洞 D 批 · 船长 2026-09-13：「4 艘同时参战」）——与 `startBattleFor` 并列的
+ * 第二条建档入口，**既有单船路径一字不动**。
+ *
+ * 口径（逐条见设计稿 §二 冲突 1 的 D 批落地表）：
+ * - **主控 = `state.shipId`**（若在编队里，否则编队第一艘）；tag 恒为 `'player'`，僚舰 `'ally-1'..`；
+ * - **逐船**按自己的装配/技能建三层血，并按自己的**场间残余**（`armorPct`/`durability`）开局；
+ * - **弹药整队共用一个池，但池 = 每艘船各自装载量之和**（各船按自己的装配档与货仓装载、
+ *   **照付成本**）；⚠ 多船混装**不同弹种档位**时，`battle.ammoIds` 与退还都按**主控优先**
+ *   的档口（共用池记不住两套档位——已知简化，F 批可细化）；
+ * - **不挂 `hullEscapeFrac`** ⇒ 副本内没有"结构过半自动脱离"保险（冲突 2 · 船长裁定「关闭」）；
+ * - 僚舰的**无人机机群 / 近防炮 / 修理包不参战**（D 批边界；机群与点防的多单位化留 F 批）。
+ */
+export function startFleetBattleFor(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+  anomalyId: string | null,
+  atGameMs: number = state.gameMs,
+  desireM?: number | null,
+  /**
+   * **虫洞战斗标记**（F 批 · 2026-09-13）：给了就按层派生敌卡（`wormholeAnomalyOf`），
+   * 并把 `{cardId, depth, kind, waves}` 写进 `battle.wormhole` ⇒ 逐拍重建同源。
+   * **不给 = 普通多舰战斗**（既有行为）。
+   * `strengthMul` = **校准用覆写**（只有 `tools/wormhole-econ.ts` 会传；引擎/实战一律走常量）。
+   */
+  wormhole?: {
+    depth: number
+    kind: 'node' | 'boss' | 'extract'
+    waves: number
+    strengthMul?: number
+  },
+): import('./state').BattleState | null {
+  if (!anomalyId || shipIds.length === 0) return null
+  // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
+  const baseCard = battleAnomalyOf(ctx, anomalyId)
+  if (!baseCard) return null
+  // 洞内敌卡：按层派生（**与逐拍重建同源**，见 `wormholeDerivedAnomaly` 的注释）
+  const anomaly = wormhole ? wormholeDerivedAnomaly(ctx, baseCard, wormhole) : baseCard
+  const bal = ctx.balance.battle
+  // 编队顺序：**主控置首**（`state.shipId` 在编队里就提到第一位），其余保持传入顺序
+  const ordered = [...shipIds]
+  const leaderIdx = ordered.indexOf(state.shipId)
+  if (leaderIdx > 0) {
+    ordered.splice(leaderIdx, 1)
+    ordered.unshift(state.shipId)
+  }
+  const specs: UnitSpec[] = []
+  const fleet: NonNullable<import('./state').BattleState['myFleet']> = []
+  /** 逐船规格（弹药装载要按船各算一次，故留一份） */
+  const specOf = new Map<string, UnitSpec>()
+  for (let i = 0; i < ordered.length; i++) {
+    const sid = ordered[i]!
+    const spec = createPlayerSpec(state, ctx, sid)
+    // 主力船记录缺失 = 与单船路径同样的"开不了战"（不让它退化成"打头的变成僚舰"）
+    if (!spec) {
+      if (i === 0) return null
+      continue
+    }
+    spec.tag = i === 0 ? 'player' : `ally-${i}`
+    // P0 承伤持久化：装甲/结构（=耐久合并属性）按**各自**场间残余开局；护盾每场满值重建
+    const fleetShip = state.fleet[sid]
+    if (fleetShip) {
+      const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
+      const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
+      spec.hp.a = Math.max(0, spec.hp.a * armorMul)
+      spec.hp.h = Math.max(0, spec.hp.h * hullMul)
+    }
+    specs.push(spec)
+    specOf.set(sid, spec)
+    fleet.push({ tag: spec.tag, shipId: sid })
+  }
+  if (specs.length === 0) return null
+  const me = specs[0]!
+  // 多波（2026-09-09）：开战只生成第一波；后续波由 advanceBattleFor 在敌方全灭时补刷
+  const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
+  const foes = waves
+    ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
+    : createFoeSpecs(anomaly, bal)
+  const openM = battleOpenM(me, foes, bal)
+  const rawDesire =
+    desireM === null
+      ? desiredRangeFor(me, 'mid', bal)
+      : desireM !== undefined && desireM > 0
+        ? Math.round(desireM)
+        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
+  const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
+  const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
+  // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
+  // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
+  // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
+  //
+  // ⚠ **虫洞内战斗的特殊规则（船长 2026-09-13）**：洞内**不吃**上面那条常规开战距离 ——
+  //   ① **非近战敌人**：初始距离 = **其目标距离**（敌人一开场就站在自己想打的位置）；
+  //   ② **近战敌人**：初始距离 = **玩家的中距离位置**（贴脸怪一开场就在你脸上）。
+  //   动机：常规口径下长射程编队能把近程敌人**永远钉在射程外**（F1 校准实测「敌开火 0」），
+  //   洞内要的是"进去就得挨打"的搜打撤张力。混合编成按"**卡内任一近战单位 ⇒ 走近战口径**"。
+  if (wormhole) {
+    const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
+    const want = anyBrawl ? desiredRangeFor(me, 'mid', bal) : foeDesiredRange(me, foes, bal)
+    battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
+  } else {
+    battle.distanceM = openM
+  }
+  battle.myFleet = fleet
+  // 弹药：**逐船装载、汇入同一个池**（成本按各船各付；档口按主控优先）
+  const ammoIds: Partial<Record<DamageType, string>> = {}
+  for (const entry of fleet) {
+    const spec = specOf.get(entry.shipId)!
+    const totals = ammoLoadTotals(spec, bal, state)
+    for (const [t, n] of Object.entries(totals)) {
+      const type = t as DamageType
+      const key = ammoKeyOf(type)
+      const res = loadAmmoTier(state, ctx, entry.shipId, type, n)
+      battle.ammo[key] += res.loaded
+      if (state.fleet[entry.shipId]?.ammoPref?.[type] && res.loaded > 0 && ammoIds[type] === undefined) {
+        ammoIds[type] = res.id
+      }
+      if (res.fellBack && res.loaded > 0) {
+        const wantName = ctx.items.get(state.fleet[entry.shipId]!.ammoPref![type]!)?.name ?? type
+        const useName = ctx.items.get(res.id)?.name ?? type
+        addLog(state, 'warn', `⚙ ${wantName}库存不足，本场改用${useName}（预载 ${res.loaded} 发）。`)
+      }
+    }
+  }
+  if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
+  // 机群生存池：**只按主控武器槽建池**（僚舰无人机本批不参战，见 D 批边界）
+  const pools: Record<number, import('./state').DronePoolEntry> = {}
+  const durMul =
+    (1 + DRONE_SKILL.durabilityPerLevel * droneSkillLv(state, 'drone-durability')) *
+    (1 + DRONE_SKILL.reinforcePerLevel * droneSkillLv(state, 'drone-reinforce'))
+  const evaMul = 1 + DRONE_SKILL.evasionPerLevel * droneSkillLv(state, 'drone-evasion')
+  me.weapons.forEach((w, i) => {
+    if (w.src !== 'drone' || !w.artId) return
+    const d = ctx.items.get(w.artId)?.defense
+    pools[i] = {
+      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
+      a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
+      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul)),
+      alive: true,
+      artId: w.artId,
+      evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
+      ...(d
+        ? {
+            resists: {
+              ...(d.shieldResist ? { shield: d.shieldResist } : {}),
+              ...(d.armorResist ? { armor: d.armorResist } : {}),
+              ...(d.hullResist ? { hull: d.hullResist } : {}),
+            },
+          }
+        : {}),
+    }
+  })
+  if (Object.keys(pools).length > 0) {
+    battle.dronePools = pools
+    battle.droneLost = {}
+    battle.droneLoadAtStart = { ...(state.fleet[fleet[0]!.shipId]?.droneLoad ?? {}) }
+  }
+  initFoeDronePools(battle, foes);
+  if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
+    battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
+  }
+  // 维修装置：**只预载主控**（僚舰修理包不参战，见 D 批边界）
+  const repair = preloadRepairFor(state, ctx, fleet[0]!.shipId, bal.maxBattleMs)
+  if (repair) {
+    const ready = repair.units.filter((u) => !u.stopped)
+    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+    battle.repair = repair
+  }
+  // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）
+  if (wormhole) battle.wormhole = { cardId: anomalyId, ...wormhole }
+  // ⚠ **刻意不写 `battle.hullEscapeFrac`**：副本内无"结构过半自动脱离"保险（冲突 2 · 船长裁定）。
+  return battle
+}
+
 /** 战斗射程带查询（小剧场距离条用）：返回双方主武器带与开战距离上限；无战斗返回 null */
 export function battleZonesFor(state: GameState, ctx: SimContext): {
   openM: number
@@ -2330,6 +2589,16 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
 export function battleArcsFor(
   state: GameState,
   ctx: SimContext,
+  /**
+   * **显式战斗上下文**（2026-09-13 F 批）：不给 = 既有"远征战斗"口径（逐字不变）；
+   * 给了 = 按这套上下文出视图（虫洞战斗由 `wormholeBattleViewOf` 传进来，与远征互不干扰）。
+   */
+  override?: {
+    battle: import('./state').BattleState
+    anomaly: AnomalyDef
+    /** 视图锚（我方主视角/主控）的船型 uid */
+    leaderShipId: string
+  } | null,
 ): {
   nearM: number
   openM: number
@@ -2358,6 +2627,18 @@ export function battleArcsFor(
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
+  /** **我方编队逐舰读数**（F 批「4 条舰影 + 血条」；单船路径 = 一条 = 主控） */
+  myUnits: Array<{
+    tag: string
+    shipId: string
+    name: string
+    className: string
+    /** 主控（视图锚） */
+    leader: boolean
+    hp: { s: number; a: number; h: number }
+    hpMax: { s: number; a: number; h: number }
+    alive: boolean
+  }>
   /** 敌方各武器射程带（聚合）：`minM~maxM` 跨全部单位取极值，`type` = 遍历到的最后一件武器弹种 */
   foe: { minM: number; maxM: number; type: DamageType }
   /**
@@ -2388,11 +2669,14 @@ export function battleArcsFor(
     hangar?: number
   }>
 } | null {
-  const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
-  const battle = state.expedition.battle
+  const anomaly =
+    override?.anomaly ??
+    battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
+  const battle = override?.battle ?? state.expedition.battle
   if (!anomaly || !battle) return null
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, state.shipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
+  const leaderShipId = override?.leaderShipId ?? state.shipId
+  const me = createPlayerSpec(state, ctx, leaderShipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
   if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
   const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
@@ -2575,6 +2859,27 @@ export function battleArcsFor(
         ...(hangarN > 0 ? { hangar: hangarN } : {}),
       })
   }
+  /**
+   * **我方编队逐舰读数**（2026-09-13 F 批「4 条舰影 + 血条」的数据源）：
+   * 单船路径 = 只有主控一条（`tag='player'`）；多单位路径 = 主控 + 僚舰（各自三层血）。
+   */
+  const myUnits = (battle.myFleet && battle.myFleet.length > 0
+    ? battle.myFleet
+    : [{ tag: 'player', shipId: leaderShipId }]
+  ).map((e) => {
+    const u = battle.units[e.tag]
+    const def = ctx.ships.get(uidDefId(e.shipId))
+    return {
+      tag: e.tag,
+      shipId: e.shipId,
+      name: shipDisplayName(state, ctx, e.shipId),
+      className: def?.name ?? e.shipId,
+      leader: e.tag === 'player',
+      hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
+      hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
+      alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
+    }
+  })
   return {
     nearM: bal.minDistanceM,
     openM,
@@ -2583,6 +2888,7 @@ export function battleArcsFor(
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
     meReload,
+    myUnits,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
     foeBands,
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
@@ -2625,7 +2931,9 @@ export function persistFleetHullDamage(
 ): void {
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return
-  const unit = battle?.units['player']
+  // 多单位（虫洞 D 批）：按 `myFleet` 查本船在这场战斗里的 tag（单船路径 = 恒 'player'）
+  const tag = battle?.myFleet?.find((e) => e.shipId === shipId)?.tag ?? 'player'
+  const unit = battle?.units[tag]
   if (!unit) return
   const cap = createPlayerSpec(state, ctx, shipId)
   if (!cap) return
@@ -2768,16 +3076,19 @@ export function advanceBattleFor(
   factionActive?: boolean,
 ): void {
   if (!battle || battle.ended) return
-  const anomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
-  if (!anomaly) return
+  const baseAnomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
+  if (!baseAnomaly) return
+  // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（**与开战同源**——同一处 `wormholeDerivedAnomaly`）
+  const anomaly = battle.wormhole
+    ? wormholeDerivedAnomaly(ctx, baseAnomaly, battle.wormhole)
+    : baseAnomaly
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
-  if (!me) {
+  const myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId)
+  if (myUnits.length === 0) {
     battle.ended = 'foe'
     return
   }
-  // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
-  if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
+  const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
   const foes = createFoeSpecs(anomaly, bal)
   const foeDesire = foeDesiredRange(me, foes, bal)
   const openM = battleOpenM(me, foes, bal)
@@ -2865,7 +3176,20 @@ export function advanceBattleFor(
     // 总开关关闭时本函数第一步就返回（且建档期也没写过 `foeReinforceAt`）= 零行为变化。
     resolveReinforcements(state, ctx, battle, anomaly, curFoes, bal, openM)
     const dt = Math.min(BATTLE_STEP_MS, state.gameMs - battle.lastTickGameMs)
-    stepBattle(state, battle, me, curFoes, foeDesire, openM, bal, dt, favor, waves ? waveIdx < lastIdx : false)
+    stepBattle(
+      state,
+      battle,
+      myUnits,
+      curFoes,
+      foeDesire,
+      openM,
+      bal,
+      dt,
+      favor,
+      waves ? waveIdx < lastIdx : false,
+      // 敌方选靶模式（虫洞内敌卡专属；缺省 random）——单船路径不消费选靶随机数，见 pickMyUnitTarget
+      anomaly.foeTargeting ?? 'random',
+    )
     battle.lastTickGameMs += dt
     // 连续作战保险（2026-09-08 船长定，仅巡回场次 battle.hullEscapeFrac 有值）：
     // 本场结构损失过半（剩余 < 满值结构 × 阈值）→ 中止步进并请求自动撤退，绝不拖到弃船
@@ -3398,10 +3722,18 @@ export function pickFoeDroneTarget(
   return { foeTag: pick.foeTag, pool: pick.pool }
 }
 
+/**
+ * 一步战斗推进。
+ *
+ * **多单位（虫洞 D 批 · 船长 2026-09-13）**：`myUnits` 恒为**我方编队**——单船路径传 `[me]` 一条，
+ * 虫洞内传 `[主控, ...僚舰]`（见 `BattleState.myFleet`）。硬纪律：**`myUnits.length === 1` 时
+ * 每一处多单位分支都必须与改动前逐字等价**（尤其**随机数消费顺序**——选靶函数在"只剩一艘"时
+ * 直接返回、一次 `nextRandom` 都不多消耗），否则既有 27 张卡的标定读数会整体漂移。
+ */
 function stepBattle(
   state: GameState,
   b: import('./state').BattleState,
-  me: UnitSpec,
+  myUnits: readonly UnitSpec[],
   foes: UnitSpec[],
   foeDesire: number,
   openM: number,
@@ -3409,22 +3741,32 @@ function stepBattle(
   dtMs: number,
   favor: { meMul: number; foeMul: number } | null = null,
   hasMoreWaves = false, // 多波（2026-09-09）：本波清空但还有后续波 → 不判胜，由推进方切波续刷
+  /** 敌方选靶模式（虫洞内敌卡专属；`random` = 等权随机，多单位下的缺省） */
+  foeTargeting: FoeTargetingMode = 'random',
 ): void {
   const dtSec = dtMs / 1000
+  // 主控 = 编队首条（距离/期望交距/胜率口径的锚；单船路径即唯一那条）
+  const me = myUnits[0]!
 
   // ── 距离机动（无过冲转向：每方朝自己期望距离推进，剩余距离不足本步航程时只走剩余，
   //    到位即停；双方意图相反时在中间形成无振荡角力平衡，杜绝"到点来回抖动"）──
   // 2026-09-10 船长（推进器周期爆发）：我方机动 = 基础机动 ×(1 + 推进器爆发倍率)——**只在爆发窗口内**；
   // 冷却期回到基础值（不再常驻加成）。
   const thruster = thrusterPhase(b, bal)
-  const meV =
-    combatSpeed(me.speedMps, me.agility, bal) *
-    (1 + (thruster.boosting ? (me.thrusterBoost ?? 0) : 0))
-  // 开火失稳代价同样只在点火期生效（2026-09-10 船长：没点火就不失稳）——
-  // 每次开火取当前有效乘子，冷却期 = 1（不改 me 本身，避免污染其它读法）
-  const meAtk: UnitSpec = thruster.boosting
-    ? me
-    : { ...me, hitMul: effectiveHitMul(me, false) };
+  // **整队机动 = 存活我方单位的「平均」战斗机动**（虫洞 D 批 · 船长 2026-09-13 选定"整队平均"）——
+  // 与敌方 2026-09-11 定的「敌舰速度按所有船的平均值算」**同一把尺**；单船 = 该船自己（逐字不变）。
+  // 推进器爆发仍按战斗时钟统一判定（`thrusterPhase` 不区分单位），故整队同时点火。
+  let meV = 0
+  {
+    let n = 0
+    for (const u of myUnits) {
+      if (!isAlive(b, u.tag)) continue
+      meV += combatSpeed(u.speedMps, u.agility, bal)
+      n += 1
+    }
+    if (n > 0) meV /= n
+    meV *= 1 + (thruster.boosting ? (me.thrusterBoost ?? 0) : 0)
+  }
   // **敌编队接近速度 = 存活单位的「平均」战斗机动**（船长 2026-09-11：
   // 「**能否敌舰移动速度按照敌方是所有船的平均值算**」）。
   // 原口径是**取最快单位**（`Math.max`）——混编卡里一条快船会把整队拖快：例 穹顶守卫
@@ -3467,11 +3809,23 @@ function stepBattle(
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
   b.distanceM = clamp(bal.minDistanceM, openM, b.distanceM + rate)
 
-  // ── 我方开火（主炮 + 无人机条目） ──
-  const meRt = b.units['player']
-  if (meRt && isAlive(b, 'player')) {
-    for (let wi = 0; wi < me.weapons.length; wi++) {
-      const w = me.weapons[wi]!
+  // ── 我方开火（主炮 + 无人机条目）——**逐舰结算**（单船路径 = 只循环一次，逐字等价）──
+  // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
+  // 冷却期 = 1（不改 me 本身，避免污染其它读法）；**逐舰各取自己的 `hitMul`**。
+  const meAtkOf = (u: UnitSpec): UnitSpec =>
+    thruster.boosting ? u : { ...u, hitMul: effectiveHitMul(u, false) }
+  for (const unit of myUnits) {
+    const meRt = b.units[unit.tag]
+    if (!meRt || !isAlive(b, unit.tag)) continue
+    // 主控（`player`）——单船路径与多单位路径的首条都走这里
+    const isLeader = unit.tag === 'player'
+    const meAtk = meAtkOf(unit)
+    for (let wi = 0; wi < unit.weapons.length; wi++) {
+      const w = unit.weapons[wi]!
+      // **僚舰的无人机条目本批不参战**（D 批边界 · 船长 2026-09-13 核准）：我方机群生存池
+      // `b.dronePools` / 点防集火 `b.mePdFocus` 目前按**主控武器槽**建池与锁定，多舰机群
+      // （逐舰建池 + 敌方点防逐舰选靶）留 F 批。跳过而非"无池开火" ⇒ 不会出现打不掉的幽灵机群。
+      if (w.src === 'drone' && !isLeader) continue
       // 2026-09-10 船长「无人机可被击落」：已被点防打掉的架次不再开火（条目保留占位）
       if (w.src === 'drone' && b.dronePools?.[wi]?.alive === false) continue
       const cd = meRt.weapons[wi] ?? 0
@@ -3493,7 +3847,7 @@ function stepBattle(
       // 2026-09-09 锁定装置：装上即切换"集火模式"——全部武器打存活编队首位（主舰优先、击毁接力）。
       const foeTarget = droneHit
         ? null
-        : me.lockedDmgBonus
+        : unit.lockedDmgBonus
           ? firstAliveFoe(foes, b)
           : randomAliveFoe(state, b, foes)
       if (!foeTarget && !droneHit) continue
@@ -3604,8 +3958,8 @@ function stepBattle(
         } else {
           const rt = b.units[foeTarget!.tag]!;
           // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
-          const dmgLocked = me.lockedDmgBonus
-            ? Math.round(dmg * (1 + me.lockedDmgBonus))
+          const dmgLocked = unit.lockedDmgBonus
+            ? Math.round(dmg * (1 + unit.lockedDmgBonus))
             : dmg
           const r = applyDamage(rt.hp, {}, dmgLocked, type)
           rt.hp = r.hp
@@ -3631,7 +3985,7 @@ function stepBattle(
       pushBattleFx(b, {
         atMs: b.lastTickGameMs + dtMs,
         side: 'me',
-        tag: 'player',
+        tag: unit.tag,
         to: droneHit ? droneHit.foeTag : foeTarget!.tag,
         type,
         src: w.src,
@@ -3643,17 +3997,24 @@ function stepBattle(
     }
   }
 
-  // ── 敌方开火（集火我方） ──
+  // ── 敌方开火（按**选靶模式**打我方；单船路径 = 恒打唯一那艘、零随机数消费） ──
   for (const f of foes) {
     const rt = b.units[f.tag]
     if (!rt || !isAlive(b, f.tag)) continue;
+    // 本发（本次齐射）的目标：**每次开火前重选**——目标被打沉后自动换人，与"每发独立抽敌人"对称。
+    const pickTarget = (): { spec: UnitSpec; rt: import('./state').BattleState['units'][string] } | null => {
+      const spec = pickMyUnitTarget(state, b, myUnits, foeTargeting)
+      if (!spec) return null
+      const urt = b.units[spec.tag]
+      return urt ? { spec, rt: urt } : null
+    }
     // ── 敌方机群开火（2026-09-11 机群批）──
     // 逐架独立装填、独立掷命中（与我方无人机条目同款口径：`src:'drone'` + `artId` 供演出层识别）。
     // ⚠ 本段**放在主武器之前**：主武器有 `continue`（无弹分支之外还有 beam 分支的 continue），
     //   放在循环尾部会被那些 `continue` 跳过。
     // 池与 drone 条目**同序**（`initFoeDronePools` 按 slot 顺序展开），故用独立计数 `di` 对位。
     const fPools = b.foeDronePools?.[f.tag]
-    if (fPools && fPools.length > 0 && meRt && isAlive(b, 'player')) {
+    if (fPools && fPools.length > 0 && isAliveAnyOf(b, myUnits)) {
       // **备用机库补位到位**（2026-09-12 船长「损坏后补充敌机」）：到点的备用机翻成**在空**并**满血**放出
       for (const p of fPools) {
         if (p.inHangar !== true || p.readyAtMs === undefined) continue
@@ -3699,21 +4060,24 @@ function stepBattle(
         rt.weapons[k] = aloftReload(dw.reloadMs)
         // 射程门：**受击增程**生效时读 `foeDroneRangeOf`（机型射程 × 倍率），否则就是机型射程
         if (b.distanceM > foeDroneRangeOf(b, dw)) continue // 机群够不着（我方在它射程外）
+        // 选靶（多单位）：**每架敌机独立选靶**——与我方"每发独立抽敌人"同款粒度
+        const dtgt = pickTarget()
+        if (!dtgt) break // 我方已全灭（正常由结束判定收场）
         b.stats.foeShots += 1;
         // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击
         b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }
         const dType = dw.fixedType ?? 'kinetic';
         // 机群为掷命中（`fixed`）：吃自己的 `hitRate`、吃我方回避与距离衰减——与我方无人机同源
-        const droneHit = hitChance(dw, f, me, b.distanceM, bal)
+        const droneHit = hitChance(dw, f, dtgt.spec, b.distanceM, bal)
         const droneHitEff = favor
           ? clamp(0, 0.97, droneHit * favor.foeMul)
           : droneHit
         const dHit = nextRandom(state.rng) < droneHitEff
         if (dHit) {
           b.stats.foeHits += 1
-          meRt.hp = applyFoeShot(
-            meRt.hp,
-            me.resists,
+          dtgt.rt.hp = applyFoeShot(
+            dtgt.rt.hp,
+            dtgt.spec.resists,
             dw,
             dw.shotDmg ?? 0,
             dType,
@@ -3723,7 +4087,7 @@ function stepBattle(
           atMs: b.lastTickGameMs + dtMs,
           side: 'foe',
           tag: f.tag,
-          to: 'player',
+          to: dtgt.spec.tag,
           type: dType,
           src: 'drone',
           artId: dw.artId,
@@ -3742,7 +4106,10 @@ function stepBattle(
     // maxRange 内即可开火；伤害按 blindDmgMul 打折（玩家贴脸钻近盲不再零风险）。
     // 玩家武器无此待遇（近盲带内仍不开火）——双方在近盲带上行为区分。
     // 射程门：**炮台受击增程**生效时读 `foeGunMaxRangeOf`（原射程 × 倍率；仅带该字段的舰）
-    if (b.distanceM > foeGunMaxRangeOf(b, f, w) || !meRt) continue
+    if (b.distanceM > foeGunMaxRangeOf(b, f, w)) continue
+    // 选靶（多单位）：**本发开火前重选**（上一次齐射可能已把目标打沉）
+    const gtgt = pickTarget()
+    if (!gtgt) continue // 我方已全灭（正常由结束判定收场）
     b.stats.foeShots += 1
     const fType = w.fixedType ?? 'kinetic'
     // 2026-09-08（船长定）：能量（beam）= 必中——不掷命中骰；威力：近盲带内 ×blindDmgMul
@@ -3753,36 +4120,44 @@ function stepBattle(
       const dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * pow))
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
-      meRt.hp = applyFoeShot(meRt.hp, me.resists, w, dmg, fType)
-      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: true })
+      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, dmg, fType)
+      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true })
       continue
     }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
     const shotDmg = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
     // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
     // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
-    const foeHit = hitChance(w, f, me, b.distanceM, bal, foeGunPowerFactorOf(b, f, w, b.distanceM))
+    const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, w, b.distanceM))
     const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
     const fHit = nextRandom(state.rng) < foeHitEff
     if (fHit) {
       b.stats.foeHits += 1
-      meRt.hp = applyFoeShot(meRt.hp, me.resists, w, shotDmg, fType)
+      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, shotDmg, fType)
     }
-    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: 'player', type: fType, hit: fHit })
+    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit })
   }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
+  // ⚠ 本批仍只结算**主控**的机群（`b.dronePools` 按主控武器槽建池；僚舰无人机不参战，见 D 批边界）
   resolvePointDefense(state, b, me, foes, bal, dtMs)
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
   // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）──
-  if (meRt && bal.shieldRegenPerSec > 0 && meRt.hp.s < me.hp.s && (meRt.hp.a > 0 || meRt.hp.h > 0)) {
-    const regen = me.hp.s * bal.shieldRegenPerSec * dtSec
-    if (regen > 0) meRt.hp.s = Math.min(me.hp.s, meRt.hp.s + regen)
+  if (bal.shieldRegenPerSec > 0) {
+    for (const unit of myUnits) {
+      const urt = b.units[unit.tag]
+      if (!urt || !isAlive(b, unit.tag)) continue
+      if (urt.hp.s >= unit.hp.s || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
+      const regen = unit.hp.s * bal.shieldRegenPerSec * dtSec
+      if (regen > 0) urt.hp.s = Math.min(unit.hp.s, urt.hp.s + regen)
+    }
   }
 
   // ── 结束判定 ──
-  const meAlive = !!meRt && isAlive(b, 'player')
+  // **判负 = 我方全灭**（虫洞 D 批 · 船长 2026-09-13 定）：主控沉了僚舰继续打；
+  // 单船路径下"全灭"与"主控沉"等价 ⇒ 与改动前逐字一致。
+  const meAlive = isAliveAnyOf(b, myUnits)
   const foeAlive = foes.some((f) => isAlive(b, f.tag))
   if (!meAlive) {
     b.ended = 'foe'
@@ -3807,8 +4182,8 @@ function stepBattle(
     b.stats.meShots === 0 &&
     b.stats.foeShots > 0
   ) {
-    const myTopRangeM = me.weapons.reduce(
-      (m, w) => Math.max(m, w.maxRangeM),
+    const myTopRangeM = myUnits.reduce(
+      (m, u) => u.weapons.reduce((mm, w) => Math.max(mm, w.maxRangeM), m),
       0,
     )
     if (b.distanceM > myTopRangeM) {
@@ -3846,6 +4221,82 @@ export function steerStep(cur: number, desire: number, speedMps: number, dtSec: 
 function isAlive(b: import('./state').BattleState, tag: string): boolean {
   const u = b.units[tag]
   return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
+}
+
+/** 我方还有没有活着的单位（`myUnits` 里任一存活）——单船路径等价于 `isAlive(b,'player')` */
+function isAliveAnyOf(b: import('./state').BattleState, myUnits: readonly UnitSpec[]): boolean {
+  return myUnits.some((u) => isAlive(b, u.tag))
+}
+
+/* ═══════════ 虫洞 D 批：敌方选靶（船长 2026-09-13 定） ═══════════ */
+
+/** 存活的我方单位（按编队顺序；`myFleet` 首条 = 主控 ⇒ 首位恒为 `player`） */
+export function aliveMyUnits(
+  b: import('./state').BattleState,
+  myUnits: readonly UnitSpec[],
+): UnitSpec[] {
+  return myUnits.filter((u) => isAlive(b, u.tag))
+}
+
+/** 我方单位的**输出分**（模式「打输出最高的」判据）= 各武器条目名义 DPS 之和
+ *  （`nominalWeaponDps` 与装配页 `rawDpsOf` 同口径：炮台取首弹种单发 × 门数 ÷ 装填） */
+export function myUnitOutputScore(u: UnitSpec): number {
+  let sum = 0
+  for (const w of u.weapons) sum += nominalWeaponDps(w)
+  return sum
+}
+
+/** **非战斗船**（模式「打非战斗船」判据）：工业/采矿与货舰算非战斗；武装/装甲算战斗 */
+export function isNonCombatShipRole(role: ShipRole | undefined): boolean {
+  return role === 'industrial' || role === 'hauler'
+}
+
+/**
+ * **敌方选靶**（虫洞 D 批 · 船长 2026-09-13 定的五种模式；见 `FoeTargetingMode`）：
+ * 从**存活我方单位**里挑一个目标。并列（同输出 / 同档 / 多艘非战斗船）一律**等权随机**。
+ *
+ * ⚠⚠ **只剩一艘我方单位时直接返回、一次随机数都不消费** —— 这条是单船路径零漂移的命门：
+ * 既有 27 张悬赏卡 / 低安遭遇 / AI 副船的战斗里，敌方开火从不掷"选靶骰"，本函数在那些
+ * 场次里也不会多消耗一个 `nextRandom`（否则整批标定读数会漂移）。
+ * ⚠ `noncombat` 模式下编队里**没有**非战斗船 ⇒ **退回随机**（船长口径）。
+ * ⚠ 模式只由**虫洞内敌卡**（`AnomalyDef.foeTargeting`）写；不写 = `random`。
+ */
+export function pickMyUnitTarget(
+  state: GameState,
+  b: import('./state').BattleState,
+  myUnits: readonly UnitSpec[],
+  mode: FoeTargetingMode = 'random',
+): UnitSpec | null {
+  // ⚠ **单船路径逐字等价**：编队只有一条（= 既有 27 张悬赏卡 / 低安遭遇 / AI 副船全部场次）
+  // ⇒ 恒返回那一条、**一次随机数都不消费**。这里**刻意不看存活**：改动前敌方主炮分支只判
+  // `!meRt`、不判 `isAlive`，故"我方在某一拍被打沉后、本拍剩余敌人仍照旧结算开火"——
+  // 那一发打在尸体上、对战果无影响，但**会进 `stats.foeShots`**（标定工具「敌开火」列）。
+  // 若在此提前返回 null，该计数会少掉最后一拍 ⇒ 与改动前口径不一致（D 批实测到的唯一漂移）。
+  if (myUnits.length === 1) return myUnits[0]!
+  const alive = aliveMyUnits(b, myUnits)
+  if (alive.length === 0) return null
+  if (alive.length === 1) return alive[0]!
+  /** 并列集合里等权随机（**恰好消费一次** `nextInt`） */
+  const randomOf = (cands: UnitSpec[]): UnitSpec => cands[nextInt(state.rng, cands.length)]!
+  switch (mode) {
+    case 'top-output': {
+      const best = Math.max(...alive.map((u) => myUnitOutputScore(u)))
+      return randomOf(alive.filter((u) => myUnitOutputScore(u) === best))
+    }
+    case 'smallest':
+    case 'largest': {
+      const tiers = alive.map((u) => u.shipTier ?? 1)
+      const want = mode === 'smallest' ? Math.min(...tiers) : Math.max(...tiers)
+      return randomOf(alive.filter((u) => (u.shipTier ?? 1) === want))
+    }
+    case 'noncombat': {
+      const civ = alive.filter((u) => isNonCombatShipRole(u.shipRole))
+      return civ.length > 0 ? randomOf(civ) : randomOf(alive)
+    }
+    case 'random':
+    default:
+      return randomOf(alive)
+  }
 }
 
 /** 锁定目标（2026-09-09 锁定装置）：存活编队首位（foes 生成序 = 主舰优先），

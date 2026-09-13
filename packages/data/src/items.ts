@@ -127,8 +127,12 @@ export const ORES: readonly ItemDef[] = [
      * - 精炼产出 = 虚空晶 0.5 + 副产物（同位聚晶 1.0 · 星髓晶 0.25）⇒ 每单位产出价值
      *   `0.5×1800 + 1.0×55 + 0.25×245 = **1,016.25 ISK**`，按既有原矿的"基价 ÷ 产出价值 ≈ 0.88~0.96"
      *   规律取 **0.90** ⇒ 基础卖价 **915**（玩家卖出按站内收购档约 6 折 ⇒ 实收 ≈550，仍低于 1,016 产出值）；
-     * - **虫洞落地前对玩家不可见**：市场卡标 `unreleased`（见 `marketCatalog.ts`），
-     *   `buildSimContext` 会把它挡在玩家可见目录之外；虫洞上线时把那个字段去掉即可开卖。
+     * - **虫洞落地前对玩家不可见**：**两道闸门都要标**——
+     *   a) 市场卡 `unreleased`（见 `marketCatalog.ts`）⇒ 挡在市场/图鉴/挂单/任务/事件之外；
+     *   b) **物品卡 `unreleased`**（2026-09-13 补）⇒ 挡在工业页「可精炼资源」网格、
+     *      舰船页 AI 精炼炉下拉、组装机材料提示、手册物品图鉴之外。
+     *   ⚠ 首版只标了 a)：实测**这本矿连卡带"虫洞"描述一起挂在工业页可精炼资源里**（玩家可见泄露）。
+     *   虫洞上线时把两个字段一起去掉即可。
      */
     id: 'ore-voidmother',
     name: '虚空母矿',
@@ -136,6 +140,7 @@ export const ORES: readonly ItemDef[] = [
     unitM3: 1,
     baseSellPriceIsk: 915,
     description: '深空裂隙里结出的黑色母岩——虫洞深处唯一能带回来的东西，炼得出虚空晶。',
+    unreleased: true,
     refine: [
       { mineralId: 'min-voidcrystal', perOre: 0.5 },
       { mineralId: 'min-isotope', perOre: 1.0 },

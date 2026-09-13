@@ -1033,7 +1033,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 18,
     repairHullHp: 18,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗 1 枚军用修理组件——高配巡洋/主力舰的持久战底牌。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗 1 枚军用修理组件——高配巡洋/战列舰的持久战底牌。',
   },
 
   /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；

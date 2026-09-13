@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
-import { createInitialState } from '../src/state'
+import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
@@ -263,14 +263,14 @@ describe('V14 存档迁移与续扫进度', () => {
     raw.version = 12
     const text = serializeSaveFile(state, 999)
     const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(24)
+    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state.exploredGalaxies).toEqual(['galaxy-hub'])
     expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false })
     expect(loaded.state.scanProgress).toEqual({})
     expect(loaded.state.wallet.isk).toBe(123_456)
     // 往返保存：新字段保留
     const again = loadSaveFile(serializeSaveFile(loaded.state, 1000))
-    expect(again.state.version).toBe(24)
+    expect(again.state.version).toBe(CURRENT_STATE_VERSION)
     expect(again.state.exploredGalaxies).toEqual(['galaxy-hub'])
   })
 })

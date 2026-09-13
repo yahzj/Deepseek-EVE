@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { BeltDef, SimContext } from '../src/types'
 import type { GameState } from '../src/state'
-import { createInitialState } from '../src/state'
+import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem, countWare } from '../src/inventory'
 import { miningStatus, rollBeltOutput, startMining } from '../src/mining'
@@ -97,7 +97,7 @@ describe('V16 迁移：被删矿石折算', () => {
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
     const s = loaded.state
-    expect(s.version).toBe(24)
+    expect(s.version).toBe(CURRENT_STATE_VERSION)
     expect(s.warehouse.items['ore-kernite']).toBeUndefined()
     expect(s.warehouse.items['ore-fluxite']).toBeUndefined()
     expect(s.fleet['sandcat']!.cargo['ore-crimsonite']).toBeUndefined()
@@ -117,7 +117,7 @@ describe('V16 迁移：被删矿石折算', () => {
     const raw = state as unknown as Record<string, unknown>
     raw.version = 15
     const loaded = loadSaveFile(serializeSaveFile(state, 1000))
-    expect(loaded.state.version).toBe(24)
+    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state.logs.some((l) => l.text.includes('内容整合'))).toBe(false)
   })
 })

@@ -23,6 +23,7 @@ import { reconcilePilotShip } from './shipyard'
 import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
 import { advanceExpedition } from './expedition'
+import { advanceWormhole } from './wormholeBattle'
 import { advanceAi } from './ai'
 import { advanceEvents } from './events'
 import { advanceMarket } from './market'
@@ -84,6 +85,8 @@ export function advanceGame(
   advanceManufacturing(state, ctx, opts?.settleStats)
   advanceRefining(state, ctx, opts?.settleStats)
   advanceExpedition(state, ctx, opts?.freezeBattle)
+  // 终局玩法「虫洞」（F 批）：洞内战斗步进与收口 + 撤离战自动开打（不在洞里时零开销）
+  advanceWormhole(state, ctx, opts?.freezeBattle)
   advanceScanning(state, ctx)
   advanceHauling(state, d, ctx)
   advanceAi(state, d, ctx, opts?.settleStats)

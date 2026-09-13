@@ -51,6 +51,8 @@ export type {
   BattleBalance,
   FoeTactic,
   DefProfile,
+  // 虫洞内敌方选靶模式（船长 2026-09-13 定；`FoeTargetingMode` + 中文名表见 types.ts）
+  FoeTargetingMode,
   FoeShipDef,
   FoeShipSlot,
   FoeDroneDef, // 2026-09-11 敌机机型表（舰载机群；设计稿 foe-drone-system-20260911.md）
@@ -58,6 +60,9 @@ export type {
   FoeReinforceTrigger,
   SimContext,
 } from './types'
+
+// 虫洞内敌方选靶模式的中文名（界面/战报/工具读数用；施工期仅调试面板可见）
+export { FOE_TARGETING_LABELS } from './types'
 
 export {
   CURRENT_STATE_VERSION,
@@ -180,6 +185,9 @@ export {
   unloadCargoOfShipToWarehouse,
   loadWarehouseToCargo,
   loadWarehouseToCargoFit,
+  // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
+  itemReleased,
+  visibleItemDefs,
 } from './inventory'
 
 export {
@@ -584,6 +592,13 @@ export {
   FOE_ELITE_WORD,
   createPlayerSpec,
   playerAmmoType,
+  // 多舰编队开战（虫洞 D 批 · 船长 2026-09-13「4 艘同时参战」）——既有单船路径并列的第二条入口
+  startFleetBattleFor,
+  // 敌方选靶模式（虫洞内专属；单船路径一次随机数都不消费）
+  pickMyUnitTarget,
+  aliveMyUnits,
+  myUnitOutputScore,
+  isNonCombatShipRole,
   typeLayerMult,
   layerMultText,
   BATTLE_STEP_MS,
@@ -792,5 +807,53 @@ export {
   wormholeStepCost,
   wormholeTurnBudget,
   wormholeUnitsPerSlot,
+  // C 批：副本状态机（层/节点/回合/撤离）与层曲线
+  EMPTY_WORMHOLE_STATE,
+  WORMHOLE_THREAT_BASE,
+  WORMHOLE_THREAT_PER_LAYER,
+  WORMHOLE_REWARD_GROWTH,
+  wormholeStartRun,
+  wormholeMakeNode,
+  // E 批（界面接线）：入洞 / 拾取 / 背包格现算 / 调试放弃
+  wormholeEnter,
+  wormholeTakePile,
+  wormholeNodePiles,
+  wormholeFleetCargoM3,
+  wormholeBagSlotsOfFleet,
+  wormholeDebugReset,
+  WORMHOLE_ORE_ITEM_ID,
+  WORMHOLE_PILE_UNITS_BASE,
+  wormholeAdvanceNode,
+  wormholeDescend,
+  wormholeExtract,
+  // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
+  wormholeOutOfTurns,
+  // 沉船扣格：背包超格时按每格价值从低到高丢货（船长 2026-09-13 裁定）
+  wormholeTrimBag,
+  // F 批：敌卡按层派生
+  wormholeFoeThreat,
+  wormholeAnomalyOf,
+  wormholeCardIdFor,
+  WORMHOLE_FOE_CARD_IDS,
+  WORMHOLE_BOSS_THREAT_MUL,
+  WORMHOLE_EXTRACT_THREAT_MUL,
+  wormholeLayerThreat,
+  wormholeLayerRewardMul,
+  wormholeNodesPerLayer,
 } from './wormhole'
-export type { WormholeAdmission, WormholeAdmissionCode, WormholeBagSlot } from './wormhole'
+// F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
+export { wormholeStartBattle, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
+export type {
+  WormholeAdmission,
+  WormholeAdmissionCode,
+  WormholeBagSlot,
+  WormholePile,
+  WormholeFoeKind,
+  WormholeState,
+  WormholeRunState,
+  WormholeNode,
+  WormholeNodeKind,
+  WormholePhase,
+  WormholeStartResult,
+  WormholeAdvanceResult,
+} from './wormhole'

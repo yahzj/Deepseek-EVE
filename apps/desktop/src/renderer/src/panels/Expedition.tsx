@@ -2,8 +2,8 @@
  * M3 远征中心：势力声望、星图（SVG）、悬赏任务卡。
  * 中列面板：SkirmishStatus（远征中作业）→ StarMap（可点选）→ Standing → 任务列表。
  */
-import { useEffect, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskBoardView } from '@whale/core'
 import {
   AI_CORE_ORDER,
@@ -63,6 +63,58 @@ import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
+import { ShipSprite } from '../ui/ShipSprite'
+import { debugEnabled } from './DebugPanel'
+import { WormholePanel } from './Wormhole'
+
+/* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
+ * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
+ * 口径与舰队卡（ShipPage.FleetArt / .app-ship-card.is-fleet）**逐条同款**：列宽固定、置卡片最左侧、
+ * 容器实测宽不足时整列不渲染（不留空位）；图形取**敌族形**（`FOE_ART` 的 A~G 族字母），
+ * 配色取敌族色 `FOE_ACCENT`——与战斗画面 `BattleScreen` 同一取形/取色口径，不新增美术资产。
+ * 族来源一律是**数据侧** `AnomalyDef.foeFamily`（`foeFamilyOf`，全仓唯一缺省点），不另建映射表。 */
+/** 舰影列宽（与 ShipPage.FLEET_ART_W 同值：三处悬赏卡与舰队卡观感一致） */
+const FOE_ART_W = 132
+/** 舰影列与右侧信息列的间距（与 CSS .is-foe-art 的 gap 保持一致） */
+const FOE_ART_GAP = 10
+/** 右侧信息列可读下限（再窄就藏舰影；与 ShipPage.FLEET_MAIN_MIN 同值） */
+const FOE_ART_MAIN_MIN = 560
+
+/**
+ * 悬赏敌舰影（置卡片最左侧）。
+ * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props（族字母）恒定即整棵 SVG 子树跳过 diff。
+ * 不带尾焰（engine={false}）——列表里的静止展示件，与舰队卡同款；不翻转（船头朝右、面向右侧信息）。
+ * 悬浮提示用词典既有族短名表（星图「敌对派系」模式同一张表），不新造称呼。
+ */
+const FoeArt = memo(function FoeArt({ fam }: { fam: string }) {
+  return (
+    <div className="app-ship-art" title={`敌对派系：${FOE_FAMILY_LABEL[fam] ?? fam}`}>
+      <ShipSprite foeKey={fam} accent={FOE_ACCENT[fam] ?? '#ff8373'} size={FOE_ART_W} engine={false} />
+    </div>
+  )
+})
+
+/**
+ * 舰影列自适应：容器实测宽 ≥ 舰影列 + 间距 + 信息列下限 ⇒ 显示舰影。
+ * 判定取容器的 clientWidth（已扣滚动条），不用窗口宽猜——与 `ShipPage` 舰队页同一套做法与常量
+ * （卡片高由右侧信息列决定、舰影更矮，故显隐不会反过来改变容器宽，无振荡）。
+ */
+function useFoeArtFit(ref: RefObject<HTMLElement | null>): boolean {
+  const [show, setShow] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = (): void => {
+      const next = el.clientWidth >= FOE_ART_W + FOE_ART_GAP + FOE_ART_MAIN_MIN
+      setShow((old) => (old === next ? old : next))
+    }
+    update() // 首帧先量一次（布局阶段、绘制前，无闪烁）
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return show
+}
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
 export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -340,11 +392,25 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
     }
   }
 
+  // —— 舰影列自适应（同舰队页：容器实测宽驱动，过窄整列不渲染、不留空位）——
+  // 量在列表容器上（.app-ano-list 宽度 = 面板内容宽，已扣面板体滚动条）。
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const showFoeArt = useFoeArtFit(listRef)
+
+  // —— 未探索星系的悬赏卡**不再列出**（2026-09-13 船长：「将未探索的悬赏卡隐藏。」）——
+  // 同日**作废** V13 旧口径「悬赏情报例外：列表照常可见」（见 docs/design/v13-exploration.md §四）；
+  // 星图上的 ⚔N 悬赏情报徽标与剪影窗口的「悬赏情报 N 处」**照旧**（那是协会共享情报，不是卡面）。
+  // 判定口径与卡内 `unexplored` 逐字同式：星系条目缺失（脏数据）不隐藏，按现状照常显示。
+  const listed = engine.anomalies.filter((a) => {
+    const g = engine.ctx.galaxies.get(a.galaxyId)
+    return g ? isExplored(state, g.id) : true
+  })
+
   // —— 悬赏任务排序（2026-09-09：默认 = 危险 = 目标星系安全等级 sec 降序、安全在前；次级均按名称） ——
   const byName = (x: { a: AnomalyDef }, y: { a: AnomalyDef }): number =>
     x.a.name.localeCompare(y.a.name, 'zh-Hans-CN') || x.a.id.localeCompare(y.a.id)
   const galaxySecOf = (a: AnomalyDef): number => engine.ctx.galaxies.get(a.galaxyId)?.security ?? 1
-  const items = engine.anomalies.map((a) => {
+  const items = listed.map((a) => {
     const galaxy = engine.ctx.galaxies.get(a.galaxyId)
     const mins = shortestTravelMinutes(engine.ctx, originGalaxyOf(state, engine.ctx), a.galaxyId)
     return {
@@ -386,7 +452,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
     <Panel
       className="is-fill"
       title="常驻悬赏"
-      right={<span className="app-dim">悬赏任务 {engine.anomalies.length} 张 · 默认：危险（安全优先）</span>}
+      right={<span className="app-dim">悬赏任务 {listed.length} 张 · 默认：危险（安全优先）</span>}
     >
       <div className="app-task-sortrow">
         <span className="app-dim">悬赏排序：</span>
@@ -398,9 +464,14 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
           ))}
         </select>
       </div>
-      <div className="app-ano-list">
+      <div className="app-ano-list" ref={listRef}>
+        {sorted.length === 0 ? (
+          <div className="app-dim app-exp-idle">
+            当前没有已探明星系的悬赏——星图上还有未探索的星系，扫描点亮后它的悬赏会出现在这里。
+          </div>
+        ) : null}
         {sorted.map((item) => (
-          <AnomalyCard key={item.a.id} engine={engine} anomaly={item.a} onToast={onToast} />
+          <AnomalyCard key={item.a.id} engine={engine} anomaly={item.a} onToast={onToast} showFoeArt={showFoeArt} />
         ))}
       </div>
     </Panel>
@@ -1462,6 +1533,9 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
 function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy: GalaxyDef; onToast: ToastFn }) {
   const state = engine.state
   const ctx = engine.ctx
+  // ── 虫洞施工期入口（2026-09-13 E 批）：**只在调试模式下出现**（与调试面板同一开关）──
+  const [whOpen, setWhOpen] = useState(false)
+  const whEntryVisible = debugEnabled()
   // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
@@ -1556,6 +1630,21 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
   return (
     <div className="app-galaxy-actions">
       <div className="app-bay-title">前往星系 · 行动</div>
+      {/* ㊕ 虫洞（终局玩法 · 施工期入口：**只在调试模式下出现**，拍板前对玩家不可见） */}
+      {whEntryVisible ? (
+        <div className="app-ga-row">
+          <span className="app-ga-main">
+            <span className="app-ico">
+              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+            </span>
+            虫洞
+            <span className="app-dim app-ga-desc">调试入口 · 施工中（编队 / 探索 / 背包）</span>
+          </span>
+          <button className="app-btn is-small" onClick={() => setWhOpen(true)} title="终局玩法·虫洞（施工期：仅调试模式可见）">
+            进入虫洞
+          </button>
+        </div>
+      ) : null}
       {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
@@ -1808,6 +1897,8 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           </div>
         )
       })()}
+      {/* 虫洞面板（施工期：仅调试入口可达；见 panels/Wormhole.tsx 头注释） */}
+      {whOpen ? <WormholePanel engine={engine} onToast={onToast} onClose={() => setWhOpen(false)} /> : null}
     </div>
   )
 }
@@ -1824,7 +1915,20 @@ const FOE_TACTIC_HINTS: Record<string, string> = {
   kite: '远程风筝型：射程压制——需远程火力对射，或高速贴脸钻其近盲带',
 }
 
-function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly: AnomalyDef; onToast: ToastFn }) {
+/** 常驻悬赏卡。`showFoeArt` = 舰影列是否渲染（由列表容器实测宽驱动，见 BountyPanel）；
+ *  2026-09-13 起未探索星系的卡**不再进入本列表**（船长：「将未探索的悬赏卡隐藏」）——
+ *  卡内 `unexplored` 分支保留为防御路径（万一别处复用本卡，行为仍与原口径一致）。 */
+function AnomalyCard({
+  engine,
+  anomaly,
+  onToast,
+  showFoeArt,
+}: {
+  engine: GameEngine
+  anomaly: AnomalyDef
+  onToast: ToastFn
+  showFoeArt: boolean
+}) {
   const state = engine.state
   const galaxy = engine.ctx.galaxies.get(anomaly.galaxyId)
   const power = calcPower(state, engine.ctx)
@@ -1856,7 +1960,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
       : Math.round(iskPerHour).toLocaleString('zh-CN')
   const standing = standingOf(state, DSI_FACTION_ID)
   const reqMet = standing >= anomaly.standingReq
-  const unexplored = galaxy ? !isExplored(state, galaxy.id) : false // V13：星系未探索（悬赏情报例外可见）
+  const unexplored = galaxy ? !isExplored(state, galaxy.id) : false // 星系未探索（2026-09-13 起本列表已不列这类卡，此分支为防御路径）
   // T4 延后项：采矿中可「转战」（两步确认）；提示当前驾驶船（可能开着战斗船在挖矿）
   const [goAsk, setGoAsk] = useState(false)
   const lootText = anomaly.loot
@@ -1911,7 +2015,10 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
   const locked = !reqMet || unexplored
 
   return (
-    <div className={`app-ano-card${locked ? ' is-locked' : ''}`}>
+    <div className={`app-ano-card is-foe-art${locked ? ' is-locked' : ''}`}>
+      {/* 舰影列：固定尺寸、置卡片最左侧；容器过窄时整列不渲染（样式 .app-ano-card.is-foe-art） */}
+      {showFoeArt ? <FoeArt fam={foeFamilyOf(anomaly)} /> : null}
+      <div className="app-foe-main">
       <div className="app-ano-top">
         <span className="app-ano-name">
           {anomaly.name}
@@ -2080,6 +2187,7 @@ function AnomalyCard({ engine, anomaly, onToast }: { engine: GameEngine; anomaly
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   )
 }
@@ -2312,6 +2420,10 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
   const standing = standingOf(state, DSI_FACTION_ID)
   // T4 延后项：采矿中可「转战」（卡片内联两步确认，与常驻悬赏卡同口径）
   const [goAsk, setGoAsk] = useState<number | null>(null)
+  // —— 舰影列自适应（2026-09-13 船长：赏金任务窝点卡与派系活跃置顶卡也加敌族舰影）——
+  // 两处共用同一个测量点：本区根容器 .app-sidetasks（宽度 = 面板内容宽，已扣面板体滚动条）。
+  const areaRef = useRef<HTMLDivElement | null>(null)
+  const showFoeArt = useFoeArtFit(areaRef)
 
   function go(t: SideTask): void {
     const miningActive = state.mining.active
@@ -2350,7 +2462,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
   }
 
   return (
-    <div className="app-sidetasks">
+    <div className="app-sidetasks" ref={areaRef}>
       <div className="app-sidetasks-head">
         <span>
           赏金任务 · 每日高难目标（指定敌人窝点：亲自出击，AI 不能代劳）
@@ -2418,7 +2530,10 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 (state.expedition.active && state.autoLoopAnomalyId !== faction.anomalyId)
               const reqMet2 = standing >= (factionCard.standingReq ?? 0)
               return (
-                <div className="app-station-card is-faction">
+                <div className="app-station-card is-foe-art is-faction">
+                  {/* 舰影列（2026-09-13 船长）：族取**置顶那张代表悬赏卡**的族——与卡面标的出击目标同一张卡，不另算族 */}
+                  {showFoeArt ? <FoeArt fam={foeFamilyOf(factionCard)} /> : null}
+                  <div className="app-foe-main">
                   <div className="app-station-head">
                     <span className="app-station-name">
                       ⚑ 敌对派系活跃：{factionCard.name}
@@ -2523,6 +2638,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       )}
                     </button>
                   </div>
+                  </div>
                 </div>
               )
             })()
@@ -2578,7 +2694,10 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                         : undefined
           const canGo = lockedTxt === undefined || (goAsk === t.id && !inFlightOther)
           return (
-            <div key={t.id} className={`app-station-card${standingMet ? '' : ' is-locked'}`}>
+            <div key={t.id} className={`app-station-card is-foe-art${standingMet ? '' : ' is-locked'}`}>
+              {/* 舰影列（2026-09-13 船长）：族取该任务**主题悬赏卡**（档位强化卡与原卡同族，`lairAnomalyOf` 不改族） */}
+              {showFoeArt && base ? <FoeArt fam={foeFamilyOf(base)} /> : null}
+              <div className="app-foe-main">
               <div className="app-station-head">
                 <span className="app-station-name">
                   ⚑ 赏金任务：{t.lairName ?? card?.name ?? t.anomalyId}
@@ -2691,6 +2810,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     {goAsk === t.id ? '确认转战出击' : '出发'}
                   </button>
                 )}
+              </div>
               </div>
             </div>
           )

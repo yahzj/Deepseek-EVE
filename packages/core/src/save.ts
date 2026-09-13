@@ -678,6 +678,15 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     }
     return next
   },
+  24: (raw) => {
+    // v24 -> v25（2026-09-13 虫洞副本开工）：补 `wormhole` 空状态（run: null）——
+    // **字段纯新增、零行为变化**；老档不在洞里，故无需迁移进行中的副本。
+    // ⚠ 施工期铁律：虫洞完成前对玩家不可见（入口走调试开关），完成后由船长拍板才上线。
+    const next: RawState = { ...raw }
+    const wh = asRaw(next.wormhole)
+    if (wh === null || typeof wh !== 'object') next.wormhole = { run: null, lastFleetLost: 0 }
+    return next
+  },
 }
 /** 字符串或 null 归一（迁移辅助） */
 function asNullableString(v: unknown): string | null {
@@ -722,6 +731,12 @@ const BATTLE_FIELDS = {
   waveClearAt: { kind: 'persist' },
   autoEscaped: { kind: 'persist' },
   escapeReason: { kind: 'persist' },
+  // **我方编队**（虫洞 D 批 · 2026-09-13）：**必须随档** —— 丢了会让战中重载的多舰战斗
+  // 退化成单船（僚舰凭空消失、结算按 1 艘算），与 `hullEscapeFrac` 当年漏登记同类后果。
+  myFleet: { kind: 'persist' },
+  // **虫洞战斗标记**（虫洞 F 批 · 2026-09-13）：**必须随档** —— 逐拍按它重建派生敌卡；
+  // 丢了会让战中重载的洞内战斗**退回原卡强度**（层数缩放消失，越深越弱的怪事）。
+  wormhole: { kind: 'persist' },
   /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
@@ -860,6 +875,10 @@ function cleanBattle(raw: unknown): BattleState | null {
         : undefined,
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),
+    // 我方编队（虫洞 D 批）：坏项丢弃、空表 = 不写（= 单船路径，零迁移）
+    myFleet: cleanMyFleet(b.myFleet),
+    // 虫洞战斗标记（虫洞 F 批）：坏值丢弃（= 退回原卡强度），零迁移
+    wormhole: cleanBattleWormhole(b.wormhole),
     // ── 2026-09-12 船长裁定七项（随档）──
     ...(repair !== undefined ? { repair } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
@@ -897,6 +916,46 @@ function cleanCountMap(raw: unknown): Record<string, number> | undefined {
     out[k] = Math.floor(n)
   }
   return out
+}
+
+/**
+ * 我方编队（虫洞 D 批）：`Array<{ tag, shipId }>`——坏项丢弃、同 tag 去重、空表 = undefined
+ * （= 不写字段 = 单船路径，旧档零迁移）。首条恒为主控（`tag = 'player'`），但**不强制**：
+ * 引擎按 tag 认单位，写死了反而会在数据坏掉时整场弃置（宁可少带一艘僚舰也别丢掉整场战斗）。
+ */
+function cleanMyFleet(raw: unknown): BattleState['myFleet'] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const seen = new Set<string>()
+  const out: NonNullable<BattleState['myFleet']> = []
+  for (const item of raw) {
+    const e = asRaw(item)
+    const tag = typeof e.tag === 'string' && e.tag.length > 0 ? e.tag : null
+    const shipId = typeof e.shipId === 'string' && e.shipId.length > 0 ? e.shipId : null
+    if (!tag || !shipId || seen.has(tag)) continue
+    seen.add(tag)
+    out.push({ tag, shipId })
+  }
+  return out.length > 0 ? out : undefined
+}
+
+/**
+ * **虫洞战斗标记**（F 批）：`{ cardId, depth, kind, waves }` —— 坏值一律丢弃
+ * （丢了只会退回"原卡强度"，不会崩；`kind` 白名单外 / `cardId` 空 ⇒ 丢弃）。
+ */
+function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined {
+  const w = asRaw(raw)
+  const cardId = typeof w.cardId === 'string' && w.cardId.length > 0 ? w.cardId : null
+  const kind =
+    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' ? w.kind : null
+  const depth = cleanPosNum(w.depth)
+  const waves = cleanPosNum(w.waves)
+  if (!cardId || !kind || depth === undefined || waves === undefined) return undefined
+  return {
+    cardId,
+    kind,
+    depth: Math.max(1, Math.floor(depth)),
+    waves: Math.max(1, Math.floor(waves)),
+  }
 }
 
 /** 单架机群生存池条目（三层血齐备才收；机型/闪避/抗性/备用机字段按形状带过） */
@@ -2331,7 +2390,81 @@ function normalizeState(raw: unknown): GameState {
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
-  const normalized: GameStateV24 = {
+  /**
+   * 拾取堆（E 批）：每项 = `{ itemId, units }`；**坏项丢弃、空表 = `{}`（不写该字段）**。
+   * 旧档 / 非拾取节点没有这个字段 ⇒ 归一化后依然没有 ⇒ 界面按"没有可捡的"渲染（零迁移）。
+   */
+  const cleanWormholePiles = (raw: unknown): { piles?: Array<{ itemId: string; units: number }> } => {
+    if (!Array.isArray(raw)) return {}
+    const out: Array<{ itemId: string; units: number }> = []
+    for (const it of raw) {
+      const row = asRaw(it)
+      const itemId = typeof row.itemId === 'string' ? row.itemId : ''
+      const units = Math.floor(num(row.units))
+      if (itemId.length > 0 && units > 0) out.push({ itemId, units })
+    }
+    return out.length > 0 ? { piles: out } : {}
+  }
+
+  // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
+  const cleanWormhole = (): GameState['wormhole'] => {
+    const wRaw = asRaw(src.wormhole)
+    const rRaw = asRaw(wRaw.run)
+    const phaseRaw = rRaw.phase
+    const phase: 'inside' | 'extracting' | null =
+      phaseRaw === 'inside' || phaseRaw === 'extracting' ? phaseRaw : null
+    const depth = Math.floor(num(rRaw.depth))
+    const turnsLeft = Math.floor(num(rRaw.turnsLeft))
+    const turnsTotal = Math.floor(num(rRaw.turnsTotal))
+    const fleet = Array.isArray(rRaw.fleet) ? rRaw.fleet.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    const bagRaw = Array.isArray(rRaw.bag) ? rRaw.bag : []
+    const bag: Array<{ itemId: string; units: number }> = []
+    for (const it of bagRaw) {
+      const row = asRaw(it)
+      const itemId = typeof row.itemId === 'string' ? row.itemId : ''
+      const units = Math.floor(num(row.units))
+      if (itemId.length > 0 && units > 0) bag.push({ itemId, units })
+    }
+    const pn = asRaw(rRaw.pendingNode)
+    const kindRaw = pn.kind
+    const nodeKind: 'combat' | 'pickup' | 'event' | null =
+      kindRaw === 'combat' || kindRaw === 'pickup' || kindRaw === 'event' ? kindRaw : null
+    const run =
+      phase !== null
+        ? {
+            phase,
+            depth: depth > 0 ? depth : 1,
+            nodeIndex: Math.max(0, Math.floor(num(rRaw.nodeIndex))),
+            turnsLeft: Math.max(0, turnsLeft),
+            turnsTotal: Math.max(0, turnsTotal),
+            fleet,
+            totalMass: Math.max(0, num(rRaw.totalMass)),
+            bag,
+            pendingNode:
+              nodeKind === null
+                ? null
+                : {
+                    kind: nodeKind,
+                    waves: Math.max(0, Math.floor(num(pn.waves))),
+                    pickups: Math.max(0, Math.floor(num(pn.pickups))),
+                    ...(typeof pn.eventKey === 'string' && pn.eventKey.length > 0 ? { eventKey: pn.eventKey } : {}),
+                    cost: Math.max(1, Math.floor(num(pn.cost))),
+                    // 拾取堆（E 批）：坏项丢弃、空表不写（旧档/非拾取节点缺省 = 没有可捡的）
+                    ...cleanWormholePiles(pn.piles),
+                  },
+            nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
+            // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
+            ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
+            ...(Math.floor(num(rRaw.bossCleared)) > 0
+              ? { bossCleared: Math.floor(num(rRaw.bossCleared)) }
+              : {}),
+          }
+        : null
+    return { run, lastFleetLost: Math.max(0, Math.floor(num(wRaw.lastFleetLost))) }
+  }
+  const wormhole = cleanWormhole()
+
+  const normalized: GameState = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -2398,6 +2531,7 @@ function normalizeState(raw: unknown): GameState {
     onboarding,
     importantTasks,
     sideTasks,
+    wormhole,
     logs,
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）

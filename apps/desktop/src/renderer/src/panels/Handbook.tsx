@@ -12,7 +12,7 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel, visibleItemDefs } from '@whale/core'
 import type { DroneClass, ItemKind } from '@whale/core'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -110,7 +110,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
       ['AI 副船', '练「AI 核心操作学」（入门向）+ 买基础 AI 核心，可给闲置舰船指派自动采矿 / 打捞 / 掩护巡逻任务——核心效率越高越快；同时启用的 AI 核心总数受 AI 核心上限技能约束（Lv0 无法启用），AI 副船与站内精炼炉 / 回收炉 / 制造线共用该上限；站内产业可另练「工业自动化」扩容工业专用工位（每级 +2 枚、不占副船名额）。舰船页「AI 指挥中心」可统一指派与取消这些作业。'],
       ['副空间站', '建成的副站并入协会基地网络：市场买卖、精炼与残骸回收、组装机制造线、维修补给、换驾驶卸货全部可用——设施与仓库和母港共享（同一市场与仓库）；采矿 / 打捞自动返航、悬赏与扫描的胜利返航都会停到最近已建成的站；手动召回仍回母港。未建成的工地不提供停靠与任何站内功能：人在现场可提交建材，或停靠空间站后一键「前往工地交付」——每趟装满货仓出航，到点清仓自动交付，并自动往返续运直到建站完成或仓库建材耗尽（途中可随时取消）。'],
       ['长途运输', '建成至少一座副站后，星图「长途运输」页签开放：选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段；随时「停止运输」会立即返港停靠，无惩罚。'],
-      ['势力与舰船', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（重装舰）、蜃楼（航运货舰）。舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、主力舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高；同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
+      ['势力与舰船', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（重装舰）、蜃楼（航运货舰）。舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高；同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
     ],
   },
   {
@@ -452,8 +452,10 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
   const hitRow = ([k, v]: [string, string]): boolean =>
     q === '' || k.toLowerCase().includes(q) || v.toLowerCase().includes(q)
 
-  /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ── */
-  const itemCells: GridCell[] = engine.items.map((item) => ({
+  /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ──
+   *  ⚠ 物品图鉴走**玩家可见目录**（`visibleItemDefs`）：未上线物品（标 `ItemDef.unreleased`）
+   *  不进图鉴——首版直接遍历 `engine.items` 全目录，未上线矿会连名字带描述一起被搜出来（2026-09-13 实测）。 */
+  const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => ({
     key: item.id,
     tab: 'items',
     glyph: item.kind,

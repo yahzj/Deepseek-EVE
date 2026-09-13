@@ -19,6 +19,8 @@ import {
   missingMaterials,
   ownsBlueprint,
   recipeCapability,
+  // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
+  visibleItemDefs,
 } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -58,10 +60,12 @@ function productBaseOf(engine: GameEngine, kind: 'module' | 'ship' | 'item', ref
   return 0
 }
 
-/** 精炼源矿石：精炼配方（def.refine）产出该矿物的矿石 id 列表；空 = 无精炼产出，只能市场购买 */
+/** 精炼源矿石：精炼配方（def.refine）产出该矿物的矿石 id 列表；空 = 无精炼产出，只能市场购买。
+ *  ⚠ 只列**玩家可见**的矿（`visibleItemDefs`）：未上线矿石不能作为"由精炼炉炼出"的提示来源
+ *  （否则"虚空晶由虚空母矿炼出"会把未上线矿名念给玩家听）。 */
 function refineSourcesOf(engine: GameEngine, mineralId: string): string[] {
   const out: string[] = []
-  for (const def of engine.ctx.items.values()) {
+  for (const def of visibleItemDefs(engine.ctx)) {
     if (def.kind === 'wreck') continue
     if ((def.refine ?? []).some((r) => r.mineralId === mineralId)) out.push(def.id)
   }

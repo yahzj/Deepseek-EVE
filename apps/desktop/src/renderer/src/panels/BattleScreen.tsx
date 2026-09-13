@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -168,9 +168,19 @@ function foePoseAt(
 
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
   const state = engine.state
+  /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
+  const whView = wormholeBattleViewOf(state, engine.ctx)
   const view = expeditionStatus(state, engine.ctx)
-  const arcs = battleArcsFor(state, engine.ctx)
-  const battle = state.expedition.battle
+  const combatView = view.combat ?? whView?.combat ?? null
+  const sceneName = view.combat ? view.anomalyName : (whView?.name ?? '')
+  /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条） */
+  const inWormhole = !!whView && !!combatView
+  const arcs = battleArcsFor(
+    state,
+    engine.ctx,
+    whView ? { battle: whView.battle, anomaly: whView.anomaly, leaderShipId: whView.leaderShipId } : null,
+  )
+  const battle = whView ? whView.battle : state.expedition.battle
   /** 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源 */
   const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle) : null
   /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
@@ -332,11 +342,11 @@ const meSpeedRef = useRef(200)
           ...(battle!.droneLost && Object.keys(battle!.droneLost).length > 0 ? { droneLost: { ...battle!.droneLost } } : {}),
         }
         setStage('outro')
-      } else if (!view.combat) {
+      } else if (!combatView) {
         // 未见到分出胜负战斗就结束了（离线恢复等）：直接关屏，战报看日志
         onClose()
       }
-    } else if (stage === 'outro' && !view.combat) {
+    } else if (stage === 'outro' && !combatView) {
       // 引擎已结算（killcam 走完）→ 战报文本（resolve 日志已写入）
       const snap = outroRef.current
       // 机群战损结算结果（2026-09-11）：结算刚在这一刻完成，读取结构化结果；
@@ -351,7 +361,7 @@ const meSpeedRef = useRef(200)
       setStage('report')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, battle?.ended, view.combat === null])
+  }, [stage, battle?.ended, combatView === null])
 
   // 战报自动关闭：report 展示 12 秒后自动返回（按钮可随时提前关闭）
   // 2026-09-11 船长：「战斗报告持续时间延长」——6 秒 → 12 秒（新增机群回收明细后 6 秒读不完）
@@ -597,8 +607,8 @@ const meSpeedRef = useRef(200)
     )
   }
 
-  if (!view.combat || !battle || !arcs) return null
-  const combat = view.combat
+  if (!combatView || !battle || !arcs) return null
+  const combat = combatView
   const openM = arcs.openM
   const nearM = arcs.nearM
 
@@ -1060,6 +1070,41 @@ const meSpeedRef = useRef(200)
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
   const lay = layout(dims, foeSizes, visM, openM, nearM, meSize)
+  /**
+   * **跃迁入场**（船长 2026-09-13：「既然开始做战斗效果了，那么能否在开始时做一个入场效果？
+   *  为了最小程度防止BUG，**入场效果仅为动画**。玩家和敌舰的位置依旧不改变。入场效果为我方或者敌方
+   *  跃迁入场。（**虫洞内为敌方，虫洞外为我方**）」）。
+   *
+   * 口径（三条，缺一不可）：
+   * 1. **纯动画**：只多一层 `pointer-events: none` 的绝对定位覆盖层，**不碰任何布局/坐标**——
+   *    我方列与敌列的 `left`、编队几何、距离尺全部照旧（本层不进 `layout()` 的入参）；
+   * 2. **按战斗时钟只演一次**：`battle.lastTickGameMs - startedAtGameMs ≤ ARRIVAL_FX_MS` 才渲染
+   *    ⇒ 开战瞬间看得到、**中途退出再进战场不会重播**（洞内战斗 100ms 一拍 ≈ 与真实时间 1:1）；
+   * 3. **谁入场**：虫洞内 = **敌方**跃迁入场（洞里是它们的地盘）；洞外（悬赏/遭遇/教学）= **我方**。
+   * 4. **怎么入场**（2026-09-13 船长二次裁定）：「**舰船从屏幕外以减速的形式进场并落到舰船战斗位置。
+   *    这里只影响动画。不影响舰船实际位置。**」——即**舰船本体**从**本侧屏幕外**飞入（我方自左缘外、
+   *    敌方自右缘外），末段减速落位；**不用**原来的"泳道中线画一圈跃迁环"（那版已删除）。
+   *    实现 = 给入场那侧的舰船元素加 `is-arriving` + `--arrive-dx/--arrive-ms/--arrive-delay` 三个变量，
+   *    由 CSS 关键帧做 `translateX(起点) → 0` + 快速淡入；**只走 transform/opacity（合成层，不重排）**，
+   *    终点恒为 `translateX(0)` ＝ 它的战斗位置 ⇒ 舰船坐标、编队几何、血条锚点、距离尺一字不改；
+   *    动画撤掉（窗口结束）时无跳变。
+   */
+  const ARRIVAL_FX_MS = 1300
+  /** 单舰飞入时长（ms）与逐舰错峰（ms）——须满足 时长 + 错峰×(舰数−1) ≤ 窗口，否则末舰会被截断 */
+  const ARRIVAL_FLY_MS = 950
+  const ARRIVAL_STAGGER_MS = 60
+  /** 起点余量（px）：让起点**完全落在屏幕外**（泳道 `overflow: hidden`，超出即不可见） */
+  const ARRIVAL_EDGE_MARGIN = 40
+  const arrivalSide: 'me' | 'foe' | null =
+    battle.lastTickGameMs - battle.startedAtGameMs <= ARRIVAL_FX_MS ? (inWormhole ? 'foe' : 'me') : null
+  /** 我方飞入起点位移（负 = 自左缘外飞入；0 = 战斗位置） */
+  const arriveDxMe = Math.round(-(lay.me.x + meSize / 2 + ARRIVAL_EDGE_MARGIN))
+  /** 敌方逐舰飞入起点位移（正 = 自右缘外飞入；逐舰按各自机位算，斜向菱形两排一致） */
+  const arriveDxFoe = (i: number): number => {
+    const w = lay.sizes[i] ?? LAY.MAIN
+    const x = lay.foe[i]?.x ?? dims.W
+    return Math.round(dims.W - x + w / 2 + ARRIVAL_EDGE_MARGIN)
+  }
   /** 阵形（斜向菱形）：列宽/右移/下移/排高 + 逐舰机位（DOM 的两排排布与逐舰微调共用这一份） */
   const foeFormation = lay.formation
   /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该排整组竖排到编队下方）——
@@ -1456,9 +1501,21 @@ const meSpeedRef = useRef(200)
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}
-        /* 列内居中微调（窄舰在本列里居中；等宽编成为 0）——纵向位置由**所在排**决定，不用 top 偏移 */
-        style={slot.dx !== 0 ? { marginLeft: slot.dx } : undefined}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arrivalSide === 'foe' ? ' is-arriving' : ''}`}
+        /* 列内居中微调（窄舰在本列里居中；等宽编成为 0）——纵向位置由**所在排**决定，不用 top 偏移。
+           入场期（is-arriving）另带三个变量：起点位移 / 时长 / 错峰——**只做动画**，不留任何布局改动 */
+        style={
+          arrivalSide === 'foe'
+            ? ({
+                ...(slot.dx !== 0 ? { marginLeft: slot.dx } : {}),
+                '--arrive-dx': `${arriveDxFoe(rowIdx)}px`,
+                '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
+                '--arrive-delay': `${rowIdx * ARRIVAL_STAGGER_MS}ms`,
+              } as CSSProperties)
+            : slot.dx !== 0
+              ? { marginLeft: slot.dx }
+              : undefined
+        }
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
@@ -1520,31 +1577,61 @@ const meSpeedRef = useRef(200)
             <button className="app-btn is-small" onClick={onClose}>
               ← 退出战场
             </button>
-            <button
-              className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
-              title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
-              onClick={() => {
-                if (!retreatAsk) {
-                  setRetreatAsk(true)
-                  onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
-                  return
-                }
-                setRetreatAsk(false)
-                const r = engine.retreatNow()
-                if (!r.ok) onToast(r.error ?? '撤退失败', true)
-              }}
-            >
-              {retreatAsk ? '再点确认撤退' : '⚑ 撤退'}
-            </button>
+            {/* 洞内战斗**不给撤退**（船长 2026-09-12 第 8 条：战斗一开必须打完；撤离只在层末发起） */}
+            {inWormhole ? (
+              <span className="app-dim app-bts-noretreat" title="副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离">
+                洞内：本场必须打完
+              </span>
+            ) : (
+              <button
+                className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
+                title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
+                onClick={() => {
+                  if (!retreatAsk) {
+                    setRetreatAsk(true)
+                    onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
+                    return
+                  }
+                  setRetreatAsk(false)
+                  const r = engine.retreatNow()
+                  if (!r.ok) onToast(r.error ?? '撤退失败', true)
+                }}
+              >
+                {retreatAsk ? '再点确认撤退' : '⚑ 撤退'}
+              </button>
+            )}
           </>
         ) : (
           <span className="app-bts-outro-tag">{ended ? (defeat ? '战斗结束 · 正在撤离…' : '战斗结束 · 正在结算…') : ''}</span>
         )}
-        <span className="app-gold">{view.anomalyName}</span>
+        <span className="app-gold">{sceneName}</span>
         <span className="app-dim">
           交火 {secs}s · 我方开火 {meStats.meShots}/命中 {meStats.meHits} · 敌开火 {meStats.foeShots}/命中 {meStats.foeHits}
         </span>
       </div>
+
+      {/* **我方编队条**（2026-09-13 F2：虫洞 4 舰同场时给每条舰影一条三层血条；
+          单船路径 `myUnits` 只有一条 ⇒ 与改造前观感一致，不额外占视觉） */}
+      {arcs.myUnits.length > 1 ? (
+        <div className="app-bts-fleet" aria-label="我方编队">
+          {arcs.myUnits.map((u) => (
+            <div key={u.tag} className={`app-bts-fleet-cell${u.alive ? '' : ' is-down'}`}>
+              <div className="app-bts-fleet-head">
+                <ShipSprite shipId={u.shipId} role={fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial'} accent={ROLE_ACCENT[fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial']} size={46} />
+                <span className="app-bts-fleet-name" title={u.className}>
+                  {u.name}
+                  {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
+                </span>
+              </div>
+              {u.alive ? (
+                <HpTri hp={u.hp} max={u.hpMax} />
+              ) : (
+                <span className="app-bts-fleet-down">已沉没</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="app-bts-stage">
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
@@ -1590,6 +1677,10 @@ const meSpeedRef = useRef(200)
               </div>
             ))}
           </div>
+          {/* 入场效果**不再是一层覆盖图形**：改为入场那侧**舰船本体**飞入（我方列见下方 `is-arriving`、
+              敌方逐舰见 `foeUnitEls` 的 `is-arriving`）——2026-09-13 船长二次裁定：
+              「舰船从屏幕外以减速的形式进场并落到舰船战斗位置。这里只影响动画。不影响舰船实际位置。」
+              旧的「泳道中线跃迁环 + 尾迹 + 闪光」覆盖层与此处的挂载点一并删除。 */}
           <svg className="app-bts-arcs" width="100%" height="100%" aria-hidden="true">
             {/* attribute transform（在无 viewBox/CSS-transform 兼容性问题上最可靠）；平滑由 33ms 视觉插值提供 */}
             <g transform={`translate(${meGunX} ${lay.me.y})`}>{meArcEls}</g>
@@ -1609,11 +1700,16 @@ const meSpeedRef = useRef(200)
             </text>
           </svg>
 
-          {/* 我方舰列 */}
+          {/* 我方舰列 —— 入场期（is-arriving）整列自左缘外飞入：舰名/舰体/血条同进，
+              只做 transform + opacity 动画，`left` 与落点坐标不动 */}
           <div
-            className={`app-bts-col is-me${defeat ? " is-crippled" : ""}`}
+            className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
             ref={meColRef}
-            style={{ left: lay.meLeft }}
+            style={
+              arrivalSide === 'me'
+                ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
+                : { left: lay.meLeft }
+            }
           >
             <span className="app-bts-name">{meShip?.name}</span>
             <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />

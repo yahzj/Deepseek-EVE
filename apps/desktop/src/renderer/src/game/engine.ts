@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
  * 职责（中文说明）：
@@ -135,6 +135,14 @@ import {
   HAUL_RATE_PER_M3_MIN,
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
+  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；施工期入口在调试开关后面）
+  wormholeEnter,
+  wormholeTakePile,
+  wormholeAdvanceNode,
+  wormholeDescend,
+  wormholeExtract,
+  wormholeStartBattle,
+  wormholeDebugReset,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -451,6 +459,8 @@ export class GameEngine {
   private wantsFastPump(): boolean {
     const exp = this.state.expedition
     if (exp.phase === 'battle' && !!exp.battle) return true
+    // 虫洞战斗（F 批）同款：洞内战斗也按 100ms 实时推进（否则 500ms 心跳下战斗画面一顿一顿）
+    if (this.state.wormhole.run?.battle) return true
     if (tutorialAccelWait(this.state)) return true
     if (exp.active && exp.phase === 'out') return true
     return false
@@ -1306,6 +1316,81 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  /* ─────────────── 终局玩法「虫洞」（E 批 · 施工期入口在调试开关后面） ─────────────── */
+
+  /** 虫洞：跃入（编队校验 + 建副本；`seed` 取游戏随机种子，保证节点/拾取堆可复现） */
+  wormholeEnter(shipIds: readonly string[]): CommandResult {
+    const r = wormholeEnter(this.state, this.ctx, shipIds, this.state.rng.seed)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
+  wormholeTakePile(pileIndex: number): CommandResult {
+    const r = wormholeTakePile(this.state, this.ctx, pileIndex)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：结算当前节点并推进（回合不足则拒绝——只能撤离） */
+  wormholeAdvance(): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run) return { ok: false, error: '不在虫洞内。' }
+    const r = wormholeAdvanceNode(this.ctx, run, this.state.rng.seed)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：深入下一层（只在层末可用） */
+  wormholeDescend(): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run) return { ok: false, error: '不在虫洞内。' }
+    const r = wormholeDescend(run, this.state.rng.seed)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：发起撤离（进入撤离战相位；撤离战本体在 F 批） */
+  wormholeExtract(): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run) return { ok: false, error: '不在虫洞内。' }
+    const r = wormholeExtract(run)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**迎战**（`node` = 当前节点 / `boss` = 层末守卫 / `extract` = 撤离战） */
+  wormholeFight(kind: 'node' | 'boss' | 'extract'): CommandResult {
+    const r = wormholeStartBattle(this.state, this.ctx, kind)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 虫洞：⚠ 施工期调试用——放弃本趟（正式结算路径在 F 批） */
+  wormholeDebugReset(): void {
+    wormholeDebugReset(this.state)
+    void this.persist()
+    this.notify()
   }
 
   /* ─────────────── 调试模式（V15 开发工具；对正常玩家不可见） ─────────────── */
