@@ -25,6 +25,7 @@ import {
   wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
+  wormholeOutOfTurns,
   wormholeShipAllowed,
   wormholeShipMass,
   wormholeUnitsPerSlot,
@@ -61,6 +62,8 @@ export function WormholePanel({
   const cargoM3 = wormholeFleetCargoM3(state, ctx, picked)
   const bagSlots = wormholeBagSlots(cargoM3)
   const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
+  /** 回合走不动了（耗尽 / 付不起当前节点）⇒ 只能撤离（逃生门；与 core `wormholeOutOfTurns` 同一把尺） */
+  const outOfTurns = run ? wormholeOutOfTurns(run) : false
 
   function togglePick(uid: string): void {
     setPicked((prev) => {
@@ -195,7 +198,9 @@ export function WormholePanel({
                 <div className="app-wh-node">
                   <div className="app-wh-node-title">撤离战</div>
                   <div className="app-dim app-note">
-                    撤离战尚未接入（施工中）：当前只把相位切到「撤离中」，不发生战斗与结算。
+                    {run.battle
+                      ? '撤离拦截已交火：本场必须打完——打赢，背包里的东西才算带回港；打不完 = 全损。'
+                      : '撤离拦截正在布防：交火马上开始（本场必须打完）。'}
                   </div>
                   <div className="app-wh-actions">
                     <button
@@ -260,7 +265,25 @@ export function WormholePanel({
                     </div>
                   )}
                   <div className="app-wh-actions">
-                    {run.pendingNode.kind === 'combat' ? (
+                    {outOfTurns ? (
+                      // **逃生门**（设计稿 §六「回合耗尽 ⇒ 只能撤离」）：回合付不起本节点时，
+                      // 战斗/拾取/事件三条路都走不动 ⇒ 必须给一条「只能撤离」的出口
+                      // （首版这里什么都不给：非战斗节点会卡死，只能靠施工期的调试按钮）
+                      <>
+                        <span className="app-dim">回合不足：只能撤离</span>
+                        <button
+                          className="app-btn is-small is-primary"
+                          disabled={!!run.battle}
+                          onClick={() => {
+                            const r = engine.wormholeExtract()
+                            if (!r.ok) onToast(r.error ?? '无法撤离。', true)
+                          }}
+                          title="回合不足以结算本节点：直接进入撤离战（同样必须打完）"
+                        >
+                          撤离（进入撤离战）
+                        </button>
+                      </>
+                    ) : run.pendingNode.kind === 'combat' ? (
                       <button
                         className="app-btn is-small is-primary"
                         disabled={!!run.battle}
@@ -296,9 +319,11 @@ export function WormholePanel({
                     ) : null}
                   </div>
                   <div className="app-dim app-note">
-                    {(run.bossCleared ?? 0) < run.depth
-                      ? '层内节点已走完，但出口被本层守卫堵着：先「迎击层末守卫」，打完才能选择深入或撤离。'
-                      : '本层守卫已清：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。'}
+                    {outOfTurns
+                      ? '回合已走不动：只能撤离（撤离拦截照打——打赢才算把背包带回去）。'
+                      : (run.bossCleared ?? 0) < run.depth
+                        ? '层内节点已走完，但出口被本层守卫堵着：先「迎击层末守卫」，打完才能选择深入或撤离。'
+                        : '本层守卫已清：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。'}
                   </div>
                   <div className="app-wh-actions">
                     {(run.bossCleared ?? 0) < run.depth ? (
@@ -332,7 +357,14 @@ export function WormholePanel({
                     </button>
                     <button
                       className="app-btn is-small"
-                      disabled={(run.bossCleared ?? 0) < run.depth}
+                      disabled={!outOfTurns && (run.bossCleared ?? 0) < run.depth}
+                      title={
+                        outOfTurns
+                          ? '回合已走不动：只能撤离（撤离战照打）'
+                          : (run.bossCleared ?? 0) < run.depth
+                            ? '先清掉本层守卫'
+                            : undefined
+                      }
                       onClick={() => {
                         const r = engine.wormholeExtract()
                         if (!r.ok) onToast(r.error ?? '无法撤离。', true)

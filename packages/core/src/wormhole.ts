@@ -417,11 +417,33 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number): Wormhol
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
-/** 撤离（**只在层末可用、且本层守卫已清**）：进入撤离战相位 */
+/**
+ * **回合是否已经"走不动了"**（逃生门判据 · 2026-09-13 补）。
+ *
+ * 口径 = 设计稿 §六「**回合耗尽 ⇒ 只能撤离**」：
+ * - `turnsLeft <= 0`：连深入都被拒（`wormholeDescend`）⇒ 只能走；
+ * - `turnsLeft < 当前节点 cost`：这个节点**付不起**了 ⇒ 也只能走。
+ *
+ * ⚠ 为什么单独抽出来（**真死局**，2026-09-13 审计抓到）：首版 `wormholeExtract` 硬要求
+ * `pendingNode === null && bossCleared >= depth` ⇒ 当"节点付不起"且节点是**拾取/事件**（没有「迎战」
+ * 这条路）时，玩家**打不动节点、也撤不走**，面板上只剩施工期的「放弃本趟（调试）」——
+ * 上线后就是无路可走。故把判据抽成单点，**撤离与界面按钮共用同一把尺**。
+ */
+export function wormholeOutOfTurns(run: WormholeRunState): boolean {
+  if (run.turnsLeft <= 0) return true
+  return run.pendingNode !== null && run.turnsLeft < run.pendingNode.cost
+}
+
+/**
+ * 撤离（**只在层末可用、且本层守卫已清**）——**唯一例外是"回合走不动了"的逃生门**：
+ * 回合耗尽/付不起当前节点时，哪怕节点没结算、层末守卫没清，也放行撤离（见 `wormholeOutOfTurns`）。
+ * 战斗中（`run.battle` 非空）一律不许撤——船长裁定「战斗没结束不能撤」优先于逃生门。
+ */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
-  if (run.pendingNode) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
-  if ((run.bossCleared ?? 0) < run.depth) {
+  const outOfTurns = wormholeOutOfTurns(run)
+  if (run.pendingNode && !outOfTurns) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
+  if ((run.bossCleared ?? 0) < run.depth && !outOfTurns) {
     return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
   }
   run.phase = 'extracting'

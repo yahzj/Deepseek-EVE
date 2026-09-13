@@ -826,6 +826,8 @@ export {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
+  wormholeOutOfTurns,
   // F 批：敌卡按层派生
   wormholeFoeThreat,
   wormholeAnomalyOf,

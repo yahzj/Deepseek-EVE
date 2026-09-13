@@ -18,6 +18,7 @@ import {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  wormholeOutOfTurns,
   wormholeLayerRewardMul,
   wormholeLayerThreat,
   wormholeMakeNode,
@@ -104,6 +105,42 @@ describe('虫洞 · 起程与副本推进', () => {
     run.bossCleared = run.depth
     expect(wormholeDescend(run, 77).ok).toBe(true)
     expect(run.depth).toBe(2)
+  })
+
+  it('**逃生门**（2026-09-13 修死局）：回合付不起当前节点时，哪怕节点没结算、守卫没清，撤离也放行', () => {
+    const run = wormholeStartRun(ctx, [T1, T1], 31)!.run!
+    // 造"付不起"的现场：手上 1 回合，当前节点要 2 回合（拾取/事件节点没有「迎战」这条路）
+    run.turnsLeft = 1
+    run.pendingNode = { kind: 'pickup', waves: 1, pickups: 1, cost: 2, piles: [] }
+    expect(wormholeOutOfTurns(run)).toBe(true)
+    expect(wormholeAdvanceNode(ctx, run, 31).ok).toBe(false) // 结算被拒（只能撤离）
+    const ex = wormholeExtract(run)
+    expect(ex.ok, '回合付不起节点时撤不走 = 死局').toBe(true)
+    expect(run.phase).toBe('extracting')
+    // 负向：回合充足时这条路不该被打开（守卫照旧是门）
+    const run2 = wormholeStartRun(ctx, [T1, T1], 31)!.run!
+    run2.turnsLeft = 5
+    run2.pendingNode = { kind: 'pickup', waves: 1, pickups: 1, cost: 2, piles: [] }
+    expect(wormholeOutOfTurns(run2)).toBe(false)
+    expect(wormholeExtract(run2).ok).toBe(false)
+    expect(wormholeExtract(run2).error ?? '').toContain('战斗没结束')
+    run2.pendingNode = null
+    expect(wormholeExtract(run2).error ?? '').toContain('守卫') // 守卫未清照旧是门
+    // 回合耗尽（= 0）时同样放行
+    run2.turnsLeft = 0
+    expect(wormholeOutOfTurns(run2)).toBe(true)
+    expect(wormholeExtract(run2).ok).toBe(true)
+  })
+
+  it('战斗中的逃生门不生效：**战斗没结束一律不能撤**（船长裁定优先于回合）', () => {
+    const run = wormholeStartRun(ctx, [T1, T1], 41)!.run!
+    run.turnsLeft = 0
+    run.pendingNode = null
+    run.battle = {} as never // 只验"有没有战斗宿主"这一层判据
+    const r = wormholeExtract(run)
+    expect(r.ok).toBe(false)
+    expect(r.error ?? '').toContain('战斗中')
+    expect(run.phase).toBe('inside')
   })
 
   it('深入下一层：层末可用，深度 +1、节点数按层（层 3 起 3 个）', () => {
