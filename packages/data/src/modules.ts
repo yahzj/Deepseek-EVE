@@ -1285,7 +1285,7 @@ export const MODULES: readonly ModuleDef[] = [
     falloff: 0.5,
     reloadMs: 5_600,
     dmgMult: 7.04, // 船长审核：8.8 ×0.8（伤害降低 20%）
-    cpuUse: 48, // 船长审核：62 → 48
+    cpuUse: 37, // 船长 2026-09-13：48 → 37（再降 11 点）
     secondaryDamagePct: 0.5, // 船长：附加伤害段 = 主段实收 ×50%，固定动能（与所耗爆炸弹无关）
     secondaryDamageType: 'kinetic',
     // ⚠ **待落**：船长要求「攻击额外造成 50% 的动能伤害」——引擎当前**一件武器只有一个弹种**
