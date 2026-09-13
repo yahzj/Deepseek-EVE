@@ -16,7 +16,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, wormholeEnter, wormholeTakePile } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, wormholeEnter } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
@@ -227,13 +227,14 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     expect(denied.error ?? '').toContain('采集器')
     expect(bareRun.turnsLeft).toBe(turnsBefore0)
     expect(bareCell.piles ?? []).toHaveLength(0)
-    // ②b **逐堆"拾取"这条老路也必须被拦住**：否则 0 采集器的编队照样能把母矿一堆堆搬空
+    // ②b **逐堆"拾取"这条老路在网格层已退场**（船长 2026-09-13 裁定 A）：只留"采集"这一个入口，
+    //    否则 0 采集器的编队照样能把母矿一堆堆搬空，"要求携带采集器"就成了空话。
     wormholeEnsureVeinPiles(bare, bareCell)
     expect((bareCell.piles ?? []).length).toBeGreaterThan(0)
     const handPick = wormholeTakePileAt(bare, ctx, 0)
     expect(handPick.ok).toBe(false)
-    expect(handPick.error ?? '').toContain('采集器')
-    expect(bareRun.turnsLeft).toBe(turnsBefore0)
+    expect(handPick.error ?? '').toContain('采集')
+    expect(bareRun.turnsLeft).toBe(turnsBefore0) // 被拒 ⇒ 不扣回合
     expect((bareCell.piles ?? []).length).toBeGreaterThan(0) // 堆留在原地
     // ③ 带 2 台采集器：一次动作用 1 回合回收 2 堆 ⇒ 总回合 = ⌈堆数 ÷ 台数⌉（船长裁定 A）
     const sawPiles = new Set<number>()

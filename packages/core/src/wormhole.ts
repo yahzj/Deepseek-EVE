@@ -25,7 +25,6 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_MOVE,
-  WORMHOLE_TURN_PER_PICK,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
   wormholeStream,
@@ -892,7 +891,14 @@ export function wormholeBagSlotsOfFleet(
 }
 
 /** 把一堆东西并进背包（同物品并格——一格只装一种物品，故同一 `itemId` 只留一条记录） */
-function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
+/**
+ * **把一堆并进背包**（同类并格、否则新增一条；**纯函数**，不判容量、不扣回合、不写日志）。
+ *
+ * ⚠ 这是全仓**唯一**的"合并"实现：虫洞侧所有"把东西搬上船"的路径（打捞 / 采集 / 舰船战果 /
+ * 老档线性层的逐堆拾取）都走它，只是各自的**容量判据与回合口径**由调用方负责
+ * （`wormholeSalvage.tryMergeIntoBag` = F5 网格判据 + 放不下整条回滚）。
+ */
+export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
   const out = bag.map((s) => ({ ...s }))
   const hit = out.find((s) => s.itemId === pile.itemId)
   if (hit) hit.units += pile.units
@@ -1043,47 +1049,6 @@ export function wormholeEnter(
     `🕳 虫洞跃入：编队 ${shipIds.length} 艘 · 折算总质量 ${r.run.totalMass.toLocaleString('zh-CN')} · 可探索 ${r.run.turnsTotal} 回合。`,
   )
   return r
-}
-
-/**
- * **拾取一堆**（每堆 = 一堆原矿；进包前先做容量预检，**放不下就不给捡**——不静默丢弃）。
- * ⚠ 回合口径：F3a-2 起"打捞/挖掘"的回合花在**激活地点**那一步（各 1 回合）⇒ **拾取本身不再扣回合**
- * （旧线性节点口径是把"每堆 +1 回合"算进节点 `cost`，在"结算本节点"时一次扣掉；两代口径都不重复计费）。
- * 堆的宿主：网格层 = **当前所在格**（`grid.cells[].piles`）；老档线性层 = `pendingNode.piles`。
- */
-export function wormholeTakePile(
-  state: GameState,
-  ctx: SimContext,
-  pileIndex: number,
-): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
-  const run = state.wormhole.run
-  if (!run) return { ok: false, error: '不在虫洞内。' }
-  const grid = run.grid
-  const holder: { piles?: WormholePile[] } | undefined = grid
-    ? gridCellAt(grid, grid.pos)
-    : (run.pendingNode ?? undefined)
-  const piles = holder?.piles
-  if (!piles || pileIndex < 0 || pileIndex >= piles.length) {
-    return { ok: false, error: '这里没有可拾取的东西。' }
-  }
-  const pile = piles[pileIndex]!
-  // **网格层：手拾一堆 = 1 回合**（船长口径第 13 条「每捡一堆 +1」；老档线性层的回合已算在节点 cost 里，
-  // 不重复扣）。回合不够 ⇒ 当场拒绝、**不扣**（与其它层内动作同一把尺）。
-  if (grid) {
-    if (run.turnsLeft < WORMHOLE_TURN_PER_PICK) return { ok: false, error: '回合不足：只能撤离。' }
-  }
-  const capacity = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
-  const merged = mergeIntoBag(run.bag, pile)
-  const usage = wormholeBagUsage(ctx, merged, capacity)
-  if (usage.overflow) {
-    return { ok: false, error: `背包放不下：已占 ${usage.used} / 共 ${capacity} 格。` }
-  }
-  run.bag = merged
-  piles.splice(pileIndex, 1)
-  if (grid) run.turnsLeft -= WORMHOLE_TURN_PER_PICK
-  const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
-  addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（背包 ${usage.used}/${capacity} 格）。`)
-  return { ok: true, taken: pile, used: usage.used, capacity }
 }
 
 /**

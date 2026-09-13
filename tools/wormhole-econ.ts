@@ -49,9 +49,9 @@ import {
   wormholeMakeNode,
   wormholeNodesPerLayer,
   wormholeStepCost,
-  wormholeTakePile,
 } from '../packages/core/src/wormhole'
 import { advanceWormhole, wormholeActivateAt, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
+import { wormholeTakePileAt } from '../packages/core/src/wormholeSalvage'
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
 import { gridCellAt } from '../packages/core/src/wormholeGrid'
 
@@ -282,9 +282,9 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
       if (r.pendingNode.kind === 'combat') {
         if (!wormholeStartBattle(state, ctx, 'node', state.gameMs, STRENGTH === undefined ? undefined : { strengthMul: STRENGTH }).ok) break
       } else {
-        // 拾取点：能捡就捡光；事件节点直接结算
+        // 拾取点：能捡就捡光；事件节点直接结算（老档线性层入口 = `wormholeTakePileAt`，网格层不许逐堆拾取）
         while ((r.pendingNode.piles ?? []).length > 0) {
-          if (!wormholeTakePile(state, ctx, 0).ok) break
+          if (!wormholeTakePileAt(state, ctx, 0).ok) break
         }
         if (!wormholeAdvanceNode(ctx, r, state.rng.seed).ok) wormholeExtract(r)
       }

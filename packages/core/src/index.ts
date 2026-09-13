@@ -820,7 +820,6 @@ export {
   wormholeMakeNode,
   // E 批（界面接线）：入洞 / 拾取 / 背包格现算 / 调试放弃
   wormholeEnter,
-  wormholeTakePile,
   wormholeNodePiles,
   wormholeFleetCargoM3,
   wormholeBagSlotsOfFleet,

@@ -1,11 +1,13 @@
 /**
- * **虫洞 · 入洞 / 拾取 / 背包（E 批 · 2026-09-13）**。
+ * **虫洞 · 入洞 / 拾取 / 背包（E 批 · 2026-09-13；F5 收口 2026-09-13）**。
  *
  * 锁住四组口径：
  * ① **入洞**：编队校验复用 B 批 `wormholeAdmission`（旗舰被拒 / 超重被拒 / 空编队被拒），
  *    成功则写进存档的 `wormhole.run`，**已在洞里不许再进**；
- * ② **拾取堆**：堆挂在**所在的格**上（确定性生成；虚空母矿为原矿堆，残骸堆由 F3b 打捞生成），捡一堆就少一堆；
- * ③ **背包容量**：超格**拒绝入包**（不静默丢弃）——同物品**并格**、每格 500 m³ 上限；
+ * ② **拾取的存废**（船长 2026-09-13 裁定 A）：**网格层没有"逐堆拾取"** —— 残骸走「打捞」、母矿走「采集」，
+ *    装备门槛（打捞器 / 采集器）与回合口径（⌈堆数 ÷ 台数⌉）只有一份实现，不给第二条能绕开判据的路；
+ *    逐堆拾取**只服务老档线性层**（`run.pendingNode.piles`：那代存档的回合已算进节点 `cost`）；
+ * ③ **背包容量**：装舱判据与打捞同源（合并 → 对齐货仓格 → 放不下**整条回滚**，不静默丢弃）；
  * ④ **随档**：`piles` 与背包一起过存档往返（捡走的堆不会复活）。
  *
  * ⚠ 施工期铁律：虫洞**对玩家不可见**（入口走调试开关、数据走 `unreleased` 闸门），拍板权在船长；
@@ -27,9 +29,10 @@ import {
   wormholeEnter,
   wormholeFleetCargoM3,
   wormholeLayerRewardMul,
+  wormholeMakeNode,
   wormholeNodePiles,
-  wormholeTakePile,
 } from '../src/wormhole'
+import { wormholeTakePileAt } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -39,19 +42,32 @@ function fresh(seed = 5): GameState {
 }
 
 /**
- * **在当前格上挂若干堆**（F3a-2 起：堆的宿主是**玩家所在的格**，不再是线性节点）。
- * F3b 起由"打捞/挖掘"往格上生成；本文件只验拾取与容量机制，故直接铺。
+ * **把这一层退回老档线性口径**：抹掉网格、给一个带堆的 `pendingNode`
+ * （与 `wormhole-run.test.ts` 里"老档线性节点仍能走完"同款造法）。
+ * F5 起"逐堆拾取"只在这条兼容路径上存在，故拾取/容量用例都跑在这里。
  */
+function enterLegacy(state: GameState, seed: number, piles: { itemId: string; units: number }[]): void {
+  const run = state.wormhole.run!
+  run.grid = undefined
+  run.pendingNode = { ...wormholeMakeNode(seed, 1, 0), piles: piles.map((p) => ({ ...p })) }
+}
+
+/** 老档节点上还剩几堆 */
+function nodePiles(state: GameState): { itemId: string; units: number }[] {
+  return state.wormhole.run!.pendingNode?.piles ?? []
+}
+
+/** 当前格上的堆（网格层用例用；读不到 ⇒ 空数组） */
+function cellPiles(state: GameState): { itemId: string; units: number }[] {
+  const g = state.wormhole.run!.grid!
+  return g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)?.piles ?? []
+}
+
+/** **在当前格上挂若干堆**（网格层用例：验"网格层不许逐堆拾取"） */
 function putPiles(state: GameState, piles: { itemId: string; units: number }[]): void {
   const g = state.wormhole.run!.grid!
   const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
   cell.piles = piles.map((p) => ({ ...p }))
-}
-
-/** 当前格上的堆（读不到 ⇒ 空数组） */
-function cellPiles(state: GameState): { itemId: string; units: number }[] {
-  const g = state.wormhole.run!.grid!
-  return g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)?.piles ?? []
 }
 
 describe('虫洞 · 入洞（E 批）', () => {
@@ -91,7 +107,7 @@ describe('虫洞 · 入洞（E 批）', () => {
   })
 })
 
-describe('虫洞 · 拾取堆（E 批）', () => {
+describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老档线性层）', () => {
   it('原矿堆是确定性的、只出虚空母矿、数量随层收益系数上升', () => {
     const p1 = wormholeNodePiles(777, 1, 1, 2)
     const p2 = wormholeNodePiles(777, 1, 1, 2)
@@ -110,76 +126,99 @@ describe('虫洞 · 拾取堆（E 批）', () => {
     expect(shallow).toBeGreaterThan(Math.floor(WORMHOLE_PILE_UNITS_BASE * 0.5))
   })
 
-  it('格上的堆：捡一堆少一堆，捡空后没有可捡的', () => {
+  it('**网格层没有逐堆拾取**（船长 F5 裁定 A）：格上有堆也拒绝、不扣回合、堆不动', () => {
     const state = fresh()
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 7)
     const run = state.wormhole.run!
-    // 堆的生成器照旧用 `wormholeNodePiles`（原矿堆；F3b 由矿脉挖掘调用它，残骸堆另有生成器）
-    const piles = wormholeNodePiles(7, 1, 1, 3)
-    expect(piles.length).toBe(3)
-    putPiles(state, piles)
-    const first = piles[0]!
-    const r1 = wormholeTakePile(state, ctx, 0)
-    expect(r1.ok).toBe(true)
-    expect(r1.taken!.itemId).toBe(WORMHOLE_ORE_ITEM_ID)
-    expect(cellPiles(state).length).toBe(2)
-    expect(run.bag).toEqual([{ itemId: first.itemId, units: first.units }])
-    // 捡空
-    while (cellPiles(state).length > 0) {
-      expect(wormholeTakePile(state, ctx, 0).ok).toBe(true)
-    }
-    expect(wormholeTakePile(state, ctx, 0).ok).toBe(false)
-    expect(wormholeTakePile(state, ctx, 0).error).toContain('没有可拾取')
+    putPiles(state, wormholeNodePiles(7, 1, 1, 3))
+    const turnsBefore = run.turnsLeft
+    const r = wormholeTakePileAt(state, ctx, 0)
+    expect(r.ok).toBe(false)
+    expect(r.error ?? '').toContain('打捞')
+    expect(r.error ?? '').toContain('采集')
+    expect(run.turnsLeft).toBe(turnsBefore) // 被拒 ⇒ 不扣回合
+    expect(cellPiles(state).length).toBe(3) // 堆留在格上
+    expect(run.bag).toEqual([])
   })
 
-  it('同物品并格；**超格拒绝入包**（不静默丢弃）', () => {
+  it('**老档线性层**：逐堆拾取照旧可用，捡一堆少一堆，捡空后没有可捡的', () => {
+    const state = fresh()
+    const a = addShipToFleet(state, T3)
+    wormholeEnter(state, ctx, [a], 7)
+    const run = state.wormhole.run!
+    // 堆的生成器照旧用 `wormholeNodePiles`（原矿堆；F3b 由矿脉采集调用它，残骸堆另有生成器）
+    const piles = wormholeNodePiles(7, 1, 1, 3)
+    expect(piles.length).toBe(3)
+    enterLegacy(state, 7, piles)
+    const first = piles[0]!
+    const r1 = wormholeTakePileAt(state, ctx, 0)
+    expect(r1.ok).toBe(true)
+    expect(r1.taken!.itemId).toBe(WORMHOLE_ORE_ITEM_ID)
+    expect(nodePiles(state).length).toBe(2)
+    expect(run.bag).toEqual([{ itemId: first.itemId, units: first.units }])
+    expect(run.turnsLeft).toBe(run.turnsTotal) // 老档：回合已算进节点 cost ⇒ 拾取不再扣
+    // 捡空
+    while (nodePiles(state).length > 0) {
+      expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true)
+    }
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(false)
+    expect(wormholeTakePileAt(state, ctx, 0).error).toContain('没有可拾取')
+  })
+
+  it('装舱判据与打捞同源：同物品并格；**放不下整条回滚**（不静默丢弃）', () => {
     const state = fresh()
     const a = addShipToFleet(state, T3) // 货仓 2,600 m³ ⇒ 5 格
     wormholeEnter(state, ctx, [a], 9)
     const run = state.wormhole.run!
     const cap = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
     expect(cap).toBe(5)
-    // 造一个刚好装满的背包（每格 500 单位）
+    // 造一个刚好装满的货仓（每格 500 单位）
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 }]
-    putPiles(state, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 1 }])
-    const bad = wormholeTakePile(state, ctx, 0)
+    enterLegacy(state, 9, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 1 }])
+    const bad = wormholeTakePileAt(state, ctx, 0)
     expect(bad.ok).toBe(false)
     expect(bad.error).toContain('放不下')
-    expect(cellPiles(state).length).toBe(1) // 堆还在：没被吞掉
+    expect(nodePiles(state).length).toBe(1) // 堆还在：没被吞掉
+    expect(run.bag).toEqual([{ itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 }]) // 货也没被改动
     // 空出一格 ⇒ 同一堆就能拿
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: (cap - 1) * 500 }]
-    const ok = wormholeTakePile(state, ctx, 0)
+    const ok = wormholeTakePileAt(state, ctx, 0)
     expect(ok.ok).toBe(true)
     expect(ok.used).toBe(cap)
     expect(wormholeBagUsage(ctx, run.bag, cap).overflow).toBe(false)
   })
 
-  it('不在洞里 / 当前格没有堆 ⇒ 拾取被拒', () => {
+  it('不在洞里 / 老档节点上没有堆 ⇒ 拾取被拒', () => {
     const state = fresh()
-    expect(wormholeTakePile(state, ctx, 0).ok).toBe(false)
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(false)
+    expect(wormholeTakePileAt(state, ctx, 0).error).toContain('不在虫洞内')
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 11)
-    expect(cellPiles(state).length).toBe(0) // 入口格上本来就没有堆
-    expect(wormholeTakePile(state, ctx, 0).ok).toBe(false)
+    // 网格层：先被"逐堆拾取已退场"拦下（与"有没有堆"无关）
+    expect(cellPiles(state).length).toBe(0)
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(false)
+    // 老档节点：没有堆 ⇒ 报"没有可拾取的东西"
+    enterLegacy(state, 11, [])
+    const r = wormholeTakePileAt(state, ctx, 0)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('没有可拾取')
   })
 })
 
 describe('虫洞 · E 批随档', () => {
-  it('待拾取的堆（挂在格上）与背包一起过存档往返（捡走的不会复活）', () => {
+  it('待拾取的堆与背包一起过存档往返（捡走的不会复活）', () => {
     const state = fresh()
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 13)
-    const run = state.wormhole.run!
-    putPiles(state, wormholeNodePiles(13, 1, 1, 2))
-    const taken = wormholeTakePile(state, ctx, 0).taken!
-    const left = cellPiles(state).length
+    enterLegacy(state, 13, wormholeNodePiles(13, 1, 1, 2))
+    const taken = wormholeTakePileAt(state, ctx, 0).taken!
+    const left = nodePiles(state).length
     const back = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
     expect(back.bag).toEqual([{ itemId: taken.itemId, units: taken.units }])
-    const backCell = back.grid!.cells.find((c) => c.key === `${back.grid!.pos.q},${back.grid!.pos.r}`)!
-    expect(backCell.piles!.length).toBe(left)
-    expect(backCell.piles!.length).toBe(1)
-    expect(run.bag[0]!.units).toBe(taken.units)
+    expect(back.pendingNode!.piles!.length).toBe(left)
+    expect(back.pendingNode!.piles!.length).toBe(1)
+    expect(back.grid).toBeUndefined() // 老档：没有网格这件事本身也要过档
   })
 
   it('调试放弃：清空 run（正式结算路径在 F 批）', () => {

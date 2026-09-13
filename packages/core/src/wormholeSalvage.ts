@@ -60,7 +60,7 @@ import {
   wormholeCardIdFor,
   wormholeLayerRewardMul,
   wormholeNodePiles,
-  wormholeTakePile,
+  mergeIntoBag,
   wormholeTrimBag,
   wormholeUnitsPerSlot,
 } from './wormhole'
@@ -528,11 +528,16 @@ export function wormholeDiscardToFit(state: GameState, ctx: SimContext): { ok: b
   return { ok: true, dropped: trimmed.dropped }
 }
 /**
- * **拾取一堆**（玩家入口 = 超载闸 + 形状件分流 + 转调 `wormhole.wormholeTakePile`）。
+ * **把一堆搬上船**（玩家入口 = 超载闸 + 形状件分流 + 装舱判据）。
  *
- * 为什么要这一层：① 超载闸要 `ctx`（算货仓占用）；② **形状件**（遗迹安全货柜）不能进散货槽位，
- * 得走货仓格（`wormholeHoldStow`：占 4 格、放不下整件拒收）。而 `wormhole.ts` 不许 import 本文件
- * （会被 `state.ts` 顶层的引用链成环）⇒ 分流放在这里，界面照旧只调一个入口。
+ * ⚠ **网格层没有"逐堆拾取"**（船长 2026-09-13 裁定 A）：网格层的残骸走「**打捞**」、母矿走「**采集**」，
+ * 两条路都要对应装备（打捞器 / 采集器）、回合口径都是 ⌈堆数 ÷ 台数⌉ —— 判据只有一份，
+ * 不再留"能绕开装备门槛的第二条路"。本函数因此**只服务老档线性层**（`run.pendingNode.piles`；
+ * 那代存档的回合已算进节点 `cost`，故这里不扣回合）。
+ *
+ * 为什么不把它放进 `wormhole.ts`：① 超载闸要 `ctx`；② **形状件**（遗迹安全货柜）不能进散货槽位，
+ * 得走货仓格（`wormholeHoldStow`：占 4 格、放不下整件拒收）；③ `wormhole.ts` 不许 import 本文件
+ * （`state.ts` → `wormhole.ts`，而本文件 import `state.ts` ⇒ 会成环）。故入口住在这一侧。
  */
 export function wormholeTakePileAt(
   state: GameState,
@@ -541,27 +546,14 @@ export function wormholeTakePileAt(
 ): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。' }
+  if (run.grid) {
+    return { ok: false, error: '网格层不能逐堆拾取：残骸用「打捞」、母矿用「采集」（都要对应装备）。' }
+  }
   const blocked = wormholeOverloadBlockReason(state, ctx)
   if (blocked) return { ok: false, error: blocked }
-  const grid = run.grid
-  const holder: { piles?: WormholePile[] } | undefined = grid
-    ? gridCellAt(grid, grid.pos)
-    : (run.pendingNode ?? undefined)
+  const holder: { piles?: WormholePile[] } | undefined = run.pendingNode ?? undefined
   const pile = holder?.piles?.[pileIndex]
   if (!pile) return { ok: false, error: '这里没有可拾取的东西。' }
-  /**
-   * **矿脉没有采集器就一堆也拿不走**（船长 F5：「虚空母矿要求玩家携带采集器」）。
-   *
-   * 为什么要在这里再拦一道：`wormholeTakePile`（`wormhole.ts`，无 ctx）是"手拾一堆 = 1 回合"的老路，
-   * 它不认识装备 —— 只拦批量入口的话，**0 采集器的编队照样能逐堆把虚空母矿搬空**，
-   * "要求携带采集器"就成了空话。老档线性层（`pendingNode.piles`）没有地点概念，不动它。
-   */
-  if (grid) {
-    const here = gridCellAt(grid, grid.pos)
-    if (here?.place === 'vein' && wormholeMinersOf(state, ctx) <= 0) {
-      return { ok: false, error: '编队里没有采集器：矿脉挖不动（至少装 1 台）。' }
-    }
-  }
   if (wormholeIsShapedItem(pile.itemId)) {
     // **形状件**：整件装舱（放不下就不装、堆留在原地）
     const stowed = wormholeHoldStow(state, ctx, pile.itemId)
@@ -570,7 +562,21 @@ export function wormholeTakePileAt(
     const u = wormholeHoldUsage(state, ctx)
     return { ok: true, taken: pile, used: u.used, capacity: u.capacity }
   }
-  return wormholeTakePile(state, ctx, pileIndex)
+  /**
+   * **老档线性层：装舱判据与打捞/采集同一份**（`tryMergeIntoBag`）——
+   * 合并 → 对齐货仓格（`wormholeHoldSyncCargo`）→ 有摆不下的条目就整条回滚（**不静默丢货**）。
+   * 回合：不扣（这代存档的"每堆 +1 回合"已在节点 `cost` 里一次扣过，见 `wormholeAdvanceNode`）。
+   */
+  if (!tryMergeIntoBag(state, ctx, run, pile)) {
+    const cap = wormholeHoldCapacityOf(state, ctx)
+    const used = wormholeHoldUsage(state, ctx).used
+    return { ok: false, error: `背包放不下：已占 ${used} / 共 ${cap} 格。` }
+  }
+  holder!.piles!.splice(pileIndex, 1)
+  const u = wormholeHoldUsage(state, ctx)
+  const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
+  addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（货仓 ${u.used}/${u.capacity} 格）。`)
+  return { ok: true, taken: pile, used: u.used, capacity: u.capacity }
 }
 /* ═══════════ 三之四、采集器与"到达即铺堆"（F5 · 船长 2026-09-13） ═══════════
  *
@@ -698,11 +704,8 @@ export interface WormholeSalvageResult {
  */
 function tryMergeIntoBag(state: GameState, ctx: SimContext, run: WormholeRunState, pile: WormholeCellPile): boolean {
   const before = run.bag.map((s) => ({ ...s }))
-  const next = run.bag.map((s) => ({ ...s }))
-  const hit = next.find((s) => s.itemId === pile.itemId)
-  if (hit) hit.units += pile.units
-  else next.push({ itemId: pile.itemId, units: pile.units })
-  run.bag = next
+  // 合并只认 `wormhole.mergeIntoBag`（全仓唯一一份"同类并格"实现）
+  run.bag = mergeIntoBag(run.bag, pile)
   const sync = wormholeHoldSyncCargo(state, ctx)
   if (sync.unplaced.length > 0) {
     run.bag = before
@@ -885,11 +888,11 @@ export function wormholeGrantShipSpoils(state: GameState, ctx: SimContext): { ba
   return { bagged, leftOnCell: leftovers.length }
 }
 
-/* ═══════════ 六、矿脉（虚空母矿 1~3 堆；拾取每堆 1 回合） ═══════════ */
+/* ═══════════ 六、矿脉（虚空母矿 1~3 堆；走到就铺、按采集器台数成批回收） ═══════════ */
 
 /**
  * **给矿脉格铺原矿堆**（只铺一次）。堆的生成器沿用 `wormholeNodePiles`（虚空母矿、确定性、
- * 数量随层收益系数）；拾取走既有的 `wormholeTakePile`（网格层每拾一堆扣 1 回合）。
+ * 数量随层收益系数）；回收走 `wormholeCollectOreAt`（一次动作 1 回合 = 台数 堆，⌈堆数 ÷ 台数⌉ 回合）。
  */
 export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell): void {
   const run = state.wormhole.run
