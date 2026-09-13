@@ -883,7 +883,10 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 }
 // 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增巨齿鲨级战列舰 sh-megalodon、
 // 邓氏鱼级旗舰 sh-dunkleosteus 两具**壳体**：定制船口径 priceIsk 0、不上市场/不接蓝图/不接卡）。
-check(SHIPS.length === 27, `舰船应为 27 艘，实际 ${SHIPS.length}`)
+// 2026-09-13：27 → **42**（船长「护卫，驱逐，巡洋都可以有，你干脆都安排设计吧」⇒ 新增
+// **虫洞专属舰船 15 艘**：A/C/D/E/G 五族各 护卫 T1 / 驱逐 T2 / 巡洋 T3，全部标 `unreleased`、
+// 只由一次性舰船图纸制造；计数是"防手滑"的守卫，改数据时同步改这里与 `hull-class.test.ts`）。
+check(SHIPS.length === 42, `舰船应为 42 艘（既有 27 + 虫洞专属 15），实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,
 )
@@ -3056,7 +3059,7 @@ for (const m of MODULES) {
      *  这三类的"玩家可见枚举"是手册的**装备图鉴 / 舰船图鉴 / 蓝图图鉴**（三处都直接遍历全目录，
      *  与物品那次同款）⇒ 虫洞专属内容（id 前缀 `mod-wh-` / `sh-wh-` / `bp-wh-`）**必须标 `unreleased`**，
      *  且**已上线**的内容其玩家可见文案里不得出现「虫洞」。 */
-    const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sh-wh-'] as const
+    const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-'] as const
     const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
       ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
       ...SHIPS.map((s) => ({ kind: '舰船', id: s.id, name: s.name, description: s.description, unreleased: s.unreleased })),
