@@ -32,9 +32,21 @@ import {
   wormholeUnitsPerSlot,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { ShipSprite } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 
 type WhTab = 'prep' | 'map' | 'bag'
+
+/** 选舰「状态」筛选（与「我的舰队」的状态筛选同款控件；键义按虫洞口径：可编入 / 已编入 / 过重 / 占用中） */
+type WhStatusFilter = 'all' | 'pickable' | 'picked' | 'heavy' | 'busy'
+const WH_STATUS_TABS: Array<{ key: WhStatusFilter; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'pickable', label: '可编入' },
+  { key: 'picked', label: '已编入' },
+  { key: 'heavy', label: '过重' },
+  { key: 'busy', label: '占用中' },
+]
 
 const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
 
@@ -67,6 +79,50 @@ export function WormholePanel({
   const outOfTurns = run ? wormholeOutOfTurns(run) : false
   /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
   const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
+
+  /* ── 选舰检索（船长 2026-09-13「缺少一个类似我的舰队里的舰船筛选和搜索」）──
+     复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 三行筛选（状态/类别/级别，各维取「与」）；
+     类别与级别复用同一张单点表（`SHIP_SUBS` / `SHIP_TIER_SUBS`），与市场/手册/组装机同口径。 */
+  const [whQ, setWhQ] = useState('')
+  const [whStatus, setWhStatus] = useState<WhStatusFilter>('all')
+  const [whRole, setWhRole] = useState<string>(SUB_ALL)
+  const [whTier, setWhTier] = useState<string>(SUB_ALL)
+  const whEntries = Object.keys(state.fleet).map((uid) => {
+    const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
+    const busy = shipBusyLabel(state, ctx, uid)
+    const ok = def ? wormholeShipAllowed(def) : false
+    return {
+      uid,
+      def,
+      name: shipDisplayName(state, ctx, uid),
+      tier: def?.tier ?? 0,
+      ok,
+      busy,
+      on: picked.includes(uid),
+    }
+  })
+  const whFiltered = whQ.trim().length > 0 || whStatus !== 'all' || whRole !== SUB_ALL || whTier !== SUB_ALL
+  const whShown = whEntries.filter((e) => {
+    const q = whQ.trim().toLowerCase()
+    if (q.length > 0) {
+      const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    if (whStatus !== 'all') {
+      const hit =
+        whStatus === 'picked'
+          ? e.on
+          : whStatus === 'pickable'
+            ? e.ok && !e.busy
+            : whStatus === 'heavy'
+              ? !e.ok
+              : !!e.busy // busy
+      if (!hit) return false
+    }
+    if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
+    if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
+    return true
+  })
 
   function togglePick(uid: string): void {
     setPicked((prev) => {
@@ -149,43 +205,129 @@ export function WormholePanel({
                 带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过 {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；
                 总质量越高、可探索回合越短；背包格数按编队「合计货仓」折算（每 {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
               </div>
-              <ul className="app-inv-list app-wh-ships">
-                {Object.keys(state.fleet).map((uid) => {
+              {/* **选舰卡片**（船长 2026-09-13：「虫洞入口选取舰船采用卡片形式，卡片内含有舰船名称、
+                  舰船级别、折算质量、货仓、舰船 SVG 外形，且当编入时，卡片边框会变色」）——
+                  结构/类名沿用装配页候选卡（`.app-fit-pick-item`）与舰队卡（`.app-inv-row.is-picked`）那一族：
+                  整卡可点、选中态给边框+底色；舰影走统一资产 `ShipSprite`（细描边线稿，非 CSS 拼形）。
+                  ⚠ `ShipSprite` **不要传 `name`**：它自带一个绝对定位的舰名标签（`.app-sprite-name`，
+                  贴在舰影下缘），会压住卡片自己的舰名（2026-09-13 船长报「名称与 SVG 下方文本重叠」）。
+                  检索控件（搜索 + 状态/类别/级别三行筛选）复刻「我的舰队」那套类名与口径。 */}
+              <div className="app-bay-title app-wh-sub">选择舰船（点卡片编入 / 再点撤下）</div>
+              <span className="app-head-search-wrap app-wh-search">
+                <input
+                  className="app-head-search"
+                  type="text"
+                  placeholder="搜索舰船…"
+                  value={whQ}
+                  onChange={(e) => setWhQ(e.target.value)}
+                  spellCheck={false}
+                />
+                <span className="app-dim">
+                  {whFiltered ? `匹配 ${whShown.length} / 共 ${whEntries.length} 艘` : `${whEntries.length} 艘`}
+                </span>
+              </span>
+              <div className="app-fleet-toolbar app-wh-filters">
+                <div className="app-fleet-row">
+                  <span className="app-dim">状态：</span>
+                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                    {WH_STATUS_TABS.map((t) => (
+                      <button
+                        key={t.key}
+                        role="tab"
+                        aria-selected={whStatus === t.key}
+                        className={`app-tasktab${whStatus === t.key ? ' is-active' : ''}`}
+                        onClick={() => setWhStatus(t.key)}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="app-fleet-row">
+                  <span className="app-dim">类别：</span>
+                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                    <button
+                      role="tab"
+                      aria-selected={whRole === SUB_ALL}
+                      className={`app-tasktab${whRole === SUB_ALL ? ' is-active' : ''}`}
+                      onClick={() => setWhRole(SUB_ALL)}
+                    >
+                      全部
+                    </button>
+                    {SHIP_SUBS.map((s) => (
+                      <button
+                        key={s.key}
+                        role="tab"
+                        aria-selected={whRole === s.key}
+                        className={`app-tasktab${whRole === s.key ? ' is-active' : ''}`}
+                        onClick={() => setWhRole(s.key)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="app-fleet-row">
+                  <span className="app-dim">级别：</span>
+                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                    <button
+                      role="tab"
+                      aria-selected={whTier === SUB_ALL}
+                      className={`app-tasktab${whTier === SUB_ALL ? ' is-active' : ''}`}
+                      onClick={() => setWhTier(SUB_ALL)}
+                    >
+                      全部
+                    </button>
+                    {SHIP_TIER_SUBS.map((s) => (
+                      <button
+                        key={s.key}
+                        role="tab"
+                        aria-selected={whTier === s.key}
+                        className={`app-tasktab${whTier === s.key ? ' is-active' : ''}`}
+                        onClick={() => setWhTier(s.key)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <ul className="app-wh-cards">
+                {whShown.map(({ uid, name, tier, ok, on, busy }) => {
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
-                  const tier = def?.tier ?? 0
-                  const ok = def ? wormholeShipAllowed(def) : false
-                  const on = picked.includes(uid)
-                  // 忙态的船编不进来（船长 2026-09-13：进洞要求主控闲置 + 进洞的船要锁定 ⇒ 编队各船也得空闲）
-                  const busy = shipBusyLabel(state, ctx, uid)
                   const canPick = ok && !busy
+                  const title = !ok
+                    ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
+                    : busy
+                      ? `${busy}：先收工/取消派工，才能编入虫洞`
+                      : on
+                        ? '再点一下撤下'
+                        : '点一下编入'
                   return (
-                    <li key={uid} className={`app-inv-row${on ? ' is-picked' : ''}`}>
-                      <div className="app-inv-main">
-                        <span className="app-inv-name">
-                          {shipDisplayName(state, ctx, uid)}
-                          <span className="app-dim"> · {shipSizeLabel(tier)} T{tier}</span>
+                    <li key={uid}>
+                      <button
+                        type="button"
+                        className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
+                        disabled={!canPick}
+                        onClick={() => togglePick(uid)}
+                        title={title}
+                      >
+                        <span className="app-wh-card-art" aria-hidden>
+                          {/* ⚠ 不传 name（见上：会把舰名压在卡片文本上） */}
+                          <ShipSprite shipId={state.fleet[uid]!.defId ?? uid} size={132} />
+                        </span>
+                        <span className="app-wh-card-name">{shipDisplayName(state, ctx, uid)}</span>
+                        <span className="app-wh-card-sub">
+                          {shipSizeLabel(tier)} · T{tier}
                           {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
                         </span>
-                        <span className="app-inv-count">
+                        <span className="app-wh-card-sub">
                           折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
-                      </div>
-                      <div className="app-inv-btns">
-                        <button
-                          className={`app-btn is-small${on ? ' is-primary' : ''}`}
-                          disabled={!canPick}
-                          onClick={() => togglePick(uid)}
-                          title={
-                            !ok
-                              ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
-                              : busy
-                                ? `${busy}：先收工/取消派工，才能编入虫洞`
-                                : undefined
-                          }
-                        >
-                          {on ? '已选' : !ok ? '过重' : busy ? '占用中' : '编入'}
-                        </button>
-                      </div>
+                        <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
+                          {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                        </span>
+                      </button>
                     </li>
                   )
                 })}
