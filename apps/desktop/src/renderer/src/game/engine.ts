@@ -141,6 +141,8 @@ import {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  wormholeLeave,
+  wormholeResume,
   wormholeStartBattle,
   wormholeDebugReset,
 } from '@whale/core'
@@ -1330,6 +1332,22 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
+  /** 虫洞：临时离开（活动停止、进度保存；主控随即释放，可去做别的） */
+  wormholeLeave(): void {
+    wormholeLeave(this.state)
+    void this.persist()
+    this.notify()
+  }
+
+  /** 虫洞：返回（要求主控空闲——忙着就拒绝并把忙态回报给界面） */
+  wormholeResume(): CommandResult {
+    const r = wormholeResume(this.state, this.ctx)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
   /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
   wormholeTakePile(pileIndex: number): CommandResult {
     const r = wormholeTakePile(this.state, this.ctx, pileIndex)

@@ -310,6 +310,27 @@ export interface WormholeRunState {
    * `wormholeDescend` / `wormholeExtract` 都要求 `bossCleared === depth`。
    */
   bossCleared?: number
+  /**
+   * **玩家此刻是否"人在洞里"**（船长 2026-09-13 批准实行 · 议案 A）。
+   *
+   * 口径（**活动位开关**，与"这趟存不存在"是两件事）：
+   * - `true` = **进虫洞这个活动正在进行** ⇒ 占着主控（采矿/打捞/扫描/巡逻/远征/运输/亲自开炉一律被拒），
+   *   洞内照常推进（战斗实时打）；
+   * - `false` = 玩家**临时离开**（关掉虫洞界面）⇒ **活动停止、主控立刻释放**（可以去做别的），
+   *   **洞内一切冻结**（战斗不推进、不掉血、回合不扣），**进度原样保存**；
+   * - 回来（`wormholeResume`）要求**主控空闲**。
+   *
+   * 存档：`save.ts` 的 `cleanWormhole` 同步清洗（旧档/坏值 ⇒ `false`＝不占主控，安全侧）。
+   */
+  attending?: boolean
+  /**
+   * **临时离开的时刻**（state.gameMs；仅 ttending === false 时有意义）。
+   * 回来时按 state.gameMs - leftAtGameMs 把**进行中的战斗时钟整体前移**——
+   * 否则 dvanceBattleFor 的步进基准（while (state.gameMs > battle.lastTickGameMs)）
+   * 会把"离开的这段时间"一次性当作战时间补算：实测 2×T1 离开 6 秒回来**当场团灭**，
+   * 冻结就白做了。随档保存（离线离开同样适用）。
+   */
+  leftAtGameMs?: number
 }
 
 export interface WormholeState {
@@ -582,6 +603,14 @@ function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): Worm
  */
 export function shipBusyForWormhole(state: GameState, shipId: string): string | null {
   if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+  return shipActivityBusy(state, shipId)
+}
+
+/**
+ * **该船此刻手上有别的"活动"吗**（**不含虫洞本身**）——"进洞门槛"与"返回虫洞"共用这一把尺。
+ * 口径同 `activity.shipBusyLabel`，差别只在：这里**不**把"在洞里"当忙（返回虫洞时要排除自己）。
+ */
+export function shipActivityBusy(state: GameState, shipId: string): string | null {
   if (shipId !== state.shipId) {
     const task = state.aiAssignments[shipId]?.task
     if (!task) return null
@@ -596,6 +625,48 @@ export function shipBusyForWormhole(state: GameState, shipId: string): string | 
   if (state.scanning.active) return '扫描探索中'
   if (state.expedition.active) return '远征中'
   return null
+}
+
+/**
+ * **临时离开虫洞**（关掉虫洞界面；船长 2026-09-13 批准实行）：`attending = false` ⇒
+ * **活动停止、主控立刻释放**（可以去做别的），**本趟进度原样保存**
+ * （层 / 回合 / 背包 / 待处理节点 / 进行中的战斗都在），且**洞内一切冻结**（见 `advanceWormhole`）。
+ */
+export function wormholeLeave(state: GameState): void {
+  const run = state.wormhole.run
+  if (!run) return
+  run.attending = false
+  run.leftAtGameMs = state.gameMs // 记下离开时刻：回来时按这段时长前移战斗时钟（不然会"补算"成战时间）
+}
+
+/**
+ * **把一场洞内战斗的时钟整体前移 `deltaMs`**（临时离开期间游戏时间照走，但洞内冻结）：
+ * 只动"绝对时刻"字段——`startedAtGameMs` / `lastTickGameMs` / `waveClearAt` / `repair.nextPulseAtMs`；
+ * 装填与近防炮冷却是**倒计时**（`weapons: number[]` / `pdCd`），无需处理。
+ */
+function shiftBattleClock(battle: BattleState, deltaMs: number): void {
+  if (!(deltaMs > 0)) return
+  battle.startedAtGameMs += deltaMs
+  battle.lastTickGameMs += deltaMs
+  if (battle.waveClearAt !== undefined) battle.waveClearAt += deltaMs
+  const nextPulseAtMs = battle.repair?.nextPulseAtMs
+  if (nextPulseAtMs !== undefined) battle.repair!.nextPulseAtMs = nextPulseAtMs + deltaMs
+}
+
+/**
+ * **返回虫洞**（重新打开虫洞界面）：要求**主控空闲**（船长第四条口径）。
+ * 判据只查"别的活动"（`shipActivityBusy`）——**不**把"在洞里"算忙（否则永远回不去）。
+ */
+export function wormholeResume(state: GameState, ctx: SimContext): WormholeStartResult {
+  void ctx
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。' }
+  const busy = shipActivityBusy(state, state.shipId)
+  if (busy) return { ok: false, error: `主控正在${busy}：先把手上的活收工，才能回到虫洞。` }
+  shiftBattleClock(run.battle as BattleState, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
+  run.leftAtGameMs = undefined
+  run.attending = true
+  return { ok: true, run }
 }
 
 /**
@@ -634,6 +705,7 @@ export function wormholeEnter(
   if (blocked) return { ok: false, error: blocked }
   const r = wormholeStartRun(ctx, shipIds, seed)
   if (!r.ok || !r.run) return r
+  r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
   state.wormhole.run = r.run
   addLog(
     state,

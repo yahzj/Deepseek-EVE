@@ -10,7 +10,7 @@
  * 战斗接入（节点战斗与撤离战）与收益校准在 **F 批**；故战斗/事件节点的按钮标着「F 批接入」，
  * 施工期用「结算本节点」把流程走通（不产生任何结算收益）。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_MAX_SHIPS,
@@ -88,12 +88,33 @@ export function WormholePanel({
     }
   }
 
+  /**
+   * **临时离开 = 活动停止**（船长 2026-09-13 批准 · 议案 A 第 2 条）：关掉面板就 `wormholeLeave()`
+   * ⇒ 主控立刻释放（可以去做别的），**虫洞进度原样保存**、洞内一切冻结（含战斗）。
+   */
+  function handleClose(): void {
+    if (state.wormhole.run) engine.wormholeLeave()
+    onClose()
+  }
+
+  // **返回虫洞**（打开面板即占住活动位）：要求主控空闲——忙着则留在"已离开"态并提示先收工（第 3 条）。
+  const [resumeNote, setResumeNote] = useState<string | null>(null)
+  useEffect(() => {
+    if (!state.wormhole.run || state.wormhole.run.attending === true) return
+    const r = engine.wormholeResume()
+    if (!r.ok) setResumeNote(r.error ?? '暂时回不到虫洞。')
+    else setResumeNote(null)
+    // 只在"刚打开/刚离开"这两种时刻触发；`attending` 变 true 后本效果自动空转
+  }, [engine, state.wormhole.run?.attending])
+
   return (
-    <div className="app-modal-mask" onClick={onClose}>
+    <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
           <span className="app-report-title">虫洞</span>
-          <span className="app-dim app-wh-devnote">调试入口 · 施工中（拍板后对玩家开放）</span>
+          <span className="app-dim app-wh-devnote">
+            {run ? (run.attending ? '人在洞里 · 离开即暂停（进度保存）' : '已离开 · 进度已保存') : '调试入口 · 施工中（拍板后对玩家开放）'}
+          </span>
           <div className="app-wh-tabs">
             {(Object.keys(TAB_LABEL) as WhTab[]).map((k) => (
               <button
@@ -107,12 +128,14 @@ export function WormholePanel({
               </button>
             ))}
           </div>
-          <button className="app-btn is-small" onClick={onClose}>
-            ✕ 关闭
+          <button className="app-btn is-small" onClick={handleClose}>
+            ✕ 关闭（离开虫洞）
           </button>
         </div>
 
         <div className="app-modal-body">
+          {/* 回不到虫洞（主控在忙）：把拒因摆出来，别让玩家对着不能点的界面猜（议案 A 第 3 条） */}
+          {resumeNote ? <div className="app-warn app-wh-gate">{resumeNote}</div> : null}
           {/* 本趟已结束（撤离成功 / 全损）⇒ 回到准备页并说明结果（否则"探索/背包"两页会是空白） */}
           {!run && tab !== 'prep' ? (
             <div className="app-dim app-inv-empty">

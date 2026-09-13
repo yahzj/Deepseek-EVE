@@ -449,6 +449,8 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
   // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛
   // 这些读同一把尺的地方**自动**把它挡在外面（不需要逐处加判断）。
   if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+  // 人在洞里时，主控本人也算忙（活动位被占）；**临时离开后即释放**（船长 2026-09-13 批准）
+  if (state.wormhole.run?.attending === true && shipId === state.shipId) return '虫洞探索中'
   if (shipId === state.shipId) {
     const mv = miningStatus(state, ctx)
     if (mv.active) {
