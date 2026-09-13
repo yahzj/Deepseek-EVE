@@ -76,8 +76,9 @@ describe('舰种表（2026-09-11 船长定案：5 档·敌我共用）', () => {
 
   // 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增两具壳体：巨齿鲨级战列舰 / 邓氏鱼级旗舰）
   // 2026-09-13：27 → **42**（船长「护卫，驱逐，巡洋都可以有」⇒ 虫洞专属舰船 15 艘：五族各 T1/T2/T3 一艘）
-  it('42 艘船的 tier 与其等效质量落档区间一一一致', () => {
-    expect(SHIPS.length).toBe(42)
+  // 2026-09-13：42 → **43**（船长「添加一艘新的巡洋舰…」⇒ 鹦鹉螺级测绘巡洋舰 sh-nautilus，T3 侦察舰）
+  it('43 艘船的 tier 与其等效质量落档区间一一一致', () => {
+    expect(SHIPS.length).toBe(43)
     const bad = SHIPS.filter((s) => s.tier !== tierOfEquivalentMass(equivalentMassOf(s))).map(
       (s) =>
         `${s.name}（质量 ${s.massKg} → 等效 ${equivalentMassOf(s)}，实际 tier ${s.tier}）`,
@@ -85,12 +86,12 @@ describe('舰种表（2026-09-11 船长定案：5 档·敌我共用）', () => {
     expect(bad).toEqual([])
   })
 
-  it('每艘船的舰种名 = 其 tier 对应命名（归类统计 护卫 10 / 驱逐 12 / 巡洋 14 / 战列 4 / 旗舰 2）', () => {
+  it('每艘船的舰种名 = 其 tier 对应命名（归类统计 护卫 10 / 驱逐 12 / 巡洋 15 / 战列 4 / 旗舰 2）', () => {
     const count: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     for (const s of SHIPS) {
       count[s.tier] += 1
       expect(hullClassOf(s)).toBe(HULL_CLASS_NAME[s.tier as 1])
     }
-    expect(count).toEqual({ 1: 10, 2: 12, 3: 14, 4: 4, 5: 2 })
+    expect(count).toEqual({ 1: 10, 2: 12, 3: 15, 4: 4, 5: 2 }) // T3 +1 = 鹦鹉螺级测绘巡洋舰（2026-09-13）
   })
 })

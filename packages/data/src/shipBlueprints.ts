@@ -275,6 +275,23 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     description: '「牛鲨级突击巡洋舰」总装图纸：货舱 3,000 m³、循环 13 秒产 12 单位——武装舰族量产线，学会即可在船坞总装。',
   },
   {
+    id: 'sbp-nautilus',
+    name: '鹦鹉螺级舰船蓝图',
+    shipId: 'sh-nautilus',
+    materials: [
+      { itemId: 'min-tritanium', count: 190_000 },
+      { itemId: 'min-pyerite', count: 56_000 },
+      { itemId: 'min-mexallon', count: 31_000 },
+      { itemId: 'min-nocxium', count: 6_000 },
+      { itemId: 'min-isotope', count: 12_700 },
+    ],
+    buildSeconds: 16_920, // 鹦鹉螺级（2026-09-13 工期阶梯：T3 带 3~5 时；同价同档 ⇒ 与长尾鲨级同值）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 36_000_000, // = 行价 9,000,000 × 4（>400 万档系数）
+    unreleased: true, // 跟随虫洞挂闸门（与 ship-nautilus 同步）
+    description: '「鹦鹉螺级测绘巡洋舰」总装图纸：货舱 6,600 m³、循环 14 秒产 39 单位——协会测量线量产线，学会即可在船坞总装。',
+  },
+  {
     id: 'sbp-tortoise',
     name: '陆龟级舰船蓝图',
     shipId: 'sh-tortoise',
