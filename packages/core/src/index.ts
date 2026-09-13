@@ -828,6 +828,8 @@ export {
   wormholeExtract,
   // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
+  // 沉船扣格：背包超格时按每格价值从低到高丢货（船长 2026-09-13 裁定）
+  wormholeTrimBag,
   // F 批：敌卡按层派生
   wormholeFoeThreat,
   wormholeAnomalyOf,

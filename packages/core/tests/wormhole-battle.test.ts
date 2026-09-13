@@ -27,10 +27,13 @@ import {
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
   wormholeAnomalyOf,
+  wormholeBagSlots,
+  wormholeBagUsage,
   wormholeCardIdFor,
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
+  wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
   wormholeNaturalHp,
@@ -271,6 +274,42 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(Object.keys(state.fleet).length).toBeGreaterThanOrEqual(1) // 协会补发保底舰船
     expect(state.fleet[state.shipId]).toBeTruthy()
     expect(pilotUnavailableReason(state)).toBeNull()
+  })
+
+  it('**沉船扣背包格**（船长 2026-09-13 裁定「扣背包格，不足时丢弃货物」）：缩容后按每格价值从低到高丢', () => {
+    const state = fresh()
+    const ids = [addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3)]
+    state.shipId = ids[0]!
+    expect(wormholeEnter(state, ctx, ids, 21).ok).toBe(true)
+    const run = state.wormhole.run!
+    const cheap = 'ore-veldspar' // 最便宜的原矿（每格价值低 ⇒ 该先丢）
+    const dear = WORMHOLE_ORE_ITEM_ID // 虚空母矿 915/单位 ⇒ 每格 45.75 万（该留）
+    const capBefore = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
+    expect(capBefore).toBeGreaterThanOrEqual(6)
+    // 塞满一整包：便宜货占满 (capBefore - 2) 格 + 贵货 2 格
+    run.bag = [
+      { itemId: cheap, units: (capBefore - 2) * 500 },
+      { itemId: dear, units: 2 * 500 },
+    ]
+    expect(wormholeBagUsage(ctx, run.bag, capBefore).used).toBe(capBefore)
+    // 打沉两艘僚舰后仍胜 ⇒ 编队剩 2 艘 ⇒ 上限缩水 ⇒ 装不下的当场丢
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    run.battle!.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
+    run.battle!.units['ally-2']!.hp = { s: 0, a: 0, h: 0 }
+    winBattle(state)
+    settleBattle(state)
+    const back = state.wormhole.run!
+    const capAfter = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))
+    expect(capAfter, '沉船后背包上限没缩水').toBeLessThan(capBefore)
+    const usage = wormholeBagUsage(ctx, back.bag, capAfter)
+    expect(usage.overflow, '沉船后背包还超格').toBe(false)
+    // 丢的是便宜货、贵货原封不动（"按每格价值从低到高丢"）
+    const dearLeft = back.bag.find((s) => s.itemId === dear)
+    expect(dearLeft?.units, '贵货被丢了（应先丢便宜的）').toBe(1000)
+    const cheapLeft = back.bag.find((s) => s.itemId === cheap)?.units ?? 0
+    expect(cheapLeft, '便宜货没被扣').toBeLessThan((capBefore - 2) * 500)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('沉船拖走了货舱'))).toBe(true)
   })
 
   it('某个僚舰被打沉（战斗仍胜）：该船从编队与舰队里一起消失，其余船继续', () => {

@@ -17,7 +17,10 @@ import { loseShip } from './shipyard'
 import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor } from './combat'
 import {
   wormholeAdvanceNode,
+  wormholeBagSlots,
   wormholeCardIdFor,
+  wormholeFleetCargoM3,
+  wormholeTrimBag,
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
@@ -139,6 +142,21 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   if (sunk.length > 0) {
     run.fleet = run.fleet.filter((uid) => !sunk.includes(uid))
     state.wormhole.lastFleetLost += sunk.length
+    // **沉船拖走货舱 ⇒ 背包格上限跟着缩水，装不下的当场丢**（船长 2026-09-13：「扣背包格，
+    // 不足时丢弃货物」）。格数 = 「剩余编队合计货仓 ÷ 500」现算 ⇒ 这里只需把溢出部分裁掉。
+    const cap = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
+    const trimmed = wormholeTrimBag(ctx, run.bag, cap)
+    if (trimmed.dropped.length > 0) {
+      const names = trimmed.dropped
+        .map((s) => `${ctx.items.get(s.itemId)?.name ?? s.itemId}×${Math.floor(s.units).toLocaleString('zh-CN')}`)
+        .join('、')
+      run.bag = trimmed.bag
+      addLog(
+        state,
+        'warn',
+        `🕳 沉船拖走了货舱：背包缩到 ${cap} 格，装不下的部分当场丢弃（${names}）——按每格价值从低到高丢。`,
+      )
+    }
   }
   // P0 承伤持久化（船长「副本内承伤持久」）：逐船把装甲/结构残余写回
   for (const uid of run.fleet) persistFleetHullDamage(state, ctx, uid, battle)

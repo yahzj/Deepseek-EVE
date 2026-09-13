@@ -188,6 +188,51 @@ export interface WormholeBagSlot {
   units: number
 }
 
+/**
+ * **超格时丢弃货物**（船长 2026-09-13 裁定：「**扣背包格，不足时丢弃货物**」）。
+ *
+ * 场景 = 有船被打沉 ⇒ 编队合计货仓变小 ⇒ 背包格上限跟着变小（格数由"剩余编队货仓 ÷ 500"现算）
+ * ⇒ 手上这包货可能装不下了。口径两条：
+ * - **整格丢**（一格 = 一条同物品记录；留半格不释放格位）；无法识别的物品视为最贵（最后才丢）；
+ * - **每格价值从低到高丢**（价值 = 单位数 × 基础卖价）⇒ 保住贵的（与既有"优先回收高价值"同一取舍方向）。
+ *
+ * 返回丢掉的那些格（调用方写日志用），原数组不改（返回新数组）。
+ */
+export function wormholeTrimBag(
+  ctx: SimContext,
+  bag: readonly WormholeBagSlot[],
+  capacity: number,
+): { bag: WormholeBagSlot[]; dropped: WormholeBagSlot[] } {
+  const slots = bag.map((s) => ({ ...s }))
+  const perOf = (itemId: string): number => wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 0)
+  /** 每格价值（判"先丢谁"用的就是它；认不出的物品 = 无穷大 ⇒ 最后丢） */
+  const valuePerSlot = (s: WormholeBagSlot): number => {
+    const def = ctx.items.get(s.itemId)
+    const per = perOf(s.itemId)
+    if (!def || per <= 0) return Number.POSITIVE_INFINITY
+    return per * Math.max(0, def.baseSellPriceIsk ?? 0)
+  }
+  const dropped: WormholeBagSlot[] = []
+  while (wormholeBagUsage(ctx, slots, capacity).used > capacity && slots.length > 0) {
+    let pick = 0
+    for (let i = 1; i < slots.length; i++) {
+      const a = valuePerSlot(slots[i]!)
+      const b = valuePerSlot(slots[pick]!)
+      if (a < b || (a === b && slots[i]!.itemId < slots[pick]!.itemId)) pick = i
+    }
+    const slot = slots[pick]!
+    const per = perOf(slot.itemId)
+    // **一次丢一格**（不是整条记录连锅端）：满格记录按"每格单位数"扣，零头记录整条丢
+    const cut = per > 0 ? Math.min(slot.units, per) : slot.units
+    slot.units -= cut
+    const same = dropped.find((d) => d.itemId === slot.itemId)
+    if (same) same.units += cut
+    else dropped.push({ itemId: slot.itemId, units: cut })
+    if (slot.units <= 0) slots.splice(pick, 1)
+  }
+  return { bag: slots, dropped }
+}
+
 /** 背包占格汇总：`N / M` 与是否溢出（溢出不入包——拾取前由界面/引擎拦） */
 export function wormholeBagUsage(
   ctx: SimContext,
