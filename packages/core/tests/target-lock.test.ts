@@ -52,7 +52,10 @@ describe('目标锁定阵列（2026-09-09）', () => {
   it('集火模式：主舰死前我方弹道全部打首位（foe-0），击毁后自动接力下一艘', () => {
     // 双单位卡：主 + 僚（escorts 1）
     const ctx0 = makeTestCtx({
-      ships: [ship('bed', { cpu: 300, slots: { high: 6, mid: 2, low: 2 }, powerBonus: 0.2 })],
+      // ⚠ 2026-09-13 层位克制改判（动能对甲 / 爆炸对盾 0.5 → 0.75）后，本夹具原来的"每层 30 血"
+      // 会被敌舰**一炮一层**打穿（实测：我方 0 次开火即被打到 0/0/0）⇒ 夹具船抬到每层 90 血。
+      // **只动夹具、不动内容数值**：本用例被测的行为是"集火弹道"，与血量无关（船长 2026-09-13 裁定「①」）。
+      ships: [ship('bed', { cpu: 300, slots: { high: 6, mid: 2, low: 2 }, powerBonus: 0.2, shieldHp: 90, armorHp: 90, hullHp: 90 })],
       modules: [laserDef('mod-laser-3', 6), lockDef('mod-lock-3', 0.2)],
       anomalies: [anomaly('ano-x', 'galaxy-hub', { threat: 30, escorts: 1 })],
     })
