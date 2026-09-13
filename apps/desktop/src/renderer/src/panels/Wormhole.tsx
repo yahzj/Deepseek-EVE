@@ -43,8 +43,9 @@ import {
   wormholeShipMass,
   wormholeUnitsPerSlot,
   wormholeShapeOf,
+  wormholeCargoSlotsOf,
 } from '@whale/core'
-import type { WormholeGridState, WormholePlace, WormholeSignal } from '@whale/core'
+import type { WormholeGridState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
@@ -54,9 +55,48 @@ type WhTab = 'prep' | 'map' | 'bag'
 
 const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
 
+/* ── 探索页动效时长（船长 2026-09-13 拍板：「入场动画时长可以拉长到 1 秒」）──
+   飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms。
+   三处都是纯表现：数据结算在点下那一刻就完成了，动画期间只是"不许再点"。 */
+const WORMHOLE_FX_IN_MS = 1000
+const WORMHOLE_FX_OUT_MS = 600
+const WORMHOLE_FX_SCAN_MS = 900
+
+/** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
+let scanFxSeqCounter = 0
+function scanFxSeq(): number {
+  scanFxSeqCounter += 1
+  return scanFxSeqCounter
+}
+
 /** 千分位 */
 function n(v: number): string {
   return Math.round(v).toLocaleString('zh-CN')
+}
+
+/**
+ * **数字跳数**（船长 2026-09-13 拍板「⑦要」）：结算单里的 ISK 合计从 0 滚到目标值，
+ * 220ms 一跳、共 `ms` 毫秒；纯前端表现，不碰任何数据。
+ */
+function useCountUp(value: number, ms = 320): number {
+  const [shown, setShown] = useState(value)
+  useEffect(() => {
+    if (!Number.isFinite(value) || value === 0) {
+      setShown(value)
+      return
+    }
+    const t0 = performance.now()
+    let raf = 0
+    const step = (t: number): void => {
+      const k = Math.min(1, (t - t0) / ms)
+      // 末段减速（ease-out），停下来的那一下才落在真值上
+      setShown(Math.round(value * (1 - Math.pow(1 - k, 3))))
+      if (k < 1) raf = window.requestAnimationFrame(step)
+    }
+    raf = window.requestAnimationFrame(step)
+    return () => window.cancelAnimationFrame(raf)
+  }, [value, ms])
+  return shown
 }
 
 export function WormholePanel({
@@ -143,6 +183,30 @@ export function WormholePanel({
   const settle = state.wormhole.lastSettle
   const holdInfo = run ? engine.wormholeHoldInfo() : null
   const overloaded = holdInfo?.overload ?? false
+  /**
+   * **进场/换层动效相位**（船长 2026-09-13：「入场动画时长可以拉长到 1 秒，并且可以实现玩家初始舰船
+   * 从屏幕外入场的效果（前往下一层时也可以飞出屏幕外，到达时从屏幕外飞入）」）：
+   * `in` = 舰影从地图外飞入（进场与到达新层都播）· `out` = 往地图外飞走（深入前先播）· `idle` = 静止。
+   * ⚠ 动效期间**所有作业按钮禁用**（`fxBusy`）：否则"飞出"还没播完玩家就点下一个动作，画面会跳。
+   */
+  const [fx, setFx] = useState<'idle' | 'out' | 'in'>('in')
+  const fxBusy = fx !== 'idle'
+  /** 扫描动画（扫完自动清；`nonce` 换一次 = 重播一次） */
+  const [scanFx, setScanFx] = useState<{ keys: string[]; rings: number; nonce: number } | null>(null)
+  const layerKeyForFx = run ? `${run.seed ?? 0}-${run.depth}` : 'none'
+  /** 新层挂载 ⇒ 播"从屏幕外飞入"，1 秒后交还操作（进场与深入共用这一条） */
+  useEffect(() => {
+    if (!run) return
+    setFx('in')
+    const t = window.setTimeout(() => setFx('idle'), WORMHOLE_FX_IN_MS)
+    return () => window.clearTimeout(t)
+  }, [layerKeyForFx, !!run])
+  /** 扫描动画收尾：波散完 + 格子亮完就清（清理只影响表现，数据早已落盘） */
+  useEffect(() => {
+    if (!scanFx) return
+    const t = window.setTimeout(() => setScanFx(null), WORMHOLE_FX_SCAN_MS)
+    return () => window.clearTimeout(t)
+  }, [scanFx])
   /**
    * **作业前「货仓会不会满」预告**（船长 2026-09-13：「**在打捞挖矿之前货仓可能会满的时候提醒玩家**」）：
    * 把当前格上剩下的**散货堆**按 m³ → 格折算成预计入仓格数，与货仓剩余格数比大小。
@@ -256,12 +320,21 @@ export function WormholePanel({
     if (res.beacon) onToast('漂浮信标：下一层入口已标在地图上。')
   }
 
+  /**
+   * **扫描动画**（船长 2026-09-13 拍板「甲：扫描波 + 逐格点亮」）：
+   * 点下扫描即结算（数据不等动画），这里只记"这一批新揭开了哪几格 + 扫了几圈"，
+   * 地图据此画一圈扩散的波、并让新格子**按圈依次亮起**；动画放完（~900ms）自动清空。
+   */
   function doScan(): void {
+    const before = new Set(grid?.scanned ?? [])
     const res = engine.wormholeScan()
     if (!res.ok) {
       onToast(res.error ?? '无法扫描。', true)
       return
     }
+    const after = grid?.scanned ?? []
+    const fresh = after.filter((k) => !before.has(k))
+    setScanFx({ keys: fresh, rings: Math.max(1, Math.floor(grid?.scanRadius ?? 1)), nonce: scanFxSeq() })
     onToast('扫描完成（1 回合）。')
   }
 
@@ -294,9 +367,22 @@ export function WormholePanel({
     else if (place === 'matter') onToast('谜质的增强效果待定（F3c）。')
   }
 
+  /**
+   * **深入下一层**（船长 2026-09-13：「前往下一层时也可以飞出屏幕外，到达时从屏幕外飞入」）：
+   * ① 先播 600ms「飞出屏幕外」（这一段时间真的**不下沉**，所以失败也不会出现"飞走了却没走成"）；
+   * ② 到点才调 `engine.wormholeDescend()`；③ 新层挂载后由 `layerKey` 那个 effect 播 1 秒飞入。
+   */
   function doDescend(): void {
-    const r = engine.wormholeDescend()
-    if (!r.ok) onToast(r.error ?? '无法深入。', true)
+    if (fxBusy) return
+    setFx('out')
+    window.setTimeout(() => {
+      const r = engine.wormholeDescend()
+      if (!r.ok) {
+        setFx('idle')
+        onToast(r.error ?? '无法深入。', true)
+      }
+      // 成功：`layerKey` 变了 ⇒ 那个 effect 会接着播飞入并复位
+    }, WORMHOLE_FX_OUT_MS)
   }
 
   function doExtract(): void {
@@ -428,6 +514,15 @@ export function WormholePanel({
     // 只在"刚打开/刚离开"这两种时刻触发；`attending` 变 true 后本效果自动空转
   }, [engine, state.wormhole.run?.attending])
 
+  /**
+   * **页签跟随"有没有在洞里"**：进洞 ⇒ 只能看「探索/背包」（准备页对编队已锁定）；
+   * 出洞 ⇒ 回到准备页。这样关掉面板再打开也落在正确那一页（不会停在空白页或死掉的准备页）。
+   */
+  useEffect(() => {
+    if (state.wormhole.run && tab === 'prep') setTab('map')
+    else if (!state.wormhole.run && tab !== 'prep') setTab('prep')
+  }, [state.wormhole.run, tab])
+
   return (
     <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
@@ -444,32 +539,35 @@ export function WormholePanel({
                   : '已离开 · 进度已保存'
                 : '调试入口 · 施工中（拍板后对玩家开放）'}
           </span>
-          <div className="app-wh-tabs">{settle ? null : (
-            (Object.keys(TAB_LABEL) as WhTab[]).map((k) => {
-              /**
-               * **进洞后不许回「准备」页**（船长 2026-09-13 报的 UI BUG）：
-               * 编队一进洞就锁定了（人也进洞了），再回准备页既能改编队又能重复「进入虫洞」，
-               * 语义上是"人已经下去了还能重选队伍"。⇒ `run` 存在时「准备」置灰，
-               * 要改编队必须先撤离/结算本趟（回合制，页签状态不影响引擎）。
-               */
-              const blocked = k === 'prep' ? !!run : !run
-              return (
-                <button
-                  key={k}
-                  className={`app-btn is-small${tab === k ? ' is-primary' : ''}`}
-                  onClick={() => setTab(k)}
-                  disabled={blocked}
-                  title={k === 'prep' && run ? '已在洞里：先撤离或结算本趟，才能重新编队' : !run && k !== 'prep' ? '还没进洞' : undefined}
-                >
-                  {TAB_LABEL[k]}
-                </button>
-              )
-            })
-          )}</div>
           <button className="app-btn is-small" onClick={handleClose}>
             ✕ 关闭（离开虫洞）
           </button>
         </div>
+        {/**
+         * **探索 / 背包 = 显眼的分段大页签**（船长 2026-09-13：「探索和背包的切换按钮有些过于隐蔽」）：
+         * 从标题行右侧那两颗 `is-small` 小按钮搬出来，放到标题行**正下方**、等宽两枚、带图标与读数；
+         * 背包那枚顺带把**货仓占用**摆在脸上（超载转红）——省得玩家为了看格数专门切过去。
+         * 进洞后「准备」是死按钮（编队已锁定）⇒ **直接不渲染**；没进洞时只有准备页 ⇒ 整条不渲染。
+         */}
+        {!settle && run ? (
+          <div className="app-wh-tabbar">
+            {(['map', 'bag'] as WhTab[]).map((k) => (
+              <button
+                key={k}
+                className={`app-wh-tab${tab === k ? ' is-active' : ''}`}
+                onClick={() => setTab(k)}
+              >
+                <span className="app-wh-tab-label">{TAB_LABEL[k]}</span>
+                <span className="app-wh-tab-sub">
+                  {k === 'map'
+                    ? `第 ${run.depth} 层 · 回合 ${run.turnsLeft}/${run.turnsTotal}`
+                    : `背包 ${holdInfo?.used ?? 0}/${holdInfo?.capacity ?? 0} 格`}
+                </span>
+                {k === 'bag' && overloaded ? <span className="app-wh-tab-warn">超载</span> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {/* `app-wh-body` = 让本面板的页体成为**纵向弹性容器**（船长 2026-09-13：
             「舰船选择界面高度可以适当缩减，让上一层的虫洞界面不要有滚动条」）——
@@ -481,68 +579,22 @@ export function WormholePanel({
            * 点「确认」= 清掉结算单 + **关闭虫洞面板**（`onClose`）。
            */}
           {settle ? (
-            <div className="app-wh-settle">
-              <div className="app-wh-settle-head">
-                <span className={`app-wh-settle-kind${settle.kind === 'extract' ? ' is-good' : ' is-bad'}`}>
-                  {settle.kind === 'extract' ? '撤离成功' : '本趟全损'}
-                </span>
-                <span className="app-dim">
-                  第 {settle.depth} 层 ·{' '}
-                  {settle.kind === 'lost'
-                    ? '编队失联，货全丢了'
-                    : settle.skippedExtractBattle === true
-                      ? '第 1 层没有拦截舰队（直接脱离）'
-                      : '打赢了撤离拦截战'}
-                </span>
-              </div>
-              <div className="app-wh-settle-grid">
-                <div className="app-wh-settle-cell">
-                  <span className="app-dim">虚空母矿</span>
-                  <b>{n(settle.oreUnits)}</b>
-                  <span className="app-dim">单位 ⇒ {n(settle.oreIsk)} ISK</span>
-                </div>
-                <div className="app-wh-settle-cell">
-                  <span className="app-dim">残骸（回收炉拆解估值）</span>
-                  <b>{n(settle.wreckIsk)}</b>
-                  <span className="app-dim">ISK</span>
-                </div>
-                <div className="app-wh-settle-cell">
-                  <span className="app-dim">遗迹安全货柜</span>
-                  <b>{settle.boxes.length}</b>
-                  <span className="app-dim">件（内容物待拆解）</span>
-                </div>
-                <div className="app-wh-settle-cell">
-                  <span className="app-dim">随行战利品</span>
-                  <b>{settle.relics.length}</b>
-                  <span className="app-dim">件（装备 / 图纸）</span>
-                </div>
-              </div>
-              <div className="app-wh-settle-total">
-                本趟到手合计 <b>{n(settle.oreIsk + settle.wreckIsk)}</b> ISK
-                {settle.boxes.length > 0 ? ` · 货柜 ${settle.boxes.length} 件` : ''}
-              </div>
-              {settle.shipsLost.length > 0 ? (
-                <div className="app-wh-settle-loss">
-                  损失：{settle.shipsLost.join('、')}（共 {settle.shipsLost.length} 艘，船上装备一并遗失）
-                </div>
-              ) : null}
-              {settle.lostIsk > 0 ? (
-                <div className="app-wh-settle-loss">
-                  没带回来的货：约 {n(settle.lostIsk)} ISK（随编队一起丢了）
-                </div>
-              ) : null}
-              <div className="app-wh-actions">
-                <button
-                  className="app-btn is-primary app-wh-settle-ok"
-                  onClick={() => {
-                    engine.wormholeAckSettle()
-                    onClose() // 船长：结算完关掉虫洞界面
-                  }}
-                >
-                  确认并返回
-                </button>
-              </div>
-            </div>
+            /**
+             * **本趟结算界面**（船长 2026-09-13）：「玩家撤离后弹出一个结算界面，表示玩家的收益和损失。
+             * 然后关闭虫洞界面」＋同日晚两条追加：「**结算界面尽量居中显示**」
+             * 「**收获信息挨个弹出显示（需要动效）**」。
+             *
+             * 做法：整块**居中**（定宽 640，内容变化不跳动）；四格明细**依次弹出**（逐格 +90ms，
+             * 下方 6px 淡入上移，纯 CSS `animation-delay`）；合计那一行等明细播完再淡入，
+             * 数字走 `useCountUp` **跳数** 320ms。⚠ **「确认并返回」立刻可点**——不拿动画锁玩家。
+             */
+            <SettleView
+              settle={settle}
+              onConfirm={() => {
+                engine.wormholeAckSettle()
+                onClose() // 船长：结算完关掉虫洞界面
+              }}
+            />
           ) : null}
           {/* 回不到虫洞（主控在忙）：把拒因摆出来，别让玩家对着不能点的界面猜（议案 A 第 3 条） */}
           {!settle && resumeNote ? <div className="app-warn app-wh-gate">{resumeNote}</div> : null}
@@ -760,6 +812,8 @@ export function WormholePanel({
                       onPickCell={pickCell}
                       shipDefId={leadShipDefId}
                       layerKey={`${run.seed ?? 0}-${run.depth}`}
+                      fx={fx}
+                      scanFx={scanFx}
                     />
                   </div>
                   <div className="app-wh-legend">
@@ -799,47 +853,60 @@ export function WormholePanel({
                     </div>
                   ) : null}
                   {/**
-                   * **扫描按钮（放大）在地点信息窗左侧、平级摆放**（船长 2026-09-13）；
-                   * 其余动作按钮留在下面那一行，且**只在真能用的时候才出现**
-                   * （船长：「有可以采集或者激活的情况时，才显示对应按钮」）——
-                   * 不能用时由信息窗里的说明给出原因（比如"编队里没有打捞器"），不再摆一排灰按钮。
+                   * **左列 = 扫描 + 作业按钮**（船长 2026-09-13：「激活等按钮可以放在扫描下方」）：
+                   * 扫描大按钮下面紧挨着"在这一格能做的事"（打捞/采集 · 激活此地/迎战守卫），
+                   * 两者同宽对齐；右边仍是地点信息窗（平级摆放，船长 2026-09-13）。
+                   * **只在真能用的时候才出现**（船长：「有可以采集或者激活的情况时，才显示对应按钮」）——
+                   * 不能用时由信息窗里的说明给出原因（比如"编队里没有打捞器"），不摆一排灰按钮。
+                   * 「继续深入 / 撤离」留在下面那条动作行：它们不是"这一格的事"，而是整趟的相位动作。
                    */}
                   <div className="app-wh-workspace">
-                    <button
-                      className="app-btn is-primary app-wh-scan-big"
-                      disabled={!!run.battle || overloaded || run.turnsLeft < 1}
-                      onClick={doScan}
-                      title="扫描当前地点及周围一圈：只揭开还没扫过的格（1 回合）"
-                    >
-                      扫描
-                      <span className="app-wh-scan-sub">1 回合 · 揭开周围一圈</span>
-                    </button>
+                    <div className="app-wh-workspace-left">
+                      <button
+                        className="app-btn is-primary app-wh-scan-big"
+                        disabled={!!run.battle || overloaded || run.turnsLeft < 1 || fxBusy}
+                        onClick={doScan}
+                        title="扫描当前地点及周围一圈：只揭开还没扫过的格（1 回合）"
+                      >
+                        扫描
+                        <span className="app-wh-scan-sub">1 回合 · 揭开周围一圈</span>
+                      </button>
+                      {workCell && canWork ? (
+                        <button
+                          className="app-btn is-primary app-wh-work"
+                          disabled={!!run.battle || overloaded || run.turnsLeft < 1 || fxBusy}
+                          onClick={doActivate}
+                          title={workTitle}
+                        >
+                          {veinCell ? '采集' : '打捞'}
+                          <span className="app-wh-scan-sub">
+                            1 回合 · 回收 {Math.min(Math.max(rigs, 0), herePiles.length)} 堆
+                          </span>
+                        </button>
+                      ) : null}
+                      {!workCell && canActivate ? (
+                        <button
+                          className="app-btn is-primary app-wh-work"
+                          disabled={!!run.battle || overloaded || run.turnsLeft < 1 || fxBusy}
+                          onClick={doActivate}
+                          title={
+                            atExit
+                              ? '激活下一层入口：迎战本层守卫（打完才能深入）'
+                              : '激活当前地点：按地点类型开战 / 取回谜质（1 回合）'
+                          }
+                        >
+                          {atExit ? '迎战守卫' : '激活此地'}
+                          <span className="app-wh-scan-sub">1 回合</span>
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="app-wh-node">{renderHereNode()}</div>
                   </div>
                   <div className="app-wh-actions">
-                    {workCell && canWork ? (
-                      <button className="app-btn is-small is-primary" onClick={doActivate} title={workTitle}>
-                        {`${veinCell ? '采集' : '打捞'}（1 回合 · 回收 ${Math.min(Math.max(rigs, 0), herePiles.length)} 堆）`}
-                      </button>
-                    ) : null}
-                    {!workCell && canActivate ? (
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={!!run.battle || overloaded || run.turnsLeft < 1}
-                        onClick={doActivate}
-                        title={
-                          atExit
-                            ? '激活下一层入口：迎战本层守卫（打完才能深入）'
-                            : '激活当前地点：按地点类型开战 / 取回谜质（1 回合）'
-                        }
-                      >
-                        {atExit ? '迎战层末守卫（1 回合）' : '激活此地（1 回合）'}
-                      </button>
-                    ) : null}
                     {bossDone ? (
                       <button
                         className="app-btn is-small is-primary"
-                        disabled={!!run.battle || overloaded || run.turnsLeft <= 0}
+                        disabled={!!run.battle || overloaded || run.turnsLeft <= 0 || fxBusy}
                         onClick={doDescend}
                         title="带着当前进度深入下一层（更深、更值钱、更硬）"
                       >
@@ -848,7 +915,7 @@ export function WormholePanel({
                     ) : null}
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || overloaded}
+                      disabled={!!run.battle || overloaded || fxBusy}
                       onClick={doExtract}
                       title={
                         run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
@@ -875,12 +942,6 @@ export function WormholePanel({
                       <button className="app-btn is-small" onClick={() => setTab('bag')}>
                         去货仓页抛货
                       </button>
-                    </div>
-                  ) : null}
-                  {run.phase === 'extracting' && !run.battle ? (
-                    <div className="app-wh-ask">
-                      ⚠ 撤离战：拦截舰队正在围堵你——战斗马上开始，**打赢才把背包与货柜带回去**
-                      （打输 = 本趟全损）。
                     </div>
                   ) : null}
                   {(run.relics ?? []).length > 0 ? (
@@ -943,6 +1004,70 @@ export function WormholePanel({
 }
 
 /**
+ * **本趟结算单**（船长 2026-09-13：「结算界面表示玩家的收益和损失」＋ 同日晚两条追加
+ * 「**结算界面尽量居中显示**」「**收获信息挨个弹出显示（需要动效）**」）。
+ *
+ * 版式：整块**居中**、定宽 640（内容变化不跳动）；四格收获**依次弹出**（+90ms/格，纯 CSS
+ * `animation-delay`），合计等明细播完再淡入，数字用 `useCountUp` **跳数**（320ms 缓出）；
+ * ⚠ 「确认并返回」**立刻可点**，不拿动画锁玩家。
+ */
+function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onConfirm: () => void }) {
+  const total = useCountUp(settle.oreIsk + settle.wreckIsk)
+  const cells: Array<{ label: string; value: string; sub: string }> = [
+    { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} ISK` },
+    { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: 'ISK' },
+    { label: '遗迹安全货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
+    { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
+  ]
+  const STEP = 90
+  return (
+    <div className="app-wh-settle">
+      <div className="app-wh-settle-head is-pop">
+        <span className={`app-wh-settle-kind${settle.kind === 'extract' ? ' is-good' : ' is-bad'}`}>
+          {settle.kind === 'extract' ? '撤离成功' : '本趟全损'}
+        </span>
+        <span className="app-dim">
+          第 {settle.depth} 层 ·{' '}
+          {settle.kind === 'lost'
+            ? '编队失联，货全丢了'
+            : settle.skippedExtractBattle === true
+              ? '第 1 层没有拦截舰队（直接脱离）'
+              : '打赢了撤离拦截战'}
+        </span>
+      </div>
+      <div className="app-wh-settle-grid">
+        {cells.map((c, i) => (
+          <div key={c.label} className="app-wh-settle-cell is-pop" style={{ animationDelay: `${(i + 1) * STEP}ms` }}>
+            <span className="app-dim">{c.label}</span>
+            <b>{c.value}</b>
+            <span className="app-dim">{c.sub}</span>
+          </div>
+        ))}
+      </div>
+      <div className="app-wh-settle-total is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
+        本趟到手合计 <b>{n(total)}</b> ISK
+        {settle.boxes.length > 0 ? ` · 货柜 ${settle.boxes.length} 件` : ''}
+      </div>
+      {settle.shipsLost.length > 0 ? (
+        <div className="app-wh-settle-loss is-pop" style={{ animationDelay: `${(cells.length + 2) * STEP}ms` }}>
+          损失：{settle.shipsLost.join('、')}（共 {settle.shipsLost.length} 艘，船上装备一并遗失）
+        </div>
+      ) : null}
+      {settle.lostIsk > 0 ? (
+        <div className="app-wh-settle-loss is-pop" style={{ animationDelay: `${(cells.length + 3) * STEP}ms` }}>
+          没带回来的货：约 {n(settle.lostIsk)} ISK（随编队一起丢了）
+        </div>
+      ) : null}
+      <div className="app-wh-actions app-wh-settle-actions">
+        <button className="app-btn is-primary app-wh-settle-ok" onClick={onConfirm}>
+          确认并返回
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
  * **层内网格地图**（F3a-2 · 船长 2026-09-13：「探索采用网格地图的形式。整体网格地图呈现圆型」）。
  *
  * 画法：尖顶六边形（pointy-top）铺成半径为 `grid.radius` 的**圆盘**；一格 = 一个地点。
@@ -964,13 +1089,19 @@ function WhGridMap({
   onPickCell,
   shipDefId,
   layerKey,
+  fx = 'idle',
+  scanFx = null,
 }: {
   grid: WormholeGridState
   onPickCell: (q: number, r: number) => void
   /** 编队第一艘船的 defId（画玩家舰影用；取不到就退化成一个小箭头） */
   shipDefId?: string
-  /** 层标识（换了它 = 换了新盘 ⇒ 舰影重挂动画、重新淡入） */
+  /** 层标识（换了它 = 换了新盘 ⇒ 舰影重挂动画、重新飞入） */
   layerKey: string
+  /** 舰影动效相位：`in` 从地图外飞入 · `out` 往地图外飞走 · `idle` 静止 */
+  fx?: 'idle' | 'out' | 'in'
+  /** 扫描动画：这一批新揭开的格 + 扫了几圈（波散开、格子按圈依次亮） */
+  scanFx?: { keys: string[]; rings: number; nonce: number } | null
 }) {
   const size = 30
   const R = Math.max(1, Math.floor(grid.radius))
@@ -991,6 +1122,19 @@ function WhGridMap({
   /** 玩家舰影的落点（与格子同一套换算；单独算一份给地图最上层那个 `<g>` 用） */
   const hereX = cx + Math.sqrt(3) * size * (grid.pos.q + grid.pos.r / 2)
   const hereY = cy + 1.5 * size * grid.pos.r
+  /**
+   * **新扫到的格子按圈依次亮起**（船长 2026-09-13 拍板「甲：扫描波 + 逐格点亮」）：
+   * 延迟 = 与玩家所在格的距离（按"第几圈"算）× 60ms，与扩散的波同步。
+   */
+  const freshAt = new Map<string, number>()
+  for (const k of scanFx?.keys ?? []) {
+    const c = grid.cells.find((x) => x.key === k)
+    if (!c) continue
+    const dq = c.q - grid.pos.q
+    const dr = c.r - grid.pos.r
+    const ring = Math.max(0, Math.round((Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2))
+    freshAt.set(k, ring * 60)
+  }
   return (
     <svg
       className="app-wh-map"
@@ -999,6 +1143,14 @@ function WhGridMap({
       role="img"
       aria-label={`第 ${grid.radius} 圈网格地图`}
     >
+      {/* 舰影底下的柔光（氛围光效；SVG 渐变，不是 CSS 拼形状） */}
+      <defs>
+        <radialGradient id="app-wh-ship-glow">
+          <stop offset="0%" stopColor="rgba(79,216,196,0.30)" />
+          <stop offset="55%" stopColor="rgba(79,216,196,0.10)" />
+          <stop offset="100%" stopColor="rgba(79,216,196,0)" />
+        </radialGradient>
+      </defs>
       {grid.cells.map((c) => {
         const x = cx + Math.sqrt(3) * size * (c.q + c.r / 2)
         const y = cy + 1.5 * size * c.r
@@ -1037,6 +1189,7 @@ function WhGridMap({
           known ? (signal ? `is-${signal}` : 'is-blank') : '',
           c.key === hereKey ? 'is-here' : '',
           isExit ? 'is-exit' : '',
+          freshAt.has(c.key) ? 'is-just-scanned' : '',
         ]
           .filter((s) => s.length > 0)
           .join(' ')
@@ -1051,7 +1204,12 @@ function WhGridMap({
                 ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
                 : '没有信号：空信息地点'
         return (
-          <g key={c.key} className={cls} onClick={() => onPickCell(c.q, c.r)}>
+          <g
+            key={c.key}
+            className={cls}
+            onClick={() => onPickCell(c.q, c.r)}
+            style={freshAt.has(c.key) ? { animationDelay: `${freshAt.get(c.key)}ms` } : undefined}
+          >
             <polygon points={corners.map((p) => `${(x + p.dx).toFixed(2)},${(y + p.dy).toFixed(2)}`).join(' ')} />
             {known && !iconGone ? (
               <g className="app-wh-hex-glyph" transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}>
@@ -1065,16 +1223,41 @@ function WhGridMap({
         )
       })}
       {/**
+       * **扫描波**（船长 2026-09-13 拍板方案甲）：从玩家所在格向外扩散一圈**线稿圆环**
+       * （SVG `circle` + CSS 动画 `r`/`opacity`，不拼形状），半径 = 扫描圈数 + 半格余量；
+       * `key` 带序号 ⇒ 连点也能重播。
+       */}
+      {scanFx ? (
+        <circle
+          key={`scan-${scanFx.nonce}`}
+          className="app-wh-scan-wave"
+          cx={hereX.toFixed(2)}
+          cy={hereY.toFixed(2)}
+          r={0}
+          style={{ ['--wh-wave-r' as string]: `${((scanFx.rings + 0.45) * Math.sqrt(3) * size).toFixed(1)}px` }}
+        />
+      ) : null}
+      {/**
        * **玩家舰影**（船长 2026-09-13：「当前玩家停留的格子，用玩家舰船队伍里第一艘船的 SVG 图形覆盖表示」）：
        * 单独挂在格子之上（不进上面那圈 `<g>`，免得被格子的透明度/点击态牵连）；
        * `transform` 用**内联 style** 写 ⇒ 换格时由 CSS 过渡**平移过去**（移动动画）；
-       * 换层时 `key` 变 ⇒ 重新挂载，重播一次**淡入**（进入动画）。
+       * 换层时 `key` 变 ⇒ 重新挂载，重播一次**从地图外飞入**（船长：入场 1 秒 / 深入时先飞出屏幕外）。
        */}
       <g
         key={`player-${layerKey}`}
-        className="app-wh-ship-here"
-        style={{ transform: `translate(${hereX.toFixed(2)}px, ${hereY.toFixed(2)}px)` }}
+        className={`app-wh-ship-here${fx === 'in' ? ' is-entering' : fx === 'out' ? ' is-leaving' : ''}`}
+        style={{
+          transform: `translate(${hereX.toFixed(2)}px, ${hereY.toFixed(2)}px)`,
+          // 关键帧里要还原"落点"，故把落点与两个出画偏移都写成变量（纯表现，判定不用）
+          ['--wh-x' as string]: `${hereX.toFixed(1)}px`,
+          ['--wh-y' as string]: `${hereY.toFixed(1)}px`,
+          // 飞入起点 = 地图左侧外 · 飞出终点 = 地图右侧外（一眼能看出"从外面来 / 往外面走"）
+          ['--wh-fly-in' as string]: `${(-hereX - size * 3).toFixed(1)}px`,
+          ['--wh-fly-out' as string]: `${(w - hereX + size * 3).toFixed(1)}px`,
+          ['--wh-fly-ms' as string]: `${fx === 'out' ? WORMHOLE_FX_OUT_MS : WORMHOLE_FX_IN_MS}ms`,
+        }}
       >
+        <circle className="app-wh-ship-halo" r={size * 0.62} fill="url(#app-wh-ship-glow)" />
         {shipDefId ? (
           <ShipSpriteShape shipId={shipDefId} size={size * 1.15} />
         ) : (
@@ -1202,8 +1385,9 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
         </span>
       </div>
       <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**一种一条横条——
-        都能拖拽摆放（点一下选中、再点空格也算落位），放不下整件拒收；整理按钮把所有件自动重排。
+        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**按**矩形块**摆
+        （4 格以内是一条细条，更大就是方块——格数凑不出矩形时向上取整到那块）——
+        都能拖拽摆放（点一下选中、再点空格也算落位），形状放不下就整条留在原地；整理按钮把所有件自动重排。
       </div>
       {info.overload ? (
         <div className="app-wh-hold-overload">
@@ -1334,10 +1518,8 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
             const def = ctx.items.get(s.itemId)
             const shaped = wormholeIsShapedItem(s.itemId)
             const shape = shaped ? wormholeShapeOf(s.itemId) : null
-            // 与 core 的 `wormholeTempUsage` 同一把尺：形状件按形状格、散货按 ⌈单位 ÷ 每格单位⌉
-            const cells = shape
-              ? shape.w * shape.h
-              : Math.ceil(s.units / Math.max(1, wormholeUnitsPerSlot(def?.unitM3 ?? 0)))
+            // 与 core 的 `wormholeTempUsage` 同一把尺：形状件按形状格、散货按**矩形块面积**
+            const cells = shape ? shape.w * shape.h : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
             return (
               <li key={s.itemId} className="app-inv-row">
                 <div className="app-inv-main">
@@ -1415,7 +1597,9 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
           {run.bag.map((s) => {
             const def = ctx.items.get(s.itemId)
             const per = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
-            const cells = Math.ceil(s.units / Math.max(1, per))
+            // 占格与形状都按**实际摆放件**报（还没摆下才退回"规范块面积"）
+            const placed = placements.find((p) => p.kind === 'cargo' && p.itemId === s.itemId)
+            const cells = placed ? placed.w * placed.h : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
             return (
               <li key={s.itemId} className="app-inv-row">
                 <div className="app-inv-main">
@@ -1423,7 +1607,8 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
                     {def?.name ?? s.itemId} ×{n(s.units)}
                   </span>
                   <span className="app-inv-count">
-                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格 · 每格 {n(per)} 单位
+                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格
+                    {placed ? `（${placed.w}×${placed.h} 块）` : '（还没摆下）'} · 每格 {n(per)} 单位
                   </span>
                 </div>
                 <div className="app-inv-btns">

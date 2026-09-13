@@ -37,6 +37,8 @@ import {
 } from './salvage'
 import {
   canPlace,
+  cargoBlockArea,
+  cargoShapeFits,
   cargoShapesFor,
   findFreeSpot,
   holdAdd,
@@ -325,6 +327,14 @@ export function wormholeCargoCellsOf(ctx: SimContext, itemId: string, units: num
 }
 
 /**
+ * 一条散货**规范后的占格数**（= 那块**矩形**的面积；船长 2026-09-13「必须是矩形」）。
+ * 全仓只此一份：容量判据、占用读数、临时空间、界面文案都走它，免得"物理格数"与"占格"两套尺打架。
+ */
+export function wormholeCargoSlotsOf(ctx: SimContext, itemId: string, units: number): number {
+  return cargoBlockArea(wormholeCargoCellsOf(ctx, itemId, units))
+}
+
+/**
  * **把散货与网格对齐**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）。
  *
  * 口径：`run.bag` 是**数量账本**（一种物品一条），`run.hold.placements` 是**位置账本**（每条散货 = 一条 1×N 横条）。
@@ -352,7 +362,8 @@ export function wormholeHoldSyncCargo(
   for (const slot of run.bag) {
     const cells = wormholeCargoCellsOf(ctx, slot.itemId, slot.units)
     const current = hold.placements.find((p) => p.kind === 'cargo' && p.itemId === slot.itemId)
-    if (current && current.w * current.h === cells) {
+    // 已经是这一档的合法落形（矩形/细条）⇒ 只同步数量，不动位置
+    if (current && cargoShapeFits(cells, { w: current.w, h: current.h })) {
       current.units = Math.floor(slot.units)
       continue
     }
@@ -424,7 +435,7 @@ export function wormholeHoldUsage(
   const placed = new Set((run.hold?.placements ?? []).filter((p) => p.kind === 'cargo').map((p) => p.itemId))
   let unplacedCells = 0
   for (const slot of run.bag) {
-    if (!placed.has(slot.itemId)) unplacedCells += wormholeCargoCellsOf(ctx, slot.itemId, slot.units)
+    if (!placed.has(slot.itemId)) unplacedCells += wormholeCargoSlotsOf(ctx, slot.itemId, slot.units)
   }
   const used = cargoCells + shapeCells + unplacedCells
   return { used, capacity, cargoCells, shapeCells, unplacedCells, overload: used > capacity }
@@ -445,18 +456,18 @@ export function wormholeTempUsage(
   const run = state.wormhole.run
   const items = run?.temp ?? []
   let cells = 0
-  // 与 `wormholeTempAdd` 的判据**同一把尺**：形状件按形状格数（货柜 = 4 格），散货按 ⌈单位 ÷ 每格单位⌉
+  // 与 `wormholeTempAdd` 的判据**同一把尺**：形状件按形状格数（货柜 = 4 格），散货按**矩形块面积**
   for (const s of items) {
     cells += wormholeIsShapedItem(s.itemId)
       ? wormholeShapeOf(s.itemId).w * wormholeShapeOf(s.itemId).h
-      : wormholeCargoCellsOf(ctx, s.itemId, s.units)
+      : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
   }
   return { cells, capacity: WORMHOLE_TEMP_CELLS, items, full: cells >= WORMHOLE_TEMP_CELLS }
 }
 
 /**
  * **往临时空间放一件/一条**（放不下 ⇒ false，调用方据此决定"拒收/留在原地"）。
- * 口径：一种物品一条（与背包同账本）；**形状件按形状格数算**（货柜 = 4 格），散货按 ⌈单位 ÷ 每格单位⌉。
+ * 口径：一种物品一条（与背包同账本）；**形状件按形状格数算**（货柜 = 4 格），散货按**矩形块面积**。
  */
 export function wormholeTempAdd(
   state: GameState,
@@ -468,7 +479,7 @@ export function wormholeTempAdd(
   if (!run) return { ok: false, error: '不在虫洞内。' }
   const need = wormholeIsShapedItem(itemId)
     ? wormholeShapeOf(itemId).w * wormholeShapeOf(itemId).h
-    : wormholeCargoCellsOf(ctx, itemId, units)
+    : wormholeCargoSlotsOf(ctx, itemId, units)
   const cur = wormholeTempUsage(state, ctx)
   if (cur.cells + need > cur.capacity) {
     return { ok: false, error: `临时空间也放不下（${cur.cells}/${cur.capacity} 格，这件要 ${need} 格）。` }

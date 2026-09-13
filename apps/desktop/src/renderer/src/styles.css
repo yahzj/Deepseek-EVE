@@ -9300,7 +9300,7 @@ body {
   border: 1px solid var(--wui-border); border-radius: 6px;
   background: rgba(255, 255, 255, 0.015); padding: 2px 0;
 }
-.app-wh-map { width: 100%; height: 296px; color: var(--wui-accent); display: block; }
+.app-wh-map { width: 100%; height: 296px; color: var(--wui-accent); display: block; overflow: hidden; }
 .app-wh-hex { cursor: pointer; }
 .app-wh-hex polygon {
   fill: rgba(255, 255, 255, 0.015);
@@ -9338,9 +9338,44 @@ body {
 }
 .app-wh-ship-shape { fill: none; stroke-linejoin: round; }
 .app-wh-ship-fallback { fill: currentColor; stroke: none; }
-@keyframes app-wh-ship-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* ── 玩家舰影：**染色 + 光晕 + 飞入/飞出**（船长 2026-09-13）──
+   ① 染色：从近白 `#eaf6ff` 换成 **UI accent 青**，与未扫描格的蓝灰、各信号色区分开；
+   ② 光晕：`<circle fill="url(#app-wh-ship-glow)">`（SVG 径向渐变，属"氛围光效"允许项）；
+   ③ 动效：进场与到达新层 = **从地图外飞入 1 秒**；深入前 = **飞出地图外 600ms**。
+      只动 `transform`/`opacity`（合成层），坐标与点击判定一字不动。 */
+.app-wh-ship-here {
+  color: var(--wui-accent);
+  stroke: currentColor;
+  transform-box: fill-box; transform-origin: center;
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none; /* 舰影不吃点击：格子照旧可点 */
+}
+.app-wh-ship-halo { stroke: none; }
+.app-wh-ship-here.is-entering { animation: app-wh-ship-flyin var(--wh-fly-ms, 1000ms) cubic-bezier(0.12, 0.75, 0.2, 1) both; }
+.app-wh-ship-here.is-leaving { animation: app-wh-ship-flyout var(--wh-fly-ms, 600ms) cubic-bezier(0.5, 0, 0.85, 0.4) both; }
+@keyframes app-wh-ship-flyin {
+  0% { transform: translate(calc(var(--wh-x, 0px) + var(--wh-fly-in, -400px)), var(--wh-y, 0px)); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate(var(--wh-x, 0px), var(--wh-y, 0px)); opacity: 1; }
+}
+@keyframes app-wh-ship-flyout {
+  0% { transform: translate(var(--wh-x, 0px), var(--wh-y, 0px)); opacity: 1; }
+  100% { transform: translate(calc(var(--wh-x, 0px) + var(--wh-fly-out, 400px)), var(--wh-y, 0px)); opacity: 0; }
+}
+/* ── 扫描波 + 逐格点亮（船长 2026-09-13 拍板方案甲）──
+   圆环从玩家所在格向外扩到"扫描圈数"，纯 `r`/`opacity` 动画；新扫到的格按圈依次亮一下。 */
+.app-wh-scan-wave {
+  fill: none; stroke: var(--wui-accent); stroke-width: 1.6; opacity: 0;
+  animation: app-wh-scan-wave 820ms ease-out both;
+}
+@keyframes app-wh-scan-wave {
+  0% { r: 6px; opacity: 0.85; }
+  100% { r: var(--wh-wave-r, 120px); opacity: 0; }
+}
+.app-wh-hex.is-just-scanned polygon { animation: app-wh-hex-lit 420ms ease-out both; }
+@keyframes app-wh-hex-lit {
+  0% { stroke: #eaf6ff; stroke-width: 3; filter: drop-shadow(0 0 6px rgba(79, 216, 196, 0.85)); }
+  100% { stroke-width: 1.6; filter: none; }
 }
 .app-wh-hex:hover polygon { stroke-width: 2; }
 .app-wh-hex.is-here polygon { stroke-width: 2.5; fill: rgba(79, 216, 196, 0.14); }
@@ -9359,16 +9394,44 @@ body {
 .app-wh-legend-glyph.is-visited polygon { stroke-dasharray: none; opacity: 0.5; }
 .app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(244, 201, 93, 0.12); }
 .app-wh-hex.is-exit { color: #f4c95d; }
-/* ── 探索页版式（船长 2026-09-13）：**扫描按钮放大 + 与地点信息窗平级**（左扫描 / 右信息卡）── */
+/* ── 探索页版式（船长 2026-09-13）：**扫描按钮放大 + 与地点信息窗平级**（左扫描 / 右信息卡）──
+   同日晚追加「**激活等按钮可以放在扫描下方**」⇒ 左列 = 扫描 + 它的作业按钮（同宽对齐）。 */
 .app-wh-workspace { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; }
 .app-wh-workspace .app-wh-node { flex: 1 1 auto; margin-top: 0; min-height: 150px; }
+.app-wh-workspace-left { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; align-self: flex-start; }
 /* 扫描大按钮：与"进入虫洞"同档（主按钮 + 加高），副标题小字说明花费 */
 .app-wh-scan-big {
-  flex: 0 0 auto; align-self: flex-start;
+  flex: 0 0 auto; align-self: stretch;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   min-width: 128px; padding: 14px 16px; font-size: 15px; font-weight: 600;
 }
+/* 作业按钮（打捞/采集 · 激活/迎战）：与扫描按钮**同宽同族**，紧挨在它下面 */
+.app-wh-work {
+  flex: 0 0 auto; align-self: stretch;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 10px 16px; font-size: 14px; font-weight: 600;
+}
 .app-wh-scan-sub { font-size: 10.5px; font-weight: 400; opacity: 0.78; }
+/* ── 探索 / 背包 页签（船长 2026-09-13：「切换按钮有些过于隐蔽」⇒ 标题行下方的分段大页签）──
+   两枚等宽、带副读数（探索 = 层/回合，背包 = 占用格数），选中态 accent 实底；超载另挂红标。 */
+.app-wh-tabbar {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  padding: 8px 12px 0;
+}
+.app-wh-tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 7px 10px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--wui-text);
+  background: rgba(15, 26, 40, 0.6); border: 1px solid rgba(85, 112, 140, 0.35);
+  border-radius: 8px; cursor: pointer; transition: border-color 120ms ease, background 120ms ease;
+}
+.app-wh-tab:hover { border-color: rgba(79, 216, 196, 0.55); background: rgba(24, 40, 60, 0.7); }
+.app-wh-tab.is-active {
+  border-color: rgba(79, 216, 196, 0.7); background: rgba(79, 216, 196, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(79, 216, 196, 0.35);
+}
+.app-wh-tab-label { line-height: 1.2; }
+.app-wh-tab-sub { font-size: 10.5px; font-weight: 400; color: var(--wui-dim); }
+.app-wh-tab-warn { font-size: 10.5px; font-weight: 600; color: #ff8373; }
 /* ── 准备页版式：检索区（搜索 + 两行筛选）与放大的「进入虫洞」平级，按钮在最右 ── */
 .app-wh-prephead { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .app-wh-prephead-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
@@ -9389,9 +9452,16 @@ body {
 /* ── 准备页不撑出外层滚动条（同一条船长口径）：页体纵向弹性 · 准备页撑满 · 卡网格吃剩余高度 ── */
 .app-wh-body { display: flex; flex-direction: column; }
 .app-wh-body > .app-wh-prep { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-/* ── 本趟结算界面（船长 2026-09-13：撤离后弹结算 + 关闭虫洞界面）── */
-.app-wh-settle { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
-.app-wh-settle-head { display: flex; align-items: baseline; gap: 10px; }
+/* ── 本趟结算界面（船长 2026-09-13：撤离后弹结算 + 关闭虫洞界面；
+   同日晚追加「**结算界面尽量居中显示**」＋「**收获信息挨个弹出显示（需要动效）**」）──
+   定宽 640 + 整块居中（内容多少都不跳动）；`.is-pop` 逐条弹出（延迟由 TSX 用 `animation-delay` 给）。 */
+.app-wh-settle {
+  display: flex; flex-direction: column; justify-content: center; gap: 10px;
+  width: 640px; max-width: 100%; margin: 0 auto;
+  /* 进度条式居中：页体是纵向弹性容器 ⇒ 用 `flex: 1` 吃掉剩余高度，整块在**纵向也居中** */
+  flex: 1 1 auto;
+}
+.app-wh-settle-head { display: flex; align-items: baseline; justify-content: center; gap: 10px; }
 .app-wh-settle-kind { font-size: 16px; font-weight: 700; }
 .app-wh-settle-kind.is-good { color: var(--wui-accent); }
 .app-wh-settle-kind.is-bad { color: #ff8373; }
@@ -9403,12 +9473,20 @@ body {
 .app-wh-settle-cell b { font-size: 15px; }
 .app-wh-settle-total {
   padding: 8px 10px; border: 1px solid rgba(79, 216, 196, 0.4); border-radius: 6px;
-  background: rgba(79, 216, 196, 0.06); font-size: 13px;
+  background: rgba(79, 216, 196, 0.06); font-size: 13px; text-align: center;
 }
 .app-wh-settle-total b { font-size: 16px; color: var(--wui-accent); }
 .app-wh-settle-loss {
   padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45); border-radius: 6px;
   background: rgba(255, 131, 115, 0.07); color: #ff8373; font-size: 12px; line-height: 1.5;
+}
+/* 结算页底部按钮居中（它自己那一行也要居中，否则整块居中会看着偏） */
+.app-wh-settle-actions { justify-content: center; margin-top: 2px; }
+/* **逐条弹出**：从下方 6px 淡入上移（只动 opacity/transform）；`both` ⇒ 延迟期间保持"未出现"态 */
+.app-wh-settle .is-pop { animation: app-wh-pop 220ms ease-out both; }
+@keyframes app-wh-pop {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .app-wh-legend {
   display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px;

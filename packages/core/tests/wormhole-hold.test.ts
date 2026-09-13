@@ -19,7 +19,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../src/wormhole'
 import type { WormholeHoldState } from '../src/wormholeHold'
-import { canPlace, findFreeSpot, holdAdd, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState } from '../src/wormholeHold'
+import { canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -86,6 +86,41 @@ describe('虫洞 · 货仓格几何（纯逻辑）', () => {
     expect(after.cargoCells).toBe(6)
     expect(after.unplacedCells, '读档后凭空多出"放不下"的格数 = 假超载').toBe(0)
     expect(after.overload).toBe(false)
+  })
+
+  /**
+   * **散货形状 = 矩形**（船长 2026-09-13：「单件超 4 格的就是矩形方块」＋「必须是矩形」）。
+   * 锁三件事：① ≤4 格仍是细条（老观感）；② >4 格走矩形方块（宽高都 ≥ 2）；
+   * ③ 单件上限比改判前的硬上限 8 格高一档（20 格仓里 9/12/16 格装得下，17 格装不下）。
+   */
+  it('**散货形状**：≤4 格 = 细条；>4 格 = 矩形方块（且单件上限不再是 8 格）', () => {
+    // ① ≤4 格：细条（`n×1` 优先，其次 `n×1` 的竖条）
+    expect(cargoShapesFor(3)[0]).toEqual({ w: 3, h: 1 })
+    expect(cargoShapesFor(4)).toContainEqual({ w: 1, h: 4 })
+    // ② >4 格：首选是**方块**（宽高都 ≥ 2）
+    for (const n of [5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 20, 24]) {
+      const first = cargoShapesFor(n)[0]!
+      expect(first.w, `${n} 格的首选形状 ${first.w}×${first.h} 应是方块`).toBeGreaterThan(1)
+      expect(first.h, `${n} 格的首选形状 ${first.w}×${first.h} 应是方块`).toBeGreaterThan(1)
+    }
+    // 规范占格：凑不出整矩形就向上取整（11 → 12）；5~8 格细条更省 ⇒ 等于格数
+    expect(cargoBlockArea(11)).toBe(12)
+    expect(cargoBlockArea(13)).toBe(14)
+    expect(cargoBlockArea(20)).toBe(20)
+    expect(cargoBlockArea(5)).toBe(5)
+    expect(cargoBlockArea(9)).toBe(9)
+    // ③ 单件上限：20 格仓（8 列 × 3 行，末行 4 个锁定格）里 9/12/16 格装得下、17 格装不下
+    const mk = (): WormholeHoldState => makeHoldState()
+    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 9 * 500, 9, 20).ok).toBe(true)
+    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 12 * 500, 12, 20).ok).toBe(true)
+    const big = holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 16 * 500, 16, 20)
+    expect(big.ok, big.error ?? '').toBe(true)
+    expect([big.placement!.w, big.placement!.h]).toEqual([8, 2]) // 8 列 × 2 行
+    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 17 * 500, 17, 20).ok).toBe(false)
+    // 27 格仓（4 行整行 + 3 格）能放下一件 24 格（8×3）——改判前 8 格就顶天了
+    const huge = holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 24 * 500, 24, 27)
+    expect(huge.ok, huge.error ?? '').toBe(true)
+    expect([huge.placement!.w, huge.placement!.h]).toEqual([8, 3])
   })
 
   it('8 列网格：行数 = ⌈格数 ÷ 8⌉；越界与重叠都判"放不下"', () => {
