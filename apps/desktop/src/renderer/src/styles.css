@@ -9305,6 +9305,17 @@ body {
 .app-wh-hex.is-unknown polygon { stroke: #7b8fa3; stroke-dasharray: 3 3; opacity: 0.55; }
 .app-wh-hex.is-scanned polygon { opacity: 0.72; }
 .app-wh-hex.is-known polygon { fill: rgba(79, 216, 196, 0.06); opacity: 1; }
+/* ── 「去过」标记（船长 2026-09-13：「玩家去过的地点需要变暗或者其他标识」）──
+   去过 = **右上角小实心点 + 整体压暗**；但**这一格还有产出没拿走**时只打点、不压暗
+   （`.is-visited` 不给 dim）——那是"还得回来"的地方，压暗会把它藏起来。
+   当前所在这格（`.is-here`）与下一层入口（`.is-exit`）永远保持醒目。 */
+.app-wh-hex.is-visited.is-visited-dim polygon { fill: rgba(255, 255, 255, 0.02); opacity: 0.5; }
+.app-wh-hex.is-visited.is-visited-dim .app-wh-hex-glyph { opacity: 0.5; }
+.app-wh-hex.is-visited.is-here polygon,
+.app-wh-hex.is-visited.is-exit polygon { opacity: 1; }
+.app-wh-hex.is-visited.is-here .app-wh-hex-glyph,
+.app-wh-hex.is-visited.is-exit .app-wh-hex-glyph { opacity: 1; }
+.app-wh-hex-done { fill: currentColor; opacity: 0.9; }
 .app-wh-hex:hover polygon { stroke-width: 2; }
 .app-wh-hex.is-here polygon { stroke-width: 2.5; fill: rgba(79, 216, 196, 0.14); }
 .app-wh-hex-here { fill: none; stroke: var(--wui-accent); stroke-width: 1.4; stroke-dasharray: 4 3; opacity: 0.9; }
@@ -9317,6 +9328,9 @@ body {
 .app-wh-hex.is-blank, .app-wh-legend-glyph.is-blank { color: var(--wui-dim); }
 /* 图例里的"未扫描"格与地图同色（蓝灰虚线），否则图例教不会玩家认这个边框 */
 .app-wh-legend-glyph.is-unknown { color: #7b8fa3; }
+.app-wh-legend-glyph.is-visited { color: var(--wui-accent); }
+/* 图例里的"去过"格要与地图一致：**实线 + 压暗**（地图上它已不是"未扫描"的虚线档） */
+.app-wh-legend-glyph.is-visited polygon { stroke-dasharray: none; opacity: 0.5; }
 .app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(244, 201, 93, 0.12); }
 .app-wh-hex.is-exit { color: #f4c95d; }
 .app-wh-legend {

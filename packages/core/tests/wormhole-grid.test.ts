@@ -34,7 +34,7 @@ import type { WormholeSignal } from '../src/wormholeGrid'
 import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter } from '../src/wormhole'
+import { wormholeEnter, wormholeGridTravel } from '../src/wormhole'
 import { buildSimContext } from '@whale/data'
 
 const ctx = buildSimContext()
@@ -158,6 +158,42 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
         // 出口格本来就不参与信号分配 ⇒ 也不该是信标
         expect(beacons.some((c) => c.key === `${g.exit.q},${g.exit.r}`)).toBe(false)
       }
+    }
+  })
+
+  /**
+   * **信标读出终点 ⇒ 终点格一并算"已知"**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
+   *
+   * 为什么：出口格不参与信号分配 ⇒ 永远不在 `scanned` 里；玩家从信标知道终点在哪之后，
+   * 点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」——那句话在此时是误导。
+   */
+  it('信标读出终点后，**出口格不再要求"确认未知"**（修掉那次多余的确认框）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 4242 })
+    const a = addShipToFleet(state, 'sh-thresher')
+    expect(wormholeEnter(state, ctx, [a], 4242).ok).toBe(true)
+    const run = state.wormhole.run!
+    const g = run.grid!
+    const startKey = `${g.pos.q},${g.pos.r}`
+    const exitKey = `${g.exit.q},${g.exit.r}`
+    // ① 读到信标之前：出口格未扫描 ⇒ 直接前往被"未知地点"拦（口径照旧）
+    expect(g.scanned.includes(exitKey)).toBe(false)
+    if (exitKey !== startKey) {
+      const blocked = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r })
+      expect(blocked.ok).toBe(false)
+      expect(blocked.code).toBe('unknown-target')
+    }
+    // ② 走到信标（把邻格改成信标、扫过再走过去）
+    const beacon = g.cells.find((c) => c.key !== startKey)!
+    beacon.place = 'beacon'
+    beacon.piles = []
+    if (!g.scanned.includes(beacon.key)) g.scanned.push(beacon.key)
+    expect(wormholeGridTravel(state, { q: beacon.q, r: beacon.r }).ok).toBe(true)
+    expect(g.exitKnown).toBe(true)
+    // ③ 出口格随之记为已知，且前往它走正常路径（不再需要 confirmUnknown）
+    expect(g.scanned.includes(exitKey), '信标读出终点后，出口格应记为已知').toBe(true)
+    if (exitKey !== beacon.key) {
+      const go = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r })
+      expect(go.ok, `前往出口被拒：${go.error ?? ''}`).toBe(true)
     }
   })
 

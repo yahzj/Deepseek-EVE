@@ -30,6 +30,7 @@ import {
   wormholeStream,
   gridCellAt,
   gridScanTargets,
+  hexKey,
   isExitCell,
   signalOfPlace,
   wormholeMakeGrid,
@@ -734,7 +735,19 @@ export function wormholeGridTravel(
   const autoBattle = first && cell.place === 'ship'
   const beacon = first && cell.place === 'beacon'
   if (autoBattle || beacon) grid.activated.push(cell.key)
-  if (beacon) grid.exitKnown = true
+  if (beacon) {
+    grid.exitKnown = true
+    /**
+     * **信标标出终点 ⇒ 终点格一并记为"已知"**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
+     *
+     * 为什么：出口格不参与信号分配 ⇒ 它永远不在 `scanned` 里；原先玩家从信标得知终点位置后，
+     * 点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」的确认框 —— 那句话在此时是**误导**
+     * （它不是未知地点，它是终点）。这里把出口格并入 `scanned`，前往它就走正常路径。
+     * ⚠ 只在**读到信标之后**才并：在那之前玩家不该"凭空知道"出口格是安全可去的。
+     */
+    const exitKey = hexKey(grid.exit.q, grid.exit.r)
+    if (!grid.scanned.includes(exitKey)) grid.scanned.push(exitKey)
+  }
   addLog(
     state,
     'info',

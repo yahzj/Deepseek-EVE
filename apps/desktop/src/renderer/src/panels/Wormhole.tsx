@@ -520,11 +520,13 @@ export function WormholePanel({
                     {GRID_LEGEND.map((l) => (
                       <span key={l.key} className="app-wh-legend-item">
                         <svg
-                          className={`app-wh-legend-glyph is-${l.none ? 'unknown' : (l.signal ?? 'blank')}`}
+                          className={`app-wh-legend-glyph is-${l.done === true ? 'visited' : l.none ? 'unknown' : (l.signal ?? 'blank')}`}
                           viewBox="-13 -13 26 26"
                           aria-hidden="true"
                         >
                           {l.none ? <polygon points="0,-12 10.39,-6 10.39,6 0,12 -10.39,6 -10.39,-6" /> : <WhGlyph signal={l.signal} />}
+                          {/* 「去过」那一档把右上角小点也画上（与地图上的标记同源） */}
+                          {l.done === true ? <circle className="app-wh-hex-done" cx={6.5} cy={-6.5} r={2.2} /> : null}
                         </svg>
                         {l.text}
                       </span>
@@ -774,9 +776,18 @@ function WhGridMap({ grid, onPickCell }: { grid: WormholeGridState; onPickCell: 
         const signal = signalOfPlace(c.place)
         // 入口：**到达过**或**被漂浮信标标出来**（船长 2026-09-13 新增信标）⇒ 地图上一直标着
         const isExit = c.key === exitKey && (visited || grid.exitKnown === true)
+        /**
+         * **去过这一格**（船长 2026-09-13：「玩家去过的地点需要变暗或者其他标识」）：
+         * 给"已到达"的格加**右上角小实心点** + 整体压暗；但**这一格还有产出没拿走**（`piles` 非空）
+         * 就不压暗 —— 那是"还得回来"的地方，藏起来反而害人（点仍然打着）。
+         */
+        const hasLeftover = (c.piles ?? []).length > 0
+        const visitedMark = visited && !hasLeftover
         const cls = [
           'app-wh-hex',
           visited ? 'is-known' : scanned ? 'is-scanned' : 'is-unknown',
+          visited ? 'is-visited' : '',
+          visitedMark ? 'is-visited-dim' : '',
           /**
            * ⚠ **信号分色只给"已扫描/已到达"的格**（船长 F5：「目前未扫描的地点可以通过边框颜色判断」）：
            * 未扫描的格一律走 `.is-unknown` 的**蓝灰虚线边框**；若照旧按 `c.place` 上色，
@@ -793,7 +804,7 @@ function WhGridMap({ grid, onPickCell }: { grid: WormholeGridState; onPickCell: 
           : isExit
             ? '下一层入口（层末守卫守在这里）'
             : visited
-              ? WORMHOLE_PLACE_TEXT[c.place]
+              ? `${WORMHOLE_PLACE_TEXT[c.place]}${visited ? '（去过）' : ''}${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
               : signal
                 ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
                 : '没有信号：空信息地点'
@@ -805,6 +816,8 @@ function WhGridMap({ grid, onPickCell }: { grid: WormholeGridState; onPickCell: 
                 <WhGlyph signal={signal} exit={isExit} />
               </g>
             ) : null}
+            {/* **去过标记**：右上角一个小实心点（SVG 线稿；与图例同源） */}
+            {visited ? <circle className="app-wh-hex-done" cx={x + size * 0.52} cy={y - size * 0.5} r={2.2} /> : null}
             {c.key === hereKey ? <circle className="app-wh-hex-here" cx={x} cy={y} r={size * 0.74} /> : null}
             <title>{title}</title>
           </g>
@@ -853,8 +866,16 @@ const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
 }
 
 /** 地图图例（与格内符号共用同一个 `WhGlyph` ⇒ 图例与看板永远一致） */
-const GRID_LEGEND: ReadonlyArray<{ key: string; text: string; signal: WormholeSignal | null; none?: boolean }> = [
+const GRID_LEGEND: ReadonlyArray<{
+  key: string
+  text: string
+  signal: WormholeSignal | null
+  none?: boolean
+  /** 「去过」那一档：画基线空 hex + 右上角小点 */
+  done?: boolean
+}> = [
   { key: 'unknown', text: '未扫描（蓝灰虚线边框）', signal: null, none: true },
+  { key: 'visited', text: '去过（变暗 + 右上小点）', signal: null, none: true, done: true },
   { key: 'wreck', text: SIGNAL_TEXT.wreck, signal: 'wreck' },
   { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },
   { key: 'resource', text: SIGNAL_TEXT.resource, signal: 'resource' },
