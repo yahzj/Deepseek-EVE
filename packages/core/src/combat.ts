@@ -665,6 +665,8 @@ export function createPlayerSpec(
   for (const m of allDefs) {
     for (const [rt, v] of Object.entries(m.rangeTypeBonusPct ?? {})) rangeBonus[rt as DamageType] += v ?? 0
   }
+  // **船体固有按系射程加成**（2026-09-13 船长：炮艇「动能武器射程 +30%」）——与模块同链加算
+  for (const [rt, v] of Object.entries(ship.weaponRangeBonusPct ?? {})) rangeBonus[rt as DamageType] += v ?? 0
   /** 武器实际射程 = 基础 × (1−削减) × (1+该系加成)；下限 500 m（不许被压成 0） */
   const rangeOf = (base: number, type: DamageType): number =>
     Math.max(500, Math.round(base * (1 - Math.min(0.9, rangeCut)) * (1 + rangeBonus[type])))
@@ -2537,6 +2539,27 @@ export function startFleetBattleFor(
     fleet.push({ tag: spec.tag, shipId: sid })
   }
   if (specs.length === 0) return null
+  // **全舰单发伤害光环**（2026-09-13 船长：指挥舰「提高全舰的单发伤害 15%」）——
+  // 建完各舰规格后统一乘；**多艘同类只取最高、不叠加**（与"同项取优"惯例一致）。
+  const fleetAura = Math.max(0, ...ordered.map((sid) => {
+    const fs = state.fleet[sid]
+    const defId = fs?.defId
+    return (defId ? ctx.ships.get(defId)?.fleetDamageBonusPct : 0) ?? 0
+  }))
+  if (fleetAura > 0) {
+    const mul = 1 + fleetAura
+    for (const spec of specs) {
+      for (const w of spec.weapons) {
+        if (typeof w.shotDmg === 'number') w.shotDmg = w.shotDmg * mul
+        if (w.shotsByType) {
+          for (const k of Object.keys(w.shotsByType) as DamageType[]) {
+            const v = w.shotsByType[k]
+            if (typeof v === 'number') w.shotsByType[k] = v * mul
+          }
+        }
+      }
+    }
+  }
   const me = specs[0]!
   // 多波（2026-09-09）：开战只生成第一波；后续波由 advanceBattleFor 在敌方全灭时补刷
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null

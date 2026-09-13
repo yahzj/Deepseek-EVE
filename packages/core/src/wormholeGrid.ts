@@ -336,7 +336,7 @@ export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
  * 4. 其余格先按 **空 ≥50%** 铺空地点，再把剩下的格按四类权重分配（**用最大余数法**保证格子数取整后仍可复现）；
  * 5. 残骸信号再按 70/30 分墓场/遗迹。
  */
-export function wormholeMakeGrid(seed: number, depth: number): WormholeGridState {
+export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0): WormholeGridState {
   const rng = wormholeStream(seed * 7919 + depth * 104729)
   const radius = wormholeGridRadiusFor(depth)
   const all = hexDiskCells(radius)
@@ -392,7 +392,7 @@ export function wormholeMakeGrid(seed: number, depth: number): WormholeGridState
     start: { q: start.q, r: start.r },
     exit: { q: exit.q, r: exit.r },
     pos: { q: start.q, r: start.r },
-    scanRadius: WORMHOLE_SCAN_RADIUS_BASE,
+    scanRadius: WORMHOLE_SCAN_RADIUS_BASE + Math.max(0, Math.floor(extraScanRadius)),
     // 落点与"到达即揭示"：入口格一开始就算**已到达**（玩家就在那儿）、终点格在到达前不揭示
     scanned: [hexKey(start.q, start.r)],
     visited: [hexKey(start.q, start.r)],

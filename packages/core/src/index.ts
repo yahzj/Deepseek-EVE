@@ -829,6 +829,8 @@ export {
   WORMHOLE_PILE_UNITS_BASE,
   wormholeAdvanceNode,
   wormholeDescend,
+  // 2026-09-13 船长：侦察舰/电子舰「虫洞扫码 +1 圈（编队即生效、可叠加）」⇒ 编队加成求和
+  wormholeScanBonusOf,
   wormholeExtract,
   wormholeGridScan,
   wormholeGridTravel,

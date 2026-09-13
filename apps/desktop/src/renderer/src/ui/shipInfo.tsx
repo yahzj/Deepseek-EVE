@@ -338,6 +338,17 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
       v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipRoleLabel(ship.role)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
     },
+    // 2026-09-13 船长点名的三条**船体固有新机制**（只虫洞族专属舰船有；没有就不占行）
+    ...(() => {
+      const bits: string[] = []
+      const rangeText = Object.entries(ship.weaponRangeBonusPct ?? {})
+        .map(([t, v]) => `${DMG_LABEL[t as keyof typeof DMG_LABEL] ?? t}武器射程 +${Math.round((v ?? 0) * 100)}%`)
+        .join(' · ')
+      if (rangeText) bits.push(rangeText)
+      if (ship.fleetDamageBonusPct) bits.push(`全舰单发伤害 +${Math.round(ship.fleetDamageBonusPct * 100)}%（编队光环，多艘取最高）`)
+      if (ship.wormholeScanRadiusBonus) bits.push(`虫洞扫描范围 +${ship.wormholeScanRadiusBonus} 圈（编入队伍即生效、可叠加）`)
+      return bits.length > 0 ? [{ k: '船体特性', v: bits.join(' · ') }] : []
+    })(),
     { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },
     { k: '采集性能', v: `${ship.cycleSeconds} 秒 × ${ship.oreUnitsPerCycle} 单位/循环` },
     { k: '动力（机动 / 跃迁充能）', v: `${Math.round(ship.agility * 100)}%` },

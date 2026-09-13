@@ -445,7 +445,7 @@ export function wormholeStartRun(
       // 新开趟一律为 `null`（老档里已有的 pendingNode 仍能被 `wormholeAdvanceNode` 走完，见该函数注释）。
       pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
-      grid: wormholeMakeGrid(rngSeed, depth),
+      grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds)),
       seed: rngSeed,
     },
   }
@@ -525,7 +525,7 @@ export function wormholeAdvanceNode(
 }
 
 /** 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离） */
-export function wormholeDescend(run: WormholeRunState, rngSeed: number): WormholeAdvanceResult {
+export function wormholeDescend(run: WormholeRunState, rngSeed: number, scanBonus = 0): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。' }
   if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。' }
   // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
@@ -537,7 +537,7 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number): Wormhol
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
-  run.grid = wormholeMakeGrid(rngSeed, run.depth)
+  run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus)
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
@@ -1006,6 +1006,22 @@ export function wormholeEntryBlockReason(
     if (busy) return `${shipDisplayName(state, ctx, uid)}正在${busy}：先取消它的作业/派工，才能编入虫洞。`
   }
   return null
+}
+
+/**
+ * **编队的虫洞扫描半径加成（圈）**（2026-09-13 船长：侦察舰/电子舰「让虫洞扫码范围 +1 圈」——
+ * 「**编入队伍就有效。且可以叠加**」）⇒ 对编队内每艘船的 `wormholeScanRadiusBonus` **求和**。
+ * 用途：① `wormholeEnter` 建档时喂给 `wormholeMakeGrid`；② 界面在**深入下一层**时把它传给
+ * `wormholeDescend(run, seed, scanBonus)`（该入参默认 0 ⇒ 不传 = 维持旧行为）。
+ */
+export function wormholeScanBonusOf(ctx: SimContext, shipIds: readonly string[]): number {
+  let sum = 0
+  for (const id of shipIds) {
+    const def = ctx.ships.get(uidDefId(id))
+    const v = def?.wormholeScanRadiusBonus
+    if (typeof v === 'number' && Number.isFinite(v)) sum += Math.max(0, Math.floor(v))
+  }
+  return sum
 }
 
 /**

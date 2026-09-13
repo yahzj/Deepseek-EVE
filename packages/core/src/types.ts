@@ -263,6 +263,22 @@ export interface ShipDef {
   evasion?: number
   /** 命中率加成 0~0.5（打敌方时加到武器命中率上；受自身扫描分辨率修正） */
   hitBonus?: number
+  /* ═══ 2026-09-13 船长：虫洞族专属舰船的"船体固有新机制"（三项都由船长点名） ═══ */
+  /**
+   * **按系武器射程加成**（如炮艇「动能武器射程 +30%」）——与模块的 `rangeTypeBonusPct` **同链加算**：
+   * 实际射程 = 基础 × (1 − 全局削减) × (1 + 本系加成)（`combat.createPlayerSpec` 的 `rangeOf`）。
+   */
+  weaponRangeBonusPct?: Partial<Record<DamageType, number>>
+  /**
+   * **全舰（编队）单发伤害光环**（如指挥舰「全舰单发伤害 +15%」）——`startFleetBattleFor` 在建完各舰规格后，
+   * 对**全队每艘船**的每条武器统一乘 `(1 + 本值)`；**多艘同类**只取**最高**、不叠加（与"同项取优"惯例一致）。
+   */
+  fleetDamageBonusPct?: number
+  /**
+   * **虫洞扫描半径加成（圈）**（如侦察舰/电子舰「虫洞扫码范围 +1 圈」）——进洞建档时
+   * `scanRadius = WORMHOLE_SCAN_RADIUS_BASE + Σ(本值 over 编队)`；**编入队伍即生效、可叠加**（船长 2026-09-13）。
+   */
+  wormholeScanRadiusBonus?: number
   description: string
   /**
    * **未上线闸门（施工期）**——语义与口径**完全同 `ItemDef.unreleased`**（2026-09-13 船长铁律

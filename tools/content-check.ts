@@ -881,6 +881,22 @@ for (const s of SHIPS) {
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
   check(s.hitBonus === undefined || (s.hitBonus >= 0 && s.hitBonus <= 0.5), `舰船 ${s.id} hitBonus 越界：${String(s.hitBonus)}`)
+  // **船体固有新机制三条**（2026-09-13 船长点名：炮艇动能射程 / 指挥舰全舰光环 / 侦察舰·电子舰扫码）
+  for (const [rt, v] of Object.entries(s.weaponRangeBonusPct ?? {})) {
+    check(
+      DMG_TYPES.has(rt) && typeof v === 'number' && v > 0 && v <= 0.6,
+      `舰船 ${s.id} weaponRangeBonusPct.${rt} 越界（应 0<x≤0.6）：${String(v)}`,
+    )
+  }
+  check(
+    s.fleetDamageBonusPct === undefined || (s.fleetDamageBonusPct > 0 && s.fleetDamageBonusPct <= 0.5),
+    `舰船 ${s.id} fleetDamageBonusPct 越界（应 0<x≤0.5）：${String(s.fleetDamageBonusPct)}`,
+  )
+  check(
+    s.wormholeScanRadiusBonus === undefined ||
+      (Number.isInteger(s.wormholeScanRadiusBonus) && s.wormholeScanRadiusBonus > 0 && s.wormholeScanRadiusBonus <= 3),
+    `舰船 ${s.id} wormholeScanRadiusBonus 越界（应 1~3 的整数）：${String(s.wormholeScanRadiusBonus)}`,
+  )
   // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面）——
   // 只给 `sh-wh-*` 写；取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）
   if (s.subClass !== undefined) {

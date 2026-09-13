@@ -15,6 +15,10 @@ type Sub = {
   slot: 'high' | 'mid' | 'low'
   /** 三层血占比摆动（相对本船现值，之后归一到 Σ 目标） */
   swing: [number, number, number]
+  /** 直接指定三层血（写了就跳过 Σ目标×摆动 的计算；用于"按船点名"的精确值） */
+  layers?: [number, number, number]
+  /** 额外 HP 倍率（在 Σ 目标之上再乘；用于"重突 ×1.1"这类点名加成） */
+  hpMul?: number
   speed: number
   agility: number
   evasion: number
@@ -26,25 +30,29 @@ type Sub = {
   droneBonus?: number
   bayMul?: number
   hit?: number
+  /** 直接追加到块里的原始字段行（新机制字段用；插在 `description` 之前） */
+  extra?: string[]
+  /** 该船的显式抗性（写了就覆盖族默认 RESIST） */
+  resists?: { shieldResist?: Record<string, number>; armorResist?: Record<string, number>; hullResist?: Record<string, number> }
   /** 新的玩家可见说明（旧说明与新数值矛盾，必须同步重写） */
   desc: string
   note: string
 }
 /** 子分类（键 = 舰船 id） */
 const SUB: Record<string, Sub> = {
-  'sh-wh-a-frigate': { label: '电子舰', name: '掠袭电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.2, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.1, desc: '海盗的电子战艇：火控与回避双高——先锁上、先打中，也更难被咬住；舱位为设备让路，壳薄，抢完就走。', note: '**命中 +0.10 · 回避 +20%**（真吃战斗公式）· 分辨率 +50%（**经济向**：悬赏冷却 ×√(1/1.5) ≈ −18%）· 锁定 +50%（**纯展示**）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
-  'sh-wh-a-destroyer': { label: '炮艇', name: '掠袭炮艇', slot: 'high', swing: [0.8, 1.2, 1.0], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 0.8, cargo: 0.7, famBonus: { type: 'kinetic', v: 0.15 }, hit: 0.03, desc: '海盗的炮艇：动能炮阵加持，正面火力扎实；舱位很窄、护盾让位给装甲，全靠一门门炮说话。', note: '族武 动能 +0.15 · 命中 +0.03 ｜ 货舱 −30% · 护盾血占比 −20% · 分辨率 −20%' },
-  'sh-wh-a-cruiser': { label: '重型突击巡洋舰', name: '掠袭重型突击巡洋舰', slot: 'high', swing: [0.9, 1.15, 1.05], speed: 0.85, agility: 0.7, evasion: 1.0, signal: 1.2, lock: 1.0, scan: 1.0, cargo: 0.7, famBonus: { type: 'kinetic', v: 0.15 }, desc: '海盗的重型突击巡洋舰：动能火力全开、甲壳同步加厚，专啃硬目标；代价是转身慢、舱位小。', note: '族武 动能 +0.15 · 甲/壳血占比提高 ｜ 机动 −30% · 货舱 −30% · 信号 +20%' },
+  'sh-wh-a-frigate': { label: '电子舰', name: '掠袭电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.2, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.1, extra: ['    wormholeScanRadiusBonus: 1,'], desc: '海盗的电子战艇：火控与回避双高——先锁上、先打中，也更难被咬住；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。', note: '**命中 +0.10 · 回避 +20%**（真吃战斗）· **虫洞扫码 +1 圈（编队即生效、可叠加）** · 分辨率 +50%（经济向）· 锁定 +50%（纯展示）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
+  'sh-wh-a-destroyer': { label: '炮艇', name: '掠袭炮艇', slot: 'high', swing: [0.8, 1.2, 1.0], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 0.8, cargo: 0.7, famBonus: { type: 'kinetic', v: 0.15 }, hit: 0.03, extra: ['    weaponRangeBonusPct: { kinetic: 0.3 },'], desc: '海盗的炮艇：动能炮阵加持，动能武器射程再拉长三成——先在射程外开火；舱位很窄、护盾让位给装甲。', note: '**族武 动能 +0.15 · 动能武器射程 +30%** · 命中 +0.03 ｜ 货舱 −30% · 护盾血占比 −20% · 分辨率 −20%' },
+  'sh-wh-a-cruiser': { label: '重型突击巡洋舰', name: '掠袭重型突击巡洋舰', slot: 'high', swing: [0.9, 1.15, 1.05], layers: [375, 225, 255], speed: 0.85, agility: 0.7, evasion: 1.0, signal: 1.2, lock: 1.0, scan: 1.0, cargo: 0.7, resists: { shieldResist: { kinetic: 0.5, explosive: 0.25, plasma: 0.25 }, armorResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 }, hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 } }, desc: '海盗的重型突击巡洋舰：三层抗性齐备、血量再厚一成，专啃硬目标；**没有额外火力加成**，代价是转身慢、舱位小。', note: '**三层抗性：0 抗一律 → 0.25**（护盾动能保留 0.5）· **三层血 ×1.1 = 855** · **移除族武 +0.15**（船长 2026-09-13）｜ 机动 −30% · 货舱 −30% · 信号 +20%' },
   'sh-wh-c-frigate': { label: '截击舰', name: '幼虫截击舰', slot: 'mid', swing: [0.7, 1.1, 1.2], speed: 1.35, agility: 1.35, evasion: 1.0, signal: 1.15, lock: 1.0, scan: 1.0, cargo: 0.7, hit: 0.04, desc: '巢群的活体截击舰：快得不像话，专咬落单的；护盾几乎不设防，靠一层甲壳与一副骨架撑住。', note: '速度 +35% · 机动 +35% · 命中 +0.04 ｜ 货舱 −30% · 护盾血占比 −30% · 信号 +15%' },
   'sh-wh-c-destroyer': { label: '截击舰', name: '甲壳截击舰', slot: 'mid', swing: [0.7, 1.1, 1.2], speed: 1.35, agility: 1.35, evasion: 1.0, signal: 1.15, lock: 1.0, scan: 1.0, cargo: 0.7, hit: 0.04, desc: '巢群的活体截击舰：速度与机动拉满，切入切出；护盾极薄，伤害全由甲与结构承担。', note: '同上（C 族两艘同子分类）' },
-  'sh-wh-c-cruiser': { label: '重型突击巡洋舰', name: '巢群重型突击巡洋舰', slot: 'low', swing: [0.9, 1.15, 1.05], speed: 0.85, agility: 0.7, evasion: 1.0, signal: 1.2, lock: 1.0, scan: 1.0, cargo: 0.7, famBonus: { type: 'plasma', v: 0.15 }, desc: '巢群的重型突击巡洋舰：能量主炮配厚甲厚壳，正面硬碰硬；转身极慢，空间全让给装甲。', note: '族武 能量 +0.15 · 甲/壳血占比提高 · 低槽 +1（装甲舰槽位契约：低槽须多于高槽）｜ 机动 −30% · 货舱 −30% · 信号 +20%' },
-  'sh-wh-d-frigate': { label: '电子舰', name: '哨戒电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.55, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.12, desc: '陵墓的电子哨戒舰：火控与回避一并拉高，替全队先敌开火、也活得更久；壳薄舱小。', note: '**命中 +0.12 · 回避 +55%**（真吃战斗公式）· 分辨率 +50%（**经济向**）· 锁定 +50%（**纯展示**）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
-  'sh-wh-d-destroyer': { label: '指挥舰', name: '陵卫指挥舰', slot: 'mid', swing: [1.15, 1.0, 0.9], speed: 0.7, agility: 0.85, evasion: 0.9, signal: 1.0, lock: 1.55, scan: 1.55, cargo: 0.75, bayMul: 1.5, droneBonus: 0.08, hit: 0.05, desc: '陵墓的指挥舰：机巢与无人机战力一并拉高，是编队的机群中枢；命中扎实，但几乎跑不动。', note: '**机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05**（真吃战斗公式）· 分辨率 +55%（**经济向**）· 锁定 +55%（**纯展示**）｜ 速度 −30% · 货舱 −25% · 回避 −10%' },
-  'sh-wh-d-cruiser': { label: '', name: '陵寝巡洋舰', slot: 'high', swing: [1.0, 1.0, 1.0], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 1.0, desc: '陵墓的重装巡洋舰：三层血最厚、炮位最多，是能站在阵线中央扛住火力的平台。', note: '**无子分类**（船长）⇒ 只做总量/CPU/槽位/抗性' },
+  'sh-wh-c-cruiser': { label: '重型突击巡洋舰', name: '巢群重型突击巡洋舰', slot: 'low', swing: [0.9, 1.15, 1.05], layers: [85, 455, 515], speed: 0.85, agility: 0.7, evasion: 1.0, signal: 1.2, lock: 1.0, scan: 1.0, cargo: 0.7, resists: { shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 }, armorResist: { explosive: 0.5, kinetic: 0.25, plasma: 0.25 }, hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 } }, desc: '巢群的重型突击巡洋舰：三层抗性齐备、甲壳再厚一成，正面硬碰硬；**没有额外火力加成**，转身极慢。', note: '**三层抗性：0 抗一律 → 0.25**（甲爆炸保留 0.5）· **三层血 ×1.1 = 1055** · **移除族武 +0.15** · 低槽 +1 ｜ 机动 −30% · 货舱 −30% · 信号 +20%' },
+  'sh-wh-d-frigate': { label: '电子舰', name: '哨戒电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], layers: [170, 35, 55], speed: 1.0, agility: 0.9, evasion: 1.55, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.12, extra: ['    wormholeScanRadiusBonus: 1,'], resists: { shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 }, armorResist: { explosive: 0.5 }, hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 } }, desc: '陵墓的电子哨戒舰：护盾占比全批最高、火控与回避一并拉高，替全队先敌开火；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。', note: '**D 族特色 = 高护盾比（护盾 65%）** · **三层盾抗 0.25 + 甲爆炸 0.5** · **命中 +0.12 · 回避 +55%** · **虫洞扫码 +1 圈（编队即生效、可叠加）** · 分辨率 +50%（经济向）｜ 货舱 −30% · 机动 −10%' },
+  'sh-wh-d-destroyer': { label: '指挥舰', name: '陵卫指挥舰', slot: 'mid', swing: [1.15, 1.0, 0.9], layers: [230, 75, 80], speed: 0.7, agility: 0.85, evasion: 0.9, signal: 1.0, lock: 1.55, scan: 1.55, cargo: 0.75, bayMul: 1.5, droneBonus: 0.08, hit: 0.05, extra: ['    fleetDamageBonusPct: 0.15,'], resists: { shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 }, armorResist: { explosive: 0.5 }, hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 } }, desc: '陵墓的指挥舰：护盾占比高、并给**全编队**的单发伤害加一成半——多艘指挥舰只取最高、不叠加。', note: '**D 族特色 = 高护盾比（护盾 60%）** · **全舰单发伤害 +15%（取最高、不叠加）** · 机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05 ｜ 速度 −30% · 货舱 −25%' },
+  'sh-wh-d-cruiser': { label: '', name: '陵寝巡洋舰', slot: 'high', swing: [1.0, 1.0, 1.0], layers: [510, 155, 255], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 1.0, resists: { shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 }, armorResist: { explosive: 0.5 }, hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 } }, desc: '陵墓的重装巡洋舰：**护盾占比全批最高**（不再靠总血厚）、炮位最多、舱容最大——靠盾与抗性站在阵线中央。', note: '**无子分类**；**D 族特色 = 高护盾比（护盾 55%）**· 三层盾抗 0.25 + 甲爆炸 0.5 · **血量由最厚 1000 → 920**（船长：移除"血量厚"特点）· 货舱 9000 · 槽 3/5/5 保留' },
   'sh-wh-e-frigate': { label: '鱼雷舰', name: '构件鱼雷舰', slot: 'high', swing: [1.0, 1.1, 1.1], speed: 1.0, agility: 1.0, evasion: 0.75, signal: 1.3, lock: 1.0, scan: 1.0, cargo: 1.0, famBonus: { type: 'explosive', v: 0.15 }, hit: 0.03, desc: '巨构的鱼雷舰：爆破弹头拆甲，命中扎实；信号大、转身笨，得靠队友挡在前面。', note: '族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%' },
   'sh-wh-e-destroyer': { label: '无人机作战舰', name: '机库无人机作战舰', slot: 'mid', swing: [1.15, 0.9, 0.95], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 0.7, droneBonus: 0.1, bayMul: 1.5, hit: -0.02, desc: '巨构的无人机作战舰：机巢与无人机战力双高，是长时间放飞机群的移动机库；舱位与自射火力都让位给机群。', note: '无人机伤害 +0.10 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02' },
   'sh-wh-e-carrier': { label: '无人机作战舰', name: '巨构无人机作战舰', slot: 'mid', swing: [1.15, 0.9, 0.95], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 0.7, droneBonus: 0.14, bayMul: 1.5, hit: -0.02, desc: '巨构的无人机作战舰：本批机巢最大、无人机伤害最高，放飞即是主武器；舱位让给机库，本舰火力偏辅助。', note: '无人机伤害 +0.14 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02' },
-  'sh-wh-g-frigate': { label: '侦察舰', name: '幽影侦察舰', slot: 'mid', swing: [1.15, 0.75, 0.85], speed: 1.05, agility: 1.0, evasion: 1.35, signal: 0.65, lock: 1.25, scan: 1.0, cargo: 0.7, hit: 0.06, desc: '亡军的侦察舰：回避极高、火控不弱——它负责先看见别人，也咬得住；货舱与甲壳为速度让路。', note: '**回避 +35% · 命中 +0.06**（真吃战斗公式）· 信号 −35% · 锁定 +25%（**纯展示**，叙事用）｜ 货舱 −30% · 甲/壳血占比 −25%' },
+  'sh-wh-g-frigate': { label: '侦察舰', name: '幽影侦察舰', slot: 'mid', swing: [1.15, 0.75, 0.85], speed: 1.05, agility: 1.0, evasion: 1.35, signal: 0.65, lock: 1.25, scan: 1.0, cargo: 0.7, hit: 0.06, extra: ['    wormholeScanRadiusBonus: 1,'], desc: '亡军的侦察舰：回避极高、火控不弱——编入虫洞队伍即扩大扫描范围一圈（多艘可叠加），它负责先看见别人。', note: '**回避 +35% · 命中 +0.06**（真吃战斗）· **虫洞扫码 +1 圈（编队即生效、可叠加）** · 信号 −35% · 锁定 +25%（纯展示，叙事用）｜ 货舱 −30% · 甲/壳血占比 −25%' },
   'sh-wh-g-destroyer': { label: '后勤舰', name: '亡军后勤舰', slot: 'low', swing: [1.2, 0.8, 1.0], speed: 1.0, agility: 1.0, evasion: 1.05, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 1.45, bayMul: 1.5, hit: -0.03, desc: '亡军的后勤舰：货舱与机巢最大，跟着编队补给、换机；火力只求自保。', note: '货舱 +45% · 机巢 +50% · 回避 +5% ｜ 命中 −0.03 · 甲血占比 −20%' },
   'sh-wh-g-cruiser': { label: '鱼雷舰', name: '亡军鱼雷舰', slot: 'high', swing: [1.0, 1.1, 1.1], speed: 1.0, agility: 0.85, evasion: 0.75, signal: 1.3, lock: 1.0, scan: 1.0, cargo: 1.0, famBonus: { type: 'explosive', v: 0.15 }, hit: 0.03, desc: '亡军的鱼雷舰：爆破弹头配扎实命中，专挑大目标的装甲；信号大、转身慢，是明牌重锤。', note: '族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%' },
 }
@@ -117,7 +125,10 @@ for (const s of wh) {
   const cur: [number, number, number] = [s.shieldHp ?? 0, s.armorHp ?? 0, s.hullHp ?? 0]
   const swung = cur.map((v, i) => v * sub.swing[i]!)
   const k = target / swung.reduce((a, b) => a + b, 0)
-  const layers = swung.map((v) => r5(v * k)) as [number, number, number]
+  // 点名值优先（`layers` 直接给定；`hpMul` 再乘一道，例如"重突 ×1.1"）
+  const layers = (sub.layers
+    ? sub.layers.map((v) => r5(v * (sub.hpMul ?? 1)))
+    : swung.map((v) => r5(v * k * (sub.hpMul ?? 1)))) as [number, number, number]
   const famCpu = 207 / 6 // 族池平均按 A 族≈34.5 统一取 40（保证新槽能装一件自家件）
   const cpu = Math.max(r5(refCpu * 1.1), r5((s.cpu ?? 0) + 40))
   const slots = { ...slotOf(s) }
@@ -185,13 +196,15 @@ if (process.argv.includes('--write')) {
     blk = blk.replace(/(slots: \{ high: )[0-9]+(, mid: )[0-9]+(, low: )[0-9]+/, `$1${o.slots.high}$2${o.slots.mid}$3${o.slots.low}`)
     const hit = r3((s.hitBonus ?? 0) + (sub.hit ?? 0))
     setNum('hitBonus', hit)
-    const res = RESIST[fam]!
+    const res = sub.resists ?? RESIST[fam]!
     const resLines = [
       res.shieldResist ? `    shieldResist: ${JSON.stringify(res.shieldResist)},` : '',
       res.armorResist ? `    armorResist: ${JSON.stringify(res.armorResist)},` : '',
       res.hullResist ? `    hullResist: ${JSON.stringify(res.hullResist)},` : '',
     ].filter(Boolean).join('\n')
-    if (resLines && !blk.includes('shieldResist:')) {
+    // 抗性：点名值优先（覆盖族默认）；已有抗性行的船先删旧行再插新行
+    if (resLines) {
+      blk = blk.replace(/^ {4}(shieldResist|armorResist|hullResist): .*$\n?/gm, '')
       blk = blk.replace(/(\n    description:)/, `\n${resLines}$1`)
     }
     if (sub.famBonus && !blk.includes('weaponFamilyBonus:')) {
@@ -199,6 +212,11 @@ if (process.argv.includes('--write')) {
     }
     if (sub.droneBonus && !blk.includes('droneDmgBonus:')) {
       blk = blk.replace(/(\n    description:)/, `\n    droneDmgBonus: ${sub.droneBonus},\n    description:`)
+    }
+    // 新机制字段（点名追加；重复运行不叠加）
+    for (const line of sub.extra ?? []) {
+      const key = line.trim().split(':')[0]!
+      if (!blk.includes(`${key}:`)) blk = blk.replace(/(\n    description:)/, `\n${line}$1`)
     }
     text = text.replace(m[1]!, blk)
   }
