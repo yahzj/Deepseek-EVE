@@ -135,14 +135,16 @@ function approachOf(m: number, openM: number, nearM: number): number {
  * 排法（**取代** 2026-09-11 的「前排＝首舰/头目档原位、其余上抬 54」口径，旧口径作废）：
  * - 按**视觉行序交替分两排**：第 1/3/5… 艘 = **第一排**（原位，逐像素不动）；第 2/4/6… 艘 = **第二排**；
  * - 同排内按列从左到右（列间距 = 本列最宽舰 + `ROW_GAP`）；
- * - **第二排右移半个列间距**（`shift = round(pitch₀ / 2)`）、**下移一个舰高**（`drop = round(max(舰高))`）。
+ * - **第二排右移半个列间距**（`shift = round(pitch₀ / 2)`）、**下移一个舰高 + 一条血条带**（`drop`，见 `ROW2_BAR_DROP`）。
  *
  * ⚠ 两条硬约束（决定为什么是"半格 + 一个舰高"）：
  * 1. **舰体是实心的**：两排水平错开 < 一舰宽（170px）时，必须**竖向拉开 ≥ 一舰高**，否则两排舰体互相压住
  *    （验算：右移 87 + 竖向仅 54 ⇒ 横向重叠 83px、竖向重叠 24px，会实打实叠在一起）；
  * 2. **上方只有 `LAY.TOP`(54px) 留白**（2026-09-10 给无人机上凸弧留的）⇒ 第二排**不能往上抬 78**（会溢出泳道被裁），
  *    故**往下**排——好处是第一排完全不动（船长 2026-09-11 明确不喜欢"前排被顶下去"）。
- * 代价：编队向下多占一个舰高（后排舰顶与血条随之落低），窄窗口（泳道 min-height 260）下后排血条可能被裁。
+ * 代价：编队向下多占一个舰高 + 一条血条带（后排舰顶与血条随之落低），窄窗口（泳道 min-height 260）下后排血条可能被裁。
+ * ⚠ 2026-09-13 补：竖向间距再加 **`ROW2_BAR_DROP`**——原「一个舰高」会让第二排舰体顶边正好压住
+ *    第一排**血条**（血条挂舰底、高 ~48-50）⇒ 故第二排改为「一个舰高 + 血条带 + 6 缝隙」。
  *
  * 退化（船长确认）：1 舰 = 第一排（逐像素不变）· 2 舰 = 前一后右上 · 3 舰 = 前、后右上、前（锯齿）·
  * 4 舰 = 完整斜向菱形 · 5 舰起继续按"前/后交替 + 逐列右移"接下去。 */
@@ -150,11 +152,11 @@ function approachOf(m: number, openM: number, nearM: number): number {
 interface FoeSlot {
   /** 列号（同排内从左到右） */
   col: number
-  /** 排号：0 = 第一排（原位）；1 = 第二排（右移半格 + 下移一个舰高） */
+  /** 排号：0 = 第一排（原位）；1 = 第二排（右移半格 + 下移一个舰高 + 一条血条带） */
   row: 0 | 1
   /** 相对**本列中心**的水平微调（把窄舰在本列内居中） */
   dx: number
-  /** 抬升量（px；**负 = 下移**）——血条分梯队与锚点共用此值 */
+  /** 抬升量（px；**负 = 下移**）——＝ 第二排下移量 `drop` 的反号（第一排 = 0） */
   raise: number
 }
 /** 斜向菱形的几何（列宽/列中心/右移量/下移量）——锚点与 DOM 排布**共用同一份** */
@@ -164,7 +166,7 @@ interface FoeFormation {
   colW: number[]
   /** 第二排右移量（px） */
   shift: number
-  /** 下移量（一个舰高，px） */
+  /** 第二排**总计**下移量（px）＝一个舰高 + `ROW2_BAR_DROP`（让开第一排血条带；第一排 = 0） */
   drop: number
   /** 单排行高（px）＝最高舰高 */
   rowH: number
@@ -183,9 +185,10 @@ function foeFormationOf(sizes: readonly number[]): FoeFormation {
     colW.push(w)
   }
   const rowH = Math.max(1, ...sizes.map((s) => s * 0.46))
-  const shift = Math.round((colW[0]! + LAY.ROW_GAP) / 2)
-  const drop = Math.round(rowH)
   const rows: 1 | 2 = n > 1 ? 2 : 1
+  const shift = Math.round((colW[0]! + LAY.ROW_GAP) / 2)
+  /** 第二排总计下移量（单排编队 = 0 ⇒ 逐像素沿用旧口径） */
+  const drop = rows === 2 ? Math.round(rowH) + ROW2_BAR_DROP : 0
   const slots: FoeSlot[] = []
   for (let i = 0; i < n; i++) {
     const col = Math.floor(i / 2)
@@ -207,6 +210,15 @@ const HP_BAR_H = 50
 /** 血条宽上限 / 下限（px；`.app-bts-hpWrap` 现值 185，下限保证"护/甲/结"三段数字仍读得出） */
 const HP_BAR_W_MAX = 185
 const HP_BAR_W_MIN = 140
+/**
+ * **第二排额外下移量**（px）= 一条血条带 + 6 缝隙。
+ * 起因（船长 2026-09-13）：「**目前会挡住第一排血条（敌我都移动）**」——血条挂在**舰体下方**
+ * （`.app-bts-unit > .app-bts-hpWrap` 是 `top:100%`），而两排纵向只差一个 `rowH`（＝舰高）
+ * ⇒ 第二排舰体顶边正好落在第一排舰底、**把第一排的血条整条盖住**。
+ * 取 `HP_BAR_H`（血条块高）＋6 缝隙 ⇒ 第二排顶边让到第一排血条之下。**敌我共用本常量**（两侧同时下移）。
+ * ⚠ 已知取舍：编队整体再向下多占 ~56px（窄窗下第二排血条可能被泳道裁掉——原口径已登记过同类取舍）。
+ */
+const ROW2_BAR_DROP = HP_BAR_H + 6
 /** 血条几何（相对**本舰**的偏移量；`dx` 正 = 右移，`dy` 正 = 下移） */
 interface BarGeom {
   width: number
@@ -277,7 +289,7 @@ interface Anchor {
  * 贴脸（nearM）时两舰间距 = LAY.GAP。
  * `foeSizes` = **逐舰体积**（px，见 `sizeOfUnit`）：**锚点永远跟实际舰宽**（2026-09-11 船长「乙」裁决）。
  * **阵形** = 斜向菱形（见上方 `foeFormationOf`）：第一排 `y = TOP + rowH − 舰高/2`（＝改动前的行底，逐像素不变）；
- * 第二排再低一个 `rowH`、并右移 `shift`。
+ * 第二排再低一个 `rowH` **＋ `ROW2_BAR_DROP`**（让开第一排血条带；2026-09-13 船长「第二排会挡住第一排血条」）、并右移 `shift`。
  * `meSize` = 玩家舰体积；缺省 `LAY.MAIN`。
  */
 function layout(
@@ -340,14 +352,14 @@ function layout(
     const w = slots[i]!
     const s = fm.slots[i]!
     const x = rowLeft + foeColLeft(fm, s.col) + (fm.colW[s.col] ?? w) / 2 + (s.row === 1 ? fm.shift : 0)
-    // 第一排：与改动前同一条行底（TOP + rowH）；第二排再低一个 rowH；排内沉底
-    const y = LAY.TOP + (s.row === 1 ? fm.rowH * 2 : fm.rowH) - foeH[i]! / 2
+    // 第一排：与改动前同一条行底（TOP + rowH）；第二排再低一个 rowH **＋ 血条带 ROW2_BAR_DROP**（不压第一排血条）；排内沉底
+    const y = LAY.TOP + (s.row === 1 ? fm.rowH * 2 + ROW2_BAR_DROP : fm.rowH) - foeH[i]! / 2
     foe.push({ x, y })
   }
-  const foeBottom = LAY.TOP + (fm.rows === 2 ? fm.rowH * 2 : fm.rowH)
+  const foeBottom = LAY.TOP + (fm.rows === 2 ? fm.rowH * 2 + ROW2_BAR_DROP : fm.rowH)
   /* ── 我方逐舰锚点：**敌人斜向菱形的镜像**（2026-09-13 船长「都挤成了一排，应该按照敌人阵型那样镜像排列」）
      同一份 `foeFormationOf`（列宽/右移/下移/排高）算结构，方向镜像：敌方在右、列序自左向右且第二排**右**移
-     ⇒ 我方在左，列序改成**向左**展开（主控＝第 0 列，最靠敌），第二排**左**移 `shift`、同样**下**移一行高。
+     ⇒ 我方在左，列序改成**向左**展开（主控＝第 0 列，最靠敌），第二排**左**移 `shift`、同样**下**移一行高 ＋ 血条带。
      ⚠ 单舰（`mySizes.length === 1`）时**必须**返回 `[me]` 本身（`me` 是距离尺/弹道/血条的既有锚点）⇒ 逐像素不变。 */
   const my: Anchor[] = mySizes.length <= 1 ? [me] : (() => {
     const mySlots = [...mySizes]
@@ -366,7 +378,8 @@ function layout(
       const s = myFm.slots[i]!
       const colOffset = foeColLeft(myFm, s.col) + (myFm.colW[s.col] ?? mySlots[i]!) / 2 - colBase
       const x = me.x - colOffset - (s.row === 1 ? myFm.shift : 0)
-      const y = LAY.TOP + (s.row === 1 ? myRowH * 2 : myRowH) - myH[i]! / 2
+      // 第二排同样让开第一排血条带（与敌方对称）：多下一个 `ROW2_BAR_DROP`
+      const y = LAY.TOP + (s.row === 1 ? myRowH * 2 + ROW2_BAR_DROP : myRowH) - myH[i]! / 2
       out.push({ x, y })
     }
     return out
@@ -553,6 +566,7 @@ export {
   TIER_SIZE,
   ESCORT_MUL,
   HP_BAR_W_MAX,
+  ROW2_BAR_DROP,
   foeFormationOf,
   foeColLeft,
   foeBarGeom,

@@ -38,6 +38,7 @@ import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag, foeHangarTotal,
+  ROW2_BAR_DROP,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -1977,7 +1978,10 @@ const meSpeedRef = useRef(200)
               {foeFormation.rows === 2 ? (
                 <div
                   className="app-bts-shipRow"
-                  style={{ minHeight: foeFormation.rowH, marginLeft: foeFormation.shift }}
+                  /* 2026-09-13 船长：「第二排下移，目前会挡住第一排血条（敌我都移动）」——
+                     第二排容器再加 `ROW2_BAR_DROP`（一条血条高 + 6 缝隙，与 `layout` 的锚点同源同值），
+                     让第二排舰体顶边落到第一排血条**之下**；第一排容器一律不动。 */
+                  style={{ minHeight: foeFormation.rowH, marginLeft: foeFormation.shift, marginTop: ROW2_BAR_DROP }}
                 >
                   {foeUnitEls.filter((_, i) => foeFormation.slots[i]?.row === 1)}
                 </div>
