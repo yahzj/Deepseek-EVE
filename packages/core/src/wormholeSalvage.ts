@@ -23,7 +23,15 @@ import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { salvagerCyclesOf } from './salvaging'
 import { addModule } from './equipment'
-import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckItemIdOf } from './salvage'
+import {
+  RARE_WRECK_VOLUME_M3,
+  RECYCLE_POOL_AVG_ISK,
+  RECYCLE_YIELD_PER_M3,
+  isRareWreck,
+  rareWreckItemIdOf,
+  recycleProfileOf,
+  wreckItemIdOf,
+} from './salvage'
 import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_PICK,
@@ -204,6 +212,60 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   }
   // **稀有在前**：回收按数组顺序取 ⇒ "优先打捞稀有残骸"天然成立
   cell.piles = piles
+}
+
+/* ═══════════ 三之二、收益口径（残骸的真价值在回收炉，不在市场） ═══════════ */
+
+/** 稀有残骸的**名义价值加成**（一个高级箱的期望量级；只用于排序与提示，不进结算） */
+export const WORMHOLE_RARE_CHEST_NOMINAL_ISK = 1_000_000
+
+/**
+ * **残骸的拆解价值**（ISK/m³；非残骸 / 无回收档案 ⇒ 0）。
+ *
+ * 为什么单开这一条（2026-09-13 F3c 抓到的真问题）：残骸物品的 `baseSellPriceIsk = 1`
+ * （市场一律按废料价收），**真价值在回收炉拆解**（保底矿物 + 概率特色掉落）。
+ * 而"沉船丢货"的排序与撤离结算的报账原来都只看基础卖价 ⇒ **稀有残骸（30 m³、30 ISK）会被
+ * 当成最不值钱的东西第一个丢掉**，一格虚空母矿（457,500 ISK）反而留着。
+ * 口径 = 该残骸**回收档位**的保底产出（`RECYCLE_YIELD_PER_M3 × RECYCLE_POOL_AVG_ISK`），
+ * 与工业页/星图打捞页展示的"保底 ≈ X ISK/h"同源；**不含**高级箱/特色掉落那部分。
+ */
+export function wormholeWreckRecycleIskPerM3(ctx: SimContext, itemId: string): number {
+  const p = recycleProfileOf(ctx, itemId)
+  if (!p) return 0
+  return RECYCLE_YIELD_PER_M3[p.tier] * RECYCLE_POOL_AVG_ISK[p.tier]
+}
+
+/**
+ * 背包里一件物品的**收益估值**（残骸走拆解、其余走基础卖价）——报账、排序与读数共用这一把尺。
+ *
+ * `opts.rareChestNominal`：稀有残骸是否计入**高级箱的名义价值**。
+ * - **默认不计**：给"这趟赚了多少 ISK"的读数用——高级箱出的是装备/图纸而不是 ISK，
+ *   混进收益会把数字撑爆（实测：层收益表里的"毛收益"会被这个名义值主导）。
+ * - **丢货排序要计**：否则稀有残骸（30 m³、回收价值约 1,700 ISK）会排在原矿前面被丢掉。
+ */
+export function wormholeLootValueIsk(
+  ctx: SimContext,
+  itemId: string,
+  units: number,
+  opts?: { rareChestNominal?: boolean },
+): number {
+  const n = Math.max(0, units)
+  if (itemId.startsWith('wreck-')) {
+    const base = n * wormholeWreckRecycleIskPerM3(ctx, itemId)
+    return isRareWreck(itemId) && opts?.rareChestNominal === true ? base + WORMHOLE_RARE_CHEST_NOMINAL_ISK : base
+  }
+  return n * (ctx.items.get(itemId)?.baseSellPriceIsk ?? 0)
+}
+
+/**
+ * **丢货排序档位**（0 = 先丢）：普通残骸 → 其它可售物 → 稀有残骸。
+ * 为什么要有档位而不是纯按 ISK：残骸与矿的价值量纲不同（一个要拆解、一个直接卖），
+ * 纯比数字会让**稀有残骸（高级箱的载体）排在原矿前面被丢掉**——那是玩家最不能接受的一种丢法。
+ */
+export function wormholeLootTierOf(itemId: string): 0 | 1 | 2 {
+  if (isRareWreck(itemId)) return 2
+  if (itemId.startsWith('wreck-')) return 0
+  return 1
 }
 
 /* ═══════════ 四、打捞动作（1 回合 = 回收台数 的堆） ═══════════ */

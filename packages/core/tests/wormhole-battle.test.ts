@@ -42,6 +42,7 @@ import { advanceWormhole, wormholeActivateAt, wormholeBattleViewOf, wormholeStar
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
 import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
+import { rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -411,6 +412,37 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const cheapLeft = back.bag.find((s) => s.itemId === cheap)?.units ?? 0
     expect(cheapLeft, '便宜货没被扣').toBeLessThan((capBefore - 2) * 500)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('沉船拖走了货舱'))).toBe(true)
+  })
+
+  it('**缩容丢货的顺序**：普通残骸先丢、原矿其次、**稀有残骸最后丢**（旧口径只看基础价 ⇒ 稀有残骸第一个被丢）', () => {
+    const state = fresh()
+    const ids = [addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3)]
+    state.shipId = ids[0]!
+    expect(wormholeEnter(state, ctx, ids, 21).ok).toBe(true)
+    const run = state.wormhole.run!
+    const card = 'wh-pirate-scout'
+    const common = wreckItemIdOf(card)
+    const rare = rareWreckItemIdOf(card)
+    const capBefore = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
+    expect(capBefore).toBe(20) // 4×T3 合计货仓 10,400 m³ ÷ 500
+    // 12 格普通残骸 + 3 格虚空母矿 + 1 格稀有残骸 = 16 格 > 缩容后的 10 格 ⇒ 必须丢 6 格
+    run.bag = [
+      { itemId: common, units: 12 * 500 },
+      { itemId: WORMHOLE_ORE_ITEM_ID, units: 3 * 500 },
+      { itemId: rare, units: 30 },
+    ]
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    run.battle!.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
+    run.battle!.units['ally-2']!.hp = { s: 0, a: 0, h: 0 }
+    winBattle(state)
+    settleBattle(state)
+    const back = state.wormhole.run!
+    expect(wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))).toBe(10)
+    expect(wormholeBagUsage(ctx, back.bag, 10).overflow).toBe(false)
+    expect(back.bag.find((s) => s.itemId === rare)?.units, '稀有残骸被丢了').toBe(30)
+    expect(back.bag.find((s) => s.itemId === WORMHOLE_ORE_ITEM_ID)?.units, '虚空母矿被丢了').toBe(1500)
+    expect(back.bag.find((s) => s.itemId === common)?.units, '普通残骸没被扣').toBe(6 * 500)
   })
 
   it('某个僚舰被打沉（战斗仍胜）：该船从编队与舰队里一起消失，其余船继续', () => {

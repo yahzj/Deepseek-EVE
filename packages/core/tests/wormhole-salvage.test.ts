@@ -16,7 +16,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeTakePile } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, wormholeEnter, wormholeTakePile } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
@@ -27,7 +27,11 @@ import {
   WORMHOLE_RELIC_CHANCE_CAP,
   WORMHOLE_RUINS_RARES_MAX,
   WORMHOLE_RUINS_RARES_MIN,
+  WORMHOLE_RARE_CHEST_NOMINAL_ISK,
   wormholeCellCardIdOf,
+  wormholeLootTierOf,
+  wormholeLootValueIsk,
+  wormholeWreckRecycleIskPerM3,
   wormholeEnsureSalvagePiles,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
@@ -232,6 +236,29 @@ describe('虫洞 · 确定性随机流（2026-09-13 修掉的分布坑）', () =
   })
 })
 
+describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）', () => {
+  it('普通残骸按**拆解**估值（不是基础价 1 ISK/单位）；母矿仍按基础卖价', () => {
+    const common = wreckItemIdOf('wh-pirate-scout')
+    expect(wormholeWreckRecycleIskPerM3(ctx, common)).toBeCloseTo(56.8, 1) // common 档：5.8 × 9.8
+    expect(wormholeLootValueIsk(ctx, common, 500)).toBeCloseTo(28_420, -2)
+    expect(wormholeLootValueIsk(ctx, COMMON_ORE_FOR_TEST, 500)).toBeCloseTo(457_500, -2) // 915 × 500
+    // 残骸的**基础价**口径确实接近 0（这就是为什么必须换尺）
+    expect(ctx.items.get(common)?.baseSellPriceIsk).toBe(1)
+  })
+
+  it('稀有残骸：默认**不含**高级箱名义值（读数用），排序时才计入（丢货用）', () => {
+    const rare = rareWreckItemIdOf('wh-pirate-scout')
+    const plain = wormholeLootValueIsk(ctx, rare, 30)
+    const forDrop = wormholeLootValueIsk(ctx, rare, 30, { rareChestNominal: true })
+    expect(plain).toBeGreaterThan(0)
+    expect(plain).toBeLessThan(5000) // 只有 30 m³ 的拆解保底
+    expect(forDrop - plain).toBe(WORMHOLE_RARE_CHEST_NOMINAL_ISK)
+    // 丢货档位：普通残骸（0）先丢 → 原矿（1）→ 稀有残骸（2）最后
+    expect(wormholeLootTierOf(rare)).toBe(2)
+    expect(wormholeLootTierOf(COMMON_ORE_FOR_TEST)).toBe(1)
+    expect(wormholeLootTierOf(wreckItemIdOf('wh-pirate-scout'))).toBe(0)
+  })
+})
 describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', () => {
   it('五族池齐（装备 / 装备图纸 / 舰船图纸各非空）——缺一族就报出哪族', () => {
     expect(wormholeFamilyPoolGaps(ctx)).toEqual([])
