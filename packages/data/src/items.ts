@@ -507,6 +507,64 @@ export const DRONES: readonly ItemDef[] = [
     defense: { shieldHp: 12, armorHp: 6, hullHp: 12, evasion: 0.55 }, // 三层血 15（最薄）+ 闪避最高
     exclusive: true,
   },
+  // ══════════ 虫洞族专属机型（2026-09-13 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ **换成族专属无人机**，
+  // 不用制式机。两型都走"专属强化型"口径（`exclusive`：无蓝图、不上市场、不入常规掉落）＋施工期 `unreleased`） ══════════
+  {
+    id: 'drone-wh-c-heavy',
+    name: '巢卫攻坚无人机',
+    kind: 'drone',
+    unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
+    baseSellPriceIsk: 12_000,
+    description:
+      '巢群的活体攻坚机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚且偏甲壳，装甲与结构的抗性也更硬——代价是更笨重。',
+    damageType: 'explosive', // 族弹型权威：C 族 = 等离子 8 / 爆炸 2 ⇒ 爆炸在族内（且呼应本族「孢子导弹巢」）
+    dmg: 15, // 制式攻坚机 12 ⇒ +25%（专属强化型，豁免区间校验、只受硬边界约束）
+    cpuUse: 12,
+    maxRangeM: 3500, // 射程分类 3/4：攻坚中程（**档位硬钉**，专属机型也须同档 —— content-check「射程分类契约」）
+    droneClass: 'assault', // 攻坚机
+    hitRate: 0.78,
+    falloff: 1, // 攻坚机档：命中不随距离衰减
+    // 2026-09-13 船长：「C 组无人机护甲和结构抗性提高 10%」⇒ 护甲/结构抗性 0.25 → **0.35**，护盾维持 0.25
+    defense: {
+      shieldHp: 50,
+      armorHp: 70,
+      hullHp: 120, // 三层血 240（制式 194 ⇒ +24%），偏甲/壳
+      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+      armorResist: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
+      hullResist: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
+      evasion: 0.08, // 厚而慢（制式 0.10）
+    },
+    exclusive: true,
+    unreleased: true,
+  },
+  {
+    id: 'drone-wh-e-sentry',
+    name: '构件哨戒无人机',
+    kind: 'drone',
+    unitM3: 40, // 体积档 4/4：重型哨戒（与制式哨戒机同档）
+    baseSellPriceIsk: 22_000,
+    description:
+      '巨构自组装的长针哨戒机：动能长针拆盾，命中比制式哨戒机更高、远端衰减更缓，机体也略厚——它是机群里最难被打断的一型。',
+    damageType: 'kinetic', // 族弹型权威：E 族 = 动能 5 / 爆炸 5 ⇒ 动能在族内（呼应本族「巨构导控塔/近防阵列」）
+    dmg: 24, // 制式哨戒机 20 ⇒ +20%（专属强化型）
+    cpuUse: 18,
+    maxRangeM: 5000, // 射程分类 4/4：远程哨戒（**档位硬钉**，专属机型也须同档 —— content-check「射程分类契约」）
+    reloadMs: 8800, // 沿用"哨戒机攻击周期翻倍"口径（与制式同）
+    droneClass: 'sentry', // 哨戒机
+    hitRate: 1.15,
+    falloff: 0.4, // 哨戒机保留命中衰减（独有代价），比制式 0.35 略缓
+    defense: {
+      shieldHp: 28,
+      armorHp: 14,
+      hullHp: 18, // 三层血 60（制式 46 ⇒ +30%），偏盾
+      shieldResist: { kinetic: 0.2 },
+      armorResist: { kinetic: 0.1 },
+      hullResist: { kinetic: 0.1 },
+      evasion: 0.2,
+    },
+    exclusive: true,
+    unreleased: true,
+  },
 ]
 
 /** 修理组件（P2 定稿 2026-09-05；**2026-09-13 船长改数值**：基础回复对齐「船体维修装置每跳」口径——

@@ -134,13 +134,15 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34；
 // 2026-09-10 G 族专属无人机「流亡蜂无人机」→ 无人机 4→5 种、物品总数 34→35；
 // 2026-09-12 虫洞线：新增**虚空母矿**（原矿 8 种、物品总数 35→36）——术语同步为「原矿 / 原材料」）
-check(itemDefs.length === 36, `物品总数应为 36，实际 ${itemDefs.length}`)
+// 2026-09-13 虫洞族专属机型 2 型（`drone-wh-c-heavy` 巢卫攻坚 / `drone-wh-e-sentry` 构件哨戒，
+// 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ 换成族专属无人机）→ 物品总数 36→**38**、无人机 5→**7**
+check(itemDefs.length === 38, `物品总数应为 38，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
-check(drones.length === 5, `无人机应为 5 种（四型制式锚点 + 专属强化型），实际 ${drones.length}`)
+check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 流亡蜂 + 2 型虫洞族专属），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -3116,13 +3118,15 @@ for (const m of MODULES) {
     /* ⑥ **（2026-09-13 补）装备 / 舰船 / 蓝图三类也要闸门**（船长「装备就全部做进来」批）：
      *  这三类的"玩家可见枚举"是手册的**装备图鉴 / 舰船图鉴 / 蓝图图鉴**（三处都直接遍历全目录，
      *  与物品那次同款）⇒ 虫洞专属内容（id 前缀 `mod-wh-` / `sh-wh-` / `bp-wh-`）**必须标 `unreleased`**，
-     *  且**已上线**的内容其玩家可见文案里不得出现「虫洞」。 */
-    const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-'] as const
+     *  且**已上线**的内容其玩家可见文案里不得出现「虫洞」。
+     *  **2026-09-13 补**：族专属**无人机**（`drone-wh-*`）也纳入同一闸门——物品图鉴同样遍历全目录。 */
+    const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-', 'drone-wh-'] as const
     const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
       ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
       ...SHIPS.map((s) => ({ kind: '舰船', id: s.id, name: s.name, description: s.description, unreleased: s.unreleased })),
       ...BLUEPRINTS.map((b) => ({ kind: '装备图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
       ...SHIP_BLUEPRINTS.map((b) => ({ kind: '舰船图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
+      ...DRONES.map((d) => ({ kind: '无人机', id: d.id, name: d.name, description: d.description, unreleased: d.unreleased })),
     ]
     const isWhContent = (id: string): boolean => WH_PREFIXES.some((p) => id.startsWith(p))
     const whContent = whTyped.filter((d) => isWhContent(d.id))
