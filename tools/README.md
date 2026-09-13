@@ -53,6 +53,7 @@
 | `price-audit.ts` | `price:audit` | 未登记版本自检 |
 | `salvage-econ.ts` | `salvage:econ` | 未登记版本自检 |
 | `travel-matrix.ts` | `travel:matrix` | 未登记版本自检 |
+| **`wormhole-econ.ts`** | `wormhole:econ` | **已登记**（v25 · 核对 2026-09-13；虫洞层收益校准：逐层真实战斗 + 期望原矿收益） |
 | **`ui-probe.ts`** | `ui:probe` | **已登记**（v24 · 核对 2026-09-12） |
 | **`ui-geom.ts`** | `ui:geom` | **已登记**（v24 · 核对 2026-09-12） |
 | **`tools-audit.ts`** | `tools:audit` | **已登记**（v24 · 本体检工具自身） |

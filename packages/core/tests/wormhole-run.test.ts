@@ -83,8 +83,9 @@ describe('虫洞 · 起程与副本推进', () => {
     const adv = wormholeAdvanceNode(ctx, run, 9)
     expect(adv.ok).toBe(false)
     expect(adv.mustExtract).toBe(true)
-    // 层末（清空待处理节点）后：深入被拒、撤离放行
+    // 层末（清空待处理节点 + 本层守卫已清）后：深入被拒、撤离放行
     run.pendingNode = null
+    run.bossCleared = run.depth
     const desc = wormholeDescend(run, 9)
     expect(desc.ok).toBe(false)
     expect(desc.mustExtract).toBe(true)
@@ -93,14 +94,28 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('extracting')
   })
 
+  it('**层末守卫是门**（F 批）：守卫没清时不能深入、也不能撤离', () => {
+    const run = wormholeStartRun(ctx, [T1, T1], 77)!.run!
+    run.pendingNode = null // 层内走完，进入"层末抉择"
+    expect(wormholeDescend(run, 77).ok).toBe(false)
+    expect(wormholeDescend(run, 77).error ?? '').toContain('守卫')
+    expect(wormholeExtract(run).ok).toBe(false)
+    // 打通本层守卫后两条路都放行
+    run.bossCleared = run.depth
+    expect(wormholeDescend(run, 77).ok).toBe(true)
+    expect(run.depth).toBe(2)
+  })
+
   it('深入下一层：层末可用，深度 +1、节点数按层（层 3 起 3 个）', () => {
     const run = wormholeStartRun(ctx, [T1, T1], 42)!.run!
     run.pendingNode = null // 模拟已清空本层
+    run.bossCleared = run.depth
     expect(wormholeDescend(run, 42).ok).toBe(true)
     expect(run.depth).toBe(2)
     expect(run.nodeIndex).toBe(0)
     expect(run.nodesPerLayer).toBe(wormholeNodesPerLayer(2))
     run.pendingNode = null
+    run.bossCleared = run.depth
     wormholeDescend(run, 42)
     expect(run.depth).toBe(3)
     expect(run.nodesPerLayer).toBe(3)

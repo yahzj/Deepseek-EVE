@@ -23,6 +23,7 @@ import {
   wormholeBagSlots,
   wormholeBagUsage,
   wormholeFleetCargoM3,
+  wormholeFoeThreat,
   wormholeLayerThreat,
   wormholeShipAllowed,
   wormholeShipMass,
@@ -248,34 +249,74 @@ export function WormholePanel({
                   ) : (
                     <div className="app-dim app-note">
                       {run.pendingNode.kind === 'combat'
-                        ? '节点战斗尚未接入（施工中）：下方按钮只把流程走通，不解算战果。'
+                        ? '战斗节点：点「迎战」按本节点波数开打（4 艘一起上）。'
                         : `事件池键：${run.pendingNode.eventKey ?? '—'}（事件内容尚未接入）。`}
                     </div>
                   )}
                   <div className="app-wh-actions">
-                    <button
-                      className="app-btn is-small is-primary"
-                      onClick={() => {
-                        const r = engine.wormholeAdvance()
-                        if (!r.ok) onToast(r.error ?? '无法推进。', true)
-                      }}
-                      title="结算本节点并推进到下一个节点（回合不足时只能撤离）"
-                    >
-                      结算本节点（{run.pendingNode.cost} 回合）
-                    </button>
+                    {run.pendingNode.kind === 'combat' ? (
+                      <button
+                        className="app-btn is-small is-primary"
+                        disabled={!!run.battle}
+                        onClick={() => {
+                          const r = engine.wormholeFight('node')
+                          if (!r.ok) onToast(r.error ?? '无法开战。', true)
+                        }}
+                        title="开打本节点：战斗结束后自动结算该节点（扣回合、推进）"
+                      >
+                        迎战（{run.pendingNode.waves} 波 · 结算花 {run.pendingNode.cost} 回合）
+                      </button>
+                    ) : (
+                      <button
+                        className="app-btn is-small is-primary"
+                        disabled={!!run.battle}
+                        onClick={() => {
+                          const r = engine.wormholeAdvance()
+                          if (!r.ok) onToast(r.error ?? '无法推进。', true)
+                        }}
+                        title="结算本节点并推进到下一个节点（回合不足时只能撤离）"
+                      >
+                        结算本节点（{run.pendingNode.cost} 回合）
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="app-wh-node">
-                  <div className="app-wh-node-title">层末抉择</div>
+                  <div className="app-wh-node-title">
+                    层末抉择
+                    {(run.bossCleared ?? 0) < run.depth ? (
+                      <span className="app-dim"> · 层末守卫尚未清除</span>
+                    ) : null}
+                  </div>
                   <div className="app-dim app-note">
-                    本层已清空：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。
+                    {(run.bossCleared ?? 0) < run.depth
+                      ? '层内节点已走完，但出口被本层守卫堵着：先「迎击层末守卫」，打完才能选择深入或撤离。'
+                      : '本层守卫已清：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。'}
                   </div>
                   <div className="app-wh-actions">
+                    {(run.bossCleared ?? 0) < run.depth ? (
+                      <button
+                        className="app-btn is-small is-primary"
+                        disabled={!!run.battle}
+                        onClick={() => {
+                          const r = engine.wormholeFight('boss')
+                          if (!r.ok) onToast(r.error ?? '无法开战。', true)
+                        }}
+                      >
+                        迎击层末守卫（威胁 {wormholeFoeThreat(run.depth, 'boss')}）
+                      </button>
+                    ) : null}
                     <button
                       className="app-btn is-small is-primary"
-                      disabled={run.turnsLeft <= 0}
-                      title={run.turnsLeft <= 0 ? '回合已耗尽：只能撤离' : undefined}
+                      disabled={run.turnsLeft <= 0 || (run.bossCleared ?? 0) < run.depth}
+                      title={
+                        (run.bossCleared ?? 0) < run.depth
+                          ? '先清掉本层守卫'
+                          : run.turnsLeft <= 0
+                            ? '回合已耗尽：只能撤离'
+                            : undefined
+                      }
                       onClick={() => {
                         const r = engine.wormholeDescend()
                         if (!r.ok) onToast(r.error ?? '无法深入。', true)
@@ -285,6 +326,7 @@ export function WormholePanel({
                     </button>
                     <button
                       className="app-btn is-small"
+                      disabled={(run.bossCleared ?? 0) < run.depth}
                       onClick={() => {
                         const r = engine.wormholeExtract()
                         if (!r.ok) onToast(r.error ?? '无法撤离。', true)

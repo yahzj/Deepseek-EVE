@@ -823,15 +823,25 @@ export {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  // F 批：敌卡按层派生
+  wormholeFoeThreat,
+  wormholeAnomalyOf,
+  wormholeCardIdFor,
+  WORMHOLE_FOE_CARD_IDS,
+  WORMHOLE_BOSS_THREAT_MUL,
+  WORMHOLE_EXTRACT_THREAT_MUL,
   wormholeLayerThreat,
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
 } from './wormhole'
+// F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
+export { wormholeStartBattle, advanceWormhole } from './wormholeBattle'
 export type {
   WormholeAdmission,
   WormholeAdmissionCode,
   WormholeBagSlot,
   WormholePile,
+  WormholeFoeKind,
   WormholeState,
   WormholeRunState,
   WormholeNode,

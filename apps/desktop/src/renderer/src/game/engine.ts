@@ -141,6 +141,7 @@ import {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  wormholeStartBattle,
   wormholeDebugReset,
 } from '@whale/core'
 import type {
@@ -1371,6 +1372,16 @@ export class GameEngine {
       this.notify()
     }
     return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**迎战**（`node` = 当前节点 / `boss` = 层末守卫 / `extract` = 撤离战） */
+  wormholeFight(kind: 'node' | 'boss' | 'extract'): CommandResult {
+    const r = wormholeStartBattle(this.state, this.ctx, kind)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
   }
 
   /** 虫洞：⚠ 施工期调试用——放弃本趟（正式结算路径在 F 批） */

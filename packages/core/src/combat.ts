@@ -33,6 +33,8 @@ import type {
 } from './types'
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
+// 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
+import { wormholeAnomalyOf } from './wormholeFoes'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
@@ -2369,11 +2371,20 @@ export function startFleetBattleFor(
   anomalyId: string | null,
   atGameMs: number = state.gameMs,
   desireM?: number | null,
+  /**
+   * **虫洞战斗标记**（F 批 · 2026-09-13）：给了就按层派生敌卡（`wormholeAnomalyOf`），
+   * 并把 `{cardId, depth, kind, waves}` 写进 `battle.wormhole` ⇒ 逐拍重建同源。
+   * **不给 = 普通多舰战斗**（既有行为）。
+   */
+  wormhole?: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number },
 ): import('./state').BattleState | null {
   if (!anomalyId || shipIds.length === 0) return null
-  // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径）
-  const anomaly = battleAnomalyOf(ctx, anomalyId)
-  if (!anomaly) return null
+  // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
+  const baseCard = battleAnomalyOf(ctx, anomalyId)
+  if (!baseCard) return null
+  const anomaly = wormhole
+    ? wormholeAnomalyOf(baseCard, wormhole.depth, wormhole.kind, wormhole.waves)
+    : baseCard
   const bal = ctx.balance.battle
   // 编队顺序：**主控置首**（`state.shipId` 在编队里就提到第一位），其余保持传入顺序
   const ordered = [...shipIds]
@@ -2489,6 +2500,8 @@ export function startFleetBattleFor(
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
   }
+  // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）
+  if (wormhole) battle.wormhole = { cardId: anomalyId, ...wormhole }
   // ⚠ **刻意不写 `battle.hullEscapeFrac`**：副本内无"结构过半自动脱离"保险（冲突 2 · 船长裁定）。
   return battle
 }
@@ -2967,8 +2980,17 @@ export function advanceBattleFor(
   factionActive?: boolean,
 ): void {
   if (!battle || battle.ended) return
-  const anomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
-  if (!anomaly) return
+  const baseAnomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
+  if (!baseAnomaly) return
+  // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（与开战同源 ⇒ 波次/血量/火力口径一致）
+  const anomaly = battle.wormhole
+    ? wormholeAnomalyOf(
+        baseAnomaly,
+        battle.wormhole.depth,
+        battle.wormhole.kind,
+        battle.wormhole.waves,
+      )
+    : baseAnomaly
   const bal = ctx.balance.battle
   const myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId)
   if (myUnits.length === 0) {

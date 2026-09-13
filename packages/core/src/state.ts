@@ -527,6 +527,19 @@ export interface BattleState {
    * 其余为僚舰 `'ally-1'..'ally-3'`；`units` 里每条的 hp/装填各自独立。
    */
   myFleet?: Array<{ tag: string; shipId: string }>
+  /**
+   * **本场是虫洞战斗**（F 批 · 2026-09-13）：只记"哪张敌卡 + 哪一层 + 什么用途 + 几波"，
+   * 敌卡的绝对值**每拍按层重建**（静态卡由定义重建，不把整张卡存进档）。
+   * **不写 = 普通战斗**（既有 27 张赏金卡 / 低安遭遇 / AI 副船）⇒ 零变化。
+   */
+  wormhole?: {
+    /** 洞内敌卡 id（`wh-*`，见 `packages/data/src/wormholeFoes.ts`） */
+    cardId: string
+    depth: number
+    kind: 'node' | 'boss' | 'extract'
+    /** 本节点打几波（同一编成分波进场；撤离战恒 1 波） */
+    waves: number
+  }
   /* ═══ 敌突进 / 冲锋（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）═══
    * 够不着时机动 ×2；**结束判据已改为「到达目标距离」**（敌方期望交距），冷却 20 秒。
    * 字段都是**可选、零迁移**；`cleanBattle` 白名单未收录（撤退保险三项自 2026-09-11 起已收录；

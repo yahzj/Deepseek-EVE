@@ -10,11 +10,17 @@
  *
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
-import type { GameState } from './state'
+import type { GameState, BattleState } from './state'
 import { addLog } from './state'
-import type { ShipDef, SimContext } from './types'
+import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
+import {
+  wormholeLayerRewardMul,
+  wormholeNodesPerLayer,
+  wormholeCardIdFor,
+} from './wormholeFoes'
+import type { WormholeFoeKind } from './wormholeFoes'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -245,6 +251,19 @@ export interface WormholeRunState {
   pendingNode: WormholeNode | null
   /** 本层节点数（2~3，船长定） */
   nodesPerLayer: number
+  /**
+   * **进行中的洞内战斗**（F 批 · 2026-09-13；`null`/缺省 = 不在战斗中）。
+   * 非空即"战斗没结束" ⇒ **不能撤离、不能推进/深入**（设计稿冲突 2 / 船长第 8 条）。
+   * 宿主放在副本状态里（而非复用 `expedition.battle`）：洞内战斗**不走远征结算**
+   * （不发赏金、不返航），收口由 `advanceWormhole` 自己做。
+   */
+  battle?: BattleState | null
+  /**
+   * **已打通层末 BOSS 的层号**（= 本层 BOSS 已清）。
+   * 设计稿 §3：「层末 BOSS 打完才出现『继续深入 / 撤离』的抉择」⇒
+   * `wormholeDescend` / `wormholeExtract` 都要求 `bossCleared === depth`。
+   */
+  bossCleared?: number
 }
 
 export interface WormholeState {
@@ -256,35 +275,25 @@ export interface WormholeState {
 
 export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
 
-/* ── 层曲线（船长 2026-09-13：「深层收益应该比难度曲线要更高」） ── */
-
-/** 第 1 层基准威胁 */
-export const WORMHOLE_THREAT_BASE = 45
-/** 每层**威胁**增幅（等比 ×1.16 ⇒ 层 1~3 = 45/52/61，与设计稿"≈45~60"同量级） */
-export const WORMHOLE_THREAT_GROWTH = 0.16
-/** 每层**收益**增幅（+20%）。**必须大于威胁增幅** —— 船长 2026-09-13：
- *  「深层收益应该比难度曲线要更高」⇒ 用等比而非加法，才能让"单位威胁收益"**逐层严格上升**
- *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。 */
-export const WORMHOLE_REWARD_GROWTH = 0.2
-/** 兼容取整：每层威胁的**名义**增量（= 45×0.16 ≈ 7，落在设计稿"+8~10"附近，供文档/读数引用） */
-export const WORMHOLE_THREAT_PER_LAYER = Math.round(WORMHOLE_THREAT_BASE * WORMHOLE_THREAT_GROWTH)
-
-/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.16，取整） */
-export function wormholeLayerThreat(depth: number): number {
-  const d = Math.max(1, Math.floor(depth))
-  return Math.round(WORMHOLE_THREAT_BASE * Math.pow(1 + WORMHOLE_THREAT_GROWTH, d - 1))
-}
-
-/** 第 `depth` 层的收益系数（层 1 = 1.0，每层 ×1.2）——**涨得比威胁快** */
-export function wormholeLayerRewardMul(depth: number): number {
-  const d = Math.max(1, Math.floor(depth))
-  return Math.pow(1 + WORMHOLE_REWARD_GROWTH, d - 1)
-}
-
-/** 每层节点数（船长定：2~3 个；层 1~2 取 2、层 3 起取 3——越深越长，与收益曲线同向） */
-export function wormholeNodesPerLayer(depth: number): number {
-  return Math.max(1, Math.floor(depth)) <= 2 ? 2 : 3
-}
+/* ── 层曲线（船长 2026-09-13：「深层收益应该比难度曲线要更高」） ──
+ * ⚠ 实现已挪到 `wormholeFoes.ts`（引擎侧 `combat.ts` 也要用它做按层派生，不能反向依赖本文件）；
+ * 这里**原样再导出**，保持既有的 `from './wormhole'` 引用与用例不变。 */
+export {
+  WORMHOLE_THREAT_BASE,
+  WORMHOLE_THREAT_GROWTH,
+  WORMHOLE_REWARD_GROWTH,
+  WORMHOLE_THREAT_PER_LAYER,
+  WORMHOLE_BOSS_THREAT_MUL,
+  WORMHOLE_EXTRACT_THREAT_MUL,
+  WORMHOLE_FOE_CARD_IDS,
+  wormholeLayerThreat,
+  wormholeLayerRewardMul,
+  wormholeNodesPerLayer,
+  wormholeFoeThreat,
+  wormholeCardIdFor,
+  wormholeAnomalyOf,
+} from './wormholeFoes'
+export type { WormholeFoeKind } from './wormholeFoes'
 
 /** 起一趟：校验编队（复用 B 批的 `wormholeAdmission`）并锁定质量 / 回合预算 / 背包 */
 export interface WormholeStartResult {
@@ -393,7 +402,12 @@ export function wormholeAdvanceNode(
 
 /** 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离） */
 export function wormholeDescend(run: WormholeRunState, rngSeed: number): WormholeAdvanceResult {
+  if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。' }
   if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。' }
+  // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
+  if ((run.bossCleared ?? 0) < run.depth) {
+    return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
+  }
   if (run.turnsLeft <= 0) return { ok: false, error: '回合已耗尽：只能撤离。', mustExtract: true }
   run.depth += 1
   run.nodeIndex = 0
@@ -402,13 +416,16 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number): Wormhol
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
-/** 撤离（**只在层末可用**）：进入撤离战相位；撤离战本体在 F 批实现 */
+/** 撤离（**只在层末可用、且本层守卫已清**）：进入撤离战相位 */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
+  if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
   if (run.pendingNode) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
+  if ((run.bossCleared ?? 0) < run.depth) {
+    return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
+  }
   run.phase = 'extracting'
   return { ok: true }
 }
-
 /* ═══════════ 六、E 批：入洞 / 拾取 / 背包（界面接线所需的引擎动作） ═══════════ */
 
 /**

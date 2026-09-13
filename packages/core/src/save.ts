@@ -734,6 +734,9 @@ const BATTLE_FIELDS = {
   // **我方编队**（虫洞 D 批 · 2026-09-13）：**必须随档** —— 丢了会让战中重载的多舰战斗
   // 退化成单船（僚舰凭空消失、结算按 1 艘算），与 `hullEscapeFrac` 当年漏登记同类后果。
   myFleet: { kind: 'persist' },
+  // **虫洞战斗标记**（虫洞 F 批 · 2026-09-13）：**必须随档** —— 逐拍按它重建派生敌卡；
+  // 丢了会让战中重载的洞内战斗**退回原卡强度**（层数缩放消失，越深越弱的怪事）。
+  wormhole: { kind: 'persist' },
   /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
@@ -874,6 +877,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     ammoIds: cleanAmmoIdMap(b.ammoIds),
     // 我方编队（虫洞 D 批）：坏项丢弃、空表 = 不写（= 单船路径，零迁移）
     myFleet: cleanMyFleet(b.myFleet),
+    // 虫洞战斗标记（虫洞 F 批）：坏值丢弃（= 退回原卡强度），零迁移
+    wormhole: cleanBattleWormhole(b.wormhole),
     // ── 2026-09-12 船长裁定七项（随档）──
     ...(repair !== undefined ? { repair } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
@@ -931,6 +936,26 @@ function cleanMyFleet(raw: unknown): BattleState['myFleet'] | undefined {
     out.push({ tag, shipId })
   }
   return out.length > 0 ? out : undefined
+}
+
+/**
+ * **虫洞战斗标记**（F 批）：`{ cardId, depth, kind, waves }` —— 坏值一律丢弃
+ * （丢了只会退回"原卡强度"，不会崩；`kind` 白名单外 / `cardId` 空 ⇒ 丢弃）。
+ */
+function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined {
+  const w = asRaw(raw)
+  const cardId = typeof w.cardId === 'string' && w.cardId.length > 0 ? w.cardId : null
+  const kind =
+    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' ? w.kind : null
+  const depth = cleanPosNum(w.depth)
+  const waves = cleanPosNum(w.waves)
+  if (!cardId || !kind || depth === undefined || waves === undefined) return undefined
+  return {
+    cardId,
+    kind,
+    depth: Math.max(1, Math.floor(depth)),
+    waves: Math.max(1, Math.floor(waves)),
+  }
 }
 
 /** 单架机群生存池条目（三层血齐备才收；机型/闪避/抗性/备用机字段按形状带过） */
@@ -2428,6 +2453,11 @@ function normalizeState(raw: unknown): GameState {
                     ...cleanWormholePiles(pn.piles),
                   },
             nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
+            // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
+            ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
+            ...(Math.floor(num(rRaw.bossCleared)) > 0
+              ? { bossCleared: Math.floor(num(rRaw.bossCleared)) }
+              : {}),
           }
         : null
     return { run, lastFleetLost: Math.max(0, Math.floor(num(wRaw.lastFleetLost))) }
