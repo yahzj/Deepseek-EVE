@@ -9335,18 +9335,44 @@ body {
   border-radius: 6px; background: rgba(255, 255, 255, 0.02); min-height: 132px;
 }
 .app-wh-node-title { font-size: 13px; margin-bottom: 6px; }
-.app-wh-bag-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-  gap: 6px; margin-top: 6px;
+/* ── 货仓格（F4b · 2026-09-13 船长：「类似背包英雄那种需要管理的背包格」）──
+   8 列固定网格：货柜 = 2×2 整块（可拖拽）、散货 = 自动填的散格、超出容量的显示位 = 锁定格。
+   格子统一 aspect-ratio:1 ⇒ 永远是正方形（拖拽落点与视觉一致，也不因内容变化跳动）。 */
+.app-wh-hold { display: flex; flex-direction: column; gap: 6px; }
+.app-wh-hold-grid {
+  display: grid; gap: 4px; margin-top: 6px;
+  max-width: 560px; /* 8 列在宽面板里不至于拉成巨格 */
 }
-.app-wh-bag-cell {
-  height: 50px; border: 1px dashed var(--wui-border); border-radius: 5px;
+.app-wh-hold-cell {
+  aspect-ratio: 1 / 1; border: 1px dashed var(--wui-border); border-radius: 5px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  font-size: 10.5px; line-height: 1.35; padding: 2px; overflow: hidden; text-align: center;
+  font-size: 10.5px; line-height: 1.3; padding: 2px; overflow: hidden; text-align: center;
+  user-select: none;
 }
-.app-wh-bag-cell.is-full { border-style: solid; border-color: rgba(79, 216, 196, 0.45); background: rgba(79, 216, 196, 0.07); }
-.app-wh-bag-name { color: var(--wui-accent); }
-.app-wh-bag-units { opacity: 0.85; }
+.app-wh-hold-cell.is-free { border-style: solid; border-color: rgba(255, 255, 255, 0.06); }
+.app-wh-hold-cell.is-cargo {
+  border-style: solid; border-color: rgba(157, 180, 200, 0.35);
+  background: rgba(157, 180, 200, 0.08);
+}
+.app-wh-hold-cell.is-locked { border-style: dashed; opacity: 0.28; cursor: not-allowed; }
+/* 货柜整块：只有"左上角那一格"画边框（其余格做底色）⇒ 视觉上是一整块而不是 4 个格子 */
+.app-wh-hold-cell.is-boxbody { border-color: transparent; background: rgba(79, 216, 196, 0.07); border-radius: 0; }
+.app-wh-hold-cell.is-box {
+  border-style: solid; border-color: rgba(79, 216, 196, 0.55);
+  background: rgba(79, 216, 196, 0.12); border-radius: 5px;
+}
+.app-wh-hold-cell.is-origin { cursor: grab; }
+.app-wh-hold-cell.is-dragging { opacity: 0.45; cursor: grabbing; }
+.app-wh-hold-box-name { color: var(--wui-accent); font-size: 10px; }
+.app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
+.app-wh-hold-warn { color: #ff8373; }
+/* 超载条（探索页与货仓页共用）：与「前往未知地点」警告同族，但走红档 */
+.app-wh-hold-overload {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45);
+  border-radius: 6px; background: rgba(255, 131, 115, 0.07); color: #ff8373;
+  font-size: 12px; line-height: 1.5;
+}
 
 /* ═══════════ 我方编队条（虫洞 4 舰同场；2026-09-13 F2）═══════════
    口径：与战场同色系；容器固定高，舰沉只改透明度不改行高（防界面跳动）。

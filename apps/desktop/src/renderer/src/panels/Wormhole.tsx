@@ -28,7 +28,10 @@ import {
   wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
+  WORMHOLE_HOLD_COLS,
   durabilityOf,
+  holdRows,
+  placementCells,
   signalOfPlace,
   wormholeOutOfTurns,
   wormholeShipAllowed,
@@ -98,6 +101,12 @@ export function WormholePanel({
   const canSalvage = salvageCell && salvagers > 0 && herePiles.length > 0 && (run?.turnsLeft ?? 0) >= 1
   /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
   const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
+  /**
+   * **货仓超载**（F4 · 船长裁定 8：沉船后要求玩家手动抛弃货物）：
+   * 超载期间不能再装货（拾取/打捞/战果），撤离与深入也要先抛到容量内 ⇒ 界面据此置灰并给提示。
+   */
+  const holdInfo = run ? engine.wormholeHoldInfo() : null
+  const overloaded = holdInfo?.overload ?? false
 
   /* ── 选舰检索（船长 2026-09-13「缺少一个类似我的舰队里的舰船筛选和搜索」）──
      复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 两行筛选（类别 / 级别，各维取「与」）；
@@ -526,7 +535,7 @@ export function WormholePanel({
                   <div className="app-wh-actions">
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || run.turnsLeft < 1}
+                      disabled={!!run.battle || overloaded || run.turnsLeft < 1}
                       onClick={doScan}
                       title="扫描当前地点及周围一圈：只揭开还没扫过的格（1 回合）"
                     >
@@ -536,6 +545,7 @@ export function WormholePanel({
                       className="app-btn is-small is-primary"
                       disabled={
                         !!run.battle ||
+                        overloaded ||
                         run.turnsLeft < 1 ||
                         (salvageCell ? !canSalvage : !canActivate)
                       }
@@ -565,7 +575,7 @@ export function WormholePanel({
                     {bossDone ? (
                       <button
                         className="app-btn is-small is-primary"
-                        disabled={!!run.battle || run.turnsLeft <= 0}
+                        disabled={!!run.battle || overloaded || run.turnsLeft <= 0}
                         onClick={doDescend}
                         title="带着当前进度深入下一层（更深、更值钱、更硬）"
                       >
@@ -574,7 +584,7 @@ export function WormholePanel({
                     ) : null}
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || (!outOfTurns && !bossDone)}
+                      disabled={!!run.battle || overloaded || (!outOfTurns && !bossDone)}
                       onClick={doExtract}
                       title={
                         outOfTurns
@@ -588,6 +598,17 @@ export function WormholePanel({
                     </button>
                     <span className="app-dim">点格子前往（不限距离 · 1 回合）</span>
                   </div>
+                  {overloaded ? (
+                    <div className="app-wh-hold-overload">
+                      <span>
+                        货仓超载（{holdInfo?.used}/{holdInfo?.capacity} 格）：**先抛货**——超载期间不能拾取/打捞，
+                        撤离与深入也要先抛到容量内。
+                      </span>
+                      <button className="app-btn is-small" onClick={() => setTab('bag')}>
+                        去货仓页抛货
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="app-wh-node">
                     <div className="app-wh-node-title">
                       {atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[hereCell.place]}
@@ -678,7 +699,7 @@ export function WormholePanel({
                   <div className="app-wh-actions">
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || (!outOfTurns && !bossDone)}
+                      disabled={!!run.battle || overloaded || (!outOfTurns && !bossDone)}
                       onClick={doExtract}
                     >
                       撤离
@@ -697,7 +718,7 @@ export function WormholePanel({
           ) : null}
 
           {tab === 'bag' && run ? (
-            <WhBag engine={engine} />
+            <WhHold engine={engine} onToast={onToast} />
           ) : null}
         </div>
       </div>
@@ -846,46 +867,223 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   beacon: '漂浮信标：到达即读出它标出的下一层入口位置（地图上会一直标着）。',
 }
 /**
- * 背包网格：每格只装一种物品（`WormholeBagSlot` 一条 = 一格的内容，同物品并格）。
- * 空位补到容量上限（最多画 120 格——设计稿 §七：21~120 格，超过再谈虚拟化）。
+ * **货仓页 = 形状网格**（F4b · 船长 2026-09-13：「类似背包英雄那种需要管理的背包格（没有背包，
+ * 货仓直接代表背包大小）」）。
+ *
+ * 画法（与 core 同一套几何，`wormholeHold`）：
+ * - **8 列**、行数 = ⌈可用格数 ÷ 8⌉；超出可用格数的显示位 = **锁定格**（虚线、不可放）；
+ * - **形状件**（遗迹安全货柜 2×2）按自己的坐标画成整块，可**拖拽**到别的格子（落点非法 ⇒ 拒绝并提示）；
+ * - **可叠加散货**（母矿/残骸）不参与拼装：按"占 N 格"**从网格末尾往前填**（跳过被货柜占住的格），
+ *   所以画面上的空格数 = 真正还能放货柜的空位（散货会自动让位）；
+ * - 超载（沉船后格数变小）⇒ 顶部红条 + 「一键抛到容量内」；抛弃**永远手动**（船长裁定 8）。
  */
-function WhBag({ engine }: { engine: GameEngine }) {
+function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const ctx = engine.ctx
   const run = state.wormhole.run!
-  const cap = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
-  const usage = wormholeBagUsage(ctx, run.bag, cap)
-  const cells: Array<{ itemId: string; units: number; slots: number } | null> = []
-  for (const s of run.bag) {
-    const def = ctx.items.get(s.itemId)
-    cells.push({ itemId: s.itemId, units: s.units, slots: Math.ceil(s.units / Math.max(1, wormholeUnitsPerSlot(def?.unitM3 ?? 0))) })
+  const info = engine.wormholeHoldInfo()
+  const [dragId, setDragId] = useState<string | null>(null)
+  const cols = WORMHOLE_HOLD_COLS
+  const rows = holdRows(info.capacity, cols)
+  const placements = run.hold?.placements ?? []
+
+  /** 格 → 件（画块用） */
+  const ownerOf = new Map<string, { id: string; x: number; y: number }>()
+  for (const p of placements) {
+    for (const c of placementCells(p)) ownerOf.set(`${c.x},${c.y}`, { id: p.id, x: p.x, y: p.y })
   }
-  const drawn = Math.min(Math.max(cap, cells.length), 120)
-  while (cells.length < drawn) cells.push(null)
+  /** **散货占格**：从末格往前填、跳过货柜格（纯展示；散货在模型里没有坐标） */
+  const cargoCells = new Set<string>()
+  {
+    let need = info.cargoCells
+    for (let i = rows * cols - 1; i >= 0 && need > 0; i--) {
+      const x = i % cols
+      const y = Math.floor(i / cols)
+      if (i >= info.capacity) continue // 锁定格不吃散货
+      if (ownerOf.has(`${x},${y}`)) continue // 货柜占住的格跳过
+      cargoCells.add(`${x},${y}`)
+      need -= 1
+    }
+  }
+
+  function dropAt(x: number, y: number): void {
+    if (!dragId) return
+    const r = engine.wormholeHoldMove(dragId, x, y)
+    if (!r.ok) onToast(r.error ?? '这里放不下。', true)
+    setDragId(null)
+  }
+
   return (
-    <div className="app-wh-bag">
+    <div className="app-wh-hold">
       <div className="app-bay-title">
-        背包 · 已用 {usage.used} / 共 {cap} 格{usage.overflow ? '（已溢出）' : ''}
+        货仓 · 已用 <b>{info.used}</b> / {info.capacity} 格
+        {info.overload ? <span className="app-wh-hold-warn"> · 超载</span> : null}
+        <span className="app-dim">
+          {' '}（散货 {info.cargoCells} 格 + 货柜 {info.shapeCells} 格）
+        </span>
       </div>
       <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³ 且「只装一种物品」；洞内产出 = 原矿（虚空母矿，1 m³/单位 ⇒ 每格 500 单位）
-        与残骸（墓场/遗迹打捞所得，1 m³/单位）。
+        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）要占 2×2 整块——拖拽摆放、放不下整件拒收；
+        母矿与残骸可叠加、会自动给货柜让位。
       </div>
-      <div className="app-wh-bag-grid">
-        {cells.map((c, i) => (
-          <div key={i} className={`app-wh-bag-cell${c ? ' is-full' : ''}`} title={c ? `${ctx.items.get(c.itemId)?.name ?? c.itemId} ×${n(c.units)}` : '空格'}>
-            {c ? (
-              <>
-                <span className="app-wh-bag-name">{ctx.items.get(c.itemId)?.name ?? c.itemId}</span>
-                <span className="app-wh-bag-units">×{n(c.units)}</span>
-              </>
-            ) : (
-              <span className="app-dim">空</span>
-            )}
-          </div>
-        ))}
+      {info.overload ? (
+        <div className="app-wh-hold-overload">
+          <span>
+            货仓超载：沉船拖走了货舱，现在装不下（{info.used}/{info.capacity} 格）。
+            **请手动抛弃货物**——超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。
+          </span>
+          <button
+            className="app-btn is-small is-warn"
+            onClick={() => {
+              const r = engine.wormholeDiscardToFit()
+              if (!r.ok) onToast(r.error ?? '没有可抛的货。', true)
+            }}
+          >
+            一键抛到容量内（按每格价值从低到高）
+          </button>
+        </div>
+      ) : null}
+      <div className="app-wh-hold-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+        {Array.from({ length: rows * cols }, (_, i) => {
+          const x = i % cols
+          const y = Math.floor(i / cols)
+          const key = `${x},${y}`
+          const locked = i >= info.capacity
+          const owner = ownerOf.get(key)
+          const isOrigin = owner !== undefined && owner.x === x && owner.y === y
+          const p = isOrigin ? placements.find((q) => q.id === owner!.id) : undefined
+          const def = p ? ctx.items.get(p.itemId) : undefined
+          const cls = [
+            'app-wh-hold-cell',
+            locked ? 'is-locked' : '',
+            owner ? 'is-box' : cargoCells.has(key) ? 'is-cargo' : locked ? '' : 'is-free',
+            isOrigin ? 'is-origin' : owner ? 'is-boxbody' : '',
+            dragId !== null && isOrigin ? 'is-dragging' : '',
+          ]
+            .filter((s) => s.length > 0)
+            .join(' ')
+          return (
+            <div
+              key={key}
+              className={cls}
+              title={
+                locked
+                  ? '锁定格：超出货仓容量'
+                  : owner
+                    ? (def?.name ?? p!.itemId)
+                    : cargoCells.has(key)
+                      ? '散货'
+                      : '空位：可放货柜'
+              }
+              draggable={isOrigin}
+              onDragStart={() => {
+                if (p) setDragId(p.id)
+              }}
+              onDragEnd={() => setDragId(null)}
+              onDragOver={(e) => {
+                if (dragId) e.preventDefault()
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                dropAt(x, y)
+              }}
+              onClick={() => {
+                if (isOrigin && p) {
+                  // 点一下选中/取消（选中后再点空格也能落位，照顾不方便拖的场景）
+                  setDragId((prev) => (prev === p.id ? null : p.id))
+                } else if (dragId) {
+                  dropAt(x, y)
+                }
+              }}
+            >
+              {isOrigin && p ? (
+                <>
+                  <span className="app-wh-hold-box-name">{def?.name ?? p.itemId}</span>
+                  <span className="app-wh-hold-box-size">
+                    {p.w}×{p.h}
+                  </span>
+                </>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
-      {run.bag.length === 0 ? <div className="app-dim app-inv-empty">背包是空的：去拾取点搬原矿。</div> : null}
+      <div className="app-wh-actions">
+        <button
+          className="app-btn is-small"
+          disabled={placements.length === 0}
+          onClick={() => {
+            const r = engine.wormholeHoldCompact()
+            if (!r.ok) onToast(r.error ?? '无法整理。', true)
+          }}
+        >
+          整理（自动重排）
+        </button>
+        <span className="app-dim">
+          {placements.length} 件货柜 · 拖拽摆放（也可点选中后再点空位）· 占 2×2 = 4 格
+        </span>
+      </div>
+      {placements.length > 0 ? (
+        <ul className="app-inv-list">
+          {placements.map((p) => (
+            <li key={p.id} className="app-inv-row">
+              <div className="app-inv-main">
+                <span className="app-inv-name">{ctx.items.get(p.itemId)?.name ?? p.itemId}</span>
+                <span className="app-inv-count">
+                  {p.w}×{p.h} 格 · 位置 第 {p.y + 1} 行第 {p.x + 1} 列
+                </span>
+              </div>
+              <div className="app-inv-btns">
+                <button
+                  className="app-btn is-small is-warn"
+                  onClick={() => {
+                    const r = engine.wormholeDiscardHold(p.id)
+                    if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                  }}
+                >
+                  抛弃
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {/* 散货清单（可叠加的那些；抛弃按"整条"给，省得点两次） */}
+      <div className="app-bay-title">散货 · {run.bag.length} 类</div>
+      {run.bag.length === 0 ? (
+        <div className="app-dim app-inv-empty">没有散货：去矿脉挖原矿、去墓场/遗迹打捞残骸。</div>
+      ) : (
+        <ul className="app-inv-list">
+          {run.bag.map((s) => {
+            const def = ctx.items.get(s.itemId)
+            const per = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
+            const cells = Math.ceil(s.units / Math.max(1, per))
+            return (
+              <li key={s.itemId} className="app-inv-row">
+                <div className="app-inv-main">
+                  <span className="app-inv-name">
+                    {def?.name ?? s.itemId} ×{n(s.units)}
+                  </span>
+                  <span className="app-inv-count">
+                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格 · 每格 {n(per)} 单位
+                  </span>
+                </div>
+                <div className="app-inv-btns">
+                  <button
+                    className="app-btn is-small is-warn"
+                    onClick={() => {
+                      const r = engine.wormholeDiscardCargo(s.itemId)
+                      if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                    }}
+                  >
+                    抛弃
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }
