@@ -150,6 +150,7 @@ import {
   holdMove,
   wormholeGridActivate,
   wormholeGridScan,
+  wormholeScanBonusOf,
   wormholeTravelTo,
   wormholeDescend,
   wormholeExtract,
@@ -1518,7 +1519,12 @@ export class GameEngine {
     if (!run) return { ok: false, error: '不在虫洞内。' }
     const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
-    const r = wormholeDescend(run, this.state.rng.seed)
+    /**
+     * ⚠ **新层也要带上扫码加成**（2026-09-13 二号接线单）：`wormholeDescend` 的第三个入参是
+     * "新盘的扫描半径加成"，不传就默认 0 ⇒ 侦察舰/电子舰的「扫码范围 +1 圈」**只在第 1 层生效**。
+     * 口径与入洞同源（`wormholeScanBonusOf` 对编队求和），故这里现算一次传进去。
+     */
+    const r = wormholeDescend(run, this.state.rng.seed, wormholeScanBonusOf(this.ctx, run.fleet))
     if (r.ok) {
       void this.persist()
       this.notify()
