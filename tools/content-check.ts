@@ -2966,6 +2966,8 @@ for (const m of MODULES) {
   let driftMatRatio = 0
   let okCoef = 0
   let overridden = 0
+  /** 一次性图纸（不上市场 ⇒ 无市场行）的豁免计数——不参与书价与料/价比对，单独留痕 */
+  let exemptSingleUse = 0
   const tiers: Record<string, number> = {}
   for (const bpId of Object.keys(BLUEPRINT_PRICE_OVERRIDES)) {
     if (!BLUEPRINTS.some((b) => b.id === bpId)) {
@@ -3050,14 +3052,43 @@ for (const m of MODULES) {
     const visibleItemText = ITEMS.filter((i) => itemReleased(i))
       .filter((i) => `${i.name}${i.description}`.includes('虫洞'))
       .map((i) => `物品 ${i.id}（${i.name}）`)
-    const textLeaks = [...visibleAnomalyText, ...visibleItemText]
+    /* ⑥ **（2026-09-13 补）装备 / 舰船 / 蓝图三类也要闸门**（船长「装备就全部做进来」批）：
+     *  这三类的"玩家可见枚举"是手册的**装备图鉴 / 舰船图鉴 / 蓝图图鉴**（三处都直接遍历全目录，
+     *  与物品那次同款）⇒ 虫洞专属内容（id 前缀 `mod-wh-` / `sh-wh-` / `bp-wh-`）**必须标 `unreleased`**，
+     *  且**已上线**的内容其玩家可见文案里不得出现「虫洞」。 */
+    const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sh-wh-'] as const
+    const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
+      ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
+      ...SHIPS.map((s) => ({ kind: '舰船', id: s.id, name: s.name, description: s.description, unreleased: s.unreleased })),
+      ...BLUEPRINTS.map((b) => ({ kind: '装备图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
+      ...SHIP_BLUEPRINTS.map((b) => ({ kind: '舰船图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
+    ]
+    const isWhContent = (id: string): boolean => WH_PREFIXES.some((p) => id.startsWith(p))
+    const whContent = whTyped.filter((d) => isWhContent(d.id))
+    for (const d of whContent) {
+      if (d.unreleased !== true) {
+        errors.push(
+          `虫洞不可见闸门：${d.kind} ${d.id}（${d.name}）没有标 unreleased —— ` +
+            `手册装备/舰船/蓝图图鉴都是遍历全目录的，施工期会连名字带描述一起露出去`,
+        )
+      }
+    }
+    const visibleWhText = whTyped
+      .filter((d) => !isWhContent(d.id))
+      .filter((d) => `${d.name}${d.description ?? ''}`.includes('虫洞'))
+      .map((d) => `${d.kind} ${d.id}（${d.name}）`)
+    const textLeaks = [...visibleAnomalyText, ...visibleItemText, ...visibleWhText]
     if (textLeaks.length > 0) {
       errors.push(
         `虫洞不可见闸门：以下**玩家可见**内容里出现了「虫洞」字样（施工期文案不得提及虫洞）：${textLeaks.join('、')}`,
       )
     }
+    const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
+      `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     console.log(
       `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
+        ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
+        ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
         ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
     )
   }
@@ -3065,6 +3096,13 @@ for (const m of MODULES) {
     const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'
     const good = marketOfBp.get(bp.id)
     if (!good) {
+      /* **一次性图纸豁免**（2026-09-13 船长：「不掉永久图纸」⇒ 虫洞专属装备/舰船只出一次性图纸）：
+       * 它**不上市场**（2026-09-12 船长裁定「来源由掉落/奖励指定」），故"没有市场行"不是错；
+       * 但也**不参与**档位系数与料/价比对（没有产物现货价可比），单独计数留痕。 */
+      if (bp.singleUse === true) {
+        exemptSingleUse += 1
+        continue
+      }
       errors.push(`蓝图价格口径：${bp.id}（${label}）在市场目录里没有蓝图行——玩家买不到，也无法比对书价`)
       mismatchPrice += 1
       continue
@@ -3120,7 +3158,7 @@ for (const m of MODULES) {
   console.log(
     `· 蓝图价格口径：${BLUEPRINTS.length} 张装备/物品蓝图中，书价与规则值一致 ${okCoef} 张（${Object.entries(tiers)
       .map(([k, v]) => `${k} ${v}`)
-      .join(' / ')}；单独覆盖 ${overridden} 张）；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
+      .join(' / ')}；单独覆盖 ${overridden} 张；**一次性图纸豁免 ${exemptSingleUse} 张**（不上市场、无市场行，故不比书价/料价））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
   )
 }
 

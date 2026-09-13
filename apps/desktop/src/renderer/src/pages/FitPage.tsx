@@ -319,7 +319,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   // V18.1 索敌阵列（命中件）：炮台命中乘子（收敛后；条目层）
   const gunEq = spec?.weapons.find((w) => w.kind === 'gun')?.eqHitMul
 
-  const bayModules: ModuleDef[] = engine.modules.filter((m) => countModule(state, m.id) > 0)
+  // 装备库按**持有数**筛 ⇒ 走全目录（玩家的东西必须显示得出来，未上线闸门只管"给玩家看的枚举"）
+  const bayModules: ModuleDef[] = engine.allModules.filter((m) => countModule(state, m.id) > 0)
   // CPU 占用（全位合计 + 无人机舱清单预占——2026-09-08 无人机舱大改：装入即占预算）
   const droneLoadOf = state.fleet[effectiveTarget]?.droneLoad
   const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) + droneCpuUsed(droneLoadOf, engine.ctx) : 0

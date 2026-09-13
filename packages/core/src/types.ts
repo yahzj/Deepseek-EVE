@@ -245,6 +245,17 @@ export interface ShipDef {
   /** 命中率加成 0~0.5（打敌方时加到武器命中率上；受自身扫描分辨率修正） */
   hitBonus?: number
   description: string
+  /**
+   * **未上线闸门（施工期）**——语义与口径**完全同 `ItemDef.unreleased`**（2026-09-13 船长铁律
+   * 「虫洞完成之前，对玩家不可见」）：标了 ⇒ 不进任何"给玩家看的全目录枚举"
+   * （首例 = 手册**舰船图鉴**，它直接遍历 `SHIPS` 全目录）。
+   *
+   * 为什么舰船也要这一道：未上线的船一旦登记进 `SHIPS`，舰船图鉴 / 组装机舰船下拉就会
+   * 连名字带描述一起露出去——与 2026-09-13 物品那次（虚空母矿挂上工业页）是同一个坑。
+   * **引擎内部照用 `SHIPS` 全目录**（舰种契约、战斗建档、价格口径都不受影响）。
+   * **上线动作 = 删掉这一个字段**。
+   */
+  unreleased?: boolean
 }
 
 /** AI 核心类型（v8：玩家的"分身"，效率决定副船工作速度；效率不影响奖励） */
@@ -895,6 +906,12 @@ export interface ModuleDef {
    */
   bonus?: number
   description: string
+  /**
+   * **未上线闸门（施工期）**——语义同 `ItemDef.unreleased`（2026-09-13 船长铁律）。
+   * 标了 ⇒ 不进手册**装备图鉴**（它直接遍历 `MODULES` 全目录）；引擎内部照用全目录。
+   * **上线动作 = 删掉这一个字段**。
+   */
+  unreleased?: boolean
   /* ═══ V17/V17.1 战斗装备参数（EVE 式：字段各自进公式环节；抗性件与容量件拆族；
        V18.1 起取消同类唯一——多件按 equipment 收敛组合成：抗性/闪避缺口复合 1−Π(1−x)、
        命中/速度 EVE 曲线 Π(1+pᵢ·wᵢ)、伤害/射速/容量加算 Σ） ═══ */
@@ -1042,6 +1059,13 @@ export interface ShipBlueprintDef {
   shipId: string
   /** **一次性图纸**：口径同 `BlueprintDef.singleUse`（舰船蓝图同样适用；缺省不写 = 普通蓝图） */
   singleUse?: boolean
+  /**
+   * **未上线闸门（施工期）**——语义同 `ItemDef.unreleased`（2026-09-13 船长铁律）。
+   * 标了 ⇒ 不进手册**蓝图图鉴**与组装机的蓝图下拉（两处都遍历全目录）；
+   * 引擎内部照用全目录（制造开工按玩家实际持有的书判定，不受影响）。
+   * **上线动作 = 删掉这一个字段**。
+   */
+  unreleased?: boolean
   /** 材料需求（矿物），开工时一次性扣除 */
   materials: readonly MaterialNeed[]
   /** 基础制造耗时（秒），受工业理论缩短 */
@@ -1109,6 +1133,12 @@ export interface BlueprintDef {
   /** 购买蓝图价格（ISK） */
   priceIsk: number
   description: string
+  /**
+   * **未上线闸门（施工期）**——语义同 `ItemDef.unreleased`（2026-09-13 船长铁律）。
+   * 标了 ⇒ 不进手册**蓝图图鉴**与组装机的蓝图下拉；引擎内部照用全目录。
+   * **上线动作 = 删掉这一个字段**（与一次性图纸的"落地同批"口径一致）。
+   */
+  unreleased?: boolean
 }
 
 /** 星系定义（星图节点；坐标仅用于界面 SVG 布局） */

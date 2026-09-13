@@ -17,6 +17,7 @@ import {
   fightEncounter,
   fleeEncounter,
   formatDurationMs,
+  itemReleased, // 2026-09-13 施工期闸门：未上线内容不进"给玩家看的"目录枚举
   assignAiExpedition,
   assignAiStandby,
   assignAiMining,
@@ -348,20 +349,30 @@ function offlineReportLogText(r: OfflineReport): string {
 export class GameEngine {
   /** 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值） */
   readonly ctx: SimContext = buildSimContext()
-  /** 界面目录数据 */
+  /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
+   *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
   readonly skills = SKILLS
   readonly groups = SKILL_GROUPS
-  readonly ships = SHIPS
+  readonly ships = SHIPS.filter((d) => itemReleased(d))
   readonly belts = BELTS
   readonly items = ITEMS
-  readonly modules = MODULES
-  readonly blueprints = BLUEPRINTS
-  readonly shipBlueprints = SHIP_BLUEPRINTS
+  readonly modules = MODULES.filter((d) => itemReleased(d))
+  readonly blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
+  readonly shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
   readonly galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
   readonly anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
   readonly allAnomalies = ANOMALIES_FLAVORED
+  /**
+   * **全目录**（含未上线）——只给"玩家已持有 / 已在跑"的解析路径用：装备库按持有数筛、
+   * 组装机按 `run.blueprintId` 反查蓝图等。**别的用途一律用上面的可见目录**
+   * （口径与 `allAnomalies` 同款；未上线内容在施工期不可能被玩家持有，故这些路径不会漏）。
+   */
+  readonly allShips = SHIPS
+  readonly allModules = MODULES
+  readonly allBlueprints = BLUEPRINTS
+  readonly allShipBlueprints = SHIP_BLUEPRINTS
   /** 通讯剧本目录（T9） */
   readonly dialogues = DIALOGUES
 

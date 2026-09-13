@@ -689,7 +689,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26_000,
     signatureM: 300,
     scanResMm: 300,
-    description: '战列舰壳体（模子）：正面承伤与火力平台，数值待定案。',
+    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢。',
   },
   {
     id: 'sh-dunkleosteus',
@@ -716,7 +716,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 28_000,
     signatureM: 350,
     scanResMm: 280,
-    description: '旗舰壳体（模子）：舰队的顶点，数值待定案。',
+    description: '舰队的顶点：承伤、火力与装配位都在同代船之上，造价与工期同样如此。整支编队的节奏由它定——它慢，别人就得等。',
   },
 
   // ══════════ 蜃楼航运线（壳大皮薄：结构量高、盾甲低） ══════════
