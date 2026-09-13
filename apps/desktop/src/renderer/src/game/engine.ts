@@ -1387,6 +1387,13 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
   /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
+  /**
+   * 虫洞：**逐堆拾取**（1 回合/堆）。
+   *
+   * ⚠ F5 起网格层的产出**一律成批回收**（打捞器/采集器台数 × 回合，界面只给「打捞 / 采集」一个按钮）——
+   * 这个方法留给**老档线性层**（`run.grid` 不存在的那代存档）与将来的"单堆拣选"入口；
+   * 网格层的矿脉另有 core 侧的采集器闸门（`wormholeTakePileAt`），没采集器一堆也拿不走。
+   */
   wormholeTakePile(pileIndex: number): CommandResult {
     const r = wormholeTakePileAt(this.state, this.ctx, pileIndex)
     if (r.ok) {
@@ -1495,7 +1502,14 @@ export class GameEngine {
   }
 
   /** 虫洞：**货仓读数**（已用格 / 总格 / 超载；界面与按钮置灰共用） */
-  wormholeHoldInfo(): { used: number; capacity: number; cargoCells: number; shapeCells: number; overload: boolean } {
+  wormholeHoldInfo(): {
+    used: number
+    capacity: number
+    cargoCells: number
+    shapeCells: number
+    unplacedCells: number
+    overload: boolean
+  } {
     return wormholeHoldUsage(this.state, this.ctx)
   }
   /** 虫洞：深入下一层（只在层末可用） */

@@ -921,6 +921,10 @@ export {
   wormholeDeliverRelics,
   wormholeEnsureSalvagePiles,
   wormholeEnsureVeinPiles,
+  // F5（船长 2026-09-13）：到达即铺堆（不用激活）+ 采集器门槛（虚空母矿）——打捞/采集同构
+  wormholeEnsureArrivalPiles,
+  wormholeMinersOf,
+  wormholeCollectOreAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
   wormholeGrantShipSpoils,

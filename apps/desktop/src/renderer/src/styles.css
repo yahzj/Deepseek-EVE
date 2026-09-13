@@ -9300,8 +9300,9 @@ body {
   fill: rgba(255, 255, 255, 0.015);
   stroke: currentColor; stroke-width: 1; opacity: 0.45;
 }
-/* 三档：未扫描（虚线最淡）/ 已扫描（有信号符号）/ 已到达（亮 + 淡底） */
-.app-wh-hex.is-unknown polygon { stroke-dasharray: 3 3; opacity: 0.3; }
+/* 三档：未扫描（**蓝灰虚线边框** —— 船长 F5：「目前未扫描的地点可以通过边框颜色判断」）/
+   已扫描（按信号分色 + 符号）/ 已到达（亮 + 淡底）。 */
+.app-wh-hex.is-unknown polygon { stroke: #7b8fa3; stroke-dasharray: 3 3; opacity: 0.55; }
 .app-wh-hex.is-scanned polygon { opacity: 0.72; }
 .app-wh-hex.is-known polygon { fill: rgba(79, 216, 196, 0.06); opacity: 1; }
 .app-wh-hex:hover polygon { stroke-width: 2; }
@@ -9313,7 +9314,9 @@ body {
 .app-wh-hex.is-wreck, .app-wh-legend-glyph.is-wreck { color: #9db4c8; }
 .app-wh-hex.is-resource, .app-wh-legend-glyph.is-resource { color: #f4c95d; }
 .app-wh-hex.is-radar, .app-wh-legend-glyph.is-radar { color: #b48fe0; }
-.app-wh-hex.is-blank, .app-wh-legend-glyph.is-blank, .app-wh-legend-glyph.is-unknown { color: var(--wui-dim); }
+.app-wh-hex.is-blank, .app-wh-legend-glyph.is-blank { color: var(--wui-dim); }
+/* 图例里的"未扫描"格与地图同色（蓝灰虚线），否则图例教不会玩家认这个边框 */
+.app-wh-legend-glyph.is-unknown { color: #7b8fa3; }
 .app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(244, 201, 93, 0.12); }
 .app-wh-hex.is-exit { color: #f4c95d; }
 .app-wh-legend {
@@ -9336,8 +9339,8 @@ body {
 }
 .app-wh-node-title { font-size: 13px; margin-bottom: 6px; }
 /* ── 货仓格（F4b · 2026-09-13 船长：「类似背包英雄那种需要管理的背包格」）──
-   8 列固定网格：货柜 = 2×2 整块（可拖拽）、散货 = 自动填的散格、超出容量的显示位 = 锁定格。
-   格子统一 aspect-ratio:1 ⇒ 永远是正方形（拖拽落点与视觉一致，也不因内容变化跳动）。 */
+   8 列固定网格：货柜 = 2×2 整块、散货 = 一种一条 1×N 横条（**F5 起散货也是真摆放件、可拖拽**）、
+   超出容量的显示位 = 锁定格。格子统一 aspect-ratio:1 ⇒ 永远是正方形（拖拽落点与视觉一致，也不因内容变化跳动）。 */
 .app-wh-hold { display: flex; flex-direction: column; gap: 6px; }
 .app-wh-hold-grid {
   display: grid; gap: 4px; margin-top: 6px;
@@ -9355,8 +9358,9 @@ body {
   background: rgba(157, 180, 200, 0.08);
 }
 .app-wh-hold-cell.is-locked { border-style: dashed; opacity: 0.28; cursor: not-allowed; }
-/* 货柜整块：只有"左上角那一格"画边框（其余格做底色）⇒ 视觉上是一整块而不是 4 个格子 */
-.app-wh-hold-cell.is-boxbody { border-color: transparent; background: rgba(79, 216, 196, 0.07); border-radius: 0; }
+/* 整块件（货柜 / 散货条）：只有"左上角那一格"画边框（其余格做底色）⇒ 视觉上是一整块而不是几个格子 */
+.app-wh-hold-cell.is-body { border-color: transparent; background: rgba(79, 216, 196, 0.07); border-radius: 0; }
+.app-wh-hold-cell.is-cargobody { border-color: transparent; background: rgba(157, 180, 200, 0.08); border-radius: 0; }
 .app-wh-hold-cell.is-box {
   border-style: solid; border-color: rgba(79, 216, 196, 0.55);
   background: rgba(79, 216, 196, 0.12); border-radius: 5px;
@@ -9364,6 +9368,7 @@ body {
 .app-wh-hold-cell.is-origin { cursor: grab; }
 .app-wh-hold-cell.is-dragging { opacity: 0.45; cursor: grabbing; }
 .app-wh-hold-box-name { color: var(--wui-accent); font-size: 10px; }
+.app-wh-hold-cargo-name { color: #9db4c8; font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }
 /* 超载条（探索页与货仓页共用）：与「前往未知地点」警告同族，但走红档 */

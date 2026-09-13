@@ -34,6 +34,8 @@ import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
   wormholeHoldUsage,
+  wormholeCollectOreAt,
+  wormholeEnsureArrivalPiles,
   wormholeLootTierOf,
   wormholeLootValueIsk,
   wormholeOverloadBlockReason,
@@ -123,11 +125,10 @@ export function wormholeActivateAt(
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
   const overloaded = wormholeOverloadBlockReason(state, ctx)
   if (overloaded) return { ok: false, error: overloaded }
-  // **打捞格走打捞入口**（F3b）：墓场/遗迹的"激活"其实是**打捞作业**——要打捞器、
-  // 一次回收台数 的堆、遗迹捞空还要掷收尾战；那套逻辑需要 ctx（打捞器台数/背包容量）与目录，
-  // 故放在 `wormholeSalvage` 里，这里只做分流（`wormhole.ts` 不许 import 那个模块）。
-  const here = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
-  if (here && (here.place === 'graveyard' || here.place === 'ruins')) {
+
+  // **打捞格**（墓场/遗迹 · F5 起不用激活）：打捞一批 + 遗迹捞空时的收尾战 —— 合成一次调用
+  const hereCell = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+  if (hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins')) {
     const s = wormholeSalvageAt(state, ctx)
     if (!s.ok) return { ok: false, error: s.error }
     const effect = s.effect
@@ -135,6 +136,12 @@ export function wormholeActivateAt(
     const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
     if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
     return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }
+  }
+  // **矿脉**（F5：要采集器；规则同打捞）——也走"激活"这个入口，界面一个按钮就够
+  if (hereCell?.place === 'vein') {
+    const c = wormholeCollectOreAt(state, ctx)
+    if (!c.ok) return { ok: false, error: c.error }
+    return { ok: true, spent: c.spent, taken: c.taken?.length ?? 0 }
   }
   const r = wormholeGridActivate(state)
   if (!r.ok) return { ok: false, error: r.error }
@@ -186,6 +193,8 @@ export function wormholeTravelTo(
       : null
   const r = wormholeGridTravel(state, target, opts)
   if (!r.ok) return { ok: false, error: r.error, ...(r.code ? { code: r.code } : {}) }
+  // **到达即铺堆**（船长 F5：「资源点和墓场遗迹改为不用激活」）——只铺产出，不扣回合、不进回滚路径
+  wormholeEnsureArrivalPiles(state, ctx)
   const arrived = r.arrived
   if (!arrived?.autoBattle) {
     return {

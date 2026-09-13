@@ -785,6 +785,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (!atExit && (cell.place === 'empty' || cell.place === 'beacon')) {
     return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
   }
+  /**
+   * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
+   * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
+   * 故这三个地点在"激活"这条路上**直接拒绝**，免得白扣一回合。
+   */
+  if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
+    return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。' }
+  }
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
     return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
   }
@@ -797,35 +805,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
     ? { kind: 'exit', key: cell.key }
     : cell.place === 'ship'
       ? { kind: 'battle', key: cell.key }
-      : cell.place === 'graveyard' || cell.place === 'ruins'
-        ? { kind: 'salvage', key: cell.key, place: cell.place }
-        : cell.place === 'vein'
-          ? { kind: 'excavate', key: cell.key }
-          : { kind: 'matter', key: cell.key }
-  // 矿脉：激活即**铺出原矿堆**（1~3 堆，确定性）；拾取走 `wormholeTakePile`（网格层每堆 1 回合）。
-  // ⚠ 残骸打捞（墓场/遗迹）**不在这里铺**：那套要打捞器台数与背包容量（需要 ctx），在 `wormholeSalvage` 里。
-  if (effect.kind === 'excavate') wormholeFillVeinPiles(run, grid, cell)
+      : { kind: 'matter', key: cell.key }
+  // ⚠ 产出的铺放已全部改到**到达那一刻**（`wormholeSalvage.wormholeEnsureArrivalPiles`，船长 F5：资源点/墓场遗迹不用激活）
   addLog(
     state,
     'info',
     `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 剩 ${run.turnsLeft} 回合。`,
   )
   return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
-}
-
-/**
- * **给矿脉格铺原矿堆**（1~3 堆；只铺一次，确定性 = `(本趟种子, 层, 格坐标)`）。
- * 堆本身沿用 `wormholeNodePiles`（虚空母矿、数量随层收益系数），拾取走 `wormholeTakePile`。
- * 为什么放在 `wormhole.ts` 而不是打捞模块：**它不需要 ctx**（原矿堆不认族、不查打捞器），
- * 而 `wormhole.ts` 不许 import 打捞模块（会成环）。
- */
-function wormholeFillVeinPiles(run: WormholeRunState, grid: WormholeGridState, cell: WormholeGridCell): void {
-  if ((cell.piles ?? []).length > 0) return
-  const seed = run.seed ?? run.depth
-  const rng = wormholeStream(seed * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
-  const count = 1 + Math.floor(rng() * 3) // 1~3 堆（与打捞模块的 WORMHOLE_VEIN_PILES_* 同值）
-  const index = Math.abs(cell.q * 13 + cell.r * 29) % 97
-  cell.piles = wormholeNodePiles(seed, run.depth, index, count)
 }
 
 /** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {

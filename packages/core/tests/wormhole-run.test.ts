@@ -572,21 +572,25 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
     expect(again.error ?? '').toContain('守卫')
   })
 
-  it('非资源地点的激活效果按地点类型分流（墓场/遗迹 ⇒ 打捞，矿脉 ⇒ 挖掘，谜质 ⇒ 取回）', () => {
+  it('**免激活三地点**（船长 F5）：墓场/遗迹/矿脉在"激活"这条路上直接拒绝（不扣回合）；谜质照旧可激活', () => {
     const { state, run } = enterForActions()
-    const cases: Array<[WormholePlace, string]> = [
-      ['graveyard', 'salvage'],
-      ['ruins', 'salvage'],
-      ['vein', 'excavate'],
-      ['matter', 'matter'],
-    ]
-    for (const [place, kind] of cases) {
+    // 船长 2026-09-13：「资源点和墓场遗迹改为不用激活」⇒ 走到就铺好产出，玩家直接打捞/采集。
+    // 故这三个地点在 `wormholeGridActivate` 上**拒绝**（免得白扣一回合），改由界面走「打捞 / 采集」。
+    const noActivate: WormholePlace[] = ['graveyard', 'ruins', 'vein']
+    for (const place of noActivate) {
       const key = standOnPlace(run, place)
+      const turnsBefore = run.turnsLeft
       const r = wormholeGridActivate(state)
-      expect(r.ok, `${place} 应可激活`).toBe(true)
-      expect(r.effect?.kind).toBe(kind)
-      expect(r.effect?.key).toBe(key)
+      expect(r.ok, `${place} 不该能激活`).toBe(false)
+      expect(r.error ?? '').toContain('不用激活')
+      expect(run.turnsLeft).toBe(turnsBefore) // 被拒 ⇒ 不扣回合
+      expect(run.grid!.activated).not.toContain(key) // 也不算"已处理"
     }
+    // 谜质不在免激活名单里：照旧「激活 ⇒ 取回」
+    const matterKey = standOnPlace(run, 'matter')
+    const m = wormholeGridActivate(state)
+    expect(m.ok).toBe(true)
+    expect(m.effect).toEqual({ kind: 'matter', key: matterKey })
   })
 
   it('**到达即触发**（船长 2026-09-13）：走到舰船信号 ⇒ 回报 autoBattle 且该格记已处理（不再需要激活）', () => {
