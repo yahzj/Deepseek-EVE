@@ -27,6 +27,7 @@ import {
   wormholeHoldDiscard,
   wormholeHoldOverloaded,
   wormholeHoldStow,
+  wormholeHoldSyncCargo,
   wormholeHoldUsage,
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
@@ -48,6 +49,21 @@ function enterRun(ships = 4, seed = 777): GameState {
   return state
 }
 
+/**
+ * **直接设置背包并同步网格**（F5 起：散货也占真实格、也要有位置）。
+ * ⚠ 背包的既有口径是**一种物品一条**（同物品并格）⇒ 本助手也照此合并，
+ * 否则会出现两条同 id 的散货（网格按 itemId 对齐 ⇒ 读数是假的）。
+ */
+function setBag(state: GameState, slots: Array<{ itemId: string; units: number }>): void {
+  const merged: Array<{ itemId: string; units: number }> = []
+  for (const s of slots) {
+    const hit = merged.find((x) => x.itemId === s.itemId)
+    if (hit) hit.units += s.units
+    else merged.push({ ...s })
+  }
+  state.wormhole.run!.bag = merged
+  wormholeHoldSyncCargo(state, ctx)
+}
 describe('虫洞 · 货仓格几何（纯逻辑）', () => {
   it('8 列网格：行数 = ⌈格数 ÷ 8⌉；越界与重叠都判"放不下"', () => {
     const hold = makeHoldState()
@@ -119,7 +135,7 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     const state = enterRun(4)
     const run = state.wormhole.run!
     expect(wormholeHoldCapacityOf(state, ctx)).toBe(20)
-    run.bag = [{ itemId: 'ore-voidmother', units: 1500 }] // 3 格
+    setBag(state, [{ itemId: 'ore-voidmother', units: 1500 }]) // 3 格
     expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 3, shapeCells: 0, used: 3, capacity: 20 })
     const stow = wormholeHoldStow(state, ctx, BOX)
     expect(stow.ok).toBe(true)
@@ -132,7 +148,7 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     const run = state.wormhole.run!
     const cap = wormholeHoldCapacityOf(state, ctx)
     expect(cap).toBe(10)
-    run.bag = [{ itemId: 'ore-voidmother', units: 12 * 500 }] // 12 格 > 10
+    setBag(state, [{ itemId: 'ore-voidmother', units: 12 * 500 }]) // 12 格 > 10
     expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
     expect(wormholeOverloadBlockReason(state, ctx) ?? '').toContain('超载')
     expect(wormholeActivateAt(state, ctx).ok).toBe(false)
@@ -151,40 +167,45 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
   it('散货可按量抛（只差一两格时不用整条丢）；形状件单独抛', () => {
     const state = enterRun(2)
     const run = state.wormhole.run!
-    run.bag = [
+    setBag(state, [
       { itemId: 'ore-voidmother', units: 6 * 500 },
       { itemId: 'wreck-wh-pirate-scout', units: 6 * 500 },
-    ] // 共 12 格 > 10
+    ]) // 共 12 格 > 10
     const dropped = wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout', 2 * 500)
     expect(dropped.ok).toBe(true)
     expect(dropped.dropped).toBe(1000)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
-    // 形状件：装一件占 4 格 ⇒ 10 + 4 = 14 > 10 ⇒ **立刻超载**（格管理要留位置）
+    // **F5 起货柜要真有空位**（散货也占真实格）：10 格被散货占满 ⇒ 装 4 格货柜**当场拒收**（整件拒收）
+    const blocked = wormholeHoldStow(state, ctx, BOX)
+    expect(blocked.ok).toBe(false)
+    expect(blocked.error ?? '').toContain('装不下')
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(false) // 被拒 ≠ 超载：状态没动
+    // 腾出 4 格（抛掉 2000 单位残骸）⇒ 货柜装得下
+    expect(wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout').ok).toBe(true)
     const stow = wormholeHoldStow(state, ctx, BOX)
     expect(stow.ok).toBe(true)
-    expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
-    expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 10, shapeCells: 4, used: 14 })
-    // 再抛 4 格散货（2000 单位残骸）⇒ 恢复
-    expect(wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout').ok).toBe(true)
+    expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 6, shapeCells: 4, used: 10 })
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
-    // 抛掉货柜也恢复（形状件单独抛）：再塞 2000 单位母矿（4 格）⇒ 散货 10 格 + 货柜 4 格 = 14 > 10
-    run.bag = [...run.bag, { itemId: 'ore-voidmother', units: 4 * 500 }]
+    // 再塞 4 格散货（2000 单位母矿）⇒ 母矿条从 6 格涨到 10 格、网格里摆不下 ⇒ **整条**算"没位置" ⇒ 超载
+    setBag(state, [...run.bag, { itemId: 'ore-voidmother', units: 4 * 500 }])
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(10)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
+    // 抛掉货柜 ⇒ 散货立刻有位（对齐一次）⇒ 恢复
     const disc = wormholeHoldDiscard(state, ctx, stow.placementId!)
     expect(disc.ok).toBe(true)
-    expect(wormholeHoldUsage(state, ctx).used).toBe(10) // 抛掉货柜 ⇒ 正好回到容量
+    wormholeHoldSyncCargo(state, ctx)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
-    expect(run.hold!.placements).toHaveLength(0)
+    expect(run.hold!.placements.filter((p) => p.kind === 'box')).toHaveLength(0)
   })
 
   it('放不下形状件时**整件拒收**（并提示要几格）', () => {
     const state = enterRun(1) // 1×T3 = 5 格
     const run = state.wormhole.run!
-    run.bag = [{ itemId: 'ore-voidmother', units: 2 * 500 }] // 占 2 格 ⇒ 剩 3 格，放不下 4 格货柜
+    setBag(state, [{ itemId: 'ore-voidmother', units: 2 * 500 }]) // 占 2 格 ⇒ 剩 3 格，放不下 4 格货柜
     const r = wormholeHoldStow(state, ctx, BOX)
     expect(r.ok).toBe(false)
     expect(r.error ?? '').toContain('4 格')
-    expect(run.hold?.placements ?? []).toHaveLength(0)
+    expect((run.hold?.placements ?? []).filter((p) => p.kind === 'box')).toHaveLength(0)
     void findFreeSpot
   })
 })
@@ -200,11 +221,11 @@ describe('虫洞 · 货仓格随档（零迁移）', () => {
     expect(back.hold?.placements).toHaveLength(2)
     expect(back.hold?.cols).toBe(8)
     // 越界件（比如摆在 20 格之外的 y=5）保留 —— 那是超载态，靠玩家抛
-    run.hold.placements.push({ id: 'x1', itemId: BOX, x: 0, y: 5, w: 2, h: 2 })
+    run.hold.placements.push({ id: 'x1', itemId: BOX, kind: 'box', x: 0, y: 5, w: 2, h: 2 })
     const back2 = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
     expect(back2.hold?.placements.some((p) => p.id === 'x1')).toBe(true)
     // 重叠件丢弃
-    run.hold.placements.push({ id: 'x2', itemId: BOX, x: 0, y: 0, w: 2, h: 2 })
+    run.hold.placements.push({ id: 'x2', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
     const back3 = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
     expect(back3.hold?.placements.some((p) => p.id === 'x2')).toBe(false)
     // 坏值整块丢弃（hold 字段不认识 ⇒ 不写）

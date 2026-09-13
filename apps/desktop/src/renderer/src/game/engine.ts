@@ -1387,6 +1387,13 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
   /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
+  /**
+   * 虫洞：**逐堆拾取**（**只服务老档线性层**）。
+   *
+   * ⚠ F5 收口（船长 2026-09-13 裁定 A）：**网格层没有逐堆拾取** —— 残骸走「打捞」、母矿走「采集」，
+   * 装备门槛（打捞器 / 采集器）与回合口径（⌈堆数 ÷ 台数⌉）因此只有一份实现；
+   * 网格层调本方法一律被拒（提示改用打捞/采集）。老档线性层（`run.grid` 不存在）照旧可用。
+   */
   wormholeTakePile(pileIndex: number): CommandResult {
     const r = wormholeTakePileAt(this.state, this.ctx, pileIndex)
     if (r.ok) {
@@ -1495,7 +1502,14 @@ export class GameEngine {
   }
 
   /** 虫洞：**货仓读数**（已用格 / 总格 / 超载；界面与按钮置灰共用） */
-  wormholeHoldInfo(): { used: number; capacity: number; cargoCells: number; shapeCells: number; overload: boolean } {
+  wormholeHoldInfo(): {
+    used: number
+    capacity: number
+    cargoCells: number
+    shapeCells: number
+    unplacedCells: number
+    overload: boolean
+  } {
     return wormholeHoldUsage(this.state, this.ctx)
   }
   /** 虫洞：深入下一层（只在层末可用） */

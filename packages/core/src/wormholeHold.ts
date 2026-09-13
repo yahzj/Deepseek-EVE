@@ -51,11 +51,20 @@ export function wormholeShapeOf(itemId: string): WormholeHoldShape {
   return WORMHOLE_HOLD_SHAPES[itemId] ?? WORMHOLE_SHAPE_STACK
 }
 
-/** 网格里的一个形状件 */
+/**
+ * 网格里的一个**摆放件**。
+ * - `box` = 形状件（遗迹安全货柜 2×2，不可拆）；
+ * - `cargo` = **可叠加散货的一条**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）
+ *   —— 占格由数量现算（`units ÷ 每格单位数`），形状 = 1×N 横条（放不下时自动改 N×1 竖条）。
+ */
 export interface WormholeHoldPlacement {
   /** 件 id（同一物品可以有多个件 ⇒ 必须各自有 id） */
   id: string
   itemId: string
+  /** 件类型：形状件 / 散货条 */
+  kind: 'box' | 'cargo'
+  /** 散货条的数量（单位数；`box` 不带此字段） */
+  units?: number
   /** 左上角（列 x 从 0 起、行 y 从 0 起） */
   x: number
   y: number
@@ -64,18 +73,27 @@ export interface WormholeHoldPlacement {
 }
 
 /**
- * 货仓网格状态（随档；**可选字段 ⇒ 零迁移**：老档没有 = 该趟只有散货、没有形状件）。
+ * 货仓网格状态（随档；**可选字段 ⇒ 零迁移**：老档没有 = 该趟只有散货、没有摆放记录）。
  * ⚠ **不存"可用格数"**：它由编队货仓现算（沉船后自动变小 ⇒ 才能表达"超载"）。
  */
 export interface WormholeHoldState {
   /** 列数（当前恒 8；存下来是为了将来改宽度也能读旧档） */
   cols: number
-  /** 形状件（可叠加散货不在这里） */
+  /** 摆放件（散货条 + 形状件；**所有占格的东西都在这**） */
   placements: WormholeHoldPlacement[]
 }
 
 export function makeHoldState(): WormholeHoldState {
   return { cols: WORMHOLE_HOLD_COLS, placements: [] }
+}
+
+/** 散货条的目标形状：先横条（1×N）、放不下再竖条（N×1）——两条都试过才算"放不下" */
+export function cargoShapesFor(cells: number): WormholeHoldShape[] {
+  const n = Math.max(1, Math.floor(cells))
+  return n === 1 ? [{ w: 1, h: 1 }] : [
+    { w: n, h: 1 },
+    { w: 1, h: n },
+  ]
 }
 
 /* ═══════════ 二、占用与合法性（纯几何） ═══════════ */
@@ -160,35 +178,89 @@ function nextPlacementId(): string {
   return `h${Date.now().toString(36)}${placementSeq.toString(36)}`
 }
 
-/** **首次适应递减**找一个能放下的位置（行优先扫描；找不到 ⇒ null） */
+/**
+ * **首次适应递减**找一个能放下的位置（行优先扫描；找不到 ⇒ null）。
+ * `reverse: true` = **从右下往左上找**（散货条用它 ⇒ 散货自己靠底排、把整行留给货柜，
+ * 小货仓也能摆下 2×2 的货柜；这也是"散货给货柜让位"的落点）。
+ */
 export function findFreeSpot(
   hold: WormholeHoldState,
   shape: WormholeHoldShape,
   capacity: number,
+  reverse = false,
 ): { x: number; y: number } | null {
   const rows = holdRows(capacity, hold.cols)
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x + shape.w <= hold.cols; x++) {
+  const ys = reverse ? Array.from({ length: rows }, (_, i) => rows - 1 - i) : Array.from({ length: rows }, (_, i) => i)
+  for (const y of ys) {
+    const xs = reverse
+      ? Array.from({ length: hold.cols }, (_, i) => hold.cols - 1 - i)
+      : Array.from({ length: hold.cols }, (_, i) => i)
+    for (const x of xs) {
+      if (x + shape.w > hold.cols) continue
       if (canPlace(hold, x, y, shape, capacity)) return { x, y }
     }
   }
   return null
 }
 
-/** 自动放入一件（放不下 ⇒ `ok:false`，**不改状态**——船长口径"整件拒收"） */
+/**
+ * **自动放入一个形状件**（货柜；放不下 ⇒ `ok:false`，**不改状态**——船长口径"整件拒收"）。
+ * 散货条走 `holdAddCargo`（形状由数量现算）。
+ */
 export function holdAdd(
   hold: WormholeHoldState,
   itemId: string,
   capacity: number,
 ): { ok: boolean; placement?: WormholeHoldPlacement; error?: string } {
   const shape = wormholeShapeOf(itemId)
-  if (!wormholeIsShapedItem(itemId)) return { ok: false, error: '这件东西是可叠加散货：应该进背包槽位，不该占形状格。' }
+  if (!wormholeIsShapedItem(itemId)) return { ok: false, error: '这件东西是可叠加散货：应该走散货条（holdAddCargo）。' }
   if (capacity <= 0) return { ok: false, error: '货仓格数为 0：放不下任何形状件。' }
   const spot = findFreeSpot(hold, shape, capacity)
   if (!spot) return { ok: false, error: `货仓放不下：这件要占 ${shape.w}×${shape.h} = ${shape.w * shape.h} 格。` }
-  const p: WormholeHoldPlacement = { id: nextPlacementId(), itemId, x: spot.x, y: spot.y, w: shape.w, h: shape.h }
+  const p: WormholeHoldPlacement = {
+    id: nextPlacementId(),
+    itemId,
+    kind: 'box',
+    x: spot.x,
+    y: spot.y,
+    w: shape.w,
+    h: shape.h,
+  }
   hold.placements.push(p)
   return { ok: true, placement: p }
+}
+
+/**
+ * **自动放入一条散货**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）。
+ * 形状 = 1×N 横条，放不下自动改 N×1 竖条；两条都放不下 ⇒ `ok:false`（调用方据此拒绝这次拾取/打捞）。
+ */
+export function holdAddCargo(
+  hold: WormholeHoldState,
+  itemId: string,
+  units: number,
+  cells: number,
+  capacity: number,
+): { ok: boolean; placement?: WormholeHoldPlacement; error?: string } {
+  const n = Math.max(1, Math.floor(cells))
+  if (capacity <= 0) return { ok: false, error: '货仓格数为 0：放不下任何东西。' }
+  for (const shape of cargoShapesFor(n)) {
+    const spot = findFreeSpot(hold, shape, capacity, true)
+    if (spot) {
+      const p: WormholeHoldPlacement = {
+        id: nextPlacementId(),
+        itemId,
+        kind: 'cargo',
+        units: Math.max(0, Math.floor(units)),
+        x: spot.x,
+        y: spot.y,
+        w: shape.w,
+        h: shape.h,
+      }
+      hold.placements.push(p)
+      return { ok: true, placement: p }
+    }
+  }
+  return { ok: false, error: `货仓放不下：这条散货要占 ${n} 格（横竖都试过了）。` }
 }
 
 /** 移动一件（拖拽落点非法 ⇒ 拒绝，不改状态） */
@@ -261,5 +333,16 @@ export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
   const itemId = typeof o.itemId === 'string' && o.itemId.length > 0 ? o.itemId : null
   if (!id || !itemId) return null
   if (!(x >= 0 && y >= 0 && w >= 1 && w <= 4 && h >= 1 && h <= 4)) return null
-  return { id, itemId, x, y, w, h }
+  const kind = o.kind === 'cargo' ? 'cargo' : 'box'
+  const units = num(o.units)
+  return {
+    id,
+    itemId,
+    kind,
+    ...(kind === 'cargo' && Number.isFinite(units) && units > 0 ? { units } : {}),
+    x,
+    y,
+    w,
+    h,
+  }
 }

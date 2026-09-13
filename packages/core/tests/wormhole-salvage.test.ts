@@ -16,7 +16,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, wormholeEnter, wormholeTakePile } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, wormholeEnter } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
@@ -33,6 +33,10 @@ import {
   wormholeLootValueIsk,
   wormholeWreckRecycleIskPerM3,
   wormholeEnsureSalvagePiles,
+  wormholeEnsureVeinPiles,
+  wormholeCollectOreAt,
+  wormholeMinersOf,
+  wormholeTakePileAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
   wormholeRelicBoxIdOf,
@@ -47,17 +51,20 @@ const ctx = buildSimContext()
 /** 巡洋舰（T3，可装打捞器）；`mod-salvager-1` 是打捞器 MK1 */
 const T3 = 'sh-thresher'
 const RIG = 'mod-salvager-1'
+/** 采集器 MK1（`slot: 'miner'` · 走 high 槽）——虚空母矿要求编队带它（船长 F5） */
+const MINER = 'mod-miner-1'
 
-/** 起一趟：`rigs` = 每艘船装几台打捞器（0 = 不带打捞器） */
-function enterRun(rigs = 1, seed = 4242): GameState {
+/** 起一趟：`rigs` = 每艘船装几台打捞器（0 = 不带打捞器）；`miners` = 装几台采集器（0 = 不带） */
+function enterRun(rigs = 1, seed = 4242, miners = 0): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
   const a = addShipToFleet(state, T3)
   state.shipId = a
   expect(wormholeEnter(state, ctx, [a], seed).ok).toBe(true)
-  if (rigs > 0) {
-    // 直接改装配表（打捞器走 low 槽；本文件只验机制，不验装配合法性）
-    state.fleet[a]!.fitted = { ...(state.fleet[a]!.fitted ?? {}), low: Array.from({ length: rigs }, () => RIG) }
-  }
+  const fitted = { ...(state.fleet[a]!.fitted ?? {}) }
+  // 直接改装配表（打捞器走 low 槽、采集器走 high 槽；本文件只验机制，不验装配合法性）
+  if (rigs > 0) fitted.low = Array.from({ length: rigs }, () => RIG)
+  if (miners > 0) fitted.high = Array.from({ length: miners }, () => MINER)
+  state.fleet[a]!.fitted = fitted
   return state
 }
 
@@ -201,26 +208,66 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     expect(run.bag.length).toBeGreaterThan(0)
   })
 
-  it('**矿脉**：激活即铺 1~3 堆虚空母矿；手拾每堆 1 回合（网格层）', () => {
-    const state = enterRun(1)
-    const run = state.wormhole.run!
-    const cell = standOn(state, 'vein')
-    const r = wormholeActivateAt(state, ctx)
-    expect(r.ok).toBe(true)
-    const piles = cell.piles ?? []
-    expect(piles.length).toBeGreaterThanOrEqual(1)
-    expect(piles.length).toBeLessThanOrEqual(3)
-    expect(piles.every((p) => p.itemId === 'ore-voidmother')).toBe(true)
-    const turnsBefore = run.turnsLeft
-    // ⚠ 先取快照：`cell.piles` 是**活引用**（拾取会 splice），直接读 `.length` 会在循环里越读越短
-    const count = (cell.piles ?? []).length
-    for (let i = 0; i < count; i++) {
-      const picked = wormholeTakePile(state, ctx, 0)
-      expect(picked.ok, `第 ${i + 1} 堆拾取失败：${picked.error ?? ''}`).toBe(true)
+  it('**矿脉（F5）**：走到就铺 1~3 堆虚空母矿；没采集器挖不动；一次回收 = 台数堆（总回合 ⌈堆数 ÷ 台数⌉）', () => {
+    // ① 船长 F5：「资源点和墓场遗迹改为不用激活」⇒ 矿脉不能再靠"激活"铺堆
+    //    （"激活"这个入口对矿脉转发到采集；没采集器 ⇒ 报的就是采集器门槛，而不是"激活成功"）
+    const bare = enterRun(1)
+    const bareRun = bare.wormhole.run!
+    const bareCell = standOn(bare, 'vein')
+    const turnsBefore0 = bareRun.turnsLeft
+    const noAct = wormholeActivateAt(bare, ctx)
+    expect(noAct.ok).toBe(false)
+    expect(noAct.error ?? '').toMatch(/采集器|不用激活/)
+    expect(bareRun.turnsLeft).toBe(turnsBefore0)
+    expect(bareCell.piles ?? []).toHaveLength(0)
+    // ② 船长 F5：「虚空母矿要求玩家携带采集器」⇒ 只有打捞器也不行，且不扣回合、不铺堆
+    expect(wormholeMinersOf(bare, ctx)).toBe(0)
+    const denied = wormholeCollectOreAt(bare, ctx)
+    expect(denied.ok).toBe(false)
+    expect(denied.error ?? '').toContain('采集器')
+    expect(bareRun.turnsLeft).toBe(turnsBefore0)
+    expect(bareCell.piles ?? []).toHaveLength(0)
+    // ②b **逐堆"拾取"这条老路在网格层已退场**（船长 2026-09-13 裁定 A）：只留"采集"这一个入口，
+    //    否则 0 采集器的编队照样能把母矿一堆堆搬空，"要求携带采集器"就成了空话。
+    wormholeEnsureVeinPiles(bare, bareCell)
+    expect((bareCell.piles ?? []).length).toBeGreaterThan(0)
+    const handPick = wormholeTakePileAt(bare, ctx, 0)
+    expect(handPick.ok).toBe(false)
+    expect(handPick.error ?? '').toContain('采集')
+    expect(bareRun.turnsLeft).toBe(turnsBefore0) // 被拒 ⇒ 不扣回合
+    expect((bareCell.piles ?? []).length).toBeGreaterThan(0) // 堆留在原地
+    // ③ 带 2 台采集器：一次动作用 1 回合回收 2 堆 ⇒ 总回合 = ⌈堆数 ÷ 台数⌉（船长裁定 A）
+    const sawPiles = new Set<number>()
+    for (let seed = 1; seed <= 20; seed++) {
+      const state = enterRun(1, seed, 2)
+      const run = state.wormhole.run!
+      expect(wormholeMinersOf(state, ctx)).toBe(2)
+      const cell = standOn(state, 'vein')
+      wormholeEnsureVeinPiles(state, cell) // 走到该格即铺（`wormholeEnsureArrivalPiles` 的矿脉分支）
+      const total = (cell.piles ?? []).length
+      sawPiles.add(total)
+      expect(total).toBeGreaterThanOrEqual(1)
+      expect(total).toBeLessThanOrEqual(3)
+      expect((cell.piles ?? []).every((p) => p.itemId === 'ore-voidmother')).toBe(true)
+      const turnsBefore = run.turnsLeft
+      const batches: number[] = []
+      for (let guard = 0; guard <= 3 && (cell.piles ?? []).length > 0; guard++) {
+        // ⚠ 先取快照：`cell.piles` 是**活引用**（回收会 shift），别在断言里连读两次
+        const before = (cell.piles ?? []).length
+        const r = wormholeCollectOreAt(state, ctx)
+        expect(r.ok, `采集失败：${r.error ?? ''}`).toBe(true)
+        expect(r.spent).toBe(1)
+        expect(r.taken!.length).toBe(Math.min(2, before)) // 一台一堆、上限 = 台数
+        batches.push(r.taken!.length)
+      }
+      expect((cell.piles ?? []).length).toBe(0)
+      expect(batches.length).toBe(Math.ceil(total / 2)) // 总回合 = ⌈堆数 ÷ 台数⌉
+      expect(run.turnsLeft).toBe(turnsBefore - Math.ceil(total / 2))
+      const ore = run.bag.filter((s) => s.itemId === 'ore-voidmother')
+      expect(ore.length).toBe(1) // 同类只占一格（叠加）
+      expect(ore[0]!.units).toBeGreaterThan(0)
     }
-    expect((cell.piles ?? []).length).toBe(0)
-    expect(run.turnsLeft).toBe(turnsBefore - count) // 手拾每堆 1 回合
-    expect(run.bag.some((s) => s.itemId === 'ore-voidmother')).toBe(true)
+    expect(sawPiles.size, `20 趟只见 ${[...sawPiles].join('/')} 堆：堆数该在 1~3 散开`).toBeGreaterThan(1)
   })
 })
 

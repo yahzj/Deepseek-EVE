@@ -25,7 +25,6 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_MOVE,
-  WORMHOLE_TURN_PER_PICK,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
   wormholeStream,
@@ -785,6 +784,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (!atExit && (cell.place === 'empty' || cell.place === 'beacon')) {
     return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
   }
+  /**
+   * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
+   * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
+   * 故这三个地点在"激活"这条路上**直接拒绝**，免得白扣一回合。
+   */
+  if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
+    return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。' }
+  }
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
     return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
   }
@@ -797,35 +804,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
     ? { kind: 'exit', key: cell.key }
     : cell.place === 'ship'
       ? { kind: 'battle', key: cell.key }
-      : cell.place === 'graveyard' || cell.place === 'ruins'
-        ? { kind: 'salvage', key: cell.key, place: cell.place }
-        : cell.place === 'vein'
-          ? { kind: 'excavate', key: cell.key }
-          : { kind: 'matter', key: cell.key }
-  // 矿脉：激活即**铺出原矿堆**（1~3 堆，确定性）；拾取走 `wormholeTakePile`（网格层每堆 1 回合）。
-  // ⚠ 残骸打捞（墓场/遗迹）**不在这里铺**：那套要打捞器台数与背包容量（需要 ctx），在 `wormholeSalvage` 里。
-  if (effect.kind === 'excavate') wormholeFillVeinPiles(run, grid, cell)
+      : { kind: 'matter', key: cell.key }
+  // ⚠ 产出的铺放已全部改到**到达那一刻**（`wormholeSalvage.wormholeEnsureArrivalPiles`，船长 F5：资源点/墓场遗迹不用激活）
   addLog(
     state,
     'info',
     `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 剩 ${run.turnsLeft} 回合。`,
   )
   return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
-}
-
-/**
- * **给矿脉格铺原矿堆**（1~3 堆；只铺一次，确定性 = `(本趟种子, 层, 格坐标)`）。
- * 堆本身沿用 `wormholeNodePiles`（虚空母矿、数量随层收益系数），拾取走 `wormholeTakePile`。
- * 为什么放在 `wormhole.ts` 而不是打捞模块：**它不需要 ctx**（原矿堆不认族、不查打捞器），
- * 而 `wormhole.ts` 不许 import 打捞模块（会成环）。
- */
-function wormholeFillVeinPiles(run: WormholeRunState, grid: WormholeGridState, cell: WormholeGridCell): void {
-  if ((cell.piles ?? []).length > 0) return
-  const seed = run.seed ?? run.depth
-  const rng = wormholeStream(seed * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
-  const count = 1 + Math.floor(rng() * 3) // 1~3 堆（与打捞模块的 WORMHOLE_VEIN_PILES_* 同值）
-  const index = Math.abs(cell.q * 13 + cell.r * 29) % 97
-  cell.piles = wormholeNodePiles(seed, run.depth, index, count)
 }
 
 /** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
@@ -905,7 +891,14 @@ export function wormholeBagSlotsOfFleet(
 }
 
 /** 把一堆东西并进背包（同物品并格——一格只装一种物品，故同一 `itemId` 只留一条记录） */
-function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
+/**
+ * **把一堆并进背包**（同类并格、否则新增一条；**纯函数**，不判容量、不扣回合、不写日志）。
+ *
+ * ⚠ 这是全仓**唯一**的"合并"实现：虫洞侧所有"把东西搬上船"的路径（打捞 / 采集 / 舰船战果 /
+ * 老档线性层的逐堆拾取）都走它，只是各自的**容量判据与回合口径**由调用方负责
+ * （`wormholeSalvage.tryMergeIntoBag` = F5 网格判据 + 放不下整条回滚）。
+ */
+export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
   const out = bag.map((s) => ({ ...s }))
   const hit = out.find((s) => s.itemId === pile.itemId)
   if (hit) hit.units += pile.units
@@ -1056,47 +1049,6 @@ export function wormholeEnter(
     `🕳 虫洞跃入：编队 ${shipIds.length} 艘 · 折算总质量 ${r.run.totalMass.toLocaleString('zh-CN')} · 可探索 ${r.run.turnsTotal} 回合。`,
   )
   return r
-}
-
-/**
- * **拾取一堆**（每堆 = 一堆原矿；进包前先做容量预检，**放不下就不给捡**——不静默丢弃）。
- * ⚠ 回合口径：F3a-2 起"打捞/挖掘"的回合花在**激活地点**那一步（各 1 回合）⇒ **拾取本身不再扣回合**
- * （旧线性节点口径是把"每堆 +1 回合"算进节点 `cost`，在"结算本节点"时一次扣掉；两代口径都不重复计费）。
- * 堆的宿主：网格层 = **当前所在格**（`grid.cells[].piles`）；老档线性层 = `pendingNode.piles`。
- */
-export function wormholeTakePile(
-  state: GameState,
-  ctx: SimContext,
-  pileIndex: number,
-): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
-  const run = state.wormhole.run
-  if (!run) return { ok: false, error: '不在虫洞内。' }
-  const grid = run.grid
-  const holder: { piles?: WormholePile[] } | undefined = grid
-    ? gridCellAt(grid, grid.pos)
-    : (run.pendingNode ?? undefined)
-  const piles = holder?.piles
-  if (!piles || pileIndex < 0 || pileIndex >= piles.length) {
-    return { ok: false, error: '这里没有可拾取的东西。' }
-  }
-  const pile = piles[pileIndex]!
-  // **网格层：手拾一堆 = 1 回合**（船长口径第 13 条「每捡一堆 +1」；老档线性层的回合已算在节点 cost 里，
-  // 不重复扣）。回合不够 ⇒ 当场拒绝、**不扣**（与其它层内动作同一把尺）。
-  if (grid) {
-    if (run.turnsLeft < WORMHOLE_TURN_PER_PICK) return { ok: false, error: '回合不足：只能撤离。' }
-  }
-  const capacity = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
-  const merged = mergeIntoBag(run.bag, pile)
-  const usage = wormholeBagUsage(ctx, merged, capacity)
-  if (usage.overflow) {
-    return { ok: false, error: `背包放不下：已占 ${usage.used} / 共 ${capacity} 格。` }
-  }
-  run.bag = merged
-  piles.splice(pileIndex, 1)
-  if (grid) run.turnsLeft -= WORMHOLE_TURN_PER_PICK
-  const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
-  addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（背包 ${usage.used}/${capacity} 格）。`)
-  return { ok: true, taken: pile, used: usage.used, capacity }
 }
 
 /**
