@@ -948,6 +948,9 @@ export {
   wormholeTempStow,
   wormholeTempDiscard,
   wormholeStowOrTemp,
+  // 散货占格（船长 2026-09-13：「必须是矩形」⇒ 全仓唯一一把尺）
+  wormholeCargoCellsOf,
+  wormholeCargoSlotsOf,
 
   wormholeRelicWeightsOf,
   wormholeRollRelicBox,
@@ -958,10 +961,14 @@ export {
 // F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,
+  WORMHOLE_CARGO_BAR_MAX,
   WORMHOLE_SHAPE_CONTAINER,
   WORMHOLE_SHAPE_STACK,
   WORMHOLE_HOLD_SHAPES,
   canPlace,
+  cargoBlockArea,
+  cargoShapeFits,
+  cargoShapesFor,
   findFreeSpot,
   holdAdd,
   holdCellsUsed,
@@ -992,6 +999,7 @@ export type {
   WormholeNode,
   WormholeNodeKind,
   WormholePhase,
+  WormholeSettleRecord,
   WormholeStartResult,
   WormholeAdvanceResult,
 } from './wormhole'

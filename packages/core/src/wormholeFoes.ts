@@ -47,8 +47,33 @@ export type WormholeFoeKind = 'node' | 'boss' | 'extract' | 'ruins'
 
 /** 层末 **BOSS** 的威胁倍率（设计稿 §3 表：本层 ×1.2） */
 export const WORMHOLE_BOSS_THREAT_MUL = 1.2
-/** **撤离战**的威胁倍率（设计稿 §3 表：当层威胁 ×0.8） */
+/** **撤离战**的威胁倍率（设计稿 §3 表：当层威胁 ×0.8）——**只用于层 2 的基准**，见下 */
 export const WORMHOLE_EXTRACT_THREAT_MUL = 0.8
+
+/**
+ * **撤离战威胁 = 线性**（船长 2026-09-13 裁定：「**撤离威胁按线性**」，回应"线性还是等比"那一问）。
+ *
+ * 口径：**层 2 = 42**（= 层 2 威胁 52 × 0.8，与改判前的层 2 读数一致），之后**每层 +7**
+ * （7 = 层增量的名义值 `WORMHOLE_THREAT_PER_LAYER`）——即"与前进的层数成正比"。
+ * 层 1 没有拦截舰队（`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`），本函数对层 1 也按层 2 取值，
+ * 免得别处误用出负数。
+ *
+ * 为什么不像节点战那样等比（×1.16/层）：撤离战是"拿了就跑"的拦截，等比到深处会指数翻上去
+ * （层 8 等比 102 / 线性 84、层 12 等比 158 / 线性 112）——**节点战照旧等比**（那才是"越深越硬"），
+ * 只有撤离这一路改成线性。
+ */
+export const WORMHOLE_EXTRACT_THREAT_BASE = Math.round(
+  WORMHOLE_THREAT_BASE * (1 + WORMHOLE_THREAT_GROWTH) * WORMHOLE_EXTRACT_THREAT_MUL, // 层 2 = 52 × 0.8 = 42
+)
+/** 撤离战**每层增量**（线性；= 层增量名义值 7） */
+export const WORMHOLE_EXTRACT_THREAT_PER_LAYER = WORMHOLE_THREAT_PER_LAYER
+
+/** 第 `depth` 层**撤离战**的威胁（线性：层 2 = 42、层 3 = 49、层 4 = 56……层 8 = 84） */
+export function wormholeExtractThreat(depth: number): number {
+  const d = Math.max(2, Math.floor(depth))
+  return WORMHOLE_EXTRACT_THREAT_BASE + WORMHOLE_EXTRACT_THREAT_PER_LAYER * (d - 2)
+}
+
 /** **遗迹收尾战**的威胁倍率（船长：「打捞结束时，大概率会触发一场**高难度**战斗」⇒ 比普通地点战高一档） */
 export const WORMHOLE_RUINS_THREAT_MUL = 1.3
 
@@ -72,11 +97,13 @@ export function wormholeNaturalHp(base: AnomalyDef): number {
   )
 }
 
-/** 本层本次交战的**威胁**（普通节点 = 层威胁；BOSS ×1.2；撤离战 ×0.8） */
+/**
+ * 本层本次交战的**威胁**（普通节点 = 层威胁；BOSS ×1.2；**撤离战 = 线性曲线**；遗迹收尾战 ×1.3）
+ */
 export function wormholeFoeThreat(depth: number, kind: WormholeFoeKind): number {
   const base = wormholeLayerThreat(depth)
   if (kind === 'boss') return Math.round(base * WORMHOLE_BOSS_THREAT_MUL)
-  if (kind === 'extract') return Math.round(base * WORMHOLE_EXTRACT_THREAT_MUL)
+  if (kind === 'extract') return wormholeExtractThreat(depth)
   if (kind === 'ruins') return Math.round(base * WORMHOLE_RUINS_THREAT_MUL)
   return base
 }

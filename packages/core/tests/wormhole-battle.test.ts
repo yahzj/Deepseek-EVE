@@ -33,6 +33,7 @@ import {
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
+  wormholeExtractThreat,
   wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
@@ -113,13 +114,24 @@ function settleBattle(state: GameState): void {
 }
 
 describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
-  it('威胁随用途分流：普通节点 = 层威胁 · BOSS ×1.2 · 撤离战 ×0.8', () => {
+  it('威胁随用途分流：普通节点 = 层威胁 · BOSS ×1.2 · 撤离战 = **线性**（船长 2026-09-13 改判）', () => {
     expect(wormholeLayerThreat(1)).toBe(45)
     expect(wormholeFoeThreat(1, 'node')).toBe(45)
     expect(wormholeFoeThreat(1, 'boss')).toBe(54) // 45 × 1.2
-    expect(wormholeFoeThreat(1, 'extract')).toBe(36) // 45 × 0.8
     expect(wormholeFoeThreat(3, 'node')).toBe(wormholeLayerThreat(3))
     expect(wormholeFoeThreat(3, 'boss')).toBe(Math.round(wormholeLayerThreat(3) * 1.2))
+    // **撤离战：线性**（层 2 = 42，每层 +7）——层 2/3 与改判前的读数相同，之后逐层低于等比
+    expect(wormholeFoeThreat(2, 'extract')).toBe(42)
+    expect(wormholeFoeThreat(3, 'extract')).toBe(49)
+    expect(wormholeFoeThreat(4, 'extract')).toBe(56)
+    expect(wormholeFoeThreat(8, 'extract')).toBe(84)
+    expect(wormholeExtractThreat(12)).toBe(112)
+    // 等差（不是等比）：任意相邻两层之差恒为 7
+    for (let d = 2; d <= 14; d++) {
+      expect(wormholeExtractThreat(d + 1) - wormholeExtractThreat(d)).toBe(7)
+    }
+    // 且**深层明显低于**等比口径（等比层 8 = 102）：撤离战不该比同层节点战更陡
+    expect(wormholeExtractThreat(8)).toBeLessThan(Math.round(wormholeLayerThreat(8) * 0.8))
   })
 
   it('五张洞内敌卡按 (层, 节点) 确定性轮换，且五族（A/C/D/E/G）都真实存在于目录里', () => {

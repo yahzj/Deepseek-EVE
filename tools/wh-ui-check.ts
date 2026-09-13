@@ -187,13 +187,143 @@ async function main(): Promise<void> {
     const read = await cdp.evalJS<Record<string, unknown>>(READ)
     const shot = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data?: string }
     if (shot.data) writeFileSync(join(SHOT_DIR, `prep-check-${w}x${h}.png`), Buffer.from(shot.data, 'base64'))
-    results[`${w}x${h}`] = { ...read, 点到入口: clicked }
+    const run = await probeRunPage(cdp, w, h)
+    results[`${w}x${h}`] = { ...read, 点到入口: clicked, 探索页: run }
     console.log(`\n══════ 窗口 ${w}×${h} ══════`)
-    console.log(JSON.stringify(results[`${w}x${h}`], null, 1))
+    console.log(JSON.stringify({ ...read, 点到入口: clicked }, null, 1))
+    console.log('── 探索页（进洞后）──')
+    console.log(JSON.stringify(run, null, 1))
   }
   writeFileSync(join(SHOT_DIR, 'prep-geom.json'), JSON.stringify(results, null, 2), 'utf8')
   cdp.close()
   console.log(`\n截屏与读数：${SHOT_DIR}`)
+}
+
+/* ── 第二阶段：真的进洞，量探索页（页签 / 舰影动效 / 扫描波 / 作业按钮在扫描下方） ── */
+
+const READ_RUN = `(() => {
+  const rect = (sel) => { const el = document.querySelector(sel); if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } }
+  const body = document.querySelector('.app-modal-body')
+  const ship = document.querySelector('.app-wh-ship-here')
+  const tabs = [...document.querySelectorAll('.app-wh-tab')]
+  return {
+    弹层纵向溢出: (() => { const m = document.querySelector('.app-wh-modal'); return m ? m.scrollHeight - m.clientHeight : null })(),
+    页体溢出: body ? body.scrollHeight - body.clientHeight : null,
+    页签名: tabs.map((t) => (t.querySelector('.app-wh-tab-label')?.textContent || '').trim()),
+    页签副读数: tabs.map((t) => (t.querySelector('.app-wh-tab-sub')?.textContent || '').trim()),
+    页签矩形: rect('.app-wh-tab'),
+    扫描按钮: rect('.app-wh-scan-big'),
+    作业按钮: rect('.app-wh-work'),
+    舰影: rect('.app-wh-ship-here'),
+    舰影色: ship ? getComputedStyle(ship).color : null,
+    舰影动画: ship ? getComputedStyle(ship).animationName : null,
+    舰影动画时长: ship ? getComputedStyle(ship).animationDuration : null,
+    光晕: !!document.querySelector('.app-wh-ship-here .app-wh-ship-halo'),
+    扫描波: document.querySelectorAll('.app-wh-scan-wave').length,
+    新亮格数: document.querySelectorAll('.app-wh-hex.is-just-scanned').length,
+  }
+})()`
+
+async function probeRunPage(cdp: Cdp, w: number, h: number): Promise<Record<string, unknown>> {
+  // 准备页点「进入虫洞」（编队默认已含驾驶船；忙/超重时按钮是禁用的，那就如实报出来）
+  const entered = await cdp.evalJS<boolean>(`(() => {
+    const b = document.querySelector('.app-wh-modal .app-wh-enter')
+    if (!b || b.disabled) return false
+    b.click()
+    return true
+  })()`)
+  if (!entered) return { 进洞: '按钮不可用（编队忙 / 超重 / 已在洞里）' }
+  await waitFor(cdp, `!!document.querySelector('.app-wh-tabbar .app-wh-tab')`, '探索页页签')
+  const inFlight = await cdp.evalJS<Record<string, unknown>>(READ_RUN)
+  const shotIn = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data?: string }
+  if (shotIn.data) writeFileSync(join(SHOT_DIR, `run-flyin-${w}x${h}.png`), Buffer.from(shotIn.data, 'base64'))
+  await sleep(1200) // 等飞入动画播完 + 交还操作
+  const settled = await cdp.evalJS<Record<string, unknown>>(READ_RUN)
+  // 扫描一次，抓"扫描波 + 逐格点亮"的当场读数
+  const scanned = await cdp.evalJS<boolean>(`(() => {
+    const b = document.querySelector('.app-wh-scan-big')
+    if (!b || b.disabled) return false
+    b.click()
+    return true
+  })()`)
+  await sleep(180)
+  const scanRead = await cdp.evalJS<Record<string, unknown>>(READ_RUN)
+  const shotScan = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data?: string }
+  if (shotScan.data) writeFileSync(join(SHOT_DIR, `run-scan-${w}x${h}.png`), Buffer.from(shotScan.data, 'base64'))
+  /**
+   * **作业按钮的版式**（船长：「激活等按钮可以放在扫描下方」）：真档的编队未必带打捞器/采集器，
+   * 作业按钮"只在能干活的格子才渲染"⇒ 靠走格子碰运气不可靠。这里改成**样式核对**：
+   * 临时往左列塞一个同 class 的按钮，量它与扫描按钮是否**同宽、正下方**，量完即摘掉。
+   */
+  const workGeom = await cdp.evalJS<Record<string, unknown>>(`(() => {
+    const left = document.querySelector('.app-wh-workspace-left')
+    const scan = document.querySelector('.app-wh-scan-big')
+    if (!left || !scan) return { 左列: !!left, 扫描: !!scan }
+    const probe = document.createElement('button')
+    probe.className = 'app-btn is-primary app-wh-work'
+    probe.textContent = '探针'
+    left.appendChild(probe)
+    const a = scan.getBoundingClientRect()
+    const b = probe.getBoundingClientRect()
+    const cs = getComputedStyle(probe)
+    probe.remove()
+    return {
+      扫描宽: Math.round(a.width), 作业宽: Math.round(b.width),
+      横向偏差: Math.round(b.x - a.x),
+      纵向间距: Math.round(b.y - (a.y + a.height)),
+      左列方向: getComputedStyle(left).flexDirection,
+    }
+  })()`)
+  // 撤离（第 1 层免拦截战 ⇒ 直接出结算单）⇒ 量结算界面是否居中 + 逐条弹出
+  const extracted = await cdp.evalJS<boolean>(`(() => {
+    const b = [...document.querySelectorAll('.app-wh-actions button')].find((x) => (x.textContent || '').trim() === '撤离')
+    if (!b || b.disabled) return false
+    b.click()
+    return true
+  })()`)
+  let settleRead: Record<string, unknown> | null = null
+  if (extracted) {
+    await waitFor(cdp, `!!document.querySelector('.app-wh-settle')`, '结算界面')
+    /** 逐条弹出的判据：最后一条此刻还**没到它那一拍**（`animation-delay` 未到 ⇒ opacity 0），900ms 后应为 1 */
+    const early = await cdp.evalJS<Record<string, unknown>>(`(() => {
+      const pops = [...document.querySelectorAll('.app-wh-settle .is-pop')]
+      const last = pops[pops.length - 1]
+      const first = pops[0]
+      return {
+        条数: pops.length,
+        首条透明度: first ? getComputedStyle(first).opacity : null,
+        末条透明度: last ? getComputedStyle(last).opacity : null,
+        末条延迟: last ? getComputedStyle(last).animationDelay : null,
+      }
+    })()`)
+    await sleep(900) // 等逐条弹完 + 跳数跑完
+    settleRead = await cdp.evalJS<Record<string, unknown>>(`(() => {
+      const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } }
+      const body = document.querySelector('.app-modal-body')
+      const s = document.querySelector('.app-wh-settle')
+      const br = body ? body.getBoundingClientRect() : null
+      const sr = s ? s.getBoundingClientRect() : null
+      return {
+        结算块: box(s),
+        页体: box(body),
+        居中偏差左: br && sr ? Math.round(sr.x - br.x - (br.width - sr.width) / 2) : null,
+        逐条弹出元素数: document.querySelectorAll('.app-wh-settle .is-pop').length,
+        合计文本: (document.querySelector('.app-wh-settle-total')?.textContent || '').trim(),
+        明细文案: [...document.querySelectorAll('.app-wh-settle-cell')].map((c) => (c.textContent || '').trim()),
+      }
+    })()`)
+    const shotSettle = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data?: string }
+    if (shotSettle.data) writeFileSync(join(SHOT_DIR, `settle-${w}x${h}.png`), Buffer.from(shotSettle.data, 'base64'))
+    // 记下"刚出结算/900ms 后"两条读数：末条透明度应从 0 变 1（证明确实逐条弹，而不是一起出现）
+    settleRead = {
+      ...settleRead,
+      刚出结算: early,
+      弹完后末条透明度: await cdp.evalJS<string>(
+        `getComputedStyle([...document.querySelectorAll('.app-wh-settle .is-pop')].pop()).opacity`,
+      ),
+    }
+  }
+  return { 进洞: 'ok', 飞入中: inFlight, 落定: settled, 点了扫描: scanned, 扫描后: scanRead, 作业按钮版式: workGeom, 点了撤离: extracted, 结算: settleRead }
 }
 
 main().catch((e: unknown) => {
