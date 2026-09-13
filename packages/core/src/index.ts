@@ -851,6 +851,42 @@ export {
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
 } from './wormhole'
+// 网格探索（F3a · 2026-09-13 船长确认）：几何 / 生成 / 信号遮蔽 / 回合成本
+export {
+  HEX_DIRS,
+  WORMHOLE_EMPTY_MIN_SHARE,
+  WORMHOLE_RUINS_SHARE,
+  WORMHOLE_SIGNAL_WEIGHTS,
+  WORMHOLE_SCAN_RADIUS_BASE,
+  WORMHOLE_TURN_PER_ACTIVATE,
+  WORMHOLE_TURN_PER_MOVE,
+  WORMHOLE_TURN_PER_SCAN,
+  gridCellAt,
+  gridScanTargets,
+  gridTally,
+  hexDiskAround,
+  hexDiskCells,
+  hexDiskCount,
+  hexDistance,
+  hexKey,
+  hexNeighbors,
+  hexRingAround,
+  isExitCell,
+  parseHexKey,
+  revealOf,
+  signalOfPlace,
+  wormholeGridRadiusFor,
+  wormholeMakeGrid,
+} from './wormholeGrid'
+export type {
+  HexCell,
+  WormholeCellReveal,
+  WormholeGridCell,
+  WormholeGridState,
+  WormholePlace,
+  WormholeSignal,
+} from './wormholeGrid'
+
 // F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
 export { wormholeStartBattle, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
 export type {
@@ -867,3 +903,4 @@ export type {
   WormholeStartResult,
   WormholeAdvanceResult,
 } from './wormhole'
+

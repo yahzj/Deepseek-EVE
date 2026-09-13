@@ -19,6 +19,7 @@ import {
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
+import type { WormholeGridState } from './wormholeGrid'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
@@ -2407,6 +2408,48 @@ function normalizeState(raw: unknown): GameState {
   }
 
   // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
+  /** 网格探索状态（F3a）：**老档没有 ⇒ 不写**（零迁移）；坏结构整块丢弃（该层退回旧口径） */
+  const cleanWormholeGrid = (raw: unknown): WormholeGridState | undefined => {
+    const g = asRaw(raw)
+    const radius = Math.floor(num(g.radius))
+    if (!(radius >= 1 && radius <= 8)) return undefined
+    const cellsRaw = Array.isArray(g.cells) ? g.cells : []
+    const cells: WormholeGridState['cells'] = []
+    for (const it of cellsRaw) {
+      const row = asRaw(it)
+      const key = typeof row.key === 'string' ? row.key : ''
+      const place = typeof row.place === 'string' ? row.place : ''
+      if (key.length === 0 || place.length === 0) continue
+      const placeOk =
+        place === 'empty' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'vein' || place === 'matter'
+        ? (place as WormholeGridState['cells'][number]['place'])
+        : undefined
+      if (!placeOk) continue
+      cells.push({ key, q: Math.floor(num(row.q)), r: Math.floor(num(row.r)), place: placeOk })
+    }
+    if (cells.length === 0) return undefined
+    const cell = (v: unknown): { q: number; r: number } | undefined => {
+      const o = asRaw(v)
+      return typeof o.q === 'number' || typeof o.r === 'number' ? { q: Math.floor(num(o.q)), r: Math.floor(num(o.r)) } : undefined
+    }
+    const start = cell(g.start)
+    const exit = cell(g.exit)
+    const pos = cell(g.pos)
+    if (!start || !exit || !pos) return undefined
+    const keys = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    return {
+      radius,
+      start,
+      exit,
+      pos,
+      scanRadius: Math.max(0, Math.floor(num(g.scanRadius)) || 1),
+      scanned: keys(g.scanned),
+      visited: keys(g.visited),
+      activated: keys(g.activated),
+      cells,
+    }
+  }
   const cleanWormhole = (): GameState['wormhole'] => {
     const wRaw = asRaw(src.wormhole)
     const rRaw = asRaw(wRaw.run)
@@ -2455,6 +2498,8 @@ function normalizeState(raw: unknown): GameState {
             nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
             // **人在洞里**（2026-09-13 · 议案 A）：活动位开关。旧档/坏值 ⇒ false（安全侧：不占主控）
             attending: rRaw.attending === true,
+            // 网格探索（F3a）：老档/坏值 ⇒ 不写（该层走旧口径，零迁移）
+            ...(cleanWormholeGrid(rRaw.grid) !== undefined ? { grid: cleanWormholeGrid(rRaw.grid) } : {}),
             // 临时离开时刻（回来时按它前移战斗时钟）：坏值/缺省 = 不写（= 没离开过）
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
