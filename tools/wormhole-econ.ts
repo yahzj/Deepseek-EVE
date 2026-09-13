@@ -38,14 +38,20 @@ import {
 import {
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
+  wormholeAdvanceNode,
   wormholeCardIdFor,
+  wormholeDescend,
+  wormholeEnter,
+  wormholeExtract,
   wormholeFoeThreat,
   wormholeLayerRewardMul,
   wormholeLayerThreat,
   wormholeMakeNode,
   wormholeNodesPerLayer,
   wormholeStepCost,
+  wormholeTakePile,
 } from '../packages/core/src/wormhole'
+import { advanceWormhole, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
 
 const ctx: SimContext = buildSimContext()
 
@@ -161,7 +167,152 @@ function layerLoot(seed: number, depth: number): { piles: number; units: number;
   return { piles, units, cost }
 }
 
+/* ─────────── 整趟模拟（`--runs=N`）：真引擎跑完整"搜打撤" ─────────── */
+
+/** 政策用的**粗残血**（逐船 装甲% 与 结构% 取均值；不是精确三层血比，只作"要不要继续深入"的门槛） */
+function roughHpFrac(state: GameState, shipIds: readonly string[]): number {
+  let sum = 0
+  let n = 0
+  for (const uid of shipIds) {
+    const f = state.fleet[uid]
+    if (!f) continue
+    sum += ((f.armorPct ?? 1) + (f.durability ?? 1)) / 2
+    n++
+  }
+  return n > 0 ? sum / n : 0
+}
+
+/**
+ * **三层血口径的编队残血**（含护盾；战斗内读数）。
+ * ⚠ 为什么不能只用 `roughHpFrac` 做政策：**护盾不落档**（`persistFleetHullDamage` 只写装甲/结构）⇒
+ * 全靠护盾扛下来的编队看起来"毫发无损"，政策会一直往下钻直到被打死。
+ * 首版模拟吃到这个亏（12/12 趟在第 3 层全损），这条是修正。
+ */
+function battleHpFrac(battle: GameState['expedition']['battle']): number {
+  if (!battle) return 1
+  let cur = 0
+  let max = 0
+  for (const entry of battle.myFleet ?? []) {
+    const u = battle.units[entry.tag]
+    if (!u) continue
+    cur += u.hp.s + u.hp.a + u.hp.h
+    max += (u.hpMax?.s ?? 0) + (u.hpMax?.a ?? 0) + (u.hpMax?.h ?? 0)
+  }
+  return max > 0 ? cur / max : 1
+}
+
+interface RunOutcome {
+  /** 结束方式：撤离成功 / 全损 */
+  result: 'extract' | 'lost'
+  depth: number
+  shipsLeft: number
+  oreUnits: number
+  isk: number
+  /** 结束时的编队粗残血 */
+  hpFrac: number
+}
+
+/**
+ * **跑一整趟**（真状态机 + 真战斗）：进洞 → 逐节点打 → 层末先打守卫 → 按政策决定深入或撤离。
+ * 政策（模拟"一个正常玩家"）：`--extract-hp=`（粗残血低于它就撤，默认 0.5）与 `--max-depth=`（默认 3）。
+ */
+function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutcome {
+  const { state, uids } = makeFleet(seed)
+  const orePrice = ctx.items.get(WORMHOLE_ORE_ITEM_ID)?.baseSellPriceIsk ?? 0
+  const before = state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  let guard = 0
+  /** 最近一场战斗结束时的**三层血口径**残血（政策用它；护盾不落档，见 `battleHpFrac`） */
+  let lastFrac = 1
+  while (state.wormhole.run && guard++ < 400) {
+    state.gameMs += 1_000 // 与引擎心跳同款：推时间，战斗才走得动
+    const r = state.wormhole.run
+    if (r.battle) {
+      if (r.battle.ended) lastFrac = battleHpFrac(r.battle)
+      advanceWormhole(state, ctx)
+      continue
+    }
+    if (r.phase === 'extracting') {
+      advanceWormhole(state, ctx)
+      continue
+    }
+    if (r.pendingNode) {
+      if (r.pendingNode.kind === 'combat') {
+        if (!wormholeStartBattle(state, ctx, 'node').ok) break
+      } else {
+        // 拾取点：能捡就捡光；事件节点直接结算
+        while ((r.pendingNode.piles ?? []).length > 0) {
+          if (!wormholeTakePile(state, ctx, 0).ok) break
+        }
+        if (!wormholeAdvanceNode(ctx, r, state.rng.seed).ok) wormholeExtract(r)
+      }
+      continue
+    }
+    if ((r.bossCleared ?? 0) < r.depth) {
+      if (!wormholeStartBattle(state, ctx, 'boss').ok) break
+      continue
+    }
+    const frac = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
+    if (r.depth >= maxDepth || frac < extractHp || r.turnsLeft <= 0) wormholeExtract(r)
+    else wormholeDescend(r, state.rng.seed)
+  }
+  const after = state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0
+  const ore = after - before
+  return {
+    result: ore > 0 ? 'extract' : 'lost',
+    depth: state.wormhole.run?.depth ?? maxDepth,
+    shipsLeft: uids.filter((u) => state.fleet[u]).length,
+    oreUnits: ore,
+    isk: ore * orePrice,
+    hpFrac: roughHpFrac(state, uids.length > 0 ? uids : []),
+  }
+}
+
+function runRunsMode(): void {
+  const n = Math.max(1, Number((process.argv.find((a) => a.startsWith('--runs=')) ?? '--runs=20').split('=')[1]))
+  const extractHp = Number(
+    (process.argv.find((a) => a.startsWith('--extract-hp=')) ?? '--extract-hp=0.5').split('=')[1],
+  )
+  const maxDepth = Math.max(
+    1,
+    Number((process.argv.find((a) => a.startsWith('--max-depth=')) ?? '--max-depth=3').split('=')[1]),
+  )
+  console.log(
+    `整趟模拟 · ${n} 趟（参考编队 4×巡洋 MK2 · 政策：粗残血 < ${extractHp} 或到第 ${maxDepth} 层就撤 · 拾取点捡光）`,
+  )
+  console.log(['#', '结果', '到达层', '存活船', '原矿', '收益ISK', '收尾残血'].join('\t'))
+  const out: RunOutcome[] = []
+  for (let i = 0; i < n; i++) {
+    const o = simulateRun(1000 + i * 37, extractHp, maxDepth)
+    out.push(o)
+    console.log(
+      [
+        i + 1,
+        o.result === 'extract' ? '撤离成功' : '全损',
+        o.depth,
+        `${o.shipsLeft}/4`,
+        o.oreUnits,
+        Math.round(o.isk).toLocaleString('zh-CN'),
+        `${Math.round(o.hpFrac * 100)}%`,
+      ].join('\t'),
+    )
+  }
+  const ok = out.filter((o) => o.result === 'extract')
+  const avg = (f: (o: RunOutcome) => number): number => out.reduce((s, o) => s + f(o), 0) / out.length
+  const lostShips = out.reduce((s, o) => s + (4 - o.shipsLeft), 0)
+  console.log(
+    `\n汇总：撤离成功 ${ok.length}/${out.length} · 平均到达第 ${avg((o) => o.depth).toFixed(1)} 层 · ` +
+      `平均存活 ${avg((o) => o.shipsLeft).toFixed(2)}/4 艘（合计损失 ${lostShips} 艘）· ` +
+      `平均原矿 ${Math.round(avg((o) => o.oreUnits))} 单位 ⇒ 平均收益 ${Math.round(avg((o) => o.isk)).toLocaleString('zh-CN')} ISK`,
+  )
+}
+
 function main(): void {
+  if (process.argv.includes('--runs') || process.argv.some((a) => a.startsWith('--runs='))) {
+    runRunsMode()
+    return
+  }
   // **逐卡模式**（`--card=1 --depth=2`）：单看某层的某张卡，用来做**逐卡配平**（四张卡的战术/射程
   // 差异很大 ⇒ 同一预算下强度并不相等，必须逐卡看读数再微调该卡的 `dmgMul`）。
   const cardArg = process.argv.find((a) => a.startsWith('--card='))

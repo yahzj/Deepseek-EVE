@@ -9261,3 +9261,50 @@ body {
 }
 .app-bts-fleet-down { font-size: 11px; color: #ff8373; }
 .app-bts-noretreat { margin-left: 4px; }
+
+/* ═══════════ 跃迁入场（船长 2026-09-13 · **纯动画，不动任何位置**）═══════════
+   虫洞内 = 敌方跃迁入场（is-foe）；洞外 = 我方跃迁入场（is-me）。
+   容器 absolute + pointer-events:none ⇒ 不参与布局，我方列/敌列坐标与编队几何一字不改。
+   视觉一律 SVG 线稿（约定第六章：禁 CSS 拼形状）。 */
+.app-bts-warp {
+  position: absolute; top: 50%; width: 260px; height: 200px;
+  transform: translateY(-50%); pointer-events: none; z-index: 3;
+}
+.app-bts-warp.is-foe { transform: translateY(-50%) scaleX(-1); }
+.app-bts-warp svg { width: 100%; height: 100%; overflow: visible; }
+.app-bts-warp .w-ring {
+  fill: none; stroke: currentColor; stroke-width: 1.6; opacity: 0;
+  transform-box: fill-box; transform-origin: center;
+  animation: app-warp-ring 1300ms cubic-bezier(.2, .7, .25, 1) both;
+}
+.app-bts-warp .w-ring.r1 { animation-delay: 0ms; }
+.app-bts-warp .w-ring.r2 { animation-delay: 70ms; }
+.app-bts-warp .w-ring.r3 { animation-delay: 140ms; }
+.app-bts-warp .w-streak {
+  stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; opacity: 0;
+  transform-box: fill-box; transform-origin: center;
+  animation: app-warp-streak 1300ms cubic-bezier(.2, .7, .25, 1) both;
+}
+.app-bts-warp .w-flash {
+  fill: currentColor; opacity: 0;
+  transform-box: fill-box; transform-origin: center;
+  animation: app-warp-flash 1300ms ease-out both;
+}
+/* 我方 = 冷色；敌方 = 暖色（与战场双方配色同源） */
+.app-bts-warp.is-me { color: var(--wui-accent); }
+.app-bts-warp.is-foe { color: #ff9a6b; }
+@keyframes app-warp-ring {
+  0% { transform: scale(2.4); opacity: 0; }
+  30% { opacity: .95; }
+  100% { transform: scale(.72); opacity: 0; }
+}
+@keyframes app-warp-streak {
+  0% { transform: scaleX(2.1); opacity: 0; }
+  28% { opacity: .85; }
+  100% { transform: scaleX(.6); opacity: 0; }
+}
+@keyframes app-warp-flash {
+  0% { opacity: 1; transform: scale(.7); }
+  22% { opacity: .35; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}

@@ -1070,6 +1070,21 @@ const meSpeedRef = useRef(200)
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
   const lay = layout(dims, foeSizes, visM, openM, nearM, meSize)
+  /**
+   * **跃迁入场**（船长 2026-09-13：「既然开始做战斗效果了，那么能否在开始时做一个入场效果？
+   *  为了最小程度防止BUG，**入场效果仅为动画**。玩家和敌舰的位置依旧不改变。入场效果为我方或者敌方
+   *  跃迁入场。（**虫洞内为敌方，虫洞外为我方**）」）。
+   *
+   * 口径（三条，缺一不可）：
+   * 1. **纯动画**：只多一层 `pointer-events: none` 的绝对定位覆盖层，**不碰任何布局/坐标**——
+   *    我方列与敌列的 `left`、编队几何、距离尺全部照旧（本层不进 `layout()` 的入参）；
+   * 2. **按战斗时钟只演一次**：`battle.lastTickGameMs - startedAtGameMs ≤ ARRIVAL_FX_MS` 才渲染
+   *    ⇒ 开战瞬间看得到、**中途退出再进战场不会重播**（洞内战斗 100ms 一拍 ≈ 与真实时间 1:1）；
+   * 3. **谁入场**：虫洞内 = **敌方**跃迁入场（洞里是它们的地盘）；洞外（悬赏/遭遇/教学）= **我方**。
+   */
+  const ARRIVAL_FX_MS = 1300
+  const arrivalSide: 'me' | 'foe' | null =
+    battle.lastTickGameMs - battle.startedAtGameMs <= ARRIVAL_FX_MS ? (inWormhole ? 'foe' : 'me') : null
   /** 阵形（斜向菱形）：列宽/右移/下移/排高 + 逐舰机位（DOM 的两排排布与逐舰微调共用这一份） */
   const foeFormation = lay.formation
   /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该排整组竖排到编队下方）——
@@ -1630,6 +1645,45 @@ const meSpeedRef = useRef(200)
               </div>
             ))}
           </div>
+          {/* **跃迁入场（纯动画 · 不动位置）**——见 `arrivalSide` 的口径注释：
+              只叠一层不接收指针事件的 SVG；我方列/敌列坐标与编队几何一字未动。 */}
+          {arrivalSide ? (
+            <div
+              className={`app-bts-warp is-${arrivalSide}`}
+              style={{ left: arrivalSide === 'me' ? lay.meLeft : lay.foeLeft }}
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 260 200">
+                {/* 跃迁环（三层同心椭圆，由外向内收） */}
+                <ellipse className="w-ring r1" cx="130" cy="100" rx="96" ry="52" />
+                <ellipse className="w-ring r2" cx="130" cy="100" rx="64" ry="34" />
+                <ellipse className="w-ring r3" cx="130" cy="100" rx="34" ry="18" />
+                {/* 跃迁尾迹：上下各三条向心线 */}
+                {[-64, -32, 0, 32, 64].map((dy, i) => (
+                  <line
+                    key={`u${i}`}
+                    className="w-streak"
+                    x1="8"
+                    y1={100 + dy * 1.5}
+                    x2="86"
+                    y2={100 + dy * 0.55}
+                  />
+                ))}
+                {[-64, -32, 0, 32, 64].map((dy, i) => (
+                  <line
+                    key={`d${i}`}
+                    className="w-streak"
+                    x1="252"
+                    y1={100 + dy * 1.5}
+                    x2="174"
+                    y2={100 + dy * 0.55}
+                  />
+                ))}
+                {/* 出场闪点 */}
+                <circle className="w-flash" cx="130" cy="100" r="16" />
+              </svg>
+            </div>
+          ) : null}
           <svg className="app-bts-arcs" width="100%" height="100%" aria-hidden="true">
             {/* attribute transform（在无 viewBox/CSS-transform 兼容性问题上最可靠）；平滑由 33ms 视觉插值提供 */}
             <g transform={`translate(${meGunX} ${lay.me.y})`}>{meArcEls}</g>
