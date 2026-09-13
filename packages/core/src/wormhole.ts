@@ -188,3 +188,203 @@ export function wormholeBagUsage(
   }
   return { used, capacity, overflow: used > capacity }
 }
+
+/* ═══════════ 五、副本状态机（C 批：层 / 节点 / 回合 / 撤离） ═══════════ */
+
+/**
+ * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）· `extracting` 撤离战。
+ *
+ * ⚠ 两条硬约束（船长裁定）：
+ * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` **只在层末**（`pendingNode === null`）可用；
+ * 2. **回合耗尽只能撤离** ⇒ `turnsLeft` 不够走完当前节点时，推进被拒（`mustExtract`）。
+ */
+export type WormholePhase = 'idle' | 'inside' | 'extracting'
+
+/** 层内节点类型（B 批最小集：战斗 / 拾取 / 事件；BOSS 门与撤离战在 D/F 批细化） */
+export type WormholeNodeKind = 'combat' | 'pickup' | 'event'
+
+export interface WormholeNode {
+  kind: WormholeNodeKind
+  /** 战斗：本节点波数（≥1；每多一波 +1 回合） */
+  waves: number
+  /** 拾取：本节点可捡几堆（每堆 +1 回合） */
+  pickups: number
+  /** 事件：事件池键（内容由后续批次接 `travelEvents` 风格的表） */
+  eventKey?: string
+  /** 本节点打完/点完要花几回合（= `wormholeStepCost`） */
+  cost: number
+}
+
+export interface WormholeRunState {
+  phase: WormholePhase
+  /** 当前层（1 起） */
+  depth: number
+  /** 本层已推进到第几个节点（0 起） */
+  nodeIndex: number
+  /** 剩余回合 */
+  turnsLeft: number
+  /** 出发时锁定的回合预算（读数用） */
+  turnsTotal: number
+  /** 编队（船型 id；进场时锁定） */
+  fleet: readonly string[]
+  /** 折合总质量（进场时锁定） */
+  totalMass: number
+  /** 背包（每格只装一种物品 ⇒ 一条记录 = 一格的内容） */
+  bag: WormholeBagSlot[]
+  /** 当前待处理节点（`null` = 本层已清空，处于"层末抉择"） */
+  pendingNode: WormholeNode | null
+  /** 本层节点数（2~3，船长定） */
+  nodesPerLayer: number
+}
+
+export interface WormholeState {
+  /** 进行中的一趟（null = 不在洞里） */
+  run: WormholeRunState | null
+  /** 本趟累计：损失船数（结算读数用） */
+  lastFleetLost: number
+}
+
+export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
+
+/* ── 层曲线（船长 2026-09-13：「深层收益应该比难度曲线要更高」） ── */
+
+/** 第 1 层基准威胁 */
+export const WORMHOLE_THREAT_BASE = 45
+/** 每层**威胁**增幅（等比 ×1.16 ⇒ 层 1~3 = 45/52/61，与设计稿"≈45~60"同量级） */
+export const WORMHOLE_THREAT_GROWTH = 0.16
+/** 每层**收益**增幅（+20%）。**必须大于威胁增幅** —— 船长 2026-09-13：
+ *  「深层收益应该比难度曲线要更高」⇒ 用等比而非加法，才能让"单位威胁收益"**逐层严格上升**
+ *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。 */
+export const WORMHOLE_REWARD_GROWTH = 0.2
+/** 兼容取整：每层威胁的**名义**增量（= 45×0.16 ≈ 7，落在设计稿"+8~10"附近，供文档/读数引用） */
+export const WORMHOLE_THREAT_PER_LAYER = Math.round(WORMHOLE_THREAT_BASE * WORMHOLE_THREAT_GROWTH)
+
+/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.16，取整） */
+export function wormholeLayerThreat(depth: number): number {
+  const d = Math.max(1, Math.floor(depth))
+  return Math.round(WORMHOLE_THREAT_BASE * Math.pow(1 + WORMHOLE_THREAT_GROWTH, d - 1))
+}
+
+/** 第 `depth` 层的收益系数（层 1 = 1.0，每层 ×1.2）——**涨得比威胁快** */
+export function wormholeLayerRewardMul(depth: number): number {
+  const d = Math.max(1, Math.floor(depth))
+  return Math.pow(1 + WORMHOLE_REWARD_GROWTH, d - 1)
+}
+
+/** 每层节点数（船长定：2~3 个；层 1~2 取 2、层 3 起取 3——越深越长，与收益曲线同向） */
+export function wormholeNodesPerLayer(depth: number): number {
+  return Math.max(1, Math.floor(depth)) <= 2 ? 2 : 3
+}
+
+/** 起一趟：校验编队（复用 B 批的 `wormholeAdmission`）并锁定质量 / 回合预算 / 背包 */
+export interface WormholeStartResult {
+  ok: boolean
+  error?: string
+  run?: WormholeRunState
+}
+
+export function wormholeStartRun(
+  ctx: SimContext,
+  shipIds: readonly string[],
+  rngSeed: number,
+): WormholeStartResult {
+  const adm = wormholeAdmission(ctx, shipIds)
+  if (!adm.ok) return { ok: false, error: WORMHOLE_ADMISSION_TEXT[adm.code] }
+  const depth = 1
+  return {
+    ok: true,
+    run: {
+      phase: 'inside',
+      depth,
+      nodeIndex: 0,
+      turnsLeft: adm.turnBudget,
+      turnsTotal: adm.turnBudget,
+      fleet: [...shipIds],
+      totalMass: adm.totalMass,
+      bag: [],
+      pendingNode: wormholeMakeNode(rngSeed, depth, 0),
+      nodesPerLayer: wormholeNodesPerLayer(depth),
+    },
+  }
+}
+
+/**
+ * 造一个层内节点（**确定性**：同 `(seed, depth, index)` ⇒ 同结果，便于复现与用例）。
+ * 口径：每层**首节点固定战斗**（"进层先打一场"）、其余按 roll 分战斗/拾取/事件；
+ * 波数随深度 +1（层 3 起可到 3 波；每多一波 +1 回合）。
+ */
+export function wormholeMakeNode(seed: number, depth: number, index: number): WormholeNode {
+  const h = Math.abs((seed * 1103515245 + (depth * 97 + index) * 12345) % 2147483647)
+  const roll = h % 100
+  const waves = Math.min(3, 1 + Math.floor(Math.max(0, depth - 1) / 2) + (roll % 2))
+  if (index === 0) {
+    return { kind: 'combat', waves, pickups: 0, cost: wormholeStepCost(waves, 0) }
+  }
+  if (roll < 45) return { kind: 'pickup', waves: 0, pickups: 2, cost: wormholeStepCost(1, 2) }
+  if (roll < 80) return { kind: 'combat', waves, pickups: 0, cost: wormholeStepCost(waves, 0) }
+  return {
+    kind: 'event',
+    waves: 0,
+    pickups: 0,
+    eventKey: `wh-event-${roll % 3}`,
+    cost: wormholeStepCost(1, 0),
+  }
+}
+
+/** 推进结果（读数为准；界面到 E 批接） */
+export interface WormholeAdvanceResult {
+  ok: boolean
+  error?: string
+  /** 本步花掉几回合 */
+  spent?: number
+  /** 是否进入"层末抉择"（`pendingNode === null`） */
+  atLayerEnd?: boolean
+  /** 是否因回合耗尽而**只能撤离** */
+  mustExtract?: boolean
+}
+
+/**
+ * **结算当前节点**并推进到下一个（或进入层末抉择）。
+ * - 回合不足 ⇒ **拒绝推进**（只能撤离）——"回合耗尽只能撤离"的落点；
+ * - 层内节点走完 ⇒ `pendingNode = null`（层末：可"继续深入"或"撤离"）；
+ * - **不自动跨层**：跨层由 `wormholeDescend`（层末抉择）处理。
+ */
+export function wormholeAdvanceNode(
+  ctx: SimContext,
+  run: WormholeRunState,
+  rngSeed: number,
+): WormholeAdvanceResult {
+  void ctx
+  const node = run.pendingNode
+  if (!node) return { ok: false, error: '本层已清空：请选择「继续深入」或「撤离」。' }
+  if (run.turnsLeft < node.cost) {
+    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+  }
+  const spent = node.cost
+  run.turnsLeft -= spent
+  run.nodeIndex += 1
+  if (run.nodeIndex >= run.nodesPerLayer) {
+    run.pendingNode = null
+    return { ok: true, spent, atLayerEnd: true, mustExtract: run.turnsLeft <= 0 }
+  }
+  run.pendingNode = wormholeMakeNode(rngSeed, run.depth, run.nodeIndex)
+  return { ok: true, spent, atLayerEnd: false, mustExtract: run.turnsLeft <= 0 }
+}
+
+/** 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离） */
+export function wormholeDescend(run: WormholeRunState, rngSeed: number): WormholeAdvanceResult {
+  if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。' }
+  if (run.turnsLeft <= 0) return { ok: false, error: '回合已耗尽：只能撤离。', mustExtract: true }
+  run.depth += 1
+  run.nodeIndex = 0
+  run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
+  run.pendingNode = wormholeMakeNode(rngSeed, run.depth, 0)
+  return { ok: true, spent: 0, atLayerEnd: false }
+}
+
+/** 撤离（**只在层末可用**）：进入撤离战相位；撤离战本体在 F 批实现 */
+export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
+  if (run.pendingNode) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
+  run.phase = 'extracting'
+  return { ok: true }
+}
