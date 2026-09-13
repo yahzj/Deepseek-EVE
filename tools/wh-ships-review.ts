@@ -102,7 +102,7 @@ for (const f of FAMS) {
   for (const s of list) {
     const bp = SHIP_BLUEPRINTS.find((b) => b.shipId === s.id)
     P(
-      `| **${s.name}**\n\`${s.id}\` | T${s.tier} | ${s.role} | ${NUM_COLS.map((c) => {
+      `| **${s.name}**\r\n\`${s.id}\` | T${s.tier} | ${s.role} | ${NUM_COLS.map((c) => {
         const flag = outOfBand(s, c)
         return flag === '越界' ? `**${fmt(c.get(s))}**⚠` : fmt(c.get(s))
       }).join(' | ')} | ${fmt(s.hitBonus ?? 0)} | ${
@@ -165,7 +165,7 @@ for (const s of wh) {
     flagged.push(`   - **${s.name}**（T${s.tier}/${s.role}）：${hits.join(' · ')}（参照 ${bandOf(s).map((b) => `${b.id} ${b.name}`).join('、')}）`)
   }
 }
-P(flagged.length > 0 ? flagged.join('\n') : '   - （无）')
+P(flagged.length > 0 ? flagged.join('\r\n') : '   - （无）')
 P()
 P('## §4 复现')
 P()
