@@ -323,9 +323,10 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(wormholeDescend(run, 21).ok).toBe(true)
   })
 
-  it('**胜 · 撤离战**：背包并入仓库、本趟结束', () => {
+  it('**胜 · 撤离战**：背包并入仓库、本趟结束（第 2 层起才有撤离战）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
+    run.depth = 2 // 船长 2026-09-13：「撤离战只从第二层开始生效」⇒ 要打撤离战就得站到第 2 层
     run.bossCleared = run.depth
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 500 }]
     const before = countWare(state, WORMHOLE_ORE_ITEM_ID)
@@ -339,6 +340,30 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     settleBattle(state)
     expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + 500) // 收益入港
     expect(state.wormhole.run).toBeNull() // 本趟结束
+    // **结算单**（界面弹层用）：收益写进来、没有损失
+    const st = state.wormhole.lastSettle!
+    expect(st.kind).toBe('extract')
+    expect(st.depth).toBe(2)
+    expect(st.oreUnits).toBe(500)
+    expect(st.oreIsk).toBe(500 * (ctx.items.get(WORMHOLE_ORE_ITEM_ID)?.baseSellPriceIsk ?? 0))
+    expect(st.shipsLost).toEqual([])
+    expect(st.lostIsk).toBe(0)
+  })
+
+  it('**第 1 层免撤离战**（船长 2026-09-13）：撤了就直接入港，结算单标记 skippedExtractBattle', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    expect(run.depth).toBe(1)
+    run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 300 }]
+    const before = countWare(state, WORMHOLE_ORE_ITEM_ID)
+    expect(wormholeExtract(run).ok).toBe(true)
+    advanceWormhole(state, ctx)
+    expect(state.wormhole.run).toBeNull() // 一趟结束（没有战斗要打）
+    expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + 300) // 收益照常入港
+    const st = state.wormhole.lastSettle!
+    expect(st.kind).toBe('extract')
+    expect(st.depth).toBe(1)
+    expect(st.skippedExtractBattle).toBe(true)
   })
 
   /**
@@ -349,6 +374,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
   it('**胜 · 撤离战**：货仓里的货柜也进仓库（不是只有散货入港）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
+    run.depth = 2 // 第 2 层起才有撤离战（第 1 层免战那条另有用例）
     run.bossCleared = run.depth
     // 直接用「装舱」入位（等价从格上拾取：占 2×2 = 4 格）
     const family = String(ctx.anomalies.get(wormholeCardIdFor(run.depth, 0))?.foeFamily ?? 'A')
@@ -361,6 +387,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     settleBattle(state)
     expect(countWare(state, boxId)).toBe(1) // **货柜真的到港了**
     expect(state.wormhole.run).toBeNull()
+    expect(state.wormhole.lastSettle!.boxes).toEqual([boxId]) // 结算单里也报出这件货柜
   })
 
   it('**负 · 全灭**：全损——货柜一起丢（不带走）', () => {
@@ -375,6 +402,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     advanceWormhole(state, ctx)
     expect(state.wormhole.run).toBeNull()
     expect(countWare(state, boxId)).toBe(0) // 全损 ⇒ 货柜随趟一起丢
+    expect(state.wormhole.lastSettle!.kind).toBe('lost')
   })
 
   it('**负 · 全灭**：全损——编队全丢、背包清空、本趟结束', () => {
@@ -396,6 +424,12 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(state.wormhole.lastFleetLost).toBe(runFleet.length)
     expect(Object.keys(state.fleet).length).toBe(fleetBefore - runFleet.length) // 船真丢了
     expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(oreBefore) // 背包内容没入港
+    // **结算单**（界面弹层用）：全损也要有单子，且把"损失了哪几艘 / 本来能带走多少"写清楚
+    const st = state.wormhole.lastSettle!
+    expect(st.kind).toBe('lost')
+    expect(st.shipsLost.length).toBe(runFleet.length)
+    expect(st.oreIsk).toBe(0)
+    expect(st.lostIsk).toBeGreaterThan(0) // 300 单位母矿本来能带走
     // **绝不软锁**：主控也在这批损失里 ⇒ 弃船补驾驶必须已经补上（全损是终局玩法，不能停在"没船可开"）
     expect(state.fleet[state.shipId], '全损后没有可驾驶船').toBeTruthy()
     expect(pilotUnavailableReason(state)).toBeNull()
@@ -586,8 +620,9 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     expect(line, '地点战胜利没有战报').toBeTruthy()
     expect(line!).toContain('第 1 层地点')
     expect(line!).toContain('编队残血')
-    // 撤离战同样有战报（且与"撤离成功"分开两条）
+    // 撤离战同样有战报（且与"撤离成功"分开两条）——第 2 层起才有撤离战
     const run2 = state.wormhole.run!
+    run2.depth = 2
     run2.bossCleared = run2.depth
     run2.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 500 }]
     expect(wormholeExtract(run2).ok).toBe(true)

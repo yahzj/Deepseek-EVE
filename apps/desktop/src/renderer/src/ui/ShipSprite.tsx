@@ -142,3 +142,47 @@ export function ShipSprite({
 export function roleLabel(role: ShipRole): string {
   return SHIP_ROLE_LABELS[role] ?? role
 }
+
+/**
+ * **把舰形画进"已经存在的 SVG"**（2026-09-13 · 虫洞地图的"当前格 = 玩家舰"用）：
+ * 只输出一个 `<g>`（**不套 `<div>`/`<svg>` 外壳**，否则嵌进地图的 `<svg>` 里就是非法嵌套）。
+ *
+ * 画布口径沿用资产表（`SHIP_ART` = 240×110、船头朝右；未命中回退 140×64 的 role 剪影）——
+ * 本组件**自带"缩放到目标宽度 + 居中到原点"的变换** ⇒ 调用方只要把它放进一个负责定位/动画的
+ * 外层 `<g>`（例如地图格子上做 CSS transform 过渡）即可。
+ * 尾焰默认**不画**（地图格子小，焰形会糊成一团；要画就传 `engine`）。
+ */
+export function ShipSpriteShape({
+  role,
+  shipId,
+  size = 22,
+  flip = false,
+  engine = false,
+}: {
+  role?: ShipRole
+  shipId?: string
+  /** 目标显示宽度（地图用户单位 / 像素）；高度按资产比例自动算 */
+  size?: number
+  flip?: boolean
+  engine?: boolean
+}) {
+  const art: ReactNode | undefined = shipId ? SHIP_ART[shipId] : undefined
+  const w = art ? 240 : 140
+  const h = art ? 110 : 64
+  const s = size / w
+  const place = `scale(${s.toFixed(5)}) translate(${-w / 2},${-h / 2})`
+  const mirror = flip ? ` scale(-1,1) translate(${-w},0)` : ''
+  return (
+    <g
+      className="app-wh-ship-shape"
+      transform={place + mirror}
+      stroke="currentColor"
+      strokeWidth={art ? 2.2 : 2}
+      strokeLinejoin="round"
+      fill="none"
+    >
+      {engine ? <Exhausts shipId={shipId} /> : null}
+      {art ?? <path d={hullPath(role ?? 'industrial')} />}
+    </g>
+  )
+}

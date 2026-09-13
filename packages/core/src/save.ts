@@ -2582,7 +2582,35 @@ function normalizeState(raw: unknown): GameState {
               : {}),
           }
         : null
-    return { run, lastFleetLost: Math.max(0, Math.floor(num(wRaw.lastFleetLost))) }
+    /**
+     * **最近一趟的结算单**（2026-09-13：撤离后弹结算界面用）：形状严格清洗，
+     * 坏值整条丢弃（宁可少弹一次结算层，也不要读出半个坏对象）。**可选字段 ⇒ 零迁移**。
+     */
+    const settleRaw = asRaw(wRaw.lastSettle)
+    const strList = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    const lastSettle =
+      settleRaw !== null &&
+      typeof settleRaw === 'object' &&
+      (settleRaw.kind === 'extract' || settleRaw.kind === 'lost')
+        ? {
+            kind: settleRaw.kind as 'extract' | 'lost',
+            depth: Math.max(1, Math.floor(num(settleRaw.depth))),
+            oreUnits: Math.max(0, Math.floor(num(settleRaw.oreUnits))),
+            oreIsk: Math.max(0, num(settleRaw.oreIsk)),
+            wreckIsk: Math.max(0, num(settleRaw.wreckIsk)),
+            boxes: strList(settleRaw.boxes),
+            relics: strList(settleRaw.relics),
+            shipsLost: strList(settleRaw.shipsLost),
+            lostIsk: Math.max(0, num(settleRaw.lostIsk)),
+            ...(settleRaw.skippedExtractBattle === true ? { skippedExtractBattle: true } : {}),
+          }
+        : undefined
+    return {
+      run,
+      lastFleetLost: Math.max(0, Math.floor(num(wRaw.lastFleetLost))),
+      ...(lastSettle !== undefined ? { lastSettle } : {}),
+    }
   }
   const wormhole = cleanWormhole()
 

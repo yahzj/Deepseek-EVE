@@ -421,29 +421,40 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('extracting')
   })
 
-  it('**层末守卫是门**（网格口径）：守卫没清时不能深入、也不能撤离；清掉后两条路都放行', () => {
+  it('**守卫只堵"深入"**（船长 2026-09-13 改裁定）：守卫没清也能撤（照打撤离战）；深入照旧要清守卫', () => {
     const { run } = enterForActions([T1, T1], 77)
+    // **深入**这侧的门照旧：守卫没清不许往下走
     expect(wormholeDescend(run, 77).ok).toBe(false)
     expect(wormholeDescend(run, 77).error ?? '').toContain('守卫')
-    expect(wormholeExtract(run).ok).toBe(false)
-    run.bossCleared = run.depth
-    expect(wormholeDescend(run, 77).ok).toBe(true)
-    expect(run.depth).toBe(2)
+    // **撤离**这侧已无条件（船长：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）
+    const ex = wormholeExtract(run)
+    expect(ex.ok, '守卫没清也该能开始撤离').toBe(true)
+    expect(run.phase).toBe('extracting')
+    // 清掉守卫之后：深入放行
+    const b = enterForActions([T1, T1], 77)
+    b.run.bossCleared = b.run.depth
+    expect(wormholeDescend(b.run, 77).ok).toBe(true)
+    expect(b.run.depth).toBe(2)
   })
 
-  it('**逃生门**（2026-09-13 修死局 · 网格口径）：回合走不动时，哪怕守卫没清，撤离也放行', () => {
+  it('**撤离开放**（2026-09-13 船长改裁定）：回合没耗尽、守卫没清、层内还有活 ⇒ 一样能开始撤离', () => {
     const { run } = enterForActions([T1, T1], 31)
-    run.turnsLeft = 0 // 网格层的最小花费 = 1 回合 ⇒ 0 回合时三个动作全走不动
+    run.turnsLeft = 0 // 回合耗尽
     expect(wormholeOutOfTurns(run)).toBe(true)
-    const ex = wormholeExtract(run)
-    expect(ex.ok, '回合耗尽却撤不走 = 死局').toBe(true)
+    expect(wormholeExtract(run).ok, '回合耗尽却撤不走 = 死局').toBe(true)
     expect(run.phase).toBe('extracting')
-    // 负向：回合充足时这条路不该被打开（守卫照旧是门）
+    // 回合充足 + 守卫没清 + 层内节点还在 ⇒ 旧口径会拒，新裁定放行（代价 = 照打撤离战）
     const b = enterForActions([T1, T1], 31)
     b.run.turnsLeft = 5
     expect(wormholeOutOfTurns(b.run)).toBe(false)
-    expect(wormholeExtract(b.run).ok).toBe(false)
-    expect(wormholeExtract(b.run).error ?? '').toContain('守卫')
+    expect((b.run.bossCleared ?? 0) < b.run.depth).toBe(true)
+    expect(wormholeExtract(b.run).ok).toBe(true)
+    expect(b.run.phase).toBe('extracting')
+    // 老档线性层的"节点没走完"也不再挡撤离（同一把尺）
+    const c = enterForActions([T1, T1], 31)
+    c.run.grid = undefined
+    c.run.pendingNode = wormholeMakeNode(31, 1, 0)
+    expect(wormholeExtract(c.run).ok).toBe(true)
   })
 
   it('战斗中的逃生门不生效：**战斗没结束一律不能撤**（船长裁定优先于回合）', () => {

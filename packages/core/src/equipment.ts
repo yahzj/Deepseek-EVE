@@ -608,7 +608,9 @@ export function setAmmoTier(
 
 /** 玩家指令：卸下当前船"某家族的第一件"（旧六槽语义的兼容入口；UI 位操作请用 unfitAt）。
  * 家族 → 固定兼容位（V17_FAMILY_BAYS：turret→high0 / miner→high1 / shield→mid0 /
- * propulsion→mid1 / armor→low0 / cargo→low1）。 */
+ * propulsion→mid1 / armor→low0 / cargo→low1）。
+ * ⚠ 这张表是**老档（v17 布局）的历史位**：采集器/打捞器自 2026-09-13 起改归**低槽**（船长「给作业开」），
+ * 新装配里它们不在 high1 ⇒ 本函数只服务"老档里还插在高槽的那一件"，新档请用 `unfitAt`。 */
 export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
   const fitted = fittedOf(state)
   if (!fitted) return false
