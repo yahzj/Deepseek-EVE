@@ -225,11 +225,14 @@ function clamp(min: number, max: number, v: number): number {
  * 层位克制系数（远行星号体系削弱版）。
  * 2026-09-05 船长改：能量（plasma）对护盾 0.75 → 1.25（能量弹/激光对盾更有效，
  * 三系成为"各有克制侧重"：动能拆盾 1.5、爆炸破甲 1.5、能量拆盾 1.25 且不劣于任何层）。
+ * **2026-09-13 船长改（本次）**：「爆炸对护盾改为 ×0.75，动能对装甲改为 ×0.75」——
+ * 两处**逆克制劣化**由 0.5 抬到 0.75（克制/劣化比 3:1 → 2:1），三系对"非擅长层"不再腰斩。
+ * UI 速查文案 `layerMultText`、产物资检契约（`tools/content-check.ts` 克制表对账）与本函数同源，自动跟随。
  * ⚠ C4 复核项：此改动提升激光炮/能量弹系（含部分无人机能量弹）胜率与 PvE 时长结构，请二号复核平衡。
  */
 export function typeLayerMult(t: DamageType, layer: 'shield' | 'armor' | 'hull'): number {
-  if (t === 'kinetic') return layer === 'shield' ? 1.5 : layer === 'armor' ? 0.5 : 1
-  if (t === 'explosive') return layer === 'shield' ? 0.5 : layer === 'armor' ? 1.5 : 1
+  if (t === 'kinetic') return layer === 'shield' ? 1.5 : layer === 'armor' ? 0.75 : 1
+  if (t === 'explosive') return layer === 'shield' ? 0.75 : layer === 'armor' ? 1.5 : 1
   return layer === 'shield' ? 1.25 : 1 // plasma（能量）：拆盾 1.25，对甲/结构无劣化
 }
 

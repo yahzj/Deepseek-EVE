@@ -332,7 +332,7 @@ export const ICES: readonly ItemDef[] = [
 ]
 
 /** 弹药（V10.5 战斗数值契约就位：克制体系见 docs/design/v10b-combat-data.md；
- * 动能弹对护盾 ×1.5 对装甲 ×0.5、爆破导弹（爆炸）反之、能量弹药（能量系）对护盾 ×0.75 其余 ×1.0；
+ * 动能弹对护盾 ×1.5 对装甲 ×0.75、爆破导弹（爆炸）反之、能量弹药（能量系）对护盾 ×1.25 其余 ×1.0；
  * V18 口径取消：每型只留单档通用弹；V18B-1/2：高爆弹更名"爆破导弹"（导弹架专用）、
  * 等离子弹更名"能量弹药"（激光炮专用）——武器形态与弹药一一对应） */
 export const AMMO: readonly ItemDef[] = [
@@ -342,7 +342,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 6,
-    description: '动能弹：实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.5）。',
+    description: '动能弹：实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.75）。',
     damageType: 'kinetic',
     dmg: 6,
   },
@@ -352,7 +352,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 7,
-    description: '爆破导弹：导弹架专用弹药，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
+    description: '爆破导弹：导弹架专用弹药，拆甲专精（对装甲 ×1.5、对护盾 ×0.75）。导弹无视近盲、命中不随距离衰减。',
     damageType: 'explosive',
     dmg: 7,
   },
@@ -374,7 +374,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 45,
-    description: '动能弹 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.5）。攻坚用高级弹药。',
+    description: '动能弹 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.75）。攻坚用高级弹药。',
     damageType: 'kinetic',
     dmg: 8,
   },
@@ -384,7 +384,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 60,
-    description: '爆破导弹 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.5）。导弹无视近盲、命中不随距离衰减。',
+    description: '爆破导弹 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.75）。导弹无视近盲、命中不随距离衰减。',
     damageType: 'explosive',
     dmg: 9,
   },
