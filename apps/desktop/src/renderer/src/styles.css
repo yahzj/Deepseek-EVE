@@ -9205,7 +9205,7 @@ body {
    口径：复用仓内既有家族（app-modal / app-inv-* / app-bay-title / app-btn），
    只补虫洞专属的：弹层尺寸 · 三联读数条 · 节点图 · 背包网格。
    容器固定尺寸，防内容变化引起跳动（约定 §六）。 */
-.app-wh-modal { width: 720px; height: min(620px, calc(100vh - 90px)); }
+.app-wh-modal { width: min(1060px, 92vw); height: min(760px, calc(100vh - 72px)); max-width: calc(100vw - 40px); max-height: calc(100vh - 48px); }
 .app-wh-devnote { font-size: 11px; margin-left: 8px; margin-right: auto; }
 .app-wh-tabs { display: flex; gap: 6px; margin-right: 8px; }
 .app-wh-sub { margin-top: 10px; }
@@ -9226,12 +9226,12 @@ body {
 .app-wh-filters { margin: 0 0 6px; }
 .app-wh-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
   gap: 8px;
   margin: 6px 0 0;
   padding: 0;
   list-style: none;
-  max-height: 300px;
+  max-height: 420px;
   overflow-y: auto;
 }
 .app-wh-card {

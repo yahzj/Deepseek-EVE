@@ -38,16 +38,6 @@ import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 
 type WhTab = 'prep' | 'map' | 'bag'
 
-/** 选舰「状态」筛选（与「我的舰队」的状态筛选同款控件；键义按虫洞口径：可编入 / 已编入 / 过重 / 占用中） */
-type WhStatusFilter = 'all' | 'pickable' | 'picked' | 'heavy' | 'busy'
-const WH_STATUS_TABS: Array<{ key: WhStatusFilter; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'pickable', label: '可编入' },
-  { key: 'picked', label: '已编入' },
-  { key: 'heavy', label: '过重' },
-  { key: 'busy', label: '占用中' },
-]
-
 const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
 
 /** 千分位 */
@@ -81,10 +71,10 @@ export function WormholePanel({
   const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
 
   /* ── 选舰检索（船长 2026-09-13「缺少一个类似我的舰队里的舰船筛选和搜索」）──
-     复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 三行筛选（状态/类别/级别，各维取「与」）；
-     类别与级别复用同一张单点表（`SHIP_SUBS` / `SHIP_TIER_SUBS`），与市场/手册/组装机同口径。 */
+     复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 两行筛选（类别 / 级别，各维取「与」）；
+     类别与级别复用同一张单点表（`SHIP_SUBS` / `SHIP_TIER_SUBS`），与市场/手册/组装机同口径。
+     （2026-09-13 船长：「状态的筛选可以删除」⇒ 原「状态」那一行整行退场。） */
   const [whQ, setWhQ] = useState('')
-  const [whStatus, setWhStatus] = useState<WhStatusFilter>('all')
   const [whRole, setWhRole] = useState<string>(SUB_ALL)
   const [whTier, setWhTier] = useState<string>(SUB_ALL)
   const whEntries = Object.keys(state.fleet).map((uid) => {
@@ -101,23 +91,12 @@ export function WormholePanel({
       on: picked.includes(uid),
     }
   })
-  const whFiltered = whQ.trim().length > 0 || whStatus !== 'all' || whRole !== SUB_ALL || whTier !== SUB_ALL
+  const whFiltered = whQ.trim().length > 0 || whRole !== SUB_ALL || whTier !== SUB_ALL
   const whShown = whEntries.filter((e) => {
     const q = whQ.trim().toLowerCase()
     if (q.length > 0) {
       const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
       if (!hay.includes(q)) return false
-    }
-    if (whStatus !== 'all') {
-      const hit =
-        whStatus === 'picked'
-          ? e.on
-          : whStatus === 'pickable'
-            ? e.ok && !e.busy
-            : whStatus === 'heavy'
-              ? !e.ok
-              : !!e.busy // busy
-      if (!hit) return false
     }
     if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
     if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
@@ -227,22 +206,6 @@ export function WormholePanel({
                 </span>
               </span>
               <div className="app-fleet-toolbar app-wh-filters">
-                <div className="app-fleet-row">
-                  <span className="app-dim">状态：</span>
-                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
-                    {WH_STATUS_TABS.map((t) => (
-                      <button
-                        key={t.key}
-                        role="tab"
-                        aria-selected={whStatus === t.key}
-                        className={`app-tasktab${whStatus === t.key ? ' is-active' : ''}`}
-                        onClick={() => setWhStatus(t.key)}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <div className="app-fleet-row">
                   <span className="app-dim">类别：</span>
                   <div className="app-task-tabs app-fleet-tabs" role="tablist">
