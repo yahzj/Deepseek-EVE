@@ -978,7 +978,7 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armored',
     subClass: '重型突击巡洋舰',
     // 子分类「重型突击巡洋舰」（船长 2026-09-13）：**三层抗性：0 抗一律 → 0.25**（甲爆炸保留 0.5）· **三层血 ×1.1 = 1055** · **移除族武 +0.15** · 低槽 +1 ｜ 机动 −30% · 货舱 −30% · 信号 +20%
-    slots: { high: 3, mid: 4, low: 5 },
+    slots: { high: 4, mid: 3, low: 5 },
     tier: 3,
     unreleased: true,
     cargoM3: 2940,
@@ -1075,7 +1075,7 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-wh-d-cruiser',
     name: '陵寝巡洋舰',
     role: 'armored',
-    slots: { high: 2, mid: 5, low: 5 },
+    slots: { high: 4, mid: 4, low: 4 },
     tier: 3,
     unreleased: true,
     cargoM3: 9000,
