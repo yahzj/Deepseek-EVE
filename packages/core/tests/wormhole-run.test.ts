@@ -14,9 +14,17 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { idleAiShipIds } from '../src/ai'
+import { shipBusyLabel } from '../src/activity'
+import { advanceGame } from '../src/engine'
+import { startExpedition } from '../src/expedition'
+import { wormholeStartBattle } from '../src/wormholeBattle'
+import { addShipToFleet } from '../src/shipyard'
 import {
+  shipBusyForWormhole,
   wormholeAdvanceNode,
   wormholeDescend,
+  wormholeEnter,
   wormholeExtract,
   wormholeOutOfTurns,
   wormholeLayerRewardMul,
@@ -30,6 +38,125 @@ const ctx = buildSimContext()
 const T1 = 'sandcat'
 const T3 = 'sh-thresher'
 const T5 = 'sh-colossal'
+
+describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13）', () => {
+  it('**主控不闲置就进不去**：主控在采矿 ⇒ 拒绝，文案点名忙态', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    state.shipId = a
+    state.mining.active = true // 主控在采矿（判据走 activity.shipBusyLabel）
+    const r = wormholeEnter(state, ctx, [a], 7)
+    expect(r.ok, '主控忙着还能进洞').toBe(false)
+    expect(r.error ?? '').toContain('主控正在')
+    expect(state.wormhole.run).toBeNull()
+    // 收工后就能进
+    state.mining.active = false
+    expect(wormholeEnter(state, ctx, [a], 7).ok).toBe(true)
+  })
+
+  it('**编队里有人被占用就进不去**：某艘正在 AI 派工 ⇒ 拒绝并点名那艘船', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    state.aiAssignments[b] = {
+      coreType: 'basic',
+      startedAtGameMs: 0,
+      task: { kind: 'mining', beltId: '', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+    }
+    const r = wormholeEnter(state, ctx, [a, b], 7)
+    expect(r.ok).toBe(false)
+    expect(r.error ?? '').toContain('AI 采矿')
+    expect(state.wormhole.run).toBeNull()
+  })
+
+  it('**进洞的船被锁定**：洞内船对外一律算忙（AI 指派列表里没有它、忙态写着「虫洞探索中」）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    const c = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(idleAiShipIds(state)).toContain(b) // 进洞前：b/c 都是可指派的空闲船
+    expect(wormholeEnter(state, ctx, [b, c], 7).ok).toBe(true)
+    // 锁定：洞里那两艘不再出现在"可指派空闲船"里（船长：「已经进洞的船将被锁定（包括货仓）」）
+    expect(idleAiShipIds(state)).not.toContain(b)
+    expect(idleAiShipIds(state)).not.toContain(c)
+    expect(shipBusyLabel(state, ctx, b)).toBe('虫洞探索中')
+    // 也不能被重复编入（同一艘船不能同时下两个洞）
+    state.wormhole.run = null
+    expect(idleAiShipIds(state)).toContain(b)
+  })
+})
+
+describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
+  it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：两场各自推进、锚点各在各边', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const holeBattle = run.battle!
+    // 洞外的开战入口**不设闸门**（船长裁定）：主控在洞外 ⇒ 直接放行
+    const exp = startExpedition(state, 'ano-training', ctx)
+    expect(exp.ok, exp.error ?? '').toBe(true)
+    expect(state.expedition.battle, '洞外那场没开起来').toBeTruthy()
+    // 锚点各在各边：洞内锚 = run.fleet[0]、洞外锚 = 主控（不在洞里 ⇒ 不会被两场同时读写）
+    expect(run.fleet).not.toContain(state.shipId)
+    const tickBefore = holeBattle.lastTickGameMs
+    for (let i = 0; i < 2; i++) advanceGame(state, 500, ctx, { nowWallMs: 0 })
+    expect(state.expedition.battle, '洞外那场被洞内那场吞了').toBeTruthy()
+    const hole = state.wormhole.run?.battle
+    if (hole) expect(hole.lastTickGameMs).toBeGreaterThanOrEqual(tickBefore) // 各推各的
+  })
+
+  it('**主控被锁在洞里 ⇒ 洞外开不了新战斗**（锁定的直接推论 · 文案点名）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const pilot = state.shipId
+    const a = addShipToFleet(state, T1)
+    expect(wormholeEnter(state, ctx, [pilot, a], 7).ok).toBe(true) // 船长裁定 B：主控可编入
+    const r = startExpedition(state, 'ano-training', ctx)
+    expect(r.ok, '主控在洞里还能出击 = 两场战斗共用一个锚点').toBe(false)
+    expect(r.error ?? '').toContain('虫洞里')
+  })
+
+  it('忙态口径不漂移：`shipBusyForWormhole` 与界面侧 `shipBusyLabel` 必须同时"忙/闲"', () => {
+    const scenarios: Array<[string, (s: GameState) => void]> = [
+      ['空闲', () => {}],
+      [
+        '主控采矿',
+        (s) => {
+          s.mining.active = true
+        },
+      ],
+      [
+        '主控远征',
+        (s) => {
+          startExpedition(s, 'ano-training', ctx) // 用真实状态转换，别手搓字段（手搓会造出"假忙"）
+        },
+      ],
+    ]
+    for (const [name, setup] of scenarios) {
+      const state = createInitialState({ nowWallMs: 0, seed: 7 })
+      const a = addShipToFleet(state, T1)
+      const b = addShipToFleet(state, T1)
+      state.shipId = a
+      setup(state)
+      expect(
+        shipBusyForWormhole(state, a) !== null,
+        `${name}：主控忙态两边不一致（${shipBusyForWormhole(state, a)} vs ${shipBusyLabel(state, ctx, a)}）`,
+      ).toBe(shipBusyLabel(state, ctx, a) !== null)
+      // 副船：AI 派工 ⇒ 两边都算忙
+      state.aiAssignments[b] = {
+        coreType: 'basic',
+        startedAtGameMs: 0,
+        task: { kind: 'mining', beltId: '', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+      }
+      expect(shipBusyForWormhole(state, b) !== null).toBe(shipBusyLabel(state, ctx, b) !== null)
+    }
+  })
+})
 
 describe('虫洞 · 起程与副本推进', () => {
   it('合法编队可起程：锁定质量/回合、进入 inside、首节点是战斗', () => {

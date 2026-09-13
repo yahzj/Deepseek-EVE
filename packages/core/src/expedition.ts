@@ -11,7 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
-import { addLog, HOME_GALAXY_ID } from './state'
+import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
@@ -295,6 +295,11 @@ export function startExpedition(
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
   if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
+  // 虫洞锁定（船长 2026-09-13：「已经进洞的船将被锁定」＋「洞内战斗时，洞外可以开新战斗」）：
+  // 洞外这场战斗的锚点只能是**洞外的船**——主控若在洞里，先暂停并召回整队再出击。
+  if (shipLockedInWormhole(state, state.shipId)) {
+    return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。' }
+  }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)
   const fromName = ctx.galaxies.get(from)?.name ?? from

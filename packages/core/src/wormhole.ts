@@ -15,6 +15,7 @@ import { addLog } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
+import { shipDisplayName } from './instances'
 import {
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
@@ -565,6 +566,60 @@ function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): Worm
 }
 
 /**
+ * **某艘船此刻的忙态**（进洞门槛用；`null` = 空闲）。
+ *
+ * ⚠ **为什么在 `wormhole.ts` 里重写一份、而不是 import `activity.shipBusyLabel`**（2026-09-13 实测）：
+ * `wormhole.ts` 被 `state.ts` 顶层引用，一旦它 import `activity`，就形成
+ * `state → wormhole → activity → expedition → state` 的环 —— 而 `expedition.ts` 顶层读
+ * `HOME_GALAXY_ID`，首跑即 `Cannot access 'HOME_GALAXY_ID' before initialization`
+ * （与 D 批 `wormhole → shipyard → hauling` 同款；两回都真踩到了）。
+ * 故这里只读 `state` 上的普通字段，**不 import 任何重模块**。
+ *
+ * 口径与 `activity.shipBusyLabel` **一致**（那边是"给玩家看的忙态徽标"，判据同一批字段）；
+ * 两边的**一致性由用例 `wormhole-entry-gate.test.ts` 钉住**（同一现场两边必须同时"忙/闲"）。
+ * 已知差异（有意）：这里**不覆盖** `shipInReturn`（换船善后返航，需 import `mining`）——
+ * 那一档由界面侧的 `shipBusyLabel` 拦（准备页按它置灰），core 这层只保底。
+ */
+export function shipBusyForWormhole(state: GameState, shipId: string): string | null {
+  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+  if (shipId !== state.shipId) {
+    const task = state.aiAssignments[shipId]?.task
+    if (!task) return null
+    // 用词与 `shipBusyLabel` 对齐（玩家在提示里看到的是这一串）
+    if (task.kind === 'mining') return 'AI 采矿中'
+    if (task.kind === 'standby') return 'AI 掩护巡逻中'
+    return 'AI 远征中'
+  }
+  if (state.mining.active) return '采矿中'
+  if (state.sideTasks.deliver !== null) return '快递投送中'
+  if (state.standby.active) return '掩护巡逻中'
+  if (state.scanning.active) return '扫描探索中'
+  if (state.expedition.active) return '远征中'
+  return null
+}
+
+/**
+ * **进洞门槛**（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）：主控必须闲置
+ * （采矿/打捞/交付/扫描/掩护巡逻/远征在飞都不行），编队里每艘船也必须先空闲
+ *（正在 AI 派工/已在洞里的船编不进来——否则同一艘船会被两处同时占用）。
+ * 返回拒因文案；`null` = 可以进洞。
+ */
+export function wormholeEntryBlockReason(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): string | null {
+  void ctx
+  const pilotBusy = shipBusyForWormhole(state, state.shipId)
+  if (pilotBusy) return `主控正在${pilotBusy}：先把手上的活收工，才能指挥虫洞探索。`
+  for (const uid of shipIds) {
+    const busy = shipBusyForWormhole(state, uid)
+    if (busy) return `${shipDisplayName(state, ctx, uid)}正在${busy}：先取消它的作业/派工，才能编入虫洞。`
+  }
+  return null
+}
+
+/**
  * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
  * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
  */
@@ -575,6 +630,8 @@ export function wormholeEnter(
   seed: number,
 ): WormholeStartResult {
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。' }
+  const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
+  if (blocked) return { ok: false, error: blocked }
   const r = wormholeStartRun(ctx, shipIds, seed)
   if (!r.ok || !r.run) return r
   state.wormhole.run = r.run

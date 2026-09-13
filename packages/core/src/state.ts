@@ -1430,6 +1430,24 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
   manufacturingLoops: Record<string, ManufacturingLoopState>
 }
 
+/**
+ * **该船此刻是否被锁在虫洞里**（= 在本趟编队里）。
+ *
+ * 用途（船长 2026-09-13 两条裁定合起来）：①「已经进洞的船将被锁定」；
+ * ②「**洞内战斗时，洞外可以开新战斗**」——两场战斗**锚点必须各在各边**：
+ * 洞内锚点 = `run.fleet[0]`（见 `advanceWormhole`）、洞外锚点 = `state.shipId`（见 `advanceBattle`）。
+ * 于是"拿洞里的船去外面开战"要拒掉，否则同一艘船会被两场战斗同时读写（承伤/弹药/丢船互相串台）。
+ *
+ * ⚠ 放在 `state.ts` 而不是 `wormhole.ts`：`wormhole.ts` 已经反向依赖 `activity`，
+ * 若再让 `expedition` 反向 import `wormhole`，就会形成
+ * `state → wormhole → activity → expedition → wormhole` 的环，首跑即
+ * `Cannot access 'HOME_GALAXY_ID' before initialization`（2026-09-13 实测踩到，与 D 批同款）。
+ * 本函数只读 `state.wormhole.run`，放这里两边都能直接 import，零新增依赖边。
+ */
+export function shipLockedInWormhole(state: GameState, shipId: string): boolean {
+  return (state.wormhole.run?.fleet ?? []).includes(shipId)
+}
+
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
