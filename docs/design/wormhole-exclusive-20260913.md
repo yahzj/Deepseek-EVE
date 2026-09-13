@@ -590,6 +590,22 @@ CPU = max(官方中位 ×1.10, 现 CPU + 40)；**每艘 +1 槽位**（按子分�
 - **口径**：两型都是 `exclusive`（无蓝图、不上市场、不入常规掉落）＋施工期 `unreleased`＋id 前缀 `drone-wh-` 已纳入 `content:check` 的「虫洞不可见闸门」。两型都**符合族弹型权威**（C = 爆炸在族内、E = 动能在族内）。
 - **射程 = 专属豁免（船长 2026-09-13「专属无人机开豁免」）**：C 型 **3,600 m**（档位标准 3500）、E 型 **6,000 m**（档位标准 5000，哨戒区间上限）。落实方式 = `content:check` 的「射程分类」档位钉对 `exclusive === true` 机型**跳过断言并登记打印**（其余两道约束照旧：`DRONE_ROLE_SPECS[cls].rangeM` 区间 + 硬边界 500~20000 m）。这是对船长 2026-09-10「射程分类 1/4~4/4」那条钉子的**定向豁免**（仅专属机型，制式四型仍按 2500/3000/3500/5000 硬钉）。
 
+> ⏳ **接线现状核对（2026-09-13 二号，主树含一号在途文件）**：一号已做**族池派生**（packages/core/src/wormholeSalvage.ts 的
+> WormholeFamilyPool = modules / moduleBlueprints / shipBlueprints，从 ctx 目录按 id 前缀派生 + wormholeFamilyPoolGaps 查齐备），
+> **两处仍缺**：① 池里**没有「无人机」这一类**（drone-wh- 全仓只有 2 条物品定义 + 闸门前缀，无池/掉落引用）⇒
+> **C 巢卫攻坚 / E 构件哨戒 两型专属无人机不掉**；② panels/Wormhole.tsx **未给 wormholeDescend 传 scanBonus** ⇒ 扫码加成只在第 1 层生效。
+>
+> **精确落点（照抄即可）**：
+> `	s
+> // ① wormholeSalvage.ts：池加"无人机"一类（架数复用 salvage.ts 的 RARE_BOX_DRONE_UNITS = 10）
+> export interface WormholeFamilyPool { modules: string[]; moduleBlueprints: string[]; shipBlueprints: string[]; drones: string[] }
+> //   wormholeFamilyPoolOf 里：drones: pick(ctx.items.keys(), 'drone')   // C = drone-wh-c-heavy、E = drone-wh-e-sentry
+> //   ⚠ 无人机是**选择性替换物**（只有 C/E 两族有）⇒ **不进"五族齐备"判据**，只做归属/孤儿检查
+> // ② Wormhole.tsx：深入下一层时带上扫码加成
+> import { wormholeScanBonusOf } from '@whale/core'
+> const r = wormholeDescend(run, seed, wormholeScanBonusOf(ctx, run.fleet))
+> `
+>
 > ⚠ **接线状态**：数据侧机**已落码**（`packages/data/src/items.ts`，物品总数 36→38、无人机 5→7）；
 > 但**族池掉落表仍未接线**（全仓除 `blueprints.ts` 的图纸→装备映射外无任何地方引用 `mod-wh-*`，§6.3「只给权重、不给来源」照旧）
 > ⇒ 接线时：**C/E 两张池各多一条无人机条目**（一次 ×10 架），其余三族不变。
