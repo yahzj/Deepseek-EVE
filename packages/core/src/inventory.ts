@@ -11,7 +11,7 @@
  * - 船在 data 缺失或弃船瞬间 fleet 条目会短暂为空：所有辅助函数都做容错（按空处理）。
  */
 import type { FleetShipState, GameState } from './state'
-import type { SimContext } from './types'
+import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { familyModules } from './equipment'
 
@@ -22,6 +22,29 @@ export const MODULE_CARGO_UNIT_M3 = 1
  *  用于货仓装卸分流——模块卸回 moduleBay，其余回 warehouse.items） */
 export function isModuleCargoId(id: string): boolean {
   return id.startsWith('mod-')
+}
+
+/* ───────── 未上线闸门（施工期：给玩家看的目录 vs 引擎全目录） ───────── */
+
+/**
+ * **该物品能不能给玩家看**（2026-09-13 补：把船长铁律「数据走 `unreleased` 闸门」落到物品目录级）。
+ *
+ * 为什么需要它：市场闸门 `MarketGoodDef.unreleased` 只挡 `ctx.marketGoods`，而**工业页「可精炼资源」
+ * 网格 / 舰船页 AI 精炼炉下拉 / 组装机材料提示 / 手册物品图鉴**都是直接扫 `ctx.items` 全目录的
+ * （判据 = 有没有精炼配方）。首版只标了市场卡 ⇒ 实测**虚空母矿连卡带"虫洞"描述一起挂在工业页上**。
+ *
+ * 口径：**给玩家看的枚举一律走 `visibleItemDefs` / `itemReleased`**；
+ * **引擎内部逻辑照用 `ctx.items` 全目录**（虫洞背包按体积换算、精炼扣料、掉落等都不受闸门影响）。
+ */
+export function itemReleased(def: { unreleased?: boolean } | undefined | null): boolean {
+  return !!def && def.unreleased !== true
+}
+
+/** 玩家可见的物品目录（`ctx.items` 全目录里"能给玩家看"的那部分；顺序与目录一致） */
+export function visibleItemDefs(ctx: SimContext): ItemDef[] {
+  const out: ItemDef[] = []
+  for (const def of ctx.items.values()) if (itemReleased(def)) out.push(def)
+  return out
 }
 
 /* ───────── 基础访问（容错） ───────── */

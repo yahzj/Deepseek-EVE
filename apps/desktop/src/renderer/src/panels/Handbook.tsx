@@ -12,7 +12,7 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel, visibleItemDefs } from '@whale/core'
 import type { DroneClass, ItemKind } from '@whale/core'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -452,8 +452,10 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
   const hitRow = ([k, v]: [string, string]): boolean =>
     q === '' || k.toLowerCase().includes(q) || v.toLowerCase().includes(q)
 
-  /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ── */
-  const itemCells: GridCell[] = engine.items.map((item) => ({
+  /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ──
+   *  ⚠ 物品图鉴走**玩家可见目录**（`visibleItemDefs`）：未上线物品（标 `ItemDef.unreleased`）
+   *  不进图鉴——首版直接遍历 `engine.items` 全目录，未上线矿会连名字带描述一起被搜出来（2026-09-13 实测）。 */
+  const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => ({
     key: item.id,
     tab: 'items',
     glyph: item.kind,

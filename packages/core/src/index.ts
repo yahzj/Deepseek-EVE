@@ -185,6 +185,9 @@ export {
   unloadCargoOfShipToWarehouse,
   loadWarehouseToCargo,
   loadWarehouseToCargoFit,
+  // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
+  itemReleased,
+  visibleItemDefs,
 } from './inventory'
 
 export {

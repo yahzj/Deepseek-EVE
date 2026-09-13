@@ -96,6 +96,8 @@ securityZoneOf,
   rackOf,
   wreckBaseDensity,
   foeLayerSplit,
+  // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
+  itemReleased,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -2996,6 +2998,11 @@ for (const m of MODULES) {
    *   玩家在星图上就能看到"虫洞"敌人）；②**虚空母矿**必须仍标 `unreleased`（市场/图鉴看不见）；
    * ③**四张洞内敌卡不带赏金/战利品**（`rewardIsk = 0` 且 `loot` 空）——它们只由虫洞生成，
    *   若挂了奖金/掉落，任何一条别的路径引用到它都会白送收益。
+   * ④**（2026-09-13 补）物品卡也要标 `unreleased`**：市场闸门只管 `ctx.marketGoods`，
+   *   而工业页「可精炼资源」/舰船页 AI 精炼炉下拉/组装机材料提示/手册物品图鉴都是
+   *   **直接扫 `ctx.items` 全目录**的——只标市场卡 ⇒ 虚空母矿连卡带描述挂在工业页上（实测泄露）。
+   * ⑤**（2026-09-13 补）"虫洞"字样闸门**：凡**未隐藏**的敌卡 / **未上线**的物品，其**玩家可见字段**
+   *   （名称/描述）里出现「虫洞」即报错——把铁律的文案面也变成机器守的。
    * ⚠ 审计的是"标注"这一层；**入口走调试开关**这层没法在这里自动核（见 `panels/Wormhole.tsx` 头注释）。
    */
   {
@@ -3021,7 +3028,37 @@ for (const m of MODULES) {
     } else if (ore.unreleased !== true) {
       errors.push('虫洞不可见闸门：虚空母矿没有标 unreleased —— 市场/图鉴会提前出现虫洞专属原矿')
     }
-    console.log(`· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿仍「未上线」${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`)
+    // ④ 物品卡闸门：标了才算挡住"全目录枚举"（工业页可精炼资源 / AI 精炼炉下拉 / 组装机提示 / 手册图鉴）
+    const oreItem = ITEMS.find((i) => i.id === 'ore-voidmother')
+    if (!oreItem) {
+      errors.push('虫洞不可见闸门：物品目录里找不到 ore-voidmother（虚空母矿）')
+    } else if (oreItem.unreleased !== true) {
+      errors.push(
+        '虫洞不可见闸门：虚空母矿的**物品卡**没有标 unreleased —— 工业页「可精炼资源」网格' +
+          '/舰船页 AI 精炼炉下拉/组装机材料提示/手册物品图鉴都是直接扫 ctx.items 全目录的，' +
+          '会被玩家看到（2026-09-13 实测过这条泄露）',
+      )
+    }
+    if (oreItem && itemReleased(oreItem)) {
+      errors.push('虫洞不可见闸门：虚空母矿出现在「玩家可见物品目录」（visibleItemDefs）里')
+    }
+    // ⑤ 「虫洞」字样闸门：未隐藏/未上线的玩家可见文案里不许出现
+    const visibleAnomalyText = ANOMALIES_FLAVORED.filter((a) => a.hidden !== true)
+      .filter((a) => `${a.name}${a.description ?? ''}`.includes('虫洞'))
+      .map((a) => `敌卡 ${a.id}（${a.name}）`)
+    const visibleItemText = ITEMS.filter((i) => itemReleased(i))
+      .filter((i) => `${i.name}${i.description}`.includes('虫洞'))
+      .map((i) => `物品 ${i.id}（${i.name}）`)
+    const textLeaks = [...visibleAnomalyText, ...visibleItemText]
+    if (textLeaks.length > 0) {
+      errors.push(
+        `虫洞不可见闸门：以下**玩家可见**内容里出现了「虫洞」字样（施工期文案不得提及虫洞）：${textLeaks.join('、')}`,
+      )
+    }
+    console.log(
+      `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
+        ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
+    )
   }
   for (const bp of BLUEPRINTS) {
     const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'
