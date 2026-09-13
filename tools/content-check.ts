@@ -3053,6 +3053,14 @@ for (const m of MODULES) {
         errors.push(`虫洞不可见闸门：${id}（${card.name}）没有 hidden —— 会出现在悬赏目录/派发里，施工期提前泄露`)
         leaked += 1
       }
+      // 洞内卡的「稀有残骸」物品（F3b 打捞产物）：注册进 ctx.items 的东西**必须**标 unreleased，
+      // 否则手册物品图鉴/工业页这类"全目录枚举"会连名字带描述一起露出去（虚空母矿那次实测过）。
+      const rareWh = ctxItems.get(`wreck-rare-${id}`)
+      if (!rareWh) {
+        errors.push(`虫洞不可见闸门：洞内敌卡 ${id}（${card.name}）没有注册「稀有残骸」物品 —— 墓场/遗迹打捞出的稀有残骸会解析不到定义（读档后显示成未知物品）`)
+      } else if (rareWh.unreleased !== true) {
+        errors.push(`虫洞不可见闸门：${rareWh.id}（${rareWh.name}）没有标 unreleased —— 手册物品图鉴会提前出现洞内打捞产物`)
+      }
       if (card.rewardIsk !== 0 || (card.loot?.length ?? 0) > 0) {
         errors.push(`虫洞不可见闸门：${id}（${card.name}）带了奖金/掉落 —— 洞内敌卡不应有赏金收益（收益走背包拾取）`)
       }

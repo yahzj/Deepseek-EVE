@@ -790,7 +790,13 @@ export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
  */
 export const WORMHOLE_PILE_UNITS_BASE = 200
 
-/** 拾取点里的一堆战利品（虫洞内**只掉原矿**——船长 2026-09-12 定，见设计稿 §5.4/Q14） */
+/**
+ * 拾取点里的一堆战利品。
+ * ⚠ 口径变更（2026-09-13 船长：「**「虫洞内只掉原矿」删除。残骸能进背包。**」）：
+ * 原来这里写的是"虫洞内**只掉原矿**"（2026-09-12 定）；现行 = **原矿 + 残骸**——
+ * 墓场/遗迹打捞给残骸（`wreck-wh-*`）与稀有残骸（`wreck-rare-wh-*`），矿脉给虚空母矿；
+ * 仍**不掉**制成品、不掉永久图纸、不给 ISK/声望（见设计稿 §11.5）。
+ */
 export interface WormholePile {
   itemId: string
   units: number

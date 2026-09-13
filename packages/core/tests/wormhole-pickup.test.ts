@@ -4,7 +4,7 @@
  * 锁住四组口径：
  * ① **入洞**：编队校验复用 B 批 `wormholeAdmission`（旗舰被拒 / 超重被拒 / 空编队被拒），
  *    成功则写进存档的 `wormhole.run`，**已在洞里不许再进**；
- * ② **拾取堆**：拾取点节点自带 `piles`（确定性生成、虫洞内**只出原矿**），捡一堆就少一堆；
+ * ② **拾取堆**：堆挂在**所在的格**上（确定性生成；虚空母矿为原矿堆，残骸堆由 F3b 打捞生成），捡一堆就少一堆；
  * ③ **背包容量**：超格**拒绝入包**（不静默丢弃）——同物品**并格**、每格 500 m³ 上限；
  * ④ **随档**：`piles` 与背包一起过存档往返（捡走的堆不会复活）。
  *
@@ -92,13 +92,13 @@ describe('虫洞 · 入洞（E 批）', () => {
 })
 
 describe('虫洞 · 拾取堆（E 批）', () => {
-  it('堆是确定性的、只出原矿、数量随层收益系数上升', () => {
+  it('原矿堆是确定性的、只出虚空母矿、数量随层收益系数上升', () => {
     const p1 = wormholeNodePiles(777, 1, 1, 2)
     const p2 = wormholeNodePiles(777, 1, 1, 2)
     expect(p2).toEqual(p1) // 同种子同位置 ⇒ 逐字一致
     expect(p1.length).toBe(2)
     for (const pile of p1) {
-      expect(pile.itemId).toBe(WORMHOLE_ORE_ITEM_ID) // 虫洞内只出原矿（Q14）
+      expect(pile.itemId).toBe(WORMHOLE_ORE_ITEM_ID) // 原矿堆只出虚空母矿（残骸堆另走打捞，见设计稿 §11.5）
       expect(pile.units).toBeGreaterThan(0)
     }
     // 数量随层收益系数抬升（同种子下把层换成更深的一层 ⇒ 期望量级变大）
@@ -115,7 +115,7 @@ describe('虫洞 · 拾取堆（E 批）', () => {
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 7)
     const run = state.wormhole.run!
-    // 堆的生成器照旧用 `wormholeNodePiles`（虫洞内只出虚空母矿；F3b 由打捞/挖掘调用它）
+    // 堆的生成器照旧用 `wormholeNodePiles`（原矿堆；F3b 由矿脉挖掘调用它，残骸堆另有生成器）
     const piles = wormholeNodePiles(7, 1, 1, 3)
     expect(piles.length).toBe(3)
     putPiles(state, piles)

@@ -808,7 +808,8 @@ function WhBag({ engine }: { engine: GameEngine }) {
         背包 · 已用 {usage.used} / 共 {cap} 格{usage.overflow ? '（已溢出）' : ''}
       </div>
       <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³ 且「只装一种物品」；虫洞内只出「原矿」（虚空母矿，1 m³/单位 ⇒ 每格 500 单位）。
+        每格 {n(WORMHOLE_SLOT_M3)} m³ 且「只装一种物品」；洞内产出 = 原矿（虚空母矿，1 m³/单位 ⇒ 每格 500 单位）
+        与残骸（墓场/遗迹打捞所得，1 m³/单位）。
       </div>
       <div className="app-wh-bag-grid">
         {cells.map((c, i) => (
