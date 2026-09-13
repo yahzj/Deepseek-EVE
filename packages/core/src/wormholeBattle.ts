@@ -62,6 +62,34 @@ export function wormholeStartBattle(
   return { ok: true }
 }
 
+/** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */
+function fleetHpFrac(run: WormholeRunState, battle: BattleState): number {
+  let cur = 0
+  let max = 0
+  for (const entry of battle.myFleet ?? []) {
+    const u = battle.units[entry.tag]
+    if (!u) continue
+    cur += u.hp.s + u.hp.a + u.hp.h
+    max += (u.hpMax?.s ?? 0) + (u.hpMax?.a ?? 0) + (u.hpMax?.h ?? 0)
+  }
+  return max > 0 ? cur / max : 0
+}
+
+/**
+ * **洞内战报**（一句话，与结算同源）：交火时长 / 双方开火与命中 / 编队残血。
+ * 只在洞内推（远征有自己的战报链），纯日志、不影响任何数值。
+ */
+function wormholeBattleReport(run: WormholeRunState, battle: BattleState, kind: WormholeFoeKind): string {
+  const sec = Math.max(0, Math.round((battle.lastTickGameMs - battle.startedAtGameMs) / 1000))
+  const s = battle.stats
+  const frac = Math.round(fleetHpFrac(run, battle) * 100)
+  const what = kind === 'boss' ? `第 ${run.depth} 层守卫` : kind === 'extract' ? '撤离拦截' : `第 ${run.depth} 层节点`
+  return (
+    `🕳 ${what}交火结束：${sec}s · 我方开火 ${s.meShots}/命中 ${s.meHits} · 敌方开火 ${s.foeShots}/命中 ${s.foeHits} · ` +
+    `编队残血 ${frac}%。`
+  )
+}
+
 /** 在本场战斗里被打沉的我方单位（三层血全 0；`player` = 主控） */
 function sunkShipIds(run: WormholeRunState, battle: BattleState): string[] {
   const out: string[] = []
@@ -96,6 +124,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // P0 承伤持久化（船长「副本内承伤持久」）：逐船把装甲/结构残余写回
   for (const uid of run.fleet) persistFleetHullDamage(state, ctx, uid, battle)
   const won = battle.ended === 'me'
+  const report = won ? wormholeBattleReport(run, battle, kind) : null
   run.battle = null
   // ── 负（全灭）：全损收场 ──
   if (!won || run.fleet.length === 0) {
@@ -109,6 +138,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     state.wormhole.run = null
     return
   }
+  // 胜：先出战报（与结算同源），再按战斗用途分流
+  if (report) addLog(state, 'info', report)
   // ── 胜：按战斗用途分流 ──
   if (kind === 'extract') {
     let isk = 0

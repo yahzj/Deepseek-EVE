@@ -330,6 +330,29 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     // 强度系数 10 的口径下，这一场应当打出**成规模**的战损（不是挠痒痒）
     expect(lost / before).toBeGreaterThan(0.05)
   })
+  it('**战报**：每场洞内战斗结束都留一条同源战报（交火时长 / 双方开火命中 / 编队残血）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    winBattle(state)
+    settleBattle(state)
+    const line = state.logs.map((l) => l.text).filter((t) => t.includes('交火结束')).pop()
+    expect(line, '节点战胜利没有战报').toBeTruthy()
+    expect(line!).toContain('第 1 层节点')
+    expect(line!).toContain('编队残血')
+    // 撤离战同样有战报（且与"撤离成功"分开两条）
+    const run2 = state.wormhole.run!
+    run2.pendingNode = null
+    run2.bossCleared = run2.depth
+    run2.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 500 }]
+    expect(wormholeExtract(run2).ok).toBe(true)
+    advanceWormhole(state, ctx) // 自动开撤离战
+    winBattle(state)
+    settleBattle(state)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离拦截交火结束'))).toBe(true)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离成功'))).toBe(true)
+  })
 })
 
 describe('虫洞 · 战场视图（F2 · 2026-09-13）', () => {
