@@ -2577,6 +2577,19 @@ function normalizeState(raw: unknown): GameState {
             ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
             // 货仓格（F4）：形状件逐个清洗；坏件丢弃、**重叠的丢弃**（越界保留 ⇒ 那是"超载"态）
             ...(cleanWormholeHold(rRaw.hold) !== undefined ? { hold: cleanWormholeHold(rRaw.hold) } : {}),
+            /**
+             * **临时空间**（2026-09-13 船长：大件货先进临时空间让玩家协调）：
+             * 一种物品一条，只留"id 非空 + 单位数为正"的条目；坏值丢条、空数组不写（零迁移）。
+             */
+            ...(Array.isArray(rRaw.temp)
+              ? (() => {
+                  const list = rRaw.temp
+                    .filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null)
+                    .map((x) => ({ itemId: typeof x.itemId === 'string' ? x.itemId : '', units: Math.floor(num(x.units)) }))
+                    .filter((x) => x.itemId.length > 0 && x.units > 0)
+                  return list.length > 0 ? { temp: list } : {}
+                })()
+              : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0
               ? { bossCleared: Math.floor(num(rRaw.bossCleared)) }
               : {}),

@@ -802,6 +802,8 @@ export {
   WORMHOLE_TURN_PER_EXTRA_WAVE,
   WORMHOLE_TURN_PER_NODE,
   WORMHOLE_TURN_PER_PICKUP,
+  // 临时空间的格数上限（大件货缓冲）
+  WORMHOLE_TEMP_CELLS,
   wormholeAdmission,
   wormholeBagSlots,
   wormholeBagUsage,
@@ -941,6 +943,11 @@ export {
   wormholeDiscardToFit,
   wormholeOverloadBlockReason,
   wormholeTakePileAt,
+  // 临时空间（船长 2026-09-13：大件货先进临时空间，让玩家协调）
+  wormholeTempUsage,
+  wormholeTempStow,
+  wormholeTempDiscard,
+  wormholeStowOrTemp,
 
   wormholeRelicWeightsOf,
   wormholeRollRelicBox,
@@ -976,6 +983,7 @@ export type {
   WormholeAdmission,
   WormholeAdmissionCode,
   WormholeBagSlot,
+  WormholeTempSlot,
   WormholeGridActionResult,
   WormholePile,
   WormholeFoeKind,
