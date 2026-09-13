@@ -184,14 +184,37 @@ const localStorageBridge: WhaleApi = {
       input.click()
     })
   },
-  /** 导出 = 触发浏览器下载（手机网页版保存到下载目录；iOS 可在分享里选「存储到文件」） */
-  async exportSaveToFile(text: string): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
+  /** 导出 = **优先系统分享**，不支持/被拒时回落浏览器下载（2026-09-13 船长反馈「手机网页点了没反应」后加）：
+   *  - 手机网页里下载常被拦：QQ/微信等 App 内置浏览器直接吞掉 `<a download>`，
+   *    iOS 也只在"下载/分享"里给一条提示 —— 玩家看到的就是"点了没反应"；
+   *  - 系统分享（`navigator.share` 带文件）在手机上弹「存储到文件 / 发给自己的聊天」，
+   *    **在多数内置浏览器里同样放行**，是手机端最可靠的导出通道；
+   *  - 兜底仍是浏览器下载（手机/桌面保存到下载目录；iOS 可在分享里选「存储到文件」）。
+   *  ⚠ 分享/下载都必须在**用户手势内**发起：本函数内不做任何前置 await（调用方也不要先 await 别的东西）。 */
+  async exportSaveToFile(text: string): Promise<{ ok: boolean; shared?: boolean; canceled?: boolean; error?: string }> {
+    const name = `${stampOf(new Date())}.json`
+    // ① 系统分享（浏览器需支持"分享文件"；不支持则直接跳过）
+    try {
+      const share = navigator as Navigator & {
+        share?: (data: ShareData) => Promise<void>
+        canShare?: (data: ShareData) => boolean
+      }
+      const file = new File([text], name, { type: 'application/json' })
+      if (typeof share.share === 'function' && (typeof share.canShare !== 'function' || share.canShare({ files: [file] }))) {
+        await share.share({ files: [file], title: name })
+        return { ok: true, shared: true }
+      }
+    } catch (err) {
+      if ((err as { name?: string } | null)?.name === 'AbortError') return { ok: false, canceled: true } // 玩家取消分享
+      // 其它失败（如该浏览器不支持带文件分享）→ 不报错，走下面的下载兜底
+    }
+    // ② 浏览器下载兜底
     try {
       const blob = new Blob([text], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${stampOf(new Date())}.json`
+      a.download = name
       document.body.appendChild(a)
       a.click()
       a.remove()

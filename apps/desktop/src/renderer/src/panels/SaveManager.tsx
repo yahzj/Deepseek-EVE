@@ -67,24 +67,26 @@ export function SaveManager({
     }
   }
 
-  /** 导出当前档：桌面 = 系统对话框选文件夹/文件名；网页/手机 = 触发下载 */
+  /** 导出当前档：桌面 = 系统对话框选文件夹/文件名；网页/手机 = 优先系统分享，不支持时触发下载 */
   async function handleExportCurrent(): Promise<void> {
     setBusy(true)
     const r = await engine.exportSaveToFile()
     setBusy(false)
     if (r.canceled) return
     if (!r.ok) onToast(r.error ?? '导出失败。', true)
-    else onToast(r.path ? `已导出到：${r.path}` : '存档已开始下载（保存在下载目录，iOS 可在分享里选「存储到文件」）。')
+    else if (r.shared) onToast('存档已导出：已调起系统分享——选「存储到文件」或发给自己即可保存。')
+    else onToast(r.path ? `已导出到：${r.path}` : '存档已开始下载（保存在下载目录；若点了没反应，请改用「系统浏览器」打开本页）。')
   }
 
-  /** 导出指定备份到用户选择的位置 */
+  /** 导出指定备份：同上（桌面选位置；网页/手机优先分享、回落下载） */
   async function handleExportBackup(name: string): Promise<void> {
     setBusy(true)
     const r = await engine.exportBackupToFile(name)
     setBusy(false)
     if (r.canceled) return
     if (!r.ok) onToast(r.error ?? '导出失败。', true)
-    else onToast(r.path ? `已导出：${r.path}` : '备份已开始下载。')
+    else if (r.shared) onToast('备份已导出：已调起系统分享（选「存储到文件」或发给自己）。')
+    else onToast(r.path ? `已导出：${r.path}` : '备份已开始下载（保存在下载目录）。')
   }
 
   /** 删除备份（两讨伐确认；只删备份文件，不影响当前档） */
@@ -117,8 +119,8 @@ export function SaveManager({
           <div className="app-dim app-note">
             备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。恢复/导入前会自动为当前档再做一次备份
             （若恢复错了，用列表里最新的备份即可退回）；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，
-            导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把存档保存到你选择的位置（手机网页版：导入走系统文件选择、
-            导出为下载——iOS 可在分享里选「存储到文件」）。
+            导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会**优先弹系统分享**：
+            选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。
           </div>
           <div className="app-save-actions">
             <button className="app-btn is-primary is-small" onClick={() => void handleBackup()} disabled={busy}>

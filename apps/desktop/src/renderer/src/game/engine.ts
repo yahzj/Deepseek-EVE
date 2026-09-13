@@ -780,18 +780,21 @@ export class GameEngine {
     return serializeSaveFile(out)
   }
 
-  /** 导出当前进度：桌面 = 系统保存对话框选位置；网页/手机 = 触发下载 */
-  async exportSaveToFile(): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> {
+  /** 导出当前进度：桌面 = 系统保存对话框选位置；手机网页 = 优先系统分享、回落浏览器下载。
+   *  ⚠ **顺序要紧：先调桥、后落盘**——网页端的分享/下载必须在**用户手势内**发起，
+   *  若先 `await persist()` 再调桥，iOS Safari 会因"已不是用户手势"静默拦掉（表现为点了没反应）。 */
+  async exportSaveToFile(): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }> {
     try {
-      await this.persist() // 先落盘最新进度（与备份同口径）
-      return await saveBridge.exportSaveToFile(this.currentSaveText())
+      const r = await saveBridge.exportSaveToFile(this.currentSaveText())
+      void this.persist() // 落盘最新进度（与备份同口径）；不阻塞导出
+      return r
     } catch (err) {
       return { ok: false, error: String(err) }
     }
   }
 
-  /** 导出指定备份到用户选择的位置（内容 = 该备份文件原文） */
-  async exportBackupToFile(name: string): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> {
+  /** 导出指定备份：桌面 = 系统对话框选位置；手机网页 = 优先系统分享、回落浏览器下载 */
+  async exportBackupToFile(name: string): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
       if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? '读取备份失败。' }

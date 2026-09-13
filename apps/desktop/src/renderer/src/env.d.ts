@@ -30,8 +30,9 @@ declare global {
     deleteBackup(name: string): Promise<{ ok: boolean; error?: string }>
     /** 弹文件选择框读取外部 .json 存档文本（桌面 = 系统对话框；网页版 = 文件选择器；取消 → canceled） */
     pickImportSave(): Promise<{ ok: boolean; text?: string; canceled?: boolean; error?: string }>
-    /** 把存档文本导出到用户指定位置（桌面 = 保存对话框；网页版 = 触发下载；取消 → canceled） */
-    exportSaveToFile(text: string): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>
+    /** 把存档文本导出：桌面 = 保存对话框；手机网页 = **优先系统分享**（分享面板），不支持/被拒时回落浏览器下载；
+     *  `shared` = 本次走的是系统分享；`path` = 桌面写盘位置；取消 → canceled */
+    exportSaveToFile(text: string): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }>
   }
 
   interface Window {

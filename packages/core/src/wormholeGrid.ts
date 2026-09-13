@@ -272,6 +272,29 @@ export function wormholeRng(seed: number): () => number {
   }
 }
 
+/**
+ * **32 位整数散列**（splitmix32 的终混三步）：把"混合种子"打成一个均匀的 32 位值。
+ * 为什么需要它（2026-09-13 F3b 实测抓到的坑）：`wormholeRng` 是**线性同余**，
+ * 它的**第一次输出 ≈ 种子 × 16807 ÷ 2³¹** ⇒ 种子小的时候第一次输出必然极小
+ * （种子 1 ⇒ 7.8e-6、种子 1 万 ⇒ 0.078）⇒ 凡"抽一次就完事"的地方（遗迹专属、收尾战、矿脉堆数、
+ * 墓场堆数）概率全被拉满/拉到下限。散列一步之后，第一输出在整个 [0,1) 上均匀。
+ */
+export function wormholeHash32(n: number): number {
+  let x = Math.floor(n) | 0
+  x = Math.imul(x ^ (x >>> 16), 0x7feb352d)
+  x = Math.imul(x ^ (x >>> 15), 0x846ca68b)
+  return (x ^ (x >>> 16)) >>> 0
+}
+
+/**
+ * **均匀的确定性随机流**：先用 `wormholeHash32` 打散种子，再喂给 LCG。
+ * ⚠ **凡是要新建一条随机流的地方都用它**（不要直接 `wormholeStream(混合种子)`）——
+ * 否则又踩上面那个"第一次输出偏小"的坑。
+ */
+export function wormholeStream(seed: number): () => number {
+  return wormholeRng(wormholeHash32(seed))
+}
+
 /** 按权重挑一个信号（权重表可覆写；坏表 ⇒ 回退舰船信号） */
 export function pickSignal(rnd: number, weights: Readonly<Record<WormholeSignal, number>> = WORMHOLE_SIGNAL_WEIGHTS): WormholeSignal {
   const order: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar', 'beacon']
@@ -314,7 +337,7 @@ export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
  * 5. 残骸信号再按 70/30 分墓场/遗迹。
  */
 export function wormholeMakeGrid(seed: number, depth: number): WormholeGridState {
-  const rng = wormholeRng(seed * 7919 + depth * 104729)
+  const rng = wormholeStream(seed * 7919 + depth * 104729)
   const radius = wormholeGridRadiusFor(depth)
   const all = hexDiskCells(radius)
   const outer = all.filter((c) => hexDistance(c, { q: 0, r: 0 }) === radius)

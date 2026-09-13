@@ -30,6 +30,7 @@ import {
   gridCellAt,
   gridContentIndex,
   wormholeRng,
+  wormholeStream,
 } from './wormholeGrid'
 import type { WormholeCellPile, WormholeGridCell } from './wormholeGrid'
 import {
@@ -54,9 +55,25 @@ export const WORMHOLE_RARE_JUDGE_CHANCE = 0.35
 /** 遗迹：稀有残骸堆数范围（**不受墓场那条新规则影响** —— 船长 2026-09-13 明示） */
 export const WORMHOLE_RUINS_RARES_MIN = 2
 export const WORMHOLE_RUINS_RARES_MAX = 3
-/** 遗迹专属掉落：单次概率 + 起效层（专属稿 §6.2：层 1~2 不出专属） */
-export const WORMHOLE_RELIC_CHANCE = 0.25
-export const WORMHOLE_RELIC_MIN_DEPTH = 3
+/**
+ * 遗迹专属掉落：**起效层 + 随层上升的概率**（船长 2026-09-13：「**将遗迹打捞出专属的几率也和层数挂钩，
+ * 从第二层开始就有几率打捞到。**」）。曲线口径：
+ * `概率 = min(50%, 12% × 1.3^(层-2))` ⇒ 层 2 = 12.0% · 层 3 = 15.6% · 层 4 = 20.3% · 层 5 = 26.4% ·
+ * 层 6 = 34.3% · 层 7 = 44.6% · 层 8 起封顶 **50%**。**层 1 恒不出**。
+ * ⚠ 四个常数都是 F3c 配平的旋钮（改基准=整体平移，改增速=换斜率，改封顶=控上限）。
+ */
+export const WORMHOLE_RELIC_MIN_DEPTH = 2
+export const WORMHOLE_RELIC_CHANCE_BASE = 0.12
+export const WORMHOLE_RELIC_CHANCE_GROWTH = 0.3
+export const WORMHOLE_RELIC_CHANCE_CAP = 0.5
+
+/** 第 `depth` 层遗迹打捞出专属的**单次概率**（层 1 = 0；层 2 起按上式上升，封顶 50%） */
+export function wormholeRelicChanceOf(depth: number): number {
+  const d = Math.max(1, Math.floor(depth))
+  if (d < WORMHOLE_RELIC_MIN_DEPTH) return 0
+  const raw = WORMHOLE_RELIC_CHANCE_BASE * Math.pow(1 + WORMHOLE_RELIC_CHANCE_GROWTH, d - WORMHOLE_RELIC_MIN_DEPTH)
+  return Math.min(WORMHOLE_RELIC_CHANCE_CAP, raw)
+}
 /** 遗迹收尾战：概率 + 威胁系数（船长 2026-09-13 确认「除了 5 其他没问题」） */
 export const WORMHOLE_RUINS_BATTLE_CHANCE = 0.7
 /** 舰船信号战果（打赢固定给） */
@@ -66,10 +83,14 @@ export const WORMHOLE_SHIP_SPOIL_RARES = 1
 export const WORMHOLE_VEIN_PILES_MIN = 1
 export const WORMHOLE_VEIN_PILES_MAX = 3
 
-/** 遗迹专属掉落的**按深度权重**（专属稿 §6.2；同一层里三类的相对权重） */
+/**
+ * 遗迹专属掉落的**按深度权重**（专属稿 §6.2；同一层里三类的相对权重）。
+ * ⚠ 「层 1~2 不出专属」那半句自 2026-09-13 起**只对层 1 成立**（船长令层 2 起有几率）⇒
+ * 层 2 归入最浅那一档（装备为主、图纸少）。
+ */
 export function wormholeRelicWeightsOf(depth: number): { modules: number; moduleBlueprints: number; shipBlueprints: number } {
   const d = Math.max(1, Math.floor(depth))
-  if (d <= 2) return { modules: 0, moduleBlueprints: 0, shipBlueprints: 0 }
+  if (d < WORMHOLE_RELIC_MIN_DEPTH) return { modules: 0, moduleBlueprints: 0, shipBlueprints: 0 }
   if (d <= 4) return { modules: 60, moduleBlueprints: 25, shipBlueprints: 15 }
   if (d <= 6) return { modules: 45, moduleBlueprints: 30, shipBlueprints: 25 }
   return { modules: 30, moduleBlueprints: 35, shipBlueprints: 35 }
@@ -163,7 +184,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   const common = wreckItemIdOf(cardId)
   const rare = rareWreckItemIdOf(cardId)
   const mul = wormholeLayerRewardMul(run.depth)
-  const rng = wormholeRng(runSeedOf(state) * 31 + run.depth * 7919 + (cell.q * 131 + cell.r * 17) * 7)
+  const rng = wormholeStream(runSeedOf(state) * 31 + run.depth * 7919 + (cell.q * 131 + cell.r * 17) * 7)
   const piles: WormholeCellPile[] = []
   if (cell.place === 'graveyard') {
     const span = WORMHOLE_GRAVEYARD_COMMONS_MAX - WORMHOLE_GRAVEYARD_COMMONS_MIN + 1
@@ -284,7 +305,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   if (cell.place === 'ruins') {
     const relics = wormholeRollRelic(state, ctx, cell)
     if (relics.length > 0) result.relics = relics
-    const rng = wormholeRng(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
+    const rng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
     if (rng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
       result.effect = { kind: 'ruinsBattle', key: cell.key }
       addLog(state, 'warn', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。')
@@ -303,8 +324,8 @@ export function wormholeRollRelic(state: GameState, ctx: SimContext, cell: Wormh
   const grid = run?.grid
   if (!run || !grid) return []
   if (run.depth < WORMHOLE_RELIC_MIN_DEPTH) return []
-  const rng = wormholeRng(runSeedOf(state) * 53 + run.depth * 911 + (cell.q * 23 + cell.r * 29) * 13 + 7)
-  if (rng() >= WORMHOLE_RELIC_CHANCE) return []
+  const rng = wormholeStream(runSeedOf(state) * 53 + run.depth * 911 + (cell.q * 23 + cell.r * 29) * 13 + 7)
+  if (rng() >= wormholeRelicChanceOf(run.depth)) return []
   const family = familyOfCard(ctx, wormholeCellCardIdOf(run, cell))
   const pool = wormholeFamilyPoolOf(ctx, family)
   const w = wormholeRelicWeightsOf(run.depth)
@@ -368,7 +389,7 @@ export function wormholeGrantShipSpoils(state: GameState, ctx: SimContext): { ba
   if (!cell) return { bagged: 0, leftOnCell: 0 }
   const cardId = wormholeCellCardIdOf(run, cell)
   const mul = wormholeLayerRewardMul(run.depth)
-  const rng = wormholeRng(runSeedOf(state) * 7 + run.depth * 331 + (cell.q * 61 + cell.r * 67) * 3 + 11)
+  const rng = wormholeStream(runSeedOf(state) * 7 + run.depth * 331 + (cell.q * 61 + cell.r * 67) * 3 + 11)
   const spoils: WormholeCellPile[] = []
   for (let i = 0; i < WORMHOLE_SHIP_SPOIL_COMMONS; i++) {
     spoils.push({ itemId: wreckItemIdOf(cardId), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
@@ -400,7 +421,7 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
   if (!run || !grid) return
   if ((cell.piles ?? []).length > 0) return
   if (cell.place !== 'vein') return
-  const rng = wormholeRng(runSeedOf(state) * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
+  const rng = wormholeStream(runSeedOf(state) * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
   const span = WORMHOLE_VEIN_PILES_MAX - WORMHOLE_VEIN_PILES_MIN + 1
   const count = WORMHOLE_VEIN_PILES_MIN + Math.floor(rng() * span)
   cell.piles = wormholeNodePilesFor(state, cell, count)
