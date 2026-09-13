@@ -46,16 +46,27 @@ npx tsx tools/wh-ship-tune.ts                # ⚠ 只对**未调过的基线**�
 **四连**（本批每次提交均绿）：`npm run typecheck`（4 包）· `npm run test -w @whale/core`（**1232 用例**）·
 `npm run content:check` · `npm run build`。
 
-## 四、待办归属（本批唯一未完成的两处）
+## 四、待办归属（① ② 已由一号完成 · 2026-09-13 21:17 提交 `4a82f78b`）
 
 | 归属 | 事项 | 精确落点 |
 |---|---|---|
-| **一号**（在途） | ① **族池加「无人机」类**（C = 巢卫攻坚、E = 构件哨戒；架数复用 `RARE_BOX_DRONE_UNITS = 10`）；⚠ 无人机是**选择性替换物**，**不进"五族齐备"判据** | `packages/core/src/wormholeSalvage.ts`：`WormholeFamilyPool` 加 `drones: string[]` + `drones: pick(ctx.items.keys(), 'drone')` |
-| **一号**（在途） | ② **扫码加成带到下一层** | `apps/desktop/src/renderer/src/game/engine.ts`：`wormholeDescend(run, seed, wormholeScanBonusOf(this.ctx, run.fleet))` |
+| ~~**一号**（在途）~~ ✅ **已完成** | ① **族池加「无人机」类**（C = 巢卫攻坚、E = 构件哨戒；架数复用 `RARE_BOX_DRONE_UNITS = 10`）；⚠ 无人机是**选择性替换物**，**不进"五族齐备"判据** | `packages/core/src/wormholeSalvage.ts`：`WormholeFamilyPool` 加 `drones: string[]` + `drones: pick(ctx.items.keys(), 'drone')` |
+| ~~**一号**（在途）~~ ✅ **已完成** | ② **扫码加成带到下一层** | `apps/desktop/src/renderer/src/game/engine.ts`：`wormholeDescend(run, seed, wormholeScanBonusOf(this.ctx, run.fleet))` |
 | **船长** | ③ 已发布公告里那处「鱿蜂无人机」是否同步改名（**id 不动**，仅文案） | `packages/data/src/announcements.ts`（1 处） |
 | **船长** | ④ **上线动作**：删 `unreleased` + 虫洞公告待审稿（船长已答「先不动」） | 见设计稿 §7 |
 
-**一号提交后我这边补**：`content:check` 的"无人机归属 / 孤儿"契约 + 用例 + 按族清单同步（若一号已在 `content-check.ts` 里做了，则不重复）。
+> ✅ **一号已完成（提交 `4a82f78b`）**：① 族池 `drones` 一类已落（C = `drone-wh-c-heavy`、E = `drone-wh-e-sentry`；
+> 不进五族齐备、只做归属/孤儿检查）+ 架数口径 `wormholePoolGrantUnitsOf`（×10，复用 `RARE_BOX_DRONE_UNITS`）；
+> ② 扫码加成落点就取本件写的**引擎** `wormholeDescend()`，一并把 `tools/wormhole-econ.ts` 同步传。
+>
+> ✅ **`content:check` 的"无人机归属 / 孤儿"契约 + 用例已由一号一并做完（二号不必重复）**：
+> 孤儿检查认 `drone-wh-` 前缀（实测把族标记改成 `x` ⇒ 报「永远掉不出来」）、打印改成带 `+机1`、
+> 加一条"有无人机的族「装备 + 无人机」必须 = 6 件"的替换物钉子；用例在 `wormhole-salvage.test.ts`
+> （只归 C/E、一族一件、×10、交付入仓）与 `wormhole-battle.test.ts`（撤离胜 ⇒ 货柜到港 / 全损 ⇒ 随趟丢）。
+>
+> ⚠ **顺手抓到一个真 BUG（已修，见设计稿 §13.4）**：F4 把遗迹掉落改成「安全货柜」= **物品**之后，
+> 撤离结算只扫 `run.bag` + `run.relics`，而货柜走 `run.hold.placements`，`wormholeDeliverRelics` 又不认 `ctx.items`
+> ⇒ **货柜在"撤离成功"那一刻静默消失**，「带回后精炼炉拆解」永远发生不了。已两处补全。
 
 ## 五、已销账项（别再重复问）
 
