@@ -1239,25 +1239,29 @@ const meSpeedRef = useRef(200)
     const r = engine.battleSetDesireAt(sliderToDesire(v))
     if (!r.ok) onToast(r.error ?? '设置失败', true)
   }
+  /**
+   * 拖动中：**节流提交**（把期望距离写进引擎，远征按星系记忆 / 洞内记在本趟），
+   * 但 **`dragV` 一直留到松手**（2026-09-13 船长反馈"一格一格地移动"）——
+   * 首版这个定时器顺手 `setDragV(null)`：手指还按着时，滑条会每 160ms 被"回弹到上一次提交值"，
+   * 拖起来就是一跳一跳的。提交归提交，**画面跟随归画面跟随**，松手才收。
+   */
   const scheduleCommit = (v: number): void => {
     dragValRef.current = v
     if (flushTimerRef.current !== null) window.clearTimeout(flushTimerRef.current)
     flushTimerRef.current = window.setTimeout(() => {
       flushTimerRef.current = null
-      dragValRef.current = null
       commitDesire(v)
-      setDragV(null)
     }, 160)
   }
+  /** 松手/失焦：补最后一次提交，并交还"跟随态" */
   const flushDrag = (): void => {
     const v = dragValRef.current
-    if (v === null) return
     dragValRef.current = null
     if (flushTimerRef.current !== null) {
       window.clearTimeout(flushTimerRef.current)
       flushTimerRef.current = null
     }
-    commitDesire(v)
+    if (v !== null) commitDesire(v)
     setDragV(null)
   }
   const applyTactic = (t: 'assault' | 'mid' | 'kite'): void => {
@@ -2174,7 +2178,12 @@ const meSpeedRef = useRef(200)
                 className="app-battle-range app-bts-range"
                 min={0}
                 max={1000}
-                step={5}
+                /**
+                 * **步长 1**（2026-09-13 船长反馈"一格一格"）：原 `step=5` 只有 201 个落点——
+                 * 在洞内这种 5 千多米的量程上，一格 ≈ 27m，慢拖时肉眼就是"跳格"。
+                 * 1 ⇒ 1001 个落点（约 5m/格），拖动与读数都跟手。
+                 */
+                step={1}
                 disabled={ended}
                 value={Math.min(1000, Math.max(0, sliderV))}
                 onChange={(e) => {
@@ -2183,6 +2192,8 @@ const meSpeedRef = useRef(200)
                   scheduleCommit(v)
                 }}
                 onPointerUp={flushDrag}
+                onPointerCancel={flushDrag}
+                onBlur={flushDrag}
                 onKeyUp={flushDrag}
                 title="向左拖 = 拉开距离，向右拖 = 贴脸接近（自动记忆）"
               />
