@@ -1443,7 +1443,11 @@ export class GameEngine {
   battleSetDesireAt(desireM: number): CommandResult {
     const result = setBattleDesire(this.state, desireM, this.ctx)
     if (result.ok) {
-      void this.persist()
+      /**
+       * **只重绘、不写盘**（2026-09-13 性能修）：拖距离条时每 160ms 提交一次，若每次都整档
+       * `persist()`（大档 JSON + localStorage 写）会把主线程顶出顿挫——船长："依旧还是有顿挫感"。
+       * 偏好不是易失数据：**15 秒自动存盘**与其它任何动作都会把它落盘（`ensurePump` 里的定时器）。
+       */
       this.notify()
     }
     return result

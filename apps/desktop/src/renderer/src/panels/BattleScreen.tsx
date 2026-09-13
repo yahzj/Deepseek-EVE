@@ -1245,6 +1245,22 @@ const meSpeedRef = useRef(200)
    * 首版这个定时器顺手 `setDragV(null)`：手指还按着时，滑条会每 160ms 被"回弹到上一次提交值"，
    * 拖起来就是一跳一跳的。提交归提交，**画面跟随归画面跟随**，松手才收。
    */
+  /**
+   * **拖动中的"跟手"重绘**：合并到 `requestAnimationFrame`，**每帧最多一次 setState**——
+   * 高回报率鼠标（125~1000Hz）一次拖动能产生几百个 `input` 事件，逐个 setState 会把整棵战场
+   * （我方 4 舰 + SVG 射程弧 + 事件环）重渲染几百次 ⇒ 顿挫（船长 2026-09-13：「依旧还是有顿挫感」）。
+   */
+  const dragRafRef = useRef<number | null>(null)
+  const dragPendingRef = useRef<number | null>(null)
+  const pushDragV = (v: number): void => {
+    dragPendingRef.current = v
+    if (dragRafRef.current !== null) return
+    dragRafRef.current = window.requestAnimationFrame(() => {
+      dragRafRef.current = null
+      const pending = dragPendingRef.current
+      if (pending !== null) setDragV(pending)
+    })
+  }
   const scheduleCommit = (v: number): void => {
     dragValRef.current = v
     if (flushTimerRef.current !== null) window.clearTimeout(flushTimerRef.current)
@@ -2188,7 +2204,10 @@ const meSpeedRef = useRef(200)
                 value={Math.min(1000, Math.max(0, sliderV))}
                 onChange={(e) => {
                   const v = Number(e.target.value)
-                  setDragV(v)
+                  // **每帧最多重绘一次**（2026-09-13 性能修）：高回报率鼠标一次拖动能来几百个
+                  // input 事件，逐个 setState 会把整棵战场（我方 4 舰 + SVG 弧 + 事件环）重渲染几百次
+                  // ⇒ 顿挫。这里合并到 rAF：画面最多 60 次/秒，提交仍按 160ms 节流。
+                  pushDragV(v)
                   scheduleCommit(v)
                 }}
                 onPointerUp={flushDrag}
