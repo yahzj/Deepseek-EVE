@@ -131,7 +131,18 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
   })
 
   it('**活动位判据必须挂在每个活动入口上**（源码级契约：新增入口忘了挂，这条会红）', () => {
-    const files = ['mining.ts', 'salvaging.ts', 'explore.ts', 'location.ts', 'expedition.ts', 'hauling.ts']
+    const files = [
+      // 主控的移动类活动
+      'mining.ts',
+      'salvaging.ts',
+      'explore.ts',
+      'location.ts',
+      'expedition.ts',
+      'hauling.ts',
+      // 主控的站内手动工业（占主控工作位，与其它活动同属"相斥"那一组）
+      'industry.ts',
+      'manufacturing.ts',
+    ]
     const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
     for (const f of files) {
       const src = readFileSync(join(dir, f), 'utf8')
