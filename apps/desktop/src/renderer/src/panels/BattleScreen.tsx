@@ -1105,6 +1105,13 @@ const meSpeedRef = useRef(200)
     const x = lay.foe[i]?.x ?? dims.W
     return Math.round(dims.W - x + w / 2 + ARRIVAL_EDGE_MARGIN)
   }
+  /* ═══ 我方舰列：单船 / 4 舰同屏（虫洞 F2b，2026-09-13 船长「我方4条舰船需要同时显示」）═══
+     · 单船路径（`myUnits.length === 1`）走原分支，DOM 与原实现逐字一致 ⇒ 观感零变化；
+     · 多舰路径逐舰一条舰影，**主控恒在最前**（DOM 顺序把主控放最后 = 画在最上层），
+       其余沿纵队向左错位（`MY_LANE_STAGGER`×序号）——距离尺/弹道锚点仍按主控那条舰。 */
+  const MY_LANE_STAGGER = 26
+  const multiMe = arcs.myUnits.length > 1
+  const myLaneCols = multiMe ? [...arcs.myUnits].sort((a, b) => Number(a.leader) - Number(b.leader)) : arcs.myUnits
   /** 阵形（斜向菱形）：列宽/右移/下移/排高 + 逐舰机位（DOM 的两排排布与逐舰微调共用这一份） */
   const foeFormation = lay.formation
   /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该排整组竖排到编队下方）——
@@ -1610,28 +1617,9 @@ const meSpeedRef = useRef(200)
         </span>
       </div>
 
-      {/* **我方编队条**（2026-09-13 F2：虫洞 4 舰同场时给每条舰影一条三层血条；
-          单船路径 `myUnits` 只有一条 ⇒ 与改造前观感一致，不额外占视觉） */}
-      {arcs.myUnits.length > 1 ? (
-        <div className="app-bts-fleet" aria-label="我方编队">
-          {arcs.myUnits.map((u) => (
-            <div key={u.tag} className={`app-bts-fleet-cell${u.alive ? '' : ' is-down'}`}>
-              <div className="app-bts-fleet-head">
-                <ShipSprite shipId={u.shipId} role={fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial'} accent={ROLE_ACCENT[fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial']} size={46} />
-                <span className="app-bts-fleet-name" title={u.className}>
-                  {u.name}
-                  {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
-                </span>
-              </div>
-              {u.alive ? (
-                <HpTri hp={u.hp} max={u.hpMax} />
-              ) : (
-                <span className="app-bts-fleet-down">已沉没</span>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {/* **我方编队条已撤**（2026-09-13 F2b · 交接卡 §3 建议）：4 舰读数改为**直接画在各自的舰影上**
+          （舰名 + 三层血条 + 主控徽标 + 沉没灰态）⇒ 同一读数不再出现两遍。
+          若船长要留，恢复成"折叠一行"的紧凑读数即可（原实现见 git 历史：`.app-bts-fleet` 那一块）。 */}
 
       <div className="app-bts-stage">
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
@@ -1700,23 +1688,70 @@ const meSpeedRef = useRef(200)
             </text>
           </svg>
 
-          {/* 我方舰列 —— 入场期（is-arriving）整列自左缘外飞入：舰名/舰体/血条同进，
-              只做 transform + opacity 动画，`left` 与落点坐标不动 */}
-          <div
-            className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
-            ref={meColRef}
-            style={
-              arrivalSide === 'me'
-                ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
-                : { left: lay.meLeft }
-            }
-          >
-            <span className="app-bts-name">{meShip?.name}</span>
-            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
-            <div className="app-bts-hpWrap">
-              <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
-            </div>
-          </div>
+          {/* 我方舰列 —— 单船（远征 / 遭遇 / 教学）与 **4 舰同屏**（虫洞 F2b）共用这一支。
+              · **单船路径**（`myUnits.length === 1`）：渲染与原实现**逐字一致**（同一 class / ref / style），
+                ⇒ 观感零变化（交接卡验收第 5 条）；
+              · **多舰路径**（虫洞 4 舰）：逐舰一条舰影，**主控保持原位**（距离尺与弹道锚点仍按主控那条舰，
+                逐舰锚点是另一批的活）；其余 3 条沿纵队向左错位 `MY_LANE_STAGGER`×序号（近处=主控在最前，
+                故 DOM 顺序把主控放最后 = 画在最上层）；
+              · 每条各带**舰名 + 三层血条**（同一支 `HpTri`）、主控徽标（沿用编队条样式）、
+                **沉没舰位置保留**只转灰（抽走会让其余舰影跳动 —— 验收第 4 条）；
+              · 入场动画照旧：整列 `is-arriving` 自左缘外飞入，**逐舰 `--arrive-delay` 错峰**，
+                只走 transform/opacity、落点坐标不动（验收第 6 条）。 */}
+          {multiMe
+            ? myLaneCols.map((u, i) => {
+                const def = fleetDefOf(state, engine.ctx, u.shipId)
+                const role: ShipRole = def?.role ?? 'industrial'
+                // 纵队错位：主控（leader）恒 0；其余按"从近到远"依次退 MY_LANE_STAGGER
+                const back = u.leader ? 0 : i + 1
+                const left = lay.meLeft - MY_LANE_STAGGER * back
+                return (
+                  <div
+                    key={u.tag}
+                    className={`app-bts-col is-me${defeat && u.leader ? ' is-crippled' : ''}${u.alive ? '' : ' is-down'}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
+                    style={
+                      arrivalSide === 'me'
+                        ? ({
+                            left,
+                            '--arrive-dx': `${arriveDxMe}px`,
+                            '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
+                            '--arrive-delay': `${(u.leader ? 0 : i + 1) * ARRIVAL_STAGGER_MS}ms`,
+                          } as CSSProperties)
+                        : { left }
+                    }
+                  >
+                    <span className="app-bts-name">
+                      {u.name}
+                      {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
+                    </span>
+                    <ShipSprite shipId={u.shipId} role={role} accent={ROLE_ACCENT[role]} size={sizeOfUnit(def?.tier, false)} flip={meFlip} />
+                    {u.alive ? (
+                      <div className="app-bts-hpWrap">
+                        <HpTri hp={u.hp} max={u.hpMax} />
+                      </div>
+                    ) : (
+                      <span className="app-bts-fleet-down">已沉没</span>
+                    )}
+                  </div>
+                )
+              })
+            : (
+              <div
+                className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
+                ref={meColRef}
+                style={
+                  arrivalSide === 'me'
+                    ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
+                    : { left: lay.meLeft }
+                }
+              >
+                <span className="app-bts-name">{meShip?.name}</span>
+                <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
+                <div className="app-bts-hpWrap">
+                  <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
+                </div>
+              </div>
+            )}
 
           {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 起飞即出击-到位开火-立刻返航；雷鸥哨戒常驻伴飞）；
               位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐。

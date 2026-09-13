@@ -9260,6 +9260,11 @@ body {
   border: 1px solid rgba(79, 216, 196, 0.5); border-radius: 3px; opacity: 0.9;
 }
 .app-bts-fleet-down { font-size: 11px; color: #ff8373; }
+/* **4 舰同屏：沉没舰在泳道里位置保留、只转灰**（2026-09-13 F2b；抽走会让其余舰影跳动 —— 验收第 4 条） */
+.app-bts-col.is-me.is-down { opacity: 0.45; filter: grayscale(1); }
+.app-bts-col.is-me.is-down .app-bts-name { color: #9aa7b4; }
+/* 多舰时逐舰舰名的宽度与血条同宽，长名省略号（不撑破纵队间距） */
+.app-bts-col.is-me .app-bts-name { max-width: 185px; overflow: hidden; text-overflow: ellipsis; }
 .app-bts-noretreat { margin-left: 4px; }
 
 /* ═══════════ 战斗入场：舰船从屏幕外减速飞入（船长 2026-09-13 二次裁定 · **纯动画，不动任何位置**）═══════════
