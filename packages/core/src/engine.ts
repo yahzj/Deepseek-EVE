@@ -50,6 +50,8 @@ export interface CommandResult {
   autoBattle?: boolean
   /** 虫洞"前往"专用：到达的格是漂浮信标 ⇒ **下一层入口已标出**（界面提示一句） */
   beacon?: boolean
+  /** 虫洞"激活/打捞"专用：**本次回收了几堆**（墓场/遗迹打捞；界面提示"回收 N 堆"） */
+  taken?: number
 }
 
 /** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；

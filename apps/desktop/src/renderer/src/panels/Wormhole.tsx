@@ -32,6 +32,7 @@ import {
   signalOfPlace,
   wormholeOutOfTurns,
   wormholeShipAllowed,
+  wormholeSalvagersOf,
   wormholeShipMass,
   wormholeUnitsPerSlot,
 } from '@whale/core'
@@ -83,9 +84,18 @@ export function WormholePanel({
   const hereCell = grid ? grid.cells.find((c) => c.key === hereKey) : undefined
   const atExit = grid ? isExitCell(grid, grid.pos) : false
   const bossDone = !!run && (run.bossCleared ?? 0) >= run.depth
-  /** 当前地点能不能激活：空信息地点没作业、处理过的不重复、入口格在守卫清掉后不再触发 */
+  /** **打捞现场**（F3b：墓场/遗迹）——它的"激活"是打捞作业（要打捞器、按台数回收） */
+  const salvageCell = !!hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins')
+  /** 编队打捞器台数（0 ⇒ 打捞格干不了活；界面据此给出拒因而不是让按钮白按） */
+  const salvagers = run ? wormholeSalvagersOf(state, ctx) : 0
+  /** 当前格上还剩几堆（打捞/手拾共用；打捞按钮上显示"本次能回收几堆"） */
+  const herePiles = hereCell?.piles ?? []
+  const orePiles = hereCell?.place === 'vein'
+  /** 当前地点能不能激活：空信息地点/信标没作业、处理过的不重复、入口格守卫清掉后不再触发 */
   const canActivate =
     !!grid && !!hereCell && !grid.activated.includes(hereKey) && (atExit ? !bossDone : hereCell.place !== 'empty')
+  /** 打捞格：没打捞器就打不了；有打捞器但堆已空 ⇒ 也打不了 */
+  const canSalvage = salvageCell && salvagers > 0 && herePiles.length > 0 && (run?.turnsLeft ?? 0) >= 1
   /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
   const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
 
@@ -192,8 +202,8 @@ export function WormholePanel({
   }
 
   /**
-   * 激活当前地点：舰船信号 / 下一层入口会**就地开战**（战斗界面接手）；
-   * 其余地点的收益在 F3b/F3c，施工期如实提示"作业尚未接入"（与既有「事件内容尚未接入」同一档）。
+   * 激活当前地点：舰船信号 / 下一层入口会**就地开战**；**墓场/遗迹 = 打捞一批**（core 侧分流）；
+   * 矿脉铺堆；谜质的增强待定（F3c）。施工期如实提示"作业尚未接入"的部分。
    */
   function doActivate(): void {
     const place = hereCell?.place
@@ -204,8 +214,11 @@ export function WormholePanel({
       return
     }
     if (exitNow || place === 'ship') return // 已开战：交给战斗界面
-    if (place === 'graveyard' || place === 'ruins') onToast('打捞作业尚未接入（F3b）。')
-    else if (place === 'vein') onToast('挖掘作业尚未接入（F3b）。')
+    if (place === 'graveyard' || place === 'ruins') {
+      onToast(`打捞作业：这一批回收了 ${res.taken ?? 0} 堆。`)
+      return
+    }
+    if (place === 'vein') onToast('矿脉已开挖：点堆位把原矿搬上船（每堆 1 回合）。')
     else if (place === 'matter') onToast('谜质的增强效果待定（F3c）。')
   }
 
@@ -464,6 +477,9 @@ export function WormholePanel({
                 <span className="app-wh-cell">
                   已扫描 <b>{grid ? grid.scanned.length : 0}</b> 格
                 </span>
+                <span className="app-wh-cell">
+                  打捞器 <b>{salvagers}</b> 台
+                </span>
                 <span className="app-wh-cell">回合 <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
                 <span className="app-wh-cell">背包 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
                 <span className="app-wh-cell">本层威胁 <b>{wormholeLayerThreat(run.depth)}</b></span>
@@ -518,19 +534,33 @@ export function WormholePanel({
                     </button>
                     <button
                       className="app-btn is-small is-primary"
-                      disabled={!!run.battle || !canActivate || run.turnsLeft < 1}
+                      disabled={
+                        !!run.battle ||
+                        run.turnsLeft < 1 ||
+                        (salvageCell ? !canSalvage : !canActivate)
+                      }
                       onClick={doActivate}
                       title={
-                        atExit
-                          ? '激活下一层入口：迎战本层守卫（打完才能深入或撤离）'
-                          : hereCell.place === 'empty'
-                            ? '空信息地点：没有可执行的作业'
-                            : grid.activated.includes(hereKey)
-                              ? '这个地点已经处理过了'
-                              : '激活当前地点：按地点类型开战 / 打捞 / 挖掘（1 回合）'
+                        salvageCell
+                          ? salvagers <= 0
+                            ? '编队里没有打捞器：打捞作业干不了（每艘船至少装 1 台）'
+                            : herePiles.length === 0
+                              ? '这个地点已经捞空了'
+                              : `打捞一批：${salvagers} 台打捞器一次回收 ${Math.min(salvagers, herePiles.length)} 堆（优先稀有）`
+                          : atExit
+                            ? '激活下一层入口：迎战本层守卫（打完才能深入或撤离）'
+                            : hereCell.place === 'empty'
+                              ? '空信息地点：没有可执行的作业'
+                              : grid.activated.includes(hereKey)
+                                ? '这个地点已经处理过了'
+                                : '激活当前地点：按地点类型开战 / 挖矿（1 回合）'
                       }
                     >
-                      激活此地（1 回合）
+                      {salvageCell
+                        ? herePiles.length > 0
+                          ? `打捞（1 回合 · 回收 ${Math.min(Math.max(salvagers, 0), herePiles.length)} 堆）`
+                          : '打捞（已捞空）'
+                        : '激活此地（1 回合）'}
                     </button>
                     {bossDone ? (
                       <button
@@ -567,39 +597,69 @@ export function WormholePanel({
                       </span>
                     </div>
                     {(hereCell.piles ?? []).length > 0 ? (
-                      <ul className="app-inv-list">
-                        {(hereCell.piles ?? []).map((p, i) => {
-                          const def = ctx.items.get(p.itemId)
-                          const slotUse = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
-                          return (
-                            <li key={`${p.itemId}-${i}`} className="app-inv-row">
-                              <div className="app-inv-main">
-                                <span className="app-inv-name">
-                                  {def?.name ?? p.itemId} ×{n(p.units)}
-                                </span>
-                                <span className="app-inv-count">
-                                  {n(p.units * (def?.unitM3 ?? 0))} m³ · 每格 {n(slotUse)} 单位
-                                </span>
-                              </div>
-                              <div className="app-inv-btns">
-                                <button
-                                  className="app-btn is-small"
-                                  onClick={() => {
-                                    const r = engine.wormholeTakePile(i)
-                                    if (!r.ok) onToast(r.error ?? '拾取失败。', true)
-                                  }}
-                                >
-                                  拾取
-                                </button>
-                              </div>
-                            </li>
-                          )
-                        })}
-                      </ul>
+                      <>
+                        {salvageCell ? (
+                          <div className="app-dim app-note">
+                            残骸堆 {herePiles.length} 堆（稀有在前）· 编队打捞器 <b>{salvagers}</b> 台 ⇒ 每回合回收{' '}
+                            {Math.min(Math.max(salvagers, 0), herePiles.length)} 堆、共{' '}
+                            {salvagers > 0 ? Math.ceil(herePiles.length / salvagers) : '—'} 回合
+                            {salvagers <= 0 ? '（没有打捞器：先给编队装上打捞器）' : ''}
+                          </div>
+                        ) : null}
+                        <ul className="app-inv-list">
+                          {herePiles.map((p, i) => {
+                            const def = ctx.items.get(p.itemId)
+                            const slotUse = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
+                            return (
+                              <li key={`${p.itemId}-${i}`} className="app-inv-row">
+                                <div className="app-inv-main">
+                                  <span className="app-inv-name">
+                                    {def?.name ?? p.itemId} ×{n(p.units)}
+                                  </span>
+                                  <span className="app-inv-count">
+                                    {n(p.units * (def?.unitM3 ?? 0))} m³ · 每格 {n(slotUse)} 单位
+                                  </span>
+                                </div>
+                                <div className="app-inv-btns">
+                                  {/* 残骸靠**打捞**（台数×回合）回收 ⇒ 逐堆"拾取"按钮只给矿脉（手拾 1 回合/堆） */}
+                                  {orePiles ? (
+                                    <button
+                                      className="app-btn is-small"
+                                      disabled={!!run.battle || run.turnsLeft < 1}
+                                      onClick={() => {
+                                        const r = engine.wormholeTakePile(i)
+                                        if (!r.ok) onToast(r.error ?? '拾取失败。', true)
+                                      }}
+                                    >
+                                      拾取（1 回合）
+                                    </button>
+                                  ) : (
+                                    <span className="app-dim">待打捞</span>
+                                  )}
+                                </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </>
                     ) : (
                       <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
                     )}
                   </div>
+                  {(run.relics ?? []).length > 0 ? (
+                    <div className="app-dim app-note">
+                      随行战利品（撤离成功后入库）：
+                      {(run.relics ?? [])
+                        .map(
+                          (id) =>
+                            ctx.modules.get(id)?.name ??
+                            ctx.blueprints.get(id)?.name ??
+                            ctx.shipBlueprints.get(id)?.name ??
+                            id,
+                        )
+                        .join('、')}
+                    </div>
+                  ) : null}
                   {bossDone ? (
                     <div className="app-dim app-note">
                       本层守卫已清：可以「继续深入」（更深、更值钱、更硬），也可以把剩下的地点再扫一遍，或直接撤离。
@@ -775,13 +835,13 @@ const GRID_LEGEND: ReadonlyArray<{ key: string; text: string; signal: WormholeSi
   { key: 'blank', text: '空信息', signal: null },
 ]
 
-/** 地点说明（看板一处说清"这里有什么/能干什么"；具体收益落地在 F3b） */
+/** 地点说明（看板一处说清"这里有什么/能干什么"；数字口径与 core 常量同源） */
 const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   empty: '空信息地点：什么都没有，没有可执行的作业。',
-  graveyard: '舰船墓场：大量残骸、少量稀有残骸——激活后开始打捞。',
-  ruins: '遗迹：稀有残骸为主，有小概率拿到一次性图纸或虫洞专属装备；打捞结束大概率触发一场恶战。',
+  graveyard: '舰船墓场：普通残骸 3~10 堆、稀有残骸每 3 堆普通判一次——**要打捞器**，每回合回收 = 台数 的堆。',
+  ruins: '遗迹：稀有残骸 2~3 堆，小概率拿到一次性图纸或专属装备；打捞结束大概率触发一场恶战。',
   ship: '舰船信号：到达即交火；打赢固定获得残骸与稀有残骸。',
-  vein: '矿脉：激活后挖掘，可得虚空母矿。',
+  vein: '矿脉：激活后开挖，虚空母矿 1~3 堆（手拾每堆 1 回合）。',
   matter: '虫洞谜质：取回后，本趟探索中我方所有舰船获得指定增强。',
   beacon: '漂浮信标：到达即读出它标出的下一层入口位置（地图上会一直标着）。',
 }

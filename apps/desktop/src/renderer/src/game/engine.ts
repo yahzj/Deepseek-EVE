@@ -1414,14 +1414,19 @@ export class GameEngine {
     }
   }
 
-  /** 虫洞：**激活当前地点**（1 回合；舰船信号/入口会就地开战） */
+  /**
+   * 虫洞：**激活当前地点**（1 回合；舰船信号/入口会就地开战）。
+   * ⚠ 墓场/遗迹的"激活"在 core 侧**分流到打捞**（`wormholeActivateAt` → `wormholeSalvageAt`）——
+   * 要打捞器台数与背包容量，还要掷遗迹收尾战 ⇒ 界面**只留这一个入口**（不再单开"打捞"方法，
+   * 免得两条路各写一遍回合/回滚规则）。返回值里的 `taken` = 本次回收了几堆。
+   */
   wormholeActivate(): CommandResult {
     const r = wormholeActivateAt(this.state, this.ctx)
     if (r.ok) {
       void this.persist()
       this.notify()
     }
-    return { ok: r.ok, error: r.error }
+    return { ok: r.ok, error: r.error, ...(r.taken !== undefined ? { taken: r.taken } : {}) }
   }
 
   /** 虫洞：深入下一层（只在层末可用） */
