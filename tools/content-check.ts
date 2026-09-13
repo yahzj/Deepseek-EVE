@@ -818,6 +818,18 @@ for (const sbp of SHIP_BLUEPRINTS) {
 
 // 舰船
 const roleSet = new Set(['industrial', 'armed', 'armored', 'hauler'])
+/** 舰种子分类白名单（2026-09-13 船长定；与 `packages/core/src/types.ts` 的 `ShipSubClass` 同源） */
+const SHIP_SUBCLASSES = [
+  '电子舰',
+  '炮艇',
+  '重型突击巡洋舰',
+  '截击舰',
+  '指挥舰',
+  '鱼雷舰',
+  '无人机作战舰',
+  '侦察舰',
+  '后勤舰',
+] as const
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -869,6 +881,15 @@ for (const s of SHIPS) {
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
   check(s.hitBonus === undefined || (s.hitBonus >= 0 && s.hitBonus <= 0.5), `舰船 ${s.id} hitBonus 越界：${String(s.hitBonus)}`)
+  // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面）——
+  // 只给 `sh-wh-*` 写；取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）
+  if (s.subClass !== undefined) {
+    check(
+      SHIP_SUBCLASSES.includes(s.subClass as (typeof SHIP_SUBCLASSES)[number]),
+      `舰船 ${s.id} 子分类非法：${String(s.subClass)}`,
+    )
+    check(s.id.startsWith('sh-wh-'), `舰船 ${s.id} 写了子分类（${String(s.subClass)}）但不是虫洞族专属舰船（子分类只给 sh-wh-*）`)
+  }
   for (const f of ['maxSpeedMps', 'warpSpeedAus', 'massKg', 'lockRangeM', 'signatureM', 'scanResMm'] as const) {
     const v = s[f]
     check(v === undefined || (typeof v === 'number' && Number.isFinite(v) && v > 0), `舰船 ${s.id} 间接属性 ${f} 非法：${String(v)}`)

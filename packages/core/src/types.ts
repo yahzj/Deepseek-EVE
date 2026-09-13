@@ -173,6 +173,23 @@ export interface BeltDef {
 /** 舰船角色（V10 展示用；战斗系统落地后决定各角色的战斗数值曲线） */
 export type ShipRole = 'industrial' | 'armed' | 'armored' | 'hauler'
 
+/**
+ * **舰种子分类**（2026-09-13 船长定：虫洞专属舰船按子分类重排数值并进界面）。
+ * 与 `role` 并列：`role` 管战斗曲线口径，`subClass` 管"这艘船是干什么的"——
+ * 只作**展示 + 设计口径**（数值差异已直接落在各字段上，引擎不读本字段做判定）。
+ * **只有虫洞专属舰船写**（其余舰船无此字段）；D 族巡洋舰按船长裁定**不设子分类**。
+ */
+export type ShipSubClass =
+  | '电子舰'
+  | '炮艇'
+  | '重型突击巡洋舰'
+  | '截击舰'
+  | '指挥舰'
+  | '鱼雷舰'
+  | '无人机作战舰'
+  | '侦察舰'
+  | '后勤舰'
+
 /** 舰船定义 */
 export interface ShipDef {
   id: string
@@ -181,6 +198,8 @@ export interface ShipDef {
   tier: number
   /** 船型角色（V10：舰船细分系统的占位字段，本轮仅 UI 徽标展示） */
   role: ShipRole
+  /** **舰种子分类**（仅虫洞专属舰船写；见 `ShipSubClass` 注释） */
+  subClass?: ShipSubClass
   /** 货舱容量（立方米） */
   cargoM3: number
   /** 单个采集循环耗时（秒），受技能缩短 */

@@ -475,6 +475,8 @@ export function ShipPage({
                 <div className="app-ship-top">
                   <span className="app-ship-name">
                     {displayName}
+                    {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
+                    {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
                     <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
                     {isLockedShip ? (
@@ -711,6 +713,8 @@ export function ShipPage({
                   <div className="app-ship-top">
                     <span className="app-ship-name">
                       {def.name}
+                      {/* 2026-09-13 船长：子分类徽标（市场/图纸列同样显示） */}
+                      {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
                       <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
                     </span>
                     <span className={`app-chip${good?.rarity === 'common' ? '' : good?.rarity === 'rare' ? ' is-rare' : ' is-exotic'}`}>

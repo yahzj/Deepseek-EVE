@@ -333,7 +333,11 @@ export function slotListText(ship?: ShipDef): string {
 /** 舰船统一信息行：基础 + V10.5b 面板分组（护盾/装甲/结构区块各自血量与三系抗性；CPU/无人机舱） */
 export function shipInfoLines(ship: ShipDef): InfoLine[] {
   const lines: InfoLine[] = [
-    { k: '定位 / 档次', v: `${shipRoleLabel(ship.role)} · ${shipSizeLabel(ship.tier)} T${ship.tier}` },
+    {
+      k: '定位 / 档次',
+      // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
+      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipRoleLabel(ship.role)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
+    },
     { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },
     { k: '采集性能', v: `${ship.cycleSeconds} 秒 × ${ship.oreUnitsPerCycle} 单位/循环` },
     { k: '动力（机动 / 跃迁充能）', v: `${Math.round(ship.agility * 100)}%` },
