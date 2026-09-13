@@ -318,8 +318,16 @@ export function holdCompact(
 /* ═══════════ 四、读档容错（save.ts 与用例共用） ═══════════ */
 
 /**
- * 清洗一个 placement（坏值 ⇒ null）：坐标/形状必须是 0~8 的整数、尺寸 1~4；
+ * 清洗一个 placement（坏值 ⇒ null）：坐标/形状必须是整数、尺寸在**网格允许的范围内**；
  * **越界不丢**（超载态本来就允许"摆在可用格之外"，由超载判据去提示玩家抛货），但**重叠要丢**。
+ *
+ * ⚠ **2026-09-13 修一个真 BUG**：这里原先卡 `w,h ≤ 4`，而**散货条天生可以很宽/很高** ——
+ * `cargoShapesFor(n)` 给的是 `1×n` 横条或 `n×1` 竖条（n 可以到 8 格宽、甚至十几格高）
+ * ⇒ 一条 6 格的母矿条在**读档时被当坏值丢掉**：货还在 `run.bag` 里，网格里却没有它，
+ * 于是 `wormholeHoldUsage.unplacedCells` 冒出一堆"放不下"的格数 ⇒ **凭空超载**
+ * （探针实测：6 格母矿条读档后 `placements` 空了、`unplacedCells = 6`），
+ * 玩家会被"先抛货"挡住，甚至把其实还在船上的货抛掉。
+ * ⇒ 现在按**货仓的真实几何**校验：宽 ≤ 列数（8）、高 ≤ 64（够放下任何一趟的竖条）。
  */
 export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
   if (typeof raw !== 'object' || raw === null) return null
@@ -332,7 +340,7 @@ export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
   const id = typeof o.id === 'string' && o.id.length > 0 ? o.id : null
   const itemId = typeof o.itemId === 'string' && o.itemId.length > 0 ? o.itemId : null
   if (!id || !itemId) return null
-  if (!(x >= 0 && y >= 0 && w >= 1 && w <= 4 && h >= 1 && h <= 4)) return null
+  if (!(x >= 0 && y >= 0 && w >= 1 && w <= WORMHOLE_HOLD_COLS && h >= 1 && h <= 64)) return null
   const kind = o.kind === 'cargo' ? 'cargo' : 'box'
   const units = num(o.units)
   return {

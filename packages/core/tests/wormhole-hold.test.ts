@@ -17,7 +17,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { wormholeEnter } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../src/wormhole'
 import type { WormholeHoldState } from '../src/wormholeHold'
 import { canPlace, findFreeSpot, holdAdd, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState } from '../src/wormholeHold'
 import {
@@ -65,6 +65,29 @@ function setBag(state: GameState, slots: Array<{ itemId: string; units: number }
   wormholeHoldSyncCargo(state, ctx)
 }
 describe('虫洞 · 货仓格几何（纯逻辑）', () => {
+  /**
+   * **宽货条读档不丢**（2026-09-13 修的真 BUG）：
+   * 散货条天生可以到 8 格宽（`cargoShapesFor` 给 1×n），而存档清洗原先卡 `w ≤ 4`
+   * ⇒ 一条 6 格母矿条**读档后被当坏值丢掉**：货还在 `bag` 里、网格里却没有它，
+   * `unplacedCells` 凭空冒出来 ⇒ **假超载**（玩家会被"先抛货"挡住，甚至抛掉其实还在船上的货）。
+   */
+  it('**宽散货条过存档往返不丢**（1×6 母矿条）：reads 后仍在网格里、不产生"放不下"', () => {
+    const state = enterRun(2, 911)
+    const run = state.wormhole.run!
+    setBag(state, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 3_000 }]) // 6 格 ⇒ 1×6 横条
+    const before = wormholeHoldUsage(state, ctx)
+    expect(before.cargoCells).toBe(6)
+    expect(before.unplacedCells).toBe(0)
+    const shape = (run.hold?.placements ?? []).find((p) => p.kind === 'cargo')!
+    expect(shape.w).toBe(6) // 恰好是旧口径会丢掉的那种形状（w > 4）
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state
+    const after = wormholeHoldUsage(back, ctx)
+    expect(back.wormhole.run!.hold!.placements.length).toBe(1)
+    expect(after.cargoCells).toBe(6)
+    expect(after.unplacedCells, '读档后凭空多出"放不下"的格数 = 假超载').toBe(0)
+    expect(after.overload).toBe(false)
+  })
+
   it('8 列网格：行数 = ⌈格数 ÷ 8⌉；越界与重叠都判"放不下"', () => {
     const hold = makeHoldState()
     expect(hold.cols).toBe(8)
