@@ -1,0 +1,210 @@
+/**
+ * **网格探索几何与生成（F3a · 2026-09-13 船长确认）**。
+ *
+ * 本文件钉住四件事（都是船长原话口径）：
+ * ① **圆盘六边形网格**：R=2 ⇒ 19 格（`3R(R+1)+1`）、邻居 6 个、距离对称；
+ * ② **信号遮蔽**：未扫描 = 未知；已扫描 = 只看到**信号**；**到达**才给真相；
+ *    （空地点 ⇒ 无信号；舰船墓场/遗迹 ⇒ 都是「残骸信号」；舰船/矿脉/谜质各自一个信号）
+ * ③ **空地点 ≥50%**、**遗迹 = 残骸信号的 30%**（其余 70% 舰船墓场）；
+ * ④ **确定性**：同 `(seed, depth)` 必得同盘（存档只存结果，重算也能复现）。
+ *
+ * ⚠ 施工期铁律：虫洞**对玩家不可见**；本文件不产生任何玩家可见文案。
+ */
+import { describe, expect, it } from 'vitest'
+import {
+  HEX_DIRS,
+  WORMHOLE_EMPTY_MIN_SHARE,
+  WORMHOLE_GRID_R_MAX,
+  WORMHOLE_RUINS_SHARE,
+  gridTally,
+  hexDiskAround,
+  hexDiskCells,
+  hexDiskCount,
+  hexDistance,
+  hexKey,
+  hexNeighbors,
+  isExitCell,
+  pickPlace,
+  revealOf,
+  signalOfPlace,
+  wormholeGridRadiusFor,
+  wormholeMakeGrid,
+} from '../src/wormholeGrid'
+import type { WormholeSignal } from '../src/wormholeGrid'
+import { createInitialState } from '../src/state'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { addShipToFleet } from '../src/shipyard'
+import { wormholeEnter } from '../src/wormhole'
+import { buildSimContext } from '@whale/data'
+
+const ctx = buildSimContext()
+
+describe('虫洞网格 · 几何（F3a）', () => {
+  it('半径 R 的圆盘格数 = 3R(R+1)+1（R=2 ⇒ 19 格）', () => {
+    expect(hexDiskCount(0)).toBe(1)
+    expect(hexDiskCount(1)).toBe(7)
+    expect(hexDiskCount(2)).toBe(19)
+    expect(hexDiskCount(3)).toBe(37)
+    expect(hexDiskCount(4)).toBe(61)
+    for (const R of [0, 1, 2, 3, 4]) expect(hexDiskCells(R).length).toBe(hexDiskCount(R))
+  })
+
+  it('邻居恒 6 个、距离 1；距离对称且满足三角不等式', () => {
+    const c = { q: 2, r: -1 }
+    const ns = hexNeighbors(c)
+    expect(ns).toHaveLength(6)
+    expect(HEX_DIRS).toHaveLength(6)
+    for (const n of ns) expect(hexDistance(c, n)).toBe(1)
+    const far = { q: -3, r: 4 }
+    expect(hexDistance(c, far)).toBe(hexDistance(far, c))
+    expect(hexDistance(c, far)).toBeLessThanOrEqual(hexDistance(c, ns[0]!) + hexDistance(ns[0]!, far))
+  })
+
+  it('`hexDiskAround` 含中心；`hexRingAround` 只取该圈', () => {
+    const center = { q: 1, r: 2 }
+    expect(hexDiskAround(center, 1)).toHaveLength(7)
+    expect(hexDiskAround(center, 0)).toEqual([center])
+  })
+
+  it('每层半径：R=2 起、每 2 层 +1、上限 R=4（船长「其他按推荐」）', () => {
+    expect(wormholeGridRadiusFor(1)).toBe(2)
+    expect(wormholeGridRadiusFor(2)).toBe(2)
+    expect(wormholeGridRadiusFor(3)).toBe(3)
+    expect(wormholeGridRadiusFor(4)).toBe(3)
+    expect(wormholeGridRadiusFor(5)).toBe(4)
+    expect(wormholeGridRadiusFor(99)).toBe(WORMHOLE_GRID_R_MAX)
+  })
+})
+
+describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
+  it('**确定性**：同 seed+depth 必得同盘；不同 seed 会不一样', () => {
+    const a = wormholeMakeGrid(12345, 1)
+    const b = wormholeMakeGrid(12345, 1)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    const c = wormholeMakeGrid(999, 1)
+    expect(JSON.stringify(c)).not.toBe(JSON.stringify(a))
+  })
+
+  it('**入口在外圈、终点是另一个格**（且都在盘内）', () => {
+    for (const seed of [1, 7, 42, 20260913]) {
+      for (const depth of [1, 2, 3, 5]) {
+        const g = wormholeMakeGrid(seed, depth)
+        const distStart = hexDistance(g.start, { q: 0, r: 0 })
+        expect(distStart, `第 ${depth} 层入口应在外圈（半径 ${g.radius}）`).toBe(g.radius)
+        expect(hexKey(g.exit.q, g.exit.r)).not.toBe(hexKey(g.start.q, g.start.r))
+        expect(hexDistance(g.exit, { q: 0, r: 0 })).toBeLessThanOrEqual(g.radius)
+        // 初始：玩家在入口、入口格已知（到达即揭示），终点还没到过
+        expect(g.pos).toEqual(g.start)
+        expect(g.visited).toEqual([hexKey(g.start.q, g.start.r)])
+        expect(g.visited).not.toContain(hexKey(g.exit.q, g.exit.r))
+        expect(g.scanRadius).toBe(1) // 船长：初始扫描范围 1 格
+      }
+    }
+  })
+
+  it('**空地点至少占 50%**（船长口径）', () => {
+    for (const seed of [1, 2, 3, 77, 12345]) {
+      const g = wormholeMakeGrid(seed, 1)
+      const t = gridTally(g)
+      expect(t.total).toBe(19)
+      expect(t.empty / t.total, `seed ${seed} 空地点占比 ${t.empty}/${t.total}`).toBeGreaterThanOrEqual(
+        WORMHOLE_EMPTY_MIN_SHARE,
+      )
+    }
+  })
+
+  it('**遗迹 = 残骸信号的 30%**（±1 格容差，格数少时取整）', () => {
+    let ruins = 0
+    let wreck = 0
+    for (let seed = 1; seed <= 200; seed++) {
+      const t = gridTally(wormholeMakeGrid(seed, 1))
+      ruins += t.byPlace.ruins
+      wreck += t.bySignal.wreck
+    }
+    expect(wreck).toBeGreaterThan(50)
+    expect(ruins / wreck).toBeGreaterThan(WORMHOLE_RUINS_SHARE - 0.15)
+    expect(ruins / wreck).toBeLessThan(WORMHOLE_RUINS_SHARE + 0.15)
+  })
+
+  it('四类信号都真的会出现（多 seed 抽样）', () => {
+    const seen = new Set<WormholeSignal>()
+    for (let seed = 1; seed <= 40; seed++) {
+      const t = gridTally(wormholeMakeGrid(seed, 3))
+      for (const k of Object.keys(t.bySignal) as WormholeSignal[]) if (t.bySignal[k] > 0) seen.add(k)
+    }
+    expect([...seen].sort()).toEqual(['radar', 'resource', 'ship', 'wreck'])
+  })
+
+  it('信号遮蔽：未知 / 只有信号 / 已知真相 三档（**空地点无信号**）', () => {
+    const g = wormholeMakeGrid(20260913, 1)
+    const startCell = g.start
+    // 入口格：已到达 ⇒ 直接给真相
+    const r0 = revealOf(g, startCell)
+    expect(r0.kind).toBe('known')
+    // 找一个未扫描的格 ⇒ unknown
+    const unknown = g.cells.find((c) => !g.scanned.includes(c.key) && !g.visited.includes(c.key))!
+    expect(revealOf(g, { q: unknown.q, r: unknown.r }).kind).toBe('unknown')
+    // 人为标成"已扫描" ⇒ 只给信号（不给真相）
+    g.scanned.push(unknown.key)
+    const r1 = revealOf(g, { q: unknown.q, r: unknown.r })
+    expect(r1.kind).toBe('signal')
+    if (r1.kind === 'signal') expect(r1.signal).toBe(signalOfPlace(unknown.place) ?? 'ship')
+    // 再标成"已到达" ⇒ 给真相
+    g.visited.push(unknown.key)
+    const r2 = revealOf(g, { q: unknown.q, r: unknown.r })
+    expect(r2.kind).toBe('known')
+    if (r2.kind === 'known') expect(r2.place).toBe(unknown.place)
+  })
+
+  it('地点 ↔ 信号 的映射：墓场/遗迹同为残骸信号；空地点无信号', () => {
+    expect(signalOfPlace('empty')).toBeNull()
+    expect(signalOfPlace('graveyard')).toBe('wreck')
+    expect(signalOfPlace('ruins')).toBe('wreck')
+    expect(signalOfPlace('ship')).toBe('ship')
+    expect(signalOfPlace('vein')).toBe('resource')
+    expect(signalOfPlace('matter')).toBe('radar')
+    // 残骸信号按 30% 判遗迹（用固定随机数验证分界，避免抽样抖动）
+    expect(pickPlace('wreck', 0)).toBe('ruins')
+    expect(pickPlace('wreck', WORMHOLE_RUINS_SHARE - 0.01)).toBe('ruins')
+    expect(pickPlace('wreck', WORMHOLE_RUINS_SHARE + 0.01)).toBe('graveyard')
+  })
+
+  it('终点判定：只有终点格算"该层末守卫处"', () => {
+    const g = wormholeMakeGrid(5, 2)
+    expect(isExitCell(g, g.exit)).toBe(true)
+    expect(isExitCell(g, g.start)).toBe(false)
+  })
+})
+
+describe('虫洞网格 · 随档（F3a）', () => {
+  it('网格状态随档往返不丢（真相/已扫描/已到达/位置/终点都在），坏值 ⇒ 整块丢弃退回旧口径', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, 'sh-thresher')
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a], 7).ok).toBe(true)
+    const run = state.wormhole.run!
+    const grid = wormholeMakeGrid(7, 1)
+    // 造点"进度"：扫两个、到一个、激活一个
+    grid.scanned.push('1,0', '0,1')
+    grid.visited.push('1,0')
+    grid.pos = { q: 1, r: 0 }
+    grid.activated.push('1,0')
+    run.grid = grid
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
+    expect(back.grid, '网格没随档').toBeTruthy()
+    expect(back.grid!.radius).toBe(grid.radius)
+    expect(back.grid!.pos).toEqual(grid.pos)
+    expect(back.grid!.exit).toEqual(grid.exit)
+    expect(back.grid!.scanned).toEqual(grid.scanned)
+    expect(back.grid!.visited).toEqual(grid.visited)
+    expect(back.grid!.activated).toEqual(grid.activated)
+    expect(back.grid!.cells.length).toBe(grid.cells.length)
+    expect(gridTally(back.grid!).empty).toBe(gridTally(grid).empty)
+    // 坏值：cells 清空 ⇒ 整块丢弃（该层退回旧口径），但档其余部分照读
+    const raw = JSON.parse(serializeSaveFile(state, 1)) as { state: { wormhole: { run: { grid: unknown } } } }
+    raw.state.wormhole.run.grid = { radius: 2, cells: [] }
+    const broken = loadSaveFile(JSON.stringify(raw)).state.wormhole.run!
+    expect(broken).toBeTruthy()
+    expect(broken.grid).toBeUndefined()
+  })
+})

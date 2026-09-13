@@ -337,6 +337,12 @@ export interface WormholeRunState {
    * 注意：**不写星系偏好**——虫洞不属于任何星系（远征那条路才写星系）。
    */
   desireM?: number
+  /**
+   * **本层的网格探索状态**（F3a · 2026-09-13 船长确认「探索采用网格地图的形式，整体网格地图呈现圆型」）。
+   * 可选字段：老档没有 = 该层走旧口径（零迁移）；新开层由 wormholeMakeGrid(seed, depth) 生成。
+   * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（evealOf）——不是靠不存。
+   */
+  grid?: import('./wormholeGrid').WormholeGridState
 }
 
 export interface WormholeState {
