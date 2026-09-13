@@ -64,6 +64,8 @@ import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
+import { debugEnabled } from './DebugPanel'
+import { WormholePanel } from './Wormhole'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -1531,6 +1533,9 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
 function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy: GalaxyDef; onToast: ToastFn }) {
   const state = engine.state
   const ctx = engine.ctx
+  // ── 虫洞施工期入口（2026-09-13 E 批）：**只在调试模式下出现**（与调试面板同一开关）──
+  const [whOpen, setWhOpen] = useState(false)
+  const whEntryVisible = debugEnabled()
   // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
@@ -1625,6 +1630,21 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
   return (
     <div className="app-galaxy-actions">
       <div className="app-bay-title">前往星系 · 行动</div>
+      {/* ㊕ 虫洞（终局玩法 · 施工期入口：**只在调试模式下出现**，拍板前对玩家不可见） */}
+      {whEntryVisible ? (
+        <div className="app-ga-row">
+          <span className="app-ga-main">
+            <span className="app-ico">
+              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+            </span>
+            虫洞
+            <span className="app-dim app-ga-desc">调试入口 · 施工中（编队 / 探索 / 背包）</span>
+          </span>
+          <button className="app-btn is-small" onClick={() => setWhOpen(true)} title="终局玩法·虫洞（施工期：仅调试模式可见）">
+            进入虫洞
+          </button>
+        </div>
+      ) : null}
       {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
@@ -1877,6 +1897,8 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           </div>
         )
       })()}
+      {/* 虫洞面板（施工期：仅调试入口可达；见 panels/Wormhole.tsx 头注释） */}
+      {whOpen ? <WormholePanel engine={engine} onToast={onToast} onClose={() => setWhOpen(false)} /> : null}
     </div>
   )
 }

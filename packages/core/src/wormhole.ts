@@ -10,8 +10,11 @@
  *
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
+import type { GameState } from './state'
+import { addLog } from './state'
 import type { ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
+import { cargoCapacityM3Of } from './inventory'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -218,6 +221,8 @@ export interface WormholeNode {
   eventKey?: string
   /** 本节点打完/点完要花几回合（= `wormholeStepCost`） */
   cost: number
+  /** 拾取点里**还没捡走**的堆（E 批：捡一堆就从这里删一条；非拾取节点不写该字段） */
+  piles?: WormholePile[]
 }
 
 export interface WormholeRunState {
@@ -317,6 +322,7 @@ export function wormholeStartRun(
  * 造一个层内节点（**确定性**：同 `(seed, depth, index)` ⇒ 同结果，便于复现与用例）。
  * 口径：每层**首节点固定战斗**（"进层先打一场"）、其余按 roll 分战斗/拾取/事件；
  * 波数随深度 +1（层 3 起可到 3 波；每多一波 +1 回合）。
+ * 拾取节点的**堆**在造节点时一并生成（`piles`）——捡走即从数组里删，随档保存。
  */
 export function wormholeMakeNode(seed: number, depth: number, index: number): WormholeNode {
   const h = Math.abs((seed * 1103515245 + (depth * 97 + index) * 12345) % 2147483647)
@@ -325,7 +331,16 @@ export function wormholeMakeNode(seed: number, depth: number, index: number): Wo
   if (index === 0) {
     return { kind: 'combat', waves, pickups: 0, cost: wormholeStepCost(waves, 0) }
   }
-  if (roll < 45) return { kind: 'pickup', waves: 0, pickups: 2, cost: wormholeStepCost(1, 2) }
+  if (roll < 45) {
+    const pickups = 2
+    return {
+      kind: 'pickup',
+      waves: 0,
+      pickups,
+      cost: wormholeStepCost(1, pickups),
+      piles: wormholeNodePiles(seed, depth, index, pickups),
+    }
+  }
   if (roll < 80) return { kind: 'combat', waves, pickups: 0, cost: wormholeStepCost(waves, 0) }
   return {
     kind: 'event',
@@ -393,3 +408,135 @@ export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   run.phase = 'extracting'
   return { ok: true }
 }
+
+/* ═══════════ 六、E 批：入洞 / 拾取 / 背包（界面接线所需的引擎动作） ═══════════ */
+
+/**
+ * 每堆原矿的**基准单位数**。
+ *
+ * ⚠ **待 F 批收益校准**：本批（E）只落"堆 = 一堆原矿、能拾、能进包、超格会被拦"这套**机制**；
+ * 具体数量与层收益曲线的乘子以 F 批 `tools/` 校准读数为准再定稿。当前口径 = 基准 × 层收益系数，
+ * 故"越深越值钱"的方向与 §4/§5 一致，只是绝对值未定。
+ */
+export const WORMHOLE_PILE_UNITS_BASE = 200
+
+/** 拾取点里的一堆战利品（虫洞内**只掉原矿**——船长 2026-09-12 定，见设计稿 §5.4/Q14） */
+export interface WormholePile {
+  itemId: string
+  units: number
+}
+
+/**
+ * 生成第 `depth` 层第 `index` 个节点的拾取堆（**确定性**：同 `(seed, depth, index)` ⇒ 同结果）。
+ * 数量 = `基准 × 层收益系数 × (0.8~1.2)`（随机项同样来自确定性散列，便于复现与用例）。
+ * ⚠ 绝对值待 F 批校准（见 `WORMHOLE_PILE_UNITS_BASE` 注释）。
+ */
+export function wormholeNodePiles(seed: number, depth: number, index: number, count: number): WormholePile[] {
+  const n = Math.max(0, Math.floor(count))
+  if (n <= 0) return []
+  const mul = wormholeLayerRewardMul(depth)
+  const out: WormholePile[] = []
+  for (let k = 0; k < n; k++) {
+    const h = Math.abs((seed * 1103515245 + (depth * 137 + index * 31 + k * 7) * 7919) % 2147483647)
+    const jitter = 0.8 + (h % 41) / 100 // 0.80 ~ 1.20
+    out.push({
+      itemId: WORMHOLE_ORE_ITEM_ID,
+      units: Math.max(1, Math.round(WORMHOLE_PILE_UNITS_BASE * mul * jitter)),
+    })
+  }
+  return out
+}
+
+/** 虫洞内唯一的原矿（虚空母矿；`packages/data/src/items.ts`）——由它精炼出虚空晶 */
+export const WORMHOLE_ORE_ITEM_ID = 'ore-voidmother'
+
+/** 编队合计货仓（含技能与货舱件加成；与货仓页数字同源 —— 船长 Q6 口径） */
+export function wormholeFleetCargoM3(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
+  let total = 0
+  for (const id of shipIds) total += cargoCapacityM3Of(state, ctx, id)
+  return total
+}
+
+/** 编队的背包格数（`floor(合计货仓 ÷ 500)`）——**现算**（技能/装配一变就跟着变，与货仓页一致） */
+export function wormholeBagSlotsOfFleet(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
+  return wormholeBagSlots(wormholeFleetCargoM3(state, ctx, shipIds))
+}
+
+/** 把一堆东西并进背包（同物品并格——一格只装一种物品，故同一 `itemId` 只留一条记录） */
+function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
+  const out = bag.map((s) => ({ ...s }))
+  const hit = out.find((s) => s.itemId === pile.itemId)
+  if (hit) hit.units += pile.units
+  else out.push({ itemId: pile.itemId, units: pile.units })
+  return out
+}
+
+/**
+ * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
+ * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
+ */
+export function wormholeEnter(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+  seed: number,
+): WormholeStartResult {
+  if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。' }
+  const r = wormholeStartRun(ctx, shipIds, seed)
+  if (!r.ok || !r.run) return r
+  state.wormhole.run = r.run
+  addLog(
+    state,
+    'info',
+    `🕳 虫洞跃入：编队 ${shipIds.length} 艘 · 折算总质量 ${r.run.totalMass.toLocaleString('zh-CN')} · 可探索 ${r.run.turnsTotal} 回合。`,
+  )
+  return r
+}
+
+/**
+ * **拾取一堆**（每堆 = 一堆原矿；进包前先做容量预检，**放不下就不给捡**——不静默丢弃）。
+ * ⚠ 回合口径：节点 `cost` 已按"每堆 +1 回合"计入（C 批 `wormholeStepCost`），故**拾取本身不再扣回合**，
+ * 回合在"结算本节点"时一次性扣（E 批不重复计费；F 批若改逐步扣费再说）。
+ */
+export function wormholeTakePile(
+  state: GameState,
+  ctx: SimContext,
+  pileIndex: number,
+): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '不在虫洞内。' }
+  const piles = run.pendingNode?.piles
+  if (!piles || pileIndex < 0 || pileIndex >= piles.length) {
+    return { ok: false, error: '这里没有可拾取的东西。' }
+  }
+  const pile = piles[pileIndex]!
+  const capacity = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
+  const merged = mergeIntoBag(run.bag, pile)
+  const usage = wormholeBagUsage(ctx, merged, capacity)
+  if (usage.overflow) {
+    return { ok: false, error: `背包放不下：已占 ${usage.used} / 共 ${capacity} 格。` }
+  }
+  run.bag = merged
+  piles.splice(pileIndex, 1)
+  const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
+  addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（背包 ${usage.used}/${capacity} 格）。`)
+  return { ok: true, taken: pile, used: usage.used, capacity }
+}
+
+/**
+ * ⚠ **施工期调试用**：放弃本趟探索（背包内容一并作废、`run` 清空）。
+ * 正式路径（撤离成功结算 / 全损 / 回合耗尽）在 **F 批**实现；本函数只为"施工期不被卡在洞里"而存在，
+ * 拍板前不应出现在玩家可及路径上（入口本身在调试开关后面）。
+ */
+export function wormholeDebugReset(state: GameState): void {
+  state.wormhole.run = null
+}
+

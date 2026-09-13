@@ -2365,6 +2365,22 @@ function normalizeState(raw: unknown): GameState {
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
+  /**
+   * 拾取堆（E 批）：每项 = `{ itemId, units }`；**坏项丢弃、空表 = `{}`（不写该字段）**。
+   * 旧档 / 非拾取节点没有这个字段 ⇒ 归一化后依然没有 ⇒ 界面按"没有可捡的"渲染（零迁移）。
+   */
+  const cleanWormholePiles = (raw: unknown): { piles?: Array<{ itemId: string; units: number }> } => {
+    if (!Array.isArray(raw)) return {}
+    const out: Array<{ itemId: string; units: number }> = []
+    for (const it of raw) {
+      const row = asRaw(it)
+      const itemId = typeof row.itemId === 'string' ? row.itemId : ''
+      const units = Math.floor(num(row.units))
+      if (itemId.length > 0 && units > 0) out.push({ itemId, units })
+    }
+    return out.length > 0 ? { piles: out } : {}
+  }
+
   // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
   const cleanWormhole = (): GameState['wormhole'] => {
     const wRaw = asRaw(src.wormhole)
@@ -2408,6 +2424,8 @@ function normalizeState(raw: unknown): GameState {
                     pickups: Math.max(0, Math.floor(num(pn.pickups))),
                     ...(typeof pn.eventKey === 'string' && pn.eventKey.length > 0 ? { eventKey: pn.eventKey } : {}),
                     cost: Math.max(1, Math.floor(num(pn.cost))),
+                    // 拾取堆（E 批）：坏项丢弃、空表不写（旧档/非拾取节点缺省 = 没有可捡的）
+                    ...cleanWormholePiles(pn.piles),
                   },
             nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
           }
