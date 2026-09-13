@@ -17,7 +17,8 @@ import type { DroneClass, ItemKind } from '@whale/core'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
-import { BLUEPRINT_SUBS, MODULE_SUBS, SHIP_SUBS, moduleSubKeyOf } from '../ui/itemSubs'
+import { BLUEPRINT_SUBS, MODULE_SUBS, RACK_SUBS, SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, moduleSubKeyOf } from '../ui/itemSubs'
+import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
@@ -63,6 +64,24 @@ const COUNT_UNIT: Record<Tab, string> = {
   skills: '项',
 }
 const VIEW_KEY = 'whale-idle:handbook-view'
+
+/** 蓝图门类（手册「蓝图图鉴」主筛选）：判据与分组键同源（有 `shipId` = 舰船蓝图、
+ *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图） */
+const BP_MAIN: SubOption[] = [
+  { key: 'equip', label: '装备蓝图' },
+  { key: 'ship', label: '舰船蓝图' },
+  { key: 'consume', label: '消耗品蓝图' },
+]
+/** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
+const FILTER_LABEL: Record<Tab, string> = {
+  guide: '',
+  rules: '',
+  items: '分类',
+  modules: '槽类',
+  ships: '类别',
+  blueprints: '门类',
+  skills: '技能组',
+}
 
 function readView(): ViewMode {
   try {
@@ -427,6 +446,10 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
   const [view, setView] = useState<ViewMode>(readView)
   const [detail, setDetail] = useState<GridCell | null>(null)
   const [query, setQuery] = useState('')
+  /* 图鉴筛选（2026-09-13 船长）：一级 `mainKey`，二级 `subKey`；都**不落盘**——关上手册再打开即重置
+     （与市场「切类型即回全部子类」同一哲学）。`SUB_ALL` = 全部 / 全部子类。 */
+  const [mainKey, setMainKey] = useState<string>(SUB_ALL)
+  const [subKey, setSubKey] = useState<string>(SUB_ALL)
 
   function changeView(v: ViewMode): void {
     setView(v)
@@ -436,11 +459,18 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
       // 本地存储不可用：忽略
     }
   }
-  /** 切页：清空关键词与详情（各页关键词互不相关，避免"换了页却没结果"的困惑） */
+  /** 切页：清空关键词、详情与筛选（各页关键词/分类互不相关，避免"换了页却没结果"的困惑） */
   function changeTab(t: Tab): void {
     setTab(t)
     setQuery('')
     setDetail(null)
+    setMainKey(SUB_ALL)
+    setSubKey(SUB_ALL)
+  }
+  /** 选一级分类：二级随之归零（与组装机「换一级标签即回全部子类」同款） */
+  function pickMain(k: string): void {
+    setMainKey(k)
+    setSubKey(SUB_ALL)
   }
 
   const q = query.trim().toLowerCase()
@@ -552,22 +582,88 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
     skills: skillCells,
   }
   const isCodex = tab === 'items' || tab === 'modules' || tab === 'ships' || tab === 'blueprints' || tab === 'skills'
-  const groups: CellGroup[] = isCodex ? showCells(filtered(codexCells[tab]), tab) : []
+
+  /* ── 图鉴筛选（2026-09-13 船长：「对手册中的各个图鉴添加筛选，如果有子分类的，主筛选选择之后出现子分类筛选」；
+        集中提问后定：**只做一级的页签 = 物品 / 技能**（无天然第二层），二级只在装备 / 舰船 / 蓝图三页；
+        控件复用组装机那一套 `app-task-tabs` + `app-tasktab` 胶囊；与搜索取「与」 ── */
+
+  /** 主筛选（一级）可选项——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
+  function mainOptions(t: Tab): SubOption[] {
+    if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
+    if (t === 'modules') return RACK_SUBS
+    if (t === 'ships') return SHIP_SUBS
+    if (t === 'blueprints') return BP_MAIN
+    if (t === 'skills') return engine.groups.map((g) => ({ key: g, label: g }))
+    return []
+  }
+  /** 子筛选（二级）可选项——**只有装备 / 舰船 / 蓝图三页有**，且**必须选了主类才出现**
+   *  （「全部」不带子筛选，与组装机「全部标签不带子筛选」同款；2026-09-13 船长口径：
+   *  「如果有子分类的，主筛选选择之后出现子分类筛选」）；
+   *  蓝图的子级随所选门类变化（装备→槽类 / 舰船→级别 / 消耗品→无，与市场页 `BLUEPRINT_SUBS` 同表同键） */
+  function subOptions(t: Tab, main: string): SubOption[] {
+    if (main === SUB_ALL) return []
+    if (t === 'modules') return MODULE_SUBS
+    if (t === 'ships') return SHIP_TIER_SUBS
+    if (t === 'blueprints') return main === 'equip' ? RACK_SUBS : main === 'ship' ? SHIP_TIER_SUBS : []
+    return []
+  }
+  /** 主筛选判定（判据与 `groupKeyOf` 逐条对齐，避免"筛出来的条目和分组标题不一致"） */
+  function mainPasses(c: GridCell, t: Tab, main: string): boolean {
+    if (main === SUB_ALL) return true
+    if (t === 'items') return String(c.raw.kind ?? '') === main
+    if (t === 'modules') {
+      const mod = engine.ctx.modules.get(c.key)
+      return mod !== undefined && rackOf(mod) === main
+    }
+    if (t === 'ships') return String(c.raw.role ?? 'industrial') === main
+    if (t === 'blueprints') {
+      if (c.raw.shipId !== undefined) return main === 'ship'
+      if (c.raw.itemId !== undefined) return main === 'consume'
+      return main === 'equip'
+    }
+    return String(c.raw.group ?? '') === main // skills
+  }
+  /** 子筛选判定（物品与技能无二级，恒真） */
+  function subPassesCell(c: GridCell, t: Tab, sub: string): boolean {
+    if (sub === SUB_ALL) return true
+    if (t === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? '')) === sub
+    if (t === 'ships') return `t${String(c.raw.tier ?? '')}` === sub
+    if (t === 'blueprints') {
+      if (c.raw.shipId !== undefined) {
+        const ship = engine.ctx.ships.get(String(c.raw.shipId))
+        return ship !== undefined && `t${ship.tier}` === sub
+      }
+      const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
+      return mod !== undefined && rackOf(mod) === sub
+    }
+    return true
+  }
+
+  const mainOpts = isCodex ? mainOptions(tab) : []
+  const subOpts = isCodex ? subOptions(tab, mainKey) : []
+  /** 搜索或筛选任一生效（命中计数与空态文案据此切换措辞） */
+  const narrowed = q !== '' || mainKey !== SUB_ALL || subKey !== SUB_ALL
+  const groups: CellGroup[] = isCodex
+    ? showCells(
+        filtered(codexCells[tab]).filter((c) => mainPasses(c, tab, mainKey) && subPassesCell(c, tab, subKey)),
+        tab,
+      )
+    : []
   const codexHit = isCodex ? groups.reduce((n, g) => n + g.cells.length, 0) : 0
 
-  /** 左侧导航计数：图鉴类 = 条目数（搜索时显示命中数），说明类 = 词条数 */
+  /** 左侧导航计数：图鉴类 = 条目数（搜索时显示命中数；**不含筛选**——筛选是当前页的临时收窄），说明类 = 词条数 */
   function navCount(t: Tab): number {
     if (t === 'guide') return GUIDE_GROUPS.reduce((n, g) => n + g.rows.filter(hitRow).length, 0)
     if (t === 'rules') return RULE_SECTS.reduce((n, s) => n + s.rows.filter(hitRow).length, 0)
     return codexCells[t].filter(hitCell).length
   }
-  /** 当前页命中计数文案（搜索态与全量态） */
+  /** 当前页命中计数文案（搜索/筛选态与全量态） */
   const countText = (): string => {
     if (tab === 'guide' || tab === 'rules') {
       const n = navCount(tab)
       return q === '' ? `${n} ${COUNT_UNIT[tab]}` : `匹配 ${n} ${COUNT_UNIT[tab]}`
     }
-    return q === '' ? `${codexHit} ${COUNT_UNIT[tab]}` : `匹配 ${codexHit} ${COUNT_UNIT[tab]}`
+    return narrowed ? `匹配 ${codexHit} ${COUNT_UNIT[tab]}` : `${codexHit} ${COUNT_UNIT[tab]}`
   }
 
   /* ── 列表视图：按分组渲染同一批卡片（沿用原有完整字段行） ── */
@@ -818,13 +914,71 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
               ) : null}
               <span className="app-dim">{countText()}</span>
             </div>
+            {/* 图鉴筛选（2026-09-13 船长）：一级常显；**装备 / 舰船 / 蓝图**选了主类才出二级
+                （「全部」时不占位，同组装机「全部标签不带子筛选」）；固定在列表上方不随滚动 */}
+            {isCodex && mainOpts.length > 0 ? (
+              <div className="app-fleet-toolbar app-hand-filters">
+                <div className="app-fleet-row">
+                  <span className="app-dim">{FILTER_LABEL[tab]}：</span>
+                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                    <button
+                      role="tab"
+                      aria-selected={mainKey === SUB_ALL}
+                      className={`app-tasktab${mainKey === SUB_ALL ? ' is-active' : ''}`}
+                      onClick={() => pickMain(SUB_ALL)}
+                    >
+                      全部
+                    </button>
+                    {mainOpts.map((o) => (
+                      <button
+                        key={o.key}
+                        role="tab"
+                        aria-selected={mainKey === o.key}
+                        className={`app-tasktab${mainKey === o.key ? ' is-active' : ''}`}
+                        onClick={() => pickMain(o.key)}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {subOpts.length > 0 ? (
+                  <div className="app-fleet-row">
+                    <span className="app-dim">细分：</span>
+                    <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                      <button
+                        role="tab"
+                        aria-selected={subKey === SUB_ALL}
+                        className={`app-tasktab${subKey === SUB_ALL ? ' is-active' : ''}`}
+                        onClick={() => setSubKey(SUB_ALL)}
+                      >
+                        全部子类
+                      </button>
+                      {subOpts.map((o) => (
+                        <button
+                          key={o.key}
+                          role="tab"
+                          aria-selected={subKey === o.key}
+                          className={`app-tasktab${subKey === o.key ? ' is-active' : ''}`}
+                          onClick={() => setSubKey(o.key)}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="app-hand-scroll">
               {tab === 'guide' ? renderSects(GUIDE_GROUPS) : null}
               {tab === 'rules' ? renderSects(RULE_SECTS) : null}
               {isCodex ? (
                 codexEmpty ? (
                   <div className="app-dim app-inv-empty">
-                    没有匹配「{query.trim()}」的条目——试试清空搜索或换个关键词。
+                    {q !== ''
+                      ? `没有匹配「${query.trim()}」的条目——试试清空搜索或换个关键词。`
+                      : '当前筛选下没有条目——换个分类，或点「全部」看全表。'}
                   </div>
                 ) : (
                   groups.map((g) => (

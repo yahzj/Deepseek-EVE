@@ -1635,7 +1635,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
         <div className="app-ga-row">
           <span className="app-ga-main">
             <span className="app-ico">
-              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+              <Glyph name="nav-wormhole" size={13} color={NAV_TONES['nav-wormhole']} />
             </span>
             虫洞
             <span className="app-dim app-ga-desc">调试入口 · 施工中（编队 / 探索 / 背包）</span>

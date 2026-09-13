@@ -6,13 +6,14 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, rackOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
+import { RACK_SUBS, SUB_ALL } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -29,6 +30,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const state = engine.state
   // 仓库搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明过滤仓库物品与装备库）
   const [wareQuery, setWareQuery] = useState('')
+  /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」）：
+     一级 = 各大类 + 「装备」；选「装备」时出二级槽类（高/中/低，`RACK_SUBS` 单点表）。
+     与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。 */
+  const [wareKind, setWareKind] = useState<string>(SUB_ALL)
+  const [wareRack, setWareRack] = useState<string>(SUB_ALL)
+  /** 一级筛选中（分类 / 装备）；`SUB_ALL` = 全部 */
+  const kindPicked = wareKind !== SUB_ALL
+  /** 装备是否在展示范围内（选了某个物品大类时，装备库整块不显示） */
+  const showMods = wareKind === SUB_ALL || wareKind === 'module'
   const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
   const modRows = Object.entries(state.moduleBay).filter(([, n]) => n > 0)
@@ -52,9 +62,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       (def.description ?? '').toLowerCase().includes(wq)
     )
   }
-  const itemHits = wq.length > 0 ? rows.filter(([id]) => hitItem(id)) : rows
-  const modHits = wq.length > 0 ? modRows.filter(([id]) => hitMod(id)) : modRows
+  /** 一级筛选（物品大类）：选了某一类就只留那一类 */
+  const kindHit = (id: string): boolean => {
+    if (!kindPicked) return true
+    return engine.ctx.items.get(id)?.kind === wareKind
+  }
+  /** 二级筛选（装备槽类，走 core 单点 `rackOf`）：只对装备库生效 */
+  const rackHit = (id: string): boolean => {
+    if (wareRack === SUB_ALL) return true
+    const def = engine.ctx.modules.get(id)
+    return def !== undefined && rackOf(def) === wareRack
+  }
+  const itemHits = rows.filter(([id]) => hitItem(id) && kindHit(id))
+  const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && rackHit(id)) : []
   const hitTotal = itemHits.length + modHits.length
+  /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
+  const wareNarrowed = wq.length > 0 || kindPicked || wareRack !== SUB_ALL
 
   // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
@@ -138,7 +161,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
 
   return (
     <Panel
-      className="is-fill"
+      className="is-fill app-fleet-panel"
       title="仓库"
       right={
         <span className="app-head-search-wrap">
@@ -152,23 +175,101 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             spellCheck={false}
           />
           <span className="app-dim">
-            {wq.length > 0 ? `匹配 ${hitTotal} 种` : `${hitTotal} 种 · 无限容量 · 不随船`}
+            {wareNarrowed ? `匹配 ${hitTotal} 种` : `${hitTotal} 种 · 无限容量 · 不随船`}
           </span>
         </span>
       }
     >
-      {/* 仓库内容在面板体内滚动：标题行（搜索/切换）固定不随内容滚走（2026-09-10 船长：同技能目录标题栏） */}
-      {wq.length > 0 && hitTotal === 0 ? (
+      {/* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」）——工具条固定在列表上方不随滚动
+          （复刻「我的舰队」那套：app-fleet-toolbar + app-fleet-row + app-tasktab 胶囊）；
+          一级＝各大类 + 「装备」；选「装备」才出二级槽类（与手册装备图鉴同一张 RACK_SUBS 单点表） */}
+      <div className="app-fleet-toolbar">
+        <div className="app-fleet-row">
+          <span className="app-dim">分类：</span>
+          <div className="app-task-tabs app-fleet-tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={wareKind === SUB_ALL}
+              className={`app-tasktab${wareKind === SUB_ALL ? ' is-active' : ''}`}
+              onClick={() => {
+                setWareKind(SUB_ALL)
+                setWareRack(SUB_ALL)
+              }}
+            >
+              全部
+            </button>
+            {ITEM_KIND_ORDER.map((kind) => (
+              <button
+                key={kind}
+                role="tab"
+                aria-selected={wareKind === kind}
+                className={`app-tasktab${wareKind === kind ? ' is-active' : ''}`}
+                onClick={() => {
+                  setWareKind(kind)
+                  setWareRack(SUB_ALL)
+                }}
+              >
+                {itemKindLabel(kind)}
+              </button>
+            ))}
+            <button
+              role="tab"
+              aria-selected={wareKind === 'module'}
+              className={`app-tasktab${wareKind === 'module' ? ' is-active' : ''}`}
+              onClick={() => {
+                setWareKind('module')
+                setWareRack(SUB_ALL)
+              }}
+            >
+              装备
+            </button>
+          </div>
+        </div>
+        {wareKind === 'module' ? (
+          <div className="app-fleet-row">
+            <span className="app-dim">槽类：</span>
+            <div className="app-task-tabs app-fleet-tabs" role="tablist">
+              <button
+                role="tab"
+                aria-selected={wareRack === SUB_ALL}
+                className={`app-tasktab${wareRack === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => setWareRack(SUB_ALL)}
+              >
+                全部槽类
+              </button>
+              {RACK_SUBS.map((s) => (
+                <button
+                  key={s.key}
+                  role="tab"
+                  aria-selected={wareRack === s.key}
+                  className={`app-tasktab${wareRack === s.key ? ' is-active' : ''}`}
+                  onClick={() => setWareRack(s.key)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+      {/* 仓库内容在自滚容器里滚：标题行（搜索/切换）与筛选行固定不随内容滚走
+          （2026-09-10 船长：同技能目录标题栏；2026-09-13 加入筛选行后改用舰队那套「工具条 + 自滚区」） */}
+      <div className="app-fleet-scroll">
+      {wareNarrowed && hitTotal === 0 ? (
         <div className="app-dim app-note">
-          没有匹配「{wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。
+          {wq.length > 0
+            ? `没有匹配「${wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。`
+            : '当前筛选下仓库里没有东西——换个分类，或点「全部」看全表。'}
         </div>
       ) : null}
       {mode === 'list' ? (
         <>
       {ITEM_KIND_ORDER.map((kind) => {
+        // 一级筛选：选了某一类就只渲染那一类（2026-09-13 仓库筛选）
+        if (kindPicked && wareKind !== kind) return null
         const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
-        // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索时任一空类都隐藏
-        if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wq.length > 0)) return null
+        // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索/筛选时任一空类都隐藏
+        if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
         return (
           <Panel
             key={kind}
@@ -237,14 +338,16 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         )
       })}
 
+      {/* 装备库（2026-09-13 筛选：选了某个物品大类时整块不显示；计数随槽类二级筛选收窄） */}
+      {showMods ? (
       <Panel
         title="装备（装备库）"
-        right={<span className="app-dim">{modRows.length} 种 · 空间站库存</span>}
+        right={<span className="app-dim">{modHits.length} 种 · 空间站库存</span>}
       >
         {modHits.length === 0 ? (
           <div className="app-dim app-inv-empty">
-            {wq.length > 0
-              ? `没有匹配「${wareQuery.trim()}」的装备。`
+            {wareNarrowed
+              ? '当前筛选下没有装备——换个分类或槽类试试。'
               : '装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。'}
           </div>
         ) : (
@@ -297,13 +400,16 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           </ul>
         )}
       </Panel>
+      ) : null}
         </>
       ) : (
         <>
           <div className="app-dim app-note">图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。</div>
           {ITEM_KIND_ORDER.map((kind) => {
+            // 一级筛选：选了某一类就只渲染那一类（2026-09-13 仓库筛选，与列表视图同一套判据）
+            if (kindPicked && wareKind !== kind) return null
             const kindRows2 = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
-            if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wq.length > 0)) return null
+            if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
             const cells: ItemGridCell[] = kindRows2.map(([id, units]) => {
               const def = engine.ctx.items.get(id)
               return {
@@ -331,17 +437,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               </Panel>
             )
           })}
-          <Panel title="装备（装备库）" right={<span className="app-dim">{modCells.length} 种 · 空间站库存</span>}>
-            {modCells.length > 0 ? (
+          {showMods ? (
+          <Panel
+            title="装备（装备库）"
+            right={<span className="app-dim">{modHits.length} 种 · 空间站库存</span>}
+          >
+            {modHits.length > 0 ? (
               <ItemGlyphGrid cells={modCells} onPick={(key) => setPickMod(key)} />
             ) : (
               <div className="app-dim app-inv-empty">
-                {wq.length > 0
-                  ? `没有匹配「${wareQuery.trim()}」的装备。`
+                {wareNarrowed
+                  ? '当前筛选下没有装备——换个分类或槽类试试。'
                   : '装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。'}
               </div>
             )}
           </Panel>
+          ) : null}
 
           {pickItemDef && pickItem ? (
             <ItemActionModal onClose={() => setPickItem(null)}>
@@ -454,6 +565,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           {/* 出售数量弹层已提升到列表/图标两模式共用的外层（见组件 return 尾部） */}
         </>
       )}
+      </div>
 
       {/* 出售数量选择（部分出售；船长 2026-09-05）——列表/图标两模式共用（2026-09-08 修复：
          原误置于图标模式分支内，列表模式点「市价卖出」设了状态却无弹层渲染 = 点击无反应） */}

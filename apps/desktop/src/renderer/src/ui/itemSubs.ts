@@ -24,11 +24,13 @@
  *   **T1~T5 五档**、原「补给蓝图（弹药·修理组件）」改名「**消耗品蓝图（弹药·修理组件）**」；
  * - **手册「蓝图图鉴」**分组随同（同一张表）：舰船从 1 组变 5 个级别组。
  *
- * 检索入口：`grep MODULE_SUBS|SUBS_OF_KIND|moduleSubKeyOf|CONSUME_SUBS|SHIP_TIER_SUBS|BLUEPRINT_SUBS`。
+ * 检索入口：`grep MODULE_SUBS|SUBS_OF_KIND|moduleSubKeyOf|CONSUME_SUBS|SHIP_TIER_SUBS|BLUEPRINT_SUBS|RACK_SUBS`。
  * - 市场页 MarketPage：类型下拉的一级类型与二级子分类（筛选市场商品目录）；
  * - 组装机 Industry.tsx：蓝图标签行 + 二级子筛选（按蓝图产物分类，不走市场商品目录）；
- * - 手册 Handbook：装备/舰船/蓝图的分组标题与分组判定（同一套键与中文名，避免两页口径漂移）。
- * 新增/调整分类只改本文件，三处同时生效。
+ * - 手册 Handbook：装备/舰船/蓝图的分组标题与分组判定（同一套键与中文名，避免两页口径漂移），
+ *   以及 2026-09-13 起的**图鉴筛选行**（一级 `RACK_SUBS`/`SHIP_SUBS`/…，二级 `MODULE_SUBS`/`SHIP_TIER_SUBS`/`RACK_SUBS`）；
+ * - 物品页 ItemsPage：仓库筛选的装备二级（`RACK_SUBS`）与槽类判定（core `rackOf`）。
+ * 新增/调整分类只改本文件，各处同时生效。
  */
 import { rackOf, shipSizeLabel } from '@whale/core'
 import type { MarketGoodDef, SimContext } from '@whale/core'
@@ -141,6 +143,22 @@ export const CORE_SUBS: SubOption[] = [
  */
 export const RACK_KIND_KEYS = ['module-high', 'module-mid', 'module-low'] as const
 export type RackKind = (typeof RACK_KIND_KEYS)[number]
+
+/** 装备槽类中文名（键 = core `rackOf` 的返回值）——**全仓唯一一份**：
+ *  市场页「类型」下拉的三项（`module-high/mid/low`）、手册「装备图鉴」主筛选、
+ *  手册「蓝图图鉴」装备蓝图的子筛选、物品页仓库的装备二级筛选，全部读这里。 */
+export const RACK_LABELS: Record<string, string> = {
+  high: '高槽装备',
+  mid: '中槽装备',
+  low: '低槽装备',
+}
+
+/** 装备槽类子项（顺序 = 高 / 中 / 低；手册与仓库的筛选行直接渲染这张表） */
+export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low'] as const).map((k) => ({
+  key: k,
+  label: RACK_LABELS[k],
+}))
+
 
 /** 主类型 → 可用子分类（残骸 wreck 无二级；三个槽类装备类型共用装备的功能子分类） */
 export const SUBS_OF_KIND: Record<string, SubOption[]> = {
