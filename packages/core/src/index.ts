@@ -76,8 +76,6 @@ export {
   createInitialState,
   // 虫洞锁定判据（洞外开战要避开锁在洞里的锚点船；放 state.ts 避免依赖环）
   shipLockedInWormhole,
-  // 进洞 = 主控的一个活动（一趟没结束不能开别的活动）
-  wormholePilotHoldReason,
 } from './state'
 export type {
   LogKind,

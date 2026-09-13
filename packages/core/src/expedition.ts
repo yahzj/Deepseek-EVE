@@ -11,7 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
-import { addLog, HOME_GALAXY_ID, shipLockedInWormhole, wormholePilotHoldReason } from './state'
+import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
@@ -243,9 +243,6 @@ export function bountyRewardFactor(state: GameState): number {
 function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13）：一趟没结束就不能再开别的活动
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。' }

@@ -24,7 +24,7 @@
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
-import { addLog, wormholePilotHoldReason } from './state'
+import { addLog } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
@@ -235,11 +235,6 @@ export function startManufacturing(
     } else {
       return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
     }
-  }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13）：一趟没结束就不能再占主控的手动工作位
-  if (worker === 'pilot') {
-    const hold = wormholePilotHoldReason(state)
-    if (hold) return { ok: false, error: hold }
   }
   if (worker === 'pilot') {
     // 主控亲自制造 = 全局限 1 条 + 与手动精炼/回收共用一个手动工作位 + 占主控工作位

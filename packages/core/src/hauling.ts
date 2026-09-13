@@ -27,7 +27,7 @@
  * - 互斥：任务中驾驶船忙碌（等同远征），各出港/站内手动作业入口拒绝；换驾驶 = 立即终止
  *   （虚拟货无残留、无惩罚）；AI 副船本版不支持。
  */
-import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
+import { addLog, HOME_GALAXY_ID } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
@@ -228,9 +228,6 @@ function setLeg(state: GameState, ctx: SimContext, fromId: string | null, toId: 
  */
 export function startHauling(state: GameState, aSiteId: string | null, bSiteId: string | null, ctx: SimContext): CommandResult {
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（顶部活动栏）再换线。' }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13）：一趟没结束就不能再开别的活动
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
   // 前置：停靠在空间站（母港或已建成副站）
   if (state.awayGalaxy !== null) return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。' }
   const endpoints = haulEndpoints(state, ctx)
