@@ -9262,49 +9262,26 @@ body {
 .app-bts-fleet-down { font-size: 11px; color: #ff8373; }
 .app-bts-noretreat { margin-left: 4px; }
 
-/* ═══════════ 跃迁入场（船长 2026-09-13 · **纯动画，不动任何位置**）═══════════
-   虫洞内 = 敌方跃迁入场（is-foe）；洞外 = 我方跃迁入场（is-me）。
-   容器 absolute + pointer-events:none ⇒ 不参与布局，我方列/敌列坐标与编队几何一字不改。
-   视觉一律 SVG 线稿（约定第六章：禁 CSS 拼形状）。 */
-.app-bts-warp {
-  position: absolute; top: 50%; width: 260px; height: 200px;
-  transform: translateY(-50%); pointer-events: none; z-index: 3;
+/* ═══════════ 战斗入场：舰船从屏幕外减速飞入（船长 2026-09-13 二次裁定 · **纯动画，不动任何位置**）═══════════
+   船长原话：「舰船从屏幕外以减速的形式进场并落到舰船战斗位置。这里只影响动画。不影响舰船实际位置。」
+   口径：
+   · **动的是舰船本体**（我方列 `.app-bts-col.is-me` / 敌方逐舰 `.app-bts-unit`），不是覆盖图形 ——
+     **旧的「泳道中线跃迁环 + 尾迹 + 闪光」覆盖层（`.app-bts-warp` 与 app-warp-* 三条关键帧）已整体删除**。
+   · 只做 `transform: translateX()` + `opacity`（合成层，**不触发重排**）⇒ 舰船坐标、编队几何、
+     血条锚点、距离尺一字不改；终点恒为 `translateX(0)` ＝ 它的战斗位置。
+   · 起点 = **本侧屏幕外**（我方自左缘外、敌方自右缘外）；位移由 `BattleScreen` 按布局现算，
+     经 `--arrive-dx` 传入（另加 40px 余量，保证起点完全落在 `overflow: hidden` 的泳道之外）。
+   · 时长 `--arrive-ms`（950ms）、末段强减速（cubic-bezier(.12,.75,.2,1)）；逐舰错峰 `--arrive-delay`（i×60ms）。
+   · 动画随「入场窗口」（战斗时钟 ≤1300ms）一起卸载 ⇒ 卸载时它早已停在终点位置，**无跳变**。
+   · ⚠ 入场期本规则**取代**敌方单位原有的挂载淡入（`.app-bts-unit` 的 app-bts-foe-in）：
+     首波是"飞进来"；此后波次增援（窗口已过）仍走原来的淡入。 */
+.app-bts-col.is-me.is-arriving,
+.app-bts-unit.is-arriving {
+  animation: app-bts-arrive-fly var(--arrive-ms, 950ms) cubic-bezier(.12, .75, .2, 1) both;
+  animation-delay: var(--arrive-delay, 0ms);
 }
-.app-bts-warp.is-foe { transform: translateY(-50%) scaleX(-1); }
-.app-bts-warp svg { width: 100%; height: 100%; overflow: visible; }
-.app-bts-warp .w-ring {
-  fill: none; stroke: currentColor; stroke-width: 1.6; opacity: 0;
-  transform-box: fill-box; transform-origin: center;
-  animation: app-warp-ring 1300ms cubic-bezier(.2, .7, .25, 1) both;
-}
-.app-bts-warp .w-ring.r1 { animation-delay: 0ms; }
-.app-bts-warp .w-ring.r2 { animation-delay: 70ms; }
-.app-bts-warp .w-ring.r3 { animation-delay: 140ms; }
-.app-bts-warp .w-streak {
-  stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; opacity: 0;
-  transform-box: fill-box; transform-origin: center;
-  animation: app-warp-streak 1300ms cubic-bezier(.2, .7, .25, 1) both;
-}
-.app-bts-warp .w-flash {
-  fill: currentColor; opacity: 0;
-  transform-box: fill-box; transform-origin: center;
-  animation: app-warp-flash 1300ms ease-out both;
-}
-/* 我方 = 冷色；敌方 = 暖色（与战场双方配色同源） */
-.app-bts-warp.is-me { color: var(--wui-accent); }
-.app-bts-warp.is-foe { color: #ff9a6b; }
-@keyframes app-warp-ring {
-  0% { transform: scale(2.4); opacity: 0; }
-  30% { opacity: .95; }
-  100% { transform: scale(.72); opacity: 0; }
-}
-@keyframes app-warp-streak {
-  0% { transform: scaleX(2.1); opacity: 0; }
-  28% { opacity: .85; }
-  100% { transform: scaleX(.6); opacity: 0; }
-}
-@keyframes app-warp-flash {
-  0% { opacity: 1; transform: scale(.7); }
-  22% { opacity: .35; transform: scale(1.1); }
-  100% { opacity: 0; transform: scale(1.5); }
+@keyframes app-bts-arrive-fly {
+  0% { transform: translateX(var(--arrive-dx, -600px)); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
 }

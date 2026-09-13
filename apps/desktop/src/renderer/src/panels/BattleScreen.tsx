@@ -1081,10 +1081,30 @@ const meSpeedRef = useRef(200)
    * 2. **按战斗时钟只演一次**：`battle.lastTickGameMs - startedAtGameMs ≤ ARRIVAL_FX_MS` 才渲染
    *    ⇒ 开战瞬间看得到、**中途退出再进战场不会重播**（洞内战斗 100ms 一拍 ≈ 与真实时间 1:1）；
    * 3. **谁入场**：虫洞内 = **敌方**跃迁入场（洞里是它们的地盘）；洞外（悬赏/遭遇/教学）= **我方**。
+   * 4. **怎么入场**（2026-09-13 船长二次裁定）：「**舰船从屏幕外以减速的形式进场并落到舰船战斗位置。
+   *    这里只影响动画。不影响舰船实际位置。**」——即**舰船本体**从**本侧屏幕外**飞入（我方自左缘外、
+   *    敌方自右缘外），末段减速落位；**不用**原来的"泳道中线画一圈跃迁环"（那版已删除）。
+   *    实现 = 给入场那侧的舰船元素加 `is-arriving` + `--arrive-dx/--arrive-ms/--arrive-delay` 三个变量，
+   *    由 CSS 关键帧做 `translateX(起点) → 0` + 快速淡入；**只走 transform/opacity（合成层，不重排）**，
+   *    终点恒为 `translateX(0)` ＝ 它的战斗位置 ⇒ 舰船坐标、编队几何、血条锚点、距离尺一字不改；
+   *    动画撤掉（窗口结束）时无跳变。
    */
   const ARRIVAL_FX_MS = 1300
+  /** 单舰飞入时长（ms）与逐舰错峰（ms）——须满足 时长 + 错峰×(舰数−1) ≤ 窗口，否则末舰会被截断 */
+  const ARRIVAL_FLY_MS = 950
+  const ARRIVAL_STAGGER_MS = 60
+  /** 起点余量（px）：让起点**完全落在屏幕外**（泳道 `overflow: hidden`，超出即不可见） */
+  const ARRIVAL_EDGE_MARGIN = 40
   const arrivalSide: 'me' | 'foe' | null =
     battle.lastTickGameMs - battle.startedAtGameMs <= ARRIVAL_FX_MS ? (inWormhole ? 'foe' : 'me') : null
+  /** 我方飞入起点位移（负 = 自左缘外飞入；0 = 战斗位置） */
+  const arriveDxMe = Math.round(-(lay.me.x + meSize / 2 + ARRIVAL_EDGE_MARGIN))
+  /** 敌方逐舰飞入起点位移（正 = 自右缘外飞入；逐舰按各自机位算，斜向菱形两排一致） */
+  const arriveDxFoe = (i: number): number => {
+    const w = lay.sizes[i] ?? LAY.MAIN
+    const x = lay.foe[i]?.x ?? dims.W
+    return Math.round(dims.W - x + w / 2 + ARRIVAL_EDGE_MARGIN)
+  }
   /** 阵形（斜向菱形）：列宽/右移/下移/排高 + 逐舰机位（DOM 的两排排布与逐舰微调共用这一份） */
   const foeFormation = lay.formation
   /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该排整组竖排到编队下方）——
@@ -1481,9 +1501,21 @@ const meSpeedRef = useRef(200)
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}`}
-        /* 列内居中微调（窄舰在本列里居中；等宽编成为 0）——纵向位置由**所在排**决定，不用 top 偏移 */
-        style={slot.dx !== 0 ? { marginLeft: slot.dx } : undefined}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arrivalSide === 'foe' ? ' is-arriving' : ''}`}
+        /* 列内居中微调（窄舰在本列里居中；等宽编成为 0）——纵向位置由**所在排**决定，不用 top 偏移。
+           入场期（is-arriving）另带三个变量：起点位移 / 时长 / 错峰——**只做动画**，不留任何布局改动 */
+        style={
+          arrivalSide === 'foe'
+            ? ({
+                ...(slot.dx !== 0 ? { marginLeft: slot.dx } : {}),
+                '--arrive-dx': `${arriveDxFoe(rowIdx)}px`,
+                '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
+                '--arrive-delay': `${rowIdx * ARRIVAL_STAGGER_MS}ms`,
+              } as CSSProperties)
+            : slot.dx !== 0
+              ? { marginLeft: slot.dx }
+              : undefined
+        }
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
@@ -1645,45 +1677,10 @@ const meSpeedRef = useRef(200)
               </div>
             ))}
           </div>
-          {/* **跃迁入场（纯动画 · 不动位置）**——见 `arrivalSide` 的口径注释：
-              只叠一层不接收指针事件的 SVG；我方列/敌列坐标与编队几何一字未动。 */}
-          {arrivalSide ? (
-            <div
-              className={`app-bts-warp is-${arrivalSide}`}
-              style={{ left: arrivalSide === 'me' ? lay.meLeft : lay.foeLeft }}
-              aria-hidden="true"
-            >
-              <svg viewBox="0 0 260 200">
-                {/* 跃迁环（三层同心椭圆，由外向内收） */}
-                <ellipse className="w-ring r1" cx="130" cy="100" rx="96" ry="52" />
-                <ellipse className="w-ring r2" cx="130" cy="100" rx="64" ry="34" />
-                <ellipse className="w-ring r3" cx="130" cy="100" rx="34" ry="18" />
-                {/* 跃迁尾迹：上下各三条向心线 */}
-                {[-64, -32, 0, 32, 64].map((dy, i) => (
-                  <line
-                    key={`u${i}`}
-                    className="w-streak"
-                    x1="8"
-                    y1={100 + dy * 1.5}
-                    x2="86"
-                    y2={100 + dy * 0.55}
-                  />
-                ))}
-                {[-64, -32, 0, 32, 64].map((dy, i) => (
-                  <line
-                    key={`d${i}`}
-                    className="w-streak"
-                    x1="252"
-                    y1={100 + dy * 1.5}
-                    x2="174"
-                    y2={100 + dy * 0.55}
-                  />
-                ))}
-                {/* 出场闪点 */}
-                <circle className="w-flash" cx="130" cy="100" r="16" />
-              </svg>
-            </div>
-          ) : null}
+          {/* 入场效果**不再是一层覆盖图形**：改为入场那侧**舰船本体**飞入（我方列见下方 `is-arriving`、
+              敌方逐舰见 `foeUnitEls` 的 `is-arriving`）——2026-09-13 船长二次裁定：
+              「舰船从屏幕外以减速的形式进场并落到舰船战斗位置。这里只影响动画。不影响舰船实际位置。」
+              旧的「泳道中线跃迁环 + 尾迹 + 闪光」覆盖层与此处的挂载点一并删除。 */}
           <svg className="app-bts-arcs" width="100%" height="100%" aria-hidden="true">
             {/* attribute transform（在无 viewBox/CSS-transform 兼容性问题上最可靠）；平滑由 33ms 视觉插值提供 */}
             <g transform={`translate(${meGunX} ${lay.me.y})`}>{meArcEls}</g>
@@ -1703,11 +1700,16 @@ const meSpeedRef = useRef(200)
             </text>
           </svg>
 
-          {/* 我方舰列 */}
+          {/* 我方舰列 —— 入场期（is-arriving）整列自左缘外飞入：舰名/舰体/血条同进，
+              只做 transform + opacity 动画，`left` 与落点坐标不动 */}
           <div
-            className={`app-bts-col is-me${defeat ? " is-crippled" : ""}`}
+            className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
             ref={meColRef}
-            style={{ left: lay.meLeft }}
+            style={
+              arrivalSide === 'me'
+                ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
+                : { left: lay.meLeft }
+            }
           >
             <span className="app-bts-name">{meShip?.name}</span>
             <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
