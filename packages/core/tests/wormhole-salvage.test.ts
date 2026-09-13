@@ -46,6 +46,8 @@ import {
   wormholeRollRelicBox,
   wormholeSalvageAt,
   wormholeSalvagersOf,
+  wormholeHoldSyncCargo,
+  wormholeHoldUsage,
 } from '../src/wormholeSalvage'
 import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
 import { countWare } from '../src/inventory'
@@ -58,17 +60,24 @@ const RIG = 'mod-salvager-1'
 /** 采集器 MK1（`slot: 'miner'` · 走 high 槽）——虚空母矿要求编队带它（船长 F5） */
 const MINER = 'mod-miner-1'
 
-/** 起一趟：`rigs` = 每艘船装几台打捞器（0 = 不带打捞器）；`miners` = 装几台采集器（0 = 不带） */
-function enterRun(rigs = 1, seed = 4242, miners = 0): GameState {
+/**
+ * 起一趟：`rigs` = **每艘船**装几台打捞器（0 = 不带打捞器）；`miners` = 每艘装几台采集器（0 = 不带）；
+ * `ships` = 编队艘数（货仓格数 = ⌊艘数 × 2600 ÷ 500⌋ ⇒ 1 艘 5 格、2 艘 10 格 —— 2×2 货柜要 10 格才有落点）。
+ */
+function enterRun(rigs = 1, seed = 4242, miners = 0, ships = 1): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
-  const a = addShipToFleet(state, T3)
+  const ids: string[] = []
+  for (let i = 0; i < Math.max(1, ships); i++) ids.push(addShipToFleet(state, T3))
+  const a = ids[0]!
   state.shipId = a
-  expect(wormholeEnter(state, ctx, [a], seed).ok).toBe(true)
-  const fitted = { ...(state.fleet[a]!.fitted ?? {}) }
-  // 直接改装配表（打捞器与采集器**都走 low 槽** —— 2026-09-13 船长「给作业开」后作业装备归低槽；
-  if (rigs > 0) fitted.low = Array.from({ length: rigs }, () => RIG)
-  if (miners > 0) fitted.low = [...(fitted.low ?? []), ...Array.from({ length: miners }, () => MINER)]
-  state.fleet[a]!.fitted = fitted
+  expect(wormholeEnter(state, ctx, ids, seed).ok).toBe(true)
+  for (const uid of ids) {
+    const fitted = { ...(state.fleet[uid]!.fitted ?? {}) }
+    // 直接改装配表（打捞器与采集器**都走 low 槽** —— 2026-09-13 船长「给作业开」后作业装备归低槽）
+    if (rigs > 0) fitted.low = Array.from({ length: rigs }, () => RIG)
+    if (miners > 0) fitted.low = [...(fitted.low ?? []), ...Array.from({ length: miners }, () => MINER)]
+    state.fleet[uid]!.fitted = fitted
+  }
   return state
 }
 
@@ -402,6 +411,74 @@ describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', ()
     expect(wormholePoolGrantUnitsOf('drone-wh-e-sentry')).toBe(RARE_BOX_DRONE_UNITS)
     expect(wormholePoolGrantUnitsOf('box-relic-c')).toBe(1)
     expect(wormholePoolGrantUnitsOf('mod-wh-a-coat')).toBe(1)
+  })
+})
+
+describe('虫洞 · 遗迹安全货柜的搬运（船长 F4：「2000 m³ = 4 格 · 放不下整件拒收」）', () => {
+  /** 摆一格"只堆着货柜"的遗迹（等价打捞结束后的现场） */
+  function ruinsWithBox(state: GameState, family = 'A'): WormholeGridCell {
+    const run = state.wormhole.run!
+    const grid = run.grid!
+    const cell = gridCellAt(grid, grid.pos)!
+    cell.place = 'ruins'
+    cell.piles = [{ itemId: wormholeRelicBoxIdOf(family), units: 1 }]
+    grid.activated = grid.activated.filter((k) => k !== cell.key)
+    return cell
+  }
+
+  it('**打捞器搬不动货柜**：打捞不会把它塞进背包（否则只占 1 格、丢了 2×2 形状）', () => {
+    const state = enterRun(1) // 1 台打捞器
+    const run = state.wormhole.run!
+    const cell = ruinsWithBox(state)
+    const r = wormholeSalvageAt(state, ctx)
+    expect(r.ok).toBe(true)
+    expect(r.taken?.length ?? 0).toBe(0) // 一件也没搬走
+    expect(run.bag, '货柜不该进散货账本').toEqual([])
+    expect((cell.piles ?? []).map((p) => p.itemId)).toEqual([wormholeRelicBoxIdOf('A')]) // 留在原地
+    // 日志要点明"要自己拾取"
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('自己拾取装舱'))).toBe(true)
+  })
+
+  it('**拾取装舱**：占 2×2 = 4 格、进的是货仓格（不是散货条）', () => {
+    const state = enterRun(1, 4242, 0, 2) // 2 艘 ⇒ 10 格（8×2 行，2×2 才有落点）
+    const run = state.wormhole.run!
+    const cell = ruinsWithBox(state)
+    const pick = wormholeTakePileAt(state, ctx, 0)
+    expect(pick.ok, pick.error ?? '').toBe(true)
+    const placed = run.hold!.placements.filter((p) => p.kind === 'box')
+    expect(placed.length).toBe(1)
+    expect([placed[0]!.w, placed[0]!.h]).toEqual([2, 2]) // 方块，不是货条
+    const usage = wormholeHoldUsage(state, ctx)
+    expect(usage.shapeCells).toBe(4) // 4 格（不是 1 格）
+    expect(usage.cargoCells).toBe(0)
+    expect((cell.piles ?? []).length).toBe(0) // 搬走了
+  })
+
+  it('**放不下整件拒收**：腾不出 2×2 ⇒ 拒绝且堆留在原地（不静默丢）', () => {
+    const state = enterRun(1, 4242, 0, 2) // 2 艘 ⇒ 10 格；首件货柜占掉 (0,0)-(1,1) 后，第二件无处可放
+    const run = state.wormhole.run!
+    const cell = ruinsWithBox(state, 'A')
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // 第一件放得下
+    cell.piles = [{ itemId: wormholeRelicBoxIdOf('C'), units: 1 }] // 再散落一件
+    const pick = wormholeTakePileAt(state, ctx, 0)
+    expect(pick.ok).toBe(false)
+    // 两条拒收口径都算"整件拒收"：①格数不够（`货仓只剩 N 格，装不下这件`）
+    // ②格数够但**腾不出 2×2 连块**（`货仓放不下：这件要占 2×2 = 4 格`）——本例走的是 ②
+    expect(pick.error ?? '').toMatch(/放不下|装不下/)
+    expect((cell.piles ?? []).length).toBe(1) // 堆还在：没被吞掉
+    expect(run.hold!.placements.filter((p) => p.kind === 'box').length).toBe(1) // 只装上了一件
+  })
+
+  it('**普通堆仍不许逐堆拾取**（船长裁定 A 照旧）：残骸在网格层只能打捞', () => {
+    const state = enterRun(1)
+    const grid = state.wormhole.run!.grid!
+    const cell = gridCellAt(grid, grid.pos)!
+    cell.place = 'graveyard'
+    cell.piles = [{ itemId: wreckItemIdOf('wh-pirate-scout'), units: 200 }]
+    const pick = wormholeTakePileAt(state, ctx, 0)
+    expect(pick.ok).toBe(false)
+    expect(pick.error ?? '').toContain('打捞')
+    expect((cell.piles ?? []).length).toBe(1)
   })
 })
 

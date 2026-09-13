@@ -17,6 +17,7 @@ import {
   WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   WORMHOLE_MAX_SHIPS,
   WORMHOLE_PLACE_TEXT,
+  wormholeIsShapedItem,
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
   cargoCapacityM3Of,
@@ -104,6 +105,14 @@ export function WormholePanel({
   /** 当前格上还剩几堆（打捞/采集共用；按钮上显示"本次能回收几堆"） */
   const herePiles = hereCell?.piles ?? []
   /**
+   * **堆分两类**（2026-09-13 修好货柜拾取后）：
+   * - **形状件**（遗迹安全货柜）= 要玩家**自己拾取装舱**（2×2 = 4 格、放不下整件拒收）；
+   * - 其余 = 残骸 / 母矿，走「打捞」「采集」的成批回收。
+   * 按钮可用性只看**可成批回收的那部分**（只剩货柜时「打捞」不该亮着）。
+   */
+  const shapedPiles = herePiles.filter((p) => wormholeIsShapedItem(p.itemId))
+  const bulkPiles = herePiles.length - shapedPiles.length
+  /**
    * **编队第一艘船的 defId**（地图上"当前格"用它的舰影表示 —— 船长 2026-09-13）。
    * 取不到（老档 uid 悬空）就退化成一个小箭头，不让地图空着。
    */
@@ -115,9 +124,9 @@ export function WormholePanel({
   /** 当前地点能不能激活：空信息地点/信标没作业、处理过的不重复、入口格守卫清掉后不再触发 */
   const canActivate = !!grid && !!hereCell && !grid.activated.includes(hereKey) && (atExit ? !bossDone : hereCell.place !== 'empty')
   /** 打捞格：没打捞器就打不了；有打捞器但堆已空 ⇒ 也打不了 */
-  const canSalvage = salvageCell && salvagers > 0 && herePiles.length > 0 && (run?.turnsLeft ?? 0) >= 1
+  const canSalvage = salvageCell && salvagers > 0 && bulkPiles > 0 && (run?.turnsLeft ?? 0) >= 1
   /** 矿脉：没采集器就挖不动；有采集器但堆已空 ⇒ 也采不了 */
-  const canCollect = veinCell && miners > 0 && herePiles.length > 0 && (run?.turnsLeft ?? 0) >= 1
+  const canCollect = veinCell && miners > 0 && bulkPiles > 0 && (run?.turnsLeft ?? 0) >= 1
   /** **免激活的两个作业格**（打捞 / 采集）：界面按钮走同一个引擎入口，标签与拒因按地点分流 */
   const workCell = salvageCell || veinCell
   const canWork = salvageCell ? canSalvage : veinCell ? canCollect : false
@@ -303,17 +312,24 @@ export function WormholePanel({
         </div>
         {herePiles.length > 0 ? (
           <>
-            {workCell ? (
+            {workCell && bulkPiles > 0 ? (
               <div className="app-dim app-note">
-                {veinCell ? '虚空母矿' : '残骸'}堆 {herePiles.length} 堆{veinCell ? '' : '（稀有在前）'} · 编队
-                {rigName} <b>{rigs}</b> 台 ⇒ 每回合回收 {Math.min(Math.max(rigs, 0), herePiles.length)} 堆、共{' '}
-                {rigs > 0 ? Math.ceil(herePiles.length / rigs) : '—'} 回合
+                {veinCell ? '虚空母矿' : '残骸'}堆 {bulkPiles} 堆{veinCell ? '' : '（稀有在前）'} · 编队
+                {rigName} <b>{rigs}</b> 台 ⇒ 每回合回收 {Math.min(Math.max(rigs, 0), bulkPiles)} 堆、共{' '}
+                {rigs > 0 ? Math.ceil(bulkPiles / rigs) : '—'} 回合
                 {rigs <= 0 ? `（没有${rigName}：先给编队装上${rigName}）` : ''} · 走到这一格就铺好了，**不用激活**
+              </div>
+            ) : null}
+            {shapedPiles.length > 0 ? (
+              <div className="app-dim app-note">
+                另有 <b>{shapedPiles.length}</b> 件「遗迹安全货柜」：**打捞器搬不动它** ——
+                点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；放不下会**整件拒收**，先腾地方）。
               </div>
             ) : null}
             <ul className="app-inv-list">
               {herePiles.map((p, i) => {
                 const def = ctx.items.get(p.itemId)
+                const shaped = wormholeIsShapedItem(p.itemId)
                 const slotUse = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
                 return (
                   <li key={`${p.itemId}-${i}`} className="app-inv-row">
@@ -322,12 +338,29 @@ export function WormholePanel({
                         {def?.name ?? p.itemId} ×{n(p.units)}
                       </span>
                       <span className="app-inv-count">
-                        {n(p.units * (def?.unitM3 ?? 0))} m³ · 每格 {n(slotUse)} 单位
+                        {n(p.units * (def?.unitM3 ?? 0))} m³
+                        {shaped ? ' · 整件占 2×2 = 4 格（放不下整件拒收）' : ` · 每格 ${n(slotUse)} 单位`}
                       </span>
                     </div>
                     <div className="app-inv-btns">
-                      {/* 母矿与残骸都靠**台数 × 回合**成批回收（船长 F5：规则同打捞）⇒ 不逐堆拾取 */}
-                      <span className="app-dim">{veinCell ? '待采集' : '待打捞'}</span>
+                      {shaped ? (
+                        /* **形状件（货柜）**：唯一入口就是这个拾取装舱（打捞/采集都不搬它） */
+                        <button
+                          className="app-btn is-small is-primary"
+                          disabled={!!run.battle || overloaded}
+                          onClick={() => {
+                            const r = engine.wormholeTakePile(i)
+                            if (!r.ok) onToast(r.error ?? '拾取失败。', true)
+                            else onToast('已装上货柜（占 2×2 = 4 格）。')
+                          }}
+                          title="拾取装舱：占货仓 2×2 = 4 格；放不下会整件拒收（先腾地方）"
+                        >
+                          拾取装舱（2×2 格）
+                        </button>
+                      ) : (
+                        /* 母矿与残骸都靠**台数 × 回合**成批回收（船长 F5：规则同打捞）⇒ 不逐堆拾取 */
+                        <span className="app-dim">{veinCell ? '待采集' : '待打捞'}</span>
+                      )}
                     </div>
                   </li>
                 )
