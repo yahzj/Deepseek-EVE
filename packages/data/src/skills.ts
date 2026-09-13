@@ -418,7 +418,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '舰体快修学',
     group: '工程',
     rank: 2,
-    description: '应急修补手法：自动使用修理组件时的恢复量每级 +⟦10%⟧（满级 +⟦50%⟧）。',
+    description: '应急修补手法：使用修理组件时的恢复量每级 +⟦5%⟧（满级 +⟦25%⟧）——**船体维修装置战斗中每跳同样计入**。',
   },
   {
     id: 'station-protocol',

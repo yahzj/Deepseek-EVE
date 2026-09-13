@@ -50,10 +50,10 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
     expect(r0?.units[0]?.hullPerPulse).toBe(5)
 
     const lv5 = world(5, 'mod-hullrep-2')
-    expect(quickRepairFactor(lv5.state, ctx)).toBe(1.5)
+    expect(quickRepairFactor(lv5.state, ctx)).toBe(1.25) // 2026-09-13 削弱：每级 5% ⇒ 满级 ×1.25（原 ×1.5）
     const r5 = preloadRepairFor(lv5.state, ctx, lv5.uid, 10 * REPAIR_PULSE_MS)
-    expect(r5?.units[0]?.armorPerPulse).toBe(27) // 18 × 1.5
-    expect(r5?.units[0]?.hullPerPulse).toBe(27)
+    expect(r5?.units[0]?.armorPerPulse).toBe(23) // 18 × 1.25 = 22.5 → round 23
+    expect(r5?.units[0]?.hullPerPulse).toBe(23)
   })
 
   it('直接使用同基数、同吃技能：一枚民用件回 round(5 × 层容量增幅 × 系数) 点', () => {

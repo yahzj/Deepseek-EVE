@@ -684,7 +684,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'armor-tuning', per: 0.02, call: 'combat.ts tune（装甲三系抗）' },
     { skill: 'repair-engineering', per: 0.1, call: 'shipyard.ts（停站维修费）' },
     { skill: 'station-protocol', per: 0.05, call: 'shipyard.ts（停站维修费）' },
-    { skill: 'hull-quick-repair', per: 0.1, call: 'shipyard.ts（停站修理组件恢复量）' },
+    { skill: 'hull-quick-repair', per: 0.05, call: 'core/repair.ts quickRepairFactor（修理组件恢复量：直接使用 + 船体维修装置每跳，2026-09-13 由 0.1 削弱）' },
     { skill: 'ai-core-dispatch', per: 0.02, call: 'balance.aiCore.dispatchPerLevel（百分点）' },
     { skill: 'accelerated-learning', per: 0.04, call: 'training.ts trainingTimeFactor' },
     { skill: 'marketing', per: 0.012, call: 'market.ts marketSellSkillMult' },

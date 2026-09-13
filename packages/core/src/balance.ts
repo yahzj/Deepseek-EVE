@@ -76,7 +76,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // ② 船体维修装置战斗中每跳（combat.preloadRepairFor 在开战预载时按本系数放大每跳值）。
     // 无消耗自愈件（异形生体件 repairFree）**不吃**本技能（它不消耗组件，与"修理组件用法"无关）。
     quickRepairSkillId: 'hull-quick-repair',
-    quickRepairPerLevel: 0.1,
+    // 2026-09-13 船长「效果需要削弱，修理效果加成都降低到 5% 每级」⇒ 0.1 → **0.05**（满级 +25%，原 +50%）
+    quickRepairPerLevel: 0.05,
   },
   // 富矿脉基础触发率 3%/分钟（卷B2⑥，2026-09-08 船长定稿：掷点按"循环占用分钟数"缩放；
   // 命中后连续 2 循环 ×3；0 = 禁用，测试用它关富矿保 rng 时序）
