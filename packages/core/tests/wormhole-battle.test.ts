@@ -32,7 +32,7 @@ import {
   wormholeFoeThreat,
   wormholeLayerThreat,
 } from '../src/wormhole'
-import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
+import { advanceWormhole, wormholeBattleViewOf, wormholeStartBattle } from '../src/wormholeBattle'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -59,6 +59,17 @@ function winBattle(state: GameState): void {
     if (u.side === 'foe') u.hp = { s: 0, a: 0, h: 0 }
   }
   battle.ended = 'me'
+}
+
+/**
+ * **收口一场已分胜负的战斗**：跳过「击杀慢镜」窗口（与远征 `bal.killcamMs` 同源）再推进。
+ * 引擎在 `ended` 之后**延迟结算**——为的是让战斗界面把最后一击/爆炸演出播完
+ * （首版实测：不延迟的话战斗界面会在结束那一瞬间直接卸载，战报窗口没机会播）。
+ */
+function settleBattle(state: GameState): void {
+  const b = state.wormhole.run?.battle
+  if (b) state.gameMs = b.lastTickGameMs + 10_000
+  advanceWormhole(state, ctx)
 }
 
 describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
@@ -169,7 +180,7 @@ describe('虫洞 · 开战（F 批）', () => {
     expect(wormholeDescend(run, 21).ok).toBe(false) // 守卫没清
     expect(wormholeStartBattle(state, ctx, 'boss', 0).ok).toBe(true)
     winBattle(state)
-    advanceWormhole(state, ctx)
+    settleBattle(state)
     expect(run.bossCleared).toBe(1)
     expect(run.battle).toBeNull()
     expect(wormholeDescend(run, 21).ok).toBe(true)
@@ -185,7 +196,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const turnsBefore = run.turnsLeft
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     winBattle(state)
-    advanceWormhole(state, ctx)
+    settleBattle(state)
     expect(run.battle).toBeNull()
     expect(run.turnsLeft).toBe(turnsBefore - 1) // 节点开销已扣
     expect(run.nodeIndex).toBe(1) // 已推进
@@ -205,7 +216,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(run.battle).not.toBeNull()
     expect(run.battle!.wormhole?.kind).toBe('extract')
     winBattle(state)
-    advanceWormhole(state, ctx)
+    settleBattle(state)
     expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + 500) // 收益入港
     expect(state.wormhole.run).toBeNull() // 本趟结束
   })
@@ -224,7 +235,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
       if (u.side === 'me') u.hp = { s: 0, a: 0, h: 0 }
     }
     battle.ended = 'foe'
-    advanceWormhole(state, ctx)
+    settleBattle(state)
     expect(state.wormhole.run).toBeNull()
     expect(state.wormhole.lastFleetLost).toBe(runFleet.length)
     expect(Object.keys(state.fleet).length).toBe(fleetBefore - runFleet.length) // 船真丢了
@@ -240,7 +251,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const battle = run.battle!
     battle.units['ally-1']!.hp = { s: 0, a: 0, h: 0 } // 僚舰沉
     winBattle(state)
-    advanceWormhole(state, ctx)
+    settleBattle(state)
     expect(run.fleet.length).toBe(1) // 编队只剩主控
     expect(Object.keys(state.fleet).length).toBe(fleetBefore - 1)
     expect(state.wormhole.run).not.toBeNull() // 还有船 ⇒ 本趟继续
@@ -258,6 +269,46 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(wormholeExtract(run).ok).toBe(true)
     advanceWormhole(state, ctx)
     expect(state.wormhole.run).toBeNull()
+  })
+})
+
+describe('虫洞 · 战场视图（F2 · 2026-09-13）', () => {
+  it('视图上下文：给出按层派生的敌卡 / 主控锚 / 场景名；**分胜负后仍要给 combat**（击杀慢镜窗口）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    expect(wormholeBattleViewOf(state, ctx)).toBeNull() // 没开战时没有视图
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const v = wormholeBattleViewOf(state, ctx)!
+    expect(v.name).toBe('虫洞 · 第 1 层')
+    expect(v.leaderShipId).toBe(run.fleet[0])
+    expect(v.anomaly.threat).toBe(wormholeLayerThreat(1)) // 已按层派生
+    expect(v.combat).not.toBeNull()
+    expect(Object.keys(v.combat!.foeHp).length).toBeGreaterThan(0)
+    // **分出胜负后 combat 仍在**：战斗界面靠它把最后一击/战报窗口播完（提前置 null ⇒ 界面直接卸载）
+    winBattle(state)
+    const v2 = wormholeBattleViewOf(state, ctx)!
+    expect(v2.combat).not.toBeNull()
+    // 结算之后（战斗宿主清掉）视图才消失
+    settleBattle(state)
+    expect(state.wormhole.run!.battle).toBeNull()
+    expect(wormholeBattleViewOf(state, ctx)).toBeNull()
+  })
+
+  it('击杀慢镜：分出胜负后要等 `killcamMs` 才结算（否则战斗界面一结束就卸载）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    winBattle(state)
+    // 未满窗口：不结算、战斗还在
+    state.gameMs = run.battle!.lastTickGameMs + 100
+    advanceWormhole(state, ctx)
+    expect(run.battle).not.toBeNull()
+    // 满窗口：结算落地
+    state.gameMs = run.battle!.lastTickGameMs + ctx.balance.battle.killcamMs + 100
+    advanceWormhole(state, ctx)
+    expect(run.battle).toBeNull()
   })
 })
 

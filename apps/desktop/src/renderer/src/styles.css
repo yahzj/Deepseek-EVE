@@ -9238,3 +9238,26 @@ body {
 .app-wh-bag-cell.is-full { border-style: solid; border-color: rgba(79, 216, 196, 0.45); background: rgba(79, 216, 196, 0.07); }
 .app-wh-bag-name { color: var(--wui-accent); }
 .app-wh-bag-units { opacity: 0.85; }
+
+/* ═══════════ 我方编队条（虫洞 4 舰同场；2026-09-13 F2）═══════════
+   口径：与战场同色系；容器固定高，舰沉只改透明度不改行高（防界面跳动）。
+   单船路径不渲染本块（`myUnits` 只有一条）⇒ 既有战斗观感零变化。 */
+.app-bts-fleet {
+  display: flex; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--wui-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+.app-bts-fleet-cell {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  padding: 3px 6px; border: 1px solid var(--wui-border); border-radius: 5px;
+}
+.app-bts-fleet-cell.is-down { opacity: 0.45; }
+.app-bts-fleet-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.app-bts-fleet-name {
+  font-size: 11px; color: var(--wui-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-bts-fleet-lead {
+  font-style: normal; font-size: 9.5px; margin-left: 5px; padding: 0 4px;
+  border: 1px solid rgba(79, 216, 196, 0.5); border-radius: 3px; opacity: 0.9;
+}
+.app-bts-fleet-down { font-size: 11px; color: #ff8373; }
+.app-bts-noretreat { margin-left: 4px; }

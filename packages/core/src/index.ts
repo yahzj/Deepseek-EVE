@@ -835,7 +835,7 @@ export {
   wormholeNodesPerLayer,
 } from './wormhole'
 // F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
-export { wormholeStartBattle, advanceWormhole } from './wormholeBattle'
+export { wormholeStartBattle, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
 export type {
   WormholeAdmission,
   WormholeAdmissionCode,

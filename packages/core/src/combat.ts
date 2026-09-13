@@ -37,7 +37,8 @@ import type { LairTier } from './lairs'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
-import { fleetDefOf } from './instances'
+import { fleetDefOf, shipDisplayName } from './instances'
+import { uidDefId } from './labels'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
@@ -2540,6 +2541,16 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
 export function battleArcsFor(
   state: GameState,
   ctx: SimContext,
+  /**
+   * **显式战斗上下文**（2026-09-13 F 批）：不给 = 既有"远征战斗"口径（逐字不变）；
+   * 给了 = 按这套上下文出视图（虫洞战斗由 `wormholeBattleViewOf` 传进来，与远征互不干扰）。
+   */
+  override?: {
+    battle: import('./state').BattleState
+    anomaly: AnomalyDef
+    /** 视图锚（我方主视角/主控）的船型 uid */
+    leaderShipId: string
+  } | null,
 ): {
   nearM: number
   openM: number
@@ -2568,6 +2579,18 @@ export function battleArcsFor(
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
+  /** **我方编队逐舰读数**（F 批「4 条舰影 + 血条」；单船路径 = 一条 = 主控） */
+  myUnits: Array<{
+    tag: string
+    shipId: string
+    name: string
+    className: string
+    /** 主控（视图锚） */
+    leader: boolean
+    hp: { s: number; a: number; h: number }
+    hpMax: { s: number; a: number; h: number }
+    alive: boolean
+  }>
   /** 敌方各武器射程带（聚合）：`minM~maxM` 跨全部单位取极值，`type` = 遍历到的最后一件武器弹种 */
   foe: { minM: number; maxM: number; type: DamageType }
   /**
@@ -2598,11 +2621,14 @@ export function battleArcsFor(
     hangar?: number
   }>
 } | null {
-  const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
-  const battle = state.expedition.battle
+  const anomaly =
+    override?.anomaly ??
+    battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
+  const battle = override?.battle ?? state.expedition.battle
   if (!anomaly || !battle) return null
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, state.shipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
+  const leaderShipId = override?.leaderShipId ?? state.shipId
+  const me = createPlayerSpec(state, ctx, leaderShipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
   if (!me) return null
   const foes = createFoeSpecs(anomaly, bal)
   const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
@@ -2785,6 +2811,27 @@ export function battleArcsFor(
         ...(hangarN > 0 ? { hangar: hangarN } : {}),
       })
   }
+  /**
+   * **我方编队逐舰读数**（2026-09-13 F 批「4 条舰影 + 血条」的数据源）：
+   * 单船路径 = 只有主控一条（`tag='player'`）；多单位路径 = 主控 + 僚舰（各自三层血）。
+   */
+  const myUnits = (battle.myFleet && battle.myFleet.length > 0
+    ? battle.myFleet
+    : [{ tag: 'player', shipId: leaderShipId }]
+  ).map((e) => {
+    const u = battle.units[e.tag]
+    const def = ctx.ships.get(uidDefId(e.shipId))
+    return {
+      tag: e.tag,
+      shipId: e.shipId,
+      name: shipDisplayName(state, ctx, e.shipId),
+      className: def?.name ?? e.shipId,
+      leader: e.tag === 'player',
+      hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
+      hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
+      alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
+    }
+  })
   return {
     nearM: bal.minDistanceM,
     openM,
@@ -2793,6 +2840,7 @@ export function battleArcsFor(
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
     meReload,
+    myUnits,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
     foeBands,
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },

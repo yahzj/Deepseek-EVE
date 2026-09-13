@@ -459,6 +459,8 @@ export class GameEngine {
   private wantsFastPump(): boolean {
     const exp = this.state.expedition
     if (exp.phase === 'battle' && !!exp.battle) return true
+    // 虫洞战斗（F 批）同款：洞内战斗也按 100ms 实时推进（否则 500ms 心跳下战斗画面一顿一顿）
+    if (this.state.wormhole.run?.battle) return true
     if (tutorialAccelWait(this.state)) return true
     if (exp.active && exp.phase === 'out') return true
     return false

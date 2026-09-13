@@ -107,6 +107,12 @@ export function WormholePanel({
         </div>
 
         <div className="app-modal-body">
+          {/* 本趟已结束（撤离成功 / 全损）⇒ 回到准备页并说明结果（否则"探索/背包"两页会是空白） */}
+          {!run && tab !== 'prep' ? (
+            <div className="app-dim app-inv-empty">
+              本趟已结束（最近一次损失 {state.wormhole.lastFleetLost} 艘）：在「准备」页可再次编队入洞。
+            </div>
+          ) : null}
           {tab === 'prep' ? (
             <div className="app-wh-prep">
               <div className="app-bay-title">准备 · 选编队（最多 {WORMHOLE_MAX_SHIPS} 艘）</div>

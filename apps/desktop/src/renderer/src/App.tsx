@@ -505,7 +505,9 @@ export function App({ engine }: { engine: GameEngine }) {
   }
 
   // 交火中（主动进入全屏战斗页；不自动切换页面）
-  const inBattle = state.expedition.active && state.expedition.phase === 'battle'
+  // 交火中 = 主控远征战斗 **或** 虫洞内的洞内战斗（F2：洞内战斗同样要能进战场观看）
+  const inBattle =
+    (state.expedition.active && state.expedition.phase === 'battle') || !!state.wormhole.run?.battle
 
   // V12.3：出发远征到港开战（phase 进入 battle 的上升沿）→ 自动切入全屏战场；
   // 玩家手动退出战场后（battleOpen=false 而 inBattle 仍 true）不会再被自动弹回

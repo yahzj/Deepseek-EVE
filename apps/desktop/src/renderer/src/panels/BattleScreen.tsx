@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase } from '@whale/core'
+import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -168,9 +168,19 @@ function foePoseAt(
 
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
   const state = engine.state
+  /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
+  const whView = wormholeBattleViewOf(state, engine.ctx)
   const view = expeditionStatus(state, engine.ctx)
-  const arcs = battleArcsFor(state, engine.ctx)
-  const battle = state.expedition.battle
+  const combatView = view.combat ?? whView?.combat ?? null
+  const sceneName = view.combat ? view.anomalyName : (whView?.name ?? '')
+  /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条） */
+  const inWormhole = !!whView && !!combatView
+  const arcs = battleArcsFor(
+    state,
+    engine.ctx,
+    whView ? { battle: whView.battle, anomaly: whView.anomaly, leaderShipId: whView.leaderShipId } : null,
+  )
+  const battle = whView ? whView.battle : state.expedition.battle
   /** 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源 */
   const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle) : null
   /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
@@ -332,11 +342,11 @@ const meSpeedRef = useRef(200)
           ...(battle!.droneLost && Object.keys(battle!.droneLost).length > 0 ? { droneLost: { ...battle!.droneLost } } : {}),
         }
         setStage('outro')
-      } else if (!view.combat) {
+      } else if (!combatView) {
         // 未见到分出胜负战斗就结束了（离线恢复等）：直接关屏，战报看日志
         onClose()
       }
-    } else if (stage === 'outro' && !view.combat) {
+    } else if (stage === 'outro' && !combatView) {
       // 引擎已结算（killcam 走完）→ 战报文本（resolve 日志已写入）
       const snap = outroRef.current
       // 机群战损结算结果（2026-09-11）：结算刚在这一刻完成，读取结构化结果；
@@ -351,7 +361,7 @@ const meSpeedRef = useRef(200)
       setStage('report')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, battle?.ended, view.combat === null])
+  }, [stage, battle?.ended, combatView === null])
 
   // 战报自动关闭：report 展示 12 秒后自动返回（按钮可随时提前关闭）
   // 2026-09-11 船长：「战斗报告持续时间延长」——6 秒 → 12 秒（新增机群回收明细后 6 秒读不完）
@@ -597,8 +607,8 @@ const meSpeedRef = useRef(200)
     )
   }
 
-  if (!view.combat || !battle || !arcs) return null
-  const combat = view.combat
+  if (!combatView || !battle || !arcs) return null
+  const combat = combatView
   const openM = arcs.openM
   const nearM = arcs.nearM
 
@@ -1520,31 +1530,61 @@ const meSpeedRef = useRef(200)
             <button className="app-btn is-small" onClick={onClose}>
               ← 退出战场
             </button>
-            <button
-              className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
-              title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
-              onClick={() => {
-                if (!retreatAsk) {
-                  setRetreatAsk(true)
-                  onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
-                  return
-                }
-                setRetreatAsk(false)
-                const r = engine.retreatNow()
-                if (!r.ok) onToast(r.error ?? '撤退失败', true)
-              }}
-            >
-              {retreatAsk ? '再点确认撤退' : '⚑ 撤退'}
-            </button>
+            {/* 洞内战斗**不给撤退**（船长 2026-09-12 第 8 条：战斗一开必须打完；撤离只在层末发起） */}
+            {inWormhole ? (
+              <span className="app-dim app-bts-noretreat" title="副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离">
+                洞内：本场必须打完
+              </span>
+            ) : (
+              <button
+                className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
+                title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
+                onClick={() => {
+                  if (!retreatAsk) {
+                    setRetreatAsk(true)
+                    onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
+                    return
+                  }
+                  setRetreatAsk(false)
+                  const r = engine.retreatNow()
+                  if (!r.ok) onToast(r.error ?? '撤退失败', true)
+                }}
+              >
+                {retreatAsk ? '再点确认撤退' : '⚑ 撤退'}
+              </button>
+            )}
           </>
         ) : (
           <span className="app-bts-outro-tag">{ended ? (defeat ? '战斗结束 · 正在撤离…' : '战斗结束 · 正在结算…') : ''}</span>
         )}
-        <span className="app-gold">{view.anomalyName}</span>
+        <span className="app-gold">{sceneName}</span>
         <span className="app-dim">
           交火 {secs}s · 我方开火 {meStats.meShots}/命中 {meStats.meHits} · 敌开火 {meStats.foeShots}/命中 {meStats.foeHits}
         </span>
       </div>
+
+      {/* **我方编队条**（2026-09-13 F2：虫洞 4 舰同场时给每条舰影一条三层血条；
+          单船路径 `myUnits` 只有一条 ⇒ 与改造前观感一致，不额外占视觉） */}
+      {arcs.myUnits.length > 1 ? (
+        <div className="app-bts-fleet" aria-label="我方编队">
+          {arcs.myUnits.map((u) => (
+            <div key={u.tag} className={`app-bts-fleet-cell${u.alive ? '' : ' is-down'}`}>
+              <div className="app-bts-fleet-head">
+                <ShipSprite shipId={u.shipId} role={fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial'} accent={ROLE_ACCENT[fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial']} size={46} />
+                <span className="app-bts-fleet-name" title={u.className}>
+                  {u.name}
+                  {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
+                </span>
+              </div>
+              {u.alive ? (
+                <HpTri hp={u.hp} max={u.hpMax} />
+              ) : (
+                <span className="app-bts-fleet-down">已沉没</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="app-bts-stage">
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}

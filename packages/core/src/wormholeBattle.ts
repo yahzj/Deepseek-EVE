@@ -10,7 +10,7 @@
  */
 import type { BattleState, GameState } from './state'
 import { addLog } from './state'
-import type { SimContext } from './types'
+import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
@@ -21,6 +21,7 @@ import {
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
+import { wormholeAnomalyOf } from './wormholeFoes'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
 
@@ -145,6 +146,67 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
 }
 
 /**
+ * **洞内战斗的视图上下文**（F2 · 2026-09-13）：战斗窗口拿它渲染洞内战斗
+ * （战斗宿主在 `run.battle`、敌卡按层派生、我方编队逐舰）。
+ * 无洞内战斗返回 `null`（界面照旧走远征口径）。
+ */
+export function wormholeBattleViewOf(
+  state: GameState,
+  ctx: SimContext,
+): {
+  battle: BattleState
+  anomaly: AnomalyDef
+  /** 视图锚 = 主控（`myFleet` 首条的船型 uid；缺省退 `state.shipId`） */
+  leaderShipId: string
+  /** 顶部标题用：`虫洞 · 第 N 层` / `虫洞 · 第 N 层守卫` / `虫洞 · 撤离拦截` */
+  name: string
+  /** 与 `expeditionStatus().combat` 同形（战斗窗口两套来源共用一套渲染） */
+  combat: {
+    distanceM: number
+    myDesireM: number
+    meHp: { s: number; a: number; h: number }
+    foeHp: Record<string, { s: number; a: number; h: number; name: string }>
+    shots: number
+    hits: number
+    lockTag: string | null
+  } | null
+} | null {
+  const run = state.wormhole.run
+  const battle = run?.battle
+  if (!run || !battle) return null
+  const spec = battle.wormhole
+  const base = spec ? ctx.anomalies.get(spec.cardId) : undefined
+  if (!spec || !base) return null
+  const anomaly = wormholeAnomalyOf(base, spec.depth, spec.kind, spec.waves)
+  const leaderShipId = battle.myFleet?.[0]?.shipId ?? state.shipId
+  const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
+  const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
+  for (const [tag, u] of Object.entries(battle.units)) {
+    if (u.side !== 'foe' || u.hp.s + u.hp.a + u.hp.h <= 0) continue
+    foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
+  }
+  const kindLabel = spec.kind === 'boss' ? '层末守卫' : spec.kind === 'extract' ? '撤离拦截' : `第 ${spec.depth} 层`
+  return {
+    battle,
+    anomaly,
+    leaderShipId,
+    name: `虫洞 · ${kindLabel}`,
+    // ⚠ **`ended` 之后仍要给 `combat`**：与远征同款——分胜负那一刻要留"击杀慢镜/战报演出"窗口，
+    // 提前返回 null 会让战斗界面**直接卸载**（首版实测：战斗一结束画面就没了、战报没机会播）。
+    combat: {
+      distanceM: battle.distanceM,
+      myDesireM: battle.myDesireM,
+      meHp: leaderRt ? { ...leaderRt.hp } : { s: 0, a: 0, h: 0 },
+      foeHp,
+      shots: battle.stats.meShots,
+      hits: battle.stats.meHits,
+      // 锁定装置的集火目标：洞内沿用同一读法（主控装了锁定件才非空）
+      lockTag: null,
+    },
+  }
+}
+
+/**
  * **洞内推进（每拍调用一次）**：战斗步进 + 战斗收口 + 撤离战自动开打。
  * 放在 `advanceGame` 管线里（`engine.ts`），与远征/AI/遭遇同款"每拍一次"节奏。
  * `freezeBattle`（调试快进）时**不推进战斗**，与既有口径一致。
@@ -159,7 +221,13 @@ export function advanceWormhole(
   if (run.battle) {
     if (freezeBattle) return
     advanceBattleFor(state, ctx, run.battle, run.fleet[0] ?? state.shipId, run.battle.wormhole?.cardId ?? null)
-    if (run.battle.ended) settleWormholeBattle(state, ctx, run)
+    if (run.battle.ended) {
+      // **击杀慢镜**（与远征 `expedition.ts` 同源 · `bal.killcamMs`）：分出胜负后**延迟结算**，
+      // 让最后一击动画/爆炸演出播完；否则战斗界面会在结束那一瞬间直接卸载（首版实测踩到）。
+      const waitMs = ctx.balance.battle.killcamMs
+      if (state.gameMs - run.battle.lastTickGameMs < waitMs) return
+      settleWormholeBattle(state, ctx, run)
+    }
     return
   }
   // 撤离相位：自动开撤离战（打完才算撤离成功；打不完 = 全损）
