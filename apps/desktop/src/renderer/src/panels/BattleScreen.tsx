@@ -167,6 +167,19 @@ function foePoseAt(
   return { ...dronePathPos(t, station, deck, arc, true), heading: 1 }
 }
 
+/**
+ * 33ms 平滑循环需要的**最小战斗句柄**（结构类型：远征与洞内两种 `BattleState` 都满足；
+ * 也省得把 `BattleState` 从 core 再导出一遍）。
+ */
+type BattleHandle = {
+  startedAtGameMs: number
+  /** 上一拍时刻（`thrusterPhase` 与平滑循环都读） */
+  lastTickGameMs: number
+  distanceM: number
+  myDesireM: number
+  myFleet?: Array<{ tag: string; shipId: string }>
+}
+
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
@@ -315,6 +328,23 @@ const meSpeedRef = useRef(200)
   const droneReportRef = useRef<DroneLossReport | null>(null)
   const flushTimerRef = useRef<number | null>(null)
   const dragValRef = useRef<number | null>(null)
+  /**
+   * 拖动"跟手"重绘的 rAF 句柄（合并高频 input 事件，见下方 `pushDragV`）。
+   * ⚠ **必须在守卫之前声明**：渲染体在 `!combatView` 时会提前 `return null`，
+   * 守卫之后出现的任何 hook 都会让两次渲染的 hook 数量不一致 ⇒ React 卸载整棵树（**黑屏**，
+   * 2026-09-13 船长实测踩到——就是这两个 ref 放错了位置）。
+   */
+  const dragRafRef = useRef<number | null>(null)
+  const dragPendingRef = useRef<number | null>(null)
+  /**
+   * **当前战斗句柄**（远征 or 洞内）——33ms 平滑循环读它（每渲染赋值一次，`dimsRef` 同款模式）。
+   * ⚠ 2026-09-13：那个循环原先硬编码 `engine.state.expedition.battle` ⇒ **洞内那场在它眼里永远是 null**，
+   * 于是"两拍之间线性插值"整段没跑，船只在引擎每 100ms 一拍时才动一下 ＝ 船长说的
+   * 「移动有顿挫感，不是顺滑移动」（帧率没问题，是**更新节奏**掉了）。
+   */
+  const battleRef = useRef<BattleHandle | null>(null)
+  /** 最近一次"战斗换了"的标记（`startedAtGameMs`）：33ms 循环据此重置尸骸/血量/速度等视觉账本 */
+  const battleStartRef = useRef(0)
   const mapRef = useRef<{ openM: number; nearM: number }>({ openM: 1, nearM: 200 })
 
   // 滑条两端距（卸载冲刷也要用）
@@ -404,11 +434,25 @@ const meSpeedRef = useRef(200)
   }, [engine.state.expedition.battle?.startedAtGameMs])
 
   // 视觉插值：引擎每 ~100ms 一拍；本循环 33ms 在两拍间线性插值，舰列/弧/游标平滑移动
+  // ⚠ **句柄取 `battleRef`（远征 or 洞内）**：原先写死 `engine.state.expedition.battle` ⇒
+  //   洞内那场在这里恒为 null，插值整段不跑 ⇒ 船每 100ms 才动一次（船长"移动有顿挫感，不顺滑"）。
   useEffect(() => {
     const iv = window.setInterval(() => {
-      const b = engine.state.expedition.battle
+      const b = battleRef.current
       const now = performance.now()
       if (!b) return
+      // **换了战斗**（开战/换节点/换层）：清视觉账本，并同步星场速率的基准船速（洞内 = 编队首舰）
+      if (b.startedAtGameMs !== battleStartRef.current) {
+        battleStartRef.current = b.startedAtGameMs
+        moveSnapRef.current = { prev: null, cur: null }
+        visDistRef.current = 0
+        corpseAtRef.current.clear()
+        prevHpRef.current.clear()
+        hpInitRef.current = false
+        const anchorId = b.myFleet?.[0]?.shipId ?? engine.state.shipId
+        const spec = createPlayerSpec(engine.state, engine.ctx, anchorId)
+        meSpeedRef.current = spec?.speedMps ?? 200
+      }
       const s = moveSnapRef.current
       if (!s.cur || s.cur.m !== b.distanceM) {
         if (s.cur && s.cur.m !== b.distanceM) s.prev = s.cur
@@ -609,6 +653,8 @@ const meSpeedRef = useRef(200)
   }
 
   if (!combatView || !battle || !arcs) return null
+  // 交给 33ms 平滑循环（每渲染同步一次句柄；`dimsRef` 同款模式）
+  battleRef.current = battle
   const combat = combatView
   const openM = arcs.openM
   const nearM = arcs.nearM
@@ -1250,8 +1296,6 @@ const meSpeedRef = useRef(200)
    * 高回报率鼠标（125~1000Hz）一次拖动能产生几百个 `input` 事件，逐个 setState 会把整棵战场
    * （我方 4 舰 + SVG 射程弧 + 事件环）重渲染几百次 ⇒ 顿挫（船长 2026-09-13：「依旧还是有顿挫感」）。
    */
-  const dragRafRef = useRef<number | null>(null)
-  const dragPendingRef = useRef<number | null>(null)
   const pushDragV = (v: number): void => {
     dragPendingRef.current = v
     if (dragRafRef.current !== null) return

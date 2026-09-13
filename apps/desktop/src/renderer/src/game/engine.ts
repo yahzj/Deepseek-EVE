@@ -425,7 +425,9 @@ export class GameEngine {
    * 现改：单批预算 8ms + 每批最多 2 条 → 同样工作量摊到十几拍（每拍 ≤10ms，肉眼无感）。
    */
   private pumpWinCache(now: number): void {
+    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧
     if (this.state.expedition.phase === 'battle' && !!this.state.expedition.battle) return
+    if (this.state.wormhole.run?.battle) return
     if (now - this.winLastPumpAt < 400) return
     const fp = this.winFingerprint()
     if (fp !== this.winFpCur) {
@@ -500,7 +502,10 @@ export class GameEngine {
   /** 当前心跳所属计量桶：交火中 = battle，其余 = idle（性能监测分桶用） */
   private currentBucket(): PerfBucket {
     const exp = this.state.expedition
-    return exp.active && exp.phase === 'battle' && !!exp.battle ? 'battle' : 'idle'
+    // 洞内交火同算 battle 桶（2026-09-13：心跳分支已认洞内，分桶同步）
+    return (exp.active && exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
+      ? 'battle'
+      : 'idle'
   }
 
   /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销）。
@@ -632,9 +637,16 @@ export class GameEngine {
       return
     }
     const exp = this.state.expedition
-    // 含已分胜负的"击杀慢镜窗口"（battle.ended 非空但尚未结算）：
-    // 窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定的实时画面
-    const inBattle = exp.phase === 'battle' && !!exp.battle
+    /**
+     * 含已分胜负的"击杀慢镜窗口"：窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定画面。
+     *
+     * ⚠ **洞内战斗必须同款**（2026-09-13 修船长报的"舰船移动约一秒跳一次，不顺滑"）：
+     * 洞内宿主是 `state.wormhole.run.battle`（**不占** `expedition.battle`），首版这里只认远征 ⇒
+     * 洞内交火掉进下面的**挂机分支**（`pendingMs >= 1000` 才推进并 `notify()` 一次）⇒
+     * 战场每约 1 秒才收到一帧数据，船自然一秒跳一次（与帧率、与 33ms 插值都无关——插值再密，
+     * 数据 1 秒才来一次也白搭）。
+     */
+    const inBattle = (exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
     if (inBattle) {
       if (this.pendingMs > 0) {
         // 交火期积压（切页/后台节流等产生）按 100ms 分片追平，避免整段隐藏推进
