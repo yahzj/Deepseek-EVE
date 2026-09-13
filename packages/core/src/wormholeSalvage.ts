@@ -33,6 +33,13 @@ import {
   wreckItemIdOf,
 } from './salvage'
 import {
+  holdAdd,
+  holdCellsUsed,
+  holdRemove,
+  makeHoldState,
+  wormholeIsShapedItem,
+} from './wormholeHold'
+import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_PICK,
   gridCellAt,
@@ -47,7 +54,11 @@ import {
   wormholeCardIdFor,
   wormholeLayerRewardMul,
   wormholeNodePiles,
+  wormholeTakePile,
+  wormholeTrimBag,
+  wormholeUnitsPerSlot,
 } from './wormhole'
+import type { WormholeBagSlot, WormholePile } from './wormhole'
 import type { WormholeActivateEffect, WormholeRunState } from './wormhole'
 
 /* ═══════════ 一、口径常量（F3c 配平的旋钮都在这里） ═══════════ */
@@ -268,6 +279,171 @@ export function wormholeLootTierOf(itemId: string): 0 | 1 | 2 {
   return 1
 }
 
+/* ═══════════ 三之三、货仓格（F4 · 船长 2026-09-13：货仓直接代表背包大小） ═══════════ */
+
+/** 货仓**总格数**（散货 + 形状件共用一本账）= ⌊编队合计货仓 ÷ 500⌋（现算 ⇒ 沉船后变小） */
+export function wormholeHoldCapacityOf(state: GameState, ctx: SimContext): number {
+  const run = state.wormhole.run
+  if (!run) return 0
+  return wormholeBagSlotsOfFleet(state, ctx, run.fleet)
+}
+
+/** 货仓当前**占用**：散货占格 + 形状件占格（`overload` = 装不下了） */
+export function wormholeHoldUsage(
+  state: GameState,
+  ctx: SimContext,
+): { used: number; capacity: number; cargoCells: number; shapeCells: number; overload: boolean } {
+  const run = state.wormhole.run
+  if (!run) return { used: 0, capacity: 0, cargoCells: 0, shapeCells: 0, overload: false }
+  const capacity = wormholeHoldCapacityOf(state, ctx)
+  const cargoCells = wormholeBagUsage(ctx, run.bag, capacity).used
+  const shapeCells = holdCellsUsed(run.hold)
+  return { used: cargoCells + shapeCells, capacity, cargoCells, shapeCells, overload: cargoCells + shapeCells > capacity }
+}
+
+/** **超载**判据（沉船后格数变小 ⇒ 玩家必须手动抛货；船长 2026-09-13 裁定 8） */
+export function wormholeHoldOverloaded(state: GameState, ctx: SimContext): boolean {
+  return wormholeHoldUsage(state, ctx).overload
+}
+
+/** **把一件形状件装进货仓**（船长口径：**整件拒收** ⇒ 放不下就不装、状态不变） */
+export function wormholeHoldStow(
+  state: GameState,
+  ctx: SimContext,
+  itemId: string,
+): { ok: boolean; error?: string; placementId?: string } {
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '不在虫洞内。' }
+  if (!wormholeIsShapedItem(itemId)) return { ok: false, error: '这件东西不占形状格。' }
+  const capacity = wormholeHoldCapacityOf(state, ctx)
+  run.hold = run.hold ?? makeHoldState()
+  const r = holdAdd(run.hold, itemId, capacity)
+  if (!r.ok) return { ok: false, error: r.error }
+  const name = ctx.items.get(itemId)?.name ?? itemId
+  addLog(
+    state,
+    'info',
+    `🕳 装舱：${name}（占 ${r.placement!.w}×${r.placement!.h} 格）· 货仓 ${wormholeHoldUsage(state, ctx).used}/${capacity} 格。`,
+  )
+  return { ok: true, placementId: r.placement!.id }
+}
+
+/** **抛弃一件形状件**（手动抛货 · 船长裁定 8） */
+export function wormholeHoldDiscard(
+  state: GameState,
+  ctx: SimContext,
+  placementId: string,
+): { ok: boolean; error?: string } {
+  const run = state.wormhole.run
+  if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+  const gone = holdRemove(run.hold, placementId)
+  if (!gone) return { ok: false, error: '没有这个件。' }
+  const name = ctx.items.get(gone.itemId)?.name ?? gone.itemId
+  addLog(
+    state,
+    'warn',
+    `🕳 抛弃：${name}（货仓 ${wormholeHoldUsage(state, ctx).used}/${wormholeHoldCapacityOf(state, ctx)} 格）。`,
+  )
+  return { ok: true }
+}
+
+/**
+ * **抛弃散货**（手动抛货；给数量 ⇒ 可只丢一部分）。
+ * 为什么给数量：沉船后经常只差一两格，整条记录丢太狠（船长口径是"手动抛"，不是"丢光"）。
+ */
+export function wormholeDiscardCargo(
+  state: GameState,
+  ctx: SimContext,
+  itemId: string,
+  units?: number,
+): { ok: boolean; error?: string; dropped?: number } {
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '不在虫洞内。' }
+  const slot = run.bag.find((s) => s.itemId === itemId)
+  if (!slot) return { ok: false, error: '货仓里没有这种货。' }
+  const cut = Math.max(1, Math.min(slot.units, Math.floor(units ?? slot.units)))
+  slot.units -= cut
+  if (slot.units <= 0) run.bag = run.bag.filter((s) => s.itemId !== itemId)
+  const name = ctx.items.get(itemId)?.name ?? itemId
+  addLog(
+    state,
+    'warn',
+    `🕳 抛弃：${name} ×${cut}（货仓 ${wormholeHoldUsage(state, ctx).used}/${wormholeHoldCapacityOf(state, ctx)} 格）。`,
+  )
+  return { ok: true, dropped: cut }
+}
+
+/**
+ * **超载封锁**：超载时能做什么、不能做什么（船长裁定 8 的落地口径）。
+ * - 不许：扫描 / 前往 / 激活（打捞·挖矿·开战）/ 拾取（**不能再装新东西**）；
+ * - 允许：**抛货**（随时）、看地图、撤离/深入（但撤离与深入前必须先把货抛到容量内）；
+ * - **不软锁**：抛货永远可用 ⇒ 任何超载态都有出路。
+ */
+export function wormholeOverloadBlockReason(state: GameState, ctx: SimContext): string | null {
+  const u = wormholeHoldUsage(state, ctx)
+  if (!u.overload) return null
+  return `货仓超载（${u.used}/${u.capacity} 格）：先抛货再继续（货仓页可以抛弃）。`
+}
+
+/**
+ * **一键抛到容量内**（玩家点按钮才执行 · 顺序 = 每格价值从低到高，复用 `wormholeTrimBag` 的口径）。
+ * ⚠ 这不是"自动丢货"（船长裁定 8 要的是**手动**抛）：它只在玩家点的时候跑一次，且**只动散货**、
+ * 形状件（安全货柜）一律不碰——货柜是专门带回来的战利品，要丢得玩家自己点。
+ */
+export function wormholeDiscardToFit(state: GameState, ctx: SimContext): { ok: boolean; dropped: WormholeBagSlot[] } {
+  const run = state.wormhole.run
+  if (!run) return { ok: false, dropped: [] }
+  const capacity = wormholeHoldCapacityOf(state, ctx)
+  const shapeCells = holdCellsUsed(run.hold)
+  const cargoCap = Math.max(0, capacity - shapeCells) // 形状件不参与裁包
+  const trimmed = wormholeTrimBag(ctx, run.bag, cargoCap, (slot) => {
+    const def = ctx.items.get(slot.itemId)
+    const per = Math.max(1, wormholeUnitsPerSlot(def?.unitM3 ?? 0))
+    return {
+      tier: wormholeLootTierOf(slot.itemId),
+      iskPerSlot: wormholeLootValueIsk(ctx, slot.itemId, per, { rareChestNominal: true }),
+    }
+  })
+  if (trimmed.dropped.length === 0) return { ok: false, dropped: [] }
+  run.bag = trimmed.bag
+  const names = trimmed.dropped
+    .map((s) => `${ctx.items.get(s.itemId)?.name ?? s.itemId}×${Math.floor(s.units).toLocaleString('zh-CN')}`)
+    .join('、')
+  addLog(state, 'warn', `🕳 抛货（按每格价值从低到高）：${names}。`)
+  return { ok: true, dropped: trimmed.dropped }
+}
+/**
+ * **拾取一堆**（玩家入口 = 超载闸 + 形状件分流 + 转调 `wormhole.wormholeTakePile`）。
+ *
+ * 为什么要这一层：① 超载闸要 `ctx`（算货仓占用）；② **形状件**（遗迹安全货柜）不能进散货槽位，
+ * 得走货仓格（`wormholeHoldStow`：占 4 格、放不下整件拒收）。而 `wormhole.ts` 不许 import 本文件
+ * （会被 `state.ts` 顶层的引用链成环）⇒ 分流放在这里，界面照旧只调一个入口。
+ */
+export function wormholeTakePileAt(
+  state: GameState,
+  ctx: SimContext,
+  pileIndex: number,
+): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '不在虫洞内。' }
+  const blocked = wormholeOverloadBlockReason(state, ctx)
+  if (blocked) return { ok: false, error: blocked }
+  const grid = run.grid
+  const holder: { piles?: WormholePile[] } | undefined = grid
+    ? gridCellAt(grid, grid.pos)
+    : (run.pendingNode ?? undefined)
+  const pile = holder?.piles?.[pileIndex]
+  if (!pile) return { ok: false, error: '这里没有可拾取的东西。' }
+  if (wormholeIsShapedItem(pile.itemId)) {
+    // **形状件**：整件装舱（放不下就不装、堆留在原地）
+    const stowed = wormholeHoldStow(state, ctx, pile.itemId)
+    if (!stowed.ok) return { ok: false, error: stowed.error }
+    holder!.piles!.splice(pileIndex, 1)
+    const u = wormholeHoldUsage(state, ctx)
+    return { ok: true, taken: pile, used: u.used, capacity: u.capacity }
+  }
+  return wormholeTakePile(state, ctx, pileIndex)
+}
 /* ═══════════ 四、打捞动作（1 回合 = 回收台数 的堆） ═══════════ */
 
 export interface WormholeSalvageResult {
@@ -365,8 +541,18 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     mustExtract: run.turnsLeft <= 0,
   }
   if (cell.place === 'ruins') {
-    const relics = wormholeRollRelic(state, ctx, cell)
-    if (relics.length > 0) result.relics = relics
+    // **F4：专属掉落 = 一个「遗迹安全货柜」，散落在该格**（不直接入库：要占 4 格、由玩家拾取）
+    const boxId = wormholeRollRelicBox(state, ctx, cell)
+    if (boxId) {
+      cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
+      const name = ctx.items.get(boxId)?.name ?? boxId
+      addLog(
+        state,
+        'info',
+        `🕳 遗迹深处发现${name}：**散落在该地点**——拾取要占货仓 2×2 = 4 格（放不下就先腾地方）。`,
+      )
+      result.relics = [boxId]
+    }
     const rng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
     if (rng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
       result.effect = { kind: 'ruinsBattle', key: cell.key }
@@ -377,43 +563,35 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
 }
 
 /**
- * **遗迹专属掉落**（船长：「遗迹…有小概率获得一次性图纸和虫洞专属装备」）。
- * 按族池抽（装备本体 / 装备图纸 / 舰船图纸），权重按深度分档（专属稿 §6.2；层 1~2 不出）。
- * 抽中的东西记进 `run.relics`——**撤离成功才入库**（半路全损就一起丢，与背包同一条风险线）。
+ * **族 → 安全货柜物品 id**（`box-relic-<族小写>`；形状表里已登记这 5 个 id）
  */
-export function wormholeRollRelic(state: GameState, ctx: SimContext, cell: WormholeGridCell): string[] {
+export function wormholeRelicBoxIdOf(family: string): string {
+  return `box-relic-${family.toLowerCase()}`
+}
+
+/**
+ * **掷遗迹专属掉落 = 一个「遗迹安全货柜」**（F4 · 船长 2026-09-13：「装备和蓝图的产出加一个中间件：
+ * 玩家从遗迹获得『遗迹安全货柜』…将安全货柜带回后在精炼炉拆解」）。
+ *
+ * 口径：
+ * - **概率随层上升**（`wormholeRelicChanceOf`；层 1 恒不出）；
+ * - **族 = 本格敌卡的族**（保住「专属掉落按种族库走」这条裁定：内容物等拆解时才揭，族不能丢）；
+ * - **不直接入库**：调用方把货柜**散落到该格**，玩家自己拾取（占货仓 2×2 = 4 格；放不下整件拒收）；
+ * - 内容物（装备本体 / 装备图纸 / 舰船图纸）留待**拆解批次**——本批船长明示「暂时不用拆解」。
+ */
+export function wormholeRollRelicBox(
+  state: GameState,
+  ctx: SimContext,
+  cell: WormholeGridCell,
+): string | undefined {
   const run = state.wormhole.run
   const grid = run?.grid
-  if (!run || !grid) return []
-  if (run.depth < WORMHOLE_RELIC_MIN_DEPTH) return []
+  if (!run || !grid) return undefined
+  if (run.depth < WORMHOLE_RELIC_MIN_DEPTH) return undefined
   const rng = wormholeStream(runSeedOf(state) * 53 + run.depth * 911 + (cell.q * 23 + cell.r * 29) * 13 + 7)
-  if (rng() >= wormholeRelicChanceOf(run.depth)) return []
+  if (rng() >= wormholeRelicChanceOf(run.depth)) return undefined
   const family = familyOfCard(ctx, wormholeCellCardIdOf(run, cell))
-  const pool = wormholeFamilyPoolOf(ctx, family)
-  const w = wormholeRelicWeightsOf(run.depth)
-  const total = w.modules + w.moduleBlueprints + w.shipBlueprints
-  if (total <= 0) return []
-  let acc = rng() * total
-  const buckets: Array<[keyof WormholeFamilyPool, number]> = [
-    ['modules', w.modules],
-    ['moduleBlueprints', w.moduleBlueprints],
-    ['shipBlueprints', w.shipBlueprints],
-  ]
-  let picked: string | undefined
-  for (const [key, weight] of buckets) {
-    acc -= weight
-    if (acc < 0) {
-      const list = pool[key]
-      if (list.length > 0) picked = list[Math.min(list.length - 1, Math.floor(rng() * list.length))]
-      break
-    }
-  }
-  if (!picked) return []
-  const name =
-    ctx.modules.get(picked)?.name ?? ctx.blueprints.get(picked)?.name ?? ctx.shipBlueprints.get(picked)?.name ?? picked
-  run.relics = [...(run.relics ?? []), picked]
-  addLog(state, 'info', `🕳 遗迹里的密封舱：${name}（${family} 族专属，带回港才能入库）。`)
-  return [picked]
+  return wormholeRelicBoxIdOf(family)
 }
 
 /**

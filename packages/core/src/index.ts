@@ -924,12 +924,46 @@ export {
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
   wormholeGrantShipSpoils,
+  // F4：货仓格（超载 / 装舱 / 抛弃 / 拾取入口）——住在 wormholeSalvage
+  wormholeHoldCapacityOf,
+  wormholeHoldDiscard,
+  wormholeHoldOverloaded,
+  wormholeHoldStow,
+  wormholeHoldUsage,
+  wormholeDiscardCargo,
+  wormholeDiscardToFit,
+  wormholeOverloadBlockReason,
+  wormholeTakePileAt,
+
   wormholeRelicWeightsOf,
-  wormholeRollRelic,
+  wormholeRollRelicBox,
+  wormholeRelicBoxIdOf,
   wormholeSalvageAt,
   wormholeSalvagersOf,
 } from './wormholeSalvage'
+// F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
+export {
+  WORMHOLE_HOLD_COLS,
+  WORMHOLE_SHAPE_CONTAINER,
+  WORMHOLE_SHAPE_STACK,
+  WORMHOLE_HOLD_SHAPES,
+  canPlace,
+  findFreeSpot,
+  holdAdd,
+  holdCellsUsed,
+  holdCompact,
+  holdMove,
+  holdRemove,
+  holdRows,
+  makeHoldState,
+  placementCells,
+  placementCellsCount,
+  wormholeIsShapedItem,
+  wormholeShapeOf,
+} from './wormholeHold'
+
 export type { WormholeFamilyPool, WormholeSalvageResult } from './wormholeSalvage'
+export type { WormholeHoldPlacement, WormholeHoldShape, WormholeHoldState } from './wormholeHold'
 export type {
   WormholeActivateEffect,
   WormholeAdmission,

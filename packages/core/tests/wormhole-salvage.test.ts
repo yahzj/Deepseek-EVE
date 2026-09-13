@@ -35,8 +35,9 @@ import {
   wormholeEnsureSalvagePiles,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  wormholeRelicBoxIdOf,
   wormholeRelicChanceOf,
-  wormholeRollRelic,
+  wormholeRollRelicBox,
   wormholeSalvageAt,
   wormholeSalvagersOf,
 } from '../src/wormholeSalvage'
@@ -321,10 +322,12 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       const r2 = wormholeSalvageAt(state, ctx)
       if ((r2.relics ?? []).length > 0) {
         got = r2.relics![0]
+        // **F4 起：掉的是一个「安全货柜」，按族命名**（内容物等拆解时才揭）
         const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell2)
-        const family = ctx.anomalies.get(cardId)?.foeFamily ?? 'A'
-        const pool = wormholeFamilyPoolOf(ctx, String(family))
-        expect([...pool.modules, ...pool.moduleBlueprints, ...pool.shipBlueprints]).toContain(got)
+        const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? 'A')
+        expect(got).toBe(wormholeRelicBoxIdOf(family))
+        // 且它**散落在该格**（没直接进背包/relics）
+        expect((cell2.piles ?? []).some((pp) => pp.itemId === got)).toBe(true)
         break
       }
     }
@@ -348,7 +351,7 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
         run.depth = depth
         const cell = standOn(state, 'ruins')
         run.relics = []
-        if (wormholeRollRelic(state, ctx, cell).length > 0) hits += 1
+        if (wormholeRollRelicBox(state, ctx, cell) !== undefined) hits += 1
       }
       return hits / n
     }

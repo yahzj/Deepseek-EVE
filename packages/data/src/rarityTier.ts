@@ -238,6 +238,12 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'ore-sunshard': 1,
   'ore-veldspar': 1,
   'ore-voidmother': 1, // 虚空母矿（2026-09-12 虫洞线新增原矿；数字档 = 1 常驻层，与其它原矿同档）
+  // 遗迹安全货柜（F4 · 2026-09-13）：罕见的施工期中间件，数字档同常驻层（1）
+  'box-relic-a': 1,
+  'box-relic-c': 1,
+  'box-relic-d': 1,
+  'box-relic-e': 1,
+  'box-relic-g': 1,
   'ore-voidshard': 1,
   'pioneer': 3,
   'repairkit-civ': 1,

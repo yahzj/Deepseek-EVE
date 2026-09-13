@@ -33,8 +33,10 @@ import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
 import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
+  wormholeHoldUsage,
   wormholeLootTierOf,
   wormholeLootValueIsk,
+  wormholeOverloadBlockReason,
   wormholeSalvageAt,
 } from './wormholeSalvage'
 
@@ -118,6 +120,9 @@ export function wormholeActivateAt(
 ): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind; taken?: number } {
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
+  // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
+  const overloaded = wormholeOverloadBlockReason(state, ctx)
+  if (overloaded) return { ok: false, error: overloaded }
   // **打捞格走打捞入口**（F3b）：墓场/遗迹的"激活"其实是**打捞作业**——要打捞器、
   // 一次回收台数 的堆、遗迹捞空还要掷收尾战；那套逻辑需要 ctx（打捞器台数/背包容量）与目录，
   // 故放在 `wormholeSalvage` 里，这里只做分流（`wormhole.ts` 不许 import 那个模块）。
@@ -165,6 +170,8 @@ export function wormholeTravelTo(
   atGameMs?: number,
 ): { ok: boolean; error?: string; code?: 'unknown-target'; spent?: number; autoBattle?: boolean; beacon?: boolean } {
   const run = state.wormhole.run
+  const overloaded = wormholeOverloadBlockReason(state, ctx)
+  if (overloaded) return { ok: false, error: overloaded }
   const g = run?.grid
   const snap =
     run && g
@@ -280,26 +287,18 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   if (sunk.length > 0) {
     run.fleet = run.fleet.filter((uid) => !sunk.includes(uid))
     state.wormhole.lastFleetLost += sunk.length
-    // **沉船拖走货舱 ⇒ 背包格上限跟着缩水，装不下的当场丢**（船长 2026-09-13：「扣背包格，
-    // 不足时丢弃货物」）。格数 = 「剩余编队合计货仓 ÷ 500」现算 ⇒ 这里只需把溢出部分裁掉。
-    const cap = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
-    const trimmed = wormholeTrimBag(ctx, run.bag, cap, (slot) => {
-      const def = ctx.items.get(slot.itemId)
-      const per = Math.max(1, wormholeUnitsPerSlot(def?.unitM3 ?? 0))
-      return {
-        tier: wormholeLootTierOf(slot.itemId),
-        iskPerSlot: wormholeLootValueIsk(ctx, slot.itemId, per, { rareChestNominal: true }),
-      }
-    })
-    if (trimmed.dropped.length > 0) {
-      const names = trimmed.dropped
-        .map((s) => `${ctx.items.get(s.itemId)?.name ?? s.itemId}×${Math.floor(s.units).toLocaleString('zh-CN')}`)
-        .join('、')
-      run.bag = trimmed.bag
+    /* **沉船拖走货舱 ⇒ 格数缩水**（船长 2026-09-13 两版口径，后版为准）：
+     * 旧版（B/C 批）：当场按"每格价值从低到高"自动丢掉溢出部分；
+     * **新版（F4 · 船长裁定 8）：「沉船后要求玩家手动抛弃货物」** ⇒ 这里**不再自动丢**，
+     * 只把"超载"这件事说清楚（`wormholeHoldUsage` 现算），玩家到货仓页自己抛。
+     * ⚠ 超载**不软锁**：抛货永远可用（`wormholeDiscardToFit` / 逐件抛弃）。 */
+    const usage = wormholeHoldUsage(state, ctx)
+    if (usage.overload) {
       addLog(
         state,
         'warn',
-        `🕳 沉船拖走了货舱：背包缩到 ${cap} 格，装不下的部分当场丢弃（${names}）——按每格价值从低到高丢。`,
+        `🕳 沉船拖走了货舱：货仓缩到 ${usage.capacity} 格，当前装了 ${usage.used} 格（**超载**）——` +
+          `请到货仓页手动抛弃货物；超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。`,
       )
     }
   }
