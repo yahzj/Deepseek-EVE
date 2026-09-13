@@ -167,7 +167,69 @@ for (const s of wh) {
 }
 P(flagged.length > 0 ? flagged.join('\r\n') : '   - （无）')
 P()
-P('## §4 复现')
+
+// ─────────────── §5 相对官方同档船的强弱（回答"稀有船是否强一档"） ───────────────
+const sumHp = (s: ShipDef): number => (s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)
+const sumSlots = (s: ShipDef): number => {
+  const sl = slotOf(s)
+  return (sl.high ?? 0) + (sl.mid ?? 0) + (sl.low ?? 0)
+}
+const median = (xs: number[]): number => {
+  const v = [...xs].sort((a, b) => a - b)
+  if (v.length === 0) return 0
+  const m = Math.floor(v.length / 2)
+  return v.length % 2 === 1 ? (v[m] as number) : ((v[m - 1] as number) + (v[m] as number)) / 2
+}
+const ratio = (a: number, b: number): string => (b === 0 ? '—' : `${a / b >= 1 ? '+' : ''}${((a / b - 1) * 100).toFixed(0)}%`)
+P('## §5 相对"官方同档船"的强弱（机械对比：中位数为基准）')
+P()
+P('> 参照组 = **同 `tier` 同 `role` 的非虫洞船**（官方 27 艘）中位数。正值 = 本批更强。')
+P('> Σ血 = 盾+甲+壳；槽合计 = 高+中+低。')
+P()
+P('| 舰船 | Σ血 本批 / 同档中位 | 差 | CPU 本批 / 中位 | 差 | 槽合计 本批 / 中位 | 差 | 机巢 本批 / 中位 | 差 | 命中差 | 回避差 |')
+P('|---|---|---|---|---|---|---|---|---|---|---|')
+const verdict = { stronger: 0, same: 0, weaker: 0 }
+for (const s of wh.sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id))) {
+  const peers = bandOf(s)
+  if (peers.length === 0) {
+    P(`| ${s.name} \`${s.id}\` | ${sumHp(s)} / **无同档参照** | — | ${s.cpu ?? 0} | — | ${sumSlots(s)} | — | ${s.droneBayM3 ?? 0} | — | — | — |`)
+    continue
+  }
+  const hpM = median(peers.map(sumHp))
+  const cpuM = median(peers.map((p) => p.cpu ?? 0))
+  const slotM = median(peers.map(sumSlots))
+  const bayM = median(peers.map((p) => p.droneBayM3 ?? 0))
+  const hitM = median(peers.map((p) => p.hitBonus ?? 0))
+  const evaM = median(peers.map((p) => p.evasion ?? 0))
+  const r = hpM === 0 ? 1 : sumHp(s) / hpM
+  if (r >= 1.1) verdict.stronger++
+  else if (r <= 0.95) verdict.weaker++
+  else verdict.same++
+  P(
+    `| ${s.name} \`${s.id}\` | ${sumHp(s)} / ${fmt(hpM)} | **${ratio(sumHp(s), hpM)}** | ${s.cpu ?? 0} / ${fmt(cpuM)} | ${ratio(s.cpu ?? 0, cpuM)} |` +
+      ` ${sumSlots(s)} / ${fmt(slotM)} | ${ratio(sumSlots(s), slotM)} | ${s.droneBayM3 ?? 0} / ${fmt(bayM)} | ${ratio(s.droneBayM3 ?? 0, bayM)} |` +
+      ` ${((s.hitBonus ?? 0) - hitM >= 0 ? '+' : '') + ((s.hitBonus ?? 0) - hitM).toFixed(2)} | ${((s.evasion ?? 0) - evaM >= 0 ? '+' : '') + ((s.evasion ?? 0) - evaM).toFixed(2)} |`,
+  )
+}
+P()
+P(`**判定**：以 Σ血 为准，明显更强（≥ +10%）**${verdict.stronger}** 艘 · 同档（−5%~+10%）**${verdict.same}** 艘 · 偏弱（≤ −5%）**${verdict.weaker}** 艘。`)
+P()
+P('⇒ **现状 = 与官方同档船基本持平（"+0 档"），没有实现"稀有船强一档"**；若要落实"强一档"，见 §6 待定口径。')
+P()
+P('## §6 待船长定的加强口径（未动数据）')
+P()
+P('| 方案 | 内容 | 优点 | 风险 |')
+P('|---|---|---|---|')
+P('| **A 稀有加成（推荐）** | 全批 **Σ血 +15%**（三层等比）· **CPU +10%** · **机巢 +1 档** · **按角色补船体抗性** · **T3 巡洋舰补族武 +0.12** · 槽位**不动** | 耐打+能装，但不直接抬 DPS；与"稀有"匹配 | 玩家存活更久 ⇒ 洞内难度曲线要同步（一号 `wormhole:econ`） |')
+P('| **B 只加防御** | 仅 Σ血 +20% + 船体抗性 + 机巢 | 最不影响输出侧平衡 | 手感"更肉但不更强"，稀有感弱 |')
+P('| **C 加火力** | 槽位 +1（高槽）· CPU +15% · Σ血 +15% | 稀有感最强 | 直接抬 DPS ⇒ 与一号的洞内/悬赏难度校准强耦合，回归面最大 |')
+P('| **D 不加数值** | 只补抗性/族武/机巢这些"身份件"，靠一次性图纸 + 虚空晶体现稀有 | 零平衡风险 | 你要的"强一档"没落地 |')
+P()
+P('> ⚠ 三条硬约束（无论选哪个方案）：① 槽位与 CPU 一动就影响**装配可行性**（content:check 的槽位/CPU 契约）；')
+P('> ② Σ血一动就影响**战斗时长与胜率**，一号正在跑的洞内难度校准会跟着变；')
+P('> ③ 抗性/族武/机巢是"身份加成"，改动面最小、最像"稀有船"。')
+P()
+P('## §7 复现')
 P()
 P('```')
 P('npx tsx tools/wh-ships-review.ts --write    # 重出本表（数据只读代码）')
