@@ -49,6 +49,8 @@ export type ItemKind =
   | 'ammo'
   | 'drone'
   | 'wreck'
+  /** **货柜**（F4 · 船长 2026-09-13「遗迹安全货柜」）：占形状格（2×2 = 4 格）、带回后拆解 */
+  | 'container'
   | 'fragment'
   | 'kit'
 
@@ -124,7 +126,7 @@ export interface ItemDef {
    */
   repairRestore?: number
   /**
-   * **专属型号**（2026-09-10 船长：G 族「流亡蜂无人机」引出）：只能从敌族窝点·高级箱产出——
+   * **专属型号**（2026-09-10 船长：G 族「鱿蜂无人机」引出）：只能从敌族窝点·高级箱产出——
    * 无蓝图（不可造）、不上市场、不入常规掉落池。护栏据此断言渠道唯一；
    * 无人机定位契约（data/droneRoles.ts）对专属型号**豁免四型区间校验**（仍受硬边界约束），
    * 于是"专属强化型 + 制式型"可以同类共存，而不破坏四型本身的定位口径。
@@ -173,6 +175,23 @@ export interface BeltDef {
 /** 舰船角色（V10 展示用；战斗系统落地后决定各角色的战斗数值曲线） */
 export type ShipRole = 'industrial' | 'armed' | 'armored' | 'hauler'
 
+/**
+ * **舰种子分类**（2026-09-13 船长定：虫洞专属舰船按子分类重排数值并进界面）。
+ * 与 `role` 并列：`role` 管战斗曲线口径，`subClass` 管"这艘船是干什么的"——
+ * 只作**展示 + 设计口径**（数值差异已直接落在各字段上，引擎不读本字段做判定）。
+ * **只有虫洞专属舰船写**（其余舰船无此字段）；D 族巡洋舰按船长裁定**不设子分类**。
+ */
+export type ShipSubClass =
+  | '电子舰'
+  | '炮艇'
+  | '重型突击巡洋舰'
+  | '截击舰'
+  | '指挥舰'
+  | '鱼雷舰'
+  | '无人机作战舰'
+  | '侦察舰'
+  | '后勤舰'
+
 /** 舰船定义 */
 export interface ShipDef {
   id: string
@@ -181,6 +200,8 @@ export interface ShipDef {
   tier: number
   /** 船型角色（V10：舰船细分系统的占位字段，本轮仅 UI 徽标展示） */
   role: ShipRole
+  /** **舰种子分类**（仅虫洞专属舰船写；见 `ShipSubClass` 注释） */
+  subClass?: ShipSubClass
   /** 货舱容量（立方米） */
   cargoM3: number
   /** 单个采集循环耗时（秒），受技能缩短 */
@@ -244,6 +265,22 @@ export interface ShipDef {
   evasion?: number
   /** 命中率加成 0~0.5（打敌方时加到武器命中率上；受自身扫描分辨率修正） */
   hitBonus?: number
+  /* ═══ 2026-09-13 船长：虫洞族专属舰船的"船体固有新机制"（三项都由船长点名） ═══ */
+  /**
+   * **按系武器射程加成**（如炮艇「动能武器射程 +30%」）——与模块的 `rangeTypeBonusPct` **同链加算**：
+   * 实际射程 = 基础 × (1 − 全局削减) × (1 + 本系加成)（`combat.createPlayerSpec` 的 `rangeOf`）。
+   */
+  weaponRangeBonusPct?: Partial<Record<DamageType, number>>
+  /**
+   * **全舰（编队）单发伤害光环**（如指挥舰「全舰单发伤害 +15%」）——`startFleetBattleFor` 在建完各舰规格后，
+   * 对**全队每艘船**的每条武器统一乘 `(1 + 本值)`；**多艘同类**只取**最高**、不叠加（与"同项取优"惯例一致）。
+   */
+  fleetDamageBonusPct?: number
+  /**
+   * **虫洞扫描半径加成（圈）**（如侦察舰/电子舰「虫洞扫码范围 +1 圈」）——进洞建档时
+   * `scanRadius = WORMHOLE_SCAN_RADIUS_BASE + Σ(本值 over 编队)`；**编入队伍即生效、可叠加**（船长 2026-09-13）。
+   */
+  wormholeScanRadiusBonus?: number
   description: string
   /**
    * **未上线闸门（施工期）**——语义与口径**完全同 `ItemDef.unreleased`**（2026-09-13 船长铁律
@@ -998,6 +1035,11 @@ export interface ModuleDef {
   /** 无人机中继天线（2026-09-10 船长拍板百分比制）：放飞无人机射程上限加成
    * （0.2 = +20%；求和后乘入机型基础射程；线性可叠件——MK1/2/3 = 0.2/0.45/0.8） */
   droneRangeBonusPct?: number
+  /**
+   * **无人机结构层加成**（2026-09-13 船长：G 族「鱿蜂结构层」＝原残兵结构层 —— 「提高无人机 80% 的结构」）：
+   * 0.8 = +80%；本舰多件**求和**，只放大机群生存池的**结构层**（`DronePoolEntry.h`），与机型基础结构值同链。
+   */
+  droneHullHpBonusPct?: number
   /* ═══ B3 打捞器（salvager 家族：高槽无伤害件；升级只缩短周期） ═══ */
   /** 打捞器单轮周期毫秒（每台每轮捞 1 具残骸；MK1/2/3 = 10s/8s/6s） */
   salvageCycleMs?: number
@@ -1050,6 +1092,11 @@ export interface ModuleDef {
   /** **每次攻击消耗的弹药发数**（陵卫连装炮 = 2）：预载量与实战扣弹都按「门数 × 本值」算；
    *  缺省 1 ⇒ 既有武器零变化。 */
   ammoPerShot?: number
+  /**
+   * **全体攻击**（2026-09-13 船长：C 族「孢子导弹巢」＝「对所有敌方同时攻击」）：
+   * `true` = 本武器每轮齐射逐个结算到**全部存活敌舰**（逐目标独立掷命中/各吃各自层克制）。
+   */
+  hitsAllFoes?: boolean
   /** **全武器射程削减**（掠袭者护盾笼 −25%）：射程 × (1 − 本值)；多件**只取最重一件**
    *  （与推进器失稳、装甲机动代价同口径）。缺省 0。 */
   rangeCutPct?: number

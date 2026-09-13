@@ -25,9 +25,9 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_MOVE,
-  WORMHOLE_TURN_PER_PICK,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
+  wormholeStream,
   gridCellAt,
   gridScanTargets,
   isExitCell,
@@ -216,15 +216,25 @@ export function wormholeTrimBag(
   ctx: SimContext,
   bag: readonly WormholeBagSlot[],
   capacity: number,
+  /**
+   * **价值解析器**（可选）：返回 `{ tier, iskPerSlot }`——`tier` 小的先丢，同档再比每格价值。
+   * 缺省 = 基础卖价（老行为）。**洞内实战必须传**（`wormholeBattle` 传
+   * `wormholeSalvage.wormholeLootTierOf + wormholeLootValueIsk`）：残骸 `baseSellPriceIsk = 1`，
+   * 只看基础价会把**稀有残骸第一个丢掉**（2026-09-13 F3c 抓到的真问题）。
+   * ⚠ 为什么用参数而不是在这里 import 打捞模块：`wormhole.ts` 被 `state.ts` 顶层引用，
+   * 而打捞模块经 `salvaging` 回头吃 `state` ⇒ 直接 import 会成环（D/F 批两次踩过的坑）。
+   */
+  valueOf?: (slot: WormholeBagSlot) => { tier: number; iskPerSlot: number },
 ): { bag: WormholeBagSlot[]; dropped: WormholeBagSlot[] } {
   const slots = bag.map((s) => ({ ...s }))
   const perOf = (itemId: string): number => wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 0)
   /** 每格价值（判"先丢谁"用的就是它；认不出的物品 = 无穷大 ⇒ 最后丢） */
-  const valuePerSlot = (s: WormholeBagSlot): number => {
+  const valuePerSlot = (s: WormholeBagSlot): { tier: number; isk: number } => {
     const def = ctx.items.get(s.itemId)
     const per = perOf(s.itemId)
-    if (!def || per <= 0) return Number.POSITIVE_INFINITY
-    return per * Math.max(0, def.baseSellPriceIsk ?? 0)
+    if (!def || per <= 0) return { tier: Number.POSITIVE_INFINITY, isk: Number.POSITIVE_INFINITY }
+    if (valueOf) return { tier: valueOf(s).tier, isk: valueOf(s).iskPerSlot }
+    return { tier: 1, isk: per * Math.max(0, def.baseSellPriceIsk ?? 0) }
   }
   const dropped: WormholeBagSlot[] = []
   while (wormholeBagUsage(ctx, slots, capacity).used > capacity && slots.length > 0) {
@@ -232,7 +242,10 @@ export function wormholeTrimBag(
     for (let i = 1; i < slots.length; i++) {
       const a = valuePerSlot(slots[i]!)
       const b = valuePerSlot(slots[pick]!)
-      if (a < b || (a === b && slots[i]!.itemId < slots[pick]!.itemId)) pick = i
+      const worse =
+        a.tier < b.tier ||
+        (a.tier === b.tier && (a.isk < b.isk || (a.isk === b.isk && slots[i]!.itemId < slots[pick]!.itemId)))
+      if (worse) pick = i
     }
     const slot = slots[pick]!
     const per = perOf(slot.itemId)
@@ -367,8 +380,17 @@ export interface WormholeRunState {
    * **随行战利品**（F3b · 2026-09-13）：图纸 / 装备本体这类**不进背包格子**的东西（遗迹专属掉落）。
    * **撤离成功才入库**（`wormholeSalvage.wormholeDeliverRelics`）——半路全损就一起丢，
    * 与背包同一条风险线。可选字段（零迁移）。
+   * ⚠ **F4 起被「遗迹安全货柜」取代**（船长 2026-09-13：装备与图纸走中间件、占 4 格货仓）——
+   * 本字段保留为旧档兼容读入口，新趟不再写入。
    */
   relics?: string[]
+  /**
+   * **货仓格状态**（F4 · 船长 2026-09-13：货仓直接代表背包大小 + 类似背包英雄的格管理）。
+   * 只装**占形状的件**（遗迹安全货柜 2×2 = 4 格）；可叠加散货仍走 `bag`。
+   * 可用格数**不在这里**（= ⌊编队合计货仓 ÷ 500⌋ 现算 ⇒ 沉船后自动变小 ⇒ 超载）。
+   * 可选字段（老档没有 ⇒ 该趟只有散货，零迁移）。
+   */
+  hold?: import('./wormholeHold').WormholeHoldState
 }
 
 export interface WormholeState {
@@ -431,7 +453,7 @@ export function wormholeStartRun(
       // 新开趟一律为 `null`（老档里已有的 pendingNode 仍能被 `wormholeAdvanceNode` 走完，见该函数注释）。
       pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
-      grid: wormholeMakeGrid(rngSeed, depth),
+      grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds)),
       seed: rngSeed,
     },
   }
@@ -511,7 +533,7 @@ export function wormholeAdvanceNode(
 }
 
 /** 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离） */
-export function wormholeDescend(run: WormholeRunState, rngSeed: number): WormholeAdvanceResult {
+export function wormholeDescend(run: WormholeRunState, rngSeed: number, scanBonus = 0): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。' }
   if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。' }
   // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
@@ -523,7 +545,7 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number): Wormhol
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
-  run.grid = wormholeMakeGrid(rngSeed, run.depth)
+  run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus)
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
@@ -762,6 +784,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (!atExit && (cell.place === 'empty' || cell.place === 'beacon')) {
     return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
   }
+  /**
+   * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
+   * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
+   * 故这三个地点在"激活"这条路上**直接拒绝**，免得白扣一回合。
+   */
+  if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
+    return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。' }
+  }
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
     return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
   }
@@ -774,35 +804,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
     ? { kind: 'exit', key: cell.key }
     : cell.place === 'ship'
       ? { kind: 'battle', key: cell.key }
-      : cell.place === 'graveyard' || cell.place === 'ruins'
-        ? { kind: 'salvage', key: cell.key, place: cell.place }
-        : cell.place === 'vein'
-          ? { kind: 'excavate', key: cell.key }
-          : { kind: 'matter', key: cell.key }
-  // 矿脉：激活即**铺出原矿堆**（1~3 堆，确定性）；拾取走 `wormholeTakePile`（网格层每堆 1 回合）。
-  // ⚠ 残骸打捞（墓场/遗迹）**不在这里铺**：那套要打捞器台数与背包容量（需要 ctx），在 `wormholeSalvage` 里。
-  if (effect.kind === 'excavate') wormholeFillVeinPiles(run, grid, cell)
+      : { kind: 'matter', key: cell.key }
+  // ⚠ 产出的铺放已全部改到**到达那一刻**（`wormholeSalvage.wormholeEnsureArrivalPiles`，船长 F5：资源点/墓场遗迹不用激活）
   addLog(
     state,
     'info',
     `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 剩 ${run.turnsLeft} 回合。`,
   )
   return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
-}
-
-/**
- * **给矿脉格铺原矿堆**（1~3 堆；只铺一次，确定性 = `(本趟种子, 层, 格坐标)`）。
- * 堆本身沿用 `wormholeNodePiles`（虚空母矿、数量随层收益系数），拾取走 `wormholeTakePile`。
- * 为什么放在 `wormhole.ts` 而不是打捞模块：**它不需要 ctx**（原矿堆不认族、不查打捞器），
- * 而 `wormhole.ts` 不许 import 打捞模块（会成环）。
- */
-function wormholeFillVeinPiles(run: WormholeRunState, grid: WormholeGridState, cell: WormholeGridCell): void {
-  if ((cell.piles ?? []).length > 0) return
-  const seed = run.seed ?? run.depth
-  const rng = wormholeRng(seed * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
-  const count = 1 + Math.floor(rng() * 3) // 1~3 堆（与打捞模块的 WORMHOLE_VEIN_PILES_* 同值）
-  const index = Math.abs(cell.q * 13 + cell.r * 29) % 97
-  cell.piles = wormholeNodePiles(seed, run.depth, index, count)
 }
 
 /** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
@@ -882,7 +891,14 @@ export function wormholeBagSlotsOfFleet(
 }
 
 /** 把一堆东西并进背包（同物品并格——一格只装一种物品，故同一 `itemId` 只留一条记录） */
-function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
+/**
+ * **把一堆并进背包**（同类并格、否则新增一条；**纯函数**，不判容量、不扣回合、不写日志）。
+ *
+ * ⚠ 这是全仓**唯一**的"合并"实现：虫洞侧所有"把东西搬上船"的路径（打捞 / 采集 / 舰船战果 /
+ * 老档线性层的逐堆拾取）都走它，只是各自的**容量判据与回合口径**由调用方负责
+ * （`wormholeSalvage.tryMergeIntoBag` = F5 网格判据 + 放不下整条回滚）。
+ */
+export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
   const out = bag.map((s) => ({ ...s }))
   const hit = out.find((s) => s.itemId === pile.itemId)
   if (hit) hit.units += pile.units
@@ -995,6 +1011,22 @@ export function wormholeEntryBlockReason(
 }
 
 /**
+ * **编队的虫洞扫描半径加成（圈）**（2026-09-13 船长：侦察舰/电子舰「让虫洞扫码范围 +1 圈」——
+ * 「**编入队伍就有效。且可以叠加**」）⇒ 对编队内每艘船的 `wormholeScanRadiusBonus` **求和**。
+ * 用途：① `wormholeEnter` 建档时喂给 `wormholeMakeGrid`；② 界面在**深入下一层**时把它传给
+ * `wormholeDescend(run, seed, scanBonus)`（该入参默认 0 ⇒ 不传 = 维持旧行为）。
+ */
+export function wormholeScanBonusOf(ctx: SimContext, shipIds: readonly string[]): number {
+  let sum = 0
+  for (const id of shipIds) {
+    const def = ctx.ships.get(uidDefId(id))
+    const v = def?.wormholeScanRadiusBonus
+    if (typeof v === 'number' && Number.isFinite(v)) sum += Math.max(0, Math.floor(v))
+  }
+  return sum
+}
+
+/**
  * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
  * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
  */
@@ -1017,47 +1049,6 @@ export function wormholeEnter(
     `🕳 虫洞跃入：编队 ${shipIds.length} 艘 · 折算总质量 ${r.run.totalMass.toLocaleString('zh-CN')} · 可探索 ${r.run.turnsTotal} 回合。`,
   )
   return r
-}
-
-/**
- * **拾取一堆**（每堆 = 一堆原矿；进包前先做容量预检，**放不下就不给捡**——不静默丢弃）。
- * ⚠ 回合口径：F3a-2 起"打捞/挖掘"的回合花在**激活地点**那一步（各 1 回合）⇒ **拾取本身不再扣回合**
- * （旧线性节点口径是把"每堆 +1 回合"算进节点 `cost`，在"结算本节点"时一次扣掉；两代口径都不重复计费）。
- * 堆的宿主：网格层 = **当前所在格**（`grid.cells[].piles`）；老档线性层 = `pendingNode.piles`。
- */
-export function wormholeTakePile(
-  state: GameState,
-  ctx: SimContext,
-  pileIndex: number,
-): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
-  const run = state.wormhole.run
-  if (!run) return { ok: false, error: '不在虫洞内。' }
-  const grid = run.grid
-  const holder: { piles?: WormholePile[] } | undefined = grid
-    ? gridCellAt(grid, grid.pos)
-    : (run.pendingNode ?? undefined)
-  const piles = holder?.piles
-  if (!piles || pileIndex < 0 || pileIndex >= piles.length) {
-    return { ok: false, error: '这里没有可拾取的东西。' }
-  }
-  const pile = piles[pileIndex]!
-  // **网格层：手拾一堆 = 1 回合**（船长口径第 13 条「每捡一堆 +1」；老档线性层的回合已算在节点 cost 里，
-  // 不重复扣）。回合不够 ⇒ 当场拒绝、**不扣**（与其它层内动作同一把尺）。
-  if (grid) {
-    if (run.turnsLeft < WORMHOLE_TURN_PER_PICK) return { ok: false, error: '回合不足：只能撤离。' }
-  }
-  const capacity = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
-  const merged = mergeIntoBag(run.bag, pile)
-  const usage = wormholeBagUsage(ctx, merged, capacity)
-  if (usage.overflow) {
-    return { ok: false, error: `背包放不下：已占 ${usage.used} / 共 ${capacity} 格。` }
-  }
-  run.bag = merged
-  piles.splice(pileIndex, 1)
-  if (grid) run.turnsLeft -= WORMHOLE_TURN_PER_PICK
-  const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
-  addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（背包 ${usage.used}/${capacity} 格）。`)
-  return { ok: true, taken: pile, used: usage.used, capacity }
 }
 
 /**

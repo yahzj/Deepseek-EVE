@@ -1,8 +1,8 @@
 /**
- * G 族「鱿烬亡军」专属装备（2026-09-10 船长：第一件由机库模块「流亡蜂群巢」改为**专属无人机物品**
- * 「流亡蜂无人机」）——设计稿见 `docs/design/g-exile-bee-drone-20260910.md`（状态：已确认）。
+ * G 族「鱿烬亡军」专属装备（2026-09-10 船长：第一件由机库模块「鱿蜂群巢」改为**专属无人机物品**
+ * 「鱿蜂无人机」）——设计稿见 `docs/design/g-exile-bee-drone-20260910.md`（状态：已确认）。
  *
- * 三件：①**流亡蜂无人机**（物品 · 侦察机 · exclusive）②流亡蜂群导控（模块 +45% / CPU 32）
+ * 三件：①**鱿蜂无人机**（物品 · 侦察机 · exclusive）②鱿蜂群导控（模块 +45% / CPU 32）
  * ③流亡中继桅（模块 +65% / CPU 34）。
  * 裁决：①补给 = 一次掉 **×10 架**、仍不可造（打光后再刷可补）；②数值 = 闪避 0.55 / 血 15 /
  * 单发 **6** / 射程 2500 / 命中 0.75 / 体积 5 m³；③单发 6 越出四型区间（侦察机上限 1.4×锚点），
@@ -57,8 +57,8 @@ function drawGear(state: GameState, pool?: readonly string[], max = 400) {
   return null
 }
 
-describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（2026-09-10 船长）', () => {
-  it('G 族池 = 1 专属物品 + 2 模块；旧「流亡蜂群巢」已撤下', () => {
+describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-09-10 船长）', () => {
+  it('G 族池 = 1 专属物品 + 2 模块；旧「鱿蜂群巢」已撤下', () => {
     expect(FOE_LAIR_GEAR.G).toEqual([BEE, 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'])
     expect(ctx.items.get(BEE)).toBeTruthy()
     expect(ctx.modules.get('mod-lair-drone-tac-g')).toBeTruthy()
@@ -66,7 +66,7 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
     expect(ctx.modules.has('mod-lair-drone-rack-g')).toBe(false) // 已撤下
   })
 
-  it('流亡蜂无人机数值：侦察机档 + 单发 6 / 闪避 0.55 / 血 15 / CPU 5 / 体积 5', () => {
+  it('鱿蜂无人机数值：侦察机档 + 单发 6 / 闪避 0.55 / 血 15 / CPU 5 / 体积 5', () => {
     const d = ctx.items.get(BEE)!
     expect(d.kind).toBe('drone')
     expect(d.droneClass).toBe('scout')
@@ -108,7 +108,7 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
     const extra = drawGear(state, [BEE])!
     expect(extra.drones).toEqual([{ id: BEE, count: RARE_BOX_DRONE_UNITS }])
     expect(RARE_BOX_DRONE_UNITS).toBe(10)
-    expect(extra.note).toContain('流亡蜂无人机')
+    expect(extra.note).toContain('鱿蜂无人机')
     expect(extra.note).toContain('×10 架')
   })
 
@@ -192,7 +192,7 @@ describe('G 族专属装备：流亡蜂无人机 + 蜂群导控 + 中继桅（20
       state.gameMs += 90_000 // 跑满一个结算单位：30 m³ = 3 批 × 10 m³（未满 30 m³ 不给彩头）
       advanceRefining(state, ctx)
       expect(countWare(state, BEE)).toBe(RARE_BOX_DRONE_UNITS) // 一次 10 架进物品仓库
-      expect(state.logs.some((l) => l.text.includes('高级箱') && l.text.includes('流亡蜂无人机'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('高级箱') && l.text.includes('鱿蜂无人机'))).toBe(true)
     } finally {
       for (const [k, v] of Object.entries(saved)) {
         RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = v

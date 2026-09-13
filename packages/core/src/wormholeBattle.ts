@@ -20,6 +20,7 @@ import {
   wormholeBagSlots,
   wormholeCardIdFor,
   wormholeFleetCargoM3,
+  wormholeUnitsPerSlot,
   wormholeGridActivate,
   wormholeGridTravel,
   wormholeTrimBag,
@@ -29,7 +30,17 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
-import { wormholeDeliverRelics, wormholeGrantShipSpoils, wormholeSalvageAt } from './wormholeSalvage'
+import {
+  wormholeDeliverRelics,
+  wormholeGrantShipSpoils,
+  wormholeHoldUsage,
+  wormholeCollectOreAt,
+  wormholeEnsureArrivalPiles,
+  wormholeLootTierOf,
+  wormholeLootValueIsk,
+  wormholeOverloadBlockReason,
+  wormholeSalvageAt,
+} from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
 
@@ -111,11 +122,13 @@ export function wormholeActivateAt(
 ): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind; taken?: number } {
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
-  // **打捞格走打捞入口**（F3b）：墓场/遗迹的"激活"其实是**打捞作业**——要打捞器、
-  // 一次回收台数 的堆、遗迹捞空还要掷收尾战；那套逻辑需要 ctx（打捞器台数/背包容量）与目录，
-  // 故放在 `wormholeSalvage` 里，这里只做分流（`wormhole.ts` 不许 import 那个模块）。
-  const here = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
-  if (here && (here.place === 'graveyard' || here.place === 'ruins')) {
+  // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
+  const overloaded = wormholeOverloadBlockReason(state, ctx)
+  if (overloaded) return { ok: false, error: overloaded }
+
+  // **打捞格**（墓场/遗迹 · F5 起不用激活）：打捞一批 + 遗迹捞空时的收尾战 —— 合成一次调用
+  const hereCell = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+  if (hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins')) {
     const s = wormholeSalvageAt(state, ctx)
     if (!s.ok) return { ok: false, error: s.error }
     const effect = s.effect
@@ -123,6 +136,12 @@ export function wormholeActivateAt(
     const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
     if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
     return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }
+  }
+  // **矿脉**（F5：要采集器；规则同打捞）——也走"激活"这个入口，界面一个按钮就够
+  if (hereCell?.place === 'vein') {
+    const c = wormholeCollectOreAt(state, ctx)
+    if (!c.ok) return { ok: false, error: c.error }
+    return { ok: true, spent: c.spent, taken: c.taken?.length ?? 0 }
   }
   const r = wormholeGridActivate(state)
   if (!r.ok) return { ok: false, error: r.error }
@@ -158,6 +177,8 @@ export function wormholeTravelTo(
   atGameMs?: number,
 ): { ok: boolean; error?: string; code?: 'unknown-target'; spent?: number; autoBattle?: boolean; beacon?: boolean } {
   const run = state.wormhole.run
+  const overloaded = wormholeOverloadBlockReason(state, ctx)
+  if (overloaded) return { ok: false, error: overloaded }
   const g = run?.grid
   const snap =
     run && g
@@ -172,6 +193,8 @@ export function wormholeTravelTo(
       : null
   const r = wormholeGridTravel(state, target, opts)
   if (!r.ok) return { ok: false, error: r.error, ...(r.code ? { code: r.code } : {}) }
+  // **到达即铺堆**（船长 F5：「资源点和墓场遗迹改为不用激活」）——只铺产出，不扣回合、不进回滚路径
+  wormholeEnsureArrivalPiles(state, ctx)
   const arrived = r.arrived
   if (!arrived?.autoBattle) {
     return {
@@ -273,19 +296,18 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   if (sunk.length > 0) {
     run.fleet = run.fleet.filter((uid) => !sunk.includes(uid))
     state.wormhole.lastFleetLost += sunk.length
-    // **沉船拖走货舱 ⇒ 背包格上限跟着缩水，装不下的当场丢**（船长 2026-09-13：「扣背包格，
-    // 不足时丢弃货物」）。格数 = 「剩余编队合计货仓 ÷ 500」现算 ⇒ 这里只需把溢出部分裁掉。
-    const cap = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
-    const trimmed = wormholeTrimBag(ctx, run.bag, cap)
-    if (trimmed.dropped.length > 0) {
-      const names = trimmed.dropped
-        .map((s) => `${ctx.items.get(s.itemId)?.name ?? s.itemId}×${Math.floor(s.units).toLocaleString('zh-CN')}`)
-        .join('、')
-      run.bag = trimmed.bag
+    /* **沉船拖走货舱 ⇒ 格数缩水**（船长 2026-09-13 两版口径，后版为准）：
+     * 旧版（B/C 批）：当场按"每格价值从低到高"自动丢掉溢出部分；
+     * **新版（F4 · 船长裁定 8）：「沉船后要求玩家手动抛弃货物」** ⇒ 这里**不再自动丢**，
+     * 只把"超载"这件事说清楚（`wormholeHoldUsage` 现算），玩家到货仓页自己抛。
+     * ⚠ 超载**不软锁**：抛货永远可用（`wormholeDiscardToFit` / 逐件抛弃）。 */
+    const usage = wormholeHoldUsage(state, ctx)
+    if (usage.overload) {
       addLog(
         state,
         'warn',
-        `🕳 沉船拖走了货舱：背包缩到 ${cap} 格，装不下的部分当场丢弃（${names}）——按每格价值从低到高丢。`,
+        `🕳 沉船拖走了货舱：货仓缩到 ${usage.capacity} 格，当前装了 ${usage.used} 格（**超载**）——` +
+          `请到货仓页手动抛弃货物；超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。`,
       )
     }
   }
@@ -321,21 +343,36 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // ── 胜：按战斗用途分流 ──
   if (kind === 'extract') {
     let isk = 0
+    let recycle = 0
     for (const slot of run.bag) {
       const units = Math.floor(slot.units)
+      const isWreck = slot.itemId.startsWith('wreck-')
       const price = ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0
-      isk += units * price
-      if (units > 0) addWare(state, slot.itemId, units)
+      // **残骸的报账走拆解口径**（基础价只有 1 ISK/单位，写出来等于没写）
+      isk += isWreck ? 0 : units * price
+      if (isWreck) recycle += wormholeLootValueIsk(ctx, slot.itemId, units)
+      else if (units > 0) addWare(state, slot.itemId, units)
+      if (isWreck && units > 0) addWare(state, slot.itemId, units)
     }
     addLog(
       state,
       'info',
       `🕳 撤离成功：背包 ${run.bag.length} 类物资入港` +
-        (isk > 0 ? `（按基础价约 ${isk.toLocaleString('zh-CN')} ISK）` : '') +
+        (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} ISK）` : '') +
+        (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} ISK）` : '') +
         `，第 ${run.depth} 层撤离。`,
     )
     // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
     if ((run.relics ?? []).length > 0) wormholeDeliverRelics(state, ctx, run.relics ?? [])
+    /**
+     * **货柜（形状件）随趟带回**（船长 §12.2-3：「撤离成功 ⇒ 货柜进仓库；失败 ⇒ 随趟一起丢」）。
+     *
+     * ⚠ 2026-09-13 修：形状件**不在 `run.bag`**（它们走 `run.hold.placements`），上面那段"背包入港"
+     * 的循环因此看不到它们 ⇒ F4 起打捞到的「遗迹安全货柜」会在撤离成功那一刻**静默消失**，
+     * "带回后在精炼炉拆解"这条链永远走不到。⇒ 在这里按 `kind === 'box'` 收一遍，走同一条入库函数。
+     */
+    const boxes = (run.hold?.placements ?? []).filter((p) => p.kind === 'box').map((p) => p.itemId)
+    if (boxes.length > 0) wormholeDeliverRelics(state, ctx, boxes)
     state.wormhole.run = null
     return
   }

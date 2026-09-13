@@ -153,6 +153,70 @@ export const ORES: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **遗迹安全货柜**（F4 · 船长 2026-09-13：「装备和蓝图的产出加一个中间件：玩家从遗迹获得
+ * 『遗迹安全货柜』，货柜体积是 2000 立方（也就是 4 格），将安全货柜带回后在精炼炉拆解」）。
+ *
+ * 口径：
+ * - **按族各一种**（A/C/D/E/G）——保住「专属掉落按种族库走」这条裁定：拆解时才知道内容物，
+ *   但**族信息不能丢**，所以族写在物品 id 与名字里；
+ * - **2000 m³ / 件，占货仓 2×2 = 4 格**（`packages/core/src/wormholeHold.ts` 的形状表已登记这 5 个 id）；
+ * - **施工期一律 `unreleased`**（与虫洞同批上线；`content:check` 有契约钉住）；
+ * - **精炼炉拆解配方本批不做**（船长「暂时不用拆解」）⇒ 现阶段带回仓库即止，内容物留待后续批次。
+ */
+export const RELIC_CONTAINERS: readonly ItemDef[] = [
+  {
+    id: 'box-relic-a',
+    name: '遗迹安全货柜（海盗）',
+    kind: 'container',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的整箱货柜：外壳带锁、标记已被磨掉，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+  },
+  {
+    id: 'box-relic-c',
+    name: '遗迹安全货柜（异形）',
+    kind: 'container',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的整箱货柜：外壁挂着干涸的生物膜，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+  },
+  {
+    id: 'box-relic-d',
+    name: '遗迹安全货柜（守墓）',
+    kind: 'container',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的整箱货柜：封条上还留着守墓者的印记，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+  },
+  {
+    id: 'box-relic-e',
+    name: '遗迹安全货柜（巨构）',
+    kind: 'container',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的整箱货柜：外壳是巨构自己的合金，接口仍在待机，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+  },
+  {
+    id: 'box-relic-g',
+    name: '遗迹安全货柜（亡军）',
+    kind: 'container',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的整箱货柜：箱体被蜂群啃过又焊上，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+  },
+]
+
 /** 矿物（精炼产物，可出售；制造原料） */
 export const MINERALS: readonly ItemDef[] = [
   {
@@ -486,12 +550,12 @@ export const DRONES: readonly ItemDef[] = [
     // 2026-09-10 定位调整：血量与侦察机相仿（23）+ 闪避次低（18%）——狙击平台靠距离活命
     defense: { shieldHp: 16, armorHp: 10, hullHp: 20, shieldResist: { kinetic: 0.1 }, evasion: 0.18 },
   },
-  // ══════════ 专属机型（2026-09-10 船长：G 族「流亡蜂群巢」改为专属侦查无人机） ══════════
+  // ══════════ 专属机型（2026-09-10 船长：G 族「鱿蜂群巢」改为专属侦查无人机） ══════════
   // 只在敌族窝点 → 稀有残骸 → 高级箱这条链路上产出（exclusive：无蓝图、不上市场、不入常规掉落池）；
   // 无人机是消耗品（会被点防击落、永久损失），故**一次掉一批 ×10 架**，打光之后再刷可补。
   {
     id: 'drone-exile-bee',
-    name: '流亡蜂无人机',
+    name: '鱿蜂无人机',
     kind: 'drone',
     unitM3: 5, // 轻型侦察机档（与蜂鸟同体积）
     baseSellPriceIsk: 6_000,
@@ -592,7 +656,16 @@ export const REPAIR_KITS: readonly ItemDef[] = [
 ]
 
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */
-export const ITEMS: readonly ItemDef[] = [...ORES, ...MINERALS, ...GASES, ...ICES, ...AMMO, ...DRONES, ...REPAIR_KITS]
+export const ITEMS: readonly ItemDef[] = [
+  ...ORES,
+  ...MINERALS,
+  ...GASES,
+  ...ICES,
+  ...AMMO,
+  ...DRONES,
+  ...REPAIR_KITS,
+  ...RELIC_CONTAINERS,
+]
 
 /** 构建"物品 id → 定义"目录 */
 export function buildItemCatalog(): ReadonlyMap<string, ItemDef> {

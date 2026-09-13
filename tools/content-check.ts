@@ -132,17 +132,18 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 
 // 数量与目标规模（V10 设计确认；V16 矿带整合：矿石 10→7，总量 35→32；V18 口径取消：重弹并入通用弹 6→3；
 // 2026-09-09 弹药 MK2：每族 +1 高级弹 → 弹药 6 种，物品总数 31→34；
-// 2026-09-10 G 族专属无人机「流亡蜂无人机」→ 无人机 4→5 种、物品总数 34→35；
+// 2026-09-10 G 族专属无人机「鱿蜂无人机」→ 无人机 4→5 种、物品总数 34→35；
 // 2026-09-12 虫洞线：新增**虚空母矿**（原矿 8 种、物品总数 35→36）——术语同步为「原矿 / 原材料」）
 // 2026-09-13 虫洞族专属机型 2 型（`drone-wh-c-heavy` 巢卫攻坚 / `drone-wh-e-sentry` 构件哨戒，
 // 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ 换成族专属无人机）→ 物品总数 36→**38**、无人机 5→**7**
-check(itemDefs.length === 38, `物品总数应为 38，实际 ${itemDefs.length}`)
+// 2026-09-13 F4：遗迹安全货柜 5 种（中间件，施工期 unreleased）→ 物品总数 38→**43**
+check(itemDefs.length === 43, `物品总数应为 43，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
-check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 流亡蜂 + 2 型虫洞族专属），实际 ${drones.length}`)
+check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 鱿蜂 + 2 型虫洞族专属），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -243,8 +244,15 @@ for (const item of itemDefs) {
     }
   } else {
     check(
-      item.kind === 'mineral' || item.kind === 'ammo' || item.kind === 'drone' || item.kind === 'kit',
-      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免）`,
+      item.kind === 'mineral' ||
+        item.kind === 'ammo' ||
+        item.kind === 'drone' ||
+        item.kind === 'kit' ||
+        /* **货柜豁免有前提**（F4 · 2026-09-13）：`container` 是"带回后拆解"的大件，
+         * 船长明示「**暂时不用拆解**」⇒ 施工期（`unreleased`）允许没有配方；
+         * 但**一旦上线（删掉 unreleased）就必须有配方**，否则玩家拖回一箱打不开的东西。 */
+        (item.kind === 'container' && item.unreleased === true),
+      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container 仅在施工期豁免）`,
     )
   }
 }
@@ -818,6 +826,18 @@ for (const sbp of SHIP_BLUEPRINTS) {
 
 // 舰船
 const roleSet = new Set(['industrial', 'armed', 'armored', 'hauler'])
+/** 舰种子分类白名单（2026-09-13 船长定；与 `packages/core/src/types.ts` 的 `ShipSubClass` 同源） */
+const SHIP_SUBCLASSES = [
+  '电子舰',
+  '炮艇',
+  '重型突击巡洋舰',
+  '截击舰',
+  '指挥舰',
+  '鱼雷舰',
+  '无人机作战舰',
+  '侦察舰',
+  '后勤舰',
+] as const
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -862,13 +882,43 @@ for (const s of SHIPS) {
     //   原为 `total >= 3 && total <= 12`（上限当年以驱逐舰为标尺）。现**废除上限**：
     //   战列舰（T4）按**平均值 14**、旗舰（T5）**18**。下限保留 3（防手滑写成 1~2 槽的空壳）。
     check(total >= 3, `舰船 ${s.id} 总槽位 ${total} 过少（下限 3）`)
-    // V18 族定位弱断言：武装舰高槽多、装甲舰低槽多（布局草案精神）
+    // V18 族定位弱断言：**只剩"武装舰高槽多"半条**
+    // ⚠ **2026-09-13 船长：「删掉」** ⇒ **装甲舰那半条（`low >= high + 1`）已删除**。
+    //   出处回顾：该弱断言 2026-09-04 随 V18A 槽位落库（`68bb806f`），依据是 `docs/design/v18-slots.md`
+    //   §四布局草案表（陆龟 2/2/3、玳瑁 2/3/3、玄武 2/3/4 的低槽偏多形态 + 注"甲厚（低槽多）"）。
+    //   删除理由：① 它是**草案精神**而非独立裁定；② 草案数值早被后续平衡批突破（玄武已从 2/3/4 变 4/4/6）；
+    //   ③ 虫洞族重装巡洋按新口径给到"高槽 4"（4/4/4、4/3/5）⇒ 与 `low >= high + 1` 冲突。
+    //   保留"武装舰"半条（现行 42 艘全部通过，且与 armed 族的身份一致）。
     if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
-    if (s.role === 'armored') check(slots.low >= slots.high + 1, `装甲舰 ${s.id} 低槽应显著多于高槽（${slots.low} vs ${slots.high}）`)
   }
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
   check(s.hitBonus === undefined || (s.hitBonus >= 0 && s.hitBonus <= 0.5), `舰船 ${s.id} hitBonus 越界：${String(s.hitBonus)}`)
+  // **船体固有新机制三条**（2026-09-13 船长点名：炮艇动能射程 / 指挥舰全舰光环 / 侦察舰·电子舰扫码）
+  for (const [rt, v] of Object.entries(s.weaponRangeBonusPct ?? {})) {
+    check(
+      DMG_TYPES.has(rt) && typeof v === 'number' && v > 0 && v <= 0.6,
+      `舰船 ${s.id} weaponRangeBonusPct.${rt} 越界（应 0<x≤0.6）：${String(v)}`,
+    )
+  }
+  check(
+    s.fleetDamageBonusPct === undefined || (s.fleetDamageBonusPct > 0 && s.fleetDamageBonusPct <= 0.5),
+    `舰船 ${s.id} fleetDamageBonusPct 越界（应 0<x≤0.5）：${String(s.fleetDamageBonusPct)}`,
+  )
+  check(
+    s.wormholeScanRadiusBonus === undefined ||
+      (Number.isInteger(s.wormholeScanRadiusBonus) && s.wormholeScanRadiusBonus > 0 && s.wormholeScanRadiusBonus <= 3),
+    `舰船 ${s.id} wormholeScanRadiusBonus 越界（应 1~3 的整数）：${String(s.wormholeScanRadiusBonus)}`,
+  )
+  // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面）——
+  // 只给 `sh-wh-*` 写；取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）
+  if (s.subClass !== undefined) {
+    check(
+      SHIP_SUBCLASSES.includes(s.subClass as (typeof SHIP_SUBCLASSES)[number]),
+      `舰船 ${s.id} 子分类非法：${String(s.subClass)}`,
+    )
+    check(s.id.startsWith('sh-wh-'), `舰船 ${s.id} 写了子分类（${String(s.subClass)}）但不是虫洞族专属舰船（子分类只给 sh-wh-*）`)
+  }
   for (const f of ['maxSpeedMps', 'warpSpeedAus', 'massKg', 'lockRangeM', 'signatureM', 'scanResMm'] as const) {
     const v = s[f]
     check(v === undefined || (typeof v === 'number' && Number.isFinite(v) && v > 0), `舰船 ${s.id} 间接属性 ${f} 非法：${String(v)}`)
@@ -3099,6 +3149,20 @@ for (const m of MODULES) {
         errors.push(`虫洞不可见闸门：${id}（${card.name}）带了奖金/掉落 —— 洞内敌卡不应有赏金收益（收益走背包拾取）`)
       }
     }
+    /* **遗迹安全货柜契约**（F4 · 2026-09-13 船长：装备与图纸改走中间件、货柜 2000 m³ = 4 格）：
+     * 五族各一种，必须 ① `unreleased` ② `kind === 'container'` ③ **2000 m³**（与 `wormholeHold` 的
+     * 形状表 2×2 对得上）；少一种 ⇒ 那一族的遗迹专属掉落会散落出一件"读不懂的东西"。 */
+    for (const fam of WORMHOLE_FAMILIES) {
+      const boxId = `box-relic-${fam.toLowerCase()}`
+      const box = ctxItems.get(boxId)
+      if (!box) {
+        errors.push(`货柜契约：没有 ${boxId}（${fam} 族的遗迹安全货柜）—— 该族专属掉落会散落出无定义的物品`)
+        continue
+      }
+      if (box.unreleased !== true) errors.push(`货柜契约：${boxId}（${box.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
+      if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
+      if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
+    }
     const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {
       errors.push('虫洞不可见闸门：市场目录里找不到 ore-voidmother（虚空母矿）——上线时"删字段"那一步就无从谈起')
@@ -3162,7 +3226,10 @@ for (const m of MODULES) {
     /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：
      * 五族（A/C/D/E/G）各要有一池「装备本体 + 装备图纸 + 舰船图纸」——缺一族就有一整族拿不到东西
      * （E 族此前正是这个状态，靠补第五张洞内卡 `wh-titan-echo` 才通）。池本身由 core 从目录按 id
-     * 前缀派生（`wormholeFamilyPoolOf`），这里断言"派生出来必须非空"，顺带把 id 前缀约定钉成契约。 */
+     * 前缀派生（`wormholeFamilyPoolOf`），这里断言"派生出来必须非空"，顺带把 id 前缀约定钉成契约。
+     * **（2026-09-13 二号接线单补）族专属无人机**（`drone-wh-<族>-`）是 C/E 两族的**第 6 件替换物**
+     * ⇒ **不进"五族齐备"判据**（只有两族有，缺了不算空池），但**要进孤儿检查**：
+     * 族标记写错一个字母的无人机永远掉不出来，且不会有任何别的报错——正是要机器守的地方。 */
     const poolCtx = buildSimContext()
     const poolGaps = wormholeFamilyPoolGaps(poolCtx)
     if (poolGaps.length > 0) {
@@ -3170,28 +3237,43 @@ for (const m of MODULES) {
     }
     const poolCounts = WORMHOLE_FAMILIES.map((f) => {
       const p = wormholeFamilyPoolOf(poolCtx, f)
-      return `${f} ${p.modules.length}/${p.moduleBlueprints.length}/${p.shipBlueprints.length}`
+      return `${f} ${p.modules.length}/${p.moduleBlueprints.length}/${p.shipBlueprints.length}${p.drones.length > 0 ? `+机${p.drones.length}` : ''}`
     }).join(' · ')
-    // **无孤儿**：所有 `mod-wh-` / `bp-wh-` / `sbp-wh-` 内容都必须落进某一族池（族标记写错一个字母
+    // **无孤儿**：所有 `mod-wh-` / `bp-wh-` / `sbp-wh-` / `drone-wh-` 内容都必须落进某一族池（族标记写错一个字母
     // ⇒ 那件内容**永远不会掉出来**，而且不会有任何别的报错——这正是要机器守的地方）。
     const pooled = new Set<string>()
     for (const f of WORMHOLE_FAMILIES) {
       const p = wormholeFamilyPoolOf(poolCtx, f)
-      for (const id of [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints]) pooled.add(id)
+      for (const id of [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints, ...p.drones]) pooled.add(id)
     }
     const orphans: string[] = []
     for (const id of poolCtx.modules.keys()) if (id.startsWith('mod-wh-') && !pooled.has(id)) orphans.push(id)
     for (const id of poolCtx.blueprints.keys()) if (id.startsWith('bp-wh-') && !pooled.has(id)) orphans.push(id)
     for (const id of poolCtx.shipBlueprints.keys()) if (id.startsWith('sbp-wh-') && !pooled.has(id)) orphans.push(id)
+    for (const id of poolCtx.items.keys()) if (id.startsWith('drone-wh-') && !pooled.has(id)) orphans.push(id)
     if (orphans.length > 0) {
       errors.push(`虫洞按族池契约：这些内容没落进任何族池（族标记写错了？⇒ 永远掉不出来）：${orphans.join('、')}`)
+    }
+    const droneIds = [...poolCtx.items.keys()].filter((id) => id.startsWith('drone-wh-'))
+    if (droneIds.length > 0) {
+      // 无人机是**替换物**：有它的族，装备件数应比别族少 1（C/E = 5 件装备 + 1 型无人机）
+      const odd = WORMHOLE_FAMILIES.filter((f) => {
+        const p = wormholeFamilyPoolOf(poolCtx, f)
+        if (p.drones.length === 0) return false
+        return p.modules.length + p.drones.length !== 6
+      })
+      if (odd.length > 0) {
+        errors.push(
+          `虫洞按族池契约：${odd.join('、')} 族的「装备 + 无人机」不等于 6 件 —— 无人机是替换物（移除一件装备、补一型无人机），件数不该净增（见专属稿 §6.1）`,
+        )
+      }
     }
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     console.log(
       `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
         ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
-        ` · 按族池（装备/装备图/舰船图）${poolCounts}` +
+        ` · 按族池（装备/装备图/舰船图[+族专属无人机]）${poolCounts} · 族专属无人机 ${droneIds.length} 型（不进五族齐备判据：C/E 替换物）` +
         ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
         ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
     )

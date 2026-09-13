@@ -820,7 +820,6 @@ export {
   wormholeMakeNode,
   // E 批（界面接线）：入洞 / 拾取 / 背包格现算 / 调试放弃
   wormholeEnter,
-  wormholeTakePile,
   wormholeNodePiles,
   wormholeFleetCargoM3,
   wormholeBagSlotsOfFleet,
@@ -829,6 +828,8 @@ export {
   WORMHOLE_PILE_UNITS_BASE,
   wormholeAdvanceNode,
   wormholeDescend,
+  // 2026-09-13 船长：侦察舰/电子舰「虫洞扫码 +1 圈（编队即生效、可叠加）」⇒ 编队加成求和
+  wormholeScanBonusOf,
   wormholeExtract,
   wormholeGridScan,
   wormholeGridTravel,
@@ -902,8 +903,11 @@ export {
   WORMHOLE_GRAVEYARD_COMMONS_MIN,
   WORMHOLE_RARE_JUDGE_CHANCE,
   WORMHOLE_RARE_JUDGE_PER_COMMONS,
-  WORMHOLE_RELIC_CHANCE,
+  WORMHOLE_RELIC_CHANCE_BASE,
+  WORMHOLE_RELIC_CHANCE_CAP,
+  WORMHOLE_RELIC_CHANCE_GROWTH,
   WORMHOLE_RELIC_MIN_DEPTH,
+  wormholeRelicChanceOf,
   WORMHOLE_RUINS_BATTLE_CHANCE,
   WORMHOLE_RUINS_RARES_MAX,
   WORMHOLE_RUINS_RARES_MIN,
@@ -916,15 +920,55 @@ export {
   wormholeDeliverRelics,
   wormholeEnsureSalvagePiles,
   wormholeEnsureVeinPiles,
+  // F5（船长 2026-09-13）：到达即铺堆（不用激活）+ 采集器门槛（虚空母矿）——打捞/采集同构
+  wormholeEnsureArrivalPiles,
+  wormholeMinersOf,
+  wormholeCollectOreAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
+  wormholePoolGrantUnitsOf,
   wormholeGrantShipSpoils,
+  // F4：货仓格（超载 / 装舱 / 抛弃 / 拾取入口）——住在 wormholeSalvage
+  wormholeHoldCapacityOf,
+  wormholeHoldDiscard,
+  wormholeHoldOverloaded,
+  wormholeHoldStow,
+  wormholeHoldUsage,
+  wormholeDiscardCargo,
+  wormholeDiscardToFit,
+  wormholeOverloadBlockReason,
+  wormholeTakePileAt,
+
   wormholeRelicWeightsOf,
-  wormholeRollRelic,
+  wormholeRollRelicBox,
+  wormholeRelicBoxIdOf,
   wormholeSalvageAt,
   wormholeSalvagersOf,
 } from './wormholeSalvage'
+// F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
+export {
+  WORMHOLE_HOLD_COLS,
+  WORMHOLE_SHAPE_CONTAINER,
+  WORMHOLE_SHAPE_STACK,
+  WORMHOLE_HOLD_SHAPES,
+  canPlace,
+  findFreeSpot,
+  holdAdd,
+  holdCellsUsed,
+  holdCompact,
+  holdMove,
+  holdRemove,
+  holdRows,
+  makeHoldState,
+  placementCells,
+  placementCellsCount,
+  wormholeIsShapedItem,
+  wormholeShapeOf,
+} from './wormholeHold'
+
 export type { WormholeFamilyPool, WormholeSalvageResult } from './wormholeSalvage'
+export type { WormholeHoldPlacement, WormholeHoldShape, WormholeHoldState } from './wormholeHold'
 export type {
   WormholeActivateEffect,
   WormholeAdmission,

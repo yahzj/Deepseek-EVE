@@ -80,6 +80,16 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.6 15.4l1.4.8" />
     </g>
   ),
+  /* ── 货柜（2026-09-13 F4 补：遗迹安全货柜 = 带回后拆解的大件）──
+     造型与其它种类同语言（细描边 + currentColor）：一个带锁扣的箱体 + 两道加固梁。 */
+  container: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="7.2" y="8.8" width="9.6" height="6.4" rx="1" />
+      <path d="M7.2 11.2h9.6" />
+      <path d="M11.4 10.2v2" />
+    </g>
+  ),
   /* ── 装备（方框徽：外框 + 内部机件） ── */
   miner: (
     <g>
@@ -498,6 +508,7 @@ export const TONES: Record<string, string> = {
   wreck: '#b8a37a', // 残骸：旧黄铜/锈色（回收料的观感）
   kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
+  container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
   miner: '#5ee6c8',
   cargo: '#ffd166',
   turret: '#ff8373',

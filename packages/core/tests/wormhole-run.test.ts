@@ -37,6 +37,7 @@ import {
   wormholeGridActivate,
   wormholeGridScan,
   wormholeGridTravel,
+  wormholeScanBonusOf,
   wormholeLeave,
   wormholeOutOfTurns,
   wormholeResume,
@@ -480,6 +481,33 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.grid!.radius).toBe(wormholeGridRadiusFor(3))
   })
 
+  /**
+   * **深入下一层要带上"编队扫码加成"**（2026-09-13 二号接线单）：`wormholeDescend` 的第三个入参是
+   * 新盘的扫描半径加成，不传就默认 0 ⇒ 侦察舰/电子舰的「扫码范围 +1 圈」**只会在第 1 层生效**。
+   * 这条同时钉住两件事：① core 认这个入参；② 加成真的体现在**新盘**上（不是只写进入口那一层）。
+   */
+  it('**深入下一层带上扫码加成**：新盘 scanRadius = 基础 + 编队加成（侦察舰 1 艘 = +1 圈）', () => {
+    // 不带加成：新盘扫描半径 = 基础值
+    const plain = enterForActions([T1, T1], 42).run
+    plain.bossCleared = plain.depth
+    expect(wormholeDescend(plain, 42).ok).toBe(true)
+    const baseScan = plain.grid!.scanRadius
+    // 带 +1 圈：同一 seed/层 ⇒ 只有扫描半径不同（盘面其余部分同源）
+    const boosted = enterForActions([T1, T1], 42).run
+    boosted.bossCleared = boosted.depth
+    expect(wormholeDescend(boosted, 42, 1).ok).toBe(true)
+    expect(boosted.grid!.scanRadius).toBe(baseScan + 1)
+    expect(boosted.grid!.cells.length).toBe(plain.grid!.cells.length) // 加成只改"能扫多远"，不改盘大小
+    // **编队里真有船带这个加成**（数据侧 `wormholeScanRadiusBonus`；三族电子/侦察舰各 1）
+    const scout = 'sh-wh-g-frigate' // G 族侦察舰（`wormholeScanRadiusBonus: 1`；专属舰，施工期对玩家不可见）
+    const withScout = enterForActions([T1, scout], 42).run
+    expect(wormholeScanBonusOf(ctx, withScout.fleet)).toBe(1)
+    expect(wormholeScanBonusOf(ctx, [T1, T1])).toBe(0)
+    withScout.bossCleared = withScout.depth
+    expect(wormholeDescend(withScout, 42, wormholeScanBonusOf(ctx, withScout.fleet)).ok).toBe(true)
+    expect(withScout.grid!.scanRadius).toBe(baseScan + 1)
+  })
+
   it('节点生成是确定性的（同 seed/depth/index ⇒ 同结果）——老档线性口径仍可用', () => {
     const a = wormholeMakeNode(2026, 3, 1)
     const b = wormholeMakeNode(2026, 3, 1)
@@ -572,21 +600,25 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
     expect(again.error ?? '').toContain('守卫')
   })
 
-  it('非资源地点的激活效果按地点类型分流（墓场/遗迹 ⇒ 打捞，矿脉 ⇒ 挖掘，谜质 ⇒ 取回）', () => {
+  it('**免激活三地点**（船长 F5）：墓场/遗迹/矿脉在"激活"这条路上直接拒绝（不扣回合）；谜质照旧可激活', () => {
     const { state, run } = enterForActions()
-    const cases: Array<[WormholePlace, string]> = [
-      ['graveyard', 'salvage'],
-      ['ruins', 'salvage'],
-      ['vein', 'excavate'],
-      ['matter', 'matter'],
-    ]
-    for (const [place, kind] of cases) {
+    // 船长 2026-09-13：「资源点和墓场遗迹改为不用激活」⇒ 走到就铺好产出，玩家直接打捞/采集。
+    // 故这三个地点在 `wormholeGridActivate` 上**拒绝**（免得白扣一回合），改由界面走「打捞 / 采集」。
+    const noActivate: WormholePlace[] = ['graveyard', 'ruins', 'vein']
+    for (const place of noActivate) {
       const key = standOnPlace(run, place)
+      const turnsBefore = run.turnsLeft
       const r = wormholeGridActivate(state)
-      expect(r.ok, `${place} 应可激活`).toBe(true)
-      expect(r.effect?.kind).toBe(kind)
-      expect(r.effect?.key).toBe(key)
+      expect(r.ok, `${place} 不该能激活`).toBe(false)
+      expect(r.error ?? '').toContain('不用激活')
+      expect(run.turnsLeft).toBe(turnsBefore) // 被拒 ⇒ 不扣回合
+      expect(run.grid!.activated).not.toContain(key) // 也不算"已处理"
     }
+    // 谜质不在免激活名单里：照旧「激活 ⇒ 取回」
+    const matterKey = standOnPlace(run, 'matter')
+    const m = wormholeGridActivate(state)
+    expect(m.ok).toBe(true)
+    expect(m.effect).toEqual({ kind: 'matter', key: matterKey })
   })
 
   it('**到达即触发**（船长 2026-09-13）：走到舰船信号 ⇒ 回报 autoBattle 且该格记已处理（不再需要激活）', () => {

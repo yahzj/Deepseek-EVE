@@ -15,7 +15,7 @@ import { createFoeSpecs } from '../src/combat'
 const bal = DEFAULT_BALANCE.battle
 /** ⚠ 用 `buildSimContext()`（物品表含无人机）——`makeTestCtx()` 的 items 只有装备模块 */
 const ctx = buildSimContext()
-/** 我方无人机机型 id（四型 + G 族专属「流亡蜂无人机」） */
+/** 我方无人机机型 id（四型 + G 族专属「鱿蜂无人机」） */
 const DRONE_IDS = ['drone-scout', 'drone-assault', 'drone-heavy', 'drone-sentry', 'drone-exile-bee']
 
 describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
