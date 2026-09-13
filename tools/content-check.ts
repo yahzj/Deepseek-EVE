@@ -1065,6 +1065,18 @@ for (const m of MODULES) {
   if (m.rack !== undefined) {
     check(m.rack === rackOf(m), `装备 ${m.id} rack 标注（${m.rack}）与 Q3 推导（${rackOf(m)}）不一致`)
   }
+  /**
+   * **作业装备归低槽**（船长 2026-09-13：「**给作业开**」——采集器 / 打捞器不再跟武器抢高槽）。
+   *
+   * ⚠ 为什么必须单列一条：上面那条 `m.rack === rackOf(m)` 对**显式标了 rack 的件是同义反复**
+   * （`rackOf` 优先返回显式值）⇒ 把采集器写回 `high` 也照样通过。这条才是真钉子。
+   */
+  if (m.slot === 'miner' || m.slot === 'salvager') {
+    check(
+      m.rack === 'low',
+      `作业装备 ${m.id}（${m.slot}）必须归**低槽**：船长 2026-09-13「给作业开」——作业装备不跟武器抢高槽`,
+    )
+  }
   if (m.slot === 'drone-rack' || m.slot === 'drone-tac') {
     // V18 无人机装置：字段自洽（甲板扩展 = +droneBayM3；战术导控 = +droneDmgBonus；互斥）
     const hasBay = (m.droneBayBonusM3 ?? 0) > 0

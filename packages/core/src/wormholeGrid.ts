@@ -381,6 +381,31 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
       if (c) signalOfCell.set(hexKey(c.q, c.r), q)
     }
   }
+  /**
+   * **信标不许落在入口格上**（船长 2026-09-13：「**不可以同一格**」）。
+   *
+   * 为什么必须挪：信标的"读出下一层入口"是**到达时触发**的（`wormholeGridTravel`），
+   * 而入口格开局就是"已到达"（`visited`/`scanned` 都由建档时写死）⇒ 信标落在入口格上时，
+   * 玩家**站在信标上却读不出终点**，只能先走开一回合再走回来（F3c 第二段的整趟模拟实测踩到）。
+   *
+   * 做法：**与另一格交换信号**（找 `all` 顺序里第一个"非出口、非入口、信号不是信标"的格），
+   * 交换而不是重掷 ⇒ **各信号的格数与实测分布一字不变**（层 1/3 各 1 个信标、层 5 个 3 个的读数照旧）。
+   */
+  const startKey = hexKey(start.q, start.r)
+  if (signalOfCell.get(startKey) === 'beacon') {
+    const swap = all.find((c) => {
+      const k = hexKey(c.q, c.r)
+      if (k === startKey) return false
+      if (c.q === exit.q && c.r === exit.r) return false
+      const s = signalOfCell.get(k)
+      return s !== undefined && s !== 'beacon'
+    })
+    if (swap) {
+      const swapKey = hexKey(swap.q, swap.r)
+      signalOfCell.set(startKey, signalOfCell.get(swapKey)!)
+      signalOfCell.set(swapKey, 'beacon')
+    }
+  }
   const cells: WormholeGridCell[] = all.map((c) => {
     const key = hexKey(c.q, c.r)
     const sig = signalOfCell.get(key)

@@ -70,19 +70,27 @@ import type { WormholeGridState, WormholePlace } from '../packages/core/src/worm
 const ctx: SimContext = buildSimContext()
 
 /**
- * 参考编队（两套 fit · F3c 第二段）：
- * - `combat` = 设计稿 §4.4 的**纯战斗**配置（5×导弹 MK3）——战斗强度读数用；
- * - `salvage` = **搜打撤**配置（3×导弹 MK3 + 1 打捞器 + 1 采集器）——整趟经济读数用：
- *   F5 起打捞/采集都要装备（打捞器 / 采集器），不带就一分钱也捞不上来
- *   （高槽 5 个 ⇒ 让出 2 个给作业装备；这是玩家真实的取舍）。
+ * 参考编队（三套 fit · F3c 第二段）：
+ * - **`full`（默认 · 满配 · 2026-09-13 船长定「给作业开，并添加你自己决定的满配配置」）**：
+ *   **11 个槽位全插满** —— 高槽 5×导弹 MK2（火力**一点不让**）、中槽 推进 + 双盾 + 索敌、
+ *   低槽 **打捞器 MK3 + 采集器 MK3**（作业装备改归低槽后不再跟武器抢位）。
+ *   CPU 255 / 345 ✓（实测脚本核对过槽数与 CPU，见提交说明）。
+ * - `combat`：**老难度基准**（5×导弹 + 3 中槽 + 稳像/装甲低槽）——不带作业装备，纯战斗读数用。
+ * - `old`：**旧口径对照**（作业装备还占高槽 ⇒ 3×导弹 + 打捞器 + 采集器）——用来给船长看"改槽前"的差距。
  */
 const REF_SHIP = 'sh-thresher'
+export type RefFit = 'full' | 'combat' | 'old'
+const REF_FIT_FULL = {
+  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+  mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+  low: ['mod-salvager-3', 'mod-miner-3'],
+}
 const REF_FIT_COMBAT = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
-const REF_FIT_SALVAGE = {
+const REF_FIT_OLD = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-1', 'mod-miner-1'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
@@ -98,10 +106,11 @@ const SKILLS: Record<string, number> = {
 }
 
 /**
- * **解析表 / 逐卡模式用哪套装配**：`--fit=salvage` ⇒ 看"交出两个高槽给打捞器+采集器"之后的战斗读数
- * （打捞器与采集器**都占高槽** ⇒ 搜打撤编队必然少两门炮，这是玩家真实的取舍）。
+ * **用哪套装配**（`--fit=full|combat|old`，默认 `full` 满配）：
+ * 解析表 / 逐卡模式看战斗读数，整趟模式还要看"能不能捞"（不带作业装备 ⇒ 一分钱也捞不上来）。
  */
-const ANALYTIC_FIT: 'combat' | 'salvage' = process.argv.includes('--fit=salvage') ? 'salvage' : 'combat'
+const FIT_ARG = (process.argv.find((a) => a.startsWith('--fit=')) ?? '--fit=full').split('=')[1]
+const ANALYTIC_FIT: RefFit = FIT_ARG === 'combat' ? 'combat' : FIT_ARG === 'old' ? 'old' : 'full'
 
 const LAYERS = Number((process.argv.find((a) => a.startsWith('--layers=')) ?? '--layers=8').split('=')[1])
 const WAVES = Math.max(1, Number((process.argv.find((a) => a.startsWith('--waves=')) ?? '--waves=1').split('=')[1]))
@@ -111,12 +120,12 @@ const STR = process.argv.find((a) => a.startsWith('--str='))
 const STRENGTH = STR ? Number(STR.split('=')[1]) : undefined
 const SEEDS = Array.from({ length: SEED_N }, (_, i) => 1 + i * 6)
 
-function makeFleet(seed: number, fit: 'combat' | 'salvage' = 'combat'): { state: GameState; uids: string[] } {
+function makeFleet(seed: number, fit: RefFit = 'full'): { state: GameState; uids: string[] } {
   const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 20_000_000
   for (const [id, lv] of Object.entries(SKILLS)) state.skills.trained[id] = lv
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[key] = 5_000
-  const refFit = fit === 'salvage' ? REF_FIT_SALVAGE : REF_FIT_COMBAT
+  const refFit = fit === 'old' ? REF_FIT_OLD : fit === 'combat' ? REF_FIT_COMBAT : REF_FIT_FULL
   const uids: string[] = []
   for (let i = 0; i < 4; i++) {
     const uid = addShipToFleet(state, REF_SHIP)
@@ -143,7 +152,7 @@ function runOneBattle(
   kind: 'node' | 'boss' | 'extract',
   nodeIndex: number,
   cardIndex?: number,
-  fit: 'combat' | 'salvage' = 'combat',
+  fit: RefFit = 'full',
 ): Cell {
   const { state, uids } = makeFleet(seed, fit)
   const cardId = cardIndex === undefined ? wormholeCardIdFor(depth, nodeIndex) : WORMHOLE_FOE_CARD_IDS[cardIndex]!
@@ -447,7 +456,7 @@ function pickTarget(
  * **跑一整趟**（真状态机 + 真战斗 + 真打捞/采集）：进洞 → 逐层按政策扫/走/打捞/采集/开战 →
  * 找信标 → 打层末守卫 → 按政策决定深入或撤离 ⇒ 读**真正入港**的收益与逐层分布。
  */
-function simulateRun(seed: number, pol: Policy, fit: 'combat' | 'salvage'): RunOutcome {
+function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
   const { state, uids } = makeFleet(seed, fit)
   const before = incomeOf(state)
   const enter = wormholeEnter(state, ctx, uids, seed)
@@ -801,14 +810,19 @@ function runRunsMode(): void {
     shipHpMin: 0.6,
     bossHpMin: Number((process.argv.find((a) => a.startsWith('--boss-hp=')) ?? '--boss-hp=0.55').split('=')[1]),
   }
-  const fit: 'combat' | 'salvage' = process.argv.includes('--combat-fit') ? 'combat' : 'salvage'
+  const fit: RefFit = ANALYTIC_FIT
+  const fitText: Record<RefFit, string> = {
+    full: '**满配**：5×导弹 MK2 + 推进 + 双盾 + 索敌 + **打捞器 MK3 + 采集器 MK3**（11 槽插满 · CPU 255/345）',
+    combat: '纯战斗：5×导弹 MK2 + 3 中槽 + 稳像/装甲（不带作业装备 ⇒ 捞不到东西）',
+    old: '旧口径：3×导弹 + 打捞器/采集器**占高槽**（改槽前的对照）',
+  }
   console.log(
     `整趟模拟 · ${n} 趟（**强度系数 ${WORMHOLE_FOE_BASE_STRENGTH_MUL * (STRENGTH ?? 1)}**（覆写 ${STRENGTH ?? '无'}）· ` +
-      `参考编队 4×巡洋「${fit === 'salvage' ? '搜打撤配置：3×导弹 MK3 + 1 打捞器 + 1 采集器 + 支援件' : '纯战斗配置：5×导弹 MK3 + 支援件'}」）`,
+      `参考编队 4×巡洋「${fitText[fit]}」）`,
   )
   console.log(
-    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（守卫没清就先打守卫）· ` +
-      `回合保留 ${pol.reserve} · 守卫血量门槛 ${pol.bossHpMin}（低于它就直接撤：撤离开放、但照打撤离战；守卫只堵深入）· ` +
+    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，但照打撤离拦截战）· ` +
+      `回合保留 ${pol.reserve} · 守卫血量门槛 ${pol.bossHpMin}（低于它就直接撤；守卫只堵深入）· ` +
       `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )
   console.log(

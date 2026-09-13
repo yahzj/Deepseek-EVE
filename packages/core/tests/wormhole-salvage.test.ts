@@ -49,6 +49,7 @@ import {
 } from '../src/wormholeSalvage'
 import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
 import { countWare } from '../src/inventory'
+import { rackOf } from '../src/labels'
 
 const ctx = buildSimContext()
 /** 巡洋舰（T3，可装打捞器）；`mod-salvager-1` 是打捞器 MK1 */
@@ -64,9 +65,9 @@ function enterRun(rigs = 1, seed = 4242, miners = 0): GameState {
   state.shipId = a
   expect(wormholeEnter(state, ctx, [a], seed).ok).toBe(true)
   const fitted = { ...(state.fleet[a]!.fitted ?? {}) }
-  // 直接改装配表（打捞器走 low 槽、采集器走 high 槽；本文件只验机制，不验装配合法性）
+  // 直接改装配表（打捞器与采集器**都走 low 槽** —— 2026-09-13 船长「给作业开」后作业装备归低槽；
   if (rigs > 0) fitted.low = Array.from({ length: rigs }, () => RIG)
-  if (miners > 0) fitted.high = Array.from({ length: miners }, () => MINER)
+  if (miners > 0) fitted.low = [...(fitted.low ?? []), ...Array.from({ length: miners }, () => MINER)]
   state.fleet[a]!.fitted = fitted
   return state
 }
@@ -310,6 +311,45 @@ describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）
     expect(wormholeLootTierOf(wreckItemIdOf('wh-pirate-scout'))).toBe(0)
   })
 })
+describe('虫洞 · 作业装备的槽位（船长 2026-09-13「给作业开」）', () => {
+  /**
+   * 船长裁定：采集器与打捞器改归**低槽**（不再跟武器抢高槽）⇒ 满配编队能"火力一点不让 + 两件作业装备都带"。
+   * 这条盯**真数据**：`content:check` 里那条 `m.rack === rackOf(m)` 对显式标了 rack 的件是同义反复，
+   * 真正防漂移的是这里 + `content:check` 的「作业装备必须归低槽」契约。
+   */
+  it('真目录里所有采集器 / 打捞器都归**低槽**，且推导（无显式 rack 时）也是低槽', () => {
+    const work = [...ctx.modules.values()].filter((m) => m.slot === 'miner' || m.slot === 'salvager')
+    expect(work.length, '作业装备件数').toBeGreaterThan(0)
+    for (const m of work) {
+      expect(rackOf(m), `${m.id}（${m.slot}）的归槽`).toBe('low')
+    }
+    // 缺省 rack 的件（测试替身那种只有 slot 的定义）也要推成低槽
+    expect(rackOf({ slot: 'miner' })).toBe('low')
+    expect(rackOf({ slot: 'salvager' })).toBe('low')
+    // 对照：炮台照旧高槽（这条裁定只管作业装备）
+    expect(rackOf({ slot: 'turret' })).toBe('high')
+  })
+
+  it('**满配可查**：长尾鲨级（高 5 / 中 4 / 低 2）能把 11 个槽插满且不吃超 CPU', () => {
+    const ship = ctx.ships.get('sh-thresher')!
+    const fit = {
+      high: Array.from({ length: 5 }, () => 'mod-turret-kin-2'),
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+      low: ['mod-salvager-3', 'mod-miner-3'],
+    }
+    let cpu = 0
+    for (const [rack, ids] of Object.entries(fit) as Array<[keyof typeof fit, string[]]>) {
+      const cap = ship.slots?.[rack] ?? 0
+      expect(ids.length, `${rack} 槽用量`).toBeLessThanOrEqual(cap)
+      for (const id of ids) {
+        expect(rackOf(ctx.modules.get(id)!), `${id} 归槽`).toBe(rack)
+        cpu += ctx.modules.get(id)?.cpuUse ?? 0
+      }
+    }
+    expect(cpu, `满配 CPU ${cpu} / 船体 ${ship.cpu}`).toBeLessThanOrEqual(ship.cpu ?? 0)
+  })
+})
+
 describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', () => {
   it('五族池齐（装备 / 装备图纸 / 舰船图纸各非空）——缺一族就报出哪族', () => {
     expect(wormholeFamilyPoolGaps(ctx)).toEqual([])

@@ -135,6 +135,32 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     expect([...seen].sort()).toEqual(['beacon', 'radar', 'resource', 'ship', 'wreck'])
   })
 
+  /**
+   * **信标不许落在入口格**（船长 2026-09-13：「不可以同一格」）。
+   *
+   * 为什么：信标的"读出下一层入口"是**到达时触发**的，而入口格开局就算"已到达"（建档时写死 `visited`）
+   * ⇒ 信标落在入口格上时玩家站在信标上却读不出终点（F3c 第二段的整趟模拟实测踩到）。
+   * 修法 = 与另一格**交换信号**（不是重掷）⇒ 各信号的格数与实测分布一字不变。
+   */
+  it('**信标不落入口格**（船长 2026-09-13：「不可以同一格」）——且各层信标数照旧', () => {
+    const expectBeacons: Record<number, number> = { 1: 1, 2: 1, 3: 1, 5: 3, 8: 3 }
+    for (const [depthStr, n] of Object.entries(expectBeacons)) {
+      const depth = Number(depthStr)
+      for (let seed = 1; seed <= 120; seed++) {
+        const g = wormholeMakeGrid(seed, depth)
+        const startKey = `${g.start.q},${g.start.r}`
+        const beacons = g.cells.filter((c) => c.place === 'beacon')
+        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数`).toBe(n)
+        expect(
+          beacons.some((c) => c.key === startKey),
+          `seed ${seed} 层 ${depth}：信标落在了入口格 ${startKey} 上`,
+        ).toBe(false)
+        // 出口格本来就不参与信号分配 ⇒ 也不该是信标
+        expect(beacons.some((c) => c.key === `${g.exit.q},${g.exit.r}`)).toBe(false)
+      }
+    }
+  })
+
   it('信号遮蔽：未知 / 只有信号 / 已知真相 三档（**空地点无信号**）', () => {
     const g = wormholeMakeGrid(20260913, 1)
     const startCell = g.start

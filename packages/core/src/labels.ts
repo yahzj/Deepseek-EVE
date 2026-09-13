@@ -76,8 +76,11 @@ export function shipSlotsOf(ship: { slots?: ShipSlots }): ShipSlots {
 
 /**
  * V18 模块归槽（Q3 映射单点实现）：显式 ModuleDef.rack 优先；缺省按家族/字段推导——
- * turret・missile・laser・miner・drone-rack・drone-tac（炮台・导弹架・激光炮・采集器・
- * 无人机装置）→ high；shield・propulsion（盾系・推进）→ mid；
+ * turret・missile・laser・drone-rack・drone-tac（炮台・导弹架・激光炮・无人机装置）→ high；
+ * shield・propulsion（盾系・推进）→ mid；
+ * **miner・salvager（采集器・打捞器）→ low**（2026-09-13 船长定：「**给作业开**」——
+ * 作业装备不再跟武器抢高槽，改走低槽；低槽最少 1 个、多数船 2 个以上 ⇒
+ * 小船的取舍变成"带打捞器还是带采集器"，而不再是"要不要火力"）；
  * armor・cargo（甲系・货舱）→ low；
  * support（V18.1 支援件）必须显式标注 rack（伤害/射速 = low、命中/闪避 = mid）。
  */
@@ -93,8 +96,6 @@ export function rackOf(def: {
     def.slot === 'turret' ||
     def.slot === 'missile' ||
     def.slot === 'laser' ||
-    def.slot === 'salvager' ||
-    def.slot === 'miner' ||
     def.slot === 'drone-rack' ||
     def.slot === 'drone-tac' ||
     def.slot === 'drone-relay' ||
@@ -102,6 +103,8 @@ export function rackOf(def: {
   )
     return 'high'
   if (def.slot === 'shield' || def.slot === 'propulsion') return 'mid'
+  // 采集器 / 打捞器：低槽（船长 2026-09-13「给作业开」）
+  if (def.slot === 'miner' || def.slot === 'salvager') return 'low'
   // 2026-09-11 协处理器：低槽（与装甲/货舱/支援件同槽类竞争——占一个低槽换 CPU 预算）
   if (def.slot === 'cpu') return 'low'
   return 'low'
