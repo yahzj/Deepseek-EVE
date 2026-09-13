@@ -8,7 +8,9 @@
  * ③ **收口 · 胜**：节点战 ⇒ 自动结算该节点（扣回合、推进）；层末守卫 ⇒ 记 `bossCleared` 后放行深入/撤离；
  *    撤离战 ⇒ **收益入港**（背包并入仓库）并结束本趟；
  * ④ **收口 · 负**（= 我方全灭，D 批口径）：**全损**——编队全丢、背包清空；
- * ⑤ **门与句柄**：战斗中不许推进/深入/撤离；层末守卫未清不许深入/撤离。
+ * ⑤ **门与句柄**：战斗中不许推进/深入/撤离；层末守卫未清不许深入/撤离；
+ * ⑥ **后勤尾巴与远征同源**：未打出去的弹药/修理组件退回仓库、**机群战损真扣清单**、
+ *    战报带上船体维修装置消耗（2026-09-13 修：首版全漏 ⇒ 洞内无人机打不死、连打第二场全队哑火）。
  *
  * ⚠ 施工期铁律：虫洞**对玩家不可见**（入口走调试开关、数据走 `unreleased` 闸门），拍板权在船长。
  * ⚠ 本文件不产生任何玩家可见文案。
@@ -352,6 +354,48 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     settleBattle(state)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离拦截交火结束'))).toBe(true)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离成功'))).toBe(true)
+  })
+  it('**机群照吃战损**（与远征/遭遇同款）：洞内首舰的无人机被打下来要**真扣清单**，不是白嫖', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const leader = run.fleet[0]!
+    // 首舰装机库甲板 + 带上侦察无人机（真走 `buildMyUnitSpecs` ⇒ 机群生存池）
+    state.fleet[leader]!.fitted = { high: ['mod-drone-rack-3'], mid: [], low: [] }
+    state.fleet[leader]!.droneLoad = { 'drone-scout': 4 }
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    // D 批边界：僚舰无人机不参战，**主控机群参战**（池按主控武器槽建）
+    expect(battle.dronePools, '洞内没建机群生存池').toBeTruthy()
+    expect(Object.keys(battle.dronePools!).length).toBe(4)
+    expect(battle.droneLoadAtStart?.['drone-scout']).toBe(4)
+    // 模拟"被打下来 4 架"（点防/敌机群击落的落账口径），再收口
+    battle.droneLost = { 'drone-scout': 4 }
+    winBattle(state)
+    settleBattle(state)
+    // **净损失已从清单扣除**：回收率 20%~50% ⇒ 4 架里回收 1~2 架，但**不可能一架不少**
+    const left = state.fleet[leader]?.droneLoad?.['drone-scout'] ?? 0
+    expect(left).toBeLessThan(4)
+    expect(left).toBeGreaterThanOrEqual(1)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('机群战损'))).toBe(true)
+    // 账本已清（幂等：重复结算不会二次扣）
+    expect(state.wormhole.run?.battle).toBeNull()
+  })
+  it('**战报带后勤尾巴**：船体维修装置消耗写进洞内战报（与远征同口径）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    const repair = battle.repair ?? { units: [], kits: {}, pulses: 0, kitsUsed: 0 }
+    repair.kitsUsed = 2
+    repair.kitsUsedByType = { 'repairkit-mil': 2 }
+    battle.repair = repair
+    winBattle(state)
+    settleBattle(state)
+    const line = state.logs.map((l) => l.text).filter((t) => t.includes('交火结束')).pop()
+    expect(line).toContain('船体维修装置')
+    expect(line).toContain('×2')
   })
   it('**战后弹药退款**（与远征同款）：仓库只损失**真打出去**的那些 ⇒ 连打第二场不会哑火', () => {
     const state = enterRun()

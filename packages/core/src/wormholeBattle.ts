@@ -14,7 +14,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, startFleetBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeCardIdFor,
@@ -86,14 +86,22 @@ function fleetHpFrac(run: WormholeRunState, battle: BattleState): number {
  * **洞内战报**（一句话，与结算同源）：交火时长 / 双方开火与命中 / 编队残血。
  * 只在洞内推（远征有自己的战报链），纯日志、不影响任何数值。
  */
-function wormholeBattleReport(run: WormholeRunState, battle: BattleState, kind: WormholeFoeKind): string {
+function wormholeBattleReport(
+  run: WormholeRunState,
+  battle: BattleState,
+  kind: WormholeFoeKind,
+  ctx: SimContext,
+): string {
   const sec = Math.max(0, Math.round((battle.lastTickGameMs - battle.startedAtGameMs) / 1000))
   const s = battle.stats
   const frac = Math.round(fleetHpFrac(run, battle) * 100)
   const what = kind === 'boss' ? `第 ${run.depth} 层守卫` : kind === 'extract' ? '撤离拦截' : `第 ${run.depth} 层节点`
+  // 尾巴（与远征/遭遇同款口径）：船体维修装置消耗——洞内同样吃这套后勤，不写就等于白用
+  const repair = repairUsageText(battle, ctx)
+  const tail = repair.length > 0 ? ` · 船体维修装置${repair}` : ''
   return (
     `🕳 ${what}交火结束：${sec}s · 我方开火 ${s.meShots}/命中 ${s.meHits} · 敌方开火 ${s.foeShots}/命中 ${s.foeHits} · ` +
-    `编队残血 ${frac}%。`
+    `编队残血 ${frac}%${tail}。`
   )
 }
 
@@ -119,6 +127,10 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   const battle = run.battle
   if (!battle) return
   const kind = battle.wormhole?.kind ?? 'node'
+  // 机群归属：多舰路径的无人机集火池是按**编队首舰**（`fleet[0]`）建的（D 批边界：
+  // 僚舰无人机不参战，见 `startFleetBattleFor`）——这里必须在**扣沉船之前**取到它，
+  // 否则首舰一沉就找不到归属、机群战损会全部漏结。
+  const droneOwner = run.fleet[0]
   const sunk = sunkShipIds(run, battle)
   for (const uid of sunk) {
     const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
@@ -136,8 +148,12 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
   refundAmmo(state, battle.ammo, battle.ammoIds)
   refundRepairKits(state, battle.repair)
+  // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内首舰的
+  // 无人机照样会被点防打下来（`battle.droneLost` 在涨），首版漏了这一步 ⇒ 洞内无人机
+  // **打不死**（清单不减、也没有战损日志），是最便宜的一种白嫖。
+  if (droneOwner) settleDroneLosses(state, ctx, droneOwner, battle)
   const won = battle.ended === 'me'
-  const report = won ? wormholeBattleReport(run, battle, kind) : null
+  const report = won ? wormholeBattleReport(run, battle, kind, ctx) : null
   run.battle = null
   // ── 负（全灭）：全损收场 ──
   if (!won || run.fleet.length === 0) {
