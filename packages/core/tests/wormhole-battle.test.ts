@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import { addShipToFleet } from '../src/shipyard'
+import { addShipToFleet, pilotUnavailableReason } from '../src/shipyard'
 import { addWare, countWare } from '../src/inventory'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -248,6 +248,29 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(state.wormhole.lastFleetLost).toBe(runFleet.length)
     expect(Object.keys(state.fleet).length).toBe(fleetBefore - runFleet.length) // 船真丢了
     expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(oreBefore) // 背包内容没入港
+    // **绝不软锁**：主控也在这批损失里 ⇒ 弃船补驾驶必须已经补上（全损是终局玩法，不能停在"没船可开"）
+    expect(state.fleet[state.shipId], '全损后没有可驾驶船').toBeTruthy()
+    expect(pilotUnavailableReason(state)).toBeNull()
+  })
+
+  it('单舰入洞打全损（连保底船都没有了）⇒ 协会补发保底舰船，不会软锁', () => {
+    const state = fresh()
+    const only = state.shipId
+    expect(wormholeEnter(state, ctx, [only], 21).ok).toBe(true)
+    const run = state.wormhole.run!
+    expect(run.fleet).toEqual([only])
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    for (const u of Object.values(run.battle!.units)) {
+      if (u.side === 'me') u.hp = { s: 0, a: 0, h: 0 }
+    }
+    run.battle!.ended = 'foe'
+    settleBattle(state)
+    expect(state.wormhole.run).toBeNull()
+    expect(state.fleet[only]).toBeUndefined() // 唯一那艘真丢了
+    expect(Object.keys(state.fleet).length).toBeGreaterThanOrEqual(1) // 协会补发保底舰船
+    expect(state.fleet[state.shipId]).toBeTruthy()
+    expect(pilotUnavailableReason(state)).toBeNull()
   })
 
   it('某个僚舰被打沉（战斗仍胜）：该船从编队与舰队里一起消失，其余船继续', () => {
@@ -498,5 +521,27 @@ describe('虫洞 · 随档（F 批）', () => {
     const broken = loadSaveFile(JSON.stringify(raw)).state.wormhole.run!.battle
     expect(broken).toBeTruthy()
     expect(broken!.wormhole).toBeUndefined()
+  })
+
+  it('**战中重载后收口照旧**：沉掉的僚舰照样真丢、机群战损照样扣（`myFleet`/`droneLost` 必须随档）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const leader = run.fleet[0]!
+    const ally = run.fleet[1]!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    // 战斗中：僚舰沉 + 机群被打下来 3 架（都还没收口）——此刻存档
+    run.battle!.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
+    run.battle!.droneLost = { 'drone-scout': 3 }
+    state.fleet[leader]!.droneLoad = { 'drone-scout': 4 }
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state
+    // 重载后打赢并收口：沉船判定靠 `myFleet`（运行时不算），机群账本靠 `droneLost`
+    winBattle(back)
+    settleBattle(back)
+    expect(back.fleet[ally], '重载后沉掉的僚舰又活过来了（`myFleet` 没随档）').toBeUndefined()
+    expect(back.wormhole.run!.fleet).not.toContain(ally)
+    expect(back.wormhole.run!.fleet).toContain(leader)
+    const left = back.fleet[leader]?.droneLoad?.['drone-scout'] ?? 0
+    expect(left, '重载后机群战损没落账（`droneLost` 没随档）').toBeLessThan(4)
   })
 })
