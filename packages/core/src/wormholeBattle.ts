@@ -31,6 +31,7 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+import { wormholeIsShapedItem } from './wormholeHold'
 import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
@@ -528,7 +529,21 @@ function deliverExtraction(
    * 的循环因此看不到它们 ⇒ F4 起打捞到的「遗迹安全货柜」会在撤离成功那一刻**静默消失**。
    */
   const boxes = (run.hold?.placements ?? []).filter((p) => p.kind === 'box').map((p) => p.itemId)
-  if (boxes.length > 0) wormholeDeliverRelics(state, ctx, boxes)
+  /**
+   * **临时空间里的东西也随趟带回**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」）：
+   * 临时空间是"船上的缓冲"，不是船外的地方 ⇒ 撤离成功一并入港（失败随趟丢，与背包同一条风险线）。
+   * 形状件（货柜）仍走 `wormholeDeliverRelics` 的物品分支；散货按单位数入仓。
+   */
+  const tempItems = (run.temp ?? []).map((s) => s.itemId)
+  const boxesAll = [...boxes, ...tempItems.filter((id) => wormholeIsShapedItem(id))]
+  if (boxesAll.length > 0) wormholeDeliverRelics(state, ctx, boxesAll)
+  for (const slot of run.temp ?? []) {
+    if (wormholeIsShapedItem(slot.itemId)) continue // 上面已按"件"入过
+    if (Math.floor(slot.units) > 0) addWare(state, slot.itemId, Math.floor(slot.units))
+  }
+  if ((run.temp ?? []).length > 0) {
+    addLog(state, 'info', `🕳 临时空间里的 ${run.temp!.length} 类物资一并入港（未整理的也带回来了）。`)
+  }
   // **结算单**（界面弹层用；玩家确认后清掉）
   state.wormhole.lastSettle = {
     kind: 'extract',
@@ -536,7 +551,7 @@ function deliverExtraction(
     oreUnits,
     oreIsk: isk,
     wreckIsk: recycle,
-    boxes,
+    boxes: boxesAll,
     relics,
     shipsLost: [],
     lostIsk: 0,

@@ -146,6 +146,9 @@ import {
   wormholeOverloadBlockReason,
   wormholeHoldStow,
   wormholeHoldCapacityOf,
+  wormholeTempUsage,
+  wormholeTempStow,
+  wormholeTempDiscard,
   holdCompact,
   holdMove,
   wormholeGridActivate,
@@ -176,6 +179,7 @@ import type {
   SettleStats,
   SideTask,
   SimContext,
+  WormholeTempSlot,
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
 import { saveBridge } from './storage'
@@ -1520,6 +1524,31 @@ export class GameEngine {
     overload: boolean
   } {
     return wormholeHoldUsage(this.state, this.ctx)
+  }
+
+  /** 虫洞：**临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
+  wormholeTempInfo(): { cells: number; capacity: number; items: WormholeTempSlot[]; full: boolean } {
+    return wormholeTempUsage(this.state, this.ctx)
+  }
+
+  /** 虫洞：**临时空间里的一件放进货仓**（腾得出位置才成功；失败原样留在临时空间） */
+  wormholeTempStow(itemId: string): CommandResult {
+    const r = wormholeTempStow(this.state, this.ctx, itemId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**抛弃临时空间里的一件**（手动抛货，与货仓抛货同一把尺） */
+  wormholeTempDiscard(itemId: string): CommandResult {
+    const r = wormholeTempDiscard(this.state, this.ctx, itemId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
   }
   /** 虫洞：深入下一层（只在层末可用） */
   wormholeDescend(): CommandResult {

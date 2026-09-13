@@ -37,6 +37,7 @@
     "manufacture:econ": "tsx tools/manufacture-econ.ts",
     "ui:probe": "tsx tools/ui-probe.ts",
     "ui:geom": "tsx tools/ui-geom.ts",
+    "wh:ui": "tsx tools/wh-ui-check.ts",
     "tools:audit": "tsx tools/tools-audit.ts"
   },
   "devDependencies": {

@@ -16,7 +16,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, wormholeEnter } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, WORMHOLE_TEMP_CELLS, wormholeEnter } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
@@ -48,7 +48,13 @@ import {
   wormholeSalvagersOf,
   wormholeHoldSyncCargo,
   wormholeHoldUsage,
+  wormholeHoldDiscard,
+  wormholeHoldStow,
+  wormholeTempUsage,
+  wormholeTempStow,
+  wormholeTempDiscard,
 } from '../src/wormholeSalvage'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
 import { countWare } from '../src/inventory'
 import { rackOf } from '../src/labels'
@@ -414,6 +420,16 @@ describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', ()
   })
 })
 
+/** 摆一格「只堆着货柜」的遗迹（等价打捞结束后的现场）——顶层版，多个 describe 共用 */
+function ruinsWithBoxIn(state: GameState, family = 'A'): WormholeGridCell {
+  const run = state.wormhole.run!
+  const grid = run.grid!
+  const cell = gridCellAt(grid, grid.pos)!
+  cell.place = 'ruins'
+  cell.piles = [{ itemId: wormholeRelicBoxIdOf(family), units: 1 }]
+  grid.activated = grid.activated.filter((k) => k !== cell.key)
+  return cell
+}
 describe('虫洞 · 遗迹安全货柜的搬运（船长 F4：「2000 m³ = 4 格 · 放不下整件拒收」）', () => {
   /** 摆一格"只堆着货柜"的遗迹（等价打捞结束后的现场） */
   function ruinsWithBox(state: GameState, family = 'A'): WormholeGridCell {
@@ -454,19 +470,23 @@ describe('虫洞 · 遗迹安全货柜的搬运（船长 F4：「2000 m³ = 4 �
     expect((cell.piles ?? []).length).toBe(0) // 搬走了
   })
 
-  it('**放不下整件拒收**：腾不出 2×2 ⇒ 拒绝且堆留在原地（不静默丢）', () => {
+  it('**货仓整件拒收仍在**：`wormholeHoldStow` 腾不出 2×2 ⇒ 拒绝（临时空间是外一层的兜底）', () => {
     const state = enterRun(1, 4242, 0, 2) // 2 艘 ⇒ 10 格；首件货柜占掉 (0,0)-(1,1) 后，第二件无处可放
     const run = state.wormhole.run!
     const cell = ruinsWithBox(state, 'A')
     expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // 第一件放得下
-    cell.piles = [{ itemId: wormholeRelicBoxIdOf('C'), units: 1 }] // 再散落一件
-    const pick = wormholeTakePileAt(state, ctx, 0)
-    expect(pick.ok).toBe(false)
-    // 两条拒收口径都算"整件拒收"：①格数不够（`货仓只剩 N 格，装不下这件`）
-    // ②格数够但**腾不出 2×2 连块**（`货仓放不下：这件要占 2×2 = 4 格`）——本例走的是 ②
-    expect(pick.error ?? '').toMatch(/放不下|装不下/)
-    expect((cell.piles ?? []).length).toBe(1) // 堆还在：没被吞掉
+    // **货仓这一层照旧整件拒收**（不塞散货账本、不硬挤缝）：状态不变
+    const stow = wormholeHoldStow(state, ctx, wormholeRelicBoxIdOf('C'))
+    expect(stow.ok).toBe(false)
+    expect(stow.error ?? '').toMatch(/放不下|装不下/)
     expect(run.hold!.placements.filter((p) => p.kind === 'box').length).toBe(1) // 只装上了一件
+    expect(run.bag).toEqual([]) // 没被偷偷塞进散货
+    // 打捞/拾取走的是**外层阶梯**：这一件改去临时空间，不再是"整件拒收"
+    cell.piles = [{ itemId: wormholeRelicBoxIdOf('C'), units: 1 }]
+    const pick = wormholeTakePileAt(state, ctx, 0)
+    expect(pick.ok, pick.error ?? '').toBe(true)
+    expect(wormholeTempUsage(state, ctx).items.map((s) => s.itemId)).toEqual([wormholeRelicBoxIdOf('C')])
+    expect((cell.piles ?? []).length).toBe(0)
   })
 
   it('**普通堆仍不许逐堆拾取**（船长裁定 A 照旧）：残骸在网格层只能打捞', () => {
@@ -479,6 +499,86 @@ describe('虫洞 · 遗迹安全货柜的搬运（船长 F4：「2000 m³ = 4 �
     expect(pick.ok).toBe(false)
     expect(pick.error ?? '').toContain('打捞')
     expect((cell.piles ?? []).length).toBe(1)
+  })
+})
+
+describe('虫洞 · 临时空间（船长 2026-09-13：「大件货先进临时空间，让玩家协调」）', () => {
+  it('**收货阶梯**：货仓放得下 ⇒ 进货仓；腾不出 2×2 ⇒ 进临时空间（不留在原地）', () => {
+    // ① 2 艘（10 格）⇒ 2×2 放得下 ⇒ 进货仓格
+    const a = enterRun(1, 4242, 0, 2)
+    const cellA = ruinsWithBoxIn(a)
+    expect(wormholeTakePileAt(a, ctx, 0).ok).toBe(true)
+    expect(a.wormhole.run!.hold!.placements.filter((p) => p.kind === 'box').length).toBe(1)
+    expect(a.wormhole.run!.temp ?? []).toEqual([])
+    expect((cellA.piles ?? []).length).toBe(0)
+    // ② 先塞一件把 2×2 位置站掉 ⇒ 第二件进临时空间
+    const b = enterRun(1, 4242, 0, 2)
+    const cellB = ruinsWithBoxIn(b, 'A')
+    expect(wormholeTakePileAt(b, ctx, 0).ok).toBe(true)
+    cellB.piles = [{ itemId: wormholeRelicBoxIdOf('C'), units: 1 }]
+    const second = wormholeTakePileAt(b, ctx, 0)
+    expect(second.ok, second.error ?? '').toBe(true) // **不再整件拒收**：改走临时空间
+    const tempB = wormholeTempUsage(b, ctx)
+    expect(tempB.items.map((s) => s.itemId)).toEqual([wormholeRelicBoxIdOf('C')])
+    expect(tempB.cells).toBe(4) // 货柜在临时空间里同样按 4 格算
+    expect((cellB.piles ?? []).length).toBe(0) // 已经接住，不留在原地
+    expect(b.logs.map((l) => l.text).some((t) => t.includes('放进临时空间'))).toBe(true)
+  })
+
+  it('**临时空间也有上限**（8 格 = 2 件货柜）：两边都满 ⇒ 才留在原地', () => {
+    const state = enterRun(1, 4242, 0, 2)
+    const run = state.wormhole.run!
+    const cell = ruinsWithBoxIn(state, 'A')
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // 第 1 件 → 货仓格
+    // 再塞两件（把临时空间用满）→ 第 4 件只能留在原地
+    for (const fam of ['C', 'D']) {
+      cell.piles = [{ itemId: wormholeRelicBoxIdOf(fam), units: 1 }]
+      expect(wormholeTakePileAt(state, ctx, 0).ok, `${fam} 应进临时空间`).toBe(true)
+    }
+    expect(wormholeTempUsage(state, ctx).cells).toBe(WORMHOLE_TEMP_CELLS)
+    cell.piles = [{ itemId: wormholeRelicBoxIdOf('E'), units: 1 }]
+    const last = wormholeTakePileAt(state, ctx, 0)
+    expect(last.ok).toBe(false)
+    expect(last.error ?? '').toMatch(/临时空间/)
+    expect((cell.piles ?? []).length).toBe(1) // 留在原地等腾地方
+    expect(run.temp!.length).toBe(2)
+  })
+
+  it('**整理**：临时空间里的货柜能放进货仓（腾出位置后），也能直接抛弃', () => {
+    const state = enterRun(1, 4242, 0, 2)
+    const run = state.wormhole.run!
+    const cell = ruinsWithBoxIn(state, 'A')
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true)
+    cell.piles = [{ itemId: wormholeRelicBoxIdOf('C'), units: 1 }]
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // → 临时空间
+    const boxC = wormholeRelicBoxIdOf('C')
+    // 货仓没位置 ⇒ 整理失败、东西还在临时空间
+    const fail = wormholeTempStow(state, ctx, boxC)
+    expect(fail.ok).toBe(false)
+    expect((run.temp ?? []).map((s) => s.itemId)).toEqual([boxC])
+    // 抛掉货仓里那件（腾出 2×2）⇒ 整理成功
+    const boxA = run.hold!.placements.find((p) => p.kind === 'box')!
+    expect(wormholeHoldDiscard(state, ctx, boxA.id).ok).toBe(true)
+    expect(wormholeTempStow(state, ctx, boxC).ok).toBe(true)
+    expect(run.temp ?? []).toEqual([])
+    expect(run.hold!.placements.filter((p) => p.kind === 'box').map((p) => p.itemId)).toEqual([boxC])
+    // 「抛弃」那条路也通（这里临时空间已空 ⇒ 拒绝）
+    expect(wormholeTempDiscard(state, ctx, boxC).ok).toBe(false)
+  })
+
+  it('**临时空间随档往返**（可选字段，零迁移）', () => {
+    const state = enterRun(1, 4242, 0, 2)
+    const run = state.wormhole.run!
+    run.temp = [{ itemId: 'ore-voidmother', units: 1_000 }]
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(back.wormhole.run!.temp).toEqual([{ itemId: 'ore-voidmother', units: 1_000 }])
+    // 坏值丢条、空数组不写（存档文件是 `{format,version,savedAtWallMs,state}` ⇒ 虫洞在 `state.wormhole` 下）
+    const dirty = JSON.parse(serializeSaveFile(state, 1)) as Record<string, unknown>
+    const wh = (dirty.state as Record<string, unknown>).wormhole as Record<string, unknown>
+    const r2 = wh.run as Record<string, unknown>
+    r2.temp = [{ itemId: '', units: 5 }, { itemId: 'x', units: 0 }, { itemId: 'ore-voidmother', units: 7.9 }]
+    const cleaned = loadSaveFile(JSON.stringify(dirty)).state
+    expect(cleaned.wormhole.run!.temp).toEqual([{ itemId: 'ore-voidmother', units: 7 }])
   })
 })
 
@@ -545,8 +645,12 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
         const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell2)
         const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? 'A')
         expect(got).toBe(wormholeRelicBoxIdOf(family))
-        // 且它**散落在该格**（没直接进背包/relics）
-        expect((cell2.piles ?? []).some((pp) => pp.itemId === got)).toBe(true)
+        // 且它**真的落到了玩家手里**——收货阶梯（2026-09-13 船长「大件货先进临时空间」）：
+        // ① 货仓腾得出 2×2 ⇒ 进货仓格；② 腾不出 ⇒ 进临时空间；③ 两边都满才散落在该格
+        const inHold = (run.hold?.placements ?? []).some((pp) => pp.kind === 'box' && pp.itemId === got)
+        const inTemp = (run.temp ?? []).some((s) => s.itemId === got)
+        const onGround = (cell2.piles ?? []).some((pp) => pp.itemId === got)
+        expect(inHold || inTemp || onGround, '货柜既不在货仓/临时空间，也没散落在原地——凭空消失了').toBe(true)
         break
       }
     }

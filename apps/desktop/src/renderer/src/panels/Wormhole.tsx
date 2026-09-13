@@ -42,6 +42,7 @@ import {
   wormholeMinersOf,
   wormholeShipMass,
   wormholeUnitsPerSlot,
+  wormholeShapeOf,
 } from '@whale/core'
 import type { WormholeGridState, WormholePlace, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -142,6 +143,25 @@ export function WormholePanel({
   const settle = state.wormhole.lastSettle
   const holdInfo = run ? engine.wormholeHoldInfo() : null
   const overloaded = holdInfo?.overload ?? false
+  /**
+   * **作业前「货仓会不会满」预告**（船长 2026-09-13：「**在打捞挖矿之前货仓可能会满的时候提醒玩家**」）：
+   * 把当前格上剩下的**散货堆**按 m³ → 格折算成预计入仓格数，与货仓剩余格数比大小。
+   * 口径是**保守估计**（同种物品可能压进已有的半格 ⇒ 实际可能少占一点，故文案写"约"）；
+   * 形状件（安全货柜）不参与这条算式——它有自己的收货阶梯（货仓腾不出 2×2 会先进临时空间）。
+   */
+  const incomingCells = (() => {
+    const m3ById = new Map<string, number>()
+    for (const p of hereCell?.piles ?? []) {
+      if (wormholeIsShapedItem(p.itemId)) continue
+      m3ById.set(p.itemId, (m3ById.get(p.itemId) ?? 0) + p.units * (ctx.items.get(p.itemId)?.unitM3 ?? 0))
+    }
+    let m3 = 0
+    for (const v of m3ById.values()) m3 += v
+    return m3 > 0 ? Math.ceil(m3 / WORMHOLE_SLOT_M3) : 0
+  })()
+  const holdFreeCells = holdInfo ? Math.max(0, holdInfo.capacity - holdInfo.used) : 0
+  /** 这一格的产出**装不下**（还差多少格）——只在工作格真有活、货仓读数在手时才算 */
+  const holdShortBy = workCell && holdInfo ? Math.max(0, incomingCells - holdFreeCells) : 0
 
   /* ── 选舰检索（船长 2026-09-13「缺少一个类似我的舰队里的舰船筛选和搜索」）──
      复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 两行筛选（类别 / 级别，各维取「与」）；
@@ -253,6 +273,13 @@ export function WormholePanel({
   function doActivate(): void {
     const place = hereCell?.place
     const exitNow = atExit
+    /**
+     * **动手前的容量提醒**（船长 2026-09-13：「在打捞挖矿之前货仓可能会满的时候提醒玩家」）：
+     * 这一格的产出按保守估计装不下时，先喊一句再干活（**不拦着**：打捞到装不下会自己停下、剩下的留在原地）。
+     */
+    if (holdShortBy > 0) {
+      onToast(`⚠ 货仓可能装不下：这一格约 ${incomingCells} 格、货仓只剩 ${holdFreeCells} 格——装不下的会留在原地。`)
+    }
     const res = engine.wormholeActivate()
     if (!res.ok) {
       onToast(res.error ?? '无法激活。', true)
@@ -323,7 +350,15 @@ export function WormholePanel({
             {shapedPiles.length > 0 ? (
               <div className="app-dim app-note">
                 另有 <b>{shapedPiles.length}</b> 件「遗迹安全货柜」：**打捞器搬不动它** ——
-                点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；放不下会**整件拒收**，先腾地方）。
+                点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
+              </div>
+            ) : null}
+            {/* **装不下的预告**（船长 2026-09-13）——把"再捞就满"这件事摆在按钮之前，别等捞到一半才发现 */}
+            {holdShortBy > 0 ? (
+              <div className="app-wh-hold-soon">
+                货仓可能装不下：这一格还有 {bulkPiles} 堆、约 <b>{incomingCells}</b> 格，
+                货仓只剩 <b>{holdFreeCells}</b> 格（差 {holdShortBy} 格）——装不下的会留在原地，
+                先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。
               </div>
             ) : null}
             <ul className="app-inv-list">
@@ -339,7 +374,7 @@ export function WormholePanel({
                       </span>
                       <span className="app-inv-count">
                         {n(p.units * (def?.unitM3 ?? 0))} m³
-                        {shaped ? ' · 整件占 2×2 = 4 格（放不下整件拒收）' : ` · 每格 ${n(slotUse)} 单位`}
+                        {shaped ? ' · 整件占 2×2 = 4 格（腾不出会先进临时空间）' : ` · 每格 ${n(slotUse)} 单位`}
                       </span>
                     </div>
                     <div className="app-inv-btns">
@@ -353,7 +388,7 @@ export function WormholePanel({
                             if (!r.ok) onToast(r.error ?? '拾取失败。', true)
                             else onToast('已装上货柜（占 2×2 = 4 格）。')
                           }}
-                          title="拾取装舱：占货仓 2×2 = 4 格；放不下会整件拒收（先腾地方）"
+                          title="拾取装舱：占货仓 2×2 = 4 格；货仓腾不出 2×2 会先放进临时空间"
                         >
                           拾取装舱（2×2 格）
                         </button>
@@ -436,7 +471,10 @@ export function WormholePanel({
           </button>
         </div>
 
-        <div className="app-modal-body">
+        {/* `app-wh-body` = 让本面板的页体成为**纵向弹性容器**（船长 2026-09-13：
+            「舰船选择界面高度可以适当缩减，让上一层的虫洞界面不要有滚动条」）——
+            准备页把自己撑满页体、**卡网格吸收剩余高度并在内部滚动**，外层页体就不再出现滚动条。 */}
+        <div className="app-modal-body app-wh-body">
           {/**
            * **本趟结算界面**（船长 2026-09-13：「玩家撤离后弹出一个结算界面，表示玩家的收益和损失。
            * 然后关闭虫洞界面」）：有结算单时**整页只显示它**（页签隐去），
@@ -495,7 +533,7 @@ export function WormholePanel({
               ) : null}
               <div className="app-wh-actions">
                 <button
-                  className="app-btn is-primary app-wh-enter"
+                  className="app-btn is-primary app-wh-settle-ok"
                   onClick={() => {
                     engine.wormholeAckSettle()
                     onClose() // 船长：结算完关掉虫洞界面
@@ -1131,6 +1169,8 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const ctx = engine.ctx
   const run = state.wormhole.run!
   const info = engine.wormholeHoldInfo()
+  /** **临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
+  const tempInfo = engine.wormholeTempInfo()
   const [dragId, setDragId] = useState<string | null>(null)
   const cols = WORMHOLE_HOLD_COLS
   const rows = holdRows(info.capacity, cols)
@@ -1274,6 +1314,68 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
         </span>
       </div>
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
+      {/**
+       * **临时空间**（船长 2026-09-13：「打捞出了大件货时应该放进一个临时空间或者临时背包，
+       * 让玩家进行协调」）：收货阶梯的第二层——货仓腾不出 2×2 时，大件先落这里；
+       * 玩家在这一块决定「放进货仓」（腾出位置后）还是「抛弃」。
+       * 样式沿用本页的「货柜 / 散货清单」那一族（`app-inv-list`），不自造新样式。
+       */}
+      <div className="app-bay-title">
+        临时空间 · 已用 <b>{tempInfo.cells}</b> / {tempInfo.capacity} 格
+        {tempInfo.full ? <span className="app-wh-hold-warn"> · 已满</span> : null}
+      </div>
+      {tempInfo.items.length === 0 ? (
+        <div className="app-dim app-inv-empty">
+          临时空间是空的：货仓腾不出整块位置时，打捞到的大件（遗迹安全货柜）会先放在这里等你协调。
+        </div>
+      ) : (
+        <ul className="app-inv-list">
+          {tempInfo.items.map((s) => {
+            const def = ctx.items.get(s.itemId)
+            const shaped = wormholeIsShapedItem(s.itemId)
+            const shape = shaped ? wormholeShapeOf(s.itemId) : null
+            // 与 core 的 `wormholeTempUsage` 同一把尺：形状件按形状格、散货按 ⌈单位 ÷ 每格单位⌉
+            const cells = shape
+              ? shape.w * shape.h
+              : Math.ceil(s.units / Math.max(1, wormholeUnitsPerSlot(def?.unitM3 ?? 0)))
+            return (
+              <li key={s.itemId} className="app-inv-row">
+                <div className="app-inv-main">
+                  <span className="app-inv-name">
+                    {def?.name ?? s.itemId} ×{n(s.units)}
+                  </span>
+                  <span className="app-inv-count">
+                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格
+                    {shape ? `（${shape.w}×${shape.h} 整块）` : ''} · 撤离时随编队一起入港
+                  </span>
+                </div>
+                <div className="app-inv-btns">
+                  <button
+                    className="app-btn is-small is-primary"
+                    onClick={() => {
+                      const r = engine.wormholeTempStow(s.itemId)
+                      if (!r.ok) onToast(r.error ?? '放不进。', true)
+                      else onToast(`已把 ${def?.name ?? s.itemId} 放进货仓。`)
+                    }}
+                    title="放进货仓：形状件占 2×2 = 4 格，腾不出整块就先留在临时空间"
+                  >
+                    放进货仓
+                  </button>
+                  <button
+                    className="app-btn is-small is-warn"
+                    onClick={() => {
+                      const r = engine.wormholeTempDiscard(s.itemId)
+                      if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                    }}
+                  >
+                    抛弃
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
       <div className="app-bay-title">货柜 · {boxes} 件</div>
       {boxes === 0 ? (
         <div className="app-dim app-inv-empty">没有货柜：遗迹打捞出来的安全货柜才会占这种整块格子。</div>

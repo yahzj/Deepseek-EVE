@@ -9242,7 +9242,12 @@ body {
   margin: 6px 0 0;
   padding: 0;
   list-style: none;
-  max-height: 420px;
+  /* **吃剩余高度**（船长 2026-09-13：「舰船选择界面高度可以适当缩减，让上一层的虫洞界面不要有滚动条」）：
+     外层页体不再滚动，滚动只发生在这张卡网格内部（约定 §六：滚动只进二级窗口的卡网格）。
+     上限 = 正好两行卡（168×2 + 间距 8），窗矮时继续收缩、下限留住一行。 */
+  flex: 1 1 auto;
+  min-height: 128px;
+  max-height: 344px;
   overflow-y: auto;
 }
 .app-wh-card {
@@ -9251,7 +9256,8 @@ body {
   align-items: stretch;
   gap: 3px;
   width: 100%;
-  height: 184px; /* 2026-09-13：标签行可能换行（编入 + 带伤），定高留一线余量防裁切 */
+  height: 168px; /* 2026-09-13：标签行可能换行（编入 + 带伤），定高留一线余量防裁切；
+                    同日按船长「选舰高度适当缩减」压到 168（舰影区同步 72→64），正好两行装满卡区 */
   padding: 6px 8px 8px;
   text-align: left;
   font-family: inherit;
@@ -9270,7 +9276,7 @@ body {
   box-shadow: inset 0 0 0 1px rgba(79, 216, 196, 0.35);
 }
 .app-wh-card:disabled { cursor: default; opacity: 0.75; border-color: rgba(232, 180, 90, 0.45); background: rgba(232, 180, 90, 0.05); }
-.app-wh-card-art { display: flex; align-items: center; justify-content: center; height: 72px; overflow: hidden; color: var(--wui-accent); }
+.app-wh-card-art { display: flex; align-items: center; justify-content: center; height: 64px; overflow: hidden; color: var(--wui-accent); }
 .app-wh-card-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-wh-card-sub { font-size: 11px; color: var(--wui-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-wh-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
@@ -9367,11 +9373,22 @@ body {
 .app-wh-prephead { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .app-wh-prephead-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
 .app-wh-prephead-go {
-  flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding-top: 2px;
 }
-/* 「进入虫洞」放大（参考导航栏「出击」的主按钮观感：更大字号 + 更厚内边距） */
-.app-wh-enter { font-size: 15px; font-weight: 600; padding: 12px 26px; }
+/* 「进入虫洞」放大（参考导航栏「出击」的主按钮观感）——**正方形**（船长 2026-09-13：
+   「进入虫洞的按钮再放大一些，并保持正方形」）：定宽定高、内容居中、不随文字换行变形。 */
+.app-wh-enter {
+  width: 112px; height: 112px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-align: center; line-height: 1.35; letter-spacing: 1px;
+  font-size: 16px; font-weight: 600;
+}
+/* 结算页的「确认并返回」：沿用放大主按钮的老观感（长条，不跟着变成方块） */
+.app-wh-settle-ok { font-size: 15px; font-weight: 600; padding: 12px 26px; }
+/* ── 准备页不撑出外层滚动条（同一条船长口径）：页体纵向弹性 · 准备页撑满 · 卡网格吃剩余高度 ── */
+.app-wh-body { display: flex; flex-direction: column; }
+.app-wh-body > .app-wh-prep { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 /* ── 本趟结算界面（船长 2026-09-13：撤离后弹结算 + 关闭虫洞界面）── */
 .app-wh-settle { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
 .app-wh-settle-head { display: flex; align-items: baseline; gap: 10px; }
@@ -9450,6 +9467,13 @@ body {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45);
   border-radius: 6px; background: rgba(255, 131, 115, 0.07); color: #ff8373;
+  font-size: 12px; line-height: 1.5;
+}
+/* **作业前"货仓可能装不下"预告**（船长 2026-09-13）：形状与超载条同族，
+   但这是"提醒"不是"拦路" ⇒ 走琥珀档（与货柜卡的「带伤」标签同色）。 */
+.app-wh-hold-soon {
+  margin: 4px 0 2px; padding: 6px 10px; border: 1px solid rgba(244, 201, 93, 0.45);
+  border-radius: 6px; background: rgba(244, 201, 93, 0.07); color: #f4c95d;
   font-size: 12px; line-height: 1.5;
 }
 
