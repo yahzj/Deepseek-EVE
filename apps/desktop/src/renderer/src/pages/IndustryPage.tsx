@@ -24,6 +24,8 @@ import {
   recycleMineralPoolOf,
   recycleProfileOf,
   refineRate,
+  // 2026-09-13：未上线资源不进"可精炼资源"网格 / 材料跳转（施工期闸门）
+  visibleItemDefs,
 } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -427,10 +429,11 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
     return () => window.clearTimeout(t)
   }, [focusOreId])
 
-  /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场 */
+  /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场
+   *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。 */
   function handleNeedMineral(itemId: string): void {
     let src = ''
-    for (const def of engine.ctx.items.values()) {
+    for (const def of visibleItemDefs(engine.ctx)) {
       if (def.kind === 'wreck') continue
       if ((def.refine ?? []).some((r) => r.mineralId === itemId)) {
         src = def.id
@@ -451,8 +454,10 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
     onToast(`「${engine.ctx.items.get(itemId)?.name ?? itemId}」没有精炼产出与市场渠道——先采集可炼原料再来看。`, true)
   }
 
-  /** 带精炼配方的全部矿石/气体/冰矿（2026-09-08 船长定：精炼炉默认显示所有可精炼资源；空料卡提示引导） */
-  const allItemDefs = [...engine.ctx.items.values()]
+  /** 带精炼配方的全部矿石/气体/冰矿（2026-09-08 船长定：精炼炉默认显示所有可精炼资源；空料卡提示引导）
+   *  ⚠ **走"玩家可见目录"**（`visibleItemDefs`）：未上线资源（标 `ItemDef.unreleased`，如虫洞线的虚空母矿）
+   *  不进这张网格——首版直接扫 `ctx.items` 全目录，导致未上线矿连卡带描述一起挂在工业页上（2026-09-13 实测）。 */
+  const allItemDefs = visibleItemDefs(engine.ctx)
   const oreDefs = allItemDefs.filter(
     (def) => def.kind !== 'wreck' && def.refine !== undefined && def.refine.length > 0,
   )

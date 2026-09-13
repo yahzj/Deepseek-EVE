@@ -25,6 +25,8 @@ import {
   ownsBlueprint,
   manufacturingRunViews,
   isAtHomeLike,
+  // 2026-09-13：站内工业目标只列玩家可见的资源（未上线资源不进 AI 精炼炉下拉）
+  visibleItemDefs,
 } from '@whale/core'
 import type { AiCoreType, FleetShipState, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
@@ -801,8 +803,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     shipTasksOk || mode === 'refine' || mode === 'craft' ? mode : 'craft'
 
   /** 站内工业可指派的目标（与工业页卡片同口径）：
-   *  精炼炉 = 全部带精炼配方的资源；回收炉 = 当前有料（货仓或仓库）的残骸；制造线 = 已学会的蓝图。 */
-  const allItemDefs = [...engine.ctx.items.values()]
+   *  精炼炉 = 全部带精炼配方的资源（**只列玩家可见的**——未上线资源不进下拉，见 `visibleItemDefs`）；
+   *  回收炉 = 当前有料（货仓或仓库）的残骸；制造线 = 已学会的蓝图。 */
+  const allItemDefs = visibleItemDefs(engine.ctx)
   const refineOres = allItemDefs.filter((d) => d.kind !== 'wreck' && (d.refine?.length ?? 0) > 0)
   const refineWrecks = allItemDefs.filter((d) => d.kind === 'wreck' && oreAvailable(state, d.id) > 0)
   const refineAll = [...refineOres, ...refineWrecks]
