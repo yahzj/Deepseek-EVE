@@ -3059,17 +3059,40 @@ for (const m of MODULES) {
       )
       driftPrice += 1
     }
-    const bp = SHIP_BLUEPRINTS.find((b) => b.shipId === ship.id)
-    if (!bp) continue
-    // 定制船的蓝图价 = 唯一定价（无"市场价 × 系数"可比），不参与系数比对
-    if (custom) continue
-    const market = good!.basePrice ?? 0
-    const expect = Math.round(market * tierCoefOf(market))
-    if (Math.abs(bp.priceIsk - expect) > 10_000) {
-      warn.push(
-        `舰船蓝图价格口径：${ship.name}（${ship.id}）蓝图价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「市场价 × 档位系数」应为 ${expect.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+    // 2026-09-13 船长：T3/T4/T5 各有一张**一次性蓝图**（价格 = 行价 ×100%，不是 ×系数）⇒
+    // 本契约改按 `singleUse` 分流：一次性那张比 ×1、普通那张比 ×档位系数。
+    const bps = SHIP_BLUEPRINTS.filter((b) => b.shipId === ship.id)
+    if (bps.length === 0) continue
+    // 定制船只有一次性图纸时：它的价也是"行价 ×1"（行价 = 只收不卖的市场基准价）⇒ 仍可按 ×1 核
+    const market = (good?.basePrice ?? 0) || ship.priceIsk
+    for (const bp of bps) {
+      if (bp.singleUse === true) {
+        if (market > 0 && Math.abs(bp.priceIsk - market) > 10_000) {
+          warn.push(
+            `一次性舰船蓝图价格口径：${ship.name}（${ship.id}）${bp.id} 价 = ${bp.priceIsk.toLocaleString('zh-CN')}，` +
+              `按船长口径「**舰船价格的 100%**」应为 ${market.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+          )
+          driftBp += 1
+        }
+        continue
+      }
+      // 永久（可学）蓝图：定制船的蓝图价 = 唯一定价（无"市场价 × 系数"可比），不参与系数比对
+      if (custom) continue
+      const expect = Math.round(market * tierCoefOf(market))
+      if (Math.abs(bp.priceIsk - expect) > 10_000) {
+        warn.push(
+          `舰船蓝图价格口径：${ship.name}（${ship.id}）蓝图价 = ${bp.priceIsk.toLocaleString('zh-CN')}，按「市场价 × 档位系数」应为 ${expect.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+        )
+        driftBp += 1
+      }
+    }
+    // **一次性蓝图必须存在**（船长 2026-09-13：「给T3船也添加一次性蓝图」＋「T4T5舰船都出一张」）：
+    // 判据 = 有市场行价（即非壳体）的 T3/T4/T5 舰，必须有一张 `singleUse` 舰船蓝图。
+    if (ship.tier >= 3 && market > 0 && !bps.some((b) => b.singleUse === true)) {
+      errors.push(
+        `一次性舰船蓝图缺失：${ship.name}（${ship.id}，T${ship.tier}）没有一次性蓝图——` +
+          `船长 2026-09-13 裁定「T3/T4/T5 各出一张，价格按舰船价格的 100%」`,
       )
-      driftBp += 1
     }
   }
   console.log(
