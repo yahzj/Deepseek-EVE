@@ -476,6 +476,19 @@ export function App({ engine }: { engine: GameEngine }) {
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), 3200)
   }
+  /**
+   * **点击底部提示条立即关闭**（2026-09-13 船长：「屏幕下方的错误提示，允许玩家通过点击快速关闭。」）——
+   * 两种底部提示（操作提示 `.app-toast` 与随机事件小弹卡 `.app-event-toast`）**整条可点**：
+   * 点一下即消失，并**同时清掉自动隐藏计时器**（否则点掉后旧定时器仍会到点置空一次，无害但语义脏）。
+   * **自动隐藏口径不变**（操作 3.2s / 事件 6s）；点击只做关闭，不触发任何其它动作。
+   */
+  const dismissToast = (): void => {
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current)
+      toastTimer.current = null
+    }
+    setToast(null)
+  }
 
   // 2026-09-08 引擎系统通知（交付循环终止弹窗）：engine 心跳/离线结算后调用
   useEffect(() => {
@@ -541,6 +554,13 @@ export function App({ engine }: { engine: GameEngine }) {
   const [eventToast, setEventToast] = useState<{ id: number; text: string } | null>(null)
   const lastSeenLogId = useRef<number>(state.logs[state.logs.length - 1]?.id ?? 0)
   const eventTimer = useRef<number | null>(null)
+  /**
+   * ⚠ **effect 依赖 = 日志尾号（单调递增），不能写 `[state.logs]`**（2026-09-13 三号修既有缺陷）：
+   * `core.state.addLog` 是**原地 `push` / `splice`**（数组引用永不变）⇒ 依赖数组本身的 effect
+   * **挂载后再也不会重跑** ⇒ 小弹卡此前**从不弹出**。真机实测：日志面板里已有「✦ 扫描完成：…」，
+   * 而页面全程不存在 `.app-event-toast`。改用尾号做依赖后语义不变（只认"挂载之后新增"的日志）。
+   */
+  const logTailId = state.logs[state.logs.length - 1]?.id ?? 0
   useEffect(() => {
     const logs = state.logs
     for (let i = logs.length - 1; i >= 0; i--) {
@@ -555,7 +575,16 @@ export function App({ engine }: { engine: GameEngine }) {
     }
     const tail = logs[logs.length - 1]
     if (tail) lastSeenLogId.current = tail.id
-  }, [state.logs])
+  }, [logTailId])
+
+  /** 随机事件小弹卡的「点击关闭」（口径同 `dismissToast`；本卡自动隐藏为 6 秒） */
+  const dismissEventToast = (): void => {
+    if (eventTimer.current !== null) {
+      window.clearTimeout(eventTimer.current)
+      eventTimer.current = null
+    }
+    setEventToast(null)
+  }
 
   async function handleSave(): Promise<void> {
     const ok = await engine.persist()
@@ -879,8 +908,21 @@ export function App({ engine }: { engine: GameEngine }) {
 
 
 
-        {toast ? <div className={`app-toast${toast.warn ? ' is-warn' : ''}`}>{toast.text}</div> : null}
-        {eventToast ? <div className="app-event-toast">{eventToast.text}</div> : null}
+        {/* 两种底部提示**整条可点 = 立即关闭**（2026-09-13 船长；见 dismissToast 注释） */}
+        {toast ? (
+          <div
+            className={`app-toast${toast.warn ? ' is-warn' : ''}`}
+            title="点击关闭提示"
+            onClick={dismissToast}
+          >
+            {toast.text}
+          </div>
+        ) : null}
+        {eventToast ? (
+          <div className="app-event-toast" title="点击关闭提示" onClick={dismissEventToast}>
+            {eventToast.text}
+          </div>
+        ) : null}
         {/* B1 低安遭遇横幅：待决（迎战/快速脱离，60s 超时自动脱离）与遭遇战进行中 */}
         {state.encounter.active ? (
           <div className={`app-enc-banner${state.encounter.battle ? ' is-fight' : ''}`}>

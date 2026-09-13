@@ -695,6 +695,14 @@ body {
 
 }
 
+/* 两种底部提示**整条可点 = 立即关闭**（2026-09-13 船长：「屏幕下方的错误提示，允许玩家通过点击快速关闭。」）：
+   光标手型 + 悬停提亮（照 .app-btn:hover 的做法改底色/描边，**不用 filter**——见约定第十四章性能纪律）；
+   点击只做关闭，不改自动隐藏时长（操作 3.2s / 事件 6s），也不新增任何视觉元素。 */
+.app-toast,
+.app-event-toast { cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.app-toast:hover { background: #16283c; }
+.app-event-toast:hover { border-color: rgba(244, 201, 93, 0.9); }
+
 /* ---------- 顶部 ISK 余额 ---------- */
 
 .app-isk {
