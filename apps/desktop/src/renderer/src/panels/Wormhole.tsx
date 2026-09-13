@@ -155,17 +155,26 @@ export function WormholePanel({
             {run ? (run.attending ? '人在洞里 · 离开即暂停（进度保存）' : '已离开 · 进度已保存') : '调试入口 · 施工中（拍板后对玩家开放）'}
           </span>
           <div className="app-wh-tabs">
-            {(Object.keys(TAB_LABEL) as WhTab[]).map((k) => (
-              <button
-                key={k}
-                className={`app-btn is-small${tab === k ? ' is-primary' : ''}`}
-                onClick={() => setTab(k)}
-                disabled={k !== 'prep' && !run}
-                title={k !== 'prep' && !run ? '还没进洞' : undefined}
-              >
-                {TAB_LABEL[k]}
-              </button>
-            ))}
+            {(Object.keys(TAB_LABEL) as WhTab[]).map((k) => {
+              /**
+               * **进洞后不许回「准备」页**（船长 2026-09-13 报的 UI BUG）：
+               * 编队一进洞就锁定了（人也进洞了），再回准备页既能改编队又能重复「进入虫洞」，
+               * 语义上是"人已经下去了还能重选队伍"。⇒ `run` 存在时「准备」置灰，
+               * 要改编队必须先撤离/结算本趟（回合制，页签状态不影响引擎）。
+               */
+              const blocked = k === 'prep' ? !!run : !run
+              return (
+                <button
+                  key={k}
+                  className={`app-btn is-small${tab === k ? ' is-primary' : ''}`}
+                  onClick={() => setTab(k)}
+                  disabled={blocked}
+                  title={k === 'prep' && run ? '已在洞里：先撤离或结算本趟，才能重新编队' : !run && k !== 'prep' ? '还没进洞' : undefined}
+                >
+                  {TAB_LABEL[k]}
+                </button>
+              )
+            })}
           </div>
           <button className="app-btn is-small" onClick={handleClose}>
             ✕ 关闭（离开虫洞）
