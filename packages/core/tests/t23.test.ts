@@ -5,11 +5,12 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState, DEFAULT_START_ISK, serializeSaveFile, loadSaveFile } from '../src/index'
 import type { GameState } from '../src/state'
+import { CURRENT_STATE_VERSION } from '../src/state'
 
 describe('v23 序章·苏醒', () => {
   it('prologue 新档：零资金、鲣鱼默认驾驶且带 80% 损伤、沙猫在库、无预置炮台弹药、onboarding step 0', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
-    expect(s.version).toBe(24)
+    expect(s.version).toBe(CURRENT_STATE_VERSION)
     expect(s.wallet.isk).toBe(0)
     expect(s.shipId).toBe('sh-falconet')
     expect(s.fleet['sh-falconet']!.durability).toBe(0.8)
@@ -37,7 +38,7 @@ describe('v23 序章·苏醒', () => {
     delete v23.sideTasks
     v23.version = 23
     const loaded = loadSaveFile(serializeSaveFile(v23 as unknown as GameState, 0))
-    expect(loaded.state.version).toBe(24)
+    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state.onboarding.step).toBe(-1)
     expect(Object.keys(loaded.state.importantTasks)).toEqual([])
     expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null })

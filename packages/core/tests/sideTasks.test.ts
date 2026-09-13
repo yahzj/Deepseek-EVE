@@ -40,6 +40,7 @@ import {
   shortestTravelMinutes,
 } from '../src/index'
 import { belt, makeTestCtx, ore } from './helpers'
+import { CURRENT_STATE_VERSION } from '../src/state'
 
 /** 本板周期 = 市场常驻订单寿命（20 分钟；与 ctx.balance.market.orderLifeMs.common 同源） */
 const PERIOD = DEFAULT_BALANCE.market.orderLifeMs.common
@@ -698,7 +699,7 @@ describe('v24 时效任务：存档 v23→v24 迁移 / 老档读入 / 往返', (
     delete raw.sideTasks
     raw.version = 23
     const loaded = loadSaveFile(serializeSaveFile(raw as unknown as GameState, 0))
-    expect(loaded.state.version).toBe(24)
+    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null })
     expect(loaded.state.wallet.isk).toBe(10_000) // 其余字段无损
     const ctx = makeTestCtx({

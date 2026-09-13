@@ -678,6 +678,15 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     }
     return next
   },
+  24: (raw) => {
+    // v24 -> v25（2026-09-13 虫洞副本开工）：补 `wormhole` 空状态（run: null）——
+    // **字段纯新增、零行为变化**；老档不在洞里，故无需迁移进行中的副本。
+    // ⚠ 施工期铁律：虫洞完成前对玩家不可见（入口走调试开关），完成后由船长拍板才上线。
+    const next: RawState = { ...raw }
+    const wh = asRaw(next.wormhole)
+    if (wh === null || typeof wh !== 'object') next.wormhole = { run: null, lastFleetLost: 0 }
+    return next
+  },
 }
 /** 字符串或 null 归一（迁移辅助） */
 function asNullableString(v: unknown): string | null {
@@ -2331,7 +2340,58 @@ function normalizeState(raw: unknown): GameState {
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
-  const normalized: GameStateV24 = {
+  // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
+  const cleanWormhole = (): GameState['wormhole'] => {
+    const wRaw = asRaw(src.wormhole)
+    const rRaw = asRaw(wRaw.run)
+    const phaseRaw = rRaw.phase
+    const phase: 'inside' | 'extracting' | null =
+      phaseRaw === 'inside' || phaseRaw === 'extracting' ? phaseRaw : null
+    const depth = Math.floor(num(rRaw.depth))
+    const turnsLeft = Math.floor(num(rRaw.turnsLeft))
+    const turnsTotal = Math.floor(num(rRaw.turnsTotal))
+    const fleet = Array.isArray(rRaw.fleet) ? rRaw.fleet.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    const bagRaw = Array.isArray(rRaw.bag) ? rRaw.bag : []
+    const bag: Array<{ itemId: string; units: number }> = []
+    for (const it of bagRaw) {
+      const row = asRaw(it)
+      const itemId = typeof row.itemId === 'string' ? row.itemId : ''
+      const units = Math.floor(num(row.units))
+      if (itemId.length > 0 && units > 0) bag.push({ itemId, units })
+    }
+    const pn = asRaw(rRaw.pendingNode)
+    const kindRaw = pn.kind
+    const nodeKind: 'combat' | 'pickup' | 'event' | null =
+      kindRaw === 'combat' || kindRaw === 'pickup' || kindRaw === 'event' ? kindRaw : null
+    const run =
+      phase !== null
+        ? {
+            phase,
+            depth: depth > 0 ? depth : 1,
+            nodeIndex: Math.max(0, Math.floor(num(rRaw.nodeIndex))),
+            turnsLeft: Math.max(0, turnsLeft),
+            turnsTotal: Math.max(0, turnsTotal),
+            fleet,
+            totalMass: Math.max(0, num(rRaw.totalMass)),
+            bag,
+            pendingNode:
+              nodeKind === null
+                ? null
+                : {
+                    kind: nodeKind,
+                    waves: Math.max(0, Math.floor(num(pn.waves))),
+                    pickups: Math.max(0, Math.floor(num(pn.pickups))),
+                    ...(typeof pn.eventKey === 'string' && pn.eventKey.length > 0 ? { eventKey: pn.eventKey } : {}),
+                    cost: Math.max(1, Math.floor(num(pn.cost))),
+                  },
+            nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
+          }
+        : null
+    return { run, lastFleetLost: Math.max(0, Math.floor(num(wRaw.lastFleetLost))) }
+  }
+  const wormhole = cleanWormhole()
+
+  const normalized: GameState = {
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
@@ -2398,6 +2458,7 @@ function normalizeState(raw: unknown): GameState {
     onboarding,
     importantTasks,
     sideTasks,
+    wormhole,
     logs,
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）

@@ -792,5 +792,29 @@ export {
   wormholeStepCost,
   wormholeTurnBudget,
   wormholeUnitsPerSlot,
+  // C 批：副本状态机（层/节点/回合/撤离）与层曲线
+  EMPTY_WORMHOLE_STATE,
+  WORMHOLE_THREAT_BASE,
+  WORMHOLE_THREAT_PER_LAYER,
+  WORMHOLE_REWARD_GROWTH,
+  wormholeStartRun,
+  wormholeMakeNode,
+  wormholeAdvanceNode,
+  wormholeDescend,
+  wormholeExtract,
+  wormholeLayerThreat,
+  wormholeLayerRewardMul,
+  wormholeNodesPerLayer,
 } from './wormhole'
-export type { WormholeAdmission, WormholeAdmissionCode, WormholeBagSlot } from './wormhole'
+export type {
+  WormholeAdmission,
+  WormholeAdmissionCode,
+  WormholeBagSlot,
+  WormholeState,
+  WormholeRunState,
+  WormholeNode,
+  WormholeNodeKind,
+  WormholePhase,
+  WormholeStartResult,
+  WormholeAdvanceResult,
+} from './wormhole'

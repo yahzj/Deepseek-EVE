@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SimContext, MarketGoodDef, StationSiteDef } from '../src/types'
 import type { GameState } from '../src/state'
-import { createInitialState } from '../src/state'
+import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countWare } from '../src/inventory'
 import { sellAll, sellWareItem } from '../src/industry'
@@ -411,7 +411,7 @@ describe('A3 回归：v8→v9 迁移后直接 8 小时长离线（市场开市 +
     }
     const loaded = loadSaveFile(JSON.stringify({ format: 'whale-idle-save', version: 8, savedAtWallMs: 100, state: v8Raw }))
     const state = loaded.state
-    expect(state.version).toBe(24)
+    expect(state.version).toBe(CURRENT_STATE_VERSION)
     expect(state.learnedRecipes).toEqual(['bp-a', 'bp-b']) // 蓝图无损平移
 
     // 直接 8 小时大离线（480 窗口）

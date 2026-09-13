@@ -11,11 +11,13 @@
 
 import type { AiCoreType, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
 import { emptyFitted } from './labels'
+import { EMPTY_WORMHOLE_STATE } from './wormhole'
+import type { WormholeState } from './wormhole'
 
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 24
+export const CURRENT_STATE_VERSION = 25
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -882,6 +884,12 @@ export interface GameStateV7 {
   standings: Record<string, number>
   /** 远征作业 */
   expedition: ExpeditionState
+  /**
+   * **终局玩法「虫洞」副本状态**（v25 = v24 + 本字段；2026-09-13 开工）。
+   * ⚠ 施工期铁律（船长）：**虫洞完成前对玩家不可见**（入口走调试开关、数据走 `unreleased` 闸门），
+   * 完成后由船长拍板才上线。老档缺省 = `{ run: null, lastFleetLost: 0 }`（零迁移）。
+   */
+  wormhole: WormholeState
   logs: LogEntry[]
 }
 
@@ -1218,8 +1226,18 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   rareBurnUnits: Record<string, number>
 }
 
-/** 对外统一称呼：当前版本状态（v24 = v23 + 任务中心·时效任务板 sideTasks） */
-export type GameState = GameStateV24
+/**
+ * 第二十五版存档结构（当前版本）：**v25 = v24 + 虫洞副本状态 `wormhole`**（2026-09-13 开工）。
+ *
+ * 施工期铁律（船长）：「**虫洞完成前对玩家不可见**（入口走调试开关）；**完成后需要我拍板**」。
+ * 字段纯新增、老档迁移补 `EMPTY_WORMHOLE_STATE`（`run: null`）⇒ **零行为变化**。
+ */
+export type GameStateV25 = Omit<GameStateV24, 'version'> & {
+  version: 25
+  wormhole: WormholeState
+}
+/** 对外统一称呼：当前版本状态（v25 = v24 + 虫洞副本状态） */
+export type GameState = GameStateV25
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -1412,11 +1430,11 @@ export function createInitialState(opts?: {
   seed?: number
   nowWallMs?: number
   prologue?: boolean
-}): GameStateV24 {
+}): GameStateV25 {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV24 = {
-    version: 24,
+  const state: GameStateV25 = {
+    version: 25,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -1588,6 +1606,7 @@ export function createInitialState(opts?: {
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
+    wormhole: { ...EMPTY_WORMHOLE_STATE }, // v25：虫洞副本（施工期对玩家不可见；见 wormhole.ts 头注释）
     logs: [],
   }
   if (prologue) {
