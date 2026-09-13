@@ -22,6 +22,17 @@ import {
   wormholeCardIdFor,
 } from './wormholeFoes'
 import type { WormholeFoeKind } from './wormholeFoes'
+import {
+  WORMHOLE_TURN_PER_ACTIVATE,
+  WORMHOLE_TURN_PER_MOVE,
+  WORMHOLE_TURN_PER_SCAN,
+  gridCellAt,
+  gridScanTargets,
+  isExitCell,
+  signalOfPlace,
+  wormholeMakeGrid,
+} from './wormholeGrid'
+import type { HexCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -401,8 +412,11 @@ export function wormholeStartRun(
       fleet: [...shipIds],
       totalMass: adm.totalMass,
       bag: [],
-      pendingNode: wormholeMakeNode(rngSeed, depth, 0),
+      // F3a-2：层内内容**全部**由网格承载（`grid`）；`pendingNode` 是旧线性节点口径的遗留字段，
+      // 新开趟一律为 `null`（老档里已有的 pendingNode 仍能被 `wormholeAdvanceNode` 走完，见该函数注释）。
+      pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
+      grid: wormholeMakeGrid(rngSeed, depth),
     },
   }
 }
@@ -492,7 +506,8 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number): Wormhol
   run.depth += 1
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
-  run.pendingNode = wormholeMakeNode(rngSeed, run.depth, 0)
+  // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
+  run.grid = wormholeMakeGrid(rngSeed, run.depth)
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
@@ -514,9 +529,13 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
 }
 
 /**
- * 撤离（**只在层末可用、且本层守卫已清**）——**唯一例外是"回合走不动了"的逃生门**：
- * 回合耗尽/付不起当前节点时，哪怕节点没结算、层末守卫没清，也放行撤离（见 `wormholeOutOfTurns`）。
+ * 撤离（**层末守卫清掉之后**才放行）——**唯一例外是"回合走不动了"的逃生门**：
+ * 回合耗尽时，哪怕本层守卫没清，也放行撤离（见 `wormholeOutOfTurns`）。
  * 战斗中（`run.battle` 非空）一律不许撤——船长裁定「战斗没结束不能撤」优先于逃生门。
+ *
+ * ⚠ F3a-2 口径变更：网格世界里"层内还有事没做完"不再是一道门——每个地点都是**自愿**去处理的，
+ * 故旧口径的 `pendingNode !== null ⇒ 不许撤` 只对老档（线性节点）生效；网格层的门只剩**层末守卫**
+ * 与**进行中的战斗**两条（都与设计稿 §3 一致）。
  */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
@@ -527,6 +546,199 @@ export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   }
   run.phase = 'extracting'
   return { ok: true }
+}
+
+/* ═══════════ 五之二、层内网格探索（F3a-2 · 船长 2026-09-13 口径） ═══════════
+ *
+ * 船长原话：「探索采用网格地图的形式。整体网格地图呈现圆型。玩家初始随机出现在一个网格地点入口。
+ * 前往下一层的入口位于随机位置。玩家需要依靠扫描来获取周围网格地点的信息……玩家扫描需要消耗一回合。
+ * 前往其他地点消耗一回合，激活该地点效果也需要一回合……玩家只有到达目标地点后才能知道目标地点的
+ * 确切信息并更新地点，否则只会显示一个信号。」
+ * 另：「**玩家可以到达任意位置，包括未扫描，但是前往未扫描的地方需要警告玩家即将前往未知地点**」
+ * （⇒ 前往**不限邻格、不限距离**，一律 1 回合；未扫描的格要先警告再确认）。
+ *
+ * 三个动作 = 这一层的全部操作面：**扫描 / 前往 / 激活**，各花 1 回合（`wormholeGrid.ts` 的常量）。
+ */
+
+/** 激活一个地点会触发什么（**只回报效果，不在这里开战**——开战是 `wormholeBattle.wormholeActivateAt`） */
+export type WormholeActivateEffect =
+  /** 站在"下一层入口"上：触发层末守卫战（`WORMHOLE_EXIT_KIND`） */
+  | { kind: 'exit'; key: string }
+  /** 舰船信号：直接一场战斗（船长：「'舰船信号'地点直接就是一场战斗」） */
+  | { kind: 'battle'; key: string }
+  /** 舰船墓场 / 遗迹：打捞（F3b 落收益与"遗迹大概率触发恶战"） */
+  | { kind: 'salvage'; key: string; place: 'graveyard' | 'ruins' }
+  /** 矿脉：挖掘虚空母矿（F3b） */
+  | { kind: 'excavate'; key: string }
+  /** 虫洞谜质：取回后本趟内为我方提供增强（效果待船长裁定，F3c） */
+  | { kind: 'matter'; key: string }
+
+/**
+ * 网格动作的统一结果（`wormholeGridScan` / `wormholeGridTravel` / `wormholeGridActivate` 共用）。
+ *
+ * ⚠ **被拒时绝不扣回合**（`spent` 只在 `ok === true` 时有值）：回合是这一层唯一的硬通货，
+ * "点了但白扣"是这个玩法最不能忍的失误。
+ */
+export interface WormholeGridActionResult {
+  ok: boolean
+  error?: string
+  /** 拒绝码：`unknown-target` = 目标格没扫过（界面据此先弹「前往未知地点」的确认） */
+  code?: 'unknown-target'
+  /** 本次花掉几回合 */
+  spent?: number
+  /** 本次新揭开的格（扫描；`signal === null` = 空信息地点） */
+  revealed?: { key: string; signal: WormholeSignal | null }[]
+  /** 到达后该格的真相（前往） */
+  arrived?: { key: string; place: WormholePlace; signal: WormholeSignal | null; atExit: boolean }
+  /** 激活产生的效果（激活；有它就该接着开战/结算，见 `wormholeActivateAt`） */
+  effect?: WormholeActivateEffect
+  /** 回合耗尽 ⇒ 只能撤离（与 `wormholeAdvanceNode` 的 `mustExtract` 同口径） */
+  mustExtract?: boolean
+}
+
+/** 本层网格 + 副本状态（不在洞里 / 老档没有网格 ⇒ null） */
+function gridRun(state: GameState): { run: WormholeRunState; grid: WormholeGridState } | null {
+  const run = state.wormhole.run
+  if (!run?.grid) return null
+  return { run, grid: run.grid }
+}
+
+/** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
+function gridActionBlocked(run: WormholeRunState): string | null {
+  return run.battle ? '战斗中：先打完这一场。' : null
+}
+
+/**
+ * **扫描**（1 回合）：揭开"当前格 + 扫描半径内"还没扫过的格。
+ * 周围都扫过了 ⇒ **拒绝且不扣回合**（不让玩家把回合浪费在重复扫描上）。
+ */
+export function wormholeGridScan(state: GameState): WormholeGridActionResult {
+  const hit = gridRun(state)
+  if (!hit) return { ok: false, error: '本层没有网格：无法扫描。' }
+  const { run, grid } = hit
+  const blocked = gridActionBlocked(run)
+  if (blocked) return { ok: false, error: blocked }
+  const targets = gridScanTargets(grid)
+  if (targets.length === 0) return { ok: false, error: '周围都扫过了：换个地点再扫。' }
+  if (run.turnsLeft < WORMHOLE_TURN_PER_SCAN) {
+    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+  }
+  run.turnsLeft -= WORMHOLE_TURN_PER_SCAN
+  const revealed: { key: string; signal: WormholeSignal | null }[] = []
+  for (const c of targets) {
+    const cell = gridCellAt(grid, c)
+    if (!cell) continue
+    if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
+    revealed.push({ key: cell.key, signal: signalOfPlace(cell.place) })
+  }
+  const empty = revealed.filter((r) => r.signal === null).length
+  addLog(
+    state,
+    'info',
+    `🕳 扫描（半径 ${grid.scanRadius}）：揭开 ${revealed.length} 格` +
+      (empty > 0 ? `（其中 ${empty} 格没有信号）` : '') +
+      ` · 剩 ${run.turnsLeft} 回合。`,
+  )
+  return { ok: true, spent: WORMHOLE_TURN_PER_SCAN, revealed, mustExtract: run.turnsLeft <= 0 }
+}
+
+/**
+ * **前往**（1 回合，不限距离 —— 船长裁定"可以到达任意位置"）。
+ * 未扫描的格：**默认拒绝**并回 `code='unknown-target'`，界面拿它弹「即将前往未知地点」的确认，
+ * 玩家确认后带 `confirmUnknown: true` 再来一次（这才是"警告"该有的样子：不会点一下就冲进去）。
+ */
+export function wormholeGridTravel(
+  state: GameState,
+  target: HexCell,
+  opts?: { confirmUnknown?: boolean },
+): WormholeGridActionResult {
+  const hit = gridRun(state)
+  if (!hit) return { ok: false, error: '本层没有网格：无法前往。' }
+  const { run, grid } = hit
+  const blocked = gridActionBlocked(run)
+  if (blocked) return { ok: false, error: blocked }
+  const cell = gridCellAt(grid, target)
+  if (!cell) return { ok: false, error: '那一格不在本层网格里。' }
+  if (cell.key === gridCellAt(grid, grid.pos)?.key) return { ok: false, error: '已经在这个地点了。' }
+  const scanned = grid.scanned.includes(cell.key) || grid.visited.includes(cell.key)
+  if (!scanned && !opts?.confirmUnknown) {
+    return { ok: false, error: '这个地点还没扫描过：前往未知地点？', code: 'unknown-target' }
+  }
+  if (run.turnsLeft < WORMHOLE_TURN_PER_MOVE) {
+    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+  }
+  run.turnsLeft -= WORMHOLE_TURN_PER_MOVE
+  grid.pos = { q: cell.q, r: cell.r }
+  // 到达 ⇒ 真相揭开（`revealOf` 里 visited 优先于 scanned）；同时并入 scanned，避免后续扫描重复"揭开"它
+  if (!grid.visited.includes(cell.key)) grid.visited.push(cell.key)
+  if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
+  const signal = signalOfPlace(cell.place)
+  const atExit = isExitCell(grid, cell)
+  addLog(
+    state,
+    'info',
+    atExit
+      ? `🕳 抵达下一层入口（${cell.q},${cell.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
+      : `🕳 抵达新地点（${cell.q},${cell.r}）：${WORMHOLE_PLACE_TEXT[cell.place]} · 剩 ${run.turnsLeft} 回合。`,
+  )
+  return {
+    ok: true,
+    spent: WORMHOLE_TURN_PER_MOVE,
+    arrived: { key: cell.key, place: cell.place, signal, atExit },
+    mustExtract: run.turnsLeft <= 0,
+  }
+}
+
+/**
+ * **激活当前地点**（1 回合，每个地点只算一次）。
+ * - 空信息地点 ⇒ **拒绝且不扣回合**（"什么都没有"，没有可执行的作业）；
+ * - 站在下一层入口 ⇒ 层末守卫战（优先于地点自身类型：入口的意义就是"下一层"）；
+ * - 其余按地点类型给效果，开战/结算由 `wormholeActivateAt` 接着做。
+ */
+export function wormholeGridActivate(state: GameState): WormholeGridActionResult {
+  const hit = gridRun(state)
+  if (!hit) return { ok: false, error: '本层没有网格：无法激活。' }
+  const { run, grid } = hit
+  const blocked = gridActionBlocked(run)
+  if (blocked) return { ok: false, error: blocked }
+  const cell = gridCellAt(grid, grid.pos)
+  if (!cell) return { ok: false, error: '当前位置不在网格里。' }
+  if (grid.activated.includes(cell.key)) return { ok: false, error: '这个地点已经处理过了。' }
+  const atExit = isExitCell(grid, cell)
+  if (!atExit && cell.place === 'empty') return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
+  if (atExit && (run.bossCleared ?? 0) >= run.depth) {
+    return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
+  }
+  if (run.turnsLeft < WORMHOLE_TURN_PER_ACTIVATE) {
+    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+  }
+  run.turnsLeft -= WORMHOLE_TURN_PER_ACTIVATE
+  grid.activated.push(cell.key)
+  const effect: WormholeActivateEffect = atExit
+    ? { kind: 'exit', key: cell.key }
+    : cell.place === 'ship'
+      ? { kind: 'battle', key: cell.key }
+      : cell.place === 'graveyard' || cell.place === 'ruins'
+        ? { kind: 'salvage', key: cell.key, place: cell.place }
+        : cell.place === 'vein'
+          ? { kind: 'excavate', key: cell.key }
+          : { kind: 'matter', key: cell.key }
+  addLog(
+    state,
+    'info',
+    `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 剩 ${run.turnsLeft} 回合。`,
+  )
+  return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
+}
+
+/** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */
+export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
+  empty: '空信息地点',
+  graveyard: '舰船墓场',
+  ruins: '遗迹',
+  ship: '舰船信号',
+  vein: '矿脉',
+  matter: '虫洞谜质',
 }
 /* ═══════════ 六、E 批：入洞 / 拾取 / 背包（界面接线所需的引擎动作） ═══════════ */
 
@@ -729,8 +941,9 @@ export function wormholeEnter(
 
 /**
  * **拾取一堆**（每堆 = 一堆原矿；进包前先做容量预检，**放不下就不给捡**——不静默丢弃）。
- * ⚠ 回合口径：节点 `cost` 已按"每堆 +1 回合"计入（C 批 `wormholeStepCost`），故**拾取本身不再扣回合**，
- * 回合在"结算本节点"时一次性扣（E 批不重复计费；F 批若改逐步扣费再说）。
+ * ⚠ 回合口径：F3a-2 起"打捞/挖掘"的回合花在**激活地点**那一步（各 1 回合）⇒ **拾取本身不再扣回合**
+ * （旧线性节点口径是把"每堆 +1 回合"算进节点 `cost`，在"结算本节点"时一次扣掉；两代口径都不重复计费）。
+ * 堆的宿主：网格层 = **当前所在格**（`grid.cells[].piles`）；老档线性层 = `pendingNode.piles`。
  */
 export function wormholeTakePile(
   state: GameState,
@@ -739,7 +952,11 @@ export function wormholeTakePile(
 ): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。' }
-  const piles = run.pendingNode?.piles
+  const grid = run.grid
+  const holder: { piles?: WormholePile[] } | undefined = grid
+    ? gridCellAt(grid, grid.pos)
+    : (run.pendingNode ?? undefined)
+  const piles = holder?.piles
   if (!piles || pileIndex < 0 || pileIndex >= piles.length) {
     return { ok: false, error: '这里没有可拾取的东西。' }
   }

@@ -141,6 +141,17 @@ export const WORMHOLE_SCAN_RADIUS_BASE = 1
 
 /* ═══════════ 三、每层网格状态（可存档的纯数据） ═══════════ */
 
+/**
+ * 格上的战利品堆（残骸/稀有残骸/矿……）。
+ * ⚠ 结构同 `wormhole.WormholePile`，但**在这里另立一份**：`wormhole.ts` 要 import 本文件，
+ * 本文件若反过来 import `WormholePile` 就成环（`state → wormhole → wormholeGrid → wormhole`）。
+ * TS 是结构类型 ⇒ 两者互相赋值无障碍（`save.ts` 的清洗也照同一形状走）。
+ */
+export interface WormholeCellPile {
+  itemId: string
+  units: number
+}
+
 /** 一格（真相随档；**信号遮蔽靠"未扫描不展示"实现**，不是靠不存） */
 export interface WormholeGridCell {
   key: string
@@ -148,6 +159,8 @@ export interface WormholeGridCell {
   r: number
   /** 真相：到达后才知道 */
   place: WormholePlace
+  /** 该格上还没被搬走的堆（F3b 打捞/挖矿往里放；非资源地点不写该字段） */
+  piles?: WormholeCellPile[]
 }
 
 export interface WormholeGridState {
@@ -174,7 +187,8 @@ export interface WormholeGridState {
 /** 该格此刻**对外可见的信息**（未知 / 只有信号 / 已知真相） */
 export type WormholeCellReveal =
   | { kind: 'unknown' }
-  | { kind: 'signal'; signal: WormholeSignal }
+  /** `signal === null` = **空信息地点**（船长 2026-09-13：扫开发现"这里什么都没有"，占全盘 ≥50%） */
+  | { kind: 'signal'; signal: WormholeSignal | null }
   | { kind: 'known'; signal: WormholeSignal | null; place: WormholePlace }
 
 /** 查格（坏键 ⇒ undefined） */
@@ -182,12 +196,18 @@ export function gridCellAt(grid: WormholeGridState, cell: HexCell): WormholeGrid
   return grid.cells.find((c) => c.key === hexKey(cell.q, cell.r))
 }
 
-/** 某格对外揭示到什么程度（**这条是"信号遮蔽"的唯一判据**） */
+/**
+ * 某格对外揭示到什么程度（**这条是"信号遮蔽"的唯一判据**）。
+ *
+ * ⚠ 2026-09-13 F3a-2 修正：首版这里写的是 `signalOfPlace(place) ?? 'ship'` —— 把**空信息地点
+ * 伪装成"舰船信号"**，后果是船长定的「空信息地点占 ≥50%」在界面上根本看不出来（半张盘全是
+ * 舰船信号，扫描反而在骗人）。改成如实给 `null`（扫开 = "没有信号"），与 `signalOfPlace` 同源。
+ */
 export function revealOf(grid: WormholeGridState, cell: HexCell): WormholeCellReveal {
   const c = gridCellAt(grid, cell)
   if (!c) return { kind: 'unknown' }
   if (grid.visited.includes(c.key)) return { kind: 'known', signal: signalOfPlace(c.place), place: c.place }
-  if (grid.scanned.includes(c.key)) return { kind: 'signal', signal: signalOfPlace(c.place) ?? 'ship' }
+  if (grid.scanned.includes(c.key)) return { kind: 'signal', signal: signalOfPlace(c.place) }
   return { kind: 'unknown' }
 }
 
@@ -345,6 +365,18 @@ export function gridTally(grid: WormholeGridState): {
 /** 该格是否"该层末守卫"（= 下一层入口） */
 export function isExitCell(grid: WormholeGridState, cell: HexCell): boolean {
   return grid.exit.q === cell.q && grid.exit.r === cell.r
+}
+
+/**
+ * **该格的"内容序号"**（0 起）：给 `wormholeCardIdFor(depth, index)` 轮换敌卡用。
+ *
+ * 旧（线性节点）口径用 `run.nodeIndex` 当序号；网格世界里没有"第几个节点"了，
+ * 若继续用常量 0，全层每场战斗都是同一张敌卡（一层里连打三场完全重样）——
+ * 故按格坐标散列出序号：**同格恒同序**（可复现）、不同格大体不同（有变化）。
+ */
+export function gridContentIndex(grid: WormholeGridState, cell: HexCell = grid.pos): number {
+  const n = Math.abs(cell.q * 7 + cell.r * 13 + grid.radius * 3)
+  return n % 8
 }
 
 /** 层末守卫战的用途键（与现有 `WormholeFoeKind` 对齐，F3b 接战斗时直接用） */

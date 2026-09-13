@@ -1,22 +1,24 @@
 /**
- * 终局玩法「虫洞」· 施工期界面（E 批 · 2026-09-13）。
+ * 终局玩法「虫洞」· 施工期界面（E 批 2026-09-13 起 · F3a-2 层内网格 2026-09-13）。
  *
  * ⚠ **可见性铁律（船长 2026-09-13）**：虫洞完成前**对玩家不可见** —— 入口只在**调试模式**下出现
  * （`debugEnabled()`，与调试面板同一开关），数据侧走 `MarketGoodDef.unreleased` 闸门，
  * **拍板前不得出现在玩家可及路径上**。见 `docs/design/wormhole-extraction-endgame-20260912.md`
  * §「可见性与拍板」与 §十（分批落码）。
  *
- * 本批（E）只做**界面 + 交互**：准备页（编队 / 三联读数）· 节点图 · 背包网格 · 拾取。
- * 战斗接入（节点战斗与撤离战）与收益校准在 **F 批**；故战斗/事件节点的按钮标着「F 批接入」，
- * 施工期用「结算本节点」把流程走通（不产生任何结算收益）。
+ * 界面构成：准备页（编队检索 + 三联读数）· **探索页（F3a-2：圆盘六边形网格 + 扫描/前往/激活）** ·
+ * 背包网格。层内动作各花 1 回合，未扫描的地点要先警告再确认（船长口径）；
+ * 地点收益（打捞/挖掘/谜质增强）在 F3b/F3c —— 施工期这几个地点的按钮会如实提示"作业尚未接入"。
  */
 import { useEffect, useState } from 'react'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_MAX_SHIPS,
+  WORMHOLE_PLACE_TEXT,
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
   cargoCapacityM3Of,
+  isExitCell,
   shipBusyLabel,
   shipDisplayName,
   shipSizeLabel,
@@ -27,11 +29,13 @@ import {
   wormholeFoeThreat,
   wormholeLayerThreat,
   durabilityOf,
+  signalOfPlace,
   wormholeOutOfTurns,
   wormholeShipAllowed,
   wormholeShipMass,
   wormholeUnitsPerSlot,
 } from '@whale/core'
+import type { WormholeGridState, WormholePlace, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
@@ -61,6 +65,11 @@ export function WormholePanel({
   const [tab, setTab] = useState<WhTab>(run ? 'map' : 'prep')
   /** 编队选择（准备页；进洞前才用得上） */
   const [picked, setPicked] = useState<string[]>(state.shipId ? [state.shipId] : [])
+  /**
+   * 待确认的"前往未知地点"目标（船长 2026-09-13：前往未扫描的地方**需要警告**）。
+   * 口径：点未扫描的格 **不直接走**（也不扣回合），先把警告摆出来，等玩家点「确认前往」。
+   */
+  const [pendingCell, setPendingCell] = useState<{ q: number; r: number } | null>(null)
 
   const admission = wormholeAdmission(ctx, picked)
   const cargoM3 = wormholeFleetCargoM3(state, ctx, picked)
@@ -68,6 +77,15 @@ export function WormholePanel({
   const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
   /** 回合走不动了（耗尽 / 付不起当前节点）⇒ 只能撤离（逃生门；与 core `wormholeOutOfTurns` 同一把尺） */
   const outOfTurns = run ? wormholeOutOfTurns(run) : false
+  /** 本层网格（F3a-2；老档该层没有网格 ⇒ 退回旧口径提示） */
+  const grid = run?.grid
+  const hereKey = grid ? `${grid.pos.q},${grid.pos.r}` : ''
+  const hereCell = grid ? grid.cells.find((c) => c.key === hereKey) : undefined
+  const atExit = grid ? isExitCell(grid, grid.pos) : false
+  const bossDone = !!run && (run.bossCleared ?? 0) >= run.depth
+  /** 当前地点能不能激活：空信息地点没作业、处理过的不重复、入口格在守卫清掉后不再触发 */
+  const canActivate =
+    !!grid && !!hereCell && !grid.activated.includes(hereKey) && (atExit ? !bossDone : hereCell.place !== 'empty')
   /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
   const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
 
@@ -125,6 +143,78 @@ export function WormholePanel({
       onToast('已跃入虫洞。')
       setTab('map')
     }
+  }
+
+  /* ── 层内网格动作（F3a-2）：扫描 / 前往 / 激活，各 1 回合 ──
+     口径（船长 2026-09-13）：「玩家可以到达任意位置，包括未扫描，但是前往未扫描的地方需要
+     警告玩家即将前往未知地点」⇒ 点未扫描的格**只摆警告**（不移动、不扣回合），
+     等玩家点「确认前往」才真的走。核心侧同样有这道闸（`code === 'unknown-target'`），
+     界面不依赖"记得拦"——两边同一把尺。 */
+
+  /** 点格：已扫描/已到达 ⇒ 直接走；未扫描 ⇒ 先警告 */
+  function pickCell(q: number, r: number): void {
+    if (!grid || !run) return
+    if (run.battle) {
+      onToast('交火中：先打完这一场。', true)
+      return
+    }
+    const cell = grid.cells.find((c) => c.key === `${q},${r}`)
+    if (!cell) return
+    if (cell.key === hereKey) {
+      onToast('已经在这个地点了。')
+      return
+    }
+    if (!grid.scanned.includes(cell.key) && !grid.visited.includes(cell.key)) {
+      setPendingCell({ q, r })
+      return
+    }
+    travelTo(q, r, false)
+  }
+
+  function travelTo(q: number, r: number, confirmUnknown: boolean): void {
+    const res = engine.wormholeTravel(q, r, confirmUnknown)
+    if (!res.ok) {
+      onToast(res.error ?? '无法前往。', true)
+      return
+    }
+    setPendingCell(null)
+  }
+
+  function doScan(): void {
+    const res = engine.wormholeScan()
+    if (!res.ok) {
+      onToast(res.error ?? '无法扫描。', true)
+      return
+    }
+    onToast('扫描完成（1 回合）。')
+  }
+
+  /**
+   * 激活当前地点：舰船信号 / 下一层入口会**就地开战**（战斗界面接手）；
+   * 其余地点的收益在 F3b/F3c，施工期如实提示"作业尚未接入"（与既有「事件内容尚未接入」同一档）。
+   */
+  function doActivate(): void {
+    const place = hereCell?.place
+    const exitNow = atExit
+    const res = engine.wormholeActivate()
+    if (!res.ok) {
+      onToast(res.error ?? '无法激活。', true)
+      return
+    }
+    if (exitNow || place === 'ship') return // 已开战：交给战斗界面
+    if (place === 'graveyard' || place === 'ruins') onToast('打捞作业尚未接入（F3b）。')
+    else if (place === 'vein') onToast('挖掘作业尚未接入（F3b）。')
+    else if (place === 'matter') onToast('谜质的增强效果待定（F3c）。')
+  }
+
+  function doDescend(): void {
+    const r = engine.wormholeDescend()
+    if (!r.ok) onToast(r.error ?? '无法深入。', true)
+  }
+
+  function doExtract(): void {
+    const r = engine.wormholeExtract()
+    if (!r.ok) onToast(r.error ?? '无法撤离。', true)
   }
 
   /**
@@ -366,55 +456,125 @@ export function WormholePanel({
             <div className="app-wh-run">
               <div className="app-wh-head">
                 <span className="app-wh-cell">第 <b>{run.depth}</b> 层</span>
-                <span className="app-wh-cell">节点 <b>{Math.min(run.nodeIndex + 1, run.nodesPerLayer)}</b> / {run.nodesPerLayer}</span>
+                <span className="app-wh-cell">
+                  已探明 <b>{grid ? grid.visited.length : 0}</b> / {grid ? grid.cells.length : 0} 格
+                </span>
+                <span className="app-wh-cell">
+                  已扫描 <b>{grid ? grid.scanned.length : 0}</b> 格
+                </span>
                 <span className="app-wh-cell">回合 <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
                 <span className="app-wh-cell">背包 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
                 <span className="app-wh-cell">本层威胁 <b>{wormholeLayerThreat(run.depth)}</b></span>
               </div>
-              <WhNodeMap depth={run.depth} nodesPerLayer={run.nodesPerLayer} nodeIndex={run.nodeIndex} atLayerEnd={!run.pendingNode} />
-              {run.phase === 'extracting' ? (
-                <div className="app-wh-node">
-                  <div className="app-wh-node-title">撤离战</div>
-                  <div className="app-dim app-note">
-                    {run.battle
-                      ? '撤离拦截已交火：本场必须打完——打赢，背包里的东西才算带回港；打不完 = 全损。'
-                      : '撤离拦截正在布防：交火马上开始（本场必须打完）。'}
+              {grid && hereCell ? (
+                <>
+                  <div className="app-wh-mapbox">
+                    <WhGridMap grid={grid} onPickCell={pickCell} />
                   </div>
+                  <div className="app-wh-legend">
+                    {GRID_LEGEND.map((l) => (
+                      <span key={l.key} className="app-wh-legend-item">
+                        <svg
+                          className={`app-wh-legend-glyph is-${l.none ? 'unknown' : (l.signal ?? 'blank')}`}
+                          viewBox="-13 -13 26 26"
+                          aria-hidden="true"
+                        >
+                          {l.none ? <polygon points="0,-12 10.39,-6 10.39,6 0,12 -10.39,6 -10.39,-6" /> : <WhGlyph signal={l.signal} />}
+                        </svg>
+                        {l.text}
+                      </span>
+                    ))}
+                  </div>
+                  {pendingCell ? (
+                    <div className="app-wh-ask">
+                      <span>
+                        即将前往<b>未扫描</b>的地点（Q{pendingCell.q} · R{pendingCell.r}）：那里是什么、会不会撞上交火，
+                        现在都还不知道。
+                      </span>
+                      <span className="app-wh-actions">
+                        <button
+                          className="app-btn is-small is-warn"
+                          disabled={!!run.battle || run.turnsLeft < 1}
+                          onClick={() => travelTo(pendingCell.q, pendingCell.r, true)}
+                        >
+                          确认前往（1 回合）
+                        </button>
+                        <button className="app-btn is-small" onClick={() => setPendingCell(null)}>
+                          取消
+                        </button>
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="app-wh-actions">
                     <button
-                      className="app-btn is-small is-warn"
-                      onClick={() => {
-                        engine.wormholeDebugReset()
-                        onToast('已放弃本趟探索（调试用）。', true)
-                        setTab('prep')
-                      }}
+                      className="app-btn is-small"
+                      disabled={!!run.battle || run.turnsLeft < 1}
+                      onClick={doScan}
+                      title="扫描当前地点及周围一圈：只揭开还没扫过的格（1 回合）"
                     >
-                      放弃本趟（调试）
+                      扫描（1 回合）
                     </button>
+                    <button
+                      className="app-btn is-small is-primary"
+                      disabled={!!run.battle || !canActivate || run.turnsLeft < 1}
+                      onClick={doActivate}
+                      title={
+                        atExit
+                          ? '激活下一层入口：迎战本层守卫（打完才能深入或撤离）'
+                          : hereCell.place === 'empty'
+                            ? '空信息地点：没有可执行的作业'
+                            : grid.activated.includes(hereKey)
+                              ? '这个地点已经处理过了'
+                              : '激活当前地点：按地点类型开战 / 打捞 / 挖掘（1 回合）'
+                      }
+                    >
+                      激活此地（1 回合）
+                    </button>
+                    {bossDone ? (
+                      <button
+                        className="app-btn is-small is-primary"
+                        disabled={!!run.battle || run.turnsLeft <= 0}
+                        onClick={doDescend}
+                        title="带着当前进度深入下一层（更深、更值钱、更硬）"
+                      >
+                        继续深入（第 {run.depth + 1} 层 · 威胁 {wormholeLayerThreat(run.depth + 1)}）
+                      </button>
+                    ) : null}
+                    <button
+                      className="app-btn is-small"
+                      disabled={!!run.battle || (!outOfTurns && !bossDone)}
+                      onClick={doExtract}
+                      title={
+                        outOfTurns
+                          ? '回合已走不动：只能撤离（撤离拦截照打）'
+                          : bossDone
+                            ? '进入撤离战：打赢才把背包带回港'
+                            : '先清掉本层守卫（它堵在下一层入口上）'
+                      }
+                    >
+                      撤离
+                    </button>
+                    <span className="app-dim">点格子前往（不限距离 · 1 回合）</span>
                   </div>
-                </div>
-              ) : run.pendingNode ? (
-                <div className="app-wh-node">
-                  <div className="app-wh-node-title">
-                    {run.pendingNode.kind === 'combat'
-                      ? `战斗节点 · ${run.pendingNode.waves} 波`
-                      : run.pendingNode.kind === 'pickup'
-                        ? '拾取点'
-                        : '随机事件'}
-                    <span className="app-dim"> · 结算花 {run.pendingNode.cost} 回合</span>
-                  </div>
-                  {run.pendingNode.kind === 'pickup' ? (
-                    <ul className="app-inv-list">
-                      {(run.pendingNode.piles ?? []).length === 0 ? (
-                        <li className="app-dim app-inv-empty">这一堆都搬空了——结算本节点继续前进。</li>
-                      ) : (
-                        (run.pendingNode.piles ?? []).map((p, i) => {
+                  <div className="app-wh-node">
+                    <div className="app-wh-node-title">
+                      {atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[hereCell.place]}
+                      <span className="app-dim">
+                        {' '}· 坐标 Q{grid.pos.q} · R{grid.pos.r}
+                        {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
+                      </span>
+                    </div>
+                    {(hereCell.piles ?? []).length > 0 ? (
+                      <ul className="app-inv-list">
+                        {(hereCell.piles ?? []).map((p, i) => {
                           const def = ctx.items.get(p.itemId)
                           const slotUse = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
                           return (
                             <li key={`${p.itemId}-${i}`} className="app-inv-row">
                               <div className="app-inv-main">
-                                <span className="app-inv-name">{def?.name ?? p.itemId} ×{n(p.units)}</span>
+                                <span className="app-inv-name">
+                                  {def?.name ?? p.itemId} ×{n(p.units)}
+                                </span>
                                 <span className="app-inv-count">
                                   {n(p.units * (def?.unitM3 ?? 0))} m³ · 每格 {n(slotUse)} 单位
                                 </span>
@@ -432,123 +592,41 @@ export function WormholePanel({
                               </div>
                             </li>
                           )
-                        })
-                      )}
-                    </ul>
-                  ) : (
-                    <div className="app-dim app-note">
-                      {run.pendingNode.kind === 'combat'
-                        ? '战斗节点：点「迎战」按本节点波数开打（4 艘一起上）。'
-                        : `事件池键：${run.pendingNode.eventKey ?? '—'}（事件内容尚未接入）。`}
-                    </div>
-                  )}
-                  <div className="app-wh-actions">
-                    {outOfTurns ? (
-                      // **逃生门**（设计稿 §六「回合耗尽 ⇒ 只能撤离」）：回合付不起本节点时，
-                      // 战斗/拾取/事件三条路都走不动 ⇒ 必须给一条「只能撤离」的出口
-                      // （首版这里什么都不给：非战斗节点会卡死，只能靠施工期的调试按钮）
-                      <>
-                        <span className="app-dim">回合不足：只能撤离</span>
-                        <button
-                          className="app-btn is-small is-primary"
-                          disabled={!!run.battle}
-                          onClick={() => {
-                            const r = engine.wormholeExtract()
-                            if (!r.ok) onToast(r.error ?? '无法撤离。', true)
-                          }}
-                          title="回合不足以结算本节点：直接进入撤离战（同样必须打完）"
-                        >
-                          撤离（进入撤离战）
-                        </button>
-                      </>
-                    ) : run.pendingNode.kind === 'combat' ? (
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={!!run.battle}
-                        onClick={() => {
-                          const r = engine.wormholeFight('node')
-                          if (!r.ok) onToast(r.error ?? '无法开战。', true)
-                        }}
-                        title="开打本节点：战斗结束后自动结算该节点（扣回合、推进）"
-                      >
-                        迎战（{run.pendingNode.waves} 波 · 结算花 {run.pendingNode.cost} 回合）
-                      </button>
+                        })}
+                      </ul>
                     ) : (
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={!!run.battle}
-                        onClick={() => {
-                          const r = engine.wormholeAdvance()
-                          if (!r.ok) onToast(r.error ?? '无法推进。', true)
-                        }}
-                        title="结算本节点并推进到下一个节点（回合不足时只能撤离）"
-                      >
-                        结算本节点（{run.pendingNode.cost} 回合）
-                      </button>
+                      <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
                     )}
                   </div>
-                </div>
+                  {bossDone ? (
+                    <div className="app-dim app-note">
+                      本层守卫已清：可以「继续深入」（更深、更值钱、更硬），也可以把剩下的地点再扫一遍，或直接撤离。
+                    </div>
+                  ) : null}
+                  {outOfTurns ? (
+                    <div className="app-wh-ask">回合已走不动：只能撤离（撤离拦截照打——打赢才算把背包带回去）。</div>
+                  ) : null}
+                </>
               ) : (
                 <div className="app-wh-node">
-                  <div className="app-wh-node-title">
-                    层末抉择
-                    {(run.bossCleared ?? 0) < run.depth ? (
-                      <span className="app-dim"> · 层末守卫尚未清除</span>
-                    ) : null}
-                  </div>
+                  <div className="app-wh-node-title">本层没有网格</div>
                   <div className="app-dim app-note">
-                    {outOfTurns
-                      ? '回合已走不动：只能撤离（撤离拦截照打——打赢才算把背包带回去）。'
-                      : (run.bossCleared ?? 0) < run.depth
-                        ? '层内节点已走完，但出口被本层守卫堵着：先「迎击层末守卫」，打完才能选择深入或撤离。'
-                        : '本层守卫已清：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。'}
+                    这一层是旧口径（线性节点）的存档：可以照旧撤离或深入，重新进洞后会拿到网格地图。
                   </div>
                   <div className="app-wh-actions">
-                    {(run.bossCleared ?? 0) < run.depth ? (
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={!!run.battle}
-                        onClick={() => {
-                          const r = engine.wormholeFight('boss')
-                          if (!r.ok) onToast(r.error ?? '无法开战。', true)
-                        }}
-                      >
-                        迎击层末守卫（威胁 {wormholeFoeThreat(run.depth, 'boss')}）
-                      </button>
-                    ) : null}
-                    <button
-                      className="app-btn is-small is-primary"
-                      disabled={run.turnsLeft <= 0 || (run.bossCleared ?? 0) < run.depth}
-                      title={
-                        (run.bossCleared ?? 0) < run.depth
-                          ? '先清掉本层守卫'
-                          : run.turnsLeft <= 0
-                            ? '回合已耗尽：只能撤离'
-                            : undefined
-                      }
-                      onClick={() => {
-                        const r = engine.wormholeDescend()
-                        if (!r.ok) onToast(r.error ?? '无法深入。', true)
-                      }}
-                    >
-                      继续深入（第 {run.depth + 1} 层 · 威胁 {wormholeLayerThreat(run.depth + 1)}）
-                    </button>
                     <button
                       className="app-btn is-small"
-                      disabled={!outOfTurns && (run.bossCleared ?? 0) < run.depth}
-                      title={
-                        outOfTurns
-                          ? '回合已走不动：只能撤离（撤离战照打）'
-                          : (run.bossCleared ?? 0) < run.depth
-                            ? '先清掉本层守卫'
-                            : undefined
-                      }
-                      onClick={() => {
-                        const r = engine.wormholeExtract()
-                        if (!r.ok) onToast(r.error ?? '无法撤离。', true)
-                      }}
+                      disabled={!!run.battle || (!outOfTurns && !bossDone)}
+                      onClick={doExtract}
                     >
                       撤离
+                    </button>
+                    <button
+                      className="app-btn is-small is-primary"
+                      disabled={!!run.battle || run.turnsLeft <= 0 || !bossDone}
+                      onClick={doDescend}
+                    >
+                      继续深入
                     </button>
                   </div>
                 </div>
@@ -566,73 +644,132 @@ export function WormholePanel({
 }
 
 /**
- * 节点图（SVG 线稿：圆点节点 + 连线；当前节点高亮、已过节点变暗）。
- * 口径：只画**本层**的节点（`nodesPerLayer`），层数由标题栏的「第 N 层」表达。
+ * **层内网格地图**（F3a-2 · 船长 2026-09-13：「探索采用网格地图的形式。整体网格地图呈现圆型」）。
+ *
+ * 画法：尖顶六边形（pointy-top）铺成半径为 `grid.radius` 的**圆盘**；一格 = 一个地点。
+ * 三档揭示（`revealOf` 同源）：
+ * - **未扫描** = 虚线空hex，点了先弹「前往未知地点」的警告；
+ * - **已扫描** = 只给信号符号（残骸/舰船/资源/雷达；**空信息地点给一个小圆点**）；
+ * - **已到达** = 真相（地点名看下方卡片；入口格额外画箭头）。
+ * 玩家所在格用虚线圈标出；**下一层入口只在到达之后才标出来**（船长：「玩家只有到达目标地点后
+ * 才能知道目标地点的确切信息」⇒ 没到过就不该在图上被指出来）。
+ *
+ * ⚠ 视觉纪律：图形一律 SVG 线稿（约定 §九），不用 CSS 拼形状；颜色只给信号类别分色。
  */
-function WhNodeMap({
-  depth,
-  nodesPerLayer,
-  nodeIndex,
-  atLayerEnd,
-}: {
-  depth: number
-  nodesPerLayer: number
-  nodeIndex: number
-  atLayerEnd: boolean
-}) {
-  const n = Math.max(1, nodesPerLayer)
-  const w = 720
-  const h = 96
-  const y = 46
-  const step = n > 1 ? (w - 120) / (n - 1) : 0
-  const xs = Array.from({ length: n }, (_, i) => (n > 1 ? 60 + step * i : w / 2))
-  const cur = Math.min(nodeIndex, n - 1)
+function WhGridMap({ grid, onPickCell }: { grid: WormholeGridState; onPickCell: (q: number, r: number) => void }) {
+  const size = 30
+  const R = Math.max(1, Math.floor(grid.radius))
+  // 画布留白按半径算（六边形顶点正好落在边界上会显得挤）；容器高随圈数长一点但有上限
+  // ⇒ 每格在屏幕上的边长尽量稳定（R=2 约 60px / R=4 约 46px），避免深层的格子小到点不准。
+  const w = Math.sqrt(3) * size * (2 * R + 1.3)
+  const h = size * (3 * R + 2.4)
+  const mapH = Math.min(420, 150 + 30 * (2 * R + 1))
+  const cx = w / 2
+  const cy = h / 2
+  // 六边形顶点（尖顶：上下各一个顶点、左右是平边）
+  const corners = Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 180) * (60 * i - 30)
+    return { dx: Math.cos(a) * size, dy: Math.sin(a) * size }
+  })
+  const hereKey = `${grid.pos.q},${grid.pos.r}`
+  const exitKey = `${grid.exit.q},${grid.exit.r}`
   return (
-    <svg className="app-wh-map" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`第 ${depth} 层节点图`}>
-      {/* 连线 */}
-      {xs.slice(0, -1).map((x, i) => (
-        <line
-          key={`l${i}`}
-          x1={x + 16}
-          y1={y}
-          x2={xs[i + 1]! - 16}
-          y2={y}
-          stroke="currentColor"
-          strokeWidth={1}
-          opacity={i < cur ? 0.75 : 0.3}
-        />
-      ))}
-      {xs.map((x, i) => {
-        const passed = i < cur
-        const here = i === cur && !atLayerEnd
+    <svg
+      className="app-wh-map"
+      style={{ height: `${mapH}px` }}
+      viewBox={`0 0 ${w} ${h}`}
+      role="img"
+      aria-label={`第 ${grid.radius} 圈网格地图`}
+    >
+      {grid.cells.map((c) => {
+        const x = cx + Math.sqrt(3) * size * (c.q + c.r / 2)
+        const y = cy + 1.5 * size * c.r
+        const visited = grid.visited.includes(c.key)
+        const scanned = grid.scanned.includes(c.key)
+        const signal = signalOfPlace(c.place)
+        const isExit = visited && c.key === exitKey
+        const cls = [
+          'app-wh-hex',
+          visited ? 'is-known' : scanned ? 'is-scanned' : 'is-unknown',
+          signal ? `is-${signal}` : 'is-blank',
+          c.key === hereKey ? 'is-here' : '',
+          isExit ? 'is-exit' : '',
+        ]
+          .filter((s) => s.length > 0)
+          .join(' ')
+        const title = !visited && !scanned
+          ? '未扫描：不知道这里有什么'
+          : isExit
+            ? '下一层入口（层末守卫守在这里）'
+            : visited
+              ? WORMHOLE_PLACE_TEXT[c.place]
+              : signal
+                ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
+                : '没有信号：空信息地点'
         return (
-          <g key={`n${i}`} opacity={passed ? 0.45 : 1}>
-            <circle
-              cx={x}
-              cy={y}
-              r={here ? 11 : 8}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={here ? 2 : 1}
-            />
-            {here ? <circle cx={x} cy={y} r={3.5} fill="currentColor" /> : null}
-            <text x={x} y={y + 28} textAnchor="middle" fontSize={11} fill="currentColor" opacity={0.8}>
-              {i + 1}
-            </text>
+          <g key={c.key} className={cls} onClick={() => onPickCell(c.q, c.r)}>
+            <polygon points={corners.map((p) => `${(x + p.dx).toFixed(2)},${(y + p.dy).toFixed(2)}`).join(' ')} />
+            {visited || scanned ? (
+              <g className="app-wh-hex-glyph" transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}>
+                <WhGlyph signal={signal} exit={isExit} />
+              </g>
+            ) : null}
+            {c.key === hereKey ? <circle className="app-wh-hex-here" cx={x} cy={y} r={size * 0.74} /> : null}
+            <title>{title}</title>
           </g>
         )
       })}
-      {/* 层末抉择位（徽标） */}
-      <g opacity={atLayerEnd ? 1 : 0.35}>
-        <rect x={w - 40} y={y - 12} width={26} height={24} rx={4} fill="none" stroke="currentColor" />
-        <text x={w - 27} y={y + 4} textAnchor="middle" fontSize={12} fill="currentColor">
-          末
-        </text>
-      </g>
     </svg>
   )
 }
 
+/**
+ * 格内符号（**一律 SVG 线稿**，以格心为原点、半径约 7~8）。
+ * `exit` = 下一层入口（箭头）；`signal === null` = 空信息地点（一个小空心点）。
+ */
+function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boolean }) {
+  if (exit) return <path d="M-7,0 L6,0 M1,-5 L7,0 L1,5" />
+  if (signal === 'wreck') return <path d="M-8,3 L-4,-3 L0,2 L4,-4 L8,3" />
+  if (signal === 'ship') return <path d="M-7,-5 L8,0 L-7,5 Z" />
+  if (signal === 'resource') return <path d="M0,-7 L7,0 L0,7 L-7,0 Z" />
+  if (signal === 'radar')
+    return (
+      <>
+        <path d="M-7,4 A7,7 0 0 1 7,4" />
+        <path d="M-3.4,4 A3.4,3.4 0 0 1 3.4,4" />
+        <circle cx={0} cy={4} r={1.4} />
+      </>
+    )
+  return <circle cx={0} cy={0} r={2.2} />
+}
+
+/** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
+const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
+  wreck: '残骸信号',
+  ship: '舰船信号',
+  resource: '资源信号',
+  radar: '雷达信号',
+}
+
+/** 地图图例（与格内符号共用同一个 `WhGlyph` ⇒ 图例与看板永远一致） */
+const GRID_LEGEND: ReadonlyArray<{ key: string; text: string; signal: WormholeSignal | null; none?: boolean }> = [
+  { key: 'unknown', text: '未扫描', signal: null, none: true },
+  { key: 'wreck', text: SIGNAL_TEXT.wreck, signal: 'wreck' },
+  { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },
+  { key: 'resource', text: SIGNAL_TEXT.resource, signal: 'resource' },
+  { key: 'radar', text: SIGNAL_TEXT.radar, signal: 'radar' },
+  { key: 'blank', text: '空信息', signal: null },
+]
+
+/** 地点说明（看板一处说清"这里有什么/能干什么"；具体收益落地在 F3b） */
+const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
+  empty: '空信息地点：什么都没有，没有可执行的作业。',
+  graveyard: '舰船墓场：大量残骸、少量稀有残骸——激活后开始打捞。',
+  ruins: '遗迹：稀有残骸为主，有小概率拿到一次性图纸或虫洞专属装备；打捞结束大概率触发一场恶战。',
+  ship: '舰船信号：激活即交火；打赢固定获得残骸与稀有残骸。',
+  vein: '矿脉：激活后挖掘，可得虚空母矿。',
+  matter: '虫洞谜质：取回后，本趟探索中我方所有舰船获得指定增强。',
+}
 /**
  * 背包网格：每格只装一种物品（`WormholeBagSlot` 一条 = 一格的内容，同物品并格）。
  * 空位补到容量上限（最多画 120 格——设计稿 §七：21~120 格，超过再谈虚拟化）。

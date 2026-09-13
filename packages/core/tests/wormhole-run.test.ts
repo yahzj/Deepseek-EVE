@@ -34,6 +34,9 @@ import {
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
+  wormholeGridActivate,
+  wormholeGridScan,
+  wormholeGridTravel,
   wormholeLeave,
   wormholeOutOfTurns,
   wormholeResume,
@@ -43,11 +46,44 @@ import {
   wormholeNodesPerLayer,
   wormholeStartRun,
 } from '../src/wormhole'
+import type { WormholeRunState } from '../src/wormhole'
+import type { WormholeGridCell, WormholePlace } from '../src/wormholeGrid'
+import { gridCellAt, hexDistance, wormholeGridRadiusFor } from '../src/wormholeGrid'
 
 const ctx = buildSimContext()
 const T1 = 'sandcat'
 const T3 = 'sh-thresher'
 const T5 = 'sh-colossal'
+
+/**
+ * 起一趟（**层内动作**用例的公共前置）：跳过入洞门槛，只要一个"人在洞里 + 本层网格就位"的现场。
+ * 门槛本身由本文件上半段的用例单独钉。
+ */
+function enterForActions(shipIds: readonly string[] = [T1, T1, T1, T1], seed = 12345): { state: GameState; run: WormholeRunState } {
+  const state = createInitialState({ nowWallMs: 0, seed })
+  const run = wormholeStartRun(ctx, shipIds, seed).run!
+  run.attending = true
+  state.wormhole.run = run
+  return { state, run }
+}
+
+/** 当前格（查格一律按 `q,r` 字面键，与 `hexKey` 同格式） */
+function hereCell(run: WormholeRunState): WormholeGridCell {
+  const g = run.grid!
+  return g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
+}
+
+/**
+ * **把玩家挪到一个指定地点的格上**（F3a-2 起：地点效果由**激活**触发，不再是线性节点）。
+ * 等价于旧用例里的 `run.pendingNode = { kind: … }`：直接改格的真相，省掉"扫/走"的铺垫。
+ */
+function standOnPlace(run: WormholeRunState, place: WormholePlace): string {
+  const cell = hereCell(run)
+  cell.place = place
+  const g = run.grid!
+  g.activated = g.activated.filter((k) => k !== cell.key)
+  return cell.key
+}
 
 describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13）', () => {
   it('**主控不闲置就进不去**：主控在采矿 ⇒ 拒绝，文案点名忙态', () => {
@@ -159,7 +195,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     const b = addShipToFleet(state, T1)
     expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由地点触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
     const tick0 = battle.lastTickGameMs
@@ -208,7 +244,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     state.shipId = a
     expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由地点触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     // 首版这条路只认远征 ⇒ 洞内拖距离条被拒（看着像"锁死"）
     const card = ctx.anomalies.get('ano-training')!
@@ -233,7 +269,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     const b = addShipToFleet(state, T1)
     expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
     const run = state.wormhole.run!
-    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    standOnPlace(run, 'ship') // F3a-2：洞内战由地点触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const holeBattle = run.battle!
     // 洞外触发一场遭遇（AI 船/主控在外都可能）：**战斗系统不因洞内战而关闭**
@@ -309,7 +345,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
 })
 
 describe('虫洞 · 起程与副本推进', () => {
-  it('合法编队可起程：锁定质量/回合、进入 inside、首节点是战斗', () => {
+  it('合法编队可起程：锁定质量/回合、进入 inside、本层网格就位（入口格已到达、扫描半径 1）', () => {
     const r = wormholeStartRun(ctx, [T1, T1, T1, T1], 12345)
     expect(r.ok).toBe(true)
     const run = r.run!
@@ -319,7 +355,18 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.turnsTotal).toBe(51) // 4×T1 = 51 回合（B 批表）
     expect(run.turnsLeft).toBe(51)
     expect(run.bag).toEqual([])
-    expect(run.pendingNode?.kind).toBe('combat') // 每层首节点固定战斗
+    // F3a-2：层内内容全部由网格承载；旧的线性节点字段不再生成
+    expect(run.pendingNode).toBeNull()
+    const g = run.grid!
+    expect(g.radius).toBe(wormholeGridRadiusFor(1))
+    expect(g.scanRadius).toBe(1) // 船长：「初始扫描范围 1 格」
+    expect(g.pos).toEqual(g.start)
+    expect(g.visited).toContain(`${g.start.q},${g.start.r}`) // 玩家就落在入口 ⇒ 入口格算"已到达"
+    expect(g.activated).toEqual([])
+    // 入口格：落在外圈上（船长：「玩家初始随机出现在一个网格地点入口」）
+    expect(hexDistance(g.start, { q: 0, r: 0 })).toBe(g.radius)
+    // 下一层入口：随机位置，且不在入口格上
+    expect(`${g.exit.q},${g.exit.r}`).not.toBe(`${g.start.q},${g.start.r}`)
   })
 
   it('不合法编队照旧被拒（旗舰 / 超质量 / 空编队）', () => {
@@ -331,38 +378,39 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(wormholeStartRun(ctx, [], 1).ok).toBe(false)
   })
 
-  it('节点推进：本层走完 ⇒ 进入层末抉择（pendingNode = null）', () => {
+  it('**老档线性节点仍能走完**（兼容边界）：pendingNode 手动给上照旧可推进到层末', () => {
     const run = wormholeStartRun(ctx, [T1, T1, T1, T1], 777)!.run!
+    run.grid = undefined // 模拟老档：该层没有网格
+    run.pendingNode = wormholeMakeNode(777, 1, 0)
     const turnsBefore = run.turnsLeft
     const first = wormholeAdvanceNode(ctx, run, 777)
     expect(first.ok).toBe(true)
     expect(first.spent).toBeGreaterThan(0)
     expect(run.turnsLeft).toBe(turnsBefore - first.spent!)
-    // 层 1 有 2 个节点 ⇒ 再推进一步即到层末
     const second = wormholeAdvanceNode(ctx, run, 777)
     expect(second.ok).toBe(true)
     expect(second.atLayerEnd).toBe(true)
     expect(run.pendingNode).toBeNull()
   })
 
-  it('**战斗没结束不能撤**：层内（还有待处理节点）撤离被拒', () => {
-    const run = wormholeStartRun(ctx, [T1, T1, T1, T1], 5)!.run!
-    expect(run.pendingNode).not.toBeNull()
+  it('**战斗没结束不能撤**（网格层）：层内有进行中的战斗时撤离被拒', () => {
+    const { run } = enterForActions([T1, T1, T1, T1], 5)
+    run.battle = {} as never // 只验"有没有战斗宿主"这一层判据
     const r = wormholeExtract(run)
     expect(r.ok).toBe(false)
-    expect(r.error ?? '').toContain('战斗没结束')
+    expect(r.error ?? '').toContain('战斗中')
     expect(run.phase).toBe('inside') // 相位没动
   })
 
-  it('**回合耗尽只能撤离**：回合不足时推进被拒、深入被拒、撤离放行', () => {
-    const run = wormholeStartRun(ctx, [T1, T1, T1, T1], 9)!.run!
-    // 人为把回合压到走不动任何一个节点
+  it('**回合耗尽只能撤离**：回合不足时三个层内动作全拒、深入被拒、撤离放行', () => {
+    const { state, run } = enterForActions([T1, T1, T1, T1], 9)
     run.turnsLeft = 0
-    const adv = wormholeAdvanceNode(ctx, run, 9)
-    expect(adv.ok).toBe(false)
-    expect(adv.mustExtract).toBe(true)
-    // 层末（清空待处理节点 + 本层守卫已清）后：深入被拒、撤离放行
-    run.pendingNode = null
+    expect(wormholeGridScan(state).mustExtract).toBe(true)
+    const far = run.grid!.cells.find((c) => c.key !== `${run.grid!.pos.q},${run.grid!.pos.r}`)!
+    expect(wormholeGridTravel(state, { q: far.q, r: far.r }, { confirmUnknown: true }).mustExtract).toBe(true)
+    standOnPlace(run, 'ship')
+    expect(wormholeGridActivate(state).mustExtract).toBe(true)
+    // 层末（本层守卫已清）后：深入被拒、撤离放行
     run.bossCleared = run.depth
     const desc = wormholeDescend(run, 9)
     expect(desc.ok).toBe(false)
@@ -372,47 +420,34 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('extracting')
   })
 
-  it('**层末守卫是门**（F 批）：守卫没清时不能深入、也不能撤离', () => {
-    const run = wormholeStartRun(ctx, [T1, T1], 77)!.run!
-    run.pendingNode = null // 层内走完，进入"层末抉择"
+  it('**层末守卫是门**（网格口径）：守卫没清时不能深入、也不能撤离；清掉后两条路都放行', () => {
+    const { run } = enterForActions([T1, T1], 77)
     expect(wormholeDescend(run, 77).ok).toBe(false)
     expect(wormholeDescend(run, 77).error ?? '').toContain('守卫')
     expect(wormholeExtract(run).ok).toBe(false)
-    // 打通本层守卫后两条路都放行
     run.bossCleared = run.depth
     expect(wormholeDescend(run, 77).ok).toBe(true)
     expect(run.depth).toBe(2)
   })
 
-  it('**逃生门**（2026-09-13 修死局）：回合付不起当前节点时，哪怕节点没结算、守卫没清，撤离也放行', () => {
-    const run = wormholeStartRun(ctx, [T1, T1], 31)!.run!
-    // 造"付不起"的现场：手上 1 回合，当前节点要 2 回合（拾取/事件节点没有「迎战」这条路）
-    run.turnsLeft = 1
-    run.pendingNode = { kind: 'pickup', waves: 1, pickups: 1, cost: 2, piles: [] }
+  it('**逃生门**（2026-09-13 修死局 · 网格口径）：回合走不动时，哪怕守卫没清，撤离也放行', () => {
+    const { run } = enterForActions([T1, T1], 31)
+    run.turnsLeft = 0 // 网格层的最小花费 = 1 回合 ⇒ 0 回合时三个动作全走不动
     expect(wormholeOutOfTurns(run)).toBe(true)
-    expect(wormholeAdvanceNode(ctx, run, 31).ok).toBe(false) // 结算被拒（只能撤离）
     const ex = wormholeExtract(run)
-    expect(ex.ok, '回合付不起节点时撤不走 = 死局').toBe(true)
+    expect(ex.ok, '回合耗尽却撤不走 = 死局').toBe(true)
     expect(run.phase).toBe('extracting')
     // 负向：回合充足时这条路不该被打开（守卫照旧是门）
-    const run2 = wormholeStartRun(ctx, [T1, T1], 31)!.run!
-    run2.turnsLeft = 5
-    run2.pendingNode = { kind: 'pickup', waves: 1, pickups: 1, cost: 2, piles: [] }
-    expect(wormholeOutOfTurns(run2)).toBe(false)
-    expect(wormholeExtract(run2).ok).toBe(false)
-    expect(wormholeExtract(run2).error ?? '').toContain('战斗没结束')
-    run2.pendingNode = null
-    expect(wormholeExtract(run2).error ?? '').toContain('守卫') // 守卫未清照旧是门
-    // 回合耗尽（= 0）时同样放行
-    run2.turnsLeft = 0
-    expect(wormholeOutOfTurns(run2)).toBe(true)
-    expect(wormholeExtract(run2).ok).toBe(true)
+    const b = enterForActions([T1, T1], 31)
+    b.run.turnsLeft = 5
+    expect(wormholeOutOfTurns(b.run)).toBe(false)
+    expect(wormholeExtract(b.run).ok).toBe(false)
+    expect(wormholeExtract(b.run).error ?? '').toContain('守卫')
   })
 
   it('战斗中的逃生门不生效：**战斗没结束一律不能撤**（船长裁定优先于回合）', () => {
-    const run = wormholeStartRun(ctx, [T1, T1], 41)!.run!
+    const { run } = enterForActions([T1, T1], 41)
     run.turnsLeft = 0
-    run.pendingNode = null
     run.battle = {} as never // 只验"有没有战斗宿主"这一层判据
     const r = wormholeExtract(run)
     expect(r.ok).toBe(false)
@@ -420,26 +455,159 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('inside')
   })
 
-  it('深入下一层：层末可用，深度 +1、节点数按层（层 3 起 3 个）', () => {
-    const run = wormholeStartRun(ctx, [T1, T1], 42)!.run!
-    run.pendingNode = null // 模拟已清空本层
+  it('深入下一层：层末可用，深度 +1、**换成一张新盘**（入口重随机、进度清零）', () => {
+    const { run } = enterForActions([T1, T1], 42)
+    const oldGrid = run.grid!
     run.bossCleared = run.depth
     expect(wormholeDescend(run, 42).ok).toBe(true)
     expect(run.depth).toBe(2)
     expect(run.nodeIndex).toBe(0)
     expect(run.nodesPerLayer).toBe(wormholeNodesPerLayer(2))
-    run.pendingNode = null
+    const g2 = run.grid!
+    expect(g2).not.toBe(oldGrid)
+    expect(g2.radius).toBe(wormholeGridRadiusFor(2))
+    expect(g2.pos).toEqual(g2.start) // 新层从新入口格开始
+    expect(g2.visited).toEqual([`${g2.start.q},${g2.start.r}`])
+    expect(g2.activated).toEqual([])
+    expect(g2.scanned).toEqual([`${g2.start.q},${g2.start.r}`])
+    // 老盘的对象不再被引用（避免"两层共用一个 cells 数组"这类串层 bug）
+    expect(oldGrid.activated).not.toBe(g2.activated)
+    // 再深一层：半径按层曲线（层 3 = 3）
     run.bossCleared = run.depth
-    wormholeDescend(run, 42)
+    expect(wormholeDescend(run, 42).ok).toBe(true)
     expect(run.depth).toBe(3)
     expect(run.nodesPerLayer).toBe(3)
+    expect(run.grid!.radius).toBe(wormholeGridRadiusFor(3))
   })
 
-  it('节点生成是确定性的（同 seed/depth/index ⇒ 同结果）', () => {
+  it('节点生成是确定性的（同 seed/depth/index ⇒ 同结果）——老档线性口径仍可用', () => {
     const a = wormholeMakeNode(2026, 3, 1)
     const b = wormholeMakeNode(2026, 3, 1)
     expect(a).toEqual(b)
     expect(a.cost).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各 1 回合）', () => {
+  it('**扫描**：1 回合揭开"当前格 + 周围一圈"；周围都扫过 ⇒ 拒绝且不扣回合', () => {
+    const { state, run } = enterForActions()
+    const g = run.grid!
+    const turnsBefore = run.turnsLeft
+    const r = wormholeGridScan(state)
+    expect(r.ok).toBe(true)
+    expect(r.spent).toBe(1)
+    expect(run.turnsLeft).toBe(turnsBefore - 1)
+    expect(r.revealed!.length).toBeGreaterThan(0)
+    // 揭开的每一格：都在扫描半径内、且确实进了 `scanned`
+    for (const rv of r.revealed!) {
+      const cell = g.cells.find((c) => c.key === rv.key)!
+      expect(hexDistance({ q: cell.q, r: cell.r }, g.pos)).toBeLessThanOrEqual(g.scanRadius)
+      expect(g.scanned).toContain(rv.key)
+      // 信号如实回报：空信息地点 ⇒ null（**不是**伪装成"舰船信号"）
+      expect(rv.signal).toBe(cell.place === 'empty' ? null : rv.signal)
+    }
+    // 入口格在外圈 ⇒ 一圈扫完，再扫没有新格：拒绝且回合不动
+    const again = wormholeGridScan(state)
+    expect(again.ok).toBe(false)
+    expect(again.error ?? '').toContain('扫过')
+    expect(run.turnsLeft).toBe(turnsBefore - 1)
+  })
+
+  it('**前往**：不限距离、一律 1 回合；未扫描的格先拒（`unknown-target`），确认后才动', () => {
+    const { state, run } = enterForActions()
+    const g = run.grid!
+    const turnsBefore = run.turnsLeft
+    const far = g.cells.find((c) => hexDistance(c, g.pos) >= 2)!
+    const target = { q: far.q, r: far.r }
+    const ask = wormholeGridTravel(state, target)
+    expect(ask.ok).toBe(false)
+    expect(ask.code).toBe('unknown-target') // 界面据此弹「即将前往未知地点」
+    expect(run.turnsLeft).toBe(turnsBefore) // 被拒不扣回合
+    expect(g.pos).toEqual(g.start)
+    const go = wormholeGridTravel(state, target, { confirmUnknown: true })
+    expect(go.ok).toBe(true)
+    expect(go.spent).toBe(1)
+    expect(run.turnsLeft).toBe(turnsBefore - 1)
+    expect(g.pos).toEqual(target)
+    expect(go.arrived!.place).toBe(far.place) // 到达 ⇒ 拿到确切信息
+    expect(g.visited).toContain(far.key)
+    expect(go.arrived!.atExit).toBe(`${g.exit.q},${g.exit.r}` === far.key)
+    // 原地不动 / 盘外 ⇒ 都拒
+    expect(wormholeGridTravel(state, target).ok).toBe(false)
+    expect(wormholeGridTravel(state, { q: 99, r: 0 }).ok).toBe(false)
+    expect(run.turnsLeft).toBe(turnsBefore - 1)
+  })
+
+  it('**激活**：空信息地点拒（不扣回合）；舰船信号 ⇒ 交火效果；入口格 ⇒ 层末守卫效果；每格只算一次', () => {
+    const { state, run } = enterForActions()
+    const g = run.grid!
+    // 空信息地点：没有可执行的作业
+    standOnPlace(run, 'empty')
+    const turnsBefore = run.turnsLeft
+    const empty = wormholeGridActivate(state)
+    expect(empty.ok).toBe(false)
+    expect(empty.error ?? '').toContain('什么都没有')
+    expect(run.turnsLeft).toBe(turnsBefore)
+    // 舰船信号：给"开战"效果 + 扣 1 回合 + 记进 activated
+    const shipKey = standOnPlace(run, 'ship')
+    const fight = wormholeGridActivate(state)
+    expect(fight.ok).toBe(true)
+    expect(fight.spent).toBe(1)
+    expect(fight.effect).toEqual({ kind: 'battle', key: shipKey })
+    expect(run.turnsLeft).toBe(turnsBefore - 1)
+    expect(g.activated).toContain(shipKey)
+    expect(wormholeGridActivate(state).ok).toBe(false) // 同一个地点不重复计
+    // 层末入口：优先于地点自身类型（入口的意义就是"下一层"）
+    g.pos = { q: g.exit.q, r: g.exit.r }
+    g.visited.push(`${g.exit.q},${g.exit.r}`)
+    g.activated = g.activated.filter((k) => k !== `${g.exit.q},${g.exit.r}`)
+    const boss = wormholeGridActivate(state)
+    expect(boss.ok).toBe(true)
+    expect(boss.effect).toEqual({ kind: 'exit', key: `${g.exit.q},${g.exit.r}` })
+    // 守卫已清 ⇒ 入口格不再重复触发
+    run.bossCleared = run.depth
+    g.activated = g.activated.filter((k) => k !== `${g.exit.q},${g.exit.r}`)
+    const again = wormholeGridActivate(state)
+    expect(again.ok).toBe(false)
+    expect(again.error ?? '').toContain('守卫')
+  })
+
+  it('非资源地点的激活效果按地点类型分流（墓场/遗迹 ⇒ 打捞，矿脉 ⇒ 挖掘，谜质 ⇒ 取回）', () => {
+    const { state, run } = enterForActions()
+    const cases: Array<[WormholePlace, string]> = [
+      ['graveyard', 'salvage'],
+      ['ruins', 'salvage'],
+      ['vein', 'excavate'],
+      ['matter', 'matter'],
+    ]
+    for (const [place, kind] of cases) {
+      const key = standOnPlace(run, place)
+      const r = wormholeGridActivate(state)
+      expect(r.ok, `${place} 应可激活`).toBe(true)
+      expect(r.effect?.kind).toBe(kind)
+      expect(r.effect?.key).toBe(key)
+    }
+  })
+
+  it('战斗中：三个层内动作全部拒绝（与"战斗没结束不能撤"同一把尺）', () => {
+    const { state, run } = enterForActions()
+    run.battle = {} as never
+    expect(wormholeGridScan(state).ok).toBe(false)
+    expect(wormholeGridTravel(state, { q: 0, r: 0 }, { confirmUnknown: true }).ok).toBe(false)
+    expect(wormholeGridActivate(state).ok).toBe(false)
+    expect(run.turnsLeft).toBe(run.turnsTotal)
+  })
+
+  it('网格动作只认"人在洞里"的现场：不在洞里 / 老档没网格 ⇒ 全部拒绝', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 1 })
+    expect(wormholeGridScan(s).ok).toBe(false)
+    expect(wormholeGridTravel(s, { q: 0, r: 0 }).ok).toBe(false)
+    expect(wormholeGridActivate(s).ok).toBe(false)
+    const { state, run } = enterForActions()
+    run.grid = undefined // 老档该层没有网格
+    expect(wormholeGridScan(state).ok).toBe(false)
+    expect(wormholeGridActivate(state).ok).toBe(false)
+    expect(wormholeGridTravel(state, { q: 0, r: 0 }).ok).toBe(false)
   })
 })
 
@@ -490,7 +658,10 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
     expect(back.turnsTotal).toBe(51)
     expect(back.fleet).toEqual([T1, T1, T1, T1])
     expect(back.bag).toEqual([{ itemId: 'ore-voidmother', units: 800 }])
-    expect(back.pendingNode).toEqual(run.pendingNode)
+    // 层内网格随档（F3a）：位置/真相/已扫描/终点都在（细项由 wormhole-grid.test.ts 钉）
+    expect(back.grid).toBeTruthy()
+    expect(back.grid!.pos).toEqual(run.grid!.pos)
+    expect(back.grid!.cells.length).toBe(run.grid!.cells.length)
     expect(loaded.wormhole.lastFleetLost).toBe(1)
   })
 

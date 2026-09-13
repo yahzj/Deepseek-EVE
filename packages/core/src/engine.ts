@@ -41,6 +41,11 @@ import { advanceSideTasks } from './sideTasks'
 export interface CommandResult {
   ok: boolean
   error?: string
+  /**
+   * 拒绝码（可选，机器可读）：目前只有虫洞层内动作在用——
+   * `unknown-target` = "目标格还没扫描过"，界面据此弹「即将前往未知地点」的确认，而不是当错误报给玩家。
+   */
+  code?: 'unknown-target'
 }
 
 /** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；

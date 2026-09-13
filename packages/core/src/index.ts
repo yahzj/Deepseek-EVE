@@ -830,6 +830,10 @@ export {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  wormholeGridScan,
+  wormholeGridTravel,
+  wormholeGridActivate,
+  WORMHOLE_PLACE_TEXT,
   // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
@@ -862,6 +866,7 @@ export {
   WORMHOLE_TURN_PER_MOVE,
   WORMHOLE_TURN_PER_SCAN,
   gridCellAt,
+  gridContentIndex,
   gridScanTargets,
   gridTally,
   hexDiskAround,
@@ -880,6 +885,7 @@ export {
 } from './wormholeGrid'
 export type {
   HexCell,
+  WormholeCellPile,
   WormholeCellReveal,
   WormholeGridCell,
   WormholeGridState,
@@ -888,11 +894,13 @@ export type {
 } from './wormholeGrid'
 
 // F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
-export { wormholeStartBattle, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
+export { wormholeStartBattle, wormholeActivateAt, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
 export type {
+  WormholeActivateEffect,
   WormholeAdmission,
   WormholeAdmissionCode,
   WormholeBagSlot,
+  WormholeGridActionResult,
   WormholePile,
   WormholeFoeKind,
   WormholeState,
