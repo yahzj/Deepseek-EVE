@@ -15,7 +15,8 @@ import { createInitialState, CURRENT_STATE_VERSION, wormholePilotHoldReason } fr
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { idleAiShipIds } from '../src/ai'
-import { shipBusyLabel } from '../src/activity'
+import { activityOverview, shipBusyLabel } from '../src/activity'
+import { desirePrefOf } from '../src/combat'
 import type { CommandResult } from '../src/engine'
 import { advanceGame } from '../src/engine'
 import { fightEncounter } from '../src/encounters'
@@ -24,7 +25,7 @@ import { startMining } from '../src/mining'
 import { goStandbyAt } from '../src/location'
 import { startHauling } from '../src/hauling'
 import { startScan } from '../src/explore'
-import { startExpedition } from '../src/expedition'
+import { setBattleDesire, startExpedition } from '../src/expedition'
 import { wormholeStartBattle } from '../src/wormholeBattle'
 import { addShipToFleet } from '../src/shipyard'
 import {
@@ -179,6 +180,51 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     // **不许把"离开的时间"补算成战时间**：回来那一拍之后，战斗时钟必须紧跟当前游戏时刻
     // （首版没前移时钟 ⇒ 步进基准 `while (state.gameMs > lastTickGameMs)` 一次补算 6 秒 ⇒ 当场团灭）
     expect(state.gameMs - after!.lastTickGameMs, '回来时把离开的时间补算成战时间了').toBeLessThanOrEqual(250)
+  })
+
+  it('**活动栏显示虫洞探索**（船长 2026-09-13「显示」）：一条读数 + 不可终止 + 离开态标注', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(activityOverview(state, ctx).some((v) => v.kind === 'wormhole')).toBe(false) // 没进洞 ⇒ 没有这一行
+    expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
+    const row = activityOverview(state, ctx).find((v) => v.kind === 'wormhole')!
+    expect(row, '进洞后活动栏没有虫洞那一行').toBeTruthy()
+    expect(row.label).toContain('虫洞探索')
+    expect(row.sub).toContain('回合')
+    expect(row.sub).toContain('人在洞里')
+    expect(row.stopable, '虫洞那趟不该给终止入口（误点会丢整趟）').toBe(false)
+    // 临时离开 ⇒ 同一行的读数改口（进度已保存）
+    wormholeLeave(state)
+    const row2 = activityOverview(state, ctx).find((v) => v.kind === 'wormhole')!
+    expect(row2.sub).toContain('已离开')
+  })
+
+  it('**洞内距离可调**（2026-09-13 修"锁死"）：写进本场 + 本趟后续节点沿用 + **不污染星系偏好**', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    // 首版这条路只认远征 ⇒ 洞内拖距离条被拒（看着像"锁死"）
+    const card = ctx.anomalies.get('ano-training')!
+    const prefBefore = desirePrefOf(state, card.galaxyId)
+    const want = ctx.balance.battle.minDistanceM // 拉到最近：与默认中距明显不同
+    const r = setBattleDesire(state, want, ctx)
+    expect(r.ok, `洞内拖距离被拒：${r.error ?? ''}`).toBe(true)
+    expect(run.battle!.myDesireM).toBeGreaterThanOrEqual(ctx.balance.battle.minDistanceM)
+    expect(run.desireM, '没把偏好记在本趟上').toBe(run.battle!.myDesireM)
+    // **不污染星系偏好**（虫洞不属于任何星系）
+    expect(desirePrefOf(state, card.galaxyId)).toBe(prefBefore)
+    // 本趟后续节点沿用：重开一场（同节点）应直接吃本趟偏好
+    const want2 = run.battle!.myDesireM
+    run.battle = null
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    expect(run.battle!.myDesireM).toBe(want2)
   })
 
   it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：走"遭遇"这条不受活动位限制的路', () => {

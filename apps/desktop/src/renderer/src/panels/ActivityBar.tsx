@@ -26,6 +26,8 @@ const KIND_ICON: Record<string, string> = {
   loop: 'ico-loop',
   courier: 'nav-task',
   hauling: 'nav-haul',
+  // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标沿用行动区的虫洞入口行
+  wormhole: 'ico-flag',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -136,6 +138,9 @@ function goFor(kind: string): { page: string; mapTab?: string } {
       return { page: 'map', mapTab: 'haul' }
     case 'loop':
       return { page: 'map', mapTab: 'bounty' }
+    // 虫洞探索（船长 2026-09-13「活动栏显示」）：跳到星图·星图页——虫洞入口行就在那一页的行动区
+    case 'wormhole':
+      return { page: 'map', mapTab: 'star' }
     case 'manufacture':
     case 'refine':
       return { page: 'industry' }

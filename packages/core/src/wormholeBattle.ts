@@ -14,7 +14,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -61,7 +61,8 @@ export function wormholeStartBattle(
   }
   const waves = kind === 'node' ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   const cardId = wormholeCardIdFor(run.depth, run.nodeIndex)
-  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, null, {
+  // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
+  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,
     kind,
     waves,
@@ -255,7 +256,9 @@ export function wormholeBattleViewOf(
   const spec = battle.wormhole
   const base = spec ? ctx.anomalies.get(spec.cardId) : undefined
   if (!spec || !base) return null
-  const anomaly = wormholeAnomalyOf(base, spec.depth, spec.kind, spec.waves)
+  // 走**引擎同源**那一处（wormholeDerivedAnomaly）：既保证视图与推进同口径，也吃到它的一层记忆
+  //（本函数每次重渲染都会被调一次；拖动距离条时高频重渲染 ⇒ 重建整张敌卡会顶出顿挫）
+  const anomaly = wormholeDerivedAnomaly(ctx, base, spec)
   const leaderShipId = battle.myFleet?.[0]?.shipId ?? state.shipId
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}

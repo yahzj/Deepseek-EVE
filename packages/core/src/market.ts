@@ -27,7 +27,7 @@
  *   双满合计减免 80% → 1%）；挂单/自动转挂单/买入一律免费——税是唯一的市场费用
  *   （参考 EVE 的销售税；取消经纪人费/挂单费）。
  */
-import { addLog } from './state'
+import { addLog, shipLockedReason } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
 import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
 import { nextInt, nextRandom, pickWeighted } from './rng'
@@ -1464,6 +1464,9 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
  * 返回 total = 税后净入账。
  */
 export function sellShipAtMarket(state: GameState, ctx: SimContext, shipId: string): { ok: boolean; total?: number; reason?: string } {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, shipId, '卖掉它')
+  if (lock) return { ok: false, reason: lock }
   const check = shipSellable(state, shipId)
   if (!check.ok) return check
   const fleetShip = state.fleet[shipId]

@@ -2366,18 +2366,34 @@ export function startBattleFor(
  * 首版就是这么错的：`advanceBattleFor` 漏了总血预算 ⇒ 敌人**血是强化后的、炮还是自然值**
  * （探针实测：敌总血 11,168、单发 1,336，实战里每发只掉 6~7 点，整场残血 100%）。
  */
-function wormholeDerivedAnomaly(
+/**
+ * `wormholeDerivedAnomaly` 的一层记忆（见该函数注释；键 = 卡 id|层|用途|波数|强度覆写）。
+ * 只存最近一份：一局里同时只会有一种用途在场（节点/守卫/撤离），换键即重算。
+ */
+let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
+
+export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
   spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },
 ): AnomalyDef {
-  return wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
+  /**
+   * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
+   * （战场视图 `wormholeBattleViewOf`）调用，每次都克隆/缩放整张敌卡与槽位 ⇒ 拖距离条那种
+   * 高频重渲染下会顶出顿挫（船长："依旧还是有顿挫感"、"参考洞外战斗的距离调整"）。
+   * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
+   */
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}`
+  if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
+  const card = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
+  wormholeDerivedMemo = { key: memoKey, card }
+  return card
 }
 
 /**

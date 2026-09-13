@@ -19,7 +19,7 @@
  *   与旧版空间站收购价一致（波动来自池淤积与冲击动量）；
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
-import { addLog, wormholePilotHoldReason } from './state'
+import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
 import type { AiCoreType, ItemDef, SimContext } from './types'
@@ -685,6 +685,9 @@ export function sellWareItem(state: GameState, itemId: string, ctx: SimContext):
 
 /** 从当前船货仓按市价**卖出指定数量**（船长 2026-09-05：出售支持只卖一部分；其余语义同 sellCargoItem） */
 export function sellCargoItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, state.shipId, '卖它货仓里的东西')
+  if (lock) return { ok: false, error: lock, soldUnits: 0, gainedIsk: 0 }
   const have = countItem(state, itemId)
   const want = Math.max(0, Math.floor(qty))
   if (want <= 0) return { ok: false, error: '出售数量需大于 0。', soldUnits: 0, gainedIsk: 0 }

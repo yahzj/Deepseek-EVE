@@ -331,6 +331,12 @@ export interface WormholeRunState {
    * 冻结就白做了。随档保存（离线离开同样适用）。
    */
   leftAtGameMs?: number
+  /**
+   * **本趟的期望交距偏好**（玩家在洞内战里拖距离条选的；setBattleDesire 写入）。
+   * 用途：本趟**后续每一场**洞内战斗开战都沿用它（否则每个节点都要重拖一次）。
+   * 注意：**不写星系偏好**——虫洞不属于任何星系（远征那条路才写星系）。
+   */
+  desireM?: number
 }
 
 export interface WormholeState {

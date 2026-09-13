@@ -1444,6 +1444,15 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
  * `Cannot access 'HOME_GALAXY_ID' before initialization`（2026-09-13 实测踩到，与 D 批同款）。
  * 本函数只读 `state.wormhole.run`，放这里两边都能直接 import，零新增依赖边。
  */
+/**
+ * **进洞船只的"所有行为"锁定拒因**（船长 2026-09-13：「**锁，进洞船只所有行为都锁定。包括维修。**」）。
+ * 用途：换驾驶 / 货仓装卸 / 市场卖出 / 装配改装 / 维修（组件与站内）/ 卖船 等动作在入口处调它；
+ * 空 = 可以操作。文案统一说明"为什么"与"怎么解"。
+ */
+export function shipLockedReason(state: GameState, shipId: string, what = '操作这艘船'): string | null {
+  if (!shipLockedInWormhole(state, shipId)) return null
+  return `该舰在虫洞里（已锁定）：${what}要等它出洞——先撤离或结算本趟。`
+}
 export function shipLockedInWormhole(state: GameState, shipId: string): boolean {
   return (state.wormhole.run?.fleet ?? []).includes(shipId)
 }
