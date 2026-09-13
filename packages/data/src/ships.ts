@@ -178,7 +178,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 19_000,
     cycleSeconds: 30,
     oreUnitsPerCycle: 140,
-    priceIsk: 1_350_000,
+    priceIsk: 9_000_000, // 2026-09-13 价位重排：T3 工业（鲸吞 0.9M ×10；原 1.35M）
     agility: 0.3,
     evasion: 0,
     hitBonus: 0.1,
@@ -205,7 +205,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 26_000,
     cycleSeconds: 36,
     oreUnitsPerCycle: 110,
-    priceIsk: 13_500_000, // 2026-09-13 船长：T4 档全面上调（鲸盟货舰线 = 座头鲸 1.35M ×10；原 1.9M）
+    priceIsk: 67_500_000, // 2026-09-13 价位重排：T4 货舰（剑鱼 24M ×2.81，保持同档比；原锚矿舰的算法作废；原 13.5M）
     agility: 0.28,
     evasion: 0,
     hitBonus: 0.1,
@@ -645,7 +645,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 12000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 22,
-    priceIsk: 1_100_000, // 2026-09-13 船长：旧重装舰对齐同级后价格跟涨（760k → 1.1M）
+    priceIsk: 6_000_000, // 2026-09-13 价位重排：T3 装甲（陆龟 0.45M ×13.3；原 1.1M）
     agility: 0.46,
     evasion: 0.08,
     hitBonus: 0.12,
@@ -672,7 +672,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 19000,
     cycleSeconds: 14,
     oreUnitsPerCycle: 26,
-    priceIsk: 16_500_000, // 2026-09-13 船长：T4 档全面上调（装甲线 = 玳瑁 1.1M ×15；原 2.2M）
+    priceIsk: 90_000_000, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15；原 16.5M）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -797,7 +797,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 8500,
     cycleSeconds: 11,
     oreUnitsPerCycle: 18,
-    priceIsk: 480_000,
+    priceIsk: 2_400_000, // 2026-09-13 价位重排：T3 货舰（飞鱼 0.21M ×11.4；原 480k）
     agility: 0.56,
     evasion: 0.3,
     hitBonus: 0.08,
@@ -824,7 +824,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 14000,
     cycleSeconds: 12,
     oreUnitsPerCycle: 16,
-    priceIsk: 4_800_000, // 2026-09-13 船长：T4 档全面上调（蜃楼货舰线 = 旗鱼 0.48M ×10；原 1.25M）
+    priceIsk: 24_000_000, // 2026-09-13 价位重排：T4 货舰（旗鱼 2.4M ×10；原 4.8M）
     agility: 0.5,
     evasion: 0.28,
     hitBonus: 0.08,

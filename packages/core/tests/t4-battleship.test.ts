@@ -54,7 +54,7 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
   it('只卖图纸：成品不可直接购买（buyShip 给明确原因）', () => {
     const good = goodOf('ship', 'sh-megalodon')
     expect(good?.playerBuyable).toBe(false)
-    expect(good?.standingReq).toBe(11)
+    expect(good?.standingReq).toBe(20) // 2026-09-13 声望按档：T4 = 20（原 11）
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
     state.wallet.isk = 1_000_000_000 // 钱够也不卖成品
     const r = buyShip(state, 'sh-megalodon', ctx)
@@ -73,14 +73,28 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     expect(bp!.buildSeconds).toBe(72_000) // T4 带 9~20 时的上沿
   })
 
-  it('T4 档价位全面上调：三条线各按 T3 锚 ×15 / ×10', () => {
-    expect(shipOf('sh-xuanwu').priceIsk).toBe(shipOf('sh-hawksbill').priceIsk * 15) // 装甲线：玳瑁 1.1M ×15
-    expect(shipOf('sh-bowhead').priceIsk).toBe(shipOf('sh-humpback').priceIsk * 10) // 鲸盟货舰线：座头鲸 1.35M ×10
-    expect(shipOf('sh-swordfish').priceIsk).toBe(shipOf('sh-sailfish').priceIsk * 10) // 蜃楼货舰线：旗鱼 0.48M ×10
+  it('价位阶梯：三条线各按同定位锚抬升（2026-09-13 价位重排后的口径）', () => {
+    expect(shipOf('sh-xuanwu').priceIsk).toBe(shipOf('sh-hawksbill').priceIsk * 15) // 装甲线：玳瑁 6M ×15 = 90M
+    // ⚠ 蝠鲼（**货舰**）锚**货舰线**（剑鱼），不是矿舰——船长 2026-09-13：「蝠鲼级重载货舰是货船，
+    //   不应该对应矿舰」；系数 = 保持今天 13.5M ÷ 4.8M 的同档比 2.8125。
+    expect(shipOf('sh-bowhead').priceIsk).toBe(shipOf('sh-swordfish').priceIsk * 2.8125) // 67.5M
+    expect(shipOf('sh-swordfish').priceIsk).toBe(shipOf('sh-sailfish').priceIsk * 10) // 蜃楼货舰线：旗鱼 2.4M ×10 = 24M
+    expect(shipOf('sh-humpback').priceIsk).toBe(900_000 * 10) // 工业线：鲸吞 0.9M ×10 = 9M（矿舰锚矿舰）
     expect(goodOf('ship', 'sh-megalodon')?.basePrice).toBe(shipOf('sh-electricray').priceIsk * 15) // 武装线：电鳐 15M ×15
-    for (const id of ['sh-xuanwu', 'sh-bowhead', 'sh-swordfish']) {
+    for (const id of ['sh-xuanwu', 'sh-bowhead', 'sh-swordfish', 'sh-hawksbill', 'sh-sailfish', 'sh-humpback']) {
       expect(goodOf('ship', id)?.basePrice, `${id} 市场行价未跟上 ships.ts`).toBe(shipOf(id).priceIsk)
     }
+  })
+
+  it('T5 旗舰与声望档位：皇带鱼 = 旗舰基准 8 亿 ×0.8；T3/T4/T5 门槛 12/20/35', () => {
+    expect(shipOf('sh-colossal').priceIsk).toBe(0) // 定制船口径（只收不卖 ⇒ priceIsk 必须 0）
+    expect(goodOf('ship', 'sh-colossal')?.basePrice).toBe(640_000_000) // 8 亿 ×0.8（非战斗下浮）
+    expect(goodOf('ship', 'sh-colossal')?.standingReq).toBe(35)
+    expect(goodOf('ship', 'sh-xuanwu')?.standingReq).toBe(20)
+    expect(goodOf('blueprint', 'sbp-xuanwu')?.standingReq).toBe(25)
+    expect(goodOf('ship', 'sh-hawksbill')?.standingReq).toBe(12)
+    expect(goodOf('blueprint', 'sbp-hawksbill')?.standingReq).toBe(15)
+    expect(goodOf('ship', 'sh-whiteshark')?.standingReq).toBe(7) // T2 保留门槛（大白鲨）
   })
 
   it('T5 邓氏鱼仍是壳体：不上市场、不接蓝图、priceIsk 0（本轮不越界）', () => {

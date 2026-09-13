@@ -28,14 +28,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '鲸王级舰船蓝图',
     shipId: 'whale-king',
     materials: [
-      { itemId: 'min-tritanium', count: 90_450 },
-      { itemId: 'min-pyerite', count: 46_500 },
-      { itemId: 'min-mexallon', count: 20_650 },
-      { itemId: 'min-nocxium', count: 5_150 },
+      { itemId: 'min-tritanium', count: 226_000 },
+      { itemId: 'min-pyerite', count: 116_000 },
+      { itemId: 'min-mexallon', count: 51_600 },
+      { itemId: 'min-nocxium', count: 12_900 },
     ],
-    buildSeconds: 15_600, // 鲸王级（2026-09-13 工期阶梯重排：T3 带 3~5 时；原 180*60=10800）
+    buildSeconds: 17_520, // 鲸王级（2026-09-13 价位重排后按带内插值：12M ⇒ 4.9 时）
     buildCostIsk: 900_000,
-    priceIsk: 19200000,
+    priceIsk: 48_000_000, // = 行价 12,000,000 × 4（2026-09-13 价位重排）
     description: '鲸王级总装图纸：货舱 7,000 m³，8 秒循环产 58 单位。造完它，你就是深空工业的传说。',
   },
   {
@@ -43,14 +43,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '座头鲸级舰船蓝图',
     shipId: 'sh-humpback',
     materials: [
-      { itemId: 'min-tritanium', count: 32_150 },
-      { itemId: 'min-pyerite', count: 14_050 },
-      { itemId: 'min-mexallon', count: 5_200 },
-      { itemId: 'min-isotope', count: 1_400 },
+      { itemId: 'min-tritanium', count: 240_000 },
+      { itemId: 'min-pyerite', count: 78_000 },
+      { itemId: 'min-mexallon', count: 39_000 },
+      { itemId: 'min-isotope', count: 7_500 },
     ],
-    buildSeconds: 12_960, // 座头鲸级（2026-09-13 工期阶梯重排：T3 带 3~5 时；原 90*60=5400）
+    buildSeconds: 16_920, // 座头鲸级（2026-09-13 价位重排后按带内插值：9M ⇒ 4.7 时）
     buildCostIsk: 420_000,
-    priceIsk: 4050000,
+    priceIsk: 36_000_000, // = 行价 9,000,000 × 4（2026-09-13 价位重排）
     description: '座头鲸级矿舰总装图纸：货舱 19000 m³、30 秒循环产 140 单位——采矿舰族的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
   },
   {
@@ -58,18 +58,18 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '皇带鱼级舰船蓝图', // 2026-09-09 船长定：随船改名（原巨灵鲸级）
     shipId: 'sh-colossal',
     materials: [
-      { itemId: 'min-tritanium', count: 80_000 },
-      { itemId: 'min-pyerite', count: 40_000 },
-      { itemId: 'min-mexallon', count: 18_000 },
-      { itemId: 'min-nocxium', count: 3_000 },
-      { itemId: 'min-isotope', count: 5_000 },
-      { itemId: 'min-starcore', count: 2_000 },
-      { itemId: 'min-darkiron', count: 800 },
-      { itemId: 'min-voidcrystal', count: 120 },
+      { itemId: 'min-tritanium', count: 6_880_000 },
+      { itemId: 'min-pyerite', count: 3_440_000 },
+      { itemId: 'min-mexallon', count: 1_548_000 },
+      { itemId: 'min-nocxium', count: 258_000 },
+      { itemId: 'min-isotope', count: 430_000 },
+      { itemId: 'min-starcore', count: 172_000 },
+      { itemId: 'min-darkiron', count: 68_800 },
+      { itemId: 'min-voidcrystal', count: 10_320 },
     ],
-    buildSeconds: 162_000, // 皇带鱼级（2026-09-13 工期阶梯重排：T5 = T4 带下沿 9h ×5 = 45 时；原 240*60=14400）
+    buildSeconds: 162_000, // 皇带鱼级（2026-09-13 工期阶梯：T5 = T4 带下沿 9h ×5 = 45 时；价位重排后不变）
     buildCostIsk: 2_400_000,
-    priceIsk: 22000000,
+    priceIsk: 2_560_000_000, // = 行价 640,000,000 × 4（2026-09-13 价位重排：旗舰基准 8 亿 ×0.8）
     description: '皇带鱼级旗舰货舰总装图纸（限定奇货）：三万六千立方货舱的移动要塞——材料清单本身就是一份远征地图。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）
   },
   {
@@ -104,14 +104,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '蝠鲼级舰船蓝图',
     shipId: 'sh-bowhead',
     materials: [
-      { itemId: 'min-tritanium', count: 318_000 },
-      { itemId: 'min-pyerite', count: 102_000 },
-      { itemId: 'min-mexallon', count: 61_000 },
-      { itemId: 'min-nocxium', count: 12_000 },
+      { itemId: 'min-tritanium', count: 1_590_000 },
+      { itemId: 'min-pyerite', count: 510_000 },
+      { itemId: 'min-mexallon', count: 305_000 },
+      { itemId: 'min-nocxium', count: 60_000 },
     ],
-    buildSeconds: 43_200, // 蝠鲼级（2026-09-13 工期阶梯重排：T4 带 9~20 时；原 7140）
+    buildSeconds: 59_610, // 蝠鲼级（2026-09-13 价位重排后按带内插值：67.5M ⇒ 16.6 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 54_000_000, // = 行价 13,500,000 × 4（2026-09-13 T4 档上调后跨入 >400 万档系数）
+    priceIsk: 270_000_000, // = 行价 67,500,000 × 4（2026-09-13 价位重排）
     description: '「蝠鲼级重载货舰」总装图纸：货舱 26,000 m³、循环 36 秒产 110 单位——货运舰族量产线，学会即可在船坞总装。',
   },
   {
@@ -310,13 +310,13 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玳瑁级舰船蓝图',
     shipId: 'sh-hawksbill',
     materials: [
-      { itemId: 'min-tritanium', count: 34_100 },
-      { itemId: 'min-pyerite', count: 10_300 },
-      { itemId: 'min-mexallon', count: 4_900 },
+      { itemId: 'min-tritanium', count: 210_000 },
+      { itemId: 'min-pyerite', count: 56_000 },
+      { itemId: 'min-mexallon', count: 17_400 },
     ],
-    buildSeconds: 12_540, // 玳瑁级（2026-09-13 工期阶梯重排：T3 带 3~5 时；原 2880）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
+    buildSeconds: 16_080, // 玳瑁级（2026-09-13 价位重排后按带内插值：6M ⇒ 4.5 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 3_300_000, // 同步：1,100,000 × 3（T3 档位系数；2026-09-13 船价跟涨）
+    priceIsk: 24_000_000, // = 行价 6,000,000 × 4（2026-09-13 价位重排；此前与市场卡不同值，本次一并归位）
     description: '「玳瑁级重装巡舰」总装图纸：货舱 12,000 m³、循环 13 秒产 22 单位——重装舰族量产线，学会即可在船坞总装。',
   },
   {
@@ -324,14 +324,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玄武级舰船蓝图',
     shipId: 'sh-xuanwu',
     materials: [
-      { itemId: 'min-tritanium', count: 390_000 },
-      { itemId: 'min-pyerite', count: 125_000 },
-      { itemId: 'min-mexallon', count: 73_000 },
-      { itemId: 'min-nocxium', count: 15_000 },
+      { itemId: 'min-tritanium', count: 2_125_000 },
+      { itemId: 'min-pyerite', count: 680_000 },
+      { itemId: 'min-mexallon', count: 400_000 },
+      { itemId: 'min-nocxium', count: 81_000 },
     ],
-    buildSeconds: 45_000, // 玄武级（2026-09-13 工期阶梯重排：T4 带 9~20 时；原 8280）
+    buildSeconds: 62_580, // 玄武级（2026-09-13 价位重排后按带内插值：90M ⇒ 17.4 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 66_000_000, // = 行价 16,500,000 × 4（2026-09-13 T4 档上调后跨入 >400 万档系数）
+    priceIsk: 360_000_000, // = 行价 90,000,000 × 4（2026-09-13 价位重排）
     description: '「玄武级重装旗舰」总装图纸：货舱 19,000 m³、循环 14 秒产 26 单位——重装舰族量产线，学会即可在船坞总装。',
   },
   {
@@ -352,13 +352,13 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '旗鱼级舰船蓝图',
     shipId: 'sh-sailfish',
     materials: [
-      { itemId: 'min-tritanium', count: 14_850 },
-      { itemId: 'min-pyerite', count: 4_500 },
-      { itemId: 'min-mexallon', count: 2_150 },
+      { itemId: 'min-tritanium', count: 84_000 },
+      { itemId: 'min-pyerite', count: 22_500 },
+      { itemId: 'min-mexallon', count: 6_900 },
     ],
-    buildSeconds: 10_800, // 旗鱼级（2026-09-13 工期阶梯重排：T3 带 3~5 时；原 1800）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
+    buildSeconds: 14_160, // 旗鱼级（2026-09-13 价位重排后按带内插值：2.4M ⇒ 3.9 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 1200000,
+    priceIsk: 7_200_000, // = 行价 2,400,000 × 3（100~400 万档系数；2026-09-13 价位重排）
     description: '「旗鱼级高速货舰」总装图纸：货舱 8,500 m³、循环 11 秒产 18 单位——货运舰族量产线，学会即可在船坞总装。',
   },
   {
@@ -366,13 +366,13 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '剑鱼级舰船蓝图',
     shipId: 'sh-swordfish',
     materials: [
-      { itemId: 'min-tritanium', count: 168_000 },
-      { itemId: 'min-pyerite', count: 45_000 },
-      { itemId: 'min-mexallon', count: 13_800 },
+      { itemId: 'min-tritanium', count: 840_000 },
+      { itemId: 'min-pyerite', count: 225_000 },
+      { itemId: 'min-mexallon', count: 69_000 },
     ],
-    buildSeconds: 32_400, // 剑鱼级（2026-09-13 工期阶梯重排：T4 带 9~20 时；原 4680）
+    buildSeconds: 48_960, // 剑鱼级（2026-09-13 价位重排后按带内插值：24M ⇒ 13.6 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 19_200_000, // = 行价 4,800,000 × 4（2026-09-13 T4 档上调后跨入 >400 万档系数）
+    priceIsk: 96_000_000, // = 行价 24,000,000 × 4（2026-09-13 价位重排）
     description: '「剑鱼级大型货舰」总装图纸：货舱 14,000 m³、循环 12 秒产 16 单位——货运舰族量产线，学会即可在船坞总装。',
   },
   {
