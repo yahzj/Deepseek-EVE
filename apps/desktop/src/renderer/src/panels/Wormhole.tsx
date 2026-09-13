@@ -26,6 +26,7 @@ import {
   wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
+  durabilityOf,
   wormholeOutOfTurns,
   wormholeShipAllowed,
   wormholeShipMass,
@@ -37,16 +38,6 @@ import type { ToastFn } from '../pages/common'
 import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 
 type WhTab = 'prep' | 'map' | 'bag'
-
-/** 选舰「状态」筛选（与「我的舰队」的状态筛选同款控件；键义按虫洞口径：可编入 / 已编入 / 过重 / 占用中） */
-type WhStatusFilter = 'all' | 'pickable' | 'picked' | 'heavy' | 'busy'
-const WH_STATUS_TABS: Array<{ key: WhStatusFilter; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'pickable', label: '可编入' },
-  { key: 'picked', label: '已编入' },
-  { key: 'heavy', label: '过重' },
-  { key: 'busy', label: '占用中' },
-]
 
 const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
 
@@ -81,10 +72,10 @@ export function WormholePanel({
   const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
 
   /* ── 选舰检索（船长 2026-09-13「缺少一个类似我的舰队里的舰船筛选和搜索」）──
-     复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 三行筛选（状态/类别/级别，各维取「与」）；
-     类别与级别复用同一张单点表（`SHIP_SUBS` / `SHIP_TIER_SUBS`），与市场/手册/组装机同口径。 */
+     复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 两行筛选（类别 / 级别，各维取「与」）；
+     类别与级别复用同一张单点表（`SHIP_SUBS` / `SHIP_TIER_SUBS`），与市场/手册/组装机同口径。
+     （2026-09-13 船长：「状态的筛选可以删除」⇒ 原「状态」那一行整行退场。） */
   const [whQ, setWhQ] = useState('')
-  const [whStatus, setWhStatus] = useState<WhStatusFilter>('all')
   const [whRole, setWhRole] = useState<string>(SUB_ALL)
   const [whTier, setWhTier] = useState<string>(SUB_ALL)
   const whEntries = Object.keys(state.fleet).map((uid) => {
@@ -99,25 +90,17 @@ export function WormholePanel({
       ok,
       busy,
       on: picked.includes(uid),
+      // **损伤**（与舰队页「待维修」同一把尺）：装甲/结构未满 = 带伤；护盾每场满值重建、不持久、不计
+      armor: state.fleet[uid]!.armorPct ?? 1,
+      dur: durabilityOf(state, uid),
     }
   })
-  const whFiltered = whQ.trim().length > 0 || whStatus !== 'all' || whRole !== SUB_ALL || whTier !== SUB_ALL
+  const whFiltered = whQ.trim().length > 0 || whRole !== SUB_ALL || whTier !== SUB_ALL
   const whShown = whEntries.filter((e) => {
     const q = whQ.trim().toLowerCase()
     if (q.length > 0) {
       const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
       if (!hay.includes(q)) return false
-    }
-    if (whStatus !== 'all') {
-      const hit =
-        whStatus === 'picked'
-          ? e.on
-          : whStatus === 'pickable'
-            ? e.ok && !e.busy
-            : whStatus === 'heavy'
-              ? !e.ok
-              : !!e.busy // busy
-      if (!hit) return false
     }
     if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
     if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
@@ -228,22 +211,6 @@ export function WormholePanel({
               </span>
               <div className="app-fleet-toolbar app-wh-filters">
                 <div className="app-fleet-row">
-                  <span className="app-dim">状态：</span>
-                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
-                    {WH_STATUS_TABS.map((t) => (
-                      <button
-                        key={t.key}
-                        role="tab"
-                        aria-selected={whStatus === t.key}
-                        className={`app-tasktab${whStatus === t.key ? ' is-active' : ''}`}
-                        onClick={() => setWhStatus(t.key)}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="app-fleet-row">
                   <span className="app-dim">类别：</span>
                   <div className="app-task-tabs app-fleet-tabs" role="tablist">
                     <button
@@ -293,7 +260,8 @@ export function WormholePanel({
                 </div>
               </div>
               <ul className="app-wh-cards">
-                {whShown.map(({ uid, name, tier, ok, on, busy }) => {
+                {whShown.map(({ uid, name, tier, ok, on, busy, armor, dur }) => {
+                  const damaged = armor < 1 || dur < 1
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
                   const canPick = ok && !busy
                   const title = !ok
@@ -324,8 +292,24 @@ export function WormholePanel({
                         <span className="app-wh-card-sub">
                           折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
-                        <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
-                          {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                        <span className="app-wh-card-tags">
+                          <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
+                            {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                          </span>
+                          {/* **损伤提示标签**（船长 2026-09-13：「如果舰船有损伤，那么在编入的标签旁新增一个标签
+                              提示玩家，防止不小心损坏的船带入虫洞」）：判据与舰队页「待维修」同一把尺
+                              （`armorPct < 1 || durability < 1`；护盾不持久、不计损伤）。 */}
+                          {damaged ? (
+                            <span
+                              className="app-wh-card-tag is-warn"
+                              title={`该舰带伤（承伤在虫洞内**跨节点保留**）：${armor < 1 ? `装甲 ${Math.round(armor * 100)}%` : ''}${
+                                armor < 1 && dur < 1 ? ' · ' : ''
+                              }${dur < 1 ? `结构 ${Math.round(dur * 100)}%` : ''}——建议先回站维修或换一艘。`}
+                            >
+                              带伤{armor < 1 ? ` 甲${Math.round(armor * 100)}%` : ''}
+                              {dur < 1 ? ` 构${Math.round(dur * 100)}%` : ''}
+                            </span>
+                          ) : null}
                         </span>
                       </button>
                     </li>
