@@ -185,10 +185,14 @@ export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' 
   return null
 }
 
-/** 可指派的空闲船（舰队里非主控、无任务、不在换船善后返航中的船） */
+/** 可指派的空闲船（舰队里非主控、无任务、不在换船善后返航中的船）
+ *  ⚠ **进了虫洞的船不算空闲**（船长 2026-09-13：「已经进洞的船将被锁定」）——它们锁在洞里，
+ *  不能被派去采矿/打捞/掩护巡逻（否则同一艘船会被两处同时占用）。判据与 `shipBusyLabel` 同源。 */
 export function idleAiShipIds(state: GameState): string[] {
+  const inHole = state.wormhole.run?.fleet ?? []
   return Object.keys(state.fleet).filter(
-    (id) => id !== state.shipId && !(id in state.aiAssignments) && !shipInReturn(state, id),
+    (id) =>
+      id !== state.shipId && !inHole.includes(id) && !(id in state.aiAssignments) && !shipInReturn(state, id),
   )
 }
 

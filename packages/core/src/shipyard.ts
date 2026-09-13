@@ -4,7 +4,7 @@
  * v17（T5-B）：fleet 键 = 实例 uid——同型可多艘（第 1 艘 = 船型 id，
  * 第 2 艘起 = `船型id#N`，固定不回收）；条目带 defId/customName。
  */
-import { addLog, DEFAULT_START_SHIP_ID } from './state'
+import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import type { CommandResult } from './engine'
 import type { FittedModules, FleetShipState, GameState } from './state'
 import type { SimContext } from './types'
@@ -17,6 +17,7 @@ import { cancelHaulingOnSwitch } from './hauling'
 import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
 import { countWare, removeWare } from './inventory'
+import { quickRepairFactor } from './repair'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
@@ -85,6 +86,9 @@ export function ownsShip(state: GameState, shipId: string): boolean {
 
 /** 玩家指令：切换到拥有的另一艘船驾驶（采矿/打捞作业中可直接切换——旧船自动返航卸货善后，作业随之结束） */
 export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, shipId, '换驾驶到它')
+  if (lock) return { ok: false, error: lock }
   if (shipId === state.shipId) {
     return { ok: false, error: `正在驾驶的就是 ${shipDisplayName(state, ctx, shipId)}。` }
   }
@@ -324,7 +328,8 @@ export function hullLayerCaps(
   return layerCaps(state, ctx, shipId)
 }
 
-/** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 抢修工程学（+10%/级） */
+/** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 舰体快修学（+10%/级）
+ *  （技能系数走 `repair.quickRepairFactor`——与船体维修装置每跳共用同一处，见该模块头注释） */
 function kitHealFor(
   state: GameState,
   ctx: SimContext,
@@ -332,7 +337,7 @@ function kitHealFor(
   baseHp: number,
   caps: { capA: number; capH: number; baseA: number; baseH: number } | null,
 ): { a: number; h: number } {
-  const skill = 1 + 0.1 * Math.min(5, state.skills.trained['hull-quick-repair'] ?? 0)
+  const skill = quickRepairFactor(state, ctx)
   const aMult = caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1
   const hMult = caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1
   return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
@@ -358,6 +363,9 @@ export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext)
 
 /** 玩家指令：维修某艘拥有船（回满耐久与装甲；钱不够时按比例修复可用部分） */
 export function repairShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, shipId, '在站里修它')
+  if (lock) return { ok: false, error: lock }
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   const name = shipDisplayName(state, ctx, shipId)
@@ -420,13 +428,16 @@ export function repairWithKitsFor(
   target = 0.5,
   source: 'cargo' | 'cargo+warehouse' = 'cargo',
 ): RepairWithKitsResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, shipId, '用维修装置修它')
+  if (lock) return { used: 0, reachedTarget: true, outOfKits: false }
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return { used: 0, reachedTarget: true, outOfKits: false }
   const caps = layerCaps(state, ctx, shipId)
   const damaged = (): boolean => fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target
   let used = 0
   let guard = 0
-  while (damaged() && guard < 200) {
+  while (damaged() && guard < 1000) {
     guard += 1
     const kitId = takeRepairKit(state, ctx, shipId, source)
     if (kitId === null) break

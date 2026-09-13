@@ -14,10 +14,13 @@ import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
 import {
   wormholeAdvanceNode,
+  wormholeBagSlots,
   wormholeCardIdFor,
+  wormholeFleetCargoM3,
+  wormholeTrimBag,
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
@@ -58,7 +61,8 @@ export function wormholeStartBattle(
   }
   const waves = kind === 'node' ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   const cardId = wormholeCardIdFor(run.depth, run.nodeIndex)
-  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, null, {
+  // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
+  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,
     kind,
     waves,
@@ -139,6 +143,21 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   if (sunk.length > 0) {
     run.fleet = run.fleet.filter((uid) => !sunk.includes(uid))
     state.wormhole.lastFleetLost += sunk.length
+    // **沉船拖走货舱 ⇒ 背包格上限跟着缩水，装不下的当场丢**（船长 2026-09-13：「扣背包格，
+    // 不足时丢弃货物」）。格数 = 「剩余编队合计货仓 ÷ 500」现算 ⇒ 这里只需把溢出部分裁掉。
+    const cap = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
+    const trimmed = wormholeTrimBag(ctx, run.bag, cap)
+    if (trimmed.dropped.length > 0) {
+      const names = trimmed.dropped
+        .map((s) => `${ctx.items.get(s.itemId)?.name ?? s.itemId}×${Math.floor(s.units).toLocaleString('zh-CN')}`)
+        .join('、')
+      run.bag = trimmed.bag
+      addLog(
+        state,
+        'warn',
+        `🕳 沉船拖走了货舱：背包缩到 ${cap} 格，装不下的部分当场丢弃（${names}）——按每格价值从低到高丢。`,
+      )
+    }
   }
   // P0 承伤持久化（船长「副本内承伤持久」）：逐船把装甲/结构残余写回
   for (const uid of run.fleet) persistFleetHullDamage(state, ctx, uid, battle)
@@ -237,7 +256,9 @@ export function wormholeBattleViewOf(
   const spec = battle.wormhole
   const base = spec ? ctx.anomalies.get(spec.cardId) : undefined
   if (!spec || !base) return null
-  const anomaly = wormholeAnomalyOf(base, spec.depth, spec.kind, spec.waves)
+  // 走**引擎同源**那一处（wormholeDerivedAnomaly）：既保证视图与推进同口径，也吃到它的一层记忆
+  //（本函数每次重渲染都会被调一次；拖动距离条时高频重渲染 ⇒ 重建整张敌卡会顶出顿挫）
+  const anomaly = wormholeDerivedAnomaly(ctx, base, spec)
   const leaderShipId = battle.myFleet?.[0]?.shipId ?? state.shipId
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
@@ -278,6 +299,9 @@ export function advanceWormhole(
 ): void {
   const run = state.wormhole.run
   if (!run) return
+  // **临时离开 = 活动停止 ⇒ 洞内一切冻结**（船长 2026-09-13 批准 · 议案 A 第 4 条）：战斗不推进
+  // （不掉血）、撤离战不开打、收口不落地——回来接着打，进度原样在。
+  if (run.attending !== true) return
   if (run.battle) {
     if (freezeBattle) return
     advanceBattleFor(state, ctx, run.battle, run.fleet[0] ?? state.shipId, run.battle.wormhole?.cardId ?? null)

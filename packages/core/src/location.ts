@@ -1,4 +1,4 @@
-﻿/**
+/**
  * T8/T9 位置模型（多空间站版）：
  * - 舰船空闲时的"野外停留" = awayGalaxy；否则停靠空间站 = 母港（dockedSite=null）
  *   或已建成的副空间站（dockedSite = 站点 id）；
@@ -11,7 +11,7 @@
  *   建设工地星系（to-site）→ 到点野外停留自动交付建材 → 自动返航最近空间站（to-station）；
  *   行程随时可取消（无惩罚，取消即立即返航停靠最近已建成站）。
  */
-import { addLog, HOME_GALAXY_ID } from './state'
+import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
@@ -564,6 +564,9 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
+  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
+  const hold = wormholePilotHoldReason(state)
+  if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再转场。' }

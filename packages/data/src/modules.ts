@@ -1259,6 +1259,417 @@ export const MODULES: readonly ModuleDef[] = [
     description:
       '鱿烬亡军窝点专属：用废桅杆拼起来的中继阵——放飞无人机射程 **+65%**（蜂鸟 4125 m / 赤鸢 4950 m / 猎鹰 5775 m / 雷鸥 8250 m）。比无人机中继天线 MK3 近一档，却省下 12 点 CPU。',
   },
+
+  /* ══════════════ 虫洞专属装备（2026-09-13 船长「开工，装备就全部做进来」；设计稿 `docs/design/wormhole-exclusive-20260913.md`）
+   * 五族各 6 件，**同族以内与本族的"残骸族专属"（`FOE_LAIR_GEAR`）不重复定位**（逐件核过：本套用的
+   * 字段，族专属一件都没用过）。强度档 ≈ **MK3 同字段件的 2 倍量级**（与窝点专属同档、走另一维度），
+   * 每件都带一个明确代价（高 CPU，或失步 / 近盲 / 偏低的命中 / 只对单弹种有效）。
+   *
+   * ⚠ **施工期闸门**：全部标 `unreleased: true`（手册装备图鉴遍历 MODULES 全目录），上线时删字段；
+   *   `content:check` 的「虫洞不可见闸门」按 `mod-wh-` 前缀逐条钉住。
+   * ⚠ 这 30 件**无市场卡**（买不到也卖不掉），来源 = 洞内掉落 + 各自的**一次性图纸**（`singleUse`）。 */
+  /* ── A 族（海盗 · 掠夺：大货舱 / 快 / 中近程）──
+   * 窝点套已占：转管炮（动能近程）・导弹巢（爆破中程）・赃物强化舱（货舱+甲容量） */
+  {
+    // 2026-09-13 船长审核改：原「裂罅熔流炮」（激光·等离子·11.5 km）⇒ **爆炸武器·破片炮**
+    id: 'mod-wh-a-frag',
+    name: '掠袭破片炮',
+    slot: 'turret', // 爆炸系武器形态 = 炮台（激光槽契约要求等离子 ⇒ 随弹种改槽）
+    rack: 'high',
+    unreleased: true,
+    damageType: 'explosive',
+    ammoPerEngagement: 20,
+    maxRangeM: 7_300, // 船长审核：11.5 km → 7.3 km
+    minRangeM: 0,
+    hitRate: 0.8, // 船长审核：1 → 0.8
+    falloff: 0.5,
+    reloadMs: 5_600,
+    dmgMult: 7.04, // 船长审核：8.8 ×0.8（伤害降低 20%）
+    cpuUse: 48, // 船长审核：62 → 48
+    // ⚠ **待落**：船长要求「攻击额外造成 50% 的动能伤害」——引擎当前**一件武器只有一个弹种**
+    //   （`ModuleDef.damageType` 单值），需新增字段（建议 `secondaryDamagePct` + 副弹种）与战斗侧
+    //   第二段伤害，见设计稿 §3.6「待落机制」。
+    description:
+      '会自己炸开的破片弹：**7.3 km 内**撒出一片高爆碎片，单发是攻坚炮台 MK3 的 1.37 倍。碎片不看装甲缝隙——**额外附带一段动能伤害**（机制待落，见设计稿 §3.6）。代价：命中只有 0.8，装填 5.6 秒。',
+  },
+  {
+    id: 'mod-wh-a-hangar',
+    name: '掠袭机库', // 船长审核改：赃物机库 → 掠袭机库
+    slot: 'drone-rack',
+    rack: 'high',
+    unreleased: true,
+    droneBayBonusM3: 30, // 船长审核：85 → 30
+    cpuUse: 25, // 船长审核：46 → 25
+    // ⚠ **待落**：船长要求「无人机攻击间隔减少 8%」——无人机当前没有"攻击间隔"可加的模块字段
+    //   （只有 bay/dmg/range 三件），需新增字段（建议 `droneIntervalCutPct`）+ 战斗侧接入，见设计稿 §3.6。
+    description:
+      '把抢来的货舱隔板焊成的机库夹层：无人机舱 **+30 m³**，**放飞无人机的攻击间隔明显缩短**（机制待落，见设计稿 §3.6）。装得下才抢得动，代价只有 25 点 CPU——是本套最省的一件。',
+  },
+  {
+    id: 'mod-wh-a-prop',
+    name: '掠袭加力器',
+    slot: 'propulsion',
+    rack: 'mid',
+    unreleased: true,
+    speedBonusPct: 1.2, // 矢量推进器 MK3 = +100%
+    hitPenalty: 0.35, // 船长审核：0.05 → 0.35（开火命中 ×0.65）
+    cpuUse: 18, // 船长审核：38 → 18
+    description:
+      '过载到发红的推进段：战斗机动 **+120%**（矢量推进器 MK3 是 +100%），CPU 只吃 18。代价是开火失稳到极点——**命中 ×0.65**。抢完就跑才是它的正经用法。',
+  },
+  {
+    id: 'mod-wh-a-coat',
+    name: '赃物折射涂层',
+    slot: 'support',
+    rack: 'mid',
+    unreleased: true,
+    evasionGapPct: 0.28, // 姿态陀螺 MK3 = 0.2
+    cpuUse: 34,
+    description:
+      '一层会骗测距的涂层：被命中缺口再削 **28%**（姿态陀螺 MK3 是 20%）。不给抗性、不给血，只让你更难被打中——保命也保货。',
+  },
+  {
+    id: 'mod-wh-a-scan',
+    name: '赃物扫描阵',
+    slot: 'support',
+    rack: 'mid',
+    unreleased: true,
+    hitBonusPct: 0.24, // 索敌阵列 MK3 = 0.16
+    cpuUse: 36,
+    description:
+      '拼装起来的火控阵列：炮台命中整体 **×1.24**（索敌阵列 MK3 是 ×1.16）。贴脸速射最怕散布，它专治这个。',
+  },
+  {
+    id: 'mod-wh-a-shield',
+    name: '掠袭者护盾笼', // 船长审核改：掠夺者护盾笼 → 掠袭者护盾笼
+    slot: 'shield',
+    rack: 'mid',
+    unreleased: true,
+    shieldHpBonus: 0.8, // 船长审核：0.9 → 0.8
+    cpuUse: 46,
+    // ⚠ **待落**：船长要求「射程削减 25%」——引擎当前没有"武器射程百分比"模块字段，
+    //   需新增（建议 `rangeCutPct`，多件取最重一件）+ 战斗侧接入，见设计稿 §3.6。
+    description:
+      '把三块抢来的护盾发生器串成一个笼：护盾容量 **+80%**（护盾扩展器 MK3 是 +60%）。只堆池子、不加快回充——**代价是全舰武器射程大幅缩水**（机制待落，见设计稿 §3.6）：护盾笼挤占了炮座的位置。',
+  },
+  /* ── C 族（异形 · 生体：结构/装甲高、护盾薄、近程高伤）──
+   * 窝点套已占：生体甲壳板（甲自修）・生体损管腔（结构抗+结构自修）・酸液喷吐器（近程必中） */
+  {
+    id: 'mod-wh-c-laser',
+    name: '生体棱镜束',
+    slot: 'laser',
+    rack: 'high',
+    unreleased: true,
+    damageType: 'plasma', // ⚠ 审核修正：C 族卡池 = 等离子 8 / 爆破 2（无动能）⇒ 原"动能穿刺炮"越出本族弹型，改为等离子
+    ammoPerEngagement: 22,
+    maxRangeM: 8_600, // 与本族窝点件（酸液喷吐器 2.8 km 近程必中）拉开射程带：近战贴脸是它的，这件管拉开之后
+    minRangeM: 0, // 激光家族口径：光束无近盲
+    hitRate: 1,
+    falloff: 0.1, // 激光件统一口径：最远端威力 ×0.10
+    reloadMs: 5_600, // 代价：装填比激光炮 MK3 慢四成
+    dmgMult: 7.6, // 单发 ≈ 激光炮 MK3（4.2）的 1.8 倍
+    cpuUse: 60,
+    description:
+      '生体棱镜阵列射出的酸蚀光束：**8.6 km 必中**、单发是激光炮 MK3 的 1.8 倍。比同族的酸液喷吐器远出三倍——贴脸有喷吐器，这件管的是"它想拉开距离"的时候。代价是装填 5.6 秒。',
+  },
+  {
+    id: 'mod-wh-c-armor',
+    name: '活性甲壳层',
+    slot: 'armor',
+    rack: 'low',
+    unreleased: true,
+    armorHpBonus: 1.6, // 装甲增厚板 MK3 = 0.8
+    cpuUse: 44,
+    description:
+      '还在缓慢生长的甲壳：装甲容量 **+160%**（装甲增厚板 MK3 是 +80%）。它不修、不抗，就是厚——与本族那件"会自修的甲"是两条路。',
+  },
+  {
+    id: 'mod-wh-c-prism',
+    name: '甲壳棱镜层',
+    slot: 'armor',
+    rack: 'low',
+    unreleased: true,
+    armorResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 }, // 三系均衡（与 D 族盾抗同档，但走装甲层）
+    cpuUse: 46,
+    description:
+      '甲壳里析出的棱晶结构：**三系装甲抗性各削三成缺口**（动能 / 爆破 / 等离子一视同仁）。护盾薄的族，只能把甲做成棱镜。',
+  },
+  {
+    id: 'mod-wh-c-pulse',
+    name: '生体脉搏加速器',
+    slot: 'support',
+    rack: 'low',
+    unreleased: true,
+    reloadCutPct: 0.18, // 射速计算机 MK3 = 0.12
+    cpuUse: 32,
+    description:
+      '以生体脉搏驱动装填链：炮台装填间隔 **÷1.18**（射速计算机 MK3 是 ÷1.12）。配近程高频武器最合拍——打得近，就得打得密。',
+  },
+  {
+    id: 'mod-wh-c-missile',
+    name: '孢子导弹巢',
+    slot: 'missile',
+    rack: 'high',
+    unreleased: true,
+    damageType: 'explosive',
+    ammoPerEngagement: 30,
+    maxRangeM: 13_500,
+    minRangeM: 400,
+    hitRate: 0.8, // 代价：散布大、命中偏低
+    falloff: 1, // 导弹家族口径：追踪命中，命中不随距离衰减
+    reloadMs: 7_600, // 代价：装填长
+    dmgMult: 12.1, // 单发 ≈ 导弹架 MK3（6.04）的 2 倍
+    cpuUse: 58,
+    description:
+      '会自己散开的孢子囊：13.5 km 爆破覆盖、单发是导弹架 MK3 的两倍。散布大（命中 0.8）、装填慢（7.6 秒）——它负责把远处的编队整个罩住。',
+  },
+  {
+    id: 'mod-wh-c-frame',
+    name: '几丁质骨架层',
+    slot: 'armor',
+    rack: 'low',
+    unreleased: true,
+    armorHpBonus: 0.2, // 结构件带一点甲（与「巨构骨架 = 甲 0.3 + 结构 0.6」同款搭车；装甲槽契约要求有甲族字段）
+    hullHpBonus: 0.75, // 巨构骨架 = 0.6
+    cpuUse: 46,
+    description:
+      '把整副骨架换成几丁质复合层：结构层容量 **+75%**（巨构骨架是 +60%），另带一点装甲容量 **+20%**。护盾与装甲被打穿之后，最后那段血就靠它。',
+  },
+  /* ── D 族（守墓 · 重装：三系抗 / 必中远程 / 最慢）──
+   * 窝点套已占：陵墓护盾阵列（三系盾抗）・守墓者长炮（动能必中 12 km）・陵寝装甲层（甲容量） */
+  {
+    id: 'mod-wh-d-turret',
+    name: '陵卫连装炮',
+    slot: 'turret',
+    rack: 'high',
+    unreleased: true,
+    damageType: 'kinetic', // ⚠ 审核修正：D 族卡池 = 等离子 8 / 动能 2（**无爆破**）⇒ 原"陵寝齐射巢（导弹＝爆破）"越出本族弹型，改为动能
+    ammoPerEngagement: 40,
+    maxRangeM: 5_400, // 与本族窝点件（守墓者长炮 12 km 必中慢炮）拉开射程带与节奏：一门点名、一门清近
+    minRangeM: 300,
+    hitRate: 0.86,
+    falloff: 0.4,
+    reloadMs: 1_600, // 速射：1.6 秒一轮，节奏是长炮的 4.6 倍
+    dmgMult: 4.6, // 单发 ≈ 攻坚炮台 MK3（5.13）的九成
+    cpuUse: 46,
+    description:
+      '陵卫的连装速射炮：5.4 km 内 1.6 秒一轮。长炮负责点名硬目标，它负责把贴上来的一群清掉——守墓者慢，但不能被围。',
+  },
+  {
+    id: 'mod-wh-d-shield',
+    name: '陵墓护盾芯',
+    slot: 'shield',
+    rack: 'mid',
+    unreleased: true,
+    shieldHpBonus: 0.9, // 护盾扩展器 MK3 = 0.6
+    cpuUse: 52,
+    description:
+      '从陵墓阵列里取出的核心：护盾容量 **+90%**（护盾扩展器 MK3 是 +60%）。与本族那套"三系抗性的盾"互补——一个管厚度，一个管硬度。',
+  },
+  {
+    id: 'mod-wh-d-lock',
+    name: '守墓者丧钟',
+    slot: 'target-lock',
+    rack: 'high',
+    unreleased: true,
+    lockDmgBonus: 0.3, // 目标锁定阵列 MK3 = 0.2
+    cpuUse: 40,
+    description:
+      '锁定即宣判：被本舰锁定的目标**受击加深 30%**（目标锁定阵列 MK3 是 20%），且全舰武器转为集火同一目标——先敲最硬的那一个。',
+  },
+  {
+    id: 'mod-wh-d-laser',
+    name: '陵寝棱镜炮',
+    slot: 'laser',
+    rack: 'high',
+    unreleased: true,
+    damageType: 'plasma',
+    ammoPerEngagement: 18,
+    maxRangeM: 12_500,
+    minRangeM: 0, // 激光家族口径：光束无近盲
+    hitRate: 1,
+    falloff: 0.1, // 激光件统一口径
+    reloadMs: 6_800, // 代价：本套最慢
+    dmgMult: 9.4,
+    cpuUse: 68,
+    description:
+      '把陵墓顶端的棱镜拆下来当炮管：**12.5 km 必中光束**、单发是激光炮 MK3 的两倍多。装填 6.8 秒是本套最慢——瞄准的时间，就是它全部的代价。',
+  },
+  {
+    id: 'mod-wh-d-loader',
+    name: '守墓者速装填机',
+    slot: 'support',
+    rack: 'low',
+    unreleased: true,
+    reloadCutPct: 0.18, // 射速计算机 MK3 = 0.12
+    cpuUse: 34,
+    description:
+      '一套不知疲倦的机械装填臂：炮台装填间隔 **÷1.18**（射速计算机 MK3 是 ÷1.12）。必中长炮唯一的短板就是慢，它专补这一处。',
+  },
+  {
+    id: 'mod-wh-d-steady',
+    name: '陵墓弹道铭文',
+    slot: 'support',
+    rack: 'low',
+    unreleased: true,
+    damageTypeBonusPct: { kinetic: 0.22 }, // 伤害稳定器 MK3 = 0.15（单系）
+    cpuUse: 30,
+    description:
+      '刻在炮闩上的铭文：**动能武器单发 +22%**（动能稳定器 MK3 是 +15%）。只喂动能这一系——守墓者的炮都是动能炮。',
+  },
+  /* ── E 族（巨构 · 平台：机库 / CPU）──
+   * 窝点套已占：巨构残骸炮（爆破重锤）・深层机库（机库容量）・巨构骨架（甲+结构容量） */
+  {
+    id: 'mod-wh-e-dc',
+    name: '巨构损管阵列',
+    slot: 'armor',
+    rack: 'low',
+    unreleased: true,
+    armorHpBonus: 0.2, // 结构抗性件带一点甲容量（装甲槽契约要求有甲族字段）
+    hullResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 },
+    cpuUse: 48,
+    description:
+      '巨构造物的自带损管网：**三系结构抗性各削三成缺口**，另带装甲容量 **+20%**。巨构本来是挨打不还手的料，这一层让它挨得住第二轮。',
+  },
+  {
+    id: 'mod-wh-e-tac',
+    name: '巨构导控塔',
+    slot: 'drone-tac',
+    rack: 'high',
+    unreleased: true,
+    droneDmgBonus: 0.5, // 流亡蜂群导控 = 0.45
+    cpuUse: 44,
+    description:
+      '塔状的机群指挥中枢：放飞无人机单发 **+50%**（流亡蜂群导控是 +45%）。机库族缺的从来不是数量，是让它们打得疼。',
+  },
+  {
+    id: 'mod-wh-e-cpu',
+    name: '巨构协处理器',
+    slot: 'cpu',
+    rack: 'low',
+    unreleased: true,
+    cpuBonus: 90, // 协处理器 MK3 = +45
+    cpuUse: 0, // 协处理器口径：自身不占 CPU
+    description:
+      '巨构造物的并行计算核心：装配 CPU 上限 **+90**，自身不占 CPU。三件巨构件压上去之前，先把预算撑开——制式协处理器只到它的一半。',
+  },
+  {
+    id: 'mod-wh-e-pd',
+    name: '巨构近防阵列',
+    slot: 'turret',
+    rack: 'high',
+    unreleased: true,
+    damageType: 'kinetic',
+    ammoPerEngagement: 64,
+    maxRangeM: 2_500, // 防空口径（船长 2026-09-11「近防炮射程按 2500m 算」）：防空是贴身护卫，不得超过
+    minRangeM: 1,
+    hitRate: 0.92,
+    falloff: 0.5,
+    reloadMs: 1_200,
+    dmgMult: 3.7, // 单发 ≈ 近防炮 MK3（2.85）的 1.3 倍
+    antiDrone: 2, // 防空值 = 2（船长 2026-09-12「那伤害倍率按 2 倍算」——全游统一，专属件也不破例）
+    cpuUse: 56,
+    description:
+      '一整套阵列化点防：射程 2.5 km（防空武器统一射程），单发是近防炮 MK3 的 1.3 倍、射速也更快——贴在脸上，它是本套最快的一门。防空属性与制式近防炮同为 ×2，赢在单发与节奏。',
+  },
+  {
+    id: 'mod-wh-e-shield',
+    name: '巨构护盾矩阵',
+    slot: 'shield',
+    rack: 'mid',
+    unreleased: true,
+    shieldResistAdd: { kinetic: 0.32, explosive: 0.32, plasma: 0.32 }, // 陵墓护盾阵列 = 0.3
+    cpuUse: 50,
+    description:
+      '矩阵式护盾发生层：**三系护盾抗性各削三成二缺口**（比陵墓护盾阵列还高两个点）。巨构族原本一件护盾件都没有，这是它的第一块。',
+  },
+  {
+    id: 'mod-wh-e-steady',
+    name: '巨构稳态器',
+    slot: 'support',
+    rack: 'low',
+    unreleased: true,
+    damageTypeBonusPct: { explosive: 0.22 }, // 高爆稳定器 MK3 = 0.15
+    cpuUse: 30,
+    description:
+      '把巨构造物的减振结构塞进炮座：**爆破武器单发 +22%**（高爆稳定器 MK3 是 +15%）。只喂爆破——巨构的炮全是爆破炮。',
+  },
+  /* ── G 族（亡军 · 幽灵：低信号 / 快 / 远锁定 / 无人机）──
+   * 窝点套已占：流亡蜂无人机（专属无人机）・流亡蜂群导控（无人机伤害）・流亡中继桅（无人机射程） */
+  {
+    id: 'mod-wh-g-hangar',
+    name: '亡军蜂巢坞',
+    slot: 'drone-rack',
+    rack: 'high',
+    unreleased: true,
+    droneBayBonusM3: 110, // 深层机库 = +95
+    cpuUse: 54,
+    description:
+      '由废弃蜂巢改成的机坞：无人机舱 **+110 m³**（深层机库是 +95）。亡军给了无人机伤害与射程，唯独没给"装得下"——这就是那一块。',
+  },
+  {
+    id: 'mod-wh-g-fcs',
+    name: '亡军火控残响',
+    slot: 'support',
+    rack: 'mid',
+    unreleased: true,
+    hitBonusPct: 0.24, // 索敌阵列 MK3 = 0.16
+    cpuUse: 36,
+    description:
+      '从沉船里捡回的火控残骸，还在按老参数工作：炮台命中整体 **×1.24**（索敌阵列 MK3 是 ×1.16）。它记得上一任主人的射击习惯。',
+  },
+  {
+    id: 'mod-wh-g-ballistic',
+    name: '幽灵弹道校正器',
+    slot: 'support',
+    rack: 'low',
+    unreleased: true,
+    damageTypeBonusPct: { kinetic: 0.22 }, // 动能稳定器 MK3 = 0.15
+    cpuUse: 30,
+    description:
+      '一把没有主人的弹道仪：**动能武器单发 +22%**（动能稳定器 MK3 是 +15%）。亡军的炮都是捡来的动能炮，校正器也只好认这一系。',
+  },
+  {
+    id: 'mod-wh-g-hull',
+    name: '残兵结构层',
+    slot: 'armor',
+    rack: 'low',
+    unreleased: true,
+    armorHpBonus: 0.18, // 结构抗性件带一点甲容量（装甲槽契约要求有甲族字段）
+    hullResistAdd: { kinetic: 0.28, explosive: 0.28, plasma: 0.28 },
+    cpuUse: 44,
+    description:
+      '一层用同族残骸回炉重铸的结构层：**三系结构抗性各削二成八缺口**，另带装甲容量 **+18%**。亡军没有完整的船，只有拆下来的骨。',
+  },
+  {
+    id: 'mod-wh-g-turret',
+    name: '亡军残炮',
+    slot: 'turret',
+    rack: 'high',
+    unreleased: true,
+    damageType: 'explosive',
+    ammoPerEngagement: 36,
+    maxRangeM: 8_600,
+    minRangeM: 700,
+    hitRate: 0.75, // 代价：命中偏低（拼装货）
+    falloff: 0.4,
+    reloadMs: 4_600,
+    dmgMult: 11.5, // 单发 ≈ 攻坚炮台 MK3（5.13）的 2.2 倍
+    cpuUse: 54,
+    description:
+      '把三门废炮的部件拼成一门：单发是攻坚炮台 MK3 的两倍多，命中只有 0.75——它经手过太多任主人，膛线早就花了。',
+  },
+  {
+    id: 'mod-wh-g-prop',
+    name: '幽灵推进器',
+    slot: 'propulsion',
+    rack: 'mid',
+    unreleased: true,
+    speedBonusPct: 1.15, // 矢量推进器 MK3 = +100%
+    cpuUse: 36,
+    description:
+      '没有排气痕迹的推进段：战斗机动 **+115%**（矢量推进器 MK3 是 +100%），而且不像掠袭加力器那样拖累命中。幽灵的走法是"你看不见我来"。',
+  },
 ]
 
 /** 构建"装备 id → 定义"目录 */

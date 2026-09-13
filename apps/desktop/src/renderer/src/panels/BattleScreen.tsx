@@ -38,6 +38,7 @@ import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag, foeHangarTotal,
+  ROW2_BAR_DROP,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
@@ -164,6 +165,19 @@ function foePoseAt(
     ),
   )
   return { ...dronePathPos(t, station, deck, arc, true), heading: 1 }
+}
+
+/**
+ * 33ms 平滑循环需要的**最小战斗句柄**（结构类型：远征与洞内两种 `BattleState` 都满足；
+ * 也省得把 `BattleState` 从 core 再导出一遍）。
+ */
+type BattleHandle = {
+  startedAtGameMs: number
+  /** 上一拍时刻（`thrusterPhase` 与平滑循环都读） */
+  lastTickGameMs: number
+  distanceM: number
+  myDesireM: number
+  myFleet?: Array<{ tag: string; shipId: string }>
 }
 
 export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
@@ -314,6 +328,23 @@ const meSpeedRef = useRef(200)
   const droneReportRef = useRef<DroneLossReport | null>(null)
   const flushTimerRef = useRef<number | null>(null)
   const dragValRef = useRef<number | null>(null)
+  /**
+   * 拖动"跟手"重绘的 rAF 句柄（合并高频 input 事件，见下方 `pushDragV`）。
+   * ⚠ **必须在守卫之前声明**：渲染体在 `!combatView` 时会提前 `return null`，
+   * 守卫之后出现的任何 hook 都会让两次渲染的 hook 数量不一致 ⇒ React 卸载整棵树（**黑屏**，
+   * 2026-09-13 船长实测踩到——就是这两个 ref 放错了位置）。
+   */
+  const dragRafRef = useRef<number | null>(null)
+  const dragPendingRef = useRef<number | null>(null)
+  /**
+   * **当前战斗句柄**（远征 or 洞内）——33ms 平滑循环读它（每渲染赋值一次，`dimsRef` 同款模式）。
+   * ⚠ 2026-09-13：那个循环原先硬编码 `engine.state.expedition.battle` ⇒ **洞内那场在它眼里永远是 null**，
+   * 于是"两拍之间线性插值"整段没跑，船只在引擎每 100ms 一拍时才动一下 ＝ 船长说的
+   * 「移动有顿挫感，不是顺滑移动」（帧率没问题，是**更新节奏**掉了）。
+   */
+  const battleRef = useRef<BattleHandle | null>(null)
+  /** 最近一次"战斗换了"的标记（`startedAtGameMs`）：33ms 循环据此重置尸骸/血量/速度等视觉账本 */
+  const battleStartRef = useRef(0)
   const mapRef = useRef<{ openM: number; nearM: number }>({ openM: 1, nearM: 200 })
 
   // 滑条两端距（卸载冲刷也要用）
@@ -403,11 +434,25 @@ const meSpeedRef = useRef(200)
   }, [engine.state.expedition.battle?.startedAtGameMs])
 
   // 视觉插值：引擎每 ~100ms 一拍；本循环 33ms 在两拍间线性插值，舰列/弧/游标平滑移动
+  // ⚠ **句柄取 `battleRef`（远征 or 洞内）**：原先写死 `engine.state.expedition.battle` ⇒
+  //   洞内那场在这里恒为 null，插值整段不跑 ⇒ 船每 100ms 才动一次（船长"移动有顿挫感，不顺滑"）。
   useEffect(() => {
     const iv = window.setInterval(() => {
-      const b = engine.state.expedition.battle
+      const b = battleRef.current
       const now = performance.now()
       if (!b) return
+      // **换了战斗**（开战/换节点/换层）：清视觉账本，并同步星场速率的基准船速（洞内 = 编队首舰）
+      if (b.startedAtGameMs !== battleStartRef.current) {
+        battleStartRef.current = b.startedAtGameMs
+        moveSnapRef.current = { prev: null, cur: null }
+        visDistRef.current = 0
+        corpseAtRef.current.clear()
+        prevHpRef.current.clear()
+        hpInitRef.current = false
+        const anchorId = b.myFleet?.[0]?.shipId ?? engine.state.shipId
+        const spec = createPlayerSpec(engine.state, engine.ctx, anchorId)
+        meSpeedRef.current = spec?.speedMps ?? 200
+      }
       const s = moveSnapRef.current
       if (!s.cur || s.cur.m !== b.distanceM) {
         if (s.cur && s.cur.m !== b.distanceM) s.prev = s.cur
@@ -608,6 +653,8 @@ const meSpeedRef = useRef(200)
   }
 
   if (!combatView || !battle || !arcs) return null
+  // 交给 33ms 平滑循环（每渲染同步一次句柄；`dimsRef` 同款模式）
+  battleRef.current = battle
   const combat = combatView
   const openM = arcs.openM
   const nearM = arcs.nearM
@@ -676,8 +723,32 @@ const meSpeedRef = useRef(200)
   }
   const dropNow = scanDroppable()
   const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
+  /* ── 我方逐舰几何（**必须先于弹道几何算**：2026-09-13 起弹道按发射舰取锚点，见下方 `meAnchorByTag`） ──
+     · `multiMe`：单船路径 = false（观感与旧版逐像素一致）；多舰路径 = true（洞内 4 舰）。
+     · `mySizes`：逐舰落画体积（阵位序 = core 给的顺序，**主控在前**）。 */
+  const multiMe = arcs.myUnits.length > 1
+  const mySizes = multiMe
+    ? arcs.myUnits.map((u) => sizeOfUnit(fleetDefOf(state, engine.ctx, u.shipId)?.tier, false))
+    : [meSize]
   // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
-  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize)
+  // **多舰路径也要喂我方逐舰体积**（2026-09-13 修"弹道统一从第一艘出"）：否则 `layFx.my` 只有主控一条，
+  // 我方每一发都从主控炮口飞出去（船长实测："多船战斗时弹道变成统一由第一艘船射出"）。
+  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize, multiMe ? mySizes : undefined)
+  /**
+   * **我方逐舰锚点/体积按 tag 索引**（多舰路径）——开火事件 `fx.tag` 就是发射舰（`player` / `ally-N`），
+   * 弹道起点取"那一艘"的锚点与舰体尺寸；单船路径为空表 ⇒ 全部回落到 `layFx.me`（观感与旧版逐像素一致）。
+   * 无人机（`src='drone'`）例外：机群池按**编队首舰**建（见 D 批边界），其弹道仍从主控一侧起飞。
+   */
+  const meAnchorByTag = new Map<string, typeof layFx.me>()
+  const meSizeByTag = new Map<string, number>()
+  if (multiMe) {
+    arcs.myUnits.forEach((u, slot) => {
+      const a = layFx.my[slot]
+      if (a) meAnchorByTag.set(u.tag, a)
+      const sz = mySizes[slot]
+      if (sz !== undefined) meSizeByTag.set(u.tag, sz)
+    })
+  }
   /** 无人机攻击阵位外推量（2026-09-11 舰种体积配套）：阵位基线按改造前的敌舰（T3 = 170px 宽）定，
    *  目标舰更大时阵位同步外推，避免机群压在放大的舰体上；敌舰未变大时不内收（下限 0）。 */
   const droneOutward = Math.max(0, Math.round(((layFx.sizes[0] ?? LAY.MAIN) - LAY.MAIN) / 2))
@@ -866,10 +937,12 @@ const meSpeedRef = useRef(200)
       const isMeShot = fx.side === 'me'
       const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
       const aimRowIdx = rowFxTags.indexOf(aimTag)
+      /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点；单船/无人机回落到主控锚）——见上方 meAnchorByTag */
+      const mySrc = isMeShot && fx.src !== 'drone' ? meAnchorByTag.get(fx.tag) : undefined
       let src: Anchor | undefined
       let dst: Anchor | undefined
       if (isMeShot) {
-        src = layFx.me
+        src = mySrc ?? layFx.me
         dst = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 目标已撤（旧尸骸）→ 首位兜底
       } else {
         src = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 发射者（存活敌人）
@@ -881,14 +954,17 @@ const meSpeedRef = useRef(200)
       // 优先取本帧布局的实际值（含溢出收缩），索引缺失才回落到按 tag 推导的体积
       const aimSize = (aimRowIdx >= 0 ? layFx.sizes[aimRowIdx] : undefined) ?? foeSizeOf(aimTag)
       const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
-      const shooterSize = (shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag)
-      const srcNose = noseOf(isMeShot ? meSize : shooterSize)
+      /** 我方多舰路径：发射舰的实际落画体积（与 `src` 同一把尺） */
+      const myShooterSize = isMeShot ? meSizeByTag.get(fx.tag) : undefined
+      const shooterSize =
+        myShooterSize ?? ((shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag))
+      const srcNose = noseOf(isMeShot ? (myShooterSize ?? meSize) : shooterSize)
       const dstNose = noseOf(isMeShot ? aimSize : meSize)
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
       // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
       const dm = fx.src === 'drone' ? droneModelOf(fx.artId) : undefined
-      const artW = isMeShot ? meSize : shooterSize
+      const artW = isMeShot ? (myShooterSize ?? meSize) : shooterSize
       let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
       let from: Anchor | null = null
@@ -1066,10 +1142,19 @@ const meSpeedRef = useRef(200)
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
   const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
   const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
+  /* ═══ 我方舰列：单船 / 4 舰同屏（虫洞 F2b，2026-09-13 船长「我方4条舰船需要同时显示」＋
+     「按照敌人阵型那样**镜像排列**」）═══
+     · 单船路径（`myUnits.length === 1`）走原分支（`lay.me` / `lay.meLeft`），DOM 与原实现逐字一致；
+     · 多舰路径喂 `layout()` 我方逐舰体积 ⇒ 它按**敌人斜向菱形的镜像**给我方逐舰锚点 `lay.my[i]`
+       （列序向左展开、第二排左移半个列距 + 下移一行高；主控＝第 0 列最靠敌）。
+     · 直径尺锚点仍按主控那条舰；**弹道已改为按发射舰出**（见上 `meAnchorByTag`，2026-09-13 修）。 */
+  const mySlots = multiMe ? arcs.myUnits.map((u, slot) => ({ u, slot })) : []
+  /** 渲染次序：非主控在前（远的先画）、主控最后（画在最上层） */
+  const myDrawOrder = multiMe ? [...mySlots].sort((a, b) => Number(a.u.leader) - Number(b.u.leader)) : []
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
-  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize)
+  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize, mySizes)
   /**
    * **跃迁入场**（船长 2026-09-13：「既然开始做战斗效果了，那么能否在开始时做一个入场效果？
    *  为了最小程度防止BUG，**入场效果仅为动画**。玩家和敌舰的位置依旧不改变。入场效果为我方或者敌方
@@ -1105,6 +1190,10 @@ const meSpeedRef = useRef(200)
     const x = lay.foe[i]?.x ?? dims.W
     return Math.round(dims.W - x + w / 2 + ARRIVAL_EDGE_MARGIN)
   }
+  /* ═══ 我方舰列：单船 / 4 舰同屏（虫洞 F2b，2026-09-13 船长「我方4条舰船需要同时显示」）═══
+     · 单船路径（`myUnits.length === 1`）走原分支，DOM 与原实现逐字一致 ⇒ 观感零变化；
+     · 多舰路径逐舰一条舰影，锚点取 `lay.my[i]`（**敌人斜向菱形的镜像**，见上）；DOM 顺序把主控放最后
+       ＝画在最上层；距离尺/弹道锚点仍按主控那条舰。 */
   /** 阵形（斜向菱形）：列宽/右移/下移/排高 + 逐舰机位（DOM 的两排排布与逐舰微调共用这一份） */
   const foeFormation = lay.formation
   /** 逐舰血条几何（宽/相对本舰偏移；贴各自舰下，拥挤时该排整组竖排到编队下方）——
@@ -1196,25 +1285,43 @@ const meSpeedRef = useRef(200)
     const r = engine.battleSetDesireAt(sliderToDesire(v))
     if (!r.ok) onToast(r.error ?? '设置失败', true)
   }
+  /**
+   * 拖动中：**节流提交**（把期望距离写进引擎，远征按星系记忆 / 洞内记在本趟），
+   * 但 **`dragV` 一直留到松手**（2026-09-13 船长反馈"一格一格地移动"）——
+   * 首版这个定时器顺手 `setDragV(null)`：手指还按着时，滑条会每 160ms 被"回弹到上一次提交值"，
+   * 拖起来就是一跳一跳的。提交归提交，**画面跟随归画面跟随**，松手才收。
+   */
+  /**
+   * **拖动中的"跟手"重绘**：合并到 `requestAnimationFrame`，**每帧最多一次 setState**——
+   * 高回报率鼠标（125~1000Hz）一次拖动能产生几百个 `input` 事件，逐个 setState 会把整棵战场
+   * （我方 4 舰 + SVG 射程弧 + 事件环）重渲染几百次 ⇒ 顿挫（船长 2026-09-13：「依旧还是有顿挫感」）。
+   */
+  const pushDragV = (v: number): void => {
+    dragPendingRef.current = v
+    if (dragRafRef.current !== null) return
+    dragRafRef.current = window.requestAnimationFrame(() => {
+      dragRafRef.current = null
+      const pending = dragPendingRef.current
+      if (pending !== null) setDragV(pending)
+    })
+  }
   const scheduleCommit = (v: number): void => {
     dragValRef.current = v
     if (flushTimerRef.current !== null) window.clearTimeout(flushTimerRef.current)
     flushTimerRef.current = window.setTimeout(() => {
       flushTimerRef.current = null
-      dragValRef.current = null
       commitDesire(v)
-      setDragV(null)
     }, 160)
   }
+  /** 松手/失焦：补最后一次提交，并交还"跟随态" */
   const flushDrag = (): void => {
     const v = dragValRef.current
-    if (v === null) return
     dragValRef.current = null
     if (flushTimerRef.current !== null) {
       window.clearTimeout(flushTimerRef.current)
       flushTimerRef.current = null
     }
-    commitDesire(v)
+    if (v !== null) commitDesire(v)
     setDragV(null)
   }
   const applyTactic = (t: 'assault' | 'mid' | 'kite'): void => {
@@ -1610,28 +1717,9 @@ const meSpeedRef = useRef(200)
         </span>
       </div>
 
-      {/* **我方编队条**（2026-09-13 F2：虫洞 4 舰同场时给每条舰影一条三层血条；
-          单船路径 `myUnits` 只有一条 ⇒ 与改造前观感一致，不额外占视觉） */}
-      {arcs.myUnits.length > 1 ? (
-        <div className="app-bts-fleet" aria-label="我方编队">
-          {arcs.myUnits.map((u) => (
-            <div key={u.tag} className={`app-bts-fleet-cell${u.alive ? '' : ' is-down'}`}>
-              <div className="app-bts-fleet-head">
-                <ShipSprite shipId={u.shipId} role={fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial'} accent={ROLE_ACCENT[fleetDefOf(state, engine.ctx, u.shipId)?.role ?? 'industrial']} size={46} />
-                <span className="app-bts-fleet-name" title={u.className}>
-                  {u.name}
-                  {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
-                </span>
-              </div>
-              {u.alive ? (
-                <HpTri hp={u.hp} max={u.hpMax} />
-              ) : (
-                <span className="app-bts-fleet-down">已沉没</span>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {/* **我方编队条已撤**（2026-09-13 F2b · 交接卡 §3 建议）：4 舰读数改为**直接画在各自的舰影上**
+          （舰名 + 三层血条 + 主控徽标 + 沉没灰态）⇒ 同一读数不再出现两遍。
+          若船长要留，恢复成"折叠一行"的紧凑读数即可（原实现见 git 历史：`.app-bts-fleet` 那一块）。 */}
 
       <div className="app-bts-stage">
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
@@ -1700,23 +1788,73 @@ const meSpeedRef = useRef(200)
             </text>
           </svg>
 
-          {/* 我方舰列 —— 入场期（is-arriving）整列自左缘外飞入：舰名/舰体/血条同进，
-              只做 transform + opacity 动画，`left` 与落点坐标不动 */}
-          <div
-            className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
-            ref={meColRef}
-            style={
-              arrivalSide === 'me'
-                ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
-                : { left: lay.meLeft }
-            }
-          >
-            <span className="app-bts-name">{meShip?.name}</span>
-            <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
-            <div className="app-bts-hpWrap">
-              <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
-            </div>
-          </div>
+          {/* 我方舰列 —— 单船（远征 / 遭遇 / 教学）与 **4 舰同屏**（虫洞 F2b）共用这一支。
+              · **单船路径**（`myUnits.length === 1`）：渲染与原实现**逐字一致**（同一 class / ref / style），
+                ⇒ 观感零变化（交接卡验收第 5 条）；
+              · **多舰路径**（虫洞 4 舰）：逐舰一条舰影，**主控保持原位**（距离尺与弹道锚点仍按主控那条舰，
+                逐舰锚点是另一批的活）；其余 3 条沿纵队向左错位 `MY_LANE_STAGGER`×序号（近处=主控在最前，
+                故 DOM 顺序把主控放最后 = 画在最上层）；
+              · 每条各带**舰名 + 三层血条**（同一支 `HpTri`）、主控徽标（沿用编队条样式）、
+                **沉没舰位置保留**只转灰（抽走会让其余舰影跳动 —— 验收第 4 条）；
+              · 入场动画照旧：整列 `is-arriving` 自左缘外飞入，**逐舰 `--arrive-delay` 错峰**，
+                只走 transform/opacity、落点坐标不动（验收第 6 条）。 */}
+          {multiMe
+            ? myDrawOrder.map(({ u, slot }, drawIdx) => {
+                const def = fleetDefOf(state, engine.ctx, u.shipId)
+                const role: ShipRole = def?.role ?? 'industrial'
+                const spriteSize = sizeOfUnit(def?.tier, false)
+                // **镜像斜向菱形**：锚点 = `lay.my[slot]`（主控那条恒等于 `me`，故距离尺/弹道不偏）
+                const anchor = lay.my[slot] ?? lay.me
+                const left = Math.round(anchor.x - spriteSize / 2)
+                const top = Math.round(anchor.y - (spriteSize * 0.46) / 2)
+                return (
+                  <div
+                    key={u.tag}
+                    className={`app-bts-col is-me${defeat && u.leader ? ' is-crippled' : ''}${u.alive ? '' : ' is-down'}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
+                    style={
+                      arrivalSide === 'me'
+                        ? ({
+                            left,
+                            top,
+                            '--arrive-dx': `${arriveDxMe}px`,
+                            '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
+                            '--arrive-delay': `${(u.leader ? 0 : drawIdx + 1) * ARRIVAL_STAGGER_MS}ms`,
+                          } as CSSProperties)
+                        : { left, top }
+                    }
+                  >
+                    <span className="app-bts-name">
+                      {u.name}
+                      {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
+                    </span>
+                    <ShipSprite shipId={u.shipId} role={role} accent={ROLE_ACCENT[role]} size={spriteSize} flip={meFlip} />
+                    {u.alive ? (
+                      <div className="app-bts-hpWrap">
+                        <HpTri hp={u.hp} max={u.hpMax} />
+                      </div>
+                    ) : (
+                      <span className="app-bts-fleet-down">已沉没</span>
+                    )}
+                  </div>
+                )
+              })
+            : (
+              <div
+                className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
+                ref={meColRef}
+                style={
+                  arrivalSide === 'me'
+                    ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
+                    : { left: lay.meLeft }
+                }
+              >
+                <span className="app-bts-name">{meShip?.name}</span>
+                <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
+                <div className="app-bts-hpWrap">
+                  <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
+                </div>
+              </div>
+            )}
 
           {/* 无人机机群（2026-09-10：蜂鸟/赤鸢/猎鹰 起飞即出击-到位开火-立刻返航；雷鸥哨戒常驻伴飞）；
               位置由 rAF 驱动层直接写 transform（见上），此处只负责结构与显隐。
@@ -1927,7 +2065,10 @@ const meSpeedRef = useRef(200)
               {foeFormation.rows === 2 ? (
                 <div
                   className="app-bts-shipRow"
-                  style={{ minHeight: foeFormation.rowH, marginLeft: foeFormation.shift }}
+                  /* 2026-09-13 船长：「第二排下移，目前会挡住第一排血条（敌我都移动）」——
+                     第二排容器再加 `ROW2_BAR_DROP`（一条血条高 + 6 缝隙，与 `layout` 的锚点同源同值），
+                     让第二排舰体顶边落到第一排血条**之下**；第一排容器一律不动。 */
+                  style={{ minHeight: foeFormation.rowH, marginLeft: foeFormation.shift, marginTop: ROW2_BAR_DROP }}
                 >
                   {foeUnitEls.filter((_, i) => foeFormation.slots[i]?.row === 1)}
                 </div>
@@ -2097,15 +2238,25 @@ const meSpeedRef = useRef(200)
                 className="app-battle-range app-bts-range"
                 min={0}
                 max={1000}
-                step={5}
+                /**
+                 * **步长 1**（2026-09-13 船长反馈"一格一格"）：原 `step=5` 只有 201 个落点——
+                 * 在洞内这种 5 千多米的量程上，一格 ≈ 27m，慢拖时肉眼就是"跳格"。
+                 * 1 ⇒ 1001 个落点（约 5m/格），拖动与读数都跟手。
+                 */
+                step={1}
                 disabled={ended}
                 value={Math.min(1000, Math.max(0, sliderV))}
                 onChange={(e) => {
                   const v = Number(e.target.value)
-                  setDragV(v)
+                  // **每帧最多重绘一次**（2026-09-13 性能修）：高回报率鼠标一次拖动能来几百个
+                  // input 事件，逐个 setState 会把整棵战场（我方 4 舰 + SVG 弧 + 事件环）重渲染几百次
+                  // ⇒ 顿挫。这里合并到 rAF：画面最多 60 次/秒，提交仍按 160ms 节流。
+                  pushDragV(v)
                   scheduleCommit(v)
                 }}
                 onPointerUp={flushDrag}
+                onPointerCancel={flushDrag}
+                onBlur={flushDrag}
                 onKeyUp={flushDrag}
                 title="向左拖 = 拉开距离，向右拖 = 贴脸接近（自动记忆）"
               />

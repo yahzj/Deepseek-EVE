@@ -10,13 +10,14 @@
  * 战斗接入（节点战斗与撤离战）与收益校准在 **F 批**；故战斗/事件节点的按钮标着「F 批接入」，
  * 施工期用「结算本节点」把流程走通（不产生任何结算收益）。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_MAX_SHIPS,
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
   cargoCapacityM3Of,
+  shipBusyLabel,
   shipDisplayName,
   shipSizeLabel,
   wormholeAdmission,
@@ -25,12 +26,16 @@ import {
   wormholeFleetCargoM3,
   wormholeFoeThreat,
   wormholeLayerThreat,
+  durabilityOf,
+  wormholeOutOfTurns,
   wormholeShipAllowed,
   wormholeShipMass,
   wormholeUnitsPerSlot,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { ShipSprite } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 
 type WhTab = 'prep' | 'map' | 'bag'
 
@@ -61,6 +66,46 @@ export function WormholePanel({
   const cargoM3 = wormholeFleetCargoM3(state, ctx, picked)
   const bagSlots = wormholeBagSlots(cargoM3)
   const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
+  /** 回合走不动了（耗尽 / 付不起当前节点）⇒ 只能撤离（逃生门；与 core `wormholeOutOfTurns` 同一把尺） */
+  const outOfTurns = run ? wormholeOutOfTurns(run) : false
+  /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
+  const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
+
+  /* ── 选舰检索（船长 2026-09-13「缺少一个类似我的舰队里的舰船筛选和搜索」）──
+     复刻「我的舰队」那套：搜索词（舰名/船型名，忽略大小写）+ 两行筛选（类别 / 级别，各维取「与」）；
+     类别与级别复用同一张单点表（`SHIP_SUBS` / `SHIP_TIER_SUBS`），与市场/手册/组装机同口径。
+     （2026-09-13 船长：「状态的筛选可以删除」⇒ 原「状态」那一行整行退场。） */
+  const [whQ, setWhQ] = useState('')
+  const [whRole, setWhRole] = useState<string>(SUB_ALL)
+  const [whTier, setWhTier] = useState<string>(SUB_ALL)
+  const whEntries = Object.keys(state.fleet).map((uid) => {
+    const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
+    const busy = shipBusyLabel(state, ctx, uid)
+    const ok = def ? wormholeShipAllowed(def) : false
+    return {
+      uid,
+      def,
+      name: shipDisplayName(state, ctx, uid),
+      tier: def?.tier ?? 0,
+      ok,
+      busy,
+      on: picked.includes(uid),
+      // **损伤**（与舰队页「待维修」同一把尺）：装甲/结构未满 = 带伤；护盾每场满值重建、不持久、不计
+      armor: state.fleet[uid]!.armorPct ?? 1,
+      dur: durabilityOf(state, uid),
+    }
+  })
+  const whFiltered = whQ.trim().length > 0 || whRole !== SUB_ALL || whTier !== SUB_ALL
+  const whShown = whEntries.filter((e) => {
+    const q = whQ.trim().toLowerCase()
+    if (q.length > 0) {
+      const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
+    if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
+    return true
+  })
 
   function togglePick(uid: string): void {
     setPicked((prev) => {
@@ -82,12 +127,33 @@ export function WormholePanel({
     }
   }
 
+  /**
+   * **临时离开 = 活动停止**（船长 2026-09-13 批准 · 议案 A 第 2 条）：关掉面板就 `wormholeLeave()`
+   * ⇒ 主控立刻释放（可以去做别的），**虫洞进度原样保存**、洞内一切冻结（含战斗）。
+   */
+  function handleClose(): void {
+    if (state.wormhole.run) engine.wormholeLeave()
+    onClose()
+  }
+
+  // **返回虫洞**（打开面板即占住活动位）：要求主控空闲——忙着则留在"已离开"态并提示先收工（第 3 条）。
+  const [resumeNote, setResumeNote] = useState<string | null>(null)
+  useEffect(() => {
+    if (!state.wormhole.run || state.wormhole.run.attending === true) return
+    const r = engine.wormholeResume()
+    if (!r.ok) setResumeNote(r.error ?? '暂时回不到虫洞。')
+    else setResumeNote(null)
+    // 只在"刚打开/刚离开"这两种时刻触发；`attending` 变 true 后本效果自动空转
+  }, [engine, state.wormhole.run?.attending])
+
   return (
-    <div className="app-modal-mask" onClick={onClose}>
+    <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
           <span className="app-report-title">虫洞</span>
-          <span className="app-dim app-wh-devnote">调试入口 · 施工中（拍板后对玩家开放）</span>
+          <span className="app-dim app-wh-devnote">
+            {run ? (run.attending ? '人在洞里 · 离开即暂停（进度保存）' : '已离开 · 进度已保存') : '调试入口 · 施工中（拍板后对玩家开放）'}
+          </span>
           <div className="app-wh-tabs">
             {(Object.keys(TAB_LABEL) as WhTab[]).map((k) => (
               <button
@@ -101,12 +167,14 @@ export function WormholePanel({
               </button>
             ))}
           </div>
-          <button className="app-btn is-small" onClick={onClose}>
-            ✕ 关闭
+          <button className="app-btn is-small" onClick={handleClose}>
+            ✕ 关闭（离开虫洞）
           </button>
         </div>
 
         <div className="app-modal-body">
+          {/* 回不到虫洞（主控在忙）：把拒因摆出来，别让玩家对着不能点的界面猜（议案 A 第 3 条） */}
+          {resumeNote ? <div className="app-warn app-wh-gate">{resumeNote}</div> : null}
           {/* 本趟已结束（撤离成功 / 全损）⇒ 回到准备页并说明结果（否则"探索/背包"两页会是空白） */}
           {!run && tab !== 'prep' ? (
             <div className="app-dim app-inv-empty">
@@ -120,33 +188,130 @@ export function WormholePanel({
                 带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过 {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；
                 总质量越高、可探索回合越短；背包格数按编队「合计货仓」折算（每 {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
               </div>
-              <ul className="app-inv-list app-wh-ships">
-                {Object.keys(state.fleet).map((uid) => {
+              {/* **选舰卡片**（船长 2026-09-13：「虫洞入口选取舰船采用卡片形式，卡片内含有舰船名称、
+                  舰船级别、折算质量、货仓、舰船 SVG 外形，且当编入时，卡片边框会变色」）——
+                  结构/类名沿用装配页候选卡（`.app-fit-pick-item`）与舰队卡（`.app-inv-row.is-picked`）那一族：
+                  整卡可点、选中态给边框+底色；舰影走统一资产 `ShipSprite`（细描边线稿，非 CSS 拼形）。
+                  ⚠ `ShipSprite` **不要传 `name`**：它自带一个绝对定位的舰名标签（`.app-sprite-name`，
+                  贴在舰影下缘），会压住卡片自己的舰名（2026-09-13 船长报「名称与 SVG 下方文本重叠」）。
+                  检索控件（搜索 + 状态/类别/级别三行筛选）复刻「我的舰队」那套类名与口径。 */}
+              <div className="app-bay-title app-wh-sub">选择舰船（点卡片编入 / 再点撤下）</div>
+              <span className="app-head-search-wrap app-wh-search">
+                <input
+                  className="app-head-search"
+                  type="text"
+                  placeholder="搜索舰船…"
+                  value={whQ}
+                  onChange={(e) => setWhQ(e.target.value)}
+                  spellCheck={false}
+                />
+                <span className="app-dim">
+                  {whFiltered ? `匹配 ${whShown.length} / 共 ${whEntries.length} 艘` : `${whEntries.length} 艘`}
+                </span>
+              </span>
+              <div className="app-fleet-toolbar app-wh-filters">
+                <div className="app-fleet-row">
+                  <span className="app-dim">类别：</span>
+                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                    <button
+                      role="tab"
+                      aria-selected={whRole === SUB_ALL}
+                      className={`app-tasktab${whRole === SUB_ALL ? ' is-active' : ''}`}
+                      onClick={() => setWhRole(SUB_ALL)}
+                    >
+                      全部
+                    </button>
+                    {SHIP_SUBS.map((s) => (
+                      <button
+                        key={s.key}
+                        role="tab"
+                        aria-selected={whRole === s.key}
+                        className={`app-tasktab${whRole === s.key ? ' is-active' : ''}`}
+                        onClick={() => setWhRole(s.key)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="app-fleet-row">
+                  <span className="app-dim">级别：</span>
+                  <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                    <button
+                      role="tab"
+                      aria-selected={whTier === SUB_ALL}
+                      className={`app-tasktab${whTier === SUB_ALL ? ' is-active' : ''}`}
+                      onClick={() => setWhTier(SUB_ALL)}
+                    >
+                      全部
+                    </button>
+                    {SHIP_TIER_SUBS.map((s) => (
+                      <button
+                        key={s.key}
+                        role="tab"
+                        aria-selected={whTier === s.key}
+                        className={`app-tasktab${whTier === s.key ? ' is-active' : ''}`}
+                        onClick={() => setWhTier(s.key)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <ul className="app-wh-cards">
+                {whShown.map(({ uid, name, tier, ok, on, busy, armor, dur }) => {
+                  const damaged = armor < 1 || dur < 1
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
-                  const tier = def?.tier ?? 0
-                  const ok = def ? wormholeShipAllowed(def) : false
-                  const on = picked.includes(uid)
+                  const canPick = ok && !busy
+                  const title = !ok
+                    ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
+                    : busy
+                      ? `${busy}：先收工/取消派工，才能编入虫洞`
+                      : on
+                        ? '再点一下撤下'
+                        : '点一下编入'
                   return (
-                    <li key={uid} className={`app-inv-row${on ? ' is-picked' : ''}`}>
-                      <div className="app-inv-main">
-                        <span className="app-inv-name">
-                          {shipDisplayName(state, ctx, uid)}
-                          <span className="app-dim"> · {shipSizeLabel(tier)} T{tier}</span>
+                    <li key={uid}>
+                      <button
+                        type="button"
+                        className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
+                        disabled={!canPick}
+                        onClick={() => togglePick(uid)}
+                        title={title}
+                      >
+                        <span className="app-wh-card-art" aria-hidden>
+                          {/* ⚠ 不传 name（见上：会把舰名压在卡片文本上） */}
+                          <ShipSprite shipId={state.fleet[uid]!.defId ?? uid} size={132} />
                         </span>
-                        <span className="app-inv-count">
+                        <span className="app-wh-card-name">{shipDisplayName(state, ctx, uid)}</span>
+                        <span className="app-wh-card-sub">
+                          {shipSizeLabel(tier)} · T{tier}
+                          {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
+                        </span>
+                        <span className="app-wh-card-sub">
                           折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
-                      </div>
-                      <div className="app-inv-btns">
-                        <button
-                          className={`app-btn is-small${on ? ' is-primary' : ''}`}
-                          disabled={!ok}
-                          onClick={() => togglePick(uid)}
-                          title={ok ? undefined : '该舰过重，会压塌虫洞入口（最多带到 T4）'}
-                        >
-                          {on ? '已选' : ok ? '编入' : '过重'}
-                        </button>
-                      </div>
+                        <span className="app-wh-card-tags">
+                          <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
+                            {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                          </span>
+                          {/* **损伤提示标签**（船长 2026-09-13：「如果舰船有损伤，那么在编入的标签旁新增一个标签
+                              提示玩家，防止不小心损坏的船带入虫洞」）：判据与舰队页「待维修」同一把尺
+                              （`armorPct < 1 || durability < 1`；护盾不持久、不计损伤）。 */}
+                          {damaged ? (
+                            <span
+                              className="app-wh-card-tag is-warn"
+                              title={`该舰带伤（承伤在虫洞内**跨节点保留**）：${armor < 1 ? `装甲 ${Math.round(armor * 100)}%` : ''}${
+                                armor < 1 && dur < 1 ? ' · ' : ''
+                              }${dur < 1 ? `结构 ${Math.round(dur * 100)}%` : ''}——建议先回站维修或换一艘。`}
+                            >
+                              带伤{armor < 1 ? ` 甲${Math.round(armor * 100)}%` : ''}
+                              {dur < 1 ? ` 构${Math.round(dur * 100)}%` : ''}
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
                     </li>
                   )
                 })}
@@ -167,12 +332,19 @@ export function WormholePanel({
               {!admission.ok ? (
                 <div className="app-warn app-wh-gate">{WORMHOLE_ADMISSION_TEXT[admission.code]}</div>
               ) : null}
+              {pilotBusy ? (
+                <div className="app-warn app-wh-gate">
+                  主控正在{pilotBusy}：先把手上的活收工，才能指挥虫洞探索。
+                </div>
+              ) : null}
               <div className="app-wh-actions">
                 <button
                   className="app-btn is-primary is-small"
-                  disabled={!admission.ok || !!run}
+                  disabled={!admission.ok || !!run || !!pilotBusy}
                   onClick={handleEnter}
-                  title={run ? '已经在虫洞里了' : undefined}
+                  title={
+                    run ? '已经在虫洞里了' : pilotBusy ? `主控正在${pilotBusy}：先收工` : undefined
+                  }
                 >
                   进入虫洞
                 </button>
@@ -195,7 +367,9 @@ export function WormholePanel({
                 <div className="app-wh-node">
                   <div className="app-wh-node-title">撤离战</div>
                   <div className="app-dim app-note">
-                    撤离战尚未接入（施工中）：当前只把相位切到「撤离中」，不发生战斗与结算。
+                    {run.battle
+                      ? '撤离拦截已交火：本场必须打完——打赢，背包里的东西才算带回港；打不完 = 全损。'
+                      : '撤离拦截正在布防：交火马上开始（本场必须打完）。'}
                   </div>
                   <div className="app-wh-actions">
                     <button
@@ -260,7 +434,25 @@ export function WormholePanel({
                     </div>
                   )}
                   <div className="app-wh-actions">
-                    {run.pendingNode.kind === 'combat' ? (
+                    {outOfTurns ? (
+                      // **逃生门**（设计稿 §六「回合耗尽 ⇒ 只能撤离」）：回合付不起本节点时，
+                      // 战斗/拾取/事件三条路都走不动 ⇒ 必须给一条「只能撤离」的出口
+                      // （首版这里什么都不给：非战斗节点会卡死，只能靠施工期的调试按钮）
+                      <>
+                        <span className="app-dim">回合不足：只能撤离</span>
+                        <button
+                          className="app-btn is-small is-primary"
+                          disabled={!!run.battle}
+                          onClick={() => {
+                            const r = engine.wormholeExtract()
+                            if (!r.ok) onToast(r.error ?? '无法撤离。', true)
+                          }}
+                          title="回合不足以结算本节点：直接进入撤离战（同样必须打完）"
+                        >
+                          撤离（进入撤离战）
+                        </button>
+                      </>
+                    ) : run.pendingNode.kind === 'combat' ? (
                       <button
                         className="app-btn is-small is-primary"
                         disabled={!!run.battle}
@@ -296,9 +488,11 @@ export function WormholePanel({
                     ) : null}
                   </div>
                   <div className="app-dim app-note">
-                    {(run.bossCleared ?? 0) < run.depth
-                      ? '层内节点已走完，但出口被本层守卫堵着：先「迎击层末守卫」，打完才能选择深入或撤离。'
-                      : '本层守卫已清：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。'}
+                    {outOfTurns
+                      ? '回合已走不动：只能撤离（撤离拦截照打——打赢才算把背包带回去）。'
+                      : (run.bossCleared ?? 0) < run.depth
+                        ? '层内节点已走完，但出口被本层守卫堵着：先「迎击层末守卫」，打完才能选择深入或撤离。'
+                        : '本层守卫已清：可以「继续深入」（更深、更值钱、更硬）或「撤离」（进入撤离战后带着背包回港）。'}
                   </div>
                   <div className="app-wh-actions">
                     {(run.bossCleared ?? 0) < run.depth ? (
@@ -332,7 +526,14 @@ export function WormholePanel({
                     </button>
                     <button
                       className="app-btn is-small"
-                      disabled={(run.bossCleared ?? 0) < run.depth}
+                      disabled={!outOfTurns && (run.bossCleared ?? 0) < run.depth}
+                      title={
+                        outOfTurns
+                          ? '回合已走不动：只能撤离（撤离战照打）'
+                          : (run.bossCleared ?? 0) < run.depth
+                            ? '先清掉本层守卫'
+                            : undefined
+                      }
                       onClick={() => {
                         const r = engine.wormholeExtract()
                         if (!r.ok) onToast(r.error ?? '无法撤离。', true)

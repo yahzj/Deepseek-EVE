@@ -11,7 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
-import { addLog, HOME_GALAXY_ID } from './state'
+import { addLog, HOME_GALAXY_ID, shipLockedInWormhole, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
@@ -39,6 +39,8 @@ import {
   setDesirePrefOf,
   settleDroneLosses,
   startBattleFor,
+  // 洞内战：距离上限与开战同源（2026-09-13 修洞内距离被锁死）
+  wormholeDerivedAnomaly,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
@@ -156,21 +158,37 @@ export function battleTacticDesire(
  * 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）。
  * **按星系记忆**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存」）——
  * 写入的是**本场战斗所在星系**（= 远征目标卡的星系）的目标距离；下次在该星系开战、
- * 以及该星系的胜率预估都会沿用它。战斗界面只服务远征交火（遭遇战是无界面自动推演），
- * 故这里只处理远征；遭遇战在开战时另行读取同一份设定。
+ * 以及该星系的胜率预估都会沿用它。
+ *
+ * ⚠ **洞内战（2026-09-13 修）**：洞内战斗宿主在 `run.battle`（不占 `expedition.battle`），
+ * 首版这里只认远征 ⇒ 洞内拖距离条会被拒（「当前不在交火中」）＝**看着像"距离被锁死"**。
+ * 现在两条路都认：洞内用**编队首舰**当主视角、敌卡走引擎同源的 `wormholeDerivedAnomaly`
+ * （开战距离上限与开战那一刻同一把尺），偏好**记在本趟 `run.desireM`**（后续节点沿用）——
+ * **不写星系偏好**：虫洞不属于任何星系，写进去会污染那个星系的设定。
  */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
-  const battle = state.expedition.battle
+  const whRun = state.wormhole.run
+  const whBattle = whRun?.battle ?? null
+  const battle = state.expedition.battle ?? whBattle
   if (!battle) return { ok: false, error: '当前不在交火中。' }
-  const me = createPlayerSpec(state, ctx, state.shipId)
-  const anomaly = state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
-  if (!me || !anomaly) return { ok: false, error: '战斗记录缺失。' }
+  const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
+  const me = createPlayerSpec(state, ctx, anchorShipId)
+  const cardId = whBattle ? whBattle.wormhole?.cardId : state.expedition.anomalyId
+  const baseCard = cardId ? ctx.anomalies.get(cardId) : undefined
+  if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。' }
+  const anomaly =
+    whBattle && whBattle.wormhole ? wormholeDerivedAnomaly(ctx, baseCard, whBattle.wormhole) : baseCard
   const foes = createFoeSpecs(anomaly, ctx.balance.battle)
   const maxD = battleOpenM(me, foes, ctx.balance.battle)
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  setDesirePrefOf(state, anomaly.galaxyId, clamped) // 记忆 = 该星系的目标距离（跨会话沿用）
+  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**（见函数头注释）
+  if (whBattle) {
+    if (whRun) whRun.desireM = clamped
+  } else {
+    setDesirePrefOf(state, anomaly.galaxyId, clamped)
+  }
   return { ok: true }
 }
 
@@ -243,6 +261,9 @@ export function bountyRewardFactor(state: GameState): number {
 function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
+  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
+  const hold = wormholePilotHoldReason(state)
+  if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。' }
@@ -295,6 +316,11 @@ export function startExpedition(
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
   if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
+  // 虫洞锁定（船长 2026-09-13：「已经进洞的船将被锁定」＋「洞内战斗时，洞外可以开新战斗」）：
+  // 洞外这场战斗的锚点只能是**洞外的船**——主控若在洞里，先暂停并召回整队再出击。
+  if (shipLockedInWormhole(state, state.shipId)) {
+    return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。' }
+  }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)
   const fromName = ctx.galaxies.get(from)?.name ?? from

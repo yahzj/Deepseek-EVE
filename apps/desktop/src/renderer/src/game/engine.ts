@@ -17,6 +17,7 @@ import {
   fightEncounter,
   fleeEncounter,
   formatDurationMs,
+  itemReleased, // 2026-09-13 施工期闸门：未上线内容不进"给玩家看的"目录枚举
   assignAiExpedition,
   assignAiStandby,
   assignAiMining,
@@ -141,6 +142,8 @@ import {
   wormholeAdvanceNode,
   wormholeDescend,
   wormholeExtract,
+  wormholeLeave,
+  wormholeResume,
   wormholeStartBattle,
   wormholeDebugReset,
 } from '@whale/core'
@@ -346,20 +349,30 @@ function offlineReportLogText(r: OfflineReport): string {
 export class GameEngine {
   /** 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值） */
   readonly ctx: SimContext = buildSimContext()
-  /** 界面目录数据 */
+  /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
+   *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
   readonly skills = SKILLS
   readonly groups = SKILL_GROUPS
-  readonly ships = SHIPS
+  readonly ships = SHIPS.filter((d) => itemReleased(d))
   readonly belts = BELTS
   readonly items = ITEMS
-  readonly modules = MODULES
-  readonly blueprints = BLUEPRINTS
-  readonly shipBlueprints = SHIP_BLUEPRINTS
+  readonly modules = MODULES.filter((d) => itemReleased(d))
+  readonly blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
+  readonly shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
   readonly galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
   readonly anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
   readonly allAnomalies = ANOMALIES_FLAVORED
+  /**
+   * **全目录**（含未上线）——只给"玩家已持有 / 已在跑"的解析路径用：装备库按持有数筛、
+   * 组装机按 `run.blueprintId` 反查蓝图等。**别的用途一律用上面的可见目录**
+   * （口径与 `allAnomalies` 同款；未上线内容在施工期不可能被玩家持有，故这些路径不会漏）。
+   */
+  readonly allShips = SHIPS
+  readonly allModules = MODULES
+  readonly allBlueprints = BLUEPRINTS
+  readonly allShipBlueprints = SHIP_BLUEPRINTS
   /** 通讯剧本目录（T9） */
   readonly dialogues = DIALOGUES
 
@@ -412,7 +425,9 @@ export class GameEngine {
    * 现改：单批预算 8ms + 每批最多 2 条 → 同样工作量摊到十几拍（每拍 ≤10ms，肉眼无感）。
    */
   private pumpWinCache(now: number): void {
+    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧
     if (this.state.expedition.phase === 'battle' && !!this.state.expedition.battle) return
+    if (this.state.wormhole.run?.battle) return
     if (now - this.winLastPumpAt < 400) return
     const fp = this.winFingerprint()
     if (fp !== this.winFpCur) {
@@ -487,7 +502,10 @@ export class GameEngine {
   /** 当前心跳所属计量桶：交火中 = battle，其余 = idle（性能监测分桶用） */
   private currentBucket(): PerfBucket {
     const exp = this.state.expedition
-    return exp.active && exp.phase === 'battle' && !!exp.battle ? 'battle' : 'idle'
+    // 洞内交火同算 battle 桶（2026-09-13：心跳分支已认洞内，分桶同步）
+    return (exp.active && exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
+      ? 'battle'
+      : 'idle'
   }
 
   /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销）。
@@ -619,9 +637,16 @@ export class GameEngine {
       return
     }
     const exp = this.state.expedition
-    // 含已分胜负的"击杀慢镜窗口"（battle.ended 非空但尚未结算）：
-    // 窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定的实时画面
-    const inBattle = exp.phase === 'battle' && !!exp.battle
+    /**
+     * 含已分胜负的"击杀慢镜窗口"：窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定画面。
+     *
+     * ⚠ **洞内战斗必须同款**（2026-09-13 修船长报的"舰船移动约一秒跳一次，不顺滑"）：
+     * 洞内宿主是 `state.wormhole.run.battle`（**不占** `expedition.battle`），首版这里只认远征 ⇒
+     * 洞内交火掉进下面的**挂机分支**（`pendingMs >= 1000` 才推进并 `notify()` 一次）⇒
+     * 战场每约 1 秒才收到一帧数据，船自然一秒跳一次（与帧率、与 33ms 插值都无关——插值再密，
+     * 数据 1 秒才来一次也白搭）。
+     */
+    const inBattle = (exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
     if (inBattle) {
       if (this.pendingMs > 0) {
         // 交火期积压（切页/后台节流等产生）按 100ms 分片追平，避免整段隐藏推进
@@ -1330,6 +1355,22 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
+  /** 虫洞：临时离开（活动停止、进度保存；主控随即释放，可去做别的） */
+  wormholeLeave(): void {
+    wormholeLeave(this.state)
+    void this.persist()
+    this.notify()
+  }
+
+  /** 虫洞：返回（要求主控空闲——忙着就拒绝并把忙态回报给界面） */
+  wormholeResume(): CommandResult {
+    const r = wormholeResume(this.state, this.ctx)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
   /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
   wormholeTakePile(pileIndex: number): CommandResult {
     const r = wormholeTakePile(this.state, this.ctx, pileIndex)
@@ -1425,7 +1466,11 @@ export class GameEngine {
   battleSetDesireAt(desireM: number): CommandResult {
     const result = setBattleDesire(this.state, desireM, this.ctx)
     if (result.ok) {
-      void this.persist()
+      /**
+       * **只重绘、不写盘**（2026-09-13 性能修）：拖距离条时每 160ms 提交一次，若每次都整档
+       * `persist()`（大档 JSON + localStorage 写）会把主线程顶出顿挫——船长："依旧还是有顿挫感"。
+       * 偏好不是易失数据：**15 秒自动存盘**与其它任何动作都会把它落盘（`ensurePump` 里的定时器）。
+       */
       this.notify()
     }
     return result

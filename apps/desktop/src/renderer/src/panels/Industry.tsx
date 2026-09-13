@@ -126,11 +126,12 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
     <Panel className="is-fill" title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；一次性图纸只能制造一次</span>}>
       <div className="app-shelf-grid">
         {entries.map(([id, n]) => {
-          const bp = engine.blueprints.find((b) => b.id === id) ?? engine.shipBlueprints.find((b) => b.id === id)
+          // 蓝图书架按**持有的书**列条目 ⇒ 走全目录（施工期闸门下未上线的图纸只有调试才可能持有）
+          const bp = engine.allBlueprints.find((b) => b.id === id) ?? engine.allShipBlueprints.find((b) => b.id === id)
           const learned = ownsBlueprint(state, id)
           const su = bp?.singleUse === true
           const willConsume = su && !learned && (state.spentOneTimeRecipes ?? []).includes(id)
-          const kindShip = (bp && 'shipId' in bp) || (!bp && engine.shipBlueprints.some((b) => b.id === id))
+          const kindShip = (bp && 'shipId' in bp) || (!bp && engine.allShipBlueprints.some((b) => b.id === id))
           return (
             <div key={id} className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}`}>
               <div className="app-belt-head">

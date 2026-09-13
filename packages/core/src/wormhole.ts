@@ -15,6 +15,7 @@ import { addLog } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
+import { shipDisplayName } from './instances'
 import {
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
@@ -188,6 +189,51 @@ export interface WormholeBagSlot {
   units: number
 }
 
+/**
+ * **超格时丢弃货物**（船长 2026-09-13 裁定：「**扣背包格，不足时丢弃货物**」）。
+ *
+ * 场景 = 有船被打沉 ⇒ 编队合计货仓变小 ⇒ 背包格上限跟着变小（格数由"剩余编队货仓 ÷ 500"现算）
+ * ⇒ 手上这包货可能装不下了。口径两条：
+ * - **整格丢**（一格 = 一条同物品记录；留半格不释放格位）；无法识别的物品视为最贵（最后才丢）；
+ * - **每格价值从低到高丢**（价值 = 单位数 × 基础卖价）⇒ 保住贵的（与既有"优先回收高价值"同一取舍方向）。
+ *
+ * 返回丢掉的那些格（调用方写日志用），原数组不改（返回新数组）。
+ */
+export function wormholeTrimBag(
+  ctx: SimContext,
+  bag: readonly WormholeBagSlot[],
+  capacity: number,
+): { bag: WormholeBagSlot[]; dropped: WormholeBagSlot[] } {
+  const slots = bag.map((s) => ({ ...s }))
+  const perOf = (itemId: string): number => wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 0)
+  /** 每格价值（判"先丢谁"用的就是它；认不出的物品 = 无穷大 ⇒ 最后丢） */
+  const valuePerSlot = (s: WormholeBagSlot): number => {
+    const def = ctx.items.get(s.itemId)
+    const per = perOf(s.itemId)
+    if (!def || per <= 0) return Number.POSITIVE_INFINITY
+    return per * Math.max(0, def.baseSellPriceIsk ?? 0)
+  }
+  const dropped: WormholeBagSlot[] = []
+  while (wormholeBagUsage(ctx, slots, capacity).used > capacity && slots.length > 0) {
+    let pick = 0
+    for (let i = 1; i < slots.length; i++) {
+      const a = valuePerSlot(slots[i]!)
+      const b = valuePerSlot(slots[pick]!)
+      if (a < b || (a === b && slots[i]!.itemId < slots[pick]!.itemId)) pick = i
+    }
+    const slot = slots[pick]!
+    const per = perOf(slot.itemId)
+    // **一次丢一格**（不是整条记录连锅端）：满格记录按"每格单位数"扣，零头记录整条丢
+    const cut = per > 0 ? Math.min(slot.units, per) : slot.units
+    slot.units -= cut
+    const same = dropped.find((d) => d.itemId === slot.itemId)
+    if (same) same.units += cut
+    else dropped.push({ itemId: slot.itemId, units: cut })
+    if (slot.units <= 0) slots.splice(pick, 1)
+  }
+  return { bag: slots, dropped }
+}
+
 /** 背包占格汇总：`N / M` 与是否溢出（溢出不入包——拾取前由界面/引擎拦） */
 export function wormholeBagUsage(
   ctx: SimContext,
@@ -264,6 +310,33 @@ export interface WormholeRunState {
    * `wormholeDescend` / `wormholeExtract` 都要求 `bossCleared === depth`。
    */
   bossCleared?: number
+  /**
+   * **玩家此刻是否"人在洞里"**（船长 2026-09-13 批准实行 · 议案 A）。
+   *
+   * 口径（**活动位开关**，与"这趟存不存在"是两件事）：
+   * - `true` = **进虫洞这个活动正在进行** ⇒ 占着主控（采矿/打捞/扫描/巡逻/远征/运输/亲自开炉一律被拒），
+   *   洞内照常推进（战斗实时打）；
+   * - `false` = 玩家**临时离开**（关掉虫洞界面）⇒ **活动停止、主控立刻释放**（可以去做别的），
+   *   **洞内一切冻结**（战斗不推进、不掉血、回合不扣），**进度原样保存**；
+   * - 回来（`wormholeResume`）要求**主控空闲**。
+   *
+   * 存档：`save.ts` 的 `cleanWormhole` 同步清洗（旧档/坏值 ⇒ `false`＝不占主控，安全侧）。
+   */
+  attending?: boolean
+  /**
+   * **临时离开的时刻**（state.gameMs；仅 ttending === false 时有意义）。
+   * 回来时按 state.gameMs - leftAtGameMs 把**进行中的战斗时钟整体前移**——
+   * 否则 dvanceBattleFor 的步进基准（while (state.gameMs > battle.lastTickGameMs)）
+   * 会把"离开的这段时间"一次性当作战时间补算：实测 2×T1 离开 6 秒回来**当场团灭**，
+   * 冻结就白做了。随档保存（离线离开同样适用）。
+   */
+  leftAtGameMs?: number
+  /**
+   * **本趟的期望交距偏好**（玩家在洞内战里拖距离条选的；setBattleDesire 写入）。
+   * 用途：本趟**后续每一场**洞内战斗开战都沿用它（否则每个节点都要重拖一次）。
+   * 注意：**不写星系偏好**——虫洞不属于任何星系（远征那条路才写星系）。
+   */
+  desireM?: number
 }
 
 export interface WormholeState {
@@ -417,11 +490,33 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number): Wormhol
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
-/** 撤离（**只在层末可用、且本层守卫已清**）：进入撤离战相位 */
+/**
+ * **回合是否已经"走不动了"**（逃生门判据 · 2026-09-13 补）。
+ *
+ * 口径 = 设计稿 §六「**回合耗尽 ⇒ 只能撤离**」：
+ * - `turnsLeft <= 0`：连深入都被拒（`wormholeDescend`）⇒ 只能走；
+ * - `turnsLeft < 当前节点 cost`：这个节点**付不起**了 ⇒ 也只能走。
+ *
+ * ⚠ 为什么单独抽出来（**真死局**，2026-09-13 审计抓到）：首版 `wormholeExtract` 硬要求
+ * `pendingNode === null && bossCleared >= depth` ⇒ 当"节点付不起"且节点是**拾取/事件**（没有「迎战」
+ * 这条路）时，玩家**打不动节点、也撤不走**，面板上只剩施工期的「放弃本趟（调试）」——
+ * 上线后就是无路可走。故把判据抽成单点，**撤离与界面按钮共用同一把尺**。
+ */
+export function wormholeOutOfTurns(run: WormholeRunState): boolean {
+  if (run.turnsLeft <= 0) return true
+  return run.pendingNode !== null && run.turnsLeft < run.pendingNode.cost
+}
+
+/**
+ * 撤离（**只在层末可用、且本层守卫已清**）——**唯一例外是"回合走不动了"的逃生门**：
+ * 回合耗尽/付不起当前节点时，哪怕节点没结算、层末守卫没清，也放行撤离（见 `wormholeOutOfTurns`）。
+ * 战斗中（`run.battle` 非空）一律不许撤——船长裁定「战斗没结束不能撤」优先于逃生门。
+ */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
-  if (run.pendingNode) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
-  if ((run.bossCleared ?? 0) < run.depth) {
+  const outOfTurns = wormholeOutOfTurns(run)
+  if (run.pendingNode && !outOfTurns) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
+  if ((run.bossCleared ?? 0) < run.depth && !outOfTurns) {
     return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
   }
   run.phase = 'extracting'
@@ -498,6 +593,110 @@ function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): Worm
 }
 
 /**
+ * **某艘船此刻的忙态**（进洞门槛用；`null` = 空闲）。
+ *
+ * ⚠ **为什么在 `wormhole.ts` 里重写一份、而不是 import `activity.shipBusyLabel`**（2026-09-13 实测）：
+ * `wormhole.ts` 被 `state.ts` 顶层引用，一旦它 import `activity`，就形成
+ * `state → wormhole → activity → expedition → state` 的环 —— 而 `expedition.ts` 顶层读
+ * `HOME_GALAXY_ID`，首跑即 `Cannot access 'HOME_GALAXY_ID' before initialization`
+ * （与 D 批 `wormhole → shipyard → hauling` 同款；两回都真踩到了）。
+ * 故这里只读 `state` 上的普通字段，**不 import 任何重模块**。
+ *
+ * 口径与 `activity.shipBusyLabel` **一致**（那边是"给玩家看的忙态徽标"，判据同一批字段）；
+ * 两边的**一致性由用例 `wormhole-entry-gate.test.ts` 钉住**（同一现场两边必须同时"忙/闲"）。
+ * 已知差异（有意）：这里**不覆盖** `shipInReturn`（换船善后返航，需 import `mining`）——
+ * 那一档由界面侧的 `shipBusyLabel` 拦（准备页按它置灰），core 这层只保底。
+ */
+export function shipBusyForWormhole(state: GameState, shipId: string): string | null {
+  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+  return shipActivityBusy(state, shipId)
+}
+
+/**
+ * **该船此刻手上有别的"活动"吗**（**不含虫洞本身**）——"进洞门槛"与"返回虫洞"共用这一把尺。
+ * 口径同 `activity.shipBusyLabel`，差别只在：这里**不**把"在洞里"当忙（返回虫洞时要排除自己）。
+ */
+export function shipActivityBusy(state: GameState, shipId: string): string | null {
+  if (shipId !== state.shipId) {
+    const task = state.aiAssignments[shipId]?.task
+    if (!task) return null
+    // 用词与 `shipBusyLabel` 对齐（玩家在提示里看到的是这一串）
+    if (task.kind === 'mining') return 'AI 采矿中'
+    if (task.kind === 'standby') return 'AI 掩护巡逻中'
+    return 'AI 远征中'
+  }
+  if (state.mining.active) return '采矿中'
+  if (state.sideTasks.deliver !== null) return '快递投送中'
+  if (state.standby.active) return '掩护巡逻中'
+  if (state.scanning.active) return '扫描探索中'
+  if (state.expedition.active) return '远征中'
+  return null
+}
+
+/**
+ * **临时离开虫洞**（关掉虫洞界面；船长 2026-09-13 批准实行）：`attending = false` ⇒
+ * **活动停止、主控立刻释放**（可以去做别的），**本趟进度原样保存**
+ * （层 / 回合 / 背包 / 待处理节点 / 进行中的战斗都在），且**洞内一切冻结**（见 `advanceWormhole`）。
+ */
+export function wormholeLeave(state: GameState): void {
+  const run = state.wormhole.run
+  if (!run) return
+  run.attending = false
+  run.leftAtGameMs = state.gameMs // 记下离开时刻：回来时按这段时长前移战斗时钟（不然会"补算"成战时间）
+}
+
+/**
+ * **把一场洞内战斗的时钟整体前移 `deltaMs`**（临时离开期间游戏时间照走，但洞内冻结）：
+ * 只动"绝对时刻"字段——`startedAtGameMs` / `lastTickGameMs` / `waveClearAt` / `repair.nextPulseAtMs`；
+ * 装填与近防炮冷却是**倒计时**（`weapons: number[]` / `pdCd`），无需处理。
+ */
+function shiftBattleClock(battle: BattleState, deltaMs: number): void {
+  if (!(deltaMs > 0)) return
+  battle.startedAtGameMs += deltaMs
+  battle.lastTickGameMs += deltaMs
+  if (battle.waveClearAt !== undefined) battle.waveClearAt += deltaMs
+  const nextPulseAtMs = battle.repair?.nextPulseAtMs
+  if (nextPulseAtMs !== undefined) battle.repair!.nextPulseAtMs = nextPulseAtMs + deltaMs
+}
+
+/**
+ * **返回虫洞**（重新打开虫洞界面）：要求**主控空闲**（船长第四条口径）。
+ * 判据只查"别的活动"（`shipActivityBusy`）——**不**把"在洞里"算忙（否则永远回不去）。
+ */
+export function wormholeResume(state: GameState, ctx: SimContext): WormholeStartResult {
+  void ctx
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。' }
+  const busy = shipActivityBusy(state, state.shipId)
+  if (busy) return { ok: false, error: `主控正在${busy}：先把手上的活收工，才能回到虫洞。` }
+  shiftBattleClock(run.battle as BattleState, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
+  run.leftAtGameMs = undefined
+  run.attending = true
+  return { ok: true, run }
+}
+
+/**
+ * **进洞门槛**（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）：主控必须闲置
+ * （采矿/打捞/交付/扫描/掩护巡逻/远征在飞都不行），编队里每艘船也必须先空闲
+ *（正在 AI 派工/已在洞里的船编不进来——否则同一艘船会被两处同时占用）。
+ * 返回拒因文案；`null` = 可以进洞。
+ */
+export function wormholeEntryBlockReason(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): string | null {
+  void ctx
+  const pilotBusy = shipBusyForWormhole(state, state.shipId)
+  if (pilotBusy) return `主控正在${pilotBusy}：先把手上的活收工，才能指挥虫洞探索。`
+  for (const uid of shipIds) {
+    const busy = shipBusyForWormhole(state, uid)
+    if (busy) return `${shipDisplayName(state, ctx, uid)}正在${busy}：先取消它的作业/派工，才能编入虫洞。`
+  }
+  return null
+}
+
+/**
  * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
  * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
  */
@@ -508,8 +707,11 @@ export function wormholeEnter(
   seed: number,
 ): WormholeStartResult {
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。' }
+  const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
+  if (blocked) return { ok: false, error: blocked }
   const r = wormholeStartRun(ctx, shipIds, seed)
   if (!r.ok || !r.run) return r
+  r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
   state.wormhole.run = r.run
   addLog(
     state,

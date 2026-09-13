@@ -40,6 +40,7 @@ import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { uidDefId } from './labels'
+import { quickRepairFactor } from './repair'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
@@ -1951,6 +1952,9 @@ export function preloadRepairFor(
   const units: import('./state').BattleRepairUnit[] = []
   const need = new Map<string, number>()
   const perUnit = Math.max(1, Math.ceil(maxBattleMs / REPAIR_PULSE_MS)) + 1
+  // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
+  // 共用同一处系数（`repair.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）
+  const quickRepair = quickRepairFactor(state, ctx)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
   // （权重 100%/87%/57%/28%/11%，与"命中/速度"同类；不吃组件故必须收敛，否则叠装失控）
   const freeSeen = new Map<string, number>()
@@ -1974,11 +1978,14 @@ export function preloadRepairFor(
       continue
     }
     const kitId = d.repairKit ?? 'repairkit-civ'
+    // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
+    // 共用同一处系数（`shipyard.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）——
+    // 开战预载时按**开战那一刻的技能**折算成每跳值（与"装配快照 + 组件预载"同一份快照语义）。
     units.push({
       moduleId: d.id,
       kitId,
-      armorPerPulse: Math.max(0, Math.round(d.repairArmorHp ?? 0)),
-      hullPerPulse: Math.max(0, Math.round(d.repairHullHp ?? 0)),
+      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair)),
+      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair)),
       stopped: false,
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
@@ -2359,18 +2366,34 @@ export function startBattleFor(
  * 首版就是这么错的：`advanceBattleFor` 漏了总血预算 ⇒ 敌人**血是强化后的、炮还是自然值**
  * （探针实测：敌总血 11,168、单发 1,336，实战里每发只掉 6~7 点，整场残血 100%）。
  */
-function wormholeDerivedAnomaly(
+/**
+ * `wormholeDerivedAnomaly` 的一层记忆（见该函数注释；键 = 卡 id|层|用途|波数|强度覆写）。
+ * 只存最近一份：一局里同时只会有一种用途在场（节点/守卫/撤离），换键即重算。
+ */
+let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
+
+export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
   spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },
 ): AnomalyDef {
-  return wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
+  /**
+   * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
+   * （战场视图 `wormholeBattleViewOf`）调用，每次都克隆/缩放整张敌卡与槽位 ⇒ 拖距离条那种
+   * 高频重渲染下会顶出顿挫（船长："依旧还是有顿挫感"、"参考洞外战斗的距离调整"）。
+   * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
+   */
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}`
+  if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
+  const card = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
+  wormholeDerivedMemo = { key: memoKey, card }
+  return card
 }
 
 /**

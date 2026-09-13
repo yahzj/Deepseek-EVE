@@ -19,7 +19,7 @@
  *   与旧版空间站收购价一致（波动来自池淤积与冲击动量）；
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
-import { addLog } from './state'
+import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
 import type { AiCoreType, ItemDef, SimContext } from './types'
@@ -201,6 +201,11 @@ export function startRefineRun(
   if (available <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
   }
+  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
+  if (worker === 'pilot') {
+    const hold = wormholePilotHoldReason(state)
+    if (hold) return { ok: false, error: hold }
+  }
   if (worker === 'pilot') {
     // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与其它主控作业互斥；与主控手动制造共用手动工作位
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
@@ -303,6 +308,11 @@ export function startRecycleRun(
       ok: false,
       error: `残骸不足一批（每批 ${RECYCLE_BATCH_M3} m³，现有 ${Math.round(available * 100) / 100} m³）——先凑够同型号残骸再拆解。`,
     }
+  }
+  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
+  if (worker === 'pilot') {
+    const hold = wormholePilotHoldReason(state)
+    if (hold) return { ok: false, error: hold }
   }
   if (worker === 'pilot') {
     // 主控亲自回收：全局限 1 台 + 占主控工作位；与主控手动制造共用手动工作位
@@ -675,6 +685,9 @@ export function sellWareItem(state: GameState, itemId: string, ctx: SimContext):
 
 /** 从当前船货仓按市价**卖出指定数量**（船长 2026-09-05：出售支持只卖一部分；其余语义同 sellCargoItem） */
 export function sellCargoItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, state.shipId, '卖它货仓里的东西')
+  if (lock) return { ok: false, error: lock, soldUnits: 0, gainedIsk: 0 }
   const have = countItem(state, itemId)
   const want = Math.max(0, Math.floor(qty))
   if (want <= 0) return { ok: false, error: '出售数量需大于 0。', soldUnits: 0, gainedIsk: 0 }

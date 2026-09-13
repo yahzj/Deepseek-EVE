@@ -34,6 +34,7 @@ export type ActivityKind =
   | 'transit'
   | 'standby'
   | 'loop'
+  | 'wormhole'
   | 'courier'
   | 'hauling'
 
@@ -254,6 +255,30 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
+  // ── 虫洞探索（船长 2026-09-13：「进虫洞视作主控的一个活动」＋「活动栏显示」）──
+  // 一行读数：层/节点、回合余量、背包类数、人在洞里还是已离开；**不可终止**（要自己走完：
+  // 在虫洞界面发起「撤离」并打赢撤离战，或全损收场）——终止入口刻意不给，避免误点把整趟丢水里。
+  const whRun = state.wormhole.run
+  if (whRun) {
+    const where = whRun.battle
+      ? '交火中'
+      : whRun.phase === 'extracting'
+        ? '撤离战'
+        : `第 ${whRun.depth} 层 · 节点 ${Math.min(whRun.nodeIndex + 1, whRun.nodesPerLayer)}/${whRun.nodesPerLayer}`
+    out.push({
+      id: 'wormhole',
+      kind: 'wormhole',
+      label: `虫洞探索 · ${where}`,
+      sub:
+        `回合 ${whRun.turnsLeft}/${whRun.turnsTotal} · 背包 ${whRun.bag.length} 类物资` +
+        (whRun.attending === true ? ' · 人在洞里' : ' · 已离开（进度已保存）'),
+      percent: whRun.turnsTotal > 0 ? Math.round((1 - whRun.turnsLeft / whRun.turnsTotal) * 100) : null,
+      remainingMs: null,
+      stopable: false,
+      stopReason: '洞内那趟要自己走完：在虫洞界面里发起「撤离」并打赢撤离战，或全损收场。',
+      stop: null,
+    })
+  }
   // ── 重复清剿（autoLoop：非出击/非返航的等待/冷却窗口行——2026-09-08 船长：出击/返航期间
   // 不再显示独立行，停止入口并入上方本次讨伐行） ──
   const loopId = state.autoLoopAnomalyId
@@ -445,6 +470,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
  * 制造与技能训练不绑船，不算忙。UI 的货仓页船徽标与以后复用都走这里。
  */
 export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): string | null {
+  // **虫洞锁定**（船长 2026-09-13：「已经进洞的船将被锁定（包括货仓）」）——
+  // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛
+  // 这些读同一把尺的地方**自动**把它挡在外面（不需要逐处加判断）。
+  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+  // 人在洞里时，主控本人也算忙（活动位被占）；**临时离开后即释放**（船长 2026-09-13 批准）
+  if (state.wormhole.run?.attending === true && shipId === state.shipId) return '虫洞探索中'
   if (shipId === state.shipId) {
     const mv = miningStatus(state, ctx)
     if (mv.active) {

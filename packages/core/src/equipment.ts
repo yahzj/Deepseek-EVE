@@ -18,7 +18,7 @@
  *   对齐（超长尾件退库、短位补空）+ 旧 -h 弹药并入（migrateDeprecatedAmmo）；
  * - 加成查询 = 按家族求和（复数矿枪/货舱扩展线性叠加；AI/采矿/货舱同源单点）。
  */
-import { addLog } from './state'
+import { addLog, shipLockedReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists, DamageType } from './types'
@@ -327,6 +327,9 @@ export function fitModule(
   ctx: SimContext,
   opts?: { rack?: RackSlot; index?: number; shipId?: string },
 ): CommandResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：「锁，进洞船只所有行为都锁定。包括维修。」）
+  const lock = shipLockedReason(state, opts?.shipId ?? state.shipId, '改装它')
+  if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
   if (countModule(state, moduleId) < 1) {
@@ -385,6 +388,9 @@ export function unfitAt(
   shipId: string = state.shipId,
   ctx?: SimContext,
 ): boolean {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const lock = shipLockedReason(state, shipId, '卸下它的装备')
+  if (lock) return false
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return false
   const bays = rackBays(fitted, rack)
@@ -430,6 +436,9 @@ export function swapModuleAt(
   ctx: SimContext,
   opts: { rack: RackSlot; index: number; shipId?: string },
 ): CommandResult {
+  // **进洞船只所有行为锁定**（船长 2026-09-13：「锁，进洞船只所有行为都锁定。包括维修。」）
+  const lock = shipLockedReason(state, opts.shipId ?? state.shipId, '改装它')
+  if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
   const shipId = opts.shipId ?? state.shipId

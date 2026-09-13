@@ -1430,6 +1430,51 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
   manufacturingLoops: Record<string, ManufacturingLoopState>
 }
 
+/**
+ * **该船此刻是否被锁在虫洞里**（= 在本趟编队里）。
+ *
+ * 用途（船长 2026-09-13 两条裁定合起来）：①「已经进洞的船将被锁定」；
+ * ②「**洞内战斗时，洞外可以开新战斗**」——两场战斗**锚点必须各在各边**：
+ * 洞内锚点 = `run.fleet[0]`（见 `advanceWormhole`）、洞外锚点 = `state.shipId`（见 `advanceBattle`）。
+ * 于是"拿洞里的船去外面开战"要拒掉，否则同一艘船会被两场战斗同时读写（承伤/弹药/丢船互相串台）。
+ *
+ * ⚠ 放在 `state.ts` 而不是 `wormhole.ts`：`wormhole.ts` 已经反向依赖 `activity`，
+ * 若再让 `expedition` 反向 import `wormhole`，就会形成
+ * `state → wormhole → activity → expedition → wormhole` 的环，首跑即
+ * `Cannot access 'HOME_GALAXY_ID' before initialization`（2026-09-13 实测踩到，与 D 批同款）。
+ * 本函数只读 `state.wormhole.run`，放这里两边都能直接 import，零新增依赖边。
+ */
+/**
+ * **进洞船只的"所有行为"锁定拒因**（船长 2026-09-13：「**锁，进洞船只所有行为都锁定。包括维修。**」）。
+ * 用途：换驾驶 / 货仓装卸 / 市场卖出 / 装配改装 / 维修（组件与站内）/ 卖船 等动作在入口处调它；
+ * 空 = 可以操作。文案统一说明"为什么"与"怎么解"。
+ */
+export function shipLockedReason(state: GameState, shipId: string, what = '操作这艘船'): string | null {
+  if (!shipLockedInWormhole(state, shipId)) return null
+  return `该舰在虫洞里（已锁定）：${what}要等它出洞——先撤离或结算本趟。`
+}
+export function shipLockedInWormhole(state: GameState, shipId: string): boolean {
+  return (state.wormhole.run?.fleet ?? []).includes(shipId)
+}
+
+
+
+/**
+ * **主控"手上那个活动"是否还占着**（船长 2026-09-13 批准实行 · 议案 A）。
+ *
+ * 口径：进洞 = 与采矿 / 打捞 / 扫描 / 交付 / 长途运输 / 掩护巡逻 / 远征 / 亲自开炉**同级的一个主控活动**，
+ * 但它**只在"人在洞里"（`run.attending === true`）时占位**：
+ * - 人在洞里 ⇒ 别的活动一律开不了（本函数给拒因）；
+ * - **临时离开（关掉虫洞界面）⇒ 活动停止、主控立刻释放**（可以去做别的），**虫洞进度原样保存**；
+ * - **返回虫洞**要求主控空闲（`wormhole.ts` 的 `wormholeResume`）。
+ *
+ * ⚠ **不要塞进 `pilotUnavailableReason`**：那个函数还被 `reconcilePilotShip`（每拍自愈）读——
+ * 一旦它因虫洞报"驾驶船不可用"，引擎会去改派驾驶船/补发保底船。故单开一个判据。
+ */
+export function wormholePilotHoldReason(state: GameState): string | null {
+  if (state.wormhole.run?.attending !== true) return null
+  return '人在虫洞里（进虫洞这个活动还在进行）：先撤离或结算本趟；临时离开的话，关掉虫洞界面就能释放主控。'
+}
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0

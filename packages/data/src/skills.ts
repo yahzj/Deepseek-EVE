@@ -410,15 +410,15 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'repair-engineering',
     name: '维修工程学',
     group: '工程',
-    rank: 2,
-    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站协议学乘算叠加；修理组件不受影响）。',
+    rank: 3,
+    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站协议学乘算叠加）；并让修理组件恢复量每级 +⟦5%⟧（与舰体快修学同效果、按级相加；船体维修装置每跳同样计入）。',
   },
   {
     id: 'hull-quick-repair',
     name: '舰体快修学',
     group: '工程',
     rank: 2,
-    description: '应急修补手法：自动使用修理组件时的恢复量每级 +⟦10%⟧（满级 +⟦50%⟧）。',
+    description: '应急修补手法：使用修理组件时的恢复量每级 +⟦5%⟧（满级 +⟦25%⟧）——**船体维修装置战斗中每跳同样计入**。',
   },
   {
     id: 'station-protocol',
