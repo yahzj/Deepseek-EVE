@@ -567,21 +567,20 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
 }
 
 /**
- * 撤离（**层末守卫清掉之后**才放行）——**唯一例外是"回合走不动了"的逃生门**：
- * 回合耗尽时，哪怕本层守卫没清，也放行撤离（见 `wormholeOutOfTurns`）。
- * 战斗中（`run.battle` 非空）一律不许撤——船长裁定「战斗没结束不能撤」优先于逃生门。
+ * 撤离 —— **无条件可以开始**（船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」）。
  *
- * ⚠ F3a-2 口径变更：网格世界里"层内还有事没做完"不再是一道门——每个地点都是**自愿**去处理的，
- * 故旧口径的 `pendingNode !== null ⇒ 不许撤` 只对老档（线性节点）生效；网格层的门只剩**层末守卫**
- * 与**进行中的战斗**两条（都与设计稿 §3 一致）。
+ * 口径：
+ * - **不再有"层末守卫没清 / 层内还有节点没走完 / 回合没耗尽"这几道门**：想走随时能走（老口径把
+ *   守卫当成"出门许可"，实测会逼出"打不过就原地转圈耗回合"的歪招）；
+ * - 但**撤离不是白走**：进入 `extracting` 相位后由 `advanceWormhole` 开一场**撤离拦截战**（威胁 ×0.8），
+ *   打赢才把背包与货柜带回港，打输照样全损（见 `settleWormholeBattle`）；
+ * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」）。
+ *
+ * ⚠ 被本裁定取代的旧条款（设计稿 §六「回合耗尽 ⇒ 只能撤离」+ §3「守卫是门」里"撤离也要先清守卫"那半句）
+ * 已在文档里标注作废；`wormholeDescend`（**深入**）那一侧的守卫门**照旧有效**。
  */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
-  const outOfTurns = wormholeOutOfTurns(run)
-  if (run.pendingNode && !outOfTurns) return { ok: false, error: '战斗没结束不能撤退：先打完本节点。' }
-  if ((run.bossCleared ?? 0) < run.depth && !outOfTurns) {
-    return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
-  }
   run.phase = 'extracting'
   return { ok: true }
 }

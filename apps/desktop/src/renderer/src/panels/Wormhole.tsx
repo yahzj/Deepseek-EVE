@@ -599,14 +599,12 @@ export function WormholePanel({
                     ) : null}
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || overloaded || (!outOfTurns && !bossDone)}
+                      disabled={!!run.battle || overloaded}
                       onClick={doExtract}
                       title={
-                        outOfTurns
-                          ? '回合已走不动：只能撤离（撤离拦截照打）'
-                          : bossDone
-                            ? '进入撤离战：打赢才把背包带回港'
-                            : '先清掉本层守卫（它堵在下一层入口上）'
+                        bossDone
+                          ? '进入撤离战：打赢才把背包与货柜带回港'
+                          : '随时可以撤（**不必先清守卫**）：但要打赢撤离拦截战，打赢才把背包与货柜带回港'
                       }
                     >
                       撤离
@@ -701,7 +699,7 @@ export function WormholePanel({
                   <div className="app-wh-actions">
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || overloaded || (!outOfTurns && !bossDone)}
+                      disabled={!!run.battle || overloaded}
                       onClick={doExtract}
                     >
                       撤离
