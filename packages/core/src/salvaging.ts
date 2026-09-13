@@ -14,7 +14,7 @@
  * - 工作位守卫：与采矿/远征/扫描/待命/返航/主控精炼互斥（入口拒绝）；
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
-import { addLog } from './state'
+import { addLog, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
@@ -76,6 +76,9 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   const galaxy = ctx.galaxies.get(galaxyId)
   if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
+  // **进洞 = 主控的一个活动**（船长 2026-09-13）：一趟没结束就不能再开别的活动
+  const hold = wormholePilotHoldReason(state)
+  if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。' }

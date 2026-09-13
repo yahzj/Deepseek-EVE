@@ -14,7 +14,7 @@
  * - 扫描期间随机事件倒计时按 balance.events.exploreBoost 加速，且事件改从"探索发现"池抽取
  *   （见 events.ts EXPLORE_EVENTS）。
  */
-import { addLog, HOME_GALAXY_ID } from './state'
+import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { GameState } from './state'
 import type { SimContext } from './types'
@@ -153,6 +153,9 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港扫描。' }
   }
+  // **进洞 = 主控的一个活动**（船长 2026-09-13）：一趟没结束就不能再开别的活动
+  const hold = wormholePilotHoldReason(state)
+  if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再扫描。' }

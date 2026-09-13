@@ -37,7 +37,7 @@
  *   伏击敌群残骸可打捞回收；
  * - 首次进入低安弹提示并写日志（lowSecNotified 一次性标记），规则入手册「航行须知」。
  */
-import { addLog } from './state'
+import { addLog, shipLockedInWormhole } from './state'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AnomalyDef, SimContext } from './types'
@@ -626,6 +626,11 @@ function foeKeyOf(enc: GameState['encounter']): string {
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。' }
+  // **洞内战斗时洞外可以开新战斗**（船长 2026-09-13），但**锚点船不能被锁在洞里**：
+  // 洞内锚 = `run.fleet[0]`、洞外锚 = 这里那艘 —— 同一艘船被两场战斗同时读写会互相串台。
+  if (shipLockedInWormhole(state, enc.shipId ?? state.shipId)) {
+    return { ok: false, error: '这艘船在虫洞里（已锁定）：换一艘应战，或先撤离本趟。' }
+  }
   // 目标距离（2026-09-11 船长：按星系独立保存）：遭遇所在星系设过就用它，没设过由 startBattleFor
   // 回落射程中段（遭遇模板自带的 galaxyId 是模板产地，不是玩家所在星系，故这里显式传入）
   const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs, desirePrefOf(state, enc.galaxyId) ?? undefined)

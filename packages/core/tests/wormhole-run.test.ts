@@ -11,15 +11,25 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
+import { createInitialState, CURRENT_STATE_VERSION, wormholePilotHoldReason } from '../src/state'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { idleAiShipIds } from '../src/ai'
 import { shipBusyLabel } from '../src/activity'
+import type { CommandResult } from '../src/engine'
 import { advanceGame } from '../src/engine'
+import { fightEncounter } from '../src/encounters'
 import { startExpedition } from '../src/expedition'
+import { startScan } from '../src/explore'
+import { startHauling } from '../src/hauling'
+import { goStandbyAt } from '../src/location'
+import { startMining } from '../src/mining'
+import { startSalvageOp } from '../src/salvaging'
 import { wormholeStartBattle } from '../src/wormholeBattle'
 import { addShipToFleet } from '../src/shipyard'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   shipBusyForWormhole,
   wormholeAdvanceNode,
@@ -89,7 +99,47 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13）', () => {
 })
 
 describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
-  it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：两场各自推进、锚点各在各边', () => {
+  it('**进洞 = 主控的一个活动**：一趟没结束时主控开不了别的活动（各入口同一判据）', () => {
+    // 基线（同一套档、未进洞）：远征收下 ⇒ 证明待会儿挡它的是"虫洞活动位"，不是别的前置
+    const base = createInitialState({ nowWallMs: 0, seed: 7 })
+    const p0 = addShipToFleet(base, T1)
+    base.shipId = p0
+    expect(startExpedition(base, 'ano-training', ctx).ok).toBe(true)
+    // 进洞后：同一条命令被"活动位"挡下，拒因写明是虫洞
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [b], 7).ok).toBe(true)
+    expect(wormholePilotHoldReason(state) ?? '').toContain('虫洞探索中')
+    const exp = startExpedition(state, 'ano-training', ctx)
+    expect(exp.ok, '洞内涌着一趟时还能出击').toBe(false)
+    expect(exp.error ?? '').toContain('虫洞探索中')
+    // 其余活动入口：都被挡（各自更早的前置也可能先报，故只断言"开不起来"）
+    for (const [what, r] of [
+      ['采矿', startMining(state, '__no_such_belt__', ctx)],
+      ['扫描', startScan(state, 'gx-2', ctx)],
+      ['打捞', startSalvageOp(state, 'gx-2', ctx)],
+      ['掩护巡逻', goStandbyAt(state, 'gx-2', ctx)],
+      ['长途运输', startHauling(state, null, null, ctx)],
+    ] as Array<[string, CommandResult]>) {
+      expect(r.ok, `${what} 在洞内还能开`).toBe(false)
+    }
+    // 结算/撤离本趟 ⇒ 活动位释放
+    state.wormhole.run = null
+    expect(wormholePilotHoldReason(state)).toBeNull()
+  })
+
+  it('**活动位判据必须挂在每个活动入口上**（源码级契约：新增入口忘了挂，这条会红）', () => {
+    const files = ['mining.ts', 'salvaging.ts', 'explore.ts', 'location.ts', 'expedition.ts', 'hauling.ts']
+    const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
+    for (const f of files) {
+      const src = readFileSync(join(dir, f), 'utf8')
+      expect(src.includes('wormholePilotHoldReason(state)'), `${f} 的活动入口没挂"进洞=主控的一个活动"判据`).toBe(true)
+    }
+  })
+
+  it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：走"遭遇"这条不受活动位限制的路', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     const b = addShipToFleet(state, T1)
@@ -98,27 +148,39 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const holeBattle = run.battle!
-    // 洞外的开战入口**不设闸门**（船长裁定）：主控在洞外 ⇒ 直接放行
-    const exp = startExpedition(state, 'ano-training', ctx)
-    expect(exp.ok, exp.error ?? '').toBe(true)
-    expect(state.expedition.battle, '洞外那场没开起来').toBeTruthy()
-    // 锚点各在各边：洞内锚 = run.fleet[0]、洞外锚 = 主控（不在洞里 ⇒ 不会被两场同时读写）
+    // 洞外触发一场遭遇（AI 船/主控在外都可能）：**战斗系统不因洞内战而关闭**
+    state.encounter = {
+      ...state.encounter,
+      active: true,
+      shipId: state.shipId, // 主控在洞外 ⇒ 锚点不冲突
+      galaxyId: 'gx-home',
+      name: '测试遭遇',
+      threat: 40,
+      anomalyId: 'ano-training',
+      origin: 'test',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 10_000_000,
+    }
+    const fights = fightEncounter(state, ctx)
+    expect(fights.ok, fights.error ?? '').toBe(true)
+    expect(state.encounter.battle, '洞外那场没开起来').toBeTruthy()
+    // 锚点各在各边：洞内锚 = run.fleet[0]，洞外锚 = 主控（不在洞里 ⇒ 不会被两场同时读写）
     expect(run.fleet).not.toContain(state.shipId)
     const tickBefore = holeBattle.lastTickGameMs
     for (let i = 0; i < 2; i++) advanceGame(state, 500, ctx, { nowWallMs: 0 })
-    expect(state.expedition.battle, '洞外那场被洞内那场吞了').toBeTruthy()
+    expect(state.encounter.battle, '洞外那场被洞内那场吞了').toBeTruthy()
     const hole = state.wormhole.run?.battle
     if (hole) expect(hole.lastTickGameMs).toBeGreaterThanOrEqual(tickBefore) // 各推各的
   })
 
-  it('**主控被锁在洞里 ⇒ 洞外开不了新战斗**（锁定的直接推论 · 文案点名）', () => {
+  it('**主控被活动位占着 ⇒ 洞外开不了新远征**（两条裁定的交界面 · 见汇报）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const pilot = state.shipId
     const a = addShipToFleet(state, T1)
     expect(wormholeEnter(state, ctx, [pilot, a], 7).ok).toBe(true) // 船长裁定 B：主控可编入
     const r = startExpedition(state, 'ano-training', ctx)
-    expect(r.ok, '主控在洞里还能出击 = 两场战斗共用一个锚点').toBe(false)
-    expect(r.error ?? '').toContain('虫洞里')
+    expect(r.ok, '主控的活动位被虫洞占着还能出击').toBe(false)
+    expect(r.error ?? '').toContain('虫洞')
   })
 
   it('忙态口径不漂移：`shipBusyForWormhole` 与界面侧 `shipBusyLabel` 必须同时"忙/闲"', () => {
