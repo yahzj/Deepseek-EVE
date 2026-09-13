@@ -17,6 +17,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { idleAiShipIds } from '../src/ai'
 import { shipBusyLabel } from '../src/activity'
 import { advanceGame } from '../src/engine'
+import { fightEncounter } from '../src/encounters'
 import { startExpedition } from '../src/expedition'
 import { wormholeStartBattle } from '../src/wormholeBattle'
 import { addShipToFleet } from '../src/shipyard'
@@ -89,7 +90,24 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13）', () => {
 })
 
 describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
-  it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：两场各自推进、锚点各在各边', () => {
+  it('**（议案待议）主控活动互斥暂不实行**：洞内在跑时，别的活动入口不被虫洞挡（各按自己的前置判）', () => {
+    // 船长 2026-09-13：「主控活动相互互斥这个先不要实行，维持现状，当做一个议案，用作之后优化的」
+    // ⇒ 本用例把"维持现状"钉住：洞内跑着一趟时，远征收下（主控在洞外）、其余入口各自按前置判
+    //   ——将来要实行议案（进洞=主控的一个活动）时，把这条改成"被虫洞挡"即可。
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [b], 7).ok).toBe(true) // a=主控留洞外，b 进洞
+    const exp = startExpedition(state, 'ano-training', ctx)
+    expect(exp.ok, `洞内在跑时出击被挡了（议案已生效？）：${exp.error ?? ''}`).toBe(true)
+    expect(state.expedition.battle).toBeTruthy()
+    // 归还：把外部那场收掉，避免影响同文件其它用例（各用例档独立，这里只是保险）
+    state.expedition.battle = null
+    state.expedition.active = false
+  })
+
+  it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：走"遭遇"这条不受活动位限制的路', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     const b = addShipToFleet(state, T1)
@@ -98,26 +116,38 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const holeBattle = run.battle!
-    // 洞外的开战入口**不设闸门**（船长裁定）：主控在洞外 ⇒ 直接放行
-    const exp = startExpedition(state, 'ano-training', ctx)
-    expect(exp.ok, exp.error ?? '').toBe(true)
-    expect(state.expedition.battle, '洞外那场没开起来').toBeTruthy()
-    // 锚点各在各边：洞内锚 = run.fleet[0]、洞外锚 = 主控（不在洞里 ⇒ 不会被两场同时读写）
+    // 洞外触发一场遭遇（AI 船/主控在外都可能）：**战斗系统不因洞内战而关闭**
+    state.encounter = {
+      ...state.encounter,
+      active: true,
+      shipId: state.shipId, // 主控在洞外 ⇒ 锚点不冲突
+      galaxyId: 'gx-home',
+      name: '测试遭遇',
+      threat: 40,
+      anomalyId: 'ano-training',
+      origin: 'test',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 10_000_000,
+    }
+    const fights = fightEncounter(state, ctx)
+    expect(fights.ok, fights.error ?? '').toBe(true)
+    expect(state.encounter.battle, '洞外那场没开起来').toBeTruthy()
+    // 锚点各在各边：洞内锚 = run.fleet[0]，洞外锚 = 主控（不在洞里 ⇒ 不会被两场同时读写）
     expect(run.fleet).not.toContain(state.shipId)
     const tickBefore = holeBattle.lastTickGameMs
     for (let i = 0; i < 2; i++) advanceGame(state, 500, ctx, { nowWallMs: 0 })
-    expect(state.expedition.battle, '洞外那场被洞内那场吞了').toBeTruthy()
+    expect(state.encounter.battle, '洞外那场被洞内那场吞了').toBeTruthy()
     const hole = state.wormhole.run?.battle
     if (hole) expect(hole.lastTickGameMs).toBeGreaterThanOrEqual(tickBefore) // 各推各的
   })
 
-  it('**主控被锁在洞里 ⇒ 洞外开不了新战斗**（锁定的直接推论 · 文案点名）', () => {
+  it('**锚点锁定仍在**：主控编在洞里 ⇒ 出击被拒（这条属"锁定"裁定，不在议案退回范围）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const pilot = state.shipId
     const a = addShipToFleet(state, T1)
     expect(wormholeEnter(state, ctx, [pilot, a], 7).ok).toBe(true) // 船长裁定 B：主控可编入
     const r = startExpedition(state, 'ano-training', ctx)
-    expect(r.ok, '主控在洞里还能出击 = 两场战斗共用一个锚点').toBe(false)
+    expect(r.ok, '主控被锁在洞里还能出击 = 两场战斗共用一个锚点').toBe(false)
     expect(r.error ?? '').toContain('虫洞里')
   })
 

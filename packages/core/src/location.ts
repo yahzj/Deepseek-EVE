@@ -1,4 +1,4 @@
-﻿/**
+/**
  * T8/T9 位置模型（多空间站版）：
  * - 舰船空闲时的"野外停留" = awayGalaxy；否则停靠空间站 = 母港（dockedSite=null）
  *   或已建成的副空间站（dockedSite = 站点 id）；

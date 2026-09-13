@@ -1448,6 +1448,8 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
   return (state.wormhole.run?.fleet ?? []).includes(shipId)
 }
 
+
+
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
