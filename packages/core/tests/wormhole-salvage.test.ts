@@ -39,13 +39,16 @@ import {
   wormholeTakePileAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  wormholePoolGrantUnitsOf,
+  wormholeDeliverRelics,
   wormholeRelicBoxIdOf,
   wormholeRelicChanceOf,
   wormholeRollRelicBox,
   wormholeSalvageAt,
   wormholeSalvagersOf,
 } from '../src/wormholeSalvage'
-import { rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
+import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
+import { countWare } from '../src/inventory'
 
 const ctx = buildSimContext()
 /** 巡洋舰（T3，可装打捞器）；`mod-salvager-1` 是打捞器 MK1 */
@@ -329,6 +332,58 @@ describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', ()
     const c = wormholeFamilyPoolOf(ctx, 'C')
     for (const id of a.modules) expect(c.modules.includes(id)).toBe(false)
     for (const id of a.shipBlueprints) expect(c.shipBlueprints.includes(id)).toBe(false)
+  })
+
+  /**
+   * **族专属无人机是 C/E 两族的"第 6 件替换物"**（2026-09-13 二号接线单 · 专属稿 §6.1）：
+   * C 移除「活性甲壳层」、E 移除「巨构稳态器」，由两型专属无人机替换 ⇒ 只有这两族有。
+   */
+  it('**族专属无人机只归 C/E**（替换物）；不进"五族齐备"判据；一族一件、件数净增为 0', () => {
+    expect(ctx.items.has('drone-wh-c-heavy')).toBe(true)
+    expect(ctx.items.has('drone-wh-e-sentry')).toBe(true)
+    const c = wormholeFamilyPoolOf(ctx, 'C')
+    const e = wormholeFamilyPoolOf(ctx, 'E')
+    expect(c.drones).toEqual(['drone-wh-c-heavy'])
+    expect(e.drones).toEqual(['drone-wh-e-sentry'])
+    for (const f of ['A', 'D', 'G']) expect(wormholeFamilyPoolOf(ctx, f).drones, `${f} 族不该有专属无人机`).toEqual([])
+    // **五族齐备判据不看无人机**（只有两族有 ⇒ 查它会把 A/D/G 判成空池）
+    expect(wormholeFamilyPoolGaps(ctx)).toEqual([])
+    // **替换关系**：装备件数 + 无人机件数 = 6（其余三族各 6 件装备）
+    for (const f of ['A', 'C', 'D', 'E', 'G']) {
+      const p = wormholeFamilyPoolOf(ctx, f)
+      expect(p.modules.length + p.drones.length, `${f} 族「装备 + 无人机」件数`).toBe(6)
+    }
+    // 无人机也是施工期内容（对玩家不可见）
+    for (const id of [...c.drones, ...e.drones]) expect(ctx.items.get(id)?.unreleased, `${id} 没标 unreleased`).toBe(true)
+  })
+
+  it('**一次到手几件**：族专属无人机 ×10 架（与窝点同款），其余池内容物 1 件', () => {
+    expect(wormholePoolGrantUnitsOf('drone-wh-c-heavy')).toBe(10)
+    expect(wormholePoolGrantUnitsOf('drone-wh-e-sentry')).toBe(RARE_BOX_DRONE_UNITS)
+    expect(wormholePoolGrantUnitsOf('box-relic-c')).toBe(1)
+    expect(wormholePoolGrantUnitsOf('mod-wh-a-coat')).toBe(1)
+  })
+})
+
+describe('虫洞 · 撤离交付（F4 货柜 / 池内容的入库链路）', () => {
+  it('**货柜与无人机都进仓库**：模块进装备库、图纸进书架、物品按"一次几件"入仓', () => {
+    const state = enterRun(1)
+    // ① 物品（F4 的「遗迹安全货柜」是物品，不是模块 ⇒ 早先这条链会把它静默丢掉）
+    const boxDelivered = wormholeDeliverRelics(state, ctx, ['box-relic-c'])
+    expect(boxDelivered).toEqual(['遗迹安全货柜（异形）×1'])
+    expect(countWare(state, 'box-relic-c')).toBe(1)
+    // ② 族专属无人机：一次 10 架
+    const droneDelivered = wormholeDeliverRelics(state, ctx, ['drone-wh-e-sentry'])
+    expect(droneDelivered).toEqual(['构件哨戒无人机×10'])
+    expect(countWare(state, 'drone-wh-e-sentry')).toBe(10)
+    // ③ 老口径照旧：装备进装备库、一次性图纸进蓝图书架
+    const modId = wormholeFamilyPoolOf(ctx, 'A').modules[0]!
+    const bpId = wormholeFamilyPoolOf(ctx, 'A').moduleBlueprints[0]!
+    wormholeDeliverRelics(state, ctx, [modId, bpId])
+    expect(state.blueprintStock[bpId]).toBe(1)
+    expect(ctx.modules.has(modId)).toBe(true)
+    // ④ 认不出的 id 不炸、也不入账（静默跳过）
+    expect(wormholeDeliverRelics(state, ctx, ['没有这个 id'])).toEqual([])
   })
 })
 

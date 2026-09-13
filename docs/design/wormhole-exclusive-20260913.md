@@ -606,7 +606,22 @@ CPU = max(官方中位 ×1.10, 现 CPU + 40)；**每艘 +1 槽位**（按子分�
 > const r = wormholeDescend(run, seed, wormholeScanBonusOf(ctx, run.fleet))
 > `
 >
-> ⚠ **接线状态**：数据侧机**已落码**（`packages/data/src/items.ts`，物品总数 36→38、无人机 5→7）；
+> ✅ **接线完成（2026-09-13 一号）**：① **族池加 `drones` 一类** —— `wormholeFamilyPoolOf` 从 `ctx.items` 按
+> `drone-wh-<族>-` 派生（C = `drone-wh-c-heavy`、E = `drone-wh-e-sentry`），**不进"五族齐备"判据**、只做归属/孤儿检查；
+> 架数口径收成**唯一一份** `wormholePoolGrantUnitsOf`（无人机 ×10，复用 `RARE_BOX_DRONE_UNITS`；其余 1 件）。
+> `content:check` 打印改为 `A 6/6/3 · C 5/5/3+机1 · D 6/6/3 · E 5/5/3+机1 · G 6/6/3 · 族专属无人机 2 型`，
+> 并加两条钉子：**孤儿检查认 `drone-wh-` 前缀**（实测把族标记改成 `x` ⇒ 立刻报「永远掉不出来」）、
+> **有无人机的族「装备 + 无人机」必须 = 6 件**（替换物不该让件数净增）。
+> ② **扫码加成改在引擎传**：面板本来就不直接调 core（它调 `engine.wormholeDescend()`）⇒ 落点取
+> `apps/desktop/src/renderer/src/game/engine.ts` 的 `wormholeDescend()`（`wormholeScanBonusOf(ctx, run.fleet)`），
+> 一个点覆盖面板与将来的其它入口；`tools/wormhole-econ.ts` 同步传，免得多层读数与实战口径分叉。
+>
+> ⚠ **顺手抓到一个真 BUG（已修）**：F4 把遗迹掉落改成「安全货柜」= **物品**之后，
+> 撤离结算只扫 `run.bag`（散货）与 `run.relics`（老口径），而**货柜走 `run.hold.placements`** ⇒
+> **打捞到的货柜会在"撤离成功"那一刻静默消失**，"带回后精炼炉拆解"永远发生不了；
+> `wormholeDeliverRelics` 也不认 `ctx.items`。⇒ 两处一起补：结算按 `kind === 'box'` 收一遍形状件、
+> 交付函数加物品分支（按 `wormholePoolGrantUnitsOf` 计数）。用例：撤离胜 ⇒ 货柜到港；全损 ⇒ 货柜随趟丢。
+>> ⚠ **接线状态**：数据侧机**已落码**（`packages/data/src/items.ts`，物品总数 36→38、无人机 5→7）；
 > 但**族池掉落表仍未接线**（全仓除 `blueprints.ts` 的图纸→装备映射外无任何地方引用 `mod-wh-*`，§6.3「只给权重、不给来源」照旧）
 > ⇒ 接线时：**C/E 两张池各多一条无人机条目**（一次 ×10 架），其余三族不变。
 

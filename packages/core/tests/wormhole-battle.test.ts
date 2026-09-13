@@ -43,7 +43,13 @@ import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
 import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
 import { rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
-import { wormholeDiscardToFit, wormholeHoldOverloaded, wormholeOverloadBlockReason } from '../src/wormholeSalvage'
+import {
+  wormholeDiscardToFit,
+  wormholeHoldOverloaded,
+  wormholeHoldStow,
+  wormholeOverloadBlockReason,
+  wormholeRelicBoxIdOf,
+} from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -333,6 +339,42 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     settleBattle(state)
     expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + 500) // 收益入港
     expect(state.wormhole.run).toBeNull() // 本趟结束
+  })
+
+  /**
+   * **形状件（遗迹安全货柜）随趟带回**——⚠ 这条是 2026-09-13 修掉的**真 BUG**：
+   * 货柜走 `run.hold.placements`（不在 `run.bag`），而撤离结算只扫 `run.bag` 与 `run.relics`
+   * ⇒ 打捞到的货柜会在"撤离成功"那一刻**静默消失**，"带回后精炼炉拆解"永远发生不了。
+   */
+  it('**胜 · 撤离战**：货仓里的货柜也进仓库（不是只有散货入港）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.bossCleared = run.depth
+    // 直接用「装舱」入位（等价从格上拾取：占 2×2 = 4 格）
+    const family = String(ctx.anomalies.get(wormholeCardIdFor(run.depth, 0))?.foeFamily ?? 'A')
+    const boxId = wormholeRelicBoxIdOf(family)
+    expect(wormholeHoldStow(state, ctx, boxId).ok).toBe(true)
+    expect(countWare(state, boxId)).toBe(0)
+    expect(wormholeExtract(run).ok).toBe(true)
+    advanceWormhole(state, ctx)
+    winBattle(state)
+    settleBattle(state)
+    expect(countWare(state, boxId)).toBe(1) // **货柜真的到港了**
+    expect(state.wormhole.run).toBeNull()
+  })
+
+  it('**负 · 全灭**：全损——货柜一起丢（不带走）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.bossCleared = run.depth
+    const family = String(ctx.anomalies.get(wormholeCardIdFor(run.depth, 0))?.foeFamily ?? 'A')
+    const boxId = wormholeRelicBoxIdOf(family)
+    expect(wormholeHoldStow(state, ctx, boxId).ok).toBe(true)
+    run.fleet = [] // 掏空编队记录 ⇒ 撤离战建不出来（与「无船撤离」那条同款造法）
+    expect(wormholeExtract(run).ok).toBe(true)
+    advanceWormhole(state, ctx)
+    expect(state.wormhole.run).toBeNull()
+    expect(countWare(state, boxId)).toBe(0) // 全损 ⇒ 货柜随趟一起丢
   })
 
   it('**负 · 全灭**：全损——编队全丢、背包清空、本趟结束', () => {

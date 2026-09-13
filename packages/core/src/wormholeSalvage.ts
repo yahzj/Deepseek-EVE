@@ -22,6 +22,8 @@ import type { GameState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { salvagerCyclesOf } from './salvaging'
+import { RARE_BOX_DRONE_UNITS } from './salvage'
+import { addWare } from './inventory'
 import { allFittedModules } from './equipment'
 import { addModule } from './equipment'
 import {
@@ -133,10 +135,19 @@ export interface WormholeFamilyPool {
   moduleBlueprints: string[]
   /** 舰船图纸（`sbp-wh-<族>-`） */
   shipBlueprints: string[]
+  /**
+   * **族专属无人机**（`drone-wh-<族>-`；2026-09-13 二号接线单 · 专属稿 §6.1）。
+   *
+   * C/E 两族的第 6 件由**无人机掉落替换**（C 移除「活性甲壳层」、E 移除「巨构稳态器」）⇒
+   * 它**只有 C/E 两族有**，是**选择性替换物**：**不进"五族齐备"判据**（`wormholeFamilyPoolGaps` 不查它），
+   * 只做**归属 / 孤儿检查**（`content:check` 按 `drone-wh-` 前缀查孤儿——族标记写错一个字母就永远掉不出来）。
+   * 一次到手几架见 `wormholePoolGrantUnitsOf`（复用窝点稀有箱口径 `RARE_BOX_DRONE_UNITS` = 10）。
+   */
+  drones: string[]
 }
 
 /**
- * **某族的专属池**（装备本体 / 装备图纸 / 舰船图纸）。
+ * **某族的专属池**（装备本体 / 装备图纸 / 舰船图纸 / 族专属无人机）。
  *
  * 为什么从 `ctx` 目录**按 id 前缀派生**而不是在数据层手抄清单：抄一份就会漂——
  * 内容加一件、改一次族，清单不会自己跟上；而 id 前缀（`-wh-<族>-`）是内容侧的既有约定，
@@ -150,7 +161,19 @@ export function wormholeFamilyPoolOf(ctx: SimContext, family: string): WormholeF
     modules: pick(ctx.modules.keys(), 'mod'),
     moduleBlueprints: pick(ctx.blueprints.keys(), 'bp'),
     shipBlueprints: pick(ctx.shipBlueprints.keys(), 'sbp'),
+    drones: pick(ctx.items.keys(), 'drone'),
   }
+}
+
+/**
+ * **池内一件东西"一次到手几个"**（船长口径：专属无人机一次 **×10 架**，与窝点稀有箱同款）。
+ *
+ * 用途：`wormholeDeliverRelics` 把池内容物（货柜 / 无人机 / 将来的拆解产出）送进仓库时按它计数。
+ * ⚠ 洞内专属掉落的**内容物本身**仍留待拆解批次（船长「暂时不用拆解」）——这里先把"几件"的口径收成一份，
+ * 免得将来拆解、入库两处各写一个 10。
+ */
+export function wormholePoolGrantUnitsOf(itemId: string): number {
+  return itemId.startsWith('drone-wh-') ? RARE_BOX_DRONE_UNITS : 1
 }
 
 /** 五族池齐不齐（`content:check` 与用例共用；缺哪族就说哪族） */
@@ -834,9 +857,15 @@ export function wormholeRollRelicBox(
 }
 
 /**
- * **撤离成功后把随行战利品入库**（图纸/装备这类不进背包格子的东西）：
- * 一次性图纸进蓝图书架（组装机用掉）、装备本体进装备库。
- * 由 `settleWormholeBattle` 在撤离战胜利那一支调用。
+ * **撤离成功后把随行战利品入库**：
+ * - 装备本体（`mod-*`）⇒ 装备库（`addModule`）；
+ * - 一次性图纸（`bp-*` / `sbp-*`）⇒ 蓝图书架（组装机用掉）；
+ * - **物品**（`ctx.items`：遗迹安全货柜、池里的族专属无人机…）⇒ 仓库，
+ *   数量按 `wormholePoolGrantUnitsOf`（无人机一次 10 架，其余 1 件）。
+ *
+ * 由 `settleWormholeBattle` 在撤离战胜利那一支调用；**半路全损 ⇒ 一起丢**（本函数根本不跑）。
+ * ⚠ 2026-09-13 修：F4 把遗迹掉落改成「安全货柜」= **物品**（`ctx.items`）后，这里原先只认模块/图纸
+ * ⇒ 货柜走到这一步会被**静默丢掉**（"带回后精炼炉拆解"永远发生不了）。物品分支就是补这个洞。
  */
 export function wormholeDeliverRelics(state: GameState, ctx: SimContext, relics: readonly string[]): string[] {
   const done: string[] = []
@@ -847,6 +876,10 @@ export function wormholeDeliverRelics(state: GameState, ctx: SimContext, relics:
     } else if (ctx.blueprints.has(id) || ctx.shipBlueprints.has(id)) {
       state.blueprintStock[id] = (state.blueprintStock[id] ?? 0) + 1
       done.push(ctx.blueprints.get(id)?.name ?? ctx.shipBlueprints.get(id)?.name ?? id)
+    } else if (ctx.items.has(id)) {
+      const units = wormholePoolGrantUnitsOf(id)
+      addWare(state, id, units)
+      done.push(`${ctx.items.get(id)?.name ?? id}×${units}`)
     }
   }
   if (done.length > 0) addLog(state, 'info', `🕳 随行战利品入库：${done.join('、')}。`)

@@ -884,6 +884,16 @@
 | **F5b** | 核心：免激活三地点（到达即铺堆）+ 采集器门槛 + **逐堆拾取在网格层退场**（裁定 A） | ✅ 已落码（`wormhole-salvage` 「矿脉（F5）」· `wormhole-run` 「免激活三地点」· `wormhole-pickup` 「网格层没有逐堆拾取」） |
 | **F5c** | 界面：打捞 / 采集按钮与读数、未扫描边框色、散货条拖拽 | ✅ 已落码（界面按约定只做静态代码 + CSS 检查） |
 
+### 13.4 F5 收口后：两处接线 + 一个真 BUG（2026-09-13 · 源自二号接线单）
+
+| 项 | 内容 | 状态 |
+|---|---|---|
+| **族专属无人机入池** | `WormholeFamilyPool.drones`（由 `ctx.items` 按 `drone-wh-<族>-` 派生；C = `drone-wh-c-heavy`、E = `drone-wh-e-sentry`）—— **选择性替换物**：不进"五族齐备"判据（`wormholeFamilyPoolGaps` 不查它），只做**归属/孤儿检查**；架数口径 = `wormholePoolGrantUnitsOf`（无人机 **×10**，复用窝点 `RARE_BOX_DRONE_UNITS`；其余 1 件） | ✅ 已落码（`content:check` 打印 `C 5/5/3+机1 · E 5/5/3+机1`） |
+| **深入下层带扫码加成** | `wormholeDescend(run, seed, scanBonus)` 的第三参此前没人传 ⇒ 侦察/电子舰的「扫码范围 +1 圈」**只在第 1 层生效**。落点选**引擎**（面板调的是 `engine.wormholeDescend()`，不直连 core） | ✅ 已落码（`engine.ts` 传 `wormholeScanBonusOf(ctx, run.fleet)`；`tools/wormhole-econ.ts` 同步） |
+| **⚠ 货柜交付断链（真 BUG）** | F4 把遗迹掉落改成「安全货柜」= **物品**后：撤离结算只扫 `run.bag` + `run.relics`，而货柜走 `run.hold.placements`；`wormholeDeliverRelics` 又不认 `ctx.items` ⇒ **货柜在"撤离成功"那一刻静默消失**，「带回后精炼炉拆解」永远发生不了 | ✅ 已修（结算按 `kind === 'box'` 收形状件；交付函数加物品分支，按 `wormholePoolGrantUnitsOf` 计数） |
+
+⚠ **仍未接线的部分（照旧挂账）**：池的**实际抽取**（装备本体 / 装备图纸 / 舰船图纸 / 无人机各自权重与"一层掉几件"）
+要等**精炼炉拆解**那一批（船长「暂时不用拆解」）；本批只把**池的构成与"一次几件"**收成一份口径。
 ---
 **第三轮并入来源链改判：虚空母矿 →（精炼）→ 虚空晶**，§5.2 的体积改判已作废、以 §5.4 为准）。
 **状态（各批状态以 §10「F 批拆分与状态」/ §11.7 / §12.3 / §13.3 为准，本节只留历史提交号）：A/B/C/D/E 五批 + F1 已落码**——A 批（术语改判 + 虚空母矿数据 + 「未上线」闸门，提交 `3f1716f4`／`32122e62`／`2ce787fd`）· B 批 `packages/core/src/wormhole.ts` 质量表 + 入场裁定 + 背包格模型（提交 `f8509d2f`）· C 批 副本状态机 + 节点推进 + 深度曲线 + 存档 v25（提交 `c4cbf6aa`）· D 批 我方 4 单位战斗路径 + 敌方选靶模式（提交 `756f6133`）· E 批 **施工期界面**（准备页/节点图/背包网格/拾取 + 入洞与拾取的引擎动作，`apps/desktop/src/renderer/src/panels/Wormhole.tsx`，提交 `b65445f1`）· **F1 批 洞内敌卡与按层派生 + 4 舰战斗接线 + 收益校准工具（提交 `63cedd37`）**。

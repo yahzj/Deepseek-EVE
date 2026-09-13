@@ -926,6 +926,8 @@ export {
   wormholeCollectOreAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
+  wormholePoolGrantUnitsOf,
   wormholeGrantShipSpoils,
   // F4：货仓格（超载 / 装舱 / 抛弃 / 拾取入口）——住在 wormholeSalvage
   wormholeHoldCapacityOf,

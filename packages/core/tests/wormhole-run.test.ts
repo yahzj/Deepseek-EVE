@@ -37,6 +37,7 @@ import {
   wormholeGridActivate,
   wormholeGridScan,
   wormholeGridTravel,
+  wormholeScanBonusOf,
   wormholeLeave,
   wormholeOutOfTurns,
   wormholeResume,
@@ -478,6 +479,33 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.depth).toBe(3)
     expect(run.nodesPerLayer).toBe(3)
     expect(run.grid!.radius).toBe(wormholeGridRadiusFor(3))
+  })
+
+  /**
+   * **深入下一层要带上"编队扫码加成"**（2026-09-13 二号接线单）：`wormholeDescend` 的第三个入参是
+   * 新盘的扫描半径加成，不传就默认 0 ⇒ 侦察舰/电子舰的「扫码范围 +1 圈」**只会在第 1 层生效**。
+   * 这条同时钉住两件事：① core 认这个入参；② 加成真的体现在**新盘**上（不是只写进入口那一层）。
+   */
+  it('**深入下一层带上扫码加成**：新盘 scanRadius = 基础 + 编队加成（侦察舰 1 艘 = +1 圈）', () => {
+    // 不带加成：新盘扫描半径 = 基础值
+    const plain = enterForActions([T1, T1], 42).run
+    plain.bossCleared = plain.depth
+    expect(wormholeDescend(plain, 42).ok).toBe(true)
+    const baseScan = plain.grid!.scanRadius
+    // 带 +1 圈：同一 seed/层 ⇒ 只有扫描半径不同（盘面其余部分同源）
+    const boosted = enterForActions([T1, T1], 42).run
+    boosted.bossCleared = boosted.depth
+    expect(wormholeDescend(boosted, 42, 1).ok).toBe(true)
+    expect(boosted.grid!.scanRadius).toBe(baseScan + 1)
+    expect(boosted.grid!.cells.length).toBe(plain.grid!.cells.length) // 加成只改"能扫多远"，不改盘大小
+    // **编队里真有船带这个加成**（数据侧 `wormholeScanRadiusBonus`；三族电子/侦察舰各 1）
+    const scout = 'sh-wh-g-frigate' // G 族侦察舰（`wormholeScanRadiusBonus: 1`；专属舰，施工期对玩家不可见）
+    const withScout = enterForActions([T1, scout], 42).run
+    expect(wormholeScanBonusOf(ctx, withScout.fleet)).toBe(1)
+    expect(wormholeScanBonusOf(ctx, [T1, T1])).toBe(0)
+    withScout.bossCleared = withScout.depth
+    expect(wormholeDescend(withScout, 42, wormholeScanBonusOf(ctx, withScout.fleet)).ok).toBe(true)
+    expect(withScout.grid!.scanRadius).toBe(baseScan + 1)
   })
 
   it('节点生成是确定性的（同 seed/depth/index ⇒ 同结果）——老档线性口径仍可用', () => {

@@ -48,6 +48,7 @@ import {
   wormholeLayerThreat,
   wormholeMakeNode,
   wormholeNodesPerLayer,
+  wormholeScanBonusOf,
   wormholeStepCost,
 } from '../packages/core/src/wormhole'
 import { advanceWormhole, wormholeActivateAt, wormholeStartBattle } from '../packages/core/src/wormholeBattle'
@@ -275,7 +276,7 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
       }
       const fracGrid = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
       if (r.depth >= maxDepth || fracGrid < extractHp || r.turnsLeft <= 0) wormholeExtract(r)
-      else wormholeDescend(r, state.rng.seed)
+      else wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
       continue
     }
     if (r.pendingNode) {
@@ -296,7 +297,7 @@ function simulateRun(seed: number, extractHp: number, maxDepth: number): RunOutc
     }
     const frac = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
     if (r.depth >= maxDepth || frac < extractHp || r.turnsLeft <= 0) wormholeExtract(r)
-    else wormholeDescend(r, state.rng.seed)
+    else wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
   }
   const after = state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0
   const ore = after - before

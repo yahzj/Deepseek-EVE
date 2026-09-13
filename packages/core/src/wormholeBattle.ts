@@ -364,6 +364,15 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     )
     // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
     if ((run.relics ?? []).length > 0) wormholeDeliverRelics(state, ctx, run.relics ?? [])
+    /**
+     * **货柜（形状件）随趟带回**（船长 §12.2-3：「撤离成功 ⇒ 货柜进仓库；失败 ⇒ 随趟一起丢」）。
+     *
+     * ⚠ 2026-09-13 修：形状件**不在 `run.bag`**（它们走 `run.hold.placements`），上面那段"背包入港"
+     * 的循环因此看不到它们 ⇒ F4 起打捞到的「遗迹安全货柜」会在撤离成功那一刻**静默消失**，
+     * "带回后在精炼炉拆解"这条链永远走不到。⇒ 在这里按 `kind === 'box'` 收一遍，走同一条入库函数。
+     */
+    const boxes = (run.hold?.placements ?? []).filter((p) => p.kind === 'box').map((p) => p.itemId)
+    if (boxes.length > 0) wormholeDeliverRelics(state, ctx, boxes)
     state.wormhole.run = null
     return
   }

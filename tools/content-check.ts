@@ -3226,7 +3226,10 @@ for (const m of MODULES) {
     /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：
      * 五族（A/C/D/E/G）各要有一池「装备本体 + 装备图纸 + 舰船图纸」——缺一族就有一整族拿不到东西
      * （E 族此前正是这个状态，靠补第五张洞内卡 `wh-titan-echo` 才通）。池本身由 core 从目录按 id
-     * 前缀派生（`wormholeFamilyPoolOf`），这里断言"派生出来必须非空"，顺带把 id 前缀约定钉成契约。 */
+     * 前缀派生（`wormholeFamilyPoolOf`），这里断言"派生出来必须非空"，顺带把 id 前缀约定钉成契约。
+     * **（2026-09-13 二号接线单补）族专属无人机**（`drone-wh-<族>-`）是 C/E 两族的**第 6 件替换物**
+     * ⇒ **不进"五族齐备"判据**（只有两族有，缺了不算空池），但**要进孤儿检查**：
+     * 族标记写错一个字母的无人机永远掉不出来，且不会有任何别的报错——正是要机器守的地方。 */
     const poolCtx = buildSimContext()
     const poolGaps = wormholeFamilyPoolGaps(poolCtx)
     if (poolGaps.length > 0) {
@@ -3234,28 +3237,43 @@ for (const m of MODULES) {
     }
     const poolCounts = WORMHOLE_FAMILIES.map((f) => {
       const p = wormholeFamilyPoolOf(poolCtx, f)
-      return `${f} ${p.modules.length}/${p.moduleBlueprints.length}/${p.shipBlueprints.length}`
+      return `${f} ${p.modules.length}/${p.moduleBlueprints.length}/${p.shipBlueprints.length}${p.drones.length > 0 ? `+机${p.drones.length}` : ''}`
     }).join(' · ')
-    // **无孤儿**：所有 `mod-wh-` / `bp-wh-` / `sbp-wh-` 内容都必须落进某一族池（族标记写错一个字母
+    // **无孤儿**：所有 `mod-wh-` / `bp-wh-` / `sbp-wh-` / `drone-wh-` 内容都必须落进某一族池（族标记写错一个字母
     // ⇒ 那件内容**永远不会掉出来**，而且不会有任何别的报错——这正是要机器守的地方）。
     const pooled = new Set<string>()
     for (const f of WORMHOLE_FAMILIES) {
       const p = wormholeFamilyPoolOf(poolCtx, f)
-      for (const id of [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints]) pooled.add(id)
+      for (const id of [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints, ...p.drones]) pooled.add(id)
     }
     const orphans: string[] = []
     for (const id of poolCtx.modules.keys()) if (id.startsWith('mod-wh-') && !pooled.has(id)) orphans.push(id)
     for (const id of poolCtx.blueprints.keys()) if (id.startsWith('bp-wh-') && !pooled.has(id)) orphans.push(id)
     for (const id of poolCtx.shipBlueprints.keys()) if (id.startsWith('sbp-wh-') && !pooled.has(id)) orphans.push(id)
+    for (const id of poolCtx.items.keys()) if (id.startsWith('drone-wh-') && !pooled.has(id)) orphans.push(id)
     if (orphans.length > 0) {
       errors.push(`虫洞按族池契约：这些内容没落进任何族池（族标记写错了？⇒ 永远掉不出来）：${orphans.join('、')}`)
+    }
+    const droneIds = [...poolCtx.items.keys()].filter((id) => id.startsWith('drone-wh-'))
+    if (droneIds.length > 0) {
+      // 无人机是**替换物**：有它的族，装备件数应比别族少 1（C/E = 5 件装备 + 1 型无人机）
+      const odd = WORMHOLE_FAMILIES.filter((f) => {
+        const p = wormholeFamilyPoolOf(poolCtx, f)
+        if (p.drones.length === 0) return false
+        return p.modules.length + p.drones.length !== 6
+      })
+      if (odd.length > 0) {
+        errors.push(
+          `虫洞按族池契约：${odd.join('、')} 族的「装备 + 无人机」不等于 6 件 —— 无人机是替换物（移除一件装备、补一型无人机），件数不该净增（见专属稿 §6.1）`,
+        )
+      }
     }
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     console.log(
       `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
         ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
-        ` · 按族池（装备/装备图/舰船图）${poolCounts}` +
+        ` · 按族池（装备/装备图/舰船图[+族专属无人机]）${poolCounts} · 族专属无人机 ${droneIds.length} 型（不进五族齐备判据：C/E 替换物）` +
         ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
         ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
     )
