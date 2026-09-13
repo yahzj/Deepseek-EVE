@@ -2425,7 +2425,25 @@ function normalizeState(raw: unknown): GameState {
         ? (place as WormholeGridState['cells'][number]['place'])
         : undefined
       if (!placeOk) continue
-      cells.push({ key, q: Math.floor(num(row.q)), r: Math.floor(num(row.r)), place: placeOk })
+      // 格上的战利品堆（F3b 打捞/挖矿往里放；形状与 `cleanPiles` 同一口径）
+      const cellPiles = ((): { itemId: string; units: number }[] | undefined => {
+        const pileRaw = Array.isArray(row.piles) ? row.piles : []
+        const out: { itemId: string; units: number }[] = []
+        for (const p of pileRaw) {
+          const o = asRaw(p)
+          const itemId = typeof o.itemId === 'string' ? o.itemId : ''
+          const units = Math.floor(num(o.units))
+          if (itemId.length > 0 && units > 0) out.push({ itemId, units })
+        }
+        return out.length > 0 ? out : undefined
+      })()
+      cells.push({
+        key,
+        q: Math.floor(num(row.q)),
+        r: Math.floor(num(row.r)),
+        place: placeOk,
+        ...(cellPiles ? { piles: cellPiles } : {}),
+      })
     }
     if (cells.length === 0) return undefined
     const cell = (v: unknown): { q: number; r: number } | undefined => {

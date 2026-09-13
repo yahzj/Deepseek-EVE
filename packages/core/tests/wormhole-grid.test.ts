@@ -148,7 +148,8 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     g.scanned.push(unknown.key)
     const r1 = revealOf(g, { q: unknown.q, r: unknown.r })
     expect(r1.kind).toBe('signal')
-    if (r1.kind === 'signal') expect(r1.signal).toBe(signalOfPlace(unknown.place) ?? 'ship')
+    // 扫开 ⇒ 如实回报：空信息地点给 null（**不是**伪装成"舰船信号"，船长 2026-09-13 F3a-2 修正）
+    if (r1.kind === 'signal') expect(r1.signal).toBe(signalOfPlace(unknown.place))
     // 再标成"已到达" ⇒ 给真相
     g.visited.push(unknown.key)
     const r2 = revealOf(g, { q: unknown.q, r: unknown.r })
