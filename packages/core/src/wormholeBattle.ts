@@ -20,6 +20,7 @@ import {
   wormholeBagSlots,
   wormholeCardIdFor,
   wormholeFleetCargoM3,
+  wormholeUnitsPerSlot,
   wormholeGridActivate,
   wormholeGridTravel,
   wormholeTrimBag,
@@ -29,7 +30,13 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
-import { wormholeDeliverRelics, wormholeGrantShipSpoils, wormholeSalvageAt } from './wormholeSalvage'
+import {
+  wormholeDeliverRelics,
+  wormholeGrantShipSpoils,
+  wormholeLootTierOf,
+  wormholeLootValueIsk,
+  wormholeSalvageAt,
+} from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
 
@@ -276,7 +283,14 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     // **沉船拖走货舱 ⇒ 背包格上限跟着缩水，装不下的当场丢**（船长 2026-09-13：「扣背包格，
     // 不足时丢弃货物」）。格数 = 「剩余编队合计货仓 ÷ 500」现算 ⇒ 这里只需把溢出部分裁掉。
     const cap = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
-    const trimmed = wormholeTrimBag(ctx, run.bag, cap)
+    const trimmed = wormholeTrimBag(ctx, run.bag, cap, (slot) => {
+      const def = ctx.items.get(slot.itemId)
+      const per = Math.max(1, wormholeUnitsPerSlot(def?.unitM3 ?? 0))
+      return {
+        tier: wormholeLootTierOf(slot.itemId),
+        iskPerSlot: wormholeLootValueIsk(ctx, slot.itemId, per, { rareChestNominal: true }),
+      }
+    })
     if (trimmed.dropped.length > 0) {
       const names = trimmed.dropped
         .map((s) => `${ctx.items.get(s.itemId)?.name ?? s.itemId}×${Math.floor(s.units).toLocaleString('zh-CN')}`)
@@ -321,17 +335,23 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // ── 胜：按战斗用途分流 ──
   if (kind === 'extract') {
     let isk = 0
+    let recycle = 0
     for (const slot of run.bag) {
       const units = Math.floor(slot.units)
+      const isWreck = slot.itemId.startsWith('wreck-')
       const price = ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0
-      isk += units * price
-      if (units > 0) addWare(state, slot.itemId, units)
+      // **残骸的报账走拆解口径**（基础价只有 1 ISK/单位，写出来等于没写）
+      isk += isWreck ? 0 : units * price
+      if (isWreck) recycle += wormholeLootValueIsk(ctx, slot.itemId, units)
+      else if (units > 0) addWare(state, slot.itemId, units)
+      if (isWreck && units > 0) addWare(state, slot.itemId, units)
     }
     addLog(
       state,
       'info',
       `🕳 撤离成功：背包 ${run.bag.length} 类物资入港` +
-        (isk > 0 ? `（按基础价约 ${isk.toLocaleString('zh-CN')} ISK）` : '') +
+        (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} ISK）` : '') +
+        (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} ISK）` : '') +
         `，第 ${run.depth} 层撤离。`,
     )
     // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手

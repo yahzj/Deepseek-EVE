@@ -217,15 +217,25 @@ export function wormholeTrimBag(
   ctx: SimContext,
   bag: readonly WormholeBagSlot[],
   capacity: number,
+  /**
+   * **价值解析器**（可选）：返回 `{ tier, iskPerSlot }`——`tier` 小的先丢，同档再比每格价值。
+   * 缺省 = 基础卖价（老行为）。**洞内实战必须传**（`wormholeBattle` 传
+   * `wormholeSalvage.wormholeLootTierOf + wormholeLootValueIsk`）：残骸 `baseSellPriceIsk = 1`，
+   * 只看基础价会把**稀有残骸第一个丢掉**（2026-09-13 F3c 抓到的真问题）。
+   * ⚠ 为什么用参数而不是在这里 import 打捞模块：`wormhole.ts` 被 `state.ts` 顶层引用，
+   * 而打捞模块经 `salvaging` 回头吃 `state` ⇒ 直接 import 会成环（D/F 批两次踩过的坑）。
+   */
+  valueOf?: (slot: WormholeBagSlot) => { tier: number; iskPerSlot: number },
 ): { bag: WormholeBagSlot[]; dropped: WormholeBagSlot[] } {
   const slots = bag.map((s) => ({ ...s }))
   const perOf = (itemId: string): number => wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 0)
   /** 每格价值（判"先丢谁"用的就是它；认不出的物品 = 无穷大 ⇒ 最后丢） */
-  const valuePerSlot = (s: WormholeBagSlot): number => {
+  const valuePerSlot = (s: WormholeBagSlot): { tier: number; isk: number } => {
     const def = ctx.items.get(s.itemId)
     const per = perOf(s.itemId)
-    if (!def || per <= 0) return Number.POSITIVE_INFINITY
-    return per * Math.max(0, def.baseSellPriceIsk ?? 0)
+    if (!def || per <= 0) return { tier: Number.POSITIVE_INFINITY, isk: Number.POSITIVE_INFINITY }
+    if (valueOf) return { tier: valueOf(s).tier, isk: valueOf(s).iskPerSlot }
+    return { tier: 1, isk: per * Math.max(0, def.baseSellPriceIsk ?? 0) }
   }
   const dropped: WormholeBagSlot[] = []
   while (wormholeBagUsage(ctx, slots, capacity).used > capacity && slots.length > 0) {
@@ -233,7 +243,10 @@ export function wormholeTrimBag(
     for (let i = 1; i < slots.length; i++) {
       const a = valuePerSlot(slots[i]!)
       const b = valuePerSlot(slots[pick]!)
-      if (a < b || (a === b && slots[i]!.itemId < slots[pick]!.itemId)) pick = i
+      const worse =
+        a.tier < b.tier ||
+        (a.tier === b.tier && (a.isk < b.isk || (a.isk === b.isk && slots[i]!.itemId < slots[pick]!.itemId)))
+      if (worse) pick = i
     }
     const slot = slots[pick]!
     const per = perOf(slot.itemId)
