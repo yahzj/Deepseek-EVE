@@ -32,6 +32,7 @@ import {
   wormholeUnitsPerSlot,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { ShipSprite } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
 
 type WhTab = 'prep' | 'map' | 'bag'
@@ -149,7 +150,12 @@ export function WormholePanel({
                 带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过 {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；
                 总质量越高、可探索回合越短；背包格数按编队「合计货仓」折算（每 {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
               </div>
-              <ul className="app-inv-list app-wh-ships">
+              {/* **选舰卡片**（船长 2026-09-13：「虫洞入口选取舰船采用卡片形式，卡片内含有舰船名称、
+                  舰船级别、折算质量、货仓、舰船 SVG 外形，且当编入时，卡片边框会变色」）——
+                  结构/类名沿用装配页候选卡（`.app-fit-pick-item`）与舰队卡（`.app-inv-row.is-picked`）那一族：
+                  整卡可点、选中态给边框+底色；舰影走统一资产 `ShipSprite`（细描边线稿，非 CSS 拼形）。 */}
+              <div className="app-bay-title app-wh-sub">选择舰船（点卡片编入 / 再点撤下）</div>
+              <ul className="app-wh-cards">
                 {Object.keys(state.fleet).map((uid) => {
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
                   const tier = def?.tier ?? 0
@@ -158,34 +164,37 @@ export function WormholePanel({
                   // 忙态的船编不进来（船长 2026-09-13：进洞要求主控闲置 + 进洞的船要锁定 ⇒ 编队各船也得空闲）
                   const busy = shipBusyLabel(state, ctx, uid)
                   const canPick = ok && !busy
+                  const title = !ok
+                    ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
+                    : busy
+                      ? `${busy}：先收工/取消派工，才能编入虫洞`
+                      : on
+                        ? '再点一下撤下'
+                        : '点一下编入'
                   return (
-                    <li key={uid} className={`app-inv-row${on ? ' is-picked' : ''}`}>
-                      <div className="app-inv-main">
-                        <span className="app-inv-name">
-                          {shipDisplayName(state, ctx, uid)}
-                          <span className="app-dim"> · {shipSizeLabel(tier)} T{tier}</span>
+                    <li key={uid}>
+                      <button
+                        type="button"
+                        className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
+                        disabled={!canPick}
+                        onClick={() => togglePick(uid)}
+                        title={title}
+                      >
+                        <span className="app-wh-card-art" aria-hidden>
+                          <ShipSprite shipId={state.fleet[uid]!.defId ?? uid} name={def?.name} size={150} />
+                        </span>
+                        <span className="app-wh-card-name">{shipDisplayName(state, ctx, uid)}</span>
+                        <span className="app-wh-card-sub">
+                          {shipSizeLabel(tier)} · T{tier}
                           {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
                         </span>
-                        <span className="app-inv-count">
+                        <span className="app-wh-card-sub">
                           折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
-                      </div>
-                      <div className="app-inv-btns">
-                        <button
-                          className={`app-btn is-small${on ? ' is-primary' : ''}`}
-                          disabled={!canPick}
-                          onClick={() => togglePick(uid)}
-                          title={
-                            !ok
-                              ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
-                              : busy
-                                ? `${busy}：先收工/取消派工，才能编入虫洞`
-                                : undefined
-                          }
-                        >
-                          {on ? '已选' : !ok ? '过重' : busy ? '占用中' : '编入'}
-                        </button>
-                      </div>
+                        <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
+                          {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                        </span>
+                      </button>
                     </li>
                   )
                 })}
