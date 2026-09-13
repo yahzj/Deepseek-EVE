@@ -32,19 +32,19 @@ type Sub = {
 }
 /** 子分类（键 = 舰船 id） */
 const SUB: Record<string, Sub> = {
-  'sh-wh-a-frigate': { label: '电子舰', name: '掠袭电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.0, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.04, desc: '海盗的电子战艇：锁定与分辨率冠绝同级，先看见、先锁上；舱位为设备让路，壳也薄——抢完就走，不拿来硬顶。', note: '锁定 +50% · 分辨率 +50% · 命中 +0.04 ｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
+  'sh-wh-a-frigate': { label: '电子舰', name: '掠袭电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.2, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.1, desc: '海盗的电子战艇：火控与回避双高——先锁上、先打中，也更难被咬住；舱位为设备让路，壳薄，抢完就走。', note: '**命中 +0.10 · 回避 +20%**（真吃战斗公式）· 分辨率 +50%（**经济向**：悬赏冷却 ×√(1/1.5) ≈ −18%）· 锁定 +50%（**纯展示**）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
   'sh-wh-a-destroyer': { label: '炮艇', name: '掠袭炮艇', slot: 'high', swing: [0.8, 1.2, 1.0], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 0.8, cargo: 0.7, famBonus: { type: 'kinetic', v: 0.15 }, hit: 0.03, desc: '海盗的炮艇：动能炮阵加持，正面火力扎实；舱位很窄、护盾让位给装甲，全靠一门门炮说话。', note: '族武 动能 +0.15 · 命中 +0.03 ｜ 货舱 −30% · 护盾血占比 −20% · 分辨率 −20%' },
   'sh-wh-a-cruiser': { label: '重型突击巡洋舰', name: '掠袭重型突击巡洋舰', slot: 'high', swing: [0.9, 1.15, 1.05], speed: 0.85, agility: 0.7, evasion: 1.0, signal: 1.2, lock: 1.0, scan: 1.0, cargo: 0.7, famBonus: { type: 'kinetic', v: 0.15 }, desc: '海盗的重型突击巡洋舰：动能火力全开、甲壳同步加厚，专啃硬目标；代价是转身慢、舱位小。', note: '族武 动能 +0.15 · 甲/壳血占比提高 ｜ 机动 −30% · 货舱 −30% · 信号 +20%' },
   'sh-wh-c-frigate': { label: '截击舰', name: '幼虫截击舰', slot: 'mid', swing: [0.7, 1.1, 1.2], speed: 1.35, agility: 1.35, evasion: 1.0, signal: 1.15, lock: 1.0, scan: 1.0, cargo: 0.7, hit: 0.04, desc: '巢群的活体截击舰：快得不像话，专咬落单的；护盾几乎不设防，靠一层甲壳与一副骨架撑住。', note: '速度 +35% · 机动 +35% · 命中 +0.04 ｜ 货舱 −30% · 护盾血占比 −30% · 信号 +15%' },
   'sh-wh-c-destroyer': { label: '截击舰', name: '甲壳截击舰', slot: 'mid', swing: [0.7, 1.1, 1.2], speed: 1.35, agility: 1.35, evasion: 1.0, signal: 1.15, lock: 1.0, scan: 1.0, cargo: 0.7, hit: 0.04, desc: '巢群的活体截击舰：速度与机动拉满，切入切出；护盾极薄，伤害全由甲与结构承担。', note: '同上（C 族两艘同子分类）' },
   'sh-wh-c-cruiser': { label: '重型突击巡洋舰', name: '巢群重型突击巡洋舰', slot: 'low', swing: [0.9, 1.15, 1.05], speed: 0.85, agility: 0.7, evasion: 1.0, signal: 1.2, lock: 1.0, scan: 1.0, cargo: 0.7, famBonus: { type: 'plasma', v: 0.15 }, desc: '巢群的重型突击巡洋舰：能量主炮配厚甲厚壳，正面硬碰硬；转身极慢，空间全让给装甲。', note: '族武 能量 +0.15 · 甲/壳血占比提高 · 低槽 +1（装甲舰槽位契约：低槽须多于高槽）｜ 机动 −30% · 货舱 −30% · 信号 +20%' },
-  'sh-wh-d-frigate': { label: '电子舰', name: '哨戒电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.0, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.04, desc: '陵墓的电子哨戒舰：锁定与分辨率远压同级，替全队先敌发现；壳薄舱小，靠眼睛与距离活命。', note: '锁定 +50% · 分辨率 +50% · 命中 +0.04 ｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
-  'sh-wh-d-destroyer': { label: '指挥舰', name: '陵卫指挥舰', slot: 'mid', swing: [1.15, 1.0, 0.9], speed: 0.7, agility: 0.85, evasion: 0.9, signal: 1.0, lock: 1.55, scan: 1.55, cargo: 0.75, bayMul: 1.5, desc: '陵墓的指挥舰：锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢；代价是几乎跑不动。', note: '锁定 +55% · 分辨率 +55% · 机巢 +50% ｜ 速度 −30% · 货舱 −25% · 回避 −10%' },
+  'sh-wh-d-frigate': { label: '电子舰', name: '哨戒电子舰', slot: 'mid', swing: [1.1, 1.0, 0.75], speed: 1.0, agility: 0.9, evasion: 1.55, signal: 1.0, lock: 1.5, scan: 1.5, cargo: 0.7, hit: 0.12, desc: '陵墓的电子哨戒舰：火控与回避一并拉高，替全队先敌开火、也活得更久；壳薄舱小。', note: '**命中 +0.12 · 回避 +55%**（真吃战斗公式）· 分辨率 +50%（**经济向**）· 锁定 +50%（**纯展示**）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%' },
+  'sh-wh-d-destroyer': { label: '指挥舰', name: '陵卫指挥舰', slot: 'mid', swing: [1.15, 1.0, 0.9], speed: 0.7, agility: 0.85, evasion: 0.9, signal: 1.0, lock: 1.55, scan: 1.55, cargo: 0.75, bayMul: 1.5, droneBonus: 0.08, hit: 0.05, desc: '陵墓的指挥舰：机巢与无人机战力一并拉高，是编队的机群中枢；命中扎实，但几乎跑不动。', note: '**机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05**（真吃战斗公式）· 分辨率 +55%（**经济向**）· 锁定 +55%（**纯展示**）｜ 速度 −30% · 货舱 −25% · 回避 −10%' },
   'sh-wh-d-cruiser': { label: '', name: '陵寝巡洋舰', slot: 'high', swing: [1.0, 1.0, 1.0], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 1.0, desc: '陵墓的重装巡洋舰：三层血最厚、炮位最多，是能站在阵线中央扛住火力的平台。', note: '**无子分类**（船长）⇒ 只做总量/CPU/槽位/抗性' },
   'sh-wh-e-frigate': { label: '鱼雷舰', name: '构件鱼雷舰', slot: 'high', swing: [1.0, 1.1, 1.1], speed: 1.0, agility: 1.0, evasion: 0.75, signal: 1.3, lock: 1.0, scan: 1.0, cargo: 1.0, famBonus: { type: 'explosive', v: 0.15 }, hit: 0.03, desc: '巨构的鱼雷舰：爆破弹头拆甲，命中扎实；信号大、转身笨，得靠队友挡在前面。', note: '族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%' },
   'sh-wh-e-destroyer': { label: '无人机作战舰', name: '机库无人机作战舰', slot: 'mid', swing: [1.15, 0.9, 0.95], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 0.7, droneBonus: 0.1, bayMul: 1.5, hit: -0.02, desc: '巨构的无人机作战舰：机巢与无人机战力双高，是长时间放飞机群的移动机库；舱位与自射火力都让位给机群。', note: '无人机伤害 +0.10 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02' },
   'sh-wh-e-carrier': { label: '无人机作战舰', name: '巨构无人机作战舰', slot: 'mid', swing: [1.15, 0.9, 0.95], speed: 1.0, agility: 1.0, evasion: 1.0, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 0.7, droneBonus: 0.14, bayMul: 1.5, hit: -0.02, desc: '巨构的无人机作战舰：本批机巢最大、无人机伤害最高，放飞即是主武器；舱位让给机库，本舰火力偏辅助。', note: '无人机伤害 +0.14 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02' },
-  'sh-wh-g-frigate': { label: '侦察舰', name: '幽影侦察舰', slot: 'mid', swing: [1.15, 0.75, 0.85], speed: 1.05, agility: 1.0, evasion: 1.35, signal: 0.65, lock: 1.25, scan: 1.0, cargo: 0.7, desc: '亡军的侦察舰：信号极小、闪避极高，锁定也够远——它负责先看见别人；货舱与甲壳为速度让路。', note: '回避 +35% · 信号 −35% · 锁定 +25% ｜ 货舱 −30% · 甲/壳血占比 −25%' },
+  'sh-wh-g-frigate': { label: '侦察舰', name: '幽影侦察舰', slot: 'mid', swing: [1.15, 0.75, 0.85], speed: 1.05, agility: 1.0, evasion: 1.35, signal: 0.65, lock: 1.25, scan: 1.0, cargo: 0.7, hit: 0.06, desc: '亡军的侦察舰：回避极高、火控不弱——它负责先看见别人，也咬得住；货舱与甲壳为速度让路。', note: '**回避 +35% · 命中 +0.06**（真吃战斗公式）· 信号 −35% · 锁定 +25%（**纯展示**，叙事用）｜ 货舱 −30% · 甲/壳血占比 −25%' },
   'sh-wh-g-destroyer': { label: '后勤舰', name: '亡军后勤舰', slot: 'low', swing: [1.2, 0.8, 1.0], speed: 1.0, agility: 1.0, evasion: 1.05, signal: 1.0, lock: 1.0, scan: 1.0, cargo: 1.45, bayMul: 1.5, hit: -0.03, desc: '亡军的后勤舰：货舱与机巢最大，跟着编队补给、换机；火力只求自保。', note: '货舱 +45% · 机巢 +50% · 回避 +5% ｜ 命中 −0.03 · 甲血占比 −20%' },
   'sh-wh-g-cruiser': { label: '鱼雷舰', name: '亡军鱼雷舰', slot: 'high', swing: [1.0, 1.1, 1.1], speed: 1.0, agility: 0.85, evasion: 0.75, signal: 1.3, lock: 1.0, scan: 1.0, cargo: 1.0, famBonus: { type: 'explosive', v: 0.15 }, hit: 0.03, desc: '亡军的鱼雷舰：爆破弹头配扎实命中，专挑大目标的装甲；信号大、转身慢，是明牌重锤。', note: '族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%' },
 }
@@ -96,9 +96,11 @@ const base = SHIPS.filter((s) => !s.id.startsWith('sh-wh-'))
 // ⚠ **护栏：本工具只对"未调过的基线"运行**——它按现值 × 摆动重算，二次运行会**叠加**
 //（货舱 −30% 会变成 −51%、槽位会再加一格、锁定 +50% 会变成 +125%）。
 // 已调过的树上必须先 `git checkout -- packages/data/src/ships.ts packages/data/src/shipBlueprints.ts` 再跑。
-if (wh.some((s) => s.subClass !== undefined) && !process.argv.includes('--force')) {
+// 判据读的是**源文件文本**（不能看 `@whale/data` 的导出：tsx 解析到的是构建产物，会滞后一步）。
+const SHIPS_SRC = resolve(process.cwd(), 'packages/data/src/ships.ts')
+if (readFileSync(SHIPS_SRC, 'utf8').includes('subClass:') && !process.argv.includes('--force')) {
   throw new Error(
-    '检测到虫洞舰船已带 subClass（= 已调过的树）⇒ 拒绝运行，避免二次叠加。\n' +
+    '检测到 packages/data/src/ships.ts 已带 subClass（= 已调过的树）⇒ 拒绝运行，避免二次叠加。\n' +
       '正确做法：git checkout -- packages/data/src/ships.ts packages/data/src/shipBlueprints.ts 后再跑本工具。',
   )
 }

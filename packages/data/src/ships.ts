@@ -817,7 +817,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '掠袭电子舰',
     role: 'armed',
     subClass: '电子舰',
-    // 子分类「电子舰」（船长 2026-09-13）：锁定 +50% · 分辨率 +50% · 命中 +0.04 ｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%
+    // 子分类「电子舰」（船长 2026-09-13）：**命中 +0.10 · 回避 +20%**（真吃战斗公式）· 分辨率 +50%（**经济向**：悬赏冷却 ×√(1/1.5) ≈ −18%）· 锁定 +50%（**纯展示**）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%
     slots: { high: 3, mid: 3, low: 1 },
     tier: 1,
     unreleased: true,
@@ -826,8 +826,8 @@ export const SHIPS: readonly ShipDef[] = [
     oreUnitsPerCycle: 8,
     priceIsk: 0, // 定制船：无市场行
     agility: 0.675,
-    evasion: 0.18,
-    hitBonus: 0.19,
+    evasion: 0.216,
+    hitBonus: 0.25,
     powerBonus: 0.3,
     shieldHp: 130,
     armorHp: 60,
@@ -841,7 +841,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 44,
     scanResMm: 990,
     shieldResist: {"kinetic":0.5},
-    description: '海盗的电子战艇：锁定与分辨率冠绝同级，先看见、先锁上；舱位为设备让路，壳也薄——抢完就走，不拿来硬顶。',
+    description: '海盗的电子战艇：火控与回避双高——先锁上、先打中，也更难被咬住；舱位为设备让路，壳薄，抢完就走。',
   },
   {
     id: 'sh-wh-a-destroyer',
@@ -1006,7 +1006,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '哨戒电子舰',
     role: 'armored',
     subClass: '电子舰',
-    // 子分类「电子舰」（船长 2026-09-13）：锁定 +50% · 分辨率 +50% · 命中 +0.04 ｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%
+    // 子分类「电子舰」（船长 2026-09-13）：**命中 +0.12 · 回避 +55%**（真吃战斗公式）· 分辨率 +50%（**经济向**）· 锁定 +50%（**纯展示**）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%
     slots: { high: 2, mid: 3, low: 3 },
     tier: 1,
     unreleased: true,
@@ -1015,8 +1015,8 @@ export const SHIPS: readonly ShipDef[] = [
     oreUnitsPerCycle: 8,
     priceIsk: 0,
     agility: 0.495,
-    evasion: 0.07,
-    hitBonus: 0.14,
+    evasion: 0.109,
+    hitBonus: 0.22,
     shieldHp: 105,
     armorHp: 75,
     hullHp: 75,
@@ -1030,14 +1030,14 @@ export const SHIPS: readonly ShipDef[] = [
     scanResMm: 840,
     shieldResist: {"plasma":0.25},
     armorResist: {"explosive":0.5},
-    description: '陵墓的电子哨戒舰：锁定与分辨率远压同级，替全队先敌发现；壳薄舱小，靠眼睛与距离活命。',
+    description: '陵墓的电子哨戒舰：火控与回避一并拉高，替全队先敌开火、也活得更久；壳薄舱小。',
   },
   {
     id: 'sh-wh-d-destroyer',
     name: '陵卫指挥舰',
     role: 'armored',
     subClass: '指挥舰',
-    // 子分类「指挥舰」（船长 2026-09-13）：锁定 +55% · 分辨率 +55% · 机巢 +50% ｜ 速度 −30% · 货舱 −25% · 回避 −10%
+    // 子分类「指挥舰」（船长 2026-09-13）：**机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05**（真吃战斗公式）· 分辨率 +55%（**经济向**）· 锁定 +55%（**纯展示**）｜ 速度 −30% · 货舱 −25% · 回避 −10%
     slots: { high: 2, mid: 4, low: 4 },
     tier: 2,
     unreleased: true,
@@ -1047,7 +1047,7 @@ export const SHIPS: readonly ShipDef[] = [
     priceIsk: 0,
     agility: 0.383,
     evasion: 0.045,
-    hitBonus: 0.06,
+    hitBonus: 0.11,
     shieldHp: 100,
     armorHp: 145,
     hullHp: 165,
@@ -1061,7 +1061,8 @@ export const SHIPS: readonly ShipDef[] = [
     scanResMm: 651,
     shieldResist: {"plasma":0.25},
     armorResist: {"explosive":0.5},
-    description: '陵墓的指挥舰：锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢；代价是几乎跑不动。',
+    droneDmgBonus: 0.08,
+    description: '陵墓的指挥舰：机巢与无人机战力一并拉高，是编队的机群中枢；命中扎实，但几乎跑不动。',
   },
   {
     id: 'sh-wh-d-cruiser',
@@ -1196,7 +1197,7 @@ export const SHIPS: readonly ShipDef[] = [
     name: '幽影侦察舰',
     role: 'armed',
     subClass: '侦察舰',
-    // 子分类「侦察舰」（船长 2026-09-13）：回避 +35% · 信号 −35% · 锁定 +25% ｜ 货舱 −30% · 甲/壳血占比 −25%
+    // 子分类「侦察舰」（船长 2026-09-13）：**回避 +35% · 命中 +0.06**（真吃战斗公式）· 信号 −35% · 锁定 +25%（**纯展示**，叙事用）｜ 货舱 −30% · 甲/壳血占比 −25%
     slots: { high: 3, mid: 4, low: 1 },
     tier: 1,
     unreleased: true,
@@ -1206,7 +1207,7 @@ export const SHIPS: readonly ShipDef[] = [
     priceIsk: 0,
     agility: 0.82,
     evasion: 0.27,
-    hitBonus: 0.14,
+    hitBonus: 0.2,
     powerBonus: 0.28,
     shieldHp: 140,
     armorHp: 45,
@@ -1221,7 +1222,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 22,
     scanResMm: 700,
     shieldResist: {"kinetic":0.5},
-    description: '亡军的侦察舰：信号极小、闪避极高，锁定也够远——它负责先看见别人；货舱与甲壳为速度让路。',
+    description: '亡军的侦察舰：回避极高、火控不弱——它负责先看见别人，也咬得住；货舱与甲壳为速度让路。',
   },
   {
     id: 'sh-wh-g-destroyer',
