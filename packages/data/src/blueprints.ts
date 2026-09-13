@@ -1422,9 +1422,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
    * `priceIsk = 0`（不上市场 ⇒ 无书价；`content:check` 的「蓝图价格口径」对一次性图纸豁免比对）。
    * ⚠ **施工期闸门**：全部标 `unreleased: true`（手册蓝图图鉴 / 组装机蓝图下拉都遍历全目录）。 */
   {
-    id: 'bp-wh-a-laser',
-    name: '裂罅熔流炮图纸（一次性）',
-    moduleId: 'mod-wh-a-laser',
+    id: 'bp-wh-a-frag',
+    name: '掠袭破片炮图纸（一次性）',
+    moduleId: 'mod-wh-a-frag',
     singleUse: true,
     unreleased: true,
     materials: [
@@ -1436,11 +1436,11 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 5400,
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 0, // 一次性图纸不上市场 ⇒ 无书价
-    description: '「裂罅熔流炮」的制造工艺，写在整块母岩切片上——**只能用一次**。照它做出来的那门炮，才是你的。',
+    description: '「掠袭破片炮」的制造工艺，写在整块母岩切片上——**只能用一次**。装药与破片槽的配比是全部关键。',
   },
   {
     id: 'bp-wh-a-hangar',
-    name: '赃物机库图纸（一次性）',
+    name: '掠袭机库图纸（一次性）',
     moduleId: 'mod-wh-a-hangar',
     singleUse: true,
     unreleased: true,
@@ -1453,7 +1453,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 4600,
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「赃物机库」的制造工艺，写在整块母岩切片上——**只能用一次**。隔板怎么焊，图上一道道都标好了。',
+    description: '「掠袭机库」的制造工艺，写在整块母岩切片上——**只能用一次**。隔板怎么焊，图上一道道都标好了。',
   },
   {
     id: 'bp-wh-a-prop',
@@ -1508,7 +1508,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
   {
     id: 'bp-wh-a-shield',
-    name: '掠夺者护盾笼图纸（一次性）',
+    name: '掠袭者护盾笼图纸（一次性）',
     moduleId: 'mod-wh-a-shield',
     singleUse: true,
     unreleased: true,
@@ -1521,7 +1521,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 5000,
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「掠夺者护盾笼」的制造工艺，写在整块母岩切片上——**只能用一次**。三台发生器怎么串，图上只有一种接法。',
+    description: '「掠袭者护盾笼」的制造工艺，写在整块母岩切片上——**只能用一次**。三台发生器怎么串，图上只有一种接法。',
   },
   {
     id: 'bp-wh-c-laser',

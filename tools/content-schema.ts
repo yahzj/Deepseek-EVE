@@ -146,6 +146,26 @@ export const TABLES: readonly TableSpec[] = [
       col('射速缩短reloadCutPct(0.05=装填÷1.05)', 'reloadCutPct', 'num', { min: 0, max: 5 }),
       col('命中提升hitBonusPct(0.08=命中×1.08)', 'hitBonusPct', 'num', { min: 0, max: 5 }),
       col('闪避缺口削减evasionGapPct(0.1=被命中×0.9)', 'evasionGapPct', 'num', { min: 0, max: 5 }),
+      /* ══ 2026-09-13 补全（船长「输出到 excel 给我审阅」）══
+       * 此前本表**漏了 9 类已在用的模块字段**（结构容量/结构抗性/锁定加深/CPU 扩容/防空/备弹/
+       * 机动代价/修复系/无人机中继射程）⇒ 虫洞专属装备里近一半加成在审阅表上**看不见**。
+       * 表头文字 = 两端契约，故 `content:import` 端同步认得这些列（老文件请先重新 export）。 */
+      col('结构容量加成hullHpBonus(0.6=+60%)', 'hullHpBonus', 'num', { min: 0, max: 2 }),
+      col('结构抗性动能hullResistAdd.kinetic', 'hullResistAdd.kinetic', 'obj', { min: 0, max: 0.9 }),
+      col('结构抗性高爆hullResistAdd.explosive', 'hullResistAdd.explosive', 'obj', { min: 0, max: 0.9 }),
+      col('结构抗性能量hullResistAdd.plasma', 'hullResistAdd.plasma', 'obj', { min: 0, max: 0.9 }),
+      col('锁定加深lockDmgBonus(0.08=被锁目标受击×1.08)', 'lockDmgBonus', 'num', { min: 0, max: 2 }),
+      col('CPU扩容cpuBonus(协处理器：+45=装配上限+45)', 'cpuBonus', 'num', { min: 0, max: 500, int: true }),
+      col('防空antiDrone(能打机群+对机群伤害×本值)', 'antiDrone', 'num', { min: 0, max: 10 }),
+      col('每战备弹ammoPerEngagement(展示用)', 'ammoPerEngagement', 'num', { min: 0, int: true }),
+      col('机动代价speedPenaltyPct(装甲件；0.25=速度×0.75)', 'speedPenaltyPct', 'num', { min: 0, max: 0.9 }),
+      col('修复装甲/脉冲repairArmorHp', 'repairArmorHp', 'num', { min: 0, max: 100 }),
+      col('修复结构/脉冲repairHullHp', 'repairHullHp', 'num', { min: 0, max: 100 }),
+      col('修复脉冲间隔ms', 'repairIntervalMs', 'num', { min: 2000, max: 60000, int: true }),
+      col('修复消耗组件(repairkit-civ/mil)', 'repairKit', 'str'),
+      col('无消耗自愈repairFree(是/空)', 'repairFree', 'bool'),
+      col('无人机射程加成droneRangeBonusPct(中继天线)', 'droneRangeBonusPct', 'num', { min: 0, max: 2 }),
+      col('未上线闸门unreleased(是=施工期对玩家不可见；勿手改)', 'unreleased', 'bool'),
       col('描述', 'description', 'str'),
     ],
   },
@@ -178,6 +198,14 @@ export const TABLES: readonly TableSpec[] = [
       col('结构抗动能', 'hullResist.kinetic', 'obj', { min: 0, max: 0.9 }),
       col('结构抗高爆', 'hullResist.explosive', 'obj', { min: 0, max: 0.9 }),
       col('结构抗能量', 'hullResist.plasma', 'obj', { min: 0, max: 0.9 }),
+      /* ══ 2026-09-13 补全（船长「输出到 excel 给我审阅」）══ 此前漏了这 5 项：
+       * 命中加成 / 船体武器族加成三系 / 船体无人机加成 / 未上线闸门 —— 虫洞专属舰船正靠它们立族签名。 */
+      col('命中加成hitBonus(0~0.5)', 'hitBonus', 'num', { min: 0, max: 0.5 }),
+      col('船体武器族加成功能weaponFamilyBonus.kinetic', 'weaponFamilyBonus.kinetic', 'obj', { min: 0, max: 1 }),
+      col('船体武器族加成高爆weaponFamilyBonus.explosive', 'weaponFamilyBonus.explosive', 'obj', { min: 0, max: 1 }),
+      col('船体武器族加成功量weaponFamilyBonus.plasma', 'weaponFamilyBonus.plasma', 'obj', { min: 0, max: 1 }),
+      col('船体无人机加成droneDmgBonus(只喂放飞无人机)', 'droneDmgBonus', 'num', { min: 0, max: 1 }),
+      col('未上线闸门unreleased(是=施工期对玩家不可见；勿手改)', 'unreleased', 'bool'),
       col('CPU总量', 'cpu', 'num', { min: 0 }),
       col('高槽数', 'slots.high', 'obj', { min: 0, int: true }),
       col('中槽数', 'slots.mid', 'obj', { min: 0, int: true }),

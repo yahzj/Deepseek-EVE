@@ -89,6 +89,13 @@ async function writeXlsx(colsList: readonly (readonly ColSpec[])[], rowSets: rea
         }),
       )
     }
+    /* 2026-09-13 船长：「现在这样修改太麻烦」⇒ 导出侧加**审阅便利**三件（纯排版，不改数据/列契约）：
+     * ① 表头行冻结（往下滚不丢列名）；② 全表自动筛选（按名称/id 过滤一批看）；③ 隔行浅底色。 */
+    ws.views = [{ state: 'frozen', ySplit: 1 }]
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }
+    for (let r = 2; r <= ws.rowCount; r++) {
+      if (r % 2 === 0) ws.getRow(r).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7F9FC' } }
+    }
   }
   await wb.xlsx.writeFile(join(outDir, 'content-workbench.xlsx'))
 }
