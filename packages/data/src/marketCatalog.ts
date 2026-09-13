@@ -52,6 +52,15 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   数值：虚空晶 0.5 + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **1,016.25**；
   //   basePrice 1,300（≈1.28×产出，供应侧不亏）· demandMultiplier 0.6 ⇒ 收购 ≈780 < 1,016（买入精炼不赚）。】
   { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, unreleased: true },
+  // ── **遗迹安全货柜**（F4 · 2026-09-13）──
+  // 【不上市交易：它是"带回后拆解"的中间件，不是商品。这里照"每种物品必须有市场卡"的既有契约补卡，
+  //   一律 `unreleased`（施工期不可见）⇒ **上线动作 = 删这 5 个字段**（与虚空母矿同一套做法）。
+  //   basePrice 1 / demandMultiplier 0：即便将来失手放出来，也不至于变成一条套利通道。】
+  { key: 'box-relic-a', kind: 'item', refId: 'box-relic-a', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-relic-c', kind: 'item', refId: 'box-relic-c', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
   //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722

@@ -43,6 +43,7 @@ import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
 import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
 import { rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
+import { wormholeDiscardToFit, wormholeHoldOverloaded, wormholeOverloadBlockReason } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -378,43 +379,45 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(pilotUnavailableReason(state)).toBeNull()
   })
 
-  it('**沉船扣背包格**（船长 2026-09-13 裁定「扣背包格，不足时丢弃货物」）：缩容后按每格价值从低到高丢', () => {
+  it('**沉船后格数缩水 ⇒ 超载（不自动丢货）**：船长 F4 裁定「要求玩家手动抛弃货物」', () => {
     const state = fresh()
     const ids = [addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3)]
     state.shipId = ids[0]!
     expect(wormholeEnter(state, ctx, ids, 21).ok).toBe(true)
     const run = state.wormhole.run!
-    const cheap = 'ore-veldspar' // 最便宜的原矿（每格价值低 ⇒ 该先丢）
-    const dear = WORMHOLE_ORE_ITEM_ID // 虚空母矿 915/单位 ⇒ 每格 45.75 万（该留）
+    const cheap = 'ore-veldspar'
+    const dear = WORMHOLE_ORE_ITEM_ID
     const capBefore = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
     expect(capBefore).toBeGreaterThanOrEqual(6)
-    // 塞满一整包：便宜货占满 (capBefore - 2) 格 + 贵货 2 格
     run.bag = [
       { itemId: cheap, units: (capBefore - 2) * 500 },
       { itemId: dear, units: 2 * 500 },
     ]
-    expect(wormholeBagUsage(ctx, run.bag, capBefore).used).toBe(capBefore)
-    // 打沉两艘僚舰后仍胜 ⇒ 编队剩 2 艘 ⇒ 上限缩水 ⇒ 装不下的当场丢
-    standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
+    const bagBefore = JSON.stringify(run.bag)
+    standOnPlace(run, 'ship')
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     run.battle!.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
     run.battle!.units['ally-2']!.hp = { s: 0, a: 0, h: 0 }
     winBattle(state)
     settleBattle(state)
     const back = state.wormhole.run!
-    const capAfter = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))
-    expect(capAfter, '沉船后背包上限没缩水').toBeLessThan(capBefore)
-    const usage = wormholeBagUsage(ctx, back.bag, capAfter)
-    expect(usage.overflow, '沉船后背包还超格').toBe(false)
-    // 丢的是便宜货、贵货原封不动（"按每格价值从低到高丢"）
-    const dearLeft = back.bag.find((s) => s.itemId === dear)
-    expect(dearLeft?.units, '贵货被丢了（应先丢便宜的）').toBe(1000)
-    const cheapLeft = back.bag.find((s) => s.itemId === cheap)?.units ?? 0
-    expect(cheapLeft, '便宜货没被扣').toBeLessThan((capBefore - 2) * 500)
-    expect(state.logs.map((l) => l.text).some((t) => t.includes('沉船拖走了货舱'))).toBe(true)
+    expect(wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))).toBeLessThan(capBefore)
+    // **一件都没自动丢**（新口径）；超载由玩家自己解
+    expect(JSON.stringify(back.bag), '旧口径在自动丢货').toBe(bagBefore)
+    expect(wormholeHoldOverloaded(state, ctx), '沉船后应当超载').toBe(true)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('超载'))).toBe(true)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('手动抛弃货物'))).toBe(true)
+    // 超载期间不许再装东西
+    expect(wormholeOverloadBlockReason(state, ctx) ?? '').toContain('超载')
+    // 玩家抛货（先便宜的）⇒ 恢复
+    const fit = wormholeDiscardToFit(state, ctx)
+    expect(fit.ok).toBe(true)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
+    const dearLeft = back.bag.find((s) => s.itemId === dear)?.units ?? 0
+    expect(dearLeft, '贵货被丢了（应先丢便宜的）').toBe(1000)
   })
 
-  it('**缩容丢货的顺序**：普通残骸先丢、原矿其次、**稀有残骸最后丢**（旧口径只看基础价 ⇒ 稀有残骸第一个被丢）', () => {
+  it('**一键抛货的顺序**（玩家点按钮，仍按价值）：普通残骸先丢、原矿其次、**稀有残骸最后丢**', () => {
     const state = fresh()
     const ids = [addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3), addShipToFleet(state, T3)]
     state.shipId = ids[0]!
@@ -425,7 +428,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const rare = rareWreckItemIdOf(card)
     const capBefore = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
     expect(capBefore).toBe(20) // 4×T3 合计货仓 10,400 m³ ÷ 500
-    // 12 格普通残骸 + 3 格虚空母矿 + 1 格稀有残骸 = 16 格 > 缩容后的 10 格 ⇒ 必须丢 6 格
+    // 12 格普通残骸 + 3 格虚空母矿 + 1 格稀有残骸 = 16 格 > 缩容后的 10 格
     run.bag = [
       { itemId: common, units: 12 * 500 },
       { itemId: WORMHOLE_ORE_ITEM_ID, units: 3 * 500 },
@@ -439,10 +442,14 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     settleBattle(state)
     const back = state.wormhole.run!
     expect(wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))).toBe(10)
-    expect(wormholeBagUsage(ctx, back.bag, 10).overflow).toBe(false)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
+    // 玩家点「抛到容量内」⇒ 只动最便宜的（普通残骸），原矿与稀有残骸留着
+    const fit = wormholeDiscardToFit(state, ctx)
+    expect(fit.ok).toBe(true)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
     expect(back.bag.find((s) => s.itemId === rare)?.units, '稀有残骸被丢了').toBe(30)
     expect(back.bag.find((s) => s.itemId === WORMHOLE_ORE_ITEM_ID)?.units, '虚空母矿被丢了').toBe(1500)
-    expect(back.bag.find((s) => s.itemId === common)?.units, '普通残骸没被扣').toBe(6 * 500)
+    expect(back.bag.find((s) => s.itemId === common)?.units ?? 0, '普通残骸没被扣').toBeLessThan(12 * 500)
   })
 
   it('某个僚舰被打沉（战斗仍胜）：该船从编队与舰队里一起消失，其余船继续', () => {

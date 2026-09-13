@@ -138,7 +138,16 @@ import {
   toggleMark,
   // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；施工期入口在调试开关后面）
   wormholeEnter,
-  wormholeTakePile,
+  wormholeTakePileAt,
+  wormholeHoldUsage,
+  wormholeDiscardToFit,
+  wormholeHoldDiscard,
+  wormholeDiscardCargo,
+  wormholeOverloadBlockReason,
+  wormholeHoldStow,
+  wormholeHoldCapacityOf,
+  holdCompact,
+  holdMove,
   wormholeGridActivate,
   wormholeGridScan,
   wormholeTravelTo,
@@ -1379,7 +1388,7 @@ export class GameEngine {
   }
   /** 虫洞：拾取当前节点的一堆（进包前做容量预检，放不下就拒绝） */
   wormholeTakePile(pileIndex: number): CommandResult {
-    const r = wormholeTakePile(this.state, this.ctx, pileIndex)
+    const r = wormholeTakePileAt(this.state, this.ctx, pileIndex)
     if (r.ok) {
       void this.persist()
       this.notify()
@@ -1432,10 +1441,69 @@ export class GameEngine {
     return { ok: r.ok, error: r.error, ...(r.taken !== undefined ? { taken: r.taken } : {}) }
   }
 
+  /** 虫洞：**整理货仓格**（把所有形状件按首次适应递减重排；只重排、不丢件） */
+  wormholeHoldCompact(): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    const r = holdCompact(run.hold, wormholeHoldCapacityOf(this.state, this.ctx))
+    if (r.moved > 0 || r.unplaced.length > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: true, error: r.unplaced.length > 0 ? `有 ${r.unplaced.length} 件放不回格子里（货仓超载）：先抛货。` : undefined }
+  }
+
+  /** 虫洞：**移动一件形状件**（拖拽落点；非法落点 ⇒ 拒绝、位置不变） */
+  wormholeHoldMove(id: string, x: number, y: number): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    const r = holdMove(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx))
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+  /** 虫洞：**抛弃一件形状件**（货仓格 · 手动抛货，船长裁定 8） */
+  wormholeDiscardHold(placementId: string): CommandResult {
+    const r = wormholeHoldDiscard(this.state, this.ctx, placementId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**抛弃散货**（可给数量；不给 = 整条记录丢） */
+  wormholeDiscardCargo(itemId: string, units?: number): CommandResult {
+    const r = wormholeDiscardCargo(this.state, this.ctx, itemId, units)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**一键抛到容量内**（玩家点按钮才跑；只动散货、按每格价值从低到高） */
+  wormholeDiscardToFit(): CommandResult {
+    const r = wormholeDiscardToFit(this.state, this.ctx)
+    if (r.dropped.length > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.dropped.length > 0, error: r.dropped.length > 0 ? undefined : '货仓没有超载，不用抛货。' }
+  }
+
+  /** 虫洞：**货仓读数**（已用格 / 总格 / 超载；界面与按钮置灰共用） */
+  wormholeHoldInfo(): { used: number; capacity: number; cargoCells: number; shapeCells: number; overload: boolean } {
+    return wormholeHoldUsage(this.state, this.ctx)
+  }
   /** 虫洞：深入下一层（只在层末可用） */
   wormholeDescend(): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
+    const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
+    if (blocked) return { ok: false, error: blocked }
     const r = wormholeDescend(run, this.state.rng.seed)
     if (r.ok) {
       void this.persist()
@@ -1448,6 +1516,9 @@ export class GameEngine {
   wormholeExtract(): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
+    // **超载不许撤离**（船长裁定 8）：先把货抛到容量内（抛货本身任何时候都能做 ⇒ 不会软锁）
+    const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
+    if (blocked) return { ok: false, error: blocked }
     const r = wormholeExtract(run)
     if (r.ok) {
       void this.persist()

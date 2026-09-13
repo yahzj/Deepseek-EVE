@@ -136,7 +136,8 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-12 虫洞线：新增**虚空母矿**（原矿 8 种、物品总数 35→36）——术语同步为「原矿 / 原材料」）
 // 2026-09-13 虫洞族专属机型 2 型（`drone-wh-c-heavy` 巢卫攻坚 / `drone-wh-e-sentry` 构件哨戒，
 // 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ 换成族专属无人机）→ 物品总数 36→**38**、无人机 5→**7**
-check(itemDefs.length === 38, `物品总数应为 38，实际 ${itemDefs.length}`)
+// 2026-09-13 F4：遗迹安全货柜 5 种（中间件，施工期 unreleased）→ 物品总数 38→**43**
+check(itemDefs.length === 43, `物品总数应为 43，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -243,8 +244,15 @@ for (const item of itemDefs) {
     }
   } else {
     check(
-      item.kind === 'mineral' || item.kind === 'ammo' || item.kind === 'drone' || item.kind === 'kit',
-      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免）`,
+      item.kind === 'mineral' ||
+        item.kind === 'ammo' ||
+        item.kind === 'drone' ||
+        item.kind === 'kit' ||
+        /* **货柜豁免有前提**（F4 · 2026-09-13）：`container` 是"带回后拆解"的大件，
+         * 船长明示「**暂时不用拆解**」⇒ 施工期（`unreleased`）允许没有配方；
+         * 但**一旦上线（删掉 unreleased）就必须有配方**，否则玩家拖回一箱打不开的东西。 */
+        (item.kind === 'container' && item.unreleased === true),
+      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container 仅在施工期豁免）`,
     )
   }
 }
@@ -3140,6 +3148,20 @@ for (const m of MODULES) {
       if (card.rewardIsk !== 0 || (card.loot?.length ?? 0) > 0) {
         errors.push(`虫洞不可见闸门：${id}（${card.name}）带了奖金/掉落 —— 洞内敌卡不应有赏金收益（收益走背包拾取）`)
       }
+    }
+    /* **遗迹安全货柜契约**（F4 · 2026-09-13 船长：装备与图纸改走中间件、货柜 2000 m³ = 4 格）：
+     * 五族各一种，必须 ① `unreleased` ② `kind === 'container'` ③ **2000 m³**（与 `wormholeHold` 的
+     * 形状表 2×2 对得上）；少一种 ⇒ 那一族的遗迹专属掉落会散落出一件"读不懂的东西"。 */
+    for (const fam of WORMHOLE_FAMILIES) {
+      const boxId = `box-relic-${fam.toLowerCase()}`
+      const box = ctxItems.get(boxId)
+      if (!box) {
+        errors.push(`货柜契约：没有 ${boxId}（${fam} 族的遗迹安全货柜）—— 该族专属掉落会散落出无定义的物品`)
+        continue
+      }
+      if (box.unreleased !== true) errors.push(`货柜契约：${boxId}（${box.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
+      if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
+      if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
     }
     const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {

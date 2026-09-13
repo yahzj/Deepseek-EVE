@@ -20,6 +20,8 @@ import {
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { WormholeGridState } from './wormholeGrid'
+import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
+import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
@@ -2407,6 +2409,44 @@ function normalizeState(raw: unknown): GameState {
     return out.length > 0 ? { piles: out } : {}
   }
 
+  /**
+   * **货仓格清洗**（F4 · 船长 2026-09-13：类似背包英雄的格管理）。
+   * - 形状件逐个走 `cleanHoldPlacement`（坐标/尺寸越界或坏值 ⇒ 丢这一件）；
+   * - **重叠的件丢弃**（后到的让位）——重叠是坏档，留着会让放置逻辑错乱；
+   * - **越界（超出当前可用格）保留**：那正是"超载"态（沉船后格数变小），玩家要手动抛货；
+   * - 老档没有 hold / 洗完为空 ⇒ 返回 undefined（= 不写字段，零迁移）。
+   */
+  const cleanWormholeHold = (raw: unknown): WormholeHoldState | undefined => {
+    const h = asRaw(raw)
+    if (raw === undefined || raw === null) return undefined
+    const cols = Math.floor(num(h.cols))
+    const list = Array.isArray(h.placements) ? h.placements : []
+    const out: WormholeHoldState['placements'] = []
+    const taken = new Set<string>()
+    for (const it of list) {
+      const p = cleanHoldPlacement(it)
+      if (!p) continue
+      const cells: string[] = []
+      let clash = false
+      for (let dy = 0; dy < p.h && !clash; dy++) {
+        for (let dx = 0; dx < p.w; dx++) {
+          const key = `${p.x + dx},${p.y + dy}`
+          if (taken.has(key)) {
+            clash = true
+            break
+          }
+          cells.push(key)
+        }
+      }
+      if (clash) continue
+      for (const c of cells) taken.add(c)
+      out.push(p)
+    }
+    return {
+      cols: cols >= 1 && cols <= 32 ? cols : WORMHOLE_HOLD_COLS,
+      placements: out,
+    }
+  }
   // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
   /** 网格探索状态（F3a）：**老档没有 ⇒ 不写**（零迁移）；坏结构整块丢弃（该层退回旧口径） */
   const cleanWormholeGrid = (raw: unknown): WormholeGridState | undefined => {
@@ -2535,6 +2575,8 @@ function normalizeState(raw: unknown): GameState {
               : {}),
             // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
             ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
+            // 货仓格（F4）：形状件逐个清洗；坏件丢弃、**重叠的丢弃**（越界保留 ⇒ 那是"超载"态）
+            ...(cleanWormholeHold(rRaw.hold) !== undefined ? { hold: cleanWormholeHold(rRaw.hold) } : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0
               ? { bossCleared: Math.floor(num(rRaw.bossCleared)) }
               : {}),

@@ -49,6 +49,8 @@ export type ItemKind =
   | 'ammo'
   | 'drone'
   | 'wreck'
+  /** **货柜**（F4 · 船长 2026-09-13「遗迹安全货柜」）：占形状格（2×2 = 4 格）、带回后拆解 */
+  | 'container'
   | 'fragment'
   | 'kit'
 
