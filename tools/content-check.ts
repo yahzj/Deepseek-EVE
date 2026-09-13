@@ -929,6 +929,8 @@ for (const t of DMG_TYPES) {
     check((mk2?.dmg ?? 0) > (base?.dmg ?? 0), `弹药：${t} MK2 单发应高于基础弹`)
   }
 }
+/** 射程豁免机型（船长 2026-09-13「专属无人机开豁免」）——只登记并打印，不参与断言 */
+const exclusiveRangeNotes: string[] = []
 for (const d of drones) {
   check(d.damageType !== undefined && DMG_TYPES.has(d.damageType), `无人机 ${d.id} damageType 缺失或非法`)
   check((d.dmg ?? 0) > 0 && Number.isFinite(d.dmg), `无人机 ${d.id} dmg 缺失或非正`)
@@ -938,10 +940,16 @@ for (const d of drones) {
   const dc = d.droneClass
   check(dc !== undefined && DRONE_CLASS_RANGE[dc] !== undefined, `无人机 ${d.id} droneClass 缺失或非法：${String(dc)}`)
   if (dc !== undefined && DRONE_CLASS_RANGE[dc] !== undefined) {
-    check(
-      d.maxRangeM === DRONE_CLASS_RANGE[dc],
-      `无人机 ${d.id}（${dc}）射程应为 ${DRONE_CLASS_RANGE[dc]}，实际 ${String(d.maxRangeM)}`,
-    )
+    // **2026-09-13 船长：「专属无人机开豁免」** ⇒ `exclusive` 机型不受「射程分类」档位硬钉约束
+    //（仍受 droneRoles 的两道约束：区间 `DRONE_ROLE_SPECS[cls].rangeM` 与硬边界 500~20000m）。
+    if (d.exclusive === true) {
+      exclusiveRangeNotes.push(`${d.id}（${dc}）射程 ${String(d.maxRangeM)} · 档位标准 ${DRONE_CLASS_RANGE[dc]}`)
+    } else {
+      check(
+        d.maxRangeM === DRONE_CLASS_RANGE[dc],
+        `无人机 ${d.id}（${dc}）射程应为 ${DRONE_CLASS_RANGE[dc]}，实际 ${String(d.maxRangeM)}`,
+      )
+    }
   }
   // V11：无人机生存包契约（三层血量必填、回避与抗性界内）
   const def = d.defense
@@ -979,6 +987,9 @@ for (const d of drones) {
         })
         .join('　')}（单发基准 = 锚点侦察机 ${base?.name ?? '—'} ${scoutDmg}）`,
     )
+  }
+  if (exclusiveRangeNotes.length > 0) {
+    console.log(`· 无人机射程豁免（船长 2026-09-13「专属无人机开豁免」）：${exclusiveRangeNotes.join('　')}`)
   }
 }
 for (const m of MODULES) {
