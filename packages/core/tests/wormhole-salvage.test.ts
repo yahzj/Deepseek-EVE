@@ -18,18 +18,21 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholeEnter, wormholeTakePile } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
-import { gridCellAt } from '../src/wormholeGrid'
+import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
 import {
   WORMHOLE_GRAVEYARD_COMMONS_MAX,
   WORMHOLE_GRAVEYARD_COMMONS_MIN,
   WORMHOLE_RARE_JUDGE_PER_COMMONS,
+  WORMHOLE_RELIC_CHANCE_CAP,
   WORMHOLE_RUINS_RARES_MAX,
   WORMHOLE_RUINS_RARES_MIN,
   wormholeCellCardIdOf,
   wormholeEnsureSalvagePiles,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  wormholeRelicChanceOf,
+  wormholeRollRelic,
   wormholeSalvageAt,
   wormholeSalvagersOf,
 } from '../src/wormholeSalvage'
@@ -107,6 +110,18 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     }
     expect(sawRare, '60 趟里一次稀有都没出（35% 概率不该如此）').toBeGreaterThan(0)
     expect(capBinding, '60 趟里没有一趟把上限用满 ⇒ 这条上限没被真正验证').toBeGreaterThan(0)
+    // **堆数真的在 3~10 上散开**（不是恒取下限）：2026-09-13 踩过的坑——随机流没打散时，
+    // 小种子下 LCG 的"第一次输出"恒偏小 ⇒ 堆数永远是最小值 3。这条专门守它。
+    const seenCounts = new Set<number>()
+    for (let seed = 1; seed <= 60; seed++) {
+      const s2 = enterRun(1, seed)
+      const c2 = standOn(s2, 'graveyard')
+      wormholeEnsureSalvagePiles(s2, c2)
+      const card = wormholeCellCardIdOf(s2.wormhole.run!, c2)
+      seenCounts.add((c2.piles ?? []).filter((p) => p.itemId === wreckItemIdOf(card)).length)
+    }
+    expect(seenCounts.size, `60 趟里只见过这些普通堆数：${[...seenCounts].sort((a, b) => a - b).join('/')}`)
+      .toBeGreaterThanOrEqual(6)
     // 普通残骸的堆量随层收益系数（基准 200 m³ × 系数 × 0.8~1.2）
     const probe = enterRun(1)
     const probeCell = standOn(probe, 'graveyard')
@@ -204,6 +219,19 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
   })
 })
 
+describe('虫洞 · 确定性随机流（2026-09-13 修掉的分布坑）', () => {
+  it('`wormholeStream` 的第一输出在整个 [0,1) 上均匀（**不能直接用 LCG 的第一次输出**）', () => {
+    const firsts = Array.from({ length: 200 }, (_, i) => wormholeStream(1 + i)())
+    expect(Math.min(...firsts)).toBeLessThan(0.1)
+    expect(Math.max(...firsts)).toBeGreaterThan(0.9)
+    // 小种子下若没打散，全部会挤在 0.2 以下（旧口径的实测现象）
+    const low = firsts.filter((v) => v < 0.2).length
+    expect(low, `200 个种子里有 ${low} 个第一次输出 < 0.2（均匀应约 20%）`).toBeLessThan(80)
+    // 同种子可复现
+    expect(wormholeStream(4242)()).toBe(wormholeStream(4242)())
+  })
+})
+
 describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', () => {
   it('五族池齐（装备 / 装备图纸 / 舰船图纸各非空）——缺一族就报出哪族', () => {
     expect(wormholeFamilyPoolGaps(ctx)).toEqual([])
@@ -248,7 +276,7 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
     expect(quiet, '24 个种子里次次都触发（概率没生效）').toBeGreaterThan(0)
   })
 
-  it('专属掉落只在层 3 起（层 1 恒不出），且抽中的东西一定落在本族池里', () => {
+  it('专属掉落：**层 1 恒不出、层 2 起有几率**（船长 2026-09-13），抽中的东西一定落在本族池里', () => {
     let got: string | undefined
     for (let seed = 1; seed <= 40; seed++) {
       const state = enterRun(4, seed)
@@ -259,21 +287,50 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       const r1 = wormholeSalvageAt(state, ctx)
       expect(r1.relics ?? []).toEqual([])
       expect((run.relics ?? []).length).toBe(0)
-      // 推到第 3 层再试（直接改层号：只验门槛与池归属，不验走盘）
-      run.depth = 3
-      const cell3 = standOn(state, 'ruins')
-      wormholeEnsureSalvagePiles(state, cell3)
-      const r3 = wormholeSalvageAt(state, ctx)
-      if ((r3.relics ?? []).length > 0) {
-        got = r3.relics![0]
-        const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell3)
+      // 推到第 2 层再试（直接改层号：只验门槛与池归属，不验走盘）
+      run.depth = 2
+      const cell2 = standOn(state, 'ruins')
+      wormholeEnsureSalvagePiles(state, cell2)
+      const r2 = wormholeSalvageAt(state, ctx)
+      if ((r2.relics ?? []).length > 0) {
+        got = r2.relics![0]
+        const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell2)
         const family = ctx.anomalies.get(cardId)?.foeFamily ?? 'A'
         const pool = wormholeFamilyPoolOf(ctx, String(family))
         expect([...pool.modules, ...pool.moduleBlueprints, ...pool.shipBlueprints]).toContain(got)
         break
       }
     }
-    expect(got, '40 个种子里一次专属都没掉（25% 概率不该如此）').toBeTruthy()
+    expect(got, '40 个种子里一次专属都没掉（层 2 = 12% 概率不该如此）').toBeTruthy()
+  })
+
+  it('**专属概率随层上升**（层 2 < 层 4 < 层 7；层 1 = 0）——实测命中率单调上升', () => {
+    // 概率表本身（解析口径）
+    expect(wormholeRelicChanceOf(1)).toBe(0)
+    expect(wormholeRelicChanceOf(2)).toBeCloseTo(0.12, 6)
+    expect(wormholeRelicChanceOf(4)).toBeCloseTo(0.2028, 3)
+    expect(wormholeRelicChanceOf(7)).toBeGreaterThan(wormholeRelicChanceOf(4))
+    expect(wormholeRelicChanceOf(20)).toBe(WORMHOLE_RELIC_CHANCE_CAP) // 封顶 50%
+    // 实测口径：同一种子集在不同层的命中率（各 160 趟）
+    const hitRate = (depth: number): number => {
+      let hits = 0
+      const n = 160
+      for (let seed = 1; seed <= n; seed++) {
+        const state = enterRun(4, seed)
+        const run = state.wormhole.run!
+        run.depth = depth
+        const cell = standOn(state, 'ruins')
+        run.relics = []
+        if (wormholeRollRelic(state, ctx, cell).length > 0) hits += 1
+      }
+      return hits / n
+    }
+    const r2 = hitRate(2)
+    const r4 = hitRate(4)
+    const r7 = hitRate(7)
+    expect(r2, `层 2 命中率 ${r2}（期望 ≈12%）`).toBeGreaterThan(0.04)
+    expect(r4, `层 4 命中率 ${r4}（期望 ≈20%）`).toBeGreaterThan(r2)
+    expect(r7, `层 7 命中率 ${r7}（期望 ≈45%）`).toBeGreaterThan(r4)
   })
 })
 

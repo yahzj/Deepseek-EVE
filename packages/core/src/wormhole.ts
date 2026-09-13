@@ -28,6 +28,7 @@ import {
   WORMHOLE_TURN_PER_PICK,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
+  wormholeStream,
   gridCellAt,
   gridScanTargets,
   isExitCell,
@@ -799,7 +800,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
 function wormholeFillVeinPiles(run: WormholeRunState, grid: WormholeGridState, cell: WormholeGridCell): void {
   if ((cell.piles ?? []).length > 0) return
   const seed = run.seed ?? run.depth
-  const rng = wormholeRng(seed * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
+  const rng = wormholeStream(seed * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
   const count = 1 + Math.floor(rng() * 3) // 1~3 堆（与打捞模块的 WORMHOLE_VEIN_PILES_* 同值）
   const index = Math.abs(cell.q * 13 + cell.r * 29) % 97
   cell.piles = wormholeNodePiles(seed, run.depth, index, count)
