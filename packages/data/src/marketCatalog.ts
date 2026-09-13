@@ -334,7 +334,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 市场不出售成品（图鉴「仅可制造」标注自洽；供给抽取侧 playerBuyable=false 天然排除）
   { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, playerBuyable: false },
   { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 1_350_000, demandMultiplier: 0.65 },
-  { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'rare', basePrice: 1_900_000, demandMultiplier: 0.65 },
+  { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'rare', basePrice: 13_500_000, demandMultiplier: 0.65 }, // 2026-09-13 船长：T4 档全面上调（座头鲸 1.35M ×10）
   { key: 'ship-falconet', kind: 'ship', refId: 'sh-falconet', rarity: 'rare', basePrice: 42_000, demandMultiplier: 0.65 },
   { key: 'ship-shrike', kind: 'ship', refId: 'sh-shrike', rarity: 'rare', basePrice: 110_000, demandMultiplier: 0.65 },
   { key: 'ship-tigershark', kind: 'ship', refId: 'sh-tigershark', rarity: 'rare', basePrice: 240_000, demandMultiplier: 0.65 },
@@ -359,8 +359,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'exotic', basePrice: 15_000_000, demandMultiplier: 1.0, standingReq: 8 },
   { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'exotic', basePrice: 11_000_000, demandMultiplier: 1.0, standingReq: 9 },
   { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'exotic', basePrice: 13_000_000, demandMultiplier: 1.0, standingReq: 10 },
-  { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 1_250_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 2_200_000, demandMultiplier: 1.0, standingReq: 9 },
+  { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 4_800_000, demandMultiplier: 1.0, standingReq: 8 }, // 2026-09-13 船长：T4 档全面上调（旗鱼 0.48M ×10）
+  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 16_500_000, demandMultiplier: 1.0, standingReq: 9 }, // 2026-09-13 船长：T4 档全面上调（玳瑁 1.1M ×15）
+  // 2026-09-13 船长裁定：巨齿鲨级（T4 战列舰）走**仅图纸制造**——成品只收不卖（照皇带鱼口径），
+  // 行价 225M = T3 武装顶（电鳐 15M）×15；蓝图价 900M = 行价 ×4（>400 万档系数）。
+  { key: 'ship-megalodon', kind: 'ship', refId: 'sh-megalodon', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 11, playerBuyable: false },
   // 2026-09-11 船长裁决（甲）：皇带鱼与开拓/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
   // 此前它漏在 2026-09-09「蓝图船成品现货下架」那次清扫之外：图鉴写着「仅可制造」（ships.ts priceIsk=0），
   // 市场却挂着 550 万现货——同一条口径两处打架，由 content-check「舰船价格口径（预警）」抓出。
@@ -368,7 +371,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 2026-09-09 全舰船蓝图化（第二批）：全部可造舰船开放蓝图书；蓝图价 = 船市场价 × 档位系数（≤30 万 ×2 / 30~100 万 ×2.5 / 100~400 万 ×3 / >400 万 ×4）；船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11
   { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 掘洞级（蓝图=船价×2）
   { key: 'sbp-whale', kind: 'blueprint', refId: 'sbp-whale', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65 }, // 鲸吞级（蓝图=船价×2.5）
-  { key: 'sbp-bowhead', kind: 'blueprint', refId: 'sbp-bowhead', rarity: 'exotic', basePrice: 5700000, demandMultiplier: 1.0, standingReq: 11 }, // 蝠鲼级（蓝图=船价×3）
+  { key: 'sbp-bowhead', kind: 'blueprint', refId: 'sbp-bowhead', rarity: 'exotic', basePrice: 54_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 蝠鲼级（蓝图=船价×4；2026-09-13 T4 档上调后跨入 >400 万档：13.5M×4）
   { key: 'sbp-falconet', kind: 'blueprint', refId: 'sbp-falconet', rarity: 'rare', basePrice: 80000, demandMultiplier: 0.65 }, // 鲣鱼级（蓝图=船价×2）
   { key: 'sbp-shrike', kind: 'blueprint', refId: 'sbp-shrike', rarity: 'rare', basePrice: 220000, demandMultiplier: 0.65 }, // 马鲛级（蓝图=船价×2）
   { key: 'sbp-tigershark', kind: 'blueprint', refId: 'sbp-tigershark', rarity: 'rare', basePrice: 480000, demandMultiplier: 0.65 }, // 虎鲨级（蓝图=船价×2）
@@ -382,10 +385,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-bullshark', kind: 'blueprint', refId: 'sbp-bullshark', rarity: 'exotic', basePrice: 52000000, demandMultiplier: 1.0, standingReq: 11 }, // 牛鲨级（蓝图=船价×4）
   { key: 'sbp-tortoise', kind: 'blueprint', refId: 'sbp-tortoise', rarity: 'rare', basePrice: 830000, demandMultiplier: 0.65 }, // 陆龟级（蓝图=船价×2.5）
   { key: 'sbp-hawksbill', kind: 'blueprint', refId: 'sbp-hawksbill', rarity: 'rare', basePrice: 1900000, demandMultiplier: 0.65 }, // 玳瑁级（蓝图=船价×2.5）
-  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 6600000, demandMultiplier: 1.0, standingReq: 11 }, // 玄武级（蓝图=船价×3）
+  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 66_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 玄武级（蓝图=船价×4；2026-09-13 T4 档上调后跨入 >400 万档：16.5M×4）
   { key: 'sbp-flyingfish', kind: 'blueprint', refId: 'sbp-flyingfish', rarity: 'rare', basePrice: 420000, demandMultiplier: 0.65 }, // 飞鱼级（蓝图=船价×2）
   { key: 'sbp-sailfish', kind: 'blueprint', refId: 'sbp-sailfish', rarity: 'rare', basePrice: 1200000, demandMultiplier: 0.65 }, // 旗鱼级（蓝图=船价×2.5）
-  { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 3750000, demandMultiplier: 1.0, standingReq: 11 }, // 剑鱼级（蓝图=船价×3）
+  { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 19_200_000, demandMultiplier: 1.0, standingReq: 11 }, // 剑鱼级（蓝图=船价×4；2026-09-13 T4 档上调后跨入 >400 万档：4.8M×4）
+  { key: 'sbp-megalodon', kind: 'blueprint', refId: 'sbp-megalodon', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 巨齿鲨级（2026-09-13 新增：蓝图=船价×4，225M×4）
 
 // 旧 4 张：pioneer 1200000×3=3,600,000；whale-king 4800000×4=19,200,000；humpback 1350000×3=4,050,000；colossal 5500000×4=22,000,000（材料保留原单不动）
   { key: 'sbp-colossal', kind: 'blueprint', refId: 'sbp-colossal', rarity: 'exotic', basePrice: 22_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 皇带鱼级（蓝图=船价×4；2026-09-09 全蓝图化定价）

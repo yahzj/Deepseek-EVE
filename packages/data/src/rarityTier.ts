@@ -259,6 +259,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-hawksbill': 3,
   'sbp-humpback': 4,
   'sbp-mako': 3,
+  'sbp-megalodon': 4, // 2026-09-13 新增（巨齿鲨级舰船图纸 · 奇货渠道）
   'sbp-pioneer': 4,
   'sbp-sailfish': 3,
   'sbp-sentinel': 4,
@@ -282,6 +283,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sh-hawksbill': 3,
   'sh-humpback': 3,
   'sh-mako': 2,
+  'sh-megalodon': 4, // 2026-09-13 新增（巨齿鲨级战列舰 · 奇货渠道，只收不卖）
   'sh-sailfish': 2,
   'sh-sentinel': 4,
   'sh-shrike': 2,

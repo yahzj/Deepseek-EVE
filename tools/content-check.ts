@@ -945,6 +945,11 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 // 2026-09-13：27 → **42**（船长「护卫，驱逐，巡洋都可以有，你干脆都安排设计吧」⇒ 新增
 // **虫洞专属舰船 15 艘**：A/C/D/E/G 五族各 护卫 T1 / 驱逐 T2 / 巡洋 T3，全部标 `unreleased`、
 // 只由一次性舰船图纸制造；计数是"防手滑"的守卫，改数据时同步改这里与 `hull-class.test.ts`）。
+// 2026-09-13（同日第二批 · 船长「完善战列舰」）：**巨齿鲨级 sh-megalodon 已定案接图纸线**
+// （补掠食者线 `shieldResist` 动能 0.5；市场行 225M `playerBuyable: false` 只收不卖 ⇒ `priceIsk` 仍为 0；
+// 蓝图 sbp-megalodon 900M）；**邓氏鱼级 sh-dunkleosteus 仍是壳体**（不上市场/不接蓝图/不接卡）。
+// 同批：**T4 档价位全面上调**（玄武 16.5M / 蝠鲼 13.5M / 剑鱼 4.8M）+ **全舰工期阶梯重排**（见
+// `docs/design/t4-battleship-20260913.md`）。
 check(SHIPS.length === 42, `舰船应为 42 艘（既有 27 + 虫洞专属 15），实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,

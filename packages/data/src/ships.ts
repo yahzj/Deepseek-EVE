@@ -205,7 +205,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 26_000,
     cycleSeconds: 36,
     oreUnitsPerCycle: 110,
-    priceIsk: 1_900_000,
+    priceIsk: 13_500_000, // 2026-09-13 船长：T4 档全面上调（鲸盟货舰线 = 座头鲸 1.35M ×10；原 1.9M）
     agility: 0.28,
     evasion: 0,
     hitBonus: 0.1,
@@ -635,7 +635,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 19000,
     cycleSeconds: 14,
     oreUnitsPerCycle: 26,
-    priceIsk: 2_200_000,
+    priceIsk: 16_500_000, // 2026-09-13 船长：T4 档全面上调（装甲线 = 玳瑁 1.1M ×15；原 2.2M）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -654,10 +654,13 @@ export const SHIPS: readonly ShipDef[] = [
     description: '重装线的顶点：传闻用整颗小行星的岩壳锻造（限定奇货，需高声望）。',
   },
 
-  // ══════════ T4/T5 主战船「模子」（2026-09-12 船长「T4,T5 可以先立个模子」）══════════════
-  // ⚠ **状态 = 壳体/模子**：只登记**舰体**（档位/槽位/CPU/血量按档位口径外推），
-  //   **暂不上市场、不接蓝图、不接任何卡** ⇒ `priceIsk` 必须为 **0**（定制船口径，
-  //   `content:check`「舰船价格口径」据此判定）。数值**待船长定案**后再决定上架与定价。
+  // ══════════ T4/T5 主战船（2026-09-12 船长「T4,T5 可以先立个模子」）══════════════
+  // ⚠ **状态（2026-09-13 船长四条裁定后分写）**：
+  //   · **巨齿鲨级战列舰（T4）= 已定案**：数值照用 2026-09-12 外推值（档位/槽位/CPU/血量/火力加成
+  //     均落在阶梯上）+ 补掠食者线抗性签名；走**仅图纸制造**（市场行 `playerBuyable: false` 只收不卖
+  //     ⇒ 本字段 `priceIsk` 仍必须为 **0**，`content:check`「舰船价格口径」据此判定）；
+  //     蓝图 `sbp-megalodon` 上市场奇货（900M · 声望 11）。
+  //   · **邓氏鱼级旗舰（T5）= 仍是壳体/模子**：**不上市场、不接蓝图、不接任何卡**，数值待定案。
   //   外推口径（2026-09-12 船长修订）：**槽位 T4 战列舰 = 14（平均值）· T5 旗舰 = 18**
 //   （旧的「总槽位 3~12」契约同日废除——它当初是为驱逐舰设的）；CPU T3 = 350 ⇒ **×1.4/档**；
   //   血量 = 档位阶梯（锚 T2 = 372、**×1.85/档** ⇒ **T4 = 1,273 / T5 = 2,355**）；
@@ -677,8 +680,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.35,
     evasion: 0.06,
     hitBonus: 0.06,
-    powerBonus: 0.85, // 模子待定（武装舰必填；阶梯 牛鲨 0.7 → T4 0.85）
+    powerBonus: 0.85, // 2026-09-13 定案（武装舰必填；阶梯 牛鲨 0.7 → T4 0.85）
     shieldHp: 675,
+    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制；2026-09-13 补上缺失的线签名）
     armorHp: 280,
     hullHp: 318, // 三层共 1,273（T4 档位目标）；武装族定位 = 盾 > 结构 > 甲
     cpu: 490, // T3 350 × 1.4
@@ -689,7 +693,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26_000,
     signatureM: 300,
     scanResMm: 300,
-    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢。',
+    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢（仅可制造）。',
   },
   {
     id: 'sh-dunkleosteus',
@@ -783,7 +787,7 @@ export const SHIPS: readonly ShipDef[] = [
     cargoM3: 14000,
     cycleSeconds: 12,
     oreUnitsPerCycle: 16,
-    priceIsk: 1_250_000,
+    priceIsk: 4_800_000, // 2026-09-13 船长：T4 档全面上调（蜃楼货舰线 = 旗鱼 0.48M ×10；原 1.25M）
     agility: 0.5,
     evasion: 0.28,
     hitBonus: 0.08,
