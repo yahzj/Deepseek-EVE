@@ -25,14 +25,16 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_MOVE,
+  WORMHOLE_TURN_PER_PICK,
   WORMHOLE_TURN_PER_SCAN,
+  wormholeRng,
   gridCellAt,
   gridScanTargets,
   isExitCell,
   signalOfPlace,
   wormholeMakeGrid,
 } from './wormholeGrid'
-import type { HexCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
+import type { HexCell, WormholeGridCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -354,6 +356,19 @@ export interface WormholeRunState {
    * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（evealOf）——不是靠不存。
    */
   grid?: import('./wormholeGrid').WormholeGridState
+  /**
+   * **本趟的确定性种子**（F3b · 2026-09-13）：层内产出的**生成**（残骸堆、遗迹专属判定、战果）
+   * 都按 `(本趟种子, 层, 格坐标)` 散列 ⇒ 同一趟里反复进出同一格结果不变、随档可复现。
+   * ⚠ 不能借用 `state.rng.seed`：那是全局随机流的活种子，会随游戏进行漂移（同格会生成两次不同结果）。
+   * 可选字段（老档没有 ⇒ 退到全局种子，只影响老档的复现性，零迁移）。
+   */
+  seed?: number
+  /**
+   * **随行战利品**（F3b · 2026-09-13）：图纸 / 装备本体这类**不进背包格子**的东西（遗迹专属掉落）。
+   * **撤离成功才入库**（`wormholeSalvage.wormholeDeliverRelics`）——半路全损就一起丢，
+   * 与背包同一条风险线。可选字段（零迁移）。
+   */
+  relics?: string[]
 }
 
 export interface WormholeState {
@@ -417,6 +432,7 @@ export function wormholeStartRun(
       pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
       grid: wormholeMakeGrid(rngSeed, depth),
+      seed: rngSeed,
     },
   }
 }
@@ -572,6 +588,8 @@ export type WormholeActivateEffect =
   | { kind: 'excavate'; key: string }
   /** 虫洞谜质：取回后本趟内为我方提供增强（效果待船长裁定，F3c） */
   | { kind: 'matter'; key: string }
+  /** **遗迹打捞结束的收尾战**（船长：「打捞结束时，大概率会触发一场高难度战斗」⇒ 70% / 本层威胁 ×1.3） */
+  | { kind: 'ruinsBattle'; key: string }
 
 /**
  * 网格动作的统一结果（`wormholeGridScan` / `wormholeGridTravel` / `wormholeGridActivate` 共用）。
@@ -761,6 +779,9 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
         : cell.place === 'vein'
           ? { kind: 'excavate', key: cell.key }
           : { kind: 'matter', key: cell.key }
+  // 矿脉：激活即**铺出原矿堆**（1~3 堆，确定性）；拾取走 `wormholeTakePile`（网格层每堆 1 回合）。
+  // ⚠ 残骸打捞（墓场/遗迹）**不在这里铺**：那套要打捞器台数与背包容量（需要 ctx），在 `wormholeSalvage` 里。
+  if (effect.kind === 'excavate') wormholeFillVeinPiles(run, grid, cell)
   addLog(
     state,
     'info',
@@ -769,8 +790,22 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
 }
 
-/** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */
-export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
+/**
+ * **给矿脉格铺原矿堆**（1~3 堆；只铺一次，确定性 = `(本趟种子, 层, 格坐标)`）。
+ * 堆本身沿用 `wormholeNodePiles`（虚空母矿、数量随层收益系数），拾取走 `wormholeTakePile`。
+ * 为什么放在 `wormhole.ts` 而不是打捞模块：**它不需要 ctx**（原矿堆不认族、不查打捞器），
+ * 而 `wormhole.ts` 不许 import 打捞模块（会成环）。
+ */
+function wormholeFillVeinPiles(run: WormholeRunState, grid: WormholeGridState, cell: WormholeGridCell): void {
+  if ((cell.piles ?? []).length > 0) return
+  const seed = run.seed ?? run.depth
+  const rng = wormholeRng(seed * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
+  const count = 1 + Math.floor(rng() * 3) // 1~3 堆（与打捞模块的 WORMHOLE_VEIN_PILES_* 同值）
+  const index = Math.abs(cell.q * 13 + cell.r * 29) % 97
+  cell.piles = wormholeNodePiles(seed, run.depth, index, count)
+}
+
+/** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
   empty: '空信息地点',
   graveyard: '舰船墓场',
   ruins: '遗迹',
@@ -1006,6 +1041,11 @@ export function wormholeTakePile(
     return { ok: false, error: '这里没有可拾取的东西。' }
   }
   const pile = piles[pileIndex]!
+  // **网格层：手拾一堆 = 1 回合**（船长口径第 13 条「每捡一堆 +1」；老档线性层的回合已算在节点 cost 里，
+  // 不重复扣）。回合不够 ⇒ 当场拒绝、**不扣**（与其它层内动作同一把尺）。
+  if (grid) {
+    if (run.turnsLeft < WORMHOLE_TURN_PER_PICK) return { ok: false, error: '回合不足：只能撤离。' }
+  }
   const capacity = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
   const merged = mergeIntoBag(run.bag, pile)
   const usage = wormholeBagUsage(ctx, merged, capacity)
@@ -1014,6 +1054,7 @@ export function wormholeTakePile(
   }
   run.bag = merged
   piles.splice(pileIndex, 1)
+  if (grid) run.turnsLeft -= WORMHOLE_TURN_PER_PICK
   const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
   addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（背包 ${usage.used}/${capacity} 格）。`)
   return { ok: true, taken: pile, used: usage.used, capacity }

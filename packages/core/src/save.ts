@@ -947,7 +947,7 @@ function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined 
   const w = asRaw(raw)
   const cardId = typeof w.cardId === 'string' && w.cardId.length > 0 ? w.cardId : null
   const kind =
-    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' ? w.kind : null
+    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' || w.kind === 'ruins' ? w.kind : null
   const depth = cleanPosNum(w.depth)
   const waves = cleanPosNum(w.waves)
   if (!cardId || !kind || depth === undefined || waves === undefined) return undefined
@@ -2524,6 +2524,15 @@ function normalizeState(raw: unknown): GameState {
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
             ...(num(rRaw.desireM) > 0 ? { desireM: Math.round(num(rRaw.desireM)) } : {}),
+            // 本趟确定性种子（F3b：层内产出的生成按它散列；坏值/缺省 ⇒ 不写，退回全局种子）
+            ...(Math.floor(num(rRaw.seed)) !== 0 ? { seed: Math.floor(num(rRaw.seed)) } : {}),
+            // 随行战利品（遗迹专属掉落：图纸/装备；撤离成功才入库）：只留非空字符串
+            ...(Array.isArray(rRaw.relics)
+              ? (() => {
+                  const list = rRaw.relics.filter((x): x is string => typeof x === 'string' && x.length > 0)
+                  return list.length > 0 ? { relics: list } : {}
+                })()
+              : {}),
             // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
             ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0

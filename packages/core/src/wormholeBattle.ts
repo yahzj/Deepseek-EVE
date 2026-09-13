@@ -29,6 +29,7 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+import { wormholeDeliverRelics, wormholeGrantShipSpoils, wormholeSalvageAt } from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
 
@@ -72,6 +73,11 @@ export function wormholeStartBattle(
       return { ok: false, error: '本层还没走完：先处理完层内节点。' }
     }
     if ((run.bossCleared ?? 0) >= run.depth) return { ok: false, error: '本层守卫已经清掉了。' }
+  } else if (kind === 'ruins') {
+    // **遗迹收尾战**（F3b）：打捞结束时触发；网格层必须站在遗迹格上、且那格已经捞空
+    if (!grid) return { ok: false, error: '遗迹收尾战只在网格层成立。' }
+    if (here?.place !== 'ruins') return { ok: false, error: '这里不是遗迹。' }
+    if ((here.piles ?? []).length > 0) return { ok: false, error: '遗迹还没打捞完：先捞空再打。' }
   } else if (run.phase !== 'extracting') {
     return { ok: false, error: '还没进入撤离相位。' }
   }
@@ -102,9 +108,22 @@ export function wormholeActivateAt(
   state: GameState,
   ctx: SimContext,
   atGameMs?: number,
-): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind } {
+): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind; taken?: number } {
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
+  // **打捞格走打捞入口**（F3b）：墓场/遗迹的"激活"其实是**打捞作业**——要打捞器、
+  // 一次回收台数 的堆、遗迹捞空还要掷收尾战；那套逻辑需要 ctx（打捞器台数/背包容量）与目录，
+  // 故放在 `wormholeSalvage` 里，这里只做分流（`wormhole.ts` 不许 import 那个模块）。
+  const here = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+  if (here && (here.place === 'graveyard' || here.place === 'ruins')) {
+    const s = wormholeSalvageAt(state, ctx)
+    if (!s.ok) return { ok: false, error: s.error }
+    const effect = s.effect
+    if (!effect || effect.kind !== 'ruinsBattle') return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0 }
+    const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
+    if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
+    return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }
+  }
   const r = wormholeGridActivate(state)
   if (!r.ok) return { ok: false, error: r.error }
   const effect = r.effect
@@ -206,9 +225,11 @@ function wormholeBattleReport(
     ? `第 ${run.depth} 层守卫`
     : kind === 'extract'
       ? '撤离拦截'
-      : run.grid
-        ? `第 ${run.depth} 层地点`
-        : `第 ${run.depth} 层节点`
+      : kind === 'ruins'
+        ? `第 ${run.depth} 层遗迹守军`
+        : run.grid
+          ? `第 ${run.depth} 层地点`
+          : `第 ${run.depth} 层节点`
   // 尾巴（与远征/遭遇同款口径）：船体维修装置消耗——洞内同样吃这套后勤，不写就等于白用
   const repair = repairUsageText(battle, ctx)
   const tail = repair.length > 0 ? ` · 船体维修装置${repair}` : ''
@@ -313,6 +334,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
         (isk > 0 ? `（按基础价约 ${isk.toLocaleString('zh-CN')} ISK）` : '') +
         `，第 ${run.depth} 层撤离。`,
     )
+    // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
+    if ((run.relics ?? []).length > 0) wormholeDeliverRelics(state, ctx, run.relics ?? [])
     state.wormhole.run = null
     return
   }
@@ -324,6 +347,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 网格层的地点战：回合已在"激活地点"那一步扣掉、地点也已记进 `activated` ⇒ 这里只报账
   // （地点收益——墓场/遗迹的打捞、矿脉的母矿、谜质的增强——在 F3b/F3c 接）
   if (run.grid) {
+    // 舰船信号的战果：打赢**固定**给残骸 2 堆 + 稀有残骸 1 堆（船长口径；放不下的留在格上）
+    if (kind === 'node') wormholeGrantShipSpoils(state, ctx)
     if (run.turnsLeft <= 0) addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`)
     return
   }
@@ -381,7 +406,14 @@ export function wormholeBattleViewOf(
     if (u.side !== 'foe' || u.hp.s + u.hp.a + u.hp.h <= 0) continue
     foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
   }
-  const kindLabel = spec.kind === 'boss' ? '层末守卫' : spec.kind === 'extract' ? '撤离拦截' : `第 ${spec.depth} 层`
+  const kindLabel =
+    spec.kind === 'boss'
+      ? '层末守卫'
+      : spec.kind === 'extract'
+        ? '撤离拦截'
+        : spec.kind === 'ruins'
+          ? `第 ${spec.depth} 层遗迹守军`
+          : `第 ${spec.depth} 层`
   return {
     battle,
     anomaly,
