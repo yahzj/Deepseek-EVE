@@ -536,7 +536,7 @@ export interface BattleState {
     /** 洞内敌卡 id（`wh-*`，见 `packages/data/src/wormholeFoes.ts`） */
     cardId: string
     depth: number
-    kind: 'node' | 'boss' | 'extract'
+    kind: 'node' | 'boss' | 'extract' | 'ruins'
     /** 本节点打几波（同一编成分波进场；撤离战恒 1 波） */
     waves: number
   }

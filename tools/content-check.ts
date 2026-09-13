@@ -101,6 +101,10 @@ securityZoneOf,
   itemReleased,
   // 2026-09-13：洞内敌卡轮换表（与 data 清单、内容侧契约三处同序；见「虫洞不可见闸门」）
   WORMHOLE_FOE_CARD_IDS as coreWhIds,
+  // 2026-09-13 F3b：按族掉落池（装备/装备图纸/舰船图纸；五族池非空契约）
+  WORMHOLE_FAMILIES,
+  wormholeFamilyPoolGaps,
+  wormholeFamilyPoolOf,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -3140,11 +3144,39 @@ for (const m of MODULES) {
         `虫洞不可见闸门：以下**玩家可见**内容里出现了「虫洞」字样（施工期文案不得提及虫洞）：${textLeaks.join('、')}`,
       )
     }
+    /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：
+     * 五族（A/C/D/E/G）各要有一池「装备本体 + 装备图纸 + 舰船图纸」——缺一族就有一整族拿不到东西
+     * （E 族此前正是这个状态，靠补第五张洞内卡 `wh-titan-echo` 才通）。池本身由 core 从目录按 id
+     * 前缀派生（`wormholeFamilyPoolOf`），这里断言"派生出来必须非空"，顺带把 id 前缀约定钉成契约。 */
+    const poolCtx = buildSimContext()
+    const poolGaps = wormholeFamilyPoolGaps(poolCtx)
+    if (poolGaps.length > 0) {
+      errors.push(`虫洞按族池契约：${poolGaps.join('、')} —— 该族的洞内掉落会空池（见设计稿 §11.6）`)
+    }
+    const poolCounts = WORMHOLE_FAMILIES.map((f) => {
+      const p = wormholeFamilyPoolOf(poolCtx, f)
+      return `${f} ${p.modules.length}/${p.moduleBlueprints.length}/${p.shipBlueprints.length}`
+    }).join(' · ')
+    // **无孤儿**：所有 `mod-wh-` / `bp-wh-` / `sbp-wh-` 内容都必须落进某一族池（族标记写错一个字母
+    // ⇒ 那件内容**永远不会掉出来**，而且不会有任何别的报错——这正是要机器守的地方）。
+    const pooled = new Set<string>()
+    for (const f of WORMHOLE_FAMILIES) {
+      const p = wormholeFamilyPoolOf(poolCtx, f)
+      for (const id of [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints]) pooled.add(id)
+    }
+    const orphans: string[] = []
+    for (const id of poolCtx.modules.keys()) if (id.startsWith('mod-wh-') && !pooled.has(id)) orphans.push(id)
+    for (const id of poolCtx.blueprints.keys()) if (id.startsWith('bp-wh-') && !pooled.has(id)) orphans.push(id)
+    for (const id of poolCtx.shipBlueprints.keys()) if (id.startsWith('sbp-wh-') && !pooled.has(id)) orphans.push(id)
+    if (orphans.length > 0) {
+      errors.push(`虫洞按族池契约：这些内容没落进任何族池（族标记写错了？⇒ 永远掉不出来）：${orphans.join('、')}`)
+    }
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     console.log(
       `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
         ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
+        ` · 按族池（装备/装备图/舰船图）${poolCounts}` +
         ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
         ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
     )

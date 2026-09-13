@@ -2443,7 +2443,7 @@ let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
 export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
-  spec: { depth: number; kind: 'node' | 'boss' | 'extract'; waves: number; strengthMul?: number },
+  spec: { depth: number; kind: 'node' | 'boss' | 'extract' | 'ruins'; waves: number; strengthMul?: number },
 ): AnomalyDef {
   /**
    * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
@@ -2492,7 +2492,7 @@ export function startFleetBattleFor(
    */
   wormhole?: {
     depth: number
-    kind: 'node' | 'boss' | 'extract'
+    kind: 'node' | 'boss' | 'extract' | 'ruins'
     waves: number
     strengthMul?: number
   },

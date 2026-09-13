@@ -252,11 +252,18 @@ export const WORMHOLE_TURN_PER_MOVE = 1
 export const WORMHOLE_TURN_PER_SCAN = 1
 /** 激活一个地点消耗（船长：打捞/挖矿/战斗等各 1 回合） */
 export const WORMHOLE_TURN_PER_ACTIVATE = 1
+/**
+ * 手动拾取一堆消耗（船长口径第 13 条「每捡一堆 +1」）。
+ * ⚠ 只用于**手拾**（矿脉的虚空母矿、留给玩家的散堆）；**残骸打捞**走打捞器口径——
+ * 一次动作（1 回合）回收 = 打捞器台数 的堆（船长 2026-09-13：「每个打捞器每次能回收 1 堆残骸」
+ * ⇒ 总回合 = ⌈堆数 ÷ 台数⌉）。
+ */
+export const WORMHOLE_TURN_PER_PICK = 1
 
 /* ═══════════ 四、确定性生成（同 seed+depth ⇒ 同盘） ═══════════ */
 
 /** 轻量确定性随机（与 `wormholeMakeNode` 同款口径：纯函数、不占存档 rng、可复现） */
-function makeRng(seed: number): () => number {
+export function wormholeRng(seed: number): () => number {
   let s = (Math.floor(seed) % 2147483647) || 1
   if (s <= 0) s += 2147483646
   return () => {
@@ -307,7 +314,7 @@ export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
  * 5. 残骸信号再按 70/30 分墓场/遗迹。
  */
 export function wormholeMakeGrid(seed: number, depth: number): WormholeGridState {
-  const rng = makeRng(seed * 7919 + depth * 104729)
+  const rng = wormholeRng(seed * 7919 + depth * 104729)
   const radius = wormholeGridRadiusFor(depth)
   const all = hexDiskCells(radius)
   const outer = all.filter((c) => hexDistance(c, { q: 0, r: 0 }) === radius)
