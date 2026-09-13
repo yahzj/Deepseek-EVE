@@ -55,7 +55,13 @@
   要加字段先在群里/汇报里说一声，别默默改（一号这边有用例钉着）。
 - 只改 `BattleScreen.tsx` + `styles.css`；**别顺手改** `panels/Wormhole.tsx`（一号在改：入洞门槛/锁定/暂停）。
 - 自测四条：`npm run typecheck` · `npm run test -w @whale/core` · `npm run content:check` · `npm run build`，
-  **全绿**再合入；UI 改动给**无头 Chrome + CDP 的实测读数 + 截图**（存 `tools/_ui-artifacts/`，不入库）。
+  **全绿**再合入。
+  > ~~UI 改动给**无头 Chrome + CDP 的实测读数 + 截图**（存 `tools/_ui-artifacts/`，不入库）。~~
+  > ⇒ **2026-09-13 船长裁定：删除本句**（原话「UI 改动给无头 Chrome + CDP 的实测读数 + 截图（存 tools/_ui-artifacts/）
+  > 这条规则写在哪的？**我从没要求过**」）。依据：该流程源自一号交接件（`handoff-20260910-session-turnover.md:125` /
+  > `handoff-20260911-to-new-pilot1.md:211`），**无任何仓级权威文档把它写成必须**；船长 2026-09-11 已就同一件事
+  > 裁定「乙」（见 `development-conventions-changelog.md` 顶部该条，已入 `AGENTS.md` §1 末条：验证标注**只在容易被
+  > 误读的场合**才写）。⇒ **界面改动以"四连全绿"为准**，观感由船长本地查看；需要时才按需取证。
 - 完成后：D2 侧解冲突 → 确认主树干净 → merge 回 main → D2 追平 main，并在 `docs/roadmap.md` 顶部补一条
   （写清：改了哪些文件 / 行为变化 / 验收读数 / 已知取舍）。
 
