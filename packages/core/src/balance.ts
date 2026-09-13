@@ -71,6 +71,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   repair: {
     // P2 定稿（2026-09-05）：维修费 =（甲缺失+结构缺失 HP）× perHpCost × 科技档权重（L1×0.4…L4×1.4）
     perHpCost: 300,
+    // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：
+    // **两条用件路径共用同一处系数** —— ① 直接使用（手动 / 遇袭自动修 / 重复清剿自动修，shipyard.kitHealFor）
+    // ② 船体维修装置战斗中每跳（combat.preloadRepairFor 在开战预载时按本系数放大每跳值）。
+    // 无消耗自愈件（异形生体件 repairFree）**不吃**本技能（它不消耗组件，与"修理组件用法"无关）。
+    quickRepairSkillId: 'hull-quick-repair',
+    quickRepairPerLevel: 0.1,
   },
   // 富矿脉基础触发率 3%/分钟（卷B2⑥，2026-09-08 船长定稿：掷点按"循环占用分钟数"缩放；
   // 命中后连续 2 循环 ×3；0 = 禁用，测试用它关富矿保 rng 时序）

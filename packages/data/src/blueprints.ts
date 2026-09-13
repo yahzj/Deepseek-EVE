@@ -362,7 +362,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 30, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（90s→30s）
     buildCostIsk: 600,
     priceIsk: 33000,
-    description: '民用修理组件蓝图：纳米修复材料压装（5 个/批；基础 30 HP×容量增幅）。',
+    description: '民用修理组件蓝图：纳米修复材料压装（5 个/批；基础 5 HP×容量增幅×舰体快修学）。',
   },
   {
     id: 'bp-repairkit-mil',
@@ -376,7 +376,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 40, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（120s→40s）
     buildCostIsk: 1_200,
     priceIsk: 138500,
-    description: '军用修理组件蓝图：高密度纳米修复剂封装（3 个/批；基础 70 HP×容量增幅）。',
+    description: '军用修理组件蓝图：高密度纳米修复剂封装（3 个/批；基础 10 HP×容量增幅×舰体快修学）。',
   },
   {
     id: 'bp-laser-1',

@@ -38,7 +38,9 @@ export interface RefineRow {
  * 弹药/无人机为占位消耗品（市场流通、可囤可回卖，战斗系统开放后启用消耗）；
  * B3（2026-09-05）：wreck = 残骸（打捞回收原料）、fragment = 蓝图碎片（逆向研究素材）；
  * kit（2026-09-05）：修理组件（消耗品，repairRestore = 基础回复 HP 固定值，结构/装甲
- * 各按层容量增幅——2026-09-08 船长纠正：不是百分比） */
+ * 各按层容量增幅 × 舰体快修学——2026-09-08 船长纠正：不是百分比；
+ * **2026-09-13 船长两条指令**：① 基础值对齐「船体维修装置每跳」口径（民用 30→**5**、军用 70→**10**）；
+ * ② 装置每跳也吃舰体快修学 ⇒ **两条用件路径同一套系数与技能**，见 `repair.quickRepairFactor`） */
 export type ItemKind =
   | 'ore'
   | 'mineral'
@@ -473,6 +475,10 @@ export interface BalanceConfig {
   repair: {
     /** P2 定稿：港内维修单价 = ISK / 1 HP（甲+结构缺失按各自满值池折算）× 舰船科技档权重 */
     perHpCost: number
+    /** 舰体快修学技能 id（2026-09-13 起**两条用件路径共用**：直接使用与船体维修装置每跳） */
+    quickRepairSkillId: string
+    /** 该技能每级的修理组件回复量加成（0.1 = +10%/级，满 5 级 +50%） */
+    quickRepairPerLevel: number
   }
   market: MarketBalance
   /** V11 战斗引擎常量（命中/距离动力学/敌方换算/战术/弹药预载） */

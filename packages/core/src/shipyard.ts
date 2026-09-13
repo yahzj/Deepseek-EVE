@@ -17,6 +17,7 @@ import { cancelHaulingOnSwitch } from './hauling'
 import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
 import { countWare, removeWare } from './inventory'
+import { quickRepairFactor } from './repair'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
@@ -324,7 +325,8 @@ export function hullLayerCaps(
   return layerCaps(state, ctx, shipId)
 }
 
-/** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 抢修工程学（+10%/级） */
+/** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 舰体快修学（+10%/级）
+ *  （技能系数走 `repair.quickRepairFactor`——与船体维修装置每跳共用同一处，见该模块头注释） */
 function kitHealFor(
   state: GameState,
   ctx: SimContext,
@@ -332,7 +334,7 @@ function kitHealFor(
   baseHp: number,
   caps: { capA: number; capH: number; baseA: number; baseH: number } | null,
 ): { a: number; h: number } {
-  const skill = 1 + 0.1 * Math.min(5, state.skills.trained['hull-quick-repair'] ?? 0)
+  const skill = quickRepairFactor(state, ctx)
   const aMult = caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1
   const hMult = caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1
   return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
@@ -426,7 +428,7 @@ export function repairWithKitsFor(
   const damaged = (): boolean => fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target
   let used = 0
   let guard = 0
-  while (damaged() && guard < 200) {
+  while (damaged() && guard < 1000) {
     guard += 1
     const kitId = takeRepairKit(state, ctx, shipId, source)
     if (kitId === null) break

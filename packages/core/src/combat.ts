@@ -34,6 +34,7 @@ import type { LairTier } from './lairs'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf } from './instances'
+import { quickRepairFactor } from './repair'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
@@ -1930,6 +1931,9 @@ export function preloadRepairFor(
   const units: import('./state').BattleRepairUnit[] = []
   const need = new Map<string, number>()
   const perUnit = Math.max(1, Math.ceil(maxBattleMs / REPAIR_PULSE_MS)) + 1
+  // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
+  // 共用同一处系数（`repair.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）
+  const quickRepair = quickRepairFactor(state, ctx)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
   // （权重 100%/87%/57%/28%/11%，与"命中/速度"同类；不吃组件故必须收敛，否则叠装失控）
   const freeSeen = new Map<string, number>()
@@ -1953,11 +1957,14 @@ export function preloadRepairFor(
       continue
     }
     const kitId = d.repairKit ?? 'repairkit-civ'
+    // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
+    // 共用同一处系数（`shipyard.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）——
+    // 开战预载时按**开战那一刻的技能**折算成每跳值（与"装配快照 + 组件预载"同一份快照语义）。
     units.push({
       moduleId: d.id,
       kitId,
-      armorPerPulse: Math.max(0, Math.round(d.repairArmorHp ?? 0)),
-      hullPerPulse: Math.max(0, Math.round(d.repairHullHp ?? 0)),
+      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair)),
+      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair)),
       stopped: false,
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)

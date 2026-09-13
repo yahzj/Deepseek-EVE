@@ -502,8 +502,9 @@ export const DRONES: readonly ItemDef[] = [
   },
 ]
 
-/** 修理组件（P2 定稿 2026-09-05：固定回复 × 装甲量增幅——不用“上限百分比”语言；
- * 民用基础 30 HP、军用基础 70 HP（甲、结构各按此值×该层容量增幅）；厚甲船绝对回复更大=甲抗流特征） */
+/** 修理组件（P2 定稿 2026-09-05；**2026-09-13 船长改数值**：基础回复对齐「船体维修装置每跳」口径——
+ * 民用 30 → **5**、军用 70 → **10**；甲、结构各按此值 × 该层容量增幅 × 舰体快修学（与装置侧同吃该技能）。
+ * 厚甲船绝对回复更大 = 甲抗流特征保留） */
 export const REPAIR_KITS: readonly ItemDef[] = [
   {
     id: 'repairkit-civ',
@@ -511,8 +512,8 @@ export const REPAIR_KITS: readonly ItemDef[] = [
     kind: 'kit',
     unitM3: 1,
     baseSellPriceIsk: 3_000,
-    repairRestore: 30,
-    description: '纳米修理组件：基础回复 30 HP（结构/装甲各按此值×容量增幅——甲板/技能越厚回得越多）。野外/回港前应急可用。',
+    repairRestore: 5,
+    description: '纳米修理组件：基础回复 5 HP（结构/装甲各按此值×容量增幅×舰体快修学——甲板/技能越厚回得越多）。野外/回港前应急可用。',
   },
   {
     id: 'repairkit-mil',
@@ -520,8 +521,8 @@ export const REPAIR_KITS: readonly ItemDef[] = [
     kind: 'kit',
     unitM3: 1,
     baseSellPriceIsk: 21_000,
-    repairRestore: 70,
-    description: '军用级纳米修理组件：基础回复 70 HP×容量增幅。远征深空长线作战的标准补给。',
+    repairRestore: 10,
+    description: '军用级纳米修理组件：基础回复 10 HP×容量增幅×舰体快修学。远征深空长线作战的标准补给。',
   },
 ]
 
