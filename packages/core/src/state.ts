@@ -1450,6 +1450,22 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
 
 
 
+/**
+ * **主控"手上那个活动"是否还占着**（船长 2026-09-13 批准实行 · 议案 A）。
+ *
+ * 口径：进洞 = 与采矿 / 打捞 / 扫描 / 交付 / 长途运输 / 掩护巡逻 / 远征 / 亲自开炉**同级的一个主控活动**，
+ * 但它**只在"人在洞里"（`run.attending === true`）时占位**：
+ * - 人在洞里 ⇒ 别的活动一律开不了（本函数给拒因）；
+ * - **临时离开（关掉虫洞界面）⇒ 活动停止、主控立刻释放**（可以去做别的），**虫洞进度原样保存**；
+ * - **返回虫洞**要求主控空闲（`wormhole.ts` 的 `wormholeResume`）。
+ *
+ * ⚠ **不要塞进 `pilotUnavailableReason`**：那个函数还被 `reconcilePilotShip`（每拍自愈）读——
+ * 一旦它因虫洞报"驾驶船不可用"，引擎会去改派驾驶船/补发保底船。故单开一个判据。
+ */
+export function wormholePilotHoldReason(state: GameState): string | null {
+  if (state.wormhole.run?.attending !== true) return null
+  return '人在虫洞里（进虫洞这个活动还在进行）：先撤离或结算本趟；临时离开的话，关掉虫洞界面就能释放主控。'
+}
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0

@@ -296,6 +296,9 @@ export function advanceWormhole(
 ): void {
   const run = state.wormhole.run
   if (!run) return
+  // **临时离开 = 活动停止 ⇒ 洞内一切冻结**（船长 2026-09-13 批准 · 议案 A 第 4 条）：战斗不推进
+  // （不掉血）、撤离战不开打、收口不落地——回来接着打，进度原样在。
+  if (run.attending !== true) return
   if (run.battle) {
     if (freezeBattle) return
     advanceBattleFor(state, ctx, run.battle, run.fleet[0] ?? state.shipId, run.battle.wormhole?.cardId ?? null)

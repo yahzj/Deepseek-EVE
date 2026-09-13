@@ -11,13 +11,19 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
+import { createInitialState, CURRENT_STATE_VERSION, wormholePilotHoldReason } from '../src/state'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { idleAiShipIds } from '../src/ai'
 import { shipBusyLabel } from '../src/activity'
+import type { CommandResult } from '../src/engine'
 import { advanceGame } from '../src/engine'
 import { fightEncounter } from '../src/encounters'
+import { startSalvageOp } from '../src/salvaging'
+import { startMining } from '../src/mining'
+import { goStandbyAt } from '../src/location'
+import { startHauling } from '../src/hauling'
+import { startScan } from '../src/explore'
 import { startExpedition } from '../src/expedition'
 import { wormholeStartBattle } from '../src/wormholeBattle'
 import { addShipToFleet } from '../src/shipyard'
@@ -27,7 +33,9 @@ import {
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
+  wormholeLeave,
   wormholeOutOfTurns,
+  wormholeResume,
   wormholeLayerRewardMul,
   wormholeLayerThreat,
   wormholeMakeNode,
@@ -90,21 +98,87 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13）', () => {
 })
 
 describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
-  it('**（议案待议）主控活动互斥暂不实行**：洞内在跑时，别的活动入口不被虫洞挡（各按自己的前置判）', () => {
-    // 船长 2026-09-13：「主控活动相互互斥这个先不要实行，维持现状，当做一个议案，用作之后优化的」
-    // ⇒ 本用例把"维持现状"钉住：洞内跑着一趟时，远征收下（主控在洞外）、其余入口各自按前置判
-    //   ——将来要实行议案（进洞=主控的一个活动）时，把这条改成"被虫洞挡"即可。
+  it('**议案 A（船长已批准）：人在洞里 ⇒ 主控开不了别的活动**；其余入口同一把尺', () => {
+    // 船长 2026-09-13：「……这个可以实行」⇒ 四条口径：①人在洞里才占主控 ②临时离开=活动停止（进度保存）
+    // ③返回要主控空闲 ④离开期间洞内冻结。本用例钉 ①：进洞后（attending=true）各活动入口被同一条拒因挡住。
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     const b = addShipToFleet(state, T1)
     state.shipId = a
     expect(wormholeEnter(state, ctx, [b], 7).ok).toBe(true) // a=主控留洞外，b 进洞
+    expect(state.wormhole.run!.attending).toBe(true)
+    expect(wormholePilotHoldReason(state) ?? '').toContain('虫洞里')
     const exp = startExpedition(state, 'ano-training', ctx)
-    expect(exp.ok, `洞内在跑时出击被挡了（议案已生效？）：${exp.error ?? ''}`).toBe(true)
-    expect(state.expedition.battle).toBeTruthy()
-    // 归还：把外部那场收掉，避免影响同文件其它用例（各用例档独立，这里只是保险）
-    state.expedition.battle = null
+    expect(exp.ok, `人在洞里还能出击：${exp.error ?? ''}`).toBe(false)
+    expect(exp.error ?? '').toContain('虫洞里')
+    for (const [what, r] of [
+      ['采矿', startMining(state, '__no_such_belt__', ctx)],
+      ['扫描', startScan(state, 'gx-2', ctx)],
+      ['打捞', startSalvageOp(state, 'gx-2', ctx)],
+      ['掩护巡逻', goStandbyAt(state, 'gx-2', ctx)],
+      ['长途运输', startHauling(state, null, null, ctx)],
+    ] as Array<[string, CommandResult]>) {
+      expect(r.ok, `${what} 在洞内还能开`).toBe(false)
+    }
+  })
+
+  it('**口径②③：临时离开 ⇒ 活动停止·进度保存·主控可干活；返回要主控空闲**', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [b], 7).ok).toBe(true)
+    const run = state.wormhole.run!
+    run.turnsLeft = 17 // 造个"进度"读数，稍后验证没丢
+    expect(startExpedition(state, 'ano-training', ctx).ok).toBe(false) // 人在洞里 ⇒ 挡
+    // ② 临时离开 ⇒ 活动停止、主控立刻释放
+    wormholeLeave(state)
+    expect(run.attending).toBe(false)
+    expect(wormholePilotHoldReason(state)).toBeNull()
+    expect(run.turnsLeft).toBe(17) // 进度保存
+    expect(state.wormhole.run).not.toBeNull()
+    const exp = startExpedition(state, 'ano-training', ctx)
+    expect(exp.ok, `离开后主控还是被占着：${exp.error ?? ''}`).toBe(true) // 主控能干活了
+    // ③ 返回要主控空闲：主控在远征 ⇒ 拒绝
+    const back = wormholeResume(state, ctx)
+    expect(back.ok).toBe(false)
+    expect(back.error ?? '').toContain('远征')
+    // 收工后就能回去
     state.expedition.active = false
+    state.expedition.battle = null
+    state.expedition.phase = 'back'
+    expect(wormholeResume(state, ctx).ok).toBe(true)
+    expect(state.wormhole.run!.attending).toBe(true)
+    expect(state.wormhole.run!.turnsLeft).toBe(17) // 进度还在
+  })
+
+  it('**口径④：临时离开期间洞内一切冻结**（战斗不推进、不掉血）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
+    const run = state.wormhole.run!
+    run.pendingNode = { kind: 'combat', waves: 1, pickups: 0, cost: 1 }
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    const tick0 = battle.lastTickGameMs
+    const hp0 = JSON.stringify(battle.units['player']!.hp)
+    wormholeLeave(state) // 临时离开
+    for (let i = 0; i < 6; i++) advanceGame(state, 1_000, ctx, { nowWallMs: 0 })
+    expect(battle.lastTickGameMs, '离开期间洞内战斗还在推进').toBe(tick0)
+    expect(JSON.stringify(battle.units['player']!.hp), '离开期间还在掉血').toBe(hp0)
+    expect(battle.ended).toBeFalsy()
+    // 回来：接着打
+    state.expedition.active = false
+    expect(wormholeResume(state, ctx).ok).toBe(true)
+    // 回来只推一小步：2×T1 打第 1 层本来就吃力，推久了会真分出胜负（那是另一回事）
+    advanceGame(state, 200, ctx, { nowWallMs: 0 })
+    const after = state.wormhole.run?.battle
+    expect(after, '回来一推进战斗就没了（本趟收场？）').toBeTruthy()
+    expect(after!.lastTickGameMs).toBeGreaterThan(tick0)
+    // **不许把"离开的时间"补算成战时间**：回来那一拍之后，战斗时钟必须紧跟当前游戏时刻
+    // （首版没前移时钟 ⇒ 步进基准 `while (state.gameMs > lastTickGameMs)` 一次补算 6 秒 ⇒ 当场团灭）
+    expect(state.gameMs - after!.lastTickGameMs, '回来时把离开的时间补算成战时间了').toBeLessThanOrEqual(250)
   })
 
   it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：走"遭遇"这条不受活动位限制的路', () => {

@@ -76,6 +76,8 @@ export {
   createInitialState,
   // 虫洞锁定判据（洞外开战要避开锁在洞里的锚点船；放 state.ts 避免依赖环）
   shipLockedInWormhole,
+  // 主控活动位判据（人在洞里 ⇒ 别的活动开不了）
+  wormholePilotHoldReason,
 } from './state'
 export type {
   LogKind,
@@ -832,6 +834,10 @@ export {
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
   wormholeEntryBlockReason,
+  // 议案 A（船长 2026-09-13 批准）：临时离开 = 活动停止（进度保存）/ 返回要主控空闲 / 忙态判据
+  wormholeLeave,
+  wormholeResume,
+  shipActivityBusy,
   // 沉船扣格：背包超格时按每格价值从低到高丢货（船长 2026-09-13 裁定）
   wormholeTrimBag,
   // F 批：敌卡按层派生

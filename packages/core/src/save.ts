@@ -2453,6 +2453,10 @@ function normalizeState(raw: unknown): GameState {
                     ...cleanWormholePiles(pn.piles),
                   },
             nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
+            // **人在洞里**（2026-09-13 · 议案 A）：活动位开关。旧档/坏值 ⇒ false（安全侧：不占主控）
+            attending: rRaw.attending === true,
+            // 临时离开时刻（回来时按它前移战斗时钟）：坏值/缺省 = 不写（= 没离开过）
+            ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
             ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0
