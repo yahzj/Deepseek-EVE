@@ -38,10 +38,10 @@ import {
   wormholeLayerThreat,
   wormholeNaturalHp,
 } from '../src/wormhole'
-import { advanceWormhole, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle } from '../src/wormholeBattle'
+import { advanceWormhole, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
-import { gridContentIndex } from '../src/wormholeGrid'
+import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -254,6 +254,45 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(run.battle).toBeNull()
     expect(run.turnsLeft).toBe(turnsBefore - 1) // 收口不重复扣费
     expect(run.grid!.activated).toContain(key)
+  })
+
+  it('**到达即开打**（船长 2026-09-13）：走到舰船信号那一格就地交火，只花「前往」那 1 回合', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const g = run.grid!
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'ship'
+    g.scanned.push(target.key)
+    const turnsBefore = run.turnsLeft
+    const r = wormholeTravelTo(state, ctx, { q: target.q, r: target.r })
+    expect(r.ok).toBe(true)
+    expect(r.autoBattle).toBe(true)
+    expect(run.battle).not.toBeNull()
+    expect(run.battle!.wormhole?.kind).toBe('node')
+    expect(run.turnsLeft).toBe(turnsBefore - 1) // 到达即开打 ⇒ 没有第二次「激活」扣费
+    winBattle(state)
+    settleBattle(state)
+    expect(run.battle).toBeNull()
+    expect(run.turnsLeft).toBe(turnsBefore - 1) // 收口也不重复扣
+  })
+
+  it('开战起不来（编队被掏空）⇒ **整趟移动回滚**：人留在原格、回合不丢、地点没被记成已处理', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const g = run.grid!
+    const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
+    target.place = 'ship'
+    g.scanned.push(target.key)
+    const posBefore = { ...g.pos }
+    const turnsBefore = run.turnsLeft
+    run.fleet = [] // `startFleetBattleFor` 建不出战斗
+    const r = wormholeTravelTo(state, ctx, { q: target.q, r: target.r })
+    expect(r.ok).toBe(false)
+    expect(g.pos).toEqual(posBefore)
+    expect(run.turnsLeft).toBe(turnsBefore)
+    expect(g.visited).not.toContain(target.key)
+    expect(g.activated).not.toContain(target.key)
+    expect(run.battle ?? null).toBeNull()
   })
 
   it('**激活入口格 ⇒ 层末守卫战**（网格层的"打完才放行"落点）', () => {

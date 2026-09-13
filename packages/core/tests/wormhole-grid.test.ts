@@ -126,13 +126,13 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     expect(ruins / wreck).toBeLessThan(WORMHOLE_RUINS_SHARE + 0.15)
   })
 
-  it('四类信号都真的会出现（多 seed 抽样）', () => {
+  it('五类信号都真的会出现（多 seed 抽样）', () => {
     const seen = new Set<WormholeSignal>()
     for (let seed = 1; seed <= 40; seed++) {
       const t = gridTally(wormholeMakeGrid(seed, 3))
       for (const k of Object.keys(t.bySignal) as WormholeSignal[]) if (t.bySignal[k] > 0) seen.add(k)
     }
-    expect([...seen].sort()).toEqual(['radar', 'resource', 'ship', 'wreck'])
+    expect([...seen].sort()).toEqual(['beacon', 'radar', 'resource', 'ship', 'wreck'])
   })
 
   it('信号遮蔽：未知 / 只有信号 / 已知真相 三档（**空地点无信号**）', () => {
@@ -157,17 +157,21 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     if (r2.kind === 'known') expect(r2.place).toBe(unknown.place)
   })
 
-  it('地点 ↔ 信号 的映射：墓场/遗迹同为残骸信号；空地点无信号', () => {
+  it('地点 ↔ 信号 的映射：墓场/遗迹同为残骸信号；空地点无信号；信标自成一类', () => {
     expect(signalOfPlace('empty')).toBeNull()
     expect(signalOfPlace('graveyard')).toBe('wreck')
     expect(signalOfPlace('ruins')).toBe('wreck')
     expect(signalOfPlace('ship')).toBe('ship')
     expect(signalOfPlace('vein')).toBe('resource')
     expect(signalOfPlace('matter')).toBe('radar')
+    expect(signalOfPlace('beacon')).toBe('beacon')
     // 残骸信号按 30% 判遗迹（用固定随机数验证分界，避免抽样抖动）
     expect(pickPlace('wreck', 0)).toBe('ruins')
     expect(pickPlace('wreck', WORMHOLE_RUINS_SHARE - 0.01)).toBe('ruins')
     expect(pickPlace('wreck', WORMHOLE_RUINS_SHARE + 0.01)).toBe('graveyard')
+    // 其余信号一一对应（信标也照此）
+    expect(pickPlace('beacon', 0.5)).toBe('beacon')
+    expect(pickPlace('ship', 0.5)).toBe('ship')
   })
 
   it('终点判定：只有终点格算"该层末守卫处"', () => {
@@ -185,11 +189,12 @@ describe('虫洞网格 · 随档（F3a）', () => {
     expect(wormholeEnter(state, ctx, [a], 7).ok).toBe(true)
     const run = state.wormhole.run!
     const grid = wormholeMakeGrid(7, 1)
-    // 造点"进度"：扫两个、到一个、激活一个
+    // 造点"进度"：扫两个、到一个、激活一个、信标已把入口标出
     grid.scanned.push('1,0', '0,1')
     grid.visited.push('1,0')
     grid.pos = { q: 1, r: 0 }
     grid.activated.push('1,0')
+    grid.exitKnown = true
     run.grid = grid
     const back = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
     expect(back.grid, '网格没随档').toBeTruthy()
@@ -199,8 +204,15 @@ describe('虫洞网格 · 随档（F3a）', () => {
     expect(back.grid!.scanned).toEqual(grid.scanned)
     expect(back.grid!.visited).toEqual(grid.visited)
     expect(back.grid!.activated).toEqual(grid.activated)
+    expect(back.grid!.exitKnown, '信标标出的入口没随档（读档后地图上的入口会消失）').toBe(true)
     expect(back.grid!.cells.length).toBe(grid.cells.length)
     expect(gridTally(back.grid!).empty).toBe(gridTally(grid).empty)
+    // 带堆的格随档（F3b 打捞会往格上放堆）
+    grid.cells[0]!.piles = [{ itemId: 'ore-voidmother', units: 500 }]
+    const back2 = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
+    expect(back2.grid!.cells.find((c) => c.key === grid.cells[0]!.key)!.piles).toEqual([
+      { itemId: 'ore-voidmother', units: 500 },
+    ])
     // 坏值：cells 清空 ⇒ 整块丢弃（该层退回旧口径），但档其余部分照读
     const raw = JSON.parse(serializeSaveFile(state, 1)) as { state: { wormhole: { run: { grid: unknown } } } }
     raw.state.wormhole.run.grid = { radius: 2, cells: [] }

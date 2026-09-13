@@ -88,18 +88,34 @@ export function hexRingAround(center: HexCell, radius: number): HexCell[] {
 
 /* ═══════════ 二、信号与地点（信号遮蔽真相） ═══════════ */
 
-/** **扫描能看到的东西**（四类信号；未扫描 = 未知） */
-export type WormholeSignal = 'wreck' | 'ship' | 'resource' | 'radar'
+/**
+ * **扫描能看到的东西**（五类信号；未扫描 = 未知）。
+ *
+ * ⚠ 2026-09-13 船长追加第五类「**信标信号**」：「新增一个信标信号，到达后有一个漂浮信标，
+ * 会告诉玩家终点位置。」⇒ 它是**导航手段**：给"入口在下潜点随机位置、默认不标出来"这条口径
+ * 配一个玩家能主动找到的指路环节（找到信标 ⇒ 地图上标出下一层入口）。
+ */
+export type WormholeSignal = 'wreck' | 'ship' | 'resource' | 'radar' | 'beacon'
 
-/** **到达后才知道的真相**：空地点 / 舰船墓场 / 遗迹 / 舰船 / 矿脉 / 谜质 */
-export type WormholePlace = 'empty' | 'graveyard' | 'ruins' | 'ship' | 'vein' | 'matter'
+/** **到达后才知道的真相**：空地点 / 舰船墓场 / 遗迹 / 舰船 / 矿脉 / 谜质 / 漂浮信标 */
+export type WormholePlace = 'empty' | 'graveyard' | 'ruins' | 'ship' | 'vein' | 'matter' | 'beacon'
 
-/** 四类信号的权重（**已扣除空地点**后的相对权重；船长确认：空 ≥50%、遗迹 30%） */
+/**
+ * 各类信号的权重（**已扣除空地点**后的相对权重；船长确认：空 ≥50%、遗迹 30%）。
+ *
+ * ⚠ 2026-09-13 F3a-3 加入信标后重新分配（原来 舰船 30 / 残骸 30 / 资源 25 / 雷达 15）：
+ * 信标取 **10**，其余等比例小幅让位。**实测分布**（400 盘/档，`_` 探针跑完即删）：
+ * 层 1（R=2，19 格）空 57.9% · 信标 **1.0 个/盘**；层 3（R=3，37 格）空 54.1% · 信标 **1.0 个/盘**；
+ * 层 5（R=4，61 格）空 52.5% · 信标 **3.0 个/盘**；三档"遗迹 ÷ 残骸信号"分别 30.4% / 29.8% / 29.7%。
+ * 因为格子少 + 最大余数法取整，信标数实际是**定额**（R=2/3 各 1 个、R=4 得 3 个）——
+ * 即"每层都有指路信标"，但它在 19~61 格里落在哪一格仍要靠找。
+ */
 export const WORMHOLE_SIGNAL_WEIGHTS: Readonly<Record<WormholeSignal, number>> = {
-  ship: 30,
-  wreck: 30,
-  resource: 25,
-  radar: 15,
+  ship: 28,
+  wreck: 28,
+  resource: 22,
+  radar: 12,
+  beacon: 10,
 }
 
 /** **空地点占比下限**（船长：「添加空信息地点（目标地点什么都没有）至少要占 50%」） */
@@ -122,6 +138,8 @@ export function signalOfPlace(place: WormholePlace): WormholeSignal | null {
       return 'resource'
     case 'matter':
       return 'radar'
+    case 'beacon':
+      return 'beacon'
   }
 }
 
@@ -180,6 +198,14 @@ export interface WormholeGridState {
   visited: string[]
   /** **已激活**的格（打捞/挖矿/战斗/取谜质各自只算一次，重复来不重复计） */
   activated: string[]
+  /**
+   * **下一层入口是否已被标出**（F3a-3 · 船长 2026-09-13 新增信标信号）。
+   *
+   * 口径：入口默认**不在地图上显示**（船长：「玩家只有到达目标地点后才能知道目标地点的确切信息」）；
+   * 玩家**到达"漂浮信标"那一格**时，信标会指出入口位置 ⇒ 本字段置 `true`，此后地图上一直标着它。
+   * 可选字段（老档没有 = 没被标出 ⇒ 零迁移）。
+   */
+  exitKnown?: boolean
   /** 全部格（真相在这里；对外按 `scanned`/`visited` 决定展示到什么程度） */
   cells: WormholeGridCell[]
 }
@@ -241,7 +267,7 @@ function makeRng(seed: number): () => number {
 
 /** 按权重挑一个信号（权重表可覆写；坏表 ⇒ 回退舰船信号） */
 export function pickSignal(rnd: number, weights: Readonly<Record<WormholeSignal, number>> = WORMHOLE_SIGNAL_WEIGHTS): WormholeSignal {
-  const order: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar']
+  const order: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar', 'beacon']
   const total = order.reduce((s, k) => s + Math.max(0, weights[k] ?? 0), 0)
   if (!(total > 0)) return 'ship'
   let acc = rnd * total
@@ -255,7 +281,7 @@ export function pickSignal(rnd: number, weights: Readonly<Record<WormholeSignal,
 /**
  * **按信号 + 概率定真相**：
  * - `wreck` ⇒ 70% 舰船墓场 / **30% 遗迹**（船长：遗迹概率降到 30%）；
- * - `ship`/`resource`/`radar` ⇒ 一一对应（舰船 / 矿脉 / 谜质）。
+ * - `ship`/`resource`/`radar`/`beacon` ⇒ 一一对应（舰船 / 矿脉 / 谜质 / 漂浮信标）。
  */
 export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
   switch (signal) {
@@ -265,6 +291,8 @@ export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
       return 'vein'
     case 'radar':
       return 'matter'
+    case 'beacon':
+      return 'beacon'
     case 'wreck':
       return rnd < WORMHOLE_RUINS_SHARE ? 'ruins' : 'graveyard'
   }
@@ -301,7 +329,7 @@ export function wormholeMakeGrid(seed: number, depth: number): WormholeGridState
   const emptyKeys = new Set(shuffled.slice(0, emptyCount).map((c) => hexKey(c.q, c.r)))
   // 剩余格按权重分配信号（最大余数法：先按比例取整，余额给余数最大的）
   const pool = others.filter((c) => !emptyKeys.has(hexKey(c.q, c.r)))
-  const order: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar']
+  const order: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar', 'beacon']
   const totalW = order.reduce((s, k) => s + WORMHOLE_SIGNAL_WEIGHTS[k], 0)
   const quota = order.map((k) => {
     const exact = (pool.length * WORMHOLE_SIGNAL_WEIGHTS[k]) / totalW
@@ -339,6 +367,8 @@ export function wormholeMakeGrid(seed: number, depth: number): WormholeGridState
     scanned: [hexKey(start.q, start.r)],
     visited: [hexKey(start.q, start.r)],
     activated: [],
+    // 入口默认不在地图上标出（船长：到达后才知道确切信息）；找到漂浮信标才会置 true
+    exitKnown: false,
     cells,
   }
 }
@@ -352,8 +382,8 @@ export function gridTally(grid: WormholeGridState): {
   bySignal: Record<WormholeSignal, number>
   byPlace: Record<WormholePlace, number>
 } {
-  const bySignal: Record<WormholeSignal, number> = { wreck: 0, ship: 0, resource: 0, radar: 0 }
-  const byPlace: Record<WormholePlace, number> = { empty: 0, graveyard: 0, ruins: 0, ship: 0, vein: 0, matter: 0 }
+  const bySignal: Record<WormholeSignal, number> = { wreck: 0, ship: 0, resource: 0, radar: 0, beacon: 0 }
+  const byPlace: Record<WormholePlace, number> = { empty: 0, graveyard: 0, ruins: 0, ship: 0, vein: 0, matter: 0, beacon: 0 }
   for (const c of grid.cells) {
     byPlace[c.place] += 1
     const s = signalOfPlace(c.place)

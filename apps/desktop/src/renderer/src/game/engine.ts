@@ -141,7 +141,7 @@ import {
   wormholeTakePile,
   wormholeGridActivate,
   wormholeGridScan,
-  wormholeGridTravel,
+  wormholeTravelTo,
   wormholeDescend,
   wormholeExtract,
   wormholeLeave,
@@ -1394,14 +1394,24 @@ export class GameEngine {
     return { ok: r.ok, error: r.error, code: r.code }
   }
 
-  /** 虫洞：**前往**某一格（1 回合；未扫描的格必须先带 `confirmUnknown`，这就是"警告"的落点） */
+  /**
+   * 虫洞：**前往**某一格（1 回合；未扫描的格必须先带 `confirmUnknown`，这就是"警告"的落点）。
+   * ⚠ 走 `wormholeTravelTo`（不是 core 的 `wormholeGridTravel`）：**到达"舰船信号"那一格就地开打**
+   * （船长 2026-09-13「战斗节点到达即开打」）——开战失败整趟移动回滚，玩家留在原格。
+   */
   wormholeTravel(q: number, r: number, confirmUnknown = false): CommandResult {
-    const res = wormholeGridTravel(this.state, { q, r }, { confirmUnknown })
+    const res = wormholeTravelTo(this.state, this.ctx, { q, r }, { confirmUnknown })
     if (res.ok) {
       void this.persist()
       this.notify()
     }
-    return { ok: res.ok, error: res.error, code: res.code }
+    return {
+      ok: res.ok,
+      error: res.error,
+      code: res.code,
+      ...(res.autoBattle ? { autoBattle: true } : {}),
+      ...(res.beacon ? { beacon: true } : {}),
+    }
   }
 
   /** 虫洞：**激活当前地点**（1 回合；舰船信号/入口会就地开战） */

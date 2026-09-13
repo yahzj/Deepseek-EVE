@@ -2421,7 +2421,7 @@ function normalizeState(raw: unknown): GameState {
       const place = typeof row.place === 'string' ? row.place : ''
       if (key.length === 0 || place.length === 0) continue
       const placeOk =
-        place === 'empty' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'vein' || place === 'matter'
+        place === 'empty' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'vein' || place === 'matter' || place === 'beacon'
         ? (place as WormholeGridState['cells'][number]['place'])
         : undefined
       if (!placeOk) continue
@@ -2465,6 +2465,8 @@ function normalizeState(raw: unknown): GameState {
       scanned: keys(g.scanned),
       visited: keys(g.visited),
       activated: keys(g.activated),
+      // 「下一层入口已被漂浮信标标出」（F3a-3）：只在为真时写（老档/未标出 ⇒ 不写 = 零迁移）
+      ...(g.exitKnown === true ? { exitKnown: true } : {}),
       cells,
     }
   }
