@@ -18,8 +18,8 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
-import type { WormholeHoldState } from '../src/wormholeHold'
-import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount } from '../src/wormholeHold'
+import type { WormholeHoldPlacement, WormholeHoldState } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -349,5 +349,127 @@ describe('虫洞 · 货仓格随档（零迁移）', () => {
     const loaded = loadSaveFile(JSON.stringify(raw)).state.wormhole.run!
     expect(loaded.hold).toBeUndefined()
     void ({} as WormholeHoldState)
+  })
+})
+
+describe('虫洞 · 货仓不重叠不变量（船长 2026-09-13 报障「整理后背包出现明显错误」「大件与小件换位后重叠」）', () => {
+  /** 两件**真正占的格**是否相撞（重叠 = 一格被两件占；重复的件 id 也算坏账） */
+  function overlapPairs(hold: WormholeHoldState): string[] {
+    const seen = new Map<string, string>()
+    const bad: string[] = []
+    for (const p of hold.placements) {
+      for (const c of placementCellsOf(p)) {
+        const k = `${c.x},${c.y}`
+        const prev = seen.get(k)
+        if (prev !== undefined && prev !== p.id) bad.push(`${k}:${prev}+${p.id}`)
+        seen.set(k, p.id)
+      }
+    }
+    return bad
+  }
+  /** 件真正占的格（行优先、末行可不满：与 core `placementCells` 同一口径） */
+  function placementCellsOf(p: WormholeHoldPlacement): Array<{ x: number; y: number }> {
+    const fill = placementFill(p)
+    const out: Array<{ x: number; y: number }> = []
+    let k = 0
+    for (let dy = 0; dy < p.h && k < fill; dy++) {
+      for (let dx = 0; dx < p.w && k < fill; dx++) {
+        out.push({ x: p.x + dx, y: p.y + dy })
+        k += 1
+      }
+    }
+    return out
+  }
+  /** 造一份"乱摆"的货仓：3 件货柜 + 若干散货条（含末行不满的 6 格条） */
+  function messyHold(capacity: number): WormholeHoldState {
+    const hold = makeHoldState()
+    let seq = 0
+    const put = (kind: 'box' | 'cargo', w: number, h: number, fill: number | undefined, x: number, y: number): void => {
+      seq += 1
+      hold.placements.push({ id: `p${seq}`, itemId: kind === 'box' ? BOX : WORMHOLE_ORE_ITEM_ID, kind, x, y, w, h, fill })
+    }
+    put('box', 2, 2, undefined, 0, 0)
+    put('box', 2, 2, undefined, 4, 1)
+    put('box', 2, 2, undefined, 1, 3)
+    put('cargo', 3, 2, 6, 3, 0) // 6 格（3×2 整框）
+    put('cargo', 4, 2, 6, 6, 3) // 6 格（4×2 末行只填 2 格）
+    put('cargo', 4, 4, 14, 0, 6) // 14 格（4×4 末行只填 2 格）
+    void capacity
+    return hold
+  }
+
+  it('整理：混排后**没有任何两件重叠**（含末行不满的散货条），且件一个不少', () => {
+    const capacity = 24
+    const hold = messyHold(capacity)
+    const before = hold.placements.length
+    const r = holdCompact(hold, capacity)
+    expect(hold.placements).toHaveLength(before)
+    expect(overlapPairs(hold)).toEqual([])
+    // 24 格放得下：3×4 格货柜 + 6 + 6 + 14 = 38 格 ⇒ 必然放不下，落进 unplaced 的件仍**互不重叠**
+    expect(r.unplaced.length).toBeGreaterThan(0)
+    expect(overlapPairs(hold)).toEqual([])
+  })
+
+  it('整理：容量够时全部排进可用区（大件优先 ⇒ 货柜整块、散货条补齐）', () => {
+    const capacity = 40
+    const hold = makeHoldState()
+    // 3 件 2×2 货柜（12 格）+ 两条散货（6 格 + 6 格）= 24 格 ≤ 40 ⇒ 一件都不该落在可用区之外
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 4, y: 1, w: 2, h: 2 })
+    hold.placements.push({ id: 'b3', itemId: BOX, kind: 'box', x: 3, y: 2, w: 2, h: 2 })
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 1, y: 0, w: 3, h: 2 })
+    hold.placements.push({ id: 'c2', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 6, y: 3, w: 4, h: 2, fill: 6 })
+    const r = holdCompact(hold, capacity)
+    expect(r.unplaced).toEqual([])
+    expect(overlapPairs(hold)).toEqual([])
+    // 每一件都完整落在可用格内（自证式判据：拿 canPlace 排除自己再判一次）
+    for (const p of hold.placements) {
+      expect(canPlace(hold, p.x, p.y, { w: p.w, h: p.h }, capacity, p.id, placementFill(p))).toBe(true)
+    }
+  })
+
+  it('换位：2×2 货柜 ↔ 末行不满的散货条（4×2 只填 6 格）——**旧写法会判"能换"而两件重叠**', () => {
+    const capacity = 12
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 2, y: 0, w: 4, h: 2, fill: 6 })
+    const r = holdSwap(hold, 'b1', 'c1', capacity)
+    // 散货条落到 (0,0) 时第 1 行整行（x=0..3）⇒ 与落到 (2,0) 的货柜**压住两格** ⇒ 必须拒绝
+    expect(r.ok).toBe(false)
+    expect(overlapPairs(hold)).toEqual([])
+    const b = hold.placements.find((p) => p.id === 'b1')!
+    const c = hold.placements.find((p) => p.id === 'c1')!
+    expect({ x: b.x, y: b.y }).toEqual({ x: 0, y: 0 })
+    expect({ x: c.x, y: c.y }).toEqual({ x: 2, y: 0 })
+  })
+
+  it('换位：形状对得上时**真的互换**（1×1 散货 ↔ 2×2 货柜），换完不重叠', () => {
+    const capacity = 24 // 8 列 3 行：货柜落到 (4,0) 要占第 0~1 行，容量得够
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 4, y: 0, w: 1, h: 1 })
+    const r = holdSwap(hold, 'b1', 'c1', capacity)
+    expect(r.ok).toBe(true)
+    expect(overlapPairs(hold)).toEqual([])
+    expect(hold.placements.find((p) => p.id === 'b1')).toMatchObject({ x: 4, y: 0 })
+    expect(hold.placements.find((p) => p.id === 'c1')).toMatchObject({ x: 0, y: 0 })
+  })
+
+  it('移动：**不满的散货条按实占格判**（容量 10 格时 4×2 末行只填 2 格的条放得下）', () => {
+    const capacity = 10 // 8 列 1 行 + 末行 2 格
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 0, y: 0, w: 4, h: 2, fill: 6 })
+    // 带 fill：实占 6 格 ⇒ 末格 (1,1) = 第 10 格 ⇒ 放得下（漏了 fill 会按整框 8 格算、末格 (3,1) = 第 12 格 ⇒ 误拒）
+    expect(holdMove(hold, 'c1', 0, 0, capacity).ok).toBe(true)
+    // 往右挪一格：末格 (2,1) = 第 11 格 > 10 ⇒ 真越界，拒
+    expect(holdMove(hold, 'c1', 1, 0, capacity).ok).toBe(false)
+    expect({ x: hold.placements[0]!.x, y: hold.placements[0]!.y }).toEqual({ x: 0, y: 0 })
+    // 重叠判据照旧生效：横条挪到货柜身上 ⇒ 拒（初始摆放本身不能重叠，先自证）
+    const bar = makeHoldState()
+    bar.placements.push({ id: 'c2', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 0, y: 0, w: 6, h: 1 })
+    bar.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 6, y: 0, w: 2, h: 2 }) // 摆在 (6,0)，与横条不挨着
+    expect(overlapPairs(bar)).toEqual([])
+    expect(holdMove(bar, 'c2', 2, 0, 16).ok).toBe(false)
+    expect(overlapPairs(bar)).toEqual([])
   })
 })

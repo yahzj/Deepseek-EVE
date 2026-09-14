@@ -1855,6 +1855,23 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
  * - 散货条由 core `wormholeHoldSyncCargo` 与 `run.bag` 对齐（数量变了就重放，**先试原位**保住玩家摆好的位置）；
  * - 超载（沉船后格数变小）⇒ 顶部红条 + 「一键抛到容量内」；抛弃**永远手动**（船长裁定 8）。
  */
+/**
+ * **抓取偏移**：玩家是抓住块内**第几格**开始拖的（列 dx / 行 dy）。
+ *
+ * 为什么必须有它（船长 2026-09-13 报障「如果不是拖拽左上角会提示[这里放不下]」）：
+ * 拖拽落点事件给的是**鼠标压着的那一格**；件的新左上角 = 落点 − 抓取偏移。
+ * 少了这一步，抓右下角拖一个 2×2 货柜就会按"左上角落在右下角那格"去判 —— 必然越界。
+ */
+function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: number, clientY: number): { dx: number; dy: number } {
+  const r = el.getBoundingClientRect()
+  if (r.width <= 0 || r.height <= 0) return { dx: 0, dy: 0 }
+  const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
+  return {
+    dx: clamp(Math.floor(((clientX - r.left) / r.width) * w), w - 1),
+    dy: clamp(Math.floor(((clientY - r.top) / r.height) * h), h - 1),
+  }
+}
+
 function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const ctx = engine.ctx
@@ -1866,9 +1883,18 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
 const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const [discardAsk, setDiscardAsk] = useState<{ id: string; units: number } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  /** 抓起时压住的是块内哪一格（见 `grabOffsetOf`）：落点要减掉它，抓哪一格拖都算数 */
+  const grabRef = useRef({ dx: 0, dy: 0 })
   const cols = WORMHOLE_HOLD_COLS
-  const rows = holdRows(info.capacity, cols)
   const placements = run.hold?.placements ?? []
+  /**
+   * **行数要够到"实际摆放件"**（不能只按容量算）：整理时**放不下的件会被排到可用区之外**
+   * （core `holdCompact`：先保彼此不重叠，再由界面提示抛货）——只按容量算行数，这些件会跑到格子外**看不见**。
+   */
+  const rows = Math.max(
+    holdRows(info.capacity, cols),
+    placements.reduce((m, p) => Math.max(m, p.y + p.h), 0),
+  )
   const boxes = placements.filter((p) => p.kind === 'box').length
   /** 散货**件**（一件一格：船长 2026-09-13 深夜口径；按物品名 + 位置排序，列表稳定不跳） */
   const cargoPieces = placements
@@ -1896,7 +1922,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
       setDragId(null)
       return
     }
-    const r = engine.wormholeHoldMove(id, x, y)
+    const g = grabRef.current
+    const r = engine.wormholeHoldMove(id, x - g.dx, y - g.dy)
     if (!r.ok) onToast(r.error ?? '这里放不下。', true)
     setDragId(null)
   }
@@ -1933,7 +1960,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           </button>
         </div>
       ) : null}
-      <div className="app-wh-hold-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      <div
+        className="app-wh-hold-grid"
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
+      >
         {Array.from({ length: rows * cols }, (_, i) => {
           const x = i % cols
           const y = Math.floor(i / cols)
@@ -1966,6 +1996,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     : '空位：可放货柜'
               }
               draggable={isOrigin}
+              onPointerDown={(e) => {
+                if (isOrigin && p) {
+                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                }
+              }}
               onDragStart={() => {
                 if (isOrigin) setDragId(p!.id)
               }}
@@ -2004,7 +2039,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
          * 块**自己就是拖拽/点击/落点**（不再只能抓左上角那格）；落到别人身上 = `dropAt` 里换位。
          * 标签写成底部小药丸（带底色）⇒ **不再被图标压住**（船长报的"数量被图标遮住"）。
          */}
-        <div className="app-wh-hold-figures" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+        <div
+          className="app-wh-hold-figures"
+          style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
+        >
           {placements.map((p) => {
             const def = ctx.items.get(p.itemId)
             const key = itemIconOf(p.itemId, def?.kind)
@@ -2027,6 +2065,9 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
                 }
                 draggable
+                onPointerDown={(e) => {
+                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                }}
                 onDragStart={() => setDragId(p.id)}
                 onDragEnd={() => setDragId(null)}
                 onDragOver={(e) => {
