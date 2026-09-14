@@ -302,12 +302,12 @@ export function startUnboxRun(
 ): CommandResult {
   // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
   if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '拆解台随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
+    return { ok: false, error: '精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const def = ctx.items.get(boxItemId)
   if (!def) return { ok: false, error: `未知物品：${boxItemId}。` }
   if (def.kind !== 'container') {
-    return { ok: false, error: `「${def.name}」不是货柜——拆解台只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。` }
+    return { ok: false, error: `「${def.name}」不是货柜——「货柜拆解」只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。` }
   }
   if (oreAvailable(state, boxItemId) <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
@@ -325,7 +325,7 @@ export function startUnboxRun(
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
-      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入拆解台。` }
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入「货柜拆解」。` }
     }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
