@@ -2820,41 +2820,24 @@ export function startBattleFor(
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
   // **开战预载量**（F3c B2 · 谜质「弹药回收装置」）：记一份，战后按「预载 − 余额」算这一场打出去多少
   battle.ammoLoaded = { ...battle.ammo }
-  // 机群生存池（2026-09-10 船长「无人机可被击落」）：按武器条目下标建池——只有 src='drone'
-  // 的条目参战；机型三层血/抗性/闪避取自物品本体（DroneDefense，四型定位契约见 data/droneRoles.ts）
-  const pools: Record<number, import('./state').DronePoolEntry> = {}
+  // 机群生存池（2026-09-10 船长「无人机可被击落」）：**逐舰**建池（2026-09-14 船长「逐舰机群」），
+  // 键 = `舰tag:武器下标`；只有 src='drone' 的条目参战。
+  const pools: Record<string, import('./state').DronePoolEntry> = {}
   // 无人机线技能（2026-09-10 船长）：耐久学（基础档）与强化学（进阶档）**乘算**放大三层血
   // （"全血条"）、规避学提闪避（封顶 0.9）
   const durMul =
     (1 + DRONE_SKILL.durabilityPerLevel * droneSkillLv(state, 'drone-durability')) *
     (1 + DRONE_SKILL.reinforcePerLevel * droneSkillLv(state, 'drone-reinforce'))
   const evaMul = 1 + DRONE_SKILL.evasionPerLevel * droneSkillLv(state, 'drone-evasion')
-  me.weapons.forEach((w, i) => {
-    if (w.src !== 'drone' || !w.artId) return
-    const d = ctx.items.get(w.artId)?.defense
-    pools[i] = {
-      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
-      a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
-      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (me.droneHullBonusPct ?? 0)))),
-      alive: true,
-      artId: w.artId,
-      evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
-      ...(d
-        ? {
-            resists: {
-              ...(d.shieldResist ? { shield: d.shieldResist } : {}),
-              ...(d.armorResist ? { armor: d.armorResist } : {}),
-              ...(d.hullResist ? { hull: d.hullResist } : {}),
-            },
-          }
-        : {}),
-    }
-  })
+  buildDronePoolsFor(ctx, me, pools, durMul, evaMul)
   if (Object.keys(pools).length > 0) {
     battle.dronePools = pools
     battle.droneLost = {}
-    // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）
-    battle.droneLoadAtStart = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
+    battle.droneLostBy = {}
+    // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）：单船路径只有主控一份
+    const load = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
+    battle.droneLoadAtStart = load
+    battle.droneLoadAtStartBy = { [me.tag ?? 'player']: load }
   }
   // 敌机机群生存池（2026-09-11 机群批）：与敌方编队同建；无 `foeDrones` 的敌舰不建池 ⇒ 零行为变化
   initFoeDronePools(battle, foes);
@@ -3147,36 +3130,22 @@ export function startFleetBattleFor(
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
   // **开战预载量**（F3c B2 · 谜质「弹药回收装置」）：记一份，战后按「预载 − 余额」算这一场打出去多少
   battle.ammoLoaded = { ...battle.ammo }
-  // 机群生存池：**只按主控武器槽建池**（僚舰无人机本批不参战，见 D 批边界）
-  const pools: Record<number, import('./state').DronePoolEntry> = {}
+  // 机群生存池：**逐舰建池**（2026-09-14 船长「逐舰机群」——此前只有主控的机群参战，僚舰的
+  // 无人机条目被 `stepBattle` 跳过；键 = `舰tag:武器下标`，逐舰各自的机型/技能/舱位口径）
+  const pools: Record<string, import('./state').DronePoolEntry> = {}
   const durMul =
     (1 + DRONE_SKILL.durabilityPerLevel * droneSkillLv(state, 'drone-durability')) *
     (1 + DRONE_SKILL.reinforcePerLevel * droneSkillLv(state, 'drone-reinforce'))
   const evaMul = 1 + DRONE_SKILL.evasionPerLevel * droneSkillLv(state, 'drone-evasion')
-  me.weapons.forEach((w, i) => {
-    if (w.src !== 'drone' || !w.artId) return
-    const d = ctx.items.get(w.artId)?.defense
-    pools[i] = {
-      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
-      a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
-      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (me.droneHullBonusPct ?? 0)))),
-      alive: true,
-      artId: w.artId,
-      evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
-      ...(d
-        ? {
-            resists: {
-              ...(d.shieldResist ? { shield: d.shieldResist } : {}),
-              ...(d.armorResist ? { armor: d.armorResist } : {}),
-              ...(d.hullResist ? { hull: d.hullResist } : {}),
-            },
-          }
-        : {}),
-    }
-  })
+  for (const spec of specs) buildDronePoolsFor(ctx, spec, pools, durMul, evaMul)
   if (Object.keys(pools).length > 0) {
     battle.dronePools = pools
     battle.droneLost = {}
+    battle.droneLostBy = {}
+    // 开战清单快照：**逐舰**一份（战后按舰扣各自的机舱清单）；老字段 `droneLoadAtStart` 仍是主控那份
+    const by: Record<string, Record<string, number>> = {}
+    for (const e of fleet) by[e.tag] = { ...(state.fleet[e.shipId]?.droneLoad ?? {}) }
+    battle.droneLoadAtStartBy = by
     battle.droneLoadAtStart = { ...(state.fleet[fleet[0]!.shipId]?.droneLoad ?? {}) }
   }
   initFoeDronePools(battle, foes);
@@ -3305,6 +3274,13 @@ export function battleArcsFor(
     className: string
     /** 主控（视图锚） */
     leader: boolean
+    /**
+     * **本舰的机群机体清单**（2026-09-14 船长「逐舰机群」）：按该舰**存活**的池条目归并
+     * （`artId → 架数`）。界面据此**逐舰**画机体（挂在各舰自己的锚点上）；
+     * 键里带 owner，故主控那条与旧口径同源（同 artId、同架数、同锚点 ⇒ 逐像素不变）。
+     * 缺省/空数组 = 该舰没有机群（或不参战）。
+     */
+    drones: Array<{ artId: string; count: number }>
     hp: { s: number; a: number; h: number }
     hpMax: { s: number; a: number; h: number }
     alive: boolean
@@ -3560,6 +3536,16 @@ export function battleArcsFor(
       hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
       hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
       alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
+      /** 逐舰机群机体清单（见上方类型注释；只算**该舰存活**的池条目） */
+      drones: (() => {
+        const byArt = new Map<string, number>()
+        for (const [k, p] of Object.entries(battle.dronePools ?? {})) {
+          if (!p.alive || !p.artId) continue
+          if (dronePoolOwner(k) !== e.tag) continue
+          byArt.set(p.artId, (byArt.get(p.artId) ?? 0) + 1)
+        }
+        return [...byArt].map(([artId, count]) => ({ artId, count }))
+      })(),
     }
   })
   return {
@@ -3750,8 +3736,14 @@ export function settleDroneLosses(
   battle: import('./state').BattleState | null,
   /** **回收率加成**（谜质「机群回收网」· F3c B2）：按百分点加在既有回收率上，并夹在 100% 以内。缺省 0 = 既有行为。 */
   recoveryBonus = 0,
+  /**
+   * **战损归属**（船长 2026-09-14「按舰归属」）：结算哪条舰的机群——键进 `battle.droneLostBy`。
+   * 缺省 `'player'`（主控）= 旧口径；老档没有 `droneLostBy` ⇒ 回落到全队合计 `droneLost`（零迁移）。
+   */
+  ownerTag = 'player',
 ): string | null {
-  const lost = battle?.droneLost
+  const byOwner = battle?.droneLostBy
+  const lost = byOwner ? byOwner[ownerTag] : ownerTag === 'player' ? battle?.droneLost : undefined
   if (!lost) return null
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return null
@@ -3804,6 +3796,12 @@ export function settleDroneLosses(
   fleetShip.droneLoad = Object.keys(load).length > 0 ? load : undefined
   // 结算后清空战损账本（调用幂等：重复结算不会重复扣；战报/日志已带损失摘要）
   battle!.droneLost = undefined
+  // **逐舰账本也清掉本舰那一份**（2026-09-14「按舰归属」：多舰各结算一次，清掉才能幂等）
+  if (battle!.droneLostBy) {
+    const rest = { ...battle!.droneLostBy }
+    delete rest[ownerTag]
+    battle!.droneLostBy = rest
+  }
 
   // 展示口径：具名清单按价值降序（高价值在前，与"优先回收"的观感一致）
   const lostParts = byValue.map((r) => `${r.name}×${r.lost}`)
@@ -3812,10 +3810,16 @@ export function settleDroneLosses(
   const text = lostParts.join('、')
   const backTxt =
     backParts.length > 0 ? `，其中 ${backParts.join("、")} 已回收修复归队` : ''
+  /**
+   * **战报按舰列出**（船长 2026-09-14「战损按舰归属」）：多舰趟次里每艘舰各出一条战损日志，
+   * 日志抬头点名是哪条舰（单舰/主控那条不写抬头 ⇒ 与旧文案逐字一致）。
+   */
+  const who =
+    ownerTag === 'player' ? '' : `${state.fleet[shipId] ? shipDisplayName(state, ctx, shipId) : ownerTag}：`
   addLog(
     state,
     'warn',
-    `⚠ 机群战损：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
+    `⚠ 机群战损${who ? `（${who.replace(/：$/, '')}）` : ''}：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
   )
   state.droneLossNotice =
     recovered > 0
@@ -4298,20 +4302,20 @@ function pushBattleNotice(b: import('./state').BattleState, text: string): void 
  * - **非哨戒机全被摧毁后，近防炮转而攻击哨戒机**（2026-09-10 船长追加）——
  *   即"机群里还有别的机型就先打别的，只剩哨戒机时才打它"。
  */
-function aliveDroneIndices(
+function aliveDroneKeys(
   b: import('./state').BattleState,
   sentryIds: ReadonlySet<string> = SENTRY_DRONE_IDS,
   sentriesInRange = false,
   sentryOnly = false,
-): number[] {
+): string[] {
   const pools = b.dronePools
   if (!pools) return []
-  const others: number[] = []
-  const sentries: number[] = []
+  const others: string[] = []
+  const sentries: string[] = []
   for (const [k, p] of Object.entries(pools)) {
     if (!p.alive) continue
-    if (p.artId && sentryIds.has(p.artId)) sentries.push(Number(k))
-    else others.push(Number(k))
+    if (p.artId && sentryIds.has(p.artId)) sentries.push(k)
+    else others.push(k)
   }
   // **船长 2026-09-11：关闭"哨戒机可被攻击"的机制**（代码保留、不删）——常驻伴飞的哨戒机停在
   // 母舰旁、**从不飞到敌方** ⇒ **永不被攻击**；**只有出击型（会飞到敌舰旁的那些）才会挨打**。
@@ -4348,7 +4352,56 @@ const PD_SENTRY_RANGE_M = 2_500
 /** 哨戒机机型 id（**2026-09-12 起为"优先打击"而非"排除"**；机型表变化时此处同步） */
 const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry'])
 
-/** 存活放飞条目下标（近防炮选靶 / 开火跳过共用）；`droneTotalCount` 已随"取消单场上限"移除用途 */
+/** 存活放飞条目**键**（近防炮选靶 / 开火跳过共用）——2026-09-14 起返回 `舰tag:下标`（逐舰机群）；
+ *  `droneTotalCount` 已随"取消单场上限"移除用途 */
+
+/** **机群池键**（2026-09-14 船长「逐舰机群」）：`舰tag:武器条目下标`。
+ *  老档的**纯数字键**（只有主控）由 `save.ts` 归一成 `player:<下标>`（零迁移）。 */
+export function dronePoolKey(tag: string, wi: number): string {
+  return `${tag}:${wi}`
+}
+/** 池键 → 所属舰 tag（老档/异常键一律算 `player`） */
+export function dronePoolOwner(key: string): string {
+  const i = key.indexOf(':')
+  return i > 0 ? key.slice(0, i) : 'player'
+}
+
+/**
+ * **建一艘船自己的机群生存池**（2026-09-14 船长「逐舰机群」）：按该舰 `weapons` 里 `src='drone'`
+ * 的条目逐条建（键 = `舰tag:下标`），机型三层血/抗性/闪避取自物品本体（`DroneDefense`）。
+ * `durMul`/`evaMul` = 无人机线技能（耐久学 × 强化学 乘算 / 规避学）的既有系数，由调用方算一次传进来。
+ */
+function buildDronePoolsFor(
+  ctx: SimContext,
+  spec: UnitSpec,
+  pools: Record<string, import('./state').DronePoolEntry>,
+  durMul: number,
+  evaMul: number,
+): void {
+  const tag = spec.tag ?? 'player'
+  spec.weapons.forEach((w, i) => {
+    if (w.src !== 'drone' || !w.artId) return
+    const d = ctx.items.get(w.artId)?.defense
+    pools[dronePoolKey(tag, i)] = {
+      owner: tag,
+      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
+      a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
+      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (spec.droneHullBonusPct ?? 0)))),
+      alive: true,
+      artId: w.artId,
+      evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
+      ...(d
+        ? {
+            resists: {
+              ...(d.shieldResist ? { shield: d.shieldResist } : {}),
+              ...(d.armorResist ? { armor: d.armorResist } : {}),
+              ...(d.hullResist ? { hull: d.hullResist } : {}),
+            },
+          }
+        : {}),
+    }
+  })
+}
 
 /** 本场已击落架数 */
 export function droneLostCount(b: import('./state').BattleState): number {
@@ -4396,7 +4449,6 @@ function pdPriorityOf(artId: string | undefined | null, role?: string): number {
 function resolvePointDefense(
   state: GameState,
   b: import('./state').BattleState,
-  me: UnitSpec,
   foes: UnitSpec[],
   bal: BattleBalance,
   dtMs: number,
@@ -4413,11 +4465,11 @@ function resolvePointDefense(
     foeHitAt !== undefined && b.lastTickGameMs - foeHitAt <= PD_REACTIVE_WINDOW_MS
   // 许可 b：**哨戒机在射程内**（不需令牌）
   const sentryOpen =
-    sentryOk && aliveDroneIndices(b, SENTRY_DRONE_IDS, true, true).length > 0
+    sentryOk && aliveDroneKeys(b, SENTRY_DRONE_IDS, true, true).length > 0
   if (!tokenOpen && !sentryOpen) return
   // **消费制**（船长 2026-09-11）：一次攻击换一次还手（对每艘点防舰各一次）
   if (tokenOpen) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
-  const focus: Array<number | undefined> = b.pdFocus ? [...b.pdFocus] : []
+  const focus: Array<string | undefined> = b.pdFocus ? [...b.pdFocus] : []
   for (let fi = 0; fi < foes.length; fi++) {
     if (!isAlive(b, foes[fi]!.tag)) continue
     let cd = (b.pdCd[fi] ?? period) - dtMs
@@ -4426,19 +4478,29 @@ function resolvePointDefense(
       guard++
       cd += period;
       // 候选 = 存活放飞条目（哨戒机**只在射程内**可选）
-      const cands = aliveDroneIndices(b, SENTRY_DRONE_IDS, sentryOk)
-      if (cands.length === 0) break
-      // **集火**（船长 2026-09-12）：沿用本舰上一次锁定的目标，只要它还活着且仍可选；
-      // 否则按**优先级**重选（哨戒 → 攻坚 → 其余等权）
-      let idx = focus[fi] !== undefined && cands.includes(focus[fi]!) ? focus[fi]! : -1
-      if (idx < 0) {
-        const best = Math.min(...cands.map((i) => pdPriorityOf(pools[i]!.artId)))
-        const tier1 = cands.filter((i) => pdPriorityOf(pools[i]!.artId) === best)
-        idx = pickOne(state.rng, tier1)!
+      const candsAll = aliveDroneKeys(b, SENTRY_DRONE_IDS, sentryOk)
+      if (candsAll.length === 0) break
+      /**
+       * **逐舰各自挨打**（船长 2026-09-14）：本舰先选**一条舰**、再在该舰机群里按优先级选机。
+       * · 选舰 = **等权随机**（与"机型等权抽取"同族，不引入新的距离口径——近防炮打机群本就不看两舰间距）；
+       * · **集火**（船长 2026-09-12）沿用同一把锁：上次锁的**池键**仍可选 ⇒ 继续打那一架；
+       *   否则**重新选舰**再按优先级（哨戒 → 攻坚 → 其余等权）选机。
+       */
+      const owners = [...new Set(candsAll.map(dronePoolOwner))]
+      const lockedKey = focus[fi]
+      const owner =
+        lockedKey !== undefined && candsAll.includes(lockedKey)
+          ? dronePoolOwner(lockedKey)
+          : pickOne(state.rng, owners)!
+      const cands = candsAll.filter((k) => dronePoolOwner(k) === owner)
+      let key = focus[fi] !== undefined && cands.includes(focus[fi]!) ? focus[fi]! : undefined
+      if (key === undefined) {
+        const best = Math.min(...cands.map((k) => pdPriorityOf(pools[k]!.artId)))
+        const tier1 = cands.filter((k) => pdPriorityOf(pools[k]!.artId) === best)
+        key = pickOne(state.rng, tier1)!
       }
-      focus[fi] = idx
-      const pool = pools[idx]!
-      const w = me.weapons[idx]!
+      focus[fi] = key
+      const pool = pools[key]!
       // 命中 = clamp(**下限 10%**, 1, pdAcc − 闪避)（船长 2026-09-12）
       const pHit = clamp(bal.pdHitFloor ?? 0, 1, bal.pdAcc - pool.evasion)
       if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
@@ -4457,14 +4519,21 @@ function resolvePointDefense(
       if (pool.s + pool.a + pool.h <= 0) {
         pool.alive = false
         focus[fi] = undefined // 目标已灭 ⇒ 本舰下一拍重选
-        const artId = w.artId ?? 'drone'
+        // 机型直接从**池条目**取（2026-09-14「逐舰」后不再回查主控武器表：键里有舰 tag，池里有 artId）
+        const artId = pool.artId ?? 'drone'
+        const ownerTag = pool.owner ?? dronePoolOwner(key)
         b.droneLost = { ...(b.droneLost ?? {}) }
         b.droneLost[artId] = (b.droneLost[artId] ?? 0) + 1
-        // 击落演出事件（side='me' + src='drone' + droneDown：UI 出小爆炸/坠落）
+        // **逐舰战损**（船长 2026-09-14「战损按舰归属」）：结算按舰扣各自的机舱清单
+        const byOwner = { ...(b.droneLostBy ?? {}) }
+        byOwner[ownerTag] = { ...(byOwner[ownerTag] ?? {}) }
+        byOwner[ownerTag]![artId] = (byOwner[ownerTag]![artId] ?? 0) + 1
+        b.droneLostBy = byOwner
+        // 击落演出事件（side='me' + src='drone' + droneDown：UI 出小爆炸/坠落）——**tag = 该架所属舰**
         pushBattleFx(b, {
           atMs: b.lastTickGameMs + dtMs,
           side: 'me',
-          tag: 'player',
+          tag: ownerTag,
           type: 'kinetic',
           src: 'drone',
           artId,
@@ -4661,16 +4730,19 @@ function stepBattle(
     const meRt = b.units[unit.tag]
     if (!meRt || !isAlive(b, unit.tag)) continue
     // 主控（`player`）——单船路径与多单位路径的首条都走这里
-    const isLeader = unit.tag === 'player'
     const meAtk = meAtkOf(unit)
     for (let wi = 0; wi < unit.weapons.length; wi++) {
       const w = unit.weapons[wi]!
-      // **僚舰的无人机条目本批不参战**（D 批边界 · 船长 2026-09-13 核准）：我方机群生存池
-      // `b.dronePools` / 点防集火 `b.mePdFocus` 目前按**主控武器槽**建池与锁定，多舰机群
-      // （逐舰建池 + 敌方点防逐舰选靶）留 F 批。跳过而非"无池开火" ⇒ 不会出现打不掉的幽灵机群。
-      if (w.src === 'drone' && !isLeader) continue
-      // 2026-09-10 船长「无人机可被击落」：已被点防打掉的架次不再开火（条目保留占位）
-      if (w.src === 'drone' && b.dronePools?.[wi]?.alive === false) continue
+      /**
+       * **逐舰放飞**（船长 2026-09-14「逐舰机群」；此前只有主控的机群参战、僚舰条目被跳过）：
+       * 本舰的无人机条目查**本舰自己的池**（键 = `舰tag:武器下标`）。
+       * ⚠ 查不到池条目 = 这条无人机**不参战**（该舰没带 / 老档没这类键 / 未建池）——**跳过而非
+       * "无池开火"**，否则会出现打不掉的幽灵机群（这条纪律从 D 批起就有，本轮换成逐舰判定）。
+       */
+      if (w.src === 'drone') {
+        const poolEntry = b.dronePools?.[dronePoolKey(unit.tag, wi)]
+        if (!poolEntry || poolEntry.alive === false) continue // 已被点防打掉的架次不再开火（条目保留占位）
+      }
       const cd = meRt.weapons[wi] ?? 0
       if (cd > 0) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
@@ -5055,7 +5127,7 @@ function stepBattle(
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
   // ⚠ 本批仍只结算**主控**的机群（`b.dronePools` 按主控武器槽建池；僚舰无人机不参战，见 D 批边界）
-  resolvePointDefense(state, b, me, foes, bal, dtMs)
+  resolvePointDefense(state, b, foes, bal, dtMs)
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
   // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）

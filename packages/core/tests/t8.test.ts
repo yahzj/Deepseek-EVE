@@ -6,6 +6,7 @@ import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
+import { RETURN_LEG_MUL } from '../src/balance'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import {
   advanceAutoLoopBounty,
@@ -55,7 +56,7 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     const r = recallExpedition(state, ctx)
     expect(r.ok).toBe(false)
     expect(r.error ?? '').toContain('不可召回')
-    // 返航到港（原去程并入返航 2×单程）→ 空闲停靠母港
+    // 返航到港（返航 = 单程 × RETURN_LEG_MUL，2026-09-14 船长改回 1×）→ 空闲停靠母港
     for (let i = 0; i < 60 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
     expect(state.expedition.active).toBe(false)
     expect(state.awayGalaxy).toBeNull()
@@ -92,7 +93,7 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     expect(state2.awayGalaxy).toBeNull()
   })
 
-  it('从野外驻留（掩护巡逻）出发打悬赏：胜利返航仍按 目标↔母港 2×单程计费（与出发地无关），落点母港', () => {
+  it('从野外驻留（掩护巡逻）出发打悬赏：胜利返航按 目标↔母港 1×单程计费（与出发地无关），落点母港', () => {
     const { state, ctx } = worldWithFarBounty()
     // 先驻留 far（即时就位）
     expect(goStandbyAt(state, 'galaxy-far', ctx).ok).toBe(true)
@@ -105,12 +106,14 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     }
     expect(state.expedition.phase).toBe('back')
     expect(state.expedition.returnReason).toBe('victory')
-    // 胜利返航按 目标↔母港 2×单程重算（与出发地无关）：剩余应接近整段 2×单程
+    // 胜利返航按 目标↔母港 单程 × `RETURN_LEG_MUL` 重算（与出发地无关）：
+    // **2026-09-14 船长「修正倍率回1倍」** ⇒ 现值 = 1×单程（旧口径「去程并入返航 = 2×单程」作废）。
     // （检测步长 500ms + 击杀慢镜结算窗口 ≤1.5s → 容差 5s，2026-09-09 返航起点提前到停表时刻）
     const homeLeg = travelLegMs(state, ctx, shortestTravelMinutes(ctx, 'galaxy-hub', 'galaxy-far'))
     const remain = state.expedition.finishAtGameMs - state.gameMs
-    expect(remain).toBeGreaterThan(homeLeg * 2 - 5_000)
-    expect(remain).toBeLessThanOrEqual(homeLeg * 2)
+    expect(RETURN_LEG_MUL).toBe(1) // 旋钮本身也钉住（要改就得连文档/用例一起改）
+    expect(remain).toBeGreaterThan(homeLeg * RETURN_LEG_MUL - 5_000)
+    expect(remain).toBeLessThanOrEqual(homeLeg * RETURN_LEG_MUL)
     expect(state.awayGalaxy).toBeNull()
     // 返航到港后停靠母港（驻留结束）
     for (let i = 0; i < 120 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
@@ -133,7 +136,7 @@ describe('T8 重复清剿（2026-09-06 重复清剿：自动返航到港后自�
     expect(state.awayGalaxy).toBeNull()
     expect(advanceAutoLoopBounty(state, ctx)).toBeNull() // 返航中：等
     expect(state.expedition.active).toBe(true)
-    // 到港（2×单程走完）→ 空闲且冷却结束 → 自动再出发（巡回第二单）
+    // 到港（返航走完）→ 空闲且冷却结束 → 自动再出发（巡回第二单）
     for (let i = 0; i < 60 && state.expedition.active; i++) advanceGame(state, 60_000, ctx)
     expect(state.expedition.active).toBe(false)
     expect(state.awayGalaxy).toBeNull()

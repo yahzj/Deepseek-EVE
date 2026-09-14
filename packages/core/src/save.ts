@@ -758,6 +758,9 @@ const BATTLE_FIELDS = {
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
   droneLoadAtStart: { kind: 'persist' }, // 开战机群快照（丢了 ⇒ 战后"战损过半"判定失效）
+  // 2026-09-14 船长「逐舰机群」：逐舰战损账本 + 逐舰开战快照（`舰tag → 机型 → 架数`）
+  droneLostBy: { kind: 'persist' },
+  droneLoadAtStartBy: { kind: 'persist' },
   foeDroneRangeBuff: { kind: 'persist' }, // E 族受击增程：一次触发、本场永久（丢了 ⇒ 机制静默重置）
   foeGunRangeBuff: { kind: 'persist' }, // D 族炮台受击增程：同上
   /* ── 运行态（有意不入档，逐条写明理由） ── */
@@ -853,6 +856,9 @@ function cleanBattle(raw: unknown): BattleState | null {
   const foeDronePools = cleanFoeDronePools(b.foeDronePools)
   const droneLost = cleanCountMap(b.droneLost)
   const droneLoadAtStart = cleanCountMap(b.droneLoadAtStart)
+  /** 逐舰账本（键 = 舰 tag；值是 `机型 → 架数`）：2026-09-14「逐舰机群」新增，老档没有 ⇒ undefined */
+  const droneLostBy = cleanCountMapBy(b.droneLostBy)
+  const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy)
   const foeDroneRangeBuff = cleanPosNum(b.foeDroneRangeBuff)
   const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
@@ -926,6 +932,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
     ...(droneLoadAtStart !== undefined ? { droneLoadAtStart } : {}),
+    ...(droneLostBy !== undefined ? { droneLostBy } : {}),
+    ...(droneLoadAtStartBy !== undefined ? { droneLoadAtStartBy } : {}),
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
   }
@@ -999,6 +1007,21 @@ function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined 
   }
 }
 
+/** **两层计数表**（`舰tag → (机型 id → 架数)`；2026-09-14「逐舰机群」）：
+ *  逐层清洗，空的一律省掉（读不到该字段的老档 = undefined ⇒ 调用方按"只有主控那一份"回落）。 */
+function cleanCountMapBy(raw: unknown): Record<string, Record<string, number>> | undefined {
+  const r = asRaw(raw)
+  let out: Record<string, Record<string, number>> | undefined
+  for (const [k, v] of Object.entries(r)) {
+    if (!k) continue
+    const inner = cleanCountMap(v)
+    if (!inner) continue
+    if (!out) out = {}
+    out[k] = inner
+  }
+  return out
+}
+
 /** 单架机群生存池条目（三层血齐备才收；机型/闪避/抗性/备用机字段按形状带过） */
 function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools']>[number] | undefined {
   const e = asRaw(raw)
@@ -1007,6 +1030,8 @@ function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools'
   const h = cleanPosNum(e.h)
   if (s === undefined || a === undefined || h === undefined) return undefined
   const artId = typeof e.artId === 'string' && e.artId.length > 0 ? e.artId : undefined
+  /** 所属舰 tag（2026-09-14「逐舰机群」）：老档没有 ⇒ 由 `cleanDronePools` 按键回填 */
+  const owner = typeof e.owner === 'string' && e.owner.length > 0 ? e.owner : undefined
   const readyAtMs = cleanPosNum(e.readyAtMs)
   const maxS = cleanPosNum(e.maxS)
   const maxA = cleanPosNum(e.maxA)
@@ -1017,6 +1042,7 @@ function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools'
     h,
     alive: e.alive === true,
     ...(artId !== undefined ? { artId } : {}),
+    ...(owner !== undefined ? { owner } : {}),
     evasion: cleanPosNum(e.evasion) ?? 0,
     // 抗性表按形状带过（本工程自己的数据；形状坏了就丢弃 ⇒ 退化为"无抗性"，不会崩）
     ...(e.resists !== null && typeof e.resists === 'object'
@@ -1030,17 +1056,24 @@ function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools'
   }
 }
 
-/** 我方机群生存池（键 = 武器条目下标；JSON 里是字符串键 ⇒ 还原为数字键） */
+/** 我方机群生存池（键 = **`舰tag:武器下标`**；2026-09-14「逐舰机群」起逐舰。
+ *  ⚠ **老档的键是纯数字**（下标，只有主控）⇒ 归一成 `player:<下标>`（零迁移、语义不变）；
+ *  键形不认识的一律丢弃（脏档不能让它崩）。`owner` 一律以**键**为准回填。 */
 function cleanDronePools(raw: unknown): BattleState['dronePools'] | undefined {
   const r = asRaw(raw)
   let out: NonNullable<BattleState['dronePools']> | undefined
   for (const [k, v] of Object.entries(r)) {
-    const idx = Number.parseInt(k, 10)
-    if (!Number.isFinite(idx) || idx < 0) continue
     const entry = cleanDronePoolEntry(v)
     if (!entry) continue
+    let key: string
+    if (/^\d+$/.test(k)) key = `${entry.owner && entry.owner !== 'player' ? entry.owner : 'player'}:${k}`
+    else if (/^[A-Za-z][\w-]*:\d+$/.test(k)) key = k
+    else continue
+    const sep = key.indexOf(':')
+    const wi = Number.parseInt(key.slice(sep + 1), 10)
+    if (!Number.isFinite(wi) || wi < 0) continue
     if (!out) out = {}
-    out[idx] = entry
+    out[key] = { ...entry, owner: key.slice(0, sep) }
   }
   return out
 }

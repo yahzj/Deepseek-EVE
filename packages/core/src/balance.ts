@@ -5,6 +5,20 @@
  */
 import type { BalanceConfig } from './types'
 
+/**
+ * **返航倍率**（船长 2026-09-14：「**修正倍率回1倍**」）：自动返航时长 = 出发点↔落点**单程 × 本值**。
+ *
+ * 两处共用这一个旋钮（乙案：同一把尺）：
+ * - `expedition.returnBackMs` —— 悬赏/远征的自动返航（胜利 / 失利 / 自动撤退 / 超时判负）；
+ * - `explore` 的扫描探索完成后自动返航。
+ *
+ * 沿革：2026-09-05 取消去程时，把去程时间**并入返航**（= 2×单程，总行程时长不变）；
+ * 2026-09-14 船长改判**回 1×**（总行程减半 ⇒ 异星系悬赏的 ISK/h 约 ×1.8~1.9）。
+ * **不吃本值的三处**：母港本地卡固定 120 秒（`mining.localLegMs`）；**手动撤退**即时回港；
+ * AI 副船任务与快递/长途运输各自的时间公式（各自单程，与返航倍率无关）。
+ */
+export const RETURN_LEG_MUL = 1
+
 export const DEFAULT_BALANCE: BalanceConfig = {
   mining: {
     yieldSkillId: 'mining', // 采矿技术：每级 +6% 产量

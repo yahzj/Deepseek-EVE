@@ -722,9 +722,11 @@ export interface BattleState {
     pulses: number
   }
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
-  /** 逐架生存池：键 = 我方武器条目下标（仅 src='drone' 的条目）；开战由 startBattleFor 写入。
-   * 缺省 = 本次改动前已在进行的战斗（照旧打完，不折损） */
-  dronePools?: Record<number, DronePoolEntry>;
+  /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
+   *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。
+   *  ⚠ 键在 2026-09-14 前是**纯数字**（下标，只有主控）——老档由 `save.ts` 归一成 `player:<下标>`。
+   *  缺省 = 本次改动前已在进行的战斗（照旧打完，不折损） */
+  dronePools?: Record<string, DronePoolEntry>;
   /** **敌机机群生存池**（2026-09-11 机群批）——键 = **敌单位 tag**，值 = 与该单位 `src:'drone'`
    *  武器条目**同序**的逐架池（每架一条）；三层血/抗性/回避取自机型表（`FoeDroneDef.defense`）。
    *  开战与每次换波由 `combat.initFoeDronePools` 重建。
@@ -770,14 +772,19 @@ export interface BattleState {
    * 缺省 = 本场没有提示（零行为变化）。
    */
   notices?: Array<{ atMs: number; text: string }>;
-  /** 本场已击落架数（机型 id → 架数）；结算时按此**永久扣除**无人机舱清单 */
+  /** 本场已击落架数（机型 id → 架数，**全队合计**）；结算时按此**永久扣除**无人机舱清单 */
   droneLost?: Record<string, number>
+  /** **逐舰战损**（2026-09-14 船长「战损按舰归属」）：`舰tag → (机型 id → 架数)`。
+   *  `droneLost` 仍是全队合计（老口径不破：战报汇总 / "战损过半"判定都读它）；
+   *  本字段供**按舰结算**（各自扣各自的机舱清单）与按舰战报。**可选**：老档没有 ⇒ 全部算主控。 */
+  droneLostBy?: Record<string, Record<string, number>>
   /** 近防炮调度（当前波）：每舰判定冷却剩余毫秒（与敌编队同序）；缺省 = 无近防炮 */
   pdCd?: number[]
-  /** **近防炮集火锁定**（2026-09-12 船长「改为集火制度」）：每艘点防舰当前锁定的机群条目下标
-   *  （与敌编队同序；`undefined` = 未锁定/目标已灭 ⇒ 下一拍按优先级重选）。
-   *  **可选字段**：旧档/旧战斗没有它 ⇒ 行为 = 每拍按优先级重选（**零迁移**）。 */
-  pdFocus?: Array<number | undefined>
+  /** **近防炮集火锁定**（2026-09-12 船长「改为集火制度」）：每艘点防舰当前锁定的**机群池键**
+   *  （与敌编队同序；`undefined` = 未锁定/目标已灭/换了目标舰 ⇒ 下一拍重选）。
+   *  ⚠ 2026-09-14「逐舰挨打」起，键 = `舰tag:武器下标`（**锁到的是"哪条舰的第几架"**；
+   *  此前是纯数字下标）。**可选字段**：旧档/旧战斗没有它 ⇒ 行为 = 每拍按优先级重选（**零迁移**）。 */
+  pdFocus?: Array<string | undefined>
   /**
    * **我方近防炮集火锁定**（2026-09-12 船长「改为集火制度」+ P-40 乙案「我方侧口径对齐」）：
    * 按**我方武器槽**（`wi`）存当前锁定的敌机（`tag` + 该舰机群池下标），锁定到目标被击落才换靶
@@ -785,8 +792,12 @@ export interface BattleState {
    * **可选字段**：旧档/旧战斗没有它 ⇒ 行为 = 每拍按优先级重选（**零迁移**）。
    */
   mePdFocus?: Array<{ tag: string; idx: number } | undefined>
-  /** 开战时的机群清单快照（机型 id → 架数；用于战后判定"机群战损过半"→ 停重复清剿） */
+  /** 开战时的机群清单快照（机型 id → 架数；用于战后判定"机群战损过半"→ 停重复清剿）
+   *  ⚠ 2026-09-14 起**只是主控那份**（老字段，兼容保留）；逐舰快照见下一条 */
   droneLoadAtStart?: Record<string, number>
+  /** **逐舰机群清单快照**（2026-09-14 船长「逐舰机群」）：`舰tag → (机型 id → 架数)`。
+   *  读不到该字段的老档 ⇒ 只有主控那一份（`droneLoadAtStart`）。 */
+  droneLoadAtStartBy?: Record<string, Record<string, number>>
 }
 
 /** 机群战损结算结果（结构化，2026-09-11 船长「在战斗报告中显示」）：
@@ -866,6 +877,9 @@ export interface BattleReportRecord {
 /** 单架无人机的战斗生存池（开战自机型 DroneDefense 写入；被点防打空即击落）
  * 装备模块阻力/回避随池携带——战斗跨会话续算不依赖当时的仓库/装配状态 */
 export interface DronePoolEntry {
+  /** **所属舰的 tag**（`player` / `ally-1`…；2026-09-14 船长「逐舰机群」）——与池键前缀同源，
+   *  冗余存一份便于按舰分组（点防选靶 / 战报 / 损失归属）。老档缺省 = `player`。 */
+  owner?: string
   s: number
   a: number
   h: number

@@ -25,6 +25,8 @@ import { EXPLORE_EVENTS } from '../src/events'
 import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
 import { anomaly, belt, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { shortestTravelMinutes, travelLegMs } from '../src/travel'
+import { RETURN_LEG_MUL } from '../src/balance'
 
 describe('V13 星图探索：迷雾与剪影', () => {
   let state: GameState
@@ -206,7 +208,13 @@ describe('V13 扫描探索作业', () => {
     expect(isExplored(state, 'galaxy-far')).toBe(true)
     expect(state.awayGalaxy).toBeNull()
     expect(state.logs.some((l) => l.text.includes('扫描完成'))).toBe(true)
-    // 自动返航（2×单程）走完 → 停靠母港
+    /**
+     * **自动返航 = 单程 × `RETURN_LEG_MUL`**（2026-09-14 船长「修正倍率回1倍」：现值 1×单程，与悬赏返航
+     * 共用同一个旋钮；旧口径「去程并入返航 = 2×单程」作废）——这里直接核时长，别只靠"推几步看它到港"。
+     */
+    const oneLeg = travelLegMs(state, ctx, shortestTravelMinutes(ctx, 'galaxy-hub', 'galaxy-far'))
+    expect(state.scanning.finishAtGameMs - state.scanning.startedAtGameMs).toBe(oneLeg * RETURN_LEG_MUL)
+    // 自动返航走完 → 停靠母港
     for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
     expect(state.scanning.active).toBe(false)
     expect(state.scanning.returning).toBe(false)

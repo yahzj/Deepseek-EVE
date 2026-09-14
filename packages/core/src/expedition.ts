@@ -23,6 +23,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
+import { RETURN_LEG_MUL } from './balance'
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import {
   advanceBattleFor,
@@ -83,13 +84,14 @@ function returnBaseGalaxy(state: GameState, ctx: SimContext, fromGalaxy: string)
 }
 
 /** 从"战场星系"转入返航段的统一时长：基准 = 目标星系最近已建成站；
- * 目标星系即基准（母港本地 / 建成站本地）→ 固定 LOCAL_RETURN_MS（调试模式 1 秒）；否则 2×单程（去程并入返航）。
- * 航路不可达时返回 0（调用方用 outMs×2 兜底）。 */
+ * 目标星系即基准（母港本地 / 建成站本地）→ 固定 LOCAL_RETURN_MS（调试模式 1 秒）；
+ * 否则 **单程 × `RETURN_LEG_MUL`**（2026-09-14 船长「修正倍率回1倍」⇒ 现值 1×；旧值 2× 作废）。
+ * 航路不可达时返回 0（调用方用 `outMs × RETURN_LEG_MUL` 兜底）。 */
 function returnBackMs(state: GameState, ctx: SimContext, targetGalaxy: string): { ms: number; base: string } {
   const base = returnBaseGalaxy(state, ctx, targetGalaxy)
   if (base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) return { ms: localLegMs(state, LOCAL_RETURN_MS), base }
   const mins = shortestTravelMinutes(ctx, base, targetGalaxy)
-  const ms = Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * 2 : 0
+  const ms = Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * RETURN_LEG_MUL : 0
   return { ms, base }
 }
 
@@ -591,7 +593,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     exp.eventId = null
     exp.eventFired = false
     const ret = returnBackMs(state, ctx, anomaly.galaxyId)
-    const backMs = ret.ms > 0 ? ret.ms : exp.outMs * 2
+    const backMs = ret.ms > 0 ? ret.ms : exp.outMs * RETURN_LEG_MUL
     const baseName =
       ret.base === HOME_GALAXY_ID
         ? '母港'
@@ -668,7 +670,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const endAtD = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
   exp.returnAtGameMs = endAtD
   const retD = returnBackMs(state, ctx, anomaly.galaxyId)
-  exp.finishAtGameMs = endAtD + (retD.ms > 0 ? retD.ms : exp.outMs * 2)
+  exp.finishAtGameMs = endAtD + (retD.ms > 0 ? retD.ms : exp.outMs * RETURN_LEG_MUL)
   addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
 }
 
@@ -816,7 +818,7 @@ function settleBattleRetreat(
     return
   }
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
-  exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * 2)
+  exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * RETURN_LEG_MUL)
   addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
 }
 
@@ -1169,7 +1171,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     const totalBack =
       exp.returnAtGameMs !== undefined && Number.isFinite(exp.returnAtGameMs)
         ? Math.max(1, exp.finishAtGameMs - exp.returnAtGameMs)
-        : exp.outMs * 2
+        : exp.outMs * RETURN_LEG_MUL
     totalMs = Math.max(1, totalBack)
     percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
   } else if (exp.battle) {

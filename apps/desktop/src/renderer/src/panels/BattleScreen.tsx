@@ -201,10 +201,11 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
    * （`arcs.thrusterCycle`），与「推进器点火中：战斗中机动 +N%」用的 `arcs.thrusterBoost` 同一个单位。
    */
   const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle, arcs?.thrusterCycle) : null
-  /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
+  /** 机群池键（**`舰tag:机型`**）→ 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复）。
+   *  2026-09-14「逐舰机群」：由 core 视图的**逐舰**机体清单（`myUnits[].drones`）建表——此前只有主控那张。 */
   const droneCountOf = new Map<string, number>()
-  for (const w of arcs?.me ?? [])
-    if (w.src === 'drone' && w.artId) droneCountOf.set(w.artId, w.count ?? 1);
+  for (const u of arcs?.myUnits ?? [])
+    for (const d of u.drones ?? []) droneCountOf.set(`${u.tag}:${d.artId}`, d.count);
   /** 敌方机群：敌单位 tag + 机型 → **该舰现存架数**（弹道道次取模要用它；敌我各用各的表，见弹道层） */
   const foeDroneAliveOf = (tag: string, artId: string): number =>
     arcs?.foeDrones?.find((d) => d.tag === tag && d.artId === artId)?.alive ??
@@ -302,8 +303,13 @@ const meSpeedRef = useRef(200)
     openM: number
     nearM: number
     /** `foe` 有值 = 该机群属于**敌方单位 tag**（走 `foePoseAt` 镜像几何；元素键加 `foe:` 前缀）。
-     *  `rangeBuff` = **受击增程已触发**（2026-09-11 船长）：机体后撤到远距阵位（见 `foeDroneStation`）。 */
+     *  `rangeBuff` = **受击增程已触发**（2026-09-11 船长）：机体后撤到远距阵位（见 `foeDroneStation`）。
+     *  `key`/`owner` = **我方**机群的池键（`舰tag:artId`）与所属舰（2026-09-14「逐舰机群」：
+     *  僚舰的机群挂在自己舰位旁 ⇒ 姿态按 `meAnchors` 里该舰的锚算）。 */
     wings: Array<{
+      /** **我方**机群的池键（`舰tag:artId`；敌方那条不需要，走 `foe` 分支） */
+      key?: string
+      owner?: string
       artId: string
       model: DroneModel
       show: number
@@ -312,7 +318,9 @@ const meSpeedRef = useRef(200)
       foe?: string
       rangeBuff?: boolean
     }>
-  }>({ foeSizes: [LAY.MAIN], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [] })
+    /** **我方逐舰锚点**（tag → 锚；2026-09-14「逐舰机群」）：rAF 循环里给僚舰机群取自己的舰位 */
+    meAnchors: Map<string, { x: number; y: number }>
+  }>({ foeSizes: [LAY.MAIN], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [], meAnchors: new Map() })
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -553,15 +561,22 @@ const meSpeedRef = useRef(200)
         for (const w of d.wings) {
           if (w.deck) continue // 收舱（display:none）不写位置
           const elapsed = w.st ? nowMs - w.st.startAt : Number.POSITIVE_INFINITY
+          /**
+           * **逐舰锚**（2026-09-14「逐舰机群」）：僚舰的机群挂在自己舰位旁 ⇒ 姿态按**该舰**的布局算
+           * （把 `me` 换成该舰锚，敌侧锚沿用同一份）。主控那条 = 旧口径的 `layLoop`（逐像素不变）；
+           * 外层盒子的平移仍以主控锚为基准（机体坐标是相对主控锚的差值）。
+           */
+          const own = w.owner && w.owner !== 'player' ? d.meAnchors.get(w.owner) : undefined
+          const layW = own ? { foe: layLoop.foe, me: own } : layLoop
           for (let i = 0; i < w.show; i++) {
             const key = w.foe
               ? `foe:${w.foe}:${w.artId}|${i}`
-              : `${w.artId}|${i}`
+              : `${w.key ?? w.artId}|${i}`
             const el = droneElsRef.current.get(key)
             if (!el) continue
             const pose = w.foe
               ? foePoseAt(w.model, i, w.st, layLoop, elapsed, w.rangeBuff === true)
-              : dronePoseAt(w.model, i, w.st, layLoop, elapsed)
+              : dronePoseAt(w.model, i, w.st, layW, elapsed)
             const t = `translate3d(${(pose.x - layLoop.me.x).toFixed(1)}px, ${(pose.y - layLoop.me.y).toFixed(1)}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
             if (w0.get(key) !== t) {
               el.style.transform = t
@@ -908,11 +923,14 @@ const meSpeedRef = useRef(200)
               foe: true,
             })
           } else {
+            /** **我方**机群：键一律走 `舰tag:机型`（2026-09-14「逐舰机群」——僚舰的机体也在这层，
+             *  击落演出必须找到**它自己那条舰**的机体位次） */
+            const meKey = `${fx.tag ?? 'player'}:${artId}`
             const prevShow =
-              downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
+              downCursor.get(meKey) ?? dronePrevShowRef.current.get(meKey) ?? 1
             const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
-            downCursor.set(artId, lane)
-            const st = droneSortieRef.current.get(artId);
+            downCursor.set(meKey, lane)
+            const st = droneSortieRef.current.get(meKey);
             // **爆炸点与相位无关**（同上，我方一侧对称）：固定取「从攻击阵位（敌舰旁）
             // 往我舰机库口返航 1/3 处」，不随"当前轮次相位"漂移。
             const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
@@ -980,11 +998,14 @@ const meSpeedRef = useRef(200)
               foe: true,
             })
           } else {
+            /** **我方**机群：键一律走 `舰tag:机型`（2026-09-14「逐舰机群」——僚舰的机体也在这层，
+             *  击落演出必须找到**它自己那条舰**的机体位次） */
+            const meKey = `${fx.tag ?? 'player'}:${artId}`
             const prevShow =
-              downCursor.get(artId) ?? dronePrevShowRef.current.get(artId) ?? 1
+              downCursor.get(meKey) ?? dronePrevShowRef.current.get(meKey) ?? 1
             const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
-            downCursor.set(artId, lane)
-            const st = droneSortieRef.current.get(artId);
+            downCursor.set(meKey, lane)
+            const st = droneSortieRef.current.get(meKey);
             // **爆炸点与相位无关**（同上，我方一侧对称）：固定取「从攻击阵位（敌舰旁）
             // 往我舰机库口返航 1/3 处」，不随"当前轮次相位"漂移。
             const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
@@ -1023,8 +1044,10 @@ const meSpeedRef = useRef(200)
        */
       const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
       const aimRowIdx = rowFxTags.indexOf(aimTag)
-      /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点；单船/无人机回落到主控锚）——见上方 meAnchorByTag */
-      const mySrc = isMeShot && fx.src !== 'drone' ? meAnchorByTag.get(fx.tag) : undefined
+      /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点）——见上方 meAnchorByTag。
+       *  ⚠ 2026-09-14「逐舰机群」起**无人机也按发射舰取锚**（fx.tag = 该架所属舰；主控那条仍是 `player`
+       *  ⇒ 单船/主控路径逐像素不变）。此前无人机一律回落主控锚 ⇒ 僚舰放飞的机群弹道会从主控出。 */
+      const mySrc = isMeShot ? meAnchorByTag.get(fx.tag) : undefined
       /** **敌方发射舰的行号**（`rowFxTags` 只含敌方 ⇒ 只在敌方那一支有意义；我方那一支恒 −1） */
       const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
       /** **被瞄准的我方舰**（仅敌方那一支用；缺 `fx.to` 或单船路径 ⇒ undefined ⇒ 回落主控） */
@@ -1087,8 +1110,15 @@ const meSpeedRef = useRef(200)
         // ⚠ 旧版敌机弹道读的是**我方那张表**、又用我方架数 ⇒ 与机体层（读 `foeSortieRef`）的
         //   **时间起点 / 随机阵位 / 道次全对不上** ⇒ 船长实测反馈"弹道和敌机位置不对"。
         const foeDrone = !isMeShot
-        const skey = foeDrone ? `${fx.tag}:${fx.artId}` : fx.artId!
+        /** 键统一成 **`舰tag:机型`**（2026-09-14「逐舰机群」：两侧同构，机体层与弹道层用同一个键） */
+        const skey = `${fx.tag}:${fx.artId}`
         const smap = foeDrone ? foeSortieRef.current : droneSortieRef.current
+        /** 我方**逐舰**布局（僚舰的机群从自己舰位起飞/返航；主控那条 = `layFx` ⇒ 逐像素不变） */
+        const layOwner = foeDrone
+          ? layFx
+          : fx.tag && fx.tag !== 'player'
+            ? { foe: layFx.foe, me: meAnchorByTag.get(fx.tag) ?? layFx.me }
+            : layFx
         if (DRONE_STYLE === 'sortie' && !dm.resident) {
           /**
            * 2026-09-10 船长"弹道发射位置和无人机对不上（小概率）"修复——两处确定性缺陷：
@@ -1103,7 +1133,7 @@ const meSpeedRef = useRef(200)
               )
             : Math.max(
                 1,
-                Math.min(droneCountOf.get(fx.artId!) ?? 1, DRONE_SHOW_MAX),
+                Math.min(droneCountOf.get(skey) ?? 1, DRONE_SHOW_MAX),
               )
           const lane = n % count
           const prev = smap.get(skey)
@@ -1128,8 +1158,8 @@ const meSpeedRef = useRef(200)
             // 已到位：阵位出弹，立即显示
             from = station
           } else if (isMeShot) {
-            // 返航中（我方）：弹道就从无人机当前位置出（与机体一致）
-            from = dronePoseAt(dm, lane, st, layFx, elapsed)
+            // 返航中（我方）：弹道就从无人机当前位置出（与机体一致）——**按所属舰的布局**取姿态
+            from = dronePoseAt(dm, lane, st, layOwner, elapsed)
           } else {
             // 返航中（敌方）：镜像几何——阵位（我方舰旁）→ 敌舰机库口
             const t2 = Math.min(
@@ -1600,13 +1630,20 @@ const meSpeedRef = useRef(200)
      数据源 = 射程弧里已合并的「机型 ×N」无人机条目（src='drone'）；渲染按单位锚点定位，
      未来副本机制的多船舰队只要把友军单位的机群也喂进这一层即可（接口已按单位设计）。
      单轮时序（与弹道同源）：放出 →（去程 0.56s）→ 到阵位即开火 → 立刻掉头返航（0.62s）→ 收舱待命。 */
-  const droneWings = arcs.me
-    .filter((w) => w.src === 'drone' && !!w.artId)
-    .map((w) => {
+  /**
+   * 我方机群机体层（2026-09-14 船长「逐舰机群」）：**逐舰**出机体——数据源 = core 视图里每艘
+   * 编队舰自己的 `myUnits[].drones`（按该舰**存活**池归并）。主控那条与旧口径同源（同 artId、
+   * 同架数、同锚点）⇒ 单船路径与主控路径逐像素不变。
+   * ⚠ 键从 `artId` 改成 **`舰tag:artId`**（与敌方那侧 `${tag}:${artId}` 同构）：机体元素表、
+   *   出击状态表、上一帧机体数表与弹道侧**四处必须用同一个键**，否则击落演出会找不到机体。
+   */
+  const droneWings = arcs.myUnits.flatMap((u) =>
+    (u.drones ?? []).map((d) => {
+      const key = `${u.tag}:${d.artId}`
       // **兜底取机型**（2026-09-12）：漏登记机型时画"未知机型"灰机体 + 名字回退成 id，
       // 不再静默消失（G 族蜂群机曾因漏登记而在战斗里看不见）。
-      const model = droneModelOrFallback(w.artId)
-      const st = droneSortieRef.current.get(w.artId!)
+      const model = droneModelOrFallback(d.artId)
+      const st = droneSortieRef.current.get(key)
       const cycleMs = DRONE_SORTIE_OUT_MS + DRONE_DWELL_MS + DRONE_SORTIE_BACK_MS
       const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
       const phase: 'out' | 'back' | 'deck' = model.resident
@@ -1616,19 +1653,22 @@ const meSpeedRef = useRef(200)
           : elapsed < cycleMs
             ? 'back'
             : 'deck'
-      const show = model.resident ? 1 : Math.max(1, Math.min(w.count ?? 1, DRONE_SHOW_MAX))
+      const show = model.resident ? 1 : Math.max(1, Math.min(d.count, DRONE_SHOW_MAX))
       // 记下本帧渲染的机体数：下一拍的击落演出靠它定位"即将消失的末位机体"（见 fx 消费处）
-      dronePrevShowRef.current.set(w.artId!, show)
+      dronePrevShowRef.current.set(key, show)
       return {
-        artId: w.artId!,
+        key,
+        owner: u.tag,
+        artId: d.artId,
         model,
         phase,
         elapsed,
         st,
         show,
-        total: w.count ?? 1,
+        total: d.count,
       }
-    });
+    }),
+  );
   /** 敌方机群（第二层）：与 `droneWings` 同构——起点换成**敌舰机库口**、阵位在**我方舰旁**（镜像） */
   const foeWings = (arcs.foeDrones ?? []).filter((w) => w.alive > 0);
   /** 交给 rAF 驱动层：布局元数据 + 各机型机群（含本轮出击状态）；位置计算完全走 dronePoseAt */
@@ -1638,8 +1678,11 @@ const meSpeedRef = useRef(200)
     meSize,
     openM,
     nearM,
+    meAnchors: meAnchorByTag,
     wings: [
       ...droneWings.map((w) => ({
+        key: w.key,
+        owner: w.owner,
         artId: w.artId,
         model: w.model,
         show: w.show,
@@ -2048,14 +2091,14 @@ const meSpeedRef = useRef(200)
             >
               {droneWings.map((w) => (
                 <div
-                  key={w.artId}
+                  key={w.key}
                   className={`app-bts-wing is-${w.phase}${w.phase === "deck" ? " is-deck" : ""}${w.model.resident ? " is-resident" : ""}${DRONE_STYLE === "sortie" ? " is-sortie" : " is-formation"}`}
                 >
                   {Array.from({ length: w.show }, (_, i) => (
                     <span
                       key={i}
                       ref={(el) => {
-                        const key = `${w.artId}|${i}`
+                        const key = `${w.key}|${i}`
                         if (el) droneElsRef.current.set(key, el)
                         else droneElsRef.current.delete(key)
                       }}
