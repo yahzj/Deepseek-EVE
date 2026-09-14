@@ -11,7 +11,7 @@
  * F5 起散货也是网格里的真摆放件、可拖拽）。层内动作各花 1 回合，未扫描的地点要先警告再确认（船长口径）；
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
@@ -63,6 +63,8 @@ const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '
 const WORMHOLE_FX_IN_MS = 1000
 const WORMHOLE_FX_OUT_MS = 600
 const WORMHOLE_FX_SCAN_MS = 900
+/** 被拿走的堆卡片"向下移出 + 淡出"用多久（与 CSS `.app-wh-pile.is-leaving` 的动画时长同值） */
+const WORMHOLE_PILE_OUT_MS = 300
 
 /** 探索地图的缩放档（1 = 适应窗口；每档 +25%，上限 250%）——左侧 ＋/－ 按这个步进 */
 const WORMHOLE_MAP_ZOOM_FIT = 1
@@ -160,6 +162,46 @@ export function WormholePanel({
    */
   const shapedPiles = herePiles.filter((p) => wormholeIsShapedItem(p.itemId))
   const bulkPiles = herePiles.length - shapedPiles.length
+  /**
+   * **被拿走的那几堆卡片：向下移出 + 淡出**（船长 2026-09-13 深夜：「将地点详细里，那些被打捞或者
+   * 采集掉的卡片，添加一个向下移出+淡出的消失动画」）。
+   *
+   * 做法（不引第三方动画库）：留一份"上一帧的堆签名"，本帧对不上的条目挑出来当**幽灵卡**
+   * 渲染 `WORMHOLE_PILE_OUT_MS`（300ms），动画放完就摘掉；幽灵卡不吃点击、也不参与任何判定。
+   * ⚠ **换格子不算消失**（那是整块信息窗换内容）⇒ `hereKey` 变了就直接清空，不播这个动画。
+   */
+  const [leavingPiles, setLeavingPiles] = useState<Array<{ key: string; itemId: string; units: number }>>([])
+  const prevPilesRef = useRef<{ hereKey: string; sigs: string[] }>({ hereKey: '', sigs: [] })
+  const pileSig = herePiles.map((p) => `${p.itemId}|${p.units}`).join(';')
+  useEffect(() => {
+    const sigs = pileSig.length > 0 ? pileSig.split(';') : []
+    const prev = prevPilesRef.current
+    prevPilesRef.current = { hereKey, sigs }
+    // 换了格子（或还没进网格）⇒ 直接清空幽灵卡，不播"消失动画"
+    if (prev.hereKey !== hereKey) {
+      setLeavingPiles((l) => (l.length > 0 ? [] : l))
+      return
+    }
+    const pool = [...sigs]
+    const gone: string[] = []
+    for (const s of prev.sigs) {
+      const i = pool.indexOf(s)
+      if (i >= 0) pool.splice(i, 1)
+      else gone.push(s)
+    }
+    if (gone.length === 0) return
+    const stamp = Date.now()
+    const add = gone.slice(0, 12).map((s, i) => {
+      const bar = s.lastIndexOf('|')
+      return { key: `${s}#${stamp}#${i}`, itemId: s.slice(0, bar), units: Number(s.slice(bar + 1)) }
+    })
+    setLeavingPiles((l) => [...l, ...add])
+    const t = window.setTimeout(
+      () => setLeavingPiles((l) => l.filter((x) => !add.some((a) => a.key === x.key))),
+      WORMHOLE_PILE_OUT_MS,
+    )
+    return () => window.clearTimeout(t)
+  }, [pileSig, hereKey])
   /**
    * **编队第一艘船的 defId**（地图上"当前格"用它的舰影表示 —— 船长 2026-09-13）。
    * 取不到（老档 uid 悬空）就退化成一个小箭头，不让地图空着。
@@ -499,6 +541,17 @@ export function WormholePanel({
                       /* 母矿与残骸都靠**台数 × 回合**成批回收（船长 F5：规则同打捞）⇒ 不逐堆拾取 */
                       <span className="app-wh-pile-tag">{veinCell ? '待采集' : '待打捞'}</span>
                     )}
+                  </div>
+                )
+              })}
+              {/* **刚被拿走的堆**：留一张幽灵卡播"向下移出 + 淡出"（不吃点击、不参与判定，300ms 后自动摘掉） */}
+              {leavingPiles.map((g) => {
+                const def = ctx.items.get(g.itemId)
+                return (
+                  <div key={g.key} className="app-wh-pile is-leaving" aria-hidden>
+                    <span className="app-wh-pile-name">{def?.name ?? g.itemId}</span>
+                    <span className="app-wh-pile-count">×{n(g.units)}</span>
+                    <span className="app-wh-pile-sub">已收进货仓</span>
                   </div>
                 )
               })}

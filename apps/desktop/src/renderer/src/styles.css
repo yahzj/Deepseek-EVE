@@ -9568,6 +9568,19 @@ body {
 .app-wh-pile-sub { font-size: 10.5px; color: var(--wui-dim); }
 .app-wh-pile-btn { margin-top: 4px; align-self: flex-start; }
 .app-wh-pile-tag { margin-top: 4px; font-size: 11px; color: var(--wui-dim); }
+/* **被拿走的堆卡片：向下移出 + 淡出**（船长 2026-09-13 深夜）——300ms 只动 transform/opacity；
+   幽灵卡不吃点击（`pointer-events:none`），生命周期由 TSX 的 `WORMHOLE_PILE_OUT_MS` 管（两处同值）。 */
+.app-wh-pile.is-leaving {
+  pointer-events: none;
+  animation: app-wh-pile-out 300ms ease-in both;
+}
+@keyframes app-wh-pile-out {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(18px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-wh-pile.is-leaving { animation-duration: 1ms; }
+}
 /* ── 撤离（船长 2026-09-13 晚：「撤离按钮放在关闭左侧，并用红色色系……会警告玩家并需要确认」）── */
 .app-wh-extract { color: var(--wui-red); border-color: rgba(217, 106, 106, 0.55); background: rgba(217, 106, 106, 0.08); }
 .app-wh-extract:hover:not(:disabled) { background: rgba(217, 106, 106, 0.18); border-color: var(--wui-red); }
