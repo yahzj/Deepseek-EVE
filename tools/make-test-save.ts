@@ -82,9 +82,9 @@ import {
 } from '@whale/core'
 import type { GameState } from '@whale/core'
 import { GALAXIES, ITEMS, MODULES, buildSimContext } from '@whale/data'
-// 虫洞·货仓装不下 / 超载档要用到的核心单点（走深路径，与 `wormhole-econ` 同一套做法）
+// 虫洞·货仓装不下 / 超载 / 第 4 层星云现场（要用到的核心单点，走深路径，与 `wormhole-econ` 同一套做法）
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
-import { wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
+import { hexNeighbors, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
 import {
   wormholeHoldCapacityOf,
   wormholeEnsureSalvagePiles,
@@ -1654,10 +1654,135 @@ function injectWormholeBag(state: GameState, overload: boolean): string[] {
   return notes
 }
 
+/**
+ * **虫洞 · 第 4 层「星云现场」验收档**（2026-09-13 · 船长：「给我准备一个4层的存档，我打算实际测试」）。
+ *
+ * 为什么要单开一档：星云机制**只在层 4 起出现**（`WORMHOLE_NEBULA_MIN_DEPTH = 4`），
+ * 而从层 1 打下去要连过三层守卫 + 三层搜打撤（十几分钟）⇒ 手工验不到这条机制。
+ *
+ * 现场（**确定性摆位**，同 seed 每次一样）：
+ * - **第 4 层**（37 格 · R=3）；编队 = 4× 长尾鲨满配搜打撤（同 `wh-bag` 档），
+ *   回合预算按**真实入场校验**给（`wormholeEnter` ⇒ 4×T3 = 29 回合，不是拍脑袋写的数）；
+ * - **入口格脚下就是一处舰船墓场**（铺好残骸，落地即可试打捞）；
+ * - **入口格的正邻格 = 一处遗迹，且被星云罩住**（`nebula: true` —— 与引擎生成时一样，
+ *   只长在"有信号的地点"上）⇒ 原地扫一次就**看见云**（信号读不出来），**再扫一次驱散**、
+ *   遗迹信号显形，走过去打捞即得 **2~3 件稀有残骸**；
+ * - 本层还有引擎自己撒的**另外几格星云**（层 4 配额 = 4 格）⇒ 顺带能看"整盘有几处云"；
+ * - **守卫没清**（`bossCleared = 0`）⇒ 撤离随时可走、深入要先打守卫；
+ * - **信标没读**（`exitKnown = false`）⇒ 出口要靠找信标，与正常一趟一致。
+ *
+ * 试法（进游戏后）：
+ * 1. 先在 DevTools 跑 `localStorage.setItem('whale-idle:debug','1')` 再刷新（虫洞入口只在调试模式渲染）；
+ * 2. 若面板停在"准备页"，点**继续**（本档 `attending = true`，人在洞里）；
+ * 3. 点「**扫描**」⇒ 看地图上出现**云团图标**（比"未扫描"的蓝灰虚线更深一档）与提示
+ *    「N 格被星云遮挡——在原位再扫描一次即可驱散」；
+ * 4. **原地再点一次「扫描」**⇒ 云散、那一格显形为**残骸信号**；走过去 ⇒ 打捞 ⇒ 稀有残骸 2~3 件；
+ * 5. 顺带核对：**层 1~3 不该有云**（本档直接在第 4 层，可另用 `wormhole` 档从层 1 看起）。
+ */
+function injectWormholeLayer4(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  notes.push('钱包 +30,000,000 ISK（洞内修船/换装）')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13')
+  for (const k of ['gunnery', 'fire-control', 'reload-drills', 'shield-operation', 'armor-tuning', 'vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  notes.push('战斗系 8 项技能 ≥ Lv3（与 wormhole:econ 的参考行同口径）')
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
+  }
+  notes.push('弹药三型 ×5000 · 修理组件民用/军用各 ×20（承伤持久，出洞要修船）')
+  // 满配搜打撤编队（作业装备走低槽，与 `wh-bag` 同款）
+  const fit = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+    low: ['mod-salvager-3', 'mod-miner-3'],
+  }
+  const uids: string[] = []
+  for (let i = 0; i < 4; i++) {
+    const uid = addShipToFleet(state, 'sh-thresher')
+    const s = state.fleet[uid]!
+    s.customName = `长尾鲨${['①', '②', '③', '④'][i]}·搜打撤满配`
+    s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  notes.push('4× 长尾鲨级巡洋（T3）· 5×动能 MK2 + 推进/双盾/索敌 + 低槽 打捞器 MK3 + 采集器 MK3')
+  const ctx = buildSimContext()
+  const seed = 20260913
+  /**
+   * ⚠ **先清掉在途副本**：真档里若玩家正停在洞里，`wormholeEnter` 会被「已经在虫洞里了」拒掉
+   * （本档目的就是给一个**指定的层**现场 ⇒ 旧的在途状态一律作废；本工具不写回真档，只产出测试档）。
+   */
+  state.wormhole = { run: null, lastFleetLost: 0 }
+  // 入场校验走真引擎（借它算回合预算与总质量，不手写数字）
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.depth = 4
+  run.turnsLeft = enter.run!.turnsTotal // 满预算（4×T3 = 29 回合）
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0 // 本层守卫没清：撤离随时可走、深入先打守卫
+  run.grid = wormholeMakeGrid(seed, 4, 0)
+  const grid = run.grid
+  const here = grid.cells.find((c) => c.key === `${grid.start.q},${grid.start.r}`)!
+  // ① 入口格脚下 = 舰船墓场（铺真残骸：普通 + 按概率的稀有）
+  here.place = 'graveyard'
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  wormholeEnsureSalvagePiles(state, here)
+  notes.push(
+    `第 4 层（37 格 · R=3）· 入口格 (Q${here.q} R${here.r}) = 舰船墓场：已铺 ${(here.piles ?? []).length} 堆残骸`,
+  )
+  // ② 入口格的**正邻格** = 一处遗迹，并**手动罩上星云**（与引擎生成时同款：只长在有信号的地点上）
+  const neighbor = hexNeighbors(grid.pos)
+    .map((n) => ({ n, cell: grid.cells.find((c) => c.key === `${n.q},${n.r}`) }))
+    .find((x) => !!x.cell && x.cell.key !== here.key)
+  if (neighbor?.cell) {
+    const ruins = neighbor.cell
+    ruins.place = 'ruins'
+    ruins.piles = []
+    ruins.nebula = true
+    delete grid.dispersed
+    notes.push(
+      `**星云现场**：入口格正邻 (Q${ruins.q} R${ruins.r}) = 遗迹 + **星云罩住** ` +
+        `⇒ 原地点「扫描」先看到云（信号读不出），**再点一次「扫描」驱散** ⇒ 显形为残骸信号` +
+        ` ⇒ 走过去打捞得稀有残骸 2~3 件`,
+    )
+  } else {
+    notes.push('⚠ 没找到入口格的邻格（异常）——星云现场没摆成')
+  }
+  // ③ 本层其余星云由引擎自己撒（层 4 配额 = 4 格，含上面那格）
+  const nebs = grid.cells.filter((c) => c.nebula === true)
+  notes.push(`本层星云共 ${nebs.length} 格（层 4 配额；空地与下一层入口都不长云）`)
+  // ④ 信标没读（出口要靠找），同层再摆一格**未罩云的遗迹**做对照（走过去能看信号）
+  const plainRuins = grid.cells.find((c) => c.place === 'ruins' && c.nebula !== true && c.key !== here.key)
+  if (plainRuins) notes.push(`对照：同层另有一处遗迹 (Q${plainRuins.q} R${plainRuins.r}) **没有被云罩**——扫到即可读信号`)
+  grid.exitKnown = false
+  notes.push('守卫没清（撤离随时可走、深入要先打守卫）· 信标没读（出口要靠找）')
+  notes.push('⚠ 入口只在调试模式下出现：DevTools 执行 localStorage.setItem(\'whale-idle:debug\',\'1\') 后刷新')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
   'wh-overload': (s) => injectWormholeBag(s, true),
+  /**
+   * **虫洞·第 4 层星云现场**（2026-09-13 船长：「给我准备一个4层的存档，我打算实际测试」）。
+   *
+   * 为什么单开一档：星云机制**只在层 4 起出现**（`WORMHOLE_NEBULA_MIN_DEPTH = 4`），
+   * 而老档要下到层 4 得连打三层守卫 + 三层搜打撤（十几分钟）⇒ 手工验不到。
+   */
+  'wh-layer4': injectWormholeLayer4,
   // wormhole（2026-09-13）：虫洞验收档（4×巡洋 MK2 基准编队 + T4/T5 对照 + 补给）
   wormhole: injectWormhole,
   // pd（2026-09-11 机群批 S5）：敌方机群 + 巨构近防炮验收档（三船对照 + 近防炮三档）

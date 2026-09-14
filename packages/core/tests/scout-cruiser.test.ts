@@ -18,6 +18,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { MARKET_GOODS, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
+import { createInitialState } from '../src/state'
 import { wormholeDescend, wormholeScanBonusOf, wormholeStartRun } from '../src/wormhole'
 
 const ctx = buildSimContext()
@@ -73,9 +74,13 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(wormholeScanBonusOf(ctx, two.run!.fleet)).toBe(2)
     expect(two.run!.grid!.scanRadius).toBe(baseScan + 2)
     // 深入下层同样带上扫码加成（2026-09-13 接线：`wormholeDescend` 收 scanBonus）
+    // ⚠ `wormholeDescend` 的第一入参是 `state`（2026-09-13 星云批：一次性提示要写进 state）
+    // ⇒ 直接把刚起好的 run 挂进一个普通存档，再走真正的深入路径。
+    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+    state.wormhole.run = one.run!
     const run = one.run!
     run.bossCleared = run.depth
-    expect(wormholeDescend(run, 42, wormholeScanBonusOf(ctx, run.fleet)).ok).toBe(true)
+    expect(wormholeDescend(state, 42, wormholeScanBonusOf(ctx, run.fleet)).ok).toBe(true)
     expect(run.grid!.scanRadius).toBe(baseScan + 1)
   })
 

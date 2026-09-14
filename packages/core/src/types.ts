@@ -1891,6 +1891,14 @@ export type CommsTrigger =
    * 窝点派生卡与主题悬赏同族同域，不另判。
    */
   | { kind: 'foeFamily'; family: FoeFamily }
+  /**
+   * **虫洞星云带**（2026-09-13 船长定：「**除了一次性事件，通讯内也发一条相关的讯息给玩家**」）。
+   *
+   * 判定 = `state.wormhole.nebulaHintShown === true`（玩家**第一次下到第 4 层**时由
+   * `wormholeDescend` 置位）⇒ 与那条一次性提示**同一个触发点**，不会各说各的。
+   * 通讯是**留档**的（一次性提示会消失），玩家事后还能回看这条说明。
+   */
+  | { kind: 'wormholeNebula' }
 
 /** 回复选项（**预留接口：2026-09-11 船长定"预留但不启用"**，见 core COMMS_REPLIES_ENABLED） */
 export interface CommsReplyDef {

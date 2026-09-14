@@ -162,6 +162,10 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       }
       return false
     }
+    case 'wormholeNebula':
+      // 2026-09-13 船长定（星云机制）：**第一次下到第 4 层**时送达一封星云说明。
+      // 判定读的是同一个随档标记（`wormholeDescend` 置位）⇒ 与那一条一次性提示同源、不会错位。
+      return state.wormhole.nebulaHintShown === true
     default:
       return false
   }

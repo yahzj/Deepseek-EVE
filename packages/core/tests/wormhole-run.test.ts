@@ -413,7 +413,7 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(wormholeGridActivate(state).mustExtract).toBe(true)
     // 层末（本层守卫已清）后：深入被拒、撤离放行
     run.bossCleared = run.depth
-    const desc = wormholeDescend(run, 9)
+    const desc = wormholeDescend(state, 9)
     expect(desc.ok).toBe(false)
     expect(desc.mustExtract).toBe(true)
     const ex = wormholeExtract(run)
@@ -422,10 +422,10 @@ describe('虫洞 · 起程与副本推进', () => {
   })
 
   it('**守卫只堵"深入"**（船长 2026-09-13 改裁定）：守卫没清也能撤（照打撤离战）；深入照旧要清守卫', () => {
-    const { run } = enterForActions([T1, T1], 77)
+    const { state, run } = enterForActions([T1, T1], 77)
     // **深入**这侧的门照旧：守卫没清不许往下走
-    expect(wormholeDescend(run, 77).ok).toBe(false)
-    expect(wormholeDescend(run, 77).error ?? '').toContain('守卫')
+    expect(wormholeDescend(state, 77).ok).toBe(false)
+    expect(wormholeDescend(state, 77).error ?? '').toContain('守卫')
     // **撤离**这侧已无条件（船长：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）
     const ex = wormholeExtract(run)
     expect(ex.ok, '守卫没清也该能开始撤离').toBe(true)
@@ -433,7 +433,7 @@ describe('虫洞 · 起程与副本推进', () => {
     // 清掉守卫之后：深入放行
     const b = enterForActions([T1, T1], 77)
     b.run.bossCleared = b.run.depth
-    expect(wormholeDescend(b.run, 77).ok).toBe(true)
+    expect(wormholeDescend(b.state, 77).ok).toBe(true)
     expect(b.run.depth).toBe(2)
   })
 
@@ -468,10 +468,10 @@ describe('虫洞 · 起程与副本推进', () => {
   })
 
   it('深入下一层：层末可用，深度 +1、**换成一张新盘**（入口重随机、进度清零）', () => {
-    const { run } = enterForActions([T1, T1], 42)
+    const { state, run } = enterForActions([T1, T1], 42)
     const oldGrid = run.grid!
     run.bossCleared = run.depth
-    expect(wormholeDescend(run, 42).ok).toBe(true)
+    expect(wormholeDescend(state, 42).ok).toBe(true)
     expect(run.depth).toBe(2)
     expect(run.nodeIndex).toBe(0)
     expect(run.nodesPerLayer).toBe(wormholeNodesPerLayer(2))
@@ -486,7 +486,7 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(oldGrid.activated).not.toBe(g2.activated)
     // 再深一层：半径按层曲线（层 3 = 3）
     run.bossCleared = run.depth
-    expect(wormholeDescend(run, 42).ok).toBe(true)
+    expect(wormholeDescend(state, 42).ok).toBe(true)
     expect(run.depth).toBe(3)
     expect(run.nodesPerLayer).toBe(3)
     expect(run.grid!.radius).toBe(wormholeGridRadiusFor(3))
@@ -499,23 +499,24 @@ describe('虫洞 · 起程与副本推进', () => {
    */
   it('**深入下一层带上扫码加成**：新盘 scanRadius = 基础 + 编队加成（侦察舰 1 艘 = +1 圈）', () => {
     // 不带加成：新盘扫描半径 = 基础值
-    const plain = enterForActions([T1, T1], 42).run
+    // 不带加成：新盘扫描半径 = 基础值
+    const { state: plainState, run: plain } = enterForActions([T1, T1], 42)
     plain.bossCleared = plain.depth
-    expect(wormholeDescend(plain, 42).ok).toBe(true)
+    expect(wormholeDescend(plainState, 42).ok).toBe(true)
     const baseScan = plain.grid!.scanRadius
     // 带 +1 圈：同一 seed/层 ⇒ 只有扫描半径不同（盘面其余部分同源）
-    const boosted = enterForActions([T1, T1], 42).run
+    const { state: boostedState, run: boosted } = enterForActions([T1, T1], 42)
     boosted.bossCleared = boosted.depth
-    expect(wormholeDescend(boosted, 42, 1).ok).toBe(true)
+    expect(wormholeDescend(boostedState, 42, 1).ok).toBe(true)
     expect(boosted.grid!.scanRadius).toBe(baseScan + 1)
     expect(boosted.grid!.cells.length).toBe(plain.grid!.cells.length) // 加成只改"能扫多远"，不改盘大小
     // **编队里真有船带这个加成**（数据侧 `wormholeScanRadiusBonus`；三族电子/侦察舰各 1）
     const scout = 'sh-wh-g-frigate' // G 族侦察舰（`wormholeScanRadiusBonus: 1`；专属舰，施工期对玩家不可见）
-    const withScout = enterForActions([T1, scout], 42).run
+    const { state: withScoutState, run: withScout } = enterForActions([T1, scout], 42)
     expect(wormholeScanBonusOf(ctx, withScout.fleet)).toBe(1)
     expect(wormholeScanBonusOf(ctx, [T1, T1])).toBe(0)
     withScout.bossCleared = withScout.depth
-    expect(wormholeDescend(withScout, 42, wormholeScanBonusOf(ctx, withScout.fleet)).ok).toBe(true)
+    expect(wormholeDescend(withScoutState, 42, wormholeScanBonusOf(ctx, withScout.fleet)).ok).toBe(true)
     expect(withScout.grid!.scanRadius).toBe(baseScan + 1)
   })
 

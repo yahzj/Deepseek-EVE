@@ -105,6 +105,14 @@ securityZoneOf,
   WORMHOLE_FAMILIES,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  wormholeDilutionPoolOf,
+  wormholeLootShares,
+  // 2026-09-13 层间盘面 + 星云机制（船长三条裁定）：遗迹下限 / 空占比随层降 / 星云起效层与配额
+  WORMHOLE_NEBULA_MIN_DEPTH,
+  WORMHOLE_NEBULA_SHARE,
+  wormholeEmptyShareFor,
+  wormholeMakeGrid,
+  wormholeRuinsFloorFor,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -3334,12 +3342,100 @@ for (const m of MODULES) {
         )
       }
     }
+    /* ⑦b **稀释池契约**（2026-09-13 船长：「将新增的一次性蓝图放入虫洞的专属奖池内作为稀释」＋
+     * 「按70:30，不过T4降到3层，T5降到5层」）：
+     * 池内容 = T3/T4/T5 的一次性舰船蓝图，**按层分档**进池（T3 层 2 起 / T4 层 3 起 / T5 层 5 起），
+     * 抽取时族专属池 70% / 稀释池 30%。本契约钉四件事：① 层分档的**件数**；② 池里**只许**一次性蓝图；
+     * ③ 与族池**不重叠**（稀释池不该混进族专属件）；④ 权重和恒为 1。 */
+    const dil2 = wormholeDilutionPoolOf(poolCtx, 2)
+    const dil3 = wormholeDilutionPoolOf(poolCtx, 3)
+    const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
+    // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 四艘 / T5 一艘（加船时这里与用例要一起改）
+    check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
+    check(dil3.length === 14, `稀释池契约：层 3 应加 T4 四张（共 14），实际 ${dil3.length} 张`)
+    check(dil5.length === 15, `稀释池契约：层 5 应加 T5 一张（共 15），实际 ${dil5.length} 张`)
+    for (const id of dil5) {
+      const bp = poolCtx.shipBlueprints.get(id)
+      check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')
+      if (pooled.has(id)) errors.push(`稀释池契约：${id} 同时落在族专属池里——稀释池与族池必须互斥`)
+    }
+    const shares = wormholeLootShares()
+    check(
+      Math.abs(shares.family + shares.dilution - 1) < 1e-9 && Math.abs(shares.dilution - 0.3) < 1e-9,
+      `稀释池契约：抽取权重应为族 0.7 / 稀释 0.3，实际 ${shares.family} / ${shares.dilution}`,
+    )
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
+    /* ⑦c **层间盘面契约**（2026-09-13 船长三条：「让遗迹格数量随层数增加并给每层增加一个遗迹格下限」＋
+     * 「空地块允许随着高层权重降低」＋「在四层以上及以上，添加星云机制…空地没有星云」）：
+     * 钉四件事：① **逐层遗迹 ≥ 下限**（真生成 12 seed 实数，不只看公式）；
+     * ② **信标恒 ≥1**（每层都要有指路标记——借格子只从资源/谜质借）；
+     * ③ **层 1~3 绝不出星云、层 4 起配额与"有信号格数 × 15%"一致、空地与入口不长星云**；
+     * ④ 空占比与 `wormholeEmptyShareFor` 一致（**量纲 = 占可分配池**）。 */
+    {
+      const planSeeds = Array.from({ length: 12 }, (_, i) => 20260913 + i * 37)
+      const depths = [1, 2, 3, 4, 5, 6, 8]
+      let nebAcc = 0
+      for (const depth of depths) {
+        const floor = wormholeRuinsFloorFor(depth)
+        for (const seed of planSeeds) {
+          const g = wormholeMakeGrid(seed, depth, 0)
+          const ruins = g.cells.filter((c) => c.place === 'ruins').length
+          check(
+            ruins >= floor,
+            `层间盘面契约：第 ${depth} 层（seed ${seed}）遗迹格 ${ruins} < 下限 ${floor} —— 「给每层增加一个遗迹格下限」没生效`,
+          )
+          const beacons = g.cells.filter((c) => c.place === 'beacon').length
+          check(beacons >= 1, `层间盘面契约：第 ${depth} 层（seed ${seed}）没有信标——每层必须有一个指路标记`)
+          const empties = g.cells.filter((c) => c.place === 'empty').length
+          const wantEmpty = Math.ceil((g.cells.length - 1) * wormholeEmptyShareFor(depth))
+          check(
+            empties >= wantEmpty && empties <= wantEmpty + 1,
+            `层间盘面契约：第 ${depth} 层（seed ${seed}）空格 ${empties} 不在 [${wantEmpty}, ${wantEmpty + 1}]` +
+              `（口径 = 占可分配池 ${wormholeEmptyShareFor(depth)}）`,
+          )
+          const nebs = g.cells.filter((c) => c.nebula === true)
+          if (depth < WORMHOLE_NEBULA_MIN_DEPTH) {
+            check(nebs.length === 0, `层间盘面契约：第 ${depth} 层不该有星云（起效层 = ${WORMHOLE_NEBULA_MIN_DEPTH}）`)
+          } else {
+            for (const c of nebs) {
+              check(
+                c.place !== 'empty',
+                `层间盘面契约：第 ${depth} 层（seed ${seed}）空地点上长了星云 —— 船长明示「空地没有星云」`,
+              )
+              check(
+                c.key !== `${g.exit.q},${g.exit.r}`,
+                `层间盘面契约：第 ${depth} 层（seed ${seed}）下一层入口被星云罩住（导航标记不该被遮）`,
+              )
+            }
+            const cands = g.cells.filter((c) => c.place !== 'empty' && c.key !== `${g.exit.q},${g.exit.r}`).length
+            const quota = Math.min(Math.ceil(cands * WORMHOLE_NEBULA_SHARE), Math.floor(cands * 0.5))
+            check(
+              nebs.length === quota,
+              `层间盘面契约：第 ${depth} 层（seed ${seed}）星云 ${nebs.length} ≠ 配额 ${quota}`,
+            )
+          }
+          nebAcc += nebs.length        }
+      }
+      const samples = planSeeds.length
+      const perDepthRuins = depths.map((d) => {
+        let sum = 0
+        for (const seed of planSeeds) sum += wormholeMakeGrid(seed, d, 0).cells.filter((c) => c.place === 'ruins').length
+        return `层${d}=${(sum / samples).toFixed(2)}`
+      })
+      console.log(
+        `· 层间盘面契约：遗迹格下限 ${depths.map((d) => `层${d}≥${wormholeRuinsFloorFor(d)}`).join(' · ')}` +
+          `（实测均值 ${perDepthRuins.join(' / ')} · ${samples} seed/层）` +
+          ` · 空占比（占可分配池）${depths.map((d) => `${(wormholeEmptyShareFor(d) * 100).toFixed(0)}%`).join('/')}` +
+          ` · 星云：层 ${WORMHOLE_NEBULA_MIN_DEPTH} 起、配额 ${(WORMHOLE_NEBULA_SHARE * 100).toFixed(0)}%、只长在有信号的地点上` +
+          `（实测合计 ${nebAcc} 格）`,
+      )
+    }
     console.log(
       `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
         ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
         ` · 按族池（装备/装备图/舰船图[+族专属无人机]）${poolCounts} · 族专属无人机 ${droneIds.length} 型（不进五族齐备判据：C/E 替换物）` +
+        ` · **稀释池**（族 ${shares.family} : 稀释 ${shares.dilution}）层 2 = ${dil2.length} / 层 3 = ${dil3.length} / 层 5 = ${dil5.length} 张一次性舰船蓝图` +
         ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
         ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
     )
@@ -3432,6 +3528,8 @@ for (const m of MODULES) {
     'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
+    // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
+    'wormholeNebula',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -3592,6 +3690,17 @@ for (const m of MODULES) {
         check(
           ANOMALIES_FLAVORED.some((a) => a.foeFamily === m.trigger.family),
           `通讯 ${m.id} 指向的敌族没有任何敌卡（死触发器）：${m.trigger.family}`,
+        )
+        break
+      case 'wormholeNebula':
+        /**
+         * 死触发器守卫（2026-09-13 星云机制）：这封信靠 `state.wormhole.nebulaHintShown` 送达，
+         * 而那个标记只在「**玩家下到星云起始层**」时置位 ⇒ 若星云起效层被改到本工具测不到的深度、
+         * 或星云被整体撤掉，这封信就永远送不出去。这里与引擎常量**同一出处**地核一遍。
+         */
+        check(
+          WORMHOLE_NEBULA_MIN_DEPTH >= 1 && WORMHOLE_NEBULA_SHARE > 0,
+          `通讯 ${m.id} 用 wormholeNebula 触发器，但星云机制没开（起效层 ${WORMHOLE_NEBULA_MIN_DEPTH} · 配额 ${WORMHOLE_NEBULA_SHARE}）`,
         )
         break
       default:

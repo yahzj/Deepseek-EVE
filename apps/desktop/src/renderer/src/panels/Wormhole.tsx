@@ -36,6 +36,12 @@ import {
   durabilityOf,
   holdRows,
   placementCells,
+  /**
+   * ⚠ **信息展示必须走 `revealOf`**（2026-09-13 星云批）：地图此前直接读 `c.place` 上色，
+   * 那是**真相**——星云遮蔽接进来后照旧上色，云就等于白罩了。
+   * `signalOfPlace` 仍保留（把真相换成信号用），但**上色判据取 `revealOf` 的 `kind`**。
+   */
+  revealOf,
   signalOfPlace,
   wormholeOutOfTurns,
   wormholeShipAllowed,
@@ -58,11 +64,13 @@ type WhTab = 'prep' | 'map' | 'bag'
 const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
 
 /* ── 探索页动效时长（船长 2026-09-13 拍板：「入场动画时长可以拉长到 1 秒」）──
-   飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms。
-   三处都是纯表现：数据结算在点下那一刻就完成了，动画期间只是"不许再点"。 */
+   飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms ·
+   **星云消散 700ms**（船长同日追加：「当消除星云时，给星云添加个消散的动画」）。
+   四处都是纯表现：数据结算在点下那一刻就完成了，动画期间只是"不许再点"。 */
 const WORMHOLE_FX_IN_MS = 1000
 const WORMHOLE_FX_OUT_MS = 600
 const WORMHOLE_FX_SCAN_MS = 900
+const WORMHOLE_FX_NEBULA_MS = 700
 /** 被拿走的堆卡片"向下移出 + 淡出"用多久（与 CSS `.app-wh-pile.is-leaving` 的动画时长同值） */
 const WORMHOLE_PILE_OUT_MS = 300
 
@@ -76,6 +84,11 @@ let scanFxSeqCounter = 0
 function scanFxSeq(): number {
   scanFxSeqCounter += 1
   return scanFxSeqCounter
+}
+
+/** 六边形"第几圈"（`(dq,dr)` 的立方距离）——逐格延迟与扩散波共用这一把尺 */
+function hexRingOf(dq: number, dr: number): number {
+  return Math.max(0, Math.round((Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2))
 }
 
 /** 千分位 */
@@ -242,6 +255,12 @@ export function WormholePanel({
   const fxBusy = fx !== 'idle'
   /** 扫描动画（扫完自动清；`nonce` 换一次 = 重播一次） */
   const [scanFx, setScanFx] = useState<{ keys: string[]; rings: number; nonce: number } | null>(null)
+  /**
+   * **星云消散动画**（船长 2026-09-13：「当消除星云时，给星云添加个消散的动画」）：
+   * 记下"这一批刚被驱散的是哪几格"，地图上给它们挂 `is-dissolving` ⇒ 云团描边外扩 + 淡出（700ms）。
+   * 与逐格点亮同一套节奏：延迟按"第几圈"给（云从里往外一圈圈散开）。
+   */
+  const [dissolveFx, setDissolveFx] = useState<{ keys: string[]; nonce: number } | null>(null)
   /** 撤离的**待确认态**（两讨伐确认：第一次点只亮警告、第二次点才真撤）——5 秒不点自动解除 */
   const [extractAsk, setExtractAsk] = useState(false)
   useEffect(() => {
@@ -265,6 +284,12 @@ export function WormholePanel({
     const t = window.setTimeout(() => setScanFx(null), WORMHOLE_FX_SCAN_MS)
     return () => window.clearTimeout(t)
   }, [scanFx])
+  /** 星云消散收尾：700ms 后摘掉类名（不摘的话云虽然已经不在可见态里，但类名会一直挂着） */
+  useEffect(() => {
+    if (!dissolveFx) return
+    const t = window.setTimeout(() => setDissolveFx(null), WORMHOLE_FX_NEBULA_MS)
+    return () => window.clearTimeout(t)
+  }, [dissolveFx])
   /**
    * **作业前「货仓会不会满」预告**（船长 2026-09-13：「**在打捞挖矿之前货仓可能会满的时候提醒玩家**」）：
    * 把当前格上剩下的**散货堆**按 m³ → 格折算成预计入仓格数，与货仓剩余格数比大小。
@@ -393,7 +418,29 @@ export function WormholePanel({
     const after = grid?.scanned ?? []
     const fresh = after.filter((k) => !before.has(k))
     setScanFx({ keys: fresh, rings: Math.max(1, Math.floor(grid?.scanRadius ?? 1)), nonce: scanFxSeq() })
-    onToast('扫描完成（1 回合）。')
+    /**
+     * **星云消散动画**（船长 2026-09-13）：这一扫驱散了哪几格，就给它们播一段"云散开"。
+     * 时机与"逐格点亮"一致（都在数据落地之后补播），故两者能叠在同一帧里不打架。
+     */
+    if ((res.dispersed ?? 0) > 0) {
+      setDissolveFx({ keys: grid?.dispersed ?? [], nonce: scanFxSeq() })
+    }
+    /**
+     * **星云反馈**（船长 2026-09-13 星云机制）：一次扫描可能同时做两件事——
+     * 揭开新格、驱散圈内的星云。两种情况各给一句提示，玩家才分得清"这次扫到的东西被云挡着"
+     * （要**再扫一次**）与"云散了"。
+     */
+    const dispersed = res.dispersed ?? 0
+    const fogged = res.newlyFogged ?? 0
+    if (fogged > 0 && dispersed > 0) {
+      onToast(`扫描完成（1 回合）：${fogged} 格被星云遮挡，同时驱散了 ${dispersed} 格星云。`)
+    } else if (fogged > 0) {
+      onToast(`扫描完成（1 回合）：${fogged} 格被星云遮挡——在原位再扫描一次即可驱散。`)
+    } else if (dispersed > 0) {
+      onToast(`扫描完成（1 回合）：驱散星云 ${dispersed} 格，信号已显形。`)
+    } else {
+      onToast('扫描完成（1 回合）。')
+    }
   }
 
   /**
@@ -990,6 +1037,7 @@ export function WormholePanel({
                         layerKey={`${run.seed ?? 0}-${run.depth}`}
                         fx={fx}
                         scanFx={scanFx}
+                        dissolveFx={dissolveFx}
                         zoom={mapZoom}
                       />
                     </div>
@@ -998,11 +1046,19 @@ export function WormholePanel({
                     {GRID_LEGEND.map((l) => (
                       <span key={l.key} className="app-wh-legend-item">
                         <svg
-                          className={`app-wh-legend-glyph is-${l.done === true ? 'visited' : l.none ? 'unknown' : (l.signal ?? 'blank')}`}
+                          className={`app-wh-legend-glyph is-${
+                            l.nebula === true ? 'nebula' : l.done === true ? 'visited' : l.none ? 'unknown' : (l.signal ?? 'blank')
+                          }`}
                           viewBox="-13 -13 26 26"
                           aria-hidden="true"
                         >
-                          {l.none ? <polygon points="0,-12 10.39,-6 10.39,6 0,12 -10.39,6 -10.39,-6" /> : <WhGlyph signal={l.signal} />}
+                          {l.nebula === true ? (
+                            <WhNebulaGlyph />
+                          ) : l.none ? (
+                            <polygon points="0,-12 10.39,-6 10.39,6 0,12 -10.39,6 -10.39,-6" />
+                          ) : (
+                            <WhGlyph signal={l.signal} />
+                          )}
                           {/* 「去过」那一档把右上角小点也画上（与地图上的标记同源） */}
                           {l.done === true ? <circle className="app-wh-hex-done" cx={6.5} cy={-6.5} r={2.2} /> : null}
                         </svg>
@@ -1259,6 +1315,7 @@ function WhGridMap({
   layerKey,
   fx = 'idle',
   scanFx = null,
+  dissolveFx = null,
   zoom = 1,
 }: {
   grid: WormholeGridState
@@ -1271,6 +1328,8 @@ function WhGridMap({
   fx?: 'idle' | 'out' | 'in'
   /** 扫描动画：这一批新揭开的格 + 扫了几圈（波散开、格子按圈依次亮） */
   scanFx?: { keys: string[]; rings: number; nonce: number } | null
+  /** **星云消散动画**：这一批刚被驱散的格（云团外扩淡出；船长 2026-09-13 追加） */
+  dissolveFx?: { keys: string[]; nonce: number } | null
   /** 缩放（1 = 适应窗口）：**以玩家所在格为中心**放大，超出地图框的部分被裁掉 */
   zoom?: number
 }) {
@@ -1299,15 +1358,21 @@ function WhGridMap({
   /**
    * **新扫到的格子按圈依次亮起**（船长 2026-09-13 拍板「甲：扫描波 + 逐格点亮」）：
    * 延迟 = 与玩家所在格的距离（按"第几圈"算）× 60ms，与扩散的波同步。
+   * **星云消散用同一把尺**（船长同日追加消散动画）⇒ 云也是"从里往外一圈圈散开"。
    */
   const freshAt = new Map<string, number>()
   for (const k of scanFx?.keys ?? []) {
     const c = grid.cells.find((x) => x.key === k)
     if (!c) continue
-    const dq = c.q - grid.pos.q
-    const dr = c.r - grid.pos.r
-    const ring = Math.max(0, Math.round((Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2))
-    freshAt.set(k, ring * 60)
+    freshAt.set(k, hexRingOf(c.q - grid.pos.q, c.r - grid.pos.r) * 60)
+  }
+  /** 这一批正在消散的星云格（含各自的圈延迟） */
+  const dissolving = new Set(dissolveFx?.keys ?? [])
+  const dissolveAt = new Map<string, number>()
+  for (const k of dissolveFx?.keys ?? []) {
+    const c = grid.cells.find((x) => x.key === k)
+    if (!c) continue
+    dissolveAt.set(k, hexRingOf(c.q - grid.pos.q, c.r - grid.pos.r) * 60)
   }
   return (
     <svg
@@ -1341,8 +1406,17 @@ function WhGridMap({
         const y = cy + 1.5 * size * c.r
         const visited = grid.visited.includes(c.key)
         const scanned = grid.scanned.includes(c.key)
-        const known = visited || scanned
-        const signal = signalOfPlace(c.place)
+        /**
+         * ⚠ **信息档一律走 core 的 `revealOf`**（2026-09-13 星云批改的）。
+         *
+         * 改之前这里直接读 `c.place` 上色（`signalOfPlace(c.place)`）⇒ 那是**真相**：
+         * 星云遮蔽接进来后，照旧上色就等于"云没遮住任何东西"（边框颜色把被遮的信号漏出去）。
+         * 现在四档同源：`unknown` / `signal`（含"无信号 = 空地点"）/ **`nebula`** / `known`。
+         */
+        const rev = revealOf(grid, { q: c.q, r: c.r })
+        const known = rev.kind === 'known' || rev.kind === 'signal' || rev.kind === 'nebula'
+        const nebula = rev.kind === 'nebula'
+        const signal = rev.kind === 'signal' ? rev.signal : rev.kind === 'known' ? rev.signal : null
         // 入口：**到达过**或**被漂浮信标标出来**（船长 2026-09-13 新增信标）⇒ 地图上一直标着
         const isExit = c.key === exitKey && (visited || grid.exitKnown === true)
         /**
@@ -1359,6 +1433,8 @@ function WhGridMap({
         const cleared = activated || (visited && !hasLeftover)
         const iconGone = cleared && !isExit
         const dim = visited && (cleared || hasLeftover)
+        /** 这一格是不是"这一批刚被驱散"的星云（动画期间单独画云散开；动画结束 `dissolving` 清空 ⇒ 自动落回信号档） */
+        const dissolvingNow = dissolving.has(c.key)
         const cls = [
           'app-wh-hex',
           visited ? 'is-known' : scanned ? 'is-scanned' : 'is-unknown',
@@ -1367,14 +1443,16 @@ function WhGridMap({
           iconGone ? 'is-cleared' : '',
           hasLeftover ? 'is-leftover' : '',
           /**
-           * ⚠ **信号分色只给"已扫描/已到达"的格**（船长 F5：「目前未扫描的地点可以通过边框颜色判断」）：
-           * 未扫描的格一律走 `.is-unknown` 的**蓝灰虚线边框**；若照旧按 `c.place` 上色，
-           * 边框颜色本身就把地点真相漏出去了（"这格是橙色 ⇒ 里面有舰船"）。
+           * ⚠ **信号分色只给"已扫描/已到达"且没被星云遮住的格**（船长 F5：「目前未扫描的地点可以通过
+           * 边框颜色判断」）：未扫描的格一律走 `.is-unknown` 的**蓝灰虚线边框**；
+           * 被星云遮住的格走 `.is-nebula`（**不按信号上色**，否则边框颜色就把被遮的信号漏出去了）。
            */
-          known ? (signal ? `is-${signal}` : 'is-blank') : '',
+          known ? (nebula ? 'is-nebula' : signal ? `is-${signal}` : 'is-blank') : '',
           c.key === hereKey ? 'is-here' : '',
           isExit ? 'is-exit' : '',
           freshAt.has(c.key) ? 'is-just-scanned' : '',
+          /** 消散动画：这一帧画"云散开"（图层在上、与信号档不冲突；700ms 后自动摘掉） */
+          dissolvingNow ? 'is-dissolving' : '',
         ]
           .filter((s) => s.length > 0)
           .join(' ')
@@ -1385,20 +1463,43 @@ function WhGridMap({
             : visited
               ? `${WORMHOLE_PLACE_TEXT[c.place]}（去过${cleared ? ' · 已清空' : ''}）` +
                 `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
-              : signal
-                ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
-                : '没有信号：空信息地点'
+              : nebula
+                ? '星云遮蔽：这一格的信号被星云挡住——在原地再扫描一次即可驱散'
+                : signal
+                  ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
+                  : '没有信号：空信息地点'
         return (
           <g
             key={c.key}
             className={cls}
             onClick={() => onPickCell(c.q, c.r)}
-            style={freshAt.has(c.key) ? { animationDelay: `${freshAt.get(c.key)}ms` } : undefined}
+            style={
+              dissolvingNow && dissolveAt.has(c.key)
+                ? { animationDelay: `${dissolveAt.get(c.key)}ms` }
+                : freshAt.has(c.key)
+                  ? { animationDelay: `${freshAt.get(c.key)}ms` }
+                  : undefined
+            }
           >
             <polygon points={corners.map((p) => `${(x + p.dx).toFixed(2)},${(y + p.dy).toFixed(2)}`).join(' ')} />
             {known && !iconGone ? (
               <g className="app-wh-hex-glyph" transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}>
-                <WhGlyph signal={signal} exit={isExit} />
+                {nebula ? <WhNebulaGlyph /> : <WhGlyph signal={signal} exit={isExit} />}
+              </g>
+            ) : null}
+            {/**
+             * **星云消散**（船长 2026-09-13：「当消除星云时，给星云添加个消散的动画」）：
+             * 单独补一层云团线稿——**同一个 ≤2px 的云徽由 1.0 外扩到 2.1 并淡出**
+             * （外扩读作"散开"、淡出读作"没了"；与 `app-wh-scan-wave` 一样用 `transform`/`opacity`，
+             * 走合成层、不重排）。数据在点下那一刻就已经进 `grid.dispersed`，这一层只是"让消失看得见"。
+             */}
+            {dissolvingNow ? (
+              <g
+                className="app-wh-nebula-dissolve"
+                transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}
+                pointerEvents="none"
+              >
+                <WhNebulaGlyph />
               </g>
             ) : null}
             {/* **去过标记**：右上角一个小实心点（SVG 线稿；与图例同源） */}
@@ -1483,6 +1584,22 @@ function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boole
   return <circle cx={0} cy={0} r={2.2} />
 }
 
+/**
+ * **星云图标**（船长 2026-09-13 星云机制）：被星云遮住的格画一团云——**SVG 线稿**（约定 §九：
+ * 图形一律线稿、禁 CSS 拼形状），由三条疏密不同的弧线叠出"云团"轮廓 + 两颗小星点（说明这是"星云"、
+ * 不是"什么都没扫到"）。与 `WhGlyph` 同一套 `currentColor` / 描边语言，故格子配色一变它自动跟随。
+ */
+function WhNebulaGlyph() {
+  return (
+    <g className="app-wh-nebula">
+      <path d="M-7,2.4 A3.2,3.2 0 0 1 -2.6,-2.4 A3.6,3.6 0 0 1 3,-1.4 A3,3 0 0 1 7,2.4 Z" />
+      <path d="M-5.6,4.6 A2.4,2.4 0 0 1 -1.6,1.6 A2.6,2.6 0 0 1 3.2,2.2 A2.6,2.6 0 0 1 5.6,4.6" />
+      <circle cx={-3.4} cy={-4.4} r={0.9} />
+      <circle cx={4.2} cy={-3.2} r={0.7} />
+    </g>
+  )
+}
+
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
   wreck: '残骸信号',
@@ -1500,8 +1617,11 @@ const GRID_LEGEND: ReadonlyArray<{
   none?: boolean
   /** 「去过」那一档：画基线空 hex + 右上角小点 */
   done?: boolean
+  /** 「星云」那一档：画星云线稿（船长 2026-09-13 星云机制） */
+  nebula?: boolean
 }> = [
   { key: 'unknown', text: '未扫描（蓝灰虚线边框）', signal: null, none: true },
+  { key: 'nebula', text: '星云遮蔽（再扫描一次驱散）', signal: null, none: true, nebula: true },
   { key: 'visited', text: '去过（变暗 + 右上小点；清空的连图标一起去掉）', signal: null, none: true, done: true },
   { key: 'wreck', text: SIGNAL_TEXT.wreck, signal: 'wreck' },
   { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },

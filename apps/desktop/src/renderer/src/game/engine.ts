@@ -558,6 +558,14 @@ export class GameEngine {
       this.state.droneLossNotice = null
       if (this.onSystemNotice) this.onSystemNotice(droneLoss)
     }
+    // 2026-09-13 追加：星云机制一次性提示 state.nebulaHintNotice（船长：「这个机制在玩家第一次下到四层时
+    // 提示玩家」）——由 `wormholeDescend` 在该次深入时写入，同一通道提示一次；跨趟只给一次由随档的
+    // `wormhole.nebulaHintShown` 保证（通讯那封信也读同一个标记）。
+    const nebula = this.state.nebulaHintNotice
+    if (nebula) {
+      this.state.nebulaHintNotice = null
+      if (this.onSystemNotice) this.onSystemNotice(nebula)
+    }
   }
 
   private notify(): void {
@@ -1416,14 +1424,20 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：**扫描**（1 回合，揭开当前格周围一圈） */
+  /** 虫洞：**扫描**（1 回合，揭开当前格周围一圈；顺带**驱散圈内的星云**——船长 2026-09-13 星云机制） */
   wormholeScan(): CommandResult {
     const r = wormholeGridScan(this.state)
     if (r.ok) {
       void this.persist()
       this.notify()
     }
-    return { ok: r.ok, error: r.error, code: r.code }
+    return {
+      ok: r.ok,
+      error: r.error,
+      code: r.code,
+      dispersed: r.dispersed?.length ?? 0,
+      newlyFogged: r.newlyFogged ?? 0,
+    }
   }
 
   /**
@@ -1560,8 +1574,9 @@ export class GameEngine {
      * ⚠ **新层也要带上扫码加成**（2026-09-13 二号接线单）：`wormholeDescend` 的第三个入参是
      * "新盘的扫描半径加成"，不传就默认 0 ⇒ 侦察舰/电子舰的「扫码范围 +1 圈」**只在第 1 层生效**。
      * 口径与入洞同源（`wormholeScanBonusOf` 对编队求和），故这里现算一次传进去。
+     * ⚠ **第一入参是 `state`**（2026-09-13 星云批改的）：星云机制的"第一次下到层 4"提示要写进 `state`。
      */
-    const r = wormholeDescend(run, this.state.rng.seed, wormholeScanBonusOf(this.ctx, run.fleet))
+    const r = wormholeDescend(this.state, this.state.rng.seed, wormholeScanBonusOf(this.ctx, run.fleet))
     if (r.ok) {
       void this.persist()
       this.notify()

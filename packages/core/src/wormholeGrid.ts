@@ -121,6 +121,59 @@ export const WORMHOLE_SIGNAL_WEIGHTS: Readonly<Record<WormholeSignal, number>> =
 /** **空地点占比下限**（船长：「添加空信息地点（目标地点什么都没有）至少要占 50%」） */
 export const WORMHOLE_EMPTY_MIN_SHARE = 0.5
 
+/**
+ * **空地点占比随层下降**（船长 2026-09-13：「**空地块允许随着高层权重降低**」）。
+ *
+ * 为什么必须放开它：`空 ≥ 50%` 是一道**硬夹子**——非空格数 = 可分配池 − 空格数，
+ * 遗迹/舰船/矿脉**全都只能从这口锅里分**。要让「遗迹格随层增加并给下限」成立，就得给深层腾格子。
+ *
+ * 口径：`空占比 = max(下限, 50% − 每层递减 × (层 − 1))`（**相对"可分配池"而言**）
+ * ⇒ 层 1~6 = **50% / 46% / 42% / 38% / 34% / 32%**（层 6 起触底）。
+ *
+ * ⚠ **为什么是"占池"而不是"占总格数"**：这一层的可分配池 = 全部格 − 终点格（终点不参与分配）；
+ * 旧式 `ceil(nAll × 50%)` 在层 1（19 格）得 10 空，而池只有 18 格 ⇒ 实际是 **55.6% 占池**。
+ * 本批把量纲明确成"占池"，并**令层 1 逐格不变**（19 格、10 空）——船长原口径在层 1 上一字未动，
+ * 变的只是深层（层 5：池 30 格 ⇒ 空 11 格 = 36.7% 占池、占格 18%，比改造前的 31 格空 50.8% 明显"满"）。
+ */
+export const WORMHOLE_EMPTY_SHARE_PER_DEPTH = 0.04
+/** 空地点占比的**地板**（再深也不低于它——保住"三层里有一层是空的"这个体感） */
+export const WORMHOLE_EMPTY_SHARE_FLOOR = 0.32
+/** 第 `depth` 层的空地点占比（**占可分配池的比例**；乘 100 即"百分比"） */
+export function wormholeEmptyShareFor(depth: number): number {
+  const d = Math.max(1, Math.floor(depth))
+  return Math.max(WORMHOLE_EMPTY_SHARE_FLOOR, WORMHOLE_EMPTY_MIN_SHARE - WORMHOLE_EMPTY_SHARE_PER_DEPTH * (d - 1))
+}
+
+/**
+ * **每层遗迹格下限**（船长 2026-09-13：「让遗迹格数量随层数增加并给每层增加一个遗迹格下限」）。
+ *
+ * `下限 = 1 + ⌊(层 − 1) ÷ 2⌋` ⇒ 层 1~2 = 1 · 层 3~4 = 2 · 层 5~6 = 3 …
+ * **刻意沿用网格半径那条节拍**（`wormholeGridRadiusFor` 也是每 2 层 +1）⇒ 两把尺子同步、好记。
+ *
+ * 与旧口径的关系：**不推翻** `WORMHOLE_RUINS_SHARE = 30%`（船长 2026-09-13「遗迹概率降低到 30%」），
+ * 只在它上面加**地板**——残骸信号分完墓场后剩下的都给遗迹，但仍保证 ≥ 下限。
+ */
+export function wormholeRuinsFloorFor(depth: number): number {
+  return 1 + Math.floor((Math.max(1, Math.floor(depth)) - 1) / 2)
+}
+
+/**
+ * **星云机制**（船长 2026-09-13）：「在四层以上及以上，添加星云机制，玩家第一次扫描出一个地点时，
+ * 有星云的地点，星云会遮挡该地点的信号。需要玩家再扫描一次才能驱散星云。」
+ *
+ * 口径（经办确认 + 船长补正）：
+ * - **只遮"有信号的地点"**（船长补正：「**空地没有星云**」）⇒ `empty` 与下一层入口（信标格）都不长星云，
+ *   否则玩家白花一个回合才发现"这儿本来就什么都没有"；
+ * - **层 4 起才有**；第一次下到层 4 会给一次性提示 + 一条通讯（见 `wormhole.ts` 与 `docs/comms.ts`）；
+ * - **驱散 = 一次扫描动作**：把扫描圈内**所有**被遮蔽的格一起驱散（不是每格一次）；
+ * - **不额外给奖励**：它是"回合税"，不是收益机制（要奖励会与"遗迹下限"叠加过强）。
+ */
+export const WORMHOLE_NEBULA_MIN_DEPTH = 4
+/** 星云格配额 = ⌈可长星云的格数 × 该比例⌉（层 4 = 1 · 层 5 = 3） */
+export const WORMHOLE_NEBULA_SHARE = 0.15
+/** 星云最多占掉多少比例的"有信号格"（留出余量，免得整盘全被遮） */
+export const WORMHOLE_NEBULA_MAX_SHARE = 0.5
+
 /** **遗迹占残骸信号的比重**（船长：「遗迹概率降低到 30%」⇒ 舰船墓场 70%） */
 export const WORMHOLE_RUINS_SHARE = 0.3
 
@@ -179,6 +232,12 @@ export interface WormholeGridCell {
   place: WormholePlace
   /** 该格上还没被搬走的堆（F3b 打捞/挖矿往里放；非资源地点不写该字段） */
   piles?: WormholeCellPile[]
+  /**
+   * **这一格被星云罩着**（船长 2026-09-13 星云机制；层 4 起、只长在有信号的地点上）。
+   * ⚠ 它**不改变真相**（`place`/`piles` 照旧），只是让**已扫描**的格先显示"星云遮蔽"，
+   * 要再花一次扫描动作驱散（见 `WormholeGridState.dispersed`）。可选字段 ⇒ 老档零迁移。
+   */
+  nebula?: boolean
 }
 
 export interface WormholeGridState {
@@ -206,15 +265,28 @@ export interface WormholeGridState {
    * 可选字段（老档没有 = 没被标出 ⇒ 零迁移）。
    */
   exitKnown?: boolean
+  /**
+   * **已被驱散的星云格**（船长 2026-09-13 星云机制）。
+   *
+   * 判据在 `revealOf`：`cells[i].nebula === true` 且**不在此数组里** ⇒ 该格对玩家显示为「星云遮蔽」；
+   * 进数组的时机 = 玩家对"已扫描且在本圈内"的星云格**再扫一次**（`wormholeGridScan`）。
+   * 可选字段（老档没有 = 没有星云可驱散 ⇒ 零迁移）。
+   */
+  dispersed?: string[]
   /** 全部格（真相在这里；对外按 `scanned`/`visited` 决定展示到什么程度） */
   cells: WormholeGridCell[]
 }
 
-/** 该格此刻**对外可见的信息**（未知 / 只有信号 / 已知真相） */
+/** 该格此刻**对外可见的信息**（未知 / 只有信号 / **被星云遮住** / 已知真相） */
 export type WormholeCellReveal =
   | { kind: 'unknown' }
   /** `signal === null` = **空信息地点**（船长 2026-09-13：扫开发现"这里什么都没有"，占全盘 ≥50%） */
   | { kind: 'signal'; signal: WormholeSignal | null }
+  /**
+   * **星云遮蔽**（船长 2026-09-13）：已扫描、但这一格被星云罩着且还没驱散
+   * ⇒ **信号与地点都不给**（"遮挡该地点的信号"），要再花一次扫描动作驱散。
+   */
+  | { kind: 'nebula' }
   | { kind: 'known'; signal: WormholeSignal | null; place: WormholePlace }
 
 /** 查格（坏键 ⇒ undefined） */
@@ -233,8 +305,43 @@ export function revealOf(grid: WormholeGridState, cell: HexCell): WormholeCellRe
   const c = gridCellAt(grid, cell)
   if (!c) return { kind: 'unknown' }
   if (grid.visited.includes(c.key)) return { kind: 'known', signal: signalOfPlace(c.place), place: c.place }
-  if (grid.scanned.includes(c.key)) return { kind: 'signal', signal: signalOfPlace(c.place) }
+  if (grid.scanned.includes(c.key)) {
+    // **星云遮蔽**（层 4 起）：扫开了也先只看到星云，再扫一次才驱散（船长 2026-09-13）
+    if (c.nebula === true && !(grid.dispersed ?? []).includes(c.key)) return { kind: 'nebula' }
+    return { kind: 'signal', signal: signalOfPlace(c.place) }
+  }
   return { kind: 'unknown' }
+}
+
+/* ═══════════ 三之二、星云（层 4 起 · 回合税机制） ═══════════ */
+
+/** 该格是否**还被星云罩着**（未驱散）；不是星云格 / 已驱散 ⇒ false */
+export function isNebulaFogged(grid: WormholeGridState, cell: WormholeGridCell): boolean {
+  return cell.nebula === true && !(grid.dispersed ?? []).includes(cell.key)
+}
+
+/**
+ * **这一圈里有几格星云可以被"再扫一次"驱散** = 已扫描 + 在本圈内 + 还没驱散。
+ * （未扫描的星云格要**先扫出来**——第一次扫描只"发现星云"，不驱散，这是船长的口径。）
+ */
+export function gridNebulaTargets(grid: WormholeGridState): HexCell[] {
+  const r = Math.max(0, Math.floor(grid.scanRadius))
+  return hexDiskAround(grid.pos, r).filter((c) => {
+    const cell = gridCellAt(grid, c)
+    return !!cell && grid.scanned.includes(cell.key) && isNebulaFogged(grid, cell)
+  })
+}
+
+/** **驱散星云**（就地改状态；由 `wormholeGridScan` 在扣回合之后调用）。返回本次驱散的格键 */
+export function disperseNebulae(grid: WormholeGridState, cells: readonly HexCell[]): string[] {
+  const done: string[] = []
+  for (const c of cells) {
+    const cell = gridCellAt(grid, c)
+    if (!cell || !isNebulaFogged(grid, cell)) continue
+    grid.dispersed = [...(grid.dispersed ?? []), cell.key]
+    done.push(cell.key)
+  }
+  return done
 }
 
 /** 一次的扫描会揭示哪些格（当前格 + 周围一圈；**不含**已扫过的） */
@@ -333,8 +440,12 @@ export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
  * 1. 半径按 `wormholeGridRadiusFor(depth)`；
  * 2. **入口格**：随机落在**外圈**（盘最外层）；
  * 3. **下一层入口**：从盘内其余格随机取一格（保证 ≠ 入口格）；
- * 4. 其余格先按 **空 ≥50%** 铺空地点，再把剩下的格按四类权重分配（**用最大余数法**保证格子数取整后仍可复现）；
- * 5. 残骸信号再按 70/30 分墓场/遗迹。
+ * 4. 其余格先按**空占比**铺空地点（层 1 = 50%，随层按 `wormholeEmptyShareFor` 递减 ——
+ *    船长 2026-09-13「空地块允许随着高层权重降低」），再把剩下的格按四类权重分配
+ *    （**用最大余数法**保证格子数取整后仍可复现）；
+ * 5. 残骸信号再按 70/30 分墓场/遗迹，**并保证遗迹 ≥ 每层下限**（`wormholeRuinsFloorFor`，
+ *    不够就从"资源/谜质"借残骸信号；舰船与信标不动）；
+ * 6. **层 4 起点星云**（`WORMHOLE_NEBULA_MIN_DEPTH`）：只点有信号的地点、配额 15%、独立随机流。
  */
 export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0): WormholeGridState {
   const rng = wormholeStream(seed * 7919 + depth * 104729)
@@ -347,7 +458,11 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
   // 除入口/终点外的格：先定"是否为空"，再定信号
   const others = all.filter((c) => !(c.q === exit.q && c.r === exit.r))
   const nAll = all.length
-  const emptyCount = Math.max(0, Math.ceil(nAll * WORMHOLE_EMPTY_MIN_SHARE))
+  /**
+   * **空占比随层下降**（船长 2026-09-13「空地块允许随着高层权重降低」；层 1 逐格不变）。
+   * 口径 = **占可分配池的比例**（见 `wormholeEmptyShareFor` 的注释：量纲为什么是"占池"）。
+   */
+  const emptyCount = Math.max(0, Math.ceil((nAll - 1) * wormholeEmptyShareFor(depth)))
   // 洗牌（Fisher–Yates，确定性）后取前 emptyCount 个当"空"（入口/终点也照此参与 ⇒ 它们也可能是空的）
   const shuffled = [...others]
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -371,6 +486,24 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
     q.n += 1
     left -= 1
   }
+  /**
+   * **遗迹格下限**（船长 2026-09-13「让遗迹格数量随层数增加并给每层增加一个遗迹格下限」）。
+   *
+   * 做法：先算这份权重会给几个**残骸信号**（`wreckN`），再算它按哪条 70/30 **会**分出几个遗迹——
+   * `round(wreckN × 30%)`；**低于下限就补残骸信号**（从"资源"借，不够再借"谜质"；
+   * **舰船信号与信标一个不动**——信标是每层唯一的指路标记）。
+   * 这样"遗迹随层增加"与"每层有下限"同时成立，且**不改** `WORMHOLE_SIGNAL_WEIGHTS`（其余信号的比例关系照旧）。
+   */
+  const quotaOf = (k: WormholeSignal): { n: number; frac: number } => quota.find((q) => q.k === k)!
+  const ruinsFloorWanted = wormholeRuinsFloorFor(depth)
+  let wreckN = quotaOf('wreck').n
+  while (Math.round(wreckN * WORMHOLE_RUINS_SHARE) < ruinsFloorWanted && wreckN < pool.length) {
+    const donor = quotaOf('resource').n > 1 ? 'resource' : quotaOf('radar').n > 1 ? 'radar' : null
+    if (!donor) break
+    quotaOf(donor).n -= 1
+    wreckN += 1
+  }
+  quotaOf('wreck').n = wreckN
   const signalOfCell = new Map<string, WormholeSignal>()
   let at = 0
   const poolShuffled = pool // 已按上面洗牌后的相对顺序（确定性）
@@ -412,6 +545,52 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
     const place: WormholePlace = sig ? pickPlace(sig, rng()) : 'empty'
     return { key, q: c.q, r: c.r, place }
   })
+  /**
+   * **遗迹下限的"硬保证"**（船长 2026-09-13「给每层增加一个遗迹格下限」）。
+   *
+   * ⚠ 为什么不能只靠"补残骸信号"：70/30 那道分法是**逐格掷骰**（`pickPlace`），
+   * 补出来的残骸信号仍可能一张遗迹都不出（层 1 实测 24% 的盘是 0 张遗迹）。
+   * 所以这里做**兜底翻转**：真数一遍，不够就把"舰船墓场"按 `all` 顺序翻成遗迹
+   * ——与"信标不落入口格"同款手法（**只换不重掷** ⇒ 格数与其余地点分布照旧）。
+   * 墓场是"最该让位"的那个：它的专属能效最低（0.09 稀有/回合 vs 遗迹 0.67）。
+   */
+  const ruinsFloor = wormholeRuinsFloorFor(depth)
+  let ruinsNow = cells.filter((c) => c.place === 'ruins').length
+  if (ruinsNow < ruinsFloor) {
+    for (const c of cells) {
+      if (ruinsNow >= ruinsFloor) break
+      if (c.place !== 'graveyard') continue
+      c.place = 'ruins'
+      ruinsNow += 1
+    }
+  }
+  /**
+   * **点星云**（船长 2026-09-13；层 4 起）。
+   *
+   * 只点**有信号的地点**（船长补正「**空地没有星云**」）+ **排除下一层入口**（它是导航标记，
+   * 遮住它只会让玩家白扫）。配额 = `⌈有信号格数 × 15%⌉`，再夹在"最多占一半"以内。
+   * 打乱用**独立随机流**（`seed × 6619 + depth × 81173`）⇒ 不动主流的消耗序列，
+   * 层 1~3 的盘面与改造前**逐格一致**（回归可验）。
+   */
+  if (depth >= WORMHOLE_NEBULA_MIN_DEPTH) {
+    const exitKey = hexKey(exit.q, exit.r)
+    const candidates = cells.filter((c) => c.place !== 'empty' && c.key !== exitKey)
+    const quotaN = Math.min(
+      Math.ceil(candidates.length * WORMHOLE_NEBULA_SHARE),
+      Math.floor(candidates.length * WORMHOLE_NEBULA_MAX_SHARE),
+    )
+    if (quotaN > 0) {
+      const nebRng = wormholeStream(seed * 6619 + depth * 81173)
+      const idx = candidates.map((_, i) => i)
+      for (let i = idx.length - 1; i > 0; i--) {
+        const j = Math.floor(nebRng() * (i + 1))
+        const t = idx[i]!
+        idx[i] = idx[j]!
+        idx[j] = t
+      }
+      for (const i of idx.slice(0, quotaN)) candidates[i]!.nebula = true
+    }
+  }
   return {
     radius,
     start: { q: start.q, r: start.r },

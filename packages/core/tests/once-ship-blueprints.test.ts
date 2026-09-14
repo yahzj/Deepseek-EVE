@@ -23,6 +23,14 @@ import { describe, expect, it } from 'vitest'
 import { MARKET_GOODS, RARITY_TIER, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
 import { blueprintWeight } from '../src/market'
 import { isSingleUseBlueprint } from '../src/manufacturing'
+import {
+  WORMHOLE_DILUTION_MIN_DEPTH,
+  WORMHOLE_DILUTION_SHARE,
+  WORMHOLE_FAMILIES,
+  wormholeDilutionPoolOf,
+  wormholeFamilyPoolOf,
+  wormholeLootShares,
+} from '../src/index'
 
 const ctx = buildSimContext()
 const ONCE = SHIP_BLUEPRINTS.filter((b) => b.singleUse === true && b.id.startsWith('sbp-once-'))
@@ -77,5 +85,40 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
     }
     // 鹦鹉螺那张随舰挂闸门
     expect(goodOf('blueprint', 'sbp-once-nautilus')?.unreleased).toBe(true)
+  })
+
+  it('④ 稀释池（船长：「放入虫洞的专属奖池内作为稀释」）：70:30 + 按层分档 + 与族池互斥', () => {
+    // 权重：族 70 / 稀释 30（两条口径之和恒为 1）
+    expect(wormholeLootShares()).toEqual({ family: 0.7, dilution: 0.3 })
+    expect(WORMHOLE_DILUTION_SHARE).toBe(0.3)
+    // 层分档：T3 层 2 起 / T4 层 3 起 / T5 层 5 起（船长「T4 降到 3 层，T5 降到 5 层」）
+    expect(WORMHOLE_DILUTION_MIN_DEPTH).toEqual({ 3: 2, 4: 3, 5: 5 })
+    const tierOf = (bpId: string) => ctx.ships.get(ctx.shipBlueprints.get(bpId)!.shipId)!.tier
+    // 层 1：遗迹恒不出 ⇒ 池为空
+    expect(wormholeDilutionPoolOf(ctx, 1)).toEqual([])
+    // 层 2：只有 T3 十张
+    const d2 = wormholeDilutionPoolOf(ctx, 2)
+    expect(d2.length).toBe(10)
+    expect(d2.every((id) => tierOf(id) === 3)).toBe(true)
+    // 层 3：加 T4 四张
+    const d3 = wormholeDilutionPoolOf(ctx, 3)
+    expect(d3.length).toBe(14)
+    expect(d3).toContain('sbp-once-swordfish')
+    expect(d3.filter((id) => tierOf(id) === 4).length).toBe(4)
+    // 层 5：加 T5 一张（皇带鱼）
+    const d5 = wormholeDilutionPoolOf(ctx, 5)
+    expect(d5.length).toBe(15)
+    expect(d5).toContain('sbp-once-colossal')
+    // 池里只许一次性舰船蓝图
+    for (const id of d5) {
+      expect(id.startsWith('sbp-once-'), `${id} 前缀`).toBe(true)
+      expect(ctx.shipBlueprints.get(id)?.singleUse, `${id} singleUse`).toBe(true)
+    }
+    // 与族专属池互斥（稀释池不该混进族专属件）
+    const familyAll = WORMHOLE_FAMILIES.flatMap((f) => {
+      const p = wormholeFamilyPoolOf(ctx, f)
+      return [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints, ...p.drones]
+    })
+    expect(d5.filter((id) => familyAll.includes(id))).toEqual([])
   })
 })

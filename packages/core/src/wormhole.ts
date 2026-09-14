@@ -23,15 +23,19 @@ import {
 } from './wormholeFoes'
 import type { WormholeFoeKind } from './wormholeFoes'
 import {
+  WORMHOLE_NEBULA_MIN_DEPTH,
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_MOVE,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
   wormholeStream,
+  disperseNebulae,
   gridCellAt,
+  gridNebulaTargets,
   gridScanTargets,
   hexKey,
   isExitCell,
+  isNebulaFogged,
   signalOfPlace,
   wormholeMakeGrid,
 } from './wormholeGrid'
@@ -453,6 +457,13 @@ export interface WormholeState {
   lastFleetLost: number
   /** **最近一趟的结算单**（界面弹层用；玩家确认后清掉） */
   lastSettle?: WormholeSettleRecord
+  /**
+   * **星云机制的一次性提示是否已经给过**（船长 2026-09-13：「这个机制在玩家第一次下到四层时提示玩家」）。
+   *
+   * 为什么随档：**"第一次"是跨趟的**——玩家第一趟下到层 4 看过提示后，第二趟不该再被念一遍。
+   * 可选字段（老档没有 = 还没提示过；若他此刻正停在层 4+，下一次深入会补上一次性事件，不影响存档）。
+   */
+  nebulaHintShown?: boolean
 }
 
 /** **撤离战从第几层起生效**（船长 2026-09-13：「撤离战只从第二层开始生效」） */
@@ -593,8 +604,20 @@ export function wormholeAdvanceNode(
   return { ok: true, spent, atLayerEnd: false, mustExtract: run.turnsLeft <= 0 }
 }
 
-/** 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离） */
-export function wormholeDescend(run: WormholeRunState, rngSeed: number, scanBonus = 0): WormholeAdvanceResult {
+/**
+ * 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离）。
+ *
+ * ⚠ **入参从 `run` 改成 `state`**（2026-09-13 星云批）：星云机制要求"**第一次下到层 4 时提示玩家**"，
+ * 而那条提示要写进 `state`（一次性事件 + `wormhole.nebulaHintShown`）⇒ 只收 `run` 是写不了的。
+ * 调用方（引擎 / 校准工具）本来就手里有 `state`，改动是把 `state.wormhole.run` 传进去即可。
+ */
+export function wormholeDescend(
+  state: GameState,
+  rngSeed: number,
+  scanBonus = 0,
+): WormholeAdvanceResult {
+  const run = state.wormhole.run
+  if (!run) return { ok: false, error: '当前不在虫洞里。' }
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。' }
   if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。' }
   // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
@@ -607,7 +630,41 @@ export function wormholeDescend(run: WormholeRunState, rngSeed: number, scanBonu
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
   run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus)
+  maybeHintNebula(state, run.depth)
   return { ok: true, spent: 0, atLayerEnd: false }
+}
+
+/**
+ * 本趟是否已经给过星云提示（**只防同一次会话内重复**；跨会话/跨趟靠 `nebulaHintShown` 随档）。
+ * 用 `WeakSet` 挂在 run 对象上：不落档、不新增字段、不改存档结构。
+ */
+const nebulaHintedRuns = new WeakSet<object>()
+
+/**
+ * **星云机制的一次性提示**（船长 2026-09-13：「这个机制在玩家第一次下到四层时提示玩家」
+ * ＋「⑤除了一次性事件，**通讯内也发一条相关的讯息给玩家**」）。
+ *
+ * 三条一起落：
+ * - `state.nebulaHintNotice`：**不落档**的一次性事件 ⇒ 渲染层读取即清并提示（与机群战损同款通道）；
+ * - **通讯一条讯息** `wormhole-nebula`：由 `data/comms.ts` 的常驻剧本按 `nebulaHintShown` 送达；
+ * - `state.wormhole.nebulaHintShown = true`：**随档**，保证跨趟只提示一次。
+ */
+function maybeHintNebula(state: GameState, depth: number): void {
+  if (depth < WORMHOLE_NEBULA_MIN_DEPTH) return
+  const run = state.wormhole.run
+  if (run && nebulaHintedRuns.has(run)) return
+  if (run) nebulaHintedRuns.add(run)
+  if (state.wormhole.nebulaHintShown === true) return
+  state.wormhole.nebulaHintShown = true
+  state.nebulaHintNotice =
+    '这一带的星云会遮蔽地点的信号：第一次扫描只能看到"有星云"，' +
+    '在同一个位置再扫描一次就能把星云驱散、读出信号。'
+  addLog(
+    state,
+    'info',
+    '🕳 前方出现星云带：**星云会遮蔽地点的信号**——第一次扫描只看到云，' +
+      '**再扫描一次**（同一圈内）即可驱散并读出信号。',
+  )
 }
 
 /**
@@ -701,6 +758,10 @@ export interface WormholeGridActionResult {
   }
   /** 激活产生的效果（激活；有它就该接着开战/结算，见 `wormholeActivateAt`） */
   effect?: WormholeActivateEffect
+  /** **本次驱散掉的星云格键**（扫描；船长 2026-09-13 星云机制） */
+  dispersed?: string[]
+  /** **本次新揭开、但被星云遮住的格数**（扫描；界面据此提示"再扫一次可驱散"） */
+  newlyFogged?: number
   /** 回合耗尽 ⇒ 只能撤离（与 `wormholeAdvanceNode` 的 `mustExtract` 同口径） */
   mustExtract?: boolean
 }
@@ -718,8 +779,14 @@ function gridActionBlocked(run: WormholeRunState): string | null {
 }
 
 /**
- * **扫描**（1 回合）：揭开"当前格 + 扫描半径内"还没扫过的格。
- * 周围都扫过了 ⇒ **拒绝且不扣回合**（不让玩家把回合浪费在重复扫描上）。
+ * **扫描**（1 回合）：揭开"当前格 + 扫描半径内"还没扫过的格，**并把圈里已扫描的星云驱散**。
+ *
+ * 拒绝口径（都不扣回合）：**既没有新格可揭、也没有星云可驱散** ⇒ 「换个地点再扫」。
+ *
+ * ⚠ **星云为什么要"再扫一次"**（船长 2026-09-13）：「玩家第一次扫描出一个地点时，有星云的地点，
+ * 星云会遮挡该地点的信号。需要玩家再扫描一次才能驱散星云」⇒
+ * 第一次扫描**只发现"这儿有星云"**（`revealOf` 给 `{ kind: 'nebula' }`），
+ * 第二次扫描（同圈内）才驱散、信号才可读。这就是这条机制的**回合税**：深层每层多花 N 个回合。
  */
 export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
@@ -728,7 +795,11 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked }
   const targets = gridScanTargets(grid)
-  if (targets.length === 0) return { ok: false, error: '周围都扫过了：换个地点再扫。' }
+  // 圈里"已扫描但还被星云罩着"的格 ⇒ 这一扫把它们驱散
+  const nebulaTargets = gridNebulaTargets(grid)
+  if (targets.length === 0 && nebulaTargets.length === 0) {
+    return { ok: false, error: '周围都扫过了、也没有星云可驱散：换个地点再扫。' }
+  }
   if (run.turnsLeft < WORMHOLE_TURN_PER_SCAN) {
     return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
   }
@@ -740,15 +811,32 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
     if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
     revealed.push({ key: cell.key, signal: signalOfPlace(cell.place) })
   }
+  const dispersed = disperseNebulae(grid, nebulaTargets)
   const empty = revealed.filter((r) => r.signal === null).length
+  /**
+   * 新揭开的格里**有几格被星云遮住**（= 刚扫出来、但信号还看不到的那些）——
+   * 单独报出来，玩家才知道"这次扫到的东西被云挡着"，而不是以为扫描失灵。
+   */
+  const newlyFogged = grid.cells.filter(
+    (c) => revealed.some((r) => r.key === c.key) && isNebulaFogged(grid, c),
+  ).length
   addLog(
     state,
     'info',
     `🕳 扫描（半径 ${grid.scanRadius}）：揭开 ${revealed.length} 格` +
       (empty > 0 ? `（其中 ${empty} 格没有信号）` : '') +
+      (newlyFogged > 0 ? ` · **${newlyFogged} 格被星云遮住（再扫描一次可驱散）**` : '') +
+      (dispersed.length > 0 ? ` · 驱散星云 ${dispersed.length} 格` : '') +
       ` · 剩 ${run.turnsLeft} 回合。`,
   )
-  return { ok: true, spent: WORMHOLE_TURN_PER_SCAN, revealed, mustExtract: run.turnsLeft <= 0 }
+  return {
+    ok: true,
+    spent: WORMHOLE_TURN_PER_SCAN,
+    revealed,
+    dispersed,
+    newlyFogged,
+    mustExtract: run.turnsLeft <= 0,
+  }
 }
 
 /**
