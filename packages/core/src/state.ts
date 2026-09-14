@@ -214,12 +214,15 @@ export type WormholeArchetype = 'balanced' | 'wreck' | 'ruins' | 'vein' | 'comba
  */
 export type WormholeFamily = 'A' | 'C' | 'D' | 'E' | 'G'
 
-/** **已发现、未开始探索的虫洞**（种子 + 起始层 + 内容原型 + 敌族；上限 `WORMHOLE_STOCK_MAX`） */
+/** **已发现、未开始探索的虫洞**（种子 + 内容原型 + 敌族；起始层恒 1；上限 `WORMHOLE_STOCK_MAX`） */
 export interface WormholeStockItem {
   id: string
   /** 本趟种子（进洞时传给 `wormholeEnter`） */
   seed: number
-  /** 起始层（1~3）：越深越险、产出越高 */
+  /**
+   * 起始层：**恒 1**（船长 2026-09-14「所有虫洞都是从1层开始探索」；旧档里的 2/3 载入时归 1）。
+   * 字段保留 ⇒ **零迁移**（进洞时仍按它建副本，只是值不再有变化）。
+   */
   depth: number
   /**
    * 内容原型（丙 · 2026-09-14）。**可选字段 ⇒ 零迁移**：老档没有就按 `seed` 现算
@@ -243,7 +246,7 @@ export interface WormholeAutoRun {
   stockId: string
   /** 该处虫洞的种子（产出池与它同源 ⇒ 同一处无论谁去，族池一致） */
   seed: number
-  /** 起始层 */
+  /** 起始层（恒 1；字段保留 ⇒ 零迁移） */
   depth: number
   /** 该处的敌族（丁 · 族徽；缺省按 `seed` 现算 ⇒ 零迁移） */
   family?: WormholeFamily
@@ -270,6 +273,12 @@ export interface WormholeAutoReport {
   coresReleased: number
   /** 收益清单（已入仓库） */
   gains: Array<{ itemId: string; units: number }>
+  /**
+   * **本趟带回的 AI 核心**（2026-09-14 船长第四答：自动探索也吃遗迹核心掉落，按手动期望 ×40% 折算）。
+   * ⚠ 与 `gains` 分开：核心**不进仓库**（直接进 `state.aiCores` 账本）⇒ 塞进 `gains` 会被入仓循环
+   * 写进仓库、变成"仓库里有核心却不能用"的两本账。缺省 = 本趟没捞到。
+   */
+  cores?: Array<{ type: 'gamma' | 'beta' | 'alpha'; n: number }>
   /** 损伤读数（结构 / 装甲各一项） */
   damage: Array<{
     shipId: string
@@ -1375,7 +1384,7 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    */
   wormholeScan?: WormholeScanState
   /**
-   * **已发现、未开始探索的虫洞**（船长：最多囤积 5 个；每个带种子 + 起始层）。
+   * **已发现、未开始探索的虫洞**（船长：最多囤积 5 个；每处带种子 + 内容原型 + 敌族，起始层恒 1）。
    * 兼容字段（可选）：旧档没有 ⇒ 空库存，零迁移。
    */
   wormholeStock?: WormholeStockItem[]

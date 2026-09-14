@@ -225,7 +225,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: `whauto:${run.id}`,
       kind: 'whauto',
       label: '自动探索',
-      sub: `起始第 ${run.depth} 层 · ${run.shipIds.length} 条舰（各占 1 枚 AI 核心）`,
+      sub: `${run.shipIds.length} 条舰（各占 1 枚 AI 核心）`,
       percent: Math.max(0, Math.min(100, Math.round((done / span) * 100))),
       remainingMs: Math.max(0, run.finishAtGameMs - state.gameMs),
       stopable: true,

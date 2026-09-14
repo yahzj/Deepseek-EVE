@@ -8,7 +8,7 @@
  *   直接复用 `explore.scanSkillFactor` —— 与星图扫描**同一把尺**）；**不吃舰船属性**（船长：「无关」）。
  * - **随机事件期望与星图扫描同源**：暴露口径交给 `encounters`（本活动在暴露清单里与 `state.scanning` 并列）。
  * - **遇袭不中断**：被打不影响进度（进度按游戏时刻推进，不在遇袭时清零）。
- * - 进度满 ⇒ **发现 1 个虫洞**（随机种子 + 起始层）进库存，随后**自动续扫**。
+ * - 进度满 ⇒ **发现 1 个虫洞**（随机种子 + **起始层恒 1** + 原型/敌族按种子定）进库存，随后**自动续扫**。
  * - **库存上限 5**；满则**扫描停机**并提示（船长：「扫描停机并提示」）。
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
@@ -28,8 +28,15 @@ export const WORMHOLE_SCAN_BASE_MS = 220 * 60_000
 /** **未探索虫洞的库存上限**（船长：「玩家最多可以囤积5个未开始探索的虫洞」） */
 export const WORMHOLE_STOCK_MAX = 5
 
-/** 起始层档位（发现时随机；越深越险、产出越高 —— 沿用既有层曲线，不新增机制） */
-export const WORMHOLE_STOCK_DEPTHS: readonly number[] = [1, 2, 3]
+/**
+ * 起始层档位（**发现时一律从第 1 层起**）。
+ *
+ * ⚠ **2026-09-14 船长改判**：「**所有虫洞都是从1层开始探索。**」⇒ 旧口径「起始层 1/2/3 等概率」
+ * **作废**（当时是想让深区更快到手；改判后一律从浅层进，深区靠玩家自己往下走）。
+ * 数组与抽取调用一律保留（只留 `1`）——`rollStockItem` 里那次 `rng()` 照抽，
+ * **随机序列不挪位**（否则同种子的既有盘面/掉落会全变）。
+ */
+export const WORMHOLE_STOCK_DEPTHS: readonly number[] = [1]
 
 /**
  * **扫描虫洞的解锁门槛**（船长 2026-09-14：「**扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家
@@ -120,7 +127,7 @@ export function wormholeScanStop(state: GameState): CommandResult {
 }
 
 let stockSeq = 0
-/** 造一处"已发现"的虫洞（种子 + 起始层；界面按种子显示、进洞时用它建副本） */
+/** 造一处"已发现"的虫洞（种子 + 起始层恒 1；界面按种子显示、进洞时用它建副本） */
 function rollStockItem(state: GameState, ctx: SimContext): WormholeStockItem {
   const rng = (): number => {
     // 用引擎的随机流（同档可复现；不额外引入随机源）
@@ -135,6 +142,7 @@ function rollStockItem(state: GameState, ctx: SimContext): WormholeStockItem {
   }
   void ctx
   stockSeq += 1
+  // 起始层恒 1（船长 2026-09-14）；**这次 rng() 照抽**——只改档位表、不挪随机序列
   const depth = WORMHOLE_STOCK_DEPTHS[Math.min(WORMHOLE_STOCK_DEPTHS.length - 1, Math.floor(rng() * WORMHOLE_STOCK_DEPTHS.length))]!
   const seed = Math.floor(rng() * 2_000_000_000) + 1
   return {
@@ -165,11 +173,7 @@ export function wormholeStockDiscard(state: GameState, id: string): CommandResul
   if (running) return { ok: false, error: '这一处正在自动探索中：先召回那一趟，再放弃。' }
   state.wormholeStock = list.filter((x) => x.id !== id)
   const meta = wormholeStockMeta(hit)
-  addLog(
-    state,
-    'info',
-    `🛰 已放弃一处虫洞：起始第 ${hit.depth} 层 · ${WORMHOLE_ARCHETYPE_LABELS[meta.archetype]}（那处通道就此关闭）。`,
-  )
+  addLog(state, 'info', `🛰 已放弃一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[meta.archetype]}（那处通道就此关闭）。`)
   return { ok: true }
 }
 
@@ -195,7 +199,7 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
   addLog(
     state,
     'info',
-    `🛰 发现虫洞：起始层 ${item.depth}（已囤积 ${state.wormholeStock.length}/${WORMHOLE_STOCK_MAX} 处）——到「扫描虫洞」页决定何时探索。`,
+    `🛰 发现一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)]}（已囤积 ${state.wormholeStock.length}/${WORMHOLE_STOCK_MAX} 处）——到「扫描虫洞」页决定何时探索。`,
   )
   return item
 }

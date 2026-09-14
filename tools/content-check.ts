@@ -131,6 +131,12 @@ securityZoneOf,
   WORMHOLE_MATTER_DEVICE_IDS,
   WORMHOLE_MATTER_FLOOR,
   wormholeIsShapedItem,
+  // 2026-09-14 AI 核心（船长：遗迹打捞 10% 掉落 · 60/30/10 · 各占 1 格 · 撤离后入核心账）
+  WORMHOLE_CORE_ITEM_IDS,
+  WORMHOLE_CORE_SHARE,
+  WORMHOLE_CORE_WEIGHTS,
+  wormholeCoreTypeOfItemId,
+  wormholeShapeOf,
   // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
   // 2026-09-14 船长：内容原型（丙）+ 敌族锁定（丁）——两张表的自洽契约
   WORMHOLE_ARCHETYPES,
@@ -179,7 +185,8 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-13 F3c-B1：谜质储存器再 13 台（威胁 3 + 战斗 10）→ 物品总数 50→**63**
 // 2026-09-13 F3c-B2：谜质储存器再 4 台（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）→ 物品总数 63→**67**
 // 2026-09-14：图纸货柜 3 种（层档三种 · 施工期 unreleased）→ 物品总数 67→**70**
-check(itemDefs.length === 70, `物品总数应为 70，实际 ${itemDefs.length}`)
+// 2026-09-14：AI 核心 3 种（伽马/贝塔/阿尔法 · 洞内实物形态 · 施工期 unreleased）→ 物品总数 70→**73**
+check(itemDefs.length === 73, `物品总数应为 73，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -296,8 +303,11 @@ for (const item of itemDefs) {
         (item.kind === 'container' && item.unreleased === true) ||
         /* **谜质储存器同理**（F3c · 2026-09-13）：它是"本趟虫洞内生效、离开即消失"的装置，
          * 既不是原料也不进任何生产链 ⇒ 施工期（`unreleased`）允许没有配方。 */
-        (item.kind === 'matter' && item.unreleased === true),
-      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container / matter 仅在施工期豁免）`,
+        (item.kind === 'matter' && item.unreleased === true) ||
+        /* **AI 核心同理**（2026-09-14）：洞内实物形态 —— 撤离成功即**直接入核心账本**
+         * （不进仓库、不上拆解台、不进任何生产链）⇒ 施工期（`unreleased`）允许没有配方。 */
+        (item.kind === 'aicore' && item.unreleased === true),
+      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container / matter / aicore 仅在施工期豁免）`,
     )
   }
 }
@@ -3506,6 +3516,55 @@ for (const m of MODULES) {
       }
     }
     /**
+     * **AI 核心契约**（2026-09-14 船长：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
+     * AI 核心单独占 1 格。出率为 10%，不挤占旧有出率。三种核心根据稀有度区分出货权重。」）。
+     *
+     * 三种核心必须：① `unreleased`（施工期不可见）② `kind === 'aicore'`（**不是 `container`** ——
+     * 拆解台的资格判据就是 `kind === 'container'`，混了会让核心上拆解台、还被丢进货柜抽奖）
+     * ③ **500 m³**（= 500 m³/格 × **1 格**，与形状表 1×1 对得上）④ 在 core 形状表里登记过
+     * ⑤ id 与 `WORMHOLE_CORE_ITEM_IDS` **一一对应**（少一边 ⇒ 掉出来一件读不懂的物品）。
+     *
+     * 另外两条市场口径（船长同日改判）：
+     * ⑥ **贝塔 / 阿尔法「只收不卖」**（`playerBuyable === false`）—— 它们已由虫洞遗迹产出，
+     *    市场再卖现货等于"花钱跳过副本"；伽马**必须仍可买**（船长只点了贝塔与阿尔法）。
+     * ⑦ 四档行价 = 船长给定的 **2.5 万 / 20 万 / 150 万 / 1000 万**（改价必须同步改这条钉子）。
+     */
+    for (const id of WORMHOLE_CORE_ITEM_IDS) {
+      const item = ctxItems.get(id)
+      if (!item) {
+        errors.push(`AI 核心契约：物品目录里没有 ${id} —— 遗迹掉落会散落出无定义的物品`)
+        continue
+      }
+      if (item.unreleased !== true) errors.push(`AI 核心契约：${id}（${item.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
+      if (item.kind !== 'aicore') errors.push(`AI 核心契约：${id} 的 kind = ${item.kind}，应为 aicore（container 会上拆解台）`)
+      if (item.unitM3 !== 500) errors.push(`AI 核心契约：${id} 的体积 = ${item.unitM3} m³，应为 500（= 500 m³/格 × 1 格）`)
+      if (!wormholeIsShapedItem(id)) errors.push(`AI 核心契约：${id} 没在 core 形状表里登记 —— 会被当散货塞进背包（形状丢失）`)
+      if (wormholeShapeOf(id).w !== 1 || wormholeShapeOf(id).h !== 1) {
+        errors.push(`AI 核心契约：${id} 的形状 = ${wormholeShapeOf(id).w}×${wormholeShapeOf(id).h}，应为 1×1（船长「单独占 1 格」）`)
+      }
+      if (wormholeCoreTypeOfItemId(id) === null) errors.push(`AI 核心契约：${id} 在 core 里反查不出核心账本键`)
+    }
+    for (const [key, price, buyable] of [
+      ['core-basic', 25_000, true],
+      ['core-gamma', 200_000, true],
+      ['core-beta', 1_500_000, false],
+      ['core-alpha', 10_000_000, false],
+    ] as const) {
+      const g = MARKET_GOODS.find((m) => m.key === key)
+      if (!g) {
+        errors.push(`AI 核心契约：市场目录里没有 ${key}`)
+        continue
+      }
+      if (g.basePrice !== price) errors.push(`AI 核心契约：${key} 的行价 = ${g.basePrice}，应为 ${price}（船长 2026-09-14「2.5 万 / 20 万 / 150 万 / 1000 万」）`)
+      const isBuyable = g.playerBuyable !== false
+      if (isBuyable !== buyable) {
+        errors.push(
+          `AI 核心契约：${key} 的可买入 = ${isBuyable}，应为 ${buyable}` +
+            (buyable ? '（伽马仍可市场购入）' : '（船长：「移除市场的贝塔和阿尔法 AI 核心的出售订单」⇒ 只收不卖）'),
+        )
+      }
+    }
+    /**
      * ⑦ **谜质储存器契约**（F3c · 船长 2026-09-13：「谜质玩家采集后，在货仓内显示为4格的『谜质储存器』」）。
      *
      * 每一台都必须：① `kind === 'matter'` ② `unreleased`（施工期不可见：手册物品图鉴遍历全目录）
@@ -3555,7 +3614,7 @@ for (const m of MODULES) {
     const tonesBlock = blockOf('export const TONES', 'export function toneOf')
     const hasKey = (block: string, key: string): boolean =>
       block.includes(`'${key}':`) || new RegExp(`(^|\\s)${key}:`, 'm').test(block)
-    for (const id of [...matterIds, 'box-relic', 'box-bp']) {
+    for (const id of [...matterIds, 'box-relic', 'box-bp', 'ai-core']) {
       if (!hasKey(shapesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 SHAPES 里没有图形`)
       if (!hasKey(tonesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 TONES 里没有色调`)
     }
@@ -3566,6 +3625,10 @@ for (const m of MODULES) {
     // 图纸货柜三种按**层档**分色（浅/中/深），与安全货柜"按族分色"同一套做法
     for (const id of WORMHOLE_BP_BOX_IDS) {
       if (!hasKey(tonesBlock, id)) errors.push(`图标契约：图纸货柜 ${id} 没有层档色调（货仓格里按层档分色）`)
+    }
+    // AI 核心三种按**稀有度**分色（伽马 → 贝塔 → 阿尔法），同上做法
+    for (const id of WORMHOLE_CORE_ITEM_IDS) {
+      if (!hasKey(tonesBlock, id)) errors.push(`图标契约：AI 核心 ${id} 没有稀有度色调（货仓格里按稀有度分色）`)
     }
     /**
      * ⑨ **拆解链路契约**（F4d · 船长 2026-09-13 定：精炼炉拆解；2026-09-14 起两台口径分岔）：
@@ -3591,6 +3654,35 @@ for (const m of MODULES) {
     for (const fam of WORMHOLE_FAMILIES) {
       const gap = wormholeFamilyPoolGaps(unboxCtx).filter((g) => g.includes(fam))
       if (gap.length > 0) errors.push(`拆解契约：${fam} 族池有空档 —— ${gap.join(' / ')}`)
+    }
+    /**
+     * **AI 核心掉落契约**（2026-09-14 船长：「出率为 10%，**不挤占旧有出率**。三种核心根据稀有度
+     * 区分出货权重」）。"不挤占"这条在代码里靠**独立随机流**实现，这里把口径钉成可验的断言：
+     * ① 出货率 = 10%；② 权重 = 60/30/10（且按稀有度递减）；③ **核心不得混进任何既有抽取池**
+     * —— 混进去就说明"两处都在发核心"，那才是真的挤占（同一个东西两个来源）。
+     */
+    if (WORMHOLE_CORE_SHARE !== 0.1) {
+      errors.push(`AI 核心掉落契约：出货率 = ${WORMHOLE_CORE_SHARE}，应为 0.1（船长「出率为 10%」）`)
+    }
+    const cw = WORMHOLE_CORE_WEIGHTS
+    if (cw.gamma + cw.beta + cw.alpha !== 100) {
+      errors.push(`AI 核心掉落契约：权重和 = ${cw.gamma + cw.beta + cw.alpha}，应为 100（现 ${cw.gamma}/${cw.beta}/${cw.alpha}）`)
+    }
+    if (!(cw.gamma > cw.beta && cw.beta > cw.alpha)) {
+      errors.push(`AI 核心掉落契约：权重未按稀有度递减（伽马 ${cw.gamma} / 贝塔 ${cw.beta} / 阿尔法 ${cw.alpha}）`)
+    }
+    const coreIds = [...WORMHOLE_CORE_ITEM_IDS] as readonly string[]
+    const hitIn = (label: string, ids: readonly string[]): void => {
+      const bad = ids.filter((id) => coreIds.includes(id))
+      if (bad.length > 0) errors.push(`AI 核心掉落契约：核心混进了「${label}」抽取池（${bad.join('、')}）—— 同一件东西两个来源 = 挤占`)
+    }
+    for (const fam of WORMHOLE_FAMILIES) {
+      const p = wormholeFamilyPoolOf(unboxCtx, fam)
+      hitIn(`${fam} 族专属池`, [...p.modules, ...p.moduleBlueprints, ...p.shipBlueprints])
+    }
+    for (const d of [2, 3, 5]) {
+      hitIn(`稀释池（层档 ${d}）`, wormholeDilutionPoolOf(unboxCtx, d))
+      hitIn(`永久图纸池（层档 ${d}）`, wormholePermanentPoolOf(unboxCtx, d))
     }    const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {
       errors.push('虫洞不可见闸门：市场目录里找不到 ore-voidmother（虚空母矿）——上线时"删字段"那一步就无从谈起')

@@ -339,6 +339,10 @@ interface Income {
   boxes: number
   /** 其中**图纸货柜**的件数（`boxes` 的子集；验证"并列 50:50 落到实战"的读数） */
   boxesBp: number
+  /** **AI 核心件数**（2026-09-14 新增掉落；出入核心账本，不计入「合计ISK」） */
+  cores: number
+  /** AI 核心**按市场行价的参考估值**（只作参考，不进合计） */
+  coreIsk: number
   /** 族专属无人机（件数 + 基础价 ISK） */
   drones: number
   droneIsk: number
@@ -358,9 +362,29 @@ interface Income {
 const isRelicBoxId = (id: string): boolean => id.startsWith('box-relic-')
 const isBpBoxId = (id: string): boolean => id.startsWith('box-bp-')
 const isContainerId = (id: string): boolean => isRelicBoxId(id) || isBpBoxId(id)
+/**
+ * **AI 核心**（2026-09-14 船长新增：遗迹打捞 10% 掉落 · 60/30/10 权重 · 各占 1 格）。
+ *
+ * ⚠ 两个坑，本轮都填了：
+ * ① 核心是**形状件**（走 `run.hold.placements`、`kind: 'box'`）⇒ 原先"凡 box 件都算货柜"的写法
+ *    会把核心误计成货柜（读数虚高、且会污染"货柜列逐字不变"的核对）；
+ * ② 核心**不入仓库**（撤离成功直接进 `state.aiCores`）⇒ 只能从**核心账本**读到手数，
+ *    仓库差分那条路（`incomeOf` 的 `warehouse.items` 循环）永远看不到它。
+ *
+ * 估值口径：按**市场那本账的行价**（2026-09-14 船长定：伽马 20 万 / 贝塔 150 万 / 阿尔法 1000 万信用点；
+ * 唯一出处 = `marketCatalog.ts` 的 `core-*` 卡片，这里**从 ctx 现读**、不另抄一份免得两处漂移），
+ * **只作参考、不进「合计ISK」**——核心是账本资源（不拆、且贝塔/阿尔法已只收不卖），
+ * 进合计会让资产口径与旧读数不可比。
+ */
+const isCoreId = (id: string): boolean => id.startsWith('ai-core-')
+const CORE_TYPE_ORDER = ['gamma', 'beta', 'alpha'] as const
+/** 核心账本键 ⇒ 市场行价（读不到 = 0；`core-*` 卡片不在"未上线闸门"里，正常恒可读） */
+function coreIskOf(type: (typeof CORE_TYPE_ORDER)[number]): number {
+  return ctx.marketGoods.get(`core-${type}`)?.basePrice ?? 0
+}
 
 function incomeOf(state: GameState): Income {
-  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, boxesBp: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
+  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, boxesBp: 0, cores: 0, coreIsk: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
   for (const [id, units] of Object.entries(state.warehouse.items)) {
     const n = Math.max(0, Math.floor(units))
     if (n <= 0) continue
@@ -380,6 +404,12 @@ function incomeOf(state: GameState): Income {
   }
   for (const n of Object.values(state.moduleBay ?? {})) acc.modules += Math.max(0, Math.floor(n))
   for (const n of Object.values(state.blueprintStock ?? {})) acc.blueprints += Math.max(0, Math.floor(n))
+  // AI 核心不走仓库 ⇒ 从核心账本读（本工具用全新 state，故绝对值 = 本批到手数）
+  for (const t of CORE_TYPE_ORDER) {
+    const n = Math.max(0, Math.floor(state.aiCores?.[t] ?? 0))
+    acc.cores += n
+    acc.coreIsk += n * coreIskOf(t)
+  }
   return acc
 }
 
@@ -390,6 +420,8 @@ const INCOME_KEYS = [
   'rareWrecks',
   'boxes',
   'boxesBp',
+  'cores',
+  'coreIsk',
   'drones',
   'droneIsk',
   'modules',
@@ -414,10 +446,12 @@ interface Ledger {
   boxes: number
   /** 其中**图纸货柜**件数（`boxes` 的子集） */
   boxesBp: number
+  /** **AI 核心**件数（2026-09-14 新增；核心是 1×1 形状件、撤离后进核心账本） */
+  cores: number
 }
 
 function runLedger(state: GameState): Ledger {
-  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, boxesBp: 0 }
+  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, boxesBp: 0, cores: 0 }
   const run = state.wormhole.run
   // 背包（货仓格）+ **临时空间**（大件缓冲，撤离时一并入港 ⇒ 也算"已经拿到手"）
   const slots = [...(run?.bag ?? []), ...(run?.temp ?? [])]
@@ -433,13 +467,22 @@ function runLedger(state: GameState): Ledger {
     } else if (isContainerId(slot.itemId)) {
       acc.boxes += n
       if (isBpBoxId(slot.itemId)) acc.boxesBp += n
+    } else if (isCoreId(slot.itemId)) {
+      acc.cores += n
     }
   }
-  // 形状件走 placements（placement 只记 itemId ⇒ 同样按前缀分流）
+  /**
+   * 形状件走 placements（placement 只记 itemId ⇒ 同样按前缀分流）。
+   * ⚠ **必须显式分流**：placement 的 `kind: 'box'` 是"形状件"的意思，**不等于货柜** ——
+   * 核心（1×1）也是 box 件。原先"凡 box 件都记货柜"会让核心污染货柜列。
+   */
   for (const p of run?.hold?.placements ?? []) {
     if (p.kind !== 'box') continue
-    acc.boxes += 1
-    if (isBpBoxId(p.itemId)) acc.boxesBp += 1
+    if (isCoreId(p.itemId)) acc.cores += 1
+    else if (isContainerId(p.itemId)) {
+      acc.boxes += 1
+      if (isBpBoxId(p.itemId)) acc.boxesBp += 1
+    }
   }
   return acc
 }
@@ -452,6 +495,7 @@ function subLedger(a: Ledger, b: Ledger): Ledger {
     rareWrecks: a.rareWrecks - b.rareWrecks,
     boxes: a.boxes - b.boxes,
     boxesBp: a.boxesBp - b.boxesBp,
+    cores: a.cores - b.cores,
   }
 }
 
@@ -1017,7 +1061,7 @@ function runRunsMode(): void {
       `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )
   console.log(
-    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '其中图纸货柜', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
+    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '其中图纸货柜', '★AI核心(枚)', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
   )
   const out: RunOutcome[] = []
   for (let i = 0; i < n; i++) {
@@ -1033,6 +1077,7 @@ function runRunsMode(): void {
         o.income.rareWrecks,
         o.income.boxes,
         o.income.boxesBp,
+        o.income.cores,
         o.income.oreUnits,
         f(o.income.oreIsk),
         f(o.income.wreckIsk),
@@ -1070,6 +1115,8 @@ function runRunsMode(): void {
   const rareCollected = avg((o) => o.layerRares.reduce((s, v) => s + v, 0))
   const boxGot = avg((o) => o.income.boxes)
   const boxBpGot = avg((o) => o.income.boxesBp)
+  const coreGot = avg((o) => o.income.cores)
+  const coreIskGot = avg((o) => o.income.coreIsk)
   console.log(
     `        **专属产出（目标函数）**：稀有残骸 **${rareGot.toFixed(2)} 件/趟**` +
       `（1 件 = ${RARE_WRECK_VOLUME_M3} m³ = 1 个高级箱的原料；1 箱开出 1 件该族专属装备或专属图纸）· ` +
@@ -1077,6 +1124,16 @@ function runRunsMode(): void {
       `（安全货柜 ${(boxGot - boxBpGot).toFixed(2)} + **图纸货柜 ${boxBpGot.toFixed(2)}**；层 2 起才出）· ` +
       `回收率 ${rareCollected > 0 ? ((rareGot / rareCollected) * 100).toFixed(0) : '—'}%` +
       `（全损趟连稀有残骸一起丢）`,
+  )
+  /**
+   * **AI 核心**（2026-09-14 船长新增：遗迹打捞 10% · 60/30/10 · 各占 1 格 · 层 1 也给）。
+   * 单列一行而不是并进「合计ISK」：核心走**核心账本**（不卖不拆），并进去会让资产口径与旧读数不可比；
+   * 参考估值按市场行价（2026-09-14 船长定：伽马 20 万 / 贝塔 150 万 / 阿尔法 1000 万信用点）。
+   */
+  console.log(
+    `        **AI 核心（遗迹打捞）**：**${coreGot.toFixed(3)} 枚/趟**` +
+      `（按行价参考 ≈ ${Math.round(coreIskGot).toLocaleString('zh-CN')} ISK/趟 —— **不进上面的「合计ISK」**）` +
+      ` · 出货率 10% · 权重 伽马 60 / 贝塔 30 / 阿尔法 10 · 层 1 起就出 · 自动探索按 ×40% 折算`,
   )
   console.log(
     `        纯资产（附带）：平均到手 ${Math.round(avg((o) => incomeIsk(o.income))).toLocaleString('zh-CN')} ISK` +

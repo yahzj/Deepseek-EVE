@@ -39,6 +39,14 @@ export const WORMHOLE_SHAPE_STACK: WormholeHoldShape = { w: 1, h: 1 }
 export const WORMHOLE_SHAPE_CONTAINER: WormholeHoldShape = { w: 2, h: 2 }
 /** **图纸货柜**（2026-09-14 船长定「占 2 格大小」）—— 2 宽 × 1 高 = 2 格 */
 export const WORMHOLE_SHAPE_BPBOX: WormholeHoldShape = { w: 2, h: 1 }
+/**
+ * **AI 核心**（2026-09-14 船长定「AI 核心单独占 1 格」）—— 1×1 = 1 格。
+ *
+ * ⚠ 它是**形状件**（走 `hold.placements`、`kind: 'box'`）而不是可叠加散货（走 `run.bag`）：
+ * 散货按 `units ÷ 每格单位数` 合并占格，那就成了"多枚核心挤一格"，与"单独占 1 格"不符
+ * ⇒ 每一枚核心 = 独立一件、各自 1 格（洞内实物形态见 `packages/data/src/items.ts` 的 `AI_CORE_ITEMS`）。
+ */
+export const WORMHOLE_SHAPE_CORE: WormholeHoldShape = { w: 1, h: 1 }
 
 /**
  * **形状表**（物品 id → 形状）。**没登记的物品 = 可叠加散货**（走 `run.bag`，不占形状条目）。
@@ -55,6 +63,10 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'box-bp-shallow': WORMHOLE_SHAPE_BPBOX,
   'box-bp-mid': WORMHOLE_SHAPE_BPBOX,
   'box-bp-deep': WORMHOLE_SHAPE_BPBOX,
+  // AI 核心（遗迹打捞掉落；每种核心各占 1 格 —— 与 `AI_CORE_ITEMS` 三处同序）
+  'ai-core-gamma': WORMHOLE_SHAPE_CORE,
+  'ai-core-beta': WORMHOLE_SHAPE_CORE,
+  'ai-core-alpha': WORMHOLE_SHAPE_CORE,
   /**
    * **谜质储存器**（F3c · 船长 2026-09-13「在货仓内显示为4格的『谜质储存器』」）：
    * 与货柜同形（2×2），但**只在本趟虫洞内生效、随趟消失**（效果表 = `wormholeMatter.ts`）。

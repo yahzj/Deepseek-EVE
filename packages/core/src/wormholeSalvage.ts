@@ -304,6 +304,77 @@ export function wormholeBpBoxDepthOf(boxItemId: string): number | null {
   return WORMHOLE_BP_BOX_DEPTH[boxItemId] ?? null
 }
 
+/* ═══════════ 二之三、AI 核心（2026-09-14 船长定：虫洞遗迹打捞新增掉落） ═══════════ */
+
+/**
+ * **三种 AI 核心（伽马 / 贝塔 / 阿尔法）**（船长 2026-09-14 原话：「在遗迹的打捞内，添加阿尔法、
+ * 贝塔、伽马 AI 核心的掉落。AI 核心单独占 1 格。出率为 10%，**不挤占旧有出率**。
+ * 三种核心根据稀有度区分出货权重」）。
+ *
+ * 五条已确认口径（同批船长四答）：
+ * - **不进仓库、直接入核心账**（`state.aiCores`）——AI 核心在游戏里是一本账（市场买卖 / 技能上限 /
+ *   副船与产线占用），洞内这一层只是"占 1 格的实物形态"⇒ 撤离成功即入账，避免两本账；
+ * - **层 1 也给 10%**（船长答「层 1 也给 10%」）⇒ **没有层门槛**，与遗迹专属货柜那条（层 2 起）不同；
+ * - **权重 60 / 30 / 10**（按稀有度：伽马最常见、阿尔法最金贵）；
+ * - **自动探索同口径折算 ×40%**（`WORMHOLE_AUTO_MANUAL.cores`）；
+ * - **结算单另加一格「AI 核心 N 枚」**。
+ *
+ * **"不挤占旧有出率"怎么保证**：本掉落走**自己的一条每格独立流**（种子含 `q/r`，盐值与货柜那条
+ * `runSeed*53 + depth*911 + …`、收尾战那条 `runSeed*17 + depth*613 + …` 都不同）
+ * ⇒ **旧掷骰的随机数消费一格不动**，货柜/稀有残骸的读数逐字不变（用例钉死）。
+ */
+export const WORMHOLE_CORE_GAMMA = 'ai-core-gamma'
+export const WORMHOLE_CORE_BETA = 'ai-core-beta'
+export const WORMHOLE_CORE_ALPHA = 'ai-core-alpha'
+/** 三种核心的物品 id（顺序 = 由常见到稀有；形状表、图标色调、契约四处同序） */
+export const WORMHOLE_CORE_ITEM_IDS = [WORMHOLE_CORE_GAMMA, WORMHOLE_CORE_BETA, WORMHOLE_CORE_ALPHA] as const
+/** 物品 id ⇒ 核心账本的键（不是核心 ⇒ null）。命名两套（物品 `ai-core-*` / 账本 `core-*` 的 `refId`）是历史：见 items.ts 注释 */
+export const WORMHOLE_CORE_TYPE: Readonly<Record<string, 'gamma' | 'beta' | 'alpha'>> = {
+  [WORMHOLE_CORE_GAMMA]: 'gamma',
+  [WORMHOLE_CORE_BETA]: 'beta',
+  [WORMHOLE_CORE_ALPHA]: 'alpha',
+}
+/** 遗迹打捞结束时的**核心出货率**（船长 2026-09-14：「出率为 10%」；不看层数） */
+export const WORMHOLE_CORE_SHARE = 0.1
+/** 命中后三种核心的**相对权重**（船长 2026-09-14：「三种核心根据稀有度区分出货权重」⇒ 60 / 30 / 10） */
+export const WORMHOLE_CORE_WEIGHTS: Readonly<Record<'gamma' | 'beta' | 'alpha', number>> = {
+  gamma: 60,
+  beta: 30,
+  alpha: 10,
+}
+
+/** 核心账本键 ⇒ 洞内实物物品 id（发实物时用） */
+export function wormholeCoreItemIdOf(type: 'gamma' | 'beta' | 'alpha'): string {
+  return `ai-core-${type}`
+}
+
+/** 物品 id ⇒ 核心账本键（不是核心物品 ⇒ null） */
+export function wormholeCoreTypeOfItemId(itemId: string): 'gamma' | 'beta' | 'alpha' | null {
+  return WORMHOLE_CORE_TYPE[itemId] ?? null
+}
+
+/**
+ * **掷遗迹打捞的 AI 核心掉落**（独立流；返回核心物品 id 或 undefined）。
+ *
+ * 顺序 = ① 10% 命中 ② 命中后按 60/30/10 抽一种。两个随机数都取自**本条独立流**
+ * （`runSeed*71 + depth*733 + (q*31 + r*37)*17 + 13`）⇒ 不占用旧掷骰的序列。
+ * **无层门槛**（船长答「层 1 也给 10%」）⇒ 层 1 的遗迹格同样有机会。
+ */
+export function wormholeRollCore(state: GameState, cell: WormholeGridCell): string | undefined {
+  const run = state.wormhole.run
+  if (!run?.grid) return undefined
+  const rng = wormholeStream(runSeedOf(state) * 71 + run.depth * 733 + (cell.q * 31 + cell.r * 37) * 17 + 13)
+  if (rng() >= WORMHOLE_CORE_SHARE) return undefined
+  const total = WORMHOLE_CORE_WEIGHTS.gamma + WORMHOLE_CORE_WEIGHTS.beta + WORMHOLE_CORE_WEIGHTS.alpha
+  let pick = rng() * total
+  for (const type of ['gamma', 'beta', 'alpha'] as const) {
+    pick -= WORMHOLE_CORE_WEIGHTS[type]
+    if (pick < 0) return wormholeCoreItemIdOf(type)
+  }
+  // 浮点兜底：理论到不了（权重和 > 0），落到最常见的那一档
+  return WORMHOLE_CORE_GAMMA
+}
+
 /**
  * **某层的永久图纸池**（图纸货柜的 5% 档）。
  *
@@ -1222,6 +1293,8 @@ export interface WormholeSalvageResult {
   finished?: boolean
   /** 打捞结束时的专属掉落（撤离成功后入库；见 `run.relics`） */
   relics?: string[]
+  /** 打捞结束时掷中的 **AI 核心**（2026-09-14 船长定；已装进货仓/临时空间/散落该格，撤离成功才入核心账） */
+  cores?: string[]
   /** 需要接着开战（遗迹收尾战） */
   effect?: WormholeActivateEffect
   mustExtract?: boolean
@@ -1362,6 +1435,26 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
         )
       }
       result.relics = [boxId]
+    }
+    /**
+     * **AI 核心**（2026-09-14 船长定「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
+     * AI 核心单独占 1 格。出率为 10%，不挤占旧有出率」）：走**与上面货柜完全独立的一条流**
+     * （`wormholeRollCore` 自带盐值）⇒ 上面那次掷骰的随机数消费不受影响，旧读数逐字不变。
+     * 落格走**与货柜同一套收货阶梯**（货仓 → 临时空间 → 散落该格）——它是**形状件**（1×1 = 1 格）。
+     */
+    const coreId = wormholeRollCore(state, cell)
+    if (coreId) {
+      const name = ctx.items.get(coreId)?.name ?? coreId
+      const landed = wormholeStowOrTemp(state, ctx, coreId, 1)
+      if (landed.where === 'hold') {
+        addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 1 格）。`)
+      } else if (landed.where === 'temp') {
+        addLog(state, 'info', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ **先放进临时空间**（到「货仓」页整理进货仓）。`)
+      } else {
+        cell.piles = [...(cell.piles ?? []), { itemId: coreId, units: 1 }]
+        addLog(state, 'warn', `🕳 遗迹深处发现${name}：**货仓与临时空间都放不下** ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
+      }
+      result.cores = [coreId]
     }
     const rng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
     if (rng() < WORMHOLE_RUINS_BATTLE_CHANCE) {

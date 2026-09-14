@@ -478,6 +478,17 @@ export interface WormholeSettleRecord {
   boxes: string[]
   /** 到手的随行战利品（装备 / 一次性图纸 / 无人机，显示名） */
   relics: string[]
+  /**
+   * **本趟带回的 AI 核心**（2026-09-14 船长定：结算单另加一格「AI 核心 N 枚」）。
+   * 形如 `{ gamma: 1, beta: 2 }`（键 = 核心账本的 `gamma/beta/alpha`）；缺省 = 没捞到。
+   * ⚠ 与 `boxes`/`relics` 不同：核心**不进仓库**，撤离成功那一刻直接入 `state.aiCores`。
+   */
+  cores?: Partial<Record<'gamma' | 'beta' | 'alpha', number>>
+  /**
+   * 本趟带回核心的**行价参考估值**（信用点；= Σ 枚数 × 市场卡行价，唯一出处 `marketCatalog.ts`）。
+   * 只作参考、**不计入结算单的「到手合计」**——核心是账本资源（不拆解），并进去会让"合计"口径变浑。
+   */
+  coresIsk?: number
   /** 损失：本趟沉掉的船（显示名） */
   shipsLost: string[]
   /** **没带回来的收集额**（按基础价 + 拆解估值算；撤离成功 = 0） */

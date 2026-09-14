@@ -1010,6 +1010,17 @@ export {
   WORMHOLE_PERMANENT_MIN_DEPTH,
   wormholeBpBoxIdOf,
   wormholeBpBoxDepthOf,
+  // AI 核心（2026-09-14 船长：遗迹打捞 10% 掉落 · 60/30/10 权重 · 各占 1 格 · 撤离后入核心账）
+  WORMHOLE_CORE_GAMMA,
+  WORMHOLE_CORE_BETA,
+  WORMHOLE_CORE_ALPHA,
+  WORMHOLE_CORE_ITEM_IDS,
+  WORMHOLE_CORE_TYPE,
+  WORMHOLE_CORE_SHARE,
+  WORMHOLE_CORE_WEIGHTS,
+  wormholeCoreItemIdOf,
+  wormholeCoreTypeOfItemId,
+  wormholeRollCore,
   wormholePermanentPoolOf,
   // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
   wormholePoolGrantUnitsOf,
@@ -1109,6 +1120,8 @@ export {
   WORMHOLE_CARGO_BAR_MAX,
   WORMHOLE_SHAPE_CONTAINER,
   WORMHOLE_SHAPE_STACK,
+  // AI 核心（1×1 = 1 格 · 2026-09-14 船长「AI 核心单独占 1 格」）
+  WORMHOLE_SHAPE_CORE,
   WORMHOLE_HOLD_SHAPES,
   canPlace,
   cargoBlockArea,

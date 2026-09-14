@@ -122,6 +122,30 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="12" cy="8" r="1.6" />
     </g>
   ),
+  /* ── AI 核心（2026-09-14 船长：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
+        AI 核心单独占 1 格」）──
+     它与货柜/谜质都不同类：不是"装东西的箱"，而是**一枚裸核心**。故另起一套语言 ——
+     方正的**载板**（四角螺栓）+ 板心的**运算核心圆**（外环 + 内核点 + 两道引脚）。
+     三档只换色调不换造型（伽马 → 贝塔 → 阿尔法，越稀有越暖越亮），与图纸货柜同款做法。 */
+  'ai-core': (
+    <g>
+      <rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6" />
+      <circle cx="12" cy="12" r="3.6" />
+      <circle cx="12" cy="12" r="1.2" />
+      <path d="M12 6.4V3.8M12 20.2v-2.6M6.4 12H3.8M20.2 12h-2.6" />
+    </g>
+  ),
+  /* ── AI 核心（`aicore` = 大类级键；2026-09-14）──
+     与 `ai-core`（具体三种核心的共用造型）同一张线稿：大类级键是"按 kind 兜底"那条路的入口
+     （物品图鉴/列表在拿不到具体 id 键时落到这里），故两处都登记、造型一致。 */
+  aicore: (
+    <g>
+      <rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6" />
+      <circle cx="12" cy="12" r="3.6" />
+      <circle cx="12" cy="12" r="1.2" />
+      <path d="M12 6.4V3.8M12 20.2v-2.6M6.4 12H3.8M20.2 12h-2.6" />
+    </g>
+  ),
   /* ── 谜质装置 20 台（2026-09-13 F3c：每台一枚专属线稿）──
      全部沿用"圆环徽 + 内部几何"这套物品语言，靠**内部纹样**区分用途（远看同族、近看可辨）。 */
   /* 探索：测绘 / 时序 / 星云 / 扩展 */
@@ -792,6 +816,7 @@ export const TONES: Record<string, string> = {
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
   matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
+  aicore: '#8aa0b8', // AI 核心（大类级兜底色；具体三种按稀有度分色，见下面 `ai-core-*`）
   /* ── 遗迹安全货柜（F3c）：造型共用 `box-relic`，**按族分色**（与"按族掉落"这条口径对齐）── */
   'box-relic': '#e0b060',
   'box-relic-a': '#ff8373', // A 海盗：红
@@ -804,6 +829,11 @@ export const TONES: Record<string, string> = {
   'box-bp-shallow': '#9fe8ff', // 浅层：淡青（最浅那层）
   'box-bp-mid': '#ffca58', // 中层：琥珀
   'box-bp-deep': '#e07bff', // 深层：品红紫
+  /* ── AI 核心（2026-09-14）：造型共用 `ai-core`，**按稀有度分色**（伽马 → 贝塔 → 阿尔法，越稀有越暖越亮）── */
+  'ai-core': '#8aa0b8',
+  'ai-core-gamma': '#7fd4a8', // 伽马：青绿（最常见）
+  'ai-core-beta': '#ffca58', // 贝塔：琥珀
+  'ai-core-alpha': '#ff9d5c', // 阿尔法：炽橙（最稀有 · 与"1000 万"的量级对上）
   /* ── 谜质装置 20 台：按**用途族**分色（探索青蓝 / 作业青绿 / 威胁琥珀红 / 抗性按层 / 其余各自一色）── */
   'mat-surveyor': '#6fe3f0',
   'mat-chrono': '#7fc7ff',
@@ -869,6 +899,7 @@ export function toneOf(key: string | undefined): string {
  * 规则（从具体到笼统）：
  * 1. **遗迹安全货柜**（`box-relic-*`）⇒ 共用 `box-relic` 造型，**颜色按族取**（色调表按物品 id 存）；
  * 1b. **图纸货柜**（`box-bp-*`）⇒ 共用 `box-bp` 造型（扁长条 = 2×1），**颜色按层档取**；
+ * 1c. **AI 核心**（`ai-core-*`）⇒ 共用 `ai-core` 造型（载板 + 运算核心圆），**颜色按稀有度取**；
  * 2. **谜质装置**（`mat-*`）⇒ **每台一枚专属线稿**（键 = 物品 id）；
  * 3. 其余物品 ⇒ 沿用按 **大类**（`ItemDef.kind`）的既有图标（矿石/残骸/货柜/修理组件…）。
  *
@@ -877,6 +908,7 @@ export function toneOf(key: string | undefined): string {
 export function itemIconOf(itemId: string, kind?: string): string {
   if (itemId.startsWith('box-relic-')) return 'box-relic'
   if (itemId.startsWith('box-bp-')) return 'box-bp'
+  if (itemId.startsWith('ai-core-')) return 'ai-core'
   if (itemId.startsWith('mat-')) return itemId
   return kind ?? 'fallback'
 }
