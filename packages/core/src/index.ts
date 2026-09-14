@@ -993,6 +993,8 @@ export {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
   wormholeOverloadBlockReason,
+  wormholeTempBlockReason,
+  wormholeActionBlockReason,
   wormholeTakePileAt,
   // 临时空间（船长 2026-09-13：大件货先进临时空间，让玩家协调 → 2026-09-14：4×8 = 32 格的格子区）
   wormholeTempUsage,

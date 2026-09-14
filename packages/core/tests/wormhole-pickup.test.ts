@@ -33,7 +33,7 @@ import {
   wormholeMakeNode,
   wormholeNodePiles,
 } from '../src/wormhole'
-import { wormholeHoldSyncCargo, wormholeHoldUsage, wormholeTakePileAt, wormholeTempUsage } from '../src/wormholeSalvage'
+import { wormholeHoldSyncCargo, wormholeHoldUsage, wormholeTakePileAt, wormholeTempDiscardPiece, wormholeTempUsage } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -185,7 +185,8 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     expect(spilled.ok, spilled.error ?? '').toBe(true)
     expect(wormholeTempUsage(state, ctx).cells).toBe(1) // 多出来的一件进了临时空间
     expect(nodePiles(state).length).toBe(0)
-    // 把两块板都填满 ⇒ 才是"真放不下"：整条回滚、堆留在原地、货也没动
+    // 把两块板都填满 ⇒ 再拾取会被**动作闸**拦下（船长 2026-09-14：「临时空间内有物品就不允许进行
+    // 其他操作，和之前的超载类似」）——此时连"整条回滚"都轮不到：门都进不去
     run.bag = [
       { itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 },
       { itemId: 'ore-veldspar', units: WORMHOLE_TEMP_CELLS * 500 },
@@ -197,20 +198,19 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     enterLegacy(state, 9, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 1 }])
     const bad = wormholeTakePileAt(state, ctx, 0)
     expect(bad.ok).toBe(false)
-    expect(bad.error).toContain('放不下')
+    expect(bad.error ?? '').toContain('临时空间')
     expect(nodePiles(state).length).toBe(1) // 堆还在：没被吞掉
     expect(JSON.stringify(run.bag)).toBe(bagBefore) // 货也没被改动
-    // 少装一格（4 件 + 1 单位仍算 5 件，货仓腾出 1 格）⇒ 同一堆就能拿
-    run.bag = [
-      { itemId: WORMHOLE_ORE_ITEM_ID, units: (cap - 1) * 500 },
-      { itemId: 'ore-veldspar', units: WORMHOLE_TEMP_CELLS * 500 },
-    ]
+    // 清空临时空间（丢一件散货）+ 货仓腾 1 格 ⇒ 同一堆就能拿
+    // 清空临时空间（背包改成"只剩 4 格母矿"）+ 货仓腾 1 格 ⇒ 同一堆就能拿
+    run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: (cap - 1) * 500 }]
+    wormholeHoldSyncCargo(state, ctx)
+    expect(wormholeTempUsage(state, ctx).cells).toBe(0) // 临时空间已空 ⇒ 闸放行
     const ok = wormholeTakePileAt(state, ctx, 0)
     expect(ok.ok, ok.error ?? '').toBe(true)
     expect(ok.used).toBe(cap)
-    // 新口径下"背包格数"可以超过货仓容量（多出来的在临时空间里排队）——看的是"有没有落地"
-    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)
-    expect(wormholeTempUsage(state, ctx).cells).toBeGreaterThan(0)
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0) // 5 件全在货仓里
+    expect(wormholeTempUsage(state, ctx).cells).toBe(0)
   })
 
   it('不在洞里 / 老档节点上没有堆 ⇒ 拾取被拒', () => {

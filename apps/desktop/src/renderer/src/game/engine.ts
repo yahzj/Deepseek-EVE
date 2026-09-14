@@ -144,7 +144,7 @@ import {
   wormholeDiscardToFit,
   wormholeHoldDiscard,
   wormholeDiscardCargo,
-  wormholeOverloadBlockReason,
+  wormholeActionBlockReason,
   wormholeHoldStow,
   wormholeHoldCapacityOf,
   wormholeTempUsage,
@@ -1599,6 +1599,19 @@ export class GameEngine {
   }
 
   /**
+   * 虫洞：**当前能不能继续探索**（不许时的理由；可以时 null）。
+   *
+   * 两条闸（船长 2026-09-14 追加第二条）：
+   * ① **临时空间里有东西** ⇒ 必须先去背包页「放回货仓」或「丢弃」（「临时空间内有物品就不允许进行
+   *    其他操作，和之前的超载类似」）；
+   * ② 货仓超载 ⇒ 必须先抛货（船长裁定 8）。
+   * 界面据此把扫描/前往/打捞/采集/开战/撤离/深入一起置灰，并把这句理由摆出来。
+   */
+  wormholeActionBlocked(): string | null {
+    return wormholeActionBlockReason(this.state, this.ctx)
+  }
+
+  /**
    * 虫洞：**临时空间读数**（船长 2026-09-14：4 列 × 8 行 = 32 格的格子区，挂在货仓 8 列右侧）。
    * 不占货仓容量、不算超载；**离开背包页前必须清空**。
    */
@@ -1695,7 +1708,7 @@ export class GameEngine {
   wormholeDescend(): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
-    const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
+    const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
     /**
      * ⚠ **新层也要带上扫码加成**（2026-09-13 二号接线单）：`wormholeDescend` 的第三个入参是
@@ -1716,7 +1729,7 @@ export class GameEngine {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
     // **超载不许撤离**（船长裁定 8）：先把货抛到容量内（抛货本身任何时候都能做 ⇒ 不会软锁）
-    const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
+    const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
     /**
      * **临时空间没清空也不许撤离**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）：
