@@ -18,6 +18,9 @@
  * - **2026-09-11 船长定（低安遇袭重做，玩家反馈"副船遇袭耐久大幅下降后不会自动维修"）**：
  *   ① 受损档不再是「结构 −5%~15%」的固定骰 —— 一口伤害 = **敌群火力 × `encounter.hitFirepowerSec`**
  *      （敌群火力 = 威胁 × `battle.foeDpsPerThreat`，与敌方总火力同一常量），
+ *      ⚠ **2026-09-14 船长改判：`hitFirepowerSec` 0.3 秒 → 5 秒**（「遇袭失败损失按照 5 秒算」）——
+ *      两处一起变：文字结算「受损」档 ＋ 应战失利追加的那一口（共用同一旋钮）；
+ *      「快速脱离」按钮不进战斗、走文字三档 ⇒ 按遇袭口径（5 秒），不按撤离口径。
  *      施加时**先扣装甲、吸完再进结构**（旧实现直接扣结构、装甲不动，与日志"被咬下一块装甲"不符——真 BUG）；
  *   ② **收场 = 先修后判**（**2026-09-12 船长改判**：「先维修，组件不足或者修完后结构 <50% 返港」）：
  *      遭遇了结后先就地用修理组件补耐久（触发线 = 装甲或结构 <50%，目标 `encounter.repairTargetFrac`
@@ -363,7 +366,8 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
       `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
     )
   } else if (r < wWin + wLose) {
-    // 受损：一口 = 敌群火力 × hitFirepowerSec，**先扣装甲、吸完再进结构**（2026-09-11 船长定）
+    // 受损：一口 = 敌群火力 × hitFirepowerSec，**先扣装甲、吸完再进结构**（2026-09-11 船长定；
+    // 2026-09-14 改判：5 秒 —— 见 `balance.encounter.hitFirepowerSec` 与文件头）
     const hit = applyArmorFirstDamage(state, ctx, shipId, ambushHitHp(ctx, enc.threat))
     if (hit && hit.floored) {
       addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
@@ -470,7 +474,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
     // **结构化战报**（2026-09-14 船长定）：这条日志原先不含「战报」二字 ⇒ 弹层取不到正文（现已修）
     captureBattleReport(state, battle, { source: 'encounter', outcome: 'win', summary: encWinText })
   } else {
-    // 失利附加扣损：与文字结算同一口径（一口 = 敌群火力 × hitFirepowerSec，装甲先吃）
+    // 失利附加扣损：与文字结算同一口径（一口 = 敌群火力 × hitFirepowerSec，装甲先吃；2026-09-14 起 5 秒）
     const hit = applyArmorFirstDamage(state, ctx, shipId, ambushHitHp(ctx, enc.threat))
     if (hit && hit.floored) addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
     let takenUnits = 0

@@ -510,7 +510,9 @@ describe('连续作战保险', () => {
     expect(state.autoLoopAnomalyId).toBeNull() // 撤退即终止重复清剿
     expect(state.fleet[shipId]).toBeDefined() // 船没丢
     const dur = state.fleet[shipId]!.durability
-    expect(dur).toBeGreaterThan(0.05) // 下限保护
+    // 下限保护 = **结构 5% 底线**（绝不弃船）：2026-09-14 船长把撤离那一口改成 10 秒后，
+    // 这一口足以把已残的船直接压到 5% 底线 ⇒ 断言只咬"不低于底线"，不再要求"高于底线"
+    expect(dur).toBeGreaterThanOrEqual(0.05)
     expect(dur).toBeLessThan(0.5) // 本场已残
     expect(state.logs.some((l) => l.text.includes('自动撤退'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('重复清剿已停止'))).toBe(true)

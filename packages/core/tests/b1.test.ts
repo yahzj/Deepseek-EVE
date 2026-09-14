@@ -498,12 +498,14 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     state.awayGalaxy = 'galaxy-far'
   }
 
-  it('受损档：一口伤害 = 敌群火力 × 0.3 秒，先扣装甲、吸完再进结构（结构不破 5% 底线）', () => {
+  it('受损档：一口伤害 = 敌群火力 × 5 秒，先扣装甲、吸完再进结构（结构不破 5% 底线）', () => {
     const { state, ctx } = lowWorld()
     state.awayGalaxy = 'galaxy-far'
     const caps = hullLayerCaps(state, ctx, state.shipId)!
     const { foeDpsPerThreat } = ctx.balance.battle
     const { hitFirepowerSec } = ctx.balance.encounter
+    // 2026-09-14 船长改判「遇袭失败损失按照 5 秒算」（旧值 0.3 秒作废；两处共用本旋钮）
+    expect(hitFirepowerSec).toBe(5)
     let hits = 0
     for (const threat of [6, 22, 60]) {
       const hitHp = threat * foeDpsPerThreat * hitFirepowerSec
@@ -657,7 +659,7 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     const { state, ctx } = lowWorld()
     miningInField(state, ctx)
     state.fleet[state.shipId]!.durability = 0.9
-    inject(state, 6) // 一口至多 1.44 HP（沙猫 36 结构 ≈ 4%），远不到撤退线
+    inject(state, 6) // 一口 = 6 × 0.8 × 5 秒 = 24 HP（沙猫 15 甲吃满 + 9 进结构 ≈ 25%）⇒ 结构 ≈ 75%，远不到撤退线
     fleeEncounter(state, ctx)
     expect(state.mining.active).toBe(true)
     expect(state.awayGalaxy).toBe('galaxy-far')
