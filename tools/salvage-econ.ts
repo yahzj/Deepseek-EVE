@@ -83,7 +83,7 @@ function main(): void {
     const full = ev * FULL_SKILL_MULT
     const fullDev = ((full - target) / target) * 100
     console.log(
-      `· ${tier.padEnd(6)} 池均价 ${avg.toFixed(1).padStart(6)} ISK/单位 | Y = ${RECYCLE_YIELD_PER_M3[tier]} unit/m³ | 保底 EV/h：无技能 ${Math.round(ev).toLocaleString('zh-CN')}（偏差 ${dev.toFixed(1)}%）→ 满技能 ${Math.round(full).toLocaleString('zh-CN')}（偏差 ${fullDev.toFixed(1)}%）`,
+      `· ${tier.padEnd(6)} 池均价 ${avg.toFixed(1).padStart(6)} ISK/单位 | 当量 Y = ${RECYCLE_YIELD_PER_M3[tier]} 单位/m³（价值口径：Y × 均价 = ${(RECYCLE_YIELD_PER_M3[tier] * avg).toFixed(1)} ISK/m³） | 保底 EV/h：无技能 ${Math.round(ev).toLocaleString('zh-CN')}（偏差 ${dev.toFixed(1)}%）→ 满技能 ${Math.round(full).toLocaleString('zh-CN')}（偏差 ${fullDev.toFixed(1)}%）`,
     )
   }
   // B3.1 敌群特色池逐卡对照（2026-09-08：池均价 ÷ 档基数 ∈ 保底乘数 m ±3%；

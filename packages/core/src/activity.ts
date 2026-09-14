@@ -544,17 +544,31 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
       if (state.mining.phase === 'mining') return '采矿中'
       return state.mining.phase === 'outbound' ? '采矿·出航中' : '采矿·返航中'
     }
+    /**
+     * ⚠ **2026-09-14 补齐五档**（与 `wormhole.ts` 的 `shipActivityBusy` 同一把尺，判据逐项对齐）：
+     * 船长报障「探索虫洞时主控不能进行其他活动 / 进入虫洞时必须无活动，好像失效了」——
+     * **打捞 / 长途运输 / 扫描虫洞 / 亲自开炉 / 亲自开线**这五档原先两边都没写 ⇒ 主控在干这些时
+     * 洞门照样开着。两函数的一致性由 `tests/wormhole-activity-lock.test.ts` 逐档钉住。
+     */
+    if (state.salvaging.active) {
+      if (state.salvaging.phase === 'outbound') return '打捞·出航中'
+      return state.salvaging.phase === 'returning' ? '打捞·返航中' : '打捞中'
+    }
+    if (state.hauling.active) return '长途运输中'
     if (state.sideTasks.deliver !== null) return '快递投送中'
     const sb = standbyStatus(state, ctx)
     if (sb.active) return `掩护巡逻·前往${sb.targetName}中`
     const sv = scanStatus(state)
     if (sv.active) return '扫描探索中'
+    if (state.wormholeScan?.active === true) return '扫描虫洞中'
     const ev = expeditionStatus(state, ctx)
     if (ev.active) {
       if (ev.phase === 'out') return '远征·出航中'
       if (ev.phase === 'combat') return '远征·交火中'
       return '远征·返航中'
     }
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'
+    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线制造中'
     return null
   }
   // T4 换船善后：自动返航中的船（优先于 AI 判定；两者互斥，仅顺序防御）

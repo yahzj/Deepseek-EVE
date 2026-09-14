@@ -996,6 +996,13 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
    * 兼容字段：老档缺省 = 空（零迁移）。
    */
   spentOneTimeRecipes?: string[]
+  /**
+   * **残骸回收的"不足 1 单位"余额**（2026-09-14 船长改判「按价值比例产出所有矿物」后必需）：
+   * 新模型下各矿物的单位数 = `该批保底价值 × 价值占比 ÷ 单价`，**必然出小数**（例：危档冥铁 0.02 单位/批）
+   * ⇒ 把不足 1 的部分按矿物累计在本表，够 1 才入库（玩家只看到整数；长期总价值精确、不因取整蒸发）。
+   * 兼容字段：老档缺省 = 空（零迁移）。
+   */
+  recycleCarry?: Record<string, number>
   /** 持有的蓝图书：蓝图 id -> 数量（可学习或挂卖） */
   blueprintStock: Record<string, number>
 }
@@ -1850,6 +1857,7 @@ export function createInitialState(opts?: {
     escrowShips: {},
     learnedRecipes: [],
     spentOneTimeRecipes: [],
+    recycleCarry: {},
     blueprintStock: {},
     events: { nextAtGameMs: 0 },
     mining: {

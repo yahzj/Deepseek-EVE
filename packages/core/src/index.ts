@@ -470,6 +470,10 @@ export {
   recycleTierOf,
   recycleProfileOf,
   rollRecycleGuarantee,
+  recycleRefiningMultiplier,
+  recyclePoolMeanIsk,
+  recycleBatchValueFromYield,
+  recycleBatchValueIsk,
   rollRecycleLoot,
 } from './salvage'
 export type { RecycleTier, RecycleProfile } from './salvage'

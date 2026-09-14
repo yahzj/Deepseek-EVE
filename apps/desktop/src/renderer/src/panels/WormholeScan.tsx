@@ -84,7 +84,7 @@ export function WormholeScanTab({
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
   const full = stock.length >= WORMHOLE_STOCK_MAX
-  /** 解锁门槛（船长 2026-09-14：需要协会声望 35；解锁时会收到一封通讯 + 直接弹窗） */
+  /** 解锁门槛（船长 2026-09-14：需要协会声望 40；解锁时会收到一封通讯 + 直接弹窗） */
   const unlocked = engine.wormholeScanUnlocked()
   const standing = engine.wormholeScanStanding()
 

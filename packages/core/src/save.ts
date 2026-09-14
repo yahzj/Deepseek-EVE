@@ -1575,6 +1575,13 @@ function normalizeState(raw: unknown): GameState {
       if (typeof bp === 'string' && bp.length > 0 && !spentOneTimeRecipes.includes(bp)) spentOneTimeRecipes.push(bp)
     }
   }
+  // --- 回收"不足 1 单位"余额（2026-09-14 兼容字段；老档缺省 = 空，零迁移）---
+  // 只收 [0,1) 的有限数：越界/非数/负数一律丢掉——它只是"余数"，重算一次即可，不会亏玩家
+  const recycleCarry: Record<string, number> = {}
+  for (const [id, v] of Object.entries(asRaw(src.recycleCarry))) {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) continue
+    recycleCarry[id] = v % 1
+  }
 
   // --- 市场（v9）：整表容错；缺失/损坏的簿与池留空，首次推进由引擎按目录补齐 ---
   const marketRaw = asRaw(src.market)
@@ -2885,6 +2892,7 @@ function normalizeState(raw: unknown): GameState {
     moduleBay,
     learnedRecipes,
     spentOneTimeRecipes,
+    recycleCarry,
     blueprintStock,
     market,
     orders,

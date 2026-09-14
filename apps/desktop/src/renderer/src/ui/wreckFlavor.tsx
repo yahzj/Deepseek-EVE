@@ -10,7 +10,7 @@
  *
  * 文案与类名对齐工业页回收卡既有行（同族最小差异，不另起样式）。
  */
-import { FRAGMENT_RECIPES } from '@whale/core'
+import { FRAGMENT_RECIPES, recycleBatchValueFromYield, recyclePoolMeanIsk } from '@whale/core'
 
 /** 一件掉落物的名字来源（模块或物品；无人机物品按「×N 架」写） */
 type NameMaps = {
@@ -95,20 +95,29 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
   return { label: named.length > 0 ? '特色掉落' : '其他掉落', named, generic, tone: 'normal' }
 }
 
-/** 保底矿物行（工业页回收卡用）：每批期望量 = 批体积 × 档位单方产量 ×(1+8%×提纯学)×池权重占比 */
+/**
+ * 保底矿物行（工业页回收卡用）——**2026-09-14 船长改判「取消随机抽一种矿物的限制。直接按价值比例产出所有矿物」后的口径**：
+ * 每批保底**价值** = 批体积 × 档位当量 × 池均价 ×(1+8%×提纯学)；池内**每种**矿物分到「价值 × 价值占比」，
+ * 单位数 = 该价值 ÷ 单价 ⇒ **高阶矿会不足 1**（例：危档冥铁 ≈0.02 单位/批），引擎按 `state.recycleCarry`
+ * 逐矿物累计、够 1 才入库。折算全部走 core 的两个单点（`recyclePoolMeanIsk` / `recycleBatchValueFromYield`），
+ * 界面不另算一份。
+ */
 export function mineralRowsOf(
   pool: ReadonlyArray<readonly [string, number]>,
-  opts: { batchM3: number; yieldPerM3: number; refiningLevel: number },
+  opts: { batchM3: number; yieldPerM3: number; refiningMultiplier: number; priceOf: (id: string) => number },
   mineralName: (id: string) => string,
-): Array<{ id: string; name: string; units: string; share: number }> {
+): Array<{ id: string; name: string; units: string; isk: number; share: number }> {
   const totalW = pool.reduce((s, [, w]) => s + w, 0)
   if (totalW <= 0) return []
-  const perBatch = opts.batchM3 * opts.yieldPerM3 * (1 + 0.08 * opts.refiningLevel)
+  const mean = recyclePoolMeanIsk(pool, opts.priceOf)
+  const batchValue = recycleBatchValueFromYield(opts.yieldPerM3, mean, opts.batchM3, opts.refiningMultiplier)
   return pool.map(([id, w]) => {
     const share = w / totalW
-    const units = perBatch * share
-    // <10 保留一位小数（危档单矿物可能不足 1 单位）；≥10 取整，避免小数噪声
-    return { id, name: mineralName(id), share, units: units >= 10 ? String(Math.round(units)) : units.toFixed(1) }
+    const isk = batchValue * share
+    const u = isk / (opts.priceOf(id) || 1)
+    // 高阶矿可能远小于 1（那时保留两位小数）；常用矿取整，避免小数噪声
+    const units = u >= 10 ? String(Math.round(u)) : u >= 1 ? u.toFixed(1) : u.toFixed(2)
+    return { id, name: mineralName(id), units, isk, share }
   })
 }
 

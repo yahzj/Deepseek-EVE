@@ -17,6 +17,7 @@ import {
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_YIELD_PER_M3,
+  recycleRefiningMultiplier,
   aiCoreName,
   aiEfficiency,
   countAiCore,
@@ -176,12 +177,17 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       // 矿池取引擎单点 recycleMineralPoolOf（特色池优先、缺省回落档位池），界面不复写回落逻辑。
       const mineralRows = mineralRowsOf(
         recycleMineralPoolOf(profile),
-        { batchM3: RECYCLE_BATCH_M3, yieldPerM3: RECYCLE_YIELD_PER_M3[profile.tier], refiningLevel: refLv },
+        {
+          batchM3: RECYCLE_BATCH_M3,
+          yieldPerM3: RECYCLE_YIELD_PER_M3[profile.tier],
+          refiningMultiplier: recycleRefiningMultiplier(state),
+          priceOf: (id) => engine.ctx.items.get(id)?.baseSellPriceIsk ?? 0,
+        },
         (id) => engine.ctx.items.get(id)?.name ?? id,
       )
       const mineralTip =
-        `按当前技能档与敌群原材料比重折算的每批期望产出（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）；` +
-        `实际每批只按权重出其中一种、产量有 ±10% 抖动，以回收拆解结算为准。` +
+        `每批产出池内全部矿物（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）：各矿物分到的价值 = 每批保底价值 × 价值占比，` +
+        `单位数 = 该价值 ÷ 单价——单价高的矿物每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。` +
         (profile.note ? `敌群特色：${profile.note}` : '')
       econ = (
         <div className="app-belt-econ">
@@ -191,7 +197,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
               {mineralRows.map((r) => (
                 <div key={r.id} className="app-belt-out" title={mineralTip}>
                   {r.name} ×约 {r.units}
-                  <span className="app-dim">（仓库 {countWare(state, r.id).toLocaleString('zh-CN')}）</span>
+                  <span className="app-dim">
+                    {' '}≈{Math.round(r.isk).toLocaleString('zh-CN')} 信用点/批（仓库 {countWare(state, r.id).toLocaleString('zh-CN')}）
+                  </span>
                 </div>
               ))}
             </>

@@ -287,8 +287,14 @@ export const RECYCLE_CYCLE_MS = 25_000
 /**
  * 保底矿物产出档（P3 校准 + 2026-09-06 船长定档：无技能单炉保底 ≈82k ISK/h = 采矿 ×1.65，
  * 按"炉时 1440 m³/h"反推：Y_档 = 82,000 ÷ (1440 × 池内矿物期望单价)；
- * 三池期望单价：常 9.8 / 险 27.6 / 危 92.45 ISK/单位（按池权重×baseSellPrice）。
- * 单位 = 矿物 unit/m³ 残骸。
+ * 三池期望单价：常 9.8 / 险 27.76 / 危 92.55 ISK/单位（按池权重×baseSellPrice）。
+ * 单位 = **保底当量单位/m³ 残骸**。
+ *
+ * ⚠ **2026-09-14 船长改判（「取消随机抽一种矿物的限制。直接按价值比例产出所有矿物」）后的语义**：
+ * 池权重 = **价值占比**；每批产出池内**全部**矿物，各矿物分到的 ISK 价值 = `每批保底价值 × 权重占比`，
+ * 单位数 = 该价值 ÷ 该矿物单价 ⇒ 本常量不再是"实际产出单位数"，而是**保底价值的口径锚**：
+ * `每批保底价值(ISK) = 体积 × Y_档 × 池均价`（与旧口径的期望价值**逐值等值** ⇒ 保底 EV/h 与一切经济读数不变）。
+ * 折算公式收在 `recycleBatchValueIsk` / `recyclePoolMeanIsk` 两个单点里，引擎、界面、经济工具同源。
  */
 export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = {
   common: 5.8,
@@ -315,13 +321,17 @@ export type RecycleTier = 'common' | 'risky' | 'dire'
 export const RECYCLE_TIER_LABELS: Record<RecycleTier, string> = { common: '常', risky: '险', dire: '危' }
 
 /** 三档矿物池（权重表：矿物 id → 权重；船长 2026-09-05 定稿构成）
- *  ⚠ **2026-09-14 船长（两批）**：①「在所有残骸的回收里，添加钛钢合金。已有钛钢合金的不做改变。
+ *  ⚠ **权重的语义（2026-09-14 船长改判后）**：权重 = **价值占比**（每批产出池内全部矿物，各矿物分到
+ *  「每批保底价值 × 权重占比」，单位数 = 该价值 ÷ 单价）。**旧语义**（同日上午）= 抽中概率/单位占比；
+ *  船长当天先要"钛钢占 40%"（按单位），随后改判「**取消随机抽一种矿物的限制。直接按价值比例产出所有矿物**」
+ *  ⇒ 同一张权重表，语义从"单位占比"换成"价值占比"；**表本身一字未动**（改的是产出怎么分配）。
+ *  ⚠ **2026-09-14 船长（前两批）**：①「在所有残骸的回收里，添加钛钢合金。已有钛钢合金的不做改变。
  *  没有钛钢合金的，在保持价值不变的前提下将其他材料减少」⇒ 险/危两档补入**钛钢 20%**；
  *  ②「**提高钛钢占比到 40~60**」+ 三答（**只提不降 · 统一 40% · 均价不变**）⇒ 险/危两档钛钢
  *  **20% → 40%**，其余矿物按 `w × (价/均价)^α` 重配（α 二分求解）+ 整数权重微调，
  *  使**整池期望单价不变**（险 27.72 → 27.76 · 危 92.60 → 92.55）；常驻档 65% 已 ≥40% ⇒ **一字未动**。
  *  敌群专属池同批处理（`packages/data/src/salvageFlavors.ts`：19 个提到 40%，其中 6 个补入 1 种高价矿物）。
- *  ⚠ **导出**：体检脚本要用它对"三档基础池必含钛钢 · 均价 = 档基数 · 每池占比 ≥40%"做硬契约（B3.2/B3.3）。
+ *  ⚠ **导出**：体检脚本要用它对"三档基础池必含钛钢 · 均价 = 档基数 · 钛钢**价值**占比 ≥40%"做硬契约（B3.2/B3.3）。
  *  （命名注：本矿物 id 一直是 `min-tritanium`；显示名 2026-09-14 由「三钛合金」改为**「钛钢合金」**，见
  *   `docs/roadmap.md` 二号改名条——本表的注释与体检文案已同步新名，**id 未动 ⇒ 存档与配方零影响**。） */
 export const RECYCLE_POOLS: Record<RecycleTier, ReadonlyArray<readonly [string, number]>> = {
@@ -506,9 +516,55 @@ export interface RecycleProfile {
   lairGear?: readonly string[]
 }
 
+/** 池均价（ISK/单位）：池权重**就是价值占比** ⇒ 均价 = Σ(权重 × 单价) ÷ Σ权重。
+ *  引擎抽取、界面折算、经济工具都用它，别各自算一份。 */
+export function recyclePoolMeanIsk(
+  pool: ReadonlyArray<readonly [string, number]>,
+  priceOf: (id: string) => number,
+): number {
+  const wSum = pool.reduce((s, [, w]) => s + w, 0)
+  if (wSum <= 0) return 0
+  return pool.reduce((s, [id, w]) => s + w * priceOf(id), 0) / wSum
+}
+
+/** **残骸提纯学（`salvage-refining`）的保底价值乘数**：每级 **+8%（0.08）**，5 级封顶（与引擎同款 `Math.min`）。
+ *  引擎与界面**同源**调它 ⇒ 技能 id 与数值都在这一处，体检的「技能说明契约」现场复核盯得住
+ *  （2026-09-14 重构：原先 0.08 与技能 id 分处两个函数，契约报"读取点附近找不到"。） */
+export function recycleRefiningMultiplier(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
+  return 1 + 0.08 * lv
+}
+
+/** 每批保底**价值**（ISK）：体积 × 当量单位 × 池均价 × 提纯学乘数。
+ *  ⚠ 与旧口径（每批出一种矿、总量 = 体积×Y_档）的**期望价值逐值等值**——改的是"怎么分配"，不是"给多少"。 */
+export function recycleBatchValueFromYield(
+  yieldPerM3: number,
+  poolMeanIsk: number,
+  volumeM3: number,
+  refiningMultiplier: number,
+): number {
+  return Math.max(1, volumeM3 * yieldPerM3) * poolMeanIsk * refiningMultiplier
+}
+
+/** 每批保底价值（按档位取 `RECYCLE_YIELD_PER_M3`；引擎用这个，界面已有档位当量时可走上面那个） */
+export function recycleBatchValueIsk(
+  tier: RecycleTier,
+  poolMeanIsk: number,
+  volumeM3: number,
+  refiningMultiplier: number,
+): number {
+  return recycleBatchValueFromYield(RECYCLE_YIELD_PER_M3[tier], poolMeanIsk, volumeM3, refiningMultiplier)
+}
+
 /**
  * 保底矿物开箱（每批调用；确定性走 state.rng）：
- * 产出总量 = 批体积(m³) × 档位单方产量 × jitter，品种按"敌群特色池（缺省档池）"权重抽取。
+ *
+ * **2026-09-14 船长改判**：「取消随机抽一种矿物的限制。直接按价值比例产出所有矿物。」
+ * ⇒ 本函数不再"抽一种"，而是：
+ * 1. 先算该批**保底价值** = 体积 × 档位当量 × 池均价 ×(1+8%×提纯学)× 抖动(±10%)（`recycleBatchValueIsk`）；
+ * 2. 池内**每一种**矿物按**权重 = 价值占比**分到价值，单位数 = 该价值 ÷ 单价；
+ * 3. 单位数会出小数（例：危档冥铁 0.02 单位/批）⇒ **不足 1 的余额进 `state.recycleCarry` 累计**，
+ *    够 1 才入库（玩家只看到整数；长期总价值精确，不因取整蒸发）。
  */
 export function rollRecycleGuarantee(
   state: GameState,
@@ -517,23 +573,26 @@ export function rollRecycleGuarantee(
   volumeM3: number,
 ): Array<{ mineralId: string; units: number }> {
   const pool = recycleMineralPoolOf(profile)
-  let baseUnits = Math.max(1, volumeM3 * RECYCLE_YIELD_PER_M3[profile.tier])
-  // 残骸提纯学（salvage-refining，2026-09-05）：保底矿物每级 +8%（独立技能线，不依赖精炼产出倍率）
-  const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
-  if (refLv > 0) baseUnits *= 1 + 0.08 * refLv
+  if (pool.length === 0) return []
+  const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+  const wSum = pool.reduce((s, [, w]) => s + w, 0)
+  if (wSum <= 0) return []
+  const poolMean = recyclePoolMeanIsk(pool, priceOf)
+  if (poolMean <= 0) return []
+  const refMult = recycleRefiningMultiplier(state)
   const jitter = 1 - RECYCLE_YIELD_JITTER + 2 * RECYCLE_YIELD_JITTER * nextRandom(state.rng)
-  const total = Math.max(1, Math.floor(baseUnits * jitter))
-  let acc = 0
-  const roll = nextRandom(state.rng) * pool.reduce((s, [, w]) => s + w, 0)
-  let pick = pool[0]![0]!
+  const value = recycleBatchValueIsk(profile.tier, poolMean, volumeM3, refMult) * jitter
+  const carry = (state.recycleCarry ??= {})
+  const out: Array<{ mineralId: string; units: number }> = []
   for (const [id, w] of pool) {
-    acc += w
-    if (roll <= acc) {
-      pick = id
-      break
-    }
+    const price = priceOf(id)
+    if (price <= 0) continue
+    const exact = (value * (w / wSum)) / price + (carry[id] ?? 0)
+    const whole = Math.floor(exact)
+    carry[id] = exact - whole
+    if (whole > 0) out.push({ mineralId: id, units: whole })
   }
-  return ctx.items.has(pick) ? [{ mineralId: pick, units: total }] : []
+  return out
 }
 
 /**

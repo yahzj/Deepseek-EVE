@@ -39,13 +39,17 @@ export const WORMHOLE_STOCK_MAX = 5
 export const WORMHOLE_STOCK_DEPTHS: readonly number[] = [1]
 
 /**
- * **扫描虫洞的解锁门槛**（船长 2026-09-14：「**扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家
- * （同时也要直接弹窗）**」）。
+ * **扫描虫洞的解锁门槛**。
  *
- * 声望口径 = **协会（深空工业协会，`DSI_FACTION_ID` = `'dsi'`）声望 ≥ 35** —— 与其它"协会声望门槛"
+ * 沿革：船长 2026-09-14 首定「**扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家
+ * （同时也要直接弹窗）**」⇒ 同日后一条裁定「**将开始虫洞的声望门槛提高到40**」
+ * ⇒ **现值 = 40**（旧值 35 作废）。
+ *
+ * 声望口径 = **协会（深空工业协会，`DSI_FACTION_ID` = `'dsi'`）声望 ≥ 40** —— 与其它"协会声望门槛"
  * （矿带 `standingReq`、奇货件）**同一本账**（`state.standings.dsi`，界面「声望」列就是它）。
+ * ⚠ 解锁通讯 `msg-wormhole-unlock` 的触发器门槛必须与本常量**同值**（`content:check` 盯着）。
  */
-export const WORMHOLE_SCAN_UNLOCK_STANDING = 35
+export const WORMHOLE_SCAN_UNLOCK_STANDING = 40
 
 /** 协会声望（界面读数与解锁判定共用） */
 export function wormholeScanStanding(state: GameState): number {
