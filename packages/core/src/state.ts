@@ -486,6 +486,12 @@ export interface BattleState {
   units: Record<string, BattleUnitRt>
   /** 我方剩余弹药（出发预载后按开火即时扣减；开火弹型 = 剩余最多型，平局 kin→exp→pla） */
   ammo: { kin: number; exp: number; pla: number }
+  /**
+   * **开战预载量**（F3c B2 · 谜质「弹药回收装置」要用）：开战装完后立刻记一份，
+   * 战后按「预载 − 余额」算出这一场打出去多少。
+   * **只由洞内多舰开战写**（既有单船 / 远征路径不写 ⇒ 那两边看不到这个加成，零变化）。
+   */
+  ammoLoaded?: { kin: number; exp: number; pla: number }
   /** 弹药 MK2（2026-09-09）：本场实装弹 itemId（damageType → id；开战装载时写，缺货回退也写）。
    * 战斗推进/视图重建我方规格时以此覆盖装配档位偏好（伤害与实际弹种一致）；
    * 缺省 = 无覆盖（按船装配 ammoPref/基础弹），旧档零迁移 */
@@ -548,6 +554,8 @@ export interface BattleState {
     foeHitDown?: number
     /** 敌方近盲带伤害比例 −（盲区压制器，下限 0） */
     blindReduce?: number
+    /** **齐射溢出转移**是否生效（齐射协调仪 · F3c B2：1 台即开） */
+    volleyOverflow?: boolean
   }
   /* ═══ 敌突进 / 冲锋（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）═══
    * 够不着时机动 ×2；**结束判据已改为「到达目标距离」**（敌方期望交距），冷却 20 秒。

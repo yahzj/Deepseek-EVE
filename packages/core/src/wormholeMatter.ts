@@ -71,6 +71,15 @@ export type WormholeMatterEffectKind =
   | 'damagePct'
   /** 武器装填周期 −N%（不封顶；物理上周期 > 0） */
   | 'reloadPct'
+  /* ── B2：战后收口与新机制 ── */
+  /** **齐射溢出转移**（1 台即生效，多台不叠加）：打死后多余的那一截火力转给下一艘存活敌舰 */
+  | 'volleyOverflow'
+  /** 战后**弹药退款** +N%（按本场打出去的弹药折算；物理上限 100%） */
+  | 'ammoRefundPct'
+  /** **机群回收率** +N 个百分点（物理上限 100%） */
+  | 'droneRecoveryPct'
+  /** 战后**战地维修**：装甲与结构各 +N%（物理上限 100%） */
+  | 'fieldRepairPct'
 
 /** 一台谜质储存器的定义 */
 export interface WormholeMatterDevice {
@@ -264,6 +273,39 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     per: 0.08,
     text: '武器装填周期 −8%',
   },
+  /* ── B2 批：战后收口与新机制 ── */
+  {
+    id: 'mat-volley',
+    short: '齐射',
+    name: '齐射协调仪',
+    effect: 'volleyOverflow',
+    per: 1,
+    text: '齐射打死后，多余的火力转给下一艘敌舰',
+  },
+  {
+    id: 'mat-ammo-back',
+    short: '回收',
+    name: '弹药回收装置',
+    effect: 'ammoRefundPct',
+    per: 0.25,
+    text: '战后弹药退款 +25%（按本场打出去的折算）',
+  },
+  {
+    id: 'mat-drone-net',
+    short: '机网',
+    name: '机群回收网',
+    effect: 'droneRecoveryPct',
+    per: 0.1,
+    text: '机群回收率 +10 个百分点',
+  },
+  {
+    id: 'mat-field-repair',
+    short: '维修',
+    name: '战地维修单元',
+    effect: 'fieldRepairPct',
+    per: 0.05,
+    text: '战后装甲与结构各 +5%（不耗货仓组件）',
+  },
 ]
 
 /** 全部装置 id（形状表、闸门契约与用例共用一份） */
@@ -339,6 +381,15 @@ export interface WormholeMatterBuffs {
   damagePct: number
   /** 武器装填周期削减（不封顶；物理上周期仍 > 0） */
   reloadPct: number
+  /* ── B2：战后收口与新机制 ── */
+  /** **齐射溢出转移**是否生效（1 台即开；多台不叠加） */
+  volleyOverflow: boolean
+  /** 战后弹药退款比例（0~1；物理上限 100%） */
+  ammoRefundPct: number
+  /** 机群回收率加成（0~1；物理上限 100%） */
+  droneRecoveryPct: number
+  /** 战地维修：装甲 / 结构各回复比例（0~1；物理上限 100%） */
+  fieldRepairPct: number
   /** 逐台明细（界面读数行） */
   list: ReadonlyArray<{ device: WormholeMatterDevice; count: number }>
 }
@@ -366,6 +417,10 @@ export const WORMHOLE_MATTER_BUFFS_NONE: WormholeMatterBuffs = {
   blindReduce: 0,
   damagePct: 0,
   reloadPct: 0,
+  volleyOverflow: false,
+  ammoRefundPct: 0,
+  droneRecoveryPct: 0,
+  fieldRepairPct: 0,
   list: [],
 }
 
@@ -453,6 +508,18 @@ export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined):
       case 'reloadPct':
         out.reloadPct += v
         break
+      case 'volleyOverflow':
+        out.volleyOverflow = true
+        break
+      case 'ammoRefundPct':
+        out.ammoRefundPct += v
+        break
+      case 'droneRecoveryPct':
+        out.droneRecoveryPct += v
+        break
+      case 'fieldRepairPct':
+        out.fieldRepairPct += v
+        break
     }
   }
   // ── 四类封顶（船长点名的那四类；其余不封顶）──
@@ -466,6 +533,10 @@ export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined):
   out.enemyHitDown = Math.min(WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP, out.enemyHitDown)
   // 近盲带比例不能被压到负数（物理边界：它本身是个倍率）
   out.blindReduce = Math.max(0, out.blindReduce)
+  // 战后收口三项：**物理上限 100%**（不是平衡封顶——比例类不可能超过 1）
+  out.ammoRefundPct = Math.min(1, out.ammoRefundPct)
+  out.droneRecoveryPct = Math.min(1, out.droneRecoveryPct)
+  out.fieldRepairPct = Math.min(1, out.fieldRepairPct)
   return out
 }
 

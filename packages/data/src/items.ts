@@ -851,6 +851,43 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     unreleased: true,
     description: '谜质替装填机构抢时间：武器装填周期缩短。占货仓 2×2 格，离开虫洞即失效。',
   },
+  /* ── B2 批：战后收口与新机制 ── */
+  {
+    id: 'mat-volley',
+    name: '齐射协调仪',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质接管了齐射分配：一轮齐射打死一艘后，多余的火力立刻转打下一艘。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-ammo-back',
+    name: '弹药回收装置',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质在战后把打出去的弹壳与残料捞回来：本场消耗的弹药能回收一部分。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-drone-net',
+    name: '机群回收网',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质织成的回收网：被点防打下来的无人机有更多能被捞回机库。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-field-repair',
+    name: '战地维修单元',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质驱动的战地维修臂：每场交火后自动修补装甲与结构（不消耗货仓里的修理组件）。占货仓 2×2 格，离开虫洞即失效。',
+  },
 ]
 
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */

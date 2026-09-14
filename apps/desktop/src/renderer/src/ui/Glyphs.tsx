@@ -267,6 +267,39 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M16.6 6.6v2.8h-2.8" />
     </g>
   ),
+  /* ── B2 批：溢火结转 / 弹药回收 / 机群回收网 / 战地维修 ── */
+  'mat-volley': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M9.4 9.6L6.6 12l2.8 2.4" />
+      <path d="M14.6 9.6L17.4 12l-2.8 2.4" />
+      <circle cx="12" cy="12" r="1.4" />
+    </g>
+  ),
+  'mat-ammo-back': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M10.6 10h2.8v6.6h-2.8z" />
+      <path d="M10.6 10c0-1.2.6-2.1 1.4-2.1s1.4.9 1.4 2.1" />
+      <path d="M15.8 7.6h-3.4" />
+      <path d="M13.6 6.4L12.4 7.6l1.2 1.2" />
+    </g>
+  ),
+  'mat-drone-net': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 6.6l1.8 2.2h-3.6z" />
+      <path d="M8.2 11.2h7.6v5.4H8.2z" />
+      <path d="M8.2 13.9h7.6M12 11.2v5.4" />
+    </g>
+  ),
+  'mat-field-repair': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 7.4v6.4M8.8 10.6h6.4" />
+      <path d="M8.6 15.2a4.4 4.4 0 0 0 6.8 0" />
+    </g>
+  ),
   /* ── 装备（方框徽：外框 + 内部机件） ── */
   miner: (
     <g>
@@ -735,6 +768,11 @@ export const TONES: Record<string, string> = {
   'mat-blindspot': '#8fd96b',
   'mat-ammo-dmg': '#ff8373',
   'mat-reload': '#ffc46b',
+  /* B2 批： */
+  'mat-volley': '#ffd166',
+  'mat-ammo-back': '#ffb454',
+  'mat-drone-net': '#7fc7ff',
+  'mat-field-repair': '#8fd96b',
   miner: '#5ee6c8',
   cargo: '#ffd166',
   turret: '#ff8373',

@@ -152,7 +152,8 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-13 F4：遗迹安全货柜 5 种（中间件，施工期 unreleased）→ 物品总数 38→**43**
 // 2026-09-13 F3c：谜质储存器 7 台（A 批 = 探索与作业类；施工期 unreleased）→ 物品总数 43→**50**
 // 2026-09-13 F3c-B1：谜质储存器再 13 台（威胁 3 + 战斗 10）→ 物品总数 50→**63**
-check(itemDefs.length === 63, `物品总数应为 63，实际 ${itemDefs.length}`)
+// 2026-09-13 F3c-B2：谜质储存器再 4 台（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）→ 物品总数 63→**67**
+check(itemDefs.length === 67, `物品总数应为 67，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
