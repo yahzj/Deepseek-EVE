@@ -1878,7 +1878,19 @@ const meSpeedRef = useRef(200)
                       {u.name}
                       {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
                     </span>
-                    <ShipSprite shipId={u.shipId} role={role} accent={ROLE_ACCENT[role]} size={spriteSize} flip={meFlip} />
+                    <ShipSprite
+                      /**
+                       * ⚠ **画舰影要用 `defId`（船型 id），不是 `shipId`（编队 uid）** ——
+                       * 船长 2026-09-14 报障「**在虫洞内，友方舰船的图形不正确**」的真因：
+                       * 这里原先传 `u.shipId`（形如 `sh-thresher#3`）⇒ `SHIP_ART['sh-thresher#3']`
+                       * 查不到 ⇒ **退回 role 兜底剪影**，洞里 4 条友舰全成了通用轮廓。
+                       */
+                      shipId={u.defId}
+                      role={role}
+                      accent={ROLE_ACCENT[role]}
+                      size={spriteSize}
+                      flip={meFlip}
+                    />
                     {u.alive ? (
                       <div className="app-bts-hpWrap">
                         <HpTri hp={u.hp} max={u.hpMax} />

@@ -152,10 +152,13 @@ export function WormholePanel({
   engine,
   onToast,
   onClose,
+  stockId = null,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onClose: () => void
+  /** 从「扫描虫洞」页选中的库存虫洞 id（给了 ⇒ 进洞走 `wormholeEnterFromStock`：种子与起始层取它） */
+  stockId?: string | null
 }) {
   const state = engine.state
   const ctx = engine.ctx
@@ -301,6 +304,11 @@ export function WormholePanel({
   const settle = state.wormhole.lastSettle
   const holdInfo = run ? engine.wormholeHoldInfo() : null
   const overloaded = holdInfo?.overload ?? false
+  /**
+   * **动作闸**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，和之前的超载类似」）：
+   * 临时空间有东西 **或** 货仓超载 ⇒ 扫描/前往/打捞/采集/开战/撤离/深入一起置灰，并把理由摆出来。
+   */
+  const actionBlocked = run ? engine.wormholeActionBlocked() : null
   /**
    * **进场/换层动效相位**（船长 2026-09-13：「入场动画时长可以拉长到 1 秒，并且可以实现玩家初始舰船
    * 从屏幕外入场的效果（前往下一层时也可以飞出屏幕外，到达时从屏幕外飞入）」）：
@@ -467,7 +475,7 @@ export function WormholePanel({
   }
 
   function handleEnter(): void {
-    const r = engine.wormholeEnter(picked)
+    const r = stockId ? engine.wormholeEnterFromStock(stockId, picked) : engine.wormholeEnter(picked)
     if (!r.ok) onToast(r.error ?? '无法跃入。', true)
     else {
       onToast('已跃入虫洞。')
@@ -779,7 +787,7 @@ export function WormholePanel({
                       /* **形状件（货柜）**：唯一入口就是这个拾取装舱（打捞/采集都不搬它） */
                       <button
                         className="app-btn is-small is-primary app-wh-pile-btn"
-                        disabled={!!run.battle || overloaded}
+                        disabled={!!run.battle || actionBlocked !== null}
                         onClick={() => {
                           const r = engine.wormholeTakePile(i)
                           if (!r.ok) onToast(r.error ?? '拾取失败。', true)
@@ -956,6 +964,9 @@ export function WormholePanel({
                     : `背包 ${holdInfo?.used ?? 0}/${holdInfo?.capacity ?? 0} 格`}
                 </span>
                 {k === 'bag' && overloaded ? <span className="app-wh-tab-warn">超载</span> : null}
+                {k === 'bag' && !overloaded && actionBlocked !== null ? (
+                  <span className="app-wh-tab-warn">待处理</span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -1381,7 +1392,7 @@ export function WormholePanel({
                     <div className="app-wh-workspace-left">
                       <button
                         className="app-btn is-primary app-wh-scan-big"
-                        disabled={!!run.battle || overloaded || run.turnsLeft < 1 || fxBusy}
+                        disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
                         onClick={doScan}
                         title="扫描当前地点及周围一圈：只揭开还没扫过的格（1 回合）"
                       >
@@ -1391,7 +1402,7 @@ export function WormholePanel({
                       {workCell && canWork ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || overloaded || run.turnsLeft < 1 || fxBusy}
+                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
                           onClick={doActivate}
                           title={workTitle}
                         >
@@ -1404,7 +1415,7 @@ export function WormholePanel({
                       {!workCell && canActivate ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || overloaded || run.turnsLeft < 1 || fxBusy}
+                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
                           onClick={doActivate}
                           title={
                             atExit
@@ -1419,7 +1430,7 @@ export function WormholePanel({
                       {bossDone ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || overloaded || run.turnsLeft <= 0 || fxBusy}
+                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft <= 0 || fxBusy}
                           onClick={doDescend}
                           title="带着当前进度深入下一层（更深、更值钱、更硬）"
                         >
@@ -1441,14 +1452,15 @@ export function WormholePanel({
                       （打输 = 本趟全损）。
                     </div>
                   ) : null}
-                  {overloaded ? (
+                  {/**
+                   * **动作闸提示**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
+                   * 和之前的超载类似」）：两条理由共用这一条警示条 —— 临时空间待处理 / 货仓超载。
+                   */}
+                  {actionBlocked !== null ? (
                     <div className="app-wh-hold-overload">
-                      <span>
-                        货仓超载（{holdInfo?.used}/{holdInfo?.capacity} 格）：**先抛货**——超载期间不能拾取/打捞，
-                        撤离与深入也要先抛到容量内。
-                      </span>
+                      <span>{actionBlocked}</span>
                       <button className="app-btn is-small" onClick={() => setTab('bag')}>
-                        去货仓页抛货
+                        去背包页处理
                       </button>
                     </div>
                   ) : null}
@@ -1484,7 +1496,7 @@ export function WormholePanel({
                   <div className="app-wh-actions">
                     <button
                       className="app-btn is-small"
-                      disabled={!!run.battle || overloaded}
+                      disabled={!!run.battle || actionBlocked !== null}
                       onClick={doExtract}
                     >
                       撤离

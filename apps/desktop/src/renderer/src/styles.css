@@ -5011,6 +5011,18 @@ body {
 
   }
 
+  /* ⚠ 手机竖屏（`is-mobile-rot`）里真实视口只有约 390px，可文件靠前处有一条
+     `.app-root.is-mobile-rot .app-mkt-split { grid-template-columns: minmax(0,1fr) minmax(0,1.45fr) }`
+     （特异性 0,3,0）**压过**上面这条 0,1,0 的单栏规则 ⇒ 手机上门市页仍是两栏、总宽 627px 远超可用宽度，
+     右栏被挤出容器（玩家 2026-09-14 报的「手机市场显示不正常」就是这个：内容挤在一条带里、右侧大片空白）。
+     这里用**同特异性 + 更靠后**再写一条，把它压回来（平板竖屏若宽度 >1180 不受影响）。 */
+
+  .app-root.is-mobile-rot .app-mkt-split {
+
+    grid-template-columns: 1fr;
+
+  }
+
   /* ── 窄窗单栏：**放开「一级页不滚」**（船长 2026-09-14：「放宽闸门，允许市场页面在这种情况下出现滚动条。
      让所有子窗口完整显示」）────────────────────────────────────────────
      起因：窄窗切单栏后，左列表 + 市场详情 + 我的挂单 被硬塞进**一屏固定高度**里 ⇒ 三块全被压扁
@@ -9987,6 +9999,16 @@ body {
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }
 /* 超载条（探索页与货仓页共用）：与「前往未知地点」警告同族，但走红档 */
+/* **「扫描虫洞」页的进度条**（2026-09-14 船长：进度条满即发现一处虫洞）：
+   与活动栏同族的"细轨 + 填充"观感，不自造新形状（纯色块，无渐变裁形）。 */
+.app-wh-scanbar { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.app-wh-scanbar-label { font-size: 12px; }
+.app-wh-scanbar-track {
+  height: 8px; border-radius: 4px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--wui-border);
+}
+.app-wh-scanbar-fill { height: 100%; background: var(--wui-accent); transition: width 240ms linear; }
+.app-wh-scanbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .app-wh-hold-overload {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45);

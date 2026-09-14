@@ -3144,7 +3144,10 @@ export function battleArcsFor(
   /** **我方编队逐舰读数**（F 批「4 条舰影 + 血条」；单船路径 = 一条 = 主控） */
   myUnits: Array<{
     tag: string
+    /** 编队 uid（`船型id#序号`）：血条 / 名称 / 装配查找用它 */
     shipId: string
+    /** 船型 id（`sh-thresher`）：**画舰影必须用它**（uid 查不到舰形资产表 ⇒ 会退回兜底剪影） */
+    defId: string
     name: string
     className: string
     /** 主控（视图锚） */
@@ -3385,7 +3388,17 @@ export function battleArcsFor(
     const def = ctx.ships.get(uidDefId(e.shipId))
     return {
       tag: e.tag,
+      /** **编队 uid**（`船型id#序号`）—— 血条 / 名称 / 装配查找都用它 */
       shipId: e.shipId,
+      /**
+       * **船型 id**（`sh-thresher` 这种）—— **画舰影必须用它**。
+       *
+       * ⚠ 2026-09-14 修船长报障「**在虫洞内，友方舰船的图形不正确**」：战斗界面多舰路径原先拿
+       * `shipId`（uid）去查 `SHIP_ART` ⇒ `sh-thresher#3` 查不到资产表 ⇒ **退回 role 兜底剪影**
+       * （于是洞里 4 条友舰都成了"通用突击舰/作业船"轮廓）。单船路径一直传的是 `ShipDef.id`，
+       * 所以只有洞内多舰战斗会错。这里直接把 defId 一并给出去，界面不必再自己拆 uid。
+       */
+      defId: uidDefId(e.shipId),
       name: shipDisplayName(state, ctx, e.shipId),
       className: def?.name ?? e.shipId,
       leader: e.tag === 'player',

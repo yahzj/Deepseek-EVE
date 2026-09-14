@@ -1872,7 +1872,14 @@ export interface CommsFactionDef {
 /* ═══════════════ 通讯（2026-09-11 船长定：NPC 以"发消息"补充剧情与任务提示） ═══════════════ */
 
 /** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务）。`comms` = 回本页（简报里用） */
-export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'comms'
+/**
+ * 通讯消息/教程步骤的**跳转目标页**。
+ *
+ * ⚠ 2026-09-14 起新增 `'task'`：**任务中心已从星图页的一个选项卡搬成独立一级页**
+ * （船长：「将任务中心界面移出星图，放入左侧导航栏，通讯的上方」）⇒ 指向任务中心的跳转
+ * 从 `{ page: 'map', tab: 'task' }` 改成 `{ page: 'task' }`（内层标签仍走 `taskTab`）。
+ */
+export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'comms' | 'task'
 
 /**
  * 通讯消息触发条件（core 每帧廉价判定；**幂等**——条件满足一次即送达，之后重复推进不再送）。

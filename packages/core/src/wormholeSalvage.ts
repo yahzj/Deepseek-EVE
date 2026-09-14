@@ -882,15 +882,41 @@ export function wormholeDiscardCargo(
 }
 
 /**
- * **超载封锁**：超载时能做什么、不能做什么（船长裁定 8 的落地口径）。
- * - 不许：扫描 / 前往 / 激活（打捞·挖矿·开战）/ 拾取（**不能再装新东西**）；
- * - 允许：**抛货**（随时）、看地图、撤离/深入（但撤离与深入前必须先把货抛到容量内）；
- * - **不软锁**：抛货永远可用 ⇒ 任何超载态都有出路。
+ * **超载判据**（只看货仓；临时空间那一条见 `wormholeTempBlockReason`）：
+ * 沉船缩水后 `used > capacity` 就是超载 —— 玩家必须先抛货。
  */
 export function wormholeOverloadBlockReason(state: GameState, ctx: SimContext): string | null {
   const u = wormholeHoldUsage(state, ctx)
   if (!u.overload) return null
   return `货仓超载（${u.used}/${u.capacity} 格）：先抛货再继续（货仓页可以抛弃）。`
+}
+
+/**
+ * **临时空间未完待理**的封锁理由（船长 2026-09-14：「**临时空间内有物品就不允许进行其他操作，
+ * 和之前的超载类似**」）。
+ *
+ * 为什么要有它：临时空间是"落地缓冲 + 待丢区"，**不是第二个仓位** —— 一旦里面有东西，
+ * 玩家必须先在背包页把它处理掉（**放回货仓** 或 **丢弃**，强制二选一）才能继续探索。
+ * 这条同时把上一版"沉船缩水后可以先继续搜打撤"的口径收回：现在**立刻封锁**，与超载同款。
+ * ⚠ 仍然**不软锁**：丢弃/放回都在背包页做得到，且丢弃永远可用。
+ */
+export function wormholeTempBlockReason(state: GameState, ctx: SimContext): string | null {
+  const pending = wormholeTempPending(state, ctx)
+  if (pending.count <= 0) return null
+  return (
+    `临时空间里有 ${pending.count} 件没处理（${pending.cells}/${WORMHOLE_TEMP_CELLS} 格）：` +
+    `先到「背包」页把它们**放回货仓**或**丢弃**，再继续。`
+  )
+}
+
+/**
+ * **动作闸（唯一入口）**：能装货/移动的动作都要先过它 ——
+ * ① 临时空间有东西（必须先去背包页处理）② 货仓超载（必须抛货）。
+ *
+ * ⚠ 顺序有意为之：临时空间那条更"卡脖子"（处理它就得进背包页，抛货也在那一页），故优先报它。
+ */
+export function wormholeActionBlockReason(state: GameState, ctx: SimContext): string | null {
+  return wormholeTempBlockReason(state, ctx) ?? wormholeOverloadBlockReason(state, ctx)
 }
 
 /**
@@ -961,7 +987,7 @@ export function wormholeTakePileAt(
 ): { ok: boolean; error?: string; taken?: WormholePile; used?: number; capacity?: number } {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。' }
-  const blocked = wormholeOverloadBlockReason(state, ctx)
+  const blocked = wormholeActionBlockReason(state, ctx)
   if (blocked) return { ok: false, error: blocked }
   const grid = run.grid
   const holder: { piles?: WormholePile[] } | undefined = grid
@@ -1055,7 +1081,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   const grid = run?.grid
   if (!run || !grid) return { ok: false, error: '本层没有网格：无法采集。' }
   if (run.battle) return { ok: false, error: '战斗中：先打完这一场。' }
-  const blocked = wormholeOverloadBlockReason(state, ctx)
+  const blocked = wormholeActionBlockReason(state, ctx)
   if (blocked) return { ok: false, error: blocked }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。' }

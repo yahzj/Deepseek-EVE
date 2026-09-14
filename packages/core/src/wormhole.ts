@@ -806,6 +806,16 @@ function gridActionBlocked(run: WormholeRunState): string | null {
   if (run.battle) return '战斗中：先打完这一场。'
   // **遗迹守备已惊动**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
   if (run.pendingRuinsBattle === true) return '遗迹深处的守备已经惊动：先点「迎战」打完这一场。'
+  /**
+   * **临时空间里还有东西**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
+   * 和之前的超载类似」）：扫描也一并拦下 —— 玩家得先去背包页把它**放回货仓**或**丢弃**。
+   * ⚠ 这里只读 `tempGrid`（不需要 ctx）；超载那一条由 `wormholeSalvage.wormholeActionBlockReason`
+   * 在打捞/采集/开战/拾取/撤离/深入各口把守（`wormhole.ts` 不能反向依赖它，模块方向见文件头）。
+   */
+  const pending = run.tempGrid?.placements.length ?? 0
+  if (pending > 0) {
+    return `临时空间里有 ${pending} 件没处理：先到「背包」页放回货仓或丢弃，再继续。`
+  }
   return null
 }
 

@@ -521,21 +521,21 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'signal-analysis',
     name: '信号分析学',
     group: '探索',
-    rank: 2,
+    rank: 3, // 2026-09-14 船长：扫描虫洞要 220 分钟，故三项扫描技能的难度重排（分析 3 / 测绘 4 / 过滤 5）
     description: '未知信号解读与锁定：就地扫描窗口每级缩短 ⟦8%⟧（满级 −⟦40%⟧）。',
   },
   {
     id: 'cartography',
     name: '星图测绘学',
     group: '探索',
-    rank: 2,
+    rank: 4, // 2026-09-14 船长（同上）
     description: '航线标定与跳跃窗优化：就地扫描窗口每级缩短 ⟦6%⟧（满级 −⟦30%⟧；与信号分析学、信号过滤学乘算叠加）。',
   },
   {
     id: 'signal-filtering',
     name: '信号过滤学',
     group: '探索',
-    rank: 3,
+    rank: 5, // 2026-09-14 船长（同上）
     description: '干扰抑制与信号提纯：就地扫描窗口每级再缩短 ⟦6%⟧（与信号分析学乘算叠加）。',
   },
   {
