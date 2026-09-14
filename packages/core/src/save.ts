@@ -22,6 +22,7 @@ import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
 import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from './wormholeScan'
+import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
@@ -2309,6 +2310,112 @@ function normalizeState(raw: unknown): GameState {
     })
   }
 
+  // --- 自动探索（2026-09-14 批次 3 · 可选字段 ⇒ 零迁移）---
+  // 在跑的趟：id/stockId 非空、种子与层为正整数、参与舰是舰队里的船（不在舰队 ⇒ 丢弃该条目，
+  // 免得锁定一艘已经不存在的船）；到点未结算的照旧保留（下一拍 `advanceWormholeAuto` 会结算）。
+  const wormholeAuto: Array<{
+    id: string
+    stockId: string
+    seed: number
+    depth: number
+    shipIds: string[]
+    startedAtGameMs: number
+    finishAtGameMs: number
+  }> = []
+  for (const item of Array.isArray(src.wormholeAuto) ? src.wormholeAuto : []) {
+    const o = asRaw(item)
+    const id = typeof o.id === 'string' ? o.id : ''
+    const stockId = typeof o.stockId === 'string' ? o.stockId : ''
+    if (id.length === 0 || stockId.length === 0) continue
+    const seed = Math.floor(num(o.seed))
+    const depth = Math.floor(num(o.depth))
+    const pool: string[] = []
+    for (const sid of Array.isArray(o.shipIds) ? o.shipIds : []) {
+      if (typeof sid === 'string' && sid.length > 0 && !pool.includes(sid)) pool.push(sid)
+    }
+    const live = pool.filter((sid) => fleet[sid] !== undefined)
+    if (live.length === 0) continue
+    const started = Math.floor(num(o.startedAtGameMs))
+    const finish = Math.floor(num(o.finishAtGameMs))
+    wormholeAuto.push({
+      id,
+      stockId,
+      seed: Number.isFinite(seed) && seed > 0 ? seed : 1,
+      depth: Number.isFinite(depth) ? Math.min(9, Math.max(1, depth)) : 1,
+      shipIds: live.slice(0, WORMHOLE_AUTO_MAX_SHIPS),
+      startedAtGameMs: Number.isFinite(started) ? Math.max(0, started) : 0,
+      finishAtGameMs: Number.isFinite(finish) ? Math.max(0, finish) : 0,
+    })
+  }
+  // 报告队列：结构完整的才收；`gains`/`damage` 逐项净化；上限 = `WORMHOLE_AUTO_REPORT_MAX`（新的在前）
+  const wormholeAutoReports: Array<{
+    id: string
+    stockId: string
+    depth: number
+    finishedAtGameMs: number
+    shipIds: string[]
+    coresReleased: number
+    gains: Array<{ itemId: string; units: number }>
+    damage: Array<{
+      shipId: string
+      name: string
+      durabilityLossPct: number
+      armorLossPct: number
+      durabilityPct: number
+      armorPct: number
+    }>
+    confirmed: boolean
+  }> = []
+  for (const item of Array.isArray(src.wormholeAutoReports) ? src.wormholeAutoReports : []) {
+    if (wormholeAutoReports.length >= WORMHOLE_AUTO_REPORT_MAX) break
+    const o = asRaw(item)
+    const id = typeof o.id === 'string' ? o.id : ''
+    if (id.length === 0) continue
+    const gains: Array<{ itemId: string; units: number }> = []
+    for (const g of Array.isArray(o.gains) ? o.gains : []) {
+      const go = asRaw(g)
+      const itemId = typeof go.itemId === 'string' ? go.itemId : ''
+      const units = Math.floor(num(go.units))
+      if (itemId.length === 0 || !Number.isFinite(units) || units <= 0) continue
+      gains.push({ itemId, units })
+    }
+    const damage: typeof wormholeAutoReports[number]['damage'] = []
+    for (const d of Array.isArray(o.damage) ? o.damage : []) {
+      const dobj = asRaw(d)
+      const shipId = typeof dobj.shipId === 'string' ? dobj.shipId : ''
+      if (shipId.length === 0) continue
+      const clampPct = (v: unknown): number => {
+        const n = Math.floor(num(v))
+        return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0
+      }
+      damage.push({
+        shipId,
+        name: typeof dobj.name === 'string' && dobj.name.length > 0 ? dobj.name : shipId,
+        durabilityLossPct: clampPct(dobj.durabilityLossPct),
+        armorLossPct: clampPct(dobj.armorLossPct),
+        durabilityPct: clampPct(dobj.durabilityPct),
+        armorPct: clampPct(dobj.armorPct),
+      })
+    }
+    const shipIds: string[] = []
+    for (const sid of Array.isArray(o.shipIds) ? o.shipIds : []) {
+      if (typeof sid === 'string' && sid.length > 0 && !shipIds.includes(sid)) shipIds.push(sid)
+    }
+    const depth = Math.floor(num(o.depth))
+    const cores = Math.floor(num(o.coresReleased))
+    wormholeAutoReports.push({
+      id,
+      stockId: typeof o.stockId === 'string' ? o.stockId : '',
+      depth: Number.isFinite(depth) ? Math.min(9, Math.max(1, depth)) : 1,
+      finishedAtGameMs: Number.isFinite(num(o.finishedAtGameMs)) ? Math.max(0, Math.floor(num(o.finishedAtGameMs))) : 0,
+      shipIds,
+      coresReleased: Number.isFinite(cores) && cores > 0 ? Math.min(WORMHOLE_AUTO_MAX_SHIPS, cores) : shipIds.length,
+      gains,
+      damage,
+      confirmed: o.confirmed === true,
+    })
+  }
+
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
   const cbRaw = src.completedBounties
@@ -2760,6 +2867,8 @@ function normalizeState(raw: unknown): GameState {
     // 虫洞扫描与库存（2026-09-14 · 可选字段 ⇒ 老档没有就是「没在扫、库存空」）
     wormholeScan,
     wormholeStock,
+    wormholeAuto,
+    wormholeAutoReports,
     debugQuick,
     completedBounties,
     awayGalaxy,

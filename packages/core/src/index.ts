@@ -1047,6 +1047,36 @@ export {
   advanceWormholeScan,
 } from './wormholeScan'
 export type { WormholeScanState, WormholeStockItem } from './state'
+// 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
+export {
+  WORMHOLE_AUTO_DURATION_MS,
+  WORMHOLE_AUTO_MAX_SHIPS,
+  WORMHOLE_AUTO_YIELD_MUL,
+  WORMHOLE_AUTO_MANUAL,
+  WORMHOLE_AUTO_HULL_FLOOR,
+  WORMHOLE_AUTO_DAMAGE_MIN,
+  WORMHOLE_AUTO_DAMAGE_MAX,
+  WORMHOLE_AUTO_REPORT_MAX,
+  wormholeAutoRunsOf,
+  wormholeAutoReportsOf,
+  wormholeAutoUnconfirmedCount,
+  shipInWormholeAuto,
+  wormholeAutoRunOfStock,
+  wormholeAutoShipBlockReason,
+  wormholeAutoCandidates,
+  wormholeAutoDefaultShips,
+  wormholeAutoCoreBlock,
+  wormholeAutoBlockReason,
+  wormholeAutoStart,
+  wormholeAutoStop,
+  wormholeAutoStopByShip,
+  advanceWormholeAuto,
+  wormholeAutoConfirmReport,
+  wormholeAutoConfirmAll,
+  shipNameOf,
+} from './wormholeAuto'
+export type { WormholeAutoRun, WormholeAutoReport } from './state'
+export type { WormholeAutoCandidate } from './wormholeAuto'
 // F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,

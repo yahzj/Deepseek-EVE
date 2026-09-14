@@ -109,9 +109,12 @@ export function aiCoreCap(state: GameState, ctx: SimContext): number {
   return cap
 }
 
-/** AI 副船任务占用的启用数（占「共用上限」名额） */
+/** AI 副船任务占用的启用数（占「共用上限」名额）。
+ * 2026-09-14 起**并入"自动探索"的参与舰**（船长：每条参与舰各占 1 枚 AI 核心，与副船任务同一本账）——
+ * 这里直接读 `state.wormholeAuto`，不反向 import 自动探索模块（避免模块环）。 */
 export function aiCoreShipUsed(state: GameState): number {
-  return Object.keys(state.aiAssignments).length
+  const auto = (state.wormholeAuto ?? []).reduce((n, r) => n + (r.shipIds?.length ?? 0), 0)
+  return Object.keys(state.aiAssignments).length + auto
 }
 
 /** 站内工业 AI 工位占用数（AI 精炼/回收炉 + AI 制造线；
@@ -226,6 +229,10 @@ function checkAssignable(state: GameState, shipId: string, coreType: AiCoreType,
   if (shipId === state.shipId) return { ok: false, error: '主控船由你亲自驾驶，不能指派 AI。' }
   if (!state.fleet[shipId]) return { ok: false, error: '舰队里没有这艘船。' }
   if (shipId in state.aiAssignments) return { ok: false, error: '这艘船已有 AI 任务。' }
+  // 2026-09-14：自动探索中的船也不能再接 AI 副船任务（参与舰任务期间锁定）
+  if ((state.wormholeAuto ?? []).some((r) => r.shipIds.includes(shipId))) {
+    return { ok: false, error: '这艘船正在自动探索中（已锁定）：等它返航，或先在「扫描虫洞」页召回那一趟。' }
+  }
   const capBlock = aiCoreCapBlock(state, ctx)
   if (capBlock) return { ok: false, error: capBlock }
   if (countAiCore(state, coreType) <= 0) {
