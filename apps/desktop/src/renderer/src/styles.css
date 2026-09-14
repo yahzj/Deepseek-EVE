@@ -6772,6 +6772,19 @@ body {
 
 .app-fit-shipinfo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding: 8px 10px; border: 1px dashed var(--wui-border); border-radius: 6px; background: rgba(10,17,27,0.4); }
 
+/* 标题后的提示标记（2026-09-13 船长：「隐藏起来，只在标题名字的后面显示一个圆形感叹号图标，
+   当玩家悬停时才显示这些说明」）——圆形感叹号 glyph 走 currentColor，这里只给色与间距：
+   常态暗色、悬停提亮（同 `.app-btn:hover` 的改法，不用 filter）；`cursor: help` 提示"可看说明"。 */
+.app-hint-ico {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: var(--wui-text-dim);
+  cursor: help;
+  vertical-align: -1px;
+}
+.app-hint-ico:hover { color: var(--wui-text); }
+
 /* ═══════════════ 全局悬停提示（Tooltip） ═══════════════ */
 
 .app-tip {

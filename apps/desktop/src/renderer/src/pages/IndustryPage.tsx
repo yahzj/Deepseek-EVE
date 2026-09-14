@@ -35,6 +35,7 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
+import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3 } from './common'
@@ -516,6 +517,11 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
         <Panel
           className="is-fill win-fixed-body"
           title="精炼炉"
+          hint={
+            <HintIcon
+              tip={`你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。稀有残骸例外：起炉即把整件（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入本炉料账——货仓/仓库不再显示这批料，卡面按"炉内料账 + 货仓/仓库"合计数给出，停炉时未用完部分退回物品仓库。`}
+            />
+          }
           right={
             <>
               <span
@@ -528,9 +534,6 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
             </>
           }
         >
-          <div className="app-dim app-note">
-            你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。稀有残骸例外：起炉即把整件（1 件 = {RARE_WRECK_VOLUME_M3} m³）转入本炉料账——货仓/仓库不再显示这批料，卡面按"炉内料账 + 货仓/仓库"合计数给出，停炉时未用完部分退回物品仓库。
-          </div>
           <div className="app-win-body">
           {oreDefs.length === 0 && wreckDefs.length === 0 ? (
             <div className="app-dim app-inv-empty">
