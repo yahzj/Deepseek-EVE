@@ -148,8 +148,17 @@ import {
   wormholeHoldStow,
   wormholeHoldCapacityOf,
   wormholeTempUsage,
-  wormholeTempStow,
-  wormholeTempDiscard,
+  wormholeTempStowPiece,
+  wormholeTempDiscardPiece,
+  wormholeTempStowAll,
+  wormholeTempDiscardAll,
+  wormholeTempPending,
+  wormholeTempBoard,
+  wormholeNormalizeLegacyTemp,
+  holdTransferTo,
+  makeHoldState,
+  wormholeSyncMatterTurns,
+  WORMHOLE_TEMP_CELLS,
   holdCompact,
   holdDropWithGrab,
   holdSwap,
@@ -182,7 +191,7 @@ import type {
   SettleStats,
   SideTask,
   SimContext,
-  WormholeTempSlot,
+  WormholeHoldPlacement,
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
 import { saveBridge } from './storage'
@@ -591,6 +600,8 @@ export class GameEngine {
         this.state = parsed.state
         // V18 口径取消：旧重型弹 1:1 并入通用弹（含挂单撤销）；见 core/equipment.migrateDeprecatedAmmo
         migrateDeprecatedAmmo(this.state)
+        // 临时空间换账本（2026-09-14）：老档 `run.temp`（一种物品一条的列表）→ `run.tempGrid`（4×8 格子）
+        wormholeNormalizeLegacyTemp(this.state, this.ctx)
         lastSavedWall = parsed.savedAtWallMs
       }
     } catch (err) {
@@ -1587,14 +1598,22 @@ export class GameEngine {
     return wormholeHoldUsage(this.state, this.ctx)
   }
 
-  /** 虫洞：**临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
-  wormholeTempInfo(): { cells: number; capacity: number; items: WormholeTempSlot[]; full: boolean } {
+  /**
+   * 虫洞：**临时空间读数**（船长 2026-09-14：4 列 × 8 行 = 32 格的格子区，挂在货仓 8 列右侧）。
+   * 不占货仓容量、不算超载；**离开背包页前必须清空**。
+   */
+  wormholeTempInfo(): { cells: number; capacity: number; placements: WormholeHoldPlacement[]; full: boolean } {
     return wormholeTempUsage(this.state, this.ctx)
   }
 
-  /** 虫洞：**临时空间里的一件放进货仓**（腾得出位置才成功；失败原样留在临时空间） */
-  wormholeTempStow(itemId: string): CommandResult {
-    const r = wormholeTempStow(this.state, this.ctx, itemId)
+  /** 虫洞：临时空间里还有多少件要处理（离页/撤离前必须清零） */
+  wormholeTempPending(): { count: number; cells: number; placements: WormholeHoldPlacement[] } {
+    return wormholeTempPending(this.state, this.ctx)
+  }
+
+  /** 虫洞：**把临时空间里的一件放进货仓**（腾得出位置才成功；失败原样留在临时空间） */
+  wormholeTempStow(id: string): CommandResult {
+    const r = wormholeTempStowPiece(this.state, this.ctx, id)
     if (r.ok) {
       void this.persist()
       this.notify()
@@ -1602,14 +1621,75 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：**抛弃临时空间里的一件**（手动抛货，与货仓抛货同一把尺） */
-  wormholeTempDiscard(itemId: string): CommandResult {
-    const r = wormholeTempDiscard(this.state, this.ctx, itemId)
+  /** 虫洞：**丢弃临时空间里的一件**（手动；与货仓抛货同一把尺） */
+  wormholeTempDiscard(id: string): CommandResult {
+    const r = wormholeTempDiscardPiece(this.state, this.ctx, id)
     if (r.ok) {
       void this.persist()
       this.notify()
     }
     return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**临时空间全部放回货仓**（逐件尝试 ⇒ 报告放不下的那几件） */
+  wormholeTempStowAll(): { ok: boolean; moved: number; stuck: string[] } {
+    const r = wormholeTempStowAll(this.state, this.ctx)
+    if (r.moved > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.stuck.length === 0, moved: r.moved, stuck: r.stuck }
+  }
+
+  /** 虫洞：**临时空间全部丢弃**（离页确认条的「丢掉这些」） */
+  wormholeTempDiscardAll(): { ok: boolean; moved: number } {
+    const r = wormholeTempDiscardAll(this.state, this.ctx)
+    if (r.moved > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: true, moved: r.moved }
+  }
+
+  /**
+   * 虫洞：**一件在两块格板之间搬**（货仓 ↔ 临时空间；界面跨板拖拽的唯一入口）。
+   * `to` 给不出落点（`x/y` 省略）⇒ 目标板找第一个放得下的空位。
+   */
+  wormholeBoardTransfer(
+    from: 'hold' | 'temp',
+    to: 'hold' | 'temp',
+    id: string,
+    x?: number,
+    y?: number,
+    grab?: { dx: number; dy: number },
+  ): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run) return { ok: false, error: '不在虫洞内。' }
+    run.hold = run.hold ?? makeHoldState()
+    const holdCap = wormholeHoldCapacityOf(this.state, this.ctx)
+    const src = from === 'hold' ? run.hold : wormholeTempBoard(run)
+    const dst = to === 'hold' ? run.hold : wormholeTempBoard(run)
+    if (src === dst) return { ok: false, error: '两边是同一块板。' }
+    const r = holdTransferTo(src, dst, id, to === 'hold' ? holdCap : WORMHOLE_TEMP_CELLS, x, y, grab)
+    if (r.ok) {
+      // 谜质装置挪动 ⇒ 增益实时派生（进货仓生效 / 出仓失效并**夹紧回合**）
+      wormholeSyncMatterTurns(this.state)
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /** 虫洞：**整理临时空间**（与货仓的「整理」同一把尺：按件大小重排，只重排不丢件） */
+  wormholeTempCompact(): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run?.tempGrid) return { ok: false, error: '临时空间里没有东西。' }
+    const r = holdCompact(run.tempGrid, WORMHOLE_TEMP_CELLS)
+    if (r.moved > 0 || r.unplaced.length > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: true, error: r.unplaced.length > 0 ? `有 ${r.unplaced.length} 件放不回格子里。` : undefined }
   }
   /** 虫洞：深入下一层（只在层末可用） */
   wormholeDescend(): CommandResult {
@@ -1638,6 +1718,18 @@ export class GameEngine {
     // **超载不许撤离**（船长裁定 8）：先把货抛到容量内（抛货本身任何时候都能做 ⇒ 不会软锁）
     const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
+    /**
+     * **临时空间没清空也不许撤离**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）：
+     * 界面在离开背包页时就强制二选一，这里是引擎侧的第二道闸（坏档 / 界面漏判都拦得住）。
+     * ⚠ 仍然**不软锁**：丢弃与放回都在背包页做得到，且丢弃永远可用。
+     */
+    const pending = wormholeTempPending(this.state, this.ctx)
+    if (pending.count > 0) {
+      return {
+        ok: false,
+        error: `临时空间里还有 ${pending.count} 件没处理：到「背包」页「放回货仓」或「丢弃」后再撤离。`,
+      }
+    }
     const r = wormholeExtract(run)
     if (r.ok) {
       void this.persist()

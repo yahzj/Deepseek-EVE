@@ -48,7 +48,9 @@ import {
   wormholeDiscardToFit,
   wormholeHoldOverloaded,
   wormholeHoldStow,
+  wormholeHoldUsage,
   wormholeOverloadBlockReason,
+  wormholeTempUsage,
   wormholeRelicBoxIdOf,
 } from '../src/wormholeSalvage'
 
@@ -490,17 +492,32 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     settleBattle(state)
     const back = state.wormhole.run!
     expect(wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))).toBeLessThan(capBefore)
-    // **一件都没自动丢**（新口径）；超载由玩家自己解
-    expect(JSON.stringify(back.bag), '旧口径在自动丢货').toBe(bagBefore)
-    expect(wormholeHoldOverloaded(state, ctx), '沉船后应当超载').toBe(true)
+    /**
+     * **一件都没被自动丢掉**（新口径）：逐条比"数量只增不减"——
+     * ⚠ 不能直接比整串相等：这一场是**胜仗**，战果（残骸）本来就会进背包；
+     * 旧口径下货仓刚好装满 ⇒ 战果装不下、进不来；现在临时空间接得住 ⇒ 背包会**多出**战果条目。
+     */
+    for (const before of JSON.parse(bagBefore) as Array<{ itemId: string; units: number }>) {
+      const after = back.bag.find((s) => s.itemId === before.itemId)?.units ?? 0
+      expect(after, `${before.itemId} 被自动丢了（旧口径在自动丢货）`).toBeGreaterThanOrEqual(before.units)
+    }
+    /**
+     * ⚠ **2026-09-14 新口径**（船长把临时空间加大到 4×8 = 32 格，且「不占容量、不算超载」）：
+     * 沉船缩水后多出来的那几格不再算"放不下"，而是**落进临时空间**（收货阶梯第二层）⇒
+     * `wormholeHoldOverloaded` 为假，但**撤离前必须先把它清空**（引擎侧第二道闸）。
+     * 惩罚因此从"立刻封锁"改成"**撤离前必须丢到容量内**"，洞里仍可继续搜打撤。
+     */
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)
+    expect(wormholeTempUsage(state, ctx).cells, '多出来的货落在临时空间').toBeGreaterThan(0)
+    expect(wormholeHoldOverloaded(state, ctx), '临时空间不算超载').toBe(false)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('超载'))).toBe(true)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('手动抛弃货物'))).toBe(true)
-    // 超载期间不许再装东西
-    expect(wormholeOverloadBlockReason(state, ctx) ?? '').toContain('超载')
-    // 玩家抛货（先便宜的）⇒ 恢复
+    // 玩家点「一键抛到容量内」（先便宜的）⇒ 恢复
     const fit = wormholeDiscardToFit(state, ctx)
     expect(fit.ok).toBe(true)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
+    // ⚠ 这一场是**胜仗**：战果（残骸）会进背包 —— 裁剪后再同步，多出来的战果落在临时空间里等玩家处理
+    expect(wormholeHoldUsage(state, ctx).used).toBeLessThanOrEqual(wormholeHoldUsage(state, ctx).capacity)
     const dearLeft = back.bag.find((s) => s.itemId === dear)?.units ?? 0
     expect(dearLeft, '贵货被丢了（应先丢便宜的）').toBe(1000)
   })
@@ -530,11 +547,14 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     settleBattle(state)
     const back = state.wormhole.run!
     expect(wormholeBagSlots(wormholeFleetCargoM3(state, ctx, back.fleet))).toBe(10)
-    expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
+    // 16 格 > 缩容后的 10 格 ⇒ 多出的 6 格落进临时空间（不算超载，但撤离前必须清空）
+    expect(wormholeTempUsage(state, ctx).cells).toBeGreaterThan(0)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
     // 玩家点「抛到容量内」⇒ 只动最便宜的（普通残骸），原矿与稀有残骸留着
     const fit = wormholeDiscardToFit(state, ctx)
     expect(fit.ok).toBe(true)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
+    expect(wormholeHoldUsage(state, ctx).used).toBeLessThanOrEqual(wormholeHoldUsage(state, ctx).capacity)
     expect(back.bag.find((s) => s.itemId === rare)?.units, '稀有残骸被丢了').toBe(30)
     expect(back.bag.find((s) => s.itemId === WORMHOLE_ORE_ITEM_ID)?.units, '虚空母矿被丢了').toBe(1500)
     expect(back.bag.find((s) => s.itemId === common)?.units ?? 0, '普通残骸没被扣').toBeLessThan(12 * 500)

@@ -9899,10 +9899,33 @@ body {
    8 列固定网格：货柜 = 2×2 整块、散货 = 一种一条 1×N 横条（**F5 起散货也是真摆放件、可拖拽**）、
    超出容量的显示位 = 锁定格。格子统一 aspect-ratio:1 ⇒ 永远是正方形（拖拽落点与视觉一致，也不因内容变化跳动）。 */
 .app-wh-hold { display: flex; flex-direction: column; gap: 6px; }
+/* **两块格板并排**（船长 2026-09-14：8 列货仓 + 右侧 4 列的**临时空间**）：
+   左 = 货仓格（固定上限宽），右 = 临时空间（4 列 ⇒ 天然窄）；窄窗口自动换行，不挤成一条缝。 */
+.app-wh-hold-boards { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.app-wh-hold-board-main { flex: 1 1 420px; min-width: 320px; }
+.app-wh-hold-board-side {
+  flex: 0 1 300px; min-width: 236px;
+  border-left: 1px solid var(--wui-border); padding-left: 12px;
+}
 .app-wh-hold-grid {
   display: grid; gap: 4px; margin-top: 6px;
   max-width: 560px; /* 8 列在宽面板里不至于拉成巨格 */
 }
+/* 临时空间（4 列 × 8 行）：跟货仓同一套格子，只是更窄 */
+.app-wh-hold-grid.is-temp { max-width: 300px; gap: 3px; }
+.app-wh-hold-grid.is-temp .app-wh-hold-cell { font-size: 9.5px; }
+/* **临时空间待清空确认条**（船长 2026-09-14：「需要提醒玩家是否要丢弃物品并列出丢弃的物品列表」）：
+   与页内的"超载红条"同族（红档底 + 描边），逐件列出后可「丢掉这些 / 放回货仓」。 */
+.app-wh-tempask {
+  border: 1px solid rgba(255, 131, 115, 0.55); background: rgba(255, 131, 115, 0.1);
+  border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.app-wh-tempask-title { font-size: 11.5px; }
+.app-wh-tempask-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.app-wh-tempask-list li { line-height: 1.5; }
+.app-wh-tempask-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 临时空间里的谜质储存器 = **不生效**（船长 2026-09-14：「谜质储存器拖进小背包会失效」）⇒ 压暗提示 */
+.app-wh-hold-fig.is-inert { opacity: 0.55; border-style: dashed; }
 .app-wh-hold-cell {
   aspect-ratio: 1 / 1; border: 1px dashed var(--wui-border); border-radius: 5px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

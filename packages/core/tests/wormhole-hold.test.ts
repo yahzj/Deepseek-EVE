@@ -17,7 +17,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID, WORMHOLE_TEMP_CELLS, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldPlacement, WormholeHoldState } from '../src/wormholeHold'
 import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
 import {
@@ -31,6 +31,7 @@ import {
   wormholeHoldUsage,
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
+  wormholeTempUsage,
 } from '../src/wormholeSalvage'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
 import { gridCellAt } from '../src/wormholeGrid'
@@ -252,7 +253,17 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     const run = state.wormhole.run!
     const cap = wormholeHoldCapacityOf(state, ctx)
     expect(cap).toBe(10)
-    setBag(state, [{ itemId: 'ore-voidmother', units: 12 * 500 }]) // 12 格 > 10
+    /**
+     * ⚠ **2026-09-14 起"超载"要连临时空间一起算**（船长把临时空间加大到 4×8 = 32 格）：
+     * 收货阶梯是「货仓 → 临时空间 → 才失败」，所以只有**两块板都放不下**才会出现 `unplacedCells`。
+     * 这里灌 45 格：货仓 10 + 临时空间 32 = 42 落地，剩 3 格没位置 ⇒ 超载。
+     */
+    setBag(state, [
+      { itemId: 'ore-voidmother', units: 10 * 500 },
+      { itemId: 'wreck-wh-pirate-scout', units: 35 * 500 },
+    ])
+    expect(wormholeTempUsage(state, ctx).cells).toBe(WORMHOLE_TEMP_CELLS)
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(3)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
     expect(wormholeOverloadBlockReason(state, ctx) ?? '').toContain('超载')
     expect(wormholeActivateAt(state, ctx).ok).toBe(false)
@@ -266,6 +277,7 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     const cell = gridCellAt(run.grid!, run.grid!.pos)!
     void cell
     expect(wormholeHoldUsage(state, ctx).used).toBeLessThanOrEqual(cap)
+    expect(wormholeTempUsage(state, ctx).cells).toBe(0) // 散货裁到容量内 ⇒ 临时空间也清空
   })
 
   it('散货可按量抛（只差一两格时不用整条丢）；形状件单独抛', () => {
@@ -274,11 +286,13 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     setBag(state, [
       { itemId: 'ore-voidmother', units: 6 * 500 },
       { itemId: 'wreck-wh-pirate-scout', units: 6 * 500 },
-    ]) // 共 12 格 > 10
+    ]) // 共 12 格：货仓 10 格占满，多出的 2 件落进临时空间（阶梯第二层）
+    expect(wormholeTempUsage(state, ctx).cells).toBe(2)
     const dropped = wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout', 2 * 500)
     expect(dropped.ok).toBe(true)
     expect(dropped.dropped).toBe(1000)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
+    expect(wormholeTempUsage(state, ctx).cells).toBe(0) // 裁到 10 格 ⇒ 全部装进货仓
     // **F5 起货柜要真有空位**（散货也占真实格）：10 格被散货占满 ⇒ 装 4 格货柜**当场拒收**（整件拒收）
     const blocked = wormholeHoldStow(state, ctx, BOX)
     expect(blocked.ok).toBe(false)
@@ -287,22 +301,35 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     // 腾出 4 格（抛掉 2000 单位残骸）⇒ 货柜装得下
     expect(wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout').ok).toBe(true)
     const stow = wormholeHoldStow(state, ctx, BOX)
-    expect(stow.ok).toBe(true)
+    expect(stow.ok, stow.error ?? '').toBe(true)
     expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 6, shapeCells: 4, used: 10 })
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
-    /**
-     * 再塞 4 格散货（2000 单位母矿）⇒ 母矿从 6 件涨到 10 件，而货仓只剩 6 格给散货
-     * ⇒ **多出来的 4 件**算"没位置"（一件一格口径：`unplacedCells` = 件数差 = 4）⇒ 超载。
-     */
-    setBag(state, [...run.bag, { itemId: 'ore-voidmother', units: 4 * 500 }])
-    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(4)
-    expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
-    // 抛掉货柜 ⇒ 散货立刻有位（对齐一次）⇒ 恢复
+    // 抛掉货柜 ⇒ 散货立刻有位（对齐一次）⇒ 状态照旧自洽
     const disc = wormholeHoldDiscard(state, ctx, stow.placementId!)
     expect(disc.ok).toBe(true)
     wormholeHoldSyncCargo(state, ctx)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
     expect(run.hold!.placements.filter((p) => p.kind === 'box')).toHaveLength(0)
+  })
+
+  it('**散货溢出到两块板都满** ⇒ 超载（2026-09-14 新口径：临时空间也算落地位置）', () => {
+    const state = enterRun(2)
+    const run = state.wormhole.run!
+    // 货仓 10 格 + 临时空间 32 格 = 42 格正好装满 ⇒ 还没超载
+    setBag(state, [
+      { itemId: 'ore-voidmother', units: 10 * 500 },
+      { itemId: 'wreck-wh-pirate-scout', units: 32 * 500 },
+    ])
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
+    expect(wormholeTempUsage(state, ctx).cells).toBe(WORMHOLE_TEMP_CELLS)
+    // 再塞 4 格 ⇒ 两块板都没位置 ⇒ 那 4 件算"放不下" ⇒ 超载
+    setBag(state, [...run.bag, { itemId: 'ore-voidmother', units: 4 * 500 }])
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(4)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
+    // 抛掉 4 格散货 ⇒ 立刻恢复
+    expect(wormholeDiscardCargo(state, ctx, 'ore-voidmother', 4 * 500).ok).toBe(true)
+    expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
   })
 
   it('放不下形状件时**整件拒收**（并提示要几格）', () => {
