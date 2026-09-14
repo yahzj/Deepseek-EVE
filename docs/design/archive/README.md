@@ -63,6 +63,17 @@
 | `handoff-20260912-verify-wrapup.md` | 三号 | 2026-09-12 三号会话交接卡（更新交接；被一号收尾归档件取代） |
 | `handoff-20260912-pilot2-wrapup.md` | 二号 | 2026-09-12 二号收档 + 交接卡（同一会话序列的收尾件） |
 
+> **2026-09-14 追加归档（3 份 · 一号收尾批）**：
+>
+> | 文件 | 归属 | 说明 |
+> |---|---|---|
+> | `handoff-20260912-bounty-wave-split.md` | 一号 | 赏金回退交接 —— 其顶部早已是"船长裁定作废"的收口件，使命完成 |
+> | `handoff-20260912-to-new-pilot1.md` | 一号 | 2026-09-12 一号交接 —— **被 `docs/design/handoff-20260914-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
+> | `handoff-20260913-wormhole-4ship-stage.md` | 一号 → 二号 | 虫洞「4 舰同屏」阶段交接 —— 该功能随虫洞上线一并交付，卡使命完成 |
+>
+> 引用同步：`wormhole-extraction-endgame-20260912.md`（2 处）· 本目录 `wrapup-20260912-night-pilot1.md`（2 处）·
+> 新交接卡头部指针 —— 均改写成 `docs/design/archive/…` 全路径（按 §四 口径）。
+
 ### 3.3 会话收尾归档件（5 份 · 生成即归档）
 
 | 文件 | 归属 | 说明 |
@@ -82,7 +93,7 @@
 > 故无死链风险"——**这句已过时**。现状（同日全仓复查）有 **2 处真实引用**，另有若干"叙述性提及"（roadmap 里
 > 记录归档动作的条目、维护说明里点目录名，不指向具体文件）：
 >
-> - `docs/design/handoff-20260912-bounty-wave-split.md` §14 行 → 引 `docs/design/archive/wrapup-20260912-night-pilot1.md` §1
+> - `docs/design/archive/handoff-20260912-bounty-wave-split.md` §14 行 → 引 `docs/design/archive/wrapup-20260912-night-pilot1.md` §1
 > - `docs/design/handoff-20260913-to-new-pilot2.md` 落款行 → 提"旧的移入 `docs/design/archive/`"（目录级）
 >
 > ⇒ **归档件不会"零引用"**：旧交接卡会长期引用旧收尾件。请写**完整相对路径**（例见下），

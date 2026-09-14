@@ -288,7 +288,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920, // 鹦鹉螺级（2026-09-13 工期阶梯：T3 带 3~5 时；同价同档 ⇒ 与长尾鲨级同值）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（>400 万档系数）
-    unreleased: true, // 跟随虫洞挂闸门（与 ship-nautilus 同步）
+    // ✅ 2026-09-14 虫洞上线：闸门已删（与 `sh-nautilus` / 两张市场卡同批放开，见 design/scout-cruiser §2.3）
     description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
@@ -740,7 +740,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '鹦鹉螺级舰船蓝图（一次性）',
     shipId: 'sh-nautilus',
     singleUse: true,
-    unreleased: true, // 与舰体同步：施工期跟随虫洞挂闸门
+    // ✅ 2026-09-14 虫洞上线：闸门已删（与舰体同步放开）
     materials: [
       { itemId: 'min-tritanium', count: 190_000 },
       { itemId: 'min-pyerite', count: 56_000 },

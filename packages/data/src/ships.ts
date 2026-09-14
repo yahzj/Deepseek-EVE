@@ -585,7 +585,8 @@ export const SHIPS: readonly ShipDef[] = [
     cycleSeconds: 14,
     oreUnitsPerCycle: 39, // 船长：「采矿提高到39单位」
     priceIsk: 9_000_000, // 船长定：贴长尾鲨级（同档同价）
-    unreleased: true, // 船长定：跟随虫洞挂闸门（施工期对玩家不可见；上线时删本字段）
+    // ✅ 2026-09-14 虫洞上线：「跟随虫洞挂 unreleased」的闸门**已按设计稿『与虫洞同批』删除**
+    //   （`docs/design/scout-cruiser-20260913.md` §2.3「上线动作 = 删这四个字段」）⇒ 图鉴可见、市场可买。
     agility: 0.56,
     evasion: 0.16,
     hitBonus: 0.14,
@@ -851,7 +852,8 @@ export const SHIPS: readonly ShipDef[] = [
    * 以免与既有四艘 T3 巡洋的「族加成 +12%」撞车。
    * C 族与 D 族走 `armored`（等效质量 ×0.65，可挂更大绝对质量而不越档）。
    *
-   * ⚠ **施工期闸门**：全部标 `unreleased: true`（手册舰船图鉴遍历 SHIPS 全目录）；上线时删字段。
+   * ✅ **2026-09-14 虫洞上线**：当年「全部标 `unreleased: true`（手册舰船图鉴遍历 SHIPS 全目录）；上线时删字段」
+   * 那条**已执行完毕** ⇒ 本块 15 艘的 `unreleased` 字段**全部删除**（图鉴可见、只由一次性图纸制造）。
    * ⚠ **定制船口径**：无市场行 ⇒ `priceIsk` 必须为 0；唯一来源 = 各自的**一次性舰船图纸**。 */
   {
     id: 'sh-wh-a-frigate',

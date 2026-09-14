@@ -244,12 +244,12 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'ore-sunshard': 1,
   'ore-veldspar': 1,
   'ore-voidmother': 1, // 虚空母矿（2026-09-12 虫洞线新增原矿；数字档 = 1 常驻层，与其它原矿同档）
-  // 遗迹安全货柜（F4 · 2026-09-13）：罕见的施工期中间件，数字档同常驻层（1）
+  // 遗迹安全货柜（F4 · 2026-09-13）：罕见的中间件（带回后拆解），数字档同常驻层（1）；✅ 2026-09-14 已上线
   'box-relic-a': 1,
   'box-relic-c': 1,
   'box-relic-d': 1,
   'box-relic-e': 1,
-  // 图纸货柜（2026-09-14 船长：遗迹打捞新增）：同为施工期中间件，数字档同常驻层（1）
+  // 图纸货柜（2026-09-14 船长：遗迹打捞新增）：同为中间件，数字档同常驻层（1）；✅ 2026-09-14 已上线
   'box-bp-shallow': 1,
   'box-bp-mid': 1,
   'box-bp-deep': 1,
@@ -342,7 +342,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sh-humpback': 3,
   'sh-mako': 2,
   'sh-megalodon': 4, // 2026-09-13 新增（巨齿鲨级战列舰 · 奇货渠道，只收不卖）
-  'sh-nautilus': 4, // 2026-09-13 新增（鹦鹉螺级测绘巡洋舰 · 奇货渠道；施工期挂 unreleased）
+  'sh-nautilus': 4, // 2026-09-13 新增（鹦鹉螺级测绘巡洋舰 · 奇货渠道；✅ 2026-09-14 上线放开）
   'sh-sailfish': 2,
   'sh-sentinel': 4,
   'sh-shrike': 2,
