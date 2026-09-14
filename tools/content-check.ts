@@ -74,6 +74,7 @@ import {
   RACK_SLOTS,
   RARE_WRECK_VOLUME_M3,
   RECYCLE_POOL_AVG_ISK,
+  RECYCLE_POOLS,
   SHIP_ROLE_LABELS,
   createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
   FOE_LAIR_GEAR,
@@ -1344,9 +1345,36 @@ for (const m of MODULES) {
       missing === null && Math.abs(dev) <= 3,
       `B3.1 ${def.name}（${def.id}）特色池校验失败：${missing ?? `池均价 ${avg.toFixed(2)} ÷ 档基数 ${base} = ${ratio.toFixed(3)}，目标 m=${m.toFixed(3)}（偏差 ${dev.toFixed(1)}% > ±3%）`}`,
     )
+    // 2026-09-14 船长：「在所有残骸的回收里，添加钛钢合金。已有钛钢合金的不做改变。」
+    // ⇒ **每一张特色池都必须含钛钢**（档位基础池由下面的 B3.2 契约覆盖）
+    check(
+      pool.some(([id]) => id === 'min-tritanium'),
+      `B3.1 ${def.name}（${def.id}）特色池缺钛钢合金（船长 2026-09-14：所有残骸回收都要能出钛钢）`,
+    )
   }
   check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
-  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3%）`)
+  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3% · **每池必含钛钢合金**）`)
+
+  /* ── B3.2 档位基础池（2026-09-14 船长「所有残骸回收都加钛钢」）：
+   *   ① 三档基础池**都必须含钛钢合金**（常驻档本来就有，险/危同批补入）；
+   *   ② 基础池均价必须等于档基数 `RECYCLE_POOL_AVG_ISK`（±3%）——两条互为单点，改池必同步改常量。 */
+  for (const tier of ['common', 'risky', 'dire'] as const) {
+    const pool = RECYCLE_POOLS[tier]
+    check(
+      pool.some(([id]) => id === 'min-tritanium'),
+      `B3.2 ${tier} 档基础池缺钛钢合金（船长 2026-09-14：所有残骸回收都要能出钛钢）`,
+    )
+    const wSum = pool.reduce((s, [, w]) => s + w, 0)
+    const avg = pool.reduce((s, [id, w]) => s + (w / wSum) * (ctx.items.get(id)?.baseSellPriceIsk ?? 0), 0)
+    const dev = ((avg / RECYCLE_POOL_AVG_ISK[tier] - 1) * 100)
+    check(
+      Math.abs(dev) <= 3,
+      `B3.2 ${tier} 档基础池均价 ${avg.toFixed(2)} 与档基数 ${RECYCLE_POOL_AVG_ISK[tier]} 偏差 ${dev.toFixed(1)}% > ±3%`,
+    )
+  }
+  console.log(
+    `· B3.2 档位基础池：三档均含钛钢合金 · 均价 = 档基数（常 ${RECYCLE_POOL_AVG_ISK.common} / 险 ${RECYCLE_POOL_AVG_ISK.risky} / 危 ${RECYCLE_POOL_AVG_ISK.dire}）`,
+  )
   // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正）：收价 < 无技能拆解保底（≈57/m³，三档齐平），
   // 且与档位表一致（常 30 / 险 40 / 危 50，≈该档典型特色回收的五成上下）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }

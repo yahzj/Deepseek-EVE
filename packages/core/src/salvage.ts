@@ -299,11 +299,13 @@ export const RECYCLE_YIELD_PER_M3: Record<RecycleTier, number> = {
 export const RECYCLE_YIELD_JITTER = 0.1
 
 /** 三档池的期望单价（ISK/单位：按池权重×baseSellPrice 加权；与 tools/salvage-econ.ts 同源口径）。
- *  供"回收保底 ISK/h 估价"展示——星图「残骸打捞」页与工业页回收卡共用同一组值（2026-09-06）。 */
+ *  供"回收保底 ISK/h 估价"展示——星图「残骸打捞」页与工业页回收卡共用同一组值（2026-09-06）。
+ *  2026-09-14 随"所有池补钛钢"重配（期望单价不变口径）：常 9.8（未动）· 险 27.60 → **27.7** · 危 92.45 → **92.6**。
+ *  ⚠ 这组值同时是 `content-check` 的「B3.1 特色池均价 = m × 档基数 ±3%」**契约基数** ⇒ 改池必同步改这里。 */
 export const RECYCLE_POOL_AVG_ISK: Record<RecycleTier, number> = {
   common: 9.8,
-  risky: 27.6,
-  dire: 92.4,
+  risky: 27.7,
+  dire: 92.6,
 }
 
 /** 回收矿物池档（按残骸所属星系基础密度；2026-09-10 阈值随基础密度抬等比上移：
@@ -311,24 +313,34 @@ export const RECYCLE_POOL_AVG_ISK: Record<RecycleTier, number> = {
 export type RecycleTier = 'common' | 'risky' | 'dire'
 export const RECYCLE_TIER_LABELS: Record<RecycleTier, string> = { common: '常', risky: '险', dire: '危' }
 
-/** 三档矿物池（权重表：矿物 id → 权重；船长 2026-09-05 定稿构成） */
-const RECYCLE_POOLS: Record<RecycleTier, ReadonlyArray<readonly [string, number]>> = {
+/** 三档矿物池（权重表：矿物 id → 权重；船长 2026-09-05 定稿构成）
+ *  ⚠ **2026-09-14 船长**：「在所有残骸的回收里，添加钛钢合金。已有钛钢合金的不做改变。
+ *  没有钛钢合金的，在保持价值不变的前提下将其他材料减少」⇒ 险/危两档补入**钛钢（`min-tritanium`）20%**，
+ *  其余矿物按 `w × (价/均价)^α` 重配（α 二分求解），使**整池期望单价不变**
+ *  （险 27.60 → 27.72 · 危 92.45 → 92.60）；常驻档本来就有钛钢 ⇒ **一字未动**。
+ *  敌群专属池同批处理（`packages/data/src/salvageFlavors.ts`，15 个补钛钢、7 个原样）。
+ *  ⚠ **导出**：体检脚本要用它对"档位基础池也必须含钛钢 + 均价 = 档基数"做硬契约（B3.2）。
+ *  （命名注：本矿物 id 一直是 `min-tritanium`；显示名 2026-09-14 由「三钛合金」改为**「钛钢合金」**，见
+ *   `docs/roadmap.md` 二号改名条——本表的注释与体检文案已同步新名，**id 未动 ⇒ 存档与配方零影响**。） */
+export const RECYCLE_POOLS: Record<RecycleTier, ReadonlyArray<readonly [string, number]>> = {
   common: [
     ['min-tritanium', 65],
     ['min-pyerite', 30],
     ['min-mexallon', 5],
   ],
   risky: [
-    ['min-pyerite', 45],
-    ['min-mexallon', 35],
-    ['min-nocxium', 12],
+    ['min-tritanium', 20],
+    ['min-pyerite', 31],
+    ['min-mexallon', 27],
+    ['min-nocxium', 14],
     ['min-isotope', 8],
   ],
   dire: [
-    ['min-mexallon', 30],
-    ['min-nocxium', 25],
-    ['min-isotope', 30],
-    ['min-starcore', 13],
+    ['min-tritanium', 20],
+    ['min-mexallon', 16],
+    ['min-nocxium', 22],
+    ['min-isotope', 24],
+    ['min-starcore', 16],
     ['min-darkiron', 2],
   ],
 }
