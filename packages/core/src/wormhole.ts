@@ -1161,6 +1161,12 @@ export function shipBusyForWormhole(state: GameState, shipId: string): string | 
 /**
  * **该船此刻手上有别的"活动"吗**（**不含虫洞本身**）——"进洞门槛"与"返回虫洞"共用这一把尺。
  * 口径同 `activity.shipBusyLabel`，差别只在：这里**不**把"在洞里"当忙（返回虫洞时要排除自己）。
+ *
+ * ⚠ **2026-09-14 补齐五档**（船长报障：「进入虫洞时必须无活动。好像失效了？」）：原实现只认
+ * 采矿 / 快递 / 巡逻 / 扫描星系 / 远征，**漏了后来上线的四个活动** —— **打捞**（`state.salvaging`）、
+ * **长途运输**（`state.hauling`）、**扫描虫洞**（`state.wormholeScan`）与**亲自主持的炉线**
+ * （`refineRuns` / `manufacturingRuns` 里 `worker === 'pilot'` 且 `active`）⇒ 那些活动在跑时主控照样能进洞。
+ * 由 `tests/wormhole-activity-lock.test.ts` 逐档钉住（含与 `shipBusyLabel` 的一致性）。
  */
 export function shipActivityBusy(state: GameState, shipId: string): string | null {
   if (shipId !== state.shipId) {
@@ -1172,10 +1178,15 @@ export function shipActivityBusy(state: GameState, shipId: string): string | nul
     return 'AI 远征中'
   }
   if (state.mining.active) return '采矿中'
+  if (state.salvaging.active) return '打捞中'
+  if (state.hauling.active) return '长途运输中'
   if (state.sideTasks.deliver !== null) return '快递投送中'
   if (state.standby.active) return '掩护巡逻中'
   if (state.scanning.active) return '扫描探索中'
+  if (state.wormholeScan?.active === true) return '扫描虫洞中'
   if (state.expedition.active) return '远征中'
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线制造中'
   return null
 }
 
