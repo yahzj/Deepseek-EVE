@@ -176,7 +176,15 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     case 'foeFamily': {
       // 2026-09-12 船长定：**首次探明"有该族敌人"的星系**即送达（如 G 族蜂群的敌情通报）。
       // 读敌卡数据而不是写死星系 id ⇒ 卡片搬家时自动跟随（窝点派生卡同族同域，一并覆盖）。
+      //
+      // ⚠ 2026-09-14 船长定（报障「蜂群通报依旧在过完教程后就发」）：**"有该族敌人"只认星图可见卡**，
+      // 判据 = **玩家自己扫描出该星系**（全仓只有 `explore.ts` 的扫描会写 `exploredGalaxies`）。
+      // 必须滤掉 `hidden: true` 的洞内卡：`packages/data/src/wormholeFoes.ts` 的五张 `wh-*` 卡
+      // 统一挂 `galaxyId = 'galaxy-hub'`（= `HOME_GALAXY_ID`，开局即在 `exploredGalaxies` 里）
+      // ⇒ 不过滤则条件**从第 0 帧起恒真**，通讯一能送达就立刻发信，与玩家探明了哪片空域无关。
+      // 星图侧的同类消费方（`isLairCandidate` / 打捞池 / 遭遇抽池 / 派发）一律过滤 `hidden`，此处与之同口径。
       for (const anomaly of ctx.anomalies.values()) {
+        if (anomaly.hidden === true) continue
         if (anomaly.foeFamily !== trigger.family) continue
         if (state.exploredGalaxies.includes(anomaly.galaxyId)) return true
       }

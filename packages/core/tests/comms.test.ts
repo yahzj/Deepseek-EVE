@@ -7,7 +7,8 @@
  * 设计稿：`docs/design/comms-20260911.md` · `docs/design/npc-factions-20260911.md`。
  */
 import { describe, expect, it } from 'vitest'
-import { createInitialState } from '../src/state'
+import { buildSimContext } from '@whale/data'
+import { createInitialState, HOME_GALAXY_ID } from '../src/state'
 import type { GameState } from '../src/state'
 import type { CommsFactionDef, CommsMessageDef, SimContext, StationSiteDef } from '../src/types'
 import {
@@ -489,9 +490,10 @@ describe('通讯 · 存档往返', () => {
  * 发一封通讯给玩家，讲解对应机制」）。
  *
  * 本批新增两条触发器，**都不写死"哪几个星系"的清单**：
- * - `lowSec`：阈值 = **安全等级 < +0.5**，与低安的既有判定同源（`encounters.ts` 暴露面掷骰
- *   「高安 sec ≥ 0.5 不掷」、`explore.ts` 扫描窗口惩罚）⇒ 安全等级被改判时自动跟随；
- * - `foeFamily`：读**敌卡数据**（`AnomalyDef.foeFamily` + `galaxyId`）⇒ 敌卡搬家时自动跟随。
+ * - `lowSec`：阈值 = **安全等级 ≤ 0（含 0）**（`balance.encounter.lowSecMax`，与伏击掷骰同源
+ *   ——2026-09-12 船长两条裁定「将伏击掷骰阈值降低为 0」＋「0 也算低安」）⇒ 安全等级被改判时自动跟随；
+ * - `foeFamily`：读**敌卡数据**（`AnomalyDef.foeFamily` + `galaxyId`）⇒ 敌卡搬家时自动跟随；
+ *   **只认星图可见卡**（滤 `hidden`，2026-09-14 船长定）。
  */
 describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发一封讲解）', () => {
   const MECH_MSGS: readonly CommsMessageDef[] = [
@@ -500,7 +502,7 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
   ]
 
   /** 星系：中安 0.2 · 低安零点 0 · 真低安 −0.7 · 高安边界 0.5（母港等默认星系不写 security = 高安）；G 族敌卡挂在一个指定星系 */
-  function mechWorld(gCardGalaxy = 'galaxy-low') {
+  function mechWorld(gCardGalaxy = 'galaxy-low', gCardHidden?: boolean) {
     const ctx: SimContext = makeTestCtx({
       quietEvents: true,
       commsMessages: MECH_MSGS,
@@ -511,7 +513,7 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
         galaxy('galaxy-low', '深低安', { security: -0.7 }),
         galaxy('galaxy-edge', '高安边界', { security: 0.5 }),
       ],
-      anomalies: [anomaly('ano-swarm', gCardGalaxy, { threat: 42, foeFamily: 'G' })],
+      anomalies: [anomaly('ano-swarm', gCardGalaxy, { threat: 42, foeFamily: 'G', hidden: gCardHidden })],
     })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
     return { state, ctx }
@@ -557,6 +559,27 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
     expect(commsInbox(moved.state, moved.ctx).map((e) => e.id)).toContain('msg-swarm')
   })
 
+  it('foeFamily：隐藏卡不算"有该族敌人的星系"——洞内卡挂母港也不会开局就送（2026-09-14 船长裁定）', () => {
+    // 报障形状：`wh-exile-blockade`（G 族洞内卡，`hidden: true`）`galaxyId = 'galaxy-hub'` = 母港，
+    // 而母港开局就在 `exploredGalaxies` 里 ⇒ 只看"卡所在星系已探明"会**从第 0 帧起恒真**，
+    // 通讯一能送达（教程走完）就立刻发信，与玩家探明了哪片空域无关。
+    const hidden = mechWorld('galaxy-hub', true)
+    tick(hidden.state, hidden.ctx)
+    expect(hidden.state.exploredGalaxies).toEqual(['galaxy-hub']) // 确实只探明了母港
+    expect(commsInbox(hidden.state, hidden.ctx).map((e) => e.id)).not.toContain('msg-swarm')
+    // 同形状但**不是**隐藏卡（星图可见）⇒ 仍需玩家自己扫出该星系才发信
+    const real = mechWorld('galaxy-hub')
+    tick(real.state, real.ctx)
+    expect(commsInbox(real.state, real.ctx).map((e) => e.id)).toContain('msg-swarm')
+    // 可见卡挂在别的星系上：那个星系没扫出来就不发
+    const elsewhere = mechWorld('galaxy-low')
+    tick(elsewhere.state, elsewhere.ctx)
+    expect(commsInbox(elsewhere.state, elsewhere.ctx).map((e) => e.id)).not.toContain('msg-swarm')
+    elsewhere.state.exploredGalaxies.push('galaxy-low')
+    tick(elsewhere.state, elsewhere.ctx)
+    expect(commsInbox(elsewhere.state, elsewhere.ctx).map((e) => e.id)).toContain('msg-swarm')
+  })
+
   it('老档补送：已探明该星系的存档推进一帧即补送（幂等，不重复）', () => {
     const { state, ctx } = mechWorld()
     state.exploredGalaxies.push('galaxy-low') // 模拟"更新前就探明过"的老档：该星系 sec −0.7 且挂着 G 族敌卡
@@ -564,5 +587,41 @@ describe('通讯 · 星系机制通讯（探索到带特殊机制的星系后发
     advanceComms(state, ctx)
     // 两个触发面各自补送一封、且都只补一次（按送达时刻 + id 稳定排序）
     expect(commsInbox(state, ctx).map((e) => e.id)).toEqual(['msg-low', 'msg-swarm'])
+  })
+})
+
+/**
+ * 真数据回归（2026-09-14 船长报障：「蜂群通报依旧会在玩家过完教程后发送」）。
+ * 用真卡表建上下文（`buildSimContext`）：**只探明母港**时四封机制通讯一律不许触发。
+ * 根因 = 洞内隐藏卡（`packages/data/src/wormholeFoes.ts` 的五张 `wh-*`）统一挂 `galaxyId = 母港`，
+ * 而母港开局就在 `exploredGalaxies` 里 ⇒ `foeFamily` 判定若不滤 `hidden` 就从第 0 帧起恒真。
+ */
+describe('通讯 · 真数据：机制通讯不在开局送达（2026-09-14 船长报障回归）', () => {
+  const MECH_IDS = ['msg-auro-megastructure', 'msg-exile-swarm', 'msg-lowsec-rules', 'msg-redring-outpost'] as const
+
+  it('只探明母港 ⇒ 四封机制通讯全不触发（母港挂着 G 族隐藏洞内卡也不发）', () => {
+    const ctx = buildSimContext()
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    // 先把"污染源"钉住：确实有 G 族隐藏卡挂在母港（否则本用例会因数据搬家而假绿）
+    const hiddenG = [...ctx.anomalies.values()].filter((a) => a.foeFamily === 'G' && a.hidden === true)
+    expect(hiddenG.map((a) => a.galaxyId)).toContain(HOME_GALAXY_ID)
+    expect(state.exploredGalaxies).toEqual([HOME_GALAXY_ID])
+    for (const id of MECH_IDS) {
+      const def = ctx.commsMessages.get(id)
+      expect(def, `${id} 未登记`).toBeDefined()
+      expect(commsTriggerMet(state, ctx, def!.trigger), `${id} 不该在开局触发`).toBe(false)
+    }
+  })
+
+  it('扫出挂 G 族**可见**卡的星系 ⇒ 蜂群通报才触发（仍读卡数据、随搬家自动跟随）', () => {
+    const ctx = buildSimContext()
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const visibleG = [...ctx.anomalies.values()].filter((a) => a.foeFamily === 'G' && a.hidden !== true)
+    expect(visibleG.length).toBeGreaterThan(0)
+    const trigger = ctx.commsMessages.get('msg-exile-swarm')!.trigger
+    for (const card of visibleG) {
+      const probe = { ...state, exploredGalaxies: [...state.exploredGalaxies, card.galaxyId] }
+      expect(commsTriggerMet(probe, ctx, trigger), `${card.id} @ ${card.galaxyId}`).toBe(true)
+    }
   })
 })
