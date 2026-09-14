@@ -66,6 +66,11 @@
  *         星图 → 天底静区 →「**天底静区封锁 66**」开战：看两架蜂群机的**弹点颜色与弹种**
  *         （等离子已按船长裁决"丙＝换系"上舰、取代爆炸），并实测"**针对性堆等离子抗能不能救回来**"。
  *         （本档存在的理由：机群挂在**单张卡**上，只有同型船对照才能把"抗性选择"从船型/火力差里分出来。）
+ *  - wh-all **虫洞全量验收**（2026-09-14 · 船长：「修复后给我准备一个可以全部测试的存档」）：
+ *         乱摆货仓（3× 安全货柜 + 2× 谜质储存器 + **2 条老档形状散货宽条** + 8 件散货，实测 42/77 格）·
+ *         第 2 层的舰船墓场/遗迹/矿脉/舰船信号/谜质格各一处 · 编队 2×长尾鲨 + 2×玳瑁（四艘都挂作业装）
+ *         ⇒ 一档验完「整理 / 大件小件换位 / 抓任意一格拖动」三处修复与整条链路（打捞·采集·惊扰守卫·
+ *         交火·谜质增益·货柜拆解）。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -91,7 +96,10 @@ import {
   wormholeEnsureVeinPiles,
   wormholeHoldSyncCargo,
   wormholeHoldUsage,
+  wormholeStowOrTemp,
 } from '../packages/core/src/wormholeSalvage'
+import { makeHoldState, placementCells } from '../packages/core/src/wormholeHold'
+import { wormholeUnitsPerSlot } from '../packages/core/src/wormhole'
 
 const SAVE_PATH = join(process.env.APPDATA ?? '', 'whale-idle', 'save.json')
 const OUT_DIR = join(process.cwd(), 'docs', 'test-saves')
@@ -1772,6 +1780,214 @@ function injectWormholeLayer4(state: GameState): string[] {
   return notes
 }
 
+/**
+ * **虫洞 · 全量验收档**（2026-09-14 · 船长：「修复后给我准备一个可以全部测试的存档」）。
+ *
+ * 为什么需要它：今天修的三处摆位 BUG（**整理后重叠** / **大件小件换位后重叠** / **抓非左上角拖动被判"放不下"**）
+ * 只有在**乱摆的货仓**上才验得出来；同时虫洞其它链路（打捞 · 采集 · 遗迹惊扰守卫 · 舰船信号交火 ·
+ * 谜质装置增益 · 安全货柜拆解）也都在这一档里顺手能试 ⇒ **一档走完全部**。
+ *
+ * 现场（确定性摆位，同 seed 每次一样）：
+ * - **第 2 层**；编队 = **4× 长尾鲨级（T3 · 搜打撤满配）＋ 1× 玄武级（T4）**——今天测的是货仓管理，
+ *   多带一艘 T4 把货仓放大到 58 格（回合预算走真引擎 `wormholeEnter` 算，不手写数字）；
+ * - **入口格 = 舰船墓场**（已铺残骸，落地即可打捞）；
+ * - 同层另有：**遗迹**（打捞 ⇒ 「惊扰守卫」确认 ⇒ 恶战）· **矿脉**（采集虚空母矿）·
+ *   **舰船信号**（到达即交火）· **谜质格**（激活取回一台谜质储存器）；
+ * - **出口已知 + 守卫没清** ⇒ 撤离随时可走、深入要先打守卫；
+ * - **货仓故意乱摆**：3 件遗迹安全货柜（2×2）· 2 台谜质储存器（2×2 · 增益立刻可见）·
+ *   **2 条老档形状的散货宽条（8 格 / 6 格）** · 8 件散货（各 1 格）——大件小件穿插、四周留空，
+ *   正好对上今天修的三处摆位。
+ *
+ * 试法（详见 `docs/test-saves/README.md` 同名条目）：
+ * 1. DevTools 执行 `localStorage.setItem('whale-idle:debug','1')` 后刷新（虫洞入口只在调试模式渲染）；
+ * 2. 星图 →「进入虫洞」→ 若停在准备页就点**继续**（本档人在洞里）；
+ * 3. **货仓页**：① 抓**货柜/谜质的任意一格**（别只抓左上角）拖到空格 ⇒ 应正确落位；
+ *    ② 抓货柜拖到**散货**那格 ⇒ 两件**换位**且不重叠；③ 抓**宽条**拖到货柜上 ⇒ 提示
+ *    「形状对不上，换不了位置」且**谁都不动**（旧版会把两件压在一起）；④ 点「**整理**」⇒ 全部重排、
+ *    互不重叠、件数不变（旧版会留下压在一起的件）；
+ * 4. **探索页**：遗迹打捞 ⇒ 先弹「惊扰守卫」确认条；舰船信号格到达即交火（顺手看敌舰爆炸）；
+ *    矿脉采集；谜质格激活取回装置（货仓多一个 2×2、顶部增益立刻多一条）；
+ * 5. 撤离回基地 ⇒ 工业页「安全货柜拆解」（调试模式可见）：仓库里五族货柜**各 2 件**，可连拆。
+ */
+function injectWormholeAll(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  for (const k of ['gunnery', 'fire-control', 'reload-drills', 'shield-operation', 'armor-tuning', 'vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
+  }
+  const BOXES = ['box-relic-a', 'box-relic-c', 'box-relic-d', 'box-relic-e', 'box-relic-g']
+  for (const b of BOXES) state.warehouse.items[b] = (state.warehouse.items[b] ?? 0) + 2
+  notes.push('钱包 +30,000,000 ISK · 协会声望 13 · 战斗系技能 Lv3 · 弹药三型 ×5000 · 修理组件各 ×20')
+  notes.push(`仓库：五族遗迹安全货柜**各 2 件**（${BOXES.join(' / ')}）⇒ 工业页可连拆`)
+  // 编队：4× 长尾鲨（T3 搜打撤满配，与 wh-bag 同款）+ 1× 玄武级（T4，把货仓放到 58 格）
+  const fit = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+    low: ['mod-salvager-3', 'mod-miner-3'],
+  }
+  const uids: string[] = []
+  /** 舰型分工：长尾鲨 = 主战（5×动能 MK2）；玳瑁 = 重装（360 装甲）——四艘**都挂作业装**（打捞器 + 采集器 MK3） */
+  const thresherFit = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+    low: ['mod-salvager-3', 'mod-miner-3'],
+  }
+  const hawksbillFit = {
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+    low: ['mod-salvager-3', 'mod-miner-3', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-kin-2'],
+  }
+  const fleetPlan: Array<[string, string, typeof thresherFit]> = [
+    ['sh-thresher', '长尾鲨①·主战（搜打撤满配）', thresherFit],
+    ['sh-thresher', '长尾鲨②·主战（搜打撤满配）', thresherFit],
+    ['sh-hawksbill', '玳瑁①·重装（360 装甲 + 作业装）', hawksbillFit],
+    ['sh-hawksbill', '玳瑁②·重装（360 装甲 + 作业装）', hawksbillFit],
+  ]
+  for (const [shipId, name, fit] of fleetPlan) {
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (uids.length === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  notes.push(
+    '编队（**入场封顶 4 艘 · 总质量上限 16,000**）：2× 长尾鲨级巡洋（T3 · 5×动能 MK2）＋ ' +
+      '2× 玳瑁级重装巡舰（T3 · 12,000 m³ / 艘 · 4/4/5 槽），**四艘都挂 打捞器 MK3 + 采集器 MK3**' +
+      '——今天测货仓管理，借两艘重装巡舰把货仓放大（4×T3 = 14,000 质量，仍在上限内）',
+  )
+  const ctx = buildSimContext()
+  const seed = 20260914
+  state.wormhole = { run: null, lastFleetLost: 0 } // 清掉在途副本（本档要指定现场）
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.depth = 2
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  run.grid = wormholeMakeGrid(seed, 2, 0)
+  notes.push(
+    `本档货仓 = **${wormholeHoldCapacityOf(state, ctx)} 格**（编队各自货仓 ÷ 500 **现算**：技能与装配一变就跟着变）`,
+  )
+  const grid = run.grid
+  const cells = grid.cells
+  const pick = (i: number): (typeof cells)[number] => cells[i % cells.length]!
+  /** 扫过 + 走过（本档要"地图已知、落地即测"） */
+  const reveal = (c: (typeof cells)[number]): void => {
+    if (!grid.scanned.includes(c.key)) grid.scanned.push(c.key)
+    if (!grid.visited.includes(c.key)) grid.visited.push(c.key)
+  }
+  // ① 入口格 = 舰船墓场（铺真残骸）
+  const here = pick(0)
+  here.place = 'graveyard'
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  grid.start = { q: here.q, r: here.r }
+  reveal(here)
+  wormholeEnsureSalvagePiles(state, here)
+  notes.push(`第 2 层 · 入口格 (Q${here.q} R${here.r}) = **舰船墓场**：已铺 ${(here.piles ?? []).length} 堆残骸`)
+  // ② 同层四格：遗迹（惊扰守卫）/ 矿脉（采集）/ 舰船信号（到达即交火）/ 谜质（取回装置）
+  const ruins = pick(1)
+  const vein = pick(2)
+  const ship = pick(3)
+  const matter = pick(4)
+  for (const [cell, place, label] of [
+    [ruins, 'ruins', '遗迹'],
+    [vein, 'vein', '矿脉'],
+    [ship, 'ship', '舰船信号'],
+    [matter, 'matter', '虫洞谜质'],
+  ] as const) {
+    if (cell.key === here.key) continue
+    cell.place = place
+    cell.piles = []
+    reveal(cell)
+    if (place === 'ruins') wormholeEnsureSalvagePiles(state, cell)
+    if (place === 'vein') wormholeEnsureVeinPiles(state, cell)
+    notes.push(`同层**${label}** (Q${cell.q} R${cell.r})：${place === 'ruins' ? `已铺 ${(cell.piles ?? []).length} 堆稀有残骸 ⇒ 打捞即「惊扰守卫」` : place === 'vein' ? `已铺 ${(cell.piles ?? []).length} 堆虚空母矿 ⇒ 采集` : place === 'ship' ? '走过去即交火' : '激活取回一台谜质储存器（货仓多一个 2×2）'}`)
+  }
+  grid.exitKnown = true
+  notes.push('出口已知（可随时撤离/深入）· 守卫没清（深入要先打守卫）')
+  /**
+   * ③ **货仓乱摆现场**（本档的重点）：先用**真收货路径**把 2 台谜质储存器 + 3 件货柜摆进去
+   * （`wormholeStowOrTemp` = 打捞/拾取的唯一入口），再手工把它们挪到"穿插"的坐标上；
+   * 散货则直接写件（**不调 `wormholeHoldSyncCargo`**——那样 8 格宽条会被重排成一件一格，
+   * 就没有"大件↔小件换位"的现场可测了）。
+   */
+  run.bag = []
+  run.hold = makeHoldState()
+  const stow = (itemId: string): void => {
+    const r = wormholeStowOrTemp(state, ctx, itemId, 1)
+    if (!r.ok) throw new Error(`摆货失败（${itemId}）：${r.error ?? ''}`)
+  }
+  for (const b of ['box-relic-a', 'box-relic-c', 'box-relic-d']) stow(b)
+  stow('mat-chrono') // 时序核心：回合 +10（立刻能在增益里看见）
+  stow('mat-crane') // 打捞吊臂：每台装置额外打捞
+  notes.push('货仓：3× 安全货柜（2×2）＋ 2× 谜质储存器（2×2 · **时序核心**与**打捞吊臂**，增益立刻生效）')
+  // 散货：2 条老档形状宽条（8 格 / 6 格）+ 8 件 1 格
+  const cargoIds = ITEMS.filter((i) => i.kind === 'ore' || i.kind === 'mineral').map((i) => i.id)
+  const perSlotOf = (itemId: string): number => wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 1)
+  const barA = cargoIds[0]!
+  const barB = cargoIds[1]!
+  run.bag.push({ itemId: barA, units: 8 * perSlotOf(barA) })
+  run.bag.push({ itemId: barB, units: 6 * perSlotOf(barB) })
+  const singles = cargoIds.slice(2, 10)
+  for (const id of singles) run.bag.push({ itemId: id, units: perSlotOf(id) })
+  const hold = run.hold
+  const placeCargo = (itemId: string, x: number, y: number, units: number, w = 1, h = 1): void => {
+    hold.placements.push({ id: `${itemId}#${x},${y}`, itemId, kind: 'cargo', units, x, y, w, h })
+  }
+  placeCargo(barA, 0, 5, perSlotOf(barA) * 8, 8, 1) // 8 格宽条（老档形状）⇒ 换位拒绝路径
+  placeCargo(barB, 1, 6, perSlotOf(barB) * 6, 6, 1) // 6 格宽条（老档形状）
+  // 8 件 1 格散货：落在"大件之间的缝里"（确定性乱摆）
+  const scattered: Array<[number, number]> = [[7, 0], [7, 1], [7, 2], [5, 2], [5, 3], [0, 2], [1, 2], [0, 3]]
+  singles.forEach((id, i) => {
+    const [x, y] = scattered[i % scattered.length]!
+    placeCargo(id, x, y, perSlotOf(id))
+  })
+  // 把 5 件 2×2 挪到"穿插"坐标（大件彼此错开、四周留空 ⇒ 整理看得出重排效果）
+  const shapedSpots: Array<[number, number]> = [[0, 0], [3, 2], [5, 0], [2, 0], [6, 3]]
+  const shaped = hold.placements.filter((p) => p.kind === 'box')
+  if (shaped.length !== 5) throw new Error(`形状件数不对：${shaped.length}（应为 5）`)
+  shaped.forEach((p, i) => {
+    const [x, y] = shapedSpots[i % shapedSpots.length]!
+    p.x = x
+    p.y = y
+  })
+  /** 自检：不重叠 + 装在容量内 + 留出打捞空间（摆位错就当场报，别把坏档交给船长） */
+  const occupied = new Set<string>()
+  for (const p of hold.placements) {
+    for (const c of placementCells(p)) {
+      const k = `${c.x},${c.y}`
+      if (occupied.has(k)) throw new Error(`货仓摆位自检失败：${k} 被两件同时占住`)
+      occupied.add(k)
+    }
+  }
+  const cap = wormholeHoldCapacityOf(state, ctx)
+  const usage = wormholeHoldUsage(state, ctx)
+  if (usage.overload) throw new Error(`货仓摆位自检失败：超载（${usage.used}/${usage.capacity}）`)
+  if (usage.unplacedCells !== 0) throw new Error(`货仓摆位自检失败：有 ${usage.unplacedCells} 格货没落在网格里`)
+  if (cap - usage.used < 6) throw new Error(`货仓留空不足（${cap - usage.used} 格）——打捞/采集会立刻装不下`)
+  notes.push(
+    `货仓乱摆现场：**已用 ${usage.used} / ${cap} 格**（货柜+装置 ${usage.shapeCells} 格 · 散货 ${usage.cargoCells} 格 · ` +
+      `其中 2 条是**老档形状宽条**），四周留空 ${cap - usage.used} 格 ⇒ 打捞/采集都有地方放`,
+  )
+  notes.push('⚠ 老档宽条只是本档的"复现现场"：任何一次装货同步（拾取/打捞/采集）都会把它们重排成**一件一格**，那是新口径的正常行为')
+  notes.push('⚠ 入口只在调试模式下出现：DevTools 执行 localStorage.setItem(\'whale-idle:debug\',\'1\') 后刷新')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
@@ -1783,6 +1999,12 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
    * 而老档要下到层 4 得连打三层守卫 + 三层搜打撤（十几分钟）⇒ 手工验不到。
    */
   'wh-layer4': injectWormholeLayer4,
+  /**
+   * **虫洞·全量验收档**（2026-09-14 · 船长：「修复后给我准备一个可以全部测试的存档」）：
+   * 乱摆货仓（3 货柜 + 2 谜质 + 2 条老档宽条 + 8 件散货）+ 第 2 层墓场/遗迹/矿脉/舰船信号/谜质
+   * ⇒ 一档验完"整理 / 换位 / 抓任意一格拖动"三处修复与整条链路。
+   */
+  'wh-all': injectWormholeAll,
   // wormhole（2026-09-13）：虫洞验收档（4×巡洋 MK2 基准编队 + T4/T5 对照 + 补给）
   wormhole: injectWormhole,
   // pd（2026-09-11 机群批 S5）：敌方机群 + 巨构近防炮验收档（三船对照 + 近防炮三档）

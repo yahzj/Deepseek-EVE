@@ -558,7 +558,7 @@ export function holdSwap(
     b.y = ay
     return { ok: true }
   }
-  return { ok: false, error: '两件的形状对不上，换不了位置（先「整理」或挪开一件）。' }
+  return { ok: false, error: '两件的形状对不上：换过去会互相压住（先把一件挪开，或点「整理」）。' }
 }
 /** 移除一件（**抛弃**就是它；返回被移除的件供日志/读数） */
 export function holdRemove(hold: WormholeHoldState, id: string): WormholeHoldPlacement | undefined {
