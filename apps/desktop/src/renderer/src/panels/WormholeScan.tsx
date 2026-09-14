@@ -59,12 +59,18 @@ export function WormholeScanTab({
   onToast,
   onExplore,
   onAutoExplore,
+  onReturn,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onExplore: (stockId: string) => void
   /** 「自动探索」⇒ 打开**与主控探索同一个准备页**（`WormholePanel` 的自动模式；船长 2026-09-14） */
   onAutoExplore: (stockId: string) => void
+  /**
+   * **返回虫洞**（船长 2026-09-14：「建议在扫描虫洞内额外给玩家一个返回虫洞的按钮」）：
+   * 手上有一趟探索（临时离开中）时，本页给一个直达入口 —— 与活动栏那条走同一个 `openWormhole()`。
+   */
+  onReturn?: () => void
 }) {
   const state = engine.state
   /** 每秒重算一次读数（进度条/剩余时间跟手；引擎本身按拍推进） */
@@ -85,6 +91,8 @@ export function WormholeScanTab({
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
   const full = stock.length >= WORMHOLE_STOCK_MAX
+  /** 手上那趟探索（非空 = 人在洞里 / 临时离开中）；「返回虫洞」按钮与"扫描被挡"的说明都用它 */
+  const run = state.wormhole.run
   /** 解锁门槛（船长 2026-09-14：需要协会声望 40；解锁时会收到一封通讯 + 直接弹窗） */
   const unlocked = engine.wormholeScanUnlocked()
   const standing = engine.wormholeScanStanding()
@@ -164,6 +172,30 @@ export function WormholeScanTab({
           </div>
           {blocked !== null && !scan.active ? <div className="app-dim">{blocked}</div> : null}
         </div>
+
+        {/**
+         * **有一趟探索在洞里 ⇒ 给一个「返回虫洞」按钮**（船长 2026-09-14：「建议在扫描虫洞内
+         * 额外给玩家一个返回虫洞的按钮」）。为什么放在本页：人在洞里时**扫描是被挡的**
+         * （`wormholeScanBlockReason` 的「已经在虫洞里了」），玩家落到本页多半就是想回洞
+         * ⇒ 把出口摆在挡住他的那句话旁边。样式复用同页未解锁横幅那条 `.app-wh-scanbar`。
+         */}
+        {run ? (
+          <div className="app-wh-scanbar">
+            <div className="app-wh-scanbar-label">
+              <span className="app-wh-hold-warn">有一趟虫洞探索正在进行（临时离开中 · 进度已保存）</span>
+            </div>
+            <div className="app-wh-scanbar-actions">
+              <button
+                className="app-btn is-small is-primary"
+                disabled={!onReturn}
+                title="回到虫洞界面接着走这一趟（关掉面板即再次暂停，进度不会丢）"
+                onClick={() => onReturn?.()}
+              >
+                返回虫洞
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="app-bay-title">已发现的虫洞 · {stock.length} 处</div>
         {stock.length === 0 ? (
