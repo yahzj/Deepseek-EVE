@@ -1485,8 +1485,8 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
   /** 虫洞：**抛弃一件形状件**（货仓格 · 手动抛货，船长裁定 8） */
-  wormholeDiscardHold(placementId: string): CommandResult {
-    const r = wormholeHoldDiscard(this.state, this.ctx, placementId)
+  wormholeDiscardHold(placementId: string, units?: number): CommandResult {
+    const r = wormholeHoldDiscard(this.state, this.ctx, placementId, units)
     if (r.ok) {
       void this.persist()
       this.notify()

@@ -17,8 +17,16 @@
 
 /** 货仓网格的固定列数（船长口径"按推荐"：8 列；行数 = ⌈可用格数 ÷ 8⌉） */
 export const WORMHOLE_HOLD_COLS = 8
-/** **细条上限**：≤ 4 格的散货沿用"一条细条"的观感；> 4 格改**矩形方块**（船长 2026-09-13 定） */
+/** **细条上限**（历史常量）：≤ 4 格曾沿用"一条细条"的观感、> 4 格改矩形方块。
+ *  ⚠ 2026-09-13 深夜船长再定「**每件散货不超过 500 m³（= 一格），超过就分件**」⇒
+ *  散货一律 `1×1`；本常量只对**老档落形**（读档兼容）还有意义。 */
 export const WORMHOLE_CARGO_BAR_MAX = 4
+/**
+ * **一件散货的落形 = 一格**（船长 2026-09-13 深夜：「残骸和母矿不应该合并超过 500 立方米，
+ * 当超过时，分作 2 个单独的物品格并允许单独丢弃或者移动」）⇒ 散货**不再有跨格形状**，
+ * "矩形块 / 末行补齐"那套只留给 2×2 货柜这类形状件。
+ */
+export const WORMHOLE_CARGO_PIECE: WormholeHoldShape = { w: 1, h: 1 }
 
 /** 形状（宽 × 高，单位 = 格） */
 export interface WormholeHoldShape {
@@ -56,22 +64,31 @@ export function wormholeShapeOf(itemId: string): WormholeHoldShape {
 /**
  * 网格里的一个**摆放件**。
  * - `box` = 形状件（遗迹安全货柜 2×2，不可拆）；
- * - `cargo` = **可叠加散货的一条**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）
- *   —— 占格由数量现算（`units ÷ 每格单位数`），形状 = 1×N 横条（放不下时自动改 N×1 竖条）。
+ * - `cargo` = **可叠加散货的一件**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）
+ *   —— 占格由数量现算（`units ÷ 每格单位数`），形状 = **矩形 + 末行补齐**（见 `cargoShapesFor`）。
  */
 export interface WormholeHoldPlacement {
   /** 件 id（同一物品可以有多个件 ⇒ 必须各自有 id） */
   id: string
   itemId: string
-  /** 件类型：形状件 / 散货条 */
+  /** 件类型：形状件 / 散货件 */
   kind: 'box' | 'cargo'
-  /** 散货条的数量（单位数；`box` 不带此字段） */
+  /** 散货件的数量（单位数；`box` 不带此字段） */
   units?: number
   /** 左上角（列 x 从 0 起、行 y 从 0 起） */
   x: number
   y: number
   w: number
   h: number
+  /**
+   * **实际占几格**（行优先、从左上角起数；缺省 = `w×h` 全占）。
+   *
+   * 船长 2026-09-13 深夜裁定「**矩形 + 末行补齐**：让单件不会出现非矩形格数，就可以避免这个问题」
+   * ⇒ 散货件的**外框**永远是矩形（宽 ≤ 8 列），格数不足一整框时**只填到第 `fill` 格**：
+   * 前 `h-1` 行整行、末行按需填 —— 这样任何格数（17、19、20…）都能一次装下，
+   * 不再出现"凑不出装得下的矩形 ⇒ 整件拒收"（旧口径的取整损耗随之作废）。
+   */
+  fill?: number
 }
 
 /**
@@ -90,18 +107,16 @@ export function makeHoldState(): WormholeHoldState {
 }
 
 /**
- * **散货的目标形状**（船长 2026-09-13 定：「**单件超 4 格的就是矩形方块**」＋「**必须是矩形**」）。
+ * **散货的目标形状**（船长 2026-09-13：「**单件超 4 格的就是矩形方块**」＋「**必须是矩形**」
+ * ＋ 深夜追加「**矩形 + 末行补齐**：让单件不会出现非矩形格数，就可以避免这个问题」）。
  *
  * 口径（与 `cargoBlockArea` 同一把尺，全仓只此一份）：
- * - **1~4 格** = 细条（`1×n` 横条 / `n×1` 竖条，沿用原观感）；
- * - **>4 格** = **矩形方块**：先在「宽 ≤ 8 列」的所有矩形里挑**规范面积** `cargoBlockArea(n)`
- *   （= 最小的 `w×⌈n÷w⌉`，`w ∈ [2,8]`、高 ≥ 2）那一档，横竖都试；
- *   ① 都放不下时退到**面积更大的矩形**（同宽同高的兜底档）；
- *   ② 仍然放不下（小货仓末行不满的场合，例如 10 格仓要放 7 格货）才退回**细条**——
- *      细条本身也是矩形（`1×A`），只是薄；这样老能力一格不退。
- * - ⚠ 矩形规则下**单件上限 ≈ 整行 × 整行数**（20 格仓 = 最多 16 格一件、27 格仓 = 24 格），
- *   不是"任意大"：可用格是"整行 + 不满的末行"，矩形跨不满的末行就放不下（如 20 格仓里的 19/20 格单件）。
- *   比改判前的硬上限 **8 格**高一档，但仍会拒收少数"凑不出落形"的格数。
+ * - **1~4 格** = 细条（`n×1` 横条 / `n×1` 的竖条，沿用原观感）；
+ * - **>4 格** = **矩形外框 + 末行补齐**：外框候选 = 所有 `w ∈ [2,8]`、`h = ⌈n÷w⌉`（含转置），
+ *   按 **① 面积小 ② 方块优先 ③ 行数少 ④ 列数多** 排序；摆放层拿第一个装得下的，
+ *   实际只占 `n` 格（前几行整行、末行填到第 n 格）⇒ **任何格数都装得下**（只要 n ≤ 可用格数），
+ *   不再有"凑不出整矩形 ⇒ 拒收"的取整损耗；
+ * - 细条仍留作最后兜底（它本身也是矩形，只是薄），且**老档里的 1×n 落形依然合法**（读档不重排）。
  */
 export function cargoShapesFor(cells: number): WormholeHoldShape[] {
   const n = Math.max(1, Math.floor(cells))
@@ -117,13 +132,15 @@ export function cargoShapesFor(cells: number): WormholeHoldShape[] {
     if (w < 1 || h < 1 || w > WORMHOLE_HOLD_COLS || h > 64) return
     set.set(`${w}x${h}`, { w, h })
   }
-  // ① 矩形方块（宽高都 ≥ 2）：宽 2~8、高 = ⌈n ÷ w⌉，含转置
+  // ① 矩形外框（宽高都 ≥ 2）：宽 2~8、高 = ⌈n ÷ w⌉，含转置 —— 末行不足由 `fill` 表达
   for (let w = 2; w <= WORMHOLE_HOLD_COLS; w++) {
     const h = Math.max(2, Math.ceil(n / w))
     push(w, h)
     push(h, w)
   }
-  // ② 细条兜底（本身就是矩形，只是薄）：小货仓末行不满时靠它——老能力一格都不退
+  // ② 整行外框（宽 = 8 列、高 = ⌈n ÷ 8⌉）：小货仓"整行 + 不满的末行"就靠它
+  push(WORMHOLE_HOLD_COLS, Math.max(1, Math.ceil(n / WORMHOLE_HOLD_COLS)))
+  // ③ 细条兜底（本身就是矩形，只是薄）：老档/小货仓都能落到它
   push(n, 1)
   push(1, n)
   return [...set.values()].sort((a, b) => {
@@ -134,40 +151,50 @@ export function cargoShapesFor(cells: number): WormholeHoldShape[] {
 }
 
 /**
- * 散货**规范后的占格数** = 所有合法落形里**最小的那个矩形的面积**（船长 2026-09-13「必须是矩形」）。
- * ≤4 格 = 格数本身；>4 格 = 取"能省则省"的那一档：横细条 `n×1`（宽 ≤ 8 列，5~8 格就是它）
- * 否则最小矩形块（如 11 格 → 12 格、13 格 → 14 格）。
- * 用途：临时空间的容量判据、`unplacedCells`（还没摆下的货）与界面读数——**实际占格以摆放件为准**。
+ * 散货**规范后的占格数** = 它自己的格数（船长 2026-09-13 深夜「矩形 + 末行补齐」后，
+ * 不再需要"向上取整到矩形面积"：外框是矩形、末行按需填 ⇒ 任何格数都装得下、一格不浪费）。
+ * 保留这个函数是为了**全仓一把尺**（临时空间 / `unplacedCells` / 界面读数都走它）。
  */
 export function cargoBlockArea(cells: number): number {
-  const n = Math.max(1, Math.floor(cells))
-  if (n <= WORMHOLE_CARGO_BAR_MAX) return n
-  // 横细条（1 行、宽 ≤ 8 列）够省就用它；否则取最小的矩形块（宽 2~8、高 ≥ 2）
-  let best = n <= WORMHOLE_HOLD_COLS ? n : Number.POSITIVE_INFINITY
-  for (let w = 2; w <= WORMHOLE_HOLD_COLS; w++) {
-    const h = Math.max(2, Math.ceil(n / w))
-    if (w * h < best) best = w * h
-  }
-  return Number.isFinite(best) ? best : n
+  return Math.max(1, Math.floor(cells))
 }
 
-/** 这个形状是不是 `cells` 格散货的合法落形（读档/整理时判断"用不用重放"） */
-export function cargoShapeFits(cells: number, shape: WormholeHoldShape): boolean {
-  return cargoShapesFor(cells).some((s) => s.w === shape.w && s.h === shape.h)
+/** 一个摆放件**实际占几格**（行优先，末行可以不满） */
+export function placementFill(p: WormholeHoldPlacement): number {
+  const box = Math.max(0, p.w) * Math.max(0, p.h)
+  if (p.fill === undefined) return box
+  return Math.max(0, Math.min(box, Math.floor(p.fill)))
+}
+
+/**
+ * 这个外框是不是 `cells` 格散货的合法落形（读档/整理时判断"用不用重放"）。
+ * `fill` 缺省时按整框算（老档没有这个字段）。
+ */
+export function cargoShapeFits(cells: number, shape: WormholeHoldShape, fill?: number): boolean {
+  const n = Math.max(1, Math.floor(cells))
+  if (!cargoShapesFor(n).some((s) => s.w === shape.w && s.h === shape.h)) return false
+  return (fill === undefined ? shape.w * shape.h : Math.max(0, Math.floor(fill))) === n
 }
 
 /* ═══════════ 二、占用与合法性（纯几何） ═══════════ */
 
-/** 该件覆盖的格（按 (x,y) 列表；供碰撞与界面高亮用） */
+/** 该件覆盖的格（按 (x,y) 列表；**行优先填到 `fill` 格**——末行可以不满） */
 export function placementCells(p: WormholeHoldPlacement): Array<{ x: number; y: number }> {
   const out: Array<{ x: number; y: number }> = []
-  for (let dy = 0; dy < p.h; dy++) for (let dx = 0; dx < p.w; dx++) out.push({ x: p.x + dx, y: p.y + dy })
+  const n = placementFill(p)
+  let k = 0
+  for (let dy = 0; dy < p.h && k < n; dy++) {
+    for (let dx = 0; dx < p.w && k < n; dx++) {
+      out.push({ x: p.x + dx, y: p.y + dy })
+      k += 1
+    }
+  }
   return out
 }
 
-/** 形状件占几格 */
+/** 这件占几格（散货按 `fill`、形状件按整框） */
 export function placementCellsCount(p: WormholeHoldPlacement): number {
-  return Math.max(0, p.w) * Math.max(0, p.h)
+  return placementFill(p)
 }
 
 /** 形状件合计占格 */
@@ -181,36 +208,51 @@ export function holdRows(capacity: number, cols: number = WORMHOLE_HOLD_COLS): n
   return Math.max(1, Math.ceil(Math.max(0, capacity) / Math.max(1, cols)))
 }
 
-/** 放在 `(x,y)` 且形状 `shape` 的件，是否落在**可用格**内（可用格 = 行优先前 `capacity` 个） */
+/**
+ * 放在 `(x,y)`、外框 `shape`、实占 `fill` 格的件，是否落在**可用格**内
+ * （可用格 = 行优先前 `capacity` 个；末行不满的件只算它**真正占的那几格**）。
+ */
 export function placementInBounds(
   x: number,
   y: number,
   shape: WormholeHoldShape,
   capacity: number,
   cols: number = WORMHOLE_HOLD_COLS,
+  fill?: number,
 ): boolean {
   if (x < 0 || y < 0 || shape.w <= 0 || shape.h <= 0) return false
   if (x + shape.w > cols) return false
-  const last = (y + shape.h - 1) * cols + (x + shape.w - 1)
+  const box = shape.w * shape.h
+  const n = fill === undefined ? box : Math.max(0, Math.min(box, Math.floor(fill)))
+  if (n <= 0) return false
+  // 第 n 格（行优先）的落点：行 = ⌊(n-1) ÷ w⌋、列 = (n-1) mod w
+  const lastDy = Math.floor((n - 1) / shape.w)
+  const lastDx = (n - 1) % shape.w
+  const last = (y + lastDy) * cols + (x + lastDx)
   return last < capacity
 }
 
-/** 与已有件是否重叠（`skipId` = 移动自己时排除自己） */
+/** 与已有件是否重叠（`skipId` = 移动自己时排除自己；**只比真正占的格**） */
 export function placementOverlaps(
   hold: WormholeHoldState,
   x: number,
   y: number,
   shape: WormholeHoldShape,
   skipId?: string,
+  fill?: number,
 ): boolean {
   const occupied = new Set<string>()
   for (const p of hold.placements) {
     if (skipId !== undefined && p.id === skipId) continue
     for (const c of placementCells(p)) occupied.add(`${c.x},${c.y}`)
   }
-  for (let dy = 0; dy < shape.h; dy++) {
-    for (let dx = 0; dx < shape.w; dx++) {
+  const box = shape.w * shape.h
+  const n = fill === undefined ? box : Math.max(0, Math.min(box, Math.floor(fill)))
+  let k = 0
+  for (let dy = 0; dy < shape.h && k < n; dy++) {
+    for (let dx = 0; dx < shape.w && k < n; dx++) {
       if (occupied.has(`${x + dx},${y + dy}`)) return true
+      k += 1
     }
   }
   return false
@@ -224,9 +266,10 @@ export function canPlace(
   shape: WormholeHoldShape,
   capacity: number,
   skipId?: string,
+  fill?: number,
 ): boolean {
-  if (!placementInBounds(x, y, shape, capacity, hold.cols)) return false
-  return !placementOverlaps(hold, x, y, shape, skipId)
+  if (!placementInBounds(x, y, shape, capacity, hold.cols, fill)) return false
+  return !placementOverlaps(hold, x, y, shape, skipId, fill)
 }
 
 /* ═══════════ 三、放置 / 移动 / 移除 / 整理 ═══════════ */
@@ -248,6 +291,7 @@ export function findFreeSpot(
   shape: WormholeHoldShape,
   capacity: number,
   reverse = false,
+  fill?: number,
 ): { x: number; y: number } | null {
   const rows = holdRows(capacity, hold.cols)
   const ys = reverse ? Array.from({ length: rows }, (_, i) => rows - 1 - i) : Array.from({ length: rows }, (_, i) => i)
@@ -257,15 +301,115 @@ export function findFreeSpot(
       : Array.from({ length: hold.cols }, (_, i) => i)
     for (const x of xs) {
       if (x + shape.w > hold.cols) continue
-      if (canPlace(hold, x, y, shape, capacity)) return { x, y }
+      if (canPlace(hold, x, y, shape, capacity, undefined, fill)) return { x, y }
     }
   }
   return null
 }
 
 /**
+ * 现在还能摆下几个 **2×2 货柜**（散货落点用）。
+ *
+ * 为什么需要它：货仓是"整行 + 不满的末行"，**2×2 货柜对落点最挑**（小仓里往往只有一个位）。
+ * 散货如果只顾自己往右下角挤（`findFreeSpot(reverse)`），可能把货柜唯一的位置占了 ——
+ * 玩家就会遇到"明明还有空格，却提示货柜装不下"。所以散货选落点时**优先保住一个货柜位**。
+ */
+export function boxRoomCount(hold: WormholeHoldState, capacity: number): number {
+  const rows = holdRows(capacity, hold.cols)
+  let n = 0
+  for (let y = 0; y + 2 <= rows; y++) {
+    for (let x = 0; x + 2 <= hold.cols; x++) {
+      if (canPlace(hold, x, y, WORMHOLE_SHAPE_CONTAINER, capacity)) n += 1
+    }
+  }
+  return n
+}
+
+/**
+ * **散货落点**：在"放得下"的所有位置里挑一个 —— 先按 `reverse`（右下往左上）的既有观感排，
+ * 但**只要某个落点还留得住一个 2×2 货柜位，就用它**（见 `boxRoomCount`）。
+ */
+export function findCargoSpot(
+  hold: WormholeHoldState,
+  shape: WormholeHoldShape,
+  fill: number | undefined,
+  capacity: number,
+): { x: number; y: number } | null {
+  const rows = holdRows(capacity, hold.cols)
+  const spots: Array<{ x: number; y: number }> = []
+  for (let y = rows - 1; y >= 0; y--) {
+    for (let x = hold.cols - 1; x >= 0; x--) {
+      if (x + shape.w > hold.cols) continue
+      if (canPlace(hold, x, y, shape, capacity, undefined, fill)) spots.push({ x, y })
+    }
+  }
+  if (spots.length === 0) return null
+  const n = fill === undefined ? shape.w * shape.h : Math.max(0, Math.min(shape.w * shape.h, Math.floor(fill)))
+  let best = spots[0]!
+  let bestRoom = -1
+  for (const s of spots) {
+    const probe: WormholeHoldState = {
+      cols: hold.cols,
+      placements: [
+        ...hold.placements,
+        { id: '__probe', itemId: '', kind: 'cargo', units: 0, x: s.x, y: s.y, w: shape.w, h: shape.h, fill: n },
+      ],
+    }
+    const room = boxRoomCount(probe, capacity)
+    if (room > bestRoom) {
+      bestRoom = room
+      best = s
+      if (room > 0) break // 已经能保住一个货柜位 ⇒ 按 reverse 观感取最先的那个
+    }
+  }
+  return best
+}
+
+/**
+ * 把某个落点放上去之后，还剩几个 2×2 货柜位（`__probe` 临时件用完即丢，不进真正的状态）。
+ */
+function roomAfter(
+  hold: WormholeHoldState,
+  shape: WormholeHoldShape,
+  fill: number,
+  capacity: number,
+  spot: { x: number; y: number },
+): number {
+  const probe: WormholeHoldState = {
+    cols: hold.cols,
+    placements: [
+      ...hold.placements,
+      { id: '__probe', itemId: '', kind: 'cargo', units: 0, x: spot.x, y: spot.y, w: shape.w, h: shape.h, fill },
+    ],
+  }
+  return boxRoomCount(probe, capacity)
+}
+
+/**
+ * **散货落点总入口**：先按 `cargoShapesFor` 的外框优先序挑 ——
+ * **能保住一个 2×2 货柜位的外框优先**，其次才轮到"装得下就行"（`fallback`）。
+ * 这样"散货给货柜让位"这条老设计意图在最挑落点的小货仓里也成立。
+ */
+export function bestCargoPlacement(
+  hold: WormholeHoldState,
+  cells: number,
+  capacity: number,
+): { shape: WormholeHoldShape; fill: number; spot: { x: number; y: number } } | null {
+  const n = Math.max(1, Math.floor(cells))
+  let fallback: { shape: WormholeHoldShape; fill: number; spot: { x: number; y: number } } | null = null
+  for (const shape of cargoShapesFor(n)) {
+    const fill = Math.min(n, shape.w * shape.h)
+    const spot = findCargoSpot(hold, shape, fill, capacity)
+    if (!spot) continue
+    if (roomAfter(hold, shape, fill, capacity, spot) > 0) return { shape, fill, spot }
+    if (!fallback) fallback = { shape, fill, spot }
+  }
+  return fallback
+}
+
+/**
  * **自动放入一个形状件**（货柜；放不下 ⇒ `ok:false`，**不改状态**——船长口径"整件拒收"）。
- * 散货条走 `holdAddCargo`（形状由数量现算）。
+ * 散货件走 `holdAddCargo`（外框由数量现算）。
  */
 export function holdAdd(
   hold: WormholeHoldState,
@@ -291,9 +435,10 @@ export function holdAdd(
 }
 
 /**
- * **自动放入一条散货**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）。
- * 形状由 `cargoShapesFor` 现算（≤4 格 = 细条；>4 格 = **矩形方块**）：逐个候选试落点，
- * 全都放不下 ⇒ `ok:false`（调用方据此拒绝这次拾取/打捞）。
+ * **自动放入一件散货**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）。
+ * 外框由 `cargoShapesFor` 现算（≤4 格 = 细条；>4 格 = **矩形外框 + 末行补齐**）：
+ * 逐个候选试落点，全都放不下 ⇒ `ok:false`（调用方据此拒绝这次拾取/打捞）。
+ * ⚠ 只有 `n > 可用格数` 才可能真的放不下——**"凑不出矩形"不再是拒收理由**（船长 2026-09-13 深夜裁定）。
  */
 export function holdAddCargo(
   hold: WormholeHoldState,
@@ -304,24 +449,24 @@ export function holdAddCargo(
 ): { ok: boolean; placement?: WormholeHoldPlacement; error?: string } {
   const n = Math.max(1, Math.floor(cells))
   if (capacity <= 0) return { ok: false, error: '货仓格数为 0：放不下任何东西。' }
-  for (const shape of cargoShapesFor(n)) {
-    const spot = findFreeSpot(hold, shape, capacity, true)
-    if (spot) {
-      const p: WormholeHoldPlacement = {
-        id: nextPlacementId(),
-        itemId,
-        kind: 'cargo',
-        units: Math.max(0, Math.floor(units)),
-        x: spot.x,
-        y: spot.y,
-        w: shape.w,
-        h: shape.h,
-      }
-      hold.placements.push(p)
-      return { ok: true, placement: p }
+  const pick = bestCargoPlacement(hold, n, capacity)
+  if (pick) {
+    const p: WormholeHoldPlacement = {
+      id: nextPlacementId(),
+      itemId,
+      kind: 'cargo',
+      units: Math.max(0, Math.floor(units)),
+      x: pick.spot.x,
+      y: pick.spot.y,
+      w: pick.shape.w,
+      h: pick.shape.h,
+      // 末行补齐：外框可能比 n 大，实际只占 n 格（`w×h === n` 时不写这个字段，兼容老档形状）
+      ...(pick.fill === pick.shape.w * pick.shape.h ? {} : { fill: pick.fill }),
     }
+    hold.placements.push(p)
+    return { ok: true, placement: p }
   }
-  return { ok: false, error: `货仓放不下：这条散货要占 ${cargoBlockArea(n)} 格（矩形块的各档长宽都试过了）。` }
+  return { ok: false, error: `货仓放不下：这件散货要占 ${n} 格（货仓只剩更少可用格）。` }
 }
 
 /** 移动一件（拖拽落点非法 ⇒ 拒绝，不改状态） */
@@ -362,7 +507,7 @@ export function holdCompact(
   const unplaced: string[] = []
   let moved = 0
   for (const p of sorted) {
-    const spot = findFreeSpot(staged, { w: p.w, h: p.h }, capacity)
+    const spot = findFreeSpot(staged, { w: p.w, h: p.h }, capacity, false, placementFill(p))
     if (!spot) {
       // 放不下（超载态常见）⇒ 保持原位（不丢、也不硬塞）
       staged.placements.push({ ...p })
@@ -404,6 +549,12 @@ export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
   if (!(x >= 0 && y >= 0 && w >= 1 && w <= WORMHOLE_HOLD_COLS && h >= 1 && h <= 64)) return null
   const kind = o.kind === 'cargo' ? 'cargo' : 'box'
   const units = num(o.units)
+  /**
+   * `fill`（末行补齐的实际格数）：只对散货件有意义，必须是 `1..w×h` 的整数；
+   * **坏值就退回整框**（`undefined`）——宁可多占一格，也不能把玩家的货当坏档丢掉。
+   */
+  const rawFill = num(o.fill)
+  const fill = kind === 'cargo' && Number.isFinite(rawFill) && rawFill >= 1 && rawFill < w * h ? rawFill : undefined
   return {
     id,
     itemId,
@@ -413,5 +564,6 @@ export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
     y,
     w,
     h,
+    ...(fill !== undefined ? { fill } : {}),
   }
 }

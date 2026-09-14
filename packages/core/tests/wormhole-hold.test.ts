@@ -17,9 +17,9 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldState } from '../src/wormholeHold'
-import { canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState, placementCellsCount } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -66,58 +66,77 @@ function setBag(state: GameState, slots: Array<{ itemId: string; units: number }
 }
 describe('虫洞 · 货仓格几何（纯逻辑）', () => {
   /**
-   * **宽货条读档不丢**（2026-09-13 修的真 BUG）：
-   * 散货条天生可以到 8 格宽（`cargoShapesFor` 给 1×n），而存档清洗原先卡 `w ≤ 4`
-   * ⇒ 一条 6 格母矿条**读档后被当坏值丢掉**：货还在 `bag` 里、网格里却没有它，
-   * `unplacedCells` 凭空冒出来 ⇒ **假超载**（玩家会被"先抛货"挡住，甚至抛掉其实还在船上的货）。
+   * **散货读档不丢 + 一件一格**（2026-09-13 修的真 BUG ＋ 同日晚「每件不超过 500 m³，超过就分件」）：
+   * 旧口径下散货条可以到 8 格宽，而存档清洗原先卡 `w ≤ 4` ⇒ 6 格母矿条读档后被当坏值丢掉
+   * （货还在 `bag`、网格里没有它 ⇒ `unplacedCells` 凭空冒出来 ⇒ **假超载**）。
+   * 现在 6 格 = **6 件（各占 1 格、每件 ≤ 每格单位数）**，过档后一件不少、也不产生"放不下"。
    */
-  it('**宽散货条过存档往返不丢**（1×6 母矿条）：reads 后仍在网格里、不产生"放不下"', () => {
+  it('**散货过存档往返不丢**（6 格母矿 = 6 件）：reads 后仍在网格里、不产生"放不下"', () => {
     const state = enterRun(2, 911)
     const run = state.wormhole.run!
-    setBag(state, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 3_000 }]) // 6 格 ⇒ 1×6 横条
+    setBag(state, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 3_000 }]) // 6 格
     const before = wormholeHoldUsage(state, ctx)
     expect(before.cargoCells).toBe(6)
     expect(before.unplacedCells).toBe(0)
-    const shape = (run.hold?.placements ?? []).find((p) => p.kind === 'cargo')!
-    expect(shape.w).toBe(6) // 恰好是旧口径会丢掉的那种形状（w > 4）
+    const pieces = (run.hold?.placements ?? []).filter((p) => p.kind === 'cargo')
+    expect(pieces.length, '一件一格：6 格母矿应拆成 6 件').toBe(6)
+    for (const p of pieces) {
+      expect([p.w, p.h]).toEqual([1, 1])
+      expect(p.units, '每件不超过一格').toBeLessThanOrEqual(wormholeUnitsPerSlot(0.2)) // 母矿 0.2 m³/单位 ⇒ 2500/格
+    }
+    expect(pieces.reduce((n, p) => n + (p.units ?? 0), 0)).toBe(3_000) // 总数不丢
     const back = loadSaveFile(serializeSaveFile(state, 1)).state
     const after = wormholeHoldUsage(back, ctx)
-    expect(back.wormhole.run!.hold!.placements.length).toBe(1)
+    expect(back.wormhole.run!.hold!.placements.length).toBe(6)
     expect(after.cargoCells).toBe(6)
     expect(after.unplacedCells, '读档后凭空多出"放不下"的格数 = 假超载').toBe(0)
     expect(after.overload).toBe(false)
   })
 
   /**
-   * **散货形状 = 矩形**（船长 2026-09-13：「单件超 4 格的就是矩形方块」＋「必须是矩形」）。
-   * 锁三件事：① ≤4 格仍是细条（老观感）；② >4 格走矩形方块（宽高都 ≥ 2）；
-   * ③ 单件上限比改判前的硬上限 8 格高一档（20 格仓里 9/12/16 格装得下，17 格装不下）。
+   * **散货形状 = 矩形外框 + 末行补齐**（船长 2026-09-13：「单件超 4 格的就是矩形方块」＋
+   * 「必须是矩形」＋ 深夜「**让单件不会出现非矩形格数，就可以避免这个问题**」）。
+   * 锁四件事：① ≤4 格仍是细条；② >4 格首选是方块外框（宽高都 ≥ 2）且 `fill` 补齐；
+   * ③ 占格 = 实际格数（不再向上取整）；④ **单件上限 = 货仓可用格数**（20 格仓里 17/19/20 格都装得下，
+   *    改判前它们因为"凑不出装得下的矩形"被判拒收）。
    */
-  it('**散货形状**：≤4 格 = 细条；>4 格 = 矩形方块（且单件上限不再是 8 格）', () => {
-    // ① ≤4 格：细条（`n×1` 优先，其次 `n×1` 的竖条）
+  it('**散货形状**：≤4 格 = 细条；>4 格 = 矩形外框 + 末行补齐（单件上限 = 可用格数）', () => {
+    // ① ≤4 格：细条（`n×1` 优先，其次竖条）
     expect(cargoShapesFor(3)[0]).toEqual({ w: 3, h: 1 })
     expect(cargoShapesFor(4)).toContainEqual({ w: 1, h: 4 })
-    // ② >4 格：首选是**方块**（宽高都 ≥ 2）
+    // ② >4 格：首选是**方块外框**（宽高都 ≥ 2）
     for (const n of [5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 20, 24]) {
       const first = cargoShapesFor(n)[0]!
-      expect(first.w, `${n} 格的首选形状 ${first.w}×${first.h} 应是方块`).toBeGreaterThan(1)
-      expect(first.h, `${n} 格的首选形状 ${first.w}×${first.h} 应是方块`).toBeGreaterThan(1)
+      expect(first.w, `${n} 格的首选外框 ${first.w}×${first.h} 应是方块`).toBeGreaterThan(1)
+      expect(first.h, `${n} 格的首选外框 ${first.w}×${first.h} 应是方块`).toBeGreaterThan(1)
     }
-    // 规范占格：凑不出整矩形就向上取整（11 → 12）；5~8 格细条更省 ⇒ 等于格数
-    expect(cargoBlockArea(11)).toBe(12)
-    expect(cargoBlockArea(13)).toBe(14)
+    // ③ 占格 = 实际格数（船长：「让单件不会出现非矩形格数」⇒ 外框补齐，格数不再向上取整）
+    expect(cargoBlockArea(11)).toBe(11)
+    expect(cargoBlockArea(13)).toBe(13)
     expect(cargoBlockArea(20)).toBe(20)
     expect(cargoBlockArea(5)).toBe(5)
-    expect(cargoBlockArea(9)).toBe(9)
-    // ③ 单件上限：20 格仓（8 列 × 3 行，末行 4 个锁定格）里 9/12/16 格装得下、17 格装不下
+    // ④ 单件上限 = 可用格数：20 格仓里 9 / 12 / 16 / **17 / 19 / 20** 都装得下
     const mk = (): WormholeHoldState => makeHoldState()
-    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 9 * 500, 9, 20).ok).toBe(true)
-    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 12 * 500, 12, 20).ok).toBe(true)
+    for (const n of [9, 12, 16, 17, 19, 20]) {
+      const r = holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, n * 500, n, 20)
+      expect(r.ok, `${n} 格单件应装得下：${r.error ?? ''}`).toBe(true)
+      expect(placementCellsCount(r.placement!)).toBe(n) // 实占正好 n 格（一格不浪费）
+    }
+    // 16 格：优先挑"落下去还留得住一个 2×2 货柜位"的外框（散货给货柜让位），实占仍是 16 格
     const big = holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 16 * 500, 16, 20)
-    expect(big.ok, big.error ?? '').toBe(true)
-    expect([big.placement!.w, big.placement!.h]).toEqual([8, 2]) // 8 列 × 2 行
-    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 17 * 500, 17, 20).ok).toBe(false)
-    // 27 格仓（4 行整行 + 3 格）能放下一件 24 格（8×3）——改判前 8 格就顶天了
+    expect(placementCellsCount(big.placement!)).toBe(16)
+    const hold16 = mk()
+    const p16 = holdAddCargo(hold16, WORMHOLE_ORE_ITEM_ID, 16 * 500, 16, 20).placement!
+    hold16.placements.push(p16)
+    expect(boxRoomCount(hold16, 20), '散货不该把货柜唯一的位置占了').toBeGreaterThan(0)
+    // 20 格：整框 8×3 = 24 格太大 ⇒ 落成"外框 + 末行补齐"（fill < w×h）
+    const full = holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 20 * 500, 20, 20)
+    expect(full.placement!.fill).toBe(20)
+    expect(full.placement!.w * full.placement!.h).toBeGreaterThan(20)
+    expect(placementCellsCount(full.placement!)).toBe(20)
+    // 超过可用格数才真的放不下（21 格进 20 格仓）
+    expect(holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 21 * 500, 21, 20).ok).toBe(false)
+    // 27 格仓能放下一件 24 格（8×3 整框）——改判前 8 格就顶天了
     const huge = holdAddCargo(mk(), WORMHOLE_ORE_ITEM_ID, 24 * 500, 24, 27)
     expect(huge.ok, huge.error ?? '').toBe(true)
     expect([huge.placement!.w, huge.placement!.h]).toEqual([8, 3])
@@ -244,9 +263,12 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     expect(stow.ok).toBe(true)
     expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 6, shapeCells: 4, used: 10 })
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
-    // 再塞 4 格散货（2000 单位母矿）⇒ 母矿条从 6 格涨到 10 格、网格里摆不下 ⇒ **整条**算"没位置" ⇒ 超载
+    /**
+     * 再塞 4 格散货（2000 单位母矿）⇒ 母矿从 6 件涨到 10 件，而货仓只剩 6 格给散货
+     * ⇒ **多出来的 4 件**算"没位置"（一件一格口径：`unplacedCells` = 件数差 = 4）⇒ 超载。
+     */
     setBag(state, [...run.bag, { itemId: 'ore-voidmother', units: 4 * 500 }])
-    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(10)
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(4)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
     // 抛掉货柜 ⇒ 散货立刻有位（对齐一次）⇒ 恢复
     const disc = wormholeHoldDiscard(state, ctx, stow.placementId!)

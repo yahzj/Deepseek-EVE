@@ -11,7 +11,7 @@
  * F5 起散货也是网格里的真摆放件、可拖拽）。层内动作各花 1 回合，未扫描的地点要先警告再确认（船长口径）；
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
@@ -30,6 +30,7 @@ import {
   wormholeBagUsage,
   wormholeFleetCargoM3,
   wormholeFoeThreat,
+  wormholeExtractThreat,
   wormholeLayerThreat,
   WORMHOLE_HOLD_COLS,
   durabilityOf,
@@ -44,6 +45,7 @@ import {
   wormholeUnitsPerSlot,
   wormholeShapeOf,
   wormholeCargoSlotsOf,
+  placementCellsCount,
 } from '@whale/core'
 import type { WormholeGridState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -61,6 +63,13 @@ const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '
 const WORMHOLE_FX_IN_MS = 1000
 const WORMHOLE_FX_OUT_MS = 600
 const WORMHOLE_FX_SCAN_MS = 900
+/** 被拿走的堆卡片"向下移出 + 淡出"用多久（与 CSS `.app-wh-pile.is-leaving` 的动画时长同值） */
+const WORMHOLE_PILE_OUT_MS = 300
+
+/** 探索地图的缩放档（1 = 适应窗口；每档 +25%，上限 250%）——左侧 ＋/－ 按这个步进 */
+const WORMHOLE_MAP_ZOOM_FIT = 1
+const WORMHOLE_MAP_ZOOM_STEP = 0.25
+const WORMHOLE_MAP_ZOOM_MAX = 2.5
 
 /** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
 let scanFxSeqCounter = 0
@@ -154,6 +163,46 @@ export function WormholePanel({
   const shapedPiles = herePiles.filter((p) => wormholeIsShapedItem(p.itemId))
   const bulkPiles = herePiles.length - shapedPiles.length
   /**
+   * **被拿走的那几堆卡片：向下移出 + 淡出**（船长 2026-09-13 深夜：「将地点详细里，那些被打捞或者
+   * 采集掉的卡片，添加一个向下移出+淡出的消失动画」）。
+   *
+   * 做法（不引第三方动画库）：留一份"上一帧的堆签名"，本帧对不上的条目挑出来当**幽灵卡**
+   * 渲染 `WORMHOLE_PILE_OUT_MS`（300ms），动画放完就摘掉；幽灵卡不吃点击、也不参与任何判定。
+   * ⚠ **换格子不算消失**（那是整块信息窗换内容）⇒ `hereKey` 变了就直接清空，不播这个动画。
+   */
+  const [leavingPiles, setLeavingPiles] = useState<Array<{ key: string; itemId: string; units: number }>>([])
+  const prevPilesRef = useRef<{ hereKey: string; sigs: string[] }>({ hereKey: '', sigs: [] })
+  const pileSig = herePiles.map((p) => `${p.itemId}|${p.units}`).join(';')
+  useEffect(() => {
+    const sigs = pileSig.length > 0 ? pileSig.split(';') : []
+    const prev = prevPilesRef.current
+    prevPilesRef.current = { hereKey, sigs }
+    // 换了格子（或还没进网格）⇒ 直接清空幽灵卡，不播"消失动画"
+    if (prev.hereKey !== hereKey) {
+      setLeavingPiles((l) => (l.length > 0 ? [] : l))
+      return
+    }
+    const pool = [...sigs]
+    const gone: string[] = []
+    for (const s of prev.sigs) {
+      const i = pool.indexOf(s)
+      if (i >= 0) pool.splice(i, 1)
+      else gone.push(s)
+    }
+    if (gone.length === 0) return
+    const stamp = Date.now()
+    const add = gone.slice(0, 12).map((s, i) => {
+      const bar = s.lastIndexOf('|')
+      return { key: `${s}#${stamp}#${i}`, itemId: s.slice(0, bar), units: Number(s.slice(bar + 1)) }
+    })
+    setLeavingPiles((l) => [...l, ...add])
+    const t = window.setTimeout(
+      () => setLeavingPiles((l) => l.filter((x) => !add.some((a) => a.key === x.key))),
+      WORMHOLE_PILE_OUT_MS,
+    )
+    return () => window.clearTimeout(t)
+  }, [pileSig, hereKey])
+  /**
    * **编队第一艘船的 defId**（地图上"当前格"用它的舰影表示 —— 船长 2026-09-13）。
    * 取不到（老档 uid 悬空）就退化成一个小箭头，不让地图空着。
    */
@@ -193,6 +242,15 @@ export function WormholePanel({
   const fxBusy = fx !== 'idle'
   /** 扫描动画（扫完自动清；`nonce` 换一次 = 重播一次） */
   const [scanFx, setScanFx] = useState<{ keys: string[]; rings: number; nonce: number } | null>(null)
+  /** 撤离的**待确认态**（两讨伐确认：第一次点只亮警告、第二次点才真撤）——5 秒不点自动解除 */
+  const [extractAsk, setExtractAsk] = useState(false)
+  useEffect(() => {
+    if (!extractAsk) return
+    const t = window.setTimeout(() => setExtractAsk(false), 5000)
+    return () => window.clearTimeout(t)
+  }, [extractAsk])
+  /** 地图缩放（船长 2026-09-13：「在探索界面的左侧给玩家一个缩放按钮或者滚动条……调节探索地图的大小」） */
+  const [mapZoom, setMapZoom] = useState(WORMHOLE_MAP_ZOOM_FIT)
   const layerKeyForFx = run ? `${run.seed ?? 0}-${run.depth}` : 'none'
   /** 新层挂载 ⇒ 播"从屏幕外飞入"，1 秒后交还操作（进场与深入共用这一条） */
   useEffect(() => {
@@ -423,7 +481,12 @@ export function WormholePanel({
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
           </span>
         </div>
-        {herePiles.length > 0 ? (
+        {/**
+         * ⚠ **判据要带"幽灵卡"**（船长 2026-09-13 深夜报的坑：「**当最后打捞干净时，卡片是直接消失的**」）：
+         * 原先这里只看 `herePiles.length > 0` ⇒ 最后一堆被拿走的瞬间整块换成"地点说明"，
+         * 幽灵卡**根本没机会渲染**。现在"还有卡"含幽灵卡，动画播完（300ms）才轮到地点说明。
+         */}
+        {herePiles.length > 0 || leavingPiles.length > 0 ? (
           <>
             {workCell && bulkPiles > 0 ? (
               <div className="app-dim app-note">
@@ -447,46 +510,57 @@ export function WormholePanel({
                 先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。
               </div>
             ) : null}
-            <ul className="app-inv-list">
+            {/**
+             * **堆清单 = 卡片 + 内部滚动**（船长 2026-09-13：「将地点详细中出现的列表换成卡片形式，
+             * 并添加滚动条。（防止外侧出现滚动条。）」）：卡片网格吃满信息窗剩余高度，
+             * 超出就在**这张卡网格内部**滚（`.app-wh-cardlist`），外层永远不因此出滚动条。
+             */}
+            <div className="app-wh-cardlist">
               {herePiles.map((p, i) => {
                 const def = ctx.items.get(p.itemId)
                 const shaped = wormholeIsShapedItem(p.itemId)
                 const slotUse = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
                 return (
-                  <li key={`${p.itemId}-${i}`} className="app-inv-row">
-                    <div className="app-inv-main">
-                      <span className="app-inv-name">
-                        {def?.name ?? p.itemId} ×{n(p.units)}
-                      </span>
-                      <span className="app-inv-count">
-                        {n(p.units * (def?.unitM3 ?? 0))} m³
-                        {shaped ? ' · 整件占 2×2 = 4 格（腾不出会先进临时空间）' : ` · 每格 ${n(slotUse)} 单位`}
-                      </span>
-                    </div>
-                    <div className="app-inv-btns">
-                      {shaped ? (
-                        /* **形状件（货柜）**：唯一入口就是这个拾取装舱（打捞/采集都不搬它） */
-                        <button
-                          className="app-btn is-small is-primary"
-                          disabled={!!run.battle || overloaded}
-                          onClick={() => {
-                            const r = engine.wormholeTakePile(i)
-                            if (!r.ok) onToast(r.error ?? '拾取失败。', true)
-                            else onToast('已装上货柜（占 2×2 = 4 格）。')
-                          }}
-                          title="拾取装舱：占货仓 2×2 = 4 格；货仓腾不出 2×2 会先放进临时空间"
-                        >
-                          拾取装舱（2×2 格）
-                        </button>
-                      ) : (
-                        /* 母矿与残骸都靠**台数 × 回合**成批回收（船长 F5：规则同打捞）⇒ 不逐堆拾取 */
-                        <span className="app-dim">{veinCell ? '待采集' : '待打捞'}</span>
-                      )}
-                    </div>
-                  </li>
+                  <div key={`${p.itemId}-${i}`} className={`app-wh-pile${shaped ? ' is-shaped' : ''}`}>
+                    <span className="app-wh-pile-name">{def?.name ?? p.itemId}</span>
+                    <span className="app-wh-pile-count">×{n(p.units)}</span>
+                    <span className="app-wh-pile-sub">
+                      {n(p.units * (def?.unitM3 ?? 0))} m³
+                      {shaped ? ' · 整件占 2×2 = 4 格' : ` · 每格 ${n(slotUse)} 单位`}
+                    </span>
+                    {shaped ? (
+                      /* **形状件（货柜）**：唯一入口就是这个拾取装舱（打捞/采集都不搬它） */
+                      <button
+                        className="app-btn is-small is-primary app-wh-pile-btn"
+                        disabled={!!run.battle || overloaded}
+                        onClick={() => {
+                          const r = engine.wormholeTakePile(i)
+                          if (!r.ok) onToast(r.error ?? '拾取失败。', true)
+                          else onToast('已装上货柜（占 2×2 = 4 格）。')
+                        }}
+                        title="拾取装舱：占货仓 2×2 = 4 格；货仓腾不出 2×2 会先放进临时空间"
+                      >
+                        拾取装舱
+                      </button>
+                    ) : (
+                      /* 母矿与残骸都靠**台数 × 回合**成批回收（船长 F5：规则同打捞）⇒ 不逐堆拾取 */
+                      <span className="app-wh-pile-tag">{veinCell ? '待采集' : '待打捞'}</span>
+                    )}
+                  </div>
                 )
               })}
-            </ul>
+              {/* **刚被拿走的堆**：留一张幽灵卡播"向下移出 + 淡出"（不吃点击、不参与判定，300ms 后自动摘掉） */}
+              {leavingPiles.map((g) => {
+                const def = ctx.items.get(g.itemId)
+                return (
+                  <div key={g.key} className="app-wh-pile is-leaving" aria-hidden>
+                    <span className="app-wh-pile-name">{def?.name ?? g.itemId}</span>
+                    <span className="app-wh-pile-count">×{n(g.units)}</span>
+                    <span className="app-wh-pile-sub">已收进货仓</span>
+                  </div>
+                )
+              })}
+            </div>
           </>
         ) : (
           <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
@@ -498,8 +572,13 @@ export function WormholePanel({
   /**
    * **临时离开 = 活动停止**（船长 2026-09-13 批准 · 议案 A 第 2 条）：关掉面板就 `wormholeLeave()`
    * ⇒ 主控立刻释放（可以去做别的），**虫洞进度原样保存**、洞内一切冻结（含战斗）。
+   * ⚠ **交火中不许离开**（船长 2026-09-13：「虫洞中的战斗画面不可以退出」）：按钮禁用，这里再兜一道。
    */
   function handleClose(): void {
+    if (state.wormhole.run?.battle) {
+      onToast('交火中不能离开虫洞：打完这一场。', true)
+      return
+    }
     if (state.wormhole.run) engine.wormholeLeave()
     onClose()
   }
@@ -539,7 +618,42 @@ export function WormholePanel({
                   : '已离开 · 进度已保存'
                 : '调试入口 · 施工中（拍板后对玩家开放）'}
           </span>
-          <button className="app-btn is-small" onClick={handleClose}>
+          {/**
+           * **撤离按钮搬到「✕ 关闭」左侧，红色色系，两讨伐确认**（船长 2026-09-13：
+           * 「撤离按钮放在关闭左侧，并用红色色系，玩家撤离时会警告玩家并需要确认」）。
+           * 与「存档管理 · 删除备份」同一套确认语言：**点一下进入待确认态**（按钮变文案 + 危险红），
+           * 同时在页体顶部摆出警告条（写清"要不要打撤离战"），**再点一下才真的撤**；
+           * 5 秒不点自动解除，免得误触后一直挂着。战斗进行中一律禁用（见下）。
+           */}
+          {!settle && run ? (
+            <button
+              className={`app-btn is-small is-danger app-wh-extract${extractAsk ? ' is-armed' : ''}`}
+              disabled={!!run.battle || fxBusy}
+              onClick={() => {
+                if (!extractAsk) {
+                  setExtractAsk(true)
+                  return
+                }
+                setExtractAsk(false)
+                doExtract()
+              }}
+              title={
+                run.battle
+                  ? '交火中不能撤离：打完这一场'
+                  : extractAsk
+                    ? '再点一次确认撤离'
+                    : '撤离本趟：见页顶的警告（第 2 层起要打撤离拦截战）'
+              }
+            >
+              {extractAsk ? '确认撤离' : '撤离'}
+            </button>
+          ) : null}
+          <button
+            className="app-btn is-small"
+            disabled={!!run?.battle}
+            onClick={handleClose}
+            title={run?.battle ? '交火中不能离开虫洞：打完这一场' : undefined}
+          >
             ✕ 关闭（离开虫洞）
           </button>
         </div>
@@ -806,15 +920,79 @@ export function WormholePanel({
               </div>
               {grid && hereCell ? (
                 <>
-                  <div className="app-wh-mapbox">
-                    <WhGridMap
-                      grid={grid}
-                      onPickCell={pickCell}
-                      shipDefId={leadShipDefId}
-                      layerKey={`${run.seed ?? 0}-${run.depth}`}
-                      fx={fx}
-                      scanFx={scanFx}
-                    />
+                  {/**
+                   * **撤离警告条**（船长 2026-09-13：「玩家撤离时会警告玩家并需要确认」）：
+                   * 处于待确认态时摆在页体顶部（红档），写清"这一撤会发生什么"——第 1 层免战、第 2 层起要打拦截战。
+                   */}
+                  {extractAsk ? (
+                    <div className="app-wh-extract-ask">
+                      <span>
+                        ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
+                        {run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
+                          ? '：第 1 层没有拦截舰队，货物直接入港。'
+                          : `：拦截舰队会围堵你（威胁 ${wormholeExtractThreat(run.depth)}）——**打赢才把背包与货柜带回去**，打输 = 本趟全损。`}
+                      </span>
+                      <span className="app-wh-actions">
+                        <button
+                          className="app-btn is-small is-danger"
+                          onClick={() => {
+                            setExtractAsk(false)
+                            doExtract()
+                          }}
+                        >
+                          确认撤离
+                        </button>
+                        <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>
+                          取消
+                        </button>
+                      </span>
+                    </div>
+                  ) : null}
+                  {/**
+                   * **地图行 = 左侧缩放控件 + 地图**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景。
+                   * 且窗口高度固定（不会随着地图变大变高），在探索界面的左侧给玩家一个缩放按钮或者滚动条。
+                   * 让玩家能够调节探索地图的大小」）：地图框**定高** 300px（不再随圈数长高），
+                   * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
+                   */}
+                  <div className="app-wh-maprow">
+                    <div className="app-wh-zoom" role="group" aria-label="地图缩放">
+                      <button
+                        className="app-wh-zoom-btn"
+                        disabled={mapZoom >= WORMHOLE_MAP_ZOOM_MAX}
+                        onClick={() => setMapZoom((z) => Math.min(WORMHOLE_MAP_ZOOM_MAX, +(z + WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
+                        title="放大地图"
+                      >
+                        ＋
+                      </button>
+                      <span className="app-wh-zoom-val">{Math.round(mapZoom * 100)}%</span>
+                      <button
+                        className="app-wh-zoom-btn"
+                        disabled={mapZoom <= WORMHOLE_MAP_ZOOM_FIT}
+                        onClick={() => setMapZoom((z) => Math.max(WORMHOLE_MAP_ZOOM_FIT, +(z - WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
+                        title="缩小地图"
+                      >
+                        －
+                      </button>
+                      <button
+                        className="app-wh-zoom-btn is-text"
+                        disabled={mapZoom === WORMHOLE_MAP_ZOOM_FIT}
+                        onClick={() => setMapZoom(WORMHOLE_MAP_ZOOM_FIT)}
+                        title="回到适应窗口（整层一次看全）"
+                      >
+                        适应
+                      </button>
+                    </div>
+                    <div className="app-wh-mapbox">
+                      <WhGridMap
+                        grid={grid}
+                        onPickCell={pickCell}
+                        shipDefId={leadShipDefId}
+                        layerKey={`${run.seed ?? 0}-${run.depth}`}
+                        fx={fx}
+                        scanFx={scanFx}
+                        zoom={mapZoom}
+                      />
+                    </div>
                   </div>
                   <div className="app-wh-legend">
                     {GRID_LEGEND.map((l) => (
@@ -853,12 +1031,11 @@ export function WormholePanel({
                     </div>
                   ) : null}
                   {/**
-                   * **左列 = 扫描 + 作业按钮**（船长 2026-09-13：「激活等按钮可以放在扫描下方」）：
-                   * 扫描大按钮下面紧挨着"在这一格能做的事"（打捞/采集 · 激活此地/迎战守卫），
-                   * 两者同宽对齐；右边仍是地点信息窗（平级摆放，船长 2026-09-13）。
-                   * **只在真能用的时候才出现**（船长：「有可以采集或者激活的情况时，才显示对应按钮」）——
-                   * 不能用时由信息窗里的说明给出原因（比如"编队里没有打捞器"），不摆一排灰按钮。
-                   * 「继续深入 / 撤离」留在下面那条动作行：它们不是"这一格的事"，而是整趟的相位动作。
+                   * **左列 = 扫描 + 作业按钮 + 继续深入**（船长 2026-09-13：「激活等按钮可以放在扫描下方」
+                   * ＋「**继续深入按钮也可以整合到扫描 + 作业按钮处**」）：三枚同宽、纵向排列；
+                   * 右边是地点信息窗（其列表已改**卡片 + 内部滚动**，见 `renderHereNode`）。
+                   * 作业按钮**只在真能用的时候才出现**（船长：「有可以采集或者激活的情况时，才显示对应按钮」）；
+                   * 「继续深入」只在守卫清掉后出现。「撤离」已搬到标题行（红色 · 两讨伐确认）。
                    */}
                   <div className="app-wh-workspace">
                     <div className="app-wh-workspace-left">
@@ -899,32 +1076,23 @@ export function WormholePanel({
                           <span className="app-wh-scan-sub">1 回合</span>
                         </button>
                       ) : null}
+                      {bossDone ? (
+                        <button
+                          className="app-btn is-primary app-wh-work"
+                          disabled={!!run.battle || overloaded || run.turnsLeft <= 0 || fxBusy}
+                          onClick={doDescend}
+                          title="带着当前进度深入下一层（更深、更值钱、更硬）"
+                        >
+                          继续深入
+                          <span className="app-wh-scan-sub">
+                            第 {run.depth + 1} 层 · 威胁 {wormholeLayerThreat(run.depth + 1)}
+                          </span>
+                        </button>
+                      ) : null}
                     </div>
                     <div className="app-wh-node">{renderHereNode()}</div>
                   </div>
                   <div className="app-wh-actions">
-                    {bossDone ? (
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={!!run.battle || overloaded || run.turnsLeft <= 0 || fxBusy}
-                        onClick={doDescend}
-                        title="带着当前进度深入下一层（更深、更值钱、更硬）"
-                      >
-                        继续深入（第 {run.depth + 1} 层 · 威胁 {wormholeLayerThreat(run.depth + 1)}）
-                      </button>
-                    ) : null}
-                    <button
-                      className="app-btn is-small"
-                      disabled={!!run.battle || overloaded || fxBusy}
-                      onClick={doExtract}
-                      title={
-                        run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
-                          ? '第 1 层没有拦截舰队：直接脱离、货物入港'
-                          : '进入撤离战：拦截舰队会围堵你——打赢才把背包与货柜带回港'
-                      }
-                    >
-                      撤离
-                    </button>
                     <span className="app-dim">点格子前往（不限距离 · 1 回合）</span>
                   </div>
                   {run.phase === 'extracting' && !run.battle ? (
@@ -1091,6 +1259,7 @@ function WhGridMap({
   layerKey,
   fx = 'idle',
   scanFx = null,
+  zoom = 1,
 }: {
   grid: WormholeGridState
   onPickCell: (q: number, r: number) => void
@@ -1102,14 +1271,19 @@ function WhGridMap({
   fx?: 'idle' | 'out' | 'in'
   /** 扫描动画：这一批新揭开的格 + 扫了几圈（波散开、格子按圈依次亮） */
   scanFx?: { keys: string[]; rings: number; nonce: number } | null
+  /** 缩放（1 = 适应窗口）：**以玩家所在格为中心**放大，超出地图框的部分被裁掉 */
+  zoom?: number
 }) {
   const size = 30
   const R = Math.max(1, Math.floor(grid.radius))
-  // 画布留白按半径算（六边形顶点正好落在边界上会显得挤）；容器高随圈数长一点但有上限
-  // ⇒ 每格在屏幕上的边长尽量稳定（R=2 约 60px / R=4 约 46px），避免深层的格子小到点不准。
+  /**
+   * 画布留白按半径算（六边形顶点正好落在边界上会显得挤）。
+   * ⚠ **容器高度不再随圈数长高**（船长 2026-09-13：「窗口高度固定（不会随着地图变大变高）」）：
+   * 高度交给 CSS（`.app-wh-mapbox` 定高 300px），这里只出 viewBox —— 圈数越大，
+   * 整张圆盘在同一个框里等比缩得越小；要看清就点左侧的 **＋/－ 缩放**（以玩家所在格为中心放大）。
+   */
   const w = Math.sqrt(3) * size * (2 * R + 1.3)
   const h = size * (3 * R + 2.4)
-  const mapH = Math.min(420, 150 + 30 * (2 * R + 1))
   const cx = w / 2
   const cy = h / 2
   // 六边形顶点（尖顶：上下各一个顶点、左右是平边）
@@ -1138,7 +1312,6 @@ function WhGridMap({
   return (
     <svg
       className="app-wh-map"
-      style={{ height: `${mapH}px` }}
       viewBox={`0 0 ${w} ${h}`}
       role="img"
       aria-label={`第 ${grid.radius} 圈网格地图`}
@@ -1151,6 +1324,18 @@ function WhGridMap({
           <stop offset="100%" stopColor="rgba(79,216,196,0)" />
         </radialGradient>
       </defs>
+      {/**
+       * **缩放层**（船长 2026-09-13：左侧缩放按钮调节地图大小）：**以玩家所在格为锚点**放大/缩小 ——
+       * 换算：中心为原点 `origin`、平移 `-(k-1)·(玩家 - 中心)` ⇒ 玩家那一格在屏幕上**原地不动**、
+       * 四周围着它长开（放大后自己的位置永远不丢，也不用拖图）。超出的部分由地图框裁掉。
+       */}
+      <g
+        className="app-wh-zoomlayer"
+        style={{
+          transformOrigin: `${cx.toFixed(1)}px ${cy.toFixed(1)}px`,
+          transform: `translate(${(-(zoom - 1) * (hereX - cx)).toFixed(1)}px, ${(-(zoom - 1) * (hereY - cy)).toFixed(1)}px) scale(${zoom})`,
+        }}
+      >
       {grid.cells.map((c) => {
         const x = cx + Math.sqrt(3) * size * (c.q + c.r / 2)
         const y = cy + 1.5 * size * c.r
@@ -1264,6 +1449,7 @@ function WhGridMap({
           <path className="app-wh-ship-fallback" d="M-6,-4 L7,0 L-6,4 Z" />
         )}
       </g>
+      </g>
     </svg>
   )
 }
@@ -1354,12 +1540,17 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const info = engine.wormholeHoldInfo()
   /** **临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
   const tempInfo = engine.wormholeTempInfo()
+  /** **抛弃控件**：正在问"丢多少"的那一件（船长 2026-09-13：「拖动条 + 允许输入数量」） */
+  const [discardAsk, setDiscardAsk] = useState<{ id: string; units: number } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const cols = WORMHOLE_HOLD_COLS
   const rows = holdRows(info.capacity, cols)
   const placements = run.hold?.placements ?? []
   const boxes = placements.filter((p) => p.kind === 'box').length
-  const cargoBars = placements.length - boxes
+  /** 散货**件**（一件一格：船长 2026-09-13 深夜口径；按物品名 + 位置排序，列表稳定不跳） */
+  const cargoPieces = placements
+    .filter((p) => p.kind === 'cargo')
+    .sort((a, b) => a.itemId.localeCompare(b.itemId) || a.y - b.y || a.x - b.x)
 
   /** 格 → 件（画块用；散货条与货柜共用一张占用表） */
   const ownerOf = new Map<string, (typeof placements)[number]>()
@@ -1385,9 +1576,9 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
         </span>
       </div>
       <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**按**矩形块**摆
-        （4 格以内是一条细条，更大就是方块——格数凑不出矩形时向上取整到那块）——
-        都能拖拽摆放（点一下选中、再点空格也算落位），形状放不下就整条留在原地；整理按钮把所有件自动重排。
+        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**每件最多 1 格
+        （超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），
+        装不下就留在原地；「整理」按钮把所有件自动重排。
       </div>
       {info.overload ? (
         <div className="app-wh-hold-overload">
@@ -1466,7 +1657,8 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
                       {def?.name ?? p.itemId} ×{n(p.units ?? 0)}
                     </span>
                     <span className="app-wh-hold-box-size">
-                      {p.w}×{p.h} 格
+                      {/* 散货：实占格数（矩形外框 + 末行补齐 ⇒ 框可能比占格大） */}
+                      {placementCellsCount(p)} 格 · {p.w}×{p.h} 框
                     </span>
                   </>
                 ) : (
@@ -1494,7 +1686,7 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
           整理（自动重排）
         </button>
         <span className="app-dim">
-          {boxes} 件货柜 + {cargoBars} 条散货 · 拖拽摆放（也可点选中后再点空位）
+          {boxes} 件货柜 + {cargoPieces.length} 件散货 · 拖拽摆放（也可点选中后再点空位）
         </span>
       </div>
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
@@ -1588,40 +1780,100 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
             ))}
         </ul>
       )}
-      {/* 散货清单（可叠加的那些；抛弃按"整条"给，省得点两次） */}
-      <div className="app-bay-title">散货 · {run.bag.length} 类</div>
-      {run.bag.length === 0 ? (
+      {/**
+       * **散货清单 = 一件一行**（船长 2026-09-13 深夜：「残骸和母矿不应该合并超过 500 立方米，
+       * 当超过时，分作 2 个单独的物品格并允许单独丢弃或者移动」）：每件最多 1 格（≤ 每格单位数），
+       * 一件一个「抛弃」入口 —— 点开出现**数量拖动条 + 可直接输入数量**（同一条船长口径），
+       * 只丢这一件里的指定数量，其余留在原格；移动在网格里拖那一格即可。
+       */}
+      <div className="app-bay-title">
+        散货 · {cargoPieces.length} 件
+        <span className="app-dim">（{run.bag.length} 类 · 一件一格、可单独丢/拖）</span>
+      </div>
+      {cargoPieces.length === 0 ? (
         <div className="app-dim app-inv-empty">没有散货：去矿脉挖原矿、去墓场/遗迹打捞残骸。</div>
       ) : (
         <ul className="app-inv-list">
-          {run.bag.map((s) => {
-            const def = ctx.items.get(s.itemId)
+          {cargoPieces.map((p, i) => {
+            const def = ctx.items.get(p.itemId)
             const per = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
-            // 占格与形状都按**实际摆放件**报（还没摆下才退回"规范块面积"）
-            const placed = placements.find((p) => p.kind === 'cargo' && p.itemId === s.itemId)
-            const cells = placed ? placed.w * placed.h : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
+            const units = Math.max(0, Math.floor(p.units ?? 0))
+            const asking = discardAsk?.id === p.id
+            const amount = asking ? Math.min(discardAsk.units, Math.max(1, units)) : units
             return (
-              <li key={s.itemId} className="app-inv-row">
+              <li key={p.id} className="app-inv-row app-wh-piece">
                 <div className="app-inv-main">
                   <span className="app-inv-name">
-                    {def?.name ?? s.itemId} ×{n(s.units)}
+                    {def?.name ?? p.itemId} ×{n(units)}
+                    <span className="app-dim">
+                      {' '}
+                      · 第 {i + 1} 件 · 第 {p.y + 1} 行第 {p.x + 1} 列
+                    </span>
                   </span>
                   <span className="app-inv-count">
-                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格
-                    {placed ? `（${placed.w}×${placed.h} 块）` : '（还没摆下）'} · 每格 {n(per)} 单位
+                    {n(units * (def?.unitM3 ?? 0))} m³ · 占 1 格 · 每格 {n(per)} 单位
                   </span>
                 </div>
                 <div className="app-inv-btns">
-                  <button
-                    className="app-btn is-small is-warn"
-                    onClick={() => {
-                      const r = engine.wormholeDiscardCargo(s.itemId)
-                      if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
-                    }}
-                  >
-                    抛弃
-                  </button>
+                  {asking ? null : (
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => setDiscardAsk({ id: p.id, units })}
+                    >
+                      抛弃
+                    </button>
+                  )}
                 </div>
+                {/**
+                 * **抛弃数量控件**（船长 2026-09-13 深夜：「添加一个让玩家选择抛弃多少的拖动条
+                 * 并允许输入数量」）：拖动条与数字框双向同步；数字框允许直接敲，失焦/确认时夹到 1..本件数量。
+                 */}
+                {asking ? (
+                  <div className="app-wh-discard">
+                    <input
+                      className="app-wh-discard-range"
+                      type="range"
+                      min={1}
+                      max={Math.max(1, units)}
+                      // 步长恒 1：拖动条上的取值必须能**精确**落到任何一个单位数
+                      // （先前用 per/100 做步长，500 的上限会被浏览器吸附成 496 —— 读数对不上）
+                      step={1}
+                      value={amount}
+                      onChange={(e) => setDiscardAsk({ id: p.id, units: Number(e.target.value) })}
+                      aria-label="抛弃数量"
+                    />
+                    <input
+                      className="app-wh-discard-num"
+                      type="number"
+                      min={1}
+                      max={Math.max(1, units)}
+                      value={amount}
+                      onChange={(e) => {
+                        const v = Math.round(Number(e.target.value))
+                        setDiscardAsk({ id: p.id, units: Number.isFinite(v) ? Math.max(1, Math.min(units, v)) : 1 })
+                      }}
+                      aria-label="抛弃数量（可直接输入）"
+                    />
+                    <span className="app-dim">
+                      共 {n(units)} · 抛弃 <b>{n(amount)}</b> 单位（{n(amount * (def?.unitM3 ?? 0))} m³）· 剩{' '}
+                      {n(units - amount)}
+                    </span>
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => {
+                        const r = engine.wormholeDiscardHold(p.id, amount)
+                        setDiscardAsk(null)
+                        if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                        else onToast(`已抛弃 ${n(amount)} 单位 ${def?.name ?? p.itemId}。`)
+                      }}
+                    >
+                      确认抛弃
+                    </button>
+                    <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
+                      取消
+                    </button>
+                  </div>
+                ) : null}
               </li>
             )
           })}

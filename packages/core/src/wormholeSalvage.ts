@@ -40,11 +40,14 @@ import {
   cargoBlockArea,
   cargoShapeFits,
   cargoShapesFor,
+  bestCargoPlacement,
+  findCargoSpot,
   findFreeSpot,
   holdAdd,
   holdCellsUsed,
   holdRemove,
   makeHoldState,
+  WORMHOLE_CARGO_PIECE,
   wormholeShapeOf,
   placementCellsCount,
   wormholeIsShapedItem,
@@ -335,14 +338,37 @@ export function wormholeCargoSlotsOf(ctx: SimContext, itemId: string, units: num
 }
 
 /**
- * **把散货与网格对齐**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」）。
+ * **一条散货拆成几件**（船长 2026-09-13 深夜：「**残骸和母矿不应该合并超过 500 立方米，当超过时，
+ * 分作 2 个单独的物品格并允许单独丢弃或者移动**」）。
  *
- * 口径：`run.bag` 是**数量账本**（一种物品一条），`run.hold.placements` 是**位置账本**（每条散货 = 一条 1×N 横条）。
+ * 口径：一件散货**最多一格**（= 每格 `per` 单位 ≈ 500 m³），超过就**再起一件**：
+ * 6 格母矿 = 6 件（每件 ≤ 2500 单位），每件都能单独拖、单独丢。
+ * ⇒ 从此**不再有跨格形状**（"矩形块 / 末行补齐"那套对散货作废，只留给 2×2 货柜这类形状件）。
+ * 边界：最后一件可以不满（余数），件数 = `⌈单位 ÷ 每格单位⌉`。
+ */
+export function wormholeCargoPieceUnitsOf(ctx: SimContext, itemId: string, units: number): number[] {
+  const per = Math.max(1, wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 0))
+  const total = Math.max(0, Math.floor(units))
+  const out: number[] = []
+  let left = total
+  while (left > 0) {
+    const take = Math.min(per, left)
+    out.push(take)
+    left -= take
+  }
+  return out
+}
+
+/**
+ * **把散货与网格对齐**（船长 2026-09-13：「散货也在货仓背包内，并允许玩家拖拽移动」
+ * ＋ 同日晚「每件不超过 500 m³，超过就分件，各自可丢可拖」）。
+ *
+ * 口径：`run.bag` 是**数量账本**（一种物品一条 = 总单位数），
+ * `run.hold.placements` 是**位置账本**（`kind:'cargo'` = **一件一格**，每件 ≤ 每格单位数）。
  * 本函数把两者对齐：
- * - 背包里没有的物品 ⇒ 删掉它的散货条；
- * - 有物品没条 / 条的格数变了 ⇒ 就地重放（**先试原位**，放不下再找空位；横竖都试）；
- * - 放不进网格的条目记进 `unplaced`（调用方据此**拒绝这次装货**或报超载）。
- * ⚠ 每条散货**各自一条 placement**（不是一格一条），所以玩家拖的是"整条货"。
+ * - 背包里没有的物品 ⇒ 删掉它的所有散货件；
+ * - 件数与每件单位对不上（多了/少了/单件超一格）⇒ **先按原位重排**（保住玩家摆好的位置），
+ *   多出来的件找空位；装不下的件记进 `unplaced`（调用方据此**拒绝这次装货**或报超载）。
  */
 export function wormholeHoldSyncCargo(
   state: GameState,
@@ -355,54 +381,36 @@ export function wormholeHoldSyncCargo(
   const hold = run.hold
   const unplaced: string[] = []
   let moved = 0
-  // ① 删掉背包里已经没有的散货条
+  // ① 删掉背包里已经没有的散货件
   const inBag = new Set(run.bag.map((s) => s.itemId))
   hold.placements = hold.placements.filter((p) => p.kind !== 'cargo' || inBag.has(p.itemId))
-  // ② 逐条对齐
+  // ② 逐种物品对齐：目标 = 一串"每件 ≤ 一格"的件
   for (const slot of run.bag) {
-    const cells = wormholeCargoCellsOf(ctx, slot.itemId, slot.units)
-    const current = hold.placements.find((p) => p.kind === 'cargo' && p.itemId === slot.itemId)
-    // 已经是这一档的合法落形（矩形/细条）⇒ 只同步数量，不动位置
-    if (current && cargoShapeFits(cells, { w: current.w, h: current.h })) {
-      current.units = Math.floor(slot.units)
-      continue
-    }
-    // 先把旧的摘掉（换尺寸重放）
-    if (current) hold.placements = hold.placements.filter((p) => p.id !== current.id)
-    let placed = false
-    const shapes = cargoShapesFor(cells)
-    // **先试原位**（保持玩家手动摆好的位置）
-    if (current) {
-      for (const shape of shapes) {
-        if (canPlace(hold, current.x, current.y, shape, capacity)) {
-          hold.placements.push({ ...current, w: shape.w, h: shape.h, units: Math.floor(slot.units) })
-          placed = true
-          moved += 1
-          break
-        }
+    const want = wormholeCargoPieceUnitsOf(ctx, slot.itemId, slot.units)
+    const existing = hold.placements.filter((p) => p.kind === 'cargo' && p.itemId === slot.itemId)
+    // 位置池：玩家现有位置优先（先按 y/x 排，保住"摆在哪儿"的意图）
+    const spots = existing
+      .map((p) => ({ x: p.x, y: p.y }))
+      .sort((a, b) => a.y - b.y || a.x - b.x)
+    for (const p of existing) hold.placements = hold.placements.filter((q) => q.id !== p.id)
+    let kept = 0
+    for (const units of want) {
+      const id = `${slot.itemId}#${kept}`
+      const prev = spots[kept]
+      // 先试原位（同一格大小，通常原样保留）
+      if (prev && canPlace(hold, prev.x, prev.y, WORMHOLE_CARGO_PIECE, capacity)) {
+        hold.placements.push({ id, itemId: slot.itemId, kind: 'cargo', units, x: prev.x, y: prev.y, w: 1, h: 1 })
+        if (existing[kept]?.units !== units) moved += 1
+        kept += 1
+        continue
       }
+      const spot = findCargoSpot(hold, WORMHOLE_CARGO_PIECE, undefined, capacity)
+      if (!spot) break // 装不下：剩下的记进 unplaced（调用方回滚或报超载）
+      hold.placements.push({ id, itemId: slot.itemId, kind: 'cargo', units, x: spot.x, y: spot.y, w: 1, h: 1 })
+      moved += 1
+      kept += 1
     }
-    if (!placed) {
-      for (const shape of shapes) {
-        const spot = findFreeSpot(hold, shape, capacity, true)
-        if (spot) {
-          hold.placements.push({
-            id: `${slot.itemId}#${cells}`,
-            itemId: slot.itemId,
-            kind: 'cargo',
-            units: Math.floor(slot.units),
-            x: spot.x,
-            y: spot.y,
-            w: shape.w,
-            h: shape.h,
-          })
-          placed = true
-          moved += 1
-          break
-        }
-      }
-    }
-    if (!placed) unplaced.push(slot.itemId)
+    if (kept < want.length) unplaced.push(slot.itemId)
   }
   return { unplaced, moved }
 }
@@ -431,11 +439,16 @@ export function wormholeHoldUsage(
     if (p.kind === 'cargo') cargoCells += placementCellsCount(p)
     else shapeCells += placementCellsCount(p)
   }
-  // 背包里有、网格里没有的（只可能来自"沉船缩容"或坏档）⇒ 也算超载
-  const placed = new Set((run.hold?.placements ?? []).filter((p) => p.kind === 'cargo').map((p) => p.itemId))
+  // 背包里有、网格里没摆下的（沉船缩容 / 坏档 / 老档大件）⇒ 也算超载。
+  // ⚠ 散货是**一件一格**（船长 2026-09-13 深夜）⇒ 按"**该物品已占的格数** vs 需要格数"算：
+  //   老档里那种 8×1 大件算 8 格（不是 1 件），否则会把老档误报成"凭空少了 21 格"（实测踩过）。
   let unplacedCells = 0
   for (const slot of run.bag) {
-    if (!placed.has(slot.itemId)) unplacedCells += wormholeCargoSlotsOf(ctx, slot.itemId, slot.units)
+    const want = wormholeCargoPieceUnitsOf(ctx, slot.itemId, slot.units).length
+    const haveCells = (run.hold?.placements ?? [])
+      .filter((p) => p.kind === 'cargo' && p.itemId === slot.itemId)
+      .reduce((n, p) => n + placementCellsCount(p), 0)
+    unplacedCells += Math.max(0, want - haveCells)
   }
   const used = cargoCells + shapeCells + unplacedCells
   return { used, capacity, cargoCells, shapeCells, unplacedCells, overload: used > capacity }
@@ -607,23 +620,62 @@ export function wormholeHoldStow(
   return { ok: true, placementId: r.placement!.id }
 }
 
-/** **抛弃一件形状件**（手动抛货 · 船长裁定 8） */
+/**
+ * **抛弃一件**（手动抛货 · 船长裁定 8）。
+ * 给 `units` ⇒ **只丢这一件里的一部分**（船长 2026-09-13 深夜：「玩家抛弃时，添加一个让玩家
+ * 选择抛弃多少的拖动条并允许输入数量」）：件是**一件一格**，部分抛弃后件仍占那一格（余量留在原格），
+ * 数量账本 `run.bag` 同步扣减；扣到 0 就整件消失。
+ * 形状件（货柜）没有"部分抛弃"这回事（它是一件整体）⇒ 只认整件丢。
+ */
 export function wormholeHoldDiscard(
   state: GameState,
   ctx: SimContext,
   placementId: string,
-): { ok: boolean; error?: string } {
+  units?: number,
+): { ok: boolean; error?: string; dropped?: number } {
   const run = state.wormhole.run
-  if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
-  const gone = holdRemove(run.hold, placementId)
-  if (!gone) return { ok: false, error: '没有这个件。' }
-  const name = ctx.items.get(gone.itemId)?.name ?? gone.itemId
+  if (!run?.hold) return { ok: false, error: '货仓里没有可抛弃的件。' }
+  const target = run.hold.placements.find((p) => p.id === placementId)
+  if (!target) return { ok: false, error: '没有这个件。' }
+  const name = ctx.items.get(target.itemId)?.name ?? target.itemId
+  // 形状件：只认整件
+  if (target.kind === 'box' || units === undefined) {
+    const gone = holdRemove(run.hold, placementId)
+    if (!gone) return { ok: false, error: '没有这个件。' }
+    if (gone.kind === 'cargo') {
+      const slot = run.bag.find((s) => s.itemId === gone.itemId)
+      if (slot) {
+        slot.units -= gone.units ?? 0
+        if (slot.units <= 0) run.bag = run.bag.filter((s) => s.itemId !== gone.itemId)
+      }
+      wormholeHoldSyncCargo(state, ctx)
+    }
+    addLog(
+      state,
+      'warn',
+      `🕳 抛弃：${name}${gone.kind === 'cargo' ? ` ×${Math.floor(gone.units ?? 0)}` : ''}` +
+        `（货仓 ${wormholeHoldUsage(state, ctx).used}/${wormholeHoldCapacityOf(state, ctx)} 格）。`,
+    )
+    return { ok: true, dropped: Math.floor(gone.units ?? 0) }
+  }
+  // 散货件：按数量部分抛弃（至少 1，最多这件全部）
+  const have = Math.max(0, Math.floor(target.units ?? 0))
+  const cut = Math.max(1, Math.min(have, Math.floor(units)))
+  target.units = have - cut
+  const slot = run.bag.find((s) => s.itemId === target.itemId)
+  if (slot) {
+    slot.units -= cut
+    if (slot.units <= 0) run.bag = run.bag.filter((s) => s.itemId !== target.itemId)
+  }
+  if ((target.units ?? 0) <= 0) holdRemove(run.hold, placementId)
+  wormholeHoldSyncCargo(state, ctx)
   addLog(
     state,
     'warn',
-    `🕳 抛弃：${name}（货仓 ${wormholeHoldUsage(state, ctx).used}/${wormholeHoldCapacityOf(state, ctx)} 格）。`,
+    `🕳 抛弃：${name} ×${cut.toLocaleString('zh-CN')}（这一件还剩 ${Math.max(0, target.units ?? 0).toLocaleString('zh-CN')}）·` +
+      ` 货仓 ${wormholeHoldUsage(state, ctx).used}/${wormholeHoldCapacityOf(state, ctx)} 格。`,
   )
-  return { ok: true }
+  return { ok: true, dropped: cut }
 }
 
 /**
@@ -674,7 +726,13 @@ export function wormholeDiscardToFit(state: GameState, ctx: SimContext): { ok: b
   const run = state.wormhole.run
   if (!run) return { ok: false, dropped: [] }
   const capacity = wormholeHoldCapacityOf(state, ctx)
-  const shapeCells = holdCellsUsed(run.hold)
+  /**
+   * ⚠ **只把形状件（安全货柜）从额度里扣掉**：散货是"一件一格"、本来就该按容量裁 ——
+   * 这里若用 `holdCellsUsed(run.hold)`（它把**所有**摆放件都算上，含散货件），
+   * 缩容后刚摆下的那几件散货会把额度吃到 0 ⇒ 一键抛货会把**贵货也一起丢光**
+   * （2026-09-13 深夜实测：`cargoCap` 算成 0、两种货全被丢）。
+   */
+  const shapeCells = wormholeHoldUsage(state, ctx).shapeCells
   const cargoCap = Math.max(0, capacity - shapeCells) // 形状件不参与裁包
   const trimmed = wormholeTrimBag(ctx, run.bag, cargoCap, (slot) => {
     const def = ctx.items.get(slot.itemId)
