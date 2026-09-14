@@ -34,7 +34,7 @@ import { shipStoredCount } from './shipyard'
 import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { stationIndustryBlocked } from './location'
-import { addAiIncome, addAiMakeDone, type SettleStats } from './settleStats'
+import { addAiIncome, addAiMakeDone, addAiShipDone, type SettleStats } from './settleStats'
 
 /** 市场基准价（离线结算预估收入用：装备/舰船粗估；找不到返回 0） */
 function marketBasePrice(ctx: SimContext, kind: 'module' | 'ship', refId: string): number {
@@ -464,6 +464,8 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         )
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)
+          // 2026-09-14 船长「补」：舰船产出入的是舰船仓库 ⇒ 离线简报里单列「造船 ×N」
+          addAiShipDone(stats, coreType)
           addAiIncome(stats, coreType, marketBasePrice(ctx, 'ship', shipDef.id))
         }
       } else {

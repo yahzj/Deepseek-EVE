@@ -733,6 +733,7 @@ export {
   addAiSalvageDone,
   addAiRefineBatch,
   addAiMakeDone,
+  addAiShipDone,
   addAiIncome,
 } from './settleStats'
 export type { CoreSettleStats, SettleStats } from './settleStats'

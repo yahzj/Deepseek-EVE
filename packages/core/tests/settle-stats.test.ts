@@ -8,6 +8,7 @@ import { createInitialState } from '../src/state'
 import { startRefineRun } from '../src/industry'
 import { countAiCore } from '../src/ai'
 import { simulateOffline } from '../src/simulation'
+import { startManufacturing } from '../src/manufacturing'
 import { newSettleStats } from '../src/settleStats'
 import { makeTestCtx } from './helpers'
 
@@ -56,5 +57,43 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     const stats = newSettleStats()
     simulateOffline(state, 5_000, 5_000 + 30_000, ctx, undefined, { stats })
     expect(stats['basic']?.refineBatches).toBe(2) // 30s / 15s
+  })
+
+  it('造船完成计入 shipsDone，产出入的是舰船仓库（2026-09-14 船长「补」）', () => {
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
+    const ctx: SimContext = makeTestCtx()
+    // 默认测试舰船蓝图 sbp-a（造 sandcat2 · 60s · 材料 min-a ×5）——AI 核心驱动 + 材料备足
+    state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1 // 开 AI 线需「AI 核心上限」资格
+    state.learnedRecipes.push('sbp-a')
+    state.warehouse.items['min-a'] = 50
+    expect(startManufacturing(state, 'sbp-a', 'basic', ctx).ok).toBe(true)
+    const fleetBefore = Object.keys(state.fleet).length
+
+    const stats = newSettleStats()
+    simulateOffline(state, 0, 300_000, ctx, undefined, { stats })
+
+    expect(stats['basic']?.makeDone).toBe(1)
+    expect(stats['basic']?.shipsDone).toBe(1)
+    expect(state.shipStore?.['sandcat2']).toBe(1) // 入舰船仓库（不再直接进舰队）
+    expect(Object.keys(state.fleet).length).toBe(fleetBefore)
+    expect(state.logs.some((l) => l.text.includes('已入舰船仓库'))).toBe(true) // 逐件日志写明去处
+  })
+
+  it('装备制造只计 makeDone，不计 shipsDone', () => {
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
+    const ctx: SimContext = makeTestCtx()
+    state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1
+    state.learnedRecipes.push('bp-b') // 造 mod-b · 300s · 材料 min-b ×8
+    state.warehouse.items['min-b'] = 80
+    expect(startManufacturing(state, 'bp-b', 'basic', ctx).ok).toBe(true)
+
+    const stats = newSettleStats()
+    simulateOffline(state, 0, 3_600_000, ctx, undefined, { stats })
+
+    expect(stats['basic']?.makeDone).toBe(1)
+    expect(stats['basic']?.shipsDone).toBe(0)
+    expect(state.shipStore ?? {}).toEqual({})
   })
 })

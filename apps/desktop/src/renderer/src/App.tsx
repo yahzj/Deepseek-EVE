@@ -1165,6 +1165,9 @@ export function App({ engine }: { engine: GameEngine }) {
             {offlineReport.shipsIn.length > 0 ? (
               <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>新船入坞：{offlineReport.shipsIn.join('、')}</div>
             ) : null}
+            {offlineReport.shipsStored.length > 0 ? (
+              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>入舰船仓库：{offlineReport.shipsStored.map((s) => `${s.name}×${s.delta}`).join('、')}（到舰船页可转入舰队）</div>
+            ) : null}
             {offlineReport.skillsUp.length > 0 ? (
               <div className="app-report-line">技能：{offlineReport.skillsUp.join('、')}</div>
             ) : null}
