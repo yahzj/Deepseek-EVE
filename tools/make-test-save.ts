@@ -96,6 +96,7 @@ import {
   wormholeEnsureVeinPiles,
   wormholeHoldSyncCargo,
   wormholeHoldUsage,
+  wormholeSalvagersOf,
   wormholeStowOrTemp,
 } from '../packages/core/src/wormholeSalvage'
 import { makeHoldState, placementCells } from '../packages/core/src/wormholeHold'
@@ -1550,7 +1551,7 @@ function injectWormhole(state: GameState): string[] {
  * `wh-overload`（**超载**）：编队只剩 3 艘（沉船缩容）⇒ 可用格 20→15，货仓仍装 19 格 ⇒ 超载：
  * 扫描/前往/打捞/采集/拾取全封，界面出红条 + 「一键抛到容量内」；**抛货永远可用**（不软锁）。
  *
- * 共同场面：4× 长尾鲨（T3）· 满配搜打撤（低槽 打捞器 MK3 + 采集器 MK3）· **第 2 层** ·
+ * 共同场面：4× 长尾鲨（T3）· 满配搜打撤（高槽 3×炮台 + 打捞器 MK3 + 采集器 MK3）· **第 2 层** ·
  * 站在**舰船墓场**（已铺 3~10 堆残骸）· 同层一格**矿脉**（已扫描、1 回合可达）·
  * 出口已知（信标读过）· 守卫没清（撤离随时可走、深入要先打守卫）。
  */
@@ -1568,27 +1569,33 @@ function injectWormholeBag(state: GameState, overload: boolean): string[] {
     state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
   }
   notes.push('钱包 +30,000,000 ISK · 战斗系技能 Lv3 · 弹药三型 ×5000 · 修理组件各 ×20')
-  // 满配搜打撤编队（2026-09-13「给作业开」：作业装备走低槽）
+  // 满配搜打撤编队（2026-09-14 船长「改回高槽」：作业装备回高槽 ⇒ 高槽 3×炮台 + 打捞器 + 采集器）
   const fit = {
-    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
     mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
-    low: ['mod-salvager-3', 'mod-miner-3'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
   const uids: string[] = []
   for (let i = 0; i < 4; i++) {
     const uid = addShipToFleet(state, 'sh-thresher')
     const s = state.fleet[uid]!
-    s.customName = `长尾鲨${['①', '②', '③', '④'][i]}·搜打撤满配（打捞器+采集器在低槽）`
+    s.customName = `长尾鲨${['①', '②', '③', '④'][i]}·搜打撤满配（打捞器+采集器在高槽）`
     s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
     s.durability = 1
     s.armorPct = 1
     if (i === 0) state.shipId = uid
     uids.push(uid)
   }
-  notes.push('4× 长尾鲨级巡洋（T3）· 满配：5×动能 MK2 + 推进/双盾/索敌 + **低槽 打捞器 MK3 + 采集器 MK3**')
+  notes.push('4× 长尾鲨级巡洋（T3）· 满配：3×动能 MK2 + 推进/双盾/索敌 + **高槽 打捞器 MK3 + 采集器 MK3** · 低槽 稳像 + 装甲（CPU 226/345）')
   // 进洞（第 2 层）并把场面摆成"站在墓场上、货仓快满"
   const ctx = buildSimContext()
   const seed = 20260913
+  /**
+   * ⚠ **先清掉在途副本**（与 `wh-layer4` 同款）：真档里若玩家正停在洞里，`wormholeEnter` 会被
+   * 「已经在虫洞里了」拒掉（本档目的就是给一个**指定的层**现场 ⇒ 旧的在途状态一律作废；
+   * 本工具不写回真档，只产出测试档）。2026-09-14 复现：船长当时正在洞里 ⇒ 本档生成中断。
+   */
+  state.wormhole = { run: null, lastFleetLost: 0 }
   const enter = wormholeEnter(state, ctx, uids, seed)
   if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
   const run = state.wormhole.run!
@@ -1626,7 +1633,7 @@ function injectWormholeBag(state: GameState, overload: boolean): string[] {
   /**
    * **把货仓填到只剩 2 格**（按真实容量算）：网格 8 列 ⇒ 一条货条最多横着占满一整行（8 格），
    * 所以用**多种货**各切一条 8 格（背包不变式：一种物品一条；单条 26 格横竖都放不下 ⇒ 会直接判超载）。
-   * 留 2 格 < 一批打捞量（8 台打捞器）⇒ 一点打捞就会撞上"装不下"。
+   * 留 2 格 < 一批打捞量（= 编队打捞器台数，4 艘各 1 台 MK3）⇒ 一点打捞就会撞上"装不下"。
    */
   run.hold = undefined as never
   const capCells = wormholeHoldCapacityOf(state, ctx)
@@ -1645,7 +1652,7 @@ function injectWormholeBag(state: GameState, overload: boolean): string[] {
   const cap = wormholeHoldUsage(state, ctx)
   notes.push(
     `货仓：按真实容量填到**只剩 ${cap.capacity - cap.used} 格**（已用 ${cap.used}/${cap.capacity} 格 · ` +
-      `每条 8 格铺满整行、共 ${run.bag.length} 种货）· 一批打捞量 = ${4 * 2} 台打捞器`,
+      `每条 8 格铺满整行、共 ${run.bag.length} 种货）· 一批打捞量 = ${wormholeSalvagersOf(state, ctx)} 台打捞器`,
   )
   if (overload) {
     run.fleet = run.fleet.slice(0, 3)
@@ -1705,11 +1712,11 @@ function injectWormholeLayer4(state: GameState): string[] {
     state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
   }
   notes.push('弹药三型 ×5000 · 修理组件民用/军用各 ×20（承伤持久，出洞要修船）')
-  // 满配搜打撤编队（作业装备走低槽，与 `wh-bag` 同款）
+  // 满配搜打撤编队（2026-09-14「改回高槽」：作业装备在高槽，与 `wh-bag` 同款）
   const fit = {
-    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
     mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
-    low: ['mod-salvager-3', 'mod-miner-3'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
   const uids: string[] = []
   for (let i = 0; i < 4; i++) {
@@ -1722,7 +1729,7 @@ function injectWormholeLayer4(state: GameState): string[] {
     if (i === 0) state.shipId = uid
     uids.push(uid)
   }
-  notes.push('4× 长尾鲨级巡洋（T3）· 5×动能 MK2 + 推进/双盾/索敌 + 低槽 打捞器 MK3 + 采集器 MK3')
+  notes.push('4× 长尾鲨级巡洋（T3）· 3×动能 MK2 + 推进/双盾/索敌 + 高槽 打捞器 MK3 + 采集器 MK3 · 低槽 稳像 + 装甲（CPU 226/345）')
   const ctx = buildSimContext()
   const seed = 20260913
   /**
@@ -1788,8 +1795,8 @@ function injectWormholeLayer4(state: GameState): string[] {
  * 谜质装置增益 · 安全货柜拆解）也都在这一档里顺手能试 ⇒ **一档走完全部**。
  *
  * 现场（确定性摆位，同 seed 每次一样）：
- * - **第 2 层**；编队 = **4× 长尾鲨级（T3 · 搜打撤满配）＋ 1× 玄武级（T4）**——今天测的是货仓管理，
- *   多带一艘 T4 把货仓放大到 58 格（回合预算走真引擎 `wormholeEnter` 算，不手写数字）；
+ * - **第 2 层**；编队 = **2× 长尾鲨级（T3 · 搜打撤满配）＋ 2× 玳瑁级（T3 · 重装 4/4/5 槽）**——今天测的是货仓管理，
+ *   借两艘重装巡舰把货仓放大到 **77 格**（回合预算走真引擎 `wormholeEnter` 算，不手写数字）；
  * - **入口格 = 舰船墓场**（已铺残骸，落地即可打捞）；
  * - 同层另有：**遗迹**（打捞 ⇒ 「惊扰守卫」确认 ⇒ 恶战）· **矿脉**（采集虚空母矿）·
  *   **舰船信号**（到达即交火）· **谜质格**（激活取回一台谜质储存器）；
@@ -1827,23 +1834,18 @@ function injectWormholeAll(state: GameState): string[] {
   for (const b of BOXES) state.warehouse.items[b] = (state.warehouse.items[b] ?? 0) + 2
   notes.push('钱包 +30,000,000 ISK · 协会声望 13 · 战斗系技能 Lv3 · 弹药三型 ×5000 · 修理组件各 ×20')
   notes.push(`仓库：五族遗迹安全货柜**各 2 件**（${BOXES.join(' / ')}）⇒ 工业页可连拆`)
-  // 编队：4× 长尾鲨（T3 搜打撤满配，与 wh-bag 同款）+ 1× 玄武级（T4，把货仓放到 58 格）
-  const fit = {
-    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
-    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
-    low: ['mod-salvager-3', 'mod-miner-3'],
-  }
+  // 编队：2× 长尾鲨（T3 搜打撤满配，与 wh-bag 同款）+ 2× 玳瑁（T3 重装 4/4/5 槽，把货仓放到 77 格）
   const uids: string[] = []
-  /** 舰型分工：长尾鲨 = 主战（5×动能 MK2）；玳瑁 = 重装（360 装甲）——四艘**都挂作业装**（打捞器 + 采集器 MK3） */
+  /** 舰型分工：长尾鲨 = 主战（3×动能 MK2 + 作业装）；玳瑁 = 重装（360 装甲）——四艘**都挂作业装**（打捞器 + 采集器 MK3，2026-09-14「改回高槽」后在高槽） */
   const thresherFit = {
-    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
     mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
-    low: ['mod-salvager-3', 'mod-miner-3'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
   }
   const hawksbillFit = {
-    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+    high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
     mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
-    low: ['mod-salvager-3', 'mod-miner-3', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-kin-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-armor-plate-2'],
   }
   const fleetPlan: Array<[string, string, typeof thresherFit]> = [
     ['sh-thresher', '长尾鲨①·主战（搜打撤满配）', thresherFit],
@@ -1862,8 +1864,8 @@ function injectWormholeAll(state: GameState): string[] {
     uids.push(uid)
   }
   notes.push(
-    '编队（**入场封顶 4 艘 · 总质量上限 16,000**）：2× 长尾鲨级巡洋（T3 · 5×动能 MK2）＋ ' +
-      '2× 玳瑁级重装巡舰（T3 · 12,000 m³ / 艘 · 4/4/5 槽），**四艘都挂 打捞器 MK3 + 采集器 MK3**' +
+    '编队（**入场封顶 4 艘 · 总质量上限 16,000**）：2× 长尾鲨级巡洋（T3 · 3×动能 MK2）＋ ' +
+      '2× 玳瑁级重装巡舰（T3 · 12,000 m³ / 艘 · 4/4/5 槽），**四艘都挂 打捞器 MK3 + 采集器 MK3（高槽）**' +
       '——今天测货仓管理，借两艘重装巡舰把货仓放大（4×T3 = 14,000 质量，仍在上限内）',
   )
   const ctx = buildSimContext()

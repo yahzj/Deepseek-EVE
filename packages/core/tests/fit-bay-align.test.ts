@@ -138,4 +138,50 @@ describe('位数组按船型布局补齐（装配页按位号装入）', () => {
     // 经修复链对齐后，按位号装入照旧可用（玩家救急后的正常体验）
     expect(swapModuleAt(state, ARMOR, ctx, { rack: 'low', index: 2, shipId: uid }).ok).toBe(true)
   })
+
+  it('载入修复链：停在中/低槽的作业装备（采集器 / 打捞器）归位高槽；高槽满则腾位退库；在洞编队跳过', () => {
+    // 2026-09-14 船长「改回高槽」：2026-09-13～09-14 低槽口径那两天存下的档需要归位
+    const RIG = 'mod-rig-x'
+    const MINER = 'mod-miner-x'
+    const ctxWork = makeTestCtx({
+      quietEvents: true,
+      ships: [ship(SHIP, { cpu: 200, slots: { high: 2, mid: 3, low: 4 } })],
+      modules: [
+        moduleDef(RIG, 'salvager', 0, { cpuUse: 2, salvageCycleMs: 10_000 }),
+        moduleDef(MINER, 'miner', 0, { cpuUse: 5 }),
+        moduleDef(GUN, 'turret', 0, { ...GUN_FIELDS, cpuUse: 10 }),
+      ],
+    })
+    // ① 低槽口径存下的档：两件作业装备停在低槽 ⇒ 高槽有位就搬回去
+    const st = createInitialState({ nowWallMs: 0, seed: 12 })
+    const u = addShipToFleet(st, SHIP)
+    st.fleet[u]!.fitted = { high: [null, null], mid: [null, null, null], low: [MINER, RIG, null, null] }
+    repairDeprecatedModules(st, ctxWork)
+    expect(st.fleet[u]!.fitted.high).toEqual([MINER, RIG])
+    expect(st.fleet[u]!.fitted.low.filter((x) => x !== null)).toHaveLength(0)
+    expect(countModule(st, MINER) + countModule(st, RIG)).toBe(0) // 只是换位，不是退回装备库
+    // ② 幂等：再跑一次不再动
+    repairDeprecatedModules(st, ctxWork)
+    expect(st.fleet[u]!.fitted.high).toEqual([MINER, RIG])
+    // ③ 高槽满 ⇒ 把**最后装上的那件**退回装备库腾位（船长 2026-09-14：「自动归位，被挤掉的炮退回装备库」）
+    const st2 = createInitialState({ nowWallMs: 0, seed: 13 })
+    const u2 = addShipToFleet(st2, SHIP)
+    st2.fleet[u2]!.fitted = { high: [GUN, GUN], mid: [null, null, null], low: [RIG, null, null, null] }
+    repairDeprecatedModules(st2, ctxWork)
+    expect(st2.fleet[u2]!.fitted.high).toEqual([GUN, RIG]) // 末尾那件腾位给作业装备
+    expect(st2.fleet[u2]!.fitted.low.filter((x) => x !== null)).toHaveLength(0)
+    expect(countModule(st2, GUN)).toBe(1) // 腾出的炮退回装备库（件不丢、可装回）
+    // ④ 在洞编队跳过：进洞后改装是锁的，归位也不该在途改战力（出洞后再载入即归位）
+    const st3 = createInitialState({ nowWallMs: 0, seed: 14 })
+    const u3 = addShipToFleet(st3, SHIP)
+    st3.fleet[u3]!.fitted = { high: [GUN, null], mid: [null, null, null], low: [RIG, null, null, null] }
+    st3.wormhole = { run: { fleet: [u3] } as never, lastFleetLost: 0 }
+    repairDeprecatedModules(st3, ctxWork)
+    expect(st3.fleet[u3]!.fitted.low[0]).toBe(RIG) // 在途不动
+    expect(st3.fleet[u3]!.fitted.high[0]).toBe(GUN)
+    st3.wormhole = { run: null, lastFleetLost: 0 } // 出洞后再载入 ⇒ 归位
+    repairDeprecatedModules(st3, ctxWork)
+    expect(st3.fleet[u3]!.fitted.high).toEqual([GUN, RIG])
+    expect(st3.fleet[u3]!.fitted.low.filter((x) => x !== null)).toHaveLength(0)
+  })
 })

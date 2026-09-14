@@ -1833,7 +1833,7 @@ function GalaxyActions({
           </div>
         ))
       })()}
-      {/* ⑤ 残骸打捞（B3：采矿式自动循环作业；需低槽打捞器，满仓自动返航卸货后自动续捞） */}
+      {/* ⑤ 残骸打捞（B3：采矿式自动循环作业；需高槽打捞器，满仓自动返航卸货后自动续捞） */}
       <div className="app-bay-title app-ga-sub">
         <span className="app-ico"><Glyph name="nav-salvage" size={14} color={NAV_TONES["nav-salvage"]} /></span>残骸打捞（该星系残骸密度 {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
       </div>
@@ -1856,7 +1856,7 @@ function GalaxyActions({
       ) : (
         <div className="app-ga-row">
           <span className="app-ga-main">
-            打捞（需低槽打捞器）
+            打捞（需高槽打捞器）
             <span className="app-dim app-ga-desc">
               残骸可带回站内拆解提炼；满仓自动返航卸货；低安作业留意伏击
             </span>
@@ -1864,7 +1864,7 @@ function GalaxyActions({
           <button
             className="app-btn is-small is-primary"
             disabled={state.salvaging.active}
-            title={state.salvaging.active ? '打捞作业进行中（顶部活动栏可停止）' : '开始打捞（需低槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
+            title={state.salvaging.active ? '打捞作业进行中（顶部活动栏可停止）' : '开始打捞（需高槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
             onClick={() => {
               const r = engine.startSalvageOpAt(galaxy.id)
               if (!r.ok) onToast(r.error ?? '无法打捞', true)
