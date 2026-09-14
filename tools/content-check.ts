@@ -105,6 +105,8 @@ securityZoneOf,
   WORMHOLE_FAMILIES,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  wormholeDilutionPoolOf,
+  wormholeLootShares,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -3334,12 +3336,35 @@ for (const m of MODULES) {
         )
       }
     }
+    /* ⑦b **稀释池契约**（2026-09-13 船长：「将新增的一次性蓝图放入虫洞的专属奖池内作为稀释」＋
+     * 「按70:30，不过T4降到3层，T5降到5层」）：
+     * 池内容 = T3/T4/T5 的一次性舰船蓝图，**按层分档**进池（T3 层 2 起 / T4 层 3 起 / T5 层 5 起），
+     * 抽取时族专属池 70% / 稀释池 30%。本契约钉四件事：① 层分档的**件数**；② 池里**只许**一次性蓝图；
+     * ③ 与族池**不重叠**（稀释池不该混进族专属件）；④ 权重和恒为 1。 */
+    const dil2 = wormholeDilutionPoolOf(poolCtx, 2)
+    const dil3 = wormholeDilutionPoolOf(poolCtx, 3)
+    const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
+    // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 四艘 / T5 一艘（加船时这里与用例要一起改）
+    check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
+    check(dil3.length === 14, `稀释池契约：层 3 应加 T4 四张（共 14），实际 ${dil3.length} 张`)
+    check(dil5.length === 15, `稀释池契约：层 5 应加 T5 一张（共 15），实际 ${dil5.length} 张`)
+    for (const id of dil5) {
+      const bp = poolCtx.shipBlueprints.get(id)
+      check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')
+      if (pooled.has(id)) errors.push(`稀释池契约：${id} 同时落在族专属池里——稀释池与族池必须互斥`)
+    }
+    const shares = wormholeLootShares()
+    check(
+      Math.abs(shares.family + shares.dilution - 1) < 1e-9 && Math.abs(shares.dilution - 0.3) < 1e-9,
+      `稀释池契约：抽取权重应为族 0.7 / 稀释 0.3，实际 ${shares.family} / ${shares.dilution}`,
+    )
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     console.log(
       `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
         ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
         ` · 按族池（装备/装备图/舰船图[+族专属无人机]）${poolCounts} · 族专属无人机 ${droneIds.length} 型（不进五族齐备判据：C/E 替换物）` +
+        ` · **稀释池**（族 ${shares.family} : 稀释 ${shares.dilution}）层 2 = ${dil2.length} / 层 3 = ${dil3.length} / 层 5 = ${dil5.length} 张一次性舰船蓝图` +
         ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
         ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
     )

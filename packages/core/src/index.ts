@@ -930,6 +930,11 @@ export {
   wormholeCollectOreAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
+  // 稀释池（2026-09-13 船长：「将新增的一次性蓝图放入虫洞的专属奖池内作为稀释」，70:30 + 按层分档）
+  WORMHOLE_DILUTION_SHARE,
+  WORMHOLE_DILUTION_MIN_DEPTH,
+  wormholeDilutionPoolOf,
+  wormholeLootShares,
   // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
   wormholePoolGrantUnitsOf,
   wormholeGrantShipSpoils,

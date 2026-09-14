@@ -191,6 +191,53 @@ export function wormholeFamilyPoolGaps(ctx: SimContext): string[] {
   return gaps
 }
 
+/* ═══════════ 二之二、**稀释池**（船长 2026-09-13：「将新增的一次性蓝图放入虫洞的专属奖池内作为稀释」）═══
+ *
+ * 口径（船长三条裁定）：
+ * - **比例 70 : 30** ⇒ 拆解抽取时**族专属池 70% / 稀释池 30%**（稀释池就是"占位"，让族专属变稀）；
+ * - **按层分档**（船长：「T4 降到 3 层，T5 降到 5 层」）：
+ *   **T3 十张从层 2 起 · T4 四张从层 3 起 · T5（皇带鱼）从层 5 起**；
+ * - 池内容 = 市场在售的 **T3/T4/T5 一次性舰船蓝图**（`sbp-once-*`，`singleUse === true`）——
+ *   从 `ctx.shipBlueprints` **按 id 前缀派生**（与族池同款"不手抄清单"纪律：内容加了自动进池）。
+ *
+ * ⚠ **本批只落"池定义 + 权重常量 + 契约 + 用例"**：货柜内容物仍留待**拆解批次**（船长「暂时不用拆解」）
+ * ⇒ **运行时零行为变化**；拆解批次按 `wormholeLootShares()` 与 `wormholeDilutionPoolOf()` 抽即可。 */
+
+/** 稀释池占抽取的比例（族专属池 = 1 − 本值）；船长 2026-09-13：「按 70:30」 */
+export const WORMHOLE_DILUTION_SHARE = 0.3
+
+/** 各档一次性蓝图**进池的最低层**（船长 2026-09-13：「T4 降到 3 层，T5 降到 5 层」；T3 沿用层 2 起） */
+export const WORMHOLE_DILUTION_MIN_DEPTH: Readonly<Record<3 | 4 | 5, number>> = { 3: 2, 4: 3, 5: 5 }
+
+/** 抽取权重（供拆解批次调用；两者之和恒为 1） */
+export function wormholeLootShares(): { family: number; dilution: number } {
+  return { family: 1 - WORMHOLE_DILUTION_SHARE, dilution: WORMHOLE_DILUTION_SHARE }
+}
+
+/**
+ * **某层的稀释池**（按上方层分档过滤）。
+ *
+ * 判据链：蓝图 id 前缀 `sbp-once-` → `singleUse === true` → 它的**舰体档位**（`shipId` → `ctx.ships`）
+ * ≤ 本层允许的最高档（层 2~3 只放 T3；层 3~4 加 T4；层 5+ 加 T5）。
+ * 找不到舰体的（配置错误）**不进池**——宁可稀释少一点，也不放一张抽出来不知道给什么的图纸。
+ */
+export function wormholeDilutionPoolOf(ctx: SimContext, depth: number): string[] {
+  const d = Math.max(1, Math.floor(depth))
+  const allowed = (Object.keys(WORMHOLE_DILUTION_MIN_DEPTH) as unknown as string[])
+    .map((k) => Number(k) as 3 | 4 | 5)
+    .filter((tier) => d >= WORMHOLE_DILUTION_MIN_DEPTH[tier])
+  const out: string[] = []
+  for (const id of ctx.shipBlueprints.keys()) {
+    if (!id.startsWith('sbp-once-')) continue
+    const bp = ctx.shipBlueprints.get(id)
+    if (!bp || bp.singleUse !== true) continue
+    const tier = ctx.ships.get(bp.shipId)?.tier
+    if (tier === undefined || !allowed.includes(tier as 3 | 4 | 5)) continue
+    out.push(id)
+  }
+  return out.sort()
+}
+
 /* ═══════════ 三、打捞器与堆的生成 ═══════════ */
 
 /** **编队打捞器总台数**（各船 `salvagerCyclesOf` 的长度之和；0 = 干不了打捞） */
