@@ -122,6 +122,21 @@ export function wormholeScanBlockReason(state: GameState): string | null {
   if (state.expedition.active) return '主控正在远征：一台主控同时只能干一件事。'
   if (state.transit.active) return '主控正在航行：到港后再开始扫描。'
   if (state.standby.active) return '主控正在待命：先取消待命。'
+  /**
+   * **补齐剩下四项主控活动**（船长 2026-09-14 玩家反馈「虫洞扫描不占用主控活动」的同一批）：
+   * 修前这里只列到"待命"，于是**长途运输 / 快递在途 / 亲自开炉 / 亲自开线**期间还能开扫——
+   * 反方向（扫描时不让你开这些）由 `wormholePilotHoldReason` 兜住，两个方向必须成对。
+   * 判据与通知一律与 `mining.ts` / `industry.ts` / `manufacturing.ts` 的既有措辞对齐
+   * （"想自动××可改用 AI 核心驱动"）。
+   */
+  if (state.hauling.active) return '主控正在长途运输：先停止运输（活动栏「停止运输」，到站即止）再开始扫描。'
+  if (state.sideTasks.deliver !== null) return '快递投送在途：到站自动结算后再开始扫描。'
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return '精炼炉正由你亲自运转：先停炉才能展开扫描阵列（想自动精炼可改用 AI 核心驱动）。'
+  }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return '制造作业正由你亲自开线：先取消它才能展开扫描阵列（想自动制造可改用 AI 核心驱动）。'
+  }
   if (wormholeStockFull(state)) {
     return `已囤积 ${WORMHOLE_STOCK_MAX} 处未探索的虫洞：先去探索掉一处再扫。`
   }
