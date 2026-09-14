@@ -249,6 +249,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'box-relic-c': 1,
   'box-relic-d': 1,
   'box-relic-e': 1,
+  // 图纸货柜（2026-09-14 船长：遗迹打捞新增）：同为施工期中间件，数字档同常驻层（1）
+  'box-bp-shallow': 1,
+  'box-bp-mid': 1,
+  'box-bp-deep': 1,
   // 谜质储存器（F3c · 2026-09-13）：本趟虫洞内生效的装置，数字档同常驻层（1）
   'mat-chrono': 1,
   'mat-crane': 1,

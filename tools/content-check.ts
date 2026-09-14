@@ -117,6 +117,13 @@ securityZoneOf,
   wormholeRuinsFloorFor,
   // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
   WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
+  // 2026-09-14 图纸货柜（船长：遗迹打捞新增 · 占 2 格 · 一次性 + 5% 永久图纸）
+  WORMHOLE_BP_BOX_IDS,
+  WORMHOLE_BP_BOX_SHALLOW,
+  WORMHOLE_BP_BOX_DEPTH,
+  wormholePermanentPoolOf,
+  WORMHOLE_BPBOX_SHARE,
+  WORMHOLE_BPBOX_PERMANENT_CHANCE,
   wormholeDilutionPoolOf,
   wormholeFamilyPoolGaps,
   WORMHOLE_MATTER_DEVICES,
@@ -158,7 +165,8 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-13 F3c：谜质储存器 7 台（A 批 = 探索与作业类；施工期 unreleased）→ 物品总数 43→**50**
 // 2026-09-13 F3c-B1：谜质储存器再 13 台（威胁 3 + 战斗 10）→ 物品总数 50→**63**
 // 2026-09-13 F3c-B2：谜质储存器再 4 台（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）→ 物品总数 63→**67**
-check(itemDefs.length === 67, `物品总数应为 67，实际 ${itemDefs.length}`)
+// 2026-09-14：图纸货柜 3 种（层档三种 · 施工期 unreleased）→ 物品总数 67→**70**
+check(itemDefs.length === 70, `物品总数应为 70，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -3313,6 +3321,25 @@ for (const m of MODULES) {
       if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
       if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
     }
+    /* **图纸货柜契约**（2026-09-14 船长：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。
+     * 内部是随机 T3T4T5 舰船的一次性图纸。有较低概率出 T3 或 T4 的永久图纸。」）：
+     * 三种 = **层档**（浅层 2 / 中层 3~4 / 深层 5+，由 `wormholeBpBoxIdOf` 单一出处决定），必须
+     * ① `unreleased` ② `kind === 'container'` ③ **1000 m³**（= 500 m³/格 × 2 格，与形状表 2×1 对得上）
+     * ④ 在 core 形状表里**登记过**（没登记 ⇒ 被当散货：1000 m³ 会让"每格单位数"退化 ⇒ 只占 1 格、形状丢失，
+     * 与货柜/谜质那次同款坑）。 */
+    for (const id of WORMHOLE_BP_BOX_IDS) {
+      const box = ctxItems.get(id)
+      if (!box) {
+        errors.push(`图纸货柜契约：物品目录里没有 ${id} —— 遗迹掉落会散落出无定义的物品`)
+        continue
+      }
+      if (box.unreleased !== true) errors.push(`图纸货柜契约：${id}（${box.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
+      if (box.kind !== 'container') errors.push(`图纸货柜契约：${id} 的 kind = ${box.kind}，应为 container`)
+      if (box.unitM3 !== 1000) errors.push(`图纸货柜契约：${id} 的体积 = ${box.unitM3} m³，应为 1000（= 500 m³/格 × 2 格）`)
+      if (!wormholeIsShapedItem(id)) {
+        errors.push(`图纸货柜契约：${id} 没在 core 形状表里登记 —— 会被当散货塞进背包（只占 1 格、形状丢失）`)
+      }
+    }
     /**
      * ⑦ **谜质储存器契约**（F3c · 船长 2026-09-13：「谜质玩家采集后，在货仓内显示为4格的『谜质储存器』」）。
      *
@@ -3363,7 +3390,7 @@ for (const m of MODULES) {
     const tonesBlock = blockOf('export const TONES', 'export function toneOf')
     const hasKey = (block: string, key: string): boolean =>
       block.includes(`'${key}':`) || new RegExp(`(^|\\s)${key}:`, 'm').test(block)
-    for (const id of [...matterIds, 'box-relic']) {
+    for (const id of [...matterIds, 'box-relic', 'box-bp']) {
       if (!hasKey(shapesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 SHAPES 里没有图形`)
       if (!hasKey(tonesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 TONES 里没有色调`)
     }
@@ -3371,16 +3398,30 @@ for (const m of MODULES) {
       const boxId = `box-relic-${fam.toLowerCase()}`
       if (!hasKey(tonesBlock, boxId)) errors.push(`图标契约：安全货柜 ${boxId} 没有族色调（货仓格里按族分色）`)
     }
+    // 图纸货柜三种按**层档**分色（浅/中/深），与安全货柜"按族分色"同一套做法
+    for (const id of WORMHOLE_BP_BOX_IDS) {
+      if (!hasKey(tonesBlock, id)) errors.push(`图标契约：图纸货柜 ${id} 没有层档色调（货仓格里按层档分色）`)
+    }
     /**
-     * ⑨ **拆解链路契约**（F4d · 船长 2026-09-13 定：精炼炉拆解 · 族池 0.7 : 稀释池 0.3 · 一律最低档）：
-     * 每一种货柜都必须能**真的开出东西** —— 它那一族的族池非空、且"最低档稀释池"（层 2 那批
-     * 一次性舰船蓝图）非空。否则玩家拆一箱得到空气（或停炉），而 `content:check` 一声不吭。
+     * ⑨ **拆解链路契约**（F4d · 船长 2026-09-13 定：精炼炉拆解；2026-09-14 起两台口径分岔）：
+     * - **安全货柜** = 100% 族专属池 ⇒ 该族池必须非空（原「族池 0.7 : 稀释池 0.3」的稀释池**已收回**）；
+     * - **图纸货柜** = 5% 永久 / 95% 一次性 ⇒ **两种池在它的层档上都必须非空**。
+     * 否则玩家拆一箱得到空气（或停炉），而 `content:check` 一声不吭。
      */
     const unboxCtx = buildSimContext()
     const floorDilution = wormholeDilutionPoolOf(unboxCtx, WORMHOLE_DILUTION_MIN_DEPTH_FLOOR)
-    console.log('· 拆解链路读数：最低档稀释池', floorDilution.length, '张（层档常量', WORMHOLE_DILUTION_MIN_DEPTH_FLOOR, '）')
+    const shallowPerm = wormholePermanentPoolOf(unboxCtx, WORMHOLE_BP_BOX_DEPTH[WORMHOLE_BP_BOX_SHALLOW]!)
+    console.log(
+      '· 拆解链路读数：最低档一次性池', floorDilution.length, '张 · 浅层永久池', shallowPerm.length,
+      '张 · 图纸货柜并列比例', WORMHOLE_BPBOX_SHARE, '· 永久概率', WORMHOLE_BPBOX_PERMANENT_CHANCE,
+    )
     if (floorDilution.length === 0) {
-      errors.push('拆解契约：最低档稀释池为空 —— 拆解货柜会开出空气（稀释池要放一次性舰船蓝图）')
+      errors.push('拆解契约：最低档一次性池为空 —— 图纸货柜会开出空气（池里要放一次性舰船蓝图）')
+    }
+    for (const id of WORMHOLE_BP_BOX_IDS) {
+      const d = WORMHOLE_BP_BOX_DEPTH[id]!
+      if (wormholeDilutionPoolOf(unboxCtx, d).length === 0) errors.push(`拆解契约：${id}（层档 ${d}）的一次性图纸池为空`)
+      if (wormholePermanentPoolOf(unboxCtx, d).length === 0) errors.push(`拆解契约：${id}（层档 ${d}）的永久图纸池为空`)
     }
     for (const fam of WORMHOLE_FAMILIES) {
       const gap = wormholeFamilyPoolGaps(unboxCtx).filter((g) => g.includes(fam))
@@ -3514,10 +3555,13 @@ for (const m of MODULES) {
       check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')
       if (pooled.has(id)) errors.push(`稀释池契约：${id} 同时落在族专属池里——稀释池与族池必须互斥`)
     }
+    // ⚠ 2026-09-14：船长新增**图纸货柜**并裁定「与安全货柜并列」⇒ 安全货柜改 **100% 族专属池**，
+    //   70:30 那条稀释池分支**已停用** ⇒ 这里只断言"留档常量仍自洽、值未被误改"，
+    //   不再断言它参与抽取（运行时抽取口径见 `wormholeUnboxRoll`）。
     const shares = wormholeLootShares()
     check(
       Math.abs(shares.family + shares.dilution - 1) < 1e-9 && Math.abs(shares.dilution - 0.3) < 1e-9,
-      `稀释池契约：抽取权重应为族 0.7 / 稀释 0.3，实际 ${shares.family} / ${shares.dilution}`,
+      `稀释池契约（**已停用·仅留档**）：常量应为族 0.7 / 稀释 0.3，实际 ${shares.family} / ${shares.dilution}`,
     )
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
