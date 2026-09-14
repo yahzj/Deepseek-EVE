@@ -51,6 +51,8 @@ import {
   repairUsageText,
   settleDroneLosses,
   startBattleFor,
+  // 战报改造（2026-09-14 船长定）：结构化战报的唯一构造点
+  captureBattleReport,
 } from './combat'
 import { calcPower } from './expedition'
 import {
@@ -463,11 +465,10 @@ function settleFight(state: GameState, ctx: SimContext): void {
     state.wallet.isk += loot
     dropWrecks(state, ctx)
     const d = state.encounter.galaxyId ? wreckDensityOf(state, state.encounter.galaxyId, ctx) : null
-    addLog(
-      state,
-      'info',
-      `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}${repairTail(battle, ctx)}。`,
-    )
+    const encWinText = `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}${repairTail(battle, ctx)}。`
+    addLog(state, 'info', encWinText)
+    // **结构化战报**（2026-09-14 船长定）：这条日志原先不含「战报」二字 ⇒ 弹层取不到正文（现已修）
+    captureBattleReport(state, battle, { source: 'encounter', outcome: 'win', summary: encWinText })
   } else {
     // 失利附加扣损：与文字结算同一口径（一口 = 敌群火力 × hitFirepowerSec，装甲先吃）
     const hit = applyArmorFirstDamage(state, ctx, shipId, ambushHitHp(ctx, enc.threat))
@@ -489,17 +490,18 @@ function settleFight(state: GameState, ctx: SimContext): void {
       }
       takenUnits = take - rest
     }
-    addLog(
-      state,
-      'warn',
-      `⚔ 遭遇战失利（${galaxyName}·${enc.name}）：${shipName} 不敌来敌——${
-        hit
-          ? `装甲 -${pct(hit.armorLost)}%${hit.hullLost > 0 ? `、结构 -${pct(hit.hullLost)}%` : ''}（现 装甲 ${pct(hit.armorTo)}% / 结构 ${pct(hit.hullTo)}%）`
-          : '船体带着损伤'
-      }${
-        takenUnits > 0 ? `，货仓被劫走 ${takenUnits.toLocaleString('zh-CN')} 单位` : ''
-      }，狼狈脱离${repairTail(battle, ctx)}。`,
-    )
+    const encLoseText = `⚔ 遭遇战失利（${galaxyName}·${enc.name}）：${shipName} 不敌来敌——${
+      hit
+        ? `装甲 -${pct(hit.armorLost)}%${hit.hullLost > 0 ? `、结构 -${pct(hit.hullLost)}%` : ''}（现 装甲 ${pct(hit.armorTo)}% / 结构 ${pct(hit.hullTo)}%）`
+        : '船体带着损伤'
+    }${takenUnits > 0 ? `，货仓被劫走 ${takenUnits.toLocaleString('zh-CN')} 单位` : ''}，狼狈脱离${repairTail(battle, ctx)}。`
+    addLog(state, 'warn', encLoseText)
+    /**
+     * **结构化战报**（2026-09-14 船长定）：这一支是"打输、船没沉"（低安遭遇不弃船，只受损+被抢）
+     * ⇒ `lose`。⚠ 注意与远征不同：遭遇战**没有**"未分胜负就中止"那一档（要么全歼、要么被打退），
+     * 所以这里不会出 `break`。
+     */
+    if (battle) captureBattleReport(state, battle, { source: 'encounter', outcome: 'lose', summary: encLoseText })
   }
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判）——应战胜、败两路共用

@@ -39,6 +39,8 @@ import {
   setDesirePrefOf,
   settleDroneLosses,
   startBattleFor,
+  // 战报改造（2026-09-14 船长定）：结构化战报的唯一构造点
+  captureBattleReport,
   // 洞内战：距离上限与开战同源（2026-09-13 修洞内距离被锁死）
   wormholeDerivedAnomaly,
 } from './combat'
@@ -544,12 +546,13 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       const t = repairUsageText(battle, ctx)
       return t.length > 0 ? `，船体维修装置${t}` : ''
     })()
-    addLog(
-      state,
-      'trade',
+    // **结构化战报**（2026-09-14 船长定）：先把那句日志文案落到变量、再同时写日志与本记录
+    // ⇒ 卡片正文与事件日志**逐字同源**（不再靠"找含『战报』二字的日志"那条脆弱做法）。
+    const winText =
       `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}，${standPart}` +
-        `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`,
-    )
+      `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`
+    addLog(state, 'trade', winText)
+    captureBattleReport(state, battle, { source: 'expedition', outcome: 'win', summary: winText })
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
     // （按敌群记账、打捞必得）②命中本板该条赏金任务 → 酬金入账 + 下板 + 引导文案。
     // 投放不依赖任务是否还在板上：任务已过期也照样算窝点战果（打都打了，战利品不能吞）。
@@ -629,11 +632,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     if (abandoned) {
       // 弃船：无维修费，船+货仓+装备全损
       const abandonRepair = repairUsageText(battle, ctx)
-      addLog(
-        state,
-        'warn',
-        `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}）……`,
-      )
+      const abandonText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}）……`
+      addLog(state, 'warn', abandonText)
+      // 战报（2026-09-14）：弃船 = 我方全灭那一档 ⇒ `lose`；沉船名单走推导（三层血已归零）
+      captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: abandonText })
       loseShip(state, state.shipId, ctx, `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`)
       exp.active = false
       exp.battle = null
@@ -651,11 +653,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''
     const loseRepair = repairUsageText(battle, ctx)
-    addLog(
-      state,
-      'warn',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`,
-    )
+    const loseText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`
+    addLog(state, 'warn', loseText)
+    // 战报（2026-09-14）：走到这里就是"打输了、船没沉"⇒ `lose`（沉船那一支在上面 return 了）
+    captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: loseText })
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）
   exp.battle = null
@@ -753,9 +754,7 @@ function settleBattleRetreat(
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : exp.anomalyId ?? '目标'
   const dmgTxt = hit ? hitDamageText(hit) : `结构 -${legacyLossPct}%（旧档兜底）`
-  addLog(
-    state,
-    'warn',
+  const retreatText =
     mode === 'timeout'
       ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。`
       : mode === 'cannot-engage'
@@ -767,8 +766,20 @@ function settleBattleRetreat(
         : mode === 'auto'
           ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，正在返航。`
           // 2026-09-12 合并：主树「手动撤退 = **立刻回港**」的新文案（本块两侧各改一处 ⇒ 并集）
-          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，即刻回港。`,
-  )
+          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，即刻回港。`
+  addLog(state, 'warn', retreatText)
+  /**
+   * 战报（2026-09-14 船长定）：**四档里的「脱离」那一档** —— 这四种都是"没分出胜负就收场"
+   * （结构撤退 / 打满上限超时 / 无法交战 / 玩家主动撤退），故 `outcome: 'break'`，
+   * 只在 `breakReason` 上区分原因（判定词不变）。⚠ 超时在本引擎里"按被迫撤退处理"是**结算口径**
+   * （轻损、不弃船），与这里给的**判定词**是两件事。
+   */
+  captureBattleReport(state, battle, {
+    source: 'expedition',
+    outcome: 'break',
+    breakReason: mode === 'timeout' ? 'timeout' : mode === 'cannot-engage' ? 'cannot-engage' : mode === 'auto' ? 'hull' : 'manual',
+    summary: retreatText,
+  })
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null

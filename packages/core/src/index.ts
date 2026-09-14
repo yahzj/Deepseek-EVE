@@ -115,6 +115,10 @@ export type {
   EventsState,
   GameState,
   DroneLossReport,
+  // 战报改造（2026-09-14 船长定）：结构化战报的类型
+  BattleReportRecord,
+  BattleReportSource,
+  BattleBreakReason,
 } from './state'
 
 export {
@@ -622,6 +626,9 @@ export {
   pdEnabledFor,
   droneLostCount,
   settleDroneLosses,
+  // 战报改造（2026-09-14 船长定）：唯一构造点 + 四档判定纯函数
+  captureBattleReport,
+  battleVerdictOf,
   // 推进器周期爆发（2026-09-10 船长定）：引擎与战斗界面同源读这一个函数
   thrusterPhase,
   effectiveHitMul,
@@ -636,7 +643,7 @@ export {
   // 此前面板用 (1+falloff)/2 自算——旧口径下引擎实际是 ×0.44/×0.48、面板却写 ×0.65/×0.68，属显示值与实战值漂移）
   beamPowerFactor,
 } from './combat'
-export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3 } from './combat'
+export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 
 // 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；旧稳态 bountyWinPercentGuarded 仅兼容遗留调用）
 export { BOUNTY_MC_RUNS, buildEvalState, estimateBountyWinOn, estimateBountyWinMC } from './winEstimate'
