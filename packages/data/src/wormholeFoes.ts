@@ -15,6 +15,12 @@
  * 实际用哪一层由 core 的 `wormholeAnomalyOf(base, depth, kind, waves)` **按层换算**：
  * 层末 BOSS ×1.2、撤离战 ×0.8、普通节点 ×1.0（见 `WORMHOLE_BOSS_THREAT_MUL` 等常量）。
  *
+ * **选靶倾向概率**（船长 2026-09-14：「**虫洞敌人的攻击倾向，加一个概率**」→「**目前先挨个定为60%**」）：
+ * 本文件里**写了 `foeTargeting` 的三张卡**（A/C/D）各挂 `foeTargetingChance: 0.6`——每发开火前掷一次，
+ * 没掷中 ⇒ 这一发退回等权随机；**G/E 两张本来就是 `random` 模式 ⇒ 不写该字段**
+ * （`random` 下它无意义，写了也按 1 处理）。层末守卫的 0.6 在 core 侧
+ * （`WORMHOLE_BOSS_TARGETING_CHANCE`，模式仍是"打最大的"）。
+ *
  * ⚠ **施工期对玩家不可见**：五张卡一律 `hidden: true`（不进悬赏目录、不被派发、不参与族级设计契约），
  * 且洞内入口本身在调试开关后面 ⇒ 拍板前玩家遇不到它们。
  *
@@ -43,6 +49,10 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // **选靶模式**（船长 2026-09-13「虫洞内敌人的目标选择机制」）：海盗抢货船 ⇒ 专挑**非战斗船**
     foeTargeting: 'noncombat',
+    // **选靶倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→「目前先挨个定为60%」）：
+    // 每发开火前掷一次——六成按"抢货船"挑，四成这一发乱了（等权随机）。
+    // ⚠ 这是**性格强度**、不是难度旋钮：要调难度请动 `dmgMul`/`hpMul` 或层威胁曲线（2026-09-13 口径）。
+    foeTargetingChance: 0.6,
     // 混伤 8:2（主动能 / 副爆炸 = 劫掠护卫舰本体的构成；与编成条目的有效构成必须一致，
     // 见 `content:check`「舰级契约」的卡面/编成一致性断言）
     dmgMix: { kinetic: 8, explosive: 2 },
@@ -65,6 +75,8 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // 异形捕食弱者 ⇒ 打**最小的**（按舰种档）
     foeTargeting: 'smallest',
+    // 倾向概率 0.6（同批：六成盯着最小的那艘，四成乱咬）
+    foeTargetingChance: 0.6,
     // 混伤 8:2（主等离子 = C 族酸液签名 / 副爆炸）
     dmgMix: { plasma: 8, explosive: 2 },
     // 编成 = 畸变幼虫 ×3（T1，快、等离子、贴脸撕咬）
@@ -85,6 +97,8 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // 守墓者按残余自动化程序压制火力 ⇒ 打**输出最高的**
     foeTargeting: 'top-output',
+    // 倾向概率 0.6（同批：压制程序六成能锁对火力最高的那艘，四成判定失准 ⇒ 乱打）
+    foeTargetingChance: 0.6,
     // 混伤 8:2（主等离子 = D 族「以能量武器为主」/ 副动能）
     dmgMix: { plasma: 8, kinetic: 2 },
     // 编成 = 守墓长舰 ×1（T3 中程光束）+ 幽灵舰 ×1（T2 快船）
@@ -111,6 +125,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // 蜂群乱战 ⇒ **随机抽取**（缺省口径也在本卡显式写出，便于日后单独调整）
     foeTargeting: 'random',
+    // ⚠ 本卡**刻意不写** `foeTargetingChance`：模式已随机，概率对它无意义（写了也按 1 处理、不掷骰）
     // 混伤 8:2（主动能 / 副爆炸 = G 族蜂群炮台构成）
     dmgMix: { kinetic: 8, explosive: 2 },
     // 编成 = 围攻残兵舰 ×2（T1 蜂群压制）
@@ -131,6 +146,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // E 族签名 = **平台（机库 + 无人机承载）**：不打人、靠机群投送火力 ⇒ 选靶模式 **随机**（族格）
     foeTargeting: 'random',
+    // ⚠ 本卡**刻意不写** `foeTargetingChance`（同 G 卡：随机模式下该字段无意义）
     // 混伤 **50% 动能 + 50% 爆炸**（船长 2026-09-11「该系敌人伤害比例为 50% 爆炸 50% 动能」；E 族族格）
     dmgMix: { kinetic: 5, explosive: 5 },
     // 编成 = 奥罗残骸段 ×1（T3 静物残骸 + **警戒机群 5 架**；族内最"旧"最轻的一截）
