@@ -22,6 +22,12 @@
  * 读数列义：`胜率` = 该场判定我方胜的比例；`时长` = 战斗时钟秒（多播种均值）；`残血` = 我方
  * **全编队**剩余三层血 ÷ 满血；`收益/威胁` = 该层期望原矿价值 ÷ 该层威胁（**应逐层上升**）。
  *
+ * **整趟模式（`--runs`）的读数列义**（2026-09-13 二号补注）：`结果` = 撤离成功 / 全损；
+ * 「到手」= 真正**入港**的额（撤离成功才有，全损 = 0）；「收集」= 趟内累计（不等于到手）；
+ * 汇总下面那行「**回合余量**」= 终局还剩几回合 —— 它用来区分"**盘面没东西可拿**"与"**回合不够拿**"，
+ * 两者的处方相反（前者要加产出、后者要加回合）。⚠ 回合是**整趟共用一池**，深入下一层**不刷新**
+ * （`wormhole.ts:508`）⇒ 这个数是整趟结束时的余量。
+ *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
  *   - 本工具最后核对：**2026-09-13**（当日核对：层威胁曲线 / 四族敌卡轮换 / 拾取堆生成 / 撤离战倍率）
@@ -79,7 +85,14 @@ const ctx: SimContext = buildSimContext()
  * - `old`：**旧口径对照**（作业装备还占高槽 ⇒ 3×导弹 + 打捞器 + 采集器）——用来给船长看"改槽前"的差距。
  */
 const REF_SHIP = 'sh-thresher'
-export type RefFit = 'full' | 'combat' | 'old'
+/**
+ * **`auto`（2026-09-13 二号追加 · 供"哪套编队最优"的对比）**：按**该舰自己的槽位**自动配装——
+ * 高槽塞满导弹 MK2、中槽按 推进→双盾→索敌 取前 N、低槽按 **打捞器 MK3 → 采集器 MK3** → 稳像/装甲取前 N。
+ * 为什么必须用 `auto` 做舰队横向对比：`full/combat/old` 三套都是**长尾鲨的 11 槽配装**，
+ * 直接套到 10 槽的鹦鹉螺/13 槽的玳瑁上会**超槽**（`fitted` 是直接赋值的、不走装配校验）⇒
+ * 槽少的船会白拿别人的火力，对比就失真了。同一艘船的读数与 `full` 同源（长尾鲨 4/3/3… 见下）。
+ */
+export type RefFit = 'full' | 'combat' | 'old' | 'auto'
 const REF_FIT_FULL = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
@@ -110,7 +123,28 @@ const SKILLS: Record<string, number> = {
  * 解析表 / 逐卡模式看战斗读数，整趟模式还要看"能不能捞"（不带作业装备 ⇒ 一分钱也捞不上来）。
  */
 const FIT_ARG = (process.argv.find((a) => a.startsWith('--fit=')) ?? '--fit=full').split('=')[1]
-const ANALYTIC_FIT: RefFit = FIT_ARG === 'combat' ? 'combat' : FIT_ARG === 'old' ? 'old' : 'full'
+const ANALYTIC_FIT: RefFit = FIT_ARG === 'combat' ? 'combat' : FIT_ARG === 'old' ? 'old' : FIT_ARG === 'auto' ? 'auto' : 'full'
+
+/**
+ * **`--ships=id,id,...`（2026-09-13 二号追加）**：把"参考编队"换成任意编队 ⇒ 用来跑
+ * 「哪套编队最优」的横向对比（默认仍是 4×长尾鲨）。与 `--fit=auto` 搭配时按各舰自己的槽位配装。
+ * ⚠ 入洞门槛由引擎把关（`wormholeEnter` 失败即抛错），本工具不预先筛。
+ */
+const SHIPS_ARG = process.argv.find((a) => a.startsWith('--ships='))
+const FLEET_IDS: readonly string[] | null = SHIPS_ARG ? SHIPS_ARG.split('=')[1]!.split(',').filter((s) => s.length > 0) : null
+
+/** `--fit=auto`：按该舰槽位自动配装（高槽导弹满、中槽推进/双盾/索敌、低槽 打捞器→采集器→稳像/装甲） */
+function autoFitFor(defId: string): { high: string[]; mid: string[]; low: string[] } {
+  const slots = ctx.ships.get(defId)?.slots ?? { high: 0, mid: 0, low: 0 }
+  const midPool = ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2']
+  const lowPool = ['mod-salvager-3', 'mod-miner-3', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']
+  return {
+    high: Array.from({ length: slots.high ?? 0 }, () => 'mod-turret-kin-2'),
+    mid: midPool.slice(0, slots.mid ?? 0),
+    low: lowPool.slice(0, slots.low ?? 0),
+  }
+}
+
 
 const LAYERS = Number((process.argv.find((a) => a.startsWith('--layers=')) ?? '--layers=8').split('=')[1])
 const WAVES = Math.max(1, Number((process.argv.find((a) => a.startsWith('--waves=')) ?? '--waves=1').split('=')[1]))
@@ -127,9 +161,11 @@ function makeFleet(seed: number, fit: RefFit = 'full'): { state: GameState; uids
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[key] = 5_000
   const refFit = fit === 'old' ? REF_FIT_OLD : fit === 'combat' ? REF_FIT_COMBAT : REF_FIT_FULL
   const uids: string[] = []
-  for (let i = 0; i < 4; i++) {
-    const uid = addShipToFleet(state, REF_SHIP)
-    state.fleet[uid]!.fitted = { high: [...refFit.high], mid: [...refFit.mid], low: [...refFit.low] }
+  const ids = FLEET_IDS ?? Array.from({ length: 4 }, () => REF_SHIP)
+  for (const id of ids) {
+    const useFit = fit === 'auto' ? autoFitFor(id) : refFit
+    const uid = addShipToFleet(state, id)
+    state.fleet[uid]!.fitted = { high: [...useFit.high], mid: [...useFit.mid], low: [...useFit.low] }
     uids.push(uid)
   }
   state.shipId = uids[0]!
@@ -873,6 +909,24 @@ function runRunsMode(): void {
       `（母矿 ${Math.round(avg((o) => o.income.oreUnits))} 单位 / ${Math.round(avg((o) => o.income.oreIsk)).toLocaleString('zh-CN')} ISK` +
       ` + 残骸拆解 ${Math.round(avg((o) => o.income.wreckIsk)).toLocaleString('zh-CN')} ISK）` +
       ` · 货柜 ${avg((o) => o.income.boxes).toFixed(2)} 件/趟`,
+  )
+  /**
+   * **回合余量**（2026-09-13 二号追加 · 判断"到底是什么卡住了收益"）。
+   *
+   * 为什么要报它：早前只看"每动作收益"会把**盘面没东西可拿**误读成**回合不够拿**——两者的处方完全相反
+   * （前者要加产出、后者要加回合）。逐趟打过 `--trace` 才确认：收租收完就直接去信标/守卫了，
+   * 余回合数并不小 ⇒ 收益上限由**盘面可收的量**决定。余回合接近 0 才说明回合真的见底。
+   * ⚠ 口径：整趟共用**一个**回合池（`turnsLeft` 在深入下一层时**不刷新**，见 `wormhole.ts:508`）⇒
+   * 这个数是"整趟结束时剩多少"，不是"每层剩多少"。
+   */
+  console.log(
+    `        回合余量：终局平均剩 ${avg((o) => o.turnsLeft).toFixed(1)} 回合（预算 ${
+      out[0] ? out[0].turnsTotal : '—'
+    } 回合/趟，整趟共用一池，深入不刷新）· 平均动作 ${avg((o) =>
+      o.acts.scans + o.acts.moves + o.acts.salvages + o.acts.collects + o.acts.fights + o.acts.discards,
+    ).toFixed(1)} 次` +
+      `（扫 ${avg((o) => o.acts.scans).toFixed(1)} / 走 ${avg((o) => o.acts.moves).toFixed(1)} / 打捞 ${avg((o) => o.acts.salvages).toFixed(1)}` +
+      ` / 采集 ${avg((o) => o.acts.collects).toFixed(1)} / 交战 ${avg((o) => o.acts.fights).toFixed(1)} / 抛货 ${avg((o) => o.acts.discards).toFixed(1)}）`,
   )
   const collectedAvg = avg((o) => o.layerCollected.reduce((s, v) => s + v, 0))
   console.log(
