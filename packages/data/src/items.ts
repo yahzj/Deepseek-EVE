@@ -594,7 +594,7 @@ export const DRONES: readonly ItemDef[] = [
     name: '鱿蜂无人机',
     kind: 'drone',
     unitM3: 5, // 轻型侦察机档（与蜂鸟同体积）
-    baseSellPriceIsk: 6_000,
+    baseSellPriceIsk: 24_000, // 2026-09-14 船长「专属 ×4」：6,000 → 24,000（与市场行同值）
     description:
       '流亡者从残舰机库里拼出来的侦查无人机：单发威力是制式侦察机的两倍、机体更飘（闪避最高），放飞还比制式机省电。代价是三层血最薄——挨一下就没了。',
     damageType: 'kinetic', // 侦察机档：动能点射（破盾）
@@ -614,7 +614,7 @@ export const DRONES: readonly ItemDef[] = [
     name: '巢卫攻坚无人机',
     kind: 'drone',
     unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
-    baseSellPriceIsk: 12_000,
+    baseSellPriceIsk: 48_000, // 2026-09-14 专属 ×4：12,000 → 48,000
     description:
       '巢群的活体攻坚机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚且偏甲壳，装甲与结构的抗性也更硬——代价是更笨重。',
     damageType: 'explosive', // 族弹型权威：C 族 = 等离子 8 / 爆炸 2 ⇒ 爆炸在族内（且呼应本族「孢子导弹巢」）
@@ -641,7 +641,7 @@ export const DRONES: readonly ItemDef[] = [
     name: '构件哨戒无人机',
     kind: 'drone',
     unitM3: 40, // 体积档 4/4：重型哨戒（与制式哨戒机同档）
-    baseSellPriceIsk: 22_000,
+    baseSellPriceIsk: 88_000, // 2026-09-14 专属 ×4：22,000 → 88,000
     description:
       '巨构自组装的长针哨戒机：动能长针拆盾，航程比制式哨戒机更远，命中更高、远端衰减更缓，机体也略厚——它是机群里射得最远的一型。',
     damageType: 'kinetic', // 族弹型权威：E 族 = 动能 5 / 爆炸 5 ⇒ 动能在族内（呼应本族「巨构导控塔/近防阵列」）

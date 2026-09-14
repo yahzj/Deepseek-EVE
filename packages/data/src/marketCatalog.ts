@@ -570,6 +570,129 @@ export const WRECK_BUY_GOODS: readonly MarketGoodDef[] = ANOMALIES.filter((a) =>
 export const MARKET_GOODS: readonly MarketGoodDef[] = [
   ...MARKET_GOODS_RAW.map((g) => (BM_MK3_KEYS.has(g.key) ? { ...g, bmStanding: 11 } : g)),
   ...WRECK_BUY_GOODS,
+
+  /* ══════════ 专属内容的市场行（2026-09-14 船长四条裁定 · 三号）══════════
+   * 船长原话（照抄）：「允许玩家挂卖，顺便检查下其他物品，维持所有物品允许玩家挂卖」＋
+   *   「所有专属的东西，价格翻4倍」。⇒ 凡此前**无市场行**的可获得内容一律补行：
+   *   **一律 `playerBuyable: false`（只收不卖）**——市场不出售现货（渠道与稀缺性不变：洞内遗迹打捞 /
+   *   窝点高级箱），但玩家**可以挂卖**（自定价挂单）、也可以卖给 NPC 收购单（奇货档 = 全价回收）。
+   * 价 = **基准 × 4**（专属口径）：有材料单的走「材料 ÷ 0.45」当基准（全表"料/价 45%"锚）、
+   *   窝点专属件走「同槽位最高档常规件」、专属无人机走**自带货值 `baseSellPriceIsk`**。
+   * 不设声望门槛（门槛只挡买入，这些行不出售现货 ⇒ 设了没意义）；老档零迁移（纯内容表）。
+   * ⚠ 沙猫级（协会保底艇）与邓氏鱼级（无渠道壳体）**有意不补**（船长裁定）——见 roadmap 同日条目。 */
+  // ── 舰船图纸 15 张（`sbp-wh-*`：五族各 3，一次性）──
+    { key: 'sbp-wh-a-frigate', kind: 'blueprint', refId: 'sbp-wh-a-frigate', rarity: 'exotic', basePrice: 1_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮艇图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-a-cruiser', kind: 'blueprint', refId: 'sbp-wh-a-cruiser', rarity: 'exotic', basePrice: 4_942_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-c-frigate', kind: 'blueprint', refId: 'sbp-wh-c-frigate', rarity: 'exotic', basePrice: 1_307_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-c-destroyer', kind: 'blueprint', refId: 'sbp-wh-c-destroyer', rarity: 'exotic', basePrice: 2_822_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-c-cruiser', kind: 'blueprint', refId: 'sbp-wh-c-cruiser', rarity: 'exotic', basePrice: 5_680_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢群重型突击巡洋舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-d-frigate', kind: 'blueprint', refId: 'sbp-wh-d-frigate', rarity: 'exotic', basePrice: 1_536_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 哨戒电子舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-d-destroyer', kind: 'blueprint', refId: 'sbp-wh-d-destroyer', rarity: 'exotic', basePrice: 3_722_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫指挥舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-d-cruiser', kind: 'blueprint', refId: 'sbp-wh-d-cruiser', rarity: 'exotic', basePrice: 7_680_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝巡洋舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-e-frigate', kind: 'blueprint', refId: 'sbp-wh-e-frigate', rarity: 'exotic', basePrice: 1_437_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件鱼雷舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-e-destroyer', kind: 'blueprint', refId: 'sbp-wh-e-destroyer', rarity: 'exotic', basePrice: 3_107_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 机库无人机作战舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-e-carrier', kind: 'blueprint', refId: 'sbp-wh-e-carrier', rarity: 'exotic', basePrice: 7_172_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构无人机作战舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-g-frigate', kind: 'blueprint', refId: 'sbp-wh-g-frigate', rarity: 'exotic', basePrice: 1_515_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽影侦察舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-g-destroyer', kind: 'blueprint', refId: 'sbp-wh-g-destroyer', rarity: 'exotic', basePrice: 3_335_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军后勤舰图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-g-cruiser', kind: 'blueprint', refId: 'sbp-wh-g-cruiser', rarity: 'exotic', basePrice: 6_693_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军鱼雷舰图纸（一次性）（= 舰价 ×0.5）
+  // ── 装备图纸 28 张（`bp-wh-*`：五族专属装备的一次性图纸）──
+    { key: 'bp-wh-a-frag', kind: 'blueprint', refId: 'bp-wh-a-frag', rarity: 'exotic', basePrice: 5_244_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭破片炮图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-a-hangar', kind: 'blueprint', refId: 'bp-wh-a-hangar', rarity: 'exotic', basePrice: 3_955_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭机库图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-a-prop', kind: 'blueprint', refId: 'bp-wh-a-prop', rarity: 'exotic', basePrice: 2_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭加力器图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-a-coat', kind: 'blueprint', refId: 'bp-wh-a-coat', rarity: 'exotic', basePrice: 2_674_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭折射涂层图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-a-scan', kind: 'blueprint', refId: 'bp-wh-a-scan', rarity: 'exotic', basePrice: 2_802_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 赃物扫描阵图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-a-shield', kind: 'blueprint', refId: 'bp-wh-a-shield', rarity: 'exotic', basePrice: 4_764_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭者护盾笼图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-c-laser', kind: 'blueprint', refId: 'bp-wh-c-laser', rarity: 'exotic', basePrice: 4_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体棱镜束图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-c-prism', kind: 'blueprint', refId: 'bp-wh-c-prism', rarity: 'exotic', basePrice: 4_844_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳棱镜层图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-c-pulse', kind: 'blueprint', refId: 'bp-wh-c-pulse', rarity: 'exotic', basePrice: 2_915_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体脉搏加速器图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-c-missile', kind: 'blueprint', refId: 'bp-wh-c-missile', rarity: 'exotic', basePrice: 4_653_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 孢子导弹巢图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-c-frame', kind: 'blueprint', refId: 'bp-wh-c-frame', rarity: 'exotic', basePrice: 4_898_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 几丁质骨架层图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-d-turret', kind: 'blueprint', refId: 'bp-wh-d-turret', rarity: 'exotic', basePrice: 8_555_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫连装炮图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-d-shield', kind: 'blueprint', refId: 'bp-wh-d-shield', rarity: 'exotic', basePrice: 8_087_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓护盾芯图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-d-lock', kind: 'blueprint', refId: 'bp-wh-d-lock', rarity: 'exotic', basePrice: 6_454_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者丧钟图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-d-laser', kind: 'blueprint', refId: 'bp-wh-d-laser', rarity: 'exotic', basePrice: 9_312_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝棱镜炮图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-d-loader', kind: 'blueprint', refId: 'bp-wh-d-loader', rarity: 'exotic', basePrice: 5_506_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者速装填机图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-d-steady', kind: 'blueprint', refId: 'bp-wh-d-steady', rarity: 'exotic', basePrice: 5_141_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓弹道铭文图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-e-dc', kind: 'blueprint', refId: 'bp-wh-e-dc', rarity: 'exotic', basePrice: 7_442_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构损管阵列图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-e-tac', kind: 'blueprint', refId: 'bp-wh-e-tac', rarity: 'exotic', basePrice: 6_009_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构导控塔图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-e-cpu', kind: 'blueprint', refId: 'bp-wh-e-cpu', rarity: 'exotic', basePrice: 6_377_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构协处理器图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-e-pd', kind: 'blueprint', refId: 'bp-wh-e-pd', rarity: 'exotic', basePrice: 6_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构近防阵列图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-e-shield', kind: 'blueprint', refId: 'bp-wh-e-shield', rarity: 'exotic', basePrice: 7_406_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构护盾矩阵图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-g-hangar', kind: 'blueprint', refId: 'bp-wh-g-hangar', rarity: 'exotic', basePrice: 6_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军蜂巢坞图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-g-fcs', kind: 'blueprint', refId: 'bp-wh-g-fcs', rarity: 'exotic', basePrice: 4_978_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军火控图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-g-ballistic', kind: 'blueprint', refId: 'bp-wh-g-ballistic', rarity: 'exotic', basePrice: 4_642_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵弹道校正器图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-g-hull', kind: 'blueprint', refId: 'bp-wh-g-hull', rarity: 'exotic', basePrice: 6_718_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂结构层图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-g-turret', kind: 'blueprint', refId: 'bp-wh-g-turret', rarity: 'exotic', basePrice: 6_306_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军残炮图纸（一次性）（料÷0.45×4）
+    { key: 'bp-wh-g-prop', kind: 'blueprint', refId: 'bp-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器图纸（一次性）（料÷0.45×4）
+  // ── 虫洞装备 28 件（`mod-wh-*`：与各自图纸同料单 ⇒ 同价）──
+    { key: 'mod-wh-a-frag', kind: 'module', refId: 'mod-wh-a-frag', rarity: 'exotic', basePrice: 5_244_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭破片炮（料÷0.45×4）
+    { key: 'mod-wh-a-hangar', kind: 'module', refId: 'mod-wh-a-hangar', rarity: 'exotic', basePrice: 3_955_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭机库（料÷0.45×4）
+    { key: 'mod-wh-a-prop', kind: 'module', refId: 'mod-wh-a-prop', rarity: 'exotic', basePrice: 2_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭加力器（料÷0.45×4）
+    { key: 'mod-wh-a-coat', kind: 'module', refId: 'mod-wh-a-coat', rarity: 'exotic', basePrice: 2_674_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭折射涂层（料÷0.45×4）
+    { key: 'mod-wh-a-scan', kind: 'module', refId: 'mod-wh-a-scan', rarity: 'exotic', basePrice: 2_802_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 赃物扫描阵（料÷0.45×4）
+    { key: 'mod-wh-a-shield', kind: 'module', refId: 'mod-wh-a-shield', rarity: 'exotic', basePrice: 4_764_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭者护盾笼（料÷0.45×4）
+    { key: 'mod-wh-c-laser', kind: 'module', refId: 'mod-wh-c-laser', rarity: 'exotic', basePrice: 4_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体棱镜束（料÷0.45×4）
+    { key: 'mod-wh-c-prism', kind: 'module', refId: 'mod-wh-c-prism', rarity: 'exotic', basePrice: 4_844_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳棱镜层（料÷0.45×4）
+    { key: 'mod-wh-c-pulse', kind: 'module', refId: 'mod-wh-c-pulse', rarity: 'exotic', basePrice: 2_915_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体脉搏加速器（料÷0.45×4）
+    { key: 'mod-wh-c-missile', kind: 'module', refId: 'mod-wh-c-missile', rarity: 'exotic', basePrice: 4_653_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 孢子导弹巢（料÷0.45×4）
+    { key: 'mod-wh-c-frame', kind: 'module', refId: 'mod-wh-c-frame', rarity: 'exotic', basePrice: 4_898_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 几丁质骨架层（料÷0.45×4）
+    { key: 'mod-wh-d-turret', kind: 'module', refId: 'mod-wh-d-turret', rarity: 'exotic', basePrice: 8_555_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫连装炮（料÷0.45×4）
+    { key: 'mod-wh-d-shield', kind: 'module', refId: 'mod-wh-d-shield', rarity: 'exotic', basePrice: 8_087_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓护盾芯（料÷0.45×4）
+    { key: 'mod-wh-d-lock', kind: 'module', refId: 'mod-wh-d-lock', rarity: 'exotic', basePrice: 6_454_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者丧钟（料÷0.45×4）
+    { key: 'mod-wh-d-laser', kind: 'module', refId: 'mod-wh-d-laser', rarity: 'exotic', basePrice: 9_312_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝棱镜炮（料÷0.45×4）
+    { key: 'mod-wh-d-loader', kind: 'module', refId: 'mod-wh-d-loader', rarity: 'exotic', basePrice: 5_506_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者速装填机（料÷0.45×4）
+    { key: 'mod-wh-d-steady', kind: 'module', refId: 'mod-wh-d-steady', rarity: 'exotic', basePrice: 5_141_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓弹道铭文（料÷0.45×4）
+    { key: 'mod-wh-e-dc', kind: 'module', refId: 'mod-wh-e-dc', rarity: 'exotic', basePrice: 7_442_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构损管阵列（料÷0.45×4）
+    { key: 'mod-wh-e-tac', kind: 'module', refId: 'mod-wh-e-tac', rarity: 'exotic', basePrice: 6_009_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构导控塔（料÷0.45×4）
+    { key: 'mod-wh-e-cpu', kind: 'module', refId: 'mod-wh-e-cpu', rarity: 'exotic', basePrice: 6_377_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构协处理器（料÷0.45×4）
+    { key: 'mod-wh-e-pd', kind: 'module', refId: 'mod-wh-e-pd', rarity: 'exotic', basePrice: 6_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构近防阵列（料÷0.45×4）
+    { key: 'mod-wh-e-shield', kind: 'module', refId: 'mod-wh-e-shield', rarity: 'exotic', basePrice: 7_406_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构护盾矩阵（料÷0.45×4）
+    { key: 'mod-wh-g-hangar', kind: 'module', refId: 'mod-wh-g-hangar', rarity: 'exotic', basePrice: 6_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军蜂巢坞（料÷0.45×4）
+    { key: 'mod-wh-g-fcs', kind: 'module', refId: 'mod-wh-g-fcs', rarity: 'exotic', basePrice: 4_978_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军火控（料÷0.45×4）
+    { key: 'mod-wh-g-ballistic', kind: 'module', refId: 'mod-wh-g-ballistic', rarity: 'exotic', basePrice: 4_642_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵弹道校正器（料÷0.45×4）
+    { key: 'mod-wh-g-hull', kind: 'module', refId: 'mod-wh-g-hull', rarity: 'exotic', basePrice: 6_718_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂结构层（料÷0.45×4）
+    { key: 'mod-wh-g-turret', kind: 'module', refId: 'mod-wh-g-turret', rarity: 'exotic', basePrice: 6_306_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军残炮（料÷0.45×4）
+    { key: 'mod-wh-g-prop', kind: 'module', refId: 'mod-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器（料÷0.45×4）
+  // ── 虫洞舰船 15 艘（`sh-wh-*`：定制船，`priceIsk` 仍为 0 = 定制口径，契约「舰船价格口径」守）──
+    { key: 'sh-wh-a-frigate', kind: 'ship', refId: 'sh-wh-a-frigate', rarity: 'exotic', basePrice: 2_306_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰（料÷0.45×4）
+    { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮艇（料÷0.45×4）
+    { key: 'sh-wh-a-cruiser', kind: 'ship', refId: 'sh-wh-a-cruiser', rarity: 'exotic', basePrice: 9_884_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰（料÷0.45×4）
+    { key: 'sh-wh-c-frigate', kind: 'ship', refId: 'sh-wh-c-frigate', rarity: 'exotic', basePrice: 2_613_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰（料÷0.45×4）
+    { key: 'sh-wh-c-destroyer', kind: 'ship', refId: 'sh-wh-c-destroyer', rarity: 'exotic', basePrice: 5_644_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰（料÷0.45×4）
+    { key: 'sh-wh-c-cruiser', kind: 'ship', refId: 'sh-wh-c-cruiser', rarity: 'exotic', basePrice: 11_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢群重型突击巡洋舰（料÷0.45×4）
+    { key: 'sh-wh-d-frigate', kind: 'ship', refId: 'sh-wh-d-frigate', rarity: 'exotic', basePrice: 3_073_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 哨戒电子舰（料÷0.45×4）
+    { key: 'sh-wh-d-destroyer', kind: 'ship', refId: 'sh-wh-d-destroyer', rarity: 'exotic', basePrice: 7_443_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫指挥舰（料÷0.45×4）
+    { key: 'sh-wh-d-cruiser', kind: 'ship', refId: 'sh-wh-d-cruiser', rarity: 'exotic', basePrice: 15_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝巡洋舰（料÷0.45×4）
+    { key: 'sh-wh-e-frigate', kind: 'ship', refId: 'sh-wh-e-frigate', rarity: 'exotic', basePrice: 2_874_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件鱼雷舰（料÷0.45×4）
+    { key: 'sh-wh-e-destroyer', kind: 'ship', refId: 'sh-wh-e-destroyer', rarity: 'exotic', basePrice: 6_213_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 机库无人机作战舰（料÷0.45×4）
+    { key: 'sh-wh-e-carrier', kind: 'ship', refId: 'sh-wh-e-carrier', rarity: 'exotic', basePrice: 14_345_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构无人机作战舰（料÷0.45×4）
+    { key: 'sh-wh-g-frigate', kind: 'ship', refId: 'sh-wh-g-frigate', rarity: 'exotic', basePrice: 3_030_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽影侦察舰（料÷0.45×4）
+    { key: 'sh-wh-g-destroyer', kind: 'ship', refId: 'sh-wh-g-destroyer', rarity: 'exotic', basePrice: 6_670_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军后勤舰（料÷0.45×4）
+    { key: 'sh-wh-g-cruiser', kind: 'ship', refId: 'sh-wh-g-cruiser', rarity: 'exotic', basePrice: 13_386_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军鱼雷舰（料÷0.45×4）
+  // ── 窝点专属装备 14 件（`mod-lair-*`：无蓝图、无料单 ⇒ 同槽位最高档 ×4）──
+    { key: 'mod-lair-turret-a', kind: 'module', refId: 'mod-lair-turret-a', rarity: 'exotic', basePrice: 7_664_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 劫掠者转管炮（同槽位最高档 1,916,000×4）
+    { key: 'mod-lair-missile-a', kind: 'module', refId: 'mod-lair-missile-a', rarity: 'exotic', basePrice: 8_968_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭导弹巢（同槽位最高档 2,242,000×4）
+    { key: 'mod-lair-cargo-a', kind: 'module', refId: 'mod-lair-cargo-a', rarity: 'exotic', basePrice: 9_600_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 赃物强化舱（同槽位最高档 2,400,000×4）
+    { key: 'mod-lair-armor-c', kind: 'module', refId: 'mod-lair-armor-c', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体甲壳板（同槽位最高档 1,940,000×4）
+    { key: 'mod-lair-dc-c', kind: 'module', refId: 'mod-lair-dc-c', rarity: 'exotic', basePrice: 9_440_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体损管腔（同槽位最高档 2,360,000×4）
+    { key: 'mod-lair-laser-c', kind: 'module', refId: 'mod-lair-laser-c', rarity: 'exotic', basePrice: 12_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 酸液喷吐器（同槽位最高档 3,000,000×4）
+    { key: 'mod-lair-shield-d', kind: 'module', refId: 'mod-lair-shield-d', rarity: 'exotic', basePrice: 9_160_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓护盾阵列（同槽位最高档 2,290,000×4）
+    { key: 'mod-lair-turret-d', kind: 'module', refId: 'mod-lair-turret-d', rarity: 'exotic', basePrice: 7_664_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者长炮（同槽位最高档 1,916,000×4）
+    { key: 'mod-lair-armor-d', kind: 'module', refId: 'mod-lair-armor-d', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝装甲层（同槽位最高档 1,940,000×4）
+    { key: 'mod-lair-turret-e', kind: 'module', refId: 'mod-lair-turret-e', rarity: 'exotic', basePrice: 7_664_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构残骸炮（同槽位最高档 1,916,000×4）
+    { key: 'mod-lair-hangar-e', kind: 'module', refId: 'mod-lair-hangar-e', rarity: 'exotic', basePrice: 7_840_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 深层机库（同槽位最高档 1,960,000×4）
+    { key: 'mod-lair-frame-e', kind: 'module', refId: 'mod-lair-frame-e', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构骨架（同槽位最高档 1,940,000×4）
+    { key: 'mod-lair-drone-tac-g', kind: 'module', refId: 'mod-lair-drone-tac-g', rarity: 'exotic', basePrice: 8_160_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂群导控（同槽位最高档 2,040,000×4）
+    { key: 'mod-lair-drone-relay-g', kind: 'module', refId: 'mod-lair-drone-relay-g', rarity: 'exotic', basePrice: 8_120_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 流亡中继桅（同槽位最高档 2,030,000×4）
+  // ── 专属无人机 3 型（自带货值 ×4；无人机线**无制式图纸**，这三型各有一张一次性图纸，见 blueprints.ts）──
+    { key: 'drone-exile-bee', kind: 'item', refId: 'drone-exile-bee', rarity: 'exotic', basePrice: 24_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机（自带货值 6000×4）
+    { key: 'drone-wh-c-heavy', kind: 'item', refId: 'drone-wh-c-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫攻坚无人机（自带货值 12000×4）
+    { key: 'drone-wh-e-sentry', kind: 'item', refId: 'drone-wh-e-sentry', rarity: 'exotic', basePrice: 88_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件哨戒无人机（自带货值 22000×4）
+  // ── 3 张新增的一次性无人机蓝图（每次开工出 50 架）──
+  { key: 'bp-lair-g-drone', kind: 'blueprint', refId: 'bp-lair-g-drone', rarity: 'exotic', basePrice: 1_200_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机图纸（一次性）（料÷0.45×4）
+  { key: 'bp-wh-c-drone', kind: 'blueprint', refId: 'bp-wh-c-drone', rarity: 'exotic', basePrice: 2_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫无人机图纸（一次性）（料÷0.45×4）
+  { key: 'bp-wh-e-drone', kind: 'blueprint', refId: 'bp-wh-e-drone', rarity: 'exotic', basePrice: 4_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件无人机图纸（一次性）（料÷0.45×4）
 ]
 
 /** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：

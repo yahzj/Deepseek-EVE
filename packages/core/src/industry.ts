@@ -458,13 +458,20 @@ function yieldNoteFor(
     mod: Record<string, number>
     frag: Record<string, number>
     drone?: Record<string, number>
+    blueprint?: Record<string, number>
   },
   kind: 'refine' | 'recycle',
 ): string {
   // 2026-09-11 修复（船长实测反馈「回收残骸出货时的事件日志内显示的额外掉落为装备ID」）：
   // 名表必须**先查装备、再查物品**——旧实现只看 `ctx.items`，而「额外掉落」段里的装备是**模块 id**
   // （如 mod-lair-turret-a），查不到就回落到裸 id，玩家看到的是 `装备 mod-lair-turret-a×1`。
-  const nameOf = (id: string): string => ctx.modules.get(id)?.name ?? ctx.items.get(id)?.name ?? id
+  // 2026-09-14：补**蓝图**一支（高级箱新增专属无人机一次性图纸后，漏了它就会把图纸 id 念给玩家听）
+  const nameOf = (id: string): string =>
+    ctx.modules.get(id)?.name ??
+    ctx.items.get(id)?.name ??
+    ctx.blueprints.get(id)?.name ??
+    ctx.shipBlueprints.get(id)?.name ??
+    id
   const fmt = (m: Record<string, number>, cap = 6): string => {
     const es = Object.entries(m).sort((a, b) => b[1]! - a[1]!)
     const head = es
@@ -482,6 +489,8 @@ function yieldNoteFor(
     if (Object.keys(rec.mod).length > 0) loot.push(`装备 ${fmt(rec.mod)}`)
     const dr = rec.drone ?? {}
     if (Object.keys(dr).length > 0) loot.push(`无人机 ${fmt(dr)} 架`)
+    const bpAcc = rec.blueprint ?? {}
+    if (Object.keys(bpAcc).length > 0) loot.push(`图纸 ${fmt(bpAcc)} 张`)
     if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
     // 2026-09-11：日志文案禁用开发用词「彩头」（玩家反馈"不符合游戏设定的名词"）——统一写「额外掉落」
     if (loot.length > 0) parts.push(`额外掉落：${loot.join('；')}`)
@@ -695,6 +704,18 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               acc.drone = acc.drone ?? {}
               acc.drone[row.id] = (acc.drone[row.id] ?? 0) + row.count
               batchIncome += row.count * (ctx.items.get(row.id)?.baseSellPriceIsk ?? 0)
+            }
+            for (const bpId of extra.blueprints) {
+              // 专属无人机的一次性图纸（2026-09-14 船长）：进**蓝图书架**（到组装机开工，一次出 50 架）
+              state.blueprintStock[bpId] = (state.blueprintStock[bpId] ?? 0) + 1
+              acc.blueprint = acc.blueprint ?? {}
+              acc.blueprint[bpId] = (acc.blueprint[bpId] ?? 0) + 1
+              for (const g of ctx.marketGoods.values()) {
+                if (g.kind === 'blueprint' && g.refId === bpId) {
+                  batchIncome += g.basePrice ?? 0
+                  break
+                }
+              }
             }
             for (const row of extra.minerals) {
               addWare(state, row.mineralId, row.units)

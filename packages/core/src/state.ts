@@ -423,6 +423,8 @@ export interface RefineRunState {
     frag: Record<string, number>
     /** 专属无人机（物品）所得：id → 架数 */
     drone?: Record<string, number>
+    /** 专属无人机的一次性**图纸**所得（2026-09-14 增：id → 张数；进蓝图书架） */
+    blueprint?: Record<string, number>
   }
 }
 

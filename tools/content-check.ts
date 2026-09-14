@@ -196,14 +196,21 @@ check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 鱿蜂 
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
-const itemGoods = new Map<string, { rarity: string; playerSellable: boolean }>()
+const itemGoods = new Map<string, { rarity: string; playerSellable: boolean; playerBuyable: boolean }>()
 for (const g of MARKET_GOODS) {
   if (goodKeys.has(g.key)) errors.push(`市场卡键重复：${g.key}`)
   goodKeys.add(g.key)
   switch (g.kind) {
     case 'item':
       check(ctxItems.has(g.refId), `市场卡 ${g.key} → 物品 ${g.refId} 不存在`)
-      if (ctxItems.has(g.refId)) itemGoods.set(g.refId, { rarity: g.rarity, playerSellable: g.playerSellable !== false })
+      if (ctxItems.has(g.refId)) {
+        itemGoods.set(g.refId, {
+          rarity: g.rarity,
+          playerSellable: g.playerSellable !== false,
+          // 2026-09-14 增：专属型号"只收不卖"判据要用它（原先这张表没带 playerBuyable）
+          playerBuyable: g.playerBuyable !== false,
+        })
+      }
       break
     case 'module':
       check(MODULES.some((m) => m.id === g.refId), `市场卡 ${g.key} → 装备 ${g.refId} 不存在`)
@@ -255,12 +262,18 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
   }
 }
 
-// 每种物品必须有市场卡（防死物品）——**专属型号除外**（2026-09-10 船长：敌族窝点高级箱专属，
-// 无蓝图、不上市场、不入常规掉落：渠道唯一由下方「来源唯一契约」正向断言）
+// 每种物品必须有市场卡（防死物品）——**专属型号例外**（2026-09-10 船长：敌族窝点高级箱专属，
+// 无蓝图、不入常规掉落：渠道唯一由下方「来源唯一契约」正向断言）。
+// ⚠ **2026-09-14 船长改判**：「允许玩家挂卖，顺便检查下其他物品，维持所有物品允许玩家挂卖」
+// ⇒ 专属型号**可以有市场卡，但必须是"只收不卖"**（`playerBuyable: false`：市场不出售现货、
+// 玩家可挂卖/卖给 NPC 收购单）；**可购买的市场卡仍然禁止**（那才是"上市场卖现货"）。
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
   if (item.exclusive === true) {
-    check(!good, `专属物品 ${item.id} 不得上市场（专属型号只能从窝点高级箱产出）`)
+    check(
+      !good || good.playerBuyable === false,
+      `专属物品 ${item.id} 的市场卡必须只收不卖（playerBuyable: false）——专属型号不上架卖现货，只允许玩家挂卖`,
+    )
     continue
   }
   if (!good) {
@@ -2828,10 +2841,11 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     const gear = lairGearOf(def)
     if (def.foeFamily) famWithGear.add(def.foeFamily)
     for (const id of gear) {
-      // 池内元素可以是模块或专属物品（2026-09-10 船长：G 族第一件 = 专属无人机"物品"）
+      // 池内元素可以是模块 / 专属物品 / 蓝图（2026-09-10 船长：G 族第一件 = 专属无人机"物品"；
+      // 2026-09-14 船长：专属无人机出一次性蓝图 ⇒ G 族池再收 `bp-lair-g-drone`）
       check(
-        moduleIdSet.has(id) || lairCtx.items.has(id),
-        `窝点契约：${def.name} 专属装备 ${id} 不存在（modules.ts / items.ts 均未登记）`,
+        moduleIdSet.has(id) || lairCtx.items.has(id) || lairCtx.blueprints.has(id),
+        `窝点契约：${def.name} 专属装备 ${id} 不存在（modules.ts / items.ts / blueprints.ts 均未登记）`,
       )
     }
   }
@@ -3036,10 +3050,12 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     )
   }
   /* 专属装备的"来源唯一"契约（2026-09-10 加；2026-09-10 扩到专属**物品**）：
-   * 这批东西**只能**从高级箱（稀有残骸额外掉落）出——不得有蓝图（造不出来）、
-   * 不得有市场卡（买不到也卖不掉）、不得有碎片逆向配方、不得混进任何敌群的常规残骸主题池
-   * （否则普通残骸就能刷出窝点专属，稀释窝点价值）。
-   * 2026-09-10 船长：G 族第一件改为**无人机物品**（`item.exclusive`），同一套契约对它同样成立。 */
+   * 这批东西**只能**从高级箱（稀有残骸额外掉落）出——不得有**可购买**的市场卡、
+   * 不得有碎片逆向配方、不得混进任何敌群的常规残骸主题池（否则普通残骸就能刷出窝点专属，稀释窝点价值）。
+   * 2026-09-10 船长：G 族第一件改为**无人机物品**（`item.exclusive`），同一套契约对它同样成立。
+   * ⚠ **2026-09-14 船长两条改判**：①「允许玩家挂卖…维持所有物品允许玩家挂卖」⇒ 允许**只收不卖**的市场卡
+   * （玩家可挂卖，市场不出售现货）；②「专属无人机出一次性蓝图（每次制造50架）」⇒
+   * 允许**一次性蓝图**存在，但**只许 `singleUse`**（普通蓝图仍禁——那等于开一条制造渠道）。 */
   {
     const lairGearIds = new Set<string>(Object.values(FOE_LAIR_GEAR).flat())
     const bpByModule = new Map<string, string>()
@@ -3049,18 +3065,36 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     for (const id of lairGearIds) {
       const isModule = lairCtx.modules.has(id)
       const itemDef = lairCtx.items.get(id)
+      const isBlueprint = lairCtx.blueprints.has(id)
       check(
-        isModule || itemDef !== undefined,
-        `来源唯一契约：窝点专属 ${id} 既不是装备也不是物品（id 无法解析）`,
+        isModule || itemDef !== undefined || isBlueprint,
+        `来源唯一契约：窝点专属 ${id} 既不是装备、物品也不是蓝图（id 无法解析）`,
       )
-      const kindText = isModule ? '装备' : '物品'
+      const kindText = isModule ? '装备' : itemDef ? '物品' : '图纸'
+      if (isBlueprint) {
+        // 专属无人机的一次性图纸（2026-09-14）：**只许一次性**（普通图纸 = 变相开制造渠道）
+        check(
+          lairCtx.blueprints.get(id)?.singleUse === true,
+          `来源唯一契约：窝点专属图纸 ${id} 必须是 singleUse（一次性）——普通图纸等于给专属件开制造渠道`,
+        )
+        continue
+      }
       if (!isModule) {
         if (itemDef) {
           itemGear += 1
           check(
             itemDef.exclusive === true,
-            `来源唯一契约：窝点专属物品 ${id} 必须标 exclusive（专属型号：无蓝图、不上市场、不入常规掉落）`,
+            `来源唯一契约：窝点专属物品 ${id} 必须标 exclusive（专属型号：渠道唯一、不入常规掉落）`,
           )
+          // 2026-09-14：专属物品**只许一次性蓝图**（船长「专属无人机出一次性蓝图」）；
+          // 普通图纸 = 变相开制造渠道，仍禁
+          for (const bp of BLUEPRINTS) {
+            if (bp.itemId !== id) continue
+            check(
+              bp.singleUse === true,
+              `来源唯一契约：窝点专属物品 ${id} 的蓝图 ${bp.id} 必须是 singleUse（一次性）`,
+            )
+          }
           check(
             itemDef.kind === 'drone',
             `来源唯一契约：窝点专属物品 ${id} 目前只支持无人机类（kind = ${itemDef.kind}）`,
@@ -3070,8 +3104,13 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       const bp = bpByModule.get(id)
       check(!bp, `来源唯一契约：窝点专属${kindText} ${id} 不得有蓝图（现被 ${bp} 产出；专属装备只能从高级箱出）`)
       const card = [...lairCtx.marketGoods.values()].find((g) => g.key === id || g.refId === id)
-      if (card) marketCards += 1
-      check(!card, `来源唯一契约：窝点专属${kindText} ${id} 不得有市场卡（现被 ${card?.key} 上架；专属装备只能从高级箱出）`)
+      // 2026-09-14：只收不卖的行**不算"上架"**（市场不出售现货 ⇒ 稀缺性不变）；可购买的行才违契约
+      const sellableCard = card && card.playerBuyable !== false
+      if (sellableCard) marketCards += 1
+      check(
+        !sellableCard,
+        `来源唯一契约：窝点专属${kindText} ${id} 不得有**可购买**的市场卡（现被 ${card?.key} 上架卖现货；只收不卖行允许）`,
+      )
       const frag = FRAGMENT_RECIPES[id]
       check(
         !frag,
@@ -3085,10 +3124,66 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         )
       }
     }
-    check(marketCards === 0, `来源唯一契约：窝点专属装备共 ${marketCards} 件出现在市场上架（应为 0）`)
+    check(marketCards === 0, `来源唯一契约：窝点专属装备共 ${marketCards} 件在市场上架卖现货（应为 0）`)
     console.log(
-      `· 来源唯一契约：${lairGearIds.size} 件窝点专属（装备 ${lairGearIds.size - itemGear} + 专属物品 ${itemGear}）` +
-        `无蓝图、无市场卡、无碎片配方、不进常规掉落池（唯一来源＝高级箱）`,
+      `· 来源唯一契约：${lairGearIds.size} 件窝点专属（装备 ${lairGearIds.size - itemGear} + 专属物品/图纸 ${itemGear}）` +
+        `无**可购买**市场卡（只收不卖行允许 · 2026-09-14 船长「允许玩家挂卖」）、无碎片配方、不进常规掉落池（唯一来源＝高级箱）`,
+    )
+  }
+  /* **挂卖可达契约**（2026-09-14 船长：「允许玩家挂卖，顺便检查下其他物品，维持所有物品允许玩家挂卖」）：
+   * 三条判据——
+   * ① **任何市场行都不得禁止玩家出售**（`playerSellable: false`）——"所有物品都允许挂卖"是硬口径；
+   * ② **可获得的内容必须有市场行**（没行 = 挂不了卖也卖不掉，等于死物）。**例外表**只放"有意不补"的：
+   *    协会保底艇（开局船，防卖光起步资产）与壳体（无任何获取渠道）——逐条写明理由；
+   * ③ **专属内容的市场行必须"只收不卖"**（`playerBuyable: false`）：市场不出售现货（渠道与稀缺性不变），
+   *    但玩家可挂卖、也可卖给 NPC 收购单（奇货档 = 全价回收）。判据 = id 带 `-wh-` 的洞内专属 +
+   *    窝点专属池成员（`FOE_LAIR_GEAR`）。 */
+  {
+    // ① 全表可挂卖
+    const notSellable = MARKET_GOODS.filter((g) => g.playerSellable === false).map((g) => g.key)
+    check(
+      notSellable.length === 0,
+      `挂卖可达契约：${notSellable.join(' · ')} 标了 playerSellable: false——2026-09-14 船长「维持所有物品允许玩家挂卖」`,
+    )
+    // ② 可获得内容必须有市场行（例外表逐条写理由）
+    const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
+      ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
+      ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
+    ]
+    const noRowOk = new Set(NO_ROW_OK.map(([id]) => id))
+    const rowKeys = new Set(MARKET_GOODS.map((g) => g.refId))
+    const gaps: string[] = []
+    for (const it of ITEMS) if (itemReleased(it) && !rowKeys.has(it.id) && !noRowOk.has(it.id)) gaps.push(`物品 ${it.id}`)
+    for (const m of MODULES) if (itemReleased(m) && !rowKeys.has(m.id) && !noRowOk.has(m.id)) gaps.push(`装备 ${m.id}`)
+    for (const s of SHIPS) if (itemReleased(s) && !rowKeys.has(s.id) && !noRowOk.has(s.id)) gaps.push(`舰船 ${s.id}`)
+    for (const b of BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id) && !noRowOk.has(b.id)) gaps.push(`装备图纸 ${b.id}`)
+    for (const b of SHIP_BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id) && !noRowOk.has(b.id)) gaps.push(`舰船图纸 ${b.id}`)
+    check(
+      gaps.length === 0,
+      `挂卖可达契约：${gaps.length} 条可获得内容没有市场行（既挂不了卖也卖不掉）——${gaps.slice(0, 8).join(' · ')}${gaps.length > 8 ? ' …' : ''}；若要豁免请登记进 NO_ROW_OK 并写明理由`,
+    )
+    // ③ 专属内容"只收不卖"
+    const exclusiveIds = new Set<string>([
+      ...Object.values(FOE_LAIR_GEAR).flat(),
+      ...[...moduleIdSet].filter((id) => id.includes('-wh-')),
+      ...[...lairCtx.items.keys()].filter((id) => id.includes('-wh-')),
+      ...[...lairCtx.blueprints.keys()].filter((id) => id.includes('-wh-')),
+      ...[...lairCtx.shipBlueprints.keys()].filter((id) => id.includes('-wh-')),
+      ...[...lairCtx.ships.keys()].filter((id) => id.includes('-wh-')),
+    ])
+    const sellableExclusive: string[] = []
+    let exclusiveRows = 0
+    for (const g of MARKET_GOODS) {
+      if (!exclusiveIds.has(g.refId)) continue
+      exclusiveRows += 1
+      if (g.playerBuyable !== false) sellableExclusive.push(g.key)
+    }
+    check(
+      sellableExclusive.length === 0,
+      `挂卖可达契约：专属内容的市场行必须"只收不卖"（playerBuyable: false）——${sellableExclusive.slice(0, 8).join(' · ')} 在卖现货`,
+    )
+    console.log(
+      `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行**全部允许玩家挂卖**（playerSellable 无 false）· 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行**全部只收不卖**`,
     )
   }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽
@@ -3422,6 +3517,8 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   let overridden = 0
   /** 一次性图纸（不上市场 ⇒ 无市场行）的豁免计数——不参与书价与料/价比对，单独留痕 */
   let exemptSingleUse = 0
+  /** 专属一次性图纸（有市场行但为"只收不卖"）的计数——书价 = 产物价，不套档位系数/不比料价带 */
+  let exclusiveOnceBp = 0
   const tiers: Record<string, number> = {}
   for (const bpId of Object.keys(BLUEPRINT_PRICE_OVERRIDES)) {
     if (!BLUEPRINTS.some((b) => b.id === bpId)) {
@@ -3938,6 +4035,18 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   for (const bp of BLUEPRINTS) {
     const label = bp.moduleId !== undefined ? (modName.get(bp.moduleId) ?? bp.moduleId) : bp.itemId !== undefined ? `${itemName.get(bp.itemId) ?? bp.itemId} ×${bp.outputUnits ?? 1}` : '?'
     const good = marketOfBp.get(bp.id)
+    /**
+     * **专属一次性图纸**（2026-09-14 船长「允许玩家挂卖」批 + 「专属无人机出一次性蓝图」）：
+     * 这类图纸**只从洞内打捞 / 窝点高级箱出**，市场行是"只收不卖"（玩家可挂卖、市场不出售现货）⇒
+     * 它们的书价口径与"市场在售的蓝图"不同：
+     *   ① **不套档位系数**——`书价 = 产物价`（产物与图纸同料单 ⇒ 同值）；
+     *      正常蓝图的 ×2/×2.5/×3/×4 是"市场垄断售卖"的加价，专属掉落物没有这一层；
+     *   ② 因而 **料/价 恒 ≈11.25%**（= 0.45 ÷ 4，专属 ×4 口径），天然落在 30%~60% 带外 ⇒ 一并豁免；
+     *   ③ 舰船那 15 张另守船长 2026-09-14「一次性舰船蓝图 = 舰价 ×0.5」，由上方
+     *      「一次性舰船蓝图价格口径」单独核（不重复计预警）。
+     */
+    const exclusiveOnce = bp.singleUse === true && good?.playerBuyable === false
+    if (exclusiveOnce) exclusiveOnceBp += 1
     if (!good) {
       /* **一次性图纸豁免**（2026-09-13 船长：「不掉永久图纸」⇒ 虫洞专属装备/舰船只出一次性图纸）：
        * 它**不上市场**（2026-09-12 船长裁定「来源由掉落/奖励指定」），故"没有市场行"不是错；
@@ -3955,6 +4064,23 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         `蓝图价格口径：${bp.id}（${label}）blueprints.ts 书价 = ${bp.priceIsk.toLocaleString('zh-CN')}，市场行 basePrice = ${(good.basePrice ?? 0).toLocaleString('zh-CN')}（两处必须同值）`,
       )
       mismatchPrice += 1
+    }
+    // 专属一次性图纸：只核「书价 = 产物价」（不套系数、不比料/价带），核过就继续
+    if (exclusiveOnce) {
+      const prodEx =
+        bp.moduleId !== undefined
+          ? (marketOfModule.get(bp.moduleId)?.basePrice ?? 0)
+          : (marketOfItem.get(bp.itemId ?? '')?.basePrice ?? 0) * (bp.outputUnits ?? 1)
+      // 舰船产物（`itemId`/`moduleId` 都没有的走上面分支取不到）不在这里核，交给舰船契约
+      if (prodEx > 0 && bp.itemId !== undefined && bp.priceIsk !== prodEx) {
+        warn.push(
+          `蓝图价格口径：${bp.id}（${label}）是专属一次性图纸，书价应 = 产物价 ${prodEx.toLocaleString('zh-CN')}（专属掉落不套档位系数），实际 ${bp.priceIsk.toLocaleString('zh-CN')}`,
+        )
+        driftCoef += 1
+      } else {
+        okCoef += 1
+      }
+      continue
     }
     // 产物现货价（item 类按单次产出数量折算）
     const product =
@@ -4001,7 +4127,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   console.log(
     `· 蓝图价格口径：${BLUEPRINTS.length} 张装备/物品蓝图中，书价与规则值一致 ${okCoef} 张（${Object.entries(tiers)
       .map(([k, v]) => `${k} ${v}`)
-      .join(' / ')}；单独覆盖 ${overridden} 张；**一次性图纸豁免 ${exemptSingleUse} 张**（不上市场、无市场行，故不比书价/料价））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
+      .join(' / ')}；单独覆盖 ${overridden} 张；**无市场行的一次性图纸豁免 ${exemptSingleUse} 张**；**专属一次性图纸（只收不卖）${exclusiveOnceBp} 张**（书价 = 产物价，不套档位系数、不比料/价带——2026-09-14 船长「允许玩家挂卖」批））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
   )
 }
 

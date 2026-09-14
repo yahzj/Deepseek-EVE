@@ -58,8 +58,8 @@ function drawGear(state: GameState, pool?: readonly string[], max = 400) {
 }
 
 describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-09-10 船长）', () => {
-  it('G 族池 = 1 专属物品 + 2 模块；旧「鱿蜂群巢」已撤下', () => {
-    expect(FOE_LAIR_GEAR.G).toEqual([BEE, 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g'])
+  it('G 族池 = 1 专属物品 + 2 模块 + 1 一次性图纸（2026-09-14 船长「专属无人机出一次性蓝图」）；旧「鱿蜂群巢」已撤下', () => {
+    expect(FOE_LAIR_GEAR.G).toEqual([BEE, 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g', 'bp-lair-g-drone'])
     expect(ctx.items.get(BEE)).toBeTruthy()
     expect(ctx.modules.get('mod-lair-drone-tac-g')).toBeTruthy()
     expect(ctx.modules.get('mod-lair-drone-relay-g')).toBeTruthy()
@@ -101,7 +101,7 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
     expect(droneRoleLadderIssues(all)).toEqual([])
   })
 
-  it('掉落：命中专属即给 10 架进物品仓库，开箱文案写明「×10 架」', () => {
+  it('掉落：命中无人机即给 10 架进物品仓库，开箱文案写明「×10 架」（池里新增的图纸走另一分支，见用例 ⑧）', () => {
     const state = makeState(7)
     // 池里只留无人机 → 命中专属必给无人机（命中率改 5/8/10% 后，"反复开箱到出专属"的取样
     // 会先抽中同池的两个模块，故这里显式收窄池子，只验"命中之后给什么"）
@@ -187,6 +187,9 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
       addWare(state, rareId, RARE_WRECK_VOLUME_M3) // 一个结算单位 = 30 m³（= 3 批 × 10 m³）
       addModule(state, 'mod-lair-drone-tac-g', 1) // 另外两件视为已持有 → 池里只留无人机
       addModule(state, 'mod-lair-drone-relay-g', 1)
+      // 2026-09-14：池里新增了「鱿蜂无人机的一次性图纸」⇒ 一并视为已持有，池子才只剩无人机本体
+      // （否则这一掷可能命中图纸，进的是蓝图书架而不是 10 架无人机）
+      state.blueprintStock['bp-lair-g-drone'] = 1
       const started = startRecycleRun(state, rareId, 'pilot', ctx)
       expect(started.ok).toBe(true)
       state.gameMs += 90_000 // 跑满一个结算单位：30 m³ = 3 批 × 10 m³（未满 30 m³ 不给彩头）

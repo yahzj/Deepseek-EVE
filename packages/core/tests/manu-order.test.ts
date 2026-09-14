@@ -71,7 +71,9 @@ function legacyOrder(rows: readonly ManuOrderRow[]): ManuOrderRow[] {
   )
 }
 
-/** 成对相邻数：同产物两张图（一张原图纸 + 一张一次性）在结果里是否紧邻 */
+/** 成对相邻数：同产物两张图（一张原图纸 + 一张一次性）在结果里是否紧邻
+ *  `total` = 目录里全部一次性图纸（含"只有一次性、没有原图纸"的洞内掉落专属图纸，它们进不了紧邻计数）；
+ *  `adjacent` = 其中**确有原图纸且紧邻**的张数（判据只对能配对的那些成立） */
 function adjacentPairs(order: readonly ManuOrderRow[]): { total: number; adjacent: number } {
   const once = order.filter((r) => r.singleUse)
   let adjacent = 0
@@ -87,9 +89,10 @@ describe('组装机卡片排序（2026-09-14 船长：一次性图纸和原图�
     const rows = visibleRows()
     const legacy = legacyOrder(rows)
     const next = sortManuRows(rows)
-    // 58 = 原 14（T3 十 + T4 三 + T5 一）+ 虫洞上线新增 43（五族专属装备图纸 28 + 舰船图纸 15）
+    // 61 = 原 14（T3 十 + T4 三 + T5 一）+ 虫洞上线新增 43（五族专属装备图纸 28 + 舰船图纸 15）
     //      + 鹦鹉螺级 1（2026-09-14 随虫洞上线放开 `unreleased` 后进了可见目录）
-    expect(adjacentPairs(next).total).toBe(58)
+    //      + 3 张专属无人机一次性图纸（2026-09-14 船长「专属无人机出一次性蓝图」，每次 50 架）
+    expect(adjacentPairs(next).total).toBe(61)
     expect(adjacentPairs(legacy).adjacent).toBe(0) // 旧口径：一对都不相邻（这就是船长看到的"散落"）
     /**
      * ⚠ **虫洞那 43 张是"只有一次性、没有原图纸"的掉落专属图纸**（一次到手即用，不存在可反复买的原图纸）

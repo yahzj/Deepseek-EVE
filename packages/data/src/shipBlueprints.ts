@@ -410,7 +410,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 1_153_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭电子舰，锁定与分辨率冠绝同级，先看见、先锁上。',
   },
   {
@@ -426,7 +426,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 2_555_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭炮艇，动能炮阵加持，正面火力扎实。',
   },
   {
@@ -442,7 +442,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_942_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭重型突击巡洋舰，动能火力全开、甲壳同步加厚，专啃硬目标。',
   },
   {
@@ -458,7 +458,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 1_307_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '幼虫截击舰，快得不像话，护盾几乎不设防、靠甲壳撑着。',
   },
   {
@@ -474,7 +474,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 2_822_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '甲壳截击舰，速度与机动拉满，伤害全由装甲与结构承担。',
   },
   {
@@ -490,7 +490,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 5_680_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '巢群重型突击巡洋舰，能量主炮配厚甲厚壳，正面硬碰硬。',
   },
   {
@@ -506,7 +506,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 1_536_500, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '哨戒电子舰，锁定与分辨率远压同级，替全队先敌发现。',
   },
   {
@@ -523,7 +523,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 3_722_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '陵卫指挥舰，锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢。',
   },
   {
@@ -540,7 +540,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 7_680_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '陵寝巡洋舰，三层血最厚、炮位最多，站在阵线中央扛火力。',
   },
   {
@@ -556,7 +556,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 1_437_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '构件鱼雷舰，爆破弹头拆甲，命中扎实。',
   },
   {
@@ -572,7 +572,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 3_107_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '机库无人机作战舰，机巢与无人机战力双高，一座能跑的机库。',
   },
   {
@@ -589,7 +589,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 7_172_500, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '巨构无人机作战舰，机巢最大、无人机伤害最高，放飞即是主武器。',
   },
   {
@@ -606,7 +606,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 1_515_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '幽影侦察舰，信号极小、闪避极高，负责先看见别人。',
   },
   {
@@ -623,7 +623,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 3_335_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '亡军后勤舰，货舱与机巢最大，跟着编队补给、换机。',
   },
   {
@@ -640,7 +640,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_693_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '亡军鱼雷舰，爆破弹头配扎实命中，专挑大目标的装甲。',
   },
 
