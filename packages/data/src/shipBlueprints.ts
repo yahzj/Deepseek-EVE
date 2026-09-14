@@ -21,7 +21,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 5_160, // 开拓级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 75*60=4500）
     buildCostIsk: 250_000,
     priceIsk: 3600000,
-    description: '开拓级定制艇图纸：货舱 5200 m³，9 秒循环产 38 单位——比鲸吞级高两成。',
+    description: '采矿艇，货舱 5,200 m³、循环 9 秒产 38 单位，比鲸吞级高两成。',
   },
   {
     id: 'sbp-whale-king',
@@ -36,7 +36,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_520, // 鲸王级（2026-09-13 价位重排后按带内插值：12M ⇒ 4.9 时）
     buildCostIsk: 900_000,
     priceIsk: 48_000_000, // = 行价 12,000,000 × 4（2026-09-13 价位重排）
-    description: '鲸王级总装图纸：货舱 7,000 m³，8 秒循环产 58 单位。造完它，你就是深空工业的传说。',
+    description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿族的产量顶点。',
   },
   {
     id: 'sbp-humpback',
@@ -51,7 +51,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920, // 座头鲸级（2026-09-13 价位重排后按带内插值：9M ⇒ 4.7 时）
     buildCostIsk: 420_000,
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（2026-09-13 价位重排）
-    description: '座头鲸级矿舰总装图纸：货舱 19000 m³、30 秒循环产 140 单位——采矿舰族的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
+    description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿族的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
   },
   {
     id: 'sbp-colossal',
@@ -70,7 +70,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 162_000, // 皇带鱼级（2026-09-13 工期阶梯：T5 = T4 带下沿 9h ×5 = 45 时；价位重排后不变）
     buildCostIsk: 2_400_000,
     priceIsk: 2_560_000_000, // = 行价 640,000,000 × 4（2026-09-13 价位重排：旗舰基准 8 亿 ×0.8）
-    description: '皇带鱼级旗舰货舰总装图纸（限定奇货）：三万六千立方货舱的移动要塞——材料清单本身就是一份远征地图。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）
+    description: '旗舰货舰，货舱 36,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）
   },
   {
     id: 'sbp-burrower',
@@ -83,7 +83,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_260, // 掘洞级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 480）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 240000,
-    description: '「掘洞级采矿艇」总装图纸：货舱 1,800 m³、循环 11 秒产 18 单位——矿族量产线，学会即可在船坞总装。',
+    description: '采矿艇，T1 起步船，货舱 1,800 m³、循环 11 秒产 18 单位。',
   },
   {
     id: 'sbp-whale',
@@ -97,7 +97,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_800, // 鲸吞级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 3360）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 2250000,
-    description: '「鲸吞级采矿艇」总装图纸：货舱 4,500 m³、循环 10 秒产 34 单位——矿族量产线，学会即可在船坞总装。',
+    description: '采矿艇，货舱 4,500 m³、循环 10 秒产 34 单位，矿族的量产主力。',
   },
   {
     id: 'sbp-bowhead',
@@ -112,7 +112,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 59_610, // 蝠鲼级（2026-09-13 价位重排后按带内插值：67.5M ⇒ 16.6 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 270_000_000, // = 行价 67,500,000 × 4（2026-09-13 价位重排）
-    description: '「蝠鲼级重载货舰」总装图纸：货舱 26,000 m³、循环 36 秒产 110 单位——货运舰族量产线，学会即可在船坞总装。',
+    description: '重载货舰，货舱 26,000 m³、循环 36 秒产 110 单位，囤货主力。',
   },
   {
     id: 'sbp-falconet',
@@ -125,7 +125,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 900, // 鲣鱼级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 180）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 84_000, // 同步：42,000 × 2
-    description: '「鲣鱼级护卫舰」总装图纸：货舱 650 m³、循环 16 秒产 6 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '武装护卫舰，T1 最快的轻火力平台。',
   },
   {
     id: 'sbp-shrike',
@@ -138,7 +138,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_230, // 马鲛级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 420）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 220000,
-    description: '「马鲛级护卫舰」总装图纸：货舱 1,050 m³、循环 15 秒产 8 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '武装护卫舰，火力略高于鲣鱼级，代价是航速。',
   },
   {
     id: 'sbp-tigershark',
@@ -151,7 +151,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_500, // 虎鲨级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 900）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 480000,
-    description: '「虎鲨级武装护卫舰」总装图纸：货舱 1,500 m³、循环 14 秒产 11 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '武装护卫舰，火力骨架更强，深空护航的常客。',
   },
   {
     id: 'sbp-mako',
@@ -165,7 +165,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_050, // 灰鲭鲨级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 1800）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1200000,
-    description: '「灰鲭鲨级驱逐舰」总装图纸：货舱 2,300 m³、循环 13 秒产 15 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '驱逐舰，货舱 2,300 m³、循环 13 秒产 15 单位，火力与容量都均衡。',
   },
   {
     id: 'sbp-whiteshark',
@@ -179,7 +179,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 5_070, // 大白鲨级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 4140）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 3300000,
-    description: '「大白鲨级炮舰」总装图纸：货舱 3,200 m³、循环 13 秒产 18 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '炮舰，货舱 3,200 m³、循环 13 秒产 18 单位，武装舰族的量产主力。',
   },
   {
     id: 'sbp-swarm',
@@ -193,7 +193,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_350, // 梭鱼级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 2340）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1550000,
-    description: '「梭鱼级无人机护卫」总装图纸：货舱 2,600 m³、循环 13 秒产 16 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '无人机护卫，靠放飞机群替主炮撑火力。',
   },
   {
     id: 'sbp-sentinel',
@@ -208,7 +208,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_340, // 王鲭级（2026-09-13 工期阶梯重排：T3 带 3~5 时；原 9780）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 7800000,
-    description: '「王鲭级无人机母舰」总装图纸：货舱 3,600 m³、循环 13 秒产 15 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '无人机母舰，货舱 3,600 m³，机巢宽裕、靠放飞机群撑火力。',
   },
   {
     id: 'sbp-thresher',
@@ -224,7 +224,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920, // 长尾鲨级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36000000,
-    description: '「长尾鲨级导弹巡洋舰」总装图纸：货舱 2,600 m³、循环 14 秒产 10 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '导弹巡洋舰，货舱 2,600 m³，靠齐射导弹先声夺人。',
   },
   {
     id: 'sbp-electricray',
@@ -240,7 +240,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 18_000, // 电鳐级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 60000000,
-    description: '「电鳐级激光巡洋舰」总装图纸：货舱 2,500 m³、循环 14 秒产 10 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '激光巡洋舰，货舱 2,500 m³，接敌即烧穿护盾。',
   },
   {
     id: 'sbp-hammerhead',
@@ -256,7 +256,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_340, // 锤头鲨级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 44000000,
-    description: '「锤头鲨级炮击巡洋舰」总装图纸：货舱 2,800 m³、循环 13 秒产 12 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '炮击巡洋舰，货舱 2,800 m³，重炮动能阵列的中坚。',
   },
   {
     id: 'sbp-bullshark',
@@ -272,7 +272,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_700, // 牛鲨级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 52000000,
-    description: '「牛鲨级突击巡洋舰」总装图纸：货舱 3,000 m³、循环 13 秒产 12 单位——武装舰族量产线，学会即可在船坞总装。',
+    description: '突击巡洋舰，货舱 3,000 m³，厚盾重炮的咬合者。',
   },
   {
     id: 'sbp-nautilus',
@@ -289,7 +289,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（>400 万档系数）
     unreleased: true, // 跟随虫洞挂闸门（与 ship-nautilus 同步）
-    description: '「鹦鹉螺级测绘巡洋舰」总装图纸：货舱 6,600 m³、循环 14 秒产 39 单位——协会测量线量产线，学会即可在船坞总装。',
+    description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
     id: 'sbp-tortoise',
@@ -303,7 +303,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 3_960, // 陆龟级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 1260）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1_125_000, // 同步：450,000 × 2.5（2026-09-13 船价跟涨）
-    description: '「陆龟级重装艇」总装图纸：货舱 7,000 m³、循环 13 秒产 24 单位——重装舰族量产线，学会即可在船坞总装。',
+    description: '轻装艇，装甲与结构远超同档，换来的航速与货舱都紧。',
   },
   {
     id: 'sbp-hawksbill',
@@ -317,7 +317,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_080, // 玳瑁级（2026-09-13 价位重排后按带内插值：6M ⇒ 4.5 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 24_000_000, // = 行价 6,000,000 × 4（2026-09-13 价位重排；此前与市场卡不同值，本次一并归位）
-    description: '「玳瑁级重装巡舰」总装图纸：货舱 12,000 m³、循环 13 秒产 22 单位——重装舰族量产线，学会即可在船坞总装。',
+    description: '重装巡舰，货舱 12,000 m³、循环 13 秒产 22 单位，厚壳仓库。',
   },
   {
     id: 'sbp-xuanwu',
@@ -332,7 +332,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 62_580, // 玄武级（2026-09-13 价位重排后按带内插值：90M ⇒ 17.4 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 360_000_000, // = 行价 90,000,000 × 4（2026-09-13 价位重排）
-    description: '「玄武级重装旗舰」总装图纸：货舱 19,000 m³、循环 14 秒产 26 单位——重装舰族量产线，学会即可在船坞总装。',
+    description: '重装旗舰，货舱 19,000 m³、三层血最厚，重装线的顶点。',
   },
   {
     id: 'sbp-flyingfish',
@@ -345,7 +345,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 3_060, // 飞鱼级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 780）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 420000,
-    description: '「飞鱼级快运舰」总装图纸：货舱 5,000 m³、循环 11 秒产 20 单位——货运舰族量产线，学会即可在船坞总装。',
+    description: '快运舰，货舱 5,000 m³、航速 430，专项跑短途快件。',
   },
   {
     id: 'sbp-sailfish',
@@ -359,7 +359,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_160, // 旗鱼级（2026-09-13 价位重排后按带内插值：2.4M ⇒ 3.9 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 7_200_000, // = 行价 2,400,000 × 3（100~400 万档系数；2026-09-13 价位重排）
-    description: '「旗鱼级高速货舰」总装图纸：货舱 8,500 m³、循环 11 秒产 18 单位——货运舰族量产线，学会即可在船坞总装。',
+    description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
   },
   {
     id: 'sbp-swordfish',
@@ -373,7 +373,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 48_960, // 剑鱼级（2026-09-13 价位重排后按带内插值：24M ⇒ 13.6 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 96_000_000, // = 行价 24,000,000 × 4（2026-09-13 价位重排）
-    description: '「剑鱼级大型货舰」总装图纸：货舱 14,000 m³、循环 12 秒产 16 单位——货运舰族量产线，学会即可在船坞总装。',
+    description: '大型货舰，货舱 14,000 m³、循环 12 秒产 16 单位。',
   },
   {
     id: 'sbp-megalodon',
@@ -389,7 +389,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 72_000, // 巨齿鲨级（2026-09-13 工期阶梯：T4 带 9~20 时，取带上沿）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 900_000_000, // = 行价 225,000,000 × 4（>400 万档系数；契约「舰船价格口径」守）
-    description: '「巨齿鲨级战列舰」总装图纸：货舱 4,000 m³、循环 12 秒产 20 单位——掠食者武装线量产线，学会即可在船坞总装。',
+    description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
   },
 
   /* ══════════════ 虫洞专属舰船的**一次性图纸**（2026-09-13 船长「所有舰船不掉成品，只掉一次性图纸」）
@@ -412,7 +412,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「掠袭电子舰」总装图纸，写在整块母岩切片上——**只能用一次**。锁定与分辨率冠绝同级，先看见、先锁上。',
+    description: '掠袭电子舰，锁定与分辨率冠绝同级，先看见、先锁上。',
   },
   {
     id: 'sbp-wh-a-destroyer',
@@ -429,7 +429,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「掠袭炮艇」总装图纸，写在整块母岩切片上——**只能用一次**。动能炮阵加持，正面火力扎实。',
+    description: '掠袭炮艇，动能炮阵加持，正面火力扎实。',
   },
   {
     id: 'sbp-wh-a-cruiser',
@@ -446,7 +446,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「掠袭重型突击巡洋舰」总装图纸，写在整块母岩切片上——**只能用一次**。动能火力全开、甲壳同步加厚，专啃硬目标。',
+    description: '掠袭重型突击巡洋舰，动能火力全开、甲壳同步加厚，专啃硬目标。',
   },
   {
     id: 'sbp-wh-c-frigate',
@@ -463,7 +463,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「幼虫截击舰」总装图纸，写在整块母岩切片上——**只能用一次**。快得不像话——护盾几乎不设防，靠甲壳撑着。',
+    description: '幼虫截击舰，快得不像话，护盾几乎不设防、靠甲壳撑着。',
   },
   {
     id: 'sbp-wh-c-destroyer',
@@ -480,7 +480,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「甲壳截击舰」总装图纸，写在整块母岩切片上——**只能用一次**。速度与机动拉满，伤害全由甲与结构承担。',
+    description: '甲壳截击舰，速度与机动拉满，伤害全由装甲与结构承担。',
   },
   {
     id: 'sbp-wh-c-cruiser',
@@ -497,7 +497,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「巢群重型突击巡洋舰」总装图纸，写在整块母岩切片上——**只能用一次**。能量主炮配厚甲厚壳，正面硬碰硬。',
+    description: '巢群重型突击巡洋舰，能量主炮配厚甲厚壳，正面硬碰硬。',
   },
   {
     id: 'sbp-wh-d-frigate',
@@ -514,7 +514,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「哨戒电子舰」总装图纸，写在整块母岩切片上——**只能用一次**。锁定与分辨率远压同级，替全队先敌发现。',
+    description: '哨戒电子舰，锁定与分辨率远压同级，替全队先敌发现。',
   },
   {
     id: 'sbp-wh-d-destroyer',
@@ -532,7 +532,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「陵卫指挥舰」总装图纸，写在整块母岩切片上——**只能用一次**。锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢。',
+    description: '陵卫指挥舰，锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢。',
   },
   {
     id: 'sbp-wh-d-cruiser',
@@ -550,7 +550,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「陵寝巡洋舰」总装图纸，写在整块母岩切片上——**只能用一次**。三层血最厚、炮位最多，站在阵线中央扛火力。',
+    description: '陵寝巡洋舰，三层血最厚、炮位最多，站在阵线中央扛火力。',
   },
   {
     id: 'sbp-wh-e-frigate',
@@ -567,7 +567,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「构件鱼雷舰」总装图纸，写在整块母岩切片上——**只能用一次**。爆破弹头拆甲，命中扎实。',
+    description: '构件鱼雷舰，爆破弹头拆甲，命中扎实。',
   },
   {
     id: 'sbp-wh-e-destroyer',
@@ -584,7 +584,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「机库无人机作战舰」总装图纸，写在整块母岩切片上——**只能用一次**。机巢与无人机战力双高，一座能跑的机库。',
+    description: '机库无人机作战舰，机巢与无人机战力双高，一座能跑的机库。',
   },
   {
     id: 'sbp-wh-e-carrier',
@@ -602,7 +602,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「巨构无人机作战舰」总装图纸，写在整块母岩切片上——**只能用一次**。机巢最大、无人机伤害最高，放飞即是主武器。',
+    description: '巨构无人机作战舰，机巢最大、无人机伤害最高，放飞即是主武器。',
   },
   {
     id: 'sbp-wh-g-frigate',
@@ -620,7 +620,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「幽影侦察舰」总装图纸，写在整块母岩切片上——**只能用一次**。信号极小、闪避极高——它负责先看见别人。',
+    description: '幽影侦察舰，信号极小、闪避极高，负责先看见别人。',
   },
   {
     id: 'sbp-wh-g-destroyer',
@@ -638,7 +638,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「亡军后勤舰」总装图纸，写在整块母岩切片上——**只能用一次**。货舱与机巢最大，跟着编队补给、换机。',
+    description: '亡军后勤舰，货舱与机巢最大，跟着编队补给、换机。',
   },
   {
     id: 'sbp-wh-g-cruiser',
@@ -656,7 +656,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 0,
-    description: '「亡军鱼雷舰」总装图纸，写在整块母岩切片上——**只能用一次**。爆破弹头配扎实命中，专挑大目标的装甲。',
+    description: '亡军鱼雷舰，爆破弹头配扎实命中，专挑大目标的装甲。',
   },
 
   /* ══════════════ T3/T4/T5 的**一次性蓝图**（2026-09-13 船长：「给T3船也添加一次性蓝图」＋
@@ -683,7 +683,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_160,
     buildCostIsk: 0,
     priceIsk: 2_400_000, // = 行价 ×100%
-    description: '「旗鱼级高速货舰」总装图纸，**只能用一次**：货舱 8,500 m³、循环 11 秒产 18 单位——想造第二艘得再找一张。',
+    description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
   },
   {
     id: 'sbp-once-sentinel',
@@ -699,7 +699,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 14_340,
     buildCostIsk: 0,
     priceIsk: 2_600_000,
-    description: '「王鲭级无人机母舰」总装图纸，**只能用一次**：货舱 3,600 m³、循环 13 秒产 15 单位——机巢宽裕，放飞机群替火力撑腰。',
+    description: '无人机母舰，货舱 3,600 m³，机巢宽裕、靠放飞机群撑火力。',
   },
   {
     id: 'sbp-once-hawksbill',
@@ -714,7 +714,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_080,
     buildCostIsk: 0,
     priceIsk: 6_000_000,
-    description: '「玳瑁级重装巡舰」总装图纸，**只能用一次**：货舱 12,000 m³、循环 13 秒产 22 单位——厚壳加身的移动仓库。',
+    description: '重装巡舰，货舱 12,000 m³、循环 13 秒产 22 单位，厚壳仓库。',
   },
   {
     id: 'sbp-once-humpback',
@@ -730,7 +730,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920,
     buildCostIsk: 0,
     priceIsk: 9_000_000,
-    description: '「座头鲸级矿舰」总装图纸，**只能用一次**：货舱 19,000 m³、循环 30 秒产 140 单位——采矿舰族的产量旗舰。',
+    description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿族的产量旗舰。',
   },
   {
     id: 'sbp-once-thresher',
@@ -747,7 +747,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920,
     buildCostIsk: 0,
     priceIsk: 9_000_000,
-    description: '「长尾鲨级导弹巡洋舰」总装图纸，**只能用一次**：货舱 2,600 m³、循环 14 秒产 10 单位——齐射导弹先声夺人。',
+    description: '导弹巡洋舰，货舱 2,600 m³，靠齐射导弹先声夺人。',
   },
   {
     id: 'sbp-once-nautilus',
@@ -765,7 +765,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920,
     buildCostIsk: 0,
     priceIsk: 9_000_000,
-    description: '「鹦鹉螺级测绘巡洋舰」总装图纸，**只能用一次**：货舱 6,600 m³、循环 14 秒产 39 单位——编入虫洞队伍即扩大扫描范围一圈。',
+    description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
     id: 'sbp-once-hammerhead',
@@ -782,7 +782,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_340,
     buildCostIsk: 0,
     priceIsk: 11_000_000,
-    description: '「锤头鲨级炮击巡洋舰」总装图纸，**只能用一次**：货舱 2,800 m³、循环 13 秒产 12 单位——重炮动能阵列的中坚。',
+    description: '炮击巡洋舰，货舱 2,800 m³，重炮动能阵列的中坚。',
   },
   {
     id: 'sbp-once-whale-king',
@@ -798,7 +798,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_520,
     buildCostIsk: 0,
     priceIsk: 12_000_000,
-    description: '「鲸王级采矿艇」总装图纸，**只能用一次**：货舱 7,000 m³、循环 8 秒产 58 单位——矿族的产量传说。',
+    description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿族的产量顶点。',
   },
   {
     id: 'sbp-once-bullshark',
@@ -815,7 +815,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_700,
     buildCostIsk: 0,
     priceIsk: 13_000_000,
-    description: '「牛鲨级突击巡洋舰」总装图纸，**只能用一次**：货舱 3,000 m³、循环 13 秒产 12 单位——厚盾重炮的咬合者。',
+    description: '突击巡洋舰，货舱 3,000 m³，厚盾重炮的咬合者。',
   },
   {
     id: 'sbp-once-electricray',
@@ -832,7 +832,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 18_000,
     buildCostIsk: 0,
     priceIsk: 15_000_000,
-    description: '「电鳐级激光巡洋舰」总装图纸，**只能用一次**：货舱 2,500 m³、循环 14 秒产 10 单位——接敌即烧穿护盾。',
+    description: '激光巡洋舰，货舱 2,500 m³，接敌即烧穿护盾。',
   },
   {
     id: 'sbp-once-swordfish',
@@ -847,7 +847,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 48_960,
     buildCostIsk: 0,
     priceIsk: 24_000_000,
-    description: '「剑鱼级大型货舰」总装图纸，**只能用一次**：货舱 14,000 m³、循环 12 秒产 16 单位——跑商人的终极梦想。',
+    description: '大型货舰，货舱 14,000 m³、循环 12 秒产 16 单位。',
   },
   {
     id: 'sbp-once-bowhead',
@@ -863,7 +863,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 59_610,
     buildCostIsk: 0,
     priceIsk: 67_500_000,
-    description: '「蝠鲼级重载货舰」总装图纸，**只能用一次**：货舱 26,000 m³、循环 36 秒产 110 单位——离线囤货与长途运输的中坚。',
+    description: '重载货舰，货舱 26,000 m³、循环 36 秒产 110 单位，囤货主力。',
   },
   {
     id: 'sbp-once-xuanwu',
@@ -879,7 +879,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 62_580,
     buildCostIsk: 0,
     priceIsk: 90_000_000,
-    description: '「玄武级重装旗舰」总装图纸，**只能用一次**：货舱 19,000 m³、循环 14 秒产 26 单位——重装线的顶点。',
+    description: '重装旗舰，货舱 19,000 m³、三层血最厚，重装线的顶点。',
   },
   {
     id: 'sbp-once-megalodon',
@@ -896,7 +896,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 72_000,
     buildCostIsk: 0,
     priceIsk: 225_000_000,
-    description: '「巨齿鲨级战列舰」总装图纸，**只能用一次**：货舱 4,000 m³、循环 12 秒产 20 单位——敢站在编队最前面的火力平台。',
+    description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
   },
   {
     id: 'sbp-once-colossal',
@@ -916,7 +916,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 162_000,
     buildCostIsk: 0,
     priceIsk: 640_000_000,
-    description: '「皇带鱼级旗舰货舰」总装图纸，**只能用一次**：货舱 36,000 m³、循环 33 秒产 129 单位——深空物流的移动要塞。',
+    description: '旗舰货舰，货舱 36,000 m³、循环 33 秒产 129 单位，移动要塞。',
   },
 ]
 
