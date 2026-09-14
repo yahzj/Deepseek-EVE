@@ -293,6 +293,11 @@ function myStockOf(state: GameState, good: MarketGoodDef): number {
   return naturalHoldings(state, good)
 }
 
+/** 舰队（机库）里同型艘数——舰船可卖量的提示用（可卖只看舰船仓库） */
+function fleetCountOf(state: GameState, defId: string): number {
+  return Object.entries(state.fleet).filter(([uid, e]) => (e.defId ?? uid) === defId).length
+}
+
 function GoodRow({
   engine,
   good,
@@ -398,7 +403,8 @@ function GoodRow({
 
 /* ═══════════════ 市场栏（标题 + 有货冒泡列表；搜索/类型过滤已提升到页面级跨栏） ═══════════════ */
 
-/** 挂单回执文案（2026-09-10 船长定：挂单瞬间先与现有簿面对冲 → 回执写明即时成交部分） */
+/** 挂单回执文案（2026-09-10 船长定：挂单瞬间先与现有簿面对冲 → 回执写明即时成交部分）
+ *  `unit`：量词（舰船「艘」/ 其余「件」；2026-09-14 舰船挂卖单放行后加） */
 function placeOrderToast(
   side: '买' | '卖',
   name: string,
@@ -406,11 +412,12 @@ function placeOrderToast(
   price: number,
   filled: number,
   resting: number,
+  unit = '件',
 ): string {
   const n = (v: number): string => v.toLocaleString('zh-CN')
   if (filled <= 0) return `已挂${side}单：${name}×${n(want)} @ ${isk(price)} 信用点（挂在簿上，等对手单成交）`
   if (resting <= 0) return `${side}单已即时成交：${name}×${n(filled)} @ ${isk(price)} 信用点`
-  return `${side}单已即时成交 ${n(filled)} 件，余 ${n(resting)} 件挂单 @ ${isk(price)} 信用点`
+  return `${side}单已即时成交 ${n(filled)} ${unit}，余 ${n(resting)} ${unit}挂单 @ ${isk(price)} 信用点`
 }
 
 /**
@@ -611,7 +618,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const quote = marketQuote(state, engine.ctx, good.key)
   const hist = marketHistory(state, good.key)
   const trend = marketTrend(state, good.key)
-  const holdings = naturalHoldings(state, good)
+  const holdings = good.kind === 'ship' ? shipStoredCount(state, good.refId) : naturalHoldings(state, good)
+  /** 舰船的量词是「艘」（其余商品是「件」）；舰队同型艘数用于"可卖量从哪来"的提示 */
+  const unit = good.kind === 'ship' ? '艘' : '件'
+  const shipInFleet = good.kind === 'ship' ? fleetCountOf(state, good.refId) : 0
   const lock = goodLockedReason(state, good)
   /**
    * 买卖盘显示几档：**随这块自己的实测高度自适应**（船长 2026-09-14：「当窗口高度不足时，可以隐藏部分订单
@@ -742,17 +752,26 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   function doSell(q?: number): void {
     const n = Math.max(1, Math.min(holdings, Math.floor(q ?? (qty || 1))))
     if (n <= 0 || holdings <= 0) {
-      onToast('没有可卖的库存。', true)
+      onToast(good.kind === 'ship' ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。', true)
       return
     }
     const r = engine.sellHoldingAt(good.key, n)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已按市价卖出 ${name}×${n.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
+    else if (good.kind === 'ship') {
+      // 舰船：即时成交的部分吃收购簿，其余**留簿挂着**（可撤销退回舰船仓库）——回执把两段都说清
+      const filled = r.sold ?? 0
+      const rest = r.remaining ?? 0
+      onToast(
+        rest > 0
+          ? `已提交出售 ${name}×${n} 艘：即时成交 ${filled} 艘${filled > 0 ? `（税后 ${isk(r.total ?? 0)} 信用点）` : ''}，余 ${rest} 艘已留簿挂单（可随时撤销退回舰船仓库）。`
+          : `已按市价卖出 ${name}×${filled} 艘（税后入账 ${isk(r.total ?? 0)} 信用点）。`,
+      )
+    } else onToast(`已按市价卖出 ${name}×${n.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
   }
   /** 全部卖出：先预览（可成交件数/毛额/税/净到账）再弹确认——不直接执行（船长 2026-09-05） */
   function askSellAll(): void {
     if (holdings <= 0) {
-      onToast('没有可卖的库存。', true)
+      onToast(good.kind === 'ship' ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。', true)
       return
     }
     const pv = engine.sellPreviewAt(good.key, holdings)
@@ -766,7 +785,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     setConfirmSell(null)
     const r = engine.sellHoldingAt(good.key, holdings)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已全部卖出 ${name}×${holdings.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
+    else if (good.kind === 'ship') {
+      const filled = r.sold ?? 0
+      const rest = r.remaining ?? 0
+      onToast(
+        rest > 0
+          ? `已提交出售 ${name}×${holdings} 艘：即时成交 ${filled} 艘${filled > 0 ? `（税后 ${isk(r.total ?? 0)} 信用点）` : ''}，余 ${rest} 艘已留簿挂单（可撤销退回舰船仓库）。`
+          : `已全部卖出 ${name}×${filled} 艘（税后入账 ${isk(r.total ?? 0)} 信用点）。`,
+      )
+    } else onToast(`已全部卖出 ${name}×${holdings.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
   }
   function doPlace(): void {
     const n = Math.max(1, Math.floor(qty || 1))
@@ -795,7 +822,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
       if (!r.ok) onToast(r.error ?? '挂卖单失败。', true)
-      else onToast(`${placeOrderToast('卖', name, n, p, r.filled ?? 0, r.resting ?? n)}。`)
+      else onToast(`${placeOrderToast('卖', name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
     }
   }
   /**
@@ -815,7 +842,11 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
       right={
         <span className="app-dim">
-          持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} 信用点
+          {/* 2026-09-14：舰船的可卖量 = **舰船仓库**艘数（机库里的船不能直接卖）⇒ 舰船把两处读数分开写 */}
+          {good.kind === 'ship'
+            ? `可卖 ${holdings.toLocaleString('zh-CN')} 艘（舰船仓库） · 机库 ${shipInFleet.toLocaleString('zh-CN')} 艘`
+            : `持有 ${holdings.toLocaleString('zh-CN')} 件`}{' '}
+          · 中位价 {median !== undefined ? isk(median) : '—'} 信用点
           <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
             {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
           </span>
@@ -908,7 +939,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 <span className="app-dim">数量</span>
                 <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
                 {tab === 'sell' ? (
-                  <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部持有（${holdings}）`}>
+                  <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部可卖（${holdings} ${unit}）`}>
                     全部
                   </button>
                 ) : null}
@@ -942,12 +973,23 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 {tab === 'buy' ? '市价买入' : '市价卖出'}
               </button>
               {tab === 'sell' ? (
-                <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部持有">
-                  全部卖出（{holdings}）
+                <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部可卖">
+                  全部卖出（{holdings} {unit}）
                 </button>
               ) : null}
             </div>
           </div>
+          {/* 舰船专卖提示（2026-09-14 船长报障「市场依旧无法挂单或者直接出售舰船」）：
+              可卖只有**舰船仓库**这一处来源，机库里的船要先入库——仓库空而机库有货时把这一步说明白 */}
+          {good.kind === 'ship' ? (
+            <div className={`app-dim app-sr-eta${holdings <= 0 && shipInFleet > 0 ? ' is-warn' : ''}`}>
+              {holdings > 0
+                ? `可卖 ${holdings} 艘来自舰船仓库（仓里的船都是全新船）：挂卖单按你填的单价排队，市价卖出则先吃收购簿、余量自动留簿挂单。`
+                : shipInFleet > 0
+                  ? `舰船仓库里没有可卖的船——机库还有 ${shipInFleet} 艘：先到舰船页把船「移入舰船仓库」（需满耐久、无装配、未锁定），再回这里出售。`
+                  : '还没有舰船可卖：到舰船页「舰船仓库」看看（组装机造好的船会先入仓库）。'}
+            </div>
+          ) : null}
           {/* 价格指引（2026-09-08 船长定：不向玩家披露站内吸收/巡游通道——只保留普通撮合语义的指导文案） */}
           <div className="app-dim app-sr-eta">
             {(() => {
@@ -1005,12 +1047,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <div className="app-mkt-confirm-title">确认全部卖出 · {name}</div>
             <div className="app-mkt-confirm-row">
               <span>卖出数量</span>
-              <b>{confirmSell.want.toLocaleString('zh-CN')} 件（持有 {confirmSell.avail.toLocaleString('zh-CN')}）</b>
+              <b>{confirmSell.want.toLocaleString('zh-CN')} {unit}（可卖 {confirmSell.avail.toLocaleString('zh-CN')}）</b>
             </div>
             <div className="app-mkt-confirm-row">
               <span>收购簿可立即成交</span>
               <b className={confirmSell.fillable > 0 ? 'app-trend-up' : ''}>
-                {confirmSell.fillable.toLocaleString('zh-CN')} 件 · {confirmSell.orders} 笔单
+                {confirmSell.fillable.toLocaleString('zh-CN')} {unit} · {confirmSell.orders} 笔单
               </b>
             </div>
             {confirmSell.fillable > 0 ? (
@@ -1031,12 +1073,16 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             ) : null}
             {confirmSell.leftover > 0 ? (
               <div className="app-mkt-confirm-note">
-                ⚠ 收购簿只能吃下 {confirmSell.fillable.toLocaleString('zh-CN')} 件，其余{' '}
-                {confirmSell.leftover.toLocaleString('zh-CN')} 件将自动按边际价挂限价卖单——挂单成交前不计入本次到账（挂单免费，可随时撤销）。
+                ⚠ 收购簿只能吃下 {confirmSell.fillable.toLocaleString('zh-CN')} {unit}，其余{' '}
+                {confirmSell.leftover.toLocaleString('zh-CN')} {unit}将自动按边际价挂限价卖单——
+                {good.kind === 'ship' ? '可随时撤销，船退回舰船仓库。' : '挂单成交前不计入本次到账（挂单免费，可随时撤销）。'}
               </div>
             ) : null}
             {confirmSell.fillable <= 0 ? (
-              <div className="app-mkt-confirm-note">⚠ 当前收购簿为空：本次不会立即成交，全部数量将提示改为挂限价卖单。</div>
+              <div className="app-mkt-confirm-note">
+                ⚠ 当前收购簿为空：本次不会立即成交，
+                {good.kind === 'ship' ? '全部数量将转为限价卖单挂着（撤销即退回舰船仓库）。' : '全部数量将提示改为挂限价卖单。'}
+              </div>
             ) : null}
             <div className="app-mkt-confirm-btns">
               <button className="app-btn is-small" onClick={() => setConfirmSell(null)}>
@@ -1145,7 +1191,9 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
                   engine.cancelOrderAt(order.id)
                   onToast(
                     order.side === 'sell'
-                      ? '卖单已撤销：货物退回库存。'
+                      ? engine.ctx.marketGoods.get(order.good)?.kind === 'ship'
+                        ? '卖单已撤销：舰船已退回舰船仓库。'
+                        : '卖单已撤销：货物退回库存。'
                       : back > 0
                         ? `买单已撤销：预扣 ${isk(back)} 信用点 已退回钱包。`
                         : '买单已撤销。',
