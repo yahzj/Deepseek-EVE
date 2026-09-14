@@ -700,15 +700,8 @@ export function WormholePanel({
       <>
         <div className="app-wh-node-title">
           {atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[hereCell.place]}
-          {/* 地点说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」）：
-              原先这段说明是卡片里的一行淡字（`.app-note`），现在按 2026-09-13「常驻说明进感叹号」口径收进提示 */}
-          <HintIcon
-            tip={
-              atExit
-                ? `${PLACE_NOTE[hereCell.place]}（这一格同时是下一层入口：继续深入就从这里下去。）`
-                : PLACE_NOTE[hereCell.place]
-            }
-          />
+          {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
+              属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
             {' '}· 坐标 Q{grid.pos.q} · R{grid.pos.r}
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
@@ -830,7 +823,9 @@ export function WormholePanel({
               })}
             </div>
           </>
-        ) : null}
+        ) : (
+          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
+        )}
       </>
     )
   }
@@ -2282,11 +2277,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           {' '}（散货 {info.cargoCells} 格 + 货柜 {info.shapeCells} 格
           {info.unplacedCells > 0 ? ` + 放不下 ${info.unplacedCells} 格` : ''}）
         </span>
-      </div>
-      <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³；货柜（安全货柜 2×2 · 图纸货柜 2×1）占整块、散货每件最多 1 格
-        （超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），
-        装不下就留在原地；「整理」按钮把所有件自动重排。
+        {/* 货仓说明**进 ⓘ**（2026-09-14 船长：「虫洞背包页面的货仓说明要进」）——原文一字未改，只搬位置 */}
+        <HintIcon
+          tip={`每格 ${n(WORMHOLE_SLOT_M3)} m³；货柜（安全货柜 2×2 · 图纸货柜 2×1）占整块、散货每件最多 1 格（超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），装不下就留在原地；「整理」按钮把所有件自动重排。`}
+        />
       </div>
       {info.overload ? (
         <div className="app-wh-hold-overload">
