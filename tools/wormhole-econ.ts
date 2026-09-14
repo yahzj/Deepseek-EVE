@@ -70,6 +70,7 @@ import {
   wormholeTakePileAt,
 } from '../packages/core/src/wormholeSalvage'
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
+import { isRareWreck, RARE_WRECK_VOLUME_M3 } from '../packages/core/src/salvage'
 import { gridCellAt, gridScanTargets, hexDistance, hexNeighbors, isExitCell } from '../packages/core/src/wormholeGrid'
 import type { WormholeGridState, WormholePlace } from '../packages/core/src/wormholeGrid'
 
@@ -298,7 +299,18 @@ interface Income {
   oreIsk: number
   /** 残骸按**回收炉拆解**估值（`baseSellPriceIsk = 1`，只看基础价会算成 0） */
   wreckIsk: number
-  /** 遗迹安全货柜件数（内容物待拆解，不计 ISK——专设一列免得被误读成"没收益"） */
+  /**
+   * **稀有残骸（`wreck-rare-*`）件数**（2026-09-13 二号追加 · **目标函数**）。
+   *
+   * ⚠ **为什么它是主读数、而不是 ISK**（船长 2026-09-13 校正口径）：
+   * 「**进虫洞的目的是获得专属装备（稀有残骸，虫洞专属），资产收益只是附带的**」。
+   * 虫洞专属装备的唯一来源 = 稀有残骸 → 回收炉开**高级箱** → 该族专属件；
+   * 而 `wreckIsk` 里**只算了回收炉的保底矿物**（`wormholeLootValueIsk` 默认**不计**高级箱的
+   * `WORMHOLE_RARE_CHEST_NOMINAL_ISK`）⇒ 用 ISK 当目标函数会把"捡到专属装备的机会"
+   * 按 1,700 ISK/堆 折算掉，**方向性错误**。
+   */
+  rareWrecks: number
+  /** 遗迹安全货柜件数（**专属装备/图纸的中间件**；内容物待拆解 ⇒ 不计 ISK） */
   boxes: number
   /** 族专属无人机（件数 + 基础价 ISK） */
   drones: number
@@ -309,7 +321,7 @@ interface Income {
 }
 
 function incomeOf(state: GameState): Income {
-  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, boxes: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
+  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
   for (const [id, units] of Object.entries(state.warehouse.items)) {
     const n = Math.max(0, Math.floor(units))
     if (n <= 0) continue
@@ -318,6 +330,7 @@ function incomeOf(state: GameState): Income {
       acc.oreIsk += n * (ctx.items.get(id)?.baseSellPriceIsk ?? 0)
     } else if (id.startsWith('wreck-')) {
       acc.wreckIsk += wormholeLootValueIsk(ctx, id, n)
+      if (isRareWreck(id)) acc.rareWrecks += 1 // 1 件 = 30 m³ = 1 个高级箱的原料（不是 30 件）
     } else if (id.startsWith('box-relic-')) {
       acc.boxes += n
     } else if (id.startsWith('drone-wh-')) {
@@ -334,6 +347,7 @@ const INCOME_KEYS = [
   'oreUnits',
   'oreIsk',
   'wreckIsk',
+  'rareWrecks',
   'boxes',
   'drones',
   'droneIsk',
@@ -352,12 +366,17 @@ interface Ledger {
   oreUnits: number
   oreIsk: number
   wreckIsk: number
+  /** 稀有残骸件数（趟内已收）——**目标函数的分子** */
+  rareWrecks: number
   boxes: number
 }
 
 function runLedger(state: GameState): Ledger {
-  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, boxes: 0 }
-  for (const slot of state.wormhole.run?.bag ?? []) {
+  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0 }
+  const run = state.wormhole.run
+  // 背包（货仓格）+ **临时空间**（大件缓冲，撤离时一并入港 ⇒ 也算"已经拿到手"）
+  const slots = [...(run?.bag ?? []), ...(run?.temp ?? [])]
+  for (const slot of slots) {
     const n = Math.max(0, Math.floor(slot.units))
     if (n <= 0) continue
     if (slot.itemId === WORMHOLE_ORE_ITEM_ID) {
@@ -365,9 +384,12 @@ function runLedger(state: GameState): Ledger {
       acc.oreIsk += n * (ctx.items.get(slot.itemId)?.baseSellPriceIsk ?? 0)
     } else if (slot.itemId.startsWith('wreck-')) {
       acc.wreckIsk += wormholeLootValueIsk(ctx, slot.itemId, n)
+      if (isRareWreck(slot.itemId)) acc.rareWrecks += 1 // 1 件 = 30 m³ = 1 个高级箱的原料
+    } else if (slot.itemId.startsWith('box-relic-')) {
+      acc.boxes += n
     }
   }
-  for (const p of state.wormhole.run?.hold?.placements ?? []) {
+  for (const p of run?.hold?.placements ?? []) {
     if (p.kind === 'box') acc.boxes += 1
   }
   return acc
@@ -378,6 +400,7 @@ function subLedger(a: Ledger, b: Ledger): Ledger {
     oreUnits: a.oreUnits - b.oreUnits,
     oreIsk: a.oreIsk - b.oreIsk,
     wreckIsk: a.wreckIsk - b.wreckIsk,
+    rareWrecks: a.rareWrecks - b.rareWrecks,
     boxes: a.boxes - b.boxes,
   }
 }
@@ -425,6 +448,8 @@ interface RunOutcome {
   layerCollected: number[]
   /** 逐层收集到的货柜件数（内容物待拆解，不计 ISK） */
   layerBoxes: number[]
+  /** **逐层收到的稀有残骸件数**（专属装备的原料 ⇒ 目标函数的分层读数） */
+  layerRares: number[]
   /** 逐层动作数（回合账） */
   layerActs: LayerActs[]
   acts: LayerActs
@@ -516,6 +541,8 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
   }
   const layerCollected: number[] = []
   const layerBoxes: number[] = []
+  /** 逐层**稀有残骸件数**（目标函数的分层读数） */
+  const layerRares: number[] = []
   let lastSnap = runLedger(state)
   const turnsTotal = enter.run?.turnsTotal ?? 0
   /** **停止原因**（只对"未结束"有意义：把"卡在哪一步"如实带出来，而不是让人对着 0 收益猜） */
@@ -542,13 +569,15 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
     const d = subLedger(now, lastSnap)
     const gain = ledgerIsk(d)
     const depth = state.wormhole.run?.depth ?? 1
-    if (gain > 0 || d.boxes > 0) {
+    if (gain > 0 || d.boxes > 0 || d.rareWrecks > 0) {
       while (layerCollected.length < depth) {
         layerCollected.push(0)
         layerBoxes.push(0)
+        layerRares.push(0)
       }
       layerCollected[depth - 1] = (layerCollected[depth - 1] ?? 0) + Math.max(0, gain)
       layerBoxes[depth - 1] = (layerBoxes[depth - 1] ?? 0) + Math.max(0, d.boxes)
+      layerRares[depth - 1] = (layerRares[depth - 1] ?? 0) + Math.max(0, d.rareWrecks)
     }
     lastSnap = now
   }
@@ -813,6 +842,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
     income: subIncome(after, before),
     layerCollected,
     layerBoxes,
+    layerRares,
     layerActs,
     acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0 }),
     turnsLeft: state.wormhole.run?.turnsLeft ?? lastTurns,
@@ -832,6 +862,8 @@ interface LayerRow {
   isk: number
   oreUnits: number
   wrecks: number
+  /** **稀有残骸件数**（该层收到手的；目标函数的分层读数） */
+  rares: number
   boxes: number
   /** 该层的动作数合计（扫/走/打捞/采集/交战/抛货/磨回合） */
   acts: number
@@ -862,7 +894,7 @@ function runRunsMode(): void {
       `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )
   console.log(
-    ['#', '结果', '到达层', '存活', '母矿', '母矿ISK', '残骸ISK', '无人机', '货柜', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
+    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
   )
   const out: RunOutcome[] = []
   for (let i = 0; i < n; i++) {
@@ -875,11 +907,12 @@ function runRunsMode(): void {
         o.result === 'extract' ? '撤离成功' : o.result === 'lost' ? '全损' : '未结束',
         o.depth,
         `${o.shipsLeft}/4`,
+        o.income.rareWrecks,
+        o.income.boxes,
         o.income.oreUnits,
         f(o.income.oreIsk),
         f(o.income.wreckIsk),
         o.income.drones,
-        o.income.boxes,
         f(incomeIsk(o.income)),
         o.acts.scans,
         o.acts.moves,
@@ -902,13 +935,28 @@ function runRunsMode(): void {
   const ok = out.filter((o) => o.result === 'extract')
   const avg = (f: (o: RunOutcome) => number): number => out.reduce((s, o) => s + f(o), 0) / out.length
   const lostShips = out.reduce((s, o) => s + (4 - o.shipsLeft), 0)
+  /**
+   * **目标函数行**（2026-09-13 二号追加 · 船长校正口径后的主读数）。
+   *
+   * 船长原话：「**进虫洞的目的是获得专属装备（稀有残骸，虫洞专属），资产收益只是附带的**」⇒
+   * 看配置优劣先看这一行（**稀有残骸件数 + 安全货柜件数**），ISK 只在同一条线上做参考。
+   * 「回收率」= 已收到手的稀有残骸 ÷ 趟内曾经收进包的（分母含全损趟里丢掉的那些）。
+   */
+  const rareGot = avg((o) => o.income.rareWrecks)
+  const rareCollected = avg((o) => o.layerRares.reduce((s, v) => s + v, 0))
   console.log(
-    `\n汇总：撤离成功 ${ok.length}/${out.length} · 平均到达第 ${avg((o) => o.depth).toFixed(1)} 层 · ` +
-      `平均存活 ${avg((o) => o.shipsLeft).toFixed(2)}/4 艘（合计损失 ${lostShips} 艘）· ` +
-      `平均到手 ${Math.round(avg((o) => incomeIsk(o.income))).toLocaleString('zh-CN')} ISK` +
+    `        **专属产出（目标函数）**：稀有残骸 **${rareGot.toFixed(2)} 件/趟**` +
+      `（1 件 = ${RARE_WRECK_VOLUME_M3} m³ = 1 个高级箱的原料；1 箱开出 1 件该族专属装备或专属图纸）· ` +
+      `**遗迹安全货柜 ${avg((o) => o.income.boxes).toFixed(2)} 件/趟**` +
+      `（层 2 起才出）· 回收率 ${rareCollected > 0 ? ((rareGot / rareCollected) * 100).toFixed(0) : '—'}%` +
+      `（全损趟连稀有残骸一起丢）`,
+  )
+  console.log(
+    `        纯资产（附带）：平均到手 ${Math.round(avg((o) => incomeIsk(o.income))).toLocaleString('zh-CN')} ISK` +
       `（母矿 ${Math.round(avg((o) => o.income.oreUnits))} 单位 / ${Math.round(avg((o) => o.income.oreIsk)).toLocaleString('zh-CN')} ISK` +
-      ` + 残骸拆解 ${Math.round(avg((o) => o.income.wreckIsk)).toLocaleString('zh-CN')} ISK）` +
-      ` · 货柜 ${avg((o) => o.income.boxes).toFixed(2)} 件/趟`,
+      ` + 残骸拆解（**只算保底矿物，不含高级箱**）${Math.round(avg((o) => o.income.wreckIsk)).toLocaleString('zh-CN')} ISK）` +
+      ` · 撤离 ${ok.length}/${out.length} · 平均第 ${avg((o) => o.depth).toFixed(1)} 层 · ` +
+      `存活 ${avg((o) => o.shipsLeft).toFixed(2)}/4（合计损失 ${lostShips} 艘）`,
   )
   /**
    * **回合余量**（2026-09-13 二号追加 · 判断"到底是什么卡住了收益"）。
@@ -939,31 +987,35 @@ function runRunsMode(): void {
   for (const o of out) {
     o.layerCollected.forEach((isk, idx) => {
       const d = idx + 1
-      const row = rows.get(d) ?? { samples: 0, isk: 0, oreUnits: 0, wrecks: 0, boxes: 0, acts: 0 }
+      const row = rows.get(d) ?? { samples: 0, isk: 0, oreUnits: 0, wrecks: 0, rares: 0, boxes: 0, acts: 0 }
       const a = o.layerActs[idx]
       row.samples += 1
       row.isk += isk
       row.boxes += o.layerBoxes[idx] ?? 0
+      row.rares += o.layerRares[idx] ?? 0
       row.acts += a ? a.scans + a.moves + a.salvages + a.collects + a.fights + a.discards + a.waits : 0
       rows.set(d, row)
     })
   }
   console.log('\n逐层读数（**按层累加"收集"额 + 该层动作数**；样本 = 走到过这一层的趟数）：')
-  console.log(['层', '样本', '平均收集ISK', '平均动作数', '每动作ISK', '货柜/层', '层威胁', 'ISK/威胁', '较上层'].join('\t'))
+  console.log(['层', '样本', '稀有残骸/层', '平均动作数', '每动作稀有/100', '平均收集ISK', '每动作ISK', '货柜/层', '层威胁', 'ISK/威胁', '较上层'].join('\t'))
   let prevRatio = 0
   for (let d = 1; d <= Math.max(...out.map((o) => o.depth), 1); d++) {
     const row = rows.get(d)
     if (!row || row.samples === 0) continue
     const isk = row.isk / row.samples
     const acts = row.acts / row.samples
+    const rares = row.rares / row.samples
     const threat = wormholeLayerThreat(d)
     const ratio = isk / threat
     console.log(
       [
         d,
         row.samples,
-        Math.round(isk).toLocaleString('zh-CN'),
+        rares.toFixed(2),
         acts.toFixed(1),
+        acts > 0 ? (rares / acts * 100).toFixed(1) : '—',
+        Math.round(isk).toLocaleString('zh-CN'),
         acts > 0 ? Math.round(isk / acts).toLocaleString('zh-CN') : '—',
         row.boxes.toFixed(2),
         threat,
@@ -974,11 +1026,13 @@ function runRunsMode(): void {
     prevRatio = ratio
   }
   console.log(
-    '\n读法：① 逐层表记的是**收集额**（按层累加；母矿按基础卖价、残骸按回收炉拆解估值）——样本少的高层会被"能活着走到那儿的人"筛选过，看趋势时先看样本列；' +
-      '② 整趟表记的是**到手额**（只有撤离成功才入港 ⇒ 全损 = 0）——两个数的差就是"没带回来"的部分；' +
-      '③ 货柜不计 ISK（内容物待拆解批），单列件数；④ 「ISK/威胁」应逐层上升（船长口径：深层收益比难度曲线更高）；' +
-      '⑤ 政策不偷看 `grid.exit`，出口只由**信标**给出 ⇒ 读数里包含"找信标"的回合成本；' +
-      '⑥ 撤离开放（船长 2026-09-13：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）⇒ ' +
+    '\n读法：① **主读数 = 「稀有残骸/层」**（船长 2026-09-13：「进虫洞的目的是获得专属装备（稀有残骸，虫洞专属），' +
+      '资产收益只是附带的」）——稀有残骸 → 回收炉开**高级箱** → 该族专属件，是专属装备与专属图纸的唯一来源；' +
+      '② 逐层表记的是**收集额**（按层累加；母矿按基础卖价、残骸按回收炉保底估值，**不含高级箱**）——样本少的高层会被"能活着走到那儿的人"筛选过，看趋势时先看样本列；' +
+      '③ 整趟表记的是**到手额**（只有撤离成功才入港 ⇒ 全损 = 0）——两个数的差就是"没带回来"的部分；' +
+      '④ 货柜（遗迹 2×2 件）与稀有残骸都**不计 ISK**，单列件数；⑤ 「ISK/威胁」是**资产口径**的旁证（应逐层上升）；' +
+      '⑥ 政策不偷看 `grid.exit`，出口只由**信标**给出 ⇒ 读数里包含"找信标"的回合成本；' +
+      '⑦ 撤离开放（船长 2026-09-13：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）⇒ ' +
       '「磨回合」列恒 0：旧闸门逼出来的"打不过就转圈耗回合"歪招已消失；守卫只堵**深入**。',
   )
 }
