@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
-import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
+import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RECYCLE_POOL_AVG_ISK, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
 import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
@@ -130,6 +130,26 @@ describe('回收画像与保底矿物滚动', () => {
     for (let i = 0; i < 20; i += 1) {
       const out = rollRecycleGuarantee(state, { ...base, anomalies: flavMap }, flavored, 10)
       expect(['min-nocxium', 'min-isotope']).toContain(out[0]!.mineralId)
+    }
+  })
+
+  it('三档基础池都含三钛合金，且均价 = 档基数（船长 2026-09-14：所有残骸回收都加三钛、价值不变）', () => {
+    const ctx = ctxOf()
+    // 测试 ctx 里：柯尔 = 常档、坟场 = 危档（险档由 data 侧专属池覆盖，见 content-check B3.1/B3.2）
+    for (const [anomalyId, tier] of [
+      ['ano-kor', 'common'],
+      ['ano-grave', 'dire'],
+    ] as const) {
+      const profile = recycleProfileOf(ctx, wreckItemIdOf(anomalyId))!
+      expect(profile.tier).toBe(tier)
+      const pool = recycleMineralPoolOf(profile)
+      // ① 必含三钛（船长口径：不能有"拆了不给三钛"的残骸）
+      expect(pool.map(([id]) => id)).toContain('min-tritanium')
+      // ② 均价必须等于档基数（改池必同步改 RECYCLE_POOL_AVG_ISK，容差 ±3% 同 content-check）
+      const wSum = pool.reduce((s, [, w]) => s + w, 0)
+      const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+      const avg = pool.reduce((s, [id, w]) => s + (w / wSum) * priceOf(id), 0)
+      expect(Math.abs(avg / RECYCLE_POOL_AVG_ISK[tier] - 1)).toBeLessThanOrEqual(0.03)
     }
   })
 })
