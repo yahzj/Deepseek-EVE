@@ -68,6 +68,32 @@ body {
   background-size: cover, 512px 512px;
 }
 
+/* ── **超宽屏的内容最大宽度**（船长 2026-09-13：「有玩家反应，当屏幕偏长时，游戏界面过宽。
+   给游戏界面的内容加个最大宽度。当窗口超出这个宽度时，在左右填充空白（大概是这样）」）──
+   做法：顶栏与工作区各自 `width:100% + max-width + 左右 auto` ⇒ 窗口比 `--app-max-w` 宽时，
+   整块内容居中、两侧露出宇宙底图（= 天然"填充空白"，不用另画占位）；**没超过时完全不变**。
+   一个旋钮 = `--app-max-w`（想更宽/更窄改这一处即可；1760 比常见 1600 桌面宽一点，
+   保证普通屏与笔记本**看不出任何变化**，只有超宽屏才收进来）。
+   ⚠ 不套这层的：**全屏覆盖层**（战斗画面 = 按窗口铺开的场景；弹层/详情本来就有自己的宽度上限并居中）。 */
+:root {
+  --app-max-w: 1760px;
+}
+.app-header,
+.app-workspace {
+  /* ⚠ 三条一起才成立（实测踩过两次坑）：
+     ① **只写 `max-width` + `margin:auto`** ⇒ 纵向 flex 的交叉轴里 `auto` 外边距会**取消 stretch**，
+        整条顶栏缩成"内容宽"（1600 的窗口上只剩 1258 宽）——不对；
+     ② **写 `width:100%` 但不加 `box-sizing`** ⇒ 顶栏内边距 10px 16px 不含在宽度里，
+        变成"100% + 32px" ⇒ 普通 1600 窗口被挤出 32px 横向滚动条——也不对；
+     ③ 正解 = `width:100%` + `box-sizing:border-box` 封顶 `max-width` + 左右 auto ⇒
+        没超过上限时**逐像素与改前一致**（1600 = 1600），超过时居中留白。 */
+  width: 100%;
+  box-sizing: border-box;
+  max-width: var(--app-max-w);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：visualViewport 真实可见区铺满）──
    整窗 rotate(-90°) + 等比缩放；--mob-w/--mob-h/--mob-scale/--mob-x/--mob-y 由 JS 按可见区计算 ── */
 
@@ -4845,20 +4871,28 @@ body {
 
 }
 
+/* ── 图标模式的物品操作行（船长 2026-09-13 深夜：「物品仓库界面图标模式下的物品操作，将装到船上等
+   按钮横向排布，且适当变高」）——原来是 `column`（一颗颗竖着堆、`is-small` 只有 ~21px 高），
+   现在改成**横排等分 + 加高**：按钮同高同宽（`flex:1`）、必要时换行，点起来目标更大。
+   本弹层只由「图标视图」的卡片点选打开（列表模式用自己的行内按钮），故不会串到列表模式。 */
 .app-itempick-actions {
-
   display: flex;
-
-  flex-direction: column;
-
-  align-items: flex-start;
-
-  gap: 6px;
-
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
   padding-top: 8px;
-
   border-top: 1px dashed rgba(85, 112, 140, 0.25);
-
+}
+.app-itempick-actions .app-btn {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 6px 14px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 /* 出售数量选择行（2026-09-05：部分出售） */
