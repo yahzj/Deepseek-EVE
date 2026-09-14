@@ -13,7 +13,7 @@
  * - 弹药：我方炮台开火即时消耗 1 发（弹型 = 剩余最多型，平局 kin→exp→pla）；
  *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
-import type { GameState } from './state'
+import type { BattleBreakReason, BattleReportRecord, BattleReportSource, GameState } from './state'
 import { addLog } from './state'
 import type {
   AnomalyDef,
@@ -2632,6 +2632,16 @@ export function startBattleFor(
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
   if (!me) return null
+  /**
+   * **满值上限**（血条分母）——必须在**承伤持久化之前**留一份。
+   *
+   * ⚠ 2026-09-14 修船长报障「**虫洞战斗中，我方舰船的血量上限显示不正确**」：洞内多舰路径把
+   * `hpMax` 取自**打完折之后**的规格（下面那两行 `me.hp.a *= armorMul`），于是"上限"跟着场间残余
+   * 一起缩水（装甲剩 60% ⇒ 血条分母只有满值的 60%、开局读作满格）；而**单船路径的视图上限**
+   * （`battleArcsFor` 的 `maxHp.me`）用的是**现建的满值规格** ⇒ 洞外 60%、洞内 100%，两条路不一致。
+   * 语义定案：**上限恒为该舰的满值**，承伤持久化只打"当前值"（与护盾每场满值重建同一条口径）。
+   */
+  const meFullHp = { ...me.hp }
   // P0 承伤持久化：装甲/结构（=耐久合并属性）按场间残余开局；护盾每场满值重建
   const fleetShip = state.fleet[shipId]
   if (fleetShip) {
@@ -2659,6 +2669,13 @@ export function startBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
+  /**
+   * **把血条分母修回满值**（2026-09-14 修船长报障「虫洞战斗中，我方舰船的血量上限显示不正确」）：
+   * `createBattleState` 是按"传入规格"写 `hp`/`hpMax` 的，而上面已经把规格的装甲/结构按场间残余打过折
+   * ⇒ 分母跟着缩水。这里显式改回**满值**，只让 `hp`（当前值）吃那份折扣。
+   */
+  const meRt0 = battle.units['player']
+  if (meRt0) meRt0.hpMax = meFullHp
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
@@ -2891,6 +2908,13 @@ export function startFleetBattleFor(
   const fleet: NonNullable<import('./state').BattleState['myFleet']> = []
   /** 逐船规格（弹药装载要按船各算一次，故留一份） */
   const specOf = new Map<string, UnitSpec>()
+  /**
+   * **逐船满值三层血**（血条分母）——必须在承伤持久化**之前**留一份。
+   * ⚠ 2026-09-14 修船长报障「**虫洞战斗中，我方舰船的血量上限显示不正确**」：见 `startBattleFor`
+   * 里同款注释（洞内多舰路径原先拿"打完折的规格"当初始 `hpMax` ⇒ 上限凭空缩水、与洞外口径不一致）。
+   * 语义定案：**上限恒为该舰满值**，承伤持久化只打"当前值"。
+   */
+  const fullHpOf = new Map<string, { s: number; a: number; h: number }>()
   for (let i = 0; i < ordered.length; i++) {
     const sid = ordered[i]!
     const spec = createPlayerSpec(state, ctx, sid)
@@ -2900,6 +2924,7 @@ export function startFleetBattleFor(
       continue
     }
     spec.tag = i === 0 ? 'player' : `ally-${i}`
+    fullHpOf.set(spec.tag, { ...spec.hp })
     // P0 承伤持久化：装甲/结构（=耐久合并属性）按**各自**场间残余开局；护盾每场满值重建
     const fleetShip = state.fleet[sid]
     if (fleetShip) {
@@ -2954,6 +2979,15 @@ export function startFleetBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
+  /**
+   * **逐船把血条分母修回满值**（2026-09-14 修船长报障「虫洞战斗中，我方舰船的血量上限显示不正确」）：
+   * `createBattleState` 按"传入规格"写 `hp`/`hpMax`，而上面已按各舰的场间残余打过折 ⇒ 分母跟着缩水
+   * （洞内 4 条舰的血条开局全是满格、上限比洞外小）。这里显式改回**各自满值**。
+   */
+  for (const [tag, full] of fullHpOf) {
+    const rt = battle.units[tag]
+    if (rt) rt.hpMax = full
+  }
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
@@ -3442,6 +3476,108 @@ export function spreadWinChance(p: number, k: number): number {
   const logit = Math.log(t / (1 - t))
   const s = 1 / (1 + Math.exp(-k * logit))
   return clamp(0.02, 0.98, s)
+}
+
+/**
+ * **四档判定**（2026-09-14 船长定 · 战报改造）。
+ *
+ * | 情形 | 判定 |
+ * |---|---|
+ * | 我方全灭 / 结构归零判负（含弃船） | `defeat` → 界面写「⚠ 失利」 |
+ * | 未分胜负就中止（结构撤退 / 打满上限超时 / 无法交战 / 主动撤退） | `break` → 「⚠ 脱离」 |
+ * | 胜 + **零沉船 且 机群无净损失** | `great` → 「⚔ 大捷」 |
+ * | 胜 + **有沉船 或 机群有净损失** | `pyrrhic` → 「⚔ 惨胜」 |
+ *
+ * 做成**纯函数**是刻意的：渲染层没有测试运行器（`npm test` 只管 core），而这个判定正是船长
+ * 报障的那个点（"损失了舰船也显示大捷"）⇒ 只有放进 core 才拦得住。
+ */
+export type BattleVerdict = 'great' | 'pyrrhic' | 'defeat' | 'break'
+
+export function battleVerdictOf(r: Pick<BattleReportRecord, 'outcome' | 'shipsLost' | 'dronesGone'>): BattleVerdict {
+  if (r.outcome === 'break') return 'break'
+  if (r.outcome === 'lose') return 'defeat'
+  return r.shipsLost.length > 0 || r.dronesGone > 0 ? 'pyrrhic' : 'great'
+}
+
+/**
+ * **写一份结构化战报**（2026-09-14 船长定 · 战报改造）——**全仓唯一构造点**。
+ *
+ * 四个结算点各调一次（悬赏远征胜/败/中止 · 低安遭遇胜/败 · 虫洞胜/负 · AI 副船胜/败），
+ * 好处是"派生口径只有一份"：沉船名单、逐舰三层残余、敌方残余、弹药消耗都从 `battle` 现算，
+ * 各结算点只负责给 `source` / `outcome` / `breakReason` 与**它自己写的那句日志原文**（`summary`）。
+ *
+ * 口径要点：
+ * - `shipsLost`：**调用方给了就用它**（洞内那边已有船长口径的显示名，含自定义船名），否则从
+ *   `battle.units` 里按"我方且三层血合计 ≤ 0"推导（与 `wormholeBattle.sunkShipIds` 同一判据）；
+ * - `myUnits`：单船路径 = 只有 `player`；多舰路径 = `myFleet` 顺序（主控在前）；
+ * - `foe`：`total` = 本场**参战过**的敌单位数（多波战斗含后续波已刷出的），`alive` = 其中三层血
+ *   合计 > 0 的，`hpFrac` = Σ当前 ÷ Σ上限；
+ * - `ammoUsed` = 开战预载 − 战后余额（`ammoLoaded` 四条路径都在写 ⇒ 四类战斗都算得出）；
+ * - `dronesGone`：从 `state.droneLossReport` 读**净损失**（按时刻配对；AI 副船不写它 ⇒ 0）。
+ */
+export function captureBattleReport(
+  state: GameState,
+  battle: import('./state').BattleState,
+  opts: {
+    source: BattleReportSource
+    outcome: 'win' | 'lose' | 'break'
+    breakReason?: BattleBreakReason
+    /** 本场引擎写的那条日志原文（弹层正文用它 ⇒ 卡片与日志同源） */
+    summary: string
+    /** 覆盖"我方沉船名单"（洞内传船长口径的显示名；缺省 = 从 battle.units 推导） */
+    shipsLost?: readonly string[]
+  },
+): BattleReportRecord {
+  const entries = battle.myFleet && battle.myFleet.length > 0 ? battle.myFleet : [{ tag: 'player' }]
+  const myUnits: BattleReportRecord['myUnits'] = []
+  const derivedLost: string[] = []
+  for (const e of entries) {
+    const u = battle.units[e.tag]
+    if (!u) continue
+    const max = u.hpMax ?? u.hp
+    myUnits.push({ name: u.name, s: u.hp.s, a: u.hp.a, h: u.hp.h, sMax: max.s, aMax: max.a, hMax: max.h })
+    if (u.hp.s + u.hp.a + u.hp.h <= 0) derivedLost.push(u.name)
+  }
+  let foeTotal = 0
+  let foeAlive = 0
+  let foeCur = 0
+  let foeMax = 0
+  for (const u of Object.values(battle.units)) {
+    if (u.side !== 'foe') continue
+    foeTotal += 1
+    const cur = u.hp.s + u.hp.a + u.hp.h
+    const max = u.hpMax ?? u.hp
+    foeCur += cur
+    foeMax += max.s + max.a + max.h
+    if (cur > 0) foeAlive += 1
+  }
+  const loaded = battle.ammoLoaded
+  const ammoUsed = loaded
+    ? {
+        kin: Math.max(0, Math.round(loaded.kin - battle.ammo.kin)),
+        exp: Math.max(0, Math.round(loaded.exp - battle.ammo.exp)),
+        pla: Math.max(0, Math.round(loaded.pla - battle.ammo.pla)),
+      }
+    : { kin: 0, exp: 0, pla: 0 }
+  const dr = state.droneLossReport
+  const dronesGone = dr && dr.battleStartedAtGameMs === battle.startedAtGameMs ? Math.max(0, dr.gone) : 0
+  const shipsLost = [...new Set((opts.shipsLost ?? derivedLost).filter((n) => n.length > 0))]
+  const rec: BattleReportRecord = {
+    battleStartedAtGameMs: battle.startedAtGameMs,
+    source: opts.source,
+    outcome: opts.outcome,
+    ...(opts.breakReason !== undefined ? { breakReason: opts.breakReason } : {}),
+    durMs: Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs),
+    stats: { ...battle.stats },
+    shipsLost,
+    myUnits,
+    foe: { alive: foeAlive, total: foeTotal, hpFrac: foeMax > 0 ? Math.max(0, Math.min(1, foeCur / foeMax)) : 0 },
+    ammoUsed,
+    dronesGone,
+    summary: opts.summary,
+  }
+  state.battleReport = rec
+  return rec
 }
 
 /**

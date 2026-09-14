@@ -529,9 +529,20 @@ export function App({ engine }: { engine: GameEngine }) {
   const [whOpen, setWhOpen] = useState(false)
   /** 从库存进洞：选中的那处（null = 调试入口，直接用游戏随机种子开一趟） */
   const [whStockPick, setWhStockPick] = useState<string | null>(null)
+  /** **自动探索模式**要派的那一处库存（2026-09-14 船长：自动探索走同一个准备页） */
+  const [whAutoPick, setWhAutoPick] = useState<string | null>(null)
   /** 打开虫洞面板（stockId 给了 = 从「扫描虫洞」页选中的那处库存虫洞开始探索） */
   const openWormhole = (stockId?: string): void => {
     setWhStockPick(stockId ?? null)
+    setWhAutoPick(null)
+    changePage('map')
+    changeMapTab('star')
+    setWhOpen(true)
+  }
+  /** 打开虫洞面板的**自动探索模式**（同一个准备页；按钮写「派队自动探索」） */
+  const openWormholeAuto = (stockId: string): void => {
+    setWhStockPick(null)
+    setWhAutoPick(stockId)
     changePage('map')
     changeMapTab('star')
     setWhOpen(true)
@@ -959,6 +970,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 mapGoto={mapGoto}
                 onOpenWormhole={openWormhole}
                 onExploreWormhole={(stockId) => openWormhole(stockId)}
+                onAutoExploreWormhole={(stockId) => openWormholeAuto(stockId)}
               />
             ) : null}
             {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}
@@ -1197,9 +1209,11 @@ export function App({ engine }: { engine: GameEngine }) {
             engine={engine}
             onToast={showToast}
             stockId={whStockPick}
+            autoStockId={whAutoPick}
             onClose={() => {
               setWhOpen(false)
               setWhStockPick(null)
+              setWhAutoPick(null)
             }}
           />
         ) : null}

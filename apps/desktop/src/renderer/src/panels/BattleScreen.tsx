@@ -11,8 +11,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
-import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -41,7 +41,7 @@ import {
   ROW2_BAR_DROP,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
-  fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport, resolveBoltAnchors,
+  fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 
@@ -326,6 +326,8 @@ const meSpeedRef = useRef(200)
   const reportTextRef = useRef('')
   /** 机群战损结算结果（2026-09-11）：进入 report 阶段那一刻从引擎取，供战报两行明细 */
   const droneReportRef = useRef<DroneLossReport | null>(null)
+  /** **结构化战报**（2026-09-14 战报改造）：进入 report 阶段那一刻从引擎取（按起手时刻配对） */
+  const battleReportRef = useRef<BattleReportRecord | null>(null)
   const flushTimerRef = useRef<number | null>(null)
   const dragValRef = useRef<number | null>(null)
   /**
@@ -396,20 +398,28 @@ const meSpeedRef = useRef(200)
       const dr = state.droneLossReport ?? null
       droneReportRef.current =
         dr && (!snap || dr.battleStartedAtGameMs === snap.startedAtGameMs) ? dr : null
-      const report =
-        lastBattleReport(state.logs, snap?.startedAtGameMs ?? 0) ??
+      /**
+       * **结构化战报**（2026-09-14 船长定 · 战报改造）：引擎在结算时写了一份 `state.battleReport`，
+       * 弹层直接读它 —— 取代原先"在日志里找含『战报』二字的那条"（那条做法对洞内/遭遇/无法交战
+       * **三类战斗全部取不到正文**，而且标题只看胜负 ⇒ 沉了船也写「大捷」）。
+       * 配对口径同 `droneLossReport`：起手时刻对不上就是别的战斗写的 ⇒ 回落兜底句，绝不串场。
+       */
+      const br = state.battleReport ?? null
+      battleReportRef.current = br && (!snap || br.battleStartedAtGameMs === snap.startedAtGameMs) ? br : null
+      reportTextRef.current =
+        battleReportRef.current?.summary ??
         (snap?.kind === 'me' ? '大捷：敌方编队全灭，舰队开始返航。' : '失利：舰队被迫撤离，详情见事件日志。')
-      reportTextRef.current = report
       setStage('report')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, battle?.ended, combatView === null])
 
-  // 战报自动关闭：report 展示 12 秒后自动返回（按钮可随时提前关闭）
-  // 2026-09-11 船长：「战斗报告持续时间延长」——6 秒 → 12 秒（新增机群回收明细后 6 秒读不完）
+  // 战报自动关闭：report 展示 20 秒后自动返回（按钮可随时提前关闭）
+  // 2026-09-11 船长：「战斗报告持续时间延长」6 秒 → 12 秒；
+  // 2026-09-14（战报改造）：内容又多了三行（我方损失 / 双方残余 / 弹药消耗）⇒ 12 秒 → **20 秒**
   useEffect(() => {
     if (stage !== 'report') return
-    const t = window.setTimeout(() => onClose(), 12_000)
+    const t = window.setTimeout(() => onClose(), 20_000)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
@@ -600,16 +610,51 @@ const meSpeedRef = useRef(200)
   if (stage === 'report') {
     const snap = outroRef.current
     const droneReport = droneReportRef.current
+    const br = battleReportRef.current
     const won = snap?.kind === 'me'
     const durSec = Math.max(1, Math.round((snap?.durMs ?? 0) / 1000))
     const fallback = won ? '敌方编队已全灭。' : '舰队被迫撤离。'
+    /**
+     * **判定四档**（2026-09-14 船长定）：胜且**零沉船、机群无损**才是「大捷」；有损失 ⇒ 「惨胜」；
+     * 负 ⇒ 「失利」；没分出胜负就收场（结构撤退/超时/无法交战/主动撤退）⇒ 「脱离」。
+     * 判定由 core 的纯函数出（`battleVerdictOf` ⇒ 它进得了用例）；这里只管文案与配色。
+     * ⚠ 取不到记录（老档/配对不上）时**回落旧口径**（只看胜负），行为与改造前一致。
+     */
+    const verdict: BattleVerdict = br ? battleVerdictOf(br) : won ? 'great' : 'defeat'
+    const lostN = br?.shipsLost.length ?? 0
+    const titleOf: Record<BattleVerdict, string> = {
+      great: '⚔ 大捷',
+      // 「惨胜」沿用**胜色**（金色），只在标题里带上损失数 —— 不新增一档配色（船长 2026-09-14 批准）
+      pyrrhic: `⚔ 惨胜（损失 ${lostN} 艘）`,
+      defeat: '⚠ 失利',
+      break: '⚠ 脱离',
+    }
+    const isWinSide = verdict === 'great' || verdict === 'pyrrhic'
+    /** 三层残余一行：`长尾鲨 盾 1240/1240 · 甲 860/860 · 结构 420/420`（多舰用「 ｜ 」连） */
+    const myUnitsText = br
+      ? br.myUnits.map((u) => `${u.name} 盾 ${Math.round(u.s)}/${Math.round(u.sMax)} · 甲 ${Math.round(u.a)}/${Math.round(u.aMax)} · 结构 ${Math.round(u.h)}/${Math.round(u.hMax)}`).join(' ｜ ')
+      : ''
+    const foeText = br
+      ? br.foe.alive <= 0
+        ? `敌方 全灭（共 ${br.foe.total} 艘）`
+        : `敌方 存活 ${br.foe.alive}/${br.foe.total} · 残余血量 ${Math.round(br.foe.hpFrac * 100)}%`
+      : ''
+    /** 弹药消耗一行：0 的弹种不列；全 0 ⇒ 这一行整行不显示（没开过火就别占版面） */
+    const ammoSeg = br
+      ? ([
+          ['动能', br.ammoUsed.kin],
+          ['爆炸', br.ammoUsed.exp],
+          ['等离子', br.ammoUsed.pla],
+        ] as const)
+          .filter(([, n]) => n > 0)
+          .map(([label, n]) => `${label} ×${n}`)
+          .join(' · ')
+      : ''
     return (
       <div className="app-battle-screen is-report">
         <div className="app-bts-report">
-          <div className={`app-bts-report-card${won ? " is-win" : " is-lose"}`}>
-            <div className="app-bts-report-title">
-              {won ? '⚔ 大捷' : '⚠ 失利'}
-            </div>
+          <div className={`app-bts-report-card${isWinSide ? " is-win" : " is-lose"}`}>
+            <div className="app-bts-report-title">{titleOf[verdict]}</div>
             <div className="app-bts-report-text">
               {reportTextRef.current || fallback}
             </div>
@@ -620,6 +665,16 @@ const meSpeedRef = useRef(200)
                 {snap.foeShots} / 命中 {snap.foeHits} · 交火 {durSec}s
               </div>
             ) : null}
+            {/* **我方损失**（2026-09-14 船长定：新增三行之一）——这条正是"损失了舰船也显示大捷"的正身 */}
+            {br && lostN > 0 ? (
+              <div className="app-bts-report-stats is-loss">
+                我方损失：{br.shipsLost.join('、')}（{lostN} 艘 · 船上装备一并遗失）
+              </div>
+            ) : null}
+            {/* **双方残余**（新增三行之二）：逐舰 盾/甲/结构（当前/上限）+ 敌方残余 */}
+            {myUnitsText ? <div className="app-bts-report-stats">双方残余：我方 {myUnitsText} ｜ {foeText}</div> : null}
+            {/* **弹药消耗**（新增三行之三）：按弹种；0 的弹种不列 */}
+            {ammoSeg ? <div className="app-bts-report-stats">弹药消耗：{ammoSeg}</div> : null}
             {/* 机群战损（2026-09-11 船长：优先回收高价值 + 在战报里显示）：
                 第一行 = 汇总（损坏 / 回收归队 / 净损失），第二行 = 逐型明细（回收 ｜ 净损失，按机型价值降序） */}
             {droneReport ? (

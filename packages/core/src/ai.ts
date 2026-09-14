@@ -40,6 +40,8 @@ import {
   repairUsageText,
   settleDroneLosses,
   startBattleFor,
+  // 战报改造（2026-09-14 船长定）：结构化战报的唯一构造点
+  captureBattleReport,
 } from './combat'
 import { durabilityOf, loseShip, repairShip } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
@@ -978,14 +980,19 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     const dropText = rollAiCoreDrop(state, anomaly.threat, ctx)
     // 船体维修装置消耗数（2026-09-11 船长：不单独显示日志，只进战报）
     const repairUse = repairUsageText(battle, ctx)
-    addLog(
-      state,
-      'trade',
+    const aiWinText =
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 大捷（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）！` +
-        `${repairUse.length > 0 ? `船体维修装置${repairUse}。` : ''}` +
-        `奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
-        `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
-    )
+      `${repairUse.length > 0 ? `船体维修装置${repairUse}。` : ''}` +
+      `奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
+      `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`
+    addLog(state, 'trade', aiWinText)
+    /**
+     * **结构化战报**（2026-09-14 船长定：四类战斗统一填写）。
+     * ⚠ AI 副船的战斗**不弹战报弹层**（只有主控那场弹）⇒ 这份记录只是"四类同源"的完整性，
+     * 不会被读到；`source: 'ai'` 也让将来若要弹它时无需再补口径。**并行不串场**靠起手时刻配对：
+     * 若它晚于主控那场写、弹层配对不上 ⇒ 回落兜底句（与既有 `droneLossReport` 同一套保护）。
+     */
+    captureBattleReport(state, battle, { source: 'ai', outcome: 'win', summary: aiWinText })
   } else {
     // ── 失利：扣耐久 → 弃船骰 → 维修费（公式与主控一致，火力按本船指数） ──
     const bal = ctx.balance.combat
@@ -1005,12 +1012,12 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     state.wallet.isk -= repair
     const dur = Math.round((state.fleet[shipId]?.durability ?? 0) * 100)
     const aiRepairUse = repairUsageText(battle, ctx)
-    addLog(
-      state,
-      'warn',
+    const aiLoseText =
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} 信用点（耐久 ${dur}%）。` +
-        `${aiRepairUse.length > 0 ? `船体维修装置${aiRepairUse}。` : ''}`,
-    )
+      `${aiRepairUse.length > 0 ? `船体维修装置${aiRepairUse}。` : ''}`
+    addLog(state, 'warn', aiLoseText)
+    // 战报（2026-09-14）：AI 副船这一支是"打输、船没沉"（沉船那一支上面 return 了）⇒ `lose`
+    captureBattleReport(state, battle, { source: 'ai', outcome: 'lose', summary: aiLoseText })
   }
   // 任务结束：核心归还核心库
   delete state.aiAssignments[shipId]

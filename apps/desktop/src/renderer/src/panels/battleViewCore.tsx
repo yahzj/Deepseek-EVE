@@ -599,16 +599,6 @@ interface OutroSnap {
   wormholeKind?: 'node' | 'boss' | 'extract' | 'ruins'
 }
 
-/** 在日志中找本场战斗的战报原文（时间在开战之后、含"战报"的最新一条） */
-function lastBattleReport(logs: Array<{ atGameMs: number; text: string }>, sinceGameMs: number): string | null {
-  for (let i = logs.length - 1; i >= 0; i--) {
-    const l = logs[i]!
-    if (l.atGameMs < sinceGameMs) break // 日志按时间升序：再往前都是开战前的
-    if (l.text.includes('战报')) return l.text
-  }
-  return null
-}
-
 export {
   DMG_COLOR,
   DMG_LABEL,
@@ -646,6 +636,5 @@ export {
   HpTri,
   boltGeom,
   resolveBoltAnchors,
-  lastBattleReport,
 }
 export type { StarPt, Dims, Anchor, BoltV, FlashV, Stage, OutroSnap, BarGeom, FoeSlot, FoeFormation }

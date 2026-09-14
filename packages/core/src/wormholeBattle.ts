@@ -15,7 +15,7 @@ import { uidDefId } from './labels'
 import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -461,7 +461,15 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       if (!sunk.includes(uid)) loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
     }
     state.wormhole.lastFleetLost += run.fleet.length
-    addLog(state, 'warn', `🕳 虫洞探险失败：编队失联、背包内容全部丢失（损失 ${lost.length} 艘）。`)
+    const lostText = `🕳 虫洞探险失败：编队失联、背包内容全部丢失（损失 ${lost.length} 艘）。`
+    addLog(state, 'warn', lostText)
+    /**
+     * **结构化战报**（2026-09-14 船长定）：洞内全损 = 我方全灭那一档 ⇒ `lose`，
+     * 沉船名单用**整趟丢掉的这批**（含"这一场沉掉的 + 还活着但整趟判负的"）。
+     * ⚠ 撤离战（`extract`）**不弹战报弹层**（那一场由虫洞结算单说话）⇒ 这份记录只在
+     * 节点/守卫/遗迹那几种用途上会被读到；写它只是为了四类战斗同源。
+     */
+    captureBattleReport(state, battle, { source: 'wormhole', outcome: 'lose', summary: lostText, shipsLost: lostNames })
     /**
      * **结算单（全损）**：把"本来能带走多少"如实算出来 —— 玩家要看到自己赌掉了什么
      * （船长 2026-09-13：「结算界面表示玩家的收益和损失」）。
@@ -481,7 +489,20 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     return
   }
   // 胜：先出战报（与结算同源），再按战斗用途分流
-  if (report) addLog(state, 'info', report)
+  if (report) {
+    addLog(state, 'info', report)
+    /**
+     * **结构化战报**（2026-09-14 船长定 · 战报改造）：洞内这一支原先写的是「🕳 第 N 层…交火结束：…」
+     * ——**不含「战报」二字** ⇒ 弹层永远取不到正文（船长看到的"过于简陋"就是这个）。
+     * 沉船名单走**船长口径的显示名**（`sunk` 那批已有自定义船名），不从 `units` 推导。
+     */
+    captureBattleReport(state, battle, {
+      source: 'wormhole',
+      outcome: 'win',
+      summary: report,
+      shipsLost: sunk.map((uid) => ctx.ships.get(uidDefId(uid))?.name ?? uid),
+    })
+  }
   // ── 胜：按战斗用途分流 ──
   if (kind === 'extract') {
     deliverExtraction(state, ctx, run)

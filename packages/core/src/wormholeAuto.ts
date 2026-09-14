@@ -31,6 +31,8 @@ import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul } 
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
+import { changeShip } from './shipyard'
+import { shipBusyLabel } from './activity'
 
 /** **一趟自动探索的时长**（船长：「自动探索时间缩短至5分钟」） */
 export const WORMHOLE_AUTO_DURATION_MS = 5 * 60_000
@@ -67,10 +69,11 @@ export const WORMHOLE_AUTO_MANUAL = {
    * **4%/趟**」）。取 **0.10** = 「每趟 1 次遗迹打捞 × `WORMHOLE_CORE_SHARE`(10%)」——
    * 与船长批准的那条口径逐字对应；**层 1 起就出**（与货柜那条层 2 起不同）。
    *
-   * ⚠ **这一项不是 econ 工具实测量出来的**（其余三项都是）：2026-09-14 实测时当前政策
-   * **20 趟里 0 次遗迹打捞**（同批"货柜 0.00 件/趟"也印证了这点）⇒ 取不到样本。故按上面的
-   * 保守基准取值；等政策能稳定上到第 2 层、遗迹打捞有了样本，再用 `npm run wormhole:econ`
-   * 的「AI 核心（遗迹打捞）」一行复核。
+   * ⚠ **实测复核（2026-09-14 晚 · `npm run wormhole:econ -- --runs=100`）：0.090 枚/趟**
+   * （100 趟共 9 枚 —— 层 1 三趟、层 2 六趟）⇒ 与本处取值的 0.10 在抽样噪声内一致
+   * （泊松 λ=0.1 时 100 趟的 σ≈0.03）⇒ **取值不动**。
+   * 早前那版注释写"取不到样本"，是因为当时政策 20 趟里 0 次遗迹打捞（一号的「内容原型」批次
+   * 落进 main 之后盘面遗迹格才稳定够用）——那条注记已作废。
    */
   cores: 0.1,
 } as const
@@ -177,11 +180,19 @@ export function wormholeAutoRunOfStock(state: GameState, stockId: string): Wormh
 /**
  * **能不能派这艘船**（自动配置与手动改选共用同一把尺）：null = 可以，否则给拒因。
  * 排除：主控船 · 在虫洞里的船 · 已在别的 AI 副船任务里 · 已在别的自动探索里 · 不在舰队里。
+ *
+ * `opts.mainMayJoin`（2026-09-14 船长裁定「**如果选择了主控船，就将主控换到其他船上**」）：
+ * 为真 ⇒ **放行主控船**（调用方已先确认"能交接"：主控空闲且存在接任的新主控，
+ * 见 `wormholeAutoMainHandover`）。
  */
-export function wormholeAutoShipBlockReason(state: GameState, shipId: string): string | null {
+export function wormholeAutoShipBlockReason(
+  state: GameState,
+  shipId: string,
+  opts?: { mainMayJoin?: boolean },
+): string | null {
   const ship = state.fleet[shipId]
   if (!ship) return '舰队里没有这艘船。'
-  if (shipId === state.shipId) return '主控船不参与自动探索（主控要留在站内）。'
+  if (shipId === state.shipId && !opts?.mainMayJoin) return '主控船不参与自动探索（主控要留在站内）。'
   if (shipLockedInWormhole(state, shipId)) return '该舰在虫洞里：等它出洞再派。'
   if (state.aiAssignments[shipId]) return '该舰已在别的 AI 副船任务里：先撤回它。'
   if (shipInWormholeAuto(state, shipId)) return '该舰已在另一处虫洞的自动探索里。'
@@ -208,22 +219,29 @@ export interface WormholeAutoCandidate {
  * ③ **船型档位**（`tier`）高者优先。
  * 不可派的船**照旧列出**（界面置灰 + 显示原因）——玩家能看到"为什么它不能去"。
  */
+/**
+ * **自动配置的评分**（能打 → 耐打 → 船型档位；同分再按 id 稳定排序 ⇒ 同档可复现）。
+ * 抽成单点：`wormholeAutoCandidates`（挑参与舰）与 `wormholeAutoMainHandover`（挑接任主控）共用同一把尺。
+ */
+function wormholeAutoScore(state: GameState, ctx: SimContext, shipId: string): number {
+  const ship = state.fleet[shipId]!
+  const def = ctx.ships.get(ship.defId ?? shipId)
+  let guns = 0
+  for (const id of ship.fitted?.high ?? []) {
+    if (!id) continue
+    const slot = ctx.modules.get(id)?.slot
+    if (slot === 'turret' || slot === 'missile' || slot === 'laser' || slot === 'drone-rack' || slot === 'drone-tac') guns += 1
+  }
+  return guns * 100 + Math.round((ship.durability ?? 1) * 10) * 5 + (def?.tier ?? 1) * 3
+}
+
 export function wormholeAutoCandidates(state: GameState, ctx: SimContext, exclude?: readonly string[]): WormholeAutoCandidate[] {
   const skip = new Set(exclude ?? [])
   const rows: Array<{ shipId: string; name: string; score: number; blocked: string | null }> = []
   for (const shipId of Object.keys(state.fleet)) {
     if (skip.has(shipId)) continue
     const blocked = wormholeAutoShipBlockReason(state, shipId)
-    const ship = state.fleet[shipId]!
-    const def = ctx.ships.get(ship.defId ?? shipId)
-    let guns = 0
-    for (const id of ship.fitted?.high ?? []) {
-      if (!id) continue
-      const slot = ctx.modules.get(id)?.slot
-      if (slot === 'turret' || slot === 'missile' || slot === 'laser' || slot === 'drone-rack' || slot === 'drone-tac') guns += 1
-    }
-    const score = guns * 100 + Math.round((ship.durability ?? 1) * 10) * 5 + (def?.tier ?? 1) * 3
-    rows.push({ shipId, name: shipNameOf(state, ctx, shipId), score, blocked })
+    rows.push({ shipId, name: shipNameOf(state, ctx, shipId), score: wormholeAutoScore(state, ctx, shipId), blocked })
   }
   rows.sort((a, b) => b.score - a.score || a.shipId.localeCompare(b.shipId))
   let picked = 0
@@ -288,7 +306,13 @@ export function wormholeAutoCoreBlock(state: GameState, ctx: SimContext, need: n
  * 船长口径里**没有**"主控必须空闲"的限制 —— 自动探索吃的是**副船 + AI 名额**，
  * 主控在扫描/远征期间照旧可以派队。
  */
-export function wormholeAutoBlockReason(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[]): string | null {
+export function wormholeAutoBlockReason(
+  state: GameState,
+  ctx: SimContext,
+  stockId: string,
+  shipIds?: readonly string[],
+  opts?: { mainMayJoin?: boolean },
+): string | null {
   // 先看"是不是已经派出去了"：开始时库存项即被消耗 ⇒ 先查在跑的趟，理由才说得清
   if (wormholeAutoRunOfStock(state, stockId)) return '这一处已经在自动探索中。'
   const item = wormholeStockOf(state).find((x) => x.id === stockId)
@@ -297,19 +321,74 @@ export function wormholeAutoBlockReason(state: GameState, ctx: SimContext, stock
   if (pool.length === 0) return '没有可派出的副船：自动探索不派主控船，先备至少 1 条空闲副船。'
   if (pool.length > WORMHOLE_AUTO_MAX_SHIPS) return `参与舰最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条。`
   for (const shipId of pool) {
-    const blocked = wormholeAutoShipBlockReason(state, shipId)
+    const blocked = wormholeAutoShipBlockReason(state, shipId, opts)
     if (blocked) return `${shipNameOf(state, ctx, shipId)}：${blocked}`
   }
   return wormholeAutoCoreBlock(state, ctx, pool.length)
 }
 
 /**
+ * **主控交接**（船长 2026-09-14：「**如果选择了主控船，就将主控换到其他船上。**」）。
+ *
+ * 口径：
+ * - 队里**没有**主控 ⇒ `needed: false`（什么也不做）；
+ * - 队里有主控 ⇒ **先看主控忙不忙**：船长裁定「**忙时直接不允许**」（不走"采矿中换驾驶 = 旧船返航"
+ *   那条善后链）⇒ 主控手上有活/在洞里一律给 `reason`；
+ * - 接任的新主控 = **不在本队、不在别的 AI 任务/虫洞里、空闲**的船里，按自动配置同一套评分
+ *   （能打 → 耐打 → 船型档位）挑最好的一条；一条都没有 ⇒ 给 `reason`。
+ *
+ * 界面据此写确认弹窗（「主控将由 X 换到 Y」）并把卡片置灰；命令层照它落（真正换船走 `changeShip`）。
+ */
+export interface WormholeAutoHandover {
+  /** 队里有没有主控（有 ⇒ 需要交接） */
+  needed: boolean
+  /** 接任的新主控（`needed` 且没有 `reason` 时才有值） */
+  toId?: string
+  toName?: string
+  /** 不能交接的原因（`needed` 时才有值） */
+  reason?: string
+}
+
+export function wormholeAutoMainHandover(
+  state: GameState,
+  ctx: SimContext,
+  teamShipIds: readonly string[],
+): WormholeAutoHandover {
+  const team = new Set(teamShipIds)
+  if (!team.has(state.shipId)) return { needed: false }
+  const busy = shipBusyLabel(state, ctx, state.shipId)
+  if (busy) return { needed: true, reason: `主控正在${busy}：先把手上的活收工，才能把它编进自动探索队。` }
+  if (shipLockedInWormhole(state, state.shipId)) return { needed: true, reason: '主控正在虫洞里：先出洞。' }
+  const pool = Object.keys(state.fleet)
+    .filter((id) => id !== state.shipId && !team.has(id))
+    .filter((id) => shipBusyLabel(state, ctx, id) === null)
+    .filter((id) => wormholeAutoShipBlockReason(state, id) === null)
+    .sort((a, b) => wormholeAutoScore(state, ctx, b) - wormholeAutoScore(state, ctx, a) || a.localeCompare(b))
+  const toId = pool[0]
+  if (!toId) return { needed: true, reason: '舰队里没有别的空闲船可以接任主控：先收工或添一条船，再把它编进来。' }
+  return { needed: true, toId, toName: shipNameOf(state, ctx, toId) }
+}
+
+/**
  * **开始自动探索**（一处虫洞一趟；不满 4 条也能跑）。
  * 成功 ⇒ **消耗该处库存**、按参与舰数占 AI 名额、参与舰锁定到返航。
+ *
+ * ⚠ **主控在队里**（船长 2026-09-14：「如果选择了主控船，就将主控换到其他船上」）：先按
+ * `wormholeAutoMainHandover` 读一次口径（主控忙/在洞里/没有接任船 ⇒ 直接拒绝），
+ * 校验放行主控（`mainMayJoin`）通过后**真正换船走 `changeShip`**（守卫/日志/善后单一出处），
+ * 再照常派队 —— 于是主控船以"普通副船"的身份随队出发。
  */
 export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[]): CommandResult {
-  const blocked = wormholeAutoBlockReason(state, ctx, stockId, shipIds)
+  const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
+  const handover = wormholeAutoMainHandover(state, ctx, pool)
+  if (handover.needed && handover.reason) return { ok: false, error: handover.reason }
+  const blocked = wormholeAutoBlockReason(state, ctx, stockId, shipIds, { mainMayJoin: handover.needed })
   if (blocked) return { ok: false, error: blocked }
+  /** 交接：换船在**校验之后**才落（校验不过就一行状态都不动） */
+  if (handover.needed && handover.toId) {
+    const sw = changeShip(state, handover.toId, ctx)
+    if (!sw.ok) return sw
+  }
   const item = wormholeStockOf(state).find((x) => x.id === stockId)!
   const picked = [...(shipIds ?? wormholeAutoDefaultShips(state, ctx))]
   wormholeStockTake(state, stockId)
