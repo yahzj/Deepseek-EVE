@@ -26,6 +26,7 @@ import type { InfoLine } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
+import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, RACK_LABELS } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
@@ -407,6 +408,25 @@ function placeOrderToast(
   return `${side}单已即时成交 ${n(filled)} 件，余 ${n(resting)} 件挂单 @ ${isk(price)} ISK`
 }
 
+/**
+ * 贸易税说明（2026-09-13 船长：各页常驻说明统一收进标题后的圆形感叹号）。
+ * 税率随「会计学 / 贸易谈判学」等级变化 ⇒ 每次渲染现算；市场详情与未选中时的占位面板共用这一份文案。
+ */
+function taxTipText(state: GameState, ctx: PageProps['engine']['ctx']): string {
+  const rate = salesTaxRate(state, ctx)
+  const lvA = state.skills.trained[ctx.balance.market.taxSkillAId] ?? 0
+  const lvB = state.skills.trained[ctx.balance.market.taxSkillBId] ?? 0
+  const skillNote =
+    lvA + lvB > 0
+      ? `（会计学 Lv${lvA} −${lvA * 8}% · 贸易谈判学 Lv${lvB} −${lvB * 8}%）`
+      : '（基础 5%；练「会计学 / 贸易谈判学」各 −8%/级，双满仅剩 1%）'
+  return `贸易税：卖出成交按成交额收税——当前税率 ${Math.round(rate * 1000) / 10}%${skillNote}。挂单、自动转挂单与买入一律免费。`
+}
+
+/** 协会市场的撮合与星标说明（挂单簿语义、冲击动量、行首星标；2026-09-13 收进列表标题后的圆形感叹号） */
+const MKT_MECH_TIP =
+  '协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），原矿/原材料另受库存池调节。每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。'
+
 /** 有货冒泡上浮（供应簿有现货的排前面）；其余保持目录稳定顺序。
  *  2026-09-10 船长定：默认排序下已标记（收藏）的商品置顶——两栏与搜索结果都是这一套默认口径。 */
 function stockedFirst(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
@@ -433,6 +453,7 @@ function rareOrderRows(engine: PageProps['engine'], goods: MarketGoodDef[]): Mar
 function MarketColumn({
   engine,
   title,
+  hint,
   right,
   rows,
   selKey,
@@ -440,6 +461,8 @@ function MarketColumn({
 }: {
   engine: PageProps['engine']
   title: string
+  /** 标题文字后的提示标记（撮合与星标说明；2026-09-13 船长口径） */
+  hint?: ReactNode
   right: ReactNode
   rows: MarketGoodDef[]
   selKey?: string | null
@@ -447,7 +470,7 @@ function MarketColumn({
 }) {
   return (
     // is-fill + 去掉列表自身 max-height 帽：列表交给 Panel body 二级内滚（一级页不滚）
-    <Panel className="is-fill" title={title} right={right}>
+    <Panel className="is-fill" title={title} hint={hint} right={right}>
       {rows.length === 0 ? (
         <div className="app-dim app-inv-empty">没有匹配的订单（试试清空搜索、切换类型或子分类）。</div>
       ) : (
@@ -698,6 +721,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     <>
     <Panel
       title={`市场详情 · ${name}`}
+      hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
       right={
         <span className="app-dim">
           持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} ISK
@@ -1032,9 +1056,6 @@ export function MarketPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusSeq])
-  const taxRate = salesTaxRate(state, engine.ctx)
-  const lvA = state.skills.trained[engine.ctx.balance.market.taxSkillAId] ?? 0
-  const lvB = state.skills.trained[engine.ctx.balance.market.taxSkillBId] ?? 0
 
   // 页面级全局搜索（船长 2026-09-05）：搜索栏从两栏内取出；输入/类型过滤时同时检索常驻与稀有订单
   // （常驻与稀有的商品集不重叠——rarity 单值归属，跨栏合并不会重复条目）。
@@ -1072,21 +1093,6 @@ export function MarketPage({
 
   return (
     <div className="page-stack page-fill">
-      <div className="app-dim app-note">
-        协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），原矿/原材料另受库存池调节。
-        每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。
-      </div>
-      <div className="app-dim app-note">
-        贸易税：卖出成交按成交额收税——当前税率{' '}
-        <b className="app-gold">{Math.round(taxRate * 1000) / 10}%</b>
-        {lvA + lvB > 0 ? (
-          <span>（会计学 Lv{lvA} −{lvA * 8}% · 贸易谈判学 Lv{lvB} −{lvB * 8}%）</span>
-        ) : (
-          <span>（基础 5%；练「会计学 / 贸易谈判学」各 −8%/级，双满仅剩 1%）</span>
-        )}
-        。挂单、自动转挂单与买入一律免费。
-      </div>
-
       {/* 常驻双栏：左 = 搜索 + 标签 + 商品列表；右 = 市场详情大盘（常驻，无选中时显示引导） */}
       <div className="app-mkt-split">
         <div className="app-mkt-left">
@@ -1135,6 +1141,7 @@ export function MarketPage({
                       sub !== SUB_ALL && kindSubs ? ` · ${kindSubs.find((s) => s.key === sub)?.label ?? ''}` : ''
                     }`
               }
+              hint={<HintIcon tip={MKT_MECH_TIP} />}
               right={<span className="app-dim">常驻与稀有订单一次搜全（商品按稀有度徽标区分）</span>}
               rows={filteredAll}
               selKey={activeSelKey}
@@ -1169,6 +1176,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title="常驻供应"
+                  hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={
                     <span className="app-dim" title="NPC 每 60 秒按窗口补给/刷新订单（含离线期间）">
                       下次补给 {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
@@ -1182,6 +1190,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title="稀有订单"
+                  hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={<span className="app-dim">每 10 分钟一轮到货 · 稀有 36 分钟寿命（蓝图书 6 小时）· 限定奇货 6 小时有效 · 时钟=现存单到期</span>}
                   rows={rareOrderRows(engine, rareCol)}
                   selKey={activeSelKey}
@@ -1198,6 +1207,7 @@ export function MarketPage({
           ) : (
             <Panel
               title="市场详情"
+              hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
               right={<span className="app-dim">点击左侧商品的「 详情」查看行情</span>}
             >
               <div className="app-dim app-inv-empty">

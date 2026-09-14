@@ -44,6 +44,7 @@ import { Panel } from '@whale/ui'
 import { rarityTierOf } from '@whale/data'
 import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
+import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
 import type { PageProps } from './common'
 
@@ -755,16 +756,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               <span>
                 {RACK_LABELS[pickBay.rack]} · 第 {pickBay.index + 1} 位
                 {fitted?.[pickBay.rack]?.[pickBay.index] ? '（更换）' : '（装入）'}
+                <HintIcon tip="以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。默认按稀有度从高到低排列。红色的「CPU 剩 …（差 N）」= 装后超预算，这件装不上（先卸件，或低槽装一件「协处理器」扩容）；红色的属性段只是数值下降，照样装得上。" />
               </span>
               <button className="app-btn is-small" onClick={() => setPickBay(null)}>
                 关闭
               </button>
-            </div>
-            <div className="app-dim app-note">
-              以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前
-              对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。默认按稀有度从高到低排列。
-              红色的「CPU 剩 …（差 N）」= 装后超预算，这件装不上（先卸件，或低槽装一件「协处理器」扩容）；
-              红色的属性段只是数值下降，照样装得上。
             </div>
             {/* 筛选与搜索（2026-09-11 船长定：参考市场页；复刻 app-mkt-search 那套"搜索框 + 分类下拉 + 命中计数"） */}
             <div className="app-mkt-search app-fit-pick-filter">

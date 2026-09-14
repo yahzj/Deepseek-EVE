@@ -31,6 +31,7 @@ import type { ToastFn } from '../pages/common'
 import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
+import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -113,11 +114,15 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
 
   if (entries.length === 0) {
     return (
-      <Panel title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}>
-        <div className="app-dim app-note">
-          书架上还没有蓝图书：到下方组装机点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。
-          一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。
-        </div>
+      <Panel
+        title="蓝图书架"
+        hint={
+          // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
+          <HintIcon tip="到下方组装机点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。" />
+        }
+        right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
+      >
+        <div className="app-dim app-inv-empty">书架上还没有蓝图书。</div>
       </Panel>
     )
   }

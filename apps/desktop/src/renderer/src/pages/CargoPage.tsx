@@ -24,6 +24,7 @@ import {
 import { Panel, ProgressBar } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
+import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
 import type { ItemNavProps } from './ItemsPage'
@@ -137,6 +138,15 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     <div className="page-stack">
       <Panel
         title="货仓"
+        hint={
+          <HintIcon
+            tip={
+              isPiloted
+                ? `货仓随船：采集与远征战利品都先落在这里；弃船会连同本页内容一起遗失。资源可以在此直接卖出，或卸入仓库后再处理。${busy ? ` 当前：${busy}。` : ''}`
+                : `正在查看「${targetName}」的货仓：空闲停靠的舰船可直接卸入仓库；装船与出售仍仅限当前驾驶船「${shipDisplayName(state, engine.ctx, piloted)}」。${busy ? ` 该船当前：${busy}，卸货需等作业结束。` : ' 该船闲置中，可卸货。'}`
+            }
+          />
+        }
         right={
           isPiloted ? <span className="app-dim">当前驾驶船</span> : <span className="app-dim">查看中 · 可卸货</span>
         }
@@ -191,19 +201,6 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             </button>
           ) : null}
         </div>
-        {isPiloted ? (
-          <div className="app-dim app-note">
-            货仓随船：采集与远征战利品都先落在这里；弃船会连同本页内容一起遗失。
-            资源可以在此直接卖出，或卸入仓库后再处理。
-            {busy ? ` 当前：${busy}。` : ''}
-          </div>
-        ) : (
-          <div className="app-dim app-note">
-            正在查看「{targetName}」的货仓：空闲停靠的舰船可直接卸入仓库；装船与出售仍仅限当前驾驶船「
-            {shipDisplayName(state, engine.ctx, piloted)}」。
-            {busy ? ` 该船当前：${busy}，卸货需等作业结束。` : ' 该船闲置中，可卸货。'}
-          </div>
-        )}
       </Panel>
 
       <ItemViewBar mode={view} onChange={setView} />
@@ -217,15 +214,14 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           kind === 'ore' && !isPiloted
             ? `「${targetName}」的货仓里没有原矿。`
             : KIND_EMPTY[kind] ?? '货仓里没有该分类的货物。'
+        const extra = kindExtraNote(kind)
         return (
           <Panel
             key={kind}
             title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
+            hint={extra ? <HintIcon tip={extra} /> : undefined}
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
-            {kindExtraNote(kind) ? (
-              <div className="app-dim app-note">{kindExtraNote(kind)}</div>
-            ) : null}
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{emptyText}</div>
             ) : (
@@ -341,15 +337,14 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   title: def?.description,
                 }
               })
+              const extra = kindExtraNote(kind)
               return (
                 <Panel
                   key={kind}
                   title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
+                  hint={extra ? <HintIcon tip={extra} /> : undefined}
                   right={<span className="app-dim">{kindRows.length} 种</span>}
                 >
-                  {kindExtraNote(kind) ? (
-                    <div className="app-dim app-note">{kindExtraNote(kind)}</div>
-                  ) : null}
                   <ItemGlyphGrid cells={cells} onPick={(key) => setPickId(key)} />
                 </Panel>
               )

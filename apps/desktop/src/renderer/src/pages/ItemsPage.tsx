@@ -10,6 +10,7 @@ import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, rackOf,
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, toneOf } from '../ui/Glyphs'
+import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
@@ -163,6 +164,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     <Panel
       className="is-fill app-fleet-panel"
       title="仓库"
+      hint={
+        // 图标视图的用法说明只在图标视图挂出来（2026-09-13 船长：常驻说明收进标题后的圆形感叹号）
+        mode === 'grid' ? <HintIcon tip="图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。" /> : undefined
+      }
       right={
         <span className="app-head-search-wrap">
           <ItemViewBar mode={mode} onChange={setMode} />
@@ -270,15 +275,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
         // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索/筛选时任一空类都隐藏
         if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
+        const extra = kindExtraNote(kind)
         return (
           <Panel
             key={kind}
             title={`${itemKindLabel(kind)}`}
+            hint={extra ? <HintIcon tip={extra} /> : undefined}
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
-            {kindExtraNote(kind) ? (
-              <div className="app-dim app-note">{kindExtraNote(kind)}</div>
-            ) : null}
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? '仓库里没有该分类物品。'}</div>
             ) : (
@@ -404,7 +408,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         </>
       ) : (
         <>
-          <div className="app-dim app-note">图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。</div>
           {ITEM_KIND_ORDER.map((kind) => {
             // 一级筛选：选了某一类就只渲染那一类（2026-09-13 仓库筛选，与列表视图同一套判据）
             if (kindPicked && wareKind !== kind) return null
@@ -420,15 +423,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 title: def?.description,
               }
             })
+            const extra2 = kindExtraNote(kind)
             return (
               <Panel
                 key={kind}
                 title={`${itemKindLabel(kind)}`}
+                hint={extra2 ? <HintIcon tip={extra2} /> : undefined}
                 right={<span className="app-dim">{kindRows2.length} 种</span>}
               >
-                {kindExtraNote(kind) ? (
-                  <div className="app-dim app-note">{kindExtraNote(kind)}</div>
-                ) : null}
                 {kindRows2.length === 0 ? (
                   <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? '仓库里没有该分类物品。'}</div>
                 ) : (
