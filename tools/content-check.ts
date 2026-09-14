@@ -58,6 +58,9 @@ import {
   GALAXIES,
   WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
+// ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
+//   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
+import { moduleShortEffect } from '../apps/desktop/src/renderer/src/ui/shipInfo'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
 import { join } from 'node:path'
@@ -910,6 +913,21 @@ for (const sbp of SHIP_BLUEPRINTS) {
   for (const u of unwired) warn.push(`技能说明契约：${u}`)
   console.log(
     `· 技能说明契约：${registered.size} 个技能登记来源（平衡表 ${pairs.length} 条 + 引擎参数对象 6 条 + 内联表 ${INLINE.length} 条），核对 ${checked} 个技能的每级值、其中 ${srcChecked} 条做了引擎现场复核；未接线 ${unwired.length} 个`,
+  )
+}
+
+// ── 装备卡片说明契约（2026-09-14 船长报障「护盾充能装置，在装配时候的卡片上没有说明」）──
+//
+// 装配页换装卡的正文 = `moduleShortEffect(mod)`：它按 `slot` 分支拼串，**分支漏了某个槽位、或某个
+// 新效果字段没接进分支 ⇒ 整张卡一个字都没有**（本轮实测：护盾充能装置 ×3 只有 `shieldPulsePct`、
+// 打捞器 ×3 的 `salvager` 槽位连分支都没有 ⇒ 6 件全空）。
+//
+// ⚠ 放在体检而不是 core 用例：渲染层没有测试运行器（desktop 包不跑 vitest）；将来若把该函数
+//   搬进 core（更正统），这条断言可原样迁进 core 用例。
+for (const m of MODULES) {
+  check(
+    moduleShortEffect(m).trim().length > 0,
+    `装备 ${m.id}（${m.name}）的**短效说明为空**——装配页卡片会一句话都没有（去 moduleShortEffect 补该 slot / 该字段的分支）`,
   )
 }
 
