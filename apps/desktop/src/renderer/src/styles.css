@@ -9397,6 +9397,34 @@ body {
 .app-wh-hex.is-nebula, .app-wh-legend-glyph.is-nebula { color: #8c93c8; }
 .app-wh-hex.is-nebula polygon { stroke-dasharray: 4 3; fill: rgba(140, 147, 200, 0.1); }
 .app-wh-nebula { opacity: 0.92; }
+/**
+ * **星云消散动画**（船长 2026-09-13：「当消除星云时，给星云添加个消散的动画」）。
+ *
+ * 画法：驱散那一瞬间，地图上给该格**补一层云团线稿**（`.app-wh-nebula-dissolve`），
+ * 让同一个 ≤2px 的云徽在 **700ms** 内**外扩到 2.1 倍并淡出**——
+ * 外扩读作"散开"、淡出读作"没了"；同时把整格描边亮一下再回落，读作"云开见物"。
+ * 延迟按"第几圈"给（与 `app-wh-scan-wave` / 逐格点亮同一把尺）⇒ 云从里往外一圈圈散开。
+ * 与既有三处动效同纪律：**纯 `transform`/`opacity`**（走合成层、不重排），
+ * 且 `animation-fill-mode: forwards` ⇒ 终态停在"已消失"，不会闪回来。
+ */
+.app-wh-nebula-dissolve {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  opacity: 0.92;
+  animation: app-wh-nebula-dissolve 700ms cubic-bezier(0.22, 0.68, 0.34, 1) forwards;
+}
+.app-wh-hex.is-dissolving polygon { animation: app-wh-hex-unveil 700ms ease-out forwards; }
+@keyframes app-wh-nebula-dissolve {
+  0% { transform: scale(1); opacity: 0.92; }
+  45% { opacity: 0.6; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+@keyframes app-wh-hex-unveil {
+  0% { stroke: #8c93c8; stroke-width: 1.8; fill: rgba(140, 147, 200, 0.1); }
+  100% { stroke-width: 1.2; }
+}
 /* 图例里的"未扫描"格与地图同色（蓝灰虚线），否则图例教不会玩家认这个边框 */
 .app-wh-legend-glyph.is-unknown { color: #7b8fa3; }
 .app-wh-legend-glyph.is-visited { color: var(--wui-accent); }
