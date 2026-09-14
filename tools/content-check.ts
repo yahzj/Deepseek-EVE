@@ -130,6 +130,9 @@ securityZoneOf,
   WORMHOLE_MATTER_DEVICE_IDS,
   WORMHOLE_MATTER_FLOOR,
   wormholeIsShapedItem,
+  // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
+  WORMHOLE_SCAN_UNLOCK_STANDING,
+  DSI_FACTION_ID,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -3730,6 +3733,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'lowSec', 'foeFamily',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
+    // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
+    'standing',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -3892,6 +3897,25 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
           `通讯 ${m.id} 指向的敌族没有任何敌卡（死触发器）：${m.trigger.family}`,
         )
         break
+      case 'standing': {
+        /**
+         * 死触发器守卫（2026-09-14 虫洞解锁信）：这封信靠「协会声望 ≥ N」送达，门槛值与 core 的
+         * `WORMHOLE_SCAN_UNLOCK_STANDING` **必须同值** —— 两处不一致时，要么信送了却扫不了、
+         * 要么能扫了却永远收不到信。这里与引擎常量同一出处地核一遍。
+         */
+        check(m.trigger.min > 0, `通讯 ${m.id} 的 standing 触发门槛必须为正：${m.trigger.min}`)
+        check(
+          m.trigger.factionId === DSI_FACTION_ID,
+          `通讯 ${m.id} 的 standing 触发指向未知声望势力：${m.trigger.factionId}`,
+        )
+        if (m.trigger.factionId === DSI_FACTION_ID) {
+          check(
+            m.trigger.min === WORMHOLE_SCAN_UNLOCK_STANDING,
+            `通讯 ${m.id} 的 standing 门槛 ${m.trigger.min} 与引擎常量 ${WORMHOLE_SCAN_UNLOCK_STANDING} 不一致`,
+          )
+        }
+        break
+      }
       case 'wormholeNebula':
         /**
          * 死触发器守卫（2026-09-13 星云机制）：这封信靠 `state.wormhole.nebulaHintShown` 送达，

@@ -640,6 +640,14 @@ export function App({ engine }: { engine: GameEngine }) {
   const offlineReport = engine.offlineReport
   const showOfflineReport = offlineReport !== null && !reportDismissed
 
+  /**
+   * **需要弹窗的通讯**（船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）：
+   * 队首那封弹一次卡片；点「知道了」清掉（信仍在收件箱里）。离线简报优先，避免两张卡叠着。
+   */
+  const popupId = engine.commsPopups()[0] ?? null
+  const popupMsg =
+    popupId !== null && !showOfflineReport ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null) : null
+
   // ── 随机事件小弹卡（在线触发时展示 6 秒；离线触发的不弹，避免启动刷屏） ──
   const [eventToast, setEventToast] = useState<{ id: number; text: string } | null>(null)
   const lastSeenLogId = useRef<number>(state.logs[state.logs.length - 1]?.id ?? 0)
@@ -1147,6 +1155,36 @@ export function App({ engine }: { engine: GameEngine }) {
             ))}
             <div className="app-dim app-report-tail">
               期间共 {offlineReport.logCount.toLocaleString('zh-CN')} 条新事件，详见右侧事件日志。
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ───── 需要弹窗的通讯（船长 2026-09-14：「解锁时发送通讯给玩家（同时也要直接弹窗）」） ───── */}
+      {popupMsg ? (
+        <div className="app-ann-mask" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
+          <div className="app-ann app-comm-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="app-ann-head">
+              <span className="app-ann-title">✉ {popupMsg.from}</span>
+              <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
+                知道了
+              </button>
+            </div>
+            <div className="app-ann-list">
+              <div className="app-ann-item is-new">
+                <div className="app-ann-item-head">
+                  <span className="app-ann-tag">{popupMsg.kind || '通讯'}</span>
+                  <span className="app-ann-item-title">{popupMsg.subject}</span>
+                </div>
+                <div className="app-comm-pop-body">
+                  {popupMsg.paragraphs.map((line, i) => (
+                    <p key={i} className={popupMsg.highlight?.includes(line) ? 'app-report-highlight' : undefined}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+                <div className="app-dim">已存进「通讯」收件箱，随时可以回看。</div>
+              </div>
             </div>
           </div>
         </div>

@@ -1179,6 +1179,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 送达即记账 ⇒ 触发器重复判定不会重复送（幂等）；可选字段、零迁移。
    */
   commsDelivered?: Record<string, number>
+  /**
+   * **需要直接弹窗的通讯 id 队列**（2026-09-14 船长：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）。
+   * 送达标了 `popup: true` 的消息时入队；界面弹一次、点「知道了」调 `dismissCommsPopup` 清掉。
+   * 兼容字段（可选）⇒ 零迁移；界面只弹队首那一封。
+   */
+  commsPopups?: string[]
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**
@@ -1797,6 +1803,7 @@ export function createInitialState(opts?: {
     dialogueSeen: {},
     pendingDialogue: null,
     commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
+    commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,
     completedBounties: [],

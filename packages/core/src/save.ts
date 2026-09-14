@@ -2416,6 +2416,12 @@ function normalizeState(raw: unknown): GameState {
     })
   }
 
+  // --- 需弹窗的通讯队列（2026-09-14 · 可选字段 ⇒ 零迁移）：只收非空字符串、去重保序 ---
+  const commsPopups: string[] = []
+  for (const id of Array.isArray(src.commsPopups) ? src.commsPopups : []) {
+    if (typeof id === 'string' && id.length > 0 && !commsPopups.includes(id)) commsPopups.push(id)
+  }
+
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
   const cbRaw = src.completedBounties
@@ -2891,6 +2897,7 @@ function normalizeState(raw: unknown): GameState {
     dialogueSeen,
     pendingDialogue,
     commsDelivered,
+    commsPopups,
     commsRead,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,

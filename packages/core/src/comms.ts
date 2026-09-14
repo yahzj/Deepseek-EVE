@@ -116,6 +116,23 @@ function deliver(state: GameState, id: string): boolean {
   return true
 }
 
+/**
+ * **需要直接弹窗的通讯**（船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）：
+ * 送达后把 id 记进 `state.commsPopups`（去重、保序），界面弹一次卡片；点「知道了」调
+ * `dismissCommsPopup` 清掉——**关掉不丢信**（收件箱里还有）。
+ */
+export function commsPopupQueue(state: GameState): string[] {
+  return state.commsPopups ?? []
+}
+
+/** 关掉一份弹窗（幂等；返回是否真的关掉了一份） */
+export function dismissCommsPopup(state: GameState, id: string): boolean {
+  const list = state.commsPopups ?? []
+  if (!list.includes(id)) return false
+  state.commsPopups = list.filter((x) => x !== id)
+  return true
+}
+
 /** 单条触发条件是否达成（新增 kind 时须同步 content-check 的「通讯消息契约」） */
 export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: CommsTrigger): boolean {
   switch (trigger.kind) {
@@ -133,6 +150,9 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       return (state.skills.trained[trigger.skillId] ?? 0) >= trigger.level
     case 'isk':
       return state.wallet.isk >= trigger.amount
+    case 'standing':
+      // 声望达标（2026-09-14 船长：虫洞扫描解锁要 35 声望）——直接读 state，避免与 expedition 形成模块环
+      return (state.standings[trigger.factionId] ?? 0) >= trigger.min
     case 'siteBuilt': {
       const site = ctx.stations.get(trigger.siteId)
       return site !== undefined && isSiteBuilt(state, site)
@@ -184,8 +204,16 @@ function deliveryLogText(ctx: SimContext, msg: CommsMessageDef): string {
 export function advanceComms(state: GameState, ctx: SimContext): void {
   if (ctx.commsMessages.size === 0) return
   for (const msg of ctx.commsMessages.values()) {
+    // 施工期闸门（船长铁律「数据走 unreleased」）：标了 unreleased 的消息**不送达**（上线时删字段即可开送）
+    if (msg.unreleased === true) continue
     if (!commsTriggerMet(state, ctx, msg.trigger)) continue
-    if (deliver(state, msg.id)) addLog(state, 'info', deliveryLogText(ctx, msg))
+    if (!deliver(state, msg.id)) continue
+    addLog(state, 'info', deliveryLogText(ctx, msg))
+    // 船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」⇒ 标记了 popup 的消息再进弹窗队列
+    if (msg.popup === true) {
+      const list = state.commsPopups ?? []
+      if (!list.includes(msg.id)) state.commsPopups = [...list, msg.id]
+    }
   }
 }
 

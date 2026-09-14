@@ -20,6 +20,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { wormholeEnter } from '../src/wormhole'
 import {
   WORMHOLE_SCAN_BASE_MS,
+  WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
   advanceWormholeScan,
   wormholeScanBlockReason,
@@ -35,7 +36,13 @@ const T3 = 'sh-thresher'
 void ITEMS
 
 function fresh(seed = 4242): GameState {
-  return createInitialState({ nowWallMs: 0, seed })
+  const state = createInitialState({ nowWallMs: 0, seed })
+  /**
+   * 扫本文件的用例只管"扫描机制"（窗口/互斥/续扫/离线连出/库存满/往返），
+   * **解锁门槛另有专测**（`wormhole-unlock.test.ts`：协会声望 < 35 一律拦）⇒ 这里直接把声望垫到达标。
+   */
+  state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+  return state
 }
 
 /** 把三项扫描技能练到 Lv（船长新 rank 上限：分析 3 / 测绘 4 / 过滤 5） */

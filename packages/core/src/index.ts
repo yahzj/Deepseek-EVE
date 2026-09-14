@@ -529,6 +529,9 @@ export {
   commsDialogueKey,
   commsGameClock,
   commsInbox,
+  // 2026-09-14 船长：「解锁时发送通讯给玩家（同时也要直接弹窗）」⇒ 弹窗队列两件套
+  commsPopupQueue,
+  dismissCommsPopup,
   commsTriggerMet,
   commsUnreadCount,
   deliverDialogueToComms,
@@ -1034,8 +1037,11 @@ export {
 // 虫洞扫描（发现线 · 2026-09-14 船长：主控活动「扫描虫洞」+ 最多囤 5 个未探索虫洞）
 export {
   WORMHOLE_SCAN_BASE_MS,
+  WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
   WORMHOLE_STOCK_DEPTHS,
+  wormholeScanStanding,
+  wormholeScanUnlocked,
   wormholeScanWindowMs,
   wormholeScanBlockReason,
   wormholeScanStart,

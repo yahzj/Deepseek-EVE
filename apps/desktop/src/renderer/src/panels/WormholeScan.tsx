@@ -23,6 +23,7 @@ import {
   WORMHOLE_AUTO_MAX_SHIPS,
   WORMHOLE_AUTO_YIELD_MUL,
   WORMHOLE_SCAN_BASE_MS,
+  WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -50,6 +51,9 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
   const full = stock.length >= WORMHOLE_STOCK_MAX
+  /** 解锁门槛（船长 2026-09-14：需要协会声望 35；解锁时会收到一封通讯 + 直接弹窗） */
+  const unlocked = engine.wormholeScanUnlocked()
+  const standing = engine.wormholeScanStanding()
   /** 配置界面的候选（全部列出；不可派的也显示并写明原因） */
   const allCandidates = pickFor !== null ? engine.wormholeAutoCandidates([]) : []
   const lineup =
@@ -86,6 +90,19 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
           扫描期间**遭遇随机事件的概率与星图扫描一致**；被打断也**不影响进度**。
           未探索的虫洞最多囤 {WORMHOLE_STOCK_MAX} 处。
         </div>
+
+        {!unlocked ? (
+          <div className="app-wh-scanbar">
+            <div className="app-wh-scanbar-label">
+              <span className="app-wh-hold-warn">
+                尚未解锁：需要「深空工业协会」声望 {WORMHOLE_SCAN_UNLOCK_STANDING}（当前 {standing}）
+              </span>
+            </div>
+            <div className="app-dim">
+              声望靠协会的委托与任务攒；达到门槛时协会测绘处会发来一封通讯，并当场弹给你看。
+            </div>
+          </div>
+        ) : null}
 
         <div className="app-wh-scanbar">
           <div className="app-wh-scanbar-label">

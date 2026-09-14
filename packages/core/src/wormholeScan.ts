@@ -18,6 +18,7 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { scanSkillFactor } from './explore'
 import { WORMHOLE_MAX_SHIPS } from './wormhole'
+import { DSI_FACTION_ID } from './expedition'
 
 /** **扫描一个虫洞的基准时长**（船长 2026-09-14：「扫描基准设定为220分钟」） */
 export const WORMHOLE_SCAN_BASE_MS = 220 * 60_000
@@ -29,11 +30,36 @@ export const WORMHOLE_STOCK_MAX = 5
 export const WORMHOLE_STOCK_DEPTHS: readonly number[] = [1, 2, 3]
 
 /**
+ * **扫描虫洞的解锁门槛**（船长 2026-09-14：「**扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家
+ * （同时也要直接弹窗）**」）。
+ *
+ * 声望口径 = **协会（深空工业协会，`DSI_FACTION_ID` = `'dsi'`）声望 ≥ 35** —— 与其它"协会声望门槛"
+ * （矿带 `standingReq`、奇货件）**同一本账**（`state.standings.dsi`，界面「声望」列就是它）。
+ */
+export const WORMHOLE_SCAN_UNLOCK_STANDING = 35
+
+/** 协会声望（界面读数与解锁判定共用） */
+export function wormholeScanStanding(state: GameState): number {
+  return state.standings[DSI_FACTION_ID] ?? 0
+}
+
+/** 扫描虫洞是否已解锁（声望 ≥ 门槛） */
+export function wormholeScanUnlocked(state: GameState): boolean {
+  return wormholeScanStanding(state) >= WORMHOLE_SCAN_UNLOCK_STANDING
+}
+
+/**
  * **本趟扫描窗口**（毫秒）= 基准 220 分钟 × 三技能乘算。
  * ⚠ 与星图扫描的区别只有"基准值"和"没有低安惩罚"（扫描虫洞不吃目标星系安全等级 —— 它扫的是深空；
  * 船长只要求"遇袭期望一致"，没要求时长也吃低安系数）。
  */
 export function wormholeScanWindowMs(state: GameState): number {
+  /**
+   * **调试 1 秒化**（船长 2026-09-14：「**希望调试模式也能增加虫洞扫码的速度**」）：
+   * 与 `explore.ts` 的星图扫描、`training` 的技能训练、AI 副船任务、本地航行段**同一把开关**
+   * （`state.debugQuick`，调试面板「⇄ 调试 · 1秒化」勾选）⇒ 一个窗口 1 秒，连点即可攒满库存。
+   */
+  if (state.debugQuick) return 1000
   return Math.max(1000, Math.round(WORMHOLE_SCAN_BASE_MS * scanSkillFactor(state)))
 }
 
@@ -49,6 +75,10 @@ export function wormholeStockFull(state: GameState): boolean {
 
 /** 能不能开扫（主控活动互斥：与采矿/打捞/扫描/远征/待命/过境/虫洞探索同一把尺） */
 export function wormholeScanBlockReason(state: GameState): string | null {
+  // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 35 才开放扫描虫洞 —— 放在最前面，理由最有用
+  if (!wormholeScanUnlocked(state)) {
+    return `扫描虫洞尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${wormholeScanStanding(state)}）——先去做协会的委托攒声望。`
+  }
   if (state.wormhole.run) return '已经在虫洞里了：先完成或撤离这一趟。'
   if (state.encounter.active) return '遭遇战未决：先处理完当前遭遇。'
   if (state.mining.active) return '主控正在采矿：一台主控同时只能干一件事。'
