@@ -889,13 +889,11 @@ body {
 
 }
 
-/* 组装机卡片：**金色只留给产物名**（2026-09-13 船长：「关于组装机产物的修改，只需要将产物染成金色就够了，
-   不用根据类型分成不同颜色。其他文字的金色取消」）——`.app-belt-ore`（产物行）与 `.app-belt-econ`
-   （≈ISK/h 经济行）的金色是采矿/打捞/精炼卡片**共用**的，这里**只在本卡内部**取消；
-   产物名自己带 `.app-gold`，故仍为金色。 */
-.app-belt-card.is-assembler .app-belt-ore,
-.app-belt-card.is-assembler .app-belt-econ,
-.app-belt-card.is-assembler .app-belt-econ-val {
+/* 组装机卡片：产物行的**其余文字**取消金色（2026-09-13 船长：「只需要将产物染成金色就够了…其他文字的金色
+   取消」——产物行的拥有数/主控耗时原先随整行金色一起变金，现回到普通文字色；**产物名自己带 `.app-gold`**）。
+   ⚠ **经济行（≈ISK/h）不在取消之列**：船长同日追加「经济行回滚，允许显示金色」⇒ `.app-belt-econ` /
+   `.app-belt-econ-val` 保持各自的金色原样。 */
+.app-belt-card.is-assembler .app-belt-ore {
   color: var(--wui-text);
 }
 
