@@ -33,7 +33,6 @@ const ctx = buildSimContext()
 const T1 = 'sh-falconet'
 /** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——这些**照旧拦住进洞** */
 const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
-  ['长途运输', (s) => void (s.hauling.active = true)],
   [
     '扫描星系',
     (s) => {
@@ -173,6 +172,37 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(blocked ?? '').toContain('AI 采矿中')
       expect(wormholeEntryAutoStops(state)).toEqual([]) // 主控自己没在作业 ⇒ 没有要自动停的东西
     }
+    // ── 边界：**远征不在自动停名单里**（船长 2026-09-14：「远征无法自动停」）⇒ 照旧拦住 ──
+    {
+      const { state, pilot } = fresh()
+      startExpedition(state, 'ano-training', ctx)
+      expect(wormholeEntryAutoStops(state).map((a) => a.name)).toEqual([])
+      expect(wormholeEntryBlockReason(state, ctx, [pilot]) ?? '').toContain('远征')
+    }
+  })
+
+  /**
+   * **长途运输：警告 + 自动停**（船长 2026-09-14：「**长途运输发出警告**」）——
+   * 它停掉**有可见后果**（本段航程中止、船被挪回出发站）⇒ 自动停名单里带 `warn` 标记，
+   * 准备页据此摆**琥珀色警告条**（而不是轻描淡写的预告），但**照旧不拦进洞**。
+   */
+  it('**①‴ 长途运输 ⇒ 不拦，进洞那一刻自动停运（船即时返港停靠出发站 + warn 标记）**', () => {
+    const { state, pilot } = fresh()
+    state.hauling = { ...state.hauling, active: true, routeA: null, routeB: 'site-x', fromSiteId: null, toSiteId: 'site-x' }
+    state.dockedSite = 'site-x'
+    state.awayGalaxy = 'galaxy-hub'
+    const stops = wormholeEntryAutoStops(state)
+    expect(stops.map((a) => a.label)).toEqual(['长途运输中'])
+    expect(stops[0]!.warn, '长途运输要发警告').toBe(true)
+    expect(wormholeEntryBlockReason(state, ctx, [pilot]), '长途运输中应当能进洞了').toBeNull()
+    expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
+    // 自动停运：与手点「停止运输」同一个单点（清空航段 + 瞬时返港停靠出发站 + 清野外标记）
+    expect(state.hauling.active).toBe(false)
+    expect(state.hauling.toSiteId).toBeNull()
+    expect(state.dockedSite).toBeNull() // 出发站 = 母港（fromSiteId null）
+    expect(state.awayGalaxy).toBeNull()
+    const logs = state.logs.map((l) => l.text)
+    expect(logs.some((t) => t.includes('自动停掉「长途运输」') && t.includes('母港'))).toBe(true)
   })
 
   it('② **洞内锁定**：人在洞里 ⇒ 别的活动开不了（真命令复核）', () => {

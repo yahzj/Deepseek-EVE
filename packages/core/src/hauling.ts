@@ -27,7 +27,7 @@
  * - 互斥：任务中驾驶船忙碌（等同远征），各出港/站内手动作业入口拒绝；换驾驶 = 立即终止
  *   （虚拟货无残留、无惩罚）；AI 副船本版不支持。
  */
-import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
+import { addLog, HOME_GALAXY_ID, haulingHalt, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
@@ -295,21 +295,10 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
 
 /** 玩家指令：停止长途运输（立即响应：中止当前航段并**即时返港停靠出发站**，无需返程时间；无惩罚） */
 export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
-  const h = state.hauling
-  if (!h.active) return { ok: false, error: '没有进行中的长途运输。' }
-  const originId = h.fromSiteId // 本段出发站（null = 母港）
-  const originName = haulEndpointName(ctx, originId)
-  h.active = false
-  h.routeA = null
-  h.routeB = null
-  h.fromSiteId = null
-  h.toSiteId = null
-  h.legMinutes = 0
-  h.legMs = 0
-  h.phaseAccMs = 0
-  // 2026-09-09（船长定）：终止即瞬时返港——不再安排真实折返航程，船直接停靠回出发站
-  state.awayGalaxy = null
-  state.dockedSite = originId === null ? null : originId
+  /** 状态改动走 `state.ts` 的单点 `haulingHalt`（**进洞前自动停运**也用它）⇒ 两条停运路径不会各写一份 */
+  const info = haulingHalt(state)
+  if (info === null) return { ok: false, error: '没有进行中的长途运输。' }
+  const originName = haulEndpointName(ctx, info.fromSiteId)
   addLog(state, 'info', `长途运输已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`)
   return { ok: true }
 }

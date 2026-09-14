@@ -80,6 +80,10 @@ export {
   wormholePilotHoldReason,
   // 停掉「扫描虫洞」的状态单点（手动停扫与「进洞自动停扫」共用；进度保留）
   wormholeScanHalt,
+  // 同款单点：进洞前自动停掉「开采 / 打捞 / 长途运输」与手动停止共用（船长 2026-09-14）
+  miningHalt,
+  salvageHalt,
+  haulingHalt,
 } from './state'
 export type {
   LogKind,

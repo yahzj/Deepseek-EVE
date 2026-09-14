@@ -11,7 +11,7 @@
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
-import { addLog, miningHalt, salvageHalt, wormholeScanHalt } from './state'
+import { addLog, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
@@ -1242,28 +1242,38 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
 
 /**
  * **进洞时会"自动停掉"的活动**（船长 2026-09-14：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』
- * 同样落实到**采矿/打捞**」）。
+ * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」）。
  *
- * 三项都是"就地作业"类：停它们与玩家手点活动栏里的「停止」**完全同一条路径**（状态改动走 `state.ts` 的
- * 单点 `wormholeScanHalt` / `miningHalt` / `salvageHalt`），未返航的货留在船上、日志照写 ⇒ **不新增损失**。
- * 其余主控活动（扫描星系 / 远征 / 掩护巡逻 / 快递投送 / 长途运输 / 亲自开炉开线）**照旧拦住**：
- * 停它们会牵动船的位置或半成品（比如远征在飞、炉线跑到一半），不能替玩家做主。
+ * 四项都是"主控亲自在跑"的作业：停法与玩家手点活动栏里的「停止」**完全同一条路径**（状态改动走 `state.ts`
+ * 的单点 `wormholeScanHalt` / `miningHalt` / `salvageHalt` / `haulingHalt`），日志照写 ⇒ **不新增损失**
+ * （扫描进度保留；开采/打捞未返航的货留在船上；长途运输"终止即瞬时返港停靠出发站、无惩罚"）。
+ *
+ * `warn: true` = 停它**有可见后果**（长途运输会中止本段航程、船被挪回出发站）⇒ 准备页要**发警告**，
+ * 不能只当"顺手停一下"。
+ *
+ * **远征不在名单里**（船长 2026-09-14：「**远征无法自动停**」）：它是多阶段活动（出航/交火/返航 + 战斗锚点），
+ * 没有"无损停掉"的路径 ⇒ **照旧拦住进洞**（人在洞里时也照旧开不了）。其余活动（扫描星系 / 掩护巡逻 /
+ * 快递投送 / 亲自开炉开线）同理照旧拦住。
  */
 export interface WormholeEntryAutoStop {
   /** 判据键（界面/日志用；与 `shipActivityBusy` 的忙态文案一一对应） */
-  kind: 'whscan' | 'mining' | 'salvage'
+  kind: 'whscan' | 'mining' | 'salvage' | 'hauling'
   /** 忙态文案（`shipActivityBusy` 报的就是它） */
   label: string
-  /** 日志里用的短名（「扫描虫洞」「开采」「打捞」） */
+  /** 日志/界面里用的短名（「扫描虫洞」「开采」「打捞」「长途运输」） */
   name: string
+  /** 停它有没有可见后果（true ⇒ 准备页发**警告**，而不是轻描淡写地"预告"） */
+  warn: boolean
 }
 
 /** 当前**会被进洞自动停掉**的活动（可能不止一项：作业之间本应互斥，这里按顺序全收，坏档也不会漏停） */
 export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[] {
   const out: WormholeEntryAutoStop[] = []
-  if (state.wormholeScan?.active === true) out.push({ kind: 'whscan', label: '扫描虫洞中', name: '扫描虫洞' })
-  if (state.mining.active === true) out.push({ kind: 'mining', label: '采矿中', name: '开采' })
-  if (state.salvaging.active === true) out.push({ kind: 'salvage', label: '打捞中', name: '打捞' })
+  if (state.wormholeScan?.active === true) out.push({ kind: 'whscan', label: '扫描虫洞中', name: '扫描虫洞', warn: false })
+  if (state.mining.active === true) out.push({ kind: 'mining', label: '采矿中', name: '开采', warn: false })
+  if (state.salvaging.active === true) out.push({ kind: 'salvage', label: '打捞中', name: '打捞', warn: false })
+  /** 长途运输：船会被挪回出发站（有可见后果）⇒ `warn`（船长 2026-09-14：「长途运输发出警告」） */
+  if (state.hauling.active === true) out.push({ kind: 'hauling', label: '长途运输中', name: '长途运输', warn: true })
   return out
 }
 
@@ -1341,9 +1351,10 @@ export function wormholeEnter(
   if (blocked) return { ok: false, error: blocked }
   /**
    * **进洞自动停止**（船长 2026-09-14：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』
-   * 同样落实到**采矿/打捞**」）：扫描虫洞 / 开采 / 打捞这三项"就地作业"一律**在进洞那一刻停掉**
-   * ——与玩家手点活动栏「停止」**同一条路径**（状态改动各走 `state.ts` 的单点），未返航的货留在船上、
-   * 不新增任何损失；其余主控活动仍在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
+   * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」）：扫描虫洞 / 开采 / 打捞 / 长途运输这四项
+   * 一律**在进洞那一刻停掉**——与玩家手点活动栏「停止」**同一条路径**（状态改动各走 `state.ts` 的单点），
+   * 未返航的货留在船上、长途运输瞬时返港停靠出发站（无惩罚）⇒ 不新增任何损失；
+   * 其余主控活动（含**无法自动停的远征**）仍在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
    */
   const halted = wormholeEntryAutoStops(state)
   for (const a of halted) {
@@ -1361,7 +1372,7 @@ export function wormholeEnter(
           `⛏ 进洞前自动停掉「开采」（${belt?.name ?? '矿带'} · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上）。`,
         )
       }
-    } else {
+    } else if (a.kind === 'salvage') {
       const info = salvageHalt(state)
       if (info !== null) {
         const gName = info.galaxyId ? (ctx.galaxies.get(info.galaxyId)?.name ?? '') : ''
@@ -1370,6 +1381,12 @@ export function wormholeEnter(
           'info',
           `♻ 进洞前自动停掉「打捞」（${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上）。`,
         )
+      }
+    } else {
+      const info = haulingHalt(state)
+      if (info !== null) {
+        const originName = info.fromSiteId ? (ctx.stations.get(info.fromSiteId)?.name ?? info.fromSiteId) : '母港'
+        addLog(state, 'info', `🚚 进洞前自动停掉「长途运输」（舰船已即时返港停靠「${originName}」，无惩罚）。`)
       }
     }
   }
