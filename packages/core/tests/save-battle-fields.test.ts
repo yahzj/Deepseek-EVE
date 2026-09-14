@@ -57,7 +57,10 @@ function battleWithAllFields(): { state: GameState; ctx: SimContext; battle: Bat
     kitsUsed: 5,
     kitsUsedByType: { 'repairkit-mil': 5 },
   }
-  battle.dronePools = { 0: { s: 1, a: 2, h: 3, alive: true, artId: 'drone-x', evasion: 0.25 } }
+  // 2026-09-14「逐舰机群」：键 = `舰tag:武器下标`、条目带 `owner`（老档纯数字键会在读档时归一成 `player:<n>`）
+  battle.dronePools = {
+    'player:0': { owner: 'player', s: 1, a: 2, h: 3, alive: true, artId: 'drone-x', evasion: 0.25 },
+  }
   battle.foeDronePools = {
     'foe-0': [
       { s: 4, a: 5, h: 6, alive: false, evasion: 0.1, inHangar: true, readyAtMs: 1616, maxS: 4, maxA: 5, maxH: 6 },
@@ -109,7 +112,7 @@ describe('战斗字段随档往返（审计 A3 登记表）', () => {
   it('登记为 runtime 的字段**有意不入档**（重载后按缺省口径续算）', () => {
     const { state, battle } = battleWithAllFields()
     // 故意给几个 runtime 字段塞值（真引擎里它们只在战斗中出现）
-    battle.pdFocus = [0]
+    battle.pdFocus = ['player:0']
     battle.pdCd = [123]
     battle.notices = [{ atMs: 1, text: '测试提示' }]
     battle.foeChargeOn = true

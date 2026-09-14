@@ -363,23 +363,36 @@ describe('虫洞 · 判负与副本内保险', () => {
     expect(battle.ended).toBe('foe')
   })
 
-  it('副本内**不挂**「结构过半自动脱离」保险；僚舰无人机不参战（D 批边界）', () => {
+  it('副本内**不挂**「结构过半自动脱离」保险；**机群逐舰建池**（2026-09-14 船长「逐舰机群」）', () => {
     const state = fresh()
-    const leader = addShip(state, 'sh-thresher')
+    state.moduleBay['mod-drone-rack-2'] = 2
+    const leader = addShip(state, 'sh-thresher', ['mod-drone-rack-2'])
     const droneShip = addShip(state, 'sh-sentinel', ['mod-drone-rack-2'])
     state.moduleBay['mod-drone-rack-2'] = 0
     state.fleet[droneShip]!.droneLoad = { 'drone-assault': 4 }
     state.shipId = leader
     const battle = startFleetBattleFor(state, ctx, [leader, droneShip], CARD, 0)!
     expect(battle.hullEscapeFrac).toBeUndefined()
-    // 机群生存池只按**主控**武器槽建 ⇒ 主控没带机群时根本没有池（僚舰的机群不参战）
-    expect(battle.dronePools).toBeUndefined()
-    // 正对照：主控带机群时照旧建池（既有单船口径不变）
+    // 主控没带机群、僚舰带 4 架 ⇒ 池里**只有僚舰那四条**（逐舰建池；此前只有主控会建池）
+    const keys = Object.keys(battle.dronePools ?? {})
+    expect(keys.length, `僚舰的 4 架机群没建池：${keys.join(',')}`).toBe(4)
+    expect(keys.every((k) => k.startsWith('ally-1:'))).toBe(true)
+    expect(Object.values(battle.dronePools ?? {}).every((p) => p.owner === 'ally-1')).toBe(true)
+    expect(battle.droneLoadAtStartBy?.['ally-1']?.['drone-assault']).toBe(4)
+    // 正对照：两舰**各带 4 架** ⇒ 8 条池、两个 owner（各自独立，互不顶替）
+    state.fleet[leader]!.droneLoad = { 'drone-assault': 4 }
+    const battle2 = startFleetBattleFor(state, ctx, [leader, droneShip], CARD, 0)!
+    const keys2 = Object.keys(battle2.dronePools ?? {})
+    expect(keys2.length).toBe(8)
+    expect(new Set(Object.values(battle2.dronePools ?? {}).map((p) => p.owner))).toEqual(
+      new Set(['player', 'ally-1']),
+    )
+    // 单船路径仍是"只有主控那一份"（既有口径不变）
     const carrier = addShip(state, 'sh-sentinel', ['mod-drone-rack-2'])
     state.fleet[carrier]!.droneLoad = { 'drone-assault': 4 }
     state.shipId = carrier
-    const battle2 = startFleetBattleFor(state, ctx, [carrier], CARD, 0)!
-    expect(Object.keys(battle2.dronePools ?? {}).length).toBe(4)
+    const single = startFleetBattleFor(state, ctx, [carrier], CARD, 0)!
+    expect(Object.keys(single.dronePools ?? {}).length).toBe(4)
   })
 })
 

@@ -423,10 +423,18 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       addLog(state, 'info', `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`)
     }
   }
-  // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内首舰的
-  // 无人机照样会被点防打下来（`battle.droneLost` 在涨），首版漏了这一步 ⇒ 洞内无人机
-  // **打不死**（清单不减、也没有战损日志），是最便宜的一种白嫖。
-  if (droneOwner) settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct)
+  // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内的无人机照样会被
+  // 点防打下来（`battle.droneLost` 在涨），首版漏了这一步 ⇒ 洞内无人机**打不死**（清单不减、也没有
+  // 战损日志），是最便宜的一种白嫖。**2026-09-14 船长「逐舰机群」**：改为**逐舰结算**——每艘编队舰
+  // 各自扣各自的机舱清单、各写一条战损日志；老档/旧战斗只有合计账本 ⇒ 回落到主控那一份。
+  const fleetForDrones = battle.myFleet
+  if (fleetForDrones && fleetForDrones.length > 0) {
+    for (const e of fleetForDrones) {
+      settleDroneLosses(state, ctx, e.shipId, battle, matterBuffs.droneRecoveryPct, e.tag)
+    }
+  } else if (droneOwner) {
+    settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct)
+  }
   if (matterBuffs.fieldRepairPct > 0) {
     const pct = matterBuffs.fieldRepairPct
     let touched = 0
