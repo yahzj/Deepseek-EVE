@@ -123,10 +123,21 @@ export function isSingleUseBlueprint(ctx: SimContext, blueprintId: string): bool
   return blueprintDefOf(ctx, blueprintId)?.singleUse === true
 }
 
-/** 该蓝图当前能否开工（界面按钮可用性用；与 `startManufacturing` 同源判定） */
+/**
+ * 该蓝图当前能否开工（界面按钮可用性用；**与 `startManufacturing` 同源判定**）。
+ *
+ * ⚠ **2026-09-14 修（船长报障「组装机原先没有图纸时会跳转到市场求购的按钮怎么没了」）**：
+ * 原先写成 `ownsBlueprint || recipeCapability(state, id, isSingleUse).kind === 'ok'`，而
+ * `recipeCapability(..., singleUse=false)` 对**普通图纸恒返回 `ok`**（那是"配方可用"、不是"现在能开工"）
+ * ⇒ 未学会的普通图纸也返回 true ⇒ 组装机卡片永远走"能造/手动制造"那一支，
+ * **「市场求购蓝图书」按钮整个轮不到**（实测 181 张里 123 张普通图纸全被吃掉）。
+ * 现在逐条对齐 `startManufacturing` 的把关：**已学会 ⇒ true；一次性图纸 ⇒ 书架有书且名额未用尽；
+ * 其余（未学会的普通图纸）⇒ false**。
+ */
 export function canStartBlueprint(state: GameState, ctx: SimContext, blueprintId: string): boolean {
   if (ownsBlueprint(state, blueprintId)) return true
-  return recipeCapability(state, blueprintId, isSingleUseBlueprint(ctx, blueprintId)).kind === 'ok'
+  if (!isSingleUseBlueprint(ctx, blueprintId)) return false
+  return recipeCapability(state, blueprintId, true).kind === 'ok'
 }
 
 /**

@@ -19,6 +19,7 @@ import {
   missingMaterials,
   ownsBlueprint,
   recipeCapability,
+  canStartBlueprint,
   // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
   visibleItemDefs,
 } from '@whale/core'
@@ -280,7 +281,15 @@ function BlueprintCard({
   const bpDef = engine.ctx.blueprints.get(blueprintId) ?? engine.ctx.shipBlueprints.get(blueprintId)
   const singleUse = bpDef?.singleUse === true
   const cap = recipeCapability(state, blueprintId, singleUse)
-  const canBuild = ownsBlueprint(state, blueprintId) || cap.kind === 'ok'
+  /**
+   * ⚠ **不能用 `cap.kind === 'ok'` 当"能造"**（2026-09-14 船长报障「组装机原先没有图纸时会跳转到市场
+   * 求购的按钮怎么没了」）：`recipeCapability(..., singleUse=false)` 对**普通图纸恒返回 `ok`**
+   * （core 注释：「普通蓝图恒 ok：只由 `startManufacturing` 的'是否已学会'把关」）⇒
+   * `ownsBlueprint || cap.kind === 'ok'` **恒为真**，未学会的卡也会走上面"手动制造 + AI 工位"那一支，
+   * 于是下面「市场求购蓝图书」的 else 分支**永远轮不到**（181 张图里 123 张普通图纸全被吃掉）。
+   * ⇒ 改用 core 的**单点判定** `canStartBlueprint`（已学会 ⇒ true；一次性图纸另有"书架有书且名额未用尽"）。
+   */
+  const canBuild = canStartBlueprint(state, engine.ctx, blueprintId)
   /** 一次性图纸的缺口提示（`null` = 无需提示） */
   const oneTimeNote = !singleUse
     ? null
