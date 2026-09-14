@@ -168,7 +168,7 @@ export {
   totalQueueTimeMs,
 } from './training'
 
-export { DEFAULT_BALANCE } from './balance'
+export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 
 export {
   advanceGame,

@@ -54,6 +54,7 @@ import {
   stationBillView,
   transitStatus,
   RARE_WRECK_VOLUME_M3,
+  RETURN_LEG_MUL,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -1024,7 +1025,7 @@ function StarMap({
   function handleScan(g: GalaxyDef): void {
     const r = engine.startScanAt(g.id)
     if (!r.ok) onToast(r.error ?? '无法发起扫描。', true)
-    else onToast('扫描艇已就地展开深空扫描：窗口完成即点亮该星系并自动返航（去程并入返航）。')
+    else onToast('扫描艇已就地展开深空扫描：窗口完成即点亮该星系并自动返航（返航路程 = 单程）。')
   }
 
   const posOf = (g: GalaxyDef): { x: number; y: number } => {
@@ -1985,11 +1986,11 @@ function AnomalyCard({
   const chanceTone = chance >= 70 ? '高' : chance >= 40 ? '中' : '低'
   const combatMs = anomaly.combatSeconds * 1000
   // 奖励/小时（2026-09-08：胜利自动返航——基准 = 目标星系最近已建成站；本地悬赏（目标=基准）
-  // = 固定返港 120s；异星系 = 2×单程）——每单耗时 = 交火 + 返航
+  // = 固定返港 120s；异星系 = 单程 × RETURN_LEG_MUL，2026-09-14 起 1×）——每单耗时 = 交火 + 返航
   const retBase = nearestStationGalaxyId(state, engine.ctx, anomaly.galaxyId)
   const localTarget = anomaly.galaxyId === retBase
   const retMins = localTarget ? NaN : shortestTravelMinutes(engine.ctx, retBase, anomaly.galaxyId)
-  const retMs = localTarget ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * 2 : 0
+  const retMs = localTarget ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * RETURN_LEG_MUL : 0
   const roundTripMs = Math.max(1, combatMs + retMs)
   const grossIsk = (factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
@@ -2084,14 +2085,14 @@ function AnomalyCard({
         )) : '？'} ·{' '}
         {(() => {
           // 2026-09-06：去程取消（下达即开战）；胜利自动返航（2026-09-08：基准 = 最近已建成站；
-          // 本地悬赏 = 固定返港 2 分钟不可召回；异星系 = 2×单程不可召回）
+          // 本地悬赏 = 固定返港 2 分钟不可召回；异星系 = 单程 × RETURN_LEG_MUL（现值 1×）不可召回）
           const homeTarget = localTarget
           const backTxt =
             homeTarget
               ? ''
               : !Number.isFinite(retMins)
                 ? ''
-                : ` · 胜利自动返航约 ${Math.max(1, Math.round(travelMinutesEff(state, engine.ctx, retMins) * 2))} 分钟（不可召回）`
+                : ` · 胜利自动返航约 ${Math.max(1, Math.round(travelMinutesEff(state, engine.ctx, retMins) * RETURN_LEG_MUL))} 分钟（不可召回）`
           return (
             <>
               即时开战 · 交火约 {formatDurationMs(anomaly.combatSeconds * 1000)}
@@ -2152,7 +2153,7 @@ function AnomalyCard({
       </div>
       <div
         className="app-ano-econ"
-        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航：异星系 2×单程 / 本地悬赏固定返港 2 分钟）：${grossIsk.toLocaleString('zh-CN')} 信用点 ÷ ${formatDurationMs(roundTripMs)}`}
+        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航：异星系 = 单程 / 本地悬赏固定返港 2 分钟）：${grossIsk.toLocaleString('zh-CN')} 信用点 ÷ ${formatDurationMs(roundTripMs)}`}
       >
         {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} 信用点/h（每次出击）
       </div>
@@ -2171,7 +2172,7 @@ function AnomalyCard({
                   ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启讨伐'
                   : looping
                     ? '停止自动循环（当前这一单会打完）'
-                    : '开启重复清剿：胜利后自动返航到港（去程并入返航），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
+                    : '开启重复清剿：胜利后自动返航到港（返航路程 = 单程），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
             }
             onClick={toggleLoop}
           >
@@ -2657,7 +2658,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                               ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启'
                               : loopOn2
                                 ? '停止循环剿灭（当前这一单会打完）'
-                                : '循环剿灭：打赢就自动返航到港（去程并入返航），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停。与其它悬赏卡的「重复清剿」共用同一个开关——开这里会停掉那边'
+                                : '循环剿灭：打赢就自动返航到港（返航路程 = 单程），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停。与其它悬赏卡的「重复清剿」共用同一个开关——开这里会停掉那边'
                       }
                       onClick={() => {
                         if (!faction.anomalyId) return

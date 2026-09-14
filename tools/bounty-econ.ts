@@ -7,8 +7,8 @@
  * 无技能）跑 SEEDS 场确定性实战（advanceBattleFor 真实结算），得出：
  *   胜率% / 平均交火秒 / 平均弹药耗（发）
  * 再叠加现行经济口径（2026-09-06 自动返航定稿）：
- *   单局周期 = 交火 + max(返航 2×单程实耗, 重复冷却)——冷却自结算时并行计时；
- *   母港目标无返航段；
+ *   单局周期 = 交火 + max(返航实耗（= 单程 × RETURN_LEG_MUL，现值 1×；母港本地卡固定 120 秒）, 重复冷却)
+ *   ——冷却自结算时并行计时；
  *   净收益 = 奖金期望(±15% jitter 均值=1) − 失局维修费期望(0.5×奖金×(1−胜率))
  *           + 战利品估值(按物品基准价×胜率) − 弹药费(按实耗发数×单价)
  *   实际 ≈ISK/h = 净收益 × 3600 / 周期
@@ -27,6 +27,7 @@ import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
 import { bountyCooldownMsFor } from '../packages/core/src/expedition'
 import { getMiningParams } from '../packages/core/src/mining'
 import { BOUNTY_COOLDOWN_BASE_MS } from '../packages/core/src/expedition'
+import { RETURN_LEG_MUL } from '../packages/core/src/balance'
 import { fleetDefOf } from '../packages/core/src/instances'
 
 const ctx = buildSimContext()
@@ -106,7 +107,7 @@ function main(): void {
 
   console.log('══ 悬赏收益对照（参考装配 × 现行经济口径；5 种子实战平均）══')
   console.log('参考装配按威胁档：≤16 鲣鱼+动能MK1 / ≤40 虎鲨+2×动能MK2 / >40 鲸王+3×动能MK3（无技能）')
-  console.log('单局周期 = 交火 + max(返航2×单程, 重复冷却)；冷却与返航并行计时（冷却基数 10s，随船扫描属性缩短）')
+  console.log('单局周期 = 交火 + max(返航（单程 × RETURN_LEG_MUL，现值 1×；母港本地卡固定 120s）, 重复冷却)；冷却与返航并行计时（冷却基数 10s，随船扫描属性缩短）')
   console.log(
     [
       '目标'.padEnd(14),
@@ -145,7 +146,9 @@ function main(): void {
     const st = makeState(fit.ship, fit, 1)
     const mins = shortestTravelMinutes(ctx, HOME, a.galaxyId)
     const oneLegMs = Number.isFinite(mins) && mins > 0 ? travelLegMs(st, ctx as SimContext, mins, fit.ship) : 0
-    const backMs = a.galaxyId === HOME ? 0 : oneLegMs * 2
+    // 母港本地卡：引擎给的是**固定 120 秒**返港段（expedition.LOCAL_RETURN_MS，= balance.mining.localLegMs；debugQuick 才 1 秒）——`0` 是旧口径（2026-09-14 修正）。
+    const localReturnMs = ctx.balance.mining.localLegMs
+    const backMs = a.galaxyId === HOME ? localReturnMs : oneLegMs * RETURN_LEG_MUL
     const cdMs = bountyCooldownMsFor(st, ctx as SimContext)
     const periodSec = fightSec + Math.max(backMs, cdMs) / 1000
     const ammoCost = shots * AMMO_PRICE.kin
@@ -158,7 +161,7 @@ function main(): void {
     const netPerClear = gross * pWin - lossCost + lootVal * pWin - ammoCost
     const actualIskH = periodSec > 0 ? (netPerClear * 3600) / periodSec : 0
     // 卡面口径：交火 = 标称 combatSeconds；返航 = 2×单程实耗；无弹药/维修/战利
-    const cardMs = a.combatSeconds * 1000 + (a.galaxyId === HOME ? 0 : oneLegMs * 2)
+    const cardMs = a.combatSeconds * 1000 + (a.galaxyId === HOME ? ctx.balance.mining.localLegMs : oneLegMs * RETURN_LEG_MUL)
     const cardIskH = (gross * 3600) / Math.max(1, cardMs / 1000)
     const galaxyName = ctx.galaxies.get(a.galaxyId)?.name ?? a.galaxyId
     const ref = bestAt(a.standingReq)

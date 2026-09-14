@@ -21,6 +21,7 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { originGalaxyOf, startTransitHome, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
+import { RETURN_LEG_MUL } from './balance'
 import { unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
@@ -225,7 +226,8 @@ function finishScan(state: GameState, ctx: SimContext): void {
   const base = targetId !== null ? nearestStationGalaxyId(state, ctx, targetId) : HOME_GALAXY_ID
   const baseName = base === HOME_GALAXY_ID ? '母港' : ctx.galaxies.get(base)?.name ?? base
   const mins = targetId !== null ? shortestTravelMinutes(ctx, base, targetId) : NaN
-  const backMs = targetId !== null && Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * 2 : 0
+  /** 返航段 = 单程 × `RETURN_LEG_MUL`（2026-09-14 船长「修正倍率回1倍」⇒ 现值 1×；与悬赏返航**同一旋钮**） */
+  const backMs = targetId !== null && Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * RETURN_LEG_MUL : 0
   s.returning = true
   s.startedAtGameMs = state.gameMs
   s.finishAtGameMs = state.gameMs + backMs // galaxyId 保持目标星系直至到港收尾
