@@ -163,7 +163,7 @@ import {
   wormholeScanBlockReason,
   // 2026-09-14 船长：「进洞自动停止」——进洞门槛 + 会被自动停掉的活动（扫描虫洞）
   wormholeEntryBlockReason,
-  wormholeEntryAutoStop,
+  wormholeEntryAutoStops,
   wormholeShipEntryBusy,
   // 2026-09-14 船长：扫描虫洞要协会声望 40 才解锁（先定 35、当日改判 40；解锁发通讯 + 直接弹窗）
   wormholeScanStanding,
@@ -1527,16 +1527,16 @@ export class GameEngine {
 
   /**
    * **进洞门槛（核心同一把尺）**：主控 + 编队各船必须空闲；`null` = 可以进洞。
-   * ⚠ 「扫描虫洞」**不算拦**（船长 2026-09-14「进洞自动停止」：进洞那一步会自动停扫、进度保留）
-   * ⇒ 界面据此置灰，并用 `wormholeEntryAutoStopText()` 提示"会先自动停扫"。
+   * ⚠ 「扫描虫洞 / 开采 / 打捞」**不算拦**（船长 2026-09-14「进洞自动停止」＋「同样落实到采矿/打捞」：
+   * 进洞那一步会把它们停掉）⇒ 界面据此置灰，并用 `wormholeEntryAutoStopText()` 预告"会先自动停掉哪些"。
    */
   wormholeEntryGate(shipIds: readonly string[]): string | null {
     return wormholeEntryBlockReason(this.state, this.ctx, shipIds)
   }
 
-  /** 进洞时会自动停掉的活动名（没有则 null）——准备页用它显示黄色预告条 */
+  /** 进洞时会自动停掉的活动名（「扫描虫洞、开采、打捞」这类中文短名；没有则 null）——准备页预告条用它 */
   wormholeEntryAutoStopText(): string | null {
-    return wormholeEntryAutoStop(this.state)
+    return wormholeEntryAutoStops(this.state).map((a) => a.name).join('、') || null
   }
 
   /**

@@ -20,7 +20,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeEntryBlockReason, wormholeEntryAutoStop, wormholeLeave } from '../src/wormhole'
+import { wormholeEnter, wormholeEntryBlockReason, wormholeEntryAutoStops, wormholeLeave } from '../src/wormhole'
 import { shipBusyForWormhole, shipActivityBusy } from '../src/wormhole'
 import { shipBusyLabel } from '../src/activity'
 import { wormholePilotHoldReason } from '../src/state'
@@ -33,8 +33,6 @@ const ctx = buildSimContext()
 const T1 = 'sh-falconet'
 /** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——这些**照旧拦住进洞** */
 const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
-  ['采矿', (s) => void (s.mining.active = true)],
-  ['打捞', (s) => void (s.salvaging.active = true)],
   ['长途运输', (s) => void (s.hauling.active = true)],
   [
     '扫描星系',
@@ -97,8 +95,9 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
   })
 
   /**
-   * **「扫描虫洞」是唯一例外**（船长 2026-09-14：「**进洞自动停止**」）：
-   * 它是"找洞"的准备动作 ⇒ **不拦**，进洞那一刻**自动停掉**（进度保留、回来续扫）。
+   * **「扫描虫洞 / 开采 / 打捞」三项例外**（船长 2026-09-14：「**进洞自动停止**」＋
+   * 「『进洞会自动停掉的那一项活动』**同样落实到采矿/打捞**」）：
+   * 它们都是"就地作业" ⇒ **不拦**，进洞那一刻**自动停掉**（与手点活动栏「停止」同一条路径、无损）。
    */
   it('**①′ 扫描虫洞 ⇒ 不拦，进洞那一刻自动停扫（进度保留 + 日志）**', () => {
     const { state, pilot } = fresh()
@@ -106,7 +105,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     // 徽标照旧报"忙"（它确实占着主控），但**进洞门槛放行**
     expect(shipBusyLabel(state, ctx, pilot)).toBe('扫描虫洞中')
     expect(shipActivityBusy(state, pilot)).toBe('扫描虫洞中')
-    expect(wormholeEntryAutoStop(state)).toBe('扫描虫洞中')
+    expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['扫描虫洞中'])
     expect(wormholeEntryBlockReason(state, ctx, [pilot])).toBeNull()
     // 进洞 ⇒ 自动停扫：active 归 false、**进度一字不动**、日志写明"自动停掉"与已扫分钟
     const r = wormholeEnter(state, ctx, [pilot], 4242)
@@ -123,6 +122,57 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     state.wormhole.run = null
     expect(wormholeScanStart(state, ctx).ok).toBe(true)
     expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
+  })
+
+  it('**①″ 开采 / 打捞 ⇒ 同样不拦，进洞那一刻自动停掉（货物留在船上 + 日志）**', () => {
+    const beltId = [...ctx.belts.keys()][0]!
+    // ── 开采：手搓"正在采掘且本趟已采 12 单位"的现场（门槛读的就是这两个字段） ──
+    {
+      const { state, pilot } = fresh()
+      state.mining.active = true
+      state.mining.beltId = beltId
+      state.mining.phase = 'mining'
+      state.mining.tripUnits = 12
+      expect(shipActivityBusy(state, pilot)).toBe('采矿中')
+      expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['采矿中'])
+      expect(wormholeEntryBlockReason(state, ctx, [pilot]), '开采中应当能进洞了').toBeNull()
+      expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
+      // 自动停采：走的是与「停止开采」同一个单点（字段全清、本趟读数进日志）
+      expect(state.mining.active).toBe(false)
+      expect(state.mining.beltId).toBeNull()
+      expect(state.mining.tripUnits).toBe(0)
+      const logs = state.logs.map((l) => l.text)
+      expect(logs.some((t) => t.includes('自动停掉「开采」') && t.includes('12 单位'))).toBe(true)
+    }
+    // ── 打捞：同款现场 ──
+    {
+      const { state, pilot } = fresh()
+      state.salvaging.active = true
+      state.salvaging.galaxyId = 'galaxy-hub'
+      state.salvaging.phase = 'salvaging'
+      state.salvaging.tripM3 = 33.5
+      expect(shipActivityBusy(state, pilot)).toBe('打捞中')
+      expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['打捞中'])
+      expect(wormholeEntryBlockReason(state, ctx, [pilot]), '打捞中应当能进洞了').toBeNull()
+      expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
+      expect(state.salvaging.active).toBe(false)
+      expect(state.salvaging.galaxyId).toBeNull()
+      expect(state.salvaging.tripM3).toBe(0)
+      const logs = state.logs.map((l) => l.text)
+      expect(logs.some((t) => t.includes('自动停掉「打捞」') && t.includes('33.5'))).toBe(true)
+    }
+    // ── 边界：**副船的 AI 采矿**不算主控活动 ⇒ 照旧拦住（不替玩家停别人的派工） ──
+    {
+      const { state, pilot, mate } = fresh()
+      state.aiAssignments[mate] = {
+        coreType: 'basic',
+        startedAtGameMs: 0,
+        task: { kind: 'mining', beltId, phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
+      }
+      const blocked = wormholeEntryBlockReason(state, ctx, [pilot, mate])
+      expect(blocked ?? '').toContain('AI 采矿中')
+      expect(wormholeEntryAutoStops(state)).toEqual([]) // 主控自己没在作业 ⇒ 没有要自动停的东西
+    }
   })
 
   it('② **洞内锁定**：人在洞里 ⇒ 别的活动开不了（真命令复核）', () => {

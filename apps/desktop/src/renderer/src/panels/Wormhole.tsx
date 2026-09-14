@@ -1229,7 +1229,7 @@ export function WormholePanel({
                       auto
                         ? (autoGate ?? (picked.length === 0 ? '先勾选至少 1 条船' : undefined))
                         : (entryGate ??
-                          (autoStopText ? `进洞会先自动停掉「${autoStopText.replace('中', '')}」（进度保留，回来可续扫）` : undefined))
+                          (autoStopText ? `进洞会先自动停掉：${autoStopText}` : undefined))
                     }
                   >
                     {auto ? '派队自动探索' : '进入虫洞'}
@@ -1357,12 +1357,14 @@ export function WormholePanel({
               ) : null}
               {!auto && entryGate !== null ? <div className="app-warn app-wh-gate">{entryGate}</div> : null}
               {/**
-               * **进洞会自动停扫**的预告（船长 2026-09-14「进洞自动停止」）：这里只说清"会发生什么"，
-               * 不拦人——扫描虫洞是找洞的准备动作，停它是无损的（进度保留、回来续扫）。
+               * **进洞会自动停掉哪些活动的预告**（船长 2026-09-14「进洞自动停止」＋「同样落实到采矿/打捞」）：
+               * 只说清"会发生什么"，**不拦人**——这三项都是就地作业，停法与手点活动栏「停止」完全一致
+               * （扫描进度保留、作业中的货留在船上）。
                */}
               {!auto && autoStopText !== null ? (
                 <div className="app-note app-dim">
-                  进洞会先自动停掉「{autoStopText.replace('中', '')}」（进度保留，回来可以接着扫）。
+                  进洞会先自动停掉：<b>{autoStopText}</b>
+                  （扫描进度保留、作业中的货留在船上——与手点活动栏「停止」同一个结果）。
                 </div>
               ) : null}
               {/* 进入按钮已上移到检索区右侧（船长 2026-09-13），此处不再重复放一个 */}

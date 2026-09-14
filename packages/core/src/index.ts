@@ -895,8 +895,8 @@ export {
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
   wormholeEntryBlockReason,
-  // 船长 2026-09-14：「进洞自动停止」——「扫描虫洞」是唯一会被进洞自动停掉的活动（进度保留）
-  wormholeEntryAutoStop,
+  // 船长 2026-09-14：「进洞自动停止」——扫描虫洞 / 开采 / 打捞 三项会在进洞那一刻自动停掉
+  wormholeEntryAutoStops,
   wormholeShipEntryBusy,
   shipBusyForWormhole,
   // 议案 A（船长 2026-09-13 批准）：临时离开 = 活动停止（进度保存）/ 返回要主控空闲 / 忙态判据
