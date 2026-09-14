@@ -67,7 +67,7 @@ describe('虫洞解锁门槛（船长 2026-09-14：先定 35，当日改判提�
     const state = fresh()
     state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
     const normal = wormholeScanWindowMs(state)
-    expect(normal).toBe(220 * 60_000) // 未练技能 = 220 分钟
+    expect(normal).toBe(12 * 60 * 60_000) // 未练技能 = 12 小时（船长 2026-09-14：「虫洞扫描时长提高到12小时」）
     state.debugQuick = true
     expect(wormholeScanWindowMs(state)).toBe(1000)
     state.debugQuick = false

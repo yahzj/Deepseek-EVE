@@ -810,6 +810,8 @@ export {
   SPAWN_SUPPLY_CUT,
   COURIER_TASK_MARGIN,
   BOUNTY_TASKS_PER_ROUND,
+  // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
+  sideTasksMarkBountySeen,
 } from './sideTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'

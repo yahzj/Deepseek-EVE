@@ -1,15 +1,17 @@
 /**
  * **虫洞扫描（发现线）**（船长 2026-09-14：「新增主控活动：'扫描虫洞'…进度条满后…发现一个虫洞。
- * 玩家最多可以囤积5个未开始探索的虫洞」「扫描基准设定为220分钟，同时享受信号分析学，星图测绘学，
- * 信号过滤学的影响」「遇袭不中断扫描」「信号分析学，星图测绘学，信号过滤学的rank分别修改为3-4-5」）。
+ * 玩家最多可以囤积5个未开始探索的虫洞」「遇袭不中断扫描」「信号分析学，星图测绘学，信号过滤学的
+ * rank 分别修改为3-4-5」；**同日两条改判**：「**虫洞扫描时长提高到12小时。**」＋
+ * 「**星际奇遇学，对缩减虫洞的时间也有效。**」「**满级后缩减虫洞扫描周期20%**」「**并移动到探索内**」
+ * 「**rank提升到5**」）。
  *
- * 锁住五条口径：
- * ① 窗口 = 220 分钟 × 三技能乘算（不练 = 220 分钟；练满 = ≈89 分钟）；
+ * 锁住六条口径：
+ * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；三项 + 奇遇学全满 ≈ 2.8 小时）；
  * ② 主控活动互斥（采矿/打捞/扫描/远征/航行/待命/在洞内 都不许开扫）；
  * ③ 推进：满一个窗口发现一处进库存，**连续跨窗可连出**（离线大步长）；
  * ④ **库存上限 5**：满则**扫描停机**并写一条提示（不静默白跑）；
  * ⑤ 随档往返 + 坏值清洗（非法条目丢弃、超出上限截断）；
- * ⑥ 三项扫描技能的 `rank` 按船长口径为 3 / 4 / 5。
+ * ⑥ 技能口径：三项扫描技能 `rank` = 3 / 4 / 5；**星际奇遇学 `rank` = 5 且归「探索」组**（同日改判）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, ITEMS, SKILLS } from '@whale/data'
@@ -18,6 +20,7 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { wormholeEnter } from '../src/wormhole'
+import { scanWindowMsOf } from '../src/explore'
 import {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
@@ -53,26 +56,46 @@ function trainScanSkills(state: GameState, aLv: number, bLv: number, cLv: number
 }
 
 describe('虫洞 · 扫描虫洞（主控活动）', () => {
-  it('**窗口 = 220 分钟 × 三技能乘算**（不练 220 分钟；三技能满级 ≈89 分钟）', () => {
+  it('**窗口 = 12 小时 × 三技能乘算 × 星际奇遇学**（不练 12 小时；奇遇学满级再 −20%）', () => {
     const state = fresh()
-    expect(WORMHOLE_SCAN_BASE_MS).toBe(220 * 60_000)
+    expect(WORMHOLE_SCAN_BASE_MS).toBe(12 * 60 * 60_000)
     expect(wormholeScanWindowMs(state)).toBe(WORMHOLE_SCAN_BASE_MS)
-    // 世界 0 分钟 → 满级（−8%×3 · −6%×5 · −6%×4 乘算）：220 × 0.76 × 0.70 × 0.76 ≈ 89 分钟
+    // 三项（−8%×3 · −6%×4 · −6%×5 乘算）：12 小时 × 0.76 × 0.76 × 0.70 ≈ 291 分钟
     trainScanSkills(state, 3, 4, 5)
-    const min = wormholeScanWindowMs(state)
-    expect(min).toBeLessThan(95 * 60_000)
-    expect(min).toBeGreaterThan(85 * 60_000)
+    const three = wormholeScanWindowMs(state)
+    expect(three).toBeLessThan(295 * 60_000)
+    expect(three).toBeGreaterThan(285 * 60_000)
     // 单练一项也缩短（乘算叠加）
     const state2 = fresh()
     trainScanSkills(state2, 3, 0, 0)
     expect(wormholeScanWindowMs(state2)).toBeLessThan(WORMHOLE_SCAN_BASE_MS)
+    /**
+     * **星际奇遇学 = 虫洞专属的第四项**（船长 2026-09-14：「满级后缩减虫洞扫描周期20%」）：
+     * 每级 −4% 线性（Lv1 −4% · **满级 Lv5 −20%**），与三技能**乘算**。
+     */
+    const state3 = fresh()
+    state3.skills.trained['galactic-happenings'] = 5
+    expect(wormholeScanWindowMs(state3)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.8))
+    const state4 = fresh()
+    state4.skills.trained['galactic-happenings'] = 1
+    expect(wormholeScanWindowMs(state4)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.96))
+    state.skills.trained['galactic-happenings'] = 5
+    expect(wormholeScanWindowMs(state)).toBe(Math.round(three * 0.8))
+    // ⚠ **星图扫描不吃这一项**（船长只点了虫洞）：同一档位上就地扫描窗口不受奇遇学影响
+    const starmap = fresh()
+    const before = scanWindowMsOf(starmap)
+    starmap.skills.trained['galactic-happenings'] = 5
+    expect(scanWindowMsOf(starmap)).toBe(before)
   })
 
-  it('**三项扫描技能的 rank = 3 / 4 / 5**（船长 2026-09-14 口径）', () => {
-    const byId = (id: string): number => SKILLS.find((s) => s.id === id)!.rank
-    expect(byId('signal-analysis')).toBe(3)
-    expect(byId('cartography')).toBe(4)
-    expect(byId('signal-filtering')).toBe(5)
+  it('**技能口径**：三项扫描技能 rank = 3/4/5；星际奇遇学 rank = 5 且归「探索」组（船长 2026-09-14 口径）', () => {
+    const byId = (id: string) => SKILLS.find((s) => s.id === id)!
+    expect(byId('signal-analysis').rank).toBe(3)
+    expect(byId('cartography').rank).toBe(4)
+    expect(byId('signal-filtering').rank).toBe(5)
+    // 同日改判：「rank提升到5」＋「并移动到探索内」（原属贸易组）
+    expect(byId('galactic-happenings').rank).toBe(5)
+    expect(byId('galactic-happenings').group).toBe('探索')
   })
 
   it('**主控活动互斥**：采矿/打捞/远征/航行/待命/在洞内 都不许开扫', () => {

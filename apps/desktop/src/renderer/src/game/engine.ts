@@ -105,6 +105,7 @@ import {
   runCommsAction,
   completeSideTask,
   sideTaskBoard,
+  sideTasksMarkBountySeen,
   courierTaskUnlocked,
   courierDelivering,
   startCourierDelivery,
@@ -1519,7 +1520,7 @@ export class GameEngine {
     return this.ctx.anomalies.get(cardId)?.name ?? this.anomalies.find((a) => a.id === cardId)?.name ?? cardId
   }
 
-  /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */
+  /** 虫洞扫描：本趟窗口（毫秒；12 小时 × 三技能乘算 × 星际奇遇学） */
   wormholeScanWindow(): number {
     return wormholeScanWindowMs(this.state)
   }
@@ -2300,6 +2301,20 @@ export class GameEngine {
   /** 任务板只读视图：资源/快递（20 分钟整点）+ 赏金（每天本地 0 点）两套倒计时一并返回 */
   sideTasksView(): ReturnType<typeof sideTaskBoard> {
     return sideTaskBoard(this.state, this.ctx, Date.now())
+  }
+
+  /**
+   * **任务中心徽标**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，玩家进入后消除提示」）：
+   * 未看过这一板赏金任务 ⇒ 返回该板条数（徽标数字）；看过 / 未开板 ⇒ 0。
+   * 判定与记账的单点都在 core（`sideTaskBoard().bountyNewCount` / `sideTasksMarkBountySeen`）。
+   */
+  bountyNewCount(): number {
+    return sideTaskBoard(this.state, this.ctx, Date.now()).bountyNewCount
+  }
+
+  /** 记一笔"玩家已看过这一板赏金任务"（进「任务中心」页时调用；幂等）⇒ 徽标灭 */
+  markBountyBoardSeen(): void {
+    sideTasksMarkBountySeen(this.state)
   }
 
   /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */

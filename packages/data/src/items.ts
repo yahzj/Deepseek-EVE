@@ -160,8 +160,11 @@ export const ORES: readonly ItemDef[] = [
  * - **按族各一种**（A/C/D/E/G）——保住「专属掉落按种族库走」这条裁定：拆解时才知道内容物，
  *   但**族信息不能丢**，所以族写在物品 id 与名字里；
  * - **2000 m³ / 件，占货仓 2×2 = 4 格**（`packages/core/src/wormholeHold.ts` 的形状表已登记这 5 个 id）；
- * - **施工期一律 `unreleased`**（与虫洞同批上线；`content:check` 有契约钉住）；
- * - **精炼炉拆解配方本批不做**（船长「暂时不用拆解」）⇒ 现阶段带回仓库即止，内容物留待后续批次。
+ * - **市场口径**（2026-09-14 船长改判）：它**可带回、可拆解、也可换现** ⇒ 市场**只收不卖**
+ *   （`playerBuyable: false`——玩家不能买箱子，否则花钱就能买、把洞内打捞这条渠道架穿）；
+ *   **基础价 = 该族内容期望市值 ×0.6**（真引擎 `wormholeUnboxRoll` 抽 4000 次量得，与 `baseSellPriceIsk` 同值）。
+ *   ⚠ 2026-09-14 之前这里写着"施工期一律 unreleased、上线动作 = 删字段"——那批字段上线时删掉了，
+ *   结果这 8 行**变成 1 信用点的常驻现货**（船长报障「谜质出现在了市场内…并且可以购买」的同源问题）。
  */
 export const RELIC_CONTAINERS: readonly ItemDef[] = [
   {
@@ -169,7 +172,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     name: '遗迹安全货柜（海盗）',
     kind: 'container',
     unitM3: 2000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 2_155_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的整箱货柜：外壳带锁、标记已被磨掉，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -178,7 +181,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     name: '遗迹安全货柜（异形）',
     kind: 'container',
     unitM3: 2000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 2_235_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的整箱货柜：外壁挂着干涸的生物膜，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -187,7 +190,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     name: '遗迹安全货柜（守墓）',
     kind: 'container',
     unitM3: 2000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 4_075_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的整箱货柜：封条上还留着守墓者的印记，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -196,7 +199,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     name: '遗迹安全货柜（巨构）',
     kind: 'container',
     unitM3: 2000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 3_285_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的整箱货柜：外壳是巨构自己的合金，接口仍在待机，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -205,7 +208,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     name: '遗迹安全货柜（亡军）',
     kind: 'container',
     unitM3: 2000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 3_210_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的整箱货柜：箱体被蜂群啃过又焊上，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -221,7 +224,9 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
  *   ⚠ **层档必须写进物品 id**：拆解读的是精炼炉产线记录里的 `itemId`，而货柜撤离后进仓库
  *   只剩「物品 id + 数量」⇒ 层信息无处可挂。好在稀释池的层门槛是 2/3/5，**三段精确等价**。
  * - **内容物**（拆解时揭）：一次性舰船图纸（T3 / T4 / T5，按层档过滤）+ **5%** 永久图纸（T3 / T4）；
- * - **施工期一律 `unreleased`**（与虫洞同批上线；`content:check` 有契约钉住）。
+ * - **市场口径**（2026-09-14）：与安全货柜同款——**只收不卖** + 基础价 = 内容期望市值 ×0.6。
+ *   ⚠ 这三种箱子"贵"是**内容决定的**（船长问过「为什么图纸货柜那么贵」）：深箱 EV 4,326 万里
+ *   **单张皇带鱼一次性图纸（3.2 亿 × 6.3% 出货）就占 46%**；该定价锚由船长选定「维持 EV×0.6」。
  */
 export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
   {
@@ -229,7 +234,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     name: '图纸货柜（浅层）',
     kind: 'container',
     unitM3: 1000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 3_595_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的长条货柜：外壳印着制式编号，接口还是热的，只有回站拆开才知道里面压着哪张图纸。占货仓 2×1 格。',
   },
@@ -238,7 +243,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     name: '图纸货柜（中层）',
     kind: 'container',
     unitM3: 1000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 14_045_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的长条货柜：编号被人为磨去一半，比浅层那种压手得多。占货仓 2×1 格。',
   },
@@ -247,7 +252,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     name: '图纸货柜（深层）',
     kind: 'container',
     unitM3: 1000,
-    baseSellPriceIsk: 1,
+    baseSellPriceIsk: 25_840_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
       '从遗迹里拖出来的长条货柜：铭牌上还留着旧主人的舰徽，封条完好无损。占货仓 2×1 格。',
   },
