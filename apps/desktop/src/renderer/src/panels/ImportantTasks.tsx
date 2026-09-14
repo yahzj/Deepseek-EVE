@@ -74,7 +74,7 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
         <div className="app-imp-card is-perm">
           <div className="app-imp-card-title">◆ 寻找人类</div>
           <div className="app-imp-card-body">
-            人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；在这座章鱼宇宙人统治的母港继续航行，或许终会有所发现。
+            人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；以这座章鱼宇宙人统治的母港为起点，往未知的前方继续航行，壮大自身规模，应对各种危险，或许终会有所发现。
           </div>
           {/* 任务目标（船长 2026-09-10 定）：探索全部星系、寻找人类踪迹——带进度 */}
           <div className="app-imp-card-goal">
