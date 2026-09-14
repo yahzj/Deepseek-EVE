@@ -447,28 +447,40 @@ export function rollRareBoxExtra(
 ): {
   modules: string[]
   drones: Array<{ id: string; count: number }>
+  /** 2026-09-14 新增：池内的**蓝图**（专属无人机的一次性图纸——船长「专属无人机出一次性蓝图」） */
+  blueprints: string[]
   minerals: Array<{ mineralId: string; units: number }>
   note: string
 } | undefined {
   const modules: string[] = []
   const drones: Array<{ id: string; count: number }> = []
+  const blueprints: string[] = []
   const minerals: Array<{ mineralId: string; units: number }> = []
   const notes: string[] = []
   // ① 专属装备（2026-09-10 船长：**集齐前不重复掉落**——该族池中还有玩家未持有的件时，
   //    只从"未持有"里均匀抽；三件（或该族全部）都到手后恢复均匀随机、允许重复。
   //    判定口径 = 当前持有：模块看装备库 + 已装配位（equipment.ownedModuleCount）、
-  //    无人机物品看物品仓库 + 各船机舱架数（equipment.ownedItemCount）——打光后重新进池）
+  //    无人机物品看物品仓库 + 各船机舱架数（equipment.ownedItemCount）、
+  //    **蓝图看蓝图书架存量**（2026-09-14：池里新增一次性图纸后补的这一支）——打光后重新进池）
   const gearAll = profile.lairGear ?? []
-  const gear = gearAll.filter((id) =>
-    ctx.modules.has(id) ? ownedModuleCount(state, id) <= 0 : ownedItemCount(state, id) <= 0,
-  )
+  const heldCount = (id: string): number => {
+    if (ctx.modules.has(id)) return ownedModuleCount(state, id)
+    if (ctx.items.has(id)) return ownedItemCount(state, id)
+    return state.blueprintStock[id] ?? 0
+  }
+  const gear = gearAll.filter((id) => heldCount(id) <= 0)
   const gearPool = gear.length > 0 ? gear : gearAll
   if (gearPool.length > 0 && nextRandom(state.rng) < (RARE_BOX_GEAR_CHANCE[profile.tier] ?? 0)) {
     const pick = gearPool[nextInt(state.rng, gearPool.length)]!
     const modDef = ctx.modules.get(pick)
+    const bpDef = ctx.blueprints.get(pick)
     if (modDef) {
       modules.push(pick)
       notes.push(`专属装备「${modDef.name}」`)
+    } else if (bpDef) {
+      // 专属无人机的一次性图纸（2026-09-14）：进蓝图书架，到组装机开工（一次出 50 架）
+      blueprints.push(pick)
+      notes.push(`专属图纸「${bpDef.name}」`)
     } else {
       const itemDef = ctx.items.get(pick)
       drones.push({ id: pick, count: RARE_BOX_DRONE_UNITS })
@@ -493,8 +505,8 @@ export function rollRareBoxExtra(
     minerals.push({ mineralId: chosen, units })
     notes.push(`${ctx.items.get(chosen)?.name ?? chosen} ×${units}`)
   }
-  if (modules.length === 0 && drones.length === 0 && minerals.length === 0) return undefined
-  return { modules, drones, minerals, note: notes.join('、') }
+  if (modules.length === 0 && drones.length === 0 && blueprints.length === 0 && minerals.length === 0) return undefined
+  return { modules, drones, blueprints, minerals, note: notes.join('、') }
 }
 
 export interface RecycleProfile {

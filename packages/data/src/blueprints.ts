@@ -1481,7 +1481,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5400,
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 0, // 一次性图纸不上市场 ⇒ 无书价
+    priceIsk: 5_244_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守；原「不上市场 ⇒ 无书价」作废）
     description: '掠袭破片炮，主段爆炸伤、附段动能伤，一轮 20 发。',
   },
   {
@@ -1497,7 +1497,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 3_955_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '掠袭机库，扩大无人机舱并加快机群循环。',
   },
   {
@@ -1513,7 +1513,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 2_995_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '掠袭加力器，大幅提速，代价是命中下滑。',
   },
   {
@@ -1529,7 +1529,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 2_674_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '掠袭折射涂层，拉开闪避差，代价是全抗性下调。',
   },
   {
@@ -1545,7 +1545,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 2_802_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '赃物扫描阵，准度大幅提升，代价是射程缩短。',
   },
   {
@@ -1561,7 +1561,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_764_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '掠袭者护盾笼，护盾容量大涨，代价是射程缩短。',
   },
   {
@@ -1577,7 +1577,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5400,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_995_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '生体棱镜束，必中的等离子光束，射程与衰减都优于同级。',
   },
   {
@@ -1593,7 +1593,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_844_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '甲壳棱镜层，动能、爆炸、等离子三系装甲抗性同步提高。',
   },
   {
@@ -1609,7 +1609,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 2_915_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '生体脉搏加速器，装填更快、航速略增。',
   },
   {
@@ -1625,7 +1625,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5400,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_653_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '孢子导弹巢，爆炸弹头、命中偏差大，但一轮齐射覆盖全体敌人。',
   },
   {
@@ -1641,7 +1641,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_898_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '几丁质骨架层，结构强度大增、航速略增。',
   },
   {
@@ -1658,7 +1658,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 8_555_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '陵卫连装炮，每发双弹的速射动能炮，射速在同级里最高。',
   },
   {
@@ -1675,7 +1675,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 8_087_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '陵墓护盾芯，护盾容量的顶档核心。',
   },
   {
@@ -1692,7 +1692,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_454_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '守墓者丧钟，锁定后对目标的伤害显著提升。',
   },
   {
@@ -1709,7 +1709,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 9_312_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '陵寝棱镜炮，必中的远程等离子光束，射程最远。',
   },
   {
@@ -1726,7 +1726,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 5_506_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '守墓者速装填机，大幅缩短装填时间。',
   },
   {
@@ -1743,7 +1743,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 5_141_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '陵墓弹道铭文，同时提高动能与等离子武器的伤害。',
   },
   {
@@ -1760,7 +1760,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 7_442_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '巨构损管阵列，动能与爆炸抗性、结构强度一并提高。',
   },
   {
@@ -1777,7 +1777,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4200,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_009_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '巨构导控塔，大幅提高无人机伤害与结构强度。',
   },
   {
@@ -1794,7 +1794,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4200,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_377_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '巨构协处理器，算力冠绝同级，代价是装填变慢。',
   },
   {
@@ -1811,7 +1811,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_153_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '巨构近防阵列，射程最短但射速最快，是拦截机群的专用阵列。',
   },
   {
@@ -1828,7 +1828,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5000,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 7_406_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '巨构护盾矩阵，护盾容量与动能、等离子抗性同时提高。',
   },
   {
@@ -1845,7 +1845,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4800,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_360_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '亡军蜂巢坞，机位容量全系最大。',
   },
   {
@@ -1862,7 +1862,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3800,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_978_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '亡军火控，命中与伤害同时小幅提高。',
   },
   {
@@ -1879,7 +1879,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3600,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_642_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '幽灵弹道校正器，提高动能武器的伤害与射程。',
   },
   {
@@ -1896,7 +1896,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 4800,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_718_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '鱿蜂结构层，三系抗性与结构强度提高，并让机上无人机更耐打。',
   },
   {
@@ -1913,7 +1913,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 5200,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 6_306_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '亡军残炮，单发最重的爆炸炮，射程与射速居中。',
   },
   {
@@ -1930,8 +1930,71 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 3800,
     buildCostIsk: 0,
-    priceIsk: 0,
+    priceIsk: 4_709_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
     description: '幽灵推进器，大幅提升航速。',
+  },
+
+  /* ══════════════ 专属无人机的**一次性图纸**（2026-09-14 船长：「无人机也出蓝图，专属无人机出一次性蓝图
+   * （专属无人机的一次性蓝图，每次制造50架）」）══════════════
+   * 口径（五条）：
+   * ① `singleUse: true` ⇒ **造一批吃掉一张**（与虫洞一次性图纸同机制，`manufacturing.ts` 现成通路）；
+   * ② `outputUnits: 50` ⇒ **每次开工出 50 架**——本批唯一"批量产出"的图纸（舰船图纸仍 1 艘、装备图纸仍 1 件）；
+   * ③ 材料 = **全矿物**（虚空晶为主 + 族特色矿物），工期按档 30/60/90 分；
+   * ④ **渠道 = 各自走原渠道**（船长裁定「甲」）：`bp-wh-c-drone` / `bp-wh-e-drone` 随 **C/E 族专属池**
+   *    （id 前缀 `-wh-<族>-` ⇒ `wormholeFamilyPoolOf` 自动收进池，安全货柜 100% 族池）；
+   *    `bp-lair-g-drone`（鱿蜂）随 **G 族窝点高级箱**（`FOE_LAIR_GEAR` + `rollRareBoxExtra` 的图纸分支）；
+   * ⑤ 价 = 材料 ÷ 0.45 ×4（**专属 ×4 口径**，与市场行同值；市场行只收不卖）。
+   * ⚠ 无人机线此前**没有制式图纸**（制式 4 型只能市场买）——这一批是无人机第一次有图纸。 */
+  {
+    id: 'bp-lair-g-drone',
+    name: '鱿蜂无人机图纸（一次性）',
+    itemId: 'drone-exile-bee',
+    outputUnits: 50,
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 8_000 },
+      { itemId: 'min-pyerite', count: 2_500 },
+      { itemId: 'min-mexallon', count: 1_500 },
+      { itemId: 'min-voidcrystal', count: 12 },
+    ],
+    buildSeconds: 1800,
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 1_200_000, // = 产物价（鱿蜂 24,000 ×50）（专属掉落不套档位系数） // = 材料 145,600 ÷ 0.45 ×4（专属 ×4 · 与市场行同值）
+    description: '一次开工出 50 架鱿蜂无人机：单发威力是制式侦察机的两倍，机体最飘。',
+  },
+  {
+    id: 'bp-wh-c-drone',
+    name: '巢卫无人机图纸（一次性）',
+    itemId: 'drone-wh-c-heavy',
+    outputUnits: 50,
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 12_000 },
+      { itemId: 'min-pyerite', count: 3_500 },
+      { itemId: 'min-mexallon', count: 2_400 },
+      { itemId: 'min-voidcrystal', count: 22 },
+    ],
+    buildSeconds: 3600,
+    buildCostIsk: 0,
+    priceIsk: 2_400_000, // = 产物价（巢卫 48,000 ×50）（专属掉落不套档位系数） // = 材料 225,600 ÷ 0.45 ×4
+    description: '一次开工出 50 架巢卫攻坚无人机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚。',
+  },
+  {
+    id: 'bp-wh-e-drone',
+    name: '构件无人机图纸（一次性）',
+    itemId: 'drone-wh-e-sentry',
+    outputUnits: 50,
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 16_000 },
+      { itemId: 'min-pyerite', count: 5_000 },
+      { itemId: 'min-mexallon', count: 3_200 },
+      { itemId: 'min-voidcrystal', count: 35 },
+    ],
+    buildSeconds: 5400,
+    buildCostIsk: 0,
+    priceIsk: 4_400_000, // = 产物价（构件 88,000 ×50）（专属掉落不套档位系数） // = 材料 315,000 ÷ 0.45 ×4
+    description: '一次开工出 50 架构件哨戒无人机：动能长针拆盾，航程与命中都比制式哨戒机更远更高。',
   },
 ]
 

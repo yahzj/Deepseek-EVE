@@ -42,7 +42,15 @@ const shipPrice = (shipId: string) => goodOf('ship', shipId)?.basePrice ?? 0
 
 describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
   it('① 每艘 T3/T4/T5 有价舰都有一张；价格 = 行价 ×0.5（2026-09-14 改判）；材料与工期与永久蓝图相同', () => {
-    const withPrice = SHIPS.filter((s) => s.tier >= 3 && shipPrice(s.id) > 0)
+    /**
+     * ⚠ **2026-09-14 收窄判据**：本节只数"**同时有永久蓝图**"的那 15 张（`sbp-once-*`：T3 十 + T4 四 + T5 一）。
+     * 洞内定制舰船（`sh-wh-*`）如今也有市场行（只收不卖，2026-09-14「允许玩家挂卖」批），
+     * 但它们**没有永久蓝图**（只有一次性图纸 `sbp-wh-*`，价格同样 = 舰价 ×0.5）——
+     * 那 15 张由 `tests/exclusive-market.test.ts` ② 单独钉。
+     */
+    const withPrice = SHIPS.filter(
+      (s) => s.tier >= 3 && shipPrice(s.id) > 0 && SHIP_BLUEPRINTS.some((b) => b.shipId === s.id && b.singleUse !== true),
+    )
     expect(withPrice.length).toBe(15) // T3 十 + T4 四 + T5 一
     for (const s of withPrice) {
       const once = SHIP_BLUEPRINTS.find((b) => b.shipId === s.id && b.singleUse === true)

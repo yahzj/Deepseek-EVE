@@ -779,6 +779,7 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
       'drone-exile-bee',
       'mod-lair-drone-tac-g',
       'mod-lair-drone-relay-g',
+      'bp-lair-g-drone', // 2026-09-14：专属无人机的一次性图纸
     ])
     expect(lairGearOf(LAIR_B)).toEqual([])
     expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_B.id))!.lairGear).toBeUndefined()

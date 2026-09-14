@@ -2056,12 +2056,14 @@ function normalizeState(raw: unknown): GameState {
         Object.keys(numMap(recRaw.min)).length > 0 ||
         Object.keys(numMap(recRaw.mod)).length > 0 ||
         Object.keys(numMap(recRaw.frag)).length > 0 ||
-        Object.keys(numMap(recRaw.drone)).length > 0)
+        Object.keys(numMap(recRaw.drone)).length > 0 ||
+        Object.keys(numMap(recRaw.blueprint)).length > 0)
         ? {
             min: numMap(recRaw.min),
             mod: numMap(recRaw.mod),
             frag: numMap(recRaw.frag),
             drone: numMap(recRaw.drone), // 专属无人机架数（2026-09-10 增；老档缺省空表）
+            blueprint: numMap(recRaw.blueprint), // 专属无人机一次性图纸张数（2026-09-14 增；老档缺省空表）
           }
         : undefined
     const runOut: GameState['refineRuns'][number] = {
