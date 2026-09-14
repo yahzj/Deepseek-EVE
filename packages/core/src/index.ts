@@ -607,6 +607,10 @@ export {
   layerMultText,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
+  // **入场窗口**（船长 2026-09-14「动画没结束不开火」）：界面飞入动画与引擎"不可选中窗口"的
+  // **同一个出处**——界面直接 import 这两个数当 `--arrive-ms`，不许再各写一份。
+  BATTLE_ARRIVAL_FLY_MS,
+  BATTLE_ARRIVAL_STAGGER_MS,
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
   pdEnabledFor,
   droneLostCount,

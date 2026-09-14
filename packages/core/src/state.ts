@@ -436,6 +436,15 @@ export interface BattleUnitRt {
   hpMax?: { s: number; a: number; h: number }
   /** 每武器装填倒计时 ms（0 = 可开火；与静态武器卡顺序一一对应） */
   weapons: number[]
+  /**
+   * **入场时刻**（战斗时钟 ms；含逐舰错峰）——**只给"有入场动画"的单位写**（船长 2026-09-14：
+   * 「初始不可开火…并且参考①动画没结束不开火」）：
+   * - 窗口 = `[enteredAtMs, enteredAtMs + BATTLE_ARRIVAL_FLY_MS)`（见 `combat.ts` 单一出处）；
+   * - 窗口内它**不可被我方选中**（`isFoeEngageable`）⇒ 动画没演完打不到它；
+   * - 它自己那一侧的首发也在窗口之后（播种时装填取"窗口"与自身装填的较大者）。
+   * 缺省 = 无入场窗口（开战即在的常规单位、洞外首波敌舰、老档读入的单位）⇒ 立即可交战。
+   */
+  enteredAtMs?: number
 }
 
 /** V12 战斗可视化事件：一次实际开火（供战斗画面动画回放；纯展示数据，不影响结算与随机） */

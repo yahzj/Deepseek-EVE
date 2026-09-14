@@ -1613,12 +1613,19 @@ function resolveReinforcements(
 ): void {
   if (bal.foeReinforceEnabled !== true) return
   const arrived: UnitSpec[] = []
+  let arriveIdx = 0
   for (const spec of curFoes) {
     if (b.units[spec.tag]) continue // 已入场（含已阵亡的尸体）
     const at = spec.foeReinforceAt
     if (!at) continue // 开战即在的常规单位（未写 enterAt）
     if (!reinforceTriggered(at, b, curFoes)) continue
-    seedUnit(b, spec, { enterReload: true })
+    // 入场窗口与界面动画同源（船长 2026-09-14「动画没结束不开火」）：逐舰错峰；
+    // 时刻取**全局时钟**（`state.gameMs`）——与转场那一处同理由（战斗时钟可能落后于全局时钟）
+    seedUnit(b, spec, {
+      enterReload: true,
+      arrivedAtMs: state.gameMs + arriveIdx * BATTLE_ARRIVAL_STAGGER_MS,
+    })
+    arriveIdx += 1
     arrived.push(spec)
   }
   if (arrived.length === 0) return
@@ -2245,17 +2252,63 @@ export function createBattleState(
 /** 按规格把单位补入战斗（多波续刷/读档补缺用；已存在（含 hp 归零的尸体）不覆盖）。
  * enterReload（2026-09-09 波次转场）：增援单位入场需先完成一轮装填（weapons 满倒计时）
  * 才开火——给"增援抵达"一段自然哑火窗口（≈一次装填时长），不改变任何结算语义。 */
-function seedUnit(b: import('./state').BattleState, spec: UnitSpec, opts: { enterReload?: boolean } = {}): void {
+/**
+ * **入场飞入时长（ms）**——船长 2026-09-13「舰船从屏幕外以减速的形式进场」，2026-09-14 补定
+ * 「**动画没结束不开火**」⇒ 它就是**入场窗口**的长度。**界面与引擎同源**：`panels/BattleScreen.tsx`
+ * 直接 import 这个数当 `--arrive-ms`，不许再各写一份（否则"窗口"与"看得见的动画"会脱钩）。
+ */
+export const BATTLE_ARRIVAL_FLY_MS = 950
+/** **逐舰入场错峰（ms）**：同批入场第 i 条舰的入场时刻 = 群入场时刻 + i×本值（界面同一算式） */
+export const BATTLE_ARRIVAL_STAGGER_MS = 60
+
+/**
+ * **入场播种**（船长 2026-09-14：「①乙，初始不可开火，且对洞内洞外都生效」「③补。并且参考①动画没结束不开火」）。
+ *
+ * 只给**有入场动画**的单位写 `enteredAtMs`（洞内首波敌方跃迁入场 / 每一次波次转场与单波内增援）：
+ * - `idx` = 该舰在本批入场里的序（0 起）⇒ 入场时刻含逐舰错峰，与界面 `--arrive-delay` 同一算式；
+ * - **它自己的首发也推到窗口之后**：装填取"窗口时长"与自身装填的**较大者**
+ *   （波次转场/增援本来就带 `enterReload`，只有"洞内首波原本满装填"这一档会因此变慢）；
+ * - `enterReload` 语义不变（`true` = 至少一个自身装填周期）。
+ */
+function seedUnit(
+  b: import('./state').BattleState,
+  spec: UnitSpec,
+  opts: { enterReload?: boolean; arrivedAtMs?: number } = {},
+): void {
   if (b.units[spec.tag]) return
+  const windowMs = opts.arrivedAtMs !== undefined ? BATTLE_ARRIVAL_FLY_MS : 0
   b.units[spec.tag] = {
     tag: spec.tag,
     side: spec.side,
     name: spec.name,
     hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
-    weapons: opts.enterReload ? spec.weapons.map((w) => Math.max(1, w.reloadMs)) : spec.weapons.map(() => 0),
+    weapons: opts.enterReload
+      ? spec.weapons.map((w) => Math.max(1, w.reloadMs, windowMs))
+      : spec.weapons.map(() => 0),
+    ...(opts.arrivedAtMs !== undefined ? { enteredAtMs: opts.arrivedAtMs } : {}),
   }
 }
+
+/**
+ * **洞内开战：敌方跃迁入场**（船长 2026-09-13「虫洞内为敌方」）⇒ 给开战首波的敌舰盖入场时刻
+ * （含逐舰错峰），并把它们的首发推到窗口之后。**洞外的首波不盖**——那一场是**我方**飞入
+ * （船长同日口径），敌方没有入场动画 ⇒ 也就没有窗口（"有动画才有窗口"）。
+ * 开战首波由 `createBattleState` 播种（`units` 的插入序 = `[me, ...僚舰, ...foes]`）⇒ 这里的序即编成序。
+ */
+export function stampFoeArrivalFx(b: import('./state').BattleState, nowMs = b.lastTickGameMs): void {
+  const foeTags = Object.values(b.units)
+    .filter((u) => u.side === 'foe')
+    .map((u) => u.tag)
+  foeTags.forEach((tag, idx) => {
+    const rt = b.units[tag]
+    if (!rt) return
+    rt.enteredAtMs = nowMs + idx * BATTLE_ARRIVAL_STAGGER_MS
+    // 首发也推到窗口之后（与 `seedUnit` 同一条判据：动画没演完不开火）
+    rt.weapons = rt.weapons.map((cd) => Math.max(cd, BATTLE_ARRIVAL_FLY_MS))
+  })
+}
+
 
 /** 追加可视化开火事件（环缓冲 48 条，超长丢最旧；纯展示）。
  * seq 由战斗内计数器自增分配——环头部裁剪后序号仍单调，UI 按 seq>last 续播不受裁剪影响。
@@ -3238,7 +3291,8 @@ export function advanceBattleFor(
     // 不许在这里补缺**——否则每次推进都会把"还没该到的援军"直接塞进战场（本批用例抓到过这个洞）。
     // 它们只由下面的 `resolveReinforcements` 按条件补入；开关关闭时本字段一律不存在 → 本行不生效。
     if (f.foeReinforceAt) continue
-    seedUnit(battle, f, { enterReload: true })
+    // 读档中断补缺 = 视为"增援入场" ⇒ 同样盖入场窗口（时刻取**全局时钟**，理由同转场那一处）
+    seedUnit(battle, f, { enterReload: true, arrivedAtMs: state.gameMs })
   }
   let guard = 0
   while (state.gameMs > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
@@ -3251,6 +3305,8 @@ export function advanceBattleFor(
     // - 大步长/离线推进下 state.gameMs 越过窗口即立刻续刷，无额外等待。
     if (waves && waveIdx < lastIdx && !curFoes.some((f) => isAlive(battle, f.tag))) {
       const gapMs = Math.max(0, bal.waveEnterGapMs ?? 0)
+      /** **进入本拍时就已经在等**转场窗口（= 真的等过一段，而不是"本拍才发现全灭、本拍就续刷"） */
+      const pendingGap = battle.waveClearAt !== undefined
       if (gapMs > 0 && battle.waveClearAt === undefined) {
         battle.waveClearAt = battle.lastTickGameMs + gapMs
         const waveName = ctx.galaxies.get(anomaly.galaxyId)?.name ?? ''
@@ -3262,11 +3318,35 @@ export function advanceBattleFor(
         )
       }
       if (gapMs > 0 && battle.waveClearAt !== undefined && state.gameMs < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
+      /**
+       * **这一波是不是"真的等过转场窗口"**（`pendingGap`：进入本拍时 `waveClearAt` 就已经在）。
+       * 只有它为真时才盖入场窗口（船长 2026-09-14「动画没结束不开火」）：
+       * - **实时**：清空那一拍先记 `waveClearAt` 并 `break`，等 33 拍后才走到这里 ⇒ **等过** ⇒ 有动画、给窗口；
+       * - **大步长 / 离线补算**：一次推进就跨过了整个窗口（本拍才发现全灭、`state.gameMs` 一上来就 ≥
+       *   `waveClearAt`）⇒ **没等过**、玩家根本没看见过转场（也就没有动画可言）⇒ **不盖窗口**，
+       *   行为与改动前逐字一致（否则"离线结算时最后一波敌人免疫到本次推进结束"⇒ 该赢的场次会被
+       *   拖成超时判负——`tests/wave-battle.test.ts` 的大步长用例抓到过）；
+       * - `waveEnterGapMs = 0`（无转场节拍）⇒ 同样不盖（没有转场演出，也就没有入场动画）。
+       */
+      const waitedGap = pendingGap
       battle.waveClearAt = undefined
       waveIdx += 1
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
-      for (const f of curFoes) seedUnit(battle, f, { enterReload: true }) // 增援入场装填（转场窗口）
+      // 增援入场装填（转场窗口）+ **入场窗口**（船长 2026-09-14「动画没结束不开火」）：
+      // 逐舰错峰写进 `enteredAtMs`，与界面 `--arrive-delay` 同一算式 ⇒ 动画演完才可被选中。
+      // ⚠⚠ **入场时刻取 `state.gameMs`（全局时钟 / 本帧结束时的推进目标），绝不能取 `battle.lastTickGameMs`**
+      //   ——转场窗口内战斗时钟是**冻住**的（上面那条"停表等待"），此刻它还是"上一波全灭那一刻"的值；
+      //   本帧收尾时战斗时钟会**追平**全局时钟（实测：一帧内推进了 3300ms）⇒ 拿冻住的值当"现在"
+      //   会把窗口算到**过去**（真 BUG：窗口一出生就已过期、新一波照样在登场那一拍被打死）。
+      //   按全局时钟算 ⇒ 窗口 = **追平之后实实在在的 950ms**（实测：14800 入场 → 15900 才掉第一滴血）。
+      if (waitedGap) {
+        curFoes.forEach((f, i) =>
+          seedUnit(battle, f, { enterReload: true, arrivedAtMs: state.gameMs + i * BATTLE_ARRIVAL_STAGGER_MS }),
+        )
+      } else {
+        curFoes.forEach((f) => seedUnit(battle, f, { enterReload: true }))
+      }
       // 近防炮调度随波重建（pdCd 与敌编队同序）
       if (battle.pdCd && battle.dronePools) {
         battle.pdCd = curFoes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
@@ -3804,6 +3884,9 @@ export function pickFoeDroneTarget(
   }> = []
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue;
+    // **入场窗口内的敌舰整舰不可交战**（船长 2026-09-14「动画没结束不开火」）：它的机群自然也打不到
+    // ——母舰还在跃迁/入场中，机库里的机还没跟着到场。
+    if (!isFoeEngageable(b, f.tag)) continue;
     // 该舰各机型的**角色**（哨戒机按"进射程才可打"处理——船长 2026-09-11 重新定义近防炮）
     const roleOf = new Map<string, string>()
     for (const slot of f.foeDrones ?? [])
@@ -4401,6 +4484,24 @@ function isAlive(b: import('./state').BattleState, tag: string): boolean {
   return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
 }
 
+/**
+ * **敌舰是否"可被我方选中"**（= 能开火打它）——船长 2026-09-14：「**动画没结束不开火**」。
+ *
+ * 判据 = **真值存活**（{@link isAlive}）**且已过入场窗口**（{@link BATTLE_ARRIVAL_FLY_MS}）：
+ * 洞内首波的敌舰跃迁入场、以及每一次波次转场/增援入场，在窗口内都**不可被选中**——
+ * 于是我方的枪口会**跳过它去打别人**；若窗口内没有别的可打目标，本拍自然停火（转场时正是这种情况）。
+ *
+ * 为什么这条要做成**选靶判据**而不是"伤害免疫"：引擎里**命中与伤害同拍结算**（没有在途弹道状态，
+ * 界面上那条延迟弹道只是演出）⇒ 选靶处排除即**彻底**堵住"登场第一拍就被齐射带走"。
+ *
+ * 缺 `enteredAtMs`（开战即在的常规单位 / 洞外首波敌舰 / 老档读入）⇒ **恒可选中**（零行为变化）。
+ */
+function isFoeEngageable(b: import('./state').BattleState, tag: string): boolean {
+  if (!isAlive(b, tag)) return false
+  const at = b.units[tag]?.enteredAtMs
+  return at === undefined || b.lastTickGameMs >= at + BATTLE_ARRIVAL_FLY_MS
+}
+
 /** 我方还有没有活着的单位（`myUnits` 里任一存活）——单船路径等价于 `isAlive(b,'player')` */
 function isAliveAnyOf(b: import('./state').BattleState, myUnits: readonly UnitSpec[]): boolean {
   return myUnits.some((u) => isAlive(b, u.tag))
@@ -4480,7 +4581,7 @@ export function pickMyUnitTarget(
 /** 锁定目标（2026-09-09 锁定装置）：存活编队首位（foes 生成序 = 主舰优先），
  * 主舰击毁自动接力下一艘——集火永不卡空；确定性、不消耗 rng */
 function firstAliveFoe(foes: UnitSpec[], b: import('./state').BattleState): UnitSpec | null {
-  for (const f of foes) if (isAlive(b, f.tag)) return f
+  for (const f of foes) if (isFoeEngageable(b, f.tag)) return f
   return null
 }
 
@@ -4489,7 +4590,9 @@ function firstAliveFoe(foes: UnitSpec[], b: import('./state').BattleState): Unit
  * 种子固定则每场可复现；每发武器调用一次 = 齐射可分散到不同目标）。
  */
 function randomAliveFoe(state: import('./state').GameState, b: import('./state').BattleState, foes: UnitSpec[]): UnitSpec | null {
-  const alive = foes.filter((f) => isAlive(b, f.tag))
+  // ⚠ 抽签池 = **可选中**的敌人（`isFoeEngageable`：存活 + 已过入场窗口）——池子为空 ⇒ 返回 null
+  //    ⇒ 本发武器跳过（`advanceBattleFor` 里 `if (!foeTarget && !droneHit) continue`），本拍停火。
+  const alive = foes.filter((f) => isFoeEngageable(b, f.tag))
   if (alive.length === 0) return null
   const i = nextInt(state.rng, alive.length)
   return alive[i]!

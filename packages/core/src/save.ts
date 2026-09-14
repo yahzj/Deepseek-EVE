@@ -818,6 +818,12 @@ function cleanBattle(raw: unknown): BattleState | null {
             }
           : {}),
         weapons,
+        // **入场时刻**（船长 2026-09-14「动画没结束不开火」）：**随档**——战斗时钟 `lastTickGameMs`
+        // 也随档 ⇒ 在读入后 `lastTickGameMs − enteredAtMs` 依旧正确（窗口不会因重载而重启或消失）。
+        // 老档/无入场动画的单位本字段缺失 ⇒ 视为"窗口已过"（恒可交战，零迁移）。
+        ...(typeof u.enteredAtMs === 'number' && Number.isFinite(u.enteredAtMs)
+          ? { enteredAtMs: numf(u.enteredAtMs, 0) }
+          : {}),
       }
     }
   }

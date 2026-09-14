@@ -14,7 +14,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -105,6 +105,10 @@ export function wormholeStartBattle(
     ...(opts?.strengthMul !== undefined ? { strengthMul: opts.strengthMul } : {}),
   })
   if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。' }
+  // **洞内开战 = 敌方跃迁入场**（船长 2026-09-13「虫洞内为敌方」）：给首波敌舰盖入场时刻
+  // ⇒ 入场窗口内我方打不到它们（船长 2026-09-14「动画没结束不开火」）。
+  // 洞外那一场是我方飞入、敌方没有入场动画 ⇒ **不盖**（有动画才有窗口）。
+  stampFoeArrivalFx(battle)
   run.battle = battle
   return { ok: true }
 }
@@ -435,7 +439,11 @@ export function wormholeBattleViewOf(
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
   for (const [tag, u] of Object.entries(battle.units)) {
-    if (u.side !== 'foe' || u.hp.s + u.hp.a + u.hp.h <= 0) continue
+    // ⚠ **不滤 0 血**（船长 2026-09-14 裁定「②和洞外一致」）：洞外 `expeditionStatus` 一直把阵亡单位
+    // 也交出来（`side === 'foe'` 即收），战斗界面靠"看见它从有血变成 0 血"驱动**尸骸/爆炸/淡出**演出；
+    // 这里过去把 0 血滤掉 ⇒ **洞内击杀直接消失、整套演出从不触发**（实测：节点战 2 次击杀、界面 0 次
+    // 出现过 0 血单位）。现与洞外同口径。
+    if (u.side !== 'foe') continue
     foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
   }
   const kindLabel =

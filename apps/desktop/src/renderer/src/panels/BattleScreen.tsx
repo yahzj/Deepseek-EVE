@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleTacticDesire, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -1112,26 +1112,40 @@ const meSpeedRef = useRef(200)
     )
   }
 
-  /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）── */
+  /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）──
+     ⚠ **2026-09-14 船长报障修复（甲案）**：「血条打空后，舰船形象和血条都不清理消除」——
+     旧判据 `sum === 0 && prev > 0` 要求**看见过它活着**才登记阵亡；而**次波/增援的新单位可能在
+     登场第一拍就被我方齐射打死**（真引擎实测：210 场里 81 场复现，幽灵**全部**来自 `w1-/w2-` 增援波），
+     于是它永不入 `deadRef` ⇒ 视觉行不撤队 + 血条照画（`corpseOn` 为假才画条）⇒ 舰影与空血条**
+     永久留场**。现改为：**只要观察到 0 血且未登记过，就登记阵亡**——
+     有前值（正常阵亡）⇒ 照旧演爆炸；**没有前值**（首见即 0 血：漏帧 / 入场期被打死 / 重进战场）
+     ⇒ **不登记尸骸 ⇒ `scanDroppable` 立即出队**，不重放爆炸（与 2026-09-10 预登记那条同口径）。 */
   if (!hpInitRef.current) {
     for (const tag of foeTags) {
       const hp = combat.foeHp[tag]
-      prevHpRef.current.set(tag, hp ? hp.s + hp.a + hp.h : 0)
+      const sum = hp ? hp.s + hp.a + hp.h : 0
+      prevHpRef.current.set(tag, sum)
+      // 首帧就把"已经是尸体"的登记掉（无声撤出：不写尸骸 ⇒ 不演爆炸）——重进战场/洞内重开面板都走这条
+      if (sum === 0) deadRef.current.add(tag)
     }
     hpInitRef.current = true
   } else {
     for (const tag of foeTags) {
       const hp = combat.foeHp[tag]
       const sum = hp ? hp.s + hp.a + hp.h : 0
+      const known = prevHpRef.current.has(tag)
       const prev = prevHpRef.current.get(tag) ?? 0
       prevHpRef.current.set(tag, sum)
-      if (sum === 0 && prev > 0 && !deadRef.current.has(tag)) {
-        deadRef.current.add(tag) // 刚被击毁：登记尸骸；爆炸延后到致死弹道着弹后再启动
-        // 击杀爆炸延迟 = 致死形态的弹道时长（动能 420 / 导弹 760 / 激光 130），
-        // 与命中 puff 同时出现——否则导弹击杀会在弹道半途提前变灰/上移
-        const killerType = lastHitTypeRef.current.get(tag)
-        const killerFly = (killerType ? BOLT_LOOK[killerType]?.fly : undefined) ?? FLY_MS
-        corpseAtRef.current.set(tag, now + killerFly)
+      if (sum === 0 && !deadRef.current.has(tag)) {
+        deadRef.current.add(tag) // 阵亡登记（含"首见即 0 血"这一档）
+        if (known && prev > 0) {
+          // 正常阵亡：爆炸延后到致死弹道着弹后再启动
+          // 击杀爆炸延迟 = 致死形态的弹道时长（动能 420 / 导弹 760 / 激光 130），
+          // 与命中 puff 同时出现——否则导弹击杀会在弹道半途提前变灰/上移
+          const killerType = lastHitTypeRef.current.get(tag)
+          const killerFly = (killerType ? BOLT_LOOK[killerType]?.fly : undefined) ?? FLY_MS
+          corpseAtRef.current.set(tag, now + killerFly)
+        }
       }
     }
   }
@@ -1160,11 +1174,18 @@ const meSpeedRef = useRef(200)
    *  为了最小程度防止BUG，**入场效果仅为动画**。玩家和敌舰的位置依旧不改变。入场效果为我方或者敌方
    *  跃迁入场。（**虫洞内为敌方，虫洞外为我方**）」）。
    *
-   * 口径（三条，缺一不可）：
-   * 1. **纯动画**：只多一层 `pointer-events: none` 的绝对定位覆盖层，**不碰任何布局/坐标**——
-   *    我方列与敌列的 `left`、编队几何、距离尺全部照旧（本层不进 `layout()` 的入参）；
-   * 2. **按战斗时钟只演一次**：`battle.lastTickGameMs - startedAtGameMs ≤ ARRIVAL_FX_MS` 才渲染
-   *    ⇒ 开战瞬间看得到、**中途退出再进战场不会重播**（洞内战斗 100ms 一拍 ≈ 与真实时间 1:1）；
+   * ⚠ **2026-09-14 船长改判**（原话「**动画没结束不开火**」，见
+   * `docs/design/battle-arrival-window-20260914.md` §6）：「**仅为动画**」这句**不再成立**——
+   * 入场现在**同时**带一段"不可被我方选中"的窗口（引擎侧给，窗口与动画**同一个数**）；
+   * **仍然成立的是"位置不改"**（那才是原话"为了最小程度防止BUG"的用意）：本层不进 `layout()`、
+   * 不碰任何布局/坐标/编队几何/血条锚点/距离尺。**"只演一次"也一并改判**为**逐舰各演一次**。
+   *
+   * 口径（四条，缺一不可）：
+   * 1. **不碰布局**：只给舰船元素加 `is-arriving` + `--arrive-dx/--arrive-ms/--arrive-delay`
+   *    （CSS 关键帧做 `translateX(起点) → 0` + 快速淡入，**只走 transform/opacity**），
+   *    我方列与敌列的 `left`、编队几何、距离尺全部照旧；
+   * 2. **按战斗时钟**：首波 = 开战前 `ARRIVAL_FX_MS`（中途退出再进战场不会重播）；
+   *    **此后每一次波次转场/增援 = 引擎 `enteredAtMs` 逐舰驱动**（每一条新舰各演一次）；
    * 3. **谁入场**：虫洞内 = **敌方**跃迁入场（洞里是它们的地盘）；洞外（悬赏/遭遇/教学）= **我方**。
    * 4. **怎么入场**（2026-09-13 船长二次裁定）：「**舰船从屏幕外以减速的形式进场并落到舰船战斗位置。
    *    这里只影响动画。不影响舰船实际位置。**」——即**舰船本体**从**本侧屏幕外**飞入（我方自左缘外、
@@ -1175,13 +1196,29 @@ const meSpeedRef = useRef(200)
    *    动画撤掉（窗口结束）时无跳变。
    */
   const ARRIVAL_FX_MS = 1300
-  /** 单舰飞入时长（ms）与逐舰错峰（ms）——须满足 时长 + 错峰×(舰数−1) ≤ 窗口，否则末舰会被截断 */
-  const ARRIVAL_FLY_MS = 950
-  const ARRIVAL_STAGGER_MS = 60
+  /** 单舰飞入时长（ms）与逐舰错峰（ms）——**与引擎同源**（`core/combat.ts` 的两个常量：
+   *  入场窗口就是拿它们算的 ⇒「动画没结束不开火」与"看得见的动画"永远同一个数，不许各写一份）。 */
+  const ARRIVAL_FLY_MS = BATTLE_ARRIVAL_FLY_MS
+  const ARRIVAL_STAGGER_MS = BATTLE_ARRIVAL_STAGGER_MS
   /** 起点余量（px）：让起点**完全落在屏幕外**（泳道 `overflow: hidden`，超出即不可见） */
   const ARRIVAL_EDGE_MARGIN = 40
+  /** **开战那一刻谁在入场**（船长 2026-09-13：洞内 = 敌方跃迁入场、洞外 = 我方）——只用于**首波**；
+   *  此后每一次波次转场/增援由引擎的 `enteredAtMs` 逐舰驱动（见下 `arrivingTagOf`，船长 2026-09-14「③补」）。 */
   const arrivalSide: 'me' | 'foe' | null =
     battle.lastTickGameMs - battle.startedAtGameMs <= ARRIVAL_FX_MS ? (inWormhole ? 'foe' : 'me') : null
+  /**
+   * **逐舰入场判定**（船长 2026-09-14「③补。并且参考①动画没结束不开火」）：
+   * 引擎给**每一次入场**（洞内首波 / 每一次波次转场 / 单波内增援）的每条舰写了 `enteredAtMs`
+   * （含逐舰错峰），界面据此**各播一次飞入**——旧实现只看"开战前 1300ms"，次波入场**没有动画**。
+   * ⚠ 与引擎的不可选中窗口**同一个数**：动画演完那一刻，窗口也正好结束。
+   */
+  const arrivingTagOf = (tag: string): boolean => {
+    const at = battle.units[tag]?.enteredAtMs
+    if (at === undefined) return false
+    const since = battle.lastTickGameMs - at
+    return since >= 0 && since < ARRIVAL_FLY_MS
+  }
+  const foeArriving = (tag: string): boolean => arrivingTagOf(tag) || arrivalSide === 'foe'
   /** 我方飞入起点位移（负 = 自左缘外飞入；0 = 战斗位置） */
   const arriveDxMe = Math.round(-(lay.me.x + meSize / 2 + ARRIVAL_EDGE_MARGIN))
   /** 敌方逐舰飞入起点位移（正 = 自右缘外飞入；逐舰按各自机位算，斜向菱形两排一致） */
@@ -1604,20 +1641,24 @@ const meSpeedRef = useRef(200)
     const locked = !corpseOn && tag === combat.lockTag
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
+    /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
+    const arriving = foeArriving(tag)
     return (
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arrivalSide === 'foe' ? ' is-arriving' : ''}`}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}`}
         /* 列内居中微调（窄舰在本列里居中；等宽编成为 0）——纵向位置由**所在排**决定，不用 top 偏移。
            入场期（is-arriving）另带三个变量：起点位移 / 时长 / 错峰——**只做动画**，不留任何布局改动 */
         style={
-          arrivalSide === 'foe'
+          arriving
             ? ({
                 ...(slot.dx !== 0 ? { marginLeft: slot.dx } : {}),
                 '--arrive-dx': `${arriveDxFoe(rowIdx)}px`,
                 '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
-                '--arrive-delay': `${rowIdx * ARRIVAL_STAGGER_MS}ms`,
+                // 逐舰错峰：首波仍按行序（`arrivalSide` 那档，与改造前一致）；此后**已烘进 `enteredAtMs`**
+                // （引擎写的就是"本条舰的入场时刻"）⇒ 界面不再重复叠一层延迟
+                '--arrive-delay': `${arrivalSide === 'foe' ? rowIdx * ARRIVAL_STAGGER_MS : 0}ms`,
               } as CSSProperties)
             : slot.dx !== 0
               ? { marginLeft: slot.dx }
