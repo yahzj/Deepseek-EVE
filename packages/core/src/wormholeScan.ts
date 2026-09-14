@@ -174,7 +174,9 @@ export function wormholeScanStop(state: GameState): CommandResult {
  * - **只送一次**（`scan.welcomed` 标记；可选存档字段 ⇒ 零迁移）；
  * - 达标那一刻把 `progressMs` 置成 `wormholeScanWindowMs(state)` ⇒ 玩家点「开始扫描」后**第一拍**
  *   即产出一处虫洞（**仍要玩家自己点**，不替他开扫）；
- * - **不额外提示**（船长 2026-09-14：「不提示」）——只留一条中性日志，解锁信文案一字不动。
+ * - **不提示进度预置**（船长 2026-09-14：「不提示」）：日志不写"已预置 100%"这类字样；
+ *   **2026-09-14 追加**：日志要提醒**进洞前带采集器与打捞器**（船长：「**解锁虫洞的提示和通讯内，
+ *   提醒玩家要带采集器和打捞器**」）——洞里的矿脉靠采集器采、遗迹与残骸靠打捞器捞，空手进去收获会少一大截。
  *
  * ⚠ **逐 tick 调用**（`advanceGame`，与 `reconcileDockSanity` 同款）：解锁是"声望 ≥ 40"这个
  * **连续状态**、不是一次性事件 ⇒ 靠标记保证幂等；老档若已达标，下一次 tick 自动补上。
@@ -185,7 +187,7 @@ export function reconcileWormholeScanWelcome(state: GameState): boolean {
   if (!wormholeScanUnlocked(state)) return false
   scan.welcomed = true
   scan.progressMs = wormholeScanWindowMs(state)
-  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描。')
+  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。')
   return true
 }
 
