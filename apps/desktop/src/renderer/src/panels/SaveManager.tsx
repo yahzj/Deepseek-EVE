@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+import { HintIcon } from '../ui/Hint'
 
 function fmtTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString('zh-CN', { hour12: false })
@@ -110,18 +111,15 @@ export function SaveManager({
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
-          <span className="app-report-title">存档管理</span>
+          <span className="app-report-title">
+            存档管理
+            <HintIcon tip="备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。恢复/导入前会自动为当前档再做一次备份（若恢复错了，用列表里最新的备份即可退回）；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。" />
+          </span>
           <button className="app-btn is-small" onClick={onClose}>
             ✕ 关闭
           </button>
         </div>
         <div className="app-modal-body">
-          <div className="app-dim app-note">
-            备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。恢复/导入前会自动为当前档再做一次备份
-            （若恢复错了，用列表里最新的备份即可退回）；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，
-            导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会**优先弹系统分享**：
-            选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。
-          </div>
           <div className="app-save-actions">
             <button className="app-btn is-primary is-small" onClick={() => void handleBackup()} disabled={busy}>
               备份当前档
