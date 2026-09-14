@@ -1951,15 +1951,15 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'drone-exile-bee',
     outputUnits: 50,
     singleUse: true,
-    materials: [
-      { itemId: 'min-tritanium', count: 8_000 },
-      { itemId: 'min-pyerite', count: 2_500 },
-      { itemId: 'min-mexallon', count: 1_500 },
-      { itemId: 'min-voidcrystal', count: 12 },
+            materials: [
+      { itemId: 'min-tritanium', count: 20_000 },
+      { itemId: 'min-pyerite', count: 6_000 },
+      { itemId: 'min-mexallon', count: 5_000 },
+      { itemId: 'min-voidcrystal', count: 115 },
     ],
-    buildSeconds: 1800,
+    buildSeconds: 180, // 2026-09-14 船长「制造时间可以缩短到10%」：1800 → 180 秒（3 分钟/50 架） // 2026-09-14 船长「制造时间可以缩短到10%」：1800 → 180 秒（3 分钟/50 架）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 1_200_000, // = 产物价（鱿蜂 24,000 ×50）（专属掉落不套档位系数） // = 材料 145,600 ÷ 0.45 ×4（专属 ×4 · 与市场行同值）
+    priceIsk: 1_200_000, // = 材料 539,000 ÷ 0.45 = 产物价（鱿蜂 24,000 ×50）：**材料按产品价 45% 定**（2026-09-14 船长口径） // = 材料 145,600 ÷ 0.45 ×4（专属 ×4 · 与市场行同值）
     description: '一次开工出 50 架鱿蜂无人机：单发威力是制式侦察机的两倍，机体最飘。',
   },
   {
@@ -1968,15 +1968,15 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'drone-wh-c-heavy',
     outputUnits: 50,
     singleUse: true,
-    materials: [
-      { itemId: 'min-tritanium', count: 12_000 },
-      { itemId: 'min-pyerite', count: 3_500 },
-      { itemId: 'min-mexallon', count: 2_400 },
-      { itemId: 'min-voidcrystal', count: 22 },
+            materials: [
+      { itemId: 'min-tritanium', count: 40_000 },
+      { itemId: 'min-pyerite', count: 12_000 },
+      { itemId: 'min-mexallon', count: 10_000 },
+      { itemId: 'min-voidcrystal', count: 230 },
     ],
-    buildSeconds: 3600,
+    buildSeconds: 360, // 2026-09-14：3600 → 360 秒（6 分钟/50 架） // 2026-09-14：3600 → 360 秒（6 分钟/50 架）
     buildCostIsk: 0,
-    priceIsk: 2_400_000, // = 产物价（巢卫 48,000 ×50）（专属掉落不套档位系数） // = 材料 225,600 ÷ 0.45 ×4
+    priceIsk: 2_400_000, // = 材料 1,078,000 ÷ 0.45 = 产物价（巢卫 48,000 ×50） // = 材料 225,600 ÷ 0.45 ×4
     description: '一次开工出 50 架巢卫攻坚无人机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚。',
   },
   {
@@ -1985,15 +1985,15 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'drone-wh-e-sentry',
     outputUnits: 50,
     singleUse: true,
-    materials: [
-      { itemId: 'min-tritanium', count: 16_000 },
-      { itemId: 'min-pyerite', count: 5_000 },
-      { itemId: 'min-mexallon', count: 3_200 },
-      { itemId: 'min-voidcrystal', count: 35 },
+            materials: [
+      { itemId: 'min-tritanium', count: 70_000 },
+      { itemId: 'min-pyerite', count: 22_000 },
+      { itemId: 'min-mexallon', count: 18_000 },
+      { itemId: 'min-voidcrystal', count: 440 },
     ],
-    buildSeconds: 5400,
+    buildSeconds: 540, // 2026-09-14：5400 → 540 秒（9 分钟/50 架） // 2026-09-14：5400 → 540 秒（9 分钟/50 架）
     buildCostIsk: 0,
-    priceIsk: 4_400_000, // = 产物价（构件 88,000 ×50）（专属掉落不套档位系数） // = 材料 315,000 ÷ 0.45 ×4
+    priceIsk: 4_400_000, // = 材料 1,976,000 ÷ 0.45 = 产物价（构件 88,000 ×50） // = 材料 315,000 ÷ 0.45 ×4
     description: '一次开工出 50 架构件哨戒无人机：动能长针拆盾，航程与命中都比制式哨戒机更远更高。',
   },
 ]
