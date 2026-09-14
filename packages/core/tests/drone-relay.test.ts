@@ -1,12 +1,13 @@
 /**
- * 无人机射程分类 + 中继天线（2026-09-10 船长拍板）：
+ * 无人机射程分类 + 中继天线（2026-09-10 船长拍板；**2026-09-14 船长「对无人机的射程插件添加叠加惩罚」**）：
  * - 机型射程分类：蜂鸟 2500 / 赤鸢 3000 / 猎鹰 3500 / 雷鸥哨戒 5000（combat 读 def.maxRangeM）；
- * - 无人机中继天线（高槽 drone-relay，百分比制）：Σ 百分比乘入机型基础射程，多件线性可叠。
+ * - 无人机中继天线（高槽 drone-relay，百分比制）：**折权加算**（第 2 件起按 stackWeight 的 87% / 57%… 折权后相加；单件仍全额）。本文件的机型卡是自带的测试夹具，真表口径见 `drone-range-stacking.test.ts`。
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { createPlayerSpec } from '../src/combat'
 import { itemKindText, DRONE_CLASS_LABELS } from '../src/labels'
+import { weightedSum } from '../src/equipment'
 import { makeTestCtx, moduleDef, ship } from './helpers'
 import type { ItemDef } from '../src/types'
 
@@ -64,9 +65,9 @@ describe('无人机射程分类 + 中继天线（2026-09-10）', () => {
     expect(r['雷鸥']).toBe(Math.round(5000 * 1.45))
   })
 
-  it('多件线性可叠：MK1×2(+20%×2) → ×1.4；MK3(+80%) → 雷鸥 9000', () => {
+  it('多件折权加算（2026-09-14 叠加惩罚）：MK1×2 ⇒ 1+0.2×(1+87%)；MK3 单件仍全额', () => {
     const dbl = world({ relays: ['mod-relay-1', 'mod-relay-1'], load: { 'drone-scout': 2 } })
-    expect(droneRanges(dbl.state, dbl.ctx as never)['蜂鸟']).toBe(Math.round(2500 * 1.4))
+    expect(droneRanges(dbl.state, dbl.ctx as never)['蜂鸟']).toBe(Math.round(2500 * (1 + weightedSum([0.2, 0.2])))) // 折权：第 2 件 ×87% ⇒ 1.3738（原全额 1.4）
     const top = world({ relays: ['mod-relay-3'], load: { 'drone-sentry': 1 } })
     expect(droneRanges(top.state, top.ctx as never)['雷鸥']).toBe(Math.round(5000 * 1.8))
   })

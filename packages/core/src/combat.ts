@@ -44,7 +44,7 @@ import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inve
 import { fleetDefOf, shipDisplayName } from './instances'
 import { uidDefId } from './labels'
 import { quickRepairFactor } from './repair'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight, weightedSum } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
@@ -910,13 +910,23 @@ export function createPlayerSpec(
   // 装配变化导致舱容/CPU 不足时按清单顺序整型裁到装得下，装不下的类型跳过）
   let bayLimit = ship.droneBayM3 ?? 0
   let droneDmgBonus = 0
-  // 无人机中继天线（2026-09-10 船长：百分比制求和乘入机型基础射程；多件线性可叠）
-  let droneRangeMult = 1
+  /**
+   * 无人机中继天线（2026-09-10 船长：百分比制乘入机型基础射程）。
+   *
+   * ⚠ **2026-09-14 船长「对无人机的射程插件添加叠加惩罚」→「按推荐折算」**：由"全额线性相加"改为
+   * **折权加算**（`weightedSum`）——四件同池（制式 MK1/2/3 + G 族「流亡中继桅」）按**加成从强到弱**排位，
+   * 第 2 件起乘 `stackWeight` 的 87% / 57% / 28% / 11% 后相加 ⇒ 件件递减（读数：3×MK1 由 +60% → +48.8%、
+   * 3×MK3 由 +240% → +195.2%）。判据单点 = `equipment.weightedSum`，收敛分组 = `stackingOf` 的 `weighted`。
+   */
+  const droneRangePcts: number[] = []
   for (const g of droneGear) {
     bayLimit += g.droneBayBonusM3 ?? 0
     droneDmgBonus += g.droneDmgBonus ?? 0
-    droneRangeMult += g.droneRangeBonusPct ?? 0
+    if ((g.droneRangeBonusPct ?? 0) > 0) droneRangePcts.push(g.droneRangeBonusPct!)
   }
+  const droneRangeMult = 1 + weightedSum(droneRangePcts)
+
+
   let bayUsed = 0
   // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
   let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx)

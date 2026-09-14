@@ -180,8 +180,8 @@ export function familyModules(state: GameState, ctx: SimContext, shipId: string,
 
 /* ═══════════ V18.1 多件收敛（取消同类唯一后的防超模机制） ═══════════ */
 
-/** 收敛分组：gap = 缺口复合（抗性/闪避）、curve = EVE 曲线（命中/速度）、flat = 加算线性 */
-export type StackGroup = 'gap' | 'curve' | 'flat'
+/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/速度）· **weighted = 折权加算**（加算族的多装惩罚，2026-09-14 起用于无人机射程中继天线）· flat = 加算线性（不收敛） */
+export type StackGroup = 'gap' | 'curve' | 'weighted' | 'flat'
 
 /**
  * 一件装备的收敛分组与收敛键（同键 = 同一收敛池，按单件效果从强到弱参与合成）。
@@ -199,6 +199,10 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   if (def.hitBonusPct !== undefined) return { group: 'curve', kind: 'hit' }
   if (def.speedBonusPct !== undefined) return { group: 'curve', kind: 'speed' }
   if (def.lockDmgBonus !== undefined) return { group: 'curve', kind: 'lock' }
+  // 无人机中继天线（`droneRangeBonusPct`）：**折权加算**（2026-09-14 船长「对无人机的射程插件添加叠加
+  // 惩罚」→「按推荐折算」）——第 2 件起按 `stackWeight` 的 87% / 57% / 28%… 折权后**仍相加**，
+  // 不再"全额线性叠加"；收敛池 = 同 `kind`（制式 MK1/2/3 与 G 族「流亡中继桅」同槽同池）。
+  if (def.droneRangeBonusPct !== undefined) return { group: 'weighted', kind: 'drone-relay' }
   const sk = resistKey(def.shieldResistAdd)
   if (sk) return { group: 'gap', kind: `shield-${sk}` }
   const ak = resistKey(def.armorResistAdd)
@@ -226,6 +230,21 @@ export function curveMult(bonuses: number[]): number {
   let mult = 1
   for (let i = 0; i < sorted.length; i++) mult *= 1 + sorted[i]! * stackWeight(i + 1)
   return mult
+}
+
+/**
+ * **折权加算多件合成**（加算族的多装惩罚 · 2026-09-14 船长「对无人机的射程插件添加叠加惩罚」→「按推荐折算」）：
+ * 总加成 = **Σ pᵢ × wᵢ**（p 从强到弱排位，w = `stackWeight(n)` ⇒ 100% / 87% / 57% / 28% / 11%…）。
+ *
+ * ⚠ **与 `curveMult` 别混用**：那个是**乘积**形 `Π(1+pᵢ·wᵢ)`，对大额件反而**放大**
+ * （2×+80% 时 +205% ＞ 全额叠加的 +160%），只适合"命中/速度"这类**乘区**；
+ * 本形是**折权后仍相加** ⇒ 件件递减、总额仍随件数上升（无人机射程中继天线族用它）。
+ */
+export function weightedSum(bonuses: number[]): number {
+  const sorted = [...bonuses].filter((p) => p > 0).sort((a, b) => b - a)
+  let sum = 0
+  for (let i = 0; i < sorted.length; i++) sum += sorted[i]! * stackWeight(i + 1)
+  return sum
 }
 
 /**

@@ -486,7 +486,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     if (st.group === 'flat') return base
     const n = sameKindCount(fitted, engine.ctx, m)
     if (n === 0) return base
-    if (st.group === 'curve') {
+    if (st.group === 'curve' || st.group === 'weighted') { // 折权加算与 EVE 曲线同文案：写明第 N 件按权重百分比生效
       return `${base} ← 同类第 ${n + 1} 件：按 ${Math.round(stackWeight(n + 1) * 100)}% 生效`
     }
     return `${base} ← 同类第 ${n + 1} 件：只削剩余缺口（收益递减）`
