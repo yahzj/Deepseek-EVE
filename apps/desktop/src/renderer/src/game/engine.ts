@@ -151,6 +151,7 @@ import {
   wormholeTempStow,
   wormholeTempDiscard,
   holdCompact,
+  holdDropWithGrab,
   holdSwap,
   holdMove,
   wormholeGridActivate,
@@ -1509,6 +1510,24 @@ export class GameEngine {
     const run = this.state.wormhole.run
     if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
     const r = holdMove(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx))
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+
+  /**
+   * 虫洞：**按抓取偏移落件**（界面拖拽的真正入口）。
+   *
+   * 玩家抓的是件内第 `(dx,dy)` 格（`pointerdown` 时记下）⇒ 落点按"**抓着的那一格跟着光标走**"换算，
+   * **越界就夹回网格内**（船长 2026-09-14 报障：件在第一排时抓下面那格往第一排拖会被白报"放不下"）。
+   * 详见 core `holdDropWithGrab`。
+   */
+  wormholeHoldDropAt(id: string, x: number, y: number, grab: { dx: number; dy: number }): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    const r = holdDropWithGrab(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx), grab)
     if (r.ok) {
       void this.persist()
       this.notify()

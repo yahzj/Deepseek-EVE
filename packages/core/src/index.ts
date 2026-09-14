@@ -1019,6 +1019,7 @@ export {
   holdAdd,
   holdCellsUsed,
   holdCompact,
+  holdDropWithGrab,
   holdMove,
   holdRemove,
   holdSwap,

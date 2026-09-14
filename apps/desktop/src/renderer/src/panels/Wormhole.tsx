@@ -1911,6 +1911,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
    * **落点**（船长 2026-09-13 两条：「拖拽要能抓住整件」「物品之间要能交换位置」）：
    * ① 落在**空格**上 = 普通移动；② 落在**别件身上** = **两件互换位置**（形状对不上则拒绝并回滚，
    * 由 core `holdSwap` 判、界面只报原因）。
+   *
+   * ⚠ **2026-09-14 修船长报障**（「不是拖拽左上角就提示[这里放不下]」＋「当物品上方处于第一排时」）：
+   * 落位要按**抓取偏移**换算（`grabRef`），且**越界由 core 夹回网格内**（`holdDropWithGrab`）
+   * ——件在第一排时抓它下面那格往第一排拖，理想左上角会落到第 −1 行，旧写法一律白报"放不下"。
    */
   function dropAt(x: number, y: number): void {
     const id = dragId
@@ -1922,8 +1926,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
       setDragId(null)
       return
     }
-    const g = grabRef.current
-    const r = engine.wormholeHoldMove(id, x - g.dx, y - g.dy)
+    const r = engine.wormholeHoldDropAt(id, x, y, grabRef.current)
     if (!r.ok) onToast(r.error ?? '这里放不下。', true)
     setDragId(null)
   }

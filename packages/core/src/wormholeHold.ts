@@ -560,6 +560,64 @@ export function holdSwap(
   }
   return { ok: false, error: '两件的形状对不上：换过去会互相压住（先把一件挪开，或点「整理」）。' }
 }
+/**
+ * **按「抓取偏移」落件**（界面拖拽专用）：玩家抓的是件内第 `(dx,dy)` 格、光标落在 `(x,y)` 格。
+ *
+ * 语义 = 「**抓着的那一格跟着光标走**」（与浏览器拖动影像一致）：理想左上角 = `(x−dx, y−dy)`。
+ *
+ * ⚠ **2026-09-14 修船长报障**（探针在真 DOM 里复现）：件在**第一排**（`y = 0`）时抓它下面那格往第一排里拖，
+ * 理想左上角落到 **第 −1 行** ⇒ 旧写法直接判「这里放不下」，可玩家的意思明明是「**沿第一排把它挪过去**」。
+ * ⇒ 现在**越界就把件夹回网格内**（先夹再判），候选顺序：
+ * ① 精确落点 → ② **夹回网格** → ③ 光标格当左上角 → ④ 夹回后的光标格；第一个放得下的就用它。
+ * 全部放不下才报错 —— 手抓的位置偏了不该白报"放不下"。
+ */
+export function holdDropWithGrab(
+  hold: WormholeHoldState,
+  id: string,
+  x: number,
+  y: number,
+  capacity: number,
+  grab: { dx: number; dy: number },
+): { ok: boolean; error?: string; x?: number; y?: number } {
+  const p = hold.placements.find((q) => q.id === id)
+  if (!p) return { ok: false, error: '没有这个件。' }
+  const shape = { w: p.w, h: p.h }
+  const fill = placementFill(p)
+  const maxX = Math.max(0, hold.cols - p.w)
+  const maxY = Math.max(0, holdRows(capacity, hold.cols) - p.h)
+  const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
+  const dx = Math.max(0, Math.floor(grab.dx))
+  const dy = Math.max(0, Math.floor(grab.dy))
+  const ix = x - dx
+  const iy = y - dy
+  /**
+   * **界内就严格、越界才夹**：
+   * - 理想左上角落在**可用格**里 ⇒ 只试它一个（落不下就报错）—— 避免"明明想放到某一格、却被挪去别处"的意外；
+   * - 理想左上角越界 ⇒ 依次试「夹回网格」「光标格当左上角」「夹回后的光标格」
+   *   （船长那条报障正是靠第一条：件在第一排时把它沿第一排挪过去）。
+   */
+  const strict = placementInBounds(ix, iy, shape, capacity, hold.cols, fill)
+  const cands: Array<[number, number]> = strict
+    ? [[ix, iy]]
+    : [
+        [ix, iy],
+        [clamp(ix, maxX), clamp(iy, maxY)],
+        [x, y],
+        [clamp(x, maxX), clamp(y, maxY)],
+      ]
+  const tried = new Set<string>()
+  for (const [cx, cy] of cands) {
+    const k = `${cx},${cy}`
+    if (tried.has(k)) continue
+    tried.add(k)
+    if (!canPlace(hold, cx, cy, shape, capacity, p.id, fill)) continue
+    p.x = cx
+    p.y = cy
+    return { ok: true, x: cx, y: cy }
+  }
+  return { ok: false, error: '这里放不下（它周围没有能摆下这块地方的位置）。' }
+}
+
 /** 移除一件（**抛弃**就是它；返回被移除的件供日志/读数） */
 export function holdRemove(hold: WormholeHoldState, id: string): WormholeHoldPlacement | undefined {
   const i = hold.placements.findIndex((p) => p.id === id)

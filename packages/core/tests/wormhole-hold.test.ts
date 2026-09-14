@@ -19,7 +19,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldPlacement, WormholeHoldState } from '../src/wormholeHold'
-import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -471,5 +471,100 @@ describe('虫洞 · 货仓不重叠不变量（船长 2026-09-13 报障「整理
     expect(overlapPairs(bar)).toEqual([])
     expect(holdMove(bar, 'c2', 2, 0, 16).ok).toBe(false)
     expect(overlapPairs(bar)).toEqual([])
+  })
+})
+
+describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障：「当物品上方处于第一排时」触发）', () => {
+  /** 两件**真正占的格**是否相撞（与本文件另一组的同名助手同口径，此处独立一份便于本组自证） */
+  function overlapPairs(hold: WormholeHoldState): string[] {
+    const seen = new Map<string, string>()
+    const bad: string[] = []
+    for (const p of hold.placements) {
+      const fill = placementFill(p)
+      let k = 0
+      for (let dy = 0; dy < p.h && k < fill; dy++) {
+        for (let dx = 0; dx < p.w && k < fill; dx++) {
+          const key = `${p.x + dx},${p.y + dy}`
+          const prev = seen.get(key)
+          if (prev !== undefined && prev !== p.id) bad.push(`${key}:${prev}+${p.id}`)
+          seen.set(key, p.id)
+          k += 1
+        }
+      }
+    }
+    return bad
+  }
+
+  /** 现场：2×2 货柜在**第一排**（y=0），右侧 (5,0) 起是空的（容量 40 = 5 行） */
+  function holdWithBoxAtTop(capacity = 40): WormholeHoldState {
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    return hold
+  }
+
+  it('件在**第一排**、抓**右下角**那格、光标落在**第一排**的空格 ⇒ 夹回网格内（旧口径直接报"放不下"）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    // 光标落在 (6,0)（第一排的空格）⇒ 理想左上角 = (6-1, 0-1) = (5,-1) —— 第 −1 行，越界
+    const r = holdDropWithGrab(hold, 'b1', 6, 0, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(true)
+    expect({ x: r.x, y: r.y }).toEqual({ x: 5, y: 0 }) // 夹回第一排 ⇒ "沿第一排挪过去"
+    expect(hold.placements[0]).toMatchObject({ x: 5, y: 0 })
+    expect(overlapPairs(hold)).toEqual([])
+    // **负向**：旧口径（`holdMove` 直接用理想左上角）必然拒 —— 这就是船长看到的那句"这里放不下"
+    const raw = holdWithBoxAtTop(capacity)
+    expect(holdMove(raw, 'b1', 5, -1, capacity).ok).toBe(false)
+  })
+
+  it('件在第一排、抓右下角、光标落在**第二排** ⇒ 精确落点就在界内，不夹（位置 = 光标 − 抓取偏移）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    const r = holdDropWithGrab(hold, 'b1', 6, 1, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(true)
+    expect({ x: r.x, y: r.y }).toEqual({ x: 5, y: 0 })
+  })
+
+  it('抓左上角（偏移 0,0）⇒ 光标格就是左上角（与旧观感一致）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    const r = holdDropWithGrab(hold, 'b1', 4, 3, capacity, { dx: 0, dy: 0 })
+    expect(r.ok).toBe(true)
+    expect({ x: r.x, y: r.y }).toEqual({ x: 4, y: 3 })
+  })
+
+  it('**界内**的落点被占 ⇒ 照旧拒绝（不猜位置、不悄悄挪去别处）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 4, y: 1, w: 2, h: 2 })
+    // 光标落在 (5,2)：理想左上角 = (4,1) = b2 占着 ⇒ 拒（且两件位置都不动）
+    const r = holdDropWithGrab(hold, 'b1', 5, 2, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(false)
+    expect(hold.placements.find((p) => p.id === 'b1')).toMatchObject({ x: 0, y: 0 })
+    expect(hold.placements.find((p) => p.id === 'b2')).toMatchObject({ x: 4, y: 1 })
+    expect(overlapPairs(hold)).toEqual([])
+  })
+
+  it('**右边越界**同理：抓右下角把件拖到最右列 ⇒ 夹回可用宽度内', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    // 光标落在 (7,3)：理想左上角 = (6,2)（界内 ⇒ 精确落点，因为 6+2 ≤ 8）
+    const a = holdDropWithGrab(hold, 'b1', 7, 3, capacity, { dx: 1, dy: 1 })
+    expect(a.ok).toBe(true)
+    expect({ x: a.x, y: a.y }).toEqual({ x: 6, y: 2 })
+    // 抓右下角、光标落在 (0,3)：理想 = (-1,2) 越界 ⇒ 夹回 x=0
+    const b = holdDropWithGrab(hold, 'b1', 0, 3, capacity, { dx: 1, dy: 1 })
+    expect(b.ok).toBe(true)
+    expect({ x: b.x, y: b.y }).toEqual({ x: 0, y: 2 })
+  })
+
+  it('真没地方（夹回后仍被占）⇒ 才报"放不下"，且位置不动', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    // 把第一排右侧与第二排右侧都占满 ⇒ 夹回第一排也放不下
+    hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 5, y: 0, w: 2, h: 2 })
+    const r = holdDropWithGrab(hold, 'b1', 6, 0, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(false)
+    expect(hold.placements.find((p) => p.id === 'b1')).toMatchObject({ x: 0, y: 0 })
+    expect(overlapPairs(hold)).toEqual([])
   })
 })
