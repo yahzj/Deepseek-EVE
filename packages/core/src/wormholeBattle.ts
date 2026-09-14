@@ -709,14 +709,32 @@ function deliverExtraction(
    *
    * ⚠ 2026-09-13 修：形状件**不在 `run.bag`**（它们走 `run.hold.placements`），"背包入港"
    * 的循环因此看不到它们 ⇒ F4 起打捞到的「遗迹安全货柜」会在撤离成功那一刻**静默消失**。
+   *
+   * ⚠ 2026-09-14 修（一号核验查出的缺陷）：**谜质储存器与货柜共用同一套形状件账本**（都记
+   * `kind: 'box'`），原来按 `p.kind === 'box'` 取件 ⇒ 装置被当货柜交去入库，与物品说明
+   * 「本趟结束随趟消失（不进仓库、不拆解）· 离开虫洞即失效」相反 ⇒ 现在**按物品 kind 排除 `matter`**。
    */
-  const boxes = (run.hold?.placements ?? []).filter((p) => p.kind === 'box').map((p) => p.itemId)
+  const boxes = (run.hold?.placements ?? [])
+    .filter((p) => p.kind === 'box')
+    .map((p) => p.itemId)
+    .filter((id) => ctx.items.get(id)?.kind !== 'matter')
   /**
    * **临时空间里的东西也随趟带回**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」）：
    * 临时空间是"船上的缓冲"，不是船外的地方 ⇒ 撤离成功一并入港（失败随趟丢，与背包同一条风险线）。
    * 形状件（货柜）仍走 `wormholeDeliverRelics` 的物品分支；散货按单位数入仓。
+   *
+   * ⚠ 2026-09-14 修（一号核验查出的缺陷）：账本 2026-09-14 已从**老档只读字段** `run.temp`
+   * （一种物品一条的列表）迁到 **`run.tempGrid`**（4×8 格子账本）⇒ 原来读 `run.temp` 恒读空，
+   * 临时空间里的件会在"撤离成功"那一刻**凭空消失**（当时被界面规则「撤离前必须清空临时空间」
+   * 挡成不可达，所以没炸）。现在按 `tempGrid` 现算：散货按单位数累加、形状件仍按"件"走。
    */
-  const tempItems = (run.temp ?? []).map((s) => s.itemId)
+  const tempPlacements = run.tempGrid?.placements ?? []
+  const tempItems = tempPlacements.map((p) => p.itemId)
+  /** 临时空间里的散货按物品合并单位数（一件一格 ⇒ 同一物品可能有多件） */
+  const tempUnits = new Map<string, number>()
+  for (const p of tempPlacements) {
+    tempUnits.set(p.itemId, (tempUnits.get(p.itemId) ?? 0) + Math.max(0, Math.floor(p.units ?? 0)))
+  }
   /**
    * **AI 核心单独走一条**（2026-09-14 船长定：「AI 核心单独占 1 格」＋ 落地答「撤离成功自动入核心库，
    * 不进仓库」）：它们是**形状件**（1×1），撤离成功那一刻按枚数 `gainAiCore` 直接入核心账，
@@ -732,13 +750,15 @@ function deliverExtraction(
   )
   const boxesAll = [...boxes, ...tempItems.filter((id) => wormholeIsShapedItem(id))]
     .filter((id) => wormholeCoreTypeOfItemId(id) === null)
+    .filter((id) => ctx.items.get(id)?.kind !== 'matter') // 谜质储存器：离开虫洞即消失，不进仓库
   if (boxesAll.length > 0) wormholeDeliverRelics(state, ctx, boxesAll)
-  for (const slot of run.temp ?? []) {
-    if (wormholeIsShapedItem(slot.itemId)) continue // 上面已按"件"入过（核心同理，已入核心账）
-    if (Math.floor(slot.units) > 0) addWare(state, slot.itemId, Math.floor(slot.units))
+  for (const [itemId, units] of tempUnits) {
+    if (wormholeIsShapedItem(itemId)) continue // 上面已按"件"入过（核心同理，已入核心账）
+    if (ctx.items.get(itemId)?.kind === 'matter') continue // 谜质储存器同理：随趟消失
+    if (units > 0) addWare(state, itemId, units)
   }
-  if ((run.temp ?? []).length > 0) {
-    addLog(state, 'info', `🕳 临时空间里的 ${run.temp!.length} 类物资一并入港（未整理的也带回来了）。`)
+  if (tempPlacements.length > 0) {
+    addLog(state, 'info', `🕳 临时空间里的 ${tempUnits.size} 类物资一并入港（未整理的也带回来了）。`)
   }
   // **结算单**（界面弹层用；玩家确认后清掉）
   state.wormhole.lastSettle = {

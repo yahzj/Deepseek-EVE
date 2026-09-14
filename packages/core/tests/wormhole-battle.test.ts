@@ -26,6 +26,8 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
+  WORMHOLE_TEMP_CELLS,
+  WORMHOLE_TEMP_COLS,
   wormholeAnomalyOf,
   wormholeBagSlots,
   wormholeBagUsage,
@@ -51,9 +53,12 @@ import {
   wormholeHoldStow,
   wormholeHoldUsage,
   wormholeOverloadBlockReason,
+  wormholeHoldSyncCargo,
   wormholeTempUsage,
   wormholeRelicBoxIdOf,
 } from '../src/wormholeSalvage'
+import { holdTransferTo, makeHoldState } from '../src/wormholeHold'
+import { WORMHOLE_MATTER_DEVICE_IDS } from '../src/wormholeMatter'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -407,6 +412,64 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(state.wormhole.run).toBeNull()
     expect(state.wormhole.lastSettle!.boxes).toEqual([boxId]) // 结算单里也报出这件货柜
   })
+
+  /**
+   * **谜质储存器随趟消失：撤离成功也不进仓库**（2026-09-14 修 · 一号核验查出的缺陷）。
+   *
+   * 它与货柜**共用同一套形状件账本**（都记 `kind: 'box'`），而撤离收口原来按 `p.kind === 'box'`
+   * 取件 ⇒ 装置被当成货柜交给 `wormholeDeliverRelics` 进了仓库，与物品说明「本趟结束随趟消失
+   * （不进仓库、不拆解）· 离开虫洞即失效」相反。
+   */
+  it('**谜质储存器随趟消失**：撤离成功也不进仓库（与货柜同账本、不同去向）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.depth = 2 // 第 2 层起才有撤离战
+    run.bossCleared = run.depth
+    const matterId = WORMHOLE_MATTER_DEVICE_IDS[0]!
+    expect(wormholeHoldStow(state, ctx, matterId).ok, '装置能装进货仓（2×2 形状件）').toBe(true)
+    expect(countWare(state, matterId)).toBe(0)
+    expect(wormholeExtract(run).ok).toBe(true)
+    advanceWormhole(state, ctx)
+    winBattle(state)
+    settleBattle(state)
+    expect(countWare(state, matterId), '撤离成功也不进仓库（随趟消失）').toBe(0)
+    expect(state.wormhole.lastSettle!.boxes, '结算单也不列它').not.toContain(matterId)
+  })
+
+  /**
+   * **临时空间里的东西随趟入港**（2026-09-14 修 · 一号核验查出的缺陷）。
+   *
+   * 收口原来读的是**老档只读字段** `run.temp`（2026-09-14 起账本已迁到 `run.tempGrid`）⇒
+   * 临时空间里的件会在"撤离成功"那一刻**凭空消失**；当时被界面规则「撤离前必须清空临时空间」
+   * 挡成不可达，所以没炸。
+   */
+  it('**临时空间随趟入港**：撤离成功时 `tempGrid` 里的散货按单位入库（不再凭空消失）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.depth = 2
+    run.bossCleared = run.depth
+    // 现场：货仓正好占满 ⇒ 把一件散货挪进临时空间（照搬 salvage 那条的造法）
+    const slots = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet)) // 2×T3 ⇒ 10 格
+    run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: slots * 500 }]
+    wormholeHoldSyncCargo(state, ctx)
+    const piece = run.hold!.placements.find((p) => p.kind === 'cargo')!
+    const moved = holdTransferTo(run.hold!, (run.tempGrid = makeHoldState(WORMHOLE_TEMP_COLS)), piece.id, WORMHOLE_TEMP_CELLS)
+    expect(moved.ok, moved.error ?? '').toBe(true)
+    // 同步一次 ⇒ 数量账本（`run.bag`）不再含这一件（否则撤离时会被两边各算一次）
+    wormholeHoldSyncCargo(state, ctx)
+    expect(run.tempGrid!.placements.length, '临时空间里确实有件').toBeGreaterThan(0)
+    const bagUnits = run.bag.reduce((s, e) => s + Math.floor(e.units), 0)
+    const tempUnits = run.tempGrid!.placements.reduce((s, p) => s + Math.floor(p.units ?? 0), 0)
+    expect(tempUnits).toBeGreaterThan(0)
+    const before = countWare(state, WORMHOLE_ORE_ITEM_ID)
+    expect(wormholeExtract(run).ok).toBe(true)
+    advanceWormhole(state, ctx)
+    winBattle(state)
+    settleBattle(state)
+    // 背包那批 ＋ **临时空间那批**都要到港（修前只到背包那批）
+    expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + bagUnits + tempUnits)
+  })
+
 
   it('**负 · 全灭**：全损——货柜一起丢（不带走）', () => {
     const state = enterRun()
