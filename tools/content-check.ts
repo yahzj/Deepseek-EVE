@@ -58,7 +58,7 @@ import {
   GALAXIES,
   WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
 import {
@@ -2582,6 +2582,37 @@ for (const m of MODULES) {
     }
   }
 }
+
+/* ── 悬停提示契约（2026-09-14 船长报障「部分情况仍会出现系统默认的鼠标悬浮 title 窗口」后加）：
+ * 全站悬停说明一律走**元素的 `title` 属性**（由 `ui/Tooltip.tsx` 的全局接管层换成站内自绘提示：
+ * 限宽 300px、跟随鼠标、可多行）；**SVG 的 `<title>` 子元素一律禁止** —— 它不是属性、接管层
+ * 看不见它，浏览器会照弹**系统默认**提示（实测：`closest('[title]')` 命中不到、`<title>` 子元素
+ * 还在）。作者层已把那两处（星图航线时长 / 虫洞格子）改成属性写法，这里按"静态读源码"再守一道。 */
+{
+  const uiRoot = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src')
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
+      const p = join(dir, d.name)
+      if (d.isDirectory()) return walk(p)
+      return p.endsWith('.tsx') || p.endsWith('.ts') ? [p] : []
+    })
+  const offenders: string[] = []
+  for (const file of walk(uiRoot)) {
+    // 先剥注释（`/* */`、`{/* */}`、`//` 行）——注释里写 `<title>` 讲解是合法的
+    const code = readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    if (/<title[\s>]/.test(code)) offenders.push(file.slice(process.cwd().length + 1))
+  }
+  check(
+    offenders.length === 0,
+    `悬停提示契约：渲染层出现 SVG \`<title>\` 子元素 ⇒ 浏览器会弹**系统默认**提示（请改成父元素的 title 属性，由自绘提示接管）：${offenders.join(' · ')}`,
+  )
+  if (offenders.length === 0) {
+    console.log('· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）')
+  }
+}
+
 
 /* ── 赏金任务·敌人窝点契约（2026-09-10 加）：可作窝点目标的敌群必须齐备"派生所需的三件套" ──
  * ①稀有残骸物品（窝点战利品，打捞必得 → 高级箱）已注册进 ctx.items；
