@@ -800,6 +800,51 @@ export const MODULES: readonly ModuleDef[] = [
     description: '加力推进：点火期间战斗速度 +100%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.80。短距冲刺压燃引擎——快，但不稳（市场稀有）。',
   },
 
+  // ══════════ 微型跃迁引擎（propulsion：**短爆发**加力——点火 10 秒 / 冷却 60 秒） ══════════
+  // 2026-09-14 船长定：「添加新装备，中槽，**微型跃迁引擎**：提供远超推进器的加速度，但是只持续 10 秒，
+  // 冷却依旧 60 秒。」数值（船长给定，三档）：MK1 +80%（命中×0.80）· MK2 +150%（×0.75）· MK3 +250%（×0.60）。
+  // 与三档矢量推进器**同槽族**（`slot: 'propulsion'` · 中槽），但**自带周期**——`thrusterBoostMs` /
+  // `thrusterCooldownMs` 覆盖全局的 60/60 ⇒ 装了它的船自己按 10/70 走（引擎**逐单位**判定，
+  // 见 core `combat.thrusterPhase` / `unitThrusterCycle`）。
+  // ⚠ 占空比只有 10/70 ≈ 14%（矢量是 60/120 = 50%）⇒ **峰值高、均速低**：抢位/脱离/开场压制的爆发件，
+  // 长期风筝仍归矢量推进器。
+  {
+    id: 'mod-mwd-1',
+    name: '微型跃迁引擎 MK1',
+    slot: 'propulsion',
+    rack: 'mid',
+    speedBonusPct: 0.8,
+    hitPenalty: 0.2,
+    thrusterBoostMs: 10_000,
+    thrusterCooldownMs: 60_000,
+    cpuUse: 10,
+    description: '短爆发跃迁推进：点火期间战斗速度 +80%，只持续 10 秒，随后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.80。十秒的位移够抢一个阵位——但别指望它一直快。',
+  },
+  {
+    id: 'mod-mwd-2',
+    name: '微型跃迁引擎 MK2',
+    slot: 'propulsion',
+    rack: 'mid',
+    speedBonusPct: 1.5,
+    hitPenalty: 0.25,
+    thrusterBoostMs: 10_000,
+    thrusterCooldownMs: 60_000,
+    cpuUse: 25,
+    description: '短爆发跃迁推进：点火期间战斗速度 +150%，只持续 10 秒，随后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.75。十秒内把自己甩到对方够不着的地方，剩下的时间靠船体扛。',
+  },
+  {
+    id: 'mod-mwd-3',
+    name: '微型跃迁引擎 MK3',
+    slot: 'propulsion',
+    rack: 'mid',
+    speedBonusPct: 2.5,
+    hitPenalty: 0.4,
+    thrusterBoostMs: 10_000,
+    thrusterCooldownMs: 60_000,
+    cpuUse: 50,
+    description: '短爆发跃迁推进：点火期间战斗速度 +250%，只持续 10 秒，随后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.60——这是全场最暴烈的十秒，也是最打不准的十秒（市场奇货）。',
+  },
+
   // ══════════ V18.1 支援件（support：低槽 = 伤害稳定器/射速计算机；中槽 = 索敌阵列/姿态陀螺） ══════════
   // 收敛标签：伤害/射速 = 可多装·全额叠加（加算）；命中 = 多装递减（EVE 曲线）；闪避 = 多装递减（缺口复合）。
   // 数值 = 暂定初值（MK1/MK2/MK3：+6/10/15% 等；CPU 5/15/40），进 C4 校准轮复核。

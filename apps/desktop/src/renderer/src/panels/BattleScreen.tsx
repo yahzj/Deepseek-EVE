@@ -195,8 +195,12 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
     whView ? { battle: whView.battle, anomaly: whView.anomaly, leaderShipId: whView.leaderShipId } : null,
   )
   const battle = whView ? whView.battle : state.expedition.battle
-  /** 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源 */
-  const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle) : null
+  /**
+   * 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源。
+   * **2026-09-14 起周期逐单位**（微型跃迁引擎 = 10 秒点火）：这一格显示**我方首舰（主控/读数锚）**的周期
+   * （`arcs.thrusterCycle`），与「推进器点火中：战斗中机动 +N%」用的 `arcs.thrusterBoost` 同一个单位。
+   */
+  const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle, arcs?.thrusterCycle) : null
   /** 无人机机型 → 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复） */
   const droneCountOf = new Map<string, number>()
   for (const w of arcs?.me ?? [])
@@ -226,6 +230,9 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   /** 推进器爆发倍率（0 = 未装；每渲染同步给 33ms 循环用——与 dimsRef 同款模式） */
   const thrusterBoostRef = useRef(0)
   thrusterBoostRef.current = arcs?.thrusterBoost ?? 0
+  /** 我方首舰的推进器周期（2026-09-14 逐单位周期；33ms 循环同款取值） */
+  const thrusterCycleRef = useRef<{ boostMs: number; cooldownMs: number } | undefined>(undefined)
+  thrusterCycleRef.current = arcs?.thrusterCycle
   /** 尺寸重测入口（列宽随编队数量变化；由 33ms 循环按需调用——放在守卫之前的 hook 区声明） */
   const measureRef = useRef<() => void>(() => {})
   /** 列宽核对节拍（33ms 循环每 10 拍核对一次 ≈330ms） */
@@ -505,7 +512,9 @@ const meSpeedRef = useRef(200)
       const st = starStateRef.current
       const gap = b.myDesireM - b.distanceM // <0 = 想接近（前进/向右）；>0 = 想拉开（后退/向左）
       if (Math.abs(gap) > 2) st.dir = gap < 0 ? 1 : -1 // +1 = 星空向左流 / −1 = 向右流
-      const boostNow = thrusterPhase(b, engine.ctx.balance.battle).boosting ? thrusterBoostRef.current : 0
+      const boostNow = thrusterPhase(b, engine.ctx.balance.battle, thrusterCycleRef.current).boosting
+        ? thrusterBoostRef.current
+        : 0
       const vMag = Math.min(320, 40 + meSpeedRef.current * (1 + boostNow) * 0.32) // 40px/s 底速 + 船速比例
       const target = st.dir * vMag
       st.v += (target - st.v) * 0.12 // 速度连续渐变

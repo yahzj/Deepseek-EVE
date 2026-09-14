@@ -1024,6 +1024,53 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 5910000,
     description: '顶配矢量喷口与姿态调节机构，速度与机动都拉到极限。',
   },
+  // ── 微型跃迁引擎三档（2026-09-14 船长定：短爆发推进，点火 10 秒 / 冷却 60 秒）──
+  // 书价 = 产物现货价 × 档位系数（MK1 档 2 ×2.5 · MK2 档 3 ×3 · MK3 奇货 ×4）；
+  // 材料 ≈ 产物价 ×0.45（同族锚，见 manufacture:econ），矿物按站内收价计。
+  {
+    id: 'bp-mwd-1',
+    name: '微型跃迁引擎 MK1蓝图',
+    moduleId: 'mod-mwd-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 2_000 },
+      { itemId: 'min-pyerite', count: 700 },
+      { itemId: 'min-mexallon', count: 130 },
+    ],
+    buildSeconds: 240, // 微型跃迁引擎 MK1（材料 27,000 ≈ 产物 60,000 ×0.45；蓝图 = 产物 ×2 × MK1 档系数 2）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 120000,
+    description: '短爆发跃迁线圈与一次性放电组件：十秒的位移，够抢一个阵位。',
+  },
+  {
+    id: 'bp-mwd-2',
+    name: '微型跃迁引擎 MK2蓝图',
+    moduleId: 'mod-mwd-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 20_000 },
+      { itemId: 'min-pyerite', count: 7_000 },
+      { itemId: 'min-mexallon', count: 4_000 },
+      { itemId: 'min-nocxium', count: 300 },
+    ],
+    buildSeconds: 1_100, // 微型跃迁引擎 MK2（材料 351,000 ≈ 产物 780,000 ×0.45；蓝图 = 产物 ×2.5 × MK2 档系数）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 1950000,
+    description: '大功率跃迁线圈与快放电容组：十秒内把船推到矢量推进器追不上的速度。',
+  },
+  {
+    id: 'bp-mwd-3',
+    name: '微型跃迁引擎 MK3蓝图',
+    moduleId: 'mod-mwd-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 61_250 },
+      { itemId: 'min-pyerite', count: 20_000 },
+      { itemId: 'min-mexallon', count: 13_000 },
+      { itemId: 'min-nocxium', count: 2_000 },
+    ],
+    buildSeconds: 2_400, // 微型跃迁引擎 MK3（材料 1,170,000 ≈ 产物 2,600,000 ×0.45；蓝图 = 产物 ×4 奇货档）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 10400000,
+    description: '军规跃迁线圈与瞬放堆：一次点火就是一次跃迁式的位移——十秒，然后哑火一分钟。',
+  },
   {
     id: 'bp-stab-kin-1',
     name: '动能稳定器 MK1蓝图',

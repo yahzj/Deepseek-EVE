@@ -77,6 +77,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-missile-1': 1,
   'bp-missile-2': 3,
   'bp-missile-3': 3,
+  // 微型跃迁引擎（2026-09-14 船长定）：MK1 大众稀有档 2 / MK2 高阶稀有档 3 / MK3 奇货 4
+  'bp-mwd-1': 2,
+  'bp-mwd-2': 3,
+  'bp-mwd-3': 4,
   'bp-prop-1': 1,
   'bp-prop-2': 2,
   'bp-prop-3': 3,
@@ -191,6 +195,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-missile-1': 1,
   'mod-missile-2': 2,
   'mod-missile-3': 3,
+  // 微型跃迁引擎（2026-09-14 船长定 · 同上一组蓝图）：档位与价格解耦，这里是**人审**结果
+  'mod-mwd-1': 2,
+  'mod-mwd-2': 3,
+  'mod-mwd-3': 4,
   'mod-prop-1': 1,
   'mod-prop-2': 2,
   'mod-prop-3': 3,
