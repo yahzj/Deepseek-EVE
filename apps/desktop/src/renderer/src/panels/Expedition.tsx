@@ -65,7 +65,6 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
 import { debugEnabled } from './DebugPanel'
-import { WormholePanel } from './Wormhole'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -117,7 +116,16 @@ function useFoeArtFit(ref: RefObject<HTMLElement | null>): boolean {
 }
 
 /** 星图页「星图·远征」标签内容：声望条 + 扫描/远征作业 + 星图 */
-export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+export function ExpeditionPanel({
+  engine,
+  onToast,
+  onOpenWormhole,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 开虫洞面板（面板本体挂在 App 那一层；见 GalaxyActions 里的入口行） */
+  onOpenWormhole?: () => void
+}) {
   const state = engine.state
   const standing = standingOf(state, DSI_FACTION_ID)
   const view = expeditionStatus(state, engine.ctx)
@@ -205,7 +213,7 @@ export function ExpeditionPanel({ engine, onToast }: { engine: GameEngine; onToa
           停靠母港：星图上的悬赏情报已就绪——选个目标「出发」出击，战罢舰队会自动返航结算。
         </div>
       )}
-      <StarMap engine={engine} onToast={onToast} />
+      <StarMap engine={engine} onToast={onToast} onOpenWormhole={onOpenWormhole} />
     </Panel>
   )
 }
@@ -830,7 +838,16 @@ function autoTidy(posMap: Map<string, Pt>, segNodes: Array<[string, string]>): R
   return out
 }
 
-function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+function StarMap({
+  engine,
+  onToast,
+  onOpenWormhole,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 开虫洞面板（一路传到行动区的入口行；面板本体挂在 App 层） */
+  onOpenWormhole?: () => void
+}) {
   const state = engine.state
   const [editing, setEditing] = useState(false)
   /**
@@ -1379,7 +1396,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
               </div>
               <div className="app-map-detail-desc">{selected.description}</div>
               {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介 */}
-              <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} />
+              <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} onOpenWormhole={onOpenWormhole} />
               {/* 赏金任务（当日板）落在这个星系时的提示（2026-09-10 船长：星图上要能看出哪些星系有任务） */}
               {(tasksByGalaxy.get(selected.id)?.length ?? 0) > 0 ? (
                 <div className="app-map-taskline">
@@ -1530,11 +1547,22 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
 
 /* ─────────── B1.5 星图「前往星系」动作区（掩护巡逻/矿带/悬赏 + 简介） ─────────── */
 
-function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy: GalaxyDef; onToast: ToastFn }) {
+function GalaxyActions({
+  engine,
+  galaxy,
+  onToast,
+  onOpenWormhole,
+}: {
+  engine: GameEngine
+  galaxy: GalaxyDef
+  onToast: ToastFn
+  onOpenWormhole?: () => void
+}) {
   const state = engine.state
   const ctx = engine.ctx
-  // ── 虫洞施工期入口（2026-09-13 E 批）：**只在调试模式下出现**（与调试面板同一开关）──
-  const [whOpen, setWhOpen] = useState(false)
+  // ── 虫洞施工期入口（2026-09-13 E 批）：**只在调试模式下出现**（与调试面板同一开关）；
+  //    面板本体挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
+  //    ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）──
   const whEntryVisible = debugEnabled()
   // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
@@ -1640,7 +1668,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             虫洞
             <span className="app-dim app-ga-desc">调试入口 · 施工中（编队 / 探索 / 背包）</span>
           </span>
-          <button className="app-btn is-small" onClick={() => setWhOpen(true)} title="终局玩法·虫洞（施工期：仅调试模式可见）">
+          <button className="app-btn is-small" onClick={() => onOpenWormhole?.()} title="终局玩法·虫洞（施工期：仅调试模式可见）">
             进入虫洞
           </button>
         </div>
@@ -1897,8 +1925,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
           </div>
         )
       })()}
-      {/* 虫洞面板（施工期：仅调试入口可达；见 panels/Wormhole.tsx 头注释） */}
-      {whOpen ? <WormholePanel engine={engine} onToast={onToast} onClose={() => setWhOpen(false)} /> : null}
+      {/* 虫洞面板本体已搬到 App 那一层（`onOpenWormhole`）：入口行在这里，面板不再依赖"星图选中星系" */}
     </div>
   )
 }

@@ -87,12 +87,14 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   name: '名称',
 }
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, taskFocus = null }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, taskFocus = null, onOpenWormhole }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
   /** 任务中心**内层**标签定位（2026-09-11 船长：步骤 2 跳转要切到「重要任务」；seq 变化即应用） */
   taskFocus?: TaskFocusTarget | null
+  /** **开虫洞面板**（船长 2026-09-13「活动栏直接开面板」）：面板本体挂在 App 那一层，这里只把入口按钮接上去 */
+  onOpenWormhole?: () => void
 }) {
   // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
   // seq 只在跨页跳转时递增，普通切回本页不重放）
@@ -150,7 +152,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
       </div>
 
       {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'mine' ? hlIds : []} /> : null}
-      {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} onOpenWormhole={onOpenWormhole} /> : null}
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}

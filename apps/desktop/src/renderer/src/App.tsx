@@ -35,6 +35,7 @@ import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
 import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
+import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
@@ -512,6 +513,17 @@ export function App({ engine }: { engine: GameEngine }) {
   const [taskFocus, setTaskFocus] = useState<TaskFocusTarget | null>(null)
   /** 通讯页定位（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 切到通讯页并选中该封教程通讯 */
   const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
+  /**
+   * **虫洞面板**（终局玩法 · 施工期只在调试模式下有入口，拍板前对玩家不可见）：
+   * 面板挂在 App 这一层、**不依赖星图选中哪个星系**——原先只挂在星图行动区的入口行里，
+   * 而行动区要先选中星系才渲染 ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）。
+   */
+  const [whOpen, setWhOpen] = useState(false)
+  const openWormhole = (): void => {
+    changePage('map')
+    changeMapTab('star')
+    setWhOpen(true)
+  }
   useEffect(() => {
     if (page !== 'fit') setFitShipId(null)
     // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
@@ -859,6 +871,7 @@ export function App({ engine }: { engine: GameEngine }) {
               changePage(page as PageKey)
               if (mapTab) changeMapTab(mapTab as MapTab)
             }}
+            onOpenWormhole={openWormhole}
           />
           {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗） */}
           <div className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}`} key={page}>
@@ -907,7 +920,14 @@ export function App({ engine }: { engine: GameEngine }) {
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
             {page === 'map' ? (
-              <MapPage {...pageProps} mapTab={mapTab} onMapTab={changeMapTab} mapGoto={mapGoto} taskFocus={taskFocus} />
+              <MapPage
+                {...pageProps}
+                mapTab={mapTab}
+                onMapTab={changeMapTab}
+                mapGoto={mapGoto}
+                taskFocus={taskFocus}
+                onOpenWormhole={openWormhole}
+              />
             ) : null}
             {page === 'comms' ? (
               <CommsPage
@@ -1103,6 +1123,8 @@ export function App({ engine }: { engine: GameEngine }) {
       ) : null}
 
       {/* ───── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ───── */}
+      {/* 虫洞面板（终局玩法 · 施工期只在调试模式下可见）：挂在这一层 ⇒ 不依赖星图选中星系 */}
+      {whOpen ? <WormholePanel engine={engine} onToast={showToast} onClose={() => setWhOpen(false)} /> : null}
       {showSaveManager ? <SaveManager engine={engine} onToast={showToast} onClose={() => setShowSaveManager(false)} /> : null}
       {showHandbook ? <Handbook engine={engine} onClose={() => setShowHandbook(false)} /> : null}
       {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
