@@ -6780,6 +6780,11 @@ body {
 
   z-index: 1000;
 
+  /* ⚠ `border-box` 是 2026-09-13 补的（船长：「按钮的鼠标悬浮提示有时候过宽…限制下宽度，允许多几行」）：
+     默认 content-box 时 `max-width: 300px` 只限**内容**，加上内边距 11×2 与边框 ⇒ 实际盒子 324px。
+     改为 border-box 后「300px」= 外框宽（内容 ≈278px，行数相应多一两行，正合"允许多几行"）。 */
+  box-sizing: border-box;
+
   max-width: 300px;
 
   max-height: 80vh;
