@@ -744,6 +744,8 @@ export interface BattleBalance {
   speedPerLevel: number
   evasionSkillId: string
   evasionPerLevel: number
+  /** **索敌统合（命中技能）**：**炮台/导弹架的命中率**每级相对乘算（2026-09-14 船长改判：
+   *  原为"舰船命中加成 ×(1+5%/级)"，现与「火控阵列学」同口径、每级 2%） */
   hitSkillId: string
   hitPerLevel: number
   /** 距离动力学：距离下限（贴脸极限）与开战距离 = 双方最远武器射程×openRangeFactor

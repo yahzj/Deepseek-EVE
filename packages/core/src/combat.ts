@@ -838,6 +838,13 @@ export function createPlayerSpec(
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
     const fireLv = Math.min(5, state.skills.trained['fire-control'] ?? 0)
     const fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1
+    /**
+     * **索敌统合（命中技能）· 2026-09-14 船长改判**（原话：「**索敌统合也改为炮台命中，缩减为 2% 每级**」）：
+     * 与「火控阵列学」**同口径**（乘在武器基础命中上、两者**乘算叠加**），每级 `bal.hitPerLevel`（现 2%）。
+     * 旧口径是"舰船命中加成 ×(1+5%/级)"——乘在 `ship.hitBonus` 那个小基数上、且进括号后还要被距离
+     * 衰减再乘一次 ⇒ 满级实测只值 **+3.3pp**（探针实测）；改到这里后它才真正是"炮台命中"。
+     */
+    const targetMult = 1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)
     // 2026-09-13 虫洞专属：装填惩罚 ×(1+reloadPen)（与射速计算机的"÷(1+x)"是两件事）
     const reload = Math.max(
       100,
@@ -876,7 +883,7 @@ export function createPlayerSpec(
       eqHitMul: hitEq > 1 ? hitEq : undefined,
       maxRangeM: rangeOf(turret.maxRangeM, type),
       minRangeM: turret.minRangeM ?? 0,
-      hitRate: (turret.hitRate ?? 0.5) * fireMult,
+      hitRate: (turret.hitRate ?? 0.5) * fireMult * targetMult,
       // 2026-09-13 虫洞专属（掠袭破片炮）：附加伤害段 + 每次耗弹数——缺省不写 ⇒ 既有武器零变化
       ...(turret.secondaryDamagePct !== undefined && turret.secondaryDamagePct > 0
         ? {
@@ -995,7 +1002,9 @@ export function createPlayerSpec(
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),
     // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
     evasion,
-    hitBonus: (ship.hitBonus ?? 0) * (1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)),
+    // ⚠ 2026-09-14 船长改判：**索敌统合不再放大舰船命中加成**（改去乘炮台基础命中，见上 `targetMult`）
+    // ⇒ 这里恢复成**纯静态舰船值**（装配台那一行「命中加成 +N%」自此与实际完全一致）。
+    hitBonus: ship.hitBonus ?? 0,
     // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
     // 2026-09-10 船长：本值 = **点火期**的命中乘子；冷却期不开火失稳（stepBattle 用 meAtk 置 1）
     hitMul: 1 - worstPen,

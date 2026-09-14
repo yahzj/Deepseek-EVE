@@ -198,8 +198,17 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     speedPerLevel: 0.05,
     evasionSkillId: 'evasion-maneuvering',
     evasionPerLevel: 0.05,
+    /**
+     * **索敌统合（命中技能）**：**炮台 / 导弹架的命中率**每级相对乘算。
+     *
+     * ⚠ **2026-09-14 船长改判**（原话：「**索敌统合也改为炮台命中，缩减为 2% 每级**」）：
+     * 原口径 = 「**舰船命中加成** ×(1 + 5%/级)」（乘在 `ship.hitBonus` 这个小基数上，且进括号后
+     * 还要被距离衰减再乘一次 ⇒ 满级实测只值 **+3.3pp**）；现改为与「火控阵列学」**同口径的炮台命中**
+     * （乘在武器 `hitRate` 上、与它**乘算叠加**），每级 **2%**（满级 +10%）。
+     * 激光/光束必中不受影响；无人机条目不受影响（同 `fire-control` 的适用范围）。
+     */
     hitSkillId: 'targeting-integration',
-    hitPerLevel: 0.05,
+    hitPerLevel: 0.02,
     speedFactor: 0.6, // 战斗机动速度 = maxSpeed ×0.6 ×(1 ± agility 修正)
     agilitySpeedBonus: 0.15,
     // C4 血量曲线（2026-09-05 船长拍板：战斗时长预期反推，k=1.6 幂型凸曲线，方案 A=无技能基线）：
