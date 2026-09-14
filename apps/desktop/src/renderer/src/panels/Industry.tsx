@@ -32,7 +32,6 @@ import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
-import { toneOf } from '../ui/Glyphs'
 import { MONEY_GLYPH } from '../pages/common'
 import {
   CONSUME_SUBS,
@@ -358,7 +357,7 @@ function BlueprintCard({
       : '没有可用 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'
 
   return (
-    <div className="app-belt-card">
+    <div className="app-belt-card is-assembler">
       <div className="app-belt-head">
         <span className="app-belt-name">
           <RowGlyph glyph={productGlyph} /> {name}
@@ -642,10 +641,9 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
         : ''
       const prodLabel = prodName + prodParams
-      // 产物名**只换色、其余一字不动**；颜色与卡片左边的小图标**同源**（`toneOf(productGlyph)`），
-      // 于是"武器红 / 护盾蓝 / 装甲灰白 / 推进橙…"与图标一致，一眼能看出在造什么（2026-09-13 船长）
-      const prodTone = toneOf(shipDef?.role ?? 'blueprint')
-      const prodText = <span style={{ color: prodTone }}>{prodName}</span>
+      // 产物名**一律金色**（2026-09-13 船长：「只需要将产物染成金色就够了，不用根据类型分成不同颜色」——
+      // 先前的按类型分色作废）；其余文字的金色在本卡内取消（见 `.app-belt-card.is-assembler` 那条 CSS）
+      const prodText = <span className="app-gold">{prodName}</span>
       items.push({
         id: sbp.id,
         kindLabel: '舰船',
@@ -684,8 +682,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       if (bp.itemId !== undefined) continue // 弹药等物品蓝图单独分类
       const moduleDef = engine.ctx.modules.get(bp.moduleId!)
       const prodLabel = moduleDef?.name ?? bp.moduleId!
-      // 产物名换色（与左边小图标同源；装备取**产物槽位**的色调）——其余一字不动
-      const prodText = <span style={{ color: toneOf(moduleDef?.slot ?? 'blueprint') }}>{prodLabel}</span>
+      // 产物名金色（按类型分色作废，2026-09-13 船长）
+      const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: bp.id,
         kindLabel: '装备',
@@ -716,10 +714,10 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       const units = bp.outputUnits ?? 1
       const prodName = itemDef?.name ?? bp.itemId
       const prodLabel = `${prodName} ×${units} 发`
-      // 产物名换色（物品取**大类**色调：弹药红 / 修理组件绿）；「×N 发」与别的字仍不上色
+      // 产物名金色（按类型分色作废，2026-09-13 船长）；「×N 发」等参数不上色
       const prodText = (
         <>
-          <span style={{ color: toneOf(itemDef?.kind ?? 'blueprint') }}>{prodName}</span>
+          <span className="app-gold">{prodName}</span>
           {` ×${units} 发`}
         </>
       )
