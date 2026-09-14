@@ -545,10 +545,18 @@ export function wormholeBattleViewOf(
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
   for (const [tag, u] of Object.entries(battle.units)) {
-    // ⚠ **不滤 0 血**（船长 2026-09-14 裁定「②和洞外一致」）：洞外 `expeditionStatus` 一直把阵亡单位
-    // 也交出来（`side === 'foe'` 即收），战斗界面靠"看见它从有血变成 0 血"驱动**尸骸/爆炸/淡出**演出；
-    // 这里过去把 0 血滤掉 ⇒ **洞内击杀直接消失、整套演出从不触发**（实测：节点战 2 次击杀、界面 0 次
-    // 出现过 0 血单位）。现与洞外同口径。
+    /**
+     * ⚠ **阵亡的敌舰也要留在 `foeHp` 里**（**同一处缺陷两人先后各修了一次**，两条记录都留着：
+     * 船长 2026-09-13 报障「战斗中，敌方没有爆炸动画」→ 一号修；船长同日裁定「**②和洞外一致**」→ 二号修）。
+     *
+     * **成因（口径层）**：战斗界面判定"这一拍刚被击毁"的口径是——**迭代 `foeHp` 的键**、看某个 tag
+     * 的血量总和从 >0 掉到 0（`BattleScreen` 的 `foeTags = Object.keys(combat.foeHp)` → `prevHpRef`）。
+     * 洞外那条（`expeditionStatus`）**只按 `side` 收**（阵亡者照样给、血量 0），这里原先把"血量已归零"
+     * 的敌舰**过滤掉了** ⇒ tag 从 `foeHp` 里消失、迭代根本走不到它 ⇒ **爆炸演出永远不触发**
+     * （所以只有洞内没爆炸；实测：节点战 2 次击杀、界面 0 次出现过 0 血单位）。
+     * **修法**：**按 `side` 收，不按血量收**（血量归零的条目照样给出去，界面自己会用 `deadRef`
+     * 把尸骸登记成"演出中"）——与洞外同口径。
+     */
     if (u.side !== 'foe') continue
     foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
   }
