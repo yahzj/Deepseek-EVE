@@ -5183,11 +5183,23 @@ body {
 
 .app-mkt-detail-books {
 
+  /* 买卖盘（买盘/卖盘两列）：高度不够时**少显示几档**——船长 2026-09-14：
+     「当窗口高度不足时，可以隐藏部分订单（最少显示5个订单）」。
+     分工：**行数**由 `pages/MarketPage.tsx` 量这块的实测高度后决定（只渲染放得下的整行，
+     绝不裁半行）；这里负责**下限**（5 档 ⇒ 压到这儿就停，再不够让面板体出内滚）。
+     min-height 取 20 + 5×17（比真实 19.5 + 5×16.5 略宽一点）= 宁可多留 3px，也不裁掉第 5 行。 */
+
   display: grid;
 
   grid-template-columns: 1fr 1fr;
 
   gap: 10px;
+
+  flex: 0 1 auto;
+
+  min-height: 105px;
+
+  overflow: hidden;
 
 }
 
@@ -9113,8 +9125,6 @@ body {
 .app-mkt-depth.is-click { cursor: pointer; }
 
 .app-mkt-depth.is-click:hover { background: rgba(127, 227, 255, 0.08); }
-
-.app-mkt-chart-hint { margin-top: 2px; font-size: 10.5px; opacity: 0.75; color: #7fb4c9; }
 
 /* ---------- market right column stretch ----------
    2026-09-08 初版：右栏富余高度全给**最后一个**面板（「我的挂单」）——目的是与左栏同高。

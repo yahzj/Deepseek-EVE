@@ -593,6 +593,10 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
   )
 }
 
+/** 买卖盘显示档数：上限 8（原口径）、下限 5（船长 2026-09-14：「窗口高度不足时可以隐藏部分订单，最少显示 5 个」） */
+const BOOK_ROWS_MAX = 8
+const BOOK_ROWS_MIN = 5
+
 /** 市场详情卡：价格曲线 + 买卖盘深度 + 持有量 + 交易面板（买/卖 tab：市价或挂单） */
 function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; onToast: PageProps['onToast']; good: MarketGoodDef }) {
   const state = engine.state
@@ -601,14 +605,22 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const trend = marketTrend(state, good.key)
   const holdings = naturalHoldings(state, good)
   const lock = goodLockedReason(state, good)
-  // 按价格档聚合成交量（2026-09-05 船长：同价订单不应拆成多行——盘口按档合并），再取前 8 档
+  /**
+   * 买卖盘显示几档：**随这块自己的实测高度自适应**（船长 2026-09-14：「当窗口高度不足时，可以隐藏部分订单
+   * （最少显示5个订单）」）。做法 = 让买卖盘那块可被压缩（`styles.css` 的 flex/ min-height 105px = 5 档下限），
+   * 量它的实测高度反推行数 ⇒ **只渲染放得下的整行**（绝不裁半行）；紧到 5 档都放不下时由面板体出内滚。
+   * 行高/标题高从 DOM 实测（拿不到就退回样式表里的标称值），避免两处硬编码漂移。
+   */
+  const [bookRows, setBookRows] = useState(BOOK_ROWS_MAX)
+  const booksRef = useRef<HTMLDivElement | null>(null)
+  // 按价格档聚合成交量（2026-09-05 船长：同价订单不应拆成多行——盘口按档合并），再取前 N 档（N 见 bookRows）
   const agg = (orders: Array<{ price: number; qty: number }>, desc: boolean): Array<{ price: number; qty: number }> => {
     const m = new Map<number, number>()
     for (const o of orders) m.set(o.price, (m.get(o.price) ?? 0) + o.qty)
     return [...m.entries()]
       .map(([price, qty]) => ({ price, qty }))
       .sort((a, b) => (desc ? b.price - a.price : a.price - b.price))
-      .slice(0, 8)
+      .slice(0, bookRows)
   }
   const buyOrders = agg(state.market.npcBuy[good.key] ?? [], true)
   const sellOrders = agg(state.market.npcSell[good.key] ?? [], false)
@@ -640,6 +652,67 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     setQty(side === 'sell' ? Math.max(1, holdings) : 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [good.key])
+  /**
+   * 买卖盘显示几档：**随面板可用高度自适应**（船长 2026-09-14：「当窗口高度不足时，可以隐藏部分订单
+   * （最少显示5个订单）」）。做法 = 让买卖盘那块可被压缩（`styles.css`：flex + min-height 105px = 5 档下限），
+   * 这里量「面板体还能给它多少」反推行数 ⇒ **只渲染放得下的整行**（绝不裁半行）；紧到 5 档都放不下时
+   * 由面板体出内滚。可用高度 = 面板体内高 − 上下内边距 − 除买卖盘外各块 − 块间距，其中折线图**按它的
+   * 下限（min-height 64px）计入**，差额补给买卖盘。
+   * ⚠ 不能量买卖盘自己的高度反推（第一版正是如此）：它被压到 5 档后尺寸不再变化 ⇒ ResizeObserver
+   * 不再触发 ⇒ 卡死在 5 档。改看**面板体**（尺寸由窗口/布局决定，是稳定触发源）。
+   */
+  useLayoutEffect(() => {
+    const el = booksRef.current
+    if (!el) return
+    const body = el.closest('.wui-panel-body') as HTMLElement | null
+    const detail = el.parentElement as HTMLElement | null
+    if (!body || !detail) return
+    const measure = (): void => {
+      const titleEl = el.querySelector('.app-mkt-book-title')
+      const rowEl = el.querySelector('.app-mkt-depth')
+      const titleH = (titleEl ? titleEl.getBoundingClientRect().height : 16.5) + 3 // 标题行高 + 下边距 3px
+      const rowH = rowEl ? rowEl.getBoundingClientRect().height : 16.5
+      // 5 档下限：**只在数据确实有 ≥5 档时**才把这块撑到 5 档高（数据本来不足 5 档就按内容高 ——
+      // 否则白占近 20px，紧窗口里正好把面板顶出一条内滚，实测 15/123 就是这么来的）
+      const levels = (rows: Array<{ price: number }>): number => new Set(rows.map((o) => o.price)).size
+      const maxLevels = Math.max(
+        levels(state.market.npcBuy[good.key] ?? []),
+        levels(state.market.npcSell[good.key] ?? []),
+      )
+      const floorRows = Math.max(1, Math.min(BOOK_ROWS_MIN, maxLevels))
+      el.style.minHeight = `${Math.round(titleH + floorRows * rowH)}px`
+      const charts = detail.querySelector('.app-mkt-chart-wrap, .app-mkt-chart-empty') as HTMLElement | null
+      const chartFloor = charts ? parseFloat(getComputedStyle(charts).minHeight) || 64 : 64
+      const chartNow = charts ? charts.getBoundingClientRect().height : 0
+      const gap = parseFloat(getComputedStyle(detail).rowGap) || 12
+      const csBody = getComputedStyle(body)
+      const padY = (parseFloat(csBody.paddingTop) || 0) + (parseFloat(csBody.paddingBottom) || 0)
+      let others = 0
+      let count = 0
+      for (const child of Array.from(detail.children)) {
+        count++
+        if (child === el) continue
+        const h = child.getBoundingClientRect().height
+        others += charts && child.contains(charts) ? h - chartNow + chartFloor : h
+      }
+      const avail = body.clientHeight - padY - others - gap * Math.max(0, count - 1)
+      const fit = Math.floor((avail - titleH) / rowH)
+      const next = Math.max(BOOK_ROWS_MIN, Math.min(BOOK_ROWS_MAX, fit))
+      setBookRows((prev) => (prev === next ? prev : next)) // 值守卫：不触发多余重渲染
+    }
+    measure()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    ro?.observe(body)
+    // 各兄弟块也看一眼：交易面板/提示行会随换页签、预填价、文案折行改高（只观察不改高度的话，
+    // 行数会停在按旧高度算的值上，紧窗口里就可能多出一行的内滚）
+    for (const child of Array.from(detail.children)) ro?.observe(child)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+    // 换商品 / 切买·卖页签都会改交易面板与提示行的高度 ⇒ 各重算一次
+  }, [good.key, tab])
   function doBuy(): void {
     if (lock) {
       onToast(`暂不能买入：${lock}。`, true)
@@ -736,9 +809,6 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       <div className="app-mkt-detail">
         <div className="app-mkt-detail-left">
           <PriceChart hist={hist} />
-          {hist.length >= 2 ? (
-            <div className="app-mkt-chart-hint">行市参考价走势：每 30 分钟采样一次（含库存压力与冲击），保留 48 窗约 24 小时，非逐笔成交价</div>
-          ) : null}
           <div className="app-mkt-detail-quotes">
             <div className="app-mkt-quote">
               收购 <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
@@ -751,7 +821,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             </div>
           </div>
         </div>
-        <div className="app-mkt-detail-books">
+        <div className="app-mkt-detail-books" ref={booksRef}>
           <div className="app-mkt-book">
             <div className="app-mkt-book-title">买盘（收你的货）</div>
             {buyOrders.map((o, i) => (
