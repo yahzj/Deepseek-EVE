@@ -1681,13 +1681,23 @@ const meSpeedRef = useRef(200)
       <div className="app-battle-screen-top">
         {stage === 'live' ? (
           <>
-            <button className="app-btn is-small" onClick={onClose}>
+            {/**
+             * **洞内战斗画面不许退出**（船长 2026-09-13：「虫洞中的战斗画面不可以退出」）：
+             * 按钮留着但**禁用**（让玩家知道平时这里有个出口），悬停写明原因；
+             * 洞外战斗照旧可退出（那只是"看着打"，引擎自己推进）。
+             */}
+            <button
+              className="app-btn is-small"
+              disabled={inWormhole}
+              onClick={onClose}
+              title={inWormhole ? '洞内交火中不能退出战场：打完这一场（撤离只能在本层结束后发起）' : undefined}
+            >
               ← 退出战场
             </button>
             {/* 洞内战斗**不给撤退**（船长 2026-09-12 第 8 条：战斗一开必须打完；撤离只在层末发起） */}
             {inWormhole ? (
               <span className="app-dim app-bts-noretreat" title="副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离">
-                洞内：本场必须打完
+                洞内：本场必须打完（战场也不能退出）
               </span>
             ) : (
               <button

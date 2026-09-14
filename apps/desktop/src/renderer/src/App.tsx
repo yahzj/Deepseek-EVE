@@ -318,6 +318,18 @@ function PerfHud({ onClose }: { onClose: () => void }) {
   )
 }
 
+/**
+ * 手机自绘下拉面板「最短出现间隔」（毫秒 · 2026-09-13 船长定）。
+ * 船长原话：「手机浏览器的下拉框选项我记得是优化过的？不过现在出现的太快，玩家会出现误操作，
+ * 建议加入出现延迟，保证玩家手指能即时离开屏幕」；集中提问后选定 **抬手才弹 ＋ 最短 200ms**。
+ * 为什么"抬手才弹"是必须的：面板原先在 `pointerdown` 那一刻就插入 DOM，选项正好落在手指底下——
+ * 抬手那一下的 click 直接命中某个选项（这就是误操作的来源）。现在按下只记录，手指离开屏幕才出现。
+ */
+const MOB_SEL_MIN_OPEN_MS = 200
+
+/** 按下→抬起之间手指移动超过这个距离（px）视为"滑动/拖拽"，不弹面板（旋钮） */
+const MOB_SEL_MOVE_TOLERANCE_PX = 24
+
 export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
 
@@ -383,10 +395,40 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [])
 
   // 手机横屏：拦截原生 select 弹层 → 自绘大号选项面板（仅 is-mobile-rot 生效，桌面不变）
+  // ⚠ 2026-09-13 船长：「下拉框…现在出现的太快，玩家会出现误操作」⇒ 弹出时机改**抬手才弹 + 最短 200ms**
+  //   （原先是 pointerdown 即弹 ⇒ 选项落在手指底下、抬手就误选；常量见文件头 MOB_SEL_MIN_OPEN_MS）。
   useEffect(() => {
     if (!mobileRot) {
       setMobSel(null)
       return
+    }
+    /** 已按下、等抬手的下拉（含按下时刻与按下点，用于"最短间隔"与"滑动取消"） */
+    let pending: { el: HTMLSelectElement; at: number; x: number; y: number } | null = null
+    let timer = 0
+    let raf = 0
+    const clearPending = (): void => {
+      pending = null
+      if (timer !== 0) {
+        window.clearTimeout(timer)
+        timer = 0
+      }
+      if (raf !== 0) {
+        window.cancelAnimationFrame(raf)
+        raf = 0
+      }
+    }
+    /** 真正弹出：**推到下一帧**——防"抬手那一瞬的 click 落在刚出现的选项上"（同帧插入面板会被它命中） */
+    const fire = (el: HTMLSelectElement): void => {
+      if (raf !== 0) return
+      raf = window.requestAnimationFrame(() => {
+        raf = 0
+        if (!el.isConnected) return
+        const opts = Array.from(el.options).map((o) => ({
+          value: o.value,
+          label: (o.textContent ?? '').trim() || o.value,
+        }))
+        setMobSel({ el, opts, sel: el.value })
+      })
     }
     const onPointerDown = (e: PointerEvent): void => {
       const t = e.target as HTMLElement | null
@@ -395,14 +437,38 @@ export function App({ engine }: { engine: GameEngine }) {
       if (!sel || sel.disabled || sel.options.length === 0) return
       e.preventDefault()
       e.stopPropagation()
-      const opts = Array.from(sel.options).map((o) => ({
-        value: o.value,
-        label: (o.textContent ?? '').trim() || o.value,
-      }))
-      setMobSel({ el: sel, opts, sel: sel.value })
+      // 只**记录**，不弹（口径①：抬手才弹）；照旧 preventDefault 挡住原生选择器
+      clearPending()
+      pending = { el: sel, at: Date.now(), x: e.clientX, y: e.clientY }
+    }
+    const onPointerUp = (e: PointerEvent): void => {
+      const p = pending
+      if (!p) return
+      pending = null
+      // 手指拖走了（滑动/拖拽意图）⇒ 不弹
+      if (
+        Math.abs(e.clientX - p.x) > MOB_SEL_MOVE_TOLERANCE_PX ||
+        Math.abs(e.clientY - p.y) > MOB_SEL_MOVE_TOLERANCE_PX
+      ) {
+        return
+      }
+      // 口径②：从按下算起不早于 MOB_SEL_MIN_OPEN_MS（快点的剩余时间补齐；慢点已满则立即）
+      const wait = MOB_SEL_MIN_OPEN_MS - (Date.now() - p.at)
+      if (wait <= 0) fire(p.el)
+      else timer = window.setTimeout(() => {
+        timer = 0
+        fire(p.el)
+      }, wait)
     }
     window.addEventListener('pointerdown', onPointerDown, true)
-    return () => window.removeEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('pointerup', onPointerUp, true)
+    window.addEventListener('pointercancel', clearPending, true)
+    return () => {
+      clearPending()
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('pointerup', onPointerUp, true)
+      window.removeEventListener('pointercancel', clearPending, true)
+    }
   }, [mobileRot])
 
   // 全局：点击被禁用的按钮时，把按钮禁用原因（title / data-disabled-reason）以警告提示弹出，

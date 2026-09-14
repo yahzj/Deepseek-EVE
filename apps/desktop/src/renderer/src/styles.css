@@ -68,6 +68,32 @@ body {
   background-size: cover, 512px 512px;
 }
 
+/* ── **超宽屏的内容最大宽度**（船长 2026-09-13：「有玩家反应，当屏幕偏长时，游戏界面过宽。
+   给游戏界面的内容加个最大宽度。当窗口超出这个宽度时，在左右填充空白（大概是这样）」）──
+   做法：顶栏与工作区各自 `width:100% + max-width + 左右 auto` ⇒ 窗口比 `--app-max-w` 宽时，
+   整块内容居中、两侧露出宇宙底图（= 天然"填充空白"，不用另画占位）；**没超过时完全不变**。
+   一个旋钮 = `--app-max-w`（想更宽/更窄改这一处即可；1760 比常见 1600 桌面宽一点，
+   保证普通屏与笔记本**看不出任何变化**，只有超宽屏才收进来）。
+   ⚠ 不套这层的：**全屏覆盖层**（战斗画面 = 按窗口铺开的场景；弹层/详情本来就有自己的宽度上限并居中）。 */
+:root {
+  --app-max-w: 1760px;
+}
+.app-header,
+.app-workspace {
+  /* ⚠ 三条一起才成立（实测踩过两次坑）：
+     ① **只写 `max-width` + `margin:auto`** ⇒ 纵向 flex 的交叉轴里 `auto` 外边距会**取消 stretch**，
+        整条顶栏缩成"内容宽"（1600 的窗口上只剩 1258 宽）——不对；
+     ② **写 `width:100%` 但不加 `box-sizing`** ⇒ 顶栏内边距 10px 16px 不含在宽度里，
+        变成"100% + 32px" ⇒ 普通 1600 窗口被挤出 32px 横向滚动条——也不对；
+     ③ 正解 = `width:100%` + `box-sizing:border-box` 封顶 `max-width` + 左右 auto ⇒
+        没超过上限时**逐像素与改前一致**（1600 = 1600），超过时居中留白。 */
+  width: 100%;
+  box-sizing: border-box;
+  max-width: var(--app-max-w);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：visualViewport 真实可见区铺满）──
    整窗 rotate(-90°) + 等比缩放；--mob-w/--mob-h/--mob-scale/--mob-x/--mob-y 由 JS 按可见区计算 ── */
 
@@ -4845,20 +4871,28 @@ body {
 
 }
 
+/* ── 图标模式的物品操作行（船长 2026-09-13 深夜：「物品仓库界面图标模式下的物品操作，将装到船上等
+   按钮横向排布，且适当变高」）——原来是 `column`（一颗颗竖着堆、`is-small` 只有 ~21px 高），
+   现在改成**横排等分 + 加高**：按钮同高同宽（`flex:1`）、必要时换行，点起来目标更大。
+   本弹层只由「图标视图」的卡片点选打开（列表模式用自己的行内按钮），故不会串到列表模式。 */
 .app-itempick-actions {
-
   display: flex;
-
-  flex-direction: column;
-
-  align-items: flex-start;
-
-  gap: 6px;
-
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
   padding-top: 8px;
-
   border-top: 1px dashed rgba(85, 112, 140, 0.25);
-
+}
+.app-itempick-actions .app-btn {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 6px 14px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 /* 出售数量选择行（2026-09-05：部分出售） */
@@ -9297,13 +9331,52 @@ body {
 .app-wh-card-tag.is-warn { border-color: rgba(244, 201, 93, 0.55); color: #f4c95d; }
 .app-inv-row.is-picked { border-color: rgba(79, 216, 196, 0.55); background: rgba(79, 216, 196, 0.06); }
 .app-wh-head { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
-/* ── 层内网格地图（F3a-2 · 2026-09-13）：圆盘六边形，一格 = 一个地点 ──
-   容器固定高（防界面跳动）；图形一律 SVG 线稿（约定 §九），这里只管颜色与档位透明度。 */
-.app-wh-mapbox {
-  border: 1px solid var(--wui-border); border-radius: 6px;
-  background: rgba(255, 255, 255, 0.015); padding: 2px 0;
+/* ── 探索页版式（船长 2026-09-13 晚）──
+   **窗口高度固定**：地图框定高 300px（不再随圈数长高）、信息窗的卡片列表自己滚 ⇒ 外层永不出滚动条。 */
+.app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.app-wh-maprow { display: flex; gap: 8px; align-items: stretch; }
+/* 缩放控件（在地图左侧，纵向一列）：＋ / 百分比 / － / 适应 */
+.app-wh-zoom {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 4px; border: 1px solid var(--wui-border); border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
 }
-.app-wh-map { width: 100%; height: 296px; color: var(--wui-accent); display: block; overflow: hidden; }
+.app-wh-zoom-btn {
+  width: 30px; height: 26px; padding: 0; font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--wui-text); background: rgba(15, 26, 40, 0.6);
+  border: 1px solid rgba(85, 112, 140, 0.35); border-radius: 5px; cursor: pointer;
+}
+.app-wh-zoom-btn:hover:not(:disabled) { border-color: rgba(79, 216, 196, 0.55); background: rgba(24, 40, 60, 0.7); }
+.app-wh-zoom-btn:disabled { opacity: 0.4; cursor: default; }
+.app-wh-zoom-btn.is-text { width: 30px; height: 24px; font-size: 10.5px; font-weight: 400; }
+.app-wh-zoom-val { font-size: 10.5px; color: var(--wui-dim); }
+/* 地图框：**宇宙背景**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景」）+ 定高裁切。
+   分三层叠：① 中心柔光/边缘压暗（让圆盘读得清）② 全站那套无缝星云贴图 `--space-bg`（有就上）
+   ③ **CSS 星点**（几条 radial-gradient 平铺；即使没有底图变量，地图也有星空感——网页版就不设该变量）。 */
+.app-wh-mapbox {
+  position: relative; flex: 1 1 auto; min-width: 0;
+  height: 300px; overflow: hidden;
+  border: 1px solid var(--wui-border); border-radius: 6px;
+  background-color: #060b13;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(10, 22, 38, 0.12), rgba(6, 11, 19, 0.82)),
+    var(--space-bg, none),
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.55), transparent 55%),
+    radial-gradient(1px 1px at 70% 15%, rgba(200, 225, 255, 0.45), transparent 55%),
+    radial-gradient(1.4px 1.4px at 45% 70%, rgba(255, 255, 255, 0.4), transparent 55%),
+    radial-gradient(1px 1px at 85% 60%, rgba(255, 255, 255, 0.35), transparent 55%),
+    radial-gradient(1px 1px at 15% 85%, rgba(200, 225, 255, 0.35), transparent 55%),
+    radial-gradient(1.2px 1.2px at 60% 45%, rgba(255, 255, 255, 0.3), transparent 55%);
+  background-size: auto, 256px 256px, 180px 180px, 210px 210px, 150px 150px, 240px 240px, 170px 170px, 200px 200px;
+  background-position: center;
+  background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat;
+}
+.app-wh-map { width: 100%; height: 100%; color: var(--wui-accent); display: block; overflow: hidden; }
+/* 缩放层：只影响图内内容（**以玩家所在格为锚点**放大：那一格原地不动、四周长开），不动地图框与坐标口径 */
+.app-wh-zoomlayer { transition: transform 220ms ease-out; }
+/* ── 层内网格地图（F3a-2 · 2026-09-13）：圆盘六边形，一格 = 一个地点 ──
+   容器固定高（防界面跳动；2026-09-13 晚改成**定高 300px + 左侧缩放**，见上面 `.app-wh-mapbox`）；
+   图形一律 SVG 线稿（约定 §九），这里只管颜色与档位透明度。 */
 .app-wh-hex { cursor: pointer; }
 .app-wh-hex polygon {
   fill: rgba(255, 255, 255, 0.015);
@@ -9433,8 +9506,9 @@ body {
 .app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(244, 201, 93, 0.12); }
 .app-wh-hex.is-exit { color: #f4c95d; }
 /* ── 探索页版式（船长 2026-09-13）：**扫描按钮放大 + 与地点信息窗平级**（左扫描 / 右信息卡）──
-   同日晚追加「**激活等按钮可以放在扫描下方**」⇒ 左列 = 扫描 + 它的作业按钮（同宽对齐）。 */
-.app-wh-workspace { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; }
+   同日晚追加「**激活等按钮可以放在扫描下方**」＋「**继续深入按钮也可以整合到扫描 + 作业按钮处**」
+   ⇒ 左列 = 扫描 + 作业按钮 + 继续深入（同宽对齐）；信息窗吃剩余高度、卡片列表内部滚动。 */
+.app-wh-workspace { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; flex: 1 1 auto; min-height: 0; }
 .app-wh-workspace .app-wh-node { flex: 1 1 auto; margin-top: 0; min-height: 150px; }
 .app-wh-workspace-left { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; align-self: flex-start; }
 /* 扫描大按钮：与"进入虫洞"同档（主按钮 + 加高），副标题小字说明花费 */
@@ -9543,6 +9617,63 @@ body {
 .app-wh-node {
   margin-top: 8px; padding: 8px 10px; border: 1px solid var(--wui-border);
   border-radius: 6px; background: rgba(255, 255, 255, 0.02); min-height: 132px;
+}
+/* 信息窗在探索页里**吃满剩余高度**，内部的卡片列表自己滚（船长 2026-09-13 晚：
+   「将地点详细中出现的列表换成卡片形式，并添加滚动条。（防止外侧出现滚动条。）」） */
+.app-wh-workspace .app-wh-node { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+/* 堆清单 = **卡片网格 + 内部滚动**（超出就在这一块里滚，外层页体不动） */
+.app-wh-cardlist {
+  flex: 1 1 auto; min-height: 60px; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px; margin-top: 6px; padding-right: 2px; align-content: start;
+}
+.app-wh-pile {
+  display: flex; flex-direction: column; gap: 3px; padding: 7px 9px;
+  border: 1px solid rgba(85, 112, 140, 0.35); border-radius: 8px; background: rgba(15, 26, 40, 0.6);
+}
+.app-wh-pile.is-shaped { border-color: rgba(79, 216, 196, 0.5); background: rgba(79, 216, 196, 0.06); }
+.app-wh-pile-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-wh-pile-count { font-size: 12px; color: var(--wui-accent); }
+.app-wh-pile-sub { font-size: 10.5px; color: var(--wui-dim); }
+.app-wh-pile-btn { margin-top: 4px; align-self: flex-start; }
+.app-wh-pile-tag { margin-top: 4px; font-size: 11px; color: var(--wui-dim); }
+/* **被拿走的堆卡片：向下移出 + 淡出**（船长 2026-09-13 深夜）——300ms 只动 transform/opacity；
+   幽灵卡不吃点击（`pointer-events:none`），生命周期由 TSX 的 `WORMHOLE_PILE_OUT_MS` 管（两处同值）。 */
+.app-wh-pile.is-leaving {
+  pointer-events: none;
+  animation: app-wh-pile-out 300ms ease-in both;
+}
+@keyframes app-wh-pile-out {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(18px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-wh-pile.is-leaving { animation-duration: 1ms; }
+}
+/* ── 散货「抛弃数量」控件（船长 2026-09-13 深夜：「添加一个让玩家选择抛弃多少的拖动条
+   并允许输入数量」）：拖动条 + 数字框 + 一行读数 + 确认/取消；与同页 `app-inv-*` 一族同底色同描边。 */
+.app-wh-piece { flex-wrap: wrap; }
+.app-wh-discard {
+  flex: 1 0 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 6px; padding: 6px 8px; border: 1px solid rgba(217, 106, 106, 0.35);
+  border-radius: 6px; background: rgba(217, 106, 106, 0.06); font-size: 11.5px;
+}
+.app-wh-discard-range { flex: 1 1 160px; min-width: 120px; accent-color: var(--wui-red); }
+.app-wh-discard-num {
+  width: 84px; padding: 2px 6px; font-family: inherit; font-size: 12px; color: var(--wui-text);
+  background: rgba(15, 26, 40, 0.7); border: 1px solid var(--wui-border); border-radius: 4px;
+}
+.app-wh-discard b { color: var(--wui-red); }
+/* ── 撤离（船长 2026-09-13 晚：「撤离按钮放在关闭左侧，并用红色色系……会警告玩家并需要确认」）── */
+.app-wh-extract { color: var(--wui-red); border-color: rgba(217, 106, 106, 0.55); background: rgba(217, 106, 106, 0.08); }
+.app-wh-extract:hover:not(:disabled) { background: rgba(217, 106, 106, 0.18); border-color: var(--wui-red); }
+.app-wh-extract.is-armed { color: #fff; background: rgba(217, 106, 106, 0.85); border-color: var(--wui-red); font-weight: 700; }
+/* 撤离警告条（待确认态，摆在页体顶部；与「前往未知地点」警告同族，走红档） */
+.app-wh-extract-ask {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  margin-bottom: 8px; padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45);
+  border-radius: 6px; background: rgba(255, 131, 115, 0.07); color: #ff8373;
+  font-size: 12px; line-height: 1.5;
 }
 .app-wh-node-title { font-size: 13px; margin-bottom: 6px; }
 /* ── 货仓格（F4b · 2026-09-13 船长：「类似背包英雄那种需要管理的背包格」）──

@@ -83,10 +83,17 @@ interface StepPlan {
   selectFirst?: () => Element | null
 }
 
-/** 步骤 N 的教程通讯 id（与 `data/src/messages.ts` 的 `tut-<step>` 同源） */
+/** 教程步骤 N 的教程通讯 id（与 `data/src/messages.ts` 的 `tut-<step>` 同源） */
 export function tutorialMessageId(step: number): string {
   return `tut-${step}`
 }
+
+/**
+ * 光圈定位的**抖动容差**（px，2026-09-13 修黑屏 BUG）：目标按钮自己带呼吸/悬停动画时，
+ * 它的 `getBoundingClientRect()` 会逐帧差 1px —— 小于该容差视为没动，不更新 ring 状态。
+ * 目标真移动（转场/滚动）远大于 2px，观感不受影响。
+ */
+const RING_SLOP = 2
 
 /** 该步骤自带的页内标签（App 在步骤切换时用它把页面归位；步骤 2 → 任务中心「重要任务」）。
  *  教程数据的读法收在本模块里，App 不必直接依赖 `@whale/data`。 */
@@ -298,7 +305,9 @@ export function TutorialSpot({
     let top = ring.y + ring.h + 10
     if (top + rect.height > window.innerHeight - pad) top = Math.max(pad, ring.y - rect.height - 10)
     const left = Math.min(Math.max(pad, ring.x + ring.w / 2 - rect.width / 2), window.innerWidth - rect.width - pad)
-    setTipAt({ left, top })
+    // ⚠ **值没变就不换对象**（2026-09-13 修黑屏 BUG）：这个 effect 是"布局 effect 里再 setState"，
+    // 每次新建对象都会触发一轮新的渲染；配合上面 ring 的抖动抑制，链条才断得干净。
+    setTipAt((prev) => (prev && Math.abs(prev.left - left) < 0.5 && Math.abs(prev.top - top) < 0.5 ? prev : { left, top }))
   }, [ring])
 
   // 定位光圈：立即定位 + 轮询跟随（页面转场/滚动/布局变动后框始终贴在目标上，2026-09-06 修复"框位置错误"）
@@ -319,20 +328,43 @@ export function TutorialSpot({
         return
       }
       const box = ringRectFor(hit.el)
-      setRing((prev) =>
-        prev && prev.x === box.x && prev.y === box.y && prev.w === box.w && prev.h === box.h && prev.label === hit.text
-          ? prev
-          : { x: box.x, y: box.y, w: box.w, h: box.h, label: hit.text },
-      )
+      setRing((prev) => {
+        // ⚠ **≤2px 的抖动不算变化**（2026-09-13 修黑屏 BUG）：目标自己也可能是动画按钮
+        // （如顶部引导条的「前往…」按钮带呼吸位移）⇒ 逐帧差 1px 会让 ring 状态每拍都换新对象，
+        // 进而让下面那个 `[ring]` 布局 effect 连环 setState（React #185：更新深度超限）⇒ 整树卸载＝黑屏。
+        const same =
+          !!prev &&
+          prev.label === hit.text &&
+          Math.abs(prev.x - box.x) <= RING_SLOP &&
+          Math.abs(prev.y - box.y) <= RING_SLOP &&
+          Math.abs(prev.w - box.w) <= RING_SLOP &&
+          Math.abs(prev.h - box.h) <= RING_SLOP
+        return same ? prev : { x: box.x, y: box.y, w: box.w, h: box.h, label: hit.text }
+      })
     }
-    relocate()
-    const iv = window.setInterval(relocate, 150)
-    window.addEventListener('resize', relocate)
-    window.addEventListener('scroll', relocate, true)
+    // ⚠ **定位一律推到下一帧**（2026-09-13 修黑屏 BUG · React #185：更新深度超限）：
+    // 原先这里在**布局 effect 里同步 relocate()**，而 relocate 会 setState —— 那是 **commit 阶段**的
+    // setState，React 计一次"嵌套更新"。教程第 1 步会「通讯页 → 舰船页」整页转场，转场期间滚动/尺寸
+    // 事件连击（scroll 捕获监听）⇒ 一串嵌套更新 ⇒ 超过 React 的 50 次上限 ⇒ 抛错、整树卸载 =**黑屏**
+    // （船长 2026-09-13 实测：简报里点「按单开工」即黑屏，刷新才进第 1 步页面）。
+    // 现在：首次定位、轮询、resize、scroll 全部只**登记一帧 rAF**，setState 永远发生在 commit 之外。
+    let raf = 0
+    const run = (): void => {
+      raf = 0
+      relocate()
+    }
+    const schedule = (): void => {
+      if (raf === 0) raf = window.requestAnimationFrame(run)
+    }
+    schedule()
+    const iv = window.setInterval(schedule, 150)
+    window.addEventListener('resize', schedule)
+    window.addEventListener('scroll', schedule, true)
     return () => {
+      if (raf !== 0) window.cancelAnimationFrame(raf)
       window.clearInterval(iv)
-      window.removeEventListener('resize', relocate)
-      window.removeEventListener('scroll', relocate, true)
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('scroll', schedule, true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, plan.text])
