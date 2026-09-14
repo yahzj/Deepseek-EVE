@@ -27,6 +27,7 @@ import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MapPage } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
+import { TaskCenterPage } from './pages/TaskCenterPage'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -50,14 +51,20 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'market', label: '市场', icon: 'nav-market' },
   { key: 'industry', label: '工业', icon: 'nav-industry' },
   { key: 'skills', label: '技能', icon: 'nav-skills' },
+  /**
+   * **任务中心**（2026-09-14 船长：「将任务中心界面移出星图，放入左侧导航栏，**通讯的上方**」）：
+   * 原先它是星图页（出港）的一个选项卡 —— 那条路要先选中星系才渲染行动区，绕；
+   * 搬成一级页后从左侧导航直达（内层标签与跳转定位照旧，见 `pages/TaskCenterPage.tsx`）。
+   */
+  { key: 'task', label: '任务中心', icon: 'nav-task' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
   { key: 'comms', label: '通讯', icon: 'nav-mail' },
 ]
 
-type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'comms'
+type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'task' | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'task', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -687,7 +694,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
     // 步骤 1 开放 物品页：玩家若取消采矿/返航,可手动把货仓矿石卸入仓库（防卡教程——船长复测反馈）
     [ONB_MINE]: { pages: ['ship', 'map', 'items'], map: 'mine', ship: 'fleet' },
-    [ONB_DELIVER]: { pages: ['map'], map: 'task' },
+    [ONB_DELIVER]: { pages: ['task'] }, // 任务中心已是独立一级页（2026-09-14 搬家）
     // 步骤 3（2026-09-08）：出售教学——只开物品页（仓库「市价卖出」），矿只减不增 → 卖出 ≥1 自动推进
     [ONB_SELL]: { pages: ['items'] },
     [ONB_REPAIR]: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
@@ -711,7 +718,6 @@ export function App({ engine }: { engine: GameEngine }) {
     bounty: '常驻悬赏',
     salvage: '残骸打捞',
     haul: '长途运输',
-    task: '任务中心',
   }
   const changePage = (p: PageKey): void => {
     if (!tutCanOpen(p)) {
@@ -938,10 +944,11 @@ export function App({ engine }: { engine: GameEngine }) {
                 mapTab={mapTab}
                 onMapTab={changeMapTab}
                 mapGoto={mapGoto}
-                taskFocus={taskFocus}
                 onOpenWormhole={openWormhole}
               />
             ) : null}
+            {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}
+            {page === 'task' ? <TaskCenterPage {...pageProps} taskFocus={taskFocus} /> : null}
             {page === 'comms' ? (
               <CommsPage
                 {...pageProps}
@@ -950,7 +957,8 @@ export function App({ engine }: { engine: GameEngine }) {
                 // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签与任务中心内层标签
                 onGoto={(p, tab, shipTab, taskTab) => {
                   if (p === 'map' && tab) changeMapTab(tab as MapTab)
-                  if (p === 'map' && taskTab) focusTaskTab(taskTab)
+                  // 任务中心已是一级页：老数据里可能是 { page: 'map', tab: 'task' }，一并改道到新页
+                  if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
                   if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
                   changePage(p as PageKey)
                 }}
@@ -1166,7 +1174,7 @@ export function App({ engine }: { engine: GameEngine }) {
             changePage(g.page as PageKey)
             if (g.mapTab) changeMapTab(g.mapTab as MapTab)
             // 任务中心内层标签（步骤 2：「前往任务中心」要落在「重要任务」）——与通讯「前往」同口径
-            if (g.page === 'map' && g.taskTab) focusTaskTab(g.taskTab)
+            if (g.page === 'task' && g.taskTab) focusTaskTab(g.taskTab)
             if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
           }}
           // 「看详情」：切到通讯页并直接选中本步那封教程通讯（2026-09-11 船长定：教程融入通讯）
@@ -1191,8 +1199,7 @@ export function App({ engine }: { engine: GameEngine }) {
             } catch {
               // 忽略
             }
-            setPage('map')
-            setMapTab('task')
+            setPage('task')
           }}
         />
       ) : null}
