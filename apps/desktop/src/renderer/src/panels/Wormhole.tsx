@@ -21,6 +21,12 @@ import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   WORMHOLE_MAX_SHIPS,
+  /** 自动探索（批次 3 · 船长定案）：准备页在自动模式下共用同一套结构，只有读数与按钮换口径 */
+  WORMHOLE_AUTO_MAX_SHIPS,
+  WORMHOLE_AUTO_DURATION_MS,
+  WORMHOLE_AUTO_YIELD_MUL,
+  WORMHOLE_AUTO_DAMAGE_MIN,
+  WORMHOLE_AUTO_DAMAGE_MAX,
   WORMHOLE_PLACE_TEXT,
   wormholeIsShapedItem,
   WORMHOLE_SLOT_M3,
@@ -154,16 +160,30 @@ export function WormholePanel({
   onToast,
   onClose,
   stockId = null,
+  autoStockId = null,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onClose: () => void
   /** 从「扫描虫洞」页选中的库存虫洞 id（给了 ⇒ 进洞走 `wormholeEnterFromStock`：种子与起始层取它） */
   stockId?: string | null
+  /**
+   * **自动探索模式**（船长 2026-09-14：「**自动探索采取和我们主控探索相同的准备界面。**」）：
+   * 给了库存 id ⇒ 本面板只渲染「准备」页，但规则/读数/按钮换成自动探索口径
+   * （最多 4 条副船 · 每条占 1 枚 AI 核心 · 约 5 分钟 · 收益 = 手动期望 ×40% 直入仓库 · 绝不丢船），
+   * 主按钮写「派队自动探索」；选了主控船 ⇒ 先弹确认（主控换到自动挑出的那条空闲船上）。
+   */
+  autoStockId?: string | null
 }) {
   const state = engine.state
   const ctx = engine.ctx
-  const run = state.wormhole.run
+  /** 自动探索模式（与手动进洞共用同一个准备页） */
+  const auto = autoStockId !== null
+  /**
+   * ⚠ 自动探索模式**无视洞内那一趟**：本面板此时只是一张"准备页"（不显示探索/背包、不给撤离、
+   * 不占主控活动位）⇒ 直接把 `run` 当没有。玩家若正躺在虫洞里，那趟进度原样保存在 state 里。
+   */
+  const run = auto ? undefined : state.wormhole.run
   /**
    * **洞内背景固定**（船长 2026-09-13：「**当次虫洞内的背景图需要固定**」）：
    * 以**本趟种子**为键，把进洞那一刻的全站底图**钉住**（--wh-space-bg）——
@@ -176,9 +196,24 @@ export function WormholePanel({
     const info = currentSpaceBg()
     return info ? spaceBgUrlAt(info.index) : null
   }, [run?.seed])
-  const [tab, setTab] = useState<WhTab>(run ? 'map' : 'prep')
-  /** 编队选择（准备页；进洞前才用得上） */
-  const [picked, setPicked] = useState<string[]>(state.shipId ? [state.shipId] : [])
+  const [tab, setTab] = useState<WhTab>(auto ? 'prep' : run ? 'map' : 'prep')
+  /**
+   * 编队选择（同一份状态，手动/自动两用）：
+   * - 手动 ⇒ 默认**带上主控**（老口径）；
+   * - 自动 ⇒ 默认给**自动配置的那一队**（`wormholeAutoCandidates` 里被勾中的，最多 4 条、不超过核心余量）。
+   */
+  const [picked, setPicked] = useState<string[]>(() =>
+    auto
+      ? engine
+          .wormholeAutoCandidates([])
+          .filter((c) => c.picked)
+          .map((c) => c.shipId)
+      : state.shipId
+        ? [state.shipId]
+        : [],
+  )
+  /** 自动探索：选了主控船 ⇒ 派队前先弹确认（写明主控要换给谁） */
+  const [mainAsk, setMainAsk] = useState(false)
   /**
    * 待确认的"前往未知地点"目标（船长 2026-09-13：前往未扫描的地方**需要警告**）。
    * 口径：点未扫描的格 **不直接走**（也不扣回合），先把警告摆出来，等玩家点「确认前往」。
@@ -186,6 +221,27 @@ export function WormholePanel({
   const [pendingCell, setPendingCell] = useState<{ q: number; r: number } | null>(null)
 
   const admission = wormholeAdmission(ctx, picked)
+  /* ── 自动探索模式的读数（船长 2026-09-14：准备页两用）─────────────────────────────
+     规则来自 core 同一把尺：`wormholeAutoCandidates`（逐船可派性）·
+     `wormholeAutoMainHandover`（选了主控 ⇒ 主控换给谁 / 为什么不能换）·
+     `wormholeAutoBlockReason`（整队能不能派）· `wormholeAutoCores`（AI 核心余量）。 */
+  const autoCand = auto ? engine.wormholeAutoCandidates([]) : []
+  const autoBlockedOf = new Map(autoCand.map((c) => [c.shipId, c.blocked]))
+  const autoMainPicked = auto && picked.includes(state.shipId)
+  /** 主控已经在队里 ⇒ 用真队读；还没编入 ⇒ 先探一次"编进来会怎样"（只读，不改状态） */
+  const autoHandover = auto
+    ? engine.wormholeAutoMainHandover(autoMainPicked ? picked : [...picked, state.shipId])
+    : null
+  /** 主控船为什么编不进来 / 编进来会换给谁（null = 没有障碍） */
+  const autoMainReason = auto ? (autoHandover?.reason ?? null) : null
+  const autoCores = auto ? engine.wormholeAutoCores() : null
+  /**
+   * 整队能不能派（core 同一把尺）。主控在队里时按"允许随队"校验（`mainMayJoin`）——
+   * 主控那一道闸由 `autoMainReason` 单独说话（换不了就是换不了，理由更具体）。
+   */
+  const autoBlock =
+    auto && autoStockId !== null ? engine.wormholeAutoBlockReason(autoStockId, picked, autoMainPicked) : null
+  const autoGate = autoMainReason ?? autoBlock
   const cargoM3 = wormholeFleetCargoM3(state, ctx, picked)
   const bagSlots = wormholeBagSlots(cargoM3)
   const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
@@ -301,8 +357,8 @@ export function WormholePanel({
    * **货仓超载**（F4 · 船长裁定 8：沉船后要求玩家手动抛弃货物）：
    * 超载期间不能再装货（拾取/打捞/战果），撤离与深入也要先抛到容量内 ⇒ 界面据此置灰并给提示。
    */
-  /** **本趟结算单**（有它 ⇒ 整页只显示结算界面，见船长 2026-09-13） */
-  const settle = state.wormhole.lastSettle
+  /** **本趟结算单**（有它 ⇒ 整页只显示结算界面，见船长 2026-09-13）；自动探索模式不看它（那趟与自动队无关） */
+  const settle = auto ? null : state.wormhole.lastSettle
   const holdInfo = run ? engine.wormholeHoldInfo() : null
   const overloaded = holdInfo?.overload ?? false
   /**
@@ -438,14 +494,19 @@ export function WormholePanel({
   const whEntries = Object.keys(state.fleet).map((uid) => {
     const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
     const busy = shipBusyLabel(state, ctx, uid)
-    const ok = def ? wormholeShipAllowed(def) : false
+    /**
+     * 可编入性：**手动**照旧走"洞口准入"（`wormholeShipAllowed`：T5 与超重进不去）；
+     * **自动**换走自动探索那把尺（主控船 = 交接可行才放行，其余 = 无拒因）。
+     */
+    const autoBlocked = auto ? (uid === state.shipId ? autoMainReason : (autoBlockedOf.get(uid) ?? null)) : null
+    const ok = auto ? autoBlocked === null : def ? wormholeShipAllowed(def) : false
     return {
       uid,
       def,
       name: shipDisplayName(state, ctx, uid),
       tier: def?.tier ?? 0,
       ok,
-      busy,
+      busy: auto ? autoBlocked : busy,
       on: picked.includes(uid),
       // **损伤**（与舰队页「待维修」同一把尺）：装甲/结构未满 = 带伤；护盾每场满值重建、不持久、不计
       armor: state.fleet[uid]!.armorPct ?? 1,
@@ -464,11 +525,14 @@ export function WormholePanel({
     return true
   })
 
+  /** 编队上限：手动 = `WORMHOLE_MAX_SHIPS`；自动 = 4 条副船（船长定案） */
+  const pickCap = auto ? WORMHOLE_AUTO_MAX_SHIPS : WORMHOLE_MAX_SHIPS
+
   function togglePick(uid: string): void {
     setPicked((prev) => {
       if (prev.includes(uid)) return prev.filter((x) => x !== uid)
-      if (prev.length >= WORMHOLE_MAX_SHIPS) {
-        onToast(`最多只能带 ${WORMHOLE_MAX_SHIPS} 艘船。`, true)
+      if (prev.length >= pickCap) {
+        onToast(auto ? `自动探索最多派 ${pickCap} 条船。` : `最多只能带 ${pickCap} 艘船。`, true)
         return prev
       }
       return [...prev, uid]
@@ -482,6 +546,27 @@ export function WormholePanel({
       onToast('已跃入虫洞。')
       setTab('map')
     }
+  }
+
+  /**
+   * **自动探索 · 派队**（船长 2026-09-14）：准备页挑好队伍 ⇒ 出发。
+   * 队里有主控 ⇒ **先弹确认**（写明主控要换给谁，见 `mainAsk`），确认后才真的派。
+   */
+  function startAuto(): void {
+    if (autoStockId === null) return
+    const r = engine.wormholeAutoStart(autoStockId, picked)
+    if (!r.ok) onToast(r.error ?? '派队失败。', true)
+    else {
+      onToast(
+        `自动探索队已出发（约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）——报告回来后到「扫描虫洞」页确认。`,
+      )
+      onClose()
+    }
+  }
+
+  function handleAutoStart(): void {
+    if (autoMainPicked) setMainAsk(true)
+    else startAuto()
   }
 
   /* ── 层内网格动作（F3a-2）：扫描 / 前往 / 激活，各 1 回合 ──
@@ -836,6 +921,11 @@ export function WormholePanel({
    * ⚠ **交火中不许离开**（船长 2026-09-13：「虫洞中的战斗画面不可以退出」）：按钮禁用，这里再兜一道。
    */
   function handleClose(): void {
+    /** **自动探索模式**：本面板只是"准备页"，关掉它**不碰洞内那一趟**（不 leave、不切页签） */
+    if (auto) {
+      onClose()
+      return
+    }
     if (state.wormhole.run?.battle) {
       onToast('交火中不能离开虫洞：打完这一场。', true)
       return
@@ -856,21 +946,25 @@ export function WormholePanel({
   // **返回虫洞**（打开面板即占住活动位）：要求主控空闲——忙着则留在"已离开"态并提示先收工（第 3 条）。
   const [resumeNote, setResumeNote] = useState<string | null>(null)
   useEffect(() => {
+    /** 自动探索模式不改"在不在洞里"这件事（本面板不主张主控活动位） */
+    if (auto) return
     if (!state.wormhole.run || state.wormhole.run.attending === true) return
     const r = engine.wormholeResume()
     if (!r.ok) setResumeNote(r.error ?? '暂时回不到虫洞。')
     else setResumeNote(null)
     // 只在"刚打开/刚离开"这两种时刻触发；`attending` 变 true 后本效果自动空转
-  }, [engine, state.wormhole.run?.attending])
+  }, [engine, state.wormhole.run?.attending, auto])
 
   /**
    * **页签跟随"有没有在洞里"**：进洞 ⇒ 只能看「探索/背包」（准备页对编队已锁定）；
    * 出洞 ⇒ 回到准备页。这样关掉面板再打开也落在正确那一页（不会停在空白页或死掉的准备页）。
+   * ⚠ 自动探索模式**恒在准备页**（本面板没有探索/背包两页）。
    */
   useEffect(() => {
+    if (auto) return
     if (state.wormhole.run && tab === 'prep') setTab('map')
     else if (!state.wormhole.run && tab !== 'prep') setTab('prep')
-  }, [state.wormhole.run, tab])
+  }, [state.wormhole.run, tab, auto])
 
   /**
    * **战斗中不渲染本面板**（船长 2026-09-13：「打捞遗迹触发战斗时，**虫洞界面处于最前端遮住了战斗**」）：
@@ -878,7 +972,7 @@ export function WormholePanel({
    * 这里直接在战斗中不渲染（`whOpen` 仍为真 ⇒ 战斗结束、收口完成后**面板自动回来**，玩家不用再点一次）。
    * ⚠ 这条是"几何层级的硬保证"，与"迎战前先确认再跳转"那道流程互为兜底。
    */
-  if (run?.battle) return null
+  if (!auto && run?.battle) return null
 
   return (
     <div className="app-modal-mask" onClick={handleClose}>
@@ -886,15 +980,17 @@ export function WormholePanel({
         <div className="app-modal-head">
           <span className="app-report-title">{settle ? '本趟结算' : '虫洞'}</span>
           <span className="app-dim app-wh-devnote">
-            {settle
-              ? settle.kind === 'extract'
-                ? '货物入港完毕 · 确认后关闭'
-                : '编队失联 · 确认后关闭'
-              : run
-                ? run.attending
-                  ? '人在洞里 · 离开即暂停（进度保存）'
-                  : '已离开 · 进度已保存'
-                : '调试入口 · 施工中（拍板后对玩家开放）'}
+            {auto
+              ? `自动探索 · 选编队派队（最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船 · 约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
+              : settle
+                ? settle.kind === 'extract'
+                  ? '货物入港完毕 · 确认后关闭'
+                  : '编队失联 · 确认后关闭'
+                : run
+                  ? run.attending
+                    ? '人在洞里 · 离开即暂停（进度保存）'
+                    : '已离开 · 进度已保存'
+                  : '调试入口 · 施工中（拍板后对玩家开放）'}
           </span>
           {/**
            * **撤离按钮搬到「✕ 关闭」左侧，红色色系，两讨伐确认**（船长 2026-09-13：
@@ -1012,10 +1108,28 @@ export function WormholePanel({
           ) : null}
           {!settle && tab === 'prep' ? (
             <div className="app-wh-prep">
-              <div className="app-bay-title">准备 · 选编队（最多 {WORMHOLE_MAX_SHIPS} 艘）</div>
+              <div className="app-bay-title">
+                {auto
+                  ? `准备 · 选编队（最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船）`
+                  : `准备 · 选编队（最多 ${WORMHOLE_MAX_SHIPS} 艘）`}
+              </div>
               <div className="app-dim app-note">
-                带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过 {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；
-                总质量越高、可探索回合越短；背包格数按编队「合计货仓」折算（每 {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
+                {auto ? (
+                  <>
+                    自动探索<b>不建副本、不打战斗</b>：派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去一趟（可少派），
+                    每条各占 <b>1 枚 AI 核心</b>（与副船 AI 任务、站内炉线同一本账），约{' '}
+                    {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航结算；收益 = 手动一趟期望的{' '}
+                    {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（<b>直入仓库</b>、不保底），结构/装甲各受损{' '}
+                    {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%
+                    但<b>绝不丢船</b>。<b>主控船也能派</b>——派出去前会把主控换到另一条空闲船上（要你确认）。
+                  </>
+                ) : (
+                  <>
+                    带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过{' '}
+                    {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；总质量越高、可探索回合越短；背包格数按编队「合计货仓」折算（每{' '}
+                    {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
+                  </>
+                )}
               </div>
               {/* **选舰卡片**（船长 2026-09-13：「虫洞入口选取舰船采用卡片形式，卡片内含有舰船名称、
                   舰船级别、折算质量、货仓、舰船 SVG 外形，且当编入时，卡片边框会变色」）——
@@ -1095,17 +1209,30 @@ export function WormholePanel({
                 </div>
               </div>
                 </div>
-                {/* **进入虫洞（放大 · 检索区最右）**：主按钮档位与导航栏「出击」同款观感（`.app-wh-enter`） */}
+                {/* **进入虫洞（放大 · 检索区最右）**：主按钮档位与导航栏「出击」同款观感（`.app-wh-enter`）
+                    —— 自动探索模式复用同一枚按钮位，只换文案与动作（船长 2026-09-14） */}
                 <div className="app-wh-prephead-go">
                   <button
                     className="app-btn is-primary app-wh-enter"
-                    disabled={!admission.ok || !!run || !!pilotBusy}
-                    onClick={handleEnter}
-                    title={run ? '已经在虫洞里了' : pilotBusy ? `主控正在${pilotBusy}：先收工` : undefined}
+                    disabled={auto ? picked.length === 0 || autoGate !== null : !admission.ok || !!run || !!pilotBusy}
+                    onClick={auto ? handleAutoStart : handleEnter}
+                    title={
+                      auto
+                        ? (autoGate ?? (picked.length === 0 ? '先勾选至少 1 条船' : undefined))
+                        : run
+                          ? '已经在虫洞里了'
+                          : pilotBusy
+                            ? `主控正在${pilotBusy}：先收工`
+                            : undefined
+                    }
                   >
-                    进入虫洞
+                    {auto ? '派队自动探索' : '进入虫洞'}
                   </button>
-                  <span className="app-dim">编队 {picked.length} / {WORMHOLE_MAX_SHIPS} 艘</span>
+                  <span className="app-dim">
+                    {auto
+                      ? `编队 ${picked.length} / ${WORMHOLE_AUTO_MAX_SHIPS} 条`
+                      : `编队 ${picked.length} / ${WORMHOLE_MAX_SHIPS} 艘`}
+                  </span>
                 </div>
               </div>
               <ul className="app-wh-cards">
@@ -1114,12 +1241,24 @@ export function WormholePanel({
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
                   const canPick = ok && !busy
                   const title = !ok
-                    ? '该舰过重，会压塌虫洞入口（最多带到 T4）'
-                    : busy
-                      ? `${busy}：先收工/取消派工，才能编入虫洞`
-                      : on
-                        ? '再点一下撤下'
-                        : '点一下编入'
+                    ? auto
+                      ? (busy ?? '这条船不能编入自动探索队')
+                      : '该舰过重，会压塌虫洞入口（最多带到 T4）'
+                    : auto
+                      ? busy
+                        ? busy
+                        : uid === state.shipId
+                          ? (autoHandover?.toName
+                              ? `编入后把主控换到「${autoHandover.toName}」（派队前会再确认一次）`
+                              : '点一下编入（主控船要换驾驶）')
+                          : on
+                            ? '再点一下撤下'
+                            : '点一下编入自动探索队'
+                      : busy
+                        ? `${busy}：先收工/取消派工，才能编入虫洞`
+                        : on
+                          ? '再点一下撤下'
+                          : '点一下编入'
                   return (
                     <li key={uid}>
                       <button
@@ -1166,22 +1305,51 @@ export function WormholePanel({
                 })}
               </ul>
 
-              <div className="app-bay-title app-wh-sub">三联读数</div>
-              <div className="app-wh-triad">
-                <span className="app-wh-cell">
-                  合计货仓 <b>{n(cargoM3)}</b> m³ ⇒ 背包 <b>{bagSlots}</b> 格
-                </span>
-                <span className="app-wh-cell">
-                  折算总质量 <b>{n(admission.totalMass)}</b> / {n(WORMHOLE_TOTAL_MASS_CAP)}
-                </span>
-                <span className="app-wh-cell">
-                  回合预算 <b>{admission.turnBudget}</b>
-                </span>
-              </div>
-              {!admission.ok ? (
+              {/**
+               * **读数条**（同一处位置、同一套样式，两种模式两套内容）：
+               * - 手动 ⇒ 三联读数（货仓⇒背包格 / 折算总质量 / 回合预算）；
+               * - 自动 ⇒ 自动探索读数（AI 核心占用 / 时长 / 收益 / 损伤）——船长 2026-09-14 选定。
+               */}
+              <div className="app-bay-title app-wh-sub">{auto ? '自动探索读数' : '三联读数'}</div>
+              {auto ? (
+                <div className="app-wh-triad">
+                  <span className="app-wh-cell">
+                    AI 核心 <b>{picked.length}</b> / 可派 <b>{autoCores?.free ?? 0}</b>（上限 {autoCores?.cap ?? 0}）
+                  </span>
+                  <span className="app-wh-cell">
+                    时长 约 <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> 分钟
+                  </span>
+                  <span className="app-wh-cell">
+                    收益 = 手动一趟的 <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>（直入仓库 · 不保底）
+                  </span>
+                  <span className="app-wh-cell">
+                    损伤 <b>{Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%</b>
+                    （绝不丢船）
+                  </span>
+                </div>
+              ) : (
+                <div className="app-wh-triad">
+                  <span className="app-wh-cell">
+                    合计货仓 <b>{n(cargoM3)}</b> m³ ⇒ 背包 <b>{bagSlots}</b> 格
+                  </span>
+                  <span className="app-wh-cell">
+                    折算总质量 <b>{n(admission.totalMass)}</b> / {n(WORMHOLE_TOTAL_MASS_CAP)}
+                  </span>
+                  <span className="app-wh-cell">
+                    回合预算 <b>{admission.turnBudget}</b>
+                  </span>
+                </div>
+              )}
+              {auto && autoMainPicked && autoHandover?.toName ? (
+                <div className="app-warn app-wh-gate">
+                  队里有主控船：派队时会把<b>主控换到「{autoHandover.toName}」</b>（点「派队自动探索」后再确认一次）。
+                </div>
+              ) : null}
+              {auto && autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
+              {!auto && !admission.ok ? (
                 <div className="app-warn app-wh-gate">{WORMHOLE_ADMISSION_TEXT[admission.code]}</div>
               ) : null}
-              {pilotBusy ? (
+              {!auto && pilotBusy ? (
                 <div className="app-warn app-wh-gate">
                   主控正在{pilotBusy}：先把手上的活收工，才能指挥虫洞探索。
                 </div>
@@ -1529,6 +1697,40 @@ export function WormholePanel({
           ) : null}
         </div>
       </div>
+      {/**
+       * **主控交接确认**（船长 2026-09-14：「如果选择了主控船，就将主控换到其他船上」＋
+       * 选定「自动挑一条，弹窗写明是谁」）：队里有主控 ⇒ 点「派队自动探索」先弹这一层，
+       * 写明**主控从谁换到谁**；确认后才真的派（换船在 core 里走 `changeShip`）。
+       */}
+      {mainAsk && auto ? (
+        <div className="app-modal-mask" onClick={() => setMainAsk(false)}>
+          <div className="app-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">把主控换到「{autoHandover?.toName ?? '另一条船'}」？</span>
+              <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
+                ✕ 关闭
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <div className="app-dim">
+                队里有主控船「{shipDisplayName(state, ctx, state.shipId)}」：派队后<b>主控将由它换到「
+                {autoHandover?.toName ?? '另一条空闲船'}」</b>，它随自动探索队出发（约{' '}
+                {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟；收益 = 手动一趟的{' '}
+                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}% 直入仓库；结构/装甲受损但绝不丢船）。
+              </div>
+              {autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
+              <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
+                <button className="app-btn is-primary is-small" onClick={startAuto} disabled={autoGate !== null}>
+                  确认派队
+                </button>
+                <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
+                  先不派
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

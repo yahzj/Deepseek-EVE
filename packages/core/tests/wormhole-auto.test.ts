@@ -23,6 +23,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { aiCoreCapBlock, aiCoreShipUsed, aiCoreUsed, assignAiMining } from '../src/ai'
 import { shipLockedReason } from '../src/state'
+import { shipBusyLabel } from '../src/activity'
 import { wormholeStockPush, wormholeStockOf } from '../src/wormholeScan'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
@@ -38,8 +39,10 @@ import {
   wormholeAutoConfirmAll,
   wormholeAutoConfirmReport,
   wormholeAutoDefaultShips,
+  wormholeAutoMainHandover,
   wormholeAutoReportsOf,
   wormholeAutoRunsOf,
+  wormholeAutoShipBlockReason,
   wormholeAutoStart,
   wormholeAutoStop,
   wormholeAutoUnconfirmedCount,
@@ -285,5 +288,69 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(wormholeAutoBlockReason(state, ctx, stockId)).toContain('已经在自动探索中')
     // 参与舰不可派（已在这趟里）⇒ 拒绝并给原因
     expect(wormholeAutoBlockReason(state, ctx, second.id, picked)).toContain('自动探索')
+  })
+
+  /**
+   * **主控随队 = 先换主控**（船长 2026-09-14：「如果选择了主控船，就将主控换到其他船上」＋
+   * 选定「自动挑一条，弹窗写明是谁」/「忙时直接不允许」）。
+   */
+  it('**选了主控船 ⇒ 自动挑一条空闲船接任，派队后主控真的换过去了**', () => {
+    const state = fresh({ ships: 4 })
+    const stockId = stockOne(state)
+    const oldMain = state.shipId
+    const ho = wormholeAutoMainHandover(state, ctx, [oldMain])
+    expect(ho.needed).toBe(true)
+    expect(ho.toId).toBeTruthy()
+    expect(ho.toName).toBeTruthy()
+    expect(ho.toId).not.toBe(oldMain)
+    // 队里没有主控 ⇒ 不需要交接
+    expect(wormholeAutoMainHandover(state, ctx, [ho.toId!]).needed).toBe(false)
+    // 派队：**只把主控编进队**（接任船由 core 自己挑）⇒ 真换了主控，老主控以"普通副船"身份随队出发
+    const r = wormholeAutoStart(state, ctx, stockId, [oldMain])
+    expect(r.ok).toBe(true)
+    expect(state.shipId).toBe(ho.toId)
+    const run = wormholeAutoRunsOf(state)[0]!
+    expect(run.shipIds).toEqual([oldMain])
+    // 换船之后这条老主控不再是主控 ⇒ 它现在只因为"正在这趟自动探索里"被挡（不再吃"主控不参与"那条）
+    const blockedAfter = wormholeAutoShipBlockReason(state, oldMain) ?? ''
+    expect(blockedAfter).not.toContain('主控')
+    expect(blockedAfter).toContain('自动探索')
+  })
+
+  it('**主控正忙 ⇒ 直接不允许**（不沿用"采矿中换驾驶 = 旧船返航"那条善后链）', () => {
+    const state = fresh({ ships: 4 })
+    const oldMain = state.shipId
+    // 让主控"忙"起来：给它派一项主控活动（这里用星图扫描，与 shipBusyLabel 同一把尺）
+    state.scanning = {
+      active: true,
+      galaxyId: 'galaxy-hub',
+      finishAtGameMs: 600_000,
+      startedAtGameMs: 0,
+      originGalaxy: null,
+      returning: false,
+    }
+    expect(shipBusyLabel(state, ctx, oldMain)).not.toBeNull()
+    const ho = wormholeAutoMainHandover(state, ctx, [oldMain])
+    expect(ho.needed).toBe(true)
+    expect(ho.toId).toBeUndefined()
+    expect(ho.reason).toContain('主控正在')
+    // 派队命令层同样拒绝（界面与命令同一把尺）
+    const stockId = stockOne(state)
+    const r = wormholeAutoStart(state, ctx, stockId, [oldMain])
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('主控正在')
+    expect(state.shipId).toBe(oldMain) // 一行状态都没动
+    expect(wormholeStockOf(state).some((x) => x.id === stockId)).toBe(true) // 那处虫洞也没被消耗
+  })
+
+  it('**没有别的空闲船 ⇒ 交接不了**（主控不能随队）', () => {
+    const state = fresh({ ships: 0 })
+    const oldMain = state.shipId
+    // 初始档自带两条船（主控 + 一条备船）⇒ 只留主控，制造"没人接任"
+    for (const id of Object.keys(state.fleet)) if (id !== oldMain) delete state.fleet[id]
+    const ho = wormholeAutoMainHandover(state, ctx, [oldMain])
+    expect(ho.needed).toBe(true)
+    expect(ho.toId).toBeUndefined()
+    expect(ho.reason).toContain('没有别的空闲船')
   })
 })

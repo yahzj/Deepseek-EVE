@@ -1108,6 +1108,8 @@ export {
   wormholeAutoDefaultShips,
   wormholeAutoCoreBlock,
   wormholeAutoBlockReason,
+  wormholeAutoFreeCores,
+  wormholeAutoMainHandover,
   wormholeAutoStart,
   wormholeAutoStop,
   wormholeAutoStopByShip,
@@ -1120,7 +1122,7 @@ export {
   shipNameOf,
 } from './wormholeAuto'
 export type { WormholeAutoRun, WormholeAutoReport } from './state'
-export type { WormholeAutoCandidate } from './wormholeAuto'
+export type { WormholeAutoCandidate, WormholeAutoHandover } from './wormholeAuto'
 // F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,

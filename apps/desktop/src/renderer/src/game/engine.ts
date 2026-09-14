@@ -170,6 +170,9 @@ import {
   wormholeAutoUnconfirmedCount,
   wormholeAutoCandidates,
   wormholeAutoBlockReason,
+  wormholeAutoMainHandover,
+  wormholeAutoFreeCores,
+  aiCoreCap,
   wormholeAutoStart,
   wormholeAutoStop,
   wormholeAutoConfirmReport,
@@ -219,6 +222,7 @@ import type {
   WormholeArchetype,
   WormholeFamily,
   WormholeAutoCandidate,
+  WormholeAutoHandover,
   WormholeAutoReport,
   WormholeAutoRun,
   WormholeHoldPlacement,
@@ -1554,9 +1558,26 @@ export class GameEngine {
     return wormholeAutoCandidates(this.state, this.ctx, exclude)
   }
 
-  /** 自动探索：现在能不能派（不许时给理由，界面据此置灰） */
-  wormholeAutoBlockReason(stockId: string, shipIds?: readonly string[]): string | null {
-    return wormholeAutoBlockReason(this.state, this.ctx, stockId, shipIds)
+  /**
+   * 自动探索：现在能不能派（不许时给理由，界面据此置灰）。
+   * `mainMayJoin`（2026-09-14 船长「选主控就把主控换到别的船上」）⇒ 校验时**放行主控船**
+   * （调用方须已确认交接可行，见 `wormholeAutoMainHandover`）。
+   */
+  wormholeAutoBlockReason(stockId: string, shipIds?: readonly string[], mainMayJoin = false): string | null {
+    return wormholeAutoBlockReason(this.state, this.ctx, stockId, shipIds, { mainMayJoin })
+  }
+
+  /**
+   * 自动探索：**主控交接**（船长 2026-09-14「如果选择了主控船，就将主控换到其他船上」）——
+   * 准备页用它写确认弹窗（「主控将由 X 换到 Y」）与卡片置灰理由；派队命令层照它落。
+   */
+  wormholeAutoMainHandover(shipIds: readonly string[]): WormholeAutoHandover {
+    return wormholeAutoMainHandover(this.state, this.ctx, shipIds)
+  }
+
+  /** 自动探索：当前可派的 AI 核心数 / 共用上限（准备页读数用） */
+  wormholeAutoCores(): { free: number; cap: number } {
+    return { free: wormholeAutoFreeCores(this.state, this.ctx), cap: aiCoreCap(this.state, this.ctx) }
   }
 
   /** 自动探索：开始一趟（消耗该处库存、按参与舰数占 AI 名额、参与舰锁定到返航） */
