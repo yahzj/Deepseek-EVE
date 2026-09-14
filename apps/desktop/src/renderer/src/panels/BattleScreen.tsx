@@ -41,7 +41,7 @@ import {
   ROW2_BAR_DROP,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
-  fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport,
+  fanSegs, fanPath, ringPath, HpTri, boltGeom, lastBattleReport, resolveBoltAnchors,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 
@@ -935,31 +935,56 @@ const meSpeedRef = useRef(200)
       // V18B（2026-09-05 修复）+ 2026-09-09 二轮：弹道按 fx.to（目标 tag）定位并按"视觉行序"
       // 取位（含演出期尸骸占位）——随机目标下每发飞向各自目标，不受队列撤出/补位影响
       const isMeShot = fx.side === 'me'
+      /**
+       * ⚠ **2026-09-14 船长报障修复：「多对多战斗里，敌方的弹道依旧瞄准我方最右上角的舰船」**。
+       *
+       * 旧代码敌方那一支写的是 `src = layFx.foe[aimRowIdx]` + `dst = layFx.me`，两处都塌了：
+       * ① `aimRowIdx` 是**拿我方 tag 去查 `rowFxTags`（只含敌方 tag）** ⇒ 恒 `-1` ⇒ 起点塌成 `foe[0]`
+       *    （**不是实际开火的那艘敌舰**）；② 落点**写死成 `layFx.me`**（我方主控锚）⇒ 敌方每一发都飞向主控
+       *    —— 画面里就是"最右上角那艘"。引擎侧一直是对的（`to: gtgt.spec.tag`，每发开火前重选靶），
+       *    所以这是**纯演出层的坐标解析 bug**。
+       * 现把解析抽成纯函数 `resolveBoltAnchors`（`battleViewCore` · **两侧对称**：起点 = 实际开火的舰、
+       * 落点 = 被瞄准的舰），并由正式工具 `npm run battle:bolt` 做回归守卫。
+       */
       const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
       const aimRowIdx = rowFxTags.indexOf(aimTag)
       /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点；单船/无人机回落到主控锚）——见上方 meAnchorByTag */
       const mySrc = isMeShot && fx.src !== 'drone' ? meAnchorByTag.get(fx.tag) : undefined
+      /** **敌方发射舰的行号**（`rowFxTags` 只含敌方 ⇒ 只在敌方那一支有意义；我方那一支恒 −1） */
+      const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
+      /** **被瞄准的我方舰**（仅敌方那一支用；缺 `fx.to` 或单船路径 ⇒ undefined ⇒ 回落主控） */
+      const aimMeAnchor = isMeShot ? undefined : fx.to !== undefined ? meAnchorByTag.get(fx.to) : undefined
       let src: Anchor | undefined
       let dst: Anchor | undefined
-      if (isMeShot) {
-        src = mySrc ?? layFx.me
-        dst = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 目标已撤（旧尸骸）→ 首位兜底
-      } else {
-        src = aimRowIdx >= 0 ? layFx.foe[aimRowIdx] : layFx.foe[0] // 发射者（存活敌人）
-        dst = layFx.me
+      {
+        // 我方多舰路径：发射舰锚点表优先（`fx.src='drone'` 的弹道自机群位起飞，故不走这张表）
+        const r = resolveBoltAnchors({
+          side: isMeShot ? 'me' : 'foe',
+          tag: fx.tag,
+          ...(fx.to !== undefined ? { to: fx.to } : {}),
+          rowFxTags,
+          meAnchors: meAnchorByTag,
+          meFallback: layFx.me,
+          foeAnchors: layFx.foe,
+        })
+        if (r) {
+          src = isMeShot ? (mySrc ?? r.src) : r.src
+          dst = isMeShot ? r.dst : (aimMeAnchor ?? r.dst)
+        }
       }
       if (!src || !dst) continue
       if (isMeShot && fx.hit) lastHitTypeRef.current.set(aimTag, fx.type) // 记录最近命中形态（击杀延迟用）
       // 舰艏偏移按**该舰实际落画体积**取（2026-09-11 舰种体积：舰艏距中心与舰宽线性，见 noseOf）——
       // 优先取本帧布局的实际值（含溢出收缩），索引缺失才回落到按 tag 推导的体积
-      const aimSize = (aimRowIdx >= 0 ? layFx.sizes[aimRowIdx] : undefined) ?? foeSizeOf(aimTag)
-      const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
+      const aimSize = isMeShot
+        ? ((aimRowIdx >= 0 ? layFx.sizes[aimRowIdx] : undefined) ?? foeSizeOf(aimTag))
+        : ((fx.to !== undefined ? meSizeByTag.get(fx.to) : undefined) ?? meSize) // 敌方那一支的"目标"是我方舰
       /** 我方多舰路径：发射舰的实际落画体积（与 `src` 同一把尺） */
       const myShooterSize = isMeShot ? meSizeByTag.get(fx.tag) : undefined
       const shooterSize =
         myShooterSize ?? ((shooterRowIdx >= 0 ? layFx.sizes[shooterRowIdx] : undefined) ?? foeSizeOf(fx.tag))
       const srcNose = noseOf(isMeShot ? (myShooterSize ?? meSize) : shooterSize)
-      const dstNose = noseOf(isMeShot ? aimSize : meSize)
+      const dstNose = noseOf(aimSize)
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
       // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
