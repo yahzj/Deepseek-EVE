@@ -24,6 +24,7 @@ import { addWare, countWare } from '../src/inventory'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
+  WORMHOLE_BOSS_TARGETING_CHANCE,
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
   WORMHOLE_TEMP_CELLS,
@@ -199,6 +200,31 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     for (const card of [pirate, alien, grave, exile]) {
       expect(wormholeAnomalyOf(card, 2, 'boss', 1).foeTargeting).toBe('largest')
     }
+  })
+
+  /**
+   * **选靶倾向概率**（船长 2026-09-14：「虫洞敌人的攻击倾向，加一个概率」→ 先定 60%、
+   * 同日二次改判「**概率降为40%试一下**」）：写了模式的三张卡各挂 **0.4**；BOSS 的模式虽被 core
+   * 改成「打最大的」，概率同样 **0.4**（同一条裁定）；随机模式的 G 卡 / E 卡**不写**该字段
+   * ⇒ 派生结果 = 1（不掷骰，行为与上线时逐字一致）。
+   */
+  it('选靶倾向概率：写了模式的卡 0.4 · BOSS 也 0.4 · 随机模式的卡不写（= 1）', () => {
+    const pirate = ctx.anomalies.get('wh-pirate-scout')!
+    const grave = ctx.anomalies.get('wh-grave-watch')!
+    const exile = ctx.anomalies.get('wh-exile-blockade')!
+    const titan = ctx.anomalies.get('wh-titan-echo')!
+    expect(pirate.foeTargetingChance).toBe(0.4)
+    expect(grave.foeTargetingChance).toBe(0.4)
+    expect(exile.foeTargetingChance).toBeUndefined()
+    expect(titan.foeTargetingChance).toBeUndefined()
+    // 派生：普通节点 / 撤离战 = 卡上概率；BOSS = core 常量（同样 0.4，模式仍是"打最大的"）
+    expect(wormholeAnomalyOf(pirate, 3, 'node', 1).foeTargetingChance).toBe(0.4)
+    expect(wormholeAnomalyOf(pirate, 3, 'extract', 1).foeTargetingChance).toBe(0.4)
+    expect(wormholeAnomalyOf(pirate, 3, 'boss', 1).foeTargetingChance).toBe(WORMHOLE_BOSS_TARGETING_CHANCE)
+    expect(WORMHOLE_BOSS_TARGETING_CHANCE).toBe(0.4)
+    // 随机模式的卡：派生结果 = 1 ⇒ 连一次倾向骰都不掷（洞外与 G/E 卡的零漂移守卫）
+    expect(wormholeAnomalyOf(exile, 3, 'node', 1).foeTargetingChance).toBe(1)
+    expect(wormholeAnomalyOf(titan, 3, 'node', 1).foeTargetingChance).toBe(1)
   })
 
   it('派生卡能真实建档（舰级路径）：波次数量与槽位分组一致', () => {

@@ -171,6 +171,15 @@ export function wormholeCardIdOfFamily(family: WormholeFamily | undefined, seed:
 }
 
 /**
+ * **层末守卫的选靶倾向概率**（船长 2026-09-14：「**虫洞敌人的攻击倾向，加一个概率**」→ 先定 60%，
+ * 同日二次改判「**概率降为40%试一下**」）——BOSS 的**模式**仍是「打最大的」（2026-09-13 定的分流），
+ * 变的只是"不再每发都精准"：每发开火前掷一次，没掷中 ⇒ 退回随机。
+ *
+ * ⚠ 普通节点/撤离战用**卡上**的 `foeTargetingChance`（本次也是 0.4）；这一个常量只管 BOSS。
+ */
+export const WORMHOLE_BOSS_TARGETING_CHANCE = 0.4
+
+/**
  * **把洞内敌卡按层派生**（不改数据文件，与窝点派生 `lairAnomalyOf` 同款做法）：
  * - 威胁：`wormholeFoeThreat(depth, kind)`；
  * - 舰级路径的**绝对值缩放**：按「锚点威胁 → 目标威胁」的比例同乘每个条目的 `hpMul` / `dmgMul`
@@ -179,6 +188,8 @@ export function wormholeCardIdOfFamily(family: WormholeFamily | undefined, seed:
  *   （总战力守恒，与设计稿 §3 表"同一威胁带里分几波"一致）；
  * - **选靶模式**（船长 2026-09-13 定）：普通节点 = 卡上标的那个；**BOSS 一律「打最大的」**；
  *   撤离战沿用卡口径。
+ * - **选靶倾向概率**（船长 2026-09-14 定 0.6）：模式之外再挂一个概率——普通节点/撤离战取**卡上**的
+ *   `foeTargetingChance`，BOSS 取 `WORMHOLE_BOSS_TARGETING_CHANCE`；没写 = 1（铁律，不掷骰）。
  * 旧路径卡（没写 `ships`）不缩放条目，只改 `threat`（曲线自己会算血与火力）。
  */
 export function wormholeAnomalyOf(
@@ -239,7 +250,9 @@ export function wormholeAnomalyOf(
           waves: perWaveUnits.map((units) => ({ units: Math.max(1, units), hpShare: 1 })),
         }
       : {}),
-    // 层末 BOSS 专挑最大的船（船长 2026-09-13 的五模式里，「打最大的」落在 BOSS 上）
+    // 层末 BOSS 专挑最大的船（船长 2026-09-13 的五模式里，「打最大的」落在 BOSS 上）；
+    // **选靶倾向概率**（船长 2026-09-14「挨个定为 60%」）：BOSS 也概率化——模式不变，只是不再每发都精准。
     foeTargeting: kind === 'boss' ? 'largest' : (base.foeTargeting ?? 'random'),
+    foeTargetingChance: kind === 'boss' ? WORMHOLE_BOSS_TARGETING_CHANCE : (base.foeTargetingChance ?? 1),
   }
 }
