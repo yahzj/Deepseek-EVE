@@ -97,9 +97,15 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
   const loadRaw = fleet.droneLoad ?? {}
   const droneLoad: Record<string, number> = {}
   for (const [id, n] of Object.entries(loadRaw)) if (n > 0) droneLoad[id] = n
+  const fitted = trimFitted(fleet.fitted)
+  // ⚠ **空装配不许存**：与 `save.ts` 清洗的「全空方案丢弃」对齐——否则玩家存下的空方案会在读档时
+  //   无声消失（运行时冒烟实测发现）。要清空装配请用「一键卸下全部装备」。
+  if (fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0) {
+    return { ok: false, error: '这艘船现在没装任何装备、机舱也是空的：先装几件再保存（要清空装配请用「一键卸下全部装备」）。' }
+  }
   const preset: ShipFitPreset = {
     name: finalName,
-    fitted: trimFitted(fleet.fitted),
+    fitted,
     ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
   }
   if (at >= 0) list[at] = preset

@@ -109,8 +109,21 @@ describe('装配方案（预设）：保存', () => {
     expect(fitPresetBrief(list[0]!)).toBe('装备 2 件（高 1 / 中 0 / 低 1） · 无人机 1 型 2 架')
   })
 
+  it('空装配不许存（与清洗层「全空丢弃」对齐）', () => {
+    const { state, ctx, uid } = world()
+    const r = saveFitPreset(state, ctx, uid)
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('一键卸下全部装备')
+    expect(fitPresetsOf(state, "sh-fit").length).toBe(0)
+    // 只装一件（或只装无人机）就能存
+    addWare(state, 'drone-x', 1)
+    expect(adjustDroneLoad(state, ctx, 'drone-x', 1, uid).ok).toBe(true)
+    expect(saveFitPreset(state, ctx, uid).ok).toBe(true)
+  })
+
   it('每型最多 3 套 · 同名可覆盖 · 改名（同名拒绝）· 删除', () => {
     const { state, ctx, uid } = world()
+    place(state, uid, 'high', 0, 'mod-gun') // 空装配不许存（见上一条用例）⇒ 先装一件
     expect(saveFitPreset(state, ctx, uid, '甲').ok).toBe(true)
     expect(saveFitPreset(state, ctx, uid, '乙').ok).toBe(true)
     expect(saveFitPreset(state, ctx, uid, '丙').ok).toBe(true)
