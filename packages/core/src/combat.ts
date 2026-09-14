@@ -2632,6 +2632,16 @@ export function startBattleFor(
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
   if (!me) return null
+  /**
+   * **满值上限**（血条分母）——必须在**承伤持久化之前**留一份。
+   *
+   * ⚠ 2026-09-14 修船长报障「**虫洞战斗中，我方舰船的血量上限显示不正确**」：洞内多舰路径把
+   * `hpMax` 取自**打完折之后**的规格（下面那两行 `me.hp.a *= armorMul`），于是"上限"跟着场间残余
+   * 一起缩水（装甲剩 60% ⇒ 血条分母只有满值的 60%、开局读作满格）；而**单船路径的视图上限**
+   * （`battleArcsFor` 的 `maxHp.me`）用的是**现建的满值规格** ⇒ 洞外 60%、洞内 100%，两条路不一致。
+   * 语义定案：**上限恒为该舰的满值**，承伤持久化只打"当前值"（与护盾每场满值重建同一条口径）。
+   */
+  const meFullHp = { ...me.hp }
   // P0 承伤持久化：装甲/结构（=耐久合并属性）按场间残余开局；护盾每场满值重建
   const fleetShip = state.fleet[shipId]
   if (fleetShip) {
@@ -2659,6 +2669,13 @@ export function startBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
+  /**
+   * **把血条分母修回满值**（2026-09-14 修船长报障「虫洞战斗中，我方舰船的血量上限显示不正确」）：
+   * `createBattleState` 是按"传入规格"写 `hp`/`hpMax` 的，而上面已经把规格的装甲/结构按场间残余打过折
+   * ⇒ 分母跟着缩水。这里显式改回**满值**，只让 `hp`（当前值）吃那份折扣。
+   */
+  const meRt0 = battle.units['player']
+  if (meRt0) meRt0.hpMax = meFullHp
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
@@ -2891,6 +2908,13 @@ export function startFleetBattleFor(
   const fleet: NonNullable<import('./state').BattleState['myFleet']> = []
   /** 逐船规格（弹药装载要按船各算一次，故留一份） */
   const specOf = new Map<string, UnitSpec>()
+  /**
+   * **逐船满值三层血**（血条分母）——必须在承伤持久化**之前**留一份。
+   * ⚠ 2026-09-14 修船长报障「**虫洞战斗中，我方舰船的血量上限显示不正确**」：见 `startBattleFor`
+   * 里同款注释（洞内多舰路径原先拿"打完折的规格"当初始 `hpMax` ⇒ 上限凭空缩水、与洞外口径不一致）。
+   * 语义定案：**上限恒为该舰满值**，承伤持久化只打"当前值"。
+   */
+  const fullHpOf = new Map<string, { s: number; a: number; h: number }>()
   for (let i = 0; i < ordered.length; i++) {
     const sid = ordered[i]!
     const spec = createPlayerSpec(state, ctx, sid)
@@ -2900,6 +2924,7 @@ export function startFleetBattleFor(
       continue
     }
     spec.tag = i === 0 ? 'player' : `ally-${i}`
+    fullHpOf.set(spec.tag, { ...spec.hp })
     // P0 承伤持久化：装甲/结构（=耐久合并属性）按**各自**场间残余开局；护盾每场满值重建
     const fleetShip = state.fleet[sid]
     if (fleetShip) {
@@ -2954,6 +2979,15 @@ export function startFleetBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
+  /**
+   * **逐船把血条分母修回满值**（2026-09-14 修船长报障「虫洞战斗中，我方舰船的血量上限显示不正确」）：
+   * `createBattleState` 按"传入规格"写 `hp`/`hpMax`，而上面已按各舰的场间残余打过折 ⇒ 分母跟着缩水
+   * （洞内 4 条舰的血条开局全是满格、上限比洞外小）。这里显式改回**各自满值**。
+   */
+  for (const [tag, full] of fullHpOf) {
+    const rt = battle.units[tag]
+    if (rt) rt.hpMax = full
+  }
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。

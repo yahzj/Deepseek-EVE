@@ -354,3 +354,68 @@ describe('虫洞 · 多单位战斗状态随档', () => {
     expect(back.units['ally-1']!.hp).toEqual(battle.units['ally-1']!.hp)
   })
 })
+
+/**
+ * **血条上限（`hpMax`）= 满值，不是"打完折的上限"**（2026-09-14 修船长报障
+ * 「**虫洞战斗中，我方舰船的血量上限显示不正确**」）。
+ *
+ * 根因：`createBattleState` 是照"传入规格"写 `hp`/`hpMax` 的，而 P0 承伤持久化会先把规格的
+ * 装甲/结构按**各舰场间残余**打折 ⇒ 洞内多舰路径的**分母跟着缩水**（装甲剩 60% ⇒ 上限只有满值
+ * 的 60%、血条开局读作满格）。洞外单船路径的视图上限（`battleArcsFor` 的 `maxHp.me`）用的是
+ * **现建的满值规格** ⇒ 同一个"上限"两条路两个值，船长在洞里一眼就看出来了。
+ *
+ * 定案（本次）：**上限恒为该舰满值**；承伤持久化只打"当前值"（与"护盾每场满值重建"同一条口径）。
+ * 三面都钉住：① 多舰路径 ② 单船路径 ③ **视图上限与运行时上限同源**（船长看到的就是这一条）。
+ */
+describe('虫洞 · 血条上限恒为满值（2026-09-14 船长报障修复）', () => {
+  it('多舰路径：受伤的僚舰「当前值打折、上限仍是满值」，且视图上限与运行时同源', () => {
+    const state = fresh()
+    const leader = addShip(state, 'sh-thresher')
+    const ally = addShip(state, 'sh-mako')
+    state.shipId = leader
+    // 僚舰带伤入场：装甲剩 50%、结构剩 40%
+    state.fleet[ally]!.armorPct = 0.5
+    state.fleet[ally]!.durability = 0.4
+    const full = createPlayerSpec(state, ctx, ally)!
+    const battle = startFleetBattleFor(state, ctx, [leader, ally], CARD, 0)!
+    const rt = battle.units['ally-1']!
+    // ① 上限 = 满值（**不是**打折后的值）
+    expect(rt.hpMax).toEqual({ s: full.hp.s, a: full.hp.a, h: full.hp.h })
+    // ② 当前值吃那份折扣（护盾不吃：每场满值重建）
+    expect(rt.hp.s).toBeCloseTo(full.hp.s, 6)
+    expect(rt.hp.a).toBeCloseTo(full.hp.a * 0.5, 6)
+    expect(rt.hp.h).toBeCloseTo(full.hp.h * 0.4, 6)
+    expect(rt.hp.a).toBeLessThan(rt.hpMax!.a) // 血条开局就该**不是**满格
+    // ③ 视图上限 = 运行时上限（修前洞内这两者不等 —— 舰船卡片上的分母取自 hpMax）
+    const arcs = battleArcsFor(state, ctx, { battle, anomaly: ctx.anomalies.get(CARD)!, leaderShipId: leader })!
+    expect(arcs.maxHp.me).toEqual(battle.units['player']!.hpMax)
+    const viewAlly = arcs.myUnits.find((u) => u.tag === 'ally-1')!
+    expect(viewAlly.hpMax).toEqual(rt.hpMax)
+    expect(viewAlly.hp.a).toBeCloseTo(full.hp.a * 0.5, 6)
+  })
+
+  it('单船路径同款：主控带伤入场时上限仍是满值（与洞外读数一致）', () => {
+    const state = fresh()
+    const uid = addShip(state, 'sh-thresher')
+    state.shipId = uid
+    state.fleet[uid]!.armorPct = 0.6
+    state.fleet[uid]!.durability = 0.3
+    const full = createPlayerSpec(state, ctx, uid)!
+    const battle = startBattleFor(state, ctx, uid, CARD, 0)!
+    const rt = battle.units['player']!
+    expect(rt.hpMax).toEqual({ s: full.hp.s, a: full.hp.a, h: full.hp.h })
+    expect(rt.hp.a).toBeCloseTo(full.hp.a * 0.6, 6)
+    expect(rt.hp.h).toBeCloseTo(full.hp.h * 0.3, 6)
+  })
+
+  it('满血船零变化：上限 = 当前值（旧档与既有标定读数不受影响）', () => {
+    const state = fresh()
+    const leader = addShip(state, 'sh-thresher')
+    const ally = addShip(state, 'sh-mako')
+    state.shipId = leader
+    const battle = startFleetBattleFor(state, ctx, [leader, ally], CARD, 0)!
+    for (const tag of ['player', 'ally-1']) {
+      expect(battle.units[tag]!.hpMax).toEqual(battle.units[tag]!.hp)
+    }
+  })
+})
