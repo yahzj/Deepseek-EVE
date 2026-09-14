@@ -504,6 +504,51 @@ export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }>
   plasma: { fly: 130, dash: null },
 }
 
+/**
+ * **开火事件 → 弹道两端的锚点**（纯函数 · 2026-09-14 抽出，为的是**可测**）。
+ *
+ * 船长报障：「**多个对多个敌人的战斗中，敌方的弹道依旧是瞄准我方最右上角的舰船。**」
+ * 根因 = 旧实现在组件内联，且**敌方那一支把落点写死成主控锚**（`dst = layFx.me`）、
+ * 起点还拿"我方 tag"去查"敌方行表"（恒 −1 ⇒ 塌成 `foe[0]`）。引擎侧一直是对的
+ * （`to: gtgt.spec.tag`，且每发开火前重选靶），所以这是**纯演出层的坐标解析 bug**。
+ *
+ * 口径（两侧对称）：
+ * - **我方开火**：起点 = 发射舰锚（`tag`，单船/无人机回落主控）；落点 = 目标敌舰锚（`to`，撤队回落首位）。
+ * - **敌方开火**：起点 = **实际开火的那艘敌舰**锚（`tag` 查 `foeAnchors`，取不到回落首位）；
+ *   落点 = **被瞄准的我方舰**锚（`to` 查 `meAnchors`）—— 缺 `to`（旧事件/测试构造）或
+ *   单船路径（`meAnchors` 为空表）⇒ 回落 `meFallback`（= 主控锚，与旧版逐像素一致）。
+ *
+ * 返回值 `null` = 两侧锚点缺一（调用方跳过这一发）。
+ */
+function resolveBoltAnchors(args: {
+  side: 'me' | 'foe'
+  /** 发射舰 tag（`'player'` / `'ally-N'` / `'foe-N'`） */
+  tag: string
+  /** 目标 tag（V18B · 可缺省：旧事件/测试构造） */
+  to?: string
+  /** 敌方**存活行序**（只含敌方 tag） */
+  rowFxTags: readonly string[]
+  /** 我方逐舰锚点（多舰路径才有；单船路径为空表） */
+  meAnchors: ReadonlyMap<string, Anchor>
+  /** 主控锚（单船路径与所有回落的落点） */
+  meFallback: Anchor
+  /** 敌方逐舰锚点（与 `rowFxTags` 同序） */
+  foeAnchors: readonly Anchor[]
+}): { src: Anchor; dst: Anchor } | null {
+  const { side, tag, to, rowFxTags, meAnchors, meFallback, foeAnchors } = args
+  const foe0 = foeAnchors[0]
+  if (side === 'me') {
+    const src = meAnchors.get(tag) ?? meFallback
+    const idx = to !== undefined ? rowFxTags.indexOf(to) : -1
+    const dst = (idx >= 0 ? foeAnchors[idx] : undefined) ?? foe0
+    return src && dst ? { src, dst } : null
+  }
+  const sIdx = rowFxTags.indexOf(tag)
+  const src = (sIdx >= 0 ? foeAnchors[sIdx] : undefined) ?? foe0
+  const dst = (to !== undefined ? meAnchors.get(to) : undefined) ?? meFallback
+  return src && dst ? { src, dst } : null
+}
+
 /** 开火事件 → 弹道几何：起点 = 源舰炮口（2026-09-10 起优先真实炮口 muzzle；muzzle 为空时
  *  回退舰艏前缘，nose 由调用侧按**该舰体积**算出，见 `noseOf(size)`），终点 = 目标舰枪口侧命中点。
  *  换算：挂点为 240×110 画布本地坐标 → 画面 px = 锚点 + 画布偏移 × (artW/240)；
@@ -600,6 +645,7 @@ export {
   HP_LAYER_COLOR,
   HpTri,
   boltGeom,
+  resolveBoltAnchors,
   lastBattleReport,
 }
 export type { StarPt, Dims, Anchor, BoltV, FlashV, Stage, OutroSnap, BarGeom, FoeSlot, FoeFormation }
