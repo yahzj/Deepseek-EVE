@@ -670,8 +670,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     const measure = (): void => {
       const titleEl = el.querySelector('.app-mkt-book-title')
       const rowEl = el.querySelector('.app-mkt-depth')
-      const titleH = (titleEl ? titleEl.getBoundingClientRect().height : 16.5) + 3 // 标题行高 + 下边距 3px
-      const rowH = rowEl ? rowEl.getBoundingClientRect().height : 16.5
+      // ⚠ 实测值必须**夹到合理区间**：手机旋转模式（`is-mobile-rot`）下首次测量可能落在布局未定型的瞬间
+      // ——实测到过「一行 166px」，写进 `min-height` 后把卡片顶出 ~780px 空白，且此后尺寸不再变、
+      // ResizeObserver 也不再触发 ⇒ 永久卡死。行高/标题高的正常区间是 10~40px，越界就用标称值。
+      const clampPx = (v: number, fallback: number): number => (v >= 10 && v <= 40 ? v : fallback)
+      const titleH = clampPx(titleEl ? titleEl.getBoundingClientRect().height : 16.5, 16.5) + 3 // 标题行高 + 下边距 3px
+      const rowH = clampPx(rowEl ? rowEl.getBoundingClientRect().height : 16.5, 16.5)
       // 5 档下限：**只在数据确实有 ≥5 档时**才把这块撑到 5 档高（数据本来不足 5 档就按内容高 ——
       // 否则白占近 20px，紧窗口里正好把面板顶出一条内滚，实测 15/123 就是这么来的）
       const levels = (rows: Array<{ price: number }>): number => new Set(rows.map((o) => o.price)).size
