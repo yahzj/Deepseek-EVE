@@ -70,6 +70,12 @@ export interface ActivityView {
   stopable: boolean
   /** 不可终止时的原因说明 */
   stopReason?: string
+  /**
+   * **这条 AI 活动归哪一枚徽标**（船长 2026-09-13：「活动界面 AI 图标的鼠标悬浮提示改为显示
+   * AI 正在干哪些活动」）：`ship` = AI 副船任务（采矿/远征/打捞/掩护巡逻）· `industry` = 站内
+   * AI 作业（精炼炉/回收炉/制造线）。只对 `kind === 'ai'` 的条目有值 ⇒ 现成 UI 不用去猜 id 前缀。
+   */
+  aiGroup?: 'ship' | 'industry'
   /** 终止动作（stopable=true 时非空） */
   stop: ActivityStopKind | null
   /** 终止动作参数（cancel-ai 时为副船 id） */
@@ -187,6 +193,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     out.push({
       id: aiProd ? `ai-prod-m:${mfv.id}` : `manufacture:${mfv.id}`,
       kind: aiProd ? 'ai' : 'manufacture',
+      ...(aiProd ? { aiGroup: 'industry' as const } : {}),
       label: mfv.productName,
       sub: `${who} · ${mfv.kind === 'ship' ? '造船中' : '制造中'}`,
       percent: mfv.percent,
@@ -209,6 +216,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     out.push({
       id: aiProd ? `ai-prod-r:${rv.id}` : `refine:${rv.id}`,
       kind: aiProd ? 'ai' : 'refine',
+      ...(aiProd ? { aiGroup: 'industry' as const } : {}),
       label: `${isWreck ? '残骸回收' : '精炼炉'} · ${rv.itemName}`,
       sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / ${stockNote}（每批 ${rv.batchUnits} 单位）`,
       percent: rv.percent,
@@ -321,6 +329,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
+        aiGroup: 'ship',
         label: `${shipName} · 采矿`,
         sub: `${beltName}（${phase}）`,
         percent: null,
@@ -336,6 +345,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
+        aiGroup: 'ship',
         label: `${shipName} · 远征`,
         sub: `${aName}（${phase}）`,
         percent: null,
@@ -351,6 +361,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
+        aiGroup: 'ship',
         label: `${shipName} · 打捞`,
         sub: `${gName}（${phase}）`,
         percent: null,
@@ -366,6 +377,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
+        aiGroup: 'ship',
         label: `${shipName} · 掩护巡逻`,
         sub: task.phase === 'out' ? `前往 ${gName}（去程 · 剩约 ${Math.max(1, Math.round(remain / 1000))} 秒）` : `留守「${gName}」`,
         percent: null,
