@@ -684,7 +684,8 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
  * 载入存档后的装备修复（V17/V18；幂等）：把装配中/装备库里的已下架型号替换为迁移款、
  * 悬空件退回；把每船位数组长度与船槽布局对齐（超长尾件退库、短位补空——含 v17 档
  * 六槽→18 位数组迁移后的 2/2/2 过渡形状）；并把停在**中/低槽的作业装备**（采集器 / 打捞器）
- * 归位高槽（船长 2026-09-14「改回高槽」；高槽满则原地不动）。应在 ctx 就绪后、离线结算前调用。
+ * 归位高槽（船长 2026-09-14「改回高槽」；高槽满则把最后装上的那件退回装备库腾位；在洞编队跳过）。
+ * 应在 ctx 就绪后、离线结算前调用。
  */
 export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
   let fittedMoved = 0
@@ -692,7 +693,10 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
   let bayMoved = 0
   let aligned = 0
   let rackMoved = 0
-  for (const ship of Object.values(state.fleet)) {
+  let rackFreed = 0
+  /** 在洞编队（uid）——与「进洞船只所有行为都锁定（含改装）」同口径：归位时跳过，出洞后再载入即归位 */
+  const inRun = new Set<string>(state.wormhole?.run?.fleet ?? [])
+  for (const [uid, ship] of Object.entries(state.fleet)) {
     const fitted = ship?.fitted
     if (!fitted) continue
     const shipDef = ship?.defId ? ctx.ships.get(ship.defId) : undefined
@@ -740,22 +744,41 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
       }
     }
     // 2.5) **作业装备归位高槽**（船长 2026-09-14「改回高槽」）：2026-09-13～09-14 短暂的低槽口径下
-    //      存下的档，采集器 / 打捞器可能停在中/低槽 ⇒ 高槽有空位就搬回去（幂等）。
-    //      只管作业装备两族（不做通用归位，免得动别的件）；高槽满 ⇒ **原地不动**：
-    //      绝不挤掉已装件、绝不下架（宁可留着错位，也不动玩家配置）。
-    const highBays = rackBays(fitted, 'high')
-    for (const from of ['mid', 'low'] as const) {
-      const bays = rackBays(fitted, from)
-      for (let i = 0; i < bays.length; i++) {
-        const id = bays[i]
-        if (!id) continue
-        const slot = ctx.modules.get(id)?.slot
-        if (slot !== 'miner' && slot !== 'salvager') continue
-        const free = highBays.findIndex((x) => x === null)
-        if (free < 0) break
-        highBays[free] = id
-        bays[i] = null
-        rackMoved += 1
+    //      存下的档，采集器 / 打捞器可能停在中/低槽 ⇒ 搬回高槽（幂等）。三条口径：
+    //      · 高槽有空位 ⇒ 直接搬；高槽满 ⇒ 把**最后装上的那件**（跳过作业装备本身、跳过空位）
+    //        退回装备库腾位（船长 2026-09-14 裁定：「**自动归位，被挤掉的炮退回装备库**」——
+    //        件不丢、随时可装回，日志写明件数）；
+    //      · **只管作业装备两族**（不做通用归位，免得动别的件）；
+    //      · **在洞编队跳过**（`inRun`）：进洞后改装是锁的，归位也不该在途改战力 ⇒ 出洞后再载入即归位。
+    if (!inRun.has(uid)) {
+      const highBays = rackBays(fitted, 'high')
+      for (const from of ['mid', 'low'] as const) {
+        const bays = rackBays(fitted, from)
+        for (let i = 0; i < bays.length; i++) {
+          const id = bays[i]
+          if (!id) continue
+          const slot = ctx.modules.get(id)?.slot
+          if (slot !== 'miner' && slot !== 'salvager') continue
+          let free = highBays.findIndex((x) => x === null)
+          if (free < 0) {
+            // 高槽满：腾出最后一个"非作业装备"的已装件（退回装备库）
+            for (let j = highBays.length - 1; j >= 0; j--) {
+              const occupant = highBays[j]
+              if (!occupant) continue
+              const occSlot = ctx.modules.get(occupant)?.slot
+              if (occSlot === 'miner' || occSlot === 'salvager') continue
+              highBays[j] = null
+              state.moduleBay[occupant] = countModule(state, occupant) + 1
+              rackFreed += 1
+              free = j
+              break
+            }
+          }
+          if (free < 0) break // 整个高槽都是作业装备/空位异常 ⇒ 无处可搬，留着不错位更多
+          highBays[free] = id
+          bays[i] = null
+          rackMoved += 1
+        }
       }
     }
   }
@@ -767,14 +790,15 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
     delete state.moduleBay[id]
     bayMoved += n
   }
-  const total = fittedMoved + slotEmptied + bayMoved + aligned + rackMoved
+  const total = fittedMoved + slotEmptied + bayMoved + aligned + rackMoved + rackFreed
   if (total > 0) {
     addLog(
       state,
       'info',
       `装备修复：旧件按动能款迁移 ${fittedMoved + bayMoved} 件；悬空退回 ${slotEmptied} 件；` +
         (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : '') +
-        (rackMoved > 0 ? `作业装备（采集器 / 打捞器）归位到高槽 ${rackMoved} 件。` : ''),
+        (rackMoved > 0 ? `作业装备（采集器 / 打捞器）归位到高槽 ${rackMoved} 件。` : '') +
+        (rackFreed > 0 ? `高槽已满，为归位腾出的 ${rackFreed} 件已退回装备库（随时可装回）。` : ''),
     )
   }
   // 槽位对齐可能裁掉甲板扩展 → 机舱变小：超出容量的无人机同样自动卸下（2026-09-10 船长口径）
