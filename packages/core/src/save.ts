@@ -2473,6 +2473,8 @@ function normalizeState(raw: unknown): GameState {
     for (const it of list) {
       const p = cleanHoldPlacement(it)
       if (!p) continue
+      // 横向越界（`x + w > cols`）在这两块板上都没有意义（货仓宽度固定、临时空间固定 4 列）⇒ 丢弃
+      if (p.x + p.w > (cols >= 1 && cols <= 32 ? cols : WORMHOLE_HOLD_COLS)) continue
       const cells: string[] = []
       let clash = false
       for (let dy = 0; dy < p.h && !clash; dy++) {
@@ -2631,6 +2633,8 @@ function normalizeState(raw: unknown): GameState {
             /**
              * **临时空间**（2026-09-13 船长：大件货先进临时空间让玩家协调）：
              * 一种物品一条，只留"id 非空 + 单位数为正"的条目；坏值丢条、空数组不写（零迁移）。
+             * ⚠ **2026-09-14 起这是老档只读字段**（新的格子账本是 `tempGrid`）：读档后由
+             * `wormholeNormalizeLegacyTemp` 一次性换算，换算完就清掉 ⇒ 新档里不会再出现。
              */
             ...(Array.isArray(rRaw.temp)
               ? (() => {
@@ -2641,6 +2645,11 @@ function normalizeState(raw: unknown): GameState {
                   return list.length > 0 ? { temp: list } : {}
                 })()
               : {}),
+            /**
+             * **临时空间的格子账本**（2026-09-14：4 列 × 8 行 = 32 格）：与 `hold` 同一套清洗
+             * （坏件丢弃、重叠丢弃、越界保留）。**可选字段 ⇒ 零迁移**（老档没有 = 临时空间是空的）。
+             */
+            ...(cleanWormholeHold(rRaw.tempGrid) !== undefined ? { tempGrid: cleanWormholeHold(rRaw.tempGrid) } : {}),
             ...(Math.floor(num(rRaw.bossCleared)) > 0
               ? { bossCleared: Math.floor(num(rRaw.bossCleared)) }
               : {}),

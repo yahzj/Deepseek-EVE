@@ -132,8 +132,9 @@ export interface WormholeHoldState {
   placements: WormholeHoldPlacement[]
 }
 
-export function makeHoldState(): WormholeHoldState {
-  return { cols: WORMHOLE_HOLD_COLS, placements: [] }
+/** 造一块新的格板（**货仓 8 列** 与 **临时空间 4 列** 用同一个类型、同一套几何） */
+export function makeHoldState(cols: number = WORMHOLE_HOLD_COLS): WormholeHoldState {
+  return { cols: Math.max(1, Math.floor(cols)), placements: [] }
 }
 
 /**
@@ -581,22 +582,70 @@ export function holdDropWithGrab(
 ): { ok: boolean; error?: string; x?: number; y?: number } {
   const p = hold.placements.find((q) => q.id === id)
   if (!p) return { ok: false, error: '没有这个件。' }
+  const spot = pickDropSpot(hold, { w: p.w, h: p.h }, placementFill(p), x, y, capacity, grab, p.id)
+  if (!spot) return { ok: false, error: '这里放不下（它周围没有能摆下这块地方的位置）。' }
+  p.x = spot.x
+  p.y = spot.y
+  return { ok: true, x: spot.x, y: spot.y }
+}
+
+/**
+ * **一件东西从一块格板搬到另一块**（船长 2026-09-14：临时空间与货仓之间来回拖）：
+ * 目标板上按同一套"抓取偏移 + 越界夹回"找落点（`pickDropSpot`），**找得到才真搬**
+ * （先从来源板摘掉、再落到目标板；失败 ⇒ 两块板都不动）。
+ *
+ * 形状/实占格（`fill`）原样带过去 ⇒ 形状件仍是 2×2、末行不满的散货件仍只占它那几格。
+ * `x/y` 省略 = **不指定落点**（找目标板上第一个放得下的空位，供"放进货仓"这类按钮用）。
+ */
+export function holdTransferTo(
+  from: WormholeHoldState,
+  to: WormholeHoldState,
+  id: string,
+  toCapacity: number,
+  x?: number,
+  y?: number,
+  grab?: { dx: number; dy: number },
+): { ok: boolean; error?: string; x?: number; y?: number } {
+  const p = from.placements.find((q) => q.id === id)
+  if (!p) return { ok: false, error: '没有这个件。' }
   const shape = { w: p.w, h: p.h }
   const fill = placementFill(p)
-  const maxX = Math.max(0, hold.cols - p.w)
-  const maxY = Math.max(0, holdRows(capacity, hold.cols) - p.h)
+  const spot =
+    x === undefined || y === undefined
+      ? findFreeSpot(to, shape, toCapacity, false, fill)
+      : pickDropSpot(to, shape, fill, x, y, toCapacity, grab ?? { dx: 0, dy: 0 })
+  if (!spot) return { ok: false, error: '那边放不下这件东西（先整理或丢弃腾位置）。' }
+  from.placements = from.placements.filter((q) => q.id !== id)
+  p.x = spot.x
+  p.y = spot.y
+  to.placements.push(p)
+  return { ok: true, x: spot.x, y: spot.y }
+}
+
+/**
+ * **落点候选**（拖拽落位的唯一几何判据 · 两块格板共用）：
+ * **界内就严格、越界才夹** —— 理想左上角 = 光标格 − 抓取偏移；
+ * - 理想落点落在**可用格**里 ⇒ 只试它一个（不把玩家想放的那格悄悄换成别处）；
+ * - 越界 ⇒ 依次试「夹回网格」「光标格当左上角」「夹回后的光标格」，取第一个放得下的。
+ */
+export function pickDropSpot(
+  board: WormholeHoldState,
+  shape: WormholeHoldShape,
+  fill: number | undefined,
+  x: number,
+  y: number,
+  capacity: number,
+  grab: { dx: number; dy: number },
+  skipId?: string,
+): { x: number; y: number } | null {
+  const maxX = Math.max(0, board.cols - shape.w)
+  const maxY = Math.max(0, holdRows(capacity, board.cols) - shape.h)
   const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
   const dx = Math.max(0, Math.floor(grab.dx))
   const dy = Math.max(0, Math.floor(grab.dy))
   const ix = x - dx
   const iy = y - dy
-  /**
-   * **界内就严格、越界才夹**：
-   * - 理想左上角落在**可用格**里 ⇒ 只试它一个（落不下就报错）—— 避免"明明想放到某一格、却被挪去别处"的意外；
-   * - 理想左上角越界 ⇒ 依次试「夹回网格」「光标格当左上角」「夹回后的光标格」
-   *   （船长那条报障正是靠第一条：件在第一排时把它沿第一排挪过去）。
-   */
-  const strict = placementInBounds(ix, iy, shape, capacity, hold.cols, fill)
+  const strict = placementInBounds(ix, iy, shape, capacity, board.cols, fill)
   const cands: Array<[number, number]> = strict
     ? [[ix, iy]]
     : [
@@ -610,12 +659,10 @@ export function holdDropWithGrab(
     const k = `${cx},${cy}`
     if (tried.has(k)) continue
     tried.add(k)
-    if (!canPlace(hold, cx, cy, shape, capacity, p.id, fill)) continue
-    p.x = cx
-    p.y = cy
-    return { ok: true, x: cx, y: cy }
+    if (!canPlace(board, cx, cy, shape, capacity, skipId, fill)) continue
+    return { x: cx, y: cy }
   }
-  return { ok: false, error: '这里放不下（它周围没有能摆下这块地方的位置）。' }
+  return null
 }
 
 /** 移除一件（**抛弃**就是它；返回被移除的件供日志/读数） */

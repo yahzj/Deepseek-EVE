@@ -831,6 +831,8 @@ export {
   WORMHOLE_TURN_PER_PICKUP,
   // 临时空间的格数上限（大件货缓冲）
   WORMHOLE_TEMP_CELLS,
+  WORMHOLE_TEMP_COLS,
+  WORMHOLE_TEMP_ROWS,
   wormholeAdmission,
   wormholeBagSlots,
   wormholeBagUsage,
@@ -992,10 +994,17 @@ export {
   wormholeDiscardToFit,
   wormholeOverloadBlockReason,
   wormholeTakePileAt,
-  // 临时空间（船长 2026-09-13：大件货先进临时空间，让玩家协调）
+  // 临时空间（船长 2026-09-13：大件货先进临时空间，让玩家协调 → 2026-09-14：4×8 = 32 格的格子区）
   wormholeTempUsage,
-  wormholeTempStow,
-  wormholeTempDiscard,
+  wormholeTempPending,
+  wormholeTempAddShape,
+  wormholeTempStowPiece,
+  wormholeTempDiscardPiece,
+  wormholeTempStowAll,
+  wormholeTempDiscardAll,
+  wormholeTempBoard,
+  wormholeNormalizeLegacyTemp,
+  wormholeSyncMatterTurns,
   wormholeStowOrTemp,
   // 散货占格（船长 2026-09-13：「必须是矩形」⇒ 全仓唯一一把尺）
   wormholeCargoCellsOf,
@@ -1023,6 +1032,8 @@ export {
   holdCellsUsed,
   holdCompact,
   holdDropWithGrab,
+  holdTransferTo,
+  pickDropSpot,
   holdMove,
   holdRemove,
   holdSwap,

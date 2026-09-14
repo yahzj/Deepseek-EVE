@@ -37,6 +37,11 @@ import {
   wormholeExtractThreat,
   wormholeLayerThreat,
   WORMHOLE_HOLD_COLS,
+  /** 临时空间（船长 2026-09-14）：4 列 × 8 行 = 32 格 */
+  WORMHOLE_TEMP_CELLS,
+  WORMHOLE_TEMP_COLS,
+  WORMHOLE_TEMP_ROWS,
+  makeHoldState,
   durabilityOf,
   holdRows,
   placementCells,
@@ -63,13 +68,16 @@ import {
   wormholeCargoSlotsOf,
   placementCellsCount,
 } from '@whale/core'
-import type { WormholeGridState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
+import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
 import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 
 type WhTab = 'prep' | 'map' | 'bag'
+
+/** 两块格板：货仓（8 列）/ **临时空间**（4 列 × 8 行 = 32 格 · 船长 2026-09-14） */
+type BoardKind = 'hold' | 'temp'
 
 const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
 
@@ -311,6 +319,12 @@ export function WormholePanel({
   const [dissolveFx, setDissolveFx] = useState<{ keys: string[]; nonce: number } | null>(null)
   /** 撤离的**待确认态**（两讨伐确认：第一次点只亮警告、第二次点才真撤）——5 秒不点自动解除 */
   const [extractAsk, setExtractAsk] = useState(false)
+  /**
+   * **临时空间待清空确认**（船长 2026-09-14：「离开背包页时丢弃并失效」＋「强制二选一：丢掉 或 放回」
+   * ＋「撤离前必须清空」）：三个触发口（切页 / 关面板 / 撤离）都在面板这一层；确认条画在背包页里
+   * ⇒ 触发时**先把页签切到背包**再弹条。
+   */
+  const [tempAsk, setTempAsk] = useState<null | 'tab' | 'close' | 'extract'>(null)
   useEffect(() => {
     if (!extractAsk) return
     const t = window.setTimeout(() => setExtractAsk(false), 5000)
@@ -596,6 +610,12 @@ export function WormholePanel({
   }
 
   function doExtract(): void {
+    // **临时空间没清空 ⇒ 先切到背包页弹确认条**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）
+    if (engine.wormholeTempPending().count > 0) {
+      setTab('bag')
+      setTempAsk('extract')
+      return
+    }
     const r = engine.wormholeExtract()
     if (!r.ok) {
       onToast(r.error ?? '无法撤离。', true)
@@ -611,6 +631,49 @@ export function WormholePanel({
         ? '脱离航道：第 1 层没有拦截舰队，货物直接入港。'
         : '⚠ 敌人开始围堵你：撤离战马上开打——打赢才把背包与货柜带回去。',
     )
+  }
+
+  /**
+   * **离开背包页的统一关卡**（船长 2026-09-14：「强制二选一：丢掉 或 放回」）：
+   * 临时空间非空就不放行，弹确认条（逐件列出）；处理完**按原意图继续**（切探索 / 关面板 / 撤离）。
+   */
+  function leaveBagPage(intent: 'tab' | 'close' | 'extract', go: () => void): void {
+    if (engine.wormholeTempPending().count === 0) {
+      go()
+      return
+    }
+    setTab('bag')
+    setTempAsk(intent)
+  }
+
+  /** 处理完临时空间之后，把玩家原本想做的事接着做完（切页那条 = 去探索页） */
+  function resumeAfterTemp(ask: null | 'tab' | 'close' | 'extract'): void {
+    if (ask === 'extract') doExtract()
+    else if (ask === 'close') onClose()
+    else if (ask === 'tab') setTab('map')
+  }
+
+  /** 「丢掉这些」：逐件丢弃（谜质装置一并失效、回合夹紧），清空后按原意图继续 */
+  function tempDiscardAndContinue(): void {
+    const ask = tempAsk
+    const r = engine.wormholeTempDiscardAll()
+    setTempAsk(null)
+    if (r.moved > 0) onToast(`已丢弃临时空间里的 ${r.moved} 件。`, true)
+    resumeAfterTemp(ask)
+  }
+
+  /** 「放回货仓」：逐件尝试（放不下的留在临时空间并提示先整理/抛货） */
+  function tempStowAndContinue(): void {
+    const ask = tempAsk
+    const r = engine.wormholeTempStowAll()
+    if (r.stuck.length > 0) {
+      setTempAsk(null)
+      onToast(`货仓放不下剩下 ${r.stuck.length} 件：先整理/抛货，或选择「丢掉这些」。`, true)
+      return
+    }
+    setTempAsk(null)
+    if (r.moved > 0) onToast(`已把 ${r.moved} 件放回货仓。`)
+    resumeAfterTemp(ask)
   }
 
   /** 打捞/采集按钮的悬浮说明（只在真能用时才渲染按钮，故这里只讲"这一批能回收多少"） */
@@ -766,6 +829,15 @@ export function WormholePanel({
       onToast('交火中不能离开虫洞：打完这一场。', true)
       return
     }
+    /**
+     * **临时空间没清空 ⇒ 先去背包页处理**（船长 2026-09-14：「离开背包页时丢弃并失效」＋
+     * 「强制二选一：丢掉 或 放回」）：不直接关面板，而是**切到背包页并把确认条弹出来**。
+     */
+    if (state.wormhole.run && engine.wormholeTempPending().count > 0) {
+      setTab('bag')
+      setTempAsk('close')
+      return
+    }
     if (state.wormhole.run) engine.wormholeLeave()
     onClose()
   }
@@ -864,7 +936,18 @@ export function WormholePanel({
               <button
                 key={k}
                 className={`app-wh-tab${tab === k ? ' is-active' : ''}`}
-                onClick={() => setTab(k)}
+                onClick={() => {
+                  /**
+                   * **切回探索 = 触发临时空间的丢弃确认**（船长 2026-09-14：
+                   * 「直接将要丢弃的东西放进去后切换回探索界面触发丢弃（但是需要提醒玩家是否要丢弃物品
+                   * 并列出丢弃的物品列表）」）：非空就先弹条，选完才真切过去。
+                   */
+                  if (k === 'bag') {
+                    setTab('bag')
+                    return
+                  }
+                  leaveBagPage('tab', () => setTab(k))
+                }}
               >
                 <span className="app-wh-tab-label">{TAB_LABEL[k]}</span>
                 <span className="app-wh-tab-sub">
@@ -1420,7 +1503,14 @@ export function WormholePanel({
           ) : null}
 
           {!settle && tab === 'bag' && run ? (
-            <WhHold engine={engine} onToast={onToast} />
+            <WhHold
+        engine={engine}
+        onToast={onToast}
+        tempAsk={tempAsk}
+        setTempAsk={setTempAsk}
+        onTempDiscard={tempDiscardAndContinue}
+        onTempStow={tempStowAndContinue}
+      />
           ) : null}
         </div>
       </div>
@@ -1872,7 +1962,23 @@ function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: number, cl
   }
 }
 
-function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+function WhHold({
+  engine,
+  onToast,
+  tempAsk,
+  setTempAsk,
+  onTempDiscard,
+  onTempStow,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 临时空间待清空确认的意图（面板层持有：切页 / 关面板 / 撤离都要过这一关） */
+  tempAsk: null | 'tab' | 'close' | 'extract'
+  setTempAsk: (v: null | 'tab' | 'close' | 'extract') => void
+  /** 「丢掉这些」/「放回货仓」的实际处置（面板层持有，因为它要用 onClose / 撤离继续流程） */
+  onTempDiscard: () => void
+  onTempStow: () => void
+}) {
   const state = engine.state
   const ctx = engine.ctx
   const run = state.wormhole.run!
@@ -1883,9 +1989,15 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
 const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const [discardAsk, setDiscardAsk] = useState<{ id: string; units: number } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  /** 拖的是**哪一块板**上的件（跨板拖 = 货仓 ↔ 临时空间；同板拖 = 移动/换位） */
+  const [dragFrom, setDragFrom] = useState<BoardKind>('hold')
+  /** 临时空间里还摆着的件（非空 ⇒ 离开背包页必须先处理；意图态由面板层持有） */
+  const tempPending = tempInfo.placements
   /** 抓起时压住的是块内哪一格（见 `grabOffsetOf`）：落点要减掉它，抓哪一格拖都算数 */
   const grabRef = useRef({ dx: 0, dy: 0 })
   const cols = WORMHOLE_HOLD_COLS
+  const holdBoard = run.hold ?? makeHoldState()
+  const tempBoard = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS)
   const placements = run.hold?.placements ?? []
   /**
    * **行数要够到"实际摆放件"**（不能只按容量算）：整理时**放不下的件会被排到可用区之外**
@@ -1913,26 +2025,234 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
    * 由 core `holdSwap` 判、界面只报原因）。
    *
    * ⚠ **2026-09-14 修船长报障**（「不是拖拽左上角就提示[这里放不下]」＋「当物品上方处于第一排时」）：
-   * 落位要按**抓取偏移**换算（`grabRef`），且**越界由 core 夹回网格内**（`holdDropWithGrab`）
-   * ——件在第一排时抓它下面那格往第一排拖，理想左上角会落到第 −1 行，旧写法一律白报"放不下"。
+   * 落位要按**抓取偏移**换算（`grabRef`），且**越界由 core 夹回网格内**（`holdDropWithGrab`）。
+   *
+   * ⚠ **2026-09-14 新增跨板**（临时空间改成 4×8 的格子区）：`kind` = 落点所在的板 ——
+   * 同一块板内 = 移动/换位；**跨板**（货仓 ↔ 临时空间）= `wormholeBoardTransfer`（形状/实占格原样带过去）。
    */
-  function dropAt(x: number, y: number): void {
+  function dropAt(kind: BoardKind, x: number, y: number): void {
     const id = dragId
     if (!id) return
-    const target = ownerOf.get(`${x},${y}`)
+    const target = ownerMap(kind).get(`${x},${y}`)
     if (target && target.id !== id) {
       const r = engine.wormholeHoldSwap(id, target.id)
       if (!r.ok) onToast(r.error ?? '换不了位置。', true)
       setDragId(null)
       return
     }
-    const r = engine.wormholeHoldDropAt(id, x, y, grabRef.current)
+    const r =
+      dragFrom === kind
+        ? engine.wormholeHoldDropAt(id, x, y, grabRef.current)
+        : engine.wormholeBoardTransfer(dragFrom, kind, id, x, y, grabRef.current)
     if (!r.ok) onToast(r.error ?? '这里放不下。', true)
     setDragId(null)
   }
 
+  /** 某一板上「格 → 件」的占用表（画格子与判落点都用它） */
+  function ownerMap(kind: BoardKind): Map<string, WormholeHoldPlacement> {
+    const board = kind === 'hold' ? run.hold : run.tempGrid
+    const out = new Map<string, WormholeHoldPlacement>()
+    for (const p of board?.placements ?? []) for (const c of placementCells(p)) out.set(`${c.x},${c.y}`, p)
+    return out
+  }
+
+  /**
+   * **一块格板**（货仓 8 列 / 临时空间 4 列**共用同一套画法**——船长 2026-09-14：
+   * 「背包格宽度是 8 格，那么可以在背包格右边添加一个用于丢弃和调整位置的『小背包』」）。
+   *
+   * ⚠ 写成**普通渲染函数**而不是内层组件：内层组件每次渲染都是"新类型"，React 会把整棵子树
+   * 卸载重建 ⇒ 拖拽中的 DOM 与状态会被打断。
+   */
+  function boardView(
+    kind: BoardKind,
+    board: WormholeHoldState,
+    capacity: number,
+    boardCols: number,
+    boardRows: number,
+    lockedTitle: string,
+  ): JSX.Element {
+    const owner = ownerMap(kind)
+    return (
+      <div
+        className={`app-wh-hold-grid is-${kind}`}
+        style={{ gridTemplateColumns: `repeat(${boardCols}, 1fr)`, gridTemplateRows: `repeat(${boardRows}, 1fr)` }}
+      >
+        {Array.from({ length: boardRows * boardCols }, (_, i) => {
+          const x = i % boardCols
+          const y = Math.floor(i / boardCols)
+          const key = `${kind}-${x},${y}`
+          const locked = i >= capacity
+          const p = owner.get(`${x},${y}`)
+          const isOrigin = p !== undefined && p.x === x && p.y === y
+          const def = p ? ctx.items.get(p.itemId) : undefined
+          const cls = [
+            'app-wh-hold-cell',
+            locked ? 'is-locked' : '',
+            p ? (p.kind === 'cargo' ? 'is-cargo' : 'is-box') : locked ? '' : 'is-free',
+            isOrigin ? 'is-origin' : p ? 'is-body' : '',
+            p && p.kind === 'cargo' && !isOrigin ? 'is-cargobody' : '',
+            dragId !== null && isOrigin ? 'is-dragging' : '',
+          ]
+            .filter((s) => s.length > 0)
+            .join(' ')
+          return (
+            <div
+              key={key}
+              className={cls}
+              title={
+                locked
+                  ? lockedTitle
+                  : p
+                    ? p.kind === 'cargo'
+                      ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货件：占 ${p.w}×${p.h} 格，可拖拽）`
+                      : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，可拖拽）`
+                    : kind === 'hold'
+                      ? '空位：可放货柜'
+                      : '空位：临时空间（离开背包页前必须清空）'
+              }
+              draggable={isOrigin}
+              onPointerDown={(e) => {
+                if (isOrigin && p) {
+                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                }
+              }}
+              onDragStart={() => {
+                if (isOrigin) {
+                  setDragId(p!.id)
+                  setDragFrom(kind)
+                }
+              }}
+              onDragEnd={() => setDragId(null)}
+              onDragOver={(e) => {
+                if (dragId) e.preventDefault()
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                dropAt(kind, x, y)
+              }}
+              onClick={() => {
+                if (isOrigin) {
+                  // 点一下选中/取消（选中后再点空格也能落位，照顾不方便拖的场景）
+                  setDragFrom(kind)
+                  setDragId((prev) => (prev === p!.id ? null : p!.id))
+                } else if (dragId) {
+                  dropAt(kind, x, y)
+                }
+              }}
+            ></div>
+          )
+        })}
+        {/* **物品块层**：与格子网格同一套列/行模板 ⇒ 逐格对齐；每件一块、块自己接拖拽/点击/落点。 */}
+        <div
+          className="app-wh-hold-figures"
+          style={{ gridTemplateColumns: `repeat(${boardCols}, 1fr)`, gridTemplateRows: `repeat(${boardRows}, 1fr)` }}
+        >
+          {board.placements.map((p) => {
+            const def = ctx.items.get(p.itemId)
+            const iconKey = itemIconOf(p.itemId, def?.kind)
+            const isCargo = p.kind === 'cargo'
+            const isMatter = wormholeMatterDeviceOf(p.itemId) !== undefined
+            const label = isCargo ? `×${n(p.units ?? 0)}` : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
+            return (
+              <div
+                key={`fig-${kind}-${p.id}`}
+                className={`app-wh-hold-fig ${isCargo ? 'is-cargo' : 'is-box'}${
+                  dragId === p.id ? ' is-dragging' : ''
+                }${kind === 'temp' && isMatter ? ' is-inert' : ''}`}
+                style={{
+                  gridColumn: `${p.x + 1} / span ${p.w}`,
+                  gridRow: `${p.y + 1} / span ${p.h}`,
+                  color: itemToneOf(p.itemId, iconKey),
+                }}
+                title={
+                  (isCargo
+                    ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货件：占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
+                    : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`) +
+                  (kind === 'temp'
+                    ? isMatter
+                      ? ' · **在临时空间里不生效**（谜质增益只认货仓格）'
+                      : ' · 离开背包页前要放回货仓或丢掉'
+                    : kind === 'hold' && isMatter
+                      ? ' · 本趟增益生效中'
+                      : '')
+                }
+                draggable
+                onPointerDown={(e) => {
+                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                }}
+                onDragStart={() => {
+                  setDragId(p.id)
+                  setDragFrom(kind)
+                }}
+                onDragEnd={() => setDragId(null)}
+                onDragOver={(e) => {
+                  if (dragId) e.preventDefault()
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  dropAt(kind, p.x, p.y)
+                }}
+                onClick={() => {
+                  setDragFrom(kind)
+                  setDragId((prev) => (prev === p.id ? null : p.id))
+                }}
+              >
+                <Glyph name={iconKey} size={64} color="currentColor" />
+                <span className="app-wh-hold-fig-label">{label}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-wh-hold">
+      {/**
+       * **临时空间待处理确认条**（船长 2026-09-14：「切换回探索界面触发丢弃（但是需要提醒玩家是否要丢弃物品
+       * 并列出丢弃的物品列表）」＋「强制二选一：丢掉 或 放回」＋「撤离前必须清空」）：
+       * 逐件列出（图标 + 名称 + 数量 + 是否失效），两个按钮 = 丢掉这些 / 放回货仓；谜质装置会失效。
+       */}
+      {tempAsk !== null && tempPending.length > 0 ? (
+        <div className="app-wh-tempask">
+          <div className="app-wh-tempask-title">
+            ⚠ 临时空间里还有 <b>{tempPending.length}</b> 件没处理（{tempInfo.cells}/{tempInfo.capacity} 格）：
+            {tempAsk === 'extract' ? '撤离前必须先清空。' : '离开背包页前必须先清空。'}
+          </div>
+          <ul className="app-wh-tempask-list">
+            {tempPending.map((p) => {
+              const def = ctx.items.get(p.itemId)
+              const device = wormholeMatterDeviceOf(p.itemId)
+              return (
+                <li key={`ask-${p.id}`}>
+                  <span className="app-wh-hold-row-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
+                    <Glyph name={itemIconOf(p.itemId, def?.kind)} size={15} color="currentColor" />
+                  </span>
+                  {def?.name ?? p.itemId}
+                  {p.kind === 'cargo' ? ` ×${n(p.units ?? 0)}` : ''}
+                  <span className="app-dim">
+                    {' '}
+                    · 占 {p.w * p.h} 格
+                    {device ? ` · 谜质装置：放在这里**已失效**${wormholeMatterDiscardHint(p.itemId) ? `（${wormholeMatterDiscardHint(p.itemId)}）` : ''}` : ''}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="app-wh-tempask-actions">
+            <button className="app-btn is-small is-warn" onClick={onTempDiscard}>
+              丢掉这些
+            </button>
+            <button className="app-btn is-small is-primary" onClick={onTempStow}>
+              放回货仓
+            </button>
+            <button className="app-btn is-small" onClick={() => setTempAsk(null)}>
+              先留着（不离开本页）
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="app-bay-title">
         货仓 · 已用 <b>{info.used}</b> / {info.capacity} 格
         {info.overload ? <span className="app-wh-hold-warn"> · 超载</span> : null}
@@ -1963,214 +2283,57 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           </button>
         </div>
       ) : null}
-      <div
-        className="app-wh-hold-grid"
-        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
-      >
-        {Array.from({ length: rows * cols }, (_, i) => {
-          const x = i % cols
-          const y = Math.floor(i / cols)
-          const key = `${x},${y}`
-          const locked = i >= info.capacity
-          const p = ownerOf.get(key)
-          const isOrigin = p !== undefined && p.x === x && p.y === y
-          const def = p ? ctx.items.get(p.itemId) : undefined
-          const cls = [
-            'app-wh-hold-cell',
-            locked ? 'is-locked' : '',
-            p ? (p.kind === 'cargo' ? 'is-cargo' : 'is-box') : locked ? '' : 'is-free',
-            isOrigin ? 'is-origin' : p ? 'is-body' : '',
-            p && p.kind === 'cargo' && !isOrigin ? 'is-cargobody' : '',
-            dragId !== null && isOrigin ? 'is-dragging' : '',
-          ]
-            .filter((s) => s.length > 0)
-            .join(' ')
-          return (
-            <div
-              key={key}
-              className={cls}
-              title={
-                locked
-                  ? '锁定格：超出货仓容量'
-                  : p
-                    ? p.kind === 'cargo'
-                      ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货条：占 ${p.w}×${p.h} 格，可拖拽）`
-                      : `${def?.name ?? p.itemId}（货柜：占 ${p.w}×${p.h} 格，可拖拽）`
-                    : '空位：可放货柜'
-              }
-              draggable={isOrigin}
-              onPointerDown={(e) => {
-                if (isOrigin && p) {
-                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
-                }
-              }}
-              onDragStart={() => {
-                if (isOrigin) setDragId(p!.id)
-              }}
-              onDragEnd={() => setDragId(null)}
-              onDragOver={(e) => {
-                if (dragId) e.preventDefault()
-              }}
-              onDrop={(e) => {
-                e.preventDefault()
-                dropAt(x, y)
-              }}
+      <div className="app-wh-hold-boards">
+        <div className="app-wh-hold-board-main">
+          {boardView('hold', holdBoard, info.capacity, cols, rows, '锁定格：超出货仓容量')}
+          <div className="app-wh-actions">
+            <button
+              className="app-btn is-small"
+              disabled={placements.length === 0}
               onClick={() => {
-                if (isOrigin) {
-                  // 点一下选中/取消（选中后再点空格也能落位，照顾不方便拖的场景）
-                  setDragId((prev) => (prev === p!.id ? null : p!.id))
-                } else if (dragId) {
-                  dropAt(x, y)
-                }
+                const r = engine.wormholeHoldCompact()
+                if (!r.ok) onToast(r.error ?? '无法整理。', true)
               }}
             >
-            </div>
-          )
-        })}
-        {/**
-         * **物品轮廓层**（船长 2026-09-13：「占多格的物品应该直接显示一个**大的物品轮廓**，
-         * 并且图标占据中心位置还要**随着物品大小放大**」）：
-         * 与下面格子**同一套网格模板与间距**（`grid-template-columns` + `gap` 一致 ⇒ 不靠手算像素，
-         * 多格块的轮廓正好盖住它占的整块）；每件一个 figure，`grid-area` 跨它的 w×h 格，
-         * 图标按 figure 的百分比取尺寸（单格也顺带变大）；`pointer-events: none` ⇒ 不吃拖拽与点击。
-         */}
-        {/**
-         * **物品块层**（船长 2026-09-13 三条：「占多格的物品显示依旧是4格 ⇒ 要将四格合并成一个大格子」·
-         * 「玩家只能通过拖拽左上角的格子移动物品」· 「物品之间无法交换位置」）：
-         * 与格子网格**同一套 `grid-template-columns` 与 gap**（不手算像素），每件一个块，
-         * `grid-area` 跨它自己的 `w×h` 格 ⇒ **多格物品就是一个大格子**（一条边框、一块底色、图标居中）；
-         * 块**自己就是拖拽/点击/落点**（不再只能抓左上角那格）；落到别人身上 = `dropAt` 里换位。
-         * 标签写成底部小药丸（带底色）⇒ **不再被图标压住**（船长报的"数量被图标遮住"）。
-         */}
-        <div
-          className="app-wh-hold-figures"
-          style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
-        >
-          {placements.map((p) => {
-            const def = ctx.items.get(p.itemId)
-            const key = itemIconOf(p.itemId, def?.kind)
-            const isCargo = p.kind === 'cargo'
-            const label = isCargo
-              ? `×${n(p.units ?? 0)}`
-              : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
-            return (
-              <div
-                key={`fig-${p.id}`}
-                className={`app-wh-hold-fig ${isCargo ? 'is-cargo' : 'is-box'}${dragId === p.id ? ' is-dragging' : ''}`}
-                style={{
-                  gridColumn: `${p.x + 1} / span ${p.w}`,
-                  gridRow: `${p.y + 1} / span ${p.h}`,
-                  color: itemToneOf(p.itemId, key),
-                }}
-                title={
-                  isCargo
-                    ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货条：占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
-                    : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
-                }
-                draggable
-                onPointerDown={(e) => {
-                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
-                }}
-                onDragStart={() => setDragId(p.id)}
-                onDragEnd={() => setDragId(null)}
-                onDragOver={(e) => {
-                  if (dragId) e.preventDefault()
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  dropAt(p.x, p.y)
-                }}
-                onClick={() => setDragId((prev) => (prev === p.id ? null : p.id))}
-              >
-                <Glyph name={key} size={64} color="currentColor" />
-                <span className="app-wh-hold-fig-label">{label}</span>
-              </div>
-            )
-          })}
+              整理（自动重排）
+            </button>
+            <span className="app-dim">
+              {boxes} 件货柜 + {cargoPieces.length} 件散货 · 拖拽摆放（也可点选中后再点空位）
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="app-wh-actions">
-        <button
-          className="app-btn is-small"
-          disabled={placements.length === 0}
-          onClick={() => {
-            const r = engine.wormholeHoldCompact()
-            if (!r.ok) onToast(r.error ?? '无法整理。', true)
-          }}
-        >
-          整理（自动重排）
-        </button>
-        <span className="app-dim">
-          {boxes} 件货柜 + {cargoPieces.length} 件散货 · 拖拽摆放（也可点选中后再点空位）
-        </span>
+        {/**
+         * **临时空间**（船长 2026-09-14：「背包格宽度是 8 格，那么可以在背包格右边添加一个用于丢弃和
+         * 调整位置的『小背包』。玩家可以临时将东西放进去腾出位置调整背包…正式名：临时空间」）：
+         * **4 列 × 8 行 = 32 格**，与货仓同款格子/块层（跨板拖拽即可搬进搬出）；**不占货仓容量、不算超载**；
+         * **离开背包页前必须清空**（丢掉 或 放回货仓 —— `tempPending` 非空就拦着不让走）。
+         */}
+        <div className="app-wh-hold-board-side">
+          <div className="app-bay-title">
+            临时空间 · 已用 <b>{tempInfo.cells}</b> / {tempInfo.capacity} 格
+            {tempInfo.full ? <span className="app-wh-hold-warn"> · 已满</span> : null}
+          </div>
+          {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
+          <div className="app-wh-actions">
+            <button
+              className="app-btn is-small"
+              disabled={tempInfo.placements.length === 0}
+              onClick={() => {
+                const r = engine.wormholeTempCompact()
+                if (!r.ok) onToast(r.error ?? '无法整理。', true)
+              }}
+            >
+              整理
+            </button>
+            <span className="app-dim">拖回左边即放回货仓</span>
+          </div>
+          <div className="app-dim app-note">
+            腾位置用的临时格：**不占货仓容量、不算超载**；谜质储存器放这里**不生效**。
+            离开本页（切去探索/关面板/撤离）前必须处理完：**放回货仓** 或 **丢弃**。
+          </div>
+        </div>
       </div>
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
-      {/**
-       * **临时空间**（船长 2026-09-13：「打捞出了大件货时应该放进一个临时空间或者临时背包，
-       * 让玩家进行协调」）：收货阶梯的第二层——货仓腾不出 2×2 时，大件先落这里；
-       * 玩家在这一块决定「放进货仓」（腾出位置后）还是「抛弃」。
-       * 样式沿用本页的「货柜 / 散货清单」那一族（`app-inv-list`），不自造新样式。
-       */}
-      <div className="app-bay-title">
-        临时空间 · 已用 <b>{tempInfo.cells}</b> / {tempInfo.capacity} 格
-        {tempInfo.full ? <span className="app-wh-hold-warn"> · 已满</span> : null}
-      </div>
-      {tempInfo.items.length === 0 ? (
-        <div className="app-dim app-inv-empty">
-          临时空间是空的：货仓腾不出整块位置时，打捞到的大件（遗迹安全货柜）会先放在这里等你协调。
-        </div>
-      ) : (
-        <ul className="app-inv-list">
-          {tempInfo.items.map((s) => {
-            const def = ctx.items.get(s.itemId)
-            const shaped = wormholeIsShapedItem(s.itemId)
-            const shape = shaped ? wormholeShapeOf(s.itemId) : null
-            // 与 core 的 `wormholeTempUsage` 同一把尺：形状件按形状格、散货按**矩形块面积**
-            const cells = shape ? shape.w * shape.h : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
-            return (
-              <li key={s.itemId} className="app-inv-row">
-                <div className="app-inv-main">
-                  <span className="app-inv-name">
-                    <span
-                      className="app-wh-hold-row-ico"
-                      style={{ color: itemToneOf(s.itemId, itemIconOf(s.itemId, def?.kind)) }}
-                    >
-                      <Glyph name={itemIconOf(s.itemId, def?.kind)} size={15} color="currentColor" />
-                    </span>
-                    {def?.name ?? s.itemId} ×{n(s.units)}
-                  </span>
-                  <span className="app-inv-count">
-                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格
-                    {shape ? `（${shape.w}×${shape.h} 整块）` : ''} · 撤离时随编队一起入港
-                  </span>
-                </div>
-                <div className="app-inv-btns">
-                  <button
-                    className="app-btn is-small is-primary"
-                    onClick={() => {
-                      const r = engine.wormholeTempStow(s.itemId)
-                      if (!r.ok) onToast(r.error ?? '放不进。', true)
-                      else onToast(`已把 ${def?.name ?? s.itemId} 放进货仓。`)
-                    }}
-                    title="放进货仓：形状件占 2×2 = 4 格，腾不出整块就先留在临时空间"
-                  >
-                    放进货仓
-                  </button>
-                  <button
-                    className="app-btn is-small is-warn"
-                    onClick={() => {
-                      const r = engine.wormholeTempDiscard(s.itemId)
-                      if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
-                    }}
-                  >
-                    抛弃
-                  </button>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
       <div className="app-bay-title">货柜 · {boxes} 件</div>
       {boxes === 0 ? (
         <div className="app-dim app-inv-empty">没有货柜：遗迹打捞出来的安全货柜才会占这种整块格子。</div>

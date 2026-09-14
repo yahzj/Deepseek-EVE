@@ -22,6 +22,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_ORE_ITEM_ID,
   WORMHOLE_PILE_UNITS_BASE,
+  WORMHOLE_TEMP_CELLS,
   wormholeBagSlots,
   wormholeBagSlotsOfFleet,
   wormholeBagUsage,
@@ -32,7 +33,7 @@ import {
   wormholeMakeNode,
   wormholeNodePiles,
 } from '../src/wormhole'
-import { wormholeTakePileAt } from '../src/wormholeSalvage'
+import { wormholeHoldSyncCargo, wormholeHoldUsage, wormholeTakePileAt, wormholeTempUsage } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -166,7 +167,7 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     expect(wormholeTakePileAt(state, ctx, 0).error).toContain('没有可拾取')
   })
 
-  it('装舱判据与打捞同源：同物品并格；**放不下整条回滚**（不静默丢弃）', () => {
+  it('装舱判据与打捞同源：同物品并格；**两板都放不下才整条回滚**（不静默丢弃）', () => {
     const state = fresh()
     const a = addShipToFleet(state, T3) // 货仓 2,600 m³ ⇒ 5 格
     wormholeEnter(state, ctx, [a], 9)
@@ -174,23 +175,42 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     const cap = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
     expect(cap).toBe(5)
     /**
-     * 造一个刚好装满 5 格的货仓（每格 500 单位 ⇒ 5 格，正好一条 `5×1` 细条）；再并 1 单位 ⇒ **6 格**。
-     * ⚠ **格数规范**（船长 2026-09-13：「必须是矩形」）：6 格的最小矩形块是 `3×2`（这条仓只有 1 行）
-     * ⇒ 落形全都放不下 ⇒ 整条回滚拒收（旧口径同样拒收，这里锁的是**形状**变了、判据没松）。
+     * ⚠ **2026-09-14 新口径**：收货阶梯是「货仓 → 临时空间（4×8 = 32 格）→ 才失败」，
+     * 所以"整条回滚"要**两块板都放不下**才成立。这里先造"货仓刚好装满 5 格"再看：
+     * 多并 1 单位 ⇒ 6 件 ⇒ 货仓没位、**临时空间有位** ⇒ 这一件落进临时空间（成功，不是拒收）。
      */
     run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 }]
+    enterLegacy(state, 9, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 1 }])
+    const spilled = wormholeTakePileAt(state, ctx, 0)
+    expect(spilled.ok, spilled.error ?? '').toBe(true)
+    expect(wormholeTempUsage(state, ctx).cells).toBe(1) // 多出来的一件进了临时空间
+    expect(nodePiles(state).length).toBe(0)
+    // 把两块板都填满 ⇒ 才是"真放不下"：整条回滚、堆留在原地、货也没动
+    run.bag = [
+      { itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 },
+      { itemId: 'ore-veldspar', units: WORMHOLE_TEMP_CELLS * 500 },
+    ]
+    wormholeHoldSyncCargo(state, ctx)
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)
+    expect(wormholeTempUsage(state, ctx).cells).toBe(WORMHOLE_TEMP_CELLS)
+    const bagBefore = JSON.stringify(run.bag)
     enterLegacy(state, 9, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 1 }])
     const bad = wormholeTakePileAt(state, ctx, 0)
     expect(bad.ok).toBe(false)
     expect(bad.error).toContain('放不下')
     expect(nodePiles(state).length).toBe(1) // 堆还在：没被吞掉
-    expect(run.bag).toEqual([{ itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 }]) // 货也没被改动
-    // 少装一格（4 格 + 1 单位仍算 5 格，`5×1` 细条装得下）⇒ 同一堆就能拿
-    run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: (cap - 1) * 500 }]
+    expect(JSON.stringify(run.bag)).toBe(bagBefore) // 货也没被改动
+    // 少装一格（4 件 + 1 单位仍算 5 件，货仓腾出 1 格）⇒ 同一堆就能拿
+    run.bag = [
+      { itemId: WORMHOLE_ORE_ITEM_ID, units: (cap - 1) * 500 },
+      { itemId: 'ore-veldspar', units: WORMHOLE_TEMP_CELLS * 500 },
+    ]
     const ok = wormholeTakePileAt(state, ctx, 0)
-    expect(ok.ok).toBe(true)
+    expect(ok.ok, ok.error ?? '').toBe(true)
     expect(ok.used).toBe(cap)
-    expect(wormholeBagUsage(ctx, run.bag, cap).overflow).toBe(false)
+    // 新口径下"背包格数"可以超过货仓容量（多出来的在临时空间里排队）——看的是"有没有落地"
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)
+    expect(wormholeTempUsage(state, ctx).cells).toBeGreaterThan(0)
   })
 
   it('不在洞里 / 老档节点上没有堆 ⇒ 拾取被拒', () => {
