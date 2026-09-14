@@ -771,12 +771,16 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
-    // D 批边界：僚舰无人机不参战，**主控机群参战**（池按主控武器槽建）
+    // 2026-09-14「逐舰机群」：池键 = `舰tag:武器下标`；首舰 4 架 ⇒ 四条 `player:*`
     expect(battle.dronePools, '洞内没建机群生存池').toBeTruthy()
-    expect(Object.keys(battle.dronePools!).length).toBe(4)
+    const leaderKeys = Object.keys(battle.dronePools!).filter((k) => k.startsWith('player:'))
+    expect(leaderKeys.length).toBe(4)
+    expect(Object.values(battle.dronePools!).every((p) => p.owner === 'player')).toBe(true)
     expect(battle.droneLoadAtStart?.['drone-scout']).toBe(4)
-    // 模拟"被打下来 4 架"（点防/敌机群击落的落账口径），再收口
+    expect(battle.droneLoadAtStartBy?.player?.['drone-scout']).toBe(4)
+    // 模拟"被打下来 4 架"（点防/敌机群击落的落账口径：**合计 + 逐舰两份都写**），再收口
     battle.droneLost = { 'drone-scout': 4 }
+    battle.droneLostBy = { player: { 'drone-scout': 4 } }
     winBattle(state)
     settleBattle(state)
     // **净损失已从清单扣除**：回收率 20%~50% ⇒ 4 架里回收 1~2 架，但**不可能一架不少**
@@ -786,6 +790,52 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     expect(state.logs.map((l) => l.text).some((t) => t.includes('机群战损'))).toBe(true)
     // 账本已清（幂等：重复结算不会二次扣）
     expect(state.wormhole.run?.battle).toBeNull()
+  })
+  it('**逐舰机群 · 战损按舰归属**（船长 2026-09-14）：僚舰的机群也会被打掉，且**只扣它自己的清单**', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const leader = run.fleet[0]!
+    const wing = run.fleet[1]!
+    // 主控**不带**机群；僚舰装无人机舱 + 4 架侦察机
+    state.fleet[wing]!.fitted = { high: ['mod-drone-rack-3'], mid: [], low: [] }
+    state.fleet[wing]!.droneLoad = { 'drone-scout': 4 }
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    // 池里**只有僚舰那四条**（主控没带 ⇒ 一条 `player:*` 都不该有）——这就是"逐舰建池"的判据
+    const keys = Object.keys(battle.dronePools ?? {})
+    expect(keys.length).toBe(4)
+    expect(keys.every((k) => k.startsWith('ally-1:')), `键不是僚舰的：${keys.join(',')}`).toBe(true)
+    expect(battle.droneLoadAtStartBy?.['ally-1']?.['drone-scout']).toBe(4)
+    // 僚舰被打掉 2 架 ⇒ 结算只该扣**僚舰**那份清单
+    battle.droneLost = { 'drone-scout': 2 }
+    battle.droneLostBy = { 'ally-1': { 'drone-scout': 2 } }
+    winBattle(state)
+    settleBattle(state)
+    const wingLeft = state.fleet[wing]?.droneLoad?.['drone-scout'] ?? 0
+    expect(wingLeft, '僚舰的机群战损没扣到它自己头上').toBeLessThan(4)
+    expect(wingLeft).toBeGreaterThanOrEqual(1) // 回收率 20%~50% ⇒ 回收 0~1 架
+    expect(state.fleet[leader]?.droneLoad?.['drone-scout'] ?? 0, '主控没带机群却被扣了').toBe(0)
+    // 逐舰账本清掉本舰那一份（幂等）
+    expect(state.wormhole.run?.battle).toBeNull()
+  })
+  it('**老档/旧战斗回落**：只有全队合计 `droneLost`、没有逐舰账本 ⇒ 照旧按主控扣（零迁移）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    const leader = run.fleet[0]!
+    state.fleet[leader]!.fitted = { high: ['mod-drone-rack-3'], mid: [], low: [] }
+    state.fleet[leader]!.droneLoad = { 'drone-scout': 4 }
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    // 把逐舰账本整个抹掉 = 复刻"改动前开的那场战斗 / 老档"
+    battle.droneLost = { 'drone-scout': 4 }
+    battle.droneLostBy = undefined
+    winBattle(state)
+    settleBattle(state)
+    const left = state.fleet[leader]?.droneLoad?.['drone-scout'] ?? 0
+    expect(left, '老档（无逐舰账本）没按主控扣').toBeLessThan(4)
+    expect(left).toBeGreaterThanOrEqual(1)
   })
   it('**战报带后勤尾巴**：船体维修装置消耗写进洞内战报（与远征同口径）', () => {
     const state = enterRun()

@@ -1023,8 +1023,10 @@ const meSpeedRef = useRef(200)
        */
       const aimTag = isMeShot ? (fx.to ?? foeAliveTags[0]) : fx.to ?? 'player'
       const aimRowIdx = rowFxTags.indexOf(aimTag)
-      /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点；单船/无人机回落到主控锚）——见上方 meAnchorByTag */
-      const mySrc = isMeShot && fx.src !== 'drone' ? meAnchorByTag.get(fx.tag) : undefined
+      /** **发射舰**（我方多舰路径按 `fx.tag` 取该舰锚点）——见上方 meAnchorByTag。
+       *  ⚠ 2026-09-14「逐舰机群」起**无人机也按发射舰取锚**（fx.tag = 该架所属舰；主控那条仍是 `player`
+       *  ⇒ 单船/主控路径逐像素不变）。此前无人机一律回落主控锚 ⇒ 僚舰放飞的机群弹道会从主控出。 */
+      const mySrc = isMeShot ? meAnchorByTag.get(fx.tag) : undefined
       /** **敌方发射舰的行号**（`rowFxTags` 只含敌方 ⇒ 只在敌方那一支有意义；我方那一支恒 −1） */
       const shooterRowIdx = isMeShot ? -1 : rowFxTags.indexOf(fx.tag)
       /** **被瞄准的我方舰**（仅敌方那一支用；缺 `fx.to` 或单船路径 ⇒ undefined ⇒ 回落主控） */
