@@ -9,8 +9,8 @@
  *   续批，直到料尽自动停炉；停炉即止：已完成批已出货、剩余料全额退回（核心归还）。
  * - 页面布局 = 矿带卡同款：资源卡常驻网格；运转中的卡不改样式，只把操作按钮变为「停炉」。
  */
-// 施工期开关（与虫洞入口同一把）：安全货柜拆解卡只在调试模式下出现
-import { debugEnabled } from '../panels/DebugPanel'
+// 施工期开关（与虫洞入口同一把）——精炼炉的**货柜拆解那一档**已于 2026-09-14 按船长指示解闸常显，
+// 本文件不再用它；留着这行注释是因为入口那两处（星图「扫描虫洞」/ 远征页虫洞入口）仍在用同一把开关。
 import {
   RARE_BOX_DRONE_UNITS,
   RECYCLE_BATCH_M3,
@@ -44,6 +44,31 @@ import type { PageProps } from './common'
 import { MONEY_GLYPH, m3 } from './common'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
+
+/**
+ * **精炼炉一级筛选标签**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」→
+ * 位置澄清「**放进精炼炉内，并更新筛选**」）——按**活计大类**分，与页面里原本的三个小标题一一对应：
+ * 全部 / 可精炼资源 / 残骸回收 / 货柜拆解（货柜那一档原先是"施工期只在调试模式出现"，船长 2026-09-14
+ * 明示「**虫洞已经做完了…允许对玩家开放**」⇒ 四档一律常显）。
+ */
+type FurnaceTab = 'all' | 'ore' | 'wreck' | 'box'
+const FURNACE_TABS: Array<{ key: FurnaceTab; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'ore', label: '可精炼资源' },
+  { key: 'wreck', label: '残骸回收' },
+  { key: 'box', label: '货柜拆解' },
+]
+
+/** 二级子筛选的候选（键 = 子筛选键，`''` = 全部子类，与组装机同款口径） */
+type SubOpt = { key: string; label: string }
+/** 可精炼资源按**资源大类**（只列实际存在的档；`ItemDef.kind` 单点） */
+const ORE_KIND_LABEL: Record<string, string> = { ore: '原矿', gas: '气体', ice: '冰矿' }
+/** 残骸回收按**档位**（普通 / 稀有·高级箱）——船长 2026-09-14 选甲 */
+const WRECK_SUBS: SubOpt[] = [
+  { key: 'common', label: '普通残骸' },
+  { key: 'rare', label: '稀有 · 高级箱' },
+]
+
 
 /** 主控此刻不能"亲自运转一台新炉"的原因（null = 主控空闲可开；AI 核心驱动不受此限） */
 function manualBusyNote(state: GameState): string | null {
@@ -438,6 +463,13 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
   const rate = refineRate(state, engine.ctx)
 
   const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>('refine')
+  /**
+   * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
+   * `furnaceTab` = 一级（活计大类）· `sub` = 二级（资源大类 / 残骸档位；`''` = 全部子类）。
+   * 切一级标签即回「全部子类」——与组装机、市场页 `changeKind` 同款口径。
+   */
+  const [furnaceTab, setFurnaceTab] = useState<FurnaceTab>('all')
+  const [sub, setSub] = useState<string>('')
   const runViews = engine.refineRunViews()
   // 组装机「去精炼」跳转目标（矿石卡 id；高亮数秒后自清；2026-09-08 船长定）
   const [focusOreId, setFocusOreId] = useState<string | null>(null)
@@ -449,7 +481,9 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
   }, [focusOreId])
 
   /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场
-   *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。 */
+   *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。
+   *  ⚠ 2026-09-14：加了筛选标签之后，**必须同时把一级/二级筛选让开**——否则跳到一张被筛掉的卡上，
+   *  高亮根本看不见（`setFurnaceTab('ore')` + `setSub('')`）。 */
   function handleNeedMineral(itemId: string): void {
     let src = ''
     for (const def of visibleItemDefs(engine.ctx)) {
@@ -461,6 +495,8 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
     }
     if (src) {
       setSec('refine')
+      setFurnaceTab('ore')
+      setSub('')
       setFocusOreId(src)
       return
     }
@@ -490,22 +526,46 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
   )
 
   /**
-   * **F4d：可拆解的「遗迹安全货柜」**（货仓 + 仓库有货、或在炉中就算一张卡）。
-   * ⚠ **施工期只在调试模式下出现**：货柜本身是 `unreleased`（`visibleItemDefs` 会滤掉它），
-   * 而虫洞整条线在船长拍板上线前对玩家不可见 ⇒ 这里沿用入口那一把开关（`debugEnabled()`）。
-   * 上线时把这道开关去掉即可（与入口同批）。
+   * **F4d：可拆解的货柜**（货仓 + 仓库有货、或在炉中就算一张卡）。
+   *
+   * ⚠ **2026-09-14 船长解闸**：原话「**虫洞已经做完了，正在微调，所以允许对玩家开放**」——
+   * 这里原先沿用入口那把 `debugEnabled()` 开关（施工期只有调试模式可见），现已**改为常显**。
+   * ⚠ 仍然走 `engine.ctx.items` 全表（不走 `visibleItemDefs`）：货柜的物品卡/市场卡还标着
+   * `unreleased`（"虫洞上线"那一批才摘），照 `visibleItemDefs` 过滤会让这一档**永远是空的**。
    */
-  const boxDefs = debugEnabled()
-    ? [...engine.ctx.items.values()].filter(
-        (def) =>
-          def.kind === 'container' &&
-          (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
-      )
-    : []
+  const boxDefs = [...engine.ctx.items.values()].filter(
+    (def) =>
+      def.kind === 'container' &&
+      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
+  )
   const runningCount = runViews.length
-  /** 2026-09-10 船长定：已标记（收藏）的资源/残骸在各自网格内置顶（组内保持原有顺序） */
-  const oreShown = pinMarked(state, 'recipes', oreDefs, (def) => def.id)
-  const wreckShown = pinMarked(state, 'recipes', wreckDefs, (def) => def.id)
+
+  /* ── 两级筛选（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）──────────────────
+   * 一级 = 活计大类（全部 / 可精炼资源 / 残骸回收 / 货柜拆解）；
+   * 二级 = 按当前一级给候选：「可精炼资源」按**资源大类**（原矿/气体/冰矿）、
+   *       「残骸回收」按**档位**（普通 / 稀有·高级箱）；「全部」与「货柜拆解」不带二级（同组装机）。 */
+  const oreSubs: SubOpt[] = Object.keys(ORE_KIND_LABEL)
+    .filter((k) => oreDefs.some((d) => d.kind === k))
+    .map((k) => ({ key: k, label: ORE_KIND_LABEL[k]! }))
+  const subOptions: SubOpt[] = furnaceTab === 'ore' ? oreSubs : furnaceTab === 'wreck' ? WRECK_SUBS : []
+  const oreFiltered = sub === '' ? oreDefs : oreDefs.filter((d) => d.kind === sub)
+  /** 残骸档位：`recycleProfileOf(...).rare` 是唯一判据（与卡上的「高级箱」徽标同源） */
+  const wreckFiltered =
+    sub === 'rare'
+      ? wreckDefs.filter((d) => recycleProfileOf(engine.ctx, d.id)?.rare === true)
+      : sub === 'common'
+        ? wreckDefs.filter((d) => recycleProfileOf(engine.ctx, d.id)?.rare !== true)
+        : wreckDefs
+  const oreShownF = pinMarked(state, 'recipes', oreFiltered, (def) => def.id)
+  const wreckShownF = pinMarked(state, 'recipes', wreckFiltered, (def) => def.id)
+  /** 一级标签实际要渲染哪几组（「全部」= 四组都渲染，其余只渲染对应那一组） */
+  const showOre = furnaceTab === 'all' || furnaceTab === 'ore'
+  const showWreck = furnaceTab === 'all' || furnaceTab === 'wreck'
+  const showBox = furnaceTab === 'all' || furnaceTab === 'box'
+  /** 当前筛选下"一共几张卡"（读数行用；与组装机的「· 当前 N 张」同款） */
+  const shownCount =
+    (showOre ? oreShownF.length : 0) + (showWreck ? wreckShownF.length : 0) + (showBox ? boxDefs.length : 0)
+  const totalCount = oreDefs.length + wreckDefs.length + boxDefs.length
 
   return (
     <div className="page-stack page-fill">
@@ -550,7 +610,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
           title="精炼炉"
           hint={
             <HintIcon
-              tip={`你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。稀有残骸例外：起炉即把整件（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入本炉料账——货仓/仓库不再显示这批料，卡面按"炉内料账 + 货仓/仓库"合计数给出，停炉时未用完部分退回物品仓库。`}
+              tip={`你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。稀有残骸例外：起炉即把整件（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入本炉料账——货仓/仓库不再显示这批料，卡面按"炉内料账 + 货仓/仓库"合计数给出，停炉时未用完部分退回物品仓库。精炼：循环运转到料尽自动停炉。残骸回收：保底原材料 + 概率特色掉落。货柜拆解：一箱开一件，每件 90 秒。`}
             />
           }
           right={
@@ -559,51 +619,94 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
                 className="app-dim"
                 title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底原材料另算"
               >
-                产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台
+                产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台 · 可精炼 {oreDefs.length} · 残骸{' '}
+                {wreckDefs.length}
+                {boxDefs.length > 0 ? ` · 货柜 ${boxDefs.length}` : ''}
+                {/* 筛选生效时补一个"当前 N 张"（与组装机同款：免得玩家对着收窄后的网格数不清） */}
+                {shownCount !== totalCount ? ` · 当前 ${shownCount} 张` : ''}
               </span>
               <AiSlotText state={state} ctx={engine.ctx} />
             </>
           }
         >
+          {/* 筛选固定、说明进标题后的圆形感叹号（固定头 + 下滚）：一级标签行 / 二级子筛选行常驻，
+              卡网格独立内滚 —— 与组装机逐项同款（`.app-task-tabs` + `.app-tasktab`，二级行去下边框） */}
+          <div className="app-task-tabs" role="tablist">
+            {FURNACE_TABS.map((t) => (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={furnaceTab === t.key}
+                className={`app-tasktab${furnaceTab === t.key ? ' is-active' : ''}`}
+                onClick={() => {
+                  setFurnaceTab(t.key)
+                  setSub('') // 换一级标签即回「全部子类」（与组装机、市场页 changeKind 同款）
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {subOptions.length > 0 ? (
+            <div className="app-task-tabs app-fleet-tabs" role="tablist">
+              <button
+                role="tab"
+                aria-selected={sub === ''}
+                className={`app-tasktab${sub === '' ? ' is-active' : ''}`}
+                onClick={() => setSub('')}
+              >
+                全部子类
+              </button>
+              {subOptions.map((s) => (
+                <button
+                  key={s.key}
+                  role="tab"
+                  aria-selected={sub === s.key}
+                  className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+                  onClick={() => setSub(s.key)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="app-win-body">
-          {oreDefs.length === 0 && wreckDefs.length === 0 ? (
+          {totalCount === 0 ? (
             <div className="app-dim app-inv-empty">
-              没有可精炼/可回收的资源——采集原矿/气体/冰矿，或打捞带回残骸后再来。
+              没有可精炼/可回收/可拆解的物资——采集原矿/气体/冰矿，或打捞带回残骸与货柜后再来。
+            </div>
+          ) : null}
+          {shownCount === 0 && totalCount > 0 ? (
+            <div className="app-dim app-exp-idle">该子分类下暂无物资——换个分类或点「全部子类」看看。</div>
+          ) : null}
+
+          {showOre && oreShownF.length > 0 ? (
+            <div className="app-belt-grid">
+              {oreShownF.map((def) => (
+                <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} highlight={focusOreId === def.id} onGotoMap={onGotoMap} />
+              ))}
             </div>
           ) : null}
 
-          {oreDefs.length > 0 ? (
-            <>
-              <div className="app-bay-title">♨ 可精炼资源（{oreDefs.length}）——循环运转到料尽自动停炉</div>
-              <div className="app-belt-grid">
-                {oreShown.map((def) => (
-                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} highlight={focusOreId === def.id} onGotoMap={onGotoMap} />
-                ))}
-              </div>
-            </>
+          {showWreck && wreckShownF.length > 0 ? (
+            <div className="app-belt-grid">
+              {wreckShownF.map((def) => (
+                <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
+              ))}
+            </div>
           ) : null}
 
-          {wreckDefs.length > 0 ? (
-            <>
-              <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底原材料 + 概率特色掉落</div>
-              <div className="app-belt-grid">
-                {wreckShown.map((def) => (
-                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
-                ))}
-              </div>
-            </>
+          {showBox && boxDefs.length > 0 ? (
+            <div className="app-belt-grid">
+              {boxDefs.map((def) => (
+                <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
+              ))}
+            </div>
           ) : null}
-          {boxDefs.length > 0 ? (
-            <>
-              <div className="app-bay-title">
-                📦 安全货柜拆解（{boxDefs.length}）——一箱开一件：族专属装备 / 图纸，或稀释池里的一次性舰船蓝图
-              </div>
-              <div className="app-belt-grid">
-                {boxDefs.map((def) => (
-                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
-                ))}
-              </div>
-            </>
+          {showBox && boxDefs.length === 0 ? (
+            <div className="app-dim app-exp-idle">
+              还没有可拆解的货柜——遗迹打捞带回「安全货柜 / 图纸货柜」后会出现在这里（拆开才知道内容物）。
+            </div>
           ) : null}
           </div>
         </Panel>
