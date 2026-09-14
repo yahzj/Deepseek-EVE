@@ -229,7 +229,7 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'hauler', // 2026-09-09 船长定：货舰与矿船分族（原归 industrial 名称易误导），鲸盟制造、航运编列
     slots: { high: 2, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 5,
-    cargoM3: 36_000,
+    cargoM3: 108_000, // 2026-09-14 船长：「将皇带鱼的货仓容量提高到300%」⇒ 36,000 → 108,000（×3）
     cycleSeconds: 33,
     oreUnitsPerCycle: 129,
     priceIsk: 0, // 仅制造（蓝图为限定奇货）
@@ -248,7 +248,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 23_000,
     signatureM: 260,
     scanResMm: 320,
-    description: '鲸盟总装的旗舰货舰：三万六千立方货舱，深空物流的移动要塞（仅可制造）。',
+    description: '鲸盟总装的旗舰货舰：十万八千立方货舱，深空物流的移动要塞（仅可制造）。',
   },
 
   // ══════════ 掠食者武装线（盾厚炮强；带无人机舱；锁定强） ══════════

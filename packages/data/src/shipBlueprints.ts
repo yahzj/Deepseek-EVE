@@ -70,7 +70,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 162_000, // 皇带鱼级（2026-09-13 工期阶梯：T5 = T4 带下沿 9h ×5 = 45 时；价位重排后不变）
     buildCostIsk: 2_400_000,
     priceIsk: 2_560_000_000, // = 行价 640,000,000 × 4（2026-09-13 价位重排：旗舰基准 8 亿 ×0.8）
-    description: '旗舰货舰，货舱 36,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）
+    description: '旗舰货舰，货舱 108,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）；2026-09-14 随货仓 ×3 改 108,000
   },
   {
     id: 'sbp-burrower',
@@ -902,7 +902,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 162_000,
     buildCostIsk: 0,
     priceIsk: 320_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '旗舰货舰，货舱 36,000 m³、循环 33 秒产 129 单位，移动要塞。',
+    description: '旗舰货舰，货舱 108,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-14 随货仓 ×3（36,000 → 108,000）
   },
 ]
 

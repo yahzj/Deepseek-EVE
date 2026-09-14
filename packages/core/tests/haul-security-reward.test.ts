@@ -7,10 +7,16 @@
  *
  * 本文件用 `buildSimContext()` 的**真星图**守住四件事：
  *   ① 有效距离 = 逐跳「该跳分钟 × 两端较**低**档系数」（母港⇄红环 4.5 / 母港⇄烬火 7.75 / 红环⇄烬火 3.0）；
- *   ② **锚定不漂**：母港 ⇄ 烬火前哨站时薪 = 648,000 ISK/h（皇带鱼 36,000 m³ · 行情均值 ×7.5）；
- *   ③ 其余航线按比例削弱（母港⇄红环 ≈ 409,600/h ≈ −37%）；
+ *   ② **锚定不漂**：母港 ⇄ 烬火前哨站时薪 = 1,944,000 ISK/h（皇带鱼级 **108,000 m³** · 行情均值 ×7.5）；
+ *   ③ 其余航线按比例削弱（母港⇄红环 ≈ 1,228,800/h ≈ −37%）；
  *   ④ **超可加（1+1<2）**：拆成「母港⇄红环 + 红环⇄烬火」两段只值整段的 ≈68%。
  * ⚠ 若日后改星图边权 / 星系安全等级 / 站点位置，本文件会红——那正是它要拦的"锚定漂移"。
+ *
+ * ⚠ **2026-09-14 改判（船长「将皇带鱼的货仓容量提高到300%」）**：读数用船皇带鱼的货仓
+ *   36,000 → **108,000 m³**（×3）⇒ 单段报酬 = 货仓 × 费率 ⇒ **本文件所有金额读数同比 ×3**
+ *   （原 648,000/h → **1,944,000/h**；其余航线同乘）。船长 2026-09-12 定的那句「保持母港 ⇄ 烬火前哨站
+ *   的收益为 648,000/h」是按 36,000 m³ 读的——**该锚随船变大而移动**，已在 roadmap 同日条目报备，
+ *   是否要保住 648,000/h 由船长另裁（本文件只如实反映当前口径）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -23,8 +29,8 @@ const ctx = buildSimContext() as SimContext
 const HOME = 'galaxy-hub'
 const REDRING = 'galaxy-redring'
 const CINDER = 'galaxy-cinder'
-/** 皇带鱼级旗舰货舰（本轮读数用船） */
-const CAP = 36000
+/** 皇带鱼级旗舰货舰（本轮读数用船）——2026-09-14 货仓 ×3：36,000 → 108,000 m³ */
+const CAP = 108000
 /** 行情倍率均值（5~10 均匀 ⇒ 7.5） */
 const MEAN_MUL = 7.5
 
@@ -56,23 +62,23 @@ describe('长途运输 · 安全档收益率 + 距离指数（2026-09-12 船长�
     expect(haulEffectiveMinutes(ctx, HOME, REDRING)).toBeLessThan(shortestTravelMinutes(ctx, HOME, REDRING))
   })
 
-  it('锚定契约：母港 ⇄ 烬火前哨站时薪 = 648,000 ISK/h（逐字不变）', () => {
+  it('锚定契约：母港 ⇄ 烬火前哨站时薪 = 1,944,000 ISK/h（皇带鱼 108,000 m³ 口径）', () => {
     expect(shortestTravelMinutes(ctx, HOME, CINDER)).toBe(10)
     expect(haulEffectiveMinutes(ctx, HOME, CINDER)).toBeCloseTo(ctx.balance.haul.anchorEffectiveMinutes, 6)
-    expect(hourly(HOME, CINDER)).toBe(648_000)
+    expect(hourly(HOME, CINDER)).toBe(1_944_000)
   })
 
-  it('其余航线按比例削弱：母港⇄红环 ≈ 409,600/h（−37%）· 红环⇄烬火 ≈ 520,200/h', () => {
+  it('其余航线按比例削弱：母港⇄红环 ≈ 1,228,800/h（−37%）· 红环⇄烬火 ≈ 1,560,600/h', () => {
     const hubRedring = hourly(HOME, REDRING)
     const redringCinder = hourly(REDRING, CINDER)
-    expect(hubRedring).toBeGreaterThan(400_000)
-    expect(hubRedring).toBeLessThan(420_000)
-    expect(hubRedring / 648_000).toBeCloseTo(0.632, 2) // ≈ −37%
-    expect(redringCinder).toBeGreaterThan(510_000)
-    expect(redringCinder).toBeLessThan(530_000)
+    expect(hubRedring).toBeGreaterThan(1_200_000)
+    expect(hubRedring).toBeLessThan(1_260_000)
+    expect(hubRedring / 1_944_000).toBeCloseTo(0.632, 2) // ≈ −37%
+    expect(redringCinder).toBeGreaterThan(1_530_000)
+    expect(redringCinder).toBeLessThan(1_590_000)
     // 没有任何航线超过锚（船长「其他按比例削弱」）
-    expect(hubRedring).toBeLessThan(648_000)
-    expect(redringCinder).toBeLessThan(648_000)
+    expect(hubRedring).toBeLessThan(1_944_000)
+    expect(redringCinder).toBeLessThan(1_944_000)
   })
 
   it('超可加（1+1<2）：拆成两段只值整段的 ≈68% —— 直接跑完整一段更赚', () => {
