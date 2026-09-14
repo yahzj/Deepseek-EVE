@@ -6,12 +6,14 @@
  * 口径（design §三 / §五，全部船长确认）：
  * - **扫描窗口 = 12 小时 × 三技能乘算 × 星际奇遇学**（信号分析学 −8%/级 · 星图测绘学 −6%/级 · 信号过滤学 −6%/级，
  *   直接复用 `explore.scanSkillFactor` —— 与星图扫描**同一把尺**；**再乘一项虫洞专属的星际奇遇学**
- *   −4%/级、满级 −20%，见 `happeningsScanFactor`）；**不吃舰船属性**（船长：「无关」）。
+ *   **满级（Lv5）一次性 −20%**，见 `happeningsScanFactor`）；**不吃舰船属性**（船长：「无关」）。
  *   ⚠ 基准沿革：2026-09-14 首定 **220 分钟** ⇒ 同日改判「**虫洞扫描时长提高到12小时**」⇒ **现值 12 小时**。
  * - **随机事件期望与星图扫描同源**：暴露口径交给 `encounters`（本活动在暴露清单里与 `state.scanning` 并列）。
  * - **遇袭不中断**：被打不影响进度（进度按游戏时刻推进，不在遇袭时清零）。
  * - 进度满 ⇒ **发现 1 个虫洞**（随机种子 + **起始层恒 1** + 原型/敌族按种子定）进库存，随后**自动续扫**。
  * - **库存上限 5**；满则**扫描停机**并提示（船长：「扫描停机并提示」）。
+ * - **解锁赠礼**（船长 2026-09-14）：「**设置，玩家解锁扫描虫洞时，扫描进度条就是满的。**」⇒
+ *   首次达标（协会声望 ≥ 40）那一刻把进度条**一次性预置满格**（`grantWormholeScanUnlockGift`，幂等、老档补发）。
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
 import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
@@ -73,13 +75,14 @@ export function wormholeScanUnlocked(state: GameState): boolean {
  * 「**星际奇遇学，对缩减虫洞的时间也有效。**」「**星际奇遇学，满级后缩减虫洞扫描周期20%**」
  * 「**并移动到探索内**」「**rank提升到5**」）。
  *
- * 口径 = **每级 −4%**（满级 Lv5 ⇒ ×0.8 = **−20%**）—— **虫洞专属的第四项**：
- * 与三技能乘算叠加（`scanSkillFactor` 只管那三项，星图扫描**不吃**这一项，船长只点了虫洞）。
- * 调参入口就在这一行（`content:check` 的「技能说明契约」按本文件的现场值复核技能说明里的 ⟦4%⟧/⟦20%⟧）。
+ * 口径 = **满级（Lv5）才一次性 −20%**（⇒ ×0.8）—— 船长口述是「**满级后**缩减 20%」，
+ * 故按**阶跃**落（不是每级 −4% 的线性）；**虫洞专属的第四项**，与三技能乘算叠加
+ * （`scanSkillFactor` 只管那三项，星图扫描**不吃**这一项，船长只点了虫洞）。
+ * 调参入口就在这一行（`content:check` 的「技能说明契约」按本文件的现场值复核技能说明里的 ⟦20%⟧）。
  */
 export function happeningsScanFactor(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['galactic-happenings'] ?? 0)
-  return Math.max(0, 1 - 0.04 * lv)
+  return lv >= 5 ? 1 - 0.2 : 1
 }
 
 /**
@@ -101,6 +104,27 @@ export function wormholeScanWindowMs(state: GameState): number {
 /** 当前库存（发现即入列；上限 `WORMHOLE_STOCK_MAX`） */
 export function wormholeStockOf(state: GameState): WormholeStockItem[] {
   return state.wormholeStock ?? []
+}
+
+/**
+ * **解锁赠礼**（船长 2026-09-14：「**设置，玩家解锁扫描虫洞时，扫描进度条就是满的。**」）：
+ * 首次判定"已解锁"（协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`）时，把进度条**一次性预置满格**
+ * ⇒ 玩家点开始扫描**第一拍就发现一处虫洞**（不必先等满一个窗口）。
+ *
+ * 口径：
+ * - **幂等**：领过就写 `wormholeScan.unlockGift = true`，此后不再预置（声望掉下去再涨回来也不重复领）；
+ * - **老档一并补发**：本批次之前就已达标的档在下一拍补上（否则老档永远看不到这份见面礼）；
+ * - **只增不减**：取 `max(现有进度, 当时窗口)`（已有进度更长的档不被回退）；
+ * - 预置的是**当时**的窗口（技能只让窗口更短 ⇒ 之后只会更快产出）。
+ */
+export function grantWormholeScanUnlockGift(state: GameState): boolean {
+  const scan = (state.wormholeScan = state.wormholeScan ?? { active: false, progressMs: 0 })
+  if (scan.unlockGift === true) return false
+  if (!wormholeScanUnlocked(state)) return false
+  scan.unlockGift = true
+  scan.progressMs = Math.max(scan.progressMs, wormholeScanWindowMs(state))
+  addLog(state, 'info', '🛰 扫描虫洞已解锁：扫描进度已预置满格（开扫即可发现一处）。')
+  return true
 }
 
 /** 库存是否已满（满 ⇒ 扫描停机） */
@@ -245,6 +269,8 @@ export function wormholeStockTake(state: GameState, id: string): WormholeStockIt
  * - 离线大步长会一次跨过多个窗口 ⇒ **循环产出**（每满一个产一个，直到库存满或进度用尽）。
  */
 export function advanceWormholeScan(state: GameState, ctx: SimContext, deltaMs: number): void {
+  /** **解锁赠礼先结算**（幂等、每拍都查）：达标那一刻把进度条预置满格 —— 与"扫不扫"无关，故放在活动守卫之前 */
+  grantWormholeScanUnlockGift(state)
   const scan = state.wormholeScan
   if (!scan?.active || deltaMs <= 0) return
   const windowMs = wormholeScanWindowMs(state)

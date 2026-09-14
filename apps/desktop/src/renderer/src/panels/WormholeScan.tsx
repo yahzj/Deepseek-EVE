@@ -97,7 +97,7 @@ export function WormholeScanTab({
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${WORMHOLE_STOCK_MAX} 处。`}
+          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（满级 −20%）。协会声望达标解锁时，扫描进度直接给满格——开扫即可发现一处。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${WORMHOLE_STOCK_MAX} 处。`}
         />
       }
       right={
@@ -163,6 +163,9 @@ export function WormholeScanTab({
             {full ? <span className="app-wh-hold-warn">已囤满上限：先去探索掉一处才能继续扫</span> : null}
           </div>
           {blocked !== null && !scan.active ? <div className="app-dim">{blocked}</div> : null}
+          {!scan.active && blocked === null && percent >= 100 ? (
+            <div className="app-dim">进度已满：点「开始扫描」即刻发现一处虫洞。</div>
+          ) : null}
         </div>
 
         <div className="app-bay-title">已发现的虫洞 · {stock.length} 处</div>

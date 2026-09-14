@@ -798,7 +798,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'source-sweeping', per: 0.1, call: 'market.ts SWEEP_PER_LEVEL（×1.1/级）', srcNear: false },
     { skill: 'secondhand-market', per: 0.02, call: 'market.ts SECONDHAND_PER_LEVEL', srcNear: false },
     { skill: 'galactic-happenings', per: 0.08, call: 'events.ts eventCadenceFactor（事件间隔 −8%/级）+ expedition.ts（×1.15/级）' },
-    { skill: 'galactic-happenings', per: 0.04, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描周期，2026-09-14 船长追加的第四项）' },
+    { skill: 'galactic-happenings', per: 0.2, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描窗口 · **满级阶跃 −20%**，2026-09-14 船长追加的第四项）' },
     { skill: 'event-dividend', per: 0.15, call: 'events.ts（事件现金）' },
     { skill: 'signal-analysis', per: 0.08, call: 'explore.ts scanSkillFactor' },
     { skill: 'signal-filtering', per: 0.06, call: 'explore.ts scanSkillFactor' },

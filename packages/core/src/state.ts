@@ -199,6 +199,12 @@ export interface WormholeScanState {
   active: boolean
   /** 已累计的扫描毫秒（满一个窗口即发现一处虫洞） */
   progressMs: number
+  /**
+   * **解锁赠礼已领**（船长 2026-09-14：「设置，玩家解锁扫描虫洞时，扫描进度条就是满的。」）。
+   * 首次判定"已解锁"（协会声望 ≥ 40）时把进度条一次性预置满格并置本标记；
+   * **可选字段 ⇒ 零迁移**：老档没有它 = 还没领过 ⇒ 下一拍补发（`grantWormholeScanUnlockGift`）。
+   */
+  unlockGift?: boolean
 }
 
 /**

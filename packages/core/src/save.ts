@@ -2318,6 +2318,11 @@ function normalizeState(raw: unknown): GameState {
       Number.isFinite(whScanProgressRaw) && whScanProgressRaw > 0
         ? Math.min(WORMHOLE_SCAN_BASE_MS, Math.floor(whScanProgressRaw))
         : 0,
+    /**
+     * 解锁赠礼标记（船长 2026-09-14）：**只在领过时落 `true`** —— 老档 / 没领过 = 字段不存在
+     * ⇒ 下一拍由 `grantWormholeScanUnlockGift` 补发（`false` 与"没有"同义，故不落成显式 false）。
+     */
+    unlockGift: whScanRaw.unlockGift === true ? true : undefined,
   }
   // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX`
   const wormholeStock: Array<{
