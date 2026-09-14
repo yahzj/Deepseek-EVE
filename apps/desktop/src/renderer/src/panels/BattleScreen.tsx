@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -1409,6 +1409,9 @@ const meSpeedRef = useRef(200)
   /* 弹药（显示层） */
   const ammoChips = DMG_ORDER.filter((t) => arcs.ammo[ammoKey(t)] > 0)
 
+  /* 敌方冲锋（2026-09-14 逐单位）：可能同时多条在冲 ⇒ 标记带条数；口径与引擎同源（core 的 `foeChargeCount`） */
+  const foeCharging = battle ? foeChargeCount(battle) : 0
+
   /* 船体维修装置状态（2026-09-09）：运转中（绿点呼吸）/ 组件耗尽停机（暗红）；徽标在弹药旁 */
   const repairRt = battle?.repair
   const repairTotal = repairRt ? Object.values(repairRt.kits).reduce((a, b) => a + b, 0) : 0
@@ -2306,11 +2309,11 @@ const meSpeedRef = useRef(200)
                 <span className={`app-a-chip app-a-${b.type}`}>{DMG_LABEL[b.type]}</span>
               </span>
             ))}
-            {/* 敌方突进标记（2026-09-10 船长定：高威胁近战敌在够不着时突进机动 ×2）——
+            {/* 敌方冲锋标记（2026-09-10 船长定；**2026-09-14 改逐单位**：可能不止一条在冲）——
                 复用同级"运行态 chip"样式（红点 = 告警态），不自造新类 */}
-            {battle?.foeChargeOn ? (
-              <span className="app-bts-repair is-down" title="敌方正在突进：够不着你时机动翻倍逼近——进入其射程后仍会维持 2 秒，随后冷却 20 秒">
-                <i /> 敌突进中
+            {foeCharging > 0 ? (
+              <span className="app-bts-repair is-down" title="敌方正在冲锋：各自加速逼近，自身炮台命中你、或压到目标距离即解除，随后进入 10 秒冷却">
+                <i /> 敌冲锋中{foeCharging > 1 ? ` ×${foeCharging}` : ''}
               </span>
             ) : null}
             {ammoChips.length > 0 ? (

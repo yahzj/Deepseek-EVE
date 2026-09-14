@@ -284,7 +284,8 @@ export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw']
  * 远高于 A 族同档最高 391，兑现「C 族速度比 A 海盗还快」）。
  * 其余字段 = 迁移前的现状建档值：命中 0.95 · ~~射程带 1~2552~~ ⇒ **1~3552**（2026-09-14 船长「所有虫子 +1000 射程」） · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
  * 血型均衡（= 裂谷卡 `defProfile balanced`）；主系**等离子** 8:2（C 族酸液签名）。
- * 形态 = `'spit'`（**能量掷命中**）。**逐卡目标值由卡的 `hpMul`/`dmgMul` 反算**（舰级值只是档案锚）。 */
+ * 形态 = `'spit'`（**能量掷命中**）。**逐卡目标值由卡的 `hpMul`/`dmgMul` 反算**（舰级值只是档案锚）。
+ * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
   id: 'foe-alien-rift-larva',
   name: '畸变幼虫',
@@ -303,6 +304,10 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
   dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（C 族酸液签名）
   energyForm: 'spit', // 能量·掷命中（裁定⑤）
   tactic: 'brawl',
+  // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：小虫也吃冲锋，倍率 1.5
+  // （巨兽 3）——解除 = **自身炮台命中我方**（或压到期望交距），随后冷却 10 秒；逐单位独立。
+  foeCanCharge: true,
+  foeChargeMul: 1.5,
 }
 
 /** C 族 · 一档「星髓幼虫」——星髓虫群的**幼体**、厚甲筑巢（服务：深渊之门卫队 45、星髓虫群 72）。
@@ -314,7 +319,8 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
  * 命中随距离衰减 + 吃守方回避——这是星髓那张卡唯一的难度改动）· ~~射程带 1~2655~~ ⇒ **1~3655**（2026-09-14 全族 +1000） ·
  * 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms · 血型**装甲**（= 星髓卡 `defProfile armor`）；
  * 主系**等离子** 8:2。形态 = `'spit'`（**能量掷命中**）。
- * ⚠ 深渊之门卫队卡的条目覆写：血型**护盾**（卡面 shield）· 命中 **0.90** · **纯等离子** · 射程 1~2600。 */
+ * ⚠ 深渊之门卫队卡的条目覆写：血型**护盾**（卡面 shield）· 命中 **0.90** · **纯等离子** · 射程 1~2600。
+ * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
 export const FOE_ALIEN_STARCORE: FoeShipDef = {
   id: 'foe-alien-starcore-larva',
   name: '星髓幼虫',
@@ -333,6 +339,9 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
   dmgMix: { plasma: 8, explosive: 2 }, // 等离子主
   energyForm: 'spit',
   tactic: 'brawl',
+  // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓幼虫同样吃冲锋、倍率 1.5
+  foeCanCharge: true,
+  foeChargeMul: 1.5,
 }
 
 /**
@@ -348,7 +357,8 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
  * （原 922 / 167 是卡锚；现由卡的 `hpMul`/`dmgMul` 反算回目标值）。
  * 速度 = **4 战列舰基准 205 × `297/205` = 297**（船长 2026-09-11 先「巨兽提速降为 1.35」（= 277），
  * 看过实测后「**将首领速度单独上调 20 点**」⇒ **297**；仍是族内唯一破例的慢档），
- * 并**给巨兽开启之前做过的冲锋能力**补偿其慢——`foeCanCharge: true`，
+ * 并**给巨兽开启之前做过的冲锋能力**补偿其慢——`foeCanCharge: true`（**2026-09-14 船长定倍率 3**：
+ * 「将大虫子的冲锋倍率改为 3」；解除 = **自身炮台命中我方** 或 压到期望交距，随后冷却 10 秒；逐单位独立），
  * 见 `combat.updateFoeCharge` 与 `docs/design/foe-faction-c-alien-20260911.md` §十）。
  * 射程带 **1~2,713**（船长 2026-09-11 当日先令「**巨兽射程增加**」到 4,000，看过实测后**随即「回收射程加成」**
  * ⇒ **回到原值 2,713**，与全族同档一致、**不再覆盖标准站位 3,220 m**）。⚠ **期望交距与开战距离都不动**：
@@ -376,6 +386,7 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
   tactic: 'brawl',
   elite: true, // 全族唯一的稀有头目（显示名「精锐噬口巨兽」）
   foeCanCharge: true, // 船长「给巨兽开启之前做过的冲锋能力」（舰级级 opt-in；总开关仍关）
+  foeChargeMul: 3, // 2026-09-14 船长：「将大虫子的冲锋倍率改为 3」（同日全局 4.0 退回 3.0，见 balance）
 }
 
 /**
@@ -389,7 +400,8 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
  * **按档重排（甲案）**：T2 档基线 480 / 68 × 角色 **1.30 / 0.82**（中坚成虫）= **624 / 56**。
  * 速度 = 2 驱逐舰基准 295 × **`1.35`** = **398**（高于 A 族同档最高 325）。
  * 其余字段 = 迁移前的现状建档值：命中 0.95 · ~~射程带 1~2655~~ ⇒ **1~3655**（2026-09-14 全族 +1000） · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
- * 血型**装甲**（= 星髓卡 `defProfile armor`）；主系**等离子** 8:2。形态 = `'spit'`。 */
+ * 血型**装甲**（= 星髓卡 `defProfile armor`）；主系**等离子** 8:2。形态 = `'spit'`。
+ * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
 export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   id: 'foe-alien-starcore-adult',
   name: '星髓成虫',
@@ -408,6 +420,9 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   dmgMix: { plasma: 8, explosive: 2 },
   energyForm: 'spit',
   tactic: 'brawl',
+  // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓成虫同样吃冲锋、倍率 1.5
+  foeCanCharge: true,
+  foeChargeMul: 1.5,
 }
 
 /* ═══════════ D 族 · 守墓古舰（2026-09-11 船长「对悬赏进行敌人配置」批）═══════════

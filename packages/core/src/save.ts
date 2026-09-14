@@ -761,9 +761,11 @@ const BATTLE_FIELDS = {
   foeDroneRangeBuff: { kind: 'persist' }, // E 族受击增程：一次触发、本场永久（丢了 ⇒ 机制静默重置）
   foeGunRangeBuff: { kind: 'persist' }, // D 族炮台受击增程：同上
   /* ── 运行态（有意不入档，逐条写明理由） ── */
-  foeChargeOn: { kind: 'runtime', why: '敌突进循环：落在"重载即重置循环"口径内（2026-09-10 起即如此，登记备查）' },
+  foeCharges: {
+    kind: 'runtime',
+    why: '敌冲锋循环（2026-09-14 起逐单位：在冲 / 冷却到某时刻）：落在"重载即重置循环"口径内（2026-09-10 起即如此，登记备查）',
+  },
   foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
-  foeChargeCdUntilMs: { kind: 'runtime', why: '同突进循环：重载即重置冷却' },
   droneHitAt: { kind: 'runtime', why: '反应式防空的最近受击时刻：短窗缓存，超窗即脱锁' },
   notices: { kind: 'runtime', why: '战斗画面提示条：纯表现层，限时自动消失、不留档' },
   pdCd: { kind: 'runtime', why: '近防炮调度冷却（当前波）：重载即重置为可开火' },
