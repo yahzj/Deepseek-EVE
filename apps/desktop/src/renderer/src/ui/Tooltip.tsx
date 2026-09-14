@@ -192,7 +192,39 @@ export function TooltipLayer(): ReactNode {
     let armed: HTMLElement | null = null // 已进入、在等延迟的元素
     let shown: HTMLElement | null = null // 已摘走 title、正在展示自绘提示的元素
     let shownText = '' // 正在展示的文本（跟随鼠标时要用它重排）
+    /**
+     * **展示期间盯住 `title` 被写回来**（2026-09-13 船长报的真 BUG：悬停「工业 ×N」那枚 AI 徽标久了
+     * 还是会冒出**原生旧 title**）：那一枚的 `title` 是**实时读数**（活动条数 + 每条百分比 / 剩余时间），
+     * 引擎每拍刷新 ⇒ React 把新的 `title` 重新写到元素上 ⇒ 浏览器原生提示趁虚而入、和自绘提示**同时**显示。
+     * ⇒ 展示期间挂一个只盯 `title` 属性的 MutationObserver：**写回来就再摘一次**，并把自绘提示的
+     * 内容刷新成新值（锚点仍用最近一次鼠标位置）；元素被卸载则收起提示。
+     */
+    let obs: MutationObserver | null = null
+    const watchShown = (el: HTMLElement): void => {
+      obs?.disconnect()
+      obs = new MutationObserver(() => {
+        if (shown !== el) return
+        if (!el.isConnected) {
+          restore()
+          hideTip()
+          return
+        }
+        const fresh = el.getAttribute('title')
+        if (fresh === null) return
+        el.dataset[NATIVE_TIP_STASH] = fresh
+        el.removeAttribute('title')
+        if (fresh === shownText) return
+        shownText = fresh
+        const r = el.getBoundingClientRect()
+        const ax = lastPt.x >= 0 ? lastPt.x : Math.round(r.left + Math.min(r.width / 2, 160))
+        const ay = lastPt.y >= 0 ? lastPt.y : Math.round(r.bottom - 4)
+        showTip(fresh, ax, ay)
+      })
+      obs.observe(el, { attributes: true, attributeFilter: ['title'] })
+    }
     const restore = (): void => {
+      obs?.disconnect()
+      obs = null
       if (timer !== 0) {
         window.clearTimeout(timer)
         timer = 0
@@ -227,6 +259,7 @@ export function TooltipLayer(): ReactNode {
         el.removeAttribute('title')
         shown = el
         shownText = text
+        watchShown(el) // 实时读数的 title 会被 React 写回来 ⇒ 盯住它（见 watchShown 注释）
         // 锚在**鼠标位置**（2026-09-13 船长：「鼠标悬浮的 title 要跟随鼠标走」）——
         // 指针位置取模块级 lastPt（触屏合成事件给 (0,0) 时回落到元素底边中点）
         const r = el.getBoundingClientRect()
