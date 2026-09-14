@@ -59,6 +59,7 @@ import {
   WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import ts from 'typescript'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
 import {
@@ -2621,6 +2622,60 @@ for (const m of MODULES) {
   )
   if (offenders.length === 0) {
     console.log('· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）')
+  }
+}
+
+/* ── 模板串契约（2026-09-14 船长报障「虫洞探索地图的背景变成全黑了」后加）：
+ * `url("${pinnedSpaceBg}")` 漏了反引号 ⇒ 输出的是**字面量文本**而不是插值，底图 URL 永远 404 ⇒
+ * 地图只剩压暗层与 1px 星点，看上去"背景全黑"。类型系统看不出这种错（它就是个合法字符串），
+ * 所以这里按 **TypeScript AST** 精确扫：**StringLiteral（单/双引号）的 text 里含 `${`** 即红
+ * （模板串本身是 TemplateExpression / NoSubstitutionTemplateLiteral，不会误报；嵌套引号也不干扰）。 */
+{
+  const tplRoots = [
+    'apps/desktop/src/renderer/src',
+    'apps/desktop/src/main',
+    'apps/desktop/src/preload',
+    'packages/core/src',
+    'packages/data/src',
+    'packages/ui/src',
+  ]
+  const tplFiles: string[] = []
+  const walkTpl = (dir: string): void => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, d.name)
+      if (d.isDirectory()) walkTpl(p)
+      else if (p.endsWith('.ts') || p.endsWith('.tsx')) tplFiles.push(p)
+    }
+  }
+  for (const r of tplRoots) {
+    const abs = join(process.cwd(), r)
+    if (existsSync(abs)) walkTpl(abs)
+  }
+  const tplOffenders: string[] = []
+  for (const file of tplFiles) {
+    const src = readFileSync(file, 'utf8')
+    const sf = ts.createSourceFile(
+      file,
+      src,
+      ts.ScriptTarget.Latest,
+      true,
+      file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    )
+    const visit = (node: ts.Node): void => {
+      if (ts.isStringLiteral(node) && node.text.includes('${')) {
+        const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+        tplOffenders.push(`${file.slice(process.cwd().length + 1)}:${line + 1}`)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+  check(
+    tplOffenders.length === 0,
+    `模板串契约：字符串里出现 \${…} 字面量（漏写反引号 ⇒ 输出的是字面量文本而非插值；2026-09-14「虫洞地图背景全黑」就是这个坑）：${tplOffenders.join(' · ')}`,
+  )
+  if (tplOffenders.length === 0) {
+    console.log(`· 模板串契约：${tplFiles.length} 个源文件无「引号字符串里含 \${…}」的漏反引号写法`)
   }
 }
 

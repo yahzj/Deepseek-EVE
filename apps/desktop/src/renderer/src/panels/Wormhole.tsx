@@ -1322,7 +1322,7 @@ export function WormholePanel({
                     <div
         className="app-wh-mapbox"
         ref={mapBoxRef}
-        style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': "url(\"${pinnedSpaceBg}\")" } : {}) } as React.CSSProperties}
+        style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': `url("${pinnedSpaceBg}")` } : {}) } as React.CSSProperties}
         title="滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）"
       >
                       <WhGridMap
