@@ -663,7 +663,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
    *  「T4T5舰船都出一张一次性蓝图，价格按照舰船价格的100%算」＋「还是有惩罚吧，按50%算」）
    *
    * 口径（六条）：
-   * ① **价格 = 该舰市场行价 × 100%**（不是永久图纸的 ×3/×4 —— 它买的是"一艘船"的资格）；
+   * ① **价格 = 该舰市场行价 × 50%**（**2026-09-14 船长改判**：「将一次性蓝图的价格下调到舰船的
+   *    0.5倍」——原「×100%」作废；不是永久图纸的 ×3/×4——它买的是"一艘船"的资格）；
    * ② `singleUse: true` ⇒ **造一艘吃掉一张**（与虫洞 15 张同机制，`manufacturing.ts` 现成通路）；
    * ③ **材料与工期与同舰永久蓝图逐字相同**（造出来是同一艘船）；
    * ④ **不进碎片逆向配方表**（契约「一次性图纸不得出现在碎片逆向配方表」守）；
@@ -682,7 +683,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_160,
     buildCostIsk: 0,
-    priceIsk: 2_400_000, // = 行价 ×100%
+    priceIsk: 1_200_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%） // = 行价 ×100%
     description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
   },
   {
@@ -698,7 +699,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 14_340,
     buildCostIsk: 0,
-    priceIsk: 2_600_000,
+    priceIsk: 1_300_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '无人机母舰，货舱 3,600 m³，机巢宽裕、靠放飞机群撑火力。',
   },
   {
@@ -713,7 +714,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 16_080,
     buildCostIsk: 0,
-    priceIsk: 6_000_000,
+    priceIsk: 3_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '重装巡舰，货舱 12,000 m³、循环 13 秒产 22 单位，厚壳仓库。',
   },
   {
@@ -729,7 +730,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 16_920,
     buildCostIsk: 0,
-    priceIsk: 9_000_000,
+    priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿族的产量旗舰。',
   },
   {
@@ -746,7 +747,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 16_920,
     buildCostIsk: 0,
-    priceIsk: 9_000_000,
+    priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '导弹巡洋舰，货舱 2,600 m³，靠齐射导弹先声夺人。',
   },
   {
@@ -764,7 +765,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 16_920,
     buildCostIsk: 0,
-    priceIsk: 9_000_000,
+    priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
@@ -781,7 +782,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 17_340,
     buildCostIsk: 0,
-    priceIsk: 11_000_000,
+    priceIsk: 5_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '炮击巡洋舰，货舱 2,800 m³，重炮动能阵列的中坚。',
   },
   {
@@ -797,7 +798,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 17_520,
     buildCostIsk: 0,
-    priceIsk: 12_000_000,
+    priceIsk: 6_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿族的产量顶点。',
   },
   {
@@ -814,7 +815,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 17_700,
     buildCostIsk: 0,
-    priceIsk: 13_000_000,
+    priceIsk: 6_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '突击巡洋舰，货舱 3,000 m³，厚盾重炮的咬合者。',
   },
   {
@@ -831,7 +832,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 18_000,
     buildCostIsk: 0,
-    priceIsk: 15_000_000,
+    priceIsk: 7_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '激光巡洋舰，货舱 2,500 m³，接敌即烧穿护盾。',
   },
   {
@@ -846,7 +847,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 48_960,
     buildCostIsk: 0,
-    priceIsk: 24_000_000,
+    priceIsk: 12_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '大型货舰，货舱 14,000 m³、循环 12 秒产 16 单位。',
   },
   {
@@ -862,7 +863,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 59_610,
     buildCostIsk: 0,
-    priceIsk: 67_500_000,
+    priceIsk: 33_750_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '重载货舰，货舱 26,000 m³、循环 36 秒产 110 单位，囤货主力。',
   },
   {
@@ -878,7 +879,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 62_580,
     buildCostIsk: 0,
-    priceIsk: 90_000_000,
+    priceIsk: 45_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '重装旗舰，货舱 19,000 m³、三层血最厚，重装线的顶点。',
   },
   {
@@ -895,7 +896,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 72_000,
     buildCostIsk: 0,
-    priceIsk: 225_000_000,
+    priceIsk: 112_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
   },
   {
@@ -915,7 +916,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 162_000,
     buildCostIsk: 0,
-    priceIsk: 640_000_000,
+    priceIsk: 320_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '旗舰货舰，货舱 36,000 m³、循环 33 秒产 129 单位，移动要塞。',
   },
 ]

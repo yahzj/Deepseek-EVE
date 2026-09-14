@@ -8,9 +8,12 @@
  * - 渠道划分：「**将T3巡洋舰的一次性蓝图下放到稀有**」·「**蝠鲼现货和蓝图上调至奇货，一次性蓝图保留在稀有**」·
  *   「**剑鱼的一次性蓝图也下放稀有**」·「**玳瑁现货和蓝图上调至奇货**」
  *
+ * ⚠ **2026-09-14 船长改判价格口径（原话照抄）**：「**将一次性蓝图的价格下调到舰船的0.5倍**」⇒
+ * 上面第一条里的「价格按照舰船价格的100%算」**作废**，改为 **= 该舰市场行价 × 0.5**。
+ *
  * 本件钉四件事：
  * ① **每艘 T3/T4/T5 有价舰都有一张一次性蓝图**（`singleUse: true`），
- *    **价格 = 该舰市场行价 × 100%**（不是永久图纸的 ×3/×4），**材料与工期与永久蓝图逐字相同**；
+ *    **价格 = 该舰市场行价 × 0.5**（不是永久图纸的 ×3/×4），**材料与工期与永久蓝图逐字相同**；
  * ② **权重**：`blueprintWeight` 对一次性舰船蓝图 = **×0.5**（`balance.market.singleUseBlueprintWeight`），
  *    普通蓝图仍 ×0.05，非蓝图行 = 1；
  * ③ **渠道**：T3 十张 + 剑鱼/蝠鲼 = 稀有订单层（数字 3）；玄武/巨齿鲨/皇带鱼 = 奇货（数字 4）；
@@ -38,13 +41,14 @@ const goodOf = (kind: 'ship' | 'blueprint', refId: string) => MARKET_GOODS.find(
 const shipPrice = (shipId: string) => goodOf('ship', shipId)?.basePrice ?? 0
 
 describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
-  it('① 每艘 T3/T4/T5 有价舰都有一张；价格 = 行价 ×100%；材料与工期与永久蓝图相同', () => {
+  it('① 每艘 T3/T4/T5 有价舰都有一张；价格 = 行价 ×0.5（2026-09-14 改判）；材料与工期与永久蓝图相同', () => {
     const withPrice = SHIPS.filter((s) => s.tier >= 3 && shipPrice(s.id) > 0)
     expect(withPrice.length).toBe(15) // T3 十 + T4 四 + T5 一
     for (const s of withPrice) {
       const once = SHIP_BLUEPRINTS.find((b) => b.shipId === s.id && b.singleUse === true)
       expect(once, `${s.name}（${s.id}）缺一次性蓝图`).toBeTruthy()
-      expect(once!.priceIsk, `${once!.id} 价格应为行价 ×100%`).toBe(shipPrice(s.id))
+      // 2026-09-14 船长：「将一次性蓝图的价格下调到舰船的0.5倍」（原 ×100% 作废）
+      expect(once!.priceIsk, `${once!.id} 价格应为行价 ×0.5`).toBe(Math.round(shipPrice(s.id) * 0.5))
       const perm = SHIP_BLUEPRINTS.find((b) => b.shipId === s.id && b.singleUse !== true)
       expect(perm, `${s.name} 应有永久蓝图作为对照`).toBeTruthy()
       expect(once!.materials).toEqual(perm!.materials) // 材料与永久蓝图逐字相同
