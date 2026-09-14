@@ -1026,6 +1026,22 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
    * 兼容字段：老档缺省 = 空（**零迁移**）。
    */
   shipStore?: Record<string, number>
+  /**
+   * **装配方案（预设）**（2026-09-14 船长：装配页可「保存当前装配 / 套用预设」，入口在「装配目标」栏右侧）。
+   * 归口 = **船型 id**（`defId`）：同型号任意一艘都能套用；每型上限 `FIT_PRESET_MAX = 3`。
+   * `fitted` 逐位存模块 id（尾部空位已裁），`droneLoad` 与舰船实例同结构；
+   * 套用语义（先卸光再装 · 尽力装 + 逐条提示）与结果清单见 `fitPresets.ts`。
+   * **兼容字段：老档缺省 = 空 · 零迁移 · 不升版本**（与同日 `shipStore` / `wormholeScan` 同款落法：
+   * 可选字段 + 归一化清洗 + 缺省不写键 ⇒ 老档往返逐字一致）。
+   */
+  fitPresets?: Record<string, ShipFitPreset[]>
+}
+
+/** 一套装配方案（存"哪一位装什么 + 无人机舱装载"；套用时按目标船槽位布局对齐，超出位丢弃） */
+export interface ShipFitPreset {
+  name: string
+  fitted: { high: Array<string | null>; mid: Array<string | null>; low: Array<string | null> }
+  droneLoad?: Record<string, number>
 }
 
 /** AI 副船任务：采矿（自动循环，满舱回港卸货入仓库后自动再出航） */

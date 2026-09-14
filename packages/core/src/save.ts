@@ -19,6 +19,7 @@ import {
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
+import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
 import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from './wormholeScan'
@@ -29,6 +30,7 @@ import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
+import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -1579,6 +1581,42 @@ function normalizeState(raw: unknown): GameState {
       shipStore[key] = Math.floor(value)
     }
   }
+  /**
+   * --- 装配方案（2026-09-14 船长，**兼容字段：老档缺省 = 空，零迁移**）---
+   * **只做结构清洗**：本层拿不到内容表（`normalizeState(raw)` 无 ctx）⇒ **不校验 id 是否存在**；
+   * 下架/未知件在**套用时**逐条报进"未装"清单（见 `fitPresets.applyFitPreset`）。
+   * 清洗规则：每型 ≤ `FIT_PRESET_MAX` 条 · 名称去空白并限长（空名丢弃）· 位数组只留非空字符串、
+   * 裁掉尾部空位、长度 ≤7（槽位上限）· 无人机只收正整数 · **全空方案丢弃**。
+   */
+  const fitPresets: Record<string, ShipFitPreset[]> = {}
+  for (const [defId, listRaw] of Object.entries(asRaw(src.fitPresets))) {
+    if (defId.length === 0 || !Array.isArray(listRaw)) continue
+    const list: ShipFitPreset[] = []
+    for (const itemRaw of listRaw) {
+      const item = asRaw(itemRaw)
+      const name = typeof item.name === 'string' ? item.name.trim().slice(0, FIT_PRESET_NAME_MAX) : ''
+      if (name.length === 0) continue
+      const fitRaw = asRaw(item.fitted)
+      const cleanRack = (v: unknown): Array<string | null> => {
+        if (!Array.isArray(v)) return []
+        const out: Array<string | null> = []
+        for (const x of v.slice(0, 7)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+        while (out.length > 0 && out[out.length - 1] === null) out.pop()
+        return out
+      }
+      const fitted = { high: cleanRack(fitRaw.high), mid: cleanRack(fitRaw.mid), low: cleanRack(fitRaw.low) }
+      const droneLoad: Record<string, number> = {}
+      for (const [id, n] of Object.entries(asRaw(item.droneLoad))) {
+        if (typeof n === 'number' && Number.isFinite(n) && n > 0) droneLoad[id] = Math.floor(n)
+      }
+      const empty =
+        fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0
+      if (empty) continue
+      list.push({ name, fitted, ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}) })
+      if (list.length >= FIT_PRESET_MAX) break
+    }
+    if (list.length > 0) fitPresets[defId] = list
+  }
   // --- 一次性图纸"名额已用尽"（2026-09-12 兼容字段；老档缺省 = 空，零迁移） ---
   const spentOneTimeRecipes: string[] = []
   if (Array.isArray(src.spentOneTimeRecipes)) {
@@ -2926,6 +2964,10 @@ function normalizeState(raw: unknown): GameState {
     spentOneTimeRecipes,
     recycleCarry,
     shipStore,
+    // 装配方案（2026-09-14 · 兼容字段 ⇒ 老档没有就是「没有方案」）。
+    // ⚠ **缺省不写键**（与 `sideTasks.bountySeenWindow` 同款口径）：无条件写空表会让老档往返
+    //   多出一个键 ⇒ `toEqual` 快照用例红（踩过）；因此只在真有方案时才落这个字段。
+    ...(Object.keys(fitPresets).length > 0 ? { fitPresets } : {}),
     blueprintStock,
     market,
     orders,

@@ -234,6 +234,31 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     expect(state.gameMs - after!.lastTickGameMs, '回来时把离开的时间补算成战时间了').toBeLessThanOrEqual(250)
   })
 
+  it('**临时离开期间没有战斗、时间又往前走了 ⇒ 返回不炸**（修 2026-09-14 线上 TypeError → 玩家看到的「返回虫洞黑屏」）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const a = addShipToFleet(state, T1)
+    const b = addShipToFleet(state, T1)
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
+    const run = state.wormhole.run!
+    expect(run.battle, '前提：这一趟此刻没有战斗（玩家大多就是在这种状态下临时离开）').toBeFalsy()
+    wormholeLeave(state)
+    expect(run.leftAtGameMs).toBe(state.gameMs)
+    /**
+     * 关键组合（旧用例恰好漏掉的正是这一格）：**没有战斗** ＋ **离开期间游戏时间照走**。
+     * 修前：`shiftBattleClock(run.battle as BattleState, 30 分钟)` ⇒ 形参是 undefined ⇒
+     * `battle.startedAtGameMs` 抛 TypeError ⇒ 虫洞面板整块不渲染（黑屏）。
+     */
+    advanceGame(state, 30 * 60_000, ctx, { nowWallMs: 0 })
+    const before = state.gameMs
+    const back = wormholeResume(state, ctx)
+    expect(back.ok, `返回虫洞被拒：${back.error ?? ''}`).toBe(true)
+    expect(run.attending).toBe(true)
+    expect(run.leftAtGameMs, '回来后离开时刻要清掉（否则下次会拿旧时刻算 delta）').toBeUndefined()
+    expect(state.gameMs, '回来只是记账，不该改游戏时刻').toBe(before)
+    expect(run.battle, '没有战斗就不该凭空造出一场').toBeFalsy()
+  })
+
   it('**活动栏显示虫洞探索**（船长 2026-09-13「显示」）：一条读数 + 不可终止 + 离开态标注', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)

@@ -8,6 +8,8 @@
  * - AI 打捞：每趟任务完成卸货 = 1 次；
  * - AI 精炼炉/回收炉：每完成 1 批 = 1 批；
  * - AI 制造线：每条线到点完成 = 1 件；
+ * - AI 造船：并入 `makeDone`，**另单列 `shipsDone`**（2026-09-14 船长「补」：组装机产出的
+ *   舰船进的是**舰船仓库**（`state.shipStore`），离线简报只有「制造完成 ×N」时会看不出船去了哪）；
  * - income：预估收入（ISK）——资源/矿物按站内收价（baseSellPriceIsk）、装备与舰船按市场
  *   基准价（basePrice）粗估；残骸与蓝图碎片不计（不可直接变现）。
  */
@@ -19,6 +21,8 @@ export interface CoreSettleStats {
   refineBatches: number
   recycleBatches: number
   makeDone: number
+  /** 制造完成的**舰船**件数（与 `makeDone` 并列单列：舰船产出入舰船仓库，离线简报据此写明去处） */
+  shipsDone: number
   /** 预估收入（ISK，累计） */
   income: number
 }
@@ -35,7 +39,7 @@ export function newSettleStats(): SettleStats {
 function rec(stats: SettleStats | undefined, type: AiCoreType): CoreSettleStats | null {
   if (!stats) return null
   let s = stats[type]
-  if (!s) s = stats[type] = { miningTrips: 0, salvageDone: 0, refineBatches: 0, recycleBatches: 0, makeDone: 0, income: 0 }
+  if (!s) s = stats[type] = { miningTrips: 0, salvageDone: 0, refineBatches: 0, recycleBatches: 0, makeDone: 0, shipsDone: 0, income: 0 }
   return s
 }
 
@@ -59,6 +63,12 @@ export function addAiRefineBatch(stats: SettleStats | undefined, type: AiCoreTyp
 export function addAiMakeDone(stats: SettleStats | undefined, type: AiCoreType): void {
   const s = rec(stats, type)
   if (s) s.makeDone += 1
+}
+
+/** 造船完成单列（2026-09-14 船长「补」：舰船产出入舰船仓库，离线简报要写明去处） */
+export function addAiShipDone(stats: SettleStats | undefined, type: AiCoreType): void {
+  const s = rec(stats, type)
+  if (s) s.shipsDone += 1
 }
 
 export function addAiIncome(stats: SettleStats | undefined, type: AiCoreType, isk: number): void {

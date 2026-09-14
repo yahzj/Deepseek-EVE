@@ -15,7 +15,7 @@
  */
 import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText } from '@whale/core'
+import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
 import { hideTip, moveTip, showTip } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -136,6 +136,14 @@ function repairShortText(mod: ModuleDef): string {
   return `每 ${secs} 秒 ${amt}${mod.repairFree === true ? '（无消耗）' : '（耗组件）'}`
 }
 
+/**
+ * **打捞周期秒数**（短行与详情面板共用单点；缺省 10 秒与 `core/salvaging.ts` 的 `?? 10_000` 同源）。
+ * 为什么抽出来：2026-09-14 修「卡片没有说明」时发现**详情面板写了、短行漏了**——同一口径两处各写一遍就会漂。
+ */
+function salvageCycleSecs(mod: ModuleDef): string {
+  return ((mod.salvageCycleMs ?? 10_000) / 1000).toFixed(0)
+}
+
 /** 结构层抗性短缀（任何槽位都可能带）：`结构抗 动能+25% 爆炸+25% 能量+25%` */
 function hullResistShortText(mod: ModuleDef): string {
   const bits = (['kinetic', 'explosive', 'plasma'] as const)
@@ -183,6 +191,12 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
       const gap = resistGapText(mod.shieldResistAdd)
       if (gap) parts.push(gap)
+      // 2026-09-14 护盾充能装置（船长：「每 30 秒恢复自身护盾最大值一定比例的护盾量」）：
+      // ⚠ 它只有 `shieldPulsePct` 一个效果字段，原先短行**拼出空串**（船长报障「装配时候的卡片上没有说明」）
+      // —— 秒数取 core 单点 `SHIELD_PULSE_MS`，不写死 30。
+      if ((mod.shieldPulsePct ?? 0) > 0) {
+        parts.push(`每 ${SHIELD_PULSE_MS / 1000} 秒回盾 ${pct(mod.shieldPulsePct ?? 0)}（按满盾）`)
+      }
       body = parts.join(' · ')
       break
     }
@@ -212,6 +226,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
     }
     case 'drone-rack':
       body = `无人机舱 +${fmt(mod.droneBayBonusM3)} m³`
+      break
+    case 'salvager':
+      // 2026-09-14 补（与护盾充能装置同批查出）：**打捞器短行此前也是空的**——本模板**漏了 salvager 这个槽位分支**
+      body = `每 ${salvageCycleSecs(mod)} 秒 1 具残骸`
       break
     case 'drone-tac':
       body = `无人机伤害 +${pctOpt(mod.droneDmgBonus)}`
@@ -698,7 +716,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   } else if (mod.slot === 'salvager') {
     // 2026-09-11 船长定精简时补：打捞器此前只显示"叠加方式 + CPU"，看不到真正的效果
     if (mod.salvageCycleMs !== undefined) {
-      lines.push({ k: '打捞周期', v: `每 ${(mod.salvageCycleMs / 1000).toFixed(0)} 秒 1 具残骸` })
+      lines.push({ k: '打捞周期', v: `每 ${salvageCycleSecs(mod)} 秒 1 具残骸` }) // 与短行同单点
     }
   } else if (mod.slot === 'support') {
     // V18.1 支援件：按效果字段渲染（低槽 = 稳定器/射速计算机；中槽 = 索敌/陀螺）

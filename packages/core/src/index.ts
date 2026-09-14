@@ -266,6 +266,21 @@ export {
   unstoreShip,
 } from './shipyard'
 
+// 装配方案（预设）：保存当前装配 / 按方案换装（2026-09-14 船长）
+export {
+  FIT_PRESET_MAX,
+  FIT_PRESET_NAME_MAX,
+  fitPresetsOf,
+  fitPresetBrief,
+  saveFitPreset,
+  renameFitPreset,
+  deleteFitPreset,
+  unfitAllModules,
+  clearDroneLoad,
+  applyFitPreset,
+} from './fitPresets'
+export type { FitPresetApplyResult, UnfitAllResult } from './fitPresets'
+
 export { fleetDefOf, shipDisplayName } from './instances'
 
 /** 承伤口径单点（按敌火扣装甲/结构；低安遇袭与战斗撤退共用——见 hullDamage.ts） */
@@ -736,6 +751,7 @@ export {
   addAiSalvageDone,
   addAiRefineBatch,
   addAiMakeDone,
+  addAiShipDone,
   addAiIncome,
 } from './settleStats'
 export type { CoreSettleStats, SettleStats } from './settleStats'

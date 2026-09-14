@@ -4339,6 +4339,110 @@ body {
 
 }
 
+/* 装配方案（预设）：入口在「装配目标」栏右侧（船长 2026-09-14） */
+
+.app-fit-preset-bar {
+
+  margin-left: auto;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+}
+
+.app-fit-preset-count {
+
+  font-style: normal;
+
+  font-size: 11px;
+
+  color: var(--wui-gold);
+
+}
+
+.app-fit-preset-list {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+
+  margin: 6px 0 8px;
+
+}
+
+.app-fit-preset-row {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 6px 8px;
+
+  border: 1px solid var(--wui-border);
+
+  border-radius: 6px;
+
+  background: rgba(14, 24, 40, 0.45);
+
+}
+
+.app-fit-preset-row > b {
+
+  min-width: 84px;
+
+}
+
+.app-fit-preset-row > .app-dim {
+
+  flex: 1;
+
+  min-width: 0;
+
+  font-size: 11px;
+
+}
+
+.app-fit-preset-name {
+
+  flex: 1;
+
+  min-width: 120px;
+
+}
+
+.app-fit-preset-foot {
+
+  display: flex;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  padding-top: 8px;
+
+  border-top: 1px solid var(--wui-border);
+
+}
+
+.app-fit-preset-foot > .app-dim {
+
+  flex: 1;
+
+  min-width: 180px;
+
+  font-size: 11px;
+
+}
+
 .app-fit-cpustrip {
 
   display: flex;
@@ -6619,6 +6723,61 @@ body {
 
   overflow-wrap: anywhere;
 
+}
+
+/* ── 手册 · 子页面导航 + 拆段（2026-09-14 船长：「做一个子页面导航栏来给里面的解释分页。
+   相关内容不要只用一个段落。这样会形成一大段话文字挤成一团」）──
+   口径：玩法速览 / 航行须知 = **一条解释一页**（子栏按组列出词条，组名作分组小标题）；
+   正文改成多段，每段一行短小标题（`.app-hand-para-head`），不再是一整块文字。
+   观感**复刻左侧章节导航**（`.app-hand-nav` / `.app-hand-navitem` 那套），不自造新样式。 */
+.app-hand-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 168px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--wui-border);
+  overflow-y: auto;
+  min-height: 0;
+}
+.app-hand-subgroup { display: flex; flex-direction: column; gap: 2px; }
+.app-hand-subgroup + .app-hand-subgroup { margin-top: 6px; }
+.app-hand-subgroup-title { padding: 4px 10px 2px; font-size: 11.5px; color: var(--wui-text-dim); letter-spacing: 0.5px; }
+.app-hand-subitem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wui-text-dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.app-hand-subitem:hover { color: var(--wui-text); background: rgba(15, 26, 40, 0.6); }
+.app-hand-subitem.is-active { color: var(--wui-accent); border-color: var(--wui-border); background: rgba(79, 216, 196, 0.08); }
+/* 搜索时未命中的词条：置灰但仍可点（点开能看到"这条讲什么"） */
+.app-hand-subitem.is-dim { opacity: 0.38; }
+.app-hand-subitem-hits { flex: 0 0 auto; font-family: var(--wui-mono); font-size: 10.5px; color: var(--wui-accent); }
+/* 「小贴士」是单条子页（不属于任何一组）：与上面的组用一条分隔线隔开 */
+.app-hand-subsolo { margin-top: 8px; border-top: 1px solid var(--wui-border); border-radius: 0 0 6px 6px; }
+/* 正文的段：一行短小标题 + 正文；段间 7px、段内 2px（比"一整段"好扫读） */
+.app-hand-para { display: flex; flex-direction: column; gap: 2px; }
+.app-hand-para + .app-hand-para { margin-top: 7px; }
+.app-hand-para-head { font-size: calc(var(--ui-fs, 1) * 11.5px); font-weight: 600; letter-spacing: 0.3px; color: #9fd8ff; }
+/* 页底翻页条（船长 2026-09-14 追加「加「上一条 / 下一条」」）：两端对齐、单侧缺项时留空位（按钮位置不跳） */
+.app-hand-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.app-hand-pager-btn { max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 窄窗口（≤1180px，与手册既有断点同阈值）：两列导航一起吃紧 ⇒ 子栏收窄，别把正文挤没 */
+@media (max-width: 1180px) {
+  .app-hand-subnav { flex: 0 0 140px; padding: 10px 6px; }
+  .app-hand-subitem { padding: 6px 8px; font-size: 12px; }
 }
 
 .app-hand-notes {

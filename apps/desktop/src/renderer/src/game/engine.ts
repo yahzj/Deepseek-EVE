@@ -119,6 +119,12 @@ import {
   cpuBudgetOf,
   cpuOverloadText,
   swapModuleAt,
+  // 装配方案（预设）：保存当前装配 / 套用 / 改名 / 删除 / 一键卸下（2026-09-14 船长）
+  applyFitPreset,
+  deleteFitPreset,
+  renameFitPreset,
+  saveFitPreset,
+  unfitAllModules,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
   beginTutorialAfterAwaken,
@@ -214,6 +220,8 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  FitPresetApplyResult,
+  UnfitAllResult,
   CommsActionCommand,
   DamageType,
   GameState,
@@ -251,6 +259,8 @@ interface OfflineSnapshot {
   warehouse: Record<string, number>
   cargo: Record<string, number>
   moduleBay: Record<string, number>
+  /** 舰船仓库（组装机产出的船 2026-09-14 起入这里，不进舰队 ⇒ 舰队 diff 看不见它们） */
+  shipStore: Record<string, number>
   fleetKeys: string[]
   learned: string[]
   logCount: number
@@ -272,6 +282,8 @@ export interface OfflineReport {
   modules: Array<{ name: string; delta: number }>
   /** 新入坞的舰船 */
   shipsIn: string[]
+  /** 新入**舰船仓库**的舰船（组装机产出：2026-09-14 起不入舰队，故与 `shipsIn` 并列单列） */
+  shipsStored: Array<{ name: string; delta: number }>
   /** 技能升级（名称 LvN） */
   skillsUp: string[]
   /** 新学会配方名 */
@@ -293,6 +305,7 @@ function snapshotBasics(state: GameState): OfflineSnapshot {
     warehouse: { ...state.warehouse.items },
     cargo: { ...(cur?.cargo ?? {}) },
     moduleBay: { ...state.moduleBay },
+    shipStore: { ...(state.shipStore ?? {}) },
     fleetKeys: Object.keys(state.fleet),
     learned: [...state.learnedRecipes],
     logCount: state.logs.length,
@@ -343,6 +356,13 @@ function buildOfflineReport(
     if (!beforeShips.has(id)) newShips.push(shipDisplayName(state, ctx, id))
   }
 
+  // 组装机产出的舰船 2026-09-14 起**直接进舰船仓库**（不再进舰队）⇒ 舰队 diff 看不见它们，
+  // 单列一份「入舰船仓库」清单，否则离线简报说不出船去了哪（船长 2026-09-14「补」）
+  const shipsStored = positiveDeltas(before.shipStore, state.shipStore ?? {}).map((d) => ({
+    name: ctx.ships.get(d.id)?.name ?? d.id,
+    delta: d.delta,
+  }))
+
   const skillsUp: string[] = []
   for (const [id, lv] of Object.entries(state.skills.trained)) {
     if (lv > (before.trained[id] ?? 0)) {
@@ -378,6 +398,8 @@ function buildOfflineReport(
       if (s.refineBatches > 0) acts.push(`精炼 ×${s.refineBatches} 批`)
       if (s.recycleBatches > 0) acts.push(`回收 ×${s.recycleBatches} 批`)
       if (s.makeDone > 0) acts.push(`制造完成 ×${s.makeDone}`)
+      // 2026-09-14 船长「补」：舰船产出入舰船仓库 ⇒ 单列一条，免得玩家以为船丢了
+      if (s.shipsDone > 0) acts.push(`造船 ×${s.shipsDone}（已入舰船仓库）`)
       if (acts.length === 0) continue
       coreJobs.push(
         `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? ` · 预估收入 ≈+${s.income.toLocaleString('zh-CN')} 信用点` : ''}`,
@@ -393,6 +415,7 @@ function buildOfflineReport(
     items,
     modules,
     shipsIn: newShips,
+    shipsStored,
     skillsUp,
     learnedIn,
     logCount: newLogs.length,
@@ -410,6 +433,8 @@ function offlineReportLogText(r: OfflineReport): string {
   if (r.items.length > 0) parts.push(`收获 ${r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join('、')}`)
   if (r.modules.length > 0) parts.push(`装备入库 ${r.modules.map((m) => `${m.name}×${m.delta}`).join('、')}`)
   if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join('、')}`)
+  if (r.shipsStored.length > 0)
+    parts.push(`入舰船仓库 ${r.shipsStored.map((s) => `${s.name}×${s.delta}`).join('、')}`)
   if (r.skillsUp.length > 0) parts.push(`技能 ${r.skillsUp.join('、')}`)
   if (r.learnedIn.length > 0) parts.push(`学会配方 ${r.learnedIn.join('、')}`)
   if (r.coreJobs.length > 0) parts.push(`AI 核心作业 ${r.coreJobs.join('；')}`)
@@ -1320,6 +1345,58 @@ export class GameEngine {
   swapModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
     const result = swapModuleAt(this.state, moduleId, this.ctx, { rack, index, shipId })
     if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  // ── 装配方案（预设）：保存当前装配 / 套用 / 重命名 / 删除 / 一键卸下（2026-09-14 船长，装配页入口） ──
+
+  /** 保存当前装配为方案（按**船型**归口；默认「方案 N」；同名覆盖；满 3 套且无同名时拒绝） */
+  saveFitPresetFor(shipId: string, name?: string): CommandResult {
+    const result = saveFitPreset(this.state, this.ctx, shipId, name)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 套用方案（先卸光再装 · 尽力装 + 逐条提示；`summary` 直接弹给玩家） */
+  applyFitPresetAt(shipId: string, index: number): FitPresetApplyResult {
+    const result = applyFitPreset(this.state, this.ctx, shipId, index)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 重命名方案（船型 + 序号；同名拒绝） */
+  renameFitPresetAt(defId: string, index: number, name: string): CommandResult {
+    const result = renameFitPreset(this.state, defId, index, name)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 删除方案（船型 + 序号；删空则连键一起清掉） */
+  deleteFitPresetAt(defId: string, index: number): CommandResult {
+    const result = deleteFitPreset(this.state, defId, index)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 一键卸下目标船的全部装备（放回装备库）；进洞/自动探索中的船拒绝（锁判定在 core 内） */
+  unfitAllFor(shipId: string): UnfitAllResult {
+    const result = unfitAllModules(this.state, this.ctx, shipId)
+    if (result.ok && result.removed > 0) {
       void this.persist()
       this.notify()
     }
