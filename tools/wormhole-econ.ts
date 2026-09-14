@@ -88,36 +88,38 @@ const ctx: SimContext = buildSimContext()
 
 /**
  * 参考编队（三套 fit · F3c 第二段）：
- * - **`full`（默认 · 满配 · 2026-09-13 船长定「给作业开，并添加你自己决定的满配配置」）**：
- *   **11 个槽位全插满** —— 高槽 5×导弹 MK2（火力**一点不让**）、中槽 推进 + 双盾 + 索敌、
- *   低槽 **打捞器 MK3 + 采集器 MK3**（作业装备改归低槽后不再跟武器抢位）。
- *   CPU 255 / 345 ✓（实测脚本核对过槽数与 CPU，见提交说明）。
+ * - **`full`（默认 · 满配）**：**11 个槽位全插满** —— 高槽 **3×导弹 MK2 + 打捞器 MK3 + 采集器 MK3**
+ *   （作业装备**回高槽**后与火力同槽竞争：船长 2026-09-14「改回高槽」，火力让出 2 位换两件作业装备）、
+ *   中槽 推进 + 双盾 + 索敌、低槽 稳像 + 装甲。CPU **226 / 345** ✓（实测脚本核对过槽数与 CPU）。
  * - `combat`：**老难度基准**（5×导弹 + 3 中槽 + 稳像/装甲低槽）——不带作业装备，纯战斗读数用。
- * - `old`：**旧口径对照**（作业装备还占高槽 ⇒ 3×导弹 + 打捞器 + 采集器）——用来给船长看"改槽前"的差距。
+ * - `old`：**2026-09-13～09-14 短暂口径的对照**（作业装备占低槽 ⇒ 5×导弹一点不让 + 低槽作业两件）——
+ *   该口径已被船长判为"错位 BUG"作废，仅留作读数对照。
  */
 const REF_SHIP = 'sh-thresher'
 /**
  * **`auto`（2026-09-13 二号追加 · 供"哪套编队最优"的对比）**：按**该舰自己的槽位**自动配装——
- * 高槽塞满导弹 MK2、中槽按 推进→双盾→索敌 取前 N、低槽按 **打捞器 MK3 → 采集器 MK3** → 稳像/装甲取前 N。
+ * 高槽按 **打捞器 MK3 → 采集器 MK3 → 导弹 MK2** 取前 N（作业装备优先占位，剩下的位给火力）、
+ * 中槽按 推进→双盾→索敌 取前 N、低槽 稳像/装甲 取前 N。
  * 为什么必须用 `auto` 做舰队横向对比：`full/combat/old` 三套都是**长尾鲨的 11 槽配装**，
  * 直接套到 10 槽的鹦鹉螺/13 槽的玳瑁上会**超槽**（`fitted` 是直接赋值的、不走装配校验）⇒
- * 槽少的船会白拿别人的火力，对比就失真了。同一艘船的读数与 `full` 同源（长尾鲨 4/3/3… 见下）。
+ * 槽少的船会白拿别人的火力，对比就失真了。同一艘船的读数与 `full` 同源。
  */
 export type RefFit = 'full' | 'combat' | 'old' | 'auto'
 const REF_FIT_FULL = {
-  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
-  low: ['mod-salvager-3', 'mod-miner-3'],
+  low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
 const REF_FIT_COMBAT = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
+/** 对照行 = 2026-09-13～09-14 的低槽口径（**已作废**：作业装备现在归高槽，配置会被装配校验拒） */
 const REF_FIT_OLD = {
-  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-1', 'mod-miner-1'],
+  high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
-  low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  low: ['mod-salvager-3', 'mod-miner-3'],
 }
 /** 技能档 = 战斗系 Lv3（中位行，与 `battle-calibrate` 的 A1 行同口径） */
 const SKILLS: Record<string, number> = {
@@ -154,13 +156,14 @@ const FLEET_IDS: readonly string[] | null = SHIPS_ARG ? SHIPS_ARG.split('=')[1]!
  */
 const START_DEPTH = Math.max(1, Number((process.argv.find((a) => a.startsWith('--start-depth=')) ?? '--start-depth=1').split('=')[1]))
 
-/** `--fit=auto`：按该舰槽位自动配装（高槽导弹满、中槽推进/双盾/索敌、低槽 打捞器→采集器→稳像/装甲） */
+/** `--fit=auto`：按该舰槽位自动配装（高槽 打捞器→采集器→导弹、中槽推进/双盾/索敌、低槽 稳像/装甲） */
 function autoFitFor(defId: string): { high: string[]; mid: string[]; low: string[] } {
   const slots = ctx.ships.get(defId)?.slots ?? { high: 0, mid: 0, low: 0 }
+  const highPool = ['mod-salvager-3', 'mod-miner-3', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2']
   const midPool = ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2']
-  const lowPool = ['mod-salvager-3', 'mod-miner-3', 'mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']
+  const lowPool = ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-armor-plate-2']
   return {
-    high: Array.from({ length: slots.high ?? 0 }, () => 'mod-turret-kin-2'),
+    high: highPool.slice(0, slots.high ?? 0),
     mid: midPool.slice(0, slots.mid ?? 0),
     low: lowPool.slice(0, slots.low ?? 0),
   }
@@ -935,9 +938,9 @@ function runRunsMode(): void {
   }
   const fit: RefFit = ANALYTIC_FIT
   const fitText: Record<RefFit, string> = {
-    full: '**满配**：5×导弹 MK2 + 推进 + 双盾 + 索敌 + **打捞器 MK3 + 采集器 MK3**（11 槽插满 · CPU 255/345）',
+    full: '**满配**：3×导弹 MK2 + 打捞器 MK3 + 采集器 MK3（高槽） + 推进/双盾/索敌 + 稳像/装甲（11 槽插满 · CPU 226/345）',
     combat: '纯战斗：5×导弹 MK2 + 3 中槽 + 稳像/装甲（不带作业装备 ⇒ 捞不到东西）',
-    old: '旧口径：3×导弹 + 打捞器/采集器**占高槽**（改槽前的对照）',
+    old: '对照（已作废）：5×导弹 + 打捞器/采集器**占低槽**（2026-09-13～09-14 的短暂口径）',
   }
   console.log(
     `整趟模拟 · ${n} 趟（**强度系数 ${WORMHOLE_FOE_BASE_STRENGTH_MUL * (STRENGTH ?? 1)}**（覆写 ${STRENGTH ?? '无'}）· ` +
