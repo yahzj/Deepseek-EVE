@@ -132,6 +132,15 @@ securityZoneOf,
   WORMHOLE_MATTER_FLOOR,
   wormholeIsShapedItem,
   // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
+  // 2026-09-14 船长：内容原型（丙）+ 敌族锁定（丁）——两张表的自洽契约
+  WORMHOLE_ARCHETYPES,
+  WORMHOLE_ARCHETYPE_WEIGHTS,
+  WORMHOLE_ARCHETYPE_LABELS,
+  WORMHOLE_SIGNAL_WEIGHTS,
+  wormholeSignalWeightsFor,
+  WORMHOLE_AUTO_ARCHETYPE_WEIGHTS,
+  WORMHOLE_FAMILY_ORDER,
+  WORMHOLE_FAMILY_CARD,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   DSI_FACTION_ID,
 } from '@whale/core'
@@ -3395,6 +3404,48 @@ for (const m of MODULES) {
       errors.push(
         `虫洞不可见闸门：洞内敌卡三处清单不一致 —— 内容侧契约 [${whIds.join(', ')}] vs core 轮换表 [${coreWhIds.join(', ')}]`,
       )
+    }
+    /**
+     * **内容原型（丙）+ 敌族锁定（丁）的两张表自洽**（船长 2026-09-14 定案）。
+     *
+     * ① 五档原型齐、权重为正、中文名齐，且 `WORMHOLE_ARCHETYPES` 与权重表同集合；
+     * ② **原型只改配比**：每档的权重总和恒 = 基准总和、**信标权重一字不动**（它是每层唯一的指路件）；
+     * ③ **族 ↔ 洞内卡 1:1**：五族各有一张卡、且那张卡的 `foeFamily` 就是该族（错一张 ⇒ 整族拿不到东西）；
+     * ④ 自动探索的口味权重表（`wormholeAuto` 里的字面量副本）与网格表**同值**（防两处漂移）。
+     */
+    {
+      const archs: string[] = [...WORMHOLE_ARCHETYPES]
+      const weightKeys = Object.keys(WORMHOLE_ARCHETYPE_WEIGHTS)
+      if (archs.length !== 5 || archs.some((a) => !weightKeys.includes(a)) || weightKeys.length !== 5) {
+        errors.push(`内容原型：WORMHOLE_ARCHETYPES 与权重表不同集合（${archs.join('、')} vs ${weightKeys.join('、')}）`)
+      }
+      const baseTotal = WORMHOLE_SIGNAL_WEIGHTS.ship + WORMHOLE_SIGNAL_WEIGHTS.wreck + WORMHOLE_SIGNAL_WEIGHTS.resource + WORMHOLE_SIGNAL_WEIGHTS.radar + WORMHOLE_SIGNAL_WEIGHTS.beacon
+      for (const a of WORMHOLE_ARCHETYPES) {
+        if (!(WORMHOLE_ARCHETYPE_WEIGHTS[a] > 0)) errors.push(`内容原型 ${a} 的抽取权重必须为正`)
+        if (!WORMHOLE_ARCHETYPE_LABELS[a]) errors.push(`内容原型 ${a} 缺中文名（界面徽标要用）`)
+        const w = wormholeSignalWeightsFor(a)
+        const total = w.ship + w.wreck + w.resource + w.radar + w.beacon
+        if (Math.abs(total - baseTotal) > 1e-6) {
+          errors.push(`内容原型 ${a} 改动了信号权重总和（${total} ≠ ${baseTotal}）—— 原型只许改配比`)
+        }
+        if (w.beacon !== WORMHOLE_SIGNAL_WEIGHTS.beacon) {
+          errors.push(`内容原型 ${a} 改动了信标权重（${w.beacon} ≠ ${WORMHOLE_SIGNAL_WEIGHTS.beacon}）—— 信标不参与口味`)
+        }
+        if (WORMHOLE_AUTO_ARCHETYPE_WEIGHTS[a as never] !== WORMHOLE_ARCHETYPE_WEIGHTS[a]) {
+          errors.push(`内容原型 ${a} 的自动探索口味权重与网格抽取权重不同值（两处必须同值）`)
+        }
+      }
+      for (const f of WORMHOLE_FAMILY_ORDER) {
+        const cardId = WORMHOLE_FAMILY_CARD[f]
+        const card = ANOMALIES_FLAVORED.find((x) => x.id === cardId)
+        if (!card) {
+          errors.push(`敌族锁定：族 ${f} 的洞内卡 ${cardId} 不在数据里`)
+          continue
+        }
+        if (card.foeFamily !== f) {
+          errors.push(`敌族锁定：卡 ${cardId} 的 foeFamily = ${String(card.foeFamily)}，与族 ${f} 不符（1:1 契约）`)
+        }
+      }
     }
     let leaked = 0
     for (const id of whIds) {

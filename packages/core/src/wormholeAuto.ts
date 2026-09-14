@@ -20,14 +20,15 @@
  * ⚠ 本模块**不碰** `wormholeEnter` 的副本状态机：自动探索是"抽象的一趟"（不建网格、不打战斗），
  * 产出按手动期望折算 —— 这是船长对"收益不确定 + 绝不丢船"的取舍，实现上必须与真副本解耦。
  */
-import type { GameState, WormholeAutoReport, WormholeAutoRun, WormholeStockItem } from './state'
+import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
 import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { WORMHOLE_ORE_ITEM_ID } from './wormhole'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckItemIdOf } from './salvage'
 import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf } from './wormholeSalvage'
-import { wormholeCardIdFor, wormholeLayerRewardMul } from './wormholeFoes'
+import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul } from './wormholeFoes'
+import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreShipUsed, industryAiBonus } from './ai'
 
@@ -59,11 +60,73 @@ export const WORMHOLE_AUTO_MANUAL = {
   /** 虚空母矿堆数/趟（矿脉 1~3 堆，均值 2） */
   orePiles: 2,
   /** 遗迹安全货柜件数/趟（econ 实测；层 2 起） */
-  boxes: 0.23,
+  boxChance: 0.23,
 } as const
 
 /** **结构保底**（绝不丢船：结构低于它就不再扣） */
 export const WORMHOLE_AUTO_HULL_FLOOR = 0.1
+
+/* ═══════════ 内容原型 → 自动探索的产出口味（丙 · 船长 2026-09-14：原型也影响自动探索） ═══════════ */
+
+/**
+ * 原型抽取权重（**与 `wormholeGrid.WORMHOLE_ARCHETYPE_WEIGHTS` 同值** —— `content:check` 有契约盯同值）。
+ * ⚠ 这里写字面量而不是读那个常量：本模块与 `wormholeGrid` 之间存在模块环，初始化期读对方常量会踩 TDZ。
+ */
+export const WORMHOLE_AUTO_ARCHETYPE_WEIGHTS: Readonly<Record<WormholeArchetype, number>> = {
+  balanced: 40,
+  wreck: 20,
+  ruins: 15,
+  vein: 15,
+  combat: 10,
+}
+
+/** 各原型的**原始口味倍数**（在四条产出线上重新分配；下面按抽取权重归一化回 ≈1 ⇒ 总期望不变） */
+const ARCHETYPE_RAW: Readonly<Record<WormholeArchetype, { commons: number; rares: number; ore: number; box: number }>> = {
+  balanced: { commons: 1, rares: 1, ore: 1, box: 1 },
+  wreck: { commons: 1.6, rares: 1.1, ore: 0.8, box: 1 },
+  ruins: { commons: 0.9, rares: 1.6, ore: 0.8, box: 2 },
+  vein: { commons: 0.7, rares: 0.9, ore: 2.2, box: 0.8 },
+  combat: { commons: 1.5, rares: 1.3, ore: 0.7, box: 0.9 },
+}
+
+/**
+ * **归一化后的口味倍数**：按抽取权重求加权平均，再逐线除掉它 ⇒
+ * 「同一条 40% 的期望线」不变，只是**在原型之间重新分配**（某原型多出的，别的原型少回去）。
+ */
+const ARCHETYPE_MUL: Readonly<Record<WormholeArchetype, { commons: number; rares: number; ore: number; box: number }>> = (() => {
+  const keys: WormholeArchetype[] = ['balanced', 'wreck', 'ruins', 'vein', 'combat']
+  const totalP = keys.reduce((s, k) => s + WORMHOLE_AUTO_ARCHETYPE_WEIGHTS[k], 0)
+  const mean = { commons: 0, rares: 0, ore: 0, box: 0 }
+  for (const k of keys) {
+    const p = WORMHOLE_AUTO_ARCHETYPE_WEIGHTS[k] / totalP
+    const m = ARCHETYPE_RAW[k]
+    mean.commons += p * m.commons
+    mean.rares += p * m.rares
+    mean.ore += p * m.ore
+    mean.box += p * m.box
+  }
+  const out = {} as Record<WormholeArchetype, { commons: number; rares: number; ore: number; box: number }>
+  for (const k of keys) {
+    const m = ARCHETYPE_RAW[k]
+    out[k] = {
+      commons: m.commons / mean.commons,
+      rares: m.rares / mean.rares,
+      ore: m.ore / mean.ore,
+      box: m.box / mean.box,
+    }
+  }
+  return out
+})()
+
+/** 某原型的产出口味倍数（界面/报告读数用） */
+export function wormholeAutoArchetypeMul(archetype: WormholeArchetype): {
+  commons: number
+  rares: number
+  ore: number
+  box: number
+} {
+  return ARCHETYPE_MUL[archetype]
+}
 
 /** 损伤区间（船长：「结构/装甲大幅受损（−40%~−80% 随机）」） */
 export const WORMHOLE_AUTO_DAMAGE_MIN = 0.4
@@ -243,6 +306,12 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
     stockId,
     seed: item.seed,
     depth: Math.max(1, Math.min(9, item.depth)),
+    /**
+     * 丙/丁（2026-09-14）：把该处的**内容原型 + 敌族**带进这趟自动探索 ——
+     * 产出池与"它真进去打"时同族，口味按原型重新分配（总期望仍是那条 40% 线）。
+     */
+    archetype: item.archetype ?? wormholeArchetypeOf(item.seed),
+    family: item.family ?? wormholeFamilyOfSeed(item.seed),
     shipIds: picked,
     startedAtGameMs: state.gameMs,
     finishAtGameMs: state.gameMs + WORMHOLE_AUTO_DURATION_MS,
@@ -251,10 +320,21 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   addLog(
     state,
     'info',
-    `🛰 自动探索队出发：起始第 ${run.depth} 层 · ${picked.length} 条舰（${picked.map((id) => shipNameOf(state, ctx, id)).join('、')}）` +
+    `🛰 自动探索队出发：起始第 ${run.depth} 层 · ${WORMHOLE_ARCHETYPE_LABELS[wormholeRunMeta(run).archetype]} · ${picked.length} 条舰（${picked.map((id) => shipNameOf(state, ctx, id)).join('、')}）` +
       `——约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航（每舰占 1 枚 AI 核心）。`,
   )
   return { ok: true }
+}
+
+/** 一趟（或一处）的原型与族：字段缺省一律按 `seed` 现算 ⇒ 老档与新建同口径 */
+export function wormholeRunMeta(run: { seed: number; archetype?: WormholeArchetype; family?: import('./state').WormholeFamily }): {
+  archetype: WormholeArchetype
+  family: WormholeFamily
+} {
+  return {
+    archetype: run.archetype ?? wormholeArchetypeOf(run.seed),
+    family: run.family ?? wormholeFamilyOfSeed(run.seed),
+  }
 }
 
 /**
@@ -316,26 +396,32 @@ export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
 function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): void {
   const rng = autoRng(run.seed, run.depth * 977)
   const mul = wormholeLayerRewardMul(run.depth)
-  const cardId = wormholeCardIdFor(run.depth, Math.abs(run.seed % 13))
-  const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? 'A')
+  /**
+   * 丙/丁（2026-09-14）：敌卡 = **本处锁定的族**（整趟同族）；产出口味按**内容原型**在四条线上重分配
+   * （`ARCHETYPE_MUL` 已归一化 ⇒ 总期望仍是那条 40% 线）。
+   */
+  const meta = wormholeRunMeta(run)
+  const taste = ARCHETYPE_MUL[meta.archetype]
+  const cardId = wormholeCardIdOfFamily(meta.family, run.seed)
+  const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? meta.family)
   const gains: Array<{ itemId: string; units: number }> = []
 
   // ① 普通残骸：堆数 = 手动 8.5 × 40% ≈ 3~4 堆，每堆 `WORMHOLE_WRECK_PILE_M3_BASE`(200) m³ × 层收益 × 抖动
-  const commons = Math.max(1, Math.round(WORMHOLE_AUTO_MANUAL.commons * WORMHOLE_AUTO_YIELD_MUL * (0.8 + rng() * 0.4)))
+  const commons = Math.max(1, Math.round(WORMHOLE_AUTO_MANUAL.commons * WORMHOLE_AUTO_YIELD_MUL * taste.commons * (0.8 + rng() * 0.4)))
   const wreckUnits = Math.max(1, Math.round(commons * WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4)))
   gains.push({ itemId: wreckItemIdOf(cardId), units: wreckUnits })
 
-  // ② 稀有残骸：期望 = 手动 1.25 × 40% = 0.5 件/趟 ⇒ 50% 给 1 件（专属装备的唯一来源）
-  if (rng() < WORMHOLE_AUTO_MANUAL.rares * WORMHOLE_AUTO_YIELD_MUL) {
+  // ② 稀有残骸：期望 = 手动 1.25 × 40% = 0.5 件/趟（基准）⇒ 原型口味再乘一档
+  if (rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.rares * WORMHOLE_AUTO_YIELD_MUL * taste.rares)) {
     gains.push({ itemId: rareWreckItemIdOf(cardId), units: RARE_WRECK_VOLUME_M3 })
   }
 
   // ③ 虚空母矿：0.8 堆 × 200 单位 × 层收益 × 抖动
-  const oreUnits = Math.round(WORMHOLE_AUTO_MANUAL.orePiles * WORMHOLE_AUTO_YIELD_MUL * 200 * mul * (0.8 + rng() * 0.4))
+  const oreUnits = Math.round(WORMHOLE_AUTO_MANUAL.orePiles * WORMHOLE_AUTO_YIELD_MUL * taste.ore * 200 * mul * (0.8 + rng() * 0.4))
   if (oreUnits > 0) gains.push({ itemId: WORMHOLE_ORE_ITEM_ID, units: oreUnits })
 
   // ④ 遗迹安全货柜：期望 ≈0.09 件/趟（手动 0.23 × 40%），层 2 起
-  if (run.depth >= 2 && rng() < WORMHOLE_AUTO_MANUAL.boxes * WORMHOLE_AUTO_YIELD_MUL) {
+  if (run.depth >= 2 && rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.boxChance * WORMHOLE_AUTO_YIELD_MUL * taste.box)) {
     gains.push({ itemId: wormholeRelicBoxIdOf(family), units: 1 })
   }
 

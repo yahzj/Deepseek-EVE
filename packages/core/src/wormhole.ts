@@ -10,7 +10,7 @@
  *
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
-import type { GameState, BattleState } from './state'
+import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
@@ -20,8 +20,10 @@ import {
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
   wormholeCardIdFor,
+  wormholeFamilyOfSeed,
 } from './wormholeFoes'
 import type { WormholeFoeKind } from './wormholeFoes'
+import { wormholeArchetypeOf } from './wormholeGrid'
 import {
   WORMHOLE_NEBULA_MIN_DEPTH,
   WORMHOLE_TURN_PER_ACTIVATE,
@@ -314,6 +316,13 @@ export interface WormholeRunState {
   phase: WormholePhase
   /** 当前层（1 起） */
   depth: number
+  /**
+   * **本趟锁定的敌族**（船长 2026-09-14 定案 · 丁）：进洞时从库存项带进来；老档/调试入口没有
+   * ⇒ 按 `run.seed` 现算（`wormholeFamilyOfSeed`）⇒ **零迁移**。整趟所有格都用该族的敌卡。
+   */
+  family?: WormholeFamily
+  /** 本趟的内容原型（丙 · 界面读数与结算用；同样可选 ⇒ 按 `run.seed` 现算） */
+  archetype?: WormholeArchetype
   /** 本层已推进到第几个节点（0 起） */
   nodeIndex: number
   /** 剩余回合 */
@@ -517,6 +526,12 @@ export {
   wormholeFoeThreat,
   wormholeExtractThreat,
   wormholeCardIdFor,
+  // 族锁定（丁 · 船长 2026-09-14 定案：一处虫洞一族、整趟同族）
+  wormholeCardIdOfFamily,
+  wormholeFamilyOfSeed,
+  WORMHOLE_FAMILY_ORDER,
+  WORMHOLE_FAMILY_CARD,
+  WORMHOLE_FAMILY_GLYPH,
   wormholeAnomalyOf,
   wormholeNaturalHp,
 } from './wormholeFoes'
@@ -1241,6 +1256,11 @@ export function wormholeEnter(
   ctx: SimContext,
   shipIds: readonly string[],
   seed: number,
+  /**
+   * **本处的"出生信息"**（可选）：从库存项进洞时把 起始层 / 内容原型 / 敌族 一并带进来
+   * （丙 + 丁 · 船长 2026-09-14）。不传（调试入口/老路径）⇒ 层按老口径、族与原型按 `seed` 现算。
+   */
+  origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily },
 ): WormholeStartResult {
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。' }
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
@@ -1248,6 +1268,10 @@ export function wormholeEnter(
   const r = wormholeStartRun(ctx, shipIds, seed)
   if (!r.ok || !r.run) return r
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
+  // 出生信息（丙/丁）：层夹 1~9；原型与族缺省 ⇒ 按种子现算（与库存列表显示的同源）
+  if (origin?.depth !== undefined) r.run.depth = Math.max(1, Math.min(9, Math.floor(origin.depth)))
+  r.run.archetype = origin?.archetype ?? wormholeArchetypeOf(seed)
+  r.run.family = origin?.family ?? wormholeFamilyOfSeed(seed)
   state.wormhole.run = r.run
   addLog(
     state,

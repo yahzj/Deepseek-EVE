@@ -18,7 +18,7 @@ import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits,
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
-  wormholeCardIdFor,
+  wormholeCardIdOfFamily,
   wormholeFleetCargoM3,
   wormholeUnitsPerSlot,
   wormholeGridActivate,
@@ -99,8 +99,12 @@ export function wormholeStartBattle(
     return { ok: false, error: '还没进入撤离相位。' }
   }
   const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
-  // 敌卡轮换序号：网格层按**格坐标**取（同格恒同序、不同格有变化），老档线性层按节点序号
-  const cardId = wormholeCardIdFor(run.depth, grid ? gridContentIndex(grid) : run.nodeIndex)
+  /**
+   * 敌卡 = **本趟锁定的族**（船长 2026-09-14 定案 · 丁：一处虫洞一族、整趟同族）。
+   * `run.family` 缺省（老档 / 调试入口）按 `run.seed` 现算 ⇒ 零迁移。
+   */
+  const cardId = wormholeCardIdOfFamily(run.family, run.seed)
+  void grid
   // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
   const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,

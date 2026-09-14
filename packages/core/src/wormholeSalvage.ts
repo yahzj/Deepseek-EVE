@@ -69,7 +69,7 @@ import type { WormholeCellPile, WormholeGridCell } from './wormholeGrid'
 import {
   wormholeBagSlotsOfFleet,
   wormholeBagUsage,
-  wormholeCardIdFor,
+  wormholeCardIdOfFamily,
   wormholeLayerRewardMul,
   wormholeNodePiles,
   mergeIntoBag,
@@ -343,10 +343,15 @@ function runSeedOf(state: GameState): number {
   return state.wormhole.run?.seed ?? state.rng.seed
 }
 
-/** 本格的产出跟着**哪张敌卡**走（残骸物品与专属池都按它取族） */
+/**
+ * 本格的产出跟着**哪张敌卡**走（残骸物品与专属池都按它取族）。
+ *
+ * 2026-09-14 船长定案（丁 · 族徽）：**一处虫洞锁一族** ⇒ 整趟所有格都用该族的卡
+ * （`WORMHOLE_FAMILY_CARD` 1:1）；`run.family` 缺省（老档/调试入口）按 `run.seed` 现算 ⇒ 零迁移。
+ */
 export function wormholeCellCardIdOf(run: WormholeRunState, cell: WormholeGridCell): string {
-  const grid = run.grid!
-  return wormholeCardIdFor(run.depth, gridContentIndex(grid, { q: cell.q, r: cell.r }))
+  void cell
+  return wormholeCardIdOfFamily(run.family, run.seed)
 }
 
 /** 某格的产出族（从敌卡 id 反查：`wh-*` 卡都带 `foeFamily`，取不到就当 A 族兜底） */

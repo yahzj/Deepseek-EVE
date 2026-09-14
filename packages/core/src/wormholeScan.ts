@@ -12,13 +12,15 @@
  * - **库存上限 5**；满则**扫描停机**并提示（船长：「扫描停机并提示」）。
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
-import type { GameState, WormholeScanState, WormholeStockItem } from './state'
+import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
 import { addLog } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { scanSkillFactor } from './explore'
 import { WORMHOLE_MAX_SHIPS } from './wormhole'
 import { DSI_FACTION_ID } from './expedition'
+import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
+import { wormholeFamilyOfSeed } from './wormholeFoes'
 
 /** **扫描一个虫洞的基准时长**（船长 2026-09-14：「扫描基准设定为220分钟」） */
 export const WORMHOLE_SCAN_BASE_MS = 220 * 60_000
@@ -134,11 +136,54 @@ function rollStockItem(state: GameState, ctx: SimContext): WormholeStockItem {
   void ctx
   stockSeq += 1
   const depth = WORMHOLE_STOCK_DEPTHS[Math.min(WORMHOLE_STOCK_DEPTHS.length - 1, Math.floor(rng() * WORMHOLE_STOCK_DEPTHS.length))]!
+  const seed = Math.floor(rng() * 2_000_000_000) + 1
   return {
     id: `wh-${Date.now().toString(36)}-${stockSeq.toString(36)}`,
-    seed: Math.floor(rng() * 2_000_000_000) + 1,
+    seed,
     depth,
+    /**
+     * **内容原型与敌族由种子决定**（丙/丁 · 船长 2026-09-14）：掷出种子那一刻就定了，
+     * 列表里直接给玩家看（"挑洞"就靠它）。老档缺这两个字段时按同一种子现算 ⇒ 结果一致、零迁移。
+     */
+    archetype: wormholeArchetypeOf(seed),
+    family: wormholeFamilyOfSeed(seed),
     foundAtGameMs: state.gameMs,
+  }
+}
+
+/**
+ * **放弃一处已发现的虫洞**（船长 2026-09-14：「玩家要能够放弃已经探索出的虫洞」）。
+ *
+ * 口径：**无代价、不退还**（那处就此消失），放弃后**腾出库存格**（可以继续扫新的）；
+ * **不影响扫描进度**（进度是另一本账）；**正在自动探索的那一处不能放弃**（先召回）。
+ */
+export function wormholeStockDiscard(state: GameState, id: string): CommandResult {
+  const list = wormholeStockOf(state)
+  const hit = list.find((x) => x.id === id)
+  if (!hit) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。' }
+  const running = (state.wormholeAuto ?? []).find((r) => r.stockId === id)
+  if (running) return { ok: false, error: '这一处正在自动探索中：先召回那一趟，再放弃。' }
+  state.wormholeStock = list.filter((x) => x.id !== id)
+  const meta = wormholeStockMeta(hit)
+  addLog(
+    state,
+    'info',
+    `🛰 已放弃一处虫洞：起始第 ${hit.depth} 层 · ${WORMHOLE_ARCHETYPE_LABELS[meta.archetype]}（那处通道就此关闭）。`,
+  )
+  return { ok: true }
+}
+
+/**
+ * **库存项的"完整口径"**（丙/丁 的两个字段对老档是现算的）：读的地方都走它，
+ * 免得"有的地方有原型、有的地方没有"。
+ */
+export function wormholeStockMeta(item: WormholeStockItem): {
+  archetype: WormholeArchetype
+  family: WormholeFamily
+} {
+  return {
+    archetype: item.archetype ?? wormholeArchetypeOf(item.seed),
+    family: item.family ?? wormholeFamilyOfSeed(item.seed),
   }
 }
 

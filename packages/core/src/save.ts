@@ -17,12 +17,14 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask } from './state'
+import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
 import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from './wormholeScan'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
+import { WORMHOLE_ARCHETYPES, wormholeArchetypeOf } from './wormholeGrid'
+import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
@@ -2293,7 +2295,14 @@ function normalizeState(raw: unknown): GameState {
         : 0,
   }
   // 库存：只收"结构完整"的条目（id 非空 / 种子与起始层为正整数），上限 = `WORMHOLE_STOCK_MAX`
-  const wormholeStock: Array<{ id: string; seed: number; depth: number; foundAtGameMs: number }> = []
+  const wormholeStock: Array<{
+    id: string
+    seed: number
+    depth: number
+    archetype: WormholeArchetype
+    family: WormholeFamily
+    foundAtGameMs: number
+  }> = []
   const whStockRaw = Array.isArray(src.wormholeStock) ? src.wormholeStock : []
   for (const item of whStockRaw) {
     if (wormholeStock.length >= WORMHOLE_STOCK_MAX) break
@@ -2306,6 +2315,16 @@ function normalizeState(raw: unknown): GameState {
       id,
       seed,
       depth: Number.isFinite(depthRaw) ? Math.min(9, Math.max(1, depthRaw)) : 1,
+      /**
+       * 内容原型与敌族（丙/丁 · 2026-09-14）：**老档没有 ⇒ 按种子现算**（零迁移，且与发现时一致）；
+       * 坏值（非法字符串）同样退回现算，不把脏值带进运行态。
+       */
+      archetype: WORMHOLE_ARCHETYPES.includes(o.archetype as WormholeArchetype)
+        ? (o.archetype as WormholeArchetype)
+        : wormholeArchetypeOf(seed),
+      family: WORMHOLE_FAMILY_ORDER.includes(o.family as WormholeFamily)
+        ? (o.family as WormholeFamily)
+        : wormholeFamilyOfSeed(seed),
       foundAtGameMs: Number.isFinite(num(o.foundAtGameMs)) ? Math.max(0, Math.floor(num(o.foundAtGameMs))) : 0,
     })
   }
@@ -2763,6 +2782,16 @@ function normalizeState(raw: unknown): GameState {
             ...(num(rRaw.desireM) > 0 ? { desireM: Math.round(num(rRaw.desireM)) } : {}),
             // 本趟确定性种子（F3b：层内产出的生成按它散列；坏值/缺省 ⇒ 不写，退回全局种子）
             ...(Math.floor(num(rRaw.seed)) !== 0 ? { seed: Math.floor(num(rRaw.seed)) } : {}),
+            /**
+             * 本趟锁定的敌族 + 内容原型（丙/丁 · 2026-09-14）：坏值/缺省 ⇒ **不写**，
+             * 消费侧按 `run.seed` 现算（`wormholeCardIdOfFamily` / 界面读数），零迁移。
+             */
+            ...(WORMHOLE_FAMILY_ORDER.includes(rRaw.family as WormholeFamily)
+              ? { family: rRaw.family as WormholeFamily }
+              : {}),
+            ...(WORMHOLE_ARCHETYPES.includes(rRaw.archetype as WormholeArchetype)
+              ? { archetype: rRaw.archetype as WormholeArchetype }
+              : {}),
             // 随行战利品（遗迹专属掉落：图纸/装备；撤离成功才入库）：只留非空字符串
             ...(Array.isArray(rRaw.relics)
               ? (() => {
