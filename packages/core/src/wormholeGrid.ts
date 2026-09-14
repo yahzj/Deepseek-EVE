@@ -238,10 +238,18 @@ export const WORMHOLE_EMPTY_MIN_SHARE = 0.5
 export const WORMHOLE_EMPTY_SHARE_PER_DEPTH = 0.04
 /** 空地点占比的**地板**（再深也不低于它——保住"三层里有一层是空的"这个体感） */
 export const WORMHOLE_EMPTY_SHARE_FLOOR = 0.32
-/** 第 `depth` 层的空地点占比（**占可分配池的比例**；乘 100 即"百分比"） */
-export function wormholeEmptyShareFor(depth: number): number {
+/**
+ * 第 `depth` 层的空地点占比（**占可分配池的比例**；乘 100 即"百分比"）。
+ *
+ * `blankShareFactor` = 外部给的**相对系数**（2026-09-14 船长「事件玄学」：满级 ×0.8 ⇒ 相对 −20%，
+ * 接线见 `wormhole.ts blankShareFactorOf`；缺省 1 ⇒ 一字不变）。
+ * ⚠ **必须先取该层基础占比（含 0.32 地板）、再乘系数**——反过来先乘再取地板的话，深层会被地板
+ * 吃回 0.32、技能在深层等于完全没用（本批的"相对削减"口径就是冲着这一点定的）。
+ */
+export function wormholeEmptyShareFor(depth: number, blankShareFactor = 1): number {
   const d = Math.max(1, Math.floor(depth))
-  return Math.max(WORMHOLE_EMPTY_SHARE_FLOOR, WORMHOLE_EMPTY_MIN_SHARE - WORMHOLE_EMPTY_SHARE_PER_DEPTH * (d - 1))
+  const base = Math.max(WORMHOLE_EMPTY_SHARE_FLOOR, WORMHOLE_EMPTY_MIN_SHARE - WORMHOLE_EMPTY_SHARE_PER_DEPTH * (d - 1))
+  return base * Math.max(0, blankShareFactor)
 }
 
 /**
@@ -582,7 +590,7 @@ export function pickPlace(signal: WormholeSignal, rnd: number, ruinsShare: numbe
  *    不够就从"资源/谜质"借残骸信号；舰船与信标不动）；
  * 6. **层 4 起点星云**（`WORMHOLE_NEBULA_MIN_DEPTH`）：只点有信号的地点、配额 15%、独立随机流。
  */
-export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0): WormholeGridState {
+export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0, blankShareFactor = 1): WormholeGridState {
   const rng = wormholeStream(seed * 7919 + depth * 104729)
   const radius = wormholeGridRadiusFor(depth)
   const all = hexDiskCells(radius)
@@ -597,7 +605,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    * **空占比随层下降**（船长 2026-09-13「空地块允许随着高层权重降低」；层 1 逐格不变）。
    * 口径 = **占可分配池的比例**（见 `wormholeEmptyShareFor` 的注释：量纲为什么是"占池"）。
    */
-  const emptyCount = Math.max(0, Math.ceil((nAll - 1) * wormholeEmptyShareFor(depth)))
+  const emptyCount = Math.max(0, Math.ceil((nAll - 1) * wormholeEmptyShareFor(depth, blankShareFactor)))
   // 洗牌（Fisher–Yates，确定性）后取前 emptyCount 个当"空"（入口/终点也照此参与 ⇒ 它们也可能是空的）
   const shuffled = [...others]
   for (let i = shuffled.length - 1; i > 0; i--) {

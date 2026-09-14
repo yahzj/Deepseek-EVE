@@ -909,6 +909,9 @@ export {
   wormholeFamilyOfSeed,
   wormholeCardIdOfFamily,
   wormholeScanBonusOf,
+  // 2026-09-14 船长：事件玄学（原「事件分红学」）——洞内空白地点占比的相对系数（每级 −4% / 满级 −20%）
+  EVENTS_BLANK_SHARE_PER_LEVEL,
+  blankShareFactorOf,
   wormholeExtract,
   wormholeGridScan,
   wormholeGridTravel,
