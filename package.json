@@ -24,6 +24,7 @@
     "content:import": "tsx tools/content-import.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts",
     "battle:bolt": "tsx tools/battle-bolt-anchor.ts",
+    "battle:layout": "tsx tools/battle-layout.ts",
     "wormhole:econ": "tsx tools/wormhole-econ.ts",
     "wormhole:loot": "tsx tools/wormhole-loot.ts",
     "battle:drone-vs-gun": "tsx tools/drone-vs-gun.ts",

@@ -20,7 +20,7 @@ const ROLE_ACCENT: Record<string, string> = {
 /* 画面几何常量（px）
    2026-09-10 船长：整体下移（TOP 26→54）——无人机上凸出击弧会在顶部被裁掉，给上方留出弧线空间。
    注意：CSS `.app-bts-col` 的 top 必须与本值保持一致（舰列视觉位置与锚点同源）。 */
-const LAY = { PAD: 36, GAP: 84, TOP: 54, MAIN: 170, ESC: 90, ROW_GAP: 4 }
+const LAY = { PAD: 36, GAP: 84, TOP: 54, MAIN: 170, ESC: 90, ROW_GAP: 24 }
 
 /* ═══════ 舰种体积（2026-09-11 船长：战斗动画的舰身体积与舰种挂钩）═══════
  * `TIER_SIZE[档]` = 舰身显示宽（px）。**T3 锚在改造前的统一主尺寸 170** ⇒ 巡洋舰与今天一样大、
@@ -137,6 +137,14 @@ function approachOf(m: number, openM: number, nearM: number): number {
  * - 同排内按列从左到右（列间距 = 本列最宽舰 + `ROW_GAP`）；
  * - **第二排右移半个列间距**（`shift = round(pitch₀ / 2)`）、**下移一个舰高 + 一条血条带**（`drop`，见 `ROW2_BAR_DROP`）。
  *
+ * ⚠ **`ROW_GAP` 为什么是 24（2026-09-14 船长：「同一排舰船的间距可以再拉开一些，目前会遮挡血条上的数字」）**：
+ * 血条挂在舰体下方、**宽 185px**（`.app-bts-hpWrap`），居中 ⇒ **每侧探出 92.5px**；同排邻舰的船体左缘在
+ * `列宽 + ROW_GAP − 邻舰宽/2` 处。两艘 T3（宽 170）时：`ROW_GAP = 4` ⇒ 邻舰左缘在 **+89px**，
+ * 而血条右端的数字占到 **+92.5px** ⇒ **正好被压住**（船长看到的就是这个）。
+ * 要腾出数字：`185/2 + 6 ≤ 170 + ROW_GAP − 85` ⇒ `ROW_GAP ≥ 21`，故取 **24**（留 3px 余量）。
+ * 至于"同排全是小舰"（宽 90）的极端情形，`ROW_GAP` 救不了 —— 那一种由**血条宽度**兜底
+ * （`myBarGeom` 按同排实际间距收窄，见下），两条一起才保证任何编成都不遮数字。
+ *
  * ⚠ 两条硬约束（决定为什么是"半格 + 一个舰高"）：
  * 1. **舰体是实心的**：两排水平错开 < 一舰宽（170px）时，必须**竖向拉开 ≥ 一舰高**，否则两排舰体互相压住
  *    （验算：右移 87 + 竖向仅 54 ⇒ 横向重叠 83px、竖向重叠 24px，会实打实叠在一起）；
@@ -210,6 +218,12 @@ const HP_BAR_H = 50
 /** 血条宽上限 / 下限（px；`.app-bts-hpWrap` 现值 185，下限保证"护/甲/结"三段数字仍读得出） */
 const HP_BAR_W_MAX = 185
 const HP_BAR_W_MIN = 140
+/**
+ * **我方血条宽度的下限**（px）——刻意比敌方的 `HP_BAR_W_MIN`(140) 更小：我方阵形的主控锚点被钉死在
+ * `me` 上（距离尺/射程弧/弹道都在它身上），**不能**像敌方那样走"整排竖向堆叠"那条兜底 ⇒
+ * 只能把血条收窄到同排间距内。96px 仍放得下「护盾」两字标签（24）+ 数字（26）+ 两条 4px 缝。
+ */
+const MY_BAR_W_MIN = 96
 /**
  * **第二排额外下移量**（px）= 一条血条带 + 6 缝隙。
  * 起因（船长 2026-09-13）：「**目前会挡住第一排血条（敌我都移动）**」——血条挂在**舰体下方**
@@ -316,6 +330,11 @@ function layout(
   formation: FoeFormation
   /** 米制可用跨度（px）：贴脸(near)时舰缘间距 = LAY.GAP，拉满(open)时 = LAY.GAP+usable —— 与距离线性对应 */
   usable: number
+  /**
+   * **我方血条宽度**（多舰路径才有；单舰 = 缺省 ⇒ 用 CSS 的 185px）。
+   * = `同排最小间距 − 6`，夹在 `[MY_BAR_W_MIN, HP_BAR_W_MAX]` ⇒ 邻舰船体压不到血条右端的数字。
+   */
+  myBarW?: number
 } {
   const nFoe = foeSizes.length
   /**
@@ -361,6 +380,7 @@ function layout(
      同一份 `foeFormationOf`（列宽/右移/下移/排高）算结构，方向镜像：敌方在右、列序自左向右且第二排**右**移
      ⇒ 我方在左，列序改成**向左**展开（主控＝第 0 列，最靠敌），第二排**左**移 `shift`、同样**下**移一行高 ＋ 血条带。
      ⚠ 单舰（`mySizes.length === 1`）时**必须**返回 `[me]` 本身（`me` 是距离尺/弹道/血条的既有锚点）⇒ 逐像素不变。 */
+  let myPitch = 0 // 我方同排最小间距（多舰路径才有意义；单舰恒 0 ⇒ 不返回血条宽度）
   const my: Anchor[] = mySizes.length <= 1 ? [me] : (() => {
     const mySlots = [...mySizes]
     const myFm = foeFormationOf(mySlots)
@@ -382,9 +402,34 @@ function layout(
       const y = LAY.TOP + (s.row === 1 ? myRowH * 2 + ROW2_BAR_DROP : myRowH) - myH[i]! / 2
       out.push({ x, y })
     }
+    /**
+     * **同排最小间距**（px）——两列时 = 较窄那一列的列宽 + `ROW_GAP`；用来定我方血条宽度。
+     * 只有**同排**的两艘才会互相压血条（第二排整体低了一个排高 + 血条带 ⇒ 纵向已让开）。
+     */
+    myPitch = Math.min(...myFm.colW) + LAY.ROW_GAP
     return out
   })()
-  return { meLeft, foeLeft, me, my, foe, sizes: slots, foeBottom, formation: fm, usable }
+  return {
+    meLeft,
+    foeLeft,
+    me,
+    my,
+    foe,
+    sizes: slots,
+    foeBottom,
+    formation: fm,
+    usable,
+    /**
+     * **我方血条宽度**（多舰路径专用；单舰 = `undefined` ⇒ 用 CSS 的 185px，逐像素不变）。
+     *
+     * 规则与敌方那套 `foeBarGeom` 同源（"同排间距够就贴满、不够就按间距收窄"），差别只有一条：
+     * **我方不能走"整排竖向堆叠"那条兜底**（主控锚点被钉在 `me` 上，堆叠会让血条与舰体脱开），
+     * 所以下限取更小的 `MY_BAR_W_MIN`。
+     * 这样任何编成下都有 `宽度 + 6 ≤ 同排间距` ⇒ **邻舰船体压不到血条右端的数字**
+     * （2026-09-14 船长：「同一排舰船的间距可以再拉开一些，目前会遮挡血条上的数字」）。
+     */
+    ...(mySizes.length > 1 && myPitch > 0 ? { myBarW: Math.max(MY_BAR_W_MIN, Math.min(HP_BAR_W_MAX, Math.round(myPitch) - 6)) } : {}),
+  }
 }
 
 /**
@@ -609,6 +654,8 @@ export {
   ESCORT_MUL,
   HP_BAR_W_MAX,
   ROW2_BAR_DROP,
+  // 我方血条宽度下限（`layout().myBarW` 用；几何核对工具 `npm run battle:layout` 也读它）
+  MY_BAR_W_MIN,
   foeFormationOf,
   foeColLeft,
   foeBarGeom,
