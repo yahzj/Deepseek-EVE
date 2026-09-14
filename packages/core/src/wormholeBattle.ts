@@ -213,7 +213,7 @@ export function wormholeActivateAt(
       addLog(
         state,
         'info',
-        `🕳 取回谜质：**${device.name}**（${device.text}）——` +
+        `🕳 取回谜质：${device.name}（${device.text}）——` +
           `${landed.where === 'temp' ? '货仓腾不出 2×2，已先进临时空间' : '占货仓 2×2 格'}，离开虫洞即失效。`,
       )
       return { ok: true, spent: r.spent, effect, taken: 1 }
@@ -377,7 +377,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       addLog(
         state,
         'warn',
-        `🕳 沉船拖走了货舱：货仓缩到 ${usage.capacity} 格，当前装了 ${usage.used} 格（**超载**）——` +
+        `🕳 沉船拖走了货舱：货仓缩到 ${usage.capacity} 格，当前装了 ${usage.used} 格（超载）——` +
           `请到货仓页手动抛弃货物；超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。`,
       )
     }

@@ -191,8 +191,8 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
               <span className="app-dim">
                 {' '}
                 · 每条占 1 枚 AI 核心 · 约 {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟 · 收益为手动一趟的{' '}
-                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（**直入仓库**、不保底）· 结构/装甲各受损{' '}
-                {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%（**不会丢船**）
+                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（直入仓库、不保底）· 结构/装甲各受损{' '}
+                {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%（不会丢船）
               </span>
             </div>
             <ul className="app-inv-list">

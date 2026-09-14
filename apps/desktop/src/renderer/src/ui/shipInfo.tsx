@@ -830,7 +830,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   if ((mod.allResistPenaltyPct ?? 0) > 0) {
     lines.push({
       k: '抗性代价',
-      v: `护盾 / 装甲 / 结构抗性**各** −${pct(mod.allResistPenaltyPct ?? 0)}（下限 0）`,
+      v: `护盾 / 装甲 / 结构抗性各 −${pct(mod.allResistPenaltyPct ?? 0)}（下限 0）`,
     })
   }
   if ((mod.droneCycleCutPct ?? 0) > 0) {
