@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
-import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RECYCLE_POOL_AVG_ISK, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
+import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RECYCLE_POOL_AVG_ISK, RECYCLE_POOLS, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
 import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
@@ -105,7 +105,7 @@ describe('回收画像与保底矿物滚动', () => {
     const out = rollRecycleGuarantee(state, ctx, profile, 36) // 批体积 36 m³ 直接按 m³ 计
     expect(out.length).toBe(1)
     const row = out[0]!
-    const poolIds = ['min-mexallon', 'min-nocxium', 'min-isotope', 'min-starcore', 'min-darkiron']
+    const poolIds = RECYCLE_POOLS.dire.map(([id]) => id) // 不写死矿种：随档位池口径走（2026-09-14 钛钢 40% 后一击也可能抽到钛钢）
     expect(poolIds).toContain(row.mineralId)
     expect(row.units).toBeGreaterThanOrEqual(18) // 36×0.62≈22.3 基准 ±10% → 20~24（2026-09-06 锚 82k 后 Y 上调）
     expect(row.units).toBeLessThanOrEqual(26)
@@ -133,9 +133,26 @@ describe('回收画像与保底矿物滚动', () => {
     }
   })
 
-  it('三档基础池都含三钛合金，且均价 = 档基数（船长 2026-09-14：所有残骸回收都加三钛、价值不变）', () => {
+  it('三档基础池都含钛钢合金、占比 ≥40%，且均价 = 档基数（船长 2026-09-14：先补钛钢、再「提高钛钢占比到 40~60」）', () => {
     const ctx = ctxOf()
-    // 测试 ctx 里：柯尔 = 常档、坟场 = 危档（险档由 data 侧专属池覆盖，见 content-check B3.1/B3.2）
+    const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+    const shareOf = (pool: ReadonlyArray<readonly [string, number]>): number => {
+      const wSum = pool.reduce((s, [, w]) => s + w, 0)
+      return pool.filter(([id]) => id === 'min-tritanium').reduce((s, [, w]) => s + w, 0) / wSum
+    }
+    // ① 三档基础池逐档硬契约（险档在测试 ctx 里没有对应星系，故直接查常量表；特色池见 content-check B3.1/B3.3）
+    for (const tier of ['common', 'risky', 'dire'] as const) {
+      const pool = RECYCLE_POOLS[tier]
+      // ①-a 必含钛钢（船长口径：不能有"拆了不给钛钢"的残骸）
+      expect(pool.map(([id]) => id)).toContain('min-tritanium')
+      // ①-b 占比 ≥40%（第二批口径：只提不降、统一取区间下限 40%）
+      expect(shareOf(pool)).toBeGreaterThanOrEqual(0.4)
+      // ①-c 均价必须等于档基数（改池必同步改 RECYCLE_POOL_AVG_ISK，容差 ±3% 同 content-check）
+      const wSum = pool.reduce((s, [, w]) => s + w, 0)
+      const avg = pool.reduce((s, [id, w]) => s + (w / wSum) * priceOf(id), 0)
+      expect(Math.abs(avg / RECYCLE_POOL_AVG_ISK[tier] - 1)).toBeLessThanOrEqual(0.03)
+    }
+    // ② 引擎取池单点：残骸 → 档位 → 基础池（柯尔 = 常档、坟场 = 危档）
     for (const [anomalyId, tier] of [
       ['ano-kor', 'common'],
       ['ano-grave', 'dire'],
@@ -143,13 +160,8 @@ describe('回收画像与保底矿物滚动', () => {
       const profile = recycleProfileOf(ctx, wreckItemIdOf(anomalyId))!
       expect(profile.tier).toBe(tier)
       const pool = recycleMineralPoolOf(profile)
-      // ① 必含三钛（船长口径：不能有"拆了不给三钛"的残骸）
-      expect(pool.map(([id]) => id)).toContain('min-tritanium')
-      // ② 均价必须等于档基数（改池必同步改 RECYCLE_POOL_AVG_ISK，容差 ±3% 同 content-check）
-      const wSum = pool.reduce((s, [, w]) => s + w, 0)
-      const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
-      const avg = pool.reduce((s, [id, w]) => s + (w / wSum) * priceOf(id), 0)
-      expect(Math.abs(avg / RECYCLE_POOL_AVG_ISK[tier] - 1)).toBeLessThanOrEqual(0.03)
+      expect(pool).toEqual(RECYCLE_POOLS[tier])
+      expect(shareOf(pool)).toBeGreaterThanOrEqual(0.4)
     }
   })
 })
