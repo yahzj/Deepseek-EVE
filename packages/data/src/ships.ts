@@ -861,7 +861,8 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '电子舰',
     // 子分类「电子舰」（船长 2026-09-13）：**命中 +0.10 · 回避 +20%**（真吃战斗）· **虫洞扫码 +1 圈（编队即生效、可叠加）** · 分辨率 +50%（经济向）· 锁定 +50%（纯展示）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%
-    slots: { high: 3, mid: 3, low: 1 },
+    // 槽位对齐基准线（船长 2026-09-14：专属舰 = 该档默认 7/9/11/14/18「+1 槽」⇒ T1 8 / T2 10 / T3 12）：本舰创建只有 6 槽（比 T1 默认 7 还少 1）⇒ 补 1 格中槽（3/3/1 → 3/4/1，与「电子舰 = 中槽」定槽口径一致）
+    slots: { high: 3, mid: 4, low: 1 },
     tier: 1,
     cargoM3: 1260,
     cycleSeconds: 14,
@@ -1141,6 +1142,7 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '鱼雷舰',
     // 子分类「鱼雷舰」（船长 2026-09-13）：族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%
+    // 2026-09-14 船长追补（鱼雷舰强化批）：**火力加成 +25 点**（0.25 → 0.50，只喂炮台、不含无人机）｜ 槽位 4/2/2 不动（已在专属 T1 = 8 槽线上）
     slots: { high: 4, mid: 2, low: 2 },
     tier: 1,
     cargoM3: 1000,
@@ -1150,7 +1152,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.7,
     evasion: 0.105,
     hitBonus: 0.17,
-    powerBonus: 0.25,
+    powerBonus: 0.5,
     shieldHp: 115,
     armorHp: 60,
     hullHp: 80,
@@ -1173,7 +1175,8 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '无人机作战舰',
     // 子分类「无人机作战舰」（船长 2026-09-13）：无人机伤害 +0.10 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02
-    slots: { high: 4, mid: 4, low: 3 },
+    // 槽位对齐基准线（船长 2026-09-14）：专属 T2 = 10 槽；本舰创建即 10（比默认 9 多 1）⇒ 撤销 09-13 批次加的中槽（4/4/3 → 4/3/3）
+    slots: { high: 4, mid: 3, low: 3 },
     tier: 2,
     cargoM3: 1960,
     cycleSeconds: 13,
@@ -1205,7 +1208,8 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '无人机作战舰',
     // 子分类「无人机作战舰」（船长 2026-09-13）：无人机伤害 +0.14 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02
-    slots: { high: 5, mid: 5, low: 3 },
+    // 槽位对齐基准线（船长 2026-09-14）：专属 T3（巡洋）= 12 槽；本舰创建即 12（比默认 11 多 1）⇒ 撤销 09-13 批次加的中槽（5/5/3 → 5/4/3）
+    slots: { high: 5, mid: 4, low: 3 },
     tier: 3,
     cargoM3: 2660,
     cycleSeconds: 14,
@@ -1269,7 +1273,8 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '后勤舰',
     // 子分类「后勤舰」（船长 2026-09-13）：货舱 +45% · 机巢 +50% · 回避 +5% ｜ 命中 −0.03 · 甲血占比 −20%
-    slots: { high: 4, mid: 4, low: 3 },
+    // 槽位对齐基准线（船长 2026-09-14）：专属 T2 = 10 槽；本舰创建即 10（比默认 9 多 1）⇒ 撤销 09-13 批次加的低槽（4/4/3 → 4/4/2）
+    slots: { high: 4, mid: 4, low: 2 },
     tier: 2,
     cargoM3: 3480,
     cycleSeconds: 13,
@@ -1300,16 +1305,18 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '鱼雷舰',
     // 子分类「鱼雷舰」（船长 2026-09-13）：族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%
-    slots: { high: 5, mid: 5, low: 3 },
+    // 2026-09-14 船长追补（鱼雷舰强化批）：**火力加成 +20 点**（0.62 → 0.82）＋ **中槽→高槽**（5/5/3 → 6/4/2，守「专属巡洋 = 12 槽」）；
+    //   代价：**命中 −0.10**（0.21 → 0.11）· **回避 −0.10**（0.105 → 0.005，界面显示 1%）⇒ 高单发、低命中、几乎不闪的明牌重锤
+    slots: { high: 6, mid: 4, low: 2 },
     tier: 3,
     cargoM3: 3200,
     cycleSeconds: 14,
     oreUnitsPerCycle: 10,
     priceIsk: 0,
     agility: 0.493,
-    evasion: 0.105,
-    hitBonus: 0.21,
-    powerBonus: 0.62,
+    evasion: 0.005,
+    hitBonus: 0.11,
+    powerBonus: 0.82,
     shieldHp: 345,
     armorHp: 185,
     hullHp: 225,

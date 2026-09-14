@@ -938,6 +938,14 @@ const SHIP_SUBCLASSES = [
 const SUBCLASS_NON_WH_SHIP_IDS = new Set([
   'sh-nautilus', // 鹦鹉螺级测绘巡洋舰（协会测绘处 · 侦察舰；2026-09-13 船长）
 ])
+/**
+ * **每档默认槽位总数**（船长 2026-09-14 原话：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
+ * 种族专属的会在这个基础上 +1 槽位」）。
+ * 默认线 = 各档战斗舰现状（马鲛 7 / 灰鲭鲨 9 / 长尾鲨·电鳐 11 / 玄武·巨齿鲨 14 / 邓氏鱼 18）；
+ * **专属舰 = 默认 + 1**（T1 8 / T2 10 / T3 12；专属目前只到 T3）。
+ * ⚠ **只钉专属舰**：官方 23 艘里 19 艘不在线上（船长 2026-09-14 已收到核对表，待另裁）。
+ */
+const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18 }
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -990,6 +998,19 @@ for (const s of SHIPS) {
     //   ③ 虫洞族重装巡洋按新口径给到"高槽 4"（4/4/4、4/3/5）⇒ 与 `low >= high + 1` 冲突。
     //   保留"武装舰"半条（现行 43 艘全部通过，且与 armed 族的身份一致）。
     if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+    // **专属舰槽位基准线契约**（船长 2026-09-14：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
+    // 种族专属的会在这个基础上 +1 槽位」）——只钉 `sh-wh-*`；官方船现状不在此契约内（见 TIER_SLOT_BASE 注释）。
+    // ⚠ 本契约是 2026-09-14 那次核账的钉子：此前 15 艘里 1 艘欠 1 格（掠袭电子舰）、4 艘各多 1 格
+    //   （机库 / 亡军后勤 / 巨构 / 亡军鱼雷舰——创建值本就高于默认线，批次 +1 又叠了一格）。
+    if (s.id.startsWith('sh-wh-')) {
+      const base = TIER_SLOT_BASE[s.tier]
+      if (base !== undefined) {
+        check(
+          total === base + 1,
+          `专属舰 ${s.id} 槽位总数应为该档默认 ${base} +1 = ${base + 1}，实际 ${total}（船长 2026-09-14 基准线）`,
+        )
+      }
+    }
   }
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
