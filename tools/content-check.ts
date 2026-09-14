@@ -114,6 +114,9 @@ securityZoneOf,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
   // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
+  WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
+  wormholeDilutionPoolOf,
+  wormholeFamilyPoolGaps,
   WORMHOLE_MATTER_DEVICES,
   WORMHOLE_MATTER_DEVICE_IDS,
   WORMHOLE_MATTER_FLOOR,
@@ -3299,7 +3302,21 @@ for (const m of MODULES) {
       const boxId = `box-relic-${fam.toLowerCase()}`
       if (!hasKey(tonesBlock, boxId)) errors.push(`图标契约：安全货柜 ${boxId} 没有族色调（货仓格里按族分色）`)
     }
-    const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
+    /**
+     * ⑨ **拆解链路契约**（F4d · 船长 2026-09-13 定：精炼炉拆解 · 族池 0.7 : 稀释池 0.3 · 一律最低档）：
+     * 每一种货柜都必须能**真的开出东西** —— 它那一族的族池非空、且"最低档稀释池"（层 2 那批
+     * 一次性舰船蓝图）非空。否则玩家拆一箱得到空气（或停炉），而 `content:check` 一声不吭。
+     */
+    const unboxCtx = buildSimContext()
+    const floorDilution = wormholeDilutionPoolOf(unboxCtx, WORMHOLE_DILUTION_MIN_DEPTH_FLOOR)
+    console.log('· 拆解链路读数：最低档稀释池', floorDilution.length, '张（层档常量', WORMHOLE_DILUTION_MIN_DEPTH_FLOOR, '）')
+    if (floorDilution.length === 0) {
+      errors.push('拆解契约：最低档稀释池为空 —— 拆解货柜会开出空气（稀释池要放一次性舰船蓝图）')
+    }
+    for (const fam of WORMHOLE_FAMILIES) {
+      const gap = wormholeFamilyPoolGaps(unboxCtx).filter((g) => g.includes(fam))
+      if (gap.length > 0) errors.push(`拆解契约：${fam} 族池有空档 —— ${gap.join(' / ')}`)
+    }    const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {
       errors.push('虫洞不可见闸门：市场目录里找不到 ore-voidmother（虚空母矿）——上线时"删字段"那一步就无从谈起')
     } else if (ore.unreleased !== true) {

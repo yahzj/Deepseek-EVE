@@ -267,7 +267,7 @@ export interface RefineRunState {
   /** 劳动者：主控亲自运转 / AI 核心类型 */
   worker: 'pilot' | AiCoreType
   /** 运转模式：refine = 资源精炼（矿石/气体/冰矿）；recycle = 残骸回收开箱（B3） */
-  recipe: 'refine' | 'recycle'
+  recipe: 'refine' | 'recycle' | 'unbox'
   /** 正在运转的资源 id（矿石/气体/冰矿/残骸物品） */
   itemId: string | null
   /** 单批单位（开工时按技能现算） */

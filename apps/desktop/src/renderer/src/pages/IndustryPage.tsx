@@ -9,6 +9,8 @@
  *   续批，直到料尽自动停炉；停炉即止：已完成批已出货、剩余料全额退回（核心归还）。
  * - 页面布局 = 矿带卡同款：资源卡常驻网格；运转中的卡不改样式，只把操作按钮变为「停炉」。
  */
+// 施工期开关（与虫洞入口同一把）：安全货柜拆解卡只在调试模式下出现
+import { debugEnabled } from '../panels/DebugPanel'
 import {
   RARE_BOX_DRONE_UNITS,
   RECYCLE_BATCH_M3,
@@ -65,6 +67,8 @@ function manualBusyNote(state: GameState): string | null {
 function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast']; highlight?: boolean; onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void }): ReactNode {
   const state = engine.state
   const isWreck = def.kind === 'wreck'
+  // F4d：安全货柜走「拆解」（与精炼/回收同一条产线机器，90 秒/件）
+  const isBox = def.kind === 'container'
   // 残骸回收画像（威胁/星系危险度/特色池；稀有残骸另有 rare 标记与专属装备池）——卡头徽标与估价共用
   const wreckProfile = isWreck ? recycleProfileOf(engine.ctx, def.id) : null
   const isRareBox = wreckProfile?.rare === true
@@ -105,15 +109,21 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       : manualBusyNote(state)
 
   function runWith(worker: AiCoreType | 'pilot'): void {
-    const r = isWreck ? engine.startRecycleRunAt(def.id, worker) : engine.startRefineRunAt(def.id, worker)
+    const r = isBox
+      ? engine.startUnboxRunAt(def.id, worker)
+      : isWreck
+        ? engine.startRecycleRunAt(def.id, worker)
+        : engine.startRefineRunAt(def.id, worker)
     if (!r.ok) {
       onToast(r.error ?? '启动失败。', true)
       return
     }
     const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)}核心驱动`
     onToast(
-      isWreck
-        ? isRareBox
+      isBox
+        ? `安全货柜拆解开工：${def.name}（可拆 ${total} 件）${who}；每件 90 秒、拆完自动停。`
+        : isWreck
+          ? isRareBox
           ? `残骸回收开工：${def.name}。本炉预占 ${Math.min(RARE_WRECK_VOLUME_M3, Math.round(total * 10) / 10)} m³（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入炉内料账——货仓/仓库不再显示这批料，停炉时未用完部分退回物品仓库。${who}；每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停。`
           : `残骸回收开工：${def.name}（可拆 ${Math.round(total * 10) / 10} m³，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`
         : `精炼炉开工：${def.name}（可炼 ×${total.toLocaleString('zh-CN')}，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`,
@@ -471,6 +481,19 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
     (def) => def.kind === 'wreck' && (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
   )
 
+  /**
+   * **F4d：可拆解的「遗迹安全货柜」**（货仓 + 仓库有货、或在炉中就算一张卡）。
+   * ⚠ **施工期只在调试模式下出现**：货柜本身是 `unreleased`（`visibleItemDefs` 会滤掉它），
+   * 而虫洞整条线在船长拍板上线前对玩家不可见 ⇒ 这里沿用入口那一把开关（`debugEnabled()`）。
+   * 上线时把这道开关去掉即可（与入口同批）。
+   */
+  const boxDefs = debugEnabled()
+    ? [...engine.ctx.items.values()].filter(
+        (def) =>
+          def.kind === 'container' &&
+          (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
+      )
+    : []
   const runningCount = runViews.length
   /** 2026-09-10 船长定：已标记（收藏）的资源/残骸在各自网格内置顶（组内保持原有顺序） */
   const oreShown = pinMarked(state, 'recipes', oreDefs, (def) => def.id)
@@ -557,6 +580,18 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
               <div className="app-bay-title">♻ 残骸回收（{wreckDefs.length}）——拆解残骸：保底原材料 + 概率特色掉落</div>
               <div className="app-belt-grid">
                 {wreckShown.map((def) => (
+                  <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
+                ))}
+              </div>
+            </>
+          ) : null}
+          {boxDefs.length > 0 ? (
+            <>
+              <div className="app-bay-title">
+                📦 安全货柜拆解（{boxDefs.length}）——一箱开一件：族专属装备 / 图纸，或稀释池里的一次性舰船蓝图
+              </div>
+              <div className="app-belt-grid">
+                {boxDefs.map((def) => (
                   <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
                 ))}
               </div>
