@@ -84,13 +84,13 @@ describe('虫洞 · 入洞（E 批）', () => {
     const flag = addShipToFleet(state, 'sh-colossal')
     expect(wormholeEnter(state, ctx, [flag], 1).ok).toBe(false)
     expect(state.wormhole.run).toBeNull()
-    // 合法：2×T3（7,000 质量 ⇒ 回合 55×(1−0.4375×0.53) = 42）
+    // 合法：2×T3（7,000 质量 ⇒ 回合 60×(1−0.4375×0.53) = 46）
     const r = wormholeEnter(state, ctx, [a, b], 20260913)
     expect(r.ok).toBe(true)
     expect(state.wormhole.run).not.toBeNull()
     expect(state.wormhole.run!.fleet).toEqual([a, b])
     expect(state.wormhole.run!.totalMass).toBe(7_000)
-    expect(state.wormhole.run!.turnsTotal).toBe(42)
+    expect(state.wormhole.run!.turnsTotal).toBe(46)
     // 已在洞里：不许再进（先撤离/结算）
     expect(wormholeEnter(state, ctx, [a], 1).ok).toBe(false)
   })

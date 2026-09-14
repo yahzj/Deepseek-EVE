@@ -353,8 +353,8 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('inside')
     expect(run.depth).toBe(1)
     expect(run.totalMass).toBe(2_000)
-    expect(run.turnsTotal).toBe(51) // 4×T1 = 51 回合（B 批表）
-    expect(run.turnsLeft).toBe(51)
+    expect(run.turnsTotal).toBe(56) // 4×T1 = 56 回合（基础 2026-09-14 由 55 提到 60）
+    expect(run.turnsLeft).toBe(56)
     expect(run.bag).toEqual([])
     // F3a-2：层内内容全部由网格承载；旧的线性节点字段不再生成
     expect(run.pendingNode).toBeNull()
@@ -760,7 +760,7 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
     expect(back.phase).toBe('inside')
     expect(back.depth).toBe(1)
     expect(back.turnsLeft).toBe(run.turnsLeft)
-    expect(back.turnsTotal).toBe(51)
+    expect(back.turnsTotal).toBe(56)
     expect(back.fleet).toEqual([T1, T1, T1, T1])
     expect(back.bag).toEqual([{ itemId: 'ore-voidmother', units: 800 }])
     // 层内网格随档（F3a）：位置/真相/已扫描/终点都在（细项由 wormhole-grid.test.ts 钉）
