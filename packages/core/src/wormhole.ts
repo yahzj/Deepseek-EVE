@@ -1221,8 +1221,14 @@ export function wormholeLeave(state: GameState): void {
  * **把一场洞内战斗的时钟整体前移 `deltaMs`**（临时离开期间游戏时间照走，但洞内冻结）：
  * 只动"绝对时刻"字段——`startedAtGameMs` / `lastTickGameMs` / `waveClearAt` / `repair.nextPulseAtMs`；
  * 装填与近防炮冷却是**倒计时**（`weapons: number[]` / `pdCd`），无需处理。
+ *
+ * ⚠ **形参允许空**（2026-09-14 线上事故：`run.battle` 在"洞外/没有战斗"时是 `null`，
+ * 调用点当时写了 `run.battle as BattleState` 把类型断言骗过去 ⇒ 玩家「临时离开 →（时间前进）→ 返回虫洞」
+ * 时这里抛 `TypeError: Cannot read properties of undefined (reading 'startedAtGameMs')`，
+ * 面板整块不渲染 = 玩家看到的"返回虫洞黑屏"）。**没有战斗就直接返回**，别再用 `as` 断言蒙类型系统。
  */
-function shiftBattleClock(battle: BattleState, deltaMs: number): void {
+function shiftBattleClock(battle: BattleState | null | undefined, deltaMs: number): void {
+  if (!battle) return
   if (!(deltaMs > 0)) return
   battle.startedAtGameMs += deltaMs
   battle.lastTickGameMs += deltaMs
@@ -1241,7 +1247,7 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
   if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。' }
   const busy = shipActivityBusy(state, state.shipId)
   if (busy) return { ok: false, error: `主控正在${busy}：先把手上的活收工，才能回到虫洞。` }
-  shiftBattleClock(run.battle as BattleState, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
+  shiftBattleClock(run.battle, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
   run.leftAtGameMs = undefined
   run.attending = true
   return { ok: true, run }
