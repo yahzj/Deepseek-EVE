@@ -36,7 +36,14 @@ import {
   storeShip,
   unstoreShip,
 } from '../src/shipyard'
-import { cancelOrder, sellShipAtMarket, sellStoredShipAtMarket } from '../src/market'
+import {
+  cancelOrder,
+  listSellHolding,
+  marketSellHolding,
+  marketSellPreview,
+  sellShipAtMarket,
+  sellStoredShipAtMarket,
+} from '../src/market'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, ship } from './helpers'
 
@@ -237,5 +244,88 @@ describe('舰船仓库（2026-09-14 船长）', () => {
     expect(shipOwnedCount(state, 'sh-falconet')).toBe(2)
     // 非法值一律当 0（负数/NaN 不炸）
     expect(shipStoredCount({ ...state, shipStore: { x: -3 } } as never, 'x')).toBe(0)
+  })
+})
+
+/**
+ * **市场页出售舰船**（2026-09-14 船长报障：「市场依旧无法挂单或者直接出售舰船」）
+ *
+ * 改前：市场详情的可卖量走 `naturalHoldings`（**舰船恒 0**），且 `marketSellHolding` /
+ * `marketSellPreview` / `listSellHolding` 三条对舰船**一律直接拒绝**（旧口径"请到舰船页出售"）
+ * ⇒ 市场页的「市价卖出 / 全部卖出 / 挂卖单」对舰船全是死的。
+ * 改后口径：**可卖 = 舰船仓库里的艘数**（机库里的船要先在舰船页移入仓库）；三条入口全部放行，
+ * 市价卖出吃收购簿、余量留簿挂着（撤单退回舰船仓库），挂卖单**一艘一单**。
+ */
+describe('市场页出售舰船（2026-09-14 船长报障）', () => {
+  /** 仓里放 n 艘「big」 */
+  function stock(state: GameState, ctx: SimContext, n: number): void {
+    for (let i = 0; i < n; i += 1) {
+      const uid = addShipToFleet(state, 'big')
+      expect(storeShip(state, uid, ctx).ok).toBe(true)
+    }
+  }
+
+  it('⑩ 市价卖出（可卖 = 仓库艘数）：吃收购簿即时成交、税后入账与钱包逐分对齐、仓库扣减', () => {
+    const { state, ctx } = world()
+    stock(state, ctx, 2)
+    state.market.npcBuy['ship-big'] = [{ price: 600_000, qty: 2, expiresAtGameMs: state.gameMs + 1_000_000 }]
+    const wallet0 = state.wallet.isk
+    const res = marketSellHolding(state, ctx, 'ship-big')
+    expect(res.ok).toBe(true)
+    expect(res.sold).toBe(2) // 数量省略 = 全部可卖
+    expect(res.remaining).toBe(0)
+    expect(res.total).toBeGreaterThan(0)
+    expect(state.wallet.isk - wallet0).toBe(res.total) // total = 实际到账（税后）
+    expect(shipStoredCount(state, 'big')).toBe(0)
+    expect(state.orders).toHaveLength(0) // 全部即时成交：不留单
+  })
+
+  it('⑪ 挂卖单（自定价）：一艘一单、各自 escrow 标 store，撤单逐艘退回仓库', () => {
+    const { state, ctx } = world()
+    stock(state, ctx, 2)
+    state.market.npcBuy['ship-big'] = [] // 空簿 ⇒ 只挂单不成交
+    const r = listSellHolding(state, ctx, 'ship-big', 700_000, 2)
+    expect(r.ok).toBe(true)
+    expect(r.filled).toBe(0)
+    expect(r.resting).toBe(2)
+    expect(state.orders.filter((o) => o.side === 'sell')).toHaveLength(2) // 一艘一单
+    expect(Object.values(state.escrowShips).filter((h) => h.from === 'store')).toHaveLength(2)
+    expect(shipStoredCount(state, 'big')).toBe(0)
+    // 撤掉其中一单 ⇒ 只有一艘退回仓库，另一单仍在簿上
+    expect(cancelOrder(state, ctx, state.orders[0]!.id)).toBe(true)
+    expect(shipStoredCount(state, 'big')).toBe(1)
+    expect(Object.values(state.escrowShips).filter((h) => h.from === 'store')).toHaveLength(1)
+  })
+
+  it('⑫ 全部卖出预览：可成交/毛额/税/净到账/留簿按收购簿逐档算，且**不消耗**任何库存', () => {
+    const { state, ctx } = world()
+    stock(state, ctx, 2)
+    state.market.npcBuy['ship-big'] = [{ price: 500_000, qty: 1, expiresAtGameMs: state.gameMs + 1_000_000 }]
+    const pv = marketSellPreview(state, ctx, 'ship-big', 2)
+    expect(pv.ok).toBe(true)
+    expect(pv.avail).toBe(2)
+    expect(pv.fillable).toBe(1)
+    expect(pv.leftover).toBe(1)
+    expect(pv.orders).toBe(1)
+    expect(pv.gross).toBe(500_000)
+    expect(pv.net).toBeLessThan(pv.gross) // 扣贸易税
+    expect(pv.tax).toBe(pv.gross - pv.net)
+    expect(shipStoredCount(state, 'big')).toBe(2) // 预览只读
+    expect(state.orders).toHaveLength(0)
+  })
+
+  it('⑬ 仓库里没有船时：三条入口都给**可操作**的拒因（指路舰船页入仓）', () => {
+    const { state, ctx } = world()
+    const sell = marketSellHolding(state, ctx, 'ship-big')
+    expect(sell.ok).toBe(false)
+    expect(sell.error).toContain('舰船仓库')
+    const place = listSellHolding(state, ctx, 'ship-big', 500_000, 1)
+    expect(place.ok).toBe(false)
+    expect(place.error).toContain('舰船仓库')
+    const pv = marketSellPreview(state, ctx, 'ship-big', 1)
+    expect(pv.ok).toBe(false)
+    expect(pv.error).toContain('舰船仓库')
+    // 挂单卖的上限校验仍在（价格异常先报价格）
+    expect(listSellHolding(state, ctx, 'ship-big', 0, 1).ok).toBe(false)
   })
 })

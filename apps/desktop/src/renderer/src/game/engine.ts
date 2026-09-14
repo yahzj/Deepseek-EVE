@@ -1201,13 +1201,18 @@ export class GameEngine {
   }
 
   /** 市价卖出持有的商品（市场页按钮；数量省略 = 全部） */
-  sellHoldingAt(goodKey: string, qty?: number): CommandResult {
+  sellHoldingAt(
+    goodKey: string,
+    qty?: number,
+  ): { ok: boolean; error?: string; sold?: number; total?: number; remaining?: number } {
     const res = marketSellHolding(this.state, this.ctx, goodKey, qty)
     if (res.ok && res.sold > 0) {
       void this.persist()
       this.notify()
     }
-    if (res.ok) return { ok: true }
+    // 2026-09-14：舰船也走这条（可卖 = 舰船仓库艘数）⇒ 回执带上 sold/total/remaining，
+    // 界面才能把"即时成交几艘、留簿几艘"说清楚（物品侧忽略这三个字段）
+    if (res.ok) return { ok: true, sold: res.sold, total: res.total, remaining: res.remaining }
     return { ok: false, error: res.error ?? '出售失败。' }
   }
 
