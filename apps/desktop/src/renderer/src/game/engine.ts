@@ -161,6 +161,10 @@ import {
   wormholeScanStop,
   wormholeScanWindowMs,
   wormholeScanBlockReason,
+  // 2026-09-14 船长：「进洞自动停止」——进洞门槛 + 会被自动停掉的活动（扫描虫洞）
+  wormholeEntryBlockReason,
+  wormholeEntryAutoStop,
+  wormholeShipEntryBusy,
   // 2026-09-14 船长：扫描虫洞要协会声望 40 才解锁（先定 35、当日改判 40；解锁发通讯 + 直接弹窗）
   wormholeScanStanding,
   wormholeScanUnlocked,
@@ -1519,6 +1523,28 @@ export class GameEngine {
   /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */
   wormholeScanWindow(): number {
     return wormholeScanWindowMs(this.state)
+  }
+
+  /**
+   * **进洞门槛（核心同一把尺）**：主控 + 编队各船必须空闲；`null` = 可以进洞。
+   * ⚠ 「扫描虫洞」**不算拦**（船长 2026-09-14「进洞自动停止」：进洞那一步会自动停扫、进度保留）
+   * ⇒ 界面据此置灰，并用 `wormholeEntryAutoStopText()` 提示"会先自动停扫"。
+   */
+  wormholeEntryGate(shipIds: readonly string[]): string | null {
+    return wormholeEntryBlockReason(this.state, this.ctx, shipIds)
+  }
+
+  /** 进洞时会自动停掉的活动名（没有则 null）——准备页用它显示黄色预告条 */
+  wormholeEntryAutoStopText(): string | null {
+    return wormholeEntryAutoStop(this.state)
+  }
+
+  /**
+   * **准备页"这张卡能不能编入"用的忙态**（与进洞门槛同一把尺，核心单点 `wormholeShipEntryBusy`）：
+   * 泛用徽标 `shipBusyLabel` 会把「扫描虫洞」报成忙，而进洞那一步会自动停扫 ⇒ 主控那一档放行。
+   */
+  wormholeShipEntryBusy(shipId: string): string | null {
+    return wormholeShipEntryBusy(this.state, shipId)
   }
 
   /** 虫洞扫描：现在能不能开扫（不许时给理由，界面据此置灰） */

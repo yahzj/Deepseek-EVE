@@ -1731,6 +1731,23 @@ export function wormholePilotHoldReason(state: GameState): string | null {
   if (state.wormhole.run?.attending !== true) return null
   return '人在虫洞里（进虫洞这个活动还在进行）：先撤离或结算本趟；临时离开的话，关掉虫洞界面就能释放主控。'
 }
+
+/**
+ * **停掉"扫描虫洞"这个活动**（`active = false`；**进度保留、回来可续扫**），返回"已扫分钟数"；
+ * 本来就没在扫 ⇒ 返回 `null`（什么都没动）。
+ *
+ * 为什么放在 `state.ts`（而不是直接 import `wormholeScan.ts` 的 `wormholeScanStop`）：
+ * `wormhole.ts`（进洞命令，船长 2026-09-14「进洞自动停止」要在这里停扫）若 import `wormholeScan.ts`，
+ * 会形成 `state → wormhole → wormholeScan → wormhole` 的新环——本仓为这类环踩过两次 TDZ 坑
+ * （见 `wormhole.ts` 里 `shipBusyForWormhole` 的注释）。所以**状态改动只留这一个单点**，
+ * 两边的日志文案各自写（`wormholeScanStop` 写"手动停扫"、进洞写"进洞前自动停扫"）。
+ */
+export function wormholeScanHalt(state: GameState): number | null {
+  const scan = state.wormholeScan
+  if (!scan || scan.active !== true) return null
+  scan.active = false
+  return Math.max(0, Math.floor(scan.progressMs / 60_000))
+}
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0

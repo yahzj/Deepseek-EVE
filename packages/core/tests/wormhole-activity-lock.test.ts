@@ -20,7 +20,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeEntryBlockReason, wormholeLeave } from '../src/wormhole'
+import { wormholeEnter, wormholeEntryBlockReason, wormholeEntryAutoStop, wormholeLeave } from '../src/wormhole'
 import { shipBusyForWormhole, shipActivityBusy } from '../src/wormhole'
 import { shipBusyLabel } from '../src/activity'
 import { wormholePilotHoldReason } from '../src/state'
@@ -31,7 +31,7 @@ import { startExpedition } from '../src/expedition'
 
 const ctx = buildSimContext()
 const T1 = 'sh-falconet'
-/** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目） */
+/** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——这些**照旧拦住进洞** */
 const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
   ['采矿', (s) => void (s.mining.active = true)],
   ['打捞', (s) => void (s.salvaging.active = true)],
@@ -45,7 +45,6 @@ const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
       s.scanning.startedAtGameMs = 0
     },
   ],
-  ['扫描虫洞', (s) => void (s.wormholeScan = { active: true, progressMs: 0 })],
   // ⚠ 远征必须走**真命令**（`expeditionStatus` 还看 phase/目标星系等字段；手搓 active 会造出"假忙"，
   //    2026-09-13 那条老用例就踩过这个坑）
   ['远征', (s) => void startExpedition(s, 'ano-training', ctx)],
@@ -65,6 +64,11 @@ const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
   ],
 ]
 
+/** **进洞时会自动停掉**的那一档（船长 2026-09-14：「进洞自动停止」）——不拦人，进洞那一刻停掉它 */
+function startWormholeScan(s: GameState): void {
+  s.wormholeScan = { active: true, progressMs: 7 * 60_000 }
+}
+
 function fresh(): { state: GameState; pilot: string; mate: string } {
   const state = createInitialState({ nowWallMs: 0, seed: 4242 })
   const mate = addShipToFleet(state, T1)
@@ -72,7 +76,7 @@ function fresh(): { state: GameState; pilot: string; mate: string } {
   return { state, pilot: state.shipId, mate }
 }
 
-describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 复查）', () => {
+describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 复查 + 「进洞自动停止」）', () => {
   it('**① 进洞门槛**：主控手上有任何主控活动 ⇒ 进不去（每一档都要给拒因）', () => {
     const notBusy: string[] = []
     const missed: string[] = []
@@ -90,6 +94,35 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(notBusy, `这些活动在跑；但"主控忙态"没认出来（现场/判据缺档）`).toEqual([])
     expect(drift, `这些活动两边忙态口径漂移（shipActivityBusy vs shipBusyLabel）`).toEqual([])
     expect(missed, `这些活动在跑；但主控照样能进洞（漏在门槛外）`).toEqual([])
+  })
+
+  /**
+   * **「扫描虫洞」是唯一例外**（船长 2026-09-14：「**进洞自动停止**」）：
+   * 它是"找洞"的准备动作 ⇒ **不拦**，进洞那一刻**自动停掉**（进度保留、回来续扫）。
+   */
+  it('**①′ 扫描虫洞 ⇒ 不拦，进洞那一刻自动停扫（进度保留 + 日志）**', () => {
+    const { state, pilot } = fresh()
+    startWormholeScan(state)
+    // 徽标照旧报"忙"（它确实占着主控），但**进洞门槛放行**
+    expect(shipBusyLabel(state, ctx, pilot)).toBe('扫描虫洞中')
+    expect(shipActivityBusy(state, pilot)).toBe('扫描虫洞中')
+    expect(wormholeEntryAutoStop(state)).toBe('扫描虫洞中')
+    expect(wormholeEntryBlockReason(state, ctx, [pilot])).toBeNull()
+    // 进洞 ⇒ 自动停扫：active 归 false、**进度一字不动**、日志写明"自动停掉"与已扫分钟
+    const r = wormholeEnter(state, ctx, [pilot], 4242)
+    expect(r.ok).toBe(true)
+    expect(state.wormholeScan!.active).toBe(false)
+    expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
+    const logs = state.logs.map((l) => l.text)
+    expect(logs.some((t) => t.includes('自动停掉') && t.includes('7 分钟'))).toBe(true)
+    /**
+     * 进度保留 ⇒ 出洞后能接着扫：人在洞里时扫描仍被挡（`wormholeScanBlockReason` 的那条
+     * 「已经在虫洞里了」），**把本趟收掉之后**（`run = null`）就能续扫，且进度还是那 7 分钟。
+     */
+    expect(wormholeScanStart(state, ctx).ok).toBe(false)
+    state.wormhole.run = null
+    expect(wormholeScanStart(state, ctx).ok).toBe(true)
+    expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
   })
 
   it('② **洞内锁定**：人在洞里 ⇒ 别的活动开不了（真命令复核）', () => {
