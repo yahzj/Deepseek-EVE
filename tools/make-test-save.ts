@@ -1677,7 +1677,7 @@ function injectWormholeBag(state: GameState, overload: boolean): string[] {
  *
  * 现场（**确定性摆位**，同 seed 每次一样）：
  * - **第 4 层**（37 格 · R=3）；编队 = 4× 长尾鲨满配搜打撤（同 `wh-bag` 档），
- *   回合预算按**真实入场校验**给（`wormholeEnter` ⇒ 4×T3 = 29 回合，不是拍脑袋写的数）；
+ *   回合预算按**真实入场校验**给（`wormholeEnter` ⇒ 4×T3 = 32 回合，不是拍脑袋写的数）；
  * - **入口格脚下就是一处舰船墓场**（铺好残骸，落地即可试打捞）；
  * - **入口格的正邻格 = 一处遗迹，且被星云罩住**（`nebula: true` —— 与引擎生成时一样，
  *   只长在"有信号的地点"上）⇒ 原地扫一次就**看见云**（信号读不出来），**再扫一次驱散**、
@@ -1743,7 +1743,7 @@ function injectWormholeLayer4(state: GameState): string[] {
   const run = state.wormhole.run!
   run.attending = true
   run.depth = 4
-  run.turnsLeft = enter.run!.turnsTotal // 满预算（4×T3 = 29 回合）
+  run.turnsLeft = enter.run!.turnsTotal // 满预算（4×T3 = 32 回合）
   run.turnsTotal = enter.run!.turnsTotal
   run.bossCleared = 0 // 本层守卫没清：撤离随时可走、深入先打守卫
   run.grid = wormholeMakeGrid(seed, 4, 0)

@@ -86,19 +86,34 @@ function standOnPlace(run: WormholeRunState, place: WormholePlace): string {
   return cell.key
 }
 
-describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13）', () => {
-  it('**主控不闲置就进不去**：主控在采矿 ⇒ 拒绝，文案点名忙态', () => {
+describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13；2026-09-14 起「就地作业」改为进洞自动停）', () => {
+  /**
+   * ⚠ **2026-09-14 改判**（船长：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』同样落实到
+   * **采矿/打捞**」）：**开采**与**打捞**不再拦进洞，改成**进洞那一刻自动停掉**（与手点「停止」同一路径，
+   * 货物留在船上）；本条用例因此改写——老口径「主控在采矿 ⇒ 拒绝」**作废**，
+   * 「不闲置就进不去」现在由**别的活动**（星图扫描）继续钉住。
+   */
+  it('**主控不闲置就进不去**：主控在扫描星系 ⇒ 拒绝，文案点名忙态；改判后「采矿」改为进洞自动停', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     state.shipId = a
-    state.mining.active = true // 主控在采矿（判据走 activity.shipBusyLabel）
+    state.scanning.active = true // 主控在扫描星系（仍然拦住的那一类）
+    state.scanning.galaxyId = 'galaxy-hub'
     const r = wormholeEnter(state, ctx, [a], 7)
     expect(r.ok, '主控忙着还能进洞').toBe(false)
     expect(r.error ?? '').toContain('主控正在')
     expect(state.wormhole.run).toBeNull()
     // 收工后就能进
-    state.mining.active = false
+    state.scanning.active = false
     expect(wormholeEnter(state, ctx, [a], 7).ok).toBe(true)
+    // **改判后的采矿**：不拦、进洞自动停（细账见 tests/wormhole-activity-lock.test.ts ①″）
+    const state2 = createInitialState({ nowWallMs: 0, seed: 7 })
+    const b = addShipToFleet(state2, T1)
+    state2.shipId = b
+    state2.mining.active = true
+    state2.mining.tripUnits = 3
+    expect(wormholeEnter(state2, ctx, [b], 7).ok).toBe(true)
+    expect(state2.mining.active).toBe(false)
   })
 
   it('**编队里有人被占用就进不去**：某艘正在 AI 派工 ⇒ 拒绝并点名那艘船', () => {
@@ -353,8 +368,8 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('inside')
     expect(run.depth).toBe(1)
     expect(run.totalMass).toBe(2_000)
-    expect(run.turnsTotal).toBe(51) // 4×T1 = 51 回合（B 批表）
-    expect(run.turnsLeft).toBe(51)
+    expect(run.turnsTotal).toBe(56) // 4×T1 = 56 回合（基础 2026-09-14 由 55 提到 60）
+    expect(run.turnsLeft).toBe(56)
     expect(run.bag).toEqual([])
     // F3a-2：层内内容全部由网格承载；旧的线性节点字段不再生成
     expect(run.pendingNode).toBeNull()
@@ -760,7 +775,7 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
     expect(back.phase).toBe('inside')
     expect(back.depth).toBe(1)
     expect(back.turnsLeft).toBe(run.turnsLeft)
-    expect(back.turnsTotal).toBe(51)
+    expect(back.turnsTotal).toBe(56)
     expect(back.fleet).toEqual([T1, T1, T1, T1])
     expect(back.bag).toEqual([{ itemId: 'ore-voidmother', units: 800 }])
     // 层内网格随档（F3a）：位置/真相/已扫描/终点都在（细项由 wormhole-grid.test.ts 钉）
