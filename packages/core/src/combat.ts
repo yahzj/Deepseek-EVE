@@ -3208,6 +3208,13 @@ export function battleArcsFor(
     className: string
     /** 主控（视图锚） */
     leader: boolean
+    /**
+     * **本舰的机群机体清单**（2026-09-14 船长「逐舰机群」）：按该舰**存活**的池条目归并
+     * （`artId → 架数`）。界面据此**逐舰**画机体（挂在各舰自己的锚点上）；
+     * 键里带 owner，故主控那条与旧口径同源（同 artId、同架数、同锚点 ⇒ 逐像素不变）。
+     * 缺省/空数组 = 该舰没有机群（或不参战）。
+     */
+    drones: Array<{ artId: string; count: number }>
     hp: { s: number; a: number; h: number }
     hpMax: { s: number; a: number; h: number }
     alive: boolean
@@ -3463,6 +3470,16 @@ export function battleArcsFor(
       hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
       hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
       alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
+      /** 逐舰机群机体清单（见上方类型注释；只算**该舰存活**的池条目） */
+      drones: (() => {
+        const byArt = new Map<string, number>()
+        for (const [k, p] of Object.entries(battle.dronePools ?? {})) {
+          if (!p.alive || !p.artId) continue
+          if (dronePoolOwner(k) !== e.tag) continue
+          byArt.set(p.artId, (byArt.get(p.artId) ?? 0) + 1)
+        }
+        return [...byArt].map(([artId, count]) => ({ artId, count }))
+      })(),
     }
   })
   return {
@@ -3727,10 +3744,16 @@ export function settleDroneLosses(
   const text = lostParts.join('、')
   const backTxt =
     backParts.length > 0 ? `，其中 ${backParts.join("、")} 已回收修复归队` : ''
+  /**
+   * **战报按舰列出**（船长 2026-09-14「战损按舰归属」）：多舰趟次里每艘舰各出一条战损日志，
+   * 日志抬头点名是哪条舰（单舰/主控那条不写抬头 ⇒ 与旧文案逐字一致）。
+   */
+  const who =
+    ownerTag === 'player' ? '' : `${state.fleet[shipId] ? shipDisplayName(state, ctx, shipId) : ownerTag}：`
   addLog(
     state,
     'warn',
-    `⚠ 机群战损：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
+    `⚠ 机群战损${who ? `（${who.replace(/：$/, '')}）` : ''}：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
   )
   state.droneLossNotice =
     recovered > 0
