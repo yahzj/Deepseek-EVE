@@ -695,7 +695,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
         const h = child.getBoundingClientRect().height
         others += charts && child.contains(charts) ? h - chartNow + chartFloor : h
       }
-      const avail = body.clientHeight - padY - others - gap * Math.max(0, count - 1)
+      const avail = body.clientHeight - padY - others - gap * Math.max(0, count - 1) - 16 // 16px 余量：各块高度取整/小数累计的零头（余量给小了，残差会顶出一条 1~3px 的内滚）
       const fit = Math.floor((avail - titleH) / rowH)
       const next = Math.max(BOOK_ROWS_MIN, Math.min(BOOK_ROWS_MAX, fit))
       setBookRows((prev) => (prev === next ? prev : next)) // 值守卫：不触发多余重渲染
@@ -707,7 +707,11 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     // 行数会停在按旧高度算的值上，紧窗口里就可能多出一行的内滚）
     for (const child of Array.from(detail.children)) ro?.observe(child)
     window.addEventListener('resize', measure)
+    // 兄弟块的最终高度可能在这一帧之后才定（例如下方「我的挂单」被对齐到整行后会改本面板的高度）
+    // ⇒ 下一帧再量一次，避免按旧高度算出行数、把买卖盘裁掉半行
+    const raf = requestAnimationFrame(measure)
     return () => {
+      cancelAnimationFrame(raf)
       ro?.disconnect()
       window.removeEventListener('resize', measure)
     }
@@ -1041,59 +1045,105 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
 
 function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: string) => void }) {
   const state = engine.state
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * 「我的挂单」的可见高度**对齐到整行**（船长 2026-09-14：「当我全屏时，订单的第七条会被遮住一半」）。
+   * 面板高度上限来自 CSS（右栏 40%），超出的挂单在面板体内滚动 —— 但容器底边原先落在行的中间，
+   * 于是最下面那行永远只露一半。这里量出"再放一行就超出"的位置，把面板体收到**整行**高度：
+   * 底部不再出现半行（要更多就滚动，滚动条照旧）。滚动条在滚动途中经过的行仍可能是半行，那是滚动本身的常态。
+   * 逐行累加（不假定每行等高 —— 商品名/说明折行会让某行更高）。
+   */
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current
+    const body = wrap?.closest('.wui-panel-body') as HTMLElement | null
+    if (!wrap || !body) return
+    const measure = (): void => {
+      const ul = wrap.querySelector('.app-inv-list')
+      const rows = ul ? Array.from(ul.querySelectorAll('.app-inv-row')) : []
+      body.style.maxHeight = '' // 先断开上一轮的上限，否则越量越小
+      body.style.paddingBottom = ''
+      const cs = getComputedStyle(body)
+      const padT = parseFloat(cs.paddingTop) || 0
+      const padB = parseFloat(cs.paddingBottom) || 0
+      if (rows.length === 0) return
+      const avail = body.clientHeight - padT - padB
+      let acc = 0
+      for (const r of rows) {
+        const h = r.getBoundingClientRect().height
+        if (acc + h > avail) break
+        acc += h
+      }
+      if (acc <= 0) acc = rows[0]!.getBoundingClientRect().height // 一行都放不下时至少留一行
+      // ⚠ `.wui-panel-body` 是 **content-box** ⇒ `max-height` 只限内容，内边距另算；
+      // 且**下内边距必须归零** —— 否则下一行会从这 8px 里露出一条边（也算"半行"，实测踩过）
+      body.style.paddingBottom = '0px'
+      body.style.maxHeight = `${Math.round(acc)}px`
+    }
+    measure()
+    const column = wrap.closest('.app-mkt-right')
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    if (column) ro?.observe(column)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [state.orders.length])
   if (state.orders.length === 0) {
     return (
-      <div className="app-dim app-inv-empty">
+      <div className="app-dim app-inv-empty" ref={wrapRef}>
         没有挂单。市价单吃穿簿后的剩余会自动挂单（可在此撤销，货退回库存）。
       </div>
     )
   }
   return (
-    <ul className="app-inv-list">
-      {state.orders.map((order) => (
-        <li key={order.id} className="app-inv-row">
-          <div className="app-inv-main">
-            <span className="app-inv-name">
-              {order.side === 'sell' ? '▼ 卖单' : '▲ 买单'}：{goodName(engine.ctx, order.good)}
-            </span>
-            <span className="app-inv-count">
-              {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} 信用点 · 剩余 {order.qty.toLocaleString('zh-CN')}
-              {order.filled > 0 ? `（已成交 ${order.filled.toLocaleString('zh-CN')}）` : ''}
-              {/* 2026-09-11（船长裁决「甲」预扣冻结）：买单显示"已预扣多少"，让玩家看得见这笔钱在哪 */}
-              {order.side === 'buy' && (order.escrowIsk ?? 0) > 0
-                ? ` · 已预扣 ${(order.escrowIsk ?? 0).toLocaleString('zh-CN')} 信用点`
-                : ''}
-            </span>
-          </div>
-          <div className="app-inv-btns">
-            <button
-              className="app-btn is-small"
-              onClick={() => onJump(order.good)}
-              title="跳到市场列表：按该商品搜索并打开行情详情"
-            >
-              查看行情
-            </button>
-            <button
-              className="app-btn is-small is-warn"
-              onClick={() => {
-                // 先取预扣额（撤单会把订单上的 escrowIsk 清零）
-                const back = order.side === 'buy' ? (order.escrowIsk ?? 0) : 0
-                engine.cancelOrderAt(order.id)
-                onToast(
-                  order.side === 'sell'
-                    ? '卖单已撤销：货物退回库存。'
-                    : back > 0
-                      ? `买单已撤销：预扣 ${isk(back)} 信用点 已退回钱包。`
-                      : '买单已撤销。',
-                )
-              }}
-            >
-              撤单
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div ref={wrapRef}>
+      <ul className="app-inv-list">
+        {state.orders.map((order) => (
+          <li key={order.id} className="app-inv-row">
+            <div className="app-inv-main">
+              <span className="app-inv-name">
+                {order.side === 'sell' ? '▼ 卖单' : '▲ 买单'}：{goodName(engine.ctx, order.good)}
+              </span>
+              <span className="app-inv-count">
+                {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} 信用点 · 剩余 {order.qty.toLocaleString('zh-CN')}
+                {order.filled > 0 ? `（已成交 ${order.filled.toLocaleString('zh-CN')}）` : ''}
+                {/* 2026-09-11（船长裁决「甲」预扣冻结）：买单显示"已预扣多少"，让玩家看得见这笔钱在哪 */}
+                {order.side === 'buy' && (order.escrowIsk ?? 0) > 0
+                  ? ` · 已预扣 ${(order.escrowIsk ?? 0).toLocaleString('zh-CN')} 信用点`
+                  : ''}
+              </span>
+            </div>
+            <div className="app-inv-btns">
+              <button
+                className="app-btn is-small"
+                onClick={() => onJump(order.good)}
+                title="跳到市场列表：按该商品搜索并打开行情详情"
+              >
+                查看行情
+              </button>
+              <button
+                className="app-btn is-small is-warn"
+                onClick={() => {
+                  // 先取预扣额（撤单会把订单上的 escrowIsk 清零）
+                  const back = order.side === 'buy' ? (order.escrowIsk ?? 0) : 0
+                  engine.cancelOrderAt(order.id)
+                  onToast(
+                    order.side === 'sell'
+                      ? '卖单已撤销：货物退回库存。'
+                      : back > 0
+                        ? `买单已撤销：预扣 ${isk(back)} 信用点 已退回钱包。`
+                        : '买单已撤销。',
+                  )
+                }}
+              >
+                撤单
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
