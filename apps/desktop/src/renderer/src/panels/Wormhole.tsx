@@ -1881,9 +1881,22 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     for (const c of placementCells(p)) ownerOf.set(`${c.x},${c.y}`, p)
   }
 
+  /**
+   * **落点**（船长 2026-09-13 两条：「拖拽要能抓住整件」「物品之间要能交换位置」）：
+   * ① 落在**空格**上 = 普通移动；② 落在**别件身上** = **两件互换位置**（形状对不上则拒绝并回滚，
+   * 由 core `holdSwap` 判、界面只报原因）。
+   */
   function dropAt(x: number, y: number): void {
-    if (!dragId) return
-    const r = engine.wormholeHoldMove(dragId, x, y)
+    const id = dragId
+    if (!id) return
+    const target = ownerOf.get(`${x},${y}`)
+    if (target && target.id !== id) {
+      const r = engine.wormholeHoldSwap(id, target.id)
+      if (!r.ok) onToast(r.error ?? '换不了位置。', true)
+      setDragId(null)
+      return
+    }
+    const r = engine.wormholeHoldMove(id, x, y)
     if (!r.ok) onToast(r.error ?? '这里放不下。', true)
     setDragId(null)
   }
@@ -1973,19 +1986,6 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 }
               }}
             >
-              {isOrigin && p ? (
-                p.kind === 'cargo' ? (
-                  <span className="app-wh-hold-cargo-name">×{n(p.units ?? 0)}</span>
-                ) : (
-                  <>
-                    <span className="app-wh-hold-box-name">
-                      {/* 谜质装置用**2 字短标签**（悬停给全名与效果）；安全货柜统一写「货柜」，族由颜色区分 */}
-                      {wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜'}
-                    </span>
-                    <span className="app-wh-hold-box-size">{p.w}×{p.h}</span>
-                  </>
-                )
-              ) : null}
             </div>
           )
         })}
@@ -1996,21 +1996,50 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
          * 多格块的轮廓正好盖住它占的整块）；每件一个 figure，`grid-area` 跨它的 w×h 格，
          * 图标按 figure 的百分比取尺寸（单格也顺带变大）；`pointer-events: none` ⇒ 不吃拖拽与点击。
          */}
-        <div className="app-wh-hold-figures" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }} aria-hidden>
+        {/**
+         * **物品块层**（船长 2026-09-13 三条：「占多格的物品显示依旧是4格 ⇒ 要将四格合并成一个大格子」·
+         * 「玩家只能通过拖拽左上角的格子移动物品」· 「物品之间无法交换位置」）：
+         * 与格子网格**同一套 `grid-template-columns` 与 gap**（不手算像素），每件一个块，
+         * `grid-area` 跨它自己的 `w×h` 格 ⇒ **多格物品就是一个大格子**（一条边框、一块底色、图标居中）；
+         * 块**自己就是拖拽/点击/落点**（不再只能抓左上角那格）；落到别人身上 = `dropAt` 里换位。
+         * 标签写成底部小药丸（带底色）⇒ **不再被图标压住**（船长报的"数量被图标遮住"）。
+         */}
+        <div className="app-wh-hold-figures" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
           {placements.map((p) => {
             const def = ctx.items.get(p.itemId)
             const key = itemIconOf(p.itemId, def?.kind)
+            const isCargo = p.kind === 'cargo'
+            const label = isCargo
+              ? `×${n(p.units ?? 0)}`
+              : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
             return (
               <div
                 key={`fig-${p.id}`}
-                className="app-wh-hold-fig"
+                className={`app-wh-hold-fig ${isCargo ? 'is-cargo' : 'is-box'}${dragId === p.id ? ' is-dragging' : ''}`}
                 style={{
                   gridColumn: `${p.x + 1} / span ${p.w}`,
                   gridRow: `${p.y + 1} / span ${p.h}`,
                   color: itemToneOf(p.itemId, key),
                 }}
+                title={
+                  isCargo
+                    ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货条：占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
+                    : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
+                }
+                draggable
+                onDragStart={() => setDragId(p.id)}
+                onDragEnd={() => setDragId(null)}
+                onDragOver={(e) => {
+                  if (dragId) e.preventDefault()
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  dropAt(p.x, p.y)
+                }}
+                onClick={() => setDragId((prev) => (prev === p.id ? null : p.id))}
               >
                 <Glyph name={key} size={64} color="currentColor" />
+                <span className="app-wh-hold-fig-label">{label}</span>
               </div>
             )
           })}

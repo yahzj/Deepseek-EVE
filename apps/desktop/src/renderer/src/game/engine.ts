@@ -151,6 +151,7 @@ import {
   wormholeTempStow,
   wormholeTempDiscard,
   holdCompact,
+  holdSwap,
   holdMove,
   wormholeGridActivate,
   wormholeGridScan,
@@ -1508,6 +1509,17 @@ export class GameEngine {
     const run = this.state.wormhole.run
     if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
     const r = holdMove(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx))
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: r.ok, error: r.error }
+  }
+  /** 虫洞：**两件互换位置**（船长 2026-09-13：「物品之间无法交换位置」；形状对不上则拒绝并回滚） */
+  wormholeHoldSwap(idA: string, idB: string): CommandResult {
+    const run = this.state.wormhole.run
+    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    const r = holdSwap(run.hold, idA, idB, wormholeHoldCapacityOf(this.state, this.ctx))
     if (r.ok) {
       void this.persist()
       this.notify()

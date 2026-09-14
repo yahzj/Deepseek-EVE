@@ -9879,8 +9879,29 @@ body {
   position: absolute; inset: 0; display: grid; gap: 4px;
   pointer-events: none; /* 不吃拖拽与点击（格子本体才处理交互） */
 }
-.app-wh-hold-fig { display: flex; align-items: center; justify-content: center; line-height: 0; }
-.app-wh-hold-fig svg { width: 62%; height: 62%; max-width: 64px; max-height: 64px; }
+/* **物品块 = 一个大格子**（船长 2026-09-13：「占多格的物品显示依旧是4格 ⇒ 要将四格合并成一个大格子」）：
+   边框/底色/圆角只画在**块**上（跨 w×h 格），下面的占位格一律透明 ⇒ 视觉上是一件而不是四格；
+   块自己接拖拽/点击（不再只能抓左上角），落点交给 React 的 onDrop。 */
+.app-wh-hold-fig {
+  position: relative; display: flex; align-items: center; justify-content: center; line-height: 0;
+  border: 1px solid rgba(79, 216, 196, 0.55); border-radius: 5px;
+  background: rgba(79, 216, 196, 0.12);
+  pointer-events: auto; cursor: grab; overflow: hidden;
+}
+.app-wh-hold-fig.is-cargo { border-color: rgba(157, 180, 200, 0.35); background: rgba(157, 180, 200, 0.1); }
+.app-wh-hold-fig.is-dragging { opacity: 0.45; cursor: grabbing; }
+.app-wh-hold-fig svg { width: 52%; height: 52%; max-width: 56px; max-height: 56px; }
+/* **底部标签药丸**（船长报的"数量被图标遮住"）：带底色、压在块下缘，不与图标重叠 */
+.app-wh-hold-fig-label {
+  position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+  font-size: 10px; line-height: 1.25; padding: 0 4px; border-radius: 3px;
+  background: rgba(6, 11, 19, 0.78); color: var(--wui-text); white-space: nowrap;
+}
+/* 占位格：只保留"空位/锁定"的提示线，占用的格不再画边框与底色（整块交给上面的块层） */
+.app-wh-hold-cell.is-box,
+.app-wh-hold-cell.is-cargo { border-color: transparent; background: transparent; }
+.app-wh-hold-cell.is-body,
+.app-wh-hold-cell.is-cargobody { border-color: transparent; background: transparent; }
 .app-wh-hold-cargo-name { color: #9db4c8; font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }

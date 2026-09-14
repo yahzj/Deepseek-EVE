@@ -515,6 +515,46 @@ export function holdMove(
   return { ok: true }
 }
 
+/**
+ * **两件互换位置**（船长 2026-09-13：「物品之间无法交换位置」）。
+ *
+ * 判据与 `holdMove` 同一把尺（`canPlace`）：先把两件都挪到网格外的哨兵位
+ * （避免"对方还占着"把自己挡住），再各自试落；**任一件放不下就整体回滚**（位置一字不动）。
+ * 形状对不上（例如 2×2 货柜与 1×1 散货在窄缝里）⇒ 拒绝并说明，不静默挪一半。
+ */
+export function holdSwap(
+  hold: WormholeHoldState,
+  idA: string,
+  idB: string,
+  capacity: number,
+): { ok: boolean; error?: string } {
+  const a = hold.placements.find((q) => q.id === idA)
+  const b = hold.placements.find((q) => q.id === idB)
+  if (!a || !b) return { ok: false, error: '没有这个件。' }
+  if (a.id === b.id) return { ok: true }
+  const ax = a.x
+  const ay = a.y
+  const bx = b.x
+  const by = b.y
+  a.x = -99
+  a.y = -99
+  b.x = -99
+  b.y = -99
+  const okA = canPlace(hold, bx, by, { w: a.w, h: a.h }, capacity, a.id)
+  const okB = canPlace(hold, ax, ay, { w: b.w, h: b.h }, capacity, b.id)
+  if (okA && okB) {
+    a.x = bx
+    a.y = by
+    b.x = ax
+    b.y = ay
+    return { ok: true }
+  }
+  a.x = ax
+  a.y = ay
+  b.x = bx
+  b.y = by
+  return { ok: false, error: '两件的形状对不上，换不了位置（先「整理」或挪开一件）。' }
+}
 /** 移除一件（**抛弃**就是它；返回被移除的件供日志/读数） */
 export function holdRemove(hold: WormholeHoldState, id: string): WormholeHoldPlacement | undefined {
   const i = hold.placements.findIndex((p) => p.id === id)

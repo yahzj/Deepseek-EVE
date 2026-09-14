@@ -1021,6 +1021,7 @@ export {
   holdCompact,
   holdMove,
   holdRemove,
+  holdSwap,
   holdRows,
   makeHoldState,
   placementCells,

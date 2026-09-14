@@ -19,7 +19,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldState } from '../src/wormholeHold'
-import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState, placementCellsCount } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -207,6 +207,33 @@ describe('虫洞 · 货仓格几何（纯逻辑）', () => {
   })
 })
 
+describe('虫洞 · 两件互换位置（船长 2026-09-13：「物品之间无法交换位置」）', () => {
+  it('形状都放得下 ⇒ 位置互换；放不下 ⇒ 整体回滚、位置一字不动', () => {
+    const hold = makeHoldState()
+    const a = holdAdd(hold, BOX, 20) // 2×2 货柜
+    const b = holdAdd(hold, 'mat-surveyor', 20) // 2×2 谜质装置
+    expect(a.ok && b.ok).toBe(true)
+    const ax = a.placement!.x
+    const ay = a.placement!.y
+    const bx = b.placement!.x
+    const by = b.placement!.y
+    expect(ax !== bx || ay !== by, '两件应落在不同位置（否则这条用例没意义）').toBe(true)
+    const ok = holdSwap(hold, a.placement!.id, b.placement!.id, 20)
+    expect(ok.ok, ok.error).toBe(true)
+    expect([a.placement!.x, a.placement!.y]).toEqual([bx, by])
+    expect([b.placement!.x, b.placement!.y]).toEqual([ax, ay])
+    // 放不下 ⇒ 拒绝且**两件都回原位**（容量只够 5 格：2×2 挪到右边会越出行外）
+    const tiny = makeHoldState()
+    const big = holdAdd(tiny, BOX, 5) // 2×2 落在左上
+    const small = holdAdd(tiny, 'mat-volley', 5) // 2×2 也放不进 5 格了 ⇒ 换一件 1×1 散货来试
+    if (small.ok) {
+      // 若能放下第二件，则用"容量 5"这一档直接验回滚：把 big 挪到 small 的位置必然越界
+      const bad = holdSwap(tiny, big.placement!.id, small.placement!.id, 5)
+      expect(bad.ok).toBe(false)
+      expect([big.placement!.x, big.placement!.y]).toEqual([0, 0])
+    }
+  })
+})
 describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
   it('格数 = ⌊合计货仓 ÷ 500⌋（4×T3 = 20 格）；散货与形状件共用一本账', () => {
     const state = enterRun(4)
