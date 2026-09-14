@@ -40,6 +40,7 @@ import {
   cargoBlockArea,
   cargoShapeFits,
   cargoShapesFor,
+  bestCargoPlacement,
   findFreeSpot,
   holdAdd,
   holdCellsUsed,
@@ -362,8 +363,8 @@ export function wormholeHoldSyncCargo(
   for (const slot of run.bag) {
     const cells = wormholeCargoCellsOf(ctx, slot.itemId, slot.units)
     const current = hold.placements.find((p) => p.kind === 'cargo' && p.itemId === slot.itemId)
-    // 已经是这一档的合法落形（矩形/细条）⇒ 只同步数量，不动位置
-    if (current && cargoShapeFits(cells, { w: current.w, h: current.h })) {
+    // 已经是这一档的合法落形（矩形外框 + 末行补齐）⇒ 只同步数量，不动位置
+    if (current && cargoShapeFits(cells, { w: current.w, h: current.h }, current.fill)) {
       current.units = Math.floor(slot.units)
       continue
     }
@@ -371,11 +372,20 @@ export function wormholeHoldSyncCargo(
     if (current) hold.placements = hold.placements.filter((p) => p.id !== current.id)
     let placed = false
     const shapes = cargoShapesFor(cells)
+    /** 外框可能比格数大（矩形 + 末行补齐）⇒ 落形一律带 `fill`，只有整框装得满时才省掉它 */
+    const fillOf = (shape: { w: number; h: number }): number => Math.min(cells, shape.w * shape.h)
     // **先试原位**（保持玩家手动摆好的位置）
     if (current) {
       for (const shape of shapes) {
-        if (canPlace(hold, current.x, current.y, shape, capacity)) {
-          hold.placements.push({ ...current, w: shape.w, h: shape.h, units: Math.floor(slot.units) })
+        const fill = fillOf(shape)
+        if (canPlace(hold, current.x, current.y, shape, capacity, undefined, fill)) {
+          hold.placements.push({
+            ...current,
+            w: shape.w,
+            h: shape.h,
+            units: Math.floor(slot.units),
+            ...(fill === shape.w * shape.h ? { fill: undefined } : { fill }),
+          })
           placed = true
           moved += 1
           break
@@ -383,23 +393,25 @@ export function wormholeHoldSyncCargo(
       }
     }
     if (!placed) {
-      for (const shape of shapes) {
-        const spot = findFreeSpot(hold, shape, capacity, true)
-        if (spot) {
-          hold.placements.push({
-            id: `${slot.itemId}#${cells}`,
-            itemId: slot.itemId,
-            kind: 'cargo',
-            units: Math.floor(slot.units),
-            x: spot.x,
-            y: spot.y,
-            w: shape.w,
-            h: shape.h,
-          })
-          placed = true
-          moved += 1
-          break
-        }
+      /**
+       * 没保住原位 ⇒ 交给 `bestCargoPlacement` 选落点与**外框**（它会优先保住一个 2×2 货柜位；
+       * 外框可能比格数大 —— 矩形 + 末行补齐，实际只占 `fill` 格）。
+       */
+      const pick = bestCargoPlacement(hold, cells, capacity)
+      if (pick) {
+        hold.placements.push({
+          id: `${slot.itemId}#${cells}`,
+          itemId: slot.itemId,
+          kind: 'cargo',
+          units: Math.floor(slot.units),
+          x: pick.spot.x,
+          y: pick.spot.y,
+          w: pick.shape.w,
+          h: pick.shape.h,
+          ...(pick.fill === pick.shape.w * pick.shape.h ? {} : { fill: pick.fill }),
+        })
+        placed = true
+        moved += 1
       }
     }
     if (!placed) unplaced.push(slot.itemId)

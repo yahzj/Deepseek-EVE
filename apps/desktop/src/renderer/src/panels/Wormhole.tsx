@@ -45,6 +45,7 @@ import {
   wormholeUnitsPerSlot,
   wormholeShapeOf,
   wormholeCargoSlotsOf,
+  placementCellsCount,
 } from '@whale/core'
 import type { WormholeGridState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -1593,7 +1594,8 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
                       {def?.name ?? p.itemId} ×{n(p.units ?? 0)}
                     </span>
                     <span className="app-wh-hold-box-size">
-                      {p.w}×{p.h} 格
+                      {/* 散货：实占格数（矩形外框 + 末行补齐 ⇒ 框可能比占格大） */}
+                      {placementCellsCount(p)} 格 · {p.w}×{p.h} 框
                     </span>
                   </>
                 ) : (
@@ -1726,7 +1728,8 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
             const per = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
             // 占格与形状都按**实际摆放件**报（还没摆下才退回"规范块面积"）
             const placed = placements.find((p) => p.kind === 'cargo' && p.itemId === s.itemId)
-            const cells = placed ? placed.w * placed.h : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
+            // 占格按**实际摆放件**报（实占 = 矩形外框 + 末行补齐后的格数）；还没摆下才退回格数本身
+            const cells = placed ? placementCellsCount(placed) : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
             return (
               <li key={s.itemId} className="app-inv-row">
                 <div className="app-inv-main">
@@ -1735,7 +1738,7 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
                   </span>
                   <span className="app-inv-count">
                     {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格
-                    {placed ? `（${placed.w}×${placed.h} 块）` : '（还没摆下）'} · 每格 {n(per)} 单位
+                    {placed ? `（${placed.w}×${placed.h} 框）` : '（还没摆下）'} · 每格 {n(per)} 单位
                   </span>
                 </div>
                 <div className="app-inv-btns">
