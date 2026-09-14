@@ -9336,6 +9336,29 @@ body {
   border-radius: 7px; background: #ff6b52; color: #1c0c08; font-size: 10px; font-weight: 700;
   line-height: 13px; text-align: center; box-shadow: 0 0 6px rgba(255, 90, 60, .85);
 }
+/* ═══════════ 侧边栏点击 / 一级页切换反馈（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时
+   最好给予玩家一个反馈，哪怕点的是当前窗口」） ═══════════
+   两种情形各有反馈，都只动 opacity / transform（第十四章）：
+   ① **换页** ⇒ 内容区随 `key={page}` 重挂载，播一次入场淡入（`.app-page-content` 基类，170ms）；
+   ② **点当前页** ⇒ **不重挂载**（页面内的检索词 / 滚动位置 / 弹层状态不受打扰），改播一次 220ms 脉冲：
+      内容区一次明暗脉冲 + 该项图标一次缩放脉冲（与「未读闪烁」同族手感，见上一条）。
+   ⚠ 内容区**不做位移**：页内可能有 `position: fixed` 的弹层（`.app-modal-mask`），
+   祖先一旦有 transform 就会改掉它们的定位基准 ⇒ 这里只动 opacity。
+   无动画偏好（prefers-reduced-motion: reduce）：不播动画，改为 220ms 的**静态**高亮（描边/边框变 accent 色），
+   仍然明确"这一下点到了"（与 `.is-unread` 退化为静态红点同款做法）。 */
+.app-page-content { animation: app-page-in 0.17s ease-out; }
+@keyframes app-page-in { from { opacity: 0; } to { opacity: 1; } }
+.app-page-content.is-beat { animation: app-page-beat 0.22s ease-out; }
+@keyframes app-page-beat { 0% { opacity: 0.55; } 55% { opacity: 1; } 100% { opacity: 1; } }
+.app-nav-item.is-beat .app-nav-icon { animation: app-nav-beat 0.22s ease-out; }
+@keyframes app-nav-beat { 0% { transform: scale(1); } 45% { transform: scale(0.86); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .app-page-content,
+  .app-page-content.is-beat,
+  .app-nav-item.is-beat .app-nav-icon { animation: none; }
+  .app-page-content.is-beat { box-shadow: inset 0 0 0 1px rgba(79, 216, 196, 0.55); }
+  .app-nav-item.is-beat { border-color: var(--wui-accent); color: var(--wui-accent); }
+}
 /* 双列：左列消息列表 + 右列通讯器正文；两列各自内部滚动（列表 .app-comms-list、屏幕 .app-comms-screen）。
    注意：win-fixed-body 的 .app-win-body 自带 overflow-y:auto（选择器特异性更高），这里用同级选择器
    把它改成"不滚的弹性列"，让滚动只发生在两列内部（一级页不滚）。 */
