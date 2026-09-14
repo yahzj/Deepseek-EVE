@@ -11,7 +11,7 @@
  * F5 起散货也是网格里的真摆放件、可拖拽）。层内动作各花 1 回合，未扫描的地点要先警告再确认（船长口径）；
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
@@ -326,10 +326,17 @@ export function WormholePanel({
    * 监听并显式 `{ passive: false }`：指针在地图框里滚 ⇒ **只缩放地图、不滚动任何东西**。
    * 步长取按钮的一半（0.125）——滚轮是连续输入，用按钮那档会一跳一跳；上下限与按钮同一把尺
    * （`WORMHOLE_MAP_ZOOM_FIT` ~ `WORMHOLE_MAP_ZOOM_MAX`）。指针不在图上时一个字节都不拦。
+   *
+   * ⚠ **必须用回调 ref、不能用 `useEffect` 挂**（船长 2026-09-13 报的 BUG：「战斗后，滚轮失效，
+   * 需要重开虫洞探索界面」）：战斗期间本面板**整块不渲染**（见 `run.battle` 那条早退）⇒ 地图框连同
+   * 监听一起卸载；战斗结束面板回来时元素是**新节点**，而 `useEffect` 的依赖（有没有 run / 哪个页签）
+   * 没变 ⇒ **不会补挂**，于是滚轮从此失效。回调 ref 在**每次挂载**都拿到新节点、顺手挂监听、旧节点
+   * 卸载时清掉 ⇒ 战斗前后、切页前后都不会漏。
    */
-  const mapBoxRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const el = mapBoxRef.current
+  const wheelCleanupRef = useRef<(() => void) | null>(null)
+  const mapBoxRef = useCallback((el: HTMLDivElement | null) => {
+    wheelCleanupRef.current?.()
+    wheelCleanupRef.current = null
     if (!el) return
     const onWheel = (e: WheelEvent): void => {
       if (e.deltaY === 0) return
@@ -340,9 +347,9 @@ export function WormholePanel({
       )
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-    // 地图框只在「探索」页且在洞里时挂载 ⇒ 依赖要带上页签，否则切页后监听不会补挂
-  }, [!!run, tab])
+    wheelCleanupRef.current = () => el.removeEventListener('wheel', onWheel)
+  }, [])
+  useEffect(() => () => wheelCleanupRef.current?.(), [])
   const layerKeyForFx = run ? `${run.seed ?? 0}-${run.depth}` : 'none'
   /** 新层挂载 ⇒ 播"从屏幕外飞入"，1 秒后交还操作（进场与深入共用这一条） */
   useEffect(() => {
