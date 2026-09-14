@@ -653,6 +653,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
                       // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
                       // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
+                      // **2026-09-14 起按船取值**：周期取自本船 `spec` 的两个覆盖字段（微型跃迁引擎 = 10 秒点火）。
                       {
                         k: '机动速度',
                         v: (
@@ -660,7 +661,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                             {`${fmt(Math.round(spec.speedMps))} m/s`}
                             {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
                               <span className="app-dim">
-                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText()}）`}
+                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs })}）`}
                               </span>
                             ) : null}
                           </>

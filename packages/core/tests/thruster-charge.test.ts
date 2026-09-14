@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
-import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleSeconds, thrusterCycleText, thrusterPhase } from '../src/index'
+import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
 import { anomaly, galaxy, makeTestCtx, moduleDef } from './helpers'
@@ -105,6 +105,181 @@ describe('推进器周期爆发（2026-09-10 船长定：点火 60 秒 / 冷却 
     expect(at(45_000).boosting).toBe(false) // 45 秒 = 文案的"点火 45 秒"
     expect(at(74_999).boosting).toBe(false)
     expect(at(75_000).boosting).toBe(true) // 45 + 30 = 文案的"冷却 30 秒"
+  })
+})
+
+describe('微型跃迁引擎（2026-09-14 船长定：中槽短爆发——点火 10 秒 / 冷却 60 秒）', () => {
+  /**
+   * 测试世界补三档微型跃迁引擎（数值与 `data/modules.ts` 逐字一致）+ 三档矢量推进器：
+   * 微型跃迁引擎 = **自带周期覆盖**（10 秒点火 / 60 秒冷却），矢量推进器 = 不写覆盖（走全局 60/60）。
+   */
+  function mwdWorld(): { state: GameState; ctx: SimContext } {
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      modules: [
+        moduleDef('mod-prop-1', 'propulsion', 0, { speedBonusPct: 0.3, hitPenalty: 0.05 }),
+        moduleDef('mod-prop-3', 'propulsion', 0, { speedBonusPct: 1, hitPenalty: 0.2 }),
+        moduleDef('mod-mwd-1', 'propulsion', 0, {
+          speedBonusPct: 0.8,
+          hitPenalty: 0.2,
+          thrusterBoostMs: 10_000,
+          thrusterCooldownMs: 60_000,
+        }),
+        moduleDef('mod-mwd-2', 'propulsion', 0, {
+          speedBonusPct: 1.5,
+          hitPenalty: 0.25,
+          thrusterBoostMs: 10_000,
+          thrusterCooldownMs: 60_000,
+        }),
+        moduleDef('mod-mwd-3', 'propulsion', 0, {
+          speedBonusPct: 2.5,
+          hitPenalty: 0.4,
+          thrusterBoostMs: 10_000,
+          thrusterCooldownMs: 60_000,
+        }),
+      ],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    addShipToFleet(state, 'sandcat2')
+    state.shipId = 'sandcat2'
+    return { state, ctx }
+  }
+
+  it('三档数值与自带周期：+80/150/250% · 命中 ×0.80/0.75/0.60 · 10 秒点火 / 60 秒冷却（船长给定）', () => {
+    const cases = [
+      { id: 'mod-mwd-1', boost: 0.8, hit: 0.8 },
+      { id: 'mod-mwd-2', boost: 1.5, hit: 0.75 },
+      { id: 'mod-mwd-3', boost: 2.5, hit: 0.6 },
+    ]
+    for (const c of cases) {
+      const { state, ctx } = mwdWorld()
+      withThruster(state, ctx, [c.id])
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      expect(spec.thrusterBoost, c.id).toBeCloseTo(c.boost, 6)
+      expect(spec.hitMul, c.id).toBeCloseTo(c.hit, 6) // 点火期命中代价（1 − hitPenalty）
+      expect(spec.thrusterBoostMs, c.id).toBe(10_000) // 件自带周期 → 逐单位写入
+      expect(spec.thrusterCooldownMs, c.id).toBe(60_000)
+    }
+  })
+
+  it('**逐单位相位**：装它的船第 10 秒就进冷却，装矢量推进器的船第 10 秒仍在点火', () => {
+    const { state, ctx } = mwdWorld()
+    const bal = ctx.balance.battle
+    // 同一场战斗里的两条船（同一时钟锚 = 开场即点火）
+    const at = (ms: number, spec: Parameters<typeof unitThrusterCycle>[0]): boolean =>
+      thrusterPhase({ startedAtGameMs: 0, lastTickGameMs: ms }, bal, unitThrusterCycle(spec, bal)).boosting
+    withThruster(state, ctx, ['mod-mwd-1'])
+    const mwd = createPlayerSpec(state, ctx, state.shipId)!
+    withThruster(state, ctx, ['mod-prop-3'])
+    const vec = createPlayerSpec(state, ctx, state.shipId)!
+    // t=0~9.999s：两者都在点火
+    expect(at(0, mwd)).toBe(true)
+    expect(at(9_999, mwd)).toBe(true)
+    expect(at(9_999, vec)).toBe(true)
+    // t=10s：微型跃迁引擎的点火窗口结束（矢量推进器还有 50 秒）
+    expect(at(10_000, mwd)).toBe(false)
+    expect(at(10_000, vec)).toBe(true)
+    // 周期：微型 10+60=70 秒 ⇒ t=70s 第二轮点火；矢量 60+60=120 秒 ⇒ t=70s 仍在冷却
+    expect(at(70_000, mwd)).toBe(true)
+    expect(at(70_000, vec)).toBe(false)
+    expect(at(120_000, vec)).toBe(true)
+  })
+
+  it('一船多件取**点火最短的那件**；没有覆盖件的装配**不写字段**（旧读数逐字不变）', () => {
+    const { state, ctx } = mwdWorld()
+    const bal = ctx.balance.battle
+    // 只装矢量推进器（无覆盖）⇒ 两个字段都不写，走全局 60/60
+    withThruster(state, ctx, ['mod-prop-1'])
+    const plain = createPlayerSpec(state, ctx, state.shipId)!
+    expect(plain.thrusterBoostMs).toBeUndefined()
+    expect(plain.thrusterCooldownMs).toBeUndefined()
+    expect(unitThrusterCycle(plain, bal)).toEqual({ boostMs: bal.thrusterBoostMs, cooldownMs: bal.thrusterCooldownMs })
+    // 矢量 MK3 + 微型 MK1：周期取微型那条（10 秒点火），倍率仍按 EVE 曲线合成
+    withThruster(state, ctx, ['mod-prop-3', 'mod-mwd-1'])
+    const mixed = createPlayerSpec(state, ctx, state.shipId)!
+    expect(mixed.thrusterBoostMs).toBe(10_000)
+    expect(mixed.thrusterCooldownMs).toBe(60_000)
+    expect(mixed.thrusterBoost!).toBeGreaterThan(1) // 两件合成仍更强
+  })
+
+  it('周期文案**按件取值**（2026-09-11 口径不写死秒数 + 2026-09-14 按件覆盖）', () => {
+    const bal = makeTestCtx().balance.battle
+    const mwdMod = { thrusterBoostMs: 10_000, thrusterCooldownMs: 60_000 } // 模块定义的字段形状
+    const mwdCycle = { boostMs: 10_000, cooldownMs: 60_000 } // 周期覆盖的形状（引擎/界面共用）
+    expect(thrusterCycleOfModule(mwdMod)).toEqual(mwdCycle)
+    expect(thrusterCycleSeconds(bal, mwdCycle)).toEqual({ boost: 10, cooldown: 60 })
+    expect(thrusterCycleText(bal, mwdCycle)).toBe('点火 10 秒 / 冷却 60 秒')
+    expect(thrusterCycleFullText(bal, mwdCycle)).toBe('10 秒点火 / 60 秒冷却，开场即点火')
+    // 没有覆盖（矢量推进器那三档）= 全局 60/60（逐字不变）
+    expect(thrusterCycleOfModule({})).toBeUndefined()
+    expect(thrusterCycleText(bal, thrusterCycleOfModule({}))).toBe('点火 60 秒 / 冷却 60 秒')
+  })
+
+  it('实战：点火窗口**只在前 10 秒**给速度（第 11 秒起回到基础机动）', () => {
+    /**
+     * 观测法（与"冲锋倍率不外溢"那条同款）：造一个**不会动**的敌人（`speedRatio: 0`），
+     * 我方期望交距压到 1m ⇒ **闭距全是我方走的**，于是"前 10 秒 vs 之后"两段闭距直接反映点火窗口。
+     */
+    const stationary: FoeShipDef = {
+      id: 't-foe-still',
+      name: '测试静物',
+      family: 'E',
+      hullClassTier: 3,
+      speedRatio: 0,
+      hp: 100_000,
+      split: { s: 0.34, a: 0.33, h: 0.33 },
+      shotDmg: 1,
+      hitRate: 0.85,
+      reloadMs: 600_000, // 打不疼、也打不死玩家
+      rangeMinM: 1,
+      rangeMaxM: 12_000,
+      falloff: 0.5,
+      dmgMix: { kinetic: 10 },
+      energyForm: 'spit',
+      tactic: 'orbit',
+    }
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      galaxies: [galaxy('g-test')],
+      modules: [
+        moduleDef('mod-long', 'turret', 0, { maxRangeM: 12_000, minRangeM: 0, reloadMs: 600_000, hitRate: 1, falloff: 1 }),
+        moduleDef('mod-mwd-2', 'propulsion', 0, {
+          speedBonusPct: 1.5,
+          hitPenalty: 0.25,
+          thrusterBoostMs: 10_000,
+          thrusterCooldownMs: 60_000,
+        }),
+      ],
+      anomalies: [
+        { ...anomaly('ano-t-still', 'g-test', { threat: 20, tactic: 'orbit' }), ships: [{ ship: stationary }] },
+      ],
+    })
+    const run = (modIds: string[]): { first: number; after: number; open: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 3 })
+      addShipToFleet(state, 'sandcat2')
+      state.shipId = 'sandcat2'
+      state.fleet['sandcat2']!.fitted = { high: ['mod-long'], mid: [...modIds], low: [] }
+      repairDeprecatedModules(state, ctx)
+      const b = startBattleFor(state, ctx, 'sandcat2', 'ano-t-still', 0, 1)! // 期望交距 1m ⇒ 一路内压
+      const open = b.distanceM
+      const d0 = b.distanceM
+      state.gameMs = 9_000
+      advanceBattleFor(state, ctx, b, 'sandcat2', 'ano-t-still')
+      const first = d0 - b.distanceM // 前 9 秒（点火期）
+      const d1 = b.distanceM
+      state.gameMs = 20_000
+      advanceBattleFor(state, ctx, b, 'sandcat2', 'ano-t-still')
+      const after = d1 - b.distanceM // 第 9~20 秒（点火早已结束）
+      return { first, after, open }
+    }
+    const withMwd = run(['mod-mwd-2'])
+    const bare = run([])
+    const trace = `带微型跃迁引擎：前 9 秒 ${Math.round(withMwd.first)}m / 之后 11 秒 ${Math.round(withMwd.after)}m（开战距离 ${Math.round(withMwd.open)}m）；裸船：${Math.round(bare.first)}m / ${Math.round(bare.after)}m`
+    // 裸船两段接近速度相同（没有推进器 = 恒基础机动）
+    expect(Math.abs(bare.first / 9 - bare.after / 11), trace).toBeLessThan(bare.first / 9 * 0.05)
+    // 装了微型跃迁引擎：前 9 秒明显更快（+150% 的合成倍率），之后回落到与裸船同档
+    expect(withMwd.first / 9, `点火窗口没生效（${trace}）`).toBeGreaterThan((bare.first / 9) * 1.5)
+    expect(withMwd.after / 11, `点火窗口结束后没有回落（${trace}）`).toBeLessThan((bare.after / 11) * 1.25)
   })
 })
 

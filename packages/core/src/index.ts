@@ -149,11 +149,13 @@ export {
   shipSlotsOf,
   rackOf,
   allFittedIds,
-  // 推进器周期口径文案（与 balance.battle 同源）
+  // 推进器周期口径文案（与 balance.battle 同源；2026-09-14 起支持「按件覆盖」= 微型跃迁引擎 10/60）
   thrusterCycleSeconds,
   thrusterCycleText,
   thrusterCycleFullText,
+  thrusterCycleOfModule,
 } from './labels'
+export type { ThrusterCycleOverride } from './labels'
 export type { RackSlot, ShipSlots } from './types'
 
 export { hashSeed, nextRandom, nextInt, pickOne, pickWeighted } from './rng'
@@ -660,6 +662,7 @@ export {
   battleVerdictOf,
   // 推进器周期爆发（2026-09-10 船长定）：引擎与战斗界面同源读这一个函数
   thrusterPhase,
+  unitThrusterCycle,
   effectiveHitMul,
   // 维修脉冲周期（2026-09-11：内容体检「产物说明契约」按它核对说明里的「每 N 秒」）
   REPAIR_PULSE_MS,

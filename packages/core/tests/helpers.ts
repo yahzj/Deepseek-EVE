@@ -203,6 +203,9 @@ export function moduleDef(
     allResistPenaltyPct?: number
     /** 无人机出击周期折减（掠袭机库 −8%） */
     droneCycleCutPct?: number
+    /** 推进器点火周期覆盖（2026-09-14 微型跃迁引擎：10 秒点火 / 60 秒冷却） */
+    thrusterBoostMs?: number
+    thrusterCooldownMs?: number
   },
 ): ModuleDef {
   return {
@@ -227,6 +230,8 @@ export function moduleDef(
     ...(opts?.hullResistAdd !== undefined ? { hullResistAdd: opts.hullResistAdd } : {}),
     ...(opts?.speedBonusPct !== undefined ? { speedBonusPct: opts.speedBonusPct } : {}),
     ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
+    ...(opts?.thrusterBoostMs !== undefined ? { thrusterBoostMs: opts.thrusterBoostMs } : {}),
+    ...(opts?.thrusterCooldownMs !== undefined ? { thrusterCooldownMs: opts.thrusterCooldownMs } : {}),
     ...(opts?.droneBayBonusM3 !== undefined ? { droneBayBonusM3: opts.droneBayBonusM3 } : {}),
     ...(opts?.droneDmgBonus !== undefined ? { droneDmgBonus: opts.droneDmgBonus } : {}),
     ...(opts?.rack !== undefined ? { rack: opts.rack } : {}),

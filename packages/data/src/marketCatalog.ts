@@ -275,6 +275,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-shieldchg-3', kind: 'module', refId: 'mod-shieldchg-3', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 }, // 护盾充能装置 MK3（价/渠道照船体维修装置 MK2）
   { key: 'mod-armor-plate-3', kind: 'module', refId: 'mod-armor-plate-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
   { key: 'mod-prop-3', kind: 'module', refId: 'mod-prop-3', rarity: 'rare', basePrice: 1_970_000, demandMultiplier: 0.65 },
+  // 微型跃迁引擎（2026-09-14 船长定：中槽短爆发推进，点火 10 秒 / 冷却 60 秒）——
+  // 价 = 「同族之上的溢价」：MK1 60,000（矢量 MK1 6,000 ×10）· MK2 780,000（矢量 MK2 ×2）；
+  // 书价按档位系数（`blueprintTierCoefOf`：id 后缀 -2 ⇒ ×2.5、其余非奇货 ⇒ ×2）：120,000 / 1,950,000（两处必须同值，体检硬契约）。
+  { key: 'mod-mwd-1', kind: 'module', refId: 'mod-mwd-1', rarity: 'rare', basePrice: 60_000, demandMultiplier: 0.65 },
+  { key: 'bp-mwd-1', kind: 'blueprint', refId: 'bp-mwd-1', rarity: 'rare', basePrice: 120_000, demandMultiplier: 0.65 },
+  { key: 'mod-mwd-2', kind: 'module', refId: 'mod-mwd-2', rarity: 'rare', basePrice: 780_000, demandMultiplier: 0.65 },
+  { key: 'bp-mwd-2', kind: 'blueprint', refId: 'bp-mwd-2', rarity: 'rare', basePrice: 1_950_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-rack-3', kind: 'module', refId: 'mod-drone-rack-3', rarity: 'rare', basePrice: 1_960_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-tac-3', kind: 'module', refId: 'mod-drone-tac-3', rarity: 'rare', basePrice: 2_040_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-relay-3', kind: 'module', refId: 'mod-drone-relay-3', rarity: 'rare', basePrice: 2_030_000, demandMultiplier: 0.65 }, // 无人机中继天线 MK3（2026-09-10 现货）
@@ -693,6 +700,10 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'bp-lair-g-drone', kind: 'blueprint', refId: 'bp-lair-g-drone', rarity: 'exotic', basePrice: 1_200_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机图纸（一次性）（料÷0.45×4）
   { key: 'bp-wh-c-drone', kind: 'blueprint', refId: 'bp-wh-c-drone', rarity: 'exotic', basePrice: 2_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫无人机图纸（一次性）（料÷0.45×4）
   { key: 'bp-wh-e-drone', kind: 'blueprint', refId: 'bp-wh-e-drone', rarity: 'exotic', basePrice: 4_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件无人机图纸（一次性）（料÷0.45×4）
+  // ── 微型跃迁引擎 MK3（2026-09-14 船长定 · 奇货档：顶配那条「十秒 +250%」）——
+  // 价 = 同族之上的溢价（矢量推进器 MK3 1,970,000 ×1.32 ≈ 2,600,000）；书价按奇货档 ×4 = 10,400,000。
+  { key: 'mod-mwd-3', kind: 'module', refId: 'mod-mwd-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 0.75 },
+  { key: 'bp-mwd-3', kind: 'blueprint', refId: 'bp-mwd-3', rarity: 'exotic', basePrice: 10_400_000, demandMultiplier: 0.75 },
 ]
 
 /** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：

@@ -1009,6 +1009,14 @@ export interface ModuleDef {
    * V18.1：多件推进器时命中代价只取最重（削减最大）一件。 */
   hitPenalty?: number
   /**
+   * **推进器点火周期覆盖**（2026-09-14 船长新增「微型跃迁引擎」：点火 **10 秒** / 冷却 **60 秒**）。
+   * - **不写 = 用全局**（`balance.battle.thrusterBoostMs/thrusterCooldownMs`，三档矢量推进器就是这样）；
+   * - 写了 = **本单位**改用这一套窗口（逐单位判定，见 `combat.thrusterPhase` / `unitThrusterCycle`）；
+   * - 一船多件推进器时取**点火最短的那件**（`createPlayerSpec` 的 `propCycle` 单点）。
+   */
+  thrusterBoostMs?: number
+  thrusterCooldownMs?: number
+  /**
    * 炮台固定弹种（V17.2 炮族制：每门炮只打一种伤害——换炮 = 换弹种）。
    * 缺失视为 kinetic（兼容旧数据/测试）；消耗弹药 = damageType 对应型。
    */

@@ -192,6 +192,15 @@ export interface UnitSpec {
   /** 推进器爆发倍率（2026-09-10 船长定：多件 EVE 曲线收敛后的合成值 − 1，如 MK1 = 0.4）；
    *  **只在爆发窗口内生效**（`thrusterPhase` 判定），冷却期不生效 → 缺省 0 = 无推进器 */
   thrusterBoost?: number
+  /**
+   * **本单位的推进器点火周期**（2026-09-14 船长新增「微型跃迁引擎」：点火 **10 秒** / 冷却 **60 秒**，
+   * 而三档矢量推进器仍是 60/60）——周期自此**逐单位**判定：
+   * - 装配里**没有任何覆盖件** ⇒ 这两个字段**不写** ⇒ 走 `balance.battle` 的全局值（**旧读数逐字不变**）；
+   * - 有覆盖件 ⇒ 取**点火最短的那件**（同长再取冷却更短的那件），见 `createPlayerSpec`。
+   * 判定单点 = `thrusterPhase(battle, bal, unitThrusterCycle(u, bal))`（引擎与界面同源）。
+   */
+  thrusterBoostMs?: number
+  thrusterCooldownMs?: number
   /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
    *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
   lockedDmgBonus?: number;
@@ -496,16 +505,34 @@ export function effectiveHitMul(spec: Pick<UnitSpec, 'hitMul'>, boosting: boolea
  * 推进器周期状态（2026-09-10 船长定：**爆发 60 秒 → 冷却 60 秒，开场即启动**）。
  * **由战斗时钟推导**（`lastTickGameMs - startedAtGameMs`）→ 不占任何存档字段、战中重载不丢。
  * 引擎（距离步进取我方机动）与界面（战斗界面底部推进器冷却格）**同源读这一个函数**。
+ *
+ * **2026-09-14 船长（新增「微型跃迁引擎」）**：周期改为**逐单位**——第三参 `cycle` 给该单位自己的
+ * 点火/冷却毫秒（缺省仍是 `balance.battle` 的全局值）。同一个函数、同一个时钟锚（**开场即点火**），
+ * 只是窗口长短各算各的 ⇒ 装微型跃迁引擎那条船 10 秒爆发、其余船仍 60 秒。
  */
 export function thrusterPhase(
   battle: Pick<import('./state').BattleState, 'lastTickGameMs' | 'startedAtGameMs'>,
   bal: BattleBalance,
+  cycle?: { boostMs?: number; cooldownMs?: number },
 ): { boosting: boolean; remainMs: number; cycleMs: number; posMs: number } {
-  const cycleMs = Math.max(1, bal.thrusterBoostMs + bal.thrusterCooldownMs)
+  const boostMs = cycle?.boostMs ?? bal.thrusterBoostMs
+  const cooldownMs = cycle?.cooldownMs ?? bal.thrusterCooldownMs
+  const cycleMs = Math.max(1, boostMs + cooldownMs)
   const elapsed = Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs)
   const posMs = elapsed % cycleMs
-  const boosting = posMs < bal.thrusterBoostMs
-  return { boosting, posMs, cycleMs, remainMs: boosting ? bal.thrusterBoostMs - posMs : cycleMs - posMs }
+  const boosting = posMs < boostMs
+  return { boosting, posMs, cycleMs, remainMs: boosting ? boostMs - posMs : cycleMs - posMs }
+}
+
+/** 某单位的推进器周期（没写覆盖 = 全局 `balance.battle`）——引擎与界面取周期的**单点** */
+export function unitThrusterCycle(
+  u: Pick<UnitSpec, 'thrusterBoostMs' | 'thrusterCooldownMs'>,
+  bal: BattleBalance,
+): { boostMs: number; cooldownMs: number } {
+  return {
+    boostMs: u.thrusterBoostMs ?? bal.thrusterBoostMs,
+    cooldownMs: u.thrusterCooldownMs ?? bal.thrusterCooldownMs,
+  }
 }
 
 /**
@@ -778,6 +805,20 @@ export function createPlayerSpec(
     .filter((v) => v > 0)
   const speedEq = curveMult(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
+  /**
+   * **本单位推进器的点火周期**（2026-09-14 船长新增「微型跃迁引擎」：点火 10 秒 / 冷却 60 秒）。
+   * 取**装配里点火最短的那件**（同长再取冷却更短的那件）——没有覆盖件的装配 ⇒ `cycle` 与全局值相同
+   * ⇒ 下面**不写这两个字段**，走 `balance.battle`（**旧读数逐字不变**）。
+   */
+  const propCycle = propDefs
+    .map((p) => ({
+      boostMs: p.thrusterBoostMs ?? bal.thrusterBoostMs,
+      cooldownMs: p.thrusterCooldownMs ?? bal.thrusterCooldownMs,
+    }))
+    .sort((a, b) => a.boostMs - b.boostMs || a.cooldownMs - b.cooldownMs)[0]
+  const cycleOverridden =
+    propCycle !== undefined &&
+    (propCycle.boostMs !== bal.thrusterBoostMs || propCycle.cooldownMs !== bal.thrusterCooldownMs)
   // 装甲件常驻速度代价（2026-09-10 船长：陵寝装甲层 −25%）——多件取最重一件（与上面的失稳同口径）
   const worstSpeedPen = Math.max(0, ...allFittedModules(fitted, ctx).map((m) => m.speedPenaltyPct ?? 0))
   // 锁定装置（2026-09-09 船长拍板：集火 + 被锁目标受击加深 8/12/20% 档；多件 EVE 曲线收敛）
@@ -1031,6 +1072,8 @@ export function createPlayerSpec(
       Math.max(0.1, 1 - worstSpeedPen),
     // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去
     ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
+    // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）
+    ...(cycleOverridden ? { thrusterBoostMs: propCycle!.boostMs, thrusterCooldownMs: propCycle!.cooldownMs } : {}),
     agility: ship.agility,
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
@@ -3214,6 +3257,8 @@ export function battleArcsFor(
   droneLost?: Record<string, number>
   /** 推进器爆发倍率（2026-09-10 船长定：0 = 未装；点火期乘在战斗机动上）——UI 冷却格显示用 */
   thrusterBoost: number
+  /** **我方首舰的推进器周期**（2026-09-14 逐单位周期：微型跃迁引擎 = 10 秒点火）——UI 冷却格与倒计时读它 */
+  thrusterCycle: { boostMs: number; cooldownMs: number }
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean;
   /** **敌方机群**（2026-09-11 机群批 S5）——按敌单位 tag 汇总：机型 id / 机库存量 / **现存架数**。
@@ -3467,6 +3512,8 @@ export function battleArcsFor(
     ...(battle.droneLost && Object.keys(battle.droneLost).length > 0 ? { droneLost: battle.droneLost } : {}),
     // 推进器爆发倍率与敌方突进资格（2026-09-10 船长定）——UI 与引擎同源
     thrusterBoost: me.thrusterBoost ?? 0,
+    /** **我方首舰（= 距离/读数锚）的推进器周期**（2026-09-14 逐单位周期后，战斗界面那一格读它） */
+    thrusterCycle: unitThrusterCycle(me, bal),
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
     ...(foeDroneWings.length > 0 ? { foeDrones: foeDroneWings } : {}),
   }
@@ -4491,20 +4538,21 @@ function stepBattle(
   //    到位即停；双方意图相反时在中间形成无振荡角力平衡，杜绝"到点来回抖动"）──
   // 2026-09-10 船长（推进器周期爆发）：我方机动 = 基础机动 ×(1 + 推进器爆发倍率)——**只在爆发窗口内**；
   // 冷却期回到基础值（不再常驻加成）。
-  const thruster = thrusterPhase(b, bal)
+  // 2026-09-14 船长（微型跃迁引擎）：窗口**逐单位**判定——各舰按自己装配的周期算（见 `unitThrusterCycle`）。
+  const phaseOf = (u: UnitSpec): boolean => thrusterPhase(b, bal, unitThrusterCycle(u, bal)).boosting
   // **整队机动 = 存活我方单位的「平均」战斗机动**（虫洞 D 批 · 船长 2026-09-13 选定"整队平均"）——
   // 与敌方 2026-09-11 定的「敌舰速度按所有船的平均值算」**同一把尺**；单船 = 该船自己（逐字不变）。
-  // 推进器爆发仍按战斗时钟统一判定（`thrusterPhase` 不区分单位），故整队同时点火。
+  // 爆发倍率**逐舰各取自己的**（装微型跃迁引擎那条只在它自己的 10 秒窗口里快；其余船维持 60/60）——
+  // 全队同款推进器时与改前逐字等价（相位与倍率都相同 ⇒ 平均速度 ×(1+倍率)）。
   let meV = 0
   {
     let n = 0
     for (const u of myUnits) {
       if (!isAlive(b, u.tag)) continue
-      meV += combatSpeed(u.speedMps, u.agility, bal)
+      meV += combatSpeed(u.speedMps, u.agility, bal) * (1 + (phaseOf(u) ? (u.thrusterBoost ?? 0) : 0))
       n += 1
     }
     if (n > 0) meV /= n
-    meV *= 1 + (thruster.boosting ? (me.thrusterBoost ?? 0) : 0)
   }
   // **敌编队接近速度 = 存活单位的「平均」战斗机动**（船长 2026-09-11：
   // 「**能否敌舰移动速度按照敌方是所有船的平均值算**」）。
@@ -4552,7 +4600,7 @@ function stepBattle(
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
   // 冷却期 = 1（不改 me 本身，避免污染其它读法）；**逐舰各取自己的 `hitMul`**。
   const meAtkOf = (u: UnitSpec): UnitSpec =>
-    thruster.boosting ? u : { ...u, hitMul: effectiveHitMul(u, false) }
+    phaseOf(u) ? u : { ...u, hitMul: effectiveHitMul(u, false) }
   for (const unit of myUnits) {
     const meRt = b.units[unit.tag]
     if (!meRt || !isAlive(b, unit.tag)) continue
