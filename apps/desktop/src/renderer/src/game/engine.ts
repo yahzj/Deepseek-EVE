@@ -41,7 +41,6 @@ import {
   // 2026-09-11 市价买入失败原因分诊（暗市闸口径与界面同源，对玩家按声望锁措辞）
   bmGateReason,
   learnBlueprint,
-  levelOf,
   listSellHolding,
   loadSaveFile,
   loadWarehouseToCargoFit,
@@ -1094,38 +1093,6 @@ export class GameEngine {
       this.notify()
     }
     return result
-  }
-
-  /** 获取蓝图：市场有货 → 买下蓝图书并自动学习；无货 → 挂收购单（到货后手动学习） */
-  acquireBlueprintAt(blueprintId: string): { ok: boolean; error?: string; pending?: boolean } {
-    // 找该蓝图的市场商品
-    let goodKey: string | null = null
-    for (const def of this.ctx.marketGoods.values()) {
-      if (def.kind === 'blueprint' && def.refId === blueprintId) {
-        goodKey = def.key
-        break
-      }
-    }
-    if (!goodKey) return { ok: false, error: '该蓝图不在市场流通目录中。' }
-    if (this.state.learnedRecipes.includes(blueprintId)) return { ok: false, error: '该配方已学会，无需重复获取。' }
-    const lock = goodLockedReason(this.state, this.ctx.marketGoods.get(goodKey)!)
-    if (lock) return { ok: false, error: `暂不能购买蓝图书：${lock}。` }
-    const res = buyAtMarket(this.state, this.ctx, goodKey, 1)
-    if (res.bought > 0) {
-      const learn = learnBlueprint(this.state, this.ctx, blueprintId)
-      void this.persist()
-      this.notify()
-      if (learn.ok) return { ok: true }
-      return { ok: false, error: learn.error ?? '购买成功但学习失败（异常）。' }
-    }
-    // 簿上无书：按均衡价挂收购单（到货后手动学习）
-    const quote = marketQuote(this.state, this.ctx, goodKey)
-    const ask = quote.sell !== undefined ? Math.round(quote.sell * 1.02) : Math.round(levelOf(this.state, this.ctx, goodKey) * 1.03)
-    const order = placeBuyOrder(this.state, this.ctx, goodKey, ask, 1)
-    if (!order) return { ok: false, error: '信用点不足或挂单失败：先攒够购书款。' }
-    void this.persist()
-    this.notify()
-    return { ok: true, pending: true }
   }
 
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。

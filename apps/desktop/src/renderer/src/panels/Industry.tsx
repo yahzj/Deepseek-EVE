@@ -117,7 +117,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
         title="蓝图书架"
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
-          <HintIcon tip="到下方组装机点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。" />
+          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。" />
         }
         right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
       >
@@ -240,6 +240,7 @@ function BlueprintCard({
   ownedCount,
   ownedWhere,
   onNeedMineral,
+  onGotoMarket,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -264,6 +265,9 @@ function BlueprintCard({
   ownedWhere: string
   /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
   onNeedMineral?: (itemId: string) => void
+  /** 「市场求购蓝图书」跳市场：传该蓝图的市场商品键，市场页会搜到并展开它的行情详情
+   *  （2026-09-14 船长：组装机只指路、不替玩家下任何单） */
+  onGotoMarket?: (goodKey: string) => void
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
@@ -307,11 +311,26 @@ function BlueprintCard({
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualNote = manualBuildNote(state)
 
-  function handleAcquire(): void {
-    const r = engine.acquireBlueprintAt(blueprintId)
-    if (!r.ok) onToast(r.error ?? '获取失败', true)
-    else if (r.pending) onToast('市场暂无蓝图书：已挂收购单，到货后请到「蓝图书架」点学习。')
-    else onToast('蓝图书已购得并自动学会：现在可以开始制造了。')
+  /** 求购 = **只跳转、不下单**（2026-09-14 船长：「组装机求购蓝图应该跳转到市场对应的订单详细。
+   *  而不是直接市场价下订单」）——到市场页会自动搜到该蓝图并展开它的行情详情（与舰船页/物品页
+   *  「去市场」同一个入口 `onGotoMarket`，全仓一处口径）；买不买、按什么价挂单由玩家在详情里自己定。 */
+  function handleGotoMarket(): void {
+    if (!goodKey) {
+      onToast('该蓝图不在市场流通目录。', true)
+      return
+    }
+    if (!onGotoMarket) {
+      onToast('当前入口不支持跳转市场：请从左侧「市场」页搜索这张蓝图。', true)
+      return
+    }
+    onGotoMarket(goodKey)
+  }
+
+  /** 书已在书架（未学习）：就地学习——与「蓝图书架」的「学习」同一个引擎出口与话术（不花钱、不占制造位） */
+  function handleLearnFromShelf(): void {
+    const r = engine.learnBlueprintAt(blueprintId)
+    if (!r.ok) onToast(r.error ?? '学习失败', true)
+    else onToast('已学习该配方：现在可以开始制造了。')
   }
 
   function runWith(worker: AiCoreType | 'pilot'): void {
@@ -602,9 +621,20 @@ function BlueprintCard({
           <button className="app-btn is-small" disabled title={oneTimeNote ?? '一次性图纸：需要一张同名图纸才能制造'}>
             {cap.kind === 'exhausted' ? '✕ 制造名额已用尽' : '✕ 需要一次性图纸'}
           </button>
+        ) : bookCount > 0 ? (
+          /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」
+             同一个引擎出口与话术；书不消耗、也不占制造位 */
+          <button
+            className="app-btn is-small"
+            title={`蓝图书架已有这本图纸 ×${bookCount}：点此学习（不消耗书），学会后本卡永久可造`}
+            onClick={handleLearnFromShelf}
+          >
+            学习该配方（书架已有书）
+          </button>
         ) : (
-          <button className="app-btn is-small" onClick={handleAcquire}>
-            市场求购蓝图书{bookCount > 0 ? '（书已到手，先学习）' : ''}
+          /* 求购 = 只跳市场行情详情，不替玩家下单（2026-09-14 船长口径） */
+          <button className="app-btn is-small" title="跳到市场的该蓝图行情详情：买现货或按自己的价挂买单" onClick={handleGotoMarket}>
+            市场求购蓝图书
           </button>
         )}
       </div>
@@ -612,7 +642,18 @@ function BlueprintCard({
   )
 }
 
-export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine: GameEngine; onToast: ToastFn; onNeedMineral?: (itemId: string) => void }) {
+export function ManufacturingPanel({
+  engine,
+  onToast,
+  onNeedMineral,
+  onGotoMarket,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  onNeedMineral?: (itemId: string) => void
+  /** 「市场求购蓝图书」跳市场（传市场商品键）；由工业页透传 App 的「去市场」入口 */
+  onGotoMarket?: (goodKey: string) => void
+}) {
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTab>('all')
@@ -882,6 +923,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
               ownedCount={it.ownedCount}
               ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}
+              onGotoMarket={onGotoMarket}
             />
           ))}
         </div>

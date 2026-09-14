@@ -541,7 +541,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
       </div>
 
       {sec === 'craft' ? (
-        <ManufacturingPanel engine={engine} onToast={onToast} onNeedMineral={handleNeedMineral} />
+        <ManufacturingPanel engine={engine} onToast={onToast} onNeedMineral={handleNeedMineral} onGotoMarket={onGotoMarket} />
       ) : sec === 'shelf' ? (
         <BlueprintShelfPanel engine={engine} onToast={onToast} />
       ) : (
