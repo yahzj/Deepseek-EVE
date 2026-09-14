@@ -14,11 +14,11 @@
 | 项 | 值 |
 |---|---|
 | 工作树 / 分支 | `H:\大鲸鱼\Deepseek-EVE-verify` / `verify` |
-| HEAD（写本件时） | `3c8a8648` · **与 `main` 同点、两树差异 0** |
-| `origin/main` | **本地未推 235 条**（船长「先不推」；闸门见 §7） |
+| HEAD（写本件时） | 收尾件提交 `caa41ae4` · **与 `main` 同点、两树差异 0**（收尾前的代码基线 = `3c8a8648`） |
+| `origin/main` | **本地未推 236 条**（船长「先不推」；闸门见 §7） |
 | 四连基线（合并态复跑） | typecheck 四包 **0 错** · core **124 文件 / 1311 用例**全绿 · `content:check` ✅ · 桌面 build ✅ |
-| 工作区 | `verify` 干净；`main` 有**一号在途未提交改动**（core/renderer/tools，非三号所有）；`tools/_*` 临时探针 **0** |
-| 主树本地产物 | `apps/desktop/out/renderer/assets/index-Bekc8p8S.js`（ff 后重建；verify 侧同源构建 `index-BxRJKVH3.js`，hash 差异是构建非确定性，非源码差异） |
+| 工作区 | `verify` 干净；`main` 有**一号在途未提交改动**（core/renderer/roadmap，非三号所有）；`tools/_*` 临时探针 **0** |
+| 主树本地产物 | `apps/desktop/out/renderer/assets/index-x-hMLnGu.js`（收尾时重建。⚠ 该 hash **每次构建都可能不同**——本仓 renderer 产物**非确定性**（同一份源码两次构建差约 600B），核"是不是最新"请看源码/规则，**别拿 hash 比新旧**） |
 | 后台/端口 | 预览服务已收工（4402 释放）；**我的无头实例仍在 9577**（按 §6 硬规则不自关，等船长处置） |
 | 验收视图 | **船长默认看本地那份**（`AGENTS.md` §1）⇒ 改完主动提醒他**重启本地** |
 
@@ -135,5 +135,5 @@
 ---
 
 _起草：三号（`H:\大鲸鱼\Deepseek-EVE-verify`）· 2026-09-14 · 状态：**会话收尾归档件（生成即归档）** ·_
-_基线：`verify` = `main` = `3c8a8648`（两树差异 0）· 合并态四连全绿（typecheck 0 错 / core 124 文件 1311 用例 / content:check ✅ / build ✅）·_
+_基线：`verify` = `main`（两树差异 0；代码基线 `3c8a8648`，收尾件 `caa41ae4`）· 合并态四连全绿（typecheck 0 错 / core 124 文件 1311 用例 / content:check ✅ / build ✅）·_
 _工作区干净 · `tools/_*` 探针 0 残留 · 预览服务已收工 · **无头实例 9577 仍在跑（按 §6 硬规则未自关，等船长处置）**_
