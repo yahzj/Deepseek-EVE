@@ -171,13 +171,13 @@ export function wormholeCardIdOfFamily(family: WormholeFamily | undefined, seed:
 }
 
 /**
- * **层末守卫的选靶倾向概率**（船长 2026-09-14：「**虫洞敌人的攻击倾向，加一个概率**」→
- * 「**目前先挨个定为60%**」）——BOSS 的**模式**仍是「打最大的」（2026-09-13 定的分流），
+ * **层末守卫的选靶倾向概率**（船长 2026-09-14：「**虫洞敌人的攻击倾向，加一个概率**」→ 先定 60%，
+ * 同日二次改判「**概率降为40%试一下**」）——BOSS 的**模式**仍是「打最大的」（2026-09-13 定的分流），
  * 变的只是"不再每发都精准"：每发开火前掷一次，没掷中 ⇒ 退回随机。
  *
- * ⚠ 普通节点/撤离战用**卡上**的 `foeTargetingChance`（本次也是 0.6）；这一个常量只管 BOSS。
+ * ⚠ 普通节点/撤离战用**卡上**的 `foeTargetingChance`（本次也是 0.4）；这一个常量只管 BOSS。
  */
-export const WORMHOLE_BOSS_TARGETING_CHANCE = 0.6
+export const WORMHOLE_BOSS_TARGETING_CHANCE = 0.4
 
 /**
  * **把洞内敌卡按层派生**（不改数据文件，与窝点派生 `lairAnomalyOf` 同款做法）：

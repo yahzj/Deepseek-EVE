@@ -265,7 +265,9 @@ describe('虫洞 · 敌方选靶模式（船长 2026-09-13 定）', () => {
     expect(state.rng.count).toBe(after2)
   })
 
-  it('**倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→「目前先挨个定为60%」）', () => {
+  it('**倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→ 先定 60%、同日改 40%）', () => {
+    // ⚠ 本用例验的是**机制**（口子、掷骰点、随机数消耗数），故取 0.6 这个中间值当夹具；
+    //    **生产用值 = 0.4**（卡上与 BOSS 常量），由 `wormhole-battle.test.ts` 的派生用例钉住。
     const state = fresh()
     const big = addShip(state, 'sh-xuanwu') // T4：`largest` 的唯一解
     const miner = addShip(state, 'sandcat') // T1 非战斗
