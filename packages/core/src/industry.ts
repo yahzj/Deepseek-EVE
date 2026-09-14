@@ -22,6 +22,8 @@
 import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
+// F4d：拆解安全货柜（与随行战利品同一条入库路径；抽取池在 wormholeSalvage 里）
+import { wormholeDeliverRelics, wormholeUnboxRoll } from './wormholeSalvage'
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
@@ -97,6 +99,8 @@ export interface RefineRunView {
   id: number
   itemId: string | null
   itemName: string
+  /** 产线类型（F4d：拆解安全货柜 = unbox；界面据此换文案与说明） */
+  recipe: 'refine' | 'recycle' | 'unbox'
   /** 劳动者：pilot = 主控 / AI 核心类型 */
   worker: 'pilot' | AiCoreType
   workerLabel: string
@@ -150,6 +154,7 @@ function refineRunViewOf(state: GameState, ctx: SimContext, r: RefineRunState): 
     id: r.id,
     itemId: r.itemId,
     itemName: def?.name ?? '—',
+    recipe: r.recipe,
     worker: r.worker,
     workerLabel: r.worker === 'pilot' ? '主控' : aiCoreName(r.worker),
     rate: refineRate(state, ctx),
@@ -277,6 +282,71 @@ export function startRefineRun(
  * 体积），每批开箱 = 保底矿物（按残骸敌群星系危险度三档池 + 体积当量）+ 彩头（基础件直出 /
  * 低安 MK2 / 蓝图碎片）。每批到点从仓库实时扣取残骸；耗尽自动停炉（核心归还）。
  */
+/** **拆解一件安全货柜**的周期（F4d · 船长 2026-09-13 定：**90 秒/件**） */
+export const UNBOX_CYCLE_MS = 90_000
+
+/**
+ * 玩家指令：**拆解一件「遗迹安全货柜」**（F4d · 船长 2026-09-13 定案）。
+ *
+ * 口径（船长原话要点）：走**精炼配方口径**（与精炼 / 回收**同一条产线机器**：主控亲自 或 1 枚 AI 核心）·
+ * **90 秒/件** · 一箱出 **1 件** · **族池 0.7 : 稀释池 0.3** · 货柜**不记层** ⇒ 一律**最低档**。
+ * 抽取见 `wormholeSalvage.wormholeUnboxRoll`；产出走**与随行战利品同一条入库路径**。
+ */
+export function startUnboxRun(
+  state: GameState,
+  ctx: SimContext,
+  boxItemId: string,
+  worker: 'pilot' | AiCoreType,
+): CommandResult {
+  if (!isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '拆解台随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
+  }
+  const def = ctx.items.get(boxItemId)
+  if (!def) return { ok: false, error: `未知物品：${boxItemId}。` }
+  if (def.kind !== 'container') {
+    return { ok: false, error: `「${def.name}」不是安全货柜——拆解台只拆遗迹安全货柜。` }
+  }
+  if (oreAvailable(state, boxItemId) <= 0) {
+    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
+  }
+  if (worker === 'pilot') {
+    const hold = wormholePilotHoldReason(state)
+    if (hold) return { ok: false, error: hold }
+    if (state.refineRuns.some((r) => r.worker === 'pilot')) {
+      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。' }
+    }
+    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。' }
+    }
+  } else {
+    const capBlock = aiCoreCapBlock(state, ctx, 'industry')
+    if (capBlock) return { ok: false, error: capBlock }
+    if (countAiCore(state, worker) <= 0) {
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入拆解台。` }
+    }
+  }
+  const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
+  let cycleEff = Math.max(1, Math.round(UNBOX_CYCLE_MS / eff))
+  // 产线节拍学（与精炼 / 回收同款）：每级 −5% 周期（手动与 AI 核心驱动同享）
+  const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
+  if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
+  if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+  }
+  state.refineRuns.push({
+    active: true,
+    id: state.refineSeq++,
+    worker,
+    recipe: 'unbox',
+    itemId: boxItemId,
+    batchUnits: 1,
+    cycleMs: cycleEff,
+    finishAtGameMs: state.gameMs + cycleEff,
+    batchesDone: 0,
+    recAcc: { min: {}, mod: {}, frag: {}, drone: {} },
+  })
+  return { ok: true }
+}
 export function startRecycleRun(
   state: GameState,
   wreckItemId: string,
@@ -490,6 +560,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
     }
     let guard = 0
     const isRecycle = r.recipe === 'recycle'
+    const isUnbox = r.recipe === 'unbox'
     const profile = isRecycle ? recycleProfileOf(ctx, r.itemId) : null
     if (isRecycle && !profile) {
       // 残骸来源异常：停炉（同上，先退私有料账）
@@ -566,7 +637,28 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         if (fromWare > 0) removeWare(state, r.itemId, fromWare)
       }
       let batchIncome = 0 // 2026-09-08：离线结算预估收入（原材料按站内收价；彩头装备按市场基准价粗估；碎片不计）
-      if (isRecycle && profile) {
+      if (isUnbox && r.itemId) {
+        /**
+         * **拆解一件安全货柜**（F4d）：抽 1 件 → 入库（装备 → 装备库 / 图纸 → 图纸库存 / 物品 → 仓库，
+         * 走与随行战利品同一条 `wormholeDeliverRelics`）。
+         * 抽不出东西（奖池为空）⇒ 停这一台并说清，不静默丢料。
+         */
+        const drawn = wormholeUnboxRoll(state, ctx, r.itemId)
+        if (drawn) {
+          wormholeDeliverRelics(state, ctx, [drawn.itemId])
+          const drawnName =
+            ctx.modules.get(drawn.itemId)?.name ??
+            ctx.blueprints.get(drawn.itemId)?.name ??
+            ctx.shipBlueprints.get(drawn.itemId)?.name ??
+            ctx.items.get(drawn.itemId)?.name ??
+            drawn.itemId
+          addLog(state, 'trade', `📦 拆解 ${def.name}：开出 ${drawnName}${drawn.diluted ? '（稀释池）' : ''}。`)
+        } else {
+          if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+          state.refineRuns.splice(i, 1)
+          addLog(state, 'warn', `📦 拆解 ${def.name}：这一箱抽不出东西（奖池为空），已停这一台。`)
+          break
+        }      } else if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
         const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }

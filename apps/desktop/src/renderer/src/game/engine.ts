@@ -83,6 +83,7 @@ import {
   startMiningFromExpedition,
   startRefineRun,
   startRecycleRun,
+  startUnboxRun,
   startSalvageOp,
   setSalvageAutoCycle,
   setSalvageStopAfterTrip,
@@ -1000,6 +1001,15 @@ export class GameEngine {
   }
 
   /** B3：启动残骸回收（开箱批：10 m³/25s；残骸计数 = 体积；多工位并行） */
+  /** 虫洞：**拆解一件遗迹安全货柜**（F4d · 与精炼/回收同一条产线机器；90 秒/件） */
+  startUnboxRunAt(boxItemId: string, worker: AiCoreType | 'pilot'): CommandResult {
+    const result = startUnboxRun(this.state, this.ctx, boxItemId, worker)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
   startRecycleRunAt(wreckItemId: string, worker: AiCoreType | 'pilot'): CommandResult {
     const result = startRecycleRun(this.state, wreckItemId, worker, this.ctx)
     if (result.ok) {
