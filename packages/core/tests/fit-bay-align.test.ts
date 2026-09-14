@@ -138,4 +138,38 @@ describe('位数组按船型布局补齐（装配页按位号装入）', () => {
     // 经修复链对齐后，按位号装入照旧可用（玩家救急后的正常体验）
     expect(swapModuleAt(state, ARMOR, ctx, { rack: 'low', index: 2, shipId: uid }).ok).toBe(true)
   })
+
+  it('载入修复链：停在中/低槽的作业装备（采集器 / 打捞器）归位高槽；高槽满则原地不动', () => {
+    // 2026-09-14 船长「改回高槽」：2026-09-13～09-14 低槽口径那两天存下的档需要归位
+    const RIG = 'mod-rig-x'
+    const MINER = 'mod-miner-x'
+    const ctxWork = makeTestCtx({
+      quietEvents: true,
+      ships: [ship(SHIP, { cpu: 200, slots: { high: 2, mid: 3, low: 4 } })],
+      modules: [
+        moduleDef(RIG, 'salvager', 0, { cpuUse: 2, salvageCycleMs: 10_000 }),
+        moduleDef(MINER, 'miner', 0, { cpuUse: 5 }),
+        moduleDef(GUN, 'turret', 0, { ...GUN_FIELDS, cpuUse: 10 }),
+      ],
+    })
+    // ① 低槽口径存下的档：两件作业装备停在低槽 ⇒ 高槽有位就搬回去
+    const st = createInitialState({ nowWallMs: 0, seed: 12 })
+    const u = addShipToFleet(st, SHIP)
+    st.fleet[u]!.fitted = { high: [null, null], mid: [null, null, null], low: [MINER, RIG, null, null] }
+    repairDeprecatedModules(st, ctxWork)
+    expect(st.fleet[u]!.fitted.high).toEqual([MINER, RIG])
+    expect(st.fleet[u]!.fitted.low.filter((x) => x !== null)).toHaveLength(0)
+    expect(countModule(st, MINER) + countModule(st, RIG)).toBe(0) // 只是换位，不是退回装备库
+    // ② 幂等：再跑一次不再动
+    repairDeprecatedModules(st, ctxWork)
+    expect(st.fleet[u]!.fitted.high).toEqual([MINER, RIG])
+    // ③ 高槽满 ⇒ 原地不动：不挤掉已装件、也不下架
+    const st2 = createInitialState({ nowWallMs: 0, seed: 13 })
+    const u2 = addShipToFleet(st2, SHIP)
+    st2.fleet[u2]!.fitted = { high: [GUN, GUN], mid: [null, null, null], low: [RIG, null, null, null] }
+    repairDeprecatedModules(st2, ctxWork)
+    expect(st2.fleet[u2]!.fitted.high).toEqual([GUN, GUN])
+    expect(st2.fleet[u2]!.fitted.low[0]).toBe(RIG) // 想搬没位 ⇒ 留着（件不丢）
+    expect(countModule(st2, RIG)).toBe(0)
+  })
 })

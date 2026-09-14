@@ -32,7 +32,7 @@
  * - 存档迁移：mod-shield-1/2/3、mod-armor-1/2/3（通用全系）与 mod-turret-1/2/3
  *   （V17 前混型炮）已下架，载入存档自动按动能款迁移（core/equipment 迁移表）；
  * - V18（C3）槽位制 + V18.1（2026-09-04 船长拍板）支援件与收敛：
- *   · 槽位制：fitted 位数组 + rack 归属（高 = 炮/矿/无人机装置；中 = 盾系/推进；
+ *   · 槽位制：fitted 位数组 + rack 归属（高 = 炮台/采集器/打捞器/无人机装置；中 = 盾系/推进；
  *     低 = 甲系/货舱）；V18.1 支援件再挂 中/低（伤害+射速 = 低；命中+闪避 = 中）；
  *   · V18.1 取消"同类唯一"：全部件可复数安装，防超模靠收敛（core/equipment
  *     stackingOf）：抗性/闪避缺口复合、命中/速度 EVE 曲线、伤害/射速/容量加算；
@@ -49,7 +49,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-miner-civ',
     name: '民用采集器',
     slot: 'miner',
-    rack: 'low',
+    rack: 'high',
     bonus: 0.1,
     description: '产量 +10%。空间站平价货，新手第一件看得起的强化。',
     cpuUse: 3,
@@ -58,7 +58,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-miner-1',
     name: '强化采集器 MK1',
     slot: 'miner',
-    rack: 'low',
+    rack: 'high',
     bonus: 0.2,
     description: '提升 20% 循环产量。工业入门的第一件自制装备。',
     cpuUse: 5,
@@ -67,7 +67,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-miner-2',
     name: '强化采集器 MK2',
     slot: 'miner',
-    rack: 'low',
+    rack: 'high',
     bonus: 0.5,
     description: '提升 50% 循环产量。双管谐振钻头，深空工业的标杆装备。',
     cpuUse: 15,
@@ -76,7 +76,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-miner-3',
     name: '精密采集器 MK3',
     slot: 'miner',
-    rack: 'low',
+    rack: 'high',
     bonus: 0.8,
     description: '产量 +80%。协会精密工业的结晶（蓝图可造，见组装机）；40 CPU 已接近小型船满载。',
     cpuUse: 40,
@@ -85,7 +85,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-miner-proto',
     name: '异星原型采集器',
     slot: 'miner',
-    rack: 'low',
+    rack: 'high',
     bonus: 1.1,
     description: '产量 +110%。来源不明的异星技术，仅限奇货市场（需高声望）。',
     cpuUse: 60,
@@ -1003,35 +1003,35 @@ export const MODULES: readonly ModuleDef[] = [
     description: '军用算力堆叠模块（低槽）：装配 CPU 上限 +45（奇货现货，无蓝图）。本件自身不占 CPU。',
   },
 
-  // ══════════ B3 打捞器（salvager：**低槽**无伤害件 —— 2026-09-05 定稿为高槽、2026-09-13 船长「给作业开」改判为低槽） ══════════
+  // ══════════ B3 打捞器（salvager：**高槽**无伤害件 —— 2026-09-05 定稿高槽、2026-09-13 一度改判低槽、**2026-09-14 船长「改回高槽」**） ══════════
   // 每轮每台捞 1 具残骸；升级只缩短周期不增产（10s/8s/6s）；多台叠加；CPU 2/6/15（压缩表）。
   // 周期字段 salvageCycleMs 供打捞作业引擎消费；产出/密度关系见 salvage.ts 与 docs/design/b3-salvage.md。
   {
     id: 'mod-salvager-1',
     name: '打捞器 MK1',
     slot: 'salvager',
-    rack: 'low',
+    rack: 'high',
     cpuUse: 2,
     salvageCycleMs: 10_000,
-    description: '残骸打捞（低槽，无伤害）：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。',
+    description: '残骸打捞（高槽，无伤害）：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。',
   },
   {
     id: 'mod-salvager-2',
     name: '打捞器 MK2',
     slot: 'salvager',
-    rack: 'low',
+    rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
-    description: '残骸打捞（低槽，无伤害）：周期缩短至 8 秒/轮（每轮仍 1 具）（市场稀有）。',
+    description: '残骸打捞（高槽，无伤害）：周期缩短至 8 秒/轮（每轮仍 1 具）（市场稀有）。',
   },
   {
     id: 'mod-salvager-3',
     name: '打捞器 MK3',
     slot: 'salvager',
-    rack: 'low',
+    rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,
-    description: '残骸打捞（低槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）（市场稀有）。',
+    description: '残骸打捞（高槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）（市场稀有）。',
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；

@@ -609,8 +609,9 @@ export function setAmmoTier(
 /** 玩家指令：卸下当前船"某家族的第一件"（旧六槽语义的兼容入口；UI 位操作请用 unfitAt）。
  * 家族 → 固定兼容位（V17_FAMILY_BAYS：turret→high0 / miner→high1 / shield→mid0 /
  * propulsion→mid1 / armor→low0 / cargo→low1）。
- * ⚠ 这张表是**老档（v17 布局）的历史位**：采集器/打捞器自 2026-09-13 起改归**低槽**（船长「给作业开」），
- * 新装配里它们不在 high1 ⇒ 本函数只服务"老档里还插在高槽的那一件"，新档请用 `unfitAt`。 */
+ * ⚠ 这张表是**老档（v17 布局）的历史位**：采集器 / 打捞器 2026-09-13 曾一度改归低槽
+ * （船长「给作业开」），**2026-09-14 船长「改回高槽」后作废** ⇒ 本表 miner→high1 与现行归槽一致，
+ * 本函数仍只服务"老档里插在高槽的那一件"，新档请用 `unfitAt`。 */
 export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
   const fitted = fittedOf(state)
   if (!fitted) return false
@@ -681,14 +682,16 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
 
 /**
  * 载入存档后的装备修复（V17/V18；幂等）：把装配中/装备库里的已下架型号替换为迁移款、
- * 悬空件退回；并把每船位数组长度与船槽布局对齐（超长尾件退库、短位补空——含 v17 档
- * 六槽→18 位数组迁移后的 2/2/2 过渡形状）。应在 ctx 就绪后、离线结算前调用。
+ * 悬空件退回；把每船位数组长度与船槽布局对齐（超长尾件退库、短位补空——含 v17 档
+ * 六槽→18 位数组迁移后的 2/2/2 过渡形状）；并把停在**中/低槽的作业装备**（采集器 / 打捞器）
+ * 归位高槽（船长 2026-09-14「改回高槽」；高槽满则原地不动）。应在 ctx 就绪后、离线结算前调用。
  */
 export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
   let fittedMoved = 0
   let slotEmptied = 0
   let bayMoved = 0
   let aligned = 0
+  let rackMoved = 0
   for (const ship of Object.values(state.fleet)) {
     const fitted = ship?.fitted
     if (!fitted) continue
@@ -736,6 +739,25 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
         }
       }
     }
+    // 2.5) **作业装备归位高槽**（船长 2026-09-14「改回高槽」）：2026-09-13～09-14 短暂的低槽口径下
+    //      存下的档，采集器 / 打捞器可能停在中/低槽 ⇒ 高槽有空位就搬回去（幂等）。
+    //      只管作业装备两族（不做通用归位，免得动别的件）；高槽满 ⇒ **原地不动**：
+    //      绝不挤掉已装件、绝不下架（宁可留着错位，也不动玩家配置）。
+    const highBays = rackBays(fitted, 'high')
+    for (const from of ['mid', 'low'] as const) {
+      const bays = rackBays(fitted, from)
+      for (let i = 0; i < bays.length; i++) {
+        const id = bays[i]
+        if (!id) continue
+        const slot = ctx.modules.get(id)?.slot
+        if (slot !== 'miner' && slot !== 'salvager') continue
+        const free = highBays.findIndex((x) => x === null)
+        if (free < 0) break
+        highBays[free] = id
+        bays[i] = null
+        rackMoved += 1
+      }
+    }
   }
   // 3) 装备库：有迁移的已下架型号 → 计数并入迁移款后删除旧键（无迁移的保留不丢资产）
   for (const [id, n] of Object.entries(state.moduleBay)) {
@@ -745,13 +767,14 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
     delete state.moduleBay[id]
     bayMoved += n
   }
-  const total = fittedMoved + slotEmptied + bayMoved + aligned
+  const total = fittedMoved + slotEmptied + bayMoved + aligned + rackMoved
   if (total > 0) {
     addLog(
       state,
       'info',
       `装备修复：旧件按动能款迁移 ${fittedMoved + bayMoved} 件；悬空退回 ${slotEmptied} 件；` +
-        (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : ''),
+        (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : '') +
+        (rackMoved > 0 ? `作业装备（采集器 / 打捞器）归位到高槽 ${rackMoved} 件。` : ''),
     )
   }
   // 槽位对齐可能裁掉甲板扩展 → 机舱变小：超出容量的无人机同样自动卸下（2026-09-10 船长口径）
