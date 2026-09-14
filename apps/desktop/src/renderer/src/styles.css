@@ -147,6 +147,23 @@ body {
 
 }
 
+/* ── 虫洞弹层：旋转模式下必须按"虚拟横屏空间"定尺寸（2026-09-14 船长转玩家截图定位）──
+   病根：`.app-wh-modal` 自己那套 `width: min(1060px, 92vw)` / `height: min(760px, calc(100vh − 72px))`
+   **覆盖了上面那条旋转口径** ⇒ 旋转模式下 `92vw` 取的是**手机竖屏宽**(~390) ⇒ 面板被挤成窄条；
+   而 `100vh` 取的是**手机高**(~844) ⇒ 面板高 760px，比逻辑空间高度(`--mob-h` ≈ 554px)还高
+   ⇒ 标题栏与「✕ 关闭 / 撤离」被顶出屏幕，四周只剩被遮罩压暗的星图 —— 玩家报的"黑屏"就是这个。
+   现行口径：**宽按 100vh（旋转后的横向可用宽）、高按 `--mob-h`（旋转后的纵向可用高）**。 */
+.app-root.is-mobile-rot .app-wh-modal {
+  width: min(1060px, calc(100vh - 40px));
+  max-width: calc(100vh - 24px);
+  height: min(760px, calc(var(--mob-h, 100vw) - 32px));
+  max-height: calc(var(--mob-h, 100vw) - 24px);
+}
+/* 同族：通讯弹窗与结算卡在旋转模式下也别被 100vw 截窄（与 `.app-ann` 那条同口径） */
+.app-root.is-mobile-rot .app-comm-pop {
+  width: min(560px, calc(100vh - 48px));
+}
+
 .app-root.is-mobile-rot .app-bts-hpWrap {
 
   max-width: 56vh;
