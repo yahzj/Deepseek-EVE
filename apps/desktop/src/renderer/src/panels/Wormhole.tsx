@@ -35,6 +35,12 @@ import {
   durabilityOf,
   holdRows,
   placementCells,
+  /**
+   * ⚠ **信息展示必须走 `revealOf`**（2026-09-13 星云批）：地图此前直接读 `c.place` 上色，
+   * 那是**真相**——星云遮蔽接进来后照旧上色，云就等于白罩了。
+   * `signalOfPlace` 仍保留（把真相换成信号用），但**上色判据取 `revealOf` 的 `kind`**。
+   */
+  revealOf,
   signalOfPlace,
   wormholeOutOfTurns,
   wormholeShipAllowed,
@@ -335,7 +341,22 @@ export function WormholePanel({
     const after = grid?.scanned ?? []
     const fresh = after.filter((k) => !before.has(k))
     setScanFx({ keys: fresh, rings: Math.max(1, Math.floor(grid?.scanRadius ?? 1)), nonce: scanFxSeq() })
-    onToast('扫描完成（1 回合）。')
+    /**
+     * **星云反馈**（船长 2026-09-13 星云机制）：一次扫描可能同时做两件事——
+     * 揭开新格、驱散圈内的星云。两种情况各给一句提示，玩家才分得清"这次扫到的东西被云挡着"
+     * （要**再扫一次**）与"云散了"。
+     */
+    const dispersed = res.dispersed ?? 0
+    const fogged = res.newlyFogged ?? 0
+    if (fogged > 0 && dispersed > 0) {
+      onToast(`扫描完成（1 回合）：${fogged} 格被星云遮挡，同时驱散了 ${dispersed} 格星云。`)
+    } else if (fogged > 0) {
+      onToast(`扫描完成（1 回合）：${fogged} 格被星云遮挡——在原位再扫描一次即可驱散。`)
+    } else if (dispersed > 0) {
+      onToast(`扫描完成（1 回合）：驱散星云 ${dispersed} 格，信号已显形。`)
+    } else {
+      onToast('扫描完成（1 回合）。')
+    }
   }
 
   /**
@@ -820,11 +841,19 @@ export function WormholePanel({
                     {GRID_LEGEND.map((l) => (
                       <span key={l.key} className="app-wh-legend-item">
                         <svg
-                          className={`app-wh-legend-glyph is-${l.done === true ? 'visited' : l.none ? 'unknown' : (l.signal ?? 'blank')}`}
+                          className={`app-wh-legend-glyph is-${
+                            l.nebula === true ? 'nebula' : l.done === true ? 'visited' : l.none ? 'unknown' : (l.signal ?? 'blank')
+                          }`}
                           viewBox="-13 -13 26 26"
                           aria-hidden="true"
                         >
-                          {l.none ? <polygon points="0,-12 10.39,-6 10.39,6 0,12 -10.39,6 -10.39,-6" /> : <WhGlyph signal={l.signal} />}
+                          {l.nebula === true ? (
+                            <WhNebulaGlyph />
+                          ) : l.none ? (
+                            <polygon points="0,-12 10.39,-6 10.39,6 0,12 -10.39,6 -10.39,-6" />
+                          ) : (
+                            <WhGlyph signal={l.signal} />
+                          )}
                           {/* 「去过」那一档把右上角小点也画上（与地图上的标记同源） */}
                           {l.done === true ? <circle className="app-wh-hex-done" cx={6.5} cy={-6.5} r={2.2} /> : null}
                         </svg>
@@ -1156,8 +1185,17 @@ function WhGridMap({
         const y = cy + 1.5 * size * c.r
         const visited = grid.visited.includes(c.key)
         const scanned = grid.scanned.includes(c.key)
-        const known = visited || scanned
-        const signal = signalOfPlace(c.place)
+        /**
+         * ⚠ **信息档一律走 core 的 `revealOf`**（2026-09-13 星云批改的）。
+         *
+         * 改之前这里直接读 `c.place` 上色（`signalOfPlace(c.place)`）⇒ 那是**真相**：
+         * 星云遮蔽接进来后，照旧上色就等于"云没遮住任何东西"（边框颜色把被遮的信号漏出去）。
+         * 现在四档同源：`unknown` / `signal`（含"无信号 = 空地点"）/ **`nebula`** / `known`。
+         */
+        const rev = revealOf(grid, { q: c.q, r: c.r })
+        const known = rev.kind === 'known' || rev.kind === 'signal' || rev.kind === 'nebula'
+        const nebula = rev.kind === 'nebula'
+        const signal = rev.kind === 'signal' ? rev.signal : rev.kind === 'known' ? rev.signal : null
         // 入口：**到达过**或**被漂浮信标标出来**（船长 2026-09-13 新增信标）⇒ 地图上一直标着
         const isExit = c.key === exitKey && (visited || grid.exitKnown === true)
         /**
@@ -1182,11 +1220,11 @@ function WhGridMap({
           iconGone ? 'is-cleared' : '',
           hasLeftover ? 'is-leftover' : '',
           /**
-           * ⚠ **信号分色只给"已扫描/已到达"的格**（船长 F5：「目前未扫描的地点可以通过边框颜色判断」）：
-           * 未扫描的格一律走 `.is-unknown` 的**蓝灰虚线边框**；若照旧按 `c.place` 上色，
-           * 边框颜色本身就把地点真相漏出去了（"这格是橙色 ⇒ 里面有舰船"）。
+           * ⚠ **信号分色只给"已扫描/已到达"且没被星云遮住的格**（船长 F5：「目前未扫描的地点可以通过
+           * 边框颜色判断」）：未扫描的格一律走 `.is-unknown` 的**蓝灰虚线边框**；
+           * 被星云遮住的格走 `.is-nebula`（**不按信号上色**，否则边框颜色就把被遮的信号漏出去了）。
            */
-          known ? (signal ? `is-${signal}` : 'is-blank') : '',
+          known ? (nebula ? 'is-nebula' : signal ? `is-${signal}` : 'is-blank') : '',
           c.key === hereKey ? 'is-here' : '',
           isExit ? 'is-exit' : '',
           freshAt.has(c.key) ? 'is-just-scanned' : '',
@@ -1200,9 +1238,11 @@ function WhGridMap({
             : visited
               ? `${WORMHOLE_PLACE_TEXT[c.place]}（去过${cleared ? ' · 已清空' : ''}）` +
                 `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
-              : signal
-                ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
-                : '没有信号：空信息地点'
+              : nebula
+                ? '星云遮蔽：这一格的信号被星云挡住——在原地再扫描一次即可驱散'
+                : signal
+                  ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
+                  : '没有信号：空信息地点'
         return (
           <g
             key={c.key}
@@ -1213,7 +1253,7 @@ function WhGridMap({
             <polygon points={corners.map((p) => `${(x + p.dx).toFixed(2)},${(y + p.dy).toFixed(2)}`).join(' ')} />
             {known && !iconGone ? (
               <g className="app-wh-hex-glyph" transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}>
-                <WhGlyph signal={signal} exit={isExit} />
+                {nebula ? <WhNebulaGlyph /> : <WhGlyph signal={signal} exit={isExit} />}
               </g>
             ) : null}
             {/* **去过标记**：右上角一个小实心点（SVG 线稿；与图例同源） */}
@@ -1297,6 +1337,22 @@ function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boole
   return <circle cx={0} cy={0} r={2.2} />
 }
 
+/**
+ * **星云图标**（船长 2026-09-13 星云机制）：被星云遮住的格画一团云——**SVG 线稿**（约定 §九：
+ * 图形一律线稿、禁 CSS 拼形状），由三条疏密不同的弧线叠出"云团"轮廓 + 两颗小星点（说明这是"星云"、
+ * 不是"什么都没扫到"）。与 `WhGlyph` 同一套 `currentColor` / 描边语言，故格子配色一变它自动跟随。
+ */
+function WhNebulaGlyph() {
+  return (
+    <g className="app-wh-nebula">
+      <path d="M-7,2.4 A3.2,3.2 0 0 1 -2.6,-2.4 A3.6,3.6 0 0 1 3,-1.4 A3,3 0 0 1 7,2.4 Z" />
+      <path d="M-5.6,4.6 A2.4,2.4 0 0 1 -1.6,1.6 A2.6,2.6 0 0 1 3.2,2.2 A2.6,2.6 0 0 1 5.6,4.6" />
+      <circle cx={-3.4} cy={-4.4} r={0.9} />
+      <circle cx={4.2} cy={-3.2} r={0.7} />
+    </g>
+  )
+}
+
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
   wreck: '残骸信号',
@@ -1314,8 +1370,11 @@ const GRID_LEGEND: ReadonlyArray<{
   none?: boolean
   /** 「去过」那一档：画基线空 hex + 右上角小点 */
   done?: boolean
+  /** 「星云」那一档：画星云线稿（船长 2026-09-13 星云机制） */
+  nebula?: boolean
 }> = [
   { key: 'unknown', text: '未扫描（蓝灰虚线边框）', signal: null, none: true },
+  { key: 'nebula', text: '星云遮蔽（再扫描一次驱散）', signal: null, none: true, nebula: true },
   { key: 'visited', text: '去过（变暗 + 右上小点；清空的连图标一起去掉）', signal: null, none: true, done: true },
   { key: 'wreck', text: SIGNAL_TEXT.wreck, signal: 'wreck' },
   { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },

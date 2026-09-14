@@ -2483,6 +2483,8 @@ function normalizeState(raw: unknown): GameState {
         r: Math.floor(num(row.r)),
         place: placeOk,
         ...(cellPiles ? { piles: cellPiles } : {}),
+        // 星云标记（船长 2026-09-13 星云机制）：只在为真时写（老档/非星云格 ⇒ 不写 = 零迁移）
+        ...(row.nebula === true ? { nebula: true } : {}),
       })
     }
     if (cells.length === 0) return undefined
@@ -2505,6 +2507,8 @@ function normalizeState(raw: unknown): GameState {
       scanned: keys(g.scanned),
       visited: keys(g.visited),
       activated: keys(g.activated),
+      // 已驱散的星云格（船长 2026-09-13）：空数组不写（老档/没驱散过 ⇒ 零迁移）
+      ...(keys(g.dispersed).length > 0 ? { dispersed: keys(g.dispersed) } : {}),
       // 「下一层入口已被漂浮信标标出」（F3a-3）：只在为真时写（老档/未标出 ⇒ 不写 = 零迁移）
       ...(g.exitKnown === true ? { exitKnown: true } : {}),
       cells,
@@ -2623,6 +2627,8 @@ function normalizeState(raw: unknown): GameState {
       run,
       lastFleetLost: Math.max(0, Math.floor(num(wRaw.lastFleetLost))),
       ...(lastSettle !== undefined ? { lastSettle } : {}),
+      // 星云提示只提示一次（船长 2026-09-13）：只在为真时写（老档 ⇒ 不写 = 零迁移）
+      ...(wRaw.nebulaHintShown === true ? { nebulaHintShown: true } : {}),
     }
   }
   const wormhole = cleanWormhole()

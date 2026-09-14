@@ -243,7 +243,7 @@ describe('虫洞 · 开战（F 批）', () => {
     standOnPlace(run, 'ship')
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     expect(wormholeExtract(run).ok).toBe(false)
-    expect(wormholeDescend(run, 21).ok).toBe(false)
+    expect(wormholeDescend(state, 21).ok).toBe(false)
     expect(run.phase).toBe('inside')
   })
 
@@ -251,14 +251,14 @@ describe('虫洞 · 开战（F 批）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
     expect(wormholeStartBattle(state, ctx, 'boss', 0).ok).toBe(false) // 没站在入口格上
-    expect(wormholeDescend(run, 21).ok).toBe(false) // 守卫没清
+    expect(wormholeDescend(state, 21).ok).toBe(false) // 守卫没清
     standAtExit(run)
     expect(wormholeStartBattle(state, ctx, 'boss', 0).ok).toBe(true)
     winBattle(state)
     settleBattle(state)
     expect(run.bossCleared).toBe(1)
     expect(run.battle).toBeNull()
-    expect(wormholeDescend(run, 21).ok).toBe(true)
+    expect(wormholeDescend(state, 21).ok).toBe(true)
     expect(run.depth).toBe(2)
   })
 })
@@ -332,7 +332,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     winBattle(state)
     settleBattle(state)
     expect(run.bossCleared).toBe(1)
-    expect(wormholeDescend(run, 21).ok).toBe(true)
+    expect(wormholeDescend(state, 21).ok).toBe(true)
   })
 
   it('**胜 · 撤离战**：背包并入仓库、本趟结束（第 2 层起才有撤离战）', () => {

@@ -227,6 +227,23 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     trigger: { kind: 'galaxy', galaxyId: 'galaxy-redring' },
     hint: { text: '星图 · 选「红环航道」查看建站交付。', page: 'map' },
   },
+  {
+    id: 'msg-wormhole-nebula',
+    factionId: 'dshi',
+    deptId: 'dept-survey',
+    kind: '提示',
+    subject: '深空备忘：星云带里的信号遮蔽',
+    body: [
+      '你已经下到第四层了。从这一层起，裂隙深处开始出现星云带，测绘处把已知的情况给你一份备忘。',
+      '星云会挡住落在里面的地点信号：第一次扫到它时，你看不到那是一处什么地点，只会看到那团云本身。',
+      '这时候在原地再扫描一次——同一片区域是被同一套扫描阵列覆盖的，第二遍扫过去就能把云驱散，信号随之显形。',
+      '代价是多花一个回合。深层行动里回合本来就紧，所以在星云带里规划路线时，把"多扫一次"算进预算，别把回合全压在收尾那几步上。',
+    ],
+    trigger: { kind: 'wormholeNebula' },
+    // ⚠ **刻意不给 `hint`**：`CommsHint.page` 只认导航直系页（`CommsJumpPage`），
+    // 而星云发生在**虫洞面板**里（不是一级页、也没有对应的跳转页）⇒ 硬塞一个 `map` 会把玩家带去错误的地方。
+    // 说明文字因此都写在正文里（"在原地再扫描一次"）。
+  },
 ]
 
 /** 通讯消息目录（core 判定触发器；按 id 稳定查表） */

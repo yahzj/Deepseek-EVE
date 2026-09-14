@@ -113,7 +113,15 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     }
   })
 
-  it('**遗迹 = 残骸信号的 30%**（±1 格容差，格数少时取整）', () => {
+  /**
+   * **遗迹 = 残骸信号的 30%**（±1 格容差，格数少时取整）。
+   *
+   * ⚠ 2026-09-13 星云/层间盘面批**改了这条的上界读法**：船长同日定了「**给每层增加一个遗迹格下限**」，
+   * 下限是**硬保证**（不够就把舰船墓场翻成遗迹）⇒ 层 1 的实际占比会**高于** 30%（实测 36%）。
+   * 故这里改成钉两件事：**下界照旧不能低于 30% 太多**（否则"遗迹概率 30%"名存实亡），
+   * **上界放宽到"下限带来的偏移"**（层 1 下限 1 格 ÷ 每盘 4 个残骸信号 = 最多 +25%）。
+   */
+  it('**遗迹 = 残骸信号的 30%**（下限会把它抬上去，见注释）', () => {
     let ruins = 0
     let wreck = 0
     for (let seed = 1; seed <= 200; seed++) {
@@ -123,7 +131,11 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     }
     expect(wreck).toBeGreaterThan(50)
     expect(ruins / wreck).toBeGreaterThan(WORMHOLE_RUINS_SHARE - 0.15)
-    expect(ruins / wreck).toBeLessThan(WORMHOLE_RUINS_SHARE + 0.15)
+    expect(ruins / wreck).toBeLessThan(WORMHOLE_RUINS_SHARE + 0.25)
+    // 层 1 下限 = 1 ⇒ 每盘至少一张遗迹（这是"随层给下限"那条的硬保证）
+    for (const seed of [1, 2, 3, 77, 2026]) {
+      expect(gridTally(wormholeMakeGrid(seed, 1)).byPlace.ruins).toBeGreaterThanOrEqual(1)
+    }
   })
 
   it('五类信号都真的会出现（多 seed 抽样）', () => {
@@ -142,8 +154,16 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
    * ⇒ 信标落在入口格上时玩家站在信标上却读不出终点（F3c 第二段的整趟模拟实测踩到）。
    * 修法 = 与另一格**交换信号**（不是重掷）⇒ 各信号的格数与实测分布一字不变。
    */
-  it('**信标不落入口格**（船长 2026-09-13：「不可以同一格」）——且各层信标数照旧', () => {
-    const expectBeacons: Record<number, number> = { 1: 1, 2: 1, 3: 1, 5: 3, 8: 3 }
+  it('**信标不落入口格**（船长 2026-09-13：「不可以同一格」）——且信标数从"取整漂移"变成**定额**', () => {
+    /**
+     * ⚠ 2026-09-13 层间盘面批：信标数**从"随 seed 漂 1~2 格"变成逐层定额**。
+     *
+     * 为什么：旧式 `空 = ⌈总格数 × 50%⌉` 的口径下，池子 = `格数 − 1 − 空格数` **随终点格自己是否为空**在
+     * 两组值之间跳（例如层 3 的池恒为 17 或 18）⇒ 同一层不同 seed 的信标数会在 1/2 之间漂。
+     * 现在空格数是**定额**（`⌈(格数−1) × 该层占比⌉`）⇒ 池子定额 ⇒ 各信号计数**逐层定额、与 seed 无关**。
+     * 这是纯改进（校准与用例都不必再留"取整容差"），但数变了 ⇒ 这里按新分配重钉。
+     */
+    const expectBeacons: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 4, 6: 4, 8: 4 }
     for (const [depthStr, n] of Object.entries(expectBeacons)) {
       const depth = Number(depthStr)
       for (let seed = 1; seed <= 120; seed++) {

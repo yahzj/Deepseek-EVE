@@ -9390,6 +9390,13 @@ body {
 .app-wh-hex.is-resource, .app-wh-legend-glyph.is-resource { color: #f4c95d; }
 .app-wh-hex.is-radar, .app-wh-legend-glyph.is-radar { color: #b48fe0; }
 .app-wh-hex.is-blank, .app-wh-legend-glyph.is-blank { color: var(--wui-dim); }
+/**
+ * **星云遮蔽**（船长 2026-09-13 星云机制）：被云罩住的格——**禁用信号分色**，改用冷紫（与雷达紫区分：
+ * 星云更暗、更灰），图标换成 `WhNebulaGlyph` 的云团线稿；虚线边框与"未扫描"一致（它还没被看清）。
+ */
+.app-wh-hex.is-nebula, .app-wh-legend-glyph.is-nebula { color: #8c93c8; }
+.app-wh-hex.is-nebula polygon { stroke-dasharray: 4 3; fill: rgba(140, 147, 200, 0.1); }
+.app-wh-nebula { opacity: 0.92; }
 /* 图例里的"未扫描"格与地图同色（蓝灰虚线），否则图例教不会玩家认这个边框 */
 .app-wh-legend-glyph.is-unknown { color: #7b8fa3; }
 .app-wh-legend-glyph.is-visited { color: var(--wui-accent); }

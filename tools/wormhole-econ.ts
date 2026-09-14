@@ -800,7 +800,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
           break
         }
       } else {
-        const dn = wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
+        const dn = wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
         if (!dn.ok) {
           stop(`深入被拒：${dn.error ?? ''}`)
           break
@@ -826,7 +826,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
     }
     const frac = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
     if (r.depth >= pol.maxDepth || frac < pol.extractHp || r.turnsLeft <= 0) wormholeExtract(r)
-    else wormholeDescend(r, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
+    else wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
   }
 
   if (state.wormhole.run) stopReason = stopReason || '步数上限（4000 步没走完）'

@@ -1097,6 +1097,13 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    */
   droneLossReport?: DroneLossReport | null
   /**
+   * 2026-09-13 星云机制一次性提示（船长：「这个机制在玩家第一次下到四层时提示玩家」）：
+   * 第一次深入第 4 层时由 `wormholeDescend` 写入 ⇒ 心跳读取即清并提示
+   * （同 `droneLossNotice` 模式：**不落档、零迁移**）。
+   * 跨趟的"只提示一次"由随档的 `wormhole.nebulaHintShown` 保证。
+   */
+  nebulaHintNotice?: string | null
+  /**
    * 2026-09-10 玩家标记（收藏）：四类界面各自一份 id 清单，被标记项在**默认排序**下置顶
    * （2026-09-10 船长定：舰队等有排序下拉的列表只在「默认排序」生效）。
    * 兼容字段、零迁移、不升版本号：老档缺省 = 四类全空，由 normalizeState 补默认并剪枝。
