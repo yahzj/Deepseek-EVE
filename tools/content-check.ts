@@ -1353,7 +1353,7 @@ for (const m of MODULES) {
     )
   }
   check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
-  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3% · **每池必含钛钢合金**）`)
+  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3% · **每池必含钛钢合金** · 占比 ≥40% 见 B3.3）`)
 
   /* ── B3.2 档位基础池（2026-09-14 船长「所有残骸回收都加钛钢」）：
    *   ① 三档基础池**都必须含钛钢合金**（常驻档本来就有，险/危同批补入）；
@@ -1375,6 +1375,31 @@ for (const m of MODULES) {
   console.log(
     `· B3.2 档位基础池：三档均含钛钢合金 · 均价 = 档基数（常 ${RECYCLE_POOL_AVG_ISK.common} / 险 ${RECYCLE_POOL_AVG_ISK.risky} / 危 ${RECYCLE_POOL_AVG_ISK.dire}）`,
   )
+
+  /* ── B3.3 钛钢占比下限（2026-09-14 船长第二批「提高钛钢占比到 40~60」+ 三答：
+   *   **只提不降 · 统一 40% · 均价不变**）⇒ 三档基础池 + 每一张特色池的钛钢**权重占比都 ≥40%**；
+   *   已有 65~80% 的池按"只提不降"原样保持（区间上限不是硬闸，硬闸只有下限 40%）。 */
+  {
+    const shares: { name: string; share: number }[] = []
+    const shareOf = (pool: ReadonlyArray<readonly [string, number]>): number => {
+      const wSum = pool.reduce((s, [, w]) => s + w, 0)
+      return pool.filter(([id]) => id === 'min-tritanium').reduce((s, [, w]) => s + w, 0) / wSum
+    }
+    for (const tier of ['common', 'risky', 'dire'] as const) shares.push({ name: `档位基础池·${tier}`, share: shareOf(RECYCLE_POOLS[tier]) })
+    for (const def of ANOMALIES_FLAVORED) {
+      if (!def.recyclePool || def.recyclePool.length === 0) continue
+      shares.push({ name: `${def.id}`, share: shareOf(def.recyclePool) })
+    }
+    let min = shares[0]!
+    for (const s of shares) {
+      if (s.share < min.share) min = s
+      check(
+        s.share >= 0.4,
+        `B3.3 ${s.name} 钛钢占比 ${(s.share * 100).toFixed(1)}% < 40%（船长 2026-09-14：提高钛钢占比到 40~60 ⇒ 只提不降、统一 40%）`,
+      )
+    }
+    console.log(`· B3.3 钛钢占比下限：${shares.length} 个池（3 档基础池 + ${shares.length - 3} 张特色池）全部 ≥40%（最低 = ${min.name} ${(min.share * 100).toFixed(1)}%）`)
+  }
   // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正）：收价 < 无技能拆解保底（≈57/m³，三档齐平），
   // 且与档位表一致（常 30 / 险 40 / 危 50，≈该档典型特色回收的五成上下）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }

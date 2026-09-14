@@ -21,6 +21,7 @@ import {
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
+  RECYCLE_POOLS,
   recycleTierOf,
   wreckBaseDensity,
 } from '@whale/core'
@@ -43,30 +44,11 @@ const DIVE_LV5_MULT = 1 + 0.12 * 5
 const ASSAY_LV5_EXPECT = 1 + 0.01 * Math.pow(1.2, 5)
 const SALVAGE_FULL_RATE = (1 / REC_LV5_CYCLE) * DIVE_LV5_MULT * ASSAY_LV5_EXPECT
 
-/** 池期望单价（按权重 × 矿物 baseSellPrice） */
-const POOLS: Record<'common' | 'risky' | 'dire', Array<[string, number]>> = {
-  common: [
-    ['min-tritanium', 65],
-    ['min-pyerite', 30],
-    ['min-mexallon', 5],
-  ],
-  risky: [
-    ['min-pyerite', 45],
-    ['min-mexallon', 35],
-    ['min-nocxium', 12],
-    ['min-isotope', 8],
-  ],
-  dire: [
-    ['min-mexallon', 30],
-    ['min-nocxium', 25],
-    ['min-isotope', 30],
-    ['min-starcore', 13],
-    ['min-darkiron', 2],
-  ],
-}
-
-function poolAvgPrice(tier: keyof typeof POOLS): number {
-  const rows = POOLS[tier]!
+/** 池期望单价（按权重 × 矿物 baseSellPrice）——**单点引用 `RECYCLE_POOLS`**，不在此另存副本。
+ *  ⚠ 2026-09-14 三号修正：本工具此前**自带一份三档池副本**（2026-09-05 定稿），池改动后它读的仍是旧数
+ *  （险 27.6 / 危 92.4），导致"池重配"两批的 EV/h 读数一直没跟着变 ⇒ 改为直接引用 core 常量。 */
+function poolAvgPrice(tier: 'common' | 'risky' | 'dire'): number {
+  const rows = RECYCLE_POOLS[tier]
   const wSum = rows.reduce((s, [, w]) => s + w, 0)
   let v = 0
   for (const [id, w] of rows) {
@@ -181,8 +163,8 @@ function main(): void {
   console.log('══ 蓝图两条获取路线对比（打捞凑碎片 vs 市场买书，2026-09-10 船长）══')
   const t2Pool = fragmentPoolOf(freshState, ctx, 2)
   const t3Pool = fragmentPoolOf(freshState, ctx, 3)
-  const tierEvNo = (tier: keyof typeof POOLS): number => FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
-  const tierEvFull = (tier: keyof typeof POOLS): number => tierEvNo(tier) * FULL_SKILL_MULT
+  const tierEvNo = (tier: 'common' | 'risky' | 'dire'): number => FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * poolAvgPrice(tier)
+  const tierEvFull = (tier: 'common' | 'risky' | 'dire'): number => tierEvNo(tier) * FULL_SKILL_MULT
   console.log(
     `· 碎片概率：fragT2 ${RECYCLE_CHANCE.fragT2}/m³（威胁 ≥17）· fragT3 ${RECYCLE_CHANCE.fragT3}/m³（威胁 ≥41）；` +
       `同档池大小 MK2 ${t2Pool.length} 张 / MK3 ${t3Pool.length} 张 → 单张书命中率 = 档概率 ÷ 池大小`,
