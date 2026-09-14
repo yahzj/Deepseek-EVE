@@ -861,7 +861,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「电子舰」（船长 2026-09-13）：**命中 +0.10 · 回避 +20%**（真吃战斗）· **虫洞扫码 +1 圈（编队即生效、可叠加）** · 分辨率 +50%（经济向）· 锁定 +50%（纯展示）｜ 货舱 −30% · 结构血占比 −25% · 机动 −10%
     slots: { high: 3, mid: 3, low: 1 },
     tier: 1,
-    unreleased: true,
     cargoM3: 1260,
     cycleSeconds: 14,
     oreUnitsPerCycle: 8,
@@ -893,7 +892,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「炮艇」（船长 2026-09-13）：**族武 动能 +0.15 · 动能武器射程 +30%** · 命中 +0.03 ｜ 货舱 −30% · 护盾血占比 −20% · 分辨率 −20%
     slots: { high: 5, mid: 3, low: 2 },
     tier: 2,
-    unreleased: true,
     cargoM3: 3080,
     cycleSeconds: 13,
     oreUnitsPerCycle: 14,
@@ -926,7 +924,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「重型突击巡洋舰」（船长 2026-09-13）：**三层抗性：0 抗一律 → 0.25**（护盾动能保留 0.5）· **三层血 ×1.1 = 855** · **移除族武 +0.15**（船长 2026-09-13）｜ 机动 −30% · 货舱 −30% · 信号 +20%
     slots: { high: 6, mid: 3, low: 3 },
     tier: 3,
-    unreleased: true,
     cargoM3: 3640,
     cycleSeconds: 14,
     oreUnitsPerCycle: 10,
@@ -959,7 +956,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「截击舰」（船长 2026-09-13）：速度 +35% · 机动 +35% · 命中 +0.04 ｜ 货舱 −30% · 护盾血占比 −30% · 信号 +15%
     slots: { high: 2, mid: 3, low: 3 },
     tier: 1,
-    unreleased: true,
     cargoM3: 630,
     cycleSeconds: 14,
     oreUnitsPerCycle: 8,
@@ -990,7 +986,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「截击舰」（船长 2026-09-13）：同上（C 族两艘同子分类）
     slots: { high: 2, mid: 4, low: 4 },
     tier: 2,
-    unreleased: true,
     cargoM3: 1330,
     cycleSeconds: 13,
     oreUnitsPerCycle: 16,
@@ -1021,7 +1016,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「重型突击巡洋舰」（船长 2026-09-13）：**三层抗性：0 抗一律 → 0.25**（甲爆炸保留 0.5）· **三层血 ×1.1 = 1055** · **移除族武 +0.15** · 低槽 +1 ｜ 机动 −30% · 货舱 −30% · 信号 +20%
     slots: { high: 4, mid: 3, low: 5 },
     tier: 3,
-    unreleased: true,
     cargoM3: 2940,
     cycleSeconds: 13,
     oreUnitsPerCycle: 20,
@@ -1053,7 +1047,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「电子舰」（船长 2026-09-13）：**D 族特色 = 高护盾比（护盾 65%）** · **三层盾抗 0.25 + 甲爆炸 0.5** · **命中 +0.12 · 回避 +55%** · **虫洞扫码 +1 圈（编队即生效、可叠加）** · 分辨率 +50%（经济向）｜ 货舱 −30% · 机动 −10%
     slots: { high: 2, mid: 3, low: 3 },
     tier: 1,
-    unreleased: true,
     cargoM3: 770,
     cycleSeconds: 14,
     oreUnitsPerCycle: 8,
@@ -1086,7 +1079,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「指挥舰」（船长 2026-09-13）：**D 族特色 = 高护盾比（护盾 60%）** · **全舰单发伤害 +15%（取最高、不叠加）** · 机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05 ｜ **速度/机动不再削**（2026-09-13 船长：D 组已非重装族，种族级削弱移除）· 货舱 −25%（子分类级）· 代价 = 甲/壳薄
     slots: { high: 2, mid: 4, low: 4 },
     tier: 2,
-    unreleased: true,
     cargoM3: 2700,
     cycleSeconds: 13,
     oreUnitsPerCycle: 16,
@@ -1118,7 +1110,6 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armored',
     slots: { high: 4, mid: 4, low: 4 },
     tier: 3,
-    unreleased: true,
     cargoM3: 9000,
     cycleSeconds: 13,
     oreUnitsPerCycle: 22,
@@ -1150,7 +1141,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「鱼雷舰」（船长 2026-09-13）：族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%
     slots: { high: 4, mid: 2, low: 2 },
     tier: 1,
-    unreleased: true,
     cargoM3: 1000,
     cycleSeconds: 14,
     oreUnitsPerCycle: 8,
@@ -1183,7 +1173,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「无人机作战舰」（船长 2026-09-13）：无人机伤害 +0.10 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02
     slots: { high: 4, mid: 4, low: 3 },
     tier: 2,
-    unreleased: true,
     cargoM3: 1960,
     cycleSeconds: 13,
     oreUnitsPerCycle: 12,
@@ -1216,7 +1205,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「无人机作战舰」（船长 2026-09-13）：无人机伤害 +0.14 · 机巢 +50% · CPU +15% ｜ 货舱 −30% · 命中 −0.02
     slots: { high: 5, mid: 5, low: 3 },
     tier: 3,
-    unreleased: true,
     cargoM3: 2660,
     cycleSeconds: 14,
     oreUnitsPerCycle: 10,
@@ -1249,7 +1237,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「侦察舰」（船长 2026-09-13）：**回避 +35% · 命中 +0.06**（真吃战斗）· **虫洞扫码 +1 圈（编队即生效、可叠加）** · 信号 −35% · 锁定 +25%（纯展示，叙事用）｜ 货舱 −30% · 甲/壳血占比 −25%
     slots: { high: 3, mid: 4, low: 1 },
     tier: 1,
-    unreleased: true,
     cargoM3: 490,
     cycleSeconds: 14,
     oreUnitsPerCycle: 8,
@@ -1282,7 +1269,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「后勤舰」（船长 2026-09-13）：货舱 +45% · 机巢 +50% · 回避 +5% ｜ 命中 −0.03 · 甲血占比 −20%
     slots: { high: 4, mid: 4, low: 3 },
     tier: 2,
-    unreleased: true,
     cargoM3: 3480,
     cycleSeconds: 13,
     oreUnitsPerCycle: 12,
@@ -1314,7 +1300,6 @@ export const SHIPS: readonly ShipDef[] = [
     // 子分类「鱼雷舰」（船长 2026-09-13）：族武 爆炸 +0.15 · 命中 +0.03 · 结构血占比提高 ｜ 回避 −25% · 信号 +30% · 机动 −15%
     slots: { high: 5, mid: 5, low: 3 },
     tier: 3,
-    unreleased: true,
     cargoM3: 3200,
     cycleSeconds: 14,
     oreUnitsPerCycle: 10,

@@ -530,8 +530,8 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
    *
    * ⚠ **2026-09-14 船长解闸**：原话「**虫洞已经做完了，正在微调，所以允许对玩家开放**」——
    * 这里原先沿用入口那把 `debugEnabled()` 开关（施工期只有调试模式可见），现已**改为常显**。
-   * ⚠ 仍然走 `engine.ctx.items` 全表（不走 `visibleItemDefs`）：货柜的物品卡/市场卡还标着
-   * `unreleased`（"虫洞上线"那一批才摘），照 `visibleItemDefs` 过滤会让这一档**永远是空的**。
+   * ⚠ 仍走 `engine.ctx.items` 全表（不走 `visibleItemDefs`）：这一档要认**所有** `container` 类，
+   * 将来再加货柜种类也不会漏（2026-09-14 虫洞正式上线后，货柜的物品卡本身也已摘掉 `unreleased`）。
    */
   const boxDefs = [...engine.ctx.items.values()].filter(
     (def) =>

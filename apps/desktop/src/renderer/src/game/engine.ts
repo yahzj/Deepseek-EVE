@@ -141,7 +141,7 @@ import {
   HAUL_RATE_PER_M3_MIN,
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
-  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；施工期入口在调试开关后面）
+  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；✅ 2026-09-14 已上线，入口常驻）
   wormholeEnter,
   wormholeTakePileAt,
   wormholeHoldUsage,
@@ -1449,7 +1449,7 @@ export class GameEngine {
     return result
   }
 
-  /* ─────────────── 终局玩法「虫洞」（E 批 · 施工期入口在调试开关后面） ─────────────── */
+  /* ─────────────── 终局玩法「虫洞」（E 批 · ✅ 2026-09-14 已上线） ─────────────── */
 
   /** 虫洞：跃入（编队校验 + 建副本；`seed` 取游戏随机种子，保证节点/拾取堆可复现） */
   wormholeEnter(shipIds: readonly string[]): CommandResult {
@@ -1505,7 +1505,7 @@ export class GameEngine {
   /**
    * 族名（取该族那张洞内敌卡的卡名：劫掠支队 / 巢群游猎 / 守墓巡哨 / 巨构残响 / 亡军封锁）。
    *
-   * ⚠ **必须走 `ctx.anomalies` 全表**：五张洞内卡都带 `hidden: true`（施工期不进悬赏目录），
+   * ⚠ **必须走 `ctx.anomalies` 全表**：五张洞内卡都带 `hidden: true`（**虫洞专用遭遇，不进悬赏目录**），
    * 而 `this.anomalies` 是**过滤掉 hidden 的目录** ⇒ 早先在这里查不到、界面直接漏出内部 id
    * （船长 2026-09-14 报障看到的是 `wh-alien-swarm`）。改成查全表，查不到才退回 id。
    */

@@ -37,7 +37,6 @@ import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, BountyPanel } from '../panels/Expedition'
 import { WormholeScanTab } from '../panels/WormholeScan'
-import { debugEnabled } from '../panels/DebugPanel'
 import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
@@ -65,7 +64,7 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
   { key: 'haul', label: '长途运输', icon: 'nav-haul' },
   /* 任务中心 2026-09-14 已搬成左侧导航的独立一级页（船长：移出星图、放在通讯上方）⇒ 本页不再有该选项卡 */
-  /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：**只在调试模式下出现**（施工期铁律） */
+  /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：✅ 同日解除不可见 ⇒ **常驻标签**（解锁门槛在页内：协会声望 ≥ 40） */
   { key: 'whscan', label: '扫描虫洞', icon: 'nav-wormhole' },
 ]
 
@@ -131,7 +130,9 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
     <div className="page-stack page-fill">
       {/* ───── 功能标签页（免滚动切换） ───── */}
       <div className="app-subtabs" role="tablist">
-        {MAP_TABS.filter((x) => x.key !== 'whscan' || debugEnabled()).map((t) => (
+        {/* 「扫描虫洞」标签**已全量开放**（船长 2026-09-14：「可以解除虫洞对玩家的不可见状态了」）
+            —— 原先按 `debugEnabled()` 过滤，现按常驻标签走；解锁门槛在页内（协会声望 ≥ 40）。 */}
+        {MAP_TABS.map((t) => (
           <button
             key={t.key}
             role="tab"
