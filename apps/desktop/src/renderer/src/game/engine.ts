@@ -139,7 +139,7 @@ import {
   HAUL_RATE_PER_M3_MIN,
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
-  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；施工期入口在调试开关后面）
+  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；2026-09-14 上线）
   wormholeEnter,
   wormholeTakePileAt,
   wormholeHoldUsage,
@@ -416,8 +416,9 @@ function offlineReportLogText(r: OfflineReport): string {
 export class GameEngine {
   /** 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值） */
   readonly ctx: SimContext = buildSimContext()
-  /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
-   *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
+  /** 界面目录数据（**未上线闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
+   *  —— 与下面 `anomalies` 的 `hidden` 过滤同款。2026-09-14 虫洞上线后目录里已无未上线内容，
+   *  闸门保留给后续新增内容） */
   readonly skills = SKILLS
   readonly groups = SKILL_GROUPS
   readonly ships = SHIPS.filter((d) => itemReleased(d))
@@ -1455,7 +1456,7 @@ export class GameEngine {
     return result
   }
 
-  /* ─────────────── 终局玩法「虫洞」（E 批 · 施工期入口在调试开关后面） ─────────────── */
+  /* ─────────────── 终局玩法「虫洞」（E 批 · 2026-09-14 上线） ─────────────── */
 
   /** 虫洞：跃入（编队校验 + 建副本；`seed` 取游戏随机种子，保证节点/拾取堆可复现） */
   wormholeEnter(shipIds: readonly string[]): CommandResult {
