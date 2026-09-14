@@ -323,7 +323,7 @@ function noteLowSec(state: GameState, ctx: SimContext, galaxyId: string): void {
   addLog(
     state,
     'warn',
-    `⚠ 首次进入低安星系（${name}，安全 ${secOf(ctx, galaxyId).toFixed(1)}）：低安活动可能遭遇巡逻拦截或海盗伏击——采掘/打捞/扫描作业与驻留时可能，**长途运输途中同样会**；遇袭后舰船会自己用修理组件补装甲与结构，补不动或结构过低才收手返港；可「迎战」或快速脱离，详见手册「航行须知」。`,
+    `⚠ 首次进入低安星系（${name}，安全 ${secOf(ctx, galaxyId).toFixed(1)}）：低安活动可能遭遇巡逻拦截或海盗伏击——采掘/打捞/扫描作业与驻留时可能，长途运输途中同样会；遇袭后舰船会自己用修理组件补装甲与结构，补不动或结构过低才收手返港；可「迎战」或快速脱离，详见手册「航行须知」。`,
   )
 }
 

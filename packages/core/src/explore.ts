@@ -200,7 +200,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     secOfTarget < 0.5
       ? lowSecTarget
         ? '该星系为低安：信号嘈杂、扫描偏慢，且扫描中更容易被巡逻盯上（遇袭概率提高，作业不会中断）。'
-        : '该星系安全等级不足 +0.5（中安）：信号嘈杂、扫描偏慢；**遇袭只发生在低安**，这里不会被巡逻拦截。'
+        : '该星系安全等级不足 +0.5（中安）：信号嘈杂、扫描偏慢；遇袭只发生在低安，这里不会被巡逻拦截。'
       : '扫描期间更容易碰到有趣的东西。'
   addLog(
     state,

@@ -949,7 +949,7 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.5,"explosive":0.25,"plasma":0.25},
     armorResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    description: '海盗的重型突击巡洋舰：三层抗性齐备、血量再厚一成，专啃硬目标；**没有额外火力加成**，代价是转身慢、舱位小。',
+    description: '海盗的重型突击巡洋舰：三层抗性齐备、血量再厚一成，专啃硬目标；没有额外火力加成，代价是转身慢、舱位小。',
   },
   {
     id: 'sh-wh-c-frigate',
@@ -1043,7 +1043,7 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     armorResist: {"explosive":0.5,"kinetic":0.25,"plasma":0.25},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    description: '巢群的重型突击巡洋舰：三层抗性齐备、甲壳再厚一成，正面硬碰硬；**没有额外火力加成**，转身极慢。',
+    description: '巢群的重型突击巡洋舰：三层抗性齐备、甲壳再厚一成，正面硬碰硬；没有额外火力加成，转身极慢。',
   },
   {
     id: 'sh-wh-d-frigate',
@@ -1110,7 +1110,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     droneDmgBonus: 0.08,
     fleetDamageBonusPct: 0.15,
-    description: '陵墓的指挥舰：护盾占比高、并给**全编队**的单发伤害加一成半——多艘指挥舰只取最高、不叠加。代价是甲/壳薄：盾一破就很脆。',
+    description: '陵墓的指挥舰：护盾占比高、并给全编队的单发伤害加一成半——多艘指挥舰只取最高、不叠加。代价是甲/壳薄：盾一破就很脆。',
   },
   {
     id: 'sh-wh-d-cruiser',
@@ -1140,7 +1140,7 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     armorResist: {"explosive":0.5},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    description: '陵墓的重装巡洋舰：**护盾占比全批最高**（不再靠总血厚）、炮位最多、舱容最大——靠盾与抗性站在阵线中央。',
+    description: '陵墓的重装巡洋舰：护盾占比全批最高（不再靠总血厚）、炮位最多、舱容最大——靠盾与抗性站在阵线中央。',
   },
   {
     id: 'sh-wh-e-frigate',

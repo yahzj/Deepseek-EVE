@@ -17,6 +17,7 @@ import { createInitialState } from '../src/state'
 import { learnBlueprint } from '../src/market'
 import {
   cancelManufacturing,
+  canStartBlueprint,
   isSingleUseBlueprint,
   manufacturingRunViews,
   ownsBlueprint,
@@ -85,6 +86,31 @@ describe('一次性图纸 · 学习与可用性判定', () => {
     const r2 = startManufacturing(state, 'bp-a', 'pilot', ctx)
     expect(r2.ok).toBe(false)
     expect(r2.error ?? '').toContain('尚未学会')
+  })
+
+  /**
+   * ⑨ **`canStartBlueprint` = 组装机卡片的按钮判据**（2026-09-14 船长报障后钉死）：
+   * 船长原话：「组装机原先没有图纸时会跳转到市场求购的按钮怎么没了」。
+   *
+   * 根因：该判据曾写成 `ownsBlueprint || recipeCapability(..., singleUse).kind === 'ok'`，
+   * 而 `recipeCapability(..., singleUse=false)` 对**普通图纸恒返回 `ok`**（见 ② 末行断言）——
+   * 那是"配方可用"，不是"现在能开工" ⇒ 未学会的普通图纸也判成"能造"，组装机卡片于是永远走
+   * 「手动制造 / AI 工位」那一支，**「市场求购蓝图书」按钮整个轮不到**（实测 181 张里 123 张被吃掉）。
+   * 本用例把"未学会的普通图纸 ⇒ false"钉住，防止有人再拿 `recipeCapability` 当开工判据。
+   */
+  it('⑨ 开工判据 `canStartBlueprint`：未学会的普通图纸必须为 false（否则"市场求购"按钮会被挡掉）', () => {
+    // 普通图纸：未学会 ⇒ 不能开工（这正是"该去市场买书"的那一档）
+    expect(canStartBlueprint(state, ctx, 'bp-a')).toBe(false)
+    // 一次性图纸：书架无书 ⇒ 不能开工；有书且名额未用尽 ⇒ 能
+    expect(canStartBlueprint(state, ctx, 'bp-one')).toBe(false)
+    state.blueprintStock['bp-one'] = 1
+    expect(canStartBlueprint(state, ctx, 'bp-one')).toBe(true)
+    // 学会普通配方 ⇒ 能开工
+    state.learnedRecipes.push('bp-a')
+    expect(canStartBlueprint(state, ctx, 'bp-a')).toBe(true)
+    // ⚠ **反面对照**（就是当年写错的那条）：`recipeCapability` 对普通图纸恒 `ok` ⇒
+    // 直接拿它当开工判据会让上面第一行为 true（即"未学会也能造"）——这正是回归的形状
+    expect(recipeCapability(state, 'bp-one', false).kind).toBe('ok')
   })
 })
 

@@ -700,15 +700,8 @@ export function WormholePanel({
       <>
         <div className="app-wh-node-title">
           {atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[hereCell.place]}
-          {/* 地点说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」）：
-              原先这段说明是卡片里的一行淡字（`.app-note`），现在按 2026-09-13「常驻说明进感叹号」口径收进提示 */}
-          <HintIcon
-            tip={
-              atExit
-                ? `${PLACE_NOTE[hereCell.place]}（这一格同时是下一层入口：继续深入就从这里下去。）`
-                : PLACE_NOTE[hereCell.place]
-            }
-          />
+          {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
+              属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
             {' '}· 坐标 Q{grid.pos.q} · R{grid.pos.r}
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
@@ -738,12 +731,12 @@ export function WormholePanel({
                 {veinCell ? '虚空母矿' : '残骸'}堆 {bulkPiles} 堆{veinCell ? '' : '（稀有在前）'} · 编队
                 {rigName} <b>{rigs}</b> 台 ⇒ 每回合回收 {Math.min(Math.max(rigs, 0), bulkPiles)} 堆、共{' '}
                 {rigs > 0 ? Math.ceil(bulkPiles / rigs) : '—'} 回合
-                {rigs <= 0 ? `（没有${rigName}：先给编队装上${rigName}）` : ''} · 走到这一格就铺好了，**不用激活**
+                {rigs <= 0 ? `（没有${rigName}：先给编队装上${rigName}）` : ''} · 走到这一格就铺好了，不用激活
               </div>
             ) : null}
             {shapedPiles.length > 0 ? (
               <div className="app-dim app-note">
-                另有 <b>{shapedPiles.length}</b> 件货柜：**打捞器搬不动它** ——
+                另有 <b>{shapedPiles.length}</b> 件货柜：打捞器搬不动它 ——
                 点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
               </div>
             ) : null}
@@ -754,7 +747,7 @@ export function WormholePanel({
             {hereCell.place === 'matter' ? (
               <div className="app-dim app-note">
                 这一格的谜质是「<b>{wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).name}</b>」：
-                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text} —— 取回后**装进货仓**生效
+                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text} —— 取回后装进货仓生效
                 （占 2×2 = 4 格，腾不出会先进临时空间），离开虫洞即失效。
               </div>
             ) : null}
@@ -830,7 +823,9 @@ export function WormholePanel({
               })}
             </div>
           </>
-        ) : null}
+        ) : (
+          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
+        )}
       </>
     )
   }
@@ -1156,7 +1151,7 @@ export function WormholePanel({
                           {damaged ? (
                             <span
                               className="app-wh-card-tag is-warn"
-                              title={`该舰带伤（承伤在虫洞内**跨节点保留**）：${armor < 1 ? `装甲 ${Math.round(armor * 100)}%` : ''}${
+                              title={`该舰带伤（承伤在虫洞内跨节点保留）：${armor < 1 ? `装甲 ${Math.round(armor * 100)}%` : ''}${
                                 armor < 1 && dur < 1 ? ' · ' : ''
                               }${dur < 1 ? `结构 ${Math.round(dur * 100)}%` : ''}——建议先回站维修或换一艘。`}
                             >
@@ -1247,7 +1242,7 @@ export function WormholePanel({
                         ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
                         {run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
                           ? '：第 1 层没有拦截舰队，货物直接入港。'
-                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——**打赢才把背包与货柜带回去**，打输 = 本趟全损。`}
+                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——打赢才把背包与货柜带回去，打输 = 本趟全损。`}
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1456,7 +1451,7 @@ export function WormholePanel({
                   </div>
                   {run.phase === 'extracting' && !run.battle ? (
                     <div className="app-wh-ask">
-                      ⚠ 撤离战：拦截舰队正在围堵你——战斗马上开始，**打赢才把背包与货柜带回去**
+                      ⚠ 撤离战：拦截舰队正在围堵你——战斗马上开始，打赢才把背包与货柜带回去
                       （打输 = 本趟全损）。
                     </div>
                   ) : null}
@@ -1979,12 +1974,12 @@ const GRID_LEGEND: ReadonlyArray<{
 /** 地点说明（看板一处说清"这里有什么/能干什么"；数字口径与 core 常量同源） */
 const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   empty: '空信息地点：什么都没有，没有可执行的作业。',
-  graveyard: '舰船墓场：走到就铺好普通残骸 3~10 堆（不用激活）、稀有残骸每 3 堆普通判一次——**要打捞器**，每回合回收 = 台数 的堆。',
+  graveyard: '舰船墓场：走到就铺好普通残骸 3~10 堆（不用激活）、稀有残骸每 3 堆普通判一次——要打捞器，每回合回收 = 台数 的堆。',
   ruins: '遗迹：走到就铺好稀有残骸 2~3 堆（不用激活），小概率拿到一次性图纸或专属装备；打捞结束大概率触发一场恶战。',
   ship: '舰船信号：到达即交火；打赢固定获得残骸与稀有残骸。',
-  vein: '矿脉：走到这一格就铺好虚空母矿 1~3 堆（**不用激活**）——**要采集器**，每回合回收 = 台数 的堆。',
+  vein: '矿脉：走到这一格就铺好虚空母矿 1~3 堆（不用激活）——要采集器，每回合回收 = 台数 的堆。',
   matter:
-    '虫洞谜质：取回后装进货仓（占 2×2 = 4 格），**本趟探索期间一直生效**——不一样的地点藏着不一样的装置，离开虫洞即失效。',
+    '虫洞谜质：取回后装进货仓（占 2×2 = 4 格），本趟探索期间一直生效——不一样的地点藏着不一样的装置，离开虫洞即失效。',
   beacon: '漂浮信标：到达即读出它标出的下一层入口位置（地图上会一直标着）。',
 }
 /**
@@ -2230,7 +2225,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`) +
                   (kind === 'temp'
                     ? isMatter
-                      ? ' · **在临时空间里不生效**（谜质增益只认货仓格）'
+                      ? ' · 在临时空间里不生效（谜质增益只认货仓格）'
                       : ' · 离开背包页前要放回货仓或丢掉'
                     : kind === 'hold' && isMatter
                       ? ' · 本趟增益生效中'
@@ -2294,7 +2289,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   <span className="app-dim">
                     {' '}
                     · 占 {p.w * p.h} 格
-                    {device ? ` · 谜质装置：放在这里**已失效**${wormholeMatterDiscardHint(p.itemId) ? `（${wormholeMatterDiscardHint(p.itemId)}）` : ''}` : ''}
+                    {device ? ` · 谜质装置：放在这里已失效${wormholeMatterDiscardHint(p.itemId) ? `（${wormholeMatterDiscardHint(p.itemId)}）` : ''}` : ''}
                   </span>
                 </li>
               )
@@ -2320,17 +2315,16 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           {' '}（散货 {info.cargoCells} 格 + 货柜 {info.shapeCells} 格
           {info.unplacedCells > 0 ? ` + 放不下 ${info.unplacedCells} 格` : ''}）
         </span>
-      </div>
-      <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（安全货柜 2×2 · 图纸货柜 2×1）占整块、**散货**每件最多 1 格
-        （超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），
-        装不下就留在原地；「整理」按钮把所有件自动重排。
+        {/* 货仓说明**进 ⓘ**（2026-09-14 船长：「虫洞背包页面的货仓说明要进」）——原文一字未改，只搬位置 */}
+        <HintIcon
+          tip={`每格 ${n(WORMHOLE_SLOT_M3)} m³；货柜（安全货柜 2×2 · 图纸货柜 2×1）占整块、散货每件最多 1 格（超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），装不下就留在原地；「整理」按钮把所有件自动重排。`}
+        />
       </div>
       {info.overload ? (
         <div className="app-wh-hold-overload">
           <span>
             货仓超载：沉船拖走了货舱，现在装不下（{info.used}/{info.capacity} 格）。
-            **请手动抛弃货物**——超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。
+            请手动抛弃货物——超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。
           </span>
           <button
             className="app-btn is-small is-warn"
@@ -2388,8 +2382,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             <span className="app-dim">拖回左边即放回货仓</span>
           </div>
           <div className="app-dim app-note">
-            腾位置用的临时格：**不占货仓容量、不算超载**；谜质储存器放这里**不生效**。
-            离开本页（切去探索/关面板/撤离）前必须处理完：**放回货仓** 或 **丢弃**。
+            腾位置用的临时格：不占货仓容量、不算超载；谜质储存器放这里不生效。
+            离开本页（切去探索/关面板/撤离）前必须处理完：放回货仓 或 丢弃。
           </div>
         </div>
       </div>

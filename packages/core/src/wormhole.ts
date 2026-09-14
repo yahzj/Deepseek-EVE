@@ -716,8 +716,8 @@ function maybeHintNebula(state: GameState, depth: number): void {
   addLog(
     state,
     'info',
-    '🕳 前方出现星云带：**星云会遮蔽地点的信号**——第一次扫描只看到云，' +
-      '**再扫描一次**（同一圈内）即可驱散并读出信号。',
+    '🕳 前方出现星云带：星云会遮蔽地点的信号——第一次扫描只看到云，' +
+      '再扫描一次（同一圈内）即可驱散并读出信号。',
   )
 }
 
@@ -897,7 +897,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
     'info',
     `🕳 扫描（半径 ${grid.scanRadius + buffs.scanRadius}）：揭开 ${revealed.length} 格` +
       (empty > 0 ? `（其中 ${empty} 格没有信号）` : '') +
-      (newlyFogged > 0 ? ` · **${newlyFogged} 格被星云遮住（再扫描一次可驱散）**` : '') +
+      (newlyFogged > 0 ? ` · ${newlyFogged} 格被星云遮住（再扫描一次可驱散）` : '') +
       (dispersed.length > 0 ? ` · 驱散星云 ${dispersed.length} 格` : '') +
       ` · 剩 ${run.turnsLeft} 回合。`,
   )

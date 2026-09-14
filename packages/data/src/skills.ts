@@ -193,14 +193,14 @@ export const SKILLS: readonly SkillDef[] = [
     name: '炉心熔炼学',
     group: '工业',
     rank: 2,
-    description: '精炼炉温控与搅拌工艺：**主控手动**精炼单批周期每级缩短 ⟦4%⟧（AI 核心驱动不受此技能影响）。',
+    description: '精炼炉温控与搅拌工艺：主控手动精炼单批周期每级缩短 ⟦4%⟧（AI 核心驱动不受此技能影响）。',
   },
   {
     id: 'furnace-expansion',
     name: '炉膛扩容学',
     group: '工业',
     rank: 2,
-    description: '精炼炉膛容积改造：**主控手动**精炼的单批处理量每级 +⟦6%⟧（AI 核心驱动不受此技能影响）。',
+    description: '精炼炉膛容积改造：主控手动精炼的单批处理量每级 +⟦6%⟧（AI 核心驱动不受此技能影响）。',
   },
   {
     id: 'batch-production',
@@ -420,7 +420,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '舰体快修学',
     group: '工程',
     rank: 2,
-    description: '应急修补手法：使用修理组件时的恢复量每级 +⟦5%⟧（满级 +⟦25%⟧）——**船体维修装置战斗中每跳同样计入**。',
+    description: '应急修补手法：使用修理组件时的恢复量每级 +⟦5%⟧（满级 +⟦25%⟧）——船体维修装置战斗中每跳同样计入。',
   },
   {
     id: 'station-protocol',

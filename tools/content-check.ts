@@ -2644,11 +2644,16 @@ for (const m of MODULES) {
   }
 }
 
-/* ── 模板串契约（2026-09-14 船长报障「虫洞探索地图的背景变成全黑了」后加）：
- * `url("${pinnedSpaceBg}")` 漏了反引号 ⇒ 输出的是**字面量文本**而不是插值，底图 URL 永远 404 ⇒
- * 地图只剩压暗层与 1px 星点，看上去"背景全黑"。类型系统看不出这种错（它就是个合法字符串），
- * 所以这里按 **TypeScript AST** 精确扫：**StringLiteral（单/双引号）的 text 里含 `${`** 即红
- * （模板串本身是 TemplateExpression / NoSubstitutionTemplateLiteral，不会误报；嵌套引号也不干扰）。 */
+/* ── 两条"静态读 AST"的契约（同一个遍历里一起扫，省一遍解析）：
+ * ①**模板串契约**（2026-09-14 船长报障「虫洞探索地图的背景变成全黑了」后加）：`url("${pinnedSpaceBg}")`
+ *   漏了反引号 ⇒ 输出的是**字面量文本**而不是插值，底图 URL 永远 404 ⇒ 地图只剩压暗层与 1px 星点。
+ *   类型系统看不出这种错（它就是个合法字符串）⇒ 按 AST 精确扫 **StringLiteral 的 text 里含 `${`**；
+ * ②**文案纯净契约**（2026-09-14 船长问「为什么有些说明文字有 ** 文字**」后加）：游戏文案是**纯文本渲染**，
+ *   开发文档里那套 Markdown 强调记号（连续两个星号）写进玩家可见字符串就会**原样显示**。
+ *   ⚠ **本契约刻意不写进约定/AGENTS**（船长 2026-09-14 裁定：「B 可以不用写入规则」）——它只是体检里的一道防线，
+ *   不派活、不加条款。
+ *   扫的是**文本节点**：字符串 / 模板串文本块 / JSX 文本；**注释不算**（注释里写强调记号是合法的，
+ *   本仓大量注释就是这么写的）⇒ 两类契约都只看文本节点，互不干扰。 */
 {
   const tplRoots = [
     'apps/desktop/src/renderer/src',
@@ -2671,6 +2676,14 @@ for (const m of MODULES) {
     if (existsSync(abs)) walkTpl(abs)
   }
   const tplOffenders: string[] = []
+  const mdOffenders: string[] = []
+  const isPlayerText = (node: ts.Node): boolean =>
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isTemplateHead(node) ||
+    ts.isTemplateMiddle(node) ||
+    ts.isTemplateTail(node) ||
+    node.kind === ts.SyntaxKind.JsxText
   for (const file of tplFiles) {
     const src = readFileSync(file, 'utf8')
     const sf = ts.createSourceFile(
@@ -2680,10 +2693,15 @@ for (const m of MODULES) {
       true,
       file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     )
+    const rel = file.slice(process.cwd().length + 1)
     const visit = (node: ts.Node): void => {
       if (ts.isStringLiteral(node) && node.text.includes('${')) {
         const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
-        tplOffenders.push(`${file.slice(process.cwd().length + 1)}:${line + 1}`)
+        tplOffenders.push(`${rel}:${line + 1}`)
+      }
+      if (isPlayerText(node) && node.getText(sf).includes('**')) {
+        const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+        mdOffenders.push(`${rel}:${line + 1}`)
       }
       ts.forEachChild(node, visit)
     }
@@ -2695,6 +2713,13 @@ for (const m of MODULES) {
   )
   if (tplOffenders.length === 0) {
     console.log(`· 模板串契约：${tplFiles.length} 个源文件无「引号字符串里含 \${…}」的漏反引号写法`)
+  }
+  check(
+    mdOffenders.length === 0,
+    `文案纯净契约：玩家可见文本里出现 Markdown 强调记号（连续两个星号）——游戏里是纯文本渲染，它会被**原样显示**给玩家（2026-09-14 船长报障）；请去掉记号（要强调用 <b>/颜色类，注释随意，注释不算文本节点）：${mdOffenders.join(' · ')}`,
+  )
+  if (mdOffenders.length === 0) {
+    console.log(`· 文案纯净契约：${tplFiles.length} 个源文件的文本节点无 Markdown 强调记号`)
   }
 }
 

@@ -763,7 +763,7 @@ export function wormholeTempAddShape(
   addLog(
     state,
     'info',
-    `🕳 放进临时空间：${name}（占 ${need} 格）——到「背包」页整理进货仓或丢弃（**离开背包页前必须处理**）。`,
+    `🕳 放进临时空间：${name}（占 ${need} 格）——到「背包」页整理进货仓或丢弃（离开背包页前必须处理）。`,
   )
   return { ok: true, cells: need }
 }
@@ -1056,7 +1056,7 @@ export function wormholeTempBlockReason(state: GameState, ctx: SimContext): stri
   if (pending.count <= 0) return null
   return (
     `临时空间里有 ${pending.count} 件没处理（${pending.cells}/${WORMHOLE_TEMP_CELLS} 格）：` +
-    `先到「背包」页把它们**放回货仓**或**丢弃**，再继续。`
+    `先到「背包」页把它们放回货仓或丢弃，再继续。`
   )
 }
 
@@ -1387,7 +1387,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     addLog(
       state,
       'warn',
-      `🕳 这一格还有 ${boxLeft} 件货柜：**它不是散货、打捞器搬不动**——` +
+      `🕳 这一格还有 ${boxLeft} 件货柜：它不是散货、打捞器搬不动——` +
         `点堆位自己拾取装舱（形状件按占地占货仓格；货仓腾不出会先进临时空间）。`,
     )
   }
@@ -1424,14 +1424,14 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
         addLog(
           state,
           'info',
-          `🕳 遗迹深处发现${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ **先放进临时空间**（到「货仓」页整理进货仓）。`,
+          `🕳 遗迹深处发现${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
         )
       } else {
         cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
         addLog(
           state,
           'warn',
-          `🕳 遗迹深处发现${name}：**货仓与临时空间都放不下** ⇒ 先散落在该地点（腾出空间后回来拾取）。`,
+          `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`,
         )
       }
       result.relics = [boxId]
@@ -1449,10 +1449,10 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       if (landed.where === 'hold') {
         addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 1 格）。`)
       } else if (landed.where === 'temp') {
-        addLog(state, 'info', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ **先放进临时空间**（到「货仓」页整理进货仓）。`)
+        addLog(state, 'info', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`)
       } else {
         cell.piles = [...(cell.piles ?? []), { itemId: coreId, units: 1 }]
-        addLog(state, 'warn', `🕳 遗迹深处发现${name}：**货仓与临时空间都放不下** ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
+        addLog(state, 'warn', `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
       }
       result.cores = [coreId]
     }
