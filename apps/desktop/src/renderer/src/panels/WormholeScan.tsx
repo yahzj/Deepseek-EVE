@@ -6,7 +6,8 @@
  * - **主控活动**：开始/停止都只在本页（进度保留，停扫不清零）；与采矿/打捞/远征等互斥；
  * - **窗口 = 220 分钟 × 三技能乘算**（信号分析学/星图测绘学/信号过滤学，与星图扫描同源；不吃舰船属性）；
  * - 进度满 ⇒ 发现一处虫洞进库存（**上限 5**，满了**停机并提示**）；
- * - 库存每处带**种子 + 起始层**（越深越险、产出越高）；「探索这一处」⇒ 打开准备页选编队进洞（**消耗**该处）；
+ * - 库存每处带**种子 + 内容原型 + 敌族**（起始层**恒 1**：船长 2026-09-14「所有虫洞都是从1层开始探索」）；
+ *   卡片只显示「**原型名，发现于 X月X日**」（船长 2026-09-14）；「探索这一处」⇒ 打开准备页选编队进洞（**消耗**该处）；
  * - **自动探索**（批次 3 · 船长逐条定案）：每处一个「自动探索」——自动配置最多 4 条非主控船（每条占 1 枚
  *   AI 核心，可手动改）、**5 分钟**、完成后停止；产出 = **手动一趟期望 × 40%**（**直入仓库**、不保底）；
  *   参与舰**结构/装甲各受损 −40%~−80%** 但**绝不丢船**、任务期间锁定；
@@ -28,9 +29,31 @@ import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
 } from '@whale/core'
+import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+
+/**
+ * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
+ *
+ * 口径：发现时刻 = **开局墙钟**（`character.startedAtWallMs`，建档那一刻）+ **游戏内已过时间**
+ * （`foundAtGameMs`；游戏时间与墙钟同速，离线结算也算进 `gameMs`）⇒ 得到玩家真实日历上的月/日。
+ * 显示成绝对日期 ⇒ **不再每秒跳动**（旧文案「57秒前」会一直变）。
+ */
+function foundDateLabel(state: GameState, foundAtGameMs: number): string {
+  const d = new Date((state.character?.startedAtWallMs ?? 0) + Math.max(0, foundAtGameMs))
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}
+
+/** 库存项的**标准一行**（卡片与放弃弹窗共用同一口径）：族徽 + 「原型名，发现于 X月X日」 */
+function stockLineOf(
+  state: GameState,
+  item: { family: WormholeFamily; archetype: WormholeArchetype; foundAtGameMs: number },
+): { glyph: string; text: string } {
+  const glyph = `fam-${item.family.toLowerCase()}`
+  return { glyph, text: `${WORMHOLE_ARCHETYPE_LABELS[item.archetype]}，发现于 ${foundDateLabel(state, item.foundAtGameMs)}` }
+}
 
 export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEngine; onToast: ToastFn; onExplore: (stockId: string) => void }) {
   const state = engine.state
@@ -158,7 +181,7 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
         ) : (
           <ul className="app-inv-list">
             {stock.map((item) => {
-              const famGlyph = `fam-${item.family.toLowerCase()}`
+              const line = stockLineOf(state, item)
               const famName = engine.wormholeFamilyName(item.family)
               const archName = WORMHOLE_ARCHETYPE_LABELS[item.archetype]
               return (
@@ -166,16 +189,19 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
                   <div className="app-inv-main">
                     <span className="app-inv-name">
                       <span className="app-ico">
-                        <Glyph name={famGlyph} size={14} color={ICO_TONES[famGlyph]} />
+                        <Glyph name={line.glyph} size={14} color={ICO_TONES[line.glyph]} />
                       </span>
-                      虫洞 · 起始第 {item.depth} 层
+                      虫洞
                     </span>
+                    {/**
+                     * 卡片只留「**原型名，发现于 X月X日**」（船长 2026-09-14：「只需要显示'遗迹密集，
+                     * 发现于XX月XX日'」）——族名/深度说明/相对时间一律撤下，完整口径进悬停。
+                     */}
                     <span
                       className="app-inv-count"
-                      title={`族徽＝这一处整趟都是「${famName}」：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一族。\n内容原型「${archName}」＝这一处的地点配比口味（强度仍只看起始层）。`}
+                      title={`族徽＝这一处整趟都是「${famName}」：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一族。\n内容原型「${archName}」＝这一处的地点配比口味（威胁与产出随所在层数上升：越深越险、产出越高）。`}
                     >
-                      {famName} · {archName} · 威胁与产出随起始层上升（越深越险、产出越高） · 发现于{' '}
-                      {formatDurationMs(Math.max(0, state.gameMs - item.foundAtGameMs))}前
+                      {line.text}
                     </span>
                   </div>
                   <div className="app-inv-btns">
@@ -213,35 +239,53 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
           </ul>
         )}
 
-        {/* 放弃确认（与「临时空间丢弃」同一套确认条：一次一处、说明不可恢复） */}
+        {/**
+         * **放弃确认走弹窗**（船长 2026-09-14：「**放弃虫洞的警告改用弹窗形式。**」）——
+         * 与站内其它确认弹窗同一套结构（`.app-modal-mask` / `.app-modal` / `.app-modal-head` /
+         * `.app-modal-body`，对齐「存档管理」那种写法）：点遮罩或「✕ 关闭」都等于先留着，
+         * 只有点红色的「确认放弃」才真的放弃（一次一处、说明不可恢复）。
+         */}
         {discardAsk !== null
           ? (() => {
               const item = stock.find((x) => x.id === discardAsk)
               if (!item) return null
+              const line = stockLineOf(state, item)
               return (
-                <div className="app-wh-scanbar">
-                  <div className="app-wh-scanbar-label">
-                    <span className="app-wh-hold-warn">
-                      放弃这一处虫洞？起始第 {item.depth} 层 · {engine.wormholeFamilyName(item.family)} ·{' '}
-                      {WORMHOLE_ARCHETYPE_LABELS[item.archetype]}
-                    </span>
-                  </div>
-                  <div className="app-dim">放弃后这一处就没了、**不可恢复**；库存格腾出来给新的发现，扫描进度不受影响。</div>
-                  <div className="app-wh-scanbar-actions">
-                    <button
-                      className="app-btn is-small is-warn"
-                      onClick={() => {
-                        const r = engine.wormholeStockDiscard(item.id)
-                        if (!r.ok) onToast(r.error ?? '放弃失败。', true)
-                        else onToast('已放弃这一处虫洞。')
-                        setDiscardAsk(null)
-                      }}
-                    >
-                      确认放弃
-                    </button>
-                    <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
-                      先留着
-                    </button>
+                <div className="app-modal-mask" onClick={() => setDiscardAsk(null)}>
+                  <div className="app-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="app-modal-head">
+                      <span className="app-report-title">放弃这一处虫洞？</span>
+                      <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
+                        ✕ 关闭
+                      </button>
+                    </div>
+                    <div className="app-modal-body">
+                      <div className="app-inv-name">
+                        <span className="app-ico">
+                          <Glyph name={line.glyph} size={14} color={ICO_TONES[line.glyph]} />
+                        </span>
+                        {line.text}
+                      </div>
+                      <div className="app-dim" style={{ marginTop: 6 }}>
+                        放弃后这一处就没了、<b>不可恢复</b>；库存格腾出来给新的发现，**扫描进度不受影响**。
+                      </div>
+                      <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
+                        <button
+                          className="app-btn is-small is-warn"
+                          onClick={() => {
+                            const r = engine.wormholeStockDiscard(item.id)
+                            if (!r.ok) onToast(r.error ?? '放弃失败。', true)
+                            else onToast('已放弃这一处虫洞。')
+                            setDiscardAsk(null)
+                          }}
+                        >
+                          确认放弃
+                        </button>
+                        <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
+                          先留着
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )
@@ -338,7 +382,7 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
                 return (
                   <li key={run.id} className="app-inv-row">
                     <div className="app-inv-main">
-                      <span className="app-inv-name">虫洞 · 起始第 {run.depth} 层</span>
+                      <span className="app-inv-name">虫洞 · 自动探索中</span>
                       <span className="app-inv-count">
                         {run.shipIds.length} 条舰（各占 1 枚 AI 核心）· 还剩{' '}
                         {formatDurationMs(Math.max(0, run.finishAtGameMs - state.gameMs))}
@@ -388,7 +432,7 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
                 <li key={rep.id} className="app-inv-row">
                   <div className="app-inv-main">
                     <span className="app-inv-name">
-                      起始第 {rep.depth} 层 · {rep.confirmed ? '已确认' : '待确认'}
+                      自动探索结果 · {rep.confirmed ? '已确认' : '待确认'}
                     </span>
                     <span className="app-inv-count">
                       收益（已入仓库）：

@@ -1500,10 +1500,16 @@ export class GameEngine {
     return r
   }
 
-  /** 族名（取该族那张洞内敌卡的卡名：劫掠支队 / 巢群游猎 / 守墓巡哨 / 亡灵封锁 / 巨构残响） */
+  /**
+   * 族名（取该族那张洞内敌卡的卡名：劫掠支队 / 巢群游猎 / 守墓巡哨 / 巨构残响 / 亡军封锁）。
+   *
+   * ⚠ **必须走 `ctx.anomalies` 全表**：五张洞内卡都带 `hidden: true`（施工期不进悬赏目录），
+   * 而 `this.anomalies` 是**过滤掉 hidden 的目录** ⇒ 早先在这里查不到、界面直接漏出内部 id
+   * （船长 2026-09-14 报障看到的是 `wh-alien-swarm`）。改成查全表，查不到才退回 id。
+   */
   wormholeFamilyName(family: WormholeFamily): string {
     const cardId = WORMHOLE_FAMILY_CARD[family]
-    return this.anomalies.find((a) => a.id === cardId)?.name ?? cardId
+    return this.ctx.anomalies.get(cardId)?.name ?? this.anomalies.find((a) => a.id === cardId)?.name ?? cardId
   }
 
   /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */

@@ -2294,7 +2294,7 @@ function normalizeState(raw: unknown): GameState {
         ? Math.min(WORMHOLE_SCAN_BASE_MS, Math.floor(whScanProgressRaw))
         : 0,
   }
-  // 库存：只收"结构完整"的条目（id 非空 / 种子与起始层为正整数），上限 = `WORMHOLE_STOCK_MAX`
+  // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX`
   const wormholeStock: Array<{
     id: string
     seed: number
@@ -2309,12 +2309,12 @@ function normalizeState(raw: unknown): GameState {
     const o = asRaw(item)
     const id = typeof o.id === 'string' ? o.id : ''
     const seed = Math.floor(num(o.seed))
-    const depthRaw = Math.floor(num(o.depth))
     if (id.length === 0 || !Number.isFinite(seed) || seed <= 0) continue
     wormholeStock.push({
       id,
       seed,
-      depth: Number.isFinite(depthRaw) ? Math.min(9, Math.max(1, depthRaw)) : 1,
+      /** 起始层：**恒 1**（船长 2026-09-14「所有虫洞都是从1层开始探索」）⇒ 旧档里的 2/3 一并归 1 */
+      depth: 1,
       /**
        * 内容原型与敌族（丙/丁 · 2026-09-14）：**老档没有 ⇒ 按种子现算**（零迁移，且与发现时一致）；
        * 坏值（非法字符串）同样退回现算，不把脏值带进运行态。
