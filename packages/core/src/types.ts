@@ -845,6 +845,12 @@ export interface BattleBalance {
   foeChargeEnabled: boolean
   /** 突进期敌机动倍率（临时加速，仍走距离拔河公式） */
   foeChargeMul: number
+  /**
+   * **冲锋触发余量**（船长 2026-09-14：「冲锋按乙方案来」）：距离 > 期望交距 + 本值 ⇒ 开始冲锋。
+   * 与"够不着（超出自己射程）"**取或**；结束条件不变（压到期望交距即停、冷却 20 秒）。
+   * 例：噬口巨兽期望交距 543 ⇒ **1,543 m 起冲**（旧口径要 3,713 m 以外）。
+   */
+  foeChargeTriggerMarginM: number
   /** 进入自己武器射程后再维持多久，随后突进结束 */
   foeChargeMaxHoldMs: number
   /** 突进冷却（毫秒）：这段时间内不能再次突进 */

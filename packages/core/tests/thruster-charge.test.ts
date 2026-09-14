@@ -213,6 +213,27 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
     expect(can('ano-orbit-hi')).toBe(false)
   })
 
+  it('乙方案（船长 2026-09-14）：距离在**自己射程之内**、但 > 期望交距 + 1000 ⇒ 也冲锋', () => {
+    // ARRIVAL_SHIP：射程 1~13,000 ⇒ 期望交距 2,601 ⇒ 乙的触发线 = 3,601 m；取 5,000 m（**在它射程之内**，旧口径不触发）。
+    const ctx = ctxWith(true)
+    const s1 = battleVs(ctx, 'ano-t-arrival', 'mod-long-slow', 300)
+    s1.b!.foeChargeOn = false
+    s1.b!.foeChargeCdUntilMs = 0
+    s1.b!.distanceM = 5_000
+    s1.state.gameMs = 1_000
+    advanceBattleFor(s1.state, ctx, s1.b!, 'sandcat2', 'ano-t-arrival')
+    expect(s1.b!.foeChargeOn, '乙：5,000 m > 2,601 + 1,000 ⇒ 应冲锋').toBe(true)
+    // 反证：把余量调到极大 = 等效"只留旧口径（够不着才冲）" ⇒ 同一距离不冲锋
+    ctx.balance.battle.foeChargeTriggerMarginM = 999_999
+    const s2 = battleVs(ctx, 'ano-t-arrival', 'mod-long-slow', 300)
+    s2.b!.foeChargeOn = false
+    s2.b!.foeChargeCdUntilMs = 0
+    s2.b!.distanceM = 5_000
+    s2.state.gameMs = 1_000
+    advanceBattleFor(s2.state, ctx, s2.b!, 'sandcat2', 'ano-t-arrival')
+    expect(s2.b!.foeChargeOn, '旧口径：同一距离在射程之内 ⇒ 不冲锋').toBe(false)
+  })
+
   it('够不着 → 启动突进；**到达目标距离**后结束并进入冷却（开关启用时）', () => {
     const ctx = ctxWith(true)
     // 专用场景（舰级级 opt-in + 目标距离 2,601m + 我方期望交距压到 300m ⇒ 双方都往内压）：

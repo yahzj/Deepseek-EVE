@@ -509,8 +509,9 @@ export function thrusterPhase(
 }
 
 /**
- * 高威胁近战敌突进状态机（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）：
- * 够不着（距离在**自己武器射程之外**）→ **突进**（机动 ×`foeChargeMul`，仍走拔河公式）；
+ * 高威胁近战敌突进状态机（2026-09-10 定；结束条件 2026-09-11 改判；**触发条件 2026-09-14 加一条**）：
+ * **触发两条取或**：① 够不着（距离在**自己武器射程之外**）② **距离 > 期望交距 + 1,000**
+ * （船长 2026-09-14「冲锋按乙方案来」）→ **突进**（机动 ×`foeChargeMul`，仍走拔河公式）；
  * **到达目标距离（敌方期望交距）→ 突进结束**（船长 2026-09-11：「冲锋结束条件修改，**改为到达目标距离**」
  * ——原口径'进入射程后再维持 2 秒'与其旋钮 `foeChargeMaxHoldMs` **随之停用**）；
  * 随后 `foeChargeCooldownMs`（**20 秒**）冷却，期满且再次够不着才能重启。
@@ -548,6 +549,12 @@ function updateFoeCharge(
   //   必然发生在"进入射程"之后，状态机单向、不会抖动。
   const w = charger.weapons[0]
   const inFoeRange = w ? inRange(b.distanceM, w) : false
+  // **触发两条取或**（船长 2026-09-14「冲锋按乙方案来」）：
+  //   ① 完全够不着（距离在自己射程之外）——2026-09-10 原口径；
+  //   ② 距离 > 期望交距 + `foeChargeTriggerMarginM`（默认 1,000）——被中距离拉扯就冲。
+  //   加 ② 的原因：射程长的单位（噬口 3,713 m）在原口径下永不触发 ⇒ 体感"冲锋不存在"。
+  const margin = bal.foeChargeTriggerMarginM ?? 1_000
+  const wantCharge = !inFoeRange || b.distanceM > desireM + margin
   const arrived = b.distanceM <= desireM
   if (b.foeChargeOn) {
     if (arrived) {
@@ -557,7 +564,7 @@ function updateFoeCharge(
     return charger; // 未到目标距离：持续突进（冷却不启动）——返回冲锋者供 `stepBattle` 施加加速
   }
   const cdUntil = b.foeChargeCdUntilMs ?? 0
-  if (nowMs >= cdUntil && !inFoeRange) b.foeChargeOn = true
+  if (nowMs >= cdUntil && wantCharge) b.foeChargeOn = true
   return b.foeChargeOn ? charger : null
 }
 
