@@ -8888,11 +8888,7 @@ body {
 /* 「看详情」（开通讯页读该步全文）与「跳过教程」：次要按钮，弱化以免与主按钮抢视线 */
 .app-stepbar-detail, .app-stepbar-skip { flex: 0 0 auto; }
 .app-stepbar-skip { color: #9db8a8; border-color: rgba(120,160,140,.4); }
-/* 呼吸提示（主按钮光晕）。⚠ **只动光晕、不做位移**（2026-09-13 修黑屏 BUG）：
-   原先 50% 帧带 `transform: translateY(-1px)`，而**这个按钮正是教程光圈的目标之一**——
-   框高随之逐帧 64↔65 抖动 ⇒ 光圈状态每拍换新对象 ⇒ 布局 effect 连环 setState（React #185）⇒ 黑屏。
-   去掉位移既断了病因，光晕观感不变。 */
-@keyframes app-stepbar-pulse { 0%,100% { box-shadow: 0 0 4px rgba(120,240,170,.35); } 50% { box-shadow: 0 0 16px rgba(120,240,170,.85); } }
+@keyframes app-stepbar-pulse { 0%,100% { box-shadow: 0 0 4px rgba(120,240,170,.35); } 50% { box-shadow: 0 0 16px rgba(120,240,170,.85); transform: translateY(-1px); } }
 .app-spot-ring { position: fixed; z-index: 79; pointer-events: none; border: 3px solid #7dffb0; border-radius: 10px; box-shadow: 0 0 0 3px rgba(10,30,18,.75), 0 0 22px rgba(110,255,180,.95); animation: app-spot-pulse .9s ease-in-out infinite; }
 @keyframes app-spot-pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
 /* 2026-09-08：「点这里」气泡改为独立 fixed 元素（原先 absolute 跟随光圈，估算定位会出屏/消失）——
