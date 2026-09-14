@@ -330,14 +330,27 @@ body {
 
 /* ── 侧栏让位顺序（船长 2026-09-14 口径：「当侧边栏导航栏高度不足时，优先压缩出港，其次压缩出港
    下面选项的高度（但是要保证字正常显示）」）──
-   旋转模式的逻辑高只有 ~554px，而侧栏内容 ≈ 710px（舰船窗 66+8 · 金钱栏 30+6 · 出港 148+10 ·
-   其余 8 项 ×46 · 10 道 5px 间距 · 侧栏自身 12+12 内边距）⇒ 必然放不下。落地：
+   旋转模式的逻辑高只有 ~554px，而侧栏内容 ≈ 726px（舰船窗 66+8 · 金钱栏 30+6 · 出港 148+10 ·
+   其余 8 项 ×48 · 10 道 5px 间距 · 侧栏自身 12+12 内边距）⇒ 必然放不下。落地：
    ① **出港**是唯一可压缩项（`flex-shrink: 1`，正方形被压扁；图标与文字仍按原尺寸画）；
    ② 其余导航项在旋转模式下**先按紧凑款起步**——只收**上下内边距**（11 → 5px）与间距（5 → 4px），
       **字号 / 行高 / 图标尺寸一律不动**（"字正常显示"）；
    ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。 */
 .app-root.is-mobile-rot .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: 4px; }
 .app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured) { padding-top: 5px; padding-bottom: 5px; }
+
+/* ── 虫洞弹层内部：旋转时按**桌面款**排（船长 2026-09-14 裁定「只还原虫洞弹层内部」）──
+   弹层本身已按逻辑空间定尺寸（1060 × ≈520），但**物理竖屏宽仍是 ~390** ⇒ 上批给窄屏加的那条
+   `@media (max-width: 640px)` 防御块照样命中：地图排被改成竖排、缩放控件改横排、结算卡满宽单列、
+   页签换行（实测全仓**只有 6 个窄窗媒体块**，虫洞弹层内部本来**没有** ≤1023 的窄窗变体）。
+   旋转后逻辑宽有 1200 ⇒ 内部一律还原桌面款；**唯一保留**「面板体可滚」那条防御（桌面窗口更高、
+   通常不需要，旋转下是兜底——不溢出就不出滚动条）。 */
+.app-root.is-mobile-rot .app-wh-maprow { flex-direction: row; }
+.app-root.is-mobile-rot .app-wh-zoom { flex-direction: column; justify-content: flex-start; }
+.app-root.is-mobile-rot .app-wh-settle { width: 640px; }
+.app-root.is-mobile-rot .app-wh-settle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.app-root.is-mobile-rot .app-wh-tabs { flex-wrap: nowrap; }
+.app-root.is-mobile-rot .app-modal-head { flex-wrap: nowrap; }
 
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
@@ -3279,6 +3292,17 @@ body {
 
   flex-shrink: 1;
 
+}
+
+/* ── 矮窗口同口径（船长 2026-09-14 口径：「当侧边栏导航栏高度不足时，优先压缩出港，其次压缩出港
+   下面选项的高度（但是要保证字正常显示）」＋ 当日追加裁定「**桌面矮窗口也要，与手机同口径**」）──
+   侧栏内容自然高 ≈ 726px（同上算法），紧凑款 ≈ 612px，再把出港压到内容高（42 图标 + 6 间距 + 19 文字）
+   ⇒ 最低 ≈ 531px。故 **矮于 730px 即启用紧凑款**（自然高 726 + 4px 余量）：出港仍先让位
+   （`flex-shrink: 1`），导航项只收上下内边距、**字号 / 行高 / 图标一律不动**，收完仍不足才出滚动条。
+   ⚠ 旋转模式不走这条（旋转下物理高 ~844 不会命中），由上面的 `is-mobile-rot` 两条负责。 */
+@media (max-height: 730px) {
+  .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: 4px; }
+  .app-nav-side .app-nav-item:not(.is-featured) { padding-top: 5px; padding-bottom: 5px; }
 }
 
 .app-nav-side .app-nav-item.is-featured .app-nav-icon {
