@@ -191,12 +191,14 @@ export function TooltipLayer(): ReactNode {
     let timer = 0
     let armed: HTMLElement | null = null // 已进入、在等延迟的元素
     let shown: HTMLElement | null = null // 已摘走 title、正在展示自绘提示的元素
+    let shownText = '' // 正在展示的文本（跟随鼠标时要用它重排）
     const restore = (): void => {
       if (timer !== 0) {
         window.clearTimeout(timer)
         timer = 0
       }
       armed = null
+      shownText = ''
       if (!shown) return
       const el = shown
       shown = null
@@ -224,8 +226,13 @@ export function TooltipLayer(): ReactNode {
         el.dataset[NATIVE_TIP_STASH] = text
         el.removeAttribute('title')
         shown = el
+        shownText = text
+        // 锚在**鼠标位置**（2026-09-13 船长：「鼠标悬浮的 title 要跟随鼠标走」）——
+        // 指针位置取模块级 lastPt（触屏合成事件给 (0,0) 时回落到元素底边中点）
         const r = el.getBoundingClientRect()
-        showTip(text, Math.round(r.left + Math.min(r.width / 2, 160)), Math.round(r.bottom - 4))
+        const anchorX = lastPt.x >= 0 ? lastPt.x : Math.round(r.left + Math.min(r.width / 2, 160))
+        const anchorY = lastPt.y >= 0 ? lastPt.y : Math.round(r.bottom - 4)
+        showTip(text, anchorX, anchorY)
       }, NATIVE_TIP_HOVER_MS)
     }
     const onLeave = (e: Event): void => {
@@ -237,16 +244,27 @@ export function TooltipLayer(): ReactNode {
       restore()
       hideTip()
     }
+    /** 提示跟随鼠标（`moveTip` 自带 rAF 节流；只在提示已展示时重排） */
+    const onMove = (e: Event): void => {
+      if (!shown || shownText === '') return
+      const me = e as unknown as { clientX: number; clientY: number }
+      if (typeof me.clientX !== 'number') return
+      moveTip(shownText, me.clientX, me.clientY)
+    }
     document.addEventListener('mouseover', onEnter, true)
     document.addEventListener('mouseout', onLeave, true)
     document.addEventListener('pointerover', onEnter, true)
     document.addEventListener('pointerout', onLeave, true)
+    document.addEventListener('mousemove', onMove, true)
+    document.addEventListener('pointermove', onMove, true)
     return () => {
       restore()
       document.removeEventListener('mouseover', onEnter, true)
       document.removeEventListener('mouseout', onLeave, true)
       document.removeEventListener('pointerover', onEnter, true)
       document.removeEventListener('pointerout', onLeave, true)
+      document.removeEventListener('mousemove', onMove, true)
+      document.removeEventListener('pointermove', onMove, true)
     }
   }, [])
 
