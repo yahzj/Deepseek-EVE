@@ -265,6 +265,54 @@ describe('虫洞 · 敌方选靶模式（船长 2026-09-13 定）', () => {
     expect(state.rng.count).toBe(after2)
   })
 
+  it('**倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→ 先定 60%、同日改 40%）', () => {
+    // ⚠ 本用例验的是**机制**（口子、掷骰点、随机数消耗数），故取 0.6 这个中间值当夹具；
+    //    **生产用值 = 0.4**（卡上与 BOSS 常量），由 `wormhole-battle.test.ts` 的派生用例钉住。
+    const state = fresh()
+    const big = addShip(state, 'sh-xuanwu') // T4：`largest` 的唯一解
+    const miner = addShip(state, 'sandcat') // T1 非战斗
+    const gunner = addShip(state, 'sh-mako', ['mod-turret-kin-1', 'mod-turret-kin-1']) // T2：`top-output` 的解
+    const units = specsWithTags(state, [
+      [big, 'player'],
+      [miner, 'ally-1'],
+      [gunner, 'ally-2'],
+    ])
+    const battle = createBattleState(units[0]!, [], 0, 1_000, units.slice(1))
+    // ① 缺省 chance = 1（铁律）：逐发都是模式解，且**不多掷倾向骰**（每发只花"并列随机"那一颗）
+    const before1 = state.rng.count
+    for (let i = 0; i < 20; i++) expect(pickMyUnitTarget(state, battle, units, 'largest')!.tag).toBe('player')
+    expect(state.rng.count).toBe(before1 + 20)
+    // ② chance = 0.6：**模式掷中六成**；没掷中的四成退回等权随机——注意"乱打"时**也可能**正好
+    //    打到模式原本要打的那艘（三艘里 1/3）⇒ 观测命中率 = 0.6 + 0.4 ÷ 3 ≈ 0.733，不是 0.6。
+    //    判据因而取三条：不是铁律（有人被乱打）· 不是纯随机（模式确实在起作用）· 落在这条理论带内。
+    let hits = 0
+    const before2 = state.rng.count
+    for (let i = 0; i < 400; i++) {
+      if (pickMyUnitTarget(state, battle, units, 'largest', 0.6)!.tag === 'player') hits += 1
+    }
+    // 每发固定两颗骰：倾向骰 + 并列随机（命中与没命中都各一颗）
+    expect(state.rng.count).toBe(before2 + 800)
+    const misses = 400 - hits
+    // 带子怎么定的：理论上命中率 = 0.6 + 0.4 ÷ 3 ≈ 0.733（400 发的 3σ ≈ ±0.066），但 `nextRandom`
+    // 是"每抽重播种子"的实现、同一条确定性流实测略偏高（正向读到 0.7675；判据写反时读到 0.5475）
+    // ⇒ 取实测 ±0.05 作带子。本用例自持随机流（不依赖上游消费顺序）⇒ 稳定可复现、不是"看运气"。
+    expect(misses).toBeGreaterThan(70) // 铁律会给 0 次
+    expect(misses).toBeLessThan(135) // 纯随机会给 ≈267 次（2/3）
+    expect(hits / 400).toBeGreaterThan(0.68)
+    expect(hits / 400).toBeLessThan(0.8)
+    // ③ chance = 0：模式**完全失效**（三艘都可能被抽到）——"倾向"而不是"铁律"的可观测证据
+    const seen = new Set<string>()
+    for (let i = 0; i < 200; i++) seen.add(pickMyUnitTarget(state, battle, units, 'largest', 0)!.tag)
+    expect(seen.size).toBe(3)
+    // ④ `random` 模式 + 单船路径：**连倾向骰都不掷**（洞外零漂移的命门）
+    const soloBefore = state.rng.count
+    expect(pickMyUnitTarget(state, battle, [units[0]!], 'largest', 0.6)!.tag).toBe('player')
+    expect(state.rng.count).toBe(soloBefore)
+    const rndBefore = state.rng.count
+    pickMyUnitTarget(state, battle, units, 'random', 0.6)
+    expect(state.rng.count).toBe(rndBefore + 1)
+  })
+
   it('单船路径的"打尸体也照旧结算"口径：编队只有一条时选靶恒返回它（哪怕已沉）', () => {
     // 为什么守这条：改动前敌方主炮分支只判 `!meRt`、不判存活 ⇒ 我方被打沉的那一拍，
     // 本拍剩余敌人**仍会结算开火**（打进 `stats.foeShots`，标定工具「敌开火」列看得到）。

@@ -44,7 +44,7 @@ import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inve
 import { fleetDefOf, shipDisplayName } from './instances'
 import { uidDefId } from './labels'
 import { quickRepairFactor } from './repair'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight, weightedSum } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
 
 /** 战斗基本步长（毫秒） */
@@ -910,13 +910,23 @@ export function createPlayerSpec(
   // 装配变化导致舱容/CPU 不足时按清单顺序整型裁到装得下，装不下的类型跳过）
   let bayLimit = ship.droneBayM3 ?? 0
   let droneDmgBonus = 0
-  // 无人机中继天线（2026-09-10 船长：百分比制求和乘入机型基础射程；多件线性可叠）
-  let droneRangeMult = 1
+  /**
+   * 无人机中继天线（2026-09-10 船长：百分比制乘入机型基础射程）。
+   *
+   * ⚠ **2026-09-14 船长「对无人机的射程插件添加叠加惩罚」→「按推荐折算」**：由"全额线性相加"改为
+   * **折权加算**（`weightedSum`）——四件同池（制式 MK1/2/3 + G 族「流亡中继桅」）按**加成从强到弱**排位，
+   * 第 2 件起乘 `stackWeight` 的 87% / 57% / 28% / 11% 后相加 ⇒ 件件递减（读数：3×MK1 由 +60% → +48.8%、
+   * 3×MK3 由 +240% → +195.2%）。判据单点 = `equipment.weightedSum`，收敛分组 = `stackingOf` 的 `weighted`。
+   */
+  const droneRangePcts: number[] = []
   for (const g of droneGear) {
     bayLimit += g.droneBayBonusM3 ?? 0
     droneDmgBonus += g.droneDmgBonus ?? 0
-    droneRangeMult += g.droneRangeBonusPct ?? 0
+    if ((g.droneRangeBonusPct ?? 0) > 0) droneRangePcts.push(g.droneRangeBonusPct!)
   }
+  const droneRangeMult = 1 + weightedSum(droneRangePcts)
+
+
   let bayUsed = 0
   // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
   let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx)
@@ -3881,6 +3891,8 @@ export function advanceBattleFor(
       waves ? waveIdx < lastIdx : false,
       // 敌方选靶模式（虫洞内敌卡专属；缺省 random）——单船路径不消费选靶随机数，见 pickMyUnitTarget
       anomaly.foeTargeting ?? 'random',
+      // 倾向概率（2026-09-14 船长定 0.6；缺省 1 = 铁律 ⇒ 洞外场次连一次骰都不掷）
+      anomaly.foeTargetingChance ?? 1,
     )
     battle.lastTickGameMs += dt
     // 连续作战保险（2026-09-08 船长定，仅巡回场次 battle.hullEscapeFrac 有值）：
@@ -4465,6 +4477,11 @@ function stepBattle(
   hasMoreWaves = false, // 多波（2026-09-09）：本波清空但还有后续波 → 不判胜，由推进方切波续刷
   /** 敌方选靶模式（虫洞内敌卡专属；`random` = 等权随机，多单位下的缺省） */
   foeTargeting: FoeTargetingMode = 'random',
+  /**
+   * **选靶倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→「挨个定为 60%」）：
+   * `1` = 铁律（缺省，不掷骰）· `<1` ⇒ 每发开火前掷一次，没掷中退回随机（见 `pickMyUnitTarget`）。
+   */
+  foeTargetingChance = 1,
 ): void {
   const dtSec = dtMs / 1000
   // 主控 = 编队首条（距离/期望交距/胜率口径的锚；单船路径即唯一那条）
@@ -4793,7 +4810,7 @@ function stepBattle(
     if (!rt || !isAlive(b, f.tag)) continue;
     // 本发（本次齐射）的目标：**每次开火前重选**——目标被打沉后自动换人，与"每发独立抽敌人"对称。
     const pickTarget = (): { spec: UnitSpec; rt: import('./state').BattleState['units'][string] } | null => {
-      const spec = pickMyUnitTarget(state, b, myUnits, foeTargeting)
+      const spec = pickMyUnitTarget(state, b, myUnits, foeTargeting, foeTargetingChance)
       if (!spec) return null
       const urt = b.units[spec.tag]
       return urt ? { spec, rt: urt } : null
@@ -5073,12 +5090,18 @@ export function isNonCombatShipRole(role: ShipRole | undefined): boolean {
  * 场次里也不会多消耗一个 `nextRandom`（否则整批标定读数会漂移）。
  * ⚠ `noncombat` 模式下编队里**没有**非战斗船 ⇒ **退回随机**（船长口径）。
  * ⚠ 模式只由**虫洞内敌卡**（`AnomalyDef.foeTargeting`）写；不写 = `random`。
+ *
+ * **倾向概率**（船长 2026-09-14：「虫洞敌人的攻击倾向，加一个概率」→「目前先挨个定为60%」）：
+ * `chance` = 该模式下**每发开火前**按这个概率生效一次，没掷中 ⇒ **这一发乱了（退回随机抽取）**。
+ * `chance >= 1`（缺省）或模式本来就是 `random` ⇒ **连一次骰都不掷** ⇒ 旧场次的随机数消费顺序逐字节不变。
  */
 export function pickMyUnitTarget(
   state: GameState,
   b: import('./state').BattleState,
   myUnits: readonly UnitSpec[],
   mode: FoeTargetingMode = 'random',
+  /** 模式的作用概率（1 = 铁律；<1 ⇒ 每发开火前掷一次，没掷中退回随机） */
+  chance = 1,
 ): UnitSpec | null {
   // ⚠ **单船路径逐字等价**：编队只有一条（= 既有 27 张悬赏卡 / 低安遭遇 / AI 副船全部场次）
   // ⇒ 恒返回那一条、**一次随机数都不消费**。这里**刻意不看存活**：改动前敌方主炮分支只判
@@ -5091,6 +5114,12 @@ export function pickMyUnitTarget(
   if (alive.length === 1) return alive[0]!
   /** 并列集合里等权随机（**恰好消费一次** `nextInt`） */
   const randomOf = (cands: UnitSpec[]): UnitSpec => cands[nextInt(state.rng, cands.length)]!
+  /**
+   * **倾向概率的掷骰点**（2026-09-14 船长）：**每发开火前各掷一次**，没掷中 ⇒ 这一发乱了。
+   * 位置刻意放在两个早退**之后** —— 单船 / 只剩一艘时恒返回、不掷骰（洞外零漂移的命门）。
+   */
+  const missed = chance < 1 && mode !== 'random' && nextRandom(state.rng) >= chance
+  if (mode === 'random' || missed) return randomOf(alive)
   switch (mode) {
     case 'top-output': {
       const best = Math.max(...alive.map((u) => myUnitOutputScore(u)))
@@ -5106,7 +5135,7 @@ export function pickMyUnitTarget(
       const civ = alive.filter((u) => isNonCombatShipRole(u.shipRole))
       return civ.length > 0 ? randomOf(civ) : randomOf(alive)
     }
-    case 'random':
+    // `random` 已在上面早退（`mode === 'random' || missed`）⇒ 这里只剩兜底
     default:
       return randomOf(alive)
   }
