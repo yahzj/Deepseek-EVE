@@ -26,8 +26,9 @@ const KIND_ICON: Record<string, string> = {
   loop: 'ico-loop',
   courier: 'nav-task',
   hauling: 'nav-haul',
-  // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标沿用行动区的虫洞入口行
-  wormhole: 'ico-flag',
+  // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标 = 虫洞专属「空间裂隙」（同日船长定案），
+  // 与星图·行动区的虫洞入口行同一枚，不再借 ico-flag / ico-scan
+  wormhole: 'nav-wormhole',
 }
 
 function stopLabel(v: ActivityView): string {

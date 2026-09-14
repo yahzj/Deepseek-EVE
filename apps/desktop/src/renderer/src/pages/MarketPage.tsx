@@ -27,7 +27,7 @@ import type { PageProps } from './common'
 import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, RACK_LABELS } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
@@ -36,9 +36,10 @@ const KIND_TEXT: Record<string, string> = {
   // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
   consume: '消耗品',
   // 2026-09-10 船长：类型筛选移除「装备」，改为高 / 中 / 低槽三个类型（子分类仍是装备的功能分组）
-  'module-high': '高槽装备',
-  'module-mid': '中槽装备',
-  'module-low': '低槽装备',
+  // ⚠ 中文名走 `ui/itemSubs.ts` 的 `RACK_LABELS` 单点（手册图鉴筛选与仓库筛选读同一份，2026-09-13）
+  'module-high': RACK_LABELS.high,
+  'module-mid': RACK_LABELS.mid,
+  'module-low': RACK_LABELS.low,
   ship: '舰船',
   blueprint: '蓝图',
   aicore: '核心',
