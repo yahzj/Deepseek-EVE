@@ -626,30 +626,30 @@ export const MODULES: readonly ModuleDef[] = [
     name: '护盾充能装置 MK1',
     slot: 'shield',
     rack: 'mid',
-    shieldPulsePct: 0.12,
+    shieldPulsePct: 0.24,
     cpuUse: 25,
     description:
-      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 12%（CPU 占用高）。护盾被打穿后被动回充归零，它是唯一能把护盾重新点起来的东西——点着之后被动回充接管。',
+      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 24%（CPU 占用高）。护盾被打穿后被动回充归零，它是唯一能把护盾重新点起来的东西——一跳就能把盾拉回可战水平。',
   },
   {
     id: 'mod-shieldchg-2',
     name: '护盾充能装置 MK2',
     slot: 'shield',
     rack: 'mid',
-    shieldPulsePct: 0.2,
+    shieldPulsePct: 0.4,
     cpuUse: 45,
     description:
-      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 20%（CPU 占用高）。破盾后的重启能力比 MK1 强得多，代价是吃掉几乎所有护卫舰的中槽预算。',
+      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 40%（CPU 占用高）。破盾后的重启能力比 MK1 强得多，代价是吃掉几乎所有护卫舰的中槽预算。',
   },
   {
     id: 'mod-shieldchg-3',
     name: '护盾充能装置 MK3',
     slot: 'shield',
     rack: 'mid',
-    shieldPulsePct: 0.32,
+    shieldPulsePct: 0.64,
     cpuUse: 70,
     description:
-      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 32%（CPU 占用极高）。给战列舰以上的大盾池准备的重启器，一跳就能把打空的护盾拉回可战水平。',
+      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 64%（CPU 占用极高）。给战列舰以上的大盾池准备的重启器，两跳之内必定把打空的护盾拉回满值。',
   },
 
   // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入）

@@ -774,12 +774,13 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾充能装置 MK1蓝图',
     moduleId: 'mod-shieldchg-1',
     materials: [
-      { itemId: 'min-tritanium', count: 195 },
-      { itemId: 'min-pyerite', count: 60 },
+      { itemId: 'min-tritanium', count: 930 },
+      { itemId: 'min-pyerite', count: 280 },
+      { itemId: 'min-mexallon', count: 135 },
     ],
-    buildSeconds: 180,
+    buildSeconds: 60, // 照船体维修装置·民用档（材料≈产物价×0.45、蓝图=产物×2）
     buildCostIsk: 0,
-    priceIsk: 10000,
+    priceIsk: 60000,
     description: '护盾充能回路图纸：把发生器组改成可周期性强制充能的分时母线。',
   },
   {
@@ -787,13 +788,14 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾充能装置 MK2蓝图',
     moduleId: 'mod-shieldchg-2',
     materials: [
-      { itemId: 'min-tritanium', count: 11_950 },
-      { itemId: 'min-pyerite', count: 3_600 },
-      { itemId: 'min-mexallon', count: 1_700 },
+      { itemId: 'min-tritanium', count: 11_050 },
+      { itemId: 'min-pyerite', count: 3_500 },
+      { itemId: 'min-mexallon', count: 2_100 },
+      { itemId: 'min-nocxium', count: 420 },
     ],
-    buildSeconds: 900,
+    buildSeconds: 180, // 照船体维修装置 MK1（材料≈产物价×0.45、蓝图=产物×2）
     buildCostIsk: 0,
-    priceIsk: 962500,
+    priceIsk: 936000,
     description: '大功率护盾充能回路图纸：并联一组专用充能母线，一跳补回的护盾量翻倍。',
   },
   {
@@ -801,14 +803,15 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '护盾充能装置 MK3蓝图',
     moduleId: 'mod-shieldchg-3',
     materials: [
-      { itemId: 'min-tritanium', count: 45_400 },
-      { itemId: 'min-pyerite', count: 14_450 },
-      { itemId: 'min-mexallon', count: 8_650 },
-      { itemId: 'min-nocxium', count: 1_720 },
+      { itemId: 'min-tritanium', count: 48_950 },
+      { itemId: 'min-pyerite', count: 14_600 },
+      { itemId: 'min-mexallon', count: 8_250 },
+      { itemId: 'min-nocxium', count: 1_600 },
+      { itemId: 'min-isotope', count: 2_800 },
     ],
-    buildSeconds: 1900,
+    buildSeconds: 2800, // 照船体维修装置 MK2（材料≈产物价×0.40、蓝图=产物×2.5）
     buildCostIsk: 0,
-    priceIsk: 5760000,
+    priceIsk: 5725000,
     description: '主力舰级护盾充能回路图纸：一跳把打空的护盾拉回可战水平。',
   },
   {

@@ -1167,8 +1167,8 @@ for (const m of MODULES) {
     check(hasCap || hasAdd || hasPulse, `护盾 ${m.id} 未声明容量、抗性或脉冲充能（V17.1 拆族 + 2026-09-14 充能件）`)
     if (hasPulse) {
       check(
-        pulse !== undefined && pulse > 0 && pulse <= 0.6,
-        `护盾充能件 ${m.id} shieldPulsePct 非法：${String(pulse)}（需 (0, 0.6]）`,
+        pulse !== undefined && pulse > 0 && pulse <= 0.8,
+        `护盾充能件 ${m.id} shieldPulsePct 非法：${String(pulse)}（需 (0, 0.8]）`,
       )
       check(m.rack === 'mid', `护盾充能件 ${m.id} 应为中槽，实际 ${m.rack}`)
     }
