@@ -672,6 +672,8 @@ export {
   moneyDelta,
   moneyExact,
   moneyExactText,
+  moneyFitCandidates,
+  moneyFormatCandidates,
   moneyText,
 } from './money'
 

@@ -770,7 +770,8 @@ body {
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(74, 58, 22, 0.3), rgba(20, 15, 6, 0.5));
   font-size: 13px;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.3px; /* 船长 2026-09-13：「可以考虑调整字间距宽」⇒ 略收紧，给数字让位 */
+  font-variant-numeric: tabular-nums; /* 等宽数字：位数变化时列宽稳定，不跳动 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

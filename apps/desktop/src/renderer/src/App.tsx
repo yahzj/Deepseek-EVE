@@ -10,7 +10,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, moneyDelta, moneyExactText, moneyText, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
+import { formatDurationMs, moneyDelta, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -39,6 +39,7 @@ import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
+import { MoneyFit } from './ui/MoneyFit'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -839,14 +840,13 @@ export function App({ engine }: { engine: GameEngine }) {
           <ShipStatusWin engine={engine} />
           {/**
            * **金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」＋
-           * 「更换金钱单位为**信用点**」＋「希望考虑到**钱位数过多**时的处理」）：
-           * - 位置 = 舰船状态窗之下、**第一个导航项（出港）之上**；
-           * - 值走 `ui/money.ts` 单点：`1 万`以下全写、到万/亿分级缩写，**精确值挂在 `title`**
-           *   （全站 title 走自绘提示层）⇒ 看得快、也查得到。
+           * 「更换金钱单位为**信用点**」）：位置 = 舰船状态窗之下、**第一个导航项（出港）之上**。
+           * ⚠ 显示口径（船长同日二次口径）：「**如果有条件，还是优先显示全额数字**…如果实在显示不下，
+           * 采用数量级缩写（**但是仍要尽可能保证数字够长**）」⇒ 值走 `ui/MoneyFit`：
+           * **逐候选实测宽度**，档序 = 全额（带单位 → 去掉单位）→ 缩写（带单位 → 去掉单位，长的在前），
+           * **精确值恒挂 `title`**。窄栏里优先保住的是**数字**，不是「信用点」三个字。
            */}
-          <span className="app-isk app-wallet" title={`钱包余额：${moneyExactText(state.wallet.isk)}`}>
-            {moneyText(state.wallet.isk)}
-          </span>
+          <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
           {NAV_ITEMS.map((item) => {
             const unreadN = item.key === 'comms' ? commsUnread : 0
             return (
