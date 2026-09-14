@@ -113,6 +113,8 @@ export function wormholeStartBattle(
   // 洞外那一场是我方飞入、敌方没有入场动画 ⇒ **不盖**（有动画才有窗口）。
   stampFoeArrivalFx(battle)
   run.battle = battle
+  // 开战成功 ⇒ 清「待迎战」标记（遗迹收尾战那条确认链到此闭合）
+  if (run.pendingRuinsBattle === true) run.pendingRuinsBattle = false
   return { ok: true }
 }
 
@@ -128,7 +130,23 @@ export function wormholeActivateAt(
   state: GameState,
   ctx: SimContext,
   atGameMs?: number,
-): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind; taken?: number } {
+  /**
+   * **遗迹收尾战要不要"等玩家确认"**（船长 2026-09-13）：界面传 `{ deferRuinsBattle: true }`
+   * ⇒ 打捞照常结算，但**不直接开战**，只留 `run.pendingRuinsBattle` 标记并回 `pendingBattle: 'ruins'`，
+   * 由界面弹确认条、玩家点「迎战」后再调 `wormholeStartBattle(state, ctx, 'ruins')`。
+   * 不传（旧调用方/工具/用例）= **原行为**（打捞完立刻开战）。
+   */
+  opts?: { deferRuinsBattle?: boolean },
+): {
+  ok: boolean
+  error?: string
+  spent?: number
+  effect?: WormholeActivateEffect
+  started?: WormholeFoeKind
+  /** 已结算但**等确认**的战斗（目前只有 `'ruins'`） */
+  pendingBattle?: 'ruins'
+  taken?: number
+} {
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
@@ -142,6 +160,18 @@ export function wormholeActivateAt(
     if (!s.ok) return { ok: false, error: s.error }
     const effect = s.effect
     if (!effect || effect.kind !== 'ruinsBattle') return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0 }
+    /**
+     * **遗迹收尾战：先提示、玩家确认后再开打**（船长 2026-09-13：「打捞遗迹触发战斗时……战斗突然发生
+     * 没有任何提示，应该提示玩家惊扰守卫等，**玩家确认后跳转**」）。
+     *
+     * `opts.deferRuinsBattle = true`（界面走这条）⇒ **这里不直接开战**：打捞已结算（回合已扣、货已入包），
+     * 只在 `run` 上留 `pendingRuinsBattle` 标记；界面据此弹确认条，玩家点「迎战」再调
+     * `wormholeStartBattle(state, ctx, 'ruins')`。标记没清之前 **别的动作一律被拦**（`gridActionBlocked`）
+     * ⇒ 既不会"跳过这一场"，也不会留下"回合扣了、东西拿了、却什么都没发生"的半截状态。
+     */
+    if (opts?.deferRuinsBattle === true) {
+      return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, pendingBattle: 'ruins' }
+    }
     const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
     if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
     return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }

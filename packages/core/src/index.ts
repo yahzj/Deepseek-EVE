@@ -307,6 +307,9 @@ export {
   refineManualActive,
   startRefineRun,
   startRecycleRun,
+  // F4d：拆解安全货柜（与精炼/回收同一条产线机器；船长 2026-09-13 定案）
+  startUnboxRun,
+  UNBOX_CYCLE_MS,
   stopRefineRun,
   refineRunViews,
   redeemFragments,
@@ -968,6 +971,10 @@ export {
   WORMHOLE_DILUTION_SHARE,
   WORMHOLE_DILUTION_MIN_DEPTH,
   wormholeDilutionPoolOf,
+  /** F4d：拆解货柜用的层档（一律最低档） */
+  WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
+  wormholeUnboxRoll,
+  wormholeFamilyOfBox,
   wormholeLootShares,
   // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
   wormholePoolGrantUnitsOf,

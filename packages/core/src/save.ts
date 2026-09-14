@@ -565,7 +565,8 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
           {
             active: true,
             worker,
-            recipe: r.recipe === 'recycle' ? 'recycle' : 'refine',
+            // F4d：拆解安全货柜（'unbox'）与精炼/回收同一条产线机器，白名单一并收录
+    recipe: r.recipe === 'recycle' ? 'recycle' : r.recipe === 'unbox' ? 'unbox' : 'refine',
             itemId: item,
             batchUnits:
               typeof r.batchUnits === 'number' && r.batchUnits > 0 ? Math.floor(r.batchUnits) : 10,
@@ -2020,7 +2021,8 @@ function normalizeState(raw: unknown): GameState {
       active: true,
       id: -1, // 占位：由调用方按 refineSeq 统一分配
       worker,
-      recipe: r.recipe === 'recycle' ? 'recycle' : 'refine',
+      // F4d：拆解安全货柜（'unbox'）与精炼/回收同一条产线机器，白名单一并收录
+    recipe: r.recipe === 'recycle' ? 'recycle' : r.recipe === 'unbox' ? 'unbox' : 'refine',
       itemId: item,
       batchUnits: Math.max(1, Math.floor(num(r.batchUnits, 10))),
       cycleMs: Math.max(1, Math.floor(num(r.cycleMs, 6_000))),

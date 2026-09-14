@@ -326,6 +326,12 @@ export interface WormholeRunState {
    * 老档没有这个字段 ⇒ 首次同步按"现有台数"反推（老档本来没有装置 ⇒ 等于 `turnsTotal`），**零迁移**。
    */
   turnsBase?: number
+  /**
+   * **遗迹守备已被惊动、等玩家确认迎战**（F3c 界面批 · 船长 2026-09-13：战斗不该毫无提示地突然发生，
+   * 要先提示玩家惊扰了守卫、玩家确认后再跳转）。为真时**别的动作一律被拦**（见 gridActionBlocked），
+   * 直到玩家点「迎战」（wormholeStartBattle('ruins') 成功即清）。可选字段 ⇒ 老档零迁移。
+   */
+  pendingRuinsBattle?: boolean
   /** 编队（船型 id；进场时锁定） */
   fleet: readonly string[]
   /** 折合总质量（进场时锁定） */
@@ -784,7 +790,10 @@ function gridRun(state: GameState): { run: WormholeRunState; grid: WormholeGridS
 
 /** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
 function gridActionBlocked(run: WormholeRunState): string | null {
-  return run.battle ? '战斗中：先打完这一场。' : null
+  if (run.battle) return '战斗中：先打完这一场。'
+  // **遗迹守备已惊动**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
+  if (run.pendingRuinsBattle === true) return '遗迹深处的守备已经惊动：先点「迎战」打完这一场。'
+  return null
 }
 
 /**

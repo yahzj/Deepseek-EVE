@@ -24,6 +24,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { salvagerCyclesOf } from './salvaging'
 import { RARE_BOX_DRONE_UNITS } from './salvage'
 import { addWare } from './inventory'
+import { nextInt, nextRandom } from './rng'
 import { allFittedModules } from './equipment'
 import { addModule } from './equipment'
 import {
@@ -213,6 +214,11 @@ export const WORMHOLE_DILUTION_SHARE = 0.3
 
 /** 各档一次性蓝图**进池的最低层**（船长 2026-09-13：「T4 降到 3 层，T5 降到 5 层」；T3 沿用层 2 起） */
 export const WORMHOLE_DILUTION_MIN_DEPTH: Readonly<Record<3 | 4 | 5, number>> = { 3: 2, 4: 3, 5: 5 }
+/**
+ * **拆解货柜时用的层档**（F4d · 船长 2026-09-13 定：「货柜不记层，一律最低档」）：
+ * 稀释池按**最低那一档**（层 2 ⇒ T3 那批一次性舰船蓝图 10 张）取，深层带回来的箱子与浅层开出的一样。
+ */
+export const WORMHOLE_DILUTION_MIN_DEPTH_FLOOR = 2
 
 /** 抽取权重（供拆解批次调用；两者之和恒为 1） */
 export function wormholeLootShares(): { family: number; dilution: number } {
@@ -1142,6 +1148,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     const rng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
     if (rng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
       result.effect = { kind: 'ruinsBattle', key: cell.key }
+    // **记「待迎战」标记**（船长 2026-09-13）：界面据此弹确认条；玩家点「迎战」之前别的动作一律被拦
+    run.pendingRuinsBattle = true
       addLog(state, 'warn', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。')
     }
   }
@@ -1191,6 +1199,58 @@ export function wormholeRollRelicBox(
  * ⚠ 2026-09-13 修：F4 把遗迹掉落改成「安全货柜」= **物品**（`ctx.items`）后，这里原先只认模块/图纸
  * ⇒ 货柜走到这一步会被**静默丢掉**（"带回后精炼炉拆解"永远发生不了）。物品分支就是补这个洞。
  */
+/**
+ * **拆解一件「遗迹安全货柜」抽 1 件**（F4d · 船长 2026-09-13 定：精炼炉拆解 · 90 秒/件 ·
+ * **族池 0.7 : 稀释池 0.3** · 货柜**不记层** ⇒ 稀释池一律按**最低档（层 2 档 = T3 那批 10 张）**取）。
+ *
+ * 族由货柜 id 反推（ox-relic-a ⇒ A 族）；族池内部再按 wormholeRelicWeightsOf 的
+ * 装备 / 装备图纸 / 舰船图纸 权重抽一类，然后在类内均匀抽一件；件数走 wormholePoolGrantUnitsOf
+ * （族专属无人机 ×10，其余 1 件）。随机数走 state.rng（与回收炉开箱同源 ⇒ 随档、可复现）。
+ * 抽取池为空（内容缺失）⇒ 返回 null（调用方记账后停这一批，不静默丢）。
+ */
+export function wormholeUnboxRoll(
+  state: GameState,
+  ctx: SimContext,
+  boxItemId: string,
+): { itemId: string; units: number; diluted: boolean; family: string } | null {
+  const family = wormholeFamilyOfBox(boxItemId)
+  if (!family) return null
+  const shares = wormholeLootShares()
+  const diluted = nextRandom(state.rng) >= shares.family
+  if (diluted) {
+    const pool = wormholeDilutionPoolOf(ctx, WORMHOLE_DILUTION_MIN_DEPTH_FLOOR)
+    if (pool.length === 0) return null
+    const id = pool[nextInt(state.rng, pool.length)]!
+    return { itemId: id, units: wormholePoolGrantUnitsOf(id), diluted: true, family }
+  }
+  const pool = wormholeFamilyPoolOf(ctx, family)
+  const w = wormholeRelicWeightsOf(WORMHOLE_DILUTION_MIN_DEPTH_FLOOR)
+  const buckets: Array<{ ids: string[]; weight: number }> = [
+    { ids: pool.modules, weight: w.modules },
+    { ids: pool.moduleBlueprints, weight: w.moduleBlueprints },
+    { ids: pool.shipBlueprints, weight: w.shipBlueprints },
+    { ids: pool.drones ?? [], weight: Math.max(1, Math.min(w.modules, w.moduleBlueprints, w.shipBlueprints)) },
+  ].filter((b) => b.ids.length > 0 && b.weight > 0)
+  if (buckets.length === 0) return null
+  const total = buckets.reduce((s, b) => s + b.weight, 0)
+  let roll = nextRandom(state.rng) * total
+  let hit = buckets[buckets.length - 1]!
+  for (const b of buckets) {
+    roll -= b.weight
+    if (roll <= 0) {
+      hit = b
+      break
+    }
+  }
+  const id = hit.ids[nextInt(state.rng, hit.ids.length)]!
+  return { itemId: id, units: wormholePoolGrantUnitsOf(id), diluted: false, family }
+}
+
+/** 货柜 id ⇒ 族（ox-relic-a ⇒ A；不是货柜 ⇒ null） */
+export function wormholeFamilyOfBox(boxItemId: string): string | null {
+  const m = /^box-relic-([a-g])$/i.exec(boxItemId)
+  return m ? m[1]!.toUpperCase() : null
+}
 export function wormholeDeliverRelics(state: GameState, ctx: SimContext, relics: readonly string[]): string[] {
   const done: string[] = []
   for (const id of relics) {

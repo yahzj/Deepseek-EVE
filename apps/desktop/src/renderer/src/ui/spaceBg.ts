@@ -85,6 +85,15 @@ function pickIndex(exclude?: number): number {
 }
 
 /** 当前底图（未抽过时返回 null） */
+/**
+ * **按下标取底图 URL**（F3c 界面批 · 船长 2026-09-13：「当次虫洞内的背景图需要固定」）：
+ * 面板在本趟进洞时把下标钉住，之后即使用户在「设置」里换了全站底图，洞内那张也不跟着变。
+ * 下标越界 / 没图 ⇒ null（调用方按"没有底图"处理）。
+ */
+export function spaceBgUrlAt(index: number): string | null {
+  const i = Math.floor(index)
+  return i >= 0 && i < TILE_URLS.length ? TILE_URLS[i]! : null
+}
 export function currentSpaceBg(): SpaceBgInfo | null {
   if (currentIndex === null || TILE_URLS.length === 0) return null
   const index = currentIndex

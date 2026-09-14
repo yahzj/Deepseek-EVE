@@ -5196,7 +5196,12 @@ body {
 
   gap: 10px;
 
-  flex: 0 1 auto;
+  /* **不参与 flex 收缩**（`0 0 auto`）：高度不足时应当**折线图先让**（船长口径「压缩折线图高度、与面板挂钩」）。
+     若写成 `0 1 auto`，折线图与买卖盘会按比例分摊收缩 ⇒ 买卖盘被抢掉几行、最下面一行被裁一半
+     （实测 1600×900 裁 49~53px）。行数由 JS 按"折线图取到下限 64px"算出，这里只需照单执行；
+     连折线图下限都放不下时由面板体出内滚。 */
+
+  flex: 0 0 auto;
 
   min-height: 105px;
 
@@ -9135,7 +9140,11 @@ body {
 
 .app-mkt-right > .wui-panel:first-child { flex: 1 1 auto; min-height: 0; }
 
-.app-mkt-right > .wui-panel:last-child { flex: 0 1 auto; max-height: 40%; min-height: 0; }
+/* 「我的挂单」：高度上限 = 右栏 40%（超出部分在面板体内滚），**但不参与 flex 收缩**
+   （`flex: 0 0 auto`）——可见高度由 MarketPage.MyOrders 量成「整行」写进面板体（船长 2026-09-14：
+   「全屏时订单的第七条会被遮住一半」）；若还允许收缩，flex 会在它身上再压几像素，把刚对齐的整行又切掉。 */
+
+.app-mkt-right > .wui-panel:last-child { flex: 0 0 auto; max-height: 40%; min-height: 0; }
 
 /* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
 
@@ -9512,7 +9521,7 @@ body {
   background-color: #060b13;
   background-image:
     radial-gradient(circle at 50% 50%, rgba(10, 22, 38, 0.12), rgba(6, 11, 19, 0.82)),
-    var(--space-bg, none),
+    var(--wh-space-bg, var(--space-bg, none)),
     radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.55), transparent 55%),
     radial-gradient(1px 1px at 70% 15%, rgba(200, 225, 255, 0.45), transparent 55%),
     radial-gradient(1.4px 1.4px at 45% 70%, rgba(255, 255, 255, 0.4), transparent 55%),
@@ -9863,6 +9872,15 @@ body {
 .app-wh-hold-ico { display: flex; align-items: center; justify-content: center; line-height: 0; }
 .app-wh-hold-ico svg { display: block; }
 .app-wh-hold-row-ico { display: inline-flex; align-items: center; margin-right: 6px; vertical-align: -2px; line-height: 0; }
+/* **物品轮廓层**（船长 2026-09-13：占多格的物品要一个大轮廓、居中、随大小放大）：
+   与格子网格同一套模板与 gap ⇒ 多格块的轮廓正好盖住整块；图标按 figure 的百分比取尺寸（单格也跟着变大）。 */
+.app-wh-hold-grid { position: relative; }
+.app-wh-hold-figures {
+  position: absolute; inset: 0; display: grid; gap: 4px;
+  pointer-events: none; /* 不吃拖拽与点击（格子本体才处理交互） */
+}
+.app-wh-hold-fig { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.app-wh-hold-fig svg { width: 62%; height: 62%; max-width: 64px; max-height: 64px; }
 .app-wh-hold-cargo-name { color: #9db4c8; font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }
