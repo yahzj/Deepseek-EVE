@@ -9613,25 +9613,30 @@ body {
 /* ── 层内网格地图（F3a-2 · 2026-09-13）：圆盘六边形，一格 = 一个地点 ──
    容器固定高（防界面跳动；2026-09-13 晚改成**定高 300px + 左侧缩放**，见上面 `.app-wh-mapbox`）；
    图形一律 SVG 线稿（约定 §九），这里只管颜色与档位透明度。 */
-.app-wh-hex { cursor: pointer; }
+/* 地点（六边形格）底板 —— **2026-09-14 船长：「地点的背景不要采用完全透明，结合背景很容易看不清楚」**：
+   之前是近乎全透明的白（`rgba(255,255,255,0.015)`）⇒ 压在星云底图上认不出"格"在哪。现在每格一块
+   半透明深色底板（`--wh-hex-plate`，与站内卡片同色系），各状态的色相改成「深底 + 该状态色调」的
+   混色（去过=青 / 残留=黄 / 星云=冷紫 / 入口=金 / 当前=亮青），档位之间的明暗差仍由 `opacity` 承担
+   （未扫描 .55 / 已扫描 .72 / 去过压暗 .5 / 已清空 .38 / 残留 .72）。**调深浅只改这一个变量**。 */
+.app-wh-hex { cursor: pointer; --wh-hex-plate: rgba(8, 15, 24, 0.8); }
 .app-wh-hex polygon {
-  fill: rgba(255, 255, 255, 0.015);
+  fill: var(--wh-hex-plate);
   stroke: currentColor; stroke-width: 1; opacity: 0.45;
 }
 /* 三档：未扫描（**蓝灰虚线边框** —— 船长 F5：「目前未扫描的地点可以通过边框颜色判断」）/
    已扫描（按信号分色 + 符号）/ 已到达（亮 + 淡底）。 */
 .app-wh-hex.is-unknown polygon { stroke: #7b8fa3; stroke-dasharray: 3 3; opacity: 0.55; }
 .app-wh-hex.is-scanned polygon { opacity: 0.72; }
-.app-wh-hex.is-known polygon { fill: rgba(79, 216, 196, 0.06); opacity: 1; }
+.app-wh-hex.is-known polygon { fill: rgba(15, 42, 50, 0.82); opacity: 1; }
 /* ── 「去过 / 清空 / 残留」三态（船长 2026-09-13 两条口径）──
    ① 去过 = **右上角小实心点 + 整体压暗**；
    ② **清空或已激活 ⇒ 删掉地点图标**（`.is-cleared`：符号不画，只留压暗的空 hex + 小点）；
    ③ **还有残留东西 ⇒ 变暗但保留图标**（`.is-leftover`：提示"来过、没拿完"）。
    当前所在这格（`.is-here`）与下一层入口（`.is-exit`）永远保持醒目。 */
-.app-wh-hex.is-visited.is-visited-dim polygon { fill: rgba(255, 255, 255, 0.02); opacity: 0.5; }
+.app-wh-hex.is-visited.is-visited-dim polygon { fill: var(--wh-hex-plate); opacity: 0.5; }
 .app-wh-hex.is-visited.is-visited-dim .app-wh-hex-glyph { opacity: 0.5; }
-.app-wh-hex.is-cleared polygon { fill: rgba(255, 255, 255, 0.01); opacity: 0.38; }
-.app-wh-hex.is-leftover polygon { fill: rgba(244, 201, 93, 0.05); opacity: 0.72; }
+.app-wh-hex.is-cleared polygon { fill: var(--wh-hex-plate); opacity: 0.38; }
+.app-wh-hex.is-leftover polygon { fill: rgba(38, 33, 20, 0.82); opacity: 0.72; }
 .app-wh-hex.is-leftover .app-wh-hex-glyph { opacity: 0.7; }
 .app-wh-hex.is-visited.is-here polygon,
 .app-wh-hex.is-visited.is-exit polygon { opacity: 1; }
@@ -9690,7 +9695,7 @@ body {
   100% { stroke-width: 1.6; filter: none; }
 }
 .app-wh-hex:hover polygon { stroke-width: 2; }
-.app-wh-hex.is-here polygon { stroke-width: 2.5; fill: rgba(79, 216, 196, 0.14); }
+.app-wh-hex.is-here polygon { stroke-width: 2.5; fill: rgba(18, 52, 58, 0.88); opacity: 1; } /* 当前所在格：底板不压暗 */
 .app-wh-hex-here { fill: none; stroke: var(--wui-accent); stroke-width: 1.4; stroke-dasharray: 4 3; opacity: 0.9; }
 .app-wh-hex-glyph { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
 /* 信号分色：舰船（暖橙）· 残骸（冷灰蓝）· 资源（琥珀）· 雷达（紫）· 空信息（暗） */
@@ -9704,7 +9709,7 @@ body {
  * 星云更暗、更灰），图标换成 `WhNebulaGlyph` 的云团线稿；虚线边框与"未扫描"一致（它还没被看清）。
  */
 .app-wh-hex.is-nebula, .app-wh-legend-glyph.is-nebula { color: #8c93c8; }
-.app-wh-hex.is-nebula polygon { stroke-dasharray: 4 3; fill: rgba(140, 147, 200, 0.1); }
+.app-wh-hex.is-nebula polygon { stroke-dasharray: 4 3; fill: rgba(24, 26, 44, 0.82); }
 .app-wh-nebula { opacity: 0.92; }
 /**
  * **星云消散动画**（船长 2026-09-13：「当消除星云时，给星云添加个消散的动画」）。
@@ -9731,7 +9736,7 @@ body {
   100% { transform: scale(2.1); opacity: 0; }
 }
 @keyframes app-wh-hex-unveil {
-  0% { stroke: #8c93c8; stroke-width: 1.8; fill: rgba(140, 147, 200, 0.1); }
+  0% { stroke: #8c93c8; stroke-width: 1.8; fill: rgba(24, 26, 44, 0.82); }
   100% { stroke-width: 1.2; }
 }
 /* 图例里的"未扫描"格与地图同色（蓝灰虚线），否则图例教不会玩家认这个边框 */
@@ -9739,7 +9744,7 @@ body {
 .app-wh-legend-glyph.is-visited { color: var(--wui-accent); }
 /* 图例里的"去过"格要与地图一致：**实线 + 压暗**（地图上它已不是"未扫描"的虚线档） */
 .app-wh-legend-glyph.is-visited polygon { stroke-dasharray: none; opacity: 0.5; }
-.app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(244, 201, 93, 0.12); }
+.app-wh-hex.is-exit polygon { stroke-width: 2; fill: rgba(44, 38, 20, 0.84); opacity: 1; } /* 下一层入口：底板不压暗 */
 .app-wh-hex.is-exit { color: #f4c95d; }
 /* ── 探索页版式（船长 2026-09-13）：**扫描按钮放大 + 与地点信息窗平级**（左扫描 / 右信息卡）──
    同日晚追加「**激活等按钮可以放在扫描下方**」＋「**继续深入按钮也可以整合到扫描 + 作业按钮处**」
