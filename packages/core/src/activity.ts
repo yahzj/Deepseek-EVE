@@ -196,7 +196,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
 
   /**
    * ── 主控活动「扫描虫洞」（2026-09-14 船长）──
-   * 进度条 = 已扫 / 本趟窗口（窗口 = 220 分钟 × 三技能乘算）；**遇袭不中断**（进度不清零）；
+   * 进度条 = 已扫 / 本趟窗口（窗口 = 12 小时 × 三技能乘算 × 星际奇遇学）；**遇袭不中断**（进度不清零）；
    * 库存满 5 时活动会被 `advanceWormholeScan` 停机，这里就不再出行（与"作业结束即消失"一致）。
    */
   if (state.wormholeScan?.active === true) {

@@ -2308,7 +2308,7 @@ function normalizeState(raw: unknown): GameState {
   const debugQuick = src.debugQuick === true
 
   // --- 虫洞扫描与库存（2026-09-14 · 可选字段 ⇒ 零迁移）---
-  // 扫描：active 布尔化、进度钳制在 [0, 窗口上限]（窗口上限 = 基准 220 分钟 ×1，技能只会缩短窗口 ⇒
+  // 扫描：active 布尔化、进度钳制在 [0, 窗口上限]（窗口上限 = 基准 12 小时 ×1，技能只会缩短窗口 ⇒
   // 按基准兜底，消费侧 `wormholeScanWindowMs` 再按实际技能窗口钳一次）
   const whScanRaw = asRaw(src.wormholeScan)
   const whScanProgressRaw = num(whScanRaw.progressMs)

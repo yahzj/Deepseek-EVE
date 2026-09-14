@@ -4,8 +4,10 @@
  * 扫描一致。并且会上涨一个进度条，进度条满后。玩家就可以发现一个虫洞。玩家最多可以囤积5个未开始探索的虫洞。」
  *
  * 口径（design §三 / §五，全部船长确认）：
- * - **扫描窗口 = 220 分钟 × 三技能乘算**（信号分析学 −8%/级 · 星图测绘学 −6%/级 · 信号过滤学 −6%/级，
- *   直接复用 `explore.scanSkillFactor` —— 与星图扫描**同一把尺**）；**不吃舰船属性**（船长：「无关」）。
+ * - **扫描窗口 = 12 小时 × 三技能乘算 × 星际奇遇学**（信号分析学 −8%/级 · 星图测绘学 −6%/级 · 信号过滤学 −6%/级，
+ *   直接复用 `explore.scanSkillFactor` —— 与星图扫描**同一把尺**；**再乘一项虫洞专属的星际奇遇学**
+ *   −4%/级、满级 −20%，见 `happeningsScanFactor`）；**不吃舰船属性**（船长：「无关」）。
+ *   ⚠ 基准沿革：2026-09-14 首定 **220 分钟** ⇒ 同日改判「**虫洞扫描时长提高到12小时**」⇒ **现值 12 小时**。
  * - **随机事件期望与星图扫描同源**：暴露口径交给 `encounters`（本活动在暴露清单里与 `state.scanning` 并列）。
  * - **遇袭不中断**：被打不影响进度（进度按游戏时刻推进，不在遇袭时清零）。
  * - 进度满 ⇒ **发现 1 个虫洞**（随机种子 + **起始层恒 1** + 原型/敌族按种子定）进库存，随后**自动续扫**。
@@ -22,8 +24,13 @@ import { DSI_FACTION_ID } from './expedition'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeFamilyOfSeed } from './wormholeFoes'
 
-/** **扫描一个虫洞的基准时长**（船长 2026-09-14：「扫描基准设定为220分钟」） */
-export const WORMHOLE_SCAN_BASE_MS = 220 * 60_000
+/**
+ * **扫描一个虫洞的基准时长**。
+ *
+ * 沿革：船长 2026-09-14 首定「**扫描基准设定为220分钟**」⇒ 同日改判「**虫洞扫描时长提高到12小时。**」
+ * ⇒ **现值 = 12 小时**（旧值 220 分钟作废；技能乘算口径不变，只换基准）。
+ */
+export const WORMHOLE_SCAN_BASE_MS = 12 * 60 * 60_000
 
 /** **未探索虫洞的库存上限**（船长：「玩家最多可以囤积5个未开始探索的虫洞」） */
 export const WORMHOLE_STOCK_MAX = 5
@@ -62,9 +69,24 @@ export function wormholeScanUnlocked(state: GameState): boolean {
 }
 
 /**
- * **本趟扫描窗口**（毫秒）= 基准 220 分钟 × 三技能乘算。
- * ⚠ 与星图扫描的区别只有"基准值"和"没有低安惩罚"（扫描虫洞不吃目标星系安全等级 —— 它扫的是深空；
- * 船长只要求"遇袭期望一致"，没要求时长也吃低安系数）。
+ * **星际奇遇学（`galactic-happenings`）缩短虫洞扫描周期**（船长 2026-09-14 追加裁定：
+ * 「**星际奇遇学，对缩减虫洞的时间也有效。**」「**星际奇遇学，满级后缩减虫洞扫描周期20%**」
+ * 「**并移动到探索内**」「**rank提升到5**」）。
+ *
+ * 口径 = **每级 −4%**（满级 Lv5 ⇒ ×0.8 = **−20%**）—— **虫洞专属的第四项**：
+ * 与三技能乘算叠加（`scanSkillFactor` 只管那三项，星图扫描**不吃**这一项，船长只点了虫洞）。
+ * 调参入口就在这一行（`content:check` 的「技能说明契约」按本文件的现场值复核技能说明里的 ⟦4%⟧/⟦20%⟧）。
+ */
+export function happeningsScanFactor(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['galactic-happenings'] ?? 0)
+  return Math.max(0, 1 - 0.04 * lv)
+}
+
+/**
+ * **本趟扫描窗口**（毫秒）= 基准 12 小时 × 三技能乘算 × **星际奇遇学**。
+ * ⚠ 与星图扫描的区别有三：①基准值不同（12 小时 vs 10 分钟）②**没有低安惩罚**
+ * （扫描虫洞不吃目标星系安全等级 —— 它扫的是深空；船长只要求"遇袭期望一致"，没要求时长也吃低安系数）
+ * ③**多一项 `happeningsScanFactor`**（星际奇遇学，虫洞专属）。
  */
 export function wormholeScanWindowMs(state: GameState): number {
   /**
@@ -73,7 +95,7 @@ export function wormholeScanWindowMs(state: GameState): number {
    * （`state.debugQuick`，调试面板「⇄ 调试 · 1秒化」勾选）⇒ 一个窗口 1 秒，连点即可攒满库存。
    */
   if (state.debugQuick) return 1000
-  return Math.max(1000, Math.round(WORMHOLE_SCAN_BASE_MS * scanSkillFactor(state)))
+  return Math.max(1000, Math.round(WORMHOLE_SCAN_BASE_MS * scanSkillFactor(state) * happeningsScanFactor(state)))
 }
 
 /** 当前库存（发现即入列；上限 `WORMHOLE_STOCK_MAX`） */
@@ -88,7 +110,7 @@ export function wormholeStockFull(state: GameState): boolean {
 
 /** 能不能开扫（主控活动互斥：与采矿/打捞/扫描/远征/待命/过境/虫洞探索同一把尺） */
 export function wormholeScanBlockReason(state: GameState): string | null {
-  // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 35 才开放扫描虫洞 —— 放在最前面，理由最有用
+  // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 40 才开放扫描虫洞 —— 放在最前面，理由最有用
   if (!wormholeScanUnlocked(state)) {
     return `扫描虫洞尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${wormholeScanStanding(state)}）——先去做协会的委托攒声望。`
   }

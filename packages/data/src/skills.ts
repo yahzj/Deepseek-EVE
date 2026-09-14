@@ -502,13 +502,6 @@ export const SKILLS: readonly SkillDef[] = [
     description: '旧货市场渠道：市场稀有商品的供给单价格每级 −⟦2%⟧（满级 −⟦10%⟧）。',
   },
   {
-    id: 'galactic-happenings',
-    name: '星际奇遇学',
-    group: '贸易',
-    rank: 3,
-    description: '奇闻轶事的嗅觉：在线随机事件的来访间隔每级 −⟦8%⟧（满级间隔约为原来的六成）；出击出发时遭遇随机事件的机会每级 ×⟦1.15⟧。',
-  },
-  {
     id: 'event-dividend',
     name: '事件分红学',
     group: '贸易',
@@ -521,7 +514,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'signal-analysis',
     name: '信号分析学',
     group: '探索',
-    rank: 3, // 2026-09-14 船长：扫描虫洞要 220 分钟，故三项扫描技能的难度重排（分析 3 / 测绘 4 / 过滤 5）
+    rank: 3, // 2026-09-14 船长：扫描虫洞要 12 小时，故三项扫描技能的难度重排（分析 3 / 测绘 4 / 过滤 5）
     description: '未知信号解读与锁定：就地扫描窗口每级缩短 ⟦8%⟧（满级 −⟦40%⟧）。',
   },
   {
@@ -537,6 +530,16 @@ export const SKILLS: readonly SkillDef[] = [
     group: '探索',
     rank: 5, // 2026-09-14 船长（同上）
     description: '干扰抑制与信号提纯：就地扫描窗口每级再缩短 ⟦6%⟧（与信号分析学乘算叠加）。',
+  },
+  {
+    // 2026-09-14 船长三条改判（同日追加）：①「星际奇遇学，对缩减虫洞的时间也有效」⇒ 虫洞扫描周期每级 −4%、
+    // 满级 −20%（虫洞专属第四项，接线 = `core/wormholeScan.ts happeningsScanFactor`；星图扫描不吃这一项）
+    // ②「并移动到探索内」（原属 **贸易** 组）③「rank提升到5」（难度 3→5，单级时长倍数 ×7.98、练满约 89.7 小时）
+    id: 'galactic-happenings',
+    name: '星际奇遇学',
+    group: '探索',
+    rank: 5,
+    description: '奇闻轶事的嗅觉：在线随机事件的来访间隔每级 −⟦8%⟧（满级间隔约为原来的六成）；出击出发时遭遇随机事件的机会每级 ×⟦1.15⟧；虫洞扫描周期每级 −⟦4%⟧（满级 −⟦20%⟧）。',
   },
   {
     id: 'salvage-diving',

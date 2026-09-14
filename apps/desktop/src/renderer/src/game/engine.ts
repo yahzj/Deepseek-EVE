@@ -1519,7 +1519,7 @@ export class GameEngine {
     return this.ctx.anomalies.get(cardId)?.name ?? this.anomalies.find((a) => a.id === cardId)?.name ?? cardId
   }
 
-  /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */
+  /** 虫洞扫描：本趟窗口（毫秒；12 小时 × 三技能乘算 × 星际奇遇学） */
   wormholeScanWindow(): number {
     return wormholeScanWindowMs(this.state)
   }
