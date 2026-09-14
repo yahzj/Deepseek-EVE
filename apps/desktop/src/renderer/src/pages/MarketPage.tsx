@@ -581,7 +581,9 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
             className={`app-mkt-chart-tip${mapY(slice[hover]!) < 40 ? ' is-below' : ''}`}
             style={{
               left: `${(xAt(hover) / w) * 100}%`,
-              top: `${(mapY(slice[hover]!) / 130) * 100}%`,
+              // 浮标挂在 .app-mkt-chart-wrap 上 ⇒ 百分比要按 **viewBox 高度**折算（图会被 CSS 拉伸到 wrap 的实测高度，
+              // 折线图高度现在跟面板走、wrap 不再是固定 130px；此前写死的 /130 也一直让浮标偏高约 8%）
+              top: `${(mapY(slice[hover]!) / h) * 100}%`,
             }}
           >
             ≈{isk(slice[hover]!)} 信用点 · {sampleAgoLabel(fullLen, offset + hover)}
