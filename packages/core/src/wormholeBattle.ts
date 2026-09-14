@@ -31,6 +31,8 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+// F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
+import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { wormholeIsShapedItem } from './wormholeHold'
 import {
   wormholeDeliverRelics,
@@ -42,6 +44,7 @@ import {
   wormholeLootValueIsk,
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
+  wormholeStowOrTemp,
 } from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
@@ -154,7 +157,38 @@ export function wormholeActivateAt(
   const effect = r.effect
   if (!effect) return { ok: true, spent: r.spent }
   const kind: WormholeFoeKind | null = effect.kind === 'exit' ? 'boss' : effect.kind === 'battle' ? 'node' : null
-  if (!kind) return { ok: true, spent: r.spent, effect }
+  if (!kind) {
+    /**
+     * **谜质格 ⇒ 取回一台谜质储存器**（F3c · 船长 2026-09-13：「谜质玩家采集后，在货仓内显示为
+     * 4格的『谜质储存器』，在本次虫洞探索中提供临时增益」）。
+     *
+     * 三条口径：
+     * - **是哪一台 = 按 (种子, 层, 格 key) 定死**（`wormholeMatterDeviceAt`）⇒ 不写存档、读档后还是同一台；
+     * - 落地走**收货阶梯**（货仓 2×2 → 临时空间 → 两边都满才算失败），与安全货柜同一入口；
+     * - 失败 ⇒ **回合与激活标记一起回滚**（与开战失败同款）——不留"白扣一回合、东西没拿到"的死格。
+     * 成功时的回合加成由 `wormholeStowOrTemp → wormholeSyncMatterTurns` 实时结清。
+     */
+    if (effect.kind === 'matter' && run) {
+      const device = wormholeMatterDeviceAt(run.seed ?? 0, run.depth, effect.key)
+      const landed = wormholeStowOrTemp(state, ctx, device.id, 1)
+      if (!landed.ok) {
+        run.turnsLeft = turnsBefore
+        if (run.grid) run.grid.activated = run.grid.activated.filter((k) => k !== effect.key)
+        return {
+          ok: false,
+          error: `取不回「${device.name}」：${landed.error ?? '货仓放不下'}（它占 2×2 = 4 格，先腾地方或抛货）`,
+        }
+      }
+      addLog(
+        state,
+        'info',
+        `🕳 取回谜质：**${device.name}**（${device.text}）——` +
+          `${landed.where === 'temp' ? '货仓腾不出 2×2，已先进临时空间' : '占货仓 2×2 格'}，离开虫洞即失效。`,
+      )
+      return { ok: true, spent: r.spent, effect, taken: 1 }
+    }
+    return { ok: true, spent: r.spent, effect }
+  }
   const s = wormholeStartBattle(state, ctx, kind, atGameMs)
   if (!s.ok) {
     // 回滚：回合退回、激活标记摘掉（该格回到"可再次激活"）
@@ -325,10 +359,52 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
   refundAmmo(state, battle.ammo, battle.ammoIds)
   refundRepairKits(state, battle.repair)
+  /**
+   * **谜质 B2：战后收口三件**（F3c · 船长 2026-09-13）。
+   * 一律**现算**（从货仓的装置派生）⇒ 打完这一场立刻按"这一场带了什么"结算，不留状态。
+   *
+   * ① **弹药回收装置**：按**本场打出去**的那部分退回 `round(已耗 × 比例)` ——
+   *    已耗 = 开战预载 − 战后余额（`battle.ammoLoaded`，老档/旧战斗缺该字段 ⇒ 这一项自动跳过）；
+   * ② **机群回收网**：回收率加成本（在 `settleDroneLosses` 里夹在 100% 以内）；
+   * ③ **战地维修单元**：每场交火后自动修补**装甲与结构**（船长：「同时修复护甲」），不耗货仓组件。
+   */
+  const matterBuffs = wormholeMatterBuffs(run.hold)
+  if (matterBuffs.ammoRefundPct > 0 && battle.ammoLoaded) {
+    const fired = {
+      kin: Math.max(0, battle.ammoLoaded.kin - battle.ammo.kin),
+      exp: Math.max(0, battle.ammoLoaded.exp - battle.ammo.exp),
+      pla: Math.max(0, battle.ammoLoaded.pla - battle.ammo.pla),
+    }
+    const back = {
+      kin: Math.round(fired.kin * matterBuffs.ammoRefundPct),
+      exp: Math.round(fired.exp * matterBuffs.ammoRefundPct),
+      pla: Math.round(fired.pla * matterBuffs.ammoRefundPct),
+    }
+    const n = back.kin + back.exp + back.pla
+    if (n > 0) {
+      refundAmmo(state, back, battle.ammoIds)
+      addLog(state, 'info', `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`)
+    }
+  }
   // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内首舰的
   // 无人机照样会被点防打下来（`battle.droneLost` 在涨），首版漏了这一步 ⇒ 洞内无人机
   // **打不死**（清单不减、也没有战损日志），是最便宜的一种白嫖。
-  if (droneOwner) settleDroneLosses(state, ctx, droneOwner, battle)
+  if (droneOwner) settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct)
+  if (matterBuffs.fieldRepairPct > 0) {
+    const pct = matterBuffs.fieldRepairPct
+    let touched = 0
+    for (const uid of run.fleet) {
+      const ship = state.fleet[uid]
+      if (!ship) continue
+      const before = (ship.armorPct ?? 1) + (ship.durability ?? 1)
+      ship.armorPct = Math.min(1, (ship.armorPct ?? 1) + pct)
+      ship.durability = Math.min(1, (ship.durability ?? 1) + pct)
+      if ((ship.armorPct ?? 1) + (ship.durability ?? 1) > before) touched += 1
+    }
+    if (touched > 0) {
+      addLog(state, 'info', `🕳 战地维修单元：编队装甲与结构各回复 ${Math.round(pct * 100)}%（不耗货仓组件）。`)
+    }
+  }
   const won = battle.ended === 'me'
   const report = won ? wormholeBattleReport(run, battle, kind, ctx) : null
   run.battle = null

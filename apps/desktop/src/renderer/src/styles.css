@@ -5184,11 +5184,23 @@ body {
 
 .app-mkt-detail-books {
 
+  /* 买卖盘（买盘/卖盘两列）：高度不够时**少显示几档**——船长 2026-09-14：
+     「当窗口高度不足时，可以隐藏部分订单（最少显示5个订单）」。
+     分工：**行数**由 `pages/MarketPage.tsx` 量这块的实测高度后决定（只渲染放得下的整行，
+     绝不裁半行）；这里负责**下限**（5 档 ⇒ 压到这儿就停，再不够让面板体出内滚）。
+     min-height 取 20 + 5×17（比真实 19.5 + 5×16.5 略宽一点）= 宁可多留 3px，也不裁掉第 5 行。 */
+
   display: grid;
 
   grid-template-columns: 1fr 1fr;
 
   gap: 10px;
+
+  flex: 0 1 auto;
+
+  min-height: 105px;
+
+  overflow: hidden;
 
 }
 
@@ -9115,8 +9127,6 @@ body {
 
 .app-mkt-depth.is-click:hover { background: rgba(127, 227, 255, 0.08); }
 
-.app-mkt-chart-hint { margin-top: 2px; font-size: 10.5px; opacity: 0.75; color: #7fb4c9; }
-
 /* ---------- market right column stretch ----------
    2026-09-08 初版：右栏富余高度全给**最后一个**面板（「我的挂单」）——目的是与左栏同高。
    2026-09-14 船长（甲）：「市场详情面板太矮，右栏空的高度全跑到我的挂单」⇒ **改判**：
@@ -9848,6 +9858,11 @@ body {
 .app-wh-hold-cell.is-origin { cursor: grab; }
 .app-wh-hold-cell.is-dragging { opacity: 0.45; cursor: grabbing; }
 .app-wh-hold-box-name { color: var(--wui-accent); font-size: 10px; }
+/* **格内图标**（2026-09-13 船长：「货仓内物品采用图标而不是纯文字」）：图标吃物品色调
+   （安全货柜按族、谜质按台），格内居中；行内清单里的图标与名字同排。 */
+.app-wh-hold-ico { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.app-wh-hold-ico svg { display: block; }
+.app-wh-hold-row-ico { display: inline-flex; align-items: center; margin-right: 6px; vertical-align: -2px; line-height: 0; }
 .app-wh-hold-cargo-name { color: #9db4c8; font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }

@@ -36,6 +36,9 @@ import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL, wormholeAnomalyOf } from './wormholeFoes'
 import { wormholeFoeThreat } from './wormholeFoes'
+// F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
+import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
+import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
@@ -345,6 +348,79 @@ export function applyDamage(
   }
   const after = next.s + next.a + next.h
   return { hp: next, dealt: Math.max(0, before - after) }
+}
+
+/**
+ * **打空这一艘所需的最小原始伤害**（F3c B2 · 谜质「齐射协调仪」的溢火结转要用）。
+ *
+ * 为什么不用"实收伤害"算溢出：`applyDamage` 的消费是**逐层乘系数**的（层克制 × (1−该层该系抗性)），
+ * 一发超出部分的"实收"与"原始"不是一个量纲；要把多余火力转给**另一艘**（它有自己的层克制与抗性），
+ * 必须把溢出量换回**原始伤害**再走一遍正常结算。
+ *
+ * 做法 = 对单调函数 `applyDamage(...).dealt` 做二分（`dealt` 随 dmg 单调不减）：
+ * 找最小 X 使三层被打空。上限取 `总血 × 12`（抗性最多削 90% ⇒ 需求最多 ×10，留余量）。
+ */
+export function rawDamageToKill(hp: Hp3, resists: UnitSpec['resists'], type: DamageType): number {
+  const total = hp.s + hp.a + hp.h
+  if (total <= 0) return 0
+  let lo = 0
+  let hi = total * 12 + 8
+  for (let i = 0; i < 32; i++) {
+    const mid = (lo + hi) / 2
+    if (applyDamage(hp, resists, mid, type).dealt >= total - 1e-9) hi = mid
+    else lo = mid
+  }
+  return hi
+}
+
+/**
+ * **谜质「齐射协调仪」：溢出火力转移**（F3c B2 · 船长 2026-09-13：
+ * 「**齐射协调仪改为溢出火力会转移到其他敌舰**」）。
+ *
+ * 口径：目标被打死后，把 `原始伤害 − 打空它所需的原始伤害` 这一截转给**下一艘存活敌舰**，
+ * 并按那一艘**自己的层克制**重算（`applyDamage` 原样走一遍）；若把第二艘也打空就继续往下转
+ * （`maxChain` 封顶，防一条链子无限转）。**只在本场带了该装置时调用**（`battle.wormhole.volleyOverflow`）。
+ *
+ * 参数刻意收成结构化小对象（`units` + `stats`）⇒ 用例可以拿一份手搓状态直接验这条机制。
+ */
+export function carryVolleyOverflow(
+  b: { units: Record<string, { hp: Hp3 }>; stats: { meDmg: number } },
+  foes: readonly UnitSpec[],
+  killedTag: string,
+  type: DamageType,
+  rawDamage: number,
+  hpBefore: Hp3,
+  maxChain = 3,
+): { total: number; hits: number; lastTag: string | null } {
+  let raw = rawDamage
+  let prevHp = hpBefore
+  let prevTag = killedTag
+  let total = 0
+  let hits = 0
+  let lastTag: string | null = null
+  for (let n = 0; n < maxChain; n++) {
+    const excess = raw - rawDamageToKill(prevHp, {}, type)
+    if (excess <= 0.5) break
+    const next = foes.find((f) => {
+      if (f.tag === prevTag) return false
+      const rt = b.units[f.tag]
+      return !!rt && rt.hp.s + rt.hp.a + rt.hp.h > 0
+    })
+    if (!next) break
+    const rt = b.units[next.tag]!
+    const before = { ...rt.hp }
+    const r = applyDamage(rt.hp, {}, excess, type)
+    rt.hp = r.hp
+    b.stats.meDmg += r.dealt
+    total += r.dealt
+    hits += 1
+    lastTag = next.tag
+    raw = excess
+    prevHp = before
+    prevTag = next.tag
+    if (rt.hp.s + rt.hp.a + rt.hp.h > 0) break
+  }
+  return { total, hits, lastTag }
 }
 
 /* ═══════════ 构建 ═══════════ */
@@ -2322,6 +2398,89 @@ export function pushBattleFx(
 }
 
 /**
+ * **谜质 B1：我方静态增益**（F3c · 船长 2026-09-13）——**只在洞内战斗**里调用。
+ *
+ * 六类，全部按"从货仓现算"的派生值施加：
+ * - **抗性**：对**敌队主伤害系**（单层单系）走既有"缺口削减"合成 `1 − (1−基础)×(1−值)`，
+ *   三层各自上限 **0.9 不变**（不新增旋钮）；
+ * - **命中 / 回避**：直接加（回避的**加成**在派生端已 +0.25 封顶）；
+ * - **射程**：只放大 `maxRangeM`（放大 `minRangeM` 等于把近盲带往前推，反而吃亏 ⇒ 不放大）；
+ * - **单发伤害**：与"全舰单发伤害光环"同款改法（`shotDmg` / `shotsByType` 同乘）；
+ * - **装填周期**：周期 ×(1 − 削减)，物理下限 50ms（不封顶，但周期不能到 0）。
+ */
+export function applyMatterPlayerBuffs(spec: UnitSpec, b: WormholeMatterBuffs, foeMain: DamageType): void {
+  if (b.devices === 0) return
+  spec.hitBonus += b.hitBonus
+  if (b.evasion > 0) spec.evasion = spec.evasion + b.evasion
+  const applyResist = (layer: 'shield' | 'armor' | 'hull', add: number): void => {
+    if (add <= 0) return
+    const cur = spec.resists[layer]
+    const base = cur?.[foeMain] ?? 0
+    const v = Math.min(0.9, 1 - (1 - base) * (1 - add))
+    spec.resists[layer] = { ...(cur ?? {}), [foeMain]: v }
+  }
+  applyResist('shield', b.resistShield)
+  applyResist('armor', b.resistArmor)
+  applyResist('hull', b.resistHull)
+  const rangeMul = 1 + b.weaponRangePct
+  const dmgMul = 1 + b.damagePct
+  const reloadMul = Math.max(0.1, 1 - b.reloadPct)
+  for (const w of spec.weapons) {
+    if (rangeMul !== 1) w.maxRangeM = Math.round(w.maxRangeM * rangeMul)
+    if (dmgMul !== 1) {
+      if (typeof w.shotDmg === 'number') w.shotDmg = w.shotDmg * dmgMul
+      if (w.shotsByType) {
+        for (const k of Object.keys(w.shotsByType) as DamageType[]) {
+          const v = w.shotsByType[k]
+          if (typeof v === 'number') w.shotsByType[k] = v * dmgMul
+        }
+      }
+    }
+    if (reloadMul !== 1) w.reloadMs = Math.max(50, Math.round(w.reloadMs * reloadMul))
+  }
+}
+
+/**
+ * **谜质在开战那一刻的快照**（F3c B1）：威胁乘数（按用途三档、各自 −50% 封顶）/ 敌队主伤害系 /
+ * 敌方削弱两项。**只在洞内战斗里调用**（`state.wormhole.run?.hold` 就是本趟的装置）。
+ */
+export function wormholeMatterBattleModsOf(
+  state: GameState,
+  baseCard: AnomalyDef,
+  kind: 'node' | 'boss' | 'extract' | 'ruins',
+): { threatMul: number; foeMainType: DamageType; foeHitDown: number; blindReduce: number; volleyOverflow: boolean } | null {
+  const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)
+  if (buffs.devices === 0) return null
+  const bucket: 'node' | 'boss' | 'extract' = kind === 'boss' ? 'boss' : kind === 'extract' ? 'extract' : 'node'
+  const threatMul = wormholeMatterThreatMul(buffs, bucket)
+  /**
+   * **只有真会改变战斗结果的装置才返回快照**（否则返回 `null` ⇒ 走改动前的老路径、存档形状也不变）：
+   * 探索与作业类装置（测绘仪 / 时序核心 / 起重机 / 钻机 / 星云 / 富集器 / 扩展器）不影响战斗。
+   */
+  const any =
+    threatMul < 1 ||
+    buffs.enemyHitDown > 0 ||
+    buffs.blindReduce > 0 ||
+    buffs.resistShield > 0 ||
+    buffs.resistArmor > 0 ||
+    buffs.resistHull > 0 ||
+    buffs.hitBonus > 0 ||
+    buffs.evasion > 0 ||
+    buffs.weaponRangePct > 0 ||
+    buffs.damagePct > 0 ||
+    buffs.reloadPct > 0 ||
+    buffs.volleyOverflow
+  if (!any) return null
+  return {
+    threatMul,
+    foeMainType: foeMainDamageType(baseCard),
+    foeHitDown: buffs.enemyHitDown,
+    blindReduce: buffs.blindReduce,
+    volleyOverflow: buffs.volleyOverflow,
+  }
+}
+
+/**
  * **本场我方的单位规格**（虫洞 D 批 · 每拍重建）：
  * - **单船路径**（`battle.myFleet` 未写）：等价于改动前的单点 `createPlayerSpec(shipId)` + 教学战加成；
  * - **多单位路径**（写了）：按 `myFleet` 逐条重建（各自装配/技能/血条/装填），并把 `tag` 覆盖成
@@ -2337,9 +2496,17 @@ function buildMyUnitSpecs(
   anomalyId: string | null,
 ): UnitSpec[] {
   const fleet = battle.myFleet
+  /**
+   * **谜质 B1**：洞内战斗的每拍重建也要吃同一份增益（否则"开战吃、之后几拍又吐回去"）。
+   * 快照里的 `foeMainType` 决定三张谐振片对哪一系加抗性。
+   */
+  const wh = battle.wormhole
+  const matterBuffs = wh ? wormholeMatterBuffs(state.wormhole.run?.hold) : null
+  const matterFoeMain: DamageType = wh?.foeMainType ?? 'kinetic'
   if (!fleet || fleet.length === 0) {
     const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
     if (!me) return []
+    if (matterBuffs) applyMatterPlayerBuffs(me, matterBuffs, matterFoeMain)
     // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
     if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
     return [me]
@@ -2348,6 +2515,7 @@ function buildMyUnitSpecs(
   for (const entry of fleet) {
     const spec = createPlayerSpec(state, ctx, entry.shipId, battle.ammoIds)
     if (!spec) continue
+    if (matterBuffs) applyMatterPlayerBuffs(spec, matterBuffs, matterFoeMain)
     spec.tag = entry.tag
     if (entry.tag === 'player' && isTutorialBattle(state, anomalyId, entry.shipId)) {
       applyTutorialBuff(spec)
@@ -2443,6 +2611,8 @@ export function startBattleFor(
     }
   }
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
+  // **开战预载量**（F3c B2 · 谜质「弹药回收装置」）：记一份，战后按「预载 − 余额」算这一场打出去多少
+  battle.ammoLoaded = { ...battle.ammo }
   // 机群生存池（2026-09-10 船长「无人机可被击落」）：按武器条目下标建池——只有 src='drone'
   // 的条目参战；机型三层血/抗性/闪避取自物品本体（DroneDefense，四型定位契约见 data/droneRoles.ts）
   const pools: Record<number, import('./state').DronePoolEntry> = {}
@@ -2514,23 +2684,51 @@ let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
 export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
-  spec: { depth: number; kind: 'node' | 'boss' | 'extract' | 'ruins'; waves: number; strengthMul?: number },
+  spec: {
+    depth: number
+    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    waves: number
+    strengthMul?: number
+    /** 谜质：威胁乘数（缺省 1）+ 敌方命中/近盲带削减（见 `battle.wormhole` 的字段说明） */
+    threatMul?: number
+    foeHitDown?: number
+    blindReduce?: number
+  },
 ): AnomalyDef {
   /**
    * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
    * （战场视图 `wormholeBattleViewOf`）调用，每次都克隆/缩放整张敌卡与槽位 ⇒ 拖距离条那种
    * 高频重渲染下会顶出顿挫（船长："依旧还是有顿挫感"、"参考洞外战斗的距离调整"）。
-   * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
+   * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写, 谜质三项)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
    */
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}`
+  const threatMul = spec.threatMul ?? 1
+  const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
-  const card = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
+  const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
+    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
-      WORMHOLE_FOE_BASE_STRENGTH_MUL,
+      WORMHOLE_FOE_BASE_STRENGTH_MUL *
+      threatMul,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
+  /**
+   * **谜质 B1：敌方削弱折进派生卡**（这样**所有** `createFoeSpecs` 调用点自动生效——
+   * 开战、逐拍重建、下一波补刷、战场视图都读同一张派生卡，不必各处再补一次）：
+   * `foeHitRate` 直接减（命中率是**概率**，按绝对值减、下限 0）；`blindDmgMul` 同样按绝对值减。
+   */
+  const foeHitDown = spec.foeHitDown ?? 0
+  const blindReduce = spec.blindReduce ?? 0
+  const card: AnomalyDef =
+    foeHitDown > 0 || blindReduce > 0
+      ? {
+          ...derived,
+          ...(foeHitDown > 0 ? { foeHitRate: Math.max(0, (derived.foeHitRate ?? ctx.balance.battle.foeHitRate) - foeHitDown) } : {}),
+          ...(blindReduce > 0 ? { blindDmgMul: Math.max(0, (derived.blindDmgMul ?? 0.3) - blindReduce) } : {}),
+        }
+      : derived
   wormholeDerivedMemo = { key: memoKey, card }
   return card
 }
@@ -2566,14 +2764,44 @@ export function startFleetBattleFor(
     kind: 'node' | 'boss' | 'extract' | 'ruins'
     waves: number
     strengthMul?: number
+    /**
+     * **谜质装置在开战那一刻的快照**（F3c B1 · 船长 2026-09-13）：
+     * 战斗是"逐拍重建规格"的（`buildMyUnitSpecs` / `createFoeSpecs` 每拍按敌卡重建）
+     * ⇒ 把**这一场**吃到的四个值随标记写进 `battle.wormhole`，逐拍重建时**同一份**，不各算各的。
+     * - `threatMul`：威胁乘数（压制力场/守卫解析仪/撤离掩护器，**三档各自 −50% 封顶**）；
+     * - `foeMainType`：敌队主伤害类型（护盾/装甲/结构三张谐振片**只对它**加抗性）；
+     * - `foeHitDown`：敌方命中 −（干扰发射器，**−0.25 封顶**）；
+     * - `blindReduce`：敌方近盲带伤害比例 −（盲区压制器，下限 0）。
+     */
+    threatMul?: number
+    foeMainType?: DamageType
+    foeHitDown?: number
+    blindReduce?: number
   },
 ): import('./state').BattleState | null {
   if (!anomalyId || shipIds.length === 0) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
   const baseCard = battleAnomalyOf(ctx, anomalyId)
   if (!baseCard) return null
+  /**
+   * **谜质在开战那一刻的快照**（F3c B1 · 船长 2026-09-13）：威胁乘数（三档各自 −50% 封顶）、
+   * 敌队主伤害系（三张谐振片"单层单系"只对它加抗性）、敌方削弱两项。
+   * 快照随 `battle.wormhole` 落进战斗 ⇒ 逐拍重建读同一份。
+   */
+  const matterMods = wormhole ? wormholeMatterBattleModsOf(state, baseCard, wormhole.kind) : null
   // 洞内敌卡：按层派生（**与逐拍重建同源**，见 `wormholeDerivedAnomaly` 的注释）
-  const anomaly = wormhole ? wormholeDerivedAnomaly(ctx, baseCard, wormhole) : baseCard
+  const anomaly = wormhole
+    ? wormholeDerivedAnomaly(ctx, baseCard, {
+        ...wormhole,
+        ...(matterMods
+          ? {
+              ...(matterMods.threatMul < 1 ? { threatMul: matterMods.threatMul } : {}),
+              ...(matterMods.foeHitDown > 0 ? { foeHitDown: matterMods.foeHitDown } : {}),
+              ...(matterMods.blindReduce > 0 ? { blindReduce: matterMods.blindReduce } : {}),
+            }
+          : {}),
+      })
+    : baseCard
   const bal = ctx.balance.battle
   // 编队顺序：**主控置首**（`state.shipId` 在编队里就提到第一位），其余保持传入顺序
   const ordered = [...shipIds]
@@ -2629,6 +2857,11 @@ export function startFleetBattleFor(
       }
     }
   }
+  // **谜质 B1：我方静态增益**（抗性 / 命中 / 回避 / 射程 / 单发 / 装填）——只在洞内战斗里生效
+  if (matterMods) {
+    const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)
+    for (const spec of specs) applyMatterPlayerBuffs(spec, buffs, matterMods.foeMainType)
+  }
   const me = specs[0]!
   // 多波（2026-09-09）：开战只生成第一波；后续波由 advanceBattleFor 在敌方全灭时补刷
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
@@ -2682,6 +2915,8 @@ export function startFleetBattleFor(
     }
   }
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
+  // **开战预载量**（F3c B2 · 谜质「弹药回收装置」）：记一份，战后按「预载 − 余额」算这一场打出去多少
+  battle.ammoLoaded = { ...battle.ammo }
   // 机群生存池：**只按主控武器槽建池**（僚舰无人机本批不参战，见 D 批边界）
   const pools: Record<number, import('./state').DronePoolEntry> = {}
   const durMul =
@@ -2725,8 +2960,28 @@ export function startFleetBattleFor(
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
   }
-  // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）
-  if (wormhole) battle.wormhole = { cardId: anomalyId, ...wormhole }
+  // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）；
+  // F3c B1 起，谜质在开战那一刻的快照（威胁乘数 / 敌主伤害系 / 敌方削弱）**一并写进去**，
+  // 逐拍重建与下一波补刷都读这一份（不各算各的）。
+  if (wormhole) {
+    battle.wormhole = {
+      cardId: anomalyId,
+      ...wormhole,
+      /**
+       * 谜质快照**只写真正生效的项**（没带战斗类装置时 `matterMods` = null ⇒ 一个字段都不写）：
+       * 于是"没带装置"的洞内战斗与改动前**逐字一致**（存档形状、既有用例、战报都不受影响）。
+       */
+      ...(matterMods
+        ? {
+            ...(matterMods.threatMul < 1 ? { threatMul: matterMods.threatMul } : {}),
+            ...(matterMods.foeMainType ? { foeMainType: matterMods.foeMainType } : {}),
+            ...(matterMods.foeHitDown > 0 ? { foeHitDown: matterMods.foeHitDown } : {}),
+            ...(matterMods.blindReduce > 0 ? { blindReduce: matterMods.blindReduce } : {}),
+            ...(matterMods.volleyOverflow ? { volleyOverflow: true } : {}),
+          }
+        : {}),
+    }
+  }
   // ⚠ **刻意不写 `battle.hullEscapeFrac`**：副本内无"结构过半自动脱离"保险（冲突 2 · 船长裁定）。
   return battle
 }
@@ -3138,12 +3393,14 @@ export function settleDroneLosses(
   ctx: SimContext,
   shipId: string,
   battle: import('./state').BattleState | null,
+  /** **回收率加成**（谜质「机群回收网」· F3c B2）：按百分点加在既有回收率上，并夹在 100% 以内。缺省 0 = 既有行为。 */
+  recoveryBonus = 0,
 ): string | null {
   const lost = battle?.droneLost
   if (!lost) return null
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return null
-  const rate = droneRecoveryRate(state)
+  const rate = droneRecoveryRateWithBonus(state, recoveryBonus)
   const load: Record<string, number> = { ...(fleetShip.droneLoad ?? {}) }
 
   // ── ① 先算出各型的损坏数（按清单实有数封顶）与基础名额 floor(损坏×回收率) ──
@@ -3453,6 +3710,13 @@ function droneSkillLv(state: GameState, id: string): number {
 }
 
 /** 战后损坏机体的回收比例（2026-09-10 船长：基础 20%，回收学满级 50%） */
+/**
+ * **回收率（含谜质加成）**（F3c B2 · 船长：「机群回收网」）：既有回收率 + 装置加成，
+ * **夹在 100% 以内**（物理上限：回收率是比例）。单点抽出 ⇒ 用例可直接验这条口径。
+ */
+export function droneRecoveryRateWithBonus(state: GameState, bonus = 0): number {
+  return Math.min(1, droneRecoveryRate(state) + Math.max(0, bonus))
+}
 export function droneRecoveryRate(state: GameState): number {
   const rate = DRONE_SKILL.recoveryBase + DRONE_SKILL.recoveryPerLevel * droneSkillLv(state, 'drone-recovery')
   return Math.min(DRONE_SKILL.recoveryMax, rate)
@@ -4163,6 +4427,7 @@ function stepBattle(
           }
         } else {
           const rt = b.units[foeTarget!.tag]!;
+          const hpBefore = { ...rt.hp }
           // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
           const dmgLocked = unit.lockedDmgBonus
             ? Math.round(dmg * (1 + unit.lockedDmgBonus))
@@ -4170,6 +4435,18 @@ function stepBattle(
           const r = applyDamage(rt.hp, {}, dmgLocked, type)
           rt.hp = r.hp
           b.stats.meDmg += r.dealt
+          /**
+           * **谜质「齐射协调仪」：溢出火力转移**（F3c B2 · 船长 2026-09-13：
+           * 「齐射协调仪改为溢出火力会转移到其他敌舰」）——目标被这一发打空后，把超出
+           * 「打空它所需原始伤害」的那一截转给下一艘存活敌舰（按那一艘自己的层克重重算）。
+           * 只在本场带了该装置时生效（`battle.wormhole.volleyOverflow`）。
+           */
+          if (b.wormhole?.volleyOverflow === true && rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
+            const carry = carryVolleyOverflow(b, foes, foeTarget!.tag, type, dmgLocked, hpBefore)
+            if (carry.hits > 0) {
+              pushBattleNotice(b, `齐射协调：溢火结转 ${Math.round(carry.total)} 点伤害到下一艘敌舰`)
+            }
+          }
           // **附加伤害段**（2026-09-13 船长：掠袭破片炮「额外造成 50% 的动能伤害是附加伤害，
           // 和弹种无关」）——口径（船长 2026-09-13 二次裁定）：「**伤害各自吃各自的制（克制）效果**」：
           // 副段取**武器原伤害**（含锁定加深，不含主段已吃的克制）×比例，然后**两段各吃各自的层克制**。

@@ -113,6 +113,11 @@ securityZoneOf,
   wormholeEmptyShareFor,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
+  // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
+  WORMHOLE_MATTER_DEVICES,
+  WORMHOLE_MATTER_DEVICE_IDS,
+  WORMHOLE_MATTER_FLOOR,
+  wormholeIsShapedItem,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -145,7 +150,10 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-13 虫洞族专属机型 2 型（`drone-wh-c-heavy` 巢卫攻坚 / `drone-wh-e-sentry` 构件哨戒，
 // 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ 换成族专属无人机）→ 物品总数 36→**38**、无人机 5→**7**
 // 2026-09-13 F4：遗迹安全货柜 5 种（中间件，施工期 unreleased）→ 物品总数 38→**43**
-check(itemDefs.length === 43, `物品总数应为 43，实际 ${itemDefs.length}`)
+// 2026-09-13 F3c：谜质储存器 7 台（A 批 = 探索与作业类；施工期 unreleased）→ 物品总数 43→**50**
+// 2026-09-13 F3c-B1：谜质储存器再 13 台（威胁 3 + 战斗 10）→ 物品总数 50→**63**
+// 2026-09-13 F3c-B2：谜质储存器再 4 台（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）→ 物品总数 63→**67**
+check(itemDefs.length === 67, `物品总数应为 67，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -259,8 +267,11 @@ for (const item of itemDefs) {
         /* **货柜豁免有前提**（F4 · 2026-09-13）：`container` 是"带回后拆解"的大件，
          * 船长明示「**暂时不用拆解**」⇒ 施工期（`unreleased`）允许没有配方；
          * 但**一旦上线（删掉 unreleased）就必须有配方**，否则玩家拖回一箱打不开的东西。 */
-        (item.kind === 'container' && item.unreleased === true),
-      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container 仅在施工期豁免）`,
+        (item.kind === 'container' && item.unreleased === true) ||
+        /* **谜质储存器同理**（F3c · 2026-09-13）：它是"本趟虫洞内生效、离开即消失"的装置，
+         * 既不是原料也不进任何生产链 ⇒ 施工期（`unreleased`）允许没有配方。 */
+        (item.kind === 'matter' && item.unreleased === true),
+      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container / matter 仅在施工期豁免）`,
     )
   }
 }
@@ -3229,6 +3240,64 @@ for (const m of MODULES) {
       if (box.unreleased !== true) errors.push(`货柜契约：${boxId}（${box.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
       if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
       if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
+    }
+    /**
+     * ⑦ **谜质储存器契约**（F3c · 船长 2026-09-13：「谜质玩家采集后，在货仓内显示为4格的『谜质储存器』」）。
+     *
+     * 每一台都必须：① `kind === 'matter'` ② `unreleased`（施工期不可见：手册物品图鉴遍历全目录）
+     * ③ **2000 m³**（正是 2×2 = 4 格）④ 在 core 形状表里**登记过**（没登记 ⇒ 会被当散货合并进背包：
+     * 2000 m³ 的单价体积会让"每格单位数"退化成 1 ⇒ 只占 1 格、形状也丢了，与货柜那次同款坑）。
+     * 另外 core 装置表与 data 物品表**两边 id 必须一一对应**（少一边 = 取回来一件读不懂/没有效果的东西）。
+     */
+    const matterIds = ITEMS.filter((i) => i.kind === 'matter').map((i) => i.id)
+    for (const id of matterIds) {
+      const item = ctxItems.get(id)
+      if (!item) {
+        errors.push(`谜质契约：物品目录里没有 ${id}（谜质储存器）—— 取回时会是"读不懂的东西"`)
+        continue
+      }
+      if (item.kind !== 'matter') errors.push(`谜质契约：${id} 的 kind = ${item.kind}，应为 matter`)
+      if (item.unreleased !== true) errors.push(`谜质契约：${id}（${item.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
+      if (item.unitM3 !== 2000) errors.push(`谜质契约：${id} 的体积 = ${item.unitM3} m³，应为 2000（= 2×2 = 4 格）`)
+      if (!wormholeIsShapedItem(id)) {
+        errors.push(`谜质契约：${id} 没在 core 形状表里登记 —— 会被当散货塞进背包（只占 1 格、形状丢失）`)
+      }
+    }
+    if (
+      WORMHOLE_MATTER_DEVICE_IDS.length !== matterIds.length ||
+      WORMHOLE_MATTER_DEVICE_IDS.some((id, i) => id !== matterIds[i])
+    ) {
+      errors.push(
+        `谜质契约：core 装置表 [${WORMHOLE_MATTER_DEVICE_IDS.join(', ')}] 与 data 物品表 [${matterIds.join(', ')}] 不一致`,
+      )
+    }
+    if (WORMHOLE_MATTER_FLOOR < 1) {
+      errors.push(`谜质契约：每层保底谜质格数 = ${WORMHOLE_MATTER_FLOOR}，应 ≥ 1（船长：「每层保底 1 个谜质格」）`)
+    }
+    /**
+     * ⑧ **图标契约**（F3c · 船长 2026-09-13：「**货仓内物品采用图标而不是纯文字，安全货仓和谜质的
+     * SVG图标也需要绘制**」）：谜质 20 台与 5 种安全货柜**都必须有专属图形与色调**
+     * （登记在 `ui/Glyphs.tsx` 的 `SHAPES` / `TONES` 里）。图标集在**渲染层**（core/data 看不到），
+     * 所以这一条按"静态读源码"来核 —— 与"文档行数自检"同款，防的是"加了物品忘了画图标 ⇒
+     * 货仓格里落成兜底圆环、玩家分不清"。
+     */
+    const glyphSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/ui/Glyphs.tsx'), 'utf8')
+    const blockOf = (from: string, to: string): string => {
+      const a = glyphSrc.indexOf(from)
+      const b = glyphSrc.indexOf(to)
+      return a >= 0 && b > a ? glyphSrc.slice(a, b) : ''
+    }
+    const shapesBlock = blockOf('const SHAPES', 'export function Glyph')
+    const tonesBlock = blockOf('export const TONES', 'export function toneOf')
+    const hasKey = (block: string, key: string): boolean =>
+      block.includes(`'${key}':`) || new RegExp(`(^|\\s)${key}:`, 'm').test(block)
+    for (const id of [...matterIds, 'box-relic']) {
+      if (!hasKey(shapesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 SHAPES 里没有图形`)
+      if (!hasKey(tonesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 TONES 里没有色调`)
+    }
+    for (const fam of WORMHOLE_FAMILIES) {
+      const boxId = `box-relic-${fam.toLowerCase()}`
+      if (!hasKey(tonesBlock, boxId)) errors.push(`图标契约：安全货柜 ${boxId} 没有族色调（货仓格里按族分色）`)
     }
     const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {

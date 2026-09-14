@@ -52,6 +52,8 @@ import {
   placementCellsCount,
   wormholeIsShapedItem,
 } from './wormholeHold'
+// F3c 谜质装置：效果一律从货仓现算（本文件用到容量 / 打捞·采集堆数 / 母矿产量 / 回合同步）
+import { wormholeMatterBuffs, wormholeMatterDiscardHint } from './wormholeMatter'
 import {
   WORMHOLE_TURN_PER_ACTIVATE,
   WORMHOLE_TURN_PER_PICK,
@@ -367,7 +369,8 @@ export function wormholeLootTierOf(itemId: string): 0 | 1 | 2 {
 export function wormholeHoldCapacityOf(state: GameState, ctx: SimContext): number {
   const run = state.wormhole.run
   if (!run) return 0
-  return wormholeBagSlotsOfFleet(state, ctx, run.fleet)
+  // 谜质「舱段扩展器」：货仓有效格数 +8/台（现算；物理上不越过货仓真实容量——它只是加格子）
+  return wormholeBagSlotsOfFleet(state, ctx, run.fleet) + wormholeMatterBuffs(run.hold).holdCells
 }
 
 /** 一条散货占几格（数量 ÷ 每格单位数，向上取整；认不出物品 ⇒ 按 1 格兜底） */
@@ -583,6 +586,7 @@ export function wormholeTempStow(
     const stowed = wormholeHoldStow(state, ctx, itemId)
     if (!stowed.ok) return { ok: false, error: stowed.error }
     wormholeTempRemove(state, itemId, slot.units)
+    wormholeSyncMatterTurns(state) // 谜质装置从临时空间进货仓 ⇒ 实时派生（时序核心 +10）
     const name = ctx.items.get(itemId)?.name ?? itemId
     addLog(state, 'info', `🕳 整理：${name} 从临时空间进货仓。`)
     return { ok: true }
@@ -604,6 +608,7 @@ export function wormholeTempDiscard(state: GameState, ctx: SimContext, itemId: s
   if (!run?.temp) return { ok: false, error: '临时空间是空的。' }
   const gone = wormholeTempRemove(state, itemId)
   if (gone <= 0) return { ok: false, error: '临时空间里没有这件东西。' }
+  wormholeSyncMatterTurns(state)
   const name = ctx.items.get(itemId)?.name ?? itemId
   addLog(state, 'warn', `🕳 抛弃（临时空间）：${name}${gone > 1 ? `×${gone}` : ''}。`)
   return { ok: true }
@@ -624,7 +629,10 @@ export function wormholeStowOrTemp(
 ): { ok: boolean; where?: 'hold' | 'temp'; error?: string } {
   if (wormholeIsShapedItem(itemId)) {
     const stowed = wormholeHoldStow(state, ctx, itemId)
-    if (stowed.ok) return { ok: true, where: 'hold' }
+    if (stowed.ok) {
+      wormholeSyncMatterTurns(state) // 谜质装置落进货仓 ⇒ 实时派生（时序核心 +10）
+      return { ok: true, where: 'hold' }
+    }
     const temp = wormholeTempAdd(state, ctx, itemId, units)
     if (temp.ok) return { ok: true, where: 'temp' }
     return { ok: false, error: `${stowed.error ?? '货仓放不下'} ${temp.error ?? ''}`.trim() }
@@ -689,6 +697,10 @@ export function wormholeHoldDiscard(
   if (target.kind === 'box' || units === undefined) {
     const gone = holdRemove(run.hold, placementId)
     if (!gone) return { ok: false, error: '没有这个件。' }
+    // 谜质装置被抛掉 ⇒ 回合同步（**夹紧**：上限变小、剩余夹到新上限），并把代价写进事件日志
+    wormholeSyncMatterTurns(state)
+    const hint = wormholeMatterDiscardHint(gone.itemId)
+    if (hint) addLog(state, 'warn', `🕳 ${hint}`)
     if (gone.kind === 'cargo') {
       const slot = run.bag.find((s) => s.itemId === gone.itemId)
       if (slot) {
@@ -716,6 +728,7 @@ export function wormholeHoldDiscard(
   }
   if ((target.units ?? 0) <= 0) holdRemove(run.hold, placementId)
   wormholeHoldSyncCargo(state, ctx)
+  wormholeSyncMatterTurns(state)
   addLog(
     state,
     'warn',
@@ -931,8 +944,10 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。' }
   if (cell.place !== 'vein') return { ok: false, error: '这个地点没有可采集的矿脉。' }
-  const miners = wormholeMinersOf(state, ctx)
-  if (miners <= 0) return { ok: false, error: '编队里没有采集器：矿脉挖不动（至少装 1 台）。' }
+  const baseMiners = wormholeMinersOf(state, ctx)
+  if (baseMiners <= 0) return { ok: false, error: '编队里没有采集器：矿脉挖不动（至少装 1 台）。' }
+  // 谜质「采集钻机」：每次采集 +1 堆/台（门槛仍看真采集器）
+  const miners = baseMiners + wormholeMatterBuffs(run.hold).collectPiles
   wormholeEnsureVeinPiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) return { ok: false, error: '这条矿脉已经采空了。' }
@@ -1023,10 +1038,12 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。' }
   if (cell.place !== 'graveyard' && cell.place !== 'ruins') return { ok: false, error: '这个地点没有可打捞的残骸。' }
-  const rigs = wormholeSalvagersOf(state, ctx)
-  if (rigs <= 0) {
+  const baseRigs = wormholeSalvagersOf(state, ctx)
+  if (baseRigs <= 0) {
     return { ok: false, error: '编队里没有打捞器：打捞作业干不了（至少装 1 台）。' }
   }
+  // 谜质「打捞起重机」：每次打捞 +1 堆/台（**门槛仍看真打捞器**——装置不替代装备）
+  const rigs = baseRigs + wormholeMatterBuffs(run.hold).salvagePiles
   wormholeEnsureSalvagePiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) {
@@ -1243,7 +1260,42 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
   const rng = wormholeStream(runSeedOf(state) * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
   const span = WORMHOLE_VEIN_PILES_MAX - WORMHOLE_VEIN_PILES_MIN + 1
   const count = WORMHOLE_VEIN_PILES_MIN + Math.floor(rng() * span)
-  cell.piles = wormholeNodePilesFor(state, cell, count)
+  const piles = wormholeNodePilesFor(state, cell, count)
+  /**
+   * 谜质「母矿富集器」：**铺堆那一刻**按倍率放大（+25%/台）。
+   * 铺在"到达那一刻"（`wormholeEnsureArrivalPiles`）⇒ 装置是**到那儿之前**背上才吃得到，
+   * 这与"放在货仓里就生效"一致：堆一旦铺好就不再回头改（免得同一格进进出出反复变数）。
+   */
+  const mul = wormholeMatterBuffs(run.hold).oreYieldMul
+  cell.piles = mul === 1 ? piles : piles.map((p) => ({ ...p, units: Math.max(1, Math.round(p.units * mul)) }))
+}
+
+/**
+ * **谜质·回合上限同步**（F3c · 船长 2026-09-13 裁定「实时派生 + 夹紧」，本函数**幂等**）。
+ *
+ * 本趟上限 = `turnsBase`（入场预算）＋ 10 × **货仓里**的「时序核心」台数。
+ * 为什么用"每次货仓变动后重算一遍"而不是"捡一处 +10、抛一处 −10"：装置会在
+ * 货仓 / 临时空间 / 丢弃三条路上来回走，逐处加减迟早漏一处；重算永远收敛到同一个答案。
+ *
+ * 夹紧口径：
+ * - 上限**变大** ⇒ 剩余**同样多给这么多**（捡到就真能多走几步）；
+ * - 上限**变小**（丢掉了装置）⇒ 剩余**夹到新上限**、**永不为负**；**不追缴**已经花掉的回合
+ *   —— 这也是船长问的那条：「丢弃回合相关谜质导致回合数不够」时，玩家只是走不动了，
+ *   **撤离永远可用**（`wormholeExtract` 不看回合），不会软锁。
+ */
+export function wormholeSyncMatterTurns(state: GameState): void {
+  const run = state.wormhole.run
+  if (!run) return
+  const bonus = wormholeMatterBuffs(run.hold).turnBonus
+  // 老档没有 `turnsBase` ⇒ 用"当前上限 − 当前加成"反推（老档本来没有装置 ⇒ 等于 turnsTotal）
+  const base = run.turnsBase ?? run.turnsTotal - bonus
+  run.turnsBase = base
+  const want = Math.max(0, Math.round(base + bonus))
+  const delta = want - run.turnsTotal
+  run.turnsTotal = want
+  if (delta > 0) run.turnsLeft = Math.min(want, run.turnsLeft + delta)
+  else if (run.turnsLeft > want) run.turnsLeft = want
+  if (run.turnsLeft < 0) run.turnsLeft = 0
 }
 
 /** 矿脉堆的具体生成（`wormholeNodePiles` 的薄包装：序号按格坐标散列，保证同格同结果） */

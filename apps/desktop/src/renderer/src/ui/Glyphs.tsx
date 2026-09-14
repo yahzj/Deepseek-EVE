@@ -90,6 +90,216 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M11.4 10.2v2" />
     </g>
   ),
+  /* ── 谜质储存器（2026-09-13 F3c 补：本趟虫洞内生效的装置）──
+     造型与货柜同语言但**一眼可分**：圆环里一颗菱形晶体 + 上下两道束缚带（"装起来的谜质"）。 */
+  matter: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 8.4l2.8 3.6-2.8 3.6-2.8-3.6z" />
+      <path d="M8.6 9.6h6.8" />
+      <path d="M8.6 14.4h6.8" />
+    </g>
+  ),
+  /* ── 遗迹安全货柜（2026-09-13 F3c 补：船长「安全货仓…的SVG图标也需要绘制」）──
+     与通用 `container` 区分：**没有外环**，是一个带加固角 + 挂锁 + 铅封带的箱体。 */
+  'box-relic': (
+    <g>
+      <path d="M4.8 9.2h14.4v8.6a1.4 1.4 0 0 1-1.4 1.4H6.2a1.4 1.4 0 0 1-1.4-1.4z" />
+      <path d="M4.8 12.6h14.4" />
+      <path d="M9.2 9.2V6.6h5.6v2.6" />
+      <circle cx="12" cy="15.2" r="1.5" />
+      <path d="M12 16.7v1.3" />
+    </g>
+  ),
+  /* ── 谜质装置 20 台（2026-09-13 F3c：每台一枚专属线稿）──
+     全部沿用"圆环徽 + 内部几何"这套物品语言，靠**内部纹样**区分用途（远看同族、近看可辨）。 */
+  /* 探索：测绘 / 时序 / 星云 / 扩展 */
+  'mat-surveyor': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 12l4.4-3.2" />
+      <path d="M6.8 12a5.2 5.2 0 0 1 5.2-5.2" />
+      <circle cx="12" cy="12" r="1" />
+    </g>
+  ),
+  'mat-chrono': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <circle cx="12" cy="12" r="4.6" />
+      <path d="M12 9.4V12l2 1.5" />
+    </g>
+  ),
+  'mat-nebula': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8.6 10.2h4a1.7 1.7 0 1 0-1.7-1.7" />
+      <path d="M8.4 13.8h5.4a1.8 1.8 0 1 1-1.8 1.8" />
+    </g>
+  ),
+  'mat-expander': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="9" y="9" width="6" height="6" rx="1" strokeDasharray="2 2" />
+      <path d="M6.4 12H4.8M17.6 12h1.6M12 6.4V4.8M12 17.6v1.6" />
+    </g>
+  ),
+  /* 作业与收益：起重机 / 钻机 / 富集 */
+  'mat-crane': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8.8 7.8h6.4" />
+      <path d="M12 7.8v5" />
+      <path d="M12 12.8a1.9 1.9 0 1 0 1.9 1.9" />
+    </g>
+  ),
+  'mat-drill': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 7v4.6" />
+      <path d="M9.4 11.6h5.2L12 16.4z" />
+    </g>
+  ),
+  'mat-enricher': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 13.8l2.2 2.2-2.2 2.2-2.2-2.2z" />
+      <path d="M9.8 11L12 8.8l2.2 2.2" />
+      <path d="M12 8.8v2.6" />
+    </g>
+  ),
+  /* 威胁：压制 / 守卫解析 / 撤离掩护 */
+  'mat-suppressor': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 6.6v4.2" />
+      <path d="M9.6 8.6L12 11l2.4-2.4" />
+      <path d="M8 14.2h8" />
+    </g>
+  ),
+  'mat-boss-analyzer': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 6.2l1.9 2.3h-3.8z" />
+      <circle cx="12" cy="13.4" r="3.4" />
+      <circle cx="12" cy="13.4" r="1" />
+    </g>
+  ),
+  'mat-extract-cover': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8 8.4h2.6v7.2H8" />
+      <path d="M12.4 12h4.8" />
+      <path d="M14.8 9.8L17.2 12l-2.4 2.2" />
+    </g>
+  ),
+  /* 抗性三片：护盾 / 装甲 / 结构（单层单系） */
+  'mat-shield-res': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 6.6l4.4 1.6v3.4c0 2.6-1.8 4.4-4.4 5.4-2.6-1-4.4-2.8-4.4-5.4V8.2z" />
+    </g>
+  ),
+  'mat-armor-res': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="7.2" y="8.2" width="7" height="5.2" rx="1" />
+      <rect x="9.8" y="11.4" width="7" height="5.2" rx="1" />
+    </g>
+  ),
+  'mat-hull-res': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="7.2" y="8" width="9.6" height="8" rx="1" />
+      <path d="M7.2 8l9.6 8M16.8 8l-9.6 8" />
+    </g>
+  ),
+  /* 命中 / 回避 / 干扰 */
+  'mat-tracker': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 6.2v2.4M12 15.4v2.4M6.2 12h2.4M15.4 12h2.4" />
+    </g>
+  ),
+  'mat-gyro': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <ellipse cx="12" cy="12" rx="5.8" ry="2.6" />
+      <ellipse cx="12" cy="12" rx="5.8" ry="2.6" transform="rotate(62 12 12)" />
+    </g>
+  ),
+  'mat-jammer': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M9.2 9.4a3.6 3.6 0 0 1 0 5.2" />
+      <path d="M7.2 7.6a6.6 6.6 0 0 1 0 8.8" />
+      <path d="M14.4 14.4l3.4 3.4M17.8 14.4l-3.4 3.4" />
+    </g>
+  ),
+  /* 射程 / 盲区 / 弹药增效 / 装填 */
+  'mat-rangefinder': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M5.8 12h11.6" />
+      <path d="M14.6 9.8L17.4 12l-2.8 2.2" />
+      <path d="M9 10.2v3.6" />
+    </g>
+  ),
+  'mat-blindspot': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <circle cx="12" cy="14.6" r="2.6" />
+      <path d="M12 6.6v4" />
+      <path d="M9.8 8.6L12 10.8l2.2-2.2" />
+    </g>
+  ),
+  'mat-ammo-dmg': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 7.2c1.4 1.3 2.2 2.9 2.2 4.7v3.3H9.8v-3.3c0-1.8.8-3.4 2.2-4.7z" />
+      <path d="M12 15.2v2" />
+    </g>
+  ),
+  'mat-reload': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M16.4 12a4.4 4.4 0 1 1-1.5-3.3" />
+      <path d="M16.6 6.6v2.8h-2.8" />
+    </g>
+  ),
+  /* ── B2 批：溢火结转 / 弹药回收 / 机群回收网 / 战地维修 ── */
+  'mat-volley': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M9.4 9.6L6.6 12l2.8 2.4" />
+      <path d="M14.6 9.6L17.4 12l-2.8 2.4" />
+      <circle cx="12" cy="12" r="1.4" />
+    </g>
+  ),
+  'mat-ammo-back': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M10.6 10h2.8v6.6h-2.8z" />
+      <path d="M10.6 10c0-1.2.6-2.1 1.4-2.1s1.4.9 1.4 2.1" />
+      <path d="M15.8 7.6h-3.4" />
+      <path d="M13.6 6.4L12.4 7.6l1.2 1.2" />
+    </g>
+  ),
+  'mat-drone-net': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 6.6l1.8 2.2h-3.6z" />
+      <path d="M8.2 11.2h7.6v5.4H8.2z" />
+      <path d="M8.2 13.9h7.6M12 11.2v5.4" />
+    </g>
+  ),
+  'mat-field-repair': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 7.4v6.4M8.8 10.6h6.4" />
+      <path d="M8.6 15.2a4.4 4.4 0 0 0 6.8 0" />
+    </g>
+  ),
   /* ── 装备（方框徽：外框 + 内部机件） ── */
   miner: (
     <g>
@@ -529,6 +739,40 @@ export const TONES: Record<string, string> = {
   kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
+  matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
+  /* ── 遗迹安全货柜（F3c）：造型共用 `box-relic`，**按族分色**（与"按族掉落"这条口径对齐）── */
+  'box-relic': '#e0b060',
+  'box-relic-a': '#ff8373', // A 海盗：红
+  'box-relic-c': '#c792ea', // C 异形：紫
+  'box-relic-d': '#cdd6e0', // D 守墓：灰白
+  'box-relic-e': '#5ee6c8', // E 巨构：青
+  'box-relic-g': '#ffca58', // G 亡军：黄
+  /* ── 谜质装置 20 台：按**用途族**分色（探索青蓝 / 作业青绿 / 威胁琥珀红 / 抗性按层 / 其余各自一色）── */
+  'mat-surveyor': '#6fe3f0',
+  'mat-chrono': '#7fc7ff',
+  'mat-nebula': '#9ce6f5',
+  'mat-expander': '#a6f0ff',
+  'mat-crane': '#5ee6c8',
+  'mat-drill': '#7de3a8',
+  'mat-enricher': '#ffd166',
+  'mat-suppressor': '#ff8373',
+  'mat-boss-analyzer': '#ff9f6b',
+  'mat-extract-cover': '#ffb454',
+  'mat-shield-res': '#6cb6ff',
+  'mat-armor-res': '#cdd6e0',
+  'mat-hull-res': '#ffb454',
+  'mat-tracker': '#ffca58',
+  'mat-gyro': '#7fc7ff',
+  'mat-jammer': '#c792ea',
+  'mat-rangefinder': '#a6f0ff',
+  'mat-blindspot': '#8fd96b',
+  'mat-ammo-dmg': '#ff8373',
+  'mat-reload': '#ffc46b',
+  /* B2 批： */
+  'mat-volley': '#ffd166',
+  'mat-ammo-back': '#ffb454',
+  'mat-drone-net': '#7fc7ff',
+  'mat-field-repair': '#8fd96b',
   miner: '#5ee6c8',
   cargo: '#ffd166',
   turret: '#ff8373',
@@ -559,6 +803,28 @@ export const TONES: Record<string, string> = {
 /** 取色调（带兜底） */
 export function toneOf(key: string | undefined): string {
   return (key && TONES[key]) || '#8aa0b8'
+}
+
+/**
+ * **物品 → 图标键**（2026-09-13 F3c · 船长：「货仓内物品采用图标而不是纯文字，
+ * 安全货仓和谜质的SVG图标也需要绘制」）。
+ *
+ * 规则（从具体到笼统）：
+ * 1. **遗迹安全货柜**（`box-relic-*`）⇒ 共用 `box-relic` 造型，**颜色按族取**（色调表按物品 id 存）；
+ * 2. **谜质装置**（`mat-*`）⇒ **每台一枚专属线稿**（键 = 物品 id）；
+ * 3. 其余物品 ⇒ 沿用按 **大类**（`ItemDef.kind`）的既有图标（矿石/残骸/货柜/修理组件…）。
+ *
+ * 色调一律走 `toneOf(itemId)`：物品 id 优先，回落图标键（这样"同族不同色"与"同键同色"都成立）。
+ */
+export function itemIconOf(itemId: string, kind?: string): string {
+  if (itemId.startsWith('box-relic-')) return 'box-relic'
+  if (itemId.startsWith('mat-')) return itemId
+  return kind ?? 'fallback'
+}
+
+/** 物品图标色：**物品 id 优先**（安全货柜按族分色），再回落图标键 */
+export function itemToneOf(itemId: string, iconKey: string): string {
+  return TONES[itemId] ?? toneOf(iconKey)
 }
 
 /** 导航/标签图标专属色调（2026-09-05 船长：每个图标各自纯色，未选中也着色；选中态由按钮高亮区分） */
