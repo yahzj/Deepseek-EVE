@@ -61,6 +61,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  // 【图纸货柜 3 种（2026-09-14 船长定：虫洞遗迹打捞新增）：口径与安全货柜逐字相同——同样是"带回后拆解"
+  //   的中间件、同样不上市交易；basePrice 1 / demandMultiplier 0 兜底防套利；施工期一律 unreleased
+  //   ⇒ **上线动作 = 删这 3 个字段**。】
+  { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-bp-mid', kind: 'item', refId: 'box-bp-mid', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-bp-deep', kind: 'item', refId: 'box-bp-deep', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // 【谜质储存器 7 台（F3c · 船长 2026-09-13）：同样**不上市交易**——它们是"本趟虫洞内生效、离开即消失"
   //   的装置，不是商品。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`（施工期不可见）
   //   ⇒ **上线动作 = 删这 7 个字段**（与货柜 / 虚空母矿同一套做法）；basePrice 1 / demandMultiplier 0

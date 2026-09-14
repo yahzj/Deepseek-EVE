@@ -212,7 +212,14 @@ export function wormholeFamilyPoolGaps(ctx: SimContext): string[] {
  * ⚠ **本批只落"池定义 + 权重常量 + 契约 + 用例"**：货柜内容物仍留待**拆解批次**（船长「暂时不用拆解」）
  * ⇒ **运行时零行为变化**；拆解批次按 `wormholeLootShares()` 与 `wormholeDilutionPoolOf()` 抽即可。 */
 
-/** 稀释池占抽取的比例（族专属池 = 1 − 本值）；船长 2026-09-13：「按 70:30」 */
+/**
+ * 稀释池占抽取的比例（族专属池 = 1 − 本值）；船长 2026-09-13：「按 70:30」。
+ *
+ * ⚠ **2026-09-14 起停用（保留常量，仿 `foeChargeMaxHoldMs` 的"停用但留档"惯例）**：
+ * 船长当日新增**图纸货柜**并裁定「与安全货柜并列」⇒ 安全货柜改 **100% 族专属池**、
+ * 一次性图纸完全改由图纸货柜承载，本比例**不再被任何运行时路径读取**。留档是为了让
+ * "70:30 曾经是什么"可查；`once-ship-blueprints.test.ts` 与 `content:check` 里的断言已改按"停用"口径。
+ */
 export const WORMHOLE_DILUTION_SHARE = 0.3
 
 /** 各档一次性蓝图**进池的最低层**（船长 2026-09-13：「T4 降到 3 层，T5 降到 5 层」；T3 沿用层 2 起） */
@@ -223,7 +230,7 @@ export const WORMHOLE_DILUTION_MIN_DEPTH: Readonly<Record<3 | 4 | 5, number>> = 
  */
 export const WORMHOLE_DILUTION_MIN_DEPTH_FLOOR = 2
 
-/** 抽取权重（供拆解批次调用；两者之和恒为 1） */
+/** 抽取权重（**2026-09-14 起停用**，见 `WORMHOLE_DILUTION_SHARE` 的说明；保留仅作文档留档） */
 export function wormholeLootShares(): { family: number; dilution: number } {
   return { family: 1 - WORMHOLE_DILUTION_SHARE, dilution: WORMHOLE_DILUTION_SHARE }
 }
@@ -247,6 +254,74 @@ export function wormholeDilutionPoolOf(ctx: SimContext, depth: number): string[]
     if (!bp || bp.singleUse !== true) continue
     const tier = ctx.ships.get(bp.shipId)?.tier
     if (tier === undefined || !allowed.includes(tier as 3 | 4 | 5)) continue
+    out.push(id)
+  }
+  return out.sort()
+}
+
+/* ═══════════ 二之二、图纸货柜（2026-09-14 船长定：虫洞遗迹打捞新增） ═══════════ */
+
+/**
+ * **图纸货柜三种 = 层档**（船长 2026-09-14：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。
+ * 内部是随机 T3T4T5 舰船的一次性图纸。有较低概率出 T3 或 T4 的永久图纸。」）。
+ *
+ * ⚠ **层档为什么写进物品 id**：拆解读的是精炼炉产线记录里的 `itemId`（`industry.ts` 的
+ * `wormholeUnboxRoll(state, ctx, r.itemId)`），而货柜撤离后进仓库只剩「物品 id + 数量」
+ * ⇒ 层信息无处可挂。好在稀释池的层门槛是 **2 / 3 / 5**，**三段精确等价**：
+ *   浅层 = 层 2 ⇒ 池只有 T3×10 · 中层 = 层 3~4 ⇒ T3×10 + T4×4 · 深层 = 层 5+ ⇒ 全池 15 张。
+ */
+export const WORMHOLE_BP_BOX_SHALLOW = 'box-bp-shallow'
+export const WORMHOLE_BP_BOX_MID = 'box-bp-mid'
+export const WORMHOLE_BP_BOX_DEEP = 'box-bp-deep'
+/** 三种图纸货柜的 id（顺序 = 由浅到深；形状表与契约三处同序） */
+export const WORMHOLE_BP_BOX_IDS = [WORMHOLE_BP_BOX_SHALLOW, WORMHOLE_BP_BOX_MID, WORMHOLE_BP_BOX_DEEP] as const
+/**
+ * 各层档对应的**代表层**（喂 `wormholeDilutionPoolOf` 做过滤，复用同一套门槛常量）：
+ * 浅层取 2 · 中层取 3（T4 门槛）· 深层取 5（T5 门槛）。
+ */
+export const WORMHOLE_BP_BOX_DEPTH: Readonly<Record<string, number>> = {
+  [WORMHOLE_BP_BOX_SHALLOW]: 2,
+  [WORMHOLE_BP_BOX_MID]: 3,
+  [WORMHOLE_BP_BOX_DEEP]: 5,
+}
+/** 遗迹专属掉落命中后，**安全货柜 : 图纸货柜 = 50 : 50**（船长 2026-09-14 定） */
+export const WORMHOLE_BPBOX_SHARE = 0.5
+/** 图纸货柜开出**永久图纸**的概率（船长 2026-09-14：「有较低概率出 T3 或 T4 的永久图纸」⇒ 5%） */
+export const WORMHOLE_BPBOX_PERMANENT_CHANCE = 0.05
+/** 永久图纸池的**档位门槛**（与一次性同口径：T3 层 2 起 · T4 层 3 起；**不含 T5**——船长只点了 T3/T4） */
+export const WORMHOLE_PERMANENT_MIN_DEPTH: Readonly<Record<3 | 4, number>> = { 3: 2, 4: 3 }
+
+/** 层数 ⇒ 该带哪一种图纸货柜（层 1 由 `wormholeRollRelicBox` 的入口闸挡掉，故从层 2 起） */
+export function wormholeBpBoxIdOf(depth: number): string {
+  const d = Math.max(1, Math.floor(depth))
+  if (d <= 2) return WORMHOLE_BP_BOX_SHALLOW
+  if (d <= 4) return WORMHOLE_BP_BOX_MID
+  return WORMHOLE_BP_BOX_DEEP
+}
+
+/** 图纸货柜 id ⇒ 代表层（不是图纸货柜 ⇒ null） */
+export function wormholeBpBoxDepthOf(boxItemId: string): number | null {
+  return WORMHOLE_BP_BOX_DEPTH[boxItemId] ?? null
+}
+
+/**
+ * **某层的永久图纸池**（图纸货柜的 5% 档）。
+ *
+ * 判据链：id 前缀 `sbp-` → **排除** `sbp-once-`（一次性，走另一半）与 `sbp-wh-`（虫洞族专属舰，
+ * 走族池）→ `singleUse !== true` → 舰体档位 ∈ **{3,4}**（船长只点 T3/T4）且 ≥ 本档门槛。
+ * 与稀释池同款"**按前缀 + 字段从目录派生**"纪律：以后补一张 T3/T4 永久图纸会自动进池。
+ */
+export function wormholePermanentPoolOf(ctx: SimContext, depth: number): string[] {
+  const d = Math.max(1, Math.floor(depth))
+  const out: string[] = []
+  for (const id of ctx.shipBlueprints.keys()) {
+    if (!id.startsWith('sbp-')) continue
+    if (id.startsWith('sbp-once-') || id.startsWith('sbp-wh-')) continue
+    const bp = ctx.shipBlueprints.get(id)
+    if (!bp || bp.singleUse === true) continue
+    const tier = ctx.ships.get(bp.shipId)?.tier
+    if (tier !== 3 && tier !== 4) continue
+    if (d < WORMHOLE_PERMANENT_MIN_DEPTH[tier]) continue
     out.push(id)
   }
   return out.sort()
@@ -1234,8 +1309,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     addLog(
       state,
       'warn',
-      `🕳 这一格还有 ${boxLeft} 件「遗迹安全货柜」：**它不是散货、打捞器搬不动**——` +
-        `点堆位自己拾取装舱（占 2×2 = 4 格；货仓腾不出 2×2 会先进临时空间）。`,
+      `🕳 这一格还有 ${boxLeft} 件货柜：**它不是散货、打捞器搬不动**——` +
+        `点堆位自己拾取装舱（形状件按占地占货仓格；货仓腾不出会先进临时空间）。`,
     )
   }
   const finished = piles.length === 0
@@ -1256,20 +1331,22 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     /**
      * **遗迹专属掉落 = 一个「遗迹安全货柜」**（F4）。落地走**收货阶梯**
      * （船长 2026-09-13：「**打捞出了大件货时应该放进一个临时空间或者临时背包，让玩家进行协调**」）：
-     * ① 货仓腾得出 2×2 ⇒ 直接装进货仓格；② 腾不出 ⇒ **放进临时空间**（玩家到货仓页整理）；
+     * ① 货仓腾得出该形状 ⇒ 直接装进货仓格；② 腾不出 ⇒ **放进临时空间**（玩家到货仓页整理）；
      * ③ 两边都满 ⇒ 才散落在该格（并提示"腾出空间后回来拾取"）。
+     * ⚠ 占格数**按形状现算**（安全货柜 2×2 = 4 格 / 图纸货柜 2×1 = 2 格），不写死。
      */
     const boxId = wormholeRollRelicBox(state, ctx, cell)
     if (boxId) {
       const name = ctx.items.get(boxId)?.name ?? boxId
+      const shp = wormholeShapeOf(boxId)
       const landed = wormholeStowOrTemp(state, ctx, boxId, 1)
       if (landed.where === 'hold') {
-        addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 2×2 = 4 格）。`)
+        addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`)
       } else if (landed.where === 'temp') {
         addLog(
           state,
           'info',
-          `🕳 遗迹深处发现${name}：货仓腾不出 2×2 ⇒ **先放进临时空间**（到「货仓」页整理进货仓）。`,
+          `🕳 遗迹深处发现${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ **先放进临时空间**（到「货仓」页整理进货仓）。`,
         )
       } else {
         cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
@@ -1300,14 +1377,16 @@ export function wormholeRelicBoxIdOf(family: string): string {
 }
 
 /**
- * **掷遗迹专属掉落 = 一个「遗迹安全货柜」**（F4 · 船长 2026-09-13：「装备和蓝图的产出加一个中间件：
+ * **掷遗迹专属掉落 = 一个货柜**（F4 · 船长 2026-09-13：「装备和蓝图的产出加一个中间件：
  * 玩家从遗迹获得『遗迹安全货柜』…将安全货柜带回后在精炼炉拆解」）。
  *
  * 口径：
  * - **概率随层上升**（`wormholeRelicChanceOf`；层 1 恒不出）；
+ * - **命中后再掷一次分种类**（2026-09-14 船长定「与安全货柜并列」）：
+ *   **安全货柜 50 : 图纸货柜 50**（`WORMHOLE_BPBOX_SHARE`）——图纸货柜按层档取三种之一；
  * - **族 = 本格敌卡的族**（保住「专属掉落按种族库走」这条裁定：内容物等拆解时才揭，族不能丢）；
- * - **不直接入库**：调用方把货柜**散落到该格**，玩家自己拾取（占货仓 2×2 = 4 格；放不下整件拒收）；
- * - 内容物（装备本体 / 装备图纸 / 舰船图纸）留待**拆解批次**——本批船长明示「暂时不用拆解」。
+ * - **不直接入库**：调用方把货柜**散落到该格**，玩家自己拾取（占货仓格数按形状现算；放不下整件拒收）；
+ * - 内容物（装备本体 / 装备图纸 / 舰船图纸 / 永久图纸）留待拆解。
  */
 export function wormholeRollRelicBox(
   state: GameState,
@@ -1320,6 +1399,9 @@ export function wormholeRollRelicBox(
   if (run.depth < WORMHOLE_RELIC_MIN_DEPTH) return undefined
   const rng = wormholeStream(runSeedOf(state) * 53 + run.depth * 911 + (cell.q * 23 + cell.r * 29) * 13 + 7)
   if (rng() >= wormholeRelicChanceOf(run.depth)) return undefined
+  // 2026-09-14：命中后再掷一次分种类（安全货柜 / 图纸货柜）。⚠ 这条流是**每格独立**的
+  // （种子含 q/r），多抽一个随机数不会影响别的格子"出不出货"。
+  if (rng() >= 1 - WORMHOLE_BPBOX_SHARE) return wormholeBpBoxIdOf(run.depth)
   const family = familyOfCard(ctx, wormholeCellCardIdOf(run, cell))
   return wormholeRelicBoxIdOf(family)
 }
@@ -1335,30 +1417,46 @@ export function wormholeRollRelicBox(
  * ⚠ 2026-09-13 修：F4 把遗迹掉落改成「安全货柜」= **物品**（`ctx.items`）后，这里原先只认模块/图纸
  * ⇒ 货柜走到这一步会被**静默丢掉**（"带回后精炼炉拆解"永远发生不了）。物品分支就是补这个洞。
  */
+/** 拆解一件货柜的抽取结果（`source` = 来源池，日志按它加后缀） */
+export interface WormholeUnboxDraw {
+  itemId: string
+  units: number
+  /** 族专属池 / 一次性图纸池 / 永久图纸池 */
+  source: 'family' | 'once' | 'permanent'
+}
+
 /**
- * **拆解一件「遗迹安全货柜」抽 1 件**（F4d · 船长 2026-09-13 定：精炼炉拆解 · 90 秒/件 ·
- * **族池 0.7 : 稀释池 0.3** · 货柜**不记层** ⇒ 稀释池一律按**最低档（层 2 档 = T3 那批 10 张）**取）。
+ * **拆解一件货柜抽 1 件**（F4d · 船长 2026-09-13 定：精炼炉拆解 · 90 秒/件 · 抽出后走
+ * `wormholeDeliverRelics` 同一条入库路径）。
  *
- * 族由货柜 id 反推（ox-relic-a ⇒ A 族）；族池内部再按 wormholeRelicWeightsOf 的
- * 装备 / 装备图纸 / 舰船图纸 权重抽一类，然后在类内均匀抽一件；件数走 wormholePoolGrantUnitsOf
- * （族专属无人机 ×10，其余 1 件）。随机数走 state.rng（与回收炉开箱同源 ⇒ 随档、可复现）。
+ * **2026-09-14 船长改判（新增图纸货柜）后两台口径分岔**：
+ * - **图纸货柜**（`box-bp-*`）：**5% 永久图纸池 / 95% 一次性图纸池**，两者都按**该货柜的层档**过滤
+ *   （浅层 → T3 · 中层 → T3+T4 · 深层 → T3+T4+T5）；
+ * - **安全货柜**（`box-relic-*`）：**100% 族专属池**——原「族池 0.7 : 稀释池 0.3」的稀释池**已收回**
+ *   （一次性图纸改由图纸货柜专出，否则同一批图纸会有两条渠道）。
+ *
+ * 族由货柜 id 反推（`box-relic-a` ⇒ A 族）；族池内部再按 `wormholeRelicWeightsOf` 的
+ * 装备 / 装备图纸 / 舰船图纸 权重抽一类，然后在类内均匀抽一件；件数走 `wormholePoolGrantUnitsOf`
+ * （族专属无人机 ×10，其余 1 件）。随机数走 `state.rng`（与回收炉开箱同源 ⇒ 随档、可复现）。
  * 抽取池为空（内容缺失）⇒ 返回 null（调用方记账后停这一批，不静默丢）。
  */
 export function wormholeUnboxRoll(
   state: GameState,
   ctx: SimContext,
   boxItemId: string,
-): { itemId: string; units: number; diluted: boolean; family: string } | null {
-  const family = wormholeFamilyOfBox(boxItemId)
-  if (!family) return null
-  const shares = wormholeLootShares()
-  const diluted = nextRandom(state.rng) >= shares.family
-  if (diluted) {
-    const pool = wormholeDilutionPoolOf(ctx, WORMHOLE_DILUTION_MIN_DEPTH_FLOOR)
+): WormholeUnboxDraw | null {
+  // ① 图纸货柜：按层档过滤的两个池（先掷永久 / 一次性）
+  const bpDepth = wormholeBpBoxDepthOf(boxItemId)
+  if (bpDepth !== null) {
+    const permanent = nextRandom(state.rng) < WORMHOLE_BPBOX_PERMANENT_CHANCE
+    const pool = permanent ? wormholePermanentPoolOf(ctx, bpDepth) : wormholeDilutionPoolOf(ctx, bpDepth)
     if (pool.length === 0) return null
     const id = pool[nextInt(state.rng, pool.length)]!
-    return { itemId: id, units: wormholePoolGrantUnitsOf(id), diluted: true, family }
+    return { itemId: id, units: wormholePoolGrantUnitsOf(id), source: permanent ? 'permanent' : 'once' }
   }
+  // ② 安全货柜：100% 族专属池
+  const family = wormholeFamilyOfBox(boxItemId)
+  if (!family) return null
   const pool = wormholeFamilyPoolOf(ctx, family)
   const w = wormholeRelicWeightsOf(WORMHOLE_DILUTION_MIN_DEPTH_FLOOR)
   const buckets: Array<{ ids: string[]; weight: number }> = [
@@ -1379,7 +1477,7 @@ export function wormholeUnboxRoll(
     }
   }
   const id = hit.ids[nextInt(state.rng, hit.ids.length)]!
-  return { itemId: id, units: wormholePoolGrantUnitsOf(id), diluted: false, family }
+  return { itemId: id, units: wormholePoolGrantUnitsOf(id), source: 'family' }
 }
 
 /** 货柜 id ⇒ 族（ox-relic-a ⇒ A；不是货柜 ⇒ null） */
