@@ -10,6 +10,7 @@
  *   npx tsx tools/wormhole-econ.ts --layers=12     # 看更深
  *   npx tsx tools/wormhole-econ.ts --waves=2       # 按"每节点 2 波"跑（节点 cost 也随之上抬）
  *   npm run wormhole:econ                          # 等价
+ *   npx tsx tools/wormhole-econ.ts --runs=20 --start-depth=4 --fit=auto   # 空降到第 4 层跑（★星云层）
  *
  * 口径（与引擎同源，不另存一份）：
  * - 威胁：`wormholeLayerThreat(depth)`（层 1 = 45、每层 ×1.16）；BOSS ×1.2、撤离战 ×0.8；
@@ -71,7 +72,16 @@ import {
 } from '../packages/core/src/wormholeSalvage'
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
 import { isRareWreck, RARE_WRECK_VOLUME_M3 } from '../packages/core/src/salvage'
-import { gridCellAt, gridScanTargets, hexDistance, hexNeighbors, isExitCell } from '../packages/core/src/wormholeGrid'
+import {
+  gridCellAt,
+  gridNebulaTargets,
+  gridScanTargets,
+  hexDistance,
+  hexNeighbors,
+  isExitCell,
+  isNebulaFogged,
+  wormholeMakeGrid,
+} from '../packages/core/src/wormholeGrid'
 import type { WormholeGridState, WormholePlace } from '../packages/core/src/wormholeGrid'
 
 const ctx: SimContext = buildSimContext()
@@ -133,6 +143,16 @@ const ANALYTIC_FIT: RefFit = FIT_ARG === 'combat' ? 'combat' : FIT_ARG === 'old'
  */
 const SHIPS_ARG = process.argv.find((a) => a.startsWith('--ships='))
 const FLEET_IDS: readonly string[] | null = SHIPS_ARG ? SHIPS_ARG.split('=')[1]!.split(',').filter((s) => s.length > 0) : null
+
+/**
+ * **`--start-depth=N`（2026-09-13 二号追加 · 加法式）**：整趟从**第 N 层**起跑（默认 1 = 原行为）。
+ *
+ * 为什么要它：**层 4 在正常编队下根本下不去**（守卫血量门槛会在层 1~3 就把编队逼回去），
+ * 而**星云只在层 4 起出现** ⇒ 想量"星云回合税"、想看深层盘面读数，就得能"空降"到那一层。
+ * 口径与测试档 `wh-layer4` 一致：`run.depth = N` + 新盘 + **守卫未清**（守卫仍只堵深入）。
+ * ⚠ 这不是"玩家能作弊"——它是校准旋钮，用来回答"**假如玩家能在层 N 活动**，那一层值多少"。
+ */
+const START_DEPTH = Math.max(1, Number((process.argv.find((a) => a.startsWith('--start-depth=')) ?? '--start-depth=1').split('=')[1]))
 
 /** `--fit=auto`：按该舰槽位自动配装（高槽导弹满、中槽推进/双盾/索敌、低槽 打捞器→采集器→稳像/装甲） */
 function autoFitFor(defId: string): { high: string[]; mid: string[]; low: string[] } {
@@ -455,6 +475,8 @@ interface RunOutcome {
   acts: LayerActs
   turnsLeft: number
   turnsTotal: number
+  /** **为驱散星云而多花的扫描动作数**（星云机制的回合税读数；层 1~3 恒 0） */
+  nebulaScans: number
   /** **为什么停**（只对"未结束"有意义：某个动作被拒 / 盘面走遍仍没信标 / 步数上限） */
   stopReason: string
   /** `--logs` 时的引擎日志尾（诊断"这趟到底怎么死的"） */
@@ -522,6 +544,18 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
   const before = incomeOf(state)
   const enter = wormholeEnter(state, ctx, uids, seed)
   if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  /**
+   * **空降到 `--start-depth=` 指定的层**（默认 1 ⇒ 不动）。口径与测试档 `wh-layer4` 一致：
+   * 层号改写 + **按该层重生成一张盘**（同 seed/层 ⇒ 确定性）+ 守卫未清（守卫仍只堵深入）。
+   * 回合预算仍按入场校验给（不是"每层重置"）——那正是真实的整趟口径。
+   */
+  if (START_DEPTH > 1) {
+    const r0 = state.wormhole.run!
+    r0.depth = START_DEPTH
+    r0.nodesPerLayer = wormholeNodesPerLayer(START_DEPTH)
+    r0.grid = wormholeMakeGrid(seed, START_DEPTH, wormholeScanBonusOf(ctx, r0.fleet))
+    r0.bossCleared = 0
+  }
   let guard = 0
   /** 最近一场战斗结束时的**三层血口径**残血（政策用它；护盾不落档，见 `battleHpFrac`） */
   let lastFrac = 1
@@ -544,6 +578,8 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
   /** 逐层**稀有残骸件数**（目标函数的分层读数） */
   const layerRares: number[] = []
   let lastSnap = runLedger(state)
+  /** **为驱散星云而多花的扫描动作数**（星云机制的回合税读数；层 1~3 恒 0） */
+  let nebulaScans = 0
   const turnsTotal = enter.run?.turnsTotal ?? 0
   /** **停止原因**（只对"未结束"有意义：把"卡在哪一步"如实带出来，而不是让人对着 0 收益猜） */
   let stopReason = ''
@@ -749,6 +785,24 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
             bump('scans')
             continue
           }
+          /**
+           * **星云要"再扫一次"才散**（船长 2026-09-13 星云机制）——层 4 起盘面会有被云罩住的格。
+           *
+           * ⚠ 本工具原先只认"有没有新格可揭"，**没有"为驱散而再扫一次"这条路** ⇒ 在层 4+
+           * 要么白丢回合（读了也想不起来去散云）、要么直接以"盘面走遍仍没读到信标"收场。
+           * 补法：圈里还有没散的星云（`gridNebulaTargets`）就照玩家的做法再扫一次；
+           * 但**只在盘面还有盲区时**这么做（否则白花回合——见上一条"盘面走遍"的判据）。
+           */
+          if (gridNebulaTargets(g).length > 0 && g.scanned.length < g.cells.length) {
+            const sc = wormholeGridScan(state)
+            if (!sc.ok) {
+              stop(`驱散星云被拒：${sc.error ?? ''}`)
+              break
+            }
+            bump('scans')
+            nebulaScans += 1
+            continue
+          }
           const unknown = g.cells.find((c) => !g.scanned.includes(c.key))
           if (unknown) {
             const res = wormholeTravelTo(state, ctx, { q: unknown.q, r: unknown.r }, { confirmUnknown: true })
@@ -847,6 +901,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
     acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0 }),
     turnsLeft: state.wormhole.run?.turnsLeft ?? lastTurns,
     turnsTotal,
+    nebulaScans,
     stopReason,
     ...(process.argv.includes('--logs') ? { logs: state.logs.map((l) => l.text) } : {}),
   }
@@ -975,6 +1030,16 @@ function runRunsMode(): void {
     ).toFixed(1)} 次` +
       `（扫 ${avg((o) => o.acts.scans).toFixed(1)} / 走 ${avg((o) => o.acts.moves).toFixed(1)} / 打捞 ${avg((o) => o.acts.salvages).toFixed(1)}` +
       ` / 采集 ${avg((o) => o.acts.collects).toFixed(1)} / 交战 ${avg((o) => o.acts.fights).toFixed(1)} / 抛货 ${avg((o) => o.acts.discards).toFixed(1)}）`,
+  )
+  /**
+   * **星云回合税**（2026-09-13 二号追加 · 星云机制落地后的读数）：为驱散星云而**多花的扫描动作数**。
+   * 层 1~3 恒 0（那儿没有星云）；层 4+ 才非 0 —— 这是"星云到底吃掉多少回合"的唯一读数。
+   */
+  const nebulaScansAvg = avg((o) => o.nebulaScans)
+  const nebulaRuns = out.filter((o) => o.nebulaScans > 0).length
+  console.log(
+    `        星云回合税：平均 **${nebulaScansAvg.toFixed(2)} 个扫描动作/趟**` +
+      `（${nebulaRuns}/${out.length} 趟至少驱散过一次；层 1~3 恒 0，层 4 起才有云；已计入上面的"扫"列）`,
   )
   const collectedAvg = avg((o) => o.layerCollected.reduce((s, v) => s + v, 0))
   console.log(
