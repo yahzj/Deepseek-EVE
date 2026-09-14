@@ -16,10 +16,10 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, WORMHOLE_TEMP_CELLS, wormholeEnter } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, WORMHOLE_TEMP_CELLS, wormholeEnter, wormholeGridScan } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
-import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
+import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import {
   WORMHOLE_GRAVEYARD_COMMONS_MAX,
   WORMHOLE_GRAVEYARD_COMMONS_MIN,
@@ -701,5 +701,48 @@ describe('虫洞 · 舰船信号战果（船长：打赢固定给残骸 + 稀有
     expect(r.ok).toBe(true)
     expect(r.autoBattle).toBe(true)
     expect(run.battle).not.toBeNull()
+  })
+})
+
+describe('虫洞 · 遗迹收尾战「先提示、确认后再打」（船长 2026-09-13）', () => {
+  /**
+   * 船长报障：「打捞遗迹触发战斗时，战斗突然发生没有任何提示」⇒ 口径 = 打捞照常结算、
+   * **不直接开战**，先在 `run` 上留 `pendingRuinsBattle`；界面弹确认条，玩家点「迎战」才开打；
+   * 确认之前**别的动作一律被拦**（不会把这一场跳过，也不会留下半截状态）。
+   */
+  it('先留标记不开战 → 确认前动作被拦 → 迎战后开战并清标记', () => {
+    let state: GameState | null = null
+    // 触发是确定性骰（70%），扫几个种子就能拿到一个"确实触发了"的例子
+    for (let seed = 1; seed <= 80 && state === null; seed++) {
+      const s = enterRun(2, seed, 0, 2)
+      const cell = standOn(s, 'ruins')
+      const cardId = wormholeCellCardIdOf(s.wormhole.run!, cell)
+      cell.piles = [
+        { itemId: wreckItemIdOf(cardId), units: 100 },
+        { itemId: wreckItemIdOf(cardId), units: 100 },
+      ]
+      const r = wormholeActivateAt(s, ctx, undefined, { deferRuinsBattle: true })
+      expect(r.ok, r.error).toBe(true)
+      if (r.pendingBattle === 'ruins') state = s
+    }
+    expect(state, '80 个种子里应有一个触发遗迹收尾战').not.toBeNull()
+    const run = state!.wormhole.run!
+    // ① 打捞已结算、但**没有偷偷开战**
+    expect(run.pendingRuinsBattle).toBe(true)
+    expect(run.battle ?? null).toBeNull()
+    // ② 确认之前：扫描 / 前往 / 采集一律被拦，且拒因点明"先迎战"
+    const scan = wormholeGridScan(state!)
+    expect(scan.ok).toBe(false)
+    expect(scan.error ?? '').toContain('迎战')
+    const here = gridCellAt(run.grid!, run.grid!.pos)!
+    const away = run.grid!.cells.find((c) => c.key !== here.key)!
+    const move = wormholeTravelTo(state!, ctx, { q: away.q, r: away.r }, { confirmUnknown: true })
+    expect(move.ok).toBe(false)
+    expect(move.error ?? '').toContain('迎战')
+    // ③ 迎战 ⇒ 开战、标记清掉
+    const b = wormholeStartBattle(state!, ctx, 'ruins')
+    expect(b.ok, b.error).toBe(true)
+    expect(run.battle).not.toBeNull()
+    expect(run.pendingRuinsBattle).toBe(false)
   })
 })

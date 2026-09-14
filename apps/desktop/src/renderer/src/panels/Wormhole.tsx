@@ -11,7 +11,9 @@
  * F5 起散货也是网格里的真摆放件、可拖拽）。层内动作各花 1 回合，未扫描的地点要先警告再确认（船长口径）；
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+// 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
+import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
 import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
 import {
@@ -148,6 +150,18 @@ export function WormholePanel({
   const state = engine.state
   const ctx = engine.ctx
   const run = state.wormhole.run
+  /**
+   * **洞内背景固定**（船长 2026-09-13：「**当次虫洞内的背景图需要固定**」）：
+   * 以**本趟种子**为键，把进洞那一刻的全站底图**钉住**（--wh-space-bg）——
+   * 之后即便玩家在「设置」里换了一张全站底图，或者关掉面板再打开，洞内那张都不会变。
+   * 出洞（没有 run）后不再钉，面板回到全站底图。
+   */
+  const pinnedSpaceBg = useMemo(() => {
+    const seed = run?.seed ?? null
+    if (seed === null) return null
+    const info = currentSpaceBg()
+    return info ? spaceBgUrlAt(info.index) : null
+  }, [run?.seed])
   const [tab, setTab] = useState<WhTab>(run ? 'map' : 'prep')
   /** 编队选择（准备页；进洞前才用得上） */
   const [picked, setPicked] = useState<string[]>(state.shipId ? [state.shipId] : [])
@@ -741,6 +755,14 @@ export function WormholePanel({
     else if (!state.wormhole.run && tab !== 'prep') setTab('prep')
   }, [state.wormhole.run, tab])
 
+  /**
+   * **战斗中不渲染本面板**（船长 2026-09-13：「打捞遗迹触发战斗时，**虫洞界面处于最前端遮住了战斗**」）：
+   * 全屏战场 `.app-battle-screen` 的层级低于弹层遮罩（100 vs 120）⇒ 只要面板还开着就**必然压住战斗**。
+   * 这里直接在战斗中不渲染（`whOpen` 仍为真 ⇒ 战斗结束、收口完成后**面板自动回来**，玩家不用再点一次）。
+   * ⚠ 这条是"几何层级的硬保证"，与"迎战前先确认再跳转"那道流程互为兜底。
+   */
+  if (run?.battle) return null
+
   return (
     <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
@@ -1108,6 +1130,34 @@ export function WormholePanel({
                     </div>
                   ) : null}
                   {/**
+                   * **遗迹守备的迎战确认条**（船长 2026-09-13：「打捞遗迹触发战斗时……战斗突然发生没有任何提示，
+                   * 应该提示玩家惊扰守卫等，**玩家确认后跳转**」）：
+                   * 打捞已经结算（回合扣了、货进包了），这里只等玩家点「迎战」；点之前别的动作一律被 core 拦。
+                   * 确认后**关掉面板**再去开战 ⇒ 全屏战场不会被这层弹窗挡住。
+                   */}
+                  {run.pendingRuinsBattle === true ? (
+                    <div className="app-wh-extract-ask">
+                      <span>
+                        ⚠ <b>打捞惊动了遗迹守备</b>：深处传来交火前的机械声——这一场躲不掉，打完才能继续探索。
+                      </span>
+                      <span className="app-wh-actions">
+                        <button
+                          className="app-btn is-small is-danger"
+                          onClick={() => {
+                            const r = engine.wormholeFight('ruins')
+                            if (!r.ok) {
+                              onToast(r.error ?? '无法开战。', true)
+                              return
+                            }
+                            onClose() // 跳转：关掉面板，全屏战场接管（打完从活动栏回得来）
+                          }}
+                        >
+                          迎战
+                        </button>
+                      </span>
+                    </div>
+                  ) : null}
+                  {/**
                    * **地图行 = 左侧缩放控件 + 地图**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景。
                    * 且窗口高度固定（不会随着地图变大变高），在探索界面的左侧给玩家一个缩放按钮或者滚动条。
                    * 让玩家能够调节探索地图的大小」）：地图框**定高** 300px（不再随圈数长高），
@@ -1141,7 +1191,10 @@ export function WormholePanel({
                         适应
                       </button>
                     </div>
-                    <div className="app-wh-mapbox">
+                    <div
+        className="app-wh-mapbox"
+        style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': "url(\"${pinnedSpaceBg}\")" } : {}) } as React.CSSProperties}
+      >
                       <WhGridMap
                         grid={grid}
                         onPickCell={pickCell}
@@ -1886,19 +1939,9 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             >
               {isOrigin && p ? (
                 p.kind === 'cargo' ? (
-                  <>
-                    {/* **图标优先**（船长 2026-09-13）：「货仓内物品采用图标而不是纯文字」——
-                        格子里只放图标 + 数量；全名与 m³ 在悬停里（title 已写） */}
-                    <span className="app-wh-hold-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
-                      <Glyph name={itemIconOf(p.itemId, def?.kind)} size={16} color="currentColor" />
-                    </span>
-                    <span className="app-wh-hold-cargo-name">×{n(p.units ?? 0)}</span>
-                  </>
+                  <span className="app-wh-hold-cargo-name">×{n(p.units ?? 0)}</span>
                 ) : (
                   <>
-                    <span className="app-wh-hold-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
-                      <Glyph name={itemIconOf(p.itemId, def?.kind)} size={20} color="currentColor" />
-                    </span>
                     <span className="app-wh-hold-box-name">
                       {/* 谜质装置用**2 字短标签**（悬停给全名与效果）；安全货柜统一写「货柜」，族由颜色区分 */}
                       {wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜'}
@@ -1910,6 +1953,32 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             </div>
           )
         })}
+        {/**
+         * **物品轮廓层**（船长 2026-09-13：「占多格的物品应该直接显示一个**大的物品轮廓**，
+         * 并且图标占据中心位置还要**随着物品大小放大**」）：
+         * 与下面格子**同一套网格模板与间距**（`grid-template-columns` + `gap` 一致 ⇒ 不靠手算像素，
+         * 多格块的轮廓正好盖住它占的整块）；每件一个 figure，`grid-area` 跨它的 w×h 格，
+         * 图标按 figure 的百分比取尺寸（单格也顺带变大）；`pointer-events: none` ⇒ 不吃拖拽与点击。
+         */}
+        <div className="app-wh-hold-figures" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }} aria-hidden>
+          {placements.map((p) => {
+            const def = ctx.items.get(p.itemId)
+            const key = itemIconOf(p.itemId, def?.kind)
+            return (
+              <div
+                key={`fig-${p.id}`}
+                className="app-wh-hold-fig"
+                style={{
+                  gridColumn: `${p.x + 1} / span ${p.w}`,
+                  gridRow: `${p.y + 1} / span ${p.h}`,
+                  color: itemToneOf(p.itemId, key),
+                }}
+              >
+                <Glyph name={key} size={64} color="currentColor" />
+              </div>
+            )
+          })}
+        </div>
       </div>
       <div className="app-wh-actions">
         <button
