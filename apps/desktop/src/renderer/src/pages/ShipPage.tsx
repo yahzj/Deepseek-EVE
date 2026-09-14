@@ -16,9 +16,7 @@ import {
   goodLockedReason,
   idleAiShipIds,
   isExplored,
-  marketGoodOf,
   marketQuote,
-  allFittedIds,
   shipRoleLabel,
   missingMaterials,
   oreAvailable,
@@ -27,6 +25,9 @@ import {
   isAtHomeLike,
   // 2026-09-13：站内工业目标只列玩家可见的资源（未上线资源不进 AI 精炼炉下拉）
   visibleItemDefs,
+  // 舰船仓库（2026-09-14 船长）：仓库计数 / 入仓逐档判据（core 单点，与引擎同源）
+  shipStoredCount,
+  shipStorable,
 } from '@whale/core'
 import type { AiCoreType, FleetShipState, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
@@ -69,8 +70,10 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
   return rarity === 'common' ? '常驻' : rarity === 'rare' ? '稀有' : '限定奇货'
 }
 
-/** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05） */
-export type ShipTab = 'fleet' | 'ai' | 'shop'
+/** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05）
+ *  ⚠ 2026-09-14 船长：「先将舰队页面中的舰船市场换成舰船仓库」⇒ 第三档 `'shop'`（舰船市场）**整档换成**
+ *  `'store'`（舰船仓库）；**购买入口不丢**——买卖本来就在市场页，仓/库卡片行内保留「去市场查看 / 下单」。 */
+export type ShipTab = 'fleet' | 'ai' | 'store'
 /** 舰队检索（2026-09-10 船长：筛选 + 搜索，控件样式与仓库/技能目录统一；
  *  2026-09-11 船长：「**移除排序选项，改为按照舰船级别划分的子筛选**」——
  *  排序下拉（默认/名称/耐久/舰族）整条退场，改由**舰船级别**子筛选（`SHIP_TIER_SUBS`，与组装机同一张单点表）收窄；
@@ -99,7 +102,17 @@ interface CraftOption {
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
   { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
-  { key: 'shop', label: '舰船市场', icon: 'nav-shop' },
+  // 2026-09-14 船长：「舰船市场」→「舰船仓库」（图标沿用物品仓库那只箱子，语义 = 存放）
+  { key: 'store', label: '舰船仓库', icon: 'nav-items', title: '组装机造好的船先入这里（同型堆叠）：可转入舰队，也可直接在市场出售' },
+]
+
+/** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
+ *  仓里有货 = 已拥有；仓里为空 = 未拥有，即使在役舰队有同型） */
+type StoreOwnFilter = 'all' | 'owned' | 'unowned'
+const STORE_OWN_TABS: Array<{ key: StoreOwnFilter; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'owned', label: '已拥有' },
+  { key: 'unowned', label: '未拥有' },
 ]
 
 export function ShipPage({
@@ -122,8 +135,9 @@ export function ShipPage({
   const [localTab, setLocalTab] = useState<ShipTab>('fleet')
   const activeTab = tab ?? localTab
   const setActiveTab = onTab ?? setLocalTab
-  // T5：当前展开出售确认的船（同时只展开一艘）
-  const [sellConfirmId, setSellConfirmId] = useState<string | null>(null)
+  /** 2026-09-14 船长：**移入舰船仓库**替换原先的「市价出售」（出售统一到舰船仓库）。
+   *  `storeConfirmId` = 正在展开"入仓会清掉自定义名"确认的那艘船（有名字时才需要确认）。 */
+  const [storeConfirmId, setStoreConfirmId] = useState<string | null>(null)
   // T7：扫描在途换船＝警告确认（模式甲：确认后先终止扫描——进度保留——再切换）
   const [scanSwitchId, setScanSwitchId] = useState<string | null>(null)
   // 2026-09-09 切换驾驶高亮（船长定：无缝切换易误判）：成功后目标船卡 + 「当前驾驶」行做一次约 0.8 秒脉冲
@@ -257,18 +271,26 @@ export function ShipPage({
     else onToast('维修完成：结构/装甲已修复。')
   }
 
-  /** T5：锁定/解锁防误售 */
+  /** T5：锁定/解锁（2026-09-14 起语义 = **防误移入舰船仓库**：舰队出售按钮已撤） */
   function handleToggleLock(id: string, currentlyLocked: boolean): void {
     const r = engine.lockShipAt(id, !currentlyLocked)
     if (!r.ok) onToast(r.error ?? '操作失败', true)
-    else onToast(currentlyLocked ? '已解锁：恢复可出售。' : '已锁定：此船不可出售（防止误售）。')
+    else onToast(currentlyLocked ? '已解锁：恢复可移入舰船仓库。' : '已锁定：此船不可移入舰船仓库（防止误操作）。')
   }
 
-  function confirmSell(id: string): void {
-    const r = engine.sellShipAt(id)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast('出售指令已受理：有收购单即时成交；没有则自动挂卖单（可撤单退回机库）。')
-    setSellConfirmId(null)
+  /** 移入舰船仓库（2026-09-14 船长）：有自定义名 ⇒ 先弹确认（入仓会清名），否则直接入仓 */
+  function requestStore(id: string, customName: string | null | undefined): void {
+    if (customName) {
+      setStoreConfirmId(id)
+      return
+    }
+    doStore(id, false)
+  }
+  function doStore(id: string, clearName: boolean): void {
+    const r = engine.storeShipAt(id, clearName)
+    setStoreConfirmId(null)
+    if (!r.ok) onToast(r.error ?? '移入舰船仓库失败', true)
+    else onToast(clearName ? '已移入舰船仓库（自定义名已清除）。' : '已移入舰船仓库；到「舰船仓库」可转入舰队或直接出售。')
   }
 
   /** 开始改名（恢复默认名 = 直接提交 null） */
@@ -284,21 +306,56 @@ export function ShipPage({
     setRenameDraft('')
   }
 
-  /** 出售确认前的本船预检：返回 { 模块名列表, 货仓单位 }（两者有任一即禁售并醒目提示） */
-  function sellBlockers(shipState: FleetShipState | undefined): { modules: string[]; cargoUnits: number } {
-    const modules: string[] = []
-    if (shipState) {
-      for (const modId of allFittedIds(shipState.fitted)) {
-        modules.push(engine.ctx.modules.get(modId)?.name ?? modId)
-      }
-    }
-    const cargoUnits = Object.values(shipState?.cargo ?? {}).reduce((a, b) => a + b, 0)
-    return { modules, cargoUnits }
+  /* 2026-09-14 船长：「之后移除我的舰队内舰船的出售按钮」⇒ 原 `sellBlockers`（出售前预检：装备名列表 +
+     货仓单位）随出售按钮一起退场；入仓的逐档拒因改由 core 单点 `shipStorable` 给（界面只显示它的 reason）。 */
+
+  /* ─────────── 舰船仓库（2026-09-14 船长：「先将舰队页面中的舰船市场换成舰船仓库」） ───────────
+   * 口径：仓里的船 = 组装机产出（同型堆叠计数）；可转入舰队；可直接在市场出售（吃簿即时成交 /
+   * 未成交转限价卖单 / 撤单退回仓库）。筛选三维同「我的舰队」，其中「拥有」按船长裁定**只看仓库库存**。 */
+  const [storeQ, setStoreQ] = useState('')
+  const [storeOwn, setStoreOwn] = useState<StoreOwnFilter>('all')
+  const [storeRole, setStoreRole] = useState<string>(SUB_ALL)
+  const [storeTier, setStoreTier] = useState<string>(SUB_ALL)
+  /** 正在展开出售确认的船型 id（同时只展开一个） */
+  const [storeSellId, setStoreSellId] = useState<string | null>(null)
+  /** 舰船仓库全部条目：**有市场行的船型**（沿用原「舰船市场」列表）＋ **仓库里已有的任何船型**
+   *  （后者保证洞内定制船这类不上市场的船在仓里也看得见、能提取） */
+  const storeAll = engine.ships.filter(
+    (def) =>
+      shipStoredCount(state, def.id) > 0 ||
+      [...engine.ctx.marketGoods.values()].some((g) => g.kind === 'ship' && g.refId === def.id),
+  )
+  const storeTotalShips = Object.values(state.shipStore ?? {}).reduce((a, b) => a + b, 0)
+  const sq = storeQ.trim().toLowerCase()
+  const storeFiltered = sq.length > 0 || storeOwn !== 'all' || storeRole !== SUB_ALL || storeTier !== SUB_ALL
+  const storeShown = storeAll.filter((def) => {
+    const stored = shipStoredCount(state, def.id)
+    if (sq.length > 0 && !def.name.toLowerCase().includes(sq) && !def.id.toLowerCase().includes(sq)) return false
+    if (storeOwn === 'owned' && stored <= 0) return false
+    if (storeOwn === 'unowned' && stored > 0) return false
+    if (storeRole !== SUB_ALL && def.role !== storeRole) return false
+    if (storeTier !== SUB_ALL && `t${def.tier}` !== storeTier) return false
+    return true
+  })
+  /** 舰队（机库）里同型艘数——仓库卡上的参考读数（不是筛选判据） */
+  function fleetCountOf(defId: string): number {
+    return Object.entries(state.fleet).filter(([uid, s]) => (s.defId ?? uid) === defId).length
+  }
+  function doUnstore(defId: string): void {
+    const r = engine.unstoreShipAt(defId)
+    if (!r.ok) onToast(r.error ?? '转入舰队失败', true)
+    else onToast('已从舰船仓库转入舰队（机库）：这艘是全新船，可直接切换驾驶或派 AI。')
+  }
+  function doSellStored(defId: string): void {
+    const r = engine.sellStoredShipAt(defId)
+    setStoreSellId(null)
+    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    else onToast('出售指令已受理：有收购单即时成交；没有则自动挂卖单（可撤单退回舰船仓库）。')
   }
 
   return (
     <div className="page-stack page-fill">
-      {/* 舰队 / AI 指挥 / 舰船市场（MapPage/IndustryPage 同款 app-subtabs 规范）；标签行固定，活跃面板吸满并 body 内滚 */}
+      {/* 舰队 / AI 指挥 / 舰船仓库（MapPage/IndustryPage 同款 app-subtabs 规范）；标签行固定，活跃面板吸满并 body 内滚 */}
       <div className="app-subtabs" role="tablist">
         {SHIP_TABS.map((t) => (
           <button
@@ -458,12 +515,7 @@ export function ShipPage({
             const isLockedShip = state.shipLocks[uid] === true
             const displayName = shipDisplayName(state, engine.ctx, uid)
             const isRenaming = renameId === uid
-            const blockers = sellBlockers(shipState)
-            const blockCount = blockers.modules.length + (blockers.cargoUnits > 0 ? 1 : 0)
-            // 出售估价：当前收购价（无报价就不写死数字）
-            const sellGood = marketGoodOf(engine.ctx, 'ship', def.id)
-            const sellBuy = sellGood ? marketQuote(state, engine.ctx, sellGood.key).buy : undefined
-            const canSell = !isCurrent && !isWorking && !isLockedShip
+            const storable = shipStorable(state, uid) // 入仓逐档判据（core 单点，与引擎同源）
             return (
               <ShipHover key={uid} ship={def} block>
                 <div
@@ -480,7 +532,7 @@ export function ShipPage({
                     <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
                     {isLockedShip ? (
-                      <em className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
+                      <em className="app-chip app-lock-chip" title="已锁定：此船不可移入舰船仓库（防误操作）">
                         <span className="app-ico">
                           <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
                         </span>
@@ -516,7 +568,7 @@ export function ShipPage({
                     ) : null}
                     <button
                       className={`app-btn is-small app-lock-btn${isLockedShip ? ' is-warn' : ''}`}
-                      title={isLockedShip ? '已锁定防误售——点击解锁' : '锁定此船，防止误售（锁定后仍可驾驶/派 AI）'}
+                      title={isLockedShip ? '已锁定防误操作——点击解锁' : '锁定此船，防止误移入舰船仓库（锁定后仍可驾驶/派 AI）'}
                       onClick={() => handleToggleLock(uid, isLockedShip)}
                     >
                       {isLockedShip ? (
@@ -603,67 +655,52 @@ export function ShipPage({
                     </button>
                   ) : null}
                 </div>
-                {canSell ? (
-                  sellConfirmId === uid ? (
-                    /* T5 二次确认：醒目标出货舱/装配未清空的阻止原因 */
-                    <div className="app-sell-confirm">
-                      <div className="app-sell-confirm-title">确认出售「{displayName}」？</div>
-                      <div className="app-dim app-sell-confirm-note">
-                        将按当前市场收购价即时成交；没有收购单时自动转为限价卖单（可随时撤销退回机库）。
-                        {sellBuy !== undefined ? ` 预计到手约 ${isk(sellBuy)} 信用点（税后以实际成交计）。` : ''}
-                      </div>
-                      {blockers.modules.length > 0 ? (
-                        <div className="app-sell-warn">
-                          ⚠ 该船仍装配着装备（{blockers.modules.join('、')}），必须先卸下才能出售！
-                        </div>
-                      ) : null}
-                      {blockers.cargoUnits > 0 ? (
-                        <div className="app-sell-warn">
-                          ⚠ 货仓里还有 {blockers.cargoUnits.toLocaleString('zh-CN')} 单位货物——请先清空或卸入仓库！
-                        </div>
-                      ) : null}
-                      <div className="app-sell-confirm-btns">
-                        <button
-                          className="app-btn is-small is-warn"
-                          disabled={blockCount > 0}
-                          title={blockCount > 0 ? '先卸下装备并清空货仓才能出售' : '确认按上述条件出售'}
-                          onClick={() => confirmSell(uid)}
-                        >
-                          确认出售
-                        </button>
-                        <button className="app-btn is-small" onClick={() => setSellConfirmId(null)}>
-                          取消
-                        </button>
-                      </div>
+                {storeConfirmId === uid ? (
+                  /* 入仓确认（2026-09-14 船长裁定「甲」：有自定义名先弹确认清名，可取消先去改名）——
+                     样式沿用原出售确认块（`.app-sell-confirm`），不新造弹层 */
+                  <div className="app-sell-confirm">
+                    <div className="app-sell-confirm-title">确认把「{displayName}」移入舰船仓库？</div>
+                    <div className="app-dim app-sell-confirm-note">
+                      该船带自定义名「{shipState.customName}」——舰船仓库按同型堆叠计数存放，名字会被清除。
+                      之后可以随时用「转入舰队」取回一艘全新的同型船。
                     </div>
-                  ) : (
-                    <div className="app-ship-bottom">
-                      <span className="app-dim">货仓与装备随船保存</span>
-                      <div className="app-ship-bottom-btns">
-                        <button
-                          className="app-btn is-small"
-                          onClick={() => setSellConfirmId(uid)}
-                          title="出售前需确认；有装备/货物会在此处醒目提示"
-                        >
-                          市价出售
-                        </button>
-                        <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
-                          切换驾驶
-                        </button>
-                      </div>
+                    <div className="app-sell-confirm-btns">
+                      <button className="app-btn is-small is-warn" onClick={() => doStore(uid, true)}>
+                        清名并移入仓库
+                      </button>
+                      <button className="app-btn is-small" onClick={() => setStoreConfirmId(null)}>
+                        取消
+                      </button>
                     </div>
-                  )
-                ) : !isCurrent && !isWorking ? (
-                  /* T5-A 修正（船长反馈）：锁定只禁出售——锁定的闲置船仍可切换驾驶 */
+                  </div>
+                ) : null}
+                {!isCurrent && !isWorking ? (
+                  /* T5-A 修正（船长反馈）：锁定只拦"移出舰队"，锁定的闲置船仍可切换驾驶 */
                   <div className="app-ship-bottom">
                     <span className="app-dim">货仓与装备随船保存</span>
                     <div className="app-ship-bottom-btns">
-                      <span className="app-chip app-lock-chip" title="已锁定：此船不可出售（防误售）">
-                        <span className="app-ico">
-                          <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+                      {isLockedShip ? (
+                        <span className="app-chip app-lock-chip" title="已锁定：此船不可移入舰船仓库（可点上方「解锁」）">
+                          <span className="app-ico">
+                            <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+                          </span>
+                          已锁定
                         </span>
-                        已锁定
-                      </span>
+                      ) : null}
+                      <button
+                        className="app-btn is-small"
+                        disabled={!storable.ok}
+                        title={
+                          storable.ok
+                            ? shipState.customName
+                              ? `移入舰船仓库：同型堆叠存放（会清除自定义名「${shipState.customName}」）`
+                              : '移入舰船仓库：同型堆叠存放，可在舰船仓库转入舰队或直接出售'
+                            : storable.reason
+                        }
+                        onClick={() => requestStore(uid, shipState.customName)}
+                      >
+                        移入舰船仓库
+                      </button>
                       <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
                         切换驾驶
                       </button>
@@ -684,83 +721,211 @@ export function ShipPage({
 
       {activeTab === 'ai' ? <AiCommandPanel engine={engine} onToast={onToast} /> : null}
 
-      {activeTab === 'shop' ? (
+      {activeTab === 'store' ? (
         <Panel
           className="is-fill"
-          title="舰船市场"
-          right={<span className="app-dim">现货看订单簿 · 无货可挂收购单自动等补货</span>}
+          title="舰船仓库"
+          right={
+            /* 搜索栏进标题行 + 计数（与「我的舰队」同一套写法：`.app-head-search-wrap` + 灰字计数） */
+            <span className="app-head-search-wrap">
+              <input
+                className="app-head-search"
+                type="text"
+                placeholder="搜索船型…"
+                value={storeQ}
+                onChange={(e) => setStoreQ(e.target.value)}
+                spellCheck={false}
+              />
+              <span className="app-dim">
+                {storeFiltered ? `匹配 ${storeShown.length} / 共 ${storeAll.length} 型` : `${storeAll.length} 型`} · 仓内{' '}
+                {storeTotalShips} 艘
+              </span>
+            </span>
+          }
         >
-        <div className="app-ship-list">
-          {engine.ships
-            .filter((def) => {
-              for (const good of engine.ctx.marketGoods.values()) {
-                if (good.kind === 'ship' && good.refId === def.id) return true
-              }
-              return false
-            })
-            .map((def) => {
-              // v17：可重复拥有同型——统计机库内该型艘数（实例 uid 或以 defId 为键的第 1 艘）
-              const ownedCount = Object.keys(state.fleet).filter(
-                (k) => state.fleet[k]!.defId === def.id || k === def.id,
-              ).length
-              const good = [...engine.ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === def.id)
-              const quote = good ? marketQuote(state, engine.ctx, good.key) : null
-              const ask = quote?.sell
-              const lock = good ? goodLockedReason(state, good) : null
-              return (
-                <ShipHover key={def.id} ship={def} block>
-                  <div className="app-ship-card">
-                  <div className="app-ship-top">
-                    <span className="app-ship-name">
-                      {def.name}
-                      {/* 2026-09-13 船长：子分类徽标（市场/图纸列同样显示） */}
-                      {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
-                      <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
-                    </span>
-                    <span className={`app-chip${good?.rarity === 'common' ? '' : good?.rarity === 'rare' ? ' is-rare' : ' is-exotic'}`}>
-                      {good ? rarityLabel(good.rarity) : ''}
-                    </span>
-                  </div>
-                  <div className="app-ship-spec">
-                    货舱 {def.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {def.cycleSeconds} 秒 × {def.oreUnitsPerCycle} 单位 · 动力 {Math.round(def.agility * 100)}%
-                  </div>
-                  <div className="app-ship-desc">{def.description}</div>
-                  <div className="app-ship-bottom">
-                    {ask !== undefined ? (
-                      <span className="app-ship-price">现货 {isk(ask)} 信用点</span>
-                    ) : (
-                      <span className="app-dim">暂无现货 · 挂收购单自动等货</span>
-                    )}
-                    {ownedCount > 0 ? (
-                      <span className="app-chip" title="机库里已有同型舰船；可再购一艘（同型多艘自动编号）">
-                        机库 ×{ownedCount}
-                      </span>
-                    ) : null}
-                    {lock ? (
-                      <span className="app-chip is-exotic" title={lock}>
-                        <span className="app-ico">
-                          <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
-                        </span>
-                        {lock}
-                      </span>
-                    ) : null}
-                    {good ? (
-                      <button
-                        className={`app-btn is-small${lock ? '' : ' is-primary'}`}
-                        disabled={!onGotoMarket}
-                        title={lock ?? '前往市场页查看该舰船订单——自动聚焦搜索该船，现货/挂单都在市场操作'}
-                        onClick={() => onGotoMarket?.(good.key)}
-                      >
-                        去市场查看 / 下单
-                      </button>
-                    ) : null}
-                  </div>
-                  </div>
-                </ShipHover>
-              )
-            })}
-        </div>
-      </Panel>
+          {/* 三维筛选（复刻「我的舰队」的工具条样式）：拥有（船长裁定：只看仓库库存）→ 类别 → 级别 */}
+          <div className="app-fleet-toolbar">
+            <div className="app-fleet-row">
+              <span className="app-dim">拥有：</span>
+              <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                {STORE_OWN_TABS.map((t) => (
+                  <button
+                    key={t.key}
+                    role="tab"
+                    aria-selected={storeOwn === t.key}
+                    className={`app-tasktab${storeOwn === t.key ? ' is-active' : ''}`}
+                    onClick={() => setStoreOwn(t.key)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="app-fleet-row">
+              <span className="app-dim">类别：</span>
+              <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={storeRole === SUB_ALL}
+                  className={`app-tasktab${storeRole === SUB_ALL ? ' is-active' : ''}`}
+                  onClick={() => setStoreRole(SUB_ALL)}
+                >
+                  全部
+                </button>
+                {SHIP_SUBS.map((s) => (
+                  <button
+                    key={s.key}
+                    role="tab"
+                    aria-selected={storeRole === s.key}
+                    className={`app-tasktab${storeRole === s.key ? ' is-active' : ''}`}
+                    onClick={() => setStoreRole(s.key)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="app-fleet-row">
+              <span className="app-dim">级别：</span>
+              <div className="app-task-tabs app-fleet-tabs" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={storeTier === SUB_ALL}
+                  className={`app-tasktab${storeTier === SUB_ALL ? ' is-active' : ''}`}
+                  onClick={() => setStoreTier(SUB_ALL)}
+                >
+                  全部
+                </button>
+                {SHIP_TIER_SUBS.map((s) => (
+                  <button
+                    key={s.key}
+                    role="tab"
+                    aria-selected={storeTier === s.key}
+                    className={`app-tasktab${storeTier === s.key ? ' is-active' : ''}`}
+                    onClick={() => setStoreTier(s.key)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="app-fleet-scroll">
+            {storeShown.length === 0 ? (
+              <div className="app-dim app-note">
+                {storeAll.length === 0
+                  ? '舰船目录还是空的。'
+                  : `没有匹配的船型${sq.length > 0 ? `（关键词「${storeQ.trim()}」）` : '（当前筛选）'}——换个关键词或筛选条件试试。`}
+              </div>
+            ) : (
+              <div className="app-ship-list">
+                {storeShown.map((def) => {
+                  const stored = shipStoredCount(state, def.id)
+                  const inFleet = fleetCountOf(def.id)
+                  const good = [...engine.ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === def.id)
+                  const quote = good ? marketQuote(state, engine.ctx, good.key) : null
+                  const ask = quote?.sell
+                  const lock = good ? goodLockedReason(state, good) : null
+                  return (
+                    <ShipHover key={def.id} ship={def} block>
+                      <div className="app-ship-card">
+                        <div className="app-ship-top">
+                          <span className="app-ship-name">
+                            {def.name}
+                            {/* 2026-09-13 船长：子分类徽标（市场/图纸列同样显示） */}
+                            {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
+                            <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
+                            {stored <= 0 ? (
+                              <em className="app-chip app-lock-chip" title="舰船仓库里还没有这一型（在役舰队里的船不算——「已拥有 / 未拥有」只看仓库库存）">
+                                未拥有
+                              </em>
+                            ) : null}
+                          </span>
+                          <span className={`app-chip${good?.rarity === 'common' ? '' : good?.rarity === 'rare' ? ' is-rare' : ' is-exotic'}`}>
+                            {good ? rarityLabel(good.rarity) : ''}
+                          </span>
+                        </div>
+                        <div className="app-ship-spec">
+                          货舱 {def.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {def.cycleSeconds} 秒 × {def.oreUnitsPerCycle} 单位 · 动力 {Math.round(def.agility * 100)}%
+                        </div>
+                        <div className="app-ship-desc">{def.description}</div>
+                        <div className="app-ship-bottom">
+                          <span className={stored > 0 ? 'app-ship-price' : 'app-dim'}>
+                            仓库 ×{stored.toLocaleString('zh-CN')}
+                          </span>
+                          {inFleet > 0 ? (
+                            <span className="app-chip" title="在役舰队（机库）里的同型艘数">
+                              舰队 ×{inFleet}
+                            </span>
+                          ) : null}
+                          {ask !== undefined ? <span className="app-dim">现货 {isk(ask)} 信用点</span> : null}
+                          {lock ? (
+                            <span className="app-chip is-exotic" title={lock}>
+                              <span className="app-ico">
+                                <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
+                              </span>
+                              {lock}
+                            </span>
+                          ) : null}
+                          <div className="app-ship-bottom-btns">
+                            <button
+                              className="app-btn is-small"
+                              disabled={stored <= 0}
+                              title={stored > 0 ? '转入舰队：生成一艘全新同型船（满耐久 · 无装配 · 无自定义名）' : '舰船仓库里还没有这一型'}
+                              onClick={() => doUnstore(def.id)}
+                            >
+                              转入舰队
+                            </button>
+                            <button
+                              className="app-btn is-small"
+                              disabled={stored <= 0}
+                              title={
+                                stored > 0
+                                  ? '按当前市场收购价出售 1 艘；无人收购时自动转限价卖单（可撤单退回舰船仓库）'
+                                  : '舰船仓库里还没有这一型'
+                              }
+                              onClick={() => setStoreSellId(def.id)}
+                            >
+                              出售 1 艘
+                            </button>
+                            {good ? (
+                              <button
+                                className={`app-btn is-small${lock ? '' : ' is-primary'}`}
+                                disabled={!onGotoMarket}
+                                title={lock ?? '前往市场页查看该舰船订单——自动聚焦搜索该船，现货/挂单都在市场操作'}
+                                onClick={() => onGotoMarket?.(good.key)}
+                              >
+                                去市场查看 / 下单
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                        {storeSellId === def.id ? (
+                          /* 出售二次确认（沿用舰队页原「市价出售」确认块的样式与话术结构） */
+                          <div className="app-sell-confirm">
+                            <div className="app-sell-confirm-title">确认出售「{def.name}」1 艘？</div>
+                            <div className="app-dim app-sell-confirm-note">
+                              将按当前市场收购价即时成交；没有收购单时自动转为限价卖单（可随时撤销退回舰船仓库）。
+                              {quote?.buy !== undefined ? ` 预计到手约 ${isk(quote.buy)} 信用点（税后以实际成交计）。` : ''}
+                            </div>
+                            <div className="app-sell-confirm-btns">
+                              <button className="app-btn is-small is-warn" onClick={() => doSellStored(def.id)}>
+                                确认出售
+                              </button>
+                              <button className="app-btn is-small" onClick={() => setStoreSellId(null)}>
+                                取消
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </ShipHover>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </Panel>
       ) : null}
     </div>
   )

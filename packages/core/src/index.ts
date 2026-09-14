@@ -252,6 +252,12 @@ export {
   useOneRepairKit,
   renameShip,
   hullLayerCaps,
+  // 舰船仓库（2026-09-14 船长：舰队页「舰船市场」→「舰船仓库」，组装机产出先入仓、可堆叠）
+  shipStoredCount,
+  shipOwnedCount,
+  shipStorable,
+  storeShip,
+  unstoreShip,
 } from './shipyard'
 
 export { fleetDefOf, shipDisplayName } from './instances'
@@ -387,6 +393,10 @@ export {
   shipSellable,
   sellShipAtMarket,
   placeShipSellOrder,
+  // 舰船仓库出售（2026-09-14 船长「舰船仓库是用于方便市场出售舰船的」）；上面三条是舰队实例版
+  // （**自本批起没有界面入口**：舰队出售按钮已撤——保留给老档 escrow 与后续复用）
+  sellStoredShipAtMarket,
+  placeStoredShipSellOrder,
   learnBlueprint,
   naturalHoldings,
   marketSellHolding,

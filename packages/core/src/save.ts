@@ -240,6 +240,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
       ...rest,
       learnedRecipes: bps,
       blueprintStock: {},
+      shipStore: {},
       market: { pools: {}, npcBuy: {}, npcSell: {}, digest: {}, lastTickGameMs: 0, orderSeq: 0, priceHistory: {} },
       orders: [],
       escrowItems: {},
@@ -1568,6 +1569,16 @@ function normalizeState(raw: unknown): GameState {
       if (typeof bp === 'string' && bp.length > 0 && !learnedRecipes.includes(bp)) learnedRecipes.push(bp)
     }
   }
+  /**
+   * --- 舰船仓库（2026-09-14 船长，**兼容字段：老档缺省 = 空，零迁移**）---
+   * 只收**正整数**艘数（负数/小数/非数值一律丢弃；0 与空键不落档，与 blueprintStock 同款写法）。
+   */
+  const shipStore: Record<string, number> = {}
+  for (const [key, value] of Object.entries(asRaw(src.shipStore))) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      shipStore[key] = Math.floor(value)
+    }
+  }
   // --- 一次性图纸"名额已用尽"（2026-09-12 兼容字段；老档缺省 = 空，零迁移） ---
   const spentOneTimeRecipes: string[] = []
   if (Array.isArray(src.spentOneTimeRecipes)) {
@@ -1700,7 +1711,10 @@ function normalizeState(raw: unknown): GameState {
   for (const [key, value] of Object.entries(asRaw(src.escrowItems))) {
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) escrowItems[key] = Math.floor(value)
   }
-  const escrowShips: Record<number, { shipId: string; defId: string; durability: number; customName: string | null }> = {}
+  const escrowShips: Record<
+    number,
+    { shipId: string; defId: string; durability: number; customName: string | null; from?: 'fleet' | 'store' }
+  > = {}
   for (const [key, value] of Object.entries(asRaw(src.escrowShips))) {
     const id = Number(key)
     const s = asRaw(value)
@@ -1711,6 +1725,8 @@ function normalizeState(raw: unknown): GameState {
       defId: typeof s.defId === 'string' && s.defId.length > 0 ? s.defId : uidDefId(shipId),
       durability: Math.min(1, Math.max(0, num(s.durability, 1))),
       customName: cleanCustomName(s.customName),
+      // 2026-09-14：只认显式的 'store'；老档缺省/非法值 = 舰队实例（撤单退回机库）
+      ...(s.from === 'store' ? { from: 'store' as const } : {}),
     }
   }
 
@@ -2893,6 +2909,7 @@ function normalizeState(raw: unknown): GameState {
     learnedRecipes,
     spentOneTimeRecipes,
     recycleCarry,
+    shipStore,
     blueprintStock,
     market,
     orders,

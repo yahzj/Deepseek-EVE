@@ -65,11 +65,14 @@ import {
   retreatBattle,
   sellCargoItem,
   sellCargoItemQty,
-  sellShipAtMarket,
+  sellStoredShipAtMarket,
   sellWareItem,
   sellWareItemQty,
   serializeSaveFile,
   shipDisplayName,
+  // 舰船仓库（2026-09-14 船长）
+  storeShip,
+  unstoreShip,
   setBattleDesire,
   setMiningAutoCycle,
   setMiningStopAfterTrip,
@@ -1213,9 +1216,33 @@ export class GameEngine {
     return marketSellPreview(this.state, this.ctx, goodKey, qty)
   }
 
-  /** 市价出售机库里的舰船（须空仓、无装配、非驾驶） */
-  sellShipAt(shipId: string): CommandResult {
-    const res = sellShipAtMarket(this.state, this.ctx, shipId)
+  /** 市价出售机库里的舰船（须空仓、无装配、非驾驶）
+   *  ⚠ **自 2026-09-14 起没有界面入口**（船长：「之后移除我的舰队内舰船的出售按钮」——
+   *  出售统一走舰船仓库）；core 出口与用例保留（老档 escrow 撤单与后续复用），界面改调 `sellStoredShipAt`。 */
+
+  /** 移入舰船仓库（2026-09-14 船长）：`clearName` = 已在确认弹层同意清掉自定义名 */
+  storeShipAt(uid: string, clearName = false): CommandResult {
+    const res = storeShip(this.state, uid, this.ctx, { clearName })
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return res
+  }
+
+  /** 从舰船仓库转入舰队（生成全新实例） */
+  unstoreShipAt(defId: string): CommandResult {
+    const res = unstoreShip(this.state, defId, this.ctx)
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return res
+  }
+
+  /** 舰船仓库市价出售（吃收购簿即时成交；未成交转限价卖单，撤单退回舰船仓库） */
+  sellStoredShipAt(defId: string): CommandResult {
+    const res = sellStoredShipAtMarket(this.state, this.ctx, defId)
     if (res.ok) {
       void this.persist()
       this.notify()

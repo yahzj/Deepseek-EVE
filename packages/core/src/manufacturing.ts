@@ -30,7 +30,7 @@ import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule } from './equipment'
-import { addShipToFleet } from './shipyard'
+import { shipStoredCount } from './shipyard'
 import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike } from './location'
@@ -452,8 +452,15 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       } else if (buildable.kind === 'ship') {
         const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
         if (!shipDef) return false
-        addShipToFleet(state, shipDef.id)
-        addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
+        // 2026-09-14 船长：「所有组装机生产的舰船都放进舰船仓库内，并允许堆叠数量」
+        // ⇒ 不再直接进机库；要驾驶/指派先到舰船页把船转入舰队（`shipyard.unstoreShip`）
+        state.shipStore = state.shipStore ?? {}
+        state.shipStore[shipDef.id] = shipStoredCount(state, shipDef.id) + 1
+        addLog(
+          state,
+          'info',
+          `造船完成：${shipDef.name} 已入舰船仓库（现有 ${state.shipStore[shipDef.id]} 艘）——到舰船页「舰船仓库」可转入舰队。`,
+        )
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)
           addAiIncome(stats, coreType, marketBasePrice(ctx, 'ship', shipDef.id))

@@ -8,7 +8,7 @@ import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import type { CommandResult } from './engine'
 import type { FittedModules, FleetShipState, GameState } from './state'
 import type { SimContext } from './types'
-import { emptyFitted, uidDefId } from './labels'
+import { allFittedIds, emptyFitted, uidDefId } from './labels'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { createPlayerSpec } from './combat'
 import { miningReturnLegMs } from './location'
@@ -548,12 +548,111 @@ export function lockShip(state: GameState, shipId: string, locked: boolean, ctx:
   if (locked) {
     if (isShipLocked(state, shipId)) return { ok: false, error: `${name} 已处于锁定状态。` }
     state.shipLocks[shipId] = true
-    addLog(state, 'info', `已锁定 ${name}：此船不可出售（可随时在舰船页解锁）。`)
+    addLog(state, 'info', `已锁定 ${name}：此船不可移入舰船仓库（可随时在舰船页解锁）。`)
   } else {
     if (!isShipLocked(state, shipId)) return { ok: false, error: `${name} 当前未锁定。` }
     delete state.shipLocks[shipId]
-    addLog(state, 'info', `已解锁 ${name}：恢复可出售。`)
+    addLog(state, 'info', `已解锁 ${name}：恢复可移入舰船仓库。`)
   }
+  return { ok: true }
+}
+
+/* ═══════════════ 舰船仓库（2026-09-14 船长裁定 · 本会话新批） ═══════════════
+ * 船长原话（照抄）：「接下来实现舰船出售，建议先将舰队页面中的舰船市场换成舰船仓库，所有组装机生产的
+ * 舰船都放进舰船仓库内，并允许堆叠数量。舰船仓库内添加筛选：全部/已拥有/未拥有。以及和我的舰队页面
+ * 相同的类别，级别筛选。玩家可以从舰船仓库中将船转移到我的舰队内。而我的舰队内的无装配满耐久的舰船
+ * 也可以转移到舰船仓库。之后移除我的舰队内舰船的出售按钮。」＋「舰船仓库是用于方便市场出售舰船的」。
+ *
+ * 口径（与本仓 design 稿 `docs/design/ship-warehouse-20260914.md` 同源）：
+ * ① 仓库 = **纯计数**（`state.shipStore`：船型 id → 艘数）；仓里的船一律"全新"——
+ *    满耐久（结构＋装甲都是 100%）· 无装配 · 货仓空 · 无自定义名；
+ * ② 舰队 → 仓库（`storeShip`）：还要**非驾驶中 · 无 AI 任务 · 非返航善后中 · 未锁定 · 不受进洞/自动探索锁**；
+ *    有自定义名 ⇒ 报 `named`，由界面弹确认、确认后带 `clearName` 再来（**不静默丢名字**）；
+ * ③ 仓库 → 舰队（`unstoreShip`）：即时、免费，`addShipToFleet` 生成全新实例；**舰队不设上限**；
+ * ④ 出售走市场挂单（`market.sellStoredShipAtMarket`）：先吃收购簿即时成交，未成交留在簿上，
+ *    **撤单退回舰船仓库**（escrow 记 `from: 'store'`）；
+ * ⑤ 老档缺省空 ⇒ **零迁移**（`save.ts` 只收正整数）。 */
+
+/** 仓库里该船型的艘数（读口径单点；负数/非法值一律当 0） */
+export function shipStoredCount(state: GameState, defId: string): number {
+  const n = state.shipStore?.[defId] ?? 0
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}
+
+/** 该船型的**总持有** = 仓库 ＋ 在役舰队（问"我有没有这型船"一律走这里；筛选口径另见设计稿） */
+export function shipOwnedCount(state: GameState, defId: string): number {
+  let n = shipStoredCount(state, defId)
+  for (const [uid, s] of Object.entries(state.fleet)) {
+    if ((s.defId ?? uidDefId(uid)) === defId) n += 1
+  }
+  return n
+}
+
+/**
+ * 入仓校验（界面按钮的置灰/拒因与引擎同源）：不满足 ⇒ `{ ok: false, reason }`。
+ * `named: true` 是**唯一可以确认放行**的一档（有自定义名）：界面弹「入仓将清除自定义名」，
+ * 玩家确认后带 `{ clearName: true }` 再调 `storeShip`。
+ */
+export function shipStorable(state: GameState, uid: string): { ok: boolean; reason?: string; named?: boolean } {
+  const ship = state.fleet[uid]
+  if (!ship) return { ok: false, reason: '机库里没有这艘船。' }
+  if (state.shipId === uid) return { ok: false, reason: '正在驾驶的船不能入仓：先换到别的船上。' }
+  if (state.aiAssignments[uid]) return { ok: false, reason: 'AI 任务执行中的船不能入仓，先取消指派。' }
+  if (isShipLocked(state, uid)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。' }
+  // ⚠ 判据与 `mining.shipInReturn` 同义；**这里直接读 state**（不 import mining：mining → shipyard 已有依赖边，
+  // 反向 import 会成环——与 `state.shipLockedReason` 直读 `state.wormholeAuto` 同款处置）
+  if (uid in state.shipReturns) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能入仓。' }
+  const cargoUnits = Object.values(ship.cargo).reduce((a, b) => a + b, 0)
+  if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
+  if (allFittedIds(ship.fitted).length > 0) return { ok: false, reason: '还装着模块，请先卸下。' }
+  if ((ship.durability ?? 1) < 1 || (ship.armorPct ?? 1) < 1) {
+    return { ok: false, reason: '只有满耐久（结构与装甲都完好）的船才能入仓：先维修。' }
+  }
+  if (ship.customName) return { ok: false, reason: '该船有自定义名——入仓会清掉它。', named: true }
+  return { ok: true }
+}
+
+/** 玩家指令：把机库里的一艘船移入舰船仓库（同型 +1 艘）。`clearName` = 已在确认弹层同意清掉自定义名 */
+export function storeShip(
+  state: GameState,
+  uid: string,
+  ctx: SimContext,
+  opts?: { clearName?: boolean },
+): CommandResult {
+  const lock = shipLockedReason(state, uid, '移入舰船仓库')
+  if (lock) return { ok: false, error: lock }
+  const check = shipStorable(state, uid)
+  if (!check.ok && !(check.named === true && opts?.clearName === true)) {
+    return { ok: false, error: check.reason ?? '这艘船不能入仓。' }
+  }
+  const ship = state.fleet[uid]!
+  const defId = ship.defId ?? uidDefId(uid)
+  const name = shipDisplayName(state, ctx, uid)
+  delete state.fleet[uid]
+  // 释放这艘船的杂项账本（锁定标记随实例走，船没了就不该留着）
+  delete state.shipLocks[uid]
+  state.shipStore = state.shipStore ?? {}
+  state.shipStore[defId] = shipStoredCount(state, defId) + 1
+  addLog(
+    state,
+    'info',
+    check.named === true
+      ? `${name} 已移入舰船仓库（自定义名随之清除）：仓库现有 ${state.shipStore[defId]} 艘。`
+      : `${name} 已移入舰船仓库：仓库现有 ${state.shipStore[defId]} 艘。`,
+  )
+  return { ok: true }
+}
+
+/** 玩家指令：把舰船仓库里的一艘转入舰队（生成全新实例：满耐久/无装配/无名） */
+export function unstoreShip(state: GameState, defId: string, ctx: SimContext): CommandResult {
+  const n = shipStoredCount(state, defId)
+  if (n <= 0) return { ok: false, error: '舰船仓库里没有这一型。' }
+  const def = ctx.ships.get(defId)
+  if (!def) return { ok: false, error: `未知舰船：${defId}。` }
+  state.shipStore![defId] = n - 1
+  if (state.shipStore![defId] <= 0) delete state.shipStore![defId]
+  const uid = addShipToFleet(state, defId)
+  addLog(state, 'info', `${shipDisplayName(state, ctx, uid)} 已从舰船仓库转入舰队（机库）。`)
   return { ok: true }
 }
 

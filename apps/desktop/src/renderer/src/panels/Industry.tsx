@@ -22,6 +22,8 @@ import {
   canStartBlueprint,
   // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
   sortManuRows,
+  // 2026-09-14 舰船仓库批：船型"总持有"读口径（仓库＋在役舰队）
+  shipOwnedCount,
   // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
   visibleItemDefs,
 } from '@whale/core'
@@ -687,9 +689,9 @@ export function ManufacturingPanel({
     /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
     singleUse: boolean
   }> = []
-  /** 机库同型艘数（与市场页「持有」同口径：core 自然库存对舰船恒 0，故单独数机库） */
-  const shipStockOf = (shipId: string): number =>
-    Object.entries(state.fleet).filter(([uid, e]) => (e.defId ?? uid) === shipId).length
+  /** 该船型的**总持有**（2026-09-14 舰船仓库批：组装机产出先进仓库 ⇒ 读口径改走 core 单点
+   *  `shipOwnedCount` = 舰船仓库 ＋ 在役舰队；原先只数机库，会让"仓里堆着 3 艘"显示成 0） */
+  const shipStockOf = (shipId: string): number => shipOwnedCount(state, shipId)
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
@@ -730,7 +732,7 @@ export function ManufacturingPanel({
         productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
         // 舰船产物：机库同型艘数（与市场页「持有」同口径；core 自然库存对舰船恒 0）
         ownedCount: shipStockOf(sbp.shipId),
-        ownedWhere: '机库',
+        ownedWhere: '仓库＋机库',
         bookPrice: bookPriceOf(engine, sbp.id, 0),
         productKey: `ship:${sbp.shipId}`,
         singleUse: sbp.singleUse === true,

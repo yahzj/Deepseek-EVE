@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, rackOf, salesTaxRate, formatDurationMs, bmGateReason } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, rackOf, salesTaxRate, formatDurationMs, bmGateReason, shipStoredCount } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -276,14 +276,19 @@ function GoodHover({
   )
 }
 
-/** 「自己的库存」口径说明（悬停用）：与"能卖出的量"同源；已挂单托管的量不计在内 */
+/** 「自己的库存」口径说明（悬停用）：与"能卖出的量"同源；已挂单托管的量不计在内
+ *  ⚠ 2026-09-14 船长：舰船拆成「舰船仓库 ＋ 在役舰队」两处（仓库是出售入口）⇒ 舰船那一档改成两者相加 */
 const MY_STOCK_TIP =
-  '自己的库存：物品 → 物品仓库、装备 → 装备库、蓝图 → 图书存量、AI 核心 → 核心库、舰船 → 机库同型艘数；已挂单托管的量不计在内'
+  '自己的库存：物品 → 物品仓库、装备 → 装备库、蓝图 → 图书存量、AI 核心 → 核心库、舰船 → 舰船仓库 ＋ 在役舰队同型艘数（挂单托管中的不计）；舰船出售在舰船页「舰船仓库」操作'
 
-/** 玩家自己这件东西的库存（舰船 core 的「自然库存」恒 0，按机库同型艘数单独数） */
+/** 玩家自己这件东西的库存（舰船 = 舰船仓库 ＋ 在役舰队；其余走 core「自然库存」单点） */
 function myStockOf(state: GameState, good: MarketGoodDef): number {
   if (good.kind === 'ship') {
-    return Object.entries(state.fleet).filter(([uid, e]) => (e.defId ?? uid) === good.refId).length
+    let n = shipStoredCount(state, good.refId)
+    for (const [uid, e] of Object.entries(state.fleet)) {
+      if ((e.defId ?? uid) === good.refId) n += 1
+    }
+    return n
   }
   return naturalHoldings(state, good)
 }
