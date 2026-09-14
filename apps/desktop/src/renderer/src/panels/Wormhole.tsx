@@ -152,10 +152,13 @@ export function WormholePanel({
   engine,
   onToast,
   onClose,
+  stockId = null,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onClose: () => void
+  /** 从「扫描虫洞」页选中的库存虫洞 id（给了 ⇒ 进洞走 `wormholeEnterFromStock`：种子与起始层取它） */
+  stockId?: string | null
 }) {
   const state = engine.state
   const ctx = engine.ctx
@@ -472,7 +475,7 @@ export function WormholePanel({
   }
 
   function handleEnter(): void {
-    const r = engine.wormholeEnter(picked)
+    const r = stockId ? engine.wormholeEnterFromStock(stockId, picked) : engine.wormholeEnter(picked)
     if (!r.ok) onToast(r.error ?? '无法跃入。', true)
     else {
       onToast('已跃入虫洞。')

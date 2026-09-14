@@ -155,6 +155,13 @@ import {
   wormholeTempPending,
   wormholeTempBoard,
   wormholeNormalizeLegacyTemp,
+  wormholeScanStart,
+  wormholeScanStop,
+  wormholeScanWindowMs,
+  wormholeScanBlockReason,
+  wormholeStockOf,
+  wormholeStockTake,
+  WORMHOLE_STOCK_MAX,
   holdTransferTo,
   makeHoldState,
   wormholeSyncMatterTurns,
@@ -1361,6 +1368,29 @@ export class GameEngine {
     return result
   }
 
+  /**
+   * **主控活动「扫描虫洞」**（2026-09-14 船长）：只能在「扫描虫洞」界面里开始/停止。
+   * 进度保留（停扫不清零）；满一个窗口由 `advanceWormholeScan` 在推进里发现一处虫洞。
+   */
+  wormholeScanStart(): CommandResult {
+    const r = wormholeScanStart(this.state, this.ctx)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 停「扫描虫洞」（进度保留） */
+  wormholeScanStop(): CommandResult {
+    const r = wormholeScanStop(this.state)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
   /** v21：取消指定制造线（按线号；材料全额退回仓库；制造费已取消无退费一说） */
   cancelManufacturingAt(runId: number | string): CommandResult {
     const result = cancelManufacturing(this.state, this.ctx, Number(runId))
@@ -1406,9 +1436,41 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
+  /**
+   * **从库存进洞**（2026-09-14 船长：发现的虫洞囤在「扫描虫洞」页，玩家在那里选一处开始探索）。
+   * 与调试入口的区别只有两处：种子取**该库存项**（本趟内容确定性）、起始层取该项的 `depth`；
+   * 进洞成功即**消耗**这一处。
+   */
+  wormholeEnterFromStock(stockId: string, shipIds: readonly string[]): CommandResult {
+    const item = wormholeStockOf(this.state).find((x) => x.id === stockId)
+    if (!item) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。' }
+    const r = wormholeEnter(this.state, this.ctx, shipIds, item.seed)
+    if (!r.ok) return { ok: false, error: r.error }
+    const run = this.state.wormhole.run
+    if (run) run.depth = Math.max(1, Math.min(9, item.depth))
+    wormholeStockTake(this.state, stockId)
+    void this.persist()
+    this.notify()
+    return { ok: true }
+  }
+
+  /** 虫洞扫描：库存读数（界面用） */
+  wormholeStock(): Array<{ id: string; seed: number; depth: number; foundAtGameMs: number }> {
+    return wormholeStockOf(this.state)
+  }
+
+  /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */
+  wormholeScanWindow(): number {
+    return wormholeScanWindowMs(this.state)
+  }
+
+  /** 虫洞扫描：现在能不能开扫（不许时给理由，界面据此置灰） */
+  wormholeScanBlockReason(): string | null {
+    return wormholeScanBlockReason(this.state)
+  }
+
   /** 虫洞：临时离开（活动停止、进度保存；主控随即释放，可去做别的） */
-  wormholeLeave(): void {
-    wormholeLeave(this.state)
+  wormholeLeave(): void {    wormholeLeave(this.state)
     void this.persist()
     this.notify()
   }

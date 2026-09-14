@@ -191,6 +191,26 @@ export interface ShipTransitState {
 
 /** B1.5 主控"前往星系掩护巡逻"（原"待命"）：下达即时就位——船转场目标星系野外停留（awayGalaxy）；
  * 字段为旧档兼容保留：旧档在途（finishAt 在未来）仍需等到点再留守；新指令不留 active 状态。 */
+/**
+ * **虫洞扫描作业状态**（2026-09-14 船长：新增主控活动「扫描虫洞」）。
+ * 进度按游戏时刻累计；遇袭不清零（船长：「遇袭不中断扫描」）。
+ */
+export interface WormholeScanState {
+  active: boolean
+  /** 已累计的扫描毫秒（满一个窗口即发现一处虫洞） */
+  progressMs: number
+}
+
+/** **已发现、未开始探索的虫洞**（种子 + 起始层；上限 `WORMHOLE_STOCK_MAX`） */
+export interface WormholeStockItem {
+  id: string
+  /** 本趟种子（进洞时传给 `wormholeEnter`） */
+  seed: number
+  /** 起始层（1~3）：越深越险、产出越高 */
+  depth: number
+  /** 发现时刻（游戏内毫秒） */
+  foundAtGameMs: number
+}
 export interface StandbyState {
   active: boolean
   /** 目标星系 id */
@@ -1272,6 +1292,16 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   lowSecPresence: Record<string, number>
   /** B1.5：主控主动"前往星系待命"（去程；到点转 awayGalaxy 野外停留） */
   standby: StandbyState
+  /**
+   * **主控活动「扫描虫洞」**（2026-09-14 船长：新增主控活动，只能在扫描虫洞界面内开始）。
+   * 兼容字段（可选）：旧档没有 ⇒ 视为"没在扫、库存空"，零迁移。
+   */
+  wormholeScan?: WormholeScanState
+  /**
+   * **已发现、未开始探索的虫洞**（船长：最多囤积 5 个；每个带种子 + 起始层）。
+   * 兼容字段（可选）：旧档没有 ⇒ 空库存，零迁移。
+   */
+  wormholeStock?: WormholeStockItem[]
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
   /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
@@ -1682,6 +1712,9 @@ export function createInitialState(opts?: {
     },
     exploredGalaxies: [HOME_GALAXY_ID],
     scanning: { active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false },
+    // 虫洞扫描（2026-09-14）：初始"没在扫、库存空"
+    wormholeScan: { active: false, progressMs: 0 },
+    wormholeStock: [],
     scanProgress: {},
     awayGalaxy: null,
     transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0, delivery: null },

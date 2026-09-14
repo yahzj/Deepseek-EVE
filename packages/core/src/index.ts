@@ -1019,6 +1019,22 @@ export {
   wormholeSalvageAt,
   wormholeSalvagersOf,
 } from './wormholeSalvage'
+// 虫洞扫描（发现线 · 2026-09-14 船长：主控活动「扫描虫洞」+ 最多囤 5 个未探索虫洞）
+export {
+  WORMHOLE_SCAN_BASE_MS,
+  WORMHOLE_STOCK_MAX,
+  WORMHOLE_STOCK_DEPTHS,
+  wormholeScanWindowMs,
+  wormholeScanBlockReason,
+  wormholeScanStart,
+  wormholeScanStop,
+  wormholeStockOf,
+  wormholeStockFull,
+  wormholeStockPush,
+  wormholeStockTake,
+  advanceWormholeScan,
+} from './wormholeScan'
+export type { WormholeScanState, WormholeStockItem } from './state'
 // F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,

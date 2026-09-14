@@ -29,6 +29,7 @@ import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
+import { advanceWormholeScan } from './wormholeScan'
 import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
@@ -115,6 +116,8 @@ export function advanceGame(
   // 终局玩法「虫洞」（F 批）：洞内战斗步进与收口 + 撤离战自动开打（不在洞里时零开销）
   advanceWormhole(state, ctx, opts?.freezeBattle)
   advanceScanning(state, ctx)
+  // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
+  advanceWormholeScan(state, ctx, d)
   advanceHauling(state, d, ctx)
   advanceAi(state, d, ctx, opts?.settleStats)
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
