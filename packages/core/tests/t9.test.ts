@@ -16,7 +16,8 @@ import {
   tierRemaining,
 } from '../src/station'
 import { nearestStationGalaxyId, stationGalaxyIds, isAtHomeLike, startSiteDeliverTrip, cancelSiteDeliverTrip } from '../src/location'
-import { startRefineRun, startRecycleRun, redeemFragments } from '../src/industry'
+import { startRefineRun, startRecycleRun, startUnboxRun, redeemFragments } from '../src/industry'
+import { FRAGMENT_RECIPES } from '../src/salvage'
 import { startManufacturing } from '../src/manufacturing'
 import { changeShip, repairShip } from '../src/shipyard'
 import { advanceGame } from '../src/engine'
@@ -246,6 +247,42 @@ describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能�
     state.awayGalaxy = 'galaxy-far' // 野外
     state.dockedSite = null
     expect(startRecycleRun(state, 'nope-wreck', 'pilot', ctx).error).toContain(GATE_HINT)
+  })
+
+  /**
+   * **AI 核心驱动的站内工业不看玩家位置**（2026-09-14 船长报障修复）。
+   *
+   * 船长原话：「玩家正在跑长途运输，但是无法在 AI 指挥中心安排 AI 做事。」
+   * 根因：`startRefineRun` / `startRecycleRun` / `startManufacturing` 的"基地网络"门对
+   * **AI 核心驱动**也生效，而**长途运输**会把 `awayGalaxy` 记成出发星系（`hauling.setLeg` 单点）
+   * ⇒ 跑运输期间整条站内产线都开不了；反观**采矿期间却能开**（`startMining` 会把 `awayGalaxy` 清空）
+   * —— 同一类"主控在忙"两个口径。判据已收口到单点 `stationIndustryBlocked`（`location.ts`）：
+   * **只有 `worker === 'pilot'`（玩家亲自）才要求在基地网络内**。
+   */
+  it('**AI 核心驱动的站内工业不看玩家位置**（跑长途运输/远征时照常能开炉开线）· 亲自操作照旧要求停靠', () => {
+    const { state, ctx } = world()
+    // 现场 = 航行中：`hauling.setLeg` 写下的字段（dockedSite=null + awayGalaxy=出发星系）
+    state.dockedSite = null
+    state.awayGalaxy = 'galaxy-far'
+    // ① AI 核心驱动：越过位置门 ⇒ 继续走后续校验（报的是"未知物品/蓝图"，不是位置错）
+    expect(startRefineRun(state, 'nope-ore', 'basic', ctx).error).not.toContain(GATE_HINT)
+    expect(startRecycleRun(state, 'nope-wreck', 'basic', ctx).error).not.toContain(GATE_HINT)
+    expect(startManufacturing(state, 'nope-bp', 'basic', ctx).error).not.toContain(GATE_HINT)
+    expect(startUnboxRun(state, ctx, 'nope-box', 'basic').error).not.toContain(GATE_HINT)
+    // ② 玩家亲自（worker = 'pilot'）：照旧要求在基地网络内（这条**不能**被上面的放宽带走）
+    expect(startRefineRun(state, 'nope-ore', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRecycleRun(state, 'nope-wreck', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startManufacturing(state, 'nope-bp', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startUnboxRun(state, ctx, 'nope-box', 'pilot').error).toContain(GATE_HINT)
+    // ③ 无 worker 参数的玩家动作（逆向研究）：照旧要求在基地网络内
+    //    （要用**真实存在的模块 id** 才走得到那道门：该命令先查配方表、再查位置）
+    expect(redeemFragments(state, ctx, Object.keys(FRAGMENT_RECIPES)[0]).error).toContain(GATE_HINT)
+    // ④ 修建中工地同理：AI 放行、亲自仍拦（"未建成不视为任何站点"只约束玩家自己那一档）
+    state.awayGalaxy = null
+    state.dockedSite = 'site-test'
+    state.stationSites['site-test'] = { stage: 1, delivered: {} }
+    expect(startRefineRun(state, 'nope-ore', 'basic', ctx).error).not.toContain(GATE_HINT)
+    expect(startRefineRun(state, 'nope-ore', 'pilot', ctx).error).toContain(GATE_HINT)
   })
 })
 
