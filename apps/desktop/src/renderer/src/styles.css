@@ -5010,6 +5010,53 @@ body {
 
   }
 
+  /* ── 窄窗单栏：**放开「一级页不滚」**（船长 2026-09-14：「放宽闸门，允许市场页面在这种情况下出现滚动条。
+     让所有子窗口完整显示」）────────────────────────────────────────────
+     起因：窄窗切单栏后，左列表 + 市场详情 + 我的挂单 被硬塞进**一屏固定高度**里 ⇒ 三块全被压扁
+     （详情出内滚、挂单只剩一条、列表被截），正是船长报的"子窗口不完整"。
+     口径：窄窗时**本页整页纵向滚动**，各面板回到**内容高度**（详情与挂单不再被 pin/封顶）。
+     ⚠ **只在这个断点里生效**：宽窗（>1180px）的双栏定高与"折线图先让 → 档数再降 → 才内滚"那一整套口径一字未动。
+     选择器一律带 `.app-mkt-page` 提高优先级，压过下面那些无断点的定高规则。 */
+
+  .app-page-content.no-scroll > .page-stack.app-mkt-page {
+
+    overflow-y: auto;
+
+  }
+
+  .app-page-content.no-scroll > .page-stack.app-mkt-page > .app-mkt-split {
+
+    flex: 0 0 auto;
+
+    min-height: auto;
+
+  }
+
+  .app-mkt-page .app-mkt-left,
+  .app-mkt-page .app-mkt-right {
+
+    min-height: auto;
+
+  }
+
+  .app-mkt-page .app-mkt-left > .wui-panel,
+  .app-mkt-page .app-mkt-right > .wui-panel,
+  .app-mkt-page .app-mkt-right > .wui-panel:first-child {
+
+    flex: 0 0 auto;
+
+    min-height: auto;
+
+  }
+
+  /* 「我的挂单」在窄窗不再吃 40% 上限（整页滚动底下没有"抢高度"的问题）；面板体内滚由 JS 按内容高放开 */
+
+  .app-mkt-page .app-mkt-right > .wui-panel:last-child {
+
+    max-height: none;
+
+  }
+
 }
 
 /* 市场详情卡（2026-09-05：参考盘口——价格曲线/买卖盘深度/持有量/交易面板）；右栏内纵向堆叠 */

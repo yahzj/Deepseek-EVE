@@ -1068,11 +1068,14 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
       if (rows.length === 0) return
       const avail = body.clientHeight - padT - padB
       let acc = 0
+      let total = 0
       for (const r of rows) {
         const h = r.getBoundingClientRect().height
-        if (acc + h > avail) break
-        acc += h
+        total += h
+        if (acc + h <= avail) acc += h
       }
+      // 全部放得下 ⇒ 不封顶、也不动下内边距（窄窗整页滚动那档就是这种：面板回到内容高度）
+      if (total <= avail + 0.5) return
       if (acc <= 0) acc = rows[0]!.getBoundingClientRect().height // 一行都放不下时至少留一行
       // ⚠ `.wui-panel-body` 是 **content-box** ⇒ `max-height` 只限内容，内边距另算；
       // 且**下内边距必须归零** —— 否则下一行会从这 8px 里露出一条边（也算"半行"，实测踩过）
@@ -1214,7 +1217,9 @@ export function MarketPage({
   )
 
   return (
-    <div className="page-stack page-fill">
+    // `app-mkt-page`：窄窗（≤1180px，单栏）时本页**放开「一级页不滚」**——船长 2026-09-14：
+    // 「放宽闸门，允许市场页面在这种情况下出现滚动条。让所有子窗口完整显示」（见 styles.css 同名断点块）
+    <div className="page-stack page-fill app-mkt-page">
       {/* 常驻双栏：左 = 搜索 + 标签 + 商品列表；右 = 市场详情大盘（常驻，无选中时显示引导） */}
       <div className="app-mkt-split">
         <div className="app-mkt-left">
