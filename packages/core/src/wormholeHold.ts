@@ -49,6 +49,32 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'box-relic-d': WORMHOLE_SHAPE_CONTAINER,
   'box-relic-e': WORMHOLE_SHAPE_CONTAINER,
   'box-relic-g': WORMHOLE_SHAPE_CONTAINER,
+  /**
+   * **谜质储存器**（F3c · 船长 2026-09-13「在货仓内显示为4格的『谜质储存器』」）：
+   * 与货柜同形（2×2），但**只在本趟虫洞内生效、随趟消失**（效果表 = `wormholeMatter.ts`）。
+   * 清单与 `packages/data/src/items.ts` 的 `MATTER_DEVICES`、`WORMHOLE_MATTER_DEVICE_IDS` 三处同序。
+   */
+  'mat-surveyor': WORMHOLE_SHAPE_CONTAINER,
+  'mat-chrono': WORMHOLE_SHAPE_CONTAINER,
+  'mat-crane': WORMHOLE_SHAPE_CONTAINER,
+  'mat-drill': WORMHOLE_SHAPE_CONTAINER,
+  'mat-nebula': WORMHOLE_SHAPE_CONTAINER,
+  'mat-enricher': WORMHOLE_SHAPE_CONTAINER,
+  'mat-expander': WORMHOLE_SHAPE_CONTAINER,
+  /* B1 批：威胁类 3 台 ＋ 战斗类 10 台（同形 2×2） */
+  'mat-suppressor': WORMHOLE_SHAPE_CONTAINER,
+  'mat-boss-analyzer': WORMHOLE_SHAPE_CONTAINER,
+  'mat-extract-cover': WORMHOLE_SHAPE_CONTAINER,
+  'mat-shield-res': WORMHOLE_SHAPE_CONTAINER,
+  'mat-armor-res': WORMHOLE_SHAPE_CONTAINER,
+  'mat-hull-res': WORMHOLE_SHAPE_CONTAINER,
+  'mat-tracker': WORMHOLE_SHAPE_CONTAINER,
+  'mat-gyro': WORMHOLE_SHAPE_CONTAINER,
+  'mat-jammer': WORMHOLE_SHAPE_CONTAINER,
+  'mat-rangefinder': WORMHOLE_SHAPE_CONTAINER,
+  'mat-blindspot': WORMHOLE_SHAPE_CONTAINER,
+  'mat-ammo-dmg': WORMHOLE_SHAPE_CONTAINER,
+  'mat-reload': WORMHOLE_SHAPE_CONTAINER,
 }
 
 /** 该物品是不是**占形状的件**（是 ⇒ 走 `run.hold`，不是 ⇒ 走 `run.bag` 叠加） */

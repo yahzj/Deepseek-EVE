@@ -655,6 +655,204 @@ export const REPAIR_KITS: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **谜质储存器**（F3c · 船长 2026-09-13 逐条裁定；A 批 = 探索与作业类 7 台）。
+ *
+ * 船长原话（照抄）：「**现在做，谜质玩家采集后，在货仓内显示为4格的『谜质储存器』，
+ * 在本次虫洞探索中提供临时增益**」＋「多种效果……包括探索上的增益：扫描+1.回合数+10.威胁-5%。
+ * 每个装置额外打捞/采集等」。
+ *
+ * 口径：
+ * - **一台 = 2000 m³ = 2×2 = 4 格**形状件（`packages/core/src/wormholeHold.ts` 形状表已登记这 7 个 id）；
+ * - **放在货仓里就生效、本趟结束随趟消失**（不进仓库、不拆解；效果一律现算，见 `wormholeMatter.ts`）；
+ * - **施工期一律 `unreleased`**（与虫洞同批上线；`content:check` 有契约钉住）；
+ * - 战斗类与威胁类装置（12 + 3 台）在 B 批追加。
+ */
+export const MATTER_DEVICES: readonly ItemDef[] = [
+  {
+    id: 'mat-surveyor',
+    name: '深空测绘仪',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质凝成的测绘阵列：只要它躺在货仓里，扫描就能多看一圈。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-chrono',
+    name: '时序核心',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质里剥出的一小段时间：带在货仓里，本趟可用的回合凭空多出一截。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-crane',
+    name: '打捞起重机',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质驱动的起重臂：每轮打捞都能多拖一堆上来。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-drill',
+    name: '采集钻机',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质磨出的钻头：每轮采集都能多挖一堆母矿。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-nebula',
+    name: '星云驱散器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质吹出的一阵风：每次扫描都会额外吹散附近的星云。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-enricher',
+    name: '母矿富集器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质做的富集槽：矿脉里采出的虚空母矿会更多。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-expander',
+    name: '舱段扩展器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质撑开的折叠舱段：货仓能多塞几格货（它自己仍占 2×2 格）。离开虫洞即失效。',
+  },
+  /* ── B1 批：威胁类（三档合计最多把威胁压到一半）── */
+  {
+    id: 'mat-suppressor',
+    name: '压制力场',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质铺开的一层压制场：本层的节点战、守卫战与撤离拦截战都会更轻。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-boss-analyzer',
+    name: '守卫解析仪',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质里读出的守卫编成：层末守卫的威胁明显下降。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-extract-cover',
+    name: '撤离掩护器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质撑起的撤离掩护：拦截舰队的威胁明显下降。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  /* ── B1 批：战斗类（一律只在本趟虫洞的战斗里生效）── */
+  {
+    id: 'mat-shield-res',
+    name: '护盾谐振片',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质调谐出的护盾谐振：护盾对敌方主用伤害类型的抗性提高（只作用护盾这一层）。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-armor-res',
+    name: '装甲强化片',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质重排的装甲层：装甲对敌方主用伤害类型的抗性提高（只作用装甲这一层）。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-hull-res',
+    name: '结构加固片',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质织进船体骨架：结构对敌方主用伤害类型的抗性提高（只作用结构这一层）。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-tracker',
+    name: '追踪阵列',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质校准的追踪阵列：编队命中更准。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-gyro',
+    name: '陀螺稳定器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质陀螺让船身更难被咬住：编队回避提高。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-jammer',
+    name: '干扰发射器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质噪声盖住你的信号：敌方打得更不准。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-rangefinder',
+    name: '射程扩展器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质拉伸的测距阵列：全武器射程更远。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-blindspot',
+    name: '盲区压制器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质在贴身距离上搅乱敌方火控：敌人贴脸开火的伤害比例下降。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-ammo-dmg',
+    name: '弹药增效器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质给每一发弹丸加了一层：编队单发伤害提高。占货仓 2×2 格，离开虫洞即失效。',
+  },
+  {
+    id: 'mat-reload',
+    name: '装填加速器',
+    kind: 'matter',
+    unitM3: 2000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '谜质替装填机构抢时间：武器装填周期缩短。占货仓 2×2 格，离开虫洞即失效。',
+  },
+]
+
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */
 export const ITEMS: readonly ItemDef[] = [
   ...ORES,
@@ -665,6 +863,7 @@ export const ITEMS: readonly ItemDef[] = [
   ...DRONES,
   ...REPAIR_KITS,
   ...RELIC_CONTAINERS,
+  ...MATTER_DEVICES,
 ]
 
 /** 构建"物品 id → 定义"目录 */

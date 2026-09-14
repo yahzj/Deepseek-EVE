@@ -31,6 +31,8 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+// F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
+import { wormholeMatterDeviceAt } from './wormholeMatter'
 import { wormholeIsShapedItem } from './wormholeHold'
 import {
   wormholeDeliverRelics,
@@ -42,6 +44,7 @@ import {
   wormholeLootValueIsk,
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
+  wormholeStowOrTemp,
 } from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
@@ -150,7 +153,38 @@ export function wormholeActivateAt(
   const effect = r.effect
   if (!effect) return { ok: true, spent: r.spent }
   const kind: WormholeFoeKind | null = effect.kind === 'exit' ? 'boss' : effect.kind === 'battle' ? 'node' : null
-  if (!kind) return { ok: true, spent: r.spent, effect }
+  if (!kind) {
+    /**
+     * **谜质格 ⇒ 取回一台谜质储存器**（F3c · 船长 2026-09-13：「谜质玩家采集后，在货仓内显示为
+     * 4格的『谜质储存器』，在本次虫洞探索中提供临时增益」）。
+     *
+     * 三条口径：
+     * - **是哪一台 = 按 (种子, 层, 格 key) 定死**（`wormholeMatterDeviceAt`）⇒ 不写存档、读档后还是同一台；
+     * - 落地走**收货阶梯**（货仓 2×2 → 临时空间 → 两边都满才算失败），与安全货柜同一入口；
+     * - 失败 ⇒ **回合与激活标记一起回滚**（与开战失败同款）——不留"白扣一回合、东西没拿到"的死格。
+     * 成功时的回合加成由 `wormholeStowOrTemp → wormholeSyncMatterTurns` 实时结清。
+     */
+    if (effect.kind === 'matter' && run) {
+      const device = wormholeMatterDeviceAt(run.seed ?? 0, run.depth, effect.key)
+      const landed = wormholeStowOrTemp(state, ctx, device.id, 1)
+      if (!landed.ok) {
+        run.turnsLeft = turnsBefore
+        if (run.grid) run.grid.activated = run.grid.activated.filter((k) => k !== effect.key)
+        return {
+          ok: false,
+          error: `取不回「${device.name}」：${landed.error ?? '货仓放不下'}（它占 2×2 = 4 格，先腾地方或抛货）`,
+        }
+      }
+      addLog(
+        state,
+        'info',
+        `🕳 取回谜质：**${device.name}**（${device.text}）——` +
+          `${landed.where === 'temp' ? '货仓腾不出 2×2，已先进临时空间' : '占货仓 2×2 格'}，离开虫洞即失效。`,
+      )
+      return { ok: true, spent: r.spent, effect, taken: 1 }
+    }
+    return { ok: true, spent: r.spent, effect }
+  }
   const s = wormholeStartBattle(state, ctx, kind, atGameMs)
   if (!s.ok) {
     // 回滚：回合退回、激活标记摘掉（该格回到"可再次激活"）
