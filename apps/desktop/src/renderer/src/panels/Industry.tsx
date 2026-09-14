@@ -445,7 +445,7 @@ function BlueprintCard({
       </ul>
       <div className="app-belt-econ">
         <div>
-          制造免费：只耗材料与时间
+          只耗材料与时间
           {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
         </div>
         {netPerH !== null ? (
@@ -846,7 +846,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         </div>
       ) : null}
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工，制造免费只耗材料与时间；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
+        已学会的配方才能开工，只耗材料与时间；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
       </div>
 
       <div className="app-win-body">
