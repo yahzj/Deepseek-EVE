@@ -64,7 +64,7 @@ export { shipDisplayName } from './instances'
  */
 export function renameShip(state: GameState, uid: string, name: string | null): CommandResult {
   const entry = state.fleet[uid]
-  if (!entry) return { ok: false, error: '船坞里没有这艘船。' }
+  if (!entry) return { ok: false, error: '机库里没有这艘船。' }
   if (name === null) {
     if (entry.customName === null) return { ok: false, error: '该船用的就是默认名。' }
     entry.customName = null
@@ -94,7 +94,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   }
   if (!ownsShip(state, shipId)) {
     const defName = ctx.ships.get(uidDefId(shipId))?.name ?? shipId
-    return { ok: false, error: `船坞里没有 ${defName}——先到商店购买，或用舰船蓝图制造一艘。` }
+    return { ok: false, error: `机库里没有 ${defName}——先到商店购买，或用舰船蓝图制造一艘。` }
   }
   const def = fleetDefOf(state, ctx, shipId)
   if (!def) return { ok: false, error: `未知舰船：${shipId}。` }
@@ -369,7 +369,7 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   const name = shipDisplayName(state, ctx, shipId)
-  if (!fleetShip || !def) return { ok: false, error: `船坞里没有 ${name}。` }
+  if (!fleetShip || !def) return { ok: false, error: `机库里没有 ${name}。` }
   // T8：驾驶船在野外/返航途中时不能维修（维修服务在空间站）
   if (shipId === state.shipId && (state.awayGalaxy !== null || state.standby.active)) {
     return { ok: false, error: `${name} 不在空间站（野外/掩护巡逻途中）——返航后才能维修。` }
@@ -543,7 +543,7 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
 
 /** 玩家指令：锁定 / 解锁一艘拥有的船（防误售） */
 export function lockShip(state: GameState, shipId: string, locked: boolean, ctx: SimContext): CommandResult {
-  if (!ownsShip(state, shipId)) return { ok: false, error: `船坞里没有这艘船。` }
+  if (!ownsShip(state, shipId)) return { ok: false, error: `机库里没有这艘船。` }
   const name = shipDisplayName(state, ctx, shipId)
   if (locked) {
     if (isShipLocked(state, shipId)) return { ok: false, error: `${name} 已处于锁定状态。` }

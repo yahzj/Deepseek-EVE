@@ -95,7 +95,7 @@ type AiAssignMode = 'mining' | 'salvage' | 'standby' | 'refine' | 'craft'
 interface CraftOption {
   id: string
   name: string
-  group: '装备蓝图' | '舰船蓝图' | '弹药蓝图'
+  group: '装备蓝图' | '舰船蓝图' | '消耗品蓝图'
   materials: readonly { itemId: string; count: number }[]
   buildSeconds: number
 }
@@ -986,7 +986,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       craftAll.push({
         id: bp.id,
         name: `${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId} ×${units}`,
-        group: '弹药蓝图',
+        group: '消耗品蓝图', // 2026-09-14 文案体检：档名随 2026-09-11 改名口径（原「弹药蓝图」实际含弹药＋修理组件）
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
       })
@@ -1294,7 +1294,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               title="只列已学会的蓝图（未学会的先去工业页「蓝图书架」学习）；材料不足会开工失败并提示"
             >
               {craftLearned.length === 0 ? <option value="">没有已学会的蓝图</option> : null}
-              {(['装备蓝图', '舰船蓝图', '弹药蓝图'] as const).map((group) =>
+              {(['装备蓝图', '舰船蓝图', '消耗品蓝图'] as const).map((group) =>
                 craftLearned.some((o) => o.group === group) ? (
                   <optgroup key={group} label={group}>
                     {craftLearned

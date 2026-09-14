@@ -211,8 +211,8 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         (id) => engine.ctx.items.get(id)?.name ?? id,
       )
       const mineralTip =
-        `每批产出池内全部矿物（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）：各矿物分到的价值 = 每批保底价值 × 价值占比，` +
-        `单位数 = 该价值 ÷ 单价——单价高的矿物每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。` +
+        `每批产出池内全部原材料（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）：各原材料分到的价值 = 每批保底价值 × 价值占比，` +
+        `单位数 = 该价值 ÷ 单价——单价高的原材料每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。` +
         (profile.note ? `敌群特色：${profile.note}` : '')
       econ = (
         <div className="app-belt-econ">

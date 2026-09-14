@@ -140,7 +140,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 20_000,
     signatureM: 95,
     scanResMm: 470,
-    description: '协会造船厂的定制艇：不对外出售，用矿物在自家船台上敲出来。比鲸吞级再快一档。',
+    description: '协会造船厂的定制艇：不对外出售，用原材料在自家船台上敲出来。比鲸吞级再快一档。',
   },
   {
     id: 'whale-king',
@@ -1227,7 +1227,7 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.5},
     hullResist: {"plasma":0.25},
     droneDmgBonus: 0.14,
-    description: '巨构的无人机作战舰：本批机巢最大、无人机伤害最高，放飞即是主武器；舱位让给机库，本舰火力偏辅助。',
+    description: '巨构的无人机作战舰：本舰机巢最大、无人机伤害最高，放飞即是主武器；舱位让给机库，本舰火力偏辅助。',
   },
   {
     id: 'sh-wh-g-frigate',

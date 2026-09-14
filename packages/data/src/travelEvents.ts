@@ -16,7 +16,7 @@ export const TRAVEL_EVENTS: readonly TravelEventDef[] = [
   },
   {
     id: 'ev-mineral-cloud',
-    name: '矿物碎云',
+    name: '原材料碎云',
     text: '一片被炸散的矿粉云挡住航线，舰队顺手全数吸入货舱',
     weight: 12,
     effect: { kind: 'mineral', itemId: 'min-pyerite', units: 150 },
@@ -52,7 +52,7 @@ export const TRAVEL_EVENTS: readonly TravelEventDef[] = [
   {
     id: 'ev-ore-patch',
     name: '富矿残脉',
-    text: '一片被遗忘的富矿残脉嵌在岩体上，采集器顺手收割了高品位矿物',
+    text: '一片被遗忘的富矿残脉嵌在岩体上，采集器顺手采下了一批高品位原材料',
     weight: 6,
     effect: { kind: 'mineral', itemId: 'min-mexallon', units: 120 },
   },

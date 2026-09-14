@@ -33,7 +33,7 @@ export const BELTS: readonly BeltDef[] = [
       { itemId: 'ore-scorched', weight: 30 },
       { itemId: 'ore-hemorphite', weight: 15 },
     ],
-    description: '多种矿石共生的新手混合矿带：偶尔能刨出一点赤环岩。',
+    description: '多种原矿共生的新手混合矿带：偶尔能刨出一点赤环岩。',
   },
   {
     id: 'belt-sunshard',

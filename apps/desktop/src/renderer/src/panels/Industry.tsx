@@ -552,7 +552,7 @@ function BlueprintCard({
               <span key={v.id} className="app-belt-worker">
                 <span
                   className="app-belt-worker-name"
-                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '停入船坞' : '入库'}${v.worker === null ? '（旧作业：老规则免占用线，跑完即止）' : ''}`}
+                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '入舰船仓库' : '入库'}${v.worker === null ? '（旧作业：老规则免占用线，跑完即止）' : ''}`}
                 >
                   {v.worker === null ? '⚙ 旧作业' : v.worker === 'pilot' ? '⛏ 主控亲自' : `⚙ ${v.workerLabel}驱动`} · 剩余约{' '}
                   {formatDurationMs(v.remainingMs)}

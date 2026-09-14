@@ -45,7 +45,7 @@ export const STATION_SITES: readonly StationSiteDef[] = [
     introDialogueId: 'dlg-redring-intro',
     doneDialogueId: 'dlg-redring-done',
     description:
-      '红环航道是深空航线枢纽，却常年被海盗把持。协会基建部拟在此建一座前哨站：以精炼矿物分三档施工，建成后并入协会基地网络。',
+      '红环航道是深空航线枢纽，却常年被海盗把持。协会基建部拟在此建一座前哨站：以精炼原材料分三档施工，建成后并入协会基地网络。',
   },
   {
     id: 'site-cinder',
@@ -82,7 +82,7 @@ export const STATION_SITES: readonly StationSiteDef[] = [
     introDialogueId: 'dlg-cinder-intro',
     doneDialogueId: 'dlg-cinder-done',
     description:
-      '烬火星区深处的高危采集区需要一座落脚站。基建部委托以精炼矿物分三档施工：地基尤其吃重钛钢合金，越往后用料越珍稀，建成后并入协会基地网络。',
+      '烬火星区深处的高危采集区需要一座落脚站。基建部委托以精炼原材料分三档施工：地基尤其吃重钛钢合金，越往后用料越珍稀，建成后并入协会基地网络。',
   },
 ]
 

@@ -1686,7 +1686,7 @@ export function WormholePanel({
                 <div className="app-wh-node">
                   <div className="app-wh-node-title">本层没有网格</div>
                   <div className="app-dim app-note">
-                    这一层是旧口径（线性节点）的存档：可以照旧撤离或深入，重新进洞后会拿到网格地图。
+                    这一层用的是旧式线性地图：撤离与深入都照旧可用；重新进洞后会换成网格地图。
                   </div>
                   <div className="app-wh-actions">
                     <button

@@ -48,7 +48,7 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
     <div className="app-imp-quests">
       {showOre ? (
         <div className="app-imp-card">
-          <div className="app-imp-card-title">◆ 补给协议·首批矿物</div>
+          <div className="app-imp-card-title">◆ 补给协议·首批原矿</div>
           <div className="app-imp-card-body">
             向任务中心交付 {oreName} ×{TUTORIAL_DELIVER_N}（仓库现有 {have}）——维持隐秘泊位的临时修复储备。
           </div>
@@ -56,9 +56,9 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
             className="app-btn is-small is-primary"
             disabled={have < TUTORIAL_DELIVER_N}
             onClick={deliver}
-            title={have < TUTORIAL_DELIVER_N ? '仓库矿石不足——先回港把采集的矿石卸入仓库' : undefined}
+            title={have < TUTORIAL_DELIVER_N ? '仓库原矿不足——先回港把采集的原矿卸入仓库' : undefined}
           >
-            交付矿石（{Math.min(have, TUTORIAL_DELIVER_N)}/{TUTORIAL_DELIVER_N}）
+            交付原矿（{Math.min(have, TUTORIAL_DELIVER_N)}/{TUTORIAL_DELIVER_N}）
           </button>
         </div>
       ) : null}
