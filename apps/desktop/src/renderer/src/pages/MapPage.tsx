@@ -88,7 +88,7 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   name: '名称',
 }
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
@@ -96,6 +96,8 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
   onOpenWormhole?: () => void
   /** 从「扫描虫洞」页选一处库存虫洞开始探索（App 层开面板并带上该库存项） */
   onExploreWormhole?: (stockId: string) => void
+  /** 自动探索：打开**与主控探索同一个准备页**（App 层开面板的自动模式；船长 2026-09-14） */
+  onAutoExploreWormhole?: (stockId: string) => void
 }) {
   // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
   // seq 只在跨页跳转时递增，普通切回本页不重放）
@@ -157,7 +159,14 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}
-      {mapTab === 'whscan' ? <WormholeScanTab engine={engine} onToast={onToast} onExplore={(id) => onExploreWormhole?.(id)} /> : null}
+      {mapTab === 'whscan' ? (
+        <WormholeScanTab
+          engine={engine}
+          onToast={onToast}
+          onExplore={(id) => onExploreWormhole?.(id)}
+          onAutoExplore={(id) => onAutoExploreWormhole?.(id)}
+        />
+      ) : null}
     </div>
   )
 }

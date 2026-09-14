@@ -19,11 +19,8 @@ import { Panel } from '@whale/ui'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { formatDurationMs } from '@whale/core'
 import {
-  WORMHOLE_AUTO_DAMAGE_MAX,
-  WORMHOLE_AUTO_DAMAGE_MIN,
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MAX_SHIPS,
-  WORMHOLE_AUTO_YIELD_MUL,
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_ARCHETYPE_LABELS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
@@ -56,7 +53,18 @@ function stockLineOf(
   return { glyph, text: `${WORMHOLE_ARCHETYPE_LABELS[item.archetype]}，发现于 ${foundDateLabel(state, item.foundAtGameMs)}` }
 }
 
-export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEngine; onToast: ToastFn; onExplore: (stockId: string) => void }) {
+export function WormholeScanTab({
+  engine,
+  onToast,
+  onExplore,
+  onAutoExplore,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  onExplore: (stockId: string) => void
+  /** 「自动探索」⇒ 打开**与主控探索同一个准备页**（`WormholePanel` 的自动模式；船长 2026-09-14） */
+  onAutoExplore: (stockId: string) => void
+}) {
   const state = engine.state
   /** 每秒重算一次读数（进度条/剩余时间跟手；引擎本身按拍推进） */
   const [, setTick] = useState(0)
@@ -64,12 +72,8 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
     const t = window.setInterval(() => setTick((n) => n + 1), 1000)
     return () => window.clearInterval(t)
   }, [])
-  /** 正在"配置哪一处"（null = 没在配置） */
-  const [pickFor, setPickFor] = useState<string | null>(null)
   /** 正在确认「放弃」的那一处（null = 没在确认） */
   const [discardAsk, setDiscardAsk] = useState<string | null>(null)
-  /** 配置里勾选的参与舰（开始时以库存项为键保存；关掉配置即清） */
-  const [pickShips, setPickShips] = useState<string[]>([])
   const scan = state.wormholeScan ?? { active: false, progressMs: 0 }
   const stock = engine.wormholeStock()
   const runs = engine.wormholeAutoRuns()
@@ -83,22 +87,6 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
   /** 解锁门槛（船长 2026-09-14：需要协会声望 35；解锁时会收到一封通讯 + 直接弹窗） */
   const unlocked = engine.wormholeScanUnlocked()
   const standing = engine.wormholeScanStanding()
-  /** 配置界面的候选（全部列出；不可派的也显示并写明原因） */
-  const allCandidates = pickFor !== null ? engine.wormholeAutoCandidates([]) : []
-  const lineup =
-    pickShips.length > 0
-      ? pickShips
-      : allCandidates.filter((c) => c.picked).map((c) => c.shipId)
-  const startBlock = pickFor !== null ? engine.wormholeAutoBlockReason(pickFor, lineup) : null
-
-  const openPick = (stockId: string): void => {
-    const auto = engine
-      .wormholeAutoCandidates([])
-      .filter((c) => c.picked)
-      .map((c) => c.shipId)
-    setPickShips(auto)
-    setPickFor(stockId)
-  }
 
   return (
     <Panel
@@ -215,9 +203,9 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
                       title={
                         runs.some((r) => r.stockId === item.id)
                           ? '这一处已经在自动探索中'
-                          : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
+                          : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）——打开与主控探索同一个准备页选编队`
                       }
-                      onClick={() => (pickFor === item.id ? setPickFor(null) : openPick(item.id))}
+                      onClick={() => onAutoExplore(item.id)}
                     >
                       自动探索
                     </button>
@@ -293,85 +281,11 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
             })()
           : null}
 
-        {pickFor !== null ? (
-          <div className="app-wh-scanbar">
-            <div className="app-wh-scanbar-label">
-              自动探索 · 派谁去
-              <span className="app-dim">
-                {' '}
-                · 每条占 1 枚 AI 核心 · 约 {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟 · 收益为手动一趟的{' '}
-                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（直入仓库、不保底）· 结构/装甲各受损{' '}
-                {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%（不会丢船）
-              </span>
-            </div>
-            <ul className="app-inv-list">
-              {allCandidates.length === 0 ? (
-                <li className="app-dim app-inv-empty">舰队里没有可派的副船。</li>
-              ) : (
-                allCandidates.map((c) => {
-                  const checked = lineup.includes(c.shipId)
-                  const disableAdd =
-                    c.blocked !== null || (!checked && lineup.length >= WORMHOLE_AUTO_MAX_SHIPS)
-                  /** 参与舰名（界面用；引擎包装里没有名字接口，这里退回 id） */
-                  return (
-                    <li key={c.shipId} className="app-inv-row">
-                      <label className="app-inv-main" style={{ cursor: disableAdd && !checked ? 'not-allowed' : 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={disableAdd && !checked}
-                          onChange={() => {
-                            setPickShips((prev) =>
-                              prev.includes(c.shipId) ? prev.filter((x) => x !== c.shipId) : [...prev, c.shipId],
-                            )
-                          }}
-                        />{' '}
-                        <span className="app-inv-name">{c.name}</span>
-                        <span className="app-inv-count">
-                          {c.blocked ?? (c.picked ? '自动配置已选' : '可派')}
-                          {!checked && c.blocked === null && lineup.length >= WORMHOLE_AUTO_MAX_SHIPS
-                            ? ' · 已达上限'
-                            : ''}
-                        </span>
-                      </label>
-                    </li>
-                  )
-                })
-              )}
-            </ul>
-            <div className="app-wh-scanbar-actions">
-              <button
-                className="app-btn is-small is-primary"
-                disabled={startBlock !== null}
-                title={startBlock ?? '派这一队出发'}
-                onClick={() => {
-                  const r = engine.wormholeAutoStart(pickFor, lineup)
-                  if (!r.ok) onToast(r.error ?? '派不出去。', true)
-                  else {
-                    onToast(`自动探索队出发：${lineup.length} 条舰，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航。`)
-                    setPickFor(null)
-                    setPickShips([])
-                  }
-                }}
-              >
-                派 {lineup.length} 条舰出发
-              </button>
-              <button
-                className="app-btn is-small"
-                onClick={() => {
-                  setPickFor(null)
-                  setPickShips([])
-                }}
-              >
-                取消
-              </button>
-              {startBlock !== null ? <span className="app-wh-hold-warn">{startBlock}</span> : null}
-            </div>
-            {lineup.length === 0 ? (
-              <div className="app-dim">先勾选至少 1 条副船（主控船不参与自动探索）。</div>
-            ) : null}
-          </div>
-        ) : null}
+        {/**
+         * 自动探索的编队选择**不再在本页就地勾选**（船长 2026-09-14：「自动探索采取和我们主控探索
+         * 相同的准备界面。」）——库存格的「自动探索」直接打开虫洞面板的**准备页**（`WormholePanel`
+         * 的 `autoStockId` 模式），那边与手动进洞共用同一套搜索/筛选/舰船卡片/读数结构。
+         */}
 
         {runs.length > 0 ? (
           <>
