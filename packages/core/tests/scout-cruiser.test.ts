@@ -11,8 +11,8 @@
  * ② **主效果实测生效**：`wormholeScanRadiusBonus: 1` ⇒ 对编队**求和**；入洞（`wormholeStartRun`）
  *    与深入下层（`wormholeDescend`）都真的把 `grid.scanRadius` 抬 1 圈，两艘可叠加；
  * ③ **价格同源**：蓝图书价 = 行价 × 4；材料货值 = 行价 × 45%；工期落 T3 带（3~5 时）；
- * ④ **施工期闸门**：舰体 / 图纸 / 市场两行**四处 `unreleased` 同步** ⇒ 玩家可见目录与
- *    `ctx.marketGoods` 里都没有它（"未上线闸门"双向一致）。
+ * ④ **上线放开**（2026-09-14，原「施工期闸门：四处 `unreleased` 同步、玩家买不到」已随虫洞上线翻面）：
+ *    舰体 / 两张图纸 / 三张市场卡的 `unreleased` **全删** ⇒ 图鉴可见、`ctx.marketGoods` 里也有。
  *
  * ✅ 2026-09-14 船长解除不可见；本文件不产生任何玩家可见文案。
  */
@@ -100,15 +100,20 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(bp!.buildSeconds).toBe(16_920) // T3 带 3~5 时（同价同档 ⇒ 与长尾鲨级同值）
   })
 
-  it('施工期闸门：舰体/图纸/市场两行四处 unreleased 同步，玩家买不到', () => {
-    expect(shipOf(SCOUT).unreleased).toBe(true)
-    expect(bpOfShip(SCOUT)?.unreleased).toBe(true)
-    expect(goodOf('ship', SCOUT)?.unreleased).toBe(true)
-    expect(goodOf('blueprint', 'sbp-nautilus')?.unreleased).toBe(true)
-    // 玩家可见市场目录（buildMarketGoodsCatalog 过滤 unreleased）里没有它们
-    expect(ctx.marketGoods.has('ship-nautilus')).toBe(false)
-    expect(ctx.marketGoods.has('sbp-nautilus')).toBe(false)
-    // 且它是**奇货 + 数字 4**（船长裁定：两行都留 4）
+  /**
+   * **✅ 2026-09-14 虫洞上线：闸门按设计稿「与虫洞同批」删除**（原先这条钉的是"四处 `unreleased` 同步、
+   * 玩家看不到也买不到"）——现口径翻面：**六处字段全删 ⇒ 图鉴可见、市场可买**（奇货 + 数字 4 不变）。
+   */
+  it('上线放开：舰体/两张图纸/三张市场卡的 `unreleased` 全删，玩家看得到也买得到', () => {
+    expect(shipOf(SCOUT).unreleased).toBeUndefined()
+    expect(bpOfShip(SCOUT)?.unreleased).toBeUndefined()
+    expect(goodOf('ship', SCOUT)?.unreleased).toBeUndefined()
+    expect(goodOf('blueprint', 'sbp-nautilus')?.unreleased).toBeUndefined()
+    // 玩家可见市场目录（buildMarketGoodsCatalog 过滤 unreleased）里**有**它们
+    expect(ctx.marketGoods.has('ship-nautilus')).toBe(true)
+    expect(ctx.marketGoods.has('sbp-nautilus')).toBe(true)
+    expect(ctx.marketGoods.has('sbp-once-nautilus')).toBe(true)
+    // 渠道与数字档不变：**奇货 + 数字 4**（船长裁定：两行都留 4）
     expect(goodOf('ship', SCOUT)?.rarity).toBe('exotic')
     expect(goodOf('blueprint', 'sbp-nautilus')?.rarity).toBe('exotic')
   })

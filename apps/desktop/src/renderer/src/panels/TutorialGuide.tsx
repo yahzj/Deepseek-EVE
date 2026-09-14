@@ -134,14 +134,14 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   // 玩家不知道下一步干嘛）；通讯正文里是完整说明
   if (step === 3) {
     return {
-      text: '把矿石换成信用点：前往「物品」页 → 仓库标签，橄榄岩点「市价卖出」',
+      text: '把原矿换成信用点：前往「物品」页 → 仓库标签，橄榄岩点「市价卖出」',
       go: { page: 'items' },
       goLabel: def.goLabel,
       targets: ['物品', '仓库', '市价卖出', '卖出'],
     }
   }
   const byStep: Record<number, string[]> = {
-    2: ['出港', '任务中心', '交付矿石'],
+    2: ['出港', '任务中心', '交付原矿'],
     4: ['舰船', '港内维修', '维修', '修理'],
     5: ['出港', '常驻悬赏', '演习场驱逐令', '出发'],
     6: ['技能', 'AI 核心操作学'],

@@ -87,8 +87,8 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
       expect(goodOf(ref.startsWith('sh-') ? 'ship' : 'blueprint', ref)?.rarity, `${ref} 渠道`).toBe('exotic')
       expect(RARITY_TIER[ref], `${ref} 数字档`).toBe(4)
     }
-    // 鹦鹉螺那张随舰挂闸门
-    expect(goodOf('blueprint', 'sbp-once-nautilus')?.unreleased).toBe(true)
+    // 鹦鹉螺那张的闸门已随虫洞上线删除（✅ 2026-09-14「与虫洞同批」放开）
+    expect(goodOf('blueprint', 'sbp-once-nautilus')?.unreleased).toBeUndefined()
   })
 
   it('④ 稀释池（船长：「放入虫洞的专属奖池内作为稀释」）：70:30 口径**已停用但留档** + 按层分档 + 与族池互斥', () => {

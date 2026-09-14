@@ -1031,9 +1031,10 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 }
 // 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增巨齿鲨级战列舰 sh-megalodon、
 // 邓氏鱼级旗舰 sh-dunkleosteus 两具**壳体**：定制船口径 priceIsk 0、不上市场/不接蓝图/不接卡）。
-// 2026-09-13：27 → **42**（船长「护卫，驱逐，巡洋都可以有，你干脆都安排设计吧」⇒ 新增
-// **虫洞专属舰船 15 艘**：A/C/D/E/G 五族各 护卫 T1 / 驱逐 T2 / 巡洋 T3，全部标 `unreleased`、
-// 只由一次性舰船图纸制造；计数是"防手滑"的守卫，改数据时同步改这里与 `hull-class.test.ts`）。
+// 2026-09-13：27 → **42**（船长「护卫，驱逐，巡洋，都可以有，你干脆都安排设计吧」⇒ 新增
+// **虫洞专属舰船 15 艘**：A/C/D/E/G 五族各 护卫 T1 / 驱逐 T2 / 巡洋 T3，只由一次性舰船图纸制造；
+// ✅ 2026-09-14 虫洞上线后它们**全部已上线**（`unreleased` 字段已删，见「虫洞专属内容契约」）；
+// 计数是"防手滑"的守卫，改数据时同步改这里与 `hull-class.test.ts`）。
 // 2026-09-13（同日第二批 · 船长「完善战列舰」）：**巨齿鲨级 sh-megalodon 已定案接图纸线**
 // （补掠食者线 `shieldResist` 动能 0.5；市场行 225M `playerBuyable: false` 只收不卖 ⇒ `priceIsk` 仍为 0；
 // 蓝图 sbp-megalodon 900M）；**邓氏鱼级 sh-dunkleosteus 仍是壳体**（不上市场/不接蓝图/不接卡）。
@@ -1041,7 +1042,7 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 // `docs/design/t4-battleship-20260913.md`）。
 // 2026-09-13（同日第三批 · 船长「添加一艘新的巡洋舰，子分类为侦查舰…」）：42 → **43** ⇒ 新增
 // **鹦鹉螺级测绘巡洋舰 sh-nautilus**（协会测绘处 · T3 侦察舰 · 10 槽 · 机舱 80 · 虫洞扫码 +1；
-// 奇货 + 数字 4、`unreleased` 跟随虫洞；子分类契约同日放宽为"白名单 + 非虫洞登记表"；见
+// 奇货 + 数字 4（✅ 2026-09-14 虫洞上线后闸门已删）；子分类契约同日放宽为"白名单 + 非虫洞登记表"；见
 // `docs/design/scout-cruiser-20260913.md`）。
 check(SHIPS.length === 43, `舰船应为 43 艘（既有 27 + 虫洞专属 15 + 鹦鹉螺级 1），实际 ${SHIPS.length}`)
 console.log(
@@ -2662,7 +2663,7 @@ for (const m of MODULES) {
   }
 }
 
-/* ── 两条"静态读 AST"的契约（同一个遍历里一起扫，省一遍解析）：
+/* ── 三条"静态读 AST"的契约（同一个遍历里一起扫，省一遍解析）：
  * ①**模板串契约**（2026-09-14 船长报障「虫洞探索地图的背景变成全黑了」后加）：`url("${pinnedSpaceBg}")`
  *   漏了反引号 ⇒ 输出的是**字面量文本**而不是插值，底图 URL 永远 404 ⇒ 地图只剩压暗层与 1px 星点。
  *   类型系统看不出这种错（它就是个合法字符串）⇒ 按 AST 精确扫 **StringLiteral 的 text 里含 `${`**；
@@ -2671,7 +2672,26 @@ for (const m of MODULES) {
  *   ⚠ **本契约刻意不写进约定/AGENTS**（船长 2026-09-14 裁定：「B 可以不用写入规则」）——它只是体检里的一道防线，
  *   不派活、不加条款。
  *   扫的是**文本节点**：字符串 / 模板串文本块 / JSX 文本；**注释不算**（注释里写强调记号是合法的，
- *   本仓大量注释就是这么写的）⇒ 两类契约都只看文本节点，互不干扰。 */
+ *   本仓大量注释就是这么写的）⇒ 三类契约都只看文本节点，互不干扰。
+ * ③**陈旧术语契约**（2026-09-14 船长批准加：当日文案体检靠人工才抓出 41 处旧称，加契约自动拦）：
+ *   把历次**已改判的旧称**列成黑名单，玩家可见文本里再出现即红——每条附"现行口径 + 裁定日期"，
+ *   并保留一份**极短的白名单**（确有叙事用途的专名，逐条写明理由）。 */
+
+/** 陈旧术语黑名单（正则 → 现行口径与出处）；命中即红 */
+const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/三钛合金|类银超金属|类晶体胶体|超噬矿/, '旧矿物名（2026-09-14 起：钛钢合金 / 银纹超金属 / 晶态胶体 / 重钨合金）'],
+  [/(?<!原)矿石|矿物(?!质)/, '旧称（2026-09-12 起：ore = 原矿、mineral = 原材料）'],
+  [/弹药蓝图/, '旧档名（2026-09-11 起：消耗品蓝图——该档含弹药 + 修理组件）'],
+  [/工业舰|工业族/, '旧角色名（2026-09-09 起：采矿舰 / 采矿族）'],
+  [/舰船市场/, '旧档名（2026-09-14 起：该档为「舰船仓库」；买卖在市场页）'],
+  [/船坞/, '旧称（现口径：机库 / 舰船仓库）'],
+]
+
+/** 陈旧术语**白名单**（逐条写明理由；只有确属叙事专名的才可登记） */
+const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
+  [/隐蔽船坞/, '敌方窝点叙事专名（D 族据点名，非设施旧称）'],
+]
+
 {
   const tplRoots = [
     'apps/desktop/src/renderer/src',
@@ -2695,6 +2715,7 @@ for (const m of MODULES) {
   }
   const tplOffenders: string[] = []
   const mdOffenders: string[] = []
+  const staleOffenders: string[] = []
   const isPlayerText = (node: ts.Node): boolean =>
     ts.isStringLiteral(node) ||
     ts.isNoSubstitutionTemplateLiteral(node) ||
@@ -2721,6 +2742,17 @@ for (const m of MODULES) {
         const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
         mdOffenders.push(`${rel}:${line + 1}`)
       }
+      if (isPlayerText(node) && node.getText(sf).length > 1) {
+        const text = node.getText(sf)
+        let probe = text
+        for (const [re] of STALE_COPY_ALLOW) probe = probe.replace(new RegExp(re.source, 'g'), '')
+        for (const [re, why] of STALE_COPY_TERMS) {
+          if (re.test(probe)) {
+            const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+            staleOffenders.push(`${rel}:${line + 1}（${text.slice(0, 40)}…）→ ${why}`)
+          }
+        }
+      }
       ts.forEachChild(node, visit)
     }
     visit(sf)
@@ -2738,6 +2770,15 @@ for (const m of MODULES) {
   )
   if (mdOffenders.length === 0) {
     console.log(`· 文案纯净契约：${tplFiles.length} 个源文件的文本节点无 Markdown 强调记号`)
+  }
+  check(
+    staleOffenders.length === 0,
+    `陈旧术语契约（2026-09-14 船长批准加）：玩家可见文本里出现**已改判的旧称**——请按现行口径改写（旧矿物名 → 钛钢合金/银纹超金属/晶态胶体/重钨合金；矿石/矿物 → 原矿/原材料；弹药蓝图 → 消耗品蓝图；工业舰/工业族 → 采矿舰/采矿族；舰船市场 → 舰船仓库；船坞 → 机库/舰船仓库）：${staleOffenders.join(' · ')}`,
+  )
+  if (staleOffenders.length === 0) {
+    console.log(
+      `· 陈旧术语契约：${tplFiles.length} 个源文件无已改判旧称（黑名单 ${STALE_COPY_TERMS.length} 组 · 白名单 ${STALE_COPY_ALLOW.length} 条专名）`,
+    )
   }
 }
 

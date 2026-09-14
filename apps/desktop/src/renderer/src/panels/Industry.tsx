@@ -119,7 +119,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
         title="蓝图书架"
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
-          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。" />
+          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）；它同样在市场流通（稀有订单 / 奇货偶有现货），组装机卡上点「市场求购蓝图书」就能去看订单。" />
         }
         right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
       >
@@ -552,7 +552,7 @@ function BlueprintCard({
               <span key={v.id} className="app-belt-worker">
                 <span
                   className="app-belt-worker-name"
-                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '停入船坞' : '入库'}${v.worker === null ? '（旧作业：老规则免占用线，跑完即止）' : ''}`}
+                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '入舰船仓库' : '入库'}${v.worker === null ? '（旧作业：老规则免占用线，跑完即止）' : ''}`}
                 >
                   {v.worker === null ? '⚙ 旧作业' : v.worker === 'pilot' ? '⛏ 主控亲自' : `⚙ ${v.workerLabel}驱动`} · 剩余约{' '}
                   {formatDurationMs(v.remainingMs)}
@@ -619,9 +619,34 @@ function BlueprintCard({
           <button className="app-btn is-small" disabled title={lock}>
             ✕ 声望未达标
           </button>
+        ) : singleUse && goodKey ? (
+          /* 一次性图纸（2026-09-14 船长：「组装机的一次性蓝图制造如果没有蓝图，也改为跳转市场，
+             和其他组装机一样」）——**在市场流通的一次性图纸**（`sbp-once-*`：稀有订单层 / 奇货）
+             缺书与名额已用尽都只差"再拿一张图" ⇒ 一律指路市场；买不买、按什么价挂单由玩家在详情里定。 */
+          <button
+            className="app-btn is-small"
+            title={
+              cap.kind === 'exhausted'
+                ? '本门一次性图纸的名额已用尽：要再造需要再获得一张同名图纸——点此跳市场看这张图纸的订单（稀有订单层 / 奇货偶有现货）'
+                : '一次性图纸：不能学习，只能用一次——组装机开工时消耗。点此跳市场看这张图纸的订单（稀有订单层 / 奇货偶有现货）'
+            }
+            onClick={handleGotoMarket}
+          >
+            市场求购蓝图书{cap.kind === 'exhausted' ? '（名额已用尽）' : ''}
+          </button>
         ) : singleUse ? (
-          <button className="app-btn is-small" disabled title={oneTimeNote ?? '一次性图纸：需要一张同名图纸才能制造'}>
-            {cap.kind === 'exhausted' ? '✕ 制造名额已用尽' : '✕ 需要一次性图纸'}
+          /* 一次性图纸**不在市场流通**的（洞内定制装备/舰船的 `bp-wh-*` / `sbp-wh-*`）：
+             市场里搜不到 ⇒ 不挂"去市场"的死路按钮，改为写清唯一来源（洞内遗迹打捞 · 图纸货柜）。 */
+          <button
+            className="app-btn is-small"
+            disabled
+            title={
+              cap.kind === 'exhausted'
+                ? '本门一次性图纸的名额已用尽：这张不在市场流通，只能再从虫洞遗迹打捞（图纸货柜 / 安全货柜）拿到同名图纸'
+                : '一次性图纸：不能学习，只能用一次。这张不在市场流通——只能从虫洞遗迹打捞（图纸货柜 / 安全货柜）取得'
+            }
+          >
+            {cap.kind === 'exhausted' ? '✕ 制造名额已用尽（洞内打捞）' : '✕ 需要一次性图纸（洞内打捞）'}
           </button>
         ) : bookCount > 0 ? (
           /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」

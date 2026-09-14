@@ -87,14 +87,16 @@ describe('组装机卡片排序（2026-09-14 船长：一次性图纸和原图�
     const rows = visibleRows()
     const legacy = legacyOrder(rows)
     const next = sortManuRows(rows)
-    // 57 = 原 14（T3 十 + T4 三 + T5 一）+ 虫洞上线后新增 43（五族专属装备图纸 28 + 舰船图纸 15）
-    expect(adjacentPairs(next).total).toBe(57)
+    // 58 = 原 14（T3 十 + T4 三 + T5 一）+ 虫洞上线新增 43（五族专属装备图纸 28 + 舰船图纸 15）
+    //      + 鹦鹉螺级 1（2026-09-14 随虫洞上线放开 `unreleased` 后进了可见目录）
+    expect(adjacentPairs(next).total).toBe(58)
     expect(adjacentPairs(legacy).adjacent).toBe(0) // 旧口径：一对都不相邻（这就是船长看到的"散落"）
     /**
      * ⚠ **虫洞那 43 张是"只有一次性、没有原图纸"的掉落专属图纸**（一次到手即用，不存在可反复买的原图纸）
-     * ⇒ 它们的 `mate` 找不到，本就进不了"紧邻"计数；能配对的那 14 张照旧必须全部紧邻。
+     * ⇒ 它们的 `mate` 找不到，本就进不了"紧邻"计数；能配对的 **15** 张（原 14 + 鹦鹉螺级，
+     * 它同时有永久图纸 `sbp-nautilus`）照旧必须全部紧邻。
      */
-    expect(adjacentPairs(next).adjacent).toBe(14)
+    expect(adjacentPairs(next).adjacent).toBe(15)
   })
 
   it('② 真实目录：**非一次性卡**的相对位次与 09-08 口径逐格一致（新口径只搬一次性卡）', () => {

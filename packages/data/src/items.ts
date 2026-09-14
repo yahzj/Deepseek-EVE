@@ -21,7 +21,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 13,
-    description: '最常见的低品位矿石，遍布新手星域，是起步的第一桶金。',
+    description: '最常见的低品位原矿，遍布新手星域，是起步的第一桶金。',
     refine: [
       { mineralId: 'min-tritanium', perOre: 1.175 },
       { mineralId: 'min-pyerite', perOre: 0.34 },
@@ -35,7 +35,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 18,
-    description: '熔岩包裹的致密矿石，银纹超金属与晶态胶体的重要来源。',
+    description: '熔岩包裹的致密原矿，银纹超金属与晶态胶体的重要来源。',
     refine: [
       { mineralId: 'min-pyerite', perOre: 0.985 },
       { mineralId: 'min-mexallon', perOre: 0.35 },
@@ -49,7 +49,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 55,
-    description: '红色星环内的高价值矿石，航线更长，回报也更丰厚。',
+    description: '红色星环内的高价值原矿，航线更长，回报也更丰厚。',
     refine: [
       { mineralId: 'min-nocxium', perOre: 0.53 },
       { mineralId: 'min-tritanium', perOre: 1.445 },
@@ -77,7 +77,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 115,
-    description: '棱面折射晨光的晶体矿石，高纯度同位聚晶的富矿层。',
+    description: '棱面折射晨光的晶体原矿，高纯度同位聚晶的富矿层。',
     refine: [
       { mineralId: 'min-isotope', perOre: 2.075 },
       { mineralId: 'min-pyerite', perOre: 0.77 },
@@ -106,7 +106,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 490,
-    description: '只有星云深处的矿脉才出产的传说级矿石，一舱就能换一艘船。',
+    description: '只有星云深处的矿脉才出产的传说级原矿，一舱就能换一艘船。',
     refine: [
       { mineralId: 'min-darkiron', perOre: 0.5 },
       { mineralId: 'min-starcore', perOre: 0.685 },
@@ -285,7 +285,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 90,
-    description: '稀有矿物，制造旗舰级部件的核心。',
+    description: '稀有原材料，制造旗舰级部件的核心。',
   },
   {
     id: 'min-isotope',
@@ -317,7 +317,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 1800,
-    description: '全宇宙最稀有的矿物，只有传说级制造项目才用得起。',
+    description: '全宇宙最稀有的原材料，只有传说级制造项目才用得起。',
   },
 ]
 

@@ -42,7 +42,7 @@
 末了升序、新波从种族塞最低级敌人并吃威胁加成）写完了实现，但**遇引擎耦合阻塞**（分波会改变整卡
 单位数 ⇒ 引擎的「多舰补偿 `2N/(N+1)`」随之改变**每个条目的实收单发**，归一后仍有 12%~78% 系统漂移），
 按纪律**实验代码全部回退**（不留半成品）。相关审核读数与裁定见
-`docs/design/handoff-20260912-bounty-wave-split.md`（该卡已被船长裁定作废，见其顶部声明）。
+`docs/design/archive/handoff-20260912-bounty-wave-split.md`（该卡已被船长裁定作废，见其顶部声明）。
 
 ---
 
@@ -83,7 +83,7 @@
 
 **提交 A · 火力钳制关闭（含赏金卡留档）**
 `packages/core/src/balance.ts` · `packages/core/src/types.ts` ·
-`packages/core/tests/foe-dps-cap.test.ts` · `docs/design/handoff-20260912-bounty-wave-split.md`
+`packages/core/tests/foe-dps-cap.test.ts` · `docs/design/archive/handoff-20260912-bounty-wave-split.md`
 
 **提交 B · 一次性图纸**
 `packages/core/src/types.ts` · `state.ts` · `save.ts` · `manufacturing.ts` · `market.ts` · `index.ts` ·
