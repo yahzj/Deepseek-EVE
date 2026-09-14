@@ -9857,6 +9857,11 @@ body {
 .app-wh-hold-cell.is-origin { cursor: grab; }
 .app-wh-hold-cell.is-dragging { opacity: 0.45; cursor: grabbing; }
 .app-wh-hold-box-name { color: var(--wui-accent); font-size: 10px; }
+/* **格内图标**（2026-09-13 船长：「货仓内物品采用图标而不是纯文字」）：图标吃物品色调
+   （安全货柜按族、谜质按台），格内居中；行内清单里的图标与名字同排。 */
+.app-wh-hold-ico { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.app-wh-hold-ico svg { display: block; }
+.app-wh-hold-row-ico { display: inline-flex; align-items: center; margin-right: 6px; vertical-align: -2px; line-height: 0; }
 .app-wh-hold-cargo-name { color: #9db4c8; font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }

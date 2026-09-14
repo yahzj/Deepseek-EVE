@@ -3273,6 +3273,31 @@ for (const m of MODULES) {
     if (WORMHOLE_MATTER_FLOOR < 1) {
       errors.push(`谜质契约：每层保底谜质格数 = ${WORMHOLE_MATTER_FLOOR}，应 ≥ 1（船长：「每层保底 1 个谜质格」）`)
     }
+    /**
+     * ⑧ **图标契约**（F3c · 船长 2026-09-13：「**货仓内物品采用图标而不是纯文字，安全货仓和谜质的
+     * SVG图标也需要绘制**」）：谜质 20 台与 5 种安全货柜**都必须有专属图形与色调**
+     * （登记在 `ui/Glyphs.tsx` 的 `SHAPES` / `TONES` 里）。图标集在**渲染层**（core/data 看不到），
+     * 所以这一条按"静态读源码"来核 —— 与"文档行数自检"同款，防的是"加了物品忘了画图标 ⇒
+     * 货仓格里落成兜底圆环、玩家分不清"。
+     */
+    const glyphSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/ui/Glyphs.tsx'), 'utf8')
+    const blockOf = (from: string, to: string): string => {
+      const a = glyphSrc.indexOf(from)
+      const b = glyphSrc.indexOf(to)
+      return a >= 0 && b > a ? glyphSrc.slice(a, b) : ''
+    }
+    const shapesBlock = blockOf('const SHAPES', 'export function Glyph')
+    const tonesBlock = blockOf('export const TONES', 'export function toneOf')
+    const hasKey = (block: string, key: string): boolean =>
+      block.includes(`'${key}':`) || new RegExp(`(^|\\s)${key}:`, 'm').test(block)
+    for (const id of [...matterIds, 'box-relic']) {
+      if (!hasKey(shapesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 SHAPES 里没有图形`)
+      if (!hasKey(tonesBlock, id)) errors.push(`图标契约：${id} 在 ui/Glyphs.tsx 的 TONES 里没有色调`)
+    }
+    for (const fam of WORMHOLE_FAMILIES) {
+      const boxId = `box-relic-${fam.toLowerCase()}`
+      if (!hasKey(tonesBlock, boxId)) errors.push(`图标契约：安全货柜 ${boxId} 没有族色调（货仓格里按族分色）`)
+    }
     const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {
       errors.push('虫洞不可见闸门：市场目录里找不到 ore-voidmother（虚空母矿）——上线时"删字段"那一步就无从谈起')

@@ -12,6 +12,8 @@
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
 import { useEffect, useRef, useState } from 'react'
+// 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
+import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
@@ -39,6 +41,7 @@ import {
   // F3c 谜质装置（船长 2026-09-13）：派生增益 / 本格是哪一台 / 抛弃回合类装置的提醒
   wormholeMatterBuffs,
   wormholeMatterDeviceAt,
+  wormholeMatterDeviceOf,
   wormholeMatterDiscardHint,
   wormholeMatterThreatMul,
   /**
@@ -646,7 +649,16 @@ export function WormholePanel({
                 const slotUse = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
                 return (
                   <div key={`${p.itemId}-${i}`} className={`app-wh-pile${shaped ? ' is-shaped' : ''}`}>
-                    <span className="app-wh-pile-name">{def?.name ?? p.itemId}</span>
+                    <span className="app-wh-pile-name">
+                      {/* 与货仓格同一枚图标（安全货柜按族、谜质按台）⇒ 地上与仓里对得上号 */}
+                      <span
+                        className="app-wh-hold-row-ico"
+                        style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}
+                      >
+                        <Glyph name={itemIconOf(p.itemId, def?.kind)} size={14} color="currentColor" />
+                      </span>
+                      {def?.name ?? p.itemId}
+                    </span>
                     <span className="app-wh-pile-count">×{n(p.units)}</span>
                     <span className="app-wh-pile-sub">
                       {n(p.units * (def?.unitM3 ?? 0))} m³
@@ -1875,20 +1887,23 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               {isOrigin && p ? (
                 p.kind === 'cargo' ? (
                   <>
-                    <span className="app-wh-hold-cargo-name">
-                      {def?.name ?? p.itemId} ×{n(p.units ?? 0)}
+                    {/* **图标优先**（船长 2026-09-13）：「货仓内物品采用图标而不是纯文字」——
+                        格子里只放图标 + 数量；全名与 m³ 在悬停里（title 已写） */}
+                    <span className="app-wh-hold-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
+                      <Glyph name={itemIconOf(p.itemId, def?.kind)} size={16} color="currentColor" />
                     </span>
-                    <span className="app-wh-hold-box-size">
-                      {/* 散货：实占格数（矩形外框 + 末行补齐 ⇒ 框可能比占格大） */}
-                      {placementCellsCount(p)} 格 · {p.w}×{p.h} 框
-                    </span>
+                    <span className="app-wh-hold-cargo-name">×{n(p.units ?? 0)}</span>
                   </>
                 ) : (
                   <>
-                    <span className="app-wh-hold-box-name">{def?.name ?? p.itemId}</span>
-                    <span className="app-wh-hold-box-size">
-                      {p.w}×{p.h}
+                    <span className="app-wh-hold-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
+                      <Glyph name={itemIconOf(p.itemId, def?.kind)} size={20} color="currentColor" />
                     </span>
+                    <span className="app-wh-hold-box-name">
+                      {/* 谜质装置用**2 字短标签**（悬停给全名与效果）；安全货柜统一写「货柜」，族由颜色区分 */}
+                      {wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜'}
+                    </span>
+                    <span className="app-wh-hold-box-size">{p.w}×{p.h}</span>
                   </>
                 )
               ) : null}
@@ -1938,6 +1953,12 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               <li key={s.itemId} className="app-inv-row">
                 <div className="app-inv-main">
                   <span className="app-inv-name">
+                    <span
+                      className="app-wh-hold-row-ico"
+                      style={{ color: itemToneOf(s.itemId, itemIconOf(s.itemId, def?.kind)) }}
+                    >
+                      <Glyph name={itemIconOf(s.itemId, def?.kind)} size={15} color="currentColor" />
+                    </span>
                     {def?.name ?? s.itemId} ×{n(s.units)}
                   </span>
                   <span className="app-inv-count">
@@ -1982,7 +2003,21 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             .map((p) => (
               <li key={p.id} className="app-inv-row">
                 <div className="app-inv-main">
-                  <span className="app-inv-name">{ctx.items.get(p.itemId)?.name ?? p.itemId}</span>
+                  <span className="app-inv-name">
+                    <span
+                      className="app-wh-hold-row-ico"
+                      style={{
+                        color: itemToneOf(p.itemId, itemIconOf(p.itemId, ctx.items.get(p.itemId)?.kind)),
+                      }}
+                    >
+                      <Glyph
+                        name={itemIconOf(p.itemId, ctx.items.get(p.itemId)?.kind)}
+                        size={15}
+                        color="currentColor"
+                      />
+                    </span>
+                    {ctx.items.get(p.itemId)?.name ?? p.itemId}
+                  </span>
                   <span className="app-inv-count">
                     {p.w}×{p.h} 格 · 位置 第 {p.y + 1} 行第 {p.x + 1} 列
                   </span>
@@ -2057,6 +2092,12 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               <li key={p.id} className="app-inv-row app-wh-piece">
                 <div className="app-inv-main">
                   <span className="app-inv-name">
+                    <span
+                      className="app-wh-hold-row-ico"
+                      style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}
+                    >
+                      <Glyph name={itemIconOf(p.itemId, def?.kind)} size={15} color="currentColor" />
+                    </span>
                     {def?.name ?? p.itemId} ×{n(units)}
                     <span className="app-dim">
                       {' '}
