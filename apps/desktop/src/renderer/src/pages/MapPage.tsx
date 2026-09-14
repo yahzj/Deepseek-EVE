@@ -36,13 +36,15 @@ import { HintIcon } from '../ui/Hint'
 import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, BountyPanel } from '../panels/Expedition'
+import { WormholeScanTab } from '../panels/WormholeScan'
+import { debugEnabled } from '../panels/DebugPanel'
 import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
-export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul'
+export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'whscan'
 /** 跨页跳转目标（2026-09-09 船长定：工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮数秒自清） */
 export interface MapGotoTarget {
   tab: 'mine' | 'salvage'
@@ -63,6 +65,8 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
   { key: 'haul', label: '长途运输', icon: 'nav-haul' },
   /* 任务中心 2026-09-14 已搬成左侧导航的独立一级页（船长：移出星图、放在通讯上方）⇒ 本页不再有该选项卡 */
+  /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：**只在调试模式下出现**（施工期铁律） */
+  { key: 'whscan', label: '扫描虫洞', icon: 'nav-wormhole' },
 ]
 
 /* 矿带 / 打捞排序（2026-09-09 船长拍板：危险=所在星系安全等级 sec 降序=安全在前，为默认；
@@ -84,12 +88,14 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   name: '名称',
 }
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
   /** **开虫洞面板**（船长 2026-09-13「活动栏直接开面板」）：面板本体挂在 App 那一层，这里只把入口按钮接上去 */
   onOpenWormhole?: () => void
+  /** 从「扫描虫洞」页选一处库存虫洞开始探索（App 层开面板并带上该库存项） */
+  onExploreWormhole?: (stockId: string) => void
 }) {
   // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
   // seq 只在跨页跳转时递增，普通切回本页不重放）
@@ -123,7 +129,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
     <div className="page-stack page-fill">
       {/* ───── 功能标签页（免滚动切换） ───── */}
       <div className="app-subtabs" role="tablist">
-        {MAP_TABS.map((t) => (
+        {MAP_TABS.filter((x) => x.key !== 'whscan' || debugEnabled()).map((t) => (
           <button
             key={t.key}
             role="tab"
@@ -151,6 +157,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'whscan' ? <WormholeScanTab engine={engine} onToast={onToast} onExplore={(id) => onExploreWormhole?.(id)} /> : null}
     </div>
   )
 }

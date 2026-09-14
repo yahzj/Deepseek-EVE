@@ -263,13 +263,25 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
   if (state.scanning.active && state.scanning.returning !== true && state.scanning.galaxyId) {
     push({ galaxyId: state.scanning.galaxyId, shipId: state.shipId, kind: '扫描' })
   }
+  /**
+   * **主控扫描虫洞**（2026-09-14 船长：「在扫描的过程中，玩家遭遇随机事件的期望和星图中的扫描一致」）：
+   * 与上面"扫描星系"那条**同一档暴露** —— 都是"就地作业、扫描即暴露、无入场缓冲"，
+   * 判定与概率全走同一套 `kind: '扫描'` 口径（含低安 ×1.5 的扫描埋伏系数），故期望一致。
+   * ⚠ 与星系扫描的区别只有"扫什么"：虫洞扫描**没有目标星系**，暴露地点取**当前野外所在星系**
+   * （`awayGalaxy`；在站内 / 母港为 null ⇒ 不暴露，与"野外驻留"那条同口径）。
+   * ⚠ 另：本文件的"自动停手"清单（遇袭收口）**有意不含虫洞扫描** —— 船长：「遇袭不中断扫描」（进度不丢）。
+   */
+  if (state.wormholeScan?.active === true && state.awayGalaxy !== null) {
+    push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '扫描' })
+  }
   // 主控野外驻留（掩护巡逻/旧档停留遗留）= 区域停留船；无作业进行时才成立
   if (
     state.awayGalaxy !== null &&
     !m.active &&
     !state.expedition.active &&
     !state.salvaging.active &&
-    !state.scanning.active
+    !state.scanning.active &&
+    state.wormholeScan?.active !== true
   ) {
     push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })
   }

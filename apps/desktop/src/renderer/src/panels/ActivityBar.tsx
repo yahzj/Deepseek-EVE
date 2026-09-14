@@ -29,6 +29,8 @@ const KIND_ICON: Record<string, string> = {
   // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标 = 虫洞专属「空间裂隙」（同日船长定案），
   // 与星图·行动区的虫洞入口行同一枚，不再借 ico-flag / ico-scan
   wormhole: 'nav-wormhole',
+  /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
+  whscan: 'nav-wormhole',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -39,6 +41,8 @@ function stopLabel(v: ActivityView): string {
       return '停止'
     case 'stop-scan':
       return '终止'
+    case 'stop-whscan':
+      return '停扫'
     case 'stop-salvage':
       return '停止'
     case 'cancel-manufacture':
@@ -79,6 +83,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'stop-scan':
       run(engine.stopScanNow(), '已终止扫描探索：就地扫描进度已保存，下次续扫。')
+      break
+    case 'stop-whscan':
+      run(engine.wormholeScanStop(), '已停止扫描虫洞：进度保留，下次接着扫。')
       break
     case 'stop-salvage':
       run(engine.stopSalvageOpNow(), '已停止打捞：本趟已捞的残骸仍在船上（未返航不卸货）。')
@@ -273,6 +280,8 @@ export function ActivityBar({
                   ? '召回远征：中止任务返回母港（无战果）'
                   : v.stop === 'cancel-deliver-trip'
                     ? '取消交付航线：无惩罚，停止整个交付循环，舰船立即返航停靠最近已建成空间站（本趟装载随进港卸回仓库）'
+                    : v.stop === 'stop-whscan'
+                    ? '停止扫描虫洞：进度保留，下次接着扫'
                     : v.stop === 'stop-scan'
                     ? '终止扫描：就地扫描进度保存，下次续扫'
                     : v.stop === 'stop-salvage'

@@ -10,6 +10,7 @@ import type { SimContext } from './types'
 import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
+import { WORMHOLE_STOCK_MAX, wormholeScanWindowMs, wormholeStockFull, wormholeStockOf } from './wormholeScan'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
@@ -25,6 +26,8 @@ export type ActivityKind =
   | 'train'
   | 'mining'
   | 'scan'
+  /** 主控活动「扫描虫洞」（2026-09-14 船长）：与星系扫描分开一类，界面各自一行 */
+  | 'whscan'
   | 'salvage'
   | 'manufacture'
   | 'refine'
@@ -43,6 +46,8 @@ export type ActivityStopKind =
   | 'remove-training'
   | 'stop-mining'
   | 'stop-scan'
+  /** 停「扫描虫洞」（2026-09-14）：进度保留，下次接着扫 */
+  | 'stop-whscan'
   | 'stop-salvage'
   | 'cancel-manufacture'
   | 'stop-refine'
@@ -181,6 +186,29 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: sv.remainingMs,
       stopable: !sv.returning,
       stop: sv.returning ? null : 'stop-scan',
+    })
+  }
+
+  /**
+   * ── 主控活动「扫描虫洞」（2026-09-14 船长）──
+   * 进度条 = 已扫 / 本趟窗口（窗口 = 220 分钟 × 三技能乘算）；**遇袭不中断**（进度不清零）；
+   * 库存满 5 时活动会被 `advanceWormholeScan` 停机，这里就不再出行（与"作业结束即消失"一致）。
+   */
+  if (state.wormholeScan?.active === true) {
+    const windowMs = wormholeScanWindowMs(state)
+    const done = Math.min(windowMs, state.wormholeScan.progressMs)
+    out.push({
+      id: 'whscan',
+      kind: 'whscan',
+      label: '扫描虫洞',
+      sub:
+        wormholeStockFull(state)
+          ? `已囤满 ${WORMHOLE_STOCK_MAX} 处 · 待处理`
+          : `深空扫描中 · 已囤 ${wormholeStockOf(state).length}/${WORMHOLE_STOCK_MAX} 处`,
+      percent: Math.max(0, Math.min(100, Math.round((done / windowMs) * 100))),
+      remainingMs: Math.max(0, windowMs - done),
+      stopable: true,
+      stop: 'stop-whscan',
     })
   }
 

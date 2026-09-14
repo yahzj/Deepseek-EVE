@@ -527,7 +527,11 @@ export function App({ engine }: { engine: GameEngine }) {
    * 而行动区要先选中星系才渲染 ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）。
    */
   const [whOpen, setWhOpen] = useState(false)
-  const openWormhole = (): void => {
+  /** 从库存进洞：选中的那处（null = 调试入口，直接用游戏随机种子开一趟） */
+  const [whStockPick, setWhStockPick] = useState<string | null>(null)
+  /** 打开虫洞面板（stockId 给了 = 从「扫描虫洞」页选中的那处库存虫洞开始探索） */
+  const openWormhole = (stockId?: string): void => {
+    setWhStockPick(stockId ?? null)
     changePage('map')
     changeMapTab('star')
     setWhOpen(true)
@@ -718,6 +722,7 @@ export function App({ engine }: { engine: GameEngine }) {
     bounty: '常驻悬赏',
     salvage: '残骸打捞',
     haul: '长途运输',
+    whscan: '扫描虫洞',
   }
   const changePage = (p: PageKey): void => {
     if (!tutCanOpen(p)) {
@@ -945,6 +950,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 onMapTab={changeMapTab}
                 mapGoto={mapGoto}
                 onOpenWormhole={openWormhole}
+                onExploreWormhole={(stockId) => openWormhole(stockId)}
               />
             ) : null}
             {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}
@@ -1148,7 +1154,17 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* ───── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ───── */}
       {/* 虫洞面板（终局玩法 · 施工期只在调试模式下可见）：挂在这一层 ⇒ 不依赖星图选中星系 */}
-      {whOpen ? <WormholePanel engine={engine} onToast={showToast} onClose={() => setWhOpen(false)} /> : null}
+      {whOpen ? (
+          <WormholePanel
+            engine={engine}
+            onToast={showToast}
+            stockId={whStockPick}
+            onClose={() => {
+              setWhOpen(false)
+              setWhStockPick(null)
+            }}
+          />
+        ) : null}
       {showSaveManager ? <SaveManager engine={engine} onToast={showToast} onClose={() => setShowSaveManager(false)} /> : null}
       {showHandbook ? <Handbook engine={engine} onClose={() => setShowHandbook(false)} /> : null}
       {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
