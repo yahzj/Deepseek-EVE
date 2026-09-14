@@ -94,6 +94,8 @@ const WORMHOLE_FX_JOB_MS = 380
 /** 探索地图的缩放档（1 = 适应窗口；每档 +25%，上限 250%）——左侧 ＋/－ 按这个步进 */
 const WORMHOLE_MAP_ZOOM_FIT = 1
 const WORMHOLE_MAP_ZOOM_STEP = 0.25
+/** 滚轮一格的步长（比按钮细一半：滚轮是连续输入，粗档会一跳一跳） */
+const WORMHOLE_MAP_ZOOM_WHEEL_STEP = 0.125
 const WORMHOLE_MAP_ZOOM_MAX = 2.5
 
 /** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
@@ -316,6 +318,31 @@ export function WormholePanel({
   }, [extractAsk])
   /** 地图缩放（船长 2026-09-13：「在探索界面的左侧给玩家一个缩放按钮或者滚动条……调节探索地图的大小」） */
   const [mapZoom, setMapZoom] = useState(WORMHOLE_MAP_ZOOM_FIT)
+  /**
+   * **鼠标滚轮缩放地图**（船长 2026-09-13：「允许鼠标滚轮缩放虫洞的探索地图」）。
+   *
+   * 为什么不用 React 的 `onWheel`：React 把 wheel 挂成**被动监听**（passive）⇒ 里面 `preventDefault()`
+   * 拦不住"滚轮穿到面板体 / 外层弹层上"，地图缩放了、背后的列表也跟着滚。所以这里自己挂**原生**
+   * 监听并显式 `{ passive: false }`：指针在地图框里滚 ⇒ **只缩放地图、不滚动任何东西**。
+   * 步长取按钮的一半（0.125）——滚轮是连续输入，用按钮那档会一跳一跳；上下限与按钮同一把尺
+   * （`WORMHOLE_MAP_ZOOM_FIT` ~ `WORMHOLE_MAP_ZOOM_MAX`）。指针不在图上时一个字节都不拦。
+   */
+  const mapBoxRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = mapBoxRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent): void => {
+      if (e.deltaY === 0) return
+      e.preventDefault()
+      const step = e.deltaY < 0 ? WORMHOLE_MAP_ZOOM_WHEEL_STEP : -WORMHOLE_MAP_ZOOM_WHEEL_STEP
+      setMapZoom((z) =>
+        Math.min(WORMHOLE_MAP_ZOOM_MAX, Math.max(WORMHOLE_MAP_ZOOM_FIT, +(z + step).toFixed(3))),
+      )
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+    // 地图框只在「探索」页且在洞里时挂载 ⇒ 依赖要带上页签，否则切页后监听不会补挂
+  }, [!!run, tab])
   const layerKeyForFx = run ? `${run.seed ?? 0}-${run.depth}` : 'none'
   /** 新层挂载 ⇒ 播"从屏幕外飞入"，1 秒后交还操作（进场与深入共用这一条） */
   useEffect(() => {
@@ -1193,7 +1220,9 @@ export function WormholePanel({
                     </div>
                     <div
         className="app-wh-mapbox"
+        ref={mapBoxRef}
         style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': "url(\"${pinnedSpaceBg}\")" } : {}) } as React.CSSProperties}
+        title="滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）"
       >
                       <WhGridMap
                         grid={grid}
