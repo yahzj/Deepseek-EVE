@@ -4845,20 +4845,28 @@ body {
 
 }
 
+/* ── 图标模式的物品操作行（船长 2026-09-13 深夜：「物品仓库界面图标模式下的物品操作，将装到船上等
+   按钮横向排布，且适当变高」）——原来是 `column`（一颗颗竖着堆、`is-small` 只有 ~21px 高），
+   现在改成**横排等分 + 加高**：按钮同高同宽（`flex:1`）、必要时换行，点起来目标更大。
+   本弹层只由「图标视图」的卡片点选打开（列表模式用自己的行内按钮），故不会串到列表模式。 */
 .app-itempick-actions {
-
   display: flex;
-
-  flex-direction: column;
-
-  align-items: flex-start;
-
-  gap: 6px;
-
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
   padding-top: 8px;
-
   border-top: 1px dashed rgba(85, 112, 140, 0.25);
-
+}
+.app-itempick-actions .app-btn {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 6px 14px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 /* 出售数量选择行（2026-09-05：部分出售） */
