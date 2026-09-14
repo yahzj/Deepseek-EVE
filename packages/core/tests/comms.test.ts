@@ -155,7 +155,7 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
       trigger: { kind: 'tutorial', step: 0 },
       action: { label: '按单开工：采集富凡晶石', command: 'startTutorial' },
     },
-    { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 }, hint: { text: '前往任务中心', page: 'map', tab: 'task', taskTab: 'important' } },
+    { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 }, hint: { text: '前往任务中心', page: 'task', taskTab: 'important' } },
     { id: 'tut-7', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },
   ]
 
@@ -210,9 +210,14 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
     other.state.onboarding.step = ONB_DELIVER
     advanceComms(other.state, other.ctx)
     expect(commsInbox(other.state, other.ctx).find((e) => e.id === 'tut-2')!.highlight).toBeUndefined()
-    // 跳转提示要带任务中心**内层**标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）
+    /**
+     * 跳转提示要带任务中心**内层**标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）。
+     * ⚠ **2026-09-14 起目标页变了**（船长：「将任务中心界面移出星图，放入左侧导航栏，通讯的上方」）：
+     * 任务中心是**独立一级页** ⇒ `page = 'task'`，不再是星图页的 `tab: 'task'` 选项卡。
+     */
     const tut2 = commsInbox(other.state, other.ctx).find((e) => e.id === 'tut-2')!
-    expect(tut2.hint?.tab).toBe('task')
+    expect(tut2.hint?.page).toBe('task')
+    expect(tut2.hint?.tab).toBeUndefined()
     expect(tut2.hint?.taskTab).toBe('important')
   })
 
