@@ -72,6 +72,20 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mat-nebula', kind: 'item', refId: 'mat-nebula', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'mat-enricher', kind: 'item', refId: 'mat-enricher', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'mat-expander', kind: 'item', refId: 'mat-expander', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  // 【谜质储存器 B1 批（威胁 3 + 战斗 10）：同上，一律 unreleased、不构成套利通道】
+  { key: 'mat-suppressor', kind: 'item', refId: 'mat-suppressor', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-boss-analyzer', kind: 'item', refId: 'mat-boss-analyzer', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-extract-cover', kind: 'item', refId: 'mat-extract-cover', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-shield-res', kind: 'item', refId: 'mat-shield-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-armor-res', kind: 'item', refId: 'mat-armor-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-hull-res', kind: 'item', refId: 'mat-hull-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-tracker', kind: 'item', refId: 'mat-tracker', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-gyro', kind: 'item', refId: 'mat-gyro', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-jammer', kind: 'item', refId: 'mat-jammer', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-rangefinder', kind: 'item', refId: 'mat-rangefinder', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-blindspot', kind: 'item', refId: 'mat-blindspot', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-ammo-dmg', kind: 'item', refId: 'mat-ammo-dmg', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-reload', kind: 'item', refId: 'mat-reload', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
   //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722

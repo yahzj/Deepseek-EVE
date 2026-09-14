@@ -1028,6 +1028,11 @@ export {
   wormholeMatterTurnDeltaOf,
   wormholeMatterApplyTurnDelta,
   wormholeMatterDiscardHint,
+  wormholeMatterThreatMul,
+  WORMHOLE_MATTER_THREAT_FLOOR_MUL,
+  WORMHOLE_MATTER_EVASION_CAP,
+  WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP,
+  WORMHOLE_MATTER_RESIST_CAP,
 } from './wormholeMatter'
 export type { WormholeMatterDevice, WormholeMatterEffectKind, WormholeMatterBuffs } from './wormholeMatter'
 

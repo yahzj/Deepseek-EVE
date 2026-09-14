@@ -36,6 +36,9 @@ import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL, wormholeAnomalyOf } from './wormholeFoes'
 import { wormholeFoeThreat } from './wormholeFoes'
+// F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
+import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
+import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
@@ -2269,6 +2272,87 @@ export function pushBattleFx(
 }
 
 /**
+ * **谜质 B1：我方静态增益**（F3c · 船长 2026-09-13）——**只在洞内战斗**里调用。
+ *
+ * 六类，全部按"从货仓现算"的派生值施加：
+ * - **抗性**：对**敌队主伤害系**（单层单系）走既有"缺口削减"合成 `1 − (1−基础)×(1−值)`，
+ *   三层各自上限 **0.9 不变**（不新增旋钮）；
+ * - **命中 / 回避**：直接加（回避的**加成**在派生端已 +0.25 封顶）；
+ * - **射程**：只放大 `maxRangeM`（放大 `minRangeM` 等于把近盲带往前推，反而吃亏 ⇒ 不放大）；
+ * - **单发伤害**：与"全舰单发伤害光环"同款改法（`shotDmg` / `shotsByType` 同乘）；
+ * - **装填周期**：周期 ×(1 − 削减)，物理下限 50ms（不封顶，但周期不能到 0）。
+ */
+export function applyMatterPlayerBuffs(spec: UnitSpec, b: WormholeMatterBuffs, foeMain: DamageType): void {
+  if (b.devices === 0) return
+  spec.hitBonus += b.hitBonus
+  if (b.evasion > 0) spec.evasion = spec.evasion + b.evasion
+  const applyResist = (layer: 'shield' | 'armor' | 'hull', add: number): void => {
+    if (add <= 0) return
+    const cur = spec.resists[layer]
+    const base = cur?.[foeMain] ?? 0
+    const v = Math.min(0.9, 1 - (1 - base) * (1 - add))
+    spec.resists[layer] = { ...(cur ?? {}), [foeMain]: v }
+  }
+  applyResist('shield', b.resistShield)
+  applyResist('armor', b.resistArmor)
+  applyResist('hull', b.resistHull)
+  const rangeMul = 1 + b.weaponRangePct
+  const dmgMul = 1 + b.damagePct
+  const reloadMul = Math.max(0.1, 1 - b.reloadPct)
+  for (const w of spec.weapons) {
+    if (rangeMul !== 1) w.maxRangeM = Math.round(w.maxRangeM * rangeMul)
+    if (dmgMul !== 1) {
+      if (typeof w.shotDmg === 'number') w.shotDmg = w.shotDmg * dmgMul
+      if (w.shotsByType) {
+        for (const k of Object.keys(w.shotsByType) as DamageType[]) {
+          const v = w.shotsByType[k]
+          if (typeof v === 'number') w.shotsByType[k] = v * dmgMul
+        }
+      }
+    }
+    if (reloadMul !== 1) w.reloadMs = Math.max(50, Math.round(w.reloadMs * reloadMul))
+  }
+}
+
+/**
+ * **谜质在开战那一刻的快照**（F3c B1）：威胁乘数（按用途三档、各自 −50% 封顶）/ 敌队主伤害系 /
+ * 敌方削弱两项。**只在洞内战斗里调用**（`state.wormhole.run?.hold` 就是本趟的装置）。
+ */
+export function wormholeMatterBattleModsOf(
+  state: GameState,
+  baseCard: AnomalyDef,
+  kind: 'node' | 'boss' | 'extract' | 'ruins',
+): { threatMul: number; foeMainType: DamageType; foeHitDown: number; blindReduce: number } | null {
+  const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)
+  if (buffs.devices === 0) return null
+  const bucket: 'node' | 'boss' | 'extract' = kind === 'boss' ? 'boss' : kind === 'extract' ? 'extract' : 'node'
+  const threatMul = wormholeMatterThreatMul(buffs, bucket)
+  /**
+   * **只有真会改变战斗结果的装置才返回快照**（否则返回 `null` ⇒ 走改动前的老路径、存档形状也不变）：
+   * 探索与作业类装置（测绘仪 / 时序核心 / 起重机 / 钻机 / 星云 / 富集器 / 扩展器）不影响战斗。
+   */
+  const any =
+    threatMul < 1 ||
+    buffs.enemyHitDown > 0 ||
+    buffs.blindReduce > 0 ||
+    buffs.resistShield > 0 ||
+    buffs.resistArmor > 0 ||
+    buffs.resistHull > 0 ||
+    buffs.hitBonus > 0 ||
+    buffs.evasion > 0 ||
+    buffs.weaponRangePct > 0 ||
+    buffs.damagePct > 0 ||
+    buffs.reloadPct > 0
+  if (!any) return null
+  return {
+    threatMul,
+    foeMainType: foeMainDamageType(baseCard),
+    foeHitDown: buffs.enemyHitDown,
+    blindReduce: buffs.blindReduce,
+  }
+}
+
+/**
  * **本场我方的单位规格**（虫洞 D 批 · 每拍重建）：
  * - **单船路径**（`battle.myFleet` 未写）：等价于改动前的单点 `createPlayerSpec(shipId)` + 教学战加成；
  * - **多单位路径**（写了）：按 `myFleet` 逐条重建（各自装配/技能/血条/装填），并把 `tag` 覆盖成
@@ -2284,9 +2368,17 @@ function buildMyUnitSpecs(
   anomalyId: string | null,
 ): UnitSpec[] {
   const fleet = battle.myFleet
+  /**
+   * **谜质 B1**：洞内战斗的每拍重建也要吃同一份增益（否则"开战吃、之后几拍又吐回去"）。
+   * 快照里的 `foeMainType` 决定三张谐振片对哪一系加抗性。
+   */
+  const wh = battle.wormhole
+  const matterBuffs = wh ? wormholeMatterBuffs(state.wormhole.run?.hold) : null
+  const matterFoeMain: DamageType = wh?.foeMainType ?? 'kinetic'
   if (!fleet || fleet.length === 0) {
     const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
     if (!me) return []
+    if (matterBuffs) applyMatterPlayerBuffs(me, matterBuffs, matterFoeMain)
     // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
     if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
     return [me]
@@ -2295,6 +2387,7 @@ function buildMyUnitSpecs(
   for (const entry of fleet) {
     const spec = createPlayerSpec(state, ctx, entry.shipId, battle.ammoIds)
     if (!spec) continue
+    if (matterBuffs) applyMatterPlayerBuffs(spec, matterBuffs, matterFoeMain)
     spec.tag = entry.tag
     if (entry.tag === 'player' && isTutorialBattle(state, anomalyId, entry.shipId)) {
       applyTutorialBuff(spec)
@@ -2461,23 +2554,51 @@ let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
 export function wormholeDerivedAnomaly(
   ctx: SimContext,
   baseCard: AnomalyDef,
-  spec: { depth: number; kind: 'node' | 'boss' | 'extract' | 'ruins'; waves: number; strengthMul?: number },
+  spec: {
+    depth: number
+    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    waves: number
+    strengthMul?: number
+    /** 谜质：威胁乘数（缺省 1）+ 敌方命中/近盲带削减（见 `battle.wormhole` 的字段说明） */
+    threatMul?: number
+    foeHitDown?: number
+    blindReduce?: number
+  },
 ): AnomalyDef {
   /**
    * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
    * （战场视图 `wormholeBattleViewOf`）调用，每次都克隆/缩放整张敌卡与槽位 ⇒ 拖距离条那种
    * 高频重渲染下会顶出顿挫（船长："依旧还是有顿挫感"、"参考洞外战斗的距离调整"）。
-   * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
+   * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写, 谜质三项)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
    */
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}`
+  const threatMul = spec.threatMul ?? 1
+  const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
-  const card = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
+  const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
+    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
-      WORMHOLE_FOE_BASE_STRENGTH_MUL,
+      WORMHOLE_FOE_BASE_STRENGTH_MUL *
+      threatMul,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
+  /**
+   * **谜质 B1：敌方削弱折进派生卡**（这样**所有** `createFoeSpecs` 调用点自动生效——
+   * 开战、逐拍重建、下一波补刷、战场视图都读同一张派生卡，不必各处再补一次）：
+   * `foeHitRate` 直接减（命中率是**概率**，按绝对值减、下限 0）；`blindDmgMul` 同样按绝对值减。
+   */
+  const foeHitDown = spec.foeHitDown ?? 0
+  const blindReduce = spec.blindReduce ?? 0
+  const card: AnomalyDef =
+    foeHitDown > 0 || blindReduce > 0
+      ? {
+          ...derived,
+          ...(foeHitDown > 0 ? { foeHitRate: Math.max(0, (derived.foeHitRate ?? ctx.balance.battle.foeHitRate) - foeHitDown) } : {}),
+          ...(blindReduce > 0 ? { blindDmgMul: Math.max(0, (derived.blindDmgMul ?? 0.3) - blindReduce) } : {}),
+        }
+      : derived
   wormholeDerivedMemo = { key: memoKey, card }
   return card
 }
@@ -2513,14 +2634,44 @@ export function startFleetBattleFor(
     kind: 'node' | 'boss' | 'extract' | 'ruins'
     waves: number
     strengthMul?: number
+    /**
+     * **谜质装置在开战那一刻的快照**（F3c B1 · 船长 2026-09-13）：
+     * 战斗是"逐拍重建规格"的（`buildMyUnitSpecs` / `createFoeSpecs` 每拍按敌卡重建）
+     * ⇒ 把**这一场**吃到的四个值随标记写进 `battle.wormhole`，逐拍重建时**同一份**，不各算各的。
+     * - `threatMul`：威胁乘数（压制力场/守卫解析仪/撤离掩护器，**三档各自 −50% 封顶**）；
+     * - `foeMainType`：敌队主伤害类型（护盾/装甲/结构三张谐振片**只对它**加抗性）；
+     * - `foeHitDown`：敌方命中 −（干扰发射器，**−0.25 封顶**）；
+     * - `blindReduce`：敌方近盲带伤害比例 −（盲区压制器，下限 0）。
+     */
+    threatMul?: number
+    foeMainType?: DamageType
+    foeHitDown?: number
+    blindReduce?: number
   },
 ): import('./state').BattleState | null {
   if (!anomalyId || shipIds.length === 0) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
   const baseCard = battleAnomalyOf(ctx, anomalyId)
   if (!baseCard) return null
+  /**
+   * **谜质在开战那一刻的快照**（F3c B1 · 船长 2026-09-13）：威胁乘数（三档各自 −50% 封顶）、
+   * 敌队主伤害系（三张谐振片"单层单系"只对它加抗性）、敌方削弱两项。
+   * 快照随 `battle.wormhole` 落进战斗 ⇒ 逐拍重建读同一份。
+   */
+  const matterMods = wormhole ? wormholeMatterBattleModsOf(state, baseCard, wormhole.kind) : null
   // 洞内敌卡：按层派生（**与逐拍重建同源**，见 `wormholeDerivedAnomaly` 的注释）
-  const anomaly = wormhole ? wormholeDerivedAnomaly(ctx, baseCard, wormhole) : baseCard
+  const anomaly = wormhole
+    ? wormholeDerivedAnomaly(ctx, baseCard, {
+        ...wormhole,
+        ...(matterMods
+          ? {
+              ...(matterMods.threatMul < 1 ? { threatMul: matterMods.threatMul } : {}),
+              ...(matterMods.foeHitDown > 0 ? { foeHitDown: matterMods.foeHitDown } : {}),
+              ...(matterMods.blindReduce > 0 ? { blindReduce: matterMods.blindReduce } : {}),
+            }
+          : {}),
+      })
+    : baseCard
   const bal = ctx.balance.battle
   // 编队顺序：**主控置首**（`state.shipId` 在编队里就提到第一位），其余保持传入顺序
   const ordered = [...shipIds]
@@ -2575,6 +2726,11 @@ export function startFleetBattleFor(
         }
       }
     }
+  }
+  // **谜质 B1：我方静态增益**（抗性 / 命中 / 回避 / 射程 / 单发 / 装填）——只在洞内战斗里生效
+  if (matterMods) {
+    const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)
+    for (const spec of specs) applyMatterPlayerBuffs(spec, buffs, matterMods.foeMainType)
   }
   const me = specs[0]!
   // 多波（2026-09-09）：开战只生成第一波；后续波由 advanceBattleFor 在敌方全灭时补刷
@@ -2672,8 +2828,27 @@ export function startFleetBattleFor(
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
   }
-  // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）
-  if (wormhole) battle.wormhole = { cardId: anomalyId, ...wormhole }
+  // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）；
+  // F3c B1 起，谜质在开战那一刻的快照（威胁乘数 / 敌主伤害系 / 敌方削弱）**一并写进去**，
+  // 逐拍重建与下一波补刷都读这一份（不各算各的）。
+  if (wormhole) {
+    battle.wormhole = {
+      cardId: anomalyId,
+      ...wormhole,
+      /**
+       * 谜质快照**只写真正生效的项**（没带战斗类装置时 `matterMods` = null ⇒ 一个字段都不写）：
+       * 于是"没带装置"的洞内战斗与改动前**逐字一致**（存档形状、既有用例、战报都不受影响）。
+       */
+      ...(matterMods
+        ? {
+            ...(matterMods.threatMul < 1 ? { threatMul: matterMods.threatMul } : {}),
+            ...(matterMods.foeMainType ? { foeMainType: matterMods.foeMainType } : {}),
+            ...(matterMods.foeHitDown > 0 ? { foeHitDown: matterMods.foeHitDown } : {}),
+            ...(matterMods.blindReduce > 0 ? { blindReduce: matterMods.blindReduce } : {}),
+          }
+        : {}),
+    }
+  }
   // ⚠ **刻意不写 `battle.hullEscapeFrac`**：副本内无"结构过半自动脱离"保险（冲突 2 · 船长裁定）。
   return battle
 }

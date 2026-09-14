@@ -61,6 +61,20 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'mat-nebula': WORMHOLE_SHAPE_CONTAINER,
   'mat-enricher': WORMHOLE_SHAPE_CONTAINER,
   'mat-expander': WORMHOLE_SHAPE_CONTAINER,
+  /* B1 批：威胁类 3 台 ＋ 战斗类 10 台（同形 2×2） */
+  'mat-suppressor': WORMHOLE_SHAPE_CONTAINER,
+  'mat-boss-analyzer': WORMHOLE_SHAPE_CONTAINER,
+  'mat-extract-cover': WORMHOLE_SHAPE_CONTAINER,
+  'mat-shield-res': WORMHOLE_SHAPE_CONTAINER,
+  'mat-armor-res': WORMHOLE_SHAPE_CONTAINER,
+  'mat-hull-res': WORMHOLE_SHAPE_CONTAINER,
+  'mat-tracker': WORMHOLE_SHAPE_CONTAINER,
+  'mat-gyro': WORMHOLE_SHAPE_CONTAINER,
+  'mat-jammer': WORMHOLE_SHAPE_CONTAINER,
+  'mat-rangefinder': WORMHOLE_SHAPE_CONTAINER,
+  'mat-blindspot': WORMHOLE_SHAPE_CONTAINER,
+  'mat-ammo-dmg': WORMHOLE_SHAPE_CONTAINER,
+  'mat-reload': WORMHOLE_SHAPE_CONTAINER,
 }
 
 /** 该物品是不是**占形状的件**（是 ⇒ 走 `run.hold`，不是 ⇒ 走 `run.bag` 叠加） */

@@ -151,7 +151,8 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ 换成族专属无人机）→ 物品总数 36→**38**、无人机 5→**7**
 // 2026-09-13 F4：遗迹安全货柜 5 种（中间件，施工期 unreleased）→ 物品总数 38→**43**
 // 2026-09-13 F3c：谜质储存器 7 台（A 批 = 探索与作业类；施工期 unreleased）→ 物品总数 43→**50**
-check(itemDefs.length === 50, `物品总数应为 50，实际 ${itemDefs.length}`)
+// 2026-09-13 F3c-B1：谜质储存器再 13 台（威胁 3 + 战斗 10）→ 物品总数 50→**63**
+check(itemDefs.length === 63, `物品总数应为 63，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)

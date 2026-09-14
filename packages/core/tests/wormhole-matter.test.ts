@@ -21,10 +21,13 @@ import { wormholeEnter, wormholeExtract } from '../src/wormhole'
 import {
   WORMHOLE_MATTER_DEVICES,
   WORMHOLE_MATTER_DEVICE_IDS,
+  WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP,
+  WORMHOLE_MATTER_EVASION_CAP,
   wormholeMatterApplyTurnDelta,
   wormholeMatterBuffs,
   wormholeMatterDeviceAt,
   wormholeMatterDiscardHint,
+  wormholeMatterThreatMul,
 } from '../src/wormholeMatter'
 import { WORMHOLE_HOLD_SHAPES, wormholeShapeOf } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_FLOOR, gridScanTargets, wormholeMakeGrid } from '../src/wormholeGrid'
@@ -34,7 +37,13 @@ import {
   wormholeStowOrTemp,
   wormholeSyncMatterTurns,
 } from '../src/wormholeSalvage'
-import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
+import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
+import { applyMatterPlayerBuffs, wormholeMatterBattleModsOf } from '../src/combat'
+import { wormholeFoeThreat } from '../src/wormholeFoes'
+import type { UnitSpec } from '../src/combat'
+import { wormholeCardIdFor } from '../src/wormholeFoes'
+import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
+import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -199,5 +208,171 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
     const fake = { turnsLeft: 5, turnsTotal: 9 }
     wormholeMatterApplyTurnDelta(fake, 'mat-drill', 1)
     expect(fake).toEqual({ turnsLeft: 5, turnsTotal: 9 })
+  })
+})
+
+/** 造一批装置（数量任意，用来顶封顶） */
+function holdWith(counts: Record<string, number>): { placements: Array<{ id: string; kind: 'box'; itemId: string; x: number; y: number; w: number; h: number }>; cols: number } {
+  const placements: Array<{ id: string; kind: 'box'; itemId: string; x: number; y: number; w: number; h: number }> = []
+  let i = 0
+  for (const [itemId, n] of Object.entries(counts)) {
+    for (let k = 0; k < n; k++) placements.push({ id: `${itemId}-${i++}`, kind: 'box', itemId, x: 0, y: 0, w: 2, h: 2 })
+  }
+  return { placements, cols: 8 }
+}
+
+/** 一份最小可用的我方单位规格（只填 `applyMatterPlayerBuffs` 会碰的字段） */
+function fakeSpec(): UnitSpec {
+  return {
+    tag: 'player',
+    name: '测试舰',
+    side: 'me',
+    hp: { s: 1000, a: 1000, h: 1000 },
+    resists: {},
+    evasion: 0.1,
+    hitBonus: 0.02,
+    signatureM: 100,
+    scanResMm: 400,
+    speedMps: 200,
+    agility: 0.3,
+    weapons: [
+      { label: '测试炮', kind: 'fixed', fixedType: 'kinetic', shotDmg: 100, maxRangeM: 3000, minRangeM: 500, hitRate: 0.75, falloff: 0.5, reloadMs: 4000 },
+    ],
+  } as unknown as UnitSpec
+}
+
+describe('虫洞 · 谜质装置（F3c B1 批：威胁与战斗静态增益）', () => {
+  it('① 四类封顶：威胁最多 −50% · 回避 +0.25 · 敌方命中 −0.25 · 抗性 0.9（其余不封顶）', () => {
+    const b = wormholeMatterBuffs(
+      holdWith({
+        'mat-suppressor': 40, // 40×5% = 200% ⇒ 必须夹到 −50%
+        'mat-gyro': 20, // 20×0.05 = 1.0 ⇒ 夹到 0.25
+        'mat-jammer': 20, // 同上
+        'mat-shield-res': 40, // 40×0.10 = 4.0 ⇒ 夹到 0.9
+        'mat-tracker': 20, // 不封顶：20×0.05 = 1.0
+        'mat-ammo-dmg': 20, // 不封顶：20×0.08 = 1.6
+      }),
+    )
+    expect(wormholeMatterThreatMul(b, 'node')).toBeCloseTo(0.5, 6)
+    expect(b.evasion).toBeCloseTo(WORMHOLE_MATTER_EVASION_CAP, 6)
+    expect(b.enemyHitDown).toBeCloseTo(WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP, 6)
+    expect(b.resistShield).toBeCloseTo(0.9, 6)
+    expect(b.hitBonus).toBeCloseTo(1.0, 6)
+    expect(b.damagePct).toBeCloseTo(1.6, 6)
+  })
+
+  it('② 威胁三档：压制力场三档同源 · 守卫解析仪只压守卫 · 撤离掩护器只压撤离', () => {
+    const press = wormholeMatterBuffs(holdWith({ 'mat-suppressor': 2 })) // −10%
+    expect(wormholeMatterThreatMul(press, 'node')).toBeCloseTo(0.9, 6)
+    expect(wormholeMatterThreatMul(press, 'boss')).toBeCloseTo(0.9, 6)
+    expect(wormholeMatterThreatMul(press, 'extract')).toBeCloseTo(0.9, 6)
+    const boss = wormholeMatterBuffs(holdWith({ 'mat-boss-analyzer': 2 })) // 守卫 −20%
+    expect(wormholeMatterThreatMul(boss, 'node')).toBeCloseTo(1, 6)
+    expect(wormholeMatterThreatMul(boss, 'boss')).toBeCloseTo(0.8, 6)
+    expect(wormholeMatterThreatMul(boss, 'extract')).toBeCloseTo(1, 6)
+    const cover = wormholeMatterBuffs(holdWith({ 'mat-extract-cover': 3 })) // 撤离 −30%
+    expect(wormholeMatterThreatMul(cover, 'extract')).toBeCloseTo(0.7, 6)
+    expect(wormholeMatterThreatMul(cover, 'boss')).toBeCloseTo(1, 6)
+    // 三档叠加后一起夹 −50%
+    const all = wormholeMatterBuffs(holdWith({ 'mat-suppressor': 20, 'mat-boss-analyzer': 20, 'mat-extract-cover': 20 }))
+    expect(wormholeMatterThreatMul(all, 'boss')).toBeCloseTo(0.5, 6)
+    expect(wormholeMatterThreatMul(all, 'extract')).toBeCloseTo(0.5, 6)
+  })
+
+  it('③ 我方静态增益施加到单位规格：命中 / 回避 / 单层单系抗性（缺口合成 + 0.9 上限）/ 射程 / 单发 / 装填', () => {
+    const spec = fakeSpec()
+    const buffs = wormholeMatterBuffs(
+      holdWith({
+        'mat-tracker': 2, // 命中 +0.10
+        'mat-gyro': 2, // 回避 +0.10
+        'mat-shield-res': 1, // 护盾对 kinetic +0.10
+        'mat-hull-res': 1, // 结构 +0.10
+        'mat-rangefinder': 2, // 射程 +20%
+        'mat-ammo-dmg': 5, // 单发 +40%
+        'mat-reload': 5, // 装填 −40%
+      }),
+    )
+    applyMatterPlayerBuffs(spec, buffs, 'kinetic')
+    expect(spec.hitBonus).toBeCloseTo(0.12, 6)
+    expect(spec.evasion).toBeCloseTo(0.2, 6)
+    // 只对敌队主系（kinetic）加，另外两系一字不动
+    expect(spec.resists.shield?.kinetic).toBeCloseTo(0.1, 6)
+    expect(spec.resists.hull?.kinetic).toBeCloseTo(0.1, 6)
+    expect(spec.resists.armor?.kinetic).toBeUndefined()
+    expect(spec.resists.shield?.explosive).toBeUndefined()
+    expect(spec.weapons[0]!.maxRangeM).toBe(3600)
+    expect(spec.weapons[0]!.minRangeM).toBe(500) // 近盲带不跟着放大（放大反而吃亏）
+    expect(spec.weapons[0]!.shotDmg).toBeCloseTo(140, 6)
+    expect(spec.weapons[0]!.reloadMs).toBe(2400)
+    // 抗性走"缺口削减"且封顶 0.9：再叠 20 台也只到 0.9
+    const capped = fakeSpec()
+    applyMatterPlayerBuffs(capped, wormholeMatterBuffs(holdWith({ 'mat-shield-res': 20 })), 'kinetic')
+    expect(capped.resists.shield?.kinetic).toBeCloseTo(0.9, 6)
+    // 没有装置 ⇒ 一字不动
+    const plain = fakeSpec()
+    applyMatterPlayerBuffs(plain, WORMHOLE_MATTER_BUFFS_NONE, 'kinetic')
+    expect(plain.hitBonus).toBe(0.02)
+    expect(plain.weapons[0]!.maxRangeM).toBe(3000)
+  })
+
+  it('④ 开战快照：威胁乘数 / 敌主系 / 敌方削弱写进 battle.wormhole，敌方总血按乘数缩水', () => {
+    const state = enterRun(4, 4242)
+    const run = state.wormhole.run!
+    run.hold = holdWith({ 'mat-suppressor': 2, 'mat-jammer': 2, 'mat-blindspot': 2, 'mat-shield-res': 1 })
+    const cardId = wormholeCardIdFor(run.depth, 0)
+    const baseCard = ctx.anomalies.get(cardId)!
+    const mods = wormholeMatterBattleModsOf(state, baseCard, 'node')!
+    expect(mods.threatMul).toBeCloseTo(0.9, 6)
+    expect(mods.foeHitDown).toBeCloseTo(0.1, 6)
+    expect(mods.blindReduce).toBeCloseTo(0.1, 6)
+    expect(['kinetic', 'explosive', 'plasma']).toContain(mods.foeMainType)
+    // 敌卡派生：威胁乘数直接压总血预算 ⇒ 按 createFoeSpecs 实算总血比（血预算落在派生卡内部）
+    const hpOf = (a: Parameters<typeof createFoeSpecs>[0]): number =>
+      createFoeSpecs(a, ctx.balance.battle).reduce((n, s) => n + s.hp.s + s.hp.a + s.hp.h, 0)
+    const full = wormholeDerivedAnomaly(ctx, baseCard, { depth: run.depth, kind: 'node', waves: 1 })
+    const cut = wormholeDerivedAnomaly(ctx, baseCard, { depth: run.depth, kind: 'node', waves: 1, threatMul: 0.5 })
+    expect(hpOf(full)).toBeGreaterThan(0)
+    expect(hpOf(cut)).toBeLessThan(hpOf(full))
+    expect(hpOf(cut) / hpOf(full)).toBeCloseTo(0.5, 1)
+    // 敌方命中 / 近盲带也折进派生卡
+    const debuffed = wormholeDerivedAnomaly(ctx, baseCard, {
+      depth: run.depth,
+      kind: 'node',
+      waves: 1,
+      foeHitDown: 0.2,
+      blindReduce: 0.2,
+    })
+    expect(debuffed.foeHitRate ?? 0).toBeLessThan(full.foeHitRate ?? 1)
+    expect(debuffed.blindDmgMul ?? 0).toBeLessThan(full.blindDmgMul ?? 1)
+  })
+
+  it('⑤ 洞内战斗真的吃到增益（走开战入口，读 battle.wormhole 快照）', () => {
+    /** 走到一个"舰船信号"格并开战（装置已先摆好；战斗中不能再移动 ⇒ 每趟只打一场） */
+    const fightAtSignal = (seed: number, withDevice: boolean): GameState => {
+      const state = enterRun(4, seed)
+      const run = state.wormhole.run!
+      if (withDevice) run.hold = holdWith({ 'mat-suppressor': 2, 'mat-jammer': 2 })
+      const grid = run.grid!
+      const target = grid.cells.find((c) => c.place === 'ship' && c.key !== `${grid.pos.q},${grid.pos.r}`)!
+      expect(target, '盘面上应有舰船信号格').toBeDefined()
+      expect(wormholeTravelTo(state, ctx, { q: target.q, r: target.r }, { confirmUnknown: true }).ok).toBe(true)
+      // 舰船信号 = **到达即开打**（船长 2026-09-13）⇒ 走完这一步战斗就已经开起来了
+      if (!run.battle) {
+        const act = wormholeActivateAt(state, ctx)
+        expect(act.ok, act.error).toBe(true)
+      }
+      expect(run.battle).toBeTruthy()
+      return state
+    }
+    // 不带装置 ⇒ 快照是"无压制"
+    const plain = fightAtSignal(9090, false).wormhole.run!
+    expect(plain.battle!.wormhole?.threatMul ?? 1).toBe(1)
+    expect(plain.battle!.wormhole?.foeHitDown ?? 0).toBe(0)
+    // 带 2 台压制力场 + 2 台干扰发射器 ⇒ 快照里 0.9 / −0.10（逐拍重建读同一份）
+    const armed = fightAtSignal(9091, true).wormhole.run!
+    expect(armed.battle!.wormhole?.threatMul).toBeCloseTo(0.9, 6)
+    expect(armed.battle!.wormhole?.foeHitDown).toBeCloseTo(0.1, 6)
+    expect(armed.battle!.wormhole?.foeMainType).toBeTruthy()
+    expect(wormholeFoeThreat(armed.depth, 'node')).toBeGreaterThan(0)
   })
 })

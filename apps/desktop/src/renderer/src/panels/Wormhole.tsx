@@ -40,6 +40,7 @@ import {
   wormholeMatterBuffs,
   wormholeMatterDeviceAt,
   wormholeMatterDiscardHint,
+  wormholeMatterThreatMul,
   /**
    * ⚠ **信息展示必须走 `revealOf`**（2026-09-13 星云批）：地图此前直接读 `c.place` 上色，
    * 那是**真相**——星云遮蔽接进来后照旧上色，云就等于白罩了。
@@ -181,6 +182,18 @@ export function WormholePanel({
    * 界面读数、按钮提示与 core 的结算走同一个函数（`wormholeMatterBuffs`）⇒ 不会两套口径。
    */
   const matterBuffs = wormholeMatterBuffs(run?.hold)
+  /**
+   * **谜质压制后的威胁读数**（F3c B1）：界面与 core 走同一个 `wormholeMatterThreatMul`
+   * ⇒ 玩家看到的威胁就是开战真正吃的那个数（节点档 / 撤离档分开算）。
+   */
+  const nodeThreat = run ? Math.round(wormholeLayerThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'node')) : 0
+  const extractThreat = run
+    ? Math.round(wormholeExtractThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'extract'))
+    : 0
+  const matterThreatTip =
+    matterBuffs.threatNodeMul < 1 || matterBuffs.threatBossMul < 1 || matterBuffs.threatExtractMul < 1
+      ? `谜质压制已生效：节点 / 守卫 ×${matterBuffs.threatNodeMul.toFixed(2)} / ×${(matterBuffs.threatNodeMul * matterBuffs.threatBossMul).toFixed(2)} · 撤离 ×${(matterBuffs.threatNodeMul * matterBuffs.threatExtractMul).toFixed(2)}（合计最多 −50%）`
+      : '带一台「压制力场」就能把节点 / 守卫 / 撤离的威胁一起压下来（合计最多 −50%）。'
   /** 当前格上还剩几堆（打捞/采集共用；按钮上显示"本次能回收几堆"） */
   const herePiles = hereCell?.piles ?? []
   /**
@@ -1044,7 +1057,13 @@ export function WormholePanel({
                     谜质 <b>{matterBuffs.devices}</b> 台
                   </span>
                 ) : null}
-                <span className="app-wh-cell">本层威胁 <b>{wormholeLayerThreat(run.depth)}</b></span>
+                {/**
+                 * **威胁读数走谜质压制后的值**（F3c B1）：压制力场三档同源、守卫解析仪只压守卫、
+                 * 撤离掩护器只压撤离战；三档**各自 −50% 封顶**（在 core 的派生里夹好）。
+                 */}
+                <span className="app-wh-cell" title={matterThreatTip}>
+                  本层威胁 <b>{nodeThreat}</b>
+                </span>
               </div>
               {grid && hereCell ? (
                 <>
@@ -1058,7 +1077,7 @@ export function WormholePanel({
                         ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
                         {run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
                           ? '：第 1 层没有拦截舰队，货物直接入港。'
-                          : `：拦截舰队会围堵你（威胁 ${wormholeExtractThreat(run.depth)}）——**打赢才把背包与货柜带回去**，打输 = 本趟全损。`}
+                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——**打赢才把背包与货柜带回去**，打输 = 本趟全损。`}
                       </span>
                       <span className="app-wh-actions">
                         <button
