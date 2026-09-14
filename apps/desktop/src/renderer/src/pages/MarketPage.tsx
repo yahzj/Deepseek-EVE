@@ -1,16 +1,16 @@
 /**
- * 市场页（V9）：NPC 挂单簿市场，两栏展示 —— 常驻供应 / 稀有订单（含限定奇货）。
+ * 市场页（V9）：NPC 挂单簿市场 —— 三个标签：常驻供应 / 稀有订单 / 限定奇货（2026-09-14 船长：奇货独立成页）。
  *
  * 玩法规则（中文说明，设计 V4/V5 已确认）：
  * - 收购价 = NPC 收玩家的价；供应价 = NPC 卖玩家的价（两者有价差，防倒卖）；
  * - 池商品（矿石/矿物）：站内库存池（常驻显示），池淤积→收购压价（倾销会砸价），
  *   池枯竭→供应断货涨价；价格还受隐藏的"冲击动量"影响（集中买卖会推/砸价，随时间恢复）；
- * - 单件商品（装备/蓝图/船/核心）：常驻平价随刷随买；稀有订单低频、限定奇货偶发高价；
+ * - 单件商品（装备/蓝图/船/核心）：常驻平价随刷随买；稀有订单低频、限定奇货偶发高价（两者各自一个标签）；
  * - 市价买入吃穿簿后剩单会自动转成限价挂单；挂单随时可撤销（货退回原库存）。
  *
  * 展示规则（玩家 2026-09 修正要求）：
  * - "有货"的商品行冒泡上浮（有供应现货的排在前，无货沉底，稳定排序）；
- * - 稀有订单行标注现存供应单的剩余寿命（最早到期的那笔，mm:ss）；
+ * - 稀有订单 / 限定奇货行标注现存供应单的剩余寿命（最早到期的那笔，mm:ss）；
  * - 常驻供应标题后显示"下次补给"倒计时（= 距下一市场窗口的剩余时间）；
  * - 两栏标题下方各带一个搜索栏：可按名称/商品键检索 + 按类型（物品/装备/舰船/蓝图/核心）过滤；
  * - 每行提供手动挂单（挂单买/挂单卖，数量+价格可改，卖单从自然库存锁定）。
@@ -435,7 +435,7 @@ function stockedFirst(engine: PageProps['engine'], goods: MarketGoodDef[]): Mark
   return pinMarked(engine.state, 'goods', rows, (g) => g.key)
 }
 
-/** 稀有订单列排序（2026-09-08 船长定：优先置顶"有货的限定奇货"）：
+/** 稀有档列排序（稀有订单与限定奇货两个标签共用；2026-09-08 船长定：优先置顶"有货的限定奇货"）：
  * ① 有货奇货 → ② 其余有货 → ③ 无货奇货 → ④ 其余无货；组内保持目录稳定顺序；
  * 2026-09-10 起：已标记商品再置顶一层（本列无用户可选排序，仍属默认口径） */
 function rareOrderRows(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
@@ -456,6 +456,7 @@ function MarketColumn({
   hint,
   right,
   rows,
+  empty,
   selKey,
   onSelect,
 }: {
@@ -465,6 +466,8 @@ function MarketColumn({
   hint?: ReactNode
   right: ReactNode
   rows: MarketGoodDef[]
+  /** 空态文案（缺省＝"没有匹配的订单"那句；「限定奇货」这类会周期性缺货的档要写自己的话，见调用处） */
+  empty?: string
   selKey?: string | null
   onSelect?: (key: string) => void
 }) {
@@ -472,7 +475,7 @@ function MarketColumn({
     // is-fill + 去掉列表自身 max-height 帽：列表交给 Panel body 二级内滚（一级页不滚）
     <Panel className="is-fill" title={title} hint={hint} right={right}>
       {rows.length === 0 ? (
-        <div className="app-dim app-inv-empty">没有匹配的订单（试试清空搜索、切换类型或子分类）。</div>
+        <div className="app-dim app-inv-empty">{empty ?? '没有匹配的订单（试试清空搜索、切换类型或子分类）。'}</div>
       ) : (
         <ul className="app-inv-list">
           {rows.map((good) => (
@@ -1164,8 +1167,10 @@ export function MarketPage({
   const state = engine.state
   const goods = useMemo(() => [...engine.ctx.marketGoods.values()], [engine])
   const common = goods.filter((g) => g.rarity === 'common')
-  const rareCol = goods.filter((g) => g.rarity !== 'common')
-  const [mktTab, setMktTab] = useState<'common' | 'rare'>('common')
+  // 2026-09-14 船长：奇货从稀有订单里独立成第三个标签（「限定奇货」· 图标 ◈ · 常态显示）
+  const rareCol = goods.filter((g) => g.rarity === 'rare')
+  const exoticCol = goods.filter((g) => g.rarity === 'exotic')
+  const [mktTab, setMktTab] = useState<'common' | 'rare' | 'exotic'>('common')
   // 外部聚焦（如舰船页"去市场"）：focusSeq 递增时把搜索词设为指定商品 key（像玩家自己搜的一样）
   const [kw, setKw] = useState('')
   // 行情详情选中商品（船长 2026-09-05：行内「 详情」/外部聚焦展开）
@@ -1186,8 +1191,8 @@ export function MarketPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusSeq])
 
-  // 页面级全局搜索（船长 2026-09-05）：搜索栏从两栏内取出；输入/类型过滤时同时检索常驻与稀有订单
-  // （常驻与稀有的商品集不重叠——rarity 单值归属，跨栏合并不会重复条目）。
+  // 页面级全局搜索（船长 2026-09-05）：搜索栏从各栏内取出；输入/类型过滤时同时检索常驻 / 稀有 / 限定奇货
+  // （三档商品集互不重叠——rarity 单值归属，跨档合并不会重复条目）。
   const [kind, setKind] = useState<KindFilter>('all')
   const [sub, setSub] = useState<string>(SUB_ALL)
   const query = kw.trim().toLowerCase()
@@ -1227,12 +1232,12 @@ export function MarketPage({
       {/* 常驻双栏：左 = 搜索 + 标签 + 商品列表；右 = 市场详情大盘（常驻，无选中时显示引导） */}
       <div className="app-mkt-split">
         <div className="app-mkt-left">
-          {/* 页面级全局搜索栏：同时检索常驻 + 稀有订单（常驻与稀有商品不重叠） */}
+          {/* 页面级全局搜索栏：同时检索常驻 + 稀有 + 限定奇货（三档商品不重叠） */}
           <div className="app-mkt-search">
             <input
               className="app-mkt-search-input"
               type="search"
-              placeholder="搜索市场（同时检索常驻与稀有订单）：名称 / 商品键"
+              placeholder="搜索市场（同时检索常驻 / 稀有 / 限定奇货）：名称 / 商品键"
               value={kw}
               onChange={(e) => setKw(e.target.value)}
             />
@@ -1262,7 +1267,7 @@ export function MarketPage({
           </div>
 
           {filterActive ? (
-            /* ── 搜索/过滤激活：跨栏合并结果（常驻 + 稀有一次搜全；GoodRow 自带稀有度徽标区分） ── */
+            /* ── 搜索/过滤激活：跨档合并结果（常驻 + 稀有 + 限定奇货一次搜全；GoodRow 自带稀有度徽标区分） ── */
             <MarketColumn
               engine={engine}
               title={
@@ -1273,14 +1278,16 @@ export function MarketPage({
                     }`
               }
               hint={<HintIcon tip={MKT_MECH_TIP} />}
-              right={<span className="app-dim">常驻与稀有订单一次搜全（商品按稀有度徽标区分）</span>}
+              right={<span className="app-dim">常驻 / 稀有 / 限定奇货一次搜全（商品按稀有度徽标区分）</span>}
               rows={filteredAll}
               selKey={activeSelKey}
               onSelect={setSelKey}
             />
           ) : (
             <>
-              {/* 常驻订单 / 稀有订单（与星图页同款 app-subtabs 标签规范；稀有单时效短，切回本页记得看一眼） */}
+              {/* 常驻订单 / 稀有订单 / 限定奇货（与星图页同款 app-subtabs 标签规范；后两者时效短，
+                  切回本页记得看一眼）—— 2026-09-14 船长：「将市场页面的奇货从稀有订单里独立出现…
+                  可以新增一个标签页切换」＋三答：标签名取「限定奇货」· 图标取 `◈` · **常态显示** */}
               <div className="app-subtabs" role="tablist">
                 <button
                   role="tab"
@@ -1296,10 +1303,20 @@ export function MarketPage({
                   aria-selected={mktTab === 'rare'}
                   className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
                   onClick={() => setMktTab('rare')}
-                  title="稀有订单寿命 36 分钟、蓝图书 6 小时、限定奇货 6 小时有效——每 10 分钟一轮到货，切回本标签才能看到现存单"
+                  title="稀有订单寿命 36 分钟、蓝图书 6 小时——每 10 分钟一轮到货，切回本标签才能看到现存单"
                 >
                   <span>✦</span>
                   <span>稀有订单</span>
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={mktTab === 'exotic'}
+                  className={`app-subtab${mktTab === 'exotic' ? ' is-active' : ''}`}
+                  onClick={() => setMktTab('exotic')}
+                  title="限定奇货 6 小时有效——每 10 分钟一轮到货，切回本标签才能看到现存单"
+                >
+                  <span>◈</span>
+                  <span>限定奇货</span>
                 </button>
               </div>
 
@@ -1317,13 +1334,24 @@ export function MarketPage({
                   selKey={activeSelKey}
                   onSelect={setSelKey}
                 />
-              ) : (
+              ) : mktTab === 'rare' ? (
                 <MarketColumn
                   engine={engine}
                   title="稀有订单"
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
-                  right={<span className="app-dim">每 10 分钟一轮到货 · 稀有 36 分钟寿命（蓝图书 6 小时）· 限定奇货 6 小时有效 · 时钟=现存单到期</span>}
+                  right={<span className="app-dim">每 10 分钟一轮到货 · 稀有 36 分钟寿命（蓝图书 6 小时）· 时钟=现存单到期</span>}
                   rows={rareOrderRows(engine, rareCol)}
+                  selKey={activeSelKey}
+                  onSelect={setSelKey}
+                />
+              ) : (
+                <MarketColumn
+                  engine={engine}
+                  title="限定奇货"
+                  hint={<HintIcon tip={MKT_MECH_TIP} />}
+                  right={<span className="app-dim">每 10 分钟一轮到货 · 限定奇货 6 小时有效 · 时钟=现存单到期</span>}
+                  rows={rareOrderRows(engine, exoticCol)}
+                  empty="当前没有限定奇货到货——每 10 分钟一轮，稍后再看。"
                   selKey={activeSelKey}
                   onSelect={setSelKey}
                 />
