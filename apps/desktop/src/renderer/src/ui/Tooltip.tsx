@@ -34,6 +34,19 @@ interface TipState {
 const TIP_W = 300
 const PAD = 8
 
+/**
+ * 原生 `title` 提示 → 自绘提示的**悬停延迟**（毫秒 · 2026-09-13 船长定）。
+ * 船长原话：「玩家反应，按钮的鼠标悬浮提示有时候过宽。建议限制下宽度，允许多几行。」
+ * 成因：过宽的其实是**浏览器原生 `title` 提示**——它不换行，长文案会拉成一整条
+ * （自绘的 `.app-tip` 本来就是 300px 上限 + 自动换行，做不出"过宽"）。
+ * 集中提问后船长选定：**所有带 `title` 的元素**都换自绘（不只按钮）＋ **悬停 200ms 后弹**
+ * （鼠标扫过一排按钮时不一路弹提示，停住才弹；也不像原生那样等 1 秒）。
+ */
+const NATIVE_TIP_HOVER_MS = 200
+
+/** 「原生 title 已被摘走」的暂存属性名（离开时原样放回，读 title 的代码不受影响） */
+const NATIVE_TIP_STASH = 'tipNative'
+
 const listeners = new Set<(s: TipState | null) => void>()
 let current: TipState | null = null
 let raf = 0
@@ -159,6 +172,81 @@ export function TooltipLayer(): ReactNode {
     return () => {
       window.removeEventListener('pointerdown', dismiss)
       window.removeEventListener('scroll', dismiss, true)
+    }
+  }, [])
+
+  /**
+   * ⚠ **原生 title 一律改走自绘提示**（2026-09-13 船长：「按钮的鼠标悬浮提示有时候过宽…
+   * 限制下宽度，允许多几行」）——机制：
+   * 1. 指针进入带 `title` 的元素后**等 NATIVE_TIP_HOVER_MS**，才把 `title` 摘到 `dataset.tipNative`
+   *    并弹自绘提示（`.app-tip`：max-width 300px + `white-space: pre-line` + `overflow-wrap: anywhere`
+   *    ⇒ **限宽、可多行**，且 title 里的 `\n` 仍按行渲染；扫过不弹、停住才弹）；
+   * 2. 指针真正离开该元素（`relatedTarget` 不在其内部）或提前离开 ⇒ 把 `title` **原样放回**并收起提示
+   *    ⇒ 任何读 `title` 的代码（如"点了禁用按钮弹原因"那条链）行为不变；
+   * 3. 元素在展示期间被重新渲染，若 React 又把 `title` 写回来（值变了才会写）⇒ 放回时**不覆盖**已存在的值；
+   * 4. 同时挂 `pointerover/pointerout`：某些浏览器对禁用控件的 mouse 事件不打，pointer 事件照打
+   *    （禁用按钮的长说明正是最需要限宽的一类）。
+   */
+  useEffect(() => {
+    let timer = 0
+    let armed: HTMLElement | null = null // 已进入、在等延迟的元素
+    let shown: HTMLElement | null = null // 已摘走 title、正在展示自绘提示的元素
+    const restore = (): void => {
+      if (timer !== 0) {
+        window.clearTimeout(timer)
+        timer = 0
+      }
+      armed = null
+      if (!shown) return
+      const el = shown
+      shown = null
+      const text = el.dataset[NATIVE_TIP_STASH]
+      delete el.dataset[NATIVE_TIP_STASH]
+      // 只在元素当前没有 title 时放回（元素若被 React 重新渲染并写了新值，以新值为准）
+      if (text !== undefined && !el.hasAttribute('title')) el.setAttribute('title', text)
+    }
+    const targetOf = (e: Event): HTMLElement | null => {
+      const t = e.target as HTMLElement | null
+      if (!t || typeof t.closest !== 'function') return null
+      return t.closest('[title], [data-tip-native]') as HTMLElement | null
+    }
+    const onEnter = (e: Event): void => {
+      const el = targetOf(e)
+      if (!el || el === shown || el === armed) return
+      restore()
+      const text = el.getAttribute('title') ?? ''
+      if (text.trim() === '') return
+      armed = el
+      timer = window.setTimeout(() => {
+        timer = 0
+        if (armed !== el || !el.isConnected) return
+        armed = null
+        el.dataset[NATIVE_TIP_STASH] = text
+        el.removeAttribute('title')
+        shown = el
+        const r = el.getBoundingClientRect()
+        showTip(text, Math.round(r.left + Math.min(r.width / 2, 160)), Math.round(r.bottom - 4))
+      }, NATIVE_TIP_HOVER_MS)
+    }
+    const onLeave = (e: Event): void => {
+      const el = targetOf(e)
+      if (!el || (el !== shown && el !== armed)) return
+      // 注意：本文件顶部的 `MouseEvent` 是 React 的类型，这里要的是 DOM 事件的 relatedTarget
+      const to = (e as unknown as { relatedTarget?: Node | null }).relatedTarget ?? null
+      if (to && el.contains(to)) return // 只是在元素内部移动
+      restore()
+      hideTip()
+    }
+    document.addEventListener('mouseover', onEnter, true)
+    document.addEventListener('mouseout', onLeave, true)
+    document.addEventListener('pointerover', onEnter, true)
+    document.addEventListener('pointerout', onLeave, true)
+    return () => {
+      restore()
+      document.removeEventListener('mouseover', onEnter, true)
+      document.removeEventListener('mouseout', onLeave, true)
+      document.removeEventListener('pointerover', onEnter, true)
+      document.removeEventListener('pointerout', onLeave, true)
     }
   }, [])
 
