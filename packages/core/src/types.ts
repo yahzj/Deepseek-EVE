@@ -737,7 +737,8 @@ export interface BattleBalance {
   /* ═══ 舰船属性成长技能（2026-09-05 一号按盘点补；数值 C4 复核）═════════════
      CPU：只提高船体 CPU 总量（装配+无人机放飞共用预算），不改单件成本；
      机动速度：乘于 船速×推进器 之上；回避：缺口收窄（与姿态陀螺缺口复合）；
-     命中：乘于 船体 hitBonus，作用于打敌命中加成。 */
+     ⚠ 命中：**2026-09-14 船长改判后不再"乘于船体 hitBonus"**——索敌统合改为乘在
+     **炮台/导弹架的基础命中率**上（与火控阵列学同通道、乘算叠加，见下 `hitSkillId`）。 */
   cpuSkillId: string
   cpuPerLevel: number
   speedSkillId: string
