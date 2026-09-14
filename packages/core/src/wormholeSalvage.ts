@@ -1449,10 +1449,10 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       if (landed.where === 'hold') {
         addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 1 格）。`)
       } else if (landed.where === 'temp') {
-        addLog(state, 'info', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ **先放进临时空间**（到「货仓」页整理进货仓）。`)
+        addLog(state, 'info', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`)
       } else {
         cell.piles = [...(cell.piles ?? []), { itemId: coreId, units: 1 }]
-        addLog(state, 'warn', `🕳 遗迹深处发现${name}：**货仓与临时空间都放不下** ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
+        addLog(state, 'warn', `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
       }
       result.cores = [coreId]
     }
