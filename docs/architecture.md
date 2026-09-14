@@ -118,6 +118,34 @@ v0→…→v24 迁移链在案，老档自动无损升级；真实档迁移经�
   就地扫描窗口已完成毫秒存入 `scanProgress`（随档保存），下次对该星系扫描只补扫剩余窗口；
   返航段终止直接结算点亮；完成/结算均清除进度。
 
+## 终局玩法「虫洞」（2026-09-14 上线）
+
+**一句话**：虫洞是"带编队进副本、按回合探索、活着把货带回来"的终局玩法；**扫描发现 → 库存 → 进洞探索 → 撤离结算**
+四段，全部由 core 的状态机驱动，界面只读状态与发命令。
+
+- **模块边界**（`packages/core/src/`）：
+  | 文件 | 职责 |
+  |---|---|
+  | `wormhole.ts` | 副本状态机（进入 / 推进 / 深入 / 撤离 / 临时离开与返回）· **进洞门槛**（`wormholeEntryBlockReason` / `wormholeShipEntryBusy` / `wormholeEntryAutoStops`）· 编队质量与回合预算 |
+  | `wormholeScan.ts` | 主控活动「扫描虫洞」（220 分钟窗口 × 三技能）· 库存 5 处（`wormholeStock`，**起始层恒 1**）· 放弃 · **解锁门槛 = 协会声望 40** |
+  | `wormholeGrid.ts` | 层内六边形网格、信号/地点盘面、**内容原型**（五档权重）与遗迹占比/下限 |
+  | `wormholeFoes.ts` | 五张洞内敌卡按层派生 · **族徽**（`WORMHOLE_FAMILY_CARD`：一处一族的 1:1 映射） |
+  | `wormholeSalvage.ts` | 墓场/遗迹/矿脉的产出堆 · **族池**（专属装备/图纸/舰船按族）· 安全货柜与图纸货柜的**开箱池** |
+  | `wormholeMatter.ts` | 谜质储存器 27 台（洞内随行生效的增益/压制表） |
+  | `wormholeBattle.ts` / `wormholeFleetBattle.ts` | 洞内战斗（我方 4 单位路径）与撤离战派生 |
+  | `wormholeHold.ts` | 洞内货仓（8 列网格 + **临时空间** 4×8）的形状件/散货摆放 |
+  | `wormholeAuto.ts` | **自动探索**（最多 4 条副船 · 各占 1 枚 AI 核心 · 5 分钟 · 收益 ×40% 入仓库 · 绝不丢船 · 报告需确认 · **主控交接**） |
+- **状态落点**：`state.wormhole`（`run` 副本 / `lastSettle` 结算单）· `state.wormholeScan` · `state.wormholeStock` ·
+  `state.wormholeAuto` / `state.wormholeAutoReports` —— **全为可选字段 ⇒ 零迁移**（老档缺省即无虫洞）。
+- **主控活动口径**：「进洞」是与采矿/打捞/扫描/远征同级的**一个主控活动**，但**只在"人在洞里"（`attending === true`）时占位**；
+  临时离开 ⇒ 活动停止、主控立刻释放、洞内冻结（进度原样保存）。进洞时会**自动停掉**扫描虫洞/开采/打捞/长途运输
+  （与手点「停止」同一路径），**远征等不自动停、照旧拦住**。
+- **可见性**：**已上线**（2026-09-14 船长解闸）⇒ 入口常驻、数据全部可见、公开叫法「虫洞」；
+  玩家侧门槛只有协会声望 ≥ 40。当年"入口走调试开关 + 数据走 `unreleased` + 文案不得提及虫洞"的施工期铁律**已作废**。
+- **权威文档**：`docs/design/wormhole-extraction-endgame-20260912.md`（总稿）·
+  `wormhole-discovery-scan-20260914.md`（扫描/库存/自动探索）· `wormhole-exclusive-20260913.md`（专属掉落）·
+  `wormhole-ai-core-drop-20260914.md`（AI 核心掉落）· 词典八之二～八之八 · 交接卡 `handoff-20260914-to-new-pilot1.md`。
+
 ## 离线规则（M0）
 
 - 结算时长 = min(真实离开时长, 8 小时上限)；超出部分放弃并写日志说明。
