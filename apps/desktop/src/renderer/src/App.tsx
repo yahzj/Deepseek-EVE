@@ -1016,6 +1016,15 @@ export function App({ engine }: { engine: GameEngine }) {
                   changePage('market')
                 }}
                 onGotoMap={gotoMapTab}
+                /**
+                 * **组装机「去虫洞（遗迹打捞）」**（船长 2026-09-14：虫洞专属图纸市场买不到）⇒
+                 * 跳**星图 · 出港 · 扫描虫洞**页（进洞与库存都在那儿）。走既有的 `changePage` + `changeMapTab`
+                 * 两个入口，教程锁与标签口径自动跟随（与星图内部跳转同一把尺）。
+                 */
+                onGotoWormhole={() => {
+                  changePage('map')
+                  changeMapTab('whscan')
+                }}
               />
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}

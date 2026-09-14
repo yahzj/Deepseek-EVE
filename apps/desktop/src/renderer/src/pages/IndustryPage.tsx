@@ -455,9 +455,12 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   )
 }
 
-export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageProps & {
+export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoWormhole }: PageProps & {
   onGotoMarket?: (goodKey: string) => void
   onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void
+  /** 「去虫洞（遗迹打捞）」：跳星图 · 出港 · 扫描虫洞（船长 2026-09-14：虫洞专属图纸市场买不到；
+   *  声望不达标时组装机那张卡自己会置灰，不会走到这里） */
+  onGotoWormhole?: () => void
 }) {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
@@ -473,12 +476,22 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
   const runViews = engine.refineRunViews()
   // 组装机「去精炼」跳转目标（矿石卡 id；高亮数秒后自清；2026-09-08 船长定）
   const [focusOreId, setFocusOreId] = useState<string | null>(null)
+  /**
+   * **蓝图书架 → 组装机**跳转目标（蓝图 id；船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图直接跳转
+   * 对应组装机」）——与 `focusOreId` 同一套高亮机制（`.app-belt-card.is-goto` + 居中滚动 + 3.5 秒自清），
+   * 只是目标在组装机那一栏，所以跳的时候要**同时把组装机的三级筛选清掉**（`craftFocus` 透传给面板，
+   * 面板在自己的 effect 里复位 tab/sub/useKind —— 否则目标卡可能正被筛掉，跳过去是一片空白）。
+   */
+  const [craftFocus, setCraftFocus] = useState<string | null>(null)
   useEffect(() => {
-    if (!focusOreId) return
+    if (!focusOreId && !craftFocus) return
     document.querySelector('.app-belt-card.is-goto')?.scrollIntoView({ block: 'center' })
-    const t = window.setTimeout(() => setFocusOreId(null), 3500)
+    const t = window.setTimeout(() => {
+      setFocusOreId(null)
+      setCraftFocus(null)
+    }, 3500)
     return () => window.clearTimeout(t)
-  }, [focusOreId])
+  }, [focusOreId, craftFocus])
 
   /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场
    *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。
@@ -601,9 +614,24 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
       </div>
 
       {sec === 'craft' ? (
-        <ManufacturingPanel engine={engine} onToast={onToast} onNeedMineral={handleNeedMineral} onGotoMarket={onGotoMarket} />
+        <ManufacturingPanel
+          engine={engine}
+          onToast={onToast}
+          onNeedMineral={handleNeedMineral}
+          onGotoMarket={onGotoMarket}
+          onGotoWormhole={onGotoWormhole}
+          focusBlueprintId={craftFocus}
+        />
       ) : sec === 'shelf' ? (
-        <BlueprintShelfPanel engine={engine} onToast={onToast} />
+        <BlueprintShelfPanel
+          engine={engine}
+          onToast={onToast}
+          onGotoCraft={(bpId) => {
+            // 切栏 + 复位组装机筛选（面板在 focus 变化时自己复位）＋ 定位高亮那张卡
+            setSec('craft')
+            setCraftFocus(bpId)
+          }}
+        />
       ) : (
         <Panel
           className="is-fill win-fixed-body"
