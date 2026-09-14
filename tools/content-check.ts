@@ -947,6 +947,12 @@ const SUBCLASS_NON_WH_SHIP_IDS = new Set([
  * ⚠ **只钉专属舰**：官方 23 艘里 19 艘不在线上（船长 2026-09-14 已收到核对表，待另裁）。
  */
 const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18 }
+/**
+ * **已经逐艘点名对齐基准线的官方船**（船长 2026-09-14 起分次点名；每点名一艘就往这里加一条并跑断言）。
+ * 与专属舰不同：官方船**不是**「默认 +1」，而是**恰好等于该档默认**。
+ * ⚠ 名单外的官方船现状不在契约内（还有 14 艘偏离，船长会逐艘点名）。
+ */
+const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -1009,6 +1015,16 @@ for (const s of SHIPS) {
         check(
           total === base + 1,
           `专属舰 ${s.id} 槽位总数应为该档默认 ${base} +1 = ${base + 1}，实际 ${total}（船长 2026-09-14 基准线）`,
+        )
+      }
+    }
+    // **已点名对齐的官方船**：恰好等于该档默认（船长逐艘点名，名单见 OFFICIAL_SLOT_ALIGNED）
+    if (OFFICIAL_SLOT_ALIGNED.has(s.id)) {
+      const base = TIER_SLOT_BASE[s.tier]
+      if (base !== undefined) {
+        check(
+          total === base,
+          `官方舰 ${s.id} 已按船长裁定对齐基准线，槽位总数应为该档默认 ${base}，实际 ${total}`,
         )
       }
     }

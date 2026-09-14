@@ -28,7 +28,7 @@ import {
 } from '../src/index'
 import { makeTestCtx, moduleDef, ship } from './helpers'
 
-/** 试验船：布局 高5/中3/低4（同牛鲨级形状）——远大于 `emptyFitted()` 的 1/1/1 */
+/** 试验船：布局 高5/中3/低4——远大于 `emptyFitted()` 的 1/1/1（原注「同牛鲨级形状」已作废：牛鲨级 2026-09-14 改 5/2/4） */
 const SHIP = 'sh-layout'
 const ARMOR = 'mod-armor-x' // 低槽
 const CPU = 'mod-cpu-x' // 低槽、自身不占 CPU、+45 预算

@@ -545,7 +545,8 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-bullshark',
     name: '牛鲨级突击巡洋舰',
     role: 'armed',
-    slots: { high: 5, mid: 3, low: 4 }, // V18 槽位布局（草案表 v18-slots.md）
+    slots: { high: 5, mid: 2, low: 4 }, // **11 槽**（2026-09-14 船长：「牛鲨-1槽位」⇒ **中槽 −1**、对齐 T3 默认线 11；
+    //   保住「厚甲重炮」那一排低槽：低槽 = 装甲/货舱 + 伤害/射速支援件）；原布局 5/3/4 见 v18-slots.md 草案表
     tier: 3,
     cargoM3: 3000,
     cycleSeconds: 13,
@@ -579,7 +580,8 @@ export const SHIPS: readonly ShipDef[] = [
     name: '鹦鹉螺级测绘巡洋舰',
     role: 'armed',
     subClass: '侦察舰', // 2026-09-13 船长：**协会功能舰也写子分类**（`content:check` 同步放宽为"白名单 + 非虫洞登记表"）
-    slots: { high: 4, mid: 3, low: 3 }, // **10 槽**（船长给定；武装舰契约「高槽 ≥ 低槽+1」⇒ 4 ≥ 4 ✔）
+    slots: { high: 4, mid: 4, low: 3 }, // **11 槽**（2026-09-14 船长：「鹦鹉螺+1槽位」⇒ **中槽 +1**、对齐 T3 默认线 11；
+    //   与同子分类「侦察舰」的幽影侦察舰（3/4/1）「中槽最多」同形——中槽 = 命中/闪避支援，正是它吃的那两项）
     tier: 3,
     cargoM3: 6600, // 船长：「货仓可以乘*3」（原案 2,200 ×3 ⇒ 虫洞背包 ⌊6,600÷500⌋ = 13 格）
     cycleSeconds: 14,

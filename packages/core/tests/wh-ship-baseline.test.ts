@@ -55,6 +55,20 @@ describe('虫洞族专属舰船：槽位基准线（2026-09-14 船长）', () =>
   })
 })
 
+describe('官方 T3 槽位对齐（船长 2026-09-14：「2.鹦鹉螺+1槽位，牛鲨-1槽位。」）', () => {
+  it('两艘都收到 T3 默认线 11，且满足武装舰契约「高槽 ≥ 低槽 + 1」', () => {
+    const nautilus = SHIPS.find((s) => s.id === 'sh-nautilus')!
+    const bullshark = SHIPS.find((s) => s.id === 'sh-bullshark')!
+    expect(nautilus.slots).toEqual({ high: 4, mid: 4, low: 3 }) // 中槽 +1（原 4/3/3 = 10）
+    expect(bullshark.slots).toEqual({ high: 5, mid: 2, low: 4 }) // 中槽 −1（原 5/3/4 = 12）
+    for (const s of [nautilus, bullshark]) {
+      const slots = s.slots!
+      expect(slots.high + slots.mid + slots.low, `${s.name} 槽位总数`).toBe(TIER_SLOT_BASE[s.tier])
+      expect(slots.high, `${s.name} 武装舰契约`).toBeGreaterThanOrEqual(slots.low + 1)
+    }
+  })
+})
+
 describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
   it('两艘鱼雷舰的数值（火力/命中/回避/槽位）', () => {
     expect(TORP_E.powerBonus).toBe(0.5) // 0.25 + 0.25

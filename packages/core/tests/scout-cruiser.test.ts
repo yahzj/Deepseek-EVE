@@ -6,7 +6,8 @@
  * 「**采矿提高到39单位**」「**船和蓝图放入奇货**」「**跟虫洞挂 unreleased**」。
  *
  * 本件钉四件事：
- * ① **舰体定案**：T3 / armed / 子分类「侦察舰」· **10 槽**（4/3/3）· 机舱 **80**（同级 50）·
+ * ① **舰体定案**：T3 / armed / 子分类「侦察舰」· ~~10 槽（4/3/3）~~ ⇒ **11 槽（4/4/3）**
+ *    （**2026-09-14 船长：「鹦鹉螺+1槽位」**，对齐 T3 默认线 11；上面原话照抄不动）· 机舱 **80**（同级 50）·
  *    货舱 **6,600 m³**（原案 ×3）· 循环 14 秒产 **39** 单位 · 行价 9,000,000（贴长尾鲨级）；
  * ② **主效果实测生效**：`wormholeScanRadiusBonus: 1` ⇒ 对编队**求和**；入洞（`wormholeStartRun`）
  *    与深入下层（`wormholeDescend`）都真的把 `grid.scanRadius` 抬 1 圈，两艘可叠加；
@@ -38,13 +39,13 @@ function bpOfShip(shipId: string) {
 }
 
 describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
-  it('舰体定案：T3 侦察舰 · 10 槽 · 机舱 80 · 货舱 6,600 · 产 39/14 秒', () => {
+  it('舰体定案：T3 侦察舰 · 11 槽（4/4/3，2026-09-14 +1）· 机舱 80 · 货舱 6,600 · 产 39/14 秒', () => {
     const s = shipOf(SCOUT)
     expect(s.name).toBe('鹦鹉螺级测绘巡洋舰')
     expect(s.tier).toBe(3)
     expect(s.role).toBe('armed')
     expect(s.subClass).toBe('侦察舰') // 协会功能舰写子分类（契约已放宽为"白名单 + 非虫洞登记表"）
-    expect(s.slots).toEqual({ high: 4, mid: 3, low: 3 })
+    expect(s.slots).toEqual({ high: 4, mid: 4, low: 3 }) // 2026-09-14 船长「鹦鹉螺+1槽位」⇒ 中槽 +1（原 4/3/3）
     expect(s.droneBayM3).toBe(80) // 「无人机舱稍大」（同级巡洋 50）
     expect(s.cargoM3).toBe(6_600) // 「货仓可以乘*3」
     expect(s.cycleSeconds).toBe(14)
