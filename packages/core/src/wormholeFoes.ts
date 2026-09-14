@@ -9,6 +9,7 @@
  * §3（节点/层末 BOSS 表）· §4（威胁与收益曲线）· §九 Q11（收益涨得比难度快）。
  */
 import type { AnomalyDef, FoeShipSlot } from './types'
+import type { WormholeFamily } from './state'
 
 /* ═══════════ 一、层曲线（威胁 / 收益） ═══════════ */
 
@@ -129,6 +130,44 @@ export function wormholeCardIdFor(depth: number, nodeIndex: number): string {
   const i = Math.max(0, Math.floor(nodeIndex))
   const h = Math.abs((d * 31 + i * 7) % WORMHOLE_FOE_CARD_IDS.length)
   return WORMHOLE_FOE_CARD_IDS[h]!
+}
+
+/* ═══════════ 敌族锁定（丁 · 船长 2026-09-14 定案） ═══════════ */
+
+/** **族 → 洞内敌卡**（1:1；族字母沿用敌卡数据里的 `foeFamily`） */
+export const WORMHOLE_FAMILY_CARD: Readonly<Record<WormholeFamily, string>> = {
+  A: 'wh-pirate-scout',
+  C: 'wh-alien-swarm',
+  D: 'wh-grave-watch',
+  E: 'wh-titan-echo',
+  G: 'wh-exile-blockade',
+}
+
+/** 族徽色调（界面用；与 `Glyphs.tsx` 的 `fam-*` 徽记同键） */
+export const WORMHOLE_FAMILY_GLYPH: Readonly<Record<WormholeFamily, string>> = {
+  A: 'fam-a',
+  C: 'fam-c',
+  D: 'fam-d',
+  E: 'fam-e',
+  G: 'fam-g',
+}
+
+/** 五族（抽取顺序；等概率） */
+export const WORMHOLE_FAMILY_ORDER: readonly WormholeFamily[] = ['A', 'C', 'D', 'E', 'G']
+
+/**
+ * **一处虫洞锁定的敌族**（确定性：同 `seed` 必得同族，**等概率**五分之一）。
+ * 老档/调试入口没有该字段 ⇒ 现算，永远一致、不重掷。
+ */
+export function wormholeFamilyOfSeed(seed: number): WormholeFamily {
+  const s = Math.abs(Math.floor(seed)) % 1_000_000_007
+  const h = Math.abs((s * 1103515245 + 12345) % WORMHOLE_FAMILY_ORDER.length)
+  return WORMHOLE_FAMILY_ORDER[h]!
+}
+
+/** **本趟/本处的敌卡**（族锁定后整趟一张卡；`family` 缺省 ⇒ 按种子现算；两者都缺 ⇒ 按 1 兜底） */
+export function wormholeCardIdOfFamily(family: WormholeFamily | undefined, seed: number | undefined): string {
+  return WORMHOLE_FAMILY_CARD[family ?? wormholeFamilyOfSeed(seed ?? 1)]
 }
 
 /**

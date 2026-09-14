@@ -15,6 +15,7 @@
  */
 import { useEffect, useState } from 'react'
 import { Panel } from '@whale/ui'
+import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { formatDurationMs } from '@whale/core'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
@@ -23,6 +24,7 @@ import {
   WORMHOLE_AUTO_MAX_SHIPS,
   WORMHOLE_AUTO_YIELD_MUL,
   WORMHOLE_SCAN_BASE_MS,
+  WORMHOLE_ARCHETYPE_LABELS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
 } from '@whale/core'
@@ -40,6 +42,8 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
   }, [])
   /** 正在"配置哪一处"（null = 没在配置） */
   const [pickFor, setPickFor] = useState<string | null>(null)
+  /** 正在确认「放弃」的那一处（null = 没在确认） */
+  const [discardAsk, setDiscardAsk] = useState<string | null>(null)
   /** 配置里勾选的参与舰（开始时以库存项为键保存；关掉配置即清） */
   const [pickShips, setPickShips] = useState<string[]>([])
   const scan = state.wormholeScan ?? { active: false, progressMs: 0 }
@@ -153,36 +157,96 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
           <div className="app-dim app-inv-empty">还没有发现虫洞：开扫后等进度条走满。</div>
         ) : (
           <ul className="app-inv-list">
-            {stock.map((item) => (
-              <li key={item.id} className="app-inv-row">
-                <div className="app-inv-main">
-                  <span className="app-inv-name">虫洞 · 起始第 {item.depth} 层</span>
-                  <span className="app-inv-count">
-                    威胁与产出随起始层上升（越深越险、产出越高） · 发现于{' '}
-                    {formatDurationMs(Math.max(0, state.gameMs - item.foundAtGameMs))}前
-                  </span>
-                </div>
-                <div className="app-inv-btns">
-                  <button className="app-btn is-small is-primary" onClick={() => onExplore(item.id)}>
-                    探索这一处
-                  </button>
-                  <button
-                    className="app-btn is-small"
-                    disabled={runs.some((r) => r.stockId === item.id)}
-                    title={
-                      runs.some((r) => r.stockId === item.id)
-                        ? '这一处已经在自动探索中'
-                        : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
-                    }
-                    onClick={() => (pickFor === item.id ? setPickFor(null) : openPick(item.id))}
-                  >
-                    自动探索
-                  </button>
-                </div>
-              </li>
-            ))}
+            {stock.map((item) => {
+              const famGlyph = `fam-${item.family.toLowerCase()}`
+              const famName = engine.wormholeFamilyName(item.family)
+              const archName = WORMHOLE_ARCHETYPE_LABELS[item.archetype]
+              return (
+                <li key={item.id} className="app-inv-row">
+                  <div className="app-inv-main">
+                    <span className="app-inv-name">
+                      <span className="app-ico">
+                        <Glyph name={famGlyph} size={14} color={ICO_TONES[famGlyph]} />
+                      </span>
+                      虫洞 · 起始第 {item.depth} 层
+                    </span>
+                    <span
+                      className="app-inv-count"
+                      title={`族徽＝这一处整趟都是「${famName}」：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一族。\n内容原型「${archName}」＝这一处的地点配比口味（强度仍只看起始层）。`}
+                    >
+                      {famName} · {archName} · 威胁与产出随起始层上升（越深越险、产出越高） · 发现于{' '}
+                      {formatDurationMs(Math.max(0, state.gameMs - item.foundAtGameMs))}前
+                    </span>
+                  </div>
+                  <div className="app-inv-btns">
+                    <button className="app-btn is-small is-primary" onClick={() => onExplore(item.id)}>
+                      探索这一处
+                    </button>
+                    <button
+                      className="app-btn is-small"
+                      disabled={runs.some((r) => r.stockId === item.id)}
+                      title={
+                        runs.some((r) => r.stockId === item.id)
+                          ? '这一处已经在自动探索中'
+                          : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
+                      }
+                      onClick={() => (pickFor === item.id ? setPickFor(null) : openPick(item.id))}
+                    >
+                      自动探索
+                    </button>
+                    <button
+                      className="app-btn is-small is-warn"
+                      disabled={runs.some((r) => r.stockId === item.id)}
+                      title={
+                        runs.some((r) => r.stockId === item.id)
+                          ? '这一处正在自动探索中：先召回那一趟'
+                          : '放弃这一处（腾出库存格；不可恢复）'
+                      }
+                      onClick={() => setDiscardAsk(item.id)}
+                    >
+                      放弃
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
+
+        {/* 放弃确认（与「临时空间丢弃」同一套确认条：一次一处、说明不可恢复） */}
+        {discardAsk !== null
+          ? (() => {
+              const item = stock.find((x) => x.id === discardAsk)
+              if (!item) return null
+              return (
+                <div className="app-wh-scanbar">
+                  <div className="app-wh-scanbar-label">
+                    <span className="app-wh-hold-warn">
+                      放弃这一处虫洞？起始第 {item.depth} 层 · {engine.wormholeFamilyName(item.family)} ·{' '}
+                      {WORMHOLE_ARCHETYPE_LABELS[item.archetype]}
+                    </span>
+                  </div>
+                  <div className="app-dim">放弃后这一处就没了、**不可恢复**；库存格腾出来给新的发现，扫描进度不受影响。</div>
+                  <div className="app-wh-scanbar-actions">
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => {
+                        const r = engine.wormholeStockDiscard(item.id)
+                        if (!r.ok) onToast(r.error ?? '放弃失败。', true)
+                        else onToast('已放弃这一处虫洞。')
+                        setDiscardAsk(null)
+                      }}
+                    >
+                      确认放弃
+                    </button>
+                    <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
+                      先留着
+                    </button>
+                  </div>
+                </div>
+              )
+            })()
+          : null}
 
         {pickFor !== null ? (
           <div className="app-wh-scanbar">

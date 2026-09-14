@@ -13,6 +13,7 @@
  * 不碰回合扣费与战斗触发（那两块在 `wormhole.ts` / F3b）。
  */
 import type { WormholeFoeKind } from './wormholeFoes'
+import type { WormholeArchetype } from './state'
 
 /* ═══════════ 一、六边形网格几何（轴向坐标 q/r） ═══════════ */
 
@@ -116,6 +117,105 @@ export const WORMHOLE_SIGNAL_WEIGHTS: Readonly<Record<WormholeSignal, number>> =
   resource: 22,
   radar: 12,
   beacon: 10,
+}
+
+/* ═══════════ 内容原型（丙 · 船长 2026-09-14 定案：只改"口味"，不动强度曲线） ═══════════ */
+
+/** 五档原型（顺序 = 抽取顺序；content:check 与 save 清洗都用它做白名单） */
+export const WORMHOLE_ARCHETYPES: readonly WormholeArchetype[] = ['balanced', 'wreck', 'ruins', 'vein', 'combat']
+
+/** 五档原型的**抽取权重**（船长定案：均衡占大头 40，交火最少 10） */
+export const WORMHOLE_ARCHETYPE_WEIGHTS: Readonly<Record<WormholeArchetype, number>> = {
+  balanced: 40,
+  wreck: 20,
+  ruins: 15,
+  vein: 15,
+  combat: 10,
+}
+
+/** 原型中文名（界面徽标/悬停/日志用；正式术语见 `docs/glossary.md`） */
+export const WORMHOLE_ARCHETYPE_LABELS: Readonly<Record<WormholeArchetype, string>> = {
+  balanced: '均衡深区',
+  wreck: '残骸富集',
+  ruins: '遗迹密集',
+  vein: '母矿脉',
+  combat: '交火密集',
+}
+
+/** 原型抽取顺序（与权重表同序；抽签与遍历共用，防两处漂移） */
+const ARCHETYPE_ORDER: readonly WormholeArchetype[] = ['balanced', 'wreck', 'ruins', 'vein', 'combat']
+
+/**
+ * **一处虫洞的内容原型**（确定性：同 `seed` 必得同原型）。
+ *
+ * 口径 = 按 `WORMHOLE_ARCHETYPE_WEIGHTS` 把 `[0, total)` 切成五段，用种子的确定性散列落段
+ * （与 `wormholeStream` 同一套写法）⇒ 老档没有该字段时**现算**也永远一致、不重掷。
+ */
+export function wormholeArchetypeOf(seed: number): WormholeArchetype {
+  let total = 0
+  for (const k of ARCHETYPE_ORDER) total += WORMHOLE_ARCHETYPE_WEIGHTS[k]
+  const r = wormholeStream(seed * 2654435761 + 17)() * total
+  let acc = 0
+  for (const k of ARCHETYPE_ORDER) {
+    acc += WORMHOLE_ARCHETYPE_WEIGHTS[k]
+    if (r < acc) return k
+  }
+  return 'balanced'
+}
+
+/**
+ * **原型 → 该层的信号权重表**（在基准表上重分配；**总和保持不变** ⇒ 空占比与"每格价值"都不被放大）。
+ *
+ * - `wreck`：残骸信号 ×2（墓场/遗迹都算残骸信号 ⇒ 遗迹也随之变多）；
+ * - `ruins`：残骸信号 ×1.4，**且**遗迹占比另按 `wormholeRuinsShareFor` 上调（30% → 50%）；
+ * - `vein` / `combat`：矿脉 / 舰船信号各放大（×2.2 / ×2）；
+ * - 信标恒 10（它是导航件，不参与"口味"）；
+ * - 归一化回基准总和并取一位小数（最后一项补差）⇒ 只改配比、不改总量。
+ */
+export function wormholeSignalWeightsFor(archetype: WormholeArchetype): Readonly<Record<WormholeSignal, number>> {
+  const base = WORMHOLE_SIGNAL_WEIGHTS
+  const mul: Record<WormholeSignal, number> =
+    archetype === 'wreck'
+      ? { ship: 1, wreck: 2, resource: 1, radar: 1, beacon: 1 }
+      : archetype === 'ruins'
+        ? { ship: 1, wreck: 1.4, resource: 1, radar: 1, beacon: 1 }
+        : archetype === 'vein'
+          ? { ship: 1, wreck: 1, resource: 2.2, radar: 1, beacon: 1 }
+          : archetype === 'combat'
+            ? { ship: 2, wreck: 1, resource: 1, radar: 1, beacon: 1 }
+            : { ship: 1, wreck: 1, resource: 1, radar: 1, beacon: 1 }
+  /**
+   * ⚠ **信标原样保留**（= 10）——它是每层唯一的指路件，不参与"口味"。
+   * 归一化只在**其余四类**里做（压回 `总和 − 10`）⇒
+   *  ① 信标的权重/份额/取整与改动前**逐格一致**（信标数不会因原型漂移）；
+   *  ② 四类总和也不变（= 90）⇒ 空占比与"每格价值"照旧。
+   */
+  const keys: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar']
+  const raw = keys.map((k) => base[k] * mul[k])
+  const rawTotal = raw.reduce((s, v) => s + v, 0)
+  const target = base.ship + base.wreck + base.resource + base.radar
+  const out = { ...base } as Record<WormholeSignal, number>
+  let used = 0
+  keys.forEach((k, i) => {
+    if (i === keys.length - 1) {
+      out[k] = Math.max(0, Math.round((target - used) * 10) / 10)
+      return
+    }
+    const v = Math.max(0, Math.round((raw[i]! / rawTotal) * target * 10) / 10)
+    out[k] = v
+    used += v
+  })
+  return out
+}
+
+/** 遗迹占**残骸信号**的比例（基准 30%；`ruins` 原型上调到 50%） */
+export function wormholeRuinsShareFor(archetype: WormholeArchetype): number {
+  return archetype === 'ruins' ? 0.5 : WORMHOLE_RUINS_SHARE
+}
+
+/** 遗迹下限的**原型加成**（`ruins` 原型每层 +1） */
+export function wormholeRuinsFloorBonusFor(archetype: WormholeArchetype): number {
+  return archetype === 'ruins' ? 1 : 0
 }
 
 /** **空地点占比下限**（船长：「添加空信息地点（目标地点什么都没有）至少要占 50%」） */
@@ -455,7 +555,7 @@ export function pickSignal(rnd: number, weights: Readonly<Record<WormholeSignal,
  * - `wreck` ⇒ 70% 舰船墓场 / **30% 遗迹**（船长：遗迹概率降到 30%）；
  * - `ship`/`resource`/`radar`/`beacon` ⇒ 一一对应（舰船 / 矿脉 / 谜质 / 漂浮信标）。
  */
-export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
+export function pickPlace(signal: WormholeSignal, rnd: number, ruinsShare: number = WORMHOLE_RUINS_SHARE): WormholePlace {
   switch (signal) {
     case 'ship':
       return 'ship'
@@ -466,7 +566,7 @@ export function pickPlace(signal: WormholeSignal, rnd: number): WormholePlace {
     case 'beacon':
       return 'beacon'
     case 'wreck':
-      return rnd < WORMHOLE_RUINS_SHARE ? 'ruins' : 'graveyard'
+      return rnd < ruinsShare ? 'ruins' : 'graveyard'
   }
 }
 
@@ -510,9 +610,13 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
   // 剩余格按权重分配信号（最大余数法：先按比例取整，余额给余数最大的）
   const pool = others.filter((c) => !emptyKeys.has(hexKey(c.q, c.r)))
   const order: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar', 'beacon']
-  const totalW = order.reduce((s, k) => s + WORMHOLE_SIGNAL_WEIGHTS[k], 0)
+  /** **本盘的内容原型**（丙 · 船长 2026-09-14）：只改这张权重表的配比，总量的口径照旧 */
+  const archetype = wormholeArchetypeOf(seed)
+  const signalWeights = wormholeSignalWeightsFor(archetype)
+  const ruinsShare = wormholeRuinsShareFor(archetype)
+  const totalW = order.reduce((s, k) => s + signalWeights[k], 0)
   const quota = order.map((k) => {
-    const exact = (pool.length * WORMHOLE_SIGNAL_WEIGHTS[k]) / totalW
+    const exact = (pool.length * signalWeights[k]) / totalW
     return { k, n: Math.floor(exact), frac: exact - Math.floor(exact) }
   })
   let left = pool.length - quota.reduce((s, q) => s + q.n, 0)
@@ -530,9 +634,10 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    * 这样"遗迹随层增加"与"每层有下限"同时成立，且**不改** `WORMHOLE_SIGNAL_WEIGHTS`（其余信号的比例关系照旧）。
    */
   const quotaOf = (k: WormholeSignal): { n: number; frac: number } => quota.find((q) => q.k === k)!
-  const ruinsFloorWanted = wormholeRuinsFloorFor(depth)
+  /** 遗迹下限 = 层基准 + 原型加成（`ruins` 原型 +1；船长 2026-09-14） */
+  const ruinsFloorWanted = wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype)
   let wreckN = quotaOf('wreck').n
-  while (Math.round(wreckN * WORMHOLE_RUINS_SHARE) < ruinsFloorWanted && wreckN < pool.length) {
+  while (Math.round(wreckN * ruinsShare) < ruinsFloorWanted && wreckN < pool.length) {
     const donor = quotaOf('resource').n > 1 ? 'resource' : quotaOf('radar').n > 1 ? 'radar' : null
     if (!donor) break
     quotaOf(donor).n -= 1
@@ -577,7 +682,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
   const cells: WormholeGridCell[] = all.map((c) => {
     const key = hexKey(c.q, c.r)
     const sig = signalOfCell.get(key)
-    const place: WormholePlace = sig ? pickPlace(sig, rng()) : 'empty'
+    const place: WormholePlace = sig ? pickPlace(sig, rng(), ruinsShare) : 'empty'
     return { key, q: c.q, r: c.r, place }
   })
   /**
@@ -589,7 +694,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    * ——与"信标不落入口格"同款手法（**只换不重掷** ⇒ 格数与其余地点分布照旧）。
    * 墓场是"最该让位"的那个：它的专属能效最低（0.09 稀有/回合 vs 遗迹 0.67）。
    */
-  const ruinsFloor = wormholeRuinsFloorFor(depth)
+  const ruinsFloor = wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype)
   let ruinsNow = cells.filter((c) => c.place === 'ruins').length
   if (ruinsNow < ruinsFloor) {
     for (const c of cells) {

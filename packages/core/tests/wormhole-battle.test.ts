@@ -30,6 +30,7 @@ import {
   wormholeBagSlots,
   wormholeBagUsage,
   wormholeCardIdFor,
+  wormholeCardIdOfFamily,
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
@@ -214,9 +215,12 @@ describe('虫洞 · 开战（F 批）', () => {
     const r = wormholeStartBattle(state, ctx, 'node', 0)
     expect(r.ok).toBe(true)
     const battle = run.battle!
-    // 敌卡按**格坐标**散列的序号轮换（同格恒同序；一层里连打几场不会全用同一张卡）
+    /**
+     * 敌卡 = **本趟锁定的族**（船长 2026-09-14 定案 · 丁：一处虫洞一族、整趟同族）。
+     * 本用例的 run 没写 `family`（老档口径）⇒ 按 `run.seed` 现算，与 `wormholeCardIdOfFamily` 同源。
+     */
     expect(battle.wormhole).toEqual({
-      cardId: wormholeCardIdFor(1, gridContentIndex(run.grid!)),
+      cardId: wormholeCardIdOfFamily(run.family, run.seed),
       depth: 1,
       kind: 'node',
       waves: 1,
@@ -555,7 +559,11 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(fit.ok).toBe(true)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
     expect(wormholeHoldUsage(state, ctx).used).toBeLessThanOrEqual(wormholeHoldUsage(state, ctx).capacity)
-    expect(back.bag.find((s) => s.itemId === rare)?.units, '稀有残骸被丢了').toBe(30)
+    /**
+     * 族锁定（丁）之后，**同族的稀有残骸是同一种物品** ⇒ 两格产出的稀有残骸会合成一堆，
+     * 这里不再钉"恰好 30"，只要求"还在"（没被当便宜货丢掉）。
+     */
+    expect(back.bag.find((s) => s.itemId === rare)?.units ?? 0, '稀有残骸被丢了').toBeGreaterThanOrEqual(30)
     expect(back.bag.find((s) => s.itemId === WORMHOLE_ORE_ITEM_ID)?.units, '虚空母矿被丢了').toBe(1500)
     expect(back.bag.find((s) => s.itemId === common)?.units ?? 0, '普通残骸没被扣').toBeLessThan(12 * 500)
   })
