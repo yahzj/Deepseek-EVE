@@ -73,6 +73,13 @@ const WORMHOLE_FX_SCAN_MS = 900
 const WORMHOLE_FX_NEBULA_MS = 700
 /** 被拿走的堆卡片"向下移出 + 淡出"用多久（与 CSS `.app-wh-pile.is-leaving` 的动画时长同值） */
 const WORMHOLE_PILE_OUT_MS = 300
+/**
+ * **作业进度条时长**（F2b · 船长 2026-09-13 裁定「**只做表现层进度条**」）：
+ * 打捞 / 采集 / 拾取装舱点下那一刻**数据就已经结算完了**（全篇同款：结算即落盘，动画只是表现），
+ * 这条 380ms 的回收进度条只让"正在收货"看得见——**不锁按钮、不拦操作、不加状态机**；
+ * 时长与 CSS `.app-wh-jobbar i` 的动画同值。
+ */
+const WORMHOLE_FX_JOB_MS = 380
 
 /** 探索地图的缩放档（1 = 适应窗口；每档 +25%，上限 250%）——左侧 ＋/－ 按这个步进 */
 const WORMHOLE_MAP_ZOOM_FIT = 1
@@ -291,6 +298,21 @@ export function WormholePanel({
     return () => window.clearTimeout(t)
   }, [dissolveFx])
   /**
+   * **作业进度条**（F2b · 船长 2026-09-13 裁定「只做表现层进度条」）：
+   * 打捞 / 采集 / 拾取装舱成功时播一条 380ms 的回收进度条，条上写明"这一批收了多少"。
+   * **纯表现**——动作在点下那一刻已经结算完（与扫描波、堆卡"向下移出"同一套口径），
+   * 因此不锁按钮、不拦连点（连点两次 = 进度条重播一次，属预期）。
+   */
+  const [jobFx, setJobFx] = useState<{ label: string; sub: string; nonce: number } | null>(null)
+  useEffect(() => {
+    if (!jobFx) return
+    const t = window.setTimeout(() => setJobFx(null), WORMHOLE_FX_JOB_MS)
+    return () => window.clearTimeout(t)
+  }, [jobFx])
+  /** 播一条作业进度条（`nonce` 换一次 = CSS 动画重播一次） */
+  const playJob = (label: string, sub: string): void =>
+    setJobFx((p) => ({ label, sub, nonce: (p?.nonce ?? 0) + 1 }))
+  /**
    * **作业前「货仓会不会满」预告**（船长 2026-09-13：「**在打捞挖矿之前货仓可能会满的时候提醒玩家**」）：
    * 把当前格上剩下的**散货堆**按 m³ → 格折算成预计入仓格数，与货仓剩余格数比大小。
    * 口径是**保守估计**（同种物品可能压进已有的半格 ⇒ 实际可能少占一点，故文案写"约"）；
@@ -465,11 +487,14 @@ export function WormholePanel({
     }
     if (exitNow || place === 'ship') return // 已开战：交给战斗界面
     if (place === 'graveyard' || place === 'ruins') {
+      playJob('打捞作业中…', `本批 ${res.taken ?? 0} 堆`)
       onToast(`打捞作业：这一批回收了 ${res.taken ?? 0} 堆。`)
       return
     }
-    if (place === 'vein') onToast(`采集作业：这一批回收了 ${res.taken ?? 0} 堆虚空母矿。`)
-    else if (place === 'matter') onToast('谜质的增强效果待定（F3c）。')
+    if (place === 'vein') {
+      playJob('采集作业中…', `本批 ${res.taken ?? 0} 堆`)
+      onToast(`采集作业：这一批回收了 ${res.taken ?? 0} 堆虚空母矿。`)
+    } else if (place === 'matter') onToast('谜质的增强效果待定（F3c）。')
   }
 
   /**
@@ -528,6 +553,18 @@ export function WormholePanel({
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
           </span>
         </div>
+        {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
+        {jobFx ? (
+          <div className="app-wh-jobrow" key={jobFx.nonce}>
+            <span className="app-wh-jobrow-text">
+              {jobFx.label}
+              {jobFx.sub ? <span className="app-dim"> · {jobFx.sub}</span> : null}
+            </span>
+            <span className="app-card-progress app-wh-jobbar">
+              <i />
+            </span>
+          </div>
+        ) : null}
         {/**
          * ⚠ **判据要带"幽灵卡"**（船长 2026-09-13 深夜报的坑：「**当最后打捞干净时，卡片是直接消失的**」）：
          * 原先这里只看 `herePiles.length > 0` ⇒ 最后一堆被拿走的瞬间整块换成"地点说明"，
@@ -583,7 +620,10 @@ export function WormholePanel({
                         onClick={() => {
                           const r = engine.wormholeTakePile(i)
                           if (!r.ok) onToast(r.error ?? '拾取失败。', true)
-                          else onToast('已装上货柜（占 2×2 = 4 格）。')
+                          else {
+                            playJob('装舱中…', def?.name ?? '遗迹安全货柜')
+                            onToast('已装上货柜（占 2×2 = 4 格）。')
+                          }
                         }}
                         title="拾取装舱：占货仓 2×2 = 4 格；货仓腾不出 2×2 会先放进临时空间"
                       >

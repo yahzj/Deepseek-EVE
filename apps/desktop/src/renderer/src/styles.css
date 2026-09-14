@@ -9323,6 +9323,14 @@ body {
 .app-wh-devnote { font-size: 11px; margin-left: 8px; margin-right: auto; }
 .app-wh-tabs { display: flex; gap: 6px; margin-right: 8px; }
 .app-wh-sub { margin-top: 10px; }
+/* **作业进度条**（F2b 2026-09-13 · 船长裁定「只做表现层进度条」）：复用作业卡的全宽进度条
+   `.app-card-progress`，只把填充改成"每次重播"的动画（React 侧 key 换一次 = 重播一次）。
+   数据在点下那一刻就结算完了，这条纯表现：不锁按钮、不拦连点。 */
+.app-wh-jobrow { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
+.app-wh-jobrow-text { flex: 0 0 auto; font-size: 11.5px; color: var(--wui-accent); }
+.app-wh-jobbar { flex: 1 1 auto; }
+.app-card-progress.app-wh-jobbar i { width: 0; animation: app-wh-jobfill var(--wh-job-ms, 380ms) linear forwards; }
+@keyframes app-wh-jobfill { from { width: 0; } to { width: 100%; } }
 .app-wh-triad { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
 .app-wh-cell {
   font-size: 12px; padding: 3px 8px; border: 1px solid var(--wui-border);
