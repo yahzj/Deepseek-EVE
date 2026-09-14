@@ -722,6 +722,8 @@ const BATTLE_FIELDS = {
   myDesireM: { kind: 'persist' },
   units: { kind: 'persist' },
   ammo: { kind: 'persist' },
+  // F3c B2：开战预载量（谜质「弹药回收装置」战后按「预载 − 余额」算已耗）——随档，免得中途读档后加成失效
+  ammoLoaded: { kind: 'persist' },
   ammoIds: { kind: 'persist' },
   stats: { kind: 'persist' },
   fx: { kind: 'persist' },
@@ -846,6 +848,23 @@ function cleanBattle(raw: unknown): BattleState | null {
       exp: numi(ammoRaw.exp, 0),
       pla: numi(ammoRaw.pla, 0),
     },
+    /**
+     * **开战预载量**（F3c B2 · 谜质「弹药回收装置」）：只认"三个都是有限非负数"，
+     * 缺字段 / 坏值 ⇒ **不写**（读取端在没有它时自动跳过这一项加成，不会把负数退成刷弹）。
+     */
+    ...(() => {
+      const raw = asRaw(b.ammoLoaded)
+      const ok =
+        typeof raw.kin === 'number' &&
+        Number.isFinite(raw.kin) &&
+        typeof raw.exp === 'number' &&
+        Number.isFinite(raw.exp) &&
+        typeof raw.pla === 'number' &&
+        Number.isFinite(raw.pla)
+      return ok
+        ? { ammoLoaded: { kin: Math.max(0, Math.floor(raw.kin as number)), exp: Math.max(0, Math.floor(raw.exp as number)), pla: Math.max(0, Math.floor(raw.pla as number)) } }
+        : {}
+    })(),
     stats: {
       meShots: numi(statsRaw.meShots, 0),
       meHits: numi(statsRaw.meHits, 0),

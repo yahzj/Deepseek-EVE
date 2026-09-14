@@ -86,6 +86,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mat-blindspot', kind: 'item', refId: 'mat-blindspot', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'mat-ammo-dmg', kind: 'item', refId: 'mat-ammo-dmg', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'mat-reload', kind: 'item', refId: 'mat-reload', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  // 【谜质储存器 B2 批（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）：同上一律 unreleased】
+  { key: 'mat-volley', kind: 'item', refId: 'mat-volley', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-ammo-back', kind: 'item', refId: 'mat-ammo-back', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-drone-net', kind: 'item', refId: 'mat-drone-net', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-field-repair', kind: 'item', refId: 'mat-field-repair', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
   //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722

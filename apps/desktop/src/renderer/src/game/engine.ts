@@ -1467,12 +1467,18 @@ export class GameEngine {
    * 免得两条路各写一遍回合/回滚规则）。返回值里的 `taken` = 本次回收了几堆。
    */
   wormholeActivate(): CommandResult {
-    const r = wormholeActivateAt(this.state, this.ctx)
+    // 遗迹收尾战**先提示、玩家确认后再开打**（船长 2026-09-13）⇒ 界面这条走 defer
+    const r = wormholeActivateAt(this.state, this.ctx, undefined, { deferRuinsBattle: true })
     if (r.ok) {
       void this.persist()
       this.notify()
     }
-    return { ok: r.ok, error: r.error, ...(r.taken !== undefined ? { taken: r.taken } : {}) }
+    return {
+      ok: r.ok,
+      error: r.error,
+      ...(r.taken !== undefined ? { taken: r.taken } : {}),
+      ...(r.pendingBattle ? { pendingBattle: r.pendingBattle } : {}),
+    }
   }
 
   /** 虫洞：**整理货仓格**（把所有形状件按首次适应递减重排；只重排、不丢件） */
@@ -1600,7 +1606,7 @@ export class GameEngine {
   }
 
   /** 虫洞：**迎战**（`node` = 当前节点 / `boss` = 层末守卫 / `extract` = 撤离战） */
-  wormholeFight(kind: 'node' | 'boss' | 'extract'): CommandResult {
+  wormholeFight(kind: 'node' | 'boss' | 'extract' | 'ruins'): CommandResult {
     const r = wormholeStartBattle(this.state, this.ctx, kind)
     if (r.ok) {
       void this.persist()

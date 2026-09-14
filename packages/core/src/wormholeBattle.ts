@@ -32,7 +32,7 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
-import { wormholeMatterDeviceAt } from './wormholeMatter'
+import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { wormholeIsShapedItem } from './wormholeHold'
 import {
   wormholeDeliverRelics,
@@ -109,6 +109,8 @@ export function wormholeStartBattle(
   })
   if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。' }
   run.battle = battle
+  // 开战成功 ⇒ 清「待迎战」标记（遗迹收尾战那条确认链到此闭合）
+  if (run.pendingRuinsBattle === true) run.pendingRuinsBattle = false
   return { ok: true }
 }
 
@@ -124,7 +126,23 @@ export function wormholeActivateAt(
   state: GameState,
   ctx: SimContext,
   atGameMs?: number,
-): { ok: boolean; error?: string; spent?: number; effect?: WormholeActivateEffect; started?: WormholeFoeKind; taken?: number } {
+  /**
+   * **遗迹收尾战要不要"等玩家确认"**（船长 2026-09-13）：界面传 `{ deferRuinsBattle: true }`
+   * ⇒ 打捞照常结算，但**不直接开战**，只留 `run.pendingRuinsBattle` 标记并回 `pendingBattle: 'ruins'`，
+   * 由界面弹确认条、玩家点「迎战」后再调 `wormholeStartBattle(state, ctx, 'ruins')`。
+   * 不传（旧调用方/工具/用例）= **原行为**（打捞完立刻开战）。
+   */
+  opts?: { deferRuinsBattle?: boolean },
+): {
+  ok: boolean
+  error?: string
+  spent?: number
+  effect?: WormholeActivateEffect
+  started?: WormholeFoeKind
+  /** 已结算但**等确认**的战斗（目前只有 `'ruins'`） */
+  pendingBattle?: 'ruins'
+  taken?: number
+} {
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
@@ -138,6 +156,18 @@ export function wormholeActivateAt(
     if (!s.ok) return { ok: false, error: s.error }
     const effect = s.effect
     if (!effect || effect.kind !== 'ruinsBattle') return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0 }
+    /**
+     * **遗迹收尾战：先提示、玩家确认后再开打**（船长 2026-09-13：「打捞遗迹触发战斗时……战斗突然发生
+     * 没有任何提示，应该提示玩家惊扰守卫等，**玩家确认后跳转**」）。
+     *
+     * `opts.deferRuinsBattle = true`（界面走这条）⇒ **这里不直接开战**：打捞已结算（回合已扣、货已入包），
+     * 只在 `run` 上留 `pendingRuinsBattle` 标记；界面据此弹确认条，玩家点「迎战」再调
+     * `wormholeStartBattle(state, ctx, 'ruins')`。标记没清之前 **别的动作一律被拦**（`gridActionBlocked`）
+     * ⇒ 既不会"跳过这一场"，也不会留下"回合扣了、东西拿了、却什么都没发生"的半截状态。
+     */
+    if (opts?.deferRuinsBattle === true) {
+      return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, pendingBattle: 'ruins' }
+    }
     const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
     if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
     return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }
@@ -355,10 +385,52 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
   refundAmmo(state, battle.ammo, battle.ammoIds)
   refundRepairKits(state, battle.repair)
+  /**
+   * **谜质 B2：战后收口三件**（F3c · 船长 2026-09-13）。
+   * 一律**现算**（从货仓的装置派生）⇒ 打完这一场立刻按"这一场带了什么"结算，不留状态。
+   *
+   * ① **弹药回收装置**：按**本场打出去**的那部分退回 `round(已耗 × 比例)` ——
+   *    已耗 = 开战预载 − 战后余额（`battle.ammoLoaded`，老档/旧战斗缺该字段 ⇒ 这一项自动跳过）；
+   * ② **机群回收网**：回收率加成本（在 `settleDroneLosses` 里夹在 100% 以内）；
+   * ③ **战地维修单元**：每场交火后自动修补**装甲与结构**（船长：「同时修复护甲」），不耗货仓组件。
+   */
+  const matterBuffs = wormholeMatterBuffs(run.hold)
+  if (matterBuffs.ammoRefundPct > 0 && battle.ammoLoaded) {
+    const fired = {
+      kin: Math.max(0, battle.ammoLoaded.kin - battle.ammo.kin),
+      exp: Math.max(0, battle.ammoLoaded.exp - battle.ammo.exp),
+      pla: Math.max(0, battle.ammoLoaded.pla - battle.ammo.pla),
+    }
+    const back = {
+      kin: Math.round(fired.kin * matterBuffs.ammoRefundPct),
+      exp: Math.round(fired.exp * matterBuffs.ammoRefundPct),
+      pla: Math.round(fired.pla * matterBuffs.ammoRefundPct),
+    }
+    const n = back.kin + back.exp + back.pla
+    if (n > 0) {
+      refundAmmo(state, back, battle.ammoIds)
+      addLog(state, 'info', `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`)
+    }
+  }
   // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内首舰的
   // 无人机照样会被点防打下来（`battle.droneLost` 在涨），首版漏了这一步 ⇒ 洞内无人机
   // **打不死**（清单不减、也没有战损日志），是最便宜的一种白嫖。
-  if (droneOwner) settleDroneLosses(state, ctx, droneOwner, battle)
+  if (droneOwner) settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct)
+  if (matterBuffs.fieldRepairPct > 0) {
+    const pct = matterBuffs.fieldRepairPct
+    let touched = 0
+    for (const uid of run.fleet) {
+      const ship = state.fleet[uid]
+      if (!ship) continue
+      const before = (ship.armorPct ?? 1) + (ship.durability ?? 1)
+      ship.armorPct = Math.min(1, (ship.armorPct ?? 1) + pct)
+      ship.durability = Math.min(1, (ship.durability ?? 1) + pct)
+      if ((ship.armorPct ?? 1) + (ship.durability ?? 1) > before) touched += 1
+    }
+    if (touched > 0) {
+      addLog(state, 'info', `🕳 战地维修单元：编队装甲与结构各回复 ${Math.round(pct * 100)}%（不耗货仓组件）。`)
+    }
+  }
   const won = battle.ended === 'me'
   const report = won ? wormholeBattleReport(run, battle, kind, ctx) : null
   run.battle = null

@@ -71,6 +71,15 @@ export type WormholeMatterEffectKind =
   | 'damagePct'
   /** 武器装填周期 −N%（不封顶；物理上周期 > 0） */
   | 'reloadPct'
+  /* ── B2：战后收口与新机制 ── */
+  /** **齐射溢出转移**（1 台即生效，多台不叠加）：打死后多余的那一截火力转给下一艘存活敌舰 */
+  | 'volleyOverflow'
+  /** 战后**弹药退款** +N%（按本场打出去的弹药折算；物理上限 100%） */
+  | 'ammoRefundPct'
+  /** **机群回收率** +N 个百分点（物理上限 100%） */
+  | 'droneRecoveryPct'
+  /** 战后**战地维修**：装甲与结构各 +N%（物理上限 100%） */
+  | 'fieldRepairPct'
 
 /** 一台谜质储存器的定义 */
 export interface WormholeMatterDevice {
@@ -78,6 +87,8 @@ export interface WormholeMatterDevice {
   id: string
   /** 玩家可见名（与物品卡同名） */
   name: string
+  /** **货仓格里的短标签**（2 字；格子里只有图标 + 它，悬停才给全名与效果） */
+  short: string
   effect: WormholeMatterEffectKind
   /** 每枚的数值（百分比类写小数：0.25 = +25%） */
   per: number
@@ -102,6 +113,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   /* ── A 批：探索与作业 ── */
   {
     id: 'mat-surveyor',
+    short: '测绘',
     name: '深空测绘仪',
     effect: 'scanRadius',
     per: 1,
@@ -109,6 +121,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-chrono',
+    short: '时序',
     name: '时序核心',
     effect: 'turnBudget',
     per: 10,
@@ -116,6 +129,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-crane',
+    short: '起重',
     name: '打捞起重机',
     effect: 'salvagePiles',
     per: 1,
@@ -123,6 +137,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-drill',
+    short: '钻机',
     name: '采集钻机',
     effect: 'collectPiles',
     per: 1,
@@ -130,6 +145,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-nebula',
+    short: '驱散',
     name: '星云驱散器',
     effect: 'nebulaDisperse',
     per: 2,
@@ -137,6 +153,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-enricher',
+    short: '富集',
     name: '母矿富集器',
     effect: 'oreYieldPct',
     per: 0.25,
@@ -144,6 +161,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-expander',
+    short: '扩展',
     name: '舱段扩展器',
     effect: 'holdCells',
     per: 8,
@@ -152,6 +170,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   /* ── B1 批：威胁类（三档合计 −50% 封顶）── */
   {
     id: 'mat-suppressor',
+    short: '压制',
     name: '压制力场',
     effect: 'threatAll',
     per: 0.05,
@@ -159,6 +178,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-boss-analyzer',
+    short: '解析',
     name: '守卫解析仪',
     effect: 'threatBoss',
     per: 0.1,
@@ -166,6 +186,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-extract-cover',
+    short: '掩护',
     name: '撤离掩护器',
     effect: 'threatExtract',
     per: 0.1,
@@ -174,6 +195,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   /* ── B1 批：战斗类 ── */
   {
     id: 'mat-shield-res',
+    short: '盾谐',
     name: '护盾谐振片',
     effect: 'resistShield',
     per: 0.1,
@@ -181,6 +203,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-armor-res',
+    short: '甲固',
     name: '装甲强化片',
     effect: 'resistArmor',
     per: 0.1,
@@ -188,6 +211,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-hull-res',
+    short: '构固',
     name: '结构加固片',
     effect: 'resistHull',
     per: 0.1,
@@ -195,6 +219,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-tracker',
+    short: '追踪',
     name: '追踪阵列',
     effect: 'hitBonus',
     per: 0.05,
@@ -202,6 +227,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-gyro',
+    short: '陀螺',
     name: '陀螺稳定器',
     effect: 'evasion',
     per: 0.05,
@@ -209,6 +235,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-jammer',
+    short: '干扰',
     name: '干扰发射器',
     effect: 'enemyHitDown',
     per: 0.05,
@@ -216,6 +243,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-rangefinder',
+    short: '射程',
     name: '射程扩展器',
     effect: 'weaponRangePct',
     per: 0.1,
@@ -223,6 +251,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-blindspot',
+    short: '盲区',
     name: '盲区压制器',
     effect: 'blindReduce',
     per: 0.05,
@@ -230,6 +259,7 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-ammo-dmg',
+    short: '弹效',
     name: '弹药增效器',
     effect: 'damagePct',
     per: 0.08,
@@ -237,10 +267,44 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
   {
     id: 'mat-reload',
+    short: '装填',
     name: '装填加速器',
     effect: 'reloadPct',
     per: 0.08,
     text: '武器装填周期 −8%',
+  },
+  /* ── B2 批：战后收口与新机制 ── */
+  {
+    id: 'mat-volley',
+    short: '齐射',
+    name: '齐射协调仪',
+    effect: 'volleyOverflow',
+    per: 1,
+    text: '齐射打死后，多余的火力转给下一艘敌舰',
+  },
+  {
+    id: 'mat-ammo-back',
+    short: '回收',
+    name: '弹药回收装置',
+    effect: 'ammoRefundPct',
+    per: 0.25,
+    text: '战后弹药退款 +25%（按本场打出去的折算）',
+  },
+  {
+    id: 'mat-drone-net',
+    short: '机网',
+    name: '机群回收网',
+    effect: 'droneRecoveryPct',
+    per: 0.1,
+    text: '机群回收率 +10 个百分点',
+  },
+  {
+    id: 'mat-field-repair',
+    short: '维修',
+    name: '战地维修单元',
+    effect: 'fieldRepairPct',
+    per: 0.05,
+    text: '战后装甲与结构各 +5%（不耗货仓组件）',
   },
 ]
 
@@ -317,6 +381,15 @@ export interface WormholeMatterBuffs {
   damagePct: number
   /** 武器装填周期削减（不封顶；物理上周期仍 > 0） */
   reloadPct: number
+  /* ── B2：战后收口与新机制 ── */
+  /** **齐射溢出转移**是否生效（1 台即开；多台不叠加） */
+  volleyOverflow: boolean
+  /** 战后弹药退款比例（0~1；物理上限 100%） */
+  ammoRefundPct: number
+  /** 机群回收率加成（0~1；物理上限 100%） */
+  droneRecoveryPct: number
+  /** 战地维修：装甲 / 结构各回复比例（0~1；物理上限 100%） */
+  fieldRepairPct: number
   /** 逐台明细（界面读数行） */
   list: ReadonlyArray<{ device: WormholeMatterDevice; count: number }>
 }
@@ -344,6 +417,10 @@ export const WORMHOLE_MATTER_BUFFS_NONE: WormholeMatterBuffs = {
   blindReduce: 0,
   damagePct: 0,
   reloadPct: 0,
+  volleyOverflow: false,
+  ammoRefundPct: 0,
+  droneRecoveryPct: 0,
+  fieldRepairPct: 0,
   list: [],
 }
 
@@ -431,6 +508,18 @@ export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined):
       case 'reloadPct':
         out.reloadPct += v
         break
+      case 'volleyOverflow':
+        out.volleyOverflow = true
+        break
+      case 'ammoRefundPct':
+        out.ammoRefundPct += v
+        break
+      case 'droneRecoveryPct':
+        out.droneRecoveryPct += v
+        break
+      case 'fieldRepairPct':
+        out.fieldRepairPct += v
+        break
     }
   }
   // ── 四类封顶（船长点名的那四类；其余不封顶）──
@@ -444,6 +533,10 @@ export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined):
   out.enemyHitDown = Math.min(WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP, out.enemyHitDown)
   // 近盲带比例不能被压到负数（物理边界：它本身是个倍率）
   out.blindReduce = Math.max(0, out.blindReduce)
+  // 战后收口三项：**物理上限 100%**（不是平衡封顶——比例类不可能超过 1）
+  out.ammoRefundPct = Math.min(1, out.ammoRefundPct)
+  out.droneRecoveryPct = Math.min(1, out.droneRecoveryPct)
+  out.fieldRepairPct = Math.min(1, out.fieldRepairPct)
   return out
 }
 

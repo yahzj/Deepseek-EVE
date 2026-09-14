@@ -38,7 +38,8 @@ import {
   wormholeSyncMatterTurns,
 } from '../src/wormholeSalvage'
 import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
-import { applyMatterPlayerBuffs, wormholeMatterBattleModsOf } from '../src/combat'
+import { applyMatterPlayerBuffs, carryVolleyOverflow, droneRecoveryRateWithBonus, rawDamageToKill, wormholeMatterBattleModsOf } from '../src/combat'
+import { applyDamage } from '../src/combat'
 import { wormholeFoeThreat } from '../src/wormholeFoes'
 import type { UnitSpec } from '../src/combat'
 import { wormholeCardIdFor } from '../src/wormholeFoes'
@@ -346,8 +347,7 @@ describe('虫洞 · 谜质装置（F3c B1 批：威胁与战斗静态增益）',
     expect(debuffed.blindDmgMul ?? 0).toBeLessThan(full.blindDmgMul ?? 1)
   })
 
-  it('⑤ 洞内战斗真的吃到增益（走开战入口，读 battle.wormhole 快照）', () => {
-    /** 走到一个"舰船信号"格并开战（装置已先摆好；战斗中不能再移动 ⇒ 每趟只打一场） */
+  it('⑤ 洞内战斗真的吃到增益（走开战入口，读 battle.wormhole 快照）', () => {    /** 走到一个"舰船信号"格并开战（装置已先摆好；战斗中不能再移动 ⇒ 每趟只打一场） */
     const fightAtSignal = (seed: number, withDevice: boolean): GameState => {
       const state = enterRun(4, seed)
       const run = state.wormhole.run!
@@ -374,5 +374,93 @@ describe('虫洞 · 谜质装置（F3c B1 批：威胁与战斗静态增益）',
     expect(armed.battle!.wormhole?.foeHitDown).toBeCloseTo(0.1, 6)
     expect(armed.battle!.wormhole?.foeMainType).toBeTruthy()
     expect(wormholeFoeThreat(armed.depth, 'node')).toBeGreaterThan(0)
+  })
+})
+
+describe('虫洞 · 谜质装置（F3c B2 批：溢火结转与战后收口）', () => {
+  it('① 派生与物理上限：回收率 / 弹药退款 / 战地维修各夹 100%，齐射转移是"有/没有"', () => {
+    const b = wormholeMatterBuffs(
+      holdWith({
+        'mat-volley': 3, // 多台不叠加（只看有没有）
+        'mat-ammo-back': 20, // 20×25% = 500% ⇒ 夹 100%
+        'mat-drone-net': 20, // 20×10% = 200% ⇒ 夹 100%
+        'mat-field-repair': 40, // 40×5% = 200% ⇒ 夹 100%
+      }),
+    )
+    expect(b.volleyOverflow).toBe(true)
+    expect(b.ammoRefundPct).toBe(1)
+    expect(b.droneRecoveryPct).toBe(1)
+    expect(b.fieldRepairPct).toBe(1)
+    const none = wormholeMatterBuffs(holdWith({ 'mat-surveyor': 1 }))
+    expect(none.volleyOverflow).toBe(false)
+    expect(none.ammoRefundPct).toBe(0)
+    // 机群回收率加成走单点，且夹在 100% 以内
+    const state = enterRun()
+    const base = droneRecoveryRateWithBonus(state, 0)
+    expect(droneRecoveryRateWithBonus(state, 0.1)).toBeCloseTo(base + 0.1, 6)
+    expect(droneRecoveryRateWithBonus(state, 5)).toBe(1)
+  })
+
+  it('② 打空所需原始伤害：抗性越高越费（二分解与 applyDamage 自洽）', () => {
+    const hp = { s: 100, a: 100, h: 100 }
+    const plain = rawDamageToKill(hp, {}, 'kinetic')
+    expect(applyDamage(hp, {}, plain, 'kinetic').dealt).toBeCloseTo(300, 3)
+    // 抗性 50% ⇒ 需要的原始伤害明显更高
+    const tanky = rawDamageToKill(hp, { shield: { kinetic: 0.5 }, armor: { kinetic: 0.5 }, hull: { kinetic: 0.5 } }, 'kinetic')
+    expect(tanky).toBeGreaterThan(plain)
+    expect(applyDamage(hp, { shield: { kinetic: 0.5 }, armor: { kinetic: 0.5 }, hull: { kinetic: 0.5 } }, tanky, 'kinetic').dealt).toBeCloseTo(300, 1)
+  })
+
+  it('③ 溢出火力转移：打死后多余的那一截转给下一艘（按下一艘自己的层克重重算）', () => {
+    const foes = [
+      { tag: 'foe-0' },
+      { tag: 'foe-1' },
+      { tag: 'foe-2' },
+    ] as unknown as UnitSpec[]
+    // foe-0 只剩 10 点结构 ⇒ 一发 100 打死后应有约 90 结转给 foe-1
+    const b = {
+      units: {
+        'foe-0': { hp: { s: 0, a: 0, h: 10 } },
+        'foe-1': { hp: { s: 100, a: 100, h: 100 } },
+        'foe-2': { hp: { s: 0, a: 0, h: 0 } }, // 已沉：不该被选中
+      },
+      stats: { meDmg: 0 },
+    }
+    const hpBefore = { s: 0, a: 0, h: 10 }
+    const res = carryVolleyOverflow(b, foes, 'foe-0', 'kinetic', 100, hpBefore)
+    expect(res.hits).toBe(1)
+    expect(res.lastTag).toBe('foe-1')
+    // foe-1 掉血 ≈ 100 − 10 = 90（层克制为 1 的纯动能口径下）
+    expect(300 - (b.units['foe-1']!.hp.s + b.units['foe-1']!.hp.a + b.units['foe-1']!.hp.h)).toBeGreaterThan(50)
+    expect(b.stats.meDmg).toBeGreaterThan(50)
+    // 打不死 ⇒ 不结转
+    const b2 = {
+      units: { 'foe-0': { hp: { s: 0, a: 0, h: 500 } }, 'foe-1': { hp: { s: 100, a: 100, h: 100 } } },
+      stats: { meDmg: 0 },
+    }
+    expect(carryVolleyOverflow(b2, foes, 'foe-0', 'kinetic', 100, { s: 0, a: 0, h: 500 }).hits).toBe(0)
+    // 没有别的活敌 ⇒ 也不结转
+    const b3 = {
+      units: { 'foe-0': { hp: { s: 0, a: 0, h: 10 } }, 'foe-1': { hp: { s: 0, a: 0, h: 0 } } },
+      stats: { meDmg: 0 },
+    }
+    expect(carryVolleyOverflow(b3, foes, 'foe-0', 'kinetic', 100, { s: 0, a: 0, h: 10 }).hits).toBe(0)
+  })
+
+  it('④ 齐射协调仪写进战斗快照；开战还会记一份弹药预载量（供战后回收算已耗）', () => {
+    const state = enterRun(4, 5150)
+    const run = state.wormhole.run!
+    run.hold = holdWith({ 'mat-volley': 1 })
+    const grid = run.grid!
+    const target = grid.cells.find((c) => c.place === 'ship' && c.key !== `${grid.pos.q},${grid.pos.r}`)!
+    expect(wormholeTravelTo(state, ctx, { q: target.q, r: target.r }, { confirmUnknown: true }).ok).toBe(true)
+    if (!run.battle) expect(wormholeActivateAt(state, ctx).ok).toBe(true)
+    const battle = run.battle!
+    expect(battle.wormhole?.volleyOverflow).toBe(true)
+    // 预载量已记（空仓库时三个弹种都是 0，但字段齐备）；战后"已耗 = 预载 − 余额"靠这条不变量
+    expect(battle.ammoLoaded).toBeTruthy()
+    expect(battle.ammoLoaded!.kin).toBeGreaterThanOrEqual(battle.ammo.kin)
+    expect(battle.ammoLoaded!.exp).toBeGreaterThanOrEqual(battle.ammo.exp)
+    expect(battle.ammoLoaded!.pla).toBeGreaterThanOrEqual(battle.ammo.pla)
   })
 })

@@ -9520,7 +9520,7 @@ body {
   background-color: #060b13;
   background-image:
     radial-gradient(circle at 50% 50%, rgba(10, 22, 38, 0.12), rgba(6, 11, 19, 0.82)),
-    var(--space-bg, none),
+    var(--wh-space-bg, var(--space-bg, none)),
     radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.55), transparent 55%),
     radial-gradient(1px 1px at 70% 15%, rgba(200, 225, 255, 0.45), transparent 55%),
     radial-gradient(1.4px 1.4px at 45% 70%, rgba(255, 255, 255, 0.4), transparent 55%),
@@ -9866,6 +9866,20 @@ body {
 .app-wh-hold-cell.is-origin { cursor: grab; }
 .app-wh-hold-cell.is-dragging { opacity: 0.45; cursor: grabbing; }
 .app-wh-hold-box-name { color: var(--wui-accent); font-size: 10px; }
+/* **格内图标**（2026-09-13 船长：「货仓内物品采用图标而不是纯文字」）：图标吃物品色调
+   （安全货柜按族、谜质按台），格内居中；行内清单里的图标与名字同排。 */
+.app-wh-hold-ico { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.app-wh-hold-ico svg { display: block; }
+.app-wh-hold-row-ico { display: inline-flex; align-items: center; margin-right: 6px; vertical-align: -2px; line-height: 0; }
+/* **物品轮廓层**（船长 2026-09-13：占多格的物品要一个大轮廓、居中、随大小放大）：
+   与格子网格同一套模板与 gap ⇒ 多格块的轮廓正好盖住整块；图标按 figure 的百分比取尺寸（单格也跟着变大）。 */
+.app-wh-hold-grid { position: relative; }
+.app-wh-hold-figures {
+  position: absolute; inset: 0; display: grid; gap: 4px;
+  pointer-events: none; /* 不吃拖拽与点击（格子本体才处理交互） */
+}
+.app-wh-hold-fig { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.app-wh-hold-fig svg { width: 62%; height: 62%; max-width: 64px; max-height: 64px; }
 .app-wh-hold-cargo-name { color: #9db4c8; font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }

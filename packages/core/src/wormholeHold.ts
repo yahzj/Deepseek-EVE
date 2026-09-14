@@ -75,6 +75,10 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'mat-blindspot': WORMHOLE_SHAPE_CONTAINER,
   'mat-ammo-dmg': WORMHOLE_SHAPE_CONTAINER,
   'mat-reload': WORMHOLE_SHAPE_CONTAINER,
+  'mat-volley': WORMHOLE_SHAPE_CONTAINER,
+  'mat-ammo-back': WORMHOLE_SHAPE_CONTAINER,
+  'mat-drone-net': WORMHOLE_SHAPE_CONTAINER,
+  'mat-field-repair': WORMHOLE_SHAPE_CONTAINER,
 }
 
 /** 该物品是不是**占形状的件**（是 ⇒ 走 `run.hold`，不是 ⇒ 走 `run.bag` 叠加） */

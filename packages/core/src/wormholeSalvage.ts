@@ -1142,6 +1142,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     const rng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
     if (rng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
       result.effect = { kind: 'ruinsBattle', key: cell.key }
+    // **记「待迎战」标记**（船长 2026-09-13）：界面据此弹确认条；玩家点「迎战」之前别的动作一律被拦
+    run.pendingRuinsBattle = true
       addLog(state, 'warn', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。')
     }
   }
