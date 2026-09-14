@@ -1418,10 +1418,10 @@ for (const m of MODULES) {
       if (s.share < min.share) min = s
       check(
         s.share >= 0.4,
-        `B3.3 ${s.name} 钛钢占比 ${(s.share * 100).toFixed(1)}% < 40%（船长 2026-09-14：提高钛钢占比到 40~60 ⇒ 只提不降、统一 40%）`,
+        `B3.3 ${s.name} 钛钢价值占比 ${(s.share * 100).toFixed(1)}% < 40%（船长 2026-09-14：提高钛钢占比到 40~60 ⇒ 只提不降、统一 40%；2026-09-14 二次改判后**池权重即价值占比**）`,
       )
     }
-    console.log(`· B3.3 钛钢占比下限：${shares.length} 个池（3 档基础池 + ${shares.length - 3} 张特色池）全部 ≥40%（最低 = ${min.name} ${(min.share * 100).toFixed(1)}%）`)
+    console.log(`· B3.3 钛钢价值占比下限：${shares.length} 个池（3 档基础池 + ${shares.length - 3} 张特色池）全部 ≥40%（最低 = ${min.name} ${(min.share * 100).toFixed(1)}%；池权重＝价值占比）`)
   }
   // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正）：收价 < 无技能拆解保底（≈57/m³，三档齐平），
   // 且与档位表一致（常 30 / 险 40 / 危 50，≈该档典型特色回收的五成上下）

@@ -11,7 +11,7 @@ import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
-import { FRAGMENT_RECIPES, fragmentPoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleMineralPoolOf, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentPoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleBatchValueIsk, recycleRefiningMultiplier, recycleMineralPoolOf, recyclePoolMeanIsk, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */
 function mineral(id: string, price: number): ItemDef {
@@ -98,17 +98,50 @@ describe('回收画像与保底矿物滚动', () => {
     }
   })
 
-  it('保底矿物：总量 = 体积×档位单方产量×抖动，品种按档位池抽取（走 rng 确定性）', () => {
+  /**
+   * **2026-09-14 船长改判**：「取消随机抽一种矿物的限制。直接按价值比例产出所有矿物。」
+   * ⇒ 本用例改写为钉住新口径：① 每批产出**池内全部**矿物（不再是 1 种）；
+   * ② 每批**总价值** = 体积 × 档位当量 × 池均价 ×(1+8%×提纯学) × 抖动(±10%)，且与旧口径**逐值等值**；
+   * ③ 各矿物单位数 = 该批总价值 × 价值占比 ÷ 单价（含小数累计，见下一条用例）。
+   */
+  it('保底矿物（2026-09-14 改判后）：每批出池内**全部**矿物，按价值占比分配，总价值 = 体积×当量×池均价×抖动', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 21 })
     const ctx = ctxOf()
     const profile = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
+    const pool = RECYCLE_POOLS.dire
+    const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+    const mean = recyclePoolMeanIsk(pool, priceOf)
     const out = rollRecycleGuarantee(state, ctx, profile, 36) // 批体积 36 m³ 直接按 m³ 计
-    expect(out.length).toBe(1)
-    const row = out[0]!
-    const poolIds = RECYCLE_POOLS.dire.map(([id]) => id) // 不写死矿种：随档位池口径走（2026-09-14 钛钢 40% 后一击也可能抽到钛钢）
-    expect(poolIds).toContain(row.mineralId)
-    expect(row.units).toBeGreaterThanOrEqual(18) // 36×0.62≈22.3 基准 ±10% → 20~24（2026-09-06 锚 82k 后 Y 上调）
-    expect(row.units).toBeLessThanOrEqual(26)
+    // ① 不再是"只出 1 种"：这一批里应有多种矿物，且都来自档位池
+    const poolIds = pool.map(([id]) => id)
+    expect(out.length).toBeGreaterThan(1)
+    for (const r of out) expect(poolIds).toContain(r.mineralId)
+    // ② **价值不蒸发**：入库价值 ＋ `state.recycleCarry` 里的余数价值 = 该批保底价值（±10% 抖动带内）
+    //    （单价高的矿物这一批可能不足 1 单位，那部分算在余额里、下一批接着攒）
+    const delivered = out.reduce((s, r) => s + r.units * priceOf(r.mineralId), 0)
+    const carried = Object.entries(state.recycleCarry ?? {}).reduce((s, [id, c]) => s + c * priceOf(id), 0)
+    const nominal = recycleBatchValueIsk('dire', mean, 36, recycleRefiningMultiplier(state))
+    expect(delivered + carried).toBeGreaterThan(nominal * 0.9)
+    expect(delivered + carried).toBeLessThan(nominal * 1.1)
+  })
+
+  it('保底矿物：单价高的矿物会"不足 1 单位"——余额进 `state.recycleCarry` 累计，够 1 才入库（不因取整蒸发）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = ctxOf()
+    const profile = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
+    const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+    // 单批 10 m³ 危档：冥铁只分到 ~0.02 单位 ⇒ 这一批不该出冥铁，但余额得记下来
+    const first = rollRecycleGuarantee(state, ctx, profile, 10)
+    expect(first.some((r) => r.mineralId === 'min-darkiron')).toBe(false)
+    expect((state.recycleCarry ?? {})['min-darkiron'] ?? 0).toBeGreaterThan(0)
+    // 连开 200 批：冥铁必须真的入过库（长期不丢）
+    let darkiron = 0
+    for (let i = 0; i < 200; i += 1) {
+      const out = rollRecycleGuarantee(state, ctx, profile, 10)
+      darkiron += out.filter((r) => r.mineralId === 'min-darkiron').reduce((s, r) => s + r.units, 0)
+    }
+    expect(priceOf('min-darkiron')).toBeGreaterThan(0)
+    expect(darkiron).toBeGreaterThan(0)
   })
 
   it('recycleMineralPoolOf（2026-09-10 界面保底矿物块单点）：特色池优先、缺省回落档位基础池', () => {
