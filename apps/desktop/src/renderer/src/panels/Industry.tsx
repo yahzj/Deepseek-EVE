@@ -357,7 +357,7 @@ function BlueprintCard({
       : '没有可用 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'
 
   return (
-    <div className="app-belt-card">
+    <div className="app-belt-card is-assembler">
       <div className="app-belt-head">
         <span className="app-belt-name">
           <RowGlyph glyph={productGlyph} /> {name}
@@ -391,7 +391,7 @@ function BlueprintCard({
       <div className="app-belt-desc">{description}</div>
 
       <div className="app-belt-ore">
-        产物：{productNode ?? <span className="app-gold">{productLabel}</span>}
+        产物：{productNode ?? productLabel}
         <span className="app-dim" title={`自己已有的成品数量：${ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）`}>
           （{ownedWhere} {ownedCount.toLocaleString('zh-CN')}）
         </span>
@@ -445,7 +445,7 @@ function BlueprintCard({
       </ul>
       <div className="app-belt-econ">
         <div>
-          制造免费：只耗材料与时间
+          理论收益率：
           {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
         </div>
         {netPerH !== null ? (
@@ -635,10 +635,15 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
-      const prodLabel = shipDef
-        ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
-        : sbp.shipId
-      const prodText = <span className="app-gold">{prodLabel}</span>
+      const prodName = shipDef?.name ?? sbp.shipId
+      /** 产物名后的参数（货舱/循环）：**不上色**（2026-09-13 船长：「只需要将『护盾扩展器 MK1』这部分换色」） */
+      const prodParams = shipDef
+        ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+        : ''
+      const prodLabel = prodName + prodParams
+      // 产物名**一律金色**（2026-09-13 船长：「只需要将产物染成金色就够了，不用根据类型分成不同颜色」——
+      // 先前的按类型分色作废）；其余文字的金色在本卡内取消（见 `.app-belt-card.is-assembler` 那条 CSS）
+      const prodText = <span className="app-gold">{prodName}</span>
       items.push({
         id: sbp.id,
         kindLabel: '舰船',
@@ -654,9 +659,13 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         productNode: shipDef ? (
           <ShipHover ship={shipDef} note={shipDef.description}>
             {prodText}
+            {prodParams}
           </ShipHover>
         ) : (
-          prodText
+          <>
+            {prodText}
+            {prodParams}
+          </>
         ),
         running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
@@ -673,6 +682,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       if (bp.itemId !== undefined) continue // 弹药等物品蓝图单独分类
       const moduleDef = engine.ctx.modules.get(bp.moduleId!)
       const prodLabel = moduleDef?.name ?? bp.moduleId!
+      // 产物名金色（按类型分色作废，2026-09-13 船长）
       const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: bp.id,
@@ -702,8 +712,15 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       if (bp.itemId === undefined) continue
       const itemDef = engine.ctx.items.get(bp.itemId)
       const units = bp.outputUnits ?? 1
-      const prodLabel = `${itemDef?.name ?? bp.itemId} ×${units} 发`
-      const prodText = <span className="app-gold">{prodLabel}</span>
+      const prodName = itemDef?.name ?? bp.itemId
+      const prodLabel = `${prodName} ×${units} 发`
+      // 产物名金色（按类型分色作废，2026-09-13 船长）；「×N 发」等参数不上色
+      const prodText = (
+        <>
+          <span className="app-gold">{prodName}</span>
+          {` ×${units} 发`}
+        </>
+      )
       items.push({
         id: bp.id,
         kindLabel: '消耗品',
@@ -829,7 +846,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         </div>
       ) : null}
       <div className="app-dim app-exp-idle">
-        已学会的配方才能开工，制造免费只耗材料与时间；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
+        已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
       </div>
 
       <div className="app-win-body">

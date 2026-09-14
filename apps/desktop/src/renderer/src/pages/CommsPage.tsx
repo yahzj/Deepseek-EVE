@@ -24,6 +24,7 @@ import { COMMS_REPLIES_ENABLED, commsGameClock } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { Glyph } from '../ui/Glyphs'
+import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
 
 /**
@@ -91,6 +92,9 @@ export function CommsPage({
       <Panel
         className="is-fill win-fixed-body"
         title="通讯"
+      hint={
+        <HintIcon tip="协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。" />
+      }
         right={
           <>
             <span className="app-dim" title="收件箱永久保留历史记录；剧本通话（建站介绍与并网通报）也会归入这里">
@@ -107,9 +111,6 @@ export function CommsPage({
           </>
         }
       >
-        <div className="app-dim app-note app-comms-note">
-          协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。
-        </div>
         <div className="app-win-body app-comms-body">
           {inbox.length === 0 ? (
             <div className="app-dim app-exp-idle">收件箱是空的——有新的消息会先让导航栏的「通讯」图标闪起来。</div>

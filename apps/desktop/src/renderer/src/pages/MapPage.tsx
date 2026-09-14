@@ -32,6 +32,7 @@ import {
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { HintIcon } from '../ui/Hint'
 import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, TaskPanel, BountyPanel } from '../panels/Expedition'
@@ -693,11 +694,11 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
     <Panel
       className="is-fill"
       title="残骸打捞"
+      hint={
+        <HintIcon tip="驾驶船低槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。" />
+      }
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
-      <div className="app-dim app-note">
-        驾驶船低槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。
-      </div>
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 
       {/* 打捞循环设置行（2026-09-09 船长定：与采矿同款；自动循环默认开） */}

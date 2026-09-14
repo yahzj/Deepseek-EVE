@@ -109,6 +109,13 @@ describe('T1 activityOverview 视图', () => {
     const mf = acts.find((a) => a.kind === 'ai' && a.id.startsWith('ai-prod-m'))!
     expect(mf.stop).toBe('cancel-manufacture')
     expect(mf.stopParam).toBeTruthy()
+    /**
+     * **`aiGroup` 分组**（船长 2026-09-13：活动栏 AI 徽标的悬停要显示"AI 正在干哪些活动"）：
+     * 站内 AI 作业（精炼炉/回收炉/制造线）归 `industry`，AI 副船任务归 `ship`；
+     * 主控亲自干的制造**不是 AI 活动**（`kind: 'manufacture'`、不带 aiGroup）。
+     */
+    expect(mf.aiGroup).toBe('industry')
+    expect(acts.filter((a) => a.kind === 'ai').every((a) => a.aiGroup === 'industry' || a.aiGroup === 'ship')).toBe(true)
   })
 
   it('远征出卡：交火中可撤退；返航（back）可召回；AI 采矿任务出卡且带 stopParam', () => {
@@ -138,6 +145,9 @@ describe('T1 activityOverview 视图', () => {
     expect(ai.id).toBe('ai-sh-falconet')
     expect(ai.stop).toBe('cancel-ai')
     expect(ai.stopParam).toBe('sh-falconet')
+    // 副船任务归 ship 组（活动栏那枚粉色 AI 徽标的悬停取这一组）
+    expect(ai.aiGroup).toBe('ship')
+    expect(ai.label).toContain('采矿')
   })
 
   it('主控打捞出卡带进度条(2026-09-09 补齐)：打捞中=打捞器周期进度；出航/返航=行程进度+精确剩余', () => {

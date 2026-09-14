@@ -48,13 +48,15 @@ export function SkillDescText({ text }: { text: string }) {
   )
 }
 
-/** "各级训练时长"提示串（技能行悬浮提示用；factor = 高效学习法缩时系数） */
+/** "各级训练时长"提示串（技能行/卡片悬浮提示用；factor = 高效学习法缩时系数）
+ *  2026-09-13 船长：「技能卡片的 title 只显示训练时长就够了，介绍已经写在卡片上。训练时长每个等级占一行」
+ *  ⇒ 不再拼简介（卡面已有），改为「训练时长：」＋**每级一行**（提示层 `white-space: pre-line` 照原样换行）。 */
 export function levelTimesHint(def: SkillDef, factor = 1): string {
-  const parts: string[] = []
+  const lines: string[] = []
   for (let lv = 1; lv <= MAX_SKILL_LEVEL; lv++) {
-    parts.push(`Lv${lv} ${formatDurationMs(Math.round(skillLevelTimeMs(def, lv) * factor))}`)
+    lines.push(`Lv${lv}　${formatDurationMs(Math.round(skillLevelTimeMs(def, lv) * factor))}`)
   }
-  return `各级训练时长：${parts.join(' · ')}`
+  return `训练时长：\n${lines.join('\n')}`
 }
 
 /** 技能行时长（毫秒）：基础 × 高效学习法系数（引擎推进/预估同源） */
@@ -278,7 +280,11 @@ function skillUiState(engine: PageProps['engine'], skill: SkillDef) {
   const lastQueued = mine.length > 0 ? mine[mine.length - 1]!.targetLevel : current
   const def = engine.ctx.skills.get(skill.id)
   const tf = trainingTimeFactor(state)
-  const title = `${plainSkillDesc(skill.description)}${def ? `｜${levelTimesHint(def, tf)}` : ''}${tf < 1 ? '（高效学习法缩时已计入）' : ''}`
+  // 悬停提示：**只给各级训练时长**（2026-09-13 船长：「技能卡片的 title 只显示训练时长就够了，
+  // 介绍已经写在卡片上」——卡面与列表行都已常显简介/效果，提示里不再重复）。
+  const title = def
+    ? `${levelTimesHint(def, tf)}${tf < 1 ? '（高效学习法缩时已计入）' : ''}`
+    : plainSkillDesc(skill.description)
   // "轮到该技能还有多久"（只对已排队、非队首的展示）
   let waitMs = 0
   let position = 0

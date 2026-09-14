@@ -175,6 +175,29 @@ export function ActivityBar({
   const aiSlotsNote = aiSlotTip(aiIndustrySlots(state, engine.ctx))
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
+  /**
+   * **AI 正在干哪些活动**（船长 2026-09-13：「活动界面AI图标的鼠标悬浮提示改为显示AI正在干哪些活动」）：
+   * 原先两枚徽标的悬停只写死一句"正在执行采矿 / 打捞 / 掩护巡逻"——玩家看不到**具体在干什么**。
+   * 现在直接取 `activityOverview` 里 `kind==='ai'` 的条目（core 已按 `aiGroup` 分好副船 / 工业两组）：
+   * 一条一行「· 谁 · 干什么——在哪/什么阶段（还剩多久）」，超过 8 条折成"另有 N 条"。
+   * ⚠ 只改悬停文案：**徽标计数、点击去处、渲染结构一律不动**。
+   */
+  const aiLinesOf = (items: ActivityView[]): string => {
+    if (items.length === 0) return '· （暂无明细）'
+    const lines = items.slice(0, 8).map((v) => {
+      const tail =
+        v.remainingMs !== null && v.remainingMs > 0
+          ? ` · 剩 ${formatDurationMs(v.remainingMs)}`
+          : v.percent !== null
+            ? ` · ${Math.round(v.percent)}%`
+            : ''
+      return `· ${v.label}——${v.sub}${tail}`
+    })
+    if (items.length > 8) lines.push(`· …另有 ${items.length - 8} 条`)
+    return lines.join('\n')
+  }
+  const aiShipItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'ship')
+  const aiProdItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'industry')
   // 撤退需二次确认（轻损但有代价）。
   // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
   // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
@@ -281,7 +304,7 @@ export function ActivityBar({
         {aiShips > 0 ? (
           <button
             className="app-activitybar-ai is-ship"
-            title={`AI 副船 ${aiShips} 艘：正在执行采矿 / 打捞 / 掩护巡逻——点击前往「舰船」的 AI 指挥中心。\n${aiSlotsNote}`}
+            title={`AI 副船 ${aiShips} 艘——正在执行的活动：\n${aiLinesOf(aiShipItems)}\n${aiSlotsNote}\n点击前往「舰船」的 AI 指挥中心`}
             onClick={() => onAiCenter?.()}
           >
             <span className="app-ico">
@@ -293,7 +316,7 @@ export function ActivityBar({
         {aiProd > 0 ? (
           <button
             className="app-activitybar-ai is-industry"
-            title={`站内 AI 作业 ${aiProd} 条：精炼炉 / 回收炉 / 制造线——点击前往「工业」页查看或停止。\n${aiSlotsNote}`}
+            title={`站内 AI 作业 ${aiProd} 条——正在执行的活动：\n${aiLinesOf(aiProdItems)}\n${aiSlotsNote}\n点击前往「工业」页查看或停止`}
             onClick={() => onGoPage?.('industry')}
           >
             <span className="app-ico">

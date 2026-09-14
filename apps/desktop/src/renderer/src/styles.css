@@ -861,6 +861,10 @@ body {
 
   color: var(--wui-gold);
 
+  /* ⚠ 金色是给「采矿 / 打捞 / 精炼」等卡片共用的**产物行**样式；**组装机卡片自己取消**（见下方
+     `.app-belt-card.is-assembler` 那条）：2026-09-13 船长「只需要将产物染成金色就够了…其他文字的金色取消」
+     ⇒ 组装机里唯有**产物名**是金色，产物行其余文字（拥有数、耗时）与经济行都回到普通文字色。 */
+
 }
 
 /* 效率行（试点 2026-09-05：每循环产量/时长/每小时产出 + 估价——估价按物品本身，不随市场） */
@@ -883,6 +887,14 @@ body {
 
   opacity: 0.92;
 
+}
+
+/* 组装机卡片：产物行的**其余文字**取消金色（2026-09-13 船长：「只需要将产物染成金色就够了…其他文字的金色
+   取消」——产物行的拥有数/主控耗时原先随整行金色一起变金，现回到普通文字色；**产物名自己带 `.app-gold`**）。
+   ⚠ **经济行（≈ISK/h）不在取消之列**：船长同日追加「经济行回滚，允许显示金色」⇒ `.app-belt-econ` /
+   `.app-belt-econ-val` 保持各自的金色原样。 */
+.app-belt-card.is-assembler .app-belt-ore {
+  color: var(--wui-text);
 }
 
 /* ---------- 星图显示模式切换（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ---------- */
@@ -6771,6 +6783,19 @@ body {
 .app-fit-indirect-note { margin-top: 0; }
 
 .app-fit-shipinfo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding: 8px 10px; border: 1px dashed var(--wui-border); border-radius: 6px; background: rgba(10,17,27,0.4); }
+
+/* 标题后的提示标记（2026-09-13 船长：「隐藏起来，只在标题名字的后面显示一个圆形感叹号图标，
+   当玩家悬停时才显示这些说明」）——圆形感叹号 glyph 走 currentColor，这里只给色与间距：
+   常态暗色、悬停提亮（同 `.app-btn:hover` 的改法，不用 filter）；`cursor: help` 提示"可看说明"。 */
+.app-hint-ico {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: var(--wui-text-dim);
+  cursor: help;
+  vertical-align: -1px;
+}
+.app-hint-ico:hover { color: var(--wui-text); }
 
 /* ═══════════════ 全局悬停提示（Tooltip） ═══════════════ */
 
