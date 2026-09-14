@@ -2229,6 +2229,68 @@ export function repairUsageText(
 }
 
 /**
+ * **护盾充能装置的脉冲间隔**（2026-09-14 船长：「护盾充能装置，和船体修理装置类似。
+ *  **每 30 秒**恢复自身护盾最大值一定比例的护盾量。CPU消耗较多」）。
+ *
+ * 与 `REPAIR_PULSE_MS`（维修装置 5 秒）是**两套独立计时**：两者可以同装、各按各的节奏跳。
+ * ⚠ 界面/说明里的「每 30 秒」与它同源（`content:check` 的「产物说明契约」按语境常量核）。
+ */
+export const SHIELD_PULSE_MS = 30_000
+
+/** 装配里「护盾充能装置」的**每跳合计比例**（满盾的几分之几；同型多件按 EVE 曲线收敛，无装置 = 0） */
+export function shieldPulsePctOf(state: GameState, ctx: SimContext, shipId: string): number {
+  const ship = state.fleet[shipId]
+  if (!ship) return 0
+  const seen = new Map<string, number>()
+  let total = 0
+  for (const d of allFittedModules(ship.fitted, ctx)) {
+    const pct = d.shieldPulsePct ?? 0
+    if (pct <= 0) continue
+    // 无消耗件（本件不吃组件）⇒ 同型多件必须收敛，否则叠装失控（与 `repairFree` 生体件同口径）
+    const n = (seen.get(d.id) ?? 0) + 1
+    seen.set(d.id, n)
+    total += pct * stackWeight(n)
+  }
+  return total
+}
+
+/**
+ * 护盾充能装置开战快照：每跳合计比例 + 首跳时刻（`startBattleFor` 按开战时刻赋值）。
+ * 无装置返回 `null`（零行为变化：不写 `battle.shieldCharge`）。
+ */
+export function preloadShieldChargeFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): import('./state').BattleState['shieldCharge'] | null {
+  const pctPerPulse = shieldPulsePctOf(state, ctx, shipId)
+  if (pctPerPulse <= 0) return null
+  // `nextPulseAtMs` 恒为 undefined——由 `startBattleFor` 按开战时刻赋值（与维修装置同款）
+  return { pctPerPulse, nextPulseAtMs: undefined, pulses: 0 }
+}
+
+/**
+ * **单次护盾充能脉冲**：按**满盾 × 每跳比例**把主控的护盾层补回去（夹在满盾。
+ * ⚠ 与维修装置同口径：**只作用于主控**——僚舰的充能装置不参战，见 D 批边界）。
+ *
+ * 它是**破盾后唯一的回头路**：被动回充按当前盾比例（盾 0 = 回充 0），只有这里能从 0 把盾点起来；
+ * 点着之后被动回充立刻接管（指数增长）。
+ */
+export function pulseShieldCharge(
+  b: import('./state').BattleState,
+  me: UnitSpec,
+): void {
+  const sc = b.shieldCharge
+  const meRt = b.units['player']
+  if (!sc || !meRt || sc.nextPulseAtMs === undefined) return
+  if (!isAlive(b, 'player')) return
+  const capS = Math.max(0, me.hp.s)
+  if (capS <= 0) return
+  const gain = capS * Math.max(0, sc.pctPerPulse)
+  if (gain > 0) meRt.hp.s = Math.min(capS, meRt.hp.s + gain)
+}
+
+/**
  * 单次维修脉冲（advanceBattleFor 在到期脉冲处调用）：
  * 逐台未停机装置修复——每层通道修复量 = 该层额度，某层已满（或补满）后，该层剩余额度
  * 转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
@@ -2675,6 +2737,12 @@ export function startBattleFor(
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
     battle.repair = repair
   }
+  // 护盾充能装置（2026-09-14）：**独立 30 秒计时**（与维修装置的 5 秒互不干扰），开战 30 秒后第一跳
+  const shieldCharge = preloadShieldChargeFor(state, ctx, shipId)
+  if (shieldCharge) {
+    shieldCharge.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
+    battle.shieldCharge = shieldCharge
+  }
   return battle
 }
 
@@ -2968,6 +3036,12 @@ export function startFleetBattleFor(
     const ready = repair.units.filter((u) => !u.stopped)
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
+  }
+  // 护盾充能装置：与维修装置同口径**只预载主控**（僚舰的充能装置不参战，见 D 批边界）
+  const shieldCharge = preloadShieldChargeFor(state, ctx, fleet[0]!.shipId)
+  if (shieldCharge) {
+    shieldCharge.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
+    battle.shieldCharge = shieldCharge
   }
   // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）；
   // F3c B1 起，谜质在开战那一刻的快照（威胁乘数 / 敌主伤害系 / 敌方削弱）**一并写进去**，
@@ -3682,6 +3756,26 @@ export function advanceBattleFor(
       ) {
         pulseRepairs(state, ctx, battle, me)
         guardR++
+      }
+    }
+    // 护盾充能装置脉冲（2026-09-14 船长）：与维修装置**各按各的计时**（30 秒 vs 5 秒），
+    // 同样在受伤结算之后补跳（≤1 拍延迟）；破盾后它是唯一能把盾点起来的路径。
+    if (
+      !battle.ended &&
+      battle.shieldCharge?.nextPulseAtMs !== undefined &&
+      battle.shieldCharge.nextPulseAtMs <= battle.lastTickGameMs
+    ) {
+      let guardS = 0
+      while (
+        !battle.ended &&
+        battle.shieldCharge.nextPulseAtMs !== undefined &&
+        battle.shieldCharge.nextPulseAtMs <= battle.lastTickGameMs &&
+        guardS < BATTLE_MAX_STEPS
+      ) {
+        pulseShieldCharge(battle, me)
+        battle.shieldCharge.pulses += 1
+        battle.shieldCharge.nextPulseAtMs += SHIELD_PULSE_MS
+        guardS++
       }
     }
   }
@@ -4690,13 +4784,18 @@ function stepBattle(
   resolvePointDefense(state, b, me, foes, bal, dtMs)
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
-  // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）──
+  // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）
+  // ⚠ **2026-09-14 船长改判**：回充量由"**满盾** × 费率"改为"**当前盾** × 费率"
+  //   （原话：「改成按当前盾比例，这样护盾被击穿后应该是 0 回复对吧？」＋「不留，破盾后 0 回复」）
+  //   ⇒ 回充变成**指数式**（回满时间 = ln(满盾/当前盾) ÷ 费率），且**盾归零后回充恒为 0**：
+  //   盾被打穿 = 本场的分水岭，此后全程由甲/结构承伤。想重新把盾点起来只有一条路 =
+  //   中槽「**护盾充能装置**」（`shieldPulsePct`，每 `SHIELD_PULSE_MS` 脉冲回满盾的一个比例）。──
   if (bal.shieldRegenPerSec > 0) {
     for (const unit of myUnits) {
       const urt = b.units[unit.tag]
       if (!urt || !isAlive(b, unit.tag)) continue
       if (urt.hp.s >= unit.hp.s || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
-      const regen = unit.hp.s * bal.shieldRegenPerSec * dtSec
+      const regen = urt.hp.s * bal.shieldRegenPerSec * dtSec
       if (regen > 0) urt.hp.s = Math.min(unit.hp.s, urt.hp.s + regen)
     }
   }
@@ -5020,18 +5119,27 @@ function steadyPreview(
   const foeUnitN = Math.max(1, foes.length)
   const foeDps = foeDpsPeak * ((foeUnitN + 1) / (2 * foeUnitN))
 
-  // 承伤窗口含护盾回充（2026-09-09 修正）：净敌火 = foeDps×foeMul − 回充率；
-  // 回充持续到装甲击穿（引擎语义：甲/结构任一在即回盾）→ 破甲前可承受总伤 = 盾+甲+回充量
+  // 承伤窗口含护盾回充（2026-09-09 修正）——**2026-09-14 船长改判后为指数式**：
+  // 回充按**当前盾**比例（引擎：`urt.hp.s × 费率`）⇒ 盾动力学 `ds/dt = k·s − D`（k = 费率、D = 净敌火）
+  //   · 盾被打穿时刻 `tBreak = ln(D/(D − k·s₀)) ÷ k`（**仅当 D > k·s₀**；否则回充永远顶得住、盾不破）
+  //   · **破盾后回充归 0**（船长「不留，破盾后 0 回复」）⇒ 之后 D 全打在甲+结构上
+  //   · 装了「护盾充能装置」时：把 30 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 30 秒`，
+  //     **只在破盾后计入**（盾没破时被动回充远大于它）——这样估算不会对带装置的人过分悲观。
   const foeDpsNet = foeDps * foeMul
-  const regenPerSec = bal.shieldRegenPerSec * me.hp.s // 每秒回充 = 满盾 × 费率
+  const k = bal.shieldRegenPerSec
+  const s0 = Math.max(0, me.hp.s)
+  const chargePerSec = (shieldPulsePctOf(state, ctx, shipId) * s0) / (SHIELD_PULSE_MS / 1000)
   let ttrMe: number
-  if (regenPerSec > 0 && me.hp.s > 0 && foeDpsNet > regenPerSec) {
-    const tA = (me.hp.s + me.hp.a) / (foeDpsNet - regenPerSec) // 装甲被击穿时刻（此后无回充）
-    ttrMe = (meHpTotal + regenPerSec * tA) / foeDpsNet
-  } else if (regenPerSec > 0 && foeDpsNet <= regenPerSec) {
-    ttrMe = Number.POSITIVE_INFINITY // 回充顶住敌火：只有超时血比才可能落败
+  if (foeDpsNet <= 0) {
+    ttrMe = Number.POSITIVE_INFINITY // 敌方打不动我
+  } else if (k > 0 && s0 > 0 && foeDpsNet <= k * s0) {
+    ttrMe = Number.POSITIVE_INFINITY // 回充顶住敌火：盾永不破 ⇒ 只有超时血比才可能落败
+  } else if (k > 0 && s0 > 0) {
+    const tBreak = Math.log(foeDpsNet / (foeDpsNet - k * s0)) / k // 盾被打穿
+    const after = Math.max(0, foeDpsNet - chargePerSec) // 破盾后：充能装置托底
+    ttrMe = after > 0 ? tBreak + (me.hp.a + me.hp.h) / after : Number.POSITIVE_INFINITY
   } else {
-    ttrMe = foeDpsNet > 0 ? meHpTotal / foeDpsNet : Number.POSITIVE_INFINITY
+    ttrMe = meHpTotal / foeDpsNet // 无回充（费率 0 或无盾）：原口径
   }
   const ttrFoe = meDps > 0 ? foeHpTotal / Math.max(1e-9, meDps * meMul) : Infinity // 我击毁敌方所需秒数
   return { me, meHpTotal, foeHpTotal, meDps, foeDps, ttrMe, ttrFoe }

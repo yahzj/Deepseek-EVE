@@ -767,6 +767,50 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 5760000,
     description: '顶配护盾电容扩展舱，储能单元与母线容量都拉满。',
   },
+  /* ── 护盾充能装置（2026-09-14 船长新增件）三条蓝图：材料与书价**照同槽同档的护盾扩展器**取
+     （同槽同档同价 ⇒ 同一套料价/书价系数，`content:check` 的蓝图价格口径自动核） ── */
+  {
+    id: 'bp-shieldchg-1',
+    name: '护盾充能装置 MK1蓝图',
+    moduleId: 'mod-shieldchg-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 195 },
+      { itemId: 'min-pyerite', count: 60 },
+    ],
+    buildSeconds: 180,
+    buildCostIsk: 0,
+    priceIsk: 10000,
+    description: '护盾充能回路图纸：把发生器组改成可周期性强制充能的分时母线。',
+  },
+  {
+    id: 'bp-shieldchg-2',
+    name: '护盾充能装置 MK2蓝图',
+    moduleId: 'mod-shieldchg-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 11_950 },
+      { itemId: 'min-pyerite', count: 3_600 },
+      { itemId: 'min-mexallon', count: 1_700 },
+    ],
+    buildSeconds: 900,
+    buildCostIsk: 0,
+    priceIsk: 962500,
+    description: '大功率护盾充能回路图纸：并联一组专用充能母线，一跳补回的护盾量翻倍。',
+  },
+  {
+    id: 'bp-shieldchg-3',
+    name: '护盾充能装置 MK3蓝图',
+    moduleId: 'mod-shieldchg-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 45_400 },
+      { itemId: 'min-pyerite', count: 14_450 },
+      { itemId: 'min-mexallon', count: 8_650 },
+      { itemId: 'min-nocxium', count: 1_720 },
+    ],
+    buildSeconds: 1900,
+    buildCostIsk: 0,
+    priceIsk: 5760000,
+    description: '主力舰级护盾充能回路图纸：一跳把打空的护盾拉回可战水平。',
+  },
   {
     id: 'bp-armor-kin-1',
     name: '装甲镀层 MK1·动能型蓝图',

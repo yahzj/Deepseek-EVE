@@ -184,6 +184,8 @@ export function moduleDef(
      * docs/design/wormhole-exclusive-20260913.md §3.6/§3.8） */
     /** 结构层容量加成（E 族巨构骨架起就有；此处补齐测试床） */
     hullHpBonus?: number
+    /** 护盾充能装置（2026-09-14 船长新增件）：每 30 秒脉冲回满盾的此比例（0.12 = 12%） */
+    shieldPulsePct?: number
     /** 附加伤害段（掠袭破片炮）：主段实收 ×本值，副弹种缺省 kinetic */
     secondaryDamagePct?: number
     secondaryDamageType?: DamageType
@@ -242,6 +244,8 @@ export function moduleDef(
     ...(opts?.cpuBonus !== undefined ? { cpuBonus: opts.cpuBonus } : {}),
     // 2026-09-13 虫洞专属新机制（缺省不写 ⇒ 测试床的既有用例零变化）
     ...(opts?.hullHpBonus !== undefined ? { hullHpBonus: opts.hullHpBonus } : {}),
+    // 2026-09-14 护盾充能装置（缺省不写 ⇒ 既有用例零变化）
+    ...(opts?.shieldPulsePct !== undefined ? { shieldPulsePct: opts.shieldPulsePct } : {}),
     ...(opts?.secondaryDamagePct !== undefined ? { secondaryDamagePct: opts.secondaryDamagePct } : {}),
     ...(opts?.secondaryDamageType !== undefined ? { secondaryDamageType: opts.secondaryDamageType } : {}),
     ...(opts?.ammoPerShot !== undefined ? { ammoPerShot: opts.ammoPerShot } : {}),

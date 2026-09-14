@@ -156,6 +156,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-armor-exp-1', kind: 'module', refId: 'mod-armor-exp-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
   { key: 'mod-armor-pla-1', kind: 'module', refId: 'mod-armor-pla-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
   { key: 'mod-shield-ext-1', kind: 'module', refId: 'mod-shield-ext-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
+  // 护盾充能装置（2026-09-14 船长新增件：每 30 秒脉冲回满盾的一个比例；与扩展器同槽同档同价）
+  { key: 'mod-shieldchg-1', kind: 'module', refId: 'mod-shieldchg-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
   { key: 'mod-armor-plate-1', kind: 'module', refId: 'mod-armor-plate-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
   { key: 'mod-prop-1', kind: 'module', refId: 'mod-prop-1', rarity: 'common', basePrice: 6_000, demandMultiplier: 0.6 },
   // V18 无人机装置（高槽；现货 + 蓝图双渠道——2026-09-09 全蓝图化后有书可学）
@@ -194,6 +196,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-shield-exp-1', kind: 'blueprint', refId: 'bp-shield-exp-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾增强器 MK1·高爆型（蓝图=产物×2）
   { key: 'bp-shield-pla-1', kind: 'blueprint', refId: 'bp-shield-pla-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾增强器 MK1·能量型（蓝图=产物×2）
   { key: 'bp-shield-ext-1', kind: 'blueprint', refId: 'bp-shield-ext-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾扩展器 MK1（蓝图=产物×2）
+  { key: 'bp-shieldchg-1', kind: 'blueprint', refId: 'bp-shieldchg-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾充能装置 MK1（蓝图=产物×2 · 2026-09-14 新增件）
   { key: 'bp-armor-kin-1', kind: 'blueprint', refId: 'bp-armor-kin-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲镀层 MK1·动能型（蓝图=产物×2）
   { key: 'bp-armor-exp-1', kind: 'blueprint', refId: 'bp-armor-exp-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲镀层 MK1·高爆型（蓝图=产物×2）
   { key: 'bp-armor-pla-1', kind: 'blueprint', refId: 'bp-armor-pla-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲镀层 MK1·能量型（蓝图=产物×2）
@@ -252,8 +255,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-armor-exp-3', kind: 'module', refId: 'mod-armor-exp-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
   { key: 'mod-armor-pla-3', kind: 'module', refId: 'mod-armor-pla-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
   { key: 'mod-shield-ext-2', kind: 'module', refId: 'mod-shield-ext-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
+  { key: 'mod-shieldchg-2', kind: 'module', refId: 'mod-shieldchg-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
   { key: 'mod-armor-plate-2', kind: 'module', refId: 'mod-armor-plate-2', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
   { key: 'mod-shield-ext-3', kind: 'module', refId: 'mod-shield-ext-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
+  { key: 'mod-shieldchg-3', kind: 'module', refId: 'mod-shieldchg-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
   { key: 'mod-armor-plate-3', kind: 'module', refId: 'mod-armor-plate-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
   { key: 'mod-prop-3', kind: 'module', refId: 'mod-prop-3', rarity: 'rare', basePrice: 1_970_000, demandMultiplier: 0.65 },
   { key: 'mod-drone-rack-3', kind: 'module', refId: 'mod-drone-rack-3', rarity: 'rare', basePrice: 1_960_000, demandMultiplier: 0.65 },
@@ -323,7 +328,9 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-shield-exp-3', kind: 'blueprint', refId: 'bp-shield-exp-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·高爆型（蓝图=产物×3）（入闸）
   { key: 'bp-shield-pla-3', kind: 'blueprint', refId: 'bp-shield-pla-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·能量型（蓝图=产物×3）（入闸）
   { key: 'bp-shield-ext-2', kind: 'blueprint', refId: 'bp-shield-ext-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾扩展器 MK2（蓝图=产物×2.5）
+  { key: 'bp-shieldchg-2', kind: 'blueprint', refId: 'bp-shieldchg-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾充能装置 MK2（蓝图=产物×2.5）
   { key: 'bp-shield-ext-3', kind: 'blueprint', refId: 'bp-shield-ext-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾扩展器 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-shieldchg-3', kind: 'blueprint', refId: 'bp-shieldchg-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾充能装置 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-armor-kin-2', kind: 'blueprint', refId: 'bp-armor-kin-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·动能型（蓝图=产物×2.5）
   { key: 'bp-armor-exp-2', kind: 'blueprint', refId: 'bp-armor-exp-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·高爆型（蓝图=产物×2.5）
   { key: 'bp-armor-pla-2', kind: 'blueprint', refId: 'bp-armor-pla-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·能量型（蓝图=产物×2.5）
@@ -473,7 +480,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
 const BM_MK3_KEYS = new Set([
   'mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3',
   'mod-drone-rack-3', 'mod-drone-tac-3',
-  'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-shield-pla-3', 'mod-shield-ext-3',
+  'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-shield-pla-3', 'mod-shield-ext-3', 'mod-shieldchg-3',
   'mod-armor-kin-3', 'mod-armor-exp-3', 'mod-armor-pla-3', 'mod-armor-plate-3',
   'mod-stab-kin-3', 'mod-stab-exp-3', 'mod-stab-pla-3', 'mod-rof-3', 'mod-track-3', 'mod-gyro-3',
   'bp-turret-3',
@@ -485,6 +492,7 @@ const BM_MK3_KEYS = new Set([
   'bp-shield-exp-3',
   'bp-shield-pla-3',
   'bp-shield-ext-3',
+  'bp-shieldchg-3',
   'bp-armor-kin-3',
   'bp-armor-exp-3',
   'bp-armor-pla-3',

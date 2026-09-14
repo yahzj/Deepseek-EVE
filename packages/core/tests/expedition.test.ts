@@ -247,7 +247,11 @@ describe('远征自动返航最近建成站（2026-09-08 船长定：所有自�
     st.wallet.isk = 500_000
     const c = makeTestCtx({
       stations: [site],
-      anomalies: [anomaly('ano-far-v', 'galaxy-far', { threat: 2, reward: 8_000 })],
+      // ⚠ 2026-09-14：本用例考的是**返航路由**，不是平衡 ⇒ 把这场战斗钉成"必胜且极短"
+      // （`foeHpOverride: 1` = 一发即沉）。此前它靠"裸初始船 + 满盾制回充"险胜；护盾改按
+      // **当前盾**比例后该场翻盘（真引擎实测：我方 15/10/25 打到甲空、壳碎）——那是**想要的削弱**，
+      // 故这里把路由用例钉成确定性，别再让它吊在平衡刀刃上。
+      anomalies: [{ ...anomaly('ano-far-v', 'galaxy-far', { threat: 2, reward: 8_000 }), foeHpOverride: 1 }],
     })
     st.exploredGalaxies.push('galaxy-far')
     st.stationSites['site-far'] = { stage: 2, delivered: {} } // 已建成
