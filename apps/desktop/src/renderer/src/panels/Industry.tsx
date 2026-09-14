@@ -32,6 +32,7 @@ import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
+import { toneOf } from '../ui/Glyphs'
 import { MONEY_GLYPH } from '../pages/common'
 import {
   CONSUME_SUBS,
@@ -391,7 +392,7 @@ function BlueprintCard({
       <div className="app-belt-desc">{description}</div>
 
       <div className="app-belt-ore">
-        产物：{productNode ?? <span className="app-gold">{productLabel}</span>}
+        产物：{productNode ?? productLabel}
         <span className="app-dim" title={`自己已有的成品数量：${ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）`}>
           （{ownedWhere} {ownedCount.toLocaleString('zh-CN')}）
         </span>
@@ -635,10 +636,16 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
-      const prodLabel = shipDef
-        ? `${shipDef.name}（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
-        : sbp.shipId
-      const prodText = <span className="app-gold">{prodLabel}</span>
+      const prodName = shipDef?.name ?? sbp.shipId
+      /** 产物名后的参数（货舱/循环）：**不上色**（2026-09-13 船长：「只需要将『护盾扩展器 MK1』这部分换色」） */
+      const prodParams = shipDef
+        ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+        : ''
+      const prodLabel = prodName + prodParams
+      // 产物名**只换色、其余一字不动**；颜色与卡片左边的小图标**同源**（`toneOf(productGlyph)`），
+      // 于是"武器红 / 护盾蓝 / 装甲灰白 / 推进橙…"与图标一致，一眼能看出在造什么（2026-09-13 船长）
+      const prodTone = toneOf(shipDef?.role ?? 'blueprint')
+      const prodText = <span style={{ color: prodTone }}>{prodName}</span>
       items.push({
         id: sbp.id,
         kindLabel: '舰船',
@@ -654,9 +661,13 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         productNode: shipDef ? (
           <ShipHover ship={shipDef} note={shipDef.description}>
             {prodText}
+            {prodParams}
           </ShipHover>
         ) : (
-          prodText
+          <>
+            {prodText}
+            {prodParams}
+          </>
         ),
         running: runViews.some((v) => v.blueprintId === sbp.id),
         canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
@@ -673,7 +684,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       if (bp.itemId !== undefined) continue // 弹药等物品蓝图单独分类
       const moduleDef = engine.ctx.modules.get(bp.moduleId!)
       const prodLabel = moduleDef?.name ?? bp.moduleId!
-      const prodText = <span className="app-gold">{prodLabel}</span>
+      // 产物名换色（与左边小图标同源；装备取**产物槽位**的色调）——其余一字不动
+      const prodText = <span style={{ color: toneOf(moduleDef?.slot ?? 'blueprint') }}>{prodLabel}</span>
       items.push({
         id: bp.id,
         kindLabel: '装备',
@@ -702,8 +714,15 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
       if (bp.itemId === undefined) continue
       const itemDef = engine.ctx.items.get(bp.itemId)
       const units = bp.outputUnits ?? 1
-      const prodLabel = `${itemDef?.name ?? bp.itemId} ×${units} 发`
-      const prodText = <span className="app-gold">{prodLabel}</span>
+      const prodName = itemDef?.name ?? bp.itemId
+      const prodLabel = `${prodName} ×${units} 发`
+      // 产物名换色（物品取**大类**色调：弹药红 / 修理组件绿）；「×N 发」与别的字仍不上色
+      const prodText = (
+        <>
+          <span style={{ color: toneOf(itemDef?.kind ?? 'blueprint') }}>{prodName}</span>
+          {` ×${units} 发`}
+        </>
+      )
       items.push({
         id: bp.id,
         kindLabel: '消耗品',
