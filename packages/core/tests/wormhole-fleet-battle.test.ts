@@ -22,6 +22,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   advanceBattleFor,
   aliveMyUnits,
+  battleArcsFor,
   createBattleState,
   createPlayerSpec,
   isNonCombatShipRole,
@@ -32,6 +33,7 @@ import {
   startFleetBattleFor,
 } from '../src/combat'
 import { wormholeAdmission } from '../src/wormhole'
+import { uidDefId } from '../src/labels'
 import type { UnitSpec } from '../src/combat'
 
 const ctx = buildSimContext()
@@ -73,6 +75,33 @@ function makeFoesInvincible(battle: BattleState): void {
 }
 
 describe('虫洞 · 我方多单位建档（4 艘同时参战）', () => {
+  it('**我方编队读数带船型 id**（`defId`）：画舰影要用它，uid 查不到舰形资产表', () => {
+    const state = fresh()
+    /**
+     * ⚠ **现场照抄船长那条报障**（2026-09-14「在虫洞内，友方舰船的图形不正确」）：
+     * 编队里有**同型两艘** —— 第 1 艘的 uid 就是船型 id（`sh-thresher`，恰好查得到舰形），
+     * 第 2 艘的 uid 是 `sh-thresher#2`（**查不到舰形资产表** ⇒ 旧写法退回兜底剪影）。
+     */
+    const a = addShip(state, 'sh-thresher')
+    const b = addShip(state, 'sh-thresher')
+    const c = addShip(state, 'sh-hawksbill')
+    state.shipId = a
+    const battle = startFleetBattleFor(state, ctx, [a, b, c], CARD, 0)!
+    state.expedition.battle = battle
+    // 走**显式战斗上下文**（与洞内那条调用同形：wormholeBattleViewOf → battleArcsFor(..., override)）
+    const arcs = battleArcsFor(state, ctx, { battle, anomaly: ctx.anomalies.get(CARD)!, leaderShipId: a })
+    expect(arcs).not.toBeNull()
+    const units = arcs!.myUnits
+    expect(units.map((u) => u.tag)).toEqual(['player', 'ally-1', 'ally-2'])
+    // uid 与**船型 id** 两栏都在，且各自对得上
+    expect(units.map((u) => u.shipId)).toEqual([a, b, c])
+    expect(b).toContain('#') // 同型第 2 艘 = `sh-thresher#2`
+    expect(units.map((u) => u.defId)).toEqual(['sh-thresher', 'sh-thresher', 'sh-hawksbill'])
+    expect(units[1]!.shipId).not.toBe(units[1]!.defId) // **旧写法就是拿它去查舰形 ⇒ 查不到**
+    // 逐条自证：`defId` 就是"去掉 `#序号`"的那个东西
+    for (const u of units) expect(uidDefId(u.shipId)).toBe(u.defId)
+  })
+
   it('主控恒为 player 且自动置首；僚舰 ally-1..2 各按自己的船建档', () => {
     const state = fresh()
     const a = addShip(state, 'sandcat')

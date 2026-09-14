@@ -52,19 +52,24 @@ import {
   wormholeHoldStow,
   wormholeTempUsage,
   wormholeTempPending,
+  wormholeActionBlockReason,
+  wormholeTempBoard,
+  wormholeHoldCapacityOf,
   wormholeTempStowPiece,
   wormholeTempDiscardPiece,
   wormholeTempStowAll,
   wormholeTempDiscardAll,
   wormholeNormalizeLegacyTemp,
 } from '../src/wormholeSalvage'
-import { holdTransferTo, makeHoldState } from '../src/wormholeHold'
+import { holdAdd, holdTransferTo, makeHoldState } from '../src/wormholeHold'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
 import { countWare } from '../src/inventory'
 import { rackOf } from '../src/labels'
 
 const ctx = buildSimContext()
+/** 遗迹安全货柜（A 族）—— 本文件多处用它当「形状件」样本 */
+const BOX_FOR_TEST = 'box-relic-a'
 /** 巡洋舰（T3，可装打捞器）；`mod-salvager-1` 是打捞器 MK1 */
 const T3 = 'sh-thresher'
 const RIG = 'mod-salvager-1'
@@ -531,22 +536,29 @@ describe('虫洞 · 临时空间（船长 2026-09-13：「大件货先进临时�
     expect(b.logs.map((l) => l.text).some((t) => t.includes('放进临时空间'))).toBe(true)
   })
 
-  it('**临时空间也有上限**（32 格 = 8 件货柜）：两边都满 ⇒ 才留在原地', () => {
+  it('**临时空间也有上限**（32 格 = 8 件货柜）：装满后连拾取都被拦', () => {
     const state = enterRun(1, 4242, 0, 2)
+    const run = state.wormhole.run!
     const cell = ruinsWithBoxIn(state, 'A')
     expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // 第 1 件 → 货仓格（10 格只放得下这一个 2×2）
-    // 再塞 8 件把临时空间（4×8 = 32 格）用满 ⇒ 第 10 件只能留在原地
-    for (const fam of ['C', 'D', 'E', 'G', 'A', 'C', 'D', 'E']) {
-      cell.piles = [{ itemId: wormholeRelicBoxIdOf(fam), units: 1 }]
-      expect(wormholeTakePileAt(state, ctx, 0).ok, `${fam} 应进临时空间`).toBe(true)
+    /**
+     * ⚠ **2026-09-14 起临时空间有东西就封锁其他操作** ⇒ 不能再靠"一件一件拾取"把临时空间灌满
+     * （第 2 件落进去之后，第 3 次拾取会被闸拦下）。这里**直接摆满** 8 件货柜来验容量上限。
+     */
+    const board = wormholeTempBoard(run)
+    for (let i = 0; i < 8; i++) {
+      const r = holdAdd(board, wormholeRelicBoxIdOf(['C', 'D', 'E', 'G'][i % 4]!), WORMHOLE_TEMP_CELLS)
+      expect(r.ok, `第 ${i + 1} 件应摆得下`).toBe(true)
     }
     expect(wormholeTempUsage(state, ctx).cells).toBe(WORMHOLE_TEMP_CELLS)
     expect(wormholeTempUsage(state, ctx).placements).toHaveLength(8)
+    // 第 9 件：收货阶梯第二层没位置 ⇒ 失败（这里是**动作闸**先拦：临时空间非空就不许再装）
     cell.piles = [{ itemId: wormholeRelicBoxIdOf('G'), units: 1 }]
     const last = wormholeTakePileAt(state, ctx, 0)
     expect(last.ok).toBe(false)
     expect(last.error ?? '').toMatch(/临时空间/)
     expect((cell.piles ?? []).length).toBe(1) // 留在原地等腾地方
+    expect(holdAdd(board, wormholeRelicBoxIdOf('G'), WORMHOLE_TEMP_CELLS).ok).toBe(false) // 真的满了
   })
 
   it('**整理**：临时空间里的货柜能放进货仓（腾出位置后），也能直接丢弃', () => {
@@ -599,15 +611,39 @@ describe('虫洞 · 临时空间（船长 2026-09-13：「大件货先进临时�
     expect(run.hold!.placements.filter((p) => p.kind === 'cargo')).toHaveLength(9)
   })
 
-  it('**离页必须先清空**：pending 读数 + 「全部放回」「全部丢弃」两条出路', () => {
+  it('**临时空间有东西 = 封锁其他操作**（船长 2026-09-14：「和之前的超载类似」）', () => {
     const state = enterRun(1, 4242, 0, 2)
     const run = state.wormhole.run!
     const cell = ruinsWithBoxIn(state, 'A')
-    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // 货仓
-    for (const fam of ['C', 'D']) {
-      cell.piles = [{ itemId: wormholeRelicBoxIdOf(fam), units: 1 }]
-      expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true) // 临时空间
-    }
+    // 现场：货仓一件（占满唯一的 2×2 位）+ 临时空间一件（直接摆 —— 非空之后就不能再靠拾取装货了）
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true)
+    expect(holdAdd(wormholeTempBoard(run), wormholeRelicBoxIdOf('C'), WORMHOLE_TEMP_CELLS).ok).toBe(true)
+    expect(wormholeTempPending(state, ctx).count).toBe(1)
+    // ① 动作闸给出**临时空间**的理由（不是"超载"）
+    const reason = wormholeActionBlockReason(state, ctx)
+    expect(reason ?? '').toContain('临时空间')
+    expect(reason ?? '').not.toContain('超载')
+    // ② 扫描 / 前往 / 激活（打捞·开战）/ 拾取 一律被拦
+    expect(wormholeGridScan(state).ok).toBe(false)
+    expect(wormholeTravelTo(state, ctx, { q: 0, r: 0 }, { confirmUnknown: true }).ok).toBe(false)
+    expect(wormholeActivateAt(state, ctx).ok).toBe(false)
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(false)
+    // ③ 清空临时空间（丢弃）⇒ 立刻放行
+    expect(wormholeTempDiscardAll(state, ctx).moved).toBe(1)
+    expect(wormholeActionBlockReason(state, ctx)).toBeNull()
+    expect(wormholeGridScan(state).ok).toBe(true)
+    expect(cell.place).toBe('ruins')
+  })
+
+  it('**离页必须先清空**：pending 读数 + 「全部放回」「全部丢弃」两条出路', () => {
+    const state = enterRun(1, 4242, 0, 2)
+    const run = state.wormhole.run!
+    // 直接摆：货仓一件 + 临时空间两件（非空之后其他操作都被闸拦，故不走拾取）
+    run.hold = run.hold ?? makeHoldState()
+    expect(holdAdd(run.hold, BOX_FOR_TEST, wormholeHoldCapacityOf(state, ctx)).ok).toBe(true)
+    const board = wormholeTempBoard(run)
+    expect(holdAdd(board, wormholeRelicBoxIdOf('C'), WORMHOLE_TEMP_CELLS).ok).toBe(true)
+    expect(holdAdd(board, wormholeRelicBoxIdOf('D'), WORMHOLE_TEMP_CELLS).ok).toBe(true)
     expect(wormholeTempPending(state, ctx).count).toBe(2)
     // 「全部放回」：先抛掉货仓那件腾出 2×2 ⇒ 只能放回 1 件，剩 1 件卡住（件留在临时空间）
     const boxA = run.hold!.placements.find((p) => p.kind === 'box')!

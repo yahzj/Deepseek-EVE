@@ -9999,6 +9999,16 @@ body {
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: #ff8373; }
 /* 超载条（探索页与货仓页共用）：与「前往未知地点」警告同族，但走红档 */
+/* **「扫描虫洞」页的进度条**（2026-09-14 船长：进度条满即发现一处虫洞）：
+   与活动栏同族的"细轨 + 填充"观感，不自造新形状（纯色块，无渐变裁形）。 */
+.app-wh-scanbar { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.app-wh-scanbar-label { font-size: 12px; }
+.app-wh-scanbar-track {
+  height: 8px; border-radius: 4px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--wui-border);
+}
+.app-wh-scanbar-fill { height: 100%; background: var(--wui-accent); transition: width 240ms linear; }
+.app-wh-scanbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .app-wh-hold-overload {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45);

@@ -42,6 +42,7 @@ import {
   wormholeEnsureArrivalPiles,
   wormholeLootTierOf,
   wormholeLootValueIsk,
+  wormholeActionBlockReason,
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
   wormholeStowOrTemp,
@@ -150,7 +151,7 @@ export function wormholeActivateAt(
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
-  const overloaded = wormholeOverloadBlockReason(state, ctx)
+  const overloaded = wormholeActionBlockReason(state, ctx)
   if (overloaded) return { ok: false, error: overloaded }
 
   // **打捞格**（墓场/遗迹 · F5 起不用激活）：打捞一批 + 遗迹捞空时的收尾战 —— 合成一次调用
@@ -247,7 +248,7 @@ export function wormholeTravelTo(
   atGameMs?: number,
 ): { ok: boolean; error?: string; code?: 'unknown-target'; spent?: number; autoBattle?: boolean; beacon?: boolean } {
   const run = state.wormhole.run
-  const overloaded = wormholeOverloadBlockReason(state, ctx)
+  const overloaded = wormholeActionBlockReason(state, ctx)
   if (overloaded) return { ok: false, error: overloaded }
   const g = run?.grid
   const snap =

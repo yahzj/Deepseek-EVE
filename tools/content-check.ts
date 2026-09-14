@@ -3618,7 +3618,8 @@ for (const m of MODULES) {
    **势力契约**（species 恒为章鱼人、部门 id 势力内唯一、立场合法、色调/图标有口径）
    与**发件方引用契约**（factionId/deptId 必须存在、kind 必须落在势力白名单、每个势力至少被引用一次）。 */
 {
-  const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills', 'comms'])
+  // 注：'task' = 任务中心（2026-09-14 起是独立一级页，不再是星图页的选项卡）
+const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills', 'comms', 'task'])
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
   /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
   const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
@@ -3817,8 +3818,13 @@ for (const m of MODULES) {
       // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）——只有"星图 · 任务中心"才有内层标签
       if (m.hint.taskTab !== undefined) {
         check(
-          m.hint.page === 'map' && m.hint.tab === 'task',
-          `通讯 ${m.id} 只有星图「任务中心」支持内层标签跳转（实际 page=${m.hint.page} tab=${m.hint.tab ?? '无'}）`,
+          /**
+           * ⚠ **2026-09-14 改判**（船长：「将任务中心界面移出星图，放入左侧导航栏，通讯的上方」）：
+           * 任务中心从"星图页的一个选项卡（`page: 'map'` + `tab: 'task'`）"变成**独立一级页** ⇒
+           * 内层标签的合法载体改为 `page: 'task'`；老的 `map + tab: 'task'` 仍放行一档（兼容未改道的旧数据）。
+           */
+          m.hint.page === 'task' || (m.hint.page === 'map' && m.hint.tab === 'task'),
+          `通讯 ${m.id} 只有任务中心页支持内层标签跳转（实际 page=${m.hint.page} tab=${m.hint.tab ?? '无'}）`,
         )
         check(TASK_TABS.has(m.hint.taskTab), `通讯 ${m.id} 任务中心内层标签非法：${m.hint.taskTab}`)
       }

@@ -144,7 +144,7 @@ import {
   wormholeDiscardToFit,
   wormholeHoldDiscard,
   wormholeDiscardCargo,
-  wormholeOverloadBlockReason,
+  wormholeActionBlockReason,
   wormholeHoldStow,
   wormholeHoldCapacityOf,
   wormholeTempUsage,
@@ -155,6 +155,13 @@ import {
   wormholeTempPending,
   wormholeTempBoard,
   wormholeNormalizeLegacyTemp,
+  wormholeScanStart,
+  wormholeScanStop,
+  wormholeScanWindowMs,
+  wormholeScanBlockReason,
+  wormholeStockOf,
+  wormholeStockTake,
+  WORMHOLE_STOCK_MAX,
   holdTransferTo,
   makeHoldState,
   wormholeSyncMatterTurns,
@@ -1361,6 +1368,29 @@ export class GameEngine {
     return result
   }
 
+  /**
+   * **主控活动「扫描虫洞」**（2026-09-14 船长）：只能在「扫描虫洞」界面里开始/停止。
+   * 进度保留（停扫不清零）；满一个窗口由 `advanceWormholeScan` 在推进里发现一处虫洞。
+   */
+  wormholeScanStart(): CommandResult {
+    const r = wormholeScanStart(this.state, this.ctx)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 停「扫描虫洞」（进度保留） */
+  wormholeScanStop(): CommandResult {
+    const r = wormholeScanStop(this.state)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
   /** v21：取消指定制造线（按线号；材料全额退回仓库；制造费已取消无退费一说） */
   cancelManufacturingAt(runId: number | string): CommandResult {
     const result = cancelManufacturing(this.state, this.ctx, Number(runId))
@@ -1406,9 +1436,41 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
+  /**
+   * **从库存进洞**（2026-09-14 船长：发现的虫洞囤在「扫描虫洞」页，玩家在那里选一处开始探索）。
+   * 与调试入口的区别只有两处：种子取**该库存项**（本趟内容确定性）、起始层取该项的 `depth`；
+   * 进洞成功即**消耗**这一处。
+   */
+  wormholeEnterFromStock(stockId: string, shipIds: readonly string[]): CommandResult {
+    const item = wormholeStockOf(this.state).find((x) => x.id === stockId)
+    if (!item) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。' }
+    const r = wormholeEnter(this.state, this.ctx, shipIds, item.seed)
+    if (!r.ok) return { ok: false, error: r.error }
+    const run = this.state.wormhole.run
+    if (run) run.depth = Math.max(1, Math.min(9, item.depth))
+    wormholeStockTake(this.state, stockId)
+    void this.persist()
+    this.notify()
+    return { ok: true }
+  }
+
+  /** 虫洞扫描：库存读数（界面用） */
+  wormholeStock(): Array<{ id: string; seed: number; depth: number; foundAtGameMs: number }> {
+    return wormholeStockOf(this.state)
+  }
+
+  /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */
+  wormholeScanWindow(): number {
+    return wormholeScanWindowMs(this.state)
+  }
+
+  /** 虫洞扫描：现在能不能开扫（不许时给理由，界面据此置灰） */
+  wormholeScanBlockReason(): string | null {
+    return wormholeScanBlockReason(this.state)
+  }
+
   /** 虫洞：临时离开（活动停止、进度保存；主控随即释放，可去做别的） */
-  wormholeLeave(): void {
-    wormholeLeave(this.state)
+  wormholeLeave(): void {    wormholeLeave(this.state)
     void this.persist()
     this.notify()
   }
@@ -1599,6 +1661,19 @@ export class GameEngine {
   }
 
   /**
+   * 虫洞：**当前能不能继续探索**（不许时的理由；可以时 null）。
+   *
+   * 两条闸（船长 2026-09-14 追加第二条）：
+   * ① **临时空间里有东西** ⇒ 必须先去背包页「放回货仓」或「丢弃」（「临时空间内有物品就不允许进行
+   *    其他操作，和之前的超载类似」）；
+   * ② 货仓超载 ⇒ 必须先抛货（船长裁定 8）。
+   * 界面据此把扫描/前往/打捞/采集/开战/撤离/深入一起置灰，并把这句理由摆出来。
+   */
+  wormholeActionBlocked(): string | null {
+    return wormholeActionBlockReason(this.state, this.ctx)
+  }
+
+  /**
    * 虫洞：**临时空间读数**（船长 2026-09-14：4 列 × 8 行 = 32 格的格子区，挂在货仓 8 列右侧）。
    * 不占货仓容量、不算超载；**离开背包页前必须清空**。
    */
@@ -1695,7 +1770,7 @@ export class GameEngine {
   wormholeDescend(): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
-    const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
+    const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
     /**
      * ⚠ **新层也要带上扫码加成**（2026-09-13 二号接线单）：`wormholeDescend` 的第三个入参是
@@ -1716,7 +1791,7 @@ export class GameEngine {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
     // **超载不许撤离**（船长裁定 8）：先把货抛到容量内（抛货本身任何时候都能做 ⇒ 不会软锁）
-    const blocked = wormholeOverloadBlockReason(this.state, this.ctx)
+    const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
     /**
      * **临时空间没清空也不许撤离**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）：

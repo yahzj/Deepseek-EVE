@@ -21,6 +21,7 @@ import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, Game
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
+import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from './wormholeScan'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
@@ -2278,6 +2279,36 @@ function normalizeState(raw: unknown): GameState {
   // --- 调试模式（v15）：布尔化（非法值一律 false） ---
   const debugQuick = src.debugQuick === true
 
+  // --- 虫洞扫描与库存（2026-09-14 · 可选字段 ⇒ 零迁移）---
+  // 扫描：active 布尔化、进度钳制在 [0, 窗口上限]（窗口上限 = 基准 220 分钟 ×1，技能只会缩短窗口 ⇒
+  // 按基准兜底，消费侧 `wormholeScanWindowMs` 再按实际技能窗口钳一次）
+  const whScanRaw = asRaw(src.wormholeScan)
+  const whScanProgressRaw = num(whScanRaw.progressMs)
+  const wormholeScan = {
+    active: whScanRaw.active === true,
+    progressMs:
+      Number.isFinite(whScanProgressRaw) && whScanProgressRaw > 0
+        ? Math.min(WORMHOLE_SCAN_BASE_MS, Math.floor(whScanProgressRaw))
+        : 0,
+  }
+  // 库存：只收"结构完整"的条目（id 非空 / 种子与起始层为正整数），上限 = `WORMHOLE_STOCK_MAX`
+  const wormholeStock: Array<{ id: string; seed: number; depth: number; foundAtGameMs: number }> = []
+  const whStockRaw = Array.isArray(src.wormholeStock) ? src.wormholeStock : []
+  for (const item of whStockRaw) {
+    if (wormholeStock.length >= WORMHOLE_STOCK_MAX) break
+    const o = asRaw(item)
+    const id = typeof o.id === 'string' ? o.id : ''
+    const seed = Math.floor(num(o.seed))
+    const depthRaw = Math.floor(num(o.depth))
+    if (id.length === 0 || !Number.isFinite(seed) || seed <= 0) continue
+    wormholeStock.push({
+      id,
+      seed,
+      depth: Number.isFinite(depthRaw) ? Math.min(9, Math.max(1, depthRaw)) : 1,
+      foundAtGameMs: Number.isFinite(num(o.foundAtGameMs)) ? Math.max(0, Math.floor(num(o.foundAtGameMs))) : 0,
+    })
+  }
+
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
   const cbRaw = src.completedBounties
@@ -2726,6 +2757,9 @@ function normalizeState(raw: unknown): GameState {
     exploredGalaxies,
     scanning,
     scanProgress,
+    // 虫洞扫描与库存（2026-09-14 · 可选字段 ⇒ 老档没有就是「没在扫、库存空」）
+    wormholeScan,
+    wormholeStock,
     debugQuick,
     completedBounties,
     awayGalaxy,
