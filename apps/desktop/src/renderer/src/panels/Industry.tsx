@@ -306,6 +306,16 @@ function BlueprintCard({
           : null
   const short = missingMaterials(state, engine.ctx, spec)
   const goodKey = bpGoodKey(engine, blueprintId)
+  /**
+   * **市场购买门槛**（只作"卡头状态"提示用）。⚠ **2026-09-14 船长：「组装机里，需要声望的才能启动组装机的
+   * 限制删除」** —— 这一条**不再挡任何按钮**：
+   * - 引擎侧本来就不看声望（`startManufacturing` / `canStartBlueprint` 只认"是否已学会 / 一次性图纸是否在书架"）；
+   * - 界面侧原先在 `canBuild` 之后插了一支 `lock ? 「✕ 声望未达标」（disabled）`，它排在
+   *   **「书架有书 ⇒ 就地学习」之前** ⇒ 手里已经拿着书（洞内打捞来的）也点不动、只看到"需要声望"。
+   * 现在只留卡头那枚提示（告诉玩家"市场这条路暂时买不了、还差多少声望"），
+   * **卡片永远给出下一步能做的事**：能造 ⇒ 制造；书架有书 ⇒ 学习；否则 ⇒ 市场求购（点到市场页自己看门槛）。
+   * 市场买书本身的声望门槛**未动**（那是已确认的"声望用途"口径，船长本轮只点了组装机）。
+   */
   const lock = !owned && goodKey ? marketLockedReason(state, engine.ctx, goodKey) : null
   // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
@@ -401,7 +411,8 @@ function BlueprintCard({
             </em>
           ) : null}
         </span>
-        {/* 卡头右侧：标记星标（2026-09-10 船长） + 状态徽标（已学会/蓝图书存量/声望锁/类型） */}
+        {/* 卡头右侧：标记星标（2026-09-10 船长） + 状态徽标（已学会/蓝图书存量/市场门槛提示/类型）
+            ⚠ 「市场门槛」这枚**只是提示**（2026-09-14 船长：组装机不再用声望挡启动）——它不挡任何按钮 */}
         <span className="app-belt-head-right">
           <MarkStar engine={engine} kind="blueprints" id={blueprintId} />
           {owned ? (
@@ -413,7 +424,7 @@ function BlueprintCard({
           ) : bookCount > 0 ? (
             <span className="app-chip">蓝图书 ×{bookCount}</span>
           ) : lock ? (
-            <span className="app-chip is-exotic" title={lock}>
+            <span className="app-chip is-exotic" title={`${lock}——这只影响「在市场买这本书」，不影响组装机开工`}>
               ✕ {lock}
             </span>
           ) : (
@@ -615,10 +626,6 @@ function BlueprintCard({
               </button>
             </div>
           </>
-        ) : lock ? (
-          <button className="app-btn is-small" disabled title={lock}>
-            ✕ 声望未达标
-          </button>
         ) : singleUse && goodKey ? (
           /* 一次性图纸（2026-09-14 船长：「组装机的一次性蓝图制造如果没有蓝图，也改为跳转市场，
              和其他组装机一样」）——**在市场流通的一次性图纸**（`sbp-once-*`：稀有订单层 / 奇货）
